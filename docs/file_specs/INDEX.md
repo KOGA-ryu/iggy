@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `d9665a0c`
+Verified at: `158627a3`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `121`.
-- Current mapped source files represented by those specs: about `235`.
+- Current file specs: `125`.
+- Current mapped source files represented by those specs: about `243`.
 
 ## Status Labels
 
@@ -96,6 +96,8 @@ App projection/view/window:
 - `mapped` [PauseMenu.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/frontend/PauseMenu.md)
 - `mapped` [DevToolsMenu.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/frontend/DevToolsMenu.md)
 - `mapped` [SaveSlotModel.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/frontend/SaveSlotModel.md)
+- `mapped` [SaveBrowser.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/frontend/SaveBrowser.md)
+- `mapped` [WorldSetupModel.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/frontend/WorldSetupModel.md)
 - `mapped` [FrontendRouter.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/menu/FrontendRouter.md)
 - `mapped` [InputRouter.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/menu/InputRouter.md)
 - `mapped` [ActionHandlers.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/menu/ActionHandlers.md)
@@ -103,6 +105,8 @@ App projection/view/window:
 - `mapped` [PauseUi.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/menu/PauseUi.md)
 - `mapped` [Catalog.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/save/Catalog.md)
 - `mapped` [SaveBridge.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/save/SaveBridge.md)
+- `mapped` [CatalogProjector.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/save/CatalogProjector.md)
+- `mapped` [SaveSlotOperations.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/save/SaveSlotOperations.md)
 - `mapped` [ProjectionRefresh.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ProjectionRefresh.md)
 - `mapped` [FramePresenter.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/FramePresenter.md)
 - `mapped` [InputFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/InputFrame.md)
@@ -189,12 +193,12 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch W, frontend save/world setup models:
+Batch X, product save flow/executor surfaces:
 
-- `next` `src/app/frontend/SaveBrowser.*`
-- `next` `src/app/frontend/WorldSetupModel.*`
-- `next` `src/app/iggy3d/save/SaveSlotOperations.*`
-- `next` `src/app/iggy3d/save/CatalogProjector.*`
+- `next` `src/app/iggy3d/save/Flow.*`
+- `next` `src/app/iggy3d/save/DeleteExecutor.*`
+- `next` `src/app/iggy3d/save/RecoverExecutor.*`
+- `next` `src/app/iggy3d/save/SaveSessionStore.hpp`
 
 ## Defer Leaf Policy
 
