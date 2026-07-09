@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `189`.
-- Current mapped source files represented by those specs: about `358`.
+- Current file specs: `191`.
+- Current mapped source files represented by those specs: about `363`.
 
 ## Status Labels
 
@@ -149,6 +149,8 @@ App projection/view/window:
 - `mapped` [CreativeReceiptRecording.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/CreativeReceiptRecording.md)
 - `mapped` [PhysicsReceiptRecording.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/PhysicsReceiptRecording.md)
 - `mapped` [DebugHudStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/debug/DebugHudStore.md)
+- `mapped` [InteractionModeHud.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/debug/InteractionModeHud.md)
+- `mapped` [DebugHudStatePackets.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/debug/DebugHudStatePackets.md)
 - `mapped` [CameraController.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/CameraController.md)
 - `mapped` [OpeningMenuView.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/OpeningMenuView.md)
 - `mapped` [MenuPanelsView.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/MenuPanelsView.md)
@@ -260,12 +262,11 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch AQ, app debug leaf state and HUD surfaces:
+Batch AR, creative bridge support surfaces:
 
-- `next` `src/app/iggy3d/debug/InteractionModeHud.*`
-- `next` `src/app/iggy3d/debug/DevCollisionOverlayState.hpp`
-- `next` `src/app/iggy3d/debug/NpcBehaviorDebugHudState.hpp`
-- `queued` `src/app/iggy3d/debug/TopDownMapState.hpp`
+- `next` `src/app/iggy3d/creative/bridge/ViewportPickFrame.*`
+- `next` `src/app/iggy3d/creative/bridge/WindowCoordinateSpace.*`
+- `next` `src/app/iggy3d/creative/bridge/WireframeFrame.*`
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
 ## Defer Leaf Policy
