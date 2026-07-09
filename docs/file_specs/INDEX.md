@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `183`.
-- Current mapped source files represented by those specs: about `344`.
+- Current file specs: `185`.
+- Current mapped source files represented by those specs: about `348`.
 
 ## Status Labels
 
@@ -120,6 +120,8 @@ App projection/view/window:
 - `mapped` [PresentPathStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/PresentPathStore.md)
 - `mapped` [AppShell.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/AppShell.md)
 - `mapped` [AppKernel.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/AppKernel.md)
+- `mapped` [AppConfig.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/AppConfig.md)
+- `mapped` [CliParser.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/CliParser.md)
 - `mapped` [Options.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/Options.md)
 - `mapped` [ProductAppWindowState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ProductAppWindowState.md)
 - `mapped` [ProductStartupState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ProductStartupState.md)
@@ -254,12 +256,15 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch AN, app config and CLI entry surfaces:
+Batch AO, product creative root state packets:
 
-- `next` `src/app/AppConfig.*`
-- `next` `src/app/CliParser.*`
+- `next` `src/app/iggy3d/ProductCreativeBakedRoomRefresh.hpp`
+- `next` `src/app/iggy3d/ProductCreativeDocumentRevisionState.hpp`
+- `next` `src/app/iggy3d/ProductCreativeUiInputState.hpp`
+- `queued` `src/app/iggy3d/ProductCreativeUiLastState.hpp`
+- `queued` `src/app/iggy3d/ProductCreativeUiProjectionState.hpp`
+- `queued` `src/app/iggy3d/ProductCreativeUndoState.hpp`
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
-- `queued` `src/app/iggy3d/view/PrimitiveDrawList.*` if primitive packet ownership changes.
 
 ## Defer Leaf Policy
 
