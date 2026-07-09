@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `ac496769`
+Verified at: `f27cc3fc`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `242`.
-- Current mapped source files represented by those specs: about `460`.
+- Current file specs: `246`.
+- Current mapped source files represented by those specs: about `466`.
 
 ## Status Labels
 
@@ -262,6 +262,10 @@ App room editor/map maker:
 - `mapped` [ActionController.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/room_editor/ActionController.md)
 - `mapped` [AuthoringController.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/room_editor/AuthoringController.md)
 - `mapped` [Cursor.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/room_editor/Cursor.md)
+- `mapped` [EditableRoomToAuthoredRoom.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/room_editor/EditableRoomToAuthoredRoom.md)
+- `mapped` [EditingState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/room_editor/EditingState.md)
+- `mapped` [RoomEditorOverlayState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/room_editor/RoomEditorOverlayState.md)
+- `mapped` [RoomEditorPreviewState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/room_editor/RoomEditorPreviewState.md)
 - `mapped` [GeometryOptimization.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/room/GeometryOptimization.md)
 - `mapped` [Grid.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/map_maker/Grid.md)
 - `mapped` [Presentation.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/map_maker/Presentation.md)
@@ -323,12 +327,12 @@ Batch AV, creative bake support adapters:
 - `defer leaf` `src/app/iggy3d/creative/adapters/Draw.*` zero-byte placeholder.
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
-Batch BF, remaining room-editor state/conversion surfaces:
+Batch BG, app gameplay state packet surfaces:
 
-- `next` `src/app/iggy3d/room_editor/EditableRoomToAuthoredRoom.*`
-- `next` `src/app/iggy3d/room_editor/EditingState.*`
-- `queued` `src/app/iggy3d/room_editor/RoomEditorOverlayState.hpp`
-- `queued` `src/app/iggy3d/room_editor/RoomEditorPreviewState.hpp`
+- `next` `src/app/iggy3d/gameplay/GameplayStore.hpp`
+- `next` `src/app/iggy3d/gameplay/CommandState.hpp`
+- `next` `src/app/iggy3d/gameplay/CollisionState.hpp`
+- `queued` `src/app/iggy3d/gameplay/*State.hpp` remaining data packets.
 
 ## Defer Leaf Policy
 
