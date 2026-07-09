@@ -34,6 +34,52 @@ bool recordSightingSetsMemory() {
          expect(actor.investigateDwellTicks == 0U, "sighting resets dwell");
 }
 
+bool sameOriginNonvisualPreservesDwellAndDestination() {
+  iggy3d::AiActorState actor;
+  iggy3d::npcRecordSighting(actor, v(4.0F, 2.0F), 10U);
+  actor.investigateDwellTicks = 7U;
+
+  const bool recorded = iggy3d::npcRecordNonvisualInvestigationMemory(
+      actor, v(4.2F, 2.2F), 11U, /*alertBandIncreased=*/false);
+  return expect(!recorded, "same-origin nonvisual does not refresh memory") &&
+         expect(actor.hasLastKnownTarget, "same-origin keeps memory") &&
+         expect(actor.lastKnownTargetPosition.x == 4.0F &&
+                    actor.lastKnownTargetPosition.z == 2.0F,
+                "same-origin preserves destination") &&
+         expect(actor.lastKnownTargetTick == 10U, "same-origin preserves tick") &&
+         expect(actor.investigateDwellTicks == 7U, "same-origin preserves dwell");
+}
+
+bool relocatedNonvisualRefreshesMemoryAndDwell() {
+  iggy3d::AiActorState actor;
+  iggy3d::npcRecordSighting(actor, v(4.0F, 2.0F), 10U);
+  actor.investigateDwellTicks = 7U;
+
+  const bool recorded = iggy3d::npcRecordNonvisualInvestigationMemory(
+      actor, v(5.0F, 2.0F), 11U, /*alertBandIncreased=*/false);
+  return expect(recorded, "relocated nonvisual refreshes memory") &&
+         expect(actor.lastKnownTargetPosition.x == 5.0F &&
+                    actor.lastKnownTargetPosition.z == 2.0F,
+                "relocated stores destination") &&
+         expect(actor.lastKnownTargetTick == 11U, "relocated stores tick") &&
+         expect(actor.investigateDwellTicks == 0U, "relocated resets dwell");
+}
+
+bool alertBandIncreaseRefreshesSameOriginNonvisual() {
+  iggy3d::AiActorState actor;
+  iggy3d::npcRecordSighting(actor, v(4.0F, 2.0F), 10U);
+  actor.investigateDwellTicks = 7U;
+
+  const bool recorded = iggy3d::npcRecordNonvisualInvestigationMemory(
+      actor, v(4.2F, 2.2F), 11U, /*alertBandIncreased=*/true);
+  return expect(recorded, "band increase refreshes same-origin nonvisual") &&
+         expect(actor.lastKnownTargetPosition.x == 4.2F &&
+                    actor.lastKnownTargetPosition.z == 2.2F,
+                "band increase stores latest nonvisual origin") &&
+         expect(actor.lastKnownTargetTick == 11U, "band increase stores tick") &&
+         expect(actor.investigateDwellTicks == 0U, "band increase resets dwell");
+}
+
 bool noMemoryIsInactive() {
   iggy3d::AiActorState actor;  // hasLastKnownTarget defaults false
   const iggy3d::NpcInvestigateStep step = iggy3d::npcStepInvestigate(
@@ -109,8 +155,11 @@ bool leavingSpotResetsDwell() {
 }  // namespace
 
 int main() {
-  const bool ok = recordSightingSetsMemory() && noMemoryIsInactive() &&
-                  visualConfirmedIsInactive() && belowSearchingGivesUp() &&
+  const bool ok = recordSightingSetsMemory() &&
+                  sameOriginNonvisualPreservesDwellAndDestination() &&
+                  relocatedNonvisualRefreshesMemoryAndDwell() &&
+                  alertBandIncreaseRefreshesSameOriginNonvisual() &&
+                  noMemoryIsInactive() && visualConfirmedIsInactive() && belowSearchingGivesUp() &&
                   fullTransitionApproachDwellGiveUp() && leavingSpotResetsDwell();
   return ok ? 0 : 1;
 }

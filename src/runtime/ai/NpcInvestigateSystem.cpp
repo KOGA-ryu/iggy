@@ -30,6 +30,19 @@ void npcRecordSighting(AiActorState& actor, Vec3 targetPosition, std::uint64_t t
   actor.investigateDwellTicks = 0;  // a fresh sighting restarts any look-around
 }
 
+bool npcRecordNonvisualInvestigationMemory(AiActorState& actor, Vec3 stimulusPosition,
+                                           std::uint64_t tick, bool alertBandIncreased,
+                                           float relocateEpsilonMeters) {
+  if (!actor.hasLastKnownTarget ||
+      horizontalDistanceMeters(actor.lastKnownTargetPosition, stimulusPosition) >
+          relocateEpsilonMeters ||
+      alertBandIncreased) {
+    npcRecordSighting(actor, stimulusPosition, tick);
+    return true;
+  }
+  return false;
+}
+
 NpcInvestigateStep npcStepInvestigate(AiActorState& actor, Vec3 actorPosition,
                                       std::uint8_t alertBand, bool visualConfirmed,
                                       float arriveEpsilonMeters,

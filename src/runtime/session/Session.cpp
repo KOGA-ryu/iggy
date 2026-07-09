@@ -1159,16 +1159,20 @@ void enqueueNpcBehaviorCommands(
       stimulus.soundInvestigatePos = snd.investigatePos;
     }
 
+    const std::uint8_t alertBandBefore = alertBandIndex(actorState.alertLevel, alertProfile);
     npcStepAlert(actorState, stimulus, alertProfile, state.clock.tickIndex);
+    const std::uint8_t alertBandAfter = alertBandIndex(actorState.alertLevel, alertProfile);
+    const bool alertBandIncreased = alertBandAfter > alertBandBefore;
     // Remember where the target is while it is actually seen (slice 7). visualConfirmed implies
-    // Ready, so perception.targetPosition is the live sighting. MEMORY (a1s2): if the target
-    // was heard but never seen this tick, plant the sound origin in the SAME last-known memory
-    // so npcStepInvestigate (band-gated >= Searching) walks the guard to the noise -- no second
-    // memory system (map law). Visual always wins when both are present.
+    // Ready, so perception.targetPosition is the live sighting. MEMORY (a1s2/P5b): if the target
+    // was heard but never seen this tick, share the SAME last-known memory but only refresh it
+    // for a relocated sound or strict alert-band rise. Visual always wins when both are present.
     if (stimulus.visualConfirmed) {
       npcRecordSighting(actorState, perception.targetPosition, state.clock.tickIndex);
     } else if (stimulus.heard) {
-      npcRecordSighting(actorState, stimulus.soundInvestigatePos, state.clock.tickIndex);
+      (void)npcRecordNonvisualInvestigationMemory(
+          actorState, stimulus.soundInvestigatePos, state.clock.tickIndex,
+          alertBandIncreased);
     }
 
     const NpcBehaviorDecision engaged =

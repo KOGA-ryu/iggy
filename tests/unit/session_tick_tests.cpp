@@ -1145,6 +1145,96 @@ bool nullCollisionSurfacesApplySoundWallLoss() {
   return ok;
 }
 
+void faceNpcAwayFromPlayer(iggy3d::Session& session) {
+  if (iggy3d::AiActorState* ai = mutableAiActor(session, {2})) {
+    ai->facingDirection = {1.0F, 0.0F, 0.0F};  // player at -x is outside the cone
+  }
+}
+
+void queueSoundAndWait(iggy3d::Session& session, iggy3d::Vec3 origin) {
+  iggy3d::SoundEvent event;
+  event.source = {1};
+  event.originMeters = origin;
+  event.loudnessDb = 60.0F;
+  event.alertFactor = 1.0F;
+  event.alertMax = 30.0F;
+  session.mutableStateForOwnedSystems().transient.soundEvents = {event};
+  (void)session.submitCommand(submittedWait());
+}
+
+bool sameOriginSoundLetsInvestigateDwellExpire() {
+  iggy3d::Session session = makeNpcCombatSession(4.0F);
+  seedNpcAiProfile(session, "default");
+  const iggy3d::SpatialSurfaceSet surfaces = openWalkableSurfaces();
+  const iggy3d::Vec3 soundOrigin{4.0F, 0.0F, 0.0F};
+  const iggy3d::AlertProfile profile;
+
+  bool ok = true;
+  bool reachedSearching = false;
+  bool sawDwell = false;
+  bool clearedAfterDwell = false;
+  bool reachedCombat = false;
+  for (int tick = 0;
+       tick < static_cast<int>(iggy3d::kInvestigateDwellTicks) + 140 && !clearedAfterDwell;
+       ++tick) {
+    faceNpcAwayFromPlayer(session);
+    queueSoundAndWait(session, soundOrigin);
+    ok = ok && expect(session.tick(&surfaces).status == iggy3d::ResultStatus::Ok,
+                      "same-origin sound tick ok");
+    const iggy3d::AiActorState* ai = findAiActor(session.state().ai, {2});
+    if (ai == nullptr) {
+      ok = expect(false, "same-origin sound actor present");
+      break;
+    }
+    const std::uint8_t band = iggy3d::alertBandIndex(ai->alertLevel, profile);
+    reachedSearching = reachedSearching || band >= 3U;
+    reachedCombat = reachedCombat || band >= 5U;
+    sawDwell = sawDwell || (ai->hasLastKnownTarget && ai->investigateDwellTicks > 0U);
+    if (sawDwell && !ai->hasLastKnownTarget) {
+      clearedAfterDwell = true;
+    }
+  }
+
+  return ok && expect(reachedSearching, "same-origin sound drives investigation band") &&
+         expect(sawDwell, "same-origin sound reaches investigate dwell") &&
+         expect(clearedAfterDwell, "same-origin sound lets dwell elapse and memory clear") &&
+         expect(!reachedCombat, "sound-only same-origin stimulus stays below combat");
+}
+
+bool relocatedSoundRefreshesInvestigationMemoryOnce() {
+  iggy3d::Session session = makeNpcCombatSession(4.0F);
+  seedNpcAiProfile(session, "default");
+  const iggy3d::SpatialSurfaceSet surfaces = openWalkableSurfaces();
+
+  iggy3d::AiActorState* mutableAi = mutableAiActor(session, {2});
+  if (mutableAi == nullptr) {
+    return expect(false, "relocated sound actor present before tick");
+  }
+  mutableAi->alertLevel = 0.50F;  // Searching band
+  mutableAi->lastRiseTick = 0;
+  iggy3d::npcRecordSighting(*mutableAi, {4.0F, 0.0F, 0.0F}, 99U);
+  mutableAi->investigateDwellTicks = 9U;
+  faceNpcAwayFromPlayer(session);
+
+  const iggy3d::Vec3 relocatedOrigin{5.0F, 0.0F, 0.0F};
+  queueSoundAndWait(session, relocatedOrigin);
+  bool ok = expect(session.tick(&surfaces).status == iggy3d::ResultStatus::Ok,
+                   "relocated sound tick ok");
+  const iggy3d::AiActorState* ai = findAiActor(session.state().ai, {2});
+  ok = ok && expect(ai != nullptr && ai->hasLastKnownTarget,
+                    "relocated sound keeps investigation memory") &&
+       expect(ai != nullptr &&
+                  iggy3d::nearlyEqual(ai->lastKnownTargetPosition, relocatedOrigin, 0.05F),
+              "relocated sound repoints investigation memory") &&
+       expect(ai != nullptr && ai->lastKnownTargetTick != 99U,
+              "relocated sound refreshes memory tick") &&
+       expect(ai != nullptr && ai->investigateDwellTicks == 0U,
+              "relocated sound resets dwell") &&
+       expect(ai != nullptr && ai->lastIntent == iggy3d::AiIntentKind::Investigate,
+              "relocated sound sends guard toward new origin");
+  return ok;
+}
+
 bool authoredNpcFacingOverridesDefaultAndGatesVision() {
   iggy3d::SessionCreateRequest request;
   request.config = iggy3d::makeDefaultRuntimeConfig();
@@ -2042,6 +2132,8 @@ int main() {
                   shortWallBelowStandingEyeDoesNotBlockLineOfSight() &&
                   beyondRadiusClearLosDoesNotConfirmVisualTarget() &&
                   nullCollisionSurfacesApplySoundWallLoss() &&
+                  sameOriginSoundLetsInvestigateDwellExpire() &&
+                  relocatedSoundRefreshesInvestigationMemoryOnce() &&
                   authoredNpcFacingOverridesDefaultAndGatesVision() &&
                   sessionCreateSeedsAiActorProfileIntoStateAndBaseline() &&
                   sessionCreateRejectsInvalidAiActorSeeds() &&

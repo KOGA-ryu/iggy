@@ -18,6 +18,10 @@ namespace iggy3d {
 // literal at the call site.
 inline constexpr std::uint32_t kInvestigateDwellTicks = 40U;
 
+// Same-origin nonvisual stimuli inside this horizontal radius refresh alert but do not restart
+// the look-around dwell forever. Relocated sounds beyond it are treated as a new source.
+inline constexpr float kNonvisualInvestigateRelocateEpsilonMeters = 0.75F;
+
 // One investigate step. `active` false means "leave the decision to combat/patrol". When active,
 // `dwelling` distinguishes looking-around-at-the-spot (hold) from walking-toward it (move).
 struct NpcInvestigateStep {
@@ -29,6 +33,16 @@ struct NpcInvestigateStep {
 // Record a fresh sighting: store the target position + tick as the memory and reset the dwell.
 // Called every visually-confirmed tick so the memory tracks the latest sighting.
 void npcRecordSighting(AiActorState& actor, Vec3 targetPosition, std::uint64_t tick);
+
+// Record heard-only investigation memory. Returns true when the memory was refreshed:
+//   - no existing memory,
+//   - relocated horizontally beyond the epsilon,
+//   - or a strict alert-band increase at the same origin.
+// Same-origin sounds with no band increase preserve position/tick/dwell.
+bool npcRecordNonvisualInvestigationMemory(
+    AiActorState& actor, Vec3 stimulusPosition, std::uint64_t tick,
+    bool alertBandIncreased,
+    float relocateEpsilonMeters = kNonvisualInvestigateRelocateEpsilonMeters);
 
 // Advance the investigate state and report the move/dwell. Pure except it mutates the actor's
 // memory + dwell counter:
