@@ -62,6 +62,7 @@
 #include "CreativeEditorCommandInput.hpp"
 #include "CreativeEditorFrameInput.hpp"
 #include "CreativeEditorGizmoFrame.hpp"
+#include "CreativeEditorPickFrame.hpp"
 #include "CreativeRendererBootstrap.hpp"
 #include "CreativeEditorSelection.hpp"
 #include "CreativeEditorState.hpp"
@@ -88,10 +89,10 @@ using iggy3d_creative_app::StandaloneCaptureScenarioStepRequest;
 using iggy3d_creative_app::StandaloneCaptureScript;
 using iggy3d_creative_app::StandaloneUndoStack;
 using iggy3d_creative_app::BrushFootprint;
-using iggy3d_creative_app::buildObjectVisualPickBounds;
 using iggy3d_creative_app::brushFootprintForDescriptor;
 using iggy3d_creative_app::buildBrushPaletteFromDescriptors;
 using iggy3d_creative_app::buildCreativeEditorGizmoFrame;
+using iggy3d_creative_app::buildCreativeEditorPickFrame;
 using iggy3d_creative_app::buildStandaloneRoomBakePreviewScene;
 using iggy3d_creative_app::captureFrameToPng;
 using iggy3d_creative_app::createCreativeRenderer;
@@ -102,6 +103,7 @@ using iggy3d_creative_app::beginCreativeEditorFrameInput;
 using iggy3d_creative_app::CreativeEditorState;
 using iggy3d_creative_app::CreativeEditorFrameInputResult;
 using iggy3d_creative_app::CreativeEditorGizmoFrame;
+using iggy3d_creative_app::CreativeEditorPickFrame;
 using iggy3d_creative_app::CreativeEditorSelectionFrame;
 using iggy3d_creative_app::deleteSelectedObject;
 using iggy3d_creative_app::firstBrushKind;
@@ -391,67 +393,19 @@ int main(int argc, char** argv) {
     // Scan every visible object's visual bounds with one world-space ray. The
     // nearest ray-entry distance wins, so overlapping projected boxes select the
     // closest surface instead of the object with the nearest projected center.
-    std::vector<ObjectVisualPickBounds> objectPickCandidates;
-    // Remember the FLOOR's world bounds so --capture can aim its click at a point
-    // on the floor OUTSIDE the crate's footprint (the crate sits over the floor's
-    // center, so a center-click would land on the nearer crate — nearest wins).
-    bool haveFloorBounds = false;
-    Vec3 floorBoxMin{};
-    Vec3 floorBoxMax{};
-    for (const creative::CreativeObject& obj : appState.facade.document().objects()) {
-      if (!obj.visible) {
-        continue;
-      }
-      const ObjectVisualPickBounds hit = buildObjectVisualPickBounds(
-          obj, frame.camera.clipFromWorld, extent.width, extent.height);
-      const Vec3 boxMin = hit.bounds.min;
-      const Vec3 boxMax = hit.bounds.max;
-      objectPickCandidates.push_back(hit);
-      if (obj.id == floorObjectId) {
-        haveFloorBounds = true;
-        floorBoxMin = boxMin;
-        floorBoxMax = boxMax;
-      }
-      if (!capturePath.empty() && !editor.captureScript.pointHitProxyLogged &&
-          obj.id == editor.captureScript.pointTargetId) {
-        SDL_Log("iggy3d_creative: POINT hit proxy objectId=%llu "
-                "aabbValid=%d marker=[(%.3f, %.3f, %.3f).."
-                "(%.3f, %.3f, %.3f)] screen=[%.1f, %.1f..%.1f, %.1f]",
-                static_cast<unsigned long long>(
-                    editor.captureScript.pointTargetId),
-                hit.screenAabb.valid ? 1 : 0, boxMin.x, boxMin.y, boxMin.z,
-                boxMax.x, boxMax.y, boxMax.z, hit.screenAabb.minX,
-                hit.screenAabb.minY, hit.screenAabb.maxX,
-                hit.screenAabb.maxY);
-        editor.captureScript.pointHitProxyLogged = true;
-      }
-      if (!capturePath.empty() && !editor.captureScript.lineHitProxyLogged &&
-          obj.id == editor.captureScript.lineTargetId) {
-        SDL_Log("iggy3d_creative: LINE hit proxy objectId=%llu "
-                "aabbValid=%d visual=[(%.3f, %.3f, %.3f).."
-                "(%.3f, %.3f, %.3f)] screen=[%.1f, %.1f..%.1f, %.1f]",
-                static_cast<unsigned long long>(editor.captureScript.lineTargetId),
-                hit.screenAabb.valid ? 1 : 0, boxMin.x, boxMin.y, boxMin.z,
-                boxMax.x, boxMax.y, boxMax.z, hit.screenAabb.minX,
-                hit.screenAabb.minY, hit.screenAabb.maxX,
-                hit.screenAabb.maxY);
-        editor.captureScript.lineHitProxyLogged = true;
-      }
-      if (!capturePath.empty() && !editor.captureScript.pathHitProxyLogged &&
-          obj.id == editor.captureScript.pathTargetId) {
-        SDL_Log("iggy3d_creative: PATH hit proxy objectId=%llu "
-                "aabbValid=%d visual=[(%.3f, %.3f, %.3f).."
-                "(%.3f, %.3f, %.3f)] screen=[%.1f, %.1f..%.1f, %.1f] "
-                "pathPointCount=%zu pathPoints='%s'",
-                static_cast<unsigned long long>(editor.captureScript.pathTargetId),
-                hit.screenAabb.valid ? 1 : 0, boxMin.x, boxMin.y, boxMin.z,
-                boxMax.x, boxMax.y, boxMax.z, hit.screenAabb.minX,
-                hit.screenAabb.minY, hit.screenAabb.maxX,
-                hit.screenAabb.maxY, obj.pathPoints.size(),
-                pathPointsSummary(obj.pathPoints).c_str());
-        editor.captureScript.pathHitProxyLogged = true;
-      }
-    }
+    const CreativeEditorPickFrame pickFrame = buildCreativeEditorPickFrame(
+        appState.facade.document(),
+        frame.camera,
+        extent.width,
+        extent.height,
+        floorObjectId,
+        editor.captureScript,
+        !capturePath.empty());
+    const std::vector<ObjectVisualPickBounds>& objectPickCandidates =
+        pickFrame.objectPickCandidates;
+    const bool haveFloorBounds = pickFrame.haveFloorBounds;
+    const Vec3 floorBoxMin = pickFrame.floorBoxMin;
+    const Vec3 floorBoxMax = pickFrame.floorBoxMax;
 
     if (!capturePath.empty()) {
       auto logWorldPickProof =
