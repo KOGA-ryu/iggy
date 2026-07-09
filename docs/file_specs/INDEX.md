@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `7b40370f`
+Verified at: `cd6c9663`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `227`.
-- Current mapped source files represented by those specs: about `433`.
+- Current file specs: `231`.
+- Current mapped source files represented by those specs: about `437`.
 
 ## Status Labels
 
@@ -203,6 +203,10 @@ App creative/world launch:
 - `mapped` [WorldAuthoringState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/WorldAuthoringState.md)
 - `mapped` [CreativeWorldOperations.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/CreativeWorldOperations.md)
 - `mapped` [CreativeBlankStageSession.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/CreativeBlankStageSession.md)
+- `mapped` [Core.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/Core.md)
+- `mapped` [State.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/State.md)
+- `mapped` [CreativeAppState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/CreativeAppState.md)
+- `mapped` [CreativeAuthoringStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/CreativeAuthoringStore.md)
 - `mapped` [BakedActiveRoomRefresh.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/BakedActiveRoomRefresh.md)
 - `mapped` [RoomBake.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/adapters/RoomBake.md)
 - `mapped` [RoomBakeGreedyFloors.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/adapters/RoomBakeGreedyFloors.md)
@@ -308,12 +312,12 @@ Batch AV, creative bake support adapters:
 - `defer leaf` `src/app/iggy3d/creative/adapters/Draw.*` zero-byte placeholder.
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
-Batch BB, creative root state packets:
+Batch BC, app creative mirror packets:
 
-- `next` `src/app/iggy3d/creative/Core.hpp`
-- `next` `src/app/iggy3d/creative/CreativeAppState.hpp`
-- `next` `src/app/iggy3d/creative/CreativeAuthoringStore.hpp`
-- `queued` `src/app/iggy3d/creative/State.hpp`
+- `next` `src/app/iggy3d/ProductCreativeDocumentRevisionState.hpp`
+- `next` `src/app/iggy3d/ProductCreativeUndoState.hpp`
+- `next` `src/app/iggy3d/ProductCreativeUiInputState.hpp`
+- `queued` `src/app/iggy3d/ProductCreativeUiProjectionState.hpp`
 
 ## Defer Leaf Policy
 
