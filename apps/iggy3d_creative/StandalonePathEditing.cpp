@@ -3,7 +3,7 @@
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/mutation/Mutation.hpp"
 
-#include "StandalonePlacement.hpp"
+#include "EditorPlacement.hpp"
 
 #include <SDL3/SDL_log.h>
 

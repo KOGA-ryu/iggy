@@ -12,10 +12,9 @@
 #include "app/iggy3d/creative/tools/Tools.hpp"
 #include "render/vulkan/VulkanBackend.hpp"
 
-#include "StandaloneBrushPalette.hpp"
+#include "EditorPlacement.hpp"
 #include "StandaloneDelete.hpp"
 #include "StandalonePersistenceProof.hpp"
-#include "StandalonePlacement.hpp"
 #include "StandalonePicking.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "StandaloneUndo.hpp"

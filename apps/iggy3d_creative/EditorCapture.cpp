@@ -5,7 +5,7 @@
 
 #include "CreativeEditorState.hpp"
 #include "StandalonePersistenceProof.hpp"
-#include "StandalonePlacement.hpp"
+#include "EditorPlacement.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "EditorGizmo.hpp"
 #include "StandaloneDelete.hpp"

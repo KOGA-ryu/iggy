@@ -1,4 +1,4 @@
-#include "StandalonePlacement.hpp"
+#include "EditorPlacement.hpp"
 
 #include "core/math/Snap.hpp"
 

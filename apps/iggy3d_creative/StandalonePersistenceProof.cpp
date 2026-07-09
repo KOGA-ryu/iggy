@@ -6,7 +6,7 @@
 
 #include <SDL3/SDL.h>
 
-#include "StandalonePlacement.hpp"
+#include "EditorPlacement.hpp"
 
 namespace iggy3d_creative_app {
 namespace {
