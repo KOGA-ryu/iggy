@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `4b235041`
+Verified at: `6c79462b`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `18`.
-- Current mapped source files represented by those specs: about `34`.
+- Current file specs: `26`.
+- Current mapped source files represented by those specs: about `50`.
 
 ## Status Labels
 
@@ -55,6 +55,14 @@ Projection/render:
 
 App projection/view/window:
 
+- `mapped` [FrontendState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/frontend/FrontendState.md)
+- `mapped` [StarterScreen.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/frontend/StarterScreen.md)
+- `mapped` [FrontendRouter.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/menu/FrontendRouter.md)
+- `mapped` [InputRouter.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/menu/InputRouter.md)
+- `mapped` [ActionHandlers.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/menu/ActionHandlers.md)
+- `mapped` [DrawList.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/menu/DrawList.md)
+- `mapped` [PauseUi.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/menu/PauseUi.md)
+- `mapped` [SaveBridge.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/save/SaveBridge.md)
 - `mapped` [ProjectionRefresh.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ProjectionRefresh.md)
 - `mapped` [FramePresenter.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/FramePresenter.md)
 - `mapped` [DebugHudStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/debug/DebugHudStore.md)
@@ -63,27 +71,16 @@ App projection/view/window:
 
 ## Next Batch Queue
 
-Batch A, app routing/menu/save flow:
-
-- `next` `src/app/frontend/FrontendState.*`
-- `next` `src/app/frontend/StarterScreen.*`
-- `next` `src/app/iggy3d/menu/FrontendRouter.*`
-- `next` `src/app/iggy3d/menu/InputRouter.*`
-- `next` `src/app/iggy3d/menu/ActionHandlers.*`
-- `next` `src/app/iggy3d/menu/DrawList.*`
-- `next` `src/app/iggy3d/menu/PauseUi.*`
-- `next` `src/app/iggy3d/save/SaveBridge.*`
-
 Batch B, creative/world launch:
 
-- `queued` `src/app/iggy3d/Operations.*`
-- `queued` `src/app/iggy3d/world/CreativeWorldService.*`
-- `queued` `src/app/iggy3d/creative/Facade.*`
-- `queued` `src/app/iggy3d/creative/CreativeDocument.*`
-- `queued` `src/app/iggy3d/menu/CreativeUiFrame.*`
-- `queued` `src/app/iggy3d/window/CreativeUiInputFrame.*`
-- `queued` `src/app/iggy3d/window/CreativeUiCommandFrame.*`
-- `queued` `src/app/iggy3d/window/CreativeUiWindowFrame.*`
+- `next` `src/app/iggy3d/creative/CreativeWorldOperations.*`
+- `next` `src/app/iggy3d/creative/world/WorldService.*`
+- `next` `src/app/iggy3d/creative/Facade.*`
+- `next` `src/app/iggy3d/creative/document/Document.*`
+- `next` `src/app/iggy3d/creative/ui/UiFrame.*`
+- `next` `src/app/iggy3d/creative/bridge/UiInputFrame.*`
+- `next` `src/app/iggy3d/creative/bridge/UiCommandFrame.*`
+- `next` `src/app/iggy3d/creative/bridge/UiWindowFrame.*`
 
 Batch C, app debug HUD builders:
 
@@ -108,8 +105,8 @@ Batch E, save/load/runtime persistence:
 - `queued` `src/runtime/save/SaveCodec.*`
 - `queued` `src/runtime/save/SaveEnvelope.hpp`
 - `queued` `src/runtime/replay/StateHash.*`
-- `queued` `src/app/iggy3d/save/SaveCatalog.*`
-- `queued` `src/app/iggy3d/save/SaveFileStore.*`
+- `queued` `src/app/iggy3d/save/Catalog.*`
+- `queued` `src/runtime/save/SaveFileStore.*`
 
 Batch F, room editor/map maker:
 
