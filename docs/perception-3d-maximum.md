@@ -1,4 +1,10 @@
-# Perception 3D — Build Maximum (v1.3)
+# Perception 3D — Build Maximum (v1.4)
+
+> **v1.4:** P2 LANDED (E302, HEAD 0bad85c2). **P3+ detail now governed by
+> `docs/guard_senses_and_tactics_plan_v1.md`** (recon-verified master plan: P3 occlusion truth, P4 observable
+> layer, P5 alert honesty, P6 tactics arc; rulings R1-R8 incl. radius-joins-confirmation, config-owns-the-eye,
+> fail-toward-non-detection, and R5 superseding §9's receipt keys — the observable layer adds ZERO golden
+> fields). This maximum remains the contract reference (§§0-2 pillars/laws, §10 test matrix).
 
 > **v1.3 corrections (P2 card-cut recon, E302):**
 > 4. **`horizontalDistanceMeters` is NOT deletable** (§16 said it dies) — the home-leash predicates
