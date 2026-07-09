@@ -4,44 +4,18 @@ This file ranks the task bucket without changing the bucket mechanics. Task
 files still live in `ready/`, `claimed/`, `done/`, or `blocked/`; builder should
 use this index only to decide which ready card to claim next.
 
-**Collision freshness store slice COMPLETE** (G2–G7 done,
-`docs/active_room_collision_freshness_preflight_v0_2.md`). The `activeCreative`
-mirror delete is COMPLETE (E136-E139). The `creativeFly` anchor store is
-COMPLETE (E142-E147). The structural `activeRoom` regroup into RoomStore is
-COMPLETE (E148-E152). The SaveSessionStore bulk move is COMPLETE (E153).
+**CURRENT ARC: Guard Senses & Tactics — governing plan
+`docs/guard_senses_and_tactics_plan_v1.md` (v1.4).** Cut slices from the plan;
+rulings R1–R9 are settled (R9: ascii lane INERT — any ascii card is off-plan).
+Research evidence folded (`docs/research_findings_v1.md`).
 
-**Also complete:** the dead write-only fields `window.inputOwner` /
-`window.gameplayInputSuppressed` were deleted (`36ceeac3`), and
-`runtimeStateHash` was deleted/rederived in E179. After E179, the god-struct
-remainder is 14 top-level members: 9 store members and 5 app-global scalars.
-**GameplayStore is
-COMPLETE**: E154 was decomposed into E157-E160 and all four child slices are
-complete. Disjoint from completed RoomStore/SaveSessionStore work;
-`runtimeSessionCreated` now belongs to GameplayStore.
-
-**ViewportStore fold is COMPLETE as E155** (#6 — folded 11 mapMaker* fields into
-ProductViewportState). `E156` InputDeviceStore (#7) has been decomposed into
-E165-E167 and is **COMPLETE**. E165 moved the device/action fields, E166 moved
-controller/capture fields, and E167 moved `interactionMode` plus
-`interactionModeHud` into `ProductAppWindowState::inputDevice`.
-`gamepadMenuSelectUsed` remains in FrontendWindowShell.
-`E162` DebugHudStore (#9) is **COMPLETE**: the five HUD/debug mirrors now live
-under `ProductAppWindowState::debugHud`.
-`E163` PresentPathStore (#11) is **COMPLETE**: the nine productVulkan present
-path/status fields now live under `ProductAppWindowState::presentPath`, while
-`productVulkanMenu` now lives under `ProductAppWindowState::frontendShell`.
-
-**Decomposition card set now COMPLETE through CreativeAuthoringStore.** `E161`
-CreativeAuthoringStore (#4) is **COMPLETE** as E168-E172: wireframe,
-viewport-pick, room-editor, world/ascii, and creative UI state are now under
-`ProductAppWindowState::creativeAuthoring`. Remaining
-parent `E164` FrontendWindowShell (#10 — RULING: split store vs app-global
-remainder; **COMPLETE** as E174-E176: scalar/menu, startup, and
-`productVulkanMenu` now live under `ProductAppWindowState::frontendShell`).
-NOTE:
-E157-E160 are the completed GameplayStore slices
-(E154); new cards start at E161 to avoid collision. **EXECUTION SERIALIZES on the
-god-struct — release/run one store at a time, re-anchoring each.**
+**State:** perception P1+P2 LANDED · **P3a DONE** (accepted `f16f968f`) ·
+**P3b NEXT** — ruled + unblocked (R3.1: empty=Clear, Unknown=failure only;
+bake-validity threading in scope), **planner pin-tests pre-authored in the plan
+§3½ (land verbatim)** · then P3c → P3d (serial on `Session.cpp`) · P4 after P3 ·
+P5 and P6b may interleave (disjoint files; P5 spec is research-refined — TDM
+same-source suppression + decay-falls-through) · P6c rescoped to creative
+launch-path verification pins · P6d after P3 · P6e last.
 
 ## Claim Policy
 

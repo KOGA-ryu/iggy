@@ -300,6 +300,53 @@ hashes/serializes — pin the round-trip in production wiring).
   detection-time integration; graduated occlusion; darkness-ranked hiding spots; noisemaker dedupe memory
   (P5 slice 2 if playtests demand it)** — all §1½, TDM/OpenXCom-shaped.
 
+## 3½. PIN APPENDIX — P3b (planner-authored, land verbatim; the implementer does not edit the exam)
+
+Unit pins target the new `segmentOcclusion` owner (a pure fn — the old Session bodies are file-local and
+untestable, which is itself part of why they rotted). `colliderAt(min,max)` / span helpers: adapt to the
+fixture style of `physics_collision_queries_tests` (mechanical adaptation ONLY — values/assertions frozen).
+
+```cpp
+// eye-line at y=1.6 unless stated; margin 0.05 unless stated
+bool openSegmentIsClear() {           // far collider does not occlude
+  const auto c = colliderAt({5,0,5},{6,3,6});
+  return expect(segmentOcclusion(spanOf(c), {0,1.6F,0}, {0,1.6F,3}, 0.05F) == Verdict::Clear, "open clear");
+}
+bool spanningWallBlocks() {           // 3m wall crossing the segment
+  const auto c = colliderAt({-1,0,1},{1,3,2});
+  return expect(segmentOcclusion(spanOf(c), {0,1.6F,0}, {0,1.6F,3}, 0.05F) == Verdict::Blocked, "wall blocks");
+}
+bool emptySpanIsClear() {             // R3.1: absence of blockers is knowledge
+  return expect(segmentOcclusion({}, {0,1.6F,0}, {0,1.6F,3}, 0.05F) == Verdict::Clear, "empty=Clear");
+}
+bool degenerateSegmentIsUnknown() {   // R3: absence of knowledge
+  const auto c = colliderAt({-1,0,1},{1,3,2});
+  return expect(segmentOcclusion(spanOf(c), {0,1.6F,0}, {0,1.6F,0}, 0.05F) == Verdict::Unknown, "degenerate=Unknown");
+}
+bool startInsideBlocks() {            // R4: eye embedded in geometry
+  const auto c = colliderAt({-1,0,-1},{1,3,1});   // 'from' is inside
+  return expect(segmentOcclusion(spanOf(c), {0,1.6F,0}, {0,1.6F,3}, 0.05F) == Verdict::Blocked, "startInside=Blocked");
+}
+bool shortCoverBelowEyeLineIsClear() { // 1.0m crate does not block a 1.6m eye line
+  const auto c = colliderAt({-1,0,1},{1,1.0F,2});
+  return expect(segmentOcclusion(spanOf(c), {0,1.6F,0}, {0,1.6F,3}, 0.05F) == Verdict::Clear, "short cover clear");
+}
+bool touchingWallWithinMarginIsClear() { // margin: contact at the far endpoint
+  const auto c = colliderAt({-1,0,3.0F},{1,3,4});  // face exactly at segment end
+  return expect(segmentOcclusion(spanOf(c), {0,1.6F,0}, {0,1.6F,3.0F}, 0.05F) == Verdict::Clear, "touch=Clear");
+}
+```
+
+Integration pins (behavioral — builder writes the harness to these assertions, values frozen):
+- **Failed bake → non-detection everywhere:** null/failed collision surfaces at the Session wiring → guard
+  does NOT visually confirm an in-cone clear-path target; sound events get wall-loss applied; reasoning graph
+  builds with zero LOS edges. (One test per sense.)
+- **Successful empty bake → today's behavior:** flat garden cases byte-unchanged.
+- **R2 re-pins are explicit:** the 1.0→1.6 eye unification — the garden island (3m walls) stays Blocked;
+  any test whose value changes carries `// re-pin: R2` and a one-line justification in the same commit.
+- **Negative grep gates:** hardcoded `kEyeHeightMeters` / `0.01F` margin constants in
+  `Session.cpp`+`ReasoningGraph.cpp` → 0; `reasoningSegmentBlocked` body + the per-call vector copy → gone.
+
 ## 4. STALE-DOC CORRECTIONS (fold when next touched)
 
 - `game_master_plan_v0_1.md`: the "one live seam break" is half-closed (E180); "ReconIntel doesn't exist" is
