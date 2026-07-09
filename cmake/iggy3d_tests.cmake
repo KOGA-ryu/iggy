@@ -1,3 +1,5 @@
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+
 function(iggy3d_add_unit_test test_name source_file)
   set(full_source "${CMAKE_CURRENT_SOURCE_DIR}/${source_file}")
   if(NOT EXISTS "${full_source}")
@@ -9,6 +11,13 @@ function(iggy3d_add_unit_test test_name source_file)
   add_test(NAME "${test_name}" COMMAND "$<TARGET_FILE:${test_name}>")
   set_tests_properties("${test_name}" PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 endfunction()
+
+add_test(NAME dependency_graph_tool_tests
+  COMMAND "${Python3_EXECUTABLE}"
+          "${CMAKE_CURRENT_SOURCE_DIR}/tests/tools/dependency_graph_tests.py")
+set_tests_properties(dependency_graph_tool_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "architecture;dependency;oracle;iggy3d")
 
 function(iggy3d_add_acceptance_test test_name source_file)
   set(full_source "${CMAKE_CURRENT_SOURCE_DIR}/${source_file}")
