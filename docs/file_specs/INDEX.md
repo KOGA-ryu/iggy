@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `194`.
-- Current mapped source files represented by those specs: about `369`.
+- Current file specs: `197`.
+- Current mapped source files represented by those specs: about `373`.
 
 ## Status Labels
 
@@ -200,7 +200,10 @@ App creative/world launch:
 - `mapped` [Document.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/document/Document.md)
 - `mapped` [UiFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/ui/UiFrame.md)
 - `mapped` [UiInputFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/UiInputFrame.md)
+- `mapped` [InputFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/InputFrame.md)
 - `mapped` [UiCommandFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/UiCommandFrame.md)
+- `mapped` [UiCommandCatalog.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/UiCommandCatalog.md)
+- `mapped` [CreativeUiCommandDiagnostics.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/CreativeUiCommandDiagnostics.md)
 - `mapped` [UiWindowFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/UiWindowFrame.md)
 - `mapped` [ViewportPickFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/ViewportPickFrame.md)
 - `mapped` [WindowCoordinateSpace.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/WindowCoordinateSpace.md)
@@ -265,11 +268,11 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch AS, creative bridge/catalog leaves:
+Batch AT, creative camera/render support surfaces:
 
-- `next` `src/app/iggy3d/creative/bridge/InputFrame.*`
-- `next` `src/app/iggy3d/creative/bridge/UiCommandCatalog.hpp`
-- `next` `src/app/iggy3d/creative/CreativeUiCommandDiagnostics.hpp`
+- `next` `src/app/iggy3d/creative/camera/Fly.*`
+- `next` `src/app/iggy3d/creative/render/WireframeDebugLines.*`
+- `next` `src/app/iggy3d/creative/CreativeBlankStageSession.*`
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
 ## Defer Leaf Policy
