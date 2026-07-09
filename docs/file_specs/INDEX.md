@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `6c79462b`
+Verified at: `d40a476b`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `26`.
-- Current mapped source files represented by those specs: about `50`.
+- Current file specs: `34`.
+- Current mapped source files represented by those specs: about `66`.
 
 ## Status Labels
 
@@ -69,26 +69,26 @@ App projection/view/window:
 - `mapped` [DebugHudView.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/DebugHudView.md)
 - `mapped` [PrimitiveDrawList.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/PrimitiveDrawList.md)
 
+App creative/world launch:
+
+- `mapped` [CreativeWorldOperations.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/CreativeWorldOperations.md)
+- `mapped` [WorldService.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/world/WorldService.md)
+- `mapped` [Facade.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/Facade.md)
+- `mapped` [Document.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/document/Document.md)
+- `mapped` [UiFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/ui/UiFrame.md)
+- `mapped` [UiInputFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/UiInputFrame.md)
+- `mapped` [UiCommandFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/UiCommandFrame.md)
+- `mapped` [UiWindowFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/UiWindowFrame.md)
+
 ## Next Batch Queue
-
-Batch B, creative/world launch:
-
-- `next` `src/app/iggy3d/creative/CreativeWorldOperations.*`
-- `next` `src/app/iggy3d/creative/world/WorldService.*`
-- `next` `src/app/iggy3d/creative/Facade.*`
-- `next` `src/app/iggy3d/creative/document/Document.*`
-- `next` `src/app/iggy3d/creative/ui/UiFrame.*`
-- `next` `src/app/iggy3d/creative/bridge/UiInputFrame.*`
-- `next` `src/app/iggy3d/creative/bridge/UiCommandFrame.*`
-- `next` `src/app/iggy3d/creative/bridge/UiWindowFrame.*`
 
 Batch C, app debug HUD builders:
 
-- `queued` `src/app/iggy3d/debug/PhysicsDebugHud.*`
-- `queued` `src/app/iggy3d/debug/MovementDebugHud.*`
-- `queued` `src/app/iggy3d/debug/NpcBehaviorDebugHud.*`
-- `queued` `src/app/iggy3d/debug/PositionHud.*`
-- `queued` `src/app/iggy3d/debug/TopDownMapOverlay.*`
+- `next` `src/app/iggy3d/debug/PhysicsDebugHud.*`
+- `next` `src/app/iggy3d/debug/MovementDebugHud.*`
+- `next` `src/app/iggy3d/debug/NpcBehaviorDebugHud.*`
+- `next` `src/app/iggy3d/debug/PositionHud.*`
+- `next` `src/app/iggy3d/debug/TopDownMapOverlay.*`
 
 Batch D, runtime AI kernels:
 
