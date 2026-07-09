@@ -304,3 +304,77 @@ Report:
   policy move, interactive Move policy move, later frame-stage move, tests,
   receipt/golden files, broad CTest, interactive window launch, staging,
   commit, or push was performed.
+
+## Completion Brief
+
+Files changed:
+
+- `apps/iggy3d_creative/main.cpp`
+- `apps/iggy3d_creative/CreativeEditorPickFrame.hpp`
+- `apps/iggy3d_creative/CreativeEditorPickFrame.cpp`
+- `docs/creative_mode/builder_tasks/done/E278-iggy3d-creative-main-split-g12-world-pick-proof.md`
+
+Exact helper API added:
+
+```cpp
+void logCreativeEditorWorldPickProofFrame(
+    const iggy3d::creative::Facade& facade,
+    const iggy3d::RenderCameraFrame& camera,
+    std::uint32_t drawableWidth,
+    std::uint32_t drawableHeight,
+    const CreativeEditorPickFrame& pickFrame,
+    iggy3d::creative::CreativeObjectId floorObjectId,
+    CreativeEditorState& editor,
+    bool captureMode);
+```
+
+Moved world-pick proof logic:
+
+- Capture-mode gating, the local world-pick proof policy, floor top-corner
+  proof, object-center proofs, proof labels, target-id checks, pick call, exact
+  `WORLD_PICK_PROOF` log string, and latch writes now live in
+  `CreativeEditorPickFrame.cpp`.
+- `main.cpp` now calls `logCreativeEditorWorldPickProofFrame(...)`.
+- Synthetic/interactive click selection, placement, capture scenario dispatch,
+  selection, gizmo, Move, overlay, submit, shutdown, and final logging remain in
+  `main.cpp`.
+
+`CMakeLists.txt` was unchanged.
+
+Required grep classifications:
+
+- `CreativeEditorPickFrame.hpp` declares
+  `logCreativeEditorWorldPickProofFrame(...)`.
+- `CreativeEditorPickFrame.cpp` defines
+  `logCreativeEditorWorldPickProofFrame(...)`.
+- The `WORLD_PICK_PROOF` log string, proof labels, floor top-corner math,
+  object-center proof, pick call, and capture-world latch writes live in
+  `CreativeEditorPickFrame.cpp`.
+- `main.cpp` calls `logCreativeEditorWorldPickProofFrame(...)`.
+- Click-selection consumers remain in `main.cpp`.
+- Existing ownership remains unchanged for `CreativeEditorPickFrame.*`,
+  `CreativeEditorGizmoFrame.*`, `CreativeEditorSelection.*`,
+  `CreativeEditorAim.*`, `CreativeEditorCommandInput.*`,
+  `CreativeEditorFrameInput.*`, `StandaloneDelete.*`, and
+  `StandaloneWireframeBoxEdges.*`.
+- No `EditorFrame` or `runCreativeEditorFrame(...)` was introduced.
+- No old `appendWireframeBoxEdges(...)` helper was reintroduced.
+
+Focused verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d_creative standalone_picking_tests standalone_placement_tests standalone_frustum_cull_tests -j10`
+  passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(standalone_picking_tests|standalone_placement_tests|standalone_frustum_cull_tests)$' --output-on-failure`
+  passed: 3/3 tests.
+- `git -C /Users/kogaryu/iggy3d diff -- CMakeLists.txt` produced no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over touched source files and this card
+  passed.
+
+Optional capture was skipped because no windowed/Vulkan capture check was
+explicitly allowed.
+
+No `EditorFrame`, `runCreativeEditorFrame(...)`, click-selection move,
+placement move, capture scenario move, capture Move policy move, interactive
+Move policy move, later frame-stage move, tests, receipt/golden files, broad
+CTest, interactive window launch, staging, commit, or push was performed.

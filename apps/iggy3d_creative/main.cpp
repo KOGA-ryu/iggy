@@ -121,6 +121,7 @@ using iggy3d_creative_app::movePathPointWithUndo;
 using iggy3d_creative_app::pushUndoSnapshot;
 using iggy3d_creative_app::appendPathPolylineLines;
 using iggy3d_creative_app::lineProxyBounds;
+using iggy3d_creative_app::logCreativeEditorWorldPickProofFrame;
 using iggy3d_creative_app::ObjectVisualPickBounds;
 using iggy3d_creative_app::ObjectVisualPickResult;
 using iggy3d_creative_app::pathPointHandleBounds;
@@ -139,7 +140,6 @@ using iggy3d_creative_app::StandaloneRoomBakePreviewScene;
 using iggy3d_creative_app::appendStandaloneWireframeBoxEdges;
 using iggy3d_creative_app::toVec3;
 using iggy3d_creative_app::VisualBounds;
-using iggy3d_creative_app::visualBoundsCenter;
 using iggy3d_creative_app::visualBoundsForObject;
 using iggy3d_creative_app::WorldRay;
 using iggy3d_creative_app::worldRayFromPixel;
@@ -407,65 +407,14 @@ int main(int argc, char** argv) {
     const Vec3 floorBoxMin = pickFrame.floorBoxMin;
     const Vec3 floorBoxMax = pickFrame.floorBoxMax;
 
-    if (!capturePath.empty()) {
-      auto logWorldPickProof =
-          [&](const char* label, creative::CreativeObjectId expectedId,
-              Vec3 worldPoint, bool& logged) {
-            if (logged || expectedId == creative::kInvalidObjectId) {
-              return;
-            }
-            const ScreenPoint screenPoint = projectPointToScreen(
-                frame.camera.clipFromWorld, worldPoint, extent.width,
-                extent.height);
-            if (!screenPoint.valid) {
-              return;
-            }
-            const WorldRay ray =
-                worldRayFromPixel(frame.camera, screenPoint.x, screenPoint.y,
-                                  extent.width, extent.height);
-            const ObjectVisualPickResult pick =
-                pickNearestVisualBoundsObject(objectPickCandidates, ray);
-            SDL_Log("iggy3d_creative: WORLD_PICK_PROOF label='%s' "
-                    "click=(%.1f, %.1f) rayValid=%d expectedObjectId=%llu "
-                    "pickedObjectId=%llu matched=%d entryDistance=%.3f "
-                    "tested=%llu hits=%llu",
-                    label, screenPoint.x, screenPoint.y,
-                    pick.rayValid ? 1 : 0,
-                    static_cast<unsigned long long>(expectedId),
-                    static_cast<unsigned long long>(pick.objectId),
-                    pick.objectId == expectedId ? 1 : 0, pick.entryDistance,
-                    static_cast<unsigned long long>(pick.testedCount),
-                    static_cast<unsigned long long>(pick.hitCount));
-            logged = true;
-          };
-
-      if (!editor.captureWorldPickFloorLogged && haveFloorBounds) {
-        const Vec3 floorTopCorner{
-            floorBoxMin.x + (floorBoxMax.x - floorBoxMin.x) * 0.85F,
-            floorBoxMax.y,
-            floorBoxMin.z + (floorBoxMax.z - floorBoxMin.z) * 0.85F};
-        logWorldPickProof("floor_overlap", floorObjectId, floorTopCorner,
-                          editor.captureWorldPickFloorLogged);
-      }
-      const auto logObjectCenterPick =
-          [&](const char* label, creative::CreativeObjectId expectedId,
-              bool& logged) {
-            const creative::CreativeObject* object =
-                appState.facade.findObject(expectedId);
-            if (object == nullptr) {
-              return;
-            }
-            logWorldPickProof(label, expectedId,
-                              visualBoundsCenter(visualBoundsForObject(*object)),
-                              logged);
-          };
-      logObjectCenterPick("point_proxy", editor.captureScript.pointTargetId,
-                          editor.captureWorldPickPointLogged);
-      logObjectCenterPick("line_proxy", editor.captureScript.lineTargetId,
-                          editor.captureWorldPickLineLogged);
-      logObjectCenterPick("path_proxy", editor.captureScript.pathTargetId,
-                          editor.captureWorldPickPathLogged);
-    }
+    logCreativeEditorWorldPickProofFrame(appState.facade,
+                                         frame.camera,
+                                         extent.width,
+                                         extent.height,
+                                         pickFrame,
+                                         floorObjectId,
+                                         editor,
+                                         !capturePath.empty());
 
     bool clickRequested = false;
     float clickX = 0.0F;

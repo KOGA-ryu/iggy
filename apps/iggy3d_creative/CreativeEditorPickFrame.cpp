@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 
 #include "StandalonePlacement.hpp"
+#include "StandalonePreviewProxies.hpp"
 
 namespace iggy3d_creative_app {
 
@@ -66,6 +67,80 @@ CreativeEditorPickFrame buildCreativeEditorPickFrame(
     }
   }
   return frame;
+}
+
+void logCreativeEditorWorldPickProofFrame(
+    const iggy3d::creative::Facade& facade,
+    const iggy3d::RenderCameraFrame& camera,
+    std::uint32_t drawableWidth,
+    std::uint32_t drawableHeight,
+    const CreativeEditorPickFrame& pickFrame,
+    iggy3d::creative::CreativeObjectId floorObjectId,
+    CreativeEditorState& editor,
+    bool captureMode) {
+  if (!captureMode) {
+    return;
+  }
+
+  auto logWorldPickProof =
+      [&](const char* label, iggy3d::creative::CreativeObjectId expectedId,
+          iggy3d::Vec3 worldPoint, bool& logged) {
+        if (logged || expectedId == iggy3d::creative::kInvalidObjectId) {
+          return;
+        }
+        const ScreenPoint screenPoint = projectPointToScreen(
+            camera.clipFromWorld, worldPoint, drawableWidth, drawableHeight);
+        if (!screenPoint.valid) {
+          return;
+        }
+        const WorldRay ray =
+            worldRayFromPixel(camera, screenPoint.x, screenPoint.y,
+                              drawableWidth, drawableHeight);
+        const ObjectVisualPickResult pick = pickNearestVisualBoundsObject(
+            pickFrame.objectPickCandidates, ray);
+        SDL_Log("iggy3d_creative: WORLD_PICK_PROOF label='%s' "
+                "click=(%.1f, %.1f) rayValid=%d expectedObjectId=%llu "
+                "pickedObjectId=%llu matched=%d entryDistance=%.3f "
+                "tested=%llu hits=%llu",
+                label, screenPoint.x, screenPoint.y, pick.rayValid ? 1 : 0,
+                static_cast<unsigned long long>(expectedId),
+                static_cast<unsigned long long>(pick.objectId),
+                pick.objectId == expectedId ? 1 : 0, pick.entryDistance,
+                static_cast<unsigned long long>(pick.testedCount),
+                static_cast<unsigned long long>(pick.hitCount));
+        logged = true;
+      };
+
+  if (!editor.captureWorldPickFloorLogged && pickFrame.haveFloorBounds) {
+    const iggy3d::Vec3 floorTopCorner{
+        pickFrame.floorBoxMin.x +
+            (pickFrame.floorBoxMax.x - pickFrame.floorBoxMin.x) * 0.85F,
+        pickFrame.floorBoxMax.y,
+        pickFrame.floorBoxMin.z +
+            (pickFrame.floorBoxMax.z - pickFrame.floorBoxMin.z) * 0.85F};
+    logWorldPickProof("floor_overlap", floorObjectId, floorTopCorner,
+                      editor.captureWorldPickFloorLogged);
+  }
+
+  auto logObjectCenterPick =
+      [&](const char* label, iggy3d::creative::CreativeObjectId expectedId,
+          bool& logged) {
+        const iggy3d::creative::CreativeObject* object =
+            facade.findObject(expectedId);
+        if (object == nullptr) {
+          return;
+        }
+        logWorldPickProof(label,
+                          expectedId,
+                          visualBoundsCenter(visualBoundsForObject(*object)),
+                          logged);
+      };
+  logObjectCenterPick("point_proxy", editor.captureScript.pointTargetId,
+                      editor.captureWorldPickPointLogged);
+  logObjectCenterPick("line_proxy", editor.captureScript.lineTargetId,
+                      editor.captureWorldPickLineLogged);
+  logObjectCenterPick("path_proxy", editor.captureScript.pathTargetId,
+                      editor.captureWorldPickPathLogged);
 }
 
 }  // namespace iggy3d_creative_app
