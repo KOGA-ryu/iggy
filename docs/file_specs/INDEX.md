@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `180`.
-- Current mapped source files represented by those specs: about `339`.
+- Current file specs: `182`.
+- Current mapped source files represented by those specs: about `342`.
 
 ## Status Labels
 
@@ -157,7 +157,9 @@ App projection/view/window:
 - `mapped` [PrimitiveDrawList.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/PrimitiveDrawList.md)
 - `mapped` [SdlWindow.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/platform/SdlWindow.md)
 - `mapped` [SdlVulkanSurface.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/platform/SdlVulkanSurface.md)
+- `mapped` [ExecutablePath.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/platform/ExecutablePath.md)
 - `mapped` [ProductVulkanRendererState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/ProductVulkanRendererState.md)
+- `mapped` [MouseCaptureState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/MouseCaptureState.md)
 
 App automation:
 
@@ -251,11 +253,11 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch AL, app platform leaf and remaining window state:
+Batch AM, app package/runtime lookup surfaces:
 
-- `next` `src/app/platform/ExecutablePath.*`
-- `next` `src/app/iggy3d/window/MouseCaptureState.hpp`
-- `next` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
+- `next` `src/app/PackageRuntimeLookup.*`
+- `next` `src/app/input/*` remaining input device/action mapping leaves.
+- `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 - `queued` `src/app/iggy3d/view/PrimitiveDrawList.*` if primitive packet ownership changes.
 
 ## Defer Leaf Policy
