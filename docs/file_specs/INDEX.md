@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `9cd3a6b5`
+Verified at: `9a81866f`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `45`.
-- Current mapped source files represented by those specs: about `91`.
+- Current file specs: `51`.
+- Current mapped source files represented by those specs: about `102`.
 
 ## Status Labels
 
@@ -53,6 +53,14 @@ Runtime movement/player/session/physics:
 - `mapped` [SessionTick.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/session/SessionTick.md)
 - `mapped` [PhysicsCollisionQueries.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsCollisionQueries.md)
 
+Runtime save/load/persistence:
+
+- `mapped` [SaveEnvelope.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/save/SaveEnvelope.md)
+- `mapped` [SaveCodec.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/save/SaveCodec.md)
+- `mapped` [SaveLoad.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/save/SaveLoad.md)
+- `mapped` [StateHash.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/replay/StateHash.md)
+- `mapped` [SaveFileStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/save/SaveFileStore.md)
+
 Projection/render:
 
 - `mapped` [DebugProjection.md](/Users/kogaryu/iggy3d/docs/file_specs/src/projection/debug/DebugProjection.md)
@@ -68,6 +76,7 @@ App projection/view/window:
 - `mapped` [ActionHandlers.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/menu/ActionHandlers.md)
 - `mapped` [DrawList.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/menu/DrawList.md)
 - `mapped` [PauseUi.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/menu/PauseUi.md)
+- `mapped` [Catalog.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/save/Catalog.md)
 - `mapped` [SaveBridge.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/save/SaveBridge.md)
 - `mapped` [ProjectionRefresh.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ProjectionRefresh.md)
 - `mapped` [FramePresenter.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/FramePresenter.md)
@@ -96,22 +105,13 @@ App debug HUD builders:
 
 ## Next Batch Queue
 
-Batch E, save/load/runtime persistence:
-
-- `next` `src/runtime/save/SaveLoad.*`
-- `next` `src/runtime/save/SaveCodec.*`
-- `next` `src/runtime/save/SaveEnvelope.hpp`
-- `next` `src/runtime/replay/StateHash.*`
-- `next` `src/app/iggy3d/save/Catalog.*`
-- `next` `src/runtime/save/SaveFileStore.*`
-
 Batch F, room editor/map maker:
 
-- `queued` `src/app/iggy3d/room_editor/Presentation.*`
-- `queued` `src/app/iggy3d/room_editor/Preview.*`
-- `queued` `src/app/iggy3d/room_editor/Controller.*`
-- `queued` `src/app/iggy3d/map_maker/Presentation.*`
-- `queued` `src/app/iggy3d/map_maker/Grid.*`
+- `next` `src/app/iggy3d/room_editor/Presentation.*`
+- `next` `src/app/iggy3d/room_editor/Preview.*`
+- `next` `src/app/iggy3d/room_editor/Controller.*`
+- `next` `src/app/iggy3d/map_maker/Presentation.*`
+- `next` `src/app/iggy3d/map_maker/Grid.*`
 
 ## Defer Leaf Policy
 
