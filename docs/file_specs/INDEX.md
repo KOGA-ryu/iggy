@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `197`.
-- Current mapped source files represented by those specs: about `373`.
+- Current file specs: `200`.
+- Current mapped source files represented by those specs: about `379`.
 
 ## Status Labels
 
@@ -195,6 +195,7 @@ App creative/world launch:
 - `mapped` [DungeonDraft.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/DungeonDraft.md)
 - `mapped` [WorldAuthoringState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/WorldAuthoringState.md)
 - `mapped` [CreativeWorldOperations.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/CreativeWorldOperations.md)
+- `mapped` [CreativeBlankStageSession.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/CreativeBlankStageSession.md)
 - `mapped` [WorldService.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/world/WorldService.md)
 - `mapped` [Facade.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/Facade.md)
 - `mapped` [Document.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/document/Document.md)
@@ -208,6 +209,8 @@ App creative/world launch:
 - `mapped` [ViewportPickFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/ViewportPickFrame.md)
 - `mapped` [WindowCoordinateSpace.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/WindowCoordinateSpace.md)
 - `mapped` [WireframeFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/WireframeFrame.md)
+- `mapped` [Fly.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/camera/Fly.md)
+- `mapped` [WireframeDebugLines.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/render/WireframeDebugLines.md)
 
 App room editor/map maker:
 
@@ -268,11 +271,11 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch AT, creative camera/render support surfaces:
+Batch AU, creative baked-room adapter surfaces:
 
-- `next` `src/app/iggy3d/creative/camera/Fly.*`
-- `next` `src/app/iggy3d/creative/render/WireframeDebugLines.*`
-- `next` `src/app/iggy3d/creative/CreativeBlankStageSession.*`
+- `next` `src/app/iggy3d/creative/BakedActiveRoomRefresh.*`
+- `next` `src/app/iggy3d/creative/adapters/RoomBake.*`
+- `next` `src/app/iggy3d/creative/adapters/RoomBakeGreedyFloors.*`
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
 ## Defer Leaf Policy
