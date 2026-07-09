@@ -5,6 +5,7 @@
 #include <iostream>
 #include <limits>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -135,6 +136,122 @@ bool hasCellAt(const cr::CreativeSpatialProjectionReceipt& receipt,
     }
   }
   return false;
+}
+
+static_assert(std::is_trivially_copyable_v<cr::CreativeSpatialProjectionSummary>);
+
+bool summaryMatchesFull(const cr::CreativeObject& object,
+                        const cr::CreativeSpatialProjectionRequest& request,
+                        std::string_view label) {
+  const cr::CreativeSpatialProjectionSummary summary =
+      cr::projectObjectToGridSummary(object, request);
+  const cr::CreativeSpatialProjectionReceipt receipt =
+      cr::projectObjectToGrid(object, request);
+  return expect(summary.status == receipt.status, label) &&
+         expect(summary.objectId == receipt.objectId, label) &&
+         expect(summary.objectKind == receipt.objectKind, label) &&
+         expect(summary.profile == receipt.profile, label) &&
+         expect(summary.occupancyKind == receipt.occupancyKind, label) &&
+         expectBounds(summary.projectedBounds, receipt.projectedBounds, label) &&
+         expect(summary.cellCount == receipt.cells.size(), label);
+}
+
+bool summaryParityCoversAllProjectionProfiles() {
+  const cr::CreativeSpatialProjectionRequest request = makeDeepRequest();
+  const cr::CreativeObject point = makePointObject(701, {1.0, 1.0, 1.0});
+  const cr::CreativeObject box = makeRoomObject(702);
+  const cr::CreativeObject volume = makeVolumeObject(
+      703,
+      {{1.0, 1.0, 1.0}, {3.0, 3.0, 2.0}});
+  const cr::CreativeObject line = makeLineObject(
+      704,
+      {{1.0, 1.0, 1.0}, {4.0, 1.0, 1.0}});
+  const cr::CreativeObject path = makePathObject(
+      705,
+      {{{1.0, 1.0, 1.0}}, {{3.0, 1.0, 1.0}}, {{3.0, 3.0, 1.0}}});
+  const cr::CreativeObject link = makeLinkObject(706);
+
+  return summaryMatchesFull(point, request, "summary point parity") &&
+         summaryMatchesFull(box, request, "summary box parity") &&
+         summaryMatchesFull(volume, request, "summary volume parity") &&
+         summaryMatchesFull(line, request, "summary line parity") &&
+         summaryMatchesFull(path, request, "summary path parity") &&
+         summaryMatchesFull(link, request, "summary link parity");
+}
+
+bool summaryParityCoversRejectedProjectionCases() {
+  const cr::CreativeObject valid = makeRoomObject(711);
+  cr::CreativeSpatialProjectionRequest invalidGrid = makeRequest();
+  invalidGrid.cellSize = 0.0;
+  cr::CreativeObject invalidObject = valid;
+  invalidObject.id = cr::kInvalidObjectId;
+  cr::CreativeObject hidden = valid;
+  hidden.visible = false;
+  const cr::CreativeObject authoring = makeAuthoringPointObject();
+  cr::CreativeSpatialProjectionRequest includeAuthoring = makeRequest();
+  includeAuthoring.includeAuthoringOnly = false;
+  cr::CreativeObject offGrid = makePointObject(712, {-1.0, 0.0, 0.0});
+  cr::CreativeObject invalidPath = makePathObject(713, {{{1.0, 1.0, 1.0}}});
+  cr::CreativeObject invalidLink = makeLinkObject(714);
+  invalidLink.pathPoints.clear();
+
+  return summaryMatchesFull(valid, invalidGrid, "summary invalid grid parity") &&
+         summaryMatchesFull(invalidObject, makeRequest(),
+                            "summary invalid object parity") &&
+         summaryMatchesFull(hidden, makeRequest(), "summary hidden parity") &&
+         summaryMatchesFull(authoring, includeAuthoring,
+                            "summary authoring parity") &&
+         summaryMatchesFull(offGrid, makeRequest(),
+                            "summary out of bounds parity") &&
+         summaryMatchesFull(invalidPath, makeRequest(),
+                            "summary invalid path parity") &&
+         summaryMatchesFull(invalidLink, makeRequest(),
+                            "summary invalid link parity");
+}
+
+bool summaryPathPreservesGlobalBacktrackingDeduplication() {
+  const cr::CreativeObject path = makePathObject(
+      721,
+      {{{0.0, 0.0, 0.0}},
+       {{3.0, 0.0, 0.0}},
+       {{1.0, 0.0, 0.0}},
+       {{3.0, 0.0, 0.0}}});
+  const cr::CreativeSpatialProjectionRequest request = makeDeepRequest();
+  const cr::CreativeSpatialProjectionSummary summary =
+      cr::projectObjectToGridSummary(path, request);
+  const cr::CreativeSpatialProjectionReceipt receipt =
+      cr::projectObjectToGrid(path, request);
+
+  return expect(summary.status == cr::CreativeSpatialProjectionStatus::Projected,
+                "summary backtracking projected") &&
+         expect(summary.cellCount == 4U,
+                "summary backtracking globally deduplicated count") &&
+         expect(summary.cellCount == receipt.cells.size(),
+                "summary backtracking full count parity") &&
+         expect(summaryMatchesFull(path, request,
+                                   "summary backtracking parity"),
+                "summary backtracking metadata parity");
+}
+
+bool largeBoundsSummaryCountsWithoutFullMaterialization() {
+  const cr::CreativeObject object = makeVolumeObject(
+      731,
+      {{0.0, 0.0, 0.0}, {128.0, 128.0, 128.0}});
+  cr::CreativeSpatialProjectionRequest request;
+  request.gridSize = {128, 128, 128};
+  const cr::CreativeSpatialProjectionSummary summary =
+      cr::projectObjectToGridSummary(object, request);
+
+  return expect(summary.status == cr::CreativeSpatialProjectionStatus::Projected,
+                "large summary projected") &&
+         expect(summary.cellCount == 128U * 128U * 128U,
+                "large summary arithmetic cell count") &&
+         expect(summary.projectedBounds.max.x == 128,
+                "large summary max x") &&
+         expect(summary.projectedBounds.max.y == 128,
+                "large summary max y") &&
+         expect(summary.projectedBounds.max.z == 128,
+                "large summary max z");
 }
 
 bool rowMajorIndexRoundTripIsStable() {
@@ -877,6 +994,10 @@ int main() {
                   worldBoundsToGridBoundsUsesHalfOpenBoundaries() &&
                   invalidWorldToGridCoordInputsReturnDefault() &&
                   invalidWorldBoundsToGridBoundsInputsReturnDefault() &&
+                  summaryParityCoversAllProjectionProfiles() &&
+                  summaryParityCoversRejectedProjectionCases() &&
+                  summaryPathPreservesGlobalBacktrackingDeduplication() &&
+                  largeBoundsSummaryCountsWithoutFullMaterialization() &&
                   defaultRequestExcludesAuthoringOnlyObjects() &&
                   explicitRequestIncludesAuthoringOnlyObjects() &&
                   visibleRoomStillProjects() &&

@@ -69,6 +69,19 @@ struct CreativeSpatialProjectionReceipt {
   std::string message;
 };
 
+struct CreativeSpatialProjectionSummary {
+  CreativeSpatialProjectionStatus status =
+      CreativeSpatialProjectionStatus::Unknown;
+  CreativeObjectId objectId = kInvalidObjectId;
+  CreativeObjectKind objectKind = CreativeObjectKind::Unknown;
+  CreativeSpatialProjectionProfile profile =
+      CreativeSpatialProjectionProfile::Unknown;
+  CreativeSpatialOccupancyKind occupancyKind =
+      CreativeSpatialOccupancyKind::Unknown;
+  CreativeGridBounds3 projectedBounds;
+  std::uint64_t cellCount = 0;
+};
+
 [[nodiscard]] std::string_view toString(
     CreativeSpatialProjectionProfile profile) noexcept;
 [[nodiscard]] std::string_view toString(
@@ -99,6 +112,9 @@ struct CreativeSpatialProjectionReceipt {
 [[nodiscard]] CreativeSpatialOccupancyKind occupancyKindForObject(
     CreativeObjectKind kind) noexcept;
 
+[[nodiscard]] CreativeSpatialProjectionSummary projectObjectToGridSummary(
+    const CreativeObject& object,
+    const CreativeSpatialProjectionRequest& request);
 [[nodiscard]] CreativeSpatialProjectionReceipt projectObjectToGrid(
     const CreativeObject& object,
     const CreativeSpatialProjectionRequest& request);
