@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `10135e4e`
+Verified at: `cd02b03e`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `140`.
-- Current mapped source files represented by those specs: about `276`.
+- Current file specs: `146`.
+- Current mapped source files represented by those specs: about `283`.
 
 ## Status Labels
 
@@ -122,6 +122,12 @@ App projection/view/window:
 - `mapped` [ProductStartupState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ProductStartupState.md)
 - `mapped` [ProductVulkanMenuState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/ProductVulkanMenuState.md)
 - `mapped` [ReceiptBuilder.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ReceiptBuilder.md)
+- `mapped` [ReceiptFields.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/ReceiptFields.md)
+- `mapped` [SaveStateFields.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/SaveStateFields.md)
+- `mapped` [WorldAuthoringFields.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/WorldAuthoringFields.md)
+- `mapped` [CreativeUiFields.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/CreativeUiFields.md)
+- `mapped` [CreativePickWireframeFields.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/CreativePickWireframeFields.md)
+- `mapped` [DebugHudFields.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/DebugHudFields.md)
 - `mapped` [DebugHudStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/debug/DebugHudStore.md)
 - `mapped` [DebugHudView.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/DebugHudView.md)
 - `mapped` [PrimitiveDrawList.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/PrimitiveDrawList.md)
@@ -208,12 +214,13 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch AB, receipt field emitters:
+Batch AC, remaining receipt emitters:
 
-- `next` `src/app/iggy3d/receipt/SaveStateFields.*`
-- `next` `src/app/iggy3d/receipt/WorldAuthoringFields.*`
-- `next` `src/app/iggy3d/receipt/CreativeFields.*`
-- `next` `src/app/iggy3d/receipt/DebugFields.*`
+- `next` `src/app/iggy3d/receipt/FrontendSettingsWindowFields.cpp`
+- `next` `src/app/iggy3d/receipt/StartupProbeFields.cpp`
+- `next` `src/app/iggy3d/receipt/StartupWorldBuildoutFields.cpp`
+- `next` `src/app/iggy3d/receipt/ActiveRoomFields.cpp`
+- `next` `src/app/iggy3d/receipt/TailFields.cpp`
 
 ## Defer Leaf Policy
 
