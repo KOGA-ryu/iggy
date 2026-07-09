@@ -8,7 +8,13 @@
 namespace iggy3d {
 namespace {
 
+constexpr float kCoLocatedEndpointEpsilonSquared = 0.000001F;
+
 float euclideanDistance(Vec3 a, Vec3 b) { return std::sqrt(lengthSquared(b - a)); }
+
+bool coLocatedEndpoint(Vec3 a, Vec3 b) {
+  return lengthSquared(b - a) <= kCoLocatedEndpointEpsilonSquared;
+}
 
 // Nearest graph node reachable from `point` by a clear segment; ties -> lowest node id. a3s1 nodes
 // are stable-sorted with id == index, so scanning `graph.nodes` in order is id-ascending and a
@@ -20,6 +26,15 @@ bool nearestReachableNode(const ReasoningGraph& graph, std::span<const PhysicsAa
   bool found = false;
   float bestDist = std::numeric_limits<float>::infinity();
   for (const ReasoningNode& node : graph.nodes) {
+    // No segment exists to occlude when the endpoint is already at the node.
+    if (coLocatedEndpoint(point, node.positionMeters)) {
+      if (!found || bestDist > 0.0F) {
+        found = true;
+        bestDist = 0.0F;
+        outId = node.id;
+      }
+      continue;
+    }
     if (reasoningSegmentBlocked(colliders, point, node.positionMeters)) {
       continue;
     }

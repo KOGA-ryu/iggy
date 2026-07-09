@@ -33,7 +33,7 @@ iggy3d::RoomAnchorAsset anchor(const std::string& kind, iggy3d::Vec3 pos) {
 }
 
 // A y:0..3 box blocker cell centered on (cx, cz) -- the same shape the garden bakes for a '#'
-// wall, so the eye-height (y=1) segment ray registers a hit.
+// wall, so the lifted eye-height segment ray registers a hit.
 iggy3d::RoomSpatialSurface boxWall(const std::string& id, float cx, float cz) {
   iggy3d::RoomSpatialSurface wall;
   wall.id = id;
@@ -129,6 +129,37 @@ bool wallBlocksWalkableEdge() {
        expect(clear.edges.empty() ? false : clear.edges[0].kind == iggy3d::ReasoningEdgeKind::walkable,
               "the restored edge is walkable");
   return ok;
+}
+
+iggy3d::PhysicsAabbCollider colliderAt(iggy3d::PhysicsBodyId id,
+                                       iggy3d::Vec3 center,
+                                       iggy3d::Vec3 halfExtents) {
+  iggy3d::PhysicsAabbCollider collider;
+  collider.bodyId = id;
+  collider.worldCenterMeters = center;
+  collider.halfExtentsMeters = halfExtents;
+  collider.bounds = iggy3d::aabbFromCenterExtents(center, halfExtents);
+  return collider;
+}
+
+bool emptyCollidersRemainClearForReasoningSegment() {
+  const std::vector<iggy3d::PhysicsAabbCollider> noColliders;
+  return expect(!iggy3d::reasoningSegmentBlocked(noColliders,
+                                                 {0.0F, 0.0F, 0.0F},
+                                                 {4.0F, 0.0F, 0.0F}),
+                "empty valid collider span remains clear");
+}
+
+bool invalidColliderBlocksReasoningSegment() {
+  iggy3d::PhysicsAabbCollider invalid =
+      colliderAt({42U}, {2.0F, 1.0F, 0.0F}, {0.5F, 1.0F, 1.0F});
+  invalid.halfExtentsMeters.x = 0.0F;
+  const std::vector<iggy3d::PhysicsAabbCollider> colliders{invalid};
+
+  return expect(iggy3d::reasoningSegmentBlocked(colliders,
+                                                {0.0F, 0.0F, 0.0F},
+                                                {4.0F, 0.0F, 0.0F}),
+                "invalid collider span blocks reasoning segment");
 }
 
 bool maxLinkDistanceCutsLongEdges() {
@@ -258,7 +289,10 @@ bool affordanceKindsMapToNodes() {
 
 int main() {
   const bool ok = anchorMappingDerivesRightKinds() && waypointsBecomePatrolPosts() &&
-                  wallBlocksWalkableEdge() && maxLinkDistanceCutsLongEdges() &&
+                  wallBlocksWalkableEdge() &&
+                  emptyCollidersRemainClearForReasoningSegment() &&
+                  invalidColliderBlocksReasoningSegment() &&
+                  maxLinkDistanceCutsLongEdges() &&
                   sameInputsYieldBitwiseIdenticalGraph() && summaryCountsMatchGraph() &&
                   affordanceKindsMapToNodes();
   return ok ? 0 : 1;

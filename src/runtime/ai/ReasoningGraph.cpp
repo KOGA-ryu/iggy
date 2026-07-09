@@ -4,19 +4,12 @@
 #include <cmath>
 #include <tuple>
 
+#include "runtime/ai/SegmentOcclusion.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
-#include "runtime/physics/PhysicsCollisionQueries.hpp"
 #include "runtime/physics/PhysicsSpatialSurfaceColliderBake.hpp"
 
 namespace iggy3d {
 namespace {
-
-// Segment rays run at eye height with a small occlusion margin -- IDENTICAL handling to
-// actorHasLineOfSightToTarget (vision) and hasBlockerBetween (hearing) so the reasoning graph
-// links exactly what those senses can traverse. The eye-height lift also keeps horizontal edges
-// from grazing the thin walkable floor plane.
-constexpr float kEyeHeightMeters = 1.0F;
-constexpr float kOcclusionMarginMeters = 0.01F;
 
 // Anchor-kind -> node-kind mapping (the affordance vocabulary v0.1 wire strings; docs/
 // affordance_vocabulary_v0_1.md is the contract). Returns false for kinds with no v0.1 node --
@@ -61,43 +54,22 @@ bool nodeKindForAnchor(const std::string& anchorKind, ReasoningNodeKind& out) {
 
 }  // namespace
 
-bool reasoningSegmentBlocked(std::span<const PhysicsAabbCollider> colliders, Vec3 from, Vec3 to) {
-  if (colliders.empty()) {
-    return false;
-  }
+bool reasoningSegmentBlocked(
+    std::span<const PhysicsAabbCollider> colliders,
+    Vec3 from,
+    Vec3 to,
+    float eyeHeightMeters,
+    float marginMeters) {
   Vec3 origin = from;
-  origin.y += kEyeHeightMeters;
+  origin.y += eyeHeightMeters;
   Vec3 dest = to;
-  dest.y += kEyeHeightMeters;
-  const Vec3 delta{dest.x - origin.x, dest.y - origin.y, dest.z - origin.z};
-  const float distanceSq = lengthSquared(delta);
-  if (!std::isfinite(distanceSq) || distanceSq < 1.0e-6F) {
+  dest.y += eyeHeightMeters;
+  const SegmentOcclusionVerdict verdict =
+      segmentOcclusion(colliders, origin, dest, marginMeters);
+  if (verdict == SegmentOcclusionVerdict::Clear) {
     return false;
   }
-  const float distance = std::sqrt(distanceSq);
-  // raycastPhysicsAabbs is vector-based; copy the span view into a local vector for the query. The
-  // collider set is small and this runs at build-time (edge bake) / on-demand (route reachability),
-  // never per-tile.
-  const std::vector<PhysicsAabbCollider> colliderVec(colliders.begin(), colliders.end());
-  PhysicsRaycastQueryRequest request;
-  request.colliders = &colliderVec;
-  request.originMeters = origin;
-  request.direction = delta;  // normalized inside the query
-  request.maxDistanceMeters = distance;
-  request.includeSensors = false;
-  const PhysicsRaycastQueryResult result = raycastPhysicsAabbs(request);
-  if (!result.ok) {
-    return false;
-  }
-  for (const PhysicsRaycastHit& hit : result.hits) {
-    if (hit.startInside) {
-      continue;
-    }
-    if (hit.distanceMeters < distance - kOcclusionMarginMeters) {
-      return true;
-    }
-  }
-  return false;
+  return true;
 }
 
 std::string_view reasoningNodeKindName(ReasoningNodeKind kind) {
@@ -183,8 +155,10 @@ ReasoningGraph buildReasoningGraph(const RoomAsset& room, std::span<const Vec3> 
   bakeRequest.surfaces = &surfaces;
   const PhysicsSpatialSurfaceColliderBakeResult bake =
       bakePhysicsAabbCollidersFromSpatialSurfaces(bakeRequest);
-  const std::vector<PhysicsAabbCollider> colliders =
-      bake.ok ? bake.colliders : std::vector<PhysicsAabbCollider>{};
+  if (!bake.ok) {
+    return graph;
+  }
+  const std::vector<PhysicsAabbCollider>& colliders = bake.colliders;
 
   for (std::size_t i = 0; i < graph.nodes.size(); ++i) {
     for (std::size_t j = i + 1; j < graph.nodes.size(); ++j) {
@@ -194,7 +168,11 @@ ReasoningGraph buildReasoningGraph(const RoomAsset& room, std::span<const Vec3> 
       if (len > config.maxLinkDistanceMeters) {
         continue;
       }
-      if (reasoningSegmentBlocked(colliders, a, b)) {
+      if (reasoningSegmentBlocked(colliders,
+                                  a,
+                                  b,
+                                  config.occlusionEyeHeightMeters,
+                                  config.occlusionMarginMeters)) {
         continue;
       }
       graph.edges.push_back(ReasoningEdge{graph.nodes[i].id, graph.nodes[j].id,
