@@ -218,3 +218,5 @@ BG-1219	src/runtime/save/SaveFileStore.cpp	save file path listing and id extract
 BG-1220	src/app/iggy3d/save/CatalogProjector.cpp	product save catalog to frontend slot projection policy	codex	2026-06-30
 BG-1221	src/app/iggy3d/creative/Palette.cpp	creative palette descriptor group and slot projection policy	codex	2026-07-02
 BG-1222	src/app/iggy3d/creative/Block.cpp	creative block overlay geometry packet validation and face descriptor policy	codex	2026-07-02
+BG-1229	src/app/iggy3d/window/VulkanOverlayFrames.cpp	exact Vulkan menu/overlay/wireframe branch-set relocation from FramePresenter.cpp	codex	2026-07-09
+BG-1230	src/app/iggy3d/window/VulkanGameplayFrame.cpp	exact Vulkan gameplay HUD branch-set relocation from FramePresenter.cpp	codex	2026-07-09

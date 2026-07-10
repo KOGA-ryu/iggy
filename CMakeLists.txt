@@ -177,6 +177,8 @@ target_sources(iggy3d
     src/app/iggy3d/ui/Widget.cpp
     src/app/iggy3d/view/ViewportFraming.cpp
     src/app/iggy3d/window/FramePresenter.cpp
+    src/app/iggy3d/window/VulkanOverlayFrames.cpp
+    src/app/iggy3d/window/VulkanGameplayFrame.cpp
     src/app/iggy3d/creative/bridge/WindowCoordinateSpace.cpp
     src/app/iggy3d/creative/bridge/UiWindowFrame.cpp
     src/app/iggy3d/creative/bridge/UiInputFrame.cpp
