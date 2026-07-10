@@ -19,7 +19,7 @@
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/platform/SdlWindow.hpp"
 #include "app/iggy3d/automation/AutomationRoomEditing.hpp"
-#include "app/input/InputActionRegistry.hpp"
+#include "app/input/InputActions.hpp"
 #include "app/input/InputRouter.hpp"
 #include "content/assets/RoomAsset.hpp"
 #include "core/math/Transform3.hpp"

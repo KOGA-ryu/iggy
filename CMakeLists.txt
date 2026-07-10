@@ -220,9 +220,7 @@ target_sources(iggy3d
     src/app/frontend/DevToolsMenu.cpp
     src/app/input/GamepadInput.cpp
     src/app/input/ActionState.cpp
-    src/app/input/InputAction.cpp
-    src/app/input/InputActionRegistry.cpp
-    src/app/input/InputBindings.cpp
+    src/app/input/InputActions.cpp
     src/app/input/InputDeviceEvent.cpp
     src/app/input/InputRouter.cpp
     src/app/input/KeyboardInput.cpp

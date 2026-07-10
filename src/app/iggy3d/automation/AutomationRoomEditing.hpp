@@ -8,7 +8,7 @@
 #include "app/iggy3d/room_editor/Cursor.hpp"
 #include "app/iggy3d/view/ViewportFraming.hpp"
 #include "app/iggy3d/automation/Automation.hpp"
-#include "app/input/InputAction.hpp"
+#include "app/input/InputActions.hpp"
 #include "app/input/InputRouter.hpp"
 
 namespace iggy3d {

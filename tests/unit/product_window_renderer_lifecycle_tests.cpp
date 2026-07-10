@@ -6,7 +6,7 @@
 #include <string_view>
 #include <system_error>
 
-#include "app/input/InputAction.hpp"
+#include "app/input/InputActions.hpp"
 #include "app/iggy3d/menu/ActionHandlers.hpp"
 #include "app/iggy3d/menu/DrawList.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"

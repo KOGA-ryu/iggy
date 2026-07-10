@@ -3,7 +3,7 @@
 #include <array>
 #include <cstddef>
 
-#include "app/input/InputAction.hpp"
+#include "app/input/InputActions.hpp"
 
 namespace iggy3d {
 

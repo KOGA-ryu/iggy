@@ -5,7 +5,7 @@
 #include <string_view>
 
 #include "app/iggy3d/input/InteractionMode.hpp"
-#include "app/input/InputAction.hpp"
+#include "app/input/InputActions.hpp"
 
 namespace iggy3d {
 

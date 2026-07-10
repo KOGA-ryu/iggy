@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/input/InputAction.hpp"
+#include "app/input/InputActions.hpp"
 
 namespace iggy3d {
 

@@ -1,7 +1,7 @@
 #include "app/input/GamepadInput.hpp"
 
 #include "app/input/ActionState.hpp"
-#include "app/input/InputBindings.hpp"
+#include "app/input/InputActions.hpp"
 
 #if defined(IGGY3D_HAS_SDL3)
 #include <SDL3/SDL.h>

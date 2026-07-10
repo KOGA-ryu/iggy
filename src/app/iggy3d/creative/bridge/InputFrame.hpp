@@ -2,7 +2,7 @@
 
 #include "app/iggy3d/creative/Core.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
-#include "app/input/InputAction.hpp"
+#include "app/input/InputActions.hpp"
 #include "app/input/KeyboardInput.hpp"
 #include "app/input/MouseInput.hpp"
 

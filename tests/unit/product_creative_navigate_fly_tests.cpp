@@ -10,7 +10,7 @@
 #include "ProductTestSupport.hpp"
 
 #include "app/input/ActionState.hpp"
-#include "app/input/InputAction.hpp"
+#include "app/input/InputActions.hpp"
 #include "app/iggy3d/creative/camera/Fly.hpp"
 
 namespace {

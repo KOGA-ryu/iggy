@@ -7,7 +7,7 @@
 #include "app/iggy3d/ascii_room/Authoring.hpp"
 #include "app/iggy3d/ascii_room/Editing.hpp"
 #include "app/input/ActionState.hpp"
-#include "app/input/InputAction.hpp"
+#include "app/input/InputActions.hpp"
 #include "runtime/collision/CollisionQuery.hpp"
 #include "runtime/interaction/InteractionDefinition.hpp"
 #include "runtime/replay/StateHash.hpp"

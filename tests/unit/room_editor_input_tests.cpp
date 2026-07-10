@@ -1,5 +1,5 @@
 #include "app/input/GamepadInput.hpp"
-#include "app/input/InputBindings.hpp"
+#include "app/input/InputActions.hpp"
 #include "app/input/KeyboardInput.hpp"
 
 #include <array>

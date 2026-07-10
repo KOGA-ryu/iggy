@@ -14,7 +14,7 @@
 #include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/automation/Automation.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
-#include "app/input/InputAction.hpp"
+#include "app/input/InputActions.hpp"
 #include "runtime/session/Session.hpp"
 
 namespace {

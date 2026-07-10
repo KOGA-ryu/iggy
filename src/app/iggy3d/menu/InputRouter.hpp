@@ -6,7 +6,7 @@
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/Options.hpp"
 #include "app/input/ActionState.hpp"
-#include "app/input/InputAction.hpp"
+#include "app/input/InputActions.hpp"
 #include "app/input/InputRouter.hpp"
 #include "runtime/session/Session.hpp"
 
