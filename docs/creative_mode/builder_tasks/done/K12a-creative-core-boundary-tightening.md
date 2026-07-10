@@ -399,7 +399,7 @@ print(checks)
 PY
 python3 tools/check_branch_gate.py
 git diff HEAD -- tests/golden src/runtime src/render src/projection src/app/iggy3d/receipt src/runtime/save src/runtime/replay docs/architecture_dependency_policy.json docs/file_specs docs/creative_mode/optimization
-git diff HEAD -- tests | rg '^diff --git' 
+git diff HEAD -- tests | rg '^diff --git'
 git diff --check
 ```
 
