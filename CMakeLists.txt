@@ -145,6 +145,7 @@ target_sources(iggy3d
     src/app/iggy3d/automation/AutomationDispatch.cpp
     src/app/iggy3d/automation/AutomationGameplay.cpp
     src/app/iggy3d/automation/AutomationRoomEditing.cpp
+    src/app/iggy3d/automation/AutomationRoomEditingDispatch.cpp
     src/app/iggy3d/automation/AutomationSaveBrowser.cpp
     src/app/iggy3d/automation/AutomationSystem.cpp
     src/app/iggy3d/menu/ActionHandlers.cpp
