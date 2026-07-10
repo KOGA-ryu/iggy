@@ -302,6 +302,8 @@ target_sources(iggy3d
     src/runtime/replay/CommandReplay.cpp
     src/runtime/save/SaveCompatibility.cpp
     src/runtime/save/SaveCodec.cpp
+    src/runtime/save/SaveCodecDecode.cpp
+    src/runtime/save/SaveCodecDecodeSections.cpp
     src/runtime/save/SaveFileStore.cpp
     src/runtime/save/SaveLoad.cpp
     src/runtime/diagnostics/RuntimeSummary.cpp

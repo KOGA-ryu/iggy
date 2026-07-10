@@ -224,3 +224,8 @@ BG-1231	src/app/iggy3d/automation/AutomationMetadata.cpp	exact metadata/registry
 BG-1232	src/app/iggy3d/automation/AutomationWorldSetup.cpp	exact world-setup branch-set relocation from Automation.cpp	codex	2026-07-09
 BG-1233	src/app/iggy3d/automation/AutomationMetadata.cpp	private automation lookup-miss fallback policy	codex	2026-07-09
 BG-1234	src/app/iggy3d/automation/AutomationRoomEditingDispatch.cpp	exact room-editing automation command-dispatch branch-set relocation from AutomationRoomEditing.cpp	codex	2026-07-09
+BG-1235	src/runtime/save/SaveCodecEnumTables.hpp	shared save enum wire-name lookup and parsing table policy	codex	2026-07-10
+BG-1236	src/runtime/save/SaveCodecReader.hpp	exact save decoder template branch relocation from SaveCodec.cpp	codex	2026-07-10
+BG-1237	src/runtime/save/SaveCodecDecode.cpp	exact save decoder core branch relocation from SaveCodec.cpp	codex	2026-07-10
+BG-1238	src/runtime/save/SaveCodecDecodeSections.cpp	exact save decoder section branch relocation from SaveCodec.cpp	codex	2026-07-10
+BG-1239	src/runtime/save/SaveCodecDecode.cpp	shared save format header and size guard policy	codex	2026-07-10
