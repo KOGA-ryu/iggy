@@ -326,30 +326,6 @@ CreativeDocumentMutationReceipt moveDocumentObject(
     return applyDocumentMutation(document, objectId, CreativeMutationKind::Move, makeMovePayload(position), options);
 }
 
-CreativeDocumentMutationReceipt rotateDocumentObject(
-    CreativeDocument& document,
-    CreativeObjectId objectId,
-    CreativeVec3 rotation,
-    const CreativeDocumentMutationOptions& options) {
-    return applyDocumentMutation(document, objectId, CreativeMutationKind::Rotate, makeRotatePayload(rotation), options);
-}
-
-CreativeDocumentMutationReceipt resizeDocumentObject(
-    CreativeDocument& document,
-    CreativeObjectId objectId,
-    CreativeVec3 size,
-    const CreativeDocumentMutationOptions& options) {
-    return applyDocumentMutation(document, objectId, CreativeMutationKind::Resize, makeResizePayload(size), options);
-}
-
-CreativeDocumentMutationReceipt setDocumentObjectBounds(
-    CreativeDocument& document,
-    CreativeObjectId objectId,
-    CreativeBounds bounds,
-    const CreativeDocumentMutationOptions& options) {
-    return applyDocumentMutation(document, objectId, CreativeMutationKind::SetBounds, makeBoundsPayload(bounds), options);
-}
-
 CreativeDocumentMutationReceipt setDocumentObjectVisible(
     CreativeDocument& document,
     CreativeObjectId objectId,
@@ -364,30 +340,6 @@ CreativeDocumentMutationReceipt setDocumentObjectLocked(
     bool locked,
     const CreativeDocumentMutationOptions& options) {
     return applyDocumentMutation(document, objectId, CreativeMutationKind::SetLocked, makeLockPayload(locked), options);
-}
-
-CreativeDocumentMutationReceipt assignDocumentObjectLayer(
-    CreativeDocument& document,
-    CreativeObjectId objectId,
-    CreativeLayerId layerId,
-    const CreativeDocumentMutationOptions& options) {
-    return applyDocumentMutation(document, objectId, CreativeMutationKind::AssignLayer, makeLayerPayload(layerId), options);
-}
-
-CreativeDocumentMutationReceipt addDocumentObjectTag(
-    CreativeDocument& document,
-    CreativeObjectId objectId,
-    std::string tag,
-    const CreativeDocumentMutationOptions& options) {
-    return applyDocumentMutation(document, objectId, CreativeMutationKind::AddTag, makeTagPayload(std::move(tag)), options);
-}
-
-CreativeDocumentMutationReceipt removeDocumentObjectTag(
-    CreativeDocument& document,
-    CreativeObjectId objectId,
-    std::string tag,
-    const CreativeDocumentMutationOptions& options) {
-    return applyDocumentMutation(document, objectId, CreativeMutationKind::RemoveTag, makeTagPayload(std::move(tag)), options);
 }
 
 } // namespace iggy3d::creative

@@ -346,24 +346,13 @@ struct CreativeMutationDescriptor {
 [[nodiscard]] CreativeMutationPayload makeLockPayload(bool locked);
 [[nodiscard]] CreativeMutationPayload makeMovePayload(CreativeVec3 position);
 [[nodiscard]] CreativeMutationPayload makeRotatePayload(CreativeVec3 rotation);
-[[nodiscard]] CreativeMutationPayload makeScalePayload(CreativeVec3 scale);
-[[nodiscard]] CreativeMutationPayload makeTransformPayload(CreativeTransform transform);
-[[nodiscard]] CreativeMutationPayload makeResizePayload(CreativeVec3 size);
-[[nodiscard]] CreativeMutationPayload makeStretchPayload(CreativeVec3 delta);
 [[nodiscard]] CreativeMutationPayload makeBoundsPayload(CreativeBounds bounds);
 [[nodiscard]] CreativeMutationPayload makeScalarPayload(double value);
 [[nodiscard]] CreativeMutationPayload makeParentPayload(CreativeObjectId parentId);
 [[nodiscard]] CreativeMutationPayload makeAttachPayload(CreativeObjectId targetId, std::string socket);
 [[nodiscard]] CreativeMutationPayload makeLinkPayload(CreativeObjectId targetId);
-[[nodiscard]] CreativeMutationPayload makeSocketPayload(std::string socket);
-[[nodiscard]] CreativeMutationPayload makeLayerPayload(CreativeLayerId layerId);
-[[nodiscard]] CreativeMutationPayload makeTagPayload(std::string tag);
 [[nodiscard]] CreativeMutationPayload makeTextPayload(std::string text);
-[[nodiscard]] CreativeMutationPayload makeReferenceSourcePayload(std::string source);
-[[nodiscard]] CreativeMutationPayload makeColorPayload(CreativeRgba color);
-[[nodiscard]] CreativeMutationPayload makeAudioSourcePayload(std::string source);
 [[nodiscard]] CreativeMutationPayload makeStringIdPayload(std::string id);
 [[nodiscard]] CreativeMutationPayload makePathPointsPayload(std::vector<CreativePathPoint> pathPoints);
-[[nodiscard]] CreativeMutationPayload makeObjectKindPayload(CreativeObjectKind kind);
 
 } // namespace iggy3d::creative

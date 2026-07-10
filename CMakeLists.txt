@@ -79,8 +79,8 @@ target_sources(iggy3d
     src/app/iggy3d/creative/CreativeBlankStageSession.cpp
     src/app/iggy3d/creative/CreativeUiCommandDiagnostics.cpp
     src/app/iggy3d/creative/ui/Ui.cpp
-    src/app/iggy3d/creative/mutation/Metrics.cpp
     src/app/iggy3d/creative/Facade.cpp
+    src/app/iggy3d/creative/FacadeMoveDrag.cpp
     src/app/iggy3d/creative/tools/Palette.cpp
     src/app/iggy3d/creative/document/Block.cpp
     src/app/iggy3d/view/OpeningMenuHitTest.cpp

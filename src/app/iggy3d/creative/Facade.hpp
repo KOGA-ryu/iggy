@@ -5,7 +5,6 @@
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
 #include "app/iggy3d/creative/spatial/Ghost.hpp"
 #include "app/iggy3d/creative/tools/Measure.hpp"
-#include "app/iggy3d/creative/mutation/Metrics.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/tools/Select.hpp"
 #include "app/iggy3d/creative/spatial/Snap.hpp"
@@ -169,6 +168,14 @@ struct CreativeFacadeDocumentBatchCreateReceipt {
       "creative_facade_batch_create_not_requested";
   std::string_view message =
       "creative_facade_batch_create_not_requested";
+};
+
+struct Stats {
+  std::uint64_t commandAttempts = 0;
+  std::uint64_t commandSuccesses = 0;
+  std::uint64_t commandFailures = 0;
+  std::uint64_t objectsCreated = 0;
+  std::uint64_t roomsCreated = 0;
 };
 
 [[nodiscard]] std::string_view toString(

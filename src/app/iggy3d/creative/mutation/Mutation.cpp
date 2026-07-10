@@ -800,22 +800,6 @@ CreativeMutationPayload makeRotatePayload(CreativeVec3 rotation) {
     return CreativeMutationPayload{RotateMutation{rotation}};
 }
 
-CreativeMutationPayload makeScalePayload(CreativeVec3 scale) {
-    return CreativeMutationPayload{ScaleMutation{scale}};
-}
-
-CreativeMutationPayload makeTransformPayload(CreativeTransform transform) {
-    return CreativeMutationPayload{SetTransformMutation{transform}};
-}
-
-CreativeMutationPayload makeResizePayload(CreativeVec3 size) {
-    return CreativeMutationPayload{ResizeMutation{size}};
-}
-
-CreativeMutationPayload makeStretchPayload(CreativeVec3 delta) {
-    return CreativeMutationPayload{StretchMutation{delta}};
-}
-
 CreativeMutationPayload makeBoundsPayload(CreativeBounds bounds) {
     return CreativeMutationPayload{SetBoundsMutation{bounds}};
 }
@@ -836,32 +820,8 @@ CreativeMutationPayload makeLinkPayload(CreativeObjectId targetId) {
     return CreativeMutationPayload{LinkTargetMutation{targetId}};
 }
 
-CreativeMutationPayload makeSocketPayload(std::string socket) {
-    return CreativeMutationPayload{SetSocketMutation{std::move(socket)}};
-}
-
-CreativeMutationPayload makeLayerPayload(CreativeLayerId layerId) {
-    return CreativeMutationPayload{AssignLayerMutation{layerId}};
-}
-
-CreativeMutationPayload makeTagPayload(std::string tag) {
-    return CreativeMutationPayload{TagMutation{std::move(tag)}};
-}
-
 CreativeMutationPayload makeTextPayload(std::string text) {
     return CreativeMutationPayload{TextMutation{std::move(text)}};
-}
-
-CreativeMutationPayload makeReferenceSourcePayload(std::string source) {
-    return CreativeMutationPayload{ReferenceSourceMutation{std::move(source)}};
-}
-
-CreativeMutationPayload makeColorPayload(CreativeRgba color) {
-    return CreativeMutationPayload{ColorMutation{color}};
-}
-
-CreativeMutationPayload makeAudioSourcePayload(std::string source) {
-    return CreativeMutationPayload{AudioSourceMutation{std::move(source)}};
 }
 
 CreativeMutationPayload makeStringIdPayload(std::string id) {
@@ -870,10 +830,6 @@ CreativeMutationPayload makeStringIdPayload(std::string id) {
 
 CreativeMutationPayload makePathPointsPayload(std::vector<CreativePathPoint> pathPoints) {
     return CreativeMutationPayload{PathPointsMutation{std::move(pathPoints)}};
-}
-
-CreativeMutationPayload makeObjectKindPayload(CreativeObjectKind kind) {
-    return CreativeMutationPayload{ObjectKindMutation{kind}};
 }
 
 } // namespace iggy3d::creative

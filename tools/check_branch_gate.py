@@ -14,12 +14,17 @@ import argparse
 import re
 import subprocess
 import sys
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
 
 BRANCH_RE = re.compile(r"\b(else\s+if|if|switch)\s*\(")
 APPROVAL_RE = re.compile(r"\bbranch-gate:\s*(BG-[0-9]{4,})\b")
+RELOCATION_RE = re.compile(
+    r"\bbranch-gate-relocation:\s*(BG-[0-9]{4,})\s+"
+    r"from=([^\s]+)"
+)
 SOURCE_SUFFIXES = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx"}
 DEFAULT_SOURCE_PREFIXES = ("src/", "apps/")
 DEFAULT_IGNORED_PREFIXES = ("build/",)
@@ -96,6 +101,15 @@ def branch_statement_name(code: str) -> str | None:
   return None
 
 
+def branch_fingerprint(code: str) -> tuple[str, str] | None:
+  code_without_comment = code.split("//", 1)[0]
+  statement = branch_statement_name(code_without_comment)
+  if statement is None:
+    return None
+  normalized = " ".join(code_without_comment.split())
+  return statement, normalized
+
+
 def diff_text(diff_range: str | None, staged: bool) -> str:
   if diff_range:
     return run_git(["diff", "--unified=0", diff_range])
@@ -105,79 +119,96 @@ def diff_text(diff_range: str | None, staged: bool) -> str:
 
 
 def scan_diff(diff: str, approval_ids: set[str], include_tests: bool) -> list[Finding]:
-  findings: list[Finding] = []
+  removed_branches: dict[str, Counter[tuple[str, str]]] = defaultdict(Counter)
+  relocation_markers: dict[str, list[tuple[str, str]]] = defaultdict(list)
+  additions: list[tuple[str, int, tuple[str, str], list[tuple[str, int]]]] = []
   current_path = ""
   new_line = 0
   recent_approvals: list[tuple[str, int]] = []
-  removed_branches: dict[str, int] = {}
 
   for raw_line in diff.splitlines():
     if raw_line.startswith("diff --git "):
       current_path = ""
       recent_approvals.clear()
-      removed_branches.clear()
       continue
     if raw_line.startswith("+++ b/"):
       current_path = raw_line.removeprefix("+++ b/")
-      recent_approvals.clear()
       continue
     if raw_line.startswith("@@"):
       match = re.search(r"\+([0-9]+)(?:,([0-9]+))?", raw_line)
       if match:
         new_line = int(match.group(1)) - 1
       recent_approvals.clear()
-      removed_branches.clear()
       continue
 
     if raw_line.startswith("+") and not raw_line.startswith("+++"):
       new_line += 1
+      approval_match = APPROVAL_RE.search(raw_line[1:])
+      if approval_match:
+        recent_approvals.append((approval_match.group(1), new_line))
+      recent_approvals = [
+          approval for approval in recent_approvals
+          if 0 <= new_line - approval[1] <= APPROVAL_WINDOW_LINES
+      ]
+
+      if not current_path or not source_path(current_path, include_tests):
+        continue
+
+      code = raw_line[1:]
+      relocation_match = RELOCATION_RE.search(code)
+      if relocation_match:
+        relocation_markers[current_path].append(
+            (relocation_match.group(1), relocation_match.group(2)))
+
+      code = added_code(raw_line)
+      if not code:
+        continue
+
+      fingerprint = branch_fingerprint(code)
+      if fingerprint is not None:
+        additions.append((current_path, new_line, fingerprint,
+                          list(recent_approvals)))
+      continue
     elif raw_line.startswith("-") and not raw_line.startswith("---"):
       if current_path and source_path(current_path, include_tests):
         code = raw_line[1:].strip()
-        statement = branch_statement_name(code)
-        if statement:
-          removed_branches[statement] = removed_branches.get(statement, 0) + 1
+        fingerprint = branch_fingerprint(code)
+        if fingerprint is not None:
+          removed_branches[current_path][fingerprint] += 1
       continue
     else:
       if raw_line and current_path:
         new_line += 1
       continue
 
-    if not current_path or not source_path(current_path, include_tests):
+  findings: list[Finding] = []
+  for path, line, fingerprint, recent_approvals in additions:
+    if removed_branches[path][fingerprint] > 0:
+      removed_branches[path][fingerprint] -= 1
       continue
 
-    approval_match = APPROVAL_RE.search(raw_line[1:])
-    if approval_match:
-      recent_approvals.append((approval_match.group(1), new_line))
-
-    recent_approvals = [
-        approval for approval in recent_approvals
-        if 0 <= new_line - approval[1] <= APPROVAL_WINDOW_LINES
-    ]
-
-    code = added_code(raw_line)
-    if not code:
-      continue
-
-    statement = branch_statement_name(code)
-    if not statement:
-      continue
-
-    if removed_branches.get(statement, 0) > 0:
-      removed_branches[statement] -= 1
+    relocated = False
+    for approval_id, source_path_name in relocation_markers[path]:
+      if approval_id not in approval_ids:
+        continue
+      if removed_branches[source_path_name][fingerprint] <= 0:
+        continue
+      removed_branches[source_path_name][fingerprint] -= 1
+      relocated = True
+      break
+    if relocated:
       continue
 
     approved_id = next((approval_id for approval_id, _ in reversed(recent_approvals)
                         if approval_id in approval_ids), "")
     if approved_id:
-      recent_approvals.clear()
       continue
 
     if recent_approvals:
       reason = f"approval id not found in {LEDGER_PATH}"
     else:
       reason = "missing branch-gate approval id"
-    findings.append(Finding(current_path, new_line, statement, reason))
+    findings.append(Finding(path, line, fingerprint[0], reason))
 
   return findings
 

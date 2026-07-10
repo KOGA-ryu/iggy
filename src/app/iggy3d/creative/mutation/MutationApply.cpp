@@ -10,6 +10,54 @@
 namespace iggy3d::creative {
 namespace {
 
+CreativeMutationApplyReceipt makeMutationApplyReceipt(
+    CreativeMutationApplyStatus status,
+    const CreativeObject& object,
+    CreativeMutationKind mutationKind,
+    CreativeObjectDirtyFlags dirtyFlags,
+    bool changed,
+    bool allowed,
+    std::string message) {
+    return CreativeMutationApplyReceipt{
+        status,
+        object.id,
+        object.kind,
+        mutationKind,
+        dirtyFlags,
+        changed,
+        allowed,
+        std::move(message),
+    };
+}
+
+CreativeMutationApplyReceipt applyRenameMutation(CreativeObject& object, const RenameMutation& mutation);
+CreativeMutationApplyReceipt applyVisibilityMutation(CreativeObject& object, const VisibilityMutation& mutation);
+CreativeMutationApplyReceipt applyLockMutation(CreativeObject& object, const LockMutation& mutation);
+CreativeMutationApplyReceipt applyMoveMutation(CreativeObject& object, const MoveMutation& mutation);
+CreativeMutationApplyReceipt applyRotateMutation(CreativeObject& object, const RotateMutation& mutation);
+CreativeMutationApplyReceipt applyScaleMutation(CreativeObject& object, const ScaleMutation& mutation);
+CreativeMutationApplyReceipt applySetTransformMutation(CreativeObject& object, const SetTransformMutation& mutation);
+CreativeMutationApplyReceipt applyResizeMutation(CreativeObject& object, const ResizeMutation& mutation);
+CreativeMutationApplyReceipt applyStretchMutation(CreativeObject& object, const StretchMutation& mutation);
+CreativeMutationApplyReceipt applySetBoundsMutation(CreativeObject& object, const SetBoundsMutation& mutation);
+CreativeMutationApplyReceipt applyScalarMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ScalarMutation& mutation);
+CreativeMutationApplyReceipt applySetParentMutation(CreativeObject& object, const SetParentMutation& mutation);
+CreativeMutationApplyReceipt applyClearParentMutation(CreativeObject& object, CreativeMutationKind mutationKind);
+CreativeMutationApplyReceipt applyAssignLayerMutation(CreativeObject& object, const AssignLayerMutation& mutation);
+CreativeMutationApplyReceipt applyAddTagMutation(CreativeObject& object, const TagMutation& mutation);
+CreativeMutationApplyReceipt applyRemoveTagMutation(CreativeObject& object, const TagMutation& mutation);
+CreativeMutationApplyReceipt applyClearTagsMutation(CreativeObject& object, CreativeMutationKind mutationKind);
+CreativeMutationApplyReceipt applyAttachMutation(CreativeObject& object, CreativeMutationKind mutationKind, const AttachToMutation& mutation);
+CreativeMutationApplyReceipt applyLinkMutation(CreativeObject& object, CreativeMutationKind mutationKind, const LinkTargetMutation& mutation);
+CreativeMutationApplyReceipt applySocketMutation(CreativeObject& object, CreativeMutationKind mutationKind, const SetSocketMutation& mutation);
+CreativeMutationApplyReceipt applyTextMutation(CreativeObject& object, CreativeMutationKind mutationKind, const TextMutation& mutation);
+CreativeMutationApplyReceipt applyPathPointsMutation(CreativeObject& object, CreativeMutationKind mutationKind, const PathPointsMutation& mutation);
+CreativeMutationApplyReceipt applyReferenceSourceMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ReferenceSourceMutation& mutation);
+CreativeMutationApplyReceipt applyColorMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ColorMutation& mutation);
+CreativeMutationApplyReceipt applyAudioSourceMutation(CreativeObject& object, CreativeMutationKind mutationKind, const AudioSourceMutation& mutation);
+CreativeMutationApplyReceipt applyStringIdMutation(CreativeObject& object, CreativeMutationKind mutationKind, const StringIdMutation& mutation);
+CreativeMutationApplyReceipt applyObjectKindMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ObjectKindMutation& mutation);
+
 [[nodiscard]] CreativeMutationApplyReceipt makeNoChangeReceipt(
     const CreativeObject& object,
     CreativeMutationKind mutationKind,
@@ -335,38 +383,6 @@ std::string_view toString(CreativeMutationApplyStatus status) noexcept {
     return "Unknown";
 }
 
-bool mutationApplySucceeded(CreativeMutationApplyStatus status) noexcept {
-    return status == CreativeMutationApplyStatus::Applied || status == CreativeMutationApplyStatus::NoChange;
-}
-
-bool mutationApplyFailed(CreativeMutationApplyStatus status) noexcept {
-    return !mutationApplySucceeded(status);
-}
-
-bool mutationApplyChanged(CreativeMutationApplyStatus status) noexcept {
-    return status == CreativeMutationApplyStatus::Applied;
-}
-
-CreativeMutationApplyReceipt makeMutationApplyReceipt(
-    CreativeMutationApplyStatus status,
-    const CreativeObject& object,
-    CreativeMutationKind mutationKind,
-    CreativeObjectDirtyFlags dirtyFlags,
-    bool changed,
-    bool allowed,
-    std::string message) {
-    return CreativeMutationApplyReceipt{
-        status,
-        object.id,
-        object.kind,
-        mutationKind,
-        dirtyFlags,
-        changed,
-        allowed,
-        std::move(message),
-    };
-}
-
 CreativeMutationApplyReceipt rejectMutation(
     const CreativeObject& object,
     CreativeMutationKind mutationKind,
@@ -424,6 +440,8 @@ CreativeMutationApplyReceipt applyMutation(
 
     return receipt;
 }
+
+namespace {
 
 CreativeMutationApplyReceipt applyRenameMutation(CreativeObject& object, const RenameMutation& mutation) {
     if (object.name == mutation.name) {
@@ -686,5 +704,7 @@ CreativeMutationApplyReceipt applyObjectKindMutation(CreativeObject& object, Cre
     (void)mutation;
     return makeFutureStorageNoChangeReceipt(object, mutationKind);
 }
+
+} // namespace
 
 } // namespace iggy3d::creative

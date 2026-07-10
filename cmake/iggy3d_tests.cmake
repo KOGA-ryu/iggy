@@ -19,6 +19,13 @@ set_tests_properties(dependency_graph_tool_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "architecture;dependency;oracle;iggy3d")
 
+add_test(NAME branch_gate_tool_tests
+  COMMAND "${Python3_EXECUTABLE}"
+          "${CMAKE_CURRENT_SOURCE_DIR}/tests/tools/branch_gate_tests.py")
+set_tests_properties(branch_gate_tool_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "architecture;oracle;iggy3d")
+
 add_test(NAME dependency_direction_tests
   COMMAND "${Python3_EXECUTABLE}"
           "${CMAKE_CURRENT_SOURCE_DIR}/tools/dependency_graph.py"

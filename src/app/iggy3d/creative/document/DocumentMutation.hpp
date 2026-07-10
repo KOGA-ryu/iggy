@@ -156,24 +156,6 @@ struct CreativeDocumentBatchMutationReceipt {
     CreativeVec3 position,
     const CreativeDocumentMutationOptions& options = {});
 
-[[nodiscard]] CreativeDocumentMutationReceipt rotateDocumentObject(
-    CreativeDocument& document,
-    CreativeObjectId objectId,
-    CreativeVec3 rotation,
-    const CreativeDocumentMutationOptions& options = {});
-
-[[nodiscard]] CreativeDocumentMutationReceipt resizeDocumentObject(
-    CreativeDocument& document,
-    CreativeObjectId objectId,
-    CreativeVec3 size,
-    const CreativeDocumentMutationOptions& options = {});
-
-[[nodiscard]] CreativeDocumentMutationReceipt setDocumentObjectBounds(
-    CreativeDocument& document,
-    CreativeObjectId objectId,
-    CreativeBounds bounds,
-    const CreativeDocumentMutationOptions& options = {});
-
 [[nodiscard]] CreativeDocumentMutationReceipt setDocumentObjectVisible(
     CreativeDocument& document,
     CreativeObjectId objectId,
@@ -184,24 +166,6 @@ struct CreativeDocumentBatchMutationReceipt {
     CreativeDocument& document,
     CreativeObjectId objectId,
     bool locked,
-    const CreativeDocumentMutationOptions& options = {});
-
-[[nodiscard]] CreativeDocumentMutationReceipt assignDocumentObjectLayer(
-    CreativeDocument& document,
-    CreativeObjectId objectId,
-    CreativeLayerId layerId,
-    const CreativeDocumentMutationOptions& options = {});
-
-[[nodiscard]] CreativeDocumentMutationReceipt addDocumentObjectTag(
-    CreativeDocument& document,
-    CreativeObjectId objectId,
-    std::string tag,
-    const CreativeDocumentMutationOptions& options = {});
-
-[[nodiscard]] CreativeDocumentMutationReceipt removeDocumentObjectTag(
-    CreativeDocument& document,
-    CreativeObjectId objectId,
-    std::string tag,
     const CreativeDocumentMutationOptions& options = {});
 
 } // namespace iggy3d::creative

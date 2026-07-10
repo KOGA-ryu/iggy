@@ -110,6 +110,8 @@ BG-1223	src/app/iggy3d/debug/DebugHudPanels.cpp	relocated NPC behavior debug HUD
 BG-1224	src/app/iggy3d/world/WorldTemplate.cpp	relocated world template default and override selection policy	codex	2026-07-09
 BG-1225	src/app/input/InputActions.cpp	relocated input action group name mapping policy	codex	2026-07-09
 BG-1226	src/app/input/InputActions.cpp	relocated neutral input binding first match policy	codex	2026-07-09
+BG-1227	src/app/iggy3d/creative/FacadeMoveDrag.cpp	exact Facade move-drag branch-set relocation from Facade.cpp	codex	2026-07-09
+BG-1228	src/app/iggy3d/creative/FacadeInternal.hpp	exact Facade target-id conversion branch-set relocation from Facade.cpp	codex	2026-07-09
 BG-1109	src/app/iggy3d/gameplay/ProductGameplayProjectionRefresh.cpp	product physics debug projection packet routing policy	codex	2026-06-27
 BG-1110	src/app/iggy3d/view/OpeningMenuView.cpp	product physics debug SDL HUD draw visibility and row cap policy	codex	2026-06-27
 BG-1111	src/projection/debug/DebugProjection.cpp	physics collision batch debug geometry projection policy	codex	2026-06-27

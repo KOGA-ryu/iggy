@@ -29,10 +29,11 @@ bool defaultStateIsStable() {
 bool defaultStatsAreStable() {
   const cr::Stats stats;
 
-  return expect(stats.frames == 0U, "default frame count") &&
-         expect(stats.packets == 0U, "default packet count") &&
-         expect(stats.handled == 0U, "default handled count") &&
-         expect(stats.ignored == 0U, "default ignored count");
+  return expect(stats.commandAttempts == 0U, "default command attempts") &&
+         expect(stats.commandSuccesses == 0U, "default command successes") &&
+         expect(stats.commandFailures == 0U, "default command failures") &&
+         expect(stats.objectsCreated == 0U, "default objects created") &&
+         expect(stats.roomsCreated == 0U, "default rooms created");
 }
 
 bool facadeStubsLeaveStatsStable() {
@@ -42,10 +43,11 @@ bool facadeStubsLeaveStatsStable() {
   facade.handle({});
   const cr::Stats& stats = facade.stats();
 
-  return expect(stats.frames == 0U, "facade frame count") &&
-         expect(stats.packets == 0U, "facade packet count") &&
-         expect(stats.handled == 0U, "facade handled count") &&
-         expect(stats.ignored == 0U, "facade ignored count");
+  return expect(stats.commandAttempts == 0U, "facade command attempts") &&
+         expect(stats.commandSuccesses == 0U, "facade command successes") &&
+         expect(stats.commandFailures == 0U, "facade command failures") &&
+         expect(stats.objectsCreated == 0U, "facade objects created") &&
+         expect(stats.roomsCreated == 0U, "facade rooms created");
 }
 
 }  // namespace
