@@ -240,7 +240,9 @@ CreativeDocumentMutationReceipt applyDocumentMutation(
     }
 
     const auto revisionBefore = document.revision();
-    auto objectReceipt = applyMutation(*object, request, options.applyOptions);
+    CreativeMutationApplyOptions applyOptions = options.applyOptions;
+    applyOptions.allowNoChange = options.allowNoChange;
+    auto objectReceipt = applyMutation(*object, request, applyOptions);
     const auto documentStatus = statusFromApplyReceipt(objectReceipt);
 
     if (documentStatus == CreativeDocumentMutationStatus::Applied && objectReceipt.changed && options.incrementRevisionOnChange) {
@@ -307,6 +309,44 @@ CreativeDocumentBatchMutationReceipt applyDocumentMutations(
     batch.revisionAfter = document.revision();
     batch.status = statusFromBatchCounts(batch.appliedCount, batch.noChangeCount, batch.failedCount);
     batch.message = "document mutation batch completed";
+    return batch;
+}
+
+CreativeDocumentBatchMutationReceipt applyDocumentMutationsAtomically(
+    CreativeDocument& document,
+    std::span<const CreativeMutationRequest> requests,
+    const CreativeDocumentMutationOptions& options) {
+    CreativeDocument stagedDocument = document;
+    CreativeDocumentMutationOptions stagedOptions = options;
+    stagedOptions.incrementRevisionOnChange = false;
+    stagedOptions.stopBatchOnFailure = true;
+
+    CreativeDocumentBatchMutationReceipt batch =
+        applyDocumentMutations(stagedDocument, requests, stagedOptions);
+    batch.atomic = true;
+    batch.revisionBefore = document.revision();
+
+    if (batch.failedCount > 0) {
+        batch.status = CreativeDocumentMutationStatus::ApplyFailed;
+        batch.revisionAfter = document.revision();
+        batch.rolledBack = batch.appliedCount > 0;
+        batch.changed = false;
+        batch.message = batch.rolledBack
+                            ? "atomic document mutation batch rolled back"
+                            : "atomic document mutation batch rejected";
+        return batch;
+    }
+
+    if (batch.changed) {
+        stagedDocument.markObjectMutationChanged(batch.dirtyFlags);
+        document = std::move(stagedDocument);
+    }
+
+    batch.committed = true;
+    batch.revisionAfter = document.revision();
+    batch.message = batch.changed
+                        ? "atomic document mutation batch committed"
+                        : "atomic document mutation batch had no changes";
     return batch;
 }
 

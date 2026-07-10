@@ -1,7 +1,7 @@
 #pragma once
 
 #include "app/iggy3d/creative/ui/Ui.hpp"
-#include "app/iggy3d/menu/DrawList.hpp"
+#include "app/iggy3d/creative/ui/CreativeUiDrawTypes.hpp"
 
 #include <cstdint>
 
@@ -11,10 +11,10 @@ struct ProductCreativeUiDrawListRequest {
   const creative::CreativeUiModel* model = nullptr;
   std::uint32_t virtualWidth = 1280;
   std::uint32_t virtualHeight = 720;
-  ProductUiThemeId theme = ProductUiThemeId::System;
+  CreativeUiThemeId theme = CreativeUiThemeId::System;
 };
 
-[[nodiscard]] ProductUiDrawList buildProductCreativeUiDrawList(
+[[nodiscard]] CreativeUiDrawList buildProductCreativeUiDrawList(
     const ProductCreativeUiDrawListRequest& request);
 
 }  // namespace iggy3d

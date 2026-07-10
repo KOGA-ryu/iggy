@@ -1,7 +1,7 @@
 #pragma once
 
 #include "app/iggy3d/creative/ui/Ui.hpp"
-#include "app/iggy3d/menu/DrawList.hpp"
+#include "app/iggy3d/creative/ui/CreativeUiDrawTypes.hpp"
 
 #include <cstdint>
 #include <string_view>
@@ -17,7 +17,7 @@ struct ProductCreativeUiProjectionRequest {
   const creative::CreativeAppState* creative = nullptr;
   std::uint32_t virtualWidth = 1280;
   std::uint32_t virtualHeight = 720;
-  ProductUiThemeId theme = ProductUiThemeId::System;
+  CreativeUiThemeId theme = CreativeUiThemeId::System;
 };
 
 struct ProductCreativeUiProjectionReceipt {
@@ -30,7 +30,7 @@ struct ProductCreativeUiProjectionReceipt {
   bool usedModel = false;
   std::uint32_t virtualWidth = 0;
   std::uint32_t virtualHeight = 0;
-  ProductUiThemeId theme = ProductUiThemeId::System;
+  CreativeUiThemeId theme = CreativeUiThemeId::System;
   std::uint64_t panelCount = 0;
   std::uint64_t modelRowCount = 0;
   std::uint64_t primitiveCount = 0;
@@ -42,7 +42,7 @@ struct ProductCreativeUiProjectionReceipt {
 };
 
 struct ProductCreativeUiProjection {
-  ProductUiDrawList drawList;
+  CreativeUiDrawList drawList;
   ProductCreativeUiProjectionReceipt receipt;
 };
 

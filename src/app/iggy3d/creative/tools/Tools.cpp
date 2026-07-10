@@ -122,6 +122,10 @@ CreativeToolDispatchReceipt dispatchToolInput(
                      CreativeToolIntentKind::SelectObjectCandidate,
                      state.activeTool,
                      input.pointer);
+          if ((input.pointer.modifiers & kCreativeToolModifierShift) != 0U) {
+            receipt.message = "move_additive_selection";
+            break;
+          }
           state.moveDragActive = true;
           state.moveDragTarget = input.pointer.target;
           receipt.changedState = true;

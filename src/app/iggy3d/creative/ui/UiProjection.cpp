@@ -18,7 +18,7 @@ std::string_view stableCreativeUiStatus(std::string_view status) noexcept {
 }
 
 void mirrorDrawListReceipt(ProductCreativeUiProjectionReceipt& receipt,
-                           const ProductUiDrawList& drawList) noexcept {
+                           const CreativeUiDrawList& drawList) noexcept {
   receipt.ready = drawList.ready;
   receipt.partial = drawList.partial;
   receipt.status = stableCreativeUiStatus(drawList.status);

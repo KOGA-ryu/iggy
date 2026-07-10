@@ -94,6 +94,9 @@ struct CreativeDocumentBatchMutationReceipt {
 
     bool changed{false};
     bool stoppedEarly{false};
+    bool atomic{false};
+    bool committed{false};
+    bool rolledBack{false};
 
     std::vector<CreativeDocumentMutationReceipt> receipts{};
     std::string message{};
@@ -138,6 +141,15 @@ struct CreativeDocumentBatchMutationReceipt {
     const CreativeDocumentMutationOptions& options = {});
 
 [[nodiscard]] CreativeDocumentBatchMutationReceipt applyDocumentMutations(
+    CreativeDocument& document,
+    std::span<const CreativeMutationRequest> requests,
+    const CreativeDocumentMutationOptions& options = {});
+
+// Applies the complete request set to a staged document and publishes it only
+// when every item succeeds. A changed atomic batch advances the document
+// revision once, regardless of the number of object mutations it contains.
+[[nodiscard]] CreativeDocumentBatchMutationReceipt
+applyDocumentMutationsAtomically(
     CreativeDocument& document,
     std::span<const CreativeMutationRequest> requests,
     const CreativeDocumentMutationOptions& options = {});

@@ -1,26 +1,17 @@
-option(IGGY3D_BUILD_TESTS "Build iggy3d tests" ON)
-option(IGGY3D_BUILD_TOOLS "Build iggy3d tools" ON)
 option(IGGY3D_WARNINGS_AS_ERRORS "Treat iggy3d warnings as errors" OFF)
-option(IGGY3D_ENABLE_VULKAN "Enable Vulkan renderer dependency discovery" OFF)
-option(IGGY3D_USE_SYSTEM_SDL3 "Use system SDL3 when visual or smoke features need SDL" ON)
-option(IGGY3D_ENABLE_VULKAN_SMOKE "Build optional Vulkan platform smoke tests" OFF)
-option(IGGY3D_REQUIRE_VULKAN_SMOKE "Fail configure or smoke when Vulkan smoke dependencies are missing" OFF)
-option(IGGY3D_REQUIRE_VALIDATION_LAYERS "Require Vulkan validation layers in strict visual lanes" OFF)
-option(IGGY3D_REQUIRE_SYNC_VALIDATION "Require Vulkan synchronization validation in strict visual lanes" OFF)
+option(IGGY3D_ENABLE_VULKAN "Enable the Creative Vulkan renderer" ON)
+option(IGGY3D_USE_SYSTEM_SDL3 "Use system SDL3" ON)
 option(IGGY3D_ENABLE_VULKAN_SHADERS "Build Vulkan shader artifacts" ON)
-option(IGGY3D_REQUIRE_GLSLANG "Fail configure/build when glslangValidator is unavailable" OFF)
-option(IGGY3D_INSTALL_HEADLESS_DEMO "Install the headless demo binary" ON)
-option(IGGY3D_INSTALL_VULKAN_SHADERS "Install generated Vulkan shader artifacts" OFF)
-option(IGGY3D_INSTALL_RUNTIME_DEPS "Install runtime dependency bundles" OFF)
-option(IGGY3D_INSTALL_VALIDATION_TOOLS "Install validation tooling" OFF)
-set(IGGY3D_GLSLANG_VALIDATOR "" CACHE FILEPATH "Path to glslangValidator executable")
-set(IGGY3D_SHADER_TARGET_ENV "vulkan1.3" CACHE STRING "glslang --target-env value")
-set(IGGY3D_SHADER_OUTPUT_DIR "" CACHE PATH "Generated Vulkan SPIR-V output root")
+option(IGGY3D_REQUIRE_GLSLANG
+       "Fail configure/build when glslangValidator is unavailable" OFF)
 
-message(STATUS "IGGY3D_BUILD_TESTS=${IGGY3D_BUILD_TESTS}")
-message(STATUS "IGGY3D_BUILD_TOOLS=${IGGY3D_BUILD_TOOLS}")
+set(IGGY3D_GLSLANG_VALIDATOR "" CACHE FILEPATH
+    "Path to glslangValidator executable")
+set(IGGY3D_SHADER_TARGET_ENV "vulkan1.3" CACHE STRING
+    "glslang --target-env value")
+set(IGGY3D_SHADER_OUTPUT_DIR "" CACHE PATH
+    "Generated Vulkan SPIR-V output root")
+
 message(STATUS "IGGY3D_WARNINGS_AS_ERRORS=${IGGY3D_WARNINGS_AS_ERRORS}")
 message(STATUS "iggy3d.vulkan.enabled=${IGGY3D_ENABLE_VULKAN}")
-message(STATUS "iggy3d.vulkan.smoke=${IGGY3D_ENABLE_VULKAN_SMOKE}")
-message(STATUS "iggy3d.vulkan.strict_smoke=${IGGY3D_REQUIRE_VULKAN_SMOKE}")
 message(STATUS "iggy3d.vulkan.shaders=${IGGY3D_ENABLE_VULKAN_SHADERS}")

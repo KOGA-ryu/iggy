@@ -6,6 +6,7 @@
 
 #include "app/iggy3d/creative/camera/Fly.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
+#include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
 #include "core/math/Vec3.hpp"
 
@@ -23,9 +24,9 @@ struct CreativeEditorState {
   float pitchDegrees = -25.0F;
 
   bool loggedSelection = false;
+  bool selectionButtonDown = false;
+  iggy3d::creative::CreativeInputRouterState inputRouterState;
 
-  bool prevKey1 = false;
-  bool prevKey2 = false;
   bool moveDragButtonDown = false;
   bool loggedMoveBefore = false;
   bool loggedMoveAfter = false;
@@ -53,17 +54,9 @@ struct CreativeEditorState {
   iggy3d::creative::CreativeObjectKind placeBrush =
       iggy3d::creative::CreativeObjectKind::Unknown;
   double placeCellSize = 1.0;
-  bool prevKey3 = false;
-  bool prevKeyB = false;
   bool placeButtonDown = false;
   std::uint64_t placedCount = 0;
 
-  bool prevKeyF5 = false;
-  bool prevKeyF6 = false;
-  bool prevKeyF9 = false;
-  bool prevKeyDelete = false;
-  bool prevKeyBackspace = false;
-  bool prevKeyZ = false;
   StandaloneUndoStack undoStack;
   StandaloneCaptureScript captureScript;
   bool captureWorldPickFloorLogged = false;

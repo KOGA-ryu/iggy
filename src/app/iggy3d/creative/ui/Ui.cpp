@@ -227,6 +227,7 @@ void appendSelectionPanel(CreativeUiModel& model,
                                                "Selected Target",
                                                target);
   applyObjectSummary(selectedRow, summary);
+  selectedRow.data0 = selectedTargetCount(request.selectionState);
   appendRow(model, selectedRow);
 
   // Kind (display).
@@ -488,6 +489,8 @@ CreativeUiBuildReceipt buildCreativeUiModel(CreativeUiBuildRequest request) {
 
   receipt.model.activeTool = request.toolState.activeTool;
   receipt.model.selectedTarget = request.selectionState.selectedTarget;
+  receipt.model.selectedTargetCount =
+      selectedTargetCount(request.selectionState);
   receipt.model.objectSummaries = request.objectSummaries;
   receipt.model.measurementActive = request.measurementState.active;
   receipt.model.hasMeasurement = request.measurementState.hasMeasurement;

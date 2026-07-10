@@ -126,6 +126,7 @@ struct CreativeUiModel {
   std::vector<CreativeUiObjectSummary> objectSummaries;
   Tool activeTool = Tool::Select;
   TargetRef selectedTarget;
+  std::uint64_t selectedTargetCount = 0;
   bool measurementActive = false;
   bool hasMeasurement = false;
   bool ghostVisible = false;

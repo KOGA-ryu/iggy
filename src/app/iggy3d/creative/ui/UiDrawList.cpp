@@ -188,7 +188,9 @@ void appendVec3Text(std::string& text, double x, double y, double z) {
       }
       break;
     case creative::CreativeUiRowKind::SelectedTarget:
-      text = "Selected: target=";
+      text = "Selected: count=";
+      text.append(std::to_string(row.data0));
+      text.append(" primary=");
       text.append(std::to_string(row.target.value));
       appendVisibilityText(text, row);
       break;
@@ -395,12 +397,12 @@ void appendVec3Text(std::string& text, double x, double y, double z) {
   return count;
 }
 
-void emitPanel(ProductUiDrawList& list,
+void emitPanel(CreativeUiDrawList& list,
                const creative::CreativeUiPanel& panel,
                const PanelLayout& layout) {
-  ProductUiPrimitive primitive;
-  primitive.kind = ProductUiPrimitiveKind::Panel;
-  primitive.tone = ProductUiTone::SurfaceRaised;
+  CreativeUiPrimitive primitive;
+  primitive.kind = CreativeUiPrimitiveKind::Panel;
+  primitive.tone = CreativeUiTone::SurfaceRaised;
   primitive.rect = {layout.x, layout.y, layout.width, panelHeight(panel.rowCount)};
   primitive.semanticId = makeSemanticId("panel", panelName(panel.kind));
   primitive.enabled = panel.enabled;
@@ -408,16 +410,16 @@ void emitPanel(ProductUiDrawList& list,
   ++list.rectCount;
 }
 
-void emitRowText(ProductUiDrawList& list,
+void emitRowText(CreativeUiDrawList& list,
                  const creative::CreativeUiRow& row,
                  std::size_t rowIndex,
                  const PanelLayout& layout,
                  float y) {
   const bool enabled = isRowEnabled(row);
-  ProductUiPrimitive primitive;
-  primitive.kind = ProductUiPrimitiveKind::Text;
-  primitive.tone = enabled ? ProductUiTone::TextPrimary
-                           : ProductUiTone::Disabled;
+  CreativeUiPrimitive primitive;
+  primitive.kind = CreativeUiPrimitiveKind::Text;
+  primitive.tone = enabled ? CreativeUiTone::TextPrimary
+                           : CreativeUiTone::Disabled;
   primitive.rect = {layout.x + kPanelPadding,
                     y,
                     layout.width - (2.0F * kPanelPadding),
@@ -426,11 +428,10 @@ void emitRowText(ProductUiDrawList& list,
   primitive.text = fitTextToWidth(rowText(row), primitive.rect.width);
   primitive.enabled = enabled;
 
-  UiHitRegion hit;
+  CreativeUiHitRegion hit;
   hit.semanticId = primitive.semanticId;
   hit.rect = primitive.rect;
-  hit.kind = UiHitKind::Row;
-  hit.action = FrontendAction::None;
+  hit.kind = CreativeUiHitKind::Row;
   hit.enabled = enabled;
 
   list.primitives.push_back(std::move(primitive));
@@ -444,9 +445,9 @@ void emitRowText(ProductUiDrawList& list,
 
 }  // namespace
 
-ProductUiDrawList buildProductCreativeUiDrawList(
+CreativeUiDrawList buildProductCreativeUiDrawList(
     const ProductCreativeUiDrawListRequest& request) {
-  ProductUiDrawList list;
+  CreativeUiDrawList list;
   list.virtualWidth = request.virtualWidth;
   list.virtualHeight = request.virtualHeight;
   list.theme = request.theme;

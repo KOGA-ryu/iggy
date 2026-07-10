@@ -5,6 +5,9 @@
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "core/math/Snap.hpp"
 
+#include <algorithm>
+#include <vector>
+
 // branch-gate-relocation: BG-1227 from=src/app/iggy3d/creative/Facade.cpp
 namespace iggy3d::creative {
 namespace {
@@ -132,6 +135,7 @@ CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
         moveDragTarget_ = {};
         moveDragObjectId_ = kInvalidObjectId;
         moveDragStartAnchor_ = {};
+        moveDragObjects_.clear();
         receipt.outcome = CreativeFacadeMoveDragOutcome::NoTarget;
         receipt.message = "move_drag_no_target";
         return receipt;
@@ -141,10 +145,37 @@ CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
       moveDragTarget_ = dragTarget;
       moveDragObjectId_ = objectId;
       moveDragStartAnchor_ = objectCornerAnchor(*object);
+      moveDragObjects_.clear();
+      const std::span<const TargetRef> selectedTargets =
+          selectedTargetList(selectionState_);
+      for (TargetRef selectedTarget : selectedTargets) {
+        CreativeObjectId selectedObjectId = kInvalidObjectId;
+        if (!targetRefToObjectId(selectedTarget, selectedObjectId)) {
+          continue;
+        }
+        const CreativeObject* selectedObject =
+            document_.findObject(selectedObjectId);
+        if (selectedObject != nullptr) {
+          moveDragObjects_.push_back(
+              MoveDragObject{selectedObjectId,
+                             objectCornerAnchor(*selectedObject)});
+        }
+      }
+      if (moveDragObjects_.empty()) {
+        moveDragObjects_.push_back(
+            MoveDragObject{objectId, moveDragStartAnchor_});
+      }
       receipt.accepted = true;
       receipt.objectId = objectId;
       receipt.objectKind = object->kind;
-      receipt.locked = object->locked;
+      receipt.objectCount = moveDragObjects_.size();
+      receipt.locked = std::any_of(
+          moveDragObjects_.begin(), moveDragObjects_.end(),
+          [this](const MoveDragObject& dragObject) {
+            const CreativeObject* selected =
+                document_.findObject(dragObject.objectId);
+            return selected != nullptr && selected->locked;
+          });
       receipt.hasStartAnchor = true;
       receipt.startAnchor = moveDragStartAnchor_;
       receipt.outcome = CreativeFacadeMoveDragOutcome::Begun;
@@ -156,6 +187,7 @@ CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
       receipt.stage = CreativeFacadeMoveDragStage::Preview;
       receipt.target = moveDragTarget_;
       receipt.objectId = moveDragObjectId_;
+      receipt.objectCount = moveDragObjects_.size();
       if (!moveDragActive_) {
         receipt.outcome = CreativeFacadeMoveDragOutcome::None;
         receipt.message = "move_drag_inactive";
@@ -195,11 +227,13 @@ CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
       const bool wasActive = moveDragActive_;
       const CreativeVec3 startAnchor = moveDragStartAnchor_;
       const CreativeObjectId objectId = moveDragObjectId_;
+      const std::vector<MoveDragObject> dragObjects = moveDragObjects_;
       // The drag ends here regardless of outcome.
       moveDragActive_ = false;
       moveDragTarget_ = {};
       moveDragObjectId_ = kInvalidObjectId;
       moveDragStartAnchor_ = {};
+      moveDragObjects_.clear();
 
       if (!wasActive) {
         receipt.outcome = CreativeFacadeMoveDragOutcome::None;
@@ -216,7 +250,14 @@ CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
         return receipt;
       }
       receipt.objectKind = object->kind;
-      receipt.locked = object->locked;
+      receipt.objectCount = dragObjects.size();
+      receipt.locked = std::any_of(
+          dragObjects.begin(), dragObjects.end(),
+          [this](const MoveDragObject& dragObject) {
+            const CreativeObject* selected =
+                document_.findObject(dragObject.objectId);
+            return selected != nullptr && selected->locked;
+          });
 
       if (!intent.pointer.hasWorldDestination) {
         // No resolved destination (pointer never left the grid): nothing to do.
@@ -245,36 +286,57 @@ CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
         return receipt;
       }
 
-      const CreativeDocumentMutationReceipt moveReceipt = moveDocumentObject(
-          document_, objectId, snapped);
+      const CreativeVec3 delta{snapped.x - startAnchor.x,
+                               snapped.y - startAnchor.y,
+                               snapped.z - startAnchor.z};
+      std::vector<CreativeMutationRequest> moveRequests;
+      moveRequests.reserve(dragObjects.size());
+      for (const MoveDragObject& dragObject : dragObjects) {
+        moveRequests.push_back(
+            CreativeMutationRequest{0,
+                                    dragObject.objectId,
+                                    CreativeMutationKind::Move,
+                                    makeMovePayload(CreativeVec3{
+                                        dragObject.startAnchor.x + delta.x,
+                                        dragObject.startAnchor.y + delta.y,
+                                        dragObject.startAnchor.z + delta.z})});
+      }
+      const CreativeDocumentBatchMutationReceipt moveReceipt =
+          applyDocumentMutationsAtomically(document_, moveRequests);
       receipt.documentStatus = moveReceipt.status;
       receipt.revisionAfter = document_.revision();
       receipt.changed =
-          moveReceipt.changed &&
+          moveReceipt.changed && moveReceipt.committed &&
           moveReceipt.revisionAfter != moveReceipt.revisionBefore;
       receipt.committed = true;
 
-      if (moveReceipt.status == CreativeDocumentMutationStatus::Applied &&
+      if (moveReceipt.status == CreativeDocumentMutationStatus::BatchApplied &&
           receipt.changed) {
         receipt.accepted = true;
         receipt.outcome = CreativeFacadeMoveDragOutcome::Applied;
         receipt.message = "move_drag_applied";
       } else if (moveReceipt.status ==
-                 CreativeDocumentMutationStatus::NoChange) {
+                 CreativeDocumentMutationStatus::BatchNoChange) {
         receipt.outcome = CreativeFacadeMoveDragOutcome::NoChange;
         receipt.message = "move_drag_no_change";
       } else {
         // Lock refusal (TD-3) surfaces here: the pipeline rejects the Move on a
         // locked object; the lock-refusal truth lives in objectReceipt.message
         // (TV1-A). Report it truthfully so the status line can read it.
-        receipt.outcome = object->locked
+        receipt.outcome = receipt.locked
                               ? CreativeFacadeMoveDragOutcome::RejectedLocked
                               : CreativeFacadeMoveDragOutcome::Rejected;
-        receipt.message = moveReceipt.objectReceipt.message.empty()
-                              ? moveReceipt.message
-                              : moveReceipt.objectReceipt.message;
+        receipt.message = moveReceipt.message;
+        for (const CreativeDocumentMutationReceipt& item : moveReceipt.receipts) {
+          if (documentMutationFailed(item.status)) {
+            receipt.message = item.objectReceipt.message.empty()
+                                  ? item.message
+                                  : item.objectReceipt.message;
+            break;
+          }
+        }
         if (receipt.message.empty()) {
-          receipt.message = object->locked ? "move_drag_rejected_locked"
+          receipt.message = receipt.locked ? "move_drag_rejected_locked"
                                            : "move_drag_rejected";
         }
       }
@@ -285,6 +347,7 @@ CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
       receipt.stage = CreativeFacadeMoveDragStage::Cancelled;
       receipt.target = moveDragTarget_;
       receipt.objectId = moveDragObjectId_;
+      receipt.objectCount = moveDragObjects_.size();
       if (moveDragActive_) {
         receipt.hasStartAnchor = true;
         receipt.startAnchor = moveDragStartAnchor_;
@@ -293,6 +356,7 @@ CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
       moveDragTarget_ = {};
       moveDragObjectId_ = kInvalidObjectId;
       moveDragStartAnchor_ = {};
+      moveDragObjects_.clear();
       receipt.accepted = true;
       receipt.outcome = CreativeFacadeMoveDragOutcome::Cancelled;
       receipt.message = "move_cancelled";

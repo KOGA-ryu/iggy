@@ -84,7 +84,9 @@ void applyCreativeEditorClickSelection(
       float mx = 0.0F;
       float my = 0.0F;
       const SDL_MouseButtonFlags buttons = SDL_GetMouseState(&mx, &my);
-      if ((buttons & SDL_BUTTON_LMASK) != 0U) {
+      const bool leftDown = (buttons & SDL_BUTTON_LMASK) != 0U;
+      if (leftDown && !editor.selectionButtonDown) {
+        editor.selectionButtonDown = true;
         clickRequested = true;
         const std::uint32_t logicalW = window.eventState().windowWidth;
         const std::uint32_t logicalH = window.eventState().windowHeight;
@@ -98,10 +100,15 @@ void applyCreativeEditorClickSelection(
                          : 1.0F;
         clickX = mx * scaleX;
         clickY = my * scaleY;
+      } else if (!leftDown) {
+        editor.selectionButtonDown = false;
       }
     } else {
       window.setRelativeMouseMode(true);
+      editor.selectionButtonDown = false;
     }
+  } else {
+    editor.selectionButtonDown = false;
   }
 
   if (clickRequested) {
@@ -119,6 +126,10 @@ void applyCreativeEditorClickSelection(
     iggy3d::creative::CreativeToolInputPacket packet;
     packet.kind = iggy3d::creative::CreativeToolInputKind::PointerPress;
     packet.pointer.button = iggy3d::creative::CreativeToolPointerButton::Primary;
+    if ((SDL_GetModState() & SDL_KMOD_SHIFT) != 0U) {
+      packet.pointer.modifiers |=
+          iggy3d::creative::kCreativeToolModifierShift;
+    }
     if (pickedId != iggy3d::creative::kInvalidObjectId) {
       packet.pointer.target =
           iggy3d::creative::TargetRef{
@@ -129,89 +140,187 @@ void applyCreativeEditorClickSelection(
 }
 
 namespace creative = iggy3d::creative;
+namespace {
+
+void setSdlKey(creative::CreativeInputFrame& frame,
+               creative::CreativeInputKey key,
+               const bool* keys,
+               SDL_Scancode scancode) {
+  creative::setCreativeInputKey(frame, key,
+                                keys != nullptr && keys[scancode] != 0);
+}
+
+[[nodiscard]] creative::CreativeInputFrame makeCreativeInputFrame(
+    const bool* keys,
+    SDL_Keymod modifiers,
+    creative::CreativeInputContext context) {
+  creative::CreativeInputFrame frame;
+  frame.context = context;
+  if ((modifiers & SDL_KMOD_SHIFT) != 0U) {
+    frame.modifiers |= creative::kCreativeInputModifierShift;
+  }
+  if ((modifiers & SDL_KMOD_CTRL) != 0U) {
+    frame.modifiers |= creative::kCreativeInputModifierControl;
+  }
+  if ((modifiers & SDL_KMOD_ALT) != 0U) {
+    frame.modifiers |= creative::kCreativeInputModifierAlt;
+  }
+  if ((modifiers & SDL_KMOD_GUI) != 0U) {
+    frame.modifiers |= creative::kCreativeInputModifierCommand;
+  }
+
+  setSdlKey(frame, creative::CreativeInputKey::Digit1, keys, SDL_SCANCODE_1);
+  setSdlKey(frame, creative::CreativeInputKey::Digit2, keys, SDL_SCANCODE_2);
+  setSdlKey(frame, creative::CreativeInputKey::Digit3, keys, SDL_SCANCODE_3);
+  setSdlKey(frame, creative::CreativeInputKey::B, keys, SDL_SCANCODE_B);
+  setSdlKey(frame, creative::CreativeInputKey::D, keys, SDL_SCANCODE_D);
+  setSdlKey(frame, creative::CreativeInputKey::Z, keys, SDL_SCANCODE_Z);
+  setSdlKey(frame, creative::CreativeInputKey::LeftBracket, keys,
+            SDL_SCANCODE_LEFTBRACKET);
+  setSdlKey(frame, creative::CreativeInputKey::RightBracket, keys,
+            SDL_SCANCODE_RIGHTBRACKET);
+  setSdlKey(frame, creative::CreativeInputKey::Minus, keys,
+            SDL_SCANCODE_MINUS);
+  setSdlKey(frame, creative::CreativeInputKey::Equals, keys,
+            SDL_SCANCODE_EQUALS);
+  setSdlKey(frame, creative::CreativeInputKey::Delete, keys,
+            SDL_SCANCODE_DELETE);
+  setSdlKey(frame, creative::CreativeInputKey::Backspace, keys,
+            SDL_SCANCODE_BACKSPACE);
+  setSdlKey(frame, creative::CreativeInputKey::F5, keys, SDL_SCANCODE_F5);
+  setSdlKey(frame, creative::CreativeInputKey::F6, keys, SDL_SCANCODE_F6);
+  setSdlKey(frame, creative::CreativeInputKey::F9, keys, SDL_SCANCODE_F9);
+  setSdlKey(frame, creative::CreativeInputKey::W, keys, SDL_SCANCODE_W);
+  setSdlKey(frame, creative::CreativeInputKey::A, keys, SDL_SCANCODE_A);
+  setSdlKey(frame, creative::CreativeInputKey::S, keys, SDL_SCANCODE_S);
+  setSdlKey(frame, creative::CreativeInputKey::Space, keys,
+            SDL_SCANCODE_SPACE);
+  setSdlKey(frame, creative::CreativeInputKey::LeftControl, keys,
+            SDL_SCANCODE_LCTRL);
+  setSdlKey(frame, creative::CreativeInputKey::RightControl, keys,
+            SDL_SCANCODE_RCTRL);
+  setSdlKey(frame, creative::CreativeInputKey::LeftShift, keys,
+            SDL_SCANCODE_LSHIFT);
+  setSdlKey(frame, creative::CreativeInputKey::RightShift, keys,
+            SDL_SCANCODE_RSHIFT);
+  setSdlKey(frame, creative::CreativeInputKey::LeftAlt, keys,
+            SDL_SCANCODE_LALT);
+  setSdlKey(frame, creative::CreativeInputKey::RightAlt, keys,
+            SDL_SCANCODE_RALT);
+  setSdlKey(frame, creative::CreativeInputKey::LeftCommand, keys,
+            SDL_SCANCODE_LGUI);
+  setSdlKey(frame, creative::CreativeInputKey::RightCommand, keys,
+            SDL_SCANCODE_RGUI);
+  return frame;
+}
+
+[[nodiscard]] bool navigationKeyDown(
+    const creative::CreativeInputFrame& frame,
+    const creative::CreativeInputRouteResult& routedInput,
+    creative::CreativeInputKey key) noexcept {
+  return creative::creativeInputKeyDown(frame, key) &&
+         !creative::creativeInputKeyConsumed(routedInput, key);
+}
+
+}  // namespace
 
 void applyCreativeEditorCommandInput(
-    const bool* keys,
-    bool captureMode,
+    const creative::CreativeInputRouteResult& routedInput,
     creative::CreativeAppState& appState,
     CreativeEditorState& editor,
     const std::filesystem::path& saveRoot,
     const std::string& saveId) {
-  if (captureMode || keys == nullptr) {
-    return;
-  }
-
-  const bool key1 = keys[SDL_SCANCODE_1] != 0;
-  const bool key2 = keys[SDL_SCANCODE_2] != 0;
-  const bool key3 = keys[SDL_SCANCODE_3] != 0;
-  const bool keyB = keys[SDL_SCANCODE_B] != 0;
-  const bool keyDelete = keys[SDL_SCANCODE_DELETE] != 0;
-  const bool keyBackspace = keys[SDL_SCANCODE_BACKSPACE] != 0;
-  const bool keyZ = keys[SDL_SCANCODE_Z] != 0;
-  const SDL_Keymod modState = SDL_GetModState();
-  const bool undoModifier =
-      (modState & (SDL_KMOD_GUI | SDL_KMOD_CTRL)) != 0U;
-  if (key1 && !editor.prevKey1) {
-    editor.placeMode = false;  // '1' Select leaves Place mode.
-    const bool ok = appState.facade.setActiveTool(creative::Tool::Select);
-    SDL_Log("iggy3d_creative: setActiveTool(Select) accepted=%d placeMode=0",
-            ok ? 1 : 0);
-  }
-  if (key2 && !editor.prevKey2) {
-    editor.placeMode = false;  // '2' Move leaves Place mode.
-    const bool ok = appState.facade.setActiveTool(creative::Tool::Move);
-    SDL_Log("iggy3d_creative: setActiveTool(Move) accepted=%d placeMode=0",
-            ok ? 1 : 0);
-  }
-  if (key3 && !editor.prevKey3) {
-    editor.placeMode = true;  // '3' Place: app-level mode, not a kernel Tool.
-    SDL_Log("iggy3d_creative: placeMode=1 brush='%s'",
-            std::string(creative::toString(editor.placeBrush)).c_str());
-  }
-  if (keyB && !editor.prevKeyB) {
-    editor.placeBrush = nextBrushKind(editor.brushPalette, editor.placeBrush);
-    SDL_Log("iggy3d_creative: brush cycled -> '%s'",
-            std::string(creative::toString(editor.placeBrush)).c_str());
-  }
-  if ((keyDelete && !editor.prevKeyDelete) ||
-      (keyBackspace && !editor.prevKeyBackspace)) {
-    (void)deleteSelectedObject(appState,
-                               keyDelete ? "delete_key" : "backspace_key",
-                               &editor.undoStack);
-  }
-  if (keyZ && !editor.prevKeyZ && undoModifier) {
-    (void)undoLastSnapshot(appState, editor.undoStack, "keyboard_undo");
-  }
-  const bool keyF5 = keys[SDL_SCANCODE_F5] != 0;
-  const bool keyF6 = keys[SDL_SCANCODE_F6] != 0;
-  const bool keyF9 = keys[SDL_SCANCODE_F9] != 0;
-  if (keyF5 && !editor.prevKeyF5) {
-    const iggy3d::CreativeWorldSaveResult saveResult =
-        saveStandaloneScene(appState.facade, saveRoot, saveId);
-    if (saveResult.accepted && saveResult.saved) {
-      clearUndoStack(editor.undoStack, "save_success");
+  for (const creative::CreativeInputActionEvent& event :
+       routedInput.actionEvents()) {
+    switch (event.action) {
+      case creative::CreativeInputActionId::SelectTool: {
+        editor.placeMode = false;
+        const bool ok = appState.facade.setActiveTool(creative::Tool::Select);
+        SDL_Log("iggy3d_creative: setActiveTool(Select) accepted=%d placeMode=0",
+                ok ? 1 : 0);
+        break;
+      }
+      case creative::CreativeInputActionId::MoveTool: {
+        editor.placeMode = false;
+        const bool ok = appState.facade.setActiveTool(creative::Tool::Move);
+        SDL_Log("iggy3d_creative: setActiveTool(Move) accepted=%d placeMode=0",
+                ok ? 1 : 0);
+        break;
+      }
+      case creative::CreativeInputActionId::EnterPlaceMode:
+        editor.placeMode = true;
+        SDL_Log("iggy3d_creative: placeMode=1 brush='%s'",
+                std::string(creative::toString(editor.placeBrush)).c_str());
+        break;
+      case creative::CreativeInputActionId::CycleBrush:
+        editor.placeBrush = nextBrushKind(editor.brushPalette, editor.placeBrush);
+        SDL_Log("iggy3d_creative: brush cycled -> '%s'",
+                std::string(creative::toString(editor.placeBrush)).c_str());
+        break;
+      case creative::CreativeInputActionId::DeleteSelection:
+        (void)deleteSelectedObject(
+            appState,
+            event.trigger == creative::CreativeInputKey::Backspace
+                ? "backspace_key"
+                : "delete_key",
+            &editor.undoStack);
+        break;
+      case creative::CreativeInputActionId::Undo:
+        (void)undoLastSnapshot(appState, editor.undoStack, "keyboard_undo");
+        break;
+      case creative::CreativeInputActionId::DuplicateSelection:
+        (void)duplicateSelectedObjectsWithUndo(
+            appState, editor.undoStack,
+            creative::CreativeDuplicateCommandRequest{}, "keyboard_duplicate");
+        break;
+      case creative::CreativeInputActionId::RotateYawNegative:
+      case creative::CreativeInputActionId::RotateYawPositive: {
+        creative::CreativeTransformCommandRequest request;
+        request.kind = creative::CreativeTransformCommandKind::RotateYaw;
+        request.yawDegrees =
+            event.action == creative::CreativeInputActionId::RotateYawNegative
+                ? -15.0
+                : 15.0;
+        (void)transformSelectedObjectsWithUndo(
+            appState, editor.undoStack, request,
+            request.yawDegrees < 0.0 ? "keyboard_rotate_yaw_negative"
+                                     : "keyboard_rotate_yaw_positive");
+        break;
+      }
+      case creative::CreativeInputActionId::ScaleDown:
+      case creative::CreativeInputActionId::ScaleUp: {
+        creative::CreativeTransformCommandRequest request;
+        request.kind = creative::CreativeTransformCommandKind::Scale;
+        const double factor =
+            event.action == creative::CreativeInputActionId::ScaleDown ? 0.9
+                                                                        : 1.1;
+        request.scaleFactor = {factor, factor, factor};
+        (void)transformSelectedObjectsWithUndo(
+            appState, editor.undoStack, request,
+            factor < 1.0 ? "keyboard_scale_down" : "keyboard_scale_up");
+        break;
+      }
+      case creative::CreativeInputActionId::Save: {
+        const iggy3d::CreativeWorldSaveResult saveResult =
+            saveStandaloneScene(appState.facade, saveRoot, saveId);
+        if (saveResult.accepted && saveResult.saved) {
+          clearUndoStack(editor.undoStack, "save_success");
+        }
+        break;
+      }
+      case creative::CreativeInputActionId::NewDocument:
+        clearToBlankScene(appState);
+        clearUndoStack(editor.undoStack, "new_clear");
+        break;
+      case creative::CreativeInputActionId::Load: {
+        const bool loaded = loadStandaloneScene(appState, saveRoot, saveId);
+        if (loaded) {
+          clearUndoStack(editor.undoStack, "load_success");
+        }
+        break;
+      }
     }
   }
-  if (keyF6 && !editor.prevKeyF6) {
-    clearToBlankScene(appState);
-    clearUndoStack(editor.undoStack, "new_clear");
-  }
-  if (keyF9 && !editor.prevKeyF9) {
-    const bool loaded = loadStandaloneScene(appState, saveRoot, saveId);
-    if (loaded) {
-      clearUndoStack(editor.undoStack, "load_success");
-    }
-  }
-  editor.prevKey1 = key1;
-  editor.prevKey2 = key2;
-  editor.prevKey3 = key3;
-  editor.prevKeyB = keyB;
-  editor.prevKeyDelete = keyDelete;
-  editor.prevKeyBackspace = keyBackspace;
-  editor.prevKeyZ = keyZ;
-  editor.prevKeyF5 = keyF5;
-  editor.prevKeyF6 = keyF6;
-  editor.prevKeyF9 = keyF9;
 }
 
 namespace {
@@ -223,7 +332,8 @@ constexpr float kMouseSensitivity = 0.12F;
 CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
     iggy3d::SdlWindow& window,
     iggy3d::VulkanBackend& backend,
-    CreativeEditorState& editor) {
+    CreativeEditorState& editor,
+    bool captureMode) {
   CreativeEditorFrameInputResult result;
 
   window.pollEvents();
@@ -257,27 +367,56 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
   }
 
   const bool* keys = SDL_GetKeyboardState(nullptr);
-  result.keyboardState = keys;
+  const creative::CreativeInputFrame inputFrame = makeCreativeInputFrame(
+      keys, SDL_GetModState(),
+      captureMode ? creative::CreativeInputContext::Capture
+                  : creative::CreativeInputContext::EditorViewport);
+  result.routedInput =
+      creative::routeCreativeInput(editor.inputRouterState, inputFrame);
   iggy3d::ProductCreativeFlyInput flyInput;
-  if (keys != nullptr) {
-    const float moveX = (keys[SDL_SCANCODE_D] ? 1.0F : 0.0F) -
-                        (keys[SDL_SCANCODE_A] ? 1.0F : 0.0F);
-    const float moveY = (keys[SDL_SCANCODE_W] ? 1.0F : 0.0F) -
-                        (keys[SDL_SCANCODE_S] ? 1.0F : 0.0F);
-    const float moveZ = (keys[SDL_SCANCODE_SPACE] ? 1.0F : 0.0F) -
-                        (keys[SDL_SCANCODE_LCTRL] ? 1.0F : 0.0F);
+  if (!captureMode) {
+    const float moveX =
+        (navigationKeyDown(inputFrame, result.routedInput,
+                           creative::CreativeInputKey::D)
+             ? 1.0F
+             : 0.0F) -
+        (navigationKeyDown(inputFrame, result.routedInput,
+                           creative::CreativeInputKey::A)
+             ? 1.0F
+             : 0.0F);
+    const float moveY =
+        (navigationKeyDown(inputFrame, result.routedInput,
+                           creative::CreativeInputKey::W)
+             ? 1.0F
+             : 0.0F) -
+        (navigationKeyDown(inputFrame, result.routedInput,
+                           creative::CreativeInputKey::S)
+             ? 1.0F
+             : 0.0F);
+    const float moveZ =
+        (navigationKeyDown(inputFrame, result.routedInput,
+                           creative::CreativeInputKey::Space)
+             ? 1.0F
+             : 0.0F) -
+        (navigationKeyDown(inputFrame, result.routedInput,
+                           creative::CreativeInputKey::LeftControl)
+             ? 1.0F
+             : 0.0F);
     flyInput.moveX = moveX;
     flyInput.moveY = moveY;
     flyInput.moveZ = moveZ;
-    flyInput.sprinting = keys[SDL_SCANCODE_LSHIFT];
+    flyInput.sprinting = navigationKeyDown(
+        inputFrame, result.routedInput, creative::CreativeInputKey::LeftShift);
   }
 
   float mouseDx = 0.0F;
   float mouseDy = 0.0F;
   SDL_GetRelativeMouseState(&mouseDx, &mouseDy);
-  editor.yawDegrees += mouseDx * kMouseSensitivity;
-  editor.pitchDegrees = std::clamp(
-      editor.pitchDegrees - mouseDy * kMouseSensitivity, -80.0F, 80.0F);
+  if (!captureMode) {
+    editor.yawDegrees += mouseDx * kMouseSensitivity;
+    editor.pitchDegrees = std::clamp(
+        editor.pitchDegrees - mouseDy * kMouseSensitivity, -80.0F, 80.0F);
+  }
   flyInput.cameraYawDegrees = editor.yawDegrees;
   flyInput.cameraPitchDegrees = editor.pitchDegrees;
 
@@ -391,20 +530,51 @@ void applyCreativeEditorPlacementInput(
 CreativeEditorSelectionFrame resolveCreativeEditorSelectionFrame(
     const iggy3d::creative::Facade& facade) {
   CreativeEditorSelectionFrame selection;
-  selection.selectedId = facade.selectionState().selectedTarget.value;
+  const iggy3d::creative::CreativeSelectionState& selectionState =
+      facade.selectionState();
+  selection.selectedId = selectionState.selectedTarget.value;
   selection.selected =
       selection.selectedId != 0
           ? facade.findObject(static_cast<iggy3d::creative::CreativeObjectId>(
                 selection.selectedId))
           : nullptr;
-  selection.hasSelection =
-      selection.selected != nullptr && selection.selected->visible;
-  if (selection.hasSelection) {
-    const VisualBounds selectedVisualBounds =
-        visualBoundsForObject(*selection.selected);
-    selection.boxMin = selectedVisualBounds.min;
-    selection.boxMax = selectedVisualBounds.max;
+  const std::span<const iggy3d::creative::TargetRef> targets =
+      iggy3d::creative::selectedTargetList(selectionState);
+  if (targets.empty() && selection.selected != nullptr) {
+    selection.selectedObjectIds.push_back(selection.selected->id);
+  } else {
+    selection.selectedObjectIds.reserve(targets.size());
+    for (iggy3d::creative::TargetRef target : targets) {
+      if (target.value != iggy3d::creative::kInvalidId) {
+        selection.selectedObjectIds.push_back(
+            static_cast<iggy3d::creative::CreativeObjectId>(target.value));
+      }
+    }
   }
+  selection.selectionCount = selection.selectedObjectIds.size();
+
+  bool haveBounds = false;
+  for (iggy3d::creative::CreativeObjectId objectId :
+       selection.selectedObjectIds) {
+    const iggy3d::creative::CreativeObject* object = facade.findObject(objectId);
+    if (object == nullptr || !object->visible) {
+      continue;
+    }
+    const VisualBounds bounds = visualBoundsForObject(*object);
+    if (!haveBounds) {
+      selection.boxMin = bounds.min;
+      selection.boxMax = bounds.max;
+      haveBounds = true;
+      continue;
+    }
+    selection.boxMin.x = std::min(selection.boxMin.x, bounds.min.x);
+    selection.boxMin.y = std::min(selection.boxMin.y, bounds.min.y);
+    selection.boxMin.z = std::min(selection.boxMin.z, bounds.min.z);
+    selection.boxMax.x = std::max(selection.boxMax.x, bounds.max.x);
+    selection.boxMax.y = std::max(selection.boxMax.y, bounds.max.y);
+    selection.boxMax.z = std::max(selection.boxMax.z, bounds.max.z);
+  }
+  selection.hasSelection = haveBounds;
   return selection;
 }
 

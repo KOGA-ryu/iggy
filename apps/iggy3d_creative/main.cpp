@@ -26,7 +26,7 @@
 
 #include <SDL3/SDL.h>
 
-#include "app/iggy3d/window/FramePresenter.hpp"
+#include "app/iggy3d/creative/render/CreativeSceneFrame.hpp"
 #include "app/platform/SdlWindow.hpp"
 #include "core/math/Vec3.hpp"
 #include "projection/scene/SceneProjection.hpp"
@@ -141,7 +141,8 @@ int main(int argc, char** argv) {
 
   while (window.isOpen()) {
     const CreativeEditorFrameInputResult frameInput =
-        beginCreativeEditorFrameInput(window, *backend, editor);
+        beginCreativeEditorFrameInput(
+            window, *backend, editor, !capturePath.empty());
     if (!frameInput.keepRunning) {
       break;
     }
@@ -149,10 +150,8 @@ int main(int argc, char** argv) {
       continue;
     }
     const SdlDrawableExtent extent = frameInput.extent;
-    const bool* keys = frameInput.keyboardState;
-
     applyCreativeEditorCommandInput(
-        keys, !capturePath.empty(), appState, editor, saveRoot, saveId);
+        frameInput.routedInput, appState, editor, saveRoot, saveId);
 
     // SCENE (local, must outlive submitFrame): bake supported room geometry
     // through the same CreativeDocument -> RoomAsset adapter that gameplay will
@@ -167,7 +166,7 @@ int main(int argc, char** argv) {
 
     // FRAME (non-const so we can attach UI + wireframe + label below). This
     // gives frame.camera.clipFromWorld (world -> NDC) for click + label maths.
-    FrameInput frame = makeProductVulkanFrame(
+    FrameInput frame = makeCreativeVulkanFrame(
         scene, debug, editor.frameIndex++, extent.width, extent.height,
         editor.yawDegrees, editor.pitchDegrees,
         /*cameraAnchorOverrideAvailable=*/true, editor.flyPos);

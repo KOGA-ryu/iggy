@@ -5,6 +5,7 @@
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
+#include "app/iggy3d/creative/tools/Transform.hpp"
 
 namespace iggy3d_creative_app {
 
@@ -31,5 +32,19 @@ void discardUndoSnapshot(StandaloneUndoStack& undoStack,
 deleteSelectedObject(iggy3d::creative::CreativeAppState& appState,
                      std::string_view source,
                      StandaloneUndoStack* undoStack = nullptr);
+
+[[nodiscard]] cr::CreativeTransformCommandReceipt
+transformSelectedObjectsWithUndo(
+    cr::CreativeAppState& appState,
+    StandaloneUndoStack& undoStack,
+    const cr::CreativeTransformCommandRequest& request,
+    std::string_view source);
+
+[[nodiscard]] cr::CreativeDuplicateCommandReceipt
+duplicateSelectedObjectsWithUndo(
+    cr::CreativeAppState& appState,
+    StandaloneUndoStack& undoStack,
+    const cr::CreativeDuplicateCommandRequest& request,
+    std::string_view source);
 
 }  // namespace iggy3d_creative_app

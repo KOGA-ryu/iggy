@@ -4,6 +4,7 @@
 #include "app/iggy3d/creative/tools/RoomShell.hpp"
 
 #include <span>
+#include <limits>
 #include <utility>
 
 namespace iggy3d::creative {
@@ -68,9 +69,8 @@ void invalidateRemovedObjectEditorState(
     CreativeSelectionState& selectionState,
     CreativeMeasurementState& measurementState,
     CreativeGhostState& ghostState) noexcept {
-  if (targetRefMatchesObject(selectionState.selectedTarget, objectId)) {
-    static_cast<void>(setSelectedTarget(selectionState, {}));
-  }
+  static_cast<void>(removeSelectedTarget(
+      selectionState, objectIdToTargetRef(objectId)));
   if (targetRefMatchesObject(selectionState.candidateTarget, objectId)) {
     static_cast<void>(updateSelectionCandidate(selectionState, {}));
   }
@@ -111,8 +111,29 @@ void resetTransientFacadeState(
     const State& state,
     const CreativeSelectionState& selectionState) noexcept {
   return state.selected.value != kInvalidId ||
-         selectionState.selectedTarget.value != kInvalidId ||
+         selectedTargetCount(selectionState) > 0 ||
          selectionState.candidateTarget.value != kInvalidId;
+}
+
+[[nodiscard]] std::vector<CreativeObjectId> selectedObjectIds(
+    const CreativeSelectionState& selectionState) {
+  std::vector<CreativeObjectId> objectIds;
+  const std::span<const TargetRef> targets = selectedTargetList(selectionState);
+  objectIds.reserve(targets.empty() ? 1U : targets.size());
+  if (targets.empty()) {
+    CreativeObjectId objectId = kInvalidObjectId;
+    if (targetRefToObjectId(selectionState.selectedTarget, objectId)) {
+      objectIds.push_back(objectId);
+    }
+    return objectIds;
+  }
+  for (TargetRef target : targets) {
+    CreativeObjectId objectId = kInvalidObjectId;
+    if (targetRefToObjectId(target, objectId)) {
+      objectIds.push_back(objectId);
+    }
+  }
+  return objectIds;
 }
 
 [[nodiscard]] bool hasMeasurementState(
@@ -275,6 +296,7 @@ void Facade::reset() noexcept {
   moveDragTarget_ = {};
   moveDragObjectId_ = kInvalidObjectId;
   moveDragStartAnchor_ = {};
+  moveDragObjects_.clear();
   moveDragReceipt_ = {};
 }
 
@@ -333,6 +355,7 @@ bool Facade::setActiveTool(Tool tool) noexcept {
     moveDragTarget_ = {};
     moveDragObjectId_ = kInvalidObjectId;
     moveDragStartAnchor_ = {};
+    moveDragObjects_.clear();
   }
   state_.tool = toolState_.activeTool;
   return changed;
@@ -471,6 +494,72 @@ CreativeFacadeMutationReceipt Facade::toggleSelectedObjectLocked() {
                                       CreativeMutationKind::SetLocked);
 }
 
+CreativeTransformCommandReceipt Facade::transformSelectedObjects(
+    const CreativeTransformCommandRequest& request) {
+  recordCommandAttempt(stats_);
+  const std::vector<CreativeObjectId> objectIds =
+      selectedObjectIds(selectionState_);
+  CreativeTransformCommandReceipt receipt =
+      transformDocumentObjectsAtomically(document_, objectIds, request);
+  if (receipt.accepted) {
+    recordCommandSuccess(stats_);
+  } else {
+    recordCommandFailure(stats_);
+  }
+  return receipt;
+}
+
+CreativeDuplicateCommandReceipt Facade::duplicateSelectedObjects(
+    const CreativeDuplicateCommandRequest& request) {
+  recordCommandAttempt(stats_);
+  const std::vector<CreativeObjectId> objectIds =
+      selectedObjectIds(selectionState_);
+  if (!objectIds.empty()) {
+    const CreativeObjectId nextObjectId = document_.nextObjectId();
+    const CreativeObjectId maxTargetId = std::numeric_limits<Id>::max();
+    if (nextObjectId > maxTargetId ||
+        objectIds.size() - 1U > maxTargetId - nextObjectId) {
+      CreativeDuplicateCommandReceipt receipt;
+      receipt.requested = true;
+      receipt.requestedObjectCount = objectIds.size();
+      receipt.status = CreativeTransformCommandStatus::InvalidRequest;
+      receipt.revisionBefore = document_.revision();
+      receipt.revisionAfter = receipt.revisionBefore;
+      receipt.message = "duplicate_target_id_exhausted";
+      recordCommandFailure(stats_);
+      return receipt;
+    }
+  }
+  CreativeDuplicateCommandReceipt receipt =
+      duplicateDocumentObjectsAtomically(document_, objectIds, request);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+
+  std::vector<TargetRef> duplicateTargets;
+  duplicateTargets.reserve(receipt.duplicatedObjectIds.size());
+  for (CreativeObjectId objectId : receipt.duplicatedObjectIds) {
+    const TargetRef target = objectIdToTargetRef(objectId);
+    if (target.value != kInvalidId) {
+      duplicateTargets.push_back(target);
+    }
+    recordObjectCreated(stats_);
+    const CreativeObject* object = document_.findObject(objectId);
+    if (object != nullptr && object->kind == CreativeObjectKind::Room) {
+      recordRoomCreated(stats_);
+    }
+  }
+  const TargetRef primaryTarget = duplicateTargets.empty()
+                                      ? TargetRef{}
+                                      : duplicateTargets.back();
+  static_cast<void>(setSelectedTargets(selectionState_, duplicateTargets,
+                                       primaryTarget));
+  state_.selected = selectionState_.selectedTarget;
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
 CreativeDocumentCreateReceipt Facade::createDocumentObject(
     const CreativeDocumentCreateRequest& request) {
   recordCommandAttempt(stats_);
@@ -563,6 +652,7 @@ CreativeFacadeDocumentInstallReceipt Facade::installDocument(
   moveDragTarget_ = {};
   moveDragObjectId_ = kInvalidObjectId;
   moveDragStartAnchor_ = {};
+  moveDragObjects_.clear();
   moveDragReceipt_ = {};
 
   receipt.accepted = true;

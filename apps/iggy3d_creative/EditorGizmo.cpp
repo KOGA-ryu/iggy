@@ -208,7 +208,7 @@ CreativeEditorGizmoFrame buildCreativeEditorGizmoFrame(
   frame.selectedPathHandleObjectId =
       static_cast<iggy3d::creative::CreativeObjectId>(selection.selectedId);
   frame.selectedIsPathForHandles =
-      selection.hasSelection &&
+      selection.hasSelection && selection.selectionCount == 1U &&
       iggy3d::creative::describeObject(selection.selected->kind).shapeKind ==
           iggy3d::creative::CreativeObjectShapeKind::Path &&
       validPathPoints(selection.selected->pathPoints);
@@ -219,7 +219,11 @@ CreativeEditorGizmoFrame buildCreativeEditorGizmoFrame(
 
   frame.anchorS = {frame.center.x, frame.center.y, frame.center.z};
   if (selection.hasSelection) {
-    frame.anchorS = toVec3(selection.selected->transform.position);
+    const creative::CreativeObjectDescriptor& descriptor =
+        creative::describeObject(selection.selected->kind);
+    frame.anchorS = descriptor.hasTransform
+                        ? toVec3(selection.selected->transform.position)
+                        : toVec3(selection.selected->bounds.min);
   }
   return frame;
 }
@@ -552,6 +556,9 @@ void processCreativeEditorMoveFrame(
         creative::CreativeToolInputPacket press;
         press.kind = creative::CreativeToolInputKind::PointerPress;
         press.pointer.button = creative::CreativeToolPointerButton::Primary;
+        if ((SDL_GetModState() & SDL_KMOD_SHIFT) != 0U) {
+          press.pointer.modifiers |= creative::kCreativeToolModifierShift;
+        }
         press.pointer.target =
             creative::TargetRef{static_cast<creative::Id>(selectedObjectId)};
         (void)appState.facade.dispatchToolInput(press);

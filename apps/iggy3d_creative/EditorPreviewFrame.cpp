@@ -15,9 +15,9 @@
 #include "EditorPreviewProxies.hpp"
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/document/DocumentWireframe.hpp"
+#include "app/iggy3d/creative/render/CreativeOverlayFrame.hpp"
 #include "app/iggy3d/creative/render/WireframeDebugLines.hpp"
 #include "app/iggy3d/creative/ui/UiProjection.hpp"
-#include "app/iggy3d/window/FramePresenter.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "projection/scene/SceneItem.hpp"
 #include "render/debug/DebugHudText.hpp"
@@ -135,6 +135,11 @@ void buildAndAttachCreativeEditorOverlayFrame(
   const creative::Id selectedId = request.selection.selectedId;
   const creative::CreativeObject* selected = request.selection.selected;
   const bool hasSelection = request.selection.hasSelection;
+  const auto objectSelected = [&](creative::CreativeObjectId objectId) {
+    return std::find(request.selection.selectedObjectIds.begin(),
+                     request.selection.selectedObjectIds.end(),
+                     objectId) != request.selection.selectedObjectIds.end();
+  };
   const std::array<GizmoAxisShaft, 3>& gizmoShafts =
       request.gizmoFrame.shafts;
   const bool selectedIsPathForHandles =
@@ -157,13 +162,12 @@ void buildAndAttachCreativeEditorOverlayFrame(
   const ProductCreativeUiProjection uiProj =
       buildProductCreativeUiProjection(uiReq);
 
-  ProductVulkanMenuFrameRequest menuReq;
-  menuReq.uiDrawList = &uiProj.drawList;
+  CreativeUiOverlayFrameRequest menuReq;
+  menuReq.drawList = &uiProj.drawList;
   menuReq.frameIndex = editor.frameIndex;
   menuReq.drawableWidth = drawableWidth;
   menuReq.drawableHeight = drawableHeight;
-  ProductVulkanMenuFrame menuFrame =
-      buildProductVulkanStarterMenuFrame(menuReq);
+  CreativeUiOverlayFrame menuFrame = buildCreativeUiOverlayFrame(menuReq);
   output.uiRects = std::move(menuFrame.rects);
 
   // ---- BOUNDS BOX (wireframe) --------------------------------------------
@@ -179,16 +183,14 @@ void buildAndAttachCreativeEditorOverlayFrame(
   // not by selection).
   for (ProductCreativeWireframeDebugLine& line : lines.lineList.lines) {
     // Recolor the SELECTED object's edges — matched by id, whatever the kind.
-    const bool sel =
-        hasSelection &&
-        line.objectId == static_cast<creative::CreativeObjectId>(selectedId);
+    const bool sel = hasSelection && objectSelected(line.objectId);
     line.thickness = sel ? 0.06F : 0.03F;
     if (sel) {
       line.color = {1.0F, 1.0F, 0.0F, 1.0F};
     }
   }
-  ProductCreativeWireframeDebugRenderFrame dbg =
-      buildProductCreativeWireframeDebugRenderFrame(&lines.lineList);
+  CreativeWireframeDebugRenderFrame dbg =
+      buildCreativeWireframeDebugRenderFrame(&lines.lineList);
 
   // ---- GIZMO WIREFRAME ----------------------------------------------------
   // Build ONE combined line vector: the document wireframe lines that draw the
@@ -224,9 +226,7 @@ void buildAndAttachCreativeEditorOverlayFrame(
     if (!obj.visible) {
       continue;
     }
-    const bool sel =
-        hasSelection &&
-        obj.id == static_cast<creative::CreativeObjectId>(selectedId);
+    const bool sel = hasSelection && objectSelected(obj.id);
     if (descriptor.shapeKind != creative::CreativeObjectShapeKind::Point &&
         descriptor.shapeKind != creative::CreativeObjectShapeKind::Line) {
       continue;

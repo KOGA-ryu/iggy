@@ -173,6 +173,10 @@ CreativeMeasurementReceipt applyMeasurementToolIntent(
     case CreativeToolIntentKind::NoIntent:
     case CreativeToolIntentKind::SelectObjectCandidate:
     case CreativeToolIntentKind::PreviewPointer:
+    case CreativeToolIntentKind::BeginMove:
+    case CreativeToolIntentKind::PreviewMove:
+    case CreativeToolIntentKind::CommitMove:
+    case CreativeToolIntentKind::CancelMove:
       break;
   }
 

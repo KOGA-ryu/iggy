@@ -10,6 +10,7 @@
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
+#include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
 #include "app/platform/SdlWindow.hpp"
 #include "core/math/Vec3.hpp"
@@ -34,17 +35,17 @@ struct CreativeEditorFrameInputResult {
   bool keepRunning = true;
   bool skipFrame = false;
   iggy3d::SdlDrawableExtent extent{};
-  const bool* keyboardState = nullptr;
+  iggy3d::creative::CreativeInputRouteResult routedInput;
 };
 
 CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
     iggy3d::SdlWindow& window,
     iggy3d::VulkanBackend& backend,
-    CreativeEditorState& editor);
+    CreativeEditorState& editor,
+    bool captureMode);
 
 void applyCreativeEditorCommandInput(
-    const bool* keys,
-    bool captureMode,
+    const iggy3d::creative::CreativeInputRouteResult& routedInput,
     iggy3d::creative::CreativeAppState& appState,
     CreativeEditorState& editor,
     const std::filesystem::path& saveRoot,
@@ -77,6 +78,8 @@ void applyCreativeEditorClickSelection(
 struct CreativeEditorSelectionFrame {
   iggy3d::creative::Id selectedId = 0;
   const iggy3d::creative::CreativeObject* selected = nullptr;
+  std::vector<iggy3d::creative::CreativeObjectId> selectedObjectIds;
+  std::uint64_t selectionCount = 0;
   bool hasSelection = false;
   iggy3d::Vec3 boxMin{-0.5F, 0.0F, -0.5F};
   iggy3d::Vec3 boxMax{0.5F, 1.0F, 0.5F};

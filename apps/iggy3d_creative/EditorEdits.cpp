@@ -146,4 +146,57 @@ creative::CreativeDocumentRemoveReceipt deleteSelectedObject(
   return receipt;
 }
 
+creative::CreativeTransformCommandReceipt transformSelectedObjectsWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneUndoStack& undoStack,
+    const creative::CreativeTransformCommandRequest& request,
+    std::string_view source) {
+  const std::uint64_t depthBefore = creative::creativeUndoDepth(undoStack);
+  pushUndoSnapshot(undoStack, appState.facade, source);
+  creative::CreativeTransformCommandReceipt receipt =
+      appState.facade.transformSelectedObjects(request);
+  if (!receipt.accepted || !receipt.changed) {
+    discardUndoSnapshot(undoStack, depthBefore, source, receipt.message);
+  }
+  SDL_Log("iggy3d_creative: TRANSFORM source='%s' kind='%s' status='%s' "
+          "accepted=%d changed=%d objects=%llu revisionBefore=%llu "
+          "revisionAfter=%llu undoDepthBefore=%llu undoDepthAfter=%llu",
+          std::string(source).c_str(),
+          std::string(creative::toString(receipt.kind)).c_str(),
+          std::string(creative::toString(receipt.status)).c_str(),
+          receipt.accepted ? 1 : 0, receipt.changed ? 1 : 0,
+          static_cast<unsigned long long>(receipt.objectCount),
+          static_cast<unsigned long long>(receipt.revisionBefore),
+          static_cast<unsigned long long>(receipt.revisionAfter),
+          static_cast<unsigned long long>(depthBefore),
+          static_cast<unsigned long long>(creative::creativeUndoDepth(undoStack)));
+  return receipt;
+}
+
+creative::CreativeDuplicateCommandReceipt duplicateSelectedObjectsWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneUndoStack& undoStack,
+    const creative::CreativeDuplicateCommandRequest& request,
+    std::string_view source) {
+  const std::uint64_t depthBefore = creative::creativeUndoDepth(undoStack);
+  pushUndoSnapshot(undoStack, appState.facade, source);
+  creative::CreativeDuplicateCommandReceipt receipt =
+      appState.facade.duplicateSelectedObjects(request);
+  if (!receipt.accepted || !receipt.changed) {
+    discardUndoSnapshot(undoStack, depthBefore, source, receipt.message);
+  }
+  SDL_Log("iggy3d_creative: DUPLICATE source='%s' status='%s' accepted=%d "
+          "changed=%d objects=%llu revisionBefore=%llu revisionAfter=%llu "
+          "undoDepthBefore=%llu undoDepthAfter=%llu",
+          std::string(source).c_str(),
+          std::string(creative::toString(receipt.status)).c_str(),
+          receipt.accepted ? 1 : 0, receipt.changed ? 1 : 0,
+          static_cast<unsigned long long>(receipt.duplicatedObjectCount),
+          static_cast<unsigned long long>(receipt.revisionBefore),
+          static_cast<unsigned long long>(receipt.revisionAfter),
+          static_cast<unsigned long long>(depthBefore),
+          static_cast<unsigned long long>(creative::creativeUndoDepth(undoStack)));
+  return receipt;
+}
+
 }  // namespace iggy3d_creative_app

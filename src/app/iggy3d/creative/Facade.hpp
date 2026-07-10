@@ -7,6 +7,7 @@
 #include "app/iggy3d/creative/tools/Measure.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/tools/Select.hpp"
+#include "app/iggy3d/creative/tools/Transform.hpp"
 #include "app/iggy3d/creative/spatial/Snap.hpp"
 #include "app/iggy3d/creative/State.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
@@ -17,6 +18,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace iggy3d::creative {
 
@@ -56,6 +58,7 @@ struct CreativeFacadeMoveDragReceipt {
   TargetRef target;
   CreativeObjectId objectId = kInvalidObjectId;
   CreativeObjectKind objectKind = CreativeObjectKind::Unknown;
+  std::uint64_t objectCount = 0;
   bool hasStartAnchor = false;
   CreativeVec3 startAnchor;
   bool hasDestinationAnchor = false;
@@ -207,6 +210,10 @@ class Facade {
   [[nodiscard]] CreativeFacadeMutationReceipt
   toggleSelectedObjectVisibility();
   [[nodiscard]] CreativeFacadeMutationReceipt toggleSelectedObjectLocked();
+  [[nodiscard]] CreativeTransformCommandReceipt transformSelectedObjects(
+      const CreativeTransformCommandRequest& request);
+  [[nodiscard]] CreativeDuplicateCommandReceipt duplicateSelectedObjects(
+      const CreativeDuplicateCommandRequest& request = {});
 
   [[nodiscard]] CreativeDocumentCreateReceipt createDocumentObject(
       const CreativeDocumentCreateRequest& request);
@@ -248,6 +255,11 @@ class Facade {
   TargetRef moveDragTarget_;
   CreativeObjectId moveDragObjectId_ = kInvalidObjectId;
   CreativeVec3 moveDragStartAnchor_;
+  struct MoveDragObject {
+    CreativeObjectId objectId = kInvalidObjectId;
+    CreativeVec3 startAnchor{};
+  };
+  std::vector<MoveDragObject> moveDragObjects_;
   CreativeFacadeMoveDragReceipt moveDragReceipt_;
 };
 
