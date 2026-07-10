@@ -361,6 +361,8 @@ bool tapeWaitLetsNpcAttackPlayer() {
   }
   std::optional<iggy3d::Session> session =
       makeSessionFromRoom(room.roomAsset.room);
+  const iggy3d::SpatialSurfaceSet surfaces =
+      iggy3d::buildSpatialSurfaceSet(room.roomAsset.room);
   const iggy3d::ProductGameplayTapeParseResult parsed =
       iggy3d::parseProductGameplayTape(npcCombatEscalationTape());
   if (!expect(session.has_value(), "npc session exists") ||
@@ -369,7 +371,7 @@ bool tapeWaitLetsNpcAttackPlayer() {
   }
 
   const iggy3d::ProductGameplayTapeRunResult run =
-      iggy3d::runProductGameplayTape({&*session, &parsed.tape});
+      iggy3d::runProductGameplayTape({&*session, &parsed.tape, &surfaces});
   return expect(run.ok, "npc tape run ok") &&
          expect(run.status == "gameplay_tape_completed", "npc run status") &&
          expect(run.stepCount == kNpcEscalationWaits, "npc step count") &&

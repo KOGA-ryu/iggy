@@ -15,4 +15,10 @@ std::string floatReceiptValue(float value) {
   return std::string(buffer, static_cast<std::size_t>(ptr - buffer));
 }
 
+void appendProductStartupWorldBuildoutFields(RenderReceipt& receipt, const FrontendState& frontend, const ProductAppWindowState& window, const ProductSaveBridgeResult& saves) {
+  appendProductStartupProbeFields(receipt, frontend, window, saves);
+  appendProductWorldAuthoringFields(receipt, window);
+  appendProductActiveRoomFields(receipt, window);
+}
+
 }  // namespace iggy3d

@@ -196,13 +196,11 @@ target_sources(iggy3d
     src/app/iggy3d/creative/world/WorldService.cpp
     src/app/iggy3d/ReceiptBuilder.cpp
     src/app/iggy3d/receipt/ReceiptFields.cpp
-    src/app/iggy3d/receipt/PhysicsReceiptRecording.cpp
-    src/app/iggy3d/receipt/CreativeReceiptRecording.cpp
+    src/app/iggy3d/receipt/ReceiptRecording.cpp
     src/app/iggy3d/receipt/FrontendSettingsWindowFields.cpp
     src/app/iggy3d/receipt/StartupProbeFields.cpp
     src/app/iggy3d/receipt/WorldAuthoringFields.cpp
     src/app/iggy3d/receipt/ActiveRoomFields.cpp
-    src/app/iggy3d/receipt/StartupWorldBuildoutFields.cpp
     src/app/iggy3d/receipt/SaveStateFields.cpp
     src/app/iggy3d/receipt/GameplayRuntimeMovementFields.cpp
     src/app/iggy3d/receipt/DebugHudFields.cpp

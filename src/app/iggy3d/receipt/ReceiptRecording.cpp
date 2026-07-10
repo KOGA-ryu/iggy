@@ -114,6 +114,16 @@ std::string_view uiHitKindReceiptName(UiHitKind kind) noexcept {
   return "unknown";
 }
 
+void setPhysicsMovementPlannerProof(ProductAppWindowState& window,
+                                    std::string status,
+                                    bool requested,
+                                    bool used) {
+  window.gameplay.physicsMovementPlanner.requested = requested;
+  window.gameplay.physicsMovementPlanner.used = used;
+  window.gameplay.physicsMovementPlanner.status = std::move(status);
+  window.gameplay.physicsMovementPlanner.reasonCode = window.gameplay.physicsMovementPlanner.status;
+}
+
 }  // namespace
 
 void recordProductCreativeUiProjection(
@@ -356,6 +366,33 @@ void recordProductCreativeWireframeFrame(
       std::string(toString(receipt.debugLineStatus));
   authoring.creativeWireframeDebugLineReasonCode =
       receipt.debugLineReasonCode.empty() ? "none" : receipt.debugLineReasonCode;
+}
+
+void recordProductPhysicsMovementPlannerTickProof(
+    ProductAppWindowState& window,
+    bool requested,
+    bool collisionSurfacesAvailable,
+    bool movementPhysicsStatsAvailable) {
+  // branch-gate: BG-1114
+  if (!requested) {
+    setPhysicsMovementPlannerProof(
+        window, "physics_movement_planner_disabled", false, false);
+    return;
+  }
+  // branch-gate: BG-1114
+  if (!collisionSurfacesAvailable) {
+    setPhysicsMovementPlannerProof(
+        window, "physics_movement_planner_no_collision_surfaces", true, false);
+    return;
+  }
+  // branch-gate: BG-1114
+  if (movementPhysicsStatsAvailable) {
+    setPhysicsMovementPlannerProof(
+        window, "physics_movement_planner_used", true, true);
+    return;
+  }
+  setPhysicsMovementPlannerProof(
+      window, "physics_movement_planner_not_used", true, false);
 }
 
 }  // namespace iggy3d

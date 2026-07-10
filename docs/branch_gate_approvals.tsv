@@ -112,7 +112,7 @@ BG-1110	src/app/iggy3d/view/OpeningMenuView.cpp	product physics debug SDL HUD dr
 BG-1111	src/projection/debug/DebugProjection.cpp	physics collision batch debug geometry projection policy	codex	2026-06-27
 BG-1112	src/app/iggy3d/ProductPrimitiveDrawList.cpp	product physics debug projection item draw-list mapping policy	codex	2026-06-27
 BG-1113	src/app/iggy3d/ProductRenderBridge.cpp	product physics debug render bridge count policy	codex	2026-06-27
-BG-1114	src/app/iggy3d/ReceiptBuilder.cpp	product physics movement planner receipt status policy	codex	2026-06-27
+BG-1114	src/app/iggy3d/receipt/ReceiptRecording.cpp	product physics movement planner receipt status policy	codex	2026-06-27
 BG-1115	src/app/iggy3d/gameplay/ProductGameplayController.cpp	product gameplay transient physics movement opt-in policy	codex	2026-06-27
 BG-1116	src/runtime/physics/PhysicsKernelBenchmark.cpp	runtime physics kernel benchmark dispatch and validation policy	codex	2026-06-27
 BG-1117	src/runtime/physics/PhysicsKernelBenchmarkJson.cpp	runtime physics kernel benchmark JSON serialization policy	codex	2026-06-27
