@@ -1,20 +1,11 @@
 #pragma once
 
 #include "app/iggy3d/creative/CreativeUiCommandDiagnostics.hpp"
-#include "app/iggy3d/ascii_room/AsciiRoomActivationState.hpp"
-#include "app/iggy3d/ascii_room/AsciiRoomDraftState.hpp"
-#include "app/iggy3d/ascii_room/AsciiRoomPreviewState.hpp"
+#include "app/iggy3d/ProductCreativeAuthoringState.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
 #include "app/iggy3d/room_editor/EditingState.hpp"
 #include "app/iggy3d/room_editor/Presentation.hpp"
 #include "app/iggy3d/room_editor/Preview.hpp"
-#include "app/iggy3d/room_editor/RoomEditorOverlayState.hpp"
-#include "app/iggy3d/room_editor/RoomEditorPreviewState.hpp"
-#include "app/iggy3d/ProductCreativeDocumentRevisionState.hpp"
-#include "app/iggy3d/ProductCreativeUiInputState.hpp"
-#include "app/iggy3d/ProductCreativeUiLastState.hpp"
-#include "app/iggy3d/ProductCreativeUiProjectionState.hpp"
-#include "app/iggy3d/ProductCreativeUndoState.hpp"
 
 #include <cstdint>
 #include <string>

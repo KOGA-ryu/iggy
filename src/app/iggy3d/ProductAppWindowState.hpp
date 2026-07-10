@@ -20,7 +20,7 @@
 #include "app/iggy3d/gameplay/DashState.hpp"
 #include "app/iggy3d/gameplay/PhysicsMovementPlannerState.hpp"
 #include "app/iggy3d/gameplay/ResetState.hpp"
-#include "app/iggy3d/automation/AutomationControlState.hpp"
+#include "app/iggy3d/automation/AutomationControl.hpp"
 #include "app/iggy3d/window/FrontendWindowShell.hpp"
 #include "app/iggy3d/window/PresentPathStore.hpp"
 #include "app/iggy3d/gameplay/CollisionState.hpp"

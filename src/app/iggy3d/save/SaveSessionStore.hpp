@@ -5,13 +5,56 @@
 
 #include "app/iggy3d/save/RoomMarkerBinding.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
-#include "app/iggy3d/save/SaveDeleteState.hpp"
-#include "app/iggy3d/save/SaveFlowState.hpp"
-#include "app/iggy3d/save/SaveRecoverState.hpp"
-#include "app/iggy3d/save/SelectedProductSaveState.hpp"
 
 namespace iggy3d {
 
+
+
+// Owned selected-product-save state -- extracted from the ProductAppWindowState god-struct
+// (docs/appkernel_build_map_v0_1.md, L2). Domain: save. Behavior-identical.
+struct ProductSelectedProductSaveState {
+  std::string id = "none";
+  bool enabled = false;
+  std::string status = "none";
+};
+
+// Owned save-flow state -- extracted from the ProductAppWindowState god-struct
+// (docs/appkernel_build_map_v0_1.md, L2). Domain: save. Behavior-identical.
+struct ProductSaveFlowState {
+  std::string operation = "none";
+  std::string sourceSurface = "none";
+  std::string status = "not_requested";
+  std::string reasonCode = "not_requested";
+  std::string affectedSlotId = "none";
+  std::uint64_t activeCountBefore = 0;
+  std::uint64_t activeCountAfter = 0;
+  std::uint64_t deletedCountAfter = 0;
+  std::string selectedSlotAfter = "none";
+};
+
+// Owned save-delete state -- extracted from the ProductAppWindowState god-struct
+// (docs/appkernel_build_map_v0_1.md, L2). Domain: save. Behavior-identical.
+struct ProductSaveDeleteState {
+  bool confirmationOpen = false;
+  std::string candidateId = "none";
+  bool candidateEnabled = false;
+  std::string status = "not_requested";
+  std::string reasonCode = "not_requested";
+  std::string type = "none";
+  bool recoverable = false;
+  bool executed = false;
+};
+
+// Owned save-recover state -- extracted from the ProductAppWindowState god-struct
+// (docs/appkernel_build_map_v0_1.md, L2). Domain: save. Behavior-identical.
+struct ProductSaveRecoverState {
+  std::string status = "not_requested";
+  std::string reasonCode = "not_requested";
+  bool executed = false;
+  std::string saveId = "none";
+  bool snapshotRecovered = false;
+  bool snapshotMissing = false;
+};
 struct SaveSessionStore {
   std::string productSaveStatus = "not_requested";
   std::string productSaveReasonCode = "not_requested";
