@@ -5,10 +5,8 @@
 #include <optional>
 
 #include "app/iggy3d/gameplay/GameplayFeedback.hpp"
-#include "app/iggy3d/debug/InteractionModeHud.hpp"
+#include "app/iggy3d/debug/DebugHudState.hpp"
 #include "app/iggy3d/debug/MovementDebugHud.hpp"
-#include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
-#include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/view/PrimitiveDrawList.hpp"

@@ -61,7 +61,7 @@ BG-1060	src/app/iggy3d/ProductControllerActionRouting.cpp	product controller act
 BG-1061	src/app/iggy3d/window/ProductWindowInputFrame.cpp	product controller sample input application seam	codex	2026-06-26
 BG-1062	src/app/iggy3d/automation/AutomationGameplay.cpp	controller input automation sample sequence parsing	codex	2026-06-26
 BG-1063	src/app/iggy3d/window/ProductWindowInputFrame.cpp	live creative room editor mouse pick preview policy	codex	2026-06-26
-BG-1064	src/app/iggy3d/ProductInteractionModeHud.cpp	product interaction mode hud descriptor visibility policy	codex	2026-06-26
+BG-1064	src/app/iggy3d/debug/DebugHudPanels.cpp	product interaction mode hud descriptor visibility policy	codex	2026-06-26
 BG-1065	src/app/iggy3d/view/OpeningMenuView.cpp	product interaction mode hud draw visibility policy	codex	2026-06-26
 BG-1066	src/app/frontend/PauseMenu.cpp	leave editor pause menu availability policy	codex	2026-06-26
 BG-1067	src/app/iggy3d/menu/ProductMenuActionHandlers.cpp	leave editor pause action lifecycle policy	codex	2026-06-26
@@ -105,7 +105,8 @@ BG-1104	src/runtime/session/SessionRunner.cpp	transient SessionRunner physics mo
 BG-1105	src/runtime/physics/PhysicsFrameStats.cpp	runtime physics frame stats aggregation and finite scalar policy	codex	2026-06-27
 BG-1106	src/runtime/physics/PhysicsDebugSnapshot.cpp	runtime physics debug snapshot validation and warning policy	codex	2026-06-27
 BG-1107	src/projection/debug/DebugProjection.cpp	projection physics debug HUD line status and warning policy	codex	2026-06-27
-BG-1108	src/app/iggy3d/ProductPhysicsDebugHud.cpp	product physics debug HUD gate and warning tone policy	codex	2026-06-27
+BG-1108	src/app/iggy3d/debug/DebugHudPanels.cpp	product physics debug HUD gate and warning tone policy	codex	2026-06-27
+BG-1223	src/app/iggy3d/debug/DebugHudPanels.cpp	relocated NPC behavior debug HUD availability and visibility policy	codex	2026-07-09
 BG-1109	src/app/iggy3d/gameplay/ProductGameplayProjectionRefresh.cpp	product physics debug projection packet routing policy	codex	2026-06-27
 BG-1110	src/app/iggy3d/view/OpeningMenuView.cpp	product physics debug SDL HUD draw visibility and row cap policy	codex	2026-06-27
 BG-1111	src/projection/debug/DebugProjection.cpp	physics collision batch debug geometry projection policy	codex	2026-06-27

@@ -127,7 +127,7 @@ target_sources(iggy3d
     src/app/iggy3d/input/ControllerActionMap.cpp
     src/app/iggy3d/input/ControllerActionRouting.cpp
     src/app/iggy3d/input/InteractionMode.cpp
-    src/app/iggy3d/debug/InteractionModeHud.cpp
+    src/app/iggy3d/debug/DebugHudPanels.cpp
     src/app/iggy3d/input/InteractionModeState.cpp
     src/app/iggy3d/creative/camera/Fly.cpp
     src/app/iggy3d/map_maker/Grid.cpp
@@ -135,8 +135,6 @@ target_sources(iggy3d
     src/app/iggy3d/menu/Transitions.cpp
     src/app/iggy3d/window/MouseCapturePolicy.cpp
     src/app/iggy3d/debug/MovementDebugHud.cpp
-    src/app/iggy3d/debug/NpcBehaviorDebugHud.cpp
-    src/app/iggy3d/debug/PhysicsDebugHud.cpp
     src/app/iggy3d/debug/PositionHud.cpp
     src/app/iggy3d/world/PackageSessionSeed.cpp
     src/app/iggy3d/CreativeReasoningActivation.cpp

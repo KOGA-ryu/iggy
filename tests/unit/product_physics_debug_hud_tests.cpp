@@ -1,4 +1,4 @@
-#include "app/iggy3d/debug/PhysicsDebugHud.hpp"
+#include "app/iggy3d/debug/DebugHudPanels.hpp"
 
 #include <iostream>
 

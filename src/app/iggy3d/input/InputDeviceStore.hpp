@@ -3,7 +3,7 @@
 #include <string>
 
 #include "app/input/InputAction.hpp"
-#include "app/iggy3d/debug/InteractionModeHud.hpp"
+#include "app/iggy3d/debug/DebugHudState.hpp"
 #include "app/iggy3d/input/ControllerActionState.hpp"
 #include "app/iggy3d/input/ControllerModeToggleState.hpp"
 #include "app/iggy3d/input/InteractionMode.hpp"

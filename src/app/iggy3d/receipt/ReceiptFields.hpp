@@ -6,8 +6,7 @@
 #include "app/iggy3d/gameplay/GameplayFeedback.hpp"
 #include "app/iggy3d/gameplay/MovementProof.hpp"
 #include "app/iggy3d/debug/MovementDebugHud.hpp"
-#include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
-#include "app/iggy3d/debug/PhysicsDebugHud.hpp"
+#include "app/iggy3d/debug/DebugHudState.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
 
