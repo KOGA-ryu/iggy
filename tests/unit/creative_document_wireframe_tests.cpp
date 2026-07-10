@@ -66,6 +66,22 @@ cr::CreativeObjectId createPathObject(cr::CreativeDocument& document) {
   return receipt.objectId;
 }
 
+cr::CreativeObjectId createBacktrackingPathObject(cr::CreativeDocument& document) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::PatrolRoute;
+  request.name = "Backtracking Route";
+  request.hasPathOverride = true;
+  request.pathPoints = {
+      cr::CreativePathPoint{{0.0, 0.0, 0.0}},
+      cr::CreativePathPoint{{3.0, 0.0, 0.0}},
+      cr::CreativePathPoint{{1.0, 0.0, 0.0}},
+      cr::CreativePathPoint{{3.0, 0.0, 0.0}},
+  };
+  const cr::CreativeDocumentCreateReceipt receipt =
+      document.createObject(request);
+  return receipt.objectId;
+}
+
 cr::CreativeObjectId createLinkObject(cr::CreativeDocument& document) {
   cr::CreativeDocumentCreateRequest request;
   request.kind = cr::CreativeObjectKind::NavLink;
@@ -306,6 +322,28 @@ bool patrolRoutePathEmitsOrderedGameplayLineSegments() {
                 "path second segment") &&
          expect(segmentList[1].style == cr::CreativeDocumentWireframeStyle::Gameplay,
                 "path second segment style");
+}
+
+bool backtrackingPathUsesSummaryCellCountForWireframe() {
+  cr::CreativeDocument document;
+  const cr::CreativeObjectId routeId = createBacktrackingPathObject(document);
+  const cr::CreativeSpatialProjectionRequest request = makeProjectionRequest();
+  const cr::CreativeObject& route = document.objects()[0];
+  const cr::CreativeSpatialProjectionSummary summary =
+      cr::projectObjectToGridSummary(route, request);
+  const cr::CreativeDocumentWireframeBuildResult result =
+      cr::buildCreativeDocumentWireframeList(document, request);
+
+  return expect(routeId != cr::kInvalidObjectId, "backtracking route created") &&
+         expect(summary.status == cr::CreativeSpatialProjectionStatus::Projected,
+                "backtracking summary projected") &&
+         expect(summary.cellCount == 4U, "backtracking summary cell count") &&
+         expect(result.receipt.projectionCellCount == summary.cellCount,
+                "backtracking aggregate summary count") &&
+         expect(result.drawList.items.size() == 1U,
+                "backtracking wireframe item count") &&
+         expect(result.drawList.items[0].projectedCellCount == summary.cellCount,
+                "backtracking item summary count");
 }
 
 bool navLinkEndpointsEmitNavigationLineSegment() {
@@ -662,6 +700,7 @@ int main() {
                   visibilityToggleRemovesAndRestoresItem() &&
                   multipleVisibleObjectsPreserveDocumentOrder() &&
                   patrolRoutePathEmitsOrderedGameplayLineSegments() &&
+                  backtrackingPathUsesSummaryCellCountForWireframe() &&
                   navLinkEndpointsEmitNavigationLineSegment() &&
                   objectSpanUnknownObjectIsCountedButNotRendered() &&
                   invalidProjectionSettingsFailClosed() &&

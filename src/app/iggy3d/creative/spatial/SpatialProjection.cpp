@@ -744,15 +744,6 @@ void appendSampledLineCells(std::vector<CreativeSpatialCell>& cells,
   return receipt;
 }
 
-[[nodiscard]] CreativeSpatialProjectionReceipt projectBoundsObjectToGrid(
-    const CreativeObject& object,
-    const CreativeSpatialProjectionRequest& request,
-    CreativeSpatialProjectionProfile profile) {
-  return materializePlan(makeBoundsPlan(object, request, profile, false),
-                         object,
-                         request);
-}
-
 [[nodiscard]] CreativeSpatialProjectionStatus mergeAggregateStatus(
     CreativeSpatialProjectionStatus current,
     CreativeSpatialProjectionStatus next) noexcept {
@@ -996,53 +987,6 @@ CreativeSpatialProjectionSummary projectObjectToGridSummary(
                   "no_projection");
   }
   return noProjection.summary;
-}
-
-CreativeSpatialProjectionReceipt projectPointObjectToGrid(
-    const CreativeObject& object,
-    const CreativeSpatialProjectionRequest& request) {
-  return materializePlan(makePointPlan(object, request, false), object, request);
-}
-
-CreativeSpatialProjectionReceipt projectBoxObjectToGrid(
-    const CreativeObject& object,
-    const CreativeSpatialProjectionRequest& request) {
-  return projectBoundsObjectToGrid(object,
-                                   request,
-                                   CreativeSpatialProjectionProfile::BoxProjection);
-}
-
-CreativeSpatialProjectionReceipt projectVolumeObjectToGrid(
-    const CreativeObject& object,
-    const CreativeSpatialProjectionRequest& request) {
-  return projectBoundsObjectToGrid(
-      object,
-      request,
-      CreativeSpatialProjectionProfile::VolumeProjection);
-}
-
-CreativeSpatialProjectionReceipt projectLineObjectToGrid(
-    const CreativeObject& object,
-    const CreativeSpatialProjectionRequest& request) {
-  return materializePlan(
-      makeLinePlan(object,
-                   request,
-                   CreativeSpatialProjectionProfile::LineProjection,
-                   false),
-      object,
-      request);
-}
-
-CreativeSpatialProjectionReceipt projectPathObjectToGrid(
-    const CreativeObject& object,
-    const CreativeSpatialProjectionRequest& request) {
-  return materializePlan(makePathPlan(object, request, false), object, request);
-}
-
-CreativeSpatialProjectionReceipt projectLinkObjectToGrid(
-    const CreativeObject& object,
-    const CreativeSpatialProjectionRequest& request) {
-  return materializePlan(makeLinkPlan(object, request, false), object, request);
 }
 
 CreativeSpatialProjectionReceipt projectObjectsToGrid(

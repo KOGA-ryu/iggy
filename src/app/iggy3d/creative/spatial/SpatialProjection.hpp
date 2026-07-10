@@ -118,24 +118,6 @@ struct CreativeSpatialProjectionSummary {
 [[nodiscard]] CreativeSpatialProjectionReceipt projectObjectToGrid(
     const CreativeObject& object,
     const CreativeSpatialProjectionRequest& request);
-[[nodiscard]] CreativeSpatialProjectionReceipt projectPointObjectToGrid(
-    const CreativeObject& object,
-    const CreativeSpatialProjectionRequest& request);
-[[nodiscard]] CreativeSpatialProjectionReceipt projectBoxObjectToGrid(
-    const CreativeObject& object,
-    const CreativeSpatialProjectionRequest& request);
-[[nodiscard]] CreativeSpatialProjectionReceipt projectVolumeObjectToGrid(
-    const CreativeObject& object,
-    const CreativeSpatialProjectionRequest& request);
-[[nodiscard]] CreativeSpatialProjectionReceipt projectLineObjectToGrid(
-    const CreativeObject& object,
-    const CreativeSpatialProjectionRequest& request);
-[[nodiscard]] CreativeSpatialProjectionReceipt projectPathObjectToGrid(
-    const CreativeObject& object,
-    const CreativeSpatialProjectionRequest& request);
-[[nodiscard]] CreativeSpatialProjectionReceipt projectLinkObjectToGrid(
-    const CreativeObject& object,
-    const CreativeSpatialProjectionRequest& request);
 [[nodiscard]] CreativeSpatialProjectionReceipt projectObjectsToGrid(
     std::span<const CreativeObject> objects,
     const CreativeSpatialProjectionRequest& request);

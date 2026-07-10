@@ -39,17 +39,17 @@ void setSegmentReceiptStatus(CreativeDocumentWireframeSegmentReceipt& receipt,
 
 [[nodiscard]] CreativeDocumentWireframeItem makeWireframeItem(
     const CreativeObject& object,
-    const CreativeSpatialProjectionReceipt& projectionReceipt) {
+    const CreativeSpatialProjectionSummary& projectionSummary) {
   CreativeDocumentWireframeItem item;
-  item.itemKind = wireframeItemKindForProjection(projectionReceipt.profile);
+  item.itemKind = wireframeItemKindForProjection(projectionSummary.profile);
   item.objectId = object.id;
   item.objectKind = object.kind;
   item.visible = object.visible;
-  item.projectionProfile = projectionReceipt.profile;
-  item.occupancyKind = projectionReceipt.occupancyKind;
-  item.style = wireframeStyleForOccupancy(projectionReceipt.occupancyKind);
-  item.projectedBounds = projectionReceipt.projectedBounds;
-  item.projectedCellCount = projectionReceipt.cells.size();
+  item.projectionProfile = projectionSummary.profile;
+  item.occupancyKind = projectionSummary.occupancyKind;
+  item.style = wireframeStyleForOccupancy(projectionSummary.occupancyKind);
+  item.projectedBounds = projectionSummary.projectedBounds;
+  item.projectedCellCount = projectionSummary.cellCount;
 
   switch (item.itemKind) {
     case CreativeDocumentWireframeItemKind::Box:
@@ -64,9 +64,9 @@ void setSegmentReceiptStatus(CreativeDocumentWireframeSegmentReceipt& receipt,
       item.end = object.transform.position;
       break;
     case CreativeDocumentWireframeItemKind::Line:
-      if (projectionReceipt.profile ==
+      if (projectionSummary.profile ==
               CreativeSpatialProjectionProfile::PathProjection ||
-          projectionReceipt.profile ==
+          projectionSummary.profile ==
               CreativeSpatialProjectionProfile::LinkProjection) {
         item.pathPoints.reserve(object.pathPoints.size());
         for (const CreativePathPoint& point : object.pathPoints) {
@@ -404,14 +404,14 @@ CreativeDocumentWireframeBuildResult buildCreativeDocumentWireframeList(
     }
     ++receipt.projectableObjectCount;
 
-    const CreativeSpatialProjectionReceipt projectionReceipt =
-        projectObjectToGrid(object, request.projectionRequest);
-    if (projectionReceipt.status !=
+    const CreativeSpatialProjectionSummary projectionSummary =
+        projectObjectToGridSummary(object, request.projectionRequest);
+    if (projectionSummary.status !=
             CreativeSpatialProjectionStatus::Projected ||
-        projectionReceipt.cells.empty()) {
-      if (projectionReceipt.status ==
+        projectionSummary.cellCount == 0U) {
+      if (projectionSummary.status ==
               CreativeSpatialProjectionStatus::InvalidObject ||
-          projectionReceipt.status ==
+          projectionSummary.status ==
               CreativeSpatialProjectionStatus::NoProjection) {
         ++receipt.nonProjectableObjectCount;
       }
@@ -419,15 +419,15 @@ CreativeDocumentWireframeBuildResult buildCreativeDocumentWireframeList(
     }
 
     ++receipt.projectedObjectCount;
-    receipt.projectionCellCount += projectionReceipt.cells.size();
+    receipt.projectionCellCount += projectionSummary.cellCount;
     const CreativeDocumentWireframeItemKind itemKind =
-        wireframeItemKindForProjection(projectionReceipt.profile);
+        wireframeItemKindForProjection(projectionSummary.profile);
     if (itemKind == CreativeDocumentWireframeItemKind::Unknown) {
       ++receipt.nonProjectableObjectCount;
       continue;
     }
     result.drawList.items.push_back(makeWireframeItem(object,
-                                                      projectionReceipt));
+                                                      projectionSummary));
   }
 
   receipt.itemCount = result.drawList.items.size();

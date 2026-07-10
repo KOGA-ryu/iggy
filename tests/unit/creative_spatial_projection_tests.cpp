@@ -860,7 +860,7 @@ bool linkProjectionSamplesStoredEndpoints() {
   const cr::CreativeSpatialProjectionRequest request = makeRequest();
 
   const cr::CreativeSpatialProjectionReceipt receipt =
-      cr::projectLinkObjectToGrid(object, request);
+      cr::projectObjectToGrid(object, request);
 
   return expect(receipt.status == cr::CreativeSpatialProjectionStatus::Projected,
                 "link projection projected") &&
@@ -890,7 +890,7 @@ bool invalidLinkEndpointsDoNotProject() {
   const cr::CreativeSpatialProjectionRequest request = makeRequest();
 
   const cr::CreativeSpatialProjectionReceipt receipt =
-      cr::projectLinkObjectToGrid(object, request);
+      cr::projectObjectToGrid(object, request);
 
   return expect(receipt.status ==
                     cr::CreativeSpatialProjectionStatus::EmptyProjection,
@@ -907,7 +907,7 @@ bool offGridLinkEndpointDoesNotClampToBorder() {
   request.clampToGrid = true;
 
   const cr::CreativeSpatialProjectionReceipt receipt =
-      cr::projectLinkObjectToGrid(object, request);
+      cr::projectObjectToGrid(object, request);
 
   return expect(receipt.status == cr::CreativeSpatialProjectionStatus::OutOfBounds,
                 "off-grid link out of bounds") &&
