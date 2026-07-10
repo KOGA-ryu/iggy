@@ -6,7 +6,7 @@
 #include "app/frontend/SaveBrowser.hpp"
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
-#include "app/iggy3d/world/ProductWorldTemplateOperations.hpp"
+#include "app/iggy3d/world/WorldTemplate.hpp"
 
 namespace iggy3d {
 namespace {

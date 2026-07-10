@@ -14,7 +14,7 @@
 #include "app/iggy3d/input/InteractionMode.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
-#include "app/iggy3d/world/ProductLaunchState.hpp"
+#include "app/iggy3d/world/Launch.hpp"
 
 namespace iggy3d {
 namespace {

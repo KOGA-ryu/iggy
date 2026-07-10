@@ -6,7 +6,7 @@
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
-#include "app/iggy3d/world/DefaultWorldTemplate.hpp"
+#include "app/iggy3d/world/WorldTemplate.hpp"
 #include "render/RenderDiagnostics.hpp"
 
 #include <array>

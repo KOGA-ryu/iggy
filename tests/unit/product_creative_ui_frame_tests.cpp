@@ -10,7 +10,7 @@
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
-#include "app/iggy3d/world/DefaultWorldTemplate.hpp"
+#include "app/iggy3d/world/WorldTemplate.hpp"
 #include "render/RenderDiagnostics.hpp"
 
 #include <cstdlib>

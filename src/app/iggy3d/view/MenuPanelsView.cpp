@@ -18,7 +18,7 @@
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/view/SdlDraw.hpp"
 #include "app/iggy3d/world/BuiltinDungeon.hpp"
-#include "app/iggy3d/world/DefaultWorldTemplate.hpp"
+#include "app/iggy3d/world/WorldTemplate.hpp"
 
 namespace iggy3d {
 namespace {

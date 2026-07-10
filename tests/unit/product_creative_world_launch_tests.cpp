@@ -13,7 +13,7 @@
 #include "app/iggy3d/save/Flow.hpp"
 #include "app/iggy3d/view/CreativeFlyAnchorStore.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
-#include "app/iggy3d/world/ProductNewWorldLaunch.hpp"
+#include "app/iggy3d/world/Launch.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/RenderDiagnostics.hpp"
 #include "runtime/ai/ReasoningGraph.hpp"

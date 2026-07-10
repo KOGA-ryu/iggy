@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <string>
 #include <string_view>
 
@@ -15,8 +16,15 @@ struct ProductWorldTemplate {
   std::uint64_t authoredWallCount = 0;
 };
 
+struct ProductAppOptions;
+
 ProductWorldTemplate defaultProductWorldTemplate();
 ProductWorldTemplate devOverrideProductWorldTemplate(std::string_view packagePath,
                                                      std::string_view scenarioId);
+
+std::filesystem::path productPackagePathFromOptions(
+    const ProductAppOptions& options);
+ProductWorldTemplate productWorldTemplateFromOptions(
+    const ProductAppOptions& options);
 
 }  // namespace iggy3d

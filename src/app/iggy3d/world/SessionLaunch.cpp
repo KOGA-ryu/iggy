@@ -1,4 +1,4 @@
-#include "app/iggy3d/world/ProductSessionLaunch.hpp"
+#include "app/iggy3d/world/Launch.hpp"
 
 #include <chrono>
 #include <filesystem>
@@ -18,10 +18,11 @@
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/save/Catalog.hpp"
 #include "app/iggy3d/save/RoomMarkerBinding.hpp"
+#include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/save/SaveSlotOperations.hpp"
 #include "app/iggy3d/world/PackageSessionSeed.hpp"
-#include "app/iggy3d/world/ProductLaunchState.hpp"
-#include "app/iggy3d/world/ProductWorldTemplateOperations.hpp"
+#include "app/iggy3d/world/WorldTemplate.hpp"
+#include "content/PackageLoader.hpp"
 
 namespace iggy3d {
 
@@ -181,6 +182,16 @@ void launchProductSaveSlot(const ProductAppOptions& options,
 }
 
 }  // namespace
+
+void clearProductGameplayLaunchState(std::optional<Session>& activeSession,
+                                     ProductAppWindowState& window) {
+  window.gameplay.gameplayActive = false;
+  window.gameplay.runtimeSessionCreated = false;
+  activeRoom(window) = {};
+  activeRoomCollision(window) = {};
+  bumpActiveRoomRevision(window);
+  activeSession.reset();
+}
 
 bool createProductSessionFromPackage(const PackageLoadResult& package,
                                      std::optional<Session>& activeSession,

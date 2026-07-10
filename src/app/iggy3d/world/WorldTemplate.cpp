@@ -1,4 +1,4 @@
-#include "app/iggy3d/world/ProductWorldTemplateOperations.hpp"
+#include "app/iggy3d/world/WorldTemplate.hpp"
 
 #include "app/PackageRuntimeLookup.hpp"
 #include "app/iggy3d/Options.hpp"
@@ -6,6 +6,20 @@
 #include "render/RenderDiagnostics.hpp"
 
 namespace iggy3d {
+
+ProductWorldTemplate defaultProductWorldTemplate() { return {}; }
+
+ProductWorldTemplate devOverrideProductWorldTemplate(std::string_view packagePath,
+                                                     std::string_view scenarioId) {
+  ProductWorldTemplate world;
+  // branch-gate: BG-1224
+  world.packageId = packagePath.empty() ? "iggy3d.dev_override" : std::string(packagePath);
+  // branch-gate: BG-1224
+  world.scenarioId = scenarioId.empty() ? "default" : std::string(scenarioId);
+  world.displayName = "Dev Override World";
+  world.source = "dev_package_override";
+  return world;
+}
 
 std::filesystem::path productPackagePathFromOptions(
     const ProductAppOptions& options) {

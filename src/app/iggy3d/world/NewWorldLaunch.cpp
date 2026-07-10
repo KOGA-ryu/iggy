@@ -1,4 +1,4 @@
-#include "app/iggy3d/world/ProductNewWorldLaunch.hpp"
+#include "app/iggy3d/world/Launch.hpp"
 
 #include <cstdint>
 #include <string>
@@ -14,9 +14,10 @@
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/world/BuiltinDungeon.hpp"
 #include "app/iggy3d/world/Creation.hpp"
-#include "app/iggy3d/world/ProductLaunchState.hpp"
-#include "app/iggy3d/world/ProductSessionLaunch.hpp"
-#include "app/iggy3d/world/ProductWorldTemplateOperations.hpp"
+#include "app/frontend/FrontendState.hpp"
+#include "app/frontend/WorldSetupModel.hpp"
+#include "app/iggy3d/Options.hpp"
+#include "app/iggy3d/world/WorldTemplate.hpp"
 #include "content/PackageLoader.hpp"
 
 namespace iggy3d {

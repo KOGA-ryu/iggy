@@ -7,7 +7,7 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
-#include "app/iggy3d/world/DefaultWorldTemplate.hpp"
+#include "app/iggy3d/world/WorldTemplate.hpp"
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/gameplay/MovementTuning.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
