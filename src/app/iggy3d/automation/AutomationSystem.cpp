@@ -1,4 +1,4 @@
-#include "app/iggy3d/automation/AutomationSystem.hpp"
+#include "app/iggy3d/automation/AutomationDispatch.hpp"
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"

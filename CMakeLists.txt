@@ -139,6 +139,8 @@ target_sources(iggy3d
     src/app/iggy3d/PatrolRouteWaypoints.cpp
     src/app/iggy3d/Options.cpp
     src/app/iggy3d/automation/Automation.cpp
+    src/app/iggy3d/automation/AutomationMetadata.cpp
+    src/app/iggy3d/automation/AutomationWorldSetup.cpp
     src/app/iggy3d/automation/AutomationControl.cpp
     src/app/iggy3d/automation/AutomationDispatch.cpp
     src/app/iggy3d/automation/AutomationGameplay.cpp

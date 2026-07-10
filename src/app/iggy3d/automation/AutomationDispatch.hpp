@@ -17,6 +17,58 @@ namespace creative {
 struct CreativeAppState;
 }
 
+
+
+class Session;
+struct FrontendState;
+struct ProductAppWindowState;
+
+struct ProductAutomationGameplayContext {
+  FrontendState& frontend;
+  ProductAppWindowState& window;
+  Session* activeSession = nullptr;
+  std::function<MenuOwner()> currentOwner;
+};
+
+ProductAutomationExecutionResult applyProductGameplayAutomationCommand(
+    const ProductAutomationCommand& command,
+    const ProductAutomationCommandDispatchSpec& automationSpec,
+    ProductAutomationGameplayContext& context);
+
+struct FrontendState;
+struct ProductAppOptions;
+struct ProductAppWindowState;
+struct ProductSaveBridgeResult;
+
+struct ProductAutomationSaveBrowserContext {
+  FrontendState& frontend;
+  ProductAppWindowState& window;
+  const ProductAppOptions& options;
+  ProductSaveBridgeResult& saves;
+  std::function<MenuOwner()> currentOwner;
+};
+
+ProductAutomationExecutionResult applyProductSaveBrowserAutomationCommand(
+    const ProductAutomationCommand& command,
+    const ProductAutomationCommandDispatchSpec& automationSpec,
+    ProductAutomationSaveBrowserContext& context);
+
+struct FrontendState;
+struct ProductAppWindowState;
+
+struct ProductAutomationSystemContext {
+  FrontendState& frontend;
+  ProductAppWindowState& window;
+  std::function<MenuOwner()> currentOwner;
+  std::function<bool(InputAction)> routeInput;
+  std::function<void()> returnToTitle;
+  std::function<void()> requestQuit;
+};
+
+ProductAutomationExecutionResult applyProductSystemAutomationCommand(
+    const ProductAutomationCommand& command,
+    const ProductAutomationCommandDispatchSpec& automationSpec,
+    ProductAutomationSystemContext& context);
 struct ProductAutomationDispatchContext {
   FrontendState& frontend;
   ProductSaveBridgeResult& saves;

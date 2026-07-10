@@ -1,9 +1,6 @@
 #include "app/iggy3d/automation/AutomationDispatch.hpp"
 
-#include "app/iggy3d/automation/AutomationGameplay.hpp"
 #include "app/iggy3d/automation/AutomationRoomEditing.hpp"
-#include "app/iggy3d/automation/AutomationSaveBrowser.hpp"
-#include "app/iggy3d/automation/AutomationSystem.hpp"
 #include "app/iggy3d/ascii_room/Activation.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"

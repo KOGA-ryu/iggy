@@ -1,4 +1,4 @@
-#include "app/iggy3d/automation/AutomationSaveBrowser.hpp"
+#include "app/iggy3d/automation/AutomationDispatch.hpp"
 
 #include <array>
 
