@@ -222,3 +222,4 @@ BG-1229	src/app/iggy3d/window/VulkanOverlayFrames.cpp	exact Vulkan menu/overlay/
 BG-1230	src/app/iggy3d/window/VulkanGameplayFrame.cpp	exact Vulkan gameplay HUD branch-set relocation from FramePresenter.cpp	codex	2026-07-09
 BG-1231	src/app/iggy3d/automation/AutomationMetadata.cpp	exact metadata/registry/resolver branch-set relocation from Automation.cpp	codex	2026-07-09
 BG-1232	src/app/iggy3d/automation/AutomationWorldSetup.cpp	exact world-setup branch-set relocation from Automation.cpp	codex	2026-07-09
+BG-1233	src/app/iggy3d/automation/AutomationMetadata.cpp	private automation lookup-miss fallback policy	codex	2026-07-09

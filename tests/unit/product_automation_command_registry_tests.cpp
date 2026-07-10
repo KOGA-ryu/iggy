@@ -219,6 +219,27 @@ int main() {
   expect(spec(registry, "gameplay.physics_movement").valueKind == Value::Bool,
          "gameplay physics movement is a bool value");
 
+  const iggy3d::ProductAutomationCommandDispatchSpec& menuConfirmSpec =
+      iggy3d::findProductAutomationCommandDispatchSpec("menu.confirm");
+  const iggy3d::ProductMenuShortcutAutomationResult menuConfirmYes =
+      iggy3d::resolveProductMenuShortcutAutomation(menuConfirmSpec, "yes");
+  expect(menuConfirmYes.valid && menuConfirmYes.routeRequested,
+         "menu confirm yes is valid and routes");
+  expect(menuConfirmYes.inputAction == iggy3d::InputAction::MenuConfirm,
+         "menu confirm yes keeps menu confirm action");
+  const iggy3d::ProductMenuShortcutAutomationResult menuConfirmNo =
+      iggy3d::resolveProductMenuShortcutAutomation(menuConfirmSpec, "no");
+  expect(menuConfirmNo.valid && !menuConfirmNo.routeRequested,
+         "menu confirm no is valid and does not route");
+  expect(menuConfirmNo.inputAction == iggy3d::InputAction::MenuConfirm,
+         "menu confirm no keeps menu confirm action");
+  const iggy3d::ProductMenuShortcutAutomationResult menuConfirmInvalid =
+      iggy3d::resolveProductMenuShortcutAutomation(menuConfirmSpec, "teleport");
+  expect(!menuConfirmInvalid.valid && !menuConfirmInvalid.routeRequested,
+         "menu confirm teleport is invalid and does not route");
+  expect(menuConfirmInvalid.inputAction == iggy3d::InputAction::MenuConfirm,
+         "menu confirm invalid keeps menu confirm action");
+
   const iggy3d::ProductMenuInputAutomationResult menuUp =
       iggy3d::resolveProductMenuInputAutomation("up");
   expect(menuUp.valid, "menu input up is valid");
@@ -234,6 +255,8 @@ int main() {
   const iggy3d::ProductMenuInputAutomationResult menuInvalid =
       iggy3d::resolveProductMenuInputAutomation("teleport");
   expect(!menuInvalid.valid, "menu input teleport is invalid");
+  expect(menuInvalid.inputAction == iggy3d::InputAction::None,
+         "menu input invalid falls back to none");
 
   const iggy3d::ProductFrontendSelectAutomationResult selectSettings =
       iggy3d::resolveProductFrontendSelectAutomation("settings");
@@ -260,6 +283,8 @@ int main() {
   const iggy3d::ProductFrontendSelectAutomationResult selectInvalid =
       iggy3d::resolveProductFrontendSelectAutomation("teleport");
   expect(!selectInvalid.valid, "frontend select teleport is invalid");
+  expect(selectInvalid.action == iggy3d::FrontendAction::None,
+         "frontend select invalid falls back to none");
 
   const iggy3d::ProductSettingsTabAutomationResult settingsInput =
       iggy3d::resolveProductSettingsTabAutomation("input");
@@ -276,6 +301,8 @@ int main() {
   const iggy3d::ProductSettingsTabAutomationResult settingsInvalid =
       iggy3d::resolveProductSettingsTabAutomation("teleport");
   expect(!settingsInvalid.valid, "settings tab teleport is invalid");
+  expect(settingsInvalid.settingsTab == iggy3d::FrontendSettingsTab::None,
+         "settings tab invalid falls back to none");
 
   const iggy3d::ProductDevToolsCategoryAutomationResult devToolsSession =
       iggy3d::resolveProductDevToolsCategoryAutomation("session");
@@ -292,6 +319,8 @@ int main() {
   const iggy3d::ProductDevToolsCategoryAutomationResult devToolsInvalid =
       iggy3d::resolveProductDevToolsCategoryAutomation("teleport");
   expect(!devToolsInvalid.valid, "dev tools category teleport is invalid");
+  expect(devToolsInvalid.category == iggy3d::FrontendDevToolsCategory::None,
+         "dev tools category invalid falls back to none");
 
   const iggy3d::ProductSaveSelectionAutomationResult saveSelection =
       iggy3d::resolveProductSaveSelectionAutomation("slot_1");
@@ -316,6 +345,7 @@ int main() {
   const iggy3d::ProductBoolAutomationResult boolInvalid =
       iggy3d::resolveProductAutomationBool("teleport");
   expect(!boolInvalid.valid, "generic bool teleport is invalid");
+  expect(!boolInvalid.requested, "generic bool invalid falls back to false");
 
   const iggy3d::ProductGameplayAxisAutomationResult gameplayAxis =
       iggy3d::resolveProductGameplayAxisAutomation("1.25");
@@ -345,6 +375,8 @@ int main() {
   const iggy3d::ProductDungeonDraftDirectionAutomationResult draftInvalid =
       iggy3d::resolveProductDungeonDraftDirectionAutomation("teleport");
   expect(!draftInvalid.valid, "dungeon draft direction teleport is invalid");
+  expect(draftInvalid.direction == iggy3d::ProductDungeonDraftDirection::Up,
+         "dungeon draft direction invalid falls back to up");
 
   const iggy3d::ProductDungeonDraftPaintAutomationResult draftPaint =
       iggy3d::resolveProductDungeonDraftPaintAutomation("#");
@@ -413,6 +445,7 @@ int main() {
 
   expect(!iggy3d::resolveProductSaveBrowserBoolAutomation("teleport", saveDeleteBool),
          "save browser bool teleport is invalid");
+  expect(!saveDeleteBool, "save browser bool invalid falls back to false");
 
   const iggy3d::ProductAutomationCommandDispatchResult placeDispatch =
       iggy3d::resolveProductAutomationCommandDispatch(

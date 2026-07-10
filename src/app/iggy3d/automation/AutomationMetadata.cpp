@@ -2,27 +2,39 @@
 
 #include <algorithm>
 #include <array>
-#include <charconv>
-#include <cmath>
-#include <filesystem>
-#include <fstream>
 #include <iterator>
 
 #include "app/frontend/FrontendState.hpp"
-#include "app/frontend/MenuInput.hpp"
 #include "app/frontend/SettingsMenu.hpp"
-#include "app/iggy3d/ascii_room/Preview.hpp"
-#include "app/iggy3d/world/BuiltinDungeon.hpp"
 #include "app/iggy3d/world/DungeonDraft.hpp"
-#include "app/iggy3d/ProductAppWindowState.hpp"
-#include "app/iggy3d/room_editor/AuthoringController.hpp"
-#include "app/iggy3d/room_editor/ActionController.hpp"
-#include "app/iggy3d/room_editor/Cursor.hpp"
 
 namespace iggy3d {
+namespace {
 
+template <typename Row>
+struct AutomationRowLookup {
+  const Row* row = nullptr;
+  bool found = false;
+};
+
+template <typename Row, std::size_t Count>
+AutomationRowLookup<Row> findAutomationRow(
+    const std::array<Row, Count>& rows,
+    std::string_view value,
+    const Row& fallback) {
+  const auto row = std::find_if(
+      rows.begin(), rows.end(), [value](const Row& candidate) {
+        return candidate.name == value;
+      });
+  // branch-gate: BG-1233
+  if (row == rows.end()) {
+    return {&fallback, false};
+  }
+  return {&*row, true};
+}
+
+}  // namespace
 // branch-gate-relocation: BG-1231 from=src/app/iggy3d/automation/Automation.cpp
-
 std::string_view productAutomationCommandCategoryName(
     ProductAutomationCommandCategory category) {
   static constexpr std::array names{
@@ -487,28 +499,12 @@ ProductMenuShortcutAutomationResult resolveProductMenuShortcutAutomation(
       MenuShortcutBoolRow{"0", false},
       MenuShortcutBoolRow{"no", false},
   };
-  static constexpr std::array lookup{
-      MenuShortcutBoolRow{"true", true},
-      MenuShortcutBoolRow{"1", true},
-      MenuShortcutBoolRow{"yes", true},
-      MenuShortcutBoolRow{"false", false},
-      MenuShortcutBoolRow{"0", false},
-      MenuShortcutBoolRow{"no", false},
-      MenuShortcutBoolRow{"unknown", false},
-  };
-  const auto row = std::find_if(
-      rows.begin(), rows.end(), [value](const MenuShortcutBoolRow& candidate) {
-        return candidate.name == value;
-      });
-  const std::size_t rowIndex =
-      static_cast<std::size_t>(std::distance(rows.begin(), row));
-  const std::size_t selectedIndex =
-      std::min(rowIndex, lookup.size() - 1U);
-  const MenuShortcutBoolRow& parsed = lookup[selectedIndex];
-
+  static constexpr MenuShortcutBoolRow fallback{"unknown", false};
+  const AutomationRowLookup<MenuShortcutBoolRow> parsed =
+      findAutomationRow(rows, value, fallback);
   ProductMenuShortcutAutomationResult result;
-  result.valid = rowIndex != rows.size();
-  result.routeRequested = result.valid && parsed.value;
+  result.valid = parsed.found;
+  result.routeRequested = parsed.row->value;
   result.inputAction = spec.inputAction;
   return result;
 }
@@ -530,30 +526,12 @@ ProductMenuInputAutomationResult resolveProductMenuInputAutomation(
       MenuInputRow{"previous_tab", InputAction::MenuPreviousTab},
       MenuInputRow{"none", InputAction::None},
   };
-  static constexpr std::array lookup{
-      MenuInputRow{"up", InputAction::MenuUp},
-      MenuInputRow{"down", InputAction::MenuDown},
-      MenuInputRow{"left", InputAction::MenuLeft},
-      MenuInputRow{"right", InputAction::MenuRight},
-      MenuInputRow{"confirm", InputAction::MenuConfirm},
-      MenuInputRow{"back", InputAction::MenuBack},
-      MenuInputRow{"next_tab", InputAction::MenuNextTab},
-      MenuInputRow{"previous_tab", InputAction::MenuPreviousTab},
-      MenuInputRow{"none", InputAction::None},
-      MenuInputRow{"unknown", InputAction::None},
-  };
-  const auto row = std::find_if(
-      rows.begin(), rows.end(), [value](const MenuInputRow& candidate) {
-        return candidate.name == value;
-      });
-  const std::size_t rowIndex =
-      static_cast<std::size_t>(std::distance(rows.begin(), row));
-  const std::size_t selectedIndex =
-      std::min(rowIndex, lookup.size() - 1U);
-
+  static constexpr MenuInputRow fallback{"unknown", InputAction::None};
+  const AutomationRowLookup<MenuInputRow> parsed =
+      findAutomationRow(rows, value, fallback);
   ProductMenuInputAutomationResult result;
-  result.valid = rowIndex != rows.size();
-  result.inputAction = lookup[selectedIndex].action;
+  result.valid = parsed.found;
+  result.inputAction = parsed.row->action;
   return result;
 }
 
@@ -580,36 +558,12 @@ ProductFrontendSelectAutomationResult resolveProductFrontendSelectAutomation(
       FrontendSelectRow{"return_to_title", FrontendAction::ReturnToTitle},
       FrontendSelectRow{"exit_game", FrontendAction::ExitGame},
   };
-  static constexpr std::array lookup{
-      FrontendSelectRow{"continue", FrontendAction::Continue},
-      FrontendSelectRow{"new_world", FrontendAction::NewWorld},
-      FrontendSelectRow{"creative_new_world", FrontendAction::CreativeNewWorld},
-      FrontendSelectRow{"creative_open_world", FrontendAction::CreativeOpenWorld},
-      FrontendSelectRow{"load_save", FrontendAction::LoadSave},
-      FrontendSelectRow{"settings", FrontendAction::Settings},
-      FrontendSelectRow{"dev_tools", FrontendAction::DevTools},
-      FrontendSelectRow{"exit", FrontendAction::Exit},
-      FrontendSelectRow{"resume", FrontendAction::Resume},
-      FrontendSelectRow{"edit_room", FrontendAction::EditRoom},
-      FrontendSelectRow{"leave_editor", FrontendAction::LeaveEditor},
-      FrontendSelectRow{"save", FrontendAction::Save},
-      FrontendSelectRow{"save_and_exit", FrontendAction::SaveAndExit},
-      FrontendSelectRow{"return_to_title", FrontendAction::ReturnToTitle},
-      FrontendSelectRow{"exit_game", FrontendAction::ExitGame},
-      FrontendSelectRow{"unknown", FrontendAction::None},
-  };
-  const auto row = std::find_if(
-      rows.begin(), rows.end(), [value](const FrontendSelectRow& candidate) {
-        return candidate.name == value;
-      });
-  const std::size_t rowIndex =
-      static_cast<std::size_t>(std::distance(rows.begin(), row));
-  const std::size_t selectedIndex =
-      std::min(rowIndex, lookup.size() - 1U);
-
+  static constexpr FrontendSelectRow fallback{"unknown", FrontendAction::None};
+  const AutomationRowLookup<FrontendSelectRow> parsed =
+      findAutomationRow(rows, value, fallback);
   ProductFrontendSelectAutomationResult result;
-  result.valid = rowIndex != rows.size();
-  result.action = lookup[selectedIndex].action;
+  result.valid = parsed.found;
+  result.action = parsed.row->action;
   return result;
 }
 
@@ -629,28 +583,12 @@ ProductSettingsTabAutomationResult resolveProductSettingsTabAutomation(
       SettingsTabRow{"accessibility", FrontendSettingsTab::Accessibility},
       SettingsTabRow{"developer", FrontendSettingsTab::Developer},
   };
-  static constexpr std::array lookup{
-      SettingsTabRow{"input", FrontendSettingsTab::Input},
-      SettingsTabRow{"controls", FrontendSettingsTab::Controls},
-      SettingsTabRow{"camera", FrontendSettingsTab::Camera},
-      SettingsTabRow{"gameplay", FrontendSettingsTab::Gameplay},
-      SettingsTabRow{"video_display", FrontendSettingsTab::VideoDisplay},
-      SettingsTabRow{"audio", FrontendSettingsTab::Audio},
-      SettingsTabRow{"accessibility", FrontendSettingsTab::Accessibility},
-      SettingsTabRow{"developer", FrontendSettingsTab::Developer},
-      SettingsTabRow{"unknown", FrontendSettingsTab::None},
-  };
+  static constexpr SettingsTabRow fallback{"unknown", FrontendSettingsTab::None};
   ProductSettingsTabAutomationResult result;
-  const auto row = std::find_if(
-      rows.begin(), rows.end(), [value](const SettingsTabRow& candidate) {
-        return candidate.name == value;
-      });
-  const std::size_t rowIndex =
-      static_cast<std::size_t>(std::distance(rows.begin(), row));
-  const std::size_t selectedIndex =
-      std::min(rowIndex, lookup.size() - 1U);
-  result.valid = row != rows.end();
-  result.settingsTab = lookup[selectedIndex].settingsTab;
+  const AutomationRowLookup<SettingsTabRow> parsed =
+      findAutomationRow(rows, value, fallback);
+  result.valid = parsed.found;
+  result.settingsTab = parsed.row->settingsTab;
   return result;
 }
 
@@ -672,30 +610,12 @@ ProductDevToolsCategoryAutomationResult resolveProductDevToolsCategoryAutomation
       DevToolsCategoryRow{"renderer", FrontendDevToolsCategory::Renderer},
       DevToolsCategoryRow{"performance", FrontendDevToolsCategory::Performance},
   };
-  static constexpr std::array lookup{
-      DevToolsCategoryRow{"session", FrontendDevToolsCategory::Session},
-      DevToolsCategoryRow{"input", FrontendDevToolsCategory::Input},
-      DevToolsCategoryRow{"player", FrontendDevToolsCategory::Player},
-      DevToolsCategoryRow{"movement", FrontendDevToolsCategory::Movement},
-      DevToolsCategoryRow{"world_editor", FrontendDevToolsCategory::WorldEditor},
-      DevToolsCategoryRow{"collision", FrontendDevToolsCategory::Collision},
-      DevToolsCategoryRow{"spells", FrontendDevToolsCategory::Spells},
-      DevToolsCategoryRow{"camera", FrontendDevToolsCategory::Camera},
-      DevToolsCategoryRow{"renderer", FrontendDevToolsCategory::Renderer},
-      DevToolsCategoryRow{"performance", FrontendDevToolsCategory::Performance},
-      DevToolsCategoryRow{"unknown", FrontendDevToolsCategory::None},
-  };
+  static constexpr DevToolsCategoryRow fallback{"unknown", FrontendDevToolsCategory::None};
   ProductDevToolsCategoryAutomationResult result;
-  const auto row = std::find_if(
-      rows.begin(), rows.end(), [value](const DevToolsCategoryRow& candidate) {
-        return candidate.name == value;
-      });
-  const std::size_t rowIndex =
-      static_cast<std::size_t>(std::distance(rows.begin(), row));
-  const std::size_t selectedIndex =
-      std::min(rowIndex, lookup.size() - 1U);
-  result.valid = row != rows.end();
-  result.category = lookup[selectedIndex].category;
+  const AutomationRowLookup<DevToolsCategoryRow> parsed =
+      findAutomationRow(rows, value, fallback);
+  result.valid = parsed.found;
+  result.category = parsed.row->category;
   return result;
 }
 
@@ -721,27 +641,12 @@ ProductBoolAutomationResult resolveProductAutomationBool(
       BoolRow{"0", false},
       BoolRow{"no", false},
   };
-  static constexpr std::array lookup{
-      BoolRow{"true", true},
-      BoolRow{"1", true},
-      BoolRow{"yes", true},
-      BoolRow{"false", false},
-      BoolRow{"0", false},
-      BoolRow{"no", false},
-      BoolRow{"unknown", false},
-  };
-  const auto row = std::find_if(
-      rows.begin(), rows.end(), [value](const BoolRow& candidate) {
-        return candidate.name == value;
-      });
-  const std::size_t rowIndex =
-      static_cast<std::size_t>(std::distance(rows.begin(), row));
-  const std::size_t selectedIndex =
-      std::min(rowIndex, lookup.size() - 1U);
-
+  static constexpr BoolRow fallback{"unknown", false};
+  const AutomationRowLookup<BoolRow> parsed =
+      findAutomationRow(rows, value, fallback);
   ProductBoolAutomationResult result;
-  result.valid = row != rows.end();
-  result.requested = lookup[selectedIndex].requested;
+  result.valid = parsed.found;
+  result.requested = parsed.row->requested;
   return result;
 }
 
@@ -763,24 +668,12 @@ ProductDungeonDraftDirectionAutomationResult resolveProductDungeonDraftDirection
       DirectionRow{"left", ProductDungeonDraftDirection::Left},
       DirectionRow{"right", ProductDungeonDraftDirection::Right},
   };
-  static constexpr std::array lookup{
-      DirectionRow{"up", ProductDungeonDraftDirection::Up},
-      DirectionRow{"down", ProductDungeonDraftDirection::Down},
-      DirectionRow{"left", ProductDungeonDraftDirection::Left},
-      DirectionRow{"right", ProductDungeonDraftDirection::Right},
-      DirectionRow{"unknown", ProductDungeonDraftDirection::Up},
-  };
-  const auto row = std::find_if(
-      rows.begin(), rows.end(), [value](const DirectionRow& candidate) {
-        return candidate.name == value;
-      });
-  const std::size_t rowIndex =
-      static_cast<std::size_t>(std::distance(rows.begin(), row));
-  const std::size_t selectedIndex =
-      std::min(rowIndex, lookup.size() - 1U);
+  static constexpr DirectionRow fallback{"unknown", ProductDungeonDraftDirection::Up};
+  const AutomationRowLookup<DirectionRow> parsed =
+      findAutomationRow(rows, value, fallback);
   ProductDungeonDraftDirectionAutomationResult result;
-  result.valid = row != rows.end();
-  result.direction = lookup[selectedIndex].direction;
+  result.valid = parsed.found;
+  result.direction = parsed.row->direction;
   return result;
 }
 
@@ -798,25 +691,11 @@ bool resolveProductSaveBrowserBoolAutomation(std::string_view value,
       BoolRow{"0", false},
       BoolRow{"no", false},
   };
-  static constexpr std::array lookup{
-      BoolRow{"true", true},
-      BoolRow{"1", true},
-      BoolRow{"yes", true},
-      BoolRow{"false", false},
-      BoolRow{"0", false},
-      BoolRow{"no", false},
-      BoolRow{"unknown", false},
-  };
-  const auto row = std::find_if(
-      rows.begin(), rows.end(), [value](const BoolRow& candidate) {
-        return candidate.name == value;
-      });
-  const std::size_t rowIndex =
-      static_cast<std::size_t>(std::distance(rows.begin(), row));
-  const std::size_t selectedIndex =
-      std::min(rowIndex, lookup.size() - 1U);
-  out = lookup[selectedIndex].value;
-  return row != rows.end();
+  static constexpr BoolRow fallback{"unknown", false};
+  const AutomationRowLookup<BoolRow> parsed =
+      findAutomationRow(rows, value, fallback);
+  out = parsed.row->value;
+  return parsed.found;
 }
 
 }  // namespace iggy3d
