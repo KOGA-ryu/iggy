@@ -2,6 +2,8 @@
 
 #include "app/iggy3d/creative/mutation/MutationApply.hpp"
 
+#include "app/iggy3d/creative/Geometry.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <utility>
@@ -92,18 +94,11 @@ CreativeMutationApplyReceipt applyObjectKindMutation(CreativeObject& object, Cre
     return makeNoChangeReceipt(object, mutationKind, "mutation has no stored object field yet");
 }
 
-[[nodiscard]] bool sameVec3(CreativeVec3 lhs, CreativeVec3 rhs) noexcept {
-    return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
-}
-
 [[nodiscard]] bool sameTransform(const CreativeTransform& lhs, const CreativeTransform& rhs) noexcept {
-    return sameVec3(lhs.position, rhs.position) &&
-           sameVec3(lhs.rotationEulerRadians, rhs.rotationEulerRadians) &&
-           sameVec3(lhs.scale, rhs.scale);
-}
-
-[[nodiscard]] bool sameBounds(const CreativeBounds& lhs, const CreativeBounds& rhs) noexcept {
-    return sameVec3(lhs.min, rhs.min) && sameVec3(lhs.max, rhs.max);
+    return creativeVec3ExactlyEqual(lhs.position, rhs.position) &&
+           creativeVec3ExactlyEqual(lhs.rotationEulerRadians,
+                                    rhs.rotationEulerRadians) &&
+           creativeVec3ExactlyEqual(lhs.scale, rhs.scale);
 }
 
 [[nodiscard]] bool samePathPoints(const std::vector<CreativePathPoint>& lhs, const std::vector<CreativePathPoint>& rhs) noexcept {
@@ -112,16 +107,13 @@ CreativeMutationApplyReceipt applyObjectKindMutation(CreativeObject& object, Cre
     }
 
     for (std::size_t index = 0; index < lhs.size(); ++index) {
-        if (!sameVec3(lhs[index].position, rhs[index].position)) {
+        if (!creativeVec3ExactlyEqual(lhs[index].position,
+                                      rhs[index].position)) {
             return false;
         }
     }
 
     return true;
-}
-
-[[nodiscard]] bool finiteVec3(CreativeVec3 value) noexcept {
-    return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
 }
 
 [[nodiscard]] bool validPathPoints(const std::vector<CreativePathPoint>& pathPoints) noexcept {
@@ -130,14 +122,14 @@ CreativeMutationApplyReceipt applyObjectKindMutation(CreativeObject& object, Cre
     }
 
     return std::all_of(pathPoints.begin(), pathPoints.end(), [](const CreativePathPoint& point) {
-        return finiteVec3(point.position);
+        return isFiniteCreativeVec3(point.position);
     });
 }
 
 [[nodiscard]] bool validLineEndpoints(const std::vector<CreativePathPoint>& pathPoints) noexcept {
     return pathPoints.size() == 2U &&
            std::all_of(pathPoints.begin(), pathPoints.end(), [](const CreativePathPoint& point) {
-               return finiteVec3(point.position);
+               return isFiniteCreativeVec3(point.position);
            });
 }
 
@@ -145,14 +137,6 @@ CreativeMutationApplyReceipt applyObjectKindMutation(CreativeObject& object, Cre
     return descriptor.shapeKind == CreativeObjectShapeKind::Line &&
            descriptor.projectionProfile == CreativeSpatialProjectionProfile::LinkProjection &&
            !descriptor.hasBounds;
-}
-
-[[nodiscard]] CreativeVec3 boundsSize(const CreativeBounds& bounds) noexcept {
-    return CreativeVec3{
-        bounds.max.x - bounds.min.x,
-        bounds.max.y - bounds.min.y,
-        bounds.max.z - bounds.min.z,
-    };
 }
 
 [[nodiscard]] CreativeBounds resizeBoundsFromMin(const CreativeBounds& bounds, CreativeVec3 size) noexcept {
@@ -200,8 +184,8 @@ CreativeMutationApplyReceipt applyObjectKindMutation(CreativeObject& object, Cre
     CreativeObject& object,
     CreativeMutationKind mutationKind,
     const RotateMutation& mutation) {
-    if (sameVec3(object.transform.rotationEulerRadians,
-                 mutation.rotationEulerRadians)) {
+    if (creativeVec3ExactlyEqual(object.transform.rotationEulerRadians,
+                                 mutation.rotationEulerRadians)) {
         return makeNoChangeReceipt(object, mutationKind, "object rotation already matches requested value");
     }
 
@@ -213,7 +197,8 @@ CreativeMutationApplyReceipt applyObjectKindMutation(CreativeObject& object, Cre
     CreativeObject& object,
     CreativeMutationKind mutationKind,
     CreativeVec3 size) {
-    if (sameVec3(boundsSize(object.bounds), size)) {
+    if (creativeVec3ExactlyEqual(measureCreativeBounds(object.bounds).size,
+                                 size)) {
         return makeNoChangeReceipt(object, mutationKind, "object bounds size already matches requested value");
     }
 
@@ -225,7 +210,7 @@ CreativeMutationApplyReceipt applyObjectKindMutation(CreativeObject& object, Cre
     CreativeObject& object,
     CreativeMutationKind mutationKind,
     const SetBoundsMutation& mutation) {
-    if (sameBounds(object.bounds, mutation.bounds)) {
+    if (creativeBoundsExactlyEqual(object.bounds, mutation.bounds)) {
         return makeNoChangeReceipt(object, mutationKind, "object bounds already match requested bounds");
     }
 
@@ -478,7 +463,7 @@ CreativeMutationApplyReceipt applyMoveMutation(CreativeObject& object, const Mov
     // anchor — bounds.min lands on the requested position and the transform
     // stays untouched.
     if (!objectHasTransform(object.kind) && objectHasBounds(object.kind)) {
-        if (sameVec3(object.bounds.min, mutation.position)) {
+        if (creativeVec3ExactlyEqual(object.bounds.min, mutation.position)) {
             return makeNoChangeReceipt(object, CreativeMutationKind::Move, "object position already matches requested value");
         }
 
@@ -492,7 +477,8 @@ CreativeMutationApplyReceipt applyMoveMutation(CreativeObject& object, const Mov
         return makeAppliedReceipt(object, CreativeMutationKind::Move, "object moved");
     }
 
-    if (sameVec3(object.transform.position, mutation.position)) {
+    if (creativeVec3ExactlyEqual(object.transform.position,
+                                 mutation.position)) {
         return makeNoChangeReceipt(object, CreativeMutationKind::Move, "object position already matches requested value");
     }
 
@@ -515,7 +501,7 @@ CreativeMutationApplyReceipt applyRotateMutation(CreativeObject& object, const R
 }
 
 CreativeMutationApplyReceipt applyScaleMutation(CreativeObject& object, const ScaleMutation& mutation) {
-    if (sameVec3(object.transform.scale, mutation.scale)) {
+    if (creativeVec3ExactlyEqual(object.transform.scale, mutation.scale)) {
         return makeNoChangeReceipt(object, CreativeMutationKind::Scale, "object scale already matches requested value");
     }
 
@@ -537,7 +523,7 @@ CreativeMutationApplyReceipt applyResizeMutation(CreativeObject& object, const R
 }
 
 CreativeMutationApplyReceipt applyStretchMutation(CreativeObject& object, const StretchMutation& mutation) {
-    if (sameVec3(mutation.delta, CreativeVec3{})) {
+    if (creativeVec3ExactlyEqual(mutation.delta, CreativeVec3{})) {
         return makeNoChangeReceipt(object, CreativeMutationKind::Stretch, "stretch delta is zero");
     }
 
@@ -552,19 +538,19 @@ CreativeMutationApplyReceipt applySetBoundsMutation(CreativeObject& object, cons
 CreativeMutationApplyReceipt applyScalarMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ScalarMutation& mutation) {
     switch (mutationKind) {
     case CreativeMutationKind::SetHeight: {
-        const auto size = boundsSize(object.bounds);
+        const auto size = measureCreativeBounds(object.bounds).size;
         return applyResizeMutationAs(object, mutationKind, CreativeVec3{size.x, mutation.value, size.z});
     }
     case CreativeMutationKind::SetLength: {
-        const auto size = boundsSize(object.bounds);
+        const auto size = measureCreativeBounds(object.bounds).size;
         return applyResizeMutationAs(object, mutationKind, CreativeVec3{mutation.value, size.y, size.z});
     }
     case CreativeMutationKind::SetWidth: {
-        const auto size = boundsSize(object.bounds);
+        const auto size = measureCreativeBounds(object.bounds).size;
         return applyResizeMutationAs(object, mutationKind, CreativeVec3{mutation.value, size.y, size.z});
     }
     case CreativeMutationKind::SetDepth: {
-        const auto size = boundsSize(object.bounds);
+        const auto size = measureCreativeBounds(object.bounds).size;
         return applyResizeMutationAs(object, mutationKind, CreativeVec3{size.x, size.y, mutation.value});
     }
     default:

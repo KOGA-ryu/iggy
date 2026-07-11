@@ -2,6 +2,7 @@
 
 #include "EditorPreviewProxies.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
+#include "app/iggy3d/creative/render/CreativeScreenProjection.hpp"
 #include "core/math/Mat4.hpp"
 #include "core/math/OrientedBox.hpp"
 #include "core/math/Vec3.hpp"
@@ -15,20 +16,6 @@
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 
-struct ScreenAabb {
-  bool valid = false;
-  float minX = 0.0F;
-  float minY = 0.0F;
-  float maxX = 0.0F;
-  float maxY = 0.0F;
-};
-
-struct ScreenPoint {
-  bool valid = false;
-  float x = 0.0F;
-  float y = 0.0F;
-};
-
 struct WorldRay {
   bool valid = false;
   iggy3d::Vec3 origin{};
@@ -38,7 +25,7 @@ struct WorldRay {
 struct ObjectVisualPickBounds {
   cr::CreativeObjectId id = cr::kInvalidObjectId;
   VisualBounds bounds{};
-  ScreenAabb screenAabb{};
+  cr::CreativeScreenBounds screenAabb{};
   std::optional<iggy3d::OrientedBox> orientedBounds{};
 };
 
@@ -53,21 +40,9 @@ struct ObjectVisualPickResult {
 struct PathPointHandleHit {
   cr::CreativeObjectId objectId = cr::kInvalidObjectId;
   std::size_t pointIndex = 0U;
-  ScreenAabb aabb{};
+  cr::CreativeScreenBounds aabb{};
   cr::CreativeVec3 position{};
 };
-
-[[nodiscard]] ScreenAabb projectBoxToScreen(
-    const iggy3d::Mat4& clipFromWorld,
-    iggy3d::Vec3 boxMin,
-    iggy3d::Vec3 boxMax,
-    std::uint32_t widthPx,
-    std::uint32_t heightPx);
-[[nodiscard]] ScreenPoint projectPointToScreen(
-    const iggy3d::Mat4& clipFromWorld,
-    iggy3d::Vec3 world,
-    std::uint32_t widthPx,
-    std::uint32_t heightPx);
 [[nodiscard]] WorldRay worldRayFromPixel(const iggy3d::RenderCameraFrame& camera,
                                          float pixelX,
                                          float pixelY,

@@ -441,49 +441,6 @@ CreativeFacadeToolDispatchReceipt Facade::dispatchToolInput(
   return receipt;
 }
 
-CreativeUiBuildReceipt Facade::buildUiModel() const {
-  return buildUiModel(CreativeUiBuildOptions{});
-}
-
-CreativeUiBuildReceipt Facade::buildUiModel(
-    CreativeUiBuildOptions options) const {
-  CreativeUiBuildRequest request;
-  request.toolState = toolState_;
-  request.selectionState = selectionState_;
-  request.measurementState = measurementState_;
-  request.snapSettings = snapSettings_;
-  request.ghostState = ghostState_;
-  request.undoAvailable = options.undoAvailable;
-  request.undoDepth = options.undoDepth;
-  const std::span<const CreativeObject> objects = document_.objects();
-  request.objectSummaries.reserve(objects.size());
-  for (const CreativeObject& object : objects) {
-    const TargetRef target = objectIdToTargetRef(object.id);
-    if (target.value == kInvalidId) {
-      continue;
-    }
-
-    CreativeUiObjectSummary summary;
-    summary.target = target;
-    summary.objectKind = object.kind;
-    summary.exists = true;
-    summary.visible = object.visible;
-    summary.locked = object.locked;
-    summary.hasGeneratedRoomShell =
-        object.kind == CreativeObjectKind::Room &&
-        creativeRoomHasGeneratedShellChildren(document_, object.id);
-    summary.name = object.name;
-    summary.objectId = object.id;
-    summary.layerId = object.layerId;
-    const CreativeTransformedBounds resolved =
-        resolveCreativeObjectBounds(object);
-    summary.bounds = resolved.valid ? resolved.worldBounds : object.bounds;
-    summary.position = object.transform.position;
-    request.objectSummaries.push_back(summary);
-  }
-  return buildCreativeUiModel(request);
-}
-
 CreativeFacadeMutationReceipt Facade::toggleSelectedObjectVisibility() {
   return toggleSelectedObjectMutation(document_,
                                       selectionState_.selectedTarget,

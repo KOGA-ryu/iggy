@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
+#include "app/iggy3d/creative/camera/Fly.hpp"
 #include "EditorInteraction.hpp"
 
 #include <algorithm>
@@ -28,18 +29,19 @@ bool nearFloat(float actual, float expected) {
   return std::fabs(actual - expected) <= 1.0e-6F;
 }
 
-bool controllerTransitionNormalizesAndOwnsEdges() {
+bool controllerTransitionSanitizesAndOwnsEdges() {
   cr::CreativeControllerSample sample;
   sample.connected = true;
   cr::setCreativeControllerAxis(
-      sample, cr::CreativeControllerAxis::MoveX,
+      sample, cr::CreativeControllerAxis::LeftStickX,
       cr::kCreativeControllerStickDeadzone);
-  cr::setCreativeControllerAxis(sample, cr::CreativeControllerAxis::MoveY,
-                                0.59F);
-  cr::setCreativeControllerAxis(sample, cr::CreativeControllerAxis::LookX,
+  cr::setCreativeControllerAxis(sample,
+                                cr::CreativeControllerAxis::LeftStickY, 0.0F);
+  cr::setCreativeControllerAxis(sample,
+                                cr::CreativeControllerAxis::RightStickX,
                                 1.5F);
   cr::setCreativeControllerAxis(
-      sample, cr::CreativeControllerAxis::LookY,
+      sample, cr::CreativeControllerAxis::RightStickY,
       std::numeric_limits<float>::quiet_NaN());
   cr::setCreativeControllerAxis(
       sample, cr::CreativeControllerAxis::LeftTrigger,
@@ -58,24 +60,32 @@ bool controllerTransitionNormalizesAndOwnsEdges() {
       cr::stepCreativeControllerInput(pressed.next, sample);
   const cr::CreativeControllerFrame disconnected =
       cr::stepCreativeControllerInput(held.next, {});
+  const cr::CreativeStickSignal leftStick = cr::creativeControllerStick(
+      pressed, cr::CreativeControllerStick::Left);
+  const cr::CreativeStickSignal rightStick = cr::creativeControllerStick(
+      pressed, cr::CreativeControllerStick::Right);
 
   return expect(pressed.next.connected, "controller connection is preserved") &&
          expect(nearFloat(cr::creativeControllerAxis(
-                              pressed, cr::CreativeControllerAxis::MoveX),
-                          0.0F),
-                "stick deadzone boundary normalizes to zero") &&
+                              pressed,
+                              cr::CreativeControllerAxis::LeftStickX),
+                          cr::kCreativeControllerStickDeadzone),
+                "frame preserves sanitized physical stick travel") &&
+         expect(!leftStick.active && nearFloat(leftStick.magnitude, 0.0F),
+                "stick primitive owns the radial deadzone") &&
          expect(nearFloat(cr::creativeControllerAxis(
-                              pressed, cr::CreativeControllerAxis::MoveY),
-                          0.5F),
-                "stick magnitude is rescaled after deadzone") &&
-         expect(nearFloat(cr::creativeControllerAxis(
-                              pressed, cr::CreativeControllerAxis::LookX),
+                              pressed,
+                              cr::CreativeControllerAxis::RightStickX),
                           1.0F),
-                "stick axes are clamped") &&
+                "physical stick axes are clamped") &&
          expect(nearFloat(cr::creativeControllerAxis(
-                              pressed, cr::CreativeControllerAxis::LookY),
+                              pressed,
+                              cr::CreativeControllerAxis::RightStickY),
                           0.0F),
-                "non-finite stick axes normalize to zero") &&
+                "non-finite physical axes sanitize to zero") &&
+         expect(rightStick.active && nearFloat(rightStick.x, 1.0F) &&
+                    nearFloat(rightStick.y, 0.0F),
+                "stick lookup shapes the selected physical pair") &&
          expect(cr::creativeControllerButtonPressed(
                     pressed, cr::CreativeControllerButton::South) &&
                     cr::creativeControllerButtonDown(
@@ -110,6 +120,159 @@ bool controllerTransitionNormalizesAndOwnsEdges() {
                                   pressed, cr::CreativeControllerAxis::Count),
                               0.0F),
                 "sentinel controller controls are safely ignored");
+}
+
+bool controllerStickPrimitiveHasCanonicalDirections() {
+  struct DirectionCase {
+    float rawX;
+    float rawY;
+    float expectedX;
+    float expectedY;
+    std::string_view label;
+  };
+  constexpr std::array directions{
+      DirectionCase{-1.0F, 0.0F, -1.0F, 0.0F, "left stays left"},
+      DirectionCase{1.0F, 0.0F, 1.0F, 0.0F, "right stays right"},
+      DirectionCase{0.0F, -1.0F, 0.0F, -1.0F, "down stays down"},
+      DirectionCase{0.0F, 1.0F, 0.0F, 1.0F, "up stays up"},
+  };
+  cr::CreativeStickProfile noDeadzone;
+  noDeadzone.deadzone = 0.0F;
+  bool ok =
+      expect(nearFloat(cr::canonicalCreativeStickComponent(
+                           std::numeric_limits<std::int16_t>::min(),
+                           cr::CreativeStickComponent::X),
+                       -1.0F),
+             "raw hardware left maps to canonical left") &&
+      expect(nearFloat(cr::canonicalCreativeStickComponent(
+                           std::numeric_limits<std::int16_t>::max(),
+                           cr::CreativeStickComponent::X),
+                       1.0F),
+             "raw hardware right maps to canonical right") &&
+      expect(nearFloat(cr::canonicalCreativeStickComponent(
+                           std::numeric_limits<std::int16_t>::min(),
+                           cr::CreativeStickComponent::Y),
+                       1.0F),
+             "raw hardware up maps to canonical up") &&
+      expect(nearFloat(cr::canonicalCreativeStickComponent(
+                           std::numeric_limits<std::int16_t>::max(),
+                           cr::CreativeStickComponent::Y),
+                       -1.0F),
+             "raw hardware down maps to canonical down") &&
+      expect(nearFloat(cr::canonicalCreativeStickComponent(
+                           123, cr::CreativeStickComponent::Count),
+                       0.0F),
+             "sentinel hardware component is safely ignored");
+  for (const DirectionCase& direction : directions) {
+    const cr::CreativeStickSignal signal = cr::shapeCreativeControllerStick(
+        direction.rawX, direction.rawY, noDeadzone);
+    ok = expect(signal.active && nearFloat(signal.x, direction.expectedX) &&
+                    nearFloat(signal.y, direction.expectedY) &&
+                    nearFloat(signal.magnitude, 1.0F),
+                direction.label) &&
+         ok;
+  }
+
+  const cr::CreativeStickSignal boundary = cr::shapeCreativeControllerStick(
+      cr::kCreativeControllerStickDeadzone, 0.0F);
+  const cr::CreativeStickSignal diagonal = cr::shapeCreativeControllerStick(
+      cr::kCreativeControllerStickDeadzone,
+      cr::kCreativeControllerStickDeadzone);
+  const cr::CreativeStickSignal fullDiagonal =
+      cr::shapeCreativeControllerStick(1.0F, 1.0F, noDeadzone);
+  cr::CreativeStickProfile shaped = noDeadzone;
+  shaped.responseExponent = 2.0F;
+  const cr::CreativeStickSignal halfShaped =
+      cr::shapeCreativeControllerStick(0.5F, 0.0F, shaped);
+  shaped.invertX = true;
+  shaped.invertY = true;
+  const cr::CreativeStickSignal inverted =
+      cr::shapeCreativeControllerStick(-1.0F, 1.0F, shaped);
+  const cr::CreativeControllerLookDelta lookLeft =
+      cr::creativeControllerLookDelta(
+          cr::shapeCreativeControllerStick(-1.0F, 0.0F, noDeadzone), 2.4F);
+  const cr::CreativeControllerLookDelta lookRight =
+      cr::creativeControllerLookDelta(
+          cr::shapeCreativeControllerStick(1.0F, 0.0F, noDeadzone), 2.4F);
+  const cr::CreativeControllerLookDelta lookDown =
+      cr::creativeControllerLookDelta(
+          cr::shapeCreativeControllerStick(0.0F, -1.0F, noDeadzone), 2.4F);
+  const cr::CreativeControllerLookDelta lookUp =
+      cr::creativeControllerLookDelta(
+          cr::shapeCreativeControllerStick(0.0F, 1.0F, noDeadzone), 2.4F);
+  cr::CreativeStickProfile invalid = noDeadzone;
+  invalid.deadzone = 1.0F;
+
+  return expect(!boundary.active,
+                "radial deadzone boundary is inactive") &&
+         expect(diagonal.active && diagonal.x > 0.0F && diagonal.y > 0.0F,
+                "diagonal travel is tested as one vector") &&
+         expect(fullDiagonal.active &&
+                    nearFloat(fullDiagonal.magnitude, 1.0F) &&
+                    nearFloat(fullDiagonal.x, 0.70710677F) &&
+                    nearFloat(fullDiagonal.y, 0.70710677F),
+                "diagonal travel is normalized to the unit circle") &&
+         expect(halfShaped.active && nearFloat(halfShaped.magnitude, 0.25F),
+                "consumer response exponent shapes magnitude") &&
+         expect(inverted.active && inverted.x > 0.0F && inverted.y < 0.0F,
+                "consumer profile owns explicit axis inversion") &&
+         expect(nearFloat(lookLeft.yawDegrees, -2.4F) &&
+                    nearFloat(lookRight.yawDegrees, 2.4F),
+                "camera look maps left and right without reversal") &&
+         expect(nearFloat(lookDown.pitchDegrees, -2.4F) &&
+                    nearFloat(lookUp.pitchDegrees, 2.4F),
+                "camera look maps down and up without reversal") &&
+         expect(!cr::shapeCreativeControllerStick(
+                     std::numeric_limits<float>::quiet_NaN(), 0.0F)
+                     .active &&
+                    !cr::shapeCreativeControllerStick(1.0F, 0.0F, invalid)
+                         .active,
+                "invalid stick samples and profiles are inactive") &&
+         expect(!cr::creativeControllerStick(
+                     {}, cr::CreativeControllerStick::Count)
+                     .active,
+                "sentinel physical stick is safely ignored") &&
+         ok;
+}
+
+bool controllerMovementPreservesDirectionAndFineTravel() {
+  iggy3d::ProductCreativeFlyConfig config;
+  config.enabled = true;
+  config.speedMetersPerSecond = 8.0F;
+  config.inputStepSeconds = 1.0F;
+
+  iggy3d::ProductCreativeFlyInput left;
+  left.moveX = -0.5F;
+  const iggy3d::ProductCreativeFlyResult leftResult =
+      iggy3d::applyProductCreativeFlyInput(config, left, {});
+  iggy3d::ProductCreativeFlyInput right;
+  right.moveX = 0.5F;
+  const iggy3d::ProductCreativeFlyResult rightResult =
+      iggy3d::applyProductCreativeFlyInput(config, right, {});
+  iggy3d::ProductCreativeFlyInput forward;
+  forward.moveY = 0.5F;
+  const iggy3d::ProductCreativeFlyResult forwardResult =
+      iggy3d::applyProductCreativeFlyInput(config, forward, {});
+  iggy3d::ProductCreativeFlyInput keyboardDiagonal;
+  keyboardDiagonal.moveX = 1.0F;
+  keyboardDiagonal.moveY = 1.0F;
+  const iggy3d::ProductCreativeFlyResult diagonalResult =
+      iggy3d::applyProductCreativeFlyInput(config, keyboardDiagonal, {});
+
+  return expect(leftResult.applied && nearFloat(leftResult.deltaMeters.x,
+                                                -4.0F),
+                "half stick left moves left at half speed") &&
+         expect(rightResult.applied && nearFloat(rightResult.deltaMeters.x,
+                                                 4.0F),
+                "half stick right moves right at half speed") &&
+         expect(forwardResult.applied && nearFloat(forwardResult.deltaMeters.z,
+                                                   -4.0F),
+                "half stick forward moves forward at half speed") &&
+         expect(diagonalResult.applied &&
+                    nearFloat(std::hypot(diagonalResult.deltaMeters.x,
+                                         diagonalResult.deltaMeters.z),
+                              8.0F),
+                "full keyboard diagonal remains capped at full speed");
 }
 
 bool worldActionsAreEdgeTriggered() {
@@ -543,7 +706,9 @@ bool minecraftBindingsAreConflictFreeAndEdgeTriggered() {
 
 int main() {
   bool ok = true;
-  ok = controllerTransitionNormalizesAndOwnsEdges() && ok;
+  ok = controllerTransitionSanitizesAndOwnsEdges() && ok;
+  ok = controllerStickPrimitiveHasCanonicalDirections() && ok;
+  ok = controllerMovementPreservesDirectionAndFineTravel() && ok;
   ok = worldActionsAreEdgeTriggered() && ok;
   ok = hotbarHasStableNineSlotGrammar() && ok;
   ok = heldVolumeItemsMapWithoutBranchesAtCallers() && ok;

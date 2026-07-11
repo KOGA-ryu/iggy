@@ -35,6 +35,7 @@
 
 #include "EditorCapture.hpp"
 #include "EditorCatalog.hpp"
+#include "EditorControls.hpp"
 #include "EditorFrame.hpp"
 #include "EditorGamepad.hpp"
 #include "EditorGizmo.hpp"
@@ -69,6 +70,7 @@ using iggy3d_creative_app::CreativeEditorOverlayFrame;
 using iggy3d_creative_app::firstBrushKind;
 using iggy3d_creative_app::logCreativeEditorPathHandleCaptureFrame;
 using iggy3d_creative_app::processCreativeEditorCatalogFrame;
+using iggy3d_creative_app::processCreativeEditorControlsFrame;
 using iggy3d_creative_app::processCreativeEditorToolOptionsFrame;
 using iggy3d_creative_app::processCreativeEditorWorldInteractionFrame;
 using iggy3d_creative_app::submitCreativeEditorFrame;
@@ -139,6 +141,10 @@ int main(int argc, char** argv) {
       bootstrapData.floorObjectId;
   const std::filesystem::path& saveRoot = bootstrapData.saveRoot;
   const std::string& saveId = bootstrapData.saveId;
+  const std::filesystem::path controlsPath =
+      saveRoot / "creative_controls_v1.cfg";
+  static_cast<void>(iggy3d_creative_app::loadCreativeEditorControlProfile(
+      editor.controlProfile, controlsPath));
   const creative::CreativeSpatialProjectionRequest& wireProjReq =
       bootstrapData.wireProjectionRequest;
   const float kGizmoAxisLength = bootstrapData.gizmoAxisLengthMeters;
@@ -170,6 +176,16 @@ int main(int argc, char** argv) {
             editor.transform, "selection_transform_focus_lost")) {
       static_cast<void>(window.setRelativeMouseMode(true));
     }
+    const iggy3d_creative_app::CreativeEditorControlsFrameResult controlsFrame =
+        processCreativeEditorControlsFrame(
+            {window,
+             editor,
+             frameInput.routedInput,
+             frameInput.inputFrame,
+             controlsPath,
+             frameInput.monotonicTimeNanoseconds,
+             extent.width,
+             extent.height});
     const iggy3d_creative_app::CreativeEditorTransformFrameResult
         transformFrame = processCreativeEditorTransformFrame(
             {window,
@@ -178,6 +194,8 @@ int main(int argc, char** argv) {
              frameInput.routedInput,
              frameInput.toolWheelDirectionX,
              frameInput.toolWheelDirectionY,
+             frameInput.transformNudgeWheelSteps,
+             frameInput.transformFineNudge,
              extent.width,
              extent.height});
     const iggy3d_creative_app::CreativeEditorCatalogFrameResult catalogFrame =
@@ -201,8 +219,8 @@ int main(int argc, char** argv) {
              extent.width,
              extent.height});
     const bool modalBlocksWorldActions =
-        transformFrame.blockWorldActions || catalogFrame.blockWorldActions ||
-        toolOptionsFrame.blockWorldActions;
+        controlsFrame.blockWorldActions || transformFrame.blockWorldActions ||
+        catalogFrame.blockWorldActions || toolOptionsFrame.blockWorldActions;
     if (modalBlocksWorldActions || !frameInput.windowFocused) {
       finalizeCreativeMaterialStroke(
           appState, editor,

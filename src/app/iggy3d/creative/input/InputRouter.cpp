@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cmath>
 #include <string>
 
 namespace iggy3d::creative {
@@ -49,6 +48,21 @@ constexpr CreativeInputBinding catalogBinding(
           CreativeInputConsumePolicy::ConsumeTrigger};
 }
 
+constexpr CreativeInputBinding transformBinding(
+    CreativeInputActionId action,
+    CreativeInputKey key,
+    CreativeInputModifierMask allowedModifiers =
+        kCreativeInputModifierNone) noexcept {
+  return {action,
+          key,
+          CreativeInputContext::TransformPreview,
+          kCreativeInputModifierNone,
+          kCreativeInputModifierNone,
+          allowedModifiers,
+          kTransformPriority,
+          CreativeInputConsumePolicy::ConsumeTrigger};
+}
+
 constexpr CreativeInputBinding toolWheelToggleBinding(
     CreativeInputKey key,
     CreativeInputContext context,
@@ -61,6 +75,22 @@ constexpr CreativeInputBinding toolWheelToggleBinding(
           allowedModifiers,
           kToolPriority,
           CreativeInputConsumePolicy::ConsumeTrigger};
+}
+
+constexpr CreativeInputBinding continuousBinding(
+    CreativeInputActionId action,
+    CreativeInputKey key,
+    CreativeInputContext context) noexcept {
+  return {action,
+          key,
+          context,
+          kCreativeInputModifierNone,
+          kCreativeInputModifierNone,
+          kAllModifiers,
+          0,
+          CreativeInputConsumePolicy::PassThrough,
+          {},
+          CreativeInputBindingActivation::Continuous};
 }
 
 constexpr std::array kDefaultBindings{
@@ -169,14 +199,6 @@ constexpr std::array kDefaultBindings{
                          kCreativeInputModifierNone,
                          kDestructivePriority,
                          CreativeInputConsumePolicy::ConsumeTrigger},
-    CreativeInputBinding{CreativeInputActionId::CancelActiveTool,
-                         CreativeInputKey::Escape,
-                         CreativeInputContext::EditorViewport,
-                         kCreativeInputModifierNone,
-                         kCreativeInputModifierNone,
-                         kCreativeInputModifierNone,
-                         kDestructivePriority,
-                         CreativeInputConsumePolicy::ConsumeTrigger},
     catalogBinding(CreativeInputActionId::ConfirmActiveTool,
                    CreativeInputKey::Enter,
                    CreativeInputContext::TransformPreview),
@@ -201,18 +223,60 @@ constexpr std::array kDefaultBindings{
     catalogBinding(CreativeInputActionId::ToggleTransformControls,
                    CreativeInputKey::GamepadDpadRight,
                    CreativeInputContext::TransformPreview),
+    transformBinding(CreativeInputActionId::TransformConstraintX,
+                     CreativeInputKey::X),
+    transformBinding(CreativeInputActionId::TransformConstraintY,
+                     CreativeInputKey::Y),
+    transformBinding(CreativeInputActionId::TransformConstraintZ,
+                     CreativeInputKey::Z),
+    transformBinding(CreativeInputActionId::TransformNudgePositive,
+                     CreativeInputKey::ArrowUp,
+                     kCreativeInputModifierShift),
+    transformBinding(CreativeInputActionId::TransformNudgePositive,
+                     CreativeInputKey::GamepadDpadUp,
+                     kCreativeInputModifierShift),
+    transformBinding(CreativeInputActionId::TransformNudgeNegative,
+                     CreativeInputKey::ArrowDown,
+                     kCreativeInputModifierShift),
+    transformBinding(CreativeInputActionId::TransformNudgeNegative,
+                     CreativeInputKey::GamepadDpadDown,
+                     kCreativeInputModifierShift),
+    catalogBinding(CreativeInputActionId::ConfirmActiveTool,
+                   CreativeInputKey::Enter,
+                   CreativeInputContext::TransformControls),
+    catalogBinding(CreativeInputActionId::ConfirmActiveTool,
+                   CreativeInputKey::GamepadConfirm,
+                   CreativeInputContext::TransformControls),
+    catalogBinding(CreativeInputActionId::CancelActiveTool,
+                   CreativeInputKey::Escape,
+                   CreativeInputContext::TransformControls),
+    catalogBinding(CreativeInputActionId::CancelActiveTool,
+                   CreativeInputKey::GamepadCancel,
+                   CreativeInputContext::TransformControls),
+    catalogBinding(CreativeInputActionId::CancelActiveTool,
+                   CreativeInputKey::Delete,
+                   CreativeInputContext::TransformControls),
+    catalogBinding(CreativeInputActionId::CancelActiveTool,
+                   CreativeInputKey::Backspace,
+                   CreativeInputContext::TransformControls),
+    catalogBinding(CreativeInputActionId::ToggleTransformControls,
+                   CreativeInputKey::R,
+                   CreativeInputContext::TransformControls),
+    catalogBinding(CreativeInputActionId::ToggleTransformControls,
+                   CreativeInputKey::GamepadDpadRight,
+                   CreativeInputContext::TransformControls),
     catalogBinding(CreativeInputActionId::TransformControlPrevious,
                    CreativeInputKey::ArrowLeft,
-                   CreativeInputContext::TransformPreview),
+                   CreativeInputContext::TransformControls),
     catalogBinding(CreativeInputActionId::TransformControlPrevious,
                    CreativeInputKey::GamepadDpadUp,
-                   CreativeInputContext::TransformPreview),
+                   CreativeInputContext::TransformControls),
     catalogBinding(CreativeInputActionId::TransformControlNext,
                    CreativeInputKey::ArrowRight,
-                   CreativeInputContext::TransformPreview),
+                   CreativeInputContext::TransformControls),
     catalogBinding(CreativeInputActionId::TransformControlNext,
                    CreativeInputKey::GamepadDpadDown,
-                   CreativeInputContext::TransformPreview),
+                   CreativeInputContext::TransformControls),
     hotbarBinding(CreativeInputActionId::HotbarSlot1,
                   CreativeInputKey::Digit1),
     hotbarBinding(CreativeInputActionId::HotbarSlot2,
@@ -403,39 +467,159 @@ constexpr std::array kDefaultBindings{
     catalogBinding(CreativeInputActionId::ToolOptionsClose,
                    CreativeInputKey::GamepadCancel,
                    CreativeInputContext::ToolOptions),
+    continuousBinding(CreativeInputActionId::MoveForward,
+                      CreativeInputKey::W,
+                      CreativeInputContext::EditorViewport),
+    continuousBinding(CreativeInputActionId::MoveForward,
+                      CreativeInputKey::W,
+                      CreativeInputContext::TransformPreview),
+    continuousBinding(CreativeInputActionId::MoveBackward,
+                      CreativeInputKey::S,
+                      CreativeInputContext::EditorViewport),
+    continuousBinding(CreativeInputActionId::MoveBackward,
+                      CreativeInputKey::S,
+                      CreativeInputContext::TransformPreview),
+    continuousBinding(CreativeInputActionId::MoveLeft,
+                      CreativeInputKey::A,
+                      CreativeInputContext::EditorViewport),
+    continuousBinding(CreativeInputActionId::MoveLeft,
+                      CreativeInputKey::A,
+                      CreativeInputContext::TransformPreview),
+    continuousBinding(CreativeInputActionId::MoveRight,
+                      CreativeInputKey::D,
+                      CreativeInputContext::EditorViewport),
+    continuousBinding(CreativeInputActionId::MoveRight,
+                      CreativeInputKey::D,
+                      CreativeInputContext::TransformPreview),
+    continuousBinding(CreativeInputActionId::FlyUp,
+                      CreativeInputKey::Space,
+                      CreativeInputContext::EditorViewport),
+    continuousBinding(CreativeInputActionId::FlyUp,
+                      CreativeInputKey::Space,
+                      CreativeInputContext::TransformPreview),
+    continuousBinding(CreativeInputActionId::FlyUp,
+                      CreativeInputKey::GamepadConfirm,
+                      CreativeInputContext::EditorViewport),
+    continuousBinding(CreativeInputActionId::FlyUp,
+                      CreativeInputKey::GamepadConfirm,
+                      CreativeInputContext::TransformPreview),
+    continuousBinding(CreativeInputActionId::FlyDown,
+                      CreativeInputKey::LeftShift,
+                      CreativeInputContext::EditorViewport),
+    continuousBinding(CreativeInputActionId::FlyDown,
+                      CreativeInputKey::LeftShift,
+                      CreativeInputContext::TransformPreview),
+    continuousBinding(CreativeInputActionId::FlyDown,
+                      CreativeInputKey::RightShift,
+                      CreativeInputContext::EditorViewport),
+    continuousBinding(CreativeInputActionId::FlyDown,
+                      CreativeInputKey::RightShift,
+                      CreativeInputContext::TransformPreview),
+    continuousBinding(CreativeInputActionId::FlyDown,
+                      CreativeInputKey::GamepadCancel,
+                      CreativeInputContext::EditorViewport),
+    continuousBinding(CreativeInputActionId::FlyDown,
+                      CreativeInputKey::GamepadCancel,
+                      CreativeInputContext::TransformPreview),
+    continuousBinding(CreativeInputActionId::Sprint,
+                      CreativeInputKey::LeftControl,
+                      CreativeInputContext::EditorViewport),
+    continuousBinding(CreativeInputActionId::Sprint,
+                      CreativeInputKey::LeftControl,
+                      CreativeInputContext::TransformPreview),
+    continuousBinding(CreativeInputActionId::Sprint,
+                      CreativeInputKey::RightControl,
+                      CreativeInputContext::EditorViewport),
+    continuousBinding(CreativeInputActionId::Sprint,
+                      CreativeInputKey::RightControl,
+                      CreativeInputContext::TransformPreview),
+    continuousBinding(CreativeInputActionId::Sprint,
+                      CreativeInputKey::GamepadLeftStick,
+                      CreativeInputContext::EditorViewport),
+    continuousBinding(CreativeInputActionId::Sprint,
+                      CreativeInputKey::GamepadLeftStick,
+                      CreativeInputContext::TransformPreview),
+    continuousBinding(CreativeInputActionId::PrimaryAction,
+                      CreativeInputKey::MousePrimary,
+                      CreativeInputContext::EditorViewport),
+    continuousBinding(CreativeInputActionId::PrimaryAction,
+                      CreativeInputKey::GamepadRightTrigger,
+                      CreativeInputContext::EditorViewport),
+    continuousBinding(CreativeInputActionId::SecondaryAction,
+                      CreativeInputKey::MouseSecondary,
+                      CreativeInputContext::EditorViewport),
+    continuousBinding(CreativeInputActionId::SecondaryAction,
+                      CreativeInputKey::GamepadLeftTrigger,
+                      CreativeInputContext::EditorViewport),
+    continuousBinding(CreativeInputActionId::PickAction,
+                      CreativeInputKey::MouseMiddle,
+                      CreativeInputContext::EditorViewport),
+    continuousBinding(CreativeInputActionId::PickAction,
+                      CreativeInputKey::GamepadDpadLeft,
+                      CreativeInputContext::EditorViewport),
+    continuousBinding(CreativeInputActionId::HotbarPrevious,
+                      CreativeInputKey::GamepadLeftShoulder,
+                      CreativeInputContext::EditorViewport),
+    continuousBinding(CreativeInputActionId::HotbarNext,
+                      CreativeInputKey::GamepadRightShoulder,
+                      CreativeInputContext::EditorViewport),
+    catalogBinding(CreativeInputActionId::ToggleControls,
+                   CreativeInputKey::Escape,
+                   CreativeInputContext::EditorViewport),
+    catalogBinding(CreativeInputActionId::ToggleControls,
+                   CreativeInputKey::GamepadStart,
+                   CreativeInputContext::EditorViewport),
+    catalogBinding(CreativeInputActionId::ControlsPrevious,
+                   CreativeInputKey::ArrowUp,
+                   CreativeInputContext::Controls),
+    catalogBinding(CreativeInputActionId::ControlsPrevious,
+                   CreativeInputKey::GamepadDpadUp,
+                   CreativeInputContext::Controls),
+    catalogBinding(CreativeInputActionId::ControlsNext,
+                   CreativeInputKey::ArrowDown,
+                   CreativeInputContext::Controls),
+    catalogBinding(CreativeInputActionId::ControlsNext,
+                   CreativeInputKey::GamepadDpadDown,
+                   CreativeInputContext::Controls),
+    catalogBinding(CreativeInputActionId::ControlsDecrease,
+                   CreativeInputKey::ArrowLeft,
+                   CreativeInputContext::Controls),
+    catalogBinding(CreativeInputActionId::ControlsDecrease,
+                   CreativeInputKey::GamepadDpadLeft,
+                   CreativeInputContext::Controls),
+    catalogBinding(CreativeInputActionId::ControlsIncrease,
+                   CreativeInputKey::ArrowRight,
+                   CreativeInputContext::Controls),
+    catalogBinding(CreativeInputActionId::ControlsIncrease,
+                   CreativeInputKey::GamepadDpadRight,
+                   CreativeInputContext::Controls),
+    catalogBinding(CreativeInputActionId::ControlsActivate,
+                   CreativeInputKey::Enter,
+                   CreativeInputContext::Controls),
+    catalogBinding(CreativeInputActionId::ControlsActivate,
+                   CreativeInputKey::GamepadConfirm,
+                   CreativeInputContext::Controls),
+    catalogBinding(CreativeInputActionId::ControlsClose,
+                   CreativeInputKey::Escape,
+                   CreativeInputContext::Controls),
+    catalogBinding(CreativeInputActionId::ControlsClose,
+                   CreativeInputKey::GamepadCancel,
+                   CreativeInputContext::Controls),
+    catalogBinding(CreativeInputActionId::ControlsClose,
+                   CreativeInputKey::GamepadStart,
+                   CreativeInputContext::Controls),
+    catalogBinding(CreativeInputActionId::ControlsResetDefaults,
+                   CreativeInputKey::Backspace,
+                   CreativeInputContext::Controls),
+    catalogBinding(CreativeInputActionId::ControlsResetDefaults,
+                   CreativeInputKey::GamepadWest,
+                   CreativeInputContext::Controls),
 };
 
 static_assert(kDefaultBindings.size() <= kCreativeInputBindingCapacity);
 
 [[nodiscard]] std::size_t keyIndex(CreativeInputKey key) noexcept {
   return static_cast<std::size_t>(key);
-}
-
-[[nodiscard]] std::size_t controllerAxisIndex(
-    CreativeControllerAxis axis) noexcept {
-  return static_cast<std::size_t>(axis);
-}
-
-[[nodiscard]] std::size_t controllerButtonIndex(
-    CreativeControllerButton button) noexcept {
-  return static_cast<std::size_t>(button);
-}
-
-[[nodiscard]] float finiteClamped(float value,
-                                  float minimum,
-                                  float maximum) noexcept {
-  return std::isfinite(value) ? std::clamp(value, minimum, maximum) : 0.0F;
-}
-
-[[nodiscard]] float applyControllerStickDeadzone(float value) noexcept {
-  value = finiteClamped(value, -1.0F, 1.0F);
-  const float magnitude = std::fabs(value);
-  if (magnitude <= kCreativeControllerStickDeadzone) {
-    return 0.0F;
-  }
-  const float scaled = (magnitude - kCreativeControllerStickDeadzone) /
-                       (1.0F - kCreativeControllerStickDeadzone);
-  return std::copysign(std::clamp(scaled, 0.0F, 1.0F), value);
 }
 
 [[nodiscard]] bool modifiersMatch(
@@ -455,7 +639,8 @@ static_assert(kDefaultBindings.size() <= kCreativeInputBindingCapacity);
 [[nodiscard]] bool physicalChordActive(
     const CreativeInputFrame& frame,
     const CreativeInputBinding& binding) noexcept {
-  return creativeInputKeyDown(frame, binding.trigger) &&
+  return binding.trigger != CreativeInputKey::Unbound &&
+         creativeInputKeyDown(frame, binding.trigger) &&
          modifiersMatch(frame.modifiers, binding);
 }
 
@@ -578,6 +763,16 @@ std::string_view toString(CreativeInputActionId action) noexcept {
       return "TransformControlPrevious";
     case CreativeInputActionId::TransformControlNext:
       return "TransformControlNext";
+    case CreativeInputActionId::TransformConstraintX:
+      return "TransformConstraintX";
+    case CreativeInputActionId::TransformConstraintY:
+      return "TransformConstraintY";
+    case CreativeInputActionId::TransformConstraintZ:
+      return "TransformConstraintZ";
+    case CreativeInputActionId::TransformNudgeNegative:
+      return "TransformNudgeNegative";
+    case CreativeInputActionId::TransformNudgePositive:
+      return "TransformNudgePositive";
     case CreativeInputActionId::ConfirmActiveTool: return "ConfirmActiveTool";
     case CreativeInputActionId::CancelActiveTool: return "CancelActiveTool";
     case CreativeInputActionId::DeleteSelection: return "DeleteSelection";
@@ -594,6 +789,45 @@ std::string_view toString(CreativeInputActionId action) noexcept {
     case CreativeInputActionId::Save: return "Save";
     case CreativeInputActionId::NewDocument: return "NewDocument";
     case CreativeInputActionId::Load: return "Load";
+    case CreativeInputActionId::MoveForward: return "MoveForward";
+    case CreativeInputActionId::MoveBackward: return "MoveBackward";
+    case CreativeInputActionId::MoveLeft: return "MoveLeft";
+    case CreativeInputActionId::MoveRight: return "MoveRight";
+    case CreativeInputActionId::FlyUp: return "FlyUp";
+    case CreativeInputActionId::FlyDown: return "FlyDown";
+    case CreativeInputActionId::Sprint: return "Sprint";
+    case CreativeInputActionId::PrimaryAction: return "PrimaryAction";
+    case CreativeInputActionId::SecondaryAction: return "SecondaryAction";
+    case CreativeInputActionId::PickAction: return "PickAction";
+    case CreativeInputActionId::HotbarPrevious: return "HotbarPrevious";
+    case CreativeInputActionId::HotbarNext: return "HotbarNext";
+    case CreativeInputActionId::ToggleControls: return "ToggleControls";
+    case CreativeInputActionId::ControlsPrevious: return "ControlsPrevious";
+    case CreativeInputActionId::ControlsNext: return "ControlsNext";
+    case CreativeInputActionId::ControlsDecrease: return "ControlsDecrease";
+    case CreativeInputActionId::ControlsIncrease: return "ControlsIncrease";
+    case CreativeInputActionId::ControlsActivate: return "ControlsActivate";
+    case CreativeInputActionId::ControlsClose: return "ControlsClose";
+    case CreativeInputActionId::ControlsResetDefaults:
+      return "ControlsResetDefaults";
+    case CreativeInputActionId::Count: break;
+  }
+  return "Unknown";
+}
+
+std::string_view toString(CreativeInputContext context) noexcept {
+  switch (context) {
+    case CreativeInputContext::EditorViewport: return "EditorViewport";
+    case CreativeInputContext::Catalog: return "Catalog";
+    case CreativeInputContext::ToolWheel: return "ToolWheel";
+    case CreativeInputContext::ToolOptions: return "ToolOptions";
+    case CreativeInputContext::TransformPreview: return "TransformPreview";
+    case CreativeInputContext::TransformControls: return "TransformControls";
+    case CreativeInputContext::Controls: return "Controls";
+    case CreativeInputContext::TextEntry: return "TextEntry";
+    case CreativeInputContext::Modal: return "Modal";
+    case CreativeInputContext::Capture: return "Capture";
+    case CreativeInputContext::Count: break;
   }
   return "Unknown";
 }
@@ -618,6 +852,7 @@ std::string_view toString(CreativeInputKey key) noexcept {
     case CreativeInputKey::S: return "S";
     case CreativeInputKey::V: return "V";
     case CreativeInputKey::X: return "X";
+    case CreativeInputKey::Y: return "Y";
     case CreativeInputKey::Z: return "Z";
     case CreativeInputKey::LeftBracket: return "LeftBracket";
     case CreativeInputKey::RightBracket: return "RightBracket";
@@ -652,6 +887,17 @@ std::string_view toString(CreativeInputKey key) noexcept {
     case CreativeInputKey::GamepadLeftShoulder: return "GamepadLeftShoulder";
     case CreativeInputKey::GamepadRightShoulder:
       return "GamepadRightShoulder";
+    case CreativeInputKey::MousePrimary: return "MousePrimary";
+    case CreativeInputKey::MouseSecondary: return "MouseSecondary";
+    case CreativeInputKey::MouseMiddle: return "MouseMiddle";
+    case CreativeInputKey::GamepadWest: return "GamepadWest";
+    case CreativeInputKey::GamepadBack: return "GamepadBack";
+    case CreativeInputKey::GamepadStart: return "GamepadStart";
+    case CreativeInputKey::GamepadLeftStick: return "GamepadLeftStick";
+    case CreativeInputKey::GamepadRightStick: return "GamepadRightStick";
+    case CreativeInputKey::GamepadLeftTrigger: return "GamepadLeftTrigger";
+    case CreativeInputKey::GamepadRightTrigger: return "GamepadRightTrigger";
+    case CreativeInputKey::Unbound: return "Unbound";
     case CreativeInputKey::Count: break;
   }
   return "Unknown";
@@ -710,109 +956,118 @@ std::span<const CreativeInputBinding> defaultCreativeInputBindings() noexcept {
   return kDefaultBindings;
 }
 
-void setCreativeControllerAxis(CreativeControllerSample& sample,
-                               CreativeControllerAxis axis,
-                               float value) noexcept {
-  if (axis != CreativeControllerAxis::Count) {
-    sample.axes[controllerAxisIndex(axis)] = value;
-  }
-}
-
-void setCreativeControllerButton(CreativeControllerSample& sample,
-                                 CreativeControllerButton button,
-                                 bool down) noexcept {
-  if (button != CreativeControllerButton::Count) {
-    sample.buttonsDown[controllerButtonIndex(button)] = down;
-  }
-}
-
-float creativeControllerAxis(const CreativeControllerFrame& frame,
-                             CreativeControllerAxis axis) noexcept {
-  return axis == CreativeControllerAxis::Count
-             ? 0.0F
-             : frame.axes[controllerAxisIndex(axis)];
-}
-
-bool creativeControllerButtonDown(const CreativeControllerFrame& frame,
-                                  CreativeControllerButton button) noexcept {
-  return button != CreativeControllerButton::Count &&
-         frame.next.buttonsDown[controllerButtonIndex(button)];
-}
-
-bool creativeControllerButtonPressed(const CreativeControllerFrame& frame,
-                                     CreativeControllerButton button) noexcept {
-  return button != CreativeControllerButton::Count &&
-         frame.pressed[controllerButtonIndex(button)];
-}
-
-bool creativeControllerButtonReleased(
-    const CreativeControllerFrame& frame,
-    CreativeControllerButton button) noexcept {
-  return button != CreativeControllerButton::Count &&
-         frame.released[controllerButtonIndex(button)];
-}
-
-CreativeControllerFrame stepCreativeControllerInput(
-    CreativeControllerState previous,
-    const CreativeControllerSample& current) noexcept {
-  CreativeControllerFrame frame;
-  frame.next.connected = current.connected;
-  if (current.connected) {
-    constexpr std::array stickAxes{
-        CreativeControllerAxis::MoveX,
-        CreativeControllerAxis::MoveY,
-        CreativeControllerAxis::LookX,
-        CreativeControllerAxis::LookY,
-    };
-    for (CreativeControllerAxis axis : stickAxes) {
-      const std::size_t index = controllerAxisIndex(axis);
-      frame.axes[index] = applyControllerStickDeadzone(current.axes[index]);
+bool parseCreativeInputActionId(std::string_view value,
+                                CreativeInputActionId& out) noexcept {
+  for (std::size_t index = 0;
+       index < static_cast<std::size_t>(CreativeInputActionId::Count);
+       ++index) {
+    const CreativeInputActionId candidate =
+        static_cast<CreativeInputActionId>(index);
+    if (toString(candidate) == value) {
+      out = candidate;
+      return true;
     }
+  }
+  return false;
+}
 
-    constexpr std::array triggerAxes{
-        CreativeControllerAxis::LeftTrigger,
-        CreativeControllerAxis::RightTrigger,
-    };
-    for (CreativeControllerAxis axis : triggerAxes) {
-      const std::size_t index = controllerAxisIndex(axis);
-      frame.axes[index] = finiteClamped(current.axes[index], 0.0F, 1.0F);
+bool parseCreativeInputContext(std::string_view value,
+                               CreativeInputContext& out) noexcept {
+  for (std::size_t index = 0;
+       index < static_cast<std::size_t>(CreativeInputContext::Count);
+       ++index) {
+    const CreativeInputContext candidate =
+        static_cast<CreativeInputContext>(index);
+    if (toString(candidate) == value) {
+      out = candidate;
+      return true;
     }
-    frame.next.buttonsDown = current.buttonsDown;
-    frame.next.buttonsDown[controllerButtonIndex(
-        CreativeControllerButton::LeftTrigger)] =
-        creativeControllerAxis(frame, CreativeControllerAxis::LeftTrigger) >=
-        kCreativeControllerTriggerThreshold;
-    frame.next.buttonsDown[controllerButtonIndex(
-        CreativeControllerButton::RightTrigger)] =
-        creativeControllerAxis(frame, CreativeControllerAxis::RightTrigger) >=
-        kCreativeControllerTriggerThreshold;
   }
+  return false;
+}
 
-  for (std::size_t index = 0; index < kCreativeControllerButtonCount; ++index) {
-    frame.pressed[index] =
-        frame.next.buttonsDown[index] && !previous.buttonsDown[index];
-    frame.released[index] =
-        !frame.next.buttonsDown[index] && previous.buttonsDown[index];
+bool parseCreativeInputKey(std::string_view value,
+                           CreativeInputKey& out) noexcept {
+  for (std::size_t index = 0;
+       index < static_cast<std::size_t>(CreativeInputKey::Count);
+       ++index) {
+    const CreativeInputKey candidate = static_cast<CreativeInputKey>(index);
+    if (toString(candidate) == value) {
+      out = candidate;
+      return true;
+    }
   }
-  return frame;
+  return false;
+}
+
+bool creativeInputKeyIsGamepad(CreativeInputKey key) noexcept {
+  switch (key) {
+    case CreativeInputKey::GamepadInventory:
+    case CreativeInputKey::GamepadDpadUp:
+    case CreativeInputKey::GamepadDpadDown:
+    case CreativeInputKey::GamepadConfirm:
+    case CreativeInputKey::GamepadCancel:
+    case CreativeInputKey::GamepadDpadLeft:
+    case CreativeInputKey::GamepadDpadRight:
+    case CreativeInputKey::GamepadLeftShoulder:
+    case CreativeInputKey::GamepadRightShoulder:
+    case CreativeInputKey::GamepadWest:
+    case CreativeInputKey::GamepadBack:
+    case CreativeInputKey::GamepadStart:
+    case CreativeInputKey::GamepadLeftStick:
+    case CreativeInputKey::GamepadRightStick:
+    case CreativeInputKey::GamepadLeftTrigger:
+    case CreativeInputKey::GamepadRightTrigger:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool creativeInputKeyIsModifier(CreativeInputKey key) noexcept {
+  return key == CreativeInputKey::LeftControl ||
+         key == CreativeInputKey::RightControl ||
+         key == CreativeInputKey::LeftShift ||
+         key == CreativeInputKey::RightShift ||
+         key == CreativeInputKey::LeftAlt ||
+         key == CreativeInputKey::RightAlt ||
+         key == CreativeInputKey::LeftCommand ||
+         key == CreativeInputKey::RightCommand;
 }
 
 void setCreativeInputKey(CreativeInputFrame& frame,
                          CreativeInputKey key,
                          bool down) noexcept {
-  if (key != CreativeInputKey::Count) {
+  if (key != CreativeInputKey::Unbound && key != CreativeInputKey::Count) {
     frame.keysDown[keyIndex(key)] = down;
   }
 }
 
 bool creativeInputKeyDown(const CreativeInputFrame& frame,
                           CreativeInputKey key) noexcept {
-  return key != CreativeInputKey::Count && frame.keysDown[keyIndex(key)];
+  return key != CreativeInputKey::Unbound && key != CreativeInputKey::Count &&
+         frame.keysDown[keyIndex(key)];
 }
 
 bool creativeInputKeyConsumed(const CreativeInputRouteResult& result,
                               CreativeInputKey key) noexcept {
-  return key != CreativeInputKey::Count && result.consumedKeys[keyIndex(key)];
+  return key != CreativeInputKey::Unbound && key != CreativeInputKey::Count &&
+         result.consumedKeys[keyIndex(key)];
+}
+
+bool creativeInputActionDown(
+    const CreativeInputFrame& frame,
+    CreativeInputActionId action,
+    std::span<const CreativeInputBinding> bindings,
+    const CreativeInputRouteResult* routedInput) noexcept {
+  return std::any_of(
+      bindings.begin(), bindings.end(),
+      [&frame, action, routedInput](const CreativeInputBinding& binding) {
+        return binding.action == action && binding.context == frame.context &&
+               physicalChordActive(frame, binding) &&
+               (routedInput == nullptr ||
+                !creativeInputKeyConsumed(*routedInput, binding.trigger));
+      });
 }
 
 CreativeInputRouteResult routeCreativeInput(
@@ -853,7 +1108,8 @@ CreativeInputRouteResult routeCreativeInput(
     if (binding.consumePolicy == CreativeInputConsumePolicy::ConsumeChord) {
       consumeModifierKeys(result, frame);
     }
-    if (!state.bindingActive[index] &&
+    if (binding.activation == CreativeInputBindingActivation::Press &&
+        !state.bindingActive[index] &&
         !actionAlreadyEmitted(result, binding.action)) {
       result.actions[result.actionCount++] = {binding.action, binding.trigger};
     }
@@ -882,7 +1138,10 @@ CreativeInputBindingAuditResult auditCreativeInputBindings(
     for (std::size_t secondIndex = firstIndex + 1U;
          secondIndex < bindingCount; ++secondIndex) {
       const CreativeInputBinding& second = bindings[secondIndex];
-      if (first.context != second.context || first.trigger != second.trigger) {
+      if (first.trigger == CreativeInputKey::Unbound ||
+          second.trigger == CreativeInputKey::Unbound ||
+          first.activation != second.activation ||
+          first.context != second.context || first.trigger != second.trigger) {
         continue;
       }
 

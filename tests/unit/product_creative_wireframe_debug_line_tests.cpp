@@ -4,6 +4,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <string_view>
 
 namespace {
@@ -254,6 +255,31 @@ bool degenerateSegmentIsSkippedAndCounted() {
                 "degenerate reason");
 }
 
+bool unrepresentableSegmentIsSkippedAndCounted() {
+  cr::CreativeDocumentWireframeSegmentList segments;
+  segments.segments.push_back(segment(
+      58,
+      cr::CreativeObjectKind::Room,
+      cr::CreativeDocumentWireframeStyle::Structural,
+      cr::CreativeDocumentWireframeSegmentKind::BoxEdge,
+      {static_cast<double>(std::numeric_limits<float>::max()) * 2.0, 0.0,
+       0.0},
+      {0.0, 1.0, 0.0}));
+
+  const iggy3d::ProductCreativeWireframeDebugLineBuildResult result =
+      iggy3d::buildProductCreativeWireframeDebugLines(segments);
+
+  return expect(result.receipt.lineCount == 0U, "invalid line count") &&
+         expect(result.receipt.skippedDegenerateCount == 0U,
+                "invalid is not reported as degenerate") &&
+         expect(result.receipt.skippedInvalidCount == 1U,
+                "unrepresentable segment is counted") &&
+         expect(result.lineList.lines.empty(), "invalid segment emits no line") &&
+         expect(result.receipt.status ==
+                    iggy3d::ProductCreativeWireframeDebugLineStatus::NoLines,
+                "invalid segment fails closed");
+}
+
 bool customThicknessIsCopied() {
   cr::CreativeDocumentWireframeSegment segments[] = {
       segment(7,
@@ -286,6 +312,7 @@ int main() {
                   missingSourceFailsClosed() &&
                   unknownStyleNondegenerateSegmentEmitsFallbackLine() &&
                   degenerateSegmentIsSkippedAndCounted() &&
+                  unrepresentableSegmentIsSkippedAndCounted() &&
                   customThicknessIsCopied();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

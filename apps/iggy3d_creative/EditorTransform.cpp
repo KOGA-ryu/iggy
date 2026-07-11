@@ -9,22 +9,12 @@
 
 #include "EditorEdits.hpp"
 #include "EditorState.hpp"
+#include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/input/UiInput.hpp"
 #include "app/platform/SdlWindow.hpp"
 
 namespace iggy3d_creative_app {
 namespace {
-
-constexpr float kTau = 6.28318530717958647692F;
-
-[[nodiscard]] bool finiteVec3(cr::CreativeVec3 value) noexcept {
-  return std::isfinite(value.x) && std::isfinite(value.y) &&
-         std::isfinite(value.z);
-}
-
-[[nodiscard]] bool sameVec3(cr::CreativeVec3 lhs,
-                            cr::CreativeVec3 rhs) noexcept {
-  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
-}
 
 [[nodiscard]] cr::CreativeVec3 subtract(cr::CreativeVec3 lhs,
                                         cr::CreativeVec3 rhs) noexcept {
@@ -76,6 +66,40 @@ void refreshTransformPlan(const cr::CreativeAppState& appState,
   }
 }
 
+void refreshResolvedTarget(const cr::CreativeAppState& appState,
+                           CreativeEditorSelectionTransformState& state) {
+  state.targetResolution = {};
+  state.targetPositionable = false;
+  if (!state.active || !state.aimTargetPositionable) {
+    refreshTransformPlan(appState, state);
+    return;
+  }
+  state.targetResolution = cr::resolveCreativeSelectionPlacementTarget(
+      {state.request.sourceAnchor, state.aimTargetAnchor, state.nudgeOffset,
+       state.constraint, state.snapStepMeters});
+  if (state.targetResolution.accepted) {
+    state.targetPositionable = true;
+    state.request.targetAnchor = state.targetResolution.targetAnchor;
+  }
+  refreshTransformPlan(appState, state);
+}
+
+[[nodiscard]] cr::CreativeSelectionPlacementAxis nextConstraint(
+    cr::CreativeSelectionPlacementAxis constraint) noexcept {
+  switch (constraint) {
+    case cr::CreativeSelectionPlacementAxis::Free:
+      return cr::CreativeSelectionPlacementAxis::X;
+    case cr::CreativeSelectionPlacementAxis::X:
+      return cr::CreativeSelectionPlacementAxis::Y;
+    case cr::CreativeSelectionPlacementAxis::Y:
+      return cr::CreativeSelectionPlacementAxis::Z;
+    case cr::CreativeSelectionPlacementAxis::Z:
+    case cr::CreativeSelectionPlacementAxis::Count:
+      return cr::CreativeSelectionPlacementAxis::Free;
+  }
+  return cr::CreativeSelectionPlacementAxis::Free;
+}
+
 [[nodiscard]] bool beginTransformPreview(
     const cr::CreativeAppState& appState,
     const cr::CreativeClipboard& clipboard,
@@ -85,7 +109,7 @@ void refreshTransformPlan(const cr::CreativeAppState& appState,
     std::string_view source) {
   state = {};
   if (cr::creativeClipboardEmpty(clipboard) || !clipboard.hasPlacementAnchor ||
-      !finiteVec3(clipboard.placementAnchor)) {
+      !cr::isFiniteCreativeVec3(clipboard.placementAnchor)) {
     SDL_Log("iggy3d_creative: TRANSFORM preview rejected source='%s' "
             "objectCount=%zu hasAnchor=%d",
             std::string(source).c_str(), clipboard.objects.size(),
@@ -151,31 +175,87 @@ void moveControlSelection(CreativeEditorSelectionTransformState& state,
   if (direction == 0) {
     return;
   }
-  const std::int64_t count =
-      static_cast<std::int64_t>(kCreativeEditorTransformControlCount);
-  const std::int64_t current =
-      static_cast<std::int64_t>(state.selectedControl);
-  state.selectedControl = static_cast<std::size_t>(
-      ((current + static_cast<std::int64_t>(direction)) % count + count) %
-      count);
+  const cr::CreativeWrappedIndexResult next = cr::stepCreativeWrappedIndex(
+      state.selectedControl, kCreativeEditorTransformControlCount, direction);
+  if (next.valid) {
+    state.selectedControl = next.index;
+  }
 }
 
 void selectControlDirection(CreativeEditorSelectionTransformState& state,
                             float x,
                             float y,
                             float deadzone) noexcept {
-  if (!std::isfinite(x) || !std::isfinite(y) ||
-      std::hypot(x, y) <= deadzone) {
-    return;
+  const cr::CreativeRadialSectorResult sector = cr::resolveCreativeRadialSector(
+      x, y, kCreativeEditorTransformControlCount, deadzone);
+  if (sector.valid) {
+    state.selectedControl = sector.index;
   }
-  float angle = std::atan2(x, y);
-  if (angle < 0.0F) {
-    angle += kTau;
+}
+
+void applyTransformPreviewAction(
+    const CreativeEditorTransformFrameRequest& request,
+    CreativeEditorSelectionTransformState& state,
+    cr::CreativeInputActionId action) {
+  switch (action) {
+    case cr::CreativeInputActionId::ToggleTransformControls:
+      state.controlsOpen = true;
+      return;
+    case cr::CreativeInputActionId::TransformConstraintX:
+      static_cast<void>(setCreativeEditorTransformConstraint(
+          request.appState, state, cr::CreativeSelectionPlacementAxis::X));
+      return;
+    case cr::CreativeInputActionId::TransformConstraintY:
+      static_cast<void>(setCreativeEditorTransformConstraint(
+          request.appState, state, cr::CreativeSelectionPlacementAxis::Y));
+      return;
+    case cr::CreativeInputActionId::TransformConstraintZ:
+      static_cast<void>(setCreativeEditorTransformConstraint(
+          request.appState, state, cr::CreativeSelectionPlacementAxis::Z));
+      return;
+    case cr::CreativeInputActionId::TransformNudgePositive:
+      static_cast<void>(nudgeCreativeEditorSelectionTransform(
+          request.appState, state, 1, request.fineNudge));
+      return;
+    case cr::CreativeInputActionId::TransformNudgeNegative:
+      static_cast<void>(nudgeCreativeEditorSelectionTransform(
+          request.appState, state, -1, request.fineNudge));
+      return;
+    case cr::CreativeInputActionId::ConfirmActiveTool:
+      static_cast<void>(requestCreativeEditorSelectionTransformCommit(state));
+      return;
+    case cr::CreativeInputActionId::CancelActiveTool:
+      static_cast<void>(cancelCreativeEditorSelectionTransformPreview(
+          state, "transform_preview_cancel"));
+      return;
+    default:
+      return;
   }
-  const float scaled = angle / kTau *
-                       static_cast<float>(kCreativeEditorTransformControlCount);
-  state.selectedControl = static_cast<std::size_t>(std::round(scaled)) %
-                          kCreativeEditorTransformControlCount;
+}
+
+void applyTransformControlAction(
+    const CreativeEditorTransformFrameRequest& request,
+    CreativeEditorSelectionTransformState& state,
+    cr::CreativeInputActionId action) {
+  switch (action) {
+    case cr::CreativeInputActionId::ToggleTransformControls:
+    case cr::CreativeInputActionId::CancelActiveTool:
+      state.controlsOpen = false;
+      return;
+    case cr::CreativeInputActionId::TransformControlPrevious:
+      moveControlSelection(state, -1);
+      return;
+    case cr::CreativeInputActionId::TransformControlNext:
+      moveControlSelection(state, 1);
+      return;
+    case cr::CreativeInputActionId::ConfirmActiveTool:
+      static_cast<void>(applyCreativeEditorTransformControl(
+          request.appState, state,
+          static_cast<CreativeEditorTransformControl>(state.selectedControl)));
+      return;
+    default:
+      return;
+  }
 }
 
 }  // namespace
@@ -184,6 +264,8 @@ std::string_view toString(CreativeEditorTransformControl control) noexcept {
   switch (control) {
     case CreativeEditorTransformControl::RotatePositive: return "RotatePositive";
     case CreativeEditorTransformControl::MirrorX: return "MirrorX";
+    case CreativeEditorTransformControl::CycleConstraint:
+      return "CycleConstraint";
     case CreativeEditorTransformControl::ToggleMode: return "ToggleMode";
     case CreativeEditorTransformControl::Confirm: return "Confirm";
     case CreativeEditorTransformControl::Cancel: return "Cancel";
@@ -241,6 +323,49 @@ bool cancelCreativeEditorSelectionTransformPreview(
   return true;
 }
 
+bool setCreativeEditorTransformConstraint(
+    const cr::CreativeAppState& appState,
+    CreativeEditorSelectionTransformState& state,
+    cr::CreativeSelectionPlacementAxis constraint) {
+  if (!state.active ||
+      static_cast<std::size_t>(constraint) >=
+          static_cast<std::size_t>(
+              cr::CreativeSelectionPlacementAxis::Count)) {
+    return false;
+  }
+  const cr::CreativeSelectionPlacementAxis next =
+      state.constraint == constraint
+          ? cr::CreativeSelectionPlacementAxis::Free
+          : constraint;
+  if (state.constraint == next) {
+    return false;
+  }
+  state.constraint = next;
+  state.lastCommit = {};
+  state.lastNudge = {};
+  refreshResolvedTarget(appState, state);
+  return true;
+}
+
+bool nudgeCreativeEditorSelectionTransform(
+    const cr::CreativeAppState& appState,
+    CreativeEditorSelectionTransformState& state,
+    std::int32_t steps,
+    bool fine) {
+  if (!state.active) {
+    return false;
+  }
+  state.lastNudge = cr::nudgeCreativeSelectionPlacementOffset(
+      {state.nudgeOffset, state.constraint, state.snapStepMeters, steps, fine});
+  if (!state.lastNudge.changed) {
+    return false;
+  }
+  state.nudgeOffset = state.lastNudge.offset;
+  state.lastCommit = {};
+  refreshResolvedTarget(appState, state);
+  return true;
+}
+
 bool applyCreativeEditorTransformControl(
     cr::CreativeAppState& appState,
     CreativeEditorSelectionTransformState& state,
@@ -249,6 +374,7 @@ bool applyCreativeEditorTransformControl(
     return false;
   }
   bool changed = true;
+  bool targetChanged = false;
   switch (control) {
     case CreativeEditorTransformControl::RotatePositive:
       state.request.quarterTurns =
@@ -256,6 +382,11 @@ bool applyCreativeEditorTransformControl(
       break;
     case CreativeEditorTransformControl::MirrorX:
       state.request.mirrorX = !state.request.mirrorX;
+      break;
+    case CreativeEditorTransformControl::CycleConstraint:
+      state.constraint = nextConstraint(state.constraint);
+      state.lastNudge = {};
+      targetChanged = true;
       break;
     case CreativeEditorTransformControl::ToggleMode:
       if (state.mode == cr::CreativeSelectionPlacementMode::Move) {
@@ -282,17 +413,27 @@ bool applyCreativeEditorTransformControl(
       break;
     case CreativeEditorTransformControl::Reset:
       changed = state.request.quarterTurns != 0U || state.request.mirrorX ||
-                state.request.mirrorZ;
+                state.request.mirrorZ ||
+                state.constraint != cr::CreativeSelectionPlacementAxis::Free ||
+                !cr::creativeVec3ExactlyEqual(state.nudgeOffset, {});
       state.request.quarterTurns = 0U;
       state.request.mirrorX = false;
       state.request.mirrorZ = false;
+      state.constraint = cr::CreativeSelectionPlacementAxis::Free;
+      state.nudgeOffset = {};
+      state.lastNudge = {};
+      targetChanged = true;
       break;
     case CreativeEditorTransformControl::Count:
       return false;
   }
   if (changed && state.active) {
     state.lastCommit = {};
-    refreshTransformPlan(appState, state);
+    if (targetChanged) {
+      refreshResolvedTarget(appState, state);
+    } else {
+      refreshTransformPlan(appState, state);
+    }
   }
   return changed;
 }
@@ -304,22 +445,29 @@ processCreativeEditorSelectionTransformPreview(
     bool targetPositionable,
     cr::CreativeVec3 targetAnchor,
     bool secondaryPressed,
-    std::string_view source) {
+    std::string_view source,
+    double snapStepMeters) {
   if (!state.active) {
     return {};
   }
 
-  const bool targetChanged =
-      state.targetPositionable != targetPositionable ||
-      (targetPositionable && !sameVec3(state.request.targetAnchor, targetAnchor));
-  state.targetPositionable = targetPositionable && finiteVec3(targetAnchor);
-  if (state.targetPositionable) {
-    state.request.targetAnchor = targetAnchor;
+  const bool previousPositionable = state.targetPositionable;
+  const cr::CreativeVec3 previousTarget = state.request.targetAnchor;
+  state.aimTargetPositionable =
+      targetPositionable && cr::isFiniteCreativeVec3(targetAnchor);
+  if (state.aimTargetPositionable) {
+    state.aimTargetAnchor = targetAnchor;
   }
+  state.snapStepMeters = snapStepMeters;
+  refreshResolvedTarget(appState, state);
+  const bool targetChanged =
+      previousPositionable != state.targetPositionable ||
+      (state.targetPositionable &&
+       !cr::creativeVec3ExactlyEqual(previousTarget,
+                                     state.request.targetAnchor));
   if (targetChanged) {
     state.lastCommit = {};
   }
-  refreshTransformPlan(appState, state);
   if (secondaryPressed) {
     static_cast<void>(requestCreativeEditorSelectionTransformCommit(state));
   }
@@ -370,70 +518,46 @@ CreativeEditorTransformFrameResult processCreativeEditorTransformFrame(
     return result;
   }
   const bool wasOpen = state.controlsOpen;
+  state.fineNudgeActive = request.fineNudge;
   if (request.routedInput.context == cr::CreativeInputContext::TransformPreview) {
     for (const cr::CreativeInputActionEvent& event :
          request.routedInput.actionEvents()) {
       if (!state.active) {
         break;
       }
-      switch (event.action) {
-        case cr::CreativeInputActionId::ToggleTransformControls:
-          state.controlsOpen = !state.controlsOpen;
-          break;
-        case cr::CreativeInputActionId::TransformControlPrevious:
-          if (state.controlsOpen) {
-            moveControlSelection(state, -1);
-          }
-          break;
-        case cr::CreativeInputActionId::TransformControlNext:
-          if (state.controlsOpen) {
-            moveControlSelection(state, 1);
-          }
-          break;
-        case cr::CreativeInputActionId::ConfirmActiveTool:
-          if (state.controlsOpen) {
-            static_cast<void>(applyCreativeEditorTransformControl(
-                request.appState, state,
-                static_cast<CreativeEditorTransformControl>(
-                    state.selectedControl)));
-          } else {
-            static_cast<void>(
-                requestCreativeEditorSelectionTransformCommit(state));
-          }
-          break;
-        case cr::CreativeInputActionId::CancelActiveTool:
-          if (state.controlsOpen) {
-            state.controlsOpen = false;
-          } else {
-            static_cast<void>(cancelCreativeEditorSelectionTransformPreview(
-                state, "transform_preview_cancel"));
-          }
-          break;
-        default:
-          break;
+      applyTransformPreviewAction(request, state, event.action);
+    }
+  } else if (request.routedInput.context ==
+             cr::CreativeInputContext::TransformControls) {
+    for (const cr::CreativeInputActionEvent& event :
+         request.routedInput.actionEvents()) {
+      if (!state.active) {
+        break;
       }
+      applyTransformControlAction(request, state, event.action);
+    }
+  }
+
+  if (state.active && !state.controlsOpen) {
+    if (request.nudgeWheelSteps != 0) {
+      static_cast<void>(nudgeCreativeEditorSelectionTransform(
+          request.appState, state, request.nudgeWheelSteps,
+          request.fineNudge));
     }
   }
 
   if (state.active && state.controlsOpen) {
     selectControlDirection(state, request.directionX, request.directionY, 0.35F);
     const iggy3d::SdlWindowEventState& events = request.window.eventState();
-    if (events.pointerMoved) {
-      const float scaleX = events.windowWidth > 0U
-                               ? static_cast<float>(request.drawableWidth) /
-                                     static_cast<float>(events.windowWidth)
-                               : 1.0F;
-      const float scaleY = events.windowHeight > 0U
-                               ? static_cast<float>(request.drawableHeight) /
-                                     static_cast<float>(events.windowHeight)
-                               : 1.0F;
-      selectControlDirection(
-          state,
-          events.pointerX * scaleX -
-              static_cast<float>(request.drawableWidth) * 0.5F,
-          static_cast<float>(request.drawableHeight) * 0.5F -
-              events.pointerY * scaleY,
-          24.0F);
+    const cr::CreativeDrawablePointer pointer =
+        cr::resolveCreativeDrawablePointer(
+            {events.pointerX, events.pointerY, events.windowWidth,
+             events.windowHeight, request.drawableWidth,
+             request.drawableHeight, events.pointerMoved,
+             events.primaryPointerPressed});
+    if (pointer.valid && pointer.moved) {
+      selectControlDirection(state, pointer.centeredX, pointer.centeredY,
+                             24.0F);
     }
     if (events.primaryPointerPressed) {
       static_cast<void>(applyCreativeEditorTransformControl(

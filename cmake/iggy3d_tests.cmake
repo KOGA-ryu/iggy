@@ -21,16 +21,6 @@ set_tests_properties(math_tests PROPERTIES LABELS "unit;core;iggy3d")
 iggy3d_add_unit_test(render_projectile_overlay_projection_tests
   tests/unit/render_projectile_overlay_projection_tests.cpp)
 
-iggy3d_add_unit_test(product_creative_ui_draw_list_tests
-  tests/unit/product_creative_ui_draw_list_tests.cpp)
-set_tests_properties(product_creative_ui_draw_list_tests PROPERTIES
-  LABELS "unit;app;product;creative;ui;draw_list;iggy3d")
-
-iggy3d_add_unit_test(product_creative_ui_projection_tests
-  tests/unit/product_creative_ui_projection_tests.cpp)
-set_tests_properties(product_creative_ui_projection_tests PROPERTIES
-  LABELS "unit;app;product;creative;ui;projection;iggy3d")
-
 iggy3d_add_unit_test(product_creative_wireframe_debug_line_tests
   tests/unit/product_creative_wireframe_debug_line_tests.cpp)
 set_tests_properties(product_creative_wireframe_debug_line_tests PROPERTIES
@@ -45,6 +35,11 @@ iggy3d_add_unit_test(creative_core_tests
   tests/unit/creative_core_tests.cpp)
 set_tests_properties(creative_core_tests PROPERTIES
   LABELS "unit;app;creative;core;iggy3d")
+
+iggy3d_add_unit_test(creative_geometry_tests
+  tests/unit/creative_geometry_tests.cpp)
+set_tests_properties(creative_geometry_tests PROPERTIES
+  LABELS "unit;app;creative;geometry;iggy3d")
 
 iggy3d_add_unit_test(creative_room_tests
   tests/unit/creative_room_tests.cpp)
@@ -156,6 +151,26 @@ target_include_directories(creative_interaction_tests PRIVATE
 set_tests_properties(creative_interaction_tests PROPERTIES
   LABELS "unit;app;creative;input;interaction;iggy3d")
 
+iggy3d_add_unit_test(creative_ui_input_tests
+  tests/unit/creative_ui_input_tests.cpp)
+set_tests_properties(creative_ui_input_tests PROPERTIES
+  LABELS "unit;app;creative;input;ui;iggy3d")
+
+iggy3d_add_unit_test(creative_ui_widgets_tests
+  tests/unit/creative_ui_widgets_tests.cpp)
+set_tests_properties(creative_ui_widgets_tests PROPERTIES
+  LABELS "unit;app;creative;ui;widgets;iggy3d")
+
+iggy3d_add_unit_test(creative_control_profile_tests
+  tests/unit/creative_control_profile_tests.cpp)
+set_tests_properties(creative_control_profile_tests PROPERTIES
+  LABELS "unit;app;creative;input;controls;profile;iggy3d")
+
+iggy3d_add_unit_test(creative_screen_projection_tests
+  tests/unit/creative_screen_projection_tests.cpp)
+set_tests_properties(creative_screen_projection_tests PROPERTIES
+  LABELS "unit;app;creative;render;screen_projection;iggy3d")
+
 add_executable(creative_editor_placement_tests
   tests/unit/creative_editor_placement_tests.cpp)
 target_link_libraries(creative_editor_placement_tests PRIVATE iggy3d_creative_app)
@@ -166,6 +181,18 @@ set_tests_properties(creative_editor_placement_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 set_tests_properties(creative_editor_placement_tests PROPERTIES
   LABELS "unit;app;creative;editor;placement;preview;history;iggy3d")
+
+add_executable(creative_editor_controls_tests
+  tests/unit/creative_editor_controls_tests.cpp)
+target_link_libraries(creative_editor_controls_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_controls_tests)
+add_test(NAME creative_editor_controls_tests
+  COMMAND "$<TARGET_FILE:creative_editor_controls_tests>")
+set_tests_properties(creative_editor_controls_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+set_tests_properties(creative_editor_controls_tests PROPERTIES
+  LABELS "unit;app;creative;editor;controls;persistence;iggy3d")
 
 iggy3d_add_unit_test(creative_catalog_tests
   tests/unit/creative_catalog_tests.cpp)
@@ -206,11 +233,6 @@ iggy3d_add_unit_test(creative_ghost_tests
   tests/unit/creative_ghost_tests.cpp)
 set_tests_properties(creative_ghost_tests PROPERTIES
   LABELS "unit;app;creative;ghost;iggy3d")
-
-iggy3d_add_unit_test(creative_ui_tests
-  tests/unit/creative_ui_tests.cpp)
-set_tests_properties(creative_ui_tests PROPERTIES
-  LABELS "unit;app;creative;ui;iggy3d")
 
 iggy3d_add_unit_test(creative_world_service_tests
   tests/unit/creative_world_service_tests.cpp)

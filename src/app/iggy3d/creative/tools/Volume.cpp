@@ -10,6 +10,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/tools/Clipboard.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
@@ -36,11 +37,6 @@ struct CellKeyHash {
     return hash;
   }
 };
-
-[[nodiscard]] bool finiteVec3(CreativeVec3 value) noexcept {
-  return std::isfinite(value.x) && std::isfinite(value.y) &&
-         std::isfinite(value.z);
-}
 
 [[nodiscard]] bool validObjectKind(CreativeObjectKind kind) noexcept {
   return kind != CreativeObjectKind::Unknown &&
@@ -69,7 +65,7 @@ struct CellKeyHash {
 
 [[nodiscard]] bool pointInside(CreativeVec3 point,
                                CreativeBounds bounds) noexcept {
-  return finiteVec3(point) && point.x >= bounds.min.x &&
+  return isFiniteCreativeVec3(point) && point.x >= bounds.min.x &&
          point.y >= bounds.min.y && point.z >= bounds.min.z &&
          point.x < bounds.max.x && point.y < bounds.max.y &&
          point.z < bounds.max.z;
@@ -77,7 +73,8 @@ struct CellKeyHash {
 
 [[nodiscard]] bool boundsInside(CreativeBounds inner,
                                 CreativeBounds outer) noexcept {
-  return finiteVec3(inner.min) && finiteVec3(inner.max) &&
+  return isFiniteCreativeVec3(inner.min) &&
+         isFiniteCreativeVec3(inner.max) &&
          inner.max.x >= inner.min.x && inner.max.y >= inner.min.y &&
          inner.max.z >= inner.min.z && inner.min.x >= outer.min.x &&
          inner.min.y >= outer.min.y && inner.min.z >= outer.min.z &&
@@ -143,11 +140,7 @@ void ensureTag(std::vector<std::string>& tags, std::string_view tag) {
   const CreativeObjectDescriptor& descriptor = describeObject(kind);
   const CreativeBounds cellBounds = creativeVolumeCellBounds(
       cell, selection.cellSize, selection.origin);
-  const CreativeVec3 center{
-      (cellBounds.min.x + cellBounds.max.x) * 0.5,
-      (cellBounds.min.y + cellBounds.max.y) * 0.5,
-      (cellBounds.min.z + cellBounds.max.z) * 0.5,
-  };
+  const CreativeVec3 center = measureCreativeBounds(cellBounds).center;
 
   CreativeDocumentCreateRequest create;
   create.kind = kind;
@@ -634,9 +627,9 @@ void copyVoxelMutationFacts(
   CreativeVec3 offset = request.cloneOffset;
   if (!request.hasCloneOffset) {
     const CreativeBounds bounds = creativeVolumeWorldBounds(request.selection);
-    offset = {bounds.max.x - bounds.min.x, 0.0, 0.0};
+    offset = {measureCreativeBounds(bounds).size.x, 0.0, 0.0};
   }
-  if (!finiteVec3(offset)) {
+  if (!isFiniteCreativeVec3(offset)) {
     reject(receipt, CreativeVolumeOperationStatus::InvalidRequest,
            "creative_volume_clone_offset_invalid");
     return receipt;

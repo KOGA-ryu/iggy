@@ -166,69 +166,6 @@ void narrowPickCandidate(ObjectVisualPickResult& result,
 
 }  // namespace
 
-ScreenAabb projectBoxToScreen(const iggy3d::Mat4& clipFromWorld,
-                              iggy3d::Vec3 boxMin,
-                              iggy3d::Vec3 boxMax,
-                              std::uint32_t widthPx,
-                              std::uint32_t heightPx) {
-  ScreenAabb out;
-  float minX = std::numeric_limits<float>::max();
-  float minY = std::numeric_limits<float>::max();
-  float maxX = std::numeric_limits<float>::lowest();
-  float maxY = std::numeric_limits<float>::lowest();
-  const float fw = static_cast<float>(widthPx);
-  const float fh = static_cast<float>(heightPx);
-  for (int corner = 0; corner < 8; ++corner) {
-    const iggy3d::Vec3 world{
-        (corner & 1) ? boxMax.x : boxMin.x,
-        (corner & 2) ? boxMax.y : boxMin.y,
-        (corner & 4) ? boxMax.z : boxMin.z,
-    };
-    const iggy3d::ProjectedPoint3 projected =
-        iggy3d::projectPoint(clipFromWorld, world);
-    if (!std::isfinite(projected.w) || projected.w <= 0.0F) {
-      continue;
-    }
-    const iggy3d::Vec3 ndc = projected.ndc;
-    if (!std::isfinite(ndc.x) || !std::isfinite(ndc.y)) {
-      continue;
-    }
-    const float px = (ndc.x * 0.5F + 0.5F) * fw;
-    const float py = (1.0F - (ndc.y * 0.5F + 0.5F)) * fh;
-    minX = std::min(minX, px);
-    minY = std::min(minY, py);
-    maxX = std::max(maxX, px);
-    maxY = std::max(maxY, py);
-    out.valid = true;
-  }
-  out.minX = minX;
-  out.minY = minY;
-  out.maxX = maxX;
-  out.maxY = maxY;
-  return out;
-}
-
-ScreenPoint projectPointToScreen(const iggy3d::Mat4& clipFromWorld,
-                                 iggy3d::Vec3 world,
-                                 std::uint32_t widthPx,
-                                 std::uint32_t heightPx) {
-  ScreenPoint out;
-  const iggy3d::ProjectedPoint3 projected =
-      iggy3d::projectPoint(clipFromWorld, world);
-  if (!std::isfinite(projected.w) || projected.w <= 0.0F) {
-    return out;
-  }
-  const iggy3d::Vec3 ndc = projected.ndc;
-  if (!std::isfinite(ndc.x) || !std::isfinite(ndc.y)) {
-    return out;
-  }
-  out.x = (ndc.x * 0.5F + 0.5F) * static_cast<float>(widthPx);
-  out.y = (1.0F - (ndc.y * 0.5F + 0.5F)) *
-          static_cast<float>(heightPx);
-  out.valid = true;
-  return out;
-}
-
 WorldRay worldRayFromPixel(const iggy3d::RenderCameraFrame& camera,
                            float pixelX,
                            float pixelY,
@@ -295,11 +232,9 @@ ObjectVisualPickBounds buildObjectVisualPickBounds(
   candidate.id = object.id;
   candidate.bounds = visualBoundsForObject(object);
   candidate.orientedBounds = orientedVisualBoxForObject(object);
-  candidate.screenAabb = projectBoxToScreen(clipFromWorld,
-                                            candidate.bounds.min,
-                                            candidate.bounds.max,
-                                            widthPx,
-                                            heightPx);
+  candidate.screenAabb = cr::projectCreativeWorldBoundsToScreen(
+      clipFromWorld, candidate.bounds.min, candidate.bounds.max, widthPx,
+      heightPx);
   return candidate;
 }
 
@@ -370,11 +305,8 @@ std::vector<PathPointHandleHit> buildPathPointHandleHits(
     handle.objectId = object.id;
     handle.pointIndex = index;
     handle.position = position;
-    handle.aabb = projectBoxToScreen(clipFromWorld,
-                                     handleBounds.min,
-                                     handleBounds.max,
-                                     widthPx,
-                                     heightPx);
+    handle.aabb = cr::projectCreativeWorldBoundsToScreen(
+        clipFromWorld, handleBounds.min, handleBounds.max, widthPx, heightPx);
     handles.push_back(handle);
   }
   return handles;

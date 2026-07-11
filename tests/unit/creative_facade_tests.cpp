@@ -44,34 +44,6 @@ bool removeObject(cr::Facade& facade, cr::CreativeObjectId objectId) {
   return facade.removeDocumentObject(objectId).objectRemoved;
 }
 
-const cr::CreativeUiPanel* findPanel(const cr::CreativeUiModel& model,
-                                     cr::CreativeUiPanelKind kind) {
-  for (const cr::CreativeUiPanel& panel : model.panels) {
-    if (panel.kind == kind) {
-      return &panel;
-    }
-  }
-  return nullptr;
-}
-
-bool hasGhostPreviewRow(const cr::CreativeUiModel& model) {
-  for (const cr::CreativeUiRow& row : model.rows) {
-    if (row.kind == cr::CreativeUiRowKind::GhostPreview) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool hasRowKind(const cr::CreativeUiModel& model, cr::CreativeUiRowKind kind) {
-  for (const cr::CreativeUiRow& row : model.rows) {
-    if (row.kind == kind) {
-      return true;
-    }
-  }
-  return false;
-}
-
 cr::CreativeDocument documentWithRooms(std::string_view name,
                                        cr::CreativeDocumentId documentId,
                                        std::size_t roomCount) {
@@ -87,9 +59,8 @@ cr::CreativeDocument documentWithRooms(std::string_view name,
   return document;
 }
 
-bool defaultsBuildDefaultUiModel() {
+bool defaultsExposeDefaultEditorState() {
   const cr::Facade facade;
-  const cr::CreativeUiBuildReceipt ui = facade.buildUiModel();
 
   return expect(facade.state().tool == cr::Tool::Select,
                 "default state tool") &&
@@ -101,12 +72,7 @@ bool defaultsBuildDefaultUiModel() {
                 "default measurement inactive") &&
          expect(!facade.measurementState().hasMeasurement,
                 "default measurement empty") &&
-         expect(!facade.ghostState().visible, "default ghost hidden") &&
-         expect(ui.accepted, "default ui accepted") &&
-         expect(ui.panelCount == 7U, "default ui panels") &&
-         // Inspector (Selection panel) is always present: with no selection it
-         // holds one resting row (TL-6), and Undo is visible disabled by default.
-         expect(ui.rowCount == 11U, "default ui rows");
+         expect(!facade.ghostState().visible, "default ghost hidden");
 }
 
 bool setActiveToolUpdatesKernelAndOldState() {
@@ -372,7 +338,7 @@ bool pointerMoveUpdatesGhostWithSnap() {
          expect(facade.ghostState().target.value == 42U, "ghost target");
 }
 
-bool cancelInputHidesGhostAndUiDropsGhostRow() {
+bool cancelInputHidesGhost() {
   cr::Facade facade;
   static_cast<void>(facade.dispatchToolInput(
       pointerInput(cr::CreativeToolInputKind::PointerMove, 1.2, 2.7, 42)));
@@ -380,21 +346,10 @@ bool cancelInputHidesGhostAndUiDropsGhostRow() {
   const cr::CreativeFacadeToolDispatchReceipt cancel =
       facade.dispatchToolInput(
           pointerInput(cr::CreativeToolInputKind::Cancel, 0.0, 0.0));
-  const cr::CreativeUiBuildReceipt ui = facade.buildUiModel();
-  const cr::CreativeUiPanel* ghostPanel =
-      findPanel(ui.model, cr::CreativeUiPanelKind::Ghost);
 
   return expect(cancel.accepted, "ghost cancel accepted") &&
          expect(cancel.ghostChanged, "ghost cancel changed ghost") &&
-         expect(!facade.ghostState().visible, "ghost cancel hidden") &&
-         expect(ui.accepted, "ghost cancel ui accepted") &&
-         expect(!ui.model.ghostVisible, "ghost cancel ui ghost hidden") &&
-         expect(ghostPanel != nullptr, "ghost cancel panel exists") &&
-         expect(ghostPanel != nullptr && !ghostPanel->visible,
-                "ghost cancel panel hidden") &&
-         expect(ghostPanel != nullptr && ghostPanel->rowCount == 0U,
-                "ghost cancel panel no rows") &&
-         expect(!hasGhostPreviewRow(ui.model), "ghost cancel no ghost row");
+         expect(!facade.ghostState().visible, "ghost cancel hidden");
 }
 
 bool toolSwitchHidesVisibleGhost() {
@@ -683,7 +638,6 @@ bool installingDocumentClearsTransientEditorState() {
   const cr::CreativeObjectDirtyFlags nextDirty = nextDocument.dirtyFlags();
   const cr::CreativeFacadeDocumentInstallReceipt receipt =
       facade.installDocument(std::move(nextDocument));
-  const cr::CreativeUiBuildReceipt ui = facade.buildUiModel();
 
   return expect(setup.accepted, "install clear setup accepted") &&
          expect(receipt.accepted, "install clear accepted") &&
@@ -727,21 +681,10 @@ bool installingDocumentClearsTransientEditorState() {
          expect(facade.state().hovered.value == cr::kInvalidId,
                 "install clear old hovered") &&
          expect(facade.stats().commandAttempts == 0U,
-                "install clear stats reset attempts") &&
-         expect(ui.accepted, "install clear ui accepted") &&
-         // No selection => inspector shows its single resting row, and Undo is
-         // visible disabled by default.
-         expect(ui.rowCount == 11U, "install clear default row count") &&
-         expect(!hasRowKind(ui.model, cr::CreativeUiRowKind::SelectedTarget),
-                "install clear no selected row") &&
-         expect(hasRowKind(ui.model, cr::CreativeUiRowKind::InspectorEmpty),
-                "install clear inspector resting row") &&
-         expect(!hasRowKind(ui.model, cr::CreativeUiRowKind::MeasurementState),
-                "install clear no measurement row") &&
-         expect(!hasGhostPreviewRow(ui.model), "install clear no ghost row");
+                "install clear stats reset attempts");
 }
 
-bool installingSecondDocumentDoesNotLeakOldSelectionRows() {
+bool installingSecondDocumentDoesNotLeakOldSelection() {
   cr::Facade facade;
   cr::CreativeDocument first = documentWithRooms("First", 101, 2);
   const cr::CreativeFacadeDocumentInstallReceipt firstInstall =
@@ -752,17 +695,16 @@ bool installingSecondDocumentDoesNotLeakOldSelectionRows() {
                    1.0,
                    2.0,
                    targetId(firstSelectedId))));
-  const cr::CreativeUiBuildReceipt before = facade.buildUiModel();
+  const bool selectedBefore =
+      facade.selectionState().selectedTarget.value ==
+      targetId(firstSelectedId);
 
   cr::CreativeDocument second = documentWithRooms("Second", 102, 1);
   const cr::CreativeFacadeDocumentInstallReceipt secondInstall =
       facade.installDocument(std::move(second));
-  const cr::CreativeUiBuildReceipt after = facade.buildUiModel();
 
   return expect(firstInstall.accepted, "install second setup accepted") &&
-         expect(before.accepted, "install second before ui accepted") &&
-         expect(hasRowKind(before.model, cr::CreativeUiRowKind::SelectedTarget),
-                "install second before selected row") &&
+         expect(selectedBefore, "install second before selection exists") &&
          expect(secondInstall.accepted, "install second accepted") &&
          expect(secondInstall.selectionCleared,
                 "install second selection cleared") &&
@@ -770,11 +712,12 @@ bool installingSecondDocumentDoesNotLeakOldSelectionRows() {
                 "install second document id") &&
          expect(facade.document().objectCount() == 1U,
                 "install second object count") &&
-         expect(after.accepted, "install second after ui accepted") &&
-         expect(after.model.objectSummaries.size() == 1U,
-                "install second summaries only new document") &&
-         expect(!hasRowKind(after.model, cr::CreativeUiRowKind::SelectedTarget),
-                "install second no selected row");
+         expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
+                "install second clears selected target") &&
+         expect(facade.selectionState().candidateTarget.value == cr::kInvalidId,
+                "install second clears candidate target") &&
+         expect(facade.state().selected.value == cr::kInvalidId,
+                "install second clears compatibility selection");
 }
 
 bool removingSelectedObjectClearsSelectionAndOldState() {
@@ -1048,7 +991,7 @@ bool linearArrayCreatesCopiesAndSelectsOnlyFinalInstance() {
 }  // namespace
 
 int main() {
-  const bool ok = defaultsBuildDefaultUiModel() &&
+  const bool ok = defaultsExposeDefaultEditorState() &&
                   setActiveToolUpdatesKernelAndOldState() &&
                   selectPressUpdatesSelectionOnlyAndNotDocument() &&
                   movePressSelectsLikeSelect() &&
@@ -1060,7 +1003,7 @@ int main() {
                   leavingMeasurePreservesCompletedMeasurement() &&
                   nonMeasureToolSwitchDoesNotTouchMeasurement() &&
                   pointerMoveUpdatesGhostWithSnap() &&
-                  cancelInputHidesGhostAndUiDropsGhostRow() &&
+                  cancelInputHidesGhost() &&
                   toolSwitchHidesVisibleGhost() &&
                   switchingToNavigateHidesVisibleGhost() &&
                   sameToolActivationKeepsVisibleGhost() &&
@@ -1072,7 +1015,7 @@ int main() {
                   installingValidDocumentReplacesDocumentAndPreservesContentState() &&
                   installingInvalidIdDocumentDoesNotMutateExistingFacade() &&
                   installingDocumentClearsTransientEditorState() &&
-                  installingSecondDocumentDoesNotLeakOldSelectionRows() &&
+                  installingSecondDocumentDoesNotLeakOldSelection() &&
                   removingSelectedObjectClearsSelectionAndOldState() &&
                   removingHoveredObjectPreservesSelection() &&
                   removingMissingObjectPreservesEditorTargets() &&

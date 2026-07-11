@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <numbers>
 #include <string_view>
 
@@ -629,6 +630,95 @@ bool selectionPlacementPlanOwnsPreviewAndCommitGeometry() {
                 "plan publishes aggregate preview bounds");
 }
 
+bool selectionPlacementPrecisionIsExactAndFailClosed() {
+  const auto near = [](double actual, double expected) {
+    return std::fabs(actual - expected) <= 1.0e-12;
+  };
+  cr::CreativeSelectionPlacementTargetRequest target;
+  target.sourceAnchor = {0.1, -2.0, 0.3};
+  target.aimedAnchor = {-1.16, 3.12, -4.74};
+  target.nudgeOffset = {0.25, 8.0, -6.0};
+  target.axis = cr::CreativeSelectionPlacementAxis::X;
+  target.snapStepMeters = 0.5;
+  const cr::CreativeSelectionPlacementTargetResult constrained =
+      cr::resolveCreativeSelectionPlacementTarget(target);
+
+  bool ok = expect(constrained.accepted &&
+                       constrained.status ==
+                           cr::CreativeSelectionPlacementTargetStatus::Resolved,
+                   "precision target resolves") &&
+            expect(near(constrained.displacement.x, -1.25) &&
+                       near(constrained.displacement.y, 0.0) &&
+                       near(constrained.displacement.z, 0.0) &&
+                       near(constrained.targetAnchor.x, -1.15) &&
+                       near(constrained.targetAnchor.y, -2.0) &&
+                       near(constrained.targetAnchor.z, 0.3),
+                   "negative constrained displacement snaps from source anchor");
+
+  target.axis = cr::CreativeSelectionPlacementAxis::Free;
+  const cr::CreativeSelectionPlacementTargetResult free =
+      cr::resolveCreativeSelectionPlacementTarget(target);
+  ok = expect(free.accepted && near(free.targetAnchor.x, -0.91) &&
+                  near(free.targetAnchor.y, 11.12) &&
+                  near(free.targetAnchor.z, -10.74),
+              "free target preserves aim and accumulated axis offsets") &&
+       ok;
+
+  cr::CreativeSelectionPlacementNudgeRequest nudge;
+  nudge.axis = cr::CreativeSelectionPlacementAxis::X;
+  nudge.snapStepMeters = 1.0;
+  nudge.steps = -2;
+  nudge.fine = true;
+  const cr::CreativeSelectionPlacementNudgeReceipt fine =
+      cr::nudgeCreativeSelectionPlacementOffset(nudge);
+  ok = expect(fine.accepted && fine.changed &&
+                  fine.status ==
+                      cr::CreativeSelectionPlacementNudgeStatus::Applied &&
+                  near(fine.appliedStepMeters, 0.25) &&
+                  near(fine.offset.x, -0.5),
+              "fine nudge applies quarter-step exactly") &&
+       ok;
+
+  nudge.offset = fine.offset;
+  nudge.axis = cr::CreativeSelectionPlacementAxis::Y;
+  nudge.snapStepMeters = 0.5;
+  nudge.steps = 3;
+  nudge.fine = false;
+  const cr::CreativeSelectionPlacementNudgeReceipt vertical =
+      cr::nudgeCreativeSelectionPlacementOffset(nudge);
+  ok = expect(vertical.accepted && near(vertical.offset.x, -0.5) &&
+                  near(vertical.offset.y, 1.5),
+              "nudge retains other axis offsets") &&
+       ok;
+
+  nudge.axis = cr::CreativeSelectionPlacementAxis::Free;
+  const cr::CreativeSelectionPlacementNudgeReceipt axisRequired =
+      cr::nudgeCreativeSelectionPlacementOffset(nudge);
+  ok = expect(!axisRequired.accepted && !axisRequired.changed &&
+                  axisRequired.status ==
+                      cr::CreativeSelectionPlacementNudgeStatus::AxisRequired &&
+                  near(axisRequired.offset.x, nudge.offset.x),
+              "free-axis nudge fails without changing offset") &&
+       ok;
+
+  target.snapStepMeters = std::numeric_limits<double>::infinity();
+  const cr::CreativeSelectionPlacementTargetResult invalidTarget =
+      cr::resolveCreativeSelectionPlacementTarget(target);
+  target.snapStepMeters = 1.0;
+  target.axis = static_cast<cr::CreativeSelectionPlacementAxis>(255U);
+  const cr::CreativeSelectionPlacementTargetResult invalidAxis =
+      cr::resolveCreativeSelectionPlacementTarget(target);
+  nudge.axis = cr::CreativeSelectionPlacementAxis::Z;
+  nudge.snapStepMeters = std::numeric_limits<double>::max();
+  nudge.steps = 2;
+  const cr::CreativeSelectionPlacementNudgeReceipt overflow =
+      cr::nudgeCreativeSelectionPlacementOffset(nudge);
+  return expect(!invalidTarget.accepted && !invalidAxis.accepted &&
+                    !overflow.accepted && !overflow.changed,
+                "invalid target, axis, and overflowing nudge fail closed") &&
+         ok;
+}
+
 bool selectionPlacementMoveIsAtomicAndFailClosed() {
   cr::CreativeDocument document = cr::CreativeDocument::create("Placement");
   cr::CreativeDocumentCreateRequest wallRequest;
@@ -722,6 +812,7 @@ int main() {
                   replaceFilterAndCloneOffsetUseExplicitInputs() &&
                   transformCommandsStoreRadiansAndResolveLiveGeometry() &&
                   selectionPlacementPlanOwnsPreviewAndCommitGeometry() &&
+                  selectionPlacementPrecisionIsExactAndFailClosed() &&
                   selectionPlacementMoveIsAtomicAndFailClosed();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

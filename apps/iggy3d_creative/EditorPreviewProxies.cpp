@@ -1,5 +1,7 @@
 #include "EditorPreviewProxies.hpp"
 
+#include "app/iggy3d/creative/Geometry.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <optional>
@@ -9,14 +11,8 @@ namespace iggy3d_creative_app {
 
 namespace {
 
-[[nodiscard]] bool finiteCreativeVec3(const cr::CreativeVec3& value) {
-  return std::isfinite(value.x) && std::isfinite(value.y) &&
-         std::isfinite(value.z);
-}
-
-[[nodiscard]] bool finitePositiveCreativeVec3(const cr::CreativeVec3& value) {
-  return finiteCreativeVec3(value) && value.x > 0.0 && value.y > 0.0 &&
-         value.z > 0.0;
+[[nodiscard]] iggy3d::Vec3 renderVec3(cr::CreativeVec3 value) noexcept {
+  return cr::creativeVec3ToCoreChecked(value).value;
 }
 
 [[nodiscard]] VisualBounds visualBoundsFromAabb(const iggy3d::Aabb3& bounds) {
@@ -50,19 +46,14 @@ enum class VisualMajorAxis { X, Y, Z };
 
 }  // namespace
 
-iggy3d::Vec3 toVec3(const cr::CreativeVec3& value) {
-  return {static_cast<float>(value.x), static_cast<float>(value.y),
-          static_cast<float>(value.z)};
-}
-
 iggy3d::Transform3 toTransform3(const cr::CreativeTransform& value) {
-  return {toVec3(value.position), toVec3(value.rotationEulerRadians),
-          toVec3(value.scale)};
+  return {renderVec3(value.position), renderVec3(value.rotationEulerRadians),
+          renderVec3(value.scale)};
 }
 
 iggy3d::Aabb3 visualBoundsToLocalAabb(VisualBounds bounds,
                                       const cr::CreativeTransform& transform) {
-  const iggy3d::Vec3 position = toVec3(transform.position);
+  const iggy3d::Vec3 position = renderVec3(transform.position);
   return iggy3d::makeAabb3(
       {bounds.min.x - position.x, bounds.min.y - position.y,
        bounds.min.z - position.z},
@@ -73,9 +64,12 @@ iggy3d::Aabb3 visualBoundsToLocalAabb(VisualBounds bounds,
 bool objectHasVisualTransform(const cr::CreativeObject& object) {
   constexpr double kRotationEps = 1.0e-8;
   const cr::CreativeObjectDescriptor& descriptor = cr::describeObject(object.kind);
-  if (!descriptor.hasBounds || !finiteCreativeVec3(object.transform.position) ||
-      !finiteCreativeVec3(object.transform.rotationEulerRadians) ||
-      !finitePositiveCreativeVec3(object.transform.scale)) {
+  if (!descriptor.hasBounds ||
+      !cr::creativeVec3ToCoreChecked(object.transform.position).converted ||
+      !cr::creativeVec3ToCoreChecked(object.transform.rotationEulerRadians)
+           .converted ||
+      !cr::isPositiveCreativeVec3(object.transform.scale) ||
+      !cr::creativeVec3ToCoreChecked(object.transform.scale).converted) {
     return false;
   }
   return std::fabs(object.transform.rotationEulerRadians.x) > kRotationEps ||
@@ -92,20 +86,21 @@ bool validPathPoints(const std::vector<cr::CreativePathPoint>& points) {
   }
   return std::all_of(points.begin(), points.end(),
                      [](const cr::CreativePathPoint& point) {
-                       return finiteCreativeVec3(point.position);
+                       return cr::creativeVec3ToCoreChecked(point.position)
+                           .converted;
                      });
 }
 
 VisualBounds pointMarkerBounds(const cr::CreativeVec3& position) {
   const float half = kPointMarkerSizeMeters * 0.5F;
-  const iggy3d::Vec3 center = toVec3(position);
+  const iggy3d::Vec3 center = renderVec3(position);
   return {{center.x - half, center.y - half, center.z - half},
           {center.x + half, center.y + half, center.z + half}};
 }
 
 VisualBounds pathPointHandleBounds(const cr::CreativeVec3& position) {
   const float half = kPathPointHandleSizeMeters * 0.5F;
-  const iggy3d::Vec3 center = toVec3(position);
+  const iggy3d::Vec3 center = renderVec3(position);
   return {{center.x - half, center.y - half, center.z - half},
           {center.x + half, center.y + half, center.z + half}};
 }
@@ -145,12 +140,10 @@ VisualBounds pathProxyBounds(
   }
 
   const float halfThickness = kPathProxyThicknessMeters * 0.5F;
-  iggy3d::Vec3 min{static_cast<float>(pathPoints.front().position.x),
-                   static_cast<float>(pathPoints.front().position.y),
-                   static_cast<float>(pathPoints.front().position.z)};
+  iggy3d::Vec3 min = renderVec3(pathPoints.front().position);
   iggy3d::Vec3 max = min;
   for (const cr::CreativePathPoint& point : pathPoints) {
-    const iggy3d::Vec3 p = toVec3(point.position);
+    const iggy3d::Vec3 p = renderVec3(point.position);
     min.x = std::min(min.x, p.x);
     min.y = std::min(min.y, p.y);
     min.z = std::min(min.z, p.z);
@@ -167,8 +160,8 @@ VisualBounds pathProxyBounds(
 VisualBounds pathSegmentProxyBounds(cr::CreativeVec3 start,
                                     cr::CreativeVec3 end) {
   const float halfThickness = kPathProxyThicknessMeters * 0.5F;
-  const iggy3d::Vec3 a = toVec3(start);
-  const iggy3d::Vec3 b = toVec3(end);
+  const iggy3d::Vec3 a = renderVec3(start);
+  const iggy3d::Vec3 b = renderVec3(end);
   return {{std::min(a.x, b.x) - halfThickness,
            std::min(a.y, b.y) - halfThickness,
            std::min(a.z, b.z) - halfThickness},
@@ -185,8 +178,8 @@ VisualBounds axisAlignedVisualBoundsForObject(const cr::CreativeObject& object) 
   if (descriptor.shapeKind == cr::CreativeObjectShapeKind::Path) {
     return pathProxyBounds(object.pathPoints);
   }
-  const VisualBounds authoredBounds{toVec3(object.bounds.min),
-                                    toVec3(object.bounds.max)};
+  const VisualBounds authoredBounds{renderVec3(object.bounds.min),
+                                    renderVec3(object.bounds.max)};
   if (descriptor.shapeKind == cr::CreativeObjectShapeKind::Line) {
     return lineProxyBounds(authoredBounds);
   }
@@ -235,20 +228,19 @@ std::string_view renderRoleForDescriptor(
   if (descriptor.shapeKind == cr::CreativeObjectShapeKind::Path) {
     return "rail";
   }
-  const cr::CreativeBounds& bounds = descriptor.defaults.bounds;
-  const float sizeX = static_cast<float>(bounds.max.x - bounds.min.x);
-  const float height = static_cast<float>(bounds.max.y - bounds.min.y);
-  const float sizeZ = static_cast<float>(bounds.max.z - bounds.min.z);
-  const bool finitePositive = std::isfinite(sizeX) && sizeX > 0.0F &&
-                              std::isfinite(height) && height > 0.0F &&
-                              std::isfinite(sizeZ) && sizeZ > 0.0F;
+  const cr::CreativeBoundsMetrics metrics =
+      cr::measureCreativeBounds(descriptor.defaults.bounds);
+  const cr::CreativeCoreVec3Conversion size =
+      cr::creativeVec3ToCoreChecked(metrics.size);
+  const bool finitePositive = metrics.valid && size.converted &&
+                              cr::isPositiveCreativeVec3(metrics.size);
   if (descriptor.shapeKind == cr::CreativeObjectShapeKind::Surface &&
       descriptor.occupancyKind == cr::CreativeSpatialOccupancyKind::Structural &&
       finitePositive) {
-    if (height <= std::min(sizeX, sizeZ)) {
+    if (size.value.y <= std::min(size.value.x, size.value.z)) {
       return "floor";
     }
-    if (height > std::min(sizeX, sizeZ)) {
+    if (size.value.y > std::min(size.value.x, size.value.z)) {
       return "wall";
     }
   }

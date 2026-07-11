@@ -1,6 +1,8 @@
 #include "app/iggy3d/creative/tools/SelectionPlacement.hpp"
 
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "core/math/Snap.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -11,20 +13,6 @@
 namespace iggy3d::creative {
 namespace {
 
-[[nodiscard]] bool finiteVec3(CreativeVec3 value) noexcept {
-  return std::isfinite(value.x) && std::isfinite(value.y) &&
-         std::isfinite(value.z);
-}
-
-[[nodiscard]] bool positiveVec3(CreativeVec3 value) noexcept {
-  return finiteVec3(value) && value.x > 0.0 && value.y > 0.0 &&
-         value.z > 0.0;
-}
-
-[[nodiscard]] bool sameVec3(CreativeVec3 lhs, CreativeVec3 rhs) noexcept {
-  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
-}
-
 [[nodiscard]] CreativeVec3 add(CreativeVec3 lhs, CreativeVec3 rhs) noexcept {
   return {lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z};
 }
@@ -34,11 +22,6 @@ namespace {
   return {lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z};
 }
 
-[[nodiscard]] bool sameBounds(const CreativeBounds& lhs,
-                              const CreativeBounds& rhs) noexcept {
-  return sameVec3(lhs.min, rhs.min) && sameVec3(lhs.max, rhs.max);
-}
-
 [[nodiscard]] bool samePathPoints(
     std::span<const CreativePathPoint> lhs,
     std::span<const CreativePathPoint> rhs) noexcept {
@@ -46,7 +29,8 @@ namespace {
          std::equal(lhs.begin(), lhs.end(), rhs.begin(),
                     [](const CreativePathPoint& left,
                        const CreativePathPoint& right) {
-                      return sameVec3(left.position, right.position);
+                      return creativeVec3ExactlyEqual(left.position,
+                                                      right.position);
                     });
 }
 
@@ -96,6 +80,75 @@ struct ResolvedObjects {
     CreativeSelectionPlacementMode mode) noexcept {
   return mode == CreativeSelectionPlacementMode::Copy ||
          mode == CreativeSelectionPlacementMode::Move;
+}
+
+[[nodiscard]] bool validPlacementAxis(
+    CreativeSelectionPlacementAxis axis) noexcept {
+  return static_cast<std::size_t>(axis) <
+         static_cast<std::size_t>(CreativeSelectionPlacementAxis::Count);
+}
+
+[[nodiscard]] CreativeVec3 constrainedDisplacement(
+    CreativeVec3 displacement,
+    CreativeSelectionPlacementAxis axis,
+    double snapStepMeters) noexcept {
+  switch (axis) {
+    case CreativeSelectionPlacementAxis::Free:
+      return displacement;
+    case CreativeSelectionPlacementAxis::X:
+      return {iggy3d::snapScalarToGrid(displacement.x, snapStepMeters, 0.0),
+              0.0, 0.0};
+    case CreativeSelectionPlacementAxis::Y:
+      return {0.0,
+              iggy3d::snapScalarToGrid(displacement.y, snapStepMeters, 0.0),
+              0.0};
+    case CreativeSelectionPlacementAxis::Z:
+      return {0.0, 0.0,
+              iggy3d::snapScalarToGrid(displacement.z, snapStepMeters, 0.0)};
+    case CreativeSelectionPlacementAxis::Count:
+      return {};
+  }
+  return {};
+}
+
+void addAxisNudge(CreativeVec3& displacement,
+                  CreativeVec3 nudgeOffset,
+                  CreativeSelectionPlacementAxis axis) noexcept {
+  switch (axis) {
+    case CreativeSelectionPlacementAxis::Free:
+      displacement = add(displacement, nudgeOffset);
+      return;
+    case CreativeSelectionPlacementAxis::X:
+      displacement.x += nudgeOffset.x;
+      return;
+    case CreativeSelectionPlacementAxis::Y:
+      displacement.y += nudgeOffset.y;
+      return;
+    case CreativeSelectionPlacementAxis::Z:
+      displacement.z += nudgeOffset.z;
+      return;
+    case CreativeSelectionPlacementAxis::Count:
+      return;
+  }
+}
+
+void addNudgeStep(CreativeVec3& offset,
+                  CreativeSelectionPlacementAxis axis,
+                  double delta) noexcept {
+  switch (axis) {
+    case CreativeSelectionPlacementAxis::X:
+      offset.x += delta;
+      return;
+    case CreativeSelectionPlacementAxis::Y:
+      offset.y += delta;
+      return;
+    case CreativeSelectionPlacementAxis::Z:
+      offset.z += delta;
+      return;
+    case CreativeSelectionPlacementAxis::Free:
+    case CreativeSelectionPlacementAxis::Count:
+      return;
+  }
 }
 
 [[nodiscard]] CreativeVec3 transformPlacementOffset(
@@ -173,13 +226,14 @@ struct ResolvedObjects {
   return object.id != kInvalidObjectId &&
          object.kind != CreativeObjectKind::Unknown &&
          object.kind != CreativeObjectKind::Count &&
-         finiteVec3(object.transform.position) &&
-         finiteVec3(object.transform.rotationEulerRadians) &&
-         positiveVec3(object.transform.scale) && finiteVec3(object.bounds.min) &&
-         finiteVec3(object.bounds.max) &&
+         isFiniteCreativeVec3(object.transform.position) &&
+         isFiniteCreativeVec3(object.transform.rotationEulerRadians) &&
+         isPositiveCreativeVec3(object.transform.scale) &&
+         isFiniteCreativeVec3(object.bounds.min) &&
+         isFiniteCreativeVec3(object.bounds.max) &&
          std::all_of(object.pathPoints.begin(), object.pathPoints.end(),
                      [](const CreativePathPoint& point) {
-                       return finiteVec3(point.position);
+                       return isFiniteCreativeVec3(point.position);
                      });
 }
 
@@ -245,18 +299,19 @@ void includePlacementPoint(CreativeSelectionPlacementPlan& plan,
     const CreativeObject& source,
     const CreativeObject& transformed) noexcept {
   if (objectHasTransform(source.kind) &&
-      !sameVec3(source.transform.position, transformed.transform.position) &&
+      !creativeVec3ExactlyEqual(source.transform.position,
+                                transformed.transform.position) &&
       !descriptorAllowsMutation(source.kind, CreativeMutationKind::Move)) {
     return CreativeMutationKind::Move;
   }
   if (objectHasTransform(source.kind) &&
-      !sameVec3(source.transform.rotationEulerRadians,
-                transformed.transform.rotationEulerRadians) &&
+      !creativeVec3ExactlyEqual(source.transform.rotationEulerRadians,
+                                transformed.transform.rotationEulerRadians) &&
       !descriptorAllowsMutation(source.kind, CreativeMutationKind::Rotate)) {
     return CreativeMutationKind::Rotate;
   }
   if (!objectHasTransform(source.kind) && objectHasBounds(source.kind) &&
-      !sameBounds(source.bounds, transformed.bounds) &&
+      !creativeBoundsExactlyEqual(source.bounds, transformed.bounds) &&
       !descriptorAllowsMutation(source.kind, CreativeMutationKind::SetBounds)) {
     return CreativeMutationKind::SetBounds;
   }
@@ -272,20 +327,21 @@ void appendPlacementMutations(const CreativeObject& source,
                               const CreativeObject& transformed,
                               std::vector<CreativeMutationRequest>& mutations) {
   if (objectHasTransform(source.kind) &&
-      !sameVec3(source.transform.position, transformed.transform.position)) {
+      !creativeVec3ExactlyEqual(source.transform.position,
+                                transformed.transform.position)) {
     mutations.push_back(
         {0, source.id, CreativeMutationKind::Move,
          makeMovePayload(transformed.transform.position)});
   }
   if (objectHasTransform(source.kind) &&
-      !sameVec3(source.transform.rotationEulerRadians,
-                transformed.transform.rotationEulerRadians)) {
+      !creativeVec3ExactlyEqual(source.transform.rotationEulerRadians,
+                                transformed.transform.rotationEulerRadians)) {
     mutations.push_back(
         {0, source.id, CreativeMutationKind::Rotate,
          makeRotatePayload(transformed.transform.rotationEulerRadians)});
   }
   if (!objectHasTransform(source.kind) && objectHasBounds(source.kind) &&
-      !sameBounds(source.bounds, transformed.bounds)) {
+      !creativeBoundsExactlyEqual(source.bounds, transformed.bounds)) {
     mutations.push_back(
         {0, source.id, CreativeMutationKind::SetBounds,
          makeBoundsPayload(transformed.bounds)});
@@ -307,6 +363,17 @@ std::string_view toString(CreativeSelectionPlacementMode mode) noexcept {
   return "Unknown";
 }
 
+std::string_view toString(CreativeSelectionPlacementAxis axis) noexcept {
+  switch (axis) {
+    case CreativeSelectionPlacementAxis::Free: return "FREE";
+    case CreativeSelectionPlacementAxis::X: return "X";
+    case CreativeSelectionPlacementAxis::Y: return "Y";
+    case CreativeSelectionPlacementAxis::Z: return "Z";
+    case CreativeSelectionPlacementAxis::Count: break;
+  }
+  return "INVALID";
+}
+
 std::string_view toString(CreativeSelectionPlacementStatus status) noexcept {
   switch (status) {
     case CreativeSelectionPlacementStatus::NotRequested: return "NotRequested";
@@ -326,6 +393,101 @@ std::string_view toString(CreativeSelectionPlacementStatus status) noexcept {
   return "Unknown";
 }
 
+CreativeSelectionPlacementTargetResult
+resolveCreativeSelectionPlacementTarget(
+    const CreativeSelectionPlacementTargetRequest& request) noexcept {
+  CreativeSelectionPlacementTargetResult result;
+  result.requested = true;
+  result.request = request;
+  if (!validPlacementAxis(request.axis) ||
+      !isFiniteCreativeVec3(request.sourceAnchor) ||
+      !isFiniteCreativeVec3(request.aimedAnchor) ||
+      !isFiniteCreativeVec3(request.nudgeOffset) ||
+      !std::isfinite(request.snapStepMeters) ||
+      request.snapStepMeters <= 0.0) {
+    result.status = CreativeSelectionPlacementTargetStatus::InvalidRequest;
+    result.reasonCode = "selection_placement_target_invalid";
+    return result;
+  }
+
+  result.displacement = constrainedDisplacement(
+      subtract(request.aimedAnchor, request.sourceAnchor), request.axis,
+      request.snapStepMeters);
+  addAxisNudge(result.displacement, request.nudgeOffset, request.axis);
+  result.targetAnchor = add(request.sourceAnchor, result.displacement);
+  if (!isFiniteCreativeVec3(result.displacement) ||
+      !isFiniteCreativeVec3(result.targetAnchor)) {
+    result.displacement = {};
+    result.targetAnchor = {};
+    result.status = CreativeSelectionPlacementTargetStatus::InvalidRequest;
+    result.reasonCode = "selection_placement_target_overflow";
+    return result;
+  }
+
+  result.accepted = true;
+  result.status = CreativeSelectionPlacementTargetStatus::Resolved;
+  result.reasonCode = "selection_placement_target_resolved";
+  return result;
+}
+
+CreativeSelectionPlacementNudgeReceipt
+nudgeCreativeSelectionPlacementOffset(
+    const CreativeSelectionPlacementNudgeRequest& request) noexcept {
+  CreativeSelectionPlacementNudgeReceipt receipt;
+  receipt.requested = true;
+  receipt.request = request;
+  receipt.offset = request.offset;
+  if (!validPlacementAxis(request.axis) ||
+      !isFiniteCreativeVec3(request.offset) ||
+      !std::isfinite(request.snapStepMeters) ||
+      request.snapStepMeters <= 0.0) {
+    receipt.status = CreativeSelectionPlacementNudgeStatus::InvalidRequest;
+    receipt.reasonCode = "selection_placement_nudge_invalid";
+    return receipt;
+  }
+  if (request.axis == CreativeSelectionPlacementAxis::Free) {
+    receipt.status = CreativeSelectionPlacementNudgeStatus::AxisRequired;
+    receipt.reasonCode = "selection_placement_nudge_axis_required";
+    return receipt;
+  }
+  receipt.appliedStepMeters =
+      request.snapStepMeters * (request.fine ? 0.25 : 1.0);
+  if (!std::isfinite(receipt.appliedStepMeters) ||
+      receipt.appliedStepMeters <= 0.0) {
+    receipt.appliedStepMeters = 0.0;
+    receipt.status = CreativeSelectionPlacementNudgeStatus::InvalidRequest;
+    receipt.reasonCode = "selection_placement_nudge_step_invalid";
+    return receipt;
+  }
+  if (request.steps == 0) {
+    receipt.accepted = true;
+    receipt.status = CreativeSelectionPlacementNudgeStatus::NoChange;
+    receipt.reasonCode = "selection_placement_nudge_no_change";
+    return receipt;
+  }
+
+  const double delta = receipt.appliedStepMeters *
+                       static_cast<double>(request.steps);
+  if (!std::isfinite(delta)) {
+    receipt.status = CreativeSelectionPlacementNudgeStatus::InvalidRequest;
+    receipt.reasonCode = "selection_placement_nudge_overflow";
+    return receipt;
+  }
+  addNudgeStep(receipt.offset, request.axis, delta);
+  if (!isFiniteCreativeVec3(receipt.offset)) {
+    receipt.offset = request.offset;
+    receipt.status = CreativeSelectionPlacementNudgeStatus::InvalidRequest;
+    receipt.reasonCode = "selection_placement_nudge_overflow";
+    return receipt;
+  }
+
+  receipt.accepted = true;
+  receipt.changed = true;
+  receipt.status = CreativeSelectionPlacementNudgeStatus::Applied;
+  receipt.reasonCode = "selection_placement_nudge_applied";
+  return receipt;
+}
+
 CreativeSelectionPlacementPlan planCreativeSelectionPlacement(
     std::span<const CreativeObject> objects,
     const CreativeSelectionPlacementRequest& request) {
@@ -339,7 +501,8 @@ CreativeSelectionPlacementPlan planCreativeSelectionPlacement(
     return plan;
   }
   if (!validPlacementMode(request.mode) || request.quarterTurns > 3U ||
-      !finiteVec3(request.sourceAnchor) || !finiteVec3(request.targetAnchor)) {
+      !isFiniteCreativeVec3(request.sourceAnchor) ||
+      !isFiniteCreativeVec3(request.targetAnchor)) {
     plan.status = CreativeSelectionPlacementStatus::InvalidRequest;
     plan.reasonCode = "selection_placement_request_invalid";
     return plan;

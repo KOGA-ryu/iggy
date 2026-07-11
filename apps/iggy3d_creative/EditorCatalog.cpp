@@ -11,12 +11,18 @@
 #include "EditorInteraction.hpp"
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
+#include "app/iggy3d/creative/input/UiInput.hpp"
 #include "app/platform/SdlWindow.hpp"
 #include "render/debug/DebugHudText.hpp"
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 namespace {
+
+constexpr cr::CreativeWheelProfile kCatalogWheelProfile{
+    cr::CreativeWheelPolarity::Reversed,
+    cr::CreativeWheelStepMode::RoundedMagnitude,
+    1.0e-4F};
 
 struct CatalogLayout {
   std::int32_t panelX = 0;
@@ -137,17 +143,14 @@ struct CatalogPointer {
     const iggy3d::SdlWindowEventState& events,
     std::uint32_t drawableWidth,
     std::uint32_t drawableHeight) noexcept {
-  const float scaleX = events.windowWidth > 0U
-                           ? static_cast<float>(drawableWidth) /
-                                 static_cast<float>(events.windowWidth)
-                           : 1.0F;
-  const float scaleY = events.windowHeight > 0U
-                           ? static_cast<float>(drawableHeight) /
-                                 static_cast<float>(events.windowHeight)
-                           : 1.0F;
-  return {static_cast<std::int32_t>(events.pointerX * scaleX),
-          static_cast<std::int32_t>(events.pointerY * scaleY),
-          events.primaryPointerPressed};
+  const cr::CreativeDrawablePointer pointer =
+      cr::resolveCreativeDrawablePointer(
+          {events.pointerX, events.pointerY, events.windowWidth,
+           events.windowHeight, drawableWidth, drawableHeight,
+           events.pointerMoved, events.primaryPointerPressed});
+  return {static_cast<std::int32_t>(pointer.x),
+          static_cast<std::int32_t>(pointer.y),
+          pointer.valid && pointer.primaryPressed};
 }
 
 [[nodiscard]] std::optional<cr::CreativeCatalogPage> catalogPageAtPointer(
@@ -355,9 +358,12 @@ void applyInventoryModeActions(
       return;
     case cr::CreativeInputContext::ToolOptions:
     case cr::CreativeInputContext::TransformPreview:
+    case cr::CreativeInputContext::TransformControls:
+    case cr::CreativeInputContext::Controls:
     case cr::CreativeInputContext::TextEntry:
     case cr::CreativeInputContext::Modal:
     case cr::CreativeInputContext::Capture:
+    case cr::CreativeInputContext::Count:
       return;
   }
 }
@@ -378,15 +384,6 @@ void applyInventoryWindowMode(iggy3d::SdlWindow& window,
   }
   editor.interaction.target = {};
   editor.volume.cursorValid = false;
-}
-
-[[nodiscard]] std::int32_t wheelSelectionSteps(float wheelY) noexcept {
-  if (!std::isfinite(wheelY) || std::fabs(wheelY) <= 1.0e-4F) {
-    return 0;
-  }
-  const float magnitude = std::max(1.0F, std::round(std::fabs(wheelY)));
-  return wheelY > 0.0F ? -static_cast<std::int32_t>(magnitude)
-                       : static_cast<std::int32_t>(magnitude);
 }
 
 [[nodiscard]] cr::CreativeCatalogActionAvailability catalogActionAvailability(
@@ -524,7 +521,8 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
   if (!catalog.model.open) {
     return;
   }
-  const std::int32_t wheelSteps = wheelSelectionSteps(events.mouseWheelY);
+  const std::int32_t wheelSteps = cr::quantizeCreativeWheelSteps(
+      events.mouseWheelY, kCatalogWheelProfile);
   if (wheelSteps != 0) {
     if (catalog.model.page == cr::CreativeCatalogPage::Build) {
       static_cast<void>(
@@ -666,7 +664,8 @@ void processToolWheelInput(const CreativeEditorCatalogFrameRequest& request,
     return;
   }
   const iggy3d::SdlWindowEventState& events = request.window.eventState();
-  const std::int32_t wheelSteps = wheelSelectionSteps(events.mouseWheelY);
+  const std::int32_t wheelSteps = cr::quantizeCreativeWheelSteps(
+      events.mouseWheelY, kCatalogWheelProfile);
   if (wheelSteps != 0) {
     static_cast<void>(
         cr::moveCreativeToolWheelSelection(state.toolWheel, wheelSteps));
@@ -681,21 +680,17 @@ void processToolWheelInput(const CreativeEditorCatalogFrameRequest& request,
     static_cast<void>(cr::selectCreativeToolWheelDirection(
         state.toolWheel, request.toolWheelDirectionX,
         request.toolWheelDirectionY));
-  } else if (events.pointerMoved) {
-    const float scaleX = events.windowWidth > 0U
-                             ? static_cast<float>(request.drawableWidth) /
-                                   static_cast<float>(events.windowWidth)
-                             : 1.0F;
-    const float scaleY = events.windowHeight > 0U
-                             ? static_cast<float>(request.drawableHeight) /
-                                   static_cast<float>(events.windowHeight)
-                             : 1.0F;
-    const float x = events.pointerX * scaleX -
-                    static_cast<float>(request.drawableWidth) * 0.5F;
-    const float y = static_cast<float>(request.drawableHeight) * 0.5F -
-                    events.pointerY * scaleY;
-    static_cast<void>(cr::selectCreativeToolWheelDirection(
-        state.toolWheel, x, y, 24.0F));
+  } else {
+    const cr::CreativeDrawablePointer pointer =
+        cr::resolveCreativeDrawablePointer(
+            {events.pointerX, events.pointerY, events.windowWidth,
+             events.windowHeight, request.drawableWidth,
+             request.drawableHeight, events.pointerMoved,
+             events.primaryPointerPressed});
+    if (pointer.valid && pointer.moved) {
+      static_cast<void>(cr::selectCreativeToolWheelDirection(
+          state.toolWheel, pointer.centeredX, pointer.centeredY, 24.0F));
+    }
   }
 
   if (events.primaryPointerPressed) {

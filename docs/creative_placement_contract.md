@@ -66,6 +66,7 @@ failure policy. iggy3d requires explicit receipts and fail-closed validation.
 | Bulk cell storage | `src/app/iggy3d/creative/document/VoxelField.*` | Own sorted 16-cubed chunks, atomic edits, greedy cuboids, and grid DDA |
 | Mutation gesture | `apps/iggy3d_creative/EditorInteraction.*` | Deduplicate targets, execute due plans, and group history |
 | Visual preview | `apps/iggy3d_creative/EditorPreviewFrame.*` | Render held and target views from the admitted plan without document mutation |
+| Screen projection | `src/app/iggy3d/creative/render/CreativeScreenProjection.*` | Map finite world points and eight-corner bounds to drawable pixels with explicit front/partial/invalid facts |
 | World mutation | `src/app/iggy3d/creative/Facade.*` | Apply requests and return receipts |
 | History | `src/app/iggy3d/creative/history/History.*` | Record one changed gesture as one undo snapshot |
 | Rendering boundary | `src/render/FrameInput.*` | Carry bounded transient preview data only |
@@ -115,6 +116,18 @@ reinterpret an admitted plan.
   Preview detail is bounded at 512 objects per source/destination side; larger
   selections render aggregate extents. Preview changes never invalidate
   `CreativeEditorSceneCache` because they do not change document revision.
+- Precision targeting is a pure pre-plan stage. Free mode preserves the aimed
+  anchor plus accumulated nudge offsets. X/Y/Z mode projects displacement onto
+  one world axis and snaps that component relative to the source anchor before
+  adding that axis's nudge offset. Negative coordinates use the same rule.
+- Regular nudges use the configured 0.25/0.5/1/2-meter increment; Shift or
+  controller `L1` uses exactly one quarter of it. Nudging requires X, Y, or Z.
+  Invalid axes, non-positive/non-finite steps, and arithmetic overflow return an
+  unchanged offset and cannot reach the document mutation plan.
+- Closed preview and open transform controls are distinct semantic input
+  contexts. Directional input therefore cannot both nudge and navigate the
+  radial controls in one frame. Repeated held keys do not synthesize actions;
+  each physical press or bounded wheel step produces one nudge request.
 
 ## Current Placement Policy
 
@@ -318,6 +331,8 @@ before implementation:
   one-step history, red invalid output, cancellation, and aggregate fallback.
 - `creative_spatial_projection_tests` and `creative_document_wireframe_tests`:
   transformed world bounds and exact oriented box edges.
+- `creative_screen_projection_tests`: drawable pixel mapping, viewport facts,
+  behind-camera and degenerate-W rejection, and full/partial bounds projection.
 - `render_projection_input_tests`: bounded preview frame validation.
 - `render_command_recording_tests`: target-before-held draw ordering and depth
   policy.

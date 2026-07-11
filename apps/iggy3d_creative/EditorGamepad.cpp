@@ -77,17 +77,25 @@ iggy3d::creative::CreativeControllerSample CreativeEditorGamepad::sample() {
 
   result.connected = true;
   iggy3d::creative::setCreativeControllerAxis(
-      result, iggy3d::creative::CreativeControllerAxis::MoveX,
-      normalizedAxis(SDL_GetGamepadAxis(gamepad_, SDL_GAMEPAD_AXIS_LEFTX)));
+      result, iggy3d::creative::CreativeControllerAxis::LeftStickX,
+      iggy3d::creative::canonicalCreativeStickComponent(
+          SDL_GetGamepadAxis(gamepad_, SDL_GAMEPAD_AXIS_LEFTX),
+          iggy3d::creative::CreativeStickComponent::X));
   iggy3d::creative::setCreativeControllerAxis(
-      result, iggy3d::creative::CreativeControllerAxis::MoveY,
-      -normalizedAxis(SDL_GetGamepadAxis(gamepad_, SDL_GAMEPAD_AXIS_LEFTY)));
+      result, iggy3d::creative::CreativeControllerAxis::LeftStickY,
+      iggy3d::creative::canonicalCreativeStickComponent(
+          SDL_GetGamepadAxis(gamepad_, SDL_GAMEPAD_AXIS_LEFTY),
+          iggy3d::creative::CreativeStickComponent::Y));
   iggy3d::creative::setCreativeControllerAxis(
-      result, iggy3d::creative::CreativeControllerAxis::LookX,
-      normalizedAxis(SDL_GetGamepadAxis(gamepad_, SDL_GAMEPAD_AXIS_RIGHTX)));
+      result, iggy3d::creative::CreativeControllerAxis::RightStickX,
+      iggy3d::creative::canonicalCreativeStickComponent(
+          SDL_GetGamepadAxis(gamepad_, SDL_GAMEPAD_AXIS_RIGHTX),
+          iggy3d::creative::CreativeStickComponent::X));
   iggy3d::creative::setCreativeControllerAxis(
-      result, iggy3d::creative::CreativeControllerAxis::LookY,
-      normalizedAxis(SDL_GetGamepadAxis(gamepad_, SDL_GAMEPAD_AXIS_RIGHTY)));
+      result, iggy3d::creative::CreativeControllerAxis::RightStickY,
+      iggy3d::creative::canonicalCreativeStickComponent(
+          SDL_GetGamepadAxis(gamepad_, SDL_GAMEPAD_AXIS_RIGHTY),
+          iggy3d::creative::CreativeStickComponent::Y));
   iggy3d::creative::setCreativeControllerAxis(
       result, iggy3d::creative::CreativeControllerAxis::LeftTrigger,
       std::max(0.0F, normalizedAxis(SDL_GetGamepadAxis(

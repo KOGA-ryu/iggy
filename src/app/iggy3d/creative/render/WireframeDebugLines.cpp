@@ -1,5 +1,7 @@
 #include "app/iggy3d/creative/render/WireframeDebugLines.hpp"
 
+#include "app/iggy3d/creative/Geometry.hpp"
+
 namespace iggy3d {
 namespace {
 
@@ -9,17 +11,6 @@ void setStatus(ProductCreativeWireframeDebugLineReceipt& receipt,
   receipt.status = status;
   receipt.message = reasonCode;
   receipt.reasonCode = reasonCode;
-}
-
-[[nodiscard]] bool samePoint(creative::CreativeVec3 lhs,
-                             creative::CreativeVec3 rhs) noexcept {
-  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
-}
-
-[[nodiscard]] Vec3 toRenderVec3(creative::CreativeVec3 value) noexcept {
-  return Vec3{static_cast<float>(value.x),
-              static_cast<float>(value.y),
-              static_cast<float>(value.z)};
 }
 
 }  // namespace
@@ -101,14 +92,23 @@ buildProductCreativeWireframeDebugLines(
       request.segments,
       request.segmentCount);
   for (const creative::CreativeDocumentWireframeSegment& segment : segments) {
-    if (samePoint(segment.start, segment.end)) {
+    if (creative::creativeVec3ExactlyEqual(segment.start, segment.end)) {
       ++receipt.skippedDegenerateCount;
       continue;
     }
 
+    const creative::CreativeCoreVec3Conversion start =
+        creative::creativeVec3ToCoreChecked(segment.start);
+    const creative::CreativeCoreVec3Conversion end =
+        creative::creativeVec3ToCoreChecked(segment.end);
+    if (!start.converted || !end.converted) {
+      ++receipt.skippedInvalidCount;
+      continue;
+    }
+
     ProductCreativeWireframeDebugLine line;
-    line.start = toRenderVec3(segment.start);
-    line.end = toRenderVec3(segment.end);
+    line.start = start.value;
+    line.end = end.value;
     line.color = productCreativeWireframeDebugLineColorForStyle(segment.style);
     line.objectId = segment.objectId;
     line.objectKind = segment.objectKind;

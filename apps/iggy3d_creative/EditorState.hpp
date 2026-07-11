@@ -10,6 +10,7 @@
 
 #include "EditorCatalog.hpp"
 #include "EditorCapture.hpp"
+#include "EditorControls.hpp"
 #include "EditorEdits.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorPattern.hpp"
@@ -26,8 +27,11 @@ struct CreativeEditorState {
   float pitchDegrees = -25.0F;
 
   bool loggedSelection = false;
+  iggy3d::creative::CreativeControlProfile controlProfile =
+      iggy3d::creative::makeDefaultCreativeControlProfile();
   iggy3d::creative::CreativeInputRouterState inputRouterState;
   iggy3d::creative::CreativeControllerState controllerInputState;
+  CreativeEditorControlsState controls;
   CreativeEditorInteractionState interaction;
   CreativeEditorCatalogState catalog;
   iggy3d::creative::CreativeToolSettings toolSettings =

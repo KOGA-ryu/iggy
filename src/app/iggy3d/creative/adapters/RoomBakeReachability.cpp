@@ -40,11 +40,6 @@ void setReachabilityStatus(CreativeRoomBakeReachabilityReceipt& receipt,
   receipt.checked = checked;
 }
 
-[[nodiscard]] bool finiteVec3(Vec3 value) noexcept {
-  return std::isfinite(value.x) && std::isfinite(value.y) &&
-         std::isfinite(value.z);
-}
-
 [[nodiscard]] bool walkableFootprintForSurface(
     const RoomSpatialSurface& surface,
     float cellSizeMeters,
@@ -57,7 +52,7 @@ void setReachabilityStatus(CreativeRoomBakeReachabilityReceipt& receipt,
   Vec3 min = surface.pointsMeters.front();
   Vec3 max = min;
   for (const Vec3 point : surface.pointsMeters) {
-    if (!finiteVec3(point)) {
+    if (!isFinite(point)) {
       return false;
     }
     min.x = std::min(min.x, point.x);
@@ -159,7 +154,7 @@ void setReachabilityStatus(CreativeRoomBakeReachabilityReceipt& receipt,
                                  float cellSizeMeters,
                                  ReachabilityCoord& out) {
   if (!anchorKindCanSeedReachability(anchor.kind) ||
-      !finiteVec3(anchor.positionMeters)) {
+      !isFinite(anchor.positionMeters)) {
     return false;
   }
 

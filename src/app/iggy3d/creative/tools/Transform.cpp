@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/tools/Transform.hpp"
 
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/tools/Clipboard.hpp"
 
 #include <cmath>
@@ -9,20 +10,6 @@
 
 namespace iggy3d::creative {
 namespace {
-
-[[nodiscard]] bool finiteVec3(CreativeVec3 value) noexcept {
-  return std::isfinite(value.x) && std::isfinite(value.y) &&
-         std::isfinite(value.z);
-}
-
-[[nodiscard]] bool positiveVec3(CreativeVec3 value) noexcept {
-  return finiteVec3(value) && value.x > 0.0 && value.y > 0.0 &&
-         value.z > 0.0;
-}
-
-[[nodiscard]] bool sameVec3(CreativeVec3 lhs, CreativeVec3 rhs) noexcept {
-  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
-}
 
 [[nodiscard]] CreativeVec3 add(CreativeVec3 lhs, CreativeVec3 rhs) noexcept {
   return {lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z};
@@ -122,21 +109,23 @@ struct ResolvedObjects {
     const CreativeTransformCommandRequest& request,
     double yawRadians) noexcept {
   const CreativeVec3 anchor = objectAnchor(object);
-  if (!finiteVec3(anchor)) {
+  if (!isFiniteCreativeVec3(anchor)) {
     return false;
   }
   if (request.kind == CreativeTransformCommandKind::Translate) {
-    return finiteVec3(add(anchor, request.translation));
+    return isFiniteCreativeVec3(add(anchor, request.translation));
   }
   if (request.kind == CreativeTransformCommandKind::RotateYaw) {
     CreativeVec3 rotation = object.transform.rotationEulerRadians;
     rotation.y += yawRadians;
-    return finiteVec3(rotateAroundYaw(anchor, pivot, yawRadians)) &&
-           finiteVec3(rotation);
+    return isFiniteCreativeVec3(
+               rotateAroundYaw(anchor, pivot, yawRadians)) &&
+           isFiniteCreativeVec3(rotation);
   }
-  return finiteVec3(
+  return isFiniteCreativeVec3(
              add(pivot, multiply(subtract(anchor, pivot), request.scaleFactor))) &&
-         positiveVec3(multiply(object.transform.scale, request.scaleFactor));
+         isPositiveCreativeVec3(
+             multiply(object.transform.scale, request.scaleFactor));
 }
 
 void appendTransformRequests(const CreativeObject& object,
@@ -154,7 +143,7 @@ void appendTransformRequests(const CreativeObject& object,
   if (request.kind == CreativeTransformCommandKind::RotateYaw) {
     const CreativeVec3 nextPosition =
         rotateAroundYaw(anchor, pivot, yawRadians);
-    if (!sameVec3(nextPosition, anchor)) {
+    if (!creativeVec3ExactlyEqual(nextPosition, anchor)) {
       out.push_back({0, object.id, CreativeMutationKind::Move,
                      makeMovePayload(nextPosition)});
     }
@@ -167,7 +156,7 @@ void appendTransformRequests(const CreativeObject& object,
 
   const CreativeVec3 nextPosition =
       add(pivot, multiply(subtract(anchor, pivot), request.scaleFactor));
-  if (!sameVec3(nextPosition, anchor)) {
+  if (!creativeVec3ExactlyEqual(nextPosition, anchor)) {
     out.push_back({0, object.id, CreativeMutationKind::Move,
                    makeMovePayload(nextPosition)});
   }
@@ -233,10 +222,10 @@ CreativeTransformCommandReceipt transformDocumentObjectsAtomically(
   }
   const bool requestValid =
       request.kind == CreativeTransformCommandKind::Translate
-          ? finiteVec3(request.translation)
+          ? isFiniteCreativeVec3(request.translation)
           : request.kind == CreativeTransformCommandKind::RotateYaw
                 ? std::isfinite(request.yawDegrees)
-                : positiveVec3(request.scaleFactor);
+                : isPositiveCreativeVec3(request.scaleFactor);
   if (!requestValid) {
     receipt.status = CreativeTransformCommandStatus::InvalidRequest;
     receipt.message = "transform_request_invalid";
@@ -335,7 +324,7 @@ CreativeDuplicateCommandReceipt duplicateDocumentObjectsAtomically(
     receipt.message = "duplicate_selection_empty";
     return receipt;
   }
-  if (!finiteVec3(request.offset)) {
+  if (!isFiniteCreativeVec3(request.offset)) {
     receipt.status = CreativeTransformCommandStatus::InvalidRequest;
     receipt.message = "duplicate_request_invalid";
     return receipt;

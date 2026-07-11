@@ -7,6 +7,7 @@
 #include <string>
 
 #include "EditorPreviewProxies.hpp"
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "render/debug/DebugHudText.hpp"
 
 namespace iggy3d_creative_app {
@@ -15,20 +16,14 @@ namespace {
 constexpr std::size_t kDetailedTransformPreviewObjectCapacity = 512U;
 constexpr float kTau = 6.28318530717958647692F;
 
-[[nodiscard]] bool finiteVec3(cr::CreativeVec3 value) noexcept {
-  return std::isfinite(value.x) && std::isfinite(value.y) &&
-         std::isfinite(value.z);
-}
-
 [[nodiscard]] bool renderPoint(cr::CreativeVec3 value,
                                iggy3d::Vec3& output) noexcept {
-  constexpr double kMaximum = std::numeric_limits<float>::max();
-  if (!finiteVec3(value) || std::fabs(value.x) > kMaximum ||
-      std::fabs(value.y) > kMaximum || std::fabs(value.z) > kMaximum) {
+  const cr::CreativeCoreVec3Conversion conversion =
+      cr::creativeVec3ToCoreChecked(value);
+  if (!conversion.converted) {
     return false;
   }
-  output = {static_cast<float>(value.x), static_cast<float>(value.y),
-            static_cast<float>(value.z)};
+  output = conversion.value;
   return true;
 }
 
@@ -132,6 +127,60 @@ void appendAnchorConnector(
   appendAxisSegment(yCorner, end, color, thickness, wireLines);
 }
 
+[[nodiscard]] iggy3d::RenderLineColor constraintColor(
+    cr::CreativeSelectionPlacementAxis axis) noexcept {
+  switch (axis) {
+    case cr::CreativeSelectionPlacementAxis::X:
+      return {1.0F, 0.24F, 0.20F, 0.98F};
+    case cr::CreativeSelectionPlacementAxis::Y:
+      return {0.22F, 1.0F, 0.38F, 0.98F};
+    case cr::CreativeSelectionPlacementAxis::Z:
+      return {0.24F, 0.56F, 1.0F, 0.98F};
+    case cr::CreativeSelectionPlacementAxis::Free:
+    case cr::CreativeSelectionPlacementAxis::Count:
+      return {0.82F, 0.88F, 0.92F, 0.72F};
+  }
+  return {0.82F, 0.88F, 0.92F, 0.72F};
+}
+
+void appendConstraintGuide(
+    cr::CreativeVec3 source,
+    cr::CreativeVec3 target,
+    cr::CreativeSelectionPlacementAxis axis,
+    float thickness,
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines) {
+  if (axis == cr::CreativeSelectionPlacementAxis::Free ||
+      axis == cr::CreativeSelectionPlacementAxis::Count) {
+    return;
+  }
+  iggy3d::Vec3 start;
+  iggy3d::Vec3 end;
+  if (!renderPoint(source, start) || !renderPoint(target, end)) {
+    return;
+  }
+  if (start.x == end.x && start.y == end.y && start.z == end.z) {
+    constexpr float kHalfGuideLength = 0.65F;
+    switch (axis) {
+      case cr::CreativeSelectionPlacementAxis::X:
+        start.x -= kHalfGuideLength;
+        end.x += kHalfGuideLength;
+        break;
+      case cr::CreativeSelectionPlacementAxis::Y:
+        start.y -= kHalfGuideLength;
+        end.y += kHalfGuideLength;
+        break;
+      case cr::CreativeSelectionPlacementAxis::Z:
+        start.z -= kHalfGuideLength;
+        end.z += kHalfGuideLength;
+        break;
+      case cr::CreativeSelectionPlacementAxis::Free:
+      case cr::CreativeSelectionPlacementAxis::Count:
+        return;
+    }
+  }
+  appendAxisSegment(start, end, constraintColor(axis), thickness, wireLines);
+}
+
 void appendText(std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
                 std::string_view text,
                 std::int32_t x,
@@ -158,6 +207,8 @@ void appendText(std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
   switch (control) {
     case CreativeEditorTransformControl::RotatePositive: return "ROTATE +90";
     case CreativeEditorTransformControl::MirrorX: return "MIRROR X";
+    case CreativeEditorTransformControl::CycleConstraint:
+      return std::string{"AXIS "} + std::string{cr::toString(state.constraint)};
     case CreativeEditorTransformControl::ToggleMode:
       return state.mode == cr::CreativeSelectionPlacementMode::Move
                  ? "MODE COPY"
@@ -213,6 +264,9 @@ std::size_t appendCreativeEditorSelectionTransformPreview(
                           connector, std::max(0.025F, thickness * 0.65F),
                           wireLines);
   }
+  appendConstraintGuide(state.request.sourceAnchor, state.request.targetAnchor,
+                        state.constraint, std::max(0.035F, thickness * 1.1F),
+                        wireLines);
   return wireLines.size() - before;
 }
 
@@ -228,20 +282,29 @@ void appendCreativeEditorTransformOverlay(
   const std::int32_t width = static_cast<std::int32_t>(drawableWidth);
   const std::int32_t height = static_cast<std::int32_t>(drawableHeight);
   const std::uint32_t statusWidth =
-      std::min(680U, drawableWidth > 16U ? drawableWidth - 16U : drawableWidth);
+      std::min(860U, drawableWidth > 16U ? drawableWidth - 16U : drawableWidth);
   const std::int32_t statusX =
       std::max(0, (width - static_cast<std::int32_t>(statusWidth)) / 2);
   const std::int32_t statusY = std::max(4, height - 112);
   uiRects.push_back(
       {statusX, statusY, statusWidth, 34U, 0.045F, 0.052F, 0.058F, 0.94F});
-  char status[192];
+  const cr::CreativeVec3 displacement{
+      state.request.targetAnchor.x - state.request.sourceAnchor.x,
+      state.request.targetAnchor.y - state.request.sourceAnchor.y,
+      state.request.targetAnchor.z - state.request.sourceAnchor.z};
+  const double visibleStep =
+      state.snapStepMeters * (state.fineNudgeActive ? 0.25 : 1.0);
+  char status[256];
   std::snprintf(
-      status, sizeof(status), "%s | %u DEG%s%s | %zu OBJECTS | R CONTROLS",
+      status, sizeof(status),
+      "%s | %s | %s %.2fM | D %+.2f %+.2f %+.2f | %uDEG%s%s | R",
       std::string(cr::toString(state.mode)).c_str(),
+      std::string(cr::toString(state.constraint)).c_str(),
+      state.fineNudgeActive ? "FINE" : "STEP", visibleStep, displacement.x,
+      displacement.y, displacement.z,
       static_cast<unsigned>(state.request.quarterTurns) * 90U,
       state.request.mirrorX ? " | MX" : "",
-      state.request.mirrorZ ? " | MZ" : "",
-      state.sourceClipboard.objects.size());
+      state.request.mirrorZ ? " | MZ" : "");
   const bool ready = state.targetPositionable && state.plan.accepted;
   appendText(glyphs, status, statusX + 12, statusY + 10, drawableWidth,
              drawableHeight, ready ? 0.72F : 1.0F,

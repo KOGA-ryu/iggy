@@ -1,5 +1,7 @@
 #include "app/iggy3d/creative/document/VoxelField.hpp"
 
+#include "app/iggy3d/creative/Geometry.hpp"
+
 #include <algorithm>
 #include <bitset>
 #include <cmath>
@@ -105,11 +107,6 @@ static_assert(std::is_nothrow_move_assignable_v<CreativeVoxelChunk>);
         return chunkCoordLess(chunk.coord, value);
       });
   return found != chunks.end() && found->coord == coord ? found : chunks.end();
-}
-
-[[nodiscard]] bool finiteVec3(CreativeVec3 value) noexcept {
-  return std::isfinite(value.x) && std::isfinite(value.y) &&
-         std::isfinite(value.z);
 }
 
 [[nodiscard]] bool tryWorldCell(CreativeVec3 point,
@@ -535,8 +532,9 @@ CreativeVoxelRaycastReceipt raycastCreativeVoxelField(
     const CreativeVoxelRaycastRequest& request) noexcept {
   CreativeVoxelRaycastReceipt receipt;
   receipt.requested = true;
-  if (!field.isValid() || !finiteVec3(request.rayOrigin) ||
-      !finiteVec3(request.rayDirection) || !finiteVec3(request.gridOrigin) ||
+  if (!field.isValid() || !isFiniteCreativeVec3(request.rayOrigin) ||
+      !isFiniteCreativeVec3(request.rayDirection) ||
+      !isFiniteCreativeVec3(request.gridOrigin) ||
       !std::isfinite(request.cellSize) || request.cellSize <= 0.0 ||
       !std::isfinite(request.maxDistance) || request.maxDistance < 0.0) {
     receipt.reasonCode = "creative_voxel_raycast_invalid";

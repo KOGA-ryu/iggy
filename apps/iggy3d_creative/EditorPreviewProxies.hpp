@@ -32,7 +32,6 @@ struct VisualBounds {
   iggy3d::Vec3 max;
 };
 
-[[nodiscard]] iggy3d::Vec3 toVec3(const cr::CreativeVec3& value);
 [[nodiscard]] iggy3d::Transform3 toTransform3(
     const cr::CreativeTransform& value);
 [[nodiscard]] iggy3d::Aabb3 visualBoundsToLocalAabb(

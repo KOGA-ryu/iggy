@@ -1,5 +1,7 @@
 #include "app/iggy3d/creative/document/Document.hpp"
 
+#include "app/iggy3d/creative/Geometry.hpp"
+
 #include <cmath>
 #include <utility>
 
@@ -59,10 +61,6 @@ std::string descriptorDefaultName(
   return std::string{descriptor.name};
 }
 
-bool sameVec3(CreativeVec3 lhs, CreativeVec3 rhs) noexcept {
-  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
-}
-
 bool sameGridSize(CreativeGridSize3 lhs, CreativeGridSize3 rhs) noexcept {
   return lhs.width == rhs.width && lhs.height == rhs.height &&
          lhs.depth == rhs.depth;
@@ -70,7 +68,7 @@ bool sameGridSize(CreativeGridSize3 lhs, CreativeGridSize3 rhs) noexcept {
 
 bool sameGridSettings(CreativeGridSettings lhs,
                       CreativeGridSettings rhs) noexcept {
-  return sameVec3(lhs.origin, rhs.origin) &&
+  return creativeVec3ExactlyEqual(lhs.origin, rhs.origin) &&
          lhs.cellSizeMeters == rhs.cellSizeMeters &&
          sameGridSize(lhs.size, rhs.size);
 }
@@ -81,15 +79,6 @@ bool sameSnapSettings(CreativeDocumentSnapSettings lhs,
          lhs.stepX == rhs.stepX && lhs.stepY == rhs.stepY &&
          lhs.stepZ == rhs.stepZ && lhs.originX == rhs.originX &&
          lhs.originY == rhs.originY && lhs.originZ == rhs.originZ;
-}
-
-bool sameBounds(CreativeBounds lhs, CreativeBounds rhs) noexcept {
-  return sameVec3(lhs.min, rhs.min) && sameVec3(lhs.max, rhs.max);
-}
-
-bool isFiniteVec3(CreativeVec3 value) noexcept {
-  return std::isfinite(value.x) && std::isfinite(value.y) &&
-         std::isfinite(value.z);
 }
 
 bool isPathDescriptor(const CreativeObjectDescriptor& descriptor) noexcept {
@@ -106,7 +95,7 @@ bool isEndpointLineDescriptor(
 
 bool pathPointsAreFinite(std::span<const CreativePathPoint> pathPoints) noexcept {
   for (const CreativePathPoint& point : pathPoints) {
-    if (!isFiniteVec3(point.position)) {
+    if (!isFiniteCreativeVec3(point.position)) {
       return false;
     }
   }
@@ -241,14 +230,15 @@ bool isValidUnits(CreativeUnits units) noexcept {
 }
 
 bool isValidGridSettings(CreativeGridSettings settings) noexcept {
-  return isFiniteVec3(settings.origin) &&
+  return isFiniteCreativeVec3(settings.origin) &&
          std::isfinite(settings.cellSizeMeters) &&
          settings.cellSizeMeters > 0.0 && settings.size.width >= 0 &&
          settings.size.height >= 0 && settings.size.depth >= 0;
 }
 
 bool isValidWorldBounds(CreativeBounds bounds) noexcept {
-  return isFiniteVec3(bounds.min) && isFiniteVec3(bounds.max);
+  return isFiniteCreativeVec3(bounds.min) &&
+         isFiniteCreativeVec3(bounds.max);
 }
 
 bool isValidRestoreObject(const CreativeObject& object) noexcept {
@@ -257,9 +247,9 @@ bool isValidRestoreObject(const CreativeObject& object) noexcept {
          object.kind != CreativeObjectKind::Unknown &&
          descriptor.kind == object.kind &&
          descriptor.kind != CreativeObjectKind::Unknown &&
-         isFiniteVec3(object.transform.position) &&
-         isFiniteVec3(object.transform.rotationEulerRadians) &&
-         isFiniteVec3(object.transform.scale) &&
+         isFiniteCreativeVec3(object.transform.position) &&
+         isFiniteCreativeVec3(object.transform.rotationEulerRadians) &&
+         isFiniteCreativeVec3(object.transform.scale) &&
          isValidWorldBounds(object.bounds);
 }
 
@@ -449,7 +439,7 @@ bool CreativeDocument::setDocumentSnapSettings(
 
 bool CreativeDocument::setWorldBounds(CreativeBounds bounds) {
   if (!valid_ || !isValidWorldBounds(bounds) ||
-      sameBounds(worldBounds_, bounds)) {
+      creativeBoundsExactlyEqual(worldBounds_, bounds)) {
     return false;
   }
 

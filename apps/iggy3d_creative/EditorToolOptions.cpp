@@ -1,18 +1,23 @@
 #include "EditorToolOptions.hpp"
 
 #include <algorithm>
-#include <cmath>
 #include <string>
 #include <string_view>
 
 #include "EditorState.hpp"
 #include "EditorVolume.hpp"
+#include "app/iggy3d/creative/input/UiInput.hpp"
 #include "app/platform/SdlWindow.hpp"
 #include "render/debug/DebugHudText.hpp"
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 namespace {
+
+constexpr cr::CreativeWheelProfile kToolOptionsWheelProfile{
+    cr::CreativeWheelPolarity::Reversed,
+    cr::CreativeWheelStepMode::Unit,
+    1.0e-4F};
 
 struct ToolOptionsLayout {
   std::int32_t panelX = 0;
@@ -70,38 +75,16 @@ void appendText(std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
   glyphs.insert(glyphs.end(), layout.quads.begin(), layout.quads.end());
 }
 
-[[nodiscard]] std::int32_t pointerX(
-    const iggy3d::SdlWindowEventState& events,
-    std::uint32_t drawableWidth) noexcept {
-  const float scale = events.windowWidth > 0U
-                          ? static_cast<float>(drawableWidth) /
-                                static_cast<float>(events.windowWidth)
-                          : 1.0F;
-  return static_cast<std::int32_t>(events.pointerX * scale);
-}
-
-[[nodiscard]] std::int32_t pointerY(
-    const iggy3d::SdlWindowEventState& events,
-    std::uint32_t drawableHeight) noexcept {
-  const float scale = events.windowHeight > 0U
-                          ? static_cast<float>(drawableHeight) /
-                                static_cast<float>(events.windowHeight)
-                          : 1.0F;
-  return static_cast<std::int32_t>(events.pointerY * scale);
-}
-
 void moveSelection(CreativeEditorToolOptionsState& state,
                    std::int32_t direction) noexcept {
   if (direction == 0 || state.options.count == 0U) {
     return;
   }
-  const std::int64_t count =
-      static_cast<std::int64_t>(state.options.count);
-  const std::int64_t current =
-      static_cast<std::int64_t>(state.selectedIndex);
-  state.selectedIndex = static_cast<std::size_t>(
-      ((current + static_cast<std::int64_t>(direction)) % count + count) %
-      count);
+  const cr::CreativeWrappedIndexResult next = cr::stepCreativeWrappedIndex(
+      state.selectedIndex, state.options.count, direction);
+  if (next.valid) {
+    state.selectedIndex = next.index;
+  }
 }
 
 void adjustSelection(CreativeEditorState& editor,
@@ -136,8 +119,16 @@ void processPointerInput(const CreativeEditorToolOptionsFrameRequest& request,
   }
   const ToolOptionsLayout layout = toolOptionsLayout(
       request.drawableWidth, request.drawableHeight, state.options.count);
-  const std::int32_t x = pointerX(events, request.drawableWidth);
-  const std::int32_t y = pointerY(events, request.drawableHeight);
+  const cr::CreativeDrawablePointer pointer =
+      cr::resolveCreativeDrawablePointer(
+          {events.pointerX, events.pointerY, events.windowWidth,
+           events.windowHeight, request.drawableWidth, request.drawableHeight,
+           events.pointerMoved, events.primaryPointerPressed});
+  if (!pointer.valid) {
+    return;
+  }
+  const std::int32_t x = static_cast<std::int32_t>(pointer.x);
+  const std::int32_t y = static_cast<std::int32_t>(pointer.y);
   const std::int32_t panelRight =
       layout.panelX + static_cast<std::int32_t>(layout.panelWidth);
 
@@ -223,9 +214,11 @@ CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
       }
     }
     if (state.open) {
-      const float wheelY = request.window.eventState().mouseWheelY;
-      if (std::isfinite(wheelY) && std::fabs(wheelY) > 1.0e-4F) {
-        moveSelection(state, wheelY > 0.0F ? -1 : 1);
+      const std::int32_t wheelSteps = cr::quantizeCreativeWheelSteps(
+          request.window.eventState().mouseWheelY,
+          kToolOptionsWheelProfile);
+      if (wheelSteps != 0) {
+        moveSelection(state, wheelSteps);
       }
       processPointerInput(request, result);
     }

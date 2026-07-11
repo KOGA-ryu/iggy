@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/adapters/RoomBakeGreedyFloors.hpp"
 #include "app/iggy3d/creative/adapters/RoomBakeReachability.hpp"
 #include "content/assets/TraversalTag.hpp"
@@ -13,32 +14,14 @@
 namespace iggy3d::creative {
 
 bool creativeRoomBakeBoundsAreValid(CreativeBounds bounds) noexcept {
-  if (!std::isfinite(bounds.min.x) || !std::isfinite(bounds.min.y) ||
-      !std::isfinite(bounds.min.z) || !std::isfinite(bounds.max.x) ||
-      !std::isfinite(bounds.max.y) || !std::isfinite(bounds.max.z) ||
-      !(bounds.max.x > bounds.min.x) || !(bounds.max.y > bounds.min.y) ||
-      !(bounds.max.z > bounds.min.z)) {
+  const CreativeBoundsMetrics metrics = measureCreativeBounds(bounds);
+  if (!metrics.valid || !isPositiveCreativeVec3(metrics.size)) {
     return false;
   }
-
-  const double sizeX = bounds.max.x - bounds.min.x;
-  const double sizeY = bounds.max.y - bounds.min.y;
-  const double sizeZ = bounds.max.z - bounds.min.z;
-  const double centerX = bounds.min.x + sizeX * 0.5;
-  const double centerY = bounds.min.y + sizeY * 0.5;
-  const double centerZ = bounds.min.z + sizeZ * 0.5;
-  const double maxFloat = static_cast<double>(std::numeric_limits<float>::max());
-  const double values[] = {bounds.min.x, bounds.min.y, bounds.min.z,
-                           bounds.max.x, bounds.max.y, bounds.max.z,
-                           sizeX,        sizeY,        sizeZ,
-                           centerX,      centerY,      centerZ};
-  for (const double value : values) {
-    if (std::fabs(value) > maxFloat) {
-      return false;
-    }
-  }
-
-  return true;
+  return creativeVec3ToCoreChecked(bounds.min).converted &&
+         creativeVec3ToCoreChecked(bounds.max).converted &&
+         creativeVec3ToCoreChecked(metrics.center).converted &&
+         creativeVec3ToCoreChecked(metrics.size).converted;
 }
 
 namespace {
@@ -84,30 +67,8 @@ struct BakeStaticMeshEntry {
   std::size_t documentIndex = 0;
 };
 
-[[nodiscard]] bool finite(double value) noexcept {
-  return std::isfinite(value);
-}
-
-[[nodiscard]] bool finite(CreativeVec3 value) noexcept {
-  return finite(value.x) && finite(value.y) && finite(value.z);
-}
-
-[[nodiscard]] bool fitsFloat(double value) noexcept {
-  return std::fabs(value) <=
-         static_cast<double>(std::numeric_limits<float>::max());
-}
-
-[[nodiscard]] float toFloat(double value) noexcept {
-  return static_cast<float>(value);
-}
-
-[[nodiscard]] Vec3 toVec3(CreativeVec3 value) noexcept {
-  return {toFloat(value.x), toFloat(value.y), toFloat(value.z)};
-}
-
 [[nodiscard]] bool validAnchorPosition(CreativeVec3 position) noexcept {
-  return finite(position) && fitsFloat(position.x) && fitsFloat(position.y) &&
-         fitsFloat(position.z);
+  return creativeVec3ToCoreChecked(position).converted;
 }
 
 [[nodiscard]] bool validBakeBounds(CreativeBounds bounds,
@@ -116,19 +77,23 @@ struct BakeStaticMeshEntry {
     return false;
   }
 
-  const double sizeX = bounds.max.x - bounds.min.x;
-  const double sizeY = bounds.max.y - bounds.min.y;
-  const double sizeZ = bounds.max.z - bounds.min.z;
-  const double centerX = bounds.min.x + sizeX * 0.5;
-  const double centerY = bounds.min.y + sizeY * 0.5;
-  const double centerZ = bounds.min.z + sizeZ * 0.5;
-
-  baked.min = {toFloat(bounds.min.x), toFloat(bounds.min.y),
-               toFloat(bounds.min.z)};
-  baked.max = {toFloat(bounds.max.x), toFloat(bounds.max.y),
-               toFloat(bounds.max.z)};
-  baked.center = {toFloat(centerX), toFloat(centerY), toFloat(centerZ)};
-  baked.size = {toFloat(sizeX), toFloat(sizeY), toFloat(sizeZ)};
+  const CreativeBoundsMetrics metrics = measureCreativeBounds(bounds);
+  const CreativeCoreVec3Conversion min =
+      creativeVec3ToCoreChecked(bounds.min);
+  const CreativeCoreVec3Conversion max =
+      creativeVec3ToCoreChecked(bounds.max);
+  const CreativeCoreVec3Conversion center =
+      creativeVec3ToCoreChecked(metrics.center);
+  const CreativeCoreVec3Conversion size =
+      creativeVec3ToCoreChecked(metrics.size);
+  if (!min.converted || !max.converted || !center.converted ||
+      !size.converted) {
+    return false;
+  }
+  baked.min = min.value;
+  baked.max = max.value;
+  baked.center = center.value;
+  baked.size = size.value;
   return true;
 }
 
@@ -137,7 +102,8 @@ struct BakeStaticMeshEntry {
 }
 
 [[nodiscard]] bool axisAlignedYaw(CreativeVec3 rotation) noexcept {
-  if (!finite(rotation) || !nearZero(rotation.x) || !nearZero(rotation.z)) {
+  if (!isFiniteCreativeVec3(rotation) || !nearZero(rotation.x) ||
+      !nearZero(rotation.z)) {
     return false;
   }
   const double quarterTurns = rotation.y / (std::numbers::pi * 0.5);
@@ -145,8 +111,8 @@ struct BakeStaticMeshEntry {
 }
 
 [[nodiscard]] bool identityRotation(CreativeVec3 rotation) noexcept {
-  return finite(rotation) && nearZero(rotation.x) && nearZero(rotation.y) &&
-         nearZero(rotation.z);
+  return isFiniteCreativeVec3(rotation) && nearZero(rotation.x) &&
+         nearZero(rotation.y) && nearZero(rotation.z);
 }
 
 [[nodiscard]] bool occupancySupportsRuntimeRoomGeometry(
@@ -332,7 +298,8 @@ struct BakeStaticMeshEntry {
   anchor.id = stableObjectId(object, "anchor");
   anchor.kind = std::string(anchorKind);
   anchor.runtimeStableName = stableObjectId(object);
-  anchor.positionMeters = toVec3(object.transform.position);
+  anchor.positionMeters =
+      creativeVec3ToCoreChecked(object.transform.position).value;
   return anchor;
 }
 
@@ -379,10 +346,16 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
   mesh.role = std::string(roleName(role));
   const CreativeTransformedBounds resolved =
       resolveCreativeObjectBounds(object);
-  mesh.positionMeters = resolved.valid ? toVec3(resolved.center) : bounds.center;
-  mesh.sizeMeters = resolved.valid ? toVec3(resolved.size) : bounds.size;
+  mesh.positionMeters = resolved.valid
+                            ? creativeVec3ToCoreChecked(resolved.center).value
+                            : bounds.center;
+  mesh.sizeMeters = resolved.valid
+                        ? creativeVec3ToCoreChecked(resolved.size).value
+                        : bounds.size;
   mesh.rotationEulerRadians =
-      resolved.valid ? toVec3(resolved.rotationEulerRadians) : Vec3{};
+      resolved.valid
+          ? creativeVec3ToCoreChecked(resolved.rotationEulerRadians).value
+          : Vec3{};
   if (role == BakedRoomRole::Wall &&
       axisAlignedYaw(object.transform.rotationEulerRadians)) {
     setWallSegmentFields(mesh, bounds);
@@ -557,11 +530,13 @@ void appendSpatialSurfaces(RoomAsset& room,
     return BakedRoomRole::Unsupported;
   }
 
-  const CreativeBounds bounds = descriptor.defaults.bounds;
-  const Vec3 semanticSize{toFloat(bounds.max.x - bounds.min.x),
-                          toFloat(bounds.max.y - bounds.min.y),
-                          toFloat(bounds.max.z - bounds.min.z)};
-  return roleForObject(descriptor, semanticSize);
+  const CreativeBoundsMetrics metrics =
+      measureCreativeBounds(descriptor.defaults.bounds);
+  const CreativeCoreVec3Conversion semanticSize =
+      creativeVec3ToCoreChecked(metrics.size);
+  return metrics.valid && semanticSize.converted
+             ? roleForObject(descriptor, semanticSize.value)
+             : BakedRoomRole::Unsupported;
 }
 
 [[nodiscard]] bool bakeBoundsForVoxelCuboid(
@@ -678,15 +653,21 @@ void appendVoxelCuboid(CreativeRoomBakeResult& result,
 
   const CreativeTransformedBounds resolved =
       resolveCreativeObjectBounds(object);
+  const CreativeCoreVec3Conversion orientedSize =
+      creativeVec3ToCoreChecked(resolved.size);
+  const CreativeCoreVec3Conversion resolvedCenter =
+      creativeVec3ToCoreChecked(resolved.center);
+  const CreativeCoreVec3Conversion resolvedRotation =
+      creativeVec3ToCoreChecked(resolved.rotationEulerRadians);
   if (!resolved.valid ||
       !validBakeBounds(resolved.worldBounds, classification.bounds) ||
-      !fitsFloat(resolved.size.x) || !fitsFloat(resolved.size.y) ||
-      !fitsFloat(resolved.size.z)) {
+      !orientedSize.converted || !resolvedCenter.converted ||
+      !resolvedRotation.converted) {
     classification.decision = RoomBakeObjectDecision::SkipNoBounds;
     return classification;
   }
 
-  classification.orientedSize = toVec3(resolved.size);
+  classification.orientedSize = orientedSize.value;
   classification.role = roleForObject(descriptor, classification.orientedSize);
   if (classification.role == BakedRoomRole::Unsupported) {
     classification.decision = RoomBakeObjectDecision::SkipUnsupportedShape;

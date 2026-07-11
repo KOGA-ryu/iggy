@@ -3,12 +3,12 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
-#include <cmath>
 #include <iterator>
 #include <string>
 #include <utility>
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/input/UiInput.hpp"
 
 namespace iggy3d::creative {
 namespace {
@@ -293,12 +293,14 @@ bool moveCreativeCatalogPage(CreativeCatalogState& catalog,
   if (steps == 0) {
     return false;
   }
-  constexpr std::int32_t count =
-      static_cast<std::int32_t>(CreativeCatalogPage::Count);
-  const std::int32_t current = static_cast<std::int32_t>(catalog.page);
-  const std::int32_t next = ((current + steps) % count + count) % count;
+  const CreativeWrappedIndexResult next = stepCreativeWrappedIndex(
+      static_cast<std::size_t>(catalog.page),
+      static_cast<std::size_t>(CreativeCatalogPage::Count), steps);
+  if (!next.valid) {
+    return false;
+  }
   return setCreativeCatalogPage(
-      catalog, static_cast<CreativeCatalogPage>(next));
+      catalog, static_cast<CreativeCatalogPage>(next.index));
 }
 
 bool moveCreativeCatalogActionSelection(CreativeCatalogState& catalog,
@@ -306,15 +308,12 @@ bool moveCreativeCatalogActionSelection(CreativeCatalogState& catalog,
   if (steps == 0 || kActionEntries.empty()) {
     return false;
   }
-  const std::int64_t count = static_cast<std::int64_t>(kActionEntries.size());
-  const std::int64_t current =
-      static_cast<std::int64_t>(catalog.selectedActionIndex);
-  const std::int64_t next =
-      ((current + static_cast<std::int64_t>(steps)) % count + count) % count;
-  if (next == current) {
+  const CreativeWrappedIndexResult next = stepCreativeWrappedIndex(
+      catalog.selectedActionIndex, kActionEntries.size(), steps);
+  if (!next.valid || !next.changed) {
     return false;
   }
-  catalog.selectedActionIndex = static_cast<std::size_t>(next);
+  catalog.selectedActionIndex = next.index;
   catalog.pendingActionConfirmation.reset();
   return true;
 }
@@ -422,14 +421,14 @@ bool moveCreativeCatalogSelection(CreativeCatalogState& catalog,
   if (steps == 0 || catalog.filteredEntryIndices.empty()) {
     return false;
   }
-  const std::int64_t count =
-      static_cast<std::int64_t>(catalog.filteredEntryIndices.size());
-  const std::int64_t current =
-      static_cast<std::int64_t>(catalog.selectedFilteredIndex);
-  const std::int64_t next =
-      ((current + static_cast<std::int64_t>(steps)) % count + count) % count;
-  catalog.selectedFilteredIndex = static_cast<std::size_t>(next);
-  return next != current;
+  const CreativeWrappedIndexResult next = stepCreativeWrappedIndex(
+      catalog.selectedFilteredIndex, catalog.filteredEntryIndices.size(),
+      steps);
+  if (!next.valid) {
+    return false;
+  }
+  catalog.selectedFilteredIndex = next.index;
+  return next.changed;
 }
 
 bool selectCreativeCatalogFilteredIndex(CreativeCatalogState& catalog,
@@ -489,12 +488,13 @@ bool moveCreativeCatalogShapeSelection(
   if (steps == 0) {
     return false;
   }
-  const std::int64_t count = static_cast<std::int64_t>(kShapePresets.size());
-  const std::int64_t current = static_cast<std::int64_t>(shapePresetIndex(selection));
-  const std::int64_t next =
-      ((current + static_cast<std::int64_t>(steps)) % count + count) % count;
+  const CreativeWrappedIndexResult next = stepCreativeWrappedIndex(
+      shapePresetIndex(selection), kShapePresets.size(), steps);
+  if (!next.valid) {
+    return false;
+  }
   const CreativeCatalogShapeSelection nextSelection =
-      kShapePresets[static_cast<std::size_t>(next)].selection;
+      kShapePresets[next.index].selection;
   const bool changed = !sameShapeSelection(selection, nextSelection);
   selection = nextSelection;
   return changed;
@@ -565,34 +565,26 @@ bool moveCreativeToolWheelSelection(CreativeToolWheelState& wheel,
   if (steps == 0 || wheel.entryCount == 0U) {
     return false;
   }
-  const std::int64_t count = static_cast<std::int64_t>(wheel.entryCount);
-  const std::int64_t current = static_cast<std::int64_t>(wheel.selectedIndex);
-  const std::int64_t next =
-      ((current + static_cast<std::int64_t>(steps)) % count + count) % count;
-  wheel.selectedIndex = static_cast<std::size_t>(next);
-  return next != current;
+  const CreativeWrappedIndexResult next =
+      stepCreativeWrappedIndex(wheel.selectedIndex, wheel.entryCount, steps);
+  if (!next.valid) {
+    return false;
+  }
+  wheel.selectedIndex = next.index;
+  return next.changed;
 }
 
 bool selectCreativeToolWheelDirection(CreativeToolWheelState& wheel,
                                       float x,
                                       float y,
                                       float deadzone) noexcept {
-  if (wheel.entryCount == 0U || !std::isfinite(x) || !std::isfinite(y) ||
-      !std::isfinite(deadzone) || deadzone < 0.0F ||
-      std::hypot(x, y) <= deadzone) {
+  const CreativeRadialSectorResult sector =
+      resolveCreativeRadialSector(x, y, wheel.entryCount, deadzone);
+  if (!sector.valid) {
     return false;
   }
-  constexpr float kTau = 6.28318530717958647692F;
-  float angle = std::atan2(x, y);
-  if (angle < 0.0F) {
-    angle += kTau;
-  }
-  const float sector = kTau / static_cast<float>(wheel.entryCount);
-  const std::size_t selected =
-      static_cast<std::size_t>(std::floor((angle + sector * 0.5F) / sector)) %
-      wheel.entryCount;
-  const bool changed = wheel.selectedIndex != selected;
-  wheel.selectedIndex = selected;
+  const bool changed = wheel.selectedIndex != sector.index;
+  wheel.selectedIndex = sector.index;
   return changed;
 }
 

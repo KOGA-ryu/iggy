@@ -37,12 +37,15 @@ struct CreativeEditorFrameInputResult {
   bool keepRunning = true;
   bool skipFrame = false;
   iggy3d::SdlDrawableExtent extent{};
+  iggy3d::creative::CreativeInputFrame inputFrame;
   iggy3d::creative::CreativeInputRouteResult routedInput;
   iggy3d::creative::CreativeWorldActionFrame worldActions;
   iggy3d::creative::CreativeInputModifierMask modifiers =
       iggy3d::creative::kCreativeInputModifierNone;
   float toolWheelDirectionX = 0.0F;
   float toolWheelDirectionY = 0.0F;
+  std::int32_t transformNudgeWheelSteps = 0;
+  bool transformFineNudge = false;
   std::uint64_t monotonicTimeNanoseconds = 0;
   bool windowFocused = true;
 };

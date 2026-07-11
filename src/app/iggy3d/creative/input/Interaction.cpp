@@ -5,16 +5,14 @@
 #include <cmath>
 #include <limits>
 
+#include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/input/UiInput.hpp"
+
 namespace iggy3d::creative {
 namespace {
 
 [[nodiscard]] std::size_t actionIndex(CreativeWorldActionId action) noexcept {
   return static_cast<std::size_t>(action);
-}
-
-[[nodiscard]] bool finiteVec3(CreativeVec3 value) noexcept {
-  return std::isfinite(value.x) && std::isfinite(value.y) &&
-         std::isfinite(value.z);
 }
 
 [[nodiscard]] std::size_t selectedSlotIndex(
@@ -42,7 +40,7 @@ namespace {
 
 [[nodiscard]] CreativeVec3 dominantHorizontalNormal(
     CreativeVec3 direction) noexcept {
-  if (!finiteVec3(direction)) {
+  if (!isFiniteCreativeVec3(direction)) {
     return {};
   }
   const double ax = std::fabs(direction.x);
@@ -53,12 +51,6 @@ namespace {
   return ax >= az ? CreativeVec3{std::copysign(1.0, direction.x), 0.0, 0.0}
                   : CreativeVec3{0.0, 0.0,
                                  std::copysign(1.0, direction.z)};
-}
-
-[[nodiscard]] CreativeVec3 cellCenter(const CreativeBounds& bounds) noexcept {
-  return {(bounds.min.x + bounds.max.x) * 0.5,
-          (bounds.min.y + bounds.max.y) * 0.5,
-          (bounds.min.z + bounds.max.z) * 0.5};
 }
 
 [[nodiscard]] bool tryAdjacentCell(CreativeGridCoord3 cell,
@@ -199,11 +191,13 @@ bool cycleCreativeHotbar(CreativeHotbarState& hotbar,
   if (steps == 0) {
     return false;
   }
-  const std::int32_t count = static_cast<std::int32_t>(kCreativeHotbarSlotCount);
-  const std::int32_t current = static_cast<std::int32_t>(selectedSlotIndex(hotbar));
-  const std::int32_t wrapped = ((current + steps) % count + count) % count;
-  hotbar.selectedSlot = static_cast<std::uint8_t>(wrapped);
-  return wrapped != current;
+  const CreativeWrappedIndexResult next = stepCreativeWrappedIndex(
+      selectedSlotIndex(hotbar), kCreativeHotbarSlotCount, steps);
+  if (!next.valid) {
+    return false;
+  }
+  hotbar.selectedSlot = static_cast<std::uint8_t>(next.index);
+  return next.changed;
 }
 
 bool assignCreativeHotbarMaterial(CreativeHotbarState& hotbar,
@@ -286,8 +280,10 @@ CreativeGridTarget resolveCreativeGridTargetFromHit(
     CreativeVec3 origin,
     CreativeVec3 placerForward) noexcept {
   CreativeGridTarget target;
-  if (!finiteVec3(hitPoint) || !finiteVec3(faceNormal) ||
-      !finiteVec3(origin) || !finiteVec3(placerForward) ||
+  if (!isFiniteCreativeVec3(hitPoint) ||
+      !isFiniteCreativeVec3(faceNormal) ||
+      !isFiniteCreativeVec3(origin) ||
+      !isFiniteCreativeVec3(placerForward) ||
       !std::isfinite(cellSize) || cellSize <= 0.0) {
     return target;
   }
@@ -315,7 +311,8 @@ CreativeGridTarget resolveCreativeGridTargetFromHit(
       creativeVolumeCellBounds(target.targetCell, cellSize, origin);
   target.adjacentCellBounds =
       creativeVolumeCellBounds(target.adjacentCell, cellSize, origin);
-  const CreativeVec3 adjacentCenter = cellCenter(target.adjacentCellBounds);
+  const CreativeVec3 adjacentCenter =
+      measureCreativeBounds(target.adjacentCellBounds).center;
   target.placementAnchor = {adjacentCenter.x,
                             target.adjacentCellBounds.min.y,
                             adjacentCenter.z};

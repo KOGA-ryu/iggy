@@ -8,11 +8,6 @@ namespace {
 constexpr float kPi = 3.14159265358979323846F;
 constexpr float kEpsilon = 0.0001F;
 
-bool finiteVec3(Vec3 value) {
-  return std::isfinite(value.x) && std::isfinite(value.y) &&
-         std::isfinite(value.z);
-}
-
 float safeAxis(float value) {
   // branch-gate: BG-1205
   if (!std::isfinite(value)) {
@@ -54,7 +49,7 @@ ProductCreativeFlyResult applyProductCreativeFlyInput(
   }
   // branch-gate: BG-1205
   if (!isValidProductCreativeFlyConfig(config) ||
-      !finiteVec3(startPositionMeters) ||
+      !isFinite(startPositionMeters) ||
       !std::isfinite(input.cameraYawDegrees)) {
     result.reasonCode = "creative_fly_invalid_config";
     return result;
@@ -79,9 +74,11 @@ ProductCreativeFlyResult applyProductCreativeFlyInput(
   const Vec3 right{cosYaw, 0.0F, sinYaw};
   const Vec3 up{0.0F, 1.0F, 0.0F};
   const float invMagnitude = 1.0F / magnitude;
+  const float analogMagnitude = std::min(magnitude, 1.0F);
   // branch-gate: BG-1205
-  const float speed = config.speedMetersPerSecond *
-                      (input.sprinting ? config.sprintMultiplier : 1.0F);
+  const float speed =
+      config.speedMetersPerSecond *
+      (input.sprinting ? config.sprintMultiplier : 1.0F) * analogMagnitude;
   const Vec3 direction =
       (right * moveX + forward * moveY + up * moveZ) * invMagnitude;
 

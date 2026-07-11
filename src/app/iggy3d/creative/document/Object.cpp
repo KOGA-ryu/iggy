@@ -1,6 +1,7 @@
 
 #include "app/iggy3d/creative/document/Object.hpp"
 
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 
 #include <algorithm>
@@ -141,11 +142,6 @@ constexpr auto kSerializedCreativeObjectKindIds =
 static_assert(kSerializedCreativeObjectKindIds.size() ==
               creativeObjectKindCount());
 
-[[nodiscard]] bool finite(CreativeVec3 value) noexcept {
-    return std::isfinite(value.x) && std::isfinite(value.y) &&
-           std::isfinite(value.z);
-}
-
 [[nodiscard]] CreativeVec3 rotateEulerXyz(CreativeVec3 point,
                                           CreativeVec3 radians) noexcept {
     const double cx = std::cos(radians.x);
@@ -185,34 +181,24 @@ CreativeTransformedBounds resolveCreativeTransformedBounds(
     CreativeBounds authoredBounds,
     CreativeTransform transform) noexcept {
     CreativeTransformedBounds result;
-    const CreativeVec3 authoredSize{
-        authoredBounds.max.x - authoredBounds.min.x,
-        authoredBounds.max.y - authoredBounds.min.y,
-        authoredBounds.max.z - authoredBounds.min.z,
-    };
-    if (!finite(authoredBounds.min) || !finite(authoredBounds.max) ||
-        !finite(transform.position) ||
-        !finite(transform.rotationEulerRadians) || !finite(transform.scale) ||
-        !(authoredSize.x > 0.0) || !(authoredSize.y > 0.0) ||
-        !(authoredSize.z > 0.0) || !(transform.scale.x > 0.0) ||
-        !(transform.scale.y > 0.0) || !(transform.scale.z > 0.0)) {
+    const CreativeBoundsMetrics authored = measureCreativeBounds(authoredBounds);
+    if (!authored.valid || !isFiniteCreativeVec3(transform.position) ||
+        !isFiniteCreativeVec3(transform.rotationEulerRadians) ||
+        !isPositiveCreativeVec3(transform.scale) ||
+        !isPositiveCreativeVec3(authored.size)) {
         return result;
     }
 
-    const CreativeVec3 authoredCenter{
-        (authoredBounds.min.x + authoredBounds.max.x) * 0.5,
-        (authoredBounds.min.y + authoredBounds.max.y) * 0.5,
-        (authoredBounds.min.z + authoredBounds.max.z) * 0.5,
-    };
-    result.size = multiply(authoredSize, transform.scale);
+    result.size = multiply(authored.size, transform.scale);
     result.rotationEulerRadians = transform.rotationEulerRadians;
     result.center = add(
         transform.position,
         rotateEulerXyz(
-            multiply(subtract(authoredCenter, transform.position),
+            multiply(subtract(authored.center, transform.position),
                      transform.scale),
             transform.rotationEulerRadians));
-    if (!finite(result.center) || !finite(result.size)) {
+    if (!isFiniteCreativeVec3(result.center) ||
+        !isFiniteCreativeVec3(result.size)) {
         return {};
     }
 
@@ -227,7 +213,7 @@ CreativeTransformedBounds resolveCreativeTransformedBounds(
         result.corners[index] =
             add(result.center,
                 rotateEulerXyz(local, transform.rotationEulerRadians));
-        if (!finite(result.corners[index])) {
+        if (!isFiniteCreativeVec3(result.corners[index])) {
             return {};
         }
     }

@@ -10,6 +10,7 @@
 #include "EditorPreviewProxies.hpp"
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/tools/Select.hpp"
 
 namespace iggy3d_creative_app {
@@ -99,11 +100,11 @@ std::size_t appendCreativeEditorLinearArrayPreview(
   const iggy3d::RenderLineColor color{0.22F, 0.88F, 1.0F, 0.90F};
   for (const cr::CreativeLinearArrayInstance& instance :
        plan.plannedInstances()) {
-    const iggy3d::Vec3 offset{
-        static_cast<float>(instance.offset.x),
-        static_cast<float>(instance.offset.y),
-        static_cast<float>(instance.offset.z),
-    };
+    const cr::CreativeCoreVec3Conversion offset =
+        cr::creativeVec3ToCoreChecked(instance.offset);
+    if (!offset.converted) {
+      continue;
+    }
     for (cr::TargetRef target : selected) {
       if (target.value == cr::kInvalidId) {
         continue;
@@ -115,7 +116,8 @@ std::size_t appendCreativeEditorLinearArrayPreview(
       }
       const VisualBounds bounds = visualBoundsForObject(*object);
       appendStandaloneWireframeBoxEdges(
-          wireLines, bounds.min + offset, bounds.max + offset, color,
+          wireLines, bounds.min + offset.value, bounds.max + offset.value,
+          color,
           std::max(0.025F, wireThickness * 0.8F));
     }
   }

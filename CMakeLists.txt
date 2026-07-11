@@ -38,6 +38,7 @@ target_sources(iggy3d
     src/core/math/Frustum.cpp
     src/core/math/Mat4.cpp
     src/app/PackageRuntimeLookup.cpp
+    src/app/iggy3d/creative/Geometry.cpp
     src/app/iggy3d/creative/document/Object.cpp
     src/app/iggy3d/creative/document/Document.cpp
     src/app/iggy3d/creative/document/VoxelField.cpp
@@ -47,6 +48,9 @@ target_sources(iggy3d
     src/app/iggy3d/creative/document/DocumentMutation.cpp
     src/app/iggy3d/creative/spatial/SpatialProjection.cpp
     src/app/iggy3d/creative/document/DocumentWireframe.cpp
+    src/app/iggy3d/creative/input/ControllerInput.cpp
+    src/app/iggy3d/creative/input/ControlProfile.cpp
+    src/app/iggy3d/creative/input/UiInput.cpp
     src/app/iggy3d/creative/input/InputRouter.cpp
     src/app/iggy3d/creative/input/Catalog.cpp
     src/app/iggy3d/creative/input/Interaction.cpp
@@ -68,20 +72,19 @@ target_sources(iggy3d
     src/app/iggy3d/creative/adapters/RoomBakeReachability.cpp
     src/app/iggy3d/creative/spatial/Ghost.cpp
     src/app/iggy3d/creative/tools/RoomShell.cpp
-    src/app/iggy3d/creative/ui/Ui.cpp
-    src/app/iggy3d/creative/ui/CreativeUiDrawTypes.cpp
+    src/app/iggy3d/creative/ui/UiTheme.cpp
+    src/app/iggy3d/creative/ui/UiWidgets.cpp
     src/app/iggy3d/creative/Facade.cpp
     src/app/iggy3d/creative/FacadeMoveDrag.cpp
     src/app/iggy3d/creative/camera/Fly.cpp
     src/app/iggy3d/map_maker/Grid.cpp
     src/app/iggy3d/creative/render/WireframeDebugLines.cpp
     src/app/iggy3d/creative/render/CreativeOverlayFrame.cpp
+    src/app/iggy3d/creative/render/CreativeScreenProjection.cpp
     src/app/iggy3d/creative/render/CreativeSceneFrame.cpp
     src/app/iggy3d/creative/world/DocumentSection.cpp
     src/app/iggy3d/save/Catalog.cpp
     src/app/iggy3d/save/CatalogProjector.cpp
-    src/app/iggy3d/creative/ui/UiDrawList.cpp
-    src/app/iggy3d/creative/ui/UiProjection.cpp
     src/app/iggy3d/creative/world/WorldService.cpp
     src/app/iggy3d/save/SaveBridge.cpp
     src/app/frontend/SaveSlotModel.cpp
@@ -196,6 +199,7 @@ endif()
 
 set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorCatalog.cpp
+  apps/iggy3d_creative/EditorControls.cpp
   apps/iggy3d_creative/EditorToolOptions.cpp
   apps/iggy3d_creative/EditorTransform.cpp
   apps/iggy3d_creative/EditorTransformOverlay.cpp

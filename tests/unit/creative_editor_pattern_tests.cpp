@@ -296,6 +296,84 @@ bool selectionTransformMoveUsesControlsAndOneUndo() {
          ok;
 }
 
+bool precisionTransformConstrainsNudgesAndCommitsOnce() {
+  cr::CreativeAppState appState;
+  if (!expect(installDocument(appState, "Transform Precision", 77U),
+              "precision transform document installed") ||
+      !expect(createAndSelectRoom(appState) != cr::kInvalidObjectId,
+              "precision transform source selected")) {
+    return false;
+  }
+  app::CreativeEditorState editor;
+  if (!expect(app::beginCreativeEditorSelectionTransformPreview(
+                  appState, editor.transform, "test_precision_begin"),
+              "precision transform begins")) {
+    return false;
+  }
+  const std::uint64_t revisionBefore = appState.facade.document().revision();
+  static_cast<void>(app::processCreativeEditorSelectionTransformPreview(
+      appState, editor.transform, true, {3.4, 2.2, -4.7}, false,
+      "test_precision_aim", 0.5));
+  bool ok = expect(app::setCreativeEditorTransformConstraint(
+                       appState, editor.transform,
+                       cr::CreativeSelectionPlacementAxis::X) &&
+                       editor.transform.request.targetAnchor.x == 3.5 &&
+                       editor.transform.request.targetAnchor.y == 0.0 &&
+                       editor.transform.request.targetAnchor.z == 0.5,
+                   "X lock projects and snaps aim relative to source") &&
+            expect(app::nudgeCreativeEditorSelectionTransform(
+                       appState, editor.transform, 1, false) &&
+                       editor.transform.request.targetAnchor.x == 4.0 &&
+                       app::nudgeCreativeEditorSelectionTransform(
+                           appState, editor.transform, -1, true) &&
+                       editor.transform.request.targetAnchor.x == 3.875,
+                   "regular and fine nudges update transient target exactly");
+
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> lines;
+  const std::size_t lineCount =
+      app::appendCreativeEditorSelectionTransformPreview(
+          editor.transform, 0.05F, lines);
+  ok = expect(lineCount >= 50U && !lines.empty() &&
+                  lines.back().color.r == 1.0F &&
+                  lines.back().color.g == 0.24F &&
+                  lines.back().start.y == lines.back().end.y &&
+                  lines.back().start.z == lines.back().end.z,
+              "X lock renders a red axis-aligned guide") &&
+       expect(appState.facade.document().revision() == revisionBefore &&
+                  cr::creativeUndoDepth(appState.history) == 0U,
+              "precision preview remains non-mutating") &&
+       ok;
+
+  ok = expect(app::applyCreativeEditorTransformControl(
+                       appState, editor.transform,
+                       app::CreativeEditorTransformControl::CycleConstraint) &&
+                   editor.transform.constraint ==
+                       cr::CreativeSelectionPlacementAxis::Y &&
+                   editor.transform.request.targetAnchor.y == 2.0,
+              "controller axis sector cycles X to Y") &&
+       expect(app::nudgeCreativeEditorSelectionTransform(
+                  appState, editor.transform, 2, false) &&
+                  editor.transform.request.targetAnchor.y == 3.0,
+              "repeated Y nudge accumulates by snap steps") &&
+       ok;
+
+  static_cast<void>(app::requestCreativeEditorSelectionTransformCommit(
+      editor.transform));
+  const app::CreativeEditorTransformCommitReceipt committed =
+      app::processCreativeEditorSelectionTransformPreview(
+          appState, editor.transform, true, {3.4, 2.2, -4.7}, false,
+          "test_precision_commit", 0.5);
+  const cr::CreativeObject* moved = appState.facade.findObject(1U);
+  return expect(committed.accepted && committed.changed && moved != nullptr &&
+                    moved->bounds.min.y == 3.0 &&
+                    moved->bounds.max.y == 4.0,
+                "precision target commits through shared placement plan") &&
+         expect(appState.facade.document().revision() == revisionBefore + 1U &&
+                    cr::creativeUndoDepth(appState.history) == 1U,
+                "precision move advances once and records one undo") &&
+         ok;
+}
+
 bool lockedSelectionTransformStaysRedAndNonMutating() {
   cr::CreativeAppState appState;
   if (!expect(installDocument(appState, "Transform Locked", 76U),
@@ -383,6 +461,7 @@ int main() {
                   rejectedCommitDoesNotRecordHistory() &&
                   transformCopyPreviewIsTransientAndConfirmable() &&
                   selectionTransformMoveUsesControlsAndOneUndo() &&
+                  precisionTransformConstrainsNudgesAndCommitsOnce() &&
                   lockedSelectionTransformStaysRedAndNonMutating() &&
                   largeTransformPreviewUsesOneAggregateBox();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

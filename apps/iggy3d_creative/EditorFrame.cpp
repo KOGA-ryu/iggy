@@ -10,6 +10,7 @@
 #include <thread>
 
 #include "app/iggy3d/creative/camera/Fly.hpp"
+#include "app/iggy3d/creative/input/UiInput.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
 #include "render/vulkan/VulkanBackend.hpp"
 
@@ -98,6 +99,7 @@ void setSdlKey(creative::CreativeInputFrame& frame,
   setSdlKey(frame, creative::CreativeInputKey::S, keys, SDL_SCANCODE_S);
   setSdlKey(frame, creative::CreativeInputKey::V, keys, SDL_SCANCODE_V);
   setSdlKey(frame, creative::CreativeInputKey::X, keys, SDL_SCANCODE_X);
+  setSdlKey(frame, creative::CreativeInputKey::Y, keys, SDL_SCANCODE_Y);
   setSdlKey(frame, creative::CreativeInputKey::Z, keys, SDL_SCANCODE_Z);
   setSdlKey(frame, creative::CreativeInputKey::LeftBracket, keys,
             SDL_SCANCODE_LEFTBRACKET);
@@ -143,6 +145,17 @@ void setSdlKey(creative::CreativeInputFrame& frame,
             SDL_SCANCODE_LGUI);
   setSdlKey(frame, creative::CreativeInputKey::RightCommand, keys,
             SDL_SCANCODE_RGUI);
+  const SDL_MouseButtonFlags mouseButtons =
+      SDL_GetMouseState(nullptr, nullptr);
+  creative::setCreativeInputKey(
+      frame, creative::CreativeInputKey::MousePrimary,
+      (mouseButtons & SDL_BUTTON_LMASK) != 0U);
+  creative::setCreativeInputKey(
+      frame, creative::CreativeInputKey::MouseSecondary,
+      (mouseButtons & SDL_BUTTON_RMASK) != 0U);
+  creative::setCreativeInputKey(
+      frame, creative::CreativeInputKey::MouseMiddle,
+      (mouseButtons & SDL_BUTTON_MMASK) != 0U);
   creative::setCreativeInputKey(frame,
                                 creative::CreativeInputKey::GamepadInventory,
                                 creative::creativeControllerButtonDown(
@@ -186,15 +199,35 @@ void setSdlKey(creative::CreativeInputFrame& frame,
       frame, creative::CreativeInputKey::GamepadRightShoulder,
       creative::creativeControllerButtonDown(
           controller, creative::CreativeControllerButton::RightShoulder));
+  creative::setCreativeInputKey(
+      frame, creative::CreativeInputKey::GamepadWest,
+      creative::creativeControllerButtonDown(
+          controller, creative::CreativeControllerButton::West));
+  creative::setCreativeInputKey(
+      frame, creative::CreativeInputKey::GamepadBack,
+      creative::creativeControllerButtonDown(
+          controller, creative::CreativeControllerButton::Back));
+  creative::setCreativeInputKey(
+      frame, creative::CreativeInputKey::GamepadStart,
+      creative::creativeControllerButtonDown(
+          controller, creative::CreativeControllerButton::Start));
+  creative::setCreativeInputKey(
+      frame, creative::CreativeInputKey::GamepadLeftStick,
+      creative::creativeControllerButtonDown(
+          controller, creative::CreativeControllerButton::LeftStick));
+  creative::setCreativeInputKey(
+      frame, creative::CreativeInputKey::GamepadRightStick,
+      creative::creativeControllerButtonDown(
+          controller, creative::CreativeControllerButton::RightStick));
+  creative::setCreativeInputKey(
+      frame, creative::CreativeInputKey::GamepadLeftTrigger,
+      creative::creativeControllerButtonDown(
+          controller, creative::CreativeControllerButton::LeftTrigger));
+  creative::setCreativeInputKey(
+      frame, creative::CreativeInputKey::GamepadRightTrigger,
+      creative::creativeControllerButtonDown(
+          controller, creative::CreativeControllerButton::RightTrigger));
   return frame;
-}
-
-[[nodiscard]] bool navigationKeyDown(
-    const creative::CreativeInputFrame& frame,
-    const creative::CreativeInputRouteResult& routedInput,
-    creative::CreativeInputKey key) noexcept {
-  return creative::creativeInputKeyDown(frame, key) &&
-         !creative::creativeInputKeyConsumed(routedInput, key);
 }
 
 [[nodiscard]] bool routedActionPresent(
@@ -217,8 +250,12 @@ void setSdlKey(creative::CreativeInputFrame& frame,
   };
   const std::array candidates{
       Candidate{captureMode, creative::CreativeInputContext::Capture},
+      Candidate{editor.controls.open,
+                creative::CreativeInputContext::Controls},
       Candidate{editor.transform.active,
-                creative::CreativeInputContext::TransformPreview},
+                editor.transform.controlsOpen
+                    ? creative::CreativeInputContext::TransformControls
+                    : creative::CreativeInputContext::TransformPreview},
       Candidate{editor.catalog.model.open,
                 creative::CreativeInputContext::Catalog},
       Candidate{editor.catalog.toolWheel.open,
@@ -247,7 +284,9 @@ void applyCreativeEditorCommandInput(
                                    "creative_material_stroke_command");
   }
   if (routedInput.context ==
-      creative::CreativeInputContext::TransformPreview) {
+          creative::CreativeInputContext::TransformPreview ||
+      routedInput.context ==
+          creative::CreativeInputContext::TransformControls) {
     return;
   }
   if (routedInput.context != creative::CreativeInputContext::EditorViewport) {
@@ -296,6 +335,32 @@ void applyCreativeEditorCommandInput(
       case creative::CreativeInputActionId::ToggleTransformControls:
       case creative::CreativeInputActionId::TransformControlPrevious:
       case creative::CreativeInputActionId::TransformControlNext:
+      case creative::CreativeInputActionId::TransformConstraintX:
+      case creative::CreativeInputActionId::TransformConstraintY:
+      case creative::CreativeInputActionId::TransformConstraintZ:
+      case creative::CreativeInputActionId::TransformNudgeNegative:
+      case creative::CreativeInputActionId::TransformNudgePositive:
+      case creative::CreativeInputActionId::MoveForward:
+      case creative::CreativeInputActionId::MoveBackward:
+      case creative::CreativeInputActionId::MoveLeft:
+      case creative::CreativeInputActionId::MoveRight:
+      case creative::CreativeInputActionId::FlyUp:
+      case creative::CreativeInputActionId::FlyDown:
+      case creative::CreativeInputActionId::Sprint:
+      case creative::CreativeInputActionId::PrimaryAction:
+      case creative::CreativeInputActionId::SecondaryAction:
+      case creative::CreativeInputActionId::PickAction:
+      case creative::CreativeInputActionId::HotbarPrevious:
+      case creative::CreativeInputActionId::HotbarNext:
+      case creative::CreativeInputActionId::ToggleControls:
+      case creative::CreativeInputActionId::ControlsPrevious:
+      case creative::CreativeInputActionId::ControlsNext:
+      case creative::CreativeInputActionId::ControlsDecrease:
+      case creative::CreativeInputActionId::ControlsIncrease:
+      case creative::CreativeInputActionId::ControlsActivate:
+      case creative::CreativeInputActionId::ControlsClose:
+      case creative::CreativeInputActionId::ControlsResetDefaults:
+      case creative::CreativeInputActionId::Count:
         break;
       case creative::CreativeInputActionId::ConfirmActiveTool:
         static_cast<void>(confirmCreativeEditorHeldItem(
@@ -400,16 +465,9 @@ void applyCreativeEditorCommandInput(
 
 namespace {
 
-constexpr float kMouseSensitivity = 0.12F;
-constexpr float kGamepadLookSensitivity = 2.4F;
-
-[[nodiscard]] std::int32_t wheelSteps(float wheelY) noexcept {
-  if (!std::isfinite(wheelY) || std::fabs(wheelY) <= 1.0e-4F) {
-    return 0;
-  }
-  const float magnitude = std::max(1.0F, std::round(std::fabs(wheelY)));
-  return static_cast<std::int32_t>(std::copysign(magnitude, wheelY));
-}
+constexpr creative::CreativeStickProfile kRadialStickProfile{
+    0.0F, 1.0F, false, false};
+constexpr creative::CreativeWheelProfile kFrameWheelProfile{};
 
 }  // namespace
 
@@ -463,40 +521,63 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
       resolveInputContext(captureMode, editor);
   const creative::CreativeInputFrame inputFrame = makeCreativeInputFrame(
       keys, SDL_GetModState(), inputContext, controller);
+  result.inputFrame = inputFrame;
   result.routedInput =
-      creative::routeCreativeInput(editor.inputRouterState, inputFrame);
+      creative::routeCreativeInput(editor.inputRouterState, inputFrame,
+                                   editor.controlProfile.bindingSpan());
+  const auto actionDown = [&inputFrame, &result, &editor](
+                              creative::CreativeInputActionId action) {
+    return creative::creativeInputActionDown(
+        inputFrame, action, editor.controlProfile.bindingSpan(),
+        &result.routedInput);
+  };
+  const creative::CreativeStickSignal moveStick =
+      creative::creativeControllerStick(
+          controller, creative::CreativeControllerStick::Left,
+          editor.controlProfile.movementStick);
+  const creative::CreativeStickSignal lookStick =
+      creative::creativeControllerStick(
+          controller, creative::CreativeControllerStick::Right,
+          editor.controlProfile.lookStick);
+  const creative::CreativeStickSignal radialStick =
+      creative::creativeControllerStick(
+          controller, creative::CreativeControllerStick::Right,
+          kRadialStickProfile);
+  const creative::CreativeControllerLookDelta gamepadLook =
+      creative::creativeControllerLookDelta(lookStick,
+                                            editor.controlProfile
+                                                .gamepadLookSensitivity);
   result.modifiers = inputFrame.modifiers;
-  result.toolWheelDirectionX = creative::creativeControllerAxis(
-      controller, creative::CreativeControllerAxis::LookX);
-  result.toolWheelDirectionY = creative::creativeControllerAxis(
-      controller, creative::CreativeControllerAxis::LookY);
+  result.transformNudgeWheelSteps =
+      inputContext == creative::CreativeInputContext::TransformPreview
+          ? creative::quantizeCreativeWheelSteps(
+                window.eventState().mouseWheelY, kFrameWheelProfile)
+          : 0;
+  result.transformFineNudge =
+      (inputFrame.modifiers & creative::kCreativeInputModifierShift) != 0U ||
+      creative::creativeControllerButtonDown(
+          controller, creative::CreativeControllerButton::LeftShoulder);
+  result.toolWheelDirectionX = radialStick.x;
+  result.toolWheelDirectionY = radialStick.y;
   creative::CreativeWorldInputSample worldInput;
   if (!captureMode && result.windowFocused) {
-    const SDL_MouseButtonFlags buttons = SDL_GetMouseState(nullptr, nullptr);
     creative::setCreativeWorldAction(
         worldInput, creative::CreativeWorldActionId::Primary,
-        (buttons & SDL_BUTTON_LMASK) != 0U ||
-            creative::creativeControllerButtonDown(
-                controller, creative::CreativeControllerButton::RightTrigger));
+        actionDown(creative::CreativeInputActionId::PrimaryAction));
     creative::setCreativeWorldAction(
         worldInput, creative::CreativeWorldActionId::Secondary,
-        (buttons & SDL_BUTTON_RMASK) != 0U ||
-            creative::creativeControllerButtonDown(
-                controller, creative::CreativeControllerButton::LeftTrigger));
+        actionDown(creative::CreativeInputActionId::SecondaryAction));
     creative::setCreativeWorldAction(
         worldInput, creative::CreativeWorldActionId::Pick,
-        (buttons & SDL_BUTTON_MMASK) != 0U ||
-            creative::creativeControllerButtonDown(
-                controller, creative::CreativeControllerButton::DpadLeft));
+        actionDown(creative::CreativeInputActionId::PickAction));
     creative::setCreativeWorldAction(
         worldInput, creative::CreativeWorldActionId::HotbarPrevious,
-        creative::creativeControllerButtonDown(
-            controller, creative::CreativeControllerButton::LeftShoulder));
+        actionDown(creative::CreativeInputActionId::HotbarPrevious));
     creative::setCreativeWorldAction(
         worldInput, creative::CreativeWorldActionId::HotbarNext,
-        creative::creativeControllerButtonDown(
-            controller, creative::CreativeControllerButton::RightShoulder));
-    worldInput.hotbarWheelSteps = wheelSteps(window.eventState().mouseWheelY);
+        actionDown(creative::CreativeInputActionId::HotbarNext));
+    worldInput.hotbarWheelSteps = creative::quantizeCreativeWheelSteps(
+        window.eventState().mouseWheelY, kFrameWheelProfile);
   }
   result.worldActions = creative::routeCreativeWorldActions(
       editor.interaction.actionRouter, worldInput);
@@ -511,75 +592,55 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
       !routedActionPresent(result.routedInput,
                            creative::CreativeInputActionId::ToggleToolWheel);
   if (viewportNavigationActive) {
+    const bool precisionNudgeRequested =
+        inputContext == creative::CreativeInputContext::TransformPreview &&
+        (result.transformNudgeWheelSteps != 0 ||
+         routedActionPresent(
+             result.routedInput,
+             creative::CreativeInputActionId::TransformNudgeNegative) ||
+         routedActionPresent(
+             result.routedInput,
+             creative::CreativeInputActionId::TransformNudgePositive));
     const float keyboardMoveX =
-        (navigationKeyDown(inputFrame, result.routedInput,
-                           creative::CreativeInputKey::D)
+        (actionDown(creative::CreativeInputActionId::MoveRight)
              ? 1.0F
              : 0.0F) -
-        (navigationKeyDown(inputFrame, result.routedInput,
-                           creative::CreativeInputKey::A)
+        (actionDown(creative::CreativeInputActionId::MoveLeft)
              ? 1.0F
              : 0.0F);
     const float keyboardMoveY =
-        (navigationKeyDown(inputFrame, result.routedInput,
-                           creative::CreativeInputKey::W)
+        (actionDown(creative::CreativeInputActionId::MoveForward)
              ? 1.0F
              : 0.0F) -
-        (navigationKeyDown(inputFrame, result.routedInput,
-                           creative::CreativeInputKey::S)
+        (actionDown(creative::CreativeInputActionId::MoveBackward)
              ? 1.0F
              : 0.0F);
-    const bool ascend = navigationKeyDown(
-                            inputFrame, result.routedInput,
-                            creative::CreativeInputKey::Space) ||
-                        creative::creativeControllerButtonDown(
-                            controller,
-                            creative::CreativeControllerButton::South);
-    const bool descend = navigationKeyDown(
-                             inputFrame, result.routedInput,
-                             creative::CreativeInputKey::LeftShift) ||
-                         navigationKeyDown(
-                             inputFrame, result.routedInput,
-                             creative::CreativeInputKey::RightShift) ||
-                         creative::creativeControllerButtonDown(
-                             controller,
-                             creative::CreativeControllerButton::East);
+    const bool ascend = actionDown(creative::CreativeInputActionId::FlyUp);
+    const bool descendRequested =
+        actionDown(creative::CreativeInputActionId::FlyDown);
+    const bool descend =
+        descendRequested &&
+        !(precisionNudgeRequested && result.transformFineNudge);
     const float moveZ =
         (ascend ? 1.0F : 0.0F) - (descend ? 1.0F : 0.0F);
     flyInput.moveX =
-        std::clamp(keyboardMoveX +
-                       creative::creativeControllerAxis(
-                           controller, creative::CreativeControllerAxis::MoveX),
-                   -1.0F, 1.0F);
+        std::clamp(keyboardMoveX + moveStick.x, -1.0F, 1.0F);
     flyInput.moveY =
-        std::clamp(keyboardMoveY +
-                       creative::creativeControllerAxis(
-                           controller, creative::CreativeControllerAxis::MoveY),
-                   -1.0F, 1.0F);
+        std::clamp(keyboardMoveY + moveStick.y, -1.0F, 1.0F);
     flyInput.moveZ = moveZ;
-    flyInput.sprinting =
-        navigationKeyDown(inputFrame, result.routedInput,
-                          creative::CreativeInputKey::LeftControl) ||
-        navigationKeyDown(inputFrame, result.routedInput,
-                          creative::CreativeInputKey::RightControl) ||
-        creative::creativeControllerButtonDown(
-            controller, creative::CreativeControllerButton::LeftStick);
+    flyInput.sprinting = actionDown(creative::CreativeInputActionId::Sprint);
   }
 
   float mouseDx = 0.0F;
   float mouseDy = 0.0F;
   SDL_GetRelativeMouseState(&mouseDx, &mouseDy);
   if (viewportNavigationActive) {
-    editor.yawDegrees += mouseDx * kMouseSensitivity +
-                         creative::creativeControllerAxis(
-                             controller,
-                             creative::CreativeControllerAxis::LookX) *
-                             kGamepadLookSensitivity;
+    editor.yawDegrees += mouseDx * editor.controlProfile.mouseLookSensitivity +
+                         gamepadLook.yawDegrees;
     editor.pitchDegrees = std::clamp(
-        editor.pitchDegrees - mouseDy * kMouseSensitivity -
-            creative::creativeControllerAxis(
-                controller, creative::CreativeControllerAxis::LookY) *
-                kGamepadLookSensitivity,
+        editor.pitchDegrees -
+            mouseDy * editor.controlProfile.mouseLookSensitivity +
+            gamepadLook.pitchDegrees,
         -80.0F, 80.0F);
   }
   flyInput.cameraYawDegrees = editor.yawDegrees;
@@ -726,8 +787,10 @@ void logCreativeEditorWorldPickProofFrame(
         if (logged || expectedId == iggy3d::creative::kInvalidObjectId) {
           return;
         }
-        const ScreenPoint screenPoint = projectPointToScreen(
-            camera.clipFromWorld, worldPoint, drawableWidth, drawableHeight);
+        const creative::CreativeScreenPoint screenPoint =
+            creative::projectCreativeWorldPointToScreen(
+                camera.clipFromWorld, worldPoint, drawableWidth,
+                drawableHeight);
         if (!screenPoint.valid) {
           return;
         }

@@ -56,6 +56,7 @@ struct ProductCreativeWireframeDebugLineReceipt {
   std::uint64_t segmentCount = 0;
   std::uint64_t lineCount = 0;
   std::uint64_t skippedDegenerateCount = 0;
+  std::uint64_t skippedInvalidCount = 0;
   ProductCreativeWireframeDebugLineStatus status =
       ProductCreativeWireframeDebugLineStatus::Unknown;
   std::string_view message =

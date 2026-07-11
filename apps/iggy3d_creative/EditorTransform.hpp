@@ -31,6 +31,7 @@ enum class CreativeEditorTransformSource : std::uint8_t {
 enum class CreativeEditorTransformControl : std::uint8_t {
   RotatePositive,
   MirrorX,
+  CycleConstraint,
   ToggleMode,
   Confirm,
   Cancel,
@@ -56,17 +57,26 @@ struct CreativeEditorTransformCommitReceipt {
 
 struct CreativeEditorSelectionTransformState {
   bool active = false;
+  bool aimTargetPositionable = false;
   bool targetPositionable = false;
   bool commitRequested = false;
   bool controlsOpen = false;
   bool moveAvailable = false;
+  bool fineNudgeActive = false;
   CreativeEditorTransformSource source =
       CreativeEditorTransformSource::Clipboard;
   cr::CreativeSelectionPlacementMode mode =
       cr::CreativeSelectionPlacementMode::Copy;
+  cr::CreativeSelectionPlacementAxis constraint =
+      cr::CreativeSelectionPlacementAxis::Free;
   std::size_t selectedControl = 0;
+  cr::CreativeVec3 aimTargetAnchor{};
+  cr::CreativeVec3 nudgeOffset{};
+  double snapStepMeters = 1.0;
   cr::CreativeClipboard sourceClipboard{};
   cr::CreativeSelectionPlacementRequest request{};
+  cr::CreativeSelectionPlacementTargetResult targetResolution{};
+  cr::CreativeSelectionPlacementNudgeReceipt lastNudge{};
   cr::CreativeSelectionPlacementPlan plan{};
   CreativeEditorTransformCommitReceipt lastCommit{};
 };
@@ -78,6 +88,8 @@ struct CreativeEditorTransformFrameRequest {
   const cr::CreativeInputRouteResult& routedInput;
   float directionX = 0.0F;
   float directionY = 0.0F;
+  std::int32_t nudgeWheelSteps = 0;
+  bool fineNudge = false;
   std::uint32_t drawableWidth = 0;
   std::uint32_t drawableHeight = 0;
 };
@@ -104,6 +116,15 @@ struct CreativeEditorTransformFrameResult {
 [[nodiscard]] bool cancelCreativeEditorSelectionTransformPreview(
     CreativeEditorSelectionTransformState& state,
     std::string_view source);
+[[nodiscard]] bool setCreativeEditorTransformConstraint(
+    const cr::CreativeAppState& appState,
+    CreativeEditorSelectionTransformState& state,
+    cr::CreativeSelectionPlacementAxis constraint);
+[[nodiscard]] bool nudgeCreativeEditorSelectionTransform(
+    const cr::CreativeAppState& appState,
+    CreativeEditorSelectionTransformState& state,
+    std::int32_t steps,
+    bool fine);
 [[nodiscard]] bool applyCreativeEditorTransformControl(
     cr::CreativeAppState& appState,
     CreativeEditorSelectionTransformState& state,
@@ -116,7 +137,8 @@ processCreativeEditorSelectionTransformPreview(
     bool targetPositionable,
     cr::CreativeVec3 targetAnchor,
     bool secondaryPressed,
-    std::string_view source);
+    std::string_view source,
+    double snapStepMeters = 1.0);
 
 [[nodiscard]] CreativeEditorTransformFrameResult
 processCreativeEditorTransformFrame(

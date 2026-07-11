@@ -10,21 +10,12 @@
 #include <unordered_set>
 #include <utility>
 
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/tools/SelectionPlacement.hpp"
 
 namespace iggy3d::creative {
 namespace {
-
-[[nodiscard]] bool finiteVec3(CreativeVec3 value) noexcept {
-  return std::isfinite(value.x) && std::isfinite(value.y) &&
-         std::isfinite(value.z);
-}
-
-[[nodiscard]] bool positiveVec3(CreativeVec3 value) noexcept {
-  return finiteVec3(value) && value.x > 0.0 && value.y > 0.0 &&
-         value.z > 0.0;
-}
 
 [[nodiscard]] CreativeVec3 add(CreativeVec3 lhs, CreativeVec3 rhs) noexcept {
   return {lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z};
@@ -86,8 +77,8 @@ void includePlacementPoint(PlacementExtent& extent,
   PlacementExtent selection;
   for (const CreativeObject& object : objects) {
     const PlacementExtent objectExtent = objectPlacementExtent(object);
-    if (!objectExtent.valid || !finiteVec3(objectExtent.min) ||
-        !finiteVec3(objectExtent.max)) {
+    if (!objectExtent.valid || !isFiniteCreativeVec3(objectExtent.min) ||
+        !isFiniteCreativeVec3(objectExtent.max)) {
       return false;
     }
     includePlacementPoint(selection, objectExtent.min);
@@ -96,7 +87,7 @@ void includePlacementPoint(PlacementExtent& extent,
   outAnchor = {std::midpoint(selection.min.x, selection.max.x),
                selection.min.y,
                std::midpoint(selection.min.z, selection.max.z)};
-  return finiteVec3(outAnchor);
+  return isFiniteCreativeVec3(outAnchor);
 }
 
 [[nodiscard]] bool validExternalParentPolicy(
@@ -109,15 +100,16 @@ void includePlacementPoint(PlacementExtent& extent,
   if (object.id == kInvalidObjectId ||
       object.kind == CreativeObjectKind::Unknown ||
       object.kind == CreativeObjectKind::Count ||
-      !finiteVec3(object.transform.position) ||
-      !finiteVec3(object.transform.rotationEulerRadians) ||
-      !positiveVec3(object.transform.scale) ||
-      !finiteVec3(object.bounds.min) || !finiteVec3(object.bounds.max)) {
+      !isFiniteCreativeVec3(object.transform.position) ||
+      !isFiniteCreativeVec3(object.transform.rotationEulerRadians) ||
+      !isPositiveCreativeVec3(object.transform.scale) ||
+      !isFiniteCreativeVec3(object.bounds.min) ||
+      !isFiniteCreativeVec3(object.bounds.max)) {
     return false;
   }
   return std::all_of(object.pathPoints.begin(), object.pathPoints.end(),
                      [](const CreativePathPoint& point) {
-                       return finiteVec3(point.position);
+                       return isFiniteCreativeVec3(point.position);
                      });
 }
 
@@ -208,18 +200,19 @@ void includePlacementPoint(PlacementExtent& extent,
 [[nodiscard]] bool validPasteRequest(
     const CreativeDocumentCreateRequest& request) noexcept {
   if (request.hasTransformOverride &&
-      (!finiteVec3(request.transform.position) ||
-       !finiteVec3(request.transform.rotationEulerRadians) ||
-       !positiveVec3(request.transform.scale))) {
+      (!isFiniteCreativeVec3(request.transform.position) ||
+       !isFiniteCreativeVec3(request.transform.rotationEulerRadians) ||
+       !isPositiveCreativeVec3(request.transform.scale))) {
     return false;
   }
   if (request.hasBoundsOverride &&
-      (!finiteVec3(request.bounds.min) || !finiteVec3(request.bounds.max))) {
+      (!isFiniteCreativeVec3(request.bounds.min) ||
+       !isFiniteCreativeVec3(request.bounds.max))) {
     return false;
   }
   return std::all_of(request.pathPoints.begin(), request.pathPoints.end(),
                      [](const CreativePathPoint& point) {
-                       return finiteVec3(point.position);
+                       return isFiniteCreativeVec3(point.position);
                      });
 }
 
@@ -400,7 +393,7 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
   for (std::size_t requestIndex = 0; requestIndex < requests.size();
        ++requestIndex) {
     const CreativeClipboardPasteRequest& request = requests[requestIndex];
-    if (!finiteVec3(request.offset)) {
+    if (!isFiniteCreativeVec3(request.offset)) {
       receipt.failedPasteIndex = requestIndex;
       receipt.status = CreativeClipboardStatus::InvalidRequest;
       receipt.reasonCode = "creative_clipboard_offset_invalid";

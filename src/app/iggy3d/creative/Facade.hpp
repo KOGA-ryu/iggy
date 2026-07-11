@@ -14,7 +14,6 @@
 #include "app/iggy3d/creative/spatial/Snap.hpp"
 #include "app/iggy3d/creative/State.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
-#include "app/iggy3d/creative/ui/Ui.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -207,9 +206,6 @@ class Facade {
   void setSnapSettings(CreativeSnapSettings settings) noexcept;
   [[nodiscard]] CreativeFacadeToolDispatchReceipt dispatchToolInput(
       const CreativeToolInputPacket& input);
-  [[nodiscard]] CreativeUiBuildReceipt buildUiModel() const;
-  [[nodiscard]] CreativeUiBuildReceipt buildUiModel(
-      CreativeUiBuildOptions options) const;
   [[nodiscard]] CreativeFacadeMutationReceipt
   toggleSelectedObjectVisibility();
   [[nodiscard]] CreativeFacadeMutationReceipt toggleSelectedObjectLocked();

@@ -1,5 +1,6 @@
 #include "EditorCapture.hpp"
 
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/mutation/Mutation.hpp"
 
@@ -391,8 +392,9 @@ void runLineProof(const StandaloneCaptureScenarioStepRequest& request) {
     const cr::CreativeObject* lineTarget =
         appState.facade.findObject(captureScript.lineTargetId);
     if (lineTarget != nullptr) {
-      const VisualBounds authoredBounds{toVec3(lineTarget->bounds.min),
-                                        toVec3(lineTarget->bounds.max)};
+      const VisualBounds authoredBounds{
+          cr::creativeVec3ToCoreChecked(lineTarget->bounds.min).value,
+          cr::creativeVec3ToCoreChecked(lineTarget->bounds.max).value};
       const VisualBounds lineVisual = visualBoundsForObject(*lineTarget);
       captureScript.lineMoveDestination = {
           lineTarget->transform.position.x,
@@ -439,8 +441,9 @@ void runLineProof(const StandaloneCaptureScenarioStepRequest& request) {
     const cr::CreativeObject* lineTarget =
         appState.facade.findObject(captureScript.lineTargetId);
     if (lineTarget != nullptr) {
-      const VisualBounds authoredBounds{toVec3(lineTarget->bounds.min),
-                                        toVec3(lineTarget->bounds.max)};
+      const VisualBounds authoredBounds{
+          cr::creativeVec3ToCoreChecked(lineTarget->bounds.min).value,
+          cr::creativeVec3ToCoreChecked(lineTarget->bounds.max).value};
       const VisualBounds lineVisual = visualBoundsForObject(*lineTarget);
       SDL_Log("iggy3d_creative: LINE after move objectId=%llu "
               "pos=(%.3f, %.3f, %.3f) authored=[(%.3f, %.3f, %.3f).."
@@ -465,8 +468,9 @@ void runLineProof(const StandaloneCaptureScenarioStepRequest& request) {
     const cr::CreativeObject* lineTarget =
         appState.facade.findObject(captureScript.lineTargetId);
     if (lineTarget != nullptr) {
-      const VisualBounds authoredBounds{toVec3(lineTarget->bounds.min),
-                                        toVec3(lineTarget->bounds.max)};
+      const VisualBounds authoredBounds{
+          cr::creativeVec3ToCoreChecked(lineTarget->bounds.min).value,
+          cr::creativeVec3ToCoreChecked(lineTarget->bounds.max).value};
       const VisualBounds lineVisual = visualBoundsForObject(*lineTarget);
       SDL_Log("iggy3d_creative: LINE after undo objectId=%llu "
               "pos=(%.3f, %.3f, %.3f) authored=[(%.3f, %.3f, %.3f).."

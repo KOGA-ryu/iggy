@@ -12,6 +12,7 @@
 #include <SDL3/SDL.h>
 
 #include "app/iggy3d/creative/Core.hpp"
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/tools/Volume.hpp"
 #include "core/math/Snap.hpp"
@@ -23,35 +24,21 @@ bool positiveFinite(float value) {
   return std::isfinite(value) && value > 0.0F;
 }
 
-bool finiteVec3(iggy3d::Vec3 value) {
-  return std::isfinite(value.x) && std::isfinite(value.y) &&
-         std::isfinite(value.z);
-}
-
-bool finiteOrderedBounds(const iggy3d::creative::CreativeBounds& bounds) {
-  return std::isfinite(bounds.min.x) && std::isfinite(bounds.min.y) &&
-         std::isfinite(bounds.min.z) && std::isfinite(bounds.max.x) &&
-         std::isfinite(bounds.max.y) && std::isfinite(bounds.max.z) &&
-         bounds.min.x < bounds.max.x && bounds.min.y < bounds.max.y &&
-         bounds.min.z < bounds.max.z;
-}
-
-[[nodiscard]] bool sameVec3(iggy3d::creative::CreativeVec3 lhs,
-                            iggy3d::creative::CreativeVec3 rhs) noexcept {
-  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
-}
-
-[[nodiscard]] bool sameBounds(iggy3d::creative::CreativeBounds lhs,
-                              iggy3d::creative::CreativeBounds rhs) noexcept {
-  return sameVec3(lhs.min, rhs.min) && sameVec3(lhs.max, rhs.max);
+bool positiveBounds(const iggy3d::creative::CreativeBounds& bounds) {
+  const iggy3d::creative::CreativeBoundsMetrics metrics =
+      iggy3d::creative::measureCreativeBounds(bounds);
+  return metrics.valid &&
+         iggy3d::creative::isPositiveCreativeVec3(metrics.size);
 }
 
 [[nodiscard]] bool sameTransform(
     const iggy3d::creative::CreativeTransform& lhs,
     const iggy3d::creative::CreativeTransform& rhs) noexcept {
-  return sameVec3(lhs.position, rhs.position) &&
-         sameVec3(lhs.rotationEulerRadians, rhs.rotationEulerRadians) &&
-         sameVec3(lhs.scale, rhs.scale);
+  return iggy3d::creative::creativeVec3ExactlyEqual(lhs.position,
+                                                     rhs.position) &&
+         iggy3d::creative::creativeVec3ExactlyEqual(
+             lhs.rotationEulerRadians, rhs.rotationEulerRadians) &&
+         iggy3d::creative::creativeVec3ExactlyEqual(lhs.scale, rhs.scale);
 }
 
 [[nodiscard]] bool voxelPlanMatchesDocumentGrid(
@@ -60,19 +47,21 @@ bool finiteOrderedBounds(const iggy3d::creative::CreativeBounds& bounds) {
   const iggy3d::creative::CreativeBounds expectedBounds =
       iggy3d::creative::creativeVolumeCellBounds(
           plan.voxelCell, grid.cellSizeMeters, grid.origin);
-  const iggy3d::creative::CreativeVec3 expectedCenter{
-      (expectedBounds.min.x + expectedBounds.max.x) * 0.5,
-      (expectedBounds.min.y + expectedBounds.max.y) * 0.5,
-      (expectedBounds.min.z + expectedBounds.max.z) * 0.5,
-  };
+  const iggy3d::creative::CreativeVec3 expectedCenter =
+      iggy3d::creative::measureCreativeBounds(expectedBounds).center;
   return plan.hasVoxelCell && plan.hasTransformOverride &&
          plan.hasBoundsOverride && !plan.hasPathOverride &&
          plan.pathPointCount == 0U &&
-         sameBounds(plan.authoredBounds, expectedBounds) &&
-         sameBounds(plan.previewBounds, expectedBounds) &&
-         sameVec3(plan.transform.position, expectedCenter) &&
-         sameVec3(plan.transform.rotationEulerRadians, {}) &&
-         sameVec3(plan.transform.scale, {1.0, 1.0, 1.0});
+         iggy3d::creative::creativeBoundsExactlyEqual(plan.authoredBounds,
+                                                       expectedBounds) &&
+         iggy3d::creative::creativeBoundsExactlyEqual(plan.previewBounds,
+                                                       expectedBounds) &&
+         iggy3d::creative::creativeVec3ExactlyEqual(plan.transform.position,
+                                                     expectedCenter) &&
+         iggy3d::creative::creativeVec3ExactlyEqual(
+             plan.transform.rotationEulerRadians, {}) &&
+         iggy3d::creative::creativeVec3ExactlyEqual(
+             plan.transform.scale, {1.0, 1.0, 1.0});
 }
 
 [[nodiscard]] bool objectMatchesPlacementPlan(
@@ -80,7 +69,8 @@ bool finiteOrderedBounds(const iggy3d::creative::CreativeBounds& bounds) {
     const CreativeBrushPlacementPlan& plan) noexcept {
   if (object.kind != plan.brush ||
       !sameTransform(object.transform, plan.transform) ||
-      !sameBounds(object.bounds, plan.authoredBounds) ||
+      !iggy3d::creative::creativeBoundsExactlyEqual(object.bounds,
+                                                     plan.authoredBounds) ||
       object.pathPoints.size() != plan.pathPointCount) {
     return false;
   }
@@ -89,7 +79,8 @@ bool finiteOrderedBounds(const iggy3d::creative::CreativeBounds& bounds) {
       plan.pathPoints.begin(),
       [](const iggy3d::creative::CreativePathPoint& existing,
          const iggy3d::creative::CreativePathPoint& planned) {
-        return sameVec3(existing.position, planned.position);
+        return iggy3d::creative::creativeVec3ExactlyEqual(existing.position,
+                                                           planned.position);
       });
 }
 
@@ -110,15 +101,16 @@ iggy3d::creative::CreativeBounds centeredProxyBounds(
     const iggy3d::creative::CreativeBounds& authored,
     float thickness) {
   const double half = static_cast<double>(thickness) * 0.5;
-  const double centerX = (authored.min.x + authored.max.x) * 0.5;
-  const double centerY = (authored.min.y + authored.max.y) * 0.5;
-  const double centerZ = (authored.min.z + authored.max.z) * 0.5;
-  const double extentX = authored.max.x - authored.min.x;
-  const double extentY = authored.max.y - authored.min.y;
-  const double extentZ = authored.max.z - authored.min.z;
+  const iggy3d::creative::CreativeBoundsMetrics metrics =
+      iggy3d::creative::measureCreativeBounds(authored);
+  const double extentX = metrics.size.x;
+  const double extentY = metrics.size.y;
+  const double extentZ = metrics.size.z;
   iggy3d::creative::CreativeBounds proxy{
-      {centerX - half, centerY - half, centerZ - half},
-      {centerX + half, centerY + half, centerZ + half}};
+      {metrics.center.x - half, metrics.center.y - half,
+       metrics.center.z - half},
+      {metrics.center.x + half, metrics.center.y + half,
+       metrics.center.z + half}};
   if (extentY > extentX && extentY >= extentZ) {
     proxy.min.y = authored.min.y;
     proxy.max.y = authored.max.y;
@@ -242,9 +234,8 @@ iggy3d::creative::CreativeBounds pathPreviewBounds(
     iggy3d::creative::CreativeVec3 placerForward,
     iggy3d::creative::CreativePlacementFace localForward) noexcept {
   using Face = iggy3d::creative::CreativePlacementFace;
-  if (!plan.hasTransformOverride || !std::isfinite(placerForward.x) ||
-      !std::isfinite(placerForward.y) ||
-      !std::isfinite(placerForward.z)) {
+  if (!plan.hasTransformOverride ||
+      !iggy3d::creative::isFiniteCreativeVec3(placerForward)) {
     return false;
   }
   Face forward = hitFace;
@@ -272,10 +263,11 @@ std::vector<iggy3d::creative::CreativePathPoint> initialPathPointsForAnchor(
 
 BrushFootprint descriptorBoundsFootprint(
     const iggy3d::creative::CreativeObjectDescriptor& descriptor) {
-  const iggy3d::creative::CreativeBounds& bounds = descriptor.defaults.bounds;
-  return {static_cast<float>(bounds.max.x - bounds.min.x),
-          static_cast<float>(bounds.max.y - bounds.min.y),
-          static_cast<float>(bounds.max.z - bounds.min.z)};
+  const iggy3d::creative::CreativeBoundsMetrics metrics =
+      iggy3d::creative::measureCreativeBounds(descriptor.defaults.bounds);
+  const iggy3d::Vec3 size =
+      iggy3d::creative::creativeVec3ToCoreChecked(metrics.size).value;
+  return {size.x, size.y, size.z};
 }
 
 bool validBrushFootprint(BrushFootprint footprint) {
@@ -393,7 +385,7 @@ CreativeBrushPlacementPlan planBrushPlacement(
       iggy3d::creative::describeObject(brush);
   plan.shapeKind = descriptor.shapeKind;
   plan.storagePolicy = descriptor.placementPolicy.storagePolicy;
-  if (!finiteVec3(cellCenter)) {
+  if (!iggy3d::isFinite(cellCenter)) {
     plan.status = CreativeBrushPlacementPlanStatus::InvalidAnchor;
     return plan;
   }
@@ -446,9 +438,9 @@ CreativeBrushPlacementPlan planBrushPlacement(
     plan.hasBoundsOverride = true;
   }
 
-  if (!finiteOrderedBounds(plan.previewBounds) ||
+  if (!positiveBounds(plan.previewBounds) ||
       (plan.hasBoundsOverride &&
-       !finiteOrderedBounds(plan.authoredBounds))) {
+       !positiveBounds(plan.authoredBounds))) {
     plan.status = CreativeBrushPlacementPlanStatus::InvalidGeometry;
     return plan;
   }
@@ -486,9 +478,12 @@ CreativeBrushPlacementAdmission admitBrushPlacement(
   }
 
   const iggy3d::creative::CreativeVec3& anchor = target.placementAnchor;
-  admission.plan = planBrushPlacement(
-      brush, {static_cast<float>(anchor.x), static_cast<float>(anchor.y),
-              static_cast<float>(anchor.z)});
+  const iggy3d::creative::CreativeCoreVec3Conversion coreAnchor =
+      iggy3d::creative::creativeVec3ToCoreChecked(anchor);
+  if (!coreAnchor.converted) {
+    return admission;
+  }
+  admission.plan = planBrushPlacement(brush, coreAnchor.value);
   if (!admission.plan.valid) {
     switch (admission.plan.status) {
       case CreativeBrushPlacementPlanStatus::InvalidAnchor:
@@ -534,7 +529,7 @@ CreativeBrushPlacementAdmission admitBrushPlacement(
     if (policy.occupancyPolicy !=
             iggy3d::creative::CreativePlacementOccupancyPolicy::
                 RejectOccupied ||
-        !finiteOrderedBounds(target.adjacentCellBounds)) {
+        !positiveBounds(target.adjacentCellBounds)) {
       admission.status =
           CreativeBrushPlacementAdmissionStatus::UnsupportedPolicy;
       return admission;
@@ -545,11 +540,8 @@ CreativeBrushPlacementAdmission admitBrushPlacement(
     admission.plan.hasVoxelCell = true;
     admission.plan.authoredBounds = bounds;
     admission.plan.previewBounds = bounds;
-    admission.plan.transform.position = {
-        (bounds.min.x + bounds.max.x) * 0.5,
-        (bounds.min.y + bounds.max.y) * 0.5,
-        (bounds.min.z + bounds.max.z) * 0.5,
-    };
+    admission.plan.transform.position =
+        iggy3d::creative::measureCreativeBounds(bounds).center;
     admission.plan.transform.rotationEulerRadians = {};
     admission.plan.transform.scale = {1.0, 1.0, 1.0};
     admission.plan.hasTransformOverride = true;

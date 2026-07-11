@@ -22,6 +22,9 @@ boundaries, and official Mojang source anchors live in
 8. Every mutation previews before commit and becomes one undo transaction.
 9. Text, menus, viewport tools, and capture mode are separate input contexts.
 10. Any deviation from Minecraft defaults needs an explicit reason in this file.
+11. Interactive panels use the shared bounded widget frame. Screens own durable
+    state and interpret semantic widget-event receipts; widgets never own editor
+    state or application callbacks.
 
 Statuses used below:
 
@@ -174,6 +177,8 @@ Physical input is translated into these stable actions before a tool sees it:
 | `ToggleToolWheel` | Open or close the radial creator-tool selector |
 | `ToggleTransformControls` | Open or close controls for the active selection preview |
 | `TransformControlPrevious` / `TransformControlNext` | Select a visible transform operation |
+| `TransformConstraintX/Y/Z` | Toggle an axis lock for the active transform preview |
+| `TransformNudgeNegative/Positive` | Move the preview one contextual snap step on its locked axis |
 | `Confirm` / `Cancel` | Commit or abandon an explicit preview |
 | `Undo` / `Redo` | Reverse or restore one committed gesture |
 
@@ -197,6 +202,43 @@ preview's contextual wheel. They do not each earn a permanent global key.
 
 - `WASD` moves, `Space` ascends, `Shift` descends, and `Ctrl` accelerates.
 - Mouse and right stick look through the same frame input.
+- Both controller sticks enter the editor through one canonical 2D primitive:
+  negative/positive X means left/right and negative/positive Y means down/up.
+  Movement, camera look, and radial selection consume the same radial-deadzone
+  signal; consumer profiles own any explicit inversion or response curve.
+- `Escape` or controller Options opens Controls from the viewport. Arrow keys,
+  D-pad, wheel, pointer, `Enter`, and controller Cross operate the panel.
+  Selecting a binding listens for one keyboard/mouse or controller input;
+  modifier keys are valid standalone bindings, while modifier-plus-key chords
+  retain their modifier. Escape, Circle, or Options cancels capture.
+- Rebinding is semantic and context-aware. Reject leaves a conflicting binding
+  unchanged, Replace unbinds the displaced action, and Swap exchanges complete
+  chords. The Controls open/close/navigation actions are reserved so a remap
+  cannot remove the escape hatch. Backspace or controller Square restores all
+  defaults.
+- Controls also owns mouse and controller look sensitivity, movement/look stick
+  deadzones and response curves, controller look X/Y inversion, and menu repeat
+  timing. Changes save immediately to the versioned
+  `creative_controls_v1.cfg` user setting beside Creative saves. Loading is
+  atomic and fail-closed; settings never enter map documents or map history.
+- Standard UI widgets live in `creative/ui/UiWidgets.*`. The fixed frame owns at
+  most 192 widget records and 256 visuals with fixed text storage. It provides
+  panel, label, button, list-row, stepper, toggle, tab, and text-field emitters;
+  pointer/focus routing; scroll visibility; and deterministic menu repeat. The
+  `creative/ui/UiTheme.*` palette and overlay renderer remain the sole draw
+  path.
+- The retired passive inspector model, draw list, and projection pipeline have
+  been removed. UI is now produced by live Creative screens and overlays from
+  their owning state; `Facade` no longer builds a second mirrored UI model.
+- Controls is the first migrated screen. Keyboard, controller, wheel, pointer,
+  hidden-row focus traversal, Reset, Done, binding capture, and repeat all route
+  through widget IDs and event receipts. Persistent profile and editor state
+  remain owned by Controls rather than by the widget kernel.
+- UI navigation enters through one pure input kernel. Wheel profiles explicitly
+  choose natural or reversed polarity and rounded or unit steps; pointer samples
+  map once from logical-window to drawable coordinates and expose centered Y-up
+  coordinates; wrapped selection and clockwise radial sectors share one bounded
+  implementation.
 - Left/right/middle mouse and controller primary/secondary/pick map to semantic
   world actions with press, hold, and release state.
 - Wheel, `1`-`9`, and controller bumpers select a nine-slot hotbar. Movement
@@ -238,7 +280,8 @@ preview's contextual wheel. They do not each earn a permanent global key.
   movement/world grammar and keeps `Left Alt` available for cursor capture.
   Catalog, tool-wheel, and tool-options contexts are isolated and block
   camera/document input during both opening and closing transitions.
-- Contextual settings currently provide Free/X/Z movement, 15/45/90-degree
+- Contextual settings currently provide Free/X/Z fast-drag movement,
+  X/Y/Z precision-preview constraints, 15/45/90-degree
   rotation, 0.25/0.5/1/2-meter grid increments, Replace source filtering by
   material or Any, Clone offsets on X/Y/Z at 1/2/4/8 cells, and Array direction
   on either world axis with 1/2/4/8/16/32 copies at 1/2/4/8-cell spacing.
@@ -249,23 +292,31 @@ preview's contextual wheel. They do not each earn a permanent global key.
   trigger) snapshots the ordered selection and starts a non-destructive Move
   preview at the crosshair. Platform-command `V` starts the same preview in Copy
   mode from the clipboard.
-- During a transform preview, `R` or controller D-pad right opens an eight-sector
-  contextual wheel: rotate `+90`, mirror X, toggle Copy/Move, confirm, cancel,
+- During a transform preview, `X`, `Y`, or `Z` toggles a world-axis constraint.
+  Arrow up/down, the mouse wheel, or controller D-pad up/down nudges one active
+  snap increment along that axis. Shift or controller `L1` makes that nudge one
+  quarter of the configured increment. A nudge with no axis fails closed. Camera
+  movement and look remain available while the contextual wheel is closed;
+  Shift suppresses camera descent only on a frame that actually requests a fine
+  nudge.
+- `R` or controller D-pad right opens a nine-sector contextual wheel: rotate
+  `+90`, mirror X, cycle Free/X/Y/Z axis, toggle Copy/Move, confirm, cancel,
   mirror Z, rotate `-90`, and reset. Mouse or right-stick direction selects;
   arrows or D-pad up/down cycle; click, `Enter`, or controller Cross applies the
   highlighted operation. `Escape` or controller Circle first closes the wheel,
-  then cancels the preview when pressed again. Camera movement and look remain
-  available while the wheel is closed.
+  then cancels the preview when pressed again. Reset clears rotation, mirrors,
+  axis constraint, and accumulated nudge offsets.
 - Right mouse/controller left trigger, `Enter`, or controller Cross confirms the
   positioned preview. Move changes the original ordered selection; Copy creates
   new objects and selects them. Either result is one atomic history record.
   Primary world input, hotbar changes, and unrelated commands are suppressed
   while the preview is active. Focus loss cancels the non-mutating preview.
 - Move previews draw the source amber and the destination mint, with explicit
-  pivot boxes and an axis-aligned connector. Invalid but positionable output is
-  red. The compact status row names mode, quarter-turn angle, mirror flags, and
-  object count. Above 512 source objects, each side collapses to one aggregate
-  wire box so aiming remains bounded.
+  pivot boxes and an axis-aligned connector. X, Y, and Z constraints add red,
+  green, and blue guides. Invalid but positionable output is red. The compact
+  status row names mode, constraint, base/fine step, signed XYZ displacement,
+  quarter-turn angle, and mirror flags. Above 512 source objects, each side
+  collapses to one aggregate wire box so aiming remains bounded.
 - Fill and Hollow are self-contained held tools. Primary starts or replaces
   corner 1 at the crosshair; aiming updates the exact bounded preview; Secondary
   sets corner 2 and commits once. A second Secondary cannot recommit the finished
@@ -318,10 +369,15 @@ preview's contextual wheel. They do not each earn a permanent global key.
 ## Remaining Gaps
 
 - Pause/menu UI is not implemented.
-- Mirror, radial array, and placement restrictions remain future previewable tools or
+- Radial array and placement restrictions remain future previewable tools or
   contextual settings. They do not receive permanent global keys.
-- Controller glyph hints, remapping, and accessibility settings remain future
-  work; the current controller map is fixed.
+- Context-sensitive controller glyph hints, named profile presets, per-device
+  reset, and import/export remain future work. The live Controls panel already
+  persists semantic keyboard/mouse and controller bindings plus bounded stick,
+  look, and repeat tuning.
+- Catalog, Tool Options, and Transform Overlay still own older private panel
+  layout code. Migrate them one screen at a time onto the standard widget frame;
+  do not rewrite their interaction contracts as part of a mechanical migration.
 - A real-controller and live-window interaction pass remains required. Headless
   tests pin routing, hotbar, target-grid, and binding behavior without launching
   the application.

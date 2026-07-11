@@ -1,5 +1,7 @@
 #include "app/iggy3d/creative/tools/Volume.hpp"
 
+#include "app/iggy3d/creative/Geometry.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -11,11 +13,6 @@
 
 namespace iggy3d::creative {
 namespace {
-
-[[nodiscard]] bool finiteVec3(CreativeVec3 value) noexcept {
-  return std::isfinite(value.x) && std::isfinite(value.y) &&
-         std::isfinite(value.z);
-}
 
 [[nodiscard]] bool validCellSize(double cellSize) noexcept {
   return std::isfinite(cellSize) && cellSize > 0.0;
@@ -68,7 +65,8 @@ bool creativeVolumeSelectionComplete(
 bool creativeVolumeSelectionValid(
     const CreativeVolumeSelection& selection) noexcept {
   if (!creativeVolumeSelectionComplete(selection) ||
-      !validCellSize(selection.cellSize) || !finiteVec3(selection.origin)) {
+      !validCellSize(selection.cellSize) ||
+      !isFiniteCreativeVec3(selection.origin)) {
     return false;
   }
   constexpr std::int32_t maxCoord =
@@ -79,7 +77,8 @@ bool creativeVolumeSelectionValid(
     return false;
   }
   const CreativeBounds bounds = creativeVolumeWorldBounds(selection);
-  return finiteVec3(bounds.min) && finiteVec3(bounds.max) &&
+  return isFiniteCreativeVec3(bounds.min) &&
+         isFiniteCreativeVec3(bounds.max) &&
          bounds.max.x > bounds.min.x && bounds.max.y > bounds.min.y &&
          bounds.max.z > bounds.min.z && creativeVolumeCellCount(selection) > 0U;
 }
@@ -207,7 +206,8 @@ bool tryCreativeVolumeCellFromWorld(CreativeVec3 worldPosition,
                                     double cellSize,
                                     CreativeVec3 origin,
                                     CreativeGridCoord3& outCell) noexcept {
-  if (!finiteVec3(worldPosition) || !finiteVec3(origin) ||
+  if (!isFiniteCreativeVec3(worldPosition) ||
+      !isFiniteCreativeVec3(origin) ||
       !validCellSize(cellSize)) {
     return false;
   }

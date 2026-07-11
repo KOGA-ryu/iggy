@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "app/iggy3d/creative/input/InputRouter.hpp"
+#include "app/iggy3d/creative/input/ControllerInput.hpp"
 
 struct SDL_Gamepad;
 

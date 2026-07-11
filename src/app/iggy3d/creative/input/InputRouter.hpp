@@ -7,6 +7,8 @@
 #include <string>
 #include <string_view>
 
+#include "app/iggy3d/creative/input/ControllerInput.hpp"
+
 namespace iggy3d::creative {
 
 enum class CreativeInputContext : std::uint8_t {
@@ -15,71 +17,17 @@ enum class CreativeInputContext : std::uint8_t {
   ToolWheel,
   ToolOptions,
   TransformPreview,
+  TransformControls,
+  Controls,
   TextEntry,
   Modal,
   Capture,
+  Count,
 };
 
 enum class CreativeInputPlatform : std::uint8_t {
   WindowsLinux,
   MacOS,
-};
-
-enum class CreativeControllerAxis : std::uint8_t {
-  MoveX,
-  MoveY,
-  LookX,
-  LookY,
-  LeftTrigger,
-  RightTrigger,
-  Count,
-};
-
-enum class CreativeControllerButton : std::uint8_t {
-  South,
-  East,
-  West,
-  North,
-  Back,
-  Start,
-  LeftStick,
-  RightStick,
-  LeftShoulder,
-  RightShoulder,
-  DpadUp,
-  DpadDown,
-  DpadLeft,
-  DpadRight,
-  LeftTrigger,
-  RightTrigger,
-  Count,
-};
-
-inline constexpr std::size_t kCreativeControllerAxisCount =
-    static_cast<std::size_t>(CreativeControllerAxis::Count);
-inline constexpr std::size_t kCreativeControllerButtonCount =
-    static_cast<std::size_t>(CreativeControllerButton::Count);
-inline constexpr float kCreativeControllerStickDeadzone = 0.18F;
-inline constexpr float kCreativeControllerTriggerThreshold = 0.55F;
-
-// Hardware adapters populate this platform-neutral snapshot. Trigger button
-// state is derived from the corresponding axes by stepCreativeControllerInput.
-struct CreativeControllerSample {
-  bool connected = false;
-  std::array<float, kCreativeControllerAxisCount> axes{};
-  std::array<bool, kCreativeControllerButtonCount> buttonsDown{};
-};
-
-struct CreativeControllerState {
-  bool connected = false;
-  std::array<bool, kCreativeControllerButtonCount> buttonsDown{};
-};
-
-struct CreativeControllerFrame {
-  CreativeControllerState next{};
-  std::array<float, kCreativeControllerAxisCount> axes{};
-  std::array<bool, kCreativeControllerButtonCount> pressed{};
-  std::array<bool, kCreativeControllerButtonCount> released{};
 };
 
 enum class CreativeInputActionId : std::uint8_t {
@@ -115,6 +63,11 @@ enum class CreativeInputActionId : std::uint8_t {
   ToggleTransformControls,
   TransformControlPrevious,
   TransformControlNext,
+  TransformConstraintX,
+  TransformConstraintY,
+  TransformConstraintZ,
+  TransformNudgeNegative,
+  TransformNudgePositive,
   ConfirmActiveTool,
   CancelActiveTool,
   DeleteSelection,
@@ -131,6 +84,27 @@ enum class CreativeInputActionId : std::uint8_t {
   Save,
   NewDocument,
   Load,
+  MoveForward,
+  MoveBackward,
+  MoveLeft,
+  MoveRight,
+  FlyUp,
+  FlyDown,
+  Sprint,
+  PrimaryAction,
+  SecondaryAction,
+  PickAction,
+  HotbarPrevious,
+  HotbarNext,
+  ToggleControls,
+  ControlsPrevious,
+  ControlsNext,
+  ControlsDecrease,
+  ControlsIncrease,
+  ControlsActivate,
+  ControlsClose,
+  ControlsResetDefaults,
+  Count,
 };
 
 enum class CreativeInputKey : std::uint8_t {
@@ -152,6 +126,7 @@ enum class CreativeInputKey : std::uint8_t {
   S,
   V,
   X,
+  Y,
   Z,
   LeftBracket,
   RightBracket,
@@ -185,6 +160,17 @@ enum class CreativeInputKey : std::uint8_t {
   GamepadDpadRight,
   GamepadLeftShoulder,
   GamepadRightShoulder,
+  MousePrimary,
+  MouseSecondary,
+  MouseMiddle,
+  GamepadWest,
+  GamepadBack,
+  GamepadStart,
+  GamepadLeftStick,
+  GamepadRightStick,
+  GamepadLeftTrigger,
+  GamepadRightTrigger,
+  Unbound,
   Count,
 };
 
@@ -202,6 +188,11 @@ enum class CreativeInputConsumePolicy : std::uint8_t {
   ConsumeChord,
 };
 
+enum class CreativeInputBindingActivation : std::uint8_t {
+  Press,
+  Continuous,
+};
+
 struct CreativeInputBinding {
   CreativeInputActionId action = CreativeInputActionId::HotbarSlot1;
   CreativeInputKey trigger = CreativeInputKey::Digit1;
@@ -213,6 +204,8 @@ struct CreativeInputBinding {
   CreativeInputConsumePolicy consumePolicy =
       CreativeInputConsumePolicy::ConsumeTrigger;
   std::string_view configurableLabel;
+  CreativeInputBindingActivation activation =
+      CreativeInputBindingActivation::Press;
 
   constexpr CreativeInputBinding() noexcept = default;
   constexpr CreativeInputBinding(
@@ -224,7 +217,9 @@ struct CreativeInputBinding {
       CreativeInputModifierMask allowedValue,
       std::uint16_t priorityValue,
       CreativeInputConsumePolicy consumeValue,
-      std::string_view labelValue = {}) noexcept
+      std::string_view labelValue = {},
+      CreativeInputBindingActivation activationValue =
+          CreativeInputBindingActivation::Press) noexcept
       : action(actionValue),
         trigger(triggerValue),
         context(contextValue),
@@ -233,12 +228,13 @@ struct CreativeInputBinding {
         allowedModifiers(allowedValue),
         priority(priorityValue),
         consumePolicy(consumeValue),
-        configurableLabel(labelValue) {}
+        configurableLabel(labelValue),
+        activation(activationValue) {}
 };
 
 inline constexpr std::size_t kCreativeInputKeyCount =
     static_cast<std::size_t>(CreativeInputKey::Count);
-inline constexpr std::size_t kCreativeInputBindingCapacity = 96;
+inline constexpr std::size_t kCreativeInputBindingCapacity = 160;
 inline constexpr std::size_t kCreativeInputConflictCapacity =
     kCreativeInputBindingCapacity * (kCreativeInputBindingCapacity - 1U) / 2U;
 
@@ -307,6 +303,8 @@ struct CreativeInputBindingAuditResult {
 
 [[nodiscard]] std::string_view toString(
     CreativeInputActionId action) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeInputContext context) noexcept;
 [[nodiscard]] std::string_view toString(CreativeInputKey key) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeInputBindingConflictKind kind) noexcept;
@@ -322,27 +320,19 @@ struct CreativeInputBindingAuditResult {
 [[nodiscard]] std::span<const CreativeInputBinding>
 defaultCreativeInputBindings() noexcept;
 
-void setCreativeControllerAxis(CreativeControllerSample& sample,
-                               CreativeControllerAxis axis,
-                               float value) noexcept;
-void setCreativeControllerButton(CreativeControllerSample& sample,
-                                 CreativeControllerButton button,
-                                 bool down) noexcept;
-[[nodiscard]] float creativeControllerAxis(
-    const CreativeControllerFrame& frame,
-    CreativeControllerAxis axis) noexcept;
-[[nodiscard]] bool creativeControllerButtonDown(
-    const CreativeControllerFrame& frame,
-    CreativeControllerButton button) noexcept;
-[[nodiscard]] bool creativeControllerButtonPressed(
-    const CreativeControllerFrame& frame,
-    CreativeControllerButton button) noexcept;
-[[nodiscard]] bool creativeControllerButtonReleased(
-    const CreativeControllerFrame& frame,
-    CreativeControllerButton button) noexcept;
-[[nodiscard]] CreativeControllerFrame stepCreativeControllerInput(
-    CreativeControllerState previous,
-    const CreativeControllerSample& current) noexcept;
+[[nodiscard]] bool parseCreativeInputActionId(
+    std::string_view value,
+    CreativeInputActionId& out) noexcept;
+[[nodiscard]] bool parseCreativeInputContext(
+    std::string_view value,
+    CreativeInputContext& out) noexcept;
+[[nodiscard]] bool parseCreativeInputKey(
+    std::string_view value,
+    CreativeInputKey& out) noexcept;
+[[nodiscard]] bool creativeInputKeyIsGamepad(
+    CreativeInputKey key) noexcept;
+[[nodiscard]] bool creativeInputKeyIsModifier(
+    CreativeInputKey key) noexcept;
 
 void setCreativeInputKey(CreativeInputFrame& frame,
                          CreativeInputKey key,
@@ -352,6 +342,12 @@ void setCreativeInputKey(CreativeInputFrame& frame,
 [[nodiscard]] bool creativeInputKeyConsumed(
     const CreativeInputRouteResult& result,
     CreativeInputKey key) noexcept;
+[[nodiscard]] bool creativeInputActionDown(
+    const CreativeInputFrame& frame,
+    CreativeInputActionId action,
+    std::span<const CreativeInputBinding> bindings =
+        defaultCreativeInputBindings(),
+    const CreativeInputRouteResult* routedInput = nullptr) noexcept;
 
 [[nodiscard]] CreativeInputRouteResult routeCreativeInput(
     CreativeInputRouterState& state,

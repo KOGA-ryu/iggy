@@ -17,6 +17,7 @@
 #include "EditorTransform.hpp"
 #include "EditorVolume.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "core/math/EulerRotation.hpp"
 #include "core/math/Transform3.hpp"
@@ -79,15 +80,6 @@ constexpr std::array kHeldItemBehaviors{
                      false, false},
 };
 static_assert(heldItemRowsMatchEnumOrder(kHeldItemBehaviors));
-
-[[nodiscard]] iggy3d::Vec3 worldVec3(cr::CreativeVec3 value) noexcept {
-  return {static_cast<float>(value.x), static_cast<float>(value.y),
-          static_cast<float>(value.z)};
-}
-
-[[nodiscard]] cr::CreativeVec3 toCreativeVec3(iggy3d::Vec3 value) noexcept {
-  return {value.x, value.y, value.z};
-}
 
 [[nodiscard]] iggy3d::Vec3 aabbFaceNormal(VisualBounds bounds,
                                           iggy3d::Vec3 point) noexcept {
@@ -566,7 +558,8 @@ void processMoveInteraction(
         request.appState, editor.transform,
         editor.interaction.target.grid.valid,
         editor.interaction.target.grid.placementAnchor, false,
-        "minecraft_secondary_transform_begin"));
+        "minecraft_secondary_transform_begin",
+        cr::creativeSnapIncrementMeters(editor.toolSettings.snapIncrement)));
     return;
   }
 
@@ -779,8 +772,8 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
       pickFrame.objectPickCandidates, target.ray);
   const cr::CreativeGridSettings gridSettings = document.gridSettings();
   cr::CreativeVoxelRaycastRequest voxelRequest;
-  voxelRequest.rayOrigin = toCreativeVec3(target.ray.origin);
-  voxelRequest.rayDirection = toCreativeVec3(target.ray.direction);
+  voxelRequest.rayOrigin = cr::creativeVec3FromCore(target.ray.origin);
+  voxelRequest.rayDirection = cr::creativeVec3FromCore(target.ray.direction);
   voxelRequest.gridOrigin = gridSettings.origin;
   voxelRequest.cellSize = cellSize;
   voxelRequest.maxDistance = kCreativeReachMeters;
@@ -795,7 +788,7 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
   if (voxelIsNearest) {
     target.grid = cr::resolveCreativeGridTargetFromHit(
         voxelPick.hitPoint, voxelPick.faceNormal, cellSize,
-        gridSettings.origin, toCreativeVec3(target.ray.direction));
+        gridSettings.origin, cr::creativeVec3FromCore(target.ray.direction));
     target.valid = target.grid.valid;
     target.voxelHit = true;
     target.voxelCell = voxelPick.cell;
@@ -815,9 +808,10 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
                                             *candidate->orientedBounds, point)
                                       : aabbFaceNormal(candidate->bounds, point);
       target.grid = cr::resolveCreativeGridTargetFromHit(
-          toCreativeVec3(point), toCreativeVec3(normal), cellSize,
+          cr::creativeVec3FromCore(point), cr::creativeVec3FromCore(normal),
+          cellSize,
           gridSettings.origin,
-          toCreativeVec3(target.ray.direction));
+          cr::creativeVec3FromCore(target.ray.direction));
       target.valid = target.grid.valid;
       target.objectHit = true;
       target.objectId = pick.objectId;
@@ -833,8 +827,13 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
   if (std::fabs(target.ray.direction.y) <= 1.0e-5F) {
     return target;
   }
+  const cr::CreativeCoreVec3Conversion coreGridOrigin =
+      cr::creativeVec3ToCoreChecked(gridSettings.origin);
+  if (!coreGridOrigin.converted) {
+    return target;
+  }
   const float distance =
-      (static_cast<float>(gridSettings.origin.y) - target.ray.origin.y) /
+      (coreGridOrigin.value.y - target.ray.origin.y) /
       target.ray.direction.y;
   if (!std::isfinite(distance) || distance < 0.0F ||
       distance > kCreativeReachMeters) {
@@ -843,9 +842,9 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
   const iggy3d::Vec3 point =
       target.ray.origin + target.ray.direction * distance;
   target.grid = cr::resolveCreativeGridTargetFromHit(
-      toCreativeVec3(point), {0.0, 1.0, 0.0}, cellSize,
+      cr::creativeVec3FromCore(point), {0.0, 1.0, 0.0}, cellSize,
       gridSettings.origin,
-      toCreativeVec3(target.ray.direction));
+      cr::creativeVec3FromCore(target.ray.direction));
   target.valid = target.grid.valid;
   target.distanceMeters = distance;
   return target;
@@ -978,7 +977,8 @@ void processCreativeEditorWorldInteractionFrame(
         request.appState, editor.transform,
         editor.interaction.target.grid.valid,
         editor.interaction.target.grid.placementAnchor, secondaryPressed,
-        "selection_transform_commit"));
+        "selection_transform_commit",
+        cr::creativeSnapIncrementMeters(editor.toolSettings.snapIncrement)));
     return;
   }
 
@@ -1142,10 +1142,16 @@ void appendCreativeEditorInteractionOverlay(
       held.kind != cr::CreativeHeldItemKind::Material) {
     const cr::CreativeBounds& bounds =
         editor.interaction.target.grid.targetCellBounds;
-    appendStandaloneWireframeBoxEdges(
-        wireLines, worldVec3(bounds.min), worldVec3(bounds.max),
-        iggy3d::RenderLineColor{0.96F, 0.96F, 0.96F, 1.0F},
-        std::max(0.025F, wireThickness * 0.7F));
+    const cr::CreativeCoreVec3Conversion boxMin =
+        cr::creativeVec3ToCoreChecked(bounds.min);
+    const cr::CreativeCoreVec3Conversion boxMax =
+        cr::creativeVec3ToCoreChecked(bounds.max);
+    if (boxMin.converted && boxMax.converted) {
+      appendStandaloneWireframeBoxEdges(
+          wireLines, boxMin.value, boxMax.value,
+          iggy3d::RenderLineColor{0.96F, 0.96F, 0.96F, 1.0F},
+          std::max(0.025F, wireThickness * 0.7F));
+    }
   }
 }
 

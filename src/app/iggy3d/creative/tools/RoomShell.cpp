@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/tools/RoomShell.hpp"
 
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 
 #include <array>
@@ -23,35 +24,16 @@ constexpr std::string_view kGeneratedRoomShellTag = "generated_room_shell";
   return false;
 }
 
-[[nodiscard]] bool isFiniteVec3(const CreativeVec3& value) noexcept {
-  return std::isfinite(value.x) && std::isfinite(value.y) &&
-         std::isfinite(value.z);
-}
-
-[[nodiscard]] bool hasPositiveExtents(const CreativeBounds& bounds) noexcept {
-  return bounds.max.x > bounds.min.x && bounds.max.y > bounds.min.y &&
-         bounds.max.z > bounds.min.z;
-}
-
-[[nodiscard]] CreativeVec3 centerOfBounds(const CreativeBounds& bounds) noexcept {
-  return {
-      bounds.min.x + (bounds.max.x - bounds.min.x) * 0.5,
-      bounds.min.y + (bounds.max.y - bounds.min.y) * 0.5,
-      bounds.min.z + (bounds.max.z - bounds.min.z) * 0.5,
-  };
-}
-
 [[nodiscard]] bool isValidRoomShellBounds(const CreativeBounds& bounds,
                                           double wallThickness) noexcept {
-  if (!isFiniteVec3(bounds.min) || !isFiniteVec3(bounds.max) ||
-      !std::isfinite(wallThickness) || wallThickness <= 0.0 ||
-      !hasPositiveExtents(bounds)) {
+  const CreativeBoundsMetrics metrics = measureCreativeBounds(bounds);
+  if (!metrics.valid || !isPositiveCreativeVec3(metrics.size) ||
+      !std::isfinite(wallThickness) || wallThickness <= 0.0) {
     return false;
   }
 
-  const double width = bounds.max.x - bounds.min.x;
-  const double depth = bounds.max.z - bounds.min.z;
-  return width > wallThickness * 2.0 && depth > wallThickness * 2.0;
+  return metrics.size.x > wallThickness * 2.0 &&
+         metrics.size.z > wallThickness * 2.0;
 }
 
 void setStatus(CreativeRoomShellBuildReceipt& receipt,
@@ -73,7 +55,7 @@ void setStatus(CreativeRoomShellRemoveReceipt& receipt,
 [[nodiscard]] double defaultFloorHeight() noexcept {
   const CreativeObjectDescriptor& descriptor =
       describeObject(CreativeObjectKind::Floor);
-  return descriptor.defaults.bounds.max.y - descriptor.defaults.bounds.min.y;
+  return measureCreativeBounds(descriptor.defaults.bounds).size.y;
 }
 
 [[nodiscard]] CreativeDocumentCreateRequest makeShellCreateRequest(
@@ -89,7 +71,7 @@ void setStatus(CreativeRoomShellRemoveReceipt& receipt,
   request.hasBoundsOverride = true;
   request.bounds = bounds;
   request.hasTransformOverride = true;
-  request.transform.position = centerOfBounds(bounds);
+  request.transform.position = measureCreativeBounds(bounds).center;
   request.hasVisibleOverride = true;
   request.visible = visible;
   request.parentId = roomObjectId;

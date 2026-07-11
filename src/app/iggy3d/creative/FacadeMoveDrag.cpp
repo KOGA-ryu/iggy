@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/Facade.hpp"
 
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/FacadeInternal.hpp"
 #include "app/iggy3d/creative/document/DocumentSnap.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
@@ -22,16 +23,6 @@ using facade_internal::targetRefToObjectId;
     return object.bounds.min;
   }
   return object.transform.position;
-}
-
-[[nodiscard]] iggy3d::Vec3 toCoreVec3(CreativeVec3 value) noexcept {
-  return {static_cast<float>(value.x), static_cast<float>(value.y),
-          static_cast<float>(value.z)};
-}
-
-[[nodiscard]] CreativeVec3 toCreativeVec3(iggy3d::Vec3 value) noexcept {
-  return {static_cast<double>(value.x), static_cast<double>(value.y),
-          static_cast<double>(value.z)};
 }
 
 [[nodiscard]] unsigned moveSnapAxisMask(
@@ -57,25 +48,35 @@ using facade_internal::targetRefToObjectId;
 
 // Snap a Move anchor through the core float snap kernel. The held axis is
 // excluded from the core axis mask, so no second post-snap hold pass is needed.
-[[nodiscard]] CreativeVec3 snapMoveAnchor(
+[[nodiscard]] bool snapMoveAnchor(
     CreativeVec3 anchor,
     CreativeDocumentSnapSettings settings,
-    const CreativeToolPointerPacket& pointer) noexcept {
+    const CreativeToolPointerPacket& pointer,
+    CreativeVec3& snapped) noexcept {
   if (pointer.hasMoveSnapStepOverride) {
     settings.stepX = pointer.moveSnapStepOverride;
     settings.stepY = pointer.moveSnapStepOverride;
     settings.stepZ = pointer.moveSnapStepOverride;
   }
-  const iggy3d::Vec3 step{static_cast<float>(settings.stepX),
-                          static_cast<float>(settings.stepY),
-                          static_cast<float>(settings.stepZ)};
-  const iggy3d::Vec3 origin{static_cast<float>(settings.originX),
-                            static_cast<float>(settings.originY),
-                            static_cast<float>(settings.originZ)};
+  const CreativeCoreVec3Conversion coreAnchor =
+      creativeVec3ToCoreChecked(anchor);
+  const CreativeCoreVec3Conversion coreStep = creativeVec3ToCoreChecked(
+      {settings.stepX, settings.stepY, settings.stepZ});
+  const CreativeCoreVec3Conversion coreOrigin = creativeVec3ToCoreChecked(
+      {settings.originX, settings.originY, settings.originZ});
+  if (!coreAnchor.converted || !coreStep.converted ||
+      !coreOrigin.converted) {
+    return false;
+  }
   const unsigned axisMask =
       moveSnapAxisMask(pointer.moveHeldAxis) & documentSnapAxisMask(settings);
-  return toCreativeVec3(
-      iggy3d::snapVec3ToGrid(toCoreVec3(anchor), step, origin, axisMask));
+  const iggy3d::Vec3 coreSnapped = iggy3d::snapVec3ToGrid(
+      coreAnchor.value, coreStep.value, coreOrigin.value, axisMask);
+  if (!iggy3d::isFinite(coreSnapped)) {
+    return false;
+  }
+  snapped = creativeVec3FromCore(coreSnapped);
+  return true;
 }
 
 [[nodiscard]] bool validMovePointerOptions(
@@ -105,10 +106,6 @@ void applyMoveConstraint(CreativeVec3& anchor,
     case CreativeMoveConstraint::Count:
       break;
   }
-}
-
-[[nodiscard]] bool sameAnchor(CreativeVec3 lhs, CreativeVec3 rhs) noexcept {
-  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
 }
 
 // Hold one axis of a Move anchor at the start-anchor value, leaving the other
@@ -249,9 +246,13 @@ CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
         // the pointer. Front view holds Z, ground-plane editor holds Y.
         const CreativeVec3 requested =
             resolveMoveAnchor(intent.pointer, moveDragStartAnchor_);
-        const CreativeVec3 snapped =
-            snapMoveAnchor(requested, document_.documentSnapSettings(),
-                           intent.pointer);
+        CreativeVec3 snapped;
+        if (!snapMoveAnchor(requested, document_.documentSnapSettings(),
+                            intent.pointer, snapped)) {
+          receipt.outcome = CreativeFacadeMoveDragOutcome::Rejected;
+          receipt.message = "move_drag_geometry_invalid";
+          return receipt;
+        }
         receipt.hasDestinationAnchor = true;
         receipt.requestedAnchor = requested;
         receipt.snappedAnchor = snapped;
@@ -316,14 +317,18 @@ CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
       // the axis to hold at the start anchor; the other two follow the pointer.
       const CreativeVec3 requested =
           resolveMoveAnchor(intent.pointer, startAnchor);
-      const CreativeVec3 snapped =
-          snapMoveAnchor(requested, document_.documentSnapSettings(),
-                         intent.pointer);
+      CreativeVec3 snapped;
+      if (!snapMoveAnchor(requested, document_.documentSnapSettings(),
+                          intent.pointer, snapped)) {
+        receipt.outcome = CreativeFacadeMoveDragOutcome::Rejected;
+        receipt.message = "move_drag_geometry_invalid";
+        return receipt;
+      }
       receipt.hasDestinationAnchor = true;
       receipt.requestedAnchor = requested;
       receipt.snappedAnchor = snapped;
 
-      if (sameAnchor(snapped, startAnchor)) {
+      if (creativeVec3ExactlyEqual(snapped, startAnchor)) {
         // TD-6: destination equals start anchor — no revision bump.
         receipt.outcome = CreativeFacadeMoveDragOutcome::NoChange;
         receipt.documentStatus = CreativeDocumentMutationStatus::NoChange;

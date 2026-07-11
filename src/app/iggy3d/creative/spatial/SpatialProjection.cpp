@@ -1,5 +1,7 @@
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
 
+#include "app/iggy3d/creative/Geometry.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -215,11 +217,6 @@ void fillBoundsCells(std::vector<CreativeSpatialCell>& cells,
   };
 }
 
-[[nodiscard]] bool finiteVec3(CreativeVec3 value) noexcept {
-  return std::isfinite(value.x) && std::isfinite(value.y) &&
-         std::isfinite(value.z);
-}
-
 [[nodiscard]] bool checkedInt32(double value, std::int32_t& out) noexcept {
   if (!std::isfinite(value) ||
       value < static_cast<double>(std::numeric_limits<std::int32_t>::min()) ||
@@ -233,7 +230,7 @@ void fillBoundsCells(std::vector<CreativeSpatialCell>& cells,
 [[nodiscard]] bool tryWorldToGridCoord(CreativeVec3 position,
                                        double cellSize,
                                        CreativeGridCoord3& out) noexcept {
-  if (!validCellSize(cellSize) || !finiteVec3(position)) {
+  if (!validCellSize(cellSize) || !isFiniteCreativeVec3(position)) {
     return false;
   }
 
@@ -252,8 +249,8 @@ void fillBoundsCells(std::vector<CreativeSpatialCell>& cells,
     CreativeBounds bounds,
     double cellSize,
     CreativeGridBounds3& out) noexcept {
-  if (!validCellSize(cellSize) || !finiteVec3(bounds.min) ||
-      !finiteVec3(bounds.max)) {
+  if (!validCellSize(cellSize) || !isFiniteCreativeVec3(bounds.min) ||
+      !isFiniteCreativeVec3(bounds.max)) {
     return false;
   }
 
@@ -280,7 +277,7 @@ void fillBoundsCells(std::vector<CreativeSpatialCell>& cells,
   return std::all_of(pathPoints.begin(),
                      pathPoints.end(),
                      [](const CreativePathPoint& point) {
-                       return finiteVec3(point.position);
+                       return isFiniteCreativeVec3(point.position);
                      });
 }
 
@@ -290,7 +287,7 @@ void fillBoundsCells(std::vector<CreativeSpatialCell>& cells,
          std::all_of(pathPoints.begin(),
                      pathPoints.end(),
                      [](const CreativePathPoint& point) {
-                       return finiteVec3(point.position);
+                       return isFiniteCreativeVec3(point.position);
                      });
 }
 

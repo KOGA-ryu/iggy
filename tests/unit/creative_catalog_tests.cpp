@@ -478,8 +478,9 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
                                 binding.context == context;
                        });
   };
-  bool ok = expect(bindings.size() == 91U,
-                   "catalog registry remains within fixed capacity") &&
+  bool ok = expect(!bindings.empty() &&
+                       bindings.size() <= cr::kCreativeInputBindingCapacity,
+                   "catalog registry remains populated within fixed capacity") &&
             expect(!audit.bindingCapacityExceeded && audit.conflictCount == 0U,
                    "catalog bindings remain conflict free") &&
             expect(hasBinding(cr::CreativeInputActionId::ToggleCatalog,
@@ -593,12 +594,32 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
                        hasBinding(
                            cr::CreativeInputActionId::TransformControlPrevious,
                            cr::CreativeInputKey::GamepadDpadUp,
-                           cr::CreativeInputContext::TransformPreview) &&
+                           cr::CreativeInputContext::TransformControls) &&
                        hasBinding(
                            cr::CreativeInputActionId::TransformControlNext,
                            cr::CreativeInputKey::GamepadDpadDown,
-                           cr::CreativeInputContext::TransformPreview),
-                   "transform preview owns confirm cancel and radial navigation");
+                           cr::CreativeInputContext::TransformControls) &&
+                       hasBinding(
+                           cr::CreativeInputActionId::TransformConstraintX,
+                           cr::CreativeInputKey::X,
+                           cr::CreativeInputContext::TransformPreview) &&
+                       hasBinding(
+                           cr::CreativeInputActionId::TransformConstraintY,
+                           cr::CreativeInputKey::Y,
+                           cr::CreativeInputContext::TransformPreview) &&
+                       hasBinding(
+                           cr::CreativeInputActionId::TransformConstraintZ,
+                           cr::CreativeInputKey::Z,
+                           cr::CreativeInputContext::TransformPreview) &&
+                       hasBinding(
+                           cr::CreativeInputActionId::TransformNudgePositive,
+                           cr::CreativeInputKey::GamepadDpadUp,
+                           cr::CreativeInputContext::TransformPreview) &&
+                       hasBinding(
+                           cr::CreativeInputActionId::ConfirmActiveTool,
+                           cr::CreativeInputKey::GamepadConfirm,
+                           cr::CreativeInputContext::TransformControls),
+                   "transform preview and controls have isolated semantic input");
 
   cr::CreativeInputRouterState router;
   cr::CreativeInputFrame frame;
@@ -697,6 +718,7 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
   cr::setCreativeInputKey(transformFrame, cr::CreativeInputKey::R, true);
   const cr::CreativeInputRouteResult transformOpened =
       cr::routeCreativeInput(transformRouter, transformFrame, bindings);
+  transformFrame.context = cr::CreativeInputContext::TransformControls;
   const cr::CreativeInputRouteResult transformHeld =
       cr::routeCreativeInput(transformRouter, transformFrame, bindings);
   ok = expect(transformOpened.actionCount == 1U &&
@@ -704,7 +726,43 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
                       cr::CreativeInputActionId::ToggleTransformControls,
               "transform preview R opens contextual controls") &&
        expect(transformHeld.actionCount == 0U,
-              "held transform toggle does not retrigger") &&
+              "held transform toggle does not retrigger after context change") &&
+       ok;
+
+  cr::CreativeInputRouterState precisionRouter;
+  cr::CreativeInputFrame precisionFrame;
+  precisionFrame.context = cr::CreativeInputContext::TransformPreview;
+  cr::setCreativeInputKey(precisionFrame, cr::CreativeInputKey::X, true);
+  const cr::CreativeInputRouteResult axisPressed =
+      cr::routeCreativeInput(precisionRouter, precisionFrame, bindings);
+  cr::setCreativeInputKey(precisionFrame, cr::CreativeInputKey::X, false);
+  static_cast<void>(
+      cr::routeCreativeInput(precisionRouter, precisionFrame, bindings));
+  precisionFrame.modifiers = cr::kCreativeInputModifierShift;
+  cr::setCreativeInputKey(precisionFrame,
+                          cr::CreativeInputKey::GamepadDpadUp, true);
+  const cr::CreativeInputRouteResult firstNudge =
+      cr::routeCreativeInput(precisionRouter, precisionFrame, bindings);
+  const cr::CreativeInputRouteResult heldNudge =
+      cr::routeCreativeInput(precisionRouter, precisionFrame, bindings);
+  cr::setCreativeInputKey(precisionFrame,
+                          cr::CreativeInputKey::GamepadDpadUp, false);
+  static_cast<void>(
+      cr::routeCreativeInput(precisionRouter, precisionFrame, bindings));
+  cr::setCreativeInputKey(precisionFrame,
+                          cr::CreativeInputKey::GamepadDpadUp, true);
+  const cr::CreativeInputRouteResult repeatedNudge =
+      cr::routeCreativeInput(precisionRouter, precisionFrame, bindings);
+  ok = expect(axisPressed.actionCount == 1U &&
+                  axisPressed.actions[0].action ==
+                      cr::CreativeInputActionId::TransformConstraintX,
+              "preview X emits axis constraint") &&
+       expect(firstNudge.actionCount == 1U &&
+                  firstNudge.actions[0].action ==
+                      cr::CreativeInputActionId::TransformNudgePositive &&
+                  heldNudge.actionCount == 0U &&
+                  repeatedNudge.actionCount == 1U,
+              "fine nudge emits once per physical controller-style press") &&
        ok;
   return ok;
 }

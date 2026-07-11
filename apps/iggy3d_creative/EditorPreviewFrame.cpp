@@ -13,6 +13,7 @@
 
 #include "EditorFrame.hpp"
 #include "EditorCatalog.hpp"
+#include "EditorControls.hpp"
 #include "EditorToolOptions.hpp"
 #include "EditorTransform.hpp"
 #include "EditorGizmo.hpp"
@@ -22,10 +23,11 @@
 #include "EditorPreviewProxies.hpp"
 #include "EditorState.hpp"
 #include "EditorVolume.hpp"
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/DocumentWireframe.hpp"
 #include "app/iggy3d/creative/render/CreativeOverlayFrame.hpp"
+#include "app/iggy3d/creative/render/CreativeScreenProjection.hpp"
 #include "app/iggy3d/creative/render/WireframeDebugLines.hpp"
-#include "app/iggy3d/creative/ui/UiProjection.hpp"
 #include "core/math/EulerRotation.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "projection/scene/SceneItem.hpp"
@@ -117,13 +119,19 @@ void appendGridDotsToScene(const iggy3d::ProductMapMakerGridSnapshot& grid,
     float inset,
     Vec3& center,
     Vec3& size) {
-  center = {static_cast<float>((bounds.min.x + bounds.max.x) * 0.5),
-            static_cast<float>((bounds.min.y + bounds.max.y) * 0.5),
-            static_cast<float>((bounds.min.z + bounds.max.z) * 0.5)};
-  size = {static_cast<float>(bounds.max.x - bounds.min.x) * inset,
-          static_cast<float>(bounds.max.y - bounds.min.y) * inset,
-          static_cast<float>(bounds.max.z - bounds.min.z) * inset};
-  return isFinite(center) && isFinite(size) && size.x > 0.0F &&
+  const creative::CreativeBoundsMetrics metrics =
+      creative::measureCreativeBounds(bounds);
+  const creative::CreativeCoreVec3Conversion coreCenter =
+      creative::creativeVec3ToCoreChecked(metrics.center);
+  const creative::CreativeCoreVec3Conversion coreSize =
+      creative::creativeVec3ToCoreChecked(metrics.size);
+  if (!metrics.valid || !coreCenter.converted || !coreSize.converted ||
+      !std::isfinite(inset)) {
+    return false;
+  }
+  center = coreCenter.value;
+  size = coreSize.value * inset;
+  return isFinite(size) && size.x > 0.0F &&
          size.y > 0.0F && size.z > 0.0F;
 }
 
@@ -188,17 +196,16 @@ void appendEllipseLoop(
 }
 
 [[nodiscard]] Vec3 renderVec3(cr::CreativeVec3 value) noexcept {
-  return {static_cast<float>(value.x), static_cast<float>(value.y),
-          static_cast<float>(value.z)};
+  return cr::creativeVec3ToCoreChecked(value).value;
 }
 
 [[nodiscard]] Vec3 cellCenter(const cr::CreativeVolumeSelection& selection,
                               cr::CreativeGridCoord3 cell) noexcept {
   const cr::CreativeBounds bounds = cr::creativeVolumeCellBounds(
       cell, selection.cellSize, selection.origin);
-  return {static_cast<float>((bounds.min.x + bounds.max.x) * 0.5),
-          static_cast<float>((bounds.min.y + bounds.max.y) * 0.5),
-          static_cast<float>((bounds.min.z + bounds.max.z) * 0.5)};
+  return cr::creativeVec3ToCoreChecked(
+             cr::measureCreativeBounds(bounds).center)
+      .value;
 }
 
 void appendShapeBrushOutline(
@@ -501,7 +508,9 @@ void attachCreativeEditorPlacementPreviews(
               modelMatrix(
                   targetCenter,
                   targetPlan.valid
-                      ? toVec3(targetPlan.transform.rotationEulerRadians)
+                      ? cr::creativeVec3ToCoreChecked(
+                            targetPlan.transform.rotationEulerRadians)
+                            .value
                       : Vec3{},
                   targetSize),
           targetPlan.valid &&
@@ -597,22 +606,6 @@ void buildAndAttachCreativeEditorOverlayFrame(
   output.patternEdgeCount = 0;
   output.transformPreviewEdgeCount = 0;
   output.placementFeedbackEdgeCount = 0;
-
-  // ---- INSPECTOR UI (draw list -> menu frame rects + glyphs) -------------
-  ProductCreativeUiProjectionRequest uiReq;
-  uiReq.creative = &appState;  // model=nullptr -> facade.buildUiModel().
-  uiReq.virtualWidth = 1280;
-  uiReq.virtualHeight = 720;
-  const ProductCreativeUiProjection uiProj =
-      buildProductCreativeUiProjection(uiReq);
-
-  CreativeUiOverlayFrameRequest menuReq;
-  menuReq.drawList = &uiProj.drawList;
-  menuReq.frameIndex = editor.frameIndex;
-  menuReq.drawableWidth = drawableWidth;
-  menuReq.drawableHeight = drawableHeight;
-  CreativeUiOverlayFrame menuFrame = buildCreativeUiOverlayFrame(menuReq);
-  output.uiRects = std::move(menuFrame.rects);
 
   // ---- BOUNDS BOX (wireframe) --------------------------------------------
   const creative::CreativeDocumentWireframeSegmentBuildResult segs =
@@ -748,12 +741,10 @@ void buildAndAttachCreativeEditorOverlayFrame(
       Vec3 center{};
       Vec3 size{};
       if (previewBoundsTransform(bounds, 1.0F, center, size)) {
-        const Vec3 minimum{static_cast<float>(bounds.min.x),
-                           static_cast<float>(bounds.min.y),
-                           static_cast<float>(bounds.min.z)};
-        const Vec3 maximum{static_cast<float>(bounds.max.x),
-                           static_cast<float>(bounds.max.y),
-                           static_cast<float>(bounds.max.z)};
+        const Vec3 minimum =
+            cr::creativeVec3ToCoreChecked(bounds.min).value;
+        const Vec3 maximum =
+            cr::creativeVec3ToCoreChecked(bounds.max).value;
         const std::size_t before = combinedWireLines.size();
         appendStandaloneWireframeBoxEdges(
             combinedWireLines, minimum, maximum,
@@ -813,7 +804,6 @@ void buildAndAttachCreativeEditorOverlayFrame(
       appendCreativeEditorSelectionTransformPreview(
           editor.transform, gizmoThickness, combinedWireLines);
   std::vector<DebugHudGlyphQuad>& glyphs = output.glyphs;
-  glyphs = menuFrame.textGlyphQuads;
   appendCreativeEditorInteractionOverlay(
       editor, drawableWidth, drawableHeight, gizmoThickness, output.uiRects,
       glyphs, combinedWireLines);
@@ -823,24 +813,25 @@ void buildAndAttachCreativeEditorOverlayFrame(
                                      drawableHeight, output.uiRects, glyphs);
   appendCreativeEditorToolOptionsOverlay(editor, drawableWidth, drawableHeight,
                                          output.uiRects, glyphs);
+  appendCreativeEditorControlsOverlay(editor, drawableWidth, drawableHeight,
+                                      output.uiRects, glyphs);
 
   if (output.volumeEdgeCount > 0U && volumeSelectionVisible) {
     const creative::CreativeGridBounds3 gridBounds =
         creative::creativeVolumeGridBounds(volumeSelection);
     const creative::CreativeBounds bounds =
         creative::creativeVolumeWorldBounds(volumeSelection);
-    const Vec3 labelPosition{
-        static_cast<float>((bounds.min.x + bounds.max.x) * 0.5),
-        static_cast<float>(bounds.max.y),
-        static_cast<float>((bounds.min.z + bounds.max.z) * 0.5),
-    };
-    const ProjectedPoint3 projected =
-        projectPoint(frame.camera.clipFromWorld, labelPosition);
-    if (std::isfinite(projected.w) && projected.w > 0.0F) {
-      const float px = (projected.ndc.x * 0.5F + 0.5F) *
-                       static_cast<float>(drawableWidth);
-      const float py = (1.0F - (projected.ndc.y * 0.5F + 0.5F)) *
-                       static_cast<float>(drawableHeight);
+    const creative::CreativeBoundsMetrics metrics =
+        creative::measureCreativeBounds(bounds);
+    const Vec3 labelPosition = creative::creativeVec3ToCoreChecked(
+                                   {metrics.center.x, bounds.max.y,
+                                    metrics.center.z})
+                                   .value;
+    const creative::CreativeScreenPoint screenPoint =
+        creative::projectCreativeWorldPointToScreen(
+            frame.camera.clipFromWorld, labelPosition, drawableWidth,
+            drawableHeight);
+    if (screenPoint.valid) {
       const std::uint64_t plannedCellCount =
           volumeUsesShapePlan && volumeShapePlan.accepted
               ? volumeShapePlan.generatedCellCount
@@ -884,8 +875,9 @@ void buildAndAttachCreativeEditorOverlayFrame(
             static_cast<unsigned long long>(plannedCellCount));
       }
       const DebugHudLayoutResult labelLayout = layoutDebugHudTextAt(
-          labelBuf, static_cast<std::int32_t>(px),
-          static_cast<std::int32_t>(py), drawableWidth, drawableHeight);
+          labelBuf, static_cast<std::int32_t>(screenPoint.x),
+          static_cast<std::int32_t>(screenPoint.y), drawableWidth,
+          drawableHeight);
       glyphs.insert(glyphs.end(), labelLayout.quads.begin(),
                     labelLayout.quads.end());
     }
@@ -898,13 +890,11 @@ void buildAndAttachCreativeEditorOverlayFrame(
     const Vec3 center{(request.selection.boxMin.x + request.selection.boxMax.x) * 0.5F,
                       (request.selection.boxMin.y + request.selection.boxMax.y) * 0.5F,
                       (request.selection.boxMin.z + request.selection.boxMax.z) * 0.5F};
-    const ProjectedPoint3 projected =
-        projectPoint(frame.camera.clipFromWorld, center);
-    if (std::isfinite(projected.w) && projected.w > 0.0F) {
-      const Vec3 ndc = projected.ndc;
-      const float px = (ndc.x * 0.5F + 0.5F) * static_cast<float>(drawableWidth);
-      const float py = (1.0F - (ndc.y * 0.5F + 0.5F)) *
-                       static_cast<float>(drawableHeight);
+    const creative::CreativeScreenPoint screenPoint =
+        creative::projectCreativeWorldPointToScreen(
+            frame.camera.clipFromWorld, center, drawableWidth,
+            drawableHeight);
+    if (screenPoint.valid) {
       const float dimW = request.selection.boxMax.x - request.selection.boxMin.x;
       const float dimH = request.selection.boxMax.y - request.selection.boxMin.y;
       const float dimD = request.selection.boxMax.z - request.selection.boxMin.z;
@@ -913,8 +903,9 @@ void buildAndAttachCreativeEditorOverlayFrame(
                     static_cast<double>(dimW), static_cast<double>(dimH),
                     static_cast<double>(dimD));
       const DebugHudLayoutResult labelLayout = layoutDebugHudTextAt(
-          labelBuf, static_cast<std::int32_t>(px),
-          static_cast<std::int32_t>(py), drawableWidth, drawableHeight);
+          labelBuf, static_cast<std::int32_t>(screenPoint.x),
+          static_cast<std::int32_t>(screenPoint.y), drawableWidth,
+          drawableHeight);
       glyphs.insert(glyphs.end(), labelLayout.quads.begin(),
                     labelLayout.quads.end());
     }

@@ -1,5 +1,7 @@
 #include "app/iggy3d/creative/document/DocumentWireframe.hpp"
 
+#include "app/iggy3d/creative/Geometry.hpp"
+
 #include <algorithm>
 #include <span>
 #include <string_view>
@@ -106,13 +108,9 @@ void setSegmentReceiptStatus(CreativeDocumentWireframeSegmentReceipt& receipt,
   return item;
 }
 
-[[nodiscard]] bool samePoint(CreativeVec3 lhs, CreativeVec3 rhs) noexcept {
-  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
-}
-
 [[nodiscard]] bool isDegenerateBounds(CreativeBounds bounds) noexcept {
-  return bounds.min.x >= bounds.max.x || bounds.min.y >= bounds.max.y ||
-         bounds.min.z >= bounds.max.z;
+  const CreativeBoundsMetrics metrics = measureCreativeBounds(bounds);
+  return !metrics.valid || !isPositiveCreativeVec3(metrics.size);
 }
 
 void appendSegment(CreativeDocumentWireframeSegmentList& list,
@@ -531,7 +529,7 @@ CreativeDocumentWireframeSegmentBuildResult buildCreativeDocumentWireframeSegmen
                ++index) {
             const CreativeVec3 start = item.pathPoints[index];
             const CreativeVec3 end = item.pathPoints[index + 1U];
-            if (samePoint(start, end)) {
+            if (creativeVec3ExactlyEqual(start, end)) {
               ++receipt.skippedDegenerateCount;
               continue;
             }
@@ -543,7 +541,7 @@ CreativeDocumentWireframeSegmentBuildResult buildCreativeDocumentWireframeSegmen
           }
           break;
         }
-        if (samePoint(item.start, item.end)) {
+        if (creativeVec3ExactlyEqual(item.start, item.end)) {
           ++receipt.skippedDegenerateCount;
           break;
         }
