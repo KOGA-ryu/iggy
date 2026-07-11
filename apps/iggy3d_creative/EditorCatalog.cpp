@@ -354,7 +354,7 @@ void applyInventoryModeActions(
       }
       return;
     case cr::CreativeInputContext::ToolOptions:
-    case cr::CreativeInputContext::ClipboardPreview:
+    case cr::CreativeInputContext::TransformPreview:
     case cr::CreativeInputContext::TextEntry:
     case cr::CreativeInputContext::Modal:
     case cr::CreativeInputContext::Capture:

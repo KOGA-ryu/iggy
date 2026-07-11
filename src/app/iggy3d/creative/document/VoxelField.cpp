@@ -5,6 +5,7 @@
 #include <cmath>
 #include <iterator>
 #include <limits>
+#include <type_traits>
 #include <utility>
 
 namespace iggy3d::creative {
@@ -81,6 +82,9 @@ namespace {
 using ChunkIterator = std::vector<CreativeVoxelChunk>::iterator;
 using ConstChunkIterator = std::vector<CreativeVoxelChunk>::const_iterator;
 
+static_assert(std::is_nothrow_move_constructible_v<CreativeVoxelChunk>);
+static_assert(std::is_nothrow_move_assignable_v<CreativeVoxelChunk>);
+
 [[nodiscard]] ChunkIterator findChunk(
     std::vector<CreativeVoxelChunk>& chunks,
     CreativeVoxelChunkCoord coord) noexcept {
@@ -101,29 +105,6 @@ using ConstChunkIterator = std::vector<CreativeVoxelChunk>::const_iterator;
         return chunkCoordLess(chunk.coord, value);
       });
   return found != chunks.end() && found->coord == coord ? found : chunks.end();
-}
-
-[[nodiscard]] ChunkIterator findOrInsertChunk(
-    std::vector<CreativeVoxelChunk>& chunks,
-    CreativeVoxelChunkCoord coord) {
-  ChunkIterator found = std::lower_bound(
-      chunks.begin(), chunks.end(), coord,
-      [](const CreativeVoxelChunk& chunk, CreativeVoxelChunkCoord value) {
-        return chunkCoordLess(chunk.coord, value);
-      });
-  if (found == chunks.end() || !(found->coord == coord)) {
-    CreativeVoxelChunk chunk;
-    chunk.coord = coord;
-    found = chunks.insert(found, std::move(chunk));
-  }
-  return found;
-}
-
-void addDirtyChunk(std::vector<CreativeVoxelChunkCoord>& dirty,
-                   CreativeVoxelChunkCoord coord) {
-  if (std::find(dirty.begin(), dirty.end(), coord) == dirty.end()) {
-    dirty.push_back(coord);
-  }
 }
 
 [[nodiscard]] bool finiteVec3(CreativeVec3 value) noexcept {
@@ -273,6 +254,8 @@ CreativeVoxelMutationReceipt CreativeVoxelField::apply(
   receipt.revisionBefore = revision_;
   receipt.revisionAfter = revision_;
   receipt.attemptedCellCount = edits.size();
+  receipt.chunkCountBefore = chunks_.size();
+  receipt.chunkCountAfter = chunks_.size();
 
   if (!isValid()) {
     receipt.status = CreativeVoxelMutationStatus::InvalidField;
@@ -306,38 +289,66 @@ CreativeVoxelMutationReceipt CreativeVoxelField::apply(
     }
   }
 
-  CreativeVoxelField staged = *this;
-  for (const CreativeVoxelEdit& edit : ordered) {
-    const CreativeObjectKind oldMaterial = staged.materialAt(edit.cell);
-    if (oldMaterial == edit.material) {
+  std::vector<CreativeVoxelChunk> stagedChunks;
+  std::size_t insertedChunkCount = 0;
+  for (std::size_t begin = 0; begin < ordered.size();) {
+    const CreativeVoxelChunkCoord coord = chunkCoordForCell(ordered[begin].cell);
+    std::size_t end = begin + 1U;
+    while (end < ordered.size() &&
+           chunkCoordForCell(ordered[end].cell) == coord) {
+      ++end;
+    }
+
+    const ConstChunkIterator existing = findChunk(chunks_, coord);
+    const bool existed = existing != chunks_.end();
+    bool chunkChanges = false;
+    for (std::size_t index = begin; index < end; ++index) {
+      const CreativeObjectKind oldMaterial =
+          existed ? existing->materials[localIndex(ordered[index].cell, coord)]
+                  : CreativeObjectKind::Unknown;
+      chunkChanges |= oldMaterial != ordered[index].material;
+    }
+    if (!chunkChanges) {
+      begin = end;
       continue;
     }
 
-    const CreativeVoxelChunkCoord coord = chunkCoordForCell(edit.cell);
-    if (edit.material == CreativeObjectKind::Unknown) {
-      ChunkIterator chunk = findChunk(staged.chunks_, coord);
-      if (chunk == staged.chunks_.end()) {
+    CreativeVoxelChunk staged;
+    if (existed) {
+      staged = *existing;
+    } else {
+      staged.coord = coord;
+    }
+
+    for (std::size_t index = begin; index < end; ++index) {
+      const CreativeVoxelEdit& edit = ordered[index];
+      const std::size_t materialIndex = localIndex(edit.cell, coord);
+      const CreativeObjectKind oldMaterial = staged.materials[materialIndex];
+      if (oldMaterial == edit.material) {
         continue;
       }
-      chunk->materials[localIndex(edit.cell, coord)] =
-          CreativeObjectKind::Unknown;
-      --chunk->occupiedCellCount;
-      --staged.occupiedCellCount_;
-      ++receipt.removedCellCount;
-    } else {
-      ChunkIterator chunk = findOrInsertChunk(staged.chunks_, coord);
-      chunk->materials[localIndex(edit.cell, coord)] = edit.material;
-      if (oldMaterial == CreativeObjectKind::Unknown) {
-        ++chunk->occupiedCellCount;
-        ++staged.occupiedCellCount_;
+
+      staged.materials[materialIndex] = edit.material;
+      if (edit.material == CreativeObjectKind::Unknown) {
+        --staged.occupiedCellCount;
+        ++receipt.removedCellCount;
+      } else if (oldMaterial == CreativeObjectKind::Unknown) {
+        ++staged.occupiedCellCount;
         ++receipt.createdCellCount;
       } else {
         ++receipt.replacedCellCount;
       }
+      ++receipt.changedCellCount;
     }
-    ++receipt.changedCellCount;
-    addDirtyChunk(receipt.dirtyChunks, coord);
+
+    staged.revision = revision_ + 1U;
+    insertedChunkCount +=
+        !existed && staged.occupiedCellCount != 0U ? 1U : 0U;
+    receipt.dirtyChunks.push_back(coord);
+    stagedChunks.push_back(std::move(staged));
+    begin = end;
   }
+  receipt.stagedChunkCount = stagedChunks.size();
 
   if (receipt.changedCellCount == 0U) {
     receipt.accepted = true;
@@ -346,22 +357,35 @@ CreativeVoxelMutationReceipt CreativeVoxelField::apply(
     return receipt;
   }
 
-  for (CreativeVoxelChunkCoord dirtyCoord : receipt.dirtyChunks) {
-    ChunkIterator chunk = findChunk(staged.chunks_, dirtyCoord);
-    if (chunk != staged.chunks_.end()) {
-      chunk->revision = staged.revision_ + 1U;
-      if (chunk->occupiedCellCount == 0U) {
-        staged.chunks_.erase(chunk);
+  // All allocation completes before mutation. With the no-throw chunk moves
+  // asserted above, the sorted-vector commit cannot leave a partial batch.
+  chunks_.reserve(chunks_.size() + insertedChunkCount);
+  for (CreativeVoxelChunk& staged : stagedChunks) {
+    ChunkIterator existing = findChunk(chunks_, staged.coord);
+    if (staged.occupiedCellCount == 0U) {
+      if (existing != chunks_.end()) {
+        chunks_.erase(existing);
       }
+    } else if (existing != chunks_.end()) {
+      *existing = std::move(staged);
+    } else {
+      ChunkIterator insertion = std::lower_bound(
+          chunks_.begin(), chunks_.end(), staged.coord,
+          [](const CreativeVoxelChunk& chunk, CreativeVoxelChunkCoord coord) {
+            return chunkCoordLess(chunk.coord, coord);
+          });
+      chunks_.insert(insertion, std::move(staged));
     }
   }
-  ++staged.revision_;
-  *this = std::move(staged);
+  occupiedCellCount_ -= receipt.removedCellCount;
+  occupiedCellCount_ += receipt.createdCellCount;
+  ++revision_;
 
   receipt.accepted = true;
   receipt.changed = true;
   receipt.status = CreativeVoxelMutationStatus::Applied;
   receipt.revisionAfter = revision_;
+  receipt.chunkCountAfter = chunks_.size();
   receipt.reasonCode = "creative_voxel_applied";
   return receipt;
 }

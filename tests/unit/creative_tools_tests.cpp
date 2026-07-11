@@ -582,6 +582,124 @@ bool transformCommandsStoreRadiansAndResolveLiveGeometry() {
          ok;
 }
 
+bool selectionPlacementPlanOwnsPreviewAndCommitGeometry() {
+  cr::CreativeObject wall;
+  wall.id = 1U;
+  wall.kind = cr::CreativeObjectKind::Wall;
+  wall.name = "Wall";
+  wall.transform.position = {1.0, 0.5, 2.0};
+  wall.bounds = {{0.5, 0.0, 1.5}, {1.5, 1.0, 2.5}};
+
+  cr::CreativeObject route;
+  route.id = 2U;
+  route.kind = cr::CreativeObjectKind::PatrolRoute;
+  route.name = "Route";
+  route.pathPoints = {{{0.0, 0.0, 1.0}}, {{0.0, 0.0, 3.0}}};
+  const std::array sources{wall, route};
+
+  cr::CreativeSelectionPlacementRequest request;
+  request.mode = cr::CreativeSelectionPlacementMode::Copy;
+  request.targetAnchor = {10.0, 0.0, 20.0};
+  request.quarterTurns = 1U;
+  request.mirrorX = true;
+  const cr::CreativeSelectionPlacementPlan plan =
+      cr::planCreativeSelectionPlacement(sources, request);
+  const auto near = [](double actual, double expected) {
+    return std::fabs(actual - expected) <= 1.0e-9;
+  };
+
+  return expect(plan.accepted &&
+                    plan.status == cr::CreativeSelectionPlacementStatus::Planned &&
+                    plan.objects.size() == 2U,
+                "selection placement plan accepted") &&
+         expect(near(plan.objects[0].transform.position.x, 12.0) &&
+                    near(plan.objects[0].transform.position.z, 21.0) &&
+                    near(plan.objects[0].transform.rotationEulerRadians.y,
+                         std::numbers::pi * 0.5),
+                "quarter turn and mirror transform object pivot and yaw") &&
+         expect(near(plan.objects[1].pathPoints[0].position.x, 11.0) &&
+                    near(plan.objects[1].pathPoints[0].position.z, 20.0) &&
+                    near(plan.objects[1].pathPoints[1].position.x, 13.0),
+                "path points use the shared selection transform") &&
+         expect(wall.transform.position.x == 1.0 &&
+                    route.pathPoints[0].position.z == 1.0,
+                "planning leaves source objects unchanged") &&
+         expect(plan.hasAggregateBounds &&
+                    plan.aggregateBounds.max.x >= 13.0,
+                "plan publishes aggregate preview bounds");
+}
+
+bool selectionPlacementMoveIsAtomicAndFailClosed() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Placement");
+  cr::CreativeDocumentCreateRequest wallRequest;
+  wallRequest.kind = cr::CreativeObjectKind::Wall;
+  wallRequest.name = "Wall";
+  wallRequest.transform.position = {0.0, 0.5, 1.0};
+  wallRequest.hasTransformOverride = true;
+  wallRequest.bounds = {{-0.5, 0.0, 0.5}, {0.5, 1.0, 1.5}};
+  wallRequest.hasBoundsOverride = true;
+  const cr::CreativeDocumentCreateReceipt wall =
+      document.createObject(wallRequest);
+
+  cr::CreativeDocumentCreateRequest roomRequest;
+  roomRequest.kind = cr::CreativeObjectKind::Room;
+  roomRequest.name = "Room";
+  roomRequest.bounds = {{-1.0, 0.0, -2.0}, {1.0, 2.0, 2.0}};
+  roomRequest.hasBoundsOverride = true;
+  const cr::CreativeDocumentCreateReceipt room =
+      document.createObject(roomRequest);
+  const std::array ids{wall.objectId, room.objectId};
+
+  cr::CreativeSelectionPlacementRequest request;
+  request.mode = cr::CreativeSelectionPlacementMode::Move;
+  request.targetAnchor = {4.0, 0.0, 6.0};
+  request.quarterTurns = 1U;
+  const std::uint64_t revisionBefore = document.revision();
+  const cr::CreativeSelectionPlacementReceipt moved =
+      cr::placeDocumentObjectsAtomically(document, ids, request);
+  const cr::CreativeObject* movedWall = document.findObject(wall.objectId);
+  const cr::CreativeObject* movedRoom = document.findObject(room.objectId);
+
+  bool ok = expect(moved.accepted && moved.changed &&
+                       moved.status ==
+                           cr::CreativeSelectionPlacementStatus::Applied,
+                   "selection placement move applies") &&
+            expect(document.revision() == revisionBefore + 1U,
+                   "selection placement advances revision once") &&
+            expect(movedWall != nullptr && movedRoom != nullptr &&
+                       movedWall->transform.position.x == 5.0 &&
+                       movedWall->transform.position.z == 6.0 &&
+                       movedRoom->bounds.min.x == 2.0 &&
+                       movedRoom->bounds.max.x == 6.0 &&
+                       movedRoom->bounds.min.z == 5.0 &&
+                       movedRoom->bounds.max.z == 7.0,
+                   "transform and bounds-only objects share placement geometry");
+
+  cr::CreativeDocument lockedDocument = document;
+  cr::CreativeObject* locked = lockedDocument.findObject(wall.objectId);
+  if (locked != nullptr) {
+    locked->locked = true;
+  }
+  const std::uint64_t lockedRevision = lockedDocument.revision();
+  const cr::CreativeSelectionPlacementReceipt rejected =
+      cr::placeDocumentObjectsAtomically(lockedDocument, ids, request);
+  ok = expect(!rejected.accepted && !rejected.changed &&
+                  rejected.status ==
+                      cr::CreativeSelectionPlacementStatus::LockedObject &&
+                  lockedDocument.revision() == lockedRevision,
+              "locked move rejects without partial mutation") &&
+       ok;
+
+  request.quarterTurns = 4U;
+  const cr::CreativeSelectionPlacementPlan invalid =
+      cr::planCreativeSelectionPlacement(document.objects(), request);
+  return expect(!invalid.accepted &&
+                    invalid.status ==
+                        cr::CreativeSelectionPlacementStatus::InvalidRequest,
+                "out-of-domain quarter turn fails closed") &&
+         ok;
+}
+
 }  // namespace
 
 int main() {
@@ -602,6 +720,8 @@ int main() {
                   optionDescriptorsAreContextualAndBounded() &&
                   optionAdjustmentIsDeterministicAndAtomic() &&
                   replaceFilterAndCloneOffsetUseExplicitInputs() &&
-                  transformCommandsStoreRadiansAndResolveLiveGeometry();
+                  transformCommandsStoreRadiansAndResolveLiveGeometry() &&
+                  selectionPlacementPlanOwnsPreviewAndCommitGeometry() &&
+                  selectionPlacementMoveIsAtomicAndFailClosed();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

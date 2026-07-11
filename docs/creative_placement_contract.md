@@ -58,8 +58,10 @@ failure policy. iggy3d requires explicit receipts and fail-closed validation.
 | Raw device input | `src/app/platform/SdlWindow.*` | Produce device facts only |
 | Semantic routing | `src/app/iggy3d/creative/input/InputRouter.*` and `Interaction.*` | Produce pressed/down/released world actions |
 | Center-ray target | `apps/iggy3d_creative/EditorInteraction.*` | Resolve object hit, face, placer heading, target cell, adjacent cell, and anchor |
-| Object policy | `src/app/iggy3d/creative/document/ObjectDescriptor.*` | Own whether and how an object kind may enter placement |
+| Object policy | `src/app/iggy3d/creative/document/ObjectDescriptor.*` | Own storage, occupancy, orientation, and whether an object kind may enter placement |
 | Geometry plan and admission | `apps/iggy3d_creative/EditorPlacement.*` | Produce one validated fixed-layout plan and structured admission status |
+| Selection transform plan | `src/app/iggy3d/creative/tools/SelectionPlacement.*` | Transform copied object records once for preview, Move, and clipboard Copy |
+| Transform interaction | `apps/iggy3d_creative/EditorTransform.*` | Own transient source snapshot, contextual controls, preview, and one history commit |
 | Shape-cell plan | `src/app/iggy3d/creative/tools/ShapeBrush.*` | Produce deterministic bounded Box, Line, Ellipsoid, and Cylinder cells |
 | Bulk cell storage | `src/app/iggy3d/creative/document/VoxelField.*` | Own sorted 16-cubed chunks, atomic edits, greedy cuboids, and grid DDA |
 | Mutation gesture | `apps/iggy3d_creative/EditorInteraction.*` | Deduplicate targets, execute due plans, and group history |
@@ -78,13 +80,41 @@ Every material placement follows this order:
 2. Resolve one `CreativeGridTarget` from the center ray.
 3. Read `CreativeObjectPlacementPolicy` from the selected object descriptor.
 4. Produce `CreativeBrushPlacementAdmission` and its embedded geometry plan.
-5. Use that same admitted plan for target preview and create request generation.
-6. Apply the request through `Facade` only when admission is `Ready`.
+5. Use that same admitted plan for target preview and mutation generation.
+6. Apply the object-create or voxel-edit request through `Facade` only when
+   admission is `Ready`.
 7. Use the mutation receipt for feedback and history decisions.
 8. Refresh scene geometry only when document identity or revision changes.
 
 Preview code must not recompute different geometry, and execution must not
 reinterpret an admitted plan.
+
+## Selection Transform Contract
+
+- `CreativeSelectionPlacementPlan` is the only geometry source for selection
+  Move and clipboard Copy. It receives a source anchor, target anchor, a bounded
+  quarter-turn value `0..3`, mirror-X, mirror-Z, and the explicit Copy/Move mode.
+- For each world point, planning subtracts the source anchor, applies mirrors,
+  applies the cardinal Y rotation, and adds the target anchor. Quarter turns use
+  exact component permutations rather than trigonometry, so grid-aligned values
+  do not accumulate residual drift. Object pivots, bounds-only corner envelopes,
+  and every stored path point use this same kernel.
+- Transform-backed objects move their pivot and authored bounds by the same
+  delta, then update yaw. Bounds-only objects receive the axis-aligned envelope
+  of all eight transformed corners. Copy request generation consumes the planned
+  object records directly; it cannot reinterpret the offset later.
+- Move admission additionally rejects locked objects and any required `Move`,
+  `Rotate`, `SetBounds`, or stored-path mutation unsupported by the descriptor.
+  All mutations publish through one `applyDocumentMutationsAtomically` batch, so
+  one accepted Move advances document revision once.
+- A Move source is valid only while document ID and revision still match its
+  snapshot and every source object remains present. A stale source stays visible
+  as invalid output but cannot mutate. Copy may use a foreign clipboard because
+  it creates independent objects and remaps internal parents.
+- Planning is `O(objects + path points)` with `O(objects + path points)` output.
+  Preview detail is bounded at 512 objects per source/destination side; larger
+  selections render aggregate extents. Preview changes never invalidate
+  `CreativeEditorSceneCache` because they do not change document revision.
 
 ## Current Placement Policy
 
@@ -92,15 +122,22 @@ Current placeable descriptors explicitly use:
 
 - Target: adjacent grid cell.
 - Allowed faces: all six cardinal faces.
-- Orientation: descriptor default for ordinary objects.
-- Cardinal orientation: `Wall`, `Door`, `Window`, `Arch`, `Fence`, `Railing`,
-  `Ladder`, `WallRunSurface`, `Sign`, and `Banner` align their descriptor-owned
-  local forward axis with an aimed X/Z face. On top or bottom faces, their front
-  turns toward the placer using the opposite of the player's horizontal facing.
-- Occupancy: distinct authored objects may overlap, but an identical brush kind,
-  transform, bounds, and path at the same target is already occupied. Repeating
-  that placement is rejected before opening a history transaction or changing
-  document revision.
+- Storage: `Wall`, `Floor`, `Ceiling`, and `Roof` use `VoxelCell`; each manual
+  placement writes exactly one adjacent grid cell. All other placeable
+  descriptors use `AuthoredObject`.
+- Grid scale: voxel-backed targeting, volume selection, and mutation use the
+  document grid's origin and cell size. Tool snap increments continue to
+  position authored objects but cannot resize or offset stored voxel coordinates.
+- Orientation: voxel cells are unrotated. Ordinary authored objects use the
+  descriptor default.
+- Cardinal orientation: `Door`, `Window`, `Arch`, `Fence`, `Railing`, `Ladder`,
+  `WallRunSurface`, `Sign`, and `Banner` align their descriptor-owned local
+  forward axis with an aimed X/Z face. On top or bottom faces, their front turns
+  toward the placer using the opposite of the player's horizontal facing.
+- Occupancy: a voxel-backed material rejects any occupied destination cell.
+  Distinct authored objects may overlap, but an identical brush kind, transform,
+  bounds, and path at the same target is already occupied. Either rejection
+  occurs before document revision changes.
 
 These values are intentional compatibility settings, not permanent limits.
 Future support requirements, replaceable destinations, and additional
@@ -170,10 +207,14 @@ cardinal placement is exact.
 ## Voxel Storage And Rendering
 
 - `CreativeDocument` owns one `CreativeVoxelField` beside ordinary authored
-  objects. Fill/Hollow write voxels; Replace, Erase, and Clone operate on both
-  voxels and ordinary objects where their rectangular selection contract calls
-  for it. Retired `iggy3d.volume_cell.v1` objects remain readable and removable,
-  but new bulk operations never create them.
+  objects. Manual `Wall`, `Floor`, `Ceiling`, and `Roof` placement plus
+  Fill/Hollow write voxels; Replace, Erase, and Clone operate on both voxels and
+  ordinary objects where their rectangular selection contract calls for it.
+  Retired `iggy3d.volume_cell.v1` objects remain readable and removable, but new
+  structural-cell and bulk operations never create them.
+- Volume material cycling admits only descriptors whose storage policy is
+  `VoxelCell`; authored props and attachments cannot enter voxel storage through
+  Fill, Hollow, or Replace.
 - A chunk is exactly `16 x 16 x 16` cells. Chunks are sorted in canonical
   `z/y/x` coordinate order, cells use X-fastest local indices, and negative
   coordinates use floor division. Empty chunks are removed.
@@ -218,12 +259,12 @@ red positionable ghost but never mutate the document.
   edits without allocating.
 - The history transaction opens lazily. Release or interruption commits one
   record only when at least one mutation changed the document.
-- Tool changes, hotbar changes, modals, capture mode, clipboard preview, undo,
+- Tool changes, hotbar changes, modals, capture mode, transform preview, undo,
   redo, new, load, focus loss, and shutdown finalize the active gesture.
 - Empty or wholly rejected gestures cancel without creating history.
-- Identical manual brush geometry is rejected across gesture boundaries. This
-  prevents repeated taps or touchpad edge events from stacking invisible copies
-  that each force another document bake.
+- Occupied voxel cells and identical authored-object plans are rejected across
+  gesture boundaries. This prevents repeated taps or touchpad edge events from
+  stacking invisible work that forces another document bake.
 - A Fill/Hollow corner pair applies one atomic volume operation and records at
   most one history entry. Secondary without an armed first corner fails closed,
   and a completed pair cannot be reapplied until Primary starts a new pair.
@@ -234,7 +275,7 @@ red positionable ghost but never mutate the document.
 - Valid target is green; invalid but positionable target is red.
 - Preview items never enter document geometry, room signatures, saves, or undo.
 - An accepted mutation hides the target ghost in the same frame and uses the
-  live document object for receipt feedback.
+  live object bounds or exact voxel-cell bounds for receipt feedback.
 - `CreativeEditorSceneCache` is keyed by document ID and revision. Aim motion
   does not rebuild or upload room geometry.
 - Voxel cuboid plans are additionally cached by chunk coordinate and revision;
@@ -258,18 +299,23 @@ before implementation:
 
 ## Proof Targets
 
-- `creative_object_descriptor_tests`: policy ownership, local forward axes, and
-  face filtering.
+- `creative_object_descriptor_tests`: storage and occupancy ownership, local
+  forward axes, and face filtering.
 - `creative_shape_brush_tests`: lattice counts, symmetry, canonical line order,
   axes, disks, hollow boundaries, enum rejection, and both operation limits.
 - `creative_voxel_field_tests`: negative chunk coordinates, atomic edits,
   chunk-local greedy cuboids, grid DDA, and one document revision per batch.
 - `creative_interaction_tests`: semantic action edges and repeat timing.
-- `creative_editor_placement_tests`: plan/request parity, cardinal admission,
-  oriented preview/picking/bake/render parity, bounded shape outlines, gesture deduplication,
-  interruption, history grouping, and scene-cache reuse.
+- `creative_editor_placement_tests`: object/voxel mutation parity, cardinal
+  admission, oriented preview/picking/bake/render parity, exact voxel feedback,
+  bounded shape outlines, gesture deduplication, interruption, history grouping,
+  and scene-cache reuse.
 - `creative_tools_tests`: degree-command to stored-radian conversion and
-  transform/scale geometry.
+  transform/scale geometry, shared selection-transform geometry, atomic Move,
+  locked-source rejection, and invalid quarter turns.
+- `creative_pattern_tests` and `creative_editor_pattern_tests`: transformed
+  clipboard parity, non-mutating Copy/Move previews, contextual control updates,
+  one-step history, red invalid output, cancellation, and aggregate fallback.
 - `creative_spatial_projection_tests` and `creative_document_wireframe_tests`:
   transformed world bounds and exact oriented box edges.
 - `render_projection_input_tests`: bounded preview frame validation.

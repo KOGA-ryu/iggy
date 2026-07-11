@@ -510,7 +510,10 @@ bool volumeBrushCycleSkipsUnsupportedKinds() {
                 "volume brush wraps") &&
          expect(!cr::creativeVolumeBrushSupported(
                     cr::CreativeObjectKind::SpawnPoint),
-                "point is not a volume brush");
+                "point is not a volume brush") &&
+         expect(!cr::creativeVolumeBrushSupported(
+                    cr::CreativeObjectKind::Crate),
+                "authored props cannot enter voxel storage through volume tools");
 }
 
 bool toolSettingsMapAtomicallyToVolumeRequests() {

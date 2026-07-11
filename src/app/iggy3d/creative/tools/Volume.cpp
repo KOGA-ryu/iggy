@@ -798,9 +798,9 @@ bool creativeVolumeBrushSupported(CreativeObjectKind kind) noexcept {
       !descriptorShowsInAuthoringBrushPalette(descriptor)) {
     return false;
   }
-  return descriptor.shapeKind == CreativeObjectShapeKind::BoxVolume ||
-         descriptor.shapeKind == CreativeObjectShapeKind::Surface ||
-         descriptor.shapeKind == CreativeObjectShapeKind::MeshProxy;
+  return descriptor.placementPolicy.enabled &&
+         descriptor.placementPolicy.storagePolicy ==
+             CreativePlacementStoragePolicy::VoxelCell;
 }
 
 bool applyCreativeToolSettingsToVolumeRequest(

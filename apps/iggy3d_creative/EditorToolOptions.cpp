@@ -120,14 +120,9 @@ void adjustSelection(CreativeEditorState& editor,
   if (!cr::isValidCreativeToolSettings(state.draft)) {
     return false;
   }
-  const double previousCellSize = editor.placeCellSize;
   editor.toolSettings = state.draft;
   editor.placeCellSize =
       cr::creativeSnapIncrementMeters(editor.toolSettings.snapIncrement);
-  if (editor.volume.active && editor.placeCellSize != previousCellSize) {
-    activateCreativeEditorVolumeMode(editor.volume, editor.placeCellSize,
-                                     editor.volume.selection.origin);
-  }
   state.open = false;
   return true;
 }

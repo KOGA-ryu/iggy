@@ -6,12 +6,14 @@
 #include <cstdio>
 #include <iterator>
 #include <numbers>
+#include <span>
 #include <string>
 
 #include <SDL3/SDL.h>
 
 #include "app/iggy3d/creative/Core.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/tools/Volume.hpp"
 #include "core/math/Snap.hpp"
 
 namespace iggy3d_creative_app {
@@ -50,6 +52,27 @@ bool finiteOrderedBounds(const iggy3d::creative::CreativeBounds& bounds) {
   return sameVec3(lhs.position, rhs.position) &&
          sameVec3(lhs.rotationEulerRadians, rhs.rotationEulerRadians) &&
          sameVec3(lhs.scale, rhs.scale);
+}
+
+[[nodiscard]] bool voxelPlanMatchesDocumentGrid(
+    const CreativeBrushPlacementPlan& plan,
+    iggy3d::creative::CreativeGridSettings grid) noexcept {
+  const iggy3d::creative::CreativeBounds expectedBounds =
+      iggy3d::creative::creativeVolumeCellBounds(
+          plan.voxelCell, grid.cellSizeMeters, grid.origin);
+  const iggy3d::creative::CreativeVec3 expectedCenter{
+      (expectedBounds.min.x + expectedBounds.max.x) * 0.5,
+      (expectedBounds.min.y + expectedBounds.max.y) * 0.5,
+      (expectedBounds.min.z + expectedBounds.max.z) * 0.5,
+  };
+  return plan.hasVoxelCell && plan.hasTransformOverride &&
+         plan.hasBoundsOverride && !plan.hasPathOverride &&
+         plan.pathPointCount == 0U &&
+         sameBounds(plan.authoredBounds, expectedBounds) &&
+         sameBounds(plan.previewBounds, expectedBounds) &&
+         sameVec3(plan.transform.position, expectedCenter) &&
+         sameVec3(plan.transform.rotationEulerRadians, {}) &&
+         sameVec3(plan.transform.scale, {1.0, 1.0, 1.0});
 }
 
 [[nodiscard]] bool objectMatchesPlacementPlan(
@@ -369,6 +392,7 @@ CreativeBrushPlacementPlan planBrushPlacement(
   const iggy3d::creative::CreativeObjectDescriptor& descriptor =
       iggy3d::creative::describeObject(brush);
   plan.shapeKind = descriptor.shapeKind;
+  plan.storagePolicy = descriptor.placementPolicy.storagePolicy;
   if (!finiteVec3(cellCenter)) {
     plan.status = CreativeBrushPlacementPlanStatus::InvalidAnchor;
     return plan;
@@ -491,9 +515,7 @@ CreativeBrushPlacementAdmission admitBrushPlacement(
       iggy3d::creative::describeObject(brush).placementPolicy;
   if (!policy.enabled ||
       policy.targetPolicy !=
-          iggy3d::creative::CreativePlacementTargetPolicy::AdjacentCell ||
-      policy.occupancyPolicy !=
-          iggy3d::creative::CreativePlacementOccupancyPolicy::AllowOverlap) {
+          iggy3d::creative::CreativePlacementTargetPolicy::AdjacentCell) {
     admission.status =
         CreativeBrushPlacementAdmissionStatus::UnsupportedPolicy;
     return admission;
@@ -506,6 +528,50 @@ CreativeBrushPlacementAdmission admitBrushPlacement(
 
   admission.plan.resolvedFace =
       iggy3d::creative::creativePlacementFaceFromNormal(target.faceNormal);
+  admission.plan.storagePolicy = policy.storagePolicy;
+  if (policy.storagePolicy ==
+      iggy3d::creative::CreativePlacementStoragePolicy::VoxelCell) {
+    if (policy.occupancyPolicy !=
+            iggy3d::creative::CreativePlacementOccupancyPolicy::
+                RejectOccupied ||
+        !finiteOrderedBounds(target.adjacentCellBounds)) {
+      admission.status =
+          CreativeBrushPlacementAdmissionStatus::UnsupportedPolicy;
+      return admission;
+    }
+    const iggy3d::creative::CreativeBounds bounds =
+        target.adjacentCellBounds;
+    admission.plan.voxelCell = target.adjacentCell;
+    admission.plan.hasVoxelCell = true;
+    admission.plan.authoredBounds = bounds;
+    admission.plan.previewBounds = bounds;
+    admission.plan.transform.position = {
+        (bounds.min.x + bounds.max.x) * 0.5,
+        (bounds.min.y + bounds.max.y) * 0.5,
+        (bounds.min.z + bounds.max.z) * 0.5,
+    };
+    admission.plan.transform.rotationEulerRadians = {};
+    admission.plan.transform.scale = {1.0, 1.0, 1.0};
+    admission.plan.hasTransformOverride = true;
+    admission.plan.hasBoundsOverride = true;
+    admission.plan.hasPathOverride = false;
+    admission.plan.pathPointCount = 0;
+    admission.plan.resolvedForward =
+        iggy3d::creative::CreativePlacementFace::Count;
+    admission.plan.orientationResolved = false;
+    admission.status = CreativeBrushPlacementAdmissionStatus::Ready;
+    admission.allowed = true;
+    return admission;
+  }
+
+  if (policy.storagePolicy !=
+          iggy3d::creative::CreativePlacementStoragePolicy::AuthoredObject ||
+      policy.occupancyPolicy !=
+          iggy3d::creative::CreativePlacementOccupancyPolicy::AllowOverlap) {
+    admission.status =
+        CreativeBrushPlacementAdmissionStatus::UnsupportedPolicy;
+    return admission;
+  }
   switch (policy.orientationPolicy) {
     case iggy3d::creative::CreativePlacementOrientationPolicy::
         DescriptorDefault:
@@ -534,11 +600,35 @@ CreativeBrushPlacementAdmission admitBrushPlacement(
 bool creativeBrushPlacementAlreadyExists(
     const iggy3d::creative::CreativeDocument& document,
     const CreativeBrushPlacementPlan& plan) noexcept {
-  return plan.valid &&
-         std::any_of(document.objects().begin(), document.objects().end(),
-                     [&plan](const iggy3d::creative::CreativeObject& object) {
-                       return objectMatchesPlacementPlan(object, plan);
-                     });
+  return creativeBrushPlacementTargetOccupied(document, plan);
+}
+
+bool creativeBrushPlacementTargetOccupied(
+    const iggy3d::creative::CreativeDocument& document,
+    const CreativeBrushPlacementPlan& plan) noexcept {
+  if (!plan.valid) {
+    return false;
+  }
+  switch (plan.storagePolicy) {
+    case iggy3d::creative::CreativePlacementStoragePolicy::AuthoredObject:
+      return std::any_of(
+          document.objects().begin(), document.objects().end(),
+          [&plan](const iggy3d::creative::CreativeObject& object) {
+            return objectMatchesPlacementPlan(object, plan);
+          });
+    case iggy3d::creative::CreativePlacementStoragePolicy::VoxelCell:
+      return plan.hasVoxelCell && document.voxelField().occupied(plan.voxelCell);
+  }
+  return true;
+}
+
+iggy3d::creative::CreativeBounds creativeBrushHeldPreviewBounds(
+    const CreativeBrushPlacementPlan& plan) noexcept {
+  if (plan.storagePolicy !=
+      iggy3d::creative::CreativePlacementStoragePolicy::VoxelCell) {
+    return plan.previewBounds;
+  }
+  return {{-0.5, 0.0, -0.5}, {0.5, 1.0, 0.5}};
 }
 
 std::vector<iggy3d::creative::CreativeObjectKind>
@@ -706,6 +796,93 @@ iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
     std::uint64_t ordinal) {
   return placeBrushObject(facade, planBrushPlacement(brush, cellCenter),
                           ordinal);
+}
+
+CreativeBrushPlacementMutationReceipt applyBrushPlacement(
+    iggy3d::creative::Facade& facade,
+    const CreativeBrushPlacementPlan& plan,
+    std::uint64_t ordinal) {
+  CreativeBrushPlacementMutationReceipt receipt;
+  receipt.requested = true;
+  receipt.storagePolicy = plan.storagePolicy;
+  receipt.objectKind = plan.brush;
+  receipt.voxelCell = plan.voxelCell;
+  receipt.worldBounds = plan.previewBounds;
+  receipt.revisionBefore = facade.document().revision();
+  receipt.revisionAfter = receipt.revisionBefore;
+
+  const iggy3d::creative::CreativeObjectPlacementPolicy& policy =
+      iggy3d::creative::describeObject(plan.brush).placementPolicy;
+  if (!plan.valid || plan.status != CreativeBrushPlacementPlanStatus::Ready ||
+      !policy.enabled || policy.storagePolicy != plan.storagePolicy) {
+    receipt.status = CreativeBrushPlacementMutationStatus::InvalidPlan;
+    receipt.reasonCode = placementPlanRejectionReason(plan.status);
+    return receipt;
+  }
+  switch (plan.storagePolicy) {
+    case iggy3d::creative::CreativePlacementStoragePolicy::AuthoredObject: {
+      if (policy.occupancyPolicy !=
+              iggy3d::creative::CreativePlacementOccupancyPolicy::AllowOverlap ||
+          plan.hasVoxelCell) {
+        receipt.status = CreativeBrushPlacementMutationStatus::InvalidPlan;
+        receipt.reasonCode = "creative_placement_object_plan_invalid";
+        return receipt;
+      }
+      if (creativeBrushPlacementTargetOccupied(facade.document(), plan)) {
+        receipt.status = CreativeBrushPlacementMutationStatus::Occupied;
+        receipt.reasonCode = "creative_placement_target_occupied";
+        return receipt;
+      }
+      const iggy3d::creative::CreativeDocumentCreateReceipt objectReceipt =
+          placeBrushObject(facade, plan, ordinal);
+      receipt.accepted = objectReceipt.accepted;
+      receipt.changed = objectReceipt.changed;
+      receipt.objectCreated = objectReceipt.objectCreated;
+      receipt.objectId = objectReceipt.objectId;
+      receipt.revisionAfter = objectReceipt.revisionAfter;
+      receipt.reasonCode = objectReceipt.reasonCode;
+      receipt.status = objectReceipt.accepted && objectReceipt.objectCreated &&
+                               objectReceipt.changed
+                           ? CreativeBrushPlacementMutationStatus::Applied
+                           : CreativeBrushPlacementMutationStatus::
+                                 ObjectRejected;
+      return receipt;
+    }
+    case iggy3d::creative::CreativePlacementStoragePolicy::VoxelCell: {
+      if (policy.occupancyPolicy !=
+              iggy3d::creative::CreativePlacementOccupancyPolicy::
+                  RejectOccupied ||
+          !voxelPlanMatchesDocumentGrid(plan,
+                                        facade.document().gridSettings())) {
+        receipt.status = CreativeBrushPlacementMutationStatus::InvalidPlan;
+        receipt.reasonCode = "creative_placement_voxel_grid_mismatch";
+        return receipt;
+      }
+      if (creativeBrushPlacementTargetOccupied(facade.document(), plan)) {
+        receipt.status = CreativeBrushPlacementMutationStatus::Occupied;
+        receipt.reasonCode = "creative_placement_target_occupied";
+        return receipt;
+      }
+      const iggy3d::creative::CreativeVoxelEdit edit{plan.voxelCell,
+                                                      plan.brush};
+      const iggy3d::creative::CreativeVoxelMutationReceipt voxelReceipt =
+          facade.applyVoxelEdits(std::span{&edit, 1U});
+      receipt.accepted = voxelReceipt.accepted;
+      receipt.changed = voxelReceipt.changed;
+      receipt.voxelCreated = voxelReceipt.createdCellCount == 1U;
+      receipt.revisionAfter = facade.document().revision();
+      receipt.reasonCode = voxelReceipt.reasonCode;
+      receipt.status = voxelReceipt.accepted && voxelReceipt.changed &&
+                               receipt.voxelCreated
+                           ? CreativeBrushPlacementMutationStatus::Applied
+                           : CreativeBrushPlacementMutationStatus::
+                                 VoxelRejected;
+      return receipt;
+    }
+  }
+  receipt.status = CreativeBrushPlacementMutationStatus::InvalidPlan;
+  receipt.reasonCode = "creative_placement_storage_policy_invalid";
+  return receipt;
 }
 
 iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObjectWithUndo(

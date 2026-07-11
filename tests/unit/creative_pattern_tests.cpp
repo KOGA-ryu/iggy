@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/tools/Pattern.hpp"
+#include "app/iggy3d/creative/tools/Transform.hpp"
 
 #include <array>
 #include <cstdint>
@@ -250,6 +251,50 @@ bool singlePasteRetainsTheExistingReceiptContract() {
                 "single paste revision and reason remain stable");
 }
 
+bool transformedPasteMatchesTheSharedPlacementPlan() {
+  cr::CreativeDocument document = ::document("transformed paste");
+  const cr::CreativeObjectId source = createRoom(
+      document, "Source", {{0.0, 0.0, 0.0}, {2.0, 1.0, 1.0}});
+  cr::CreativeClipboard clipboard;
+  const std::array selected{source};
+  if (!cr::copyDocumentObjectsToClipboard(document, selected, clipboard)
+           .accepted) {
+    return expect(false, "transformed paste source copied");
+  }
+
+  cr::CreativeClipboardPasteRequest request;
+  request.offset = {5.0, 0.0, 7.0};
+  request.quarterTurns = 1U;
+  request.mirrorX = true;
+  cr::CreativeSelectionPlacementRequest planRequest;
+  planRequest.mode = cr::CreativeSelectionPlacementMode::Copy;
+  planRequest.sourceAnchor = clipboard.placementAnchor;
+  planRequest.targetAnchor = {clipboard.placementAnchor.x + request.offset.x,
+                              clipboard.placementAnchor.y + request.offset.y,
+                              clipboard.placementAnchor.z + request.offset.z};
+  planRequest.quarterTurns = request.quarterTurns;
+  planRequest.mirrorX = request.mirrorX;
+  const cr::CreativeSelectionPlacementPlan plan =
+      cr::planCreativeSelectionPlacement(clipboard.objects, planRequest);
+  const cr::CreativeClipboardPasteReceipt receipt =
+      cr::pasteCreativeClipboardAtomically(document, clipboard, request);
+  const cr::CreativeObject* pasted = receipt.pastedObjectIds.empty()
+                                         ? nullptr
+                                         : document.findObject(
+                                               receipt.pastedObjectIds.front());
+
+  return expect(plan.accepted && receipt.accepted && pasted != nullptr,
+                "transformed paste accepted") &&
+         expect(pasted != nullptr && plan.objects.size() == 1U &&
+                    pasted->bounds.min.x == plan.objects[0].bounds.min.x &&
+                    pasted->bounds.min.z == plan.objects[0].bounds.min.z &&
+                    pasted->bounds.max.x == plan.objects[0].bounds.max.x &&
+                    pasted->bounds.max.z == plan.objects[0].bounds.max.z,
+                "paste commit consumes exact planned bounds") &&
+         expect(pasted != nullptr && pasted->name == "Source Copy",
+                "transformed paste retains clipboard naming contract");
+}
+
 bool lateBatchFailureRollsBackEarlierStagedCopy() {
   cr::CreativeDocument document = ::document("batch rollback");
   const double huge = std::numeric_limits<double>::max() * 0.75;
@@ -354,6 +399,7 @@ int main() {
   ok = batchPasteRemapsEachCopyIndependently() && ok;
   ok = copyDerivesDeterministicPlacementAnchor() && ok;
   ok = singlePasteRetainsTheExistingReceiptContract() && ok;
+  ok = transformedPasteMatchesTheSharedPlacementPlan() && ok;
   ok = lateBatchFailureRollsBackEarlierStagedCopy() && ok;
   ok = arrayExecutionCreatesCopiesAndIdentifiesFinalGroup() && ok;
   ok = arrayExecutionRejectsMissingSourceWithoutMutation() && ok;

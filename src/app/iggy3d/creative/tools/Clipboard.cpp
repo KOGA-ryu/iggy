@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/tools/SelectionPlacement.hpp"
 
 namespace iggy3d::creative {
 namespace {
@@ -180,15 +181,8 @@ void includePlacementPoint(PlacementExtent& extent,
   create.name = request.appendCopySuffix ? object.name + " Copy" : object.name;
   create.transform = object.transform;
   create.hasTransformOverride = descriptor.hasTransform;
-  if (create.hasTransformOverride) {
-    create.transform.position = add(create.transform.position, request.offset);
-  }
   create.bounds = object.bounds;
   create.hasBoundsOverride = descriptor.hasBounds;
-  if (create.hasBoundsOverride) {
-    create.bounds.min = add(create.bounds.min, request.offset);
-    create.bounds.max = add(create.bounds.max, request.offset);
-  }
   create.layerId = object.layerId;
   create.hasLayerOverride = true;
   create.visible = object.visible;
@@ -208,9 +202,6 @@ void includePlacementPoint(PlacementExtent& extent,
   }
   create.pathPoints = object.pathPoints;
   create.hasPathOverride = !object.pathPoints.empty();
-  for (CreativePathPoint& point : create.pathPoints) {
-    point.position = add(point.position, request.offset);
-  }
   return create;
 }
 
@@ -415,6 +406,12 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
       receipt.reasonCode = "creative_clipboard_offset_invalid";
       return receipt;
     }
+    if (request.quarterTurns > 3U) {
+      receipt.failedPasteIndex = requestIndex;
+      receipt.status = CreativeClipboardStatus::InvalidRequest;
+      receipt.reasonCode = "creative_clipboard_rotation_invalid";
+      return receipt;
+    }
     if (!validExternalParentPolicy(request.externalParentPolicy)) {
       receipt.failedPasteIndex = requestIndex;
       receipt.status = CreativeClipboardStatus::InvalidRequest;
@@ -448,6 +445,27 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
   for (std::size_t requestIndex = 0; requestIndex < requests.size();
        ++requestIndex) {
     const CreativeClipboardPasteRequest& request = requests[requestIndex];
+    CreativeSelectionPlacementRequest placementRequest;
+    placementRequest.mode = CreativeSelectionPlacementMode::Copy;
+    placementRequest.sourceAnchor =
+        clipboard.hasPlacementAnchor ? clipboard.placementAnchor : CreativeVec3{};
+    placementRequest.targetAnchor =
+        add(placementRequest.sourceAnchor, request.offset);
+    placementRequest.quarterTurns = request.quarterTurns;
+    placementRequest.mirrorX = request.mirrorX;
+    placementRequest.mirrorZ = request.mirrorZ;
+    const CreativeSelectionPlacementPlan placementPlan =
+        planCreativeSelectionPlacement(clipboard.objects, placementRequest);
+    if (!placementPlan.accepted) {
+      receipt.failedPasteIndex = requestIndex;
+      receipt.failedObjectId = placementPlan.failedObjectId;
+      receipt.status = CreativeClipboardStatus::InvalidRequest;
+      receipt.reasonCode = placementPlan.reasonCode;
+      receipt.pastedPasteCount = 0U;
+      receipt.idRemaps.clear();
+      receipt.pastedObjectIds.clear();
+      return receipt;
+    }
     const CreativeObjectId pasteStartId = staged.nextObjectId();
     std::unordered_map<CreativeObjectId, CreativeObjectId> remaps;
     remaps.reserve(clipboard.objects.size());
@@ -460,7 +478,7 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
     }
 
     for (std::size_t index : parentOrder) {
-      const CreativeObject& object = clipboard.objects[index];
+      const CreativeObject& object = placementPlan.objects[index];
       const CreativeDocumentCreateRequest createRequest =
           makePasteRequest(staged, object, request, remaps);
       if (!validPasteRequest(createRequest)) {

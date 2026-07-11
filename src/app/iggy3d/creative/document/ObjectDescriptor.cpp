@@ -125,7 +125,8 @@ constexpr CreativeObjectPlacementPolicy placementPolicyForDescriptor(
     CreativeSpatialProjectionProfile projectionProfile,
     DescriptorCapabilityFlags capabilities,
     CreativePlacementOrientationPolicy orientationPolicy,
-    CreativePlacementFace localForwardFace) noexcept {
+    CreativePlacementFace localForwardFace,
+    CreativePlacementStoragePolicy storagePolicy) noexcept {
     if (!descriptorSupportsPlacementGeometry(kind, shapeKind,
                                              projectionProfile,
                                              capabilities)) {
@@ -136,7 +137,10 @@ constexpr CreativeObjectPlacementPolicy placementPolicyForDescriptor(
         CreativePlacementTargetPolicy::AdjacentCell,
         orientationPolicy,
         localForwardFace,
-        CreativePlacementOccupancyPolicy::AllowOverlap,
+        storagePolicy == CreativePlacementStoragePolicy::VoxelCell
+            ? CreativePlacementOccupancyPolicy::RejectOccupied
+            : CreativePlacementOccupancyPolicy::AllowOverlap,
+        storagePolicy,
         true,
     };
 }
@@ -159,7 +163,9 @@ constexpr CreativeObjectDescriptor descriptor(
     CreativePlacementOrientationPolicy placementOrientationPolicy =
         CreativePlacementOrientationPolicy::DescriptorDefault,
     CreativePlacementFace localForwardFace =
-        CreativePlacementFace::PositiveZ) noexcept {
+        CreativePlacementFace::PositiveZ,
+    CreativePlacementStoragePolicy placementStoragePolicy =
+        CreativePlacementStoragePolicy::AuthoredObject) noexcept {
     return CreativeObjectDescriptor{
         kind,
         category,
@@ -174,7 +180,8 @@ constexpr CreativeObjectDescriptor descriptor(
         placementPolicyForDescriptor(kind, shapeKind, projectionProfile,
                                      capabilities,
                                      placementOrientationPolicy,
-                                     localForwardFace),
+                                     localForwardFace,
+                                     placementStoragePolicy),
         name,
         displayName,
         purpose,
@@ -254,7 +261,9 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         boxDefaults(1.0, 3.0, 4.0),
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
-        CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
+        CreativePlacementOrientationPolicy::DescriptorDefault,
+        CreativePlacementFace::PositiveZ,
+        CreativePlacementStoragePolicy::VoxelCell
     ),
     descriptor(
         CreativeObjectKind::Floor,
@@ -268,7 +277,11 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         "walkable horizontal structural surface",
         structuralCreationDirtyFlags(),
         boxDefaults(4.0, 0.25, 4.0),
-        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
+        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
+        CreativeRuntimeAnchorSemantic::None,
+        CreativePlacementOrientationPolicy::DescriptorDefault,
+        CreativePlacementFace::PositiveZ,
+        CreativePlacementStoragePolicy::VoxelCell
     ),
     descriptor(
         CreativeObjectKind::Ceiling,
@@ -282,7 +295,11 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         "upper room boundary surface",
         structuralCreationDirtyFlags(),
         boxDefaults(4.0, 0.25, 4.0),
-        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
+        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
+        CreativeRuntimeAnchorSemantic::None,
+        CreativePlacementOrientationPolicy::DescriptorDefault,
+        CreativePlacementFace::PositiveZ,
+        CreativePlacementStoragePolicy::VoxelCell
     ),
     descriptor(
         CreativeObjectKind::Roof,
@@ -296,7 +313,11 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         "exterior upper structural cover",
         structuralCreationDirtyFlags(),
         boxDefaults(5.0, 1.0, 5.0),
-        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
+        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
+        CreativeRuntimeAnchorSemantic::None,
+        CreativePlacementOrientationPolicy::DescriptorDefault,
+        CreativePlacementFace::PositiveZ,
+        CreativePlacementStoragePolicy::VoxelCell
     ),
     descriptor(
         CreativeObjectKind::Door,

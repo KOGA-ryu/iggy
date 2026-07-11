@@ -14,8 +14,10 @@
 #include "EditorPlacement.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "EditorState.hpp"
+#include "EditorTransform.hpp"
 #include "EditorVolume.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
+#include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "core/math/EulerRotation.hpp"
 #include "core/math/Transform3.hpp"
 #include "render/debug/DebugHudText.hpp"
@@ -346,14 +348,21 @@ void applyMaterialStrokeMutation(cr::CreativeAppState& appState,
     return;
   }
   const std::uint64_t ordinal = editor.placedCount + 1U;
-  const cr::CreativeDocumentCreateReceipt receipt = placeBrushObject(
+  const CreativeBrushPlacementMutationReceipt receipt = applyBrushPlacement(
       appState.facade, admission.plan, ordinal);
-  if (receipt.accepted && receipt.objectCreated && receipt.changed) {
+  if (receipt.accepted && receipt.changed &&
+      (receipt.objectCreated || receipt.voxelCreated)) {
     editor.placedCount = ordinal;
     ++stroke.acceptedMutationCount;
-    editor.interaction.placementFeedback = {
-        CreativeEditorPlacementFeedbackStatus::Placed, receipt.objectId,
-        receipt.objectKind, editor.frameIndex};
+    CreativeEditorPlacementFeedback feedback;
+    feedback.status = CreativeEditorPlacementFeedbackStatus::Placed;
+    feedback.objectId = receipt.objectId;
+    feedback.objectKind = receipt.objectKind;
+    feedback.frameIndex = editor.frameIndex;
+    feedback.voxelPlaced = receipt.voxelCreated;
+    feedback.voxelCell = receipt.voxelCell;
+    feedback.voxelBounds = receipt.worldBounds;
+    editor.interaction.placementFeedback = feedback;
   } else {
     rejectMaterialStroke(editor, held.objectKind);
   }
@@ -546,6 +555,20 @@ void processMoveInteraction(
       request.actions, cr::CreativeWorldActionId::Primary);
   const bool released = cr::creativeWorldActionReleased(
       request.actions, cr::CreativeWorldActionId::Primary);
+  const bool secondaryPressed = cr::creativeWorldActionPressed(
+      request.actions, cr::CreativeWorldActionId::Secondary);
+
+  if (secondaryPressed && !pressed &&
+      beginCreativeEditorSelectionTransformPreview(
+          request.appState, editor.transform,
+          "minecraft_secondary_transform_begin")) {
+    static_cast<void>(processCreativeEditorSelectionTransformPreview(
+        request.appState, editor.transform,
+        editor.interaction.target.grid.valid,
+        editor.interaction.target.grid.placementAnchor, false,
+        "minecraft_secondary_transform_begin"));
+    return;
+  }
 
   if (pressed && editor.interaction.target.objectHit) {
     editor.interaction.moveTargetId = editor.interaction.target.objectId;
@@ -639,6 +662,37 @@ void appendColoredText(std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
 }
 
 }  // namespace
+
+double creativeEditorTargetCellSize(
+    const cr::CreativeDocument& document,
+    const CreativeEditorState& editor) noexcept {
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  switch (held.kind) {
+    case cr::CreativeHeldItemKind::Material:
+      switch (cr::describeObject(held.objectKind)
+                  .placementPolicy.storagePolicy) {
+        case cr::CreativePlacementStoragePolicy::AuthoredObject:
+          return editor.placeCellSize;
+        case cr::CreativePlacementStoragePolicy::VoxelCell:
+          return document.gridSettings().cellSizeMeters;
+      }
+      return editor.placeCellSize;
+    case cr::CreativeHeldItemKind::VolumeSelect:
+    case cr::CreativeHeldItemKind::VolumeFill:
+    case cr::CreativeHeldItemKind::VolumeHollow:
+    case cr::CreativeHeldItemKind::VolumeReplace:
+    case cr::CreativeHeldItemKind::VolumeErase:
+    case cr::CreativeHeldItemKind::VolumeClone:
+      return document.gridSettings().cellSizeMeters;
+    case cr::CreativeHeldItemKind::ObjectSelect:
+    case cr::CreativeHeldItemKind::ObjectMove:
+    case cr::CreativeHeldItemKind::LinearArray:
+    case cr::CreativeHeldItemKind::Count:
+      return editor.placeCellSize;
+  }
+  return editor.placeCellSize;
+}
 
 std::string creativeEditorHeldItemStatusLabel(
     const CreativeEditorState& editor) {
@@ -819,7 +873,12 @@ void syncCreativeEditorHeldItem(cr::CreativeAppState& appState,
     editor.placeBrush = held.objectKind;
   }
   if (behavior.volumeMode) {
-    activateCreativeEditorVolumeMode(editor.volume, editor.placeCellSize);
+    const cr::CreativeGridSettings grid =
+        appState.facade.document().gridSettings();
+    activateCreativeEditorVolumeMode(
+        editor.volume, creativeEditorTargetCellSize(
+                           appState.facade.document(), editor),
+        grid.origin);
     editor.volume.operation = behavior.volumeOperation;
   } else {
     deactivateCreativeEditorVolumeMode(editor.volume);
@@ -883,9 +942,24 @@ bool cancelCreativeEditorHeldItem(cr::CreativeAppState& appState,
 void processCreativeEditorWorldInteractionFrame(
     const CreativeEditorWorldInteractionFrameRequest& request) {
   CreativeEditorState& editor = request.editor;
+  const cr::CreativeDocument& document = request.appState.facade.document();
+  const double targetCellSize =
+      creativeEditorTargetCellSize(document, editor);
+  const cr::CreativeGridSettings documentGrid = document.gridSettings();
+  const cr::CreativeVolumeSelection& volumeSelection =
+      editor.volume.selection;
+  const bool volumeGridChanged =
+      volumeSelection.cellSize != targetCellSize ||
+      volumeSelection.origin.x != documentGrid.origin.x ||
+      volumeSelection.origin.y != documentGrid.origin.y ||
+      volumeSelection.origin.z != documentGrid.origin.z;
+  if (editor.volume.active && volumeGridChanged) {
+    activateCreativeEditorVolumeMode(editor.volume, targetCellSize,
+                                     documentGrid.origin);
+  }
   editor.interaction.target = resolveCreativeEditorWorldTarget(
-      request.appState.facade.document(), request.camera, request.pickFrame,
-      request.drawableWidth, request.drawableHeight, editor.placeCellSize);
+      document, request.camera, request.pickFrame, request.drawableWidth,
+      request.drawableHeight, targetCellSize);
   editor.volume.cursorValid = editor.interaction.target.grid.valid;
   if (editor.volume.cursorValid) {
     editor.volume.cursorCell = editor.interaction.target.grid.targetCell;
@@ -895,16 +969,16 @@ void processCreativeEditorWorldInteractionFrame(
                                    "creative_material_stroke_capture");
     return;
   }
-  if (editor.clipboardPaste.active) {
+  if (editor.transform.active) {
     finalizeCreativeMaterialStroke(request.appState, editor,
-                                   "creative_material_stroke_clipboard");
+                                   "creative_material_stroke_transform");
     const bool secondaryPressed = cr::creativeWorldActionPressed(
         request.actions, cr::CreativeWorldActionId::Secondary);
-    static_cast<void>(processCreativeEditorClipboardPastePreview(
-        request.appState, editor.clipboardPaste,
+    static_cast<void>(processCreativeEditorSelectionTransformPreview(
+        request.appState, editor.transform,
         editor.interaction.target.grid.valid,
         editor.interaction.target.grid.placementAnchor, secondaryPressed,
-        "clipboard_preview_commit"));
+        "selection_transform_commit"));
     return;
   }
 
@@ -989,7 +1063,8 @@ void appendCreativeEditorInteractionOverlay(
   const std::int32_t centerY = static_cast<std::int32_t>(drawableHeight / 2U);
   const bool inventoryModalOpen = editor.catalog.model.open ||
                                   editor.catalog.toolWheel.open ||
-                                  editor.toolOptions.open;
+                                  editor.toolOptions.open ||
+                                  editor.transform.controlsOpen;
   if (!inventoryModalOpen) {
     const CreativeEditorPlacementFeedback& feedback =
         editor.interaction.placementFeedback;
@@ -1051,7 +1126,7 @@ void appendCreativeEditorInteractionOverlay(
                       selected);
   }
 
-  if (!inventoryModalOpen && !editor.clipboardPaste.active) {
+  if (!inventoryModalOpen && !editor.transform.active) {
     const std::string heldLabel = creativeEditorHeldItemStatusLabel(editor);
     const std::int32_t heldLabelX = std::max(
         4, static_cast<std::int32_t>(drawableWidth / 2U) -
@@ -1062,7 +1137,8 @@ void appendCreativeEditorInteractionOverlay(
 
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  if (!inventoryModalOpen && editor.interaction.target.grid.valid &&
+  if (!inventoryModalOpen && !editor.transform.active &&
+      editor.interaction.target.grid.valid &&
       held.kind != cr::CreativeHeldItemKind::Material) {
     const cr::CreativeBounds& bounds =
         editor.interaction.target.grid.targetCellBounds;

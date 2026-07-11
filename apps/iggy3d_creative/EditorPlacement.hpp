@@ -53,11 +53,45 @@ struct CreativeBrushPlacementPlan {
       iggy3d::creative::CreativePlacementFace::Count;
   iggy3d::creative::CreativePlacementFace resolvedForward =
       iggy3d::creative::CreativePlacementFace::Count;
+  iggy3d::creative::CreativePlacementStoragePolicy storagePolicy =
+      iggy3d::creative::CreativePlacementStoragePolicy::AuthoredObject;
+  iggy3d::creative::CreativeGridCoord3 voxelCell{};
   bool hasTransformOverride = false;
   bool hasBoundsOverride = false;
   bool hasPathOverride = false;
+  bool hasVoxelCell = false;
   bool orientationResolved = false;
   bool valid = false;
+};
+
+enum class CreativeBrushPlacementMutationStatus : std::uint8_t {
+  NotRequested,
+  InvalidPlan,
+  Occupied,
+  ObjectRejected,
+  VoxelRejected,
+  Applied,
+};
+
+struct CreativeBrushPlacementMutationReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  bool objectCreated = false;
+  bool voxelCreated = false;
+  CreativeBrushPlacementMutationStatus status =
+      CreativeBrushPlacementMutationStatus::NotRequested;
+  iggy3d::creative::CreativePlacementStoragePolicy storagePolicy =
+      iggy3d::creative::CreativePlacementStoragePolicy::AuthoredObject;
+  iggy3d::creative::CreativeObjectKind objectKind =
+      iggy3d::creative::CreativeObjectKind::Unknown;
+  iggy3d::creative::CreativeObjectId objectId =
+      iggy3d::creative::kInvalidObjectId;
+  iggy3d::creative::CreativeGridCoord3 voxelCell{};
+  iggy3d::creative::CreativeBounds worldBounds{};
+  std::uint64_t revisionBefore = 0;
+  std::uint64_t revisionAfter = 0;
+  std::string_view reasonCode = "creative_placement_not_requested";
 };
 
 enum class CreativeBrushPlacementAdmissionStatus : std::uint8_t {
@@ -118,6 +152,12 @@ initialPathPointsForAnchor(iggy3d::Vec3 cellCenter);
 [[nodiscard]] bool creativeBrushPlacementAlreadyExists(
     const iggy3d::creative::CreativeDocument& document,
     const CreativeBrushPlacementPlan& plan) noexcept;
+[[nodiscard]] bool creativeBrushPlacementTargetOccupied(
+    const iggy3d::creative::CreativeDocument& document,
+    const CreativeBrushPlacementPlan& plan) noexcept;
+[[nodiscard]] iggy3d::creative::CreativeBounds
+creativeBrushHeldPreviewBounds(
+    const CreativeBrushPlacementPlan& plan) noexcept;
 
 [[nodiscard]] iggy3d::Vec3 snapGroundToCellCenter(double worldX,
                                                   double worldZ,
@@ -136,6 +176,11 @@ buildBrushCreateRequest(iggy3d::creative::CreativeObjectKind brush,
                         std::uint64_t ordinal);
 
 [[nodiscard]] iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
+    iggy3d::creative::Facade& facade,
+    const CreativeBrushPlacementPlan& plan,
+    std::uint64_t ordinal);
+
+[[nodiscard]] CreativeBrushPlacementMutationReceipt applyBrushPlacement(
     iggy3d::creative::Facade& facade,
     const CreativeBrushPlacementPlan& plan,
     std::uint64_t ordinal);

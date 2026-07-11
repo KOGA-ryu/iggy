@@ -179,22 +179,40 @@ constexpr std::array kDefaultBindings{
                          CreativeInputConsumePolicy::ConsumeTrigger},
     catalogBinding(CreativeInputActionId::ConfirmActiveTool,
                    CreativeInputKey::Enter,
-                   CreativeInputContext::ClipboardPreview),
+                   CreativeInputContext::TransformPreview),
     catalogBinding(CreativeInputActionId::ConfirmActiveTool,
                    CreativeInputKey::GamepadConfirm,
-                   CreativeInputContext::ClipboardPreview),
+                   CreativeInputContext::TransformPreview),
     catalogBinding(CreativeInputActionId::CancelActiveTool,
                    CreativeInputKey::Escape,
-                   CreativeInputContext::ClipboardPreview),
+                   CreativeInputContext::TransformPreview),
     catalogBinding(CreativeInputActionId::CancelActiveTool,
                    CreativeInputKey::GamepadCancel,
-                   CreativeInputContext::ClipboardPreview),
+                   CreativeInputContext::TransformPreview),
     catalogBinding(CreativeInputActionId::CancelActiveTool,
                    CreativeInputKey::Delete,
-                   CreativeInputContext::ClipboardPreview),
+                   CreativeInputContext::TransformPreview),
     catalogBinding(CreativeInputActionId::CancelActiveTool,
                    CreativeInputKey::Backspace,
-                   CreativeInputContext::ClipboardPreview),
+                   CreativeInputContext::TransformPreview),
+    catalogBinding(CreativeInputActionId::ToggleTransformControls,
+                   CreativeInputKey::R,
+                   CreativeInputContext::TransformPreview),
+    catalogBinding(CreativeInputActionId::ToggleTransformControls,
+                   CreativeInputKey::GamepadDpadRight,
+                   CreativeInputContext::TransformPreview),
+    catalogBinding(CreativeInputActionId::TransformControlPrevious,
+                   CreativeInputKey::ArrowLeft,
+                   CreativeInputContext::TransformPreview),
+    catalogBinding(CreativeInputActionId::TransformControlPrevious,
+                   CreativeInputKey::GamepadDpadUp,
+                   CreativeInputContext::TransformPreview),
+    catalogBinding(CreativeInputActionId::TransformControlNext,
+                   CreativeInputKey::ArrowRight,
+                   CreativeInputContext::TransformPreview),
+    catalogBinding(CreativeInputActionId::TransformControlNext,
+                   CreativeInputKey::GamepadDpadDown,
+                   CreativeInputContext::TransformPreview),
     hotbarBinding(CreativeInputActionId::HotbarSlot1,
                   CreativeInputKey::Digit1),
     hotbarBinding(CreativeInputActionId::HotbarSlot2,
@@ -554,6 +572,12 @@ std::string_view toString(CreativeInputActionId action) noexcept {
     case CreativeInputActionId::ToolOptionsConfirm:
       return "ToolOptionsConfirm";
     case CreativeInputActionId::ToolOptionsClose: return "ToolOptionsClose";
+    case CreativeInputActionId::ToggleTransformControls:
+      return "ToggleTransformControls";
+    case CreativeInputActionId::TransformControlPrevious:
+      return "TransformControlPrevious";
+    case CreativeInputActionId::TransformControlNext:
+      return "TransformControlNext";
     case CreativeInputActionId::ConfirmActiveTool: return "ConfirmActiveTool";
     case CreativeInputActionId::CancelActiveTool: return "CancelActiveTool";
     case CreativeInputActionId::DeleteSelection: return "DeleteSelection";

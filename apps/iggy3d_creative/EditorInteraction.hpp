@@ -55,6 +55,9 @@ struct CreativeEditorPlacementFeedback {
   iggy3d::creative::CreativeObjectKind objectKind =
       iggy3d::creative::CreativeObjectKind::Unknown;
   std::uint64_t frameIndex = 0;
+  bool voxelPlaced = false;
+  iggy3d::creative::CreativeGridCoord3 voxelCell{};
+  iggy3d::creative::CreativeBounds voxelBounds{};
 };
 
 inline constexpr std::size_t kCreativeMaterialStrokeVisitedCapacity = 256U;
@@ -126,6 +129,9 @@ struct CreativeEditorWorldInteractionFrameRequest {
     std::uint32_t drawableWidth,
     std::uint32_t drawableHeight,
     double cellSize);
+[[nodiscard]] double creativeEditorTargetCellSize(
+    const iggy3d::creative::CreativeDocument& document,
+    const CreativeEditorState& editor) noexcept;
 
 void syncCreativeEditorHeldItem(iggy3d::creative::CreativeAppState& appState,
                                 CreativeEditorState& editor);

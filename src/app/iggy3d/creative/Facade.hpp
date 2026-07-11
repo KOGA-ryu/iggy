@@ -215,6 +215,9 @@ class Facade {
   [[nodiscard]] CreativeFacadeMutationReceipt toggleSelectedObjectLocked();
   [[nodiscard]] CreativeTransformCommandReceipt transformSelectedObjects(
       const CreativeTransformCommandRequest& request);
+  [[nodiscard]] CreativeSelectionPlacementReceipt placeObjects(
+      std::span<const CreativeObjectId> objectIds,
+      const CreativeSelectionPlacementRequest& request);
   [[nodiscard]] CreativeDuplicateCommandReceipt duplicateSelectedObjects(
       const CreativeDuplicateCommandRequest& request = {});
   [[nodiscard]] CreativeLinearArrayReceipt createLinearArrayFromSelection(

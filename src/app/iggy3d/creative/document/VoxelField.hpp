@@ -56,6 +56,10 @@ struct CreativeVoxelMutationReceipt {
   std::uint64_t createdCellCount = 0;
   std::uint64_t removedCellCount = 0;
   std::uint64_t replacedCellCount = 0;
+  std::uint64_t chunkCountBefore = 0;
+  std::uint64_t chunkCountAfter = 0;
+  // Deterministic work metric: only changed chunks may be staged.
+  std::uint64_t stagedChunkCount = 0;
   std::vector<CreativeVoxelChunkCoord> dirtyChunks;
   std::string_view reasonCode = "creative_voxel_mutation_not_requested";
 };

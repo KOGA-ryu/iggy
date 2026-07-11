@@ -1034,6 +1034,7 @@ bool mutationDirtyFlagsFollowDescriptorSpatialColumns() {
 bool placementPoliciesAreDescriptorOwnedAndFailClosed() {
   bool ok = true;
   std::size_t enabledCount = 0U;
+  std::size_t voxelBackedCount = 0U;
   for (const cr::CreativeObjectDescriptor& descriptor :
        cr::allObjectDescriptors()) {
     const cr::CreativeObjectPlacementPolicy& policy =
@@ -1042,14 +1043,21 @@ bool placementPoliciesAreDescriptorOwnedAndFailClosed() {
       continue;
     }
     ++enabledCount;
+    const bool voxelBacked =
+        policy.storagePolicy ==
+        cr::CreativePlacementStoragePolicy::VoxelCell;
+    voxelBackedCount += voxelBacked ? 1U : 0U;
+    const cr::CreativePlacementOccupancyPolicy expectedOccupancy =
+        voxelBacked
+            ? cr::CreativePlacementOccupancyPolicy::RejectOccupied
+            : cr::CreativePlacementOccupancyPolicy::AllowOverlap;
     ok = expect(policy.allowedFaces == cr::kCreativePlacementAllFaces,
                 "current placeable descriptors explicitly allow every face") &&
          expect(policy.targetPolicy ==
                     cr::CreativePlacementTargetPolicy::AdjacentCell,
                 "current placeable descriptors use adjacent-cell targets") &&
-         expect(policy.occupancyPolicy ==
-                    cr::CreativePlacementOccupancyPolicy::AllowOverlap,
-                "current placeable descriptors preserve overlap behavior") &&
+         expect(policy.occupancyPolicy == expectedOccupancy,
+                "descriptor storage owns its occupancy behavior") &&
          ok;
   }
 
@@ -1058,7 +1066,6 @@ bool placementPoliciesAreDescriptorOwnedAndFailClosed() {
   topOnly.allowedFaces =
       cr::creativePlacementFaceBit(cr::CreativePlacementFace::PositiveY);
   constexpr std::array cardinalOrientationKinds{
-      cr::CreativeObjectKind::Wall,
       cr::CreativeObjectKind::Door,
       cr::CreativeObjectKind::Window,
       cr::CreativeObjectKind::Arch,
@@ -1078,6 +1085,31 @@ bool placementPoliciesAreDescriptorOwnedAndFailClosed() {
   }
   const double nan = std::numeric_limits<double>::quiet_NaN();
   return expect(enabledCount > 0U, "descriptor table owns placeable rows") &&
+         expect(voxelBackedCount == 4U,
+                "exactly four structural materials use voxel storage") &&
+         expect(cr::describeObject(cr::CreativeObjectKind::Wall)
+                            .placementPolicy.storagePolicy ==
+                        cr::CreativePlacementStoragePolicy::VoxelCell &&
+                    cr::describeObject(cr::CreativeObjectKind::Floor)
+                            .placementPolicy.storagePolicy ==
+                        cr::CreativePlacementStoragePolicy::VoxelCell &&
+                    cr::describeObject(cr::CreativeObjectKind::Ceiling)
+                            .placementPolicy.storagePolicy ==
+                        cr::CreativePlacementStoragePolicy::VoxelCell &&
+                    cr::describeObject(cr::CreativeObjectKind::Roof)
+                            .placementPolicy.storagePolicy ==
+                        cr::CreativePlacementStoragePolicy::VoxelCell,
+                "wall floor ceiling and roof are voxel-backed") &&
+         expect(cr::describeObject(cr::CreativeObjectKind::Crate)
+                            .placementPolicy.storagePolicy ==
+                        cr::CreativePlacementStoragePolicy::AuthoredObject &&
+                    cr::describeObject(cr::CreativeObjectKind::Door)
+                            .placementPolicy.storagePolicy ==
+                        cr::CreativePlacementStoragePolicy::AuthoredObject &&
+                    cr::describeObject(cr::CreativeObjectKind::PatrolRoute)
+                            .placementPolicy.storagePolicy ==
+                        cr::CreativePlacementStoragePolicy::AuthoredObject,
+                "props attachments and paths remain authored objects") &&
          expect(!cr::describeObject(cr::CreativeObjectKind::Unknown)
                      .placementPolicy.enabled,
                 "unknown descriptor cannot be placed") &&
@@ -1100,7 +1132,7 @@ bool placementPoliciesAreDescriptorOwnedAndFailClosed() {
                         cr::CreativePlacementOrientationPolicy::
                             DescriptorDefault,
                 "floor and prop descriptors retain default orientation") &&
-         expect(cr::describeObject(cr::CreativeObjectKind::Wall)
+         expect(cr::describeObject(cr::CreativeObjectKind::Door)
                         .placementPolicy.localForwardFace ==
                     cr::CreativePlacementFace::PositiveZ &&
                     cr::describeObject(cr::CreativeObjectKind::WallRunSurface)

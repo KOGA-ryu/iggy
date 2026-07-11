@@ -13,8 +13,8 @@
 
 #include "EditorFrame.hpp"
 #include "EditorCatalog.hpp"
-#include "EditorEdits.hpp"
 #include "EditorToolOptions.hpp"
+#include "EditorTransform.hpp"
 #include "EditorGizmo.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorPlacement.hpp"
@@ -447,7 +447,7 @@ void attachCreativeEditorPlacementPreviews(
   const bool modalOpen = editor.catalog.model.open ||
                          editor.catalog.toolWheel.open ||
                          editor.toolOptions.open ||
-                         editor.clipboardPaste.active;
+                         editor.transform.active;
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   if (captureMode || modalOpen ||
@@ -460,8 +460,10 @@ void attachCreativeEditorPlacementPreviews(
       planBrushPlacement(held.objectKind, {});
   Vec3 heldCenter{};
   Vec3 heldSize{};
+  const cr::CreativeBounds heldBounds =
+      creativeBrushHeldPreviewBounds(heldPlan);
   if (!heldPlan.valid ||
-      !previewBoundsTransform(heldPlan.previewBounds, 1.0F, heldCenter,
+      !previewBoundsTransform(heldBounds, 1.0F, heldCenter,
                               heldSize)) {
     return;
   }
@@ -487,7 +489,7 @@ void attachCreativeEditorPlacementPreviews(
           feedback.status == CreativeEditorPlacementFeedbackStatus::Rejected;
       const bool duplicate =
           document != nullptr && admission.allowed &&
-          creativeBrushPlacementAlreadyExists(*document, targetPlan);
+          creativeBrushPlacementTargetOccupied(*document, targetPlan);
       const bool targetInvalid =
           !admission.allowed || duplicate || rejectedThisFrame ||
           editor.interaction.materialStroke.capacityReached;
@@ -593,7 +595,7 @@ void buildAndAttachCreativeEditorOverlayFrame(
   output.ghostEdgeCount = 0;
   output.volumeEdgeCount = 0;
   output.patternEdgeCount = 0;
-  output.clipboardPasteEdgeCount = 0;
+  output.transformPreviewEdgeCount = 0;
   output.placementFeedbackEdgeCount = 0;
 
   // ---- INSPECTOR UI (draw list -> menu frame rects + glyphs) -------------
@@ -741,6 +743,25 @@ void buildAndAttachCreativeEditorOverlayFrame(
       }
       output.placementFeedbackEdgeCount =
           combinedWireLines.size() - before;
+    } else if (placementFeedback.voxelPlaced) {
+      const cr::CreativeBounds& bounds = placementFeedback.voxelBounds;
+      Vec3 center{};
+      Vec3 size{};
+      if (previewBoundsTransform(bounds, 1.0F, center, size)) {
+        const Vec3 minimum{static_cast<float>(bounds.min.x),
+                           static_cast<float>(bounds.min.y),
+                           static_cast<float>(bounds.min.z)};
+        const Vec3 maximum{static_cast<float>(bounds.max.x),
+                           static_cast<float>(bounds.max.y),
+                           static_cast<float>(bounds.max.z)};
+        const std::size_t before = combinedWireLines.size();
+        appendStandaloneWireframeBoxEdges(
+            combinedWireLines, minimum, maximum,
+            RenderLineColor{0.25F, 1.0F, 0.35F, 1.0F},
+            std::max(0.075F, gizmoThickness * 1.4F));
+        output.placementFeedbackEdgeCount =
+            combinedWireLines.size() - before;
+      }
     }
   }
   // ---- VOLUME PREVIEW ----------------------------------------------------
@@ -751,7 +772,7 @@ void buildAndAttachCreativeEditorOverlayFrame(
   creative::CreativeShapeBrushPlanReceipt volumeShapePlan;
   bool volumeSelectionVisible = false;
   bool volumeUsesShapePlan = false;
-  if (editor.volume.active && !editor.clipboardPaste.active) {
+  if (editor.volume.active && !editor.transform.active) {
     volumeSelection = creativeEditorVolumePreviewSelection(editor.volume);
     if (creative::creativeVolumeSelectionValid(volumeSelection)) {
       volumeSelectionVisible = true;
@@ -784,18 +805,20 @@ void buildAndAttachCreativeEditorOverlayFrame(
       output.volumeEdgeCount = combinedWireLines.size() - before;
     }
   }
-  if (!editor.clipboardPaste.active) {
+  if (!editor.transform.active) {
     output.patternEdgeCount = appendCreativeEditorLinearArrayPreview(
         appState, editor, gizmoThickness, combinedWireLines);
   }
-  output.clipboardPasteEdgeCount = appendCreativeEditorClipboardPastePreview(
-      appState.clipboard, editor.clipboardPaste, gizmoThickness,
-      combinedWireLines);
+  output.transformPreviewEdgeCount =
+      appendCreativeEditorSelectionTransformPreview(
+          editor.transform, gizmoThickness, combinedWireLines);
   std::vector<DebugHudGlyphQuad>& glyphs = output.glyphs;
   glyphs = menuFrame.textGlyphQuads;
   appendCreativeEditorInteractionOverlay(
       editor, drawableWidth, drawableHeight, gizmoThickness, output.uiRects,
       glyphs, combinedWireLines);
+  appendCreativeEditorTransformOverlay(editor.transform, drawableWidth,
+                                       drawableHeight, output.uiRects, glyphs);
   appendCreativeEditorCatalogOverlay(appState, editor, drawableWidth,
                                      drawableHeight, output.uiRects, glyphs);
   appendCreativeEditorToolOptionsOverlay(editor, drawableWidth, drawableHeight,

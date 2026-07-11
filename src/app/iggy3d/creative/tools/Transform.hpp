@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
+#include "app/iggy3d/creative/tools/SelectionPlacement.hpp"
 
 #include <cstdint>
 #include <span>

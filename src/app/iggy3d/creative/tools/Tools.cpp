@@ -9,6 +9,12 @@
 namespace iggy3d::creative {
 namespace {
 
+[[nodiscard]] constexpr bool validReplaceSourceKind(
+    CreativeObjectKind kind) noexcept {
+  return kind > CreativeObjectKind::Unknown &&
+         kind < CreativeObjectKind::Count;
+}
+
 [[nodiscard]] bool samePointer(const CreativeToolPointerPacket& lhs,
                                const CreativeToolPointerPacket& rhs) noexcept {
   return lhs.x == rhs.x && lhs.y == rhs.y && lhs.button == rhs.button &&
@@ -199,7 +205,7 @@ template <typename Enum>
       continue;
     }
     const CreativeObjectKind candidate = palette[candidateIndex - 1U];
-    if (candidate != current && creativeVolumeBrushSupported(candidate)) {
+    if (candidate != current && validReplaceSourceKind(candidate)) {
       output = candidate;
       return true;
     }
@@ -394,7 +400,7 @@ bool isValidCreativeToolSettings(
     const CreativeToolSettings& settings) noexcept {
   const bool replaceSourceValid =
       settings.replaceSourceKind == CreativeObjectKind::Unknown ||
-      creativeVolumeBrushSupported(settings.replaceSourceKind);
+      validReplaceSourceKind(settings.replaceSourceKind);
   return validEnum(settings.moveConstraint, CreativeMoveConstraint::Count) &&
          validEnum(settings.rotationStep, CreativeRotationStep::Count) &&
          validEnum(settings.snapIncrement, CreativeSnapIncrement::Count) &&

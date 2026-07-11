@@ -5,6 +5,7 @@
 #include <iostream>
 #include <limits>
 #include <string_view>
+#include <vector>
 
 namespace {
 namespace cr = iggy3d::creative;
@@ -29,6 +30,10 @@ bool chunksHandleNegativeCoordinates() {
                 "negative-coordinate edit applies") &&
          expect(receipt.createdCellCount == edits.size(),
                 "all cells created") &&
+         expect(receipt.chunkCountBefore == 0U &&
+                    receipt.chunkCountAfter == 4U &&
+                    receipt.stagedChunkCount == 4U,
+                "one staged chunk per changed chunk") &&
          expect(field.occupiedCellCount() == edits.size(),
                 "occupied count") &&
          expect(field.chunkCount() == 4U, "negative floor division chunks") &&
@@ -67,6 +72,12 @@ bool mutationsAreAtomicAndCanonical() {
       cr::CreativeObjectKind::Wall};
   const cr::CreativeVoxelMutationReceipt unrepresentableReceipt =
       field.apply(std::span{&unrepresentableCell, 1U});
+  const std::array mixedInvalid{
+      cr::CreativeVoxelEdit{{7, 7, 7}, cr::CreativeObjectKind::Floor},
+      cr::CreativeVoxelEdit{{8, 8, 8}, cr::CreativeObjectKind::Count},
+  };
+  const cr::CreativeVoxelMutationReceipt mixedInvalidReceipt =
+      field.apply(mixedInvalid);
   const cr::CreativeVoxelMutationReceipt noChange =
       field.apply(std::span{&initial, 1U});
 
@@ -87,11 +98,84 @@ bool mutationsAreAtomicAndCanonical() {
                     unrepresentableReceipt.status ==
                         cr::CreativeVoxelMutationStatus::InvalidCell,
                 "cell without representable exclusive edge rejected") &&
+         expect(!mixedInvalidReceipt.accepted &&
+                    !field.occupied({7, 7, 7}),
+                "mixed invalid batch is atomic") &&
          expect(noChange.accepted && !noChange.changed,
                 "identical edit is no change") &&
+         expect(noChange.stagedChunkCount == 0U,
+                "no-change edit stages no chunks") &&
          expect(field.revision() == revision &&
                     field.occupiedCellCount() == 1U,
                 "rejected edits preserve field");
+}
+
+bool singleChunkEditStagesConstantWorkAcrossLargeField() {
+  constexpr std::int32_t kChunkCount = 256;
+  std::vector<cr::CreativeVoxelEdit> initial;
+  initial.reserve(kChunkCount);
+  for (std::int32_t chunk = 0; chunk < kChunkCount; ++chunk) {
+    initial.push_back({{chunk * cr::kCreativeVoxelChunkEdge, 0, 0},
+                       cr::CreativeObjectKind::Wall});
+  }
+
+  cr::CreativeVoxelField field;
+  const cr::CreativeVoxelMutationReceipt populated = field.apply(initial);
+  const cr::CreativeVoxelEdit replacement{
+      {(kChunkCount / 2) * cr::kCreativeVoxelChunkEdge, 0, 0},
+      cr::CreativeObjectKind::Floor};
+  const cr::CreativeVoxelMutationReceipt replaced =
+      field.apply(std::span{&replacement, 1U});
+
+  return expect(populated.accepted && populated.changed,
+                "large field population applies") &&
+         expect(populated.chunkCountBefore == 0U &&
+                    populated.chunkCountAfter == kChunkCount &&
+                    populated.stagedChunkCount == kChunkCount,
+                "large population stages each changed chunk") &&
+         expect(replaced.accepted && replaced.changed &&
+                    replaced.replacedCellCount == 1U,
+                "single existing cell replacement applies") &&
+         expect(replaced.chunkCountBefore == kChunkCount &&
+                    replaced.chunkCountAfter == kChunkCount,
+                "single replacement preserves large field chunk count") &&
+         expect(replaced.stagedChunkCount == 1U &&
+                    replaced.dirtyChunks.size() == 1U,
+                "single replacement stages constant chunk work") &&
+         expect(field.chunks().front().revision == 1U &&
+                    field.chunks()[kChunkCount / 2].revision == 2U &&
+                    field.chunks().back().revision == 1U,
+                "untouched chunk revisions remain stable") &&
+         expect(field.validateInvariants(), "large field invariants");
+}
+
+bool chunkInsertionAndRemovalCommitTogether() {
+  cr::CreativeVoxelField field;
+  const cr::CreativeVoxelEdit initial{{0, 0, 0},
+                                      cr::CreativeObjectKind::Wall};
+  static_cast<void>(field.apply(std::span{&initial, 1U}));
+  const std::array edits{
+      cr::CreativeVoxelEdit{{0, 0, 0}, cr::CreativeObjectKind::Unknown},
+      cr::CreativeVoxelEdit{{-16, 0, 0}, cr::CreativeObjectKind::Floor},
+  };
+  const cr::CreativeVoxelMutationReceipt receipt = field.apply(edits);
+
+  return expect(receipt.accepted && receipt.changed,
+                "insert and removal batch applies") &&
+         expect(receipt.stagedChunkCount == 2U &&
+                    receipt.dirtyChunks.size() == 2U,
+                "insert and removal stage two chunks") &&
+         expect(receipt.createdCellCount == 1U &&
+                    receipt.removedCellCount == 1U,
+                "insert and removal facts") &&
+         expect(receipt.chunkCountBefore == 1U &&
+                    receipt.chunkCountAfter == 1U,
+                "empty chunk erased as new chunk is inserted") &&
+         expect(!field.occupied({0, 0, 0}) &&
+                    field.materialAt({-16, 0, 0}) ==
+                        cr::CreativeObjectKind::Floor,
+                "insert and removal commit exact cells") &&
+         expect(field.validateInvariants(), "insert and removal invariants");
 }
 
 bool cuboidsAreGreedyAndChunkLocal() {
@@ -176,6 +260,8 @@ bool documentAdvancesOncePerBatch() {
 int main() {
   return chunksHandleNegativeCoordinates() &&
                  mutationsAreAtomicAndCanonical() &&
+                 singleChunkEditStagesConstantWorkAcrossLargeField() &&
+                 chunkInsertionAndRemovalCommitTogether() &&
                  cuboidsAreGreedyAndChunkLocal() && raycastUsesGridDda() &&
                  documentAdvancesOncePerBatch()
              ? 0

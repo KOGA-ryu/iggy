@@ -478,7 +478,7 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
                                 binding.context == context;
                        });
   };
-  bool ok = expect(bindings.size() == 85U,
+  bool ok = expect(bindings.size() == 91U,
                    "catalog registry remains within fixed capacity") &&
             expect(!audit.bindingCapacityExceeded && audit.conflictCount == 0U,
                    "catalog bindings remain conflict free") &&
@@ -566,23 +566,39 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
                    "tool options own directional editing and confirm") &&
             expect(hasBinding(cr::CreativeInputActionId::ConfirmActiveTool,
                               cr::CreativeInputKey::Enter,
-                              cr::CreativeInputContext::ClipboardPreview) &&
+                              cr::CreativeInputContext::TransformPreview) &&
                        hasBinding(cr::CreativeInputActionId::ConfirmActiveTool,
                                   cr::CreativeInputKey::GamepadConfirm,
-                                  cr::CreativeInputContext::ClipboardPreview) &&
+                                  cr::CreativeInputContext::TransformPreview) &&
                        hasBinding(cr::CreativeInputActionId::CancelActiveTool,
                                   cr::CreativeInputKey::Escape,
-                                  cr::CreativeInputContext::ClipboardPreview) &&
+                                  cr::CreativeInputContext::TransformPreview) &&
                        hasBinding(cr::CreativeInputActionId::CancelActiveTool,
                                   cr::CreativeInputKey::GamepadCancel,
-                                  cr::CreativeInputContext::ClipboardPreview) &&
+                                  cr::CreativeInputContext::TransformPreview) &&
                        hasBinding(cr::CreativeInputActionId::CancelActiveTool,
                                   cr::CreativeInputKey::Delete,
-                                  cr::CreativeInputContext::ClipboardPreview) &&
+                                  cr::CreativeInputContext::TransformPreview) &&
                        hasBinding(cr::CreativeInputActionId::CancelActiveTool,
                                   cr::CreativeInputKey::Backspace,
-                                  cr::CreativeInputContext::ClipboardPreview),
-                   "clipboard preview owns keyboard and controller confirm/cancel");
+                                  cr::CreativeInputContext::TransformPreview) &&
+                       hasBinding(
+                           cr::CreativeInputActionId::ToggleTransformControls,
+                           cr::CreativeInputKey::R,
+                           cr::CreativeInputContext::TransformPreview) &&
+                       hasBinding(
+                           cr::CreativeInputActionId::ToggleTransformControls,
+                           cr::CreativeInputKey::GamepadDpadRight,
+                           cr::CreativeInputContext::TransformPreview) &&
+                       hasBinding(
+                           cr::CreativeInputActionId::TransformControlPrevious,
+                           cr::CreativeInputKey::GamepadDpadUp,
+                           cr::CreativeInputContext::TransformPreview) &&
+                       hasBinding(
+                           cr::CreativeInputActionId::TransformControlNext,
+                           cr::CreativeInputKey::GamepadDpadDown,
+                           cr::CreativeInputContext::TransformPreview),
+                   "transform preview owns confirm cancel and radial navigation");
 
   cr::CreativeInputRouterState router;
   cr::CreativeInputFrame frame;
@@ -659,7 +675,7 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
 
   cr::CreativeInputRouterState previewRouter;
   cr::CreativeInputFrame previewFrame;
-  previewFrame.context = cr::CreativeInputContext::ClipboardPreview;
+  previewFrame.context = cr::CreativeInputContext::TransformPreview;
   cr::setCreativeInputKey(previewFrame, cr::CreativeInputKey::Enter, true);
   const cr::CreativeInputRouteResult previewConfirmed =
       cr::routeCreativeInput(previewRouter, previewFrame, bindings);
@@ -670,9 +686,25 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
   ok = expect(previewConfirmed.actionCount == 1U &&
                   previewConfirmed.actions[0].action ==
                       cr::CreativeInputActionId::ConfirmActiveTool,
-              "clipboard preview Enter emits confirm") &&
+              "transform preview Enter emits confirm") &&
        expect(previewIsolated.actionCount == 0U,
-              "clipboard preview suppresses viewport paste shortcut") &&
+              "transform preview suppresses viewport paste shortcut") &&
+       ok;
+
+  cr::CreativeInputRouterState transformRouter;
+  cr::CreativeInputFrame transformFrame;
+  transformFrame.context = cr::CreativeInputContext::TransformPreview;
+  cr::setCreativeInputKey(transformFrame, cr::CreativeInputKey::R, true);
+  const cr::CreativeInputRouteResult transformOpened =
+      cr::routeCreativeInput(transformRouter, transformFrame, bindings);
+  const cr::CreativeInputRouteResult transformHeld =
+      cr::routeCreativeInput(transformRouter, transformFrame, bindings);
+  ok = expect(transformOpened.actionCount == 1U &&
+                  transformOpened.actions[0].action ==
+                      cr::CreativeInputActionId::ToggleTransformControls,
+              "transform preview R opens contextual controls") &&
+       expect(transformHeld.actionCount == 0U,
+              "held transform toggle does not retrigger") &&
        ok;
   return ok;
 }

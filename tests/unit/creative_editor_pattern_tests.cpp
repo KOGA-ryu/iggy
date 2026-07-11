@@ -158,62 +158,65 @@ bool rejectedCommitDoesNotRecordHistory() {
                 "rejected array does not record history");
 }
 
-bool clipboardPastePreviewIsTransientAndConfirmable() {
+bool transformCopyPreviewIsTransientAndConfirmable() {
   cr::CreativeAppState appState;
-  if (!expect(installDocument(appState, "Clipboard Preview", 74U),
-              "clipboard preview document installed") ||
+  if (!expect(installDocument(appState, "Transform Copy", 74U),
+              "transform copy document installed") ||
       !expect(createAndSelectRoom(appState) != cr::kInvalidObjectId,
-              "clipboard preview source selected") ||
+              "transform copy source selected") ||
       !expect(appState.facade.copySelectedObjectsToClipboard(appState.clipboard)
                   .accepted,
-              "clipboard preview source copied")) {
+              "transform copy source copied")) {
     return false;
   }
   app::CreativeEditorState editor;
   const std::size_t objectCountBefore = appState.facade.document().objectCount();
   const std::uint64_t revisionBefore = appState.facade.document().revision();
-  bool ok = expect(app::beginCreativeEditorClipboardPastePreview(
-                       appState.clipboard, editor.clipboardPaste,
-                       "test_clipboard_preview"),
-                   "clipboard preview begins") &&
-            expect(editor.clipboardPaste.active &&
-                       !editor.clipboardPaste.targetValid,
-                   "clipboard preview begins without stale target");
+  bool ok = expect(app::beginCreativeEditorClipboardTransformPreview(
+                       appState, appState.clipboard, editor.transform,
+                       "test_transform_copy"),
+                   "transform copy begins") &&
+            expect(editor.transform.active &&
+                       !editor.transform.targetPositionable &&
+                       editor.transform.mode ==
+                           cr::CreativeSelectionPlacementMode::Copy,
+                   "transform copy begins without stale target");
 
-  static_cast<void>(app::processCreativeEditorClipboardPastePreview(
-      appState, editor.clipboardPaste, true, {5.5, 0.0, 7.5}, false,
-      "test_clipboard_preview_update"));
+  static_cast<void>(app::processCreativeEditorSelectionTransformPreview(
+      appState, editor.transform, true, {5.5, 0.0, 7.5}, false,
+      "test_transform_copy_update"));
   std::vector<iggy3d::RenderCreativeWireframeDebugLine> lines;
-  const std::size_t edgeCount = app::appendCreativeEditorClipboardPastePreview(
-      appState.clipboard, editor.clipboardPaste, 0.05F, lines);
-  ok = expect(editor.clipboardPaste.targetValid &&
-                  editor.clipboardPaste.request.offset.x == 5.0 &&
-                  editor.clipboardPaste.request.offset.y == 0.0 &&
-                  editor.clipboardPaste.request.offset.z == 7.0,
-              "clipboard preview derives target-minus-source offset") &&
-       expect(edgeCount == 12U && lines.size() == 12U &&
+  const std::size_t edgeCount =
+      app::appendCreativeEditorSelectionTransformPreview(
+          editor.transform, 0.05F, lines);
+  ok = expect(editor.transform.targetPositionable &&
+                  editor.transform.plan.accepted &&
+                  editor.transform.request.targetAnchor.x == 5.5 &&
+                  editor.transform.request.targetAnchor.z == 7.5,
+              "transform copy records shared source and target anchors") &&
+       expect(edgeCount == 24U && lines.size() == 24U &&
                   lines[0].start.x == 5.0F && lines[0].end.x == 6.0F &&
                   lines[0].start.z == 7.0F,
-              "clipboard preview keeps bounds aligned to target grid cell") &&
+              "transform copy draws planned object and target pivot") &&
        expect(appState.facade.document().objectCount() == objectCountBefore &&
                   appState.facade.document().revision() == revisionBefore &&
                   cr::creativeUndoDepth(appState.history) == 0U,
-              "clipboard preview is non-mutating") &&
+              "transform preview is non-mutating") &&
        ok;
 
-  static_cast<void>(app::requestCreativeEditorClipboardPasteCommit(
-      editor.clipboardPaste));
-  const cr::CreativeClipboardPasteReceipt committed =
-      app::processCreativeEditorClipboardPastePreview(
-          appState, editor.clipboardPaste, true, {5.5, 0.0, 7.5}, false,
-          "test_clipboard_preview_confirm");
+  static_cast<void>(app::requestCreativeEditorSelectionTransformCommit(
+      editor.transform));
+  const app::CreativeEditorTransformCommitReceipt committed =
+      app::processCreativeEditorSelectionTransformPreview(
+          appState, editor.transform, true, {5.5, 0.0, 7.5}, false,
+          "test_transform_copy_confirm");
   ok = expect(committed.accepted && committed.changed &&
-                  !editor.clipboardPaste.active,
-              "clipboard preview confirm commits and closes") &&
+                  !editor.transform.active,
+              "transform copy confirm commits and closes") &&
        expect(appState.facade.document().objectCount() == 2U &&
                   appState.facade.selectionState().selectedTarget.value == 2U &&
                   cr::creativeUndoDepth(appState.history) == 1U,
-              "clipboard preview commit selects paste and records one undo") &&
+              "transform copy selects paste and records one undo") &&
        ok;
 
   const cr::CreativeHistoryApplyReceipt undo = cr::applyCreativeHistory(
@@ -221,67 +224,124 @@ bool clipboardPastePreviewIsTransientAndConfirmable() {
   const cr::CreativeHistoryApplyReceipt redo = cr::applyCreativeHistory(
       appState.facade, appState.history, cr::CreativeHistoryDirection::Redo);
   return expect(undo.accepted && undo.objectCountAfter == 1U,
-                "clipboard preview undo removes full paste") &&
+                "transform copy undo removes full paste") &&
          expect(redo.accepted && redo.objectCountAfter == 2U,
-                "clipboard preview redo restores full paste") &&
+                "transform copy redo restores full paste") &&
          ok;
 }
 
-bool clipboardPasteSecondaryCommitsAndCancelIsNonMutating() {
+bool selectionTransformMoveUsesControlsAndOneUndo() {
   cr::CreativeAppState appState;
-  if (!expect(installDocument(appState, "Clipboard Secondary", 75U),
-              "clipboard secondary document installed") ||
+  if (!expect(installDocument(appState, "Transform Move", 75U),
+              "transform move document installed") ||
       !expect(createAndSelectRoom(appState) != cr::kInvalidObjectId,
-              "clipboard secondary source selected") ||
-      !expect(appState.facade.copySelectedObjectsToClipboard(appState.clipboard)
-                  .accepted,
-              "clipboard secondary source copied")) {
+              "transform move source selected")) {
     return false;
   }
   app::CreativeEditorState editor;
-  static_cast<void>(app::beginCreativeEditorClipboardPastePreview(
-      appState.clipboard, editor.clipboardPaste, "test_secondary_begin"));
-  const cr::CreativeClipboardPasteReceipt committed =
-      app::processCreativeEditorClipboardPastePreview(
-          appState, editor.clipboardPaste, true, {2.5, 0.0, 0.5}, true,
-          "test_secondary_commit");
-  bool ok = expect(committed.accepted && committed.changed &&
-                       appState.facade.document().objectCount() == 2U,
-                   "clipboard Secondary commits preview") &&
+  bool ok = expect(app::beginCreativeEditorSelectionTransformPreview(
+                       appState, editor.transform, "test_move_begin"),
+                   "selection transform move begins") &&
+            expect(app::applyCreativeEditorTransformControl(
+                       appState, editor.transform,
+                       app::CreativeEditorTransformControl::RotatePositive) &&
+                       app::applyCreativeEditorTransformControl(
+                           appState, editor.transform,
+                           app::CreativeEditorTransformControl::MirrorX),
+                   "selection transform controls update the shared request");
+  const app::CreativeEditorTransformCommitReceipt committed =
+      app::processCreativeEditorSelectionTransformPreview(
+          appState, editor.transform, true, {2.5, 0.0, 0.5}, true,
+          "test_move_commit");
+  const cr::CreativeObject* moved = appState.facade.findObject(1U);
+  ok = expect(committed.accepted && committed.changed &&
+                  appState.facade.document().objectCount() == 1U &&
+                  moved != nullptr,
+              "selection transform move mutates originals without copying") &&
             expect(cr::creativeUndoDepth(appState.history) == 1U,
-                   "clipboard Secondary records one undo step");
+                   "selection transform move records one undo step") &&
+       ok;
 
-  static_cast<void>(app::beginCreativeEditorClipboardPastePreview(
-      appState.clipboard, editor.clipboardPaste, "test_cancel_begin"));
-  static_cast<void>(app::requestCreativeEditorClipboardPasteCommit(
-      editor.clipboardPaste));
-  static_cast<void>(app::processCreativeEditorClipboardPastePreview(
-      appState, editor.clipboardPaste, false, {}, false,
+  static_cast<void>(app::beginCreativeEditorSelectionTransformPreview(
+      appState, editor.transform, "test_cancel_begin"));
+  static_cast<void>(app::requestCreativeEditorSelectionTransformCommit(
+      editor.transform));
+  static_cast<void>(app::processCreativeEditorSelectionTransformPreview(
+      appState, editor.transform, false, {}, false,
       "test_invalid_confirm"));
-  static_cast<void>(app::processCreativeEditorClipboardPastePreview(
-      appState, editor.clipboardPaste, true, {9.0, 0.0, 0.0}, false,
+  static_cast<void>(app::processCreativeEditorSelectionTransformPreview(
+      appState, editor.transform, true, {9.0, 0.0, 0.0}, false,
       "test_no_delayed_confirm"));
   const std::size_t countBeforeCancel =
       appState.facade.document().objectCount();
   const std::uint64_t revisionBeforeCancel =
       appState.facade.document().revision();
-  ok = expect(editor.clipboardPaste.active &&
-                  !editor.clipboardPaste.commitRequested &&
-                  countBeforeCancel == 2U,
+  ok = expect(editor.transform.active &&
+                  !editor.transform.commitRequested && countBeforeCancel == 1U,
               "invalid confirm does not commit later on a valid target") &&
-       expect(app::cancelCreativeEditorClipboardPastePreview(
-                  editor.clipboardPaste, "test_cancel"),
-              "clipboard preview cancel accepted") &&
-       expect(!editor.clipboardPaste.active &&
+       expect(app::cancelCreativeEditorSelectionTransformPreview(
+                  editor.transform, "test_cancel"),
+              "selection transform cancel accepted") &&
+       expect(!editor.transform.active &&
                   appState.facade.document().objectCount() == countBeforeCancel &&
                   appState.facade.document().revision() == revisionBeforeCancel &&
                   cr::creativeUndoDepth(appState.history) == 1U,
-              "clipboard cancel leaves document and history unchanged") &&
+              "selection transform cancel leaves document and history unchanged") &&
        ok;
-  return ok;
+  const cr::CreativeHistoryApplyReceipt undo = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+  return expect(undo.accepted && undo.objectCountAfter == 1U &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "selection transform move undoes atomically") &&
+         ok;
 }
 
-bool largeClipboardPreviewUsesOneAggregateBox() {
+bool lockedSelectionTransformStaysRedAndNonMutating() {
+  cr::CreativeAppState appState;
+  if (!expect(installDocument(appState, "Transform Locked", 76U),
+              "locked transform document installed") ||
+      !expect(createAndSelectRoom(appState) != cr::kInvalidObjectId,
+              "locked transform source selected") ||
+      !expect(appState.facade.toggleSelectedObjectLocked().accepted,
+              "locked transform source locked")) {
+    return false;
+  }
+  app::CreativeEditorState editor;
+  if (!expect(app::beginCreativeEditorSelectionTransformPreview(
+                  appState, editor.transform, "test_locked_begin"),
+              "locked transform preview begins")) {
+    return false;
+  }
+  const std::uint64_t revisionBefore = appState.facade.document().revision();
+  static_cast<void>(app::processCreativeEditorSelectionTransformPreview(
+      appState, editor.transform, true, {3.5, 0.0, 0.5}, false,
+      "test_locked_update"));
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> lines;
+  const std::size_t edgeCount =
+      app::appendCreativeEditorSelectionTransformPreview(
+          editor.transform, 0.05F, lines);
+  static_cast<void>(app::requestCreativeEditorSelectionTransformCommit(
+      editor.transform));
+  const app::CreativeEditorTransformCommitReceipt rejected =
+      app::processCreativeEditorSelectionTransformPreview(
+          appState, editor.transform, true, {3.5, 0.0, 0.5}, false,
+          "test_locked_commit");
+
+  return expect(!editor.transform.plan.accepted &&
+                    editor.transform.plan.status ==
+                        cr::CreativeSelectionPlacementStatus::LockedObject,
+                "locked move plan rejects before mutation") &&
+         expect(edgeCount >= 36U && lines.size() >= 36U &&
+                    lines[24].color.r == 1.0F &&
+                    lines[24].color.g == 0.24F,
+                "locked destination remains visibly red") &&
+         expect(!rejected.accepted && !rejected.changed &&
+                    appState.facade.document().revision() == revisionBefore &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "locked confirm cannot mutate or record history");
+}
+
+bool largeTransformPreviewUsesOneAggregateBox() {
   cr::CreativeClipboard clipboard;
   clipboard.hasPlacementAnchor = true;
   clipboard.placementAnchor = {};
@@ -294,19 +354,24 @@ bool largeClipboardPreviewUsesOneAggregateBox() {
                      {static_cast<double>(index + 1U), 1.0, 1.0}};
     clipboard.objects.push_back(std::move(object));
   }
-  app::CreativeEditorClipboardPasteState state;
+  app::CreativeEditorSelectionTransformState state;
   state.active = true;
-  state.targetValid = true;
-  state.request.offset = {2.0, 0.0, 0.0};
+  state.targetPositionable = true;
+  state.sourceClipboard = clipboard;
+  state.request.mode = cr::CreativeSelectionPlacementMode::Copy;
+  state.request.sourceAnchor = clipboard.placementAnchor;
+  state.request.targetAnchor = {2.0, 0.0, 0.0};
+  state.plan = cr::planCreativeSelectionPlacement(clipboard.objects,
+                                                   state.request);
   std::vector<iggy3d::RenderCreativeWireframeDebugLine> lines;
 
-  const std::size_t edgeCount = app::appendCreativeEditorClipboardPastePreview(
-      clipboard, state, 0.05F, lines);
+  const std::size_t edgeCount =
+      app::appendCreativeEditorSelectionTransformPreview(state, 0.05F, lines);
 
-  return expect(edgeCount == 12U && lines.size() == 12U,
-                "large clipboard preview uses one bounded extent box") &&
+  return expect(edgeCount == 24U && lines.size() == 24U,
+                "large transform preview uses one extent and one pivot box") &&
          expect(lines[0].start.x == 2.0F && lines[0].end.x == 515.0F,
-                "aggregate preview covers every clipboard object");
+                "aggregate transform preview covers every source object");
 }
 
 }  // namespace
@@ -316,8 +381,9 @@ int main() {
                   previewIsTransientAndOrdinalDerived() &&
                   commitRecordsOneUndoStep() &&
                   rejectedCommitDoesNotRecordHistory() &&
-                  clipboardPastePreviewIsTransientAndConfirmable() &&
-                  clipboardPasteSecondaryCommitsAndCancelIsNonMutating() &&
-                  largeClipboardPreviewUsesOneAggregateBox();
+                  transformCopyPreviewIsTransientAndConfirmable() &&
+                  selectionTransformMoveUsesControlsAndOneUndo() &&
+                  lockedSelectionTransformStaysRedAndNonMutating() &&
+                  largeTransformPreviewUsesOneAggregateBox();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

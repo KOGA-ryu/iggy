@@ -56,6 +56,9 @@ struct CreativeClipboardCopyReceipt {
 
 struct CreativeClipboardPasteRequest {
   CreativeVec3 offset{1.0, 0.0, 1.0};
+  std::uint8_t quarterTurns = 0;
+  bool mirrorX = false;
+  bool mirrorZ = false;
   bool appendCopySuffix = true;
   CreativeClipboardExternalParentPolicy externalParentPolicy =
       CreativeClipboardExternalParentPolicy::Detach;

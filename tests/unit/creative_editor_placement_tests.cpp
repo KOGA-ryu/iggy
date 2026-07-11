@@ -192,15 +192,26 @@ bool placementPlanMatchesEveryCreateRequest() {
 bool placementAdmissionOwnsPreviewAndExecutionTruth() {
   cr::CreativeGridTarget target = cr::resolveCreativeGridTargetFromHit(
       {2.25, 1.0, -3.25}, {0.0, 1.0, 0.0}, 1.0);
-  const CreativeBrushPlacementAdmission ready =
+  const CreativeBrushPlacementAdmission voxelReady =
       admitBrushPlacement(cr::CreativeObjectKind::Wall, target);
 
-  bool ok = expect(ready.allowed &&
-                       ready.status ==
+  bool ok = expect(voxelReady.allowed &&
+                       voxelReady.status ==
                            CreativeBrushPlacementAdmissionStatus::Ready &&
-                       ready.plan.valid,
+                       voxelReady.plan.valid &&
+                       voxelReady.plan.storagePolicy ==
+                           cr::CreativePlacementStoragePolicy::VoxelCell &&
+                       voxelReady.plan.hasVoxelCell &&
+                       voxelReady.plan.voxelCell.x ==
+                           target.adjacentCell.x &&
+                       voxelReady.plan.voxelCell.y ==
+                           target.adjacentCell.y &&
+                       voxelReady.plan.voxelCell.z ==
+                           target.adjacentCell.z &&
+                       sameBounds(voxelReady.plan.previewBounds,
+                                  target.adjacentCellBounds),
                    "valid target produces one admitted placement plan") &&
-            expect(toString(ready.status) == "creative_placement_ready",
+            expect(toString(voxelReady.status) == "creative_placement_ready",
                    "admission status has a stable reason code");
 
   for (const cr::CreativeVec3 face :
@@ -241,30 +252,96 @@ bool placementAdmissionOwnsPreviewAndExecutionTruth() {
 
   cr::CreativeAppState appState;
   installHistoryDocument(appState, 100U);
-  const cr::CreativeDocumentCreateReceipt receipt =
-      placeBrushObject(appState.facade, ready.plan, 1U);
-  const cr::CreativeObject* placed = appState.facade.findObject(receipt.objectId);
-  const std::uint64_t countBeforeRejected =
-      appState.facade.document().objectCount();
+  const CreativeBrushPlacementMutationReceipt voxelReceipt =
+      applyBrushPlacement(appState.facade, voxelReady.plan, 1U);
+  const CreativeBrushPlacementMutationReceipt occupiedReceipt =
+      applyBrushPlacement(appState.facade, voxelReady.plan, 2U);
+
+  const CreativeBrushPlacementAdmission objectReady =
+      admitBrushPlacement(cr::CreativeObjectKind::Crate, target);
+  const CreativeBrushPlacementMutationReceipt objectReceipt =
+      applyBrushPlacement(appState.facade, objectReady.plan, 3U);
+  const cr::CreativeObject* placed =
+      appState.facade.findObject(objectReceipt.objectId);
+  const std::uint64_t revisionBeforeRejected =
+      appState.facade.document().revision();
   const CreativeBrushPlacementPlan invalidPlan = planBrushPlacement(
       cr::CreativeObjectKind::Wall,
       {std::numeric_limits<float>::max(), 0.0F, 0.0F});
-  const cr::CreativeDocumentCreateReceipt rejected =
-      placeBrushObject(appState.facade, invalidPlan, 2U);
-  return expect(receipt.accepted && receipt.objectCreated && placed != nullptr,
-                "admitted plan executes successfully") &&
+  const CreativeBrushPlacementMutationReceipt rejected =
+      applyBrushPlacement(appState.facade, invalidPlan, 4U);
+  const cr::CreativeGridTarget halfMeterTarget =
+      cr::resolveCreativeGridTargetFromHit(
+          {2.25, 1.0, -3.25}, {0.0, 1.0, 0.0}, 0.5);
+  const CreativeBrushPlacementAdmission halfMeterAdmission =
+      admitBrushPlacement(cr::CreativeObjectKind::Wall, halfMeterTarget);
+  const CreativeBrushPlacementMutationReceipt gridMismatch =
+      applyBrushPlacement(appState.facade, halfMeterAdmission.plan, 5U);
+
+  CreativeEditorState voxelEditor =
+      materialEditor(cr::CreativeObjectKind::Wall);
+  voxelEditor.placeCellSize = 0.25;
+  CreativeEditorState objectEditor =
+      materialEditor(cr::CreativeObjectKind::Crate);
+  objectEditor.placeCellSize = 0.25;
+  CreativeEditorState volumeEditor =
+      materialEditor(cr::CreativeObjectKind::Wall);
+  volumeEditor.placeCellSize = 0.25;
+  volumeEditor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::VolumeFill;
+  syncCreativeEditorHeldItem(appState, volumeEditor);
+  return expect(voxelReceipt.accepted && voxelReceipt.changed &&
+                    voxelReceipt.voxelCreated && !voxelReceipt.objectCreated &&
+                    voxelReceipt.status ==
+                        CreativeBrushPlacementMutationStatus::Applied &&
+                    appState.facade.document().objectCount() == 1U &&
+                    appState.facade.document().voxelField().materialAt(
+                        voxelReady.plan.voxelCell) ==
+                        cr::CreativeObjectKind::Wall,
+                "voxel-backed admission writes one structural cell") &&
+         expect(!occupiedReceipt.accepted && !occupiedReceipt.changed &&
+                    occupiedReceipt.status ==
+                        CreativeBrushPlacementMutationStatus::Occupied &&
+                    occupiedReceipt.revisionBefore ==
+                        occupiedReceipt.revisionAfter,
+                "occupied voxel target rejects without a revision") &&
+         expect(objectReceipt.accepted && objectReceipt.objectCreated &&
+                    !objectReceipt.voxelCreated && placed != nullptr &&
+                    objectReceipt.storagePolicy ==
+                        cr::CreativePlacementStoragePolicy::AuthoredObject,
+                "authored-object admission remains on the object path") &&
          expect(placed != nullptr &&
-                    sameTransform(placed->transform, ready.plan.transform) &&
-                    sameBounds(placed->bounds, ready.plan.authoredBounds),
+                    sameTransform(placed->transform, objectReady.plan.transform) &&
+                    sameBounds(placed->bounds, objectReady.plan.authoredBounds),
                 "execution consumes the admitted plan without geometry drift") &&
          expect(rejected.requested && !rejected.accepted &&
                     rejected.status ==
-                        cr::CreativeDocumentCreateStatus::Rejected &&
-                    rejected.reasonCode ==
-                        "creative_placement_geometry_invalid" &&
-                    appState.facade.document().objectCount() ==
-                        countBeforeRejected,
+                        CreativeBrushPlacementMutationStatus::InvalidPlan &&
+                    appState.facade.document().revision() ==
+                        revisionBeforeRejected,
                 "invalid plan execution fails closed without mutation") &&
+         expect(halfMeterAdmission.allowed && !gridMismatch.accepted &&
+                    !gridMismatch.changed &&
+                    gridMismatch.status ==
+                        CreativeBrushPlacementMutationStatus::InvalidPlan &&
+                    gridMismatch.reasonCode ==
+                        "creative_placement_voxel_grid_mismatch" &&
+                    appState.facade.document().revision() ==
+                        revisionBeforeRejected,
+                "voxel plan must match the document grid exactly") &&
+         expect(near(static_cast<float>(creativeEditorTargetCellSize(
+                         appState.facade.document(), voxelEditor)),
+                     1.0F) &&
+                    near(static_cast<float>(creativeEditorTargetCellSize(
+                         appState.facade.document(), objectEditor)),
+                     0.25F) &&
+                    near(static_cast<float>(creativeEditorTargetCellSize(
+                         appState.facade.document(), volumeEditor)),
+                     1.0F) &&
+                    near(static_cast<float>(
+                             volumeEditor.volume.selection.cellSize),
+                         1.0F),
+                "voxel and volume targeting use document cells while objects use snap") &&
          ok;
 }
 
@@ -276,10 +353,17 @@ bool verticalSurfacePlacementFollowsTheAimedFace() {
   target.faceNormal = {0.0, 0.0, 1.0};
   const CreativeBrushPlacementAdmission wallZ =
       admitBrushPlacement(cr::CreativeObjectKind::Wall, target);
+
+  target.faceNormal = {1.0, 0.0, 0.0};
+  const CreativeBrushPlacementAdmission doorX =
+      admitBrushPlacement(cr::CreativeObjectKind::Door, target);
+  target.faceNormal = {0.0, 0.0, 1.0};
+  const CreativeBrushPlacementAdmission doorZ =
+      admitBrushPlacement(cr::CreativeObjectKind::Door, target);
   target.faceNormal = {0.0, 1.0, 0.0};
   target.placerForward = {1.0, 0.0, 0.0};
-  const CreativeBrushPlacementAdmission wallTop =
-      admitBrushPlacement(cr::CreativeObjectKind::Wall, target);
+  const CreativeBrushPlacementAdmission doorTop =
+      admitBrushPlacement(cr::CreativeObjectKind::Door, target);
   target.faceNormal = {1.0, 0.0, 0.0};
   const CreativeBrushPlacementAdmission wallRunX =
       admitBrushPlacement(cr::CreativeObjectKind::WallRunSurface, target);
@@ -290,15 +374,15 @@ bool verticalSurfacePlacementFollowsTheAimedFace() {
   const CreativeBrushPlacementAdmission bridge =
       admitBrushPlacement(cr::CreativeObjectKind::Bridge, target);
 
-  const cr::CreativeTransformedBounds wallXGeometry =
-      cr::resolveCreativeTransformedBounds(wallX.plan.authoredBounds,
-                                           wallX.plan.transform);
-  const cr::CreativeTransformedBounds wallZGeometry =
-      cr::resolveCreativeTransformedBounds(wallZ.plan.authoredBounds,
-                                           wallZ.plan.transform);
-  const cr::CreativeTransformedBounds wallTopGeometry =
-      cr::resolveCreativeTransformedBounds(wallTop.plan.authoredBounds,
-                                           wallTop.plan.transform);
+  const cr::CreativeTransformedBounds doorXGeometry =
+      cr::resolveCreativeTransformedBounds(doorX.plan.authoredBounds,
+                                           doorX.plan.transform);
+  const cr::CreativeTransformedBounds doorZGeometry =
+      cr::resolveCreativeTransformedBounds(doorZ.plan.authoredBounds,
+                                           doorZ.plan.transform);
+  const cr::CreativeTransformedBounds doorTopGeometry =
+      cr::resolveCreativeTransformedBounds(doorTop.plan.authoredBounds,
+                                           doorTop.plan.transform);
   const cr::CreativeTransformedBounds wallRunXGeometry =
       cr::resolveCreativeTransformedBounds(wallRunX.plan.authoredBounds,
                                            wallRunX.plan.transform);
@@ -307,50 +391,66 @@ bool verticalSurfacePlacementFollowsTheAimedFace() {
                                            wallRunZ.plan.transform);
   constexpr double kHalfPi = 1.57079632679489662;
 
-  bool ok = expect(wallX.allowed && wallX.plan.orientationResolved &&
-                       wallX.plan.resolvedFace ==
+  bool ok = expect(wallX.allowed && wallZ.allowed &&
+                       wallX.plan.storagePolicy ==
+                           cr::CreativePlacementStoragePolicy::VoxelCell &&
+                       wallZ.plan.storagePolicy ==
+                           cr::CreativePlacementStoragePolicy::VoxelCell &&
+                       !wallX.plan.orientationResolved &&
+                       !wallZ.plan.orientationResolved &&
+                       sameBounds(wallX.plan.previewBounds,
+                                  wallZ.plan.previewBounds) &&
+                       near(static_cast<float>(extentX(
+                                wallX.plan.previewBounds)),
+                            1.0F) &&
+                       near(static_cast<float>(extentZ(
+                                wallX.plan.previewBounds)),
+                            1.0F),
+                   "voxel wall placement remains one cell on every aimed face") &&
+            expect(doorX.allowed && doorX.plan.orientationResolved &&
+                       doorX.plan.resolvedFace ==
                            cr::CreativePlacementFace::PositiveX &&
-                       wallX.plan.resolvedForward ==
+                       doorX.plan.resolvedForward ==
                            cr::CreativePlacementFace::PositiveX &&
                        near(static_cast<float>(
-                                wallX.plan.transform.rotationEulerRadians.y),
+                                doorX.plan.transform.rotationEulerRadians.y),
                             static_cast<float>(kHalfPi)) &&
-                       wallXGeometry.valid &&
+                       doorXGeometry.valid &&
                        near(static_cast<float>(extentX(
-                                wallXGeometry.worldBounds)),
-                            0.25F) &&
+                                doorXGeometry.worldBounds)),
+                            0.2F) &&
                        near(static_cast<float>(extentZ(
-                                wallXGeometry.worldBounds)),
-                            4.0F),
-                   "wall aimed at X face stores +90 yaw and resolves thin on X") &&
-            expect(wallZ.allowed && wallZ.plan.orientationResolved &&
-                       wallZ.plan.resolvedForward ==
+                                doorXGeometry.worldBounds)),
+                            1.0F),
+                   "authored attachment aimed at X stores +90 yaw") &&
+            expect(doorZ.allowed && doorZ.plan.orientationResolved &&
+                       doorZ.plan.resolvedForward ==
                            cr::CreativePlacementFace::PositiveZ &&
                        near(static_cast<float>(
-                                wallZ.plan.transform.rotationEulerRadians.y),
+                                doorZ.plan.transform.rotationEulerRadians.y),
                             0.0F) &&
-                       wallZGeometry.valid &&
+                       doorZGeometry.valid &&
                        near(static_cast<float>(extentX(
-                                wallZGeometry.worldBounds)),
-                            4.0F) &&
+                                doorZGeometry.worldBounds)),
+                            1.0F) &&
                        near(static_cast<float>(extentZ(
-                                wallZGeometry.worldBounds)),
-                            0.25F),
-                   "wall aimed at Z face keeps local forward on +Z") &&
-            expect(wallTop.allowed && wallTop.plan.orientationResolved &&
-                       wallTop.plan.resolvedForward ==
+                                doorZGeometry.worldBounds)),
+                            0.2F),
+                   "authored attachment aimed at Z keeps local forward on +Z") &&
+            expect(doorTop.allowed && doorTop.plan.orientationResolved &&
+                       doorTop.plan.resolvedForward ==
                            cr::CreativePlacementFace::NegativeX &&
                        near(static_cast<float>(
-                                wallTop.plan.transform.rotationEulerRadians.y),
+                                doorTop.plan.transform.rotationEulerRadians.y),
                             static_cast<float>(-kHalfPi)) &&
-                       wallTopGeometry.valid &&
+                       doorTopGeometry.valid &&
                        near(static_cast<float>(extentX(
-                                wallTopGeometry.worldBounds)),
-                            0.25F) &&
+                                doorTopGeometry.worldBounds)),
+                            0.2F) &&
                        near(static_cast<float>(extentZ(
-                                wallTopGeometry.worldBounds)),
-                            4.0F),
-                   "top-face placement turns the object front toward the placer") &&
+                                doorTopGeometry.worldBounds)),
+                            1.0F),
+                   "top-face authored placement faces the placer") &&
             expect(wallRunX.allowed && wallRunX.plan.orientationResolved &&
                        wallRunXGeometry.valid &&
                        near(static_cast<float>(extentX(
@@ -379,8 +479,8 @@ bool verticalSurfacePlacementFollowsTheAimedFace() {
 
   cr::CreativeAppState appState;
   installHistoryDocument(appState, 105U);
-  const cr::CreativeDocumentCreateReceipt receipt =
-      placeBrushObject(appState.facade, wallX.plan, 1U);
+  const CreativeBrushPlacementMutationReceipt receipt =
+      applyBrushPlacement(appState.facade, doorX.plan, 1U);
   const cr::CreativeObject* placed = appState.facade.findObject(receipt.objectId);
   const ObjectVisualPickBounds pickBounds =
       placed != nullptr
@@ -406,31 +506,25 @@ bool verticalSurfacePlacementFollowsTheAimedFace() {
   const bool bakeAligned = !baked.roomBake.room.staticMeshes.empty() &&
                            near(baked.roomBake.room.staticMeshes.front()
                                     .sizeMeters.x,
-                                4.0F) &&
+                                1.0F) &&
                            near(baked.roomBake.room.staticMeshes.front()
                                     .sizeMeters.z,
-                                0.25F) &&
+                                0.2F) &&
                            near(baked.roomBake.room.staticMeshes.front()
                                     .rotationEulerRadians.y,
                                 static_cast<float>(kHalfPi)) &&
                            !baked.scene.room.meshes.empty() &&
                            near(baked.scene.room.meshes.front()
                                     .rotationEulerRadians.y,
-                                static_cast<float>(kHalfPi)) &&
-                           baked.roomBake.room.staticMeshes.front()
-                               .hasWallSegment &&
-                           near(baked.roomBake.room.staticMeshes.front()
-                                    .wallStartMeters.x,
-                                baked.roomBake.room.staticMeshes.front()
-                                    .wallEndMeters.x);
-  return expect(receipt.accepted && placed != nullptr &&
-                    sameBounds(placed->bounds, wallX.plan.authoredBounds) &&
+                                static_cast<float>(kHalfPi));
+  return expect(receipt.accepted && receipt.objectCreated && placed != nullptr &&
+                    sameBounds(placed->bounds, doorX.plan.authoredBounds) &&
                     near(static_cast<float>(
                              placed->transform.rotationEulerRadians.y),
                          static_cast<float>(kHalfPi)),
-                "committed vertical surface keeps authored bounds and admitted yaw") &&
+                "committed attachment keeps authored bounds and admitted yaw") &&
          expect(bakeAligned,
-                "room bake carries exact yaw and a cardinal collision segment") &&
+                "room bake carries the authored attachment yaw") &&
          expect(pickBounds.orientedBounds.has_value() &&
                     picked.objectId == receipt.objectId,
                 "placed cardinal object is picked through its oriented bounds") &&
@@ -443,8 +537,9 @@ bool previewFrameUsesWorldTargetAndViewHeldTransforms() {
   iggy3d::FrameInput frame;
   attachCreativeEditorPlacementPreviews(editor, false, frame);
 
-  const CreativeBrushPlacementPlan plan = planBrushPlacement(
-      cr::CreativeObjectKind::Wall, {2.5F, 1.0F, -2.5F});
+  const CreativeBrushPlacementAdmission admission = admitBrushPlacement(
+      cr::CreativeObjectKind::Wall, editor.interaction.target.grid);
+  const CreativeBrushPlacementPlan& plan = admission.plan;
   const float targetSizeX =
       static_cast<float>(plan.previewBounds.max.x - plan.previewBounds.min.x);
   const float targetSizeY =
@@ -470,17 +565,18 @@ bool previewFrameUsesWorldTargetAndViewHeldTransforms() {
                        frame.creativePreview.items[1].role ==
                            iggy3d::RenderCreativePreviewRole::Held,
                    "preview roles retain target-before-held order") &&
-            expect(near(iggy3d::at(target, 0U, 0U), targetSizeX) &&
+            expect(admission.allowed && plan.hasVoxelCell &&
+                       near(iggy3d::at(target, 0U, 0U), targetSizeX) &&
                        near(iggy3d::at(target, 1U, 1U), targetSizeY) &&
                        near(iggy3d::at(target, 2U, 2U), targetSizeZ),
-                   "target transform preserves exact final boundary") &&
+                   "voxel target transform preserves the exact aimed cell") &&
             expect(near(iggy3d::at(held, 0U, 3U), 0.42F) &&
                        near(iggy3d::at(held, 1U, 3U), -0.32F) &&
                        near(iggy3d::at(held, 2U, 3U), -0.82F),
                    "held object uses the fixed view-space position") &&
-            expect(near(std::max({heldX, heldY, heldZ}), 0.32F) &&
-                       std::min({heldX, heldY, heldZ}) >= 0.06F - 1.0e-4F,
-                   "held proportions fit the fixed visible size envelope");
+            expect(near(heldX, 0.32F) && near(heldY, 0.32F) &&
+                       near(heldZ, 0.32F),
+                   "voxel material uses a stable canonical held cube");
 
   editor.interaction.target.grid.faceNormal = {1.0, 0.0, 0.0};
   attachCreativeEditorPlacementPreviews(editor, false, frame);
@@ -492,11 +588,12 @@ bool previewFrameUsesWorldTargetAndViewHeldTransforms() {
     const float z = iggy3d::at(sideTarget, 2U, column);
     return std::sqrt(x * x + y * y + z * z);
   };
-  ok = expect(near(targetAxisLength(0U), 4.0F) &&
-                  near(targetAxisLength(2U), 0.25F) &&
-                  near(iggy3d::at(sideTarget, 2U, 0U), -4.0F) &&
-                  near(iggy3d::at(sideTarget, 0U, 2U), 0.25F),
-              "target preview uses admitted cardinal yaw without swapping bounds") &&
+  ok = expect(near(targetAxisLength(0U), 1.0F) &&
+                  near(targetAxisLength(1U), 1.0F) &&
+                  near(targetAxisLength(2U), 1.0F) &&
+                  near(iggy3d::at(sideTarget, 2U, 0U), 0.0F) &&
+                  near(iggy3d::at(sideTarget, 0U, 2U), 0.0F),
+              "voxel target remains an unrotated cell on side faces") &&
        ok;
 
   editor.interaction.target = {};
@@ -556,9 +653,9 @@ bool previewHidesForEveryBlockingSurface() {
   editor.toolOptions.open = true;
   ok = expect(hidden(), "tool options hide placement previews") && ok;
   editor.toolOptions.open = false;
-  editor.clipboardPaste.active = true;
-  ok = expect(hidden(), "clipboard preview hides placement previews") && ok;
-  editor.clipboardPaste.active = false;
+  editor.transform.active = true;
+  ok = expect(hidden(), "transform preview hides placement previews") && ok;
+  editor.transform.active = false;
   attachCreativeEditorPlacementPreviews(editor, true, frame);
   ok = expect(frame.creativePreview.itemCount == 0U,
               "capture mode hides placement previews") &&
@@ -917,6 +1014,41 @@ bool sceneCacheRefreshesOnlyOnDocumentRevision() {
          ok;
 }
 
+bool activeVolumeSelectionRebindsToLoadedDocumentGrid() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 106U);
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
+  editor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::VolumeFill;
+  syncCreativeEditorHeldItem(appState, editor);
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      editor.volume.selection, cr::CreativeVolumeCorner::First, {3, 1, 2}));
+
+  cr::CreativeDocument replacement = cr::CreativeDocument::create("new grid");
+  static_cast<void>(replacement.assignId(107U));
+  cr::CreativeGridSettings grid;
+  grid.origin = {4.0, -2.0, 8.0};
+  grid.cellSizeMeters = 2.0;
+  static_cast<void>(replacement.setGridSettings(grid));
+  const cr::CreativeFacadeDocumentInstallReceipt install =
+      appState.facade.installDocument(std::move(replacement));
+
+  cr::CreativeWorldActionFrame actions;
+  iggy3d::RenderCameraFrame camera;
+  CreativeEditorPickFrame pickFrame;
+  processCreativeEditorWorldInteractionFrame(
+      {appState, editor, actions, cr::kCreativeInputModifierNone, camera,
+       pickFrame, 800U, 600U, 0U, false});
+  return expect(install.accepted && install.changed,
+                "replacement document installs") &&
+         expect(editor.volume.selection.cellSize == 2.0 &&
+                    sameVec3(editor.volume.selection.origin, grid.origin),
+                "active volume selection adopts loaded document grid") &&
+         expect(editor.volume.selection.phase ==
+                    cr::CreativeVolumeSelectionPhase::Empty,
+                "grid replacement clears incompatible volume corners");
+}
+
 bool worldTargetPicksVoxelBeforeGround() {
   cr::CreativeDocument document = cr::CreativeDocument::create("pick voxel");
   static_cast<void>(document.assignId(106U));
@@ -986,17 +1118,37 @@ bool placementStrokeDeduplicatesAndRecordsOneUndo() {
   processCreativeMaterialStrokeFrame(
       appState, editor,
       actionFrame(cr::CreativeWorldActionId::Secondary, true, true, false), 0U);
-  bool ok = expect(appState.facade.document().objectCount() == 1U,
-                   "press places immediately") &&
+  bool ok = expect(appState.facade.document().objectCount() == 0U &&
+                       appState.facade.document()
+                               .voxelField()
+                               .occupiedCellCount() == 1U &&
+                       editor.interaction.placementFeedback.voxelPlaced &&
+                       editor.interaction.placementFeedback.voxelCell.x == 0,
+                   "press places one structural voxel immediately") &&
             expect(cr::creativeUndoDepth(appState.history) == 0U &&
                        editor.interaction.materialStroke.transaction.active,
                    "history transaction remains lazy-open during hold");
+
+  CreativeEditorSelectionFrame selection;
+  CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  iggy3d::FrameInput frame;
+  CreativeEditorOverlayFrame placementOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      placementOverlay);
+  ok = expect(placementOverlay.placementFeedbackEdgeCount == 12U,
+              "placed voxel emits one exact lime cell outline") &&
+       ok;
 
   processCreativeMaterialStrokeFrame(
       appState, editor,
       actionFrame(cr::CreativeWorldActionId::Secondary, true, false, false),
       cr::kCreativeMaterialStrokeRepeatNanoseconds);
-  ok = expect(appState.facade.document().objectCount() == 1U,
+  ok = expect(appState.facade.document()
+                      .voxelField()
+                      .occupiedCellCount() == 1U,
               "stationary repeated cell mutates once") &&
        ok;
 
@@ -1005,7 +1157,9 @@ bool placementStrokeDeduplicatesAndRecordsOneUndo() {
       appState, editor,
       actionFrame(cr::CreativeWorldActionId::Secondary, true, false, false),
       2U * cr::kCreativeMaterialStrokeRepeatNanoseconds);
-  ok = expect(appState.facade.document().objectCount() == 2U &&
+  ok = expect(appState.facade.document()
+                          .voxelField()
+                          .occupiedCellCount() == 2U &&
                   editor.interaction.materialStroke.acceptedMutationCount == 2U,
               "advancing hold places each new cell once") &&
        ok;
@@ -1019,7 +1173,10 @@ bool placementStrokeDeduplicatesAndRecordsOneUndo() {
               "release commits exactly one undo entry") &&
        ok;
   const bool undone = undoLastEdit(appState, "test_place_stroke_undo");
-  return expect(undone && appState.facade.document().objectCount() == 0U,
+  return expect(undone && appState.facade.document().objectCount() == 0U &&
+                    appState.facade.document()
+                            .voxelField()
+                            .occupiedCellCount() == 0U,
                 "one undo removes the entire placement stroke") &&
          ok;
 }
@@ -1035,9 +1192,12 @@ bool identicalPlacementAcrossGesturesIsRejected() {
   processCreativeMaterialStrokeFrame(
       appState, editor,
       actionFrame(cr::CreativeWorldActionId::Secondary, false, false, true), 1U);
-  bool ok = expect(appState.facade.document().objectCount() == 1U &&
+  bool ok = expect(appState.facade.document().objectCount() == 0U &&
+                       appState.facade.document()
+                               .voxelField()
+                               .occupiedCellCount() == 1U &&
                        cr::creativeUndoDepth(appState.history) == 1U,
-                   "first placement commits one object and history record");
+                   "first voxel placement commits one history record");
 
   ++editor.frameIndex;
   processCreativeMaterialStrokeFrame(
@@ -1046,11 +1206,14 @@ bool identicalPlacementAcrossGesturesIsRejected() {
   processCreativeMaterialStrokeFrame(
       appState, editor,
       actionFrame(cr::CreativeWorldActionId::Secondary, false, false, true), 3U);
-  ok = expect(appState.facade.document().objectCount() == 1U &&
+  ok = expect(appState.facade.document().objectCount() == 0U &&
+                  appState.facade.document()
+                          .voxelField()
+                          .occupiedCellCount() == 1U &&
                   cr::creativeUndoDepth(appState.history) == 1U &&
                   editor.interaction.placementFeedback.status ==
                       CreativeEditorPlacementFeedbackStatus::Rejected,
-              "identical later gesture cannot stack duplicate geometry") &&
+              "identical later gesture cannot overwrite occupied voxel") &&
        ok;
 
   editor.interaction.placementFeedback = {};
@@ -1272,6 +1435,7 @@ int main() {
   ok = shapeVolumePreviewsStayBoundedAndFailClosed() && ok;
   ok = editorVolumeBudgetRejectsBeforeMutation() && ok;
   ok = sceneCacheRefreshesOnlyOnDocumentRevision() && ok;
+  ok = activeVolumeSelectionRebindsToLoadedDocumentGrid() && ok;
   ok = worldTargetPicksVoxelBeforeGround() && ok;
   ok = removalStrokeDeletesVoxelAndGroupsHistory() && ok;
   ok = placementStrokeDeduplicatesAndRecordsOneUndo() && ok;

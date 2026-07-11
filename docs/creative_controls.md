@@ -172,6 +172,8 @@ Physical input is translated into these stable actions before a tool sees it:
 | `HotbarSlot` / `HotbarNext` / `HotbarPrevious` | Select held material/tool |
 | `ToggleCatalog` | Open or close searchable object and tool inventory |
 | `ToggleToolWheel` | Open or close the radial creator-tool selector |
+| `ToggleTransformControls` | Open or close controls for the active selection preview |
+| `TransformControlPrevious` / `TransformControlNext` | Select a visible transform operation |
 | `Confirm` / `Cancel` | Commit or abandon an explicit preview |
 | `Undo` / `Redo` | Reverse or restore one committed gesture |
 
@@ -179,17 +181,17 @@ Initial tool grammar:
 
 | Held tool | Primary | Secondary | Pick |
 |---|---|---|---|
-| Block/material | Remove targeted object | Place against targeted face | Sample object/material |
+| Block/material | Remove targeted object or voxel | Place against targeted face | Sample object/material |
 | Object select | Select/toggle targeted object | No action | Replace slot with sampled material |
-| Object move | Begin/preview/commit ground-plane move | No action | Replace slot with sampled material |
+| Transform | Begin/preview/commit fast ground-plane drag | Begin a non-destructive transform preview for the ordered selection | Replace slot with sampled material |
 | Selection wand | Set corner 1 | Set corner 2 | Expand selection to targeted cell |
 | Fill/Hollow shape tool | Start or replace corner 1 | Set corner 2 and commit one history transaction | Sample operation material |
 | Replace/Erase/Clone | No action | Apply the existing region as one history transaction | Sample operation material |
 | Linear array | Select/toggle targeted object | Commit the previewed copies as one history transaction | Replace slot with sampled material |
 
 Tool-specific operations such as fill, hollow, replace, clone, mirror, array,
-rotate, and axis constraints belong in visible tool options. They do not each
-earn a permanent global key.
+rotate, and axis constraints belong in visible tool options or an active
+preview's contextual wheel. They do not each earn a permanent global key.
 
 ## Current Implementation
 
@@ -242,6 +244,28 @@ earn a permanent global key.
   on either world axis with 1/2/4/8/16/32 copies at 1/2/4/8-cell spacing.
   Settings edit a non-document draft; Apply changes the editor configuration,
   while the next world operation remains one previewed history transaction.
+- The Transform tool keeps two speeds of interaction. Primary drag is the fast
+  one-object ground-plane move. Secondary (right mouse or controller left
+  trigger) snapshots the ordered selection and starts a non-destructive Move
+  preview at the crosshair. Platform-command `V` starts the same preview in Copy
+  mode from the clipboard.
+- During a transform preview, `R` or controller D-pad right opens an eight-sector
+  contextual wheel: rotate `+90`, mirror X, toggle Copy/Move, confirm, cancel,
+  mirror Z, rotate `-90`, and reset. Mouse or right-stick direction selects;
+  arrows or D-pad up/down cycle; click, `Enter`, or controller Cross applies the
+  highlighted operation. `Escape` or controller Circle first closes the wheel,
+  then cancels the preview when pressed again. Camera movement and look remain
+  available while the wheel is closed.
+- Right mouse/controller left trigger, `Enter`, or controller Cross confirms the
+  positioned preview. Move changes the original ordered selection; Copy creates
+  new objects and selects them. Either result is one atomic history record.
+  Primary world input, hotbar changes, and unrelated commands are suppressed
+  while the preview is active. Focus loss cancels the non-mutating preview.
+- Move previews draw the source amber and the destination mint, with explicit
+  pivot boxes and an axis-aligned connector. Invalid but positionable output is
+  red. The compact status row names mode, quarter-turn angle, mirror flags, and
+  object count. Above 512 source objects, each side collapses to one aggregate
+  wire box so aiming remains bounded.
 - Fill and Hollow are self-contained held tools. Primary starts or replaces
   corner 1 at the crosshair; aiming updates the exact bounded preview; Secondary
   sets corner 2 and commits once. A second Secondary cannot recommit the finished
@@ -251,39 +275,43 @@ earn a permanent global key.
   explicit region editing, but it is not a prerequisite for Fill or Hollow.
 - The center ray resolves the nearest visible object, hit face, horizontal player
   facing, occupied grid cell, adjacent placement cell, and placement anchor.
-- Directional materials use descriptor-owned orientation: side placement faces
-  outward from the clicked surface, while floor/ceiling placement turns the
-  object's front toward the player. No extra rotate key is required for normal
-  placement.
+- Directional authored objects use descriptor-owned orientation: side placement
+  faces outward from the clicked surface, while top/bottom placement turns the
+  object's front toward the player. Voxel-backed materials remain unrotated. No
+  extra rotate key is required for normal placement.
 - Material, select, move, and volume tools use the held-tool grammar above.
 - A material's thin green wireframe is only a placement preview. Right mouse or
-  controller left trigger attempts the placement. A successful create receipt
-  turns the crosshair brackets green and draws a thick lime outline from the
-  new live document object's bounds; red brackets mean the input arrived but
-  no object was created. An identical object at the exact planned transform,
-  bounds, and path is treated as occupied: its preview is red and repeated taps
-  do not add another document object or undo record.
+  controller left trigger attempts the placement. `Wall`, `Floor`, `Ceiling`,
+  and `Roof` place one exact voxel cell; props, attachments, paths, lights, and
+  other materials remain authored objects. A successful mutation turns the
+  crosshair brackets green and draws a thick lime outline from the live object
+  or exact voxel cell. Red brackets mean the input arrived but no mutation was
+  accepted. An occupied voxel cell or identical authored-object plan stays red,
+  and repeated taps add no geometry or undo record.
+- Voxel-backed materials and region tools always use the map's fixed block grid.
+  The 0.25/0.5/1/2 meter snap option remains available for authored objects and
+  transform tools; it does not resize voxel blocks or volume selections.
 - Array previews copies of the current ordered selection without mutating the
   document. Right mouse/controller Secondary or `Enter` commits the full batch
   atomically as one history transaction, preserves the originals, and selects
   only the final generated copy so repeated commits do not grow exponentially.
-- Platform-command `C`, `X`, and `V` copy, cut, and begin clipboard placement.
-  Paste aligns the copied selection's deterministic lower-center placement
-  anchor to the crosshair cell and displays a mint wireframe without mutating the
-  document. Right mouse/controller Secondary, `Enter`, or controller confirm
-  commits one atomic paste and one undo step. `Escape`, Delete, Backspace, or
-  controller cancel abandons the preview. Camera movement remains available
-  while all unrelated document commands and hotbar changes are isolated.
+- Platform-command `C`, `X`, and `V` copy, cut, and begin clipboard transform.
+  Copy aligns the selection's deterministic lower-center placement anchor to the
+  crosshair and uses the same quarter-turn/mirror plan as commit. `Escape`,
+  Delete, Backspace, or controller cancel abandons the preview. A clipboard from
+  the unchanged current document may switch to Move; stale or foreign clipboard
+  content remains Copy-only.
 - The crosshair, target cell, hotbar selection, placement ghost, placement
   receipt feedback, and volume outline provide visible state. Above the hotbar,
   the held-tool label names operation, shape, cylinder axis, material, and
   whether corner 1 or a completed region is active. Mutations use the existing
   history transactions.
-- Interactive Fill/Hollow previews fail closed above 512 candidate/generated
-  cells. The red outline appears before commit so an accidental distant second
-  corner cannot start unexpectedly large work. Accepted bulk cells live in
-  16-cubed voxel chunks and render through dirty-chunk greedy cuboids rather
-  than one document object and mesh per cell.
+- Manual structural materials and accepted Fill/Hollow cells share the same
+  sparse voxel field. Interactive Fill/Hollow previews fail closed above 512
+  candidate/generated cells. The red outline appears before commit so an
+  accidental distant second corner cannot start unexpectedly large work.
+  Accepted bulk cells live in 16-cubed voxel chunks and render through
+  dirty-chunk greedy cuboids rather than one document object and mesh per cell.
 - Save, new, and load use platform command `S`, `N`, and `O`. No `F`, `F5`, or
   Page Up/Down binding is required.
 

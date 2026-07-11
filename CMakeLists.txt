@@ -55,6 +55,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/tools/Select.cpp
     src/app/iggy3d/creative/tools/Clipboard.cpp
     src/app/iggy3d/creative/tools/Transform.cpp
+    src/app/iggy3d/creative/tools/SelectionPlacement.cpp
     src/app/iggy3d/creative/tools/Pattern.cpp
     src/app/iggy3d/creative/tools/ShapeBrush.cpp
     src/app/iggy3d/creative/tools/VolumeSelection.cpp
@@ -196,6 +197,8 @@ endif()
 set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorCatalog.cpp
   apps/iggy3d_creative/EditorToolOptions.cpp
+  apps/iggy3d_creative/EditorTransform.cpp
+  apps/iggy3d_creative/EditorTransformOverlay.cpp
   apps/iggy3d_creative/EditorCapture.cpp
   apps/iggy3d_creative/EditorFrame.cpp
   apps/iggy3d_creative/EditorGamepad.cpp

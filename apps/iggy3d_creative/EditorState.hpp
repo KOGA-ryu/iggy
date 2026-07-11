@@ -14,6 +14,7 @@
 #include "EditorInteraction.hpp"
 #include "EditorPattern.hpp"
 #include "EditorToolOptions.hpp"
+#include "EditorTransform.hpp"
 #include "EditorVolume.hpp"
 
 namespace iggy3d_creative_app {
@@ -33,7 +34,7 @@ struct CreativeEditorState {
       iggy3d::creative::makeDefaultCreativeToolSettings();
   CreativeEditorToolOptionsState toolOptions;
   CreativeEditorPatternState pattern;
-  CreativeEditorClipboardPasteState clipboardPaste;
+  CreativeEditorSelectionTransformState transform;
 
   bool placeMode = false;
   std::vector<iggy3d::creative::CreativeObjectKind> brushPalette;

@@ -189,6 +189,12 @@ enum class CreativePlacementOrientationPolicy : std::uint8_t {
 
 enum class CreativePlacementOccupancyPolicy : std::uint8_t {
     AllowOverlap,
+    RejectOccupied,
+};
+
+enum class CreativePlacementStoragePolicy : std::uint8_t {
+    AuthoredObject,
+    VoxelCell,
 };
 
 struct CreativeObjectPlacementPolicy {
@@ -200,6 +206,8 @@ struct CreativeObjectPlacementPolicy {
     CreativePlacementFace localForwardFace{CreativePlacementFace::PositiveZ};
     CreativePlacementOccupancyPolicy occupancyPolicy{
         CreativePlacementOccupancyPolicy::AllowOverlap};
+    CreativePlacementStoragePolicy storagePolicy{
+        CreativePlacementStoragePolicy::AuthoredObject};
     bool enabled{false};
 };
 

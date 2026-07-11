@@ -141,6 +141,8 @@ iggy3d_add_unit_test(creative_editor_pattern_tests
 target_sources(creative_editor_pattern_tests PRIVATE
   apps/iggy3d_creative/EditorPattern.cpp
   apps/iggy3d_creative/EditorEdits.cpp
+  apps/iggy3d_creative/EditorTransform.cpp
+  apps/iggy3d_creative/EditorTransformOverlay.cpp
   apps/iggy3d_creative/EditorPreviewProxies.cpp)
 target_include_directories(creative_editor_pattern_tests PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/apps/iggy3d_creative")

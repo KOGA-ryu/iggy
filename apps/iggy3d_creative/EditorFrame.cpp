@@ -22,6 +22,7 @@
 #include "EditorFrustumCull.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorPreviewProxies.hpp"
+#include "EditorTransform.hpp"
 #include "EditorVolume.hpp"
 
 namespace iggy3d_creative_app {
@@ -216,8 +217,8 @@ void setSdlKey(creative::CreativeInputFrame& frame,
   };
   const std::array candidates{
       Candidate{captureMode, creative::CreativeInputContext::Capture},
-      Candidate{editor.clipboardPaste.active,
-                creative::CreativeInputContext::ClipboardPreview},
+      Candidate{editor.transform.active,
+                creative::CreativeInputContext::TransformPreview},
       Candidate{editor.catalog.model.open,
                 creative::CreativeInputContext::Catalog},
       Candidate{editor.catalog.toolWheel.open,
@@ -246,22 +247,7 @@ void applyCreativeEditorCommandInput(
                                    "creative_material_stroke_command");
   }
   if (routedInput.context ==
-      creative::CreativeInputContext::ClipboardPreview) {
-    for (const creative::CreativeInputActionEvent& event :
-         routedInput.actionEvents()) {
-      switch (event.action) {
-        case creative::CreativeInputActionId::ConfirmActiveTool:
-          static_cast<void>(requestCreativeEditorClipboardPasteCommit(
-              editor.clipboardPaste));
-          break;
-        case creative::CreativeInputActionId::CancelActiveTool:
-          static_cast<void>(cancelCreativeEditorClipboardPastePreview(
-              editor.clipboardPaste, "clipboard_preview_cancel"));
-          break;
-        default:
-          break;
-      }
-    }
+      creative::CreativeInputContext::TransformPreview) {
     return;
   }
   if (routedInput.context != creative::CreativeInputContext::EditorViewport) {
@@ -269,21 +255,6 @@ void applyCreativeEditorCommandInput(
   }
   for (const creative::CreativeInputActionEvent& event :
        routedInput.actionEvents()) {
-    if (editor.clipboardPaste.active) {
-      switch (event.action) {
-        case creative::CreativeInputActionId::ConfirmActiveTool:
-          static_cast<void>(requestCreativeEditorClipboardPasteCommit(
-              editor.clipboardPaste));
-          break;
-        case creative::CreativeInputActionId::CancelActiveTool:
-          static_cast<void>(cancelCreativeEditorClipboardPastePreview(
-              editor.clipboardPaste, "clipboard_preview_cancel"));
-          break;
-        default:
-          break;
-      }
-      continue;
-    }
     switch (event.action) {
       case creative::CreativeInputActionId::HotbarSlot1:
       case creative::CreativeInputActionId::HotbarSlot2:
@@ -322,6 +293,9 @@ void applyCreativeEditorCommandInput(
       case creative::CreativeInputActionId::ToolOptionsIncrease:
       case creative::CreativeInputActionId::ToolOptionsConfirm:
       case creative::CreativeInputActionId::ToolOptionsClose:
+      case creative::CreativeInputActionId::ToggleTransformControls:
+      case creative::CreativeInputActionId::TransformControlPrevious:
+      case creative::CreativeInputActionId::TransformControlNext:
         break;
       case creative::CreativeInputActionId::ConfirmActiveTool:
         static_cast<void>(confirmCreativeEditorHeldItem(
@@ -361,8 +335,8 @@ void applyCreativeEditorCommandInput(
         (void)cutSelectionToClipboardWithHistory(appState, "keyboard_cut");
         break;
       case creative::CreativeInputActionId::PasteClipboard:
-        static_cast<void>(beginCreativeEditorClipboardPastePreview(
-            appState.clipboard, editor.clipboardPaste, "keyboard_paste"));
+        static_cast<void>(beginCreativeEditorClipboardTransformPreview(
+            appState, appState.clipboard, editor.transform, "keyboard_paste"));
         break;
       case creative::CreativeInputActionId::DuplicateSelection:
         (void)duplicateSelectedObjectsWithUndo(
@@ -529,9 +503,9 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
   iggy3d::ProductCreativeFlyInput flyInput;
   const bool viewportNavigationContext =
       inputContext == creative::CreativeInputContext::EditorViewport ||
-      inputContext == creative::CreativeInputContext::ClipboardPreview;
+      inputContext == creative::CreativeInputContext::TransformPreview;
   const bool viewportNavigationActive =
-      viewportNavigationContext &&
+      viewportNavigationContext && !editor.transform.controlsOpen &&
       !routedActionPresent(result.routedInput,
                            creative::CreativeInputActionId::ToggleCatalog) &&
       !routedActionPresent(result.routedInput,

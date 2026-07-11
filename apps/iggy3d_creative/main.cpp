@@ -44,6 +44,7 @@
 #include "EditorToolOptions.hpp"
 #include "EditorPlacement.hpp"
 #include "EditorPreviewFrame.hpp"
+#include "EditorTransform.hpp"
 
 namespace {
 
@@ -58,6 +59,8 @@ using iggy3d_creative_app::CreativeEditorGamepad;
 using iggy3d_creative_app::CreativeEditorState;
 using iggy3d_creative_app::applyCreativeEditorCommandInput;
 using iggy3d_creative_app::beginCreativeEditorFrameInput;
+using iggy3d_creative_app::cancelCreativeEditorSelectionTransformPreview;
+using iggy3d_creative_app::processCreativeEditorTransformFrame;
 using iggy3d_creative_app::CreativeEditorFrameInputResult;
 using iggy3d_creative_app::CreativeEditorGizmoFrame;
 using iggy3d_creative_app::CreativeEditorPickFrame;
@@ -154,10 +157,29 @@ int main(int argc, char** argv) {
       if (!frameInput.windowFocused) {
         finalizeCreativeMaterialStroke(
             appState, editor, "creative_material_stroke_focus_lost");
+        if (cancelCreativeEditorSelectionTransformPreview(
+                editor.transform, "selection_transform_focus_lost")) {
+          static_cast<void>(window.setRelativeMouseMode(true));
+        }
       }
       continue;
     }
     const SdlDrawableExtent extent = frameInput.extent;
+    if (!frameInput.windowFocused &&
+        cancelCreativeEditorSelectionTransformPreview(
+            editor.transform, "selection_transform_focus_lost")) {
+      static_cast<void>(window.setRelativeMouseMode(true));
+    }
+    const iggy3d_creative_app::CreativeEditorTransformFrameResult
+        transformFrame = processCreativeEditorTransformFrame(
+            {window,
+             appState,
+             editor,
+             frameInput.routedInput,
+             frameInput.toolWheelDirectionX,
+             frameInput.toolWheelDirectionY,
+             extent.width,
+             extent.height});
     const iggy3d_creative_app::CreativeEditorCatalogFrameResult catalogFrame =
         processCreativeEditorCatalogFrame(
             {window,
@@ -179,7 +201,8 @@ int main(int argc, char** argv) {
              extent.width,
              extent.height});
     const bool modalBlocksWorldActions =
-        catalogFrame.blockWorldActions || toolOptionsFrame.blockWorldActions;
+        transformFrame.blockWorldActions || catalogFrame.blockWorldActions ||
+        toolOptionsFrame.blockWorldActions;
     if (modalBlocksWorldActions || !frameInput.windowFocused) {
       finalizeCreativeMaterialStroke(
           appState, editor,

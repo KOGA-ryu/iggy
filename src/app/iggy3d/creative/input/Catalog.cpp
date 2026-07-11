@@ -42,8 +42,8 @@ constexpr std::array<CatalogShapePreset, kCreativeCatalogShapePresetCount>
 constexpr std::array kToolSpecs{
     CatalogToolSpec{CreativeHeldItemKind::ObjectSelect, "Object Select",
                     "select pick object"},
-    CatalogToolSpec{CreativeHeldItemKind::ObjectMove, "Object Move",
-                    "move drag translate"},
+    CatalogToolSpec{CreativeHeldItemKind::ObjectMove, "Transform",
+                    "object move drag translate rotate mirror copy"},
     CatalogToolSpec{CreativeHeldItemKind::VolumeSelect, "Region Select",
                     "volume region wand corner selection"},
     CatalogToolSpec{CreativeHeldItemKind::VolumeFill, "Fill",
