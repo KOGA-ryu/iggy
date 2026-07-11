@@ -49,6 +49,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/spatial/SpatialProjection.cpp
     src/app/iggy3d/creative/document/DocumentWireframe.cpp
     src/app/iggy3d/creative/input/ControllerInput.cpp
+    src/app/iggy3d/creative/input/ActionHints.cpp
     src/app/iggy3d/creative/input/ControlProfile.cpp
     src/app/iggy3d/creative/input/UiInput.cpp
     src/app/iggy3d/creative/input/InputRouter.cpp
@@ -198,6 +199,7 @@ if(IGGY3D_ENABLE_VULKAN_SHADERS AND IGGY3D_SHADER_COMPILER_AVAILABLE)
 endif()
 
 set(IGGY3D_CREATIVE_APP_SOURCES
+  apps/iggy3d_creative/EditorActionHints.cpp
   apps/iggy3d_creative/EditorCatalog.cpp
   apps/iggy3d_creative/EditorControls.cpp
   apps/iggy3d_creative/EditorToolOptions.cpp

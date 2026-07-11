@@ -122,6 +122,8 @@ std::string_view toString(CreativeWorldActionId action) noexcept {
   switch (action) {
     case CreativeWorldActionId::Primary: return "Primary";
     case CreativeWorldActionId::Secondary: return "Secondary";
+    case CreativeWorldActionId::Accept: return "Accept";
+    case CreativeWorldActionId::Reject: return "Reject";
     case CreativeWorldActionId::Pick: return "Pick";
     case CreativeWorldActionId::HotbarPrevious: return "HotbarPrevious";
     case CreativeWorldActionId::HotbarNext: return "HotbarNext";

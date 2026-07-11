@@ -221,6 +221,16 @@ void applyTransformPreviewAction(
       static_cast<void>(nudgeCreativeEditorSelectionTransform(
           request.appState, state, -1, request.fineNudge));
       return;
+    case cr::CreativeInputActionId::QuickEditDecrease:
+      static_cast<void>(applyCreativeEditorTransformControl(
+          request.appState, state,
+          CreativeEditorTransformControl::RotateNegative));
+      return;
+    case cr::CreativeInputActionId::QuickEditIncrease:
+      static_cast<void>(applyCreativeEditorTransformControl(
+          request.appState, state,
+          CreativeEditorTransformControl::RotatePositive));
+      return;
     case cr::CreativeInputActionId::ConfirmActiveTool:
       static_cast<void>(requestCreativeEditorSelectionTransformCommit(state));
       return;
@@ -569,6 +579,9 @@ CreativeEditorTransformFrameResult processCreativeEditorTransformFrame(
   result.openChanged = wasOpen != (state.active && state.controlsOpen);
   if (result.openChanged) {
     const bool controlsOpen = state.active && state.controlsOpen;
+    if (wasOpen && !controlsOpen) {
+      request.editor.rightStickLookRearmRequired = true;
+    }
     static_cast<void>(request.window.setTextInputActive(false));
     static_cast<void>(request.window.setRelativeMouseMode(!controlsOpen));
     if (controlsOpen) {

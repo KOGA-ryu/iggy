@@ -67,6 +67,8 @@ constexpr CreativeHeldItemMask kMoveItems =
 constexpr CreativeHeldItemMask kRotationItems =
     heldItemMask(CreativeHeldItemKind::ObjectSelect) |
     heldItemMask(CreativeHeldItemKind::ObjectMove);
+constexpr CreativeHeldItemMask kPlacementItems =
+    heldItemMask(CreativeHeldItemKind::Material);
 constexpr CreativeHeldItemMask kSnapItems =
     heldItemMask(CreativeHeldItemKind::Material) |
     heldItemMask(CreativeHeldItemKind::ObjectMove) |
@@ -95,6 +97,10 @@ constexpr std::array kToolOptionDescriptors{
                                  "ROTATE STEP",
                                  CreativeToolOptionValueKind::Choice,
                                  kRotationItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::PlacementYaw,
+                                 "ORIENTATION",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kPlacementItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::SnapIncrement,
                                  "GRID SIZE",
                                  CreativeToolOptionValueKind::Choice,
@@ -173,6 +179,7 @@ template <typename Enum>
                                 const CreativeToolSettings& rhs) noexcept {
   return lhs.moveConstraint == rhs.moveConstraint &&
          lhs.rotationStep == rhs.rotationStep &&
+         lhs.placementYaw == rhs.placementYaw &&
          lhs.snapIncrement == rhs.snapIncrement &&
          lhs.shapeBrushKind == rhs.shapeBrushKind &&
          lhs.shapeBrushAxis == rhs.shapeBrushAxis &&
@@ -424,6 +431,7 @@ bool isValidCreativeToolSettings(
       validReplaceSourceKind(settings.replaceSourceKind);
   return validEnum(settings.moveConstraint, CreativeMoveConstraint::Count) &&
          validEnum(settings.rotationStep, CreativeRotationStep::Count) &&
+         validEnum(settings.placementYaw, CreativePlacementYaw::Count) &&
          validEnum(settings.snapIncrement, CreativeSnapIncrement::Count) &&
          validEnum(settings.shapeBrushKind, CreativeShapeBrushKind::Count) &&
          validEnum(settings.shapeBrushAxis, CreativeShapeBrushAxis::Count) &&
@@ -534,6 +542,17 @@ std::string_view toString(CreativeRotationStep step) noexcept {
   return "INVALID";
 }
 
+std::string_view toString(CreativePlacementYaw yaw) noexcept {
+  switch (yaw) {
+    case CreativePlacementYaw::Degrees0: return "0 DEG";
+    case CreativePlacementYaw::Degrees90: return "90 DEG";
+    case CreativePlacementYaw::Degrees180: return "180 DEG";
+    case CreativePlacementYaw::Degrees270: return "270 DEG";
+    case CreativePlacementYaw::Count: break;
+  }
+  return "INVALID";
+}
+
 std::string_view toString(CreativeSnapIncrement increment) noexcept {
   switch (increment) {
     case CreativeSnapIncrement::QuarterMeter: return "0.25 M";
@@ -597,6 +616,8 @@ std::string_view creativeToolOptionValueLabel(
       return toString(settings.moveConstraint);
     case CreativeToolOptionId::RotationStep:
       return toString(settings.rotationStep);
+    case CreativeToolOptionId::PlacementYaw:
+      return toString(settings.placementYaw);
     case CreativeToolOptionId::SnapIncrement:
       return toString(settings.snapIncrement);
     case CreativeToolOptionId::ShapeBrushKind:
@@ -663,6 +684,10 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
     case CreativeToolOptionId::RotationStep:
       adjusted.rotationStep = cycleEnum(
           adjusted.rotationStep, CreativeRotationStep::Count, direction);
+      break;
+    case CreativeToolOptionId::PlacementYaw:
+      adjusted.placementYaw = cycleEnum(
+          adjusted.placementYaw, CreativePlacementYaw::Count, direction);
       break;
     case CreativeToolOptionId::SnapIncrement:
       adjusted.snapIncrement = cycleEnum(
@@ -757,6 +782,14 @@ double creativeRotationStepDegrees(CreativeRotationStep step) noexcept {
   constexpr std::array values{15.0, 45.0, 90.0};
   const std::size_t index = static_cast<std::size_t>(step);
   return index < values.size() ? values[index] : 0.0;
+}
+
+double creativePlacementYawRadians(CreativePlacementYaw yaw) noexcept {
+  constexpr double kQuarterTurn = 1.57079632679489661923;
+  const std::size_t index = static_cast<std::size_t>(yaw);
+  return index < static_cast<std::size_t>(CreativePlacementYaw::Count)
+             ? static_cast<double>(index) * kQuarterTurn
+             : 0.0;
 }
 
 double creativeSnapIncrementMeters(CreativeSnapIncrement increment) noexcept {

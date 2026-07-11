@@ -895,6 +895,9 @@ CreativeEditorCatalogFrameResult processCreativeEditorCatalogFrame(
 
   result.openChanged = wasCatalogOpen != catalog.model.open ||
                        wasToolWheelOpen != catalog.toolWheel.open;
+  if (wasToolWheelOpen && !catalog.toolWheel.open) {
+    request.editor.rightStickLookRearmRequired = true;
+  }
   if (result.openChanged || result.pageChanged) {
     applyInventoryWindowMode(request.window, request.editor,
                              !wasToolWheelOpen && catalog.toolWheel.open,

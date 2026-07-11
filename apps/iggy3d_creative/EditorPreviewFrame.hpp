@@ -7,6 +7,7 @@
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
 #include "app/iggy3d/creative/document/Document.hpp"
+#include "app/iggy3d/creative/input/ControlProfile.hpp"
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
 #include "app/iggy3d/map_maker/Grid.hpp"
 #include "projection/scene/SceneProjection.hpp"
@@ -30,6 +31,10 @@ struct CreativeEditorOverlayFrameRequest {
   std::uint32_t drawableHeight = 0;
   float gizmoThickness = 0.0F;
   bool captureMode = false;
+  iggy3d::creative::CreativeInputContext inputContext =
+      iggy3d::creative::CreativeInputContext::EditorViewport;
+  iggy3d::creative::CreativeControlDevice activeControlDevice =
+      iggy3d::creative::CreativeControlDevice::KeyboardMouse;
 };
 
 struct CreativeEditorOverlayFrame {

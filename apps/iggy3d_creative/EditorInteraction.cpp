@@ -182,9 +182,13 @@ struct InteractionContext {
 using InteractionHandler = void (*)(InteractionContext&);
 using HeldItemActionHandlers = std::array<InteractionHandler, 3>;
 
+void noInteraction(InteractionContext&);
+
 struct HeldItemHandlerRow {
   cr::CreativeHeldItemKind kind = cr::CreativeHeldItemKind::Count;
   HeldItemActionHandlers handlers{};
+  InteractionHandler accept = noInteraction;
+  InteractionHandler reject = noInteraction;
   bool primaryWinsSimultaneous = false;
 };
 
@@ -316,7 +320,8 @@ void applyMaterialStrokeMutation(cr::CreativeAppState& appState,
     return;
   }
   const CreativeBrushPlacementAdmission admission =
-      admitBrushPlacement(held.objectKind, grid);
+      admitBrushPlacement(held.objectKind, grid,
+                          editor.toolSettings.placementYaw);
   if (!admission.allowed) {
     rejectMaterialStroke(editor, held.objectKind);
     return;
@@ -369,17 +374,29 @@ void processMaterialStroke(cr::CreativeAppState& appState,
   CreativeMaterialRepeatRequest repeatRequest;
   repeatRequest.nowNanoseconds = monotonicTimeNanoseconds;
   repeatRequest.primaryPressed = cr::creativeWorldActionPressed(
-      actions, cr::CreativeWorldActionId::Primary);
+      actions, cr::CreativeWorldActionId::Primary) ||
+      cr::creativeWorldActionPressed(actions,
+                                     cr::CreativeWorldActionId::Reject);
   repeatRequest.primaryDown = cr::creativeWorldActionDown(
-      actions, cr::CreativeWorldActionId::Primary);
+      actions, cr::CreativeWorldActionId::Primary) ||
+      cr::creativeWorldActionDown(actions,
+                                  cr::CreativeWorldActionId::Reject);
   repeatRequest.primaryReleased = cr::creativeWorldActionReleased(
-      actions, cr::CreativeWorldActionId::Primary);
+      actions, cr::CreativeWorldActionId::Primary) ||
+      cr::creativeWorldActionReleased(actions,
+                                      cr::CreativeWorldActionId::Reject);
   repeatRequest.secondaryPressed = cr::creativeWorldActionPressed(
-      actions, cr::CreativeWorldActionId::Secondary);
+      actions, cr::CreativeWorldActionId::Secondary) ||
+      cr::creativeWorldActionPressed(actions,
+                                     cr::CreativeWorldActionId::Accept);
   repeatRequest.secondaryDown = cr::creativeWorldActionDown(
-      actions, cr::CreativeWorldActionId::Secondary);
+      actions, cr::CreativeWorldActionId::Secondary) ||
+      cr::creativeWorldActionDown(actions,
+                                  cr::CreativeWorldActionId::Accept);
   repeatRequest.secondaryReleased = cr::creativeWorldActionReleased(
-      actions, cr::CreativeWorldActionId::Secondary);
+      actions, cr::CreativeWorldActionId::Secondary) ||
+      cr::creativeWorldActionReleased(actions,
+                                      cr::CreativeWorldActionId::Accept);
 
   const CreativeMaterialRepeatResult repeat =
       stepCreativeMaterialRepeat(stroke.repeat, repeatRequest);
@@ -435,6 +452,22 @@ void setVolumeSecondCorner(InteractionContext& context) {
       editor.volume.selection, cr::CreativeVolumeCorner::Second,
       editor.interaction.target.grid.targetCell));
   editor.volume.lastReceipt = {};
+}
+
+void advanceVolumeSelection(InteractionContext& context) {
+  CreativeEditorState& editor = context.request.editor;
+  if (!editor.interaction.target.grid.valid) {
+    return;
+  }
+  static_cast<void>(cr::advanceCreativeVolumeSelection(
+      editor.volume.selection,
+      editor.interaction.target.grid.targetCell));
+  editor.volume.lastReceipt = {};
+}
+
+void rejectActiveInteraction(InteractionContext& context) {
+  static_cast<void>(cancelCreativeEditorHeldItem(
+      context.request.appState, context.request.editor));
 }
 
 void expandVolumeSelection(InteractionContext& context) {
@@ -503,6 +536,15 @@ void commitHeldShapeVolume(InteractionContext& context) {
   setVolumeGestureFeedback(editor, receipt.accepted);
 }
 
+void advanceHeldShapeVolume(InteractionContext& context) {
+  if (context.request.editor.volume.selection.phase ==
+      cr::CreativeVolumeSelectionPhase::FirstCorner) {
+    commitHeldShapeVolume(context);
+  } else {
+    beginHeldShapeVolume(context);
+  }
+}
+
 void applyHeldArray(InteractionContext& context) {
   static_cast<void>(applyCreativeEditorArrayWithHistory(
       context.request.appState, context.request.editor.pattern,
@@ -512,43 +554,84 @@ void applyHeldArray(InteractionContext& context) {
       "minecraft_secondary_array"));
 }
 
+void acceptHeldArray(InteractionContext& context) {
+  const cr::CreativeSelectionState& selection =
+      context.request.appState.facade.selectionState();
+  const CreativeEditorWorldTarget& target =
+      context.request.editor.interaction.target;
+  const bool targetAlreadySelected =
+      target.objectHit &&
+      cr::selectionContainsTarget(
+          selection, cr::TargetRef{static_cast<cr::Id>(target.objectId)});
+  if (cr::selectedTargetList(selection).empty() ||
+      (target.objectHit &&
+       (!targetAlreadySelected ||
+        context.request.modifiers != cr::kCreativeInputModifierNone))) {
+    selectObject(context);
+  } else {
+    applyHeldArray(context);
+  }
+}
+
 constexpr std::array<HeldItemHandlerRow, cr::kCreativeHeldItemKindCount>
     kHeldItemHandlers{{
         {cr::CreativeHeldItemKind::Material,
-         {noInteraction, noInteraction, sampleTargetMaterial}},
+         {noInteraction, noInteraction, sampleTargetMaterial},
+         noInteraction, noInteraction},
         {cr::CreativeHeldItemKind::ObjectSelect,
-         {selectObject, noInteraction, sampleTargetMaterial}},
+         {selectObject, noInteraction, sampleTargetMaterial},
+         selectObject, noInteraction},
         {cr::CreativeHeldItemKind::ObjectMove,
-         {noInteraction, noInteraction, sampleTargetMaterial}},
+         {noInteraction, noInteraction, sampleTargetMaterial},
+         noInteraction, rejectActiveInteraction},
         {cr::CreativeHeldItemKind::VolumeSelect,
          {setVolumeFirstCorner, setVolumeSecondCorner,
-          expandVolumeSelection}},
+          expandVolumeSelection},
+         advanceVolumeSelection, rejectActiveInteraction},
         {cr::CreativeHeldItemKind::VolumeFill,
          {beginHeldShapeVolume, commitHeldShapeVolume, sampleTargetMaterial},
+         advanceHeldShapeVolume, rejectActiveInteraction,
          true},
         {cr::CreativeHeldItemKind::VolumeHollow,
          {beginHeldShapeVolume, commitHeldShapeVolume, sampleTargetMaterial},
+         advanceHeldShapeVolume, rejectActiveInteraction,
          true},
         {cr::CreativeHeldItemKind::VolumeReplace,
-         {noInteraction, applyHeldVolumeOperation, sampleTargetMaterial}},
+         {noInteraction, applyHeldVolumeOperation, sampleTargetMaterial},
+         applyHeldVolumeOperation, rejectActiveInteraction},
         {cr::CreativeHeldItemKind::VolumeErase,
-         {noInteraction, applyHeldVolumeOperation, sampleTargetMaterial}},
+         {noInteraction, applyHeldVolumeOperation, sampleTargetMaterial},
+         applyHeldVolumeOperation, rejectActiveInteraction},
         {cr::CreativeHeldItemKind::VolumeClone,
-         {noInteraction, applyHeldVolumeOperation, sampleTargetMaterial}},
+         {noInteraction, applyHeldVolumeOperation, sampleTargetMaterial},
+         applyHeldVolumeOperation, rejectActiveInteraction},
         {cr::CreativeHeldItemKind::LinearArray,
-         {selectObject, applyHeldArray, sampleTargetMaterial}},
+         {selectObject, applyHeldArray, sampleTargetMaterial},
+         acceptHeldArray, rejectActiveInteraction},
     }};
 static_assert(heldItemRowsMatchEnumOrder(kHeldItemHandlers));
 
 void processMoveInteraction(
     const CreativeEditorWorldInteractionFrameRequest& request) {
   CreativeEditorState& editor = request.editor;
+  const bool rejectPressed = cr::creativeWorldActionPressed(
+      request.actions, cr::CreativeWorldActionId::Reject);
+  if (rejectPressed) {
+    static_cast<void>(cancelCreativeEditorHeldItem(request.appState, editor));
+    return;
+  }
   const bool pressed = cr::creativeWorldActionPressed(
-      request.actions, cr::CreativeWorldActionId::Primary);
+      request.actions, cr::CreativeWorldActionId::Primary) ||
+      cr::creativeWorldActionPressed(request.actions,
+                                     cr::CreativeWorldActionId::Accept);
   const bool down = cr::creativeWorldActionDown(
-      request.actions, cr::CreativeWorldActionId::Primary);
+      request.actions, cr::CreativeWorldActionId::Primary) ||
+      cr::creativeWorldActionDown(request.actions,
+                                  cr::CreativeWorldActionId::Accept);
   const bool released = cr::creativeWorldActionReleased(
-      request.actions, cr::CreativeWorldActionId::Primary);
+      request.actions, cr::CreativeWorldActionId::Primary) ||
+      cr::creativeWorldActionReleased(request.actions,
+                                      cr::CreativeWorldActionId::Accept);
   const bool secondaryPressed = cr::creativeWorldActionPressed(
       request.actions, cr::CreativeWorldActionId::Secondary);
 
@@ -694,6 +777,14 @@ std::string creativeEditorHeldItemStatusLabel(
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   std::string output(cr::toString(held.kind));
+  const auto appendQuickEdit = [&editor, &output]() {
+    const std::string quickEdit = creativeEditorQuickEditStatusLabel(editor);
+    if (!quickEdit.empty()) {
+      output.append(" | [");
+      output.append(quickEdit);
+      output.push_back(']');
+    }
+  };
   if (cr::creativeHeldItemUsesDirectShapeGesture(held.kind)) {
     output.append(" | ");
     output.append(cr::toString(editor.toolSettings.shapeBrushKind));
@@ -711,6 +802,7 @@ std::string creativeEditorHeldItemStatusLabel(
                cr::CreativeVolumeSelectionPhase::Complete) {
       output.append(" | Ready");
     }
+    appendQuickEdit();
     return output;
   }
   if (held.kind == cr::CreativeHeldItemKind::LinearArray) {
@@ -725,6 +817,7 @@ std::string creativeEditorHeldItemStatusLabel(
       output.append(" | ");
       output.append(cr::toString(editor.toolSettings.radialArraySweep));
     }
+    appendQuickEdit();
     return output;
   }
   if (held.kind == cr::CreativeHeldItemKind::Material ||
@@ -732,6 +825,7 @@ std::string creativeEditorHeldItemStatusLabel(
     output.append(" | ");
     output.append(cr::toString(held.objectKind));
   }
+  appendQuickEdit();
   return output;
 }
 
@@ -901,6 +995,7 @@ void syncCreativeEditorHeldItem(cr::CreativeAppState& appState,
   if (held.kind != cr::CreativeHeldItemKind::ObjectMove) {
     editor.interaction.moveTargetId = cr::kInvalidObjectId;
   }
+  syncCreativeEditorQuickEdit(editor);
   static_cast<void>(appState.facade.setActiveTool(behavior.facadeTool));
 }
 
@@ -987,8 +1082,11 @@ void processCreativeEditorWorldInteractionFrame(
   if (editor.transform.active) {
     finalizeCreativeMaterialStroke(request.appState, editor,
                                    "creative_material_stroke_transform");
-    const bool secondaryPressed = cr::creativeWorldActionPressed(
-        request.actions, cr::CreativeWorldActionId::Secondary);
+    const bool secondaryPressed =
+        cr::creativeWorldActionPressed(
+            request.actions, cr::CreativeWorldActionId::Secondary) ||
+        cr::creativeWorldActionPressed(
+            request.actions, cr::CreativeWorldActionId::Accept);
     static_cast<void>(processCreativeEditorSelectionTransformPreview(
         request.appState, editor.transform,
         editor.interaction.target.grid.valid,
@@ -1051,6 +1149,15 @@ void processCreativeEditorWorldInteractionFrame(
     return;
   }
   const HeldItemHandlerRow& handler = kHeldItemHandlers[handlerRow];
+  const bool rejectPressed = cr::creativeWorldActionPressed(
+      request.actions, cr::CreativeWorldActionId::Reject);
+  const bool acceptPressed = cr::creativeWorldActionPressed(
+      request.actions, cr::CreativeWorldActionId::Accept);
+  if (rejectPressed) {
+    handler.reject(context);
+  } else if (acceptPressed) {
+    handler.accept(context);
+  }
   const bool primaryPressed = cr::creativeWorldActionPressed(
       request.actions, cr::CreativeWorldActionId::Primary);
   for (std::size_t index = 0; index < actions.size(); ++index) {

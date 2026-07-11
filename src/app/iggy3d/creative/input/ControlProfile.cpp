@@ -527,10 +527,11 @@ bool adjustCreativeControlSetting(CreativeControlProfile& profile,
   return false;
 }
 
-std::string creativeControlKeyDisplayLabel(CreativeInputKey key) {
+std::string_view creativeControlKeyDisplayLabelView(
+    CreativeInputKey key) noexcept {
   switch (key) {
     case CreativeInputKey::GamepadInventory: return "Triangle";
-    case CreativeInputKey::GamepadConfirm: return "Cross";
+    case CreativeInputKey::GamepadConfirm: return "X";
     case CreativeInputKey::GamepadCancel: return "Circle";
     case CreativeInputKey::GamepadWest: return "Square";
     case CreativeInputKey::GamepadBack: return "Create";
@@ -548,9 +549,12 @@ std::string creativeControlKeyDisplayLabel(CreativeInputKey key) {
     case CreativeInputKey::MousePrimary: return "Mouse Left";
     case CreativeInputKey::MouseSecondary: return "Mouse Right";
     case CreativeInputKey::MouseMiddle: return "Mouse Middle";
-    default:
-      return std::string(toString(key));
+    default: return toString(key);
   }
+}
+
+std::string creativeControlKeyDisplayLabel(CreativeInputKey key) {
+  return std::string(creativeControlKeyDisplayLabelView(key));
 }
 
 std::string creativeControlBindingDisplayLabel(

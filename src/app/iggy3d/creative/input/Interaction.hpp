@@ -14,6 +14,8 @@ namespace iggy3d::creative {
 enum class CreativeWorldActionId : std::uint8_t {
   Primary,
   Secondary,
+  Accept,
+  Reject,
   Pick,
   HotbarPrevious,
   HotbarNext,

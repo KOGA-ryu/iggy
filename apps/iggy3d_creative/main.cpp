@@ -330,7 +330,9 @@ int main(int argc, char** argv) {
          extent.width,
          extent.height,
          kGizmoThickness,
-         !capturePath.empty()},
+         !capturePath.empty(),
+         frameInput.inputFrame.context,
+         frameInput.activeControlDevice},
         overlayFrame);
 
     if (submitCreativeEditorFrame({

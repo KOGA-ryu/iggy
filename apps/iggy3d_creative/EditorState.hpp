@@ -25,6 +25,9 @@ struct CreativeEditorState {
   iggy3d::Vec3 flyPos{0.0F, 6.0F, 12.0F};
   float yawDegrees = 0.0F;
   float pitchDegrees = -25.0F;
+  bool rightStickLookRearmRequired = false;
+  iggy3d::creative::CreativeControlDevice activeControlDevice =
+      iggy3d::creative::CreativeControlDevice::KeyboardMouse;
 
   bool loggedSelection = false;
   iggy3d::creative::CreativeControlProfile controlProfile =
@@ -37,6 +40,7 @@ struct CreativeEditorState {
   iggy3d::creative::CreativeToolSettings toolSettings =
       iggy3d::creative::makeDefaultCreativeToolSettings();
   CreativeEditorToolOptionsState toolOptions;
+  CreativeEditorQuickEditState quickEdit;
   CreativeEditorPatternState pattern;
   CreativeEditorSelectionTransformState transform;
 

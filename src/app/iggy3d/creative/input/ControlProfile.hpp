@@ -169,6 +169,8 @@ struct CreativeControlRebindReceipt {
 
 [[nodiscard]] std::string creativeControlKeyDisplayLabel(
     CreativeInputKey key);
+[[nodiscard]] std::string_view creativeControlKeyDisplayLabelView(
+    CreativeInputKey key) noexcept;
 [[nodiscard]] std::string creativeControlBindingDisplayLabel(
     const CreativeControlBindingRow& row,
     CreativeInputPlatform platform);

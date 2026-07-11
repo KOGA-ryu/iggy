@@ -48,7 +48,24 @@ struct CreativeEditorFrameInputResult {
   bool transformFineNudge = false;
   std::uint64_t monotonicTimeNanoseconds = 0;
   bool windowFocused = true;
+  iggy3d::creative::CreativeControlDevice activeControlDevice =
+      iggy3d::creative::CreativeControlDevice::KeyboardMouse;
 };
+
+struct CreativeEditorNavigationAdmission {
+  bool navigationActive = false;
+  bool rightStickLookActive = false;
+  bool clearRightStickLookRearm = false;
+};
+
+[[nodiscard]] CreativeEditorNavigationAdmission
+admitCreativeEditorNavigation(
+    iggy3d::creative::CreativeInputContext inputContext,
+    bool transformControlsOpen,
+    bool rightStickLookRearmRequired,
+    iggy3d::creative::CreativeStickSignal rightStickLook,
+    bool catalogToggleRouted,
+    bool toolWheelToggleRouted) noexcept;
 
 CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
     iggy3d::SdlWindow& window,

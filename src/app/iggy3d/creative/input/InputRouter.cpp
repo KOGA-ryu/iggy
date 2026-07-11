@@ -221,7 +221,7 @@ constexpr std::array kDefaultBindings{
                    CreativeInputKey::R,
                    CreativeInputContext::TransformPreview),
     catalogBinding(CreativeInputActionId::ToggleTransformControls,
-                   CreativeInputKey::GamepadDpadRight,
+                   CreativeInputKey::GamepadRightStick,
                    CreativeInputContext::TransformPreview),
     transformBinding(CreativeInputActionId::TransformConstraintX,
                      CreativeInputKey::X),
@@ -263,8 +263,14 @@ constexpr std::array kDefaultBindings{
                    CreativeInputKey::R,
                    CreativeInputContext::TransformControls),
     catalogBinding(CreativeInputActionId::ToggleTransformControls,
-                   CreativeInputKey::GamepadDpadRight,
+                   CreativeInputKey::GamepadRightStick,
                    CreativeInputContext::TransformControls),
+    catalogBinding(CreativeInputActionId::QuickEditDecrease,
+                   CreativeInputKey::GamepadDpadLeft,
+                   CreativeInputContext::TransformPreview),
+    catalogBinding(CreativeInputActionId::QuickEditIncrease,
+                   CreativeInputKey::GamepadDpadRight,
+                   CreativeInputContext::TransformPreview),
     catalogBinding(CreativeInputActionId::TransformControlPrevious,
                    CreativeInputKey::ArrowLeft,
                    CreativeInputContext::TransformControls),
@@ -401,10 +407,10 @@ constexpr std::array kDefaultBindings{
     toolWheelToggleBinding(CreativeInputKey::R,
                            CreativeInputContext::ToolWheel,
                            kCreativeInputModifierShift),
-    toolWheelToggleBinding(CreativeInputKey::GamepadDpadRight,
+    toolWheelToggleBinding(CreativeInputKey::GamepadRightStick,
                            CreativeInputContext::EditorViewport,
                            kAllModifiers),
-    toolWheelToggleBinding(CreativeInputKey::GamepadDpadRight,
+    toolWheelToggleBinding(CreativeInputKey::GamepadRightStick,
                            CreativeInputContext::ToolWheel,
                            kAllModifiers),
     catalogBinding(CreativeInputActionId::ToolWheelPrevious,
@@ -473,6 +479,18 @@ constexpr std::array kDefaultBindings{
     catalogBinding(CreativeInputActionId::ToolOptionsClose,
                    CreativeInputKey::GamepadCancel,
                    CreativeInputContext::ToolOptions),
+    catalogBinding(CreativeInputActionId::QuickEditPrevious,
+                   CreativeInputKey::GamepadDpadUp,
+                   CreativeInputContext::EditorViewport),
+    catalogBinding(CreativeInputActionId::QuickEditNext,
+                   CreativeInputKey::GamepadDpadDown,
+                   CreativeInputContext::EditorViewport),
+    catalogBinding(CreativeInputActionId::QuickEditDecrease,
+                   CreativeInputKey::GamepadDpadLeft,
+                   CreativeInputContext::EditorViewport),
+    catalogBinding(CreativeInputActionId::QuickEditIncrease,
+                   CreativeInputKey::GamepadDpadRight,
+                   CreativeInputContext::EditorViewport),
     continuousBinding(CreativeInputActionId::MoveForward,
                       CreativeInputKey::W,
                       CreativeInputContext::EditorViewport),
@@ -504,10 +522,10 @@ constexpr std::array kDefaultBindings{
                       CreativeInputKey::Space,
                       CreativeInputContext::TransformPreview),
     continuousBinding(CreativeInputActionId::FlyUp,
-                      CreativeInputKey::GamepadConfirm,
+                      CreativeInputKey::GamepadRightTrigger,
                       CreativeInputContext::EditorViewport),
     continuousBinding(CreativeInputActionId::FlyUp,
-                      CreativeInputKey::GamepadConfirm,
+                      CreativeInputKey::GamepadRightTrigger,
                       CreativeInputContext::TransformPreview),
     continuousBinding(CreativeInputActionId::FlyDown,
                       CreativeInputKey::LeftShift,
@@ -522,10 +540,10 @@ constexpr std::array kDefaultBindings{
                       CreativeInputKey::RightShift,
                       CreativeInputContext::TransformPreview),
     continuousBinding(CreativeInputActionId::FlyDown,
-                      CreativeInputKey::GamepadCancel,
+                      CreativeInputKey::GamepadLeftTrigger,
                       CreativeInputContext::EditorViewport),
     continuousBinding(CreativeInputActionId::FlyDown,
-                      CreativeInputKey::GamepadCancel,
+                      CreativeInputKey::GamepadLeftTrigger,
                       CreativeInputContext::TransformPreview),
     continuousBinding(CreativeInputActionId::Sprint,
                       CreativeInputKey::LeftControl,
@@ -548,20 +566,20 @@ constexpr std::array kDefaultBindings{
     continuousBinding(CreativeInputActionId::PrimaryAction,
                       CreativeInputKey::MousePrimary,
                       CreativeInputContext::EditorViewport),
-    continuousBinding(CreativeInputActionId::PrimaryAction,
-                      CreativeInputKey::GamepadRightTrigger,
-                      CreativeInputContext::EditorViewport),
     continuousBinding(CreativeInputActionId::SecondaryAction,
                       CreativeInputKey::MouseSecondary,
                       CreativeInputContext::EditorViewport),
-    continuousBinding(CreativeInputActionId::SecondaryAction,
-                      CreativeInputKey::GamepadLeftTrigger,
+    continuousBinding(CreativeInputActionId::AcceptAction,
+                      CreativeInputKey::GamepadConfirm,
+                      CreativeInputContext::EditorViewport),
+    continuousBinding(CreativeInputActionId::RejectAction,
+                      CreativeInputKey::GamepadCancel,
                       CreativeInputContext::EditorViewport),
     continuousBinding(CreativeInputActionId::PickAction,
                       CreativeInputKey::MouseMiddle,
                       CreativeInputContext::EditorViewport),
     continuousBinding(CreativeInputActionId::PickAction,
-                      CreativeInputKey::GamepadDpadLeft,
+                      CreativeInputKey::GamepadWest,
                       CreativeInputContext::EditorViewport),
     continuousBinding(CreativeInputActionId::HotbarPrevious,
                       CreativeInputKey::GamepadLeftShoulder,
@@ -764,6 +782,13 @@ std::string_view toString(CreativeInputActionId action) noexcept {
     case CreativeInputActionId::ToolOptionsConfirm:
       return "ToolOptionsConfirm";
     case CreativeInputActionId::ToolOptionsClose: return "ToolOptionsClose";
+    case CreativeInputActionId::QuickEditPrevious:
+      return "QuickEditPrevious";
+    case CreativeInputActionId::QuickEditNext: return "QuickEditNext";
+    case CreativeInputActionId::QuickEditDecrease:
+      return "QuickEditDecrease";
+    case CreativeInputActionId::QuickEditIncrease:
+      return "QuickEditIncrease";
     case CreativeInputActionId::ToggleTransformControls:
       return "ToggleTransformControls";
     case CreativeInputActionId::TransformControlPrevious:
@@ -805,6 +830,8 @@ std::string_view toString(CreativeInputActionId action) noexcept {
     case CreativeInputActionId::Sprint: return "Sprint";
     case CreativeInputActionId::PrimaryAction: return "PrimaryAction";
     case CreativeInputActionId::SecondaryAction: return "SecondaryAction";
+    case CreativeInputActionId::AcceptAction: return "AcceptAction";
+    case CreativeInputActionId::RejectAction: return "RejectAction";
     case CreativeInputActionId::PickAction: return "PickAction";
     case CreativeInputActionId::HotbarPrevious: return "HotbarPrevious";
     case CreativeInputActionId::HotbarNext: return "HotbarNext";

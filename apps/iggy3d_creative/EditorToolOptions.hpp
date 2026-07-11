@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "app/iggy3d/creative/input/InputRouter.hpp"
@@ -28,6 +29,13 @@ struct CreativeEditorToolOptionsState {
   std::size_t selectedIndex = 0;
 };
 
+struct CreativeEditorQuickEditState {
+  iggy3d::creative::CreativeHeldItemKind heldItem =
+      iggy3d::creative::CreativeHeldItemKind::Count;
+  iggy3d::creative::CreativeToolOptionList options;
+  std::size_t selectedIndex = 0;
+};
+
 struct CreativeEditorToolOptionsFrameRequest {
   iggy3d::SdlWindow& window;
   CreativeEditorState& editor;
@@ -48,6 +56,13 @@ struct CreativeEditorToolOptionsFrameResult {
 [[nodiscard]] CreativeEditorToolOptionsFrameResult
 processCreativeEditorToolOptionsFrame(
     const CreativeEditorToolOptionsFrameRequest& request);
+
+void syncCreativeEditorQuickEdit(CreativeEditorState& editor);
+[[nodiscard]] bool processCreativeEditorQuickEditAction(
+    CreativeEditorState& editor,
+    iggy3d::creative::CreativeInputActionId action);
+[[nodiscard]] std::string creativeEditorQuickEditStatusLabel(
+    const CreativeEditorState& editor);
 
 void appendCreativeEditorToolOptionsOverlay(
     const CreativeEditorState& editor,

@@ -253,6 +253,27 @@ iggy3d::creative::CreativeBounds pathPreviewBounds(
   return std::isfinite(plan.transform.rotationEulerRadians.y);
 }
 
+[[nodiscard]] bool applyPlacementYaw(
+    CreativeBrushPlacementPlan& plan,
+    iggy3d::creative::CreativePlacementYaw placementYaw) noexcept {
+  if (static_cast<std::size_t>(placementYaw) >=
+      static_cast<std::size_t>(
+          iggy3d::creative::CreativePlacementYaw::Count)) {
+    return false;
+  }
+  if (!creativeBrushSupportsPlacementYaw(plan.brush)) {
+    return true;
+  }
+  if (!plan.hasTransformOverride) {
+    return false;
+  }
+  const double offset =
+      iggy3d::creative::creativePlacementYawRadians(placementYaw);
+  plan.transform.rotationEulerRadians.y += offset;
+  plan.orientationResolved = plan.orientationResolved || offset != 0.0;
+  return std::isfinite(plan.transform.rotationEulerRadians.y);
+}
+
 }  // namespace
 
 std::vector<iggy3d::creative::CreativePathPoint> initialPathPointsForAnchor(
@@ -349,6 +370,30 @@ bool descriptorSupportsBrushPlacement(
          descriptorSupportsLinePlacement(descriptor) ||
          descriptorSupportsPointPlacement(descriptor) ||
          descriptorSupportsPathPlacement(descriptor);
+}
+
+bool creativeBrushSupportsPlacementYaw(
+    iggy3d::creative::CreativeObjectKind brush) noexcept {
+  const iggy3d::creative::CreativeObjectDescriptor& descriptor =
+      iggy3d::creative::describeObject(brush);
+  if (!descriptorSupportsBrushPlacement(descriptor) ||
+      descriptor.placementPolicy.storagePolicy !=
+          iggy3d::creative::CreativePlacementStoragePolicy::AuthoredObject ||
+      !descriptor.hasTransform) {
+    return false;
+  }
+  switch (descriptor.shapeKind) {
+    case iggy3d::creative::CreativeObjectShapeKind::BoxVolume:
+    case iggy3d::creative::CreativeObjectShapeKind::Surface:
+    case iggy3d::creative::CreativeObjectShapeKind::Line:
+    case iggy3d::creative::CreativeObjectShapeKind::MeshProxy:
+      return true;
+    case iggy3d::creative::CreativeObjectShapeKind::Unknown:
+    case iggy3d::creative::CreativeObjectShapeKind::Point:
+    case iggy3d::creative::CreativeObjectShapeKind::Path:
+      return false;
+  }
+  return false;
 }
 
 bool descriptorAvailableInStandaloneBrushPalette(
@@ -470,9 +515,17 @@ std::string_view toString(
 
 CreativeBrushPlacementAdmission admitBrushPlacement(
     iggy3d::creative::CreativeObjectKind brush,
-    const iggy3d::creative::CreativeGridTarget& target) noexcept {
+    const iggy3d::creative::CreativeGridTarget& target,
+    iggy3d::creative::CreativePlacementYaw placementYaw) noexcept {
   CreativeBrushPlacementAdmission admission;
   admission.plan.brush = brush;
+  if (static_cast<std::size_t>(placementYaw) >=
+      static_cast<std::size_t>(
+          iggy3d::creative::CreativePlacementYaw::Count)) {
+    admission.status =
+        CreativeBrushPlacementAdmissionStatus::InvalidGeometry;
+    return admission;
+  }
   if (!target.valid) {
     return admission;
   }
@@ -582,6 +635,11 @@ CreativeBrushPlacementAdmission admitBrushPlacement(
       admission.status =
           CreativeBrushPlacementAdmissionStatus::UnsupportedPolicy;
       return admission;
+  }
+  if (!applyPlacementYaw(admission.plan, placementYaw)) {
+    admission.status =
+        CreativeBrushPlacementAdmissionStatus::InvalidGeometry;
+    return admission;
   }
 
   admission.status = CreativeBrushPlacementAdmissionStatus::Ready;

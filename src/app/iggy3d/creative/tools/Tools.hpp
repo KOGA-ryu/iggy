@@ -71,6 +71,14 @@ enum class CreativeRotationStep : std::uint8_t {
   Count,
 };
 
+enum class CreativePlacementYaw : std::uint8_t {
+  Degrees0,
+  Degrees90,
+  Degrees180,
+  Degrees270,
+  Count,
+};
+
 enum class CreativeSnapIncrement : std::uint8_t {
   QuarterMeter,
   HalfMeter,
@@ -103,6 +111,7 @@ enum class CreativeArrayMode : std::uint8_t {
 enum class CreativeToolOptionId : std::uint8_t {
   MoveConstraint,
   RotationStep,
+  PlacementYaw,
   SnapIncrement,
   ShapeBrushKind,
   ShapeBrushAxis,
@@ -150,6 +159,7 @@ struct CreativeToolOptionList {
 struct CreativeToolSettings {
   CreativeMoveConstraint moveConstraint = CreativeMoveConstraint::Free;
   CreativeRotationStep rotationStep = CreativeRotationStep::Degrees15;
+  CreativePlacementYaw placementYaw = CreativePlacementYaw::Degrees0;
   CreativeSnapIncrement snapIncrement = CreativeSnapIncrement::OneMeter;
   CreativeShapeBrushKind shapeBrushKind = CreativeShapeBrushKind::Box;
   CreativeShapeBrushAxis shapeBrushAxis = CreativeShapeBrushAxis::Y;
@@ -291,6 +301,8 @@ creativeToolOptionDescriptors() noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeRotationStep step) noexcept;
 [[nodiscard]] std::string_view toString(
+    CreativePlacementYaw yaw) noexcept;
+[[nodiscard]] std::string_view toString(
     CreativeSnapIncrement increment) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeCloneOffsetAxis axis) noexcept;
@@ -313,6 +325,8 @@ creativeToolOptionDescriptors() noexcept;
 
 [[nodiscard]] double creativeRotationStepDegrees(
     CreativeRotationStep step) noexcept;
+[[nodiscard]] double creativePlacementYawRadians(
+    CreativePlacementYaw yaw) noexcept;
 [[nodiscard]] double creativeSnapIncrementMeters(
     CreativeSnapIncrement increment) noexcept;
 [[nodiscard]] bool tryCreativeCloneOffset(

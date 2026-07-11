@@ -542,9 +542,28 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
                                   cr::CreativeInputKey::R,
                                   cr::CreativeInputContext::ToolWheel) &&
                        hasBinding(cr::CreativeInputActionId::ToggleToolWheel,
+                                  cr::CreativeInputKey::GamepadRightStick,
+                                  cr::CreativeInputContext::EditorViewport) &&
+                       hasBinding(cr::CreativeInputActionId::ToggleToolWheel,
+                                  cr::CreativeInputKey::GamepadRightStick,
+                                  cr::CreativeInputContext::ToolWheel) &&
+                       !hasBinding(cr::CreativeInputActionId::ToggleToolWheel,
+                                   cr::CreativeInputKey::GamepadDpadRight,
+                                   cr::CreativeInputContext::EditorViewport),
+                   "tool wheel has keyboard and controller entry actions") &&
+            expect(hasBinding(cr::CreativeInputActionId::QuickEditPrevious,
+                              cr::CreativeInputKey::GamepadDpadUp,
+                              cr::CreativeInputContext::EditorViewport) &&
+                       hasBinding(cr::CreativeInputActionId::QuickEditNext,
+                                  cr::CreativeInputKey::GamepadDpadDown,
+                                  cr::CreativeInputContext::EditorViewport) &&
+                       hasBinding(cr::CreativeInputActionId::QuickEditDecrease,
+                                  cr::CreativeInputKey::GamepadDpadLeft,
+                                  cr::CreativeInputContext::EditorViewport) &&
+                       hasBinding(cr::CreativeInputActionId::QuickEditIncrease,
                                   cr::CreativeInputKey::GamepadDpadRight,
                                   cr::CreativeInputContext::EditorViewport),
-                   "tool wheel has keyboard and controller entry actions") &&
+                   "viewport dpad owns bounded quick editing") &&
             expect(hasBinding(cr::CreativeInputActionId::ToolWheelConfirm,
                               cr::CreativeInputKey::GamepadConfirm,
                               cr::CreativeInputContext::ToolWheel) &&
@@ -596,7 +615,7 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
                            cr::CreativeInputContext::TransformPreview) &&
                        hasBinding(
                            cr::CreativeInputActionId::ToggleTransformControls,
-                           cr::CreativeInputKey::GamepadDpadRight,
+                           cr::CreativeInputKey::GamepadRightStick,
                            cr::CreativeInputContext::TransformPreview) &&
                        hasBinding(
                            cr::CreativeInputActionId::TransformControlPrevious,
@@ -621,6 +640,14 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
                        hasBinding(
                            cr::CreativeInputActionId::TransformNudgePositive,
                            cr::CreativeInputKey::GamepadDpadUp,
+                           cr::CreativeInputContext::TransformPreview) &&
+                       hasBinding(
+                           cr::CreativeInputActionId::QuickEditDecrease,
+                           cr::CreativeInputKey::GamepadDpadLeft,
+                           cr::CreativeInputContext::TransformPreview) &&
+                       hasBinding(
+                           cr::CreativeInputActionId::QuickEditIncrease,
+                           cr::CreativeInputKey::GamepadDpadRight,
                            cr::CreativeInputContext::TransformPreview) &&
                        hasBinding(
                            cr::CreativeInputActionId::ConfirmActiveTool,
@@ -716,10 +743,10 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
                              bindings);
   ok = expect(!cr::creativeInputActionDown(
                   wheelSecondaryFrame,
-                  cr::CreativeInputActionId::SecondaryAction, bindings,
+                  cr::CreativeInputActionId::FlyDown, bindings,
                   &wheelSecondaryRouted) &&
                   wheelSecondaryRouted.actionCount == 0U,
-              "tool-wheel L2 cannot leak into world secondary action") &&
+              "tool-wheel L2 cannot leak into flight") &&
        ok;
 
   cr::CreativeInputRouterState optionRouter;

@@ -337,9 +337,11 @@ bool optionDescriptorsAreContextualAndBounded() {
 
   return expect(descriptors.size() == cr::kCreativeToolOptionDescriptorCount,
                 "global descriptor table has one row per option id") &&
-         expect(material.count == 1U &&
-                    material.ids[0] == cr::CreativeToolOptionId::SnapIncrement,
-                "material exposes grid size only") &&
+         expect(material.count == 2U &&
+                    material.ids[0] ==
+                        cr::CreativeToolOptionId::PlacementYaw &&
+                    material.ids[1] == cr::CreativeToolOptionId::SnapIncrement,
+                "material exposes orientation and grid size") &&
          expect(move.count == 3U &&
                     move.ids[0] ==
                         cr::CreativeToolOptionId::MoveConstraint &&
@@ -406,6 +408,11 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                        cr::CreativeToolOptionId::MoveConstraint) == "FREE" &&
                        cr::creativeRotationStepDegrees(settings.rotationStep) ==
                            15.0 &&
+                       cr::creativePlacementYawRadians(settings.placementYaw) ==
+                           0.0 &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::PlacementYaw) == "0 DEG" &&
                        cr::creativeSnapIncrementMeters(settings.snapIncrement) ==
                            1.0 &&
                        cr::creativeToolOptionValueLabel(
@@ -432,6 +439,11 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
        expect(adjust(cr::CreativeToolOptionId::RotationStep, -1).changed &&
                   settings.rotationStep == cr::CreativeRotationStep::Degrees90,
               "rotation cycles backward") &&
+       expect(adjust(cr::CreativeToolOptionId::PlacementYaw, 1).changed &&
+                  settings.placementYaw == cr::CreativePlacementYaw::Degrees90 &&
+                  cr::creativePlacementYawRadians(settings.placementYaw) > 1.57 &&
+                  cr::creativePlacementYawRadians(settings.placementYaw) < 1.58,
+              "placement orientation advances by a quarter turn") &&
        expect(adjust(cr::CreativeToolOptionId::SnapIncrement, 1).changed &&
                   settings.snapIncrement == cr::CreativeSnapIncrement::TwoMeters,
               "grid increment cycles") &&

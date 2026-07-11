@@ -4,8 +4,10 @@
 #include <string>
 #include <string_view>
 
+#include "EditorPlacement.hpp"
 #include "EditorState.hpp"
 #include "EditorVolume.hpp"
+#include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/input/UiInput.hpp"
 #include "app/platform/SdlWindow.hpp"
 #include "render/debug/DebugHudText.hpp"
@@ -105,6 +107,50 @@ void adjustSelection(CreativeEditorState& editor,
   }
 }
 
+[[nodiscard]] cr::CreativeToolOptionList editorToolOptionsForHeldItem(
+    const CreativeEditorState& editor,
+    cr::CreativeHeldItemKind heldItem) {
+  cr::CreativeToolOptionList options =
+      cr::creativeToolOptionsForHeldItem(heldItem, editor.toolSettings);
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  if (heldItem != cr::CreativeHeldItemKind::Material ||
+      held.kind != cr::CreativeHeldItemKind::Material) {
+    return options;
+  }
+  const bool supportsYaw = creativeBrushSupportsPlacementYaw(held.objectKind);
+  const bool usesFixedVoxelGrid =
+      cr::describeObject(held.objectKind).placementPolicy.storagePolicy ==
+      cr::CreativePlacementStoragePolicy::VoxelCell;
+  std::size_t writeIndex = 0U;
+  for (std::size_t readIndex = 0U; readIndex < options.count; ++readIndex) {
+    const cr::CreativeToolOptionId option = options.ids[readIndex];
+    if ((!supportsYaw && option == cr::CreativeToolOptionId::PlacementYaw) ||
+        (usesFixedVoxelGrid &&
+         option == cr::CreativeToolOptionId::SnapIncrement)) {
+      continue;
+    }
+    options.ids[writeIndex++] = option;
+  }
+  options.count = writeIndex;
+  return options;
+}
+
+void rebuildQuickEditOptions(CreativeEditorState& editor,
+                             bool resetSelection) {
+  CreativeEditorQuickEditState& state = editor.quickEdit;
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const bool heldItemChanged = state.heldItem != held.kind;
+  state.heldItem = held.kind;
+  state.options = editorToolOptionsForHeldItem(editor, held.kind);
+  if (resetSelection || heldItemChanged || state.options.count == 0U) {
+    state.selectedIndex = 0U;
+  } else if (state.selectedIndex >= state.options.count) {
+    state.selectedIndex = state.options.count - 1U;
+  }
+}
+
 [[nodiscard]] bool commitOptions(CreativeEditorState& editor) {
   CreativeEditorToolOptionsState& state = editor.toolOptions;
   if (!cr::isValidCreativeToolSettings(state.draft)) {
@@ -113,6 +159,7 @@ void adjustSelection(CreativeEditorState& editor,
   editor.toolSettings = state.draft;
   editor.placeCellSize =
       cr::creativeSnapIncrementMeters(editor.toolSettings.snapIncrement);
+  syncCreativeEditorQuickEdit(editor);
   state.open = false;
   return true;
 }
@@ -180,8 +227,8 @@ CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
 
   if (request.openRequested && !state.open) {
     const cr::CreativeToolOptionList options =
-        cr::creativeToolOptionsForHeldItem(request.requestedHeldItem,
-                                           request.editor.toolSettings);
+        editorToolOptionsForHeldItem(request.editor,
+                                     request.requestedHeldItem);
     if (options.count > 0U && !options.capacityExceeded) {
       state.open = true;
       state.heldItem = request.requestedHeldItem;
@@ -245,6 +292,75 @@ CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
     request.editor.volume.cursorValid = false;
   }
   return result;
+}
+
+void syncCreativeEditorQuickEdit(CreativeEditorState& editor) {
+  rebuildQuickEditOptions(editor, false);
+}
+
+bool processCreativeEditorQuickEditAction(
+    CreativeEditorState& editor,
+    cr::CreativeInputActionId action) {
+  rebuildQuickEditOptions(editor, false);
+  CreativeEditorQuickEditState& state = editor.quickEdit;
+  if (state.options.count == 0U || state.options.capacityExceeded) {
+    return false;
+  }
+
+  switch (action) {
+    case cr::CreativeInputActionId::QuickEditPrevious:
+    case cr::CreativeInputActionId::QuickEditNext: {
+      const std::size_t before = state.selectedIndex;
+      const std::int32_t direction =
+          action == cr::CreativeInputActionId::QuickEditPrevious ? -1 : 1;
+      const cr::CreativeWrappedIndexResult next = cr::stepCreativeWrappedIndex(
+          state.selectedIndex, state.options.count, direction);
+      if (next.valid) {
+        state.selectedIndex = next.index;
+      }
+      return state.selectedIndex != before;
+    }
+    case cr::CreativeInputActionId::QuickEditDecrease:
+    case cr::CreativeInputActionId::QuickEditIncrease: {
+      const cr::CreativeToolOptionId option =
+          state.options.ids[state.selectedIndex];
+      const std::int32_t direction =
+          action == cr::CreativeInputActionId::QuickEditDecrease ? -1 : 1;
+      const cr::CreativeToolOptionAdjustReceipt receipt =
+          cr::adjustCreativeToolOption(editor.toolSettings, option, direction,
+                                       editor.brushPalette);
+      if (!receipt.changed) {
+        return false;
+      }
+      editor.placeCellSize =
+          cr::creativeSnapIncrementMeters(editor.toolSettings.snapIncrement);
+      rebuildQuickEditOptions(editor, false);
+      return true;
+    }
+    default:
+      return false;
+  }
+}
+
+std::string creativeEditorQuickEditStatusLabel(
+    const CreativeEditorState& editor) {
+  const CreativeEditorQuickEditState& state = editor.quickEdit;
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  if (state.heldItem != held.kind || state.selectedIndex >= state.options.count) {
+    return {};
+  }
+  const cr::CreativeToolOptionId option =
+      state.options.ids[state.selectedIndex];
+  const cr::CreativeToolOptionDescriptor* descriptor =
+      cr::creativeToolOptionDescriptor(option);
+  if (descriptor == nullptr) {
+    return {};
+  }
+  std::string label(descriptor->label);
+  label.append(" ");
+  label.append(cr::creativeToolOptionValueLabel(editor.toolSettings, option));
+  return label;
 }
 
 void appendCreativeEditorToolOptionsOverlay(

@@ -531,6 +531,103 @@ bool verticalSurfacePlacementFollowsTheAimedFace() {
          ok;
 }
 
+bool quickEditOrientationFeedsPreviewAndCreatePlan() {
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Door);
+  setPlaceTarget(editor, 2, 0, -1);
+  syncCreativeEditorQuickEdit(editor);
+  const CreativeBrushPlacementAdmission initial = admitBrushPlacement(
+      cr::CreativeObjectKind::Door, editor.interaction.target.grid,
+      editor.toolSettings.placementYaw);
+  const bool orientationChanged = processCreativeEditorQuickEditAction(
+      editor, cr::CreativeInputActionId::QuickEditIncrease);
+  const CreativeBrushPlacementAdmission rotated = admitBrushPlacement(
+      cr::CreativeObjectKind::Door, editor.interaction.target.grid,
+      editor.toolSettings.placementYaw);
+  const cr::CreativeDocumentCreateRequest request =
+      buildBrushCreateRequest(rotated.plan, 7U);
+  const CreativeBrushPlacementAdmission invalid = admitBrushPlacement(
+      cr::CreativeObjectKind::Door, editor.interaction.target.grid,
+      cr::CreativePlacementYaw::Count);
+  CreativeEditorState voxelEditor =
+      materialEditor(cr::CreativeObjectKind::Wall);
+  setPlaceTarget(voxelEditor, 0);
+  voxelEditor.toolSettings.placementYaw =
+      cr::CreativePlacementYaw::Degrees90;
+  syncCreativeEditorQuickEdit(voxelEditor);
+  const CreativeBrushPlacementAdmission voxel = admitBrushPlacement(
+      cr::CreativeObjectKind::Wall, voxelEditor.interaction.target.grid,
+      voxelEditor.toolSettings.placementYaw);
+  bool sawPath = false;
+  bool pathYawIgnored = true;
+  for (const cr::CreativeObjectDescriptor& descriptor :
+       cr::allObjectDescriptors()) {
+    if (descriptor.shapeKind != cr::CreativeObjectShapeKind::Path ||
+        !descriptorSupportsBrushPlacement(descriptor)) {
+      continue;
+    }
+    const CreativeBrushPlacementAdmission pathDefault = admitBrushPlacement(
+        descriptor.kind, editor.interaction.target.grid,
+        cr::CreativePlacementYaw::Degrees0);
+    const CreativeBrushPlacementAdmission pathRotated = admitBrushPlacement(
+        descriptor.kind, editor.interaction.target.grid,
+        cr::CreativePlacementYaw::Degrees90);
+    if (pathDefault.allowed) {
+      sawPath = true;
+      pathYawIgnored = pathRotated.allowed &&
+                       sameTransform(pathDefault.plan.transform,
+                                     pathRotated.plan.transform);
+      break;
+    }
+  }
+  constexpr double kHalfPi = 1.57079632679489662;
+
+  bool ok = expect(initial.allowed && rotated.allowed && orientationChanged &&
+                       editor.toolSettings.placementYaw ==
+                           cr::CreativePlacementYaw::Degrees90 &&
+                       near(static_cast<float>(
+                                rotated.plan.transform.rotationEulerRadians.y -
+                                initial.plan.transform.rotationEulerRadians.y),
+                            static_cast<float>(kHalfPi)),
+                   "dpad orientation adds one quarter turn to placement") &&
+            expect(sameTransform(request.transform, rotated.plan.transform) &&
+                       sameBounds(request.bounds,
+                                  rotated.plan.authoredBounds),
+                   "rotated preview plan is the create request source") &&
+            expect(creativeEditorQuickEditStatusLabel(editor) ==
+                       "ORIENTATION 90 DEG" &&
+                       creativeEditorHeldItemStatusLabel(editor) ==
+                           "Material | Door | [ORIENTATION 90 DEG]",
+                   "held HUD exposes the selected dpad channel and value") &&
+            expect(!invalid.allowed &&
+                       invalid.status ==
+                           CreativeBrushPlacementAdmissionStatus::
+                               InvalidGeometry,
+                   "invalid orientation fails closed") &&
+            expect(voxel.allowed &&
+                       !voxel.plan.orientationResolved &&
+                       sameVec3(voxel.plan.transform.rotationEulerRadians,
+                                {}) &&
+                       creativeEditorQuickEditStatusLabel(voxelEditor).empty(),
+                   "voxel brushes omit inapplicable quick-edit channels") &&
+            expect(sawPath && pathYawIgnored,
+                   "path brushes ignore global yaw without becoming invalid");
+
+  ok = expect(processCreativeEditorQuickEditAction(
+                  editor, cr::CreativeInputActionId::QuickEditNext) &&
+                  creativeEditorQuickEditStatusLabel(editor) ==
+                      "GRID SIZE 1 M",
+              "dpad down selects the next bounded edit channel") &&
+       ok;
+  ok = expect(processCreativeEditorQuickEditAction(
+                  editor, cr::CreativeInputActionId::QuickEditDecrease) &&
+                  editor.toolSettings.snapIncrement ==
+                      cr::CreativeSnapIncrement::HalfMeter &&
+                  editor.placeCellSize == 0.5,
+              "dpad left adjusts the selected channel immediately") &&
+       ok;
+  return ok;
+}
+
 bool previewFrameUsesWorldTargetAndViewHeldTransforms() {
   CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
   setPlaceTarget(editor, 2, 1, -3);
@@ -1110,6 +1207,40 @@ bool removalStrokeDeletesVoxelAndGroupsHistory() {
          ok;
 }
 
+bool gamepadAcceptPlacesAndRejectRemoves() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 109U);
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
+  setPlaceTarget(editor, 3, 0, 2);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, true, false), 0U);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, false, false, true), 1U);
+  bool ok = expect(appState.facade.document()
+                           .voxelField()
+                           .occupiedCellCount() == 1U &&
+                       cr::creativeUndoDepth(appState.history) == 1U,
+                   "gamepad X accept places and commits one gesture");
+
+  editor.interaction.target.voxelHit = true;
+  editor.interaction.target.voxelCell = {3, 0, 2};
+  editor.interaction.target.objectKind = cr::CreativeObjectKind::Wall;
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Reject, true, true, false), 2U);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Reject, false, false, true), 3U);
+  return expect(appState.facade.document()
+                        .voxelField()
+                        .occupiedCellCount() == 0U &&
+                    cr::creativeUndoDepth(appState.history) == 2U,
+                "gamepad Circle reject removes and commits one gesture") &&
+         ok;
+}
+
 bool placementStrokeDeduplicatesAndRecordsOneUndo() {
   cr::CreativeAppState appState;
   installHistoryDocument(appState, 101U);
@@ -1420,6 +1551,41 @@ bool heldShapeToolOwnsItsTwoCornerGesture() {
                 "held tool HUD exposes operation shape axis material and phase");
 }
 
+bool radialSelectionRearmsOnlyRightStickLook() {
+  const cr::CreativeStickSignal heldDirection =
+      cr::shapeCreativeControllerStick(0.8F, 0.0F);
+  const cr::CreativeStickSignal neutralDrift =
+      cr::shapeCreativeControllerStick(0.05F, -0.04F);
+  const CreativeEditorNavigationAdmission selecting =
+      admitCreativeEditorNavigation(
+          cr::CreativeInputContext::ToolWheel, false, false, heldDirection,
+          false, false);
+  const CreativeEditorNavigationAdmission awaitingNeutral =
+      admitCreativeEditorNavigation(cr::CreativeInputContext::EditorViewport,
+                                    false, true, heldDirection, false, false);
+  const CreativeEditorNavigationAdmission rearmed =
+      admitCreativeEditorNavigation(cr::CreativeInputContext::EditorViewport,
+                                    false, true, neutralDrift, false, false);
+  const CreativeEditorNavigationAdmission openingWheel =
+      admitCreativeEditorNavigation(cr::CreativeInputContext::EditorViewport,
+                                    false, false, heldDirection, false, true);
+
+  return expect(!selecting.navigationActive &&
+                    !selecting.rightStickLookActive,
+                "tool wheel selection owns both sticks while open") &&
+         expect(awaitingNeutral.navigationActive &&
+                    !awaitingNeutral.rightStickLookActive &&
+                    !awaitingNeutral.clearRightStickLookRearm,
+                "radial close keeps movement live while camera awaits neutral") &&
+         expect(!neutralDrift.active && rearmed.navigationActive &&
+                    rearmed.rightStickLookActive &&
+                    rearmed.clearRightStickLookRearm,
+                "sub-deadzone drift clears rearm and restores camera look") &&
+         expect(!openingWheel.navigationActive &&
+                    !openingWheel.rightStickLookActive,
+                "tool wheel toggle cannot leak motion into its opening frame");
+}
+
 }  // namespace
 
 int main() {
@@ -1427,6 +1593,7 @@ int main() {
   ok = placementPlanMatchesEveryCreateRequest() && ok;
   ok = placementAdmissionOwnsPreviewAndExecutionTruth() && ok;
   ok = verticalSurfacePlacementFollowsTheAimedFace() && ok;
+  ok = quickEditOrientationFeedsPreviewAndCreatePlan() && ok;
   ok = previewFrameUsesWorldTargetAndViewHeldTransforms() && ok;
   ok = previewHidesForEveryBlockingSurface() && ok;
   ok = previewsDoNotAffectRoomGeometrySignature() && ok;
@@ -1438,11 +1605,13 @@ int main() {
   ok = activeVolumeSelectionRebindsToLoadedDocumentGrid() && ok;
   ok = worldTargetPicksVoxelBeforeGround() && ok;
   ok = removalStrokeDeletesVoxelAndGroupsHistory() && ok;
+  ok = gamepadAcceptPlacesAndRejectRemoves() && ok;
   ok = placementStrokeDeduplicatesAndRecordsOneUndo() && ok;
   ok = identicalPlacementAcrossGesturesIsRejected() && ok;
   ok = untrackedAndEmptyStrokesFailClosed() && ok;
   ok = removalStrokeDeduplicatesObjectsAndGroupsHistory() && ok;
   ok = strokeCapacityStopsAndInterruptionFinalizes() && ok;
   ok = heldShapeToolOwnsItsTwoCornerGesture() && ok;
+  ok = radialSelectionRearmsOnlyRightStickLook() && ok;
   return ok ? 0 : 1;
 }

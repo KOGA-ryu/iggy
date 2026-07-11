@@ -39,12 +39,12 @@ Statuses used below:
 |---|---|---|---|
 | Move | `WASD` | Left stick | Adopt |
 | Look/target | Mouse | Right stick | Adopt |
-| Ascend | `Space` | Jump/fly-up button | Adopt |
-| Descend | `Shift` | Sneak/fly-down button | Adopt |
+| Ascend | `Space` | `R2` | Adapt |
+| Descend | `Shift` | `L2` | Adapt |
 | Fast movement | `Ctrl` | Sprint input | Adopt |
-| Primary/destroy | Left mouse | Right trigger | Adopt |
-| Secondary/use/place | Right mouse | Left trigger | Adopt |
-| Pick/sample | Middle mouse | Pick-block action | Adopt |
+| Primary/destroy | Left mouse | Circle in the world | Adapt |
+| Secondary/use/place | Right mouse | X in the world | Adapt |
+| Pick/sample | Middle mouse | Square | Adapt |
 | Select hotbar slot | Wheel or `1`-`9` | Bumpers/slot selector | Adopt |
 | Open catalog | `E` | Inventory button | Adopt |
 | Pause/menu | `Escape` | Start/menu | Adopt |
@@ -54,9 +54,13 @@ Statuses used below:
 | Save toolbar | `C` + `1`-`9` | Saved-hotbar UI | Reference |
 | Load toolbar | `X` + `1`-`9` | Saved-hotbar UI | Reference |
 
-The Creative application may stay permanently in flight initially, but the
-movement inputs keep their Minecraft meanings: `Space` up, `Shift` down, and
-`Ctrl` fast. Double-tap flight toggling can wait for a grounded movement mode.
+The Creative application may stay permanently in flight initially. Keyboard
+keeps `Space` up, `Shift` down, and `Ctrl` fast. PS5 deliberately uses `R2` to
+raise and `L2` to lower so X and Circle can preserve one decision language
+across the editor: X accepts/adds/advances, while Circle rejects/removes/backs
+out. Tool and aim state persist between taps, so using a face button does not
+discard the target or selected operation. This is an explicit controller
+departure from Minecraft's trigger placement grammar.
 
 Sources: [Minecraft controls](https://www.minecraft.net/article/minecraft-controls),
 [Java hotkeys](https://help.minecraft.net/hc/en-us/articles/360059148111).
@@ -184,15 +188,15 @@ Physical input is translated into these stable actions before a tool sees it:
 
 Initial tool grammar:
 
-| Held tool | Primary | Secondary | Pick |
-|---|---|---|---|
-| Block/material | Remove targeted object or voxel | Place against targeted face | Sample object/material |
-| Object select | Select/toggle targeted object | No action | Replace slot with sampled material |
-| Transform | Begin/preview/commit fast ground-plane drag | Begin a non-destructive transform preview for the ordered selection | Replace slot with sampled material |
-| Selection wand | Set corner 1 | Set corner 2 | Expand selection to targeted cell |
-| Fill/Hollow shape tool | Start or replace corner 1 | Set corner 2 and commit one history transaction | Sample operation material |
-| Replace/Erase/Clone | No action | Apply the existing region as one history transaction | Sample operation material |
-| Linear array | Select/toggle targeted object | Commit the previewed copies as one history transaction | Replace slot with sampled material |
+| Held tool | Mouse primary | Mouse secondary | PS5 X | PS5 Circle | Pick / Square |
+|---|---|---|---|---|---|
+| Block/material | Remove target | Place at target | Place at target | Remove target | Sample material |
+| Object select | Select/toggle target | No action | Select/toggle target | Cancel active action | Sample material |
+| Transform | Fast ground-plane drag | Begin transform preview | Fast ground-plane drag | Cancel active drag | Sample material |
+| Selection wand | Set corner 1 | Set corner 2 | Advance corner 1/2 | Clear selection | Expand selection |
+| Fill/Hollow | Start corner 1 | Set corner 2 and commit | Advance start/commit | Clear selection | Sample material |
+| Replace/Erase/Clone | No action | Apply region | Apply region | Clear selection | Sample material |
+| Linear array | Select target | Apply preview | Select if empty, otherwise apply | Cancel active action | Sample material |
 
 Tool-specific operations such as fill, hollow, replace, clone, mirror, array,
 rotate, and axis constraints belong in visible tool options or an active
@@ -201,15 +205,16 @@ preview's contextual wheel. They do not each earn a permanent global key.
 ## Current Implementation
 
 - `WASD` moves, `Space` ascends, `Shift` descends, and `Ctrl` accelerates.
+  On PS5, `R2` ascends, `L2` descends, and `L3` accelerates.
 - Mouse and right stick look through the same frame input.
 - Both controller sticks enter the editor through one canonical 2D primitive:
   negative/positive X means left/right and negative/positive Y means down/up.
   Movement, camera look, and radial selection consume the same radial-deadzone
   signal; consumer profiles own any explicit inversion or response curve.
 - `Escape` or controller Options opens Controls from the viewport. Arrow keys,
-  D-pad, wheel, pointer, `Enter`, and controller Cross operate the panel.
+  D-pad, wheel, pointer, `Enter`, and controller X operate the panel.
   Keyboard + Mouse and PS5 Controller are separate visible tabs; click a tab or
-  focus it with vertical navigation and activate it with `Enter`/Cross.
+  focus it with vertical navigation and activate it with `Enter`/X.
   Selecting a binding listens for one keyboard/mouse or controller input;
   modifier keys are valid standalone bindings, while modifier-plus-key chords
   retain their modifier. Escape, Circle, or Options cancels capture.
@@ -231,6 +236,18 @@ preview's contextual wheel. They do not each earn a permanent global key.
   pointer/focus routing; scroll visibility; and deterministic menu repeat. The
   `creative/ui/UiTheme.*` palette and overlay renderer remain the sole draw
   path.
+- The action ribbon above the hotbar is derived from semantic actions and the
+  live remappable control profile. It shows at most six high-priority controls
+  for the held tool and current context, uses compact PS5 labels (`X`, `Circle`,
+  `R3`, `D-pad`, `L1/R1`, and `L2/R2`), and drops lower-priority hints on narrow
+  viewports instead of overlapping text. Unbound or wrong-context actions are
+  omitted. Catalog, Tool Options, and Controls retain their in-place widget
+  commands rather than receiving a duplicate ribbon.
+- The ribbon follows the last unambiguous physical device activity. Keyboard,
+  mouse motion/wheel, controller buttons, and shaped controller sticks can
+  switch it; simultaneous keyboard/mouse and controller activity preserves the
+  previous device to avoid flicker. Remapping a command updates its displayed
+  chord without a second label table.
 - The retired passive inspector model, draw list, and projection pipeline have
   been removed. UI is now produced by live Creative screens and overlays from
   their owning state; `Facade` no longer builds a second mirrored UI model.
@@ -269,15 +286,15 @@ preview's contextual wheel. They do not each earn a permanent global key.
   pending confirmation.
 - `Escape`, the controller cancel button, or a second inventory press closes
   the catalog. Catalog input is modal and cannot mutate the world underneath it.
-- `R` or controller D-pad right opens the eight-sector creator-tool wheel.
+- `R` or controller `R3` opens the eight-sector creator-tool wheel.
   Mouse direction or right stick selects a sector; arrow keys, D-pad up/down,
   and wheel cycle it; `Enter`, controller confirm, or click equips the tool into
   the active hotbar slot. `Escape`, controller cancel, or the toggle closes it.
   Array owns the eighth sector; Erase remains available from the default hotbar
   and searchable catalog instead of occupying a radial sector.
 - While the wheel is open, `O` or controller Square opens the highlighted
-  tool's contextual options. World Secondary remains right mouse/controller
-  left trigger and cannot open options or mutate the world through the wheel.
+  tool's contextual options. Modal capture prevents X, Circle, and Square from
+  mutating the world underneath the wheel.
   Up/down or wheel selects a row;
   left/right changes its value; `Enter`/controller confirm applies the draft;
   `Escape`/controller cancel discards it. Mouse rows, `-`/`+`, Apply, and Cancel
@@ -295,6 +312,12 @@ preview's contextual wheel. They do not each earn a permanent global key.
   instances across 90/180/360 degrees.
   Settings edit a non-document draft; Apply changes the editor configuration,
   while the next world operation remains one previewed history transaction.
+- In the viewport, D-pad up/down selects the previous/next bounded quick-edit
+  channel and D-pad left/right decreases/increases its value. The held-item HUD
+  names the active channel and value. Authored transform-backed materials expose
+  cardinal placement orientation; voxel, point, and path brushes omit it. In a
+  transform preview, D-pad left/right rotates by one quarter turn and D-pad
+  up/down performs the existing constrained nudge.
 - The Transform tool keeps two speeds of interaction. Primary drag is the fast
   one-object ground-plane move. Secondary (right mouse or controller left
   trigger) snapshots the ordered selection and starts a non-destructive Move
@@ -307,14 +330,14 @@ preview's contextual wheel. They do not each earn a permanent global key.
   movement and look remain available while the contextual wheel is closed;
   Shift suppresses camera descent only on a frame that actually requests a fine
   nudge.
-- `R` or controller D-pad right opens a nine-sector contextual wheel: rotate
+- `R` or controller `R3` opens a nine-sector contextual wheel: rotate
   `+90`, mirror X, cycle Free/X/Y/Z axis, toggle Copy/Move, confirm, cancel,
   mirror Z, rotate `-90`, and reset. Mouse or right-stick direction selects;
-  arrows or D-pad up/down cycle; click, `Enter`, or controller Cross applies the
+  arrows or D-pad up/down cycle; click, `Enter`, or controller X applies the
   highlighted operation. `Escape` or controller Circle first closes the wheel,
   then cancels the preview when pressed again. Reset clears rotation, mirrors,
   axis constraint, and accumulated nudge offsets.
-- Right mouse/controller left trigger, `Enter`, or controller Cross confirms the
+- Right mouse, `Enter`, or controller X confirms the
   positioned preview. Move changes the original ordered selection; Copy creates
   new objects and selects them. Either result is one atomic history record.
   Primary world input, hotbar changes, and unrelated commands are suppressed
@@ -340,7 +363,7 @@ preview's contextual wheel. They do not each earn a permanent global key.
   extra rotate key is required for normal placement.
 - Material, select, move, and volume tools use the held-tool grammar above.
 - A material's thin green wireframe is only a placement preview. Right mouse or
-  controller left trigger attempts the placement. `Wall`, `Floor`, `Ceiling`,
+  controller X attempts the placement. `Wall`, `Floor`, `Ceiling`,
   and `Roof` place one exact voxel cell; props, attachments, paths, lights, and
   other materials remain authored objects. A successful mutation turns the
   crosshair brackets green and draws a thick lime outline from the live object
@@ -386,10 +409,9 @@ preview's contextual wheel. They do not each earn a permanent global key.
 - Pause/menu UI is not implemented.
 - Placement restrictions remain a future contextual setting. They do not
   receive permanent global keys.
-- Context-sensitive controller glyph hints, named profile presets, per-device
-  reset, and import/export remain future work. The live Controls panel already
-  persists semantic keyboard/mouse and controller bindings plus bounded stick,
-  look, and repeat tuning.
+- Named profile presets, per-device reset, and import/export remain future work.
+  The live Controls panel already persists semantic keyboard/mouse and
+  controller bindings plus bounded stick, look, and repeat tuning.
 - Catalog, Tool Options, and Transform Overlay still own older private panel
   layout code. Migrate them one screen at a time onto the standard widget frame;
   do not rewrite their interaction contracts as part of a mechanical migration.

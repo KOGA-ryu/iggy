@@ -194,6 +194,18 @@ set_tests_properties(creative_editor_controls_tests PROPERTIES
 set_tests_properties(creative_editor_controls_tests PROPERTIES
   LABELS "unit;app;creative;editor;controls;persistence;iggy3d")
 
+add_executable(creative_editor_action_hints_tests
+  tests/unit/creative_editor_action_hints_tests.cpp)
+target_link_libraries(creative_editor_action_hints_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_action_hints_tests)
+add_test(NAME creative_editor_action_hints_tests
+  COMMAND "$<TARGET_FILE:creative_editor_action_hints_tests>")
+set_tests_properties(creative_editor_action_hints_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+set_tests_properties(creative_editor_action_hints_tests PROPERTIES
+  LABELS "unit;app;creative;editor;controls;hints;ui;iggy3d")
+
 iggy3d_add_unit_test(creative_catalog_tests
   tests/unit/creative_catalog_tests.cpp)
 set_tests_properties(creative_catalog_tests PROPERTIES

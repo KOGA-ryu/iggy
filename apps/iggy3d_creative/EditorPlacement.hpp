@@ -12,6 +12,7 @@
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
+#include "app/iggy3d/creative/tools/Tools.hpp"
 #include "core/math/Vec3.hpp"
 #include "EditorEdits.hpp"
 
@@ -125,6 +126,8 @@ struct CreativeBrushPlacementAdmission {
     const iggy3d::creative::CreativeObjectDescriptor& descriptor);
 [[nodiscard]] bool descriptorSupportsBrushPlacement(
     const iggy3d::creative::CreativeObjectDescriptor& descriptor);
+[[nodiscard]] bool creativeBrushSupportsPlacementYaw(
+    iggy3d::creative::CreativeObjectKind brush) noexcept;
 [[nodiscard]] bool descriptorAvailableInStandaloneBrushPalette(
     const iggy3d::creative::CreativeObjectDescriptor& descriptor);
 
@@ -148,7 +151,9 @@ initialPathPointsForAnchor(iggy3d::Vec3 cellCenter);
     CreativeBrushPlacementAdmissionStatus status) noexcept;
 [[nodiscard]] CreativeBrushPlacementAdmission admitBrushPlacement(
     iggy3d::creative::CreativeObjectKind brush,
-    const iggy3d::creative::CreativeGridTarget& target) noexcept;
+    const iggy3d::creative::CreativeGridTarget& target,
+    iggy3d::creative::CreativePlacementYaw placementYaw =
+        iggy3d::creative::CreativePlacementYaw::Degrees0) noexcept;
 [[nodiscard]] bool creativeBrushPlacementAlreadyExists(
     const iggy3d::creative::CreativeDocument& document,
     const CreativeBrushPlacementPlan& plan) noexcept;

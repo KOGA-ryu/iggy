@@ -42,6 +42,27 @@ bool defaultsAreBoundedConflictFreeAndMinecraftShaped() {
   const cr::CreativeControlBindingRow* primaryPad =
       findRow(rows, cr::CreativeInputActionId::PrimaryAction,
               cr::CreativeControlDevice::Gamepad);
+  const cr::CreativeControlBindingRow* secondaryPad =
+      findRow(rows, cr::CreativeInputActionId::SecondaryAction,
+              cr::CreativeControlDevice::Gamepad);
+  const cr::CreativeControlBindingRow* acceptPad =
+      findRow(rows, cr::CreativeInputActionId::AcceptAction,
+              cr::CreativeControlDevice::Gamepad);
+  const cr::CreativeControlBindingRow* rejectPad =
+      findRow(rows, cr::CreativeInputActionId::RejectAction,
+              cr::CreativeControlDevice::Gamepad);
+  const cr::CreativeControlBindingRow* flyUpPad =
+      findRow(rows, cr::CreativeInputActionId::FlyUp,
+              cr::CreativeControlDevice::Gamepad);
+  const cr::CreativeControlBindingRow* flyDownPad =
+      findRow(rows, cr::CreativeInputActionId::FlyDown,
+              cr::CreativeControlDevice::Gamepad);
+  const cr::CreativeControlBindingRow* toolWheelPad =
+      findRow(rows, cr::CreativeInputActionId::ToggleToolWheel,
+              cr::CreativeControlDevice::Gamepad);
+  const cr::CreativeControlBindingRow* pickPad =
+      findRow(rows, cr::CreativeInputActionId::PickAction,
+              cr::CreativeControlDevice::Gamepad);
   const cr::CreativeControlBindingRow* inventory =
       findRow(rows, cr::CreativeInputActionId::ToggleCatalog,
               cr::CreativeControlDevice::Gamepad);
@@ -71,16 +92,34 @@ bool defaultsAreBoundedConflictFreeAndMinecraftShaped() {
          expect(primaryMouse != nullptr &&
                     primaryMouse->trigger == cr::CreativeInputKey::MousePrimary,
                 "left mouse remains primary action") &&
-         expect(primaryPad != nullptr &&
-                    primaryPad->trigger ==
-                        cr::CreativeInputKey::GamepadRightTrigger,
-                "R2 remains primary action") &&
+         expect(primaryPad == nullptr && secondaryPad == nullptr,
+                "gamepad does not inherit mouse primary secondary jargon") &&
+         expect(acceptPad != nullptr &&
+                    acceptPad->trigger ==
+                        cr::CreativeInputKey::GamepadConfirm &&
+                    rejectPad != nullptr &&
+                    rejectPad->trigger ==
+                        cr::CreativeInputKey::GamepadCancel,
+                "X accepts and Circle rejects in the viewport") &&
+         expect(flyUpPad != nullptr &&
+                    flyUpPad->trigger ==
+                        cr::CreativeInputKey::GamepadRightTrigger &&
+                    flyDownPad != nullptr &&
+                    flyDownPad->trigger ==
+                        cr::CreativeInputKey::GamepadLeftTrigger,
+                "R2 raises and L2 lowers flight") &&
+         expect(toolWheelPad != nullptr &&
+                    toolWheelPad->trigger ==
+                        cr::CreativeInputKey::GamepadRightStick &&
+                    pickPad != nullptr &&
+                    pickPad->trigger == cr::CreativeInputKey::GamepadWest,
+                "R3 opens tools and Square samples the target") &&
          expect(inventory != nullptr &&
                     inventory->trigger ==
                         cr::CreativeInputKey::GamepadInventory,
                 "Triangle remains inventory") &&
          expect(cr::creativeControlKeyDisplayLabel(
-                    cr::CreativeInputKey::GamepadConfirm) == "Cross" &&
+                    cr::CreativeInputKey::GamepadConfirm) == "X" &&
                     cr::creativeControlKeyDisplayLabel(
                         cr::CreativeInputKey::GamepadStart) == "Options",
                 "PS5 labels describe physical controls");

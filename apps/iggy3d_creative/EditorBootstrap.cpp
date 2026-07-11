@@ -167,6 +167,7 @@ void initializeCreativeEditorBootstrapData(
           std::string(iggy3d::creative::toString(output.editor.placeBrush))
               .c_str());
   output.editor.placeCellSize = static_cast<double>(gridConfig.pitchMeters);
+  syncCreativeEditorQuickEdit(output.editor);
   // --capture uses the same initial material slot so its authored placement
   // schedule remains aligned with the interactive application.
   if (captureMode) {

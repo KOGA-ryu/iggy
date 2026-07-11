@@ -11,6 +11,7 @@
 
 #include <SDL3/SDL.h>
 
+#include "EditorActionHints.hpp"
 #include "EditorFrame.hpp"
 #include "EditorCatalog.hpp"
 #include "EditorControls.hpp"
@@ -482,7 +483,8 @@ void attachCreativeEditorPlacementPreviews(
       feedback.status == CreativeEditorPlacementFeedbackStatus::Placed;
   if (editor.interaction.target.grid.valid && !mutationAcceptedThisFrame) {
     const CreativeBrushPlacementAdmission admission = admitBrushPlacement(
-        held.objectKind, editor.interaction.target.grid);
+        held.objectKind, editor.interaction.target.grid,
+        editor.toolSettings.placementYaw);
     const CreativeBrushPlacementPlan& targetPlan = admission.plan;
     const cr::CreativeBounds& targetBounds =
         targetPlan.valid ? targetPlan.previewBounds
@@ -910,6 +912,11 @@ void buildAndAttachCreativeEditorOverlayFrame(
                     labelLayout.quads.end());
     }
   }
+
+  appendCreativeEditorActionHintsOverlay(
+      editor, request.inputContext, request.activeControlDevice,
+      request.captureMode, drawableWidth, drawableHeight, output.uiRects,
+      glyphs);
 
   // ---- ATTACH overlays to the frame --------------------------------------
   frame.ui.visible = true;

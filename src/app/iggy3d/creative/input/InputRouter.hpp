@@ -61,6 +61,10 @@ enum class CreativeInputActionId : std::uint8_t {
   ToolOptionsIncrease,
   ToolOptionsConfirm,
   ToolOptionsClose,
+  QuickEditPrevious,
+  QuickEditNext,
+  QuickEditDecrease,
+  QuickEditIncrease,
   ToggleTransformControls,
   TransformControlPrevious,
   TransformControlNext,
@@ -94,6 +98,8 @@ enum class CreativeInputActionId : std::uint8_t {
   Sprint,
   PrimaryAction,
   SecondaryAction,
+  AcceptAction,
+  RejectAction,
   PickAction,
   HotbarPrevious,
   HotbarNext,
@@ -235,7 +241,7 @@ struct CreativeInputBinding {
 
 inline constexpr std::size_t kCreativeInputKeyCount =
     static_cast<std::size_t>(CreativeInputKey::Count);
-inline constexpr std::size_t kCreativeInputBindingCapacity = 160;
+inline constexpr std::size_t kCreativeInputBindingCapacity = 168;
 inline constexpr std::size_t kCreativeInputConflictCapacity =
     kCreativeInputBindingCapacity * (kCreativeInputBindingCapacity - 1U) / 2U;
 
