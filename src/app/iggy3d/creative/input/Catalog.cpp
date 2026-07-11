@@ -56,8 +56,8 @@ constexpr std::array kToolSpecs{
                     "volume region remove delete", false},
     CatalogToolSpec{CreativeHeldItemKind::VolumeClone, "Clone",
                     "volume region copy duplicate"},
-    CatalogToolSpec{CreativeHeldItemKind::LinearArray, "Linear Array",
-                    "array pattern repeat duplicate line"},
+    CatalogToolSpec{CreativeHeldItemKind::LinearArray, "Array",
+                    "array pattern repeat duplicate line radial ring"},
 };
 
 constexpr std::array kActionEntries{

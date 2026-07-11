@@ -144,8 +144,10 @@ bool missingAndMalformedFilesDoNotReplaceLiveProfile() {
 bool controlsOverlayUsesTheStandardWidgetFrame() {
   app::CreativeEditorState editor;
   editor.controls.open = true;
-  editor.controls.bindingList =
-      cr::buildCreativeControlBindingList(editor.controlProfile);
+  static_cast<void>(app::selectCreativeEditorControlsTab(
+      editor, cr::CreativeControlDevice::Gamepad));
+  static_cast<void>(app::selectCreativeEditorControlsTab(
+      editor, cr::CreativeControlDevice::KeyboardMouse));
   editor.controls.focusedWidgetId = 1U;
   std::vector<iggy3d::RenderUiRect> rects;
   std::vector<iggy3d::DebugHudGlyphQuad> glyphs;
@@ -161,6 +163,54 @@ bool controlsOverlayUsesTheStandardWidgetFrame() {
                 "standard scrim covers the drawable with bounded opacity");
 }
 
+bool deviceTabsPartitionBindingsAndResetOnlyViewState() {
+  app::CreativeEditorState editor;
+  const cr::CreativeControlBindingList all =
+      cr::buildCreativeControlBindingList(editor.controlProfile);
+  editor.controls.selectedIndex = 8U;
+  editor.controls.scrollOffset = 5U;
+  editor.controls.focusedWidgetId = 9U;
+
+  const bool selectedPs5 = app::selectCreativeEditorControlsTab(
+      editor, cr::CreativeControlDevice::Gamepad);
+  const std::size_t ps5Count = editor.controls.bindingList.count;
+  const bool ps5Only = std::all_of(
+      editor.controls.bindingList.items().begin(),
+      editor.controls.bindingList.items().end(),
+      [](const cr::CreativeControlBindingRow& row) {
+        return row.device == cr::CreativeControlDevice::Gamepad;
+      });
+  const bool repeatedPs5 = app::selectCreativeEditorControlsTab(
+      editor, cr::CreativeControlDevice::Gamepad);
+
+  const bool selectedKeyboard = app::selectCreativeEditorControlsTab(
+      editor, cr::CreativeControlDevice::KeyboardMouse);
+  const std::size_t keyboardCount = editor.controls.bindingList.count;
+  const bool keyboardOnly = std::all_of(
+      editor.controls.bindingList.items().begin(),
+      editor.controls.bindingList.items().end(),
+      [](const cr::CreativeControlBindingRow& row) {
+        return row.device == cr::CreativeControlDevice::KeyboardMouse;
+      });
+  const bool rejectedInvalid = app::selectCreativeEditorControlsTab(
+      editor, cr::CreativeControlDevice::Count);
+
+  return expect(selectedPs5 && !repeatedPs5 && selectedKeyboard &&
+                    !rejectedInvalid,
+                "controls tabs accept only real device transitions") &&
+         expect(ps5Count > 0U && keyboardCount > 0U &&
+                    ps5Count + keyboardCount == all.count && ps5Only &&
+                    keyboardOnly,
+                "keyboard and PS5 tabs partition configurable bindings") &&
+         expect(editor.controls.activeDevice ==
+                        cr::CreativeControlDevice::KeyboardMouse &&
+                    editor.controls.selectedIndex == 0U &&
+                    editor.controls.scrollOffset == 0U &&
+                    editor.controls.focusedWidgetId !=
+                        cr::kInvalidCreativeUiWidgetId,
+                "tab switch resets navigation without changing profile");
+}
+
 }  // namespace
 
 int main() {
@@ -168,5 +218,6 @@ int main() {
   ok = profileRoundTripPreservesBindingsAndTuning() && ok;
   ok = missingAndMalformedFilesDoNotReplaceLiveProfile() && ok;
   ok = controlsOverlayUsesTheStandardWidgetFrame() && ok;
+  ok = deviceTabsPartitionBindingsAndResetOnlyViewState() && ok;
   return ok ? 0 : 1;
 }

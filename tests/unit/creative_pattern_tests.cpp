@@ -2,9 +2,11 @@
 #include "app/iggy3d/creative/tools/Transform.hpp"
 
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <iostream>
 #include <limits>
+#include <numbers>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -17,6 +19,10 @@ bool expect(bool condition, std::string_view message) {
     std::cerr << "FAIL: " << message << '\n';
   }
   return condition;
+}
+
+bool near(double lhs, double rhs, double epsilon = 1.0e-9) {
+  return std::fabs(lhs - rhs) <= epsilon;
 }
 
 cr::CreativeDocument document(std::string_view name) {
@@ -135,6 +141,155 @@ bool planRejectsInvalidAndOversizedRequests() {
                     raisedHardLimit.status ==
                         cr::CreativeLinearArrayStatus::InvalidRequest,
                 "hard limit cannot be raised by caller");
+}
+
+bool radialPlanPinsClosedAndPartialSweepLaws() {
+  cr::CreativeRadialArrayPlanRequest request;
+  request.sourceObjectCount = 2U;
+  request.pivot = {4.0, 1.0, -2.0};
+  request.axis = cr::CreativeAxis3::Y;
+  request.instanceCount = cr::CreativeRadialArrayInstanceCount::Four;
+  request.sweep = cr::CreativeRadialArraySweep::Degrees360;
+  const cr::CreativeRadialArrayPlanReceipt closed =
+      cr::planCreativeRadialArray(request);
+
+  bool ok = expect(closed.accepted &&
+                       closed.status == cr::CreativeRadialArrayStatus::Planned,
+                   "closed radial plan accepted") &&
+            expect(closed.totalInstanceCount == 4U &&
+                       closed.generatedCopyCount == 3U &&
+                       closed.generatedObjectCount == 6U &&
+                       closed.instanceCount == 3U,
+                   "radial counts include original exactly once") &&
+            expect(near(closed.instances[0].angleRadians,
+                        std::numbers::pi * 0.5) &&
+                       near(closed.instances[2].angleRadians,
+                            std::numbers::pi * 1.5) &&
+                       closed.instances[2].angleRadians <
+                           std::numbers::pi * 2.0,
+                   "closed ring omits duplicate 360 endpoint");
+
+  request.sweep = cr::CreativeRadialArraySweep::Degrees180;
+  const cr::CreativeRadialArrayPlanReceipt partial =
+      cr::planCreativeRadialArray(request);
+  ok = expect(partial.accepted && partial.instanceCount == 3U,
+              "partial radial plan accepted") &&
+       expect(near(partial.instances[0].angleRadians,
+                   std::numbers::pi / 3.0) &&
+                  near(partial.instances[2].angleRadians, std::numbers::pi),
+              "partial sweep spaces copies and includes endpoint") &&
+       expect(cr::creativeRadialArrayInstanceCountValue(
+                  cr::CreativeRadialArrayInstanceCount::ThirtyTwo) == 32U &&
+                  cr::creativeRadialArraySweepDegrees(
+                      cr::CreativeRadialArraySweep::Degrees90) == 90.0,
+              "radial option values remain explicit") &&
+       ok;
+  return ok;
+}
+
+bool radialPlanRejectsInvalidAndOversizedRequests() {
+  cr::CreativeRadialArrayPlanRequest request;
+  const cr::CreativeRadialArrayPlanReceipt empty =
+      cr::planCreativeRadialArray(request);
+  request.sourceObjectCount = 1U;
+  request.pivot.x = std::numeric_limits<double>::quiet_NaN();
+  const cr::CreativeRadialArrayPlanReceipt nonfinite =
+      cr::planCreativeRadialArray(request);
+  request.pivot = {};
+  request.axis = static_cast<cr::CreativeAxis3>(255U);
+  const cr::CreativeRadialArrayPlanReceipt invalidAxis =
+      cr::planCreativeRadialArray(request);
+  request.axis = cr::CreativeAxis3::Y;
+  request.sourceObjectCount = 17U;
+  request.instanceCount = cr::CreativeRadialArrayInstanceCount::ThirtyTwo;
+  const cr::CreativeRadialArrayPlanReceipt oversized =
+      cr::planCreativeRadialArray(request);
+  request.sourceObjectCount = 1U;
+  request.instanceCount = cr::CreativeRadialArrayInstanceCount::Two;
+  request.maxGeneratedObjects =
+      cr::kCreativeRadialArrayGeneratedObjectCapacity + 1U;
+  const cr::CreativeRadialArrayPlanReceipt raisedHardLimit =
+      cr::planCreativeRadialArray(request);
+
+  return expect(!empty.accepted &&
+                    empty.status ==
+                        cr::CreativeRadialArrayStatus::EmptySelection,
+                "empty radial plan rejected") &&
+         expect(!nonfinite.accepted &&
+                    nonfinite.status ==
+                        cr::CreativeRadialArrayStatus::InvalidRequest,
+                "nonfinite radial pivot rejected") &&
+         expect(!invalidAxis.accepted &&
+                    invalidAxis.status ==
+                        cr::CreativeRadialArrayStatus::InvalidRequest,
+                "invalid radial axis rejected") &&
+         expect(!oversized.accepted &&
+                    oversized.status ==
+                        cr::CreativeRadialArrayStatus::OperationLimitExceeded,
+                "oversized radial plan rejected") &&
+         expect(!raisedHardLimit.accepted &&
+                    raisedHardLimit.status ==
+                        cr::CreativeRadialArrayStatus::InvalidRequest,
+                "radial hard limit cannot be raised");
+}
+
+bool axisAngleClipboardPasteRotatesRigidly() {
+  cr::CreativeDocument document = ::document("axis angle paste");
+  const cr::CreativeObjectId source =
+      createGroup(document, "Source", {0.0, 2.0, 0.0});
+  cr::CreativeClipboard clipboard;
+  const std::array selected{source};
+  if (!cr::copyDocumentObjectsToClipboard(document, selected, clipboard)
+           .accepted) {
+    return expect(false, "axis-angle source copied");
+  }
+  cr::CreativeClipboardPasteRequest request;
+  request.offset = {};
+  request.hasTransformAnchor = true;
+  request.transformAnchor = {};
+  request.hasAxisAngleRotation = true;
+  request.rotationAxis = cr::CreativeAxis3::X;
+  request.rotationRadians = std::numbers::pi * 0.5;
+  const cr::CreativeClipboardPasteReceipt receipt =
+      cr::pasteCreativeClipboardAtomically(document, clipboard, request);
+  const cr::CreativeObject* pasted = receipt.pastedObjectIds.empty()
+                                         ? nullptr
+                                         : document.findObject(
+                                               receipt.pastedObjectIds.front());
+  const bool xRotationMatches =
+      receipt.accepted && pasted != nullptr &&
+      near(pasted->transform.position.x, 0.0) &&
+      near(pasted->transform.position.y, 0.0) &&
+      near(pasted->transform.position.z, 2.0) &&
+      near(pasted->transform.rotationEulerRadians.x,
+           std::numbers::pi * 0.5) &&
+      near(pasted->transform.rotationEulerRadians.y, 0.0) &&
+      near(pasted->transform.rotationEulerRadians.z, 0.0);
+  request.rotationAxis = cr::CreativeAxis3::Z;
+  const cr::CreativeClipboardPasteReceipt zReceipt =
+      cr::pasteCreativeClipboardAtomically(document, clipboard, request);
+  const cr::CreativeObject* zPasted = zReceipt.pastedObjectIds.empty()
+                                          ? nullptr
+                                          : document.findObject(
+                                                zReceipt.pastedObjectIds.front());
+  const std::size_t countBeforeInvalid = document.objectCount();
+  const std::uint64_t revisionBeforeInvalid = document.revision();
+  request.quarterTurns = 1U;
+  const cr::CreativeClipboardPasteReceipt mixedRotation =
+      cr::pasteCreativeClipboardAtomically(document, clipboard, request);
+  return expect(xRotationMatches,
+                "axis-angle paste revolves and orients around X") &&
+         expect(zReceipt.accepted && zPasted != nullptr &&
+                    near(zPasted->transform.position.x, -2.0) &&
+                    near(zPasted->transform.position.y, 0.0) &&
+                    near(zPasted->transform.position.z, 0.0) &&
+                    near(zPasted->transform.rotationEulerRadians.z,
+                         std::numbers::pi * 0.5),
+                "axis-angle paste supports Z-axis rigid rotation") &&
+         expect(!mixedRotation.accepted &&
+                    document.objectCount() == countBeforeInvalid &&
+                    document.revision() == revisionBeforeInvalid,
+                "mixed legacy and axis-angle rotation fails atomically");
 }
 
 bool batchPasteRemapsEachCopyIndependently() {
@@ -390,18 +545,91 @@ bool arrayExecutionRejectsMissingSourceWithoutMutation() {
                 "missing array source preserves document");
 }
 
+bool radialExecutionRotatesGroupAndRemapsParents() {
+  cr::CreativeDocument document = ::document("radial execution");
+  const cr::CreativeObjectId parent =
+      createGroup(document, "Parent", {2.0, 0.0, 0.0});
+  const cr::CreativeObjectId child =
+      createGroup(document, "Child", {2.0, 1.0, 0.0}, parent);
+  const std::array selected{parent, child};
+  cr::CreativeRadialArrayRequest request;
+  request.pivot = {};
+  request.axis = cr::CreativeAxis3::Y;
+  request.instanceCount = cr::CreativeRadialArrayInstanceCount::Four;
+  request.sweep = cr::CreativeRadialArraySweep::Degrees360;
+
+  const std::uint64_t revisionBefore = document.revision();
+  const cr::CreativeRadialArrayReceipt receipt =
+      cr::createCreativeRadialArrayAtomically(document, selected, request);
+  const std::span<const cr::CreativeObjectId> finalCopy =
+      receipt.finalCopyObjectIds();
+  const cr::CreativeObject* finalParent =
+      finalCopy.empty() ? nullptr : document.findObject(finalCopy[0]);
+  const cr::CreativeObject* finalChild =
+      finalCopy.size() < 2U ? nullptr : document.findObject(finalCopy[1]);
+
+  return expect(receipt.accepted && receipt.changed &&
+                    receipt.status == cr::CreativeRadialArrayStatus::Applied,
+                "radial execution accepted") &&
+         expect(receipt.generatedObjectCount == 6U &&
+                    receipt.generatedObjectIds().size() == 6U &&
+                    finalCopy.size() == 2U && finalCopy[0] == 7U &&
+                    finalCopy[1] == 8U,
+                "radial execution identifies final generated group") &&
+         expect(finalParent != nullptr && finalChild != nullptr &&
+                    near(finalParent->transform.position.x, 0.0) &&
+                    near(finalParent->transform.position.z, 2.0) &&
+                    near(finalParent->transform.rotationEulerRadians.y,
+                         -std::numbers::pi * 0.5) &&
+                    near(finalChild->transform.position.x, 0.0) &&
+                    near(finalChild->transform.position.y, 1.0) &&
+                    near(finalChild->transform.position.z, 2.0) &&
+                    finalChild->parentId == finalParent->id,
+                "radial execution rotates rigid group and remaps parent") &&
+         expect(document.objectCount() == 8U &&
+                    document.revision() == revisionBefore + 6U,
+                "radial execution publishes complete batch only");
+}
+
+bool radialExecutionRejectsDegeneratePivotWithoutMutation() {
+  cr::CreativeDocument document = ::document("radial degenerate");
+  const cr::CreativeObjectId source =
+      createGroup(document, "Source", {0.0, 0.0, 0.0});
+  const std::array selected{source};
+  cr::CreativeRadialArrayRequest request;
+  request.pivot = {};
+  request.axis = cr::CreativeAxis3::Y;
+  request.instanceCount = cr::CreativeRadialArrayInstanceCount::Four;
+  const std::uint64_t revisionBefore = document.revision();
+  const cr::CreativeRadialArrayReceipt receipt =
+      cr::createCreativeRadialArrayAtomically(document, selected, request);
+  return expect(!receipt.accepted && !receipt.changed &&
+                    receipt.status ==
+                        cr::CreativeRadialArrayStatus::DegenerateRadius,
+                "degenerate radial pivot rejected explicitly") &&
+         expect(document.objectCount() == 1U &&
+                    document.revision() == revisionBefore &&
+                    receipt.generatedObjectIds().empty(),
+                "degenerate radial request leaves document unchanged");
+}
+
 }  // namespace
 
 int main() {
   bool ok = true;
   ok = planUsesOrdinalOffsetsWithoutAccumulation() && ok;
   ok = planRejectsInvalidAndOversizedRequests() && ok;
+  ok = radialPlanPinsClosedAndPartialSweepLaws() && ok;
+  ok = radialPlanRejectsInvalidAndOversizedRequests() && ok;
   ok = batchPasteRemapsEachCopyIndependently() && ok;
   ok = copyDerivesDeterministicPlacementAnchor() && ok;
   ok = singlePasteRetainsTheExistingReceiptContract() && ok;
   ok = transformedPasteMatchesTheSharedPlacementPlan() && ok;
+  ok = axisAngleClipboardPasteRotatesRigidly() && ok;
   ok = lateBatchFailureRollsBackEarlierStagedCopy() && ok;
   ok = arrayExecutionCreatesCopiesAndIdentifiesFinalGroup() && ok;
   ok = arrayExecutionRejectsMissingSourceWithoutMutation() && ok;
+  ok = radialExecutionRotatesGroupAndRemapsParents() && ok;
+  ok = radialExecutionRejectsDegeneratePivotWithoutMutation() && ok;
   return ok ? 0 : 1;
 }

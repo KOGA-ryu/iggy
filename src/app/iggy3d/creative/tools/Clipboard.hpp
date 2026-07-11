@@ -8,6 +8,7 @@
 #include <string_view>
 #include <vector>
 
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/Document.hpp"
 
 namespace iggy3d::creative {
@@ -59,6 +60,11 @@ struct CreativeClipboardPasteRequest {
   std::uint8_t quarterTurns = 0;
   bool mirrorX = false;
   bool mirrorZ = false;
+  bool hasTransformAnchor = false;
+  CreativeVec3 transformAnchor{};
+  bool hasAxisAngleRotation = false;
+  CreativeAxis3 rotationAxis = CreativeAxis3::Y;
+  double rotationRadians = 0.0;
   bool appendCopySuffix = true;
   CreativeClipboardExternalParentPolicy externalParentPolicy =
       CreativeClipboardExternalParentPolicy::Detach;

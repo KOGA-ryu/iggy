@@ -797,7 +797,7 @@ void buildAndAttachCreativeEditorOverlayFrame(
     }
   }
   if (!editor.transform.active) {
-    output.patternEdgeCount = appendCreativeEditorLinearArrayPreview(
+    output.patternEdgeCount = appendCreativeEditorArrayPreview(
         appState, editor, gizmoThickness, combinedWireLines);
   }
   output.transformPreviewEdgeCount =

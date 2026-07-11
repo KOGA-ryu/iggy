@@ -616,22 +616,6 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
 void processToolWheelInput(const CreativeEditorCatalogFrameRequest& request,
                            CreativeEditorCatalogFrameResult& result) {
   CreativeEditorCatalogState& state = request.editor.catalog;
-  if (cr::creativeWorldActionPressed(
-          request.worldActions, cr::CreativeWorldActionId::Secondary)) {
-    const cr::CreativeCatalogEntry* selected =
-        cr::selectedCreativeToolWheelEntry(state.toolWheel, state.model);
-    if (selected != nullptr) {
-      const cr::CreativeToolOptionList options =
-          cr::creativeToolOptionsForHeldItem(selected->hotbarEntry.kind);
-      if (options.count > 0U && !options.capacityExceeded) {
-        result.openToolOptionsRequested = true;
-        result.toolOptionsHeldItem = selected->hotbarEntry.kind;
-        static_cast<void>(
-            cr::setCreativeToolWheelOpen(state.toolWheel, false));
-        return;
-      }
-    }
-  }
   for (const cr::CreativeInputActionEvent& event :
        request.routedInput.actionEvents()) {
     if (!state.toolWheel.open) {
@@ -655,6 +639,23 @@ void processToolWheelInput(const CreativeEditorCatalogFrameRequest& request,
               cr::setCreativeToolWheelOpen(state.toolWheel, false));
         }
         break;
+      case cr::CreativeInputActionId::ToolWheelOptions: {
+        const cr::CreativeCatalogEntry* selected =
+            cr::selectedCreativeToolWheelEntry(state.toolWheel, state.model);
+        if (selected == nullptr) {
+          break;
+        }
+        const cr::CreativeToolOptionList options =
+            cr::creativeToolOptionsForHeldItem(selected->hotbarEntry.kind,
+                                               request.editor.toolSettings);
+        if (options.count == 0U || options.capacityExceeded) {
+          break;
+        }
+        result.openToolOptionsRequested = true;
+        result.toolOptionsHeldItem = selected->hotbarEntry.kind;
+        static_cast<void>(cr::setCreativeToolWheelOpen(state.toolWheel, false));
+        return;
+      }
       default:
         break;
     }

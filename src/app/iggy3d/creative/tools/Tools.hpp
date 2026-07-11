@@ -94,6 +94,12 @@ enum class CreativeCloneOffsetDistance : std::uint8_t {
   Count,
 };
 
+enum class CreativeArrayMode : std::uint8_t {
+  Linear,
+  Radial,
+  Count,
+};
+
 enum class CreativeToolOptionId : std::uint8_t {
   MoveConstraint,
   RotationStep,
@@ -103,9 +109,13 @@ enum class CreativeToolOptionId : std::uint8_t {
   ReplaceSource,
   CloneOffsetAxis,
   CloneOffsetDistance,
+  ArrayMode,
   ArrayDirection,
   ArrayCopyCount,
   ArraySpacing,
+  RadialArrayAxis,
+  RadialArrayInstanceCount,
+  RadialArraySweep,
   Count,
 };
 
@@ -147,12 +157,18 @@ struct CreativeToolSettings {
   CreativeCloneOffsetAxis cloneOffsetAxis = CreativeCloneOffsetAxis::X;
   CreativeCloneOffsetDistance cloneOffsetDistance =
       CreativeCloneOffsetDistance::OneCell;
+  CreativeArrayMode arrayMode = CreativeArrayMode::Linear;
   CreativeLinearArrayDirection arrayDirection =
       CreativeLinearArrayDirection::PositiveX;
   CreativeLinearArrayCopyCount arrayCopyCount =
       CreativeLinearArrayCopyCount::Four;
   CreativeLinearArraySpacing arraySpacing =
       CreativeLinearArraySpacing::OneCell;
+  CreativeAxis3 radialArrayAxis = CreativeAxis3::Y;
+  CreativeRadialArrayInstanceCount radialArrayInstanceCount =
+      CreativeRadialArrayInstanceCount::Eight;
+  CreativeRadialArraySweep radialArraySweep =
+      CreativeRadialArraySweep::Degrees360;
 };
 
 static_assert(std::is_trivially_copyable_v<CreativeToolSettings>);
@@ -263,6 +279,9 @@ creativeToolOptionDescriptors() noexcept;
     CreativeToolOptionId option) noexcept;
 [[nodiscard]] CreativeToolOptionList creativeToolOptionsForHeldItem(
     CreativeHeldItemKind heldItem) noexcept;
+[[nodiscard]] CreativeToolOptionList creativeToolOptionsForHeldItem(
+    CreativeHeldItemKind heldItem,
+    const CreativeToolSettings& settings) noexcept;
 [[nodiscard]] bool creativeToolOptionAppliesToHeldItem(
     CreativeToolOptionId option,
     CreativeHeldItemKind heldItem) noexcept;
@@ -277,6 +296,7 @@ creativeToolOptionDescriptors() noexcept;
     CreativeCloneOffsetAxis axis) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeCloneOffsetDistance distance) noexcept;
+[[nodiscard]] std::string_view toString(CreativeArrayMode mode) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeToolOptionAdjustStatus status) noexcept;
 [[nodiscard]] std::string_view creativeToolOptionValueLabel(

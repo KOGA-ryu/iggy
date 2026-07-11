@@ -7,6 +7,7 @@
 #include "app/platform/SdlWindow.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstdio>
 #include <fstream>
 #include <iomanip>
@@ -21,17 +22,35 @@ namespace {
 
 constexpr std::string_view kControlFileHeader =
     "iggy3d_creative_controls 1";
-constexpr std::size_t kStaticControlRowCount =
-    cr::kCreativeControlSettingCount + 1U;
 constexpr cr::CreativeUiWidgetId kControlRowWidgetIdBase = 1U;
 constexpr cr::CreativeUiWidgetId kControlsResetWidgetId = 1000U;
 constexpr cr::CreativeUiWidgetId kControlsDoneWidgetId = 1001U;
+constexpr cr::CreativeUiWidgetId kControlsKeyboardTabWidgetId = 1002U;
+constexpr cr::CreativeUiWidgetId kControlsPs5TabWidgetId = 1003U;
 constexpr cr::CreativeWheelProfile kControlsWheelProfile{
     cr::CreativeWheelPolarity::Reversed,
     cr::CreativeWheelStepMode::Unit,
     1.0e-4F};
 
-static_assert(kStaticControlRowCount + cr::kCreativeInputBindingCapacity + 2U <=
+constexpr std::array kKeyboardMouseSettings{
+    cr::CreativeControlSettingId::MouseLookSensitivity,
+    cr::CreativeControlSettingId::MenuRepeatDelay,
+    cr::CreativeControlSettingId::MenuRepeatInterval,
+};
+constexpr std::array kPs5Settings{
+    cr::CreativeControlSettingId::GamepadLookSensitivity,
+    cr::CreativeControlSettingId::MovementDeadzone,
+    cr::CreativeControlSettingId::MovementResponse,
+    cr::CreativeControlSettingId::LookDeadzone,
+    cr::CreativeControlSettingId::LookResponse,
+    cr::CreativeControlSettingId::InvertLookX,
+    cr::CreativeControlSettingId::InvertLookY,
+    cr::CreativeControlSettingId::MenuRepeatDelay,
+    cr::CreativeControlSettingId::MenuRepeatInterval,
+};
+
+static_assert(cr::kCreativeControlSettingCount + 1U +
+                      cr::kCreativeInputBindingCapacity + 4U <=
               cr::kCreativeUiWidgetCapacity);
 
 struct ControlsLayout {
@@ -39,6 +58,8 @@ struct ControlsLayout {
   std::int32_t panelY = 0;
   std::uint32_t panelWidth = 0;
   std::uint32_t panelHeight = 0;
+  std::int32_t tabsY = 0;
+  std::uint32_t tabHeight = 30;
   std::int32_t rowsY = 0;
   std::uint32_t rowHeight = 36;
   std::size_t visibleRows = 1;
@@ -58,7 +79,8 @@ struct ControlsLayout {
       0, (width - static_cast<std::int32_t>(layout.panelWidth)) / 2);
   layout.panelY = std::max(
       0, (height - static_cast<std::int32_t>(layout.panelHeight)) / 2);
-  layout.rowsY = layout.panelY + 70;
+  layout.tabsY = layout.panelY + 62;
+  layout.rowsY = layout.panelY + 100;
   layout.footerY = std::max(
       layout.rowsY + static_cast<std::int32_t>(layout.rowHeight),
       layout.panelY + static_cast<std::int32_t>(layout.panelHeight) - 46);
@@ -92,9 +114,27 @@ struct ControlsLayout {
   return false;
 }
 
+[[nodiscard]] std::span<const cr::CreativeControlSettingId>
+settingsForDevice(cr::CreativeControlDevice device) noexcept {
+  switch (device) {
+    case cr::CreativeControlDevice::KeyboardMouse:
+      return kKeyboardMouseSettings;
+    case cr::CreativeControlDevice::Gamepad:
+      return kPs5Settings;
+    case cr::CreativeControlDevice::Count:
+      return {};
+  }
+  return {};
+}
+
+[[nodiscard]] std::size_t staticRowCount(
+    const CreativeEditorControlsState& state) noexcept {
+  return settingsForDevice(state.activeDevice).size() + 1U;
+}
+
 [[nodiscard]] std::size_t totalRowCount(
     const CreativeEditorControlsState& state) noexcept {
-  return kStaticControlRowCount + state.bindingList.count;
+  return staticRowCount(state) + state.bindingList.count;
 }
 
 [[nodiscard]] cr::CreativeUiWidgetId rowWidgetId(
@@ -118,9 +158,41 @@ struct ControlsLayout {
   return true;
 }
 
+[[nodiscard]] bool controlsChromeWidgetId(
+    cr::CreativeUiWidgetId widgetId) noexcept {
+  return widgetId == kControlsResetWidgetId ||
+         widgetId == kControlsDoneWidgetId ||
+         widgetId == kControlsKeyboardTabWidgetId ||
+         widgetId == kControlsPs5TabWidgetId;
+}
+
+[[nodiscard]] cr::CreativeControlBindingList bindingListForDevice(
+    const cr::CreativeControlProfile& profile,
+    cr::CreativeControlDevice device) noexcept {
+  cr::CreativeControlBindingList result;
+  if (device == cr::CreativeControlDevice::Count) {
+    result.capacityExceeded = true;
+    return result;
+  }
+  const cr::CreativeControlBindingList all =
+      cr::buildCreativeControlBindingList(profile);
+  result.capacityExceeded = all.capacityExceeded;
+  for (const cr::CreativeControlBindingRow& row : all.items()) {
+    if (row.device != device) {
+      continue;
+    }
+    if (result.count >= result.rows.size()) {
+      result.capacityExceeded = true;
+      break;
+    }
+    result.rows[result.count++] = row;
+  }
+  return result;
+}
+
 void refreshBindingList(CreativeEditorState& editor) {
-  editor.controls.bindingList =
-      cr::buildCreativeControlBindingList(editor.controlProfile);
+  editor.controls.bindingList = bindingListForDevice(
+      editor.controlProfile, editor.controls.activeDevice);
   const std::size_t count = totalRowCount(editor.controls);
   if (count == 0U) {
     editor.controls.selectedIndex = 0U;
@@ -130,8 +202,7 @@ void refreshBindingList(CreativeEditorState& editor) {
     editor.controls.selectedIndex =
         std::min(editor.controls.selectedIndex, count - 1U);
     std::size_t focusedRow = 0U;
-    if (editor.controls.focusedWidgetId != kControlsResetWidgetId &&
-        editor.controls.focusedWidgetId != kControlsDoneWidgetId &&
+    if (!controlsChromeWidgetId(editor.controls.focusedWidgetId) &&
         !widgetRowIndex(editor.controls.focusedWidgetId, count, focusedRow)) {
       editor.controls.focusedWidgetId =
           rowWidgetId(editor.controls.selectedIndex);
@@ -156,10 +227,11 @@ void keepFocusedRowVisible(CreativeEditorControlsState& state,
 
 [[nodiscard]] cr::CreativeControlBindingRow* selectedBindingRow(
     CreativeEditorControlsState& state) noexcept {
-  if (state.selectedIndex < kStaticControlRowCount) {
+  const std::size_t firstBindingRow = staticRowCount(state);
+  if (state.selectedIndex < firstBindingRow) {
     return nullptr;
   }
-  const std::size_t index = state.selectedIndex - kStaticControlRowCount;
+  const std::size_t index = state.selectedIndex - firstBindingRow;
   return index < state.bindingList.count ? &state.bindingList.rows[index]
                                          : nullptr;
 }
@@ -167,10 +239,12 @@ void keepFocusedRowVisible(CreativeEditorControlsState& state,
 [[nodiscard]] bool selectedSetting(
     const CreativeEditorControlsState& state,
     cr::CreativeControlSettingId& setting) noexcept {
-  if (state.selectedIndex >= cr::kCreativeControlSettingCount) {
+  const std::span<const cr::CreativeControlSettingId> settings =
+      settingsForDevice(state.activeDevice);
+  if (state.selectedIndex >= settings.size()) {
     return false;
   }
-  setting = static_cast<cr::CreativeControlSettingId>(state.selectedIndex);
+  setting = settings[state.selectedIndex];
   return true;
 }
 
@@ -297,6 +371,34 @@ void cycleConflictPolicy(CreativeEditorControlsState& state,
         state.statusLabel, iggy3d::CreativeUiTone::Accent));
   }
 
+  const float tabsX = static_cast<float>(layout.panelX + 12);
+  const float tabsAreaWidth = static_cast<float>(
+      std::max<std::uint32_t>(
+          1U, layout.panelWidth > 24U ? layout.panelWidth - 24U : 1U));
+  const float tabGap = std::min(4.0F, tabsAreaWidth * 0.1F);
+  const float firstTabWidth = (tabsAreaWidth - tabGap) * 0.5F;
+  const float secondTabWidth = tabsAreaWidth - tabGap - firstTabWidth;
+  const bool compactTabs = firstTabWidth < 150.0F;
+  cr::CreativeUiWidgetSpec keyboardTab;
+  keyboardTab.id = kControlsKeyboardTabWidgetId;
+  keyboardTab.rect = {tabsX, static_cast<float>(layout.tabsY), firstTabWidth,
+                      static_cast<float>(layout.tabHeight)};
+  keyboardTab.label = compactTabs ? "KEYBOARD" : "KEYBOARD + MOUSE";
+  keyboardTab.selected =
+      state.activeDevice == cr::CreativeControlDevice::KeyboardMouse;
+  keyboardTab.focused = state.focusedWidgetId == keyboardTab.id;
+  static_cast<void>(cr::appendCreativeUiTab(frame, keyboardTab));
+
+  cr::CreativeUiWidgetSpec ps5Tab;
+  ps5Tab.id = kControlsPs5TabWidgetId;
+  ps5Tab.rect = {tabsX + firstTabWidth + tabGap,
+                 static_cast<float>(layout.tabsY), secondTabWidth,
+                 static_cast<float>(layout.tabHeight)};
+  ps5Tab.label = compactTabs ? "PS5" : "PS5 CONTROLLER";
+  ps5Tab.selected = state.activeDevice == cr::CreativeControlDevice::Gamepad;
+  ps5Tab.focused = state.focusedWidgetId == ps5Tab.id;
+  static_cast<void>(cr::appendCreativeUiTab(frame, ps5Tab));
+
   const std::size_t totalRows = totalRowCount(state);
   const cr::CreativeUiVisibleRange visibleRange =
       cr::resolveCreativeUiVisibleRange(totalRows, layout.visibleRows,
@@ -325,9 +427,10 @@ void cycleConflictPolicy(CreativeEditorControlsState& state,
     spec.focused = state.focusedWidgetId == spec.id;
     spec.visible = visible;
 
-    if (row < cr::kCreativeControlSettingCount) {
-      const cr::CreativeControlSettingId setting =
-          static_cast<cr::CreativeControlSettingId>(row);
+    const std::span<const cr::CreativeControlSettingId> settings =
+        settingsForDevice(state.activeDevice);
+    if (row < settings.size()) {
+      const cr::CreativeControlSettingId setting = settings[row];
       spec.label = cr::toString(setting);
       const std::string value = settingValueLabel(editor.controlProfile,
                                                   setting);
@@ -342,7 +445,7 @@ void cycleConflictPolicy(CreativeEditorControlsState& state,
       }
       continue;
     }
-    if (row == cr::kCreativeControlSettingCount) {
+    if (row == settings.size()) {
       spec.label = "Conflict mode";
       const std::string value = std::string(cr::toString(state.conflictPolicy));
       spec.value = value;
@@ -351,11 +454,8 @@ void cycleConflictPolicy(CreativeEditorControlsState& state,
     }
 
     const cr::CreativeControlBindingRow& binding =
-        state.bindingList.rows[row - kStaticControlRowCount];
+        state.bindingList.rows[row - staticRowCount(state)];
     std::string label = actionDisplayLabel(binding.action);
-    label += binding.device == cr::CreativeControlDevice::Gamepad
-                 ? " [PAD]"
-                 : " [KBM]";
     std::string value =
         state.capturing && binding.group == state.captureGroup
             ? "LISTENING"
@@ -509,7 +609,8 @@ void processCapture(const CreativeEditorControlsFrameRequest& request,
     return cr::adjustCreativeControlSetting(editor.controlProfile, setting,
                                             direction);
   }
-  if (editor.controls.selectedIndex == cr::kCreativeControlSettingCount) {
+  if (editor.controls.selectedIndex ==
+      settingsForDevice(editor.controls.activeDevice).size()) {
     cycleConflictPolicy(editor.controls, direction);
   }
   return false;
@@ -582,6 +683,18 @@ void applyWidgetEvent(CreativeEditorState& editor,
       event.kind == cr::CreativeUiWidgetEventKind::Activate) {
     editor.controls.open = false;
     editor.controls.repeatState = {};
+    return;
+  }
+  if (event.kind == cr::CreativeUiWidgetEventKind::Activate &&
+      event.widgetId == kControlsKeyboardTabWidgetId) {
+    static_cast<void>(selectCreativeEditorControlsTab(
+        editor, cr::CreativeControlDevice::KeyboardMouse));
+    return;
+  }
+  if (event.kind == cr::CreativeUiWidgetEventKind::Activate &&
+      event.widgetId == kControlsPs5TabWidgetId) {
+    static_cast<void>(selectCreativeEditorControlsTab(
+        editor, cr::CreativeControlDevice::Gamepad));
     return;
   }
 
@@ -671,6 +784,22 @@ void processWidgetInput(const CreativeEditorControlsFrameRequest& request,
 }
 
 }  // namespace
+
+bool selectCreativeEditorControlsTab(
+    CreativeEditorState& editor,
+    cr::CreativeControlDevice device) noexcept {
+  if (device == cr::CreativeControlDevice::Count ||
+      device == editor.controls.activeDevice) {
+    return false;
+  }
+  editor.controls.activeDevice = device;
+  editor.controls.selectedIndex = 0U;
+  editor.controls.scrollOffset = 0U;
+  editor.controls.focusedWidgetId = rowWidgetId(0U);
+  editor.controls.repeatState = {};
+  refreshBindingList(editor);
+  return true;
+}
 
 CreativeEditorControlPersistenceReceipt loadCreativeEditorControlProfile(
     cr::CreativeControlProfile& profile,

@@ -21,13 +21,7 @@ namespace {
   return {lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z};
 }
 
-struct PlacementExtent {
-  CreativeVec3 min{};
-  CreativeVec3 max{};
-  bool valid = false;
-};
-
-void includePlacementPoint(PlacementExtent& extent,
+void includePlacementPoint(CreativeObjectWorldExtent& extent,
                            CreativeVec3 point) noexcept {
   if (!extent.valid) {
     extent.min = point;
@@ -43,40 +37,16 @@ void includePlacementPoint(PlacementExtent& extent,
   extent.max.z = std::max(extent.max.z, point.z);
 }
 
-[[nodiscard]] PlacementExtent objectPlacementExtent(
-    const CreativeObject& object) noexcept {
-  PlacementExtent extent;
-  const CreativeObjectDescriptor& descriptor = describeObject(object.kind);
-  if (descriptor.shapeKind == CreativeObjectShapeKind::Path &&
-      !object.pathPoints.empty()) {
-    for (const CreativePathPoint& point : object.pathPoints) {
-      includePlacementPoint(extent, point.position);
-    }
-    return extent;
-  }
-  if (descriptor.hasBounds) {
-    const CreativeTransformedBounds resolved =
-        resolveCreativeObjectBounds(object);
-    if (!resolved.valid) {
-      return extent;
-    }
-    includePlacementPoint(extent, resolved.worldBounds.min);
-    includePlacementPoint(extent, resolved.worldBounds.max);
-    return extent;
-  }
-  includePlacementPoint(extent, object.transform.position);
-  return extent;
-}
-
 [[nodiscard]] bool resolveClipboardPlacementAnchor(
     std::span<const CreativeObject> objects,
     CreativeVec3& outAnchor) noexcept {
   if (objects.empty()) {
     return false;
   }
-  PlacementExtent selection;
+  CreativeObjectWorldExtent selection;
   for (const CreativeObject& object : objects) {
-    const PlacementExtent objectExtent = objectPlacementExtent(object);
+    const CreativeObjectWorldExtent objectExtent =
+        resolveCreativeObjectWorldExtent(object);
     if (!objectExtent.valid || !isFiniteCreativeVec3(objectExtent.min) ||
         !isFiniteCreativeVec3(objectExtent.max)) {
       return false;
@@ -405,6 +375,18 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
       receipt.reasonCode = "creative_clipboard_rotation_invalid";
       return receipt;
     }
+    if ((request.hasTransformAnchor &&
+         !isFiniteCreativeVec3(request.transformAnchor)) ||
+        !isValidCreativeAxis3(request.rotationAxis) ||
+        !std::isfinite(request.rotationRadians) ||
+        (request.hasAxisAngleRotation &&
+         (request.quarterTurns != 0U || request.mirrorX ||
+          request.mirrorZ))) {
+      receipt.failedPasteIndex = requestIndex;
+      receipt.status = CreativeClipboardStatus::InvalidRequest;
+      receipt.reasonCode = "creative_clipboard_rigid_transform_invalid";
+      return receipt;
+    }
     if (!validExternalParentPolicy(request.externalParentPolicy)) {
       receipt.failedPasteIndex = requestIndex;
       receipt.status = CreativeClipboardStatus::InvalidRequest;
@@ -440,13 +422,19 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
     const CreativeClipboardPasteRequest& request = requests[requestIndex];
     CreativeSelectionPlacementRequest placementRequest;
     placementRequest.mode = CreativeSelectionPlacementMode::Copy;
-    placementRequest.sourceAnchor =
-        clipboard.hasPlacementAnchor ? clipboard.placementAnchor : CreativeVec3{};
+    placementRequest.sourceAnchor = request.hasTransformAnchor
+                                        ? request.transformAnchor
+                                        : clipboard.hasPlacementAnchor
+                                              ? clipboard.placementAnchor
+                                              : CreativeVec3{};
     placementRequest.targetAnchor =
         add(placementRequest.sourceAnchor, request.offset);
     placementRequest.quarterTurns = request.quarterTurns;
     placementRequest.mirrorX = request.mirrorX;
     placementRequest.mirrorZ = request.mirrorZ;
+    placementRequest.hasAxisAngleRotation = request.hasAxisAngleRotation;
+    placementRequest.rotationAxis = request.rotationAxis;
+    placementRequest.rotationRadians = request.rotationRadians;
     const CreativeSelectionPlacementPlan placementPlan =
         planCreativeSelectionPlacement(clipboard.objects, placementRequest);
     if (!placementPlan.accepted) {

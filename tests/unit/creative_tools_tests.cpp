@@ -328,6 +328,12 @@ bool optionDescriptorsAreContextualAndBounded() {
       cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::VolumeClone);
   const cr::CreativeToolOptionList array =
       cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::LinearArray);
+  cr::CreativeToolSettings radialSettings =
+      cr::makeDefaultCreativeToolSettings();
+  radialSettings.arrayMode = cr::CreativeArrayMode::Radial;
+  const cr::CreativeToolOptionList radialArray =
+      cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::LinearArray,
+                                         radialSettings);
 
   return expect(descriptors.size() == cr::kCreativeToolOptionDescriptorCount,
                 "global descriptor table has one row per option id") &&
@@ -357,18 +363,30 @@ bool optionDescriptorsAreContextualAndBounded() {
                     clone.ids[2] ==
                         cr::CreativeToolOptionId::CloneOffsetDistance,
                 "clone exposes offset axis and distance") &&
-         expect(array.count == 3U &&
+         expect(array.count == 4U &&
                     array.ids[0] ==
-                        cr::CreativeToolOptionId::ArrayDirection &&
+                        cr::CreativeToolOptionId::ArrayMode &&
                     array.ids[1] ==
-                        cr::CreativeToolOptionId::ArrayCopyCount &&
+                        cr::CreativeToolOptionId::ArrayDirection &&
                     array.ids[2] ==
+                        cr::CreativeToolOptionId::ArrayCopyCount &&
+                    array.ids[3] ==
                         cr::CreativeToolOptionId::ArraySpacing,
-                "array exposes direction, copy count, and spacing") &&
+                "linear array exposes mode, direction, copies, and spacing") &&
+         expect(radialArray.count == 4U &&
+                    radialArray.ids[0] ==
+                        cr::CreativeToolOptionId::ArrayMode &&
+                    radialArray.ids[1] ==
+                        cr::CreativeToolOptionId::RadialArrayAxis &&
+                    radialArray.ids[2] ==
+                        cr::CreativeToolOptionId::RadialArrayInstanceCount &&
+                    radialArray.ids[3] ==
+                        cr::CreativeToolOptionId::RadialArraySweep,
+                "radial array hides irrelevant linear settings") &&
          expect(!material.capacityExceeded && !move.capacityExceeded &&
                     !fill.capacityExceeded && !hollow.capacityExceeded &&
                     !replace.capacityExceeded && !clone.capacityExceeded &&
-                    !array.capacityExceeded &&
+                    !array.capacityExceeded && !radialArray.capacityExceeded &&
                     array.count <= cr::kCreativeToolOptionCapacity,
                 "default option lists fit bounded storage") &&
          expect(cr::creativeToolOptionDescriptor(
@@ -442,6 +460,21 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                   settings.arraySpacing ==
                       cr::CreativeLinearArraySpacing::TwoCells,
               "array spacing cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::ArrayMode, 1).changed &&
+                  settings.arrayMode == cr::CreativeArrayMode::Radial,
+              "array mode cycles to radial") &&
+       expect(adjust(cr::CreativeToolOptionId::RadialArrayAxis, 1).changed &&
+                  settings.radialArrayAxis == cr::CreativeAxis3::Z,
+              "radial axis cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::RadialArrayInstanceCount, 1)
+                  .changed &&
+                  settings.radialArrayInstanceCount ==
+                      cr::CreativeRadialArrayInstanceCount::Sixteen,
+              "radial instance count cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::RadialArraySweep, 1).changed &&
+                  settings.radialArraySweep ==
+                      cr::CreativeRadialArraySweep::Degrees90,
+              "radial sweep wraps") &&
        ok;
 
   const cr::CreativeToolSettings beforeZero = settings;

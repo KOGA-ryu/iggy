@@ -93,9 +93,16 @@ void adjustSelection(CreativeEditorState& editor,
   if (state.selectedIndex >= state.options.count) {
     return;
   }
-  static_cast<void>(cr::adjustCreativeToolOption(
-      state.draft, state.options.ids[state.selectedIndex], direction,
-      editor.brushPalette));
+  const cr::CreativeToolOptionId option =
+      state.options.ids[state.selectedIndex];
+  const cr::CreativeToolOptionAdjustReceipt receipt =
+      cr::adjustCreativeToolOption(state.draft, option, direction,
+                                   editor.brushPalette);
+  if (receipt.changed && option == cr::CreativeToolOptionId::ArrayMode) {
+    state.options = cr::creativeToolOptionsForHeldItem(state.heldItem,
+                                                       state.draft);
+    state.selectedIndex = 0U;
+  }
 }
 
 [[nodiscard]] bool commitOptions(CreativeEditorState& editor) {
@@ -173,7 +180,8 @@ CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
 
   if (request.openRequested && !state.open) {
     const cr::CreativeToolOptionList options =
-        cr::creativeToolOptionsForHeldItem(request.requestedHeldItem);
+        cr::creativeToolOptionsForHeldItem(request.requestedHeldItem,
+                                           request.editor.toolSettings);
     if (options.count > 0U && !options.capacityExceeded) {
       state.open = true;
       state.heldItem = request.requestedHeldItem;

@@ -119,6 +119,10 @@ constexpr std::array kToolOptionDescriptors{
                                  "CLONE DIST",
                                  CreativeToolOptionValueKind::Choice,
                                  kCloneItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::ArrayMode,
+                                 "MODE",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kArrayItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::ArrayDirection,
                                  "DIRECTION",
                                  CreativeToolOptionValueKind::Choice,
@@ -129,6 +133,19 @@ constexpr std::array kToolOptionDescriptors{
                                  kArrayItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::ArraySpacing,
                                  "STEP",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kArrayItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::RadialArrayAxis,
+                                 "AXIS",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kArrayItems},
+    CreativeToolOptionDescriptor{
+        CreativeToolOptionId::RadialArrayInstanceCount,
+        "INSTANCES",
+        CreativeToolOptionValueKind::Choice,
+        kArrayItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::RadialArraySweep,
+                                 "SWEEP",
                                  CreativeToolOptionValueKind::Choice,
                                  kArrayItems},
 };
@@ -162,9 +179,13 @@ template <typename Enum>
          lhs.replaceSourceKind == rhs.replaceSourceKind &&
          lhs.cloneOffsetAxis == rhs.cloneOffsetAxis &&
          lhs.cloneOffsetDistance == rhs.cloneOffsetDistance &&
+         lhs.arrayMode == rhs.arrayMode &&
          lhs.arrayDirection == rhs.arrayDirection &&
          lhs.arrayCopyCount == rhs.arrayCopyCount &&
-         lhs.arraySpacing == rhs.arraySpacing;
+         lhs.arraySpacing == rhs.arraySpacing &&
+         lhs.radialArrayAxis == rhs.radialArrayAxis &&
+         lhs.radialArrayInstanceCount == rhs.radialArrayInstanceCount &&
+         lhs.radialArraySweep == rhs.radialArraySweep;
 }
 
 [[nodiscard]] CreativeToolOptionAdjustReceipt adjustReceipt(
@@ -411,12 +432,18 @@ bool isValidCreativeToolSettings(
                    CreativeCloneOffsetAxis::Count) &&
          validEnum(settings.cloneOffsetDistance,
                    CreativeCloneOffsetDistance::Count) &&
+         validEnum(settings.arrayMode, CreativeArrayMode::Count) &&
          validEnum(settings.arrayDirection,
                    CreativeLinearArrayDirection::Count) &&
          validEnum(settings.arrayCopyCount,
                    CreativeLinearArrayCopyCount::Count) &&
          validEnum(settings.arraySpacing,
-                   CreativeLinearArraySpacing::Count);
+                   CreativeLinearArraySpacing::Count) &&
+         isValidCreativeAxis3(settings.radialArrayAxis) &&
+         validEnum(settings.radialArrayInstanceCount,
+                   CreativeRadialArrayInstanceCount::Count) &&
+         validEnum(settings.radialArraySweep,
+                   CreativeRadialArraySweep::Count);
 }
 
 std::span<const CreativeToolOptionDescriptor>
@@ -434,15 +461,35 @@ const CreativeToolOptionDescriptor* creativeToolOptionDescriptor(
 
 CreativeToolOptionList creativeToolOptionsForHeldItem(
     CreativeHeldItemKind heldItem) noexcept {
+  return creativeToolOptionsForHeldItem(heldItem,
+                                        makeDefaultCreativeToolSettings());
+}
+
+CreativeToolOptionList creativeToolOptionsForHeldItem(
+    CreativeHeldItemKind heldItem,
+    const CreativeToolSettings& settings) noexcept {
   CreativeToolOptionList result;
   if (static_cast<std::size_t>(heldItem) >=
-      static_cast<std::size_t>(CreativeHeldItemKind::Count)) {
+          static_cast<std::size_t>(CreativeHeldItemKind::Count) ||
+      !isValidCreativeToolSettings(settings)) {
     return result;
   }
   const CreativeHeldItemMask mask = heldItemMask(heldItem);
   for (const CreativeToolOptionDescriptor& descriptor :
        kToolOptionDescriptors) {
     if ((descriptor.applicableHeldItems & mask) == 0U) {
+      continue;
+    }
+    const bool linearOnly =
+        descriptor.id == CreativeToolOptionId::ArrayDirection ||
+        descriptor.id == CreativeToolOptionId::ArrayCopyCount ||
+        descriptor.id == CreativeToolOptionId::ArraySpacing;
+    const bool radialOnly =
+        descriptor.id == CreativeToolOptionId::RadialArrayAxis ||
+        descriptor.id == CreativeToolOptionId::RadialArrayInstanceCount ||
+        descriptor.id == CreativeToolOptionId::RadialArraySweep;
+    if ((linearOnly && settings.arrayMode != CreativeArrayMode::Linear) ||
+        (radialOnly && settings.arrayMode != CreativeArrayMode::Radial)) {
       continue;
     }
     if (result.count == result.ids.size()) {
@@ -519,6 +566,15 @@ std::string_view toString(CreativeCloneOffsetDistance distance) noexcept {
   return "INVALID";
 }
 
+std::string_view toString(CreativeArrayMode mode) noexcept {
+  switch (mode) {
+    case CreativeArrayMode::Linear: return "LINEAR";
+    case CreativeArrayMode::Radial: return "RADIAL";
+    case CreativeArrayMode::Count: break;
+  }
+  return "INVALID";
+}
+
 std::string_view toString(CreativeToolOptionAdjustStatus status) noexcept {
   switch (status) {
     case CreativeToolOptionAdjustStatus::NotRequested: return "NotRequested";
@@ -555,12 +611,20 @@ std::string_view creativeToolOptionValueLabel(
       return toString(settings.cloneOffsetAxis);
     case CreativeToolOptionId::CloneOffsetDistance:
       return toString(settings.cloneOffsetDistance);
+    case CreativeToolOptionId::ArrayMode:
+      return toString(settings.arrayMode);
     case CreativeToolOptionId::ArrayDirection:
       return toString(settings.arrayDirection);
     case CreativeToolOptionId::ArrayCopyCount:
       return toString(settings.arrayCopyCount);
     case CreativeToolOptionId::ArraySpacing:
       return toString(settings.arraySpacing);
+    case CreativeToolOptionId::RadialArrayAxis:
+      return toString(settings.radialArrayAxis);
+    case CreativeToolOptionId::RadialArrayInstanceCount:
+      return toString(settings.radialArrayInstanceCount);
+    case CreativeToolOptionId::RadialArraySweep:
+      return toString(settings.radialArraySweep);
     case CreativeToolOptionId::Count:
       break;
   }
@@ -632,6 +696,10 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
           cycleEnum(adjusted.cloneOffsetDistance,
                     CreativeCloneOffsetDistance::Count, direction);
       break;
+    case CreativeToolOptionId::ArrayMode:
+      adjusted.arrayMode = cycleEnum(
+          adjusted.arrayMode, CreativeArrayMode::Count, direction);
+      break;
     case CreativeToolOptionId::ArrayDirection:
       adjusted.arrayDirection = cycleEnum(
           adjusted.arrayDirection, CreativeLinearArrayDirection::Count,
@@ -645,6 +713,20 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
     case CreativeToolOptionId::ArraySpacing:
       adjusted.arraySpacing = cycleEnum(
           adjusted.arraySpacing, CreativeLinearArraySpacing::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::RadialArrayAxis:
+      adjusted.radialArrayAxis = cycleEnum(
+          adjusted.radialArrayAxis, CreativeAxis3::Count, direction);
+      break;
+    case CreativeToolOptionId::RadialArrayInstanceCount:
+      adjusted.radialArrayInstanceCount = cycleEnum(
+          adjusted.radialArrayInstanceCount,
+          CreativeRadialArrayInstanceCount::Count, direction);
+      break;
+    case CreativeToolOptionId::RadialArraySweep:
+      adjusted.radialArraySweep = cycleEnum(
+          adjusted.radialArraySweep, CreativeRadialArraySweep::Count,
           direction);
       break;
     case CreativeToolOptionId::Count:

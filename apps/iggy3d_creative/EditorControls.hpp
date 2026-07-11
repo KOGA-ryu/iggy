@@ -38,6 +38,8 @@ struct CreativeEditorControlPersistenceReceipt {
 
 struct CreativeEditorControlsState {
   bool open = false;
+  iggy3d::creative::CreativeControlDevice activeDevice =
+      iggy3d::creative::CreativeControlDevice::KeyboardMouse;
   std::size_t selectedIndex = 0;
   std::size_t scrollOffset = 0;
   iggy3d::creative::CreativeUiWidgetId focusedWidgetId =
@@ -87,6 +89,10 @@ saveCreativeEditorControlProfile(
 [[nodiscard]] CreativeEditorControlsFrameResult
 processCreativeEditorControlsFrame(
     const CreativeEditorControlsFrameRequest& request);
+
+[[nodiscard]] bool selectCreativeEditorControlsTab(
+    CreativeEditorState& editor,
+    iggy3d::creative::CreativeControlDevice device) noexcept;
 
 void appendCreativeEditorControlsOverlay(
     const CreativeEditorState& editor,

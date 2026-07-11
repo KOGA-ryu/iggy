@@ -218,6 +218,8 @@ class Facade {
       const CreativeDuplicateCommandRequest& request = {});
   [[nodiscard]] CreativeLinearArrayReceipt createLinearArrayFromSelection(
       const CreativeLinearArrayRequest& request = {});
+  [[nodiscard]] CreativeRadialArrayReceipt createRadialArrayFromSelection(
+      const CreativeRadialArrayRequest& request = {});
   [[nodiscard]] CreativeClipboardCopyReceipt copySelectedObjectsToClipboard(
       CreativeClipboard& outClipboard);
   [[nodiscard]] CreativeClipboardCutReceipt cutSelectedObjectsToClipboard(

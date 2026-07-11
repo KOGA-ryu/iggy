@@ -614,6 +614,75 @@ CreativeLinearArrayReceipt Facade::createLinearArrayFromSelection(
   return receipt;
 }
 
+CreativeRadialArrayReceipt Facade::createRadialArrayFromSelection(
+    const CreativeRadialArrayRequest& request) {
+  recordCommandAttempt(stats_);
+  const std::vector<CreativeObjectId> objectIds =
+      selectedObjectIds(selectionState_);
+  if (!objectIds.empty()) {
+    CreativeRadialArrayPlanRequest planRequest;
+    planRequest.sourceObjectCount = objectIds.size();
+    planRequest.pivot = request.pivot;
+    planRequest.axis = request.axis;
+    planRequest.instanceCount = request.instanceCount;
+    planRequest.sweep = request.sweep;
+    planRequest.maxGeneratedObjects = request.maxGeneratedObjects;
+    const CreativeRadialArrayPlanReceipt plan =
+        planCreativeRadialArray(planRequest);
+    if (plan.accepted) {
+      const CreativeObjectId nextObjectId = document_.nextObjectId();
+      const CreativeObjectId maxTargetId = std::numeric_limits<Id>::max();
+      if (nextObjectId > maxTargetId ||
+          plan.generatedObjectCount - 1U > maxTargetId - nextObjectId) {
+        CreativeRadialArrayReceipt receipt;
+        receipt.requested = true;
+        receipt.requestedObjectCount = objectIds.size();
+        receipt.sourceObjectCount = objectIds.size();
+        receipt.generatedObjectCount = plan.generatedObjectCount;
+        receipt.status = CreativeRadialArrayStatus::ObjectIdExhausted;
+        receipt.revisionBefore = document_.revision();
+        receipt.revisionAfter = receipt.revisionBefore;
+        receipt.plan = plan;
+        receipt.message = "creative_radial_array_target_id_exhausted";
+        recordCommandFailure(stats_);
+        return receipt;
+      }
+    }
+  }
+
+  CreativeRadialArrayReceipt receipt =
+      createCreativeRadialArrayAtomically(document_, objectIds, request);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+
+  for (CreativeObjectId objectId : receipt.generatedObjectIds()) {
+    recordObjectCreated(stats_);
+    const CreativeObject* object = document_.findObject(objectId);
+    if (object != nullptr && object->kind == CreativeObjectKind::Room) {
+      recordRoomCreated(stats_);
+    }
+  }
+
+  std::vector<TargetRef> finalCopyTargets;
+  finalCopyTargets.reserve(receipt.finalCopyObjectCount);
+  for (CreativeObjectId objectId : receipt.finalCopyObjectIds()) {
+    const TargetRef target = objectIdToTargetRef(objectId);
+    if (target.value != kInvalidId) {
+      finalCopyTargets.push_back(target);
+    }
+  }
+  const TargetRef primaryTarget = finalCopyTargets.empty()
+                                      ? TargetRef{}
+                                      : finalCopyTargets.back();
+  static_cast<void>(setSelectedTargets(selectionState_, finalCopyTargets,
+                                       primaryTarget));
+  state_.selected = selectionState_.selectedTarget;
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
 CreativeClipboardCopyReceipt Facade::copySelectedObjectsToClipboard(
     CreativeClipboard& outClipboard) {
   recordCommandAttempt(stats_);

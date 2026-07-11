@@ -503,11 +503,13 @@ void commitHeldShapeVolume(InteractionContext& context) {
   setVolumeGestureFeedback(editor, receipt.accepted);
 }
 
-void applyHeldLinearArray(InteractionContext& context) {
-  static_cast<void>(applyCreativeEditorLinearArrayWithHistory(
+void applyHeldArray(InteractionContext& context) {
+  static_cast<void>(applyCreativeEditorArrayWithHistory(
       context.request.appState, context.request.editor.pattern,
       context.request.editor.toolSettings, context.request.editor.placeCellSize,
-      "minecraft_secondary_linear_array"));
+      context.request.editor.interaction.target.grid.valid,
+      context.request.editor.interaction.target.grid.placementAnchor,
+      "minecraft_secondary_array"));
 }
 
 constexpr std::array<HeldItemHandlerRow, cr::kCreativeHeldItemKindCount>
@@ -534,7 +536,7 @@ constexpr std::array<HeldItemHandlerRow, cr::kCreativeHeldItemKindCount>
         {cr::CreativeHeldItemKind::VolumeClone,
          {noInteraction, applyHeldVolumeOperation, sampleTargetMaterial}},
         {cr::CreativeHeldItemKind::LinearArray,
-         {selectObject, applyHeldLinearArray, sampleTargetMaterial}},
+         {selectObject, applyHeldArray, sampleTargetMaterial}},
     }};
 static_assert(heldItemRowsMatchEnumOrder(kHeldItemHandlers));
 
@@ -708,6 +710,20 @@ std::string creativeEditorHeldItemStatusLabel(
     } else if (editor.volume.selection.phase ==
                cr::CreativeVolumeSelectionPhase::Complete) {
       output.append(" | Ready");
+    }
+    return output;
+  }
+  if (held.kind == cr::CreativeHeldItemKind::LinearArray) {
+    output.append(" | ");
+    output.append(cr::toString(editor.toolSettings.arrayMode));
+    if (editor.toolSettings.arrayMode == cr::CreativeArrayMode::Radial) {
+      output.append(" | ");
+      output.append(cr::toString(editor.toolSettings.radialArrayAxis));
+      output.append(" | ");
+      output.append(
+          cr::toString(editor.toolSettings.radialArrayInstanceCount));
+      output.append(" | ");
+      output.append(cr::toString(editor.toolSettings.radialArraySweep));
     }
     return output;
   }
@@ -903,10 +919,10 @@ bool confirmCreativeEditorHeldItem(cr::CreativeAppState& appState,
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   if (held.kind == cr::CreativeHeldItemKind::LinearArray) {
-    return applyCreativeEditorLinearArrayWithHistory(
-               appState, editor.pattern, editor.toolSettings,
-               editor.placeCellSize, source)
-        .accepted;
+    return applyCreativeEditorArrayWithHistory(
+        appState, editor.pattern, editor.toolSettings, editor.placeCellSize,
+        editor.interaction.target.grid.valid,
+        editor.interaction.target.grid.placementAnchor, source);
   }
   if (cr::creativeHeldItemUsesDirectShapeGesture(held.kind)) {
     return false;

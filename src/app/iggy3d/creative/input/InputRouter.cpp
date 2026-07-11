@@ -425,6 +425,12 @@ constexpr std::array kDefaultBindings{
     catalogBinding(CreativeInputActionId::ToolWheelConfirm,
                    CreativeInputKey::GamepadConfirm,
                    CreativeInputContext::ToolWheel),
+    catalogBinding(CreativeInputActionId::ToolWheelOptions,
+                   CreativeInputKey::O,
+                   CreativeInputContext::ToolWheel),
+    catalogBinding(CreativeInputActionId::ToolWheelOptions,
+                   CreativeInputKey::GamepadWest,
+                   CreativeInputContext::ToolWheel),
     catalogBinding(CreativeInputActionId::ToolWheelClose,
                    CreativeInputKey::Escape,
                    CreativeInputContext::ToolWheel),
@@ -746,6 +752,7 @@ std::string_view toString(CreativeInputActionId action) noexcept {
     case CreativeInputActionId::ToolWheelPrevious: return "ToolWheelPrevious";
     case CreativeInputActionId::ToolWheelNext: return "ToolWheelNext";
     case CreativeInputActionId::ToolWheelConfirm: return "ToolWheelConfirm";
+    case CreativeInputActionId::ToolWheelOptions: return "ToolWheelOptions";
     case CreativeInputActionId::ToolWheelClose: return "ToolWheelClose";
     case CreativeInputActionId::ToolOptionsPrevious:
       return "ToolOptionsPrevious";

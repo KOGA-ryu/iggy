@@ -154,6 +154,10 @@ void addNudgeStep(CreativeVec3& offset,
 [[nodiscard]] CreativeVec3 transformPlacementOffset(
     CreativeVec3 offset,
     const CreativeSelectionPlacementRequest& request) noexcept {
+  if (request.hasAxisAngleRotation) {
+    return rotateCreativeVectorAxisAngle(offset, request.rotationAxis,
+                                         request.rotationRadians);
+  }
   if (request.mirrorX) {
     offset.x = -offset.x;
   }
@@ -177,13 +181,17 @@ void addNudgeStep(CreativeVec3& offset,
                                       request));
 }
 
-[[nodiscard]] double transformPlacementYaw(
-    double yawRadians,
+[[nodiscard]] CreativeVec3 transformPlacementRotation(
+    CreativeVec3 eulerRadians,
     const CreativeSelectionPlacementRequest& request) noexcept {
-  if (request.quarterTurns == 0U && !request.mirrorX && !request.mirrorZ) {
-    return yawRadians;
+  if (request.hasAxisAngleRotation) {
+    return composeCreativeWorldAxisRotation(
+        eulerRadians, request.rotationAxis, request.rotationRadians);
   }
-  double transformed = yawRadians;
+  if (request.quarterTurns == 0U && !request.mirrorX && !request.mirrorZ) {
+    return eulerRadians;
+  }
+  double transformed = eulerRadians.y;
   if (request.mirrorX) {
     transformed = -transformed;
   }
@@ -192,7 +200,8 @@ void addNudgeStep(CreativeVec3& offset,
   }
   transformed += static_cast<double>(request.quarterTurns) *
                  std::numbers::pi * 0.5;
-  return std::remainder(transformed, std::numbers::pi * 2.0);
+  eulerRadians.y = std::remainder(transformed, std::numbers::pi * 2.0);
+  return eulerRadians;
 }
 
 [[nodiscard]] CreativeBounds transformPlacementBounds(
@@ -244,8 +253,8 @@ void addNudgeStep(CreativeVec3& offset,
   if (objectHasTransform(source.kind)) {
     output.transform.position =
         transformPlacementPoint(source.transform.position, request);
-    output.transform.rotationEulerRadians.y = transformPlacementYaw(
-        source.transform.rotationEulerRadians.y, request);
+    output.transform.rotationEulerRadians = transformPlacementRotation(
+        source.transform.rotationEulerRadians, request);
     if (objectHasBounds(source.kind)) {
       output.bounds = translateBounds(
           source.bounds,
@@ -500,9 +509,14 @@ CreativeSelectionPlacementPlan planCreativeSelectionPlacement(
     plan.reasonCode = "selection_placement_source_empty";
     return plan;
   }
+  const bool legacyRotationRequested =
+      request.quarterTurns != 0U || request.mirrorX || request.mirrorZ;
   if (!validPlacementMode(request.mode) || request.quarterTurns > 3U ||
       !isFiniteCreativeVec3(request.sourceAnchor) ||
-      !isFiniteCreativeVec3(request.targetAnchor)) {
+      !isFiniteCreativeVec3(request.targetAnchor) ||
+      !isValidCreativeAxis3(request.rotationAxis) ||
+      !std::isfinite(request.rotationRadians) ||
+      (request.hasAxisAngleRotation && legacyRotationRequested)) {
     plan.status = CreativeSelectionPlacementStatus::InvalidRequest;
     plan.reasonCode = "selection_placement_request_invalid";
     return plan;

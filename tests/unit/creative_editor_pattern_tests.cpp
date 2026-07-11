@@ -68,6 +68,9 @@ bool requestMappingIsExplicit() {
   const app::CreativeEditorState editor = editorForArray();
   const cr::CreativeLinearArrayRequest request =
       app::creativeEditorLinearArrayRequest(editor.toolSettings, 0.5);
+  const cr::CreativeVec3 pivot{3.0, 1.0, -2.0};
+  const cr::CreativeRadialArrayRequest radial =
+      app::creativeEditorRadialArrayRequest(editor.toolSettings, pivot);
   return expect(request.direction ==
                     cr::CreativeLinearArrayDirection::PositiveX,
                 "adapter maps direction") &&
@@ -75,7 +78,13 @@ bool requestMappingIsExplicit() {
                 "adapter maps copy count") &&
          expect(request.spacing == cr::CreativeLinearArraySpacing::TwoCells,
                 "adapter maps spacing") &&
-         expect(request.cellSize == 0.5, "adapter maps cell size");
+         expect(request.cellSize == 0.5, "adapter maps cell size") &&
+         expect(cr::creativeVec3ExactlyEqual(radial.pivot, pivot) &&
+                    radial.axis == editor.toolSettings.radialArrayAxis &&
+                    radial.instanceCount ==
+                        editor.toolSettings.radialArrayInstanceCount &&
+                    radial.sweep == editor.toolSettings.radialArraySweep,
+                "adapter maps radial pivot and options explicitly");
 }
 
 bool previewIsTransientAndOrdinalDerived() {
@@ -156,6 +165,86 @@ bool rejectedCommitDoesNotRecordHistory() {
                 "empty selection is rejected") &&
          expect(cr::creativeUndoDepth(appState.history) == 0U,
                 "rejected array does not record history");
+}
+
+bool radialPreviewUsesCrosshairPivotWithoutMutation() {
+  cr::CreativeAppState appState;
+  if (!expect(installDocument(appState, "Radial Preview", 77U),
+              "radial preview document installed") ||
+      !expect(createAndSelectRoom(appState) != cr::kInvalidObjectId,
+              "radial preview source selected")) {
+    return false;
+  }
+  app::CreativeEditorState editor = editorForArray();
+  editor.toolSettings.arrayMode = cr::CreativeArrayMode::Radial;
+  editor.toolSettings.radialArrayAxis = cr::CreativeAxis3::Y;
+  editor.toolSettings.radialArrayInstanceCount =
+      cr::CreativeRadialArrayInstanceCount::Four;
+  editor.toolSettings.radialArraySweep =
+      cr::CreativeRadialArraySweep::Degrees360;
+  editor.interaction.target.grid.valid = true;
+  editor.interaction.target.grid.placementAnchor = {0.5, 0.0, -1.5};
+  const std::size_t objectCountBefore = appState.facade.document().objectCount();
+  const std::uint64_t revisionBefore = appState.facade.document().revision();
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> lines;
+
+  const std::size_t appended =
+      app::appendCreativeEditorArrayPreview(appState, editor, 0.05F, lines);
+
+  return expect(appended == 48U && lines.size() == 48U,
+                "three radial copies and pivot use bounded wire boxes") &&
+         expect(lines[0].start.x == 2.0F && lines[0].end.x == 3.0F &&
+                    lines[0].start.z == -2.0F,
+                "radial preview revolves source around crosshair pivot") &&
+         expect(lines[36].color.r == 0.96F &&
+                    lines[36].color.g == 0.74F,
+                "radial preview marks pivot distinctly") &&
+         expect(appState.facade.document().objectCount() == objectCountBefore &&
+                    appState.facade.document().revision() == revisionBefore &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "radial preview is transient");
+}
+
+bool radialCommitRecordsOneUndoStepAndRequiresPivot() {
+  cr::CreativeAppState appState;
+  if (!expect(installDocument(appState, "Radial Commit", 78U),
+              "radial commit document installed") ||
+      !expect(createAndSelectRoom(appState) != cr::kInvalidObjectId,
+              "radial commit source selected")) {
+    return false;
+  }
+  app::CreativeEditorState editor = editorForArray();
+  editor.toolSettings.arrayMode = cr::CreativeArrayMode::Radial;
+  editor.toolSettings.radialArrayInstanceCount =
+      cr::CreativeRadialArrayInstanceCount::Four;
+  editor.toolSettings.radialArraySweep =
+      cr::CreativeRadialArraySweep::Degrees360;
+  const cr::CreativeVec3 pivot{0.5, 0.0, -1.5};
+
+  const bool missingPivot = app::applyCreativeEditorArrayWithHistory(
+      appState, editor.pattern, editor.toolSettings, editor.placeCellSize, false,
+      pivot, "test_radial_missing_pivot");
+  bool ok = expect(!missingPivot &&
+                       appState.facade.document().objectCount() == 1U &&
+                       cr::creativeUndoDepth(appState.history) == 0U,
+                   "radial commit fails closed without a live pivot");
+
+  const bool applied = app::applyCreativeEditorArrayWithHistory(
+      appState, editor.pattern, editor.toolSettings, editor.placeCellSize, true,
+      pivot, "test_radial_array");
+  ok = expect(applied && editor.pattern.lastRadialReceipt.accepted &&
+                  editor.pattern.lastRadialReceipt.changed &&
+                  appState.facade.document().objectCount() == 4U,
+              "radial adapter commits generated copies") &&
+       expect(cr::creativeUndoDepth(appState.history) == 1U &&
+                  appState.facade.selectionState().selectedTarget.value == 4U,
+              "radial commit records one undo and selects final copy") &&
+       ok;
+  const cr::CreativeHistoryApplyReceipt undo = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+  return expect(undo.accepted && undo.objectCountAfter == 1U,
+                "one undo removes complete radial batch") &&
+         ok;
 }
 
 bool transformCopyPreviewIsTransientAndConfirmable() {
@@ -459,6 +548,8 @@ int main() {
                   previewIsTransientAndOrdinalDerived() &&
                   commitRecordsOneUndoStep() &&
                   rejectedCommitDoesNotRecordHistory() &&
+                  radialPreviewUsesCrosshairPivotWithoutMutation() &&
+                  radialCommitRecordsOneUndoStepAndRequiresPivot() &&
                   transformCopyPreviewIsTransientAndConfirmable() &&
                   selectionTransformMoveUsesControlsAndOneUndo() &&
                   precisionTransformConstrainsNudgesAndCommitsOnce() &&

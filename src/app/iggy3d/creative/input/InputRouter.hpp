@@ -53,6 +53,7 @@ enum class CreativeInputActionId : std::uint8_t {
   ToolWheelPrevious,
   ToolWheelNext,
   ToolWheelConfirm,
+  ToolWheelOptions,
   ToolWheelClose,
   ToolOptionsPrevious,
   ToolOptionsNext,

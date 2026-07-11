@@ -398,7 +398,7 @@ bool heldVolumeItemsMapWithoutBranchesAtCallers() {
                     cr::CreativeHeldItemKind::LinearArray) &&
                     cr::toString(cr::CreativeHeldItemKind::LinearArray) ==
                         "Array",
-                "linear array is a distinct held tool") &&
+                "array is a distinct held tool") &&
          expect(cr::creativeHeldItemUsesDirectShapeGesture(
                     cr::CreativeHeldItemKind::VolumeFill) &&
                     cr::creativeHeldItemUsesDirectShapeGesture(

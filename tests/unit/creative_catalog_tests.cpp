@@ -284,7 +284,7 @@ bool toolWheelIsBoundedDirectionalAndAssignable() {
                   catalogState.entries[wheel.catalogEntryIndices[7]]
                           .hotbarEntry.kind ==
                       cr::CreativeHeldItemKind::LinearArray,
-              "linear array owns the eighth wheel sector") &&
+              "array owns the eighth wheel sector") &&
        ok;
 
   const std::array directions{
@@ -552,6 +552,13 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
                                   cr::CreativeInputKey::GamepadCancel,
                                   cr::CreativeInputContext::ToolWheel),
                    "tool wheel confirm and cancel stay in wheel context") &&
+            expect(hasBinding(cr::CreativeInputActionId::ToolWheelOptions,
+                              cr::CreativeInputKey::O,
+                              cr::CreativeInputContext::ToolWheel) &&
+                       hasBinding(cr::CreativeInputActionId::ToolWheelOptions,
+                                  cr::CreativeInputKey::GamepadWest,
+                                  cr::CreativeInputContext::ToolWheel),
+                   "tool wheel options has dedicated keyboard and PS5 input") &&
             expect(hasBinding(cr::CreativeInputActionId::ToolOptionsPrevious,
                               cr::CreativeInputKey::GamepadDpadUp,
                               cr::CreativeInputContext::ToolOptions) &&
@@ -680,6 +687,39 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
               "viewport R emits wheel-open action") &&
        expect(wheelHeld.actionCount == 0U,
               "held R does not retrigger in tool-wheel context") &&
+       ok;
+
+  cr::CreativeInputRouterState wheelOptionsRouter;
+  cr::CreativeInputFrame wheelOptionsFrame;
+  wheelOptionsFrame.context = cr::CreativeInputContext::ToolWheel;
+  cr::setCreativeInputKey(wheelOptionsFrame,
+                          cr::CreativeInputKey::GamepadWest, true);
+  const cr::CreativeInputRouteResult wheelOptionsPressed =
+      cr::routeCreativeInput(wheelOptionsRouter, wheelOptionsFrame, bindings);
+  const cr::CreativeInputRouteResult wheelOptionsHeld =
+      cr::routeCreativeInput(wheelOptionsRouter, wheelOptionsFrame, bindings);
+  ok = expect(wheelOptionsPressed.actionCount == 1U &&
+                  wheelOptionsPressed.actions[0].action ==
+                      cr::CreativeInputActionId::ToolWheelOptions,
+              "tool-wheel Square emits dedicated options action") &&
+       expect(wheelOptionsHeld.actionCount == 0U,
+              "held Square does not repeat tool options") &&
+       ok;
+
+  cr::CreativeInputRouterState wheelSecondaryRouter;
+  cr::CreativeInputFrame wheelSecondaryFrame;
+  wheelSecondaryFrame.context = cr::CreativeInputContext::ToolWheel;
+  cr::setCreativeInputKey(wheelSecondaryFrame,
+                          cr::CreativeInputKey::GamepadLeftTrigger, true);
+  const cr::CreativeInputRouteResult wheelSecondaryRouted =
+      cr::routeCreativeInput(wheelSecondaryRouter, wheelSecondaryFrame,
+                             bindings);
+  ok = expect(!cr::creativeInputActionDown(
+                  wheelSecondaryFrame,
+                  cr::CreativeInputActionId::SecondaryAction, bindings,
+                  &wheelSecondaryRouted) &&
+                  wheelSecondaryRouted.actionCount == 0U,
+              "tool-wheel L2 cannot leak into world secondary action") &&
        ok;
 
   cr::CreativeInputRouterState optionRouter;

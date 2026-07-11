@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/Facade.hpp"
 
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -14,6 +15,10 @@ bool expect(bool condition, std::string_view message) {
     std::cerr << "FAIL: " << message << '\n';
   }
   return condition;
+}
+
+bool near(double lhs, double rhs, double epsilon = 1.0e-9) {
+  return std::fabs(lhs - rhs) <= epsilon;
 }
 
 cr::CreativeToolInputPacket pointerInput(cr::CreativeToolInputKind kind,
@@ -988,6 +993,58 @@ bool linearArrayCreatesCopiesAndSelectsOnlyFinalInstance() {
                 "array records one command and every generated object");
 }
 
+bool radialArrayUsesPivotAndSelectsOnlyFinalInstance() {
+  cr::Facade facade;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Radial Test");
+  static_cast<void>(document.assignId(92U));
+  if (!expect(facade.installDocument(std::move(document)).accepted,
+              "radial test document installed")) {
+    return false;
+  }
+  cr::CreativeDocumentCreateRequest create;
+  create.kind = cr::CreativeObjectKind::Room;
+  create.name = "Radial Source";
+  create.bounds = {{2.0, 0.0, 0.0}, {3.0, 1.0, 1.0}};
+  create.hasBoundsOverride = true;
+  const cr::CreativeObjectId sourceId = facade.createDocumentObject(create).objectId;
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerPress, 1.0, 2.0,
+                   targetId(sourceId))));
+
+  const cr::Stats statsBefore = facade.stats();
+  cr::CreativeRadialArrayRequest request;
+  request.pivot = {};
+  request.axis = cr::CreativeAxis3::Y;
+  request.instanceCount = cr::CreativeRadialArrayInstanceCount::Four;
+  request.sweep = cr::CreativeRadialArraySweep::Degrees360;
+  const cr::CreativeRadialArrayReceipt receipt =
+      facade.createRadialArrayFromSelection(request);
+  const std::span<const cr::TargetRef> selected =
+      cr::selectedTargetList(facade.selectionState());
+  const cr::CreativeObject* final = facade.findObject(4U);
+  const cr::Stats& statsAfter = facade.stats();
+
+  return expect(receipt.accepted && receipt.changed &&
+                    receipt.generatedObjectCount == 3U,
+                "radial facade command accepted") &&
+         expect(selected.size() == 1U && selected.front().value == 4U &&
+                    facade.selectionState().selectedTarget.value == 4U &&
+                    facade.state().selected.value == 4U,
+                "radial facade selects final instance only") &&
+         expect(final != nullptr && near(final->bounds.min.x, -1.0) &&
+                    near(final->bounds.max.x, 0.0) &&
+                    near(final->bounds.min.z, 2.0) &&
+                    near(final->bounds.max.z, 3.0),
+                "radial facade publishes final rotated geometry") &&
+         expect(statsAfter.commandAttempts == statsBefore.commandAttempts + 1U &&
+                    statsAfter.commandSuccesses ==
+                        statsBefore.commandSuccesses + 1U &&
+                    statsAfter.commandFailures == statsBefore.commandFailures &&
+                    statsAfter.objectsCreated == statsBefore.objectsCreated + 3U &&
+                    statsAfter.roomsCreated == statsBefore.roomsCreated + 3U,
+                "radial facade records one command and generated objects");
+}
+
 }  // namespace
 
 int main() {
@@ -1023,6 +1080,7 @@ int main() {
                   removingDifferentObjectPreservesGhost() &&
                   removingMeasurementTargetClearsMeasurement() &&
                   removingDifferentObjectPreservesMeasurement() &&
-                  linearArrayCreatesCopiesAndSelectsOnlyFinalInstance();
+                  linearArrayCreatesCopiesAndSelectsOnlyFinalInstance() &&
+                  radialArrayUsesPivotAndSelectsOnlyFinalInstance();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

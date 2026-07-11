@@ -208,6 +208,8 @@ preview's contextual wheel. They do not each earn a permanent global key.
   signal; consumer profiles own any explicit inversion or response curve.
 - `Escape` or controller Options opens Controls from the viewport. Arrow keys,
   D-pad, wheel, pointer, `Enter`, and controller Cross operate the panel.
+  Keyboard + Mouse and PS5 Controller are separate visible tabs; click a tab or
+  focus it with vertical navigation and activate it with `Enter`/Cross.
   Selecting a binding listens for one keyboard/mouse or controller input;
   modifier keys are valid standalone bindings, while modifier-plus-key chords
   retain their modifier. Escape, Circle, or Options cancels capture.
@@ -216,9 +218,11 @@ preview's contextual wheel. They do not each earn a permanent global key.
   chords. The Controls open/close/navigation actions are reserved so a remap
   cannot remove the escape hatch. Backspace or controller Square restores all
   defaults.
-- Controls also owns mouse and controller look sensitivity, movement/look stick
-  deadzones and response curves, controller look X/Y inversion, and menu repeat
-  timing. Changes save immediately to the versioned
+- The Keyboard + Mouse tab owns mouse sensitivity and keyboard/mouse bindings.
+  The PS5 Controller tab owns controller sensitivity, movement/look stick
+  deadzones and response curves, look X/Y inversion, and PS5-labelled bindings.
+  Both tabs expose shared menu repeat timing and conflict policy. Changes save
+  immediately to the versioned
   `creative_controls_v1.cfg` user setting beside Creative saves. Loading is
   atomic and fail-closed; settings never enter map documents or map history.
 - Standard UI widgets live in `creative/ui/UiWidgets.*`. The fixed frame owns at
@@ -271,8 +275,10 @@ preview's contextual wheel. They do not each earn a permanent global key.
   the active hotbar slot. `Escape`, controller cancel, or the toggle closes it.
   Array owns the eighth sector; Erase remains available from the default hotbar
   and searchable catalog instead of occupying a radial sector.
-- While the wheel is open, right mouse or controller left trigger opens the
-  highlighted tool's contextual options. Up/down or wheel selects a row;
+- While the wheel is open, `O` or controller Square opens the highlighted
+  tool's contextual options. World Secondary remains right mouse/controller
+  left trigger and cannot open options or mutate the world through the wheel.
+  Up/down or wheel selects a row;
   left/right changes its value; `Enter`/controller confirm applies the draft;
   `Escape`/controller cancel discards it. Mouse rows, `-`/`+`, Apply, and Cancel
   expose the same semantic actions.
@@ -283,8 +289,10 @@ preview's contextual wheel. They do not each earn a permanent global key.
 - Contextual settings currently provide Free/X/Z fast-drag movement,
   X/Y/Z precision-preview constraints, 15/45/90-degree
   rotation, 0.25/0.5/1/2-meter grid increments, Replace source filtering by
-  material or Any, Clone offsets on X/Y/Z at 1/2/4/8 cells, and Array direction
-  on either world axis with 1/2/4/8/16/32 copies at 1/2/4/8-cell spacing.
+  material or Any, Clone offsets on X/Y/Z at 1/2/4/8 cells, Linear Array
+  direction on either world axis with 1/2/4/8/16/32 copies at 1/2/4/8-cell
+  spacing, and Radial Array X/Y/Z rings or arcs with 2/4/8/16/32 total
+  instances across 90/180/360 degrees.
   Settings edit a non-document draft; Apply changes the editor configuration,
   while the next world operation remains one previewed history transaction.
 - The Transform tool keeps two speeds of interaction. Primary drag is the fast
@@ -342,10 +350,17 @@ preview's contextual wheel. They do not each earn a permanent global key.
 - Voxel-backed materials and region tools always use the map's fixed block grid.
   The 0.25/0.5/1/2 meter snap option remains available for authored objects and
   transform tools; it does not resize voxel blocks or volume selections.
-- Array previews copies of the current ordered selection without mutating the
-  document. Right mouse/controller Secondary or `Enter` commits the full batch
+- Array previews show copies of the current ordered selection without mutating the
+  document. Tool Options switches between `LINEAR` and `RADIAL`. Linear owns
+  direction, new-copy count, and spacing. Radial owns X/Y/Z axis, total instance
+  count, and 90/180/360-degree sweep; the crosshair is its live pivot. A closed
+  360-degree ring counts the original as one slot and never duplicates the
+  endpoint. Partial sweeps count the original at zero and include the requested
+  endpoint. Right mouse/controller Secondary or `Enter` commits the full batch
   atomically as one history transaction, preserves the originals, and selects
   only the final generated copy so repeated commits do not grow exponentially.
+  A yellow pivot marker identifies the radial center. Cyan copies are valid;
+  red copies indicate that the selection anchor lies on the chosen pivot axis.
 - Platform-command `C`, `X`, and `V` copy, cut, and begin clipboard transform.
   Copy aligns the selection's deterministic lower-center placement anchor to the
   crosshair and uses the same quarter-turn/mirror plan as commit. `Escape`,
@@ -369,8 +384,8 @@ preview's contextual wheel. They do not each earn a permanent global key.
 ## Remaining Gaps
 
 - Pause/menu UI is not implemented.
-- Radial array and placement restrictions remain future previewable tools or
-  contextual settings. They do not receive permanent global keys.
+- Placement restrictions remain a future contextual setting. They do not
+  receive permanent global keys.
 - Context-sensitive controller glyph hints, named profile presets, per-device
   reset, and import/export remain future work. The live Controls panel already
   persists semantic keyboard/mouse and controller bindings plus bounded stick,
@@ -393,6 +408,9 @@ preview's contextual wheel. They do not each earn a permanent global key.
 - Randomized shape-brush symmetry and endpoint-reversal parity, especially even
   extents, diagonal 3D lines, thin ellipsoids, cylinder-axis permutations, and
   selections immediately above both planner limits.
+- Randomized radial-array rigid-transform parity for X/Y/Z axes, pre-rotated
+  objects near Euler gimbal configurations, parented groups, and 90/180/360
+  endpoint laws before increasing the 32-instance or 512-object limits.
 - Linear-array commit latency and preview density at the hard 512-generated-
   object limit (up to 6,144 transient box edges), including multi-object parent
   remapping and rollback on a late staged-paste failure.

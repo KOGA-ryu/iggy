@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
 
 #include <cstdint>
@@ -58,6 +59,9 @@ struct CreativeSelectionPlacementRequest {
   std::uint8_t quarterTurns = 0;
   bool mirrorX = false;
   bool mirrorZ = false;
+  bool hasAxisAngleRotation = false;
+  CreativeAxis3 rotationAxis = CreativeAxis3::Y;
+  double rotationRadians = 0.0;
 };
 
 struct CreativeSelectionPlacementTargetRequest {
