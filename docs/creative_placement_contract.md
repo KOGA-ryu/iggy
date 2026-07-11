@@ -61,11 +61,14 @@ failure policy. iggy3d requires explicit receipts and fail-closed validation.
 | Object policy | `src/app/iggy3d/creative/document/ObjectDescriptor.*` | Own whether and how an object kind may enter placement |
 | Geometry plan and admission | `apps/iggy3d_creative/EditorPlacement.*` | Produce one validated fixed-layout plan and structured admission status |
 | Shape-cell plan | `src/app/iggy3d/creative/tools/ShapeBrush.*` | Produce deterministic bounded Box, Line, Ellipsoid, and Cylinder cells |
+| Bulk cell storage | `src/app/iggy3d/creative/document/VoxelField.*` | Own sorted 16-cubed chunks, atomic edits, greedy cuboids, and grid DDA |
 | Mutation gesture | `apps/iggy3d_creative/EditorInteraction.*` | Deduplicate targets, execute due plans, and group history |
 | Visual preview | `apps/iggy3d_creative/EditorPreviewFrame.*` | Render held and target views from the admitted plan without document mutation |
 | World mutation | `src/app/iggy3d/creative/Facade.*` | Apply requests and return receipts |
 | History | `src/app/iggy3d/creative/history/History.*` | Record one changed gesture as one undo snapshot |
 | Rendering boundary | `src/render/FrameInput.*` | Carry bounded transient preview data only |
+| Room conversion | `src/app/iggy3d/creative/adapters/RoomBake.*` | Convert objects plus cached voxel cuboids into meshes and collision surfaces |
+| Save conversion | `src/app/iggy3d/creative/world/DocumentSection.*` | Persist sparse voxel chunks in Creative document section v3 |
 
 ## Required Pipeline
 
@@ -145,10 +148,10 @@ cardinal placement is exact.
   16,384 cells. A limit or validation failure returns no partial cell list.
 - The reusable planner retains its 16,384-cell algorithm ceiling. The interactive
   Creative application currently admits at most 512 candidate/generated cells
-  per Fill/Hollow commit because each cell is still a document object and many
-  materials bake as separate render meshes. Preview uses the same 512-cell limit
-  and turns red before a rejected commit. Raising this limit requires chunked
-  voxel storage or batched/instanced render ownership, not a constant change.
+  per Fill/Hollow commit as a deliberate interaction safety budget. Preview uses
+  the same limit and turns red before a rejected commit. Cells no longer become
+  document objects, so future budget changes must be justified by measured
+  planning, history-copy, bake, and upload costs rather than object count.
 - Fill/Hollow execute only the planned cells. Converting an existing generated
   solid to Hollow removes only generated interior cells; cells elsewhere in the
   selection remain untouched. Replace, Erase, and Clone retain their existing
@@ -163,6 +166,34 @@ cardinal placement is exact.
   Ellipsoid, Cylinder X, Cylinder Y, and Cylinder Z. Catalog navigation edits a
   draft and copies it into `CreativeToolSettings` only when the held tool is
   equipped; the planner never reads UI state directly.
+
+## Voxel Storage And Rendering
+
+- `CreativeDocument` owns one `CreativeVoxelField` beside ordinary authored
+  objects. Fill/Hollow write voxels; Replace, Erase, and Clone operate on both
+  voxels and ordinary objects where their rectangular selection contract calls
+  for it. Retired `iggy3d.volume_cell.v1` objects remain readable and removable,
+  but new bulk operations never create them.
+- A chunk is exactly `16 x 16 x 16` cells. Chunks are sorted in canonical
+  `z/y/x` coordinate order, cells use X-fastest local indices, and negative
+  coordinates use floor division. Empty chunks are removed.
+- One edit batch is sorted, rejects duplicate cells or invalid materials, stages
+  atomically, and advances field and document revision once. Receipts separate
+  created, removed, and replaced cells and name every dirty chunk.
+- Greedy cuboids never cross chunk boundaries. `CreativeEditorSceneCache`
+  caches them by chunk coordinate and monotonic chunk revision, so a document
+  refresh remeshes only new or changed chunks before RoomBake combines the
+  cached plans with ordinary object meshes.
+- Center-ray voxel picking uses grid DDA and compares its distance with the
+  nearest ordinary object hit. It allocates no per-cell candidate list. Primary
+  removes the exact hit voxel; Pick samples its material; Secondary still uses
+  the resolved adjacent grid cell.
+- Creative document save section v3 stores sparse chunk coordinates plus
+  canonical local indices and serialized material IDs. Section v2 remains
+  readable and restores an empty voxel field.
+- Existing history remains document-snapshot based. This preserves exact
+  undo/redo now that bulk cells are compact, but very large-world delta history
+  remains a separately measured optimization.
 
 ## Admission Statuses
 
@@ -206,6 +237,8 @@ red positionable ghost but never mutate the document.
   live document object for receipt feedback.
 - `CreativeEditorSceneCache` is keyed by document ID and revision. Aim motion
   does not rebuild or upload room geometry.
+- Voxel cuboid plans are additionally cached by chunk coordinate and revision;
+  only dirty chunks are remeshed on a document refresh.
 
 ## Deferred Algorithms
 
@@ -218,7 +251,6 @@ before implementation:
 - Exact oriented collision primitives for arbitrary non-cardinal yaw. Current
   physics intentionally uses a conservative transformed AABB.
 - Edge/corner ray tie-breaking for rotated and non-uniform bounds.
-- Dirty-region or chunk-level mesh rebuilds beyond revision-wide scene caching.
 - Atomic rollback and compact diffs for very large operations.
 - Client/server sequence IDs and reconciliation if editing becomes networked.
 - Controller disconnect, reconnect, deadzone, and trigger-threshold behavior on
@@ -230,6 +262,8 @@ before implementation:
   face filtering.
 - `creative_shape_brush_tests`: lattice counts, symmetry, canonical line order,
   axes, disks, hollow boundaries, enum rejection, and both operation limits.
+- `creative_voxel_field_tests`: negative chunk coordinates, atomic edits,
+  chunk-local greedy cuboids, grid DDA, and one document revision per batch.
 - `creative_interaction_tests`: semantic action edges and repeat timing.
 - `creative_editor_placement_tests`: plan/request parity, cardinal admission,
   oriented preview/picking/bake/render parity, bounded shape outlines, gesture deduplication,

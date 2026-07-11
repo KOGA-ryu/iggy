@@ -57,6 +57,7 @@ enum class CreativeVolumeOperationStatus : std::uint8_t {
   RemoveRejected,
   CopyRejected,
   PasteRejected,
+  VoxelMutationRejected,
   NoChange,
   Applied,
 };
@@ -91,8 +92,13 @@ struct CreativeVolumeOperationReceipt {
   std::uint64_t plannedCellCount = 0;
   std::uint64_t skippedOccupiedCellCount = 0;
   std::uint64_t matchedObjectCount = 0;
+  std::uint64_t matchedVoxelCellCount = 0;
   std::uint64_t createdObjectCount = 0;
   std::uint64_t removedObjectCount = 0;
+  std::uint64_t createdVoxelCellCount = 0;
+  std::uint64_t removedVoxelCellCount = 0;
+  std::uint64_t replacedVoxelCellCount = 0;
+  std::uint64_t dirtyVoxelChunkCount = 0;
   CreativeObjectId failedObjectId = kInvalidObjectId;
   std::vector<CreativeObjectId> createdObjectIds;
   std::vector<CreativeObjectId> removedObjectIds;
@@ -170,15 +176,11 @@ void clearCreativeVolumeSelection(CreativeVolumeSelection& selection) noexcept;
     CreativeVolumeOperationRequest& request,
     const CreativeToolSettings& settings) noexcept;
 
-// Fill/hollow are O(volume cells + existing volume cells). Replace is O(n)
-// over document objects. Erase/clone are O(n log n) because relationship-safe
-// removal and copy preserve parent order. Every path stages a full document
-// copy and commits only after all requested work succeeds.
-//
-// Fill creates missing tagged cell objects. Hollow also removes tagged interior
-// cells, so converting an existing solid is deterministic. Replace affects only
-// tagged cell objects. Erase and clone affect every object wholly contained by
-// the selected world bounds.
+// Fill/hollow write the chunked voxel field and also recognize retired tagged
+// cell objects so old documents remain editable. Replace targets voxel cells
+// and retired tagged cell objects. Erase and clone affect both voxels and every
+// ordinary object wholly contained by the selected world bounds. Each command
+// stages one document and commits only after every object and voxel edit passes.
 [[nodiscard]] CreativeVolumeOperationReceipt executeCreativeVolumeOperation(
     CreativeDocument& document,
     const CreativeVolumeOperationRequest& request);

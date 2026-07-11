@@ -4,6 +4,7 @@
 #include "content/assets/RoomAsset.hpp"
 
 #include <cstdint>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -38,12 +39,17 @@ struct CreativeRoomBakeRequest {
   bool includeHidden = false;
   bool validateReachability = true;
   float reachabilityCellSizeMeters = 1.0F;
+  bool usePrecomputedVoxelCuboids = false;
+  std::span<const CreativeVoxelCuboid> precomputedVoxelCuboids{};
 };
 
 struct CreativeRoomBakeReceipt {
   bool requested = false;
   bool accepted = false;
   std::uint64_t objectCount = 0;
+  std::uint64_t voxelCellCount = 0;
+  std::uint64_t voxelChunkCount = 0;
+  std::uint64_t bakedVoxelCuboidCount = 0;
   std::uint64_t consideredObjectCount = 0;
   std::uint64_t bakedStaticMeshCount = 0;
   std::uint64_t bakedAnchorCount = 0;

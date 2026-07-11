@@ -40,6 +40,7 @@ target_sources(iggy3d
     src/app/PackageRuntimeLookup.cpp
     src/app/iggy3d/creative/document/Object.cpp
     src/app/iggy3d/creative/document/Document.cpp
+    src/app/iggy3d/creative/document/VoxelField.cpp
     src/app/iggy3d/creative/mutation/Mutation.cpp
     src/app/iggy3d/creative/document/ObjectDescriptor.cpp
     src/app/iggy3d/creative/mutation/MutationApply.cpp

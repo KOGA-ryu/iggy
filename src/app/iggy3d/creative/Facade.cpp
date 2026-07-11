@@ -738,6 +738,18 @@ CreativeVolumeOperationReceipt Facade::applyVolumeOperation(
   return receipt;
 }
 
+CreativeVoxelMutationReceipt Facade::applyVoxelEdits(
+    std::span<const CreativeVoxelEdit> edits) {
+  recordCommandAttempt(stats_);
+  CreativeVoxelMutationReceipt receipt = document_.applyVoxelEdits(edits);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
 CreativeDocumentCreateReceipt Facade::createDocumentObject(
     const CreativeDocumentCreateRequest& request) {
   recordCommandAttempt(stats_);

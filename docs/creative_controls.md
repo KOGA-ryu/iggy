@@ -281,7 +281,9 @@ earn a permanent global key.
   history transactions.
 - Interactive Fill/Hollow previews fail closed above 512 candidate/generated
   cells. The red outline appears before commit so an accidental distant second
-  corner cannot create thousands of per-cell objects and stall scene rebaking.
+  corner cannot start unexpectedly large work. Accepted bulk cells live in
+  16-cubed voxel chunks and render through dirty-chunk greedy cuboids rather
+  than one document object and mesh per cell.
 - Save, new, and load use platform command `S`, `N`, and `O`. No `F`, `F5`, or
   Page Up/Down binding is required.
 

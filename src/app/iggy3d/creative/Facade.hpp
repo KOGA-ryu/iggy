@@ -228,6 +228,8 @@ class Facade {
       const CreativeClipboardPasteRequest& request = {});
   [[nodiscard]] CreativeVolumeOperationReceipt applyVolumeOperation(
       const CreativeVolumeOperationRequest& request);
+  [[nodiscard]] CreativeVoxelMutationReceipt applyVoxelEdits(
+      std::span<const CreativeVoxelEdit> edits);
 
   [[nodiscard]] CreativeDocumentCreateReceipt createDocumentObject(
       const CreativeDocumentCreateRequest& request);

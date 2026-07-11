@@ -63,12 +63,20 @@ struct StandaloneRoomBakePreviewScene {
   std::size_t standalonePreviewMeshCount = 0;
 };
 
+struct CreativeEditorVoxelChunkMeshCache {
+  iggy3d::creative::CreativeVoxelChunkCoord coord{};
+  std::uint64_t revision = 0;
+  std::vector<iggy3d::creative::CreativeVoxelCuboid> cuboids;
+};
+
 struct CreativeEditorSceneCache {
   StandaloneRoomBakePreviewScene preview;
   iggy3d::creative::CreativeDocumentId documentId =
       iggy3d::creative::kInvalidDocumentId;
   std::uint64_t documentRevision = 0;
   std::uint64_t refreshCount = 0;
+  std::uint64_t voxelChunkMeshBuildCount = 0;
+  std::vector<CreativeEditorVoxelChunkMeshCache> voxelChunkMeshes;
   bool valid = false;
 };
 

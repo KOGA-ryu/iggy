@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/world/DocumentSection.hpp"
 #include "runtime/save/SaveCodec.hpp"
 
+#include <array>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -899,6 +900,54 @@ bool restoreRejectsTooLargeGridDimension() {
                 "too large grid reason");
 }
 
+bool voxelChunksEncodeDecodeAndRestore() {
+  cr::CreativeDocument document = authoredDocument();
+  const std::array edits{
+      cr::CreativeVoxelEdit{{-1, 2, 3}, cr::CreativeObjectKind::Wall},
+      cr::CreativeVoxelEdit{{16, 2, 3}, cr::CreativeObjectKind::Floor},
+      cr::CreativeVoxelEdit{{17, 2, 3}, cr::CreativeObjectKind::Crate},
+  };
+  const cr::CreativeVoxelMutationReceipt mutation =
+      document.applyVoxelEdits(edits);
+  const iggy3d::ProductCreativeDocumentSectionBuildResult built =
+      iggy3d::buildSaveCreativeDocumentSection(document);
+  iggy3d::SaveEnvelope envelope = minimalEnvelope();
+  envelope.creativeDocument = built.section;
+  const iggy3d::SaveEncodeResult encoded =
+      iggy3d::encodeSaveEnvelope(envelope);
+  const iggy3d::SaveDecodeResult decoded =
+      iggy3d::decodeSaveEnvelope(encoded.encodedText);
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult restored =
+      iggy3d::restoreCreativeDocumentFromSaveSection(
+          decoded.envelope.creativeDocument);
+
+  return expect(mutation.accepted && mutation.changed,
+                "voxel save setup applies") &&
+         expect(built.receipt.accepted &&
+                    built.section.version ==
+                        iggy3d::kSaveCreativeDocumentSectionVersion &&
+                    built.section.voxelChunks.size() == 2U,
+                "save section stores sparse chunks") &&
+         expect(encoded.status == iggy3d::SaveCodecStatus::Ok &&
+                    encoded.encodedText.find(
+                        "creativeDocument.voxelChunk.count=2\n") !=
+                        std::string::npos,
+                "codec writes voxel chunk key") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok &&
+                    decoded.envelope.creativeDocument.voxelChunks.size() == 2U,
+                "codec decodes voxel chunks") &&
+         expect(restored.receipt.accepted &&
+                    restored.document.voxelField().occupiedCellCount() == 3U,
+                "restore owns three voxel cells") &&
+         expect(restored.document.voxelField().materialAt({-1, 2, 3}) ==
+                    cr::CreativeObjectKind::Wall &&
+                    restored.document.voxelField().materialAt({16, 2, 3}) ==
+                        cr::CreativeObjectKind::Floor &&
+                    restored.document.voxelField().materialAt({17, 2, 3}) ==
+                        cr::CreativeObjectKind::Crate,
+                "restored voxel coordinates and materials match");
+}
+
 }  // namespace
 
 int main() {
@@ -923,5 +972,6 @@ int main() {
   ok = restoreRejectsBadNextObjectId() && ok;
   ok = restoreRejectsInvalidSnapModeAndAxes() && ok;
   ok = restoreRejectsTooLargeGridDimension() && ok;
+  ok = voxelChunksEncodeDecodeAndRestore() && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

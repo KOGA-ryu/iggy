@@ -175,6 +175,11 @@ iggy3d_add_unit_test(creative_volume_tests
 set_tests_properties(creative_volume_tests PROPERTIES
   LABELS "unit;app;creative;tools;volume;iggy3d")
 
+iggy3d_add_unit_test(creative_voxel_field_tests
+  tests/unit/creative_voxel_field_tests.cpp)
+set_tests_properties(creative_voxel_field_tests PROPERTIES
+  LABELS "unit;app;creative;document;voxel;iggy3d")
+
 iggy3d_add_unit_test(creative_select_tests
   tests/unit/creative_select_tests.cpp)
 set_tests_properties(creative_select_tests PROPERTIES

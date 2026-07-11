@@ -219,7 +219,10 @@ void selectObject(InteractionContext& context) {
     if ((kind == CreativeMaterialStrokeKind::Place &&
          sameCell(key.cell, cell)) ||
         (kind == CreativeMaterialStrokeKind::Remove &&
-         key.objectId == objectId)) {
+         ((objectId != cr::kInvalidObjectId && key.objectId == objectId) ||
+          (objectId == cr::kInvalidObjectId &&
+           key.objectId == cr::kInvalidObjectId &&
+           sameCell(key.cell, cell))))) {
       return true;
     }
   }
@@ -273,24 +276,38 @@ void applyMaterialStrokeMutation(cr::CreativeAppState& appState,
   }
 
   if (kind == CreativeMaterialStrokeKind::Remove) {
-    if (!target.objectHit || target.objectId == cr::kInvalidObjectId) {
+    if (!target.objectHit && !target.voxelHit) {
       rejectMaterialStroke(editor, target.objectKind);
       return;
     }
-    if (strokeVisited(stroke, kind, {}, target.objectId)) {
+    const cr::CreativeGridCoord3 targetCell =
+        target.voxelHit ? target.voxelCell : cr::CreativeGridCoord3{};
+    const cr::CreativeObjectId targetObjectId =
+        target.voxelHit ? cr::kInvalidObjectId : target.objectId;
+    if (strokeVisited(stroke, kind, targetCell, targetObjectId)) {
       return;
     }
     if (!ensureMaterialStrokeTransaction(appState, stroke, kind)) {
       rejectMaterialStroke(editor, target.objectKind);
       return;
     }
-    if (!rememberStrokeTarget(stroke, {}, target.objectId)) {
+    if (!rememberStrokeTarget(stroke, targetCell, targetObjectId)) {
       rejectMaterialStroke(editor, target.objectKind);
       return;
     }
-    const cr::CreativeDocumentRemoveReceipt receipt =
-        appState.facade.removeDocumentObject(target.objectId);
-    if (receipt.accepted && receipt.objectRemoved && receipt.changed) {
+    bool changed = false;
+    if (target.voxelHit) {
+      const cr::CreativeVoxelEdit edit{target.voxelCell,
+                                       cr::CreativeObjectKind::Unknown};
+      const cr::CreativeVoxelMutationReceipt receipt =
+          appState.facade.applyVoxelEdits(std::span{&edit, 1U});
+      changed = receipt.accepted && receipt.changed;
+    } else {
+      const cr::CreativeDocumentRemoveReceipt receipt =
+          appState.facade.removeDocumentObject(target.objectId);
+      changed = receipt.accepted && receipt.objectRemoved && receipt.changed;
+    }
+    if (changed) {
       ++stroke.acceptedMutationCount;
       editor.interaction.placementFeedback = {};
     } else {
@@ -379,7 +396,8 @@ void processMaterialStroke(cr::CreativeAppState& appState,
 void sampleTargetMaterial(InteractionContext& context) {
   CreativeEditorState& editor = context.request.editor;
   const CreativeEditorWorldTarget& target = editor.interaction.target;
-  if (!target.objectHit || target.objectKind == cr::CreativeObjectKind::Unknown) {
+  if ((!target.objectHit && !target.voxelHit) ||
+      target.objectKind == cr::CreativeObjectKind::Unknown) {
     return;
   }
   if (cr::creativeHeldItemIsVolumeOperation(context.held.kind)) {
@@ -705,8 +723,34 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
 
   const ObjectVisualPickResult pick = pickNearestVisualBoundsObject(
       pickFrame.objectPickCandidates, target.ray);
-  if (pick.objectId != cr::kInvalidObjectId &&
-      pick.entryDistance <= kCreativeReachMeters) {
+  const cr::CreativeGridSettings gridSettings = document.gridSettings();
+  cr::CreativeVoxelRaycastRequest voxelRequest;
+  voxelRequest.rayOrigin = toCreativeVec3(target.ray.origin);
+  voxelRequest.rayDirection = toCreativeVec3(target.ray.direction);
+  voxelRequest.gridOrigin = gridSettings.origin;
+  voxelRequest.cellSize = cellSize;
+  voxelRequest.maxDistance = kCreativeReachMeters;
+  const cr::CreativeVoxelRaycastReceipt voxelPick =
+      cr::raycastCreativeVoxelField(document.voxelField(), voxelRequest);
+  const bool objectInReach = pick.objectId != cr::kInvalidObjectId &&
+                             pick.entryDistance <= kCreativeReachMeters;
+  const bool voxelIsNearest =
+      voxelPick.hit &&
+      (!objectInReach || voxelPick.distance <= pick.entryDistance);
+
+  if (voxelIsNearest) {
+    target.grid = cr::resolveCreativeGridTargetFromHit(
+        voxelPick.hitPoint, voxelPick.faceNormal, cellSize,
+        gridSettings.origin, toCreativeVec3(target.ray.direction));
+    target.valid = target.grid.valid;
+    target.voxelHit = true;
+    target.voxelCell = voxelPick.cell;
+    target.objectKind = voxelPick.material;
+    target.distanceMeters = static_cast<float>(voxelPick.distance);
+    return target;
+  }
+
+  if (objectInReach) {
     const ObjectVisualPickBounds* candidate =
         findCandidate(pickFrame, pick.objectId);
     if (candidate != nullptr) {
@@ -717,7 +761,8 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
                                             *candidate->orientedBounds, point)
                                       : aabbFaceNormal(candidate->bounds, point);
       target.grid = cr::resolveCreativeGridTargetFromHit(
-          toCreativeVec3(point), toCreativeVec3(normal), cellSize, {},
+          toCreativeVec3(point), toCreativeVec3(normal), cellSize,
+          gridSettings.origin,
           toCreativeVec3(target.ray.direction));
       target.valid = target.grid.valid;
       target.objectHit = true;
@@ -734,7 +779,9 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
   if (std::fabs(target.ray.direction.y) <= 1.0e-5F) {
     return target;
   }
-  const float distance = -target.ray.origin.y / target.ray.direction.y;
+  const float distance =
+      (static_cast<float>(gridSettings.origin.y) - target.ray.origin.y) /
+      target.ray.direction.y;
   if (!std::isfinite(distance) || distance < 0.0F ||
       distance > kCreativeReachMeters) {
     return target;
@@ -742,7 +789,8 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
   const iggy3d::Vec3 point =
       target.ray.origin + target.ray.direction * distance;
   target.grid = cr::resolveCreativeGridTargetFromHit(
-      toCreativeVec3(point), {0.0, 1.0, 0.0}, cellSize, {},
+      toCreativeVec3(point), {0.0, 1.0, 0.0}, cellSize,
+      gridSettings.origin,
       toCreativeVec3(target.ray.direction));
   target.valid = target.grid.valid;
   target.distanceMeters = distance;

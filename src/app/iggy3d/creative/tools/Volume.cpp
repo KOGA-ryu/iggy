@@ -203,7 +203,48 @@ void reject(CreativeVolumeOperationReceipt& receipt,
   receipt.removedObjectIds.clear();
   receipt.createdObjectCount = 0;
   receipt.removedObjectCount = 0;
+  receipt.createdVoxelCellCount = 0;
+  receipt.removedVoxelCellCount = 0;
+  receipt.replacedVoxelCellCount = 0;
+  receipt.dirtyVoxelChunkCount = 0;
   receipt.reasonCode = reasonCode;
+}
+
+void copyVoxelMutationFacts(
+    CreativeVolumeOperationReceipt& receipt,
+    const CreativeVoxelMutationReceipt& voxelReceipt) noexcept {
+  receipt.createdVoxelCellCount += voxelReceipt.createdCellCount;
+  receipt.removedVoxelCellCount += voxelReceipt.removedCellCount;
+  receipt.replacedVoxelCellCount += voxelReceipt.replacedCellCount;
+  receipt.dirtyVoxelChunkCount += voxelReceipt.dirtyChunks.size();
+}
+
+[[nodiscard]] bool affectedCountExceeds(
+    std::size_t objectCount,
+    std::size_t voxelCount,
+    std::uint64_t limit) noexcept {
+  return objectCount > limit || voxelCount > limit - objectCount;
+}
+
+[[nodiscard]] CreativeGridBounds3 inclusiveVolumeGridBounds(
+    const CreativeVolumeSelection& selection) noexcept {
+  CreativeGridBounds3 bounds = creativeVolumeGridBounds(selection);
+  --bounds.max.x;
+  --bounds.max.y;
+  --bounds.max.z;
+  return bounds;
+}
+
+[[nodiscard]] bool checkedAddCellCoordinate(std::int32_t lhs,
+                                            std::int32_t rhs,
+                                            std::int32_t& out) noexcept {
+  const std::int64_t sum = static_cast<std::int64_t>(lhs) + rhs;
+  if (sum < std::numeric_limits<std::int32_t>::min() ||
+      sum > std::numeric_limits<std::int32_t>::max()) {
+    return false;
+  }
+  out = static_cast<std::int32_t>(sum);
+  return true;
 }
 
 [[nodiscard]] CreativeVolumeOperationReceipt fillVolume(
@@ -278,37 +319,56 @@ void reject(CreativeVolumeOperationReceipt& receipt,
       plannedCells.insert(toCellKey(cell));
     }
   }
-  std::unordered_set<CellKey, CellKeyHash> occupiedCells;
-  occupiedCells.reserve(document.objects().size());
-  std::unordered_set<CellKey, CellKeyHash> occupiedBoundaryCells;
+  std::unordered_set<CellKey, CellKeyHash> occupiedLegacyCells;
+  occupiedLegacyCells.reserve(document.objects().size());
   std::vector<CreativeObjectId> interiorObjectIds;
   for (const CreativeObject& object : document.objects()) {
     CreativeGridCoord3 cell;
     if (volumeCellForObject(object, request.selection, cell)) {
       const CellKey key = toCellKey(cell);
-      occupiedCells.insert(key);
+      occupiedLegacyCells.insert(key);
       if (hollow && filledCells.contains(key)) {
-        if (plannedCells.contains(key)) {
-          occupiedBoundaryCells.insert(toCellKey(cell));
-        } else {
+        if (!plannedCells.contains(key)) {
           interiorObjectIds.push_back(object.id);
         }
       }
     }
   }
 
+  std::vector<CreativeVoxelEdit> voxelEdits;
+  voxelEdits.reserve(filledPlan.cells.size());
   if (hollow) {
-    const std::uint64_t missingBoundaryCells =
-        receipt.plannedCellCount - occupiedBoundaryCells.size();
-    if (interiorObjectIds.size() >
-            std::numeric_limits<std::uint64_t>::max() -
-                missingBoundaryCells ||
-        missingBoundaryCells + interiorObjectIds.size() >
-            request.maxAffectedObjects) {
-      reject(receipt, CreativeVolumeOperationStatus::OperationLimitExceeded,
-             "creative_volume_hollow_limit_exceeded");
-      return receipt;
+    for (const CreativeGridCoord3 cell : filledPlan.generatedCells()) {
+      const CellKey key = toCellKey(cell);
+      if (plannedCells.contains(key)) {
+        if (document.voxelField().occupied(cell) ||
+            occupiedLegacyCells.contains(key)) {
+          ++receipt.skippedOccupiedCellCount;
+          continue;
+        }
+        voxelEdits.push_back({cell, request.objectKind});
+      } else if (document.voxelField().occupied(cell)) {
+        voxelEdits.push_back({cell, CreativeObjectKind::Unknown});
+        ++receipt.matchedVoxelCellCount;
+      }
     }
+  } else {
+    for (const CreativeGridCoord3 cell : plannedShape->generatedCells()) {
+      if (document.voxelField().occupied(cell) ||
+          occupiedLegacyCells.contains(toCellKey(cell))) {
+        ++receipt.skippedOccupiedCellCount;
+        continue;
+      }
+      voxelEdits.push_back({cell, request.objectKind});
+    }
+  }
+
+  if (affectedCountExceeds(interiorObjectIds.size(), voxelEdits.size(),
+                           request.maxAffectedObjects)) {
+    reject(receipt, CreativeVolumeOperationStatus::OperationLimitExceeded,
+           hollow ? "creative_volume_hollow_limit_exceeded"
+                  : "creative_volume_fill_limit_exceeded");
+    return receipt;
   }
 
   CreativeDocument staged = document;
@@ -325,26 +385,22 @@ void reject(CreativeVolumeOperationReceipt& receipt,
     receipt.matchedObjectCount = interiorObjectIds.size();
     receipt.removedObjectIds = interiorObjectIds;
   }
-  receipt.createdObjectIds.reserve(
-      static_cast<std::size_t>(receipt.plannedCellCount));
-  for (const CreativeGridCoord3 cell : plannedShape->generatedCells()) {
-    if (occupiedCells.contains(toCellKey(cell))) {
-      ++receipt.skippedOccupiedCellCount;
-      continue;
-    }
-    const CreativeDocumentCreateReceipt createReceipt = staged.createObject(
-        makeVolumeCellRequest(request.objectKind, cell, request.selection));
-    if (!createReceipt.accepted || !createReceipt.objectCreated ||
-        !createReceipt.changed) {
-      receipt.failedObjectId = createReceipt.objectId;
-      reject(receipt, CreativeVolumeOperationStatus::CreateRejected,
-             createReceipt.reasonCode);
+
+  if (!voxelEdits.empty()) {
+    const CreativeVoxelMutationReceipt voxelReceipt =
+        staged.applyVoxelEdits(voxelEdits);
+    if (!voxelReceipt.accepted) {
+      reject(receipt, CreativeVolumeOperationStatus::VoxelMutationRejected,
+             voxelReceipt.reasonCode);
       return receipt;
     }
-    receipt.createdObjectIds.push_back(createReceipt.objectId);
+    copyVoxelMutationFacts(receipt, voxelReceipt);
   }
 
-  if (receipt.createdObjectIds.empty() && receipt.removedObjectIds.empty()) {
+  if (receipt.createdVoxelCellCount == 0U &&
+      receipt.removedVoxelCellCount == 0U &&
+      receipt.replacedVoxelCellCount == 0U &&
+      receipt.removedObjectIds.empty()) {
     acceptNoChange(receipt, "creative_volume_cells_already_occupied");
     return receipt;
   }
@@ -373,6 +429,23 @@ void reject(CreativeVolumeOperationReceipt& receipt,
 
   const CreativeBounds worldBounds =
       creativeVolumeWorldBounds(request.selection);
+  const CreativeGridBounds3 gridBounds =
+      inclusiveVolumeGridBounds(request.selection);
+  const std::vector<CreativeVoxelCell> voxelCandidates =
+      collectCreativeVoxelCells(document.voxelField(), gridBounds);
+  std::vector<CreativeVoxelEdit> voxelEdits;
+  voxelEdits.reserve(voxelCandidates.size());
+  for (const CreativeVoxelCell& cell : voxelCandidates) {
+    if (request.hasReplaceKindFilter &&
+        cell.material != request.replaceKindFilter) {
+      continue;
+    }
+    ++receipt.matchedVoxelCellCount;
+    if (cell.material != request.objectKind) {
+      voxelEdits.push_back({cell.cell, request.objectKind});
+    }
+  }
+
   std::vector<CreativeObject> candidates;
   candidates.reserve(document.objects().size());
   for (const CreativeObject& object : document.objects()) {
@@ -389,12 +462,13 @@ void reject(CreativeVolumeOperationReceipt& receipt,
     }
   }
 
-  if (candidates.size() > request.maxAffectedObjects) {
+  if (affectedCountExceeds(candidates.size(), voxelEdits.size(),
+                           request.maxAffectedObjects)) {
     reject(receipt, CreativeVolumeOperationStatus::OperationLimitExceeded,
            "creative_volume_replace_limit_exceeded");
     return receipt;
   }
-  if (candidates.empty()) {
+  if (candidates.empty() && voxelEdits.empty()) {
     acceptNoChange(receipt, "creative_volume_replace_no_change");
     return receipt;
   }
@@ -450,6 +524,17 @@ void reject(CreativeVolumeOperationReceipt& receipt,
     receipt.createdObjectIds.push_back(createReceipt.objectId);
   }
 
+  if (!voxelEdits.empty()) {
+    const CreativeVoxelMutationReceipt voxelReceipt =
+        staged.applyVoxelEdits(voxelEdits);
+    if (!voxelReceipt.accepted) {
+      reject(receipt, CreativeVolumeOperationStatus::VoxelMutationRejected,
+             voxelReceipt.reasonCode);
+      return receipt;
+    }
+    copyVoxelMutationFacts(receipt, voxelReceipt);
+  }
+
   document = std::move(staged);
   acceptApplied(receipt, document, "creative_volume_replace_applied");
   return receipt;
@@ -476,28 +561,50 @@ void reject(CreativeVolumeOperationReceipt& receipt,
   std::vector<CreativeObjectId> objectIds =
       containedObjectIds(document, request.selection);
   receipt.matchedObjectCount = objectIds.size();
-  if (objectIds.size() > request.maxAffectedObjects) {
+  const std::vector<CreativeVoxelCell> voxelCells = collectCreativeVoxelCells(
+      document.voxelField(), inclusiveVolumeGridBounds(request.selection));
+  receipt.matchedVoxelCellCount = voxelCells.size();
+  if (affectedCountExceeds(objectIds.size(), voxelCells.size(),
+                           request.maxAffectedObjects)) {
     reject(receipt, CreativeVolumeOperationStatus::OperationLimitExceeded,
            "creative_volume_erase_limit_exceeded");
     return receipt;
   }
-  if (objectIds.empty()) {
+  if (objectIds.empty() && voxelCells.empty()) {
     acceptNoChange(receipt, "creative_volume_erase_empty");
     return receipt;
   }
 
   CreativeDocument staged = document;
-  CreativeClipboard removedObjects;
-  const CreativeClipboardCutReceipt cutReceipt =
-      cutDocumentObjectsAtomically(staged, objectIds, removedObjects);
-  if (!cutReceipt.accepted || !cutReceipt.changed) {
-    receipt.failedObjectId = cutReceipt.failedObjectId;
-    reject(receipt, CreativeVolumeOperationStatus::RemoveRejected,
-           cutReceipt.reasonCode);
-    return receipt;
+  if (!objectIds.empty()) {
+    CreativeClipboard removedObjects;
+    const CreativeClipboardCutReceipt cutReceipt =
+        cutDocumentObjectsAtomically(staged, objectIds, removedObjects);
+    if (!cutReceipt.accepted || !cutReceipt.changed) {
+      receipt.failedObjectId = cutReceipt.failedObjectId;
+      reject(receipt, CreativeVolumeOperationStatus::RemoveRejected,
+             cutReceipt.reasonCode);
+      return receipt;
+    }
+    receipt.removedObjectIds = objectIds;
   }
 
-  receipt.removedObjectIds = std::move(objectIds);
+  if (!voxelCells.empty()) {
+    std::vector<CreativeVoxelEdit> voxelEdits;
+    voxelEdits.reserve(voxelCells.size());
+    for (const CreativeVoxelCell& cell : voxelCells) {
+      voxelEdits.push_back({cell.cell, CreativeObjectKind::Unknown});
+    }
+    const CreativeVoxelMutationReceipt voxelReceipt =
+        staged.applyVoxelEdits(voxelEdits);
+    if (!voxelReceipt.accepted || !voxelReceipt.changed) {
+      reject(receipt, CreativeVolumeOperationStatus::VoxelMutationRejected,
+             voxelReceipt.reasonCode);
+      return receipt;
+    }
+    copyVoxelMutationFacts(receipt, voxelReceipt);
+  }
+
   document = std::move(staged);
   acceptApplied(receipt, document, "creative_volume_erase_applied");
   return receipt;
@@ -510,23 +617,17 @@ void reject(CreativeVolumeOperationReceipt& receipt,
   const std::vector<CreativeObjectId> objectIds =
       containedObjectIds(document, request.selection);
   receipt.matchedObjectCount = objectIds.size();
-  if (objectIds.size() > request.maxAffectedObjects) {
+  const std::vector<CreativeVoxelCell> voxelCells = collectCreativeVoxelCells(
+      document.voxelField(), inclusiveVolumeGridBounds(request.selection));
+  receipt.matchedVoxelCellCount = voxelCells.size();
+  if (affectedCountExceeds(objectIds.size(), voxelCells.size(),
+                           request.maxAffectedObjects)) {
     reject(receipt, CreativeVolumeOperationStatus::OperationLimitExceeded,
            "creative_volume_clone_limit_exceeded");
     return receipt;
   }
-  if (objectIds.empty()) {
+  if (objectIds.empty() && voxelCells.empty()) {
     acceptNoChange(receipt, "creative_volume_clone_empty");
-    return receipt;
-  }
-
-  CreativeClipboard clipboard;
-  const CreativeClipboardCopyReceipt copyReceipt =
-      copyDocumentObjectsToClipboard(document, objectIds, clipboard);
-  if (!copyReceipt.accepted) {
-    receipt.failedObjectId = copyReceipt.failedObjectId;
-    reject(receipt, CreativeVolumeOperationStatus::CopyRejected,
-           copyReceipt.reasonCode);
     return receipt;
   }
 
@@ -541,21 +642,93 @@ void reject(CreativeVolumeOperationReceipt& receipt,
     return receipt;
   }
 
-  CreativeDocument staged = document;
-  CreativeClipboardPasteRequest pasteRequest;
-  pasteRequest.offset = offset;
-  pasteRequest.externalParentPolicy =
-      CreativeClipboardExternalParentPolicy::PreserveIfPresent;
-  const CreativeClipboardPasteReceipt pasteReceipt =
-      pasteCreativeClipboardAtomically(staged, clipboard, pasteRequest);
-  if (!pasteReceipt.accepted || !pasteReceipt.changed) {
-    receipt.failedObjectId = pasteReceipt.failedObjectId;
-    reject(receipt, CreativeVolumeOperationStatus::PasteRejected,
-           pasteReceipt.reasonCode);
-    return receipt;
+  CreativeGridCoord3 voxelOffset{};
+  if (!voxelCells.empty()) {
+    const double scaledX = offset.x / request.selection.cellSize;
+    const double scaledY = offset.y / request.selection.cellSize;
+    const double scaledZ = offset.z / request.selection.cellSize;
+    const double roundedX = std::round(scaledX);
+    const double roundedY = std::round(scaledY);
+    const double roundedZ = std::round(scaledZ);
+    constexpr double kCellOffsetEpsilon = 1.0e-9;
+    if (std::fabs(scaledX - roundedX) > kCellOffsetEpsilon ||
+        std::fabs(scaledY - roundedY) > kCellOffsetEpsilon ||
+        std::fabs(scaledZ - roundedZ) > kCellOffsetEpsilon ||
+        roundedX < std::numeric_limits<std::int32_t>::min() ||
+        roundedX > std::numeric_limits<std::int32_t>::max() ||
+        roundedY < std::numeric_limits<std::int32_t>::min() ||
+        roundedY > std::numeric_limits<std::int32_t>::max() ||
+        roundedZ < std::numeric_limits<std::int32_t>::min() ||
+        roundedZ > std::numeric_limits<std::int32_t>::max()) {
+      reject(receipt, CreativeVolumeOperationStatus::InvalidRequest,
+             "creative_volume_clone_voxel_offset_invalid");
+      return receipt;
+    }
+    voxelOffset = {static_cast<std::int32_t>(roundedX),
+                   static_cast<std::int32_t>(roundedY),
+                   static_cast<std::int32_t>(roundedZ)};
   }
 
-  receipt.createdObjectIds = pasteReceipt.pastedObjectIds;
+  CreativeDocument staged = document;
+  if (!objectIds.empty()) {
+    CreativeClipboard clipboard;
+    const CreativeClipboardCopyReceipt copyReceipt =
+        copyDocumentObjectsToClipboard(document, objectIds, clipboard);
+    if (!copyReceipt.accepted) {
+      receipt.failedObjectId = copyReceipt.failedObjectId;
+      reject(receipt, CreativeVolumeOperationStatus::CopyRejected,
+             copyReceipt.reasonCode);
+      return receipt;
+    }
+
+    CreativeClipboardPasteRequest pasteRequest;
+    pasteRequest.offset = offset;
+    pasteRequest.externalParentPolicy =
+        CreativeClipboardExternalParentPolicy::PreserveIfPresent;
+    const CreativeClipboardPasteReceipt pasteReceipt =
+        pasteCreativeClipboardAtomically(staged, clipboard, pasteRequest);
+    if (!pasteReceipt.accepted || !pasteReceipt.changed) {
+      receipt.failedObjectId = pasteReceipt.failedObjectId;
+      reject(receipt, CreativeVolumeOperationStatus::PasteRejected,
+             pasteReceipt.reasonCode);
+      return receipt;
+    }
+    receipt.createdObjectIds = pasteReceipt.pastedObjectIds;
+  }
+
+  if (!voxelCells.empty()) {
+    std::vector<CreativeVoxelEdit> voxelEdits;
+    voxelEdits.reserve(voxelCells.size());
+    for (const CreativeVoxelCell& cell : voxelCells) {
+      CreativeGridCoord3 targetCell;
+      if (!checkedAddCellCoordinate(cell.cell.x, voxelOffset.x,
+                                    targetCell.x) ||
+          !checkedAddCellCoordinate(cell.cell.y, voxelOffset.y,
+                                    targetCell.y) ||
+          !checkedAddCellCoordinate(cell.cell.z, voxelOffset.z,
+                                    targetCell.z)) {
+        reject(receipt, CreativeVolumeOperationStatus::InvalidRequest,
+               "creative_volume_clone_voxel_coordinate_overflow");
+        return receipt;
+      }
+      voxelEdits.push_back({targetCell, cell.material});
+    }
+    const CreativeVoxelMutationReceipt voxelReceipt =
+        staged.applyVoxelEdits(voxelEdits);
+    if (!voxelReceipt.accepted) {
+      reject(receipt, CreativeVolumeOperationStatus::VoxelMutationRejected,
+             voxelReceipt.reasonCode);
+      return receipt;
+    }
+    copyVoxelMutationFacts(receipt, voxelReceipt);
+  }
+
+  if (receipt.createdObjectIds.empty() &&
+      receipt.createdVoxelCellCount == 0U &&
+      receipt.replacedVoxelCellCount == 0U) {
+    acceptNoChange(receipt, "creative_volume_clone_no_change");
+    return receipt;
+  }
   document = std::move(staged);
   acceptApplied(receipt, document, "creative_volume_clone_applied");
   return receipt;
@@ -608,6 +781,8 @@ std::string_view toString(CreativeVolumeOperationStatus status) noexcept {
     case CreativeVolumeOperationStatus::RemoveRejected: return "RemoveRejected";
     case CreativeVolumeOperationStatus::CopyRejected: return "CopyRejected";
     case CreativeVolumeOperationStatus::PasteRejected: return "PasteRejected";
+    case CreativeVolumeOperationStatus::VoxelMutationRejected:
+      return "VoxelMutationRejected";
     case CreativeVolumeOperationStatus::NoChange: return "NoChange";
     case CreativeVolumeOperationStatus::Applied: return "Applied";
   }

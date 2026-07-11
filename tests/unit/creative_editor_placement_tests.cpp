@@ -872,10 +872,109 @@ bool sceneCacheRefreshesOnlyOnDocumentRevision() {
               "post-mutation idle frame reuses refreshed cache") &&
        ok;
   const cr::CreativeDocumentCreateReceipt second = document.createObject(create);
-  return expect(second.accepted && second.changed &&
+  ok = expect(second.accepted && second.changed &&
+                  refreshCreativeEditorSceneCache(cache, document, grid) &&
+                  cache.refreshCount == 3U,
+              "each later accepted mutation refreshes exactly once") &&
+       ok;
+
+  std::array<cr::CreativeVoxelEdit, 8> voxelEdits{};
+  std::size_t editIndex = 0;
+  for (std::int32_t z = 0; z < 2; ++z) {
+    for (std::int32_t y = 0; y < 2; ++y) {
+      for (std::int32_t x = 0; x < 2; ++x) {
+        voxelEdits[editIndex++] =
+            {{x, y, z}, cr::CreativeObjectKind::Wall};
+      }
+    }
+  }
+  const cr::CreativeVoxelMutationReceipt voxelReceipt =
+      document.applyVoxelEdits(voxelEdits);
+  ok = expect(voxelReceipt.accepted && voxelReceipt.changed &&
+                  refreshCreativeEditorSceneCache(cache, document, grid) &&
+                  cache.refreshCount == 4U &&
+                  cache.voxelChunkMeshBuildCount == 1U,
+              "voxel batch refreshes scene cache once") &&
+       expect(cache.preview.roomBake.receipt.voxelCellCount == 8U &&
+                  cache.preview.roomBake.receipt.voxelChunkCount == 1U &&
+                  cache.preview.roomBake.receipt.bakedVoxelCuboidCount == 1U,
+              "scene cache greedily bakes one voxel cuboid") &&
+       expect(!refreshCreativeEditorSceneCache(cache, document, grid) &&
+                  cache.refreshCount == 4U &&
+                  cache.voxelChunkMeshBuildCount == 1U,
+              "post-voxel idle frame reuses scene cache") &&
+       ok;
+
+  const cr::CreativeVoxelEdit secondChunkEdit{
+      {16, 0, 0}, cr::CreativeObjectKind::Floor};
+  const cr::CreativeVoxelMutationReceipt secondChunkReceipt =
+      document.applyVoxelEdits(std::span{&secondChunkEdit, 1U});
+  return expect(secondChunkReceipt.changed &&
                     refreshCreativeEditorSceneCache(cache, document, grid) &&
-                    cache.refreshCount == 3U,
-                "each later accepted mutation refreshes exactly once") &&
+                    cache.voxelChunkMeshBuildCount == 2U &&
+                    cache.preview.roomBake.receipt.voxelChunkCount == 2U,
+                "new chunk rebuilds only its greedy plan") &&
+         ok;
+}
+
+bool worldTargetPicksVoxelBeforeGround() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("pick voxel");
+  static_cast<void>(document.assignId(106U));
+  const cr::CreativeVoxelEdit edit{{2, 0, 0}, cr::CreativeObjectKind::Crate};
+  static_cast<void>(document.applyVoxelEdits(std::span{&edit, 1U}));
+
+  iggy3d::RenderCameraFrame camera;
+  camera.worldEye = {-2.0F, 0.5F, 0.5F};
+  camera.worldForward = {1.0F, 0.0F, 0.0F};
+  camera.worldUp = {0.0F, 1.0F, 0.0F};
+  const CreativeEditorWorldTarget target = resolveCreativeEditorWorldTarget(
+      document, camera, CreativeEditorPickFrame{}, 800U, 600U, 1.0);
+  return expect(target.valid && target.voxelHit && !target.objectHit,
+                "world target reports voxel hit") &&
+         expect(target.voxelCell.x == 2 && target.voxelCell.y == 0 &&
+                    target.voxelCell.z == 0,
+                "world target preserves hit cell") &&
+         expect(target.objectKind == cr::CreativeObjectKind::Crate,
+                "world target exposes voxel material") &&
+         expect(target.grid.targetCell.x == 2 &&
+                    target.grid.adjacentCell.x == 1,
+                "world target derives aimed and adjacent cells from face");
+}
+
+bool removalStrokeDeletesVoxelAndGroupsHistory() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 107U);
+  const cr::CreativeVoxelEdit edit{{4, 1, -2}, cr::CreativeObjectKind::Wall};
+  static_cast<void>(appState.facade.applyVoxelEdits(std::span{&edit, 1U}));
+  appState.history = {};
+
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
+  editor.interaction.target.valid = true;
+  editor.interaction.target.voxelHit = true;
+  editor.interaction.target.voxelCell = edit.cell;
+  editor.interaction.target.objectKind = edit.material;
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Primary, true, true, false), 0U);
+  bool ok = expect(appState.facade.document()
+                       .voxelField()
+                       .occupiedCellCount() == 0U,
+                   "primary press removes voxel immediately") &&
+            expect(editor.interaction.materialStroke.transaction.active,
+                   "voxel removal keeps gesture transaction open");
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Primary, false, false, true),
+      cr::kCreativeMaterialStrokeRepeatNanoseconds);
+  ok = expect(cr::creativeUndoDepth(appState.history) == 1U,
+              "voxel removal gesture records one undo") &&
+       ok;
+  const cr::CreativeHistoryApplyReceipt undo = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+  return expect(undo.accepted &&
+                    appState.facade.document().voxelField().materialAt(
+                        edit.cell) == edit.material,
+                "undo restores removed voxel") &&
          ok;
 }
 
@@ -1173,6 +1272,8 @@ int main() {
   ok = shapeVolumePreviewsStayBoundedAndFailClosed() && ok;
   ok = editorVolumeBudgetRejectsBeforeMutation() && ok;
   ok = sceneCacheRefreshesOnlyOnDocumentRevision() && ok;
+  ok = worldTargetPicksVoxelBeforeGround() && ok;
+  ok = removalStrokeDeletesVoxelAndGroupsHistory() && ok;
   ok = placementStrokeDeduplicatesAndRecordsOneUndo() && ok;
   ok = identicalPlacementAcrossGesturesIsRejected() && ok;
   ok = untrackedAndEmptyStrokesFailClosed() && ok;

@@ -318,16 +318,69 @@ void appendShapeBrushOutline(
                                     {1.0F, 0.15F, 0.12F, 1.0F}, thickness);
 }
 
-}  // namespace
+[[nodiscard]] bool voxelChunkCoordLess(
+    cr::CreativeVoxelChunkCoord lhs,
+    cr::CreativeVoxelChunkCoord rhs) noexcept {
+  if (lhs.z != rhs.z) return lhs.z < rhs.z;
+  if (lhs.y != rhs.y) return lhs.y < rhs.y;
+  return lhs.x < rhs.x;
+}
 
-StandaloneRoomBakePreviewScene buildStandaloneRoomBakePreviewScene(
+[[nodiscard]] std::vector<cr::CreativeVoxelCuboid>
+refreshVoxelChunkMeshPlans(CreativeEditorSceneCache& cache,
+                           const cr::CreativeDocument& document) {
+  std::vector<CreativeEditorVoxelChunkMeshCache> next;
+  next.reserve(static_cast<std::size_t>(document.voxelField().chunkCount()));
+  for (const cr::CreativeVoxelChunk& chunk : document.voxelField().chunks()) {
+    const auto found = std::lower_bound(
+        cache.voxelChunkMeshes.begin(), cache.voxelChunkMeshes.end(),
+        chunk.coord,
+        [](const CreativeEditorVoxelChunkMeshCache& entry,
+           cr::CreativeVoxelChunkCoord coord) {
+          return voxelChunkCoordLess(entry.coord, coord);
+        });
+    if (found != cache.voxelChunkMeshes.end() &&
+        found->coord == chunk.coord && found->revision == chunk.revision) {
+      next.push_back(*found);
+      continue;
+    }
+
+    CreativeEditorVoxelChunkMeshCache rebuilt;
+    rebuilt.coord = chunk.coord;
+    rebuilt.revision = chunk.revision;
+    rebuilt.cuboids = cr::buildCreativeVoxelCuboids(chunk);
+    next.push_back(std::move(rebuilt));
+    ++cache.voxelChunkMeshBuildCount;
+  }
+  cache.voxelChunkMeshes = std::move(next);
+
+  std::size_t cuboidCount = 0;
+  for (const CreativeEditorVoxelChunkMeshCache& entry :
+       cache.voxelChunkMeshes) {
+    cuboidCount += entry.cuboids.size();
+  }
+  std::vector<cr::CreativeVoxelCuboid> cuboids;
+  cuboids.reserve(cuboidCount);
+  for (const CreativeEditorVoxelChunkMeshCache& entry :
+       cache.voxelChunkMeshes) {
+    cuboids.insert(cuboids.end(), entry.cuboids.begin(), entry.cuboids.end());
+  }
+  return cuboids;
+}
+
+[[nodiscard]] StandaloneRoomBakePreviewScene
+buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
     const iggy3d::creative::CreativeDocument& document,
-    const iggy3d::ProductMapMakerGridSnapshot& gridSnapshot) {
+    const iggy3d::ProductMapMakerGridSnapshot& gridSnapshot,
+    std::span<const cr::CreativeVoxelCuboid> voxelCuboids,
+    bool usePrecomputedVoxelCuboids) {
   iggy3d::creative::CreativeRoomBakeRequest bakeRequest;
   bakeRequest.document = &document;
   bakeRequest.roomId = "iggy3d_creative_preview";
   bakeRequest.sourceName = "apps/iggy3d_creative";
   bakeRequest.sourceSubset = "standalone_preview";
+  bakeRequest.usePrecomputedVoxelCuboids = usePrecomputedVoxelCuboids;
+  bakeRequest.precomputedVoxelCuboids = voxelCuboids;
 
   StandaloneRoomBakePreviewScene preview;
   preview.roomBake =
@@ -346,6 +399,15 @@ StandaloneRoomBakePreviewScene buildStandaloneRoomBakePreviewScene(
   return preview;
 }
 
+}  // namespace
+
+StandaloneRoomBakePreviewScene buildStandaloneRoomBakePreviewScene(
+    const iggy3d::creative::CreativeDocument& document,
+    const iggy3d::ProductMapMakerGridSnapshot& gridSnapshot) {
+  return buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
+      document, gridSnapshot, {}, false);
+}
+
 bool refreshCreativeEditorSceneCache(
     CreativeEditorSceneCache& cache,
     const iggy3d::creative::CreativeDocument& document,
@@ -354,7 +416,13 @@ bool refreshCreativeEditorSceneCache(
       cache.documentRevision == document.revision()) {
     return false;
   }
-  cache.preview = buildStandaloneRoomBakePreviewScene(document, gridSnapshot);
+  if (cache.documentId != document.id()) {
+    cache.voxelChunkMeshes.clear();
+  }
+  const std::vector<cr::CreativeVoxelCuboid> voxelCuboids =
+      refreshVoxelChunkMeshPlans(cache, document);
+  cache.preview = buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
+      document, gridSnapshot, voxelCuboids, true);
   cache.documentId = document.id();
   cache.documentRevision = document.revision();
   ++cache.refreshCount;
@@ -367,6 +435,7 @@ void invalidateCreativeEditorSceneCache(
   cache.valid = false;
   cache.documentId = iggy3d::creative::kInvalidDocumentId;
   cache.documentRevision = 0;
+  cache.voxelChunkMeshes.clear();
 }
 
 void attachCreativeEditorPlacementPreviews(

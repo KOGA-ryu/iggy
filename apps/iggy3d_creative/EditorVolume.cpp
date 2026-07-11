@@ -182,7 +182,9 @@ applyCreativeEditorVolumeOperationWithHistory(
 
   SDL_Log("iggy3d_creative: VOLUME operation='%s' shape='%s' axis='%s' "
           "status='%s' accepted=%d changed=%d candidates=%llu planned=%llu "
-          "matched=%llu created=%llu removed=%llu undoRecorded=%d "
+          "matchedObjects=%llu matchedVoxels=%llu createdObjects=%llu "
+          "removedObjects=%llu createdVoxels=%llu removedVoxels=%llu "
+          "replacedVoxels=%llu dirtyChunks=%llu undoRecorded=%d "
           "reasonCode='%s'",
           std::string(creative::toString(operation)).c_str(),
           std::string(creative::toString(state.lastReceipt.shapeKind)).c_str(),
@@ -194,8 +196,18 @@ applyCreativeEditorVolumeOperationWithHistory(
               state.lastReceipt.shapeCandidateCellCount),
           static_cast<unsigned long long>(state.lastReceipt.plannedCellCount),
           static_cast<unsigned long long>(state.lastReceipt.matchedObjectCount),
+          static_cast<unsigned long long>(
+              state.lastReceipt.matchedVoxelCellCount),
           static_cast<unsigned long long>(state.lastReceipt.createdObjectCount),
           static_cast<unsigned long long>(state.lastReceipt.removedObjectCount),
+          static_cast<unsigned long long>(
+              state.lastReceipt.createdVoxelCellCount),
+          static_cast<unsigned long long>(
+              state.lastReceipt.removedVoxelCellCount),
+          static_cast<unsigned long long>(
+              state.lastReceipt.replacedVoxelCellCount),
+          static_cast<unsigned long long>(
+              state.lastReceipt.dirtyVoxelChunkCount),
           historyReceipt.recorded ? 1 : 0,
           std::string(state.lastReceipt.reasonCode).c_str());
   return state.lastReceipt;

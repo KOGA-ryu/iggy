@@ -20,6 +20,7 @@ enum class ProductCreativeDocumentSectionStatus : std::uint8_t {
   InvalidObject,
   InvalidObjectKind,
   DuplicateObjectId,
+  InvalidVoxelData,
   InvalidNextObjectId,
   Converted,
 };
@@ -32,6 +33,7 @@ struct ProductCreativeDocumentSectionReceipt {
       ProductCreativeDocumentSectionStatus::Unknown;
   creative::CreativeDocumentId documentId = creative::kInvalidDocumentId;
   std::uint64_t objectCount = 0;
+  std::uint64_t voxelCellCount = 0;
   creative::CreativeObjectId nextObjectId = creative::kInvalidObjectId;
   std::string_view message = "creative_document_section_not_requested";
   std::string_view reasonCode = "creative_document_section_not_requested";

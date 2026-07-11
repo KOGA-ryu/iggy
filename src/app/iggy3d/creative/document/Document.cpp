@@ -315,6 +315,8 @@ std::string_view toString(CreativeDocumentRestoreStatus status) noexcept {
       return "InvalidObject";
     case CreativeDocumentRestoreStatus::DuplicateObjectId:
       return "DuplicateObjectId";
+    case CreativeDocumentRestoreStatus::InvalidVoxelField:
+      return "InvalidVoxelField";
     case CreativeDocumentRestoreStatus::InvalidNextObjectId:
       return "InvalidNextObjectId";
     case CreativeDocumentRestoreStatus::Restored:
@@ -356,7 +358,7 @@ CreativeDocument CreativeDocument::create(std::string name) {
 }
 
 bool CreativeDocument::isValid() const noexcept {
-  return valid_;
+  return valid_ && voxelField_.isValid();
 }
 
 CreativeDocumentId CreativeDocument::id() const noexcept {
@@ -476,6 +478,7 @@ void CreativeDocument::reset() {
   objects_.clear();
   objectIndex_.clear();
   nextObjectId_ = 1;
+  voxelField_.clear();
   units_ = CreativeUnits::Meters;
   gridSettings_ = {};
   snapSettings_ = makeDefaultCreativeDocumentSnapSettings();
@@ -515,6 +518,10 @@ CreativeObject* CreativeDocument::findObject(CreativeObjectId id) noexcept {
 
 std::span<const CreativeObject> CreativeDocument::objects() const noexcept {
   return objects_;
+}
+
+const CreativeVoxelField& CreativeDocument::voxelField() const noexcept {
+  return voxelField_;
 }
 
 CreativeDocumentCreateReceipt CreativeDocument::createObject(
@@ -741,12 +748,43 @@ void CreativeDocument::markObjectMutationChanged(
   markDirty(dirtyFlags);
 }
 
+CreativeVoxelMutationReceipt CreativeDocument::applyVoxelEdits(
+    std::span<const CreativeVoxelEdit> edits) {
+  if (!valid_) {
+    CreativeVoxelMutationReceipt receipt;
+    receipt.requested = true;
+    receipt.attemptedCellCount = edits.size();
+    receipt.status = CreativeVoxelMutationStatus::InvalidField;
+    receipt.reasonCode = "creative_voxel_document_invalid";
+    return receipt;
+  }
+
+  CreativeObjectDirtyFlags dirtyFlags = 0;
+  for (const CreativeVoxelEdit& edit : edits) {
+    const CreativeObjectKind oldMaterial = voxelField_.materialAt(edit.cell);
+    if (oldMaterial != CreativeObjectKind::Unknown) {
+      dirtyFlags |= dirtyFlagsForCreation(oldMaterial);
+    }
+    if (edit.material != CreativeObjectKind::Unknown &&
+        edit.material != CreativeObjectKind::Count) {
+      dirtyFlags |= dirtyFlagsForCreation(edit.material);
+    }
+  }
+
+  CreativeVoxelMutationReceipt receipt = voxelField_.apply(edits);
+  if (receipt.changed) {
+    markObjectMutationChanged(dirtyFlags | documentSettingsDirtyFlags());
+  }
+  return receipt;
+}
+
 CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
     const CreativeDocumentRestoreRequest& request) {
   CreativeDocumentRestoreReceipt receipt;
   receipt.requested = true;
   receipt.documentId = request.documentId;
   receipt.objectCount = request.objects.size();
+  receipt.voxelCellCount = request.voxelField.occupiedCellCount();
   receipt.nextObjectId = request.nextObjectId;
 
   if (!valid_) {
@@ -832,6 +870,13 @@ CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
     return receipt;
   }
 
+  if (!request.voxelField.validateInvariants()) {
+    setRestoreStatus(receipt,
+                     CreativeDocumentRestoreStatus::InvalidVoxelField,
+                     "invalid_voxel_field");
+    return receipt;
+  }
+
   if (request.nextObjectId == kInvalidObjectId ||
       request.nextObjectId <= maxObjectId) {
     setRestoreStatus(receipt,
@@ -850,6 +895,7 @@ CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
   objects_ = request.objects;
   objectIndex_ = std::move(restoredIndex);
   nextObjectId_ = request.nextObjectId;
+  voxelField_ = request.voxelField;
   revision_ = 0;
   dirtyFlags_ = 0;
 

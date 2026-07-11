@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/tools/Volume.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
+#include "app/iggy3d/creative/adapters/RoomBake.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
 
 #include <algorithm>
@@ -48,11 +49,6 @@ cr::CreativeDocument document(std::string_view name) {
   return result;
 }
 
-bool hasVolumeTag(const cr::CreativeObject& object) {
-  return std::find(object.tags.begin(), object.tags.end(),
-                   cr::kCreativeVolumeCellTag) != object.tags.end();
-}
-
 bool canonicalSelectionAndPreview() {
   cr::CreativeVolumeSelection selected =
       selection({2, 0, 3}, {-1, 2, 1});
@@ -96,14 +92,15 @@ bool fillIsAtomicAndIdempotent() {
   const cr::CreativeVolumeOperationReceipt first =
       cr::executeCreativeVolumeOperation(document, fill);
   bool ok = expect(first.accepted && first.changed, "fill accepted") &&
-            expect(first.createdObjectCount == 8U, "fill creates eight cells") &&
-            expect(document.objectCount() == 8U, "fill document count") &&
-            expect(std::all_of(document.objects().begin(), document.objects().end(),
-                               [](const cr::CreativeObject& object) {
-                                 return object.kind == cr::CreativeObjectKind::Wall &&
-                                        hasVolumeTag(object);
-                               }),
-                   "fill objects carry kind and volume tag");
+            expect(first.createdVoxelCellCount == 8U,
+                   "fill creates eight voxel cells") &&
+            expect(document.objectCount() == 0U,
+                   "fill creates no document objects") &&
+            expect(document.voxelField().occupiedCellCount() == 8U,
+                   "fill voxel count") &&
+            expect(document.voxelField().materialAt({1, 1, 1}) ==
+                       cr::CreativeObjectKind::Wall,
+                   "fill cells carry material");
 
   const std::uint64_t revisionBeforeRepeat = document.revision();
   const cr::CreativeVolumeOperationReceipt repeat =
@@ -112,7 +109,7 @@ bool fillIsAtomicAndIdempotent() {
               "repeat fill accepted as no change") &&
        expect(repeat.skippedOccupiedCellCount == 8U,
               "repeat fill reports occupied cells") &&
-       expect(document.objectCount() == 8U,
+       expect(document.voxelField().occupiedCellCount() == 8U,
               "repeat fill creates no duplicates") &&
        expect(document.revision() == revisionBeforeRepeat,
               "repeat fill preserves revision") &&
@@ -128,15 +125,10 @@ bool hollowCreatesOnlyShell() {
           document,
           request(cr::CreativeVolumeOperationKind::Hollow, selected));
 
-  const bool centerMissing = std::none_of(
-      document.objects().begin(), document.objects().end(),
-      [](const cr::CreativeObject& object) {
-        return object.bounds.min.x == 1.0 && object.bounds.min.y == 1.0 &&
-               object.bounds.min.z == 1.0;
-      });
+  const bool centerMissing = !document.voxelField().occupied({1, 1, 1});
   bool ok = expect(receipt.accepted && receipt.changed, "hollow accepted") &&
             expect(receipt.plannedCellCount == 26U, "hollow shell count") &&
-            expect(receipt.createdObjectCount == 26U,
+            expect(receipt.createdVoxelCellCount == 26U,
                    "hollow creates shell") &&
             expect(centerMissing, "hollow center remains empty");
 
@@ -147,15 +139,15 @@ bool hollowCreatesOnlyShell() {
   const cr::CreativeVolumeOperationReceipt hollowed =
       cr::executeCreativeVolumeOperation(
           solid, request(cr::CreativeVolumeOperationKind::Hollow, selected));
-  ok = expect(filled.accepted && filled.createdObjectCount == 27U,
+  ok = expect(filled.accepted && filled.createdVoxelCellCount == 27U,
               "solid setup fill") &&
        expect(hollowed.accepted && hollowed.changed,
               "solid converted to hollow") &&
-       expect(hollowed.removedObjectCount == 1U,
+       expect(hollowed.removedVoxelCellCount == 1U,
               "hollow removes kernel-owned interior") &&
-       expect(hollowed.createdObjectCount == 0U,
+       expect(hollowed.createdVoxelCellCount == 0U,
               "hollow reuses existing boundary") &&
-       expect(solid.objectCount() == 26U,
+       expect(solid.voxelField().occupiedCellCount() == 26U,
               "solid to hollow final count") &&
        ok;
   return ok;
@@ -171,14 +163,8 @@ bool shapedFillAndHollowUseSharedPlanner() {
   cr::CreativeDocument document = ::document("ellipsoid");
   const cr::CreativeVolumeOperationReceipt filled =
       cr::executeCreativeVolumeOperation(document, ellipsoid);
-  const bool cornersMissing = std::none_of(
-      document.objects().begin(), document.objects().end(),
-      [](const cr::CreativeObject& object) {
-        return (object.bounds.min.x == 0.0 && object.bounds.min.y == 0.0 &&
-                object.bounds.min.z == 0.0) ||
-               (object.bounds.min.x == 2.0 && object.bounds.min.y == 2.0 &&
-                object.bounds.min.z == 2.0);
-      });
+  const bool cornersMissing = !document.voxelField().occupied({0, 0, 0}) &&
+                              !document.voxelField().occupied({2, 2, 2});
   bool ok = expect(filled.accepted && filled.changed,
                    "ellipsoid fill accepted") &&
             expect(filled.shapeKind == cr::CreativeShapeBrushKind::Ellipsoid &&
@@ -186,9 +172,10 @@ bool shapedFillAndHollowUseSharedPlanner() {
                    "ellipsoid receipt records planner inputs") &&
             expect(filled.shapeCandidateCellCount == 27U &&
                        filled.plannedCellCount == 19U &&
-                       filled.createdObjectCount == 19U,
+                       filled.createdVoxelCellCount == 19U,
                    "ellipsoid plan and mutation counts agree") &&
-            expect(document.objectCount() == 19U && cornersMissing,
+            expect(document.voxelField().occupiedCellCount() == 19U &&
+                       cornersMissing,
                    "ellipsoid document matches shared shape plan");
 
   ellipsoid.operation = cr::CreativeVolumeOperationKind::Hollow;
@@ -197,10 +184,10 @@ bool shapedFillAndHollowUseSharedPlanner() {
   ok = expect(hollowed.accepted && hollowed.changed,
               "ellipsoid hollow accepted") &&
        expect(hollowed.plannedCellCount == 18U &&
-                  hollowed.removedObjectCount == 1U &&
-                  hollowed.createdObjectCount == 0U,
+                  hollowed.removedVoxelCellCount == 1U &&
+                  hollowed.createdVoxelCellCount == 0U,
               "ellipsoid hollow removes only planner interior") &&
-       expect(document.objectCount() == 18U,
+       expect(document.voxelField().occupiedCellCount() == 18U,
               "ellipsoid hollow final object count") &&
        ok;
 
@@ -211,10 +198,11 @@ bool shapedFillAndHollowUseSharedPlanner() {
   line.shapeKind = cr::CreativeShapeBrushKind::Line;
   const cr::CreativeVolumeOperationReceipt lineReceipt =
       cr::executeCreativeVolumeOperation(lineDocument, line);
-  ok = expect(lineReceipt.accepted && lineReceipt.createdObjectCount == 6U &&
+  ok = expect(lineReceipt.accepted &&
+                  lineReceipt.createdVoxelCellCount == 6U &&
                   lineReceipt.plannedCellCount == 6U,
               "line fill applies deterministic Bresenham plan") &&
-       expect(lineDocument.objectCount() == 6U,
+       expect(lineDocument.voxelField().occupiedCellCount() == 6U,
               "line document count matches plan") &&
        ok;
 
@@ -228,7 +216,7 @@ bool shapedFillAndHollowUseSharedPlanner() {
                         cr::CreativeVolumeOperationStatus::InvalidRequest,
                 "invalid shape request fails closed") &&
          expect(lineDocument.revision() == revisionBefore &&
-                    lineDocument.objectCount() == 6U,
+                    lineDocument.voxelField().occupiedCellCount() == 6U,
                 "invalid shape leaves document unchanged") &&
          ok;
 }
@@ -248,12 +236,36 @@ bool operationLimitRejectsWithoutMutation() {
          expect(receipt.status ==
                     cr::CreativeVolumeOperationStatus::OperationLimitExceeded,
                 "limit status") &&
-         expect(document.objectCount() == 0U, "limit leaves document empty") &&
+         expect(document.voxelField().occupiedCellCount() == 0U,
+                "limit leaves voxel field empty") &&
          expect(document.revision() == revisionBefore,
                 "limit preserves revision");
 }
 
-bool partialCreateFailureRollsBack() {
+bool maximumInteractiveSolidStaysOneChunkCuboid() {
+  cr::CreativeDocument document = ::document("maximum interactive solid");
+  cr::CreativeVolumeOperationRequest fill = request(
+      cr::CreativeVolumeOperationKind::Fill,
+      selection({0, 0, 0}, {7, 7, 7}));
+  fill.maxAffectedObjects = 512U;
+  const cr::CreativeVolumeOperationReceipt receipt =
+      cr::executeCreativeVolumeOperation(document, fill);
+  cr::CreativeRoomBakeRequest bakeRequest;
+  bakeRequest.document = &document;
+  const cr::CreativeRoomBakeResult bake =
+      cr::buildRoomAssetFromCreativeDocument(bakeRequest);
+  return expect(receipt.accepted && receipt.createdVoxelCellCount == 512U,
+                "maximum interactive solid fills 512 voxels") &&
+         expect(document.objectCount() == 0U &&
+                    document.voxelField().chunkCount() == 1U,
+                "maximum solid creates no per-cell objects") &&
+         expect(bake.receipt.accepted &&
+                    bake.receipt.bakedVoxelCuboidCount == 1U &&
+                    bake.room.staticMeshes.size() == 1U,
+                "maximum solid bakes as one greedy cuboid");
+}
+
+bool voxelFillDoesNotConsumeObjectIds() {
   cr::CreativeDocument document = ::document("id exhaustion");
   cr::CreativeDocumentRestoreRequest restore;
   restore.documentId = document.id();
@@ -275,18 +287,18 @@ bool partialCreateFailureRollsBack() {
           document,
           request(cr::CreativeVolumeOperationKind::Fill,
                   selection({0, 0, 0}, {1, 0, 0})));
-  return expect(!receipt.accepted && !receipt.changed,
-                "partial create failure rejected") &&
-         expect(receipt.status ==
-                    cr::CreativeVolumeOperationStatus::CreateRejected,
-                "partial create failure status") &&
-         expect(document.objectCount() == 0U,
-                "partial create failure rolls back first cell") &&
+  return expect(receipt.accepted && receipt.changed,
+                "voxel fill ignores exhausted object ids") &&
+         expect(receipt.createdVoxelCellCount == 2U,
+                "voxel fill creates both cells") &&
+         expect(document.objectCount() == 0U &&
+                    document.voxelField().occupiedCellCount() == 2U,
+                "voxel fill does not create objects") &&
          expect(document.nextObjectId() ==
                     std::numeric_limits<cr::CreativeObjectId>::max(),
-                "partial create failure preserves id cursor") &&
-         expect(document.revision() == revisionBefore,
-                "partial create failure preserves revision");
+                "voxel fill preserves id cursor") &&
+         expect(document.revision() == revisionBefore + 1U,
+                "voxel batch advances revision once");
 }
 
 bool replaceTargetsOnlyVolumeCells() {
@@ -309,16 +321,15 @@ bool replaceTargetsOnlyVolumeCells() {
       cr::executeCreativeVolumeOperation(document, replace);
 
   return expect(receipt.accepted && receipt.changed, "replace accepted") &&
-         expect(receipt.matchedObjectCount == 4U, "replace matched count") &&
-         expect(receipt.removedObjectCount == 4U, "replace removed count") &&
-         expect(receipt.createdObjectCount == 4U, "replace created count") &&
-         expect(document.objectCount() == 4U, "replace preserves count") &&
-         expect(std::all_of(document.objects().begin(), document.objects().end(),
-                            [](const cr::CreativeObject& object) {
-                              return object.kind == cr::CreativeObjectKind::Floor &&
-                                     hasVolumeTag(object);
-                            }),
-                "replace writes target kind");
+         expect(receipt.matchedVoxelCellCount == 4U,
+                "replace matched voxel count") &&
+         expect(receipt.replacedVoxelCellCount == 4U,
+                "replace voxel count") &&
+         expect(document.voxelField().occupiedCellCount() == 4U,
+                "replace preserves cell count") &&
+         expect(document.voxelField().materialAt({1, 0, 1}) ==
+                    cr::CreativeObjectKind::Floor,
+                "replace writes target material");
 }
 
 bool eraseIsContainedAndRollbackSafe() {
@@ -343,9 +354,22 @@ bool eraseIsContainedAndRollbackSafe() {
     return expect(false, "erase large floor setup accepted");
   }
 
-  cr::CreativeObject* locked = document.findObject(fill.createdObjectIds.front());
+  cr::CreativeDocumentCreateRequest contained;
+  contained.kind = cr::CreativeObjectKind::Crate;
+  contained.name = "locked contained crate";
+  contained.bounds = {{0.1, 0.1, 0.1}, {0.9, 0.9, 0.9}};
+  contained.hasBoundsOverride = true;
+  const cr::CreativeDocumentCreateReceipt containedReceipt =
+      document.createObject(contained);
+  if (!containedReceipt.accepted) {
+    return expect(false, "erase contained object setup accepted");
+  }
+  cr::CreativeObject* locked =
+      document.findObject(containedReceipt.objectId);
   locked->locked = true;
   const std::uint64_t countBeforeReject = document.objectCount();
+  const std::uint64_t voxelsBeforeReject =
+      document.voxelField().occupiedCellCount();
   const std::uint64_t revisionBeforeReject = document.revision();
   const cr::CreativeVolumeOperationReceipt rejected =
       cr::executeCreativeVolumeOperation(
@@ -355,18 +379,26 @@ bool eraseIsContainedAndRollbackSafe() {
                    "locked erase rejected") &&
             expect(document.objectCount() == countBeforeReject,
                    "locked erase rolls back removals") &&
+            expect(document.voxelField().occupiedCellCount() ==
+                       voxelsBeforeReject,
+                   "locked erase rolls back voxel removals") &&
             expect(document.revision() == revisionBeforeReject,
                    "locked erase preserves revision");
 
-  locked = document.findObject(fill.createdObjectIds.front());
+  locked = document.findObject(containedReceipt.objectId);
   locked->locked = false;
   const cr::CreativeVolumeOperationReceipt erased =
       cr::executeCreativeVolumeOperation(
           document,
           request(cr::CreativeVolumeOperationKind::Erase, selected));
   ok = expect(erased.accepted && erased.changed, "erase accepted") &&
-       expect(erased.removedObjectCount == 4U, "erase removes contained cells") &&
+       expect(erased.removedObjectCount == 1U,
+              "erase removes contained object") &&
+       expect(erased.removedVoxelCellCount == 4U,
+              "erase removes contained voxel cells") &&
        expect(document.objectCount() == 1U, "erase leaves spanning floor") &&
+       expect(document.voxelField().occupiedCellCount() == 0U,
+              "erase clears selected voxels") &&
        expect(document.containsObject(floorReceipt.objectId),
               "erase preserves non-contained floor") &&
        ok;
@@ -429,19 +461,16 @@ bool cloneUsesVolumeWidthOffset() {
           document,
           request(cr::CreativeVolumeOperationKind::Clone, selected));
   const bool shiftedCellsPresent =
-      std::any_of(document.objects().begin(), document.objects().end(),
-                  [](const cr::CreativeObject& object) {
-                    return object.bounds.min.x == 2.0;
-                  }) &&
-      std::any_of(document.objects().begin(), document.objects().end(),
-                  [](const cr::CreativeObject& object) {
-                    return object.bounds.min.x == 3.0;
-                  });
+      document.voxelField().occupied({2, 0, 0}) &&
+      document.voxelField().occupied({3, 0, 0});
 
   return expect(cloned.accepted && cloned.changed, "clone accepted") &&
-         expect(cloned.matchedObjectCount == 2U, "clone matched count") &&
-         expect(cloned.createdObjectCount == 2U, "clone created count") &&
-         expect(document.objectCount() == 4U, "clone document count") &&
+         expect(cloned.matchedVoxelCellCount == 2U,
+                "clone matched voxel count") &&
+         expect(cloned.createdVoxelCellCount == 2U,
+                "clone created voxel count") &&
+         expect(document.voxelField().occupiedCellCount() == 4U,
+                "clone voxel count") &&
          expect(shiftedCellsPresent, "clone shifts by volume width");
 }
 
@@ -599,23 +628,28 @@ bool facadeSelectionAndHistoryRoundTrip() {
   const cr::CreativeHistoryRecordReceipt recorded =
       cr::commitCreativeHistoryTransaction(
           appState.history, std::move(transaction), appState.facade);
-  bool ok = expect(fill.accepted && fill.createdObjectCount == 2U,
+  bool ok = expect(fill.accepted && fill.createdVoxelCellCount == 2U,
                    "facade fill accepted") &&
             expect(cr::selectedTargetCount(appState.facade.selectionState()) ==
-                       2U,
-                   "facade selects created cells") &&
+                       0U,
+                   "voxel fill does not fabricate object selection") &&
             expect(recorded.recorded, "volume fill records one undo step") &&
             expect(cr::creativeUndoDepth(appState.history) == 1U,
                    "volume fill undo depth one");
 
   const cr::CreativeHistoryApplyReceipt undo = cr::applyCreativeHistory(
       appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+  ok = expect(undo.accepted &&
+                  appState.facade.document().voxelField().occupiedCellCount() ==
+                      0U,
+              "volume fill undo restores empty voxel field") &&
+       ok;
   const cr::CreativeHistoryApplyReceipt redo = cr::applyCreativeHistory(
       appState.facade, appState.history, cr::CreativeHistoryDirection::Redo);
-  ok = expect(undo.accepted && undo.objectCountAfter == 0U,
-              "volume fill undo restores empty document") &&
-       expect(redo.accepted && redo.objectCountAfter == 2U,
-              "volume fill redo restores cells") &&
+  ok = expect(redo.accepted &&
+                  appState.facade.document().voxelField().occupiedCellCount() ==
+                      2U,
+              "volume fill redo restores voxel cells") &&
        ok;
   return ok;
 }
@@ -659,7 +693,8 @@ int main() {
   ok = hollowCreatesOnlyShell() && ok;
   ok = shapedFillAndHollowUseSharedPlanner() && ok;
   ok = operationLimitRejectsWithoutMutation() && ok;
-  ok = partialCreateFailureRollsBack() && ok;
+  ok = maximumInteractiveSolidStaysOneChunkCuboid() && ok;
+  ok = voxelFillDoesNotConsumeObjectIds() && ok;
   ok = replaceTargetsOnlyVolumeCells() && ok;
   ok = eraseIsContainedAndRollbackSafe() && ok;
   ok = eraseRejectsParentWithExternalChild() && ok;

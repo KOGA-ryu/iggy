@@ -264,6 +264,50 @@ void Reader::readCreativeDocument() {
     const std::string p = "creativeDocument.object." + std::to_string(index) + ".";
     readCreativeDocumentObject(p, object);
   }
+  if (nextKeyIs("creativeDocument.voxelChunk.count")) {
+    constexpr std::uint64_t kMaxCreativeVoxelChunkCount = 1'048'576U;
+    constexpr std::uint64_t kMaxCreativeVoxelCellCount = 16'777'216U;
+    constexpr std::uint64_t kMaxCreativeVoxelCellsPerChunk = 4096U;
+    std::uint64_t chunkCount = 0;
+    readUnsigned("creativeDocument.voxelChunk.count", chunkCount);
+    if (chunkCount > kMaxCreativeVoxelChunkCount) {
+      result_ = fail(SaveCodecStatus::InvalidNumber,
+                     "creativeDocument.voxelChunk.count", index_,
+                     "voxel chunk count exceeds limit");
+      return;
+    }
+    section.voxelChunks.resize(static_cast<std::size_t>(chunkCount));
+    std::uint64_t totalCellCount = 0;
+    for (std::size_t chunkIndex = 0;
+         chunkIndex < section.voxelChunks.size(); ++chunkIndex) {
+      SaveCreativeDocumentVoxelChunkRecord& chunk =
+          section.voxelChunks[chunkIndex];
+      const std::string p = "creativeDocument.voxelChunk." +
+                            std::to_string(chunkIndex) + ".";
+      readI32(p + "x", chunk.x);
+      readI32(p + "y", chunk.y);
+      readI32(p + "z", chunk.z);
+      std::uint64_t cellCount = 0;
+      readUnsigned(p + "cell.count", cellCount);
+      if (cellCount == 0U ||
+          cellCount > kMaxCreativeVoxelCellsPerChunk ||
+          totalCellCount > kMaxCreativeVoxelCellCount - cellCount) {
+        result_ = fail(SaveCodecStatus::InvalidNumber, p + "cell.count",
+                       index_, "voxel cell count exceeds limit");
+        return;
+      }
+      totalCellCount += cellCount;
+      chunk.cells.resize(static_cast<std::size_t>(cellCount));
+      for (std::size_t cellIndex = 0; cellIndex < chunk.cells.size();
+           ++cellIndex) {
+        SaveCreativeDocumentVoxelCellRecord& cell = chunk.cells[cellIndex];
+        const std::string cellPrefix =
+            p + "cell." + std::to_string(cellIndex) + ".";
+        readUnsigned(cellPrefix + "localIndex", cell.localIndex);
+        readString(cellPrefix + "material", cell.material);
+      }
+    }
+  }
 }
 
 void Reader::readPlayers() {

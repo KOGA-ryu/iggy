@@ -3,6 +3,7 @@
 #include "app/iggy3d/creative/document/DocumentSnap.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
+#include "app/iggy3d/creative/document/VoxelField.hpp"
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
 
 #include <cstddef>
@@ -45,6 +46,7 @@ enum class CreativeDocumentRestoreStatus : std::uint8_t {
   InvalidSettings,
   InvalidObject,
   DuplicateObjectId,
+  InvalidVoxelField,
   InvalidNextObjectId,
   Restored,
 };
@@ -124,6 +126,7 @@ struct CreativeDocumentRestoreRequest {
   CreativeBounds worldBounds;
   CreativeObjectId nextObjectId = 1;
   std::vector<CreativeObject> objects;
+  CreativeVoxelField voxelField;
 };
 
 struct CreativeDocumentRestoreReceipt {
@@ -134,6 +137,7 @@ struct CreativeDocumentRestoreReceipt {
       CreativeDocumentRestoreStatus::Unknown;
   CreativeDocumentId documentId = kInvalidDocumentId;
   std::uint64_t objectCount = 0;
+  std::uint64_t voxelCellCount = 0;
   CreativeObjectId nextObjectId = kInvalidObjectId;
   std::string_view message = "document_restore_not_requested";
   std::string_view reasonCode = "document_restore_not_requested";
@@ -191,6 +195,7 @@ class CreativeDocument {
       CreativeObjectId id) const noexcept;
   [[nodiscard]] CreativeObject* findObject(CreativeObjectId id) noexcept;
   [[nodiscard]] std::span<const CreativeObject> objects() const noexcept;
+  [[nodiscard]] const CreativeVoxelField& voxelField() const noexcept;
 
   [[nodiscard]] CreativeDocumentCreateReceipt createObject(
       const CreativeDocumentCreateRequest& request);
@@ -199,6 +204,8 @@ class CreativeDocument {
   [[nodiscard]] CreativeDocumentRemoveReceipt removeDocumentObject(
       CreativeObjectId id);
   void markObjectMutationChanged(CreativeObjectDirtyFlags dirtyFlags = 0) noexcept;
+  [[nodiscard]] CreativeVoxelMutationReceipt applyVoxelEdits(
+      std::span<const CreativeVoxelEdit> edits);
   [[nodiscard]] CreativeDocumentRestoreReceipt restoreForLoad(
       const CreativeDocumentRestoreRequest& request);
 
@@ -232,6 +239,7 @@ class CreativeDocument {
   std::vector<CreativeObject> objects_{};
   std::unordered_map<CreativeObjectId, std::size_t> objectIndex_{};
   CreativeObjectId nextObjectId_{1};
+  CreativeVoxelField voxelField_{};
 
   CreativeUnits units_{CreativeUnits::Meters};
   CreativeGridSettings gridSettings_{};

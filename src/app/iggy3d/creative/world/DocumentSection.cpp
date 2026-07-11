@@ -2,7 +2,10 @@
 
 #include <limits>
 #include <optional>
+#include <set>
 #include <span>
+#include <tuple>
+#include <unordered_set>
 #include <utility>
 
 namespace iggy3d {
@@ -237,6 +240,112 @@ void setStatus(ProductCreativeDocumentSectionReceipt& receipt,
   return true;
 }
 
+[[nodiscard]] std::vector<SaveCreativeDocumentVoxelChunkRecord>
+toSaveVoxelChunks(const creative::CreativeVoxelField& field) {
+  std::vector<SaveCreativeDocumentVoxelChunkRecord> records;
+  records.reserve(static_cast<std::size_t>(field.chunkCount()));
+  for (const creative::CreativeVoxelChunk& chunk : field.chunks()) {
+    SaveCreativeDocumentVoxelChunkRecord record;
+    record.x = chunk.coord.x;
+    record.y = chunk.coord.y;
+    record.z = chunk.coord.z;
+    record.cells.reserve(chunk.occupiedCellCount);
+    for (std::size_t localIndex = 0;
+         localIndex < chunk.materials.size(); ++localIndex) {
+      const creative::CreativeObjectKind material =
+          chunk.materials[localIndex];
+      if (material == creative::CreativeObjectKind::Unknown) {
+        continue;
+      }
+      record.cells.push_back(
+          {static_cast<std::uint16_t>(localIndex),
+           std::string{creative::serializedObjectKindId(material)}});
+    }
+    records.push_back(std::move(record));
+  }
+  return records;
+}
+
+[[nodiscard]] bool checkedVoxelGlobalCoord(std::int32_t chunkCoord,
+                                           std::int32_t localCoord,
+                                           std::int32_t& out) noexcept {
+  const std::int64_t value =
+      static_cast<std::int64_t>(chunkCoord) *
+          creative::kCreativeVoxelChunkEdge +
+      localCoord;
+  if (value < std::numeric_limits<std::int32_t>::min() ||
+      value > std::numeric_limits<std::int32_t>::max()) {
+    return false;
+  }
+  out = static_cast<std::int32_t>(value);
+  return true;
+}
+
+[[nodiscard]] bool toCreativeVoxelField(
+    std::span<const SaveCreativeDocumentVoxelChunkRecord> records,
+    creative::CreativeVoxelField& out) {
+  constexpr std::uint64_t kMaxPersistedVoxelCellCount = 16'777'216U;
+  std::vector<creative::CreativeVoxelEdit> edits;
+  std::uint64_t totalCellCount = 0;
+  for (const SaveCreativeDocumentVoxelChunkRecord& chunk : records) {
+    if (chunk.cells.empty() ||
+        chunk.cells.size() > creative::kCreativeVoxelChunkCellCount ||
+        totalCellCount > kMaxPersistedVoxelCellCount - chunk.cells.size()) {
+      return false;
+    }
+    totalCellCount += chunk.cells.size();
+  }
+  edits.reserve(static_cast<std::size_t>(totalCellCount));
+
+  std::set<std::tuple<std::int32_t, std::int32_t, std::int32_t>> chunkCoords;
+  for (const SaveCreativeDocumentVoxelChunkRecord& chunk : records) {
+    if (!chunkCoords.emplace(chunk.x, chunk.y, chunk.z).second) {
+      return false;
+    }
+    std::unordered_set<std::uint16_t> localIndices;
+    localIndices.reserve(chunk.cells.size());
+    for (const SaveCreativeDocumentVoxelCellRecord& cell : chunk.cells) {
+      if (cell.localIndex >= creative::kCreativeVoxelChunkCellCount ||
+          !localIndices.insert(cell.localIndex).second) {
+        return false;
+      }
+      creative::CreativeObjectKind material =
+          creative::CreativeObjectKind::Unknown;
+      if (!creative::parseSerializedObjectKindId(cell.material, material) ||
+          material == creative::CreativeObjectKind::Unknown ||
+          material == creative::CreativeObjectKind::Count) {
+        return false;
+      }
+
+      const std::int32_t localX =
+          cell.localIndex % creative::kCreativeVoxelChunkEdge;
+      const std::int32_t localY =
+          (cell.localIndex / creative::kCreativeVoxelChunkEdge) %
+          creative::kCreativeVoxelChunkEdge;
+      const std::int32_t localZ =
+          cell.localIndex /
+          (creative::kCreativeVoxelChunkEdge *
+           creative::kCreativeVoxelChunkEdge);
+      creative::CreativeGridCoord3 global{};
+      if (!checkedVoxelGlobalCoord(chunk.x, localX, global.x) ||
+          !checkedVoxelGlobalCoord(chunk.y, localY, global.y) ||
+          !checkedVoxelGlobalCoord(chunk.z, localZ, global.z)) {
+        return false;
+      }
+      edits.push_back({global, material});
+    }
+  }
+
+  creative::CreativeVoxelField restored;
+  const creative::CreativeVoxelMutationReceipt receipt = restored.apply(edits);
+  if (!receipt.accepted || (edits.empty() ? receipt.changed
+                                         : !receipt.changed)) {
+    return false;
+  }
+  out = std::move(restored);
+  return true;
+}
+
 [[nodiscard]] bool objectIdsAreUniqueAndNextIdIsValid(
     std::span<const SaveCreativeDocumentObjectRecord> objects,
     creative::CreativeObjectId nextObjectId,
@@ -320,6 +429,11 @@ void mirrorRestoreFailure(ProductCreativeDocumentSectionReceipt& receipt,
                 ProductCreativeDocumentSectionStatus::DuplicateObjectId,
                 reason);
       return;
+    case creative::CreativeDocumentRestoreStatus::InvalidVoxelField:
+      setStatus(receipt,
+                ProductCreativeDocumentSectionStatus::InvalidDocument,
+                reason);
+      return;
     case creative::CreativeDocumentRestoreStatus::InvalidNextObjectId:
       setStatus(receipt,
                 ProductCreativeDocumentSectionStatus::InvalidNextObjectId,
@@ -361,6 +475,8 @@ std::string_view toString(
       return "InvalidObjectKind";
     case ProductCreativeDocumentSectionStatus::DuplicateObjectId:
       return "DuplicateObjectId";
+    case ProductCreativeDocumentSectionStatus::InvalidVoxelData:
+      return "InvalidVoxelData";
     case ProductCreativeDocumentSectionStatus::InvalidNextObjectId:
       return "InvalidNextObjectId";
     case ProductCreativeDocumentSectionStatus::Converted:
@@ -376,6 +492,7 @@ ProductCreativeDocumentSectionBuildResult buildSaveCreativeDocumentSection(
   receipt.requested = true;
   receipt.documentId = document.id();
   receipt.objectCount = document.objectCount();
+  receipt.voxelCellCount = document.voxelField().occupiedCellCount();
   receipt.nextObjectId = document.nextObjectId();
 
   if (!document.isValid()) {
@@ -425,11 +542,13 @@ ProductCreativeDocumentSectionBuildResult buildSaveCreativeDocumentSection(
   for (const creative::CreativeObject& object : document.objects()) {
     result.section.objects.push_back(toSaveObject(object));
   }
+  result.section.voxelChunks = toSaveVoxelChunks(document.voxelField());
 
   receipt.accepted = true;
   receipt.changed = true;
   receipt.status = ProductCreativeDocumentSectionStatus::Converted;
   receipt.objectCount = result.section.objects.size();
+  receipt.voxelCellCount = document.voxelField().occupiedCellCount();
   receipt.nextObjectId = result.section.nextObjectId;
   receipt.message = "creative_document_section_converted";
   receipt.reasonCode = "creative_document_section_converted";
@@ -443,6 +562,10 @@ ProductCreativeDocumentSectionRestoreResult restoreCreativeDocumentFromSaveSecti
   receipt.requested = true;
   receipt.documentId = section.documentId;
   receipt.objectCount = section.objects.size();
+  for (const SaveCreativeDocumentVoxelChunkRecord& chunk :
+       section.voxelChunks) {
+    receipt.voxelCellCount += chunk.cells.size();
+  }
   receipt.nextObjectId = section.nextObjectId;
 
   if (!section.present) {
@@ -475,6 +598,12 @@ ProductCreativeDocumentSectionRestoreResult restoreCreativeDocumentFromSaveSecti
   }
   request.worldBounds = toCreativeBounds(section.worldBounds);
   request.nextObjectId = section.nextObjectId;
+  if (!toCreativeVoxelField(section.voxelChunks, request.voxelField)) {
+    setStatus(receipt,
+              ProductCreativeDocumentSectionStatus::InvalidVoxelData,
+              "invalid_voxel_data");
+    return result;
+  }
 
   if (!objectIdsAreUniqueAndNextIdIsValid(section.objects,
                                           section.nextObjectId,

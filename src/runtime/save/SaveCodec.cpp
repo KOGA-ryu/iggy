@@ -359,6 +359,28 @@ private:
       const std::string p = "creativeDocument.object." + std::to_string(index) + ".";
       writeCreativeDocumentObject(p, object);
     }
+    line("creativeDocument.voxelChunk.count",
+         unsignedText(section.voxelChunks.size()));
+    for (std::size_t chunkIndex = 0;
+         chunkIndex < section.voxelChunks.size(); ++chunkIndex) {
+      const SaveCreativeDocumentVoxelChunkRecord& chunk =
+          section.voxelChunks[chunkIndex];
+      const std::string p = "creativeDocument.voxelChunk." +
+                            std::to_string(chunkIndex) + ".";
+      line(p + "x", std::to_string(chunk.x));
+      line(p + "y", std::to_string(chunk.y));
+      line(p + "z", std::to_string(chunk.z));
+      line(p + "cell.count", unsignedText(chunk.cells.size()));
+      for (std::size_t cellIndex = 0; cellIndex < chunk.cells.size();
+           ++cellIndex) {
+        const SaveCreativeDocumentVoxelCellRecord& cell =
+            chunk.cells[cellIndex];
+        const std::string cellPrefix =
+            p + "cell." + std::to_string(cellIndex) + ".";
+        line(cellPrefix + "localIndex", unsignedText(cell.localIndex));
+        lineString(cellPrefix + "material", cell.material);
+      }
+    }
   }
 
   void writePlayers() {

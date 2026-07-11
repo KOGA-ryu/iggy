@@ -303,6 +303,24 @@ struct BakeStaticMeshEntry {
   return stableObjectId(object.id, suffix);
 }
 
+[[nodiscard]] std::string stableVoxelId(
+    const CreativeVoxelCuboid& cuboid,
+    std::string_view suffix = {}) {
+  std::string id = "creative_voxel_" +
+                   std::to_string(cuboid.minCell.x) + "_" +
+                   std::to_string(cuboid.minCell.y) + "_" +
+                   std::to_string(cuboid.minCell.z) + "_" +
+                   std::to_string(cuboid.maxCellExclusive.x) + "_" +
+                   std::to_string(cuboid.maxCellExclusive.y) + "_" +
+                   std::to_string(cuboid.maxCellExclusive.z) + "_" +
+                   std::string(serializedObjectKindId(cuboid.material));
+  if (!suffix.empty()) {
+    id += "_";
+    id += suffix;
+  }
+  return id;
+}
+
 [[nodiscard]] std::string_view anchorKindForDescriptor(
     const CreativeObjectDescriptor& descriptor) noexcept {
   return toString(descriptor.runtimeAnchorSemantic);
@@ -404,6 +422,44 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
   return surface;
 }
 
+[[nodiscard]] RoomSpatialSurface walkableSurfaceForStableId(
+    std::string stableId,
+    BakeBounds bounds) {
+  RoomSpatialSurface surface;
+  surface.id = stableId + "_walkable";
+  surface.sourceStaticMeshId = std::move(stableId);
+  surface.shape = RoomSpatialSurfaceShape::Plane;
+  surface.role = RoomSpatialSurfaceRole::Walkable;
+  surface.pointsMeters = topFacePoints(bounds);
+  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.traversalTags = {std::string(traversalTagId(TraversalTag::Walkable))};
+  surface.collisionMask = {"actor"};
+  return surface;
+}
+
+[[nodiscard]] RoomSpatialSurface blockerSurfaceForStableId(
+    std::string stableId,
+    BakeBounds bounds,
+    Vec3 normal,
+    bool projectile) {
+  RoomSpatialSurface surface;
+  surface.id = stableId +
+               (projectile ? "_projectile_blocker" : "_actor_blocker");
+  surface.sourceStaticMeshId = std::move(stableId);
+  surface.shape = RoomSpatialSurfaceShape::Box;
+  surface.role = projectile ? RoomSpatialSurfaceRole::ProjectileBlocker
+                            : RoomSpatialSurfaceRole::Blocker;
+  surface.pointsMeters = boxExtentPoints(bounds);
+  surface.normal = normal;
+  surface.traversalTags = {
+      std::string(traversalTagId(projectile ? TraversalTag::ProjectileBlocker
+                                            : TraversalTag::Blocker))};
+  surface.collisionMask = {projectile ? "projectile" : "actor"};
+  surface.blocksActor = !projectile;
+  surface.blocksProjectile = projectile;
+  return surface;
+}
+
 [[nodiscard]] RoomSpatialSurface walkableSurfaceForObject(
     const CreativeObject& object,
     BakeBounds bounds,
@@ -481,6 +537,102 @@ void appendSpatialSurfaces(RoomAsset& room,
         projectileBlockerSurfaceForObject(object, bounds, normal);
     appendSpatialSurfaceSource(sources, object.id, projectileSurface);
     room.spatialSurfaces.push_back(std::move(projectileSurface));
+  }
+}
+
+[[nodiscard]] BakedRoomRole roleForVoxelMaterial(
+    const CreativeObjectDescriptor& descriptor) noexcept {
+  if (!descriptorSupportsRuntimeRoomGeometry(descriptor)) {
+    return BakedRoomRole::Unsupported;
+  }
+  if (descriptor.shapeKind == CreativeObjectShapeKind::MeshProxy) {
+    return BakedRoomRole::Prop;
+  }
+  if (descriptor.shapeKind == CreativeObjectShapeKind::BoxVolume) {
+    return occupancySupportsRuntimeRoomGeometry(descriptor.occupancyKind)
+               ? BakedRoomRole::Prop
+               : BakedRoomRole::Unsupported;
+  }
+  if (descriptor.shapeKind != CreativeObjectShapeKind::Surface) {
+    return BakedRoomRole::Unsupported;
+  }
+
+  const CreativeBounds bounds = descriptor.defaults.bounds;
+  const Vec3 semanticSize{toFloat(bounds.max.x - bounds.min.x),
+                          toFloat(bounds.max.y - bounds.min.y),
+                          toFloat(bounds.max.z - bounds.min.z)};
+  return roleForObject(descriptor, semanticSize);
+}
+
+[[nodiscard]] bool bakeBoundsForVoxelCuboid(
+    const CreativeVoxelCuboid& cuboid,
+    CreativeGridSettings grid,
+    BakeBounds& bounds) noexcept {
+  const CreativeBounds worldBounds{
+      {grid.origin.x + static_cast<double>(cuboid.minCell.x) *
+                           grid.cellSizeMeters,
+       grid.origin.y + static_cast<double>(cuboid.minCell.y) *
+                           grid.cellSizeMeters,
+       grid.origin.z + static_cast<double>(cuboid.minCell.z) *
+                           grid.cellSizeMeters},
+      {grid.origin.x + static_cast<double>(cuboid.maxCellExclusive.x) *
+                           grid.cellSizeMeters,
+       grid.origin.y + static_cast<double>(cuboid.maxCellExclusive.y) *
+                           grid.cellSizeMeters,
+       grid.origin.z + static_cast<double>(cuboid.maxCellExclusive.z) *
+                           grid.cellSizeMeters}};
+  return validBakeBounds(worldBounds, bounds);
+}
+
+void appendVoxelCuboid(CreativeRoomBakeResult& result,
+                       const CreativeVoxelCuboid& cuboid,
+                       CreativeGridSettings grid) {
+  const CreativeObjectDescriptor& descriptor = describeObject(cuboid.material);
+  const BakedRoomRole role = roleForVoxelMaterial(descriptor);
+  BakeBounds bounds;
+  if (role == BakedRoomRole::Unsupported ||
+      !bakeBoundsForVoxelCuboid(cuboid, grid, bounds)) {
+    ++result.receipt.skippedUnsupportedShapeCount;
+    return;
+  }
+
+  const std::string stableId = stableVoxelId(cuboid);
+  RoomStaticMeshAsset mesh;
+  mesh.id = stableId;
+  mesh.meshId = std::string(meshIdForRole(role));
+  mesh.materialId = std::string(materialIdForRole(role));
+  mesh.role = std::string(roleName(role));
+  mesh.positionMeters = bounds.center;
+  mesh.sizeMeters = bounds.size;
+  if (role == BakedRoomRole::Wall) {
+    setWallSegmentFields(mesh, bounds);
+  }
+  result.room.staticMeshes.push_back(std::move(mesh));
+  ++result.receipt.bakedVoxelCuboidCount;
+
+  if (role == BakedRoomRole::Floor) {
+    RoomSpatialSurface surface =
+        walkableSurfaceForStableId(stableId, bounds);
+    appendSpatialSurfaceSource(result.spatialSurfaceSources,
+                               kInvalidObjectId, surface);
+    result.room.spatialSurfaces.push_back(std::move(surface));
+    return;
+  }
+
+  if (descriptor.occupancyKind == CreativeSpatialOccupancyKind::Structural ||
+      descriptor.occupancyKind == CreativeSpatialOccupancyKind::Collision) {
+    const Vec3 normal = blockerNormalForRole(bounds, role);
+    RoomSpatialSurface actorSurface =
+        blockerSurfaceForStableId(stableId, bounds, normal, false);
+    appendSpatialSurfaceSource(result.spatialSurfaceSources,
+                               kInvalidObjectId, actorSurface);
+    result.room.spatialSurfaces.push_back(std::move(actorSurface));
+
+    RoomSpatialSurface projectileSurface =
+        blockerSurfaceForStableId(stableId, bounds, normal, true);
+    appendSpatialSurfaceSource(result.spatialSurfaceSources,
+                               kInvalidObjectId, projectileSurface);
+    result.room.spatialSurfaces.push_back(std::move(projectileSurface));
   }
 }
 
@@ -723,6 +875,8 @@ CreativeRoomBakeResult buildRoomAssetFromCreativeDocument(
   }
 
   result.receipt.objectCount = document.objectCount();
+  result.receipt.voxelCellCount = document.voxelField().occupiedCellCount();
+  result.receipt.voxelChunkCount = document.voxelField().chunkCount();
   std::vector<BakeStaticMeshEntry> staticMeshEntries;
   staticMeshEntries.reserve(document.objects().size());
   std::size_t documentIndex = 0;
@@ -780,6 +934,17 @@ CreativeRoomBakeResult buildRoomAssetFromCreativeDocument(
                           *entry.descriptor,
                           entry.classification.bounds,
                           entry.classification.role);
+  }
+
+  std::vector<CreativeVoxelCuboid> ownedVoxelCuboids;
+  std::span<const CreativeVoxelCuboid> voxelCuboids =
+      request.precomputedVoxelCuboids;
+  if (!request.usePrecomputedVoxelCuboids) {
+    ownedVoxelCuboids = buildCreativeVoxelCuboids(document.voxelField());
+    voxelCuboids = ownedVoxelCuboids;
+  }
+  for (const CreativeVoxelCuboid& cuboid : voxelCuboids) {
+    appendVoxelCuboid(result, cuboid, document.gridSettings());
   }
 
   result.receipt.bakedStaticMeshCount = result.room.staticMeshes.size();
