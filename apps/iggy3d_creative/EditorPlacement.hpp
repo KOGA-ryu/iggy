@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -9,15 +11,69 @@
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/input/Interaction.hpp"
 #include "core/math/Vec3.hpp"
 #include "EditorEdits.hpp"
 
 namespace iggy3d_creative_app {
 
+inline constexpr float kCreativeBrushPointPreviewSizeMeters = 0.35F;
+inline constexpr float kCreativeBrushLinePreviewThicknessMeters = 0.16F;
+inline constexpr float kCreativeBrushPathPreviewThicknessMeters = 0.16F;
+inline constexpr std::size_t kCreativeBrushPathPointCapacity = 3U;
+
+enum class CreativeBrushPlacementPlanStatus : std::uint8_t {
+  Ready,
+  InvalidAnchor,
+  UnsupportedBrush,
+  InvalidGeometry,
+};
+
 struct BrushFootprint {
   float sizeX = 1.0F;
   float height = 1.0F;
   float sizeZ = 1.0F;
+};
+
+struct CreativeBrushPlacementPlan {
+  CreativeBrushPlacementPlanStatus status =
+      CreativeBrushPlacementPlanStatus::UnsupportedBrush;
+  iggy3d::creative::CreativeObjectKind brush =
+      iggy3d::creative::CreativeObjectKind::Unknown;
+  iggy3d::creative::CreativeObjectShapeKind shapeKind =
+      iggy3d::creative::CreativeObjectShapeKind::Unknown;
+  iggy3d::creative::CreativeTransform transform{};
+  iggy3d::creative::CreativeBounds authoredBounds{};
+  iggy3d::creative::CreativeBounds previewBounds{};
+  std::array<iggy3d::creative::CreativePathPoint,
+             kCreativeBrushPathPointCapacity>
+      pathPoints{};
+  std::uint8_t pathPointCount = 0;
+  iggy3d::creative::CreativePlacementFace resolvedFace =
+      iggy3d::creative::CreativePlacementFace::Count;
+  iggy3d::creative::CreativePlacementFace resolvedForward =
+      iggy3d::creative::CreativePlacementFace::Count;
+  bool hasTransformOverride = false;
+  bool hasBoundsOverride = false;
+  bool hasPathOverride = false;
+  bool orientationResolved = false;
+  bool valid = false;
+};
+
+enum class CreativeBrushPlacementAdmissionStatus : std::uint8_t {
+  Ready,
+  InvalidTarget,
+  UnsupportedBrush,
+  InvalidGeometry,
+  UnsupportedPolicy,
+  FaceDisallowed,
+};
+
+struct CreativeBrushPlacementAdmission {
+  CreativeBrushPlacementAdmissionStatus status =
+      CreativeBrushPlacementAdmissionStatus::InvalidTarget;
+  CreativeBrushPlacementPlan plan{};
+  bool allowed = false;
 };
 
 [[nodiscard]] BrushFootprint descriptorBoundsFootprint(
@@ -51,6 +107,18 @@ buildBrushPaletteFromDescriptors();
 [[nodiscard]] std::vector<iggy3d::creative::CreativePathPoint>
 initialPathPointsForAnchor(iggy3d::Vec3 cellCenter);
 
+[[nodiscard]] CreativeBrushPlacementPlan planBrushPlacement(
+    iggy3d::creative::CreativeObjectKind brush,
+    iggy3d::Vec3 cellCenter) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeBrushPlacementAdmissionStatus status) noexcept;
+[[nodiscard]] CreativeBrushPlacementAdmission admitBrushPlacement(
+    iggy3d::creative::CreativeObjectKind brush,
+    const iggy3d::creative::CreativeGridTarget& target) noexcept;
+[[nodiscard]] bool creativeBrushPlacementAlreadyExists(
+    const iggy3d::creative::CreativeDocument& document,
+    const CreativeBrushPlacementPlan& plan) noexcept;
+
 [[nodiscard]] iggy3d::Vec3 snapGroundToCellCenter(double worldX,
                                                   double worldZ,
                                                   double cellSize);
@@ -59,9 +127,18 @@ initialPathPointsForAnchor(iggy3d::Vec3 cellCenter);
     const std::vector<iggy3d::creative::CreativePathPoint>& points);
 
 [[nodiscard]] iggy3d::creative::CreativeDocumentCreateRequest
+buildBrushCreateRequest(const CreativeBrushPlacementPlan& plan,
+                        std::uint64_t ordinal);
+
+[[nodiscard]] iggy3d::creative::CreativeDocumentCreateRequest
 buildBrushCreateRequest(iggy3d::creative::CreativeObjectKind brush,
                         iggy3d::Vec3 cellCenter,
                         std::uint64_t ordinal);
+
+[[nodiscard]] iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
+    iggy3d::creative::Facade& facade,
+    const CreativeBrushPlacementPlan& plan,
+    std::uint64_t ordinal);
 
 [[nodiscard]] iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
     iggy3d::creative::Facade& facade,
@@ -71,7 +148,7 @@ buildBrushCreateRequest(iggy3d::creative::CreativeObjectKind brush,
 
 [[nodiscard]] iggy3d::creative::CreativeDocumentCreateReceipt
 placeBrushObjectWithUndo(iggy3d::creative::Facade& facade,
-                         StandaloneUndoStack& undoStack,
+                         StandaloneEditHistory& history,
                          iggy3d::creative::CreativeObjectKind brush,
                          iggy3d::Vec3 cellCenter,
                          std::uint64_t ordinal,

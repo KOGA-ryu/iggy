@@ -97,7 +97,9 @@ CreativeMutationApplyReceipt applyObjectKindMutation(CreativeObject& object, Cre
 }
 
 [[nodiscard]] bool sameTransform(const CreativeTransform& lhs, const CreativeTransform& rhs) noexcept {
-    return sameVec3(lhs.position, rhs.position) && sameVec3(lhs.rotation, rhs.rotation) && sameVec3(lhs.scale, rhs.scale);
+    return sameVec3(lhs.position, rhs.position) &&
+           sameVec3(lhs.rotationEulerRadians, rhs.rotationEulerRadians) &&
+           sameVec3(lhs.scale, rhs.scale);
 }
 
 [[nodiscard]] bool sameBounds(const CreativeBounds& lhs, const CreativeBounds& rhs) noexcept {
@@ -198,11 +200,12 @@ CreativeMutationApplyReceipt applyObjectKindMutation(CreativeObject& object, Cre
     CreativeObject& object,
     CreativeMutationKind mutationKind,
     const RotateMutation& mutation) {
-    if (sameVec3(object.transform.rotation, mutation.rotation)) {
+    if (sameVec3(object.transform.rotationEulerRadians,
+                 mutation.rotationEulerRadians)) {
         return makeNoChangeReceipt(object, mutationKind, "object rotation already matches requested value");
     }
 
-    object.transform.rotation = mutation.rotation;
+    object.transform.rotationEulerRadians = mutation.rotationEulerRadians;
     return makeAppliedReceipt(object, mutationKind, "object rotated");
 }
 

@@ -149,6 +149,60 @@ enum class CreativeAuthoringPaletteVisibility {
     Brush,
 };
 
+enum class CreativePlacementFace : std::uint8_t {
+    NegativeX,
+    PositiveX,
+    NegativeY,
+    PositiveY,
+    NegativeZ,
+    PositiveZ,
+    Count,
+};
+
+using CreativePlacementFaceMask = std::uint8_t;
+
+[[nodiscard]] inline constexpr CreativePlacementFaceMask creativePlacementFaceBit(
+    CreativePlacementFace face) noexcept {
+    return face < CreativePlacementFace::Count
+               ? static_cast<CreativePlacementFaceMask>(
+                     1U << static_cast<std::uint8_t>(face))
+               : 0U;
+}
+
+inline constexpr CreativePlacementFaceMask kCreativePlacementAllFaces =
+    creativePlacementFaceBit(CreativePlacementFace::NegativeX) |
+    creativePlacementFaceBit(CreativePlacementFace::PositiveX) |
+    creativePlacementFaceBit(CreativePlacementFace::NegativeY) |
+    creativePlacementFaceBit(CreativePlacementFace::PositiveY) |
+    creativePlacementFaceBit(CreativePlacementFace::NegativeZ) |
+    creativePlacementFaceBit(CreativePlacementFace::PositiveZ);
+
+enum class CreativePlacementTargetPolicy : std::uint8_t {
+    None,
+    AdjacentCell,
+};
+
+enum class CreativePlacementOrientationPolicy : std::uint8_t {
+    DescriptorDefault,
+    CardinalFaceOrPlacerFacing,
+};
+
+enum class CreativePlacementOccupancyPolicy : std::uint8_t {
+    AllowOverlap,
+};
+
+struct CreativeObjectPlacementPolicy {
+    CreativePlacementFaceMask allowedFaces{0};
+    CreativePlacementTargetPolicy targetPolicy{
+        CreativePlacementTargetPolicy::None};
+    CreativePlacementOrientationPolicy orientationPolicy{
+        CreativePlacementOrientationPolicy::DescriptorDefault};
+    CreativePlacementFace localForwardFace{CreativePlacementFace::PositiveZ};
+    CreativePlacementOccupancyPolicy occupancyPolicy{
+        CreativePlacementOccupancyPolicy::AllowOverlap};
+    bool enabled{false};
+};
+
 enum class CreativeObjectDirtyFlag : std::uint64_t {
     None = 0,
     Identity = 1ull << 0,
@@ -190,6 +244,7 @@ struct CreativeObjectDescriptor {
         CreativeRuntimeAnchorSemantic::None};
     CreativeAuthoringPaletteVisibility authoringPaletteVisibility{
         CreativeAuthoringPaletteVisibility::Hidden};
+    CreativeObjectPlacementPolicy placementPolicy{};
 
     std::string_view name{};
     std::string_view displayName{};
@@ -233,6 +288,11 @@ struct CreativeObjectDescriptor {
 [[nodiscard]] bool objectIsEditorOnly(CreativeObjectKind kind) noexcept;
 [[nodiscard]] bool descriptorShowsInAuthoringBrushPalette(const CreativeObjectDescriptor& descriptor) noexcept;
 [[nodiscard]] bool objectShowsInAuthoringBrushPalette(CreativeObjectKind kind) noexcept;
+[[nodiscard]] CreativePlacementFace creativePlacementFaceFromNormal(
+    CreativeVec3 normal) noexcept;
+[[nodiscard]] bool creativePlacementPolicyAllowsFace(
+    const CreativeObjectPlacementPolicy& policy,
+    CreativeVec3 normal) noexcept;
 
 [[nodiscard]] bool objectUsesProfile(CreativeObjectKind kind, CreativeObjectProfile profile) noexcept;
 [[nodiscard]] bool objectUsesCategory(CreativeObjectKind kind, CreativeObjectCategory category) noexcept;

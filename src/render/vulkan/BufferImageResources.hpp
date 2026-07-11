@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -24,6 +25,25 @@ struct VkExtent2D {
 #endif
 
 namespace iggy3d::vulkan {
+
+inline constexpr std::size_t kCreativePreviewGeometryDrawRangeCount = 5U;
+
+[[nodiscard]] constexpr std::uint32_t creativePreviewGeometryDrawIndex(
+    RenderCreativePreviewRole role,
+    bool includePathWireframe) noexcept {
+  switch (role) {
+    case RenderCreativePreviewRole::Held:
+      return 0U;
+    case RenderCreativePreviewRole::PlacementValid:
+      return includePathWireframe ? 3U : 1U;
+    case RenderCreativePreviewRole::PlacementInvalid:
+      return includePathWireframe ? 4U : 2U;
+    case RenderCreativePreviewRole::Count:
+      return static_cast<std::uint32_t>(
+          kCreativePreviewGeometryDrawRangeCount);
+  }
+  return static_cast<std::uint32_t>(kCreativePreviewGeometryDrawRangeCount);
+}
 
 struct GpuBufferRecord {
   VulkanBufferAllocation allocation;
@@ -64,6 +84,16 @@ struct FirstRoomGeometryResources {
   bool indexedDraw = false;
 };
 
+struct CreativePreviewGeometryResources {
+  GpuBufferRecord vertexBuffer;
+  GpuBufferRecord indexBuffer;
+  std::array<IndexedDrawRange, kCreativePreviewGeometryDrawRangeCount>
+      indexedDraws{};
+  std::uint32_t vertexCount = 0;
+  std::uint32_t indexCount = 0;
+  bool ready = false;
+};
+
 struct RoomMeshCpuGeometry {
   std::vector<FirstRoomVertex> vertices;
   std::vector<std::uint16_t> indices;
@@ -98,6 +128,14 @@ struct CreativeWireframeDebugCpuGeometry {
   std::string status = "vulkan_creative_wireframe_debug_geometry_not_requested";
   std::string reasonCode =
       "vulkan_creative_wireframe_debug_geometry_not_requested";
+  bool ready = false;
+};
+
+struct CreativePreviewCpuGeometry {
+  std::vector<FirstRoomVertex> vertices;
+  std::vector<std::uint16_t> indices;
+  std::array<IndexedDrawRange, kCreativePreviewGeometryDrawRangeCount>
+      indexedDraws{};
   bool ready = false;
 };
 
@@ -138,14 +176,17 @@ public:
   RenderReceipt destroy();
 
   const FirstRoomGeometryResources& geometry() const;
+  const CreativePreviewGeometryResources& creativePreviewGeometry() const;
   const DepthResourceRecord& depth() const;
   bool ready() const;
 
 private:
   void destroyGeometryBuffers();
+  void destroyCreativePreviewBuffers();
 
   VulkanMemoryAllocator allocator_;
   FirstRoomGeometryResources geometry_;
+  CreativePreviewGeometryResources creativePreviewGeometry_;
   DepthResourceRecord depth_;
   BufferImageResourcesCreateInfo createInfo_;
   bool ready_ = false;
@@ -159,5 +200,6 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
     const RenderCreativeWireframeDebugFrame* creativeWireframeDebug);
 CreativeWireframeDebugCpuGeometry buildCreativeWireframeDebugCpuGeometry(
     const RenderCreativeWireframeDebugFrame* creativeWireframeDebug);
+CreativePreviewCpuGeometry buildCreativePreviewCpuGeometry();
 
 }  // namespace iggy3d::vulkan

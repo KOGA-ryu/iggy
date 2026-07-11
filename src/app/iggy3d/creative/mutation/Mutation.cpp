@@ -796,8 +796,8 @@ CreativeMutationPayload makeMovePayload(CreativeVec3 position) {
     return CreativeMutationPayload{MoveMutation{position}};
 }
 
-CreativeMutationPayload makeRotatePayload(CreativeVec3 rotation) {
-    return CreativeMutationPayload{RotateMutation{rotation}};
+CreativeMutationPayload makeRotatePayload(CreativeVec3 rotationEulerRadians) {
+    return CreativeMutationPayload{RotateMutation{rotationEulerRadians}};
 }
 
 CreativeMutationPayload makeBoundsPayload(CreativeBounds bounds) {

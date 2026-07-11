@@ -64,8 +64,8 @@ ProductCreativeUiProjection buildProductCreativeUiProjection(
   } else if (request.creative != nullptr) {
     creative::CreativeUiBuildOptions options;
     options.undoAvailable =
-        creative::creativeUndoAvailable(request.creative->undoStack);
-    options.undoDepth = creative::creativeUndoDepth(request.creative->undoStack);
+        creative::creativeUndoAvailable(request.creative->history);
+    options.undoDepth = creative::creativeUndoDepth(request.creative->history);
     facadeUiReceipt = request.creative->facade.buildUiModel(options);
     model = &facadeUiReceipt.model;
     projection.receipt.usedFacade = true;

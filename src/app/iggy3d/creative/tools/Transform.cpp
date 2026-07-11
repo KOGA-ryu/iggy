@@ -1,12 +1,9 @@
 #include "app/iggy3d/creative/tools/Transform.hpp"
 
-#include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/tools/Clipboard.hpp"
 
-#include <algorithm>
 #include <cmath>
 #include <numbers>
-#include <limits>
-#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
@@ -97,10 +94,9 @@ struct ResolvedObjects {
 
 [[nodiscard]] CreativeVec3 rotateAroundYaw(CreativeVec3 value,
                                            CreativeVec3 pivot,
-                                           double yawDegrees) noexcept {
-  const double radians = yawDegrees * std::numbers::pi / 180.0;
-  const double cosine = std::cos(radians);
-  const double sine = std::sin(radians);
+                                           double yawRadians) noexcept {
+  const double cosine = std::cos(yawRadians);
+  const double sine = std::sin(yawRadians);
   const CreativeVec3 offset = subtract(value, pivot);
   return {pivot.x + offset.x * cosine - offset.z * sine,
           value.y,
@@ -123,7 +119,8 @@ struct ResolvedObjects {
 [[nodiscard]] bool transformOutputValid(
     const CreativeObject& object,
     CreativeVec3 pivot,
-    const CreativeTransformCommandRequest& request) noexcept {
+    const CreativeTransformCommandRequest& request,
+    double yawRadians) noexcept {
   const CreativeVec3 anchor = objectAnchor(object);
   if (!finiteVec3(anchor)) {
     return false;
@@ -132,9 +129,9 @@ struct ResolvedObjects {
     return finiteVec3(add(anchor, request.translation));
   }
   if (request.kind == CreativeTransformCommandKind::RotateYaw) {
-    CreativeVec3 rotation = object.transform.rotation;
-    rotation.y += request.yawDegrees;
-    return finiteVec3(rotateAroundYaw(anchor, pivot, request.yawDegrees)) &&
+    CreativeVec3 rotation = object.transform.rotationEulerRadians;
+    rotation.y += yawRadians;
+    return finiteVec3(rotateAroundYaw(anchor, pivot, yawRadians)) &&
            finiteVec3(rotation);
   }
   return finiteVec3(
@@ -145,6 +142,7 @@ struct ResolvedObjects {
 void appendTransformRequests(const CreativeObject& object,
                              CreativeVec3 pivot,
                              const CreativeTransformCommandRequest& request,
+                             double yawRadians,
                              std::vector<CreativeMutationRequest>& out) {
   const CreativeVec3 anchor = objectAnchor(object);
   if (request.kind == CreativeTransformCommandKind::Translate) {
@@ -155,13 +153,13 @@ void appendTransformRequests(const CreativeObject& object,
 
   if (request.kind == CreativeTransformCommandKind::RotateYaw) {
     const CreativeVec3 nextPosition =
-        rotateAroundYaw(anchor, pivot, request.yawDegrees);
+        rotateAroundYaw(anchor, pivot, yawRadians);
     if (!sameVec3(nextPosition, anchor)) {
       out.push_back({0, object.id, CreativeMutationKind::Move,
                      makeMovePayload(nextPosition)});
     }
-    CreativeVec3 rotation = object.transform.rotation;
-    rotation.y += request.yawDegrees;
+    CreativeVec3 rotation = object.transform.rotationEulerRadians;
+    rotation.y += yawRadians;
     out.push_back({0, object.id, CreativeMutationKind::Rotate,
                    makeRotatePayload(rotation)});
     return;
@@ -177,58 +175,6 @@ void appendTransformRequests(const CreativeObject& object,
                  CreativeMutationPayload{
                      ScaleMutation{multiply(object.transform.scale,
                                             request.scaleFactor)}}});
-}
-
-[[nodiscard]] CreativeDocumentCreateRequest duplicateRequestForObject(
-    const CreativeObject& object,
-    const CreativeDuplicateCommandRequest& request,
-    std::optional<CreativeObjectId> parentId) {
-  const CreativeObjectDescriptor& descriptor = describeObject(object.kind);
-  CreativeDocumentCreateRequest duplicate;
-  duplicate.kind = object.kind;
-  duplicate.name = request.appendCopySuffix ? object.name + " Copy" : object.name;
-  duplicate.transform = object.transform;
-  duplicate.hasTransformOverride = descriptor.hasTransform;
-  if (duplicate.hasTransformOverride) {
-    duplicate.transform.position = add(duplicate.transform.position, request.offset);
-  }
-  duplicate.bounds = object.bounds;
-  duplicate.hasBoundsOverride = descriptor.hasBounds;
-  if (duplicate.hasBoundsOverride) {
-    duplicate.bounds.min = add(duplicate.bounds.min, request.offset);
-    duplicate.bounds.max = add(duplicate.bounds.max, request.offset);
-  }
-  duplicate.layerId = object.layerId;
-  duplicate.hasLayerOverride = true;
-  duplicate.visible = object.visible;
-  duplicate.hasVisibleOverride = true;
-  duplicate.locked = object.locked;
-  duplicate.hasLockedOverride = true;
-  duplicate.tags = object.tags;
-  duplicate.parentId = parentId;
-  duplicate.pathPoints = object.pathPoints;
-  duplicate.hasPathOverride = !object.pathPoints.empty();
-  for (CreativePathPoint& point : duplicate.pathPoints) {
-    point.position = add(point.position, request.offset);
-  }
-  return duplicate;
-}
-
-[[nodiscard]] bool validDuplicateRequest(
-    const CreativeDocumentCreateRequest& request) noexcept {
-  if (request.hasTransformOverride &&
-      (!finiteVec3(request.transform.position) ||
-       !finiteVec3(request.transform.rotation) ||
-       !positiveVec3(request.transform.scale))) {
-    return false;
-  }
-  if (request.hasBoundsOverride &&
-      (!finiteVec3(request.bounds.min) || !finiteVec3(request.bounds.max))) {
-    return false;
-  }
-  return std::all_of(
-      request.pathPoints.begin(), request.pathPoints.end(),
-      [](const CreativePathPoint& point) { return finiteVec3(point.position); });
 }
 
 }  // namespace
@@ -308,6 +254,10 @@ CreativeTransformCommandReceipt transformDocumentObjectsAtomically(
   }
   receipt.objectCount = resolved.objects.size();
   receipt.pivot = selectionPivot(resolved.objects);
+  const double yawRadians =
+      request.kind == CreativeTransformCommandKind::RotateYaw
+          ? request.yawDegrees * std::numbers::pi / 180.0
+          : 0.0;
 
   const CreativeMutationKind requiredKind = requiredMutationKind(request.kind);
   for (const CreativeObject* object : resolved.objects) {
@@ -327,7 +277,7 @@ CreativeTransformCommandReceipt transformDocumentObjectsAtomically(
       receipt.message = "transform_object_unsupported";
       return receipt;
     }
-    if (!transformOutputValid(*object, receipt.pivot, request)) {
+    if (!transformOutputValid(*object, receipt.pivot, request, yawRadians)) {
       receipt.failedObjectId = object->id;
       receipt.failedMutationKind = requiredKind;
       receipt.status = CreativeTransformCommandStatus::InvalidRequest;
@@ -339,7 +289,8 @@ CreativeTransformCommandReceipt transformDocumentObjectsAtomically(
   std::vector<CreativeMutationRequest> mutations;
   mutations.reserve(resolved.objects.size() * 2U);
   for (const CreativeObject* object : resolved.objects) {
-    appendTransformRequests(*object, receipt.pivot, request, mutations);
+    appendTransformRequests(*object, receipt.pivot, request, yawRadians,
+                            mutations);
   }
 
   receipt.mutationReceipt =
@@ -390,63 +341,40 @@ CreativeDuplicateCommandReceipt duplicateDocumentObjectsAtomically(
     return receipt;
   }
 
-  const ResolvedObjects resolved =
-      resolveObjectsInDocumentOrder(document, objectIds);
-  if (resolved.missingObjectId != kInvalidObjectId ||
-      resolved.objects.empty()) {
-    receipt.failedObjectId = resolved.missingObjectId;
+  CreativeClipboard clipboard;
+  const CreativeClipboardCopyReceipt copyReceipt =
+      copyDocumentObjectsToClipboard(document, objectIds, clipboard);
+  if (!copyReceipt.accepted) {
+    receipt.failedObjectId = copyReceipt.failedObjectId;
     receipt.status = CreativeTransformCommandStatus::MissingObject;
     receipt.message = "duplicate_object_missing";
     return receipt;
   }
 
-  const CreativeObjectId nextObjectId = document.nextObjectId();
-  const CreativeObjectId remainingIds =
-      std::numeric_limits<CreativeObjectId>::max() - nextObjectId;
-  if (nextObjectId == kInvalidObjectId ||
-      resolved.objects.size() > remainingIds) {
-    receipt.status = CreativeTransformCommandStatus::InvalidRequest;
-    receipt.message = "duplicate_object_id_exhausted";
+  CreativeClipboardPasteRequest pasteRequest;
+  pasteRequest.offset = request.offset;
+  pasteRequest.appendCopySuffix = request.appendCopySuffix;
+  pasteRequest.externalParentPolicy =
+      CreativeClipboardExternalParentPolicy::PreserveIfPresent;
+  CreativeClipboardPasteReceipt pasteReceipt =
+      pasteCreativeClipboardAtomically(document, clipboard, pasteRequest);
+  if (!pasteReceipt.accepted) {
+    receipt.failedObjectId = pasteReceipt.failedObjectId;
+    receipt.status = pasteReceipt.status ==
+                             CreativeClipboardStatus::ObjectIdExhausted
+                         ? CreativeTransformCommandStatus::InvalidRequest
+                         : CreativeTransformCommandStatus::Rejected;
+    receipt.message = pasteReceipt.status ==
+                              CreativeClipboardStatus::ObjectIdExhausted
+                          ? "duplicate_object_id_exhausted"
+                          : pasteReceipt.reasonCode;
     return receipt;
   }
 
-  CreativeDocument stagedDocument = document;
-  std::unordered_map<CreativeObjectId, CreativeObjectId> duplicateIds;
-  duplicateIds.reserve(resolved.objects.size());
-  receipt.duplicatedObjectIds.reserve(resolved.objects.size());
-  for (const CreativeObject* object : resolved.objects) {
-    std::optional<CreativeObjectId> parentId = object->parentId;
-    if (parentId.has_value()) {
-      const auto duplicateParent = duplicateIds.find(*parentId);
-      if (duplicateParent != duplicateIds.end()) {
-        parentId = duplicateParent->second;
-      }
-    }
-    CreativeDocumentCreateRequest duplicateRequest =
-        duplicateRequestForObject(*object, request, parentId);
-    if (!validDuplicateRequest(duplicateRequest)) {
-      receipt.failedObjectId = object->id;
-      receipt.status = CreativeTransformCommandStatus::InvalidRequest;
-      receipt.message = "duplicate_output_invalid";
-      return receipt;
-    }
-    const CreativeDocumentCreateReceipt createReceipt =
-        stagedDocument.createObject(duplicateRequest);
-    if (!createReceipt.accepted || !createReceipt.objectCreated ||
-        !createReceipt.changed) {
-      receipt.failedObjectId = object->id;
-      receipt.status = CreativeTransformCommandStatus::Rejected;
-      receipt.message = std::string(createReceipt.reasonCode);
-      return receipt;
-    }
-    duplicateIds.emplace(object->id, createReceipt.objectId);
-    receipt.duplicatedObjectIds.push_back(createReceipt.objectId);
-  }
-
-  document = std::move(stagedDocument);
   receipt.accepted = true;
   receipt.changed = true;
   receipt.status = CreativeTransformCommandStatus::Applied;
+  receipt.duplicatedObjectIds = std::move(pasteReceipt.pastedObjectIds);
   receipt.duplicatedObjectCount = receipt.duplicatedObjectIds.size();
   receipt.revisionAfter = document.revision();
   receipt.message = "duplicate_applied";

@@ -11,6 +11,7 @@
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
+#include "app/iggy3d/creative/input/Interaction.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
 #include "app/platform/SdlWindow.hpp"
 #include "core/math/Vec3.hpp"
@@ -29,6 +30,7 @@ class VulkanBackend;
 namespace iggy3d_creative_app {
 
 struct CreativeEditorOverlayFrame;
+class CreativeEditorGamepad;
 struct StandaloneRoomBakePreviewScene;
 
 struct CreativeEditorFrameInputResult {
@@ -36,11 +38,19 @@ struct CreativeEditorFrameInputResult {
   bool skipFrame = false;
   iggy3d::SdlDrawableExtent extent{};
   iggy3d::creative::CreativeInputRouteResult routedInput;
+  iggy3d::creative::CreativeWorldActionFrame worldActions;
+  iggy3d::creative::CreativeInputModifierMask modifiers =
+      iggy3d::creative::kCreativeInputModifierNone;
+  float toolWheelDirectionX = 0.0F;
+  float toolWheelDirectionY = 0.0F;
+  std::uint64_t monotonicTimeNanoseconds = 0;
+  bool windowFocused = true;
 };
 
 CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
     iggy3d::SdlWindow& window,
     iggy3d::VulkanBackend& backend,
+    CreativeEditorGamepad& gamepad,
     CreativeEditorState& editor,
     bool captureMode);
 
@@ -54,26 +64,12 @@ void applyCreativeEditorCommandInput(
 [[nodiscard]] iggy3d::creative::CreativeToolWorldPoint
 resolveCreativeEditorGroundPoint(const iggy3d::RenderCameraFrame& camera);
 
-[[nodiscard]] iggy3d::Vec3 resolveCreativeEditorAimCell(
-    const iggy3d::RenderCameraFrame& camera,
-    double placeCellSize);
-
 struct CreativeEditorPickFrame {
   std::vector<ObjectVisualPickBounds> objectPickCandidates;
   bool haveFloorBounds = false;
   iggy3d::Vec3 floorBoxMin{};
   iggy3d::Vec3 floorBoxMax{};
 };
-
-void applyCreativeEditorClickSelection(
-    iggy3d::SdlWindow& window,
-    iggy3d::creative::CreativeAppState& appState,
-    const iggy3d::RenderCameraFrame& camera,
-    std::uint32_t drawableWidth,
-    std::uint32_t drawableHeight,
-    const CreativeEditorPickFrame& pickFrame,
-    CreativeEditorState& editor,
-    bool captureMode);
 
 struct CreativeEditorSelectionFrame {
   iggy3d::creative::Id selectedId = 0;
@@ -101,13 +97,6 @@ struct CreativeEditorSubmitFrameRequest {
 
 [[nodiscard]] CreativeEditorSelectionFrame resolveCreativeEditorSelectionFrame(
     const iggy3d::creative::Facade& facade);
-
-void applyCreativeEditorPlacementInput(
-    iggy3d::SdlWindow& window,
-    iggy3d::creative::CreativeAppState& appState,
-    CreativeEditorState& editor,
-    iggy3d::Vec3 aimCellCenter,
-    bool captureMode);
 
 [[nodiscard]] CreativeEditorPickFrame buildCreativeEditorPickFrame(
     const iggy3d::creative::CreativeDocument& document,

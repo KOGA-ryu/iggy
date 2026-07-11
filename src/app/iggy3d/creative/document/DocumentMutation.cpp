@@ -85,6 +85,11 @@ void incrementDocumentRevisionForMutation(CreativeDocument& document,
     CreativeMutationKind mutationKind,
     std::string message) {
     const auto revision = document.revision();
+    // Sequence the copy before the move: both arguments consume `message`, and
+    // argument evaluation order is unspecified (GCC moved first, emptying the
+    // object receipt's copy).
+    CreativeMutationApplyReceipt objectReceipt =
+        rejectMutation(object, mutationKind, CreativeMutationApplyStatus::Rejected, message);
     return makeDocumentMutationReceipt(
         CreativeDocumentMutationStatus::ApplyFailed,
         object.id,
@@ -95,7 +100,7 @@ void incrementDocumentRevisionForMutation(CreativeDocument& document,
         0,
         false,
         false,
-        rejectMutation(object, mutationKind, CreativeMutationApplyStatus::Rejected, message),
+        std::move(objectReceipt),
         std::move(message));
 }
 

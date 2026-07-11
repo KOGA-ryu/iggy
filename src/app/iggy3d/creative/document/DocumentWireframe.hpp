@@ -3,6 +3,7 @@
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -69,6 +70,8 @@ struct CreativeDocumentWireframeItem {
   CreativeDocumentWireframeStyle style =
       CreativeDocumentWireframeStyle::Unknown;
   CreativeBounds bounds;
+  std::array<CreativeVec3, 8> boxCorners{};
+  bool hasBoxCorners = false;
   CreativeVec3 start;
   CreativeVec3 end;
   std::vector<CreativeVec3> pathPoints;

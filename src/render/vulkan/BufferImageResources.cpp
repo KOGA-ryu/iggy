@@ -1,5 +1,6 @@
 #include "render/vulkan/BufferImageResources.hpp"
 
+#include "core/math/EulerRotation.hpp"
 #include "render/mesh/BeanMesh.hpp"
 
 #include <algorithm>
@@ -225,6 +226,18 @@ bool finitePositive(float value) {
   return std::isfinite(value) && value > kRoomMeshEpsilon;
 }
 
+bool finiteVec3(Vec3 value) {
+  return std::isfinite(value.x) && std::isfinite(value.y) &&
+         std::isfinite(value.z);
+}
+
+bool hasRotation(Vec3 rotationEulerRadians) {
+  return finiteVec3(rotationEulerRadians) &&
+         (!near(rotationEulerRadians.x, 0.0F) ||
+          !near(rotationEulerRadians.y, 0.0F) ||
+          !near(rotationEulerRadians.z, 0.0F));
+}
+
 void hashByte(std::uint64_t& hash, std::uint8_t value) {
   hash ^= value;
   hash *= 1099511628211ULL;
@@ -269,6 +282,7 @@ std::uint64_t roomGeometrySignature(const SceneRoomProjection& room) {
     hashFloat(hash, mesh.size.x);
     hashFloat(hash, mesh.size.y);
     hashFloat(hash, mesh.size.z);
+    hashVec3(hash, mesh.rotationEulerRadians);
     hashBool(hash, mesh.hasWallSegment);
     if (mesh.hasWallSegment) {
       hashVec3(hash, mesh.wallStartMeters);
@@ -347,21 +361,24 @@ void appendBox(std::vector<FirstRoomVertex>& vertices,
                std::vector<IndexedDrawRange>& draws,
                Vec3 center,
                Vec3 size,
-               Vec3 color) {
+               Vec3 color,
+               Vec3 rotationEulerRadians = {}) {
   const std::uint16_t base = static_cast<std::uint16_t>(vertices.size());
   const float hx = std::max(size.x * 0.5F, 0.001F);
   const float hy = std::max(size.y * 0.5F, 0.001F);
   const float hz = std::max(size.z * 0.5F, 0.001F);
-  const FirstRoomVertex boxVertices[8] = {
-      {{center.x - hx, center.y - hy, center.z - hz}, {color.x, color.y, color.z}},
-      {{center.x + hx, center.y - hy, center.z - hz}, {color.x, color.y, color.z}},
-      {{center.x + hx, center.y + hy, center.z - hz}, {color.x, color.y, color.z}},
-      {{center.x - hx, center.y + hy, center.z - hz}, {color.x, color.y, color.z}},
-      {{center.x - hx, center.y - hy, center.z + hz}, {color.x, color.y, color.z}},
-      {{center.x + hx, center.y - hy, center.z + hz}, {color.x, color.y, color.z}},
-      {{center.x + hx, center.y + hy, center.z + hz}, {color.x, color.y, color.z}},
-      {{center.x - hx, center.y + hy, center.z + hz}, {color.x, color.y, color.z}},
+  const Vec3 local[8] = {
+      {-hx, -hy, -hz}, {hx, -hy, -hz}, {hx, hy, -hz}, {-hx, hy, -hz},
+      {-hx, -hy, hz},  {hx, -hy, hz},  {hx, hy, hz},  {-hx, hy, hz},
   };
+  FirstRoomVertex boxVertices[8]{};
+  for (std::size_t index = 0; index < std::size(local); ++index) {
+    const Vec3 position =
+        center + rotateEulerXyz(local[index], rotationEulerRadians);
+    boxVertices[index] = FirstRoomVertex{
+        {position.x, position.y, position.z},
+        {color.x, color.y, color.z}};
+  }
   vertices.insert(vertices.end(), std::begin(boxVertices), std::end(boxVertices));
   IndexedDrawRange range;
   range.firstIndex = static_cast<std::uint32_t>(indices.size());
@@ -381,6 +398,49 @@ void appendBox(std::vector<FirstRoomVertex>& vertices,
   draws.push_back(range);
 }
 
+void appendCreativeTargetPreview(
+    std::vector<FirstRoomVertex>& vertices,
+    std::vector<std::uint16_t>& indices,
+    std::vector<IndexedDrawRange>& componentDraws,
+    Vec3 color) {
+  constexpr float kSolidInset = 0.96F;
+  constexpr float kWireThickness = 0.015F;
+  constexpr float kWireCenter =
+      0.5F - kWireThickness * 0.5F;
+  appendBox(vertices, indices, componentDraws, {},
+            {kSolidInset, kSolidInset, kSolidInset}, color);
+  for (float first : {-kWireCenter, kWireCenter}) {
+    for (float second : {-kWireCenter, kWireCenter}) {
+      appendBox(vertices, indices, componentDraws, {0.0F, first, second},
+                {1.0F, kWireThickness, kWireThickness}, color);
+      appendBox(vertices, indices, componentDraws, {first, 0.0F, second},
+                {kWireThickness, 1.0F, kWireThickness}, color);
+      appendBox(vertices, indices, componentDraws, {first, second, 0.0F},
+                {kWireThickness, kWireThickness, 1.0F}, color);
+    }
+  }
+}
+
+void appendCreativePathWireframe(
+    std::vector<FirstRoomVertex>& vertices,
+    std::vector<std::uint16_t>& indices,
+    std::vector<IndexedDrawRange>& componentDraws,
+    Vec3 color) {
+  constexpr float kEndpoint = 1.0F / 2.16F;
+  constexpr float kHorizontalThickness = 0.025F;
+  constexpr float kVerticalThickness = 0.20F;
+  appendBox(vertices, indices, componentDraws,
+            {0.0F, 0.0F, -kEndpoint},
+            {kEndpoint * 2.0F, kVerticalThickness,
+             kHorizontalThickness},
+            color);
+  appendBox(vertices, indices, componentDraws,
+            {kEndpoint, 0.0F, 0.0F},
+            {kHorizontalThickness, kVerticalThickness,
+             kEndpoint * 2.0F},
+            color);
+}
+
 bool canAppendBox(const std::vector<FirstRoomVertex>& vertices) {
   return vertices.size() + 8U <=
          static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max());
@@ -391,11 +451,13 @@ bool appendBoxIfFits(std::vector<FirstRoomVertex>& vertices,
                      std::vector<IndexedDrawRange>& draws,
                      Vec3 center,
                      Vec3 size,
-                     Vec3 color) {
+                     Vec3 color,
+                     Vec3 rotationEulerRadians = {}) {
   if (!canAppendBox(vertices)) {
     return false;
   }
-  appendBox(vertices, indices, draws, center, size, color);
+  appendBox(vertices, indices, draws, center, size, color,
+            rotationEulerRadians);
   return true;
 }
 
@@ -676,6 +738,7 @@ struct FloorCell {
 struct FloorDraw {
   Vec3 position;
   Vec3 size;
+  Vec3 rotationEulerRadians;
 };
 
 bool floorToGridCell(const SceneRoomMeshItem& mesh,
@@ -684,7 +747,7 @@ bool floorToGridCell(const SceneRoomMeshItem& mesh,
   if (mesh.role != "floor" || !std::isfinite(mesh.position.x) ||
       !std::isfinite(mesh.position.y) || !std::isfinite(mesh.position.z) ||
       !finitePositive(mesh.size.x) || !finitePositive(mesh.size.y) ||
-      !finitePositive(mesh.size.z)) {
+      !finitePositive(mesh.size.z) || hasRotation(mesh.rotationEulerRadians)) {
     return false;
   }
 
@@ -721,7 +784,7 @@ void appendFloorRectsForGroup(const std::vector<FloorCell>& cells,
   }
 
   for (const FloorCell& duplicate : duplicates) {
-    floorDraws.push_back({duplicate.position, duplicate.size});
+    floorDraws.push_back({duplicate.position, duplicate.size, {}});
   }
 
   while (!remaining.empty()) {
@@ -774,7 +837,8 @@ std::vector<FloorDraw> buildOptimizedFloorDraws(const SceneRoomProjection& room)
     FloorMergeKey key;
     FloorCell cell;
     if (!floorToGridCell(mesh, key, cell)) {
-      floorDraws.push_back({mesh.position, mesh.size});
+      floorDraws.push_back(
+          {mesh.position, mesh.size, mesh.rotationEulerRadians});
       continue;
     }
     groups[key].push_back(cell);
@@ -790,12 +854,14 @@ std::vector<FloorDraw> buildOptimizedFloorDraws(const SceneRoomProjection& room)
 bool canEmitFloorDraw(const FloorDraw& floor) {
   return std::isfinite(floor.position.x) && std::isfinite(floor.position.y) &&
          std::isfinite(floor.position.z) && finitePositive(floor.size.x) &&
-         finitePositive(floor.size.y) && finitePositive(floor.size.z);
+         finitePositive(floor.size.y) && finitePositive(floor.size.z) &&
+         finiteVec3(floor.rotationEulerRadians);
 }
 
 struct WallBoxDraw {
   Vec3 position;
   Vec3 size;
+  Vec3 rotationEulerRadians;
 };
 
 enum class WallRunOrientation : std::uint8_t {
@@ -837,10 +903,6 @@ struct WallRunKey {
   }
 };
 
-bool finiteVec3(Vec3 value) {
-  return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
-}
-
 bool wallBoxFromSegment(const SceneRoomMeshItem& mesh, WallBoxDraw& draw) {
   if (!finiteVec3(mesh.wallStartMeters) || !finiteVec3(mesh.wallEndMeters) ||
       !std::isfinite(mesh.wallBottomY) || !finitePositive(mesh.wallHeightMeters) ||
@@ -868,6 +930,7 @@ bool wallBoxFromSegment(const SceneRoomMeshItem& mesh, WallBoxDraw& draw) {
   draw.size = runsAlongX
                   ? Vec3{length, mesh.wallHeightMeters, mesh.wallThicknessMeters}
                   : Vec3{mesh.wallThicknessMeters, mesh.wallHeightMeters, length};
+  draw.rotationEulerRadians = {};
   return true;
 }
 
@@ -922,9 +985,11 @@ bool wallBoxForMesh(const SceneRoomMeshItem& mesh, WallBoxDraw& draw) {
   }
   draw.position = mesh.position;
   draw.size = mesh.size;
+  draw.rotationEulerRadians = mesh.rotationEulerRadians;
   return std::isfinite(draw.position.x) && std::isfinite(draw.position.y) &&
          std::isfinite(draw.position.z) && finitePositive(draw.size.x) &&
-         finitePositive(draw.size.y) && finitePositive(draw.size.z);
+         finitePositive(draw.size.y) && finitePositive(draw.size.z) &&
+         finiteVec3(draw.rotationEulerRadians);
 }
 
 WallBoxDraw wallBoxFromRun(const WallSegmentSource& run) {
@@ -1164,12 +1229,16 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
       result.indexedDraws.clear();
       return result;
     }
-    if (!appendFloorPlaneIfFits(result.vertices,
-                                result.indices,
-                                result.indexedDraws,
-                                floor.position,
-                                floor.size,
-                                colorForRoomRole("floor"))) {
+    const bool appended =
+        hasRotation(floor.rotationEulerRadians)
+            ? appendBoxIfFits(result.vertices, result.indices,
+                              result.indexedDraws, floor.position, floor.size,
+                              colorForRoomRole("floor"),
+                              floor.rotationEulerRadians)
+            : appendFloorPlaneIfFits(result.vertices, result.indices,
+                                     result.indexedDraws, floor.position,
+                                     floor.size, colorForRoomRole("floor"));
+    if (!appended) {
       result.vertices.clear();
       result.indices.clear();
       result.indexedDraws.clear();
@@ -1185,12 +1254,22 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
       return result;
     }
     appendBox(result.vertices, result.indices, result.indexedDraws,
-              wall.position, wall.size, colorForRoomRole("wall"));
+              wall.position, wall.size, colorForRoomRole("wall"),
+              wall.rotationEulerRadians);
     ++result.roomWallDrawCount;
   }
 
   for (const SceneRoomMeshItem& mesh : room.meshes) {
+    if (!finiteVec3(mesh.rotationEulerRadians)) {
+      result.vertices.clear();
+      result.indices.clear();
+      result.indexedDraws.clear();
+      return result;
+    }
     if (mesh.role == "floor") {
+      if (hasRotation(mesh.rotationEulerRadians)) {
+        continue;
+      }
       std::size_t gridLines = 0;
       if (!appendFloorGrid(result.vertices, result.indices, result.indexedDraws,
                            mesh.position, mesh.size, gridLines)) {
@@ -1207,6 +1286,9 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
         result.indices.clear();
         result.indexedDraws.clear();
         return result;
+      }
+      if (hasRotation(wallDraw.rotationEulerRadians)) {
+        continue;
       }
       std::size_t gridLines = 0;
       if (!appendWallGrid(result.vertices, result.indices, result.indexedDraws,
@@ -1245,7 +1327,8 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
         return result;
       }
       appendBox(result.vertices, result.indices, result.indexedDraws,
-                mesh.position, mesh.size, colorForRoomRole(mesh.role));
+                mesh.position, mesh.size, colorForRoomRole(mesh.role),
+                mesh.rotationEulerRadians);
       if (mesh.role == "grid") {
         ++result.roomGridLineDrawCount;
         result.roomGridVisible = true;
@@ -1261,6 +1344,44 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
 
 RoomMeshCpuGeometry buildRoomMeshCpuGeometry(const SceneRoomProjection& room) {
   return buildRoomMeshCpuGeometry(room, nullptr);
+}
+
+CreativePreviewCpuGeometry buildCreativePreviewCpuGeometry() {
+  CreativePreviewCpuGeometry result;
+  constexpr std::array<std::string_view, kRenderCreativePreviewRoleCount>
+      roles{
+          "editor_ghost_select",
+          "editor_ghost_valid",
+          "editor_ghost_invalid",
+      };
+  for (std::size_t roleIndex = 0; roleIndex < roles.size(); ++roleIndex) {
+    const RenderCreativePreviewRole role =
+        static_cast<RenderCreativePreviewRole>(roleIndex);
+    const std::uint32_t firstIndex =
+        static_cast<std::uint32_t>(result.indices.size());
+    std::vector<IndexedDrawRange> componentDraws;
+    const Vec3 color = colorForRoomRole(std::string(roles[roleIndex]));
+    if (role == RenderCreativePreviewRole::Held) {
+      appendBox(result.vertices, result.indices, componentDraws, {},
+                {1.0F, 1.0F, 1.0F}, color);
+      result.indexedDraws[creativePreviewGeometryDrawIndex(role, false)] = {
+          firstIndex,
+          static_cast<std::uint32_t>(result.indices.size()) - firstIndex};
+    } else {
+      appendCreativeTargetPreview(result.vertices, result.indices,
+                                  componentDraws, color);
+      result.indexedDraws[creativePreviewGeometryDrawIndex(role, false)] = {
+          firstIndex,
+          static_cast<std::uint32_t>(result.indices.size()) - firstIndex};
+      appendCreativePathWireframe(result.vertices, result.indices,
+                                  componentDraws, color);
+      result.indexedDraws[creativePreviewGeometryDrawIndex(role, true)] = {
+          firstIndex,
+          static_cast<std::uint32_t>(result.indices.size()) - firstIndex};
+    }
+  }
+  result.ready = !result.vertices.empty() && !result.indices.empty();
+  return result;
 }
 
 BufferImageResources::~BufferImageResources() {
@@ -1334,6 +1455,52 @@ BufferImageResourcesResult BufferImageResources::createFirstRoomResources(
   geometry_.packageRoomGeometry = false;
   geometry_.indexedDraw = true;
 
+  const CreativePreviewCpuGeometry creativePreview =
+      buildCreativePreviewCpuGeometry();
+  if (!creativePreview.ready) {
+    result.reason = {"vertex_buffer_create_failed",
+                     "creative preview geometry build failed"};
+    result.receipt = baseReceipt("fail", result.reason.code);
+    return result;
+  }
+  const VkDeviceSize previewVertexBytes = static_cast<VkDeviceSize>(
+      creativePreview.vertices.size() * sizeof(FirstRoomVertex));
+  const VkDeviceSize previewIndexBytes = static_cast<VkDeviceSize>(
+      creativePreview.indices.size() * sizeof(std::uint16_t));
+  if (!uploadBuffer(
+          allocator_, createInfo.device, createInfo.graphicsQueue,
+          createInfo.graphicsQueueFamily,
+          "buffer.staging.upload.creative_preview",
+          "buffer.creative_preview.vertices", previewVertexBytes,
+          VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, creativePreview.vertices.data(),
+          creativePreviewGeometry_.vertexBuffer)) {
+    result.reason = {"vertex_buffer_create_failed",
+                     "creative preview vertex buffer create failed"};
+    result.receipt = baseReceipt("fail", result.reason.code);
+    return result;
+  }
+  if (!uploadBuffer(
+          allocator_, createInfo.device, createInfo.graphicsQueue,
+          createInfo.graphicsQueueFamily,
+          "buffer.staging.upload.creative_preview",
+          "buffer.creative_preview.indices", previewIndexBytes,
+          VK_BUFFER_USAGE_INDEX_BUFFER_BIT, creativePreview.indices.data(),
+          creativePreviewGeometry_.indexBuffer)) {
+    allocator_.destroyBuffer(
+        creativePreviewGeometry_.vertexBuffer.allocation);
+    creativePreviewGeometry_ = {};
+    result.reason = {"index_buffer_create_failed",
+                     "creative preview index buffer create failed"};
+    result.receipt = baseReceipt("fail", result.reason.code);
+    return result;
+  }
+  creativePreviewGeometry_.indexedDraws = creativePreview.indexedDraws;
+  creativePreviewGeometry_.vertexCount =
+      static_cast<std::uint32_t>(creativePreview.vertices.size());
+  creativePreviewGeometry_.indexCount =
+      static_cast<std::uint32_t>(creativePreview.indices.size());
+  creativePreviewGeometry_.ready = true;
+
   VkExtent3D depthExtent{createInfo.extent.width, createInfo.extent.height, 1U};
   VulkanAllocationResult depthImage = allocator_.createImage(
       "image.depth.swapchain_extent", depthExtent, createInfo.depthFormat,
@@ -1378,8 +1545,11 @@ BufferImageResourcesResult BufferImageResources::createFirstRoomResources(
                      static_cast<std::uint64_t>(allocator_.allocations().size()));
   appendReceiptField(result.receipt, "allocation_names",
                      allocationNamesCsv(allocator_.allocations()));
-  appendReceiptField(result.receipt, "vertex_buffer_count", static_cast<std::uint64_t>(1));
-  appendReceiptField(result.receipt, "index_buffer_count", static_cast<std::uint64_t>(1));
+  appendReceiptField(result.receipt, "vertex_buffer_count", static_cast<std::uint64_t>(2));
+  appendReceiptField(result.receipt, "index_buffer_count", static_cast<std::uint64_t>(2));
+  appendReceiptField(result.receipt, "creative_preview_draw_count",
+                     static_cast<std::uint64_t>(
+                         creativePreviewGeometry_.indexedDraws.size()));
   appendReceiptField(result.receipt, "depth_image_created", true);
   appendReceiptField(result.receipt, "depth_extent",
                      std::to_string(createInfo.extent.width) + "x" +
@@ -1528,8 +1698,10 @@ RenderReceipt BufferImageResources::destroy() {
   depth_.depthImage.imageView = {};
   allocator_.destroyImage(depth_.depthImage.allocation);
   destroyGeometryBuffers();
+  destroyCreativePreviewBuffers();
   allocator_.destroy();
   geometry_ = {};
+  creativePreviewGeometry_ = {};
   depth_ = {};
   createInfo_ = {};
   ready_ = false;
@@ -1538,6 +1710,11 @@ RenderReceipt BufferImageResources::destroy() {
 
 const FirstRoomGeometryResources& BufferImageResources::geometry() const {
   return geometry_;
+}
+
+const CreativePreviewGeometryResources&
+BufferImageResources::creativePreviewGeometry() const {
+  return creativePreviewGeometry_;
 }
 
 const DepthResourceRecord& BufferImageResources::depth() const {
@@ -1552,6 +1729,12 @@ void BufferImageResources::destroyGeometryBuffers() {
   allocator_.destroyBuffer(geometry_.indexBuffer.allocation);
   allocator_.destroyBuffer(geometry_.vertexBuffer.allocation);
   geometry_ = {};
+}
+
+void BufferImageResources::destroyCreativePreviewBuffers() {
+  allocator_.destroyBuffer(creativePreviewGeometry_.indexBuffer.allocation);
+  allocator_.destroyBuffer(creativePreviewGeometry_.vertexBuffer.allocation);
+  creativePreviewGeometry_ = {};
 }
 
 }  // namespace iggy3d::vulkan

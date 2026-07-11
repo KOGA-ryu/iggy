@@ -6,6 +6,7 @@
 #include "core/math/Snap.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 // branch-gate-relocation: BG-1227 from=src/app/iggy3d/creative/Facade.cpp
@@ -59,7 +60,12 @@ using facade_internal::targetRefToObjectId;
 [[nodiscard]] CreativeVec3 snapMoveAnchor(
     CreativeVec3 anchor,
     CreativeDocumentSnapSettings settings,
-    CreativeToolMoveHeldAxis heldAxis) noexcept {
+    const CreativeToolPointerPacket& pointer) noexcept {
+  if (pointer.hasMoveSnapStepOverride) {
+    settings.stepX = pointer.moveSnapStepOverride;
+    settings.stepY = pointer.moveSnapStepOverride;
+    settings.stepZ = pointer.moveSnapStepOverride;
+  }
   const iggy3d::Vec3 step{static_cast<float>(settings.stepX),
                           static_cast<float>(settings.stepY),
                           static_cast<float>(settings.stepZ)};
@@ -67,9 +73,38 @@ using facade_internal::targetRefToObjectId;
                             static_cast<float>(settings.originY),
                             static_cast<float>(settings.originZ)};
   const unsigned axisMask =
-      moveSnapAxisMask(heldAxis) & documentSnapAxisMask(settings);
+      moveSnapAxisMask(pointer.moveHeldAxis) & documentSnapAxisMask(settings);
   return toCreativeVec3(
       iggy3d::snapVec3ToGrid(toCoreVec3(anchor), step, origin, axisMask));
+}
+
+[[nodiscard]] bool validMovePointerOptions(
+    const CreativeToolPointerPacket& pointer) noexcept {
+  const bool constraintValid =
+      static_cast<std::size_t>(pointer.moveConstraint) <
+      static_cast<std::size_t>(CreativeMoveConstraint::Count);
+  const bool snapOverrideValid =
+      !pointer.hasMoveSnapStepOverride ||
+      (std::isfinite(pointer.moveSnapStepOverride) &&
+       pointer.moveSnapStepOverride > 0.0);
+  return constraintValid && snapOverrideValid;
+}
+
+void applyMoveConstraint(CreativeVec3& anchor,
+                         CreativeVec3 startAnchor,
+                         CreativeMoveConstraint constraint) noexcept {
+  switch (constraint) {
+    case CreativeMoveConstraint::Free:
+      break;
+    case CreativeMoveConstraint::X:
+      anchor.z = startAnchor.z;
+      break;
+    case CreativeMoveConstraint::Z:
+      anchor.x = startAnchor.x;
+      break;
+    case CreativeMoveConstraint::Count:
+      break;
+  }
 }
 
 [[nodiscard]] bool sameAnchor(CreativeVec3 lhs, CreativeVec3 rhs) noexcept {
@@ -97,11 +132,13 @@ void holdMoveAxis(CreativeVec3& anchor, CreativeVec3 startAnchor,
 }
 
 [[nodiscard]] CreativeVec3 resolveMoveAnchor(
-    CreativeToolWorldPoint destination,
-    CreativeVec3 startAnchor,
-    CreativeToolMoveHeldAxis heldAxis) noexcept {
-  CreativeVec3 requested{destination.x, destination.y, destination.z};
-  holdMoveAxis(requested, startAnchor, heldAxis);
+    const CreativeToolPointerPacket& pointer,
+    CreativeVec3 startAnchor) noexcept {
+  CreativeVec3 requested{pointer.worldDestination.x,
+                         pointer.worldDestination.y,
+                         pointer.worldDestination.z};
+  holdMoveAxis(requested, startAnchor, pointer.moveHeldAxis);
+  applyMoveConstraint(requested, startAnchor, pointer.moveConstraint);
   return requested;
 }
 
@@ -193,6 +230,11 @@ CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
         receipt.message = "move_drag_inactive";
         return receipt;
       }
+      if (!validMovePointerOptions(intent.pointer)) {
+        receipt.outcome = CreativeFacadeMoveDragOutcome::Rejected;
+        receipt.message = "move_drag_options_invalid";
+        return receipt;
+      }
       receipt.accepted = true;
       receipt.hasStartAnchor = true;
       receipt.startAnchor = moveDragStartAnchor_;
@@ -205,12 +247,11 @@ CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
         // View-agnostic Move (supersedes TD-7's hardcoded screen=XY hold): the
         // caller's moveHeldAxis picks which axis stays put; the other two follow
         // the pointer. Front view holds Z, ground-plane editor holds Y.
-        const CreativeVec3 requested = resolveMoveAnchor(
-            intent.pointer.worldDestination, moveDragStartAnchor_,
-            intent.pointer.moveHeldAxis);
+        const CreativeVec3 requested =
+            resolveMoveAnchor(intent.pointer, moveDragStartAnchor_);
         const CreativeVec3 snapped =
             snapMoveAnchor(requested, document_.documentSnapSettings(),
-                           intent.pointer.moveHeldAxis);
+                           intent.pointer);
         receipt.hasDestinationAnchor = true;
         receipt.requestedAnchor = requested;
         receipt.snappedAnchor = snapped;
@@ -265,15 +306,19 @@ CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
         receipt.message = "move_drag_no_destination";
         return receipt;
       }
+      if (!validMovePointerOptions(intent.pointer)) {
+        receipt.outcome = CreativeFacadeMoveDragOutcome::Rejected;
+        receipt.message = "move_drag_options_invalid";
+        return receipt;
+      }
 
       // View-agnostic Move (see the PreviewMove note above): moveHeldAxis picks
       // the axis to hold at the start anchor; the other two follow the pointer.
-      const CreativeVec3 requested = resolveMoveAnchor(
-          intent.pointer.worldDestination, startAnchor,
-          intent.pointer.moveHeldAxis);
+      const CreativeVec3 requested =
+          resolveMoveAnchor(intent.pointer, startAnchor);
       const CreativeVec3 snapped =
           snapMoveAnchor(requested, document_.documentSnapSettings(),
-                         intent.pointer.moveHeldAxis);
+                         intent.pointer);
       receipt.hasDestinationAnchor = true;
       receipt.requestedAnchor = requested;
       receipt.snappedAnchor = snapped;

@@ -55,6 +55,20 @@ constexpr std::uint32_t kFirstRoomColorLocation = 1U;
 constexpr std::string_view kFirstRoomVertexFormatName = "FirstRoomVertex_Pos3_Color3";
 constexpr std::string_view kFirstRoomPipelineVariant =
     "first_room.vertex_color.opaque.depth.backface";
+constexpr std::string_view kCreativeViewModelPipelineVariant =
+    "creative_view_model.vertex_color.opaque.no_depth.backface";
+
+enum class FirstRoomDepthMode : std::uint8_t {
+  ReadWrite,
+  Disabled,
+};
+
+[[nodiscard]] constexpr std::string_view firstRoomPipelineVariant(
+    FirstRoomDepthMode mode) noexcept {
+  return mode == FirstRoomDepthMode::Disabled
+             ? kCreativeViewModelPipelineVariant
+             : kFirstRoomPipelineVariant;
+}
 
 struct FirstRoomVertexFormat {
   VkVertexInputBindingDescription binding{};
@@ -69,6 +83,7 @@ struct FirstRoomPipelineCreateInfo {
   ShaderModuleRecord vertexShader;
   ShaderModuleRecord fragmentShader;
   PipelineLayoutRecord layout;
+  FirstRoomDepthMode depthMode = FirstRoomDepthMode::ReadWrite;
 };
 
 struct FirstRoomPipelineRecord {
@@ -76,6 +91,7 @@ struct FirstRoomPipelineRecord {
   std::string variant = std::string(kFirstRoomPipelineVariant);
   VkFormat colorFormat = VK_FORMAT_B8G8R8A8_SRGB;
   VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
+  FirstRoomDepthMode depthMode = FirstRoomDepthMode::ReadWrite;
 };
 
 struct FirstRoomPipelineResult {

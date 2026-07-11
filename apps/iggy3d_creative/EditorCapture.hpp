@@ -134,7 +134,7 @@ struct StandaloneCaptureScenarioStepRequest {
   bool enabled = false;
   std::uint64_t frameIndex = 0;
   cr::CreativeAppState* appState = nullptr;
-  StandaloneUndoStack* undoStack = nullptr;
+  StandaloneEditHistory* history = nullptr;
   StandaloneCaptureScript* captureScript = nullptr;
   cr::CreativeObjectKind* placeBrush = nullptr;
   bool* placeMode = nullptr;

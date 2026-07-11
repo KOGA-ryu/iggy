@@ -101,6 +101,8 @@ RenderReceipt VulkanBackend::makeReceipt(std::string_view result,
   appendReceiptField(receipt, "pipeline_variant", vulkan::kFirstRoomPipelineVariant);
   appendReceiptField(receipt, "first_room_bundle_ready", firstRoomReady_);
   appendReceiptField(receipt, "pipeline_created", firstRoomPipeline_.pipeline != VkPipeline{});
+  appendReceiptField(receipt, "creative_view_model_pipeline_created",
+                     creativeViewModelPipeline_.pipeline != VkPipeline{});
   appendReceiptField(receipt, "vertex_buffer_count",
                      firstRoomResources_.ready() ? static_cast<std::uint64_t>(1)
                                                  : static_cast<std::uint64_t>(0));
@@ -179,6 +181,15 @@ void VulkanBackend::initializePacket7FirstRoomModules() {
   }
   firstRoomPipeline_ = pipelineResult.record;
 
+  pipelineInfo.depthMode = vulkan::FirstRoomDepthMode::Disabled;
+  const vulkan::FirstRoomPipelineResult viewModelPipelineResult =
+      vulkan::createFirstRoomPipeline(pipelineInfo);
+  diagnostics_ = viewModelPipelineResult.receipt;
+  if (viewModelPipelineResult.outcome != RenderOutcome::Ok) {
+    return;
+  }
+  creativeViewModelPipeline_ = viewModelPipelineResult.record;
+
   vulkan::BufferImageResourcesCreateInfo resourcesInfo;
   resourcesInfo.physicalDevice = bootstrap_.handles().physicalDevice;
   resourcesInfo.device = bootstrap_.handles().device;
@@ -207,6 +218,8 @@ void VulkanBackend::initializePacket7FirstRoomModules() {
 void VulkanBackend::destroyPacket7FirstRoomModules() {
   firstRoomReady_ = false;
   frameCapture_.destroy();
+  vulkan::destroyFirstRoomPipeline(bootstrap_.handles().device,
+                                   creativeViewModelPipeline_);
   vulkan::destroyFirstRoomPipeline(bootstrap_.handles().device, firstRoomPipeline_);
   vulkan::destroyPipelineLayout(bootstrap_.handles().device, firstRoomLayout_);
   vulkan::destroyShaderModule(bootstrap_.handles().device, firstRoomFragmentShader_);
@@ -262,6 +275,7 @@ void VulkanBackend::initializePacket5Modules(std::uint32_t drawableWidth,
   loopInfo.frameSync = &frameSync_;
   loopInfo.commandRecording = &commandRecording_;
   loopInfo.firstRoomPipeline = &firstRoomPipeline_;
+  loopInfo.creativeViewModelPipeline = &creativeViewModelPipeline_;
   loopInfo.firstRoomLayout = &firstRoomLayout_;
   loopInfo.firstRoomResources = &firstRoomResources_;
   loopInfo.frameCapture = &frameCapture_;
@@ -343,6 +357,7 @@ RenderSubmitResult VulkanBackend::resize(RenderViewport viewport) {
     loopInfo.frameSync = &frameSync_;
     loopInfo.commandRecording = &commandRecording_;
     loopInfo.firstRoomPipeline = &firstRoomPipeline_;
+    loopInfo.creativeViewModelPipeline = &creativeViewModelPipeline_;
     loopInfo.firstRoomLayout = &firstRoomLayout_;
     loopInfo.firstRoomResources = &firstRoomResources_;
     loopInfo.frameCapture = &frameCapture_;

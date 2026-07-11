@@ -1,13 +1,21 @@
 #pragma once
 
 #include "app/iggy3d/creative/Core.hpp"
+#include "app/iggy3d/creative/document/Object.hpp"
+#include "app/iggy3d/creative/tools/Pattern.hpp"
+#include "app/iggy3d/creative/tools/ShapeBrush.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 namespace iggy3d::creative {
+
+enum class CreativeHeldItemKind : std::uint8_t;
 
 enum class CreativeToolInputKind : std::uint8_t {
   Unknown,
@@ -49,6 +57,126 @@ inline constexpr CreativeToolModifierFlags kCreativeToolModifierControl = 1u << 
 inline constexpr CreativeToolModifierFlags kCreativeToolModifierAlt = 1u << 2;
 inline constexpr CreativeToolModifierFlags kCreativeToolModifierCommand = 1u << 3;
 
+enum class CreativeMoveConstraint : std::uint8_t {
+  Free,
+  X,
+  Z,
+  Count,
+};
+
+enum class CreativeRotationStep : std::uint8_t {
+  Degrees15,
+  Degrees45,
+  Degrees90,
+  Count,
+};
+
+enum class CreativeSnapIncrement : std::uint8_t {
+  QuarterMeter,
+  HalfMeter,
+  OneMeter,
+  TwoMeters,
+  Count,
+};
+
+enum class CreativeCloneOffsetAxis : std::uint8_t {
+  X,
+  Y,
+  Z,
+  Count,
+};
+
+enum class CreativeCloneOffsetDistance : std::uint8_t {
+  OneCell,
+  TwoCells,
+  FourCells,
+  EightCells,
+  Count,
+};
+
+enum class CreativeToolOptionId : std::uint8_t {
+  MoveConstraint,
+  RotationStep,
+  SnapIncrement,
+  ShapeBrushKind,
+  ShapeBrushAxis,
+  ReplaceSource,
+  CloneOffsetAxis,
+  CloneOffsetDistance,
+  ArrayDirection,
+  ArrayCopyCount,
+  ArraySpacing,
+  Count,
+};
+
+enum class CreativeToolOptionValueKind : std::uint8_t {
+  Choice,
+  MaterialOrAny,
+};
+
+using CreativeHeldItemMask = std::uint16_t;
+inline constexpr std::size_t kCreativeToolOptionCapacity = 6;
+inline constexpr std::size_t kCreativeToolOptionDescriptorCount =
+    static_cast<std::size_t>(CreativeToolOptionId::Count);
+
+struct CreativeToolOptionDescriptor {
+  CreativeToolOptionId id = CreativeToolOptionId::MoveConstraint;
+  std::string_view label;
+  CreativeToolOptionValueKind valueKind =
+      CreativeToolOptionValueKind::Choice;
+  CreativeHeldItemMask applicableHeldItems = 0;
+};
+
+struct CreativeToolOptionList {
+  std::array<CreativeToolOptionId, kCreativeToolOptionCapacity> ids{};
+  std::size_t count = 0;
+  bool capacityExceeded = false;
+
+  [[nodiscard]] std::span<const CreativeToolOptionId> items() const noexcept {
+    return {ids.data(), count};
+  }
+};
+
+struct CreativeToolSettings {
+  CreativeMoveConstraint moveConstraint = CreativeMoveConstraint::Free;
+  CreativeRotationStep rotationStep = CreativeRotationStep::Degrees15;
+  CreativeSnapIncrement snapIncrement = CreativeSnapIncrement::OneMeter;
+  CreativeShapeBrushKind shapeBrushKind = CreativeShapeBrushKind::Box;
+  CreativeShapeBrushAxis shapeBrushAxis = CreativeShapeBrushAxis::Y;
+  CreativeObjectKind replaceSourceKind = CreativeObjectKind::Unknown;
+  CreativeCloneOffsetAxis cloneOffsetAxis = CreativeCloneOffsetAxis::X;
+  CreativeCloneOffsetDistance cloneOffsetDistance =
+      CreativeCloneOffsetDistance::OneCell;
+  CreativeLinearArrayDirection arrayDirection =
+      CreativeLinearArrayDirection::PositiveX;
+  CreativeLinearArrayCopyCount arrayCopyCount =
+      CreativeLinearArrayCopyCount::Four;
+  CreativeLinearArraySpacing arraySpacing =
+      CreativeLinearArraySpacing::OneCell;
+};
+
+static_assert(std::is_trivially_copyable_v<CreativeToolSettings>);
+static_assert(std::is_standard_layout_v<CreativeToolSettings>);
+
+enum class CreativeToolOptionAdjustStatus : std::uint8_t {
+  NotRequested,
+  InvalidOption,
+  InvalidSettings,
+  NoAvailableValue,
+  NoChange,
+  Applied,
+};
+
+struct CreativeToolOptionAdjustReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  CreativeToolOptionId option = CreativeToolOptionId::MoveConstraint;
+  CreativeToolOptionAdjustStatus status =
+      CreativeToolOptionAdjustStatus::NotRequested;
+  std::string_view reasonCode = "creative_tool_option_not_requested";
+};
+
 // Grid/world destination the window layer resolves from the pointer's grid XZ
 // (the same pointer->grid-cell conversion the viewport pick uses; TD-7). Only
 // the Move tool's drag Move/Release lifecycle fills it — the tool core carries
@@ -79,6 +207,9 @@ struct CreativeToolPointerPacket {
   CreativeToolWorldPoint worldDestination;
   // The axis the Move drag holds at the start anchor (default Z = front-view).
   CreativeToolMoveHeldAxis moveHeldAxis = CreativeToolMoveHeldAxis::Z;
+  CreativeMoveConstraint moveConstraint = CreativeMoveConstraint::Free;
+  bool hasMoveSnapStepOverride = false;
+  double moveSnapStepOverride = 1.0;
 };
 
 struct CreativeToolInputPacket {
@@ -122,5 +253,51 @@ struct CreativeToolDispatchReceipt {
 [[nodiscard]] CreativeToolDispatchReceipt dispatchToolInput(
     CreativeToolState& state,
     const CreativeToolInputPacket& input);
+
+[[nodiscard]] CreativeToolSettings makeDefaultCreativeToolSettings() noexcept;
+[[nodiscard]] bool isValidCreativeToolSettings(
+    const CreativeToolSettings& settings) noexcept;
+[[nodiscard]] std::span<const CreativeToolOptionDescriptor>
+creativeToolOptionDescriptors() noexcept;
+[[nodiscard]] const CreativeToolOptionDescriptor* creativeToolOptionDescriptor(
+    CreativeToolOptionId option) noexcept;
+[[nodiscard]] CreativeToolOptionList creativeToolOptionsForHeldItem(
+    CreativeHeldItemKind heldItem) noexcept;
+[[nodiscard]] bool creativeToolOptionAppliesToHeldItem(
+    CreativeToolOptionId option,
+    CreativeHeldItemKind heldItem) noexcept;
+
+[[nodiscard]] std::string_view toString(
+    CreativeMoveConstraint constraint) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeRotationStep step) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeSnapIncrement increment) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeCloneOffsetAxis axis) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeCloneOffsetDistance distance) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeToolOptionAdjustStatus status) noexcept;
+[[nodiscard]] std::string_view creativeToolOptionValueLabel(
+    const CreativeToolSettings& settings,
+    CreativeToolOptionId option) noexcept;
+
+// O(option count + palette size), both caller-bounded. Adjustment is atomic:
+// invalid settings or unavailable values leave the input settings unchanged.
+[[nodiscard]] CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
+    CreativeToolSettings& settings,
+    CreativeToolOptionId option,
+    std::int32_t direction,
+    std::span<const CreativeObjectKind> materialPalette = {}) noexcept;
+
+[[nodiscard]] double creativeRotationStepDegrees(
+    CreativeRotationStep step) noexcept;
+[[nodiscard]] double creativeSnapIncrementMeters(
+    CreativeSnapIncrement increment) noexcept;
+[[nodiscard]] bool tryCreativeCloneOffset(
+    const CreativeToolSettings& settings,
+    double cellSize,
+    CreativeToolWorldPoint& output) noexcept;
 
 }  // namespace iggy3d::creative

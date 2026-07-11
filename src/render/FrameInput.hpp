@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <cstddef>
 #include <string_view>
@@ -94,6 +95,28 @@ struct RenderCreativeWireframeDebugFrame {
   std::size_t lineCount = 0;
 };
 
+enum class RenderCreativePreviewRole : std::uint8_t {
+  Held,
+  PlacementValid,
+  PlacementInvalid,
+  Count,
+};
+
+inline constexpr std::size_t kRenderCreativePreviewRoleCount =
+    static_cast<std::size_t>(RenderCreativePreviewRole::Count);
+inline constexpr std::size_t kRenderCreativePreviewCapacity = 2U;
+
+struct RenderCreativePreviewItem {
+  RenderCreativePreviewRole role = RenderCreativePreviewRole::Held;
+  Mat4 clipFromModel = identityMat4();
+  bool includePathWireframe = false;
+};
+
+struct RenderCreativePreviewFrame {
+  std::array<RenderCreativePreviewItem, kRenderCreativePreviewCapacity> items{};
+  std::uint8_t itemCount = 0;
+};
+
 struct FrameInput {
   RenderViewport viewport;
   RenderFrameClock clock;
@@ -101,6 +124,7 @@ struct FrameInput {
   RenderSceneFrame projections;
   RenderUiFrame ui;
   RenderCreativeWireframeDebugFrame creativeWireframeDebug;
+  RenderCreativePreviewFrame creativePreview;
 };
 
 enum class FrameInputStatus : std::uint8_t {
@@ -114,6 +138,7 @@ enum class FrameInputStatus : std::uint8_t {
   InvalidCameraMatrix,
   InvalidClipPlanes,
   InvalidCreativeWireframeDebugLines,
+  InvalidCreativePreviewItems,
 };
 
 FrameInputStatus validateFrameInput(const FrameInput& frame);

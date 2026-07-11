@@ -14,14 +14,14 @@ namespace cr = iggy3d::creative;
 
 [[nodiscard]] cr::CreativeDocumentMutationReceipt movePathObjectWithUndo(
     cr::CreativeAppState& appState,
-    StandaloneUndoStack& undoStack,
+    StandaloneEditHistory& history,
     cr::CreativeObjectId objectId,
     cr::CreativeVec3 delta,
     std::string_view source);
 
 [[nodiscard]] cr::CreativeDocumentMutationReceipt movePathPointWithUndo(
     cr::CreativeAppState& appState,
-    StandaloneUndoStack& undoStack,
+    StandaloneEditHistory& history,
     cr::CreativeObjectId objectId,
     std::size_t pointIndex,
     cr::CreativeVec3 delta,

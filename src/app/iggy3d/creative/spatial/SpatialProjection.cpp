@@ -25,6 +25,17 @@ namespace {
          object.kind != CreativeObjectKind::Unknown;
 }
 
+[[nodiscard]] bool resolvedWorldBounds(const CreativeObject& object,
+                                       CreativeBounds& out) noexcept {
+  const CreativeTransformedBounds resolved =
+      resolveCreativeObjectBounds(object);
+  if (!resolved.valid) {
+    return false;
+  }
+  out = resolved.worldBounds;
+  return true;
+}
+
 struct CreativeSpatialProjectionPlan {
   CreativeSpatialProjectionSummary summary;
   std::string_view message = "projected";
@@ -422,7 +433,9 @@ void appendSampledLineCells(std::vector<CreativeSpatialCell>& cells,
   }
 
   CreativeGridBounds3 bounds{};
-  if (!tryWorldBoundsToGridBounds(object.bounds, request.cellSize, bounds)) {
+  CreativeBounds worldBounds{};
+  if (!resolvedWorldBounds(object, worldBounds) ||
+      !tryWorldBoundsToGridBounds(worldBounds, request.cellSize, bounds)) {
     setPlanStatus(plan,
                   CreativeSpatialProjectionStatus::OutOfBounds,
                   {},
@@ -502,8 +515,10 @@ void appendSampledLineCells(std::vector<CreativeSpatialCell>& cells,
 
   CreativeGridCoord3 start;
   CreativeGridCoord3 end;
-  if (!tryWorldToGridCoord(object.bounds.min, request.cellSize, start) ||
-      !tryWorldToGridCoord(object.bounds.max, request.cellSize, end)) {
+  CreativeBounds worldBounds{};
+  if (!resolvedWorldBounds(object, worldBounds) ||
+      !tryWorldToGridCoord(worldBounds.min, request.cellSize, start) ||
+      !tryWorldToGridCoord(worldBounds.max, request.cellSize, end)) {
     setPlanStatus(plan,
                   CreativeSpatialProjectionStatus::OutOfBounds,
                   {},
@@ -695,10 +710,15 @@ void appendSampledLineCells(std::vector<CreativeSpatialCell>& cells,
                       plan.summary.occupancyKind);
       break;
     case CreativeSpatialProjectionProfile::LineProjection: {
+      const CreativeTransformedBounds resolved =
+          resolveCreativeObjectBounds(object);
+      if (!resolved.valid) {
+        break;
+      }
       const CreativeGridCoord3 start =
-          worldToGridCoord(object.bounds.min, request.cellSize);
+          worldToGridCoord(resolved.worldBounds.min, request.cellSize);
       const CreativeGridCoord3 end =
-          worldToGridCoord(object.bounds.max, request.cellSize);
+          worldToGridCoord(resolved.worldBounds.max, request.cellSize);
       appendSampledLineCells(receipt.cells,
                              request.gridSize,
                              start,

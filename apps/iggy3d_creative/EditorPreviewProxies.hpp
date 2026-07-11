@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EditorPlacement.hpp"
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
@@ -18,9 +19,12 @@
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 
-constexpr float kPointMarkerSizeMeters = 0.35F;
-constexpr float kLineProxyThicknessMeters = 0.16F;
-constexpr float kPathProxyThicknessMeters = 0.16F;
+inline constexpr float kPointMarkerSizeMeters =
+    kCreativeBrushPointPreviewSizeMeters;
+inline constexpr float kLineProxyThicknessMeters =
+    kCreativeBrushLinePreviewThicknessMeters;
+inline constexpr float kPathProxyThicknessMeters =
+    kCreativeBrushPathPreviewThicknessMeters;
 constexpr float kPathPointHandleSizeMeters = 0.30F;
 
 struct VisualBounds {
@@ -34,7 +38,7 @@ struct VisualBounds {
 [[nodiscard]] iggy3d::Aabb3 visualBoundsToLocalAabb(
     VisualBounds bounds,
     const cr::CreativeTransform& transform);
-[[nodiscard]] bool objectHasVisualRotation(const cr::CreativeObject& object);
+[[nodiscard]] bool objectHasVisualTransform(const cr::CreativeObject& object);
 [[nodiscard]] bool validPathPoints(
     const std::vector<cr::CreativePathPoint>& points);
 [[nodiscard]] VisualBounds pointMarkerBounds(
@@ -71,13 +75,6 @@ void appendPathProxyMeshesToScene(
     const std::vector<cr::CreativeRoomBakeStaticMeshSource>&
         bakedStaticMeshSources,
     iggy3d::SceneProjectionResult& scene);
-
-void appendPathPolylineLines(
-    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& out,
-    const std::vector<cr::CreativePathPoint>& pathPoints,
-    iggy3d::RenderLineColor color,
-    float thickness,
-    cr::CreativeObjectId objectId = cr::kInvalidObjectId);
 
 void appendStandaloneWireframeBoxEdges(
     std::vector<iggy3d::RenderCreativeWireframeDebugLine>& out,

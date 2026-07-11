@@ -30,7 +30,7 @@ void setStatus(ProductCreativeDocumentSectionReceipt& receipt,
     creative::CreativeTransform transform) noexcept {
   SaveCreativeDocumentTransformRecord record;
   record.position = toSaveVec3(transform.position);
-  record.rotation = toSaveVec3(transform.rotation);
+  record.rotation = toSaveVec3(transform.rotationEulerRadians);
   record.scale = toSaveVec3(transform.scale);
   return record;
 }
@@ -39,7 +39,7 @@ void setStatus(ProductCreativeDocumentSectionReceipt& receipt,
     SaveCreativeDocumentTransformRecord record) noexcept {
   creative::CreativeTransform transform;
   transform.position = toCreativeVec3(record.position);
-  transform.rotation = toCreativeVec3(record.rotation);
+  transform.rotationEulerRadians = toCreativeVec3(record.rotation);
   transform.scale = toCreativeVec3(record.scale);
   return transform;
 }

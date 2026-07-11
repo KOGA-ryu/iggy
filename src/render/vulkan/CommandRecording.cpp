@@ -107,6 +107,28 @@ void recordOverlayRects(VkCommandBuffer commandBuffer,
 
 }  // namespace
 
+CreativePreviewCommandPlan buildCreativePreviewCommandPlan(
+    const CreativePreviewDrawInfo* draws,
+    std::size_t drawCount,
+    std::size_t geometryDrawCount) noexcept {
+  CreativePreviewCommandPlan plan;
+  if (draws == nullptr || drawCount == 0U ||
+      drawCount > plan.steps.size()) {
+    return plan;
+  }
+  for (bool depthDisabled : {false, true}) {
+    for (std::size_t index = 0; index < drawCount; ++index) {
+      if (draws[index].depthDisabled != depthDisabled ||
+          draws[index].geometryDrawIndex >= geometryDrawCount) {
+        continue;
+      }
+      plan.steps[plan.stepCount++] = {
+          static_cast<std::uint8_t>(index), depthDisabled};
+    }
+  }
+  return plan;
+}
+
 CommandRecording::~CommandRecording() {
   destroy();
 }
@@ -353,12 +375,22 @@ CommandRecordResult CommandRecording::recordEmptyFrame(const EmptyFrameRecordInf
 CommandRecordResult CommandRecording::recordFirstRoomFrame(
     const FirstRoomFrameRecordInfo& info) {
   CommandRecordResult result;
+  const bool creativePreviewInvalid =
+      info.creativePreviewDrawCount > 0U &&
+      (info.creativePreviewDrawCount > kRenderCreativePreviewCapacity ||
+       info.viewModelPipeline == VK_NULL_HANDLE ||
+       info.creativePreviewVertexBuffer == VK_NULL_HANDLE ||
+       info.creativePreviewIndexBuffer == VK_NULL_HANDLE ||
+       info.creativePreviewIndexedDraws == nullptr ||
+       info.creativePreviewIndexedDrawCount == 0U ||
+       info.creativePreviewDraws == nullptr);
   if (!ready_ || info.commandBuffer == VK_NULL_HANDLE || info.swapchainImage == VK_NULL_HANDLE ||
       info.swapchainImageView == VK_NULL_HANDLE || info.depthImage == VK_NULL_HANDLE ||
       info.depthImageView == VK_NULL_HANDLE || info.pipeline == VK_NULL_HANDLE ||
       info.pipelineLayout == VK_NULL_HANDLE || info.vertexBuffer == VK_NULL_HANDLE ||
-      info.indexBuffer == VK_NULL_HANDLE || info.indexCount == 0U || info.extent.width == 0U ||
-      info.extent.height == 0U) {
+      info.indexBuffer == VK_NULL_HANDLE || info.indexCount == 0U ||
+      info.extent.width == 0U || info.extent.height == 0U ||
+      creativePreviewInvalid) {
     result.outcome = RenderOutcome::RendererNotReady;
     result.reason = reasonFor("command_record_not_ready");
     result.stage = "precheck";
@@ -490,6 +522,44 @@ CommandRecordResult CommandRecording::recordFirstRoomFrame(
     vkCmdDrawIndexed(info.commandBuffer, info.indexCount, 1, 0, 0, 0);
     indexedDrawCount = 1U;
   }
+  std::uint32_t creativePreviewDrawCount = 0U;
+  if (info.creativePreviewDrawCount > 0U) {
+    vkCmdBindVertexBuffers(info.commandBuffer, 0, 1,
+                           &info.creativePreviewVertexBuffer, &vertexOffset);
+    vkCmdBindIndexBuffer(info.commandBuffer,
+                         info.creativePreviewIndexBuffer, 0,
+                         VK_INDEX_TYPE_UINT16);
+    const CreativePreviewCommandPlan plan = buildCreativePreviewCommandPlan(
+        info.creativePreviewDraws, info.creativePreviewDrawCount,
+        info.creativePreviewIndexedDrawCount);
+    bool pipelineBound = false;
+    bool boundDepthDisabled = false;
+    for (std::size_t stepIndex = 0; stepIndex < plan.stepCount; ++stepIndex) {
+      const CreativePreviewCommandStep& step = plan.steps[stepIndex];
+      const CreativePreviewDrawInfo& preview =
+          info.creativePreviewDraws[step.sourceDrawIndex];
+      if (!pipelineBound || boundDepthDisabled != step.depthDisabled) {
+        const VkPipeline previewPipeline =
+            step.depthDisabled ? info.viewModelPipeline : info.pipeline;
+        vkCmdBindPipeline(info.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          previewPipeline);
+        pipelineBound = true;
+        boundDepthDisabled = step.depthDisabled;
+      }
+      const IndexedDrawRange& draw =
+          info.creativePreviewIndexedDraws[preview.geometryDrawIndex];
+      if (draw.indexCount == 0U) {
+        continue;
+      }
+      vkCmdPushConstants(
+          info.commandBuffer, info.pipelineLayout,
+          VK_SHADER_STAGE_VERTEX_BIT, 0,
+          sizeof(FirstRoomPushConstants), &preview.pushConstants);
+      vkCmdDrawIndexed(info.commandBuffer, draw.indexCount, 1,
+                       draw.firstIndex, 0, 0);
+      ++creativePreviewDrawCount;
+    }
+  }
   recordOverlayRects(info.commandBuffer, info.projectileOverlayRects,
                      info.projectileOverlayRectCount);
   recordOverlayRects(info.commandBuffer, info.uiOverlayRects,
@@ -581,6 +651,8 @@ CommandRecordResult CommandRecording::recordFirstRoomFrame(
   appendReceiptField(result.receipt, "draw_count", static_cast<std::uint64_t>(indexedDrawCount));
   appendReceiptField(result.receipt, "indexed_draw_count",
                      static_cast<std::uint64_t>(indexedDrawCount));
+  appendReceiptField(result.receipt, "creative_preview_draw_count",
+                     static_cast<std::uint64_t>(creativePreviewDrawCount));
   appendReceiptField(result.receipt, "index_count", static_cast<std::uint64_t>(info.indexCount));
   appendReceiptField(result.receipt, "ui_overlay_rect_count",
                      static_cast<std::uint64_t>(info.uiOverlayRectCount));

@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <span>
@@ -24,7 +25,8 @@ struct CreativeVec3 {
 
 struct CreativeTransform {
   CreativeVec3 position{};
-  CreativeVec3 rotation{};
+  // Intrinsic X-then-Y-then-Z Euler rotation, always stored in radians.
+  CreativeVec3 rotationEulerRadians{};
   CreativeVec3 scale{1.0, 1.0, 1.0};
 };
 
@@ -184,6 +186,23 @@ struct CreativeObject {
   std::optional<CreativeObjectId> parentId{};
   std::vector<CreativePathPoint> pathPoints{};
 };
+
+struct CreativeTransformedBounds {
+  std::array<CreativeVec3, 8> corners{};
+  CreativeBounds worldBounds{};
+  CreativeVec3 center{};
+  CreativeVec3 size{};
+  CreativeVec3 rotationEulerRadians{};
+  bool valid{false};
+};
+
+// `authoredBounds` remain in document coordinates at identity rotation/scale.
+// The transform position is the pivot used to derive live world geometry.
+[[nodiscard]] CreativeTransformedBounds resolveCreativeTransformedBounds(
+    CreativeBounds authoredBounds,
+    CreativeTransform transform) noexcept;
+[[nodiscard]] CreativeTransformedBounds resolveCreativeObjectBounds(
+    const CreativeObject& object) noexcept;
 
 [[nodiscard]] CreativeObject makeRoomObject(
     CreativeObjectId id,

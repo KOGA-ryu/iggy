@@ -1,23 +1,32 @@
 #include "EditorPreviewFrame.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <numbers>
 #include <string>
 #include <utility>
 
 #include <SDL3/SDL.h>
 
 #include "EditorFrame.hpp"
+#include "EditorCatalog.hpp"
+#include "EditorEdits.hpp"
+#include "EditorToolOptions.hpp"
 #include "EditorGizmo.hpp"
+#include "EditorInteraction.hpp"
 #include "EditorPlacement.hpp"
+#include "EditorPattern.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "EditorState.hpp"
+#include "EditorVolume.hpp"
 #include "app/iggy3d/creative/document/DocumentWireframe.hpp"
 #include "app/iggy3d/creative/render/CreativeOverlayFrame.hpp"
 #include "app/iggy3d/creative/render/WireframeDebugLines.hpp"
 #include "app/iggy3d/creative/ui/UiProjection.hpp"
+#include "core/math/EulerRotation.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "projection/scene/SceneItem.hpp"
 #include "render/debug/DebugHudText.hpp"
@@ -65,6 +74,250 @@ void appendGridDotsToScene(const iggy3d::ProductMapMakerGridSnapshot& grid,
   scene.room.loaded = true;
 }
 
+[[nodiscard]] RenderLineColor volumeOperationColor(
+    cr::CreativeVolumeOperationKind operation) noexcept {
+  constexpr std::array<RenderLineColor,
+                       static_cast<std::size_t>(
+                           cr::CreativeVolumeOperationKind::Count)>
+      colors{
+          RenderLineColor{0.18F, 0.95F, 0.34F, 1.0F},
+          RenderLineColor{0.10F, 0.90F, 0.95F, 1.0F},
+          RenderLineColor{1.0F, 0.72F, 0.12F, 1.0F},
+          RenderLineColor{1.0F, 0.20F, 0.18F, 1.0F},
+          RenderLineColor{0.30F, 0.55F, 1.0F, 1.0F},
+      };
+  const std::size_t index = static_cast<std::size_t>(operation);
+  return index < colors.size() ? colors[index] : colors.front();
+}
+
+[[nodiscard]] Mat4 modelMatrix(Vec3 position,
+                               Vec3 rotationRadians,
+                               Vec3 scale) {
+  const Vec3 axisX = rotateEulerXyz({1.0F, 0.0F, 0.0F}, rotationRadians);
+  const Vec3 axisY = rotateEulerXyz({0.0F, 1.0F, 0.0F}, rotationRadians);
+  const Vec3 axisZ = rotateEulerXyz({0.0F, 0.0F, 1.0F}, rotationRadians);
+  Mat4 matrix = identityMat4();
+  matrix.m[0] = axisX.x * scale.x;
+  matrix.m[4] = axisX.y * scale.x;
+  matrix.m[8] = axisX.z * scale.x;
+  matrix.m[1] = axisY.x * scale.y;
+  matrix.m[5] = axisY.y * scale.y;
+  matrix.m[9] = axisY.z * scale.y;
+  matrix.m[2] = axisZ.x * scale.z;
+  matrix.m[6] = axisZ.y * scale.z;
+  matrix.m[10] = axisZ.z * scale.z;
+  matrix.m[3] = position.x;
+  matrix.m[7] = position.y;
+  matrix.m[11] = position.z;
+  return matrix;
+}
+
+[[nodiscard]] bool previewBoundsTransform(
+    const creative::CreativeBounds& bounds,
+    float inset,
+    Vec3& center,
+    Vec3& size) {
+  center = {static_cast<float>((bounds.min.x + bounds.max.x) * 0.5),
+            static_cast<float>((bounds.min.y + bounds.max.y) * 0.5),
+            static_cast<float>((bounds.min.z + bounds.max.z) * 0.5)};
+  size = {static_cast<float>(bounds.max.x - bounds.min.x) * inset,
+          static_cast<float>(bounds.max.y - bounds.min.y) * inset,
+          static_cast<float>(bounds.max.z - bounds.min.z) * inset};
+  return isFinite(center) && isFinite(size) && size.x > 0.0F &&
+         size.y > 0.0F && size.z > 0.0F;
+}
+
+void appendCreativePreview(RenderCreativePreviewFrame& previews,
+                           RenderCreativePreviewRole role,
+                           const Mat4& clipFromModel,
+                           bool includePathWireframe = false) {
+  if (previews.itemCount >= previews.items.size()) {
+    return;
+  }
+  previews.items[previews.itemCount++] = {
+      role, clipFromModel, includePathWireframe};
+}
+
+void appendVolumePreviewLine(
+    std::vector<RenderCreativeWireframeDebugLine>& lines,
+    Vec3 start,
+    Vec3 end,
+    RenderLineColor color,
+    float thickness) {
+  if (!isFinite(start) || !isFinite(end) ||
+      (start.x == end.x && start.y == end.y && start.z == end.z)) {
+    return;
+  }
+  RenderCreativeWireframeDebugLine line;
+  line.start = start;
+  line.end = end;
+  line.color = color;
+  line.thickness = thickness;
+  lines.push_back(line);
+}
+
+[[nodiscard]] Vec3 ellipsePoint(Vec3 center,
+                                Vec3 firstAxis,
+                                Vec3 secondAxis,
+                                float angle) noexcept {
+  const float cosine = std::cos(angle);
+  const float sine = std::sin(angle);
+  return {center.x + firstAxis.x * cosine + secondAxis.x * sine,
+          center.y + firstAxis.y * cosine + secondAxis.y * sine,
+          center.z + firstAxis.z * cosine + secondAxis.z * sine};
+}
+
+void appendEllipseLoop(
+    std::vector<RenderCreativeWireframeDebugLine>& lines,
+    Vec3 center,
+    Vec3 firstAxis,
+    Vec3 secondAxis,
+    RenderLineColor color,
+    float thickness) {
+  constexpr std::size_t kSegmentCount = 48U;
+  constexpr float kTurn = 2.0F * std::numbers::pi_v<float>;
+  Vec3 previous = ellipsePoint(center, firstAxis, secondAxis, 0.0F);
+  for (std::size_t segment = 1U; segment <= kSegmentCount; ++segment) {
+    const float angle = kTurn * static_cast<float>(segment) /
+                        static_cast<float>(kSegmentCount);
+    const Vec3 current =
+        ellipsePoint(center, firstAxis, secondAxis, angle);
+    appendVolumePreviewLine(lines, previous, current, color, thickness);
+    previous = current;
+  }
+}
+
+[[nodiscard]] Vec3 renderVec3(cr::CreativeVec3 value) noexcept {
+  return {static_cast<float>(value.x), static_cast<float>(value.y),
+          static_cast<float>(value.z)};
+}
+
+[[nodiscard]] Vec3 cellCenter(const cr::CreativeVolumeSelection& selection,
+                              cr::CreativeGridCoord3 cell) noexcept {
+  const cr::CreativeBounds bounds = cr::creativeVolumeCellBounds(
+      cell, selection.cellSize, selection.origin);
+  return {static_cast<float>((bounds.min.x + bounds.max.x) * 0.5),
+          static_cast<float>((bounds.min.y + bounds.max.y) * 0.5),
+          static_cast<float>((bounds.min.z + bounds.max.z) * 0.5)};
+}
+
+void appendShapeBrushOutline(
+    std::vector<RenderCreativeWireframeDebugLine>& lines,
+    const cr::CreativeVolumeSelection& selection,
+    cr::CreativeShapeBrushKind kind,
+    cr::CreativeShapeBrushAxis axis,
+    RenderLineColor color,
+    float thickness) {
+  const cr::CreativeBounds bounds = cr::creativeVolumeWorldBounds(selection);
+  const Vec3 minimum = renderVec3(bounds.min);
+  const Vec3 maximum = renderVec3(bounds.max);
+  const Vec3 center{(minimum.x + maximum.x) * 0.5F,
+                    (minimum.y + maximum.y) * 0.5F,
+                    (minimum.z + maximum.z) * 0.5F};
+  const Vec3 radii{(maximum.x - minimum.x) * 0.5F,
+                   (maximum.y - minimum.y) * 0.5F,
+                   (maximum.z - minimum.z) * 0.5F};
+
+  switch (kind) {
+    case cr::CreativeShapeBrushKind::Box:
+      appendStandaloneWireframeBoxEdges(lines, minimum, maximum, color,
+                                        thickness);
+      return;
+    case cr::CreativeShapeBrushKind::Line: {
+      const Vec3 first = cellCenter(selection, selection.firstCell);
+      const Vec3 second = cellCenter(selection, selection.secondCell);
+      appendVolumePreviewLine(lines, first, second, color,
+                              std::max(thickness, 0.045F));
+      const cr::CreativeBounds firstBounds = cr::creativeVolumeCellBounds(
+          selection.firstCell, selection.cellSize, selection.origin);
+      appendStandaloneWireframeBoxEdges(lines, renderVec3(firstBounds.min),
+                                        renderVec3(firstBounds.max), color,
+                                        thickness);
+      if (selection.firstCell.x != selection.secondCell.x ||
+          selection.firstCell.y != selection.secondCell.y ||
+          selection.firstCell.z != selection.secondCell.z) {
+        const cr::CreativeBounds secondBounds = cr::creativeVolumeCellBounds(
+            selection.secondCell, selection.cellSize, selection.origin);
+        appendStandaloneWireframeBoxEdges(lines, renderVec3(secondBounds.min),
+                                          renderVec3(secondBounds.max), color,
+                                          thickness);
+      }
+      return;
+    }
+    case cr::CreativeShapeBrushKind::Ellipsoid:
+      appendEllipseLoop(lines, center, {radii.x, 0.0F, 0.0F},
+                        {0.0F, radii.y, 0.0F}, color, thickness);
+      appendEllipseLoop(lines, center, {radii.x, 0.0F, 0.0F},
+                        {0.0F, 0.0F, radii.z}, color, thickness);
+      appendEllipseLoop(lines, center, {0.0F, radii.y, 0.0F},
+                        {0.0F, 0.0F, radii.z}, color, thickness);
+      return;
+    case cr::CreativeShapeBrushKind::Cylinder: {
+      Vec3 firstCenter = center;
+      Vec3 secondCenter = center;
+      Vec3 firstRadius{};
+      Vec3 secondRadius{};
+      switch (axis) {
+        case cr::CreativeShapeBrushAxis::X:
+          firstCenter.x = minimum.x;
+          secondCenter.x = maximum.x;
+          firstRadius = {0.0F, radii.y, 0.0F};
+          secondRadius = {0.0F, 0.0F, radii.z};
+          break;
+        case cr::CreativeShapeBrushAxis::Y:
+          firstCenter.y = minimum.y;
+          secondCenter.y = maximum.y;
+          firstRadius = {radii.x, 0.0F, 0.0F};
+          secondRadius = {0.0F, 0.0F, radii.z};
+          break;
+        case cr::CreativeShapeBrushAxis::Z:
+          firstCenter.z = minimum.z;
+          secondCenter.z = maximum.z;
+          firstRadius = {radii.x, 0.0F, 0.0F};
+          secondRadius = {0.0F, radii.y, 0.0F};
+          break;
+        case cr::CreativeShapeBrushAxis::Count:
+          appendStandaloneWireframeBoxEdges(lines, minimum, maximum,
+                                            {1.0F, 0.15F, 0.12F, 1.0F},
+                                            thickness);
+          return;
+      }
+      appendEllipseLoop(lines, firstCenter, firstRadius, secondRadius, color,
+                        thickness);
+      appendEllipseLoop(lines, secondCenter, firstRadius, secondRadius, color,
+                        thickness);
+      for (const float sign : {-1.0F, 1.0F}) {
+        appendVolumePreviewLine(
+            lines,
+            {firstCenter.x + firstRadius.x * sign,
+             firstCenter.y + firstRadius.y * sign,
+             firstCenter.z + firstRadius.z * sign},
+            {secondCenter.x + firstRadius.x * sign,
+             secondCenter.y + firstRadius.y * sign,
+             secondCenter.z + firstRadius.z * sign},
+            color, thickness);
+        appendVolumePreviewLine(
+            lines,
+            {firstCenter.x + secondRadius.x * sign,
+             firstCenter.y + secondRadius.y * sign,
+             firstCenter.z + secondRadius.z * sign},
+            {secondCenter.x + secondRadius.x * sign,
+             secondCenter.y + secondRadius.y * sign,
+             secondCenter.z + secondRadius.z * sign},
+            color, thickness);
+      }
+      return;
+    }
+    case cr::CreativeShapeBrushKind::Count:
+      appendStandaloneWireframeBoxEdges(lines, minimum, maximum,
+                                        {1.0F, 0.15F, 0.12F, 1.0F},
+                                        thickness);
+      return;
+  }
+  appendStandaloneWireframeBoxEdges(lines, minimum, maximum,
+                                    {1.0F, 0.15F, 0.12F, 1.0F}, thickness);
+}
+
 }  // namespace
 
 StandaloneRoomBakePreviewScene buildStandaloneRoomBakePreviewScene(
@@ -91,6 +344,118 @@ StandaloneRoomBakePreviewScene buildStandaloneRoomBakePreviewScene(
     preview.scene.room.loaded = true;
   }
   return preview;
+}
+
+bool refreshCreativeEditorSceneCache(
+    CreativeEditorSceneCache& cache,
+    const iggy3d::creative::CreativeDocument& document,
+    const iggy3d::ProductMapMakerGridSnapshot& gridSnapshot) {
+  if (cache.valid && cache.documentId == document.id() &&
+      cache.documentRevision == document.revision()) {
+    return false;
+  }
+  cache.preview = buildStandaloneRoomBakePreviewScene(document, gridSnapshot);
+  cache.documentId = document.id();
+  cache.documentRevision = document.revision();
+  ++cache.refreshCount;
+  cache.valid = true;
+  return true;
+}
+
+void invalidateCreativeEditorSceneCache(
+    CreativeEditorSceneCache& cache) noexcept {
+  cache.valid = false;
+  cache.documentId = iggy3d::creative::kInvalidDocumentId;
+  cache.documentRevision = 0;
+}
+
+void attachCreativeEditorPlacementPreviews(
+    const CreativeEditorState& editor,
+    bool captureMode,
+    FrameInput& frame,
+    const cr::CreativeDocument* document) {
+  frame.creativePreview = {};
+  const bool modalOpen = editor.catalog.model.open ||
+                         editor.catalog.toolWheel.open ||
+                         editor.toolOptions.open ||
+                         editor.clipboardPaste.active;
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  if (captureMode || modalOpen ||
+      held.kind != cr::CreativeHeldItemKind::Material ||
+      held.objectKind == cr::CreativeObjectKind::Unknown) {
+    return;
+  }
+
+  const CreativeBrushPlacementPlan heldPlan =
+      planBrushPlacement(held.objectKind, {});
+  Vec3 heldCenter{};
+  Vec3 heldSize{};
+  if (!heldPlan.valid ||
+      !previewBoundsTransform(heldPlan.previewBounds, 1.0F, heldCenter,
+                              heldSize)) {
+    return;
+  }
+
+  const CreativeEditorPlacementFeedback& feedback =
+      editor.interaction.placementFeedback;
+  const bool mutationAcceptedThisFrame =
+      feedback.frameIndex == editor.frameIndex &&
+      feedback.status == CreativeEditorPlacementFeedbackStatus::Placed;
+  if (editor.interaction.target.grid.valid && !mutationAcceptedThisFrame) {
+    const CreativeBrushPlacementAdmission admission = admitBrushPlacement(
+        held.objectKind, editor.interaction.target.grid);
+    const CreativeBrushPlacementPlan& targetPlan = admission.plan;
+    const cr::CreativeBounds& targetBounds =
+        targetPlan.valid ? targetPlan.previewBounds
+                         : editor.interaction.target.grid.adjacentCellBounds;
+    Vec3 targetCenter{};
+    Vec3 targetSize{};
+    if (previewBoundsTransform(targetBounds, 1.0F, targetCenter,
+                               targetSize)) {
+      const bool rejectedThisFrame =
+          feedback.frameIndex == editor.frameIndex &&
+          feedback.status == CreativeEditorPlacementFeedbackStatus::Rejected;
+      const bool duplicate =
+          document != nullptr && admission.allowed &&
+          creativeBrushPlacementAlreadyExists(*document, targetPlan);
+      const bool targetInvalid =
+          !admission.allowed || duplicate || rejectedThisFrame ||
+          editor.interaction.materialStroke.capacityReached;
+      appendCreativePreview(
+          frame.creativePreview,
+          targetInvalid ? RenderCreativePreviewRole::PlacementInvalid
+                        : RenderCreativePreviewRole::PlacementValid,
+          frame.camera.clipFromWorld *
+              modelMatrix(
+                  targetCenter,
+                  targetPlan.valid
+                      ? toVec3(targetPlan.transform.rotationEulerRadians)
+                      : Vec3{},
+                  targetSize),
+          targetPlan.valid &&
+              targetPlan.shapeKind == cr::CreativeObjectShapeKind::Path);
+    }
+  }
+
+  constexpr float kHeldLongestDimension = 0.32F;
+  constexpr float kHeldMinimumAxis = 0.06F;
+  const float longest = std::max({heldSize.x, heldSize.y, heldSize.z});
+  if (!std::isfinite(longest) || longest <= 0.0F) {
+    return;
+  }
+  const float heldScale = kHeldLongestDimension / longest;
+  heldSize = {std::max(kHeldMinimumAxis, heldSize.x * heldScale),
+              std::max(kHeldMinimumAxis, heldSize.y * heldScale),
+              std::max(kHeldMinimumAxis, heldSize.z * heldScale)};
+  constexpr float kDegreesToRadians = 0.01745329251994329577F;
+  const Vec3 heldRotation{20.0F * kDegreesToRadians,
+                          -35.0F * kDegreesToRadians,
+                          8.0F * kDegreesToRadians};
+  appendCreativePreview(
+      frame.creativePreview, RenderCreativePreviewRole::Held,
+      frame.camera.clipFromView *
+          modelMatrix({0.42F, -0.32F, -0.82F}, heldRotation, heldSize));
 }
 
 void logStandaloneRoomBakeFinal(
@@ -127,14 +492,18 @@ void buildAndAttachCreativeEditorOverlayFrame(
   FrameInput& frame = request.frame;
   const cr::CreativeSpatialProjectionRequest& wireProjReq =
       request.wireProjectionRequest;
-  const Vec3 aimCellCenter = request.aimCellCenter;
   const std::uint32_t drawableWidth = request.drawableWidth;
   const std::uint32_t drawableHeight = request.drawableHeight;
   const float gizmoThickness = request.gizmoThickness;
 
+  attachCreativeEditorPlacementPreviews(
+      editor, request.captureMode, frame,
+      &request.appState.facade.document());
+
   const creative::Id selectedId = request.selection.selectedId;
   const creative::CreativeObject* selected = request.selection.selected;
-  const bool hasSelection = request.selection.hasSelection;
+  const bool hasSelection =
+      request.selection.hasSelection && !editor.volume.active;
   const auto objectSelected = [&](creative::CreativeObjectId objectId) {
     return std::find(request.selection.selectedObjectIds.begin(),
                      request.selection.selectedObjectIds.end(),
@@ -153,6 +522,10 @@ void buildAndAttachCreativeEditorOverlayFrame(
   output.lineMarkerEdgeCount = 0;
   output.pathPointHandleEdgeCount = 0;
   output.ghostEdgeCount = 0;
+  output.volumeEdgeCount = 0;
+  output.patternEdgeCount = 0;
+  output.clipboardPasteEdgeCount = 0;
+  output.placementFeedbackEdgeCount = 0;
 
   // ---- INSPECTOR UI (draw list -> menu frame rects + glyphs) -------------
   ProductCreativeUiProjectionRequest uiReq;
@@ -278,59 +651,153 @@ void buildAndAttachCreativeEditorOverlayFrame(
       combinedWireLines.push_back(gizmoLine);
     }
   }
-  // ---- GHOST PREVIEW ------------------------------------------------------
-  // In Place mode, draw a GREEN (0,1,0,1) axis-aligned wireframe box at the
-  // aimed cell sized to the current brush footprint (min.y=0..height, XZ
-  // centered on the cell) — the placement preview. It rides the SAME combined
-  // wireframe vector as the selection box + gizmo, so it needs no new render
-  // path. It is NOT a document object (objectId=0); it vanishes on the drop's
-  // next frame if the aim moves.
-  std::size_t& ghostEdgeCount = output.ghostEdgeCount;
-  if (editor.placeMode) {
-    const creative::CreativeObjectDescriptor& brushDescriptor =
-        creative::describeObject(editor.placeBrush);
-    Vec3 ghostMin{};
-    Vec3 ghostMax{};
-    if (brushDescriptor.shapeKind == creative::CreativeObjectShapeKind::Path) {
-      const std::vector<creative::CreativePathPoint> ghostPath =
-          initialPathPointsForAnchor(aimCellCenter);
-      const std::size_t before = combinedWireLines.size();
-      appendPathPolylineLines(combinedWireLines,
-                              ghostPath,
-                              RenderLineColor{0.0F, 1.0F, 0.0F, 1.0F},
-                              gizmoThickness);
-      ghostEdgeCount = combinedWireLines.size() - before;
-    } else if (brushDescriptor.shapeKind ==
-               creative::CreativeObjectShapeKind::Point) {
-      const VisualBounds markerBounds = pointMarkerBounds(
-          creative::CreativeVec3{aimCellCenter.x, 0.0, aimCellCenter.z});
-      ghostMin = markerBounds.min;
-      ghostMax = markerBounds.max;
-    } else {
-      const BrushFootprint fp = brushFootprintForDescriptor(brushDescriptor);
-      const VisualBounds authoredGhost{
-          {aimCellCenter.x - fp.sizeX * 0.5F, 0.0F,
-           aimCellCenter.z - fp.sizeZ * 0.5F},
-          {aimCellCenter.x + fp.sizeX * 0.5F, fp.height,
-           aimCellCenter.z + fp.sizeZ * 0.5F}};
-      const VisualBounds ghostBounds =
-          brushDescriptor.shapeKind == creative::CreativeObjectShapeKind::Line
-              ? lineProxyBounds(authoredGhost)
-              : authoredGhost;
-      ghostMin = ghostBounds.min;
-      ghostMax = ghostBounds.max;
-    }
-    if (brushDescriptor.shapeKind != creative::CreativeObjectShapeKind::Path) {
+  const CreativeEditorPlacementFeedback& placementFeedback =
+      editor.interaction.placementFeedback;
+  if (placementFeedback.status ==
+          CreativeEditorPlacementFeedbackStatus::Placed &&
+      creativeEditorPlacementFeedbackVisible(placementFeedback,
+                                              editor.frameIndex)) {
+    const creative::CreativeObject* placedObject =
+        appState.facade.findObject(placementFeedback.objectId);
+    if (placedObject != nullptr) {
+      const VisualBounds placedBounds = visualBoundsForObject(*placedObject);
       const std::size_t before = combinedWireLines.size();
       appendStandaloneWireframeBoxEdges(
-          combinedWireLines, ghostMin, ghostMax,
-          RenderLineColor{0.0F, 1.0F, 0.0F, 1.0F},
-          gizmoThickness);
-      ghostEdgeCount = combinedWireLines.size() - before;
+          combinedWireLines, placedBounds.min, placedBounds.max,
+          RenderLineColor{0.25F, 1.0F, 0.35F, 1.0F},
+          std::max(0.075F, gizmoThickness * 1.4F));
+      for (std::size_t index = before; index < combinedWireLines.size();
+           ++index) {
+        combinedWireLines[index].objectId = placedObject->id;
+      }
+      output.placementFeedbackEdgeCount =
+          combinedWireLines.size() - before;
     }
   }
+  // ---- VOLUME PREVIEW ----------------------------------------------------
+  // The preview is transient editor state, not a document object. Curved
+  // outlines stay bounded while the shared planner supplies the exact cell
+  // count and admission result used by commit.
+  creative::CreativeVolumeSelection volumeSelection;
+  creative::CreativeShapeBrushPlanReceipt volumeShapePlan;
+  bool volumeSelectionVisible = false;
+  bool volumeUsesShapePlan = false;
+  if (editor.volume.active && !editor.clipboardPaste.active) {
+    volumeSelection = creativeEditorVolumePreviewSelection(editor.volume);
+    if (creative::creativeVolumeSelectionValid(volumeSelection)) {
+      volumeSelectionVisible = true;
+      volumeUsesShapePlan =
+          editor.volume.operation == creative::CreativeVolumeOperationKind::Fill ||
+          editor.volume.operation ==
+              creative::CreativeVolumeOperationKind::Hollow;
+      if (volumeUsesShapePlan) {
+        creative::CreativeShapeBrushPlanRequest planRequest;
+        planRequest.kind = editor.toolSettings.shapeBrushKind;
+        planRequest.axis = editor.toolSettings.shapeBrushAxis;
+        planRequest.firstCell = volumeSelection.firstCell;
+        planRequest.secondCell = volumeSelection.secondCell;
+        planRequest.hollow = editor.volume.operation ==
+                             creative::CreativeVolumeOperationKind::Hollow;
+        planRequest.maxCandidateCellCount = kCreativeEditorVolumeCellLimit;
+        planRequest.maxGeneratedCellCount = kCreativeEditorVolumeCellLimit;
+        volumeShapePlan = creative::planCreativeShapeBrush(planRequest);
+      }
+      const std::size_t before = combinedWireLines.size();
+      const RenderLineColor color =
+          volumeUsesShapePlan && !volumeShapePlan.accepted
+              ? RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F}
+              : volumeOperationColor(editor.volume.operation);
+      appendShapeBrushOutline(
+          combinedWireLines, volumeSelection,
+          volumeUsesShapePlan ? editor.toolSettings.shapeBrushKind
+                              : creative::CreativeShapeBrushKind::Box,
+          editor.toolSettings.shapeBrushAxis, color, gizmoThickness);
+      output.volumeEdgeCount = combinedWireLines.size() - before;
+    }
+  }
+  if (!editor.clipboardPaste.active) {
+    output.patternEdgeCount = appendCreativeEditorLinearArrayPreview(
+        appState, editor, gizmoThickness, combinedWireLines);
+  }
+  output.clipboardPasteEdgeCount = appendCreativeEditorClipboardPastePreview(
+      appState.clipboard, editor.clipboardPaste, gizmoThickness,
+      combinedWireLines);
   std::vector<DebugHudGlyphQuad>& glyphs = output.glyphs;
   glyphs = menuFrame.textGlyphQuads;
+  appendCreativeEditorInteractionOverlay(
+      editor, drawableWidth, drawableHeight, gizmoThickness, output.uiRects,
+      glyphs, combinedWireLines);
+  appendCreativeEditorCatalogOverlay(appState, editor, drawableWidth,
+                                     drawableHeight, output.uiRects, glyphs);
+  appendCreativeEditorToolOptionsOverlay(editor, drawableWidth, drawableHeight,
+                                         output.uiRects, glyphs);
+
+  if (output.volumeEdgeCount > 0U && volumeSelectionVisible) {
+    const creative::CreativeGridBounds3 gridBounds =
+        creative::creativeVolumeGridBounds(volumeSelection);
+    const creative::CreativeBounds bounds =
+        creative::creativeVolumeWorldBounds(volumeSelection);
+    const Vec3 labelPosition{
+        static_cast<float>((bounds.min.x + bounds.max.x) * 0.5),
+        static_cast<float>(bounds.max.y),
+        static_cast<float>((bounds.min.z + bounds.max.z) * 0.5),
+    };
+    const ProjectedPoint3 projected =
+        projectPoint(frame.camera.clipFromWorld, labelPosition);
+    if (std::isfinite(projected.w) && projected.w > 0.0F) {
+      const float px = (projected.ndc.x * 0.5F + 0.5F) *
+                       static_cast<float>(drawableWidth);
+      const float py = (1.0F - (projected.ndc.y * 0.5F + 0.5F)) *
+                       static_cast<float>(drawableHeight);
+      const std::uint64_t plannedCellCount =
+          volumeUsesShapePlan && volumeShapePlan.accepted
+              ? volumeShapePlan.generatedCellCount
+              : volumeUsesShapePlan ? 0U
+                                    : creative::creativeVolumeCellCount(
+                                          volumeSelection);
+      const std::string shapeLabel =
+          volumeUsesShapePlan
+              ? std::string(creative::toString(
+                    editor.toolSettings.shapeBrushKind))
+              : std::string{"BOX"};
+      const std::string axisLabel =
+          volumeUsesShapePlan &&
+                  editor.toolSettings.shapeBrushKind ==
+                      creative::CreativeShapeBrushKind::Cylinder
+              ? " " + std::string(creative::toString(
+                            editor.toolSettings.shapeBrushAxis))
+              : std::string{};
+      char labelBuf[128];
+      if (editor.volume.lastReceipt.requested) {
+        std::snprintf(
+            labelBuf, sizeof(labelBuf),
+            "%s %s%s %d x %d x %d | %llu cells | %s",
+            std::string(creative::toString(editor.volume.operation)).c_str(),
+            shapeLabel.c_str(), axisLabel.c_str(),
+            gridBounds.max.x - gridBounds.min.x,
+            gridBounds.max.y - gridBounds.min.y,
+            gridBounds.max.z - gridBounds.min.z,
+            static_cast<unsigned long long>(plannedCellCount),
+            std::string(
+                creative::toString(editor.volume.lastReceipt.status)).c_str());
+      } else {
+        std::snprintf(
+            labelBuf, sizeof(labelBuf),
+            "%s %s%s %d x %d x %d | %llu cells",
+            std::string(creative::toString(editor.volume.operation)).c_str(),
+            shapeLabel.c_str(), axisLabel.c_str(),
+            gridBounds.max.x - gridBounds.min.x,
+            gridBounds.max.y - gridBounds.min.y,
+            gridBounds.max.z - gridBounds.min.z,
+            static_cast<unsigned long long>(plannedCellCount));
+      }
+      const DebugHudLayoutResult labelLayout = layoutDebugHudTextAt(
+          labelBuf, static_cast<std::int32_t>(px),
+          static_cast<std::int32_t>(py), drawableWidth, drawableHeight);
+      glyphs.insert(glyphs.end(), labelLayout.quads.begin(),
+                    labelLayout.quads.end());
+    }
+  }
 
   // ---- DIMENSION LABEL + glyph merge -------------------------------------
   // Merge the inspector-panel glyphs with the dimension-label glyphs into ONE

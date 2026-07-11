@@ -1,5 +1,11 @@
 #include "app/iggy3d/creative/tools/Tools.hpp"
 
+#include <array>
+#include <cmath>
+
+#include "app/iggy3d/creative/input/Interaction.hpp"
+#include "app/iggy3d/creative/tools/Volume.hpp"
+
 namespace iggy3d::creative {
 namespace {
 
@@ -10,7 +16,11 @@ namespace {
          lhs.hasWorldDestination == rhs.hasWorldDestination &&
          lhs.worldDestination.x == rhs.worldDestination.x &&
          lhs.worldDestination.y == rhs.worldDestination.y &&
-         lhs.worldDestination.z == rhs.worldDestination.z;
+         lhs.worldDestination.z == rhs.worldDestination.z &&
+         lhs.moveHeldAxis == rhs.moveHeldAxis &&
+         lhs.moveConstraint == rhs.moveConstraint &&
+         lhs.hasMoveSnapStepOverride == rhs.hasMoveSnapStepOverride &&
+         lhs.moveSnapStepOverride == rhs.moveSnapStepOverride;
 }
 
 void updatePointer(CreativeToolState& state,
@@ -38,6 +48,163 @@ void emitIntent(CreativeToolDispatchReceipt& receipt,
                 const CreativeToolPointerPacket& pointer) {
   receipt.intents.push_back(CreativeToolIntent{kind, tool, pointer});
   receipt.emittedIntentCount = receipt.intents.size();
+}
+
+[[nodiscard]] constexpr CreativeHeldItemMask heldItemMask(
+    CreativeHeldItemKind heldItem) noexcept {
+  return static_cast<CreativeHeldItemMask>(
+      1U << static_cast<unsigned>(heldItem));
+}
+
+constexpr CreativeHeldItemMask kMoveItems =
+    heldItemMask(CreativeHeldItemKind::ObjectMove);
+constexpr CreativeHeldItemMask kRotationItems =
+    heldItemMask(CreativeHeldItemKind::ObjectSelect) |
+    heldItemMask(CreativeHeldItemKind::ObjectMove);
+constexpr CreativeHeldItemMask kSnapItems =
+    heldItemMask(CreativeHeldItemKind::Material) |
+    heldItemMask(CreativeHeldItemKind::ObjectMove) |
+    heldItemMask(CreativeHeldItemKind::VolumeSelect) |
+    heldItemMask(CreativeHeldItemKind::VolumeFill) |
+    heldItemMask(CreativeHeldItemKind::VolumeHollow) |
+    heldItemMask(CreativeHeldItemKind::VolumeReplace) |
+    heldItemMask(CreativeHeldItemKind::VolumeErase) |
+    heldItemMask(CreativeHeldItemKind::VolumeClone);
+constexpr CreativeHeldItemMask kReplaceItems =
+    heldItemMask(CreativeHeldItemKind::VolumeReplace);
+constexpr CreativeHeldItemMask kShapeItems =
+    heldItemMask(CreativeHeldItemKind::VolumeFill) |
+    heldItemMask(CreativeHeldItemKind::VolumeHollow);
+constexpr CreativeHeldItemMask kCloneItems =
+    heldItemMask(CreativeHeldItemKind::VolumeClone);
+constexpr CreativeHeldItemMask kArrayItems =
+    heldItemMask(CreativeHeldItemKind::LinearArray);
+
+constexpr std::array kToolOptionDescriptors{
+    CreativeToolOptionDescriptor{CreativeToolOptionId::MoveConstraint,
+                                 "MOVE AXIS",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kMoveItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::RotationStep,
+                                 "ROTATE STEP",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kRotationItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::SnapIncrement,
+                                 "GRID SIZE",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kSnapItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::ShapeBrushKind,
+                                 "SHAPE",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kShapeItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::ShapeBrushAxis,
+                                 "SHAPE AXIS",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kShapeItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::ReplaceSource,
+                                 "REPLACE SOURCE",
+                                 CreativeToolOptionValueKind::MaterialOrAny,
+                                 kReplaceItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::CloneOffsetAxis,
+                                 "CLONE AXIS",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kCloneItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::CloneOffsetDistance,
+                                 "CLONE DIST",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kCloneItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::ArrayDirection,
+                                 "DIRECTION",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kArrayItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::ArrayCopyCount,
+                                 "COPIES",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kArrayItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::ArraySpacing,
+                                 "STEP",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kArrayItems},
+};
+static_assert(kToolOptionDescriptors.size() ==
+              kCreativeToolOptionDescriptorCount);
+
+template <typename Enum>
+[[nodiscard]] bool validEnum(Enum value, Enum count) noexcept {
+  return static_cast<std::size_t>(value) <
+         static_cast<std::size_t>(count);
+}
+
+template <typename Enum>
+[[nodiscard]] Enum cycleEnum(Enum value, Enum count,
+                             std::int32_t direction) noexcept {
+  const std::size_t size = static_cast<std::size_t>(count);
+  const std::size_t current = static_cast<std::size_t>(value);
+  const std::size_t next = direction > 0
+                               ? (current + 1U) % size
+                               : (current + size - 1U) % size;
+  return static_cast<Enum>(next);
+}
+
+[[nodiscard]] bool sameSettings(const CreativeToolSettings& lhs,
+                                const CreativeToolSettings& rhs) noexcept {
+  return lhs.moveConstraint == rhs.moveConstraint &&
+         lhs.rotationStep == rhs.rotationStep &&
+         lhs.snapIncrement == rhs.snapIncrement &&
+         lhs.shapeBrushKind == rhs.shapeBrushKind &&
+         lhs.shapeBrushAxis == rhs.shapeBrushAxis &&
+         lhs.replaceSourceKind == rhs.replaceSourceKind &&
+         lhs.cloneOffsetAxis == rhs.cloneOffsetAxis &&
+         lhs.cloneOffsetDistance == rhs.cloneOffsetDistance &&
+         lhs.arrayDirection == rhs.arrayDirection &&
+         lhs.arrayCopyCount == rhs.arrayCopyCount &&
+         lhs.arraySpacing == rhs.arraySpacing;
+}
+
+[[nodiscard]] CreativeToolOptionAdjustReceipt adjustReceipt(
+    CreativeToolOptionId option) noexcept {
+  CreativeToolOptionAdjustReceipt receipt;
+  receipt.requested = true;
+  receipt.option = option;
+  return receipt;
+}
+
+[[nodiscard]] bool nextReplaceSource(
+    std::span<const CreativeObjectKind> palette,
+    CreativeObjectKind current,
+    std::int32_t direction,
+    CreativeObjectKind& output) noexcept {
+  const std::size_t candidateCount = palette.size() + 1U;
+  std::size_t currentIndex = 0U;
+  if (current != CreativeObjectKind::Unknown) {
+    for (std::size_t index = 0; index < palette.size(); ++index) {
+      if (palette[index] == current) {
+        currentIndex = index + 1U;
+        break;
+      }
+    }
+  }
+
+  std::size_t candidateIndex = currentIndex;
+  for (std::size_t attempt = 0; attempt < candidateCount; ++attempt) {
+    candidateIndex = direction > 0
+                         ? (candidateIndex + 1U) % candidateCount
+                         : (candidateIndex + candidateCount - 1U) %
+                               candidateCount;
+    if (candidateIndex == 0U) {
+      if (current != CreativeObjectKind::Unknown) {
+        output = CreativeObjectKind::Unknown;
+        return true;
+      }
+      continue;
+    }
+    const CreativeObjectKind candidate = palette[candidateIndex - 1U];
+    if (candidate != current && creativeVolumeBrushSupported(candidate)) {
+      output = candidate;
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace
@@ -217,6 +384,328 @@ CreativeToolDispatchReceipt dispatchToolInput(
   receipt.activeToolAfter = state.activeTool;
   receipt.emittedIntentCount = receipt.intents.size();
   return receipt;
+}
+
+CreativeToolSettings makeDefaultCreativeToolSettings() noexcept {
+  return {};
+}
+
+bool isValidCreativeToolSettings(
+    const CreativeToolSettings& settings) noexcept {
+  const bool replaceSourceValid =
+      settings.replaceSourceKind == CreativeObjectKind::Unknown ||
+      creativeVolumeBrushSupported(settings.replaceSourceKind);
+  return validEnum(settings.moveConstraint, CreativeMoveConstraint::Count) &&
+         validEnum(settings.rotationStep, CreativeRotationStep::Count) &&
+         validEnum(settings.snapIncrement, CreativeSnapIncrement::Count) &&
+         validEnum(settings.shapeBrushKind, CreativeShapeBrushKind::Count) &&
+         validEnum(settings.shapeBrushAxis, CreativeShapeBrushAxis::Count) &&
+         replaceSourceValid &&
+         validEnum(settings.cloneOffsetAxis,
+                   CreativeCloneOffsetAxis::Count) &&
+         validEnum(settings.cloneOffsetDistance,
+                   CreativeCloneOffsetDistance::Count) &&
+         validEnum(settings.arrayDirection,
+                   CreativeLinearArrayDirection::Count) &&
+         validEnum(settings.arrayCopyCount,
+                   CreativeLinearArrayCopyCount::Count) &&
+         validEnum(settings.arraySpacing,
+                   CreativeLinearArraySpacing::Count);
+}
+
+std::span<const CreativeToolOptionDescriptor>
+creativeToolOptionDescriptors() noexcept {
+  return kToolOptionDescriptors;
+}
+
+const CreativeToolOptionDescriptor* creativeToolOptionDescriptor(
+    CreativeToolOptionId option) noexcept {
+  const std::size_t index = static_cast<std::size_t>(option);
+  return index < kToolOptionDescriptors.size()
+             ? &kToolOptionDescriptors[index]
+             : nullptr;
+}
+
+CreativeToolOptionList creativeToolOptionsForHeldItem(
+    CreativeHeldItemKind heldItem) noexcept {
+  CreativeToolOptionList result;
+  if (static_cast<std::size_t>(heldItem) >=
+      static_cast<std::size_t>(CreativeHeldItemKind::Count)) {
+    return result;
+  }
+  const CreativeHeldItemMask mask = heldItemMask(heldItem);
+  for (const CreativeToolOptionDescriptor& descriptor :
+       kToolOptionDescriptors) {
+    if ((descriptor.applicableHeldItems & mask) == 0U) {
+      continue;
+    }
+    if (result.count == result.ids.size()) {
+      result.capacityExceeded = true;
+      continue;
+    }
+    result.ids[result.count++] = descriptor.id;
+  }
+  return result;
+}
+
+bool creativeToolOptionAppliesToHeldItem(
+    CreativeToolOptionId option,
+    CreativeHeldItemKind heldItem) noexcept {
+  const CreativeToolOptionDescriptor* descriptor =
+      creativeToolOptionDescriptor(option);
+  if (descriptor == nullptr ||
+      static_cast<std::size_t>(heldItem) >=
+          static_cast<std::size_t>(CreativeHeldItemKind::Count)) {
+    return false;
+  }
+  return (descriptor->applicableHeldItems & heldItemMask(heldItem)) != 0U;
+}
+
+std::string_view toString(CreativeMoveConstraint constraint) noexcept {
+  switch (constraint) {
+    case CreativeMoveConstraint::Free: return "FREE";
+    case CreativeMoveConstraint::X: return "X";
+    case CreativeMoveConstraint::Z: return "Z";
+    case CreativeMoveConstraint::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeRotationStep step) noexcept {
+  switch (step) {
+    case CreativeRotationStep::Degrees15: return "15 DEG";
+    case CreativeRotationStep::Degrees45: return "45 DEG";
+    case CreativeRotationStep::Degrees90: return "90 DEG";
+    case CreativeRotationStep::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeSnapIncrement increment) noexcept {
+  switch (increment) {
+    case CreativeSnapIncrement::QuarterMeter: return "0.25 M";
+    case CreativeSnapIncrement::HalfMeter: return "0.5 M";
+    case CreativeSnapIncrement::OneMeter: return "1 M";
+    case CreativeSnapIncrement::TwoMeters: return "2 M";
+    case CreativeSnapIncrement::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeCloneOffsetAxis axis) noexcept {
+  switch (axis) {
+    case CreativeCloneOffsetAxis::X: return "X";
+    case CreativeCloneOffsetAxis::Y: return "Y";
+    case CreativeCloneOffsetAxis::Z: return "Z";
+    case CreativeCloneOffsetAxis::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeCloneOffsetDistance distance) noexcept {
+  switch (distance) {
+    case CreativeCloneOffsetDistance::OneCell: return "1 CELL";
+    case CreativeCloneOffsetDistance::TwoCells: return "2 CELLS";
+    case CreativeCloneOffsetDistance::FourCells: return "4 CELLS";
+    case CreativeCloneOffsetDistance::EightCells: return "8 CELLS";
+    case CreativeCloneOffsetDistance::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeToolOptionAdjustStatus status) noexcept {
+  switch (status) {
+    case CreativeToolOptionAdjustStatus::NotRequested: return "NotRequested";
+    case CreativeToolOptionAdjustStatus::InvalidOption: return "InvalidOption";
+    case CreativeToolOptionAdjustStatus::InvalidSettings:
+      return "InvalidSettings";
+    case CreativeToolOptionAdjustStatus::NoAvailableValue:
+      return "NoAvailableValue";
+    case CreativeToolOptionAdjustStatus::NoChange: return "NoChange";
+    case CreativeToolOptionAdjustStatus::Applied: return "Applied";
+  }
+  return "Unknown";
+}
+
+std::string_view creativeToolOptionValueLabel(
+    const CreativeToolSettings& settings,
+    CreativeToolOptionId option) noexcept {
+  switch (option) {
+    case CreativeToolOptionId::MoveConstraint:
+      return toString(settings.moveConstraint);
+    case CreativeToolOptionId::RotationStep:
+      return toString(settings.rotationStep);
+    case CreativeToolOptionId::SnapIncrement:
+      return toString(settings.snapIncrement);
+    case CreativeToolOptionId::ShapeBrushKind:
+      return toString(settings.shapeBrushKind);
+    case CreativeToolOptionId::ShapeBrushAxis:
+      return toString(settings.shapeBrushAxis);
+    case CreativeToolOptionId::ReplaceSource:
+      return settings.replaceSourceKind == CreativeObjectKind::Unknown
+                 ? std::string_view{"ANY"}
+                 : toString(settings.replaceSourceKind);
+    case CreativeToolOptionId::CloneOffsetAxis:
+      return toString(settings.cloneOffsetAxis);
+    case CreativeToolOptionId::CloneOffsetDistance:
+      return toString(settings.cloneOffsetDistance);
+    case CreativeToolOptionId::ArrayDirection:
+      return toString(settings.arrayDirection);
+    case CreativeToolOptionId::ArrayCopyCount:
+      return toString(settings.arrayCopyCount);
+    case CreativeToolOptionId::ArraySpacing:
+      return toString(settings.arraySpacing);
+    case CreativeToolOptionId::Count:
+      break;
+  }
+  return "INVALID";
+}
+
+CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
+    CreativeToolSettings& settings,
+    CreativeToolOptionId option,
+    std::int32_t direction,
+    std::span<const CreativeObjectKind> materialPalette) noexcept {
+  CreativeToolOptionAdjustReceipt receipt = adjustReceipt(option);
+  if (creativeToolOptionDescriptor(option) == nullptr) {
+    receipt.status = CreativeToolOptionAdjustStatus::InvalidOption;
+    receipt.reasonCode = "creative_tool_option_invalid";
+    return receipt;
+  }
+  if (!isValidCreativeToolSettings(settings)) {
+    receipt.status = CreativeToolOptionAdjustStatus::InvalidSettings;
+    receipt.reasonCode = "creative_tool_option_settings_invalid";
+    return receipt;
+  }
+  if (direction == 0) {
+    receipt.accepted = true;
+    receipt.status = CreativeToolOptionAdjustStatus::NoChange;
+    receipt.reasonCode = "creative_tool_option_direction_zero";
+    return receipt;
+  }
+
+  CreativeToolSettings adjusted = settings;
+  switch (option) {
+    case CreativeToolOptionId::MoveConstraint:
+      adjusted.moveConstraint = cycleEnum(
+          adjusted.moveConstraint, CreativeMoveConstraint::Count, direction);
+      break;
+    case CreativeToolOptionId::RotationStep:
+      adjusted.rotationStep = cycleEnum(
+          adjusted.rotationStep, CreativeRotationStep::Count, direction);
+      break;
+    case CreativeToolOptionId::SnapIncrement:
+      adjusted.snapIncrement = cycleEnum(
+          adjusted.snapIncrement, CreativeSnapIncrement::Count, direction);
+      break;
+    case CreativeToolOptionId::ShapeBrushKind:
+      adjusted.shapeBrushKind = cycleEnum(
+          adjusted.shapeBrushKind, CreativeShapeBrushKind::Count, direction);
+      break;
+    case CreativeToolOptionId::ShapeBrushAxis:
+      adjusted.shapeBrushAxis = cycleEnum(
+          adjusted.shapeBrushAxis, CreativeShapeBrushAxis::Count, direction);
+      break;
+    case CreativeToolOptionId::ReplaceSource: {
+      CreativeObjectKind next = adjusted.replaceSourceKind;
+      if (!nextReplaceSource(materialPalette, adjusted.replaceSourceKind,
+                             direction, next)) {
+        receipt.status = CreativeToolOptionAdjustStatus::NoAvailableValue;
+        receipt.reasonCode = "creative_tool_option_material_unavailable";
+        return receipt;
+      }
+      adjusted.replaceSourceKind = next;
+      break;
+    }
+    case CreativeToolOptionId::CloneOffsetAxis:
+      adjusted.cloneOffsetAxis = cycleEnum(
+          adjusted.cloneOffsetAxis, CreativeCloneOffsetAxis::Count, direction);
+      break;
+    case CreativeToolOptionId::CloneOffsetDistance:
+      adjusted.cloneOffsetDistance =
+          cycleEnum(adjusted.cloneOffsetDistance,
+                    CreativeCloneOffsetDistance::Count, direction);
+      break;
+    case CreativeToolOptionId::ArrayDirection:
+      adjusted.arrayDirection = cycleEnum(
+          adjusted.arrayDirection, CreativeLinearArrayDirection::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::ArrayCopyCount:
+      adjusted.arrayCopyCount = cycleEnum(
+          adjusted.arrayCopyCount, CreativeLinearArrayCopyCount::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::ArraySpacing:
+      adjusted.arraySpacing = cycleEnum(
+          adjusted.arraySpacing, CreativeLinearArraySpacing::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::Count:
+      receipt.status = CreativeToolOptionAdjustStatus::InvalidOption;
+      receipt.reasonCode = "creative_tool_option_invalid";
+      return receipt;
+  }
+
+  if (!isValidCreativeToolSettings(adjusted)) {
+    receipt.status = CreativeToolOptionAdjustStatus::InvalidSettings;
+    receipt.reasonCode = "creative_tool_option_adjusted_invalid";
+    return receipt;
+  }
+  receipt.accepted = true;
+  if (sameSettings(settings, adjusted)) {
+    receipt.status = CreativeToolOptionAdjustStatus::NoChange;
+    receipt.reasonCode = "creative_tool_option_no_change";
+    return receipt;
+  }
+  settings = adjusted;
+  receipt.changed = true;
+  receipt.status = CreativeToolOptionAdjustStatus::Applied;
+  receipt.reasonCode = "creative_tool_option_applied";
+  return receipt;
+}
+
+double creativeRotationStepDegrees(CreativeRotationStep step) noexcept {
+  constexpr std::array values{15.0, 45.0, 90.0};
+  const std::size_t index = static_cast<std::size_t>(step);
+  return index < values.size() ? values[index] : 0.0;
+}
+
+double creativeSnapIncrementMeters(CreativeSnapIncrement increment) noexcept {
+  constexpr std::array values{0.25, 0.5, 1.0, 2.0};
+  const std::size_t index = static_cast<std::size_t>(increment);
+  return index < values.size() ? values[index] : 0.0;
+}
+
+bool tryCreativeCloneOffset(const CreativeToolSettings& settings,
+                            double cellSize,
+                            CreativeToolWorldPoint& output) noexcept {
+  output = {};
+  if (!isValidCreativeToolSettings(settings) || !std::isfinite(cellSize) ||
+      cellSize <= 0.0) {
+    return false;
+  }
+  constexpr std::array distances{1.0, 2.0, 4.0, 8.0};
+  const std::size_t distanceIndex =
+      static_cast<std::size_t>(settings.cloneOffsetDistance);
+  if (distanceIndex >= distances.size()) {
+    return false;
+  }
+  const double distance = distances[distanceIndex] * cellSize;
+  switch (settings.cloneOffsetAxis) {
+    case CreativeCloneOffsetAxis::X:
+      output.x = distance;
+      return true;
+    case CreativeCloneOffsetAxis::Y:
+      output.y = distance;
+      return true;
+    case CreativeCloneOffsetAxis::Z:
+      output.z = distance;
+      return true;
+    case CreativeCloneOffsetAxis::Count:
+      return false;
+  }
+  return false;
 }
 
 }  // namespace iggy3d::creative

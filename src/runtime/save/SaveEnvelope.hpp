@@ -168,6 +168,7 @@ struct SaveCreativeDocumentVec3Record {
 
 struct SaveCreativeDocumentTransformRecord {
   SaveCreativeDocumentVec3Record position;
+  // Intrinsic X-then-Y-then-Z Euler radians; key remains transform.rotation.
   SaveCreativeDocumentVec3Record rotation;
   SaveCreativeDocumentVec3Record scale{1.0, 1.0, 1.0};
 };

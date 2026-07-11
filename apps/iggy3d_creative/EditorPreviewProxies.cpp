@@ -56,33 +56,34 @@ iggy3d::Vec3 toVec3(const cr::CreativeVec3& value) {
 }
 
 iggy3d::Transform3 toTransform3(const cr::CreativeTransform& value) {
-  return {toVec3(value.position), toVec3(value.rotation), toVec3(value.scale)};
+  return {toVec3(value.position), toVec3(value.rotationEulerRadians),
+          toVec3(value.scale)};
 }
 
 iggy3d::Aabb3 visualBoundsToLocalAabb(VisualBounds bounds,
                                       const cr::CreativeTransform& transform) {
   const iggy3d::Vec3 position = toVec3(transform.position);
-  const iggy3d::Vec3 scale = toVec3(transform.scale);
   return iggy3d::makeAabb3(
-      {(bounds.min.x - position.x) / scale.x,
-       (bounds.min.y - position.y) / scale.y,
-       (bounds.min.z - position.z) / scale.z},
-      {(bounds.max.x - position.x) / scale.x,
-       (bounds.max.y - position.y) / scale.y,
-       (bounds.max.z - position.z) / scale.z});
+      {bounds.min.x - position.x, bounds.min.y - position.y,
+       bounds.min.z - position.z},
+      {bounds.max.x - position.x, bounds.max.y - position.y,
+       bounds.max.z - position.z});
 }
 
-bool objectHasVisualRotation(const cr::CreativeObject& object) {
+bool objectHasVisualTransform(const cr::CreativeObject& object) {
   constexpr double kRotationEps = 1.0e-8;
   const cr::CreativeObjectDescriptor& descriptor = cr::describeObject(object.kind);
   if (!descriptor.hasBounds || !finiteCreativeVec3(object.transform.position) ||
-      !finiteCreativeVec3(object.transform.rotation) ||
+      !finiteCreativeVec3(object.transform.rotationEulerRadians) ||
       !finitePositiveCreativeVec3(object.transform.scale)) {
     return false;
   }
-  return std::fabs(object.transform.rotation.x) > kRotationEps ||
-         std::fabs(object.transform.rotation.y) > kRotationEps ||
-         std::fabs(object.transform.rotation.z) > kRotationEps;
+  return std::fabs(object.transform.rotationEulerRadians.x) > kRotationEps ||
+         std::fabs(object.transform.rotationEulerRadians.y) > kRotationEps ||
+         std::fabs(object.transform.rotationEulerRadians.z) > kRotationEps ||
+         std::fabs(object.transform.scale.x - 1.0) > kRotationEps ||
+         std::fabs(object.transform.scale.y - 1.0) > kRotationEps ||
+         std::fabs(object.transform.scale.z - 1.0) > kRotationEps;
 }
 
 bool validPathPoints(const std::vector<cr::CreativePathPoint>& points) {
@@ -194,7 +195,7 @@ VisualBounds axisAlignedVisualBoundsForObject(const cr::CreativeObject& object) 
 
 std::optional<iggy3d::OrientedBox> orientedVisualBoxForObject(
     const cr::CreativeObject& object) {
-  if (!objectHasVisualRotation(object)) {
+  if (!objectHasVisualTransform(object)) {
     return std::nullopt;
   }
   const VisualBounds axisAlignedBounds = axisAlignedVisualBoundsForObject(object);
@@ -337,32 +338,6 @@ std::size_t appendStandalonePreviewProxiesToScene(
     scene.room.loaded = true;
   }
   return appended;
-}
-
-void appendPathPolylineLines(
-    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& out,
-    const std::vector<cr::CreativePathPoint>& pathPoints,
-    iggy3d::RenderLineColor color,
-    float thickness,
-    cr::CreativeObjectId objectId) {
-  if (!validPathPoints(pathPoints)) {
-    return;
-  }
-  out.reserve(out.size() + pathPoints.size() - 1U);
-  for (std::size_t index = 0; index < pathPoints.size() - 1U; ++index) {
-    const cr::CreativeVec3 start = pathPoints[index].position;
-    const cr::CreativeVec3 end = pathPoints[index + 1U].position;
-    if (!pathSegmentAxisAligned(start, end)) {
-      continue;
-    }
-    iggy3d::RenderCreativeWireframeDebugLine line;
-    line.start = toVec3(start);
-    line.end = toVec3(end);
-    line.color = color;
-    line.objectId = objectId;
-    line.thickness = thickness;
-    out.push_back(line);
-  }
 }
 
 void appendStandaloneWireframeBoxEdges(

@@ -19,7 +19,10 @@ RenderReason reason(std::string_view code) {
   return {"pipeline_create_failed", "pipeline create failed"};
 }
 
-RenderReceipt baseReceipt(std::string_view result, std::string_view reasonCode) {
+RenderReceipt baseReceipt(std::string_view result,
+                          std::string_view reasonCode,
+                          std::string_view variant,
+                          FirstRoomDepthMode depthMode) {
   RenderReceipt receipt;
   appendReceiptField(receipt, "receipt_version", "1");
   appendReceiptField(receipt, "repo", "iggy3d");
@@ -27,14 +30,16 @@ RenderReceipt baseReceipt(std::string_view result, std::string_view reasonCode) 
   appendReceiptField(receipt, "packet_order", "6");
   appendReceiptField(receipt, "backend", "vulkan");
   appendReceiptField(receipt, "pipeline_family", "first_room");
-  appendReceiptField(receipt, "pipeline_variant", kFirstRoomPipelineVariant);
+  appendReceiptField(receipt, "pipeline_variant", variant);
   appendReceiptField(receipt, "pipeline_layout", "push_constants_only");
   appendReceiptField(receipt, "descriptor_set_layout_count", static_cast<std::uint64_t>(0));
   appendReceiptField(receipt, "push_constant_clip_from_model_size",
                      static_cast<std::uint64_t>(kFirstRoomPushConstantSize));
   appendReceiptField(receipt, "vertex_format", kFirstRoomVertexFormatName);
   appendReceiptField(receipt, "rendering_path", "dynamic");
-  appendReceiptField(receipt, "depth_test", "enabled");
+  appendReceiptField(receipt, "depth_test",
+                     depthMode == FirstRoomDepthMode::ReadWrite ? "enabled"
+                                                                : "disabled");
   appendReceiptField(receipt, "cull_mode", "back");
   appendReceiptField(receipt, "front_face", "counter_clockwise");
   appendReceiptField(receipt, "pipeline_created", false);
@@ -74,10 +79,15 @@ FirstRoomPipelineResult createFirstRoomPipeline(const FirstRoomPipelineCreateInf
   FirstRoomPipelineResult result;
   result.record.colorFormat = createInfo.colorFormat;
   result.record.depthFormat = createInfo.depthFormat;
+  result.record.depthMode = createInfo.depthMode;
+  result.record.variant =
+      std::string(firstRoomPipelineVariant(createInfo.depthMode));
   if (!firstRoomVertexFormatMatchesShader() ||
       !firstRoomPipelineLayoutKeyValid(createInfo.layout.key)) {
     result.reason = reason("vertex_format_mismatch");
-    result.receipt = baseReceipt("fail", result.reason.code);
+    result.receipt = baseReceipt("fail", result.reason.code,
+                                 result.record.variant,
+                                 result.record.depthMode);
     return result;
   }
 #if defined(IGGY3D_HAS_VULKAN)
@@ -85,7 +95,9 @@ FirstRoomPipelineResult createFirstRoomPipeline(const FirstRoomPipelineCreateInf
       createInfo.fragmentShader.module == VK_NULL_HANDLE ||
       createInfo.layout.layout == VK_NULL_HANDLE) {
     result.reason = reason("pipeline_create_failed");
-    result.receipt = baseReceipt("fail", result.reason.code);
+    result.receipt = baseReceipt("fail", result.reason.code,
+                                 result.record.variant,
+                                 result.record.depthMode);
     return result;
   }
 
@@ -130,8 +142,10 @@ FirstRoomPipelineResult createFirstRoomPipeline(const FirstRoomPipelineCreateInf
 
   VkPipelineDepthStencilStateCreateInfo depth{};
   depth.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-  depth.depthTestEnable = VK_TRUE;
-  depth.depthWriteEnable = VK_TRUE;
+  const bool depthEnabled =
+      createInfo.depthMode == FirstRoomDepthMode::ReadWrite;
+  depth.depthTestEnable = depthEnabled ? VK_TRUE : VK_FALSE;
+  depth.depthWriteEnable = depthEnabled ? VK_TRUE : VK_FALSE;
   depth.depthCompareOp = VK_COMPARE_OP_LESS;
 
   VkPipelineColorBlendAttachmentState colorAttachment{};
@@ -173,20 +187,25 @@ FirstRoomPipelineResult createFirstRoomPipeline(const FirstRoomPipelineCreateInf
   if (vkCreateGraphicsPipelines(createInfo.device, VK_NULL_HANDLE, 1U, &pipelineInfo, nullptr,
                                 &pipeline) != VK_SUCCESS) {
     result.reason = reason("pipeline_create_failed");
-    result.receipt = baseReceipt("fail", result.reason.code);
+    result.receipt = baseReceipt("fail", result.reason.code,
+                                 result.record.variant,
+                                 result.record.depthMode);
     return result;
   }
   result.record.pipeline = pipeline;
 #endif
   result.outcome = RenderOutcome::Ok;
   result.reason = reason("packet6_resource_ready");
-  result.receipt = baseReceipt("pass", result.reason.code);
+  result.receipt = baseReceipt("pass", result.reason.code,
+                               result.record.variant,
+                               result.record.depthMode);
   appendReceiptField(result.receipt, "pipeline_created", true);
   return result;
 }
 
 RenderReceipt destroyFirstRoomPipeline(VkDevice device, FirstRoomPipelineRecord& record) {
-  RenderReceipt receipt = baseReceipt("pass", "packet6_resource_ready");
+  RenderReceipt receipt = baseReceipt("pass", "packet6_resource_ready",
+                                      record.variant, record.depthMode);
 #if defined(IGGY3D_HAS_VULKAN)
   if (device != VK_NULL_HANDLE && record.pipeline != VK_NULL_HANDLE) {
     vkDestroyPipeline(device, record.pipeline, nullptr);

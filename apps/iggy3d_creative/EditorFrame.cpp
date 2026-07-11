@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <string>
@@ -14,11 +15,14 @@
 
 #include "EditorPlacement.hpp"
 #include "EditorEdits.hpp"
+#include "EditorGamepad.hpp"
+#include "EditorInteraction.hpp"
 #include "EditorPersistence.hpp"
 #include "EditorPicking.hpp"
 #include "EditorFrustumCull.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorPreviewProxies.hpp"
+#include "EditorVolume.hpp"
 
 namespace iggy3d_creative_app {
 
@@ -37,110 +41,15 @@ resolveCreativeEditorGroundPoint(const iggy3d::RenderCameraFrame& camera) {
   return ground;
 }
 
-[[nodiscard]] iggy3d::Vec3 resolveCreativeEditorAimCell(
-    const iggy3d::RenderCameraFrame& camera,
-    double placeCellSize) {
-  const iggy3d::creative::CreativeToolWorldPoint ground =
-      resolveCreativeEditorGroundPoint(camera);
-  return snapGroundToCellCenter(ground.x, ground.z, placeCellSize);
-}
-
-void applyCreativeEditorClickSelection(
-    iggy3d::SdlWindow& window,
-    iggy3d::creative::CreativeAppState& appState,
-    const iggy3d::RenderCameraFrame& camera,
-    std::uint32_t drawableWidth,
-    std::uint32_t drawableHeight,
-    const CreativeEditorPickFrame& pickFrame,
-    CreativeEditorState& editor,
-    bool captureMode) {
-  bool clickRequested = false;
-  float clickX = 0.0F;
-  float clickY = 0.0F;
-  if (captureMode && editor.placeMode) {
-    // Place-mode capture drops objects directly in the capture script.
-  } else if (captureMode) {
-    if (editor.frameIndex == 3U && pickFrame.haveFloorBounds) {
-      const iggy3d::Vec3 floorTopCorner{
-          pickFrame.floorBoxMin.x +
-              (pickFrame.floorBoxMax.x - pickFrame.floorBoxMin.x) * 0.85F,
-          pickFrame.floorBoxMax.y,
-          pickFrame.floorBoxMin.z +
-              (pickFrame.floorBoxMax.z - pickFrame.floorBoxMin.z) * 0.85F};
-      const ScreenPoint p = projectPointToScreen(
-          camera.clipFromWorld, floorTopCorner, drawableWidth, drawableHeight);
-      if (p.valid) {
-        clickRequested = true;
-        clickX = p.x;
-        clickY = p.y;
-      }
-    }
-  } else if (!editor.placeMode) {
-    const bool* selKeys = SDL_GetKeyboardState(nullptr);
-    const bool altHeld =
-        selKeys != nullptr && (selKeys[SDL_SCANCODE_LALT] != 0);
-    if (altHeld) {
-      window.setRelativeMouseMode(false);
-      float mx = 0.0F;
-      float my = 0.0F;
-      const SDL_MouseButtonFlags buttons = SDL_GetMouseState(&mx, &my);
-      const bool leftDown = (buttons & SDL_BUTTON_LMASK) != 0U;
-      if (leftDown && !editor.selectionButtonDown) {
-        editor.selectionButtonDown = true;
-        clickRequested = true;
-        const std::uint32_t logicalW = window.eventState().windowWidth;
-        const std::uint32_t logicalH = window.eventState().windowHeight;
-        const float scaleX =
-            logicalW > 0 ? static_cast<float>(drawableWidth) /
-                               static_cast<float>(logicalW)
-                         : 1.0F;
-        const float scaleY =
-            logicalH > 0 ? static_cast<float>(drawableHeight) /
-                               static_cast<float>(logicalH)
-                         : 1.0F;
-        clickX = mx * scaleX;
-        clickY = my * scaleY;
-      } else if (!leftDown) {
-        editor.selectionButtonDown = false;
-      }
-    } else {
-      window.setRelativeMouseMode(true);
-      editor.selectionButtonDown = false;
-    }
-  } else {
-    editor.selectionButtonDown = false;
-  }
-
-  if (clickRequested) {
-    const WorldRay ray =
-        worldRayFromPixel(camera, clickX, clickY, drawableWidth, drawableHeight);
-    const ObjectVisualPickResult pick = pickNearestVisualBoundsObject(
-        pickFrame.objectPickCandidates, ray);
-    const iggy3d::creative::CreativeObjectId pickedId = pick.objectId;
-    SDL_Log("iggy3d_creative: WORLD_PICK click=(%.1f, %.1f) rayValid=%d "
-            "tested=%llu hits=%llu pickedObjectId=%llu entryDistance=%.3f",
-            clickX, clickY, pick.rayValid ? 1 : 0,
-            static_cast<unsigned long long>(pick.testedCount),
-            static_cast<unsigned long long>(pick.hitCount),
-            static_cast<unsigned long long>(pickedId), pick.entryDistance);
-    iggy3d::creative::CreativeToolInputPacket packet;
-    packet.kind = iggy3d::creative::CreativeToolInputKind::PointerPress;
-    packet.pointer.button = iggy3d::creative::CreativeToolPointerButton::Primary;
-    if ((SDL_GetModState() & SDL_KMOD_SHIFT) != 0U) {
-      packet.pointer.modifiers |=
-          iggy3d::creative::kCreativeToolModifierShift;
-    }
-    if (pickedId != iggy3d::creative::kInvalidObjectId) {
-      packet.pointer.target =
-          iggy3d::creative::TargetRef{
-              static_cast<iggy3d::creative::Id>(pickedId)};
-    }
-    (void)appState.facade.dispatchToolInput(packet);
-  }
-}
-
 namespace creative = iggy3d::creative;
 namespace {
+
+static_assert(
+    static_cast<std::size_t>(creative::CreativeInputActionId::HotbarSlot9) -
+            static_cast<std::size_t>(
+                creative::CreativeInputActionId::HotbarSlot1) +
+        1U ==
+    creative::kCreativeHotbarSlotCount);
 
 void setSdlKey(creative::CreativeInputFrame& frame,
                creative::CreativeInputKey key,
@@ -153,7 +62,8 @@ void setSdlKey(creative::CreativeInputFrame& frame,
 [[nodiscard]] creative::CreativeInputFrame makeCreativeInputFrame(
     const bool* keys,
     SDL_Keymod modifiers,
-    creative::CreativeInputContext context) {
+    creative::CreativeInputContext context,
+    const creative::CreativeControllerFrame& controller) {
   creative::CreativeInputFrame frame;
   frame.context = context;
   if ((modifiers & SDL_KMOD_SHIFT) != 0U) {
@@ -172,8 +82,21 @@ void setSdlKey(creative::CreativeInputFrame& frame,
   setSdlKey(frame, creative::CreativeInputKey::Digit1, keys, SDL_SCANCODE_1);
   setSdlKey(frame, creative::CreativeInputKey::Digit2, keys, SDL_SCANCODE_2);
   setSdlKey(frame, creative::CreativeInputKey::Digit3, keys, SDL_SCANCODE_3);
-  setSdlKey(frame, creative::CreativeInputKey::B, keys, SDL_SCANCODE_B);
+  setSdlKey(frame, creative::CreativeInputKey::Digit4, keys, SDL_SCANCODE_4);
+  setSdlKey(frame, creative::CreativeInputKey::Digit5, keys, SDL_SCANCODE_5);
+  setSdlKey(frame, creative::CreativeInputKey::Digit6, keys, SDL_SCANCODE_6);
+  setSdlKey(frame, creative::CreativeInputKey::Digit7, keys, SDL_SCANCODE_7);
+  setSdlKey(frame, creative::CreativeInputKey::Digit8, keys, SDL_SCANCODE_8);
+  setSdlKey(frame, creative::CreativeInputKey::Digit9, keys, SDL_SCANCODE_9);
+  setSdlKey(frame, creative::CreativeInputKey::C, keys, SDL_SCANCODE_C);
   setSdlKey(frame, creative::CreativeInputKey::D, keys, SDL_SCANCODE_D);
+  setSdlKey(frame, creative::CreativeInputKey::E, keys, SDL_SCANCODE_E);
+  setSdlKey(frame, creative::CreativeInputKey::N, keys, SDL_SCANCODE_N);
+  setSdlKey(frame, creative::CreativeInputKey::O, keys, SDL_SCANCODE_O);
+  setSdlKey(frame, creative::CreativeInputKey::R, keys, SDL_SCANCODE_R);
+  setSdlKey(frame, creative::CreativeInputKey::S, keys, SDL_SCANCODE_S);
+  setSdlKey(frame, creative::CreativeInputKey::V, keys, SDL_SCANCODE_V);
+  setSdlKey(frame, creative::CreativeInputKey::X, keys, SDL_SCANCODE_X);
   setSdlKey(frame, creative::CreativeInputKey::Z, keys, SDL_SCANCODE_Z);
   setSdlKey(frame, creative::CreativeInputKey::LeftBracket, keys,
             SDL_SCANCODE_LEFTBRACKET);
@@ -187,12 +110,20 @@ void setSdlKey(creative::CreativeInputFrame& frame,
             SDL_SCANCODE_DELETE);
   setSdlKey(frame, creative::CreativeInputKey::Backspace, keys,
             SDL_SCANCODE_BACKSPACE);
-  setSdlKey(frame, creative::CreativeInputKey::F5, keys, SDL_SCANCODE_F5);
-  setSdlKey(frame, creative::CreativeInputKey::F6, keys, SDL_SCANCODE_F6);
-  setSdlKey(frame, creative::CreativeInputKey::F9, keys, SDL_SCANCODE_F9);
+  setSdlKey(frame, creative::CreativeInputKey::Enter, keys,
+            SDL_SCANCODE_RETURN);
+  setSdlKey(frame, creative::CreativeInputKey::Escape, keys,
+            SDL_SCANCODE_ESCAPE);
+  setSdlKey(frame, creative::CreativeInputKey::ArrowUp, keys,
+            SDL_SCANCODE_UP);
+  setSdlKey(frame, creative::CreativeInputKey::ArrowDown, keys,
+            SDL_SCANCODE_DOWN);
+  setSdlKey(frame, creative::CreativeInputKey::ArrowLeft, keys,
+            SDL_SCANCODE_LEFT);
+  setSdlKey(frame, creative::CreativeInputKey::ArrowRight, keys,
+            SDL_SCANCODE_RIGHT);
   setSdlKey(frame, creative::CreativeInputKey::W, keys, SDL_SCANCODE_W);
   setSdlKey(frame, creative::CreativeInputKey::A, keys, SDL_SCANCODE_A);
-  setSdlKey(frame, creative::CreativeInputKey::S, keys, SDL_SCANCODE_S);
   setSdlKey(frame, creative::CreativeInputKey::Space, keys,
             SDL_SCANCODE_SPACE);
   setSdlKey(frame, creative::CreativeInputKey::LeftControl, keys,
@@ -211,6 +142,49 @@ void setSdlKey(creative::CreativeInputFrame& frame,
             SDL_SCANCODE_LGUI);
   setSdlKey(frame, creative::CreativeInputKey::RightCommand, keys,
             SDL_SCANCODE_RGUI);
+  creative::setCreativeInputKey(frame,
+                                creative::CreativeInputKey::GamepadInventory,
+                                creative::creativeControllerButtonDown(
+                                    controller,
+                                    creative::CreativeControllerButton::North));
+  creative::setCreativeInputKey(frame,
+                                creative::CreativeInputKey::GamepadDpadUp,
+                                creative::creativeControllerButtonDown(
+                                    controller,
+                                    creative::CreativeControllerButton::DpadUp));
+  creative::setCreativeInputKey(frame,
+                                creative::CreativeInputKey::GamepadDpadDown,
+                                creative::creativeControllerButtonDown(
+                                    controller,
+                                    creative::CreativeControllerButton::DpadDown));
+  creative::setCreativeInputKey(frame,
+                                creative::CreativeInputKey::GamepadConfirm,
+                                creative::creativeControllerButtonDown(
+                                    controller,
+                                    creative::CreativeControllerButton::South));
+  creative::setCreativeInputKey(frame,
+                                creative::CreativeInputKey::GamepadCancel,
+                                creative::creativeControllerButtonDown(
+                                    controller,
+                                    creative::CreativeControllerButton::East));
+  creative::setCreativeInputKey(frame,
+                                creative::CreativeInputKey::GamepadDpadLeft,
+                                creative::creativeControllerButtonDown(
+                                    controller,
+                                    creative::CreativeControllerButton::DpadLeft));
+  creative::setCreativeInputKey(frame,
+                                creative::CreativeInputKey::GamepadDpadRight,
+                                creative::creativeControllerButtonDown(
+                                    controller,
+                                    creative::CreativeControllerButton::DpadRight));
+  creative::setCreativeInputKey(
+      frame, creative::CreativeInputKey::GamepadLeftShoulder,
+      creative::creativeControllerButtonDown(
+          controller, creative::CreativeControllerButton::LeftShoulder));
+  creative::setCreativeInputKey(
+      frame, creative::CreativeInputKey::GamepadRightShoulder,
+      creative::creativeControllerButtonDown(
+          controller, creative::CreativeControllerButton::RightShoulder));
   return frame;
 }
 
@@ -222,6 +196,43 @@ void setSdlKey(creative::CreativeInputFrame& frame,
          !creative::creativeInputKeyConsumed(routedInput, key);
 }
 
+[[nodiscard]] bool routedActionPresent(
+    const creative::CreativeInputRouteResult& routedInput,
+    creative::CreativeInputActionId action) noexcept {
+  return std::any_of(
+      routedInput.actionEvents().begin(), routedInput.actionEvents().end(),
+      [action](const creative::CreativeInputActionEvent& event) {
+        return event.action == action;
+      });
+}
+
+[[nodiscard]] creative::CreativeInputContext resolveInputContext(
+    bool captureMode,
+    const CreativeEditorState& editor) noexcept {
+  struct Candidate {
+    bool active = false;
+    creative::CreativeInputContext context =
+        creative::CreativeInputContext::EditorViewport;
+  };
+  const std::array candidates{
+      Candidate{captureMode, creative::CreativeInputContext::Capture},
+      Candidate{editor.clipboardPaste.active,
+                creative::CreativeInputContext::ClipboardPreview},
+      Candidate{editor.catalog.model.open,
+                creative::CreativeInputContext::Catalog},
+      Candidate{editor.catalog.toolWheel.open,
+                creative::CreativeInputContext::ToolWheel},
+      Candidate{editor.toolOptions.open,
+                creative::CreativeInputContext::ToolOptions},
+  };
+  const auto active = std::find_if(
+      candidates.begin(), candidates.end(),
+      [](const Candidate& candidate) { return candidate.active; });
+  return active == candidates.end()
+             ? creative::CreativeInputContext::EditorViewport
+             : active->context;
+}
+
 }  // namespace
 
 void applyCreativeEditorCommandInput(
@@ -230,59 +241,147 @@ void applyCreativeEditorCommandInput(
     CreativeEditorState& editor,
     const std::filesystem::path& saveRoot,
     const std::string& saveId) {
+  if (!routedInput.actionEvents().empty()) {
+    finalizeCreativeMaterialStroke(appState, editor,
+                                   "creative_material_stroke_command");
+  }
+  if (routedInput.context ==
+      creative::CreativeInputContext::ClipboardPreview) {
+    for (const creative::CreativeInputActionEvent& event :
+         routedInput.actionEvents()) {
+      switch (event.action) {
+        case creative::CreativeInputActionId::ConfirmActiveTool:
+          static_cast<void>(requestCreativeEditorClipboardPasteCommit(
+              editor.clipboardPaste));
+          break;
+        case creative::CreativeInputActionId::CancelActiveTool:
+          static_cast<void>(cancelCreativeEditorClipboardPastePreview(
+              editor.clipboardPaste, "clipboard_preview_cancel"));
+          break;
+        default:
+          break;
+      }
+    }
+    return;
+  }
+  if (routedInput.context != creative::CreativeInputContext::EditorViewport) {
+    return;
+  }
   for (const creative::CreativeInputActionEvent& event :
        routedInput.actionEvents()) {
+    if (editor.clipboardPaste.active) {
+      switch (event.action) {
+        case creative::CreativeInputActionId::ConfirmActiveTool:
+          static_cast<void>(requestCreativeEditorClipboardPasteCommit(
+              editor.clipboardPaste));
+          break;
+        case creative::CreativeInputActionId::CancelActiveTool:
+          static_cast<void>(cancelCreativeEditorClipboardPastePreview(
+              editor.clipboardPaste, "clipboard_preview_cancel"));
+          break;
+        default:
+          break;
+      }
+      continue;
+    }
     switch (event.action) {
-      case creative::CreativeInputActionId::SelectTool: {
-        editor.placeMode = false;
-        const bool ok = appState.facade.setActiveTool(creative::Tool::Select);
-        SDL_Log("iggy3d_creative: setActiveTool(Select) accepted=%d placeMode=0",
-                ok ? 1 : 0);
+      case creative::CreativeInputActionId::HotbarSlot1:
+      case creative::CreativeInputActionId::HotbarSlot2:
+      case creative::CreativeInputActionId::HotbarSlot3:
+      case creative::CreativeInputActionId::HotbarSlot4:
+      case creative::CreativeInputActionId::HotbarSlot5:
+      case creative::CreativeInputActionId::HotbarSlot6:
+      case creative::CreativeInputActionId::HotbarSlot7:
+      case creative::CreativeInputActionId::HotbarSlot8:
+      case creative::CreativeInputActionId::HotbarSlot9: {
+        const std::size_t slot =
+            static_cast<std::size_t>(event.action) -
+            static_cast<std::size_t>(
+                creative::CreativeInputActionId::HotbarSlot1);
+        static_cast<void>(
+            selectCreativeEditorHotbarSlot(appState, editor, slot));
         break;
       }
-      case creative::CreativeInputActionId::MoveTool: {
-        editor.placeMode = false;
-        const bool ok = appState.facade.setActiveTool(creative::Tool::Move);
-        SDL_Log("iggy3d_creative: setActiveTool(Move) accepted=%d placeMode=0",
-                ok ? 1 : 0);
+      case creative::CreativeInputActionId::ToggleCatalog:
+      case creative::CreativeInputActionId::CatalogPrevious:
+      case creative::CreativeInputActionId::CatalogNext:
+      case creative::CreativeInputActionId::CatalogPreviousVariant:
+      case creative::CreativeInputActionId::CatalogNextVariant:
+      case creative::CreativeInputActionId::CatalogPreviousPage:
+      case creative::CreativeInputActionId::CatalogNextPage:
+      case creative::CreativeInputActionId::CatalogConfirm:
+      case creative::CreativeInputActionId::CatalogClose:
+      case creative::CreativeInputActionId::ToggleToolWheel:
+      case creative::CreativeInputActionId::ToolWheelPrevious:
+      case creative::CreativeInputActionId::ToolWheelNext:
+      case creative::CreativeInputActionId::ToolWheelConfirm:
+      case creative::CreativeInputActionId::ToolWheelClose:
+      case creative::CreativeInputActionId::ToolOptionsPrevious:
+      case creative::CreativeInputActionId::ToolOptionsNext:
+      case creative::CreativeInputActionId::ToolOptionsDecrease:
+      case creative::CreativeInputActionId::ToolOptionsIncrease:
+      case creative::CreativeInputActionId::ToolOptionsConfirm:
+      case creative::CreativeInputActionId::ToolOptionsClose:
         break;
-      }
-      case creative::CreativeInputActionId::EnterPlaceMode:
-        editor.placeMode = true;
-        SDL_Log("iggy3d_creative: placeMode=1 brush='%s'",
-                std::string(creative::toString(editor.placeBrush)).c_str());
+      case creative::CreativeInputActionId::ConfirmActiveTool:
+        static_cast<void>(confirmCreativeEditorHeldItem(
+            appState, editor, "keyboard_confirm"));
         break;
-      case creative::CreativeInputActionId::CycleBrush:
-        editor.placeBrush = nextBrushKind(editor.brushPalette, editor.placeBrush);
-        SDL_Log("iggy3d_creative: brush cycled -> '%s'",
-                std::string(creative::toString(editor.placeBrush)).c_str());
+      case creative::CreativeInputActionId::CancelActiveTool:
+        static_cast<void>(cancelCreativeEditorHeldItem(appState, editor));
         break;
       case creative::CreativeInputActionId::DeleteSelection:
-        (void)deleteSelectedObject(
-            appState,
-            event.trigger == creative::CreativeInputKey::Backspace
-                ? "backspace_key"
-                : "delete_key",
-            &editor.undoStack);
+        if (editor.volume.active) {
+          static_cast<void>(applyCreativeEditorVolumeOperationWithHistory(
+              appState, editor.volume, editor.placeBrush,
+              creative::CreativeVolumeOperationKind::Erase,
+              editor.toolSettings,
+              event.trigger == creative::CreativeInputKey::Backspace
+                  ? "volume_backspace_erase"
+                  : "volume_delete_erase"));
+        } else {
+          (void)deleteSelectedObject(
+              appState,
+              event.trigger == creative::CreativeInputKey::Backspace
+                  ? "backspace_key"
+                  : "delete_key",
+              &appState.history);
+        }
         break;
       case creative::CreativeInputActionId::Undo:
-        (void)undoLastSnapshot(appState, editor.undoStack, "keyboard_undo");
+        (void)undoLastEdit(appState, "keyboard_undo");
+        break;
+      case creative::CreativeInputActionId::Redo:
+        (void)redoLastEdit(appState, "keyboard_redo");
+        break;
+      case creative::CreativeInputActionId::CopySelection:
+        (void)copySelectionToClipboard(appState, "keyboard_copy");
+        break;
+      case creative::CreativeInputActionId::CutSelection:
+        (void)cutSelectionToClipboardWithHistory(appState, "keyboard_cut");
+        break;
+      case creative::CreativeInputActionId::PasteClipboard:
+        static_cast<void>(beginCreativeEditorClipboardPastePreview(
+            appState.clipboard, editor.clipboardPaste, "keyboard_paste"));
         break;
       case creative::CreativeInputActionId::DuplicateSelection:
         (void)duplicateSelectedObjectsWithUndo(
-            appState, editor.undoStack,
+            appState, appState.history,
             creative::CreativeDuplicateCommandRequest{}, "keyboard_duplicate");
         break;
       case creative::CreativeInputActionId::RotateYawNegative:
       case creative::CreativeInputActionId::RotateYawPositive: {
         creative::CreativeTransformCommandRequest request;
         request.kind = creative::CreativeTransformCommandKind::RotateYaw;
+        const double rotationStep =
+            creative::creativeRotationStepDegrees(
+                editor.toolSettings.rotationStep);
         request.yawDegrees =
             event.action == creative::CreativeInputActionId::RotateYawNegative
-                ? -15.0
-                : 15.0;
+                ? -rotationStep
+                : rotationStep;
         (void)transformSelectedObjectsWithUndo(
-            appState, editor.undoStack, request,
+            appState, appState.history, request,
             request.yawDegrees < 0.0 ? "keyboard_rotate_yaw_negative"
                                      : "keyboard_rotate_yaw_positive");
         break;
@@ -296,7 +395,7 @@ void applyCreativeEditorCommandInput(
                                                                         : 1.1;
         request.scaleFactor = {factor, factor, factor};
         (void)transformSelectedObjectsWithUndo(
-            appState, editor.undoStack, request,
+            appState, appState.history, request,
             factor < 1.0 ? "keyboard_scale_down" : "keyboard_scale_up");
         break;
       }
@@ -304,18 +403,20 @@ void applyCreativeEditorCommandInput(
         const iggy3d::CreativeWorldSaveResult saveResult =
             saveStandaloneScene(appState.facade, saveRoot, saveId);
         if (saveResult.accepted && saveResult.saved) {
-          clearUndoStack(editor.undoStack, "save_success");
+          clearEditHistory(appState.history, "save_success");
         }
         break;
       }
       case creative::CreativeInputActionId::NewDocument:
         clearToBlankScene(appState);
-        clearUndoStack(editor.undoStack, "new_clear");
+        clearEditHistory(appState.history, "new_clear");
+        creative::clearCreativeVolumeSelection(editor.volume.selection);
         break;
       case creative::CreativeInputActionId::Load: {
         const bool loaded = loadStandaloneScene(appState, saveRoot, saveId);
         if (loaded) {
-          clearUndoStack(editor.undoStack, "load_success");
+          clearEditHistory(appState.history, "load_success");
+          creative::clearCreativeVolumeSelection(editor.volume.selection);
         }
         break;
       }
@@ -326,17 +427,29 @@ void applyCreativeEditorCommandInput(
 namespace {
 
 constexpr float kMouseSensitivity = 0.12F;
+constexpr float kGamepadLookSensitivity = 2.4F;
+
+[[nodiscard]] std::int32_t wheelSteps(float wheelY) noexcept {
+  if (!std::isfinite(wheelY) || std::fabs(wheelY) <= 1.0e-4F) {
+    return 0;
+  }
+  const float magnitude = std::max(1.0F, std::round(std::fabs(wheelY)));
+  return static_cast<std::int32_t>(std::copysign(magnitude, wheelY));
+}
 
 }  // namespace
 
 CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
     iggy3d::SdlWindow& window,
     iggy3d::VulkanBackend& backend,
+    CreativeEditorGamepad& gamepad,
     CreativeEditorState& editor,
     bool captureMode) {
   CreativeEditorFrameInputResult result;
 
   window.pollEvents();
+  result.monotonicTimeNanoseconds = SDL_GetTicksNS();
+  result.windowFocused = window.eventState().focused;
   if (window.eventState().quitRequested) {
     result.keepRunning = false;
     return result;
@@ -367,15 +480,64 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
   }
 
   const bool* keys = SDL_GetKeyboardState(nullptr);
+  const creative::CreativeControllerSample controllerSample = gamepad.sample();
+  const creative::CreativeControllerFrame controller =
+      creative::stepCreativeControllerInput(editor.controllerInputState,
+                                            controllerSample);
+  editor.controllerInputState = controller.next;
+  const creative::CreativeInputContext inputContext =
+      resolveInputContext(captureMode, editor);
   const creative::CreativeInputFrame inputFrame = makeCreativeInputFrame(
-      keys, SDL_GetModState(),
-      captureMode ? creative::CreativeInputContext::Capture
-                  : creative::CreativeInputContext::EditorViewport);
+      keys, SDL_GetModState(), inputContext, controller);
   result.routedInput =
       creative::routeCreativeInput(editor.inputRouterState, inputFrame);
+  result.modifiers = inputFrame.modifiers;
+  result.toolWheelDirectionX = creative::creativeControllerAxis(
+      controller, creative::CreativeControllerAxis::LookX);
+  result.toolWheelDirectionY = creative::creativeControllerAxis(
+      controller, creative::CreativeControllerAxis::LookY);
+  creative::CreativeWorldInputSample worldInput;
+  if (!captureMode && result.windowFocused) {
+    const SDL_MouseButtonFlags buttons = SDL_GetMouseState(nullptr, nullptr);
+    creative::setCreativeWorldAction(
+        worldInput, creative::CreativeWorldActionId::Primary,
+        (buttons & SDL_BUTTON_LMASK) != 0U ||
+            creative::creativeControllerButtonDown(
+                controller, creative::CreativeControllerButton::RightTrigger));
+    creative::setCreativeWorldAction(
+        worldInput, creative::CreativeWorldActionId::Secondary,
+        (buttons & SDL_BUTTON_RMASK) != 0U ||
+            creative::creativeControllerButtonDown(
+                controller, creative::CreativeControllerButton::LeftTrigger));
+    creative::setCreativeWorldAction(
+        worldInput, creative::CreativeWorldActionId::Pick,
+        (buttons & SDL_BUTTON_MMASK) != 0U ||
+            creative::creativeControllerButtonDown(
+                controller, creative::CreativeControllerButton::DpadLeft));
+    creative::setCreativeWorldAction(
+        worldInput, creative::CreativeWorldActionId::HotbarPrevious,
+        creative::creativeControllerButtonDown(
+            controller, creative::CreativeControllerButton::LeftShoulder));
+    creative::setCreativeWorldAction(
+        worldInput, creative::CreativeWorldActionId::HotbarNext,
+        creative::creativeControllerButtonDown(
+            controller, creative::CreativeControllerButton::RightShoulder));
+    worldInput.hotbarWheelSteps = wheelSteps(window.eventState().mouseWheelY);
+  }
+  result.worldActions = creative::routeCreativeWorldActions(
+      editor.interaction.actionRouter, worldInput);
   iggy3d::ProductCreativeFlyInput flyInput;
-  if (!captureMode) {
-    const float moveX =
+  const bool viewportNavigationContext =
+      inputContext == creative::CreativeInputContext::EditorViewport ||
+      inputContext == creative::CreativeInputContext::ClipboardPreview;
+  const bool viewportNavigationActive =
+      viewportNavigationContext &&
+      !routedActionPresent(result.routedInput,
+                           creative::CreativeInputActionId::ToggleCatalog) &&
+      !routedActionPresent(result.routedInput,
+                           creative::CreativeInputActionId::ToggleToolWheel);
+  if (viewportNavigationActive) {
+    const float keyboardMoveX =
         (navigationKeyDown(inputFrame, result.routedInput,
                            creative::CreativeInputKey::D)
              ? 1.0F
@@ -384,7 +546,7 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
                            creative::CreativeInputKey::A)
              ? 1.0F
              : 0.0F);
-    const float moveY =
+    const float keyboardMoveY =
         (navigationKeyDown(inputFrame, result.routedInput,
                            creative::CreativeInputKey::W)
              ? 1.0F
@@ -393,29 +555,58 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
                            creative::CreativeInputKey::S)
              ? 1.0F
              : 0.0F);
+    const bool ascend = navigationKeyDown(
+                            inputFrame, result.routedInput,
+                            creative::CreativeInputKey::Space) ||
+                        creative::creativeControllerButtonDown(
+                            controller,
+                            creative::CreativeControllerButton::South);
+    const bool descend = navigationKeyDown(
+                             inputFrame, result.routedInput,
+                             creative::CreativeInputKey::LeftShift) ||
+                         navigationKeyDown(
+                             inputFrame, result.routedInput,
+                             creative::CreativeInputKey::RightShift) ||
+                         creative::creativeControllerButtonDown(
+                             controller,
+                             creative::CreativeControllerButton::East);
     const float moveZ =
-        (navigationKeyDown(inputFrame, result.routedInput,
-                           creative::CreativeInputKey::Space)
-             ? 1.0F
-             : 0.0F) -
-        (navigationKeyDown(inputFrame, result.routedInput,
-                           creative::CreativeInputKey::LeftControl)
-             ? 1.0F
-             : 0.0F);
-    flyInput.moveX = moveX;
-    flyInput.moveY = moveY;
+        (ascend ? 1.0F : 0.0F) - (descend ? 1.0F : 0.0F);
+    flyInput.moveX =
+        std::clamp(keyboardMoveX +
+                       creative::creativeControllerAxis(
+                           controller, creative::CreativeControllerAxis::MoveX),
+                   -1.0F, 1.0F);
+    flyInput.moveY =
+        std::clamp(keyboardMoveY +
+                       creative::creativeControllerAxis(
+                           controller, creative::CreativeControllerAxis::MoveY),
+                   -1.0F, 1.0F);
     flyInput.moveZ = moveZ;
-    flyInput.sprinting = navigationKeyDown(
-        inputFrame, result.routedInput, creative::CreativeInputKey::LeftShift);
+    flyInput.sprinting =
+        navigationKeyDown(inputFrame, result.routedInput,
+                          creative::CreativeInputKey::LeftControl) ||
+        navigationKeyDown(inputFrame, result.routedInput,
+                          creative::CreativeInputKey::RightControl) ||
+        creative::creativeControllerButtonDown(
+            controller, creative::CreativeControllerButton::LeftStick);
   }
 
   float mouseDx = 0.0F;
   float mouseDy = 0.0F;
   SDL_GetRelativeMouseState(&mouseDx, &mouseDy);
-  if (!captureMode) {
-    editor.yawDegrees += mouseDx * kMouseSensitivity;
+  if (viewportNavigationActive) {
+    editor.yawDegrees += mouseDx * kMouseSensitivity +
+                         creative::creativeControllerAxis(
+                             controller,
+                             creative::CreativeControllerAxis::LookX) *
+                             kGamepadLookSensitivity;
     editor.pitchDegrees = std::clamp(
-        editor.pitchDegrees - mouseDy * kMouseSensitivity, -80.0F, 80.0F);
+        editor.pitchDegrees - mouseDy * kMouseSensitivity -
+            creative::creativeControllerAxis(
+                controller, creative::CreativeControllerAxis::LookY) *
+                kGamepadLookSensitivity,
+        -80.0F, 80.0F);
   }
   flyInput.cameraYawDegrees = editor.yawDegrees;
   flyInput.cameraPitchDegrees = editor.pitchDegrees;
@@ -489,42 +680,6 @@ CreativeEditorPickFrame buildCreativeEditorPickFrame(
     }
   }
   return frame;
-}
-
-void applyCreativeEditorPlacementInput(
-    iggy3d::SdlWindow& window,
-    iggy3d::creative::CreativeAppState& appState,
-    CreativeEditorState& editor,
-    iggy3d::Vec3 aimCellCenter,
-    bool captureMode) {
-  if (!editor.placeMode || captureMode) {
-    return;
-  }
-
-  const bool* plKeys = SDL_GetKeyboardState(nullptr);
-  const bool altHeld =
-      plKeys != nullptr && (plKeys[SDL_SCANCODE_LALT] != 0);
-  if (altHeld) {
-    window.setRelativeMouseMode(false);
-    float mx = 0.0F;
-    float my = 0.0F;
-    const SDL_MouseButtonFlags buttons = SDL_GetMouseState(&mx, &my);
-    const bool lDown = (buttons & SDL_BUTTON_LMASK) != 0U;
-    if (lDown && !editor.placeButtonDown) {
-      editor.placeButtonDown = true;
-      (void)placeBrushObjectWithUndo(appState.facade,
-                                     editor.undoStack,
-                                     editor.placeBrush,
-                                     aimCellCenter,
-                                     ++editor.placedCount,
-                                     "place_interactive");
-    } else if (!lDown) {
-      editor.placeButtonDown = false;
-    }
-  } else {
-    window.setRelativeMouseMode(true);
-    editor.placeButtonDown = false;
-  }
 }
 
 CreativeEditorSelectionFrame resolveCreativeEditorSelectionFrame(

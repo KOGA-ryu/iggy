@@ -1,0 +1,607 @@
+#include "app/iggy3d/creative/tools/Tools.hpp"
+#include "app/iggy3d/creative/tools/Transform.hpp"
+#include "app/iggy3d/creative/input/Interaction.hpp"
+
+#include <array>
+#include <cmath>
+#include <cstdlib>
+#include <iostream>
+#include <numbers>
+#include <string_view>
+
+namespace {
+namespace cr = iggy3d::creative;
+
+bool expect(bool condition, std::string_view message) {
+  if (!condition) {
+    std::cerr << "FAIL: " << message << '\n';
+  }
+  return condition;
+}
+
+cr::CreativeToolInputPacket pointerInput(cr::CreativeToolInputKind kind,
+                                         double x = 10.0,
+                                         double y = 20.0) {
+  cr::CreativeToolInputPacket input;
+  input.kind = kind;
+  input.pointer.x = x;
+  input.pointer.y = y;
+  input.pointer.button = cr::CreativeToolPointerButton::Primary;
+  input.pointer.target.value = 42;
+  return input;
+}
+
+bool defaultStateUsesSelect() {
+  const cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
+
+  return expect(state.activeTool == cr::Tool::Select,
+                "default active tool select") &&
+         expect(!state.measurementActive, "default measurement inactive");
+}
+
+bool changingActiveToolWorks() {
+  cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
+  bool ok = true;
+  const cr::Tool tools[] = {cr::Tool::Move,
+                            cr::Tool::Measure,
+                            cr::Tool::Navigate,
+                            cr::Tool::Select};
+  for (const cr::Tool tool : tools) {
+    ok = expect(cr::setActiveTool(state, tool), "active tool changed") && ok;
+    ok = expect(state.activeTool == tool, "active tool stored") && ok;
+  }
+  return ok;
+}
+
+bool sameToolActivationIsNoChange() {
+  cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
+  const bool changed = cr::setActiveTool(state, cr::Tool::Select);
+
+  return expect(!changed, "same active tool no change") &&
+         expect(state.activeTool == cr::Tool::Select,
+                "same active tool remains select");
+}
+
+bool pointerMoveEmitsPreviewIntent() {
+  cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
+  const cr::CreativeToolDispatchReceipt receipt =
+      cr::dispatchToolInput(state,
+                            pointerInput(cr::CreativeToolInputKind::PointerMove));
+
+  return expect(receipt.accepted, "preview accepted") &&
+         expect(receipt.emittedIntentCount == 1U, "preview intent count") &&
+         expect(receipt.intents.size() == 1U, "preview intent size") &&
+         expect(receipt.intents[0].kind ==
+                    cr::CreativeToolIntentKind::PreviewPointer,
+                "preview intent kind") &&
+         expect(receipt.activeToolBefore == cr::Tool::Select,
+                "preview tool before") &&
+         expect(receipt.activeToolAfter == cr::Tool::Select,
+                "preview tool after");
+}
+
+bool selectPressEmitsSelectObjectCandidate() {
+  cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
+  const cr::CreativeToolDispatchReceipt receipt =
+      cr::dispatchToolInput(state,
+                            pointerInput(cr::CreativeToolInputKind::PointerPress));
+
+  return expect(receipt.accepted, "select press accepted") &&
+         expect(receipt.inputKind == cr::CreativeToolInputKind::PointerPress,
+                "select press input kind") &&
+         expect(receipt.emittedIntentCount == 1U, "select press count") &&
+         expect(receipt.intents[0].kind ==
+                    cr::CreativeToolIntentKind::SelectObjectCandidate,
+                "select press intent") &&
+         expect(receipt.intents[0].pointer.target.value == 42U,
+                "select press target forwarded");
+}
+
+bool movePressSelectsAndBeginsDrag() {
+  // TV1-G: a Move-tool press selects (TV1-C) AND begins a drag (TD-6).
+  cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
+  const bool toolChanged = cr::setActiveTool(state, cr::Tool::Move);
+
+  const cr::CreativeToolDispatchReceipt receipt =
+      cr::dispatchToolInput(state,
+                            pointerInput(cr::CreativeToolInputKind::PointerPress));
+
+  return expect(toolChanged, "move setup changed tool") &&
+         expect(receipt.accepted, "move press accepted") &&
+         expect(receipt.activeToolBefore == cr::Tool::Move,
+                "move press tool before") &&
+         expect(receipt.activeToolAfter == cr::Tool::Move,
+                "move press tool after") &&
+         expect(receipt.emittedIntentCount == 2U, "move press count") &&
+         expect(receipt.intents[0].kind ==
+                    cr::CreativeToolIntentKind::SelectObjectCandidate,
+                "move press select intent") &&
+         expect(receipt.intents[1].kind ==
+                    cr::CreativeToolIntentKind::BeginMove,
+                "move press begin-move intent") &&
+         expect(receipt.intents[0].pointer.target.value == 42U,
+                "move press select target forwarded") &&
+         expect(receipt.intents[1].pointer.target.value == 42U,
+                "move press begin target forwarded") &&
+         expect(state.moveDragActive, "move press activates drag") &&
+         expect(state.moveDragTarget.value == 42U, "move press records target") &&
+         expect(receipt.message == "move_drag_begin", "move press message");
+}
+
+bool moveDragPreviewCommitLifecycle() {
+  // Press -> Move (preview) -> Release (commit) drives the drag state machine.
+  cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
+  static_cast<void>(cr::setActiveTool(state, cr::Tool::Move));
+  static_cast<void>(cr::dispatchToolInput(
+      state, pointerInput(cr::CreativeToolInputKind::PointerPress)));
+
+  const cr::CreativeToolDispatchReceipt preview = cr::dispatchToolInput(
+      state, pointerInput(cr::CreativeToolInputKind::PointerMove, 30.0, 40.0));
+  const bool previewOk =
+      expect(preview.emittedIntentCount == 1U, "drag preview count") &&
+      expect(preview.intents[0].kind ==
+                 cr::CreativeToolIntentKind::PreviewMove,
+             "drag preview intent") &&
+      expect(preview.message == "move_preview", "drag preview message") &&
+      expect(state.moveDragActive, "drag still active during preview");
+
+  const cr::CreativeToolDispatchReceipt commit = cr::dispatchToolInput(
+      state, pointerInput(cr::CreativeToolInputKind::PointerRelease, 30.0, 40.0));
+  const bool commitOk =
+      expect(commit.emittedIntentCount == 1U, "drag commit count") &&
+      expect(commit.intents[0].kind ==
+                 cr::CreativeToolIntentKind::CommitMove,
+             "drag commit intent") &&
+      expect(commit.message == "move_drag_commit", "drag commit message") &&
+      expect(!state.moveDragActive, "drag cleared after commit") &&
+      expect(state.moveDragTarget.value == cr::kInvalidId,
+             "drag target cleared after commit");
+  return previewOk && commitOk;
+}
+
+bool releaseWithoutDragIsNoOp() {
+  // TV1-F entry req (ii): a Release with no active drag is a harmless no-op.
+  cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
+  static_cast<void>(cr::setActiveTool(state, cr::Tool::Move));
+
+  const cr::CreativeToolDispatchReceipt receipt = cr::dispatchToolInput(
+      state, pointerInput(cr::CreativeToolInputKind::PointerRelease));
+
+  return expect(receipt.accepted, "orphan release accepted") &&
+         expect(receipt.emittedIntentCount == 0U, "orphan release no intent") &&
+         expect(receipt.message == "no_intent", "orphan release message") &&
+         expect(!state.moveDragActive, "orphan release leaves drag inactive");
+}
+
+bool cancelMidDragDiscardsWithoutMutation() {
+  // TD-6: Esc/Cancel mid-drag discards the drag, emitting CancelMove.
+  cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
+  static_cast<void>(cr::setActiveTool(state, cr::Tool::Move));
+  static_cast<void>(cr::dispatchToolInput(
+      state, pointerInput(cr::CreativeToolInputKind::PointerPress)));
+
+  cr::CreativeToolInputPacket cancel;
+  cancel.kind = cr::CreativeToolInputKind::Cancel;
+  const cr::CreativeToolDispatchReceipt receipt =
+      cr::dispatchToolInput(state, cancel);
+
+  return expect(receipt.emittedIntentCount == 1U, "cancel drag count") &&
+         expect(receipt.intents[0].kind ==
+                    cr::CreativeToolIntentKind::CancelMove,
+                "cancel drag intent") &&
+         expect(receipt.message == "move_drag_cancel", "cancel drag message") &&
+         expect(!state.moveDragActive, "cancel clears drag");
+}
+
+bool toolSwitchAbandonsDrag() {
+  cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
+  static_cast<void>(cr::setActiveTool(state, cr::Tool::Move));
+  static_cast<void>(cr::dispatchToolInput(
+      state, pointerInput(cr::CreativeToolInputKind::PointerPress)));
+
+  const bool switched = cr::setActiveTool(state, cr::Tool::Select);
+
+  return expect(switched, "tool switched") &&
+         expect(!state.moveDragActive, "tool switch abandons drag") &&
+         expect(state.moveDragTarget.value == cr::kInvalidId,
+                "tool switch clears drag target");
+}
+
+bool moveToolPointerMoveKeepsGhostPreview() {
+  cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
+  static_cast<void>(cr::setActiveTool(state, cr::Tool::Move));
+
+  const cr::CreativeToolDispatchReceipt receipt =
+      cr::dispatchToolInput(state,
+                            pointerInput(cr::CreativeToolInputKind::PointerMove));
+
+  return expect(receipt.accepted, "move preview accepted") &&
+         expect(receipt.emittedIntentCount == 1U, "move preview count") &&
+         expect(receipt.intents[0].kind ==
+                    cr::CreativeToolIntentKind::PreviewPointer,
+                "move preview intent") &&
+         expect(receipt.message == "preview_pointer",
+                "move preview message");
+}
+
+bool navigatePointerInputIsInert() {
+  cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
+  static_cast<void>(cr::setActiveTool(state, cr::Tool::Navigate));
+
+  bool ok = true;
+  const cr::CreativeToolInputKind kinds[] = {
+      cr::CreativeToolInputKind::PointerPress,
+      cr::CreativeToolInputKind::PointerMove,
+      cr::CreativeToolInputKind::PointerRelease,
+  };
+  for (const cr::CreativeToolInputKind kind : kinds) {
+    const cr::CreativeToolDispatchReceipt receipt =
+        cr::dispatchToolInput(state, pointerInput(kind));
+    ok = expect(receipt.accepted, "navigate input accepted") && ok;
+    ok = expect(receipt.emittedIntentCount == 0U,
+                "navigate input no intents") && ok;
+    ok = expect(receipt.intents.empty(), "navigate input intents empty") && ok;
+    ok = expect(!receipt.changedState, "navigate input unchanged") && ok;
+    ok = expect(receipt.message == "navigate_pointer_inert",
+                "navigate input message") && ok;
+  }
+  ok = expect(state.pointer.target.value == cr::kInvalidId,
+              "navigate pointer target untouched") && ok;
+  return ok;
+}
+
+bool measurePressMoveReleaseEmitsMeasurementIntents() {
+  cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
+  const bool toolChanged = cr::setActiveTool(state, cr::Tool::Measure);
+
+  const cr::CreativeToolDispatchReceipt begin =
+      cr::dispatchToolInput(state,
+                            pointerInput(cr::CreativeToolInputKind::PointerPress,
+                                         1.0,
+                                         2.0));
+  const bool began =
+      expect(toolChanged, "measure setup changed tool") &&
+      expect(begin.emittedIntentCount == 1U, "measure begin count") &&
+      expect(begin.intents[0].kind ==
+                 cr::CreativeToolIntentKind::BeginMeasurement,
+             "measure begin intent") &&
+      expect(state.measurementActive, "measure active after begin");
+
+  const cr::CreativeToolDispatchReceipt update =
+      cr::dispatchToolInput(state,
+                            pointerInput(cr::CreativeToolInputKind::PointerMove,
+                                         3.0,
+                                         4.0));
+  const bool updated =
+      expect(update.emittedIntentCount == 1U, "measure update count") &&
+      expect(update.intents[0].kind ==
+                 cr::CreativeToolIntentKind::UpdateMeasurement,
+             "measure update intent") &&
+      expect(state.measurementActive, "measure active after update");
+
+  const cr::CreativeToolDispatchReceipt end =
+      cr::dispatchToolInput(state,
+                            pointerInput(cr::CreativeToolInputKind::PointerRelease,
+                                         5.0,
+                                         6.0));
+  const bool ended =
+      expect(end.emittedIntentCount == 1U, "measure end count") &&
+      expect(end.intents[0].kind ==
+                 cr::CreativeToolIntentKind::EndMeasurement,
+             "measure end intent") &&
+      expect(!state.measurementActive, "measure inactive after end");
+
+  return began && updated && ended;
+}
+
+bool unknownInputEmitsNoIntent() {
+  cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
+  const cr::CreativeToolDispatchReceipt receipt =
+      cr::dispatchToolInput(state, {});
+
+  return expect(!receipt.accepted, "unknown input not accepted") &&
+         expect(!receipt.changedState, "unknown input unchanged") &&
+         expect(receipt.emittedIntentCount == 0U, "unknown input count") &&
+         expect(receipt.intents.empty(), "unknown input no intents") &&
+         expect(receipt.message == "unsupported_input",
+                "unknown input message") &&
+         expect(state.activeTool == cr::Tool::Select,
+                "unknown input keeps active tool");
+}
+
+bool optionDescriptorsAreContextualAndBounded() {
+  const std::span<const cr::CreativeToolOptionDescriptor> descriptors =
+      cr::creativeToolOptionDescriptors();
+  const cr::CreativeToolOptionList material =
+      cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::Material);
+  const cr::CreativeToolOptionList move =
+      cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::ObjectMove);
+  const cr::CreativeToolOptionList replace =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::VolumeReplace);
+  const cr::CreativeToolOptionList fill =
+      cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::VolumeFill);
+  const cr::CreativeToolOptionList hollow =
+      cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::VolumeHollow);
+  const cr::CreativeToolOptionList clone =
+      cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::VolumeClone);
+  const cr::CreativeToolOptionList array =
+      cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::LinearArray);
+
+  return expect(descriptors.size() == cr::kCreativeToolOptionDescriptorCount,
+                "global descriptor table has one row per option id") &&
+         expect(material.count == 1U &&
+                    material.ids[0] == cr::CreativeToolOptionId::SnapIncrement,
+                "material exposes grid size only") &&
+         expect(move.count == 3U &&
+                    move.ids[0] ==
+                        cr::CreativeToolOptionId::MoveConstraint &&
+                    move.ids[1] == cr::CreativeToolOptionId::RotationStep &&
+                    move.ids[2] == cr::CreativeToolOptionId::SnapIncrement,
+                "move options retain descriptor order") &&
+         expect(fill.count == 3U && hollow.count == 3U &&
+                    fill.ids[0] == cr::CreativeToolOptionId::SnapIncrement &&
+                    fill.ids[1] == cr::CreativeToolOptionId::ShapeBrushKind &&
+                    fill.ids[2] == cr::CreativeToolOptionId::ShapeBrushAxis &&
+                    hollow.ids[1] ==
+                        cr::CreativeToolOptionId::ShapeBrushKind,
+                "fill and hollow expose bounded shape controls") &&
+         expect(replace.count == 2U &&
+                    replace.ids[1] ==
+                        cr::CreativeToolOptionId::ReplaceSource,
+                "replace exposes source filter") &&
+         expect(clone.count == 3U &&
+                    clone.ids[1] ==
+                        cr::CreativeToolOptionId::CloneOffsetAxis &&
+                    clone.ids[2] ==
+                        cr::CreativeToolOptionId::CloneOffsetDistance,
+                "clone exposes offset axis and distance") &&
+         expect(array.count == 3U &&
+                    array.ids[0] ==
+                        cr::CreativeToolOptionId::ArrayDirection &&
+                    array.ids[1] ==
+                        cr::CreativeToolOptionId::ArrayCopyCount &&
+                    array.ids[2] ==
+                        cr::CreativeToolOptionId::ArraySpacing,
+                "array exposes direction, copy count, and spacing") &&
+         expect(!material.capacityExceeded && !move.capacityExceeded &&
+                    !fill.capacityExceeded && !hollow.capacityExceeded &&
+                    !replace.capacityExceeded && !clone.capacityExceeded &&
+                    !array.capacityExceeded &&
+                    array.count <= cr::kCreativeToolOptionCapacity,
+                "default option lists fit bounded storage") &&
+         expect(cr::creativeToolOptionDescriptor(
+                    cr::CreativeToolOptionId::Count) == nullptr &&
+                    !cr::creativeToolOptionAppliesToHeldItem(
+                        cr::CreativeToolOptionId::MoveConstraint,
+                        cr::CreativeHeldItemKind::Material),
+                "invalid and inapplicable options are rejected");
+}
+
+bool optionAdjustmentIsDeterministicAndAtomic() {
+  cr::CreativeToolSettings settings = cr::makeDefaultCreativeToolSettings();
+  bool ok = expect(cr::isValidCreativeToolSettings(settings),
+                   "default settings valid") &&
+            expect(cr::creativeToolOptionValueLabel(
+                       settings,
+                       cr::CreativeToolOptionId::MoveConstraint) == "FREE" &&
+                       cr::creativeRotationStepDegrees(settings.rotationStep) ==
+                           15.0 &&
+                       cr::creativeSnapIncrementMeters(settings.snapIncrement) ==
+                           1.0 &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::ShapeBrushKind) == "BOX" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::ShapeBrushAxis) == "Y",
+                   "default labels and scalar conversions stable");
+
+  const auto adjust = [&settings](cr::CreativeToolOptionId option,
+                                  std::int32_t direction) {
+    return cr::adjustCreativeToolOption(settings, option, direction);
+  };
+  ok = expect(adjust(cr::CreativeToolOptionId::MoveConstraint, 1).changed &&
+                  settings.moveConstraint == cr::CreativeMoveConstraint::X,
+              "move constraint cycles to X") &&
+       expect(adjust(cr::CreativeToolOptionId::MoveConstraint, 1).changed &&
+                  settings.moveConstraint == cr::CreativeMoveConstraint::Z,
+              "move constraint cycles to Z") &&
+       expect(adjust(cr::CreativeToolOptionId::MoveConstraint, 1).changed &&
+                  settings.moveConstraint == cr::CreativeMoveConstraint::Free,
+              "move constraint wraps") &&
+       expect(adjust(cr::CreativeToolOptionId::RotationStep, -1).changed &&
+                  settings.rotationStep == cr::CreativeRotationStep::Degrees90,
+              "rotation cycles backward") &&
+       expect(adjust(cr::CreativeToolOptionId::SnapIncrement, 1).changed &&
+                  settings.snapIncrement == cr::CreativeSnapIncrement::TwoMeters,
+              "grid increment cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::ShapeBrushKind, 1).changed &&
+                  settings.shapeBrushKind == cr::CreativeShapeBrushKind::Line,
+              "shape kind cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::ShapeBrushAxis, 1).changed &&
+                  settings.shapeBrushAxis == cr::CreativeShapeBrushAxis::Z,
+              "shape axis cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::CloneOffsetAxis, 1).changed &&
+                  settings.cloneOffsetAxis == cr::CreativeCloneOffsetAxis::Y,
+              "clone axis cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::CloneOffsetDistance, 1).changed &&
+                  settings.cloneOffsetDistance ==
+                      cr::CreativeCloneOffsetDistance::TwoCells,
+              "clone distance cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::ArrayDirection, 1).changed &&
+                  settings.arrayDirection ==
+                      cr::CreativeLinearArrayDirection::NegativeX,
+              "array direction cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::ArrayCopyCount, 1).changed &&
+                  settings.arrayCopyCount ==
+                      cr::CreativeLinearArrayCopyCount::Eight,
+              "array copy count cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::ArraySpacing, 1).changed &&
+                  settings.arraySpacing ==
+                      cr::CreativeLinearArraySpacing::TwoCells,
+              "array spacing cycles") &&
+       ok;
+
+  const cr::CreativeToolSettings beforeZero = settings;
+  const cr::CreativeToolOptionAdjustReceipt zero = adjust(
+      cr::CreativeToolOptionId::MoveConstraint, 0);
+  const cr::CreativeToolOptionAdjustReceipt invalid = adjust(
+      cr::CreativeToolOptionId::Count, 1);
+  settings.moveConstraint = cr::CreativeMoveConstraint::Count;
+  const cr::CreativeToolSettings beforeInvalid = settings;
+  const cr::CreativeToolOptionAdjustReceipt invalidSettings = adjust(
+      cr::CreativeToolOptionId::RotationStep, 1);
+  return expect(zero.accepted && !zero.changed &&
+                    zero.status == cr::CreativeToolOptionAdjustStatus::NoChange &&
+                    beforeZero.moveConstraint ==
+                        cr::CreativeMoveConstraint::Free,
+                "zero direction is accepted no-change") &&
+         expect(!invalid.accepted && !invalid.changed &&
+                    invalid.status ==
+                        cr::CreativeToolOptionAdjustStatus::InvalidOption,
+                "invalid option rejected") &&
+         expect(!invalidSettings.accepted && !invalidSettings.changed &&
+                    invalidSettings.status ==
+                        cr::CreativeToolOptionAdjustStatus::InvalidSettings &&
+                    settings.moveConstraint == beforeInvalid.moveConstraint,
+                "invalid settings are not normalized") &&
+         ok;
+}
+
+bool replaceFilterAndCloneOffsetUseExplicitInputs() {
+  cr::CreativeToolSettings settings = cr::makeDefaultCreativeToolSettings();
+  constexpr std::array palette{cr::CreativeObjectKind::Wall,
+                               cr::CreativeObjectKind::Crate};
+  const auto adjustSource = [&settings, &palette](std::int32_t direction) {
+    return cr::adjustCreativeToolOption(
+        settings, cr::CreativeToolOptionId::ReplaceSource, direction, palette);
+  };
+
+  bool ok = expect(adjustSource(1).changed &&
+                       settings.replaceSourceKind ==
+                           cr::CreativeObjectKind::Wall,
+                   "replace source advances from Any to first material") &&
+            expect(adjustSource(1).changed &&
+                       settings.replaceSourceKind ==
+                           cr::CreativeObjectKind::Crate,
+                   "replace source advances through palette") &&
+            expect(adjustSource(1).changed &&
+                       settings.replaceSourceKind ==
+                           cr::CreativeObjectKind::Unknown,
+                   "replace source wraps to Any") &&
+            expect(adjustSource(-1).changed &&
+                       settings.replaceSourceKind ==
+                           cr::CreativeObjectKind::Crate,
+                   "replace source cycles backward");
+
+  settings.cloneOffsetAxis = cr::CreativeCloneOffsetAxis::Z;
+  settings.cloneOffsetDistance =
+      cr::CreativeCloneOffsetDistance::FourCells;
+  cr::CreativeToolWorldPoint offset;
+  ok = expect(cr::tryCreativeCloneOffset(settings, 0.5, offset) &&
+                  offset.x == 0.0 && offset.y == 0.0 && offset.z == 2.0,
+              "clone offset combines axis, distance, and cell size") &&
+       expect(!cr::tryCreativeCloneOffset(settings, 0.0, offset) &&
+                  offset.x == 0.0 && offset.y == 0.0 && offset.z == 0.0,
+              "invalid clone cell size fails closed") &&
+       ok;
+
+  cr::CreativeToolSettings noPalette = cr::makeDefaultCreativeToolSettings();
+  const cr::CreativeToolOptionAdjustReceipt unavailable =
+      cr::adjustCreativeToolOption(
+          noPalette, cr::CreativeToolOptionId::ReplaceSource, 1);
+  return expect(!unavailable.accepted && !unavailable.changed &&
+                    unavailable.status ==
+                        cr::CreativeToolOptionAdjustStatus::NoAvailableValue &&
+                    noPalette.replaceSourceKind ==
+                        cr::CreativeObjectKind::Unknown,
+                "missing material palette leaves filter unchanged") &&
+         ok;
+}
+
+bool transformCommandsStoreRadiansAndResolveLiveGeometry() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Transform");
+  cr::CreativeDocumentCreateRequest create;
+  create.kind = cr::CreativeObjectKind::Wall;
+  create.name = "Rotated Wall";
+  create.transform.position = {0.0, 1.0, 0.0};
+  create.hasTransformOverride = true;
+  create.bounds = {{-2.0, 0.0, -0.125}, {2.0, 2.0, 0.125}};
+  create.hasBoundsOverride = true;
+  const cr::CreativeDocumentCreateReceipt created = document.createObject(create);
+  const std::array objectIds{created.objectId};
+
+  cr::CreativeTransformCommandRequest rotate;
+  rotate.kind = cr::CreativeTransformCommandKind::RotateYaw;
+  rotate.yawDegrees = 90.0;
+  const cr::CreativeTransformCommandReceipt rotated =
+      cr::transformDocumentObjectsAtomically(document, objectIds, rotate);
+  const cr::CreativeObject* object = document.findObject(created.objectId);
+  const cr::CreativeTransformedBounds rotatedBounds =
+      object != nullptr ? cr::resolveCreativeObjectBounds(*object)
+                        : cr::CreativeTransformedBounds{};
+
+  const auto near = [](double actual, double expected) {
+    return std::fabs(actual - expected) <= 1.0e-9;
+  };
+  bool ok = expect(created.accepted && rotated.accepted && rotated.changed &&
+                       object != nullptr,
+                   "yaw transform applies to a bounds-backed object") &&
+            expect(object != nullptr &&
+                       near(object->transform.rotationEulerRadians.y,
+                            std::numbers::pi * 0.5),
+                   "degree command stores radians exactly once") &&
+            expect(rotatedBounds.valid &&
+                       near(rotatedBounds.worldBounds.max.x -
+                                rotatedBounds.worldBounds.min.x,
+                            0.25) &&
+                       near(rotatedBounds.worldBounds.max.z -
+                                rotatedBounds.worldBounds.min.z,
+                            4.0),
+                   "resolved world bounds honor stored yaw");
+
+  cr::CreativeTransformCommandRequest scale;
+  scale.kind = cr::CreativeTransformCommandKind::Scale;
+  scale.scaleFactor = {2.0, 1.0, 0.5};
+  const cr::CreativeTransformCommandReceipt scaled =
+      cr::transformDocumentObjectsAtomically(document, objectIds, scale);
+  object = document.findObject(created.objectId);
+  const cr::CreativeTransformedBounds scaledBounds =
+      object != nullptr ? cr::resolveCreativeObjectBounds(*object)
+                        : cr::CreativeTransformedBounds{};
+  return expect(scaled.accepted && scaled.changed && scaledBounds.valid,
+                "scale transform applies after rotation") &&
+         expect(near(scaledBounds.worldBounds.max.x -
+                         scaledBounds.worldBounds.min.x,
+                     0.125) &&
+                    near(scaledBounds.worldBounds.max.z -
+                         scaledBounds.worldBounds.min.z,
+                     8.0),
+                "resolved world geometry applies scale before rotation") &&
+         ok;
+}
+
+}  // namespace
+
+int main() {
+  const bool ok = defaultStateUsesSelect() &&
+                  changingActiveToolWorks() &&
+                  sameToolActivationIsNoChange() &&
+                  pointerMoveEmitsPreviewIntent() &&
+                  selectPressEmitsSelectObjectCandidate() &&
+                  movePressSelectsAndBeginsDrag() &&
+                  moveDragPreviewCommitLifecycle() &&
+                  releaseWithoutDragIsNoOp() &&
+                  cancelMidDragDiscardsWithoutMutation() &&
+                  toolSwitchAbandonsDrag() &&
+                  moveToolPointerMoveKeepsGhostPreview() &&
+                  navigatePointerInputIsInert() &&
+                  measurePressMoveReleaseEmitsMeasurementIntents() &&
+                  unknownInputEmitsNoIntent() &&
+                  optionDescriptorsAreContextualAndBounded() &&
+                  optionAdjustmentIsDeterministicAndAtomic() &&
+                  replaceFilterAndCloneOffsetUseExplicitInputs() &&
+                  transformCommandsStoreRadiansAndResolveLiveGeometry();
+  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
+}

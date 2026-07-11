@@ -45,7 +45,7 @@ bool selectObjectForCapture(cr::Facade& facade,
 void runScriptedPlacements(const StandaloneCaptureScenarioStepRequest& request) {
   cr::CreativeAppState& appState = *request.appState;
   StandaloneCaptureScript& captureScript = *request.captureScript;
-  StandaloneUndoStack& undoStack = *request.undoStack;
+  StandaloneEditHistory& history = *request.history;
   cr::CreativeObjectKind& placeBrush = *request.placeBrush;
   std::uint64_t& placedCount = *request.placedCount;
 
@@ -71,7 +71,7 @@ void runScriptedPlacements(const StandaloneCaptureScenarioStepRequest& request) 
         snapGroundToCellCenter(p.worldX, p.worldZ, request.placeCellSize);
     const cr::CreativeDocumentCreateReceipt receipt = placeBrushObjectWithUndo(
         appState.facade,
-        undoStack,
+        history,
         placeBrush,
         cell,
         ++placedCount,
@@ -172,7 +172,6 @@ void runDeleteAndUndoProof(
     const StandaloneCaptureScenarioStepRequest& request) {
   cr::CreativeAppState& appState = *request.appState;
   StandaloneCaptureScript& captureScript = *request.captureScript;
-  StandaloneUndoStack& undoStack = *request.undoStack;
 
   if (request.frameIndex == StandaloneCaptureScript::kDeleteNoSelectionFrame &&
       !captureScript.deleteNoSelectionAttempted) {
@@ -185,7 +184,7 @@ void runDeleteAndUndoProof(
             static_cast<unsigned long long>(captureScript.createUndoTargetId),
             static_cast<unsigned long long>(
                 appState.facade.document().objectCount()));
-    (void)undoLastSnapshot(appState, undoStack, "capture_create_undo");
+    (void)undoLastEdit(appState, "capture_create_undo");
     SDL_Log("iggy3d_creative: CREATE_UNDO objectCountAfter=%llu "
             "targetPresentAfter=%d",
             static_cast<unsigned long long>(
@@ -203,7 +202,7 @@ void runDeleteAndUndoProof(
     captureScript.deleteAttempted = true;
   } else if (request.frameIndex == StandaloneCaptureScript::kUndoFrame &&
              !captureScript.undoAttempted) {
-    (void)undoLastSnapshot(appState, undoStack, "capture_undo");
+    (void)undoLastEdit(appState, "capture_undo");
     captureScript.undoAttempted = true;
   }
 }
@@ -211,7 +210,7 @@ void runDeleteAndUndoProof(
 void runMoveUndoProof(const StandaloneCaptureScenarioStepRequest& request) {
   cr::CreativeAppState& appState = *request.appState;
   StandaloneCaptureScript& captureScript = *request.captureScript;
-  StandaloneUndoStack& undoStack = *request.undoStack;
+  StandaloneEditHistory& history = *request.history;
   bool& placeMode = *request.placeMode;
   cr::CreativeObjectKind& placeBrush = *request.placeBrush;
 
@@ -262,7 +261,7 @@ void runMoveUndoProof(const StandaloneCaptureScenarioStepRequest& request) {
     release.pointer.moveHeldAxis = request.moveHeldAxisForX;
     const cr::CreativeFacadeToolDispatchReceipt receipt =
         dispatchMoveReleaseWithUndo(appState,
-                                    undoStack,
+                                    history,
                                     release,
                                     captureScript.moveTargetId,
                                     "capture_move_commit");
@@ -270,7 +269,7 @@ void runMoveUndoProof(const StandaloneCaptureScenarioStepRequest& request) {
     captureScript.moveCommitAttempted = true;
   } else if (request.frameIndex == StandaloneCaptureScript::kMoveUndoFrame &&
              !captureScript.moveUndoAttempted) {
-    (void)undoLastSnapshot(appState, undoStack, "capture_move_undo");
+    (void)undoLastEdit(appState, "capture_move_undo");
     placeMode = true;
     placeBrush = cr::CreativeObjectKind::Wall;
     logUndoMovePlacement("capture_undo_after",
@@ -284,7 +283,7 @@ void runMoveUndoProof(const StandaloneCaptureScenarioStepRequest& request) {
 void runPointProof(const StandaloneCaptureScenarioStepRequest& request) {
   cr::CreativeAppState& appState = *request.appState;
   StandaloneCaptureScript& captureScript = *request.captureScript;
-  StandaloneUndoStack& undoStack = *request.undoStack;
+  StandaloneEditHistory& history = *request.history;
   bool& placeMode = *request.placeMode;
   cr::CreativeObjectKind& placeBrush = *request.placeBrush;
 
@@ -332,7 +331,7 @@ void runPointProof(const StandaloneCaptureScenarioStepRequest& request) {
     release.pointer.moveHeldAxis = request.moveHeldAxisForX;
     const cr::CreativeFacadeToolDispatchReceipt receipt =
         dispatchMoveReleaseWithUndo(appState,
-                                    undoStack,
+                                    history,
                                     release,
                                     captureScript.pointTargetId,
                                     "capture_point_move_commit");
@@ -355,7 +354,7 @@ void runPointProof(const StandaloneCaptureScenarioStepRequest& request) {
   } else if (request.frameIndex ==
                  StandaloneCaptureScript::kPointMoveUndoFrame &&
              !captureScript.pointMoveUndoAttempted) {
-    (void)undoLastSnapshot(appState, undoStack, "capture_point_move_undo");
+    (void)undoLastEdit(appState, "capture_point_move_undo");
     placeMode = true;
     placeBrush = cr::CreativeObjectKind::Wall;
     const cr::CreativeObject* pointTarget =
@@ -379,7 +378,7 @@ void runPointProof(const StandaloneCaptureScenarioStepRequest& request) {
 void runLineProof(const StandaloneCaptureScenarioStepRequest& request) {
   cr::CreativeAppState& appState = *request.appState;
   StandaloneCaptureScript& captureScript = *request.captureScript;
-  StandaloneUndoStack& undoStack = *request.undoStack;
+  StandaloneEditHistory& history = *request.history;
   bool& placeMode = *request.placeMode;
   cr::CreativeObjectKind& placeBrush = *request.placeBrush;
 
@@ -432,7 +431,7 @@ void runLineProof(const StandaloneCaptureScenarioStepRequest& request) {
     release.pointer.moveHeldAxis = request.moveHeldAxisForZ;
     const cr::CreativeFacadeToolDispatchReceipt receipt =
         dispatchMoveReleaseWithUndo(appState,
-                                    undoStack,
+                                    history,
                                     release,
                                     captureScript.lineTargetId,
                                     "capture_line_move_commit");
@@ -460,7 +459,7 @@ void runLineProof(const StandaloneCaptureScenarioStepRequest& request) {
   } else if (request.frameIndex ==
                  StandaloneCaptureScript::kLineMoveUndoFrame &&
              !captureScript.lineMoveUndoAttempted) {
-    (void)undoLastSnapshot(appState, undoStack, "capture_line_move_undo");
+    (void)undoLastEdit(appState, "capture_line_move_undo");
     placeMode = true;
     placeBrush = cr::CreativeObjectKind::Wall;
     const cr::CreativeObject* lineTarget =
@@ -489,7 +488,7 @@ void runLineProof(const StandaloneCaptureScenarioStepRequest& request) {
 void runPathProof(const StandaloneCaptureScenarioStepRequest& request) {
   cr::CreativeAppState& appState = *request.appState;
   StandaloneCaptureScript& captureScript = *request.captureScript;
-  StandaloneUndoStack& undoStack = *request.undoStack;
+  StandaloneEditHistory& history = *request.history;
   bool& placeMode = *request.placeMode;
   cr::CreativeObjectKind& placeBrush = *request.placeBrush;
 
@@ -500,7 +499,7 @@ void runPathProof(const StandaloneCaptureScenarioStepRequest& request) {
                                  "capture_path_move");
     const cr::CreativeDocumentMutationReceipt receipt =
         movePathObjectWithUndo(appState,
-                               undoStack,
+                               history,
                                captureScript.pathTargetId,
                                {1.0, 0.0, 1.0},
                                "capture_path_move_commit");
@@ -515,7 +514,7 @@ void runPathProof(const StandaloneCaptureScenarioStepRequest& request) {
   } else if (request.frameIndex ==
                  StandaloneCaptureScript::kPathMoveUndoFrame &&
              !captureScript.pathMoveUndoAttempted) {
-    (void)undoLastSnapshot(appState, undoStack, "capture_path_move_undo");
+    (void)undoLastEdit(appState, "capture_path_move_undo");
     placeMode = true;
     placeBrush = cr::CreativeObjectKind::Wall;
     const cr::CreativeObject* pathTarget =
@@ -537,7 +536,7 @@ void runPathProof(const StandaloneCaptureScenarioStepRequest& request) {
     constexpr std::size_t kCapturePathPointIndex = 2U;
     const cr::CreativeDocumentMutationReceipt receipt =
         movePathPointWithUndo(appState,
-                              undoStack,
+                              history,
                               captureScript.pathTargetId,
                               kCapturePathPointIndex,
                               {0.0, 0.0, 1.0},
@@ -555,7 +554,7 @@ void runPathProof(const StandaloneCaptureScenarioStepRequest& request) {
   } else if (request.frameIndex ==
                  StandaloneCaptureScript::kPathPointMoveUndoFrame &&
              !captureScript.pathPointMoveUndoAttempted) {
-    (void)undoLastSnapshot(appState, undoStack, "capture_path_point_move_undo");
+    (void)undoLastEdit(appState, "capture_path_point_move_undo");
     placeMode = true;
     placeBrush = cr::CreativeObjectKind::Wall;
     const cr::CreativeObject* pathTarget =
@@ -574,7 +573,7 @@ void runPathProof(const StandaloneCaptureScenarioStepRequest& request) {
 void runPersistenceProof(const StandaloneCaptureScenarioStepRequest& request) {
   cr::CreativeAppState& appState = *request.appState;
   StandaloneCaptureScript& captureScript = *request.captureScript;
-  StandaloneUndoStack& undoStack = *request.undoStack;
+  StandaloneEditHistory& history = *request.history;
 
   if (request.frameIndex == StandaloneCaptureScript::kSaveFrame &&
       !captureScript.roundtripSaved) {
@@ -583,13 +582,13 @@ void runPersistenceProof(const StandaloneCaptureScenarioStepRequest& request) {
     const iggy3d::CreativeWorldSaveResult saveResult =
         saveStandaloneScene(appState.facade, *request.saveRoot, *request.saveId);
     if (saveResult.accepted && saveResult.saved) {
-      clearUndoStack(undoStack, "capture_save_success");
+      clearEditHistory(history, "capture_save_success");
     }
     captureScript.roundtripSaved = true;
   } else if (request.frameIndex == StandaloneCaptureScript::kClearFrame &&
              !captureScript.roundtripCleared) {
     clearToBlankScene(appState);
-    clearUndoStack(undoStack, "capture_clear");
+    clearEditHistory(history, "capture_clear");
     captureScript.roundtripCountAfterClear =
         appState.facade.document().objectCount();
     captureScript.roundtripCleared = true;
@@ -598,7 +597,7 @@ void runPersistenceProof(const StandaloneCaptureScenarioStepRequest& request) {
     const bool loaded =
         loadStandaloneScene(appState, *request.saveRoot, *request.saveId);
     if (loaded) {
-      clearUndoStack(undoStack, "capture_load_success");
+      clearEditHistory(history, "capture_load_success");
     }
     const std::vector<ObjectSnapshotEntry> roundtripAfter =
         snapshotDocument(appState.facade.document());
@@ -617,7 +616,7 @@ void runPersistenceProof(const StandaloneCaptureScenarioStepRequest& request) {
 
 bool requestIsReady(const StandaloneCaptureScenarioStepRequest& request) {
   return request.enabled && request.appState != nullptr &&
-         request.undoStack != nullptr && request.captureScript != nullptr &&
+         request.history != nullptr && request.captureScript != nullptr &&
          request.placeBrush != nullptr && request.placeMode != nullptr &&
          request.placedCount != nullptr && request.saveRoot != nullptr &&
          request.saveId != nullptr && request.deleteSelected;
@@ -656,7 +655,7 @@ void runCreativeEditorCaptureScenarioFrame(
   captureStep.enabled = true;
   captureStep.frameIndex = editor.frameIndex;
   captureStep.appState = &appState;
-  captureStep.undoStack = &editor.undoStack;
+  captureStep.history = &appState.history;
   captureStep.captureScript = &editor.captureScript;
   captureStep.placeBrush = &editor.placeBrush;
   captureStep.placeMode = &editor.placeMode;
@@ -667,7 +666,7 @@ void runCreativeEditorCaptureScenarioFrame(
   captureStep.moveHeldAxisForX = heldAxisForGrabbedAxis(GizmoAxis::X);
   captureStep.moveHeldAxisForZ = heldAxisForGrabbedAxis(GizmoAxis::Z);
   captureStep.deleteSelected = [&](std::string_view source) {
-    return deleteSelectedObject(appState, source, &editor.undoStack);
+    return deleteSelectedObject(appState, source, &appState.history);
   };
   runStandaloneCaptureScenarioStep(captureStep);
 }

@@ -1,6 +1,7 @@
 #include "render/vulkan/RenderLoop.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -74,6 +75,8 @@ bool firstRoomBundleReady(const RenderLoopCreateInfo& createInfo) {
   const VkExtent2D swapchainExtent = createInfo.swapchain->info().extent;
   return createInfo.firstRoomPipeline != nullptr &&
          createInfo.firstRoomPipeline->pipeline != VK_NULL_HANDLE &&
+         createInfo.creativeViewModelPipeline != nullptr &&
+         createInfo.creativeViewModelPipeline->pipeline != VK_NULL_HANDLE &&
          createInfo.firstRoomLayout != nullptr &&
          createInfo.firstRoomLayout->layout != VK_NULL_HANDLE &&
          createInfo.firstRoomResources != nullptr && createInfo.firstRoomResources->ready() &&
@@ -82,6 +85,11 @@ bool firstRoomBundleReady(const RenderLoopCreateInfo& createInfo) {
          createInfo.firstRoomResources->geometry().indexCount > 0U &&
          createInfo.firstRoomResources->geometry().vertexBuffer.allocation.buffer != VK_NULL_HANDLE &&
          createInfo.firstRoomResources->geometry().indexBuffer.allocation.buffer != VK_NULL_HANDLE &&
+         createInfo.firstRoomResources->creativePreviewGeometry().ready &&
+         createInfo.firstRoomResources->creativePreviewGeometry()
+                 .vertexBuffer.allocation.buffer != VK_NULL_HANDLE &&
+         createInfo.firstRoomResources->creativePreviewGeometry()
+                 .indexBuffer.allocation.buffer != VK_NULL_HANDLE &&
          createInfo.firstRoomResources->depth().depthImage.allocation.image != VK_NULL_HANDLE &&
          createInfo.firstRoomResources->depth().depthImage.imageView != VK_NULL_HANDLE;
 }
@@ -401,6 +409,22 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
   const DebugHudLayoutResult debugHud = debugHudLayoutFor(frame);
   const ProjectileOverlayLayout projectileOverlay = projectileOverlayLayoutFor(frame);
   const std::vector<OverlayRect> uiOverlayRects = uiOverlayRectsFor(frame);
+  std::array<CreativePreviewDrawInfo, kRenderCreativePreviewCapacity>
+      creativePreviewDraws{};
+  const std::size_t creativePreviewDrawCount =
+      std::min<std::size_t>(frame.creativePreview.itemCount,
+                            creativePreviewDraws.size());
+  for (std::size_t index = 0; index < creativePreviewDrawCount; ++index) {
+    const RenderCreativePreviewItem& item =
+        frame.creativePreview.items[index];
+    creativePreviewDraws[index].geometryDrawIndex =
+        creativePreviewGeometryDrawIndex(item.role,
+                                         item.includePathWireframe);
+    creativePreviewDraws[index].depthDisabled =
+        item.role == RenderCreativePreviewRole::Held;
+    creativePreviewDraws[index].pushConstants =
+        pushConstantsFromMat4(item.clipFromModel);
+  }
   VkCommandBuffer commandBuffer =
       createInfo_.commandRecording->commandBufferForFrameSlot(result.frameSlot);
   const bool drawSceneContent = sceneHasRenderableContent(frame);
@@ -426,6 +450,8 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     recordInfo.frameSlot = result.frameSlot;
     recordInfo.imageIndex = acquire.imageIndex;
     recordInfo.pipeline = createInfo_.firstRoomPipeline->pipeline;
+    recordInfo.viewModelPipeline =
+        createInfo_.creativeViewModelPipeline->pipeline;
     recordInfo.pipelineLayout = createInfo_.firstRoomLayout->layout;
     recordInfo.vertexBuffer =
         createInfo_.firstRoomResources->geometry().vertexBuffer.allocation.buffer;
@@ -436,6 +462,18 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     recordInfo.indexedDrawCount =
         createInfo_.firstRoomResources->geometry().indexedDraws.size();
     recordInfo.pushConstants = pushConstantsFromMat4(frame.camera.clipFromWorld);
+    const CreativePreviewGeometryResources& previewGeometry =
+        createInfo_.firstRoomResources->creativePreviewGeometry();
+    recordInfo.creativePreviewVertexBuffer =
+        previewGeometry.vertexBuffer.allocation.buffer;
+    recordInfo.creativePreviewIndexBuffer =
+        previewGeometry.indexBuffer.allocation.buffer;
+    recordInfo.creativePreviewIndexedDraws =
+        previewGeometry.indexedDraws.data();
+    recordInfo.creativePreviewIndexedDrawCount =
+        previewGeometry.indexedDraws.size();
+    recordInfo.creativePreviewDraws = creativePreviewDraws.data();
+    recordInfo.creativePreviewDrawCount = creativePreviewDrawCount;
     recordInfo.captureEnabled =
         readySwapchain.transferSourceSupported && createInfo_.frameCapture != nullptr &&
         createInfo_.frameCapture->ready();
@@ -487,6 +525,8 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     recordInfo.frameSlot = result.frameSlot;
     recordInfo.imageIndex = acquire.imageIndex;
     recordInfo.pipeline = createInfo_.firstRoomPipeline->pipeline;
+    recordInfo.viewModelPipeline =
+        createInfo_.creativeViewModelPipeline->pipeline;
     recordInfo.pipelineLayout = createInfo_.firstRoomLayout->layout;
     recordInfo.vertexBuffer =
         createInfo_.firstRoomResources->geometry().vertexBuffer.allocation.buffer;
@@ -494,6 +534,18 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
         createInfo_.firstRoomResources->geometry().indexBuffer.allocation.buffer;
     recordInfo.indexCount = createInfo_.firstRoomResources->geometry().indexCount;
     recordInfo.pushConstants = firstRoomClipFromModel();
+    const CreativePreviewGeometryResources& previewGeometry =
+        createInfo_.firstRoomResources->creativePreviewGeometry();
+    recordInfo.creativePreviewVertexBuffer =
+        previewGeometry.vertexBuffer.allocation.buffer;
+    recordInfo.creativePreviewIndexBuffer =
+        previewGeometry.indexBuffer.allocation.buffer;
+    recordInfo.creativePreviewIndexedDraws =
+        previewGeometry.indexedDraws.data();
+    recordInfo.creativePreviewIndexedDrawCount =
+        previewGeometry.indexedDraws.size();
+    recordInfo.creativePreviewDraws = creativePreviewDraws.data();
+    recordInfo.creativePreviewDrawCount = creativePreviewDrawCount;
     recordInfo.captureEnabled =
         readySwapchain.transferSourceSupported && createInfo_.frameCapture != nullptr &&
         createInfo_.frameCapture->ready();

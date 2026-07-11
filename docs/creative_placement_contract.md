@@ -1,0 +1,243 @@
+# Creative Placement Contract
+
+This document owns the engineering contract behind material placement and
+removal. `docs/creative_controls.md` owns the player-facing control vocabulary;
+this file owns how a world action becomes a target, a plan, a mutation, visible
+feedback, and one history record.
+
+## Public Reference Evidence
+
+The implementation is original iggy3d code. These official Mojang sources are
+behavior and API references:
+
+- [Minecraft Editor](https://github.com/Mojang/minecraft-editor) establishes an
+  in-engine tool environment with extensions layered over native editor tools.
+- [Editor extension samples](https://github.com/Mojang/minecraft-editor-extension-samples)
+  register semantic actions against tool contexts instead of polling raw input
+  in every tool.
+- The sample [dye brush](https://github.com/Mojang/minecraft-editor-extension-samples/blob/main/dye-brush/dye-brush.ts)
+  separates button-down, drag, and button-up, deduplicates repeated bounds, owns
+  transient preview volume, and restores cursor state when its modal tool exits.
+- The [portal generator](https://github.com/Mojang/minecraft-editor-extension-samples/blob/main/portal-generator/portal-generator.ts)
+  opens a transaction, validates orientation, tracks the affected area before
+  mutation, and either discards or commits the operation.
+- The [tree generator](https://github.com/Mojang/minecraft-editor-extension-samples/blob/main/tree-generator/tree-generator.ts)
+  tracks an explicit block-change list and reports partially invalid locations.
+- [goto-mark](https://github.com/Mojang/minecraft-editor-extension-samples/blob/main/goto-mark/goto-mark.ts)
+  records a compact user-defined payload with separate undo and redo handlers.
+- [Bedrock block schemas](https://github.com/Mojang/bedrock-samples/blob/main/documentation/Blocks.html)
+  keep placement faces, replaceability, selection bounds, support, transforms,
+  and state permutations in data rather than input branches.
+- [Brigadier](https://github.com/Mojang/brigadier/blob/master/src/main/java/com/mojang/brigadier/CommandDispatcher.java)
+  separates expensive parsing from execution and carries structured failure
+  context. Creative placement adopts the same plan-then-execute shape.
+- [DataFixerUpper](https://github.com/Mojang/DataFixerUpper) is reserved as a
+  future reference for versioned map migration. It is not part of placement or
+  any frame-time path.
+- [WorldEdit `EllipsoidRegion`](https://github.com/EngineHub/WorldEdit/blob/version/7.4.x/worldedit-core/src/main/java/com/sk89q/worldedit/regions/EllipsoidRegion.java),
+  [`CylinderRegion`](https://github.com/EngineHub/WorldEdit/blob/version/7.4.x/worldedit-core/src/main/java/com/sk89q/worldedit/regions/CylinderRegion.java),
+  and [`EditSession`](https://github.com/EngineHub/WorldEdit/blob/version/7.4.x/worldedit-core/src/main/java/com/sk89q/worldedit/EditSession.java)
+  demonstrate cell-centered curved regions, filled/shell separation, directional
+  cylinder extrusion, and explicit maximum-change failures.
+- [TrenchBroom `DrawShapeTool`](https://github.com/TrenchBroom/TrenchBroom/blob/master/lib/TbUiLib/src/DrawShapeTool.cpp)
+  and [`Transaction`](https://github.com/TrenchBroom/TrenchBroom/blob/master/lib/TbMdlLib/include/mdl/Transaction.h)
+  keep transient shape updates separate from final document transactions and
+  make cancel/rollback explicit.
+- [FastAsyncWorldEdit](https://github.com/IntellectualSites/FastAsyncWorldEdit)
+  treats changes, iterations, memory, and region counts as separate resource
+  budgets. iggy3d adopts the preflight/bounded-work principle, not its async
+  implementation.
+
+The samples expose useful seams but are not treated as production-quality
+failure policy. iggy3d requires explicit receipts and fail-closed validation.
+
+## Ownership Map
+
+| Stage | Owner | Contract |
+|---|---|---|
+| Raw device input | `src/app/platform/SdlWindow.*` | Produce device facts only |
+| Semantic routing | `src/app/iggy3d/creative/input/InputRouter.*` and `Interaction.*` | Produce pressed/down/released world actions |
+| Center-ray target | `apps/iggy3d_creative/EditorInteraction.*` | Resolve object hit, face, placer heading, target cell, adjacent cell, and anchor |
+| Object policy | `src/app/iggy3d/creative/document/ObjectDescriptor.*` | Own whether and how an object kind may enter placement |
+| Geometry plan and admission | `apps/iggy3d_creative/EditorPlacement.*` | Produce one validated fixed-layout plan and structured admission status |
+| Shape-cell plan | `src/app/iggy3d/creative/tools/ShapeBrush.*` | Produce deterministic bounded Box, Line, Ellipsoid, and Cylinder cells |
+| Mutation gesture | `apps/iggy3d_creative/EditorInteraction.*` | Deduplicate targets, execute due plans, and group history |
+| Visual preview | `apps/iggy3d_creative/EditorPreviewFrame.*` | Render held and target views from the admitted plan without document mutation |
+| World mutation | `src/app/iggy3d/creative/Facade.*` | Apply requests and return receipts |
+| History | `src/app/iggy3d/creative/history/History.*` | Record one changed gesture as one undo snapshot |
+| Rendering boundary | `src/render/FrameInput.*` | Carry bounded transient preview data only |
+
+## Required Pipeline
+
+Every material placement follows this order:
+
+1. Route raw input to `Primary`, `Secondary`, or `Pick` in the active context.
+2. Resolve one `CreativeGridTarget` from the center ray.
+3. Read `CreativeObjectPlacementPolicy` from the selected object descriptor.
+4. Produce `CreativeBrushPlacementAdmission` and its embedded geometry plan.
+5. Use that same admitted plan for target preview and create request generation.
+6. Apply the request through `Facade` only when admission is `Ready`.
+7. Use the mutation receipt for feedback and history decisions.
+8. Refresh scene geometry only when document identity or revision changes.
+
+Preview code must not recompute different geometry, and execution must not
+reinterpret an admitted plan.
+
+## Current Placement Policy
+
+Current placeable descriptors explicitly use:
+
+- Target: adjacent grid cell.
+- Allowed faces: all six cardinal faces.
+- Orientation: descriptor default for ordinary objects.
+- Cardinal orientation: `Wall`, `Door`, `Window`, `Arch`, `Fence`, `Railing`,
+  `Ladder`, `WallRunSurface`, `Sign`, and `Banner` align their descriptor-owned
+  local forward axis with an aimed X/Z face. On top or bottom faces, their front
+  turns toward the placer using the opposite of the player's horizontal facing.
+- Occupancy: distinct authored objects may overlap, but an identical brush kind,
+  transform, bounds, and path at the same target is already occupied. Repeating
+  that placement is rejected before opening a history transaction or changing
+  document revision.
+
+These values are intentional compatibility settings, not permanent limits.
+Future support requirements, replaceable destinations, and additional
+orientation modes must be introduced as descriptor data plus admission tests.
+They must not be added as object-kind branches in input or preview code.
+
+`CreativeTransform::rotationEulerRadians` is the only in-memory rotation unit.
+Degree-valued UI commands convert once at the transform-command boundary. The
+existing serialized `transform.rotation` key is retained and stores the same
+Euler-radian values.
+
+`CreativeObject::bounds` describe the object's identity-rotation, identity-scale
+shape in document coordinates. `resolveCreativeObjectBounds` applies scale and
+intrinsic X-then-Y-then-Z Euler rotation around `transform.position`, returning
+fixed-layout corners, exact oriented center/size, and a world AABB. Preview,
+picking, document wireframes, spatial projection, volume containment, clipboard
+extents, UI summaries, and RoomBake consume that shared result.
+
+Room meshes carry exact Euler radians into CPU vertex generation. Cardinal walls
+retain the axis-aligned wall-segment optimization. Arbitrary yaw bypasses the
+incompatible wall/floor merge path. Physics still consumes AABB colliders, so a
+non-cardinal object receives the conservative world AABB of its oriented shape;
+cardinal placement is exact.
+
+## Shape Brush Contract
+
+- Fill/Hollow own a direct two-corner gesture: Primary starts or replaces corner
+  1, the current aim supplies the transient second corner, and Secondary fixes
+  corner 2 and commits exactly once. The selection wand can supply the same two
+  inclusive grid cells for other region operations. Box, ellipsoid, and cylinder
+  enumeration is canonical `z/y/x`; reversing the two corners cannot alter their
+  generated order.
+- Line uses integer 3D Bresenham traversal. Its endpoints are canonicalized and
+  included, so reversing corner order produces the same ordered plan.
+- Ellipsoid and cylinder classify grid-cell centers against the normalized
+  selection envelope. Even-sized selections remain symmetric around the plane
+  between their two middle cells.
+- Cylinder extrusion uses an explicit X, Y, or Z axis. A one-cell extent on that
+  axis is a disk. A one-cell Box extent is a wall or plane without another shape
+  kind.
+- Hollow means the one-cell six-neighbor boundary of the filled shape. It is a
+  closed shell, including cylinder end caps. Line has no removable interior.
+- Planning validates enum values and preflights candidate work before iteration.
+  Candidate and generated counts are independently bounded; the default limit is
+  16,384 cells. A limit or validation failure returns no partial cell list.
+- The reusable planner retains its 16,384-cell algorithm ceiling. The interactive
+  Creative application currently admits at most 512 candidate/generated cells
+  per Fill/Hollow commit because each cell is still a document object and many
+  materials bake as separate render meshes. Preview uses the same 512-cell limit
+  and turns red before a rejected commit. Raising this limit requires chunked
+  voxel storage or batched/instanced render ownership, not a constant change.
+- Fill/Hollow execute only the planned cells. Converting an existing generated
+  solid to Hollow removes only generated interior cells; cells elsewhere in the
+  selection remain untouched. Replace, Erase, and Clone retain their existing
+  rectangular-selection semantics.
+- Shape planning is `O(candidate cells)` and Line is `O(longest axis)`. Document
+  application remains atomic through a staged document and one history record.
+- Preview derives its status and cell count from the same planner. Rendering is
+  bounded: Box uses 12 edges, Line uses one centerline plus endpoint cells,
+  Ellipsoid uses three fixed 48-segment loops, and Cylinder uses two loops plus
+  four rails. Invalid or over-limit plans show a red box and cannot mutate.
+- Catalog shape selection is a bounded six-row preset table: Box, Line,
+  Ellipsoid, Cylinder X, Cylinder Y, and Cylinder Z. Catalog navigation edits a
+  draft and copies it into `CreativeToolSettings` only when the held tool is
+  equipped; the planner never reads UI state directly.
+
+## Admission Statuses
+
+| Status | Meaning | Mutation |
+|---|---|---|
+| `Ready` | Target, descriptor policy, and geometry plan agree | Allowed |
+| `InvalidTarget` | Missing, non-finite, or degenerate target facts | Rejected |
+| `UnsupportedBrush` | Object descriptor cannot produce placement geometry | Rejected |
+| `InvalidGeometry` | Planned bounds or transforms are invalid | Rejected |
+| `UnsupportedPolicy` | Policy requests semantics this runtime does not implement | Rejected |
+| `FaceDisallowed` | Hit face is absent or excluded by descriptor policy | Rejected |
+
+Unknown enum values and non-finite inputs fail closed. Rejections may render a
+red positionable ghost but never mutate the document.
+
+## Gesture And History Laws
+
+- Secondary places and Primary removes. Primary wins simultaneous presses.
+- The first action is immediate; held input repeats every 200 milliseconds.
+- One target cell or object may mutate at most once per gesture.
+- The visited set is fixed at 256 entries. Reaching capacity rejects further
+  edits without allocating.
+- The history transaction opens lazily. Release or interruption commits one
+  record only when at least one mutation changed the document.
+- Tool changes, hotbar changes, modals, capture mode, clipboard preview, undo,
+  redo, new, load, focus loss, and shutdown finalize the active gesture.
+- Empty or wholly rejected gestures cancel without creating history.
+- Identical manual brush geometry is rejected across gesture boundaries. This
+  prevents repeated taps or touchpad edge events from stacking invisible copies
+  that each force another document bake.
+- A Fill/Hollow corner pair applies one atomic volume operation and records at
+  most one history entry. Secondary without an armed first corner fails closed,
+  and a completed pair cannot be reapplied until Primary starts a new pair.
+
+## Visual And Cache Laws
+
+- Held preview is view-space state. Target preview is world-space state.
+- Valid target is green; invalid but positionable target is red.
+- Preview items never enter document geometry, room signatures, saves, or undo.
+- An accepted mutation hides the target ghost in the same frame and uses the
+  live document object for receipt feedback.
+- `CreativeEditorSceneCache` is keyed by document ID and revision. Aim motion
+  does not rebuild or upload room geometry.
+
+## Deferred Algorithms
+
+The following require explicit design and randomized or performance testing
+before implementation:
+
+- Replaceable-cell and support-neighbor queries.
+- Directional state permutations for stairs, ramps, doors, decals, logs, and
+  similar object classes whose gameplay state changes with orientation.
+- Exact oriented collision primitives for arbitrary non-cardinal yaw. Current
+  physics intentionally uses a conservative transformed AABB.
+- Edge/corner ray tie-breaking for rotated and non-uniform bounds.
+- Dirty-region or chunk-level mesh rebuilds beyond revision-wide scene caching.
+- Atomic rollback and compact diffs for very large operations.
+- Client/server sequence IDs and reconciliation if editing becomes networked.
+- Controller disconnect, reconnect, deadzone, and trigger-threshold behavior on
+  physical hardware.
+
+## Proof Targets
+
+- `creative_object_descriptor_tests`: policy ownership, local forward axes, and
+  face filtering.
+- `creative_shape_brush_tests`: lattice counts, symmetry, canonical line order,
+  axes, disks, hollow boundaries, enum rejection, and both operation limits.
+- `creative_interaction_tests`: semantic action edges and repeat timing.
+- `creative_editor_placement_tests`: plan/request parity, cardinal admission,
+  oriented preview/picking/bake/render parity, bounded shape outlines, gesture deduplication,
+  interruption, history grouping, and scene-cache reuse.
+- `creative_tools_tests`: degree-command to stored-radian conversion and
+  transform/scale geometry.
+- `creative_spatial_projection_tests` and `creative_document_wireframe_tests`:
+  transformed world bounds and exact oriented box edges.
+- `render_projection_input_tests`: bounded preview frame validation.
+- `render_command_recording_tests`: target-before-held draw ordering and depth
+  policy.

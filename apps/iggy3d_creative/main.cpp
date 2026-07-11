@@ -7,7 +7,7 @@
 // creative kernel and keep deterministic proof state in the extracted helpers:
 // EditorBootstrap owns renderer/bootstrap data, EditorCapture owns the fixed
 // capture schedule, and the Editor* helpers own picking, placement, gizmo/path
-// editing, RoomBake preview, persistence proof, and app-local snapshot undo.
+// editing, RoomBake preview, persistence proof, and app-local edit history.
 //
 // Rendered room geometry for bake-supported objects comes from RoomBake and the
 // product scene projection. Standalone-only previews stay app-local: point
@@ -34,10 +34,14 @@
 #include "render/vulkan/VulkanBackend.hpp"
 
 #include "EditorCapture.hpp"
+#include "EditorCatalog.hpp"
 #include "EditorFrame.hpp"
+#include "EditorGamepad.hpp"
 #include "EditorGizmo.hpp"
 #include "EditorBootstrap.hpp"
+#include "EditorInteraction.hpp"
 #include "EditorState.hpp"
+#include "EditorToolOptions.hpp"
 #include "EditorPlacement.hpp"
 #include "EditorPreviewFrame.hpp"
 
@@ -50,11 +54,9 @@ using iggy3d_creative_app::buildStandaloneRoomBakePreviewScene;
 using iggy3d_creative_app::captureFrameToPng;
 using iggy3d_creative_app::createCreativeRenderer;
 using iggy3d_creative_app::CreativeEditorBootstrapData;
+using iggy3d_creative_app::CreativeEditorGamepad;
 using iggy3d_creative_app::CreativeEditorState;
-using iggy3d_creative_app::resolveCreativeEditorAimCell;
-using iggy3d_creative_app::applyCreativeEditorClickSelection;
 using iggy3d_creative_app::applyCreativeEditorCommandInput;
-using iggy3d_creative_app::applyCreativeEditorPlacementInput;
 using iggy3d_creative_app::beginCreativeEditorFrameInput;
 using iggy3d_creative_app::CreativeEditorFrameInputResult;
 using iggy3d_creative_app::CreativeEditorGizmoFrame;
@@ -63,7 +65,9 @@ using iggy3d_creative_app::CreativeEditorSelectionFrame;
 using iggy3d_creative_app::CreativeEditorOverlayFrame;
 using iggy3d_creative_app::firstBrushKind;
 using iggy3d_creative_app::logCreativeEditorPathHandleCaptureFrame;
-using iggy3d_creative_app::processCreativeEditorMoveFrame;
+using iggy3d_creative_app::processCreativeEditorCatalogFrame;
+using iggy3d_creative_app::processCreativeEditorToolOptionsFrame;
+using iggy3d_creative_app::processCreativeEditorWorldInteractionFrame;
 using iggy3d_creative_app::submitCreativeEditorFrame;
 using iggy3d_creative_app::logCreativeEditorWorldPickProofFrame;
 using iggy3d_creative_app::resolveCreativeEditorSelectionFrame;
@@ -136,31 +140,69 @@ int main(int argc, char** argv) {
       bootstrapData.wireProjectionRequest;
   const float kGizmoAxisLength = bootstrapData.gizmoAxisLengthMeters;
   const float kGizmoThickness = bootstrapData.gizmoThicknessMeters;
-  const float kGizmoHandleThresholdPx =
-      bootstrapData.gizmoHandleThresholdPixels;
+  CreativeEditorGamepad gamepad;
+  iggy3d_creative_app::CreativeEditorSceneCache sceneCache;
 
   while (window.isOpen()) {
     const CreativeEditorFrameInputResult frameInput =
         beginCreativeEditorFrameInput(
-            window, *backend, editor, !capturePath.empty());
+            window, *backend, gamepad, editor, !capturePath.empty());
     if (!frameInput.keepRunning) {
       break;
     }
     if (frameInput.skipFrame) {
+      if (!frameInput.windowFocused) {
+        finalizeCreativeMaterialStroke(
+            appState, editor, "creative_material_stroke_focus_lost");
+      }
       continue;
     }
     const SdlDrawableExtent extent = frameInput.extent;
-    applyCreativeEditorCommandInput(
-        frameInput.routedInput, appState, editor, saveRoot, saveId);
+    const iggy3d_creative_app::CreativeEditorCatalogFrameResult catalogFrame =
+        processCreativeEditorCatalogFrame(
+            {window,
+             appState,
+             editor,
+             frameInput.routedInput,
+             frameInput.worldActions,
+             frameInput.toolWheelDirectionX,
+             frameInput.toolWheelDirectionY,
+             extent.width,
+             extent.height});
+    const iggy3d_creative_app::CreativeEditorToolOptionsFrameResult
+        toolOptionsFrame = processCreativeEditorToolOptionsFrame(
+            {window,
+             editor,
+             frameInput.routedInput,
+             catalogFrame.openToolOptionsRequested,
+             catalogFrame.toolOptionsHeldItem,
+             extent.width,
+             extent.height});
+    const bool modalBlocksWorldActions =
+        catalogFrame.blockWorldActions || toolOptionsFrame.blockWorldActions;
+    if (modalBlocksWorldActions || !frameInput.windowFocused) {
+      finalizeCreativeMaterialStroke(
+          appState, editor,
+          frameInput.windowFocused ? "creative_material_stroke_modal"
+                                   : "creative_material_stroke_focus_lost");
+    }
+    if (!catalogFrame.deferredCommandInput.actionEvents().empty()) {
+      applyCreativeEditorCommandInput(catalogFrame.deferredCommandInput,
+                                      appState, editor, saveRoot, saveId);
+    }
+    if (!modalBlocksWorldActions && frameInput.windowFocused) {
+      applyCreativeEditorCommandInput(
+          frameInput.routedInput, appState, editor, saveRoot, saveId);
+    }
 
     // SCENE (local, must outlive submitFrame): bake supported room geometry
     // through the same CreativeDocument -> RoomAsset adapter that gameplay will
     // eventually consume, then project that RoomAsset through the runtime scene
     // path. Standalone-only editor proxies remain only for objects that RoomBake
     // did not emit as static geometry, such as Point anchors and Path routes.
-    StandaloneRoomBakePreviewScene roomBakePreview =
-        buildStandaloneRoomBakePreviewScene(appState.facade.document(),
-                                            gridSnapshot);
+    static_cast<void>(refreshCreativeEditorSceneCache(
+        sceneCache, appState.facade.document(), gridSnapshot));
+    StandaloneRoomBakePreviewScene& roomBakePreview = sceneCache.preview;
     SceneProjectionResult& scene = roomBakePreview.scene;
     DebugProjectionResult debug{};
 
@@ -171,13 +213,8 @@ int main(int argc, char** argv) {
         editor.yawDegrees, editor.pitchDegrees,
         /*cameraAnchorOverrideAvailable=*/true, editor.flyPos);
 
-    const Vec3 aimCellCenter =
-        resolveCreativeEditorAimCell(frame.camera, editor.placeCellSize);
-
-    // ---- CLICK-TO-SELECT (generic over ALL objects) ------------------------
-    // Scan every visible object's visual bounds with one world-space ray. The
-    // nearest ray-entry distance wins, so overlapping projected boxes select the
-    // closest surface instead of the object with the nearest projected center.
+    // Scan every visible object's visual bounds once. Live interaction resolves
+    // the center ray from this frame; scripted capture retains its fixed proof ray.
     const CreativeEditorPickFrame pickFrame = buildCreativeEditorPickFrame(
         appState.facade.document(),
         frame.camera,
@@ -195,24 +232,35 @@ int main(int argc, char** argv) {
                                          editor,
                                          !capturePath.empty());
 
-    applyCreativeEditorClickSelection(window,
-                                      appState,
-                                      frame.camera,
-                                      extent.width,
-                                      extent.height,
-                                      pickFrame,
-                                      editor,
-                                      !capturePath.empty());
-
-    applyCreativeEditorPlacementInput(
-        window, appState, editor, aimCellCenter, !capturePath.empty());
+    if (!modalBlocksWorldActions && frameInput.windowFocused) {
+      processCreativeEditorWorldInteractionFrame(
+          {appState,
+           editor,
+           frameInput.worldActions,
+           frameInput.modifiers,
+           frame.camera,
+           pickFrame,
+           extent.width,
+           extent.height,
+           frameInput.monotonicTimeNanoseconds,
+           !capturePath.empty()});
+    }
 
     runCreativeEditorCaptureScenarioFrame(
         appState, editor, saveRoot, saveId, !capturePath.empty());
 
+    // World input mutates the CreativeDocument after the frame's initial scene
+    // bake. Refresh only changed frames so an accepted placement is submitted
+    // immediately rather than leaving the renderer on the pre-click snapshot.
+    if (refreshCreativeEditorSceneCache(
+            sceneCache, appState.facade.document(), gridSnapshot)) {
+      frame.projections.scene = &roomBakePreview.scene;
+      frame.clock.sourceTick = roomBakePreview.scene.sourceTick;
+    }
+
     // ---- RESOLVE THE SELECTION (generic) -----------------------------------
-    // Everything downstream — the yellow box, the gizmo, the dimension label, and
-    // the Move — keys off the CURRENTLY SELECTED object id, looked up via the same
+    // Everything downstream — the yellow box, gizmo, and dimension label — keys
+    // off the CURRENTLY SELECTED object id, looked up via the same
     // findObject the inspector uses. No hardcoded crate id, no kind check. When
     // nothing is selected we draw no gizmo/box and skip Move.
     const CreativeEditorSelectionFrame selection =
@@ -229,18 +277,6 @@ int main(int argc, char** argv) {
 
     logCreativeEditorPathHandleCaptureFrame(
         editor.captureScript, !capturePath.empty(), gizmoFrame);
-    processCreativeEditorMoveFrame({
-        window,
-        appState,
-        editor,
-        selection,
-        gizmoFrame,
-        frame.camera,
-        extent.width,
-        extent.height,
-        kGizmoAxisLength,
-        kGizmoHandleThresholdPx,
-        !capturePath.empty()});
 
     CreativeEditorOverlayFrame overlayFrame;
     buildAndAttachCreativeEditorOverlayFrame(
@@ -250,10 +286,10 @@ int main(int argc, char** argv) {
          gizmoFrame,
          frame,
          wireProjReq,
-         aimCellCenter,
          extent.width,
          extent.height,
-         kGizmoThickness},
+         kGizmoThickness,
+         !capturePath.empty()},
         overlayFrame);
 
     if (submitCreativeEditorFrame({
@@ -269,6 +305,9 @@ int main(int argc, char** argv) {
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(16));
   }
+
+  finalizeCreativeMaterialStroke(appState, editor,
+                                 "creative_material_stroke_shutdown");
 
   bool captureOk = true;
   if (!capturePath.empty()) {

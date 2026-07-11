@@ -28,11 +28,13 @@ struct SdlWindowEventState {
   bool minimized = false;
   bool restored = false;
   bool focused = true;
-  bool f1Pressed = false;
-  bool f2Pressed = false;
-  bool f3Pressed = false;
-  bool f4Pressed = false;
-  bool mPressed = false;
+  float mouseWheelY = 0.0F;
+  float pointerX = 0.0F;
+  float pointerY = 0.0F;
+  bool pointerMoved = false;
+  bool primaryPointerPressed = false;
+  std::string textInput;
+  std::uint32_t backspacePressCount = 0;
   std::uint32_t windowWidth = 0;
   std::uint32_t windowHeight = 0;
   std::uint32_t drawableWidth = 0;
@@ -62,6 +64,8 @@ public:
   const SdlWindowEventState& eventState() const;
   void setTitle(std::string_view title);
   SdlMouseCaptureResult setRelativeMouseMode(bool enabled);
+  bool setTextInputActive(bool enabled);
+  void centerPointer();
   void pollEvents();
 
   SDL_Window* nativeWindow() const;

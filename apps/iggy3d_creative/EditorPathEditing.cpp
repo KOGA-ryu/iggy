@@ -45,12 +45,12 @@ std::vector<cr::CreativePathPoint> movePathPoint(
 
 cr::CreativeDocumentMutationReceipt movePathObjectWithUndo(
     cr::CreativeAppState& appState,
-    StandaloneUndoStack& undoStack,
+    StandaloneEditHistory& history,
     cr::CreativeObjectId objectId,
     cr::CreativeVec3 delta,
     std::string_view source) {
   const cr::CreativeObject* beforeObject = appState.facade.findObject(objectId);
-  const std::size_t undoDepthBefore = undoStack.documents.size();
+  const std::uint64_t undoDepthBefore = cr::creativeUndoDepth(history);
   if (beforeObject == nullptr) {
     SDL_Log("iggy3d_creative: PATH move skipped source='%s' objectId=%llu "
             "reason='missing_object'",
@@ -84,21 +84,23 @@ cr::CreativeDocumentMutationReceipt movePathObjectWithUndo(
           beforePoints.size(), pathPointsSummary(beforePoints).c_str(), delta.x,
           delta.y, delta.z);
 
-  pushUndoSnapshot(undoStack, appState.facade, source);
+  StandaloneEditTransaction transaction =
+      beginEditTransaction(appState.facade, source);
   const cr::CreativeDocumentMutationReceipt receipt =
       cr::applyDocumentMutation(appState.facade.documentForPersistence(),
                                 objectId,
                                 cr::CreativeMutationKind::SetPatrolRoute,
                                 cr::makePathPointsPayload(afterPoints));
-  if (receipt.status != cr::CreativeDocumentMutationStatus::Applied ||
-      !receipt.changed) {
-    discardUndoSnapshot(undoStack, undoDepthBefore, source, receipt.message);
-  }
+  (void)completeEditTransaction(
+      history, std::move(transaction), appState.facade,
+      receipt.status == cr::CreativeDocumentMutationStatus::Applied &&
+          receipt.changed,
+      receipt.message);
 
   const cr::CreativeObject* afterObject = appState.facade.findObject(objectId);
   SDL_Log("iggy3d_creative: PATH move commit source='%s' objectId=%llu "
           "status='%s' allowed=%d changed=%d revisionBefore=%llu "
-          "revisionAfter=%llu dirtyFlags=%llu depthBefore=%zu depthAfter=%zu "
+          "revisionAfter=%llu dirtyFlags=%llu depthBefore=%llu depthAfter=%llu "
           "before='%s' after='%s'",
           std::string(source).c_str(),
           static_cast<unsigned long long>(objectId),
@@ -106,8 +108,10 @@ cr::CreativeDocumentMutationReceipt movePathObjectWithUndo(
           receipt.allowed ? 1 : 0, receipt.changed ? 1 : 0,
           static_cast<unsigned long long>(receipt.revisionBefore),
           static_cast<unsigned long long>(receipt.revisionAfter),
-          static_cast<unsigned long long>(receipt.dirtyFlags), undoDepthBefore,
-          undoStack.documents.size(), pathPointsSummary(beforePoints).c_str(),
+          static_cast<unsigned long long>(receipt.dirtyFlags),
+          static_cast<unsigned long long>(undoDepthBefore),
+          static_cast<unsigned long long>(cr::creativeUndoDepth(history)),
+          pathPointsSummary(beforePoints).c_str(),
           afterObject != nullptr
               ? pathPointsSummary(afterObject->pathPoints).c_str()
               : "<missing>");
@@ -116,13 +120,13 @@ cr::CreativeDocumentMutationReceipt movePathObjectWithUndo(
 
 cr::CreativeDocumentMutationReceipt movePathPointWithUndo(
     cr::CreativeAppState& appState,
-    StandaloneUndoStack& undoStack,
+    StandaloneEditHistory& history,
     cr::CreativeObjectId objectId,
     std::size_t pointIndex,
     cr::CreativeVec3 delta,
     std::string_view source) {
   const cr::CreativeObject* beforeObject = appState.facade.findObject(objectId);
-  const std::size_t undoDepthBefore = undoStack.documents.size();
+  const std::uint64_t undoDepthBefore = cr::creativeUndoDepth(history);
   if (beforeObject == nullptr) {
     SDL_Log("iggy3d_creative: PATH_HANDLE move skipped source='%s' objectId=%llu "
             "reason='missing_object'",
@@ -165,30 +169,34 @@ cr::CreativeDocumentMutationReceipt movePathPointWithUndo(
           pathPointsSummary(beforePoints).c_str(),
           pathPointsSummary(afterPoints).c_str());
 
-  pushUndoSnapshot(undoStack, appState.facade, source);
+  StandaloneEditTransaction transaction =
+      beginEditTransaction(appState.facade, source);
   const cr::CreativeDocumentMutationReceipt receipt =
       cr::applyDocumentMutation(appState.facade.documentForPersistence(),
                                 objectId,
                                 cr::CreativeMutationKind::SetPatrolRoute,
                                 cr::makePathPointsPayload(afterPoints));
-  if (receipt.status != cr::CreativeDocumentMutationStatus::Applied ||
-      !receipt.changed) {
-    discardUndoSnapshot(undoStack, undoDepthBefore, source, receipt.message);
-  }
+  (void)completeEditTransaction(
+      history, std::move(transaction), appState.facade,
+      receipt.status == cr::CreativeDocumentMutationStatus::Applied &&
+          receipt.changed,
+      receipt.message);
 
   const cr::CreativeObject* afterObject = appState.facade.findObject(objectId);
   SDL_Log("iggy3d_creative: PATH_HANDLE move commit source='%s' objectId=%llu "
           "pointIndex=%zu status='%s' allowed=%d changed=%d "
           "revisionBefore=%llu revisionAfter=%llu dirtyFlags=%llu "
-          "depthBefore=%zu depthAfter=%zu before='%s' after='%s'",
+          "depthBefore=%llu depthAfter=%llu before='%s' after='%s'",
           std::string(source).c_str(),
           static_cast<unsigned long long>(objectId), pointIndex,
           std::string(cr::toString(receipt.status)).c_str(),
           receipt.allowed ? 1 : 0, receipt.changed ? 1 : 0,
           static_cast<unsigned long long>(receipt.revisionBefore),
           static_cast<unsigned long long>(receipt.revisionAfter),
-          static_cast<unsigned long long>(receipt.dirtyFlags), undoDepthBefore,
-          undoStack.documents.size(), pathPointsSummary(beforePoints).c_str(),
+          static_cast<unsigned long long>(receipt.dirtyFlags),
+          static_cast<unsigned long long>(undoDepthBefore),
+          static_cast<unsigned long long>(cr::creativeUndoDepth(history)),
+          pathPointsSummary(beforePoints).c_str(),
           afterObject != nullptr
               ? pathPointsSummary(afterObject->pathPoints).c_str()
               : "<missing>");

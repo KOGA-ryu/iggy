@@ -2,7 +2,9 @@
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
 
 namespace iggy3d::creative {
@@ -83,6 +85,62 @@ constexpr bool hasCapability(
     return (capabilities & capability) != 0;
 }
 
+constexpr bool descriptorSupportsPlacementGeometry(
+    CreativeObjectKind kind,
+    CreativeObjectShapeKind shapeKind,
+    CreativeSpatialProjectionProfile projectionProfile,
+    DescriptorCapabilityFlags capabilities) noexcept {
+    if (kind == CreativeObjectKind::Unknown) {
+        return false;
+    }
+    const bool hasTransform = hasCapability(capabilities, kHasTransform);
+    const bool hasBounds = hasCapability(capabilities, kHasBounds);
+    switch (shapeKind) {
+        case CreativeObjectShapeKind::BoxVolume:
+        case CreativeObjectShapeKind::Surface:
+        case CreativeObjectShapeKind::MeshProxy:
+            return hasTransform && hasBounds &&
+                   projectionProfile ==
+                       CreativeSpatialProjectionProfile::BoxProjection;
+        case CreativeObjectShapeKind::Line:
+            return hasTransform && hasBounds &&
+                   (projectionProfile ==
+                        CreativeSpatialProjectionProfile::BoxProjection ||
+                    projectionProfile ==
+                        CreativeSpatialProjectionProfile::LineProjection);
+        case CreativeObjectShapeKind::Point:
+            return hasTransform && !hasBounds;
+        case CreativeObjectShapeKind::Path:
+            return projectionProfile ==
+                   CreativeSpatialProjectionProfile::PathProjection;
+        case CreativeObjectShapeKind::Unknown:
+            return false;
+    }
+    return false;
+}
+
+constexpr CreativeObjectPlacementPolicy placementPolicyForDescriptor(
+    CreativeObjectKind kind,
+    CreativeObjectShapeKind shapeKind,
+    CreativeSpatialProjectionProfile projectionProfile,
+    DescriptorCapabilityFlags capabilities,
+    CreativePlacementOrientationPolicy orientationPolicy,
+    CreativePlacementFace localForwardFace) noexcept {
+    if (!descriptorSupportsPlacementGeometry(kind, shapeKind,
+                                             projectionProfile,
+                                             capabilities)) {
+        return {};
+    }
+    return CreativeObjectPlacementPolicy{
+        kCreativePlacementAllFaces,
+        CreativePlacementTargetPolicy::AdjacentCell,
+        orientationPolicy,
+        localForwardFace,
+        CreativePlacementOccupancyPolicy::AllowOverlap,
+        true,
+    };
+}
+
 constexpr CreativeObjectDescriptor descriptor(
     CreativeObjectKind kind,
     CreativeObjectCategory category,
@@ -97,7 +155,11 @@ constexpr CreativeObjectDescriptor descriptor(
     CreativeObjectDefaults defaults,
     DescriptorCapabilityFlags capabilities,
     CreativeRuntimeAnchorSemantic runtimeAnchorSemantic =
-        CreativeRuntimeAnchorSemantic::None) noexcept {
+        CreativeRuntimeAnchorSemantic::None,
+    CreativePlacementOrientationPolicy placementOrientationPolicy =
+        CreativePlacementOrientationPolicy::DescriptorDefault,
+    CreativePlacementFace localForwardFace =
+        CreativePlacementFace::PositiveZ) noexcept {
     return CreativeObjectDescriptor{
         kind,
         category,
@@ -109,6 +171,10 @@ constexpr CreativeObjectDescriptor descriptor(
         hasCapability(capabilities, kAuthoringBrushPalette)
             ? CreativeAuthoringPaletteVisibility::Brush
             : CreativeAuthoringPaletteVisibility::Hidden,
+        placementPolicyForDescriptor(kind, shapeKind, projectionProfile,
+                                     capabilities,
+                                     placementOrientationPolicy,
+                                     localForwardFace),
         name,
         displayName,
         purpose,
@@ -186,7 +252,9 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         "vertical structural surface",
         structuralCreationDirtyFlags(),
         boxDefaults(1.0, 3.0, 4.0),
-        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
+        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
+        CreativeRuntimeAnchorSemantic::None,
+        CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
     ),
     descriptor(
         CreativeObjectKind::Floor,
@@ -242,7 +310,9 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         "openable passage attachment",
         structuralCreationDirtyFlags() | flagValue(CreativeObjectDirtyFlag::Logic),
         boxDefaults(1.0, 2.25, 0.2),
-        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
+        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
+        CreativeRuntimeAnchorSemantic::None,
+        CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
     ),
     descriptor(
         CreativeObjectKind::Window,
@@ -256,7 +326,9 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         "wall opening or visual aperture",
         structuralCreationDirtyFlags(),
         boxDefaults(1.5, 1.0, 0.2),
-        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
+        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
+        CreativeRuntimeAnchorSemantic::None,
+        CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
     ),
     descriptor(
         CreativeObjectKind::Stair,
@@ -368,7 +440,9 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         "arched structural opening",
         structuralCreationDirtyFlags(),
         boxDefaults(3.0, 3.0, 0.5),
-        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
+        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
+        CreativeRuntimeAnchorSemantic::None,
+        CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
     ),
     descriptor(
         CreativeObjectKind::Fence,
@@ -382,7 +456,9 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         "thin boundary structure",
         structuralCreationDirtyFlags(),
         boxDefaults(4.0, 1.25, 0.2),
-        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
+        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
+        CreativeRuntimeAnchorSemantic::None,
+        CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
     ),
     descriptor(
         CreativeObjectKind::Railing,
@@ -396,7 +472,9 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         "edge safety or visual rail",
         structuralCreationDirtyFlags(),
         boxDefaults(4.0, 1.0, 0.2),
-        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
+        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
+        CreativeRuntimeAnchorSemantic::None,
+        CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
     ),
     descriptor(
         CreativeObjectKind::Bridge,
@@ -424,7 +502,9 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         "vertical climb structure",
         structuralCreationDirtyFlags() | flagValue(CreativeObjectDirtyFlag::Navigation),
         boxDefaults(0.75, 4.0, 0.2),
-        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
+        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
+        CreativeRuntimeAnchorSemantic::None,
+        CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
     )
 });
 
@@ -684,7 +764,10 @@ constexpr auto kNavigationOrMovementDescriptors = std::to_array<CreativeObjectDe
         "wall-runable surface with movement tuning rules",
         testingCreationDirtyFlags() | flagValue(CreativeObjectDirtyFlag::Navigation),
         boxDefaults(0.25, 3.0, 6.0),
-        kHasTransform | kHasBounds | kRuntimeMeaningful | kAuthoringBrushPalette
+        kHasTransform | kHasBounds | kRuntimeMeaningful | kAuthoringBrushPalette,
+        CreativeRuntimeAnchorSemantic::None,
+        CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing,
+        CreativePlacementFace::PositiveX
     ),
     descriptor(
         CreativeObjectKind::SlideSurface,
@@ -1073,7 +1156,9 @@ constexpr auto kVisualDressingDescriptors = std::to_array<CreativeObjectDescript
         "visual sign object",
         commonAuthoredDirtyFlags() | flagValue(CreativeObjectDirtyFlag::Transform),
         boxDefaults(1.5, 1.0, 0.1),
-        kHasTransform | kHasBounds | kCanHaveParent | kAuthoringBrushPalette
+        kHasTransform | kHasBounds | kCanHaveParent | kAuthoringBrushPalette,
+        CreativeRuntimeAnchorSemantic::None,
+        CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
     ),
     descriptor(
         CreativeObjectKind::Banner,
@@ -1087,7 +1172,9 @@ constexpr auto kVisualDressingDescriptors = std::to_array<CreativeObjectDescript
         "hanging visual banner",
         commonAuthoredDirtyFlags() | flagValue(CreativeObjectDirtyFlag::Transform),
         boxDefaults(1.5, 2.0, 0.05),
-        kHasTransform | kHasBounds | kCanHaveParent | kAuthoringBrushPalette
+        kHasTransform | kHasBounds | kCanHaveParent | kAuthoringBrushPalette,
+        CreativeRuntimeAnchorSemantic::None,
+        CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
     ),
     descriptor(
         CreativeObjectKind::FoliagePatch,
@@ -1999,6 +2086,37 @@ bool descriptorShowsInAuthoringBrushPalette(
 
 bool objectShowsInAuthoringBrushPalette(CreativeObjectKind kind) noexcept {
     return descriptorShowsInAuthoringBrushPalette(describeObject(kind));
+}
+
+CreativePlacementFace creativePlacementFaceFromNormal(
+    CreativeVec3 normal) noexcept {
+    const double ax = std::fabs(normal.x);
+    const double ay = std::fabs(normal.y);
+    const double az = std::fabs(normal.z);
+    if (!std::isfinite(ax) || !std::isfinite(ay) || !std::isfinite(az) ||
+        std::max({ax, ay, az}) <= 1.0e-12) {
+        return CreativePlacementFace::Count;
+    }
+    if (ax >= ay && ax >= az) {
+        return normal.x < 0.0 ? CreativePlacementFace::NegativeX
+                              : CreativePlacementFace::PositiveX;
+    }
+    if (ay >= az) {
+        return normal.y < 0.0 ? CreativePlacementFace::NegativeY
+                              : CreativePlacementFace::PositiveY;
+    }
+    return normal.z < 0.0 ? CreativePlacementFace::NegativeZ
+                          : CreativePlacementFace::PositiveZ;
+}
+
+bool creativePlacementPolicyAllowsFace(
+    const CreativeObjectPlacementPolicy& policy,
+    CreativeVec3 normal) noexcept {
+    if (!policy.enabled) {
+        return false;
+    }
+    const CreativePlacementFace face = creativePlacementFaceFromNormal(normal);
+    return (policy.allowedFaces & creativePlacementFaceBit(face)) != 0U;
 }
 
 bool objectUsesProfile(CreativeObjectKind kind, CreativeObjectProfile profile) noexcept {

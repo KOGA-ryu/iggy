@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstddef>
 #include <limits>
+#include <numbers>
 #include <string>
 #include <utility>
 
@@ -71,6 +72,7 @@ struct RoomBakeObjectClassification {
   RoomBakeObjectDecision decision{RoomBakeObjectDecision::SkipUnsupportedShape};
   bool countedAsConsidered{true};
   BakeBounds bounds{};
+  Vec3 orientedSize{};
   BakedRoomRole role{BakedRoomRole::Unsupported};
   std::string_view anchorKind{};
 };
@@ -130,6 +132,23 @@ struct BakeStaticMeshEntry {
   return true;
 }
 
+[[nodiscard]] bool nearZero(double value) noexcept {
+  return std::fabs(value) <= 1.0e-9;
+}
+
+[[nodiscard]] bool axisAlignedYaw(CreativeVec3 rotation) noexcept {
+  if (!finite(rotation) || !nearZero(rotation.x) || !nearZero(rotation.z)) {
+    return false;
+  }
+  const double quarterTurns = rotation.y / (std::numbers::pi * 0.5);
+  return std::fabs(quarterTurns - std::round(quarterTurns)) <= 1.0e-9;
+}
+
+[[nodiscard]] bool identityRotation(CreativeVec3 rotation) noexcept {
+  return finite(rotation) && nearZero(rotation.x) && nearZero(rotation.y) &&
+         nearZero(rotation.z);
+}
+
 [[nodiscard]] bool occupancySupportsRuntimeRoomGeometry(
     CreativeSpatialOccupancyKind occupancy) noexcept {
   return occupancy == CreativeSpatialOccupancyKind::Structural ||
@@ -181,17 +200,17 @@ struct BakeStaticMeshEntry {
   return false;
 }
 
-[[nodiscard]] bool horizontalSurface(BakeBounds bounds) noexcept {
-  return bounds.size.y <= bounds.size.x && bounds.size.y <= bounds.size.z;
+[[nodiscard]] bool horizontalSurface(Vec3 size) noexcept {
+  return size.y <= size.x && size.y <= size.z;
 }
 
-[[nodiscard]] bool standingSurface(BakeBounds bounds) noexcept {
-  return bounds.size.y > bounds.size.x || bounds.size.y > bounds.size.z;
+[[nodiscard]] bool standingSurface(Vec3 size) noexcept {
+  return size.y > size.x || size.y > size.z;
 }
 
 [[nodiscard]] BakedRoomRole roleForObject(
     const CreativeObjectDescriptor& descriptor,
-    BakeBounds bounds) noexcept {
+    Vec3 orientedSize) noexcept {
   if (!descriptorSupportsRuntimeRoomGeometry(descriptor)) {
     return BakedRoomRole::Unsupported;
   }
@@ -199,11 +218,11 @@ struct BakeStaticMeshEntry {
   switch (descriptor.shapeKind) {
     case CreativeObjectShapeKind::Surface:
       if (descriptor.occupancyKind == CreativeSpatialOccupancyKind::Structural &&
-          horizontalSurface(bounds)) {
+          horizontalSurface(orientedSize)) {
         return BakedRoomRole::Floor;
       }
       if (descriptor.occupancyKind == CreativeSpatialOccupancyKind::Structural &&
-          standingSurface(bounds)) {
+          standingSurface(orientedSize)) {
         return BakedRoomRole::Wall;
       }
       return BakedRoomRole::Prop;
@@ -340,9 +359,14 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
   mesh.meshId = std::string(meshIdForRole(role));
   mesh.materialId = std::string(materialIdForRole(role));
   mesh.role = std::string(roleName(role));
-  mesh.positionMeters = bounds.center;
-  mesh.sizeMeters = bounds.size;
-  if (role == BakedRoomRole::Wall) {
+  const CreativeTransformedBounds resolved =
+      resolveCreativeObjectBounds(object);
+  mesh.positionMeters = resolved.valid ? toVec3(resolved.center) : bounds.center;
+  mesh.sizeMeters = resolved.valid ? toVec3(resolved.size) : bounds.size;
+  mesh.rotationEulerRadians =
+      resolved.valid ? toVec3(resolved.rotationEulerRadians) : Vec3{};
+  if (role == BakedRoomRole::Wall &&
+      axisAlignedYaw(object.transform.rotationEulerRadians)) {
     setWallSegmentFields(mesh, bounds);
   }
   return mesh;
@@ -500,12 +524,18 @@ void appendSpatialSurfaces(RoomAsset& room,
     return classification;
   }
 
-  if (!validBakeBounds(object.bounds, classification.bounds)) {
+  const CreativeTransformedBounds resolved =
+      resolveCreativeObjectBounds(object);
+  if (!resolved.valid ||
+      !validBakeBounds(resolved.worldBounds, classification.bounds) ||
+      !fitsFloat(resolved.size.x) || !fitsFloat(resolved.size.y) ||
+      !fitsFloat(resolved.size.z)) {
     classification.decision = RoomBakeObjectDecision::SkipNoBounds;
     return classification;
   }
 
-  classification.role = roleForObject(descriptor, classification.bounds);
+  classification.orientedSize = toVec3(resolved.size);
+  classification.role = roleForObject(descriptor, classification.orientedSize);
   if (classification.role == BakedRoomRole::Unsupported) {
     classification.decision = RoomBakeObjectDecision::SkipUnsupportedShape;
     return classification;
@@ -557,6 +587,7 @@ void setStatus(CreativeRoomBakeReceipt& receipt,
   return entry.object != nullptr && entry.descriptor != nullptr &&
          entry.classification.role == BakedRoomRole::Floor &&
          entry.object->kind == CreativeObjectKind::Floor &&
+         identityRotation(entry.object->transform.rotationEulerRadians) &&
          entry.descriptor->shapeKind == CreativeObjectShapeKind::Surface &&
              entry.descriptor->occupancyKind ==
                  CreativeSpatialOccupancyKind::Structural;

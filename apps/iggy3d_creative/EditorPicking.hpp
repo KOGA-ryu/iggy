@@ -54,7 +54,6 @@ struct PathPointHandleHit {
   cr::CreativeObjectId objectId = cr::kInvalidObjectId;
   std::size_t pointIndex = 0U;
   ScreenAabb aabb{};
-  float centerDepth = std::numeric_limits<float>::max();
   cr::CreativeVec3 position{};
 };
 
@@ -69,12 +68,6 @@ struct PathPointHandleHit {
     iggy3d::Vec3 world,
     std::uint32_t widthPx,
     std::uint32_t heightPx);
-[[nodiscard]] float pointToSegmentDistancePx(float px,
-                                             float py,
-                                             float ax,
-                                             float ay,
-                                             float bx,
-                                             float by);
 [[nodiscard]] WorldRay worldRayFromPixel(const iggy3d::RenderCameraFrame& camera,
                                          float pixelX,
                                          float pixelY,
@@ -99,10 +92,5 @@ struct PathPointHandleHit {
     const iggy3d::Mat4& clipFromWorld,
     std::uint32_t widthPx,
     std::uint32_t heightPx);
-[[nodiscard]] bool pickPathPointHandle(
-    const std::vector<PathPointHandleHit>& handles,
-    float px,
-    float py,
-    PathPointHandleHit& out);
 
 }  // namespace iggy3d_creative_app

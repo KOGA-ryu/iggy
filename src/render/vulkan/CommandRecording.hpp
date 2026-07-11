@@ -1,10 +1,12 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
 
 #include "render/RenderDiagnostics.hpp"
+#include "render/FrameInput.hpp"
 #include "render/debug/DebugHudText.hpp"
 #include "render/vulkan/FirstRoomPipeline.hpp"
 #include "render/vulkan/PipelineLayout.hpp"
@@ -51,6 +53,27 @@ struct EmptyFrameRecordInfo {
   std::size_t debugHudQuadCount = 0;
 };
 
+struct CreativePreviewDrawInfo {
+  FirstRoomPushConstants pushConstants;
+  std::uint32_t geometryDrawIndex = 0;
+  bool depthDisabled = false;
+};
+
+struct CreativePreviewCommandStep {
+  std::uint8_t sourceDrawIndex = 0;
+  bool depthDisabled = false;
+};
+
+struct CreativePreviewCommandPlan {
+  std::array<CreativePreviewCommandStep, kRenderCreativePreviewCapacity> steps{};
+  std::uint8_t stepCount = 0;
+};
+
+[[nodiscard]] CreativePreviewCommandPlan buildCreativePreviewCommandPlan(
+    const CreativePreviewDrawInfo* draws,
+    std::size_t drawCount,
+    std::size_t geometryDrawCount) noexcept;
+
 struct FirstRoomFrameRecordInfo {
   VkCommandBuffer commandBuffer{};
   VkImage swapchainImage{};
@@ -63,6 +86,7 @@ struct FirstRoomFrameRecordInfo {
   std::uint32_t frameSlot = 0;
   std::uint32_t imageIndex = 0;
   VkPipeline pipeline{};
+  VkPipeline viewModelPipeline{};
   VkPipelineLayout pipelineLayout{};
   VkBuffer vertexBuffer{};
   VkBuffer indexBuffer{};
@@ -70,6 +94,12 @@ struct FirstRoomFrameRecordInfo {
   const IndexedDrawRange* indexedDraws = nullptr;
   std::size_t indexedDrawCount = 0;
   FirstRoomPushConstants pushConstants;
+  VkBuffer creativePreviewVertexBuffer{};
+  VkBuffer creativePreviewIndexBuffer{};
+  const IndexedDrawRange* creativePreviewIndexedDraws = nullptr;
+  std::size_t creativePreviewIndexedDrawCount = 0;
+  const CreativePreviewDrawInfo* creativePreviewDraws = nullptr;
+  std::size_t creativePreviewDrawCount = 0;
   bool captureEnabled = false;
   VkBuffer captureBuffer{};
   VkDeviceSize captureBufferSize = 0;

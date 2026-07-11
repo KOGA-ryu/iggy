@@ -23,6 +23,18 @@ bool isNonZeroFiniteVector(Vec3 value) {
   return isFinite(value) && lengthSquared(value) > 0.0F;
 }
 
+bool isValidCreativePreviewRole(RenderCreativePreviewRole role) {
+  switch (role) {
+    case RenderCreativePreviewRole::Held:
+    case RenderCreativePreviewRole::PlacementValid:
+    case RenderCreativePreviewRole::PlacementInvalid:
+      return true;
+    case RenderCreativePreviewRole::Count:
+      return false;
+  }
+  return false;
+}
+
 bool hasUiContent(const RenderUiFrame& ui) {
   return ui.visible &&
          ((ui.rects != nullptr && ui.rectCount > 0U) ||
@@ -65,6 +77,8 @@ std::string_view frameInputReasonCode(FrameInputStatus status) {
       return "frame_clip_planes_invalid";
     case FrameInputStatus::InvalidCreativeWireframeDebugLines:
       return "frame_creative_wireframe_debug_lines_invalid";
+    case FrameInputStatus::InvalidCreativePreviewItems:
+      return "frame_creative_preview_items_invalid";
   }
   return "frame_input_invalid";
 }
@@ -111,6 +125,19 @@ FrameInputStatus validateFrameInput(const FrameInput& frame) {
   if (frame.creativeWireframeDebug.lineCount > 0U &&
       frame.creativeWireframeDebug.lines == nullptr) {
     return FrameInputStatus::InvalidCreativeWireframeDebugLines;
+  }
+
+  if (frame.creativePreview.itemCount > kRenderCreativePreviewCapacity) {
+    return FrameInputStatus::InvalidCreativePreviewItems;
+  }
+  for (std::size_t index = 0; index < frame.creativePreview.itemCount;
+       ++index) {
+    const RenderCreativePreviewItem& item =
+        frame.creativePreview.items[index];
+    if (!isValidCreativePreviewRole(item.role) ||
+        !isFinite(item.clipFromModel)) {
+      return FrameInputStatus::InvalidCreativePreviewItems;
+    }
   }
 
   // branch-gate: BG-1080

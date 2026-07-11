@@ -47,9 +47,17 @@ target_sources(iggy3d
     src/app/iggy3d/creative/spatial/SpatialProjection.cpp
     src/app/iggy3d/creative/document/DocumentWireframe.cpp
     src/app/iggy3d/creative/input/InputRouter.cpp
+    src/app/iggy3d/creative/input/Catalog.cpp
+    src/app/iggy3d/creative/input/Interaction.cpp
+    src/app/iggy3d/creative/history/History.cpp
     src/app/iggy3d/creative/tools/Tools.cpp
     src/app/iggy3d/creative/tools/Select.cpp
+    src/app/iggy3d/creative/tools/Clipboard.cpp
     src/app/iggy3d/creative/tools/Transform.cpp
+    src/app/iggy3d/creative/tools/Pattern.cpp
+    src/app/iggy3d/creative/tools/ShapeBrush.cpp
+    src/app/iggy3d/creative/tools/VolumeSelection.cpp
+    src/app/iggy3d/creative/tools/Volume.cpp
     src/app/iggy3d/creative/tools/Measure.cpp
     src/app/iggy3d/creative/spatial/Snap.cpp
     src/app/iggy3d/creative/document/DocumentSnap.cpp
@@ -79,6 +87,11 @@ target_sources(iggy3d
     src/content/assets/TraversalTag.cpp
     src/runtime/player/PlayerRoster.cpp
     src/runtime/player/PlayerPhysicsMovePlanner.cpp
+    src/runtime/player/PlayerMotor.cpp
+    src/runtime/physics/PhysicsBroadphase.cpp
+    src/render/RendererApi.cpp
+    src/render/RendererConfig.cpp
+    src/render/null/NullRenderer.cpp
     src/runtime/world/WorldState.cpp
     src/runtime/clock/Clock.cpp
     src/runtime/camera/CameraModePolicy.cpp
@@ -179,19 +192,40 @@ if(IGGY3D_ENABLE_VULKAN_SHADERS AND IGGY3D_SHADER_COMPILER_AVAILABLE)
   add_dependencies(iggy3d iggy3d_vulkan_shaders)
 endif()
 
-add_executable(iggy3d_creative
-  apps/iggy3d_creative/main.cpp
+set(IGGY3D_CREATIVE_APP_SOURCES
+  apps/iggy3d_creative/EditorCatalog.cpp
+  apps/iggy3d_creative/EditorToolOptions.cpp
   apps/iggy3d_creative/EditorCapture.cpp
   apps/iggy3d_creative/EditorFrame.cpp
+  apps/iggy3d_creative/EditorGamepad.cpp
   apps/iggy3d_creative/EditorGizmo.cpp
+  apps/iggy3d_creative/EditorInteraction.cpp
+  apps/iggy3d_creative/EditorPattern.cpp
   apps/iggy3d_creative/EditorBootstrap.cpp
   apps/iggy3d_creative/EditorPlacement.cpp
   apps/iggy3d_creative/EditorEdits.cpp
+  apps/iggy3d_creative/EditorVolume.cpp
   apps/iggy3d_creative/EditorFrustumCull.cpp
   apps/iggy3d_creative/EditorPathEditing.cpp
   apps/iggy3d_creative/EditorPersistence.cpp
   apps/iggy3d_creative/EditorPicking.cpp
   apps/iggy3d_creative/EditorPreviewProxies.cpp
   apps/iggy3d_creative/EditorPreviewFrame.cpp)
-target_link_libraries(iggy3d_creative PRIVATE iggy3d)
-iggy3d_apply_warnings(iggy3d_creative)
+
+add_library(iggy3d_creative_app STATIC ${IGGY3D_CREATIVE_APP_SOURCES})
+target_link_libraries(iggy3d_creative_app PUBLIC iggy3d)
+target_include_directories(iggy3d_creative_app PUBLIC
+  "${CMAKE_CURRENT_SOURCE_DIR}/apps/iggy3d_creative")
+iggy3d_apply_warnings(iggy3d_creative_app)
+
+add_executable(i3dc apps/iggy3d_creative/main.cpp)
+target_link_libraries(i3dc PRIVATE iggy3d_creative_app)
+iggy3d_apply_warnings(i3dc)
+
+# Preserve the descriptive build target while keeping the executable convenient.
+add_custom_target(iggy3d_creative DEPENDS i3dc)
+
+if(IGGY3D_BUILD_TESTS)
+  enable_testing()
+  include(cmake/iggy3d_tests.cmake)
+endif()

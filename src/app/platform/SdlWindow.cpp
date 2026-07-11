@@ -118,47 +118,97 @@ SdlMouseCaptureResult SdlWindow::setRelativeMouseMode(bool enabled) {
   return result;
 }
 
+bool SdlWindow::setTextInputActive(bool enabled) {
+  if (window_ == nullptr) {
+    return false;
+  }
+  if (SDL_TextInputActive(window_) == enabled) {
+    return true;
+  }
+  return enabled ? SDL_StartTextInput(window_) : SDL_StopTextInput(window_);
+}
+
+void SdlWindow::centerPointer() {
+  if (window_ == nullptr) {
+    return;
+  }
+  int width = 0;
+  int height = 0;
+  SDL_GetWindowSize(window_, &width, &height);
+  eventState_.pointerX = static_cast<float>(width) * 0.5F;
+  eventState_.pointerY = static_cast<float>(height) * 0.5F;
+  eventState_.pointerMoved = false;
+  SDL_WarpMouseInWindow(window_, eventState_.pointerX, eventState_.pointerY);
+}
+
 void SdlWindow::pollEvents() {
   eventState_.resized = false;
   eventState_.restored = false;
-  eventState_.f1Pressed = false;
-  eventState_.f2Pressed = false;
-  eventState_.f3Pressed = false;
-  eventState_.f4Pressed = false;
-  eventState_.mPressed = false;
+  eventState_.mouseWheelY = 0.0F;
+  eventState_.pointerMoved = false;
+  eventState_.primaryPointerPressed = false;
+  eventState_.textInput.clear();
+  eventState_.backspacePressCount = 0;
 
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
-    if (event.type == SDL_EVENT_QUIT) {
-      eventState_.quitRequested = true;
-    } else if (event.type == SDL_EVENT_WINDOW_RESIZED ||
-               event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
-      eventState_.resized = true;
-      refreshExtents();
-    } else if (event.type == SDL_EVENT_WINDOW_MINIMIZED) {
-      eventState_.minimized = true;
-      refreshExtents();
-    } else if (event.type == SDL_EVENT_WINDOW_RESTORED) {
-      eventState_.minimized = false;
-      eventState_.restored = true;
-      refreshExtents();
-    } else if (event.type == SDL_EVENT_WINDOW_FOCUS_GAINED) {
-      eventState_.focused = true;
-    } else if (event.type == SDL_EVENT_WINDOW_FOCUS_LOST) {
-      eventState_.focused = false;
-    } else if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) {  // branch-gate: BG-1195
-      eventState_.f1Pressed = eventState_.f1Pressed ||
-                              event.key.scancode == SDL_SCANCODE_F1;
-      eventState_.f2Pressed = eventState_.f2Pressed ||
-                              event.key.scancode == SDL_SCANCODE_F2;
-      eventState_.f3Pressed = eventState_.f3Pressed ||
-                              event.key.scancode == SDL_SCANCODE_F3;
-      eventState_.f4Pressed = eventState_.f4Pressed ||
-                              event.key.scancode == SDL_SCANCODE_F4;
-      eventState_.mPressed = eventState_.mPressed ||
-                             event.key.scancode == SDL_SCANCODE_M;
+    switch (event.type) {
+      case SDL_EVENT_QUIT:
+        eventState_.quitRequested = true;
+        break;
+      case SDL_EVENT_WINDOW_RESIZED:
+      case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+        eventState_.resized = true;
+        refreshExtents();
+        break;
+      case SDL_EVENT_WINDOW_MINIMIZED:
+        eventState_.minimized = true;
+        refreshExtents();
+        break;
+      case SDL_EVENT_WINDOW_RESTORED:
+        eventState_.minimized = false;
+        eventState_.restored = true;
+        refreshExtents();
+        break;
+      case SDL_EVENT_WINDOW_FOCUS_GAINED:
+        eventState_.focused = true;
+        break;
+      case SDL_EVENT_WINDOW_FOCUS_LOST:
+        eventState_.focused = false;
+        break;
+      case SDL_EVENT_MOUSE_WHEEL: {
+        const float direction =
+            event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -1.0F : 1.0F;
+        eventState_.mouseWheelY += event.wheel.y * direction;
+        break;
+      }
+      case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        eventState_.pointerX = event.button.x;
+        eventState_.pointerY = event.button.y;
+        eventState_.primaryPointerPressed =
+            eventState_.primaryPointerPressed ||
+            event.button.button == SDL_BUTTON_LEFT;
+        break;
+      case SDL_EVENT_MOUSE_MOTION:
+        eventState_.pointerX = event.motion.x;
+        eventState_.pointerY = event.motion.y;
+        eventState_.pointerMoved = true;
+        break;
+      case SDL_EVENT_TEXT_INPUT:
+        if (event.text.text != nullptr) {
+          eventState_.textInput.append(event.text.text);
+        }
+        break;
+      case SDL_EVENT_KEY_DOWN:
+        if (event.key.scancode == SDL_SCANCODE_BACKSPACE) {
+          ++eventState_.backspacePressCount;
+        }
+        break;
+      default:
+        break;
     }
   }
+  SDL_GetMouseState(&eventState_.pointerX, &eventState_.pointerY);
   refreshExtents();
 }
 

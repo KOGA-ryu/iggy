@@ -171,7 +171,7 @@ struct MoveMutation {
 };
 
 struct RotateMutation {
-    CreativeVec3 rotation{};
+    CreativeVec3 rotationEulerRadians{};
 };
 
 struct ScaleMutation {
@@ -345,7 +345,8 @@ struct CreativeMutationDescriptor {
 [[nodiscard]] CreativeMutationPayload makeVisibilityPayload(bool visible);
 [[nodiscard]] CreativeMutationPayload makeLockPayload(bool locked);
 [[nodiscard]] CreativeMutationPayload makeMovePayload(CreativeVec3 position);
-[[nodiscard]] CreativeMutationPayload makeRotatePayload(CreativeVec3 rotation);
+[[nodiscard]] CreativeMutationPayload makeRotatePayload(
+    CreativeVec3 rotationEulerRadians);
 [[nodiscard]] CreativeMutationPayload makeBoundsPayload(CreativeBounds bounds);
 [[nodiscard]] CreativeMutationPayload makeScalarPayload(double value);
 [[nodiscard]] CreativeMutationPayload makeParentPayload(CreativeObjectId parentId);

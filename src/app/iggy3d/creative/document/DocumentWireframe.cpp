@@ -53,9 +53,17 @@ void setSegmentReceiptStatus(CreativeDocumentWireframeSegmentReceipt& receipt,
 
   switch (item.itemKind) {
     case CreativeDocumentWireframeItemKind::Box:
-      item.bounds = object.bounds;
-      item.start = object.bounds.min;
-      item.end = object.bounds.max;
+      if (const CreativeTransformedBounds resolved =
+              resolveCreativeObjectBounds(object);
+          resolved.valid) {
+        item.bounds = resolved.worldBounds;
+        item.boxCorners = resolved.corners;
+        item.hasBoxCorners = true;
+      } else {
+        item.bounds = object.bounds;
+      }
+      item.start = item.bounds.min;
+      item.end = item.bounds.max;
       break;
     case CreativeDocumentWireframeItemKind::Point:
       item.bounds = CreativeBounds{object.transform.position,
@@ -124,18 +132,26 @@ void appendSegment(CreativeDocumentWireframeSegmentList& list,
 
 void appendBoxSegments(CreativeDocumentWireframeSegmentList& list,
                        const CreativeDocumentWireframeItem& item) {
-  const CreativeVec3 min = item.bounds.min;
-  const CreativeVec3 max = item.bounds.max;
+  std::array<CreativeVec3, 8> corners = item.boxCorners;
+  if (!item.hasBoxCorners) {
+    const CreativeVec3 min = item.bounds.min;
+    const CreativeVec3 max = item.bounds.max;
+    corners = {{
+        {min.x, min.y, min.z}, {max.x, min.y, min.z},
+        {min.x, max.y, min.z}, {max.x, max.y, min.z},
+        {min.x, min.y, max.z}, {max.x, min.y, max.z},
+        {min.x, max.y, max.z}, {max.x, max.y, max.z},
+    }};
+  }
 
-  const CreativeVec3 bottomFrontLeft{min.x, min.y, min.z};
-  const CreativeVec3 bottomFrontRight{max.x, min.y, min.z};
-  const CreativeVec3 bottomBackRight{max.x, min.y, max.z};
-  const CreativeVec3 bottomBackLeft{min.x, min.y, max.z};
-
-  const CreativeVec3 topFrontLeft{min.x, max.y, min.z};
-  const CreativeVec3 topFrontRight{max.x, max.y, min.z};
-  const CreativeVec3 topBackRight{max.x, max.y, max.z};
-  const CreativeVec3 topBackLeft{min.x, max.y, max.z};
+  const CreativeVec3& bottomFrontLeft = corners[0];
+  const CreativeVec3& bottomFrontRight = corners[1];
+  const CreativeVec3& bottomBackRight = corners[5];
+  const CreativeVec3& bottomBackLeft = corners[4];
+  const CreativeVec3& topFrontLeft = corners[2];
+  const CreativeVec3& topFrontRight = corners[3];
+  const CreativeVec3& topBackRight = corners[7];
+  const CreativeVec3& topBackLeft = corners[6];
 
   appendSegment(list,
                 item,

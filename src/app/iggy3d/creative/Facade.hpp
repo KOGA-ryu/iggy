@@ -7,7 +7,10 @@
 #include "app/iggy3d/creative/tools/Measure.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/tools/Select.hpp"
+#include "app/iggy3d/creative/tools/Clipboard.hpp"
+#include "app/iggy3d/creative/tools/Pattern.hpp"
 #include "app/iggy3d/creative/tools/Transform.hpp"
+#include "app/iggy3d/creative/tools/Volume.hpp"
 #include "app/iggy3d/creative/spatial/Snap.hpp"
 #include "app/iggy3d/creative/State.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
@@ -214,6 +217,17 @@ class Facade {
       const CreativeTransformCommandRequest& request);
   [[nodiscard]] CreativeDuplicateCommandReceipt duplicateSelectedObjects(
       const CreativeDuplicateCommandRequest& request = {});
+  [[nodiscard]] CreativeLinearArrayReceipt createLinearArrayFromSelection(
+      const CreativeLinearArrayRequest& request = {});
+  [[nodiscard]] CreativeClipboardCopyReceipt copySelectedObjectsToClipboard(
+      CreativeClipboard& outClipboard);
+  [[nodiscard]] CreativeClipboardCutReceipt cutSelectedObjectsToClipboard(
+      CreativeClipboard& outClipboard);
+  [[nodiscard]] CreativeClipboardPasteReceipt pasteClipboard(
+      const CreativeClipboard& clipboard,
+      const CreativeClipboardPasteRequest& request = {});
+  [[nodiscard]] CreativeVolumeOperationReceipt applyVolumeOperation(
+      const CreativeVolumeOperationRequest& request);
 
   [[nodiscard]] CreativeDocumentCreateReceipt createDocumentObject(
       const CreativeDocumentCreateRequest& request);

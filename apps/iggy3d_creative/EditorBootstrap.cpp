@@ -142,45 +142,39 @@ void initializeCreativeEditorBootstrapData(
   output.wireProjectionRequest.clampToGrid = true;
   output.wireProjectionRequest.includeAuthoringOnly = false;
 
-  // ---- MOVE state --------------------------------------------------------
-  // Interactive: edge-triggered key latches for '1' Select / '2' Move so a held
-  // key switches the tool exactly once. Interactive drag latch tracks a left
-  // button held while the Move tool is active.
-  // --capture: run the generic Move lifecycle across a few frames, and log the
-  // crate placement BEFORE the commit and AFTER the release exactly once.
-  // ---- GIZMO state -------------------------------------------------------
+  // ---- MOVE / GIZMO state ------------------------------------------------
+  // Live movement is selected from the hotbar and driven by the center target.
+  // Scripted capture retains its deterministic axis-constrained Move proof.
   // Axis shaft length (m) and wireframe thickness (m). Kept short so the shafts
   // read as handles, not room-scale rays; thickness ~5 cm per the plan.
   output.gizmoAxisLengthMeters = 1.5F;
   output.gizmoThicknessMeters = 0.05F;
-  // Handle hit-test threshold (px): a click within this pixel distance of a
-  // projected shaft grabs that axis; the nearest axis within range wins.
-  output.gizmoHandleThresholdPixels = 35.0F;
-  // Interactive: which axis is currently grabbed (None = not dragging a handle),
-  // the object's start corner anchor S captured at grab time, and the pixel/world
-  // frame captured at grab so a cursor drag maps to a world offset along the axis.
-  // --capture: log the grabbed axis exactly once.
-
   // ---- PLACE state -------------------------------------------------------
-  // placeMode is an APP-level mode (not a kernel Tool) toggled by '3'. When on,
-  // the click drops a NEW object at the aimed cell instead of running the
-  // select/move hit-test. '1'/'2' leave place mode and set the kernel tool.
-  // placeBrush is the current descriptor-backed brush kind. The grid pitch
-  // (1 m) is the placement cell size for snapping.
+  // Slot 1 starts as the first descriptor-backed material. The center ray and
+  // targeted face provide its placement anchor; the grid pitch is the cell size.
   output.editor.brushPalette = buildBrushPaletteFromDescriptors();
   output.editor.placeBrush = firstBrushKind(output.editor.brushPalette);
+  output.editor.interaction.hotbar =
+      iggy3d::creative::makeDefaultCreativeHotbar(
+          output.editor.brushPalette);
+  output.editor.catalog.model =
+      iggy3d::creative::makeCreativeCatalog(output.editor.brushPalette);
+  output.editor.catalog.toolWheel =
+      iggy3d::creative::makeCreativeToolWheel(output.editor.catalog.model);
+  output.editor.placeMode = true;
   SDL_Log("iggy3d_creative: brush palette slots=%llu first='%s'",
           static_cast<unsigned long long>(output.editor.brushPalette.size()),
           std::string(iggy3d::creative::toString(output.editor.placeBrush))
               .c_str());
   output.editor.placeCellSize = static_cast<double>(gridConfig.pitchMeters);
-  // --capture: in Place mode we start ON so the proof frames can drop objects.
+  // --capture uses the same initial material slot so its authored placement
+  // schedule remains aligned with the interactive application.
   if (captureMode) {
-    output.editor.placeMode = true;
     output.editor.placeBrush = firstBrushKind(output.editor.brushPalette);
   }
   // ---- SAVE / LOAD state ------------------------------------------------
-  // Interactive: edge latches for F5 (save), F6 (new/clear), F9 (load).
+  // Interactive: command-modifier S/N/O route save/new/load without occupying
+  // Minecraft's world-action keys.
   // --capture round-trip proof: prove create/delete/move undo, add Point and
   // Line + Path markers, undo their moves, then SAVE/CLEAR/LOAD the
   // eight-object scene. The schedule, flags, ids, and snapshots live in the

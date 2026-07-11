@@ -49,6 +49,7 @@ struct SceneRoomMeshItem {
   std::string materialId;
   Vec3 position;
   Vec3 size;
+  Vec3 rotationEulerRadians;
   bool hasWallSegment = false;
   Vec3 wallStartMeters;
   Vec3 wallEndMeters;

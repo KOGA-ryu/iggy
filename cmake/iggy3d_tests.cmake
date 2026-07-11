@@ -1,0 +1,519 @@
+# iggy3d test spine — creative-only tree.
+# Resurrected from the full-tree suite at the quarantine parent commit: every
+# test whose include-closure lives entirely in the surviving library. The
+# product-app, ascii, package, and tool suites stay quarantined with their code.
+
+function(iggy3d_add_unit_test test_name source_file)
+  set(full_source "${CMAKE_CURRENT_SOURCE_DIR}/${source_file}")
+  if(NOT EXISTS "${full_source}")
+    message(FATAL_ERROR "missing iggy3d unit test source: ${source_file}")
+  endif()
+  add_executable("${test_name}" "${source_file}")
+  target_link_libraries("${test_name}" PRIVATE iggy3d)
+  iggy3d_apply_warnings("${test_name}")
+  add_test(NAME "${test_name}" COMMAND "$<TARGET_FILE:${test_name}>")
+  set_tests_properties("${test_name}" PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+endfunction()
+
+iggy3d_add_unit_test(math_tests tests/unit/math_tests.cpp)
+set_tests_properties(math_tests PROPERTIES LABELS "unit;core;iggy3d")
+
+iggy3d_add_unit_test(render_projectile_overlay_projection_tests
+  tests/unit/render_projectile_overlay_projection_tests.cpp)
+
+iggy3d_add_unit_test(product_creative_ui_draw_list_tests
+  tests/unit/product_creative_ui_draw_list_tests.cpp)
+set_tests_properties(product_creative_ui_draw_list_tests PROPERTIES
+  LABELS "unit;app;product;creative;ui;draw_list;iggy3d")
+
+iggy3d_add_unit_test(product_creative_ui_projection_tests
+  tests/unit/product_creative_ui_projection_tests.cpp)
+set_tests_properties(product_creative_ui_projection_tests PROPERTIES
+  LABELS "unit;app;product;creative;ui;projection;iggy3d")
+
+iggy3d_add_unit_test(product_creative_wireframe_debug_line_tests
+  tests/unit/product_creative_wireframe_debug_line_tests.cpp)
+set_tests_properties(product_creative_wireframe_debug_line_tests PROPERTIES
+  LABELS "unit;app;product;creative;wireframe;debug_line;iggy3d")
+
+iggy3d_add_unit_test(product_map_maker_grid_tests
+  tests/unit/product_map_maker_grid_tests.cpp)
+set_tests_properties(product_map_maker_grid_tests PROPERTIES
+  LABELS "unit;app;product;map_maker;grid;iggy3d")
+
+iggy3d_add_unit_test(creative_core_tests
+  tests/unit/creative_core_tests.cpp)
+set_tests_properties(creative_core_tests PROPERTIES
+  LABELS "unit;app;creative;core;iggy3d")
+
+iggy3d_add_unit_test(creative_room_tests
+  tests/unit/creative_room_tests.cpp)
+set_tests_properties(creative_room_tests PROPERTIES
+  LABELS "unit;app;creative;room;iggy3d")
+
+iggy3d_add_unit_test(creative_object_descriptor_tests
+  tests/unit/creative_object_descriptor_tests.cpp)
+set_tests_properties(creative_object_descriptor_tests PROPERTIES
+  LABELS "unit;app;creative;object_descriptor;iggy3d")
+
+iggy3d_add_unit_test(creative_document_mutation_tests
+  tests/unit/creative_document_mutation_tests.cpp)
+set_tests_properties(creative_document_mutation_tests PROPERTIES
+  LABELS "unit;app;creative;document;mutation;iggy3d")
+
+iggy3d_add_unit_test(creative_document_create_tests
+  tests/unit/creative_document_create_tests.cpp)
+set_tests_properties(creative_document_create_tests PROPERTIES
+  LABELS "unit;app;creative;document;create;iggy3d")
+
+iggy3d_add_unit_test(creative_document_remove_tests
+  tests/unit/creative_document_remove_tests.cpp)
+set_tests_properties(creative_document_remove_tests PROPERTIES
+  LABELS "unit;app;creative;document;remove;iggy3d")
+
+iggy3d_add_unit_test(creative_document_dirty_tests
+  tests/unit/creative_document_dirty_tests.cpp)
+set_tests_properties(creative_document_dirty_tests PROPERTIES
+  LABELS "unit;app;creative;document;dirty;iggy3d")
+
+iggy3d_add_unit_test(creative_document_identity_tests
+  tests/unit/creative_document_identity_tests.cpp)
+set_tests_properties(creative_document_identity_tests PROPERTIES
+  LABELS "unit;app;creative;document;identity;iggy3d")
+
+iggy3d_add_unit_test(creative_document_persistence_state_tests
+  tests/unit/creative_document_persistence_state_tests.cpp)
+set_tests_properties(creative_document_persistence_state_tests PROPERTIES
+  LABELS "unit;app;creative;document;persistence;iggy3d")
+
+iggy3d_add_unit_test(creative_document_path_tests
+  tests/unit/creative_document_path_tests.cpp)
+set_tests_properties(creative_document_path_tests PROPERTIES
+  LABELS "unit;app;creative;document;path;iggy3d")
+
+iggy3d_add_unit_test(creative_room_shell_tests
+  tests/unit/creative_room_shell_tests.cpp)
+set_tests_properties(creative_room_shell_tests PROPERTIES
+  LABELS "unit;app;creative;room_shell;iggy3d")
+
+iggy3d_add_unit_test(creative_document_save_section_tests
+  tests/unit/creative_document_save_section_tests.cpp)
+set_tests_properties(creative_document_save_section_tests PROPERTIES
+  LABELS "unit;app;creative;document;save;iggy3d")
+
+iggy3d_add_unit_test(creative_facade_tests
+  tests/unit/creative_facade_tests.cpp)
+set_tests_properties(creative_facade_tests PROPERTIES
+  LABELS "unit;app;creative;facade;iggy3d")
+
+iggy3d_add_unit_test(creative_facade_mutation_tests
+  tests/unit/creative_facade_mutation_tests.cpp)
+set_tests_properties(creative_facade_mutation_tests PROPERTIES
+  LABELS "unit;app;creative;facade;mutation;iggy3d")
+
+iggy3d_add_unit_test(creative_spatial_projection_tests
+  tests/unit/creative_spatial_projection_tests.cpp)
+set_tests_properties(creative_spatial_projection_tests PROPERTIES
+  LABELS "unit;app;creative;spatial_projection;iggy3d")
+
+iggy3d_add_unit_test(creative_document_wireframe_tests
+  tests/unit/creative_document_wireframe_tests.cpp)
+set_tests_properties(creative_document_wireframe_tests PROPERTIES
+  LABELS "unit;app;creative;document;wireframe;iggy3d")
+
+iggy3d_add_unit_test(creative_tools_tests
+  tests/unit/creative_tools_tests.cpp)
+set_tests_properties(creative_tools_tests PROPERTIES
+  LABELS "unit;app;creative;tools;iggy3d")
+
+iggy3d_add_unit_test(creative_pattern_tests
+  tests/unit/creative_pattern_tests.cpp)
+set_tests_properties(creative_pattern_tests PROPERTIES
+  LABELS "unit;app;creative;tools;pattern;iggy3d")
+
+iggy3d_add_unit_test(creative_shape_brush_tests
+  tests/unit/creative_shape_brush_tests.cpp)
+set_tests_properties(creative_shape_brush_tests PROPERTIES
+  LABELS "unit;app;creative;tools;shape_brush;iggy3d")
+
+iggy3d_add_unit_test(creative_editor_pattern_tests
+  tests/unit/creative_editor_pattern_tests.cpp)
+target_sources(creative_editor_pattern_tests PRIVATE
+  apps/iggy3d_creative/EditorPattern.cpp
+  apps/iggy3d_creative/EditorEdits.cpp
+  apps/iggy3d_creative/EditorPreviewProxies.cpp)
+target_include_directories(creative_editor_pattern_tests PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/apps/iggy3d_creative")
+set_tests_properties(creative_editor_pattern_tests PROPERTIES
+  LABELS "unit;app;creative;editor;tools;pattern;iggy3d")
+
+iggy3d_add_unit_test(creative_interaction_tests
+  tests/unit/creative_interaction_tests.cpp)
+target_include_directories(creative_interaction_tests PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/apps/iggy3d_creative")
+set_tests_properties(creative_interaction_tests PROPERTIES
+  LABELS "unit;app;creative;input;interaction;iggy3d")
+
+add_executable(creative_editor_placement_tests
+  tests/unit/creative_editor_placement_tests.cpp)
+target_link_libraries(creative_editor_placement_tests PRIVATE iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_placement_tests)
+add_test(NAME creative_editor_placement_tests
+  COMMAND "$<TARGET_FILE:creative_editor_placement_tests>")
+set_tests_properties(creative_editor_placement_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+set_tests_properties(creative_editor_placement_tests PROPERTIES
+  LABELS "unit;app;creative;editor;placement;preview;history;iggy3d")
+
+iggy3d_add_unit_test(creative_catalog_tests
+  tests/unit/creative_catalog_tests.cpp)
+set_tests_properties(creative_catalog_tests PROPERTIES
+  LABELS "unit;app;creative;input;catalog;iggy3d")
+
+iggy3d_add_unit_test(creative_volume_tests
+  tests/unit/creative_volume_tests.cpp)
+set_tests_properties(creative_volume_tests PROPERTIES
+  LABELS "unit;app;creative;tools;volume;iggy3d")
+
+iggy3d_add_unit_test(creative_select_tests
+  tests/unit/creative_select_tests.cpp)
+set_tests_properties(creative_select_tests PROPERTIES
+  LABELS "unit;app;creative;select;iggy3d")
+
+iggy3d_add_unit_test(creative_measure_tests
+  tests/unit/creative_measure_tests.cpp)
+set_tests_properties(creative_measure_tests PROPERTIES
+  LABELS "unit;app;creative;measure;iggy3d")
+
+iggy3d_add_unit_test(creative_snap_tests
+  tests/unit/creative_snap_tests.cpp)
+set_tests_properties(creative_snap_tests PROPERTIES
+  LABELS "unit;app;creative;snap;iggy3d")
+
+iggy3d_add_unit_test(creative_document_snap_tests
+  tests/unit/creative_document_snap_tests.cpp)
+set_tests_properties(creative_document_snap_tests PROPERTIES
+  LABELS "unit;app;creative;document;snap;iggy3d")
+
+iggy3d_add_unit_test(creative_ghost_tests
+  tests/unit/creative_ghost_tests.cpp)
+set_tests_properties(creative_ghost_tests PROPERTIES
+  LABELS "unit;app;creative;ghost;iggy3d")
+
+iggy3d_add_unit_test(creative_ui_tests
+  tests/unit/creative_ui_tests.cpp)
+set_tests_properties(creative_ui_tests PROPERTIES
+  LABELS "unit;app;creative;ui;iggy3d")
+
+iggy3d_add_unit_test(creative_world_service_tests
+  tests/unit/creative_world_service_tests.cpp)
+set_tests_properties(creative_world_service_tests PROPERTIES
+  LABELS "unit;app;product;creative;world;service;iggy3d")
+
+iggy3d_add_unit_test(product_save_catalog_tests tests/unit/product_save_catalog_tests.cpp)
+set_tests_properties(product_save_catalog_tests PROPERTIES
+  LABELS "unit;app;product;save;catalog;iggy3d")
+
+iggy3d_add_unit_test(world_state_tests tests/unit/world_state_tests.cpp)
+set_tests_properties(world_state_tests PROPERTIES LABELS "unit;runtime;world;iggy3d")
+
+iggy3d_add_unit_test(clock_tests tests/unit/clock_tests.cpp)
+set_tests_properties(clock_tests PROPERTIES LABELS "unit;runtime;clock;iggy3d")
+
+iggy3d_add_unit_test(camera_mode_policy_tests tests/unit/camera_mode_policy_tests.cpp)
+set_tests_properties(camera_mode_policy_tests PROPERTIES LABELS "unit;runtime;camera;iggy3d")
+
+iggy3d_add_unit_test(command_admission_tests tests/unit/command_admission_tests.cpp)
+set_tests_properties(command_admission_tests PROPERTIES LABELS "unit;runtime;command;iggy3d")
+
+iggy3d_add_unit_test(npc_behavior_system_tests tests/unit/npc_behavior_system_tests.cpp)
+set_tests_properties(npc_behavior_system_tests PROPERTIES
+  LABELS "unit;runtime;ai;npc_behavior;iggy3d")
+
+iggy3d_add_unit_test(npc_behavior_profile_tests tests/unit/npc_behavior_profile_tests.cpp)
+set_tests_properties(npc_behavior_profile_tests PROPERTIES
+  LABELS "unit;runtime;ai;npc_behavior;profile;iggy3d")
+
+iggy3d_add_unit_test(npc_alert_fsm_tests tests/unit/npc_alert_fsm_tests.cpp)
+set_tests_properties(npc_alert_fsm_tests PROPERTIES
+  LABELS "unit;runtime;ai;npc_behavior;alert;iggy3d")
+
+iggy3d_add_unit_test(npc_patrol_system_tests tests/unit/npc_patrol_system_tests.cpp)
+set_tests_properties(npc_patrol_system_tests PROPERTIES
+  LABELS "unit;runtime;ai;npc_behavior;patrol;iggy3d")
+
+iggy3d_add_unit_test(npc_investigate_system_tests tests/unit/npc_investigate_system_tests.cpp)
+set_tests_properties(npc_investigate_system_tests PROPERTIES
+  LABELS "unit;runtime;ai;npc_behavior;investigate;iggy3d")
+
+iggy3d_add_unit_test(npc_sound_perception_tests tests/unit/npc_sound_perception_tests.cpp)
+set_tests_properties(npc_sound_perception_tests PROPERTIES
+  LABELS "unit;runtime;ai;npc_behavior;sound;iggy3d")
+
+iggy3d_add_unit_test(segment_occlusion_tests tests/unit/segment_occlusion_tests.cpp)
+set_tests_properties(segment_occlusion_tests PROPERTIES
+  LABELS "unit;runtime;ai;segment_occlusion;iggy3d")
+
+iggy3d_add_unit_test(reasoning_graph_tests tests/unit/reasoning_graph_tests.cpp)
+set_tests_properties(reasoning_graph_tests PROPERTIES
+  LABELS "unit;runtime;ai;reasoning;iggy3d")
+
+iggy3d_add_unit_test(reachability_tests tests/unit/reachability_tests.cpp)
+set_tests_properties(reachability_tests PROPERTIES
+  LABELS "unit;core;grid;reachability;iggy3d")
+
+iggy3d_add_unit_test(grid_footprint_tests tests/unit/grid_footprint_tests.cpp)
+set_tests_properties(grid_footprint_tests PROPERTIES
+  LABELS "unit;core;grid;footprint;iggy3d")
+
+iggy3d_add_unit_test(greedy_mesh_tests tests/unit/greedy_mesh_tests.cpp)
+set_tests_properties(greedy_mesh_tests PROPERTIES
+  LABELS "unit;core;grid;mesh;iggy3d")
+
+iggy3d_add_unit_test(aabb_grid_index_tests tests/unit/aabb_grid_index_tests.cpp)
+set_tests_properties(aabb_grid_index_tests PROPERTIES
+  LABELS "unit;core;spatial;index;iggy3d")
+
+iggy3d_add_unit_test(oriented_box_tests tests/unit/oriented_box_tests.cpp)
+set_tests_properties(oriented_box_tests PROPERTIES
+  LABELS "unit;core;math;obb;iggy3d")
+
+iggy3d_add_unit_test(aabb_ray_tests tests/unit/aabb_ray_tests.cpp)
+set_tests_properties(aabb_ray_tests PROPERTIES
+  LABELS "unit;core;math;ray;aabb;iggy3d")
+
+iggy3d_add_unit_test(snap_kernel_tests tests/unit/snap_kernel_tests.cpp)
+set_tests_properties(snap_kernel_tests PROPERTIES
+  LABELS "unit;core;math;snap;iggy3d")
+
+iggy3d_add_unit_test(frustum_tests tests/unit/frustum_tests.cpp)
+set_tests_properties(frustum_tests PROPERTIES
+  LABELS "unit;core;math;frustum;iggy3d")
+
+iggy3d_add_unit_test(vec3_math_tests tests/unit/vec3_math_tests.cpp)
+set_tests_properties(vec3_math_tests PROPERTIES
+  LABELS "unit;core;math;vec3;iggy3d")
+
+iggy3d_add_unit_test(reasoning_graph_readout tests/unit/reasoning_graph_readout.cpp)
+set_tests_properties(reasoning_graph_readout PROPERTIES
+  LABELS "unit;runtime;ai;reasoning;readout;iggy3d")
+
+iggy3d_add_unit_test(reasoning_route_tests tests/unit/reasoning_route_tests.cpp)
+set_tests_properties(reasoning_route_tests PROPERTIES
+  LABELS "unit;runtime;ai;reasoning;route;iggy3d")
+
+iggy3d_add_unit_test(guard_decision_tests tests/unit/guard_decision_tests.cpp)
+set_tests_properties(guard_decision_tests PROPERTIES
+  LABELS "unit;runtime;ai;reasoning;decision;iggy3d")
+
+iggy3d_add_unit_test(guard_decision_readout tests/unit/guard_decision_readout.cpp)
+set_tests_properties(guard_decision_readout PROPERTIES
+  LABELS "unit;runtime;ai;reasoning;decision;readout;iggy3d")
+
+iggy3d_add_unit_test(combat_system_tests tests/unit/combat_system_tests.cpp)
+set_tests_properties(combat_system_tests PROPERTIES LABELS "unit;runtime;combat;iggy3d")
+
+iggy3d_add_unit_test(entity_hit_query_tests tests/unit/entity_hit_query_tests.cpp)
+set_tests_properties(entity_hit_query_tests PROPERTIES LABELS "unit;runtime;collision;entity;iggy3d")
+
+iggy3d_add_unit_test(movement_policy_tests tests/unit/movement_policy_tests.cpp)
+set_tests_properties(movement_policy_tests PROPERTIES LABELS "unit;runtime;movement;policy;iggy3d")
+
+iggy3d_add_unit_test(movement_kinematics_tests tests/unit/movement_kinematics_tests.cpp)
+set_tests_properties(movement_kinematics_tests PROPERTIES LABELS "unit;runtime;movement;math;iggy3d")
+
+iggy3d_add_unit_test(player_motor_tests tests/unit/player_motor_tests.cpp)
+set_tests_properties(player_motor_tests PROPERTIES LABELS "unit;runtime;player;movement;iggy3d")
+
+iggy3d_add_unit_test(player_physics_move_planner_tests
+  tests/unit/player_physics_move_planner_tests.cpp)
+set_tests_properties(player_physics_move_planner_tests PROPERTIES
+  LABELS "unit;runtime;player;physics_move;iggy3d")
+
+iggy3d_add_unit_test(debug_hud_text_tests tests/unit/debug_hud_text_tests.cpp)
+set_tests_properties(debug_hud_text_tests PROPERTIES LABELS "unit;render;debug;hud;iggy3d")
+
+iggy3d_add_unit_test(bean_mesh_tests tests/unit/bean_mesh_tests.cpp)
+set_tests_properties(bean_mesh_tests PROPERTIES LABELS "unit;render;mesh;bean;iggy3d")
+
+iggy3d_add_unit_test(scenario_seed_conversion_tests
+  tests/unit/scenario_seed_conversion_tests.cpp)
+set_tests_properties(scenario_seed_conversion_tests PROPERTIES
+  LABELS "unit;runtime;session;content;seed;iggy3d")
+
+iggy3d_add_unit_test(movement_system_tests tests/unit/movement_system_tests.cpp)
+set_tests_properties(movement_system_tests PROPERTIES LABELS "unit;runtime;movement;iggy3d")
+
+iggy3d_add_unit_test(ability_command_tests tests/unit/ability_command_tests.cpp)
+set_tests_properties(ability_command_tests PROPERTIES LABELS "unit;runtime;ability;command;iggy3d")
+
+iggy3d_add_unit_test(target_reach_tests tests/unit/target_reach_tests.cpp)
+set_tests_properties(target_reach_tests PROPERTIES LABELS "unit;runtime;targeting;iggy3d")
+
+iggy3d_add_unit_test(inventory_system_tests tests/unit/inventory_system_tests.cpp)
+set_tests_properties(inventory_system_tests PROPERTIES LABELS "unit;runtime;inventory;iggy3d")
+
+iggy3d_add_unit_test(objective_system_tests tests/unit/objective_system_tests.cpp)
+set_tests_properties(objective_system_tests PROPERTIES LABELS "unit;runtime;objective;iggy3d")
+
+iggy3d_add_unit_test(objective_outcome_tests tests/unit/objective_outcome_tests.cpp)
+set_tests_properties(objective_outcome_tests PROPERTIES LABELS "unit;runtime;objective;iggy3d")
+
+iggy3d_add_unit_test(interaction_system_tests tests/unit/interaction_system_tests.cpp)
+set_tests_properties(interaction_system_tests PROPERTIES LABELS "unit;runtime;interaction;iggy3d")
+
+iggy3d_add_unit_test(physics_collision_queries_tests
+  tests/unit/physics_collision_queries_tests.cpp)
+set_tests_properties(physics_collision_queries_tests PROPERTIES
+  LABELS "unit;runtime;physics;collision_queries;iggy3d")
+
+iggy3d_add_unit_test(physics_frame_stats_tests
+  tests/unit/physics_frame_stats_tests.cpp)
+set_tests_properties(physics_frame_stats_tests PROPERTIES
+  LABELS "unit;runtime;physics;frame_stats;iggy3d")
+
+iggy3d_add_unit_test(physics_kinematic_motor_tests
+  tests/unit/physics_kinematic_motor_tests.cpp)
+set_tests_properties(physics_kinematic_motor_tests PROPERTIES
+  LABELS "unit;runtime;physics;kinematic_motor;iggy3d")
+
+iggy3d_add_unit_test(physics_spatial_surface_collider_bake_tests
+  tests/unit/physics_spatial_surface_collider_bake_tests.cpp)
+set_tests_properties(physics_spatial_surface_collider_bake_tests PROPERTIES
+  LABELS "unit;runtime;physics;spatial_surface_bake;iggy3d")
+
+iggy3d_add_unit_test(physics_shape_store_tests tests/unit/physics_shape_store_tests.cpp)
+set_tests_properties(physics_shape_store_tests PROPERTIES
+  LABELS "unit;runtime;physics;shape_store;iggy3d")
+
+iggy3d_add_unit_test(physics_aabb_collider_tests
+  tests/unit/physics_aabb_collider_tests.cpp)
+set_tests_properties(physics_aabb_collider_tests PROPERTIES
+  LABELS "unit;runtime;physics;aabb;collider;iggy3d")
+
+iggy3d_add_unit_test(physics_broadphase_tests
+  tests/unit/physics_broadphase_tests.cpp)
+set_tests_properties(physics_broadphase_tests PROPERTIES
+  LABELS "unit;runtime;physics;broadphase;aabb;iggy3d")
+
+iggy3d_add_unit_test(session_tick_tests tests/unit/session_tick_tests.cpp)
+set_tests_properties(session_tick_tests PROPERTIES LABELS "unit;runtime;session;iggy3d")
+
+iggy3d_add_unit_test(save_load_tests tests/unit/save_load_tests.cpp)
+set_tests_properties(save_load_tests PROPERTIES LABELS "unit;runtime;save;iggy3d")
+
+iggy3d_add_unit_test(save_creative_document_section_tests
+  tests/unit/save_creative_document_section_tests.cpp)
+set_tests_properties(save_creative_document_section_tests PROPERTIES
+  LABELS "unit;runtime;save;creative;iggy3d")
+
+iggy3d_add_unit_test(render_boundary_tests tests/unit/render_boundary_tests.cpp)
+set_tests_properties(render_boundary_tests PROPERTIES LABELS "unit;render;boundary;iggy3d")
+
+iggy3d_add_unit_test(render_config_tests tests/unit/render_config_tests.cpp)
+set_tests_properties(render_config_tests PROPERTIES LABELS "unit;render;config;iggy3d")
+
+iggy3d_add_unit_test(render_diagnostics_tests tests/unit/render_diagnostics_tests.cpp)
+set_tests_properties(render_diagnostics_tests PROPERTIES LABELS "unit;render;diagnostics;iggy3d")
+
+iggy3d_add_unit_test(render_projection_input_tests tests/unit/render_projection_input_tests.cpp)
+set_tests_properties(render_projection_input_tests PROPERTIES LABELS "unit;render;frame_input;iggy3d")
+
+iggy3d_add_unit_test(render_camera_frame_tests tests/unit/render_camera_frame_tests.cpp)
+set_tests_properties(render_camera_frame_tests PROPERTIES LABELS "unit;render;camera;iggy3d")
+
+iggy3d_add_unit_test(package_runtime_lookup_tests tests/unit/package_runtime_lookup_tests.cpp)
+set_tests_properties(package_runtime_lookup_tests PROPERTIES LABELS "unit;render;package;iggy3d")
+
+# Render policy/shader unit tests. The Vulkan backend is always compiled into
+# the library now, so the old packet4/packet6 conditional-source helpers reduce
+# to plain registrations with the historical labels.
+function(iggy3d_add_render_policy_unit_test test_name source_file)
+  iggy3d_add_unit_test("${test_name}" "${source_file}")
+  set_tests_properties("${test_name}" PROPERTIES LABELS "unit;render;vulkan;iggy3d")
+endfunction()
+
+function(iggy3d_add_render_shader_unit_test test_name source_file)
+  iggy3d_add_unit_test("${test_name}" "${source_file}")
+  set_tests_properties("${test_name}" PROPERTIES LABELS "unit;render;vulkan;packet6;iggy3d")
+  target_compile_definitions("${test_name}"
+    PRIVATE
+      IGGY3D_SHADER_SOURCE_ROOT_VALUE="${IGGY3D_SHADER_SOURCE_ROOT}"
+      IGGY3D_SHADER_BINARY_ROOT_VALUE="${IGGY3D_SHADER_BINARY_ROOT}"
+      IGGY3D_SHADER_TARGET_ENV_VALUE="${IGGY3D_SHADER_TARGET_ENV}")
+  if(IGGY3D_SHADER_COMPILER_AVAILABLE)
+    target_compile_definitions("${test_name}" PRIVATE IGGY3D_SHADER_COMPILER_AVAILABLE=1)
+  endif()
+endfunction()
+
+iggy3d_add_render_policy_unit_test(render_result_mapping_tests
+  tests/unit/render_result_mapping_tests.cpp)
+iggy3d_add_render_policy_unit_test(render_command_recording_tests
+  tests/unit/render_command_recording_tests.cpp)
+iggy3d_add_render_policy_unit_test(render_reason_code_tests
+  tests/unit/render_reason_code_tests.cpp)
+iggy3d_add_render_policy_unit_test(render_unsupported_device_policy_tests
+  tests/unit/render_unsupported_device_policy_tests.cpp)
+iggy3d_add_render_shader_unit_test(render_vertex_format_tests
+  tests/unit/render_vertex_format_tests.cpp)
+iggy3d_add_render_shader_unit_test(render_shader_build_policy_tests
+  tests/unit/render_shader_build_policy_tests.cpp)
+iggy3d_add_render_shader_unit_test(render_memory_budget_policy_tests
+  tests/unit/render_memory_budget_policy_tests.cpp)
+
+# ---- Vulkan smokes (self-skipping: exit 77 when no usable Vulkan device) ----
+function(iggy3d_add_vulkan_smoke target_name)
+  add_executable("${target_name}" "tests/smoke/${target_name}.cpp")
+  target_link_libraries("${target_name}" PRIVATE iggy3d)
+  iggy3d_apply_warnings("${target_name}")
+  if(IGGY3D_REQUIRE_VULKAN_SMOKE)
+    target_compile_definitions("${target_name}" PRIVATE IGGY3D_REQUIRE_VULKAN_SMOKE_ENABLED=1)
+  endif()
+endfunction()
+
+set(IGGY3D_VULKAN_SMOKES
+    vulkan_platform_smoke vulkan_device_smoke vulkan_feature_baseline_smoke
+    vulkan_validation_smoke vulkan_swapchain_smoke vulkan_resize_minimize_smoke
+    vulkan_empty_frame_smoke vulkan_sync_smoke vulkan_pipeline_smoke
+    vulkan_memory_smoke vulkan_material_smoke vulkan_diagnostics_smoke
+    vulkan_optional_unsupported_smoke vulkan_strict_unsupported_smoke)
+foreach(smoke IN LISTS IGGY3D_VULKAN_SMOKES)
+  iggy3d_add_vulkan_smoke("${smoke}")
+endforeach()
+
+if(IGGY3D_REQUIRE_VALIDATION_LAYERS)
+  target_compile_definitions(vulkan_validation_smoke
+    PRIVATE IGGY3D_REQUIRE_VALIDATION_LAYERS_ENABLED=1)
+endif()
+
+foreach(packet6_smoke vulkan_pipeline_smoke vulkan_memory_smoke vulkan_material_smoke)
+  target_compile_definitions("${packet6_smoke}"
+    PRIVATE
+      IGGY3D_SHADER_SOURCE_ROOT_VALUE="${IGGY3D_SHADER_SOURCE_ROOT}"
+      IGGY3D_SHADER_BINARY_ROOT_VALUE="${IGGY3D_SHADER_BINARY_ROOT}"
+      IGGY3D_SHADER_TARGET_ENV_VALUE="${IGGY3D_SHADER_TARGET_ENV}")
+  if(IGGY3D_SHADER_COMPILER_AVAILABLE)
+    target_compile_definitions("${packet6_smoke}" PRIVATE IGGY3D_SHADER_COMPILER_AVAILABLE=1)
+  endif()
+  if(IGGY3D_ENABLE_VULKAN_SHADERS AND IGGY3D_SHADER_COMPILER_AVAILABLE)
+    add_dependencies("${packet6_smoke}" iggy3d_vulkan_shaders)
+  endif()
+endforeach()
+
+add_test(NAME vulkan_platform_smoke_window
+         COMMAND "$<TARGET_FILE:vulkan_platform_smoke>" --mode window_only)
+add_test(NAME vulkan_platform_smoke_extensions
+         COMMAND "$<TARGET_FILE:vulkan_platform_smoke>" --mode extension_query)
+set(IGGY3D_VULKAN_SMOKE_TESTS vulkan_platform_smoke_window vulkan_platform_smoke_extensions)
+foreach(smoke IN LISTS IGGY3D_VULKAN_SMOKES)
+  if(NOT smoke STREQUAL "vulkan_platform_smoke")
+    add_test(NAME "${smoke}" COMMAND "$<TARGET_FILE:${smoke}>")
+    list(APPEND IGGY3D_VULKAN_SMOKE_TESTS "${smoke}")
+  endif()
+endforeach()
+set_tests_properties(${IGGY3D_VULKAN_SMOKE_TESTS} PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  SKIP_RETURN_CODE 77
+  LABELS "smoke;vulkan;render;iggy3d")
+# The strict smoke exercises the fail-closed path on purpose: failure is the pass.
+set_tests_properties(vulkan_strict_unsupported_smoke PROPERTIES WILL_FAIL TRUE)

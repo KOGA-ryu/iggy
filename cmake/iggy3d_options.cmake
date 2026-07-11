@@ -1,4 +1,9 @@
 option(IGGY3D_WARNINGS_AS_ERRORS "Treat iggy3d warnings as errors" OFF)
+option(IGGY3D_BUILD_TESTS "Build the iggy3d unit/smoke test spine" ON)
+option(IGGY3D_REQUIRE_VULKAN_SMOKE
+       "Fail (instead of skip) Vulkan smokes when no usable device exists" OFF)
+option(IGGY3D_REQUIRE_VALIDATION_LAYERS
+       "Fail the validation smoke when Vulkan validation layers are missing" OFF)
 option(IGGY3D_ENABLE_VULKAN "Enable the Creative Vulkan renderer" ON)
 option(IGGY3D_USE_SYSTEM_SDL3 "Use system SDL3" ON)
 option(IGGY3D_ENABLE_VULKAN_SHADERS "Build Vulkan shader artifacts" ON)

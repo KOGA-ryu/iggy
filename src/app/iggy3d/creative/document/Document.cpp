@@ -258,7 +258,7 @@ bool isValidRestoreObject(const CreativeObject& object) noexcept {
          descriptor.kind == object.kind &&
          descriptor.kind != CreativeObjectKind::Unknown &&
          isFiniteVec3(object.transform.position) &&
-         isFiniteVec3(object.transform.rotation) &&
+         isFiniteVec3(object.transform.rotationEulerRadians) &&
          isFiniteVec3(object.transform.scale) &&
          isValidWorldBounds(object.bounds);
 }

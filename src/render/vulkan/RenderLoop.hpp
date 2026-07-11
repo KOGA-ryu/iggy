@@ -43,6 +43,7 @@ struct RenderLoopCreateInfo {
   FrameSync* frameSync = nullptr;
   CommandRecording* commandRecording = nullptr;
   FirstRoomPipelineRecord* firstRoomPipeline = nullptr;
+  FirstRoomPipelineRecord* creativeViewModelPipeline = nullptr;
   PipelineLayoutRecord* firstRoomLayout = nullptr;
   BufferImageResources* firstRoomResources = nullptr;
   FrameCapture* frameCapture = nullptr;

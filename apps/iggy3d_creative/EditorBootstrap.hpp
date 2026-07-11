@@ -27,7 +27,6 @@ struct CreativeEditorBootstrapData {
   iggy3d::creative::CreativeSpatialProjectionRequest wireProjectionRequest;
   float gizmoAxisLengthMeters = 1.5F;
   float gizmoThicknessMeters = 0.05F;
-  float gizmoHandleThresholdPixels = 35.0F;
 };
 
 void initializeCreativeEditorBootstrapData(

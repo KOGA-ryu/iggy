@@ -57,6 +57,7 @@ private:
   vulkan::ShaderModuleRecord firstRoomFragmentShader_;
   vulkan::PipelineLayoutRecord firstRoomLayout_;
   vulkan::FirstRoomPipelineRecord firstRoomPipeline_;
+  vulkan::FirstRoomPipelineRecord creativeViewModelPipeline_;
   vulkan::BufferImageResources firstRoomResources_;
   vulkan::FrameCapture frameCapture_;
   bool firstRoomReady_ = false;

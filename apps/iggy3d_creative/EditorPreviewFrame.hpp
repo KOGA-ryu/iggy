@@ -26,10 +26,10 @@ struct CreativeEditorOverlayFrameRequest {
   iggy3d::FrameInput& frame;
   const iggy3d::creative::CreativeSpatialProjectionRequest&
       wireProjectionRequest;
-  iggy3d::Vec3 aimCellCenter;
   std::uint32_t drawableWidth = 0;
   std::uint32_t drawableHeight = 0;
   float gizmoThickness = 0.0F;
+  bool captureMode = false;
 };
 
 struct CreativeEditorOverlayFrame {
@@ -41,11 +41,21 @@ struct CreativeEditorOverlayFrame {
   std::size_t lineMarkerEdgeCount = 0;
   std::size_t pathPointHandleEdgeCount = 0;
   std::size_t ghostEdgeCount = 0;
+  std::size_t volumeEdgeCount = 0;
+  std::size_t patternEdgeCount = 0;
+  std::size_t clipboardPasteEdgeCount = 0;
+  std::size_t placementFeedbackEdgeCount = 0;
 };
 
 void buildAndAttachCreativeEditorOverlayFrame(
     const CreativeEditorOverlayFrameRequest& request,
     CreativeEditorOverlayFrame& output);
+
+void attachCreativeEditorPlacementPreviews(
+    const CreativeEditorState& editor,
+    bool captureMode,
+    iggy3d::FrameInput& frame,
+    const iggy3d::creative::CreativeDocument* document = nullptr);
 
 struct StandaloneRoomBakePreviewScene {
   iggy3d::SceneProjectionResult scene;
@@ -53,9 +63,25 @@ struct StandaloneRoomBakePreviewScene {
   std::size_t standalonePreviewMeshCount = 0;
 };
 
+struct CreativeEditorSceneCache {
+  StandaloneRoomBakePreviewScene preview;
+  iggy3d::creative::CreativeDocumentId documentId =
+      iggy3d::creative::kInvalidDocumentId;
+  std::uint64_t documentRevision = 0;
+  std::uint64_t refreshCount = 0;
+  bool valid = false;
+};
+
 [[nodiscard]] StandaloneRoomBakePreviewScene buildStandaloneRoomBakePreviewScene(
     const iggy3d::creative::CreativeDocument& document,
     const iggy3d::ProductMapMakerGridSnapshot& gridSnapshot);
+
+[[nodiscard]] bool refreshCreativeEditorSceneCache(
+    CreativeEditorSceneCache& cache,
+    const iggy3d::creative::CreativeDocument& document,
+    const iggy3d::ProductMapMakerGridSnapshot& gridSnapshot);
+void invalidateCreativeEditorSceneCache(
+    CreativeEditorSceneCache& cache) noexcept;
 
 void logStandaloneRoomBakeFinal(
     const StandaloneRoomBakePreviewScene& preview);

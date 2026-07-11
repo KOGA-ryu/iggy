@@ -15,6 +15,7 @@ struct RoomStaticMeshAsset {
   std::string role;
   Vec3 positionMeters;
   Vec3 sizeMeters;
+  Vec3 rotationEulerRadians;
   bool hasWallSegment = false;
   Vec3 wallStartMeters;
   Vec3 wallEndMeters;

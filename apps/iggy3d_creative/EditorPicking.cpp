@@ -229,27 +229,6 @@ ScreenPoint projectPointToScreen(const iggy3d::Mat4& clipFromWorld,
   return out;
 }
 
-float pointToSegmentDistancePx(float px,
-                               float py,
-                               float ax,
-                               float ay,
-                               float bx,
-                               float by) {
-  const float dx = bx - ax;
-  const float dy = by - ay;
-  const float lenSq = dx * dx + dy * dy;
-  float t = 0.0F;
-  if (lenSq > 1.0e-6F) {
-    t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
-    t = std::clamp(t, 0.0F, 1.0F);
-  }
-  const float cx = ax + t * dx;
-  const float cy = ay + t * dy;
-  const float ex = px - cx;
-  const float ey = py - cy;
-  return std::sqrt(ex * ex + ey * ey);
-}
-
 WorldRay worldRayFromPixel(const iggy3d::RenderCameraFrame& camera,
                            float pixelX,
                            float pixelY,
@@ -396,32 +375,9 @@ std::vector<PathPointHandleHit> buildPathPointHandleHits(
                                      handleBounds.max,
                                      widthPx,
                                      heightPx);
-    const iggy3d::ProjectedPoint3 centerProjected =
-        iggy3d::projectPoint(clipFromWorld, visualBoundsCenter(handleBounds));
-    handle.centerDepth = centerProjected.w;
     handles.push_back(handle);
   }
   return handles;
-}
-
-bool pickPathPointHandle(const std::vector<PathPointHandleHit>& handles,
-                         float px,
-                         float py,
-                         PathPointHandleHit& out) {
-  bool found = false;
-  float bestDepth = std::numeric_limits<float>::max();
-  for (const PathPointHandleHit& handle : handles) {
-    if (!handle.aabb.valid || px < handle.aabb.minX || px > handle.aabb.maxX ||
-        py < handle.aabb.minY || py > handle.aabb.maxY) {
-      continue;
-    }
-    if (!found || handle.centerDepth < bestDepth) {
-      found = true;
-      bestDepth = handle.centerDepth;
-      out = handle;
-    }
-  }
-  return found;
 }
 
 }  // namespace iggy3d_creative_app
