@@ -137,6 +137,20 @@ void appendQuickEdit(HintSpecBuffer& buffer,
       appendHintPair(buffer, cr::CreativeInputActionId::QuickEditDecrease,
                      cr::CreativeInputActionId::QuickEditIncrease, "Width");
       return;
+    case cr::CreativeHeldItemKind::TerrainRegion:
+      if (cr::creativeTerrainRegionUsesTargetHeight(
+              editor.toolSettings.terrainRegionOperation)) {
+        appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
+                       cr::CreativeInputActionId::QuickEditNext, "Target");
+      } else if (cr::creativeTerrainRegionUsesAmount(
+                     editor.toolSettings.terrainRegionOperation)) {
+        appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
+                       cr::CreativeInputActionId::QuickEditNext, "Amount");
+      }
+      appendHintPair(buffer, cr::CreativeInputActionId::QuickEditDecrease,
+                     cr::CreativeInputActionId::QuickEditIncrease,
+                     "Operation");
+      return;
     case cr::CreativeHeldItemKind::Material:
     case cr::CreativeHeldItemKind::MaterialBrush:
     case cr::CreativeHeldItemKind::ObjectSelect:
@@ -233,6 +247,25 @@ void appendViewportHints(HintSpecBuffer& buffer,
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Add point");
       keyboardQuickEdit = true;
       break;
+    case cr::CreativeHeldItemKind::TerrainRegion: {
+      std::string_view positiveLabel = "Corner 1";
+      if (editor.volume.selection.phase ==
+          cr::CreativeVolumeSelectionPhase::FirstCorner) {
+        positiveLabel = "Corner 2";
+      } else if (editor.volume.selection.phase ==
+                 cr::CreativeVolumeSelectionPhase::Complete) {
+        positiveLabel = "Apply region";
+      }
+      appendHint(buffer, positiveAction, positiveLabel);
+      appendHint(buffer, negativeAction, "Cancel");
+      if (cr::creativeTerrainRegionUsesTargetHeight(
+              editor.toolSettings.terrainRegionOperation)) {
+        appendHint(buffer, cr::CreativeInputActionId::PickAction,
+                   "Sample height");
+      }
+      keyboardQuickEdit = true;
+      break;
+    }
     case cr::CreativeHeldItemKind::ObjectSelect:
       appendHint(buffer, gamepad ? positiveAction : negativeAction, "Select");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");

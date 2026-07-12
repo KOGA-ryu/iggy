@@ -197,6 +197,7 @@ Initial tool grammar:
 | Surface extrude | Remove exposed layer | Extrude exposed face | Extrude exposed face | Remove exposed layer | Sample extrusion material |
 | Terrain rod | Remove aimed rod | Place/update aimed rod | Place/update aimed rod | Remove aimed rod | Sample rod height/radius |
 | Terrain path | Remove latest point | Commit path | Commit path | Remove latest point | Add bend/start point |
+| Terrain region | Clear region | Advance corner/apply | Advance corner/apply | Clear region | Sample Flatten height |
 | Object select | Select/toggle target | No action | Select/toggle target | Cancel active action | Sample material |
 | Transform | Fast ground-plane drag | Begin transform preview | Fast ground-plane drag | Cancel active drag | Sample material |
 | Selection wand | Set corner 1 | Set corner 2 | Advance corner 1/2 | Clear selection | Expand selection |
@@ -212,7 +213,10 @@ Terrain tools follow the same rule. D-pad/arrow quick edit adjusts contextual
 height, radius, width, strength, amplitude, rise, or depth; no terrain-specific
 global button is reserved. Terrain Path uses Square/Pick to lock bends while
 the current aim remains its live endpoint, so a straight route is Square, aim,
-X.
+X. Terrain Region uses X to set corner 1, set corner 2, and then apply; Circle
+clears the region, and Square samples a target only while Flatten is selected.
+D-pad left/right cycles the region operation, while up/down adjusts its amount
+or Flatten target.
 The data, generation, cache, and future smooth-surface seams are specified in
 [`creative_terrain.md`](creative_terrain.md).
 

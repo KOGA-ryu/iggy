@@ -547,6 +547,67 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
               "river path names vertical tuning as depth") &&
        ok;
 
+  setHeld(editor, cr::CreativeHeldItemKind::TerrainRegion);
+  const cr::CreativeActionHintFrame emptyRegion =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* regionCornerOne =
+      findHint(emptyRegion, cr::CreativeInputActionId::AcceptAction);
+  const cr::CreativeActionHint* regionCancel =
+      findHint(emptyRegion, cr::CreativeInputActionId::RejectAction);
+  const cr::CreativeActionHint* regionAmount =
+      findHint(emptyRegion, cr::CreativeInputActionId::QuickEditPrevious);
+  const cr::CreativeActionHint* regionOperation =
+      findHint(emptyRegion, cr::CreativeInputActionId::QuickEditDecrease);
+  ok = expect(regionCornerOne != nullptr &&
+                  regionCornerOne->chord.view() == "X" &&
+                  regionCornerOne->label.view() == "Corner 1" &&
+                  regionCancel != nullptr &&
+                  regionCancel->chord.view() == "Circle" &&
+                  regionCancel->label.view() == "Cancel" &&
+                  regionAmount != nullptr &&
+                  regionAmount->label.view() == "Amount" &&
+                  regionOperation != nullptr &&
+                  regionOperation->label.view() == "Operation" &&
+                  findHint(emptyRegion,
+                           cr::CreativeInputActionId::PickAction) == nullptr,
+              "region starts with corner controls and contextual amount tuning") &&
+       ok;
+  editor.volume.selection.phase =
+      cr::CreativeVolumeSelectionPhase::FirstCorner;
+  const cr::CreativeActionHintFrame secondRegionCorner =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* regionCornerTwo =
+      findHint(secondRegionCorner, cr::CreativeInputActionId::AcceptAction);
+  editor.volume.selection.phase = cr::CreativeVolumeSelectionPhase::Complete;
+  editor.toolSettings.terrainRegionOperation =
+      cr::CreativeTerrainRegionOperation::Flatten;
+  const cr::CreativeActionHintFrame completeRegion =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* regionApply =
+      findHint(completeRegion, cr::CreativeInputActionId::AcceptAction);
+  const cr::CreativeActionHint* regionSample =
+      findHint(completeRegion, cr::CreativeInputActionId::PickAction);
+  const cr::CreativeActionHint* regionTarget =
+      findHint(completeRegion, cr::CreativeInputActionId::QuickEditPrevious);
+  ok = expect(regionCornerTwo != nullptr &&
+                  regionCornerTwo->label.view() == "Corner 2" &&
+                  regionApply != nullptr &&
+                  regionApply->label.view() == "Apply region" &&
+                  regionSample != nullptr &&
+                  regionSample->chord.view() == "Square" &&
+                  regionSample->label.view() == "Sample height" &&
+                  regionTarget != nullptr &&
+                  regionTarget->label.view() == "Target" &&
+                  !completeRegion.capacityExceeded,
+              "complete flatten region advertises apply sample and target tuning") &&
+       ok;
+
   setHeld(editor, cr::CreativeHeldItemKind::LinearArray);
   const cr::CreativeActionHintFrame array = resolveCreativeEditorActionHints(
       editor, cr::CreativeInputContext::EditorViewport,

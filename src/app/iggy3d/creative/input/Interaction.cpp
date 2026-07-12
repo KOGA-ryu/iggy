@@ -152,6 +152,7 @@ std::string_view toString(CreativeHeldItemKind kind) noexcept {
     case CreativeHeldItemKind::TerrainSculpt: return "TerrainSculpt";
     case CreativeHeldItemKind::TerrainProfile: return "TerrainProfile";
     case CreativeHeldItemKind::TerrainPath: return "TerrainPath";
+    case CreativeHeldItemKind::TerrainRegion: return "TerrainRegion";
     case CreativeHeldItemKind::Count: break;
   }
   return "Unknown";
@@ -271,6 +272,7 @@ bool creativeHeldItemUsesMaterial(CreativeHeldItemKind kind) noexcept {
     case CreativeHeldItemKind::TerrainSculpt:
     case CreativeHeldItemKind::TerrainProfile:
     case CreativeHeldItemKind::TerrainPath:
+    case CreativeHeldItemKind::TerrainRegion:
     case CreativeHeldItemKind::Count:
       return false;
   }
@@ -284,6 +286,7 @@ bool creativeHeldItemIsTerrainTool(CreativeHeldItemKind kind) noexcept {
     case CreativeHeldItemKind::TerrainSculpt:
     case CreativeHeldItemKind::TerrainProfile:
     case CreativeHeldItemKind::TerrainPath:
+    case CreativeHeldItemKind::TerrainRegion:
       return true;
     case CreativeHeldItemKind::Material:
     case CreativeHeldItemKind::MaterialBrush:

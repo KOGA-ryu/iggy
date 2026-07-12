@@ -227,6 +227,33 @@ revision, scene refresh, and undo record. One undo restores the complete
 pre-path terrain field.
 Catalogs, tool options, controls, transforms, and capture mode hide the overlay.
 
+Equip **Terrain Region** for bounded changes to authored rods. It reuses the
+selection-box interaction rather than reserving another controller button:
+
+| Input | Operation |
+|---|---|
+| Right mouse / PS5 X | Set corner 1, set corner 2, then apply the complete region |
+| Left mouse / PS5 Circle | Clear the region without document history |
+| Middle mouse / PS5 Square | Sample the aimed derived height when Flatten is selected |
+| Up/down / D-pad up/down | Adjust Amount for Raise/Lower/Smooth, or Target for Flatten |
+| Left/right / D-pad left/right | Cycle Raise, Lower, Flatten, Smooth, and Erase |
+
+Raise and Lower add or subtract 1, 2, 4, or 8 cells. Flatten sets every selected
+rod to the sampled or tuned target. Smooth averages authored neighbors from one
+unchanged pre-edit snapshot and retains each rod's authored radius. Erase removes
+the selected rods. All operations affect existing rods only; an empty region is
+rejected instead of densifying terrain implicitly.
+
+The normal selection box shows the inclusive X/Z footprint. Green rod and slope
+guides show an accepted result, orange marks Erase, and red marks a rejected
+plan. The preview is cached by document ID, terrain revision, bounds, operation,
+amount, and target height. Aiming and D-pad edits do not mutate the document.
+`buildCreativeTerrainRegionPlan` scans the canonical terrain field into fixed
+256-entry storage, preserves canonical order, and emits no partial prefix on
+invalid input or capacity failure. X submits that exact edit span through one
+Facade batch, so the complete region produces at most one document revision,
+scene refresh, and undo record.
+
 ## Authored Data
 
 `CreativeTerrainField` owns a canonical vector sorted by Z then X. Coordinates

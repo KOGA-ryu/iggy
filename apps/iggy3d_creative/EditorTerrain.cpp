@@ -718,6 +718,9 @@ void clearCreativeEditorTerrainInteraction(
   state.path.preview.valid = false;
   state.path.preview.renderAccepted = false;
   state.path.preview.patches.clear();
+  state.region.preview.valid = false;
+  state.region.preview.renderAccepted = false;
+  state.region.preview.patches.clear();
 }
 
 void updateCreativeEditorTerrainAim(
@@ -848,9 +851,11 @@ void appendCreativeEditorTerrainOverlay(
   const bool terrainProfile =
       held.kind == cr::CreativeHeldItemKind::TerrainProfile;
   const bool terrainPath = held.kind == cr::CreativeHeldItemKind::TerrainPath;
+  const bool terrainRegion =
+      held.kind == cr::CreativeHeldItemKind::TerrainRegion;
   if (captureMode ||
       (!terrainControl && !terrainGrade && !terrainSculpt && !terrainProfile &&
-       !terrainPath) ||
+       !terrainPath && !terrainRegion) ||
       editor.catalog.model.open || editor.catalog.toolWheel.open ||
       editor.toolOptions.open || editor.controls.open || editor.transform.active ||
       editor.transform.controlsOpen) {
@@ -894,6 +899,12 @@ void appendCreativeEditorTerrainOverlay(
   if (terrainPath) {
     appendCreativeEditorTerrainPathOverlay(document, editor, thickness,
                                            wireLines);
+    return;
+  }
+
+  if (terrainRegion) {
+    appendCreativeEditorTerrainRegionOverlay(document, editor, thickness,
+                                             wireLines);
     return;
   }
 

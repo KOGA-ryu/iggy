@@ -95,6 +95,8 @@ constexpr std::array kHeldItemBehaviors{
                      cr::Tool::Select, false, false},
     HeldItemBehavior{cr::CreativeHeldItemKind::TerrainPath,
                      cr::Tool::Select, false, false},
+    HeldItemBehavior{cr::CreativeHeldItemKind::TerrainRegion,
+                     cr::Tool::Select, false, true},
 };
 static_assert(heldItemRowsMatchEnumOrder(kHeldItemBehaviors));
 
@@ -483,6 +485,31 @@ void removeTerrainPathPoint(InteractionContext& context) {
       removeCreativeEditorTerrainPathPoint(context.request.editor));
 }
 
+void applyTerrainRegion(InteractionContext& context) {
+  static_cast<void>(applyCreativeEditorTerrainRegionWithHistory(
+      context.request.appState, context.request.editor,
+      "minecraft_terrain_region_apply"));
+}
+
+void advanceTerrainRegion(InteractionContext& context) {
+  CreativeEditorState& editor = context.request.editor;
+  if (cr::creativeVolumeSelectionComplete(editor.volume.selection)) {
+    applyTerrainRegion(context);
+    return;
+  }
+  advanceVolumeSelection(context);
+}
+
+void sampleTerrainRegionHeight(InteractionContext& context) {
+  static_cast<void>(sampleCreativeEditorTerrainRegionHeight(
+      context.request.appState.facade.document(), context.request.editor));
+}
+
+void cancelTerrainRegion(InteractionContext& context) {
+  static_cast<void>(
+      cancelCreativeEditorTerrainRegion(context.request.editor));
+}
+
 constexpr std::array<HeldItemHandlerRow, cr::kCreativeHeldItemKindCount>
     kHeldItemHandlers{{
         {cr::CreativeHeldItemKind::Material,
@@ -543,6 +570,10 @@ constexpr std::array<HeldItemHandlerRow, cr::kCreativeHeldItemKindCount>
         {cr::CreativeHeldItemKind::TerrainPath,
          {removeTerrainPathPoint, applyTerrainPath, addTerrainPathPoint},
          applyTerrainPath, removeTerrainPathPoint, true},
+        {cr::CreativeHeldItemKind::TerrainRegion,
+         {cancelTerrainRegion, advanceTerrainRegion,
+          sampleTerrainRegionHeight},
+         advanceTerrainRegion, cancelTerrainRegion, true},
     }};
 static_assert(heldItemRowsMatchEnumOrder(kHeldItemHandlers));
 
@@ -651,6 +682,16 @@ HeldItemCommandResult confirmTerrainPathCommand(
                     .accepted};
 }
 
+HeldItemCommandResult confirmTerrainRegionCommand(
+    cr::CreativeHeldItemKind,
+    cr::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    std::string_view source) {
+  return {true, applyCreativeEditorTerrainRegionWithHistory(
+                    appState, editor, source)
+                    .accepted};
+}
+
 HeldItemCommandResult confirmVolumeCommand(
     cr::CreativeHeldItemKind kind,
     cr::CreativeAppState& appState,
@@ -702,6 +743,12 @@ HeldItemCommandResult cancelTerrainPathCommand(
   return {true, removeCreativeEditorTerrainPathPoint(editor).accepted};
 }
 
+HeldItemCommandResult cancelTerrainRegionCommand(
+    cr::CreativeAppState&,
+    CreativeEditorState& editor) {
+  return {true, cancelCreativeEditorTerrainRegion(editor).changed};
+}
+
 constexpr std::array<HeldItemCommandRow, cr::kCreativeHeldItemKindCount>
     kHeldItemCommands{{
         {cr::CreativeHeldItemKind::Material},
@@ -729,6 +776,8 @@ constexpr std::array<HeldItemCommandRow, cr::kCreativeHeldItemKindCount>
          confirmTerrainProfileCommand, cancelTerrainProfileCommand},
         {cr::CreativeHeldItemKind::TerrainPath,
          confirmTerrainPathCommand, cancelTerrainPathCommand},
+        {cr::CreativeHeldItemKind::TerrainRegion,
+         confirmTerrainRegionCommand, cancelTerrainRegionCommand},
     }};
 static_assert(heldItemRowsMatchEnumOrder(kHeldItemCommands));
 
@@ -903,6 +952,7 @@ void refreshHeldItemPreview(
     case cr::CreativeHeldItemKind::TerrainGrade:
     case cr::CreativeHeldItemKind::TerrainProfile:
     case cr::CreativeHeldItemKind::TerrainPath:
+    case cr::CreativeHeldItemKind::TerrainRegion:
     case cr::CreativeHeldItemKind::Count:
       break;
   }
@@ -927,6 +977,11 @@ void refreshHeldItemPreview(
       return;
     case cr::CreativeHeldItemKind::TerrainPath:
       static_cast<void>(refreshCreativeEditorTerrainPathPreview(
+          request.editor.terrain, request.appState.facade.document(),
+          request.editor));
+      return;
+    case cr::CreativeHeldItemKind::TerrainRegion:
+      static_cast<void>(refreshCreativeEditorTerrainRegionPreview(
           request.editor.terrain, request.appState.facade.document(),
           request.editor));
       return;
@@ -1211,6 +1266,23 @@ void appendTerrainPathStatus(std::string& output,
       !editor.terrain.path.preview.plan.accepted) {
     output.append(" | ");
     output.append(cr::toString(editor.terrain.path.preview.plan.status));
+  }
+}
+
+void appendTerrainRegionStatus(std::string& output,
+                               const CreativeEditorState& editor) {
+  output.append(" | ");
+  output.append(creativeEditorTerrainRegionQuickEditLabel(editor));
+  const CreativeTerrainRegionPreviewCache& preview =
+      editor.terrain.region.preview;
+  if (preview.valid) {
+    output.append(" | ");
+    output.append(std::to_string(preview.plan.affectedControlCount));
+    output.append(" RODS");
+    if (!preview.plan.accepted) {
+      output.append(" | ");
+      output.append(cr::toString(preview.plan.status));
+    }
   }
 }
 
@@ -1535,6 +1607,7 @@ double creativeEditorTargetCellSize(
     case cr::CreativeHeldItemKind::TerrainSculpt:
     case cr::CreativeHeldItemKind::TerrainProfile:
     case cr::CreativeHeldItemKind::TerrainPath:
+    case cr::CreativeHeldItemKind::TerrainRegion:
       return document.gridSettings().cellSizeMeters;
     case cr::CreativeHeldItemKind::ObjectSelect:
     case cr::CreativeHeldItemKind::ObjectMove:
@@ -1575,6 +1648,9 @@ std::string creativeEditorHeldItemStatusLabel(
       break;
     case cr::CreativeHeldItemKind::TerrainPath:
       appendTerrainPathStatus(output, editor);
+      break;
+    case cr::CreativeHeldItemKind::TerrainRegion:
+      appendTerrainRegionStatus(output, editor);
       break;
     case cr::CreativeHeldItemKind::ConnectedFill:
       appendConnectedFillStatus(output, editor, held);

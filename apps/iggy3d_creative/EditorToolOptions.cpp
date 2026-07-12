@@ -181,7 +181,8 @@ void adjustSelection(CreativeEditorState& editor,
       option == cr::CreativeToolOptionId::MaterialBrushMask ||
       option == cr::CreativeToolOptionId::TerrainRodStampMode ||
       option == cr::CreativeToolOptionId::TerrainProfileKind ||
-      option == cr::CreativeToolOptionId::TerrainProfileRodPolicy;
+      option == cr::CreativeToolOptionId::TerrainProfileRodPolicy ||
+      option == cr::CreativeToolOptionId::TerrainRegionOperation;
   if (receipt.changed && optionSetChanged) {
     state.options =
         creativeEditorToolOptionsForEntry(state.targetEntry, state.draft);
@@ -491,6 +492,8 @@ bool processCreativeEditorQuickEditAction(
       return processCreativeEditorTerrainProfileQuickEdit(editor, action);
     case cr::CreativeHeldItemKind::TerrainPath:
       return processCreativeEditorTerrainPathQuickEdit(editor, action);
+    case cr::CreativeHeldItemKind::TerrainRegion:
+      return processCreativeEditorTerrainRegionQuickEdit(editor, action);
     default:
       break;
   }
@@ -553,6 +556,8 @@ std::string creativeEditorQuickEditStatusLabel(
       return creativeEditorTerrainProfileQuickEditLabel(editor);
     case cr::CreativeHeldItemKind::TerrainPath:
       return creativeEditorTerrainPathQuickEditLabel(editor);
+    case cr::CreativeHeldItemKind::TerrainRegion:
+      return creativeEditorTerrainRegionQuickEditLabel(editor);
     default:
       break;
   }

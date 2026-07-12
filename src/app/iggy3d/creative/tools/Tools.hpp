@@ -8,6 +8,7 @@
 #include "app/iggy3d/creative/tools/SurfaceExtrude.hpp"
 #include "app/iggy3d/creative/tools/TerrainProfile.hpp"
 #include "app/iggy3d/creative/tools/TerrainPath.hpp"
+#include "app/iggy3d/creative/tools/TerrainRegion.hpp"
 #include "app/iggy3d/creative/tools/TerrainSeed.hpp"
 #include "app/iggy3d/creative/tools/TerrainSculpt.hpp"
 
@@ -161,6 +162,8 @@ enum class CreativeToolOptionId : std::uint8_t {
   TerrainPathElevation,
   TerrainPathWidth,
   TerrainPathAmplitude,
+  TerrainRegionOperation,
+  TerrainRegionAmount,
   Count,
 };
 
@@ -273,6 +276,10 @@ struct CreativeToolSettings {
       CreativeTerrainPathWidth::ThreeCells;
   CreativeTerrainPathAmplitude terrainPathAmplitude =
       CreativeTerrainPathAmplitude::OneCell;
+  CreativeTerrainRegionOperation terrainRegionOperation =
+      CreativeTerrainRegionOperation::Raise;
+  CreativeTerrainRegionAmount terrainRegionAmount =
+      CreativeTerrainRegionAmount::OneCell;
 
   [[nodiscard]] bool operator==(
       const CreativeToolSettings&) const noexcept = default;

@@ -902,6 +902,7 @@ struct CreativeEditorVolumePreviewFacts {
   creative::CreativeShapeBrushPlanReceipt shapePlan{};
   bool selectionVisible = false;
   bool usesShapePlan = false;
+  bool terrainRegion = false;
 };
 
 CreativeEditorVolumePreviewFacts appendCreativeEditorVolumeAndToolWireframes(
@@ -913,12 +914,24 @@ CreativeEditorVolumePreviewFacts appendCreativeEditorVolumeAndToolWireframes(
       output.combinedWireLines;
   if (editor.volume.active && !editor.transform.active) {
     facts.selection = creativeEditorVolumePreviewSelection(editor.volume);
-    if (creative::creativeVolumeSelectionValid(facts.selection)) {
+    const creative::CreativeHotbarEntry& held =
+        creative::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+    facts.terrainRegion =
+        held.kind == creative::CreativeHeldItemKind::TerrainRegion;
+    const bool regionHidden =
+        facts.terrainRegion &&
+        (request.captureMode || editor.catalog.model.open ||
+         editor.catalog.toolWheel.open || editor.toolOptions.open ||
+         editor.controls.open || editor.transform.controlsOpen);
+    if (creative::creativeVolumeSelectionValid(facts.selection) &&
+        !regionHidden) {
       facts.selectionVisible = true;
       facts.usesShapePlan =
-          editor.volume.operation == creative::CreativeVolumeOperationKind::Fill ||
-          editor.volume.operation ==
-              creative::CreativeVolumeOperationKind::Hollow;
+          !facts.terrainRegion &&
+          (editor.volume.operation ==
+               creative::CreativeVolumeOperationKind::Fill ||
+           editor.volume.operation ==
+               creative::CreativeVolumeOperationKind::Hollow);
       if (facts.usesShapePlan) {
         creative::CreativeShapeBrushPlanRequest planRequest;
         planRequest.kind = editor.toolSettings.shapeBrushKind;
@@ -933,10 +946,21 @@ CreativeEditorVolumePreviewFacts appendCreativeEditorVolumeAndToolWireframes(
         facts.shapePlan = creative::planCreativeShapeBrush(planRequest);
       }
       const std::size_t before = lines.size();
-      const RenderLineColor color =
-          facts.usesShapePlan && !facts.shapePlan.accepted
-              ? RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F}
-              : volumeOperationColor(editor.volume.operation);
+      RenderLineColor color = volumeOperationColor(editor.volume.operation);
+      if (facts.terrainRegion) {
+        const CreativeTerrainRegionPreviewCache& preview =
+            editor.terrain.region.preview;
+        const bool accepted = preview.valid && preview.plan.accepted &&
+                              preview.renderAccepted;
+        color = !accepted
+                    ? RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F}
+                    : preview.operation ==
+                              creative::CreativeTerrainRegionOperation::Erase
+                          ? RenderLineColor{1.0F, 0.46F, 0.12F, 1.0F}
+                          : RenderLineColor{0.20F, 1.0F, 0.35F, 1.0F};
+      } else if (facts.usesShapePlan && !facts.shapePlan.accepted) {
+        color = RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F};
+      }
       appendCreativeShapeBrushOutline(
           lines, facts.selection,
           facts.usesShapePlan ? editor.toolSettings.shapeBrushKind
@@ -985,44 +1009,58 @@ void appendCreativeEditorVolumePreviewLabel(
   if (!screenPoint.valid) {
     return;
   }
-  const std::uint64_t plannedCellCount =
+  char label[128];
+  if (facts.terrainRegion) {
+    const CreativeTerrainRegionPreviewCache& preview =
+        editor.terrain.region.preview;
+    std::snprintf(
+        label, sizeof(label), "TERRAIN %s %d x %d | %u rods | %s",
+        std::string(creative::toString(
+                        editor.toolSettings.terrainRegionOperation))
+            .c_str(),
+        gridBounds.max.x - gridBounds.min.x,
+        gridBounds.max.z - gridBounds.min.z,
+        static_cast<unsigned>(preview.plan.affectedControlCount),
+        std::string(creative::toString(preview.plan.status)).c_str());
+  } else {
+    const std::uint64_t plannedCellCount =
       facts.usesShapePlan && facts.shapePlan.accepted
           ? facts.shapePlan.generatedCellCount
           : facts.usesShapePlan
                 ? 0U
                 : creative::creativeVolumeCellCount(facts.selection);
-  const std::string shapeLabel =
+    const std::string shapeLabel =
       facts.usesShapePlan
           ? std::string(creative::toString(editor.toolSettings.shapeBrushKind))
           : std::string{"BOX"};
-  const std::string axisLabel =
+    const std::string axisLabel =
       facts.usesShapePlan &&
               editor.toolSettings.shapeBrushKind ==
                   creative::CreativeShapeBrushKind::Cylinder
           ? " " + std::string(
                       creative::toString(editor.toolSettings.shapeBrushAxis))
           : std::string{};
-  char label[128];
-  if (editor.volume.lastReceipt.requested) {
-    std::snprintf(
-        label, sizeof(label), "%s %s%s %d x %d x %d | %llu cells | %s",
-        std::string(creative::toString(editor.volume.operation)).c_str(),
-        shapeLabel.c_str(), axisLabel.c_str(),
-        gridBounds.max.x - gridBounds.min.x,
-        gridBounds.max.y - gridBounds.min.y,
-        gridBounds.max.z - gridBounds.min.z,
-        static_cast<unsigned long long>(plannedCellCount),
-        std::string(creative::toString(editor.volume.lastReceipt.status))
-            .c_str());
-  } else {
-    std::snprintf(
-        label, sizeof(label), "%s %s%s %d x %d x %d | %llu cells",
-        std::string(creative::toString(editor.volume.operation)).c_str(),
-        shapeLabel.c_str(), axisLabel.c_str(),
-        gridBounds.max.x - gridBounds.min.x,
-        gridBounds.max.y - gridBounds.min.y,
-        gridBounds.max.z - gridBounds.min.z,
-        static_cast<unsigned long long>(plannedCellCount));
+    if (editor.volume.lastReceipt.requested) {
+      std::snprintf(
+          label, sizeof(label), "%s %s%s %d x %d x %d | %llu cells | %s",
+          std::string(creative::toString(editor.volume.operation)).c_str(),
+          shapeLabel.c_str(), axisLabel.c_str(),
+          gridBounds.max.x - gridBounds.min.x,
+          gridBounds.max.y - gridBounds.min.y,
+          gridBounds.max.z - gridBounds.min.z,
+          static_cast<unsigned long long>(plannedCellCount),
+          std::string(creative::toString(editor.volume.lastReceipt.status))
+              .c_str());
+    } else {
+      std::snprintf(
+          label, sizeof(label), "%s %s%s %d x %d x %d | %llu cells",
+          std::string(creative::toString(editor.volume.operation)).c_str(),
+          shapeLabel.c_str(), axisLabel.c_str(),
+          gridBounds.max.x - gridBounds.min.x,
+          gridBounds.max.y - gridBounds.min.y,
+          gridBounds.max.z - gridBounds.min.z,
+          static_cast<unsigned long long>(plannedCellCount));
+    }
   }
   const DebugHudLayoutResult layout = layoutDebugHudTextAt(
       label, static_cast<std::int32_t>(screenPoint.x),

@@ -82,6 +82,10 @@ constexpr std::array kToolSpecs{
                     "terrain path road river ridge trench embankment route "
                     "landscape",
                     false},
+    CatalogToolSpec{CreativeHeldItemKind::TerrainRegion, "Terrain Region",
+                    "terrain region area raise lower flatten smooth erase "
+                    "landscape selection",
+                    false},
 };
 
 constexpr std::array kActionEntries{

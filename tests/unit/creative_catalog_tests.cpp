@@ -154,8 +154,8 @@ bool actionAvailabilityUsesExplicitFacts() {
 
 bool catalogBuildsMaterialsAndCreatorTools() {
   const cr::CreativeCatalogState state = catalog();
-  bool ok = expect(state.entries.size() == 19U,
-                   "two materials plus seventeen catalog tools") &&
+  bool ok = expect(state.entries.size() == 20U,
+                   "two materials plus eighteen catalog tools") &&
             expect(state.filteredEntryIndices.size() == state.entries.size(),
                    "empty query exposes every entry") &&
             expect(state.entries[0].category ==
@@ -174,9 +174,9 @@ bool catalogBuildsMaterialsAndCreatorTools() {
                        cr::CreativeHeldItemKind::ObjectSelect,
                    "object tools follow the material brush") &&
             expect(state.entries.back().hotbarEntry.kind ==
-                           cr::CreativeHeldItemKind::TerrainPath &&
-                       state.entries.back().label == "Terrain Path",
-                   "terrain path closes the tool lane as a selectable tool");
+                           cr::CreativeHeldItemKind::TerrainRegion &&
+                       state.entries.back().label == "Terrain Region",
+                   "terrain region closes the tool lane as a selectable tool");
   ok = expect(cr::toString(cr::CreativeCatalogEntryCategory::Material) ==
                   "Material" &&
                   cr::toString(cr::CreativeCatalogEntryCategory::Tool) ==
@@ -203,7 +203,7 @@ bool catalogOmitsToolsWithoutRequiredMaterial() {
                entry.hotbarEntry.kind ==
                    cr::CreativeHeldItemKind::SurfaceExtrude;
       });
-  return expect(state.entries.size() == 11U,
+  return expect(state.entries.size() == 12U,
                 "empty palette retains material-independent tools") &&
          expect(!materialDependentToolPresent,
                 "material-dependent tools require a valid material");
@@ -478,14 +478,18 @@ bool searchIsCaseInsensitiveBoundedAndStable() {
 
   ok = expect(cr::setCreativeCatalogQuery(state, "REGION"),
               "tool alias query accepted") &&
-       expect(state.filteredEntryIndices.size() == 7U,
-              "region query finds selection, five operations, and connected fill") &&
+       expect(state.filteredEntryIndices.size() == 8U,
+              "region query includes terrain and voxel region tools") &&
        expect(cr::setCreativeCatalogQuery(state, "raise") &&
-                  state.filteredEntryIndices.size() == 1U &&
-                  cr::selectedCreativeCatalogEntry(state) != nullptr &&
-                  cr::selectedCreativeCatalogEntry(state)->hotbarEntry.kind ==
-                      cr::CreativeHeldItemKind::TerrainSculpt,
-              "raise alias resolves uniquely to terrain sculpt") &&
+                  state.filteredEntryIndices.size() == 2U &&
+                  std::any_of(
+                      state.filteredEntryIndices.begin(),
+                      state.filteredEntryIndices.end(),
+                      [&state](std::size_t index) {
+                        return state.entries[index].hotbarEntry.kind ==
+                               cr::CreativeHeldItemKind::TerrainRegion;
+                      }),
+              "raise alias exposes brush and bounded-region terrain tools") &&
        expect(cr::setCreativeCatalogQuery(state, "crater") &&
                   state.filteredEntryIndices.size() == 1U &&
                   cr::selectedCreativeCatalogEntry(state) != nullptr &&
@@ -529,7 +533,7 @@ bool selectionWrapsAndAssignmentsAreExplicit() {
   cr::CreativeHotbarState hotbar = cr::makeDefaultCreativeHotbar(palette);
 
   bool ok = expect(cr::moveCreativeCatalogSelection(state, -1) &&
-                       state.selectedFilteredIndex == 18U,
+                       state.selectedFilteredIndex == 19U,
                    "previous wraps to final result") &&
             expect(cr::moveCreativeCatalogSelection(state, 1) &&
                        state.selectedFilteredIndex == 0U,

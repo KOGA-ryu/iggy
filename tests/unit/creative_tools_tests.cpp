@@ -374,6 +374,16 @@ bool optionDescriptorsAreContextualAndBounded() {
   const cr::CreativeToolOptionList terrainPath =
       cr::creativeToolOptionsForHeldItem(
           cr::CreativeHeldItemKind::TerrainPath);
+  const cr::CreativeToolOptionList terrainRegion =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::TerrainRegion);
+  cr::CreativeToolSettings flattenRegionSettings =
+      cr::makeDefaultCreativeToolSettings();
+  flattenRegionSettings.terrainRegionOperation =
+      cr::CreativeTerrainRegionOperation::Flatten;
+  const cr::CreativeToolOptionList flattenRegion =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::TerrainRegion, flattenRegionSettings);
   cr::CreativeToolSettings ridgeSettings =
       cr::makeDefaultCreativeToolSettings();
   ridgeSettings.terrainProfileKind = cr::CreativeTerrainProfileKind::Ridge;
@@ -536,6 +546,15 @@ bool optionDescriptorsAreContextualAndBounded() {
                     terrainPath.ids[3] ==
                         cr::CreativeToolOptionId::TerrainPathAmplitude,
                 "terrain path exposes type elevation width and rise depth") &&
+         expect(terrainRegion.count == 2U &&
+                    terrainRegion.ids[0] ==
+                        cr::CreativeToolOptionId::TerrainRegionOperation &&
+                    terrainRegion.ids[1] ==
+                        cr::CreativeToolOptionId::TerrainRegionAmount &&
+                    flattenRegion.count == 1U &&
+                    flattenRegion.ids[0] ==
+                        cr::CreativeToolOptionId::TerrainRegionOperation,
+                "terrain region hides amount when flatten owns target height") &&
          expect(array.count == 4U &&
                     array.ids[0] ==
                         cr::CreativeToolOptionId::ArrayMode &&
@@ -570,6 +589,8 @@ bool optionDescriptorsAreContextualAndBounded() {
                     !terrainSeed.capacityExceeded &&
                     !terrainProfile.capacityExceeded &&
                     !terrainPath.capacityExceeded &&
+                    !terrainRegion.capacityExceeded &&
+                    !flattenRegion.capacityExceeded &&
                     !terrainRidge.capacityExceeded &&
                     !terrainWaveExisting.capacityExceeded &&
                     !array.capacityExceeded && !radialArray.capacityExceeded &&
@@ -583,7 +604,10 @@ bool optionDescriptorsAreContextualAndBounded() {
                     sizeof(cr::CreativeHeldItemMask) == sizeof(std::uint32_t) &&
                     cr::creativeToolOptionAppliesToHeldItem(
                         cr::CreativeToolOptionId::TerrainProfileKind,
-                        cr::CreativeHeldItemKind::TerrainProfile),
+                        cr::CreativeHeldItemKind::TerrainProfile) &&
+                    cr::creativeToolOptionAppliesToHeldItem(
+                        cr::CreativeToolOptionId::TerrainRegionOperation,
+                        cr::CreativeHeldItemKind::TerrainRegion),
                 "invalid and inapplicable options are rejected");
 }
 
@@ -628,6 +652,12 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
   cr::CreativeToolSettings invalidPath = settings;
   invalidPath.terrainPathElevation =
       cr::CreativeTerrainPathElevation::Count;
+  cr::CreativeToolSettings invalidRegionOperation = settings;
+  invalidRegionOperation.terrainRegionOperation =
+      cr::CreativeTerrainRegionOperation::Count;
+  cr::CreativeToolSettings invalidRegionAmount = settings;
+  invalidRegionAmount.terrainRegionAmount =
+      cr::CreativeTerrainRegionAmount::Count;
   bool ok = expect(cr::isValidCreativeToolSettings(settings),
                    "default settings valid") &&
             expect(!cr::isValidCreativeToolSettings(invalidMask),
@@ -659,6 +689,9 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                    "invalid terrain profile option fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidPath),
                    "invalid terrain path option fails settings validation") &&
+            expect(!cr::isValidCreativeToolSettings(invalidRegionOperation) &&
+                       !cr::isValidCreativeToolSettings(invalidRegionAmount),
+                   "invalid terrain region options fail settings validation") &&
             expect(cr::creativeToolOptionValueLabel(
                        settings,
                        cr::CreativeToolOptionId::MoveConstraint) == "FREE" &&
@@ -796,6 +829,14 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::TerrainPathAmplitude) ==
+                           "1 CELL" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainRegionOperation) ==
+                           "RAISE" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainRegionAmount) ==
                            "1 CELL",
                    "default labels and scalar conversions stable");
 
@@ -952,6 +993,15 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                   settings.terrainPathAmplitude ==
                       cr::CreativeTerrainPathAmplitude::TwoCells,
               "terrain path rise depth cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainRegionOperation, 1)
+                  .changed &&
+                  settings.terrainRegionOperation ==
+                      cr::CreativeTerrainRegionOperation::Lower,
+              "terrain region operation cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainRegionAmount, 1).changed &&
+                  settings.terrainRegionAmount ==
+                      cr::CreativeTerrainRegionAmount::TwoCells,
+              "terrain region amount cycles") &&
        expect(adjust(cr::CreativeToolOptionId::ShapeBrushKind, 1).changed &&
                   settings.shapeBrushKind == cr::CreativeShapeBrushKind::Line,
               "shape kind cycles") &&

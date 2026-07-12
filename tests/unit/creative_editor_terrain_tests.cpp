@@ -3,6 +3,7 @@
 #include "EditorEdits.hpp"
 #include "EditorFrame.hpp"
 #include "EditorFrustumCull.hpp"
+#include "EditorGizmo.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorState.hpp"
@@ -82,6 +83,22 @@ CreativeEditorState terrainPathEditor(std::int32_t x, std::int32_t z) {
   editor.interaction.hotbar.entries[0].kind =
       cr::CreativeHeldItemKind::TerrainPath;
   return editor;
+}
+
+CreativeEditorState terrainRegionEditor(std::int32_t x, std::int32_t z) {
+  CreativeEditorState editor = terrainEditor(x, z);
+  editor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::TerrainRegion;
+  return editor;
+}
+
+void setTerrainRegionSelection(CreativeEditorState& editor,
+                               cr::CreativeGridCoord3 first,
+                               cr::CreativeGridCoord3 second) {
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      editor.volume.selection, cr::CreativeVolumeCorner::First, first));
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      editor.volume.selection, cr::CreativeVolumeCorner::Second, second));
 }
 
 cr::CreativeWorldActionFrame strokeAction(
@@ -1402,6 +1419,215 @@ bool terrainPathRoutesSquareXAndCircleThroughWorldActions() {
          ok;
 }
 
+bool terrainRegionPreviewApplyAndUndoStayAtomic() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 423U);
+  const std::array initial{
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{0, 0}, 2U, 2U}},
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{1, 0}, 6U, 3U}},
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{3, 0}, 10U, 1U}},
+  };
+  static_cast<void>(appState.facade.applyTerrainControlEdits(initial));
+  appState.history = {};
+  CreativeEditorState editor = terrainRegionEditor(0, 0);
+  setTerrainRegionSelection(editor, {0, 0, 0}, {1, 0, 0});
+  editor.toolSettings.terrainRegionAmount =
+      cr::CreativeTerrainRegionAmount::TwoCells;
+
+  const std::uint64_t revisionBeforePreview =
+      appState.facade.document().revision();
+  const bool previewBuilt = refreshCreativeEditorTerrainRegionPreview(
+      editor.terrain, appState.facade.document(), editor);
+  const CreativeTerrainRegionPreviewCache preview = editor.terrain.region.preview;
+  const bool previewReused = !refreshCreativeEditorTerrainRegionPreview(
+      editor.terrain, appState.facade.document(), editor);
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> previewLines;
+  appendCreativeEditorTerrainOverlay(appState.facade.document(), editor, 0.1F,
+                                     previewLines);
+  const cr::CreativeGridSettings grid =
+      appState.facade.document().gridSettings();
+  const float expectedRaisedTop = static_cast<float>(
+      grid.origin.y + 8.0 * grid.cellSizeMeters);
+  const bool plannedHeightVisible = std::any_of(
+      previewLines.begin(), previewLines.end(),
+      [expectedRaisedTop](const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return approx(line.color.r, 0.20F) && approx(line.color.g, 1.0F) &&
+               approx(line.color.b, 0.35F) &&
+               (approx(line.start.y, expectedRaisedTop) ||
+                approx(line.end.y, expectedRaisedTop));
+      });
+  editor.volume.active = true;
+  const CreativeEditorSelectionFrame selection;
+  const CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  iggy3d::FrameInput frame;
+  CreativeEditorOverlayFrame visibleOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      visibleOverlay);
+  editor.toolOptions.open = true;
+  CreativeEditorOverlayFrame modalOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      modalOverlay);
+  editor.toolOptions.open = false;
+  bool ok = expect(previewBuilt && previewReused && preview.valid &&
+                       preview.renderAccepted && preview.plan.accepted &&
+                       preview.plan.affectedControlCount == 2U &&
+                       preview.plan.editCount == 2U &&
+                       preview.buildCount == 1U && plannedHeightVisible &&
+                       visibleOverlay.volumeEdgeCount > 0U &&
+                       visibleOverlay.terrainEdgeCount > 0U &&
+                       modalOverlay.volumeEdgeCount == 0U &&
+                       modalOverlay.terrainEdgeCount == 0U &&
+                       appState.facade.document().revision() ==
+                           revisionBeforePreview,
+                   "complete region draws and caches its exact non-mutating preview");
+
+  const CreativeEditorTerrainRegionReceipt applied =
+      applyCreativeEditorTerrainRegionWithHistory(
+          appState, editor, "test_terrain_region_apply");
+  const cr::CreativeTerrainControlPoint* first =
+      appState.facade.document().terrainField().controlAt({0, 0});
+  const cr::CreativeTerrainControlPoint* second =
+      appState.facade.document().terrainField().controlAt({1, 0});
+  const cr::CreativeTerrainControlPoint* outside =
+      appState.facade.document().terrainField().controlAt({3, 0});
+  ok = expect(applied.accepted && applied.changed &&
+                  applied.plan.editCount == preview.plan.editCount &&
+                  first != nullptr && first->heightCells == 4U &&
+                  first->radiusCells == 2U && second != nullptr &&
+                  second->heightCells == 8U && second->radiusCells == 3U &&
+                  outside != nullptr && outside->heightCells == 10U &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "region commits previewed rods once and preserves outside truth") &&
+       ok;
+
+  const bool undone = undoLastEdit(appState, "test_terrain_region_undo");
+  first = appState.facade.document().terrainField().controlAt({0, 0});
+  second = appState.facade.document().terrainField().controlAt({1, 0});
+  ok = expect(undone && first != nullptr && first->heightCells == 2U &&
+                  second != nullptr && second->heightCells == 6U &&
+                  cr::creativeUndoDepth(appState.history) == 0U,
+              "one undo restores the complete region batch") &&
+       ok;
+
+  editor.toolSettings.terrainRegionOperation =
+      cr::CreativeTerrainRegionOperation::Erase;
+  const bool erasePreviewBuilt = refreshCreativeEditorTerrainRegionPreview(
+      editor.terrain, appState.facade.document(), editor);
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> eraseLines;
+  appendCreativeEditorTerrainOverlay(appState.facade.document(), editor, 0.1F,
+                                     eraseLines);
+  const bool eraseColorVisible = std::any_of(
+      eraseLines.begin(), eraseLines.end(),
+      [](const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return approx(line.color.r, 1.0F) && approx(line.color.g, 0.46F) &&
+               approx(line.color.b, 0.12F);
+      });
+  const CreativeEditorTerrainRegionReceipt erased =
+      applyCreativeEditorTerrainRegionWithHistory(
+          appState, editor, "test_terrain_region_erase");
+  ok = expect(erasePreviewBuilt && eraseColorVisible && erased.accepted &&
+                  erased.changed &&
+                  appState.facade.document().terrainField().controlAt({0, 0}) ==
+                      nullptr &&
+                  appState.facade.document().terrainField().controlAt({1, 0}) ==
+                      nullptr &&
+                  appState.facade.document().terrainField().controlAt({3, 0}) !=
+                      nullptr &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "orange Erase preview removes only selected rods in one batch") &&
+       ok;
+  return expect(undoLastEdit(appState, "test_terrain_region_erase_undo") &&
+                    appState.facade.document().terrainField().controlCount() ==
+                        3U,
+                "one undo restores an erased terrain region") &&
+         ok;
+}
+
+bool terrainRegionRoutesCornersSampleCancelAndQuickEdit() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 424U);
+  const std::array initial{
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{0, 0}, 3U, 2U}},
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{2, 0}, 7U, 2U}},
+  };
+  static_cast<void>(appState.facade.applyTerrainControlEdits(initial));
+  appState.history = {};
+  CreativeEditorState editor = terrainRegionEditor(0, 0);
+  iggy3d::RenderCameraFrame camera;
+  camera.worldEye = {0.5F, 10.0F, 0.5F};
+  camera.worldForward = {0.0F, -1.0F, 0.0F};
+  camera.worldUp = {0.0F, 0.0F, -1.0F};
+  const CreativeEditorPickFrame pickFrame;
+  const auto process = [&](const cr::CreativeWorldActionFrame& actions,
+                           std::uint64_t now) {
+    processCreativeEditorWorldInteractionFrame(
+        {appState, editor, actions, cr::kCreativeInputModifierNone, camera,
+         pickFrame, 800U, 600U, now, false});
+  };
+  const auto press = [&](cr::CreativeWorldActionId action,
+                         std::uint64_t now) {
+    process(strokeAction(action, true, true), now);
+    process(strokeAction(action, false, false, true), now + 1U);
+  };
+
+  editor.toolSettings.terrainRegionOperation =
+      cr::CreativeTerrainRegionOperation::Flatten;
+  camera.worldEye.x = 2.5F;
+  press(cr::CreativeWorldActionId::Pick, 0U);
+  bool ok = expect(editor.terrain.region.targetHeightCells == 7U &&
+                       cr::creativeUndoDepth(appState.history) == 0U,
+                   "PS5 Square samples flatten height without document history");
+
+  editor.toolSettings.terrainRegionOperation =
+      cr::CreativeTerrainRegionOperation::Raise;
+  camera.worldEye.x = 0.5F;
+  press(cr::CreativeWorldActionId::Accept, 2U);
+  camera.worldEye.x = 2.5F;
+  press(cr::CreativeWorldActionId::Accept, 4U);
+  const bool tunedAmount = processCreativeEditorQuickEditAction(
+      editor, cr::CreativeInputActionId::QuickEditPrevious);
+  press(cr::CreativeWorldActionId::Accept, 6U);
+  const cr::CreativeTerrainControlPoint* first =
+      appState.facade.document().terrainField().controlAt({0, 0});
+  const cr::CreativeTerrainControlPoint* second =
+      appState.facade.document().terrainField().controlAt({2, 0});
+  ok = expect(tunedAmount &&
+                  editor.toolSettings.terrainRegionAmount ==
+                      cr::CreativeTerrainRegionAmount::TwoCells &&
+                  first != nullptr && first->heightCells == 5U &&
+                  second != nullptr && second->heightCells == 9U &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "PS5 X selects two corners and applies the tuned region once") &&
+       ok;
+
+  press(cr::CreativeWorldActionId::Primary, 8U);
+  const bool mouseCancelled = editor.volume.selection.phase ==
+                              cr::CreativeVolumeSelectionPhase::Empty;
+  press(cr::CreativeWorldActionId::Accept, 10U);
+  press(cr::CreativeWorldActionId::Reject, 12U);
+  const bool cycledOperation = processCreativeEditorQuickEditAction(
+      editor, cr::CreativeInputActionId::QuickEditIncrease);
+  return expect(mouseCancelled && editor.volume.selection.phase ==
+                        cr::CreativeVolumeSelectionPhase::Empty &&
+                    cycledOperation &&
+                    editor.toolSettings.terrainRegionOperation ==
+                        cr::CreativeTerrainRegionOperation::Lower &&
+                    creativeEditorTerrainRegionQuickEditLabel(editor) ==
+                        "LOWER | AMOUNT 2",
+                "left mouse and Circle clear while D-pad cycles persistent operation") &&
+         ok;
+}
+
 bool bentSurfacePatchesReachRendererAndRefreshWithHeight() {
   cr::CreativeAppState appState;
   installDocument(appState, 404U);
@@ -1780,6 +2006,8 @@ int main() {
                  terrainProfileRejectionIsVisibleAtomicAndModalSafe() &&
                  terrainPathLocksBendsPreviewsCommitsAndUndoesOneBatch() &&
                  terrainPathRoutesSquareXAndCircleThroughWorldActions() &&
+                 terrainRegionPreviewApplyAndUndoStayAtomic() &&
+                 terrainRegionRoutesCornersSampleCancelAndQuickEdit() &&
                  bentSurfacePatchesReachRendererAndRefreshWithHeight() &&
                  smoothTerrainCollisionMatchesRenderedTriangle() &&
                  gridChangeRebuildsWorldSpaceTerrainPatches() &&
