@@ -35,6 +35,24 @@ is selected, that complete hold is cancel-only and cannot fall through into
 erasing the same rod. Focus loss, modal entry, commands, hotbar changes, capture
 mode, and shutdown finalize an active gesture.
 
+Terrain Rod also exposes `ROD STAMP` in Tool Options. `SINGLE` retains the
+one-rod behavior above. `SEED` turns the same X/Circle gesture into a bounded
+area operation:
+
+- X seeds only missing rods on a circular lattice. Existing rods are preserved.
+- Circle clears every authored rod in the circular seed footprint.
+- `SEED RADIUS` selects 1, 2, 4, or 8 cells; `SEED SPACING` selects 1, 2, or 4.
+- New rods sample the pre-edit derived terrain height where terrain exists and
+  otherwise use the HUD Height. Their influence uses the HUD Radius.
+- The largest radius with one-cell spacing plans at most 197 positions. If the
+  resulting document would exceed 256 controls, the entire stamp rejects before
+  history or document mutation.
+
+The green seed preview shows every missing rod that X will add; holding Circle
+turns the same exact preview red for rods that will be removed. Preview planning
+is fixed-capacity and revision-free. Overlapping or stationary stamps preserve
+existing controls and remain grouped into the gesture's single undo record.
+
 Equip **Terrain Grade** when a deliberate ramp is needed between authored
 rods. This tool uses the same world-action vocabulary without adding bindings:
 

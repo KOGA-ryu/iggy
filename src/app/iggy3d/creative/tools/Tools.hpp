@@ -6,6 +6,7 @@
 #include "app/iggy3d/creative/tools/Pattern.hpp"
 #include "app/iggy3d/creative/tools/ShapeBrush.hpp"
 #include "app/iggy3d/creative/tools/SurfaceExtrude.hpp"
+#include "app/iggy3d/creative/tools/TerrainSeed.hpp"
 #include "app/iggy3d/creative/tools/TerrainSculpt.hpp"
 
 #include <array>
@@ -142,6 +143,9 @@ enum class CreativeToolOptionId : std::uint8_t {
   TerrainSculptMode,
   TerrainSculptRadius,
   TerrainSculptStrength,
+  TerrainRodStampMode,
+  TerrainSeedRadius,
+  TerrainSeedSpacing,
   Count,
 };
 
@@ -223,6 +227,12 @@ struct CreativeToolSettings {
       CreativeTerrainSculptRadius::FourCells;
   CreativeTerrainSculptStrength terrainSculptStrength =
       CreativeTerrainSculptStrength::OneCell;
+  CreativeTerrainRodStampMode terrainRodStampMode =
+      CreativeTerrainRodStampMode::Single;
+  CreativeTerrainSeedRadius terrainSeedRadius =
+      CreativeTerrainSeedRadius::FourCells;
+  CreativeTerrainSeedSpacing terrainSeedSpacing =
+      CreativeTerrainSeedSpacing::TwoCells;
 };
 
 static_assert(std::is_trivially_copyable_v<CreativeToolSettings>);

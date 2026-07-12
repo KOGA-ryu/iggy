@@ -448,6 +448,100 @@ bool terrainPaintStrokeRepeatsDeduplicatesCachesAndGroupsUndo() {
          ok;
 }
 
+bool terrainSeedPreviewsStampsClearsAndGroupsHistory() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 417U);
+  CreativeEditorState editor = terrainEditor(0, 0);
+  editor.terrain.selectionValid = true;
+  editor.terrain.selectedOriginal = {{0, 0}, 6U, 3U};
+  editor.terrain.heightCells = 9U;
+  editor.terrain.radiusCells = 8U;
+  editor.toolOptions.open = true;
+  editor.toolOptions.targetEntry = editor.interaction.hotbar.entries[0];
+  editor.toolOptions.draft = editor.toolSettings;
+  editor.toolOptions.draft.terrainRodStampMode =
+      cr::CreativeTerrainRodStampMode::Seed;
+  editor.toolOptions.draft.terrainSeedRadius =
+      cr::CreativeTerrainSeedRadius::TwoCells;
+  editor.toolOptions.draft.terrainSeedSpacing =
+      cr::CreativeTerrainSeedSpacing::TwoCells;
+  editor.toolOptions.options = creativeEditorToolOptionsForEntry(
+      editor.toolOptions.targetEntry, editor.toolOptions.draft);
+  const bool optionsCommitted =
+      activateCreativeEditorToolOptionsSelection(editor);
+
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> previewLines;
+  const std::uint64_t revisionBeforePreview =
+      appState.facade.document().revision();
+  appendCreativeEditorTerrainOverlay(appState.facade.document(), editor, 0.1F,
+                                     previewLines);
+  bool ok = expect(optionsCommitted && !editor.terrain.selectionValid &&
+                       editor.terrain.heightCells == 6U &&
+                       editor.terrain.radiusCells == 3U &&
+                       editor.toolOptions.options.count == 3U,
+                   "entering Seed cancels a draft and exposes seed settings") &&
+            expect(previewLines.size() > 60U &&
+                       appState.facade.document().revision() ==
+                           revisionBeforePreview,
+                   "seed preview shows exact planned rods without mutation") &&
+            expect(creativeEditorHeldItemStatusLabel(editor).find(
+                       "SEED RADIUS 2 | SPACING 2") != std::string::npos,
+                   "terrain HUD exposes seed footprint and lattice spacing");
+
+  processCreativeTerrainStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Accept, true, true), 0U);
+  const std::uint64_t revisionAfterSeed =
+      appState.facade.document().revision();
+  processCreativeTerrainStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Accept, true), 200'000'000U);
+  const cr::CreativeTerrainControlPoint* center =
+      appState.facade.document().terrainField().controlAt({0, 0});
+  ok = expect(appState.facade.document().terrainField().controlCount() == 5U &&
+                  center != nullptr && center->heightCells == 6U &&
+                  center->radiusCells == 3U &&
+                  appState.facade.document().revision() == revisionAfterSeed &&
+                  editor.terrain.stroke.acceptedMutationCount == 1U &&
+                  editor.terrain.stroke.visitedCount == 1U,
+              "X seeds one canonical disk and stationary repeat is deduplicated") &&
+       ok;
+  processCreativeTerrainStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Accept, false, false, true),
+      200'000'001U);
+  ok = expect(cr::creativeUndoDepth(appState.history) == 1U &&
+                  !editor.terrain.stroke.transaction.active,
+              "seed hold commits one history record") &&
+       ok;
+
+  editor.terrain.selectionValid = true;
+  editor.terrain.selectedCoord = {0, 0};
+  editor.terrain.selectedOriginal = *center;
+  processCreativeTerrainStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Reject, true, true),
+      300'000'000U);
+  processCreativeTerrainStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Reject, false, false, true),
+      300'000'001U);
+  ok = expect(appState.facade.document().terrainField().controlCount() == 0U &&
+                  cr::creativeUndoDepth(appState.history) == 2U &&
+                  !editor.terrain.selectionValid,
+              "Circle clears the seed disk even when a prior draft was selected") &&
+       ok;
+  ok = expect(undoLastEdit(appState, "test_terrain_seed_clear_undo") &&
+                  appState.facade.document().terrainField().controlCount() == 5U,
+              "undo restores the cleared seed disk") &&
+       ok;
+  return expect(undoLastEdit(appState, "test_terrain_seed_stamp_undo") &&
+                    appState.facade.document().terrainField().controlCount() ==
+                        0U,
+                "second undo removes the original seed stamp") &&
+         ok;
+}
+
 bool terrainCancelGestureCannotFallThroughIntoEraseStroke() {
   cr::CreativeAppState appState;
   installDocument(appState, 408U);
@@ -1327,6 +1421,7 @@ int main() {
                  derivedSurfaceAndGuidesUseRevisionCaching() &&
                  semanticActionsRouteSelectionCommitCancelAndRemoval() &&
                  terrainPaintStrokeRepeatsDeduplicatesCachesAndGroupsUndo() &&
+                 terrainSeedPreviewsStampsClearsAndGroupsHistory() &&
                  terrainCancelGestureCannotFallThroughIntoEraseStroke() &&
                  terrainStrokeCapacityStopsFurtherMutation() &&
                  terrainStrokeInterruptionFinalizesChangedAndEmptyGestures() &&

@@ -420,9 +420,15 @@ void removeTerrainControl(InteractionContext& context) {
 }
 
 void sampleTerrainControl(InteractionContext& context) {
-  static_cast<void>(applyCreativeEditorTerrainEditWithHistory(
+  const CreativeEditorTerrainEditReceipt receipt =
+      applyCreativeEditorTerrainEditWithHistory(
       context.request.appState, context.request.editor,
-      CreativeEditorTerrainEditKind::Sample, "minecraft_terrain_rod_sample"));
+      CreativeEditorTerrainEditKind::Sample, "minecraft_terrain_rod_sample");
+  if (receipt.accepted &&
+      context.request.editor.toolSettings.terrainRodStampMode ==
+          cr::CreativeTerrainRodStampMode::Seed) {
+    context.request.editor.terrain.selectionValid = false;
+  }
 }
 
 void beginTerrainGrade(InteractionContext& context) {
@@ -988,16 +994,27 @@ std::string creativeEditorHeldItemStatusLabel(
     return output;
   }
   if (held.kind == cr::CreativeHeldItemKind::TerrainControl) {
-    if (editor.terrain.selectionValid) {
+    const bool seedMode =
+        editor.toolSettings.terrainRodStampMode ==
+        cr::CreativeTerrainRodStampMode::Seed;
+    if (!seedMode && editor.terrain.selectionValid) {
       output.append(" | EDIT ");
       output.append(std::to_string(editor.terrain.selectedCoord.x));
       output.push_back(' ');
       output.append(std::to_string(editor.terrain.selectedCoord.z));
-    } else if (editor.terrain.hoverValid) {
+    } else if (!seedMode && editor.terrain.hoverValid) {
       output.append(" | ROD ");
       output.append(std::to_string(editor.terrain.hoverCoord.x));
       output.push_back(' ');
       output.append(std::to_string(editor.terrain.hoverCoord.z));
+    }
+    if (seedMode) {
+      output.append(" | SEED RADIUS ");
+      output.append(std::to_string(cr::creativeTerrainSeedRadiusCells(
+          editor.toolSettings.terrainSeedRadius)));
+      output.append(" | SPACING ");
+      output.append(std::to_string(cr::creativeTerrainSeedSpacingCells(
+          editor.toolSettings.terrainSeedSpacing)));
     }
     appendQuickEdit();
     return output;

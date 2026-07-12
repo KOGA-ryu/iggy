@@ -79,6 +79,8 @@ constexpr CreativeHeldItemMask kSurfaceExtrudeItems =
     heldItemMask(CreativeHeldItemKind::SurfaceExtrude);
 constexpr CreativeHeldItemMask kTerrainSculptItems =
     heldItemMask(CreativeHeldItemKind::TerrainSculpt);
+constexpr CreativeHeldItemMask kTerrainControlItems =
+    heldItemMask(CreativeHeldItemKind::TerrainControl);
 constexpr CreativeHeldItemMask kSnapItems =
     heldItemMask(CreativeHeldItemKind::Material) |
     heldItemMask(CreativeHeldItemKind::ObjectMove) |
@@ -221,6 +223,18 @@ constexpr std::array kToolOptionDescriptors{
                                  "SCULPT STRENGTH",
                                  CreativeToolOptionValueKind::Choice,
                                  kTerrainSculptItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainRodStampMode,
+                                 "ROD STAMP",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainControlItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainSeedRadius,
+                                 "SEED RADIUS",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainControlItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainSeedSpacing,
+                                 "SEED SPACING",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainControlItems},
 };
 static_assert(kToolOptionDescriptors.size() ==
               kCreativeToolOptionDescriptorCount);
@@ -274,7 +288,10 @@ template <typename Enum>
          lhs.radialArraySweep == rhs.radialArraySweep &&
          lhs.terrainSculptMode == rhs.terrainSculptMode &&
          lhs.terrainSculptRadius == rhs.terrainSculptRadius &&
-         lhs.terrainSculptStrength == rhs.terrainSculptStrength;
+         lhs.terrainSculptStrength == rhs.terrainSculptStrength &&
+         lhs.terrainRodStampMode == rhs.terrainRodStampMode &&
+         lhs.terrainSeedRadius == rhs.terrainSeedRadius &&
+         lhs.terrainSeedSpacing == rhs.terrainSeedSpacing;
 }
 
 [[nodiscard]] CreativeToolOptionAdjustReceipt adjustReceipt(
@@ -615,7 +632,13 @@ bool isValidCreativeToolSettings(
          validEnum(settings.terrainSculptRadius,
                    CreativeTerrainSculptRadius::Count) &&
          validEnum(settings.terrainSculptStrength,
-                   CreativeTerrainSculptStrength::Count);
+                   CreativeTerrainSculptStrength::Count) &&
+         validEnum(settings.terrainRodStampMode,
+                   CreativeTerrainRodStampMode::Count) &&
+         validEnum(settings.terrainSeedRadius,
+                   CreativeTerrainSeedRadius::Count) &&
+         validEnum(settings.terrainSeedSpacing,
+                   CreativeTerrainSeedSpacing::Count);
 }
 
 std::span<const CreativeToolOptionDescriptor>
@@ -664,12 +687,17 @@ CreativeToolOptionList creativeToolOptionsForHeldItem(
         descriptor.id == CreativeToolOptionId::MaterialBrushAxis;
     const bool materialBrushReplaceOnly =
         descriptor.id == CreativeToolOptionId::MaterialBrushReplaceSource;
+    const bool terrainSeedOnly =
+        descriptor.id == CreativeToolOptionId::TerrainSeedRadius ||
+        descriptor.id == CreativeToolOptionId::TerrainSeedSpacing;
     if ((linearOnly && settings.arrayMode != CreativeArrayMode::Linear) ||
         (radialOnly && settings.arrayMode != CreativeArrayMode::Radial) ||
         (cylinderOnly && settings.materialBrushShape !=
                              CreativeMaterialBrushShape::Cylinder) ||
         (materialBrushReplaceOnly && settings.materialBrushMask !=
-                                         CreativeMaterialBrushMask::Replace)) {
+                                         CreativeMaterialBrushMask::Replace) ||
+        (terrainSeedOnly && settings.terrainRodStampMode !=
+                                CreativeTerrainRodStampMode::Seed)) {
       continue;
     }
     if (result.count == result.ids.size()) {
@@ -875,6 +903,12 @@ std::string_view creativeToolOptionValueLabel(
       return toString(settings.terrainSculptRadius);
     case CreativeToolOptionId::TerrainSculptStrength:
       return toString(settings.terrainSculptStrength);
+    case CreativeToolOptionId::TerrainRodStampMode:
+      return toString(settings.terrainRodStampMode);
+    case CreativeToolOptionId::TerrainSeedRadius:
+      return toString(settings.terrainSeedRadius);
+    case CreativeToolOptionId::TerrainSeedSpacing:
+      return toString(settings.terrainSeedSpacing);
     case CreativeToolOptionId::Count:
       break;
   }
@@ -1058,6 +1092,21 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
       adjusted.terrainSculptStrength = cycleEnum(
           adjusted.terrainSculptStrength,
           CreativeTerrainSculptStrength::Count, direction);
+      break;
+    case CreativeToolOptionId::TerrainRodStampMode:
+      adjusted.terrainRodStampMode = cycleEnum(
+          adjusted.terrainRodStampMode, CreativeTerrainRodStampMode::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::TerrainSeedRadius:
+      adjusted.terrainSeedRadius = cycleEnum(
+          adjusted.terrainSeedRadius, CreativeTerrainSeedRadius::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::TerrainSeedSpacing:
+      adjusted.terrainSeedSpacing = cycleEnum(
+          adjusted.terrainSeedSpacing, CreativeTerrainSeedSpacing::Count,
+          direction);
       break;
     case CreativeToolOptionId::Count:
       receipt.status = CreativeToolOptionAdjustStatus::InvalidOption;

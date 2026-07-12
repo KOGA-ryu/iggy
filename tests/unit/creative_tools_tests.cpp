@@ -357,6 +357,16 @@ bool optionDescriptorsAreContextualAndBounded() {
   const cr::CreativeToolOptionList terrainSculpt =
       cr::creativeToolOptionsForHeldItem(
           cr::CreativeHeldItemKind::TerrainSculpt);
+  const cr::CreativeToolOptionList terrainRodSingle =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::TerrainControl);
+  cr::CreativeToolSettings terrainSeedSettings =
+      cr::makeDefaultCreativeToolSettings();
+  terrainSeedSettings.terrainRodStampMode =
+      cr::CreativeTerrainRodStampMode::Seed;
+  const cr::CreativeToolOptionList terrainSeed =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::TerrainControl, terrainSeedSettings);
   const cr::CreativeToolOptionList array =
       cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::LinearArray);
   cr::CreativeToolSettings radialSettings =
@@ -455,6 +465,18 @@ bool optionDescriptorsAreContextualAndBounded() {
                     terrainSculpt.ids[2] ==
                         cr::CreativeToolOptionId::TerrainSculptStrength,
                 "terrain sculpt exposes mode radius and strength") &&
+         expect(terrainRodSingle.count == 1U &&
+                    terrainRodSingle.ids[0] ==
+                        cr::CreativeToolOptionId::TerrainRodStampMode,
+                "single terrain rod mode hides irrelevant seed settings") &&
+         expect(terrainSeed.count == 3U &&
+                    terrainSeed.ids[0] ==
+                        cr::CreativeToolOptionId::TerrainRodStampMode &&
+                    terrainSeed.ids[1] ==
+                        cr::CreativeToolOptionId::TerrainSeedRadius &&
+                    terrainSeed.ids[2] ==
+                        cr::CreativeToolOptionId::TerrainSeedSpacing,
+                "terrain seed exposes stamp mode radius and spacing") &&
          expect(array.count == 4U &&
                     array.ids[0] ==
                         cr::CreativeToolOptionId::ArrayMode &&
@@ -485,6 +507,8 @@ bool optionDescriptorsAreContextualAndBounded() {
                     !connectedFill.capacityExceeded &&
                     !surfaceExtrude.capacityExceeded &&
                     !terrainSculpt.capacityExceeded &&
+                    !terrainRodSingle.capacityExceeded &&
+                    !terrainSeed.capacityExceeded &&
                     !array.capacityExceeded && !radialArray.capacityExceeded &&
                     array.count <= cr::kCreativeToolOptionCapacity,
                 "default option lists fit bounded storage") &&
@@ -527,6 +551,8 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
       cr::CreativeConnectedFillLimit::Count;
   cr::CreativeToolSettings invalidSculpt = settings;
   invalidSculpt.terrainSculptMode = cr::CreativeTerrainSculptMode::Count;
+  cr::CreativeToolSettings invalidSeed = settings;
+  invalidSeed.terrainSeedSpacing = cr::CreativeTerrainSeedSpacing::Count;
   bool ok = expect(cr::isValidCreativeToolSettings(settings),
                    "default settings valid") &&
             expect(!cr::isValidCreativeToolSettings(invalidMask),
@@ -551,6 +577,8 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                    "invalid surface depth or limit fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidSculpt),
                    "invalid terrain sculpt option fails settings validation") &&
+            expect(!cr::isValidCreativeToolSettings(invalidSeed),
+                   "invalid terrain seed option fails settings validation") &&
             expect(cr::creativeToolOptionValueLabel(
                        settings,
                        cr::CreativeToolOptionId::MoveConstraint) == "FREE" &&
@@ -624,7 +652,19 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::TerrainSculptStrength) ==
-                           "1 CELL",
+                           "1 CELL" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainRodStampMode) ==
+                           "SINGLE" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainSeedRadius) ==
+                           "4 CELLS" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainSeedSpacing) ==
+                           "2 CELLS",
                    "default labels and scalar conversions stable");
 
   const auto adjust = [&settings](cr::CreativeToolOptionId option,
@@ -708,6 +748,18 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                   settings.terrainSculptStrength ==
                       cr::CreativeTerrainSculptStrength::TwoCells,
               "terrain sculpt strength cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainRodStampMode, 1).changed &&
+                  settings.terrainRodStampMode ==
+                      cr::CreativeTerrainRodStampMode::Seed,
+              "terrain rod stamp mode cycles to seed") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainSeedRadius, 1).changed &&
+                  settings.terrainSeedRadius ==
+                      cr::CreativeTerrainSeedRadius::EightCells,
+              "terrain seed radius cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainSeedSpacing, 1).changed &&
+                  settings.terrainSeedSpacing ==
+                      cr::CreativeTerrainSeedSpacing::FourCells,
+              "terrain seed spacing cycles") &&
        expect(adjust(cr::CreativeToolOptionId::ShapeBrushKind, 1).changed &&
                   settings.shapeBrushKind == cr::CreativeShapeBrushKind::Line,
               "shape kind cycles") &&

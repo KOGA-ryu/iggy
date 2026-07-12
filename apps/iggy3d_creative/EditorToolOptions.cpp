@@ -178,7 +178,8 @@ void adjustSelection(CreativeEditorState& editor,
   const bool optionSetChanged =
       option == cr::CreativeToolOptionId::ArrayMode ||
       option == cr::CreativeToolOptionId::MaterialBrushShape ||
-      option == cr::CreativeToolOptionId::MaterialBrushMask;
+      option == cr::CreativeToolOptionId::MaterialBrushMask ||
+      option == cr::CreativeToolOptionId::TerrainRodStampMode;
   if (receipt.changed && optionSetChanged) {
     state.options =
         creativeEditorToolOptionsForEntry(state.targetEntry, state.draft);
@@ -207,6 +208,16 @@ void rebuildQuickEditOptions(CreativeEditorState& editor,
   CreativeEditorToolOptionsState& state = editor.toolOptions;
   if (!cr::isValidCreativeToolSettings(state.draft)) {
     return false;
+  }
+  const bool enteringTerrainSeed =
+      editor.toolSettings.terrainRodStampMode !=
+          cr::CreativeTerrainRodStampMode::Seed &&
+      state.draft.terrainRodStampMode ==
+          cr::CreativeTerrainRodStampMode::Seed;
+  if (enteringTerrainSeed && editor.terrain.selectionValid) {
+    editor.terrain.heightCells = editor.terrain.selectedOriginal.heightCells;
+    editor.terrain.radiusCells = editor.terrain.selectedOriginal.radiusCells;
+    editor.terrain.selectionValid = false;
   }
   editor.toolSettings = state.draft;
   static_cast<void>(storeSelectedCreativeMaterialBrushPreset(

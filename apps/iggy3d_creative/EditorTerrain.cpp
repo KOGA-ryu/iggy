@@ -314,20 +314,89 @@ void clearTerrainGradeAnchor(CreativeTerrainGradeState& grade) noexcept {
 [[nodiscard]] bool ensureTerrainStrokeTransaction(
     cr::CreativeAppState& appState,
     CreativeTerrainStrokeState& stroke,
-    cr::CreativeMaterialStrokeKind kind) {
+    cr::CreativeMaterialStrokeKind kind,
+    cr::CreativeTerrainRodStampMode stampMode) {
   if (stroke.transaction.active) {
     return true;
   }
+  const bool removing = kind == cr::CreativeMaterialStrokeKind::Remove;
   const std::string_view source =
-      kind == cr::CreativeMaterialStrokeKind::Remove
-          ? "creative_terrain_erase_stroke"
-          : "creative_terrain_paint_stroke";
+      stampMode == cr::CreativeTerrainRodStampMode::Seed
+          ? removing ? "creative_terrain_clear_stroke"
+                     : "creative_terrain_seed_stroke"
+          : removing ? "creative_terrain_erase_stroke"
+                     : "creative_terrain_paint_stroke";
   stroke.transaction = beginEditTransaction(appState.facade, source);
   return stroke.transaction.active;
 }
 
 void rejectTerrainStroke(CreativeEditorState& editor) noexcept {
   setFeedback(editor, false);
+}
+
+[[nodiscard]] cr::CreativeTerrainSeedPlan terrainSeedPlan(
+    const cr::CreativeDocument& document,
+    const CreativeEditorState& editor,
+    cr::CreativeTerrainCoord2 center,
+    cr::CreativeMaterialStrokeKind kind) noexcept {
+  return cr::buildCreativeTerrainSeedPlan(
+      {&document.terrainField(), center,
+       kind == cr::CreativeMaterialStrokeKind::Remove
+           ? cr::CreativeTerrainSeedOperation::Clear
+           : cr::CreativeTerrainSeedOperation::SeedMissing,
+       cr::creativeTerrainSeedRadiusCells(editor.toolSettings.terrainSeedRadius),
+       cr::creativeTerrainSeedSpacingCells(
+           editor.toolSettings.terrainSeedSpacing),
+       editor.terrain.heightCells, editor.terrain.radiusCells});
+}
+
+void applyTerrainSeedStrokeMutation(cr::CreativeAppState& appState,
+                                    CreativeEditorState& editor,
+                                    cr::CreativeMaterialStrokeKind kind) {
+  CreativeEditorTerrainState& terrain = editor.terrain;
+  CreativeTerrainStrokeState& stroke = terrain.stroke;
+  cr::CreativeTerrainCoord2 center{};
+  if (!terrainPointerCoord(editor, center)) {
+    rejectTerrainStroke(editor);
+    return;
+  }
+  if (terrainStrokeVisited(stroke, center)) {
+    return;
+  }
+  const cr::CreativeTerrainSeedPlan plan =
+      terrainSeedPlan(appState.facade.document(), editor, center, kind);
+  if (!plan.accepted) {
+    if (plan.status == cr::CreativeTerrainSeedPlanStatus::CapacityExceeded) {
+      stroke.capacityReached = true;
+    }
+    static_cast<void>(rememberTerrainStrokeTarget(stroke, center));
+    rejectTerrainStroke(editor);
+    return;
+  }
+  if (plan.items().empty()) {
+    static_cast<void>(rememberTerrainStrokeTarget(stroke, center));
+    setFeedback(editor, true);
+    return;
+  }
+  if (!ensureTerrainStrokeTransaction(
+          appState, stroke, kind, cr::CreativeTerrainRodStampMode::Seed) ||
+      !rememberTerrainStrokeTarget(stroke, center)) {
+    rejectTerrainStroke(editor);
+    return;
+  }
+
+  terrain.lastMutation =
+      appState.facade.applyTerrainControlEdits(plan.items());
+  if (terrain.lastMutation.status ==
+      cr::CreativeTerrainMutationStatus::CapacityExceeded) {
+    stroke.capacityReached = true;
+  }
+  if (terrain.lastMutation.accepted && terrain.lastMutation.changed) {
+    ++stroke.acceptedMutationCount;
+    terrain.hoverValid = false;
+    terrain.selectionValid = false;
+  }
+  setFeedback(editor, terrain.lastMutation.accepted);
 }
 
 void applyTerrainStrokeMutation(cr::CreativeAppState& appState,
@@ -337,6 +406,11 @@ void applyTerrainStrokeMutation(cr::CreativeAppState& appState,
   CreativeTerrainStrokeState& stroke = terrain.stroke;
   if (stroke.capacityReached) {
     rejectTerrainStroke(editor);
+    return;
+  }
+  if (editor.toolSettings.terrainRodStampMode ==
+      cr::CreativeTerrainRodStampMode::Seed) {
+    applyTerrainSeedStrokeMutation(appState, editor, kind);
     return;
   }
 
@@ -381,7 +455,8 @@ void applyTerrainStrokeMutation(cr::CreativeAppState& appState,
     rejectTerrainStroke(editor);
     return;
   }
-  if (!ensureTerrainStrokeTransaction(appState, stroke, kind) ||
+  if (!ensureTerrainStrokeTransaction(
+          appState, stroke, kind, cr::CreativeTerrainRodStampMode::Single) ||
       !rememberTerrainStrokeTarget(stroke, coord)) {
     rejectTerrainStroke(editor);
     return;
@@ -673,6 +748,8 @@ void processCreativeTerrainStrokeFrame(
   if (repeat.began) {
     stroke.cancelOnly =
         repeat.dueKind == cr::CreativeMaterialStrokeKind::Remove &&
+        editor.toolSettings.terrainRodStampMode ==
+            cr::CreativeTerrainRodStampMode::Single &&
         editor.terrain.selectionValid;
     if (stroke.cancelOnly) {
       static_cast<void>(applyCreativeEditorTerrainEditWithHistory(
@@ -735,6 +812,38 @@ void appendCreativeEditorTerrainOverlay(
 
   if (terrainGrade) {
     appendTerrainGradePreview(document, editor, thickness, wireLines);
+    return;
+  }
+
+  if (terrainControl &&
+      editor.toolSettings.terrainRodStampMode ==
+          cr::CreativeTerrainRodStampMode::Seed) {
+    cr::CreativeTerrainCoord2 center{};
+    if (!terrainPointerCoord(editor, center)) {
+      return;
+    }
+    const cr::CreativeMaterialStrokeKind kind =
+        editor.terrain.stroke.repeat.active
+            ? editor.terrain.stroke.repeat.kind
+            : cr::CreativeMaterialStrokeKind::Place;
+    const cr::CreativeTerrainSeedPlan plan =
+        terrainSeedPlan(document, editor, center, kind);
+    constexpr iggy3d::RenderLineColor seedColor{0.30F, 1.0F, 0.38F, 1.0F};
+    constexpr iggy3d::RenderLineColor clearColor{1.0F, 0.20F, 0.18F, 1.0F};
+    const iggy3d::RenderLineColor color =
+        !plan.accepted || kind == cr::CreativeMaterialStrokeKind::Remove
+            ? clearColor
+            : seedColor;
+    appendTerrainFootprintOutline(
+        wireLines, grid,
+        {center, editor.terrain.heightCells,
+         cr::creativeTerrainSeedRadiusCells(
+             editor.toolSettings.terrainSeedRadius)},
+        color, thickness * 1.2F);
+    for (const cr::CreativeTerrainControlEdit& edit : plan.items()) {
+      appendBounds(wireLines, terrainRodBounds(grid, edit.control, 0.22), color,
+                   thickness * 1.15F);
+    }
     return;
   }
 

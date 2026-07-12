@@ -340,6 +340,27 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                   terrainRadius->label.view() == "Radius",
               "terrain hints expose direct height radius and edit actions") &&
        ok;
+  editor.toolSettings.terrainRodStampMode =
+      cr::CreativeTerrainRodStampMode::Seed;
+  const cr::CreativeActionHintFrame terrainSeed =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* seedRods =
+      findHint(terrainSeed, cr::CreativeInputActionId::AcceptAction);
+  const cr::CreativeActionHint* clearRods =
+      findHint(terrainSeed, cr::CreativeInputActionId::RejectAction);
+  const cr::CreativeActionHint* sampleRod =
+      findHint(terrainSeed, cr::CreativeInputActionId::PickAction);
+  ok = expect(seedRods != nullptr && seedRods->label.view() == "Seed rods" &&
+                  clearRods != nullptr &&
+                  clearRods->label.view() == "Clear rods" &&
+                  sampleRod != nullptr &&
+                  sampleRod->label.view() == "Sample rod",
+              "terrain seed reuses X and Circle with explicit area labels") &&
+       ok;
+  editor.toolSettings.terrainRodStampMode =
+      cr::CreativeTerrainRodStampMode::Single;
   editor.terrain.selectionValid = true;
   const cr::CreativeActionHintFrame terrainEdit =
       resolveCreativeEditorActionHints(

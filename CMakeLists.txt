@@ -58,6 +58,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/input/Interaction.cpp
     src/app/iggy3d/creative/history/History.cpp
     src/app/iggy3d/creative/tools/TerrainGrade.cpp
+    src/app/iggy3d/creative/tools/TerrainSeed.cpp
     src/app/iggy3d/creative/tools/TerrainSculpt.cpp
     src/app/iggy3d/creative/tools/Tools.cpp
     src/app/iggy3d/creative/tools/Select.cpp

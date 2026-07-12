@@ -59,6 +59,45 @@ void appendGamepadHotbar(HintSpecBuffer& buffer) noexcept {
                  cr::CreativeInputActionId::HotbarNext, "Hotbar");
 }
 
+[[nodiscard]] std::string_view terrainControlApplyLabel(
+    const CreativeEditorState& editor) noexcept {
+  switch (editor.toolSettings.terrainRodStampMode) {
+    case cr::CreativeTerrainRodStampMode::Single:
+      return editor.terrain.selectionValid ? "Apply edit" : "Paint rods";
+    case cr::CreativeTerrainRodStampMode::Seed:
+      return "Seed rods";
+    case cr::CreativeTerrainRodStampMode::Count:
+      break;
+  }
+  return "Terrain action";
+}
+
+[[nodiscard]] std::string_view terrainControlRejectLabel(
+    const CreativeEditorState& editor) noexcept {
+  switch (editor.toolSettings.terrainRodStampMode) {
+    case cr::CreativeTerrainRodStampMode::Single:
+      return editor.terrain.selectionValid ? "Cancel edit" : "Erase rods";
+    case cr::CreativeTerrainRodStampMode::Seed:
+      return "Clear rods";
+    case cr::CreativeTerrainRodStampMode::Count:
+      break;
+  }
+  return "Cancel terrain";
+}
+
+[[nodiscard]] std::string_view terrainControlPickLabel(
+    const CreativeEditorState& editor) noexcept {
+  switch (editor.toolSettings.terrainRodStampMode) {
+    case cr::CreativeTerrainRodStampMode::Single:
+      return "Select rod";
+    case cr::CreativeTerrainRodStampMode::Seed:
+      return "Sample rod";
+    case cr::CreativeTerrainRodStampMode::Count:
+      break;
+  }
+  return "Terrain sample";
+}
+
 void appendQuickEdit(HintSpecBuffer& buffer,
                      const CreativeEditorState& editor) noexcept {
   const cr::CreativeHeldItemKind held =
@@ -123,10 +162,11 @@ void appendViewportKeyboardHints(HintSpecBuffer& buffer,
       break;
     case cr::CreativeHeldItemKind::TerrainControl:
       appendHint(buffer, cr::CreativeInputActionId::SecondaryAction,
-                 editor.terrain.selectionValid ? "Apply edit" : "Paint rods");
+                 terrainControlApplyLabel(editor));
       appendHint(buffer, cr::CreativeInputActionId::PrimaryAction,
-                 editor.terrain.selectionValid ? "Cancel edit" : "Erase rods");
-      appendHint(buffer, cr::CreativeInputActionId::PickAction, "Select rod");
+                 terrainControlRejectLabel(editor));
+      appendHint(buffer, cr::CreativeInputActionId::PickAction,
+                 terrainControlPickLabel(editor));
       appendQuickEdit(buffer, editor);
       break;
     case cr::CreativeHeldItemKind::TerrainGrade:
@@ -219,10 +259,11 @@ void appendViewportGamepadHints(HintSpecBuffer& buffer,
       break;
     case cr::CreativeHeldItemKind::TerrainControl:
       appendHint(buffer, cr::CreativeInputActionId::AcceptAction,
-                 editor.terrain.selectionValid ? "Apply edit" : "Paint rods");
+                 terrainControlApplyLabel(editor));
       appendHint(buffer, cr::CreativeInputActionId::RejectAction,
-                 editor.terrain.selectionValid ? "Cancel edit" : "Erase rods");
-      appendHint(buffer, cr::CreativeInputActionId::PickAction, "Select rod");
+                 terrainControlRejectLabel(editor));
+      appendHint(buffer, cr::CreativeInputActionId::PickAction,
+                 terrainControlPickLabel(editor));
       break;
     case cr::CreativeHeldItemKind::TerrainGrade:
       appendHint(buffer, cr::CreativeInputActionId::AcceptAction,

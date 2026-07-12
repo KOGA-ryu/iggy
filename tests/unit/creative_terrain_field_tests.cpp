@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/document/TerrainField.hpp"
 #include "app/iggy3d/creative/tools/TerrainGrade.hpp"
+#include "app/iggy3d/creative/tools/TerrainSeed.hpp"
 #include "app/iggy3d/creative/tools/TerrainSculpt.hpp"
 
 #include <algorithm>
@@ -242,6 +243,98 @@ bool documentRevisionAdvancesOncePerTerrainBatch() {
          expect(document.dirtyFlags() != 0U, "terrain edit marks dirty");
 }
 
+bool terrainSeedPlansMissingRodsAndClearAtomically() {
+  cr::CreativeTerrainField empty;
+  const cr::CreativeTerrainSeedRequest seedRequest{
+      &empty, {0, 0}, cr::CreativeTerrainSeedOperation::SeedMissing, 2U, 2U,
+      4U, 3U};
+  const cr::CreativeTerrainSeedPlan seed =
+      cr::buildCreativeTerrainSeedPlan(seedRequest);
+  constexpr std::array expectedCoords{
+      cr::CreativeTerrainCoord2{0, -2}, cr::CreativeTerrainCoord2{-2, 0},
+      cr::CreativeTerrainCoord2{0, 0}, cr::CreativeTerrainCoord2{2, 0},
+      cr::CreativeTerrainCoord2{0, 2},
+  };
+  bool exact = seed.items().size() == expectedCoords.size();
+  for (std::size_t index = 0U; exact && index < expectedCoords.size(); ++index) {
+    exact = seed.items()[index].kind == cr::CreativeTerrainEditKind::Upsert &&
+            seed.items()[index].control.coord == expectedCoords[index] &&
+            seed.items()[index].control.heightCells == 4U &&
+            seed.items()[index].control.radiusCells == 3U;
+  }
+  static_cast<void>(empty.apply(seed.items()));
+  const cr::CreativeTerrainSeedPlan repeated =
+      cr::buildCreativeTerrainSeedPlan(
+          {&empty, {0, 0}, cr::CreativeTerrainSeedOperation::SeedMissing, 2U,
+           2U, 8U, 1U});
+  const cr::CreativeTerrainSeedPlan clear =
+      cr::buildCreativeTerrainSeedPlan(
+          {&empty, {0, 0}, cr::CreativeTerrainSeedOperation::Clear, 2U, 2U, 8U,
+           1U});
+
+  cr::CreativeTerrainField surface;
+  const cr::CreativeTerrainControlEdit surfaceControl = upsert(0, 0, 6U, 2U);
+  static_cast<void>(surface.apply(std::span{&surfaceControl, 1U}));
+  const cr::CreativeTerrainSeedPlan sampled =
+      cr::buildCreativeTerrainSeedPlan(
+          {&surface, {0, 0}, cr::CreativeTerrainSeedOperation::SeedMissing, 2U,
+           1U, 2U, 1U});
+  const bool sampledSurface = std::all_of(
+      sampled.items().begin(), sampled.items().end(),
+      [](const cr::CreativeTerrainControlEdit& edit) {
+        return edit.control.coord != cr::CreativeTerrainCoord2{0, 0} &&
+               edit.control.heightCells == 6U;
+      });
+
+  cr::CreativeTerrainField nearlyFull;
+  std::vector<cr::CreativeTerrainControlEdit> capacityControls;
+  capacityControls.reserve(250U);
+  for (std::int32_t index = 0; index < 250; ++index) {
+    capacityControls.push_back(upsert(1000 + index, 0, 4U, 1U));
+  }
+  static_cast<void>(nearlyFull.apply(capacityControls));
+  const cr::CreativeTerrainSeedPlan capacity =
+      cr::buildCreativeTerrainSeedPlan(
+          {&nearlyFull, {0, 0}, cr::CreativeTerrainSeedOperation::SeedMissing,
+           2U, 1U, 4U, 1U});
+  const cr::CreativeTerrainSeedPlan invalid =
+      cr::buildCreativeTerrainSeedPlan(
+          {&empty,
+           {std::numeric_limits<std::int32_t>::max(), 0},
+           cr::CreativeTerrainSeedOperation::SeedMissing, 8U, 1U, 4U, 1U});
+
+  return expect(seed.accepted && seed.candidateCount == 5U && exact,
+                "seed emits the exact canonical circular lattice") &&
+         expect(repeated.accepted && repeated.items().empty() &&
+                    repeated.status ==
+                        cr::CreativeTerrainSeedPlanStatus::NoChange,
+                "seed preserves existing rods instead of overwriting them") &&
+         expect(clear.accepted && clear.items().size() == 5U &&
+                    std::all_of(clear.items().begin(), clear.items().end(),
+                                [](const auto& edit) {
+                                  return edit.kind ==
+                                         cr::CreativeTerrainEditKind::Remove;
+                                }),
+                "clear removes every existing rod in the circular disk") &&
+         expect(sampled.accepted && sampled.items().size() == 12U &&
+                    sampledSurface,
+                "new rods sample pre-edit derived height when terrain exists") &&
+         expect(!capacity.accepted && capacity.items().empty() &&
+                    capacity.status ==
+                        cr::CreativeTerrainSeedPlanStatus::CapacityExceeded &&
+                    nearlyFull.controlCount() == 250U,
+                "over-capacity seed rejects atomically") &&
+         expect(!invalid.accepted && invalid.items().empty() &&
+                    invalid.status ==
+                        cr::CreativeTerrainSeedPlanStatus::InvalidRequest,
+                "coordinate overflow rejects before emitting edits") &&
+         expect(cr::creativeTerrainSeedRadiusCells(
+                    cr::CreativeTerrainSeedRadius::EightCells) == 8U &&
+                    cr::creativeTerrainSeedSpacingCells(
+                        cr::CreativeTerrainSeedSpacing::FourCells) == 4U,
+                "seed option enums resolve to explicit cell values");
+}
+
 bool sculptPlanIsSnapshotBasedBoundedAndCanonical() {
   constexpr std::array controls{
       cr::CreativeTerrainControlPoint{{-2, 0}, 1U, 2U},
@@ -436,6 +529,7 @@ int main() {
                  raycastHitsTerrainTopsSidesAndFailsClosed() &&
                  renderPlanBendsSharedCornersAndEnforcesBudget() &&
                  documentRevisionAdvancesOncePerTerrainBatch() &&
+                 terrainSeedPlansMissingRodsAndClearAtomically() &&
                  sculptPlanIsSnapshotBasedBoundedAndCanonical() &&
                  gradePlanIsDeterministicBoundedAndValidated()
              ? 0
