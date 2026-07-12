@@ -28,7 +28,8 @@ namespace {
               editor.toolSettings.terrainSculptRadius),
           cr::creativeTerrainSculptStrengthCells(
               editor.toolSettings.terrainSculptStrength),
-          editor.terrain.sculpt.targetHeightCells};
+          editor.terrain.sculpt.targetHeightCells,
+          editor.toolSettings.terrainSculptFalloff};
 }
 
 void setSculptFeedback(CreativeEditorState& editor, bool accepted) noexcept {
@@ -54,6 +55,7 @@ void invalidateSculptPreview(CreativeTerrainSculptState& sculpt) noexcept {
          cache.documentRevision == document.revision() &&
          cache.center == center &&
          cache.mode == editor.toolSettings.terrainSculptMode &&
+         cache.falloff == editor.toolSettings.terrainSculptFalloff &&
          cache.radiusCells == cr::creativeTerrainSculptRadiusCells(
                                   editor.toolSettings.terrainSculptRadius) &&
          cache.strengthCells == cr::creativeTerrainSculptStrengthCells(
@@ -316,6 +318,8 @@ std::string creativeEditorTerrainSculptQuickEditLabel(
   label.append(" | STRENGTH ");
   label.append(std::to_string(cr::creativeTerrainSculptStrengthCells(
       editor.toolSettings.terrainSculptStrength)));
+  label.append(" | FALLOFF ");
+  label.append(cr::toString(editor.toolSettings.terrainSculptFalloff));
   if (cr::creativeTerrainSculptUsesTargetHeight(
           editor.toolSettings.terrainSculptMode)) {
     label.append(" | TARGET ");
@@ -418,6 +422,7 @@ bool refreshCreativeEditorTerrainSculptPreview(
   cache.buildCount = nextBuildCount;
   cache.center = center;
   cache.mode = editor.toolSettings.terrainSculptMode;
+  cache.falloff = editor.toolSettings.terrainSculptFalloff;
   cache.radiusCells = cr::creativeTerrainSculptRadiusCells(
       editor.toolSettings.terrainSculptRadius);
   cache.strengthCells = cr::creativeTerrainSculptStrengthCells(

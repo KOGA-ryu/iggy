@@ -459,6 +459,150 @@ bool sculptPlanIsSnapshotBasedBoundedAndCanonical() {
                 "sculpt options expose explicit values and target semantics");
 }
 
+bool sculptFalloffIsDeterministicSymmetricAndSharedByModes() {
+  constexpr std::array raisedControls{
+      cr::CreativeTerrainControlPoint{{-8, 0}, 10U, 2U},
+      cr::CreativeTerrainControlPoint{{-6, 0}, 10U, 2U},
+      cr::CreativeTerrainControlPoint{{-2, 0}, 10U, 2U},
+      cr::CreativeTerrainControlPoint{{0, 0}, 10U, 2U},
+      cr::CreativeTerrainControlPoint{{2, 0}, 10U, 2U},
+      cr::CreativeTerrainControlPoint{{6, 0}, 10U, 2U},
+      cr::CreativeTerrainControlPoint{{8, 0}, 10U, 2U},
+  };
+  const auto raisePlan =
+      [&raisedControls](cr::CreativeTerrainSculptFalloff falloff) {
+        return cr::buildCreativeTerrainSculptPlan(
+            {raisedControls,
+             {0, 0},
+             cr::CreativeTerrainSculptMode::Raise,
+             8U,
+             8U,
+             20U,
+             falloff});
+      };
+  const cr::CreativeTerrainSculptPlan uniform =
+      raisePlan(cr::CreativeTerrainSculptFalloff::Uniform);
+  const cr::CreativeTerrainSculptPlan linear =
+      raisePlan(cr::CreativeTerrainSculptFalloff::Linear);
+  const cr::CreativeTerrainSculptPlan smooth =
+      raisePlan(cr::CreativeTerrainSculptFalloff::Smooth);
+
+  const auto editedHeight = [](const cr::CreativeTerrainSculptPlan &plan,
+                               std::int32_t x) {
+    const auto found = std::find_if(
+        plan.items().begin(), plan.items().end(), [x](const auto &edit) {
+          return edit.control.coord == cr::CreativeTerrainCoord2{x, 0};
+        });
+    return found == plan.items().end() ? std::uint16_t{0U}
+                                       : found->control.heightCells;
+  };
+
+  constexpr std::array loweredControls{
+      cr::CreativeTerrainControlPoint{{-8, 0}, 20U, 2U},
+      cr::CreativeTerrainControlPoint{{-6, 0}, 20U, 2U},
+      cr::CreativeTerrainControlPoint{{-2, 0}, 20U, 2U},
+      cr::CreativeTerrainControlPoint{{0, 0}, 20U, 2U},
+      cr::CreativeTerrainControlPoint{{2, 0}, 20U, 2U},
+      cr::CreativeTerrainControlPoint{{6, 0}, 20U, 2U},
+      cr::CreativeTerrainControlPoint{{8, 0}, 20U, 2U},
+  };
+  const cr::CreativeTerrainSculptPlan lower =
+      cr::buildCreativeTerrainSculptPlan(
+          {loweredControls,
+           {0, 0},
+           cr::CreativeTerrainSculptMode::Lower,
+           8U,
+           8U,
+           20U,
+           cr::CreativeTerrainSculptFalloff::Smooth});
+  const cr::CreativeTerrainSculptPlan flatten =
+      cr::buildCreativeTerrainSculptPlan(
+          {raisedControls,
+           {0, 0},
+           cr::CreativeTerrainSculptMode::Flatten,
+           8U,
+           8U,
+           30U,
+           cr::CreativeTerrainSculptFalloff::Smooth});
+
+  constexpr std::array unevenControls{
+      cr::CreativeTerrainControlPoint{{0, 0}, 10U, 2U},
+      cr::CreativeTerrainControlPoint{{2, 0}, 30U, 2U},
+      cr::CreativeTerrainControlPoint{{6, 0}, 30U, 2U},
+      cr::CreativeTerrainControlPoint{{8, 0}, 10U, 2U},
+  };
+  const cr::CreativeTerrainSculptPlan averaged =
+      cr::buildCreativeTerrainSculptPlan(
+          {unevenControls,
+           {0, 0},
+           cr::CreativeTerrainSculptMode::Smooth,
+           8U,
+           8U,
+           20U,
+           cr::CreativeTerrainSculptFalloff::Smooth});
+  const cr::CreativeTerrainSculptPlan invalid =
+      cr::buildCreativeTerrainSculptPlan(
+          {raisedControls,
+           {0, 0},
+           cr::CreativeTerrainSculptMode::Raise,
+           8U,
+           8U,
+           20U,
+           cr::CreativeTerrainSculptFalloff::Count});
+
+  return expect(uniform.accepted && uniform.items().size() == 7U &&
+                    editedHeight(uniform, -8) == 18U &&
+                    editedHeight(uniform, 8) == 18U,
+                "uniform falloff preserves full strength through the brush "
+                "edge") &&
+         expect(linear.accepted && linear.items().size() == 5U &&
+                    editedHeight(linear, -6) == 12U &&
+                    editedHeight(linear, -2) == 16U &&
+                    editedHeight(linear, 0) == 18U &&
+                    editedHeight(linear, 2) == 16U &&
+                    editedHeight(linear, 6) == 12U &&
+                    editedHeight(linear, -8) == 0U &&
+                    editedHeight(linear, 8) == 0U,
+                "linear falloff is symmetric with zero strength at the edge") &&
+         expect(smooth.accepted && smooth.items().size() == 5U &&
+                    editedHeight(smooth, -6) == 11U &&
+                    editedHeight(smooth, -2) == 17U &&
+                    editedHeight(smooth, 0) == 18U &&
+                    editedHeight(smooth, 2) == 17U &&
+                    editedHeight(smooth, 6) == 11U,
+                "smoothstep falloff rounds deterministic center and shoulder "
+                "weights") &&
+         expect(lower.accepted && editedHeight(lower, -6) == 19U &&
+                    editedHeight(lower, -2) == 13U &&
+                    editedHeight(lower, 0) == 12U &&
+                    editedHeight(lower, 2) == 13U &&
+                    editedHeight(lower, 6) == 19U,
+                "lower consumes the shared smooth falloff strength") &&
+         expect(flatten.accepted && editedHeight(flatten, -6) == 11U &&
+                    editedHeight(flatten, -2) == 17U &&
+                    editedHeight(flatten, 0) == 18U &&
+                    editedHeight(flatten, 2) == 17U &&
+                    editedHeight(flatten, 6) == 11U,
+                "flatten consumes the shared smooth falloff strength") &&
+         expect(
+             averaged.accepted && averaged.items().size() == 3U &&
+                 editedHeight(averaged, 0) == 18U &&
+                 editedHeight(averaged, 2) == 23U &&
+                 editedHeight(averaged, 6) == 29U &&
+                 editedHeight(averaged, 8) == 0U,
+             "smooth averages one snapshot before applying radial strength") &&
+         expect(!invalid.accepted && invalid.items().empty() &&
+                    invalid.status ==
+                        cr::CreativeTerrainSculptPlanStatus::InvalidRequest &&
+                    cr::toString(cr::CreativeTerrainSculptFalloff::Uniform) ==
+                        "UNIFORM" &&
+                    cr::toString(cr::CreativeTerrainSculptFalloff::Linear) ==
+                        "LINEAR" &&
+                    cr::toString(cr::CreativeTerrainSculptFalloff::Smooth) ==
+                        "SMOOTH",
+                "falloff values are closed validated and explicitly named");
+}
+
 bool gradePlanIsDeterministicBoundedAndValidated() {
   const cr::CreativeTerrainGradePlan ascending =
       cr::buildCreativeTerrainGradePlan({{0, 0}, {4, 2}, 2U, 8U, 3U});
@@ -531,6 +675,7 @@ int main() {
                  documentRevisionAdvancesOncePerTerrainBatch() &&
                  terrainSeedPlansMissingRodsAndClearAtomically() &&
                  sculptPlanIsSnapshotBasedBoundedAndCanonical() &&
+                 sculptFalloffIsDeterministicSymmetricAndSharedByModes() &&
                  gradePlanIsDeterministicBoundedAndValidated()
              ? 0
              : 1;

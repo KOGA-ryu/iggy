@@ -903,7 +903,7 @@ bool terrainSculptSamplesFlattensAndUndoesOneBatch() {
                        editor.toolSettings.terrainSculptRadius ==
                            cr::CreativeTerrainSculptRadius::OneCell &&
                        creativeEditorTerrainSculptQuickEditLabel(editor) ==
-                           "FLATTEN | RADIUS 1 | STRENGTH 2 | TARGET 5",
+                           "FLATTEN | RADIUS 1 | STRENGTH 2 | FALLOFF UNIFORM | TARGET 5",
                    "D-pad controls expose bounded sculpt strength and radius") &&
             expect(applied.accepted && applied.changed &&
                        applied.plan.editCount == 2U && left != nullptr &&
@@ -1005,6 +1005,10 @@ bool terrainSculptPreviewCachesAndUsesRuntimeSlopeBands() {
       editor, cr::CreativeInputActionId::QuickEditIncrease);
   const bool rebuiltForRadius = refreshCreativeEditorTerrainSculptPreview(
       editor.terrain, appState.facade.document(), editor);
+  editor.toolSettings.terrainSculptFalloff =
+      cr::CreativeTerrainSculptFalloff::Linear;
+  const bool rebuiltForFalloff = refreshCreativeEditorTerrainSculptPreview(
+      editor.terrain, appState.facade.document(), editor);
   const cr::CreativeTerrainControlEdit raised{
       cr::CreativeTerrainEditKind::Upsert, {{0, 0}, 3U, 4U}};
   static_cast<void>(appState.facade.applyTerrainControlEdits(
@@ -1012,8 +1016,11 @@ bool terrainSculptPreviewCachesAndUsesRuntimeSlopeBands() {
   const bool rebuiltForRevision = refreshCreativeEditorTerrainSculptPreview(
       editor.terrain, appState.facade.document(), editor);
   bool ok = expect(built && !reused && moved && radiusChanged &&
-                       rebuiltForRadius && rebuiltForRevision &&
-                       editor.terrain.sculpt.preview.buildCount == 4U,
+                       rebuiltForRadius && rebuiltForFalloff &&
+                       rebuiltForRevision &&
+                       editor.terrain.sculpt.preview.buildCount == 5U &&
+                       editor.terrain.sculpt.preview.falloff ==
+                           cr::CreativeTerrainSculptFalloff::Linear,
                    "preview rebuilds only for aim settings or document revision") &&
             expect(editor.terrain.sculpt.preview.renderAccepted &&
                        !editor.terrain.sculpt.preview.patches.empty(),

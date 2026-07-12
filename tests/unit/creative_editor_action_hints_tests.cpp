@@ -468,7 +468,7 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
   ok = expect(findHint(terrainRaise, cr::CreativeInputActionId::PickAction) ==
                       nullptr &&
                   creativeEditorTerrainSculptQuickEditLabel(editor) ==
-                      "RAISE | RADIUS 4 | STRENGTH 1",
+                      "RAISE | RADIUS 4 | STRENGTH 1 | FALLOFF UNIFORM",
               "raise omits the Flatten-only sample action and target label") &&
        ok;
 

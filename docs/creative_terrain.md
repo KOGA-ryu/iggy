@@ -101,6 +101,14 @@ creates rods, changes rod radii, or partially applies a rejected batch. An empty
 brush reports `NO RODS`; use Terrain Rod when the authored field needs more
 controls.
 
+Tool Options exposes `FALLOFF` without adding another world binding. `UNIFORM`
+preserves full Strength across the circular brush. `LINEAR` tapers Strength by
+radial distance, and `SMOOTH` applies a smoothstep taper for rounded shoulders.
+Both tapered modes reach zero at the exact brush boundary. Their weights and
+integer height steps use deterministic fixed-point math; center, preview, and
+mutation therefore agree across platforms. `UNIFORM` is the default so existing
+terrain gestures retain their original behavior.
+
 One press-hold-release sculpt gesture is one lazy history transaction. Repeating
 over a stationary brush is intentional: each 200 ms step continues moving the
 same rods toward the target. Release, tool/modal changes, focus loss, capture,
@@ -108,13 +116,14 @@ undo/redo, document replacement, and shutdown finalize the gesture; a gesture
 with no accepted mutation records no history.
 
 The circular preview is cached by document ID/revision, aim cell, mode, radius,
-strength, and target height. It rebuilds from a copied terrain field and the same
-render-plan kernel used by the scene, so aiming alone never mutates or uploads
-room geometry. Preview triangles use runtime movement slope policy: green is
-normally walkable, yellow requires careful footing, and red is rejected by the
-current maximum-walkable-slope rule. The mode itself is selected in Tool Options.
-Square and the `TARGET` HUD value are available only in Flatten mode because the
-other three modes do not consume a target height.
+strength, falloff, and target height. It rebuilds from a copied terrain field and
+the same sculpt and render-plan kernels used by the scene, so aiming alone never
+mutates or uploads room geometry. Preview triangles use runtime movement slope
+policy: green is normally walkable, yellow requires careful footing, and red is
+rejected by the current maximum-walkable-slope rule. Mode and Falloff are
+selected in Tool Options and repeated in the sculpt HUD. Square and the `TARGET`
+HUD value are available only in Flatten mode because the other three modes do
+not consume a target height.
 
 ## Authored Data
 

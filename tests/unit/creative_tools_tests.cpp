@@ -457,14 +457,16 @@ bool optionDescriptorsAreContextualAndBounded() {
                     surfaceExtrude.ids[1] ==
                         cr::CreativeToolOptionId::SurfaceExtrudeLimit,
                 "surface extrude exposes depth and affected-cell limit") &&
-         expect(terrainSculpt.count == 3U &&
+         expect(terrainSculpt.count == 4U &&
                     terrainSculpt.ids[0] ==
                         cr::CreativeToolOptionId::TerrainSculptMode &&
                     terrainSculpt.ids[1] ==
                         cr::CreativeToolOptionId::TerrainSculptRadius &&
                     terrainSculpt.ids[2] ==
-                        cr::CreativeToolOptionId::TerrainSculptStrength,
-                "terrain sculpt exposes mode radius and strength") &&
+                        cr::CreativeToolOptionId::TerrainSculptStrength &&
+                    terrainSculpt.ids[3] ==
+                        cr::CreativeToolOptionId::TerrainSculptFalloff,
+                "terrain sculpt exposes mode radius strength and falloff") &&
          expect(terrainRodSingle.count == 1U &&
                     terrainRodSingle.ids[0] ==
                         cr::CreativeToolOptionId::TerrainRodStampMode,
@@ -551,6 +553,9 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
       cr::CreativeConnectedFillLimit::Count;
   cr::CreativeToolSettings invalidSculpt = settings;
   invalidSculpt.terrainSculptMode = cr::CreativeTerrainSculptMode::Count;
+  cr::CreativeToolSettings invalidSculptFalloff = settings;
+  invalidSculptFalloff.terrainSculptFalloff =
+      cr::CreativeTerrainSculptFalloff::Count;
   cr::CreativeToolSettings invalidSeed = settings;
   invalidSeed.terrainSeedSpacing = cr::CreativeTerrainSeedSpacing::Count;
   bool ok = expect(cr::isValidCreativeToolSettings(settings),
@@ -575,7 +580,8 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
             expect(!cr::isValidCreativeToolSettings(invalidSurfaceDepth) &&
                        !cr::isValidCreativeToolSettings(invalidSurfaceLimit),
                    "invalid surface depth or limit fails settings validation") &&
-            expect(!cr::isValidCreativeToolSettings(invalidSculpt),
+            expect(!cr::isValidCreativeToolSettings(invalidSculpt) &&
+                       !cr::isValidCreativeToolSettings(invalidSculptFalloff),
                    "invalid terrain sculpt option fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidSeed),
                    "invalid terrain seed option fails settings validation") &&
@@ -653,6 +659,10 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                            settings,
                            cr::CreativeToolOptionId::TerrainSculptStrength) ==
                            "1 CELL" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainSculptFalloff) ==
+                           "UNIFORM" &&
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::TerrainRodStampMode) ==
@@ -748,6 +758,11 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                   settings.terrainSculptStrength ==
                       cr::CreativeTerrainSculptStrength::TwoCells,
               "terrain sculpt strength cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainSculptFalloff, 1)
+                  .changed &&
+                  settings.terrainSculptFalloff ==
+                      cr::CreativeTerrainSculptFalloff::Linear,
+              "terrain sculpt falloff cycles") &&
        expect(adjust(cr::CreativeToolOptionId::TerrainRodStampMode, 1).changed &&
                   settings.terrainRodStampMode ==
                       cr::CreativeTerrainRodStampMode::Seed,

@@ -35,6 +35,13 @@ enum class CreativeTerrainSculptStrength : std::uint8_t {
   Count,
 };
 
+enum class CreativeTerrainSculptFalloff : std::uint8_t {
+  Uniform,
+  Linear,
+  Smooth,
+  Count,
+};
+
 inline constexpr std::size_t kCreativeTerrainSculptEditCapacity =
     kCreativeTerrainControlCapacity;
 
@@ -45,6 +52,7 @@ struct CreativeTerrainSculptRequest {
   std::uint16_t radiusCells = 4U;
   std::uint16_t strengthCells = 1U;
   std::uint16_t targetHeightCells = 4U;
+  CreativeTerrainSculptFalloff falloff = CreativeTerrainSculptFalloff::Uniform;
 };
 
 enum class CreativeTerrainSculptPlanStatus : std::uint8_t {
@@ -82,6 +90,8 @@ static_assert(std::is_standard_layout_v<CreativeTerrainSculptPlan>);
     CreativeTerrainSculptRadius radius) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeTerrainSculptStrength strength) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeTerrainSculptFalloff falloff) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeTerrainSculptPlanStatus status) noexcept;
 [[nodiscard]] bool creativeTerrainSculptUsesTargetHeight(

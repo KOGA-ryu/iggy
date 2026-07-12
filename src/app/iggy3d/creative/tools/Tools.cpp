@@ -223,6 +223,10 @@ constexpr std::array kToolOptionDescriptors{
                                  "SCULPT STRENGTH",
                                  CreativeToolOptionValueKind::Choice,
                                  kTerrainSculptItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainSculptFalloff,
+                                 "FALLOFF",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainSculptItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainRodStampMode,
                                  "ROD STAMP",
                                  CreativeToolOptionValueKind::Choice,
@@ -258,40 +262,7 @@ template <typename Enum>
 
 [[nodiscard]] bool sameSettings(const CreativeToolSettings& lhs,
                                 const CreativeToolSettings& rhs) noexcept {
-  return lhs.moveConstraint == rhs.moveConstraint &&
-         lhs.rotationStep == rhs.rotationStep &&
-         lhs.placementYaw == rhs.placementYaw &&
-         lhs.snapIncrement == rhs.snapIncrement &&
-         lhs.materialBrushShape == rhs.materialBrushShape &&
-         lhs.materialBrushAxis == rhs.materialBrushAxis &&
-         lhs.materialBrushSize == rhs.materialBrushSize &&
-         lhs.materialBrushFill == rhs.materialBrushFill &&
-         lhs.materialBrushGuide == rhs.materialBrushGuide &&
-         lhs.materialBrushSymmetry == rhs.materialBrushSymmetry &&
-         lhs.materialBrushMask == rhs.materialBrushMask &&
-         lhs.materialBrushReplaceSourceKind ==
-             rhs.materialBrushReplaceSourceKind &&
-         lhs.connectedFillLimit == rhs.connectedFillLimit &&
-         lhs.surfaceExtrudeDepth == rhs.surfaceExtrudeDepth &&
-         lhs.surfaceExtrudeLimit == rhs.surfaceExtrudeLimit &&
-         lhs.shapeBrushKind == rhs.shapeBrushKind &&
-         lhs.shapeBrushAxis == rhs.shapeBrushAxis &&
-         lhs.replaceSourceKind == rhs.replaceSourceKind &&
-         lhs.cloneOffsetAxis == rhs.cloneOffsetAxis &&
-         lhs.cloneOffsetDistance == rhs.cloneOffsetDistance &&
-         lhs.arrayMode == rhs.arrayMode &&
-         lhs.arrayDirection == rhs.arrayDirection &&
-         lhs.arrayCopyCount == rhs.arrayCopyCount &&
-         lhs.arraySpacing == rhs.arraySpacing &&
-         lhs.radialArrayAxis == rhs.radialArrayAxis &&
-         lhs.radialArrayInstanceCount == rhs.radialArrayInstanceCount &&
-         lhs.radialArraySweep == rhs.radialArraySweep &&
-         lhs.terrainSculptMode == rhs.terrainSculptMode &&
-         lhs.terrainSculptRadius == rhs.terrainSculptRadius &&
-         lhs.terrainSculptStrength == rhs.terrainSculptStrength &&
-         lhs.terrainRodStampMode == rhs.terrainRodStampMode &&
-         lhs.terrainSeedRadius == rhs.terrainSeedRadius &&
-         lhs.terrainSeedSpacing == rhs.terrainSeedSpacing;
+  return lhs == rhs;
 }
 
 [[nodiscard]] CreativeToolOptionAdjustReceipt adjustReceipt(
@@ -633,6 +604,8 @@ bool isValidCreativeToolSettings(
                    CreativeTerrainSculptRadius::Count) &&
          validEnum(settings.terrainSculptStrength,
                    CreativeTerrainSculptStrength::Count) &&
+         validEnum(settings.terrainSculptFalloff,
+                   CreativeTerrainSculptFalloff::Count) &&
          validEnum(settings.terrainRodStampMode,
                    CreativeTerrainRodStampMode::Count) &&
          validEnum(settings.terrainSeedRadius,
@@ -903,6 +876,8 @@ std::string_view creativeToolOptionValueLabel(
       return toString(settings.terrainSculptRadius);
     case CreativeToolOptionId::TerrainSculptStrength:
       return toString(settings.terrainSculptStrength);
+    case CreativeToolOptionId::TerrainSculptFalloff:
+      return toString(settings.terrainSculptFalloff);
     case CreativeToolOptionId::TerrainRodStampMode:
       return toString(settings.terrainRodStampMode);
     case CreativeToolOptionId::TerrainSeedRadius:
@@ -1092,6 +1067,11 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
       adjusted.terrainSculptStrength = cycleEnum(
           adjusted.terrainSculptStrength,
           CreativeTerrainSculptStrength::Count, direction);
+      break;
+    case CreativeToolOptionId::TerrainSculptFalloff:
+      adjusted.terrainSculptFalloff =
+          cycleEnum(adjusted.terrainSculptFalloff,
+                    CreativeTerrainSculptFalloff::Count, direction);
       break;
     case CreativeToolOptionId::TerrainRodStampMode:
       adjusted.terrainRodStampMode = cycleEnum(

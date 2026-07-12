@@ -65,6 +65,8 @@ struct CreativeTerrainSculptPreviewCache {
   iggy3d::creative::CreativeTerrainCoord2 center{};
   iggy3d::creative::CreativeTerrainSculptMode mode =
       iggy3d::creative::CreativeTerrainSculptMode::Flatten;
+  iggy3d::creative::CreativeTerrainSculptFalloff falloff =
+      iggy3d::creative::CreativeTerrainSculptFalloff::Uniform;
   std::uint16_t radiusCells = 4U;
   std::uint16_t strengthCells = 1U;
   std::uint16_t targetHeightCells = 4U;

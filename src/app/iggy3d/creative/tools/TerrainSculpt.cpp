@@ -13,6 +13,12 @@ namespace {
          static_cast<std::size_t>(CreativeTerrainSculptMode::Count);
 }
 
+[[nodiscard]] constexpr bool validFalloff(
+    CreativeTerrainSculptFalloff falloff) noexcept {
+  return static_cast<std::size_t>(falloff) <
+         static_cast<std::size_t>(CreativeTerrainSculptFalloff::Count);
+}
+
 [[nodiscard]] constexpr bool coordLess(CreativeTerrainCoord2 lhs,
                                        CreativeTerrainCoord2 rhs) noexcept {
   return lhs.z < rhs.z || (lhs.z == rhs.z && lhs.x < rhs.x);
@@ -28,6 +34,77 @@ namespace {
     return false;
   }
   return dx * dx + dz * dz <= radius * radius;
+}
+
+[[nodiscard]] constexpr std::uint64_t integerSquareRoot(
+    std::uint64_t value) noexcept {
+  std::uint64_t result = 0U;
+  std::uint64_t bit = std::uint64_t{1U} << 62U;
+  while (bit > value) {
+    bit >>= 2U;
+  }
+  while (bit != 0U) {
+    if (value >= result + bit) {
+      value -= result + bit;
+      result = (result >> 1U) + bit;
+    } else {
+      result >>= 1U;
+    }
+    bit >>= 2U;
+  }
+  return result;
+}
+
+[[nodiscard]] std::uint32_t sculptFalloffWeight(
+    CreativeTerrainSculptFalloff falloff,
+    CreativeTerrainCoord2 center,
+    CreativeTerrainCoord2 coord,
+    std::uint16_t radiusCells) noexcept {
+  constexpr std::uint32_t kWeightScale = 65'536U;
+  constexpr std::uint32_t kDistanceScale = 256U;
+  if (falloff == CreativeTerrainSculptFalloff::Uniform) {
+    return kWeightScale;
+  }
+
+  const std::int64_t dx = static_cast<std::int64_t>(center.x) - coord.x;
+  const std::int64_t dz = static_cast<std::int64_t>(center.z) - coord.z;
+  const std::uint64_t distanceSquared =
+      static_cast<std::uint64_t>(dx * dx + dz * dz);
+  const std::uint64_t radiusSquared =
+      static_cast<std::uint64_t>(radiusCells) * radiusCells;
+  if (distanceSquared >= radiusSquared) {
+    return 0U;
+  }
+
+  const std::uint32_t distance = static_cast<std::uint32_t>(
+      integerSquareRoot(distanceSquared * kDistanceScale * kDistanceScale));
+  const std::uint32_t radius = radiusCells * kDistanceScale;
+  const std::uint32_t linear = static_cast<std::uint32_t>(
+      (static_cast<std::uint64_t>(radius - distance) * kWeightScale +
+       radius / 2U) /
+      radius);
+  if (falloff == CreativeTerrainSculptFalloff::Linear) {
+    return linear;
+  }
+
+  const std::uint64_t scaleSquared =
+      static_cast<std::uint64_t>(kWeightScale) * kWeightScale;
+  const std::uint64_t smooth = static_cast<std::uint64_t>(linear) * linear *
+                               (3U * kWeightScale - 2U * linear);
+  return static_cast<std::uint32_t>((smooth + scaleSquared / 2U) /
+                                    scaleSquared);
+}
+
+[[nodiscard]] std::uint16_t effectiveSculptStrength(
+    const CreativeTerrainSculptRequest& request,
+    CreativeTerrainCoord2 coord) noexcept {
+  constexpr std::uint32_t kWeightScale = 65'536U;
+  const std::uint32_t weight = sculptFalloffWeight(
+      request.falloff, request.center, coord, request.radiusCells);
+  return static_cast<std::uint16_t>(
+      (static_cast<std::uint64_t>(request.strengthCells) * weight +
+       kWeightScale / 2U) /
+      kWeightScale);
 }
 
 [[nodiscard]] bool validControls(
@@ -80,23 +157,28 @@ namespace {
 [[nodiscard]] std::uint16_t sculptedHeight(
     const CreativeTerrainSculptRequest& request,
     const CreativeTerrainControlPoint& control) noexcept {
+  const std::uint16_t strength =
+      effectiveSculptStrength(request, control.coord);
+  if (strength == 0U) {
+    return control.heightCells;
+  }
   switch (request.mode) {
     case CreativeTerrainSculptMode::Raise:
-      return static_cast<std::uint16_t>(std::min(
-          static_cast<int>(kCreativeTerrainMaximumHeightCells),
-          static_cast<int>(control.heightCells) + request.strengthCells));
+      return static_cast<std::uint16_t>(
+          std::min(static_cast<int>(kCreativeTerrainMaximumHeightCells),
+                   static_cast<int>(control.heightCells) + strength));
     case CreativeTerrainSculptMode::Lower:
-      return static_cast<std::uint16_t>(std::max(
-          static_cast<int>(kCreativeTerrainMinimumHeightCells),
-          static_cast<int>(control.heightCells) - request.strengthCells));
+      return static_cast<std::uint16_t>(
+          std::max(static_cast<int>(kCreativeTerrainMinimumHeightCells),
+                   static_cast<int>(control.heightCells) - strength));
     case CreativeTerrainSculptMode::Flatten:
       return moveToward(control.heightCells, request.targetHeightCells,
-                        request.strengthCells);
+                        strength);
     case CreativeTerrainSculptMode::Smooth:
       return moveToward(
           control.heightCells,
           smoothTargetHeight(request.controls, control, request.radiusCells),
-          request.strengthCells);
+          strength);
     case CreativeTerrainSculptMode::Count:
       break;
   }
@@ -148,6 +230,20 @@ std::string_view toString(CreativeTerrainSculptStrength strength) noexcept {
     case CreativeTerrainSculptStrength::EightCells:
       return "8 CELLS";
     case CreativeTerrainSculptStrength::Count:
+      break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeTerrainSculptFalloff falloff) noexcept {
+  switch (falloff) {
+    case CreativeTerrainSculptFalloff::Uniform:
+      return "UNIFORM";
+    case CreativeTerrainSculptFalloff::Linear:
+      return "LINEAR";
+    case CreativeTerrainSculptFalloff::Smooth:
+      return "SMOOTH";
+    case CreativeTerrainSculptFalloff::Count:
       break;
   }
   return "INVALID";
@@ -209,7 +305,8 @@ CreativeTerrainSculptPlan buildCreativeTerrainSculptPlan(
     const CreativeTerrainSculptRequest& request) noexcept {
   CreativeTerrainSculptPlan plan;
   plan.requested = true;
-  if (!validMode(request.mode) || !validControls(request.controls) ||
+  if (!validMode(request.mode) || !validFalloff(request.falloff) ||
+      !validControls(request.controls) ||
       request.radiusCells < kCreativeTerrainMinimumRadiusCells ||
       request.radiusCells > kCreativeTerrainMaximumRadiusCells ||
       request.strengthCells == 0U ||

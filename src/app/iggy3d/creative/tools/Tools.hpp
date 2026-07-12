@@ -143,6 +143,7 @@ enum class CreativeToolOptionId : std::uint8_t {
   TerrainSculptMode,
   TerrainSculptRadius,
   TerrainSculptStrength,
+  TerrainSculptFalloff,
   TerrainRodStampMode,
   TerrainSeedRadius,
   TerrainSeedSpacing,
@@ -227,12 +228,17 @@ struct CreativeToolSettings {
       CreativeTerrainSculptRadius::FourCells;
   CreativeTerrainSculptStrength terrainSculptStrength =
       CreativeTerrainSculptStrength::OneCell;
+  CreativeTerrainSculptFalloff terrainSculptFalloff =
+      CreativeTerrainSculptFalloff::Uniform;
   CreativeTerrainRodStampMode terrainRodStampMode =
       CreativeTerrainRodStampMode::Single;
   CreativeTerrainSeedRadius terrainSeedRadius =
       CreativeTerrainSeedRadius::FourCells;
   CreativeTerrainSeedSpacing terrainSeedSpacing =
       CreativeTerrainSeedSpacing::TwoCells;
+
+  [[nodiscard]] bool operator==(
+      const CreativeToolSettings&) const noexcept = default;
 };
 
 static_assert(std::is_trivially_copyable_v<CreativeToolSettings>);
