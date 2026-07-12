@@ -33,11 +33,13 @@ struct CreativeEditorWorldTarget {
   bool valid = false;
   bool objectHit = false;
   bool voxelHit = false;
+  bool terrainHit = false;
   iggy3d::creative::CreativeObjectId objectId =
       iggy3d::creative::kInvalidObjectId;
   iggy3d::creative::CreativeObjectKind objectKind =
       iggy3d::creative::CreativeObjectKind::Unknown;
   iggy3d::creative::CreativeGridCoord3 voxelCell{};
+  iggy3d::creative::CreativeTerrainCoord2 terrainCell{};
   float distanceMeters = 0.0F;
   WorldRay ray{};
   iggy3d::creative::CreativeGridTarget grid{};

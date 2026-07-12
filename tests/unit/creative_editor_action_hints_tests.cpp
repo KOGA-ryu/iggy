@@ -312,6 +312,73 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
               "surface extrude exposes pull remove and bounded settings") &&
        ok;
 
+  setHeld(editor, cr::CreativeHeldItemKind::TerrainControl);
+  const cr::CreativeActionHintFrame terrain = resolveCreativeEditorActionHints(
+      editor, cr::CreativeInputContext::EditorViewport,
+      cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* terrainApply =
+      findHint(terrain, cr::CreativeInputActionId::AcceptAction);
+  const cr::CreativeActionHint* terrainReject =
+      findHint(terrain, cr::CreativeInputActionId::RejectAction);
+  const cr::CreativeActionHint* terrainSelect =
+      findHint(terrain, cr::CreativeInputActionId::PickAction);
+  const cr::CreativeActionHint* terrainHeight =
+      findHint(terrain, cr::CreativeInputActionId::QuickEditPrevious);
+  const cr::CreativeActionHint* terrainRadius =
+      findHint(terrain, cr::CreativeInputActionId::QuickEditDecrease);
+  ok = expect(terrainApply != nullptr &&
+                  terrainApply->label.view() == "Place rod" &&
+                  terrainReject != nullptr &&
+                  terrainReject->label.view() == "Remove rod" &&
+                  terrainSelect != nullptr &&
+                  terrainSelect->label.view() == "Select rod" &&
+                  terrainHeight != nullptr &&
+                  terrainHeight->chord.view() == "D-pad U/D" &&
+                  terrainHeight->label.view() == "Height" &&
+                  terrainRadius != nullptr &&
+                  terrainRadius->chord.view() == "D-pad L/R" &&
+                  terrainRadius->label.view() == "Radius",
+              "terrain hints expose direct height radius and edit actions") &&
+       ok;
+  editor.terrain.selectionValid = true;
+  const cr::CreativeActionHintFrame terrainEdit =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* terrainCommit =
+      findHint(terrainEdit, cr::CreativeInputActionId::AcceptAction);
+  const cr::CreativeActionHint* terrainCancel =
+      findHint(terrainEdit, cr::CreativeInputActionId::RejectAction);
+  const cr::CreativeActionHintFrame keyboardTerrainEdit =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::KeyboardMouse, false);
+  const cr::CreativeActionHint* keyboardTerrainCommit = findHint(
+      keyboardTerrainEdit, cr::CreativeInputActionId::SecondaryAction);
+  const cr::CreativeActionHint* keyboardTerrainCancel = findHint(
+      keyboardTerrainEdit, cr::CreativeInputActionId::PrimaryAction);
+  const cr::CreativeActionHint* keyboardTerrainHeight = findHint(
+      keyboardTerrainEdit, cr::CreativeInputActionId::QuickEditPrevious);
+  const cr::CreativeActionHint* keyboardTerrainRadius = findHint(
+      keyboardTerrainEdit, cr::CreativeInputActionId::QuickEditDecrease);
+  ok = expect(terrainCommit != nullptr && terrainCommit->chord.view() == "X" &&
+                  terrainCommit->label.view() == "Apply edit" &&
+                  terrainCancel != nullptr &&
+                  terrainCancel->chord.view() == "Circle" &&
+                  terrainCancel->label.view() == "Cancel edit",
+              "selected terrain draft advertises PS5 commit and cancel") &&
+       expect(keyboardTerrainCommit != nullptr &&
+                  keyboardTerrainCommit->label.view() == "Apply edit" &&
+                  keyboardTerrainCancel != nullptr &&
+                  keyboardTerrainCancel->label.view() == "Cancel edit" &&
+                  keyboardTerrainHeight != nullptr &&
+                  keyboardTerrainHeight->chord.view() == "Up/Down" &&
+                  keyboardTerrainRadius != nullptr &&
+                  keyboardTerrainRadius->chord.view() == "Left/Right",
+              "selected terrain draft advertises mouse and arrow controls") &&
+       ok;
+  editor.terrain.selectionValid = false;
+
   setHeld(editor, cr::CreativeHeldItemKind::LinearArray);
   const cr::CreativeActionHintFrame array = resolveCreativeEditorActionHints(
       editor, cr::CreativeInputContext::EditorViewport,

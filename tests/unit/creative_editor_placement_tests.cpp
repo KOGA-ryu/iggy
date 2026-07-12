@@ -1487,6 +1487,44 @@ bool worldTargetPicksVoxelBeforeGround() {
                 "world target derives aimed and adjacent cells from face");
 }
 
+bool worldTargetPicksDerivedTerrainAndPreservesVoxelTiePriority() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("pick terrain");
+  static_cast<void>(document.assignId(108U));
+  const cr::CreativeTerrainControlEdit terrainEdit{
+      cr::CreativeTerrainEditKind::Upsert, {{0, 0}, 4U, 1U}};
+  static_cast<void>(document.applyTerrainControlEdits(
+      std::span{&terrainEdit, 1U}));
+
+  iggy3d::RenderCameraFrame camera;
+  camera.worldEye = {0.5F, 10.0F, 0.5F};
+  camera.worldForward = {0.0F, -1.0F, 0.0F};
+  camera.worldUp = {0.0F, 0.0F, -1.0F};
+  const CreativeEditorWorldTarget terrain = resolveCreativeEditorWorldTarget(
+      document, camera, CreativeEditorPickFrame{}, 800U, 600U, 1.0);
+  bool ok = expect(terrain.valid && terrain.terrainHit && !terrain.voxelHit &&
+                       !terrain.objectHit,
+                   "world target reports derived terrain hit") &&
+            expect(terrain.terrainCell == cr::CreativeTerrainCoord2{0, 0} &&
+                       terrain.objectKind == cr::CreativeObjectKind::TerrainPatch,
+                   "terrain target exposes exact authored-grid cell and role") &&
+            expect(terrain.grid.targetCell.x == 0 &&
+                       terrain.grid.targetCell.y == 3 &&
+                       terrain.grid.targetCell.z == 0,
+                   "terrain top resolves the occupied surface cell");
+
+  const cr::CreativeVoxelEdit voxelEdit{{0, 3, 0},
+                                         cr::CreativeObjectKind::Crate};
+  static_cast<void>(document.applyVoxelEdits(std::span{&voxelEdit, 1U}));
+  const CreativeEditorWorldTarget tied = resolveCreativeEditorWorldTarget(
+      document, camera, CreativeEditorPickFrame{}, 800U, 600U, 1.0);
+  return expect(tied.voxelHit && !tied.terrainHit &&
+                    tied.voxelCell.x == voxelEdit.cell.x &&
+                    tied.voxelCell.y == voxelEdit.cell.y &&
+                    tied.voxelCell.z == voxelEdit.cell.z,
+                "authored voxel wins an equal-distance derived-terrain tie") &&
+         ok;
+}
+
 bool removalStrokeDeletesVoxelAndGroupsHistory() {
   cr::CreativeAppState appState;
   installHistoryDocument(appState, 107U);
@@ -3412,6 +3450,7 @@ int main() {
   ok = sceneCacheRefreshesOnlyOnDocumentRevision() && ok;
   ok = activeVolumeSelectionRebindsToLoadedDocumentGrid() && ok;
   ok = worldTargetPicksVoxelBeforeGround() && ok;
+  ok = worldTargetPicksDerivedTerrainAndPreservesVoxelTiePriority() && ok;
   ok = removalStrokeDeletesVoxelAndGroupsHistory() && ok;
   ok = gamepadAcceptPlacesAndRejectRemoves() && ok;
   ok = materialBrushPaintsErasesPreviewsAndGroupsHistory() && ok;

@@ -10,6 +10,7 @@
 #include <limits>
 #include <map>
 #include <set>
+#include <span>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -169,6 +170,9 @@ Vec3 colorForRoomRole(const std::string& role) {
   if (role == "floor") {
     return {0.30F, 0.32F, 0.34F};
   }
+  if (role == "terrain") {
+    return {0.24F, 0.46F, 0.22F};
+  }
   if (role == "wall") {
     return {0.42F, 0.43F, 0.46F};
   }
@@ -292,6 +296,13 @@ std::uint64_t roomGeometrySignature(const SceneRoomProjection& room) {
       hashFloat(hash, mesh.wallThicknessMeters);
     }
   }
+  for (const SceneRoomSurfacePatchItem& patch : room.surfacePatches) {
+    hashString(hash, patch.role);
+    hashVec3(hash, patch.center);
+    for (const Vec3 corner : patch.corners) {
+      hashVec3(hash, corner);
+    }
+  }
   return hash;
 }
 
@@ -342,6 +353,67 @@ bool appendFloorPlaneIfFits(std::vector<FirstRoomVertex>& vertices,
   }
   appendFloorPlane(vertices, indices, draws, center, size, color);
   return true;
+}
+
+bool appendSurfacePatches(
+    std::vector<FirstRoomVertex>& vertices,
+    std::vector<std::uint16_t>& indices,
+    std::vector<IndexedDrawRange>& draws,
+    std::span<const SceneRoomSurfacePatchItem> patches) {
+  if (patches.empty()) {
+    return true;
+  }
+  IndexedDrawRange range;
+  range.firstIndex = static_cast<std::uint32_t>(indices.size());
+  for (const SceneRoomSurfacePatchItem& patch : patches) {
+    if (vertices.size() + patch.corners.size() + 1U >
+        static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max())) {
+      return false;
+    }
+    if (!finiteVec3(patch.center)) {
+      return false;
+    }
+    for (const Vec3 corner : patch.corners) {
+      if (!finiteVec3(corner)) {
+        return false;
+      }
+    }
+    const Vec3 color = colorForRoomRole(patch.role);
+    const std::uint16_t base = static_cast<std::uint16_t>(vertices.size());
+    vertices.push_back({{patch.center.x, patch.center.y, patch.center.z},
+                        {color.x, color.y, color.z}});
+    for (const Vec3 corner : patch.corners) {
+      vertices.push_back(
+          {{corner.x, corner.y, corner.z}, {color.x, color.y, color.z}});
+    }
+    appendTriangle(indices, base + 0U, base + 1U, base + 2U);
+    appendTriangle(indices, base + 0U, base + 2U, base + 3U);
+    appendTriangle(indices, base + 0U, base + 3U, base + 4U);
+    appendTriangle(indices, base + 0U, base + 4U, base + 1U);
+  }
+  range.indexCount = static_cast<std::uint32_t>(indices.size()) - range.firstIndex;
+  draws.push_back(range);
+  return true;
+}
+
+bool canAppendSurfacePatches(
+    const std::vector<FirstRoomVertex>& vertices,
+    std::span<const SceneRoomSurfacePatchItem> patches) {
+  if (patches.empty()) {
+    return false;
+  }
+  constexpr std::size_t maximumVertexCount =
+      static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max());
+  if (vertices.size() > maximumVertexCount ||
+      patches.size() > (maximumVertexCount - vertices.size()) / 5U) {
+    return false;
+  }
+  return std::all_of(
+      patches.begin(), patches.end(), [](const SceneRoomSurfacePatchItem& patch) {
+        return finiteVec3(patch.center) &&
+               std::all_of(patch.corners.begin(), patch.corners.end(),
+                           [](Vec3 corner) { return finiteVec3(corner); });
+      });
 }
 
 void appendTriangle(std::vector<std::uint16_t>& indices,
@@ -1207,12 +1279,14 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
   result.sourceRoomAssetId = room.assetId;
   result.sourceRoomStaticMeshCount = room.meshes.size();
   result.sourceRoomGeometrySignature = roomGeometrySignature(room);
-  if (room.meshes.empty()) {
+  if (room.meshes.empty() && room.surfacePatches.empty()) {
     return result;
   }
 
-  result.vertices.reserve(room.meshes.size() * 16U);
-  result.indices.reserve(room.meshes.size() * 144U);
+  result.vertices.reserve(room.meshes.size() * 16U +
+                          room.surfacePatches.size() * 5U);
+  result.indices.reserve(room.meshes.size() * 144U +
+                         room.surfacePatches.size() * 24U);
 
   const std::vector<FloorDraw> floorDraws = buildOptimizedFloorDraws(room);
   std::vector<WallBoxDraw> wallDraws;
@@ -1265,6 +1339,9 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
       result.indices.clear();
       result.indexedDraws.clear();
       return result;
+    }
+    if (mesh.role == "terrain") {
+      continue;
     }
     if (mesh.role == "floor") {
       if (hasRotation(mesh.rotationEulerRadians)) {
@@ -1333,6 +1410,33 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
         ++result.roomGridLineDrawCount;
         result.roomGridVisible = true;
       }
+    }
+  }
+
+  const bool useSurfacePatches =
+      canAppendSurfacePatches(result.vertices, room.surfacePatches);
+  if (useSurfacePatches) {
+    static_cast<void>(appendSurfacePatches(
+        result.vertices, result.indices, result.indexedDraws,
+        room.surfacePatches));
+    ++result.roomFloorDrawCount;
+  } else {
+    for (const SceneRoomMeshItem& mesh : room.meshes) {
+      if (mesh.role != "terrain") {
+        continue;
+      }
+      const FloorDraw terrain{mesh.position, mesh.size,
+                              mesh.rotationEulerRadians};
+      if (!canEmitFloorDraw(terrain) ||
+          !appendFloorPlaneIfFits(result.vertices, result.indices,
+                                  result.indexedDraws, terrain.position,
+                                  terrain.size, colorForRoomRole("terrain"))) {
+        result.vertices.clear();
+        result.indices.clear();
+        result.indexedDraws.clear();
+        return result;
+      }
+      ++result.roomFloorDrawCount;
     }
   }
 
@@ -1562,7 +1666,9 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
     const RenderCreativeWireframeDebugFrame* creativeWireframeDebug) {
   BufferImageResourcesResult result;
   result.receipt = baseReceipt("fail", "memory_allocation_failed");
-  if (!ready_ || !allocator_.ready() || room.meshes.empty() || depth_.extent.width == 0U ||
+  if (!ready_ || !allocator_.ready() ||
+      (room.meshes.empty() && room.surfacePatches.empty()) ||
+      depth_.extent.width == 0U ||
       depth_.extent.height == 0U) {
     result.reason = {"memory_allocator_create_failed", "memory allocator create failed"};
     result.receipt = baseReceipt("fail", result.reason.code);

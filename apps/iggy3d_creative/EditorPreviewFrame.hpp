@@ -89,8 +89,11 @@ struct CreativeEditorSceneCache {
   std::uint64_t voxelChunkMeshBuildCount = 0;
   std::uint64_t terrainRevision = 0;
   std::uint64_t terrainSurfaceBuildCount = 0;
+  iggy3d::creative::CreativeVec3 terrainGridOrigin{};
+  double terrainGridCellSizeMeters = 0.0;
   std::vector<CreativeEditorVoxelChunkMeshCache> voxelChunkMeshes;
   std::vector<iggy3d::creative::CreativeVoxelCuboid> terrainCuboids;
+  std::vector<iggy3d::SceneRoomSurfacePatchItem> terrainSurfacePatches;
   bool valid = false;
 };
 

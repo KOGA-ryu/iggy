@@ -19,18 +19,17 @@ class CreativeDocument;
 namespace iggy3d_creative_app {
 
 struct CreativeEditorState;
-
-enum class CreativeEditorTerrainSetting : std::uint8_t {
-  Height,
-  Radius,
-  Count,
-};
+struct WorldRay;
 
 struct CreativeEditorTerrainState {
   std::uint16_t heightCells = 4U;
   std::uint16_t radiusCells = 4U;
-  CreativeEditorTerrainSetting selectedSetting =
-      CreativeEditorTerrainSetting::Height;
+  std::uint64_t documentId = 0U;
+  bool hoverValid = false;
+  iggy3d::creative::CreativeTerrainCoord2 hoverCoord{};
+  bool selectionValid = false;
+  iggy3d::creative::CreativeTerrainCoord2 selectedCoord{};
+  iggy3d::creative::CreativeTerrainControlPoint selectedOriginal{};
   iggy3d::creative::CreativeTerrainMutationReceipt lastMutation{};
 };
 
@@ -63,6 +62,15 @@ applyCreativeEditorTerrainEditWithHistory(
     iggy3d::creative::CreativeInputActionId action) noexcept;
 [[nodiscard]] std::string creativeEditorTerrainQuickEditLabel(
     const CreativeEditorTerrainState& state);
+
+void clearCreativeEditorTerrainInteraction(
+    CreativeEditorTerrainState& state,
+    std::uint64_t documentId) noexcept;
+void updateCreativeEditorTerrainAim(
+    CreativeEditorTerrainState& state,
+    const iggy3d::creative::CreativeDocument& document,
+    WorldRay ray,
+    float occluderDistanceMeters) noexcept;
 
 void appendCreativeEditorTerrainOverlay(
     const iggy3d::creative::CreativeDocument& document,

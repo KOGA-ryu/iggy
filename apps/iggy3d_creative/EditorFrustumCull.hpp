@@ -14,6 +14,10 @@ struct StandaloneFrustumCullReceipt {
   std::size_t keptRoomMeshCount = 0;
   std::size_t culledRoomMeshCount = 0;
   std::size_t conservativelyKeptMeshCount = 0;
+  std::size_t inputSurfacePatchCount = 0;
+  std::size_t keptSurfacePatchCount = 0;
+  std::size_t culledSurfacePatchCount = 0;
+  std::size_t conservativelyKeptSurfacePatchCount = 0;
 };
 
 struct StandaloneFrustumCullResult {

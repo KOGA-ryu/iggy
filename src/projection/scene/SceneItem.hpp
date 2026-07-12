@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -58,6 +59,12 @@ struct SceneRoomMeshItem {
   float wallThicknessMeters = 0.0F;
 };
 
+struct SceneRoomSurfacePatchItem {
+  std::string role;
+  Vec3 center;
+  std::array<Vec3, 4U> corners{};
+};
+
 struct SceneRoomProjection {
   bool loaded = false;
   std::string assetId;
@@ -74,6 +81,7 @@ struct SceneRoomProjection {
   bool keyAnchorVisible = false;
   bool dummyAnchorVisible = false;
   std::vector<SceneRoomMeshItem> meshes;
+  std::vector<SceneRoomSurfacePatchItem> surfacePatches;
 };
 
 struct SceneProjectileItem {

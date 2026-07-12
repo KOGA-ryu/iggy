@@ -960,6 +960,21 @@ std::string creativeEditorHeldItemStatusLabel(
     appendQuickEdit();
     return output;
   }
+  if (held.kind == cr::CreativeHeldItemKind::TerrainControl) {
+    if (editor.terrain.selectionValid) {
+      output.append(" | EDIT ");
+      output.append(std::to_string(editor.terrain.selectedCoord.x));
+      output.push_back(' ');
+      output.append(std::to_string(editor.terrain.selectedCoord.z));
+    } else if (editor.terrain.hoverValid) {
+      output.append(" | ROD ");
+      output.append(std::to_string(editor.terrain.hoverCoord.x));
+      output.push_back(' ');
+      output.append(std::to_string(editor.terrain.hoverCoord.z));
+    }
+    appendQuickEdit();
+    return output;
+  }
   if (held.kind == cr::CreativeHeldItemKind::ConnectedFill) {
     output.append(" | ");
     output.append(cr::toString(held.objectKind));
@@ -1064,11 +1079,24 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
   voxelRequest.maxDistance = kCreativeReachMeters;
   const cr::CreativeVoxelRaycastReceipt voxelPick =
       cr::raycastCreativeVoxelField(document.voxelField(), voxelRequest);
-  const bool objectInReach = pick.objectId != cr::kInvalidObjectId &&
+  cr::CreativeTerrainRaycastRequest terrainRequest;
+  terrainRequest.rayOrigin = cr::creativeVec3FromCore(target.ray.origin);
+  terrainRequest.rayDirection = cr::creativeVec3FromCore(target.ray.direction);
+  terrainRequest.gridOrigin = gridSettings.origin;
+  terrainRequest.cellSize = gridSettings.cellSizeMeters;
+  terrainRequest.maxDistance = kCreativeReachMeters;
+  const cr::CreativeTerrainRaycastReceipt terrainPick =
+      cr::raycastCreativeTerrainField(document.terrainField(), terrainRequest);
+  const ObjectVisualPickBounds* objectCandidate =
+      findCandidate(pickFrame, pick.objectId);
+  const bool objectInReach = objectCandidate != nullptr &&
                              pick.entryDistance <= kCreativeReachMeters;
+  const bool terrainInReach =
+      terrainPick.hit && terrainPick.distance <= kCreativeReachMeters;
   const bool voxelIsNearest =
       voxelPick.hit &&
-      (!objectInReach || voxelPick.distance <= pick.entryDistance);
+      (!objectInReach || voxelPick.distance <= pick.entryDistance) &&
+      (!terrainInReach || voxelPick.distance <= terrainPick.distance);
 
   if (voxelIsNearest) {
     target.grid = cr::resolveCreativeGridTargetFromHit(
@@ -1082,31 +1110,47 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
     return target;
   }
 
-  if (objectInReach) {
-    const ObjectVisualPickBounds* candidate =
-        findCandidate(pickFrame, pick.objectId);
-    if (candidate != nullptr) {
-      const iggy3d::Vec3 point =
-          target.ray.origin + target.ray.direction * pick.entryDistance;
-      const iggy3d::Vec3 normal = candidate->orientedBounds.has_value()
-                                      ? orientedFaceNormal(
-                                            *candidate->orientedBounds, point)
-                                      : aabbFaceNormal(candidate->bounds, point);
-      target.grid = cr::resolveCreativeGridTargetFromHit(
-          cr::creativeVec3FromCore(point), cr::creativeVec3FromCore(normal),
-          cellSize,
-          gridSettings.origin,
-          cr::creativeVec3FromCore(target.ray.direction));
-      target.valid = target.grid.valid;
-      target.objectHit = true;
-      target.objectId = pick.objectId;
-      target.distanceMeters = pick.entryDistance;
-      if (const cr::CreativeObject* object = document.findObject(pick.objectId);
-          object != nullptr) {
-        target.objectKind = object->kind;
-      }
-      return target;
+  const bool objectIsNearest =
+      objectInReach &&
+      (!terrainInReach || pick.entryDistance <= terrainPick.distance);
+  if (objectIsNearest) {
+    const iggy3d::Vec3 point =
+        target.ray.origin + target.ray.direction * pick.entryDistance;
+    const iggy3d::Vec3 normal = objectCandidate->orientedBounds.has_value()
+                                    ? orientedFaceNormal(
+                                          *objectCandidate->orientedBounds,
+                                          point)
+                                    : aabbFaceNormal(objectCandidate->bounds,
+                                                     point);
+    target.grid = cr::resolveCreativeGridTargetFromHit(
+        cr::creativeVec3FromCore(point), cr::creativeVec3FromCore(normal),
+        cellSize, gridSettings.origin,
+        cr::creativeVec3FromCore(target.ray.direction));
+    target.valid = target.grid.valid;
+    target.objectHit = true;
+    target.objectId = pick.objectId;
+    target.distanceMeters = pick.entryDistance;
+    if (const cr::CreativeObject* object = document.findObject(pick.objectId);
+        object != nullptr) {
+      target.objectKind = object->kind;
     }
+    return target;
+  }
+
+  if (terrainInReach) {
+    target.grid = cr::resolveCreativeGridTargetFromHit(
+        terrainPick.hitPoint, terrainPick.faceNormal, cellSize,
+        gridSettings.origin, cr::creativeVec3FromCore(target.ray.direction));
+    target.valid = target.grid.valid;
+    target.terrainHit = true;
+    target.terrainCell = terrainPick.cell;
+    target.objectKind = cr::CreativeObjectKind::TerrainPatch;
+    target.distanceMeters = static_cast<float>(terrainPick.distance);
+    return target;
+  }
+
+  if (!terrainPick.accepted) {
+    return target;
   }
 
   if (std::fabs(target.ray.direction.y) <= 1.0e-5F) {
@@ -1168,6 +1212,10 @@ void syncCreativeEditorHeldItem(cr::CreativeAppState& appState,
   }
   if (held.kind != cr::CreativeHeldItemKind::ObjectMove) {
     editor.interaction.moveTargetId = cr::kInvalidObjectId;
+  }
+  if (held.kind != cr::CreativeHeldItemKind::TerrainControl) {
+    clearCreativeEditorTerrainInteraction(editor.terrain,
+                                          appState.facade.document().id());
   }
   syncCreativeEditorQuickEdit(editor);
   static_cast<void>(appState.facade.setActiveTool(behavior.facadeTool));
@@ -1234,6 +1282,15 @@ bool confirmCreativeEditorHeldItem(cr::CreativeAppState& appState,
 
 bool cancelCreativeEditorHeldItem(cr::CreativeAppState& appState,
                                   CreativeEditorState& editor) {
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  if (held.kind == cr::CreativeHeldItemKind::TerrainControl &&
+      editor.terrain.selectionValid) {
+    return applyCreativeEditorTerrainEditWithHistory(
+               appState, editor, CreativeEditorTerrainEditKind::Remove,
+               "creative_terrain_cancel_active_tool")
+        .accepted;
+  }
   if (editor.volume.active &&
       editor.volume.selection.phase != cr::CreativeVolumeSelectionPhase::Empty) {
     cr::clearCreativeVolumeSelection(editor.volume.selection);
@@ -1269,6 +1326,16 @@ void processCreativeEditorWorldInteractionFrame(
   editor.interaction.target = resolveCreativeEditorWorldTarget(
       document, request.camera, request.pickFrame, request.drawableWidth,
       request.drawableHeight, targetCellSize);
+  const cr::CreativeHotbarEntry& aimedHeld =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  if (aimedHeld.kind == cr::CreativeHeldItemKind::TerrainControl) {
+    updateCreativeEditorTerrainAim(
+        editor.terrain, document, editor.interaction.target.ray,
+        editor.interaction.target.valid ? editor.interaction.target.distanceMeters
+                                        : kCreativeReachMeters);
+  } else {
+    clearCreativeEditorTerrainInteraction(editor.terrain, document.id());
+  }
   cr::CreativeGridTarget brushPivotAim;
   if (editor.interaction.target.grid.valid) {
     const cr::CreativeGridTarget& targetGrid = editor.interaction.target.grid;

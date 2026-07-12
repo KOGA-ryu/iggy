@@ -9,6 +9,8 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
+#include <limits>
 #include <string>
 #include <utility>
 
@@ -18,9 +20,44 @@ namespace {
 
 [[nodiscard]] cr::CreativeTerrainCoord2 aimedTerrainCoord(
     const CreativeEditorState& editor) noexcept {
+  if (editor.terrain.selectionValid) {
+    return editor.terrain.selectedCoord;
+  }
+  if (editor.terrain.hoverValid) {
+    return editor.terrain.hoverCoord;
+  }
+  if (editor.interaction.target.terrainHit) {
+    return editor.interaction.target.terrainCell;
+  }
   const cr::CreativeGridCoord3 cell =
       editor.interaction.target.grid.targetCell;
   return {cell.x, cell.z};
+}
+
+[[nodiscard]] bool terrainEditCoord(
+    const CreativeEditorState& editor,
+    CreativeEditorTerrainEditKind kind,
+    cr::CreativeTerrainCoord2& coord) noexcept {
+  if (kind != CreativeEditorTerrainEditKind::Sample &&
+      editor.terrain.selectionValid) {
+    coord = editor.terrain.selectedCoord;
+    return true;
+  }
+  if (editor.terrain.hoverValid) {
+    coord = editor.terrain.hoverCoord;
+    return true;
+  }
+  if (editor.interaction.target.terrainHit) {
+    coord = editor.interaction.target.terrainCell;
+    return true;
+  }
+  if (!editor.interaction.target.grid.valid) {
+    return false;
+  }
+  const cr::CreativeGridCoord3 cell =
+      editor.interaction.target.grid.targetCell;
+  coord = {cell.x, cell.z};
+  return true;
 }
 
 [[nodiscard]] cr::CreativeBounds terrainRodBounds(
@@ -54,6 +91,63 @@ void appendBounds(std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,
   }
 }
 
+void appendTerrainFootprintOutline(
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,
+    cr::CreativeGridSettings grid,
+    cr::CreativeTerrainControlPoint control,
+    iggy3d::RenderLineColor color,
+    float thickness) {
+  const std::int32_t radius = control.radiusCells;
+  const auto insideDisk = [radius](std::int32_t dx, std::int32_t dz) {
+    const std::int64_t x = dx;
+    const std::int64_t z = dz;
+    return x * x + z * z <=
+           static_cast<std::int64_t>(radius) * radius;
+  };
+  const auto appendEdge = [&](cr::CreativeVec3 start, cr::CreativeVec3 end) {
+    const cr::CreativeCoreVec3Conversion coreStart =
+        cr::creativeVec3ToCoreChecked(start);
+    const cr::CreativeCoreVec3Conversion coreEnd =
+        cr::creativeVec3ToCoreChecked(end);
+    if (!coreStart.converted || !coreEnd.converted) {
+      return;
+    }
+    iggy3d::RenderCreativeWireframeDebugLine line;
+    line.start = coreStart.value;
+    line.end = coreEnd.value;
+    line.color = color;
+    line.thickness = thickness;
+    lines.push_back(line);
+  };
+
+  const double y = grid.origin.y + grid.cellSizeMeters * 0.12;
+  for (std::int32_t dz = -radius; dz <= radius; ++dz) {
+    for (std::int32_t dx = -radius; dx <= radius; ++dx) {
+      if (!insideDisk(dx, dz)) {
+        continue;
+      }
+      const double minimumX =
+          grid.origin.x + (control.coord.x + dx) * grid.cellSizeMeters;
+      const double maximumX = minimumX + grid.cellSizeMeters;
+      const double minimumZ =
+          grid.origin.z + (control.coord.z + dz) * grid.cellSizeMeters;
+      const double maximumZ = minimumZ + grid.cellSizeMeters;
+      if (!insideDisk(dx - 1, dz)) {
+        appendEdge({minimumX, y, minimumZ}, {minimumX, y, maximumZ});
+      }
+      if (!insideDisk(dx + 1, dz)) {
+        appendEdge({maximumX, y, minimumZ}, {maximumX, y, maximumZ});
+      }
+      if (!insideDisk(dx, dz - 1)) {
+        appendEdge({minimumX, y, minimumZ}, {maximumX, y, minimumZ});
+      }
+      if (!insideDisk(dx, dz + 1)) {
+        appendEdge({minimumX, y, maximumZ}, {maximumX, y, maximumZ});
+      }
+    }
+  }
+}
+
 void setFeedback(CreativeEditorState& editor, bool accepted) noexcept {
   editor.interaction.placementFeedback = {};
   editor.interaction.placementFeedback.status =
@@ -72,13 +166,12 @@ CreativeEditorTerrainEditReceipt applyCreativeEditorTerrainEditWithHistory(
   CreativeEditorTerrainEditReceipt receipt;
   receipt.requested = true;
   receipt.kind = kind;
-  if (!editor.interaction.target.grid.valid) {
+  if (!terrainEditCoord(editor, kind, receipt.coord)) {
     receipt.reasonCode = "creative_editor_terrain_target_invalid";
     setFeedback(editor, false);
     return receipt;
   }
 
-  receipt.coord = aimedTerrainCoord(editor);
   const cr::CreativeTerrainControlPoint* existing =
       appState.facade.document().terrainField().controlAt(receipt.coord);
   if (kind == CreativeEditorTerrainEditKind::Sample) {
@@ -89,11 +182,30 @@ CreativeEditorTerrainEditReceipt applyCreativeEditorTerrainEditWithHistory(
     }
     receipt.accepted = true;
     receipt.changed = editor.terrain.heightCells != existing->heightCells ||
-                      editor.terrain.radiusCells != existing->radiusCells;
+                      editor.terrain.radiusCells != existing->radiusCells ||
+                      !editor.terrain.selectionValid ||
+                      editor.terrain.selectedCoord != existing->coord;
     editor.terrain.heightCells = existing->heightCells;
     editor.terrain.radiusCells = existing->radiusCells;
-    receipt.reasonCode = "creative_editor_terrain_sampled";
+    editor.terrain.selectionValid = true;
+    editor.terrain.selectedCoord = existing->coord;
+    editor.terrain.selectedOriginal = *existing;
+    receipt.reasonCode = "creative_editor_terrain_selected";
     setFeedback(editor, true);
+    return receipt;
+  }
+
+  if (kind == CreativeEditorTerrainEditKind::Remove &&
+      editor.terrain.selectionValid) {
+    receipt.accepted = true;
+    receipt.changed =
+        editor.terrain.heightCells != editor.terrain.selectedOriginal.heightCells ||
+        editor.terrain.radiusCells != editor.terrain.selectedOriginal.radiusCells;
+    editor.terrain.heightCells = editor.terrain.selectedOriginal.heightCells;
+    editor.terrain.radiusCells = editor.terrain.selectedOriginal.radiusCells;
+    editor.terrain.selectionValid = false;
+    receipt.reasonCode = "creative_editor_terrain_edit_cancelled";
+    editor.interaction.placementFeedback = {};
     return receipt;
   }
 
@@ -118,6 +230,14 @@ CreativeEditorTerrainEditReceipt applyCreativeEditorTerrainEditWithHistory(
       appState.history, std::move(transaction), appState.facade,
       receipt.mutation.accepted && receipt.mutation.changed,
       receipt.mutation.reasonCode));
+  if (kind == CreativeEditorTerrainEditKind::Upsert &&
+      editor.terrain.selectionValid && receipt.mutation.accepted) {
+    editor.terrain.selectionValid = false;
+  }
+  if (kind == CreativeEditorTerrainEditKind::Remove &&
+      receipt.mutation.changed) {
+    editor.terrain.hoverValid = false;
+  }
   setFeedback(editor, receipt.accepted);
   return receipt;
 }
@@ -128,25 +248,19 @@ bool processCreativeEditorTerrainQuickEdit(
   switch (action) {
     case cr::CreativeInputActionId::QuickEditPrevious:
     case cr::CreativeInputActionId::QuickEditNext: {
-      const CreativeEditorTerrainSetting before = state.selectedSetting;
-      state.selectedSetting =
-          before == CreativeEditorTerrainSetting::Height
-              ? CreativeEditorTerrainSetting::Radius
-              : CreativeEditorTerrainSetting::Height;
-      return state.selectedSetting != before;
+      const int direction =
+          action == cr::CreativeInputActionId::QuickEditPrevious ? 1 : -1;
+      const std::uint16_t before = state.heightCells;
+      state.heightCells = static_cast<std::uint16_t>(std::clamp(
+          static_cast<int>(state.heightCells) + direction,
+          static_cast<int>(cr::kCreativeTerrainMinimumHeightCells),
+          static_cast<int>(cr::kCreativeTerrainMaximumHeightCells)));
+      return state.heightCells != before;
     }
     case cr::CreativeInputActionId::QuickEditDecrease:
     case cr::CreativeInputActionId::QuickEditIncrease: {
       const int direction =
           action == cr::CreativeInputActionId::QuickEditDecrease ? -1 : 1;
-      if (state.selectedSetting == CreativeEditorTerrainSetting::Height) {
-        const std::uint16_t before = state.heightCells;
-        state.heightCells = static_cast<std::uint16_t>(std::clamp(
-            static_cast<int>(state.heightCells) + direction,
-            static_cast<int>(cr::kCreativeTerrainMinimumHeightCells),
-            static_cast<int>(cr::kCreativeTerrainMaximumHeightCells)));
-        return state.heightCells != before;
-      }
       const std::uint16_t before = state.radiusCells;
       state.radiusCells = static_cast<std::uint16_t>(std::clamp(
           static_cast<int>(state.radiusCells) + direction,
@@ -161,10 +275,69 @@ bool processCreativeEditorTerrainQuickEdit(
 
 std::string creativeEditorTerrainQuickEditLabel(
     const CreativeEditorTerrainState& state) {
-  if (state.selectedSetting == CreativeEditorTerrainSetting::Height) {
-    return "HEIGHT " + std::to_string(state.heightCells);
+  return "HEIGHT " + std::to_string(state.heightCells) + " | RADIUS " +
+         std::to_string(state.radiusCells);
+}
+
+void clearCreativeEditorTerrainInteraction(
+    CreativeEditorTerrainState& state,
+    std::uint64_t documentId) noexcept {
+  if (state.selectionValid) {
+    state.heightCells = state.selectedOriginal.heightCells;
+    state.radiusCells = state.selectedOriginal.radiusCells;
   }
-  return "RADIUS " + std::to_string(state.radiusCells);
+  state.documentId = documentId;
+  state.hoverValid = false;
+  state.selectionValid = false;
+}
+
+void updateCreativeEditorTerrainAim(
+    CreativeEditorTerrainState& state,
+    const cr::CreativeDocument& document,
+    WorldRay ray,
+    float occluderDistanceMeters) noexcept {
+  if (state.documentId != document.id()) {
+    clearCreativeEditorTerrainInteraction(state, document.id());
+  }
+  state.hoverValid = false;
+  if (state.selectionValid &&
+      document.terrainField().controlAt(state.selectedCoord) == nullptr) {
+    state.heightCells = state.selectedOriginal.heightCells;
+    state.radiusCells = state.selectedOriginal.radiusCells;
+    state.selectionValid = false;
+  }
+  if (!ray.valid) {
+    return;
+  }
+
+  const cr::CreativeGridSettings grid = document.gridSettings();
+  const float tolerance = static_cast<float>(grid.cellSizeMeters * 0.6);
+  const float maximumDistance =
+      std::isfinite(occluderDistanceMeters) && occluderDistanceMeters >= 0.0F
+          ? occluderDistanceMeters + tolerance
+          : std::numeric_limits<float>::max();
+  float nearestDistance = maximumDistance;
+  for (const cr::CreativeTerrainControlPoint& control :
+       document.terrainField().controls()) {
+    const cr::CreativeBounds bounds = terrainRodBounds(grid, control, 0.5);
+    const cr::CreativeCoreVec3Conversion minimum =
+        cr::creativeVec3ToCoreChecked(bounds.min);
+    const cr::CreativeCoreVec3Conversion maximum =
+        cr::creativeVec3ToCoreChecked(bounds.max);
+    if (!minimum.converted || !maximum.converted) {
+      continue;
+    }
+    float entryDistance = 0.0F;
+    if (!rayEntryDistanceForAabb(
+            ray, VisualBounds{minimum.value, maximum.value}, entryDistance) ||
+        entryDistance > nearestDistance ||
+        (state.hoverValid && entryDistance == nearestDistance)) {
+      continue;
+    }
+    nearestDistance = entryDistance;
+    state.hoverValid = true;
+    state.hoverCoord = control.coord;
+  }
 }
 
 void appendCreativeEditorTerrainOverlay(
@@ -184,27 +357,33 @@ void appendCreativeEditorTerrainOverlay(
   const float thickness = std::max(0.02F, wireThickness * 0.75F);
   constexpr iggy3d::RenderLineColor existingColor{0.18F, 0.82F, 0.92F, 1.0F};
   constexpr iggy3d::RenderLineColor influenceColor{0.16F, 0.45F, 0.52F, 0.9F};
+  constexpr iggy3d::RenderLineColor hoverColor{0.30F, 1.0F, 0.38F, 1.0F};
+  constexpr iggy3d::RenderLineColor selectedColor{1.0F, 0.42F, 0.82F, 1.0F};
   constexpr iggy3d::RenderLineColor previewColor{0.98F, 0.88F, 0.16F, 1.0F};
   for (const cr::CreativeTerrainControlPoint& control :
        document.terrainField().controls()) {
+    const bool selected = editor.terrain.selectionValid &&
+                          editor.terrain.selectedCoord == control.coord;
+    const bool hovered = editor.terrain.hoverValid &&
+                         editor.terrain.hoverCoord == control.coord;
     appendBounds(wireLines, terrainRodBounds(grid, control, 0.18),
-                 existingColor, thickness);
+                 selected ? selectedColor : hovered ? hoverColor : existingColor,
+                 (selected || hovered) ? thickness * 1.5F : thickness);
     cr::CreativeBounds influence = terrainRodBounds(
         grid, control, static_cast<double>(control.radiusCells * 2U + 1U));
     influence.max.y = influence.min.y + grid.cellSizeMeters * 0.08;
     appendBounds(wireLines, influence, influenceColor, thickness * 0.65F);
   }
 
-  if (editor.interaction.target.grid.valid) {
+  if (editor.terrain.selectionValid || editor.terrain.hoverValid ||
+      editor.interaction.target.grid.valid) {
     const cr::CreativeTerrainControlPoint preview{
         aimedTerrainCoord(editor), editor.terrain.heightCells,
         editor.terrain.radiusCells};
     appendBounds(wireLines, terrainRodBounds(grid, preview, 0.24), previewColor,
                  thickness * 1.2F);
-    cr::CreativeBounds influence = terrainRodBounds(
-        grid, preview, static_cast<double>(preview.radiusCells * 2U + 1U));
-    influence.max.y = influence.min.y + grid.cellSizeMeters * 0.12;
-    appendBounds(wireLines, influence, previewColor, thickness);
+    appendTerrainFootprintOutline(wireLines, grid, preview, previewColor,
+                                  thickness);
   }
 }
 

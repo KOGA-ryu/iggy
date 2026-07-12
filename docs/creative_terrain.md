@@ -13,15 +13,18 @@ Equip **Terrain Rod** from the catalog or assign it to a tool-wheel sector.
 
 | Input | Operation |
 |---|---|
-| Right mouse / PS5 X | Place a rod or update the rod at the aimed grid point |
-| Left mouse / PS5 Circle | Remove the rod at the aimed grid point |
-| Middle mouse / PS5 Square | Sample that rod's Height and Radius |
-| Up/down / D-pad up/down | Select Height or Radius |
-| Left/right / D-pad left/right | Decrease or increase the selected value |
+| Right mouse / PS5 X | Place a rod, or commit the selected rod's draft |
+| Left mouse / PS5 Circle | Cancel a selected draft; otherwise remove the highlighted rod |
+| Middle mouse / PS5 Square | Select the highlighted rod and sample its Height and Radius |
+| Up/down / D-pad up/down | Raise or lower Height directly |
+| Left/right / D-pad left/right | Shrink or widen Radius directly |
 
 The cyan vertical guides are stored rods. Their dim ground boxes show influence.
-The yellow guide is the current target and settings. Guides are editor overlays;
-they never enter saved room geometry or change the document revision.
+The nearest aimed rod turns green, a selected rod turns pink, and the yellow
+guide plus stepped cell-edge outline show the live draft and its exact circular
+influence membership. D-pad edits remain revision-free until X commits; Circle
+restores the sampled values without adding history. Guides are editor overlays;
+they never enter saved room geometry or change document revision.
 
 ## Authored Data
 
@@ -56,28 +59,44 @@ bounding rectangle. Work scales with the sum of influence-disk areas. A single
 rod creates a flat circular patch; overlapping rods blend where their disks
 intersect.
 
+`buildCreativeTerrainRenderPlan` consumes that canonical column plan and emits
+one center-plus-four-corner visual patch per occupied cell. The center preserves
+the resolved column height; each corner averages the same neighboring column
+set, so adjacent patches share identical edge vertices and bend without cracks.
+The plan is capped at 8,192 patches and emits no partial mesh when the cap or
+coordinate conversion fails.
+
+`sampleCreativeTerrainHeight` applies the same integer reduction to one X/Z
+cell. `raycastCreativeTerrainField` uses that sampler in a bounded X/Z DDA, so
+the center ray can target terrain tops and cliff sides without rebuilding or
+scanning generated cuboids. Authored voxels and objects win equal-distance ties
+over derived terrain; failed or over-budget terrain traversal does not fabricate
+a ground-plane target.
+
 ## Render And Runtime
 
-`CreativeEditorSceneCache` caches the generated cuboids by terrain revision.
-Aim movement and guides reuse the cache. An accepted rod mutation changes the
-document revision, rebuilds the surface once, and feeds the cuboids through the
-existing room bake. The result is visible and supplies the same walkable
-surface path used by voxel-backed floor geometry. Terrain columns additionally
-emit actor and projectile blocker boxes so rendered cliffs are physically solid.
+`CreativeEditorSceneCache` caches generated collision cuboids and bent visual
+patches by document ID, terrain revision, grid origin, and grid cell size. Aim
+movement and guides reuse the cache. An accepted rod mutation or grid transform
+change rebuilds both derived views once. Vulkan batches admitted patches into
+one terrain draw, includes their vertices in the room geometry signature, and
+frustum-culls them with the rest of the room. If the patch cap or the room's
+16-bit vertex budget is exceeded, the renderer automatically falls back to the
+stepped terrain planes instead of dropping the surface.
 
-The initial representation is intentionally stepped. It uses existing bounded
-box rendering and physics instead of introducing a second terrain renderer.
+Collision remains intentionally column-based in this batch. It supplies the
+existing walkable surfaces plus actor and projectile blocker boxes, so cliffs
+stay physically solid while the visible top bends. Smooth slope collision is a
+separate runtime-physics contract and must not be inferred from render vertices.
 
 ## Future Algorithm Gates
 
 Keep these as explicit later work, with profiling and visual tests before use:
 
-- Smooth triangulation may consume the same control field, but must preserve
-  exact rod heights, deterministic topology, bounded triangle counts, and a
-  collision/nav parity test.
-- A terrain-specific center-ray query should replace ground-plane targeting if
-  editing steep walls from a horizontal view becomes necessary.
+- Smooth slope collision and navigation must consume a bounded terrain query or
+  explicit triangle representation, preserve the visual surface normals, and
+  prove player/AI walkability parity before replacing column collision.
 - Material layers, erosion, spline ridges, caves, and overhangs are separate
   authored capabilities. A heightfield must not be stretched to represent them.
-- Any mutable grid origin or cell-size feature must invalidate the terrain scene
-  cache explicitly.
+- Future grid mutation paths must preserve grid origin and cell size as terrain
+  scene-cache keys.

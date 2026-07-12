@@ -576,7 +576,9 @@ void appendVoxelCuboid(CreativeRoomBakeResult& result,
   mesh.id = stableId;
   mesh.meshId = std::string(meshIdForRole(role));
   mesh.materialId = std::string(materialIdForRole(role));
-  mesh.role = std::string(roleName(role));
+  mesh.role = cuboid.material == CreativeObjectKind::TerrainPatch
+                  ? "terrain"
+                  : std::string(roleName(role));
   mesh.positionMeters = bounds.center;
   mesh.sizeMeters = bounds.size;
   if (role == BakedRoomRole::Wall) {

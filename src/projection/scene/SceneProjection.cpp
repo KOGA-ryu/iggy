@@ -122,7 +122,7 @@ SceneItem projectEntity(const SessionState& state, const EntityState& entity) {
 
 bool isProjectedRoomMeshRole(std::string_view role) {
   return role == "floor" || role == "wall" || role == "prop" ||
-         role == "ledge";
+         role == "ledge" || role == "terrain";
 }
 
 void attachRoomProjection(const RoomAsset* room, SceneProjectionResult& result) {
@@ -158,7 +158,8 @@ void attachRoomProjection(const RoomAsset* room, SceneProjectionResult& result) 
     item.wallBottomY = mesh.wallBottomY;
     item.wallHeightMeters = mesh.wallHeightMeters;
     item.wallThicknessMeters = mesh.wallThicknessMeters;
-    projected.floorVisible = projected.floorVisible || mesh.role == "floor";
+    projected.floorVisible = projected.floorVisible || mesh.role == "floor" ||
+                             mesh.role == "terrain";
     projected.wallVisible = projected.wallVisible || mesh.role == "wall";
     projected.propVisible = projected.propVisible || mesh.role == "prop" ||
                             mesh.role == "ledge";

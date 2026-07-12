@@ -1,15 +1,21 @@
 #include "EditorTerrain.hpp"
 
 #include "EditorEdits.hpp"
+#include "EditorFrame.hpp"
+#include "EditorFrustumCull.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorState.hpp"
 #include "EditorToolOptions.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
+#include "render/vulkan/BufferImageResources.hpp"
 
 #include <algorithm>
 #include <iostream>
+#include <span>
+#include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -43,24 +49,33 @@ CreativeEditorState terrainEditor(std::int32_t x, std::int32_t z) {
   return editor;
 }
 
+cr::CreativeWorldActionFrame pressedAction(
+    cr::CreativeWorldActionId action) {
+  cr::CreativeWorldActionFrame frame;
+  const std::size_t index = static_cast<std::size_t>(action);
+  frame.down[index] = true;
+  frame.pressed[index] = true;
+  return frame;
+}
+
 bool quickEditOwnsHeightAndRadiusWithoutNewBindings() {
   CreativeEditorState editor = terrainEditor(0, 0);
   const bool raised = processCreativeEditorQuickEditAction(
-      editor, cr::CreativeInputActionId::QuickEditIncrease);
-  const bool selectedRadius = processCreativeEditorQuickEditAction(
+      editor, cr::CreativeInputActionId::QuickEditPrevious);
+  const std::uint16_t heightAfterRaise = editor.terrain.heightCells;
+  const bool lowered = processCreativeEditorQuickEditAction(
       editor, cr::CreativeInputActionId::QuickEditNext);
   const bool widened = processCreativeEditorQuickEditAction(
       editor, cr::CreativeInputActionId::QuickEditIncrease);
 
-  return expect(raised && editor.terrain.heightCells == 5U,
-                "D-pad right raises terrain height") &&
-         expect(selectedRadius &&
-                    editor.terrain.selectedSetting ==
-                        CreativeEditorTerrainSetting::Radius,
-                "D-pad down selects radius") &&
+  return expect(raised && heightAfterRaise == 5U,
+                "D-pad up raises terrain height") &&
+         expect(lowered && editor.terrain.heightCells == 4U,
+                "D-pad down lowers terrain height") &&
          expect(widened && editor.terrain.radiusCells == 5U &&
-                    creativeEditorQuickEditStatusLabel(editor) == "RADIUS 5",
-                "D-pad right widens radius and updates HUD");
+                    creativeEditorQuickEditStatusLabel(editor) ==
+                        "HEIGHT 4 | RADIUS 5",
+                "D-pad right widens radius while HUD shows both values");
 }
 
 bool editSampleRemoveAndUndoUseDocumentTruth() {
@@ -82,32 +97,99 @@ bool editSampleRemoveAndUndoUseDocumentTruth() {
                        CreativeEditorPlacementFeedbackStatus::Placed,
                    "placement reports positive crosshair feedback");
 
+  WorldRay rodRay;
+  rodRay.valid = true;
+  rodRay.origin = {3.5F, 10.0F, -1.5F};
+  rodRay.direction = {0.0F, -1.0F, 0.0F};
+  updateCreativeEditorTerrainAim(editor.terrain, appState.facade.document(),
+                                 rodRay, 3.0F);
   editor.terrain.heightCells = 2U;
   editor.terrain.radiusCells = 2U;
   const CreativeEditorTerrainEditReceipt sampled =
       applyCreativeEditorTerrainEditWithHistory(
           appState, editor, CreativeEditorTerrainEditKind::Sample,
           "test_terrain_sample");
-  ok = expect(sampled.accepted && editor.terrain.heightCells == 7U &&
+  ok = expect(editor.terrain.hoverValid &&
+                  editor.terrain.hoverCoord == cr::CreativeTerrainCoord2{3, -2},
+              "center ray highlights the nearest authored rod") &&
+       expect(sampled.accepted && editor.terrain.selectionValid &&
+                  editor.terrain.selectedCoord ==
+                      cr::CreativeTerrainCoord2{3, -2} &&
+                  editor.terrain.heightCells == 7U &&
                   editor.terrain.radiusCells == 5U &&
                   cr::creativeUndoDepth(appState.history) == 1U,
-              "Square samples settings without history") &&
+              "Square selects and samples without history") &&
        ok;
 
+  static_cast<void>(processCreativeEditorTerrainQuickEdit(
+      editor.terrain, cr::CreativeInputActionId::QuickEditPrevious));
+  const cr::CreativeTerrainControlPoint* unchangedDraft =
+      appState.facade.document().terrainField().controlAt({3, -2});
+  ok = expect(editor.terrain.heightCells == 8U &&
+                  unchangedDraft != nullptr &&
+                  unchangedDraft->heightCells == 7U &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "D-pad changes selected draft without mutating document truth") &&
+       ok;
+
+  const CreativeEditorTerrainEditReceipt cancelled =
+      applyCreativeEditorTerrainEditWithHistory(
+          appState, editor, CreativeEditorTerrainEditKind::Remove,
+          "test_terrain_cancel");
+  ok = expect(cancelled.accepted && cancelled.changed &&
+                  !editor.terrain.selectionValid &&
+                  editor.terrain.heightCells == 7U &&
+                  appState.facade.document().terrainField().controlCount() == 1U &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "Circle cancels a selected draft without history or deletion") &&
+       ok;
+
+  static_cast<void>(applyCreativeEditorTerrainEditWithHistory(
+      appState, editor, CreativeEditorTerrainEditKind::Sample,
+      "test_terrain_reselect"));
+  static_cast<void>(processCreativeEditorTerrainQuickEdit(
+      editor.terrain, cr::CreativeInputActionId::QuickEditPrevious));
+  clearCreativeEditorTerrainInteraction(editor.terrain,
+                                        appState.facade.document().id());
+  ok = expect(!editor.terrain.selectionValid &&
+                  editor.terrain.heightCells == 7U &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "tool interruption cancels and restores the selected draft") &&
+       ok;
+  static_cast<void>(applyCreativeEditorTerrainEditWithHistory(
+      appState, editor, CreativeEditorTerrainEditKind::Sample,
+      "test_terrain_final_select"));
+  static_cast<void>(processCreativeEditorTerrainQuickEdit(
+      editor.terrain, cr::CreativeInputActionId::QuickEditPrevious));
+  const CreativeEditorTerrainEditReceipt committed =
+      applyCreativeEditorTerrainEditWithHistory(
+          appState, editor, CreativeEditorTerrainEditKind::Upsert,
+          "test_terrain_commit");
+  const cr::CreativeTerrainControlPoint* updated =
+      appState.facade.document().terrainField().controlAt({3, -2});
+  ok = expect(committed.accepted && committed.changed &&
+                  !editor.terrain.selectionValid && updated != nullptr &&
+                  updated->heightCells == 8U &&
+                  cr::creativeUndoDepth(appState.history) == 2U,
+              "X commits one selected draft as exactly one undo entry") &&
+       ok;
+
+  updateCreativeEditorTerrainAim(editor.terrain, appState.facade.document(),
+                                 rodRay, 2.0F);
   const CreativeEditorTerrainEditReceipt removed =
       applyCreativeEditorTerrainEditWithHistory(
           appState, editor, CreativeEditorTerrainEditKind::Remove,
           "test_terrain_remove");
   ok = expect(removed.accepted && removed.changed &&
                   appState.facade.document().terrainField().controlCount() == 0U &&
-                  cr::creativeUndoDepth(appState.history) == 2U,
-              "Circle removes rod and records history") &&
+                  cr::creativeUndoDepth(appState.history) == 3U,
+              "Circle without a selected draft removes the highlighted rod") &&
        ok;
   const bool undone = undoLastEdit(appState, "test_terrain_undo");
-  return expect(undone &&
-                    appState.facade.document().terrainField().controlAt({3, -2}) !=
-                        nullptr,
-                "undo restores authored rod") &&
+  const cr::CreativeTerrainControlPoint* restored =
+      appState.facade.document().terrainField().controlAt({3, -2});
+  return expect(undone && restored != nullptr && restored->heightCells == 8U,
+                "undo restores the committed authored rod") &&
          ok;
 }
 
@@ -173,12 +255,264 @@ bool derivedSurfaceAndGuidesUseRevisionCaching() {
          ok;
 }
 
+bool semanticActionsRouteSelectionCommitCancelAndRemoval() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 403U);
+  const cr::CreativeTerrainControlEdit initial{
+      cr::CreativeTerrainEditKind::Upsert, {{0, 0}, 4U, 2U}};
+  static_cast<void>(appState.facade.applyTerrainControlEdits(
+      std::span{&initial, 1U}));
+  appState.history = {};
+  CreativeEditorState editor = terrainEditor(0, 0);
+  iggy3d::RenderCameraFrame camera;
+  camera.worldEye = {0.5F, 10.0F, 0.5F};
+  camera.worldForward = {0.0F, -1.0F, 0.0F};
+  camera.worldUp = {0.0F, 0.0F, -1.0F};
+  const CreativeEditorPickFrame pickFrame;
+  const auto process = [&](cr::CreativeWorldActionId action,
+                           std::uint64_t now) {
+    const cr::CreativeWorldActionFrame actions = pressedAction(action);
+    processCreativeEditorWorldInteractionFrame(
+        {appState, editor, actions, cr::kCreativeInputModifierNone, camera,
+         pickFrame, 800U, 600U, now, false});
+  };
+
+  process(cr::CreativeWorldActionId::Pick, 0U);
+  bool ok = expect(editor.terrain.hoverValid &&
+                       editor.terrain.selectionValid &&
+                       editor.terrain.selectedCoord ==
+                           cr::CreativeTerrainCoord2{0, 0},
+                   "Square routes through hover into terrain selection");
+  static_cast<void>(processCreativeEditorTerrainQuickEdit(
+      editor.terrain, cr::CreativeInputActionId::QuickEditPrevious));
+  process(cr::CreativeWorldActionId::Accept, 1U);
+  const cr::CreativeTerrainControlPoint* committed =
+      appState.facade.document().terrainField().controlAt({0, 0});
+  ok = expect(committed != nullptr && committed->heightCells == 5U &&
+                  !editor.terrain.selectionValid &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "X commits selected terrain draft through semantic dispatcher") &&
+       ok;
+
+  process(cr::CreativeWorldActionId::Pick, 2U);
+  static_cast<void>(processCreativeEditorTerrainQuickEdit(
+      editor.terrain, cr::CreativeInputActionId::QuickEditPrevious));
+  process(cr::CreativeWorldActionId::Reject, 3U);
+  const cr::CreativeTerrainControlPoint* afterCancel =
+      appState.facade.document().terrainField().controlAt({0, 0});
+  ok = expect(afterCancel != nullptr && afterCancel->heightCells == 5U &&
+                  !editor.terrain.selectionValid &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "Circle cancels selected terrain draft through semantic dispatcher") &&
+       ok;
+
+  process(cr::CreativeWorldActionId::Reject, 4U);
+  return expect(appState.facade.document().terrainField().controlCount() == 0U &&
+                    cr::creativeUndoDepth(appState.history) == 2U,
+                "Circle removes highlighted rod when no draft is selected") &&
+         ok;
+}
+
+bool bentSurfacePatchesReachRendererAndRefreshWithHeight() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 404U);
+  const std::array edits{
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{0, 0}, 2U, 2U}},
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{2, 0}, 8U, 2U}},
+  };
+  static_cast<void>(appState.facade.applyTerrainControlEdits(edits));
+  iggy3d::ProductMapMakerGridSnapshot grid;
+  CreativeEditorSceneCache cache;
+  const bool refreshed = refreshCreativeEditorSceneCache(
+      cache, appState.facade.document(), grid);
+  const iggy3d::vulkan::RoomMeshCpuGeometry first =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(cache.preview.scene.room);
+  const bool hasBentPatch = std::any_of(
+      cache.terrainSurfacePatches.begin(), cache.terrainSurfacePatches.end(),
+      [](const iggy3d::SceneRoomSurfacePatchItem& patch) {
+        return patch.corners[0].y != patch.corners[1].y ||
+               patch.corners[1].y != patch.corners[2].y ||
+               patch.corners[2].y != patch.corners[3].y;
+      });
+  bool ok = expect(refreshed && !cache.terrainSurfacePatches.empty() &&
+                       cache.preview.scene.room.surfacePatches.size() ==
+                           cache.terrainSurfacePatches.size(),
+                   "scene cache attaches derived terrain patches") &&
+            expect(hasBentPatch, "unequal rods bend at least one rendered tile") &&
+            expect(first.ready && first.roomFloorDrawCount == 1U &&
+                       first.vertices.size() ==
+                           cache.terrainSurfacePatches.size() * 5U &&
+                       first.indices.size() ==
+                           cache.terrainSurfacePatches.size() * 24U,
+                   "renderer emits one batched terrain draw without stepped duplicates");
+
+  const cr::CreativeTerrainControlEdit raised{
+      cr::CreativeTerrainEditKind::Upsert, {{2, 0}, 9U, 2U}};
+  static_cast<void>(appState.facade.applyTerrainControlEdits(
+      std::span{&raised, 1U}));
+  const bool refreshedAfterRaise = refreshCreativeEditorSceneCache(
+      cache, appState.facade.document(), grid);
+  const iggy3d::vulkan::RoomMeshCpuGeometry second =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(cache.preview.scene.room);
+  return expect(refreshedAfterRaise && cache.terrainSurfaceBuildCount == 2U &&
+                    second.ready && second.sourceRoomGeometrySignature !=
+                                        first.sourceRoomGeometrySignature,
+                "accepted height change rebuilds and re-signatures bent geometry once") &&
+         ok;
+}
+
+bool gridChangeRebuildsWorldSpaceTerrainPatches() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Grid Terrain");
+  static_cast<void>(document.assignId(406U));
+  const cr::CreativeTerrainControlEdit edit{
+      cr::CreativeTerrainEditKind::Upsert, {{1, -2}, 6U, 2U}};
+  static_cast<void>(document.applyTerrainControlEdits(
+      std::span{&edit, 1U}));
+  const std::uint64_t terrainRevision = document.terrainField().revision();
+  iggy3d::ProductMapMakerGridSnapshot gridSnapshot;
+  CreativeEditorSceneCache cache;
+  const bool initialRefresh = refreshCreativeEditorSceneCache(
+      cache, document, gridSnapshot);
+  if (!expect(initialRefresh && !cache.terrainSurfacePatches.empty() &&
+                  cache.terrainSurfaceBuildCount == 1U,
+              "initial grid builds world-space terrain patches")) {
+    return false;
+  }
+  const iggy3d::Vec3 initialCenter = cache.terrainSurfacePatches.front().center;
+
+  cr::CreativeGridSettings grid = document.gridSettings();
+  grid.origin = {10.0, 3.0, -4.0};
+  grid.cellSizeMeters = 2.0;
+  const bool gridChanged = document.setGridSettings(grid);
+  const bool refreshed = refreshCreativeEditorSceneCache(
+      cache, document, gridSnapshot);
+  const cr::CreativeTerrainRenderPlan expected =
+      cr::buildCreativeTerrainRenderPlan(document.terrainField(), grid.origin,
+                                         grid.cellSizeMeters);
+  const cr::CreativeCoreVec3Conversion expectedCenter =
+      expected.patches.empty()
+          ? cr::CreativeCoreVec3Conversion{}
+          : cr::creativeVec3ToCoreChecked(expected.patches.front().center);
+  const iggy3d::Vec3 actualCenter = cache.terrainSurfacePatches.empty()
+                                        ? iggy3d::Vec3{}
+                                        : cache.terrainSurfacePatches.front().center;
+  return expect(gridChanged && refreshed &&
+                    document.terrainField().revision() == terrainRevision &&
+                    cache.terrainSurfaceBuildCount == 2U,
+                "grid-only change rebuilds terrain without a terrain edit") &&
+         expect(expected.accepted && expectedCenter.converted &&
+                    actualCenter.x == expectedCenter.value.x &&
+                    actualCenter.y == expectedCenter.value.y &&
+                    actualCenter.z == expectedCenter.value.z &&
+                    (actualCenter.x != initialCenter.x ||
+                     actualCenter.y != initialCenter.y ||
+                     actualCenter.z != initialCenter.z),
+                "rebuilt patch uses the current grid origin and cell size");
+}
+
+bool oversizedBentSurfaceFallsBackToTerrainPlanes() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 405U);
+  std::vector<cr::CreativeTerrainControlEdit> edits;
+  for (std::int32_t index = 0; index < 11; ++index) {
+    edits.push_back({cr::CreativeTerrainEditKind::Upsert,
+                     {{index * 40, 0}, 4U,
+                      cr::kCreativeTerrainMaximumRadiusCells}});
+  }
+  static_cast<void>(appState.facade.applyTerrainControlEdits(edits));
+  iggy3d::ProductMapMakerGridSnapshot grid;
+  CreativeEditorSceneCache cache;
+  const bool refreshed = refreshCreativeEditorSceneCache(
+      cache, appState.facade.document(), grid);
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(cache.preview.scene.room);
+  return expect(refreshed && cache.terrainSurfacePatches.empty() &&
+                    !cache.terrainCuboids.empty(),
+                "over-budget bent plan retains stepped fallback data") &&
+         expect(geometry.ready && geometry.roomFloorDrawCount > 1U,
+                "renderer draws terrain fallback planes instead of dropping it");
+}
+
+bool denseRoomGeometryFallsBackBeforePatchVertexOverflow() {
+  iggy3d::SceneRoomProjection room;
+  constexpr std::size_t floorCount = 800U;
+  room.meshes.reserve(floorCount + 1U);
+  for (std::size_t index = 0U; index < floorCount; ++index) {
+    iggy3d::SceneRoomMeshItem floor;
+    floor.id = "terrain_budget_floor_" + std::to_string(index);
+    floor.role = "floor";
+    floor.position = {static_cast<float>(index * 2U), 0.0F, 0.0F};
+    floor.size = {1.0F, 0.1F, 1.0F};
+    room.meshes.push_back(std::move(floor));
+  }
+  iggy3d::SceneRoomMeshItem fallback;
+  fallback.id = "terrain_budget_fallback";
+  fallback.role = "terrain";
+  fallback.position = {0.0F, 2.0F, 2.0F};
+  fallback.size = {1.0F, 4.0F, 1.0F};
+  room.meshes.push_back(std::move(fallback));
+
+  const iggy3d::SceneRoomSurfacePatchItem patch{
+      "terrain",
+      {0.5F, 4.0F, 0.5F},
+      {{{0.0F, 4.0F, 0.0F},
+        {1.0F, 4.0F, 0.0F},
+        {1.0F, 4.0F, 1.0F},
+        {0.0F, 4.0F, 1.0F}}}};
+  room.surfacePatches.assign(cr::kCreativeTerrainRenderPatchCapacity, patch);
+
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(room);
+  return expect(geometry.ready &&
+                    geometry.vertices.size() < room.surfacePatches.size() * 5U,
+                "dense room falls back instead of partially appending patches") &&
+         expect(geometry.roomFloorDrawCount == floorCount + 1U,
+                "fallback preserves the room floors and terrain plane");
+}
+
+bool bentSurfacePatchesParticipateInFrustumCulling() {
+  iggy3d::SceneProjectionResult scene;
+  scene.room.loaded = true;
+  scene.room.surfacePatches = {
+      {"terrain",
+       {0.0F, 0.0F, 0.5F},
+       {{{-0.25F, 0.0F, 0.25F},
+         {0.25F, 0.0F, 0.25F},
+         {0.25F, 0.0F, 0.75F},
+         {-0.25F, 0.0F, 0.75F}}}},
+      {"terrain",
+       {10.5F, 0.0F, 0.5F},
+       {{{10.0F, 0.0F, 0.25F},
+         {11.0F, 0.0F, 0.25F},
+         {11.0F, 0.0F, 0.75F},
+         {10.0F, 0.0F, 0.75F}}}},
+  };
+  const StandaloneFrustumCullResult culled =
+      cullStandaloneSceneRoomMeshesByFrustum(scene, iggy3d::identityMat4());
+  return expect(culled.receipt.inputSurfacePatchCount == 2U &&
+                    culled.receipt.keptSurfacePatchCount == 1U &&
+                    culled.receipt.culledSurfacePatchCount == 1U,
+                "frustum pass accounts for bent terrain patches") &&
+         expect(culled.scene.room.surfacePatches.size() == 1U &&
+                    culled.scene.room.loaded &&
+                    culled.scene.room.floorVisible,
+                "visible terrain patch keeps room loaded and floor-visible");
+}
+
 }  // namespace
 
 int main() {
   return quickEditOwnsHeightAndRadiusWithoutNewBindings() &&
                  editSampleRemoveAndUndoUseDocumentTruth() &&
-                 derivedSurfaceAndGuidesUseRevisionCaching()
+                 derivedSurfaceAndGuidesUseRevisionCaching() &&
+                 semanticActionsRouteSelectionCommitCancelAndRemoval() &&
+                 bentSurfacePatchesReachRendererAndRefreshWithHeight() &&
+                 gridChangeRebuildsWorldSpaceTerrainPatches() &&
+                 oversizedBentSurfaceFallsBackToTerrainPlanes() &&
+                 denseRoomGeometryFallsBackBeforePatchVertexOverflow() &&
+                 bentSurfacePatchesParticipateInFrustumCulling()
              ? 0
              : 1;
 }

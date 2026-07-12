@@ -1,5 +1,6 @@
 #include "EditorFrustumCull.hpp"
 
+#include <algorithm>
 #include <utility>
 #include <vector>
 
@@ -22,17 +23,41 @@ iggy3d::Aabb3 meshAabb(const iggy3d::SceneRoomMeshItem& mesh) {
                            mesh.position + halfSize);
 }
 
+bool surfacePatchAabb(const iggy3d::SceneRoomSurfacePatchItem& patch,
+                      iggy3d::Aabb3& bounds) {
+  iggy3d::Vec3 minimum = patch.center;
+  iggy3d::Vec3 maximum = patch.center;
+  if (!iggy3d::isFinite(minimum)) {
+    return false;
+  }
+  for (const iggy3d::Vec3 corner : patch.corners) {
+    if (!iggy3d::isFinite(corner)) {
+      return false;
+    }
+    minimum.x = std::min(minimum.x, corner.x);
+    minimum.y = std::min(minimum.y, corner.y);
+    minimum.z = std::min(minimum.z, corner.z);
+    maximum.x = std::max(maximum.x, corner.x);
+    maximum.y = std::max(maximum.y, corner.y);
+    maximum.z = std::max(maximum.z, corner.z);
+  }
+  bounds = iggy3d::makeAabb3(minimum, maximum);
+  return iggy3d::isValid(bounds);
+}
+
 void refreshRoomRoleVisibility(iggy3d::SceneRoomProjection& room) {
   room.floorVisible = false;
   room.wallVisible = false;
   room.openingVisible = false;
   room.propVisible = false;
   for (const iggy3d::SceneRoomMeshItem& mesh : room.meshes) {
-    room.floorVisible = room.floorVisible || mesh.role == "floor";
+    room.floorVisible = room.floorVisible || mesh.role == "floor" ||
+                        mesh.role == "terrain";
     room.wallVisible = room.wallVisible || mesh.role == "wall";
     room.openingVisible = room.openingVisible || mesh.role == "opening";
     room.propVisible = room.propVisible || mesh.role == "prop";
   }
+  room.floorVisible = room.floorVisible || !room.surfacePatches.empty();
 }
 
 }  // namespace
@@ -44,6 +69,7 @@ StandaloneFrustumCullResult cullStandaloneSceneRoomMeshesByFrustum(
   result.scene = scene;
   result.receipt.requested = true;
   result.receipt.inputRoomMeshCount = scene.room.meshes.size();
+  result.receipt.inputSurfacePatchCount = scene.room.surfacePatches.size();
 
   const iggy3d::FrustumPlanes planes = iggy3d::frustumPlanesFromClip(
       clipFromWorld, iggy3d::ClipDepthRange::ZeroToOne);
@@ -68,9 +94,30 @@ StandaloneFrustumCullResult cullStandaloneSceneRoomMeshesByFrustum(
   }
 
   result.scene.room.meshes = std::move(keptMeshes);
+  std::vector<iggy3d::SceneRoomSurfacePatchItem> keptPatches;
+  keptPatches.reserve(scene.room.surfacePatches.size());
+  for (const iggy3d::SceneRoomSurfacePatchItem& patch :
+       scene.room.surfacePatches) {
+    iggy3d::Aabb3 bounds;
+    if (!surfacePatchAabb(patch, bounds)) {
+      keptPatches.push_back(patch);
+      ++result.receipt.keptSurfacePatchCount;
+      ++result.receipt.conservativelyKeptSurfacePatchCount;
+      continue;
+    }
+    if (iggy3d::aabbInFrustum(planes, bounds)) {
+      keptPatches.push_back(patch);
+      ++result.receipt.keptSurfacePatchCount;
+      continue;
+    }
+    ++result.receipt.culledSurfacePatchCount;
+  }
+  result.scene.room.surfacePatches = std::move(keptPatches);
   result.scene.room.staticMeshCount = result.scene.room.meshes.size();
   result.scene.room.loaded =
-      result.scene.room.loaded && !result.scene.room.meshes.empty();
+      result.scene.room.loaded &&
+      (!result.scene.room.meshes.empty() ||
+       !result.scene.room.surfacePatches.empty());
   refreshRoomRoleVisibility(result.scene.room);
   result.receipt.applied = true;
   return result;
