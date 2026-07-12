@@ -523,12 +523,14 @@ CreativeDuplicateCommandReceipt Facade::duplicateSelectedObjects(
   }
 
   std::vector<TargetRef> duplicateTargets;
-  duplicateTargets.reserve(receipt.duplicatedObjectIds.size());
-  for (CreativeObjectId objectId : receipt.duplicatedObjectIds) {
+  duplicateTargets.reserve(receipt.duplicatedSelectionObjectIds.size());
+  for (CreativeObjectId objectId : receipt.duplicatedSelectionObjectIds) {
     const TargetRef target = objectIdToTargetRef(objectId);
     if (target.value != kInvalidId) {
       duplicateTargets.push_back(target);
     }
+  }
+  for (CreativeObjectId objectId : receipt.duplicatedObjectIds) {
     recordObjectCreated(stats_);
     const CreativeObject* object = document_.findObject(objectId);
     if (object != nullptr && object->kind == CreativeObjectKind::Room) {
@@ -545,14 +547,87 @@ CreativeDuplicateCommandReceipt Facade::duplicateSelectedObjects(
   return receipt;
 }
 
+CreativeGroupCommandReceipt Facade::groupSelectedObjects() {
+  recordCommandAttempt(stats_);
+  const std::vector<CreativeObjectId> objectIds =
+      selectedObjectIds(selectionState_);
+  CreativeGroupCommandReceipt receipt =
+      groupDocumentObjectsAtomically(document_, objectIds);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  std::vector<TargetRef> targets;
+  targets.reserve(receipt.selectionObjectIds.size());
+  for (CreativeObjectId objectId : receipt.selectionObjectIds) {
+    const TargetRef target = objectIdToTargetRef(objectId);
+    if (target.value != kInvalidId) {
+      targets.push_back(target);
+    }
+  }
+  const TargetRef primary = targets.empty() ? TargetRef{} : targets.back();
+  static_cast<void>(setSelectedTargets(selectionState_, targets, primary));
+  state_.selected = selectionState_.selectedTarget;
+  recordObjectCreated(stats_);
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
+CreativeGroupCommandReceipt Facade::ungroupSelectedObject() {
+  CreativeObjectId groupObjectId = kInvalidObjectId;
+  if (!targetRefToObjectId(selectionState_.selectedTarget, groupObjectId)) {
+    recordCommandAttempt(stats_);
+    CreativeGroupCommandReceipt receipt;
+    receipt.requested = true;
+    receipt.kind = CreativeGroupCommandKind::Ungroup;
+    receipt.status = CreativeGroupCommandStatus::EmptySelection;
+    receipt.revisionBefore = document_.revision();
+    receipt.revisionAfter = receipt.revisionBefore;
+    receipt.reasonCode = "creative_ungroup_selection_empty";
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  return ungroupObject(groupObjectId);
+}
+
+CreativeGroupCommandReceipt Facade::ungroupObject(
+    CreativeObjectId groupObjectId) {
+  recordCommandAttempt(stats_);
+  CreativeGroupCommandReceipt receipt =
+      ungroupDocumentObjectAtomically(document_, groupObjectId);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  std::vector<TargetRef> targets;
+  targets.reserve(receipt.selectionObjectIds.size());
+  for (CreativeObjectId objectId : receipt.selectionObjectIds) {
+    const TargetRef target = objectIdToTargetRef(objectId);
+    if (target.value != kInvalidId) {
+      targets.push_back(target);
+    }
+  }
+  const TargetRef primary = targets.empty() ? TargetRef{} : targets.back();
+  static_cast<void>(setSelectedTargets(selectionState_, targets, primary));
+  state_.selected = selectionState_.selectedTarget;
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
 CreativeLinearArrayReceipt Facade::createLinearArrayFromSelection(
     const CreativeLinearArrayRequest& request) {
   recordCommandAttempt(stats_);
   const std::vector<CreativeObjectId> objectIds =
       selectedObjectIds(selectionState_);
-  if (!objectIds.empty()) {
+  const CreativeHierarchySelection hierarchy =
+      resolveCreativeObjectHierarchy(document_, objectIds);
+  const std::span<const CreativeObjectId> sourceObjectIds =
+      hierarchy.accepted
+          ? std::span<const CreativeObjectId>{hierarchy.objectIds}
+          : std::span<const CreativeObjectId>{objectIds};
+  if (!sourceObjectIds.empty()) {
     CreativeLinearArrayPlanRequest planRequest;
-    planRequest.sourceObjectCount = objectIds.size();
+    planRequest.sourceObjectCount = sourceObjectIds.size();
     planRequest.direction = request.direction;
     planRequest.copyCount = request.copyCount;
     planRequest.spacing = request.spacing;
@@ -568,7 +643,7 @@ CreativeLinearArrayReceipt Facade::createLinearArrayFromSelection(
         CreativeLinearArrayReceipt receipt;
         receipt.requested = true;
         receipt.requestedObjectCount = objectIds.size();
-        receipt.sourceObjectCount = objectIds.size();
+        receipt.sourceObjectCount = sourceObjectIds.size();
         receipt.generatedObjectCount = plan.generatedObjectCount;
         receipt.status = CreativeLinearArrayStatus::ObjectIdExhausted;
         receipt.revisionBefore = document_.revision();
@@ -582,7 +657,7 @@ CreativeLinearArrayReceipt Facade::createLinearArrayFromSelection(
   }
 
   CreativeLinearArrayReceipt receipt =
-      createCreativeLinearArrayAtomically(document_, objectIds, request);
+      createCreativeLinearArrayAtomically(document_, sourceObjectIds, request);
   if (!receipt.accepted) {
     recordCommandFailure(stats_);
     return receipt;
@@ -597,8 +672,15 @@ CreativeLinearArrayReceipt Facade::createLinearArrayFromSelection(
   }
 
   std::vector<TargetRef> finalCopyTargets;
-  finalCopyTargets.reserve(receipt.finalCopyObjectCount);
-  for (CreativeObjectId objectId : receipt.finalCopyObjectIds()) {
+  const CreativeHierarchySelection finalCopyHierarchy =
+      resolveCreativeObjectHierarchy(document_, receipt.finalCopyObjectIds());
+  const std::span<const CreativeObjectId> finalCopySelectionIds =
+      finalCopyHierarchy.accepted
+          ? std::span<const CreativeObjectId>{
+                finalCopyHierarchy.rootObjectIds}
+          : receipt.finalCopyObjectIds();
+  finalCopyTargets.reserve(finalCopySelectionIds.size());
+  for (CreativeObjectId objectId : finalCopySelectionIds) {
     const TargetRef target = objectIdToTargetRef(objectId);
     if (target.value != kInvalidId) {
       finalCopyTargets.push_back(target);
@@ -619,9 +701,15 @@ CreativeRadialArrayReceipt Facade::createRadialArrayFromSelection(
   recordCommandAttempt(stats_);
   const std::vector<CreativeObjectId> objectIds =
       selectedObjectIds(selectionState_);
-  if (!objectIds.empty()) {
+  const CreativeHierarchySelection hierarchy =
+      resolveCreativeObjectHierarchy(document_, objectIds);
+  const std::span<const CreativeObjectId> sourceObjectIds =
+      hierarchy.accepted
+          ? std::span<const CreativeObjectId>{hierarchy.objectIds}
+          : std::span<const CreativeObjectId>{objectIds};
+  if (!sourceObjectIds.empty()) {
     CreativeRadialArrayPlanRequest planRequest;
-    planRequest.sourceObjectCount = objectIds.size();
+    planRequest.sourceObjectCount = sourceObjectIds.size();
     planRequest.pivot = request.pivot;
     planRequest.axis = request.axis;
     planRequest.instanceCount = request.instanceCount;
@@ -637,7 +725,7 @@ CreativeRadialArrayReceipt Facade::createRadialArrayFromSelection(
         CreativeRadialArrayReceipt receipt;
         receipt.requested = true;
         receipt.requestedObjectCount = objectIds.size();
-        receipt.sourceObjectCount = objectIds.size();
+        receipt.sourceObjectCount = sourceObjectIds.size();
         receipt.generatedObjectCount = plan.generatedObjectCount;
         receipt.status = CreativeRadialArrayStatus::ObjectIdExhausted;
         receipt.revisionBefore = document_.revision();
@@ -651,7 +739,7 @@ CreativeRadialArrayReceipt Facade::createRadialArrayFromSelection(
   }
 
   CreativeRadialArrayReceipt receipt =
-      createCreativeRadialArrayAtomically(document_, objectIds, request);
+      createCreativeRadialArrayAtomically(document_, sourceObjectIds, request);
   if (!receipt.accepted) {
     recordCommandFailure(stats_);
     return receipt;
@@ -666,8 +754,15 @@ CreativeRadialArrayReceipt Facade::createRadialArrayFromSelection(
   }
 
   std::vector<TargetRef> finalCopyTargets;
-  finalCopyTargets.reserve(receipt.finalCopyObjectCount);
-  for (CreativeObjectId objectId : receipt.finalCopyObjectIds()) {
+  const CreativeHierarchySelection finalCopyHierarchy =
+      resolveCreativeObjectHierarchy(document_, receipt.finalCopyObjectIds());
+  const std::span<const CreativeObjectId> finalCopySelectionIds =
+      finalCopyHierarchy.accepted
+          ? std::span<const CreativeObjectId>{
+                finalCopyHierarchy.rootObjectIds}
+          : receipt.finalCopyObjectIds();
+  finalCopyTargets.reserve(finalCopySelectionIds.size());
+  for (CreativeObjectId objectId : finalCopySelectionIds) {
     const TargetRef target = objectIdToTargetRef(objectId);
     if (target.value != kInvalidId) {
       finalCopyTargets.push_back(target);
@@ -688,8 +783,11 @@ CreativeClipboardCopyReceipt Facade::copySelectedObjectsToClipboard(
   recordCommandAttempt(stats_);
   const std::vector<CreativeObjectId> objectIds =
       selectedObjectIds(selectionState_);
+  const CreativeHierarchySelection hierarchy =
+      resolveCreativeObjectHierarchy(document_, objectIds);
   CreativeClipboardCopyReceipt receipt = copyDocumentObjectsToClipboard(
-      document_, objectIds, outClipboard);
+      document_, hierarchy.accepted ? hierarchy.objectIds : objectIds,
+      outClipboard);
   if (!receipt.accepted) {
     recordCommandFailure(stats_);
     return receipt;
@@ -703,13 +801,19 @@ CreativeClipboardCutReceipt Facade::cutSelectedObjectsToClipboard(
   recordCommandAttempt(stats_);
   const std::vector<CreativeObjectId> objectIds =
       selectedObjectIds(selectionState_);
-  CreativeClipboardCutReceipt receipt = cutDocumentObjectsAtomically(
-      document_, objectIds, outClipboard);
+  const CreativeHierarchySelection hierarchy =
+      resolveCreativeObjectHierarchy(document_, objectIds);
+  const std::span<const CreativeObjectId> cutIds =
+      hierarchy.accepted
+          ? std::span<const CreativeObjectId>{hierarchy.objectIds}
+          : std::span<const CreativeObjectId>{objectIds};
+  CreativeClipboardCutReceipt receipt =
+      cutDocumentObjectsAtomically(document_, cutIds, outClipboard);
   if (!receipt.accepted) {
     recordCommandFailure(stats_);
     return receipt;
   }
-  for (CreativeObjectId objectId : objectIds) {
+  for (CreativeObjectId objectId : cutIds) {
     invalidateRemovedObjectEditorState(objectId, state_, toolState_,
                                        selectionState_, measurementState_,
                                        ghostState_);
@@ -730,12 +834,20 @@ CreativeClipboardPasteReceipt Facade::pasteClipboard(
   }
 
   std::vector<TargetRef> pastedTargets;
-  pastedTargets.reserve(receipt.pastedObjectIds.size());
-  for (CreativeObjectId objectId : receipt.pastedObjectIds) {
+  const CreativeHierarchySelection pastedHierarchy =
+      resolveCreativeObjectHierarchy(document_, receipt.pastedObjectIds);
+  const std::span<const CreativeObjectId> pastedSelectionIds =
+      pastedHierarchy.accepted
+          ? std::span<const CreativeObjectId>{pastedHierarchy.rootObjectIds}
+          : std::span<const CreativeObjectId>{receipt.pastedObjectIds};
+  pastedTargets.reserve(pastedSelectionIds.size());
+  for (CreativeObjectId objectId : pastedSelectionIds) {
     const TargetRef target = objectIdToTargetRef(objectId);
     if (target.value != kInvalidId) {
       pastedTargets.push_back(target);
     }
+  }
+  for (CreativeObjectId objectId : receipt.pastedObjectIds) {
     recordObjectCreated(stats_);
     const CreativeObject* object = document_.findObject(objectId);
     if (object != nullptr && object->kind == CreativeObjectKind::Room) {
@@ -855,6 +967,38 @@ CreativeDocumentCreateReceipt Facade::createDocumentObject(
 CreativeDocumentRemoveReceipt Facade::removeDocumentObject(
     const CreativeDocumentRemoveRequest& request) {
   recordCommandAttempt(stats_);
+  const CreativeObject* requestedObject =
+      document_.findObject(request.objectId);
+  if (requestedObject != nullptr &&
+      requestedObject->kind == CreativeObjectKind::Group) {
+    CreativeHierarchyRemoveReceipt hierarchy =
+        removeCreativeObjectHierarchyAtomically(document_, request.objectId);
+    if (!hierarchy.accepted) {
+      CreativeDocumentRemoveReceipt rejected;
+      rejected.requested = true;
+      rejected.objectId = request.objectId;
+      rejected.objectKind = requestedObject->kind;
+      rejected.objectName = requestedObject->name;
+      rejected.revisionBefore = hierarchy.revisionBefore;
+      rejected.revisionAfter = hierarchy.revisionAfter;
+      const CreativeObject* failedObject =
+          document_.findObject(hierarchy.failedObjectId);
+      rejected.status = failedObject != nullptr && failedObject->locked
+                            ? CreativeDocumentRemoveStatus::LockedObject
+                            : CreativeDocumentRemoveStatus::ParentHasChildren;
+      rejected.message = hierarchy.reasonCode;
+      rejected.reasonCode = hierarchy.reasonCode;
+      recordCommandFailure(stats_);
+      return rejected;
+    }
+    for (CreativeObjectId objectId : hierarchy.removedObjectIds) {
+      invalidateRemovedObjectEditorState(objectId, state_, toolState_,
+                                         selectionState_, measurementState_,
+                                         ghostState_);
+    }
+    recordCommandSuccess(stats_);
+    return hierarchy.rootReceipt;
+  }
   CreativeDocumentRemoveReceipt receipt = document_.removeDocumentObject(request);
   if (!receipt.accepted || !receipt.objectRemoved) {
     recordCommandFailure(stats_);

@@ -70,6 +70,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/tools/Tools.cpp
     src/app/iggy3d/creative/tools/Select.cpp
     src/app/iggy3d/creative/tools/Clipboard.cpp
+    src/app/iggy3d/creative/tools/Group.cpp
     src/app/iggy3d/creative/tools/Transform.cpp
     src/app/iggy3d/creative/tools/SelectionPlacement.cpp
     src/app/iggy3d/creative/tools/Pattern.cpp
@@ -223,6 +224,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorFrame.cpp
   apps/iggy3d_creative/EditorGamepad.cpp
   apps/iggy3d_creative/EditorGizmo.cpp
+  apps/iggy3d_creative/EditorGroup.cpp
   apps/iggy3d_creative/EditorInteraction.cpp
   apps/iggy3d_creative/EditorConnectedFill.cpp
   apps/iggy3d_creative/EditorSurfaceExtrude.cpp

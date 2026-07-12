@@ -9,6 +9,7 @@
 #include "EditorFrame.hpp"
 #include "EditorConnectedFill.hpp"
 #include "EditorGizmo.hpp"
+#include "EditorGroup.hpp"
 #include "EditorPattern.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "EditorState.hpp"
@@ -100,6 +101,8 @@ constexpr std::array kHeldItemBehaviors{
                      cr::Tool::Select, false, false},
     HeldItemBehavior{cr::CreativeHeldItemKind::TerrainRegion,
                      cr::Tool::Select, false, true},
+    HeldItemBehavior{cr::CreativeHeldItemKind::ObjectGroup,
+                     cr::Tool::Select, false, false},
 };
 static_assert(heldItemRowsMatchEnumOrder(kHeldItemBehaviors));
 
@@ -527,6 +530,18 @@ void cancelTerrainRegion(InteractionContext& context) {
       cancelCreativeEditorTerrainRegion(context.request.editor));
 }
 
+void applyObjectGroup(InteractionContext& context) {
+  if (cr::selectedTargetCount(
+          context.request.appState.facade.selectionState()) == 0U &&
+      context.request.editor.interaction.target.objectHit) {
+    static_cast<void>(context.request.appState.facade.dispatchToolInput(
+        selectionPacket(context.request.editor.interaction.target,
+                        cr::kCreativeToolModifierNone)));
+  }
+  static_cast<void>(applyCreativeEditorGroupCommandWithHistory(
+      context.request.appState, "creative_group_world_action"));
+}
+
 constexpr std::array<HeldItemHandlerRow, cr::kCreativeHeldItemKindCount>
     kHeldItemHandlers{{
         {cr::CreativeHeldItemKind::Material,
@@ -594,6 +609,9 @@ constexpr std::array<HeldItemHandlerRow, cr::kCreativeHeldItemKindCount>
          {cancelTerrainRegion, advanceTerrainRegion,
           sampleTerrainRegionHeight},
          advanceTerrainRegion, cancelTerrainRegion, true},
+        {cr::CreativeHeldItemKind::ObjectGroup,
+         {selectObject, applyObjectGroup, noInteraction},
+         applyObjectGroup, noInteraction},
     }};
 static_assert(heldItemRowsMatchEnumOrder(kHeldItemHandlers));
 
@@ -730,6 +748,16 @@ HeldItemCommandResult confirmVolumeCommand(
   return {true, receipt.accepted};
 }
 
+HeldItemCommandResult confirmGroupCommand(
+    cr::CreativeHeldItemKind,
+    cr::CreativeAppState& appState,
+    CreativeEditorState&,
+    std::string_view source) {
+  const cr::CreativeGroupCommandReceipt receipt =
+      applyCreativeEditorGroupCommandWithHistory(appState, source);
+  return {true, receipt.accepted && receipt.changed};
+}
+
 HeldItemCommandResult cancelTerrainControlCommand(
     cr::CreativeAppState& appState,
     CreativeEditorState& editor) {
@@ -807,6 +835,7 @@ constexpr std::array<HeldItemCommandRow, cr::kCreativeHeldItemKindCount>
          confirmTerrainPathCommand, cancelTerrainPathCommand},
         {cr::CreativeHeldItemKind::TerrainRegion,
          confirmTerrainRegionCommand, cancelTerrainRegionCommand},
+        {cr::CreativeHeldItemKind::ObjectGroup, confirmGroupCommand},
     }};
 static_assert(heldItemRowsMatchEnumOrder(kHeldItemCommands));
 
@@ -848,10 +877,34 @@ void processMoveInteraction(
   }
 
   if (pressed && editor.interaction.target.objectHit) {
-    editor.interaction.moveTargetId = editor.interaction.target.objectId;
+    std::vector<cr::CreativeObjectId> selectedObjectIds;
+    const cr::CreativeSelectionState& selection =
+        request.appState.facade.selectionState();
+    const std::span<const cr::TargetRef> selectedTargets =
+        cr::selectedTargetList(selection);
+    selectedObjectIds.reserve(selectedTargets.empty()
+                                  ? 1U
+                                  : selectedTargets.size());
+    for (cr::TargetRef target : selectedTargets) {
+      if (target.value != cr::kInvalidId) {
+        selectedObjectIds.push_back(
+            static_cast<cr::CreativeObjectId>(target.value));
+      }
+    }
+    if (selectedObjectIds.empty() &&
+        selection.selectedTarget.value != cr::kInvalidId) {
+      selectedObjectIds.push_back(static_cast<cr::CreativeObjectId>(
+          selection.selectedTarget.value));
+    }
+    editor.interaction.moveTargetId =
+        cr::resolveCreativeHierarchyInteractionRoot(
+            request.appState.facade.document(), selectedObjectIds,
+            editor.interaction.target.objectId);
+    CreativeEditorWorldTarget moveTarget = editor.interaction.target;
+    moveTarget.objectId = editor.interaction.moveTargetId;
     static_cast<void>(request.appState.facade.setActiveTool(cr::Tool::Move));
     static_cast<void>(request.appState.facade.dispatchToolInput(
-        selectionPacket(editor.interaction.target,
+        selectionPacket(moveTarget,
                         cr::kCreativeToolModifierNone)));
   }
 
@@ -1006,6 +1059,7 @@ void refreshHeldItemPreview(
     case cr::CreativeHeldItemKind::TerrainProfile:
     case cr::CreativeHeldItemKind::TerrainPath:
     case cr::CreativeHeldItemKind::TerrainRegion:
+    case cr::CreativeHeldItemKind::ObjectGroup:
     case cr::CreativeHeldItemKind::Count:
       break;
   }
@@ -1061,6 +1115,7 @@ void refreshHeldItemPreview(
     case cr::CreativeHeldItemKind::TerrainPaint:
     case cr::CreativeHeldItemKind::TerrainGrade:
     case cr::CreativeHeldItemKind::TerrainSculpt:
+    case cr::CreativeHeldItemKind::ObjectGroup:
     case cr::CreativeHeldItemKind::Count:
       return;
   }
@@ -1687,6 +1742,7 @@ double creativeEditorTargetCellSize(
     case cr::CreativeHeldItemKind::ObjectSelect:
     case cr::CreativeHeldItemKind::ObjectMove:
     case cr::CreativeHeldItemKind::LinearArray:
+    case cr::CreativeHeldItemKind::ObjectGroup:
     case cr::CreativeHeldItemKind::Count:
       return editor.placeCellSize;
   }
@@ -1776,6 +1832,7 @@ std::string creativeEditorHeldItemStatusLabel(
     case cr::CreativeHeldItemKind::VolumeSelect:
     case cr::CreativeHeldItemKind::VolumeErase:
     case cr::CreativeHeldItemKind::VolumeClone:
+    case cr::CreativeHeldItemKind::ObjectGroup:
     case cr::CreativeHeldItemKind::Count:
       appendHeldQuickEditStatus(output, editor);
       break;

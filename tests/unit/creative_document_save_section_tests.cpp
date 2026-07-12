@@ -636,8 +636,8 @@ bool restoreRejectsUnsupportedParentPayload() {
   if (section.objects.size() < 2U) {
     return expect(false, "unsupported parent setup object count");
   }
-  section.objects[1].kind = "Crate";
-  section.objects[1].name = "Unsupported Parented Crate";
+  section.objects[1].kind = "Room";
+  section.objects[1].name = "Unsupported Parented Room";
 
   const iggy3d::ProductCreativeDocumentSectionRestoreResult result =
       iggy3d::restoreCreativeDocumentFromSaveSection(section);

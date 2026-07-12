@@ -674,6 +674,17 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
               "array ribbon prioritizes apply and quick-edit controls") &&
        ok;
 
+  setHeld(editor, cr::CreativeHeldItemKind::ObjectGroup);
+  const cr::CreativeActionHintFrame group = resolveCreativeEditorActionHints(
+      editor, cr::CreativeInputContext::EditorViewport,
+      cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* groupAction =
+      findHint(group, cr::CreativeInputActionId::AcceptAction);
+  ok = expect(groupAction != nullptr && groupAction->chord.view() == "X" &&
+                  groupAction->label.view() == "Group / ungroup",
+              "group tool exposes one contextual PS5 X command") &&
+       ok;
+
   const cr::CreativeActionHintFrame transform =
       resolveCreativeEditorActionHints(
           editor, cr::CreativeInputContext::TransformPreview,

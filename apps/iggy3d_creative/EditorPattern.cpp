@@ -13,11 +13,34 @@
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/tools/Group.hpp"
 #include "app/iggy3d/creative/tools/Select.hpp"
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 namespace {
+
+[[nodiscard]] std::vector<cr::CreativeObjectId>
+selectedHierarchyObjectIds(const cr::CreativeAppState& appState) {
+  const cr::CreativeSelectionState& selection =
+      appState.facade.selectionState();
+  const std::span<const cr::TargetRef> targets =
+      cr::selectedTargetList(selection);
+  std::vector<cr::CreativeObjectId> selected;
+  selected.reserve(targets.empty() ? 1U : targets.size());
+  for (cr::TargetRef target : targets) {
+    if (target.value != cr::kInvalidId) {
+      selected.push_back(static_cast<cr::CreativeObjectId>(target.value));
+    }
+  }
+  if (selected.empty() && selection.selectedTarget.value != cr::kInvalidId) {
+    selected.push_back(static_cast<cr::CreativeObjectId>(
+        selection.selectedTarget.value));
+  }
+  const cr::CreativeHierarchySelection hierarchy =
+      cr::resolveCreativeObjectHierarchy(appState.facade.document(), selected);
+  return hierarchy.accepted ? hierarchy.objectIds : selected;
+}
 
 [[nodiscard]] iggy3d::Vec3 rotateAroundPivot(
     iggy3d::Vec3 point,
@@ -231,16 +254,9 @@ std::size_t appendCreativeEditorLinearArrayPreview(
     return 0U;
   }
 
-  const std::span<const cr::TargetRef> selected =
-      cr::selectedTargetList(appState.facade.selectionState());
-  std::uint64_t sourceObjectCount = 0U;
-  for (cr::TargetRef target : selected) {
-    if (target.value != cr::kInvalidId &&
-        appState.facade.findObject(
-            static_cast<cr::CreativeObjectId>(target.value)) != nullptr) {
-      ++sourceObjectCount;
-    }
-  }
+  const std::vector<cr::CreativeObjectId> selected =
+      selectedHierarchyObjectIds(appState);
+  const std::uint64_t sourceObjectCount = selected.size();
 
   const cr::CreativeLinearArrayRequest request =
       creativeEditorLinearArrayRequest(editor.toolSettings,
@@ -267,12 +283,9 @@ std::size_t appendCreativeEditorLinearArrayPreview(
     if (!offset.converted) {
       continue;
     }
-    for (cr::TargetRef target : selected) {
-      if (target.value == cr::kInvalidId) {
-        continue;
-      }
-      const cr::CreativeObject* object = appState.facade.findObject(
-          static_cast<cr::CreativeObjectId>(target.value));
+    for (cr::CreativeObjectId objectId : selected) {
+      const cr::CreativeObject* object =
+          appState.facade.findObject(objectId);
       if (object == nullptr) {
         continue;
       }
@@ -305,20 +318,15 @@ std::size_t appendCreativeEditorRadialArrayPreview(
     return 0U;
   }
 
-  const std::span<const cr::TargetRef> selected =
-      cr::selectedTargetList(appState.facade.selectionState());
-  std::uint64_t sourceObjectCount = 0U;
+  const std::vector<cr::CreativeObjectId> selected =
+      selectedHierarchyObjectIds(appState);
+  const std::uint64_t sourceObjectCount = selected.size();
   cr::CreativeObjectWorldExtent selectionExtent;
-  for (cr::TargetRef target : selected) {
-    if (target.value == cr::kInvalidId) {
-      continue;
-    }
-    const cr::CreativeObject* object = appState.facade.findObject(
-        static_cast<cr::CreativeObjectId>(target.value));
+  for (cr::CreativeObjectId objectId : selected) {
+    const cr::CreativeObject* object = appState.facade.findObject(objectId);
     if (object == nullptr) {
       continue;
     }
-    ++sourceObjectCount;
     const cr::CreativeObjectWorldExtent objectExtent =
         cr::resolveCreativeObjectWorldExtent(*object);
     if (!objectExtent.valid) {
@@ -371,12 +379,8 @@ std::size_t appendCreativeEditorRadialArrayPreview(
   const std::size_t before = wireLines.size();
   for (const cr::CreativeRadialArrayInstance& instance :
        plan.plannedInstances()) {
-    for (cr::TargetRef target : selected) {
-      if (target.value == cr::kInvalidId) {
-        continue;
-      }
-      const cr::CreativeObject* object = appState.facade.findObject(
-          static_cast<cr::CreativeObjectId>(target.value));
+    for (cr::CreativeObjectId objectId : selected) {
+      const cr::CreativeObject* object = appState.facade.findObject(objectId);
       if (object == nullptr) {
         continue;
       }

@@ -611,20 +611,21 @@ bool representativeDescriptorsPinCapabilityFacts() {
          expect(!wall.isEditorOnly, "wall not editor-only") &&
          expect(crate.hasTransform, "crate has transform") &&
          expect(crate.hasBounds, "crate has bounds") &&
-         expect(!crate.canHaveParent, "crate cannot have parent") &&
+         expect(crate.canHaveParent, "crate can join transform groups") &&
          expect(!crate.canOwnChildren, "crate cannot own children") &&
          expect(!crate.isRuntimeMeaningful, "crate not runtime meaningful") &&
          expect(!crate.isEditorOnly, "crate not editor-only") &&
          expect(pointLight.hasTransform, "point light has transform") &&
          expect(!pointLight.hasBounds, "point light has no bounds") &&
-         expect(!pointLight.canHaveParent, "point light cannot have parent") &&
+         expect(pointLight.canHaveParent,
+                "point light can join transform groups") &&
          expect(!pointLight.canOwnChildren, "point light cannot own children") &&
          expect(!pointLight.isRuntimeMeaningful,
                 "point light not runtime meaningful") &&
          expect(!pointLight.isEditorOnly, "point light not editor-only") &&
          expect(note.hasTransform, "note has transform") &&
          expect(!note.hasBounds, "note has no bounds") &&
-         expect(!note.canHaveParent, "note cannot have parent") &&
+         expect(note.canHaveParent, "note can join transform groups") &&
          expect(!note.canOwnChildren, "note cannot own children") &&
          expect(!note.isRuntimeMeaningful, "note not runtime meaningful") &&
          expect(note.isEditorOnly, "note editor-only") &&
@@ -657,7 +658,8 @@ bool representativeDescriptorsPinCapabilityFacts() {
          expect(!prefab.isEditorOnly, "prefab not editor-only") &&
          expect(testLane.hasTransform, "test lane has transform") &&
          expect(testLane.hasBounds, "test lane has bounds") &&
-         expect(!testLane.canHaveParent, "test lane cannot have parent") &&
+         expect(testLane.canHaveParent,
+                "test lane can join transform groups") &&
          expect(testLane.canOwnChildren, "test lane can own children") &&
          expect(!testLane.isRuntimeMeaningful,
                 "test lane not runtime meaningful") &&

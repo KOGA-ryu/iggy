@@ -189,7 +189,10 @@ constexpr CreativeObjectDescriptor descriptor(
         defaults,
         hasCapability(capabilities, kHasTransform),
         hasCapability(capabilities, kHasBounds),
-        hasCapability(capabilities, kCanHaveParent),
+        // Every transform-bearing authored object can participate in a Group.
+        // Explicit kCanHaveParent remains meaningful for non-transform owners.
+        hasCapability(capabilities, kCanHaveParent) ||
+            hasCapability(capabilities, kHasTransform),
         hasCapability(capabilities, kCanOwnChildren),
         hasCapability(capabilities, kRuntimeMeaningful),
         hasCapability(capabilities, kEditorOnly),

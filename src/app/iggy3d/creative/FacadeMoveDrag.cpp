@@ -4,6 +4,7 @@
 #include "app/iggy3d/creative/FacadeInternal.hpp"
 #include "app/iggy3d/creative/document/DocumentSnap.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/tools/Group.hpp"
 #include "core/math/Snap.hpp"
 
 #include <algorithm>
@@ -182,13 +183,28 @@ CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
       moveDragObjects_.clear();
       const std::span<const TargetRef> selectedTargets =
           selectedTargetList(selectionState_);
+      std::vector<CreativeObjectId> selectedObjectIds;
+      selectedObjectIds.reserve(selectedTargets.empty()
+                                    ? 1U
+                                    : selectedTargets.size());
       for (TargetRef selectedTarget : selectedTargets) {
         CreativeObjectId selectedObjectId = kInvalidObjectId;
-        if (!targetRefToObjectId(selectedTarget, selectedObjectId)) {
-          continue;
+        if (targetRefToObjectId(selectedTarget, selectedObjectId)) {
+          selectedObjectIds.push_back(selectedObjectId);
         }
-        const CreativeObject* selectedObject =
-            document_.findObject(selectedObjectId);
+      }
+      if (selectedObjectIds.empty()) {
+        selectedObjectIds.push_back(objectId);
+      }
+      const CreativeHierarchySelection hierarchy =
+          resolveCreativeObjectHierarchy(document_, selectedObjectIds);
+      const std::span<const CreativeObjectId> dragObjectIds =
+          hierarchy.accepted
+              ? std::span<const CreativeObjectId>{hierarchy.objectIds}
+              : std::span<const CreativeObjectId>{selectedObjectIds};
+      for (CreativeObjectId selectedObjectId : dragObjectIds) {
+        const CreativeObject* selectedObject = document_.findObject(
+            selectedObjectId);
         if (selectedObject != nullptr) {
           moveDragObjects_.push_back(
               MoveDragObject{selectedObjectId,

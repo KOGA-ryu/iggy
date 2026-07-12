@@ -8,6 +8,7 @@
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/tools/Select.hpp"
 #include "app/iggy3d/creative/tools/Clipboard.hpp"
+#include "app/iggy3d/creative/tools/Group.hpp"
 #include "app/iggy3d/creative/tools/Pattern.hpp"
 #include "app/iggy3d/creative/tools/Transform.hpp"
 #include "app/iggy3d/creative/tools/Volume.hpp"
@@ -216,6 +217,10 @@ class Facade {
       const CreativeSelectionPlacementRequest& request);
   [[nodiscard]] CreativeDuplicateCommandReceipt duplicateSelectedObjects(
       const CreativeDuplicateCommandRequest& request = {});
+  [[nodiscard]] CreativeGroupCommandReceipt groupSelectedObjects();
+  [[nodiscard]] CreativeGroupCommandReceipt ungroupObject(
+      CreativeObjectId groupObjectId);
+  [[nodiscard]] CreativeGroupCommandReceipt ungroupSelectedObject();
   [[nodiscard]] CreativeLinearArrayReceipt createLinearArrayFromSelection(
       const CreativeLinearArrayRequest& request = {});
   [[nodiscard]] CreativeRadialArrayReceipt createRadialArrayFromSelection(

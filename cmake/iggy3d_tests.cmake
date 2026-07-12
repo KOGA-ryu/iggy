@@ -121,6 +121,11 @@ iggy3d_add_unit_test(creative_tools_tests
 set_tests_properties(creative_tools_tests PROPERTIES
   LABELS "unit;app;creative;tools;iggy3d")
 
+iggy3d_add_unit_test(creative_group_tests
+  tests/unit/creative_group_tests.cpp)
+set_tests_properties(creative_group_tests PROPERTIES
+  LABELS "unit;app;creative;tools;group;hierarchy;iggy3d")
+
 iggy3d_add_unit_test(creative_terrain_profile_tests
   tests/unit/creative_terrain_profile_tests.cpp)
 set_tests_properties(creative_terrain_profile_tests PROPERTIES
@@ -235,6 +240,17 @@ set_tests_properties(creative_editor_action_hints_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 set_tests_properties(creative_editor_action_hints_tests PROPERTIES
   LABELS "unit;app;creative;editor;controls;hints;ui;iggy3d")
+
+add_executable(creative_editor_group_tests
+  tests/unit/creative_editor_group_tests.cpp)
+target_link_libraries(creative_editor_group_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_group_tests)
+add_test(NAME creative_editor_group_tests
+  COMMAND "$<TARGET_FILE:creative_editor_group_tests>")
+set_tests_properties(creative_editor_group_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;editor;group;history;iggy3d")
 
 add_executable(creative_editor_terrain_tests
   tests/unit/creative_editor_terrain_tests.cpp)

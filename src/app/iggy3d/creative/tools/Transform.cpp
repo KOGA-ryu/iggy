@@ -2,7 +2,9 @@
 
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/tools/Clipboard.hpp"
+#include "app/iggy3d/creative/tools/Group.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <numbers>
 #include <unordered_set>
@@ -232,17 +234,30 @@ CreativeTransformCommandReceipt transformDocumentObjectsAtomically(
     return receipt;
   }
 
+  const CreativeHierarchySelection hierarchy =
+      resolveCreativeObjectHierarchy(document, objectIds);
+  if (!hierarchy.accepted) {
+    receipt.failedObjectId = hierarchy.missingObjectId;
+    receipt.status = hierarchy.status ==
+                             CreativeHierarchySelectionStatus::MissingObject
+                         ? CreativeTransformCommandStatus::MissingObject
+                         : CreativeTransformCommandStatus::InvalidRequest;
+    receipt.message = hierarchy.reasonCode;
+    return receipt;
+  }
+  const ResolvedObjects roots =
+      resolveObjectsInDocumentOrder(document, hierarchy.rootObjectIds);
   const ResolvedObjects resolved =
-      resolveObjectsInDocumentOrder(document, objectIds);
+      resolveObjectsInDocumentOrder(document, hierarchy.objectIds);
   if (resolved.missingObjectId != kInvalidObjectId ||
-      resolved.objects.empty()) {
+      resolved.objects.empty() || roots.objects.empty()) {
     receipt.failedObjectId = resolved.missingObjectId;
     receipt.status = CreativeTransformCommandStatus::MissingObject;
     receipt.message = "transform_object_missing";
     return receipt;
   }
   receipt.objectCount = resolved.objects.size();
-  receipt.pivot = selectionPivot(resolved.objects);
+  receipt.pivot = selectionPivot(roots.objects);
   const double yawRadians =
       request.kind == CreativeTransformCommandKind::RotateYaw
           ? request.yawDegrees * std::numbers::pi / 180.0
@@ -330,9 +345,21 @@ CreativeDuplicateCommandReceipt duplicateDocumentObjectsAtomically(
     return receipt;
   }
 
+  const CreativeHierarchySelection hierarchy =
+      resolveCreativeObjectHierarchy(document, objectIds);
+  if (!hierarchy.accepted) {
+    receipt.failedObjectId = hierarchy.missingObjectId;
+    receipt.status = hierarchy.status ==
+                             CreativeHierarchySelectionStatus::MissingObject
+                         ? CreativeTransformCommandStatus::MissingObject
+                         : CreativeTransformCommandStatus::InvalidRequest;
+    receipt.message = hierarchy.reasonCode;
+    return receipt;
+  }
+
   CreativeClipboard clipboard;
   const CreativeClipboardCopyReceipt copyReceipt =
-      copyDocumentObjectsToClipboard(document, objectIds, clipboard);
+      copyDocumentObjectsToClipboard(document, hierarchy.objectIds, clipboard);
   if (!copyReceipt.accepted) {
     receipt.failedObjectId = copyReceipt.failedObjectId;
     receipt.status = CreativeTransformCommandStatus::MissingObject;
@@ -365,6 +392,19 @@ CreativeDuplicateCommandReceipt duplicateDocumentObjectsAtomically(
   receipt.status = CreativeTransformCommandStatus::Applied;
   receipt.duplicatedObjectIds = std::move(pasteReceipt.pastedObjectIds);
   receipt.duplicatedObjectCount = receipt.duplicatedObjectIds.size();
+  receipt.duplicatedSelectionObjectIds.reserve(
+      hierarchy.rootObjectIds.size());
+  for (CreativeObjectId rootObjectId : hierarchy.rootObjectIds) {
+    const auto remap = std::find_if(
+        pasteReceipt.idRemaps.begin(), pasteReceipt.idRemaps.end(),
+        [rootObjectId](const CreativeClipboardIdRemap& item) {
+          return item.sourceObjectId == rootObjectId;
+        });
+    if (remap != pasteReceipt.idRemaps.end()) {
+      receipt.duplicatedSelectionObjectIds.push_back(
+          remap->pastedObjectId);
+    }
+  }
   receipt.revisionAfter = document.revision();
   receipt.message = "duplicate_applied";
   return receipt;

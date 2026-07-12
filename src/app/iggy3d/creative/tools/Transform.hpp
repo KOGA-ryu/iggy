@@ -69,6 +69,9 @@ struct CreativeDuplicateCommandReceipt {
   std::uint64_t revisionBefore = 0;
   std::uint64_t revisionAfter = 0;
   std::vector<CreativeObjectId> duplicatedObjectIds;
+  // Mirrors the requested hierarchy roots after ID remapping. Callers should
+  // select these roots rather than every copied descendant.
+  std::vector<CreativeObjectId> duplicatedSelectionObjectIds;
   std::string message = "duplicate_not_requested";
 };
 

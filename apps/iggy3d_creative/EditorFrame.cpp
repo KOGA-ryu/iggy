@@ -14,6 +14,7 @@
 #include "app/iggy3d/creative/camera/Fly.hpp"
 #include "app/iggy3d/creative/input/ActionHints.hpp"
 #include "app/iggy3d/creative/input/UiInput.hpp"
+#include "app/iggy3d/creative/tools/Group.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
 #include "render/vulkan/VulkanBackend.hpp"
 
@@ -879,7 +880,15 @@ CreativeEditorSelectionFrame resolveCreativeEditorSelectionFrame(
       }
     }
   }
-  selection.selectionCount = selection.selectedObjectIds.size();
+  const iggy3d::creative::CreativeHierarchySelection hierarchy =
+      iggy3d::creative::resolveCreativeObjectHierarchy(
+          facade.document(), selection.selectedObjectIds);
+  if (hierarchy.accepted) {
+    selection.selectedObjectIds = hierarchy.objectIds;
+    selection.selectionCount = hierarchy.rootObjectIds.size();
+  } else {
+    selection.selectionCount = selection.selectedObjectIds.size();
+  }
 
   bool haveBounds = false;
   for (iggy3d::creative::CreativeObjectId objectId :

@@ -187,6 +187,7 @@ void appendQuickEdit(HintSpecBuffer& buffer,
     case cr::CreativeHeldItemKind::ConnectedFill:
     case cr::CreativeHeldItemKind::SurfaceExtrude:
     case cr::CreativeHeldItemKind::TerrainPaint:
+    case cr::CreativeHeldItemKind::ObjectGroup:
     case cr::CreativeHeldItemKind::Count:
       break;
   }
@@ -336,6 +337,9 @@ void appendViewportHints(HintSpecBuffer& buffer,
       appendHint(buffer, gamepad ? negativeAction : positiveAction,
                  gamepad ? "Cancel" : "Transform");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
+      break;
+    case cr::CreativeHeldItemKind::ObjectGroup:
+      appendHint(buffer, positiveAction, "Group / ungroup");
       break;
     case cr::CreativeHeldItemKind::VolumeSelect:
       appendHint(buffer, gamepad ? positiveAction : negativeAction,

@@ -173,8 +173,8 @@ bool actionAvailabilityUsesExplicitFacts() {
 
 bool catalogBuildsMaterialsAndCreatorTools() {
   const cr::CreativeCatalogState state = catalog();
-  bool ok = expect(state.entries.size() == 21U,
-                   "two materials plus nineteen catalog tools") &&
+  bool ok = expect(state.entries.size() == 22U,
+                   "two materials plus twenty catalog tools") &&
             expect(state.filteredEntryIndices.size() == state.entries.size(),
                    "empty query exposes every entry") &&
             expect(state.entries[0].category ==
@@ -222,7 +222,7 @@ bool catalogOmitsToolsWithoutRequiredMaterial() {
                entry.hotbarEntry.kind ==
                    cr::CreativeHeldItemKind::SurfaceExtrude;
       });
-  return expect(state.entries.size() == 13U,
+  return expect(state.entries.size() == 14U,
                 "empty palette retains material-independent tools") &&
          expect(!materialDependentToolPresent,
                 "material-dependent tools require a valid material");
@@ -238,7 +238,7 @@ bool catalogAssignmentDistinguishesMaterialsFromTools() {
           state.entries[2], cr::CreativeObjectKind::Wall);
   const cr::CreativeHotbarEntry fill =
       cr::resolveCreativeCatalogHotbarEntry(
-          state.entries[6], cr::CreativeObjectKind::Crate);
+          state.entries[7], cr::CreativeObjectKind::Crate);
   return expect(material.kind == cr::CreativeHeldItemKind::Material &&
                     material.objectKind == cr::CreativeObjectKind::Crate,
                 "clicked material is not replaced by active brush") &&
@@ -252,7 +252,7 @@ bool catalogAssignmentDistinguishesMaterialsFromTools() {
 
 bool shapeSelectionIsVisibleBoundedAndDeterministic() {
   const cr::CreativeCatalogState state = catalog();
-  const cr::CreativeCatalogEntry& fill = state.entries[6];
+  const cr::CreativeCatalogEntry& fill = state.entries[7];
   cr::CreativeCatalogShapeSelection selection =
       cr::normalizeCreativeCatalogShapeSelection(
           cr::CreativeShapeBrushKind::Box,
@@ -260,7 +260,7 @@ bool shapeSelectionIsVisibleBoundedAndDeterministic() {
   bool ok = expect(cr::creativeCatalogEntryUsesShapeSelection(fill),
                    "fill exposes catalog shape selection") &&
             expect(!cr::creativeCatalogEntryUsesShapeSelection(
-                       state.entries[5]),
+                       state.entries[6]),
                    "region wand has no shape configuration") &&
             expect(selection.kind == cr::CreativeShapeBrushKind::Box &&
                        selection.axis == cr::CreativeShapeBrushAxis::Y &&
@@ -333,6 +333,18 @@ bool toolWheelIsBoundedDirectionalAndAssignable() {
         return entry.hotbarEntry.kind ==
                cr::CreativeHeldItemKind::TerrainControl;
       });
+  const auto clone = std::find_if(
+      catalogState.entries.begin(), catalogState.entries.end(),
+      [](const cr::CreativeCatalogEntry& entry) {
+        return entry.hotbarEntry.kind ==
+               cr::CreativeHeldItemKind::VolumeClone;
+      });
+  const auto group = std::find_if(
+      catalogState.entries.begin(), catalogState.entries.end(),
+      [](const cr::CreativeCatalogEntry& entry) {
+        return entry.hotbarEntry.kind ==
+               cr::CreativeHeldItemKind::ObjectGroup;
+      });
   ok = expect(erase != catalogState.entries.end() &&
                   !erase->toolWheelEligible &&
                   regionSelect != catalogState.entries.end() &&
@@ -340,8 +352,17 @@ bool toolWheelIsBoundedDirectionalAndAssignable() {
                   objectSelect != catalogState.entries.end() &&
                   !objectSelect->toolWheelEligible &&
                   terrain != catalogState.entries.end() &&
-                  !terrain->toolWheelEligible,
+                  !terrain->toolWheelEligible &&
+                  clone != catalogState.entries.end() &&
+                  !clone->toolWheelEligible,
               "specialized tools remain assignable but outside defaults") &&
+       expect(group != catalogState.entries.end() &&
+                  group->toolWheelEligible &&
+                  wheel.catalogEntryIndices[2] < catalogState.entries.size() &&
+                  catalogState.entries[wheel.catalogEntryIndices[2]]
+                          .hotbarEntry.kind ==
+                      cr::CreativeHeldItemKind::ObjectGroup,
+              "group replaces clone in the default R3 wheel") &&
        expect(wheel.catalogEntryIndices[8] < catalogState.entries.size() &&
                   catalogState.entries[wheel.catalogEntryIndices[8]]
                           .hotbarEntry.kind ==
@@ -401,9 +422,9 @@ bool toolWheelIsBoundedDirectionalAndAssignable() {
       wheel, catalogState,
       {cr::CreativeHeldItemKind::VolumeReplace,
        cr::CreativeObjectKind::Crate}));
-  ok = expect(wheel.selectedIndex == 4U,
+  ok = expect(wheel.selectedIndex == 5U,
               "held tool kind restores radial selection") &&
-       expect(cr::moveCreativeToolWheelSelection(wheel, -5) &&
+       expect(cr::moveCreativeToolWheelSelection(wheel, -6) &&
                   wheel.selectedIndex == 8U,
               "radial keyboard navigation wraps") &&
        ok;
@@ -552,7 +573,7 @@ bool selectionWrapsAndAssignmentsAreExplicit() {
   cr::CreativeHotbarState hotbar = cr::makeDefaultCreativeHotbar(palette);
 
   bool ok = expect(cr::moveCreativeCatalogSelection(state, -1) &&
-                       state.selectedFilteredIndex == 20U,
+                       state.selectedFilteredIndex == 21U,
                    "previous wraps to final result") &&
             expect(cr::moveCreativeCatalogSelection(state, 1) &&
                        state.selectedFilteredIndex == 0U,

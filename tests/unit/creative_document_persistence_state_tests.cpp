@@ -367,8 +367,8 @@ bool restoreForLoadRejectsUnsupportedParentPayload() {
   };
 
   cr::CreativeDocumentRestoreRequest unsupported = validRestoreRequest();
-  unsupported.objects[1].kind = cr::CreativeObjectKind::Crate;
-  unsupported.objects[1].name = "Unsupported Parented Crate";
+  unsupported.objects[1].kind = cr::CreativeObjectKind::Room;
+  unsupported.objects[1].name = "Unsupported Parented Room";
   const cr::CreativeDocumentRestoreReceipt receipt =
       document.restoreForLoad(unsupported);
 
