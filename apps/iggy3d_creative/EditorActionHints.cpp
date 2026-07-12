@@ -77,6 +77,13 @@ void appendQuickEdit(HintSpecBuffer& buffer,
                    cr::CreativeInputActionId::QuickEditIncrease, "Width");
     return;
   }
+  if (held == cr::CreativeHeldItemKind::TerrainSculpt) {
+    appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
+                   cr::CreativeInputActionId::QuickEditNext, "Strength");
+    appendHintPair(buffer, cr::CreativeInputActionId::QuickEditDecrease,
+                   cr::CreativeInputActionId::QuickEditIncrease, "Radius");
+    return;
+  }
   if (editor.quickEdit.options.count == 0U) {
     return;
   }
@@ -129,6 +136,14 @@ void appendViewportKeyboardHints(HintSpecBuffer& buffer,
                  "Cancel grade");
       appendHint(buffer, cr::CreativeInputActionId::PickAction,
                  "Set start rod");
+      appendQuickEdit(buffer, editor);
+      break;
+    case cr::CreativeHeldItemKind::TerrainSculpt:
+      appendHint(buffer, cr::CreativeInputActionId::SecondaryAction, "Sculpt");
+      appendHint(buffer, cr::CreativeInputActionId::PrimaryAction,
+                 "Cancel sculpt");
+      appendHint(buffer, cr::CreativeInputActionId::PickAction,
+                 "Sample height");
       appendQuickEdit(buffer, editor);
       break;
     case cr::CreativeHeldItemKind::ObjectSelect:
@@ -213,6 +228,13 @@ void appendViewportGamepadHints(HintSpecBuffer& buffer,
                  "Cancel grade");
       appendHint(buffer, cr::CreativeInputActionId::PickAction,
                  "Set start rod");
+      break;
+    case cr::CreativeHeldItemKind::TerrainSculpt:
+      appendHint(buffer, cr::CreativeInputActionId::AcceptAction, "Sculpt");
+      appendHint(buffer, cr::CreativeInputActionId::RejectAction,
+                 "Cancel sculpt");
+      appendHint(buffer, cr::CreativeInputActionId::PickAction,
+                 "Sample height");
       break;
     case cr::CreativeHeldItemKind::ObjectSelect:
       appendHint(buffer, cr::CreativeInputActionId::AcceptAction, "Select");

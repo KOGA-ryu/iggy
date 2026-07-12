@@ -473,6 +473,9 @@ bool processCreativeEditorQuickEditAction(
     return processCreativeEditorTerrainGradeQuickEdit(editor.terrain.grade,
                                                       action);
   }
+  if (held.kind == cr::CreativeHeldItemKind::TerrainSculpt) {
+    return processCreativeEditorTerrainSculptQuickEdit(editor, action);
+  }
   rebuildQuickEditOptions(editor, false);
   CreativeEditorQuickEditState& state = editor.quickEdit;
   if (state.options.count == 0U || state.options.capacityExceeded) {
@@ -526,6 +529,9 @@ std::string creativeEditorQuickEditStatusLabel(
   }
   if (held.kind == cr::CreativeHeldItemKind::TerrainGrade) {
     return creativeEditorTerrainGradeQuickEditLabel(editor.terrain.grade);
+  }
+  if (held.kind == cr::CreativeHeldItemKind::TerrainSculpt) {
+    return creativeEditorTerrainSculptQuickEditLabel(editor);
   }
   const CreativeEditorQuickEditState& state = editor.quickEdit;
   if (state.targetEntry.kind != held.kind ||

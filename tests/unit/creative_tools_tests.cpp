@@ -354,6 +354,9 @@ bool optionDescriptorsAreContextualAndBounded() {
   const cr::CreativeToolOptionList surfaceExtrude =
       cr::creativeToolOptionsForHeldItem(
           cr::CreativeHeldItemKind::SurfaceExtrude);
+  const cr::CreativeToolOptionList terrainSculpt =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::TerrainSculpt);
   const cr::CreativeToolOptionList array =
       cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::LinearArray);
   cr::CreativeToolSettings radialSettings =
@@ -444,6 +447,14 @@ bool optionDescriptorsAreContextualAndBounded() {
                     surfaceExtrude.ids[1] ==
                         cr::CreativeToolOptionId::SurfaceExtrudeLimit,
                 "surface extrude exposes depth and affected-cell limit") &&
+         expect(terrainSculpt.count == 3U &&
+                    terrainSculpt.ids[0] ==
+                        cr::CreativeToolOptionId::TerrainSculptMode &&
+                    terrainSculpt.ids[1] ==
+                        cr::CreativeToolOptionId::TerrainSculptRadius &&
+                    terrainSculpt.ids[2] ==
+                        cr::CreativeToolOptionId::TerrainSculptStrength,
+                "terrain sculpt exposes mode radius and strength") &&
          expect(array.count == 4U &&
                     array.ids[0] ==
                         cr::CreativeToolOptionId::ArrayMode &&
@@ -473,6 +484,7 @@ bool optionDescriptorsAreContextualAndBounded() {
                     !replace.capacityExceeded && !clone.capacityExceeded &&
                     !connectedFill.capacityExceeded &&
                     !surfaceExtrude.capacityExceeded &&
+                    !terrainSculpt.capacityExceeded &&
                     !array.capacityExceeded && !radialArray.capacityExceeded &&
                     array.count <= cr::kCreativeToolOptionCapacity,
                 "default option lists fit bounded storage") &&
@@ -513,6 +525,8 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
   cr::CreativeToolSettings invalidSurfaceLimit = settings;
   invalidSurfaceLimit.surfaceExtrudeLimit =
       cr::CreativeConnectedFillLimit::Count;
+  cr::CreativeToolSettings invalidSculpt = settings;
+  invalidSculpt.terrainSculptMode = cr::CreativeTerrainSculptMode::Count;
   bool ok = expect(cr::isValidCreativeToolSettings(settings),
                    "default settings valid") &&
             expect(!cr::isValidCreativeToolSettings(invalidMask),
@@ -535,6 +549,8 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
             expect(!cr::isValidCreativeToolSettings(invalidSurfaceDepth) &&
                        !cr::isValidCreativeToolSettings(invalidSurfaceLimit),
                    "invalid surface depth or limit fails settings validation") &&
+            expect(!cr::isValidCreativeToolSettings(invalidSculpt),
+                   "invalid terrain sculpt option fails settings validation") &&
             expect(cr::creativeToolOptionValueLabel(
                        settings,
                        cr::CreativeToolOptionId::MoveConstraint) == "FREE" &&
@@ -596,7 +612,19 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::SurfaceExtrudeLimit) ==
-                           "256 CELLS",
+                           "256 CELLS" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainSculptMode) ==
+                           "FLATTEN" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainSculptRadius) ==
+                           "4 CELLS" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainSculptStrength) ==
+                           "1 CELL",
                    "default labels and scalar conversions stable");
 
   const auto adjust = [&settings](cr::CreativeToolOptionId option,
@@ -663,6 +691,19 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                   settings.surfaceExtrudeLimit ==
                       cr::CreativeConnectedFillLimit::Cells512,
               "surface affected-cell limit cycles within fixed storage") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainSculptMode, 1).changed &&
+                  settings.terrainSculptMode ==
+                      cr::CreativeTerrainSculptMode::Smooth,
+              "terrain sculpt mode cycles to smooth") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainSculptRadius, 1).changed &&
+                  settings.terrainSculptRadius ==
+                      cr::CreativeTerrainSculptRadius::EightCells,
+              "terrain sculpt radius cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainSculptStrength, 1)
+                  .changed &&
+                  settings.terrainSculptStrength ==
+                      cr::CreativeTerrainSculptStrength::TwoCells,
+              "terrain sculpt strength cycles") &&
        expect(adjust(cr::CreativeToolOptionId::ShapeBrushKind, 1).changed &&
                   settings.shapeBrushKind == cr::CreativeShapeBrushKind::Line,
               "shape kind cycles") &&

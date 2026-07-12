@@ -409,6 +409,36 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
               "terrain grade advertises anchor apply cancel height and width") &&
        ok;
 
+  setHeld(editor, cr::CreativeHeldItemKind::TerrainSculpt);
+  const cr::CreativeActionHintFrame terrainSculpt =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* sculptApply =
+      findHint(terrainSculpt, cr::CreativeInputActionId::AcceptAction);
+  const cr::CreativeActionHint* sculptCancel =
+      findHint(terrainSculpt, cr::CreativeInputActionId::RejectAction);
+  const cr::CreativeActionHint* sculptSample =
+      findHint(terrainSculpt, cr::CreativeInputActionId::PickAction);
+  const cr::CreativeActionHint* sculptStrength =
+      findHint(terrainSculpt, cr::CreativeInputActionId::QuickEditPrevious);
+  const cr::CreativeActionHint* sculptRadius =
+      findHint(terrainSculpt, cr::CreativeInputActionId::QuickEditDecrease);
+  ok = expect(sculptApply != nullptr && sculptApply->chord.view() == "X" &&
+                  sculptApply->label.view() == "Sculpt" &&
+                  sculptCancel != nullptr &&
+                  sculptCancel->chord.view() == "Circle" &&
+                  sculptCancel->label.view() == "Cancel sculpt" &&
+                  sculptSample != nullptr &&
+                  sculptSample->chord.view() == "Square" &&
+                  sculptSample->label.view() == "Sample height" &&
+                  sculptStrength != nullptr &&
+                  sculptStrength->label.view() == "Strength" &&
+                  sculptRadius != nullptr &&
+                  sculptRadius->label.view() == "Radius",
+              "terrain sculpt advertises apply cancel sample strength and radius") &&
+       ok;
+
   setHeld(editor, cr::CreativeHeldItemKind::LinearArray);
   const cr::CreativeActionHintFrame array = resolveCreativeEditorActionHints(
       editor, cr::CreativeInputContext::EditorViewport,

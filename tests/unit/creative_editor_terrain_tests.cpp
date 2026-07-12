@@ -63,6 +63,13 @@ CreativeEditorState terrainGradeEditor(std::int32_t x, std::int32_t z) {
   return editor;
 }
 
+CreativeEditorState terrainSculptEditor(std::int32_t x, std::int32_t z) {
+  CreativeEditorState editor = terrainEditor(x, z);
+  editor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::TerrainSculpt;
+  return editor;
+}
+
 cr::CreativeWorldActionFrame strokeAction(
     cr::CreativeWorldActionId action,
     bool down,
@@ -764,6 +771,199 @@ bool terrainGradeRoutesSquareXAndCircleThroughWorldActions() {
          ok;
 }
 
+bool terrainSculptSamplesFlattensAndUndoesOneBatch() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 414U);
+  const std::array initial{
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{0, 0}, 2U, 2U}},
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{2, 0}, 8U, 2U}},
+  };
+  static_cast<void>(appState.facade.applyTerrainControlEdits(initial));
+  appState.history = {};
+  CreativeEditorState editor = terrainSculptEditor(1, 0);
+
+  const CreativeEditorTerrainSculptReceipt sampled =
+      sampleCreativeEditorTerrainSculptHeight(appState.facade.document(),
+                                              editor);
+  const bool stronger = processCreativeEditorTerrainSculptQuickEdit(
+      editor, cr::CreativeInputActionId::QuickEditPrevious);
+  const bool narrowerFirst = processCreativeEditorTerrainSculptQuickEdit(
+      editor, cr::CreativeInputActionId::QuickEditDecrease);
+  const bool narrowerSecond = processCreativeEditorTerrainSculptQuickEdit(
+      editor, cr::CreativeInputActionId::QuickEditDecrease);
+  const CreativeEditorTerrainSculptReceipt applied =
+      applyCreativeEditorTerrainSculptWithHistory(
+          appState, editor, "test_terrain_sculpt_flatten");
+  const cr::CreativeTerrainControlPoint* left =
+      appState.facade.document().terrainField().controlAt({0, 0});
+  const cr::CreativeTerrainControlPoint* right =
+      appState.facade.document().terrainField().controlAt({2, 0});
+  bool ok = expect(sampled.accepted && sampled.changed &&
+                       editor.terrain.sculpt.targetHeightCells == 5U,
+                   "Square samples the derived blended terrain height") &&
+            expect(stronger && narrowerFirst && narrowerSecond &&
+                       editor.toolSettings.terrainSculptStrength ==
+                           cr::CreativeTerrainSculptStrength::TwoCells &&
+                       editor.toolSettings.terrainSculptRadius ==
+                           cr::CreativeTerrainSculptRadius::OneCell &&
+                       creativeEditorTerrainSculptQuickEditLabel(editor) ==
+                           "FLATTEN | RADIUS 1 | STRENGTH 2 | TARGET 5",
+                   "D-pad controls expose bounded sculpt strength and radius") &&
+            expect(applied.accepted && applied.changed &&
+                       applied.plan.editCount == 2U && left != nullptr &&
+                       left->heightCells == 4U && left->radiusCells == 2U &&
+                       right != nullptr && right->heightCells == 6U &&
+                       right->radiusCells == 2U &&
+                       cr::creativeUndoDepth(appState.history) == 1U,
+                   "flatten edits existing rod heights atomically and preserves radii");
+  ok = expect(undoLastEdit(appState, "test_terrain_sculpt_undo"),
+              "sculpt batch can be undone") &&
+       ok;
+  left = appState.facade.document().terrainField().controlAt({0, 0});
+  right = appState.facade.document().terrainField().controlAt({2, 0});
+  return expect(left != nullptr && left->heightCells == 2U &&
+                    right != nullptr && right->heightCells == 8U,
+                "one undo restores the complete sculpt batch") &&
+         ok;
+}
+
+bool terrainSculptHoldRepeatsAndCommitsOneUndo() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 415U);
+  const cr::CreativeTerrainControlEdit initial{
+      cr::CreativeTerrainEditKind::Upsert, {{0, 0}, 1U, 2U}};
+  static_cast<void>(appState.facade.applyTerrainControlEdits(
+      std::span{&initial, 1U}));
+  appState.history = {};
+  CreativeEditorState editor = terrainSculptEditor(0, 0);
+  editor.terrain.sculpt.targetHeightCells = 10U;
+
+  processCreativeTerrainSculptStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Accept, true, true), 0U);
+  const cr::CreativeTerrainControlPoint* control =
+      appState.facade.document().terrainField().controlAt({0, 0});
+  bool ok = expect(control != nullptr && control->heightCells == 2U &&
+                       editor.terrain.sculpt.stroke.transaction.active &&
+                       cr::creativeUndoDepth(appState.history) == 0U,
+                   "X applies immediately while history transaction stays lazy");
+  processCreativeTerrainSculptStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Accept, true), 199'000'000U);
+  control = appState.facade.document().terrainField().controlAt({0, 0});
+  ok = expect(control != nullptr && control->heightCells == 2U,
+              "hold does not repeat before 200 ms") &&
+       ok;
+  processCreativeTerrainSculptStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Accept, true), 200'000'000U);
+  control = appState.facade.document().terrainField().controlAt({0, 0});
+  ok = expect(control != nullptr && control->heightCells == 3U,
+              "stationary hold repeats at 200 ms") &&
+       ok;
+  processCreativeTerrainSculptStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Accept, false, false, true),
+      201'000'000U);
+  ok = expect(!editor.terrain.sculpt.stroke.repeat.active &&
+                  !editor.terrain.sculpt.stroke.transaction.active &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "release commits every repeated sculpt edit as one undo") &&
+       ok;
+  ok = expect(undoLastEdit(appState, "test_terrain_sculpt_hold_undo"),
+              "held sculpt gesture undo applies") &&
+       ok;
+  control = appState.facade.document().terrainField().controlAt({0, 0});
+  setTerrainStrokeTarget(editor, 100, 100);
+  processCreativeTerrainSculptStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Accept, true, true),
+      300'000'000U);
+  processCreativeTerrainSculptStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Accept, false, false, true),
+      301'000'000U);
+  return expect(control != nullptr && control->heightCells == 1U &&
+                    cr::creativeUndoDepth(appState.history) == 0U &&
+                    !editor.terrain.sculpt.stroke.transaction.active,
+                "brush with no existing rods rejects without history or densification") &&
+         ok;
+}
+
+bool terrainSculptPreviewCachesAndUsesRuntimeSlopeBands() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 416U);
+  const cr::CreativeTerrainControlEdit initial{
+      cr::CreativeTerrainEditKind::Upsert, {{0, 0}, 2U, 4U}};
+  static_cast<void>(appState.facade.applyTerrainControlEdits(
+      std::span{&initial, 1U}));
+  CreativeEditorState editor = terrainSculptEditor(0, 0);
+  const bool built = refreshCreativeEditorTerrainSculptPreview(
+      editor.terrain, appState.facade.document(), editor);
+  const bool reused = refreshCreativeEditorTerrainSculptPreview(
+      editor.terrain, appState.facade.document(), editor);
+  setTerrainStrokeTarget(editor, 1, 0);
+  const bool moved = refreshCreativeEditorTerrainSculptPreview(
+      editor.terrain, appState.facade.document(), editor);
+  const bool radiusChanged = processCreativeEditorTerrainSculptQuickEdit(
+      editor, cr::CreativeInputActionId::QuickEditIncrease);
+  const bool rebuiltForRadius = refreshCreativeEditorTerrainSculptPreview(
+      editor.terrain, appState.facade.document(), editor);
+  const cr::CreativeTerrainControlEdit raised{
+      cr::CreativeTerrainEditKind::Upsert, {{0, 0}, 3U, 4U}};
+  static_cast<void>(appState.facade.applyTerrainControlEdits(
+      std::span{&raised, 1U}));
+  const bool rebuiltForRevision = refreshCreativeEditorTerrainSculptPreview(
+      editor.terrain, appState.facade.document(), editor);
+  bool ok = expect(built && !reused && moved && radiusChanged &&
+                       rebuiltForRadius && rebuiltForRevision &&
+                       editor.terrain.sculpt.preview.buildCount == 4U,
+                   "preview rebuilds only for aim settings or document revision") &&
+            expect(editor.terrain.sculpt.preview.renderAccepted &&
+                       !editor.terrain.sculpt.preview.patches.empty(),
+                   "preview cache owns an admitted bounded terrain patch set");
+
+  const auto planarPatch = [](std::int32_t x, double rise) {
+    cr::CreativeTerrainSurfacePatch patch;
+    patch.coord = {x, 0};
+    const double minimumX = static_cast<double>(x);
+    patch.center = {minimumX + 0.5, rise * 0.5, 0.5};
+    patch.corners = {{{minimumX, 0.0, 0.0},
+                      {minimumX + 1.0, rise, 0.0},
+                      {minimumX + 1.0, rise, 1.0},
+                      {minimumX, 0.0, 1.0}}};
+    return patch;
+  };
+  CreativeTerrainSculptPreviewCache& preview =
+      editor.terrain.sculpt.preview;
+  preview.valid = true;
+  preview.renderAccepted = true;
+  preview.plan.accepted = true;
+  preview.center = {0, 0};
+  preview.radiusCells = 1U;
+  preview.targetHeightCells = 4U;
+  preview.patches = {planarPatch(0, 0.0), planarPatch(2, 0.364),
+                     planarPatch(4, 1.192)};
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> lines;
+  appendCreativeEditorTerrainSculptOverlay(
+      appState.facade.document(), editor, 0.1F, lines);
+  const auto hasColor = [&lines](float red, float green) {
+    return std::any_of(
+        lines.begin(), lines.end(), [red, green](const auto& line) {
+          return approx(line.color.r, red) && approx(line.color.g, green);
+        });
+  };
+  return expect(hasColor(0.20F, 1.0F),
+                "walkable sculpt preview triangles are green") &&
+         expect(hasColor(1.0F, 0.82F),
+                "careful-footing sculpt preview triangles are yellow") &&
+         expect(hasColor(1.0F, 0.20F),
+                "runtime-rejected sculpt preview triangles are red") &&
+         ok;
+}
+
 bool bentSurfacePatchesReachRendererAndRefreshWithHeight() {
   cr::CreativeAppState appState;
   installDocument(appState, 404U);
@@ -1133,6 +1333,9 @@ int main() {
                  terrainGradeAnchorsPreviewsAppliesAndUndoesOneBatch() &&
                  terrainGradeCancelAndCapacityFailureDoNotCreateHistory() &&
                  terrainGradeRoutesSquareXAndCircleThroughWorldActions() &&
+                 terrainSculptSamplesFlattensAndUndoesOneBatch() &&
+                 terrainSculptHoldRepeatsAndCommitsOneUndo() &&
+                 terrainSculptPreviewCachesAndUsesRuntimeSlopeBands() &&
                  bentSurfacePatchesReachRendererAndRefreshWithHeight() &&
                  smoothTerrainCollisionMatchesRenderedTriangle() &&
                  gridChangeRebuildsWorldSpaceTerrainPatches() &&

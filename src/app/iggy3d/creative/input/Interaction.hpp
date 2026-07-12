@@ -118,6 +118,7 @@ enum class CreativeHeldItemKind : std::uint8_t {
   SurfaceExtrude,
   TerrainControl,
   TerrainGrade,
+  TerrainSculpt,
   Count,
 };
 

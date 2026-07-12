@@ -70,6 +70,9 @@ constexpr std::array kToolSpecs{
     CatalogToolSpec{CreativeHeldItemKind::TerrainGrade, "Terrain Grade",
                     "terrain grade ramp slope hill smooth landscape ground",
                     false},
+    CatalogToolSpec{CreativeHeldItemKind::TerrainSculpt, "Terrain Sculpt",
+                    "terrain sculpt flatten smooth brush plateau landscape",
+                    false},
 };
 
 constexpr std::array kActionEntries{

@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/document/TerrainField.hpp"
 #include "app/iggy3d/creative/tools/TerrainGrade.hpp"
+#include "app/iggy3d/creative/tools/TerrainSculpt.hpp"
 
 #include <algorithm>
 #include <array>
@@ -241,6 +242,80 @@ bool documentRevisionAdvancesOncePerTerrainBatch() {
          expect(document.dirtyFlags() != 0U, "terrain edit marks dirty");
 }
 
+bool sculptPlanIsSnapshotBasedBoundedAndCanonical() {
+  constexpr std::array controls{
+      cr::CreativeTerrainControlPoint{{-2, 0}, 1U, 2U},
+      cr::CreativeTerrainControlPoint{{0, 0}, 4U, 3U},
+      cr::CreativeTerrainControlPoint{{2, 0}, 9U, 4U},
+      cr::CreativeTerrainControlPoint{{6, 0}, 5U, 5U},
+  };
+  const cr::CreativeTerrainSculptPlan flatten =
+      cr::buildCreativeTerrainSculptPlan(
+          {controls, {0, 0}, cr::CreativeTerrainSculptMode::Flatten, 2U, 2U,
+           8U});
+  const cr::CreativeTerrainSculptPlan smooth =
+      cr::buildCreativeTerrainSculptPlan(
+          {controls, {0, 0}, cr::CreativeTerrainSculptMode::Smooth, 2U, 2U,
+           8U});
+  const cr::CreativeTerrainSculptPlan noControls =
+      cr::buildCreativeTerrainSculptPlan(
+          {controls, {100, 100}, cr::CreativeTerrainSculptMode::Flatten, 2U,
+           2U, 8U});
+  const cr::CreativeTerrainSculptPlan noChange =
+      cr::buildCreativeTerrainSculptPlan(
+          {controls, {6, 0}, cr::CreativeTerrainSculptMode::Flatten, 1U, 2U,
+           5U});
+  constexpr std::array unsorted{
+      cr::CreativeTerrainControlPoint{{1, 0}, 4U, 2U},
+      cr::CreativeTerrainControlPoint{{0, 0}, 4U, 2U},
+  };
+  const cr::CreativeTerrainSculptPlan invalid =
+      cr::buildCreativeTerrainSculptPlan(
+          {unsorted, {}, cr::CreativeTerrainSculptMode::Count, 2U, 2U, 8U});
+
+  const auto hasHeights = [&controls](
+                              const cr::CreativeTerrainSculptPlan& plan,
+                              std::array<std::uint16_t, 3U> heights) {
+    if (plan.items().size() != heights.size()) {
+      return false;
+    }
+    for (std::size_t index = 0U; index < heights.size(); ++index) {
+      if (plan.items()[index].kind != cr::CreativeTerrainEditKind::Upsert ||
+          plan.items()[index].control.coord != controls[index].coord ||
+          plan.items()[index].control.heightCells != heights[index] ||
+          plan.items()[index].control.radiusCells !=
+              controls[index].radiusCells) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  return expect(flatten.accepted && flatten.affectedControlCount == 3U &&
+                    hasHeights(flatten, {3U, 6U, 8U}),
+                "flatten moves existing rods toward target without creating rods") &&
+         expect(smooth.accepted && smooth.affectedControlCount == 3U &&
+                    hasHeights(smooth, {3U, 5U, 7U}),
+                "smooth derives every output from the same input snapshot") &&
+         expect(!noControls.accepted && noControls.items().empty() &&
+                    noControls.status ==
+                        cr::CreativeTerrainSculptPlanStatus::NoControlsInBrush,
+                "empty brush rejects without implicit terrain densification") &&
+         expect(noChange.accepted && noChange.items().empty() &&
+                    noChange.status ==
+                        cr::CreativeTerrainSculptPlanStatus::NoChange,
+                "already-flat brush is an accepted no-op") &&
+         expect(!invalid.accepted && invalid.items().empty() &&
+                    invalid.status ==
+                        cr::CreativeTerrainSculptPlanStatus::InvalidRequest,
+                "invalid or noncanonical sculpt input fails closed") &&
+         expect(cr::creativeTerrainSculptRadiusCells(
+                    cr::CreativeTerrainSculptRadius::EightCells) == 8U &&
+                    cr::creativeTerrainSculptStrengthCells(
+                        cr::CreativeTerrainSculptStrength::FourCells) == 4U,
+                "sculpt option enums resolve to explicit cell values");
+}
+
 bool gradePlanIsDeterministicBoundedAndValidated() {
   const cr::CreativeTerrainGradePlan ascending =
       cr::buildCreativeTerrainGradePlan({{0, 0}, {4, 2}, 2U, 8U, 3U});
@@ -311,6 +386,7 @@ int main() {
                  raycastHitsTerrainTopsSidesAndFailsClosed() &&
                  renderPlanBendsSharedCornersAndEnforcesBudget() &&
                  documentRevisionAdvancesOncePerTerrainBatch() &&
+                 sculptPlanIsSnapshotBasedBoundedAndCanonical() &&
                  gradePlanIsDeterministicBoundedAndValidated()
              ? 0
              : 1;

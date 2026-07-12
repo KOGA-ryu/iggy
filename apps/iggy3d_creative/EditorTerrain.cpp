@@ -413,6 +413,21 @@ void applyTerrainStrokeMutation(cr::CreativeAppState& appState,
 
 }  // namespace
 
+bool resolveCreativeEditorTerrainPointerCoord(
+    const CreativeEditorState& editor,
+    cr::CreativeTerrainCoord2& target) noexcept {
+  return terrainPointerCoord(editor, target);
+}
+
+void appendCreativeEditorTerrainFootprintOutline(
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,
+    cr::CreativeGridSettings grid,
+    cr::CreativeTerrainControlPoint control,
+    iggy3d::RenderLineColor color,
+    float thickness) {
+  appendTerrainFootprintOutline(lines, grid, control, color, thickness);
+}
+
 bool resolveCreativeEditorTerrainGradeTarget(
     const CreativeEditorState& editor,
     cr::CreativeTerrainCoord2& target) noexcept {
@@ -557,6 +572,9 @@ void clearCreativeEditorTerrainInteraction(
   state.hoverValid = false;
   state.selectionValid = false;
   clearTerrainGradeAnchor(state.grade);
+  state.sculpt.preview.valid = false;
+  state.sculpt.preview.renderAccepted = false;
+  state.sculpt.preview.patches.clear();
 }
 
 void updateCreativeEditorTerrainAim(
@@ -679,7 +697,9 @@ void appendCreativeEditorTerrainOverlay(
   const bool terrainControl =
       held.kind == cr::CreativeHeldItemKind::TerrainControl;
   const bool terrainGrade = held.kind == cr::CreativeHeldItemKind::TerrainGrade;
-  if ((!terrainControl && !terrainGrade) ||
+  const bool terrainSculpt =
+      held.kind == cr::CreativeHeldItemKind::TerrainSculpt;
+  if ((!terrainControl && !terrainGrade && !terrainSculpt) ||
       editor.catalog.model.open || editor.catalog.toolWheel.open ||
       editor.toolOptions.open || editor.transform.active) {
     return;
@@ -705,6 +725,12 @@ void appendCreativeEditorTerrainOverlay(
         grid, control, static_cast<double>(control.radiusCells * 2U + 1U));
     influence.max.y = influence.min.y + grid.cellSizeMeters * 0.08;
     appendBounds(wireLines, influence, influenceColor, thickness * 0.65F);
+  }
+
+  if (terrainSculpt) {
+    appendCreativeEditorTerrainSculptOverlay(document, editor, thickness,
+                                             wireLines);
+    return;
   }
 
   if (terrainGrade) {

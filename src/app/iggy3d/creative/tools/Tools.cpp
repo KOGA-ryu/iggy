@@ -61,6 +61,8 @@ void emitIntent(CreativeToolDispatchReceipt& receipt,
   return static_cast<CreativeHeldItemMask>(
       1U << static_cast<unsigned>(heldItem));
 }
+static_assert(kCreativeHeldItemKindCount <=
+              sizeof(CreativeHeldItemMask) * 8U);
 
 constexpr CreativeHeldItemMask kMoveItems =
     heldItemMask(CreativeHeldItemKind::ObjectMove);
@@ -75,6 +77,8 @@ constexpr CreativeHeldItemMask kConnectedFillItems =
     heldItemMask(CreativeHeldItemKind::ConnectedFill);
 constexpr CreativeHeldItemMask kSurfaceExtrudeItems =
     heldItemMask(CreativeHeldItemKind::SurfaceExtrude);
+constexpr CreativeHeldItemMask kTerrainSculptItems =
+    heldItemMask(CreativeHeldItemKind::TerrainSculpt);
 constexpr CreativeHeldItemMask kSnapItems =
     heldItemMask(CreativeHeldItemKind::Material) |
     heldItemMask(CreativeHeldItemKind::ObjectMove) |
@@ -205,6 +209,18 @@ constexpr std::array kToolOptionDescriptors{
                                  "AFFECT LIMIT",
                                  CreativeToolOptionValueKind::Choice,
                                  kSurfaceExtrudeItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainSculptMode,
+                                 "SCULPT MODE",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainSculptItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainSculptRadius,
+                                 "SCULPT RADIUS",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainSculptItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainSculptStrength,
+                                 "SCULPT STRENGTH",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainSculptItems},
 };
 static_assert(kToolOptionDescriptors.size() ==
               kCreativeToolOptionDescriptorCount);
@@ -255,7 +271,10 @@ template <typename Enum>
          lhs.arraySpacing == rhs.arraySpacing &&
          lhs.radialArrayAxis == rhs.radialArrayAxis &&
          lhs.radialArrayInstanceCount == rhs.radialArrayInstanceCount &&
-         lhs.radialArraySweep == rhs.radialArraySweep;
+         lhs.radialArraySweep == rhs.radialArraySweep &&
+         lhs.terrainSculptMode == rhs.terrainSculptMode &&
+         lhs.terrainSculptRadius == rhs.terrainSculptRadius &&
+         lhs.terrainSculptStrength == rhs.terrainSculptStrength;
 }
 
 [[nodiscard]] CreativeToolOptionAdjustReceipt adjustReceipt(
@@ -590,7 +609,13 @@ bool isValidCreativeToolSettings(
          validEnum(settings.radialArrayInstanceCount,
                    CreativeRadialArrayInstanceCount::Count) &&
          validEnum(settings.radialArraySweep,
-                   CreativeRadialArraySweep::Count);
+                   CreativeRadialArraySweep::Count) &&
+         validEnum(settings.terrainSculptMode,
+                   CreativeTerrainSculptMode::Count) &&
+         validEnum(settings.terrainSculptRadius,
+                   CreativeTerrainSculptRadius::Count) &&
+         validEnum(settings.terrainSculptStrength,
+                   CreativeTerrainSculptStrength::Count);
 }
 
 std::span<const CreativeToolOptionDescriptor>
@@ -844,6 +869,12 @@ std::string_view creativeToolOptionValueLabel(
       return toString(settings.radialArrayInstanceCount);
     case CreativeToolOptionId::RadialArraySweep:
       return toString(settings.radialArraySweep);
+    case CreativeToolOptionId::TerrainSculptMode:
+      return toString(settings.terrainSculptMode);
+    case CreativeToolOptionId::TerrainSculptRadius:
+      return toString(settings.terrainSculptRadius);
+    case CreativeToolOptionId::TerrainSculptStrength:
+      return toString(settings.terrainSculptStrength);
     case CreativeToolOptionId::Count:
       break;
   }
@@ -1012,6 +1043,21 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
       adjusted.radialArraySweep = cycleEnum(
           adjusted.radialArraySweep, CreativeRadialArraySweep::Count,
           direction);
+      break;
+    case CreativeToolOptionId::TerrainSculptMode:
+      adjusted.terrainSculptMode = cycleEnum(
+          adjusted.terrainSculptMode, CreativeTerrainSculptMode::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::TerrainSculptRadius:
+      adjusted.terrainSculptRadius = cycleEnum(
+          adjusted.terrainSculptRadius, CreativeTerrainSculptRadius::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::TerrainSculptStrength:
+      adjusted.terrainSculptStrength = cycleEnum(
+          adjusted.terrainSculptStrength,
+          CreativeTerrainSculptStrength::Count, direction);
       break;
     case CreativeToolOptionId::Count:
       receipt.status = CreativeToolOptionAdjustStatus::InvalidOption;

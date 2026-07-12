@@ -89,6 +89,8 @@ constexpr std::array kHeldItemBehaviors{
                      cr::Tool::Select, false, false},
     HeldItemBehavior{cr::CreativeHeldItemKind::TerrainGrade,
                      cr::Tool::Select, false, false},
+    HeldItemBehavior{cr::CreativeHeldItemKind::TerrainSculpt,
+                     cr::Tool::Select, false, false},
 };
 static_assert(heldItemRowsMatchEnumOrder(kHeldItemBehaviors));
 
@@ -488,6 +490,9 @@ constexpr std::array<HeldItemHandlerRow, cr::kCreativeHeldItemKindCount>
         {cr::CreativeHeldItemKind::TerrainGrade,
          {cancelTerrainGrade, applyTerrainGrade, beginTerrainGrade},
          applyTerrainGrade, cancelTerrainGrade, true},
+        {cr::CreativeHeldItemKind::TerrainSculpt,
+         {noInteraction, noInteraction, noInteraction},
+         noInteraction, noInteraction},
     }};
 static_assert(heldItemRowsMatchEnumOrder(kHeldItemHandlers));
 
@@ -868,6 +873,7 @@ double creativeEditorTargetCellSize(
     case cr::CreativeHeldItemKind::SurfaceExtrude:
     case cr::CreativeHeldItemKind::TerrainControl:
     case cr::CreativeHeldItemKind::TerrainGrade:
+    case cr::CreativeHeldItemKind::TerrainSculpt:
       return document.gridSettings().cellSizeMeters;
     case cr::CreativeHeldItemKind::ObjectSelect:
     case cr::CreativeHeldItemKind::ObjectMove:
@@ -1006,6 +1012,15 @@ std::string creativeEditorHeldItemStatusLabel(
       output.append(" | SET START ROD");
     }
     appendQuickEdit();
+    return output;
+  }
+  if (held.kind == cr::CreativeHeldItemKind::TerrainSculpt) {
+    output.append(" | ");
+    output.append(creativeEditorTerrainSculptQuickEditLabel(editor));
+    if (editor.terrain.sculpt.preview.valid &&
+        !editor.terrain.sculpt.preview.plan.accepted) {
+      output.append(" | NO RODS");
+    }
     return output;
   }
   if (held.kind == cr::CreativeHeldItemKind::ConnectedFill) {
@@ -1299,6 +1314,10 @@ bool confirmCreativeEditorHeldItem(cr::CreativeAppState& appState,
     return applyCreativeEditorTerrainGradeWithHistory(appState, editor, source)
         .accepted;
   }
+  if (held.kind == cr::CreativeHeldItemKind::TerrainSculpt) {
+    return applyCreativeEditorTerrainSculptWithHistory(appState, editor, source)
+        .accepted;
+  }
   if (held.kind == cr::CreativeHeldItemKind::SurfaceExtrude) {
     return applyCreativeEditorSurfaceExtrudeWithHistory(
                appState, editor, cr::CreativeSurfaceExtrudeKind::Extrude,
@@ -1332,6 +1351,11 @@ bool cancelCreativeEditorHeldItem(cr::CreativeAppState& appState,
   }
   if (held.kind == cr::CreativeHeldItemKind::TerrainGrade) {
     return cancelCreativeEditorTerrainGrade(editor).accepted;
+  }
+  if (held.kind == cr::CreativeHeldItemKind::TerrainSculpt) {
+    finalizeCreativeTerrainSculptStroke(
+        appState, editor, "creative_terrain_sculpt_cancel_active_tool");
+    return cancelCreativeEditorTerrainSculpt(editor).accepted;
   }
   if (editor.volume.active &&
       editor.volume.selection.phase != cr::CreativeVolumeSelectionPhase::Empty) {
@@ -1371,7 +1395,8 @@ void processCreativeEditorWorldInteractionFrame(
   const cr::CreativeHotbarEntry& aimedHeld =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   if (aimedHeld.kind == cr::CreativeHeldItemKind::TerrainControl ||
-      aimedHeld.kind == cr::CreativeHeldItemKind::TerrainGrade) {
+      aimedHeld.kind == cr::CreativeHeldItemKind::TerrainGrade ||
+      aimedHeld.kind == cr::CreativeHeldItemKind::TerrainSculpt) {
     updateCreativeEditorTerrainAim(
         editor.terrain, document, editor.interaction.target.ray,
         editor.interaction.target.valid ? editor.interaction.target.distanceMeters
@@ -1458,6 +1483,8 @@ void processCreativeEditorWorldInteractionFrame(
   finalizeCreativeMaterialStroke(request.appState, editor,
                                  "creative_material_stroke_non_material_tool");
   if (held.kind == cr::CreativeHeldItemKind::TerrainControl) {
+    finalizeCreativeTerrainSculptStroke(
+        request.appState, editor, "creative_terrain_sculpt_non_sculpt_tool");
     InteractionContext context{request, held};
     processCreativeTerrainStrokeFrame(
         request.appState, editor, request.actions,
@@ -1471,6 +1498,22 @@ void processCreativeEditorWorldInteractionFrame(
   }
   finalizeCreativeTerrainStroke(request.appState, editor,
                                 "creative_terrain_stroke_non_terrain_tool");
+  if (held.kind == cr::CreativeHeldItemKind::TerrainSculpt) {
+    processCreativeTerrainSculptStrokeFrame(
+        request.appState, editor, request.actions,
+        request.monotonicTimeNanoseconds);
+    if (!editor.terrain.sculpt.stroke.repeat.active &&
+        cr::creativeWorldActionPressed(request.actions,
+                                       cr::CreativeWorldActionId::Pick)) {
+      static_cast<void>(sampleCreativeEditorTerrainSculptHeight(
+          request.appState.facade.document(), editor));
+    }
+    static_cast<void>(refreshCreativeEditorTerrainSculptPreview(
+        editor.terrain, request.appState.facade.document(), editor));
+    return;
+  }
+  finalizeCreativeTerrainSculptStroke(
+      request.appState, editor, "creative_terrain_sculpt_non_sculpt_tool");
   if (held.kind == cr::CreativeHeldItemKind::ObjectMove) {
     processMoveInteraction(request);
     if (cr::creativeWorldActionPressed(request.actions,
@@ -1519,6 +1562,7 @@ void finalizeCreativeEditorContinuousGestures(
     std::string_view reasonCode) {
   finalizeCreativeMaterialStroke(appState, editor, reasonCode);
   finalizeCreativeTerrainStroke(appState, editor, reasonCode);
+  finalizeCreativeTerrainSculptStroke(appState, editor, reasonCode);
 }
 
 void appendCreativeEditorInteractionOverlay(

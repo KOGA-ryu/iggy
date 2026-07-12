@@ -63,6 +63,37 @@ upserts in fixed storage. A rejected plan emits no partial edits. Facade applies
 an accepted plan as one batch, so document revision, scene-cache refresh, and
 history each advance at most once.
 
+Equip **Terrain Sculpt** to reshape existing authored rods without creating new
+terrain controls:
+
+| Input | Operation |
+|---|---|
+| Hold right mouse / PS5 X | Apply Flatten or Smooth immediately, then repeat every 200 ms |
+| Left mouse / PS5 Circle | End and cancel the active sculpt gesture |
+| Middle mouse / PS5 Square | Sample the exact derived surface height as the Flatten target |
+| Up/down / D-pad up/down | Increase or decrease Strength through 1, 2, 4, and 8 cells |
+| Left/right / D-pad left/right | Shrink or widen Radius through 1, 2, 4, and 8 cells |
+
+Flatten moves every existing rod in the circular brush toward the sampled target
+by at most Strength cells. Smooth computes each affected rod's neighborhood
+average from the same pre-edit snapshot, then moves toward that average by at
+most Strength cells. Neither mode creates rods, changes rod radii, or partially
+applies a rejected batch. An empty brush reports `NO RODS`; use Terrain Rod when
+the authored field needs more controls.
+
+One press-hold-release sculpt gesture is one lazy history transaction. Repeating
+over a stationary brush is intentional: each 200 ms step continues moving the
+same rods toward the target. Release, tool/modal changes, focus loss, capture,
+undo/redo, document replacement, and shutdown finalize the gesture; a gesture
+with no accepted mutation records no history.
+
+The circular preview is cached by document ID/revision, aim cell, mode, radius,
+strength, and target height. It rebuilds from a copied terrain field and the same
+render-plan kernel used by the scene, so aiming alone never mutates or uploads
+room geometry. Preview triangles use runtime movement slope policy: green is
+normally walkable, yellow requires careful footing, and red is rejected by the
+current maximum-walkable-slope rule. The mode itself is selected in Tool Options.
+
 ## Authored Data
 
 `CreativeTerrainField` owns a canonical vector sorted by Z then X. Coordinates
@@ -150,3 +181,6 @@ Keep these as explicit later work, with profiling and visual tests before use:
   authored capabilities. A heightfield must not be stretched to represent them.
 - Future grid mutation paths must preserve grid origin and cell size as terrain
   scene-cache keys.
+- Neighborhood smoothing remains the bounded O(n^2) reference kernel for at
+  most 256 rods. Replace it only after profiling demonstrates a bottleneck and
+  an indexed implementation proves bit-identical plans in tests.
