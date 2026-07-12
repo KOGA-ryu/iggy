@@ -2,6 +2,7 @@
 #include "EditorEdits.hpp"
 #include "EditorFrame.hpp"
 #include "EditorInteraction.hpp"
+#include "EditorObjectActions.hpp"
 #include "EditorPlacement.hpp"
 #include "EditorState.hpp"
 #include "EditorToolOptions.hpp"
@@ -43,6 +44,50 @@ void select(cr::Facade& facade,
       additive ? cr::kCreativeToolModifierShift
                : cr::kCreativeToolModifierNone;
   static_cast<void>(facade.dispatchToolInput(input));
+}
+
+void armObjectActions(cr::CreativeAppState& appState,
+                      app::CreativeEditorState& editor,
+                      std::size_t selectedIndex) {
+  app::CreativeEditorToolOptionsState& state = editor.toolOptions;
+  state = {};
+  state.open = true;
+  state.targetEntry = {cr::CreativeHeldItemKind::ObjectMove,
+                       cr::CreativeObjectKind::Unknown};
+  state.draft = editor.toolSettings;
+  state.commands = app::creativeEditorToolOptionCommandsForEntry(
+      state.targetEntry);
+  state.selectedIndex = selectedIndex;
+  const cr::CreativeSelectionState& selection =
+      appState.facade.selectionState();
+  state.contextSelectionCount = cr::selectedTargetCount(selection);
+  state.contextAllUnlocked = true;
+  state.contextAllMovable = true;
+  state.contextAllResettable = true;
+  if (selection.selectedTarget.value == cr::kInvalidId) {
+    return;
+  }
+  const cr::CreativeObject* primary = appState.facade.findObject(
+      static_cast<cr::CreativeObjectId>(selection.selectedTarget.value));
+  if (primary == nullptr) {
+    return;
+  }
+  state.contextPrimaryObjectId = primary->id;
+  state.contextPrimaryObjectKind = primary->kind;
+  state.contextPrimaryVisible = primary->visible;
+  state.contextPrimaryLocked = primary->locked;
+  state.contextAllUnlocked = !primary->locked;
+  state.contextAllMovable = cr::descriptorAllowsMutation(
+      primary->kind, cr::CreativeMutationKind::Move);
+  state.contextAllResettable =
+      cr::descriptorAllowsMutation(primary->kind,
+                                   cr::CreativeMutationKind::Rotate) &&
+      cr::descriptorAllowsMutation(primary->kind,
+                                   cr::CreativeMutationKind::Scale);
+  if (state.contextSelectionCount == 1U &&
+      primary->kind == cr::CreativeObjectKind::Group) {
+    state.contextGroupId = primary->id;
+  }
 }
 
 bool editorCommandGroupsUngroupsAndRecordsOneStepEach() {
@@ -379,6 +424,150 @@ bool groupToolOptionsExposeEditAndUngroupCommands() {
       "Group options present edit contents before destructive ungroup");
 }
 
+bool transformToolOptionsExposeAndRouteSharedObjectActions() {
+  const app::CreativeEditorToolOptionsCommandList commands =
+      app::creativeEditorToolOptionCommandsForEntry(
+          {cr::CreativeHeldItemKind::ObjectMove,
+           cr::CreativeObjectKind::Unknown});
+  bool ok = expect(
+      commands.count == 8U &&
+          commands.ids[0] ==
+              app::CreativeEditorToolOptionsCommandId::TransformSelection &&
+          commands.ids[1] ==
+              app::CreativeEditorToolOptionsCommandId::ResetSelectionTransform &&
+          commands.ids[2] ==
+              app::CreativeEditorToolOptionsCommandId::DuplicateSelection &&
+          commands.ids[3] ==
+              app::CreativeEditorToolOptionsCommandId::DeleteSelection &&
+          commands.ids[4] ==
+              app::CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility &&
+          commands.ids[5] ==
+              app::CreativeEditorToolOptionsCommandId::ToggleSelectionLocked &&
+          commands.ids[6] ==
+              app::CreativeEditorToolOptionsCommandId::GroupSelection &&
+          commands.ids[7] ==
+              app::CreativeEditorToolOptionsCommandId::UngroupSelection,
+      "Transform options expose the bounded shared object-action order");
+
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Object Actions");
+  static_cast<void>(document.assignId(311U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId objectId = createCrate(appState.facade, 3.0);
+  select(appState.facade, objectId, false);
+  cr::CreativeTransformCommandRequest rotate;
+  rotate.kind = cr::CreativeTransformCommandKind::RotateYaw;
+  rotate.yawDegrees = 90.0;
+  static_cast<void>(appState.facade.transformSelectedObjects(rotate));
+  cr::CreativeTransformCommandRequest scale;
+  scale.kind = cr::CreativeTransformCommandKind::Scale;
+  scale.scaleFactor = {2.0, 2.0, 2.0};
+  static_cast<void>(appState.facade.transformSelectedObjects(scale));
+  appState.history = {};
+  app::CreativeEditorState editor;
+
+  armObjectActions(appState, editor, 1U);
+  const bool reset = app::activateCreativeEditorToolOptionsSelection(
+      appState, editor);
+  const cr::CreativeObject* object = appState.facade.findObject(objectId);
+  ok = expect(reset && !editor.toolOptions.open && object != nullptr &&
+                  cr::creativeVec3ExactlyEqual(
+                      object->transform.position, {3.0, 0.0, 0.0}) &&
+                  cr::creativeVec3ExactlyEqual(
+                      object->transform.rotationEulerRadians,
+                      {0.0, 0.0, 0.0}) &&
+                  cr::creativeVec3ExactlyEqual(
+                      object->transform.scale, {1.0, 1.0, 1.0}) &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "Reset action preserves position and records one undo") &&
+       ok;
+  ok = expect(app::undoLastEdit(appState, "undo_object_action_reset") &&
+                  appState.facade.findObject(objectId)->transform.scale.x == 2.0,
+              "Reset action restores through shared history") &&
+       ok;
+
+  select(appState.facade, objectId, false);
+  armObjectActions(appState, editor, 0U);
+  const bool transform = app::activateCreativeEditorToolOptionsSelection(
+      appState, editor);
+  ok = expect(transform && editor.transform.active &&
+                  editor.transform.anchorPolicy ==
+                      app::CreativeEditorTransformAnchorPolicy::FixedSource &&
+                  !editor.toolOptions.open,
+              "Transform action enters the exact fixed-source preview") &&
+       ok;
+  static_cast<void>(app::cancelCreativeEditorSelectionTransformPreview(
+      editor.transform, "cancel_object_action_transform"));
+
+  armObjectActions(appState, editor, 4U);
+  const bool hidden = app::activateCreativeEditorToolOptionsSelection(
+      appState, editor);
+  ok = expect(hidden && !appState.facade.findObject(objectId)->visible &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "Visibility action uses one history record") &&
+       ok;
+  ok = expect(app::undoLastEdit(appState, "undo_object_action_visibility") &&
+                  appState.facade.findObject(objectId)->visible,
+              "Visibility action is undoable") &&
+       ok;
+
+  select(appState.facade, objectId, false);
+  armObjectActions(appState, editor, 5U);
+  const bool locked = app::activateCreativeEditorToolOptionsSelection(
+      appState, editor);
+  ok = expect(locked && appState.facade.findObject(objectId)->locked &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "Lock action uses one history record") &&
+       ok;
+  return expect(app::undoLastEdit(appState, "undo_object_action_lock") &&
+                    !appState.facade.findObject(objectId)->locked,
+                "Lock action is undoable") &&
+         ok;
+}
+
+bool objectActionsInspectCompleteGroupCapability() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Object Action Capability");
+  static_cast<void>(document.assignId(312U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId first = createCrate(appState.facade, 0.0);
+  const cr::CreativeObjectId second = createCrate(appState.facade, 2.0);
+  select(appState.facade, first, false);
+  select(appState.facade, second, true);
+  const cr::CreativeGroupCommandReceipt grouped =
+      appState.facade.groupSelectedObjects();
+  select(appState.facade, first, false);
+  const cr::CreativeFacadeMutationReceipt locked =
+      appState.facade.toggleSelectedObjectLocked();
+  select(appState.facade, grouped.groupObjectId, false);
+
+  app::CreativeEditorState editor;
+  editor.toolOptions.targetEntry = {
+      cr::CreativeHeldItemKind::ObjectMove,
+      cr::CreativeObjectKind::Unknown};
+  app::refreshCreativeEditorObjectActionContext(appState,
+                                                editor.toolOptions);
+  return expect(grouped.accepted && locked.accepted &&
+                    editor.toolOptions.contextSelectionCount == 1U &&
+                    !editor.toolOptions.contextAllUnlocked,
+                "Object actions inspect locked Group descendants") &&
+         expect(!app::creativeEditorObjectActionEnabled(
+                    editor, editor.toolOptions,
+                    app::CreativeEditorToolOptionsCommandId::
+                        TransformSelection) &&
+                    !app::creativeEditorObjectActionEnabled(
+                        editor, editor.toolOptions,
+                        app::CreativeEditorToolOptionsCommandId::
+                            ResetSelectionTransform) &&
+                    !app::creativeEditorObjectActionEnabled(
+                        editor, editor.toolOptions,
+                        app::CreativeEditorToolOptionsCommandId::
+                            DuplicateSelection),
+                "Locked descendants disable atomic hierarchy actions");
+}
+
 bool groupToolOptionsEnterFocusAndUngroupWithHistory() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document =
@@ -510,6 +699,8 @@ int main() {
                  focusResolvesNestedGroupsAtTheCurrentEditingLevel() &&
                  focusedPlacementParentsAuthoredObjectsOnly() &&
                  groupToolOptionsExposeEditAndUngroupCommands() &&
+                 transformToolOptionsExposeAndRouteSharedObjectActions() &&
+                 objectActionsInspectCompleteGroupCapability() &&
                  groupToolOptionsEnterFocusAndUngroupWithHistory() &&
                  controllerTransformScalesAGroupAsOneUndoableHierarchy()
              ? EXIT_SUCCESS

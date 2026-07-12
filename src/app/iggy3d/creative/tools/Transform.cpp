@@ -101,6 +101,8 @@ struct ResolvedObjects {
       return CreativeMutationKind::Rotate;
     case CreativeTransformCommandKind::Scale:
       return CreativeMutationKind::Scale;
+    case CreativeTransformCommandKind::ResetRotationScale:
+      return CreativeMutationKind::Rotate;
   }
   return CreativeMutationKind::Unknown;
 }
@@ -123,6 +125,9 @@ struct ResolvedObjects {
     return isFiniteCreativeVec3(
                rotateAroundYaw(anchor, pivot, yawRadians)) &&
            isFiniteCreativeVec3(rotation);
+  }
+  if (request.kind == CreativeTransformCommandKind::ResetRotationScale) {
+    return true;
   }
   return isFiniteCreativeVec3(
              add(pivot, multiply(subtract(anchor, pivot), request.scaleFactor))) &&
@@ -156,6 +161,15 @@ void appendTransformRequests(const CreativeObject& object,
     return;
   }
 
+  if (request.kind == CreativeTransformCommandKind::ResetRotationScale) {
+    out.push_back({0, object.id, CreativeMutationKind::Rotate,
+                   makeRotatePayload({0.0, 0.0, 0.0})});
+    out.push_back({0, object.id, CreativeMutationKind::Scale,
+                   CreativeMutationPayload{
+                       ScaleMutation{{1.0, 1.0, 1.0}}}});
+    return;
+  }
+
   const CreativeVec3 nextPosition =
       add(pivot, multiply(subtract(anchor, pivot), request.scaleFactor));
   if (!creativeVec3ExactlyEqual(nextPosition, anchor)) {
@@ -178,6 +192,8 @@ std::string_view toString(CreativeTransformCommandKind kind) noexcept {
       return "RotateYaw";
     case CreativeTransformCommandKind::Scale:
       return "Scale";
+    case CreativeTransformCommandKind::ResetRotationScale:
+      return "ResetRotationScale";
   }
   return "Unknown";
 }
@@ -222,12 +238,21 @@ CreativeTransformCommandReceipt transformDocumentObjectsAtomically(
     receipt.message = "transform_selection_empty";
     return receipt;
   }
-  const bool requestValid =
-      request.kind == CreativeTransformCommandKind::Translate
-          ? isFiniteCreativeVec3(request.translation)
-          : request.kind == CreativeTransformCommandKind::RotateYaw
-                ? std::isfinite(request.yawDegrees)
-                : isPositiveCreativeVec3(request.scaleFactor);
+  bool requestValid = false;
+  switch (request.kind) {
+    case CreativeTransformCommandKind::Translate:
+      requestValid = isFiniteCreativeVec3(request.translation);
+      break;
+    case CreativeTransformCommandKind::RotateYaw:
+      requestValid = std::isfinite(request.yawDegrees);
+      break;
+    case CreativeTransformCommandKind::Scale:
+      requestValid = isPositiveCreativeVec3(request.scaleFactor);
+      break;
+    case CreativeTransformCommandKind::ResetRotationScale:
+      requestValid = true;
+      break;
+  }
   if (!requestValid) {
     receipt.status = CreativeTransformCommandStatus::InvalidRequest;
     receipt.message = "transform_request_invalid";
@@ -272,11 +297,27 @@ CreativeTransformCommandReceipt transformDocumentObjectsAtomically(
       receipt.message = "transform_object_locked";
       return receipt;
     }
-    if (!descriptorAllowsMutation(object->kind, requiredKind) ||
-        (request.kind != CreativeTransformCommandKind::Translate &&
-         !descriptorAllowsMutation(object->kind, CreativeMutationKind::Move))) {
+    const bool resetRotationScale =
+        request.kind == CreativeTransformCommandKind::ResetRotationScale;
+    const bool supportsRequiredMutation =
+        resetRotationScale
+            ? descriptorAllowsMutation(object->kind,
+                                       CreativeMutationKind::Rotate) &&
+                  descriptorAllowsMutation(object->kind,
+                                           CreativeMutationKind::Scale)
+            : descriptorAllowsMutation(object->kind, requiredKind);
+    const bool supportsPivotMove =
+        request.kind == CreativeTransformCommandKind::Translate ||
+        resetRotationScale ||
+        descriptorAllowsMutation(object->kind, CreativeMutationKind::Move);
+    if (!supportsRequiredMutation || !supportsPivotMove) {
       receipt.failedObjectId = object->id;
-      receipt.failedMutationKind = requiredKind;
+      receipt.failedMutationKind =
+          resetRotationScale &&
+                  descriptorAllowsMutation(object->kind,
+                                           CreativeMutationKind::Rotate)
+              ? CreativeMutationKind::Scale
+              : requiredKind;
       receipt.status = CreativeTransformCommandStatus::UnsupportedObject;
       receipt.message = "transform_object_unsupported";
       return receipt;

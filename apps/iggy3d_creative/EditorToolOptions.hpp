@@ -31,11 +31,18 @@ enum class CreativeEditorToolOptionsCommandId : std::uint8_t {
   SetMaterialBrushSymmetryPivot,
   ClearMaterialBrushSymmetryPivot,
   EditGroupContents,
+  TransformSelection,
+  ResetSelectionTransform,
+  DuplicateSelection,
+  DeleteSelection,
+  ToggleSelectionVisibility,
+  ToggleSelectionLocked,
+  GroupSelection,
   UngroupSelection,
   Count,
 };
 
-inline constexpr std::size_t kCreativeEditorToolOptionsCommandCapacity = 4U;
+inline constexpr std::size_t kCreativeEditorToolOptionsCommandCapacity = 8U;
 
 struct CreativeEditorToolOptionsCommandList {
   std::array<CreativeEditorToolOptionsCommandId,
@@ -53,6 +60,16 @@ struct CreativeEditorToolOptionsState {
   std::size_t selectedIndex = 0;
   iggy3d::creative::CreativeObjectId contextGroupId =
       iggy3d::creative::kInvalidObjectId;
+  iggy3d::creative::CreativeObjectId contextPrimaryObjectId =
+      iggy3d::creative::kInvalidObjectId;
+  iggy3d::creative::CreativeObjectKind contextPrimaryObjectKind =
+      iggy3d::creative::CreativeObjectKind::Unknown;
+  std::size_t contextSelectionCount = 0U;
+  bool contextPrimaryVisible = true;
+  bool contextPrimaryLocked = false;
+  bool contextAllUnlocked = false;
+  bool contextAllMovable = false;
+  bool contextAllResettable = false;
 };
 
 struct CreativeEditorQuickEditState {

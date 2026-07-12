@@ -1262,6 +1262,64 @@ bool transformCommandsStoreRadiansAndResolveLiveGeometry() {
          ok;
 }
 
+bool resetTransformPreservesPositionAndAppliesAtomically() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Reset Transform");
+  cr::CreativeDocumentCreateRequest create;
+  create.kind = cr::CreativeObjectKind::Wall;
+  create.name = "Transformed Wall";
+  create.transform.position = {3.0, 2.0, -4.0};
+  create.transform.rotationEulerRadians = {0.25, 0.5, -0.75};
+  create.transform.scale = {2.0, 0.5, 3.0};
+  create.hasTransformOverride = true;
+  const cr::CreativeDocumentCreateReceipt created = document.createObject(create);
+  const std::array objectIds{created.objectId};
+
+  cr::CreativeTransformCommandRequest reset;
+  reset.kind = cr::CreativeTransformCommandKind::ResetRotationScale;
+  const std::uint64_t revisionBefore = document.revision();
+  const cr::CreativeTransformCommandReceipt receipt =
+      cr::transformDocumentObjectsAtomically(document, objectIds, reset);
+  const cr::CreativeObject* object = document.findObject(created.objectId);
+  bool ok = expect(receipt.accepted && receipt.changed && object != nullptr,
+                   "reset transform applies") &&
+            expect(object != nullptr &&
+                       cr::creativeVec3ExactlyEqual(
+                           object->transform.position, {3.0, 2.0, -4.0}) &&
+                       cr::creativeVec3ExactlyEqual(
+                           object->transform.rotationEulerRadians,
+                           {0.0, 0.0, 0.0}) &&
+                       cr::creativeVec3ExactlyEqual(
+                           object->transform.scale, {1.0, 1.0, 1.0}),
+                   "reset preserves position and restores rotation and scale") &&
+            expect(document.revision() == revisionBefore + 1U &&
+                       receipt.mutationReceipt.attemptedCount == 2U,
+                   "reset commits both fields in one document revision");
+
+  const std::uint64_t settledRevision = document.revision();
+  const cr::CreativeTransformCommandReceipt noChange =
+      cr::transformDocumentObjectsAtomically(document, objectIds, reset);
+  ok = expect(noChange.accepted && !noChange.changed &&
+                  document.revision() == settledRevision,
+              "repeated reset is an accepted no-op") &&
+       ok;
+
+  cr::CreativeDocument unsupported =
+      cr::CreativeDocument::create("Unsupported Reset");
+  create = {};
+  create.kind = cr::CreativeObjectKind::SoundEmitter;
+  const cr::CreativeDocumentCreateReceipt sound = unsupported.createObject(create);
+  const std::array unsupportedIds{sound.objectId};
+  const std::uint64_t unsupportedRevision = unsupported.revision();
+  const cr::CreativeTransformCommandReceipt rejected =
+      cr::transformDocumentObjectsAtomically(unsupported, unsupportedIds, reset);
+  return expect(!rejected.accepted && !rejected.changed &&
+                    rejected.status ==
+                        cr::CreativeTransformCommandStatus::UnsupportedObject &&
+                    unsupported.revision() == unsupportedRevision,
+                "reset rejects objects without rotate and scale capability") &&
+         ok;
+}
+
 bool selectionPlacementPlanOwnsPreviewAndCommitGeometry() {
   cr::CreativeObject wall;
   wall.id = 1U;
@@ -1571,6 +1629,7 @@ int main() {
                   optionAdjustmentIsDeterministicAndAtomic() &&
                   replaceFilterAndCloneOffsetUseExplicitInputs() &&
                   transformCommandsStoreRadiansAndResolveLiveGeometry() &&
+                  resetTransformPreservesPositionAndAppliesAtomically() &&
                   selectionPlacementPlanOwnsPreviewAndCommitGeometry() &&
                   selectionPlacementScalePlanMatchesAtomicCommit() &&
                   selectionPlacementPrecisionIsExactAndFailClosed() &&

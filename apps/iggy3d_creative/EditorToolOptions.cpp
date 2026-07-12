@@ -6,6 +6,7 @@
 
 #include "EditorPlacement.hpp"
 #include "EditorGroup.hpp"
+#include "EditorObjectActions.hpp"
 #include "EditorState.hpp"
 #include "EditorTerrain.hpp"
 #include "EditorVolume.hpp"
@@ -66,6 +67,23 @@ creativeEditorToolOptionCommandsForEntry(
   } else if (entry.kind == cr::CreativeHeldItemKind::ObjectGroup) {
     commands.ids[commands.count++] =
         CreativeEditorToolOptionsCommandId::EditGroupContents;
+    commands.ids[commands.count++] =
+        CreativeEditorToolOptionsCommandId::UngroupSelection;
+  } else if (entry.kind == cr::CreativeHeldItemKind::ObjectMove) {
+    commands.ids[commands.count++] =
+        CreativeEditorToolOptionsCommandId::TransformSelection;
+    commands.ids[commands.count++] =
+        CreativeEditorToolOptionsCommandId::ResetSelectionTransform;
+    commands.ids[commands.count++] =
+        CreativeEditorToolOptionsCommandId::DuplicateSelection;
+    commands.ids[commands.count++] =
+        CreativeEditorToolOptionsCommandId::DeleteSelection;
+    commands.ids[commands.count++] =
+        CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility;
+    commands.ids[commands.count++] =
+        CreativeEditorToolOptionsCommandId::ToggleSelectionLocked;
+    commands.ids[commands.count++] =
+        CreativeEditorToolOptionsCommandId::GroupSelection;
     commands.ids[commands.count++] =
         CreativeEditorToolOptionsCommandId::UngroupSelection;
   }
@@ -148,12 +166,22 @@ void appendText(std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
 }
 
 [[nodiscard]] std::string toolOptionsTargetLabel(
-    cr::CreativeHotbarEntry entry) {
-  std::string label(cr::toString(entry.kind));
-  if (entry.kind == cr::CreativeHeldItemKind::Material &&
-      entry.objectKind != cr::CreativeObjectKind::Unknown) {
+    const CreativeEditorToolOptionsState& state) {
+  if (state.targetEntry.kind == cr::CreativeHeldItemKind::ObjectMove) {
+    if (state.contextSelectionCount == 0U) {
+      return "NO SELECTION";
+    }
+    std::string label(cr::toString(state.contextPrimaryObjectKind));
     label.append(" | ");
-    label.append(cr::toString(entry.objectKind));
+    label.append(std::to_string(state.contextSelectionCount));
+    label.append(" SELECTED");
+    return label;
+  }
+  std::string label(cr::toString(state.targetEntry.kind));
+  if (state.targetEntry.kind == cr::CreativeHeldItemKind::Material &&
+      state.targetEntry.objectKind != cr::CreativeObjectKind::Unknown) {
+    label.append(" | ");
+    label.append(cr::toString(state.targetEntry.objectKind));
   }
   return label;
 }
@@ -244,6 +272,9 @@ void rebuildQuickEditOptions(CreativeEditorState& editor,
     const CreativeEditorState& editor,
     const CreativeEditorToolOptionsState& state,
     CreativeEditorToolOptionsCommandId command) noexcept {
+  if (creativeEditorCommandIsObjectAction(command)) {
+    return creativeEditorObjectActionEnabled(editor, state, command);
+  }
   const CreativeMaterialBrushPivotState& pivot =
       editor.interaction.materialBrushPivot;
   switch (command) {
@@ -255,8 +286,14 @@ void rebuildQuickEditOptions(CreativeEditorState& editor,
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
       return state.contextGroupId != cr::kInvalidObjectId &&
              editor.groupFocus.depth < editor.groupFocus.groupIds.size();
+    case CreativeEditorToolOptionsCommandId::TransformSelection:
+    case CreativeEditorToolOptionsCommandId::ResetSelectionTransform:
+    case CreativeEditorToolOptionsCommandId::DuplicateSelection:
+    case CreativeEditorToolOptionsCommandId::DeleteSelection:
+    case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
+    case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
+    case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
-      return state.contextGroupId != cr::kInvalidObjectId;
     case CreativeEditorToolOptionsCommandId::Count:
       return false;
   }
@@ -278,6 +315,9 @@ void rebuildQuickEditOptions(CreativeEditorState& editor,
 
 [[nodiscard]] std::string_view commandLabel(
     CreativeEditorToolOptionsCommandId command) noexcept {
+  if (creativeEditorCommandIsObjectAction(command)) {
+    return creativeEditorObjectActionLabel(command);
+  }
   switch (command) {
     case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
       return "SET SYMMETRY PIVOT";
@@ -285,8 +325,14 @@ void rebuildQuickEditOptions(CreativeEditorState& editor,
       return "CLEAR SYMMETRY PIVOT";
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
       return "EDIT GROUP CONTENTS";
+    case CreativeEditorToolOptionsCommandId::TransformSelection:
+    case CreativeEditorToolOptionsCommandId::ResetSelectionTransform:
+    case CreativeEditorToolOptionsCommandId::DuplicateSelection:
+    case CreativeEditorToolOptionsCommandId::DeleteSelection:
+    case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
+    case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
+    case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
-      return "UNGROUP";
     case CreativeEditorToolOptionsCommandId::Count:
       return "INVALID COMMAND";
   }
@@ -296,6 +342,10 @@ void rebuildQuickEditOptions(CreativeEditorState& editor,
 [[nodiscard]] std::string commandValueLabel(
     const CreativeEditorState& editor,
     CreativeEditorToolOptionsCommandId command) {
+  const CreativeEditorToolOptionsState& state = editor.toolOptions;
+  if (creativeEditorCommandIsObjectAction(command)) {
+    return creativeEditorObjectActionValueLabel(state, command);
+  }
   const CreativeMaterialBrushPivotState& pivot =
       editor.interaction.materialBrushPivot;
   switch (command) {
@@ -309,10 +359,14 @@ void rebuildQuickEditOptions(CreativeEditorState& editor,
       return editor.toolOptions.contextGroupId != cr::kInvalidObjectId
                  ? "ENTER"
                  : "SELECT GROUP";
+    case CreativeEditorToolOptionsCommandId::TransformSelection:
+    case CreativeEditorToolOptionsCommandId::ResetSelectionTransform:
+    case CreativeEditorToolOptionsCommandId::DuplicateSelection:
+    case CreativeEditorToolOptionsCommandId::DeleteSelection:
+    case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
+    case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
+    case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
-      return editor.toolOptions.contextGroupId != cr::kInvalidObjectId
-                 ? "REMOVE CONTAINER"
-                 : "SELECT GROUP";
     case CreativeEditorToolOptionsCommandId::Count:
       return "INVALID";
   }
@@ -372,7 +426,13 @@ void processPointerInput(const CreativeEditorToolOptionsFrameRequest& request,
     if (x >= layout.panelX && x < midpoint) {
       state.open = false;
     } else if (x >= midpoint && x < panelRight) {
-      result.committed = commitOptions(request.editor);
+      const bool commandOnly = state.options.count == 0U &&
+                               state.commands.count > 0U;
+      result.committed =
+          commandOnly
+              ? activateCreativeEditorToolOptionsSelection(
+                    request.appState, request.editor)
+              : commitOptions(request.editor);
     }
   }
 }
@@ -397,6 +457,9 @@ bool activateCreativeEditorToolOptionsSelection(
   }
   const CreativeEditorToolOptionsCommandId command =
       state.commands.ids[commandIndex];
+  if (creativeEditorCommandIsObjectAction(command)) {
+    return false;
+  }
   if (!commandEnabled(editor, state, command)) {
     return false;
   }
@@ -412,6 +475,13 @@ bool activateCreativeEditorToolOptionsSelection(
           editor.interaction.materialBrushPivot);
       break;
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
+    case CreativeEditorToolOptionsCommandId::TransformSelection:
+    case CreativeEditorToolOptionsCommandId::ResetSelectionTransform:
+    case CreativeEditorToolOptionsCommandId::DuplicateSelection:
+    case CreativeEditorToolOptionsCommandId::DeleteSelection:
+    case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
+    case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
+    case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
       break;
     case CreativeEditorToolOptionsCommandId::Count:
@@ -435,25 +505,38 @@ bool activateCreativeEditorToolOptionsSelection(
   }
   const CreativeEditorToolOptionsCommandId command =
       state.commands.ids[commandIndex];
-  if (command == CreativeEditorToolOptionsCommandId::EditGroupContents) {
-    const CreativeEditorGroupFocusReceipt receipt =
-        enterCreativeEditorGroupFocus(appState, editor.groupFocus,
-                                      state.contextGroupId);
-    if (receipt.accepted) {
-      state.open = false;
-    }
-    return receipt.accepted;
+  if (!commandEnabled(editor, state, command)) {
+    return false;
   }
-  if (command == CreativeEditorToolOptionsCommandId::UngroupSelection) {
-    const cr::CreativeGroupCommandReceipt receipt =
-        applyCreativeEditorGroupCommandWithHistory(
-            appState, "creative_group_tool_options_ungroup");
-    if (receipt.accepted) {
-      state.open = false;
-    }
-    return receipt.accepted;
+  if (creativeEditorCommandIsObjectAction(command)) {
+    return activateCreativeEditorObjectAction(appState, editor, command);
   }
-  return activateCreativeEditorToolOptionsSelection(editor);
+
+  bool accepted = false;
+  switch (command) {
+    case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
+    case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
+      return activateCreativeEditorToolOptionsSelection(editor);
+    case CreativeEditorToolOptionsCommandId::EditGroupContents:
+      accepted = enterCreativeEditorGroupFocus(
+                     appState, editor.groupFocus, state.contextGroupId)
+                     .accepted;
+      break;
+    case CreativeEditorToolOptionsCommandId::TransformSelection:
+    case CreativeEditorToolOptionsCommandId::ResetSelectionTransform:
+    case CreativeEditorToolOptionsCommandId::DuplicateSelection:
+    case CreativeEditorToolOptionsCommandId::DeleteSelection:
+    case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
+    case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
+    case CreativeEditorToolOptionsCommandId::GroupSelection:
+    case CreativeEditorToolOptionsCommandId::UngroupSelection:
+    case CreativeEditorToolOptionsCommandId::Count:
+      break;
+  }
+  if (accepted) {
+    state.open = false;
+  }
+  return accepted;
 }
 
 CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
@@ -476,20 +559,7 @@ CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
       state.options = options;
       state.commands = commands;
       state.selectedIndex = 0U;
-      state.contextGroupId = cr::kInvalidObjectId;
-      if (request.requestedEntry.kind ==
-          cr::CreativeHeldItemKind::ObjectGroup) {
-        const cr::TargetRef selected =
-            request.appState.facade.selectionState().selectedTarget;
-        if (selected.value != cr::kInvalidId) {
-          const cr::CreativeObject* object = request.appState.facade.findObject(
-              static_cast<cr::CreativeObjectId>(selected.value));
-          if (object != nullptr &&
-              object->kind == cr::CreativeObjectKind::Group) {
-            state.contextGroupId = object->id;
-          }
-        }
-      }
+      refreshCreativeEditorObjectActionContext(request.appState, state);
     }
   }
 
@@ -677,10 +747,13 @@ void appendCreativeEditorToolOptionsOverlay(
       {0, 0, drawableWidth, drawableHeight, 0.01F, 0.015F, 0.02F, 0.66F});
   uiRects.push_back({layout.panelX, layout.panelY, layout.panelWidth,
                      layout.panelHeight, 0.05F, 0.06F, 0.07F, 0.98F});
-  appendText(glyphs, "TOOL OPTIONS", layout.panelX + 18,
+  const bool objectActions =
+      state.targetEntry.kind == cr::CreativeHeldItemKind::ObjectMove;
+  appendText(glyphs, objectActions ? "OBJECT ACTIONS" : "TOOL OPTIONS",
+             layout.panelX + 18,
              layout.panelY + 16, drawableWidth, drawableHeight,
              0.91F, 0.94F, 0.96F);
-  const std::string targetLabel = toolOptionsTargetLabel(state.targetEntry);
+  const std::string targetLabel = toolOptionsTargetLabel(state);
   appendText(glyphs, targetLabel, layout.panelX + 180, layout.panelY + 16,
              drawableWidth, drawableHeight, 0.64F, 0.72F, 0.76F);
 
@@ -773,7 +846,9 @@ void appendCreativeEditorToolOptionsOverlay(
     appendText(glyphs, "CANCEL", layout.panelX + labelInset,
                layout.footerY + 10, drawableWidth, drawableHeight,
                0.78F, 0.82F, 0.84F);
-    appendText(glyphs, "APPLY",
+    const bool commandOnly = state.options.count == 0U &&
+                             state.commands.count > 0U;
+    appendText(glyphs, commandOnly ? "ACTIVATE" : "APPLY",
                layout.panelX + static_cast<std::int32_t>(halfWidth) +
                    labelInset,
                layout.footerY + 10, drawableWidth, drawableHeight,

@@ -42,6 +42,31 @@ bool applyHistoryDirection(creative::CreativeAppState& appState,
   return receipt.accepted;
 }
 
+creative::CreativeFacadeMutationReceipt toggleSelectedObjectStateWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    creative::CreativeMutationKind mutationKind,
+    std::string_view source) {
+  StandaloneEditTransaction transaction =
+      beginEditTransaction(appState.facade, source);
+  creative::CreativeFacadeMutationReceipt receipt =
+      mutationKind == creative::CreativeMutationKind::SetLocked
+          ? appState.facade.toggleSelectedObjectLocked()
+          : appState.facade.toggleSelectedObjectVisibility();
+  static_cast<void>(completeEditTransaction(
+      history, std::move(transaction), appState.facade,
+      receipt.accepted && receipt.changed, receipt.message));
+  SDL_Log("iggy3d_creative: OBJECT STATE source='%s' kind='%s' accepted=%d "
+          "changed=%d objectId=%llu revisionBefore=%llu revisionAfter=%llu",
+          std::string(source).c_str(),
+          std::string(creative::toString(receipt.mutationKind)).c_str(),
+          receipt.accepted ? 1 : 0, receipt.changed ? 1 : 0,
+          static_cast<unsigned long long>(receipt.objectId),
+          static_cast<unsigned long long>(receipt.revisionBefore),
+          static_cast<unsigned long long>(receipt.revisionAfter));
+  return receipt;
+}
+
 }  // namespace
 
 void clearEditHistory(StandaloneEditHistory& history,
@@ -225,6 +250,23 @@ creative::CreativeDuplicateCommandReceipt duplicateSelectedObjectsWithUndo(
           static_cast<unsigned long long>(depthBefore),
           static_cast<unsigned long long>(creative::creativeUndoDepth(history)));
   return receipt;
+}
+
+creative::CreativeFacadeMutationReceipt
+toggleSelectedObjectVisibilityWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    std::string_view source) {
+  return toggleSelectedObjectStateWithUndo(
+      appState, history, creative::CreativeMutationKind::SetVisible, source);
+}
+
+creative::CreativeFacadeMutationReceipt toggleSelectedObjectLockedWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    std::string_view source) {
+  return toggleSelectedObjectStateWithUndo(
+      appState, history, creative::CreativeMutationKind::SetLocked, source);
 }
 
 creative::CreativeClipboardCopyReceipt copySelectionToClipboard(

@@ -15,6 +15,7 @@ enum class CreativeTransformCommandKind : std::uint8_t {
   Translate,
   RotateYaw,
   Scale,
+  ResetRotationScale,
 };
 
 enum class CreativeTransformCommandStatus : std::uint8_t {

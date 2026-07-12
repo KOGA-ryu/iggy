@@ -51,6 +51,18 @@ duplicateSelectedObjectsWithUndo(
     const cr::CreativeDuplicateCommandRequest& request,
     std::string_view source);
 
+[[nodiscard]] cr::CreativeFacadeMutationReceipt
+toggleSelectedObjectVisibilityWithUndo(
+    cr::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    std::string_view source);
+
+[[nodiscard]] cr::CreativeFacadeMutationReceipt
+toggleSelectedObjectLockedWithUndo(
+    cr::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    std::string_view source);
+
 [[nodiscard]] cr::CreativeClipboardCopyReceipt copySelectionToClipboard(
     cr::CreativeAppState& appState,
     std::string_view source);
