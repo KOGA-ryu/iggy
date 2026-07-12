@@ -377,6 +377,9 @@ constexpr std::array kDefaultBindings{
     catalogBinding(CreativeInputActionId::CatalogConfirm,
                    CreativeInputKey::GamepadConfirm,
                    CreativeInputContext::Catalog),
+    catalogBinding(CreativeInputActionId::CatalogAssignToolWheel,
+                   CreativeInputKey::GamepadWest,
+                   CreativeInputContext::Catalog),
     catalogBinding(CreativeInputActionId::CatalogClose,
                    CreativeInputKey::Escape,
                    CreativeInputContext::Catalog),
@@ -765,6 +768,8 @@ std::string_view toString(CreativeInputActionId action) noexcept {
       return "CatalogPreviousPage";
     case CreativeInputActionId::CatalogNextPage: return "CatalogNextPage";
     case CreativeInputActionId::CatalogConfirm: return "CatalogConfirm";
+    case CreativeInputActionId::CatalogAssignToolWheel:
+      return "CatalogAssignToolWheel";
     case CreativeInputActionId::CatalogClose: return "CatalogClose";
     case CreativeInputActionId::ToggleToolWheel: return "ToggleToolWheel";
     case CreativeInputActionId::ToolWheelPrevious: return "ToolWheelPrevious";

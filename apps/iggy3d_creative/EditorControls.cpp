@@ -1,6 +1,8 @@
 #include "EditorControls.hpp"
 
+#include "EditorCatalog.hpp"
 #include "EditorState.hpp"
+#include "EditorToolWheelPreferences.hpp"
 
 #include "app/iggy3d/creative/input/UiInput.hpp"
 #include "app/iggy3d/creative/render/CreativeOverlayFrame.hpp"
@@ -27,6 +29,7 @@ constexpr cr::CreativeUiWidgetId kControlsResetWidgetId = 1000U;
 constexpr cr::CreativeUiWidgetId kControlsDoneWidgetId = 1001U;
 constexpr cr::CreativeUiWidgetId kControlsKeyboardTabWidgetId = 1002U;
 constexpr cr::CreativeUiWidgetId kControlsPs5TabWidgetId = 1003U;
+constexpr cr::CreativeUiWidgetId kControlsResetWheelWidgetId = 1004U;
 constexpr cr::CreativeWheelProfile kControlsWheelProfile{
     cr::CreativeWheelPolarity::Reversed,
     cr::CreativeWheelStepMode::Unit,
@@ -50,7 +53,7 @@ constexpr std::array kPs5Settings{
 };
 
 static_assert(cr::kCreativeControlSettingCount + 1U +
-                      cr::kCreativeInputBindingCapacity + 4U <=
+                      cr::kCreativeInputBindingCapacity + 5U <=
               cr::kCreativeUiWidgetCapacity);
 
 struct ControlsLayout {
@@ -161,6 +164,7 @@ settingsForDevice(cr::CreativeControlDevice device) noexcept {
 [[nodiscard]] bool controlsChromeWidgetId(
     cr::CreativeUiWidgetId widgetId) noexcept {
   return widgetId == kControlsResetWidgetId ||
+         widgetId == kControlsResetWheelWidgetId ||
          widgetId == kControlsDoneWidgetId ||
          widgetId == kControlsKeyboardTabWidgetId ||
          widgetId == kControlsPs5TabWidgetId;
@@ -467,20 +471,29 @@ void cycleConflictPolicy(CreativeEditorControlsState& state,
     static_cast<void>(cr::appendCreativeUiListRow(frame, spec));
   }
 
-  const float footerWidth = static_cast<float>(layout.panelWidth) * 0.5F;
+  const float footerWidth = static_cast<float>(layout.panelWidth) / 3.0F;
   cr::CreativeUiWidgetSpec reset;
   reset.id = kControlsResetWidgetId;
   reset.rect = {static_cast<float>(layout.panelX),
                 static_cast<float>(layout.footerY), footerWidth, 38.0F};
-  reset.label = "RESET DEFAULTS";
+  reset.label = "RESET CONTROLS";
   reset.focused = state.focusedWidgetId == reset.id;
   static_cast<void>(cr::appendCreativeUiButton(frame, reset));
 
+  cr::CreativeUiWidgetSpec resetWheel;
+  resetWheel.id = kControlsResetWheelWidgetId;
+  resetWheel.rect = {static_cast<float>(layout.panelX) + footerWidth,
+                     static_cast<float>(layout.footerY), footerWidth, 38.0F};
+  resetWheel.label = "RESET WHEEL";
+  resetWheel.focused = state.focusedWidgetId == resetWheel.id;
+  static_cast<void>(cr::appendCreativeUiButton(frame, resetWheel));
+
   cr::CreativeUiWidgetSpec done;
   done.id = kControlsDoneWidgetId;
-  done.rect = {static_cast<float>(layout.panelX) + footerWidth,
+  done.rect = {static_cast<float>(layout.panelX) + footerWidth * 2.0F,
                static_cast<float>(layout.footerY),
-               static_cast<float>(layout.panelWidth) - footerWidth, 38.0F};
+               static_cast<float>(layout.panelWidth) - footerWidth * 2.0F,
+               38.0F};
   done.label = "DONE";
   done.selected = true;
   done.focused = state.focusedWidgetId == done.id;
@@ -564,6 +577,19 @@ void beginCapture(CreativeEditorControlsState& state,
   return receipt.status == CreativeEditorControlPersistenceStatus::Saved;
 }
 
+[[nodiscard]] bool persistToolWheel(
+    CreativeEditorState& editor,
+    const std::filesystem::path& path) {
+  const CreativeEditorToolWheelPersistenceReceipt receipt =
+      saveCreativeEditorToolWheel(editor.catalog.toolWheel,
+                                  editor.catalog.model, path);
+  editor.controls.statusLabel =
+      receipt.status == CreativeEditorToolWheelPersistenceStatus::Saved
+          ? "TOOL WHEEL SAVED"
+          : "TOOL WHEEL SAVE FAILED";
+  return receipt.status == CreativeEditorToolWheelPersistenceStatus::Saved;
+}
+
 void processCapture(const CreativeEditorControlsFrameRequest& request,
                     CreativeEditorControlsFrameResult& result) {
   CreativeEditorControlsState& state = request.editor.controls;
@@ -641,6 +667,20 @@ void resetDefaults(CreativeEditorState& editor,
   result.profileSaved = persistProfile(editor, settingsPath);
 }
 
+void resetToolWheel(CreativeEditorState& editor,
+                    CreativeEditorControlsFrameResult& result,
+                    const std::filesystem::path& settingsPath) {
+  result.toolWheelChanged =
+      cr::resetCreativeToolWheel(editor.catalog.toolWheel,
+                                 editor.catalog.model);
+  result.toolWheelSaved = persistToolWheel(editor, settingsPath);
+  if (result.toolWheelSaved) {
+    editor.controls.statusLabel = result.toolWheelChanged
+                                      ? "TOOL WHEEL RESTORED"
+                                      : "TOOL WHEEL ALREADY DEFAULT";
+  }
+}
+
 [[nodiscard]] cr::CreativeUiRepeatCommand heldRepeatCommand(
     const CreativeEditorControlsFrameRequest& request) noexcept {
   struct RepeatBinding {
@@ -670,13 +710,19 @@ void resetDefaults(CreativeEditorState& editor,
 void applyWidgetEvent(CreativeEditorState& editor,
                       const cr::CreativeUiWidgetEvent& event,
                       CreativeEditorControlsFrameResult& result,
-                      const std::filesystem::path& settingsPath) {
+                      const std::filesystem::path& settingsPath,
+                      const std::filesystem::path& toolWheelSettingsPath) {
   if (event.kind == cr::CreativeUiWidgetEventKind::None) {
     return;
   }
   if (event.widgetId == kControlsResetWidgetId &&
       event.kind == cr::CreativeUiWidgetEventKind::Activate) {
     resetDefaults(editor, result, settingsPath);
+    return;
+  }
+  if (event.widgetId == kControlsResetWheelWidgetId &&
+      event.kind == cr::CreativeUiWidgetEventKind::Activate) {
+    resetToolWheel(editor, result, toolWheelSettingsPath);
     return;
   }
   if (event.widgetId == kControlsDoneWidgetId &&
@@ -780,7 +826,8 @@ void processWidgetInput(const CreativeEditorControlsFrameRequest& request,
   const ControlsLayout layout =
       controlsLayout(request.drawableWidth, request.drawableHeight);
   keepFocusedRowVisible(state, layout.visibleRows);
-  applyWidgetEvent(request.editor, routed.event, result, request.settingsPath);
+  applyWidgetEvent(request.editor, routed.event, result, request.settingsPath,
+                   request.toolWheelSettingsPath);
 }
 
 }  // namespace

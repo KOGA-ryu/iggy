@@ -392,6 +392,39 @@ bool toolWheelIsBoundedDirectionalAndAssignable() {
               "wheel equips the active hotbar slot") &&
        ok;
 
+  const std::size_t objectSelectIndex = static_cast<std::size_t>(
+      std::distance(catalogState.entries.begin(), objectSelect));
+  const std::size_t extrudeIndex = wheel.catalogEntryIndices[7];
+  ok = expect(cr::assignCreativeToolWheelCatalogEntry(
+                  wheel, catalogState, 0U, objectSelectIndex) &&
+                  wheel.catalogEntryIndices[0] == objectSelectIndex &&
+                  cr::isValidCreativeToolWheel(wheel, catalogState),
+              "catalog-only tools can replace a favorite sector") &&
+       expect(cr::assignCreativeToolWheelCatalogEntry(
+                  wheel, catalogState, 0U, extrudeIndex) &&
+                  wheel.catalogEntryIndices[0] == extrudeIndex &&
+                  wheel.catalogEntryIndices[7] == objectSelectIndex,
+              "moving an existing favorite swaps sectors without duplicates") &&
+       expect(!cr::assignCreativeToolWheelCatalogEntry(
+                  wheel, catalogState, wheel.entryCount, objectSelectIndex) &&
+                  !cr::assignCreativeToolWheelCatalogEntry(
+                      wheel, catalogState, 1U, 0U),
+              "invalid sectors and material entries cannot enter the wheel") &&
+       expect(cr::resetCreativeToolWheel(wheel, catalogState) &&
+                  wheel.catalogEntryIndices[0] < catalogState.entries.size() &&
+                  catalogState.entries[wheel.catalogEntryIndices[0]]
+                          .hotbarEntry.kind ==
+                      cr::CreativeHeldItemKind::MaterialBrush &&
+                  cr::isValidCreativeToolWheel(wheel, catalogState),
+              "wheel reset restores the bounded default ordering") &&
+       ok;
+
+  cr::CreativeToolWheelState duplicate = wheel;
+  duplicate.catalogEntryIndices[1] = duplicate.catalogEntryIndices[0];
+  ok = expect(!cr::isValidCreativeToolWheel(duplicate, catalogState),
+              "duplicate favorites fail structural validation") &&
+       ok;
+
   cr::CreativeCatalogState oversized;
   for (std::size_t index = 0;
        index < cr::kCreativeToolWheelCapacity + 1U; ++index) {
@@ -540,6 +573,11 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
                                   cr::CreativeInputKey::GamepadCancel,
                                   cr::CreativeInputContext::Catalog),
                    "controller confirm and cancel own catalog actions") &&
+            expect(hasBinding(
+                       cr::CreativeInputActionId::CatalogAssignToolWheel,
+                       cr::CreativeInputKey::GamepadWest,
+                       cr::CreativeInputContext::Catalog),
+                   "catalog Square owns contextual wheel assignment") &&
             expect(hasBinding(
                        cr::CreativeInputActionId::CatalogPreviousPage,
                        cr::CreativeInputKey::LeftBracket,

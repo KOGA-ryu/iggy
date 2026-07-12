@@ -1,5 +1,7 @@
 #include "EditorCatalog.hpp"
 
+#include "EditorToolWheelPreferences.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -49,6 +51,8 @@ struct CatalogLayout {
   std::int32_t equipY = 0;
   std::uint32_t equipWidth = 88;
   std::uint32_t equipHeight = 28;
+  std::int32_t assignWheelX = 0;
+  std::uint32_t assignWheelWidth = 136;
 };
 
 [[nodiscard]] CatalogLayout catalogLayout(std::uint32_t drawableWidth,
@@ -100,6 +104,8 @@ struct CatalogLayout {
   layout.equipX = layout.panelX + static_cast<std::int32_t>(layout.panelWidth) -
                   16 - static_cast<std::int32_t>(layout.equipWidth);
   layout.equipY = layout.footerY + 5;
+  layout.assignWheelX =
+      layout.equipX - 8 - static_cast<std::int32_t>(layout.assignWheelWidth);
   return layout;
 }
 
@@ -131,6 +137,12 @@ struct CatalogRect {
 
 [[nodiscard]] CatalogRect equipButton(const CatalogLayout& layout) noexcept {
   return {layout.equipX, layout.equipY, layout.equipWidth,
+          layout.equipHeight};
+}
+
+[[nodiscard]] CatalogRect assignWheelButton(
+    const CatalogLayout& layout) noexcept {
+  return {layout.assignWheelX, layout.equipY, layout.assignWheelWidth,
           layout.equipHeight};
 }
 
@@ -339,6 +351,78 @@ void ensureActionSelectionVisible(CreativeEditorCatalogState& catalog,
   return true;
 }
 
+[[nodiscard]] const cr::CreativeCatalogEntry* toolWheelAssignmentEntry(
+    const CreativeEditorCatalogState& state) noexcept {
+  if (!state.toolWheelAssignmentCatalogEntryIndex.has_value() ||
+      *state.toolWheelAssignmentCatalogEntryIndex >=
+          state.model.entries.size()) {
+    return nullptr;
+  }
+  const cr::CreativeCatalogEntry& entry =
+      state.model.entries[*state.toolWheelAssignmentCatalogEntryIndex];
+  return entry.category == cr::CreativeCatalogEntryCategory::Tool ? &entry
+                                                                  : nullptr;
+}
+
+[[nodiscard]] bool beginToolWheelAssignment(
+    CreativeEditorCatalogState& state) noexcept {
+  const std::optional<std::size_t> catalogIndex =
+      cr::selectedCreativeCatalogEntryIndex(state.model);
+  if (!catalogIndex.has_value() ||
+      state.model.entries[*catalogIndex].category !=
+          cr::CreativeCatalogEntryCategory::Tool ||
+      state.toolWheel.entryCount == 0U) {
+    return false;
+  }
+  state.toolWheelAssignmentCatalogEntryIndex = *catalogIndex;
+  if (const std::optional<std::size_t> existing =
+          cr::creativeToolWheelSectorForCatalogEntry(state.toolWheel,
+                                                     *catalogIndex);
+      existing.has_value()) {
+    state.toolWheel.selectedIndex = *existing;
+  }
+  state.statusLabel.clear();
+  static_cast<void>(cr::setCreativeCatalogOpen(state.model, false));
+  static_cast<void>(cr::setCreativeToolWheelOpen(state.toolWheel, true));
+  return true;
+}
+
+void finishToolWheelAssignment(CreativeEditorCatalogState& state,
+                               bool reopenCatalog) noexcept {
+  state.toolWheelAssignmentCatalogEntryIndex.reset();
+  static_cast<void>(cr::setCreativeToolWheelOpen(state.toolWheel, false));
+  if (reopenCatalog) {
+    static_cast<void>(cr::setCreativeCatalogOpen(state.model, true));
+  }
+}
+
+[[nodiscard]] bool commitToolWheelAssignment(
+    const CreativeEditorCatalogFrameRequest& request,
+    CreativeEditorCatalogFrameResult& result) {
+  CreativeEditorCatalogState& state = request.editor.catalog;
+  if (!state.toolWheelAssignmentCatalogEntryIndex.has_value()) {
+    return false;
+  }
+  const std::size_t sector = state.toolWheel.selectedIndex;
+  const bool changed = cr::assignCreativeToolWheelCatalogEntry(
+      state.toolWheel, state.model, sector,
+      *state.toolWheelAssignmentCatalogEntryIndex);
+  result.toolWheelChanged = changed;
+  if (changed) {
+    const CreativeEditorToolWheelPersistenceReceipt saved =
+        saveCreativeEditorToolWheel(state.toolWheel, state.model,
+                                    request.toolWheelSettingsPath);
+    result.toolWheelSaved =
+        saved.status == CreativeEditorToolWheelPersistenceStatus::Saved;
+    state.statusLabel = result.toolWheelSaved ? "TOOL WHEEL UPDATED"
+                                              : "TOOL WHEEL SAVE FAILED";
+  } else {
+    state.statusLabel = "TOOL WHEEL UNCHANGED";
+  }
+  finishToolWheelAssignment(state, true);
+  return true;
+}
+
 [[nodiscard]] bool actionPresent(
     const cr::CreativeInputRouteResult& routedInput,
     cr::CreativeInputActionId action) noexcept {
@@ -356,6 +440,8 @@ void applyInventoryModeActions(
     case cr::CreativeInputContext::EditorViewport:
       if (actionPresent(request.routedInput,
                         cr::CreativeInputActionId::ToggleCatalog)) {
+        state.toolWheelAssignmentCatalogEntryIndex.reset();
+        state.statusLabel.clear();
         state.shapeSelection = cr::normalizeCreativeCatalogShapeSelection(
             request.editor.toolSettings.shapeBrushKind,
             request.editor.toolSettings.shapeBrushAxis);
@@ -366,6 +452,7 @@ void applyInventoryModeActions(
       if (actionPresent(request.routedInput,
                         cr::CreativeInputActionId::ToggleToolWheel) &&
           state.toolWheel.entryCount > 0U) {
+        state.toolWheelAssignmentCatalogEntryIndex.reset();
         static_cast<void>(cr::selectCreativeToolWheelForHotbarEntry(
             state.toolWheel, state.model,
             cr::selectedCreativeHotbarEntry(request.editor.interaction.hotbar)));
@@ -386,7 +473,13 @@ void applyInventoryModeActions(
                         cr::CreativeInputActionId::ToggleToolWheel) ||
           actionPresent(request.routedInput,
                         cr::CreativeInputActionId::ToolWheelClose)) {
-        static_cast<void>(cr::setCreativeToolWheelOpen(state.toolWheel, false));
+        if (state.toolWheelAssignmentCatalogEntryIndex.has_value()) {
+          state.statusLabel = "TOOL WHEEL ASSIGNMENT CANCELLED";
+          finishToolWheelAssignment(state, true);
+        } else {
+          static_cast<void>(
+              cr::setCreativeToolWheelOpen(state.toolWheel, false));
+        }
       }
       return;
     case cr::CreativeInputContext::ToolOptions:
@@ -523,6 +616,11 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
         }
         break;
       }
+      case cr::CreativeInputActionId::CatalogAssignToolWheel:
+        if (catalog.model.page == cr::CreativeCatalogPage::Build) {
+          static_cast<void>(beginToolWheelAssignment(catalog));
+        }
+        break;
       case cr::CreativeInputActionId::CatalogConfirm:
         if (catalog.model.page == cr::CreativeCatalogPage::Build) {
           result.assigned =
@@ -588,6 +686,13 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
   if (catalog.model.page == cr::CreativeCatalogPage::Build) {
     const cr::CreativeCatalogEntry* selected =
         cr::selectedCreativeCatalogEntry(catalog.model);
+    if (selected != nullptr &&
+        selected->category == cr::CreativeCatalogEntryCategory::Tool &&
+        layout.assignWheelX >= layout.contentX &&
+        contains(assignWheelButton(layout), pointer.x, pointer.y)) {
+      static_cast<void>(beginToolWheelAssignment(catalog));
+      return;
+    }
     if (selected != nullptr &&
         contains(equipButton(layout), pointer.x, pointer.y)) {
       result.assigned =
@@ -664,6 +769,10 @@ void processToolWheelInput(const CreativeEditorCatalogFrameRequest& request,
             cr::moveCreativeToolWheelSelection(state.toolWheel, 1));
         break;
       case cr::CreativeInputActionId::ToolWheelConfirm:
+        if (state.toolWheelAssignmentCatalogEntryIndex.has_value()) {
+          static_cast<void>(commitToolWheelAssignment(request, result));
+          break;
+        }
         result.assigned =
             assignToolWheelSelection(request.appState, request.editor) ||
             result.assigned;
@@ -673,6 +782,9 @@ void processToolWheelInput(const CreativeEditorCatalogFrameRequest& request,
         }
         break;
       case cr::CreativeInputActionId::ToolWheelOptions: {
+        if (state.toolWheelAssignmentCatalogEntryIndex.has_value()) {
+          break;
+        }
         const cr::CreativeCatalogEntry* selected =
             cr::selectedCreativeToolWheelEntry(state.toolWheel, state.model);
         if (selected == nullptr) {
@@ -728,6 +840,10 @@ void processToolWheelInput(const CreativeEditorCatalogFrameRequest& request,
   }
 
   if (events.primaryPointerPressed) {
+    if (state.toolWheelAssignmentCatalogEntryIndex.has_value()) {
+      static_cast<void>(commitToolWheelAssignment(request, result));
+      return;
+    }
     result.assigned =
         assignToolWheelSelection(request.appState, request.editor) ||
         result.assigned;
@@ -765,6 +881,9 @@ void appendToolWheelOverlay(
       std::min(190, std::max(0, (height -
                                 static_cast<std::int32_t>(tileHeight) - 100) /
                                    2));
+  const cr::CreativeCatalogEntry* assignment =
+      toolWheelAssignmentEntry(state);
+  const bool assigning = assignment != nullptr;
 
   uiRects.push_back(
       {0, 0, drawableWidth, drawableHeight, 0.01F, 0.015F, 0.02F, 0.66F});
@@ -791,12 +910,18 @@ void appendToolWheelOverlay(
             static_cast<std::int32_t>(tileHeight / 2U),
         0, std::max(0, height - static_cast<std::int32_t>(tileHeight)));
     const bool selected = index == state.toolWheel.selectedIndex;
+    const float selectedR = assigning ? 0.20F : 0.86F;
+    const float selectedG = assigning ? 0.72F : 0.76F;
+    const float selectedB = assigning ? 0.42F : 0.28F;
     uiRects.push_back({tileX, tileY, tileWidth, tileHeight,
-                       selected ? 0.86F : 0.07F,
-                       selected ? 0.76F : 0.08F,
-                       selected ? 0.28F : 0.09F,
+                       selected ? selectedR : 0.07F,
+                       selected ? selectedG : 0.08F,
+                       selected ? selectedB : 0.09F,
                        selected ? 0.98F : 0.94F});
-    appendText(glyphs, entry.label, tileX + 8, tileY + 11,
+    char sectorLabel[160];
+    std::snprintf(sectorLabel, sizeof(sectorLabel), "%zu  %s", index + 1U,
+                  entry.label.c_str());
+    appendText(glyphs, sectorLabel, tileX + 8, tileY + 11,
                drawableWidth, drawableHeight,
                selected ? 0.06F : 0.88F,
                selected ? 0.065F : 0.91F,
@@ -806,17 +931,37 @@ void appendToolWheelOverlay(
   const cr::CreativeCatalogEntry* selected =
       cr::selectedCreativeToolWheelEntry(state.toolWheel, state.model);
   const std::uint32_t centerWidth =
-      std::min(196U, availableTileWidth);
-  const std::uint32_t centerHeight = std::min(62U, drawableHeight);
+      std::min(assigning ? 300U : 196U, availableTileWidth);
+  const std::uint32_t centerHeight =
+      std::min(assigning ? 86U : 62U, drawableHeight);
   const std::int32_t centerPanelX =
       std::max(0, centerX - static_cast<std::int32_t>(centerWidth / 2U));
   const std::int32_t centerPanelY =
       std::max(0, centerY - static_cast<std::int32_t>(centerHeight / 2U));
   uiRects.push_back({centerPanelX, centerPanelY, centerWidth, centerHeight,
                      0.045F, 0.052F, 0.058F, 0.98F});
+  if (assigning) {
+    appendText(glyphs,
+               fitCatalogText("ASSIGN " + assignment->label,
+                              centerWidth > 24U ? centerWidth - 24U : 1U),
+               centerPanelX + 12, centerPanelY + 10, drawableWidth,
+               drawableHeight, 0.92F, 0.96F, 0.94F);
+    appendText(glyphs,
+               fitCatalogText(
+                   "REPLACE " +
+                       std::string(selected != nullptr ? selected->label
+                                                       : "EMPTY"),
+                   centerWidth > 24U ? centerWidth - 24U : 1U),
+               centerPanelX + 12, centerPanelY + 34, drawableWidth,
+               drawableHeight, 0.72F, 0.78F, 0.81F);
+    appendText(glyphs, "X ASSIGN  CIRCLE BACK", centerPanelX + 12,
+               centerPanelY + 59, drawableWidth, drawableHeight, 0.58F, 0.82F,
+               0.66F);
+    return;
+  }
   appendText(glyphs, selected != nullptr ? selected->label : "TOOL WHEEL",
-             centerPanelX + 12, centerPanelY + 13,
-             drawableWidth, drawableHeight, 0.92F, 0.94F, 0.96F);
+             centerPanelX + 12, centerPanelY + 13, drawableWidth,
+             drawableHeight, 0.92F, 0.94F, 0.96F);
   char slotLabel[32];
   std::snprintf(slotLabel, sizeof(slotLabel), "SLOT %u",
                 static_cast<unsigned>(editor.interaction.hotbar.selectedSlot) +
@@ -1059,17 +1204,30 @@ void appendCreativeEditorCatalogOverlay(
     const cr::CreativeCatalogEntry* selectedEntry =
         cr::selectedCreativeCatalogEntry(catalog.model);
     if (selectedEntry != nullptr) {
+      if (selectedEntry->category == cr::CreativeCatalogEntryCategory::Tool &&
+          layout.assignWheelX >= layout.contentX) {
+        const CatalogRect wheelButton = assignWheelButton(layout);
+        uiRects.push_back({wheelButton.x, wheelButton.y, wheelButton.width,
+                           wheelButton.height, 0.14F, 0.44F, 0.28F, 0.98F});
+        appendText(glyphs, "ASSIGN WHEEL", wheelButton.x + 14,
+                   wheelButton.y + 7, drawableWidth, drawableHeight, 0.90F,
+                   0.96F, 0.92F);
+      }
       const CatalogRect button = equipButton(layout);
       uiRects.push_back({button.x, button.y, button.width, button.height,
                          0.86F, 0.76F, 0.28F, 0.98F});
       appendText(glyphs, "EQUIP", button.x + 20, button.y + 7, drawableWidth,
                  drawableHeight, 0.06F, 0.065F, 0.07F);
     }
-    std::snprintf(footer, sizeof(footer), "%zu results | slot %u",
-                  resultCount,
-                  static_cast<unsigned>(
-                      editor.interaction.hotbar.selectedSlot) +
-                      1U);
+    if (!catalog.statusLabel.empty()) {
+      std::snprintf(footer, sizeof(footer), "%s", catalog.statusLabel.c_str());
+    } else {
+      std::snprintf(footer, sizeof(footer), "%zu results | slot %u",
+                    resultCount,
+                    static_cast<unsigned>(
+                        editor.interaction.hotbar.selectedSlot) +
+                        1U);
+    }
   } else {
     const std::span<const cr::CreativeCatalogActionEntry> actions =
         cr::creativeCatalogActionEntries();

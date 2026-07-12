@@ -65,6 +65,7 @@ struct CreativeEditorControlsFrameRequest {
   const iggy3d::creative::CreativeInputRouteResult& routedInput;
   const iggy3d::creative::CreativeInputFrame& inputFrame;
   const std::filesystem::path& settingsPath;
+  const std::filesystem::path& toolWheelSettingsPath;
   std::uint64_t monotonicTimeNanoseconds = 0;
   std::uint32_t drawableWidth = 0;
   std::uint32_t drawableHeight = 0;
@@ -75,6 +76,8 @@ struct CreativeEditorControlsFrameResult {
   bool openChanged = false;
   bool profileChanged = false;
   bool profileSaved = false;
+  bool toolWheelChanged = false;
+  bool toolWheelSaved = false;
 };
 
 [[nodiscard]] CreativeEditorControlPersistenceReceipt

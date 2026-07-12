@@ -43,6 +43,7 @@
 #include "EditorInteraction.hpp"
 #include "EditorState.hpp"
 #include "EditorToolOptions.hpp"
+#include "EditorToolWheelPreferences.hpp"
 #include "EditorPlacement.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorTransform.hpp"
@@ -143,8 +144,12 @@ int main(int argc, char** argv) {
   const std::string& saveId = bootstrapData.saveId;
   const std::filesystem::path controlsPath =
       saveRoot / "creative_controls_v1.cfg";
+  const std::filesystem::path toolWheelPath =
+      saveRoot / "creative_tool_wheel_v1.cfg";
   static_cast<void>(iggy3d_creative_app::loadCreativeEditorControlProfile(
       editor.controlProfile, controlsPath));
+  static_cast<void>(iggy3d_creative_app::loadCreativeEditorToolWheel(
+      editor.catalog.toolWheel, editor.catalog.model, toolWheelPath));
   const creative::CreativeSpatialProjectionRequest& wireProjReq =
       bootstrapData.wireProjectionRequest;
   const float kGizmoAxisLength = bootstrapData.gizmoAxisLengthMeters;
@@ -183,6 +188,7 @@ int main(int argc, char** argv) {
              frameInput.routedInput,
              frameInput.inputFrame,
              controlsPath,
+             toolWheelPath,
              frameInput.monotonicTimeNanoseconds,
              extent.width,
              extent.height});
@@ -205,6 +211,7 @@ int main(int argc, char** argv) {
              editor,
              frameInput.routedInput,
              frameInput.worldActions,
+             toolWheelPath,
              frameInput.toolWheelDirectionX,
              frameInput.toolWheelDirectionY,
              extent.width,

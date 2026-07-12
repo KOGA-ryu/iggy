@@ -48,6 +48,7 @@ enum class CreativeInputActionId : std::uint8_t {
   CatalogPreviousPage,
   CatalogNextPage,
   CatalogConfirm,
+  CatalogAssignToolWheel,
   CatalogClose,
   ToggleToolWheel,
   ToolWheelPrevious,

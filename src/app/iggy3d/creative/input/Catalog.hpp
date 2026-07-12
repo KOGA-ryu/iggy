@@ -35,6 +35,8 @@ struct CreativeCatalogEntry {
   CreativeCatalogEntryCategory category =
       CreativeCatalogEntryCategory::Material;
   CreativeHotbarEntry hotbarEntry{};
+  // Marks entries admitted to the default wheel. Any Tool entry can be
+  // assigned to a wheel sector by the user.
   bool toolWheelEligible = false;
   std::string label;
   std::string searchText;
@@ -129,6 +131,8 @@ activateSelectedCreativeCatalogAction(CreativeCatalogState& catalog) noexcept;
 
 [[nodiscard]] const CreativeCatalogEntry* selectedCreativeCatalogEntry(
     const CreativeCatalogState& catalog) noexcept;
+[[nodiscard]] std::optional<std::size_t> selectedCreativeCatalogEntryIndex(
+    const CreativeCatalogState& catalog) noexcept;
 [[nodiscard]] const CreativeCatalogEntry* creativeCatalogEntryAtFilteredIndex(
     const CreativeCatalogState& catalog,
     std::size_t filteredIndex) noexcept;
@@ -173,6 +177,20 @@ activateSelectedCreativeCatalogAction(CreativeCatalogState& catalog) noexcept;
     float deadzone = 0.35F) noexcept;
 
 [[nodiscard]] const CreativeCatalogEntry* selectedCreativeToolWheelEntry(
+    const CreativeToolWheelState& wheel,
+    const CreativeCatalogState& catalog) noexcept;
+[[nodiscard]] std::optional<std::size_t> creativeToolWheelSectorForCatalogEntry(
+    const CreativeToolWheelState& wheel,
+    std::size_t catalogEntryIndex) noexcept;
+[[nodiscard]] bool assignCreativeToolWheelCatalogEntry(
+    CreativeToolWheelState& wheel,
+    const CreativeCatalogState& catalog,
+    std::size_t sectorIndex,
+    std::size_t catalogEntryIndex) noexcept;
+[[nodiscard]] bool resetCreativeToolWheel(
+    CreativeToolWheelState& wheel,
+    const CreativeCatalogState& catalog) noexcept;
+[[nodiscard]] bool isValidCreativeToolWheel(
     const CreativeToolWheelState& wheel,
     const CreativeCatalogState& catalog) noexcept;
 [[nodiscard]] bool assignSelectedCreativeToolWheelEntry(

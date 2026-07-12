@@ -178,6 +178,7 @@ Physical input is translated into these stable actions before a tool sees it:
 | `Pick` | Sample target or active tool's tertiary operation |
 | `HotbarSlot` / `HotbarNext` / `HotbarPrevious` | Select held material/tool |
 | `ToggleCatalog` | Open or close searchable object and tool inventory |
+| `CatalogAssignToolWheel` | Assign the highlighted catalog tool to a wheel sector |
 | `ToggleToolWheel` | Open or close the radial creator-tool selector |
 | `ToggleTransformControls` | Open or close controls for the active selection preview |
 | `TransformControlPrevious` / `TransformControlNext` | Select a visible transform operation |
@@ -224,8 +225,9 @@ preview's contextual wheel. They do not each earn a permanent global key.
 - Rebinding is semantic and context-aware. Reject leaves a conflicting binding
   unchanged, Replace unbinds the displaced action, and Swap exchanges complete
   chords. The Controls open/close/navigation actions are reserved so a remap
-  cannot remove the escape hatch. Backspace or controller Square restores all
-  defaults.
+  cannot remove the escape hatch. Backspace or controller Square restores the
+  active control profile. The separate Reset Wheel button restores only the
+  nine creator-tool favorites.
 - The Keyboard + Mouse tab owns mouse sensitivity and keyboard/mouse bindings.
   The PS5 Controller tab owns controller sensitivity, movement/look stick
   deadzones and response curves, look X/Y inversion, and PS5-labelled bindings.
@@ -285,7 +287,8 @@ preview's contextual wheel. They do not each earn a permanent global key.
   a result click selects without equipping. `Enter`, controller confirm, or the
   visible Equip command equips the selected result into the active hotbar slot.
   While open, `1`-`9` assigns the selected result directly to that slot without
-  closing the catalog.
+  closing the catalog. Highlighting any tool and pressing controller Square or
+  clicking Assign Wheel opens sector assignment without equipping it.
 - Fill and Hollow expose Shape, Axis, and Material beside the selected catalog
   row. Left/right or controller D-pad left/right cycles the bounded presets:
   Box, Line, Ellipsoid, and Cylinder X/Y/Z. The values are a draft until Equip;
@@ -304,10 +307,17 @@ preview's contextual wheel. They do not each earn a permanent global key.
   Mouse direction or right stick selects a sector; arrow keys, D-pad up/down,
   and wheel cycle it; `Enter`, controller confirm, or click equips the tool into
   the active hotbar slot. `Escape`, controller cancel, or the toggle closes it.
-  Brush owns the first sector, Connected Fill owns the seventh, Surface
-  Extrude owns the eighth, and Array owns the ninth. Erase, Region Select, and
-  Object Select remain available from the default hotbar and searchable catalog
-  instead of occupying radial sectors.
+  Brush owns the first default sector, Connected Fill owns the seventh, Surface
+  Extrude owns the eighth, and Array owns the ninth. During assignment, mouse,
+  right stick, D-pad, and wheel select the destination; controller X or click
+  replaces it and Circle returns to the catalog. Assigning a tool already on the
+  wheel swaps the two sectors instead of creating a duplicate. Erase, Region
+  Select, and Object Select begin outside the default wheel but can be assigned
+  from the catalog.
+- Tool-wheel favorites save atomically to `creative_tool_wheel_v1.cfg` beside
+  the control profile. Missing or invalid files preserve the default wheel.
+  Favorites are editor preferences and never enter map documents, document
+  revision, room geometry, or undo history.
 - While the wheel is open, `O` or controller Square opens the highlighted
   tool's contextual options. Modal capture prevents X, Circle, and Square from
   mutating the world underneath the wheel.

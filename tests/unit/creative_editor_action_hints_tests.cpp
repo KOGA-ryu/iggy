@@ -345,14 +345,37 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
       cr::CreativeControlDevice::Gamepad, false);
   const cr::CreativeActionHint* equip =
       findHint(catalog, cr::CreativeInputActionId::CatalogConfirm);
+  const cr::CreativeActionHint* assignWheel =
+      findHint(catalog,
+               cr::CreativeInputActionId::CatalogAssignToolWheel);
+  editor.catalog.toolWheelAssignmentCatalogEntryIndex = 0U;
+  const cr::CreativeActionHintFrame wheelAssignment =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::ToolWheel,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* assignmentConfirm =
+      findHint(wheelAssignment,
+               cr::CreativeInputActionId::ToolWheelConfirm);
+  const cr::CreativeActionHint* assignmentOptions =
+      findHint(wheelAssignment,
+               cr::CreativeInputActionId::ToolWheelOptions);
   const cr::CreativeActionHintFrame capture =
       resolveCreativeEditorActionHints(
           editor, cr::CreativeInputContext::EditorViewport,
           cr::CreativeControlDevice::Gamepad, true);
-  return expect(catalog.count == 5U && equip != nullptr &&
+  return expect(catalog.count == 6U && equip != nullptr &&
                     equip->chord.view() == "X" &&
                     equip->label.view() == "Equip",
                 "modal catalog context receives its own semantic actions") &&
+         expect(assignWheel != nullptr &&
+                    assignWheel->chord.view() == "Square" &&
+                    assignWheel->label.view() == "Assign wheel",
+                "catalog advertises the contextual PS5 wheel assignment") &&
+         expect(wheelAssignment.count == 3U &&
+                    assignmentConfirm != nullptr &&
+                    assignmentConfirm->label.view() == "Assign" &&
+                    assignmentOptions == nullptr,
+                "assignment wheel replaces equip and settings with assign") &&
          expect(capture.count == 0U,
                 "capture mode emits no interactive action ribbon") &&
          ok;

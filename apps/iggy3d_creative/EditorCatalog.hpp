@@ -2,6 +2,9 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
+#include <optional>
+#include <string>
 #include <vector>
 
 #include "app/iggy3d/creative/input/Catalog.hpp"
@@ -30,6 +33,8 @@ struct CreativeEditorCatalogState {
   iggy3d::creative::CreativeCatalogShapeSelection shapeSelection{};
   std::size_t scrollOffset = 0;
   std::size_t actionScrollOffset = 0;
+  std::optional<std::size_t> toolWheelAssignmentCatalogEntryIndex;
+  std::string statusLabel;
 };
 
 struct CreativeEditorCatalogFrameRequest {
@@ -38,6 +43,7 @@ struct CreativeEditorCatalogFrameRequest {
   CreativeEditorState& editor;
   const iggy3d::creative::CreativeInputRouteResult& routedInput;
   const iggy3d::creative::CreativeWorldActionFrame& worldActions;
+  const std::filesystem::path& toolWheelSettingsPath;
   float toolWheelDirectionX = 0.0F;
   float toolWheelDirectionY = 0.0F;
   std::uint32_t drawableWidth = 0;
@@ -49,6 +55,8 @@ struct CreativeEditorCatalogFrameResult {
   bool openChanged = false;
   bool pageChanged = false;
   bool assigned = false;
+  bool toolWheelChanged = false;
+  bool toolWheelSaved = false;
   bool openToolOptionsRequested = false;
   iggy3d::creative::CreativeInputRouteResult deferredCommandInput;
   iggy3d::creative::CreativeHotbarEntry toolOptionsEntry{};

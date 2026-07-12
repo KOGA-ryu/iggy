@@ -1,7 +1,10 @@
 #include "EditorControls.hpp"
+#include "EditorCatalog.hpp"
 #include "EditorState.hpp"
+#include "EditorToolWheelPreferences.hpp"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -141,6 +144,82 @@ bool missingAndMalformedFilesDoNotReplaceLiveProfile() {
                 "unexpected persisted fields fail atomically");
 }
 
+bool toolWheelPreferenceRoundTripIsAtomic() {
+  constexpr std::array palette{cr::CreativeObjectKind::Wall,
+                               cr::CreativeObjectKind::Crate};
+  const cr::CreativeCatalogState catalog =
+      cr::makeCreativeCatalog(palette);
+  cr::CreativeToolWheelState source = cr::makeCreativeToolWheel(catalog);
+  const auto objectSelect = std::find_if(
+      catalog.entries.begin(), catalog.entries.end(),
+      [](const cr::CreativeCatalogEntry& entry) {
+        return entry.hotbarEntry.kind ==
+               cr::CreativeHeldItemKind::ObjectSelect;
+      });
+  if (objectSelect == catalog.entries.end()) {
+    return expect(false, "object select exists for wheel preference test");
+  }
+  const std::size_t objectSelectIndex = static_cast<std::size_t>(
+      std::distance(catalog.entries.begin(), objectSelect));
+  if (!cr::assignCreativeToolWheelCatalogEntry(
+          source, catalog, 0U, objectSelectIndex)) {
+    return expect(false, "custom wheel assignment applies before save");
+  }
+
+  const std::filesystem::path root = temporaryRoot();
+  const std::filesystem::path path = root / "tool_wheel.cfg";
+  const app::CreativeEditorToolWheelPersistenceReceipt saved =
+      app::saveCreativeEditorToolWheel(source, catalog, path);
+  cr::CreativeToolWheelState loaded = cr::makeCreativeToolWheel(catalog);
+  const app::CreativeEditorToolWheelPersistenceReceipt loadedReceipt =
+      app::loadCreativeEditorToolWheel(loaded, catalog, path);
+  bool same = loaded.entryCount == source.entryCount;
+  for (std::size_t index = 0; index < source.entryCount && same; ++index) {
+    same = loaded.catalogEntryIndices[index] ==
+           source.catalogEntryIndices[index];
+  }
+
+  const std::filesystem::path malformed = root / "malformed_wheel.cfg";
+  {
+    std::ofstream output(malformed);
+    output << "iggy3d_creative_tool_wheel 1\n"
+              "entry_count 9\n"
+              "slot 0 Brush\n"
+              "slot 1 Brush\n"
+              "slot 2 Fill\n"
+              "slot 3 Hollow\n"
+              "slot 4 Replace\n"
+              "slot 5 Clone\n"
+              "slot 6 Flood\n"
+              "slot 7 Extrude\n"
+              "slot 8 Array\n";
+  }
+  const cr::CreativeToolWheelState beforeMalformed = loaded;
+  const app::CreativeEditorToolWheelPersistenceReceipt malformedReceipt =
+      app::loadCreativeEditorToolWheel(loaded, catalog, malformed);
+  const bool preserved =
+      loaded.entryCount == beforeMalformed.entryCount &&
+      std::equal(loaded.catalogEntryIndices.begin(),
+                 loaded.catalogEntryIndices.end(),
+                 beforeMalformed.catalogEntryIndices.begin());
+  std::error_code error;
+  std::filesystem::remove_all(root, error);
+
+  return expect(saved.status ==
+                        app::CreativeEditorToolWheelPersistenceStatus::Saved &&
+                    saved.accepted,
+                "custom wheel saves outside document state") &&
+         expect(loadedReceipt.status ==
+                        app::CreativeEditorToolWheelPersistenceStatus::Loaded &&
+                    loadedReceipt.accepted,
+                "custom wheel preference loads") &&
+         expect(same, "custom wheel order survives preference round trip") &&
+         expect(malformedReceipt.status ==
+                        app::CreativeEditorToolWheelPersistenceStatus::Invalid &&
+                    preserved,
+                "duplicate persisted favorites fail atomically");
+}
+
 bool controlsOverlayUsesTheStandardWidgetFrame() {
   app::CreativeEditorState editor;
   editor.controls.open = true;
@@ -217,6 +296,7 @@ int main() {
   bool ok = true;
   ok = profileRoundTripPreservesBindingsAndTuning() && ok;
   ok = missingAndMalformedFilesDoNotReplaceLiveProfile() && ok;
+  ok = toolWheelPreferenceRoundTripIsAtomic() && ok;
   ok = controlsOverlayUsesTheStandardWidgetFrame() && ok;
   ok = deviceTabsPartitionBindingsAndResetOnlyViewState() && ok;
   return ok ? 0 : 1;

@@ -215,7 +215,8 @@ void appendViewportGamepadHints(HintSpecBuffer& buffer,
 }
 
 void appendContextHints(HintSpecBuffer& buffer,
-                        cr::CreativeInputContext context) noexcept {
+                        cr::CreativeInputContext context,
+                        bool assigningToolWheel) noexcept {
   switch (context) {
     case cr::CreativeInputContext::Catalog:
       appendHintPair(buffer, cr::CreativeInputActionId::CatalogPrevious,
@@ -226,17 +227,25 @@ void appendContextHints(HintSpecBuffer& buffer,
       appendHintPair(buffer, cr::CreativeInputActionId::CatalogPreviousPage,
                      cr::CreativeInputActionId::CatalogNextPage, "Page");
       appendHint(buffer, cr::CreativeInputActionId::CatalogConfirm, "Equip");
+      appendHint(buffer, cr::CreativeInputActionId::CatalogAssignToolWheel,
+                 "Assign wheel");
       appendHint(buffer, cr::CreativeInputActionId::CatalogClose, "Close");
       return;
     case cr::CreativeInputContext::ToolWheel:
       appendHintPair(buffer, cr::CreativeInputActionId::ToolWheelPrevious,
                      cr::CreativeInputActionId::ToolWheelNext, "Choose");
-      appendHint(buffer, cr::CreativeInputActionId::ToolWheelConfirm, "Equip");
-      appendHint(buffer, cr::CreativeInputActionId::ToolWheelOptions,
-                 "Settings");
-      appendHint(buffer, cr::CreativeInputActionId::ToolWheelClose, "Close");
-      appendHint(buffer, cr::CreativeInputActionId::ToggleToolWheel,
-                 "Close wheel");
+      appendHint(buffer, cr::CreativeInputActionId::ToolWheelConfirm,
+                 assigningToolWheel ? "Assign" : "Equip");
+      if (!assigningToolWheel) {
+        appendHint(buffer, cr::CreativeInputActionId::ToolWheelOptions,
+                   "Settings");
+      }
+      appendHint(buffer, cr::CreativeInputActionId::ToolWheelClose,
+                 assigningToolWheel ? "Back" : "Close");
+      if (!assigningToolWheel) {
+        appendHint(buffer, cr::CreativeInputActionId::ToggleToolWheel,
+                   "Close wheel");
+      }
       return;
     case cr::CreativeInputContext::ToolOptions:
       appendHintPair(buffer, cr::CreativeInputActionId::ToolOptionsPrevious,
@@ -316,7 +325,9 @@ cr::CreativeActionHintFrame resolveCreativeEditorActionHints(
       appendViewportKeyboardHints(specs, held);
     }
   } else {
-    appendContextHints(specs, inputContext);
+    appendContextHints(
+        specs, inputContext,
+        editor.catalog.toolWheelAssignmentCatalogEntryIndex.has_value());
   }
   if (specs.capacityExceeded) {
     cr::CreativeActionHintFrame overflow;

@@ -453,6 +453,18 @@ const CreativeCatalogEntry* selectedCreativeCatalogEntry(
                                              catalog.selectedFilteredIndex);
 }
 
+std::optional<std::size_t> selectedCreativeCatalogEntryIndex(
+    const CreativeCatalogState& catalog) noexcept {
+  if (catalog.selectedFilteredIndex >= catalog.filteredEntryIndices.size()) {
+    return std::nullopt;
+  }
+  const std::size_t entryIndex =
+      catalog.filteredEntryIndices[catalog.selectedFilteredIndex];
+  return entryIndex < catalog.entries.size()
+             ? std::optional<std::size_t>{entryIndex}
+             : std::nullopt;
+}
+
 const CreativeCatalogEntry* creativeCatalogEntryAtFilteredIndex(
     const CreativeCatalogState& catalog,
     std::size_t filteredIndex) noexcept {
@@ -604,6 +616,78 @@ const CreativeCatalogEntry* selectedCreativeToolWheelEntry(
       wheel.catalogEntryIndices[wheel.selectedIndex];
   return catalogIndex < catalog.entries.size() ? &catalog.entries[catalogIndex]
                                                : nullptr;
+}
+
+std::optional<std::size_t> creativeToolWheelSectorForCatalogEntry(
+    const CreativeToolWheelState& wheel,
+    std::size_t catalogEntryIndex) noexcept {
+  for (std::size_t index = 0; index < wheel.entryCount; ++index) {
+    if (wheel.catalogEntryIndices[index] == catalogEntryIndex) {
+      return index;
+    }
+  }
+  return std::nullopt;
+}
+
+bool assignCreativeToolWheelCatalogEntry(
+    CreativeToolWheelState& wheel,
+    const CreativeCatalogState& catalog,
+    std::size_t sectorIndex,
+    std::size_t catalogEntryIndex) noexcept {
+  if (sectorIndex >= wheel.entryCount ||
+      catalogEntryIndex >= catalog.entries.size() ||
+      catalog.entries[catalogEntryIndex].category !=
+          CreativeCatalogEntryCategory::Tool) {
+    return false;
+  }
+  const std::optional<std::size_t> existing =
+      creativeToolWheelSectorForCatalogEntry(wheel, catalogEntryIndex);
+  if (existing == sectorIndex) {
+    return false;
+  }
+  if (existing.has_value()) {
+    std::swap(wheel.catalogEntryIndices[sectorIndex],
+              wheel.catalogEntryIndices[*existing]);
+  } else {
+    wheel.catalogEntryIndices[sectorIndex] = catalogEntryIndex;
+  }
+  wheel.selectedIndex = sectorIndex;
+  return true;
+}
+
+bool resetCreativeToolWheel(CreativeToolWheelState& wheel,
+                            const CreativeCatalogState& catalog) noexcept {
+  const CreativeToolWheelState defaults = makeCreativeToolWheel(catalog);
+  const bool changed = wheel.entryCount != defaults.entryCount ||
+                       wheel.capacityExceeded != defaults.capacityExceeded ||
+                       !std::equal(wheel.catalogEntryIndices.begin(),
+                                   wheel.catalogEntryIndices.end(),
+                                   defaults.catalogEntryIndices.begin());
+  wheel = defaults;
+  return changed;
+}
+
+bool isValidCreativeToolWheel(const CreativeToolWheelState& wheel,
+                              const CreativeCatalogState& catalog) noexcept {
+  if (wheel.entryCount > wheel.catalogEntryIndices.size() ||
+      (wheel.entryCount == 0U ? wheel.selectedIndex != 0U
+                              : wheel.selectedIndex >= wheel.entryCount)) {
+    return false;
+  }
+  for (std::size_t index = 0; index < wheel.entryCount; ++index) {
+    const std::size_t catalogIndex = wheel.catalogEntryIndices[index];
+    if (catalogIndex >= catalog.entries.size() ||
+        catalog.entries[catalogIndex].category !=
+            CreativeCatalogEntryCategory::Tool) {
+      return false;
+    }
+    for (std::size_t previous = 0; previous < index; ++previous) {
+      if (wheel.catalogEntryIndices[previous] == catalogIndex) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 bool assignSelectedCreativeToolWheelEntry(

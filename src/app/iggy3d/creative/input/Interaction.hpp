@@ -130,6 +130,9 @@ struct CreativeHotbarState {
 
 [[nodiscard]] std::string_view toString(CreativeWorldActionId action) noexcept;
 [[nodiscard]] std::string_view toString(CreativeHeldItemKind kind) noexcept;
+[[nodiscard]] bool parseCreativeHeldItemKind(
+    std::string_view value,
+    CreativeHeldItemKind& out) noexcept;
 [[nodiscard]] CreativeHotbarState makeDefaultCreativeHotbar(
     std::span<const CreativeObjectKind> materialPalette) noexcept;
 [[nodiscard]] CreativeHotbarEntry& selectedCreativeHotbarEntry(

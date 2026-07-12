@@ -321,6 +321,7 @@ void applyCreativeEditorCommandInput(
       case creative::CreativeInputActionId::CatalogPreviousPage:
       case creative::CreativeInputActionId::CatalogNextPage:
       case creative::CreativeInputActionId::CatalogConfirm:
+      case creative::CreativeInputActionId::CatalogAssignToolWheel:
       case creative::CreativeInputActionId::CatalogClose:
       case creative::CreativeInputActionId::ToggleToolWheel:
       case creative::CreativeInputActionId::ToolWheelPrevious:

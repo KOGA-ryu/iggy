@@ -152,6 +152,21 @@ std::string_view toString(CreativeHeldItemKind kind) noexcept {
   return "Unknown";
 }
 
+bool parseCreativeHeldItemKind(std::string_view value,
+                               CreativeHeldItemKind& out) noexcept {
+  for (std::size_t index = 0;
+       index < static_cast<std::size_t>(CreativeHeldItemKind::Count);
+       ++index) {
+    const CreativeHeldItemKind candidate =
+        static_cast<CreativeHeldItemKind>(index);
+    if (toString(candidate) == value) {
+      out = candidate;
+      return true;
+    }
+  }
+  return false;
+}
+
 CreativeHotbarState makeDefaultCreativeHotbar(
     std::span<const CreativeObjectKind> materialPalette) noexcept {
   const CreativeObjectKind material =
