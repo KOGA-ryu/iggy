@@ -208,12 +208,14 @@ struct MaterialBrushTargetSample {
 
 [[nodiscard]] cr::CreativeMaterialBrushStampPlan materialBrushStampPlan(
     const CreativeEditorState& editor,
-    cr::CreativeGridCoord3 center) noexcept {
+    cr::CreativeGridCoord3 center,
+    cr::CreativeMaterialBrushPlane plane) noexcept {
   cr::CreativeMaterialBrushStampRequest request;
   request.shape = editor.toolSettings.materialBrushShape;
   request.size = editor.toolSettings.materialBrushSize;
   request.centerCell = center;
   request.axis = editor.toolSettings.materialBrushAxis;
+  request.plane = plane;
   return cr::planCreativeMaterialBrushStamp(request);
 }
 
@@ -260,13 +262,26 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
     rejectMaterialStroke(editor, held.objectKind);
     return;
   }
-  const MaterialBrushTargetSample sample =
+  MaterialBrushTargetSample sample =
       materialBrushTargetSample(editor, kind);
   if (!sample.valid) {
     stroke.hasLastBrushCenter = false;
     rejectMaterialStroke(editor, held.objectKind);
     return;
   }
+  if (!stroke.hasBrushPlaneAnchor) {
+    stroke.hasBrushPlaneAnchor = true;
+    stroke.brushPlaneAnchor = sample.center;
+    stroke.brushPlane = editor.toolSettings.materialBrushPlane;
+  }
+  cr::CreativeGridCoord3 constrainedCenter{};
+  if (!cr::constrainCreativeMaterialBrushCenter(
+          stroke.brushPlane, stroke.brushPlaneAnchor, sample.center,
+          constrainedCenter)) {
+    rejectMaterialStroke(editor, held.objectKind);
+    return;
+  }
+  sample.center = constrainedCenter;
   cr::CreativeMaterialBrushPathRequest pathRequest;
   pathRequest.fromCell =
       stroke.hasLastBrushCenter ? stroke.lastBrushCenter : sample.center;
@@ -298,7 +313,7 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
   cr::CreativeGridCoord3 aggregateMax{};
   for (cr::CreativeGridCoord3 center : path.generatedCenters()) {
     const cr::CreativeMaterialBrushStampPlan stamp =
-        materialBrushStampPlan(editor, center);
+        materialBrushStampPlan(editor, center, stroke.brushPlane);
     if (!stamp.accepted) {
       rejectMaterialStroke(editor, held.objectKind);
       return;

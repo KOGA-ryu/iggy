@@ -11,6 +11,7 @@
 #include "EditorPicking.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
+#include "app/iggy3d/creative/tools/ShapeBrush.hpp"
 #include "render/FrameInput.hpp"
 
 namespace iggy3d::creative {
@@ -89,6 +90,10 @@ struct CreativeMaterialStrokeState {
   bool capacityReached = false;
   bool hasLastBrushCenter = false;
   iggy3d::creative::CreativeGridCoord3 lastBrushCenter{};
+  bool hasBrushPlaneAnchor = false;
+  iggy3d::creative::CreativeGridCoord3 brushPlaneAnchor{};
+  iggy3d::creative::CreativeMaterialBrushPlane brushPlane =
+      iggy3d::creative::CreativeMaterialBrushPlane::Free;
 };
 
 [[nodiscard]] constexpr bool creativeEditorPlacementFeedbackVisible(

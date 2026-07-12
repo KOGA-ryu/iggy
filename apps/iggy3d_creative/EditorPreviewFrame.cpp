@@ -195,13 +195,25 @@ struct MaterialBrushPreviewPlan {
   if (output.removing && !editor.interaction.target.voxelHit) {
     return output;
   }
-  const cr::CreativeGridCoord3 center =
+  const cr::CreativeGridCoord3 rawCenter =
       output.removing ? editor.interaction.target.voxelCell
                       : editor.interaction.target.grid.adjacentCell;
+  const CreativeMaterialStrokeState& stroke =
+      editor.interaction.materialStroke;
+  const cr::CreativeMaterialBrushPlane plane =
+      stroke.hasBrushPlaneAnchor ? stroke.brushPlane
+                                 : editor.toolSettings.materialBrushPlane;
+  const cr::CreativeGridCoord3 anchor =
+      stroke.hasBrushPlaneAnchor ? stroke.brushPlaneAnchor : rawCenter;
+  cr::CreativeGridCoord3 center{};
+  if (!cr::constrainCreativeMaterialBrushCenter(plane, anchor, rawCenter,
+                                                center)) {
+    return output;
+  }
   output.stamp = cr::planCreativeMaterialBrushStamp(
       {editor.toolSettings.materialBrushShape,
        editor.toolSettings.materialBrushSize, center,
-       editor.toolSettings.materialBrushAxis});
+       editor.toolSettings.materialBrushAxis, plane});
   output.visible = output.stamp.accepted;
   if (!output.visible) {
     return output;

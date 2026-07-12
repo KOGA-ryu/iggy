@@ -1349,12 +1349,12 @@ bool materialBrushPaintsErasesPreviewsAndGroupsHistory() {
                        appState.facade.document().revision() ==
                            revisionBeforePreview,
                    "sphere preview shows its exact seven green voxel cells") &&
-            expect(editor.quickEdit.options.count == 3U &&
+            expect(editor.quickEdit.options.count == 4U &&
                        creativeEditorQuickEditStatusLabel(editor) ==
                            "BRUSH SHAPE SPHERE" &&
                        creativeEditorHeldItemStatusLabel(editor) ==
-                           "Brush | Wall | SPHERE | 3 CELLS | OVERWRITE | "
-                           "7 VOXELS | [BRUSH SHAPE SPHERE]",
+                           "Brush | Wall | SPHERE | 3 CELLS | FREE | "
+                           "OVERWRITE | 7 VOXELS | [BRUSH SHAPE SPHERE]",
                    "material brush status exposes channel and stamp count");
 
   editor.toolSettings.materialBrushShape =
@@ -1390,12 +1390,16 @@ bool materialBrushPaintsErasesPreviewsAndGroupsHistory() {
   ok = expect(processCreativeEditorQuickEditAction(
                   editor, cr::CreativeInputActionId::QuickEditNext) &&
                   creativeEditorQuickEditStatusLabel(editor) ==
+                      "BRUSH DEPTH FREE" &&
+                  processCreativeEditorQuickEditAction(
+                      editor, cr::CreativeInputActionId::QuickEditNext) &&
+                  creativeEditorQuickEditStatusLabel(editor) ==
                       "BRUSH MASK OVERWRITE" &&
                   processCreativeEditorQuickEditAction(
                       editor, cr::CreativeInputActionId::QuickEditIncrease) &&
                   editor.toolSettings.materialBrushMask ==
                       cr::CreativeMaterialBrushMask::AddOnly,
-              "dpad exposes the brush occupancy mask as a third channel") &&
+              "dpad exposes plane and occupancy mask as bounded channels") &&
        ok;
   editor.toolSettings.materialBrushSize =
       cr::CreativeMaterialBrushSize::ThreeCells;
@@ -1530,7 +1534,7 @@ bool materialBrushCylinderAxisDrivesPreviewAndMutation() {
   constexpr std::size_t kWireEdgesPerVoxel = 12U;
   bool ok = expect(previewOverlay.materialBrushEdgeCount ==
                            15U * kWireEdgesPerVoxel &&
-                       editor.quickEdit.options.count == 4U &&
+                       editor.quickEdit.options.count == 5U &&
                        editor.quickEdit.options.ids[1] ==
                            cr::CreativeToolOptionId::MaterialBrushAxis &&
                        creativeEditorHeldItemStatusLabel(editor).find(
@@ -1564,6 +1568,83 @@ bool materialBrushCylinderAxisDrivesPreviewAndMutation() {
               "D-pad quick edit rotates the cylinder without a new binding") &&
        ok;
   return ok;
+}
+
+bool materialBrushPlaneStaysAnchoredForTheGesture() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 112U);
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
+  editor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::MaterialBrush;
+  editor.toolSettings.materialBrushShape =
+      cr::CreativeMaterialBrushShape::Cube;
+  editor.toolSettings.materialBrushSize =
+      cr::CreativeMaterialBrushSize::ThreeCells;
+  editor.toolSettings.materialBrushPlane =
+      cr::CreativeMaterialBrushPlane::Y;
+  syncCreativeEditorHeldItem(appState, editor);
+  syncCreativeEditorQuickEdit(editor);
+  setPlaceTarget(editor, 0, 0, 0);
+
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, true, false), 0U);
+  bool ok = expect(appState.facade.document()
+                           .voxelField()
+                           .occupiedCellCount() == 9U &&
+                       editor.interaction.materialStroke.hasBrushPlaneAnchor &&
+                       editor.interaction.materialStroke.brushPlane ==
+                           cr::CreativeMaterialBrushPlane::Y,
+                   "first sample captures and flattens the gesture plane");
+
+  setPlaceTarget(editor, 2, 2, 0);
+  CreativeEditorSelectionFrame selection;
+  CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  iggy3d::FrameInput previewFrame;
+  CreativeEditorOverlayFrame previewOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, previewFrame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      previewOverlay);
+  constexpr std::size_t kWireEdgesPerVoxel = 12U;
+  const std::size_t previewStart =
+      previewOverlay.combinedWireLines.size() -
+      previewOverlay.materialBrushEdgeCount;
+  const bool previewHeldAtAnchor = std::all_of(
+      previewOverlay.combinedWireLines.begin() +
+          static_cast<std::ptrdiff_t>(previewStart),
+      previewOverlay.combinedWireLines.end(),
+      [](const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return line.start.y >= 0.0F && line.start.y <= 1.0F &&
+               line.end.y >= 0.0F && line.end.y <= 1.0F;
+      });
+  ok = expect(previewOverlay.materialBrushEdgeCount ==
+                      6U * kWireEdgesPerVoxel &&
+                  previewHeldAtAnchor &&
+                  creativeEditorHeldItemStatusLabel(editor).find(
+                      "3 CELLS | PLANE Y") != std::string::npos,
+              "preview shows eligible cells on the anchored uneven-aim plane") &&
+       ok;
+
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, false, false),
+      cr::kCreativeMaterialStrokeRepeatNanoseconds);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, false, false, true),
+      cr::kCreativeMaterialStrokeRepeatNanoseconds + 1U);
+  const cr::CreativeVoxelField& voxels =
+      appState.facade.document().voxelField();
+  return expect(voxels.occupiedCellCount() == 15U &&
+                    voxels.occupied({2, 0, 0}) &&
+                    !voxels.occupied({2, 2, 0}) &&
+                    cr::creativeUndoDepth(appState.history) == 1U,
+                "constrained sweep fills one flat layer in one undo") &&
+         expect(!editor.interaction.materialStroke.hasBrushPlaneAnchor,
+                "release clears the gesture-local plane anchor") &&
+         ok;
 }
 
 bool materialBrushInterpolatesDiagonalsAndBreaksOnTargetLoss() {
@@ -2262,6 +2343,7 @@ int main() {
   ok = gamepadAcceptPlacesAndRejectRemoves() && ok;
   ok = materialBrushPaintsErasesPreviewsAndGroupsHistory() && ok;
   ok = materialBrushCylinderAxisDrivesPreviewAndMutation() && ok;
+  ok = materialBrushPlaneStaysAnchoredForTheGesture() && ok;
   ok = materialBrushInterpolatesDiagonalsAndBreaksOnTargetLoss() && ok;
   ok = materialBrushInterpolatesEraseSweep() && ok;
   ok = materialBrushMasksMatchPreviewAndMutation() && ok;

@@ -308,9 +308,10 @@ preview's contextual wheel. They do not each earn a permanent global key.
 - Contextual settings currently provide Free/X/Z fast-drag movement,
   X/Y/Z precision-preview constraints, 15/45/90-degree
   rotation, 0.25/0.5/1/2-meter grid increments, Material Brush Cube/Sphere/
-  Cylinder shape, X/Y/Z cylinder axis, 1/3/5-cell size, and Add Only/Replace/
-  Overwrite occupancy masks, Replace source filtering by material or Any,
-  Clone offsets on X/Y/Z at 1/2/4/8 cells, Linear Array
+  Cylinder shape, X/Y/Z cylinder axis, 1/3/5-cell size, Free/Plane X/Plane Y/
+  Plane Z brush depth, and Add Only/Replace/Overwrite occupancy masks, Replace
+  source filtering by material or Any, Clone offsets on X/Y/Z at 1/2/4/8
+  cells, Linear Array
   direction on either world axis with 1/2/4/8/16/32 copies at 1/2/4/8-cell
   spacing, and Radial Array X/Y/Z rings or arcs with 2/4/8/16/32 total
   instances across 90/180/360 degrees.
@@ -370,6 +371,11 @@ preview's contextual wheel. They do not each earn a permanent global key.
   erases with Circle/left mouse. Cube, sphere, and cylinder stamps are
   allocation-free fixed batches at 1, 3, or 5 cells across. Cylinder stamps
   can be oriented along X, Y, or Z without changing the gesture controls. A
+  Free brush retains the complete stamp. Plane X/Y/Z keeps only the center
+  slice perpendicular to that world axis and anchors that coordinate at the
+  gesture's first valid sample. The plane remains fixed until release even if
+  aim moves across uneven geometry; losing the target still breaks path
+  interpolation without moving the anchor. A
   held gesture repeats every 200 ms and fills every grid cell crossed between
   valid samples, so fast axial and diagonal sweeps do not leave holes. Losing
   the target breaks that interpolation chain instead of bridging empty space.
@@ -429,8 +435,9 @@ preview's contextual wheel. They do not each earn a permanent global key.
 ## Remaining Gaps
 
 - Pause/menu UI is not implemented.
-- Placement restrictions remain a future contextual setting. They do not
-  receive permanent global keys.
+- Authored-object placement restrictions remain a future contextual setting.
+  Material Brush already exposes gesture-local world-plane constraints; neither
+  form receives permanent global keys.
 - Named profile presets, per-device reset, and import/export remain future work.
   The live Controls panel already persists semantic keyboard/mouse and
   controller bindings plus bounded stick, look, and repeat tuning.

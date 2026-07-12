@@ -116,6 +116,7 @@ enum class CreativeToolOptionId : std::uint8_t {
   MaterialBrushShape,
   MaterialBrushAxis,
   MaterialBrushSize,
+  MaterialBrushPlane,
   MaterialBrushMask,
   ShapeBrushKind,
   ShapeBrushAxis,
@@ -170,6 +171,8 @@ struct CreativeToolSettings {
   CreativeAxis3 materialBrushAxis = CreativeAxis3::Y;
   CreativeMaterialBrushSize materialBrushSize =
       CreativeMaterialBrushSize::ThreeCells;
+  CreativeMaterialBrushPlane materialBrushPlane =
+      CreativeMaterialBrushPlane::Free;
   CreativeMaterialBrushMask materialBrushMask =
       CreativeMaterialBrushMask::Overwrite;
   CreativeShapeBrushKind shapeBrushKind = CreativeShapeBrushKind::Box;

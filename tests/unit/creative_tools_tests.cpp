@@ -352,15 +352,17 @@ bool optionDescriptorsAreContextualAndBounded() {
                         cr::CreativeToolOptionId::PlacementYaw &&
                     material.ids[1] == cr::CreativeToolOptionId::SnapIncrement,
                 "material exposes orientation and grid size") &&
-         expect(materialBrush.count == 3U &&
+         expect(materialBrush.count == 4U &&
                     materialBrush.ids[0] ==
                         cr::CreativeToolOptionId::MaterialBrushShape &&
                     materialBrush.ids[1] ==
                         cr::CreativeToolOptionId::MaterialBrushSize &&
                     materialBrush.ids[2] ==
+                        cr::CreativeToolOptionId::MaterialBrushPlane &&
+                    materialBrush.ids[3] ==
                         cr::CreativeToolOptionId::MaterialBrushMask,
-                "material brush exposes shape size and occupancy mask") &&
-         expect(cylinderBrush.count == 4U &&
+                "material brush exposes shape size plane and occupancy mask") &&
+         expect(cylinderBrush.count == 5U &&
                     cylinderBrush.ids[0] ==
                         cr::CreativeToolOptionId::MaterialBrushShape &&
                     cylinderBrush.ids[1] ==
@@ -368,6 +370,8 @@ bool optionDescriptorsAreContextualAndBounded() {
                     cylinderBrush.ids[2] ==
                         cr::CreativeToolOptionId::MaterialBrushSize &&
                     cylinderBrush.ids[3] ==
+                        cr::CreativeToolOptionId::MaterialBrushPlane &&
+                    cylinderBrush.ids[4] ==
                         cr::CreativeToolOptionId::MaterialBrushMask,
                 "cylinder brush exposes its contextual extrusion axis") &&
          expect(move.count == 3U &&
@@ -435,12 +439,17 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
   invalidMask.materialBrushMask = cr::CreativeMaterialBrushMask::Count;
   cr::CreativeToolSettings invalidBrushAxis = settings;
   invalidBrushAxis.materialBrushAxis = cr::CreativeAxis3::Count;
+  cr::CreativeToolSettings invalidBrushPlane = settings;
+  invalidBrushPlane.materialBrushPlane =
+      cr::CreativeMaterialBrushPlane::Count;
   bool ok = expect(cr::isValidCreativeToolSettings(settings),
                    "default settings valid") &&
             expect(!cr::isValidCreativeToolSettings(invalidMask),
                    "invalid material brush mask fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidBrushAxis),
                    "invalid material brush axis fails settings validation") &&
+            expect(!cr::isValidCreativeToolSettings(invalidBrushPlane),
+                   "invalid material brush plane fails settings validation") &&
             expect(cr::creativeToolOptionValueLabel(
                        settings,
                        cr::CreativeToolOptionId::MoveConstraint) == "FREE" &&
@@ -471,6 +480,10 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                            settings,
                            cr::CreativeToolOptionId::MaterialBrushSize) ==
                            "3 CELLS" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::MaterialBrushPlane) ==
+                           "FREE" &&
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::MaterialBrushMask) ==
@@ -512,6 +525,10 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                   settings.materialBrushSize ==
                       cr::CreativeMaterialBrushSize::FiveCells,
               "material brush size cycles within its fixed budget") &&
+       expect(adjust(cr::CreativeToolOptionId::MaterialBrushPlane, 1).changed &&
+                  settings.materialBrushPlane ==
+                      cr::CreativeMaterialBrushPlane::X,
+              "material brush plane cycles from free to X") &&
        expect(adjust(cr::CreativeToolOptionId::MaterialBrushMask, 1).changed &&
                   settings.materialBrushMask ==
                       cr::CreativeMaterialBrushMask::AddOnly,
