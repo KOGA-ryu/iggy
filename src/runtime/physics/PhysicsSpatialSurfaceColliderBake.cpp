@@ -152,6 +152,11 @@ bool supportedIncludedShape(const CollisionSurfaceView& surface) {
          surface.role == CollisionSurfaceRole::Walkable;
 }
 
+bool queryOnlyHeightPatch(const CollisionSurfaceView& surface) {
+  return surface.shape == CollisionSurfaceShape::HeightPatch &&
+         surface.role == CollisionSurfaceRole::Walkable;
+}
+
 bool validGeneratedBodyId(PhysicsBodyId firstGeneratedBodyId,
                           std::size_t colliderIndex) {
   const std::uint64_t id =
@@ -242,6 +247,12 @@ bakePhysicsAabbCollidersFromSpatialSurfaces(
       return invalidSurfaceResult(
           PhysicsSpatialSurfaceColliderBakeStatus::InvalidSurfaceBounds,
           surfaceIndex, result);
+    }
+    // Height patches are sampled exactly by collision queries. Baking their
+    // sloped bounds into AABBs would recreate invisible steps in the motor.
+    if (queryOnlyHeightPatch(surface)) {
+      ++result.skippedSurfaceCount;
+      continue;
     }
     // branch-gate: BG-1099
     if (!supportedIncludedShape(surface)) {

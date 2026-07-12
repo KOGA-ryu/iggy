@@ -9,6 +9,7 @@
 #include "EditorToolOptions.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
+#include "runtime/collision/CollisionQuery.hpp"
 
 #include <algorithm>
 #include <array>
@@ -29,6 +30,10 @@ bool expect(bool condition, std::string_view message) {
     std::cerr << "FAIL: " << message << '\n';
   }
   return condition;
+}
+
+bool approx(float lhs, float rhs, float epsilon = 0.001F) {
+  return lhs >= rhs - epsilon && lhs <= rhs + epsilon;
 }
 
 void installDocument(cr::CreativeAppState& appState,
@@ -255,6 +260,12 @@ bool derivedSurfaceAndGuidesUseRevisionCaching() {
       [](const auto& surface) {
         return surface.role == iggy3d::RoomSpatialSurfaceRole::Walkable;
       });
+  const bool hasHeightPatch = std::any_of(
+      surfaces.begin(), surfaces.end(),
+      [](const auto& surface) {
+        return surface.shape ==
+               iggy3d::RoomSpatialSurfaceShape::HeightPatch;
+      });
   const bool hasActorBlocker = std::any_of(
       surfaces.begin(), surfaces.end(),
       [](const auto& surface) { return surface.blocksActor; });
@@ -266,9 +277,13 @@ bool derivedSurfaceAndGuidesUseRevisionCaching() {
                     !cache.terrainCuboids.empty(),
                 "accepted rod rebuilds derived surface once") &&
          expect(cache.preview.roomBake.receipt.bakedVoxelCuboidCount > 0U,
-                "terrain cuboids enter the room render and physics bake") &&
-         expect(hasWalkable && hasActorBlocker && hasProjectileBlocker,
-                "terrain tops walk and terrain columns block") &&
+                "terrain cuboids enter the room render bake") &&
+         expect(cache.preview.roomBake.receipt.usedSmoothTerrainCollision &&
+                    cache.preview.roomBake.receipt
+                            .bakedTerrainCliffBlockerCount > 0U &&
+                    hasWalkable && hasHeightPatch && hasActorBlocker &&
+                    hasProjectileBlocker,
+                "terrain patches walk while exposed cliffs block") &&
          expect(guides.size() >= 48U,
                 "active tool shows stored rod and influence plus preview") &&
          expect(!refreshCreativeEditorSceneCache(
@@ -773,6 +788,8 @@ bool bentSurfacePatchesReachRendererAndRefreshWithHeight() {
                patch.corners[2].y != patch.corners[3].y;
       });
   bool ok = expect(refreshed && !cache.terrainSurfacePatches.empty() &&
+                       cache.terrainCollisionPatches.size() ==
+                           cache.terrainSurfacePatches.size() &&
                        cache.preview.scene.room.surfacePatches.size() ==
                            cache.terrainSurfacePatches.size(),
                    "scene cache attaches derived terrain patches") &&
@@ -797,6 +814,109 @@ bool bentSurfacePatchesReachRendererAndRefreshWithHeight() {
                                         first.sourceRoomGeometrySignature,
                 "accepted height change rebuilds and re-signatures bent geometry once") &&
          ok;
+}
+
+bool smoothTerrainCollisionMatchesRenderedTriangle() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 412U);
+  const std::array edits{
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{0, 0}, 2U, 2U}},
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{2, 0}, 8U, 2U}},
+  };
+  static_cast<void>(appState.facade.applyTerrainControlEdits(edits));
+  iggy3d::ProductMapMakerGridSnapshot grid;
+  CreativeEditorSceneCache cache;
+  if (!expect(refreshCreativeEditorSceneCache(
+                  cache, appState.facade.document(), grid),
+              "smooth collision scene refreshes")) {
+    return false;
+  }
+
+  const cr::CreativeTerrainSurfacePatch* selectedPatch = nullptr;
+  std::size_t selectedCorner = 0U;
+  for (const cr::CreativeTerrainSurfacePatch& patch :
+       cache.terrainCollisionPatches) {
+    for (std::size_t corner = 0U; corner < patch.corners.size(); ++corner) {
+      const cr::CreativeVec3 first = patch.corners[corner];
+      const cr::CreativeVec3 second =
+          patch.corners[(corner + 1U) % patch.corners.size()];
+      if (patch.center.y != first.y || patch.center.y != second.y) {
+        selectedPatch = &patch;
+        selectedCorner = corner;
+        break;
+      }
+    }
+    if (selectedPatch != nullptr) {
+      break;
+    }
+  }
+  if (!expect(selectedPatch != nullptr,
+              "unequal rods expose a bent collision triangle")) {
+    return false;
+  }
+
+  const cr::CreativeCoreVec3Conversion center =
+      cr::creativeVec3ToCoreChecked(selectedPatch->center);
+  const cr::CreativeCoreVec3Conversion first =
+      cr::creativeVec3ToCoreChecked(selectedPatch->corners[selectedCorner]);
+  const cr::CreativeCoreVec3Conversion second =
+      cr::creativeVec3ToCoreChecked(
+          selectedPatch->corners[(selectedCorner + 1U) % 4U]);
+  if (!expect(center.converted && first.converted && second.converted,
+              "selected terrain triangle converts to runtime coordinates")) {
+    return false;
+  }
+  const iggy3d::Vec3 samplePoint =
+      (center.value + first.value + second.value) / 3.0F;
+  iggy3d::Vec3 expectedNormal;
+  if (!expect(iggy3d::tryNormalize(
+                  iggy3d::cross(first.value - center.value,
+                                second.value - center.value),
+                  expectedNormal),
+              "selected terrain triangle has a finite normal")) {
+    return false;
+  }
+  if (expectedNormal.y < 0.0F) {
+    expectedNormal = expectedNormal * -1.0F;
+  }
+
+  const iggy3d::SpatialSurfaceSet collisionSurfaces =
+      iggy3d::buildSpatialSurfaceSet(cache.preview.roomBake.room);
+  const iggy3d::CollisionQueryResult sampled = iggy3d::sampleSurfaceHeight(
+      collisionSurfaces, {samplePoint.x, 0.0F, samplePoint.z}, 0.0F);
+  const iggy3d::CollisionQueryResult verticalHit = iggy3d::querySegment(
+      collisionSurfaces, samplePoint + iggy3d::Vec3{0.0F, 2.0F, 0.0F},
+      samplePoint - iggy3d::Vec3{0.0F, 2.0F, 0.0F},
+      iggy3d::CollisionQueryKind::Walkable);
+  const iggy3d::CollisionQueryResult projectileHit = iggy3d::querySegment(
+      collisionSurfaces, samplePoint + iggy3d::Vec3{0.0F, 2.0F, 0.0F},
+      samplePoint - iggy3d::Vec3{0.0F, 2.0F, 0.0F},
+      iggy3d::CollisionQueryKind::Projectile);
+  const cr::CreativeRoomBakeReceipt& receipt = cache.preview.roomBake.receipt;
+  return expect(receipt.usedSmoothTerrainCollision &&
+                    receipt.bakedTerrainSurfacePatchCount ==
+                        cache.terrainCollisionPatches.size(),
+                "room bake owns every admitted smooth collision patch") &&
+         expect(sampled.status == iggy3d::CollisionQueryStatus::Hit &&
+                    sampled.shape ==
+                        iggy3d::CollisionSurfaceShape::HeightPatch &&
+                    approx(sampled.heightMeters, samplePoint.y) &&
+                    iggy3d::nearlyEqual(sampled.normal, expectedNormal, 0.001F),
+                "height sampling matches the rendered triangle height and normal") &&
+         expect(verticalHit.status == iggy3d::CollisionQueryStatus::Hit &&
+                    verticalHit.shape ==
+                        iggy3d::CollisionSurfaceShape::HeightPatch &&
+                    approx(verticalHit.pointMeters.y, samplePoint.y) &&
+                    iggy3d::nearlyEqual(verticalHit.normal, expectedNormal,
+                                        0.001F),
+                "vertical collision query hits the same terrain triangle") &&
+         expect(projectileHit.status == iggy3d::CollisionQueryStatus::Hit &&
+                    projectileHit.shape ==
+                        iggy3d::CollisionSurfaceShape::HeightPatch &&
+                    approx(projectileHit.pointMeters.y, samplePoint.y),
+                "smooth terrain top remains projectile-solid");
 }
 
 bool gridChangeRebuildsWorldSpaceTerrainPatches() {
@@ -864,11 +984,73 @@ bool oversizedBentSurfaceFallsBackToTerrainPlanes() {
       cache, appState.facade.document(), grid);
   const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
       iggy3d::vulkan::buildRoomMeshCpuGeometry(cache.preview.scene.room);
+  const bool hasHeightPatch = std::any_of(
+      cache.preview.roomBake.room.spatialSurfaces.begin(),
+      cache.preview.roomBake.room.spatialSurfaces.end(),
+      [](const iggy3d::RoomSpatialSurface& surface) {
+        return surface.shape ==
+               iggy3d::RoomSpatialSurfaceShape::HeightPatch;
+      });
   return expect(refreshed && cache.terrainSurfacePatches.empty() &&
+                    cache.terrainCollisionPatches.empty() &&
                     !cache.terrainCuboids.empty(),
                 "over-budget bent plan retains stepped fallback data") &&
+         expect(!cache.preview.roomBake.receipt.usedSmoothTerrainCollision &&
+                    cache.preview.roomBake.receipt
+                            .bakedTerrainSurfacePatchCount == 0U &&
+                    !hasHeightPatch,
+                "over-budget plan keeps the column collision fallback") &&
          expect(geometry.ready && geometry.roomFloorDrawCount > 1U,
                 "renderer draws terrain fallback planes instead of dropping it");
+}
+
+bool invalidSmoothPatchInputFallsBackAtomically() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 413U);
+  const cr::CreativeTerrainControlEdit edit{
+      cr::CreativeTerrainEditKind::Upsert, {{0, 0}, 4U, 2U}};
+  static_cast<void>(appState.facade.applyTerrainControlEdits(
+      std::span{&edit, 1U}));
+  const cr::CreativeTerrainSurfacePlan terrain =
+      cr::buildCreativeTerrainSurfacePlan(
+          appState.facade.document().terrainField());
+  const cr::CreativeGridSettings grid =
+      appState.facade.document().gridSettings();
+  cr::CreativeTerrainRenderPlan render = cr::buildCreativeTerrainRenderPlan(
+      terrain, grid.origin, grid.cellSizeMeters);
+  if (!expect(terrain.accepted && render.accepted && !render.patches.empty(),
+              "fallback test starts from a valid terrain plan")) {
+    return false;
+  }
+  render.patches.front().corners[0] = render.patches.front().center;
+
+  cr::CreativeRoomBakeRequest request;
+  request.document = &appState.facade.document();
+  request.validateReachability = false;
+  request.usePrecomputedVoxelCuboids = true;
+  request.precomputedVoxelCuboids = terrain.cuboids;
+  request.usePrecomputedTerrainSurfacePatches = true;
+  request.precomputedTerrainSurfacePatches = render.patches;
+  const cr::CreativeRoomBakeResult baked =
+      cr::buildRoomAssetFromCreativeDocument(request);
+  const bool hasHeightPatch = std::any_of(
+      baked.room.spatialSurfaces.begin(), baked.room.spatialSurfaces.end(),
+      [](const iggy3d::RoomSpatialSurface& surface) {
+        return surface.shape ==
+               iggy3d::RoomSpatialSurfaceShape::HeightPatch;
+      });
+  const bool hasTerrainPlane = std::any_of(
+      baked.room.spatialSurfaces.begin(), baked.room.spatialSurfaces.end(),
+      [](const iggy3d::RoomSpatialSurface& surface) {
+        return surface.shape == iggy3d::RoomSpatialSurfaceShape::Plane &&
+               surface.role == iggy3d::RoomSpatialSurfaceRole::Walkable;
+      });
+  return expect(baked.receipt.accepted &&
+                    !baked.receipt.usedSmoothTerrainCollision &&
+                    baked.receipt.bakedTerrainSurfacePatchCount == 0U,
+                "invalid smooth plan is rejected as one unit") &&
+         expect(!hasHeightPatch && hasTerrainPlane,
+                "invalid smooth plan preserves stepped collision fallback");
 }
 
 bool denseRoomGeometryFallsBackBeforePatchVertexOverflow() {
@@ -952,8 +1134,10 @@ int main() {
                  terrainGradeCancelAndCapacityFailureDoNotCreateHistory() &&
                  terrainGradeRoutesSquareXAndCircleThroughWorldActions() &&
                  bentSurfacePatchesReachRendererAndRefreshWithHeight() &&
+                 smoothTerrainCollisionMatchesRenderedTriangle() &&
                  gridChangeRebuildsWorldSpaceTerrainPatches() &&
                  oversizedBentSurfaceFallsBackToTerrainPlanes() &&
+                 invalidSmoothPatchInputFallsBackAtomically() &&
                  denseRoomGeometryFallsBackBeforePatchVertexOverflow() &&
                  bentSurfacePatchesParticipateInFrustumCulling()
              ? 0

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -14,6 +15,7 @@ namespace iggy3d {
 enum class CollisionSurfaceShape : std::uint8_t {
   Box,
   Plane,
+  HeightPatch,
   Opening,
 };
 
@@ -46,6 +48,8 @@ struct CollisionSurfaceView {
   Aabb3 bounds;
   Vec3 normal;
   Vec3 planePoint;
+  // HeightPatch uses center followed by four counter-clockwise corners.
+  std::array<Vec3, 5U> heightPatchPoints{};
   bool blocksActor = false;
   bool blocksProjectile = false;
   bool hasActorMask = false;

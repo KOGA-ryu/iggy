@@ -42,6 +42,7 @@ struct RoomOpeningAsset {
 enum class RoomSpatialSurfaceShape : std::uint8_t {
   Box,
   Plane,
+  HeightPatch,
   Opening,
 };
 

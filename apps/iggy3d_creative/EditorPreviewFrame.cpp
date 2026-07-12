@@ -426,8 +426,12 @@ void refreshTerrainSurfacePlan(CreativeEditorSceneCache& cache,
   const cr::CreativeTerrainRenderPlan renderPlan =
       cr::buildCreativeTerrainRenderPlan(plan, grid.origin,
                                          grid.cellSizeMeters);
-  static_cast<void>(
-      convertTerrainSurfacePatches(renderPlan, cache.terrainSurfacePatches));
+  if (convertTerrainSurfacePatches(renderPlan,
+                                   cache.terrainSurfacePatches)) {
+    cache.terrainCollisionPatches = renderPlan.patches;
+  } else {
+    cache.terrainCollisionPatches.clear();
+  }
   cache.terrainRevision = document.terrainField().revision();
   cache.terrainGridOrigin = grid.origin;
   cache.terrainGridCellSizeMeters = grid.cellSizeMeters;
@@ -439,6 +443,7 @@ buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
     const iggy3d::creative::CreativeDocument& document,
     const iggy3d::ProductMapMakerGridSnapshot& gridSnapshot,
     std::span<const cr::CreativeVoxelCuboid> voxelCuboids,
+    std::span<const cr::CreativeTerrainSurfacePatch> terrainCollisionPatches,
     std::span<const iggy3d::SceneRoomSurfacePatchItem> terrainSurfacePatches,
     bool usePrecomputedVoxelCuboids) {
   iggy3d::creative::CreativeRoomBakeRequest bakeRequest;
@@ -448,6 +453,9 @@ buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
   bakeRequest.sourceSubset = "standalone_preview";
   bakeRequest.usePrecomputedVoxelCuboids = usePrecomputedVoxelCuboids;
   bakeRequest.precomputedVoxelCuboids = voxelCuboids;
+  bakeRequest.usePrecomputedTerrainSurfacePatches =
+      !terrainCollisionPatches.empty();
+  bakeRequest.precomputedTerrainSurfacePatches = terrainCollisionPatches;
 
   StandaloneRoomBakePreviewScene preview;
   preview.roomBake =
@@ -478,18 +486,22 @@ StandaloneRoomBakePreviewScene buildStandaloneRoomBakePreviewScene(
       cr::buildCreativeVoxelCuboids(document.voxelField());
   const cr::CreativeTerrainSurfacePlan terrain =
       cr::buildCreativeTerrainSurfacePlan(document.terrainField());
+  std::vector<cr::CreativeTerrainSurfacePatch> terrainCollisionPatches;
   std::vector<iggy3d::SceneRoomSurfacePatchItem> terrainSurfacePatches;
   if (terrain.accepted) {
     cuboids.insert(cuboids.end(), terrain.cuboids.begin(),
                    terrain.cuboids.end());
     const cr::CreativeGridSettings grid = document.gridSettings();
-    static_cast<void>(convertTerrainSurfacePatches(
+    const cr::CreativeTerrainRenderPlan renderPlan =
         cr::buildCreativeTerrainRenderPlan(terrain, grid.origin,
-                                           grid.cellSizeMeters),
-        terrainSurfacePatches));
+                                           grid.cellSizeMeters);
+    if (convertTerrainSurfacePatches(renderPlan, terrainSurfacePatches)) {
+      terrainCollisionPatches = renderPlan.patches;
+    }
   }
   return buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
-      document, gridSnapshot, cuboids, terrainSurfacePatches, true);
+      document, gridSnapshot, cuboids, terrainCollisionPatches,
+      terrainSurfacePatches, true);
 }
 
 bool refreshCreativeEditorSceneCache(
@@ -503,6 +515,7 @@ bool refreshCreativeEditorSceneCache(
   if (cache.documentId != document.id()) {
     cache.voxelChunkMeshes.clear();
     cache.terrainCuboids.clear();
+    cache.terrainCollisionPatches.clear();
     cache.terrainSurfacePatches.clear();
     cache.terrainRevision = 0;
     cache.terrainGridOrigin = {};
@@ -514,7 +527,8 @@ bool refreshCreativeEditorSceneCache(
   voxelCuboids.insert(voxelCuboids.end(), cache.terrainCuboids.begin(),
                       cache.terrainCuboids.end());
   cache.preview = buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
-      document, gridSnapshot, voxelCuboids, cache.terrainSurfacePatches, true);
+      document, gridSnapshot, voxelCuboids, cache.terrainCollisionPatches,
+      cache.terrainSurfacePatches, true);
   cache.documentId = document.id();
   cache.documentRevision = document.revision();
   ++cache.refreshCount;
@@ -529,6 +543,7 @@ void invalidateCreativeEditorSceneCache(
   cache.documentRevision = 0;
   cache.voxelChunkMeshes.clear();
   cache.terrainCuboids.clear();
+  cache.terrainCollisionPatches.clear();
   cache.terrainSurfacePatches.clear();
   cache.terrainRevision = 0;
   cache.terrainGridOrigin = {};

@@ -41,6 +41,9 @@ struct CreativeRoomBakeRequest {
   float reachabilityCellSizeMeters = 1.0F;
   bool usePrecomputedVoxelCuboids = false;
   std::span<const CreativeVoxelCuboid> precomputedVoxelCuboids{};
+  bool usePrecomputedTerrainSurfacePatches = false;
+  std::span<const CreativeTerrainSurfacePatch>
+      precomputedTerrainSurfacePatches{};
 };
 
 struct CreativeRoomBakeReceipt {
@@ -50,6 +53,8 @@ struct CreativeRoomBakeReceipt {
   std::uint64_t voxelCellCount = 0;
   std::uint64_t voxelChunkCount = 0;
   std::uint64_t bakedVoxelCuboidCount = 0;
+  std::uint64_t bakedTerrainSurfacePatchCount = 0;
+  std::uint64_t bakedTerrainCliffBlockerCount = 0;
   std::uint64_t consideredObjectCount = 0;
   std::uint64_t bakedStaticMeshCount = 0;
   std::uint64_t bakedAnchorCount = 0;
@@ -60,6 +65,7 @@ struct CreativeRoomBakeReceipt {
   std::uint64_t skippedUnsupportedAnchorCount = 0;
   std::uint64_t skippedUnsupportedShapeCount = 0;
   std::uint64_t skippedRoomMetadataCount = 0;
+  bool usedSmoothTerrainCollision = false;
   CreativeRoomBakeStatus status = CreativeRoomBakeStatus::Unknown;
   std::string reasonCode = "creative_room_bake_not_requested";
   std::string message = "creative_room_bake_not_requested";

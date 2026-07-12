@@ -42,6 +42,25 @@ iggy3d::RoomSpatialSurface floorSurface() {
   return surface;
 }
 
+iggy3d::RoomSpatialSurface heightPatchSurface() {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = "height_patch";
+  surface.sourceStaticMeshId = "terrain_mesh";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::HeightPatch;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Walkable;
+  surface.pointsMeters = {
+      {0.5F, 0.18F, 0.5F},
+      {0.0F, 0.0F, 0.0F},
+      {1.0F, 0.36F, 0.0F},
+      {1.0F, 0.36F, 1.0F},
+      {0.0F, 0.0F, 1.0F},
+  };
+  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.collisionMask = {"actor"};
+  surface.runtimeOwnerStableName = "owner.height_patch";
+  return surface;
+}
+
 iggy3d::RoomSpatialSurface wallSurface() {
   iggy3d::RoomSpatialSurface surface;
   surface.id = "wall";
@@ -260,6 +279,24 @@ bool roomSurfacesBakeInDeterministicOrderAndPreserveMetadata() {
          expect(surfaceIds(set) == beforeIds, "surface ids unchanged");
 }
 
+bool heightPatchStaysQueryOwnedWhileCliffBoxesStillBake() {
+  const iggy3d::SpatialSurfaceSet set =
+      surfaceSet({heightPatchSurface(), wallSurface()});
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult result =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces({&set, {}});
+
+  return expect(result.ok, "height patch and cliff bake succeeds") &&
+         expect(result.surfaceCount == 2U &&
+                    result.skippedSurfaceCount == 1U &&
+                    result.colliderCount == 1U,
+                "height patch skips one AABB while cliff keeps one") &&
+         expect(result.sourceSurfaceIndices[0] == 1U &&
+                    result.sourceSurfaceIds[0] == "wall" &&
+                    result.sourceShapes[0] ==
+                        iggy3d::CollisionSurfaceShape::Box,
+                "only the cliff box enters physics collider storage");
+}
+
 bool defaultPolicySkipsProjectileOnlyAndOpeningSurfaces() {
   const iggy3d::SpatialSurfaceSet set =
       surfaceSet({projectileOnlySurface(), openingSurface()});
@@ -430,6 +467,7 @@ int main() {
       statusNamesAndConfigValidation() &&
       missingAndEmptyInputsAreStable() &&
       roomSurfacesBakeInDeterministicOrderAndPreserveMetadata() &&
+      heightPatchStaysQueryOwnedWhileCliffBoxesStillBake() &&
       defaultPolicySkipsProjectileOnlyAndOpeningSurfaces() &&
       actorBlockerPolicyFollowsActorQuerySemantics() &&
       blockerRoleProjectileMaskIsNotActorBlockerByDefault() &&

@@ -291,16 +291,12 @@ MovementResult executePhysicsPlannedMovement(MovementSystemContext& context,
   Vec3 finalPosition = planned.finalCenterMeters -
                        vec3UnitY() * (params.heightMeters * 0.5F);
   const Vec3 beforeSnap = finalPosition;
-  // branch-gate: BG-1102
-  if (!planned.grounded) {
-    return blockedPhysicsResult(
-        request, start, MovementBlockedReason::NoWalkableGround, distanceMeters, planned);
-  }
-
   const CollisionQueryResult ground =
       sampleMovementGroundAtOrBelow(*context.collisionSurfaces, finalPosition, params);
   // branch-gate: BG-1102
-  if (ground.status != CollisionQueryStatus::Hit) {
+  if (ground.status != CollisionQueryStatus::Hit ||
+      std::fabs(finalPosition.y - ground.heightMeters) >
+          params.groundSnapMeters) {
     return blockedPhysicsResult(
         request, start, MovementBlockedReason::NoWalkableGround, distanceMeters, planned);
   }

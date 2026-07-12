@@ -92,6 +92,17 @@ bool closeToGround(const CollisionQueryResult& ground, Vec3 position, const Play
          std::fabs(position.y - ground.heightMeters) <= params.groundProbeMeters;
 }
 
+bool walkableGround(const CollisionQueryResult& ground,
+                    const PlayerMotorParams& params) {
+  if (ground.status != CollisionQueryStatus::Hit) {
+    return false;
+  }
+  MovementParams slopeParams;
+  slopeParams.maxWalkableSlopeDegrees = params.maxWalkableSlopeDegrees;
+  const SlopeSample slope = sampleSlope(ground.normal, slopeParams);
+  return slope.valid && slope.walkable;
+}
+
 void applyGroundSample(PlayerMotorResult& result,
                        const CollisionQueryResult& ground,
                        Vec3 position,
@@ -346,6 +357,8 @@ const char* playerMotorStatusName(PlayerMotorStatus status) {
       return "invalid_parameters";
     case PlayerMotorStatus::NoGround:
       return "no_ground";
+    case PlayerMotorStatus::UnwalkableGround:
+      return "unwalkable_ground";
   }
   return "invalid_parameters";
 }
@@ -395,9 +408,14 @@ PlayerMotorResult updatePlayerMotor(PlayerMotorContext& context,
 
   const CollisionQueryResult ground =
       sampleSurfaceHeight(*context.collisionSurfaces, start, params.footprintToleranceMeters);
-  const bool nearGround = closeToGround(ground, start, params);
+  const bool groundIsWalkable = walkableGround(ground, params);
+  const bool nearGround = groundIsWalkable && closeToGround(ground, start, params);
   if (ground.status != CollisionQueryStatus::Hit && state.phase == PlayerMotorPhase::Grounded) {
     return baseResult(state, start, PlayerMotorStatus::NoGround, params);
+  }
+  if (!groundIsWalkable && state.phase == PlayerMotorPhase::Grounded) {
+    return baseResult(state, start, PlayerMotorStatus::UnwalkableGround,
+                      params);
   }
 
   PlayerMotorResult result = baseResult(state, start, PlayerMotorStatus::Ok, params);
@@ -586,7 +604,7 @@ PlayerMotorResult updatePlayerMotor(PlayerMotorContext& context,
 
     const CollisionQueryResult landingGround = sampleSurfaceHeight(
         *context.collisionSurfaces, finalPosition, params.footprintToleranceMeters);
-    if (landingGround.status == CollisionQueryStatus::Hit &&
+    if (walkableGround(landingGround, params) &&
         finalPosition.y <= landingGround.heightMeters + params.landingSnapMeters &&
         state.verticalVelocityMetersPerSecond <= 0.0F) {
       finalPosition.y = landingGround.heightMeters;
@@ -602,7 +620,7 @@ PlayerMotorResult updatePlayerMotor(PlayerMotorContext& context,
   } else if (state.phase == PlayerMotorPhase::Grounded && transformUpdateNeeded) {
     const CollisionQueryResult finalGround =
         sampleSurfaceHeight(*context.collisionSurfaces, finalPosition, params.footprintToleranceMeters);
-    if (finalGround.status == CollisionQueryStatus::Hit &&
+    if (walkableGround(finalGround, params) &&
         std::fabs(finalPosition.y - finalGround.heightMeters) <= params.landingSnapMeters) {
       if (!nearlyEqual(finalPosition, {finalPosition.x, finalGround.heightMeters, finalPosition.z})) {
         result.groundSnapApplied = true;

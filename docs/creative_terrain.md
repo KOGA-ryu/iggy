@@ -112,30 +112,40 @@ a ground-plane target.
 
 ## Render And Runtime
 
-`CreativeEditorSceneCache` caches generated collision cuboids and bent visual
-patches by document ID, terrain revision, grid origin, and grid cell size. Aim
-movement and guides reuse the cache. An accepted rod mutation or grid transform
-change rebuilds both derived views once. Vulkan batches admitted patches into
-one terrain draw, includes their vertices in the room geometry signature, and
-frustum-culls them with the rest of the room. If the patch cap or the room's
-16-bit vertex budget is exceeded, the renderer automatically falls back to the
-stepped terrain planes instead of dropping the surface.
+`CreativeEditorSceneCache` caches generated fallback cuboids plus the shared
+center-and-corner terrain patches by document ID, terrain revision, grid origin,
+and grid cell size. Aim movement and guides reuse the cache. An accepted rod
+mutation or grid transform change rebuilds both derived views once. Vulkan
+batches admitted patches into one terrain draw, includes their vertices in the
+room geometry signature, and frustum-culls them with the rest of the room. If
+the patch cap or the room's 16-bit vertex budget is exceeded, the renderer
+automatically falls back to the stepped terrain planes instead of dropping the
+surface.
 
 Rejected, repeated, and revisited stroke samples do not advance document
 revision, so they do not rebuild or upload terrain scene data.
 
-Collision remains intentionally column-based in this batch. It supplies the
-existing walkable surfaces plus actor and projectile blocker boxes, so cliffs
-stay physically solid while the visible top bends. Smooth slope collision is a
-separate runtime-physics contract and must not be inferred from render vertices.
+An admitted render plan also enters `RoomAsset` as fixed five-point
+`HeightPatch` walkable surfaces. Runtime height and segment queries evaluate the
+same four center-fan triangles as the renderer, including their exact normals.
+Player grounding and movement therefore follow the visible height, enforce the
+configured maximum walkable slope, and keep the top projectile-solid. The
+physics AABB bake deliberately skips these query-owned top patches; only exposed
+outer terrain edges and holes emit actor/projectile cliff boxes, avoiding hidden
+stair-step colliders beneath a smooth surface.
+
+This contract is fail-safe rather than all-or-nothing. A missing, invalid,
+conversion-failed, or over-budget patch plan does not emit partial smooth
+collision. The existing terrain cuboids retain their flat walkable tops and
+full actor/projectile blocker columns for that bake, matching the renderer's
+stepped fallback.
 
 ## Future Algorithm Gates
 
 Keep these as explicit later work, with profiling and visual tests before use:
 
-- Smooth slope collision and navigation must consume a bounded terrain query or
-  explicit triangle representation, preserve the visual surface normals, and
-  prove player/AI walkability parity before replacing column collision.
+- AI navigation over smooth terrain must consume the bounded height-patch query
+  and prove route/slope parity before replacing its current footprint model.
 - Material layers, erosion, spline ridges, caves, and overhangs are separate
   authored capabilities. A heightfield must not be stretched to represent them.
 - Future grid mutation paths must preserve grid origin and cell size as terrain

@@ -1,6 +1,7 @@
 #include "runtime/collision/CollisionQuery.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <limits>
 
@@ -8,6 +9,13 @@ namespace iggy3d {
 namespace {
 
 constexpr float kEpsilon = 0.0001F;
+constexpr std::array<std::array<std::size_t, 2U>, 4U>
+    kHeightPatchCornerPairs{{
+        {1U, 2U},
+        {2U, 3U},
+        {3U, 4U},
+        {4U, 1U},
+    }};
 
 bool finiteSegment(Vec3 start, Vec3 end) {
   return isFinite(start) && isFinite(end) && distanceSquared(start, end) > kEpsilon * kEpsilon;
@@ -102,6 +110,137 @@ void fillHit(CollisionQueryResult& result,
   result.reasonCode = "collision_hit";
 }
 
+void fillHitWithNormal(CollisionQueryResult& result,
+                       const CollisionSurfaceView& surface,
+                       Vec3 point,
+                       Vec3 normal,
+                       float timeOfImpact,
+                       float distanceMeters) {
+  fillHit(result, surface, point, timeOfImpact, distanceMeters);
+  result.normal = normal;
+}
+
+struct SurfacePointSample {
+  Vec3 point;
+  Vec3 normal;
+};
+
+[[nodiscard]] bool sampleTriangleAtXZ(Vec3 samplePoint,
+                                      Vec3 first,
+                                      Vec3 second,
+                                      Vec3 third,
+                                      SurfacePointSample& output) {
+  const float denominator =
+      (second.z - third.z) * (first.x - third.x) +
+      (third.x - second.x) * (first.z - third.z);
+  if (!std::isfinite(denominator) || std::fabs(denominator) <= kEpsilon) {
+    return false;
+  }
+  const float firstWeight =
+      ((second.z - third.z) * (samplePoint.x - third.x) +
+       (third.x - second.x) * (samplePoint.z - third.z)) /
+      denominator;
+  const float secondWeight =
+      ((third.z - first.z) * (samplePoint.x - third.x) +
+       (first.x - third.x) * (samplePoint.z - third.z)) /
+      denominator;
+  const float thirdWeight = 1.0F - firstWeight - secondWeight;
+  if (firstWeight < -kEpsilon || secondWeight < -kEpsilon ||
+      thirdWeight < -kEpsilon) {
+    return false;
+  }
+
+  Vec3 normal;
+  if (!tryNormalize(cross(second - first, third - first), normal)) {
+    return false;
+  }
+  if (normal.y < 0.0F) {
+    normal = normal * -1.0F;
+  }
+  const float height = first.y * firstWeight + second.y * secondWeight +
+                       third.y * thirdWeight;
+  if (!std::isfinite(height) || !isFinite(normal)) {
+    return false;
+  }
+  output.point = {samplePoint.x, height, samplePoint.z};
+  output.normal = normal;
+  return true;
+}
+
+[[nodiscard]] bool sampleHeightPatchAtXZ(
+    const CollisionSurfaceView& surface,
+    Vec3 worldPoint,
+    float tolerance,
+    SurfacePointSample& output) {
+  if (!expandedContainsXZ(surface.bounds, worldPoint, tolerance)) {
+    return false;
+  }
+  const Vec3 samplePoint{
+      std::clamp(worldPoint.x, surface.bounds.min.x, surface.bounds.max.x),
+      0.0F,
+      std::clamp(worldPoint.z, surface.bounds.min.z, surface.bounds.max.z)};
+  for (const auto& pair : kHeightPatchCornerPairs) {
+    if (sampleTriangleAtXZ(samplePoint, surface.heightPatchPoints[0],
+                           surface.heightPatchPoints[pair[0]],
+                           surface.heightPatchPoints[pair[1]], output)) {
+      output.point.x = worldPoint.x;
+      output.point.z = worldPoint.z;
+      return true;
+    }
+  }
+  return false;
+}
+
+[[nodiscard]] bool sampleSurfaceAtXZ(const CollisionSurfaceView& surface,
+                                     Vec3 worldPoint,
+                                     float tolerance,
+                                     SurfacePointSample& output) {
+  if (surface.shape == CollisionSurfaceShape::HeightPatch) {
+    return sampleHeightPatchAtXZ(surface, worldPoint, tolerance, output);
+  }
+  if (!expandedContainsXZ(surface.bounds, worldPoint, tolerance) ||
+      std::fabs(surface.normal.y) <= kEpsilon) {
+    return false;
+  }
+  const float height =
+      surface.planePoint.y -
+      ((surface.normal.x * (worldPoint.x - surface.planePoint.x)) +
+       (surface.normal.z * (worldPoint.z - surface.planePoint.z))) /
+          surface.normal.y;
+  if (!std::isfinite(height)) {
+    return false;
+  }
+  output.point = {worldPoint.x, height, worldPoint.z};
+  output.normal = surface.normal;
+  return true;
+}
+
+[[nodiscard]] CollisionQueryResult sampleWalkableHeight(
+    const SpatialSurfaceSet& surfaces,
+    Vec3 worldPoint,
+    float footprintToleranceMeters,
+    const float* maxHeightMeters) {
+  CollisionQueryResult result = emptyResult();
+  for (const CollisionSurfaceView& surface : surfaces.surfaces()) {
+    ++result.checkedSurfaceCount;
+    if (surface.role != CollisionSurfaceRole::Walkable) {
+      continue;
+    }
+    ++result.blockingSurfaceCount;
+    SurfacePointSample sample;
+    if (!sampleSurfaceAtXZ(surface, worldPoint, footprintToleranceMeters,
+                           sample) ||
+        (maxHeightMeters != nullptr &&
+         sample.point.y > *maxHeightMeters + kEpsilon) ||
+        !betterHeight(sample.point.y, surface.id, result)) {
+      continue;
+    }
+    fillHitWithNormal(result, surface, sample.point, sample.normal, 0.0F,
+                      0.0F);
+  }
+  return result;
+}
+
 bool segmentAabb(Vec3 start, Vec3 end, const Aabb3& bounds, float& outTime) {
   const Vec3 delta = end - start;
   float tMin = 0.0F;
@@ -155,6 +294,49 @@ bool segmentPlaneFootprint(Vec3 start,
   outTime = std::clamp(t, 0.0F, 1.0F);
   outPoint = point;
   return true;
+}
+
+bool segmentHeightPatch(Vec3 start,
+                        Vec3 end,
+                        const CollisionSurfaceView& surface,
+                        float& outTime,
+                        Vec3& outPoint,
+                        Vec3& outNormal) {
+  const Vec3 delta = end - start;
+  bool found = false;
+  float nearestTime = 1.0F;
+  for (const auto& pair : kHeightPatchCornerPairs) {
+    const Vec3 first = surface.heightPatchPoints[0];
+    const Vec3 second = surface.heightPatchPoints[pair[0]];
+    const Vec3 third = surface.heightPatchPoints[pair[1]];
+    Vec3 normal;
+    if (!tryNormalize(cross(second - first, third - first), normal)) {
+      continue;
+    }
+    if (normal.y < 0.0F) {
+      normal = normal * -1.0F;
+    }
+    const float denominator = dot(normal, delta);
+    if (std::fabs(denominator) <= kEpsilon) {
+      continue;
+    }
+    const float time = dot(normal, first - start) / denominator;
+    if (time < -kEpsilon || time > 1.0F + kEpsilon ||
+        (found && time >= nearestTime - kEpsilon)) {
+      continue;
+    }
+    const Vec3 point = start + delta * std::clamp(time, 0.0F, 1.0F);
+    SurfacePointSample triangleSample;
+    if (!sampleTriangleAtXZ(point, first, second, third, triangleSample)) {
+      continue;
+    }
+    found = true;
+    nearestTime = std::clamp(time, 0.0F, 1.0F);
+    outPoint = point;
+    outNormal = normal;
+  }
+  outTime = nearestTime;
+  return found;
 }
 
 CollisionQueryResult overlapResult(const SpatialSurfaceSet& surfaces,
@@ -216,6 +398,8 @@ std::string_view collisionSurfaceShapeName(CollisionSurfaceShape shape) {
       return "box";
     case CollisionSurfaceShape::Plane:
       return "plane";
+    case CollisionSurfaceShape::HeightPatch:
+      return "height_patch";
     case CollisionSurfaceShape::Opening:
       return "opening";
   }
@@ -232,28 +416,8 @@ CollisionQueryResult sampleSurfaceHeight(const SpatialSurfaceSet& surfaces,
       footprintToleranceMeters < 0.0F) {
     return invalidResult();
   }
-  CollisionQueryResult result = emptyResult();
-  for (const CollisionSurfaceView& surface : surfaces.surfaces()) {
-    ++result.checkedSurfaceCount;
-    if (surface.role != CollisionSurfaceRole::Walkable) {
-      continue;
-    }
-    ++result.blockingSurfaceCount;
-    if (!expandedContainsXZ(surface.bounds, worldPoint, footprintToleranceMeters) ||
-        std::fabs(surface.normal.y) <= kEpsilon) {
-      continue;
-    }
-    const float height = surface.planePoint.y -
-                         ((surface.normal.x * (worldPoint.x - surface.planePoint.x)) +
-                          (surface.normal.z * (worldPoint.z - surface.planePoint.z))) /
-                             surface.normal.y;
-    if (!std::isfinite(height) || !betterHeight(height, surface.id, result)) {
-      continue;
-    }
-    Vec3 point{worldPoint.x, height, worldPoint.z};
-    fillHit(result, surface, point, 0.0F, 0.0F);
-  }
-  return result;
+  return sampleWalkableHeight(surfaces, worldPoint,
+                              footprintToleranceMeters, nullptr);
 }
 
 CollisionQueryResult sampleSurfaceHeightAtOrBelow(
@@ -271,32 +435,8 @@ CollisionQueryResult sampleSurfaceHeightAtOrBelow(
       footprintToleranceMeters < 0.0F) {
     return invalidResult();
   }
-  CollisionQueryResult result = emptyResult();
-  for (const CollisionSurfaceView& surface : surfaces.surfaces()) {
-    ++result.checkedSurfaceCount;
-    // branch-gate: BG-1191
-    if (surface.role != CollisionSurfaceRole::Walkable) {
-      continue;
-    }
-    ++result.blockingSurfaceCount;
-    // branch-gate: BG-1191
-    if (!expandedContainsXZ(surface.bounds, worldPoint, footprintToleranceMeters) ||
-        std::fabs(surface.normal.y) <= kEpsilon) {
-      continue;
-    }
-    const float height = surface.planePoint.y -
-                         ((surface.normal.x * (worldPoint.x - surface.planePoint.x)) +
-                          (surface.normal.z * (worldPoint.z - surface.planePoint.z))) /
-                             surface.normal.y;
-    // branch-gate: BG-1191
-    if (!std::isfinite(height) || height > maxHeightMeters + kEpsilon ||
-        !betterHeight(height, surface.id, result)) {
-      continue;
-    }
-    Vec3 point{worldPoint.x, height, worldPoint.z};
-    fillHit(result, surface, point, 0.0F, 0.0F);
-  }
-  return result;
+  return sampleWalkableHeight(surfaces, worldPoint,
+                              footprintToleranceMeters, &maxHeightMeters);
 }
 
 CollisionQueryResult sampleSurfaceNormal(const SpatialSurfaceSet& surfaces,
@@ -331,14 +471,18 @@ CollisionQueryResult querySegment(const SpatialSurfaceSet& surfaces,
     float time = 0.0F;
     Vec3 point;
     bool hit = false;
+    Vec3 hitNormal = surface.normal;
     if (surface.shape == CollisionSurfaceShape::Box) {
       hit = segmentAabb(start, end, surface.bounds, time);
       point = start + (end - start) * time;
+    } else if (surface.shape == CollisionSurfaceShape::HeightPatch) {
+      hit = segmentHeightPatch(start, end, surface, time, point, hitNormal);
     } else {
       hit = segmentPlaneFootprint(start, end, surface, time, point);
     }
     if (hit && betterHit(time, surface.id, result)) {
-      fillHit(result, surface, point, time, segmentLength * time);
+      fillHitWithNormal(result, surface, point, hitNormal, time,
+                        segmentLength * time);
     }
   }
   return result;

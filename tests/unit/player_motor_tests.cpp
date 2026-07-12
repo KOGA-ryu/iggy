@@ -54,6 +54,26 @@ iggy3d::RoomSpatialSurface floorSurface() {
   return surface;
 }
 
+iggy3d::RoomSpatialSurface heightPatchSurface(std::string_view id,
+                                              float riseMeters) {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = std::string(id);
+  surface.sourceStaticMeshId = "synthetic_height_patch";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::HeightPatch;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Walkable;
+  surface.pointsMeters = {
+      {0.5F, riseMeters * 0.5F, 0.5F},
+      {0.0F, 0.0F, 0.0F},
+      {1.0F, riseMeters, 0.0F},
+      {1.0F, riseMeters, 1.0F},
+      {0.0F, 0.0F, 1.0F},
+  };
+  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.traversalTags = {"walkable"};
+  surface.collisionMask = {"actor"};
+  return surface;
+}
+
 iggy3d::RoomSpatialSurface wallSurface(std::string_view id = "wall") {
   iggy3d::RoomSpatialSurface surface;
   surface.id = std::string(id);
@@ -133,6 +153,49 @@ bool groundedMotorReportsTerrainPolicy() {
          expect(approx(result.stepPenaltyMultiplier, 1.0F),
                 "terrain step multiplier") &&
          expect(!result.carefulFooting, "terrain no careful footing");
+}
+
+bool groundedMotorUsesExactHeightPatchAndRejectsSteepGround() {
+  constexpr float moderateRise = 0.36F;
+  const iggy3d::SpatialSurfaceSet moderateSurfaces =
+      makeSurfaceSet({heightPatchSurface("smooth_motor", moderateRise)});
+  iggy3d::WorldState moderateWorld = makeWorldAt({0.25F, 0.20F, 0.50F});
+  iggy3d::PlayerMotorContext moderateContext{&moderateWorld,
+                                             &moderateSurfaces};
+  iggy3d::PlayerMotorState moderateState = motorState();
+  iggy3d::PlayerMotorInput idle;
+  const iggy3d::PlayerMotorResult moderate = iggy3d::updatePlayerMotor(
+      moderateContext, moderateState, idle);
+
+  const iggy3d::SpatialSurfaceSet steepSurfaces =
+      makeSurfaceSet({heightPatchSurface("steep_motor", 1.0F)});
+  iggy3d::WorldState steepWorld = makeWorldAt({0.25F, 0.25F, 0.50F});
+  iggy3d::PlayerMotorContext steepContext{&steepWorld, &steepSurfaces};
+  iggy3d::PlayerMotorState steepState = motorState();
+  const iggy3d::PlayerMotorResult steep =
+      iggy3d::updatePlayerMotor(steepContext, steepState, idle);
+
+  const iggy3d::EntityState* moderatePlayer = moderateWorld.findById({1});
+  return expect(iggy3d::playerMotorSucceeded(moderate),
+                "motor accepts moderate smooth terrain") &&
+         expect(moderate.groundSnapApplied && moderate.mutatedWorld,
+                "motor snaps once to smooth terrain") &&
+         expect(moderate.movementPolicyBand == "moderate" &&
+                    moderate.groundWalkable,
+                "motor reports smooth terrain slope policy") &&
+         expect(moderatePlayer != nullptr &&
+                    approx(moderatePlayer->transform.position.y,
+                           moderateRise * 0.25F),
+                "motor position matches exact height patch") &&
+         expect(steep.status ==
+                    iggy3d::PlayerMotorStatus::UnwalkableGround &&
+                    steep.reasonCode ==
+                        std::string_view{"unwalkable_ground"},
+                "motor rejects terrain beyond max slope") &&
+         expect(iggy3d::nearlyEqual(
+                    steepWorld.findById({1})->transform.position,
+                    {0.25F, 0.25F, 0.50F}),
+                "steep terrain rejection does not mutate world");
 }
 
 bool jumpImpulseLeavesGround() {
@@ -541,7 +604,9 @@ bool missingAndInvalidInputsDoNotMutate() {
 }  // namespace
 
 int main() {
-  const bool ok = groundedMotorReportsTerrainPolicy() && jumpImpulseLeavesGround() &&
+  const bool ok = groundedMotorReportsTerrainPolicy() &&
+                  groundedMotorUsesExactHeightPatchAndRejectsSteepGround() &&
+                  jumpImpulseLeavesGround() &&
                   doubleJumpRejectedWhileAirborne() &&
                   airControlMovesHorizontallyWhileAirborne() &&
                   airControlClampsAgainstActorBlocker() &&

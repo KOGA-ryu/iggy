@@ -18,6 +18,7 @@ enum class PlayerMotorStatus : std::uint8_t {
   ActorInactive,
   InvalidParameters,
   NoGround,
+  UnwalkableGround,
 };
 
 enum class PlayerMotorPhase : std::uint8_t {

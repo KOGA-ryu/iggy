@@ -13,6 +13,8 @@ CollisionSurfaceShape toCollisionShape(RoomSpatialSurfaceShape shape) {
       return CollisionSurfaceShape::Box;
     case RoomSpatialSurfaceShape::Plane:
       return CollisionSurfaceShape::Plane;
+    case RoomSpatialSurfaceShape::HeightPatch:
+      return CollisionSurfaceShape::HeightPatch;
     case RoomSpatialSurfaceShape::Opening:
       return CollisionSurfaceShape::Opening;
   }
@@ -104,7 +106,10 @@ SpatialSurfaceSet buildSpatialSurfaceSet(const RoomAsset& room, Vec3 worldOffset
   for (const RoomSpatialSurface& surface : room.spatialSurfaces) {
     Aabb3 bounds;
     Vec3 normal;
+    const bool heightPatch =
+        surface.shape == RoomSpatialSurfaceShape::HeightPatch;
     if (surface.id.empty() || surface.pointsMeters.empty() ||
+        (heightPatch && surface.pointsMeters.size() != 5U) ||
         !buildBounds(surface.pointsMeters, worldOffsetMeters, bounds) ||
         !normalized(surface.normal, normal)) {
       continue;
@@ -116,6 +121,13 @@ SpatialSurfaceSet buildSpatialSurfaceSet(const RoomAsset& room, Vec3 worldOffset
     view.bounds = bounds;
     view.normal = normal;
     view.planePoint = surface.pointsMeters.front() + worldOffsetMeters;
+    if (heightPatch) {
+      for (std::size_t index = 0U; index < view.heightPatchPoints.size();
+           ++index) {
+        view.heightPatchPoints[index] =
+            surface.pointsMeters[index] + worldOffsetMeters;
+      }
+    }
     view.blocksActor = surface.blocksActor;
     view.blocksProjectile = surface.blocksProjectile;
     view.hasActorMask = contains(surface.collisionMask, "actor");

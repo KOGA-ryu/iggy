@@ -15,6 +15,10 @@ bool expect(bool condition, std::string_view message) {
   return condition;
 }
 
+bool approx(float lhs, float rhs, float epsilon = 0.001F) {
+  return lhs >= rhs - epsilon && lhs <= rhs + epsilon;
+}
+
 iggy3d::Transform3 transformAt(float x, float y, float z) {
   iggy3d::Transform3 transform = iggy3d::identityTransform3();
   transform.position = {x, y, z};
@@ -71,6 +75,26 @@ iggy3d::RoomSpatialSurface slopeSurface(std::string_view id, float degrees) {
       {10.0F, 10.0F * slope, 10.0F},
       {-10.0F, 10.0F * slope, 10.0F},
   };
+  return surface;
+}
+
+iggy3d::RoomSpatialSurface heightPatchSurface(std::string_view id,
+                                              float riseMeters) {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = std::string(id);
+  surface.sourceStaticMeshId = "synthetic_height_patch";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::HeightPatch;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Walkable;
+  surface.pointsMeters = {
+      {0.5F, riseMeters * 0.5F, 0.5F},
+      {0.0F, 0.0F, 0.0F},
+      {1.0F, riseMeters, 0.0F},
+      {1.0F, riseMeters, 1.0F},
+      {0.0F, 0.0F, 1.0F},
+  };
+  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.traversalTags = {"walkable"};
+  surface.collisionMask = {"actor"};
   return surface;
 }
 
@@ -402,6 +426,43 @@ bool kinematicModerateSlopeReportsDirectionalGrade() {
          expect(downhill.gradePercent < -30.0F, "downhill grade");
 }
 
+bool heightPatchMovementUsesExactSurfaceAndSlopePolicy() {
+  constexpr float moderateRise = 0.36F;
+  iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  const iggy3d::SpatialSurfaceSet moderateSurfaces =
+      makeSurfaceSet({heightPatchSurface("smooth_moderate", moderateRise)});
+  iggy3d::WorldState moderateWorld =
+      makeWorldAt({0.10F, moderateRise * 0.10F, 0.50F});
+  iggy3d::MovementSystemContext moderateContext{
+      &moderateWorld, &config, &moderateSurfaces};
+  const iggy3d::MovementResult moderate = iggy3d::executeKinematicMovement(
+      moderateContext, kinematicRequest({1.0F, 0.0F, 0.0F}, 0.50F));
+
+  const iggy3d::SpatialSurfaceSet steepSurfaces =
+      makeSurfaceSet({heightPatchSurface("smooth_steep", 1.0F)});
+  iggy3d::WorldState steepWorld = makeWorldAt({0.10F, 0.10F, 0.50F});
+  iggy3d::MovementSystemContext steepContext{&steepWorld, &config,
+                                             &steepSurfaces};
+  const iggy3d::MovementResult steep = iggy3d::executeKinematicMovement(
+      steepContext, kinematicRequest({1.0F, 0.0F, 0.0F}, 0.25F));
+
+  return expect(moderate.blocked == iggy3d::MovementBlockedReason::None,
+                "height patch moderate move accepted") &&
+         expect(moderate.movementPolicyBand == "moderate" &&
+                    moderate.carefulFooting,
+                "height patch normal drives moderate slope policy") &&
+         expect(approx(moderate.finalPosition.y,
+                       moderate.finalPosition.x * moderateRise),
+                "height patch move snaps to exact rendered plane") &&
+         expect(steep.blocked ==
+                    iggy3d::MovementBlockedReason::SlopeRejected,
+                "height patch steep move rejected") &&
+         expect(iggy3d::nearlyEqual(
+                    steepWorld.findById({1})->transform.position,
+                    {0.10F, 0.10F, 0.50F}),
+                "height patch steep rejection does not mutate world");
+}
+
 bool kinematicMissingSurfacesAndInvalidParamsDoNotMutate() {
   bool ok = true;
   iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
@@ -542,6 +603,48 @@ bool physicsPlannerClearMoveOverFloorSnapsAndMutates() {
          expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
                                     {1.0F, 0.0F, 0.0F}),
                 "physics clear mutated world");
+}
+
+bool physicsPlannerUsesQueryOwnedHeightPatchGround() {
+  constexpr float rise = 0.36F;
+  iggy3d::WorldState world = makeWorldAt({0.10F, rise * 0.10F, 0.50F});
+  iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  const iggy3d::SpatialSurfaceSet surfaces =
+      makeSurfaceSet({heightPatchSurface("smooth_physics", rise)});
+  iggy3d::MovementSystemContext context{&world, &config, &surfaces, true};
+
+  const iggy3d::MovementResult result = iggy3d::executeMovement(
+      context, moveRequest({0.70F, rise * 0.10F, 0.50F}));
+
+  iggy3d::WorldState highWorld = makeWorldAt({0.10F, 2.0F, 0.50F});
+  iggy3d::MovementSystemContext highContext{&highWorld, &config, &surfaces,
+                                            true};
+  const iggy3d::MovementResult high = iggy3d::executeMovement(
+      highContext, moveRequest({0.70F, 2.0F, 0.50F}));
+
+  return expect(result.blocked == iggy3d::MovementBlockedReason::None,
+                "physics height patch move accepted") &&
+         expect(result.physicsFrameStatsAvailable &&
+                    result.physicsFrameStats.playerSkippedSurfaceCount == 1U &&
+                    result.physicsFrameStats.playerBakedColliderCount == 0U,
+                "physics bake leaves smooth ground to exact queries") &&
+         expect(result.physicsDebugAabbColliders.empty(),
+                "smooth terrain does not create a stepped debug AABB") &&
+         expect(result.movementPolicyBand == "moderate",
+                "physics height patch reports exact slope band") &&
+         expect(approx(result.finalPosition.y,
+                       result.finalPosition.x * rise),
+                "physics height patch snaps to exact rendered plane") &&
+         expect(iggy3d::nearlyEqual(
+                    world.findById({1})->transform.position,
+                    result.finalPosition),
+                "physics height patch move mutates world once") &&
+         expect(high.blocked ==
+                    iggy3d::MovementBlockedReason::NoWalkableGround &&
+                    iggy3d::nearlyEqual(
+                        highWorld.findById({1})->transform.position,
+                        {0.10F, 2.0F, 0.50F}),
+                "exact ground cannot snap a distant actor down to terrain");
 }
 
 bool physicsPlannerStackedFloorsUsesCurrentLayer() {
@@ -706,11 +809,13 @@ int main() {
                   kinematicBlockedSlopeRejectsWithoutMutation() &&
                   kinematicModerateSlopeAppliesSpeedMultiplier() &&
                   kinematicModerateSlopeReportsDirectionalGrade() &&
+                  heightPatchMovementUsesExactSurfaceAndSlopePolicy() &&
                   kinematicMissingSurfacesAndInvalidParamsDoNotMutate() &&
                   acceptedMoveWithCollisionSnapsToWalkableGround() &&
                   acceptedMoveWithStackedFloorsUsesCurrentLayer() &&
                   acceptedMoveWithCollisionBlocksWallWithoutMutation() &&
                   physicsPlannerClearMoveOverFloorSnapsAndMutates() &&
+                  physicsPlannerUsesQueryOwnedHeightPatchGround() &&
                   physicsPlannerStackedFloorsUsesCurrentLayer() &&
                   physicsPlannerWallMoveClampsAndMutatesPartial() &&
                   physicsPlannerDiagonalWallMoveSlides() &&
