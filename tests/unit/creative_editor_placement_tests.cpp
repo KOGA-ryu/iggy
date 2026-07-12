@@ -1333,17 +1333,50 @@ bool materialBrushPaintsErasesPreviewsAndGroupsHistory() {
        1280U, 720U, 0.03F, false},
       previewOverlay);
 
-  bool ok = expect(previewOverlay.materialBrushEdgeCount > 0U &&
+  constexpr std::size_t kWireEdgesPerVoxel = 12U;
+  bool ok = expect(previewOverlay.materialBrushEdgeCount ==
+                           7U * kWireEdgesPerVoxel &&
+                       previewOverlay.combinedWireLines.size() ==
+                           previewOverlay.materialBrushEdgeCount &&
+                       !previewOverlay.combinedWireLines.empty() &&
+                       near(previewOverlay.combinedWireLines.front().color.r,
+                            0.22F) &&
+                       near(previewOverlay.combinedWireLines.front().color.g,
+                            1.0F) &&
                        previewFrame.creativePreview.itemCount == 1U &&
                        previewFrame.creativePreview.items[0].role ==
                            iggy3d::RenderCreativePreviewRole::Held &&
                        appState.facade.document().revision() ==
                            revisionBeforePreview,
-                   "material brush shows a bounded shape and held material") &&
-            expect(editor.quickEdit.options.count == 2U &&
+                   "sphere preview shows its exact seven green voxel cells") &&
+            expect(editor.quickEdit.options.count == 3U &&
                        creativeEditorQuickEditStatusLabel(editor) ==
-                           "BRUSH SHAPE SPHERE",
-                   "material brush reuses the two-channel quick edit system");
+                           "BRUSH SHAPE SPHERE" &&
+                       creativeEditorHeldItemStatusLabel(editor) ==
+                           "Brush | Wall | SPHERE | 3 CELLS | OVERWRITE | "
+                           "7 VOXELS | [BRUSH SHAPE SPHERE]",
+                   "material brush status exposes channel and stamp count");
+
+  editor.toolSettings.materialBrushShape =
+      cr::CreativeMaterialBrushShape::Cube;
+  syncCreativeEditorQuickEdit(editor);
+  iggy3d::FrameInput cubePreviewFrame;
+  CreativeEditorOverlayFrame cubePreviewOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, cubePreviewFrame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      cubePreviewOverlay);
+  ok = expect(cubePreviewOverlay.materialBrushEdgeCount ==
+                      27U * kWireEdgesPerVoxel &&
+                  appState.facade.document().revision() ==
+                      revisionBeforePreview &&
+                  creativeEditorHeldItemStatusLabel(editor).find(
+                      "27 VOXELS") != std::string::npos,
+              "cube preview shows all twenty-seven cells without mutation") &&
+       ok;
+  editor.toolSettings.materialBrushShape =
+      cr::CreativeMaterialBrushShape::Sphere;
+  syncCreativeEditorQuickEdit(editor);
   ok = expect(processCreativeEditorQuickEditAction(
                   editor, cr::CreativeInputActionId::QuickEditNext) &&
                   creativeEditorQuickEditStatusLabel(editor) ==
@@ -1354,8 +1387,20 @@ bool materialBrushPaintsErasesPreviewsAndGroupsHistory() {
                       cr::CreativeMaterialBrushSize::FiveCells,
               "dpad channel selection adjusts the bounded brush size") &&
        ok;
+  ok = expect(processCreativeEditorQuickEditAction(
+                  editor, cr::CreativeInputActionId::QuickEditNext) &&
+                  creativeEditorQuickEditStatusLabel(editor) ==
+                      "BRUSH MASK OVERWRITE" &&
+                  processCreativeEditorQuickEditAction(
+                      editor, cr::CreativeInputActionId::QuickEditIncrease) &&
+                  editor.toolSettings.materialBrushMask ==
+                      cr::CreativeMaterialBrushMask::AddOnly,
+              "dpad exposes the brush occupancy mask as a third channel") &&
+       ok;
   editor.toolSettings.materialBrushSize =
       cr::CreativeMaterialBrushSize::ThreeCells;
+  editor.toolSettings.materialBrushMask =
+      cr::CreativeMaterialBrushMask::Overwrite;
   editor.quickEdit.selectedIndex = 0U;
   syncCreativeEditorQuickEdit(editor);
 
@@ -1425,6 +1470,21 @@ bool materialBrushPaintsErasesPreviewsAndGroupsHistory() {
   processCreativeMaterialStrokeFrame(
       appState, editor,
       actionFrame(cr::CreativeWorldActionId::Reject, true, true, false), 10U);
+  iggy3d::FrameInput erasePreviewFrame;
+  CreativeEditorOverlayFrame erasePreviewOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, erasePreviewFrame,
+       projectionRequest, 1280U, 720U, 0.03F, false},
+      erasePreviewOverlay);
+  ok = expect(erasePreviewOverlay.materialBrushEdgeCount ==
+                      7U * kWireEdgesPerVoxel &&
+                  !erasePreviewOverlay.combinedWireLines.empty() &&
+                  near(erasePreviewOverlay.combinedWireLines.front().color.r,
+                       1.0F) &&
+                  near(erasePreviewOverlay.combinedWireLines.front().color.g,
+                       0.2F),
+              "erase preview shows the same seven voxel cells in red") &&
+       ok;
   processCreativeMaterialStrokeFrame(
       appState, editor,
       actionFrame(cr::CreativeWorldActionId::Reject, false, false, true), 11U);
@@ -1565,6 +1625,150 @@ bool materialBrushInterpolatesEraseSweep() {
                 "one undo restores the complete interpolated erase gesture");
 }
 
+bool materialBrushMasksMatchPreviewAndMutation() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 114U);
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
+  editor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::MaterialBrush;
+  editor.toolSettings.materialBrushShape =
+      cr::CreativeMaterialBrushShape::Cube;
+  editor.toolSettings.materialBrushSize =
+      cr::CreativeMaterialBrushSize::OneCell;
+  syncCreativeEditorHeldItem(appState, editor);
+
+  const std::array seedEdits{
+      cr::CreativeVoxelEdit{{0, 0, 0}, cr::CreativeObjectKind::Floor},
+      cr::CreativeVoxelEdit{{2, 0, 0}, cr::CreativeObjectKind::Floor}};
+  const cr::CreativeVoxelMutationReceipt seeded =
+      appState.facade.applyVoxelEdits(seedEdits);
+  appState.history = {};
+
+  CreativeEditorSelectionFrame selection;
+  CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  const auto previewAt = [&](std::int32_t x) {
+    setPlaceTarget(editor, x);
+    iggy3d::FrameInput frame;
+    CreativeEditorOverlayFrame overlay;
+    buildAndAttachCreativeEditorOverlayFrame(
+        {appState, editor, selection, gizmo, frame, projectionRequest,
+         1280U, 720U, 0.03F, false},
+        overlay);
+    return overlay;
+  };
+  const auto previewIsColor = [](const CreativeEditorOverlayFrame& overlay,
+                                 float red,
+                                 float green) {
+    if (overlay.materialBrushEdgeCount == 0U ||
+        overlay.materialBrushEdgeCount > overlay.combinedWireLines.size()) {
+      return false;
+    }
+    const std::size_t first =
+        overlay.combinedWireLines.size() - overlay.materialBrushEdgeCount;
+    return near(overlay.combinedWireLines[first].color.r, red) &&
+           near(overlay.combinedWireLines[first].color.g, green);
+  };
+  std::uint64_t now = 0U;
+  const auto paintAt = [&](std::int32_t x) {
+    setPlaceTarget(editor, x);
+    processCreativeMaterialStrokeFrame(
+        appState, editor,
+        actionFrame(cr::CreativeWorldActionId::Accept, true, true, false),
+        now++);
+    processCreativeMaterialStrokeFrame(
+        appState, editor,
+        actionFrame(cr::CreativeWorldActionId::Accept, false, false, true),
+        now++);
+  };
+
+  editor.toolSettings.materialBrushMask =
+      cr::CreativeMaterialBrushMask::AddOnly;
+  const CreativeEditorOverlayFrame addBlocked = previewAt(0);
+  const std::uint64_t revisionBeforeBlockedAdd =
+      appState.facade.document().revision();
+  paintAt(0);
+  bool ok = expect(seeded.accepted && seeded.changed &&
+                       addBlocked.materialBrushEdgeCount == 12U &&
+                       previewIsColor(addBlocked, 1.0F, 0.15F) &&
+                       appState.facade.document().revision() ==
+                           revisionBeforeBlockedAdd &&
+                       appState.facade.document().voxelField().materialAt(
+                           {0, 0, 0}) == cr::CreativeObjectKind::Floor &&
+                       cr::creativeUndoDepth(appState.history) == 0U,
+                   "add-only previews and preserves occupied cells");
+
+  const CreativeEditorOverlayFrame addAllowed = previewAt(1);
+  paintAt(1);
+  ok = expect(addAllowed.materialBrushEdgeCount == 12U &&
+                  previewIsColor(addAllowed, 0.22F, 1.0F) &&
+                  appState.facade.document().voxelField().materialAt(
+                      {1, 0, 0}) == cr::CreativeObjectKind::Wall &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "add-only previews and fills empty cells") &&
+       ok;
+
+  editor.toolSettings.materialBrushMask =
+      cr::CreativeMaterialBrushMask::Replace;
+  const CreativeEditorOverlayFrame replaceBlocked = previewAt(3);
+  const std::uint64_t revisionBeforeBlockedReplace =
+      appState.facade.document().revision();
+  paintAt(3);
+  ok = expect(previewIsColor(replaceBlocked, 1.0F, 0.15F) &&
+                  appState.facade.document().revision() ==
+                      revisionBeforeBlockedReplace &&
+                  appState.facade.document().voxelField().materialAt(
+                      {3, 0, 0}) == cr::CreativeObjectKind::Unknown &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "replace previews and preserves empty cells") &&
+       ok;
+
+  const CreativeEditorOverlayFrame replaceAllowed = previewAt(0);
+  paintAt(0);
+  ok = expect(previewIsColor(replaceAllowed, 0.22F, 1.0F) &&
+                  appState.facade.document().voxelField().materialAt(
+                      {0, 0, 0}) == cr::CreativeObjectKind::Wall &&
+                  cr::creativeUndoDepth(appState.history) == 2U,
+              "replace previews and recolors occupied cells") &&
+       ok;
+
+  editor.toolSettings.materialBrushMask =
+      cr::CreativeMaterialBrushMask::Overwrite;
+  const CreativeEditorOverlayFrame overwriteOccupied = previewAt(2);
+  paintAt(2);
+  const CreativeEditorOverlayFrame overwriteEmpty = previewAt(4);
+  paintAt(4);
+  ok = expect(previewIsColor(overwriteOccupied, 0.22F, 1.0F) &&
+                  previewIsColor(overwriteEmpty, 0.22F, 1.0F) &&
+                  appState.facade.document().voxelField().materialAt(
+                      {2, 0, 0}) == cr::CreativeObjectKind::Wall &&
+                  appState.facade.document().voxelField().materialAt(
+                      {4, 0, 0}) == cr::CreativeObjectKind::Wall &&
+                  cr::creativeUndoDepth(appState.history) == 4U,
+              "overwrite admits both occupied and empty cells") &&
+       ok;
+
+  editor.toolSettings.materialBrushMask =
+      cr::CreativeMaterialBrushMask::AddOnly;
+  setPlaceTarget(editor, 0);
+  editor.interaction.target.voxelHit = true;
+  editor.interaction.target.voxelCell = {0, 0, 0};
+  editor.interaction.target.objectKind = cr::CreativeObjectKind::Wall;
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Reject, true, true, false),
+      now++);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Reject, false, false, true),
+      now++);
+  return expect(appState.facade.document().voxelField().materialAt(
+                    {0, 0, 0}) == cr::CreativeObjectKind::Unknown &&
+                    cr::creativeUndoDepth(appState.history) == 5U,
+                "Circle erase ignores the paint occupancy mask") &&
+         ok;
+}
+
 bool materialBrushCapacityRejectsWholeStamp() {
   cr::CreativeAppState appState;
   installHistoryDocument(appState, 111U);
@@ -1578,6 +1782,21 @@ bool materialBrushCapacityRejectsWholeStamp() {
   syncCreativeEditorHeldItem(appState, editor);
 
   setPlaceTarget(editor, 0);
+  CreativeEditorSelectionFrame selection;
+  CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  iggy3d::FrameInput previewFrame;
+  CreativeEditorOverlayFrame previewOverlay;
+  const std::uint64_t revisionBeforePreview =
+      appState.facade.document().revision();
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, previewFrame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      previewOverlay);
+  const bool previewBounded =
+      previewOverlay.materialBrushEdgeCount == 125U * 12U &&
+      appState.facade.document().revision() == revisionBeforePreview;
+
   processCreativeMaterialStrokeFrame(
       appState, editor,
       actionFrame(cr::CreativeWorldActionId::Accept, true, true, false), 0U);
@@ -1602,7 +1821,9 @@ bool materialBrushCapacityRejectsWholeStamp() {
       appState, editor,
       actionFrame(cr::CreativeWorldActionId::Accept, false, false, true),
       2U * cr::kCreativeMaterialStrokeRepeatNanoseconds + 1U);
-  return expect(bounded,
+  return expect(previewBounded,
+                "largest brush preview is bounded to 125 voxel boxes") &&
+         expect(bounded,
                 "brush capacity rejects an entire stamp before partial mutation") &&
          expect(cr::creativeUndoDepth(appState.history) == 1U,
                 "capacity stop still commits prior accepted stamps as one undo");
@@ -1978,6 +2199,7 @@ int main() {
   ok = materialBrushPaintsErasesPreviewsAndGroupsHistory() && ok;
   ok = materialBrushInterpolatesDiagonalsAndBreaksOnTargetLoss() && ok;
   ok = materialBrushInterpolatesEraseSweep() && ok;
+  ok = materialBrushMasksMatchPreviewAndMutation() && ok;
   ok = materialBrushCapacityRejectsWholeStamp() && ok;
   ok = placementStrokeDeduplicatesAndRecordsOneUndo() && ok;
   ok = identicalPlacementAcrossGesturesIsRejected() && ok;

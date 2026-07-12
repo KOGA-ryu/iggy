@@ -449,6 +449,16 @@ std::string_view toString(CreativeMaterialBrushSize size) noexcept {
   return "INVALID";
 }
 
+std::string_view toString(CreativeMaterialBrushMask mask) noexcept {
+  switch (mask) {
+    case CreativeMaterialBrushMask::AddOnly: return "ADD ONLY";
+    case CreativeMaterialBrushMask::Replace: return "REPLACE";
+    case CreativeMaterialBrushMask::Overwrite: return "OVERWRITE";
+    case CreativeMaterialBrushMask::Count: break;
+  }
+  return "INVALID";
+}
+
 std::string_view toString(CreativeMaterialBrushStampStatus status) noexcept {
   switch (status) {
     case CreativeMaterialBrushStampStatus::NotRequested:
@@ -484,6 +494,17 @@ std::uint8_t creativeMaterialBrushRadiusCells(
     case CreativeMaterialBrushSize::Count: break;
   }
   return 0U;
+}
+
+bool creativeMaterialBrushMaskAllows(CreativeMaterialBrushMask mask,
+                                     bool occupied) noexcept {
+  switch (mask) {
+    case CreativeMaterialBrushMask::AddOnly: return !occupied;
+    case CreativeMaterialBrushMask::Replace: return occupied;
+    case CreativeMaterialBrushMask::Overwrite: return true;
+    case CreativeMaterialBrushMask::Count: return false;
+  }
+  return false;
 }
 
 CreativeMaterialBrushStampPlan planCreativeMaterialBrushStamp(

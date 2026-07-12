@@ -114,6 +114,33 @@ bool materialBrushInvalidInputsFailClosed() {
                 "material brush coordinate overflow rejects before enumeration");
 }
 
+bool materialBrushMasksPartitionOccupancy() {
+  return expect(cr::creativeMaterialBrushMaskAllows(
+                    cr::CreativeMaterialBrushMask::AddOnly, false) &&
+                    !cr::creativeMaterialBrushMaskAllows(
+                        cr::CreativeMaterialBrushMask::AddOnly, true),
+                "add-only mask admits only empty cells") &&
+         expect(!cr::creativeMaterialBrushMaskAllows(
+                    cr::CreativeMaterialBrushMask::Replace, false) &&
+                    cr::creativeMaterialBrushMaskAllows(
+                        cr::CreativeMaterialBrushMask::Replace, true),
+                "replace mask admits only occupied cells") &&
+         expect(cr::creativeMaterialBrushMaskAllows(
+                    cr::CreativeMaterialBrushMask::Overwrite, false) &&
+                    cr::creativeMaterialBrushMaskAllows(
+                        cr::CreativeMaterialBrushMask::Overwrite, true),
+                "overwrite mask admits both occupancy states") &&
+         expect(!cr::creativeMaterialBrushMaskAllows(
+                    cr::CreativeMaterialBrushMask::Count, false) &&
+                    cr::toString(cr::CreativeMaterialBrushMask::AddOnly) ==
+                        "ADD ONLY" &&
+                    cr::toString(cr::CreativeMaterialBrushMask::Replace) ==
+                        "REPLACE" &&
+                    cr::toString(cr::CreativeMaterialBrushMask::Overwrite) ==
+                        "OVERWRITE",
+                "invalid mask fails closed and labels remain explicit");
+}
+
 bool materialBrushPathUsesExactBoundedSupercover() {
   const cr::CreativeMaterialBrushPathPlan degenerate =
       cr::planCreativeMaterialBrushPath({{4, -2, 7}, {4, -2, 7}});
@@ -320,6 +347,7 @@ bool limitsAndInvalidEnumsFailClosed() {
 int main() {
   const bool ok = materialBrushStampsAreBoundedAndCanonical() &&
                   materialBrushInvalidInputsFailClosed() &&
+                  materialBrushMasksPartitionOccupancy() &&
                   materialBrushPathUsesExactBoundedSupercover() &&
                   materialBrushPathLimitsFailBeforePartialOutput() &&
                   boxParityAndHollowBoundary() &&

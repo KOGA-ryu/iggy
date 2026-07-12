@@ -345,12 +345,14 @@ bool optionDescriptorsAreContextualAndBounded() {
                         cr::CreativeToolOptionId::PlacementYaw &&
                     material.ids[1] == cr::CreativeToolOptionId::SnapIncrement,
                 "material exposes orientation and grid size") &&
-         expect(materialBrush.count == 2U &&
+         expect(materialBrush.count == 3U &&
                     materialBrush.ids[0] ==
                         cr::CreativeToolOptionId::MaterialBrushShape &&
                     materialBrush.ids[1] ==
-                        cr::CreativeToolOptionId::MaterialBrushSize,
-                "material brush exposes shape and bounded size") &&
+                        cr::CreativeToolOptionId::MaterialBrushSize &&
+                    materialBrush.ids[2] ==
+                        cr::CreativeToolOptionId::MaterialBrushMask,
+                "material brush exposes shape size and occupancy mask") &&
          expect(move.count == 3U &&
                     move.ids[0] ==
                         cr::CreativeToolOptionId::MoveConstraint &&
@@ -410,8 +412,12 @@ bool optionDescriptorsAreContextualAndBounded() {
 
 bool optionAdjustmentIsDeterministicAndAtomic() {
   cr::CreativeToolSettings settings = cr::makeDefaultCreativeToolSettings();
+  cr::CreativeToolSettings invalidMask = settings;
+  invalidMask.materialBrushMask = cr::CreativeMaterialBrushMask::Count;
   bool ok = expect(cr::isValidCreativeToolSettings(settings),
                    "default settings valid") &&
+            expect(!cr::isValidCreativeToolSettings(invalidMask),
+                   "invalid material brush mask fails settings validation") &&
             expect(cr::creativeToolOptionValueLabel(
                        settings,
                        cr::CreativeToolOptionId::MoveConstraint) == "FREE" &&
@@ -437,7 +443,11 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::MaterialBrushSize) ==
-                           "3 CELLS",
+                           "3 CELLS" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::MaterialBrushMask) ==
+                           "OVERWRITE",
                    "default labels and scalar conversions stable");
 
   const auto adjust = [&settings](cr::CreativeToolOptionId option,
@@ -472,6 +482,10 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                   settings.materialBrushSize ==
                       cr::CreativeMaterialBrushSize::FiveCells,
               "material brush size cycles within its fixed budget") &&
+       expect(adjust(cr::CreativeToolOptionId::MaterialBrushMask, 1).changed &&
+                  settings.materialBrushMask ==
+                      cr::CreativeMaterialBrushMask::AddOnly,
+              "material brush mask cycles from overwrite to add-only") &&
        expect(adjust(cr::CreativeToolOptionId::ShapeBrushKind, 1).changed &&
                   settings.shapeBrushKind == cr::CreativeShapeBrushKind::Line,
               "shape kind cycles") &&

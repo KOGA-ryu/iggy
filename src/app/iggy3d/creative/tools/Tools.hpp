@@ -115,6 +115,7 @@ enum class CreativeToolOptionId : std::uint8_t {
   SnapIncrement,
   MaterialBrushShape,
   MaterialBrushSize,
+  MaterialBrushMask,
   ShapeBrushKind,
   ShapeBrushAxis,
   ReplaceSource,
@@ -167,6 +168,8 @@ struct CreativeToolSettings {
       CreativeMaterialBrushShape::Sphere;
   CreativeMaterialBrushSize materialBrushSize =
       CreativeMaterialBrushSize::ThreeCells;
+  CreativeMaterialBrushMask materialBrushMask =
+      CreativeMaterialBrushMask::Overwrite;
   CreativeShapeBrushKind shapeBrushKind = CreativeShapeBrushKind::Box;
   CreativeShapeBrushAxis shapeBrushAxis = CreativeShapeBrushAxis::Y;
   CreativeObjectKind replaceSourceKind = CreativeObjectKind::Unknown;

@@ -30,6 +30,13 @@ enum class CreativeMaterialBrushSize : std::uint8_t {
   Count,
 };
 
+enum class CreativeMaterialBrushMask : std::uint8_t {
+  AddOnly,
+  Replace,
+  Overwrite,
+  Count,
+};
+
 enum class CreativeMaterialBrushStampStatus : std::uint8_t {
   NotRequested,
   InvalidShape,
@@ -168,12 +175,17 @@ struct CreativeShapeBrushPlanReceipt {
 [[nodiscard]] std::string_view toString(
     CreativeMaterialBrushSize size) noexcept;
 [[nodiscard]] std::string_view toString(
+    CreativeMaterialBrushMask mask) noexcept;
+[[nodiscard]] std::string_view toString(
     CreativeMaterialBrushStampStatus status) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeMaterialBrushPathStatus status) noexcept;
 
 [[nodiscard]] std::uint8_t creativeMaterialBrushRadiusCells(
     CreativeMaterialBrushSize size) noexcept;
+[[nodiscard]] bool creativeMaterialBrushMaskAllows(
+    CreativeMaterialBrushMask mask,
+    bool occupied) noexcept;
 
 // Generates a canonical z/y/x cell batch centered on centerCell. Sizes are
 // fixed at 1, 3, and 5 cells across, so work and storage are bounded by 125

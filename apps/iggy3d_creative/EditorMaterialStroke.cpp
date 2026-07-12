@@ -305,9 +305,15 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
     includeStampBounds(stamp.minCell, stamp.maxCell, boundsInitialized,
                        aggregateMin, aggregateMax);
     for (cr::CreativeGridCoord3 cell : stamp.generatedCells()) {
+      const cr::CreativeObjectKind currentMaterial = field.materialAt(cell);
+      const bool maskAllows =
+          kind == CreativeMaterialStrokeKind::Remove ||
+          cr::creativeMaterialBrushMaskAllows(
+              editor.toolSettings.materialBrushMask,
+              currentMaterial != cr::CreativeObjectKind::Unknown);
       if (strokeVisited(stroke, kind, cell, cr::kInvalidObjectId) ||
           editBatchContainsCell(edits, editCount, cell) ||
-          field.materialAt(cell) == material) {
+          currentMaterial == material || !maskAllows) {
         continue;
       }
       if (editCount >= remainingCapacity) {

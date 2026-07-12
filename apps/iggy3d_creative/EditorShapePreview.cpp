@@ -76,6 +76,42 @@ void appendEllipseLoop(
 
 }  // namespace
 
+void appendCreativeMaterialBrushCellOutlines(
+    std::vector<RenderCreativeWireframeDebugLine>& lines,
+    std::span<const cr::CreativeGridCoord3> cells,
+    const cr::CreativeGridSettings& grid,
+    RenderLineColor color,
+    float thickness) {
+  constexpr std::size_t kBoxEdgeCount = 12U;
+  lines.reserve(lines.size() + cells.size() * kBoxEdgeCount);
+  for (cr::CreativeGridCoord3 cell : cells) {
+    const cr::CreativeBounds bounds = cr::creativeVolumeCellBounds(
+        cell, grid.cellSizeMeters, grid.origin);
+    const cr::CreativeCoreVec3Conversion minimum =
+        cr::creativeVec3ToCoreChecked(bounds.min);
+    const cr::CreativeCoreVec3Conversion maximum =
+        cr::creativeVec3ToCoreChecked(bounds.max);
+    if (!minimum.converted || !maximum.converted) {
+      continue;
+    }
+    appendStandaloneWireframeBoxEdges(lines, minimum.value, maximum.value,
+                                      color, thickness);
+  }
+}
+
+void appendCreativeMaterialBrushStampOutline(
+    std::vector<RenderCreativeWireframeDebugLine>& lines,
+    const cr::CreativeMaterialBrushStampPlan& plan,
+    const cr::CreativeGridSettings& grid,
+    RenderLineColor color,
+    float thickness) {
+  if (!plan.accepted) {
+    return;
+  }
+  appendCreativeMaterialBrushCellOutlines(
+      lines, plan.generatedCells(), grid, color, thickness);
+}
+
 void appendCreativeShapeBrushOutline(
     std::vector<RenderCreativeWireframeDebugLine>& lines,
     const cr::CreativeVolumeSelection& selection,

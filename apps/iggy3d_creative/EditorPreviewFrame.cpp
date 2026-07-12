@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <span>
 #include <string>
 #include <utility>
 
@@ -147,57 +148,93 @@ void appendCreativePreview(RenderCreativePreviewFrame& previews,
       role, clipFromModel, includePathWireframe};
 }
 
-[[nodiscard]] cr::CreativeShapeBrushKind materialBrushOutlineKind(
-    cr::CreativeMaterialBrushShape shape) noexcept {
-  switch (shape) {
-    case cr::CreativeMaterialBrushShape::Cube:
-      return cr::CreativeShapeBrushKind::Box;
-    case cr::CreativeMaterialBrushShape::Sphere:
-      return cr::CreativeShapeBrushKind::Ellipsoid;
-    case cr::CreativeMaterialBrushShape::Cylinder:
-      return cr::CreativeShapeBrushKind::Cylinder;
-    case cr::CreativeMaterialBrushShape::Count:
-      return cr::CreativeShapeBrushKind::Count;
+struct MaterialBrushPreviewPlan {
+  bool visible = false;
+  bool removing = false;
+  bool admitted = false;
+  cr::CreativeMaterialBrushStampPlan stamp{};
+  std::array<cr::CreativeGridCoord3,
+             cr::kCreativeMaterialBrushStampCapacity>
+      eligibleCells{};
+  std::uint16_t eligibleCellCount = 0U;
+
+  [[nodiscard]] std::span<const cr::CreativeGridCoord3> renderedCells()
+      const noexcept {
+    return admitted
+               ? std::span<const cr::CreativeGridCoord3>{eligibleCells.data(),
+                                                         eligibleCellCount}
+               : stamp.generatedCells();
   }
-  return cr::CreativeShapeBrushKind::Count;
+};
+
+[[nodiscard]] bool materialBrushCellVisited(
+    const CreativeMaterialStrokeState& stroke,
+    cr::CreativeGridCoord3 cell) noexcept {
+  for (std::size_t index = 0U; index < stroke.visitedCount; ++index) {
+    const cr::CreativeGridCoord3 visited = stroke.visited[index].cell;
+    if (visited.x == cell.x && visited.y == cell.y && visited.z == cell.z) {
+      return true;
+    }
+  }
+  return false;
 }
 
-[[nodiscard]] bool materialBrushPreviewSelection(
+[[nodiscard]] MaterialBrushPreviewPlan materialBrushPreviewPlan(
     const CreativeEditorState& editor,
-    const cr::CreativeDocument& document,
-    cr::CreativeVolumeSelection& selection,
-    cr::CreativeShapeBrushKind& outlineKind,
-    bool& removing) noexcept {
+    const cr::CreativeDocument& document) noexcept {
+  MaterialBrushPreviewPlan output;
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   if (held.kind != cr::CreativeHeldItemKind::MaterialBrush ||
       !editor.interaction.target.grid.valid) {
-    return false;
+    return output;
   }
-  removing = editor.interaction.materialStroke.repeat.active &&
-             editor.interaction.materialStroke.repeat.kind ==
-                 CreativeMaterialStrokeKind::Remove;
-  if (removing && !editor.interaction.target.voxelHit) {
-    return false;
+  output.removing = editor.interaction.materialStroke.repeat.active &&
+                    editor.interaction.materialStroke.repeat.kind ==
+                        CreativeMaterialStrokeKind::Remove;
+  if (output.removing && !editor.interaction.target.voxelHit) {
+    return output;
   }
   const cr::CreativeGridCoord3 center =
-      removing ? editor.interaction.target.voxelCell
-               : editor.interaction.target.grid.adjacentCell;
-  const cr::CreativeMaterialBrushStampPlan plan =
-      cr::planCreativeMaterialBrushStamp(
-          {editor.toolSettings.materialBrushShape,
-           editor.toolSettings.materialBrushSize, center});
-  outlineKind = materialBrushOutlineKind(editor.toolSettings.materialBrushShape);
-  if (!plan.accepted || outlineKind == cr::CreativeShapeBrushKind::Count) {
-    return false;
+      output.removing ? editor.interaction.target.voxelCell
+                      : editor.interaction.target.grid.adjacentCell;
+  output.stamp = cr::planCreativeMaterialBrushStamp(
+      {editor.toolSettings.materialBrushShape,
+       editor.toolSettings.materialBrushSize, center});
+  output.visible = output.stamp.accepted;
+  if (!output.visible) {
+    return output;
   }
-  const cr::CreativeGridSettings grid = document.gridSettings();
-  selection.phase = cr::CreativeVolumeSelectionPhase::Complete;
-  selection.firstCell = plan.minCell;
-  selection.secondCell = plan.maxCell;
-  selection.origin = grid.origin;
-  selection.cellSize = grid.cellSizeMeters;
-  return cr::creativeVolumeSelectionValid(selection);
+
+  const cr::CreativeVoxelField& field = document.voxelField();
+  for (cr::CreativeGridCoord3 cell : output.stamp.generatedCells()) {
+    const cr::CreativeObjectKind currentMaterial = field.materialAt(cell);
+    const bool occupied = currentMaterial != cr::CreativeObjectKind::Unknown;
+    const bool allowed =
+        output.removing
+            ? occupied
+            : currentMaterial != held.objectKind &&
+                  cr::creativeMaterialBrushMaskAllows(
+                      editor.toolSettings.materialBrushMask, occupied);
+    if (!allowed || materialBrushCellVisited(
+                        editor.interaction.materialStroke, cell)) {
+      continue;
+    }
+    output.eligibleCells[output.eligibleCellCount++] = cell;
+  }
+  const std::size_t remainingCapacity =
+      editor.interaction.materialStroke.visitedCount <=
+              editor.interaction.materialStroke.visited.size()
+          ? editor.interaction.materialStroke.visited.size() -
+                editor.interaction.materialStroke.visitedCount
+          : 0U;
+  const bool materialValid =
+      output.removing || cr::creativeVolumeBrushSupported(held.objectKind);
+  output.admitted = materialValid &&
+                    !editor.interaction.materialStroke.capacityReached &&
+                    output.eligibleCellCount > 0U &&
+                    output.eligibleCellCount <= remainingCapacity;
+  return output;
 }
 
 [[nodiscard]] bool voxelChunkCoordLess(
@@ -638,29 +675,19 @@ void buildAndAttachCreativeEditorOverlayFrame(
     }
   }
   // ---- MATERIAL BRUSH PREVIEW --------------------------------------------
-  cr::CreativeVolumeSelection materialBrushSelection;
-  cr::CreativeShapeBrushKind materialBrushOutline =
-      cr::CreativeShapeBrushKind::Count;
-  bool materialBrushRemoving = false;
-  if (!editor.transform.active && materialBrushPreviewSelection(
-                                      editor, appState.facade.document(),
-                                      materialBrushSelection,
-                                      materialBrushOutline,
-                                      materialBrushRemoving)) {
-    const cr::CreativeHotbarEntry& held =
-        cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-    const bool validMaterial =
-        cr::creativeVolumeBrushSupported(held.objectKind) &&
-        !editor.interaction.materialStroke.capacityReached;
+  const MaterialBrushPreviewPlan materialBrushPreview =
+      materialBrushPreviewPlan(editor, appState.facade.document());
+  if (!editor.transform.active && materialBrushPreview.visible) {
     const RenderLineColor color =
-        materialBrushRemoving
+        materialBrushPreview.removing
             ? RenderLineColor{1.0F, 0.2F, 0.16F, 1.0F}
-            : validMaterial ? RenderLineColor{0.22F, 1.0F, 0.34F, 1.0F}
-                            : RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F};
+            : materialBrushPreview.admitted
+                  ? RenderLineColor{0.22F, 1.0F, 0.34F, 1.0F}
+                  : RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F};
     const std::size_t before = combinedWireLines.size();
-    appendCreativeShapeBrushOutline(
-        combinedWireLines, materialBrushSelection, materialBrushOutline,
-        cr::CreativeShapeBrushAxis::Y, color, gizmoThickness);
+    appendCreativeMaterialBrushCellOutlines(
+        combinedWireLines, materialBrushPreview.renderedCells(),
+        appState.facade.document().gridSettings(), color, gizmoThickness);
     output.materialBrushEdgeCount = combinedWireLines.size() - before;
   }
 

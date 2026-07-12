@@ -16,6 +16,7 @@
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/tools/ShapeBrush.hpp"
 #include "core/math/EulerRotation.hpp"
 #include "core/math/Transform3.hpp"
 #include "render/debug/DebugHudText.hpp"
@@ -629,6 +630,17 @@ std::string creativeEditorHeldItemStatusLabel(
     output.append(cr::toString(editor.toolSettings.materialBrushShape));
     output.append(" | ");
     output.append(cr::toString(editor.toolSettings.materialBrushSize));
+    output.append(" | ");
+    output.append(cr::toString(editor.toolSettings.materialBrushMask));
+    const cr::CreativeMaterialBrushStampPlan stamp =
+        cr::planCreativeMaterialBrushStamp(
+            {editor.toolSettings.materialBrushShape,
+             editor.toolSettings.materialBrushSize, {}});
+    if (stamp.accepted) {
+      output.append(" | ");
+      output.append(std::to_string(stamp.cellCount));
+      output.append(" VOXELS");
+    }
     appendQuickEdit();
     return output;
   }
@@ -1046,7 +1058,7 @@ void appendCreativeEditorInteractionOverlay(
     const std::string heldLabel = creativeEditorHeldItemStatusLabel(editor);
     const std::int32_t heldLabelX = std::max(
         4, static_cast<std::int32_t>(drawableWidth / 2U) -
-               static_cast<std::int32_t>(heldLabel.size() * 4U));
+               static_cast<std::int32_t>(heldLabel.size() * 6U));
     appendHeldItemStatusText(glyphs, heldLabel, heldLabelX, hotbarY - 22,
                              drawableWidth, drawableHeight);
   }

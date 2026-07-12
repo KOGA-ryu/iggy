@@ -308,8 +308,9 @@ preview's contextual wheel. They do not each earn a permanent global key.
 - Contextual settings currently provide Free/X/Z fast-drag movement,
   X/Y/Z precision-preview constraints, 15/45/90-degree
   rotation, 0.25/0.5/1/2-meter grid increments, Material Brush Cube/Sphere/
-  Cylinder shape and 1/3/5-cell size, Replace source filtering by material or
-  Any, Clone offsets on X/Y/Z at 1/2/4/8 cells, Linear Array
+  Cylinder shape, 1/3/5-cell size, and Add Only/Replace/Overwrite occupancy
+  masks, Replace source filtering by material or Any, Clone offsets on X/Y/Z
+  at 1/2/4/8 cells, Linear Array
   direction on either world axis with 1/2/4/8/16/32 copies at 1/2/4/8-cell
   spacing, and Radial Array X/Y/Z rings or arcs with 2/4/8/16/32 total
   instances across 90/180/360 degrees.
@@ -373,8 +374,14 @@ preview's contextual wheel. They do not each earn a permanent global key.
   that interpolation chain instead of bridging empty space. The gesture
   deduplicates previously visited cells and commits one undo record on release.
   The 256-cell gesture budget rejects a whole interpolated segment before
-  mutation rather than clipping its shape. Green wireframe previews paint; red
-  wireframe previews erase or invalid material state.
+  mutation rather than clipping its shape. The target preview draws one wire
+  box for every planned voxel and the status row reports the exact stamp count,
+  so a 3-cell sphere visibly contains 7 voxels while a 3-cell cube contains 27.
+  `ADD ONLY` writes only empty cells, `REPLACE` recolors only occupied cells,
+  and `OVERWRITE` preserves the previous write-anywhere behavior. The preview
+  uses the same occupancy predicate: admitted cells are green and a wholly
+  blocked stamp is red. Circle erase is independent of the paint mask. Green
+  wireframes paint; red wireframes erase or mark blocked/invalid state.
 - A material's thin green wireframe is only a placement preview. Right mouse or
   controller X attempts the placement. `Wall`, `Floor`, `Ceiling`,
   and `Roof` place one exact voxel cell; props, attachments, paths, lights, and
