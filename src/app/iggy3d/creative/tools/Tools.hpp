@@ -8,6 +8,7 @@
 #include "app/iggy3d/creative/tools/SurfaceExtrude.hpp"
 #include "app/iggy3d/creative/tools/TerrainProfile.hpp"
 #include "app/iggy3d/creative/tools/TerrainPath.hpp"
+#include "app/iggy3d/creative/tools/TerrainPaint.hpp"
 #include "app/iggy3d/creative/tools/TerrainRegion.hpp"
 #include "app/iggy3d/creative/tools/TerrainSeed.hpp"
 #include "app/iggy3d/creative/tools/TerrainSculpt.hpp"
@@ -148,6 +149,8 @@ enum class CreativeToolOptionId : std::uint8_t {
   TerrainSculptRadius,
   TerrainSculptStrength,
   TerrainSculptFalloff,
+  TerrainPaintMaterial,
+  TerrainPaintRadius,
   TerrainRodStampMode,
   TerrainSeedRadius,
   TerrainSeedSpacing,
@@ -250,6 +253,9 @@ struct CreativeToolSettings {
       CreativeTerrainSculptStrength::OneCell;
   CreativeTerrainSculptFalloff terrainSculptFalloff =
       CreativeTerrainSculptFalloff::Uniform;
+  CreativeTerrainMaterial terrainPaintMaterial = CreativeTerrainMaterial::Grass;
+  CreativeTerrainPaintRadius terrainPaintRadius =
+      CreativeTerrainPaintRadius::TwoCells;
   CreativeTerrainRodStampMode terrainRodStampMode =
       CreativeTerrainRodStampMode::Single;
   CreativeTerrainSeedRadius terrainSeedRadius =

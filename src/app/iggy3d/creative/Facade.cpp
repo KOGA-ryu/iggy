@@ -815,6 +815,19 @@ CreativeTerrainMutationReceipt Facade::applyTerrainControlEdits(
   return receipt;
 }
 
+CreativeTerrainMaterialMutationReceipt Facade::applyTerrainMaterialEdits(
+    std::span<const CreativeTerrainMaterialEdit> edits) {
+  recordCommandAttempt(stats_);
+  CreativeTerrainMaterialMutationReceipt receipt =
+      document_.applyTerrainMaterialEdits(edits);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
 CreativeDocumentCreateReceipt Facade::createDocumentObject(
     const CreativeDocumentCreateRequest& request) {
   recordCommandAttempt(stats_);

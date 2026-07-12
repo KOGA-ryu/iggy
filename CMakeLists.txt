@@ -42,6 +42,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/document/Object.cpp
     src/app/iggy3d/creative/document/Document.cpp
     src/app/iggy3d/creative/document/TerrainField.cpp
+    src/app/iggy3d/creative/document/TerrainMaterialField.cpp
     src/app/iggy3d/creative/document/VoxelField.cpp
     src/app/iggy3d/creative/mutation/Mutation.cpp
     src/app/iggy3d/creative/document/ObjectDescriptor.cpp
@@ -60,6 +61,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/tools/TerrainGrade.cpp
     src/app/iggy3d/creative/tools/TerrainBrushKernel.cpp
     src/app/iggy3d/creative/tools/TerrainPath.cpp
+    src/app/iggy3d/creative/tools/TerrainPaint.cpp
     src/app/iggy3d/creative/tools/TerrainProfile.cpp
     src/app/iggy3d/creative/tools/TerrainRegion.cpp
     src/app/iggy3d/creative/tools/TerrainSeed.cpp
@@ -227,6 +229,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorTerrain.cpp
   apps/iggy3d_creative/EditorTerrainGrade.cpp
   apps/iggy3d_creative/EditorTerrainPath.cpp
+  apps/iggy3d_creative/EditorTerrainPaint.cpp
   apps/iggy3d_creative/EditorTerrainProfile.cpp
   apps/iggy3d_creative/EditorTerrainRegion.cpp
   apps/iggy3d_creative/EditorTerrainSculpt.cpp

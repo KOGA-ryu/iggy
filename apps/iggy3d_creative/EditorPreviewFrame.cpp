@@ -387,7 +387,7 @@ refreshVoxelChunkMeshPlans(CreativeEditorSceneCache& cache,
   output.reserve(plan.patches.size());
   for (const cr::CreativeTerrainSurfacePatch& patch : plan.patches) {
     iggy3d::SceneRoomSurfacePatchItem item;
-    item.role = "terrain";
+    item.role = cr::creativeTerrainMaterialRenderRole(patch.material);
     const cr::CreativeCoreVec3Conversion center =
         cr::creativeVec3ToCoreChecked(patch.center);
     if (!center.converted) {
@@ -412,11 +412,33 @@ refreshVoxelChunkMeshPlans(CreativeEditorSceneCache& cache,
 void refreshTerrainSurfacePlan(CreativeEditorSceneCache& cache,
                                const cr::CreativeDocument& document) {
   const cr::CreativeGridSettings grid = document.gridSettings();
-  if (cache.valid &&
+  const bool geometryCurrent =
+      cache.valid && cache.documentId == document.id() &&
       cache.terrainRevision == document.terrainField().revision() &&
-      cache.documentId == document.id() &&
       cr::creativeVec3ExactlyEqual(cache.terrainGridOrigin, grid.origin) &&
-      cache.terrainGridCellSizeMeters == grid.cellSizeMeters) {
+      cache.terrainGridCellSizeMeters == grid.cellSizeMeters;
+  const bool materialCurrent =
+      cache.valid && cache.documentId == document.id() &&
+      cache.terrainMaterialRevision ==
+          document.terrainMaterialField().revision();
+  if (geometryCurrent && materialCurrent) {
+    return;
+  }
+  if (geometryCurrent) {
+    std::vector<cr::CreativeTerrainSurfacePatch> displayPatches =
+        cache.terrainCollisionPatches;
+    for (cr::CreativeTerrainSurfacePatch& patch : displayPatches) {
+      patch.material =
+          document.terrainMaterialField().materialAt(patch.coord);
+    }
+    cr::CreativeTerrainRenderPlan displayPlan;
+    displayPlan.accepted = true;
+    displayPlan.patches = std::move(displayPatches);
+    static_cast<void>(convertTerrainSurfacePatches(
+        displayPlan, cache.terrainSurfacePatches));
+    cache.terrainMaterialRevision =
+        document.terrainMaterialField().revision();
+    ++cache.terrainMaterialBuildCount;
     return;
   }
   const cr::CreativeTerrainSurfacePlan plan =
@@ -424,8 +446,9 @@ void refreshTerrainSurfacePlan(CreativeEditorSceneCache& cache,
   cache.terrainCuboids = plan.accepted ? plan.cuboids
                                       : std::vector<cr::CreativeVoxelCuboid>{};
   const cr::CreativeTerrainRenderPlan renderPlan =
-      cr::buildCreativeTerrainRenderPlan(plan, grid.origin,
-                                         grid.cellSizeMeters);
+      cr::buildCreativeTerrainRenderPlan(
+          plan, document.terrainMaterialField(), grid.origin,
+          grid.cellSizeMeters);
   if (convertTerrainSurfacePatches(renderPlan,
                                    cache.terrainSurfacePatches)) {
     cache.terrainCollisionPatches = renderPlan.patches;
@@ -433,9 +456,12 @@ void refreshTerrainSurfacePlan(CreativeEditorSceneCache& cache,
     cache.terrainCollisionPatches.clear();
   }
   cache.terrainRevision = document.terrainField().revision();
+  cache.terrainMaterialRevision =
+      document.terrainMaterialField().revision();
   cache.terrainGridOrigin = grid.origin;
   cache.terrainGridCellSizeMeters = grid.cellSizeMeters;
   ++cache.terrainSurfaceBuildCount;
+  ++cache.terrainMaterialBuildCount;
 }
 
 [[nodiscard]] StandaloneRoomBakePreviewScene
@@ -493,8 +519,9 @@ StandaloneRoomBakePreviewScene buildStandaloneRoomBakePreviewScene(
                    terrain.cuboids.end());
     const cr::CreativeGridSettings grid = document.gridSettings();
     const cr::CreativeTerrainRenderPlan renderPlan =
-        cr::buildCreativeTerrainRenderPlan(terrain, grid.origin,
-                                           grid.cellSizeMeters);
+        cr::buildCreativeTerrainRenderPlan(
+            terrain, document.terrainMaterialField(), grid.origin,
+            grid.cellSizeMeters);
     if (convertTerrainSurfacePatches(renderPlan, terrainSurfacePatches)) {
       terrainCollisionPatches = renderPlan.patches;
     }
@@ -518,6 +545,7 @@ bool refreshCreativeEditorSceneCache(
     cache.terrainCollisionPatches.clear();
     cache.terrainSurfacePatches.clear();
     cache.terrainRevision = 0;
+    cache.terrainMaterialRevision = 0;
     cache.terrainGridOrigin = {};
     cache.terrainGridCellSizeMeters = 0.0;
   }
@@ -546,6 +574,7 @@ void invalidateCreativeEditorSceneCache(
   cache.terrainCollisionPatches.clear();
   cache.terrainSurfacePatches.clear();
   cache.terrainRevision = 0;
+  cache.terrainMaterialRevision = 0;
   cache.terrainGridOrigin = {};
   cache.terrainGridCellSizeMeters = 0.0;
 }

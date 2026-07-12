@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/document/TerrainField.hpp"
 
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/document/TerrainMaterialField.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -769,14 +770,16 @@ CreativeTerrainRenderPlan buildCreativeTerrainRenderPlan(
       maxPatchCount);
 }
 
-CreativeTerrainRenderPlan buildCreativeTerrainRenderPlan(
+static CreativeTerrainRenderPlan buildCreativeTerrainRenderPlanWithMaterials(
     const CreativeTerrainSurfacePlan& surface,
+    const CreativeTerrainMaterialField* materials,
     CreativeVec3 gridOrigin,
     double cellSize,
     std::size_t maxPatchCount) {
   CreativeTerrainRenderPlan plan;
   plan.requested = true;
   plan.sourceRevision = surface.sourceRevision;
+  plan.sourceMaterialRevision = materials == nullptr ? 0U : materials->revision();
   if (surface.status == CreativeTerrainSurfacePlanStatus::InvalidField) {
     plan.status = CreativeTerrainRenderPlanStatus::InvalidField;
     plan.reasonCode = "creative_terrain_render_field_invalid";
@@ -820,6 +823,9 @@ CreativeTerrainRenderPlan buildCreativeTerrainRenderPlan(
     }};
     CreativeTerrainSurfacePatch patch;
     patch.coord = column.coord;
+    patch.material = materials == nullptr
+                         ? CreativeTerrainMaterial::Grass
+                         : materials->materialAt(column.coord);
     patch.center = {
         gridOrigin.x + (static_cast<double>(x) + 0.5) * cellSize,
         gridOrigin.y + static_cast<double>(column.heightCells) * cellSize,
@@ -854,6 +860,25 @@ CreativeTerrainRenderPlan buildCreativeTerrainRenderPlan(
   plan.status = CreativeTerrainRenderPlanStatus::Ready;
   plan.reasonCode = "creative_terrain_render_ready";
   return plan;
+}
+
+CreativeTerrainRenderPlan buildCreativeTerrainRenderPlan(
+    const CreativeTerrainSurfacePlan& surface,
+    CreativeVec3 gridOrigin,
+    double cellSize,
+    std::size_t maxPatchCount) {
+  return buildCreativeTerrainRenderPlanWithMaterials(
+      surface, nullptr, gridOrigin, cellSize, maxPatchCount);
+}
+
+CreativeTerrainRenderPlan buildCreativeTerrainRenderPlan(
+    const CreativeTerrainSurfacePlan& surface,
+    const CreativeTerrainMaterialField& materials,
+    CreativeVec3 gridOrigin,
+    double cellSize,
+    std::size_t maxPatchCount) {
+  return buildCreativeTerrainRenderPlanWithMaterials(
+      surface, &materials, gridOrigin, cellSize, maxPatchCount);
 }
 
 CreativeTerrainMutationPreviewReceipt buildCreativeTerrainMutationPreview(

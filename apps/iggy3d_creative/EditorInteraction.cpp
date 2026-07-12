@@ -14,6 +14,7 @@
 #include "EditorState.hpp"
 #include "EditorSurfaceExtrude.hpp"
 #include "EditorTerrain.hpp"
+#include "EditorTerrainPaint.hpp"
 #include "EditorTransform.hpp"
 #include "EditorVolume.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
@@ -86,6 +87,8 @@ constexpr std::array kHeldItemBehaviors{
     HeldItemBehavior{cr::CreativeHeldItemKind::SurfaceExtrude,
                      cr::Tool::Select, false, false},
     HeldItemBehavior{cr::CreativeHeldItemKind::TerrainControl,
+                     cr::Tool::Select, false, false},
+    HeldItemBehavior{cr::CreativeHeldItemKind::TerrainPaint,
                      cr::Tool::Select, false, false},
     HeldItemBehavior{cr::CreativeHeldItemKind::TerrainGrade,
                      cr::Tool::Select, false, false},
@@ -571,6 +574,9 @@ constexpr std::array<HeldItemHandlerRow, cr::kCreativeHeldItemKindCount>
         {cr::CreativeHeldItemKind::TerrainControl,
          {removeTerrainControl, upsertTerrainControl, sampleTerrainControl},
          upsertTerrainControl, removeTerrainControl, true},
+        {cr::CreativeHeldItemKind::TerrainPaint,
+         {noInteraction, noInteraction, noInteraction},
+         noInteraction, noInteraction},
         {cr::CreativeHeldItemKind::TerrainGrade,
          {cancelTerrainGrade, applyTerrainGrade, beginTerrainGrade},
          applyTerrainGrade, cancelTerrainGrade, true},
@@ -790,6 +796,7 @@ constexpr std::array<HeldItemCommandRow, cr::kCreativeHeldItemKindCount>
          confirmSurfaceExtrudeCommand},
         {cr::CreativeHeldItemKind::TerrainControl,
          confirmTerrainControlCommand, cancelTerrainControlCommand},
+        {cr::CreativeHeldItemKind::TerrainPaint},
         {cr::CreativeHeldItemKind::TerrainGrade,
          confirmTerrainGradeCommand, cancelTerrainGradeCommand},
         {cr::CreativeHeldItemKind::TerrainSculpt,
@@ -890,6 +897,10 @@ void refreshHeldItemPreview(
     const CreativeEditorWorldInteractionFrameRequest& request,
     const cr::CreativeHotbarEntry& held) {
   CreativeEditorState& editor = request.editor;
+  if (held.kind != cr::CreativeHeldItemKind::TerrainPaint) {
+    finalizeCreativeEditorTerrainPaintStroke(
+        request.appState, editor, "creative_terrain_paint_non_paint_tool");
+  }
   switch (held.kind) {
     case cr::CreativeHeldItemKind::Material:
     case cr::CreativeHeldItemKind::MaterialBrush: {
@@ -922,6 +933,26 @@ void refreshHeldItemPreview(
       }
       return true;
     }
+    case cr::CreativeHeldItemKind::TerrainPaint:
+      finalizeCreativeMaterialStroke(
+          request.appState, editor,
+          "creative_material_stroke_terrain_paint_tool");
+      finalizeCreativeTerrainStroke(
+          request.appState, editor,
+          "creative_terrain_stroke_terrain_paint_tool");
+      finalizeCreativeTerrainSculptStroke(
+          request.appState, editor,
+          "creative_terrain_sculpt_terrain_paint_tool");
+      processCreativeEditorTerrainPaintFrame(
+          request.appState, editor, request.actions,
+          request.monotonicTimeNanoseconds);
+      if (!editor.terrainPaint.repeat.active &&
+          cr::creativeWorldActionPressed(request.actions,
+                                         cr::CreativeWorldActionId::Pick)) {
+        static_cast<void>(sampleCreativeEditorTerrainMaterial(
+            request.appState.facade.document(), editor));
+      }
+      return true;
     case cr::CreativeHeldItemKind::TerrainSculpt:
       finalizeCreativeMaterialStroke(
           request.appState, editor,
@@ -1027,6 +1058,7 @@ void refreshHeldItemPreview(
     case cr::CreativeHeldItemKind::ConnectedFill:
     case cr::CreativeHeldItemKind::SurfaceExtrude:
     case cr::CreativeHeldItemKind::TerrainControl:
+    case cr::CreativeHeldItemKind::TerrainPaint:
     case cr::CreativeHeldItemKind::TerrainGrade:
     case cr::CreativeHeldItemKind::TerrainSculpt:
     case cr::CreativeHeldItemKind::Count:
@@ -1645,6 +1677,7 @@ double creativeEditorTargetCellSize(
     case cr::CreativeHeldItemKind::ConnectedFill:
     case cr::CreativeHeldItemKind::SurfaceExtrude:
     case cr::CreativeHeldItemKind::TerrainControl:
+    case cr::CreativeHeldItemKind::TerrainPaint:
     case cr::CreativeHeldItemKind::TerrainGrade:
     case cr::CreativeHeldItemKind::TerrainSculpt:
     case cr::CreativeHeldItemKind::TerrainProfile:
@@ -1678,6 +1711,13 @@ std::string creativeEditorHeldItemStatusLabel(
       break;
     case cr::CreativeHeldItemKind::TerrainControl:
       appendTerrainControlStatus(output, editor);
+      break;
+    case cr::CreativeHeldItemKind::TerrainPaint:
+      output.append(" | ");
+      output.append(cr::toString(editor.toolSettings.terrainPaintMaterial));
+      output.append(" | RADIUS ");
+      output.append(cr::toString(editor.toolSettings.terrainPaintRadius));
+      appendHeldQuickEditStatus(output, editor);
       break;
     case cr::CreativeHeldItemKind::TerrainGrade:
       appendTerrainGradeStatus(output, editor);
@@ -2084,6 +2124,7 @@ void finalizeCreativeEditorContinuousGestures(
   finalizeCreativeMaterialStroke(appState, editor, reasonCode);
   finalizeCreativeTerrainStroke(appState, editor, reasonCode);
   finalizeCreativeTerrainSculptStroke(appState, editor, reasonCode);
+  finalizeCreativeEditorTerrainPaintStroke(appState, editor, reasonCode);
 }
 
 void appendCreativeEditorInteractionOverlay(

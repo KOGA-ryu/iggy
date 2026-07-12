@@ -66,6 +66,16 @@ CreativeEditorState terrainGradeEditor(std::int32_t x, std::int32_t z) {
   return editor;
 }
 
+CreativeEditorState terrainPaintEditor() {
+  CreativeEditorState editor;
+  editor.frameIndex = 8U;
+  editor.interaction.hotbar.selectedSlot = 0U;
+  editor.interaction.hotbar.entries[0] =
+      {cr::CreativeHeldItemKind::TerrainPaint,
+       cr::CreativeObjectKind::Unknown};
+  return editor;
+}
+
 CreativeEditorState terrainSculptEditor(std::int32_t x, std::int32_t z) {
   CreativeEditorState editor = terrainEditor(x, z);
   editor.interaction.hotbar.entries[0].kind =
@@ -392,6 +402,85 @@ bool semanticActionsRouteSelectionCommitCancelAndRemoval() {
   return expect(appState.facade.document().terrainField().controlCount() == 0U &&
                     cr::creativeUndoDepth(appState.history) == 2U,
                 "Circle removes highlighted rod when no draft is selected") &&
+         ok;
+}
+
+bool terrainSurfacePaintRoutesGesturesHistorySamplingAndRendering() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 430U);
+  const cr::CreativeTerrainControlEdit control{
+      cr::CreativeTerrainEditKind::Upsert, {{0, 0}, 4U, 2U}};
+  static_cast<void>(appState.facade.applyTerrainControlEdits(
+      std::span{&control, 1U}));
+  appState.history = {};
+  CreativeEditorState editor = terrainPaintEditor();
+  editor.toolSettings.terrainPaintMaterial =
+      cr::CreativeTerrainMaterial::Stone;
+  editor.toolSettings.terrainPaintRadius =
+      cr::CreativeTerrainPaintRadius::OneCell;
+  iggy3d::RenderCameraFrame camera;
+  camera.worldEye = {0.5F, 10.0F, 0.5F};
+  camera.worldForward = {0.0F, -1.0F, 0.0F};
+  camera.worldUp = {0.0F, 0.0F, -1.0F};
+  const CreativeEditorPickFrame pickFrame;
+  const auto process = [&](const cr::CreativeWorldActionFrame& actions,
+                           std::uint64_t now) {
+    processCreativeEditorWorldInteractionFrame(
+        {appState, editor, actions, cr::kCreativeInputModifierNone, camera,
+         pickFrame, 800U, 600U, now, false});
+  };
+  iggy3d::ProductMapMakerGridSnapshot grid;
+  CreativeEditorSceneCache cache;
+  static_cast<void>(refreshCreativeEditorSceneCache(
+      cache, appState.facade.document(), grid));
+
+  process(strokeAction(cr::CreativeWorldActionId::Accept, true, true), 0U);
+  process(strokeAction(cr::CreativeWorldActionId::Accept, true),
+          cr::kCreativeMaterialStrokeRepeatNanoseconds - 1U);
+  process(strokeAction(cr::CreativeWorldActionId::Accept, false, false, true),
+          cr::kCreativeMaterialStrokeRepeatNanoseconds);
+  bool ok = expect(
+      appState.facade.document().terrainMaterialField().overrideCount() == 5U &&
+          appState.facade.document().terrainMaterialField().materialAt({0, 0}) ==
+              cr::CreativeTerrainMaterial::Stone &&
+          cr::creativeUndoDepth(appState.history) == 1U,
+      "X paints one radius-one surface gesture and records one undo");
+
+  editor.toolSettings.terrainPaintMaterial = cr::CreativeTerrainMaterial::Sand;
+  process(strokeAction(cr::CreativeWorldActionId::Pick, true, true),
+          300'000'000ULL);
+  ok = expect(editor.toolSettings.terrainPaintMaterial ==
+                  cr::CreativeTerrainMaterial::Stone,
+              "Square samples the aimed terrain surface material") &&
+       ok;
+
+  const bool materialRefreshed = refreshCreativeEditorSceneCache(
+      cache, appState.facade.document(), grid);
+  const bool hasStone = std::any_of(
+      cache.preview.scene.room.surfacePatches.begin(),
+      cache.preview.scene.room.surfacePatches.end(),
+      [](const iggy3d::SceneRoomSurfacePatchItem& patch) {
+        return patch.role == "terrain_stone";
+      });
+  ok = expect(materialRefreshed && hasStone &&
+                  cache.terrainSurfaceBuildCount == 1U &&
+                  cache.terrainMaterialBuildCount == 2U &&
+                  cache.terrainMaterialRevision ==
+                      appState.facade.document()
+                          .terrainMaterialField()
+                          .revision(),
+              "material refresh reuses geometry and joins the painted role") &&
+       ok;
+
+  process(strokeAction(cr::CreativeWorldActionId::Reject, true, true),
+          400'000'000ULL);
+  process(strokeAction(cr::CreativeWorldActionId::Reject, false, false, true),
+          400'000'001ULL);
+  return expect(
+             appState.facade.document().terrainMaterialField().overrideCount() ==
+                     0U &&
+                 cr::creativeUndoDepth(appState.history) == 2U,
+             "Circle restores grass and commits a second grouped gesture") &&
          ok;
 }
 
@@ -2401,6 +2490,7 @@ int main() {
                  editSampleRemoveAndUndoUseDocumentTruth() &&
                  derivedSurfaceAndGuidesUseRevisionCaching() &&
                  semanticActionsRouteSelectionCommitCancelAndRemoval() &&
+                 terrainSurfacePaintRoutesGesturesHistorySamplingAndRendering() &&
                  terrainPaintStrokeRepeatsDeduplicatesCachesAndGroupsUndo() &&
                  terrainSeedPreviewsStampsClearsAndGroupsHistory() &&
                  terrainCancelGestureCannotFallThroughIntoEraseStroke() &&

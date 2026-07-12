@@ -996,6 +996,55 @@ bool terrainControlsEncodeDecodeAndRestore() {
                 "restore preserves terrain coordinates and settings");
 }
 
+bool terrainMaterialsEncodeDecodeAndRestore() {
+  cr::CreativeDocument document = authoredDocument();
+  const std::array edits{
+      cr::CreativeTerrainMaterialEdit{
+          cr::CreativeTerrainMaterialEditKind::Set, {-4, 7},
+          cr::CreativeTerrainMaterial::Stone},
+      cr::CreativeTerrainMaterialEdit{
+          cr::CreativeTerrainMaterialEditKind::Set, {8, -2},
+          cr::CreativeTerrainMaterial::Sand},
+  };
+  const cr::CreativeTerrainMaterialMutationReceipt mutation =
+      document.applyTerrainMaterialEdits(edits);
+  const iggy3d::ProductCreativeDocumentSectionBuildResult built =
+      iggy3d::buildSaveCreativeDocumentSection(document);
+  iggy3d::SaveEnvelope envelope = minimalEnvelope();
+  envelope.creativeDocument = built.section;
+  const iggy3d::SaveEncodeResult encoded =
+      iggy3d::encodeSaveEnvelope(envelope);
+  const iggy3d::SaveDecodeResult decoded =
+      iggy3d::decodeSaveEnvelope(encoded.encodedText);
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult restored =
+      iggy3d::restoreCreativeDocumentFromSaveSection(
+          decoded.envelope.creativeDocument);
+
+  return expect(mutation.accepted && mutation.changed,
+                "terrain material save setup applies") &&
+         expect(built.receipt.accepted &&
+                    built.receipt.terrainMaterialOverrideCount == 2U &&
+                    built.section.terrainMaterials.size() == 2U,
+                "save section stores terrain material overrides") &&
+         expect(encoded.status == iggy3d::SaveCodecStatus::Ok &&
+                    encoded.encodedText.find(
+                        "creativeDocument.terrainMaterial.count=2\n") !=
+                        std::string::npos,
+                "codec writes terrain material block") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok &&
+                    decoded.envelope.creativeDocument.terrainMaterials.size() ==
+                        2U,
+                "codec decodes terrain material overrides") &&
+         expect(restored.receipt.accepted &&
+                    restored.document.terrainMaterialField().materialAt(
+                        {-4, 7}) == cr::CreativeTerrainMaterial::Stone &&
+                    restored.document.terrainMaterialField().materialAt(
+                        {8, -2}) == cr::CreativeTerrainMaterial::Sand &&
+                    restored.document.terrainMaterialField().materialAt(
+                        {0, 0}) == cr::CreativeTerrainMaterial::Grass,
+                "restore preserves overrides and sparse grass default");
+}
+
 }  // namespace
 
 int main() {
@@ -1022,5 +1071,6 @@ int main() {
   ok = restoreRejectsTooLargeGridDimension() && ok;
   ok = voxelChunksEncodeDecodeAndRestore() && ok;
   ok = terrainControlsEncodeDecodeAndRestore() && ok;
+  ok = terrainMaterialsEncodeDecodeAndRestore() && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

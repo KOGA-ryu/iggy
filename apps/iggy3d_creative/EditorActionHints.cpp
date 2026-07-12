@@ -186,6 +186,7 @@ void appendQuickEdit(HintSpecBuffer& buffer,
     case cr::CreativeHeldItemKind::LinearArray:
     case cr::CreativeHeldItemKind::ConnectedFill:
     case cr::CreativeHeldItemKind::SurfaceExtrude:
+    case cr::CreativeHeldItemKind::TerrainPaint:
     case cr::CreativeHeldItemKind::Count:
       break;
   }
@@ -236,6 +237,13 @@ void appendViewportHints(HintSpecBuffer& buffer,
       appendHint(buffer, negativeAction, terrainControlRejectLabel(editor));
       appendHint(buffer, cr::CreativeInputActionId::PickAction,
                  terrainControlPickLabel(editor));
+      keyboardQuickEdit = true;
+      break;
+    case cr::CreativeHeldItemKind::TerrainPaint:
+      appendHint(buffer, positiveAction, "Paint surface");
+      appendHint(buffer, negativeAction, "Restore grass");
+      appendHint(buffer, cr::CreativeInputActionId::PickAction,
+                 "Sample surface");
       keyboardQuickEdit = true;
       break;
     case cr::CreativeHeldItemKind::TerrainGrade:

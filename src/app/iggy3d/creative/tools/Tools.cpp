@@ -79,6 +79,8 @@ constexpr CreativeHeldItemMask kSurfaceExtrudeItems =
     heldItemMask(CreativeHeldItemKind::SurfaceExtrude);
 constexpr CreativeHeldItemMask kTerrainSculptItems =
     heldItemMask(CreativeHeldItemKind::TerrainSculpt);
+constexpr CreativeHeldItemMask kTerrainPaintItems =
+    heldItemMask(CreativeHeldItemKind::TerrainPaint);
 constexpr CreativeHeldItemMask kTerrainControlItems =
     heldItemMask(CreativeHeldItemKind::TerrainControl);
 constexpr CreativeHeldItemMask kTerrainProfileItems =
@@ -233,6 +235,14 @@ constexpr std::array kToolOptionDescriptors{
                                  "FALLOFF",
                                  CreativeToolOptionValueKind::Choice,
                                  kTerrainSculptItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainPaintMaterial,
+                                 "SURFACE",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainPaintItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainPaintRadius,
+                                 "PAINT RADIUS",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainPaintItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainRodStampMode,
                                  "ROD STAMP",
                                  CreativeToolOptionValueKind::Choice,
@@ -680,6 +690,9 @@ bool isValidCreativeToolSettings(
                    CreativeTerrainSculptStrength::Count) &&
          validEnum(settings.terrainSculptFalloff,
                    CreativeTerrainSculptFalloff::Count) &&
+         isValidCreativeTerrainMaterial(settings.terrainPaintMaterial) &&
+         validEnum(settings.terrainPaintRadius,
+                   CreativeTerrainPaintRadius::Count) &&
          validEnum(settings.terrainRodStampMode,
                    CreativeTerrainRodStampMode::Count) &&
          validEnum(settings.terrainSeedRadius,
@@ -1000,6 +1013,10 @@ std::string_view creativeToolOptionValueLabel(
       return toString(settings.terrainSculptStrength);
     case CreativeToolOptionId::TerrainSculptFalloff:
       return toString(settings.terrainSculptFalloff);
+    case CreativeToolOptionId::TerrainPaintMaterial:
+      return toString(settings.terrainPaintMaterial);
+    case CreativeToolOptionId::TerrainPaintRadius:
+      return toString(settings.terrainPaintRadius);
     case CreativeToolOptionId::TerrainRodStampMode:
       return toString(settings.terrainRodStampMode);
     case CreativeToolOptionId::TerrainSeedRadius:
@@ -1226,6 +1243,16 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
       adjusted.terrainSculptFalloff =
           cycleEnum(adjusted.terrainSculptFalloff,
                     CreativeTerrainSculptFalloff::Count, direction);
+      break;
+    case CreativeToolOptionId::TerrainPaintMaterial:
+      adjusted.terrainPaintMaterial = cycleEnum(
+          adjusted.terrainPaintMaterial, CreativeTerrainMaterial::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::TerrainPaintRadius:
+      adjusted.terrainPaintRadius = cycleEnum(
+          adjusted.terrainPaintRadius, CreativeTerrainPaintRadius::Count,
+          direction);
       break;
     case CreativeToolOptionId::TerrainRodStampMode:
       adjusted.terrainRodStampMode = cycleEnum(

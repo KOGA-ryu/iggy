@@ -12,6 +12,8 @@
 
 namespace iggy3d::creative {
 
+class CreativeTerrainMaterialField;
+
 inline constexpr std::size_t kCreativeTerrainControlCapacity = 256U;
 inline constexpr std::size_t kCreativeTerrainRenderPatchCapacity = 8192U;
 inline constexpr std::uint16_t kCreativeTerrainMinimumHeightCells = 1U;
@@ -26,6 +28,14 @@ struct CreativeTerrainCoord2 {
   [[nodiscard]] friend constexpr bool operator==(
       CreativeTerrainCoord2,
       CreativeTerrainCoord2) noexcept = default;
+};
+
+enum class CreativeTerrainMaterial : std::uint8_t {
+  Grass,
+  Dirt,
+  Stone,
+  Sand,
+  Count,
 };
 
 struct CreativeTerrainControlPoint {
@@ -167,6 +177,7 @@ struct CreativeTerrainSurfacePlan {
 
 struct CreativeTerrainSurfacePatch {
   CreativeTerrainCoord2 coord{};
+  CreativeTerrainMaterial material = CreativeTerrainMaterial::Grass;
   CreativeVec3 center{};
   // Counter-clockwise from the minimum X/Z corner when viewed from above.
   std::array<CreativeVec3, 4U> corners{};
@@ -189,6 +200,7 @@ struct CreativeTerrainRenderPlan {
   CreativeTerrainRenderPlanStatus status =
       CreativeTerrainRenderPlanStatus::NotRequested;
   std::uint64_t sourceRevision = 0;
+  std::uint64_t sourceMaterialRevision = 0;
   std::uint64_t sourceColumnCount = 0;
   std::vector<CreativeTerrainSurfacePatch> patches;
   std::string_view reasonCode = "creative_terrain_render_not_requested";
@@ -253,6 +265,12 @@ struct CreativeTerrainMutationPreviewReceipt {
     std::size_t maxPatchCount = kCreativeTerrainRenderPatchCapacity);
 [[nodiscard]] CreativeTerrainRenderPlan buildCreativeTerrainRenderPlan(
     const CreativeTerrainSurfacePlan& surface,
+    CreativeVec3 gridOrigin,
+    double cellSize,
+    std::size_t maxPatchCount = kCreativeTerrainRenderPatchCapacity);
+[[nodiscard]] CreativeTerrainRenderPlan buildCreativeTerrainRenderPlan(
+    const CreativeTerrainSurfacePlan& surface,
+    const CreativeTerrainMaterialField& materials,
     CreativeVec3 gridOrigin,
     double cellSize,
     std::size_t maxPatchCount = kCreativeTerrainRenderPatchCapacity);

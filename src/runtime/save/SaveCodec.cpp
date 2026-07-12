@@ -393,6 +393,18 @@ private:
       line(p + "heightCells", unsignedText(control.heightCells));
       line(p + "radiusCells", unsignedText(control.radiusCells));
     }
+    line("creativeDocument.terrainMaterial.count",
+         unsignedText(section.terrainMaterials.size()));
+    for (std::size_t index = 0; index < section.terrainMaterials.size();
+         ++index) {
+      const SaveCreativeDocumentTerrainMaterialRecord& material =
+          section.terrainMaterials[index];
+      const std::string p = "creativeDocument.terrainMaterial." +
+                            std::to_string(index) + ".";
+      line(p + "x", std::to_string(material.x));
+      line(p + "z", std::to_string(material.z));
+      lineString(p + "material", material.material);
+    }
   }
 
   void writePlayers() {

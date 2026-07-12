@@ -148,6 +148,7 @@ std::string_view toString(CreativeHeldItemKind kind) noexcept {
     case CreativeHeldItemKind::ConnectedFill: return "Flood";
     case CreativeHeldItemKind::SurfaceExtrude: return "Extrude";
     case CreativeHeldItemKind::TerrainControl: return "Terrain";
+    case CreativeHeldItemKind::TerrainPaint: return "TerrainPaint";
     case CreativeHeldItemKind::TerrainGrade: return "TerrainGrade";
     case CreativeHeldItemKind::TerrainSculpt: return "TerrainSculpt";
     case CreativeHeldItemKind::TerrainProfile: return "TerrainProfile";
@@ -268,6 +269,7 @@ bool creativeHeldItemUsesMaterial(CreativeHeldItemKind kind) noexcept {
     case CreativeHeldItemKind::VolumeClone:
     case CreativeHeldItemKind::LinearArray:
     case CreativeHeldItemKind::TerrainControl:
+    case CreativeHeldItemKind::TerrainPaint:
     case CreativeHeldItemKind::TerrainGrade:
     case CreativeHeldItemKind::TerrainSculpt:
     case CreativeHeldItemKind::TerrainProfile:
@@ -282,6 +284,7 @@ bool creativeHeldItemUsesMaterial(CreativeHeldItemKind kind) noexcept {
 bool creativeHeldItemIsTerrainTool(CreativeHeldItemKind kind) noexcept {
   switch (kind) {
     case CreativeHeldItemKind::TerrainControl:
+    case CreativeHeldItemKind::TerrainPaint:
     case CreativeHeldItemKind::TerrainGrade:
     case CreativeHeldItemKind::TerrainSculpt:
     case CreativeHeldItemKind::TerrainProfile:

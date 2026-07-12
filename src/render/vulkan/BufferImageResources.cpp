@@ -173,6 +173,18 @@ Vec3 colorForRoomRole(const std::string& role) {
   if (role == "terrain") {
     return {0.24F, 0.46F, 0.22F};
   }
+  if (role == "terrain_grass") {
+    return {0.22F, 0.52F, 0.20F};
+  }
+  if (role == "terrain_dirt") {
+    return {0.42F, 0.25F, 0.10F};
+  }
+  if (role == "terrain_stone") {
+    return {0.42F, 0.44F, 0.46F};
+  }
+  if (role == "terrain_sand") {
+    return {0.78F, 0.68F, 0.38F};
+  }
   if (role == "wall") {
     return {0.42F, 0.43F, 0.46F};
   }

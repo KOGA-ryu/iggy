@@ -330,6 +330,27 @@ void Reader::readCreativeDocument() {
       readUnsigned(p + "radiusCells", control.radiusCells);
     }
   }
+  if (nextKeyIs("creativeDocument.terrainMaterial.count")) {
+    std::uint64_t materialCount = 0U;
+    readUnsigned("creativeDocument.terrainMaterial.count", materialCount);
+    if (materialCount > 8192U) {
+      result_ = fail(SaveCodecStatus::InvalidNumber,
+                     "creativeDocument.terrainMaterial.count", index_,
+                     "terrain material count exceeds limit");
+      return;
+    }
+    section.terrainMaterials.resize(static_cast<std::size_t>(materialCount));
+    for (std::size_t materialIndex = 0U;
+         materialIndex < section.terrainMaterials.size(); ++materialIndex) {
+      SaveCreativeDocumentTerrainMaterialRecord& material =
+          section.terrainMaterials[materialIndex];
+      const std::string p = "creativeDocument.terrainMaterial." +
+                            std::to_string(materialIndex) + ".";
+      readI32(p + "x", material.x);
+      readI32(p + "z", material.z);
+      readString(p + "material", material.material);
+    }
+  }
 }
 
 void Reader::readPlayers() {

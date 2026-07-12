@@ -4,6 +4,7 @@
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/document/TerrainField.hpp"
+#include "app/iggy3d/creative/document/TerrainMaterialField.hpp"
 #include "app/iggy3d/creative/document/VoxelField.hpp"
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
 
@@ -49,6 +50,7 @@ enum class CreativeDocumentRestoreStatus : std::uint8_t {
   DuplicateObjectId,
   InvalidVoxelField,
   InvalidTerrainField,
+  InvalidTerrainMaterialField,
   InvalidNextObjectId,
   Restored,
 };
@@ -130,6 +132,7 @@ struct CreativeDocumentRestoreRequest {
   std::vector<CreativeObject> objects;
   CreativeVoxelField voxelField;
   CreativeTerrainField terrainField;
+  CreativeTerrainMaterialField terrainMaterialField;
 };
 
 struct CreativeDocumentRestoreReceipt {
@@ -142,6 +145,7 @@ struct CreativeDocumentRestoreReceipt {
   std::uint64_t objectCount = 0;
   std::uint64_t voxelCellCount = 0;
   std::uint64_t terrainControlCount = 0;
+  std::uint64_t terrainMaterialOverrideCount = 0;
   CreativeObjectId nextObjectId = kInvalidObjectId;
   std::string_view message = "document_restore_not_requested";
   std::string_view reasonCode = "document_restore_not_requested";
@@ -201,6 +205,8 @@ class CreativeDocument {
   [[nodiscard]] std::span<const CreativeObject> objects() const noexcept;
   [[nodiscard]] const CreativeVoxelField& voxelField() const noexcept;
   [[nodiscard]] const CreativeTerrainField& terrainField() const noexcept;
+  [[nodiscard]] const CreativeTerrainMaterialField& terrainMaterialField()
+      const noexcept;
 
   [[nodiscard]] CreativeDocumentCreateReceipt createObject(
       const CreativeDocumentCreateRequest& request);
@@ -213,6 +219,8 @@ class CreativeDocument {
       std::span<const CreativeVoxelEdit> edits);
   [[nodiscard]] CreativeTerrainMutationReceipt applyTerrainControlEdits(
       std::span<const CreativeTerrainControlEdit> edits);
+  [[nodiscard]] CreativeTerrainMaterialMutationReceipt applyTerrainMaterialEdits(
+      std::span<const CreativeTerrainMaterialEdit> edits);
   [[nodiscard]] CreativeDocumentRestoreReceipt restoreForLoad(
       const CreativeDocumentRestoreRequest& request);
 
@@ -248,6 +256,7 @@ class CreativeDocument {
   CreativeObjectId nextObjectId_{1};
   CreativeVoxelField voxelField_{};
   CreativeTerrainField terrainField_{};
+  CreativeTerrainMaterialField terrainMaterialField_{};
 
   CreativeUnits units_{CreativeUnits::Meters};
   CreativeGridSettings gridSettings_{};

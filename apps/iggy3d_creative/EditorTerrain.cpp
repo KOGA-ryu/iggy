@@ -4,6 +4,7 @@
 #include "EditorInteraction.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "EditorState.hpp"
+#include "EditorTerrainPaint.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "runtime/movement/MovementPolicy.hpp"
@@ -849,6 +850,7 @@ void appendCreativeEditorTerrainOverlay(
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   const bool terrainControl =
       held.kind == cr::CreativeHeldItemKind::TerrainControl;
+  const bool terrainPaint = held.kind == cr::CreativeHeldItemKind::TerrainPaint;
   const bool terrainGrade = held.kind == cr::CreativeHeldItemKind::TerrainGrade;
   const bool terrainSculpt =
       held.kind == cr::CreativeHeldItemKind::TerrainSculpt;
@@ -858,8 +860,8 @@ void appendCreativeEditorTerrainOverlay(
   const bool terrainRegion =
       held.kind == cr::CreativeHeldItemKind::TerrainRegion;
   if (captureMode ||
-      (!terrainControl && !terrainGrade && !terrainSculpt && !terrainProfile &&
-       !terrainPath && !terrainRegion) ||
+      (!terrainControl && !terrainPaint && !terrainGrade && !terrainSculpt &&
+       !terrainProfile && !terrainPath && !terrainRegion) ||
       editor.catalog.model.open || editor.catalog.toolWheel.open ||
       editor.toolOptions.open || editor.controls.open || editor.transform.active ||
       editor.transform.controlsOpen) {
@@ -873,6 +875,11 @@ void appendCreativeEditorTerrainOverlay(
   constexpr iggy3d::RenderLineColor hoverColor{0.30F, 1.0F, 0.38F, 1.0F};
   constexpr iggy3d::RenderLineColor selectedColor{1.0F, 0.42F, 0.82F, 1.0F};
   constexpr iggy3d::RenderLineColor previewColor{0.98F, 0.88F, 0.16F, 1.0F};
+  if (terrainPaint) {
+    appendCreativeEditorTerrainPaintOverlay(document, editor, thickness,
+                                            wireLines);
+    return;
+  }
   for (const cr::CreativeTerrainControlPoint& control :
        document.terrainField().controls()) {
     const bool selected = editor.terrain.selectionValid &&

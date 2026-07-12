@@ -385,6 +385,48 @@ toSaveTerrainControls(const creative::CreativeTerrainField& field) {
   return true;
 }
 
+[[nodiscard]] std::vector<SaveCreativeDocumentTerrainMaterialRecord>
+toSaveTerrainMaterials(const creative::CreativeTerrainMaterialField& field) {
+  std::vector<SaveCreativeDocumentTerrainMaterialRecord> records;
+  records.reserve(static_cast<std::size_t>(field.overrideCount()));
+  for (const creative::CreativeTerrainMaterialOverride& value :
+       field.overrides()) {
+    records.push_back(
+        {value.coord.x, value.coord.z,
+         std::string(creative::toString(value.material))});
+  }
+  return records;
+}
+
+[[nodiscard]] bool toCreativeTerrainMaterialField(
+    std::span<const SaveCreativeDocumentTerrainMaterialRecord> records,
+    creative::CreativeTerrainMaterialField& output) {
+  if (records.size() > creative::kCreativeTerrainMaterialOverrideCapacity) {
+    return false;
+  }
+  std::vector<creative::CreativeTerrainMaterialEdit> edits;
+  edits.reserve(records.size());
+  for (const SaveCreativeDocumentTerrainMaterialRecord& record : records) {
+    creative::CreativeTerrainMaterial material =
+        creative::CreativeTerrainMaterial::Count;
+    if (!creative::parseCreativeTerrainMaterial(record.material, material) ||
+        material == creative::CreativeTerrainMaterial::Grass) {
+      return false;
+    }
+    edits.push_back({creative::CreativeTerrainMaterialEditKind::Set,
+                     {record.x, record.z}, material});
+  }
+  creative::CreativeTerrainMaterialField restored;
+  const creative::CreativeTerrainMaterialMutationReceipt receipt =
+      restored.apply(edits);
+  if (!receipt.accepted || (edits.empty() ? receipt.changed
+                                         : !receipt.changed)) {
+    return false;
+  }
+  output = std::move(restored);
+  return true;
+}
+
 [[nodiscard]] bool objectIdsAreUniqueAndNextIdIsValid(
     std::span<const SaveCreativeDocumentObjectRecord> objects,
     creative::CreativeObjectId nextObjectId,
@@ -478,6 +520,12 @@ void mirrorRestoreFailure(ProductCreativeDocumentSectionReceipt& receipt,
                 ProductCreativeDocumentSectionStatus::InvalidTerrainData,
                 reason);
       return;
+    case creative::CreativeDocumentRestoreStatus::InvalidTerrainMaterialField:
+      setStatus(
+          receipt,
+          ProductCreativeDocumentSectionStatus::InvalidTerrainMaterialData,
+          reason);
+      return;
     case creative::CreativeDocumentRestoreStatus::InvalidNextObjectId:
       setStatus(receipt,
                 ProductCreativeDocumentSectionStatus::InvalidNextObjectId,
@@ -523,6 +571,8 @@ std::string_view toString(
       return "InvalidVoxelData";
     case ProductCreativeDocumentSectionStatus::InvalidTerrainData:
       return "InvalidTerrainData";
+    case ProductCreativeDocumentSectionStatus::InvalidTerrainMaterialData:
+      return "InvalidTerrainMaterialData";
     case ProductCreativeDocumentSectionStatus::InvalidNextObjectId:
       return "InvalidNextObjectId";
     case ProductCreativeDocumentSectionStatus::Converted:
@@ -540,6 +590,8 @@ ProductCreativeDocumentSectionBuildResult buildSaveCreativeDocumentSection(
   receipt.objectCount = document.objectCount();
   receipt.voxelCellCount = document.voxelField().occupiedCellCount();
   receipt.terrainControlCount = document.terrainField().controlCount();
+  receipt.terrainMaterialOverrideCount =
+      document.terrainMaterialField().overrideCount();
   receipt.nextObjectId = document.nextObjectId();
 
   if (!document.isValid()) {
@@ -592,6 +644,8 @@ ProductCreativeDocumentSectionBuildResult buildSaveCreativeDocumentSection(
   result.section.voxelChunks = toSaveVoxelChunks(document.voxelField());
   result.section.terrainControls =
       toSaveTerrainControls(document.terrainField());
+  result.section.terrainMaterials =
+      toSaveTerrainMaterials(document.terrainMaterialField());
 
   receipt.accepted = true;
   receipt.changed = true;
@@ -599,6 +653,8 @@ ProductCreativeDocumentSectionBuildResult buildSaveCreativeDocumentSection(
   receipt.objectCount = result.section.objects.size();
   receipt.voxelCellCount = document.voxelField().occupiedCellCount();
   receipt.terrainControlCount = document.terrainField().controlCount();
+  receipt.terrainMaterialOverrideCount =
+      document.terrainMaterialField().overrideCount();
   receipt.nextObjectId = result.section.nextObjectId;
   receipt.message = "creative_document_section_converted";
   receipt.reasonCode = "creative_document_section_converted";
@@ -617,6 +673,7 @@ ProductCreativeDocumentSectionRestoreResult restoreCreativeDocumentFromSaveSecti
     receipt.voxelCellCount += chunk.cells.size();
   }
   receipt.terrainControlCount = section.terrainControls.size();
+  receipt.terrainMaterialOverrideCount = section.terrainMaterials.size();
   receipt.nextObjectId = section.nextObjectId;
 
   if (!section.present) {
@@ -659,6 +716,14 @@ ProductCreativeDocumentSectionRestoreResult restoreCreativeDocumentFromSaveSecti
     setStatus(receipt,
               ProductCreativeDocumentSectionStatus::InvalidTerrainData,
               "invalid_terrain_data");
+    return result;
+  }
+  if (!toCreativeTerrainMaterialField(section.terrainMaterials,
+                                      request.terrainMaterialField)) {
+    setStatus(
+        receipt,
+        ProductCreativeDocumentSectionStatus::InvalidTerrainMaterialData,
+        "invalid_terrain_material_data");
     return result;
   }
 
