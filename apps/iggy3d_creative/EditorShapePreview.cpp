@@ -154,6 +154,31 @@ bool appendCreativeMaterialBrushGuideLine(
   return lines.size() == before + 1U;
 }
 
+bool appendCreativeMaterialBrushPivotMarker(
+    std::vector<RenderCreativeWireframeDebugLine>& lines,
+    cr::CreativeGridCoord3 pivot,
+    const cr::CreativeGridSettings& grid,
+    float thickness) {
+  if (!std::isfinite(grid.cellSizeMeters) || grid.cellSizeMeters <= 0.0) {
+    return false;
+  }
+  const cr::CreativeBounds cellBounds = cr::creativeVolumeCellBounds(
+      pivot, grid.cellSizeMeters, grid.origin);
+  const cr::CreativeCoreVec3Conversion center = cr::creativeVec3ToCoreChecked(
+      cr::measureCreativeBounds(cellBounds).center);
+  if (!center.converted) {
+    return false;
+  }
+  const float halfExtent =
+      static_cast<float>(grid.cellSizeMeters * 0.16);
+  const Vec3 extent{halfExtent, halfExtent, halfExtent};
+  const std::size_t before = lines.size();
+  appendStandaloneWireframeBoxEdges(
+      lines, center.value - extent, center.value + extent,
+      RenderLineColor{1.0F, 0.82F, 0.12F, 1.0F}, thickness);
+  return lines.size() > before;
+}
+
 void appendCreativeShapeBrushOutline(
     std::vector<RenderCreativeWireframeDebugLine>& lines,
     const cr::CreativeVolumeSelection& selection,

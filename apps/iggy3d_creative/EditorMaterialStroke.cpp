@@ -268,15 +268,15 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
     rejectMaterialStroke(editor, held.objectKind);
     return;
   }
-  if (!stroke.hasBrushGuideAnchor) {
-    stroke.hasBrushGuideAnchor = true;
-    stroke.brushGuideAnchor = sample.center;
+  if (!stroke.hasBrushAnchor) {
+    stroke.hasBrushAnchor = true;
+    stroke.brushAnchor = sample.center;
     stroke.brushConfig =
         creativeMaterialBrushGestureConfig(editor.toolSettings);
   }
   cr::CreativeGridCoord3 constrainedCenter{};
   if (!cr::guideCreativeMaterialBrushCenter(
-          stroke.brushConfig.guide, stroke.brushGuideAnchor, sample.center,
+          stroke.brushConfig.guide, stroke.brushAnchor, sample.center,
           constrainedCenter)) {
     rejectMaterialStroke(editor, held.objectKind);
     return;
@@ -318,9 +318,20 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
       rejectMaterialStroke(editor, held.objectKind);
       return;
     }
-    includeStampBounds(stamp.minCell, stamp.maxCell, boundsInitialized,
+    const cr::CreativeMaterialBrushSymmetryPlan symmetry =
+        cr::planCreativeMaterialBrushSymmetry(
+            {stroke.brushConfig.symmetry, stroke.brushAnchor,
+             stamp.generatedCells()});
+    if (!symmetry.accepted) {
+      stroke.capacityReached =
+          symmetry.status ==
+          cr::CreativeMaterialBrushSymmetryStatus::CapacityExceeded;
+      rejectMaterialStroke(editor, held.objectKind);
+      return;
+    }
+    includeStampBounds(symmetry.minCell, symmetry.maxCell, boundsInitialized,
                        aggregateMin, aggregateMax);
-    for (cr::CreativeGridCoord3 cell : stamp.generatedCells()) {
+    for (cr::CreativeGridCoord3 cell : symmetry.generatedCells()) {
       const cr::CreativeObjectKind currentMaterial = field.materialAt(cell);
       const bool maskAllows =
           kind == CreativeMaterialStrokeKind::Remove ||

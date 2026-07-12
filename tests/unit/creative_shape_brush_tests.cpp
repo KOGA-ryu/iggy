@@ -53,6 +53,15 @@ bool containsStampCell(const cr::CreativeMaterialBrushStampPlan& plan,
                      });
 }
 
+bool containsSymmetryCell(
+    const cr::CreativeMaterialBrushSymmetryPlan& plan,
+    cr::CreativeGridCoord3 cell) {
+  return std::any_of(plan.generatedCells().begin(), plan.generatedCells().end(),
+                     [cell](cr::CreativeGridCoord3 candidate) {
+                       return sameCell(candidate, cell);
+                     });
+}
+
 cr::CreativeMaterialBrushStampPlan stamp(
     cr::CreativeMaterialBrushShape shape,
     cr::CreativeMaterialBrushSize size,
@@ -357,6 +366,137 @@ bool materialBrushPathLimitsFailBeforePartialOutput() {
                 "extreme path rejects before coordinate traversal");
 }
 
+bool materialBrushSymmetryIsBoundedAndDeterministic() {
+  constexpr std::array source{cr::CreativeGridCoord3{1, 0, 0},
+                              cr::CreativeGridCoord3{2, 0, 0}};
+  const cr::CreativeMaterialBrushSymmetryPlan mirrorX =
+      cr::planCreativeMaterialBrushSymmetry(
+          {cr::CreativeMaterialBrushSymmetry::MirrorX, {}, source});
+  constexpr std::array oneCell{cr::CreativeGridCoord3{1, 0, 2}};
+  const cr::CreativeMaterialBrushSymmetryPlan mirrorXZ =
+      cr::planCreativeMaterialBrushSymmetry(
+          {cr::CreativeMaterialBrushSymmetry::MirrorXZ, {}, oneCell});
+  constexpr std::array onPlane{cr::CreativeGridCoord3{0, 3, 0}};
+  const cr::CreativeMaterialBrushSymmetryPlan deduplicated =
+      cr::planCreativeMaterialBrushSymmetry(
+          {cr::CreativeMaterialBrushSymmetry::MirrorX, {}, onPlane});
+
+  return expect(mirrorX.accepted && mirrorX.cellCount == 4U &&
+                    sameCell(mirrorX.cells[0], {1, 0, 0}) &&
+                    sameCell(mirrorX.cells[1], {2, 0, 0}) &&
+                    sameCell(mirrorX.cells[2], {-1, 0, 0}) &&
+                    sameCell(mirrorX.cells[3], {-2, 0, 0}) &&
+                    !mirrorX.cellIsMirrored(0U) &&
+                    !mirrorX.cellIsMirrored(1U) &&
+                    mirrorX.cellIsMirrored(2U) &&
+                    mirrorX.cellIsMirrored(3U) &&
+                    sameCell(mirrorX.minCell, {-2, 0, 0}) &&
+                    sameCell(mirrorX.maxCell, {2, 0, 0}),
+                "mirror X emits originals first and mirrored cells second") &&
+         expect(mirrorXZ.accepted && mirrorXZ.cellCount == 4U &&
+                    containsSymmetryCell(mirrorXZ, {1, 0, 2}) &&
+                    containsSymmetryCell(mirrorXZ, {-1, 0, 2}) &&
+                    containsSymmetryCell(mirrorXZ, {1, 0, -2}) &&
+                    containsSymmetryCell(mirrorXZ, {-1, 0, -2}),
+                "mirror XZ emits a bounded four-way set") &&
+         expect(deduplicated.accepted && deduplicated.cellCount == 1U &&
+                    !deduplicated.cellIsMirrored(0U),
+                "pivot-plane overlap keeps the direct cell once");
+}
+
+bool materialBrushSymmetryFailuresClearPartialOutput() {
+  constexpr std::array oneCell{cr::CreativeGridCoord3{1, 0, 1}};
+  cr::CreativeMaterialBrushSymmetryRequest invalidRequest;
+  invalidRequest.symmetry =
+      static_cast<cr::CreativeMaterialBrushSymmetry>(255U);
+  invalidRequest.sourceCells = oneCell;
+  const auto invalid = cr::planCreativeMaterialBrushSymmetry(invalidRequest);
+
+  cr::CreativeMaterialBrushSymmetryRequest emptyRequest;
+  const auto empty = cr::planCreativeMaterialBrushSymmetry(emptyRequest);
+
+  cr::CreativeMaterialBrushSymmetryRequest limitRequest;
+  limitRequest.sourceCells = oneCell;
+  limitRequest.maxCellCount = 0U;
+  const auto invalidLimit =
+      cr::planCreativeMaterialBrushSymmetry(limitRequest);
+
+  cr::CreativeMaterialBrushSymmetryRequest capacityRequest;
+  capacityRequest.symmetry = cr::CreativeMaterialBrushSymmetry::MirrorXZ;
+  capacityRequest.sourceCells = oneCell;
+  capacityRequest.maxCellCount = 3U;
+  const auto capacity =
+      cr::planCreativeMaterialBrushSymmetry(capacityRequest);
+
+  cr::CreativeMaterialBrushStampRequest largeStampRequest;
+  largeStampRequest.shape = cr::CreativeMaterialBrushShape::Cube;
+  largeStampRequest.size = cr::CreativeMaterialBrushSize::FiveCells;
+  largeStampRequest.centerCell = {10, 0, 10};
+  const auto largeStamp =
+      cr::planCreativeMaterialBrushStamp(largeStampRequest);
+  cr::CreativeMaterialBrushSymmetryRequest largeSymmetryRequest;
+  largeSymmetryRequest.symmetry =
+      cr::CreativeMaterialBrushSymmetry::MirrorXZ;
+  largeSymmetryRequest.sourceCells = largeStamp.generatedCells();
+  const auto largeSymmetry =
+      cr::planCreativeMaterialBrushSymmetry(largeSymmetryRequest);
+
+  constexpr std::array overflowSource{
+      cr::CreativeGridCoord3{std::numeric_limits<std::int32_t>::min(), 0, 0}};
+  cr::CreativeMaterialBrushSymmetryRequest overflowRequest;
+  overflowRequest.symmetry = cr::CreativeMaterialBrushSymmetry::MirrorX;
+  overflowRequest.pivot = {std::numeric_limits<std::int32_t>::max(), 0, 0};
+  overflowRequest.sourceCells = overflowSource;
+  const auto overflow =
+      cr::planCreativeMaterialBrushSymmetry(overflowRequest);
+
+  return expect(!invalid.accepted && invalid.cellCount == 0U &&
+                    invalid.status ==
+                        cr::CreativeMaterialBrushSymmetryStatus::
+                            InvalidSymmetry,
+                "invalid symmetry fails closed") &&
+         expect(!empty.accepted && empty.cellCount == 0U &&
+                    empty.status ==
+                        cr::CreativeMaterialBrushSymmetryStatus::EmptyInput,
+                "empty symmetry input fails closed") &&
+         expect(!invalidLimit.accepted && invalidLimit.cellCount == 0U &&
+                    invalidLimit.status ==
+                        cr::CreativeMaterialBrushSymmetryStatus::InvalidLimit,
+                "invalid symmetry limit fails closed") &&
+         expect(!capacity.accepted && capacity.cellCount == 0U &&
+                    capacity.status ==
+                        cr::CreativeMaterialBrushSymmetryStatus::
+                            CapacityExceeded,
+                "symmetry capacity clears partial output") &&
+         expect(largeStamp.accepted && largeStamp.cellCount == 125U &&
+                    !largeSymmetry.accepted &&
+                    largeSymmetry.cellCount == 0U &&
+                    largeSymmetry.status ==
+                        cr::CreativeMaterialBrushSymmetryStatus::
+                            CapacityExceeded,
+                "five-cell four-way symmetry rejects before partial output") &&
+         expect(!overflow.accepted && overflow.cellCount == 0U &&
+                    overflow.status ==
+                        cr::CreativeMaterialBrushSymmetryStatus::
+                            CoordinateOverflow,
+                "symmetry coordinate overflow clears partial output") &&
+         expect(cr::toString(cr::CreativeMaterialBrushSymmetry::Off) ==
+                        "OFF" &&
+                    cr::toString(
+                        cr::CreativeMaterialBrushSymmetry::MirrorX) ==
+                        "MIRROR X" &&
+                    cr::toString(
+                        cr::CreativeMaterialBrushSymmetry::MirrorY) ==
+                        "MIRROR Y" &&
+                    cr::toString(
+                        cr::CreativeMaterialBrushSymmetry::MirrorZ) ==
+                        "MIRROR Z" &&
+                    cr::toString(
+                        cr::CreativeMaterialBrushSymmetry::MirrorXZ) ==
+                        "MIRROR XZ",
+                "symmetry labels expose their world axes");
+}
+
 bool boxParityAndHollowBoundary() {
   const auto filled = plan(cr::CreativeShapeBrushKind::Box,
                            {0, 0, 0}, {2, 2, 2});
@@ -484,6 +624,8 @@ int main() {
                   materialBrushMasksPartitionOccupancy() &&
                   materialBrushPathUsesExactBoundedSupercover() &&
                   materialBrushPathLimitsFailBeforePartialOutput() &&
+                  materialBrushSymmetryIsBoundedAndDeterministic() &&
+                  materialBrushSymmetryFailuresClearPartialOutput() &&
                   boxParityAndHollowBoundary() &&
                   lineIsDeterministicAndEndpointInclusive() &&
                   ellipsoidUsesSymmetricCellCenters() &&

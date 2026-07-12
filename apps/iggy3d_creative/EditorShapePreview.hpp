@@ -30,6 +30,12 @@ void appendCreativeMaterialBrushStampOutline(
     const iggy3d::creative::CreativeGridSettings& grid,
     float thickness);
 
+[[nodiscard]] bool appendCreativeMaterialBrushPivotMarker(
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,
+    iggy3d::creative::CreativeGridCoord3 pivot,
+    const iggy3d::creative::CreativeGridSettings& grid,
+    float thickness);
+
 void appendCreativeShapeBrushOutline(
     std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,
     const iggy3d::creative::CreativeVolumeSelection& selection,

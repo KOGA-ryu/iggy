@@ -625,7 +625,7 @@ std::string creativeEditorHeldItemStatusLabel(
   }
   if (held.kind == cr::CreativeHeldItemKind::MaterialBrush) {
     const CreativeMaterialBrushGestureConfig brushConfig =
-        editor.interaction.materialStroke.hasBrushGuideAnchor
+        editor.interaction.materialStroke.hasBrushAnchor
             ? editor.interaction.materialStroke.brushConfig
             : creativeMaterialBrushGestureConfig(editor.toolSettings);
     output.append(" | ");
@@ -641,6 +641,10 @@ std::string creativeEditorHeldItemStatusLabel(
     output.append(cr::toString(brushConfig.size));
     output.append(" | ");
     output.append(cr::toString(brushConfig.guide));
+    if (brushConfig.symmetry != cr::CreativeMaterialBrushSymmetry::Off) {
+      output.append(" | ");
+      output.append(cr::toString(brushConfig.symmetry));
+    }
     output.append(" | ");
     output.append(cr::toString(brushConfig.mask));
     if (brushConfig.mask ==

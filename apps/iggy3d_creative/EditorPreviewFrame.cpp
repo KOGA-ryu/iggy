@@ -153,22 +153,45 @@ struct MaterialBrushPreviewPlan {
   bool removing = false;
   bool admitted = false;
   bool hasGuideAnchor = false;
+  bool showSymmetryPivot = false;
   cr::CreativeMaterialBrushGuide guide =
       cr::CreativeMaterialBrushGuide::Free;
   cr::CreativeGridCoord3 guideAnchor{};
   cr::CreativeGridCoord3 center{};
   cr::CreativeMaterialBrushStampPlan stamp{};
   std::array<cr::CreativeGridCoord3,
-             cr::kCreativeMaterialBrushStampCapacity>
-      eligibleCells{};
-  std::uint16_t eligibleCellCount = 0U;
+             cr::kCreativeMaterialBrushSymmetryCapacity>
+      plannedDirectCells{};
+  std::array<cr::CreativeGridCoord3,
+             cr::kCreativeMaterialBrushSymmetryCapacity>
+      plannedMirroredCells{};
+  std::array<cr::CreativeGridCoord3,
+             cr::kCreativeMaterialBrushSymmetryCapacity>
+      eligibleDirectCells{};
+  std::array<cr::CreativeGridCoord3,
+             cr::kCreativeMaterialBrushSymmetryCapacity>
+      eligibleMirroredCells{};
+  std::uint16_t plannedDirectCellCount = 0U;
+  std::uint16_t plannedMirroredCellCount = 0U;
+  std::uint16_t eligibleDirectCellCount = 0U;
+  std::uint16_t eligibleMirroredCellCount = 0U;
 
-  [[nodiscard]] std::span<const cr::CreativeGridCoord3> renderedCells()
+  [[nodiscard]] std::span<const cr::CreativeGridCoord3> renderedDirectCells()
       const noexcept {
     return admitted
-               ? std::span<const cr::CreativeGridCoord3>{eligibleCells.data(),
-                                                         eligibleCellCount}
-               : stamp.generatedCells();
+               ? std::span<const cr::CreativeGridCoord3>{
+                     eligibleDirectCells.data(), eligibleDirectCellCount}
+               : std::span<const cr::CreativeGridCoord3>{
+                     plannedDirectCells.data(), plannedDirectCellCount};
+  }
+
+  [[nodiscard]] std::span<const cr::CreativeGridCoord3>
+  renderedMirroredCells() const noexcept {
+    return admitted
+               ? std::span<const cr::CreativeGridCoord3>{
+                     eligibleMirroredCells.data(), eligibleMirroredCellCount}
+               : std::span<const cr::CreativeGridCoord3>{
+                     plannedMirroredCells.data(), plannedMirroredCellCount};
   }
 };
 
@@ -206,17 +229,20 @@ struct MaterialBrushPreviewPlan {
   const CreativeMaterialStrokeState& stroke =
       editor.interaction.materialStroke;
   const CreativeMaterialBrushGestureConfig config =
-      stroke.hasBrushGuideAnchor
+      stroke.hasBrushAnchor
           ? stroke.brushConfig
           : creativeMaterialBrushGestureConfig(editor.toolSettings);
   const cr::CreativeGridCoord3 anchor =
-      stroke.hasBrushGuideAnchor ? stroke.brushGuideAnchor : rawCenter;
+      stroke.hasBrushAnchor ? stroke.brushAnchor : rawCenter;
   cr::CreativeGridCoord3 center{};
   if (!cr::guideCreativeMaterialBrushCenter(config.guide, anchor, rawCenter,
                                             center)) {
     return output;
   }
-  output.hasGuideAnchor = stroke.hasBrushGuideAnchor;
+  output.hasGuideAnchor = stroke.hasBrushAnchor;
+  output.showSymmetryPivot =
+      stroke.hasBrushAnchor &&
+      config.symmetry != cr::CreativeMaterialBrushSymmetry::Off;
   output.guide = config.guide;
   output.guideAnchor = anchor;
   output.center = center;
@@ -227,8 +253,25 @@ struct MaterialBrushPreviewPlan {
     return output;
   }
 
+  const cr::CreativeMaterialBrushSymmetryPlan symmetry =
+      cr::planCreativeMaterialBrushSymmetry(
+          {config.symmetry, anchor, output.stamp.generatedCells()});
+  if (!symmetry.accepted) {
+    for (cr::CreativeGridCoord3 cell : output.stamp.generatedCells()) {
+      output.plannedDirectCells[output.plannedDirectCellCount++] = cell;
+    }
+    return output;
+  }
+
   const cr::CreativeVoxelField& field = document.voxelField();
-  for (cr::CreativeGridCoord3 cell : output.stamp.generatedCells()) {
+  for (std::size_t index = 0U; index < symmetry.cellCount; ++index) {
+    const cr::CreativeGridCoord3 cell = symmetry.cells[index];
+    const bool mirrored = symmetry.cellIsMirrored(index);
+    if (mirrored) {
+      output.plannedMirroredCells[output.plannedMirroredCellCount++] = cell;
+    } else {
+      output.plannedDirectCells[output.plannedDirectCellCount++] = cell;
+    }
     const cr::CreativeObjectKind currentMaterial = field.materialAt(cell);
     const bool occupied = currentMaterial != cr::CreativeObjectKind::Unknown;
     const bool allowed =
@@ -242,7 +285,11 @@ struct MaterialBrushPreviewPlan {
                         editor.interaction.materialStroke, cell)) {
       continue;
     }
-    output.eligibleCells[output.eligibleCellCount++] = cell;
+    if (mirrored) {
+      output.eligibleMirroredCells[output.eligibleMirroredCellCount++] = cell;
+    } else {
+      output.eligibleDirectCells[output.eligibleDirectCellCount++] = cell;
+    }
   }
   const std::size_t remainingCapacity =
       editor.interaction.materialStroke.visitedCount <=
@@ -252,10 +299,12 @@ struct MaterialBrushPreviewPlan {
           : 0U;
   const bool materialValid =
       output.removing || cr::creativeVolumeBrushSupported(held.objectKind);
+  const std::size_t eligibleCellCount =
+      output.eligibleDirectCellCount + output.eligibleMirroredCellCount;
   output.admitted = materialValid &&
                     !editor.interaction.materialStroke.capacityReached &&
-                    output.eligibleCellCount > 0U &&
-                    output.eligibleCellCount <= remainingCapacity;
+                    eligibleCellCount > 0U &&
+                    eligibleCellCount <= remainingCapacity;
   return output;
 }
 
@@ -542,6 +591,7 @@ void buildAndAttachCreativeEditorOverlayFrame(
   output.lineMarkerEdgeCount = 0;
   output.pathPointHandleEdgeCount = 0;
   output.ghostEdgeCount = 0;
+  output.materialBrushPivotEdgeCount = 0;
   output.materialBrushGuideLineCount = 0;
   output.materialBrushEdgeCount = 0;
   output.volumeEdgeCount = 0;
@@ -701,12 +751,25 @@ void buildAndAttachCreativeEditorOverlayFrame(
   const MaterialBrushPreviewPlan materialBrushPreview =
       materialBrushPreviewPlan(editor, appState.facade.document());
   if (!editor.transform.active && materialBrushPreview.visible) {
-    const RenderLineColor color =
+    const RenderLineColor directColor =
         materialBrushPreview.removing
             ? RenderLineColor{1.0F, 0.2F, 0.16F, 1.0F}
             : materialBrushPreview.admitted
                   ? RenderLineColor{0.22F, 1.0F, 0.34F, 1.0F}
                   : RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F};
+    const RenderLineColor mirroredColor =
+        materialBrushPreview.admitted
+            ? RenderLineColor{0.18F, 0.9F, 1.0F, 1.0F}
+            : RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F};
+    const std::size_t pivotBefore = combinedWireLines.size();
+    if (materialBrushPreview.showSymmetryPivot) {
+      static_cast<void>(appendCreativeMaterialBrushPivotMarker(
+          combinedWireLines, materialBrushPreview.guideAnchor,
+          appState.facade.document().gridSettings(),
+          std::max(0.045F, gizmoThickness * 1.4F)));
+    }
+    output.materialBrushPivotEdgeCount =
+        combinedWireLines.size() - pivotBefore;
     const std::size_t guideBefore = combinedWireLines.size();
     if (materialBrushPreview.hasGuideAnchor) {
       static_cast<void>(appendCreativeMaterialBrushGuideLine(
@@ -719,8 +782,12 @@ void buildAndAttachCreativeEditorOverlayFrame(
         combinedWireLines.size() - guideBefore;
     const std::size_t before = combinedWireLines.size();
     appendCreativeMaterialBrushCellOutlines(
-        combinedWireLines, materialBrushPreview.renderedCells(),
-        appState.facade.document().gridSettings(), color, gizmoThickness);
+        combinedWireLines, materialBrushPreview.renderedDirectCells(),
+        appState.facade.document().gridSettings(), directColor, gizmoThickness);
+    appendCreativeMaterialBrushCellOutlines(
+        combinedWireLines, materialBrushPreview.renderedMirroredCells(),
+        appState.facade.document().gridSettings(), mirroredColor,
+        gizmoThickness);
     output.materialBrushEdgeCount = combinedWireLines.size() - before;
   }
 

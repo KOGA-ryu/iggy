@@ -309,8 +309,9 @@ preview's contextual wheel. They do not each earn a permanent global key.
   X/Y/Z precision-preview constraints, 15/45/90-degree
   rotation, 0.25/0.5/1/2-meter grid increments, Material Brush Cube/Sphere/
   Cylinder shape, X/Y/Z cylinder axis, 1/3/5-cell size, Free/Line X/Line Y/
-  Line Z/Plane X/Plane Y/Plane Z brush guides, and Add Only/Replace/Overwrite
-  occupancy masks, Replace Brush source filtering by material or Any, volume
+  Line Z/Plane X/Plane Y/Plane Z brush guides, Off/Mirror X/Mirror Y/Mirror Z/
+  Mirror XZ symmetry, and Add Only/Replace/Overwrite occupancy masks, Replace
+  Brush source filtering by material or Any, volume
   Replace source filtering by material or Any, Clone offsets on X/Y/Z at
   1/2/4/8 cells, Linear Array
   direction on either world axis with 1/2/4/8/16/32 copies at 1/2/4/8-cell
@@ -379,6 +380,11 @@ preview's contextual wheel. They do not each earn a permanent global key.
   that world axis and anchors that coordinate at the first valid sample. The
   guide remains fixed until release even if aim moves across uneven geometry;
   losing the target still breaks path interpolation without moving the anchor.
+  Symmetry uses that same first valid sample as a gesture-local pivot. Mirror X,
+  Y, or Z reflects across one world plane; Mirror XZ produces the unique
+  four-way set. Direct cells preview green, mirrored cells preview cyan, and a
+  small yellow wire box marks the pivot. Cells on a mirror plane are emitted
+  once, and direct/mirrored overlap across the stroke is deduplicated.
   A held gesture repeats every 200 ms and fills every grid cell crossed between
   valid samples, so fast axial and diagonal sweeps do not leave holes. Losing
   the target breaks that interpolation chain instead of bridging empty space.
@@ -393,11 +399,13 @@ preview's contextual wheel. They do not each earn a permanent global key.
   a contextual Source option: Any accepts every occupied voxel, while a named
   material accepts only matching voxels. The preview uses the same material-
   aware predicate: admitted cells are green and a wholly blocked stamp is red.
-  Shape, cylinder axis, size, guide, mask, and replace source are frozen at the
-  first valid sample so a single held gesture cannot mix configurations inside
-  one undo record. Circle erase is independent of the paint mask and source
-  filter. Green
-  wireframes paint; red wireframes erase or mark blocked/invalid state.
+  Shape, cylinder axis, size, guide, symmetry, mask, and replace source are
+  frozen at the first valid sample so a single held gesture cannot mix
+  configurations inside one undo record. Symmetry expansion shares the
+  256-cell planner budget and rejects oversized mirrored batches without
+  partial mutation. Circle erase is independent of the paint mask and source
+  filter. Green wireframes paint; cyan wireframes mirror; red wireframes erase
+  or mark blocked/invalid state.
 - A material's thin green wireframe is only a placement preview. Right mouse or
   controller X attempts the placement. `Wall`, `Floor`, `Ceiling`,
   and `Roof` place one exact voxel cell; props, attachments, paths, lights, and

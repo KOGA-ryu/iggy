@@ -89,6 +89,8 @@ struct CreativeMaterialBrushGestureConfig {
       iggy3d::creative::CreativeMaterialBrushSize::ThreeCells;
   iggy3d::creative::CreativeMaterialBrushGuide guide =
       iggy3d::creative::CreativeMaterialBrushGuide::Free;
+  iggy3d::creative::CreativeMaterialBrushSymmetry symmetry =
+      iggy3d::creative::CreativeMaterialBrushSymmetry::Off;
   iggy3d::creative::CreativeMaterialBrushMask mask =
       iggy3d::creative::CreativeMaterialBrushMask::Overwrite;
   iggy3d::creative::CreativeObjectKind replaceSourceKind =
@@ -102,6 +104,7 @@ creativeMaterialBrushGestureConfig(
           settings.materialBrushAxis,
           settings.materialBrushSize,
           settings.materialBrushGuide,
+          settings.materialBrushSymmetry,
           settings.materialBrushMask,
           settings.materialBrushReplaceSourceKind};
 }
@@ -117,8 +120,8 @@ struct CreativeMaterialStrokeState {
   bool capacityReached = false;
   bool hasLastBrushCenter = false;
   iggy3d::creative::CreativeGridCoord3 lastBrushCenter{};
-  bool hasBrushGuideAnchor = false;
-  iggy3d::creative::CreativeGridCoord3 brushGuideAnchor{};
+  bool hasBrushAnchor = false;
+  iggy3d::creative::CreativeGridCoord3 brushAnchor{};
   CreativeMaterialBrushGestureConfig brushConfig{};
 };
 

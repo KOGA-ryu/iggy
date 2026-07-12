@@ -1351,7 +1351,7 @@ bool materialBrushPaintsErasesPreviewsAndGroupsHistory() {
                        appState.facade.document().revision() ==
                            revisionBeforePreview,
                    "sphere preview shows its exact seven green voxel cells") &&
-            expect(editor.quickEdit.options.count == 4U &&
+            expect(editor.quickEdit.options.count == 5U &&
                        creativeEditorQuickEditStatusLabel(editor) ==
                            "BRUSH SHAPE SPHERE" &&
                        creativeEditorHeldItemStatusLabel(editor) ==
@@ -1393,6 +1393,10 @@ bool materialBrushPaintsErasesPreviewsAndGroupsHistory() {
                   editor, cr::CreativeInputActionId::QuickEditNext) &&
                   creativeEditorQuickEditStatusLabel(editor) ==
                       "BRUSH GUIDE FREE" &&
+                  processCreativeEditorQuickEditAction(
+                      editor, cr::CreativeInputActionId::QuickEditNext) &&
+                  creativeEditorQuickEditStatusLabel(editor) ==
+                      "SYMMETRY OFF" &&
                   processCreativeEditorQuickEditAction(
                       editor, cr::CreativeInputActionId::QuickEditNext) &&
                   creativeEditorQuickEditStatusLabel(editor) ==
@@ -1536,7 +1540,7 @@ bool materialBrushCylinderAxisDrivesPreviewAndMutation() {
   constexpr std::size_t kWireEdgesPerVoxel = 12U;
   bool ok = expect(previewOverlay.materialBrushEdgeCount ==
                            15U * kWireEdgesPerVoxel &&
-                       editor.quickEdit.options.count == 5U &&
+                       editor.quickEdit.options.count == 6U &&
                        editor.quickEdit.options.ids[1] ==
                            cr::CreativeToolOptionId::MaterialBrushAxis &&
                        creativeEditorHeldItemStatusLabel(editor).find(
@@ -1594,7 +1598,7 @@ bool materialBrushPlaneGuideStaysAnchoredForTheGesture() {
   bool ok = expect(appState.facade.document()
                            .voxelField()
                            .occupiedCellCount() == 9U &&
-                       editor.interaction.materialStroke.hasBrushGuideAnchor &&
+                       editor.interaction.materialStroke.hasBrushAnchor &&
                        editor.interaction.materialStroke.brushConfig.guide ==
                            cr::CreativeMaterialBrushGuide::PlaneY,
                    "first sample captures and flattens the gesture plane");
@@ -1652,7 +1656,7 @@ bool materialBrushPlaneGuideStaysAnchoredForTheGesture() {
                     !voxels.occupied({2, 2, 0}) &&
                     cr::creativeUndoDepth(appState.history) == 1U,
                 "constrained sweep fills one flat layer in one undo") &&
-         expect(!editor.interaction.materialStroke.hasBrushGuideAnchor,
+         expect(!editor.interaction.materialStroke.hasBrushAnchor,
                 "release clears the gesture-local plane anchor") &&
          ok;
 }
@@ -1747,8 +1751,118 @@ bool materialBrushLineGuideConstrainsPathAndRendersAxis() {
                   near(axisLines[1].color.b, 1.0F),
               "line guide colors consistently encode X red Y green Z blue") &&
        ok;
-  return expect(!editor.interaction.materialStroke.hasBrushGuideAnchor,
+  return expect(!editor.interaction.materialStroke.hasBrushAnchor,
                 "line guide anchor clears on release") &&
+         ok;
+}
+
+bool materialBrushSymmetryUsesGesturePivotPreviewAndHistory() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 117U);
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
+  editor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::MaterialBrush;
+  editor.toolSettings.materialBrushShape =
+      cr::CreativeMaterialBrushShape::Cube;
+  editor.toolSettings.materialBrushSize =
+      cr::CreativeMaterialBrushSize::OneCell;
+  editor.toolSettings.materialBrushSymmetry =
+      cr::CreativeMaterialBrushSymmetry::MirrorX;
+  syncCreativeEditorHeldItem(appState, editor);
+  syncCreativeEditorQuickEdit(editor);
+  editor.quickEdit.selectedIndex = 3U;
+  setPlaceTarget(editor, 0, 0, 0);
+
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, true, false), 0U);
+  setPlaceTarget(editor, 2, 0, 0);
+
+  CreativeEditorSelectionFrame selection;
+  CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  iggy3d::FrameInput previewFrame;
+  CreativeEditorOverlayFrame previewOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, previewFrame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      previewOverlay);
+
+  constexpr std::size_t kWireEdgesPerVoxel = 12U;
+  const bool previewLayoutValid =
+      previewOverlay.materialBrushPivotEdgeCount == kWireEdgesPerVoxel &&
+      previewOverlay.materialBrushGuideLineCount == 0U &&
+      previewOverlay.materialBrushEdgeCount == 2U * kWireEdgesPerVoxel &&
+      previewOverlay.combinedWireLines.size() >=
+          previewOverlay.materialBrushPivotEdgeCount +
+              previewOverlay.materialBrushEdgeCount;
+  const std::size_t boxesBegin =
+      previewLayoutValid
+          ? previewOverlay.combinedWireLines.size() -
+                previewOverlay.materialBrushEdgeCount
+          : 0U;
+  const std::size_t pivotBegin =
+      previewLayoutValid
+          ? boxesBegin - previewOverlay.materialBrushPivotEdgeCount
+          : 0U;
+  const iggy3d::RenderCreativeWireframeDebugLine* pivotLine =
+      previewLayoutValid
+          ? &previewOverlay.combinedWireLines[pivotBegin]
+          : nullptr;
+  const iggy3d::RenderCreativeWireframeDebugLine* directLine =
+      previewLayoutValid
+          ? &previewOverlay.combinedWireLines[boxesBegin]
+          : nullptr;
+  const iggy3d::RenderCreativeWireframeDebugLine* mirroredLine =
+      previewLayoutValid
+          ? &previewOverlay
+                 .combinedWireLines[boxesBegin + kWireEdgesPerVoxel]
+          : nullptr;
+  bool ok = expect(
+      previewLayoutValid &&
+          editor.interaction.materialStroke.hasBrushAnchor &&
+          editor.interaction.materialStroke.brushAnchor.x == 0 &&
+          editor.interaction.materialStroke.brushConfig.symmetry ==
+              cr::CreativeMaterialBrushSymmetry::MirrorX &&
+          near(pivotLine->color.r, 1.0F) &&
+          near(pivotLine->color.g, 0.82F) &&
+          near(directLine->color.r, 0.22F) &&
+          near(directLine->color.g, 1.0F) &&
+          near(mirroredLine->color.r, 0.18F) &&
+          near(mirroredLine->color.g, 0.9F) &&
+          near(mirroredLine->color.b, 1.0F) &&
+          creativeEditorQuickEditStatusLabel(editor) ==
+              "SYMMETRY MIRROR X" &&
+          creativeEditorHeldItemStatusLabel(editor).find("MIRROR X") !=
+              std::string::npos,
+      "symmetry preview exposes its frozen pivot direct and mirror roles");
+
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, false, false),
+      cr::kCreativeMaterialStrokeRepeatNanoseconds);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, false, false, true),
+      cr::kCreativeMaterialStrokeRepeatNanoseconds + 1U);
+
+  const cr::CreativeVoxelField& voxels =
+      appState.facade.document().voxelField();
+  ok = expect(voxels.occupiedCellCount() == 5U &&
+                  voxels.occupied({-2, 0, 0}) &&
+                  voxels.occupied({-1, 0, 0}) &&
+                  voxels.occupied({0, 0, 0}) &&
+                  voxels.occupied({1, 0, 0}) &&
+                  voxels.occupied({2, 0, 0}) &&
+                  cr::creativeUndoDepth(appState.history) == 1U &&
+                  !editor.interaction.materialStroke.hasBrushAnchor,
+              "one mirrored continuous gesture commits one history entry") &&
+       ok;
+  return expect(undoLastEdit(appState, "test_material_brush_symmetry_undo") &&
+                    appState.facade.document()
+                            .voxelField()
+                            .occupiedCellCount() == 0U,
+                "one undo removes both direct and mirrored stroke cells") &&
          ok;
 }
 
@@ -1995,7 +2109,7 @@ bool materialBrushMasksMatchPreviewAndMutation() {
   paintAt(0);
   const CreativeEditorOverlayFrame selectiveAllowed = previewAt(2);
   paintAt(2);
-  ok = expect(editor.quickEdit.options.count == 5U &&
+  ok = expect(editor.quickEdit.options.count == 6U &&
                   creativeEditorQuickEditStatusLabel(editor) ==
                       "REPLACE SOURCE Floor" &&
                   previewIsColor(selectiveBlocked, 1.0F, 0.15F) &&
@@ -2484,6 +2598,7 @@ int main() {
   ok = materialBrushCylinderAxisDrivesPreviewAndMutation() && ok;
   ok = materialBrushPlaneGuideStaysAnchoredForTheGesture() && ok;
   ok = materialBrushLineGuideConstrainsPathAndRendersAxis() && ok;
+  ok = materialBrushSymmetryUsesGesturePivotPreviewAndHistory() && ok;
   ok = materialBrushInterpolatesDiagonalsAndBreaksOnTargetLoss() && ok;
   ok = materialBrushInterpolatesEraseSweep() && ok;
   ok = materialBrushMasksMatchPreviewAndMutation() && ok;

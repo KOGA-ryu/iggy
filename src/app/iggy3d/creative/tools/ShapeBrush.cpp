@@ -42,6 +42,93 @@ struct InclusiveBounds {
          static_cast<std::size_t>(CreativeMaterialBrushGuide::Count);
 }
 
+[[nodiscard]] bool validMaterialBrushSymmetry(
+    CreativeMaterialBrushSymmetry symmetry) noexcept {
+  return static_cast<std::size_t>(symmetry) <
+         static_cast<std::size_t>(CreativeMaterialBrushSymmetry::Count);
+}
+
+[[nodiscard]] bool sameGridCell(CreativeGridCoord3 lhs,
+                                CreativeGridCoord3 rhs) noexcept {
+  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
+}
+
+void rejectMaterialBrushSymmetry(
+    CreativeMaterialBrushSymmetryPlan& plan,
+    CreativeMaterialBrushSymmetryStatus status,
+    std::string_view reasonCode) noexcept {
+  plan.accepted = false;
+  plan.status = status;
+  plan.cellCount = 0U;
+  plan.reasonCode = reasonCode;
+}
+
+[[nodiscard]] bool symmetryPlanContains(
+    const CreativeMaterialBrushSymmetryPlan& plan,
+    CreativeGridCoord3 cell) noexcept {
+  for (std::size_t index = 0U; index < plan.cellCount; ++index) {
+    if (sameGridCell(plan.cells[index], cell)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+[[nodiscard]] bool appendSymmetryCell(
+    CreativeMaterialBrushSymmetryPlan& plan,
+    CreativeGridCoord3 cell,
+    bool mirrored,
+    std::size_t maxCellCount) noexcept {
+  if (symmetryPlanContains(plan, cell)) {
+    return true;
+  }
+  if (plan.cellCount >= maxCellCount ||
+      plan.cellCount >= plan.cells.size()) {
+    return false;
+  }
+  if (plan.cellCount == 0U) {
+    plan.minCell = cell;
+    plan.maxCell = cell;
+  } else {
+    plan.minCell.x = std::min(plan.minCell.x, cell.x);
+    plan.minCell.y = std::min(plan.minCell.y, cell.y);
+    plan.minCell.z = std::min(plan.minCell.z, cell.z);
+    plan.maxCell.x = std::max(plan.maxCell.x, cell.x);
+    plan.maxCell.y = std::max(plan.maxCell.y, cell.y);
+    plan.maxCell.z = std::max(plan.maxCell.z, cell.z);
+  }
+  plan.cells[plan.cellCount] = cell;
+  plan.mirrored[plan.cellCount] = mirrored ? 1U : 0U;
+  ++plan.cellCount;
+  return true;
+}
+
+[[nodiscard]] bool reflectCoordinate(std::int32_t pivot,
+                                     std::int32_t value,
+                                     std::int32_t& output) noexcept {
+  const std::int64_t reflected =
+      2LL * static_cast<std::int64_t>(pivot) -
+      static_cast<std::int64_t>(value);
+  if (reflected < std::numeric_limits<std::int32_t>::min() ||
+      reflected > std::numeric_limits<std::int32_t>::max()) {
+    return false;
+  }
+  output = static_cast<std::int32_t>(reflected);
+  return true;
+}
+
+[[nodiscard]] bool reflectGridCell(CreativeGridCoord3 source,
+                                   CreativeGridCoord3 pivot,
+                                   bool reflectX,
+                                   bool reflectY,
+                                   bool reflectZ,
+                                   CreativeGridCoord3& output) noexcept {
+  output = source;
+  return (!reflectX || reflectCoordinate(pivot.x, source.x, output.x)) &&
+         (!reflectY || reflectCoordinate(pivot.y, source.y, output.y)) &&
+         (!reflectZ || reflectCoordinate(pivot.z, source.z, output.z));
+}
+
 [[nodiscard]] bool materialBrushGuideIncludesOffset(
     CreativeMaterialBrushGuide guide,
     std::int32_t dx,
@@ -509,6 +596,19 @@ std::string_view toString(CreativeMaterialBrushGuide guide) noexcept {
   return "INVALID";
 }
 
+std::string_view toString(
+    CreativeMaterialBrushSymmetry symmetry) noexcept {
+  switch (symmetry) {
+    case CreativeMaterialBrushSymmetry::Off: return "OFF";
+    case CreativeMaterialBrushSymmetry::MirrorX: return "MIRROR X";
+    case CreativeMaterialBrushSymmetry::MirrorY: return "MIRROR Y";
+    case CreativeMaterialBrushSymmetry::MirrorZ: return "MIRROR Z";
+    case CreativeMaterialBrushSymmetry::MirrorXZ: return "MIRROR XZ";
+    case CreativeMaterialBrushSymmetry::Count: break;
+  }
+  return "INVALID";
+}
+
 std::string_view toString(CreativeMaterialBrushStampStatus status) noexcept {
   switch (status) {
     case CreativeMaterialBrushStampStatus::NotRequested:
@@ -534,6 +634,27 @@ std::string_view toString(CreativeMaterialBrushPathStatus status) noexcept {
     case CreativeMaterialBrushPathStatus::CapacityExceeded:
       return "CapacityExceeded";
     case CreativeMaterialBrushPathStatus::Planned: return "Planned";
+  }
+  return "Unknown";
+}
+
+std::string_view toString(
+    CreativeMaterialBrushSymmetryStatus status) noexcept {
+  switch (status) {
+    case CreativeMaterialBrushSymmetryStatus::NotRequested:
+      return "NotRequested";
+    case CreativeMaterialBrushSymmetryStatus::InvalidSymmetry:
+      return "InvalidSymmetry";
+    case CreativeMaterialBrushSymmetryStatus::InvalidLimit:
+      return "InvalidLimit";
+    case CreativeMaterialBrushSymmetryStatus::EmptyInput:
+      return "EmptyInput";
+    case CreativeMaterialBrushSymmetryStatus::CoordinateOverflow:
+      return "CoordinateOverflow";
+    case CreativeMaterialBrushSymmetryStatus::CapacityExceeded:
+      return "CapacityExceeded";
+    case CreativeMaterialBrushSymmetryStatus::Planned:
+      return "Planned";
   }
   return "Unknown";
 }
@@ -729,6 +850,94 @@ CreativeMaterialBrushStampPlan planCreativeMaterialBrushStamp(
                               : CreativeMaterialBrushStampStatus::InvalidShape;
   plan.reasonCode = plan.accepted ? "creative_material_brush_planned"
                                   : "creative_material_brush_empty";
+  return plan;
+}
+
+CreativeMaterialBrushSymmetryPlan planCreativeMaterialBrushSymmetry(
+    const CreativeMaterialBrushSymmetryRequest& request) noexcept {
+  CreativeMaterialBrushSymmetryPlan plan;
+  plan.requested = true;
+  plan.symmetry = request.symmetry;
+  plan.pivot = request.pivot;
+  if (!validMaterialBrushSymmetry(request.symmetry)) {
+    rejectMaterialBrushSymmetry(
+        plan, CreativeMaterialBrushSymmetryStatus::InvalidSymmetry,
+        "creative_material_brush_symmetry_invalid");
+    return plan;
+  }
+  if (request.maxCellCount == 0U ||
+      request.maxCellCount > plan.cells.size()) {
+    rejectMaterialBrushSymmetry(
+        plan, CreativeMaterialBrushSymmetryStatus::InvalidLimit,
+        "creative_material_brush_symmetry_limit_invalid");
+    return plan;
+  }
+  if (request.sourceCells.empty()) {
+    rejectMaterialBrushSymmetry(
+        plan, CreativeMaterialBrushSymmetryStatus::EmptyInput,
+        "creative_material_brush_symmetry_empty");
+    return plan;
+  }
+
+  const std::size_t maxCellCount = request.maxCellCount;
+  for (CreativeGridCoord3 cell : request.sourceCells) {
+    if (!appendSymmetryCell(plan, cell, false, maxCellCount)) {
+      rejectMaterialBrushSymmetry(
+          plan, CreativeMaterialBrushSymmetryStatus::CapacityExceeded,
+          "creative_material_brush_symmetry_capacity_exceeded");
+      return plan;
+    }
+  }
+
+  const auto appendReflection = [&](CreativeGridCoord3 source,
+                                    bool reflectX,
+                                    bool reflectY,
+                                    bool reflectZ) {
+    CreativeGridCoord3 reflected{};
+    if (!reflectGridCell(source, request.pivot, reflectX, reflectY, reflectZ,
+                         reflected)) {
+      rejectMaterialBrushSymmetry(
+          plan, CreativeMaterialBrushSymmetryStatus::CoordinateOverflow,
+          "creative_material_brush_symmetry_coordinate_overflow");
+      return false;
+    }
+    if (!appendSymmetryCell(plan, reflected, true, maxCellCount)) {
+      rejectMaterialBrushSymmetry(
+          plan, CreativeMaterialBrushSymmetryStatus::CapacityExceeded,
+          "creative_material_brush_symmetry_capacity_exceeded");
+      return false;
+    }
+    return true;
+  };
+
+  for (CreativeGridCoord3 source : request.sourceCells) {
+    switch (request.symmetry) {
+      case CreativeMaterialBrushSymmetry::Off:
+        break;
+      case CreativeMaterialBrushSymmetry::MirrorX:
+        if (!appendReflection(source, true, false, false)) return plan;
+        break;
+      case CreativeMaterialBrushSymmetry::MirrorY:
+        if (!appendReflection(source, false, true, false)) return plan;
+        break;
+      case CreativeMaterialBrushSymmetry::MirrorZ:
+        if (!appendReflection(source, false, false, true)) return plan;
+        break;
+      case CreativeMaterialBrushSymmetry::MirrorXZ:
+        if (!appendReflection(source, true, false, false) ||
+            !appendReflection(source, false, false, true) ||
+            !appendReflection(source, true, false, true)) {
+          return plan;
+        }
+        break;
+      case CreativeMaterialBrushSymmetry::Count:
+        return plan;
+    }
+  }
+
+  plan.accepted = true;
+  plan.status = CreativeMaterialBrushSymmetryStatus::Planned;
+  plan.reasonCode = "creative_material_brush_symmetry_planned";
   return plan;
 }
 

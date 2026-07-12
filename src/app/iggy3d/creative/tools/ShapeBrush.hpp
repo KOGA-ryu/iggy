@@ -16,6 +16,7 @@ namespace iggy3d::creative {
 inline constexpr std::uint64_t kDefaultCreativeShapeBrushCellLimit = 16'384U;
 inline constexpr std::size_t kCreativeMaterialBrushStampCapacity = 125U;
 inline constexpr std::size_t kCreativeMaterialBrushPathCapacity = 256U;
+inline constexpr std::size_t kCreativeMaterialBrushSymmetryCapacity = 256U;
 
 enum class CreativeMaterialBrushShape : std::uint8_t {
   Cube,
@@ -46,6 +47,15 @@ enum class CreativeMaterialBrushGuide : std::uint8_t {
   PlaneX,
   PlaneY,
   PlaneZ,
+  Count,
+};
+
+enum class CreativeMaterialBrushSymmetry : std::uint8_t {
+  Off,
+  MirrorX,
+  MirrorY,
+  MirrorZ,
+  MirrorXZ,
   Count,
 };
 
@@ -92,6 +102,59 @@ struct CreativeMaterialBrushStampPlan {
 
 static_assert(std::is_trivially_copyable_v<CreativeMaterialBrushStampPlan>);
 static_assert(std::is_standard_layout_v<CreativeMaterialBrushStampPlan>);
+
+enum class CreativeMaterialBrushSymmetryStatus : std::uint8_t {
+  NotRequested,
+  InvalidSymmetry,
+  InvalidLimit,
+  EmptyInput,
+  CoordinateOverflow,
+  CapacityExceeded,
+  Planned,
+};
+
+struct CreativeMaterialBrushSymmetryRequest {
+  CreativeMaterialBrushSymmetry symmetry =
+      CreativeMaterialBrushSymmetry::Off;
+  CreativeGridCoord3 pivot{};
+  std::span<const CreativeGridCoord3> sourceCells;
+  std::uint16_t maxCellCount =
+      static_cast<std::uint16_t>(kCreativeMaterialBrushSymmetryCapacity);
+};
+
+struct CreativeMaterialBrushSymmetryPlan {
+  bool requested = false;
+  bool accepted = false;
+  CreativeMaterialBrushSymmetry symmetry =
+      CreativeMaterialBrushSymmetry::Off;
+  CreativeMaterialBrushSymmetryStatus status =
+      CreativeMaterialBrushSymmetryStatus::NotRequested;
+  CreativeGridCoord3 pivot{};
+  CreativeGridCoord3 minCell{};
+  CreativeGridCoord3 maxCell{};
+  std::array<CreativeGridCoord3,
+             kCreativeMaterialBrushSymmetryCapacity>
+      cells{};
+  std::array<std::uint8_t,
+             kCreativeMaterialBrushSymmetryCapacity>
+      mirrored{};
+  std::uint16_t cellCount = 0U;
+  std::string_view reasonCode =
+      "creative_material_brush_symmetry_not_requested";
+
+  [[nodiscard]] std::span<const CreativeGridCoord3> generatedCells()
+      const noexcept {
+    return {cells.data(), cellCount};
+  }
+
+  [[nodiscard]] bool cellIsMirrored(std::size_t index) const noexcept {
+    return index < cellCount && mirrored[index] != 0U;
+  }
+};
+
+static_assert(
+    std::is_trivially_copyable_v<CreativeMaterialBrushSymmetryPlan>);
+static_assert(std::is_standard_layout_v<CreativeMaterialBrushSymmetryPlan>);
 
 enum class CreativeMaterialBrushPathStatus : std::uint8_t {
   NotRequested,
@@ -197,9 +260,13 @@ struct CreativeShapeBrushPlanReceipt {
 [[nodiscard]] std::string_view toString(
     CreativeMaterialBrushGuide guide) noexcept;
 [[nodiscard]] std::string_view toString(
+    CreativeMaterialBrushSymmetry symmetry) noexcept;
+[[nodiscard]] std::string_view toString(
     CreativeMaterialBrushStampStatus status) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeMaterialBrushPathStatus status) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeMaterialBrushSymmetryStatus status) noexcept;
 
 [[nodiscard]] std::uint8_t creativeMaterialBrushRadiusCells(
     CreativeMaterialBrushSize size) noexcept;
@@ -227,6 +294,13 @@ struct CreativeShapeBrushPlanReceipt {
 // stamp and constrain only the path center.
 [[nodiscard]] CreativeMaterialBrushStampPlan planCreativeMaterialBrushStamp(
     const CreativeMaterialBrushStampRequest& request) noexcept;
+
+// Emits unique source cells first, then unique mirrored cells. Reflection uses
+// 64-bit intermediates and clears partial output on overflow or capacity
+// failure. Work and storage are bounded by maxCellCount and 256 cells.
+[[nodiscard]] CreativeMaterialBrushSymmetryPlan
+planCreativeMaterialBrushSymmetry(
+    const CreativeMaterialBrushSymmetryRequest& request) noexcept;
 
 // Traverses the segment between two grid-cell centers. Exact edge and corner
 // crossings include every touched neighbor, producing a deterministic 3D
