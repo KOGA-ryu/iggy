@@ -206,6 +206,9 @@ stepped fallback.
 
 Keep these as explicit later work, with profiling and visual tests before use:
 
+- Procedural Hill, Basin, Ring, Crater, Ridge, Wave, and Ripple stamping is
+  specified in [creative_terrain_profiles_plan.md](creative_terrain_profiles_plan.md).
+  It remains planned until its pure planner and editor integration gates pass.
 - AI navigation over smooth terrain must consume the bounded height-patch query
   and prove route/slope parity before replacing its current footprint model.
 - Material layers, erosion, spline ridges, caves, and overhangs are separate
