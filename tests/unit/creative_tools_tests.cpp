@@ -1398,6 +1398,87 @@ bool selectionPlacementPrecisionIsExactAndFailClosed() {
          ok;
 }
 
+bool selectionPlacementScalePlanMatchesAtomicCommit() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Scale Plan");
+  cr::CreativeDocumentCreateRequest create;
+  create.kind = cr::CreativeObjectKind::Crate;
+  create.name = "Left";
+  create.transform.position = {0.0, 0.5, 0.0};
+  create.hasTransformOverride = true;
+  const cr::CreativeDocumentCreateReceipt left = document.createObject(create);
+  create.name = "Right";
+  create.transform.position = {2.0, 0.5, 0.0};
+  const cr::CreativeDocumentCreateReceipt right = document.createObject(create);
+  const std::array ids{left.objectId, right.objectId};
+
+  cr::CreativeSelectionPlacementRequest request;
+  request.mode = cr::CreativeSelectionPlacementMode::Move;
+  request.sourceAnchor = {1.0, 0.5, 0.0};
+  request.targetAnchor = request.sourceAnchor;
+  request.uniformScale = 1.5;
+  const cr::CreativeSelectionPlacementPlan plan =
+      cr::planCreativeSelectionPlacement(document.objects(), request);
+  const std::uint64_t revisionBefore = document.revision();
+  const cr::CreativeSelectionPlacementReceipt applied =
+      cr::placeDocumentObjectsAtomically(document, ids, request);
+  const cr::CreativeObject* scaledLeft = document.findObject(left.objectId);
+  const cr::CreativeObject* scaledRight = document.findObject(right.objectId);
+
+  bool ok = expect(plan.accepted && plan.objects.size() == 2U &&
+                       applied.accepted && applied.changed,
+                   "uniform scale plans and commits") &&
+            expect(scaledLeft != nullptr && scaledRight != nullptr &&
+                       cr::creativeVec3ExactlyEqual(
+                           scaledLeft->transform.position,
+                           plan.objects[0].transform.position) &&
+                       cr::creativeVec3ExactlyEqual(
+                           scaledRight->transform.position,
+                           plan.objects[1].transform.position) &&
+                       cr::creativeVec3ExactlyEqual(
+                           scaledLeft->transform.scale,
+                           plan.objects[0].transform.scale) &&
+                       scaledLeft->transform.position.x == -0.5 &&
+                       scaledRight->transform.position.x == 2.5 &&
+                       scaledLeft->transform.scale.x == 1.5,
+                   "commit publishes the exact planned pivot-relative scale") &&
+            expect(document.revision() == revisionBefore + 1U,
+                   "scaled batch advances document revision once");
+
+  cr::CreativeObject route;
+  route.id = 99U;
+  route.kind = cr::CreativeObjectKind::PatrolRoute;
+  route.pathPoints = {{{0.0, 0.0, 0.0}}, {{2.0, 0.0, 0.0}}};
+  const std::array routeSource{route};
+  const cr::CreativeSelectionPlacementPlan routePlan =
+      cr::planCreativeSelectionPlacement(routeSource, request);
+  ok = expect(routePlan.accepted &&
+                  routePlan.objects[0].pathPoints[0].position.x == -0.5 &&
+                  routePlan.objects[0].pathPoints[1].position.x == 2.5,
+              "path points scale around the same selection anchor") &&
+       ok;
+  cr::CreativeSelectionPlacementRequest unsupportedCopy = request;
+  unsupportedCopy.mode = cr::CreativeSelectionPlacementMode::Copy;
+  const cr::CreativeSelectionPlacementPlan copyScale =
+      cr::planCreativeSelectionPlacement(routeSource, unsupportedCopy);
+  ok = expect(!copyScale.accepted &&
+                  copyScale.status ==
+                      cr::CreativeSelectionPlacementStatus::InvalidRequest,
+              "scaled Copy preview fails until scaled paste has commit parity") &&
+       ok;
+
+  cr::CreativeDocument invalidDocument = document;
+  request.uniformScale = 0.0;
+  const std::uint64_t invalidRevision = invalidDocument.revision();
+  const cr::CreativeSelectionPlacementReceipt rejected =
+      cr::placeDocumentObjectsAtomically(invalidDocument, ids, request);
+  return expect(!rejected.accepted && !rejected.changed &&
+                    rejected.status ==
+                        cr::CreativeSelectionPlacementStatus::InvalidRequest &&
+                    invalidDocument.revision() == invalidRevision,
+                "non-positive scale fails before mutation") &&
+         ok;
+}
+
 bool selectionPlacementMoveIsAtomicAndFailClosed() {
   cr::CreativeDocument document = cr::CreativeDocument::create("Placement");
   cr::CreativeDocumentCreateRequest wallRequest;
@@ -1491,6 +1572,7 @@ int main() {
                   replaceFilterAndCloneOffsetUseExplicitInputs() &&
                   transformCommandsStoreRadiansAndResolveLiveGeometry() &&
                   selectionPlacementPlanOwnsPreviewAndCommitGeometry() &&
+                  selectionPlacementScalePlanMatchesAtomicCommit() &&
                   selectionPlacementPrecisionIsExactAndFailClosed() &&
                   selectionPlacementMoveIsAtomicAndFailClosed();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

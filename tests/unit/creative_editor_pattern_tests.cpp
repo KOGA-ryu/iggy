@@ -270,6 +270,16 @@ bool transformCopyPreviewIsTransientAndConfirmable() {
                        editor.transform.mode ==
                            cr::CreativeSelectionPlacementMode::Copy,
                    "transform copy begins without stale target");
+  ok = expect(app::cycleCreativeEditorTransformMode(
+                  appState, editor.transform) &&
+                  editor.transform.transformMode ==
+                      app::CreativeEditorTransformMode::Rotate &&
+                  app::cycleCreativeEditorTransformMode(
+                      appState, editor.transform) &&
+                  editor.transform.transformMode ==
+                      app::CreativeEditorTransformMode::Move,
+              "clipboard transform skips unsupported scale channel") &&
+       ok;
 
   static_cast<void>(app::processCreativeEditorSelectionTransformPreview(
       appState, editor.transform, true, {5.5, 0.0, 7.5}, false,
@@ -463,6 +473,84 @@ bool precisionTransformConstrainsNudgesAndCommitsOnce() {
          ok;
 }
 
+bool selectionTransformScalePreviewMatchesCommitAndOneUndo() {
+  cr::CreativeAppState appState;
+  if (!expect(installDocument(appState, "Transform Scale", 79U),
+              "scale transform document installed") ||
+      !expect(createAndSelectRoom(appState) != cr::kInvalidObjectId,
+              "scale transform source selected")) {
+    return false;
+  }
+  app::CreativeEditorState editor;
+  if (!expect(app::beginCreativeEditorSelectionTransformPreview(
+                  appState, editor.transform, "test_scale_begin"),
+              "scale transform begins")) {
+    return false;
+  }
+  const cr::CreativeVec3 anchor =
+      editor.transform.sourceClipboard.placementAnchor;
+  static_cast<void>(app::processCreativeEditorSelectionTransformPreview(
+      appState, editor.transform, true, anchor, false, "test_scale_aim"));
+  const std::uint64_t revisionBefore = appState.facade.document().revision();
+  bool ok = expect(app::cycleCreativeEditorTransformMode(
+                       appState, editor.transform) &&
+                       app::cycleCreativeEditorTransformMode(
+                           appState, editor.transform) &&
+                       editor.transform.transformMode ==
+                           app::CreativeEditorTransformMode::Scale,
+                   "Square mode cycle reaches scale for live selection") &&
+            expect(app::adjustCreativeEditorTransformSetting(
+                       appState, editor.transform, 1) &&
+                       app::adjustCreativeEditorTransformSetting(
+                           appState, editor.transform, 1) &&
+                       app::creativeEditorTransformUniformScale(
+                           editor.transform) == 1.5 &&
+                       editor.transform.plan.accepted,
+                   "D-pad scale adjustment reaches bounded 1.5x preview");
+
+  const cr::CreativeObject planned = editor.transform.plan.objects.front();
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> lines;
+  const std::size_t lineCount =
+      app::appendCreativeEditorSelectionTransformPreview(
+          editor.transform, 0.05F, lines);
+  ok = expect(lineCount >= 48U && lines.size() >= 48U &&
+                  lines[24].color.g == 1.0F &&
+                  lines[24].start.x == -0.25F &&
+                  lines[24].end.x == 1.25F,
+              "scale preview renders exact mint destination bounds") &&
+       expect(appState.facade.document().revision() == revisionBefore &&
+                  cr::creativeUndoDepth(appState.history) == 0U,
+              "scale preview remains transient") &&
+       ok;
+
+  static_cast<void>(app::requestCreativeEditorSelectionTransformCommit(
+      editor.transform));
+  const app::CreativeEditorTransformCommitReceipt committed =
+      app::processCreativeEditorSelectionTransformPreview(
+          appState, editor.transform, true, anchor, false,
+          "test_scale_commit");
+  const cr::CreativeObject* scaled = appState.facade.findObject(1U);
+  ok = expect(committed.accepted && committed.changed && scaled != nullptr &&
+                  cr::creativeBoundsExactlyEqual(scaled->bounds,
+                                                 planned.bounds) &&
+                  cr::creativeVec3ExactlyEqual(scaled->transform.scale,
+                                               planned.transform.scale),
+              "scale commit matches preview geometry exactly") &&
+       expect(appState.facade.document().revision() == revisionBefore + 1U &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "scale commit advances once and records one undo") &&
+       ok;
+
+  const cr::CreativeHistoryApplyReceipt undo = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+  scaled = appState.facade.findObject(1U);
+  return expect(undo.accepted && scaled != nullptr &&
+                    scaled->bounds.min.x == 0.0 &&
+                    scaled->bounds.max.x == 1.0,
+                "one undo restores pre-scale geometry") &&
+         ok;
+}
+
 bool lockedSelectionTransformStaysRedAndNonMutating() {
   cr::CreativeAppState appState;
   if (!expect(installDocument(appState, "Transform Locked", 76U),
@@ -552,6 +640,7 @@ int main() {
                   radialCommitRecordsOneUndoStepAndRequiresPivot() &&
                   transformCopyPreviewIsTransientAndConfirmable() &&
                   selectionTransformMoveUsesControlsAndOneUndo() &&
+                  selectionTransformScalePreviewMatchesCommitAndOneUndo() &&
                   precisionTransformConstrainsNudgesAndCommitsOnce() &&
                   lockedSelectionTransformStaysRedAndNonMutating() &&
                   largeTransformPreviewUsesOneAggregateBox();

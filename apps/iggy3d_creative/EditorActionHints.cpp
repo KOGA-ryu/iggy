@@ -173,10 +173,11 @@ void appendQuickEdit(HintSpecBuffer& buffer,
                      cr::CreativeInputActionId::QuickEditIncrease,
                      "Operation");
       return;
+    case cr::CreativeHeldItemKind::ObjectMove:
+      return;
     case cr::CreativeHeldItemKind::Material:
     case cr::CreativeHeldItemKind::MaterialBrush:
     case cr::CreativeHeldItemKind::ObjectSelect:
-    case cr::CreativeHeldItemKind::ObjectMove:
     case cr::CreativeHeldItemKind::VolumeSelect:
     case cr::CreativeHeldItemKind::VolumeFill:
     case cr::CreativeHeldItemKind::VolumeHollow:
@@ -336,6 +337,10 @@ void appendViewportHints(HintSpecBuffer& buffer,
       appendHint(buffer, gamepad ? positiveAction : negativeAction, "Move");
       appendHint(buffer, gamepad ? negativeAction : positiveAction,
                  gamepad ? "Cancel" : "Transform");
+      if (gamepad) {
+        appendHint(buffer, cr::CreativeInputActionId::QuickEditNext,
+                   "Transform");
+      }
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
       break;
     case cr::CreativeHeldItemKind::ObjectGroup:
@@ -395,6 +400,7 @@ void appendViewportHints(HintSpecBuffer& buffer,
 }
 
 void appendContextHints(HintSpecBuffer& buffer,
+                        const CreativeEditorState& editor,
                         cr::CreativeInputContext context,
                         bool assigningToolWheel) noexcept {
   switch (context) {
@@ -441,8 +447,25 @@ void appendContextHints(HintSpecBuffer& buffer,
       appendHint(buffer, cr::CreativeInputActionId::CancelActiveTool, "Cancel");
       appendHint(buffer, cr::CreativeInputActionId::ToggleTransformControls,
                  "Controls");
-      appendHintPair(buffer, cr::CreativeInputActionId::QuickEditDecrease,
-                     cr::CreativeInputActionId::QuickEditIncrease, "Rotate");
+      appendHint(buffer, cr::CreativeInputActionId::QuickEditNext, "Mode");
+      {
+        std::string_view adjustment = "Axis";
+        switch (editor.transform.transformMode) {
+          case CreativeEditorTransformMode::Move: break;
+          case CreativeEditorTransformMode::Rotate:
+            adjustment = "Rotate";
+            break;
+          case CreativeEditorTransformMode::Scale:
+            adjustment = "Scale";
+            break;
+          case CreativeEditorTransformMode::Count:
+            adjustment = "Adjust";
+            break;
+        }
+        appendHintPair(buffer, cr::CreativeInputActionId::QuickEditDecrease,
+                       cr::CreativeInputActionId::QuickEditIncrease,
+                       adjustment);
+      }
       appendHintPair(buffer, cr::CreativeInputActionId::FlyDown,
                      cr::CreativeInputActionId::FlyUp, "Fly");
       return;
@@ -502,7 +525,7 @@ cr::CreativeActionHintFrame resolveCreativeEditorActionHints(
     appendViewportHints(specs, editor, held, activeDevice);
   } else {
     appendContextHints(
-        specs, inputContext,
+        specs, editor, inputContext,
         editor.catalog.toolWheelAssignmentCatalogEntryIndex.has_value());
   }
   if (specs.capacityExceeded) {

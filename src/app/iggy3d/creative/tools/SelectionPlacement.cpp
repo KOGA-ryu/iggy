@@ -22,6 +22,11 @@ namespace {
   return {lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z};
 }
 
+[[nodiscard]] CreativeVec3 multiply(CreativeVec3 lhs,
+                                    double rhs) noexcept {
+  return {lhs.x * rhs, lhs.y * rhs, lhs.z * rhs};
+}
+
 [[nodiscard]] bool samePathPoints(
     std::span<const CreativePathPoint> lhs,
     std::span<const CreativePathPoint> rhs) noexcept {
@@ -154,6 +159,7 @@ void addNudgeStep(CreativeVec3& offset,
 [[nodiscard]] CreativeVec3 transformPlacementOffset(
     CreativeVec3 offset,
     const CreativeSelectionPlacementRequest& request) noexcept {
+  offset = multiply(offset, request.uniformScale);
   if (request.hasAxisAngleRotation) {
     return rotateCreativeVectorAxisAngle(offset, request.rotationAxis,
                                          request.rotationRadians);
@@ -255,6 +261,8 @@ void addNudgeStep(CreativeVec3& offset,
         transformPlacementPoint(source.transform.position, request);
     output.transform.rotationEulerRadians = transformPlacementRotation(
         source.transform.rotationEulerRadians, request);
+    output.transform.scale =
+        multiply(source.transform.scale, request.uniformScale);
     if (objectHasBounds(source.kind)) {
       output.bounds = translateBounds(
           source.bounds,
@@ -319,6 +327,12 @@ void includePlacementPoint(CreativeSelectionPlacementPlan& plan,
       !descriptorAllowsMutation(source.kind, CreativeMutationKind::Rotate)) {
     return CreativeMutationKind::Rotate;
   }
+  if (objectHasTransform(source.kind) &&
+      !creativeVec3ExactlyEqual(source.transform.scale,
+                                transformed.transform.scale) &&
+      !descriptorAllowsMutation(source.kind, CreativeMutationKind::Scale)) {
+    return CreativeMutationKind::Scale;
+  }
   if (!objectHasTransform(source.kind) && objectHasBounds(source.kind) &&
       !creativeBoundsExactlyEqual(source.bounds, transformed.bounds) &&
       !descriptorAllowsMutation(source.kind, CreativeMutationKind::SetBounds)) {
@@ -347,7 +361,14 @@ void appendPlacementMutations(const CreativeObject& source,
                                 transformed.transform.rotationEulerRadians)) {
     mutations.push_back(
         {0, source.id, CreativeMutationKind::Rotate,
-         makeRotatePayload(transformed.transform.rotationEulerRadians)});
+        makeRotatePayload(transformed.transform.rotationEulerRadians)});
+  }
+  if (objectHasTransform(source.kind) &&
+      !creativeVec3ExactlyEqual(source.transform.scale,
+                                transformed.transform.scale)) {
+    mutations.push_back(
+        {0, source.id, CreativeMutationKind::Scale,
+         CreativeMutationPayload{ScaleMutation{transformed.transform.scale}}});
   }
   if (!objectHasTransform(source.kind) && objectHasBounds(source.kind) &&
       !creativeBoundsExactlyEqual(source.bounds, transformed.bounds)) {
@@ -514,6 +535,9 @@ CreativeSelectionPlacementPlan planCreativeSelectionPlacement(
   if (!validPlacementMode(request.mode) || request.quarterTurns > 3U ||
       !isFiniteCreativeVec3(request.sourceAnchor) ||
       !isFiniteCreativeVec3(request.targetAnchor) ||
+      !std::isfinite(request.uniformScale) || request.uniformScale <= 0.0 ||
+      (request.mode == CreativeSelectionPlacementMode::Copy &&
+       request.uniformScale != 1.0) ||
       !isValidCreativeAxis3(request.rotationAxis) ||
       !std::isfinite(request.rotationRadians) ||
       (request.hasAxisAngleRotation && legacyRotationRequested)) {

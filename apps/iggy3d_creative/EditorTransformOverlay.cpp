@@ -285,28 +285,36 @@ void appendCreativeEditorTransformOverlay(
       std::min(860U, drawableWidth > 16U ? drawableWidth - 16U : drawableWidth);
   const std::int32_t statusX =
       std::max(0, (width - static_cast<std::int32_t>(statusWidth)) / 2);
-  const std::int32_t statusY = std::max(4, height - 112);
+  const std::int32_t statusY = std::max(4, height - 132);
   uiRects.push_back(
-      {statusX, statusY, statusWidth, 34U, 0.045F, 0.052F, 0.058F, 0.94F});
+      {statusX, statusY, statusWidth, 54U, 0.045F, 0.052F, 0.058F, 0.94F});
   const cr::CreativeVec3 displacement{
       state.request.targetAnchor.x - state.request.sourceAnchor.x,
       state.request.targetAnchor.y - state.request.sourceAnchor.y,
       state.request.targetAnchor.z - state.request.sourceAnchor.z};
   const double visibleStep =
       state.snapStepMeters * (state.fineNudgeActive ? 0.25 : 1.0);
-  char status[256];
+  char modeStatus[128];
   std::snprintf(
-      status, sizeof(status),
-      "%s | %s | %s %.2fM | D %+.2f %+.2f %+.2f | %uDEG%s%s | R",
+      modeStatus, sizeof(modeStatus), "%s %s | AX %s | %s %.3g",
       std::string(cr::toString(state.mode)).c_str(),
+      std::string(toString(state.transformMode)).c_str(),
       std::string(cr::toString(state.constraint)).c_str(),
-      state.fineNudgeActive ? "FINE" : "STEP", visibleStep, displacement.x,
+      state.fineNudgeActive ? "FINE" : "STEP", visibleStep);
+  char valueStatus[160];
+  std::snprintf(
+      valueStatus, sizeof(valueStatus),
+      "D %+.3g %+.3g %+.3g | R%u | S%.2f%s%s", displacement.x,
       displacement.y, displacement.z,
       static_cast<unsigned>(state.request.quarterTurns) * 90U,
+      creativeEditorTransformUniformScale(state),
       state.request.mirrorX ? " | MX" : "",
       state.request.mirrorZ ? " | MZ" : "");
   const bool ready = state.targetPositionable && state.plan.accepted;
-  appendText(glyphs, status, statusX + 12, statusY + 10, drawableWidth,
+  appendText(glyphs, modeStatus, statusX + 12, statusY + 8, drawableWidth,
+             drawableHeight, ready ? 0.72F : 1.0F,
+             ready ? 0.94F : 0.42F, ready ? 0.82F : 0.36F);
+  appendText(glyphs, valueStatus, statusX + 12, statusY + 30, drawableWidth,
              drawableHeight, ready ? 0.72F : 1.0F,
              ready ? 0.94F : 0.42F, ready ? 0.82F : 0.36F);
 

@@ -417,6 +417,87 @@ bool groupToolOptionsEnterFocusAndUngroupWithHistory() {
                 "Group options enter focus and ungroup through one history step");
 }
 
+bool controllerTransformScalesAGroupAsOneUndoableHierarchy() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Group Transform");
+  static_cast<void>(document.assignId(310U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId first = createCrate(appState.facade, 0.0);
+  const cr::CreativeObjectId second = createCrate(appState.facade, 2.0);
+  select(appState.facade, first, false);
+  select(appState.facade, second, true);
+  const cr::CreativeGroupCommandReceipt grouped =
+      appState.facade.groupSelectedObjects();
+  appState.history = {};
+  app::CreativeEditorState editor;
+  editor.interaction.hotbar.selectedSlot = 0U;
+  editor.interaction.hotbar.entries[0] = {
+      cr::CreativeHeldItemKind::ObjectMove,
+      cr::CreativeObjectKind::Unknown};
+
+  cr::CreativeInputFrame square;
+  square.context = cr::CreativeInputContext::EditorViewport;
+  cr::setCreativeInputKey(square, cr::CreativeInputKey::GamepadWest, true);
+  cr::CreativeInputRouterState router;
+  const cr::CreativeInputRouteResult routed = cr::routeCreativeInput(
+      router, square, editor.controlProfile.bindingSpan());
+  app::applyCreativeEditorCommandInput(
+      routed, appState, editor, std::filesystem::path{}, "group_transform");
+  if (!expect(grouped.accepted && editor.transform.active &&
+                  editor.transform.anchorPolicy ==
+                      app::CreativeEditorTransformAnchorPolicy::FixedSource &&
+                  editor.transform.targetPositionable &&
+                  cr::creativeVec3ExactlyEqual(
+                      editor.transform.request.sourceAnchor,
+                      editor.transform.request.targetAnchor),
+              "viewport Square starts in-place transform for selected Group")) {
+    return false;
+  }
+
+  const cr::CreativeVec3 anchor =
+      editor.transform.sourceClipboard.placementAnchor;
+  static_cast<void>(app::processCreativeEditorSelectionTransformPreview(
+      appState, editor.transform, true, {99.0, 99.0, 99.0}, false,
+      "group_transform_aim"));
+  bool ok = expect(app::cycleCreativeEditorTransformMode(
+                       appState, editor.transform) &&
+                       app::cycleCreativeEditorTransformMode(
+                           appState, editor.transform) &&
+                       app::adjustCreativeEditorTransformSetting(
+                           appState, editor.transform, 1) &&
+                       editor.transform.plan.accepted &&
+                       editor.transform.plan.objects.size() == 3U,
+                   "Group scale preview contains root and descendants");
+  const std::vector<cr::CreativeObject> planned =
+      editor.transform.plan.objects;
+  static_cast<void>(app::requestCreativeEditorSelectionTransformCommit(
+      editor.transform));
+  const app::CreativeEditorTransformCommitReceipt committed =
+      app::processCreativeEditorSelectionTransformPreview(
+          appState, editor.transform, true, anchor, false,
+          "group_transform_commit");
+  bool matchesPlan = committed.accepted && committed.changed;
+  for (const cr::CreativeObject& expected : planned) {
+    const cr::CreativeObject* actual =
+        appState.facade.findObject(expected.id);
+    matchesPlan = matchesPlan && actual != nullptr &&
+                  cr::creativeVec3ExactlyEqual(
+                      actual->transform.position,
+                      expected.transform.position) &&
+                  cr::creativeVec3ExactlyEqual(actual->transform.scale,
+                                               expected.transform.scale);
+  }
+  return expect(matchesPlan &&
+                    cr::creativeUndoDepth(appState.history) == 1U &&
+                    appState.facade.findObject(first)->transform.position.x <
+                        0.0 &&
+                    appState.facade.findObject(second)->transform.position.x >
+                        2.0,
+                "Group scales around one pivot and commits as one undo") &&
+         ok;
+}
+
 }  // namespace
 
 int main() {
@@ -429,7 +510,8 @@ int main() {
                  focusResolvesNestedGroupsAtTheCurrentEditingLevel() &&
                  focusedPlacementParentsAuthoredObjectsOnly() &&
                  groupToolOptionsExposeEditAndUngroupCommands() &&
-                 groupToolOptionsEnterFocusAndUngroupWithHistory()
+                 groupToolOptionsEnterFocusAndUngroupWithHistory() &&
+                 controllerTransformScalesAGroupAsOneUndoableHierarchy()
              ? EXIT_SUCCESS
              : EXIT_FAILURE;
 }

@@ -414,6 +414,38 @@ void resetCreativeEditorForDocumentReplacement(
                                   documentId);
 }
 
+[[nodiscard]] bool isControllerTransformShortcut(
+    const CreativeEditorState& editor,
+    const creative::CreativeInputActionEvent& event) noexcept {
+  if (event.action != creative::CreativeInputActionId::QuickEditNext) {
+    return false;
+  }
+  const creative::CreativeControlProfile& profile = editor.controlProfile;
+  std::uint16_t shortcutGroup =
+      static_cast<std::uint16_t>(profile.groupCount);
+  for (std::size_t index = 0U; index < profile.bindingCount; ++index) {
+    const creative::CreativeInputBinding& binding = profile.bindings[index];
+    if (binding.action == event.action && binding.trigger == event.trigger &&
+        binding.context == creative::CreativeInputContext::EditorViewport &&
+        creative::creativeInputKeyIsGamepad(binding.trigger)) {
+      shortcutGroup = profile.bindingGroups[index];
+      break;
+    }
+  }
+  if (shortcutGroup >= profile.groupCount) {
+    return false;
+  }
+  for (std::size_t index = 0U; index < profile.bindingCount; ++index) {
+    const creative::CreativeInputBinding& binding = profile.bindings[index];
+    if (profile.bindingGroups[index] == shortcutGroup &&
+        binding.action == creative::CreativeInputActionId::QuickEditNext &&
+        binding.context == creative::CreativeInputContext::TransformPreview) {
+      return true;
+    }
+  }
+  return false;
+}
+
 }  // namespace
 
 void applyCreativeEditorCommandInput(
@@ -513,8 +545,25 @@ void applyCreativeEditorCommandInput(
       case creative::CreativeInputActionId::ControlsResetDefaults:
       case creative::CreativeInputActionId::Count:
         break;
+      case creative::CreativeInputActionId::QuickEditNext: {
+        const creative::CreativeHeldItemKind held =
+            creative::selectedCreativeHotbarEntry(
+                editor.interaction.hotbar).kind;
+        if (held == creative::CreativeHeldItemKind::ObjectMove &&
+            isControllerTransformShortcut(editor, event) &&
+            creative::selectedTargetCount(
+                appState.facade.selectionState()) > 0U &&
+            beginCreativeEditorSelectionTransformPreview(
+                appState, editor.transform,
+                "controller_selection_transform_begin",
+                CreativeEditorTransformAnchorPolicy::FixedSource)) {
+          break;
+        }
+        static_cast<void>(
+            processCreativeEditorQuickEditAction(editor, event.action));
+        break;
+      }
       case creative::CreativeInputActionId::QuickEditPrevious:
-      case creative::CreativeInputActionId::QuickEditNext:
       case creative::CreativeInputActionId::QuickEditDecrease:
       case creative::CreativeInputActionId::QuickEditIncrease:
         static_cast<void>(

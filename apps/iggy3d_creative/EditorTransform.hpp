@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -27,6 +28,22 @@ enum class CreativeEditorTransformSource : std::uint8_t {
   Clipboard,
   Selection,
 };
+
+enum class CreativeEditorTransformMode : std::uint8_t {
+  Move,
+  Rotate,
+  Scale,
+  Count,
+};
+
+enum class CreativeEditorTransformAnchorPolicy : std::uint8_t {
+  FollowAim,
+  FixedSource,
+};
+
+inline constexpr std::array<double, 9U> kCreativeEditorUniformScaleFactors{
+    0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0};
+inline constexpr std::size_t kCreativeEditorDefaultUniformScaleIndex = 3U;
 
 enum class CreativeEditorTransformControl : std::uint8_t {
   RotatePositive,
@@ -65,11 +82,17 @@ struct CreativeEditorSelectionTransformState {
   bool fineNudgeActive = false;
   CreativeEditorTransformSource source =
       CreativeEditorTransformSource::Clipboard;
+  CreativeEditorTransformMode transformMode =
+      CreativeEditorTransformMode::Move;
+  CreativeEditorTransformAnchorPolicy anchorPolicy =
+      CreativeEditorTransformAnchorPolicy::FollowAim;
   cr::CreativeSelectionPlacementMode mode =
       cr::CreativeSelectionPlacementMode::Copy;
   cr::CreativeSelectionPlacementAxis constraint =
       cr::CreativeSelectionPlacementAxis::Free;
   std::size_t selectedControl = 0;
+  std::size_t uniformScaleIndex =
+      kCreativeEditorDefaultUniformScaleIndex;
   cr::CreativeVec3 aimTargetAnchor{};
   cr::CreativeVec3 nudgeOffset{};
   double snapStepMeters = 1.0;
@@ -101,6 +124,10 @@ struct CreativeEditorTransformFrameResult {
 
 [[nodiscard]] std::string_view toString(
     CreativeEditorTransformControl control) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeEditorTransformMode mode) noexcept;
+[[nodiscard]] double creativeEditorTransformUniformScale(
+    const CreativeEditorSelectionTransformState& state) noexcept;
 
 [[nodiscard]] bool beginCreativeEditorClipboardTransformPreview(
     const cr::CreativeAppState& appState,
@@ -110,7 +137,9 @@ struct CreativeEditorTransformFrameResult {
 [[nodiscard]] bool beginCreativeEditorSelectionTransformPreview(
     cr::CreativeAppState& appState,
     CreativeEditorSelectionTransformState& state,
-    std::string_view source);
+    std::string_view source,
+    CreativeEditorTransformAnchorPolicy anchorPolicy =
+        CreativeEditorTransformAnchorPolicy::FollowAim);
 [[nodiscard]] bool requestCreativeEditorSelectionTransformCommit(
     CreativeEditorSelectionTransformState& state) noexcept;
 [[nodiscard]] bool cancelCreativeEditorSelectionTransformPreview(
@@ -125,6 +154,13 @@ struct CreativeEditorTransformFrameResult {
     CreativeEditorSelectionTransformState& state,
     std::int32_t steps,
     bool fine);
+[[nodiscard]] bool cycleCreativeEditorTransformMode(
+    const cr::CreativeAppState& appState,
+    CreativeEditorSelectionTransformState& state);
+[[nodiscard]] bool adjustCreativeEditorTransformSetting(
+    const cr::CreativeAppState& appState,
+    CreativeEditorSelectionTransformState& state,
+    std::int32_t direction);
 [[nodiscard]] bool applyCreativeEditorTransformControl(
     cr::CreativeAppState& appState,
     CreativeEditorSelectionTransformState& state,

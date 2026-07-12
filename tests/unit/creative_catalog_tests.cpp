@@ -717,6 +717,9 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
                        hasBinding(cr::CreativeInputActionId::QuickEditNext,
                                   cr::CreativeInputKey::GamepadWest,
                                   cr::CreativeInputContext::EditorViewport) &&
+                       hasBinding(cr::CreativeInputActionId::QuickEditNext,
+                                  cr::CreativeInputKey::GamepadWest,
+                                  cr::CreativeInputContext::TransformPreview) &&
                        hasBinding(cr::CreativeInputActionId::QuickEditDecrease,
                                   cr::CreativeInputKey::GamepadDpadLeft,
                                   cr::CreativeInputContext::EditorViewport) &&
@@ -915,6 +918,20 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
               "viewport Square emits one next-setting action") &&
        expect(quickEditHeld.actionCount == 0U,
               "held viewport Square does not repeat setting changes") &&
+       ok;
+
+  cr::CreativeInputRouterState transformModeRouter;
+  cr::CreativeInputFrame transformModeFrame;
+  transformModeFrame.context = cr::CreativeInputContext::TransformPreview;
+  cr::setCreativeInputKey(transformModeFrame,
+                          cr::CreativeInputKey::GamepadWest, true);
+  const cr::CreativeInputRouteResult transformModePressed =
+      cr::routeCreativeInput(transformModeRouter, transformModeFrame,
+                             bindings);
+  ok = expect(transformModePressed.actionCount == 1U &&
+                  transformModePressed.actions[0].action ==
+                      cr::CreativeInputActionId::QuickEditNext,
+              "transform-preview Square emits one mode-cycle action") &&
        ok;
 
   cr::CreativeInputFrame touchpadFrame;

@@ -675,6 +675,19 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
               "array ribbon prioritizes apply and quick-edit controls") &&
        ok;
 
+  setHeld(editor, cr::CreativeHeldItemKind::ObjectMove);
+  const cr::CreativeActionHintFrame moveTool =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* beginTransform =
+      findHint(moveTool, cr::CreativeInputActionId::QuickEditNext);
+  ok = expect(beginTransform != nullptr &&
+                  beginTransform->chord.view() == "Square" &&
+                  beginTransform->label.view() == "Transform",
+              "Move tool advertises Square transform entry") &&
+       ok;
+
   setHeld(editor, cr::CreativeHeldItemKind::ObjectGroup);
   const cr::CreativeActionHintFrame group = resolveCreativeEditorActionHints(
       editor, cr::CreativeInputContext::EditorViewport,
@@ -693,10 +706,31 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
   const cr::CreativeActionHint* transformControls =
       findHint(transform,
                cr::CreativeInputActionId::ToggleTransformControls);
+  const cr::CreativeActionHint* transformMode =
+      findHint(transform, cr::CreativeInputActionId::QuickEditNext);
+  const cr::CreativeActionHint* transformAdjustment =
+      findHint(transform, cr::CreativeInputActionId::QuickEditDecrease);
   ok = expect(transformControls != nullptr &&
                   transformControls->chord.view() == "R3" &&
-                  transformControls->label.view() == "Controls",
-              "transform preview advertises its contextual R3 controls") &&
+                  transformControls->label.view() == "Controls" &&
+                  transformMode != nullptr &&
+                  transformMode->chord.view() == "Square" &&
+                  transformMode->label.view() == "Mode" &&
+                  transformAdjustment != nullptr &&
+                  transformAdjustment->chord.view() == "D-pad L/R" &&
+                  transformAdjustment->label.view() == "Axis",
+              "transform preview advertises mode and active adjustment") &&
+       ok;
+  editor.transform.transformMode = CreativeEditorTransformMode::Scale;
+  const cr::CreativeActionHintFrame scaleTransform =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::TransformPreview,
+          cr::CreativeControlDevice::Gamepad, false);
+  transformAdjustment =
+      findHint(scaleTransform, cr::CreativeInputActionId::QuickEditDecrease);
+  ok = expect(transformAdjustment != nullptr &&
+                  transformAdjustment->label.view() == "Scale",
+              "transform ribbon follows the active scale channel") &&
        ok;
 
   const cr::CreativeActionHintFrame catalog = resolveCreativeEditorActionHints(
