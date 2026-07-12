@@ -463,6 +463,8 @@ void applyCreativeEditorCommandInput(
         creative::clearCreativeVolumeSelection(editor.volume.selection);
         invalidateCreativeEditorConnectedFillCache(
             editor.interaction.connectedFill);
+        invalidateCreativeEditorSurfaceExtrudeCache(
+            editor.interaction.surfaceExtrude);
         resetCreativeMaterialBrushPivot(
             editor.interaction.materialBrushPivot,
             appState.facade.document().id());
@@ -474,6 +476,8 @@ void applyCreativeEditorCommandInput(
           creative::clearCreativeVolumeSelection(editor.volume.selection);
           invalidateCreativeEditorConnectedFillCache(
               editor.interaction.connectedFill);
+          invalidateCreativeEditorSurfaceExtrudeCache(
+              editor.interaction.surfaceExtrude);
           resetCreativeMaterialBrushPivot(
               editor.interaction.materialBrushPivot,
               appState.facade.document().id());

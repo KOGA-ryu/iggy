@@ -193,6 +193,7 @@ Initial tool grammar:
 | Block/material | Remove target | Place at target | Place at target | Remove target | Sample material |
 | Material brush | Erase stamp | Paint stamp | Paint stamp | Erase stamp | Sample material |
 | Connected fill | Erase connected region | Recolor connected region | Recolor connected region | Erase connected region | Sample replacement material |
+| Surface extrude | Remove exposed layer | Extrude exposed face | Extrude exposed face | Remove exposed layer | Sample extrusion material |
 | Object select | Select/toggle target | No action | Select/toggle target | Cancel active action | Sample material |
 | Transform | Fast ground-plane drag | Begin transform preview | Fast ground-plane drag | Cancel active drag | Sample material |
 | Selection wand | Set corner 1 | Set corner 2 | Advance corner 1/2 | Clear selection | Expand selection |
@@ -303,9 +304,10 @@ preview's contextual wheel. They do not each earn a permanent global key.
   Mouse direction or right stick selects a sector; arrow keys, D-pad up/down,
   and wheel cycle it; `Enter`, controller confirm, or click equips the tool into
   the active hotbar slot. `Escape`, controller cancel, or the toggle closes it.
-  Brush owns the first sector, Connected Fill owns the eighth, and Array owns
-  the ninth. Erase and Region Select remain available from the default hotbar
-  and searchable catalog instead of occupying radial sectors.
+  Brush owns the first sector, Connected Fill owns the seventh, Surface
+  Extrude owns the eighth, and Array owns the ninth. Erase, Region Select, and
+  Object Select remain available from the default hotbar and searchable catalog
+  instead of occupying radial sectors.
 - While the wheel is open, `O` or controller Square opens the highlighted
   tool's contextual options. Modal capture prevents X, Circle, and Square from
   mutating the world underneath the wheel.
@@ -328,7 +330,9 @@ preview's contextual wheel. They do not each earn a permanent global key.
   Overwrite occupancy masks, Replace
   Brush source filtering by material or Any, volume
   Replace source filtering by material or Any, Clone offsets on X/Y/Z at
-  1/2/4/8 cells, Connected Fill limits of 64/128/256/512 cells, Linear Array
+  1/2/4/8 cells, Connected Fill limits of 64/128/256/512 cells, Surface
+  Extrude depths of 1/2/4 cells with 64/128/256/512 affected-cell limits,
+  Linear Array
   direction on either world axis with 1/2/4/8/16/32 copies at 1/2/4/8-cell
   spacing, and Radial Array X/Y/Z rings or arcs with 2/4/8/16/32 total
   instances across 90/180/360 degrees.
@@ -450,6 +454,29 @@ preview's contextual wheel. They do not each earn a permanent global key.
   voxel edits, undo/redo, New/Load, aim movement, or limit changes force the
   next preview to resolve fresh document truth. This bounded planner is the
   shared region-discovery seam for later surface-selection and extrusion tools.
+- Surface Extrude turns an aimed exposed voxel face into a bounded coplanar
+  patch. Right mouse or controller X creates 1, 2, or 4 complete layers in the
+  outward face direction using the material held in that hotbar slot. Left
+  mouse or controller Circle removes the same number of validated inward
+  layers. Pick block/Square changes the extrusion material; removal always
+  erases the existing source material.
+  Patch connectivity uses four tangent neighbors on one face plane. Every cell
+  must have the seed material and an empty cell immediately outside the aimed
+  face, so diagonal contact, covered cells, corners, and differently oriented
+  faces do not join the patch. The app snaps the finite picked face normal to
+  one signed world axis before the core planner runs.
+  Tool Options and D-pad quick edit expose Depth (`1`, `2`, or `4` cells) and
+  Affected Limit (`64`, `128`, `256`, or `512` cells). The limit counts every
+  generated or removed layer, not only the visible face: a depth-4 operation
+  with a 256-cell limit can therefore contain at most 64 surface cells. Every
+  outward destination must be empty, and every inward removal cell must retain
+  the source material. Any mismatch, coordinate overflow, or limit breach
+  rejects the complete action before mutation.
+  Cyan wire boxes show every destination that X/right mouse will create. Red
+  shows an invalid operation as one seed box; modal screens and capture mode
+  hide the preview. Accepted extrusion and removal each use one batched Facade
+  mutation and one undo record. Preview plans are allocation-free and cached
+  by document id/revision, seed, face direction, operation, depth, and limit.
 - A material's thin green wireframe is only a placement preview. Right mouse or
   controller X attempts the placement. `Wall`, `Floor`, `Ceiling`,
   and `Roof` place one exact voxel cell; props, attachments, paths, lights, and
@@ -519,6 +546,9 @@ preview's contextual wheel. They do not each earn a permanent global key.
 - Randomized shape-brush symmetry and endpoint-reversal parity, especially even
   extents, diagonal 3D lines, thin ellipsoids, cylinder-axis permutations, and
   selections immediately above both planner limits.
+- Randomized Surface Extrude patch parity for all six face directions,
+  occluded checkerboards, coordinate boundaries, depth/limit products, and
+  occupied late-layer destinations before raising the 512-cell ceiling.
 - Randomized radial-array rigid-transform parity for X/Y/Z axes, pre-rotated
   objects near Euler gimbal configurations, parented groups, and 90/180/360
   endpoint laws before increasing the 32-instance or 512-object limits.

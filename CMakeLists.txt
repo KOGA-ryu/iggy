@@ -64,6 +64,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/tools/Pattern.cpp
     src/app/iggy3d/creative/tools/ShapeBrush.cpp
     src/app/iggy3d/creative/tools/ConnectedFill.cpp
+    src/app/iggy3d/creative/tools/SurfaceExtrude.cpp
     src/app/iggy3d/creative/tools/VolumeSelection.cpp
     src/app/iggy3d/creative/tools/Volume.cpp
     src/app/iggy3d/creative/tools/Measure.cpp
@@ -212,6 +213,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorGizmo.cpp
   apps/iggy3d_creative/EditorInteraction.cpp
   apps/iggy3d_creative/EditorConnectedFill.cpp
+  apps/iggy3d_creative/EditorSurfaceExtrude.cpp
   apps/iggy3d_creative/EditorMaterialStroke.cpp
   apps/iggy3d_creative/EditorPattern.cpp
   apps/iggy3d_creative/EditorBootstrap.cpp

@@ -351,6 +351,9 @@ bool optionDescriptorsAreContextualAndBounded() {
   const cr::CreativeToolOptionList connectedFill =
       cr::creativeToolOptionsForHeldItem(
           cr::CreativeHeldItemKind::ConnectedFill);
+  const cr::CreativeToolOptionList surfaceExtrude =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::SurfaceExtrude);
   const cr::CreativeToolOptionList array =
       cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::LinearArray);
   cr::CreativeToolSettings radialSettings =
@@ -435,6 +438,12 @@ bool optionDescriptorsAreContextualAndBounded() {
                     connectedFill.ids[0] ==
                         cr::CreativeToolOptionId::ConnectedFillLimit,
                 "connected fill exposes only its bounded region limit") &&
+         expect(surfaceExtrude.count == 2U &&
+                    surfaceExtrude.ids[0] ==
+                        cr::CreativeToolOptionId::SurfaceExtrudeDepth &&
+                    surfaceExtrude.ids[1] ==
+                        cr::CreativeToolOptionId::SurfaceExtrudeLimit,
+                "surface extrude exposes depth and affected-cell limit") &&
          expect(array.count == 4U &&
                     array.ids[0] ==
                         cr::CreativeToolOptionId::ArrayMode &&
@@ -463,6 +472,7 @@ bool optionDescriptorsAreContextualAndBounded() {
                     !fill.capacityExceeded && !hollow.capacityExceeded &&
                     !replace.capacityExceeded && !clone.capacityExceeded &&
                     !connectedFill.capacityExceeded &&
+                    !surfaceExtrude.capacityExceeded &&
                     !array.capacityExceeded && !radialArray.capacityExceeded &&
                     array.count <= cr::kCreativeToolOptionCapacity,
                 "default option lists fit bounded storage") &&
@@ -497,6 +507,12 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
   cr::CreativeToolSettings invalidConnectedFillLimit = settings;
   invalidConnectedFillLimit.connectedFillLimit =
       cr::CreativeConnectedFillLimit::Count;
+  cr::CreativeToolSettings invalidSurfaceDepth = settings;
+  invalidSurfaceDepth.surfaceExtrudeDepth =
+      cr::CreativeSurfaceExtrudeDepth::Count;
+  cr::CreativeToolSettings invalidSurfaceLimit = settings;
+  invalidSurfaceLimit.surfaceExtrudeLimit =
+      cr::CreativeConnectedFillLimit::Count;
   bool ok = expect(cr::isValidCreativeToolSettings(settings),
                    "default settings valid") &&
             expect(!cr::isValidCreativeToolSettings(invalidMask),
@@ -516,6 +532,9 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
             expect(!cr::isValidCreativeToolSettings(
                        invalidConnectedFillLimit),
                    "invalid connected fill limit fails settings validation") &&
+            expect(!cr::isValidCreativeToolSettings(invalidSurfaceDepth) &&
+                       !cr::isValidCreativeToolSettings(invalidSurfaceLimit),
+                   "invalid surface depth or limit fails settings validation") &&
             expect(cr::creativeToolOptionValueLabel(
                        settings,
                        cr::CreativeToolOptionId::MoveConstraint) == "FREE" &&
@@ -569,6 +588,14 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::ConnectedFillLimit) ==
+                           "256 CELLS" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::SurfaceExtrudeDepth) ==
+                           "1 CELL" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::SurfaceExtrudeLimit) ==
                            "256 CELLS",
                    "default labels and scalar conversions stable");
 
@@ -628,6 +655,14 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                   settings.connectedFillLimit ==
                       cr::CreativeConnectedFillLimit::Cells512,
               "connected fill limit cycles within fixed storage") &&
+       expect(adjust(cr::CreativeToolOptionId::SurfaceExtrudeDepth, 1).changed &&
+                  settings.surfaceExtrudeDepth ==
+                      cr::CreativeSurfaceExtrudeDepth::TwoCells,
+              "surface extrusion depth cycles within fixed choices") &&
+       expect(adjust(cr::CreativeToolOptionId::SurfaceExtrudeLimit, 1).changed &&
+                  settings.surfaceExtrudeLimit ==
+                      cr::CreativeConnectedFillLimit::Cells512,
+              "surface affected-cell limit cycles within fixed storage") &&
        expect(adjust(cr::CreativeToolOptionId::ShapeBrushKind, 1).changed &&
                   settings.shapeBrushKind == cr::CreativeShapeBrushKind::Line,
               "shape kind cycles") &&

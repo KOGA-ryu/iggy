@@ -12,6 +12,7 @@
 #include "EditorPattern.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "EditorState.hpp"
+#include "EditorSurfaceExtrude.hpp"
 #include "EditorTransform.hpp"
 #include "EditorVolume.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
@@ -80,6 +81,8 @@ constexpr std::array kHeldItemBehaviors{
     HeldItemBehavior{cr::CreativeHeldItemKind::LinearArray, cr::Tool::Select,
                      false, false},
     HeldItemBehavior{cr::CreativeHeldItemKind::ConnectedFill,
+                     cr::Tool::Select, false, false},
+    HeldItemBehavior{cr::CreativeHeldItemKind::SurfaceExtrude,
                      cr::Tool::Select, false, false},
 };
 static_assert(heldItemRowsMatchEnumOrder(kHeldItemBehaviors));
@@ -383,6 +386,20 @@ void eraseConnectedFill(InteractionContext& context) {
       "minecraft_connected_fill_erase"));
 }
 
+void extrudeSurface(InteractionContext& context) {
+  static_cast<void>(applyCreativeEditorSurfaceExtrudeWithHistory(
+      context.request.appState, context.request.editor,
+      cr::CreativeSurfaceExtrudeKind::Extrude,
+      "minecraft_surface_extrude"));
+}
+
+void insetSurface(InteractionContext& context) {
+  static_cast<void>(applyCreativeEditorSurfaceExtrudeWithHistory(
+      context.request.appState, context.request.editor,
+      cr::CreativeSurfaceExtrudeKind::Inset,
+      "minecraft_surface_inset"));
+}
+
 constexpr std::array<HeldItemHandlerRow, cr::kCreativeHeldItemKindCount>
     kHeldItemHandlers{{
         {cr::CreativeHeldItemKind::Material,
@@ -424,6 +441,9 @@ constexpr std::array<HeldItemHandlerRow, cr::kCreativeHeldItemKindCount>
         {cr::CreativeHeldItemKind::ConnectedFill,
          {eraseConnectedFill, paintConnectedFill, sampleTargetMaterial},
          paintConnectedFill, eraseConnectedFill, true},
+        {cr::CreativeHeldItemKind::SurfaceExtrude,
+         {insetSurface, extrudeSurface, sampleTargetMaterial},
+         extrudeSurface, insetSurface, true},
     }};
 static_assert(heldItemRowsMatchEnumOrder(kHeldItemHandlers));
 
@@ -801,6 +821,7 @@ double creativeEditorTargetCellSize(
     case cr::CreativeHeldItemKind::VolumeErase:
     case cr::CreativeHeldItemKind::VolumeClone:
     case cr::CreativeHeldItemKind::ConnectedFill:
+    case cr::CreativeHeldItemKind::SurfaceExtrude:
       return document.gridSettings().cellSizeMeters;
     case cr::CreativeHeldItemKind::ObjectSelect:
     case cr::CreativeHeldItemKind::ObjectMove:
@@ -935,6 +956,46 @@ std::string creativeEditorHeldItemStatusLabel(
         output.append(" CELLS");
       } else if (cache.plan.status ==
                  cr::CreativeConnectedFillStatus::CapacityExceeded) {
+        output.append("TOO LARGE");
+      } else {
+        output.append(cr::toString(cache.plan.status));
+      }
+    }
+    appendQuickEdit();
+    return output;
+  }
+  if (held.kind == cr::CreativeHeldItemKind::SurfaceExtrude) {
+    output.append(" | ");
+    output.append(cr::toString(held.objectKind));
+    output.append(" | ");
+    output.append(cr::toString(editor.toolSettings.surfaceExtrudeDepth));
+    output.append(" | ");
+    output.append(cr::toString(editor.toolSettings.surfaceExtrudeLimit));
+    const CreativeEditorSurfaceExtrudeCache& cache =
+        editor.interaction.surfaceExtrude;
+    const CreativeEditorWorldTarget& target = editor.interaction.target;
+    cr::CreativeGridCoord3 outward{};
+    const bool faceValid =
+        creativeSurfaceFaceOffset(target.grid.faceNormal, outward);
+    const bool cacheMatchesTarget =
+        cache.valid && target.voxelHit && faceValid &&
+        cache.seedCell.x == target.voxelCell.x &&
+        cache.seedCell.y == target.voxelCell.y &&
+        cache.seedCell.z == target.voxelCell.z &&
+        cache.outward.x == outward.x && cache.outward.y == outward.y &&
+        cache.outward.z == outward.z &&
+        cache.kind == cr::CreativeSurfaceExtrudeKind::Extrude &&
+        cache.depth == editor.toolSettings.surfaceExtrudeDepth &&
+        cache.affectedCellLimit == editor.toolSettings.surfaceExtrudeLimit;
+    if (cacheMatchesTarget) {
+      output.append(" | ");
+      if (cache.plan.accepted) {
+        output.append(std::to_string(cache.plan.surfaceCellCount));
+        output.append(" FACE / ");
+        output.append(std::to_string(cache.plan.mutationCellCount));
+        output.append(" CELLS");
+      } else if (cache.plan.status ==
+                 cr::CreativeSurfaceExtrudeStatus::CapacityExceeded) {
         output.append("TOO LARGE");
       } else {
         output.append(cr::toString(cache.plan.status));
@@ -1118,6 +1179,12 @@ bool confirmCreativeEditorHeldItem(cr::CreativeAppState& appState,
   if (held.kind == cr::CreativeHeldItemKind::ConnectedFill) {
     return applyCreativeEditorConnectedFillWithHistory(
                appState, editor, CreativeConnectedFillEditKind::Paint,
+               source)
+        .accepted;
+  }
+  if (held.kind == cr::CreativeHeldItemKind::SurfaceExtrude) {
+    return applyCreativeEditorSurfaceExtrudeWithHistory(
+               appState, editor, cr::CreativeSurfaceExtrudeKind::Extrude,
                source)
         .accepted;
   }

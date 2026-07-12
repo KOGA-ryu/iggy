@@ -43,7 +43,7 @@ constexpr std::array kToolSpecs{
     CatalogToolSpec{CreativeHeldItemKind::MaterialBrush, "Brush",
                     "paint sculpt material sphere cube cylinder"},
     CatalogToolSpec{CreativeHeldItemKind::ObjectSelect, "Object Select",
-                    "select pick object"},
+                    "select pick object", false},
     CatalogToolSpec{CreativeHeldItemKind::ObjectMove, "Transform",
                     "object move drag translate rotate mirror copy"},
     CatalogToolSpec{CreativeHeldItemKind::VolumeSelect, "Region Select",
@@ -60,6 +60,8 @@ constexpr std::array kToolSpecs{
                     "volume region copy duplicate"},
     CatalogToolSpec{CreativeHeldItemKind::ConnectedFill, "Connected Fill",
                     "flood paint bucket connected material region"},
+    CatalogToolSpec{CreativeHeldItemKind::SurfaceExtrude, "Surface Extrude",
+                    "extrude inset pull push connected face surface"},
     CatalogToolSpec{CreativeHeldItemKind::LinearArray, "Array",
                     "array pattern repeat duplicate line radial ring"},
 };

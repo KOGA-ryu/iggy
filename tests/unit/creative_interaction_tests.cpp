@@ -404,6 +404,11 @@ bool heldVolumeItemsMapWithoutBranchesAtCallers() {
                     cr::toString(cr::CreativeHeldItemKind::ConnectedFill) ==
                         "Flood",
                 "connected fill is a distinct non-volume held tool") &&
+         expect(!cr::creativeHeldItemIsVolumeOperation(
+                    cr::CreativeHeldItemKind::SurfaceExtrude) &&
+                    cr::toString(cr::CreativeHeldItemKind::SurfaceExtrude) ==
+                        "Extrude",
+                "surface extrude is a distinct non-volume held tool") &&
          expect(cr::creativeHeldItemUsesDirectShapeGesture(
                     cr::CreativeHeldItemKind::VolumeFill) &&
                     cr::creativeHeldItemUsesDirectShapeGesture(
@@ -420,7 +425,9 @@ bool heldVolumeItemsMapWithoutBranchesAtCallers() {
                     cr::creativeHeldItemUsesMaterial(
                         cr::CreativeHeldItemKind::VolumeReplace) &&
                     cr::creativeHeldItemUsesMaterial(
-                        cr::CreativeHeldItemKind::ConnectedFill),
+                        cr::CreativeHeldItemKind::ConnectedFill) &&
+                    cr::creativeHeldItemUsesMaterial(
+                        cr::CreativeHeldItemKind::SurfaceExtrude),
                 "material-backed held items are explicit") &&
          expect(!cr::creativeHeldItemUsesMaterial(
                     cr::CreativeHeldItemKind::VolumeErase) &&

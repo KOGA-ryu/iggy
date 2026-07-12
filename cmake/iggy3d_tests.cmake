@@ -136,6 +136,11 @@ iggy3d_add_unit_test(creative_connected_fill_tests
 set_tests_properties(creative_connected_fill_tests PROPERTIES
   LABELS "unit;app;creative;tools;connected_fill;iggy3d")
 
+iggy3d_add_unit_test(creative_surface_extrude_tests
+  tests/unit/creative_surface_extrude_tests.cpp)
+set_tests_properties(creative_surface_extrude_tests PROPERTIES
+  LABELS "unit;app;creative;tools;surface_extrude;iggy3d")
+
 iggy3d_add_unit_test(creative_editor_pattern_tests
   tests/unit/creative_editor_pattern_tests.cpp)
 target_sources(creative_editor_pattern_tests PRIVATE

@@ -109,6 +109,7 @@ enum class CreativeHeldItemKind : std::uint8_t {
   VolumeClone,
   LinearArray,
   ConnectedFill,
+  SurfaceExtrude,
   Count,
 };
 

@@ -7,6 +7,7 @@
 #include "EditorPreviewFrame.hpp"
 #include "EditorShapePreview.hpp"
 #include "EditorState.hpp"
+#include "EditorSurfaceExtrude.hpp"
 #include "EditorToolOptions.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
 
@@ -33,6 +34,10 @@ bool expect(bool condition, std::string_view message) {
 }
 
 bool sameVec3(cr::CreativeVec3 lhs, cr::CreativeVec3 rhs) {
+  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
+}
+
+bool sameCell(cr::CreativeGridCoord3 lhs, cr::CreativeGridCoord3 rhs) {
   return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
 }
 
@@ -114,13 +119,15 @@ void setPlaceTarget(CreativeEditorState& editor,
 
 void setVoxelTarget(CreativeEditorState& editor,
                     cr::CreativeGridCoord3 cell,
-                    cr::CreativeObjectKind material) {
+                    cr::CreativeObjectKind material,
+                    cr::CreativeVec3 faceNormal = {0.0, 1.0, 0.0}) {
   CreativeEditorWorldTarget target;
   target.valid = true;
   target.voxelHit = true;
   target.voxelCell = cell;
   target.objectKind = material;
   target.grid.valid = true;
+  target.grid.faceNormal = faceNormal;
   target.grid.targetCell = cell;
   target.grid.adjacentCell = {cell.x, cell.y + 1, cell.z};
   target.grid.targetCellBounds = cr::creativeVolumeCellBounds(
@@ -3114,6 +3121,179 @@ bool connectedFillLimitRejectsWithoutPartialMutation() {
                 "over-limit action cannot partially mutate or create history");
 }
 
+bool surfaceExtrudePreviewMutationAndRemovalStayAtomic() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 702U);
+  const std::array floorEdits{
+      cr::CreativeVoxelEdit{{0, 0, 0}, cr::CreativeObjectKind::Floor},
+      cr::CreativeVoxelEdit{{1, 0, 0}, cr::CreativeObjectKind::Floor},
+      cr::CreativeVoxelEdit{{0, 0, 1}, cr::CreativeObjectKind::Floor},
+      cr::CreativeVoxelEdit{{1, 0, 1}, cr::CreativeObjectKind::Floor},
+  };
+  const cr::CreativeVoxelMutationReceipt seeded =
+      appState.facade.applyVoxelEdits(floorEdits);
+
+  CreativeEditorState editor;
+  editor.interaction.hotbar.selectedSlot = 0U;
+  editor.interaction.hotbar.entries[0] = {
+      cr::CreativeHeldItemKind::SurfaceExtrude,
+      cr::CreativeObjectKind::Wall};
+  editor.toolSettings.surfaceExtrudeDepth =
+      cr::CreativeSurfaceExtrudeDepth::TwoCells;
+  editor.frameIndex = 40U;
+  setVoxelTarget(editor, {0, 0, 0}, cr::CreativeObjectKind::Floor);
+  syncCreativeEditorHeldItem(appState, editor);
+
+  CreativeEditorSelectionFrame selection;
+  CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  iggy3d::FrameInput frame;
+  CreativeEditorOverlayFrame firstOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      firstOverlay);
+  const bool previewCyan = std::any_of(
+      firstOverlay.combinedWireLines.begin(),
+      firstOverlay.combinedWireLines.end(),
+      [](const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return near(line.color.r, 0.12F) && near(line.color.g, 0.82F) &&
+               near(line.color.b, 1.0F);
+      });
+  CreativeEditorOverlayFrame cachedOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      cachedOverlay);
+  const bool cacheReused =
+      editor.interaction.surfaceExtrude.refreshCount == 1U;
+  const std::string status = creativeEditorHeldItemStatusLabel(editor);
+  editor.toolOptions.open = true;
+  CreativeEditorOverlayFrame blockedOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      blockedOverlay);
+  editor.toolOptions.open = false;
+
+  iggy3d::RenderCameraFrame camera;
+  camera.worldEye = {0.5F, 5.0F, 0.5F};
+  camera.worldForward = {0.0F, -1.0F, 0.0F};
+  camera.worldUp = {0.0F, 0.0F, -1.0F};
+  const CreativeEditorPickFrame pickFrame;
+  const cr::CreativeWorldActionFrame accept =
+      actionFrame(cr::CreativeWorldActionId::Accept, true, true, false);
+  processCreativeEditorWorldInteractionFrame(
+      {appState, editor, accept, cr::kCreativeInputModifierNone, camera,
+       pickFrame, 800U, 600U, 0U, false});
+  const bool extruded =
+      editor.interaction.placementFeedback.status ==
+      CreativeEditorPlacementFeedbackStatus::Placed;
+  const cr::CreativeVoxelField& extrudedField =
+      appState.facade.document().voxelField();
+  bool extrusionExact = extrudedField.occupiedCellCount() == 12U;
+  for (std::int32_t y : {1, 2}) {
+    for (std::int32_t x : {0, 1}) {
+      for (std::int32_t z : {0, 1}) {
+        extrusionExact =
+            extrusionExact &&
+            extrudedField.materialAt({x, y, z}) ==
+                cr::CreativeObjectKind::Wall;
+      }
+    }
+  }
+  const bool extrusionFeedback =
+      editor.interaction.placementFeedback.status ==
+          CreativeEditorPlacementFeedbackStatus::Placed &&
+      sameBounds(editor.interaction.placementFeedback.voxelBounds,
+                 {{0.0, 1.0, 0.0}, {2.0, 3.0, 2.0}});
+  const bool oneExtrusionUndo =
+      cr::creativeUndoDepth(appState.history) == 1U;
+  const bool extrusionUndone =
+      undoLastEdit(appState, "test_surface_extrude_undo");
+
+  editor.toolSettings.surfaceExtrudeDepth =
+      cr::CreativeSurfaceExtrudeDepth::OneCell;
+  syncCreativeEditorQuickEdit(editor);
+  const cr::CreativeWorldActionFrame reject =
+      actionFrame(cr::CreativeWorldActionId::Reject, true, true, false);
+  processCreativeEditorWorldInteractionFrame(
+      {appState, editor, reject, cr::kCreativeInputModifierNone, camera,
+       pickFrame, 800U, 600U, 0U, false});
+  const bool removed =
+      editor.interaction.placementFeedback.status ==
+      CreativeEditorPlacementFeedbackStatus::Placed;
+  const cr::CreativeVoxelField& removedField =
+      appState.facade.document().voxelField();
+  const bool removalExact = removedField.occupiedCellCount() == 0U;
+  const bool oneRemovalUndo = cr::creativeUndoDepth(appState.history) == 1U;
+  const bool removalUndone =
+      undoLastEdit(appState, "test_surface_remove_layer_undo");
+
+  editor.toolSettings.surfaceExtrudeDepth =
+      cr::CreativeSurfaceExtrudeDepth::TwoCells;
+  syncCreativeEditorQuickEdit(editor);
+  const cr::CreativeVoxelEdit blocker{{0, 2, 0},
+                                      cr::CreativeObjectKind::Wall};
+  const cr::CreativeVoxelMutationReceipt blockerSeeded =
+      appState.facade.applyVoxelEdits(std::span{&blocker, 1U});
+  setVoxelTarget(editor, {0, 0, 0}, cr::CreativeObjectKind::Floor);
+  CreativeEditorOverlayFrame rejectedOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      rejectedOverlay);
+  const bool rejectedRed = std::any_of(
+      rejectedOverlay.combinedWireLines.begin(),
+      rejectedOverlay.combinedWireLines.end(),
+      [](const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return near(line.color.r, 1.0F) && near(line.color.g, 0.15F) &&
+               near(line.color.b, 0.12F);
+      });
+  const std::uint64_t revisionBeforeRejected =
+      appState.facade.document().revision();
+  const CreativeEditorSurfaceExtrudeReceipt rejected =
+      applyCreativeEditorSurfaceExtrudeWithHistory(
+          appState, editor, cr::CreativeSurfaceExtrudeKind::Extrude,
+          "test_surface_blocked");
+
+  cr::CreativeGridCoord3 snappedFace{};
+  const bool faceSnapped = creativeSurfaceFaceOffset(
+      {-0.8, 0.2, 0.1}, snappedFace);
+  cr::CreativeGridCoord3 invalidFace{};
+  const bool zeroFace = creativeSurfaceFaceOffset({}, invalidFace);
+
+  return expect(seeded.accepted &&
+                    firstOverlay.surfaceExtrudeEdgeCount == 96U &&
+                    previewCyan && cacheReused &&
+                    blockedOverlay.surfaceExtrudeEdgeCount == 0U &&
+                    status ==
+                        "Extrude | Wall | 2 CELLS | 256 CELLS | "
+                        "4 FACE / 8 CELLS | [DEPTH 2 CELLS]",
+                "surface preview exactly matches the cached two-layer plan") &&
+         expect(extruded && extrusionExact && extrusionFeedback &&
+                    oneExtrusionUndo,
+                "surface extrusion creates eight cells as one undo") &&
+         expect(extrusionUndone && removed && removalExact && oneRemovalUndo &&
+                    removalUndone,
+                "PS5 Circle removes one complete exposed layer atomically") &&
+         expect(blockerSeeded.accepted &&
+                    rejectedOverlay.surfaceExtrudeEdgeCount == 12U &&
+                    rejectedRed && !rejected.accepted && !rejected.changed &&
+                    rejected.planStatus ==
+                        cr::CreativeSurfaceExtrudeStatus::
+                            DestinationOccupied &&
+                    appState.facade.document().revision() ==
+                        revisionBeforeRejected &&
+                    appState.facade.document().voxelField().occupiedCellCount() ==
+                        5U &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "blocked destination rejects without partial geometry or history") &&
+         expect(faceSnapped && sameCell(snappedFace, {-1, 0, 0}) &&
+                    !zeroFace,
+                "app face conversion snaps finite dominant normals only");
+}
+
 bool heldShapeToolOwnsItsTwoCornerGesture() {
   CreativeEditorVolumeState volume;
   volume.selection.cellSize = 1.0;
@@ -3252,6 +3432,7 @@ int main() {
   ok = strokeCapacityStopsAndInterruptionFinalizes() && ok;
   ok = connectedFillPreviewMutationCacheAndHistoryStayInParity() && ok;
   ok = connectedFillLimitRejectsWithoutPartialMutation() && ok;
+  ok = surfaceExtrudePreviewMutationAndRemovalStayAtomic() && ok;
   ok = heldShapeToolOwnsItsTwoCornerGesture() && ok;
   ok = radialSelectionRearmsOnlyRightStickLook() && ok;
   return ok ? 0 : 1;

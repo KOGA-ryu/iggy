@@ -289,6 +289,29 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
               "connected fill exposes paint erase and bounded-limit controls") &&
        ok;
 
+  setHeld(editor, cr::CreativeHeldItemKind::SurfaceExtrude,
+          cr::CreativeObjectKind::Wall);
+  const cr::CreativeActionHintFrame surfaceExtrude =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* extrude =
+      findHint(surfaceExtrude, cr::CreativeInputActionId::AcceptAction);
+  const cr::CreativeActionHint* removeLayer =
+      findHint(surfaceExtrude, cr::CreativeInputActionId::RejectAction);
+  const cr::CreativeActionHint* surfaceSetting =
+      findHint(surfaceExtrude,
+               cr::CreativeInputActionId::QuickEditPrevious);
+  ok = expect(extrude != nullptr && extrude->chord.view() == "X" &&
+                  extrude->label.view() == "Extrude" &&
+                  removeLayer != nullptr &&
+                  removeLayer->chord.view() == "Circle" &&
+                  removeLayer->label.view() == "Remove layer" &&
+                  surfaceSetting != nullptr &&
+                  surfaceSetting->chord.view() == "D-pad U/D",
+              "surface extrude exposes pull remove and bounded settings") &&
+       ok;
+
   setHeld(editor, cr::CreativeHeldItemKind::LinearArray);
   const cr::CreativeActionHintFrame array = resolveCreativeEditorActionHints(
       editor, cr::CreativeInputContext::EditorViewport,

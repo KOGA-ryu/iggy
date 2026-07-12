@@ -73,6 +73,8 @@ constexpr CreativeHeldItemMask kMaterialBrushItems =
     heldItemMask(CreativeHeldItemKind::MaterialBrush);
 constexpr CreativeHeldItemMask kConnectedFillItems =
     heldItemMask(CreativeHeldItemKind::ConnectedFill);
+constexpr CreativeHeldItemMask kSurfaceExtrudeItems =
+    heldItemMask(CreativeHeldItemKind::SurfaceExtrude);
 constexpr CreativeHeldItemMask kSnapItems =
     heldItemMask(CreativeHeldItemKind::Material) |
     heldItemMask(CreativeHeldItemKind::ObjectMove) |
@@ -195,6 +197,14 @@ constexpr std::array kToolOptionDescriptors{
                                  "FILL LIMIT",
                                  CreativeToolOptionValueKind::Choice,
                                  kConnectedFillItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::SurfaceExtrudeDepth,
+                                 "DEPTH",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kSurfaceExtrudeItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::SurfaceExtrudeLimit,
+                                 "AFFECT LIMIT",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kSurfaceExtrudeItems},
 };
 static_assert(kToolOptionDescriptors.size() ==
               kCreativeToolOptionDescriptorCount);
@@ -232,6 +242,8 @@ template <typename Enum>
          lhs.materialBrushReplaceSourceKind ==
              rhs.materialBrushReplaceSourceKind &&
          lhs.connectedFillLimit == rhs.connectedFillLimit &&
+         lhs.surfaceExtrudeDepth == rhs.surfaceExtrudeDepth &&
+         lhs.surfaceExtrudeLimit == rhs.surfaceExtrudeLimit &&
          lhs.shapeBrushKind == rhs.shapeBrushKind &&
          lhs.shapeBrushAxis == rhs.shapeBrushAxis &&
          lhs.replaceSourceKind == rhs.replaceSourceKind &&
@@ -556,6 +568,10 @@ bool isValidCreativeToolSettings(
          materialBrushReplaceSourceValid &&
          validEnum(settings.connectedFillLimit,
                    CreativeConnectedFillLimit::Count) &&
+         validEnum(settings.surfaceExtrudeDepth,
+                   CreativeSurfaceExtrudeDepth::Count) &&
+         validEnum(settings.surfaceExtrudeLimit,
+                   CreativeConnectedFillLimit::Count) &&
          validEnum(settings.shapeBrushKind, CreativeShapeBrushKind::Count) &&
          validEnum(settings.shapeBrushAxis, CreativeShapeBrushAxis::Count) &&
          replaceSourceValid &&
@@ -798,6 +814,10 @@ std::string_view creativeToolOptionValueLabel(
                  : toString(settings.materialBrushReplaceSourceKind);
     case CreativeToolOptionId::ConnectedFillLimit:
       return toString(settings.connectedFillLimit);
+    case CreativeToolOptionId::SurfaceExtrudeDepth:
+      return toString(settings.surfaceExtrudeDepth);
+    case CreativeToolOptionId::SurfaceExtrudeLimit:
+      return toString(settings.surfaceExtrudeLimit);
     case CreativeToolOptionId::ShapeBrushKind:
       return toString(settings.shapeBrushKind);
     case CreativeToolOptionId::ShapeBrushAxis:
@@ -920,6 +940,16 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
     case CreativeToolOptionId::ConnectedFillLimit:
       adjusted.connectedFillLimit = cycleEnum(
           adjusted.connectedFillLimit, CreativeConnectedFillLimit::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::SurfaceExtrudeDepth:
+      adjusted.surfaceExtrudeDepth = cycleEnum(
+          adjusted.surfaceExtrudeDepth, CreativeSurfaceExtrudeDepth::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::SurfaceExtrudeLimit:
+      adjusted.surfaceExtrudeLimit = cycleEnum(
+          adjusted.surfaceExtrudeLimit, CreativeConnectedFillLimit::Count,
           direction);
       break;
     case CreativeToolOptionId::ShapeBrushKind:

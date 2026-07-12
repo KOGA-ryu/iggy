@@ -25,6 +25,7 @@
 #include "EditorPreviewProxies.hpp"
 #include "EditorShapePreview.hpp"
 #include "EditorState.hpp"
+#include "EditorSurfaceExtrude.hpp"
 #include "EditorVolume.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/DocumentWireframe.hpp"
@@ -612,6 +613,7 @@ void buildAndAttachCreativeEditorOverlayFrame(
   output.materialBrushGuideLineCount = 0;
   output.materialBrushEdgeCount = 0;
   output.connectedFillEdgeCount = 0;
+  output.surfaceExtrudeEdgeCount = 0;
   output.volumeEdgeCount = 0;
   output.patternEdgeCount = 0;
   output.transformPreviewEdgeCount = 0;
@@ -850,6 +852,45 @@ void buildAndAttachCreativeEditorOverlayFrame(
         combinedWireLines, cells, appState.facade.document().gridSettings(),
         color, gizmoThickness);
     output.connectedFillEdgeCount = combinedWireLines.size() - before;
+  }
+
+  // ---- SURFACE EXTRUDE PREVIEW ------------------------------------------
+  const bool surfaceExtrudeBlocked =
+      request.captureMode || editor.catalog.model.open ||
+      editor.catalog.toolWheel.open || editor.toolOptions.open ||
+      editor.controls.open || editor.transform.active ||
+      editor.transform.controlsOpen;
+  if (!surfaceExtrudeBlocked &&
+      held.kind == cr::CreativeHeldItemKind::SurfaceExtrude &&
+      editor.interaction.target.voxelHit) {
+    cr::CreativeGridCoord3 outward{};
+    const bool faceValid = creativeSurfaceFaceOffset(
+        editor.interaction.target.grid.faceNormal, outward);
+    const cr::CreativeSurfaceExtrudePlan* surfacePlan = nullptr;
+    if (faceValid) {
+      surfacePlan = &resolveCreativeEditorSurfaceExtrudePlan(
+          editor.interaction.surfaceExtrude, appState.facade.document(),
+          editor.interaction.target.voxelCell, outward,
+          cr::CreativeSurfaceExtrudeKind::Extrude,
+          editor.toolSettings.surfaceExtrudeDepth,
+          editor.toolSettings.surfaceExtrudeLimit);
+    }
+    const bool valid =
+        surfacePlan != nullptr && surfacePlan->accepted &&
+        cr::creativeVolumeBrushSupported(held.objectKind);
+    const RenderLineColor color =
+        valid ? RenderLineColor{0.12F, 0.82F, 1.0F, 1.0F}
+              : RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F};
+    const std::array<cr::CreativeGridCoord3, 1U> rejectedSeed{
+        editor.interaction.target.voxelCell};
+    const std::span<const cr::CreativeGridCoord3> cells =
+        valid ? surfacePlan->generatedCells()
+              : std::span<const cr::CreativeGridCoord3>{rejectedSeed};
+    const std::size_t before = combinedWireLines.size();
+    appendCreativeMaterialBrushCellOutlines(
+        combinedWireLines, cells, appState.facade.document().gridSettings(),
+        color, gizmoThickness);
+    output.surfaceExtrudeEdgeCount = combinedWireLines.size() - before;
   }
 
   // ---- VOLUME PREVIEW ----------------------------------------------------

@@ -86,6 +86,13 @@ void appendViewportKeyboardHints(HintSpecBuffer& buffer,
                  "Erase region");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
       break;
+    case cr::CreativeHeldItemKind::SurfaceExtrude:
+      appendHint(buffer, cr::CreativeInputActionId::SecondaryAction,
+                 "Extrude");
+      appendHint(buffer, cr::CreativeInputActionId::PrimaryAction,
+                 "Remove layer");
+      appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
+      break;
     case cr::CreativeHeldItemKind::ObjectSelect:
       appendHint(buffer, cr::CreativeInputActionId::PrimaryAction, "Select");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
@@ -146,6 +153,12 @@ void appendViewportGamepadHints(HintSpecBuffer& buffer,
                  "Fill region");
       appendHint(buffer, cr::CreativeInputActionId::RejectAction,
                  "Erase region");
+      appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
+      break;
+    case cr::CreativeHeldItemKind::SurfaceExtrude:
+      appendHint(buffer, cr::CreativeInputActionId::AcceptAction, "Extrude");
+      appendHint(buffer, cr::CreativeInputActionId::RejectAction,
+                 "Remove layer");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
       break;
     case cr::CreativeHeldItemKind::ObjectSelect:

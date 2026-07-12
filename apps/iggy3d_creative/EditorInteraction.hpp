@@ -10,6 +10,7 @@
 #include "EditorConnectedFill.hpp"
 #include "EditorEdits.hpp"
 #include "EditorPicking.hpp"
+#include "EditorSurfaceExtrude.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
 #include "app/iggy3d/creative/tools/ShapeBrush.hpp"
@@ -231,6 +232,7 @@ struct CreativeEditorInteractionState {
   CreativeMaterialBrushPresetBank materialBrushPresets{};
   CreativeMaterialStrokeState materialStroke{};
   CreativeEditorConnectedFillCache connectedFill{};
+  CreativeEditorSurfaceExtrudeCache surfaceExtrude{};
   iggy3d::creative::CreativeObjectId moveTargetId =
       iggy3d::creative::kInvalidObjectId;
 };
