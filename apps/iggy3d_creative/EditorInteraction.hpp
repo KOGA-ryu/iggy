@@ -87,6 +87,8 @@ struct CreativeMaterialStrokeState {
   std::uint16_t visitedCount = 0;
   std::uint16_t acceptedMutationCount = 0;
   bool capacityReached = false;
+  bool hasLastBrushCenter = false;
+  iggy3d::creative::CreativeGridCoord3 lastBrushCenter{};
 };
 
 [[nodiscard]] constexpr bool creativeEditorPlacementFeedbackVisible(

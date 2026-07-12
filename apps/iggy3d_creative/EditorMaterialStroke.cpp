@@ -1,5 +1,6 @@
 #include "EditorInteraction.hpp"
 
+#include <algorithm>
 #include <array>
 #include <span>
 #include <string_view>
@@ -187,7 +188,12 @@ void applySingleMaterialMutation(cr::CreativeAppState& appState,
   }
 }
 
-[[nodiscard]] cr::CreativeMaterialBrushStampPlan materialBrushStampPlan(
+struct MaterialBrushTargetSample {
+  bool valid = false;
+  cr::CreativeGridCoord3 center{};
+};
+
+[[nodiscard]] MaterialBrushTargetSample materialBrushTargetSample(
     const CreativeEditorState& editor,
     CreativeMaterialStrokeKind kind) noexcept {
   const CreativeEditorWorldTarget& target = editor.interaction.target;
@@ -195,13 +201,51 @@ void applySingleMaterialMutation(cr::CreativeAppState& appState,
       (kind == CreativeMaterialStrokeKind::Remove && !target.voxelHit)) {
     return {};
   }
+  return {true, kind == CreativeMaterialStrokeKind::Remove
+                    ? target.voxelCell
+                    : target.grid.adjacentCell};
+}
+
+[[nodiscard]] cr::CreativeMaterialBrushStampPlan materialBrushStampPlan(
+    const CreativeEditorState& editor,
+    cr::CreativeGridCoord3 center) noexcept {
   cr::CreativeMaterialBrushStampRequest request;
   request.shape = editor.toolSettings.materialBrushShape;
   request.size = editor.toolSettings.materialBrushSize;
-  request.centerCell = kind == CreativeMaterialStrokeKind::Remove
-                           ? target.voxelCell
-                           : target.grid.adjacentCell;
+  request.centerCell = center;
   return cr::planCreativeMaterialBrushStamp(request);
+}
+
+[[nodiscard]] bool editBatchContainsCell(
+    const std::array<cr::CreativeVoxelEdit,
+                     kCreativeMaterialStrokeVisitedCapacity>& edits,
+    std::size_t editCount,
+    cr::CreativeGridCoord3 cell) noexcept {
+  for (std::size_t index = 0U; index < editCount; ++index) {
+    if (sameCell(edits[index].cell, cell)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void includeStampBounds(cr::CreativeGridCoord3 stampMin,
+                        cr::CreativeGridCoord3 stampMax,
+                        bool& initialized,
+                        cr::CreativeGridCoord3& aggregateMin,
+                        cr::CreativeGridCoord3& aggregateMax) noexcept {
+  if (!initialized) {
+    initialized = true;
+    aggregateMin = stampMin;
+    aggregateMax = stampMax;
+    return;
+  }
+  aggregateMin.x = std::min(aggregateMin.x, stampMin.x);
+  aggregateMin.y = std::min(aggregateMin.y, stampMin.y);
+  aggregateMin.z = std::min(aggregateMin.z, stampMin.z);
+  aggregateMax.x = std::max(aggregateMax.x, stampMax.x);
+  aggregateMax.y = std::max(aggregateMax.y, stampMax.y);
+  aggregateMax.z = std::max(aggregateMax.z, stampMax.z);
 }
 
 void applyMaterialBrushMutation(cr::CreativeAppState& appState,
@@ -215,36 +259,69 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
     rejectMaterialStroke(editor, held.objectKind);
     return;
   }
-  const cr::CreativeMaterialBrushStampPlan plan =
-      materialBrushStampPlan(editor, kind);
-  if (!plan.accepted) {
+  const MaterialBrushTargetSample sample =
+      materialBrushTargetSample(editor, kind);
+  if (!sample.valid) {
+    stroke.hasLastBrushCenter = false;
+    rejectMaterialStroke(editor, held.objectKind);
+    return;
+  }
+  cr::CreativeMaterialBrushPathRequest pathRequest;
+  pathRequest.fromCell =
+      stroke.hasLastBrushCenter ? stroke.lastBrushCenter : sample.center;
+  pathRequest.toCell = sample.center;
+  const cr::CreativeMaterialBrushPathPlan path =
+      cr::planCreativeMaterialBrushPath(pathRequest);
+  stroke.hasLastBrushCenter = true;
+  stroke.lastBrushCenter = sample.center;
+  if (!path.accepted) {
+    stroke.capacityReached =
+        path.status == cr::CreativeMaterialBrushPathStatus::CapacityExceeded;
     rejectMaterialStroke(editor, held.objectKind);
     return;
   }
 
-  std::array<cr::CreativeVoxelEdit, cr::kCreativeMaterialBrushStampCapacity>
+  std::array<cr::CreativeVoxelEdit,
+             kCreativeMaterialStrokeVisitedCapacity>
       edits{};
   std::size_t editCount = 0U;
+  const std::size_t remainingCapacity =
+      stroke.visited.size() - stroke.visitedCount;
   const cr::CreativeObjectKind material =
       kind == CreativeMaterialStrokeKind::Remove
           ? cr::CreativeObjectKind::Unknown
           : held.objectKind;
   const cr::CreativeVoxelField& field = appState.facade.document().voxelField();
-  for (cr::CreativeGridCoord3 cell : plan.generatedCells()) {
-    if (strokeVisited(stroke, kind, cell, cr::kInvalidObjectId) ||
-        field.materialAt(cell) == material) {
-      continue;
+  bool boundsInitialized = false;
+  cr::CreativeGridCoord3 aggregateMin{};
+  cr::CreativeGridCoord3 aggregateMax{};
+  for (cr::CreativeGridCoord3 center : path.generatedCenters()) {
+    const cr::CreativeMaterialBrushStampPlan stamp =
+        materialBrushStampPlan(editor, center);
+    if (!stamp.accepted) {
+      rejectMaterialStroke(editor, held.objectKind);
+      return;
     }
-    edits[editCount++] = {cell, material};
+    includeStampBounds(stamp.minCell, stamp.maxCell, boundsInitialized,
+                       aggregateMin, aggregateMax);
+    for (cr::CreativeGridCoord3 cell : stamp.generatedCells()) {
+      if (strokeVisited(stroke, kind, cell, cr::kInvalidObjectId) ||
+          editBatchContainsCell(edits, editCount, cell) ||
+          field.materialAt(cell) == material) {
+        continue;
+      }
+      if (editCount >= remainingCapacity) {
+        stroke.capacityReached = true;
+        rejectMaterialStroke(editor, held.objectKind);
+        return;
+      }
+      edits[editCount++] = {cell, material};
+    }
   }
   if (editCount == 0U) {
     return;
   }
-  const std::size_t remainingCapacity =
-      stroke.visited.size() - stroke.visitedCount;
-  if (editCount > remainingCapacity ||
-      !ensureMaterialStrokeTransaction(appState, stroke, held.kind, kind)) {
-    stroke.capacityReached = editCount > remainingCapacity;
+  if (!ensureMaterialStrokeTransaction(appState, stroke, held.kind, kind)) {
     rejectMaterialStroke(editor, held.objectKind);
     return;
   }
@@ -256,8 +333,8 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
     return;
   }
   for (std::size_t index = 0U; index < editCount; ++index) {
-    static_cast<void>(rememberStrokeTarget(
-        stroke, edits[index].cell, cr::kInvalidObjectId));
+    stroke.visited[stroke.visitedCount++] = {
+        edits[index].cell, cr::kInvalidObjectId};
   }
   ++stroke.acceptedMutationCount;
   if (kind == CreativeMaterialStrokeKind::Remove) {
@@ -268,15 +345,15 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
   const cr::CreativeGridSettings grid =
       appState.facade.document().gridSettings();
   const cr::CreativeBounds minBounds = cr::creativeVolumeCellBounds(
-      plan.minCell, grid.cellSizeMeters, grid.origin);
+      aggregateMin, grid.cellSizeMeters, grid.origin);
   const cr::CreativeBounds maxBounds = cr::creativeVolumeCellBounds(
-      plan.maxCell, grid.cellSizeMeters, grid.origin);
+      aggregateMax, grid.cellSizeMeters, grid.origin);
   CreativeEditorPlacementFeedback feedback;
   feedback.status = CreativeEditorPlacementFeedbackStatus::Placed;
   feedback.objectKind = held.objectKind;
   feedback.frameIndex = editor.frameIndex;
   feedback.voxelPlaced = true;
-  feedback.voxelCell = plan.centerCell;
+  feedback.voxelCell = sample.center;
   feedback.voxelBounds = {minBounds.min, maxBounds.max};
   editor.interaction.placementFeedback = feedback;
 }
@@ -313,6 +390,12 @@ void processMaterialStroke(cr::CreativeAppState& appState,
   const CreativeMaterialRepeatResult repeat =
       stepCreativeMaterialRepeat(stroke.repeat, repeatRequest);
   stroke.repeat = repeat.next;
+  if (held.kind != cr::CreativeHeldItemKind::MaterialBrush) {
+    stroke.hasLastBrushCenter = false;
+  } else if (stroke.repeat.active &&
+             !materialBrushTargetSample(editor, stroke.repeat.kind).valid) {
+    stroke.hasLastBrushCenter = false;
+  }
   if (repeat.finalized) {
     finalizeCreativeMaterialStroke(appState, editor,
                                    "creative_material_stroke_released");

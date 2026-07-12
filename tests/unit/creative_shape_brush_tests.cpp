@@ -114,6 +114,89 @@ bool materialBrushInvalidInputsFailClosed() {
                 "material brush coordinate overflow rejects before enumeration");
 }
 
+bool materialBrushPathUsesExactBoundedSupercover() {
+  const cr::CreativeMaterialBrushPathPlan degenerate =
+      cr::planCreativeMaterialBrushPath({{4, -2, 7}, {4, -2, 7}});
+  const cr::CreativeMaterialBrushPathPlan axial =
+      cr::planCreativeMaterialBrushPath({{0, 0, 0}, {4, 0, 0}});
+  const cr::CreativeMaterialBrushPathPlan diagonal =
+      cr::planCreativeMaterialBrushPath({{0, 0, 0}, {2, 2, 0}});
+  const cr::CreativeMaterialBrushPathPlan corner =
+      cr::planCreativeMaterialBrushPath({{0, 0, 0}, {1, 1, 1}});
+
+  constexpr std::array expectedDiagonal{
+      cr::CreativeGridCoord3{0, 0, 0}, cr::CreativeGridCoord3{1, 0, 0},
+      cr::CreativeGridCoord3{0, 1, 0}, cr::CreativeGridCoord3{1, 1, 0},
+      cr::CreativeGridCoord3{2, 1, 0}, cr::CreativeGridCoord3{1, 2, 0},
+      cr::CreativeGridCoord3{2, 2, 0}};
+  bool diagonalOrder = diagonal.centerCount == expectedDiagonal.size();
+  for (std::size_t index = 0U;
+       diagonalOrder && index < expectedDiagonal.size(); ++index) {
+    diagonalOrder = sameCell(diagonal.centers[index], expectedDiagonal[index]);
+  }
+  return expect(degenerate.accepted && degenerate.centerCount == 1U &&
+                    sameCell(degenerate.centers[0], {4, -2, 7}),
+                "degenerate material brush path emits one center") &&
+         expect(axial.accepted && axial.centerCount == 5U &&
+                    sameCell(axial.centers.front(), {0, 0, 0}) &&
+                    sameCell(axial.centers[axial.centerCount - 1U], {4, 0, 0}),
+                "axial material brush path includes every center") &&
+         expect(diagonal.accepted && diagonalOrder,
+                "diagonal path includes deterministic edge-crossing neighbors") &&
+         expect(corner.accepted && corner.centerCount == 8U &&
+                    sameCell(corner.centers[corner.centerCount - 1U],
+                             {1, 1, 1}),
+                "corner crossing includes all eight touched cells");
+}
+
+bool materialBrushPathLimitsFailBeforePartialOutput() {
+  cr::CreativeMaterialBrushPathRequest exactRequest;
+  exactRequest.fromCell = {0, 0, 0};
+  exactRequest.toCell = {255, 0, 0};
+  const cr::CreativeMaterialBrushPathPlan exact =
+      cr::planCreativeMaterialBrushPath(exactRequest);
+
+  cr::CreativeMaterialBrushPathRequest oversizedRequest = exactRequest;
+  oversizedRequest.toCell = {256, 0, 0};
+  const cr::CreativeMaterialBrushPathPlan oversized =
+      cr::planCreativeMaterialBrushPath(oversizedRequest);
+
+  cr::CreativeMaterialBrushPathRequest smallLimitRequest;
+  smallLimitRequest.fromCell = {0, 0, 0};
+  smallLimitRequest.toCell = {4, 0, 0};
+  smallLimitRequest.maxCenterCount = 4U;
+  const cr::CreativeMaterialBrushPathPlan smallLimit =
+      cr::planCreativeMaterialBrushPath(smallLimitRequest);
+
+  cr::CreativeMaterialBrushPathRequest invalidLimitRequest;
+  invalidLimitRequest.maxCenterCount = 0U;
+  const cr::CreativeMaterialBrushPathPlan invalidLimit =
+      cr::planCreativeMaterialBrushPath(invalidLimitRequest);
+
+  cr::CreativeMaterialBrushPathRequest extremeRequest;
+  extremeRequest.fromCell = {std::numeric_limits<std::int32_t>::min(), 0, 0};
+  extremeRequest.toCell = {std::numeric_limits<std::int32_t>::max(), 0, 0};
+  const cr::CreativeMaterialBrushPathPlan extreme =
+      cr::planCreativeMaterialBrushPath(extremeRequest);
+
+  return expect(exact.accepted && exact.centerCount == 256U,
+                "path accepts the exact fixed center capacity") &&
+         expect(!oversized.accepted && oversized.centerCount == 0U &&
+                    oversized.status ==
+                        cr::CreativeMaterialBrushPathStatus::CapacityExceeded,
+                "path rejects one center beyond fixed capacity") &&
+         expect(!smallLimit.accepted && smallLimit.centerCount == 0U &&
+                    smallLimit.status ==
+                        cr::CreativeMaterialBrushPathStatus::CapacityExceeded,
+                "caller path limit clears partial output") &&
+         expect(!invalidLimit.accepted && invalidLimit.centerCount == 0U &&
+                    invalidLimit.status ==
+                        cr::CreativeMaterialBrushPathStatus::InvalidLimit,
+                "zero path limit fails closed") &&
+         expect(!extreme.accepted && extreme.centerCount == 0U,
+                "extreme path rejects before coordinate traversal");
+}
+
 bool boxParityAndHollowBoundary() {
   const auto filled = plan(cr::CreativeShapeBrushKind::Box,
                            {0, 0, 0}, {2, 2, 2});
@@ -237,6 +320,8 @@ bool limitsAndInvalidEnumsFailClosed() {
 int main() {
   const bool ok = materialBrushStampsAreBoundedAndCanonical() &&
                   materialBrushInvalidInputsFailClosed() &&
+                  materialBrushPathUsesExactBoundedSupercover() &&
+                  materialBrushPathLimitsFailBeforePartialOutput() &&
                   boxParityAndHollowBoundary() &&
                   lineIsDeterministicAndEndpointInclusive() &&
                   ellipsoidUsesSymmetricCellCenters() &&

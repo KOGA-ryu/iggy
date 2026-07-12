@@ -14,6 +14,7 @@ namespace iggy3d::creative {
 
 inline constexpr std::uint64_t kDefaultCreativeShapeBrushCellLimit = 16'384U;
 inline constexpr std::size_t kCreativeMaterialBrushStampCapacity = 125U;
+inline constexpr std::size_t kCreativeMaterialBrushPathCapacity = 256U;
 
 enum class CreativeMaterialBrushShape : std::uint8_t {
   Cube,
@@ -66,6 +67,40 @@ struct CreativeMaterialBrushStampPlan {
 
 static_assert(std::is_trivially_copyable_v<CreativeMaterialBrushStampPlan>);
 static_assert(std::is_standard_layout_v<CreativeMaterialBrushStampPlan>);
+
+enum class CreativeMaterialBrushPathStatus : std::uint8_t {
+  NotRequested,
+  InvalidLimit,
+  CapacityExceeded,
+  Planned,
+};
+
+struct CreativeMaterialBrushPathRequest {
+  CreativeGridCoord3 fromCell{};
+  CreativeGridCoord3 toCell{};
+  std::uint16_t maxCenterCount =
+      static_cast<std::uint16_t>(kCreativeMaterialBrushPathCapacity);
+};
+
+struct CreativeMaterialBrushPathPlan {
+  bool requested = false;
+  bool accepted = false;
+  CreativeMaterialBrushPathStatus status =
+      CreativeMaterialBrushPathStatus::NotRequested;
+  CreativeGridCoord3 fromCell{};
+  CreativeGridCoord3 toCell{};
+  std::array<CreativeGridCoord3, kCreativeMaterialBrushPathCapacity> centers{};
+  std::uint16_t centerCount = 0U;
+  std::string_view reasonCode = "creative_material_brush_path_not_requested";
+
+  [[nodiscard]] std::span<const CreativeGridCoord3> generatedCenters()
+      const noexcept {
+    return {centers.data(), centerCount};
+  }
+};
+
+static_assert(std::is_trivially_copyable_v<CreativeMaterialBrushPathPlan>);
+static_assert(std::is_standard_layout_v<CreativeMaterialBrushPathPlan>);
 
 enum class CreativeShapeBrushKind : std::uint8_t {
   Box,
@@ -134,6 +169,8 @@ struct CreativeShapeBrushPlanReceipt {
     CreativeMaterialBrushSize size) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeMaterialBrushStampStatus status) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeMaterialBrushPathStatus status) noexcept;
 
 [[nodiscard]] std::uint8_t creativeMaterialBrushRadiusCells(
     CreativeMaterialBrushSize size) noexcept;
@@ -143,6 +180,13 @@ struct CreativeShapeBrushPlanReceipt {
 // candidates with no allocation. Cylinders are vertical (Y axis).
 [[nodiscard]] CreativeMaterialBrushStampPlan planCreativeMaterialBrushStamp(
     const CreativeMaterialBrushStampRequest& request) noexcept;
+
+// Traverses the segment between two grid-cell centers. Exact edge and corner
+// crossings include every touched neighbor, producing a deterministic 3D
+// supercover in source-to-target order. Work and storage are O(centerCount),
+// bounded by maxCenterCount and kCreativeMaterialBrushPathCapacity.
+[[nodiscard]] CreativeMaterialBrushPathPlan planCreativeMaterialBrushPath(
+    const CreativeMaterialBrushPathRequest& request) noexcept;
 
 // Box, ellipsoid, and cylinder plans enumerate canonical z/y/x order. Lines use
 // a canonical endpoint order and integer 3D Bresenham traversal. Curved shapes

@@ -90,6 +90,41 @@ void rejectMaterialBrushStamp(CreativeMaterialBrushStampPlan& plan,
   return true;
 }
 
+[[nodiscard]] std::uint64_t coordinateDelta(std::int32_t from,
+                                            std::int32_t to) noexcept {
+  const std::int64_t wideFrom = from;
+  const std::int64_t wideTo = to;
+  return static_cast<std::uint64_t>(
+      wideFrom < wideTo ? wideTo - wideFrom : wideFrom - wideTo);
+}
+
+void rejectMaterialBrushPath(CreativeMaterialBrushPathPlan& plan,
+                             CreativeMaterialBrushPathStatus status,
+                             std::string_view reasonCode) noexcept {
+  plan.accepted = false;
+  plan.status = status;
+  plan.centerCount = 0U;
+  plan.reasonCode = reasonCode;
+}
+
+[[nodiscard]] bool appendMaterialBrushPathCenter(
+    CreativeMaterialBrushPathPlan& plan,
+    const CreativeMaterialBrushPathRequest& request,
+    const std::array<std::int64_t, 3>& center) noexcept {
+  if (plan.centerCount >= request.maxCenterCount ||
+      plan.centerCount >= plan.centers.size()) {
+    rejectMaterialBrushPath(
+        plan, CreativeMaterialBrushPathStatus::CapacityExceeded,
+        "creative_material_brush_path_capacity_exceeded");
+    return false;
+  }
+  plan.centers[plan.centerCount++] = {
+      static_cast<std::int32_t>(center[0]),
+      static_cast<std::int32_t>(center[1]),
+      static_cast<std::int32_t>(center[2])};
+  return true;
+}
+
 [[nodiscard]] bool validKind(CreativeShapeBrushKind kind) noexcept {
   return static_cast<std::size_t>(kind) <
          static_cast<std::size_t>(CreativeShapeBrushKind::Count);
@@ -429,6 +464,17 @@ std::string_view toString(CreativeMaterialBrushStampStatus status) noexcept {
   return "Unknown";
 }
 
+std::string_view toString(CreativeMaterialBrushPathStatus status) noexcept {
+  switch (status) {
+    case CreativeMaterialBrushPathStatus::NotRequested: return "NotRequested";
+    case CreativeMaterialBrushPathStatus::InvalidLimit: return "InvalidLimit";
+    case CreativeMaterialBrushPathStatus::CapacityExceeded:
+      return "CapacityExceeded";
+    case CreativeMaterialBrushPathStatus::Planned: return "Planned";
+  }
+  return "Unknown";
+}
+
 std::uint8_t creativeMaterialBrushRadiusCells(
     CreativeMaterialBrushSize size) noexcept {
   switch (size) {
@@ -499,6 +545,109 @@ CreativeMaterialBrushStampPlan planCreativeMaterialBrushStamp(
                               : CreativeMaterialBrushStampStatus::InvalidShape;
   plan.reasonCode = plan.accepted ? "creative_material_brush_planned"
                                   : "creative_material_brush_empty";
+  return plan;
+}
+
+CreativeMaterialBrushPathPlan planCreativeMaterialBrushPath(
+    const CreativeMaterialBrushPathRequest& request) noexcept {
+  CreativeMaterialBrushPathPlan plan;
+  plan.requested = true;
+  plan.fromCell = request.fromCell;
+  plan.toCell = request.toCell;
+  if (request.maxCenterCount == 0U ||
+      request.maxCenterCount > kCreativeMaterialBrushPathCapacity) {
+    rejectMaterialBrushPath(plan,
+                            CreativeMaterialBrushPathStatus::InvalidLimit,
+                            "creative_material_brush_path_limit_invalid");
+    return plan;
+  }
+
+  constexpr std::uint8_t kAxisX = 1U << 0U;
+  constexpr std::uint8_t kAxisY = 1U << 1U;
+  constexpr std::uint8_t kAxisZ = 1U << 2U;
+  constexpr std::array<std::uint8_t, 3> kAxisMasks{kAxisX, kAxisY, kAxisZ};
+  const std::array<std::uint64_t, 3> deltas{
+      coordinateDelta(request.fromCell.x, request.toCell.x),
+      coordinateDelta(request.fromCell.y, request.toCell.y),
+      coordinateDelta(request.fromCell.z, request.toCell.z)};
+  const std::uint64_t longestAxis =
+      std::max({deltas[0], deltas[1], deltas[2]});
+  if (longestAxis + 1U > request.maxCenterCount) {
+    rejectMaterialBrushPath(
+        plan, CreativeMaterialBrushPathStatus::CapacityExceeded,
+        "creative_material_brush_path_capacity_exceeded");
+    return plan;
+  }
+
+  std::array<std::int64_t, 3> current{
+      request.fromCell.x, request.fromCell.y, request.fromCell.z};
+  const std::array<std::int64_t, 3> target{
+      request.toCell.x, request.toCell.y, request.toCell.z};
+  const std::array<std::int64_t, 3> steps{
+      request.toCell.x < request.fromCell.x ? -1 : 1,
+      request.toCell.y < request.fromCell.y ? -1 : 1,
+      request.toCell.z < request.fromCell.z ? -1 : 1};
+  std::array<std::uint64_t, 3> crossings{};
+  if (!appendMaterialBrushPathCenter(plan, request, current)) {
+    return plan;
+  }
+
+  while (current != target) {
+    std::size_t minimumAxis = deltas[0] != crossings[0]
+                                  ? 0U
+                                  : deltas[1] != crossings[1] ? 1U : 2U;
+    for (std::size_t axis = minimumAxis + 1U; axis < deltas.size(); ++axis) {
+      if (deltas[axis] == crossings[axis]) {
+        continue;
+      }
+      const std::uint64_t candidateNumerator = crossings[axis] * 2U + 1U;
+      const std::uint64_t minimumNumerator =
+          crossings[minimumAxis] * 2U + 1U;
+      if (candidateNumerator * deltas[minimumAxis] <
+          minimumNumerator * deltas[axis]) {
+        minimumAxis = axis;
+      }
+    }
+
+    const std::uint64_t minimumNumerator =
+        crossings[minimumAxis] * 2U + 1U;
+    std::uint8_t tiedAxes = 0U;
+    for (std::size_t axis = 0U; axis < deltas.size(); ++axis) {
+      if (deltas[axis] == crossings[axis]) {
+        continue;
+      }
+      const std::uint64_t candidateNumerator = crossings[axis] * 2U + 1U;
+      if (candidateNumerator * deltas[minimumAxis] ==
+          minimumNumerator * deltas[axis]) {
+        tiedAxes |= kAxisMasks[axis];
+      }
+    }
+
+    for (std::uint8_t subset = 1U; subset <= 7U; ++subset) {
+      if ((subset & static_cast<std::uint8_t>(~tiedAxes)) != 0U) {
+        continue;
+      }
+      std::array<std::int64_t, 3> candidate = current;
+      for (std::size_t axis = 0U; axis < candidate.size(); ++axis) {
+        if ((subset & kAxisMasks[axis]) != 0U) {
+          candidate[axis] += steps[axis];
+        }
+      }
+      if (!appendMaterialBrushPathCenter(plan, request, candidate)) {
+        return plan;
+      }
+    }
+    for (std::size_t axis = 0U; axis < current.size(); ++axis) {
+      if ((tiedAxes & kAxisMasks[axis]) != 0U) {
+        current[axis] += steps[axis];
+        ++crossings[axis];
+      }
+    }
+  }
+
+  plan.accepted = true;
+  plan.status = CreativeMaterialBrushPathStatus::Planned;
+  plan.reasonCode = "creative_material_brush_path_planned";
   return plan;
 }
 

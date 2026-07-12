@@ -1394,9 +1394,9 @@ bool materialBrushPaintsErasesPreviewsAndGroupsHistory() {
       2U * cr::kCreativeMaterialStrokeRepeatNanoseconds + 1U);
   ok = expect(appState.facade.document()
                           .voxelField()
-                          .occupiedCellCount() == 14U &&
+                          .occupiedCellCount() == 27U &&
                   cr::creativeUndoDepth(appState.history) == 1U,
-              "moving brush adds a disjoint stamp and release records one undo") &&
+              "fast brush movement fills every crossed center in one undo") &&
        ok;
   ok = expect(undoLastEdit(appState, "test_material_brush_paint_undo") &&
                   appState.facade.document()
@@ -1440,6 +1440,129 @@ bool materialBrushPaintsErasesPreviewsAndGroupsHistory() {
                             .occupiedCellCount() == 7U,
                 "one undo restores the complete erase gesture") &&
          ok;
+}
+
+bool materialBrushInterpolatesDiagonalsAndBreaksOnTargetLoss() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 112U);
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
+  editor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::MaterialBrush;
+  editor.toolSettings.materialBrushShape =
+      cr::CreativeMaterialBrushShape::Cube;
+  editor.toolSettings.materialBrushSize =
+      cr::CreativeMaterialBrushSize::OneCell;
+  syncCreativeEditorHeldItem(appState, editor);
+
+  setPlaceTarget(editor, 0, 0, 0);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, true, false), 0U);
+  setPlaceTarget(editor, 3, 3, 0);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, false, false),
+      cr::kCreativeMaterialStrokeRepeatNanoseconds);
+
+  const cr::CreativeVoxelField& diagonalField =
+      appState.facade.document().voxelField();
+  bool ok = expect(diagonalField.occupiedCellCount() == 10U &&
+                       diagonalField.materialAt({1, 0, 0}) ==
+                           cr::CreativeObjectKind::Wall &&
+                       diagonalField.materialAt({0, 1, 0}) ==
+                           cr::CreativeObjectKind::Wall &&
+                       diagonalField.materialAt({2, 3, 0}) ==
+                           cr::CreativeObjectKind::Wall &&
+                       diagonalField.materialAt({3, 2, 0}) ==
+                           cr::CreativeObjectKind::Wall,
+                   "fast diagonal sweep fills edge-crossing neighbors");
+
+  editor.interaction.target = {};
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, false, false),
+      cr::kCreativeMaterialStrokeRepeatNanoseconds + 1U);
+  ok = expect(!editor.interaction.materialStroke.hasLastBrushCenter,
+              "losing the target breaks brush interpolation continuity") &&
+       ok;
+
+  setPlaceTarget(editor, 8, 3, 0);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, false, false),
+      2U * cr::kCreativeMaterialStrokeRepeatNanoseconds);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, false, false, true),
+      2U * cr::kCreativeMaterialStrokeRepeatNanoseconds + 1U);
+  ok = expect(appState.facade.document()
+                          .voxelField()
+                          .occupiedCellCount() == 11U &&
+                  appState.facade.document().voxelField().materialAt(
+                      {5, 3, 0}) == cr::CreativeObjectKind::Unknown &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "reacquired target starts a new stamp without bridging the gap") &&
+       ok;
+  return expect(undoLastEdit(appState, "test_interpolated_brush_undo") &&
+                    appState.facade.document()
+                            .voxelField()
+                            .occupiedCellCount() == 0U,
+                "one undo removes the complete interpolated paint gesture") &&
+         ok;
+}
+
+bool materialBrushInterpolatesEraseSweep() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 113U);
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
+  editor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::MaterialBrush;
+  editor.toolSettings.materialBrushShape =
+      cr::CreativeMaterialBrushShape::Cube;
+  editor.toolSettings.materialBrushSize =
+      cr::CreativeMaterialBrushSize::OneCell;
+  syncCreativeEditorHeldItem(appState, editor);
+
+  std::array<cr::CreativeVoxelEdit, 6U> seedEdits{};
+  for (std::int32_t x = 0; x < 6; ++x) {
+    seedEdits[static_cast<std::size_t>(x)] = {
+        {x, 0, 0}, cr::CreativeObjectKind::Wall};
+  }
+  const cr::CreativeVoxelMutationReceipt seeded =
+      appState.facade.applyVoxelEdits(seedEdits);
+  appState.history = {};
+
+  setPlaceTarget(editor, 0);
+  editor.interaction.target.voxelHit = true;
+  editor.interaction.target.voxelCell = {0, 0, 0};
+  editor.interaction.target.objectKind = cr::CreativeObjectKind::Wall;
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Reject, true, true, false), 0U);
+  setPlaceTarget(editor, 5);
+  editor.interaction.target.voxelHit = true;
+  editor.interaction.target.voxelCell = {5, 0, 0};
+  editor.interaction.target.objectKind = cr::CreativeObjectKind::Wall;
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Reject, true, false, false),
+      cr::kCreativeMaterialStrokeRepeatNanoseconds);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Reject, false, false, true),
+      cr::kCreativeMaterialStrokeRepeatNanoseconds + 1U);
+
+  return expect(seeded.accepted && seeded.changed &&
+                    appState.facade.document()
+                            .voxelField()
+                            .occupiedCellCount() == 0U &&
+                    cr::creativeUndoDepth(appState.history) == 1U,
+                "fast erase sweep removes every crossed voxel") &&
+         expect(undoLastEdit(appState, "test_interpolated_erase_undo") &&
+                    appState.facade.document()
+                            .voxelField()
+                            .occupiedCellCount() == 6U,
+                "one undo restores the complete interpolated erase gesture");
 }
 
 bool materialBrushCapacityRejectsWholeStamp() {
@@ -1853,6 +1976,8 @@ int main() {
   ok = removalStrokeDeletesVoxelAndGroupsHistory() && ok;
   ok = gamepadAcceptPlacesAndRejectRemoves() && ok;
   ok = materialBrushPaintsErasesPreviewsAndGroupsHistory() && ok;
+  ok = materialBrushInterpolatesDiagonalsAndBreaksOnTargetLoss() && ok;
+  ok = materialBrushInterpolatesEraseSweep() && ok;
   ok = materialBrushCapacityRejectsWholeStamp() && ok;
   ok = placementStrokeDeduplicatesAndRecordsOneUndo() && ok;
   ok = identicalPlacementAcrossGesturesIsRejected() && ok;

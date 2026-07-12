@@ -368,10 +368,13 @@ preview's contextual wheel. They do not each earn a permanent global key.
 - Material Brush paints the selected voxel material with X/right mouse and
   erases with Circle/left mouse. Cube, sphere, and vertical-cylinder stamps are
   allocation-free fixed batches at 1, 3, or 5 cells across. A held gesture
-  repeats every 200 ms, deduplicates previously visited cells, and commits one
-  undo record on release. The 256-cell gesture budget rejects a whole stamp
-  before mutation rather than clipping its shape. Green wireframe previews paint;
-  red wireframe previews erase or invalid material state.
+  repeats every 200 ms and fills every grid cell crossed between valid samples,
+  so fast axial and diagonal sweeps do not leave holes. Losing the target breaks
+  that interpolation chain instead of bridging empty space. The gesture
+  deduplicates previously visited cells and commits one undo record on release.
+  The 256-cell gesture budget rejects a whole interpolated segment before
+  mutation rather than clipping its shape. Green wireframe previews paint; red
+  wireframe previews erase or invalid material state.
 - A material's thin green wireframe is only a placement preview. Right mouse or
   controller X attempts the placement. `Wall`, `Floor`, `Ceiling`,
   and `Roof` place one exact voxel cell; props, attachments, paths, lights, and
