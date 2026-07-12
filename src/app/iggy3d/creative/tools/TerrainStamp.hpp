@@ -13,10 +13,20 @@ namespace iggy3d::creative {
 
 inline constexpr std::size_t kCreativeTerrainStampEditCapacity =
     kCreativeTerrainControlCapacity * 2U;
+inline constexpr std::int16_t kCreativeTerrainStampMinimumHeightOffsetCells =
+    -63;
+inline constexpr std::int16_t kCreativeTerrainStampMaximumHeightOffsetCells =
+    63;
 
 enum class CreativeTerrainStampMode : std::uint8_t {
   Merge,
   Replace,
+  Count,
+};
+
+enum class CreativeTerrainStampElevationMode : std::uint8_t {
+  Absolute,
+  Surface,
   Count,
 };
 
@@ -35,6 +45,7 @@ struct CreativeTerrainStamp {
   CreativeTerrainCoord2 sourceMinimum{};
   std::uint32_t widthCells = 0U;
   std::uint32_t depthCells = 0U;
+  std::uint16_t minimumHeightCells = 0U;
   std::array<CreativeTerrainControlPoint, kCreativeTerrainControlCapacity>
       controls{};
   std::uint16_t controlCount = 0U;
@@ -53,6 +64,7 @@ struct CreativeTerrainStampCopyReceipt {
   CreativeTerrainCoord2 minimumCoord{};
   CreativeTerrainCoord2 maximumCoord{};
   std::uint16_t copiedControlCount = 0U;
+  std::uint16_t minimumHeightCells = 0U;
   std::string_view reasonCode = "creative_terrain_stamp_copy_not_requested";
 };
 
@@ -62,6 +74,7 @@ enum class CreativeTerrainStampPlanStatus : std::uint8_t {
   InvalidDestination,
   InvalidRequest,
   CoordinateOverflow,
+  HeightOutOfRange,
   CapacityExceeded,
   NoChange,
   Ready,
@@ -75,6 +88,11 @@ struct CreativeTerrainStampRequest {
   bool mirrorX = false;
   bool mirrorZ = false;
   CreativeTerrainStampMode mode = CreativeTerrainStampMode::Merge;
+  CreativeTerrainStampElevationMode elevationMode =
+      CreativeTerrainStampElevationMode::Absolute;
+  bool targetSurfacePresent = false;
+  std::uint16_t targetSurfaceHeightCells = 0U;
+  std::int16_t manualHeightOffsetCells = 0;
 };
 
 struct CreativeTerrainStampPlan {
@@ -83,6 +101,12 @@ struct CreativeTerrainStampPlan {
   CreativeTerrainStampPlanStatus status =
       CreativeTerrainStampPlanStatus::NotRequested;
   CreativeTerrainStampMode mode = CreativeTerrainStampMode::Merge;
+  CreativeTerrainStampElevationMode elevationMode =
+      CreativeTerrainStampElevationMode::Absolute;
+  bool targetSurfacePresent = false;
+  std::uint16_t targetSurfaceHeightCells = 0U;
+  std::int16_t manualHeightOffsetCells = 0;
+  std::int32_t appliedHeightOffsetCells = 0;
   CreativeTerrainCoord2 targetMinimum{};
   CreativeTerrainCoord2 targetMaximum{};
   std::uint32_t transformedWidthCells = 0U;
@@ -117,6 +141,8 @@ static_assert(std::is_standard_layout_v<CreativeTerrainStampPlan>);
 [[nodiscard]] std::string_view toString(
     CreativeTerrainStampMode mode) noexcept;
 [[nodiscard]] std::string_view toString(
+    CreativeTerrainStampElevationMode mode) noexcept;
+[[nodiscard]] std::string_view toString(
     CreativeTerrainStampCopyStatus status) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeTerrainStampPlanStatus status) noexcept;
@@ -137,8 +163,11 @@ void clearCreativeTerrainStamp(CreativeTerrainStamp& stamp) noexcept;
 
 // O(n log n), n <= 256 source and destination controls. Rotation and mirrors
 // operate in source-local integer coordinates, then normalize the transformed
-// footprint so targetMinimum remains the lower X/Z corner. Replace removes
-// destination-only rods inside that footprint; Merge preserves them.
+// footprint so targetMinimum remains the lower X/Z corner. Surface elevation
+// aligns the copied minimum height to an explicit destination sample when one
+// exists; Absolute preserves source heights. The bounded manual offset applies
+// afterward. Replace removes destination-only rods inside the footprint; Merge
+// preserves them. Every failure returns zero edits.
 [[nodiscard]] CreativeTerrainStampPlan buildCreativeTerrainStampPlan(
     const CreativeTerrainStampRequest& request) noexcept;
 

@@ -1648,6 +1648,8 @@ bool terrainStampCopiesPreviewsTransformsCommitsAndRepeats() {
   static_cast<void>(appState.facade.applyTerrainControlEdits(initial));
   appState.history = {};
   CreativeEditorState editor = terrainRegionEditor(0, 0);
+  editor.toolSettings.terrainStampElevationMode =
+      cr::CreativeTerrainStampElevationMode::Absolute;
   setTerrainRegionSelection(editor, {0, 0, 0}, {2, 0, 0});
 
   const std::uint64_t revisionBeforeCopy =
@@ -1702,7 +1704,7 @@ bool terrainStampCopiesPreviewsTransformsCommitsAndRepeats() {
                   editor.terrain.region.stamp.quarterTurns == 1U &&
                   editor.terrain.region.stamp.mirrorX &&
                   creativeEditorTerrainStampQuickEditLabel(editor) ==
-                      "STAMP MERGE | MIRROR X | ROT 90 | MX ON | MZ OFF",
+                      "STAMP MERGE | ABSOLUTE | MIRROR X | ROT 90 | MX ON | MZ OFF | Y +0",
               "D-pad controls select and apply exact stamp transforms") &&
        ok;
 
@@ -1834,6 +1836,151 @@ bool terrainStampCopiesPreviewsTransformsCommitsAndRepeats() {
                         initial.size() &&
                     cr::creativeUndoDepth(appState.history) == 0U,
                 "two undos restore each repeated stamp in reverse order") &&
+         ok;
+}
+
+bool terrainStampSurfaceAlignmentAndHeightOffsetStayPreviewExact() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 427U);
+  const std::array initial{
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{0, 0}, 2U, 2U}},
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{2, 0}, 6U, 3U}},
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{10, 0}, 9U, 1U}},
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{20, 0}, 64U, 1U}},
+  };
+  static_cast<void>(appState.facade.applyTerrainControlEdits(initial));
+  appState.history = {};
+  CreativeEditorState editor = terrainRegionEditor(0, 0);
+  editor.volume.active = true;
+  setTerrainRegionSelection(editor, {0, 0, 0}, {2, 0, 0});
+  static_cast<void>(copyCreativeEditorTerrainRegionToStamp(appState, editor));
+  static_cast<void>(beginCreativeEditorTerrainStampPreview(appState, editor));
+  setTerrainStrokeTarget(editor, 10, 0);
+  static_cast<void>(refreshCreativeEditorTerrainStampPreview(
+      editor.terrain, appState.facade.document(), editor,
+      appState.terrainStamp));
+  const cr::CreativeTerrainStampPlan aligned =
+      editor.terrain.region.stamp.preview.plan;
+  bool ok = expect(editor.toolSettings.terrainStampElevationMode ==
+                       cr::CreativeTerrainStampElevationMode::Surface &&
+                       aligned.accepted && aligned.targetSurfacePresent &&
+                       aligned.targetSurfaceHeightCells == 9U &&
+                       aligned.appliedHeightOffsetCells == 7 &&
+                       aligned.controls()[0].heightCells == 9U &&
+                       aligned.controls()[1].heightCells == 13U,
+                   "Surface preview aligns the copied minimum to aimed terrain");
+
+  static_cast<void>(processCreativeEditorTerrainStampQuickEdit(
+      editor, cr::CreativeInputActionId::QuickEditNext));
+  static_cast<void>(processCreativeEditorTerrainStampQuickEdit(
+      editor, cr::CreativeInputActionId::QuickEditNext));
+  const bool selectedHeight = processCreativeEditorTerrainStampQuickEdit(
+      editor, cr::CreativeInputActionId::QuickEditNext);
+  const bool raised = processCreativeEditorTerrainStampQuickEdit(
+      editor, cr::CreativeInputActionId::QuickEditIncrease);
+  static_cast<void>(refreshCreativeEditorTerrainStampPreview(
+      editor.terrain, appState.facade.document(), editor,
+      appState.terrainStamp));
+  const cr::CreativeTerrainStampPlan raisedPlan =
+      editor.terrain.region.stamp.preview.plan;
+  ok = expect(selectedHeight && raised &&
+                  editor.terrain.region.stamp.selectedControl ==
+                      CreativeTerrainStampTransformControl::HeightOffset &&
+                  raisedPlan.accepted &&
+                  raisedPlan.manualHeightOffsetCells == 1 &&
+                  raisedPlan.appliedHeightOffsetCells == 8 &&
+                  raisedPlan.controls()[0].heightCells == 10U &&
+                  raisedPlan.controls()[1].heightCells == 14U &&
+                  creativeEditorTerrainStampQuickEditLabel(editor) ==
+                      "STAMP MERGE | SURFACE | HEIGHT | ROT 0 | MX OFF | MZ OFF | Y +1",
+              "D-pad height offset applies after automatic surface alignment") &&
+       ok;
+  const CreativeEditorTerrainStampReceipt applied =
+      applyCreativeEditorTerrainStampWithHistory(
+          appState, editor, "test_terrain_stamp_surface_apply");
+  const cr::CreativeTerrainControlPoint* first =
+      appState.facade.document().terrainField().controlAt({10, 0});
+  const cr::CreativeTerrainControlPoint* second =
+      appState.facade.document().terrainField().controlAt({12, 0});
+  ok = expect(applied.accepted && applied.changed && first != nullptr &&
+                  first->heightCells == 10U && second != nullptr &&
+                  second->heightCells == 14U &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "Surface stamp commits the exact elevated preview in one undo") &&
+       ok;
+  static_cast<void>(cancelCreativeEditorTerrainStamp(editor));
+  ok = expect(undoLastEdit(appState, "test_terrain_stamp_surface_undo") &&
+                  appState.facade.document().terrainField().controlAt({10, 0}) !=
+                      nullptr &&
+                  appState.facade.document()
+                          .terrainField()
+                          .controlAt({10, 0})
+                          ->heightCells == 9U &&
+                  appState.facade.document().terrainField().controlAt({12, 0}) ==
+                      nullptr,
+              "one undo restores terrain beneath an aligned stamp") &&
+       ok;
+
+  static_cast<void>(beginCreativeEditorTerrainStampPreview(appState, editor));
+  setTerrainStrokeTarget(editor, 20, 0);
+  static_cast<void>(refreshCreativeEditorTerrainStampPreview(
+      editor.terrain, appState.facade.document(), editor,
+      appState.terrainStamp));
+  const std::uint64_t revisionBeforeRejectedApply =
+      appState.facade.document().revision();
+  const cr::CreativeTerrainStampPlan overflow =
+      editor.terrain.region.stamp.preview.plan;
+  const CreativeEditorSelectionFrame selection;
+  const CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  iggy3d::FrameInput frame;
+  CreativeEditorOverlayFrame rejectedOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      rejectedOverlay);
+  const CreativeEditorTerrainStampReceipt rejected =
+      applyCreativeEditorTerrainStampWithHistory(
+          appState, editor, "test_terrain_stamp_height_rejected");
+  ok = expect(!overflow.accepted &&
+                  overflow.status ==
+                      cr::CreativeTerrainStampPlanStatus::HeightOutOfRange &&
+                  overflow.appliedHeightOffsetCells == 62 &&
+                  rejectedOverlay.volumeEdgeCount > 0U &&
+                  !rejected.accepted && !rejected.changed &&
+                  appState.facade.document().revision() ==
+                      revisionBeforeRejectedApply &&
+                  cr::creativeUndoDepth(appState.history) == 0U,
+              "out-of-range Surface placement stays visible but cannot mutate") &&
+       ok;
+
+  editor.toolSettings.terrainStampElevationMode =
+      cr::CreativeTerrainStampElevationMode::Absolute;
+  static_cast<void>(refreshCreativeEditorTerrainStampPreview(
+      editor.terrain, appState.facade.document(), editor,
+      appState.terrainStamp));
+  const cr::CreativeTerrainStampPlan absolute =
+      editor.terrain.region.stamp.preview.plan;
+  editor.terrain.region.stamp.selectedControl =
+      CreativeTerrainStampTransformControl::HeightOffset;
+  editor.terrain.region.stamp.heightOffsetCells =
+      cr::kCreativeTerrainStampMaximumHeightOffsetCells;
+  const bool bounded = !processCreativeEditorTerrainStampQuickEdit(
+      editor, cr::CreativeInputActionId::QuickEditIncrease);
+  return expect(absolute.accepted && absolute.targetSurfacePresent &&
+                    absolute.targetSurfaceHeightCells == 64U &&
+                    absolute.appliedHeightOffsetCells == 0 &&
+                    absolute.controls()[0].heightCells == 2U &&
+                    absolute.controls()[1].heightCells == 6U,
+                "Absolute mode ignores destination elevation") &&
+         expect(bounded &&
+                    editor.terrain.region.stamp.heightOffsetCells ==
+                        cr::kCreativeTerrainStampMaximumHeightOffsetCells,
+                "manual height quick edit stops at its explicit bound") &&
          ok;
 }
 
@@ -2273,6 +2420,7 @@ int main() {
                  terrainRegionPreviewApplyAndUndoStayAtomic() &&
                  terrainRegionRoutesCornersSampleCancelAndQuickEdit() &&
                  terrainStampCopiesPreviewsTransformsCommitsAndRepeats() &&
+                 terrainStampSurfaceAlignmentAndHeightOffsetStayPreviewExact() &&
                  terrainStampCommandsUseTheTerrainClipboardLane() &&
                  bentSurfacePatchesReachRendererAndRefreshWithHeight() &&
                  smoothTerrainCollisionMatchesRenderedTriangle() &&

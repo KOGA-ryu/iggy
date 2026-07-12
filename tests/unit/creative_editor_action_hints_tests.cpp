@@ -645,6 +645,18 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                   stampMirror->label.view() == "Mirror X",
               "terrain stamp names the selected mirror channel") &&
        ok;
+  editor.terrain.region.stamp.selectedControl =
+      CreativeTerrainStampTransformControl::HeightOffset;
+  const cr::CreativeActionHintFrame raisedStamp =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* stampHeight =
+      findHint(raisedStamp, cr::CreativeInputActionId::QuickEditDecrease);
+  ok = expect(stampHeight != nullptr &&
+                  stampHeight->label.view() == "Height",
+              "terrain stamp exposes the manual height-offset channel") &&
+       ok;
   editor.terrain.region.stamp = {};
 
   setHeld(editor, cr::CreativeHeldItemKind::LinearArray);

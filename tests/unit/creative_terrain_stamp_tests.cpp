@@ -50,6 +50,8 @@ bool copyIsRelativeBoundedAndTransactional() {
                     preserved.sourceRevision == 23U &&
                     preserved.sourceMinimum == cr::CreativeTerrainCoord2{10, 20} &&
                     preserved.widthCells == 2U && preserved.depthCells == 3U &&
+                    preserved.minimumHeightCells == 2U &&
+                    copied.minimumHeightCells == 2U &&
                     preserved.items()[0].coord ==
                         cr::CreativeTerrainCoord2{0, 0} &&
                     preserved.items()[1].coord ==
@@ -64,6 +66,78 @@ bool copyIsRelativeBoundedAndTransactional() {
                         cr::CreativeTerrainStampCopyStatus::EmptyRegion &&
                     stamp.contentSignature == preserved.contentSignature,
                 "rejected copy preserves the previous terrain clipboard");
+}
+
+bool elevationModesAndManualOffsetsAreAtomic() {
+  constexpr std::array source{
+      cr::CreativeTerrainControlPoint{{0, 0}, 2U, 2U},
+      cr::CreativeTerrainControlPoint{{1, 0}, 6U, 3U},
+  };
+  cr::CreativeTerrainStamp stamp;
+  static_cast<void>(cr::copyCreativeTerrainRegionToStamp(
+      1U, 1U, source, {0, 0}, {1, 0}, stamp));
+  cr::CreativeTerrainStampRequest request;
+  request.stamp = &stamp;
+  request.targetMinimum = {10, 0};
+  request.elevationMode = cr::CreativeTerrainStampElevationMode::Surface;
+  request.targetSurfacePresent = true;
+  request.targetSurfaceHeightCells = 9U;
+  const cr::CreativeTerrainStampPlan aligned =
+      cr::buildCreativeTerrainStampPlan(request);
+
+  request.manualHeightOffsetCells = -2;
+  const cr::CreativeTerrainStampPlan lowered =
+      cr::buildCreativeTerrainStampPlan(request);
+  request.targetSurfacePresent = false;
+  request.targetSurfaceHeightCells = 0U;
+  request.manualHeightOffsetCells = 1;
+  const cr::CreativeTerrainStampPlan emptySurface =
+      cr::buildCreativeTerrainStampPlan(request);
+  request.elevationMode = cr::CreativeTerrainStampElevationMode::Absolute;
+  request.targetSurfacePresent = true;
+  request.targetSurfaceHeightCells = 20U;
+  const cr::CreativeTerrainStampPlan absolute =
+      cr::buildCreativeTerrainStampPlan(request);
+
+  request.elevationMode = cr::CreativeTerrainStampElevationMode::Surface;
+  request.targetSurfaceHeightCells = 64U;
+  request.manualHeightOffsetCells = 0;
+  const cr::CreativeTerrainStampPlan highOverflow =
+      cr::buildCreativeTerrainStampPlan(request);
+  request.elevationMode = cr::CreativeTerrainStampElevationMode::Absolute;
+  request.targetSurfacePresent = false;
+  request.targetSurfaceHeightCells = 0U;
+  request.manualHeightOffsetCells = -2;
+  const cr::CreativeTerrainStampPlan lowOverflow =
+      cr::buildCreativeTerrainStampPlan(request);
+
+  return expect(aligned.accepted && aligned.appliedHeightOffsetCells == 7 &&
+                    aligned.targetSurfacePresent &&
+                    controlAt(aligned, {10, 0})->heightCells == 9U &&
+                    controlAt(aligned, {11, 0})->heightCells == 13U,
+                "surface mode aligns the copied minimum to authored terrain") &&
+         expect(lowered.accepted && lowered.appliedHeightOffsetCells == 5 &&
+                    controlAt(lowered, {10, 0})->heightCells == 7U &&
+                    controlAt(lowered, {11, 0})->heightCells == 11U,
+                "manual offset applies after surface alignment") &&
+         expect(emptySurface.accepted &&
+                    emptySurface.appliedHeightOffsetCells == 1 &&
+                    controlAt(emptySurface, {10, 0})->heightCells == 3U,
+                "surface mode preserves source elevation over empty terrain") &&
+         expect(absolute.accepted && absolute.appliedHeightOffsetCells == 1 &&
+                    controlAt(absolute, {10, 0})->heightCells == 3U &&
+                    controlAt(absolute, {11, 0})->heightCells == 7U,
+                "absolute mode ignores destination height and applies manual offset") &&
+         expect(!highOverflow.accepted && !lowOverflow.accepted &&
+                    highOverflow.status ==
+                        cr::CreativeTerrainStampPlanStatus::HeightOutOfRange &&
+                    lowOverflow.status ==
+                        cr::CreativeTerrainStampPlanStatus::HeightOutOfRange &&
+                    highOverflow.editCount == 0U &&
+                    lowOverflow.editCount == 0U &&
+                    highOverflow.targetMaximum ==
+                        cr::CreativeTerrainCoord2{11, 0},
+                "height overflow rejects atomically with a positionable footprint");
 }
 
 bool copyRejectsInvalidInputsWithoutClobberingClipboard() {
@@ -264,6 +338,10 @@ bool invalidAndOverflowRequestsDoNotProducePlans() {
   request.quarterTurns = 0U;
   const cr::CreativeTerrainStampPlan corrupt =
       cr::buildCreativeTerrainStampPlan(request);
+  stamp.contentSignature ^= 1U;
+  ++stamp.minimumHeightCells;
+  const cr::CreativeTerrainStampPlan corruptMinimum =
+      cr::buildCreativeTerrainStampPlan(request);
 
   return expect(!overflow.accepted && overflow.editCount == 0U &&
                     overflow.status ==
@@ -281,7 +359,11 @@ bool invalidAndOverflowRequestsDoNotProducePlans() {
          expect(!corrupt.accepted && corrupt.editCount == 0U &&
                     corrupt.status ==
                         cr::CreativeTerrainStampPlanStatus::InvalidStamp,
-                "stamp signature corruption fails closed");
+                "stamp signature corruption fails closed") &&
+         expect(!corruptMinimum.accepted && corruptMinimum.editCount == 0U &&
+                    corruptMinimum.status ==
+                        cr::CreativeTerrainStampPlanStatus::InvalidStamp,
+                "copied minimum-height corruption fails closed");
 }
 
 }  // namespace
@@ -290,6 +372,7 @@ int main() {
   bool ok = true;
   ok = copyIsRelativeBoundedAndTransactional() && ok;
   ok = copyRejectsInvalidInputsWithoutClobberingClipboard() && ok;
+  ok = elevationModesAndManualOffsetsAreAtomic() && ok;
   ok = rotationAndMirrorsNormalizeTheFootprint() && ok;
   ok = mergeAndReplaceHaveDistinctAtomicSemantics() && ok;
   ok = exactEditCeilingAndFinalCapacityFailClosed() && ok;

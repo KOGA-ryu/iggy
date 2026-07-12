@@ -546,18 +546,22 @@ bool optionDescriptorsAreContextualAndBounded() {
                     terrainPath.ids[3] ==
                         cr::CreativeToolOptionId::TerrainPathAmplitude,
                 "terrain path exposes type elevation width and rise depth") &&
-         expect(terrainRegion.count == 3U &&
+         expect(terrainRegion.count == 4U &&
                     terrainRegion.ids[0] ==
                         cr::CreativeToolOptionId::TerrainRegionOperation &&
                     terrainRegion.ids[1] ==
                         cr::CreativeToolOptionId::TerrainRegionAmount &&
                     terrainRegion.ids[2] ==
                         cr::CreativeToolOptionId::TerrainStampMode &&
-                    flattenRegion.count == 2U &&
+                    terrainRegion.ids[3] ==
+                        cr::CreativeToolOptionId::TerrainStampElevation &&
+                    flattenRegion.count == 3U &&
                     flattenRegion.ids[0] ==
                         cr::CreativeToolOptionId::TerrainRegionOperation &&
                     flattenRegion.ids[1] ==
-                        cr::CreativeToolOptionId::TerrainStampMode,
+                        cr::CreativeToolOptionId::TerrainStampMode &&
+                    flattenRegion.ids[2] ==
+                        cr::CreativeToolOptionId::TerrainStampElevation,
                 "terrain region keeps stamp mode while flatten hides amount") &&
          expect(array.count == 4U &&
                     array.ids[0] ==
@@ -664,6 +668,9 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
       cr::CreativeTerrainRegionAmount::Count;
   cr::CreativeToolSettings invalidStampMode = settings;
   invalidStampMode.terrainStampMode = cr::CreativeTerrainStampMode::Count;
+  cr::CreativeToolSettings invalidStampElevation = settings;
+  invalidStampElevation.terrainStampElevationMode =
+      cr::CreativeTerrainStampElevationMode::Count;
   bool ok = expect(cr::isValidCreativeToolSettings(settings),
                    "default settings valid") &&
             expect(!cr::isValidCreativeToolSettings(invalidMask),
@@ -697,7 +704,8 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                    "invalid terrain path option fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidRegionOperation) &&
                        !cr::isValidCreativeToolSettings(invalidRegionAmount) &&
-                       !cr::isValidCreativeToolSettings(invalidStampMode),
+                       !cr::isValidCreativeToolSettings(invalidStampMode) &&
+                       !cr::isValidCreativeToolSettings(invalidStampElevation),
                    "invalid terrain region options fail settings validation") &&
             expect(cr::creativeToolOptionValueLabel(
                        settings,
@@ -848,7 +856,11 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::TerrainStampMode) ==
-                           "MERGE",
+                           "MERGE" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainStampElevation) ==
+                           "SURFACE",
                    "default labels and scalar conversions stable");
 
   const auto adjust = [&settings](cr::CreativeToolOptionId option,
@@ -1017,6 +1029,11 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                   settings.terrainStampMode ==
                       cr::CreativeTerrainStampMode::Replace,
               "terrain stamp mode cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainStampElevation, 1)
+                  .changed &&
+                  settings.terrainStampElevationMode ==
+                      cr::CreativeTerrainStampElevationMode::Absolute,
+              "terrain stamp elevation cycles") &&
        expect(adjust(cr::CreativeToolOptionId::ShapeBrushKind, 1).changed &&
                   settings.shapeBrushKind == cr::CreativeShapeBrushKind::Line,
               "shape kind cycles") &&

@@ -52,6 +52,7 @@ void mixSignature(std::uint64_t& signature, std::uint64_t value) noexcept {
   std::uint64_t signature = kFnvOffset;
   mixSignature(signature, stamp.widthCells);
   mixSignature(signature, stamp.depthCells);
+  mixSignature(signature, stamp.minimumHeightCells);
   mixSignature(signature, stamp.controlCount);
   for (const CreativeTerrainControlPoint& control : stamp.items()) {
     mixSignature(signature, static_cast<std::uint32_t>(control.coord.x));
@@ -65,6 +66,12 @@ void mixSignature(std::uint64_t& signature, std::uint64_t value) noexcept {
 [[nodiscard]] bool validStampMode(CreativeTerrainStampMode mode) noexcept {
   return static_cast<std::size_t>(mode) <
          static_cast<std::size_t>(CreativeTerrainStampMode::Count);
+}
+
+[[nodiscard]] bool validElevationMode(
+    CreativeTerrainStampElevationMode mode) noexcept {
+  return static_cast<std::size_t>(mode) <
+         static_cast<std::size_t>(CreativeTerrainStampElevationMode::Count);
 }
 
 [[nodiscard]] const CreativeTerrainControlPoint* findControl(
@@ -155,6 +162,15 @@ std::string_view toString(CreativeTerrainStampMode mode) noexcept {
   return "INVALID";
 }
 
+std::string_view toString(CreativeTerrainStampElevationMode mode) noexcept {
+  switch (mode) {
+    case CreativeTerrainStampElevationMode::Absolute: return "ABSOLUTE";
+    case CreativeTerrainStampElevationMode::Surface: return "SURFACE";
+    case CreativeTerrainStampElevationMode::Count: break;
+  }
+  return "INVALID";
+}
+
 std::string_view toString(CreativeTerrainStampCopyStatus status) noexcept {
   switch (status) {
     case CreativeTerrainStampCopyStatus::NotRequested: return "NotRequested";
@@ -175,6 +191,8 @@ std::string_view toString(CreativeTerrainStampPlanStatus status) noexcept {
     case CreativeTerrainStampPlanStatus::InvalidRequest: return "InvalidRequest";
     case CreativeTerrainStampPlanStatus::CoordinateOverflow:
       return "CoordinateOverflow";
+    case CreativeTerrainStampPlanStatus::HeightOutOfRange:
+      return "HeightOutOfRange";
     case CreativeTerrainStampPlanStatus::CapacityExceeded:
       return "CapacityExceeded";
     case CreativeTerrainStampPlanStatus::NoChange: return "NoChange";
@@ -194,14 +212,17 @@ bool isValidCreativeTerrainStamp(const CreativeTerrainStamp& stamp) noexcept {
       !validControls(stamp.items())) {
     return false;
   }
+  std::uint16_t minimumHeightCells = kCreativeTerrainMaximumHeightCells;
   for (const CreativeTerrainControlPoint& control : stamp.items()) {
     if (control.coord.x < 0 || control.coord.z < 0 ||
         static_cast<std::uint32_t>(control.coord.x) >= stamp.widthCells ||
         static_cast<std::uint32_t>(control.coord.z) >= stamp.depthCells) {
       return false;
     }
+    minimumHeightCells = std::min(minimumHeightCells, control.heightCells);
   }
-  return stamp.contentSignature == stampSignature(stamp);
+  return stamp.minimumHeightCells == minimumHeightCells &&
+         stamp.contentSignature == stampSignature(stamp);
 }
 
 bool creativeTerrainStampEmpty(const CreativeTerrainStamp& stamp) noexcept {
@@ -267,10 +288,16 @@ CreativeTerrainStampCopyReceipt copyCreativeTerrainRegionToStamp(
     receipt.reasonCode = "creative_terrain_stamp_region_empty";
     return receipt;
   }
+  staged.minimumHeightCells = kCreativeTerrainMaximumHeightCells;
+  for (const CreativeTerrainControlPoint& control : staged.items()) {
+    staged.minimumHeightCells =
+        std::min(staged.minimumHeightCells, control.heightCells);
+  }
   staged.contentSignature = stampSignature(staged);
   receipt.accepted = true;
   receipt.status = CreativeTerrainStampCopyStatus::Copied;
   receipt.copiedControlCount = staged.controlCount;
+  receipt.minimumHeightCells = staged.minimumHeightCells;
   receipt.reasonCode = "creative_terrain_stamp_copied";
   outStamp = staged;
   return receipt;
@@ -282,6 +309,10 @@ CreativeTerrainStampPlan buildCreativeTerrainStampPlan(
   plan.requested = true;
   plan.targetMinimum = request.targetMinimum;
   plan.mode = request.mode;
+  plan.elevationMode = request.elevationMode;
+  plan.targetSurfacePresent = request.targetSurfacePresent;
+  plan.targetSurfaceHeightCells = request.targetSurfaceHeightCells;
+  plan.manualHeightOffsetCells = request.manualHeightOffsetCells;
   if (request.stamp == nullptr ||
       !isValidCreativeTerrainStamp(*request.stamp)) {
     plan.status = CreativeTerrainStampPlanStatus::InvalidStamp;
@@ -293,20 +324,67 @@ CreativeTerrainStampPlan buildCreativeTerrainStampPlan(
     plan.reasonCode = "creative_terrain_stamp_destination_invalid";
     return plan;
   }
-  if (request.quarterTurns > 3U || !validStampMode(request.mode)) {
+  const bool targetSurfaceValid =
+      request.targetSurfacePresent
+          ? request.targetSurfaceHeightCells >=
+                    kCreativeTerrainMinimumHeightCells &&
+                request.targetSurfaceHeightCells <=
+                    kCreativeTerrainMaximumHeightCells
+          : request.targetSurfaceHeightCells == 0U;
+  if (request.quarterTurns > 3U || !validStampMode(request.mode) ||
+      !validElevationMode(request.elevationMode) || !targetSurfaceValid ||
+      request.manualHeightOffsetCells <
+          kCreativeTerrainStampMinimumHeightOffsetCells ||
+      request.manualHeightOffsetCells >
+          kCreativeTerrainStampMaximumHeightOffsetCells) {
     plan.status = CreativeTerrainStampPlanStatus::InvalidRequest;
     plan.reasonCode = "creative_terrain_stamp_request_invalid";
     return plan;
   }
 
   const CreativeTerrainStamp& stamp = *request.stamp;
+  const bool swapsAxes = (request.quarterTurns % 2U) != 0U;
+  plan.transformedWidthCells =
+      swapsAxes ? stamp.depthCells : stamp.widthCells;
+  plan.transformedDepthCells =
+      swapsAxes ? stamp.widthCells : stamp.depthCells;
+  CreativeTerrainCoord2 targetExclusiveMaximum{};
+  if (!checkedCoord(static_cast<std::int64_t>(request.targetMinimum.x) +
+                        plan.transformedWidthCells,
+                    static_cast<std::int64_t>(request.targetMinimum.z) +
+                        plan.transformedDepthCells,
+                    targetExclusiveMaximum)) {
+    plan.status = CreativeTerrainStampPlanStatus::CoordinateOverflow;
+    plan.reasonCode = "creative_terrain_stamp_bounds_overflow";
+    return plan;
+  }
+  plan.targetMaximum = {targetExclusiveMaximum.x - 1,
+                        targetExclusiveMaximum.z - 1};
+  const std::int32_t surfaceOffset =
+      request.elevationMode == CreativeTerrainStampElevationMode::Surface &&
+              request.targetSurfacePresent
+          ? static_cast<std::int32_t>(request.targetSurfaceHeightCells) -
+                stamp.minimumHeightCells
+          : 0;
+  plan.appliedHeightOffsetCells =
+      surfaceOffset + request.manualHeightOffsetCells;
+
   for (const CreativeTerrainControlPoint& source : stamp.items()) {
     const TransformedLocalCoord transformed = transformLocal(
         source.coord, stamp.widthCells, stamp.depthCells, request.quarterTurns,
         request.mirrorX, request.mirrorZ);
-    plan.transformedWidthCells = transformed.widthCells;
-    plan.transformedDepthCells = transformed.depthCells;
     CreativeTerrainControlPoint finalControl = source;
+    const std::int32_t shiftedHeight =
+        static_cast<std::int32_t>(source.heightCells) +
+        plan.appliedHeightOffsetCells;
+    if (shiftedHeight < kCreativeTerrainMinimumHeightCells ||
+        shiftedHeight > kCreativeTerrainMaximumHeightCells) {
+      plan.finalControlCount = 0U;
+      plan.status = CreativeTerrainStampPlanStatus::HeightOutOfRange;
+      plan.reasonCode = "creative_terrain_stamp_height_out_of_range";
+      return plan;
+    }
+    finalControl.heightCells = static_cast<std::uint16_t>(shiftedHeight);
     if (!checkedCoord(static_cast<std::int64_t>(request.targetMinimum.x) +
                           transformed.x,
                       static_cast<std::int64_t>(request.targetMinimum.z) +
@@ -322,20 +400,6 @@ CreativeTerrainStampPlan buildCreativeTerrainStampPlan(
   }
   std::sort(plan.finalControls.begin(),
             plan.finalControls.begin() + plan.finalControlCount, controlLess);
-
-  CreativeTerrainCoord2 targetExclusiveMaximum{};
-  if (!checkedCoord(static_cast<std::int64_t>(request.targetMinimum.x) +
-                        plan.transformedWidthCells,
-                    static_cast<std::int64_t>(request.targetMinimum.z) +
-                        plan.transformedDepthCells,
-                    targetExclusiveMaximum)) {
-    plan.finalControlCount = 0U;
-    plan.status = CreativeTerrainStampPlanStatus::CoordinateOverflow;
-    plan.reasonCode = "creative_terrain_stamp_bounds_overflow";
-    return plan;
-  }
-  plan.targetMaximum = {targetExclusiveMaximum.x - 1,
-                        targetExclusiveMaximum.z - 1};
 
   for (const CreativeTerrainControlPoint& destination :
        request.destinationControls) {

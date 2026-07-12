@@ -166,6 +166,7 @@ enum class CreativeToolOptionId : std::uint8_t {
   TerrainRegionOperation,
   TerrainRegionAmount,
   TerrainStampMode,
+  TerrainStampElevation,
   Count,
 };
 
@@ -283,6 +284,8 @@ struct CreativeToolSettings {
   CreativeTerrainRegionAmount terrainRegionAmount =
       CreativeTerrainRegionAmount::OneCell;
   CreativeTerrainStampMode terrainStampMode = CreativeTerrainStampMode::Merge;
+  CreativeTerrainStampElevationMode terrainStampElevationMode =
+      CreativeTerrainStampElevationMode::Surface;
 
   [[nodiscard]] bool operator==(
       const CreativeToolSettings&) const noexcept = default;

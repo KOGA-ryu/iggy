@@ -309,6 +309,10 @@ constexpr std::array kToolOptionDescriptors{
                                  "STAMP MODE",
                                  CreativeToolOptionValueKind::Choice,
                                  kTerrainRegionItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainStampElevation,
+                                 "STAMP HEIGHT",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainRegionItems},
 };
 static_assert(kToolOptionDescriptors.size() ==
               kCreativeToolOptionDescriptorCount);
@@ -709,7 +713,9 @@ bool isValidCreativeToolSettings(
                    CreativeTerrainRegionOperation::Count) &&
          validEnum(settings.terrainRegionAmount,
                    CreativeTerrainRegionAmount::Count) &&
-         validEnum(settings.terrainStampMode, CreativeTerrainStampMode::Count);
+         validEnum(settings.terrainStampMode, CreativeTerrainStampMode::Count) &&
+         validEnum(settings.terrainStampElevationMode,
+                   CreativeTerrainStampElevationMode::Count);
 }
 
 std::span<const CreativeToolOptionDescriptor>
@@ -1030,6 +1036,8 @@ std::string_view creativeToolOptionValueLabel(
       return toString(settings.terrainRegionAmount);
     case CreativeToolOptionId::TerrainStampMode:
       return toString(settings.terrainStampMode);
+    case CreativeToolOptionId::TerrainStampElevation:
+      return toString(settings.terrainStampElevationMode);
     case CreativeToolOptionId::Count:
       break;
   }
@@ -1307,6 +1315,11 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
       adjusted.terrainStampMode = cycleEnum(
           adjusted.terrainStampMode, CreativeTerrainStampMode::Count,
           direction);
+      break;
+    case CreativeToolOptionId::TerrainStampElevation:
+      adjusted.terrainStampElevationMode = cycleEnum(
+          adjusted.terrainStampElevationMode,
+          CreativeTerrainStampElevationMode::Count, direction);
       break;
     case CreativeToolOptionId::Count:
       receipt.status = CreativeToolOptionAdjustStatus::InvalidOption;

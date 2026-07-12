@@ -150,6 +150,9 @@ void appendQuickEdit(HintSpecBuffer& buffer,
           case CreativeTerrainStampTransformControl::MirrorZ:
             adjustment = "Mirror Z";
             break;
+          case CreativeTerrainStampTransformControl::HeightOffset:
+            adjustment = "Height";
+            break;
           case CreativeTerrainStampTransformControl::Count: return;
         }
         appendHintPair(buffer, cr::CreativeInputActionId::QuickEditDecrease,

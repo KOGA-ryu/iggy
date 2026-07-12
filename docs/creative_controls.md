@@ -218,10 +218,13 @@ clears the region, and Square samples a target only while Flatten is selected.
 D-pad left/right cycles the region operation, while up/down adjusts its amount
 or Flatten target. A copied region enters a repeatable stamp preview through
 Paste or Duplicate on the catalog Actions page. During that preview, up/down
-selects Rotation, Mirror X, or Mirror Z; left/right rotates by 90 degrees or
-toggles the selected mirror. X/right mouse stamps once and keeps the preview
-active at the next aimed cell; Circle/left mouse cancels it. Tool Options owns
-the persistent Merge/Replace stamp mode.
+selects Rotation, Mirror X, Mirror Z, or Height; left/right rotates by 90
+degrees, toggles the selected mirror, or changes the signed height offset by one
+cell. X/right mouse stamps once and keeps the preview active at the next aimed
+cell; Circle/left mouse cancels it. Tool Options owns persistent Merge/Replace
+and Surface/Absolute height modes. Surface aligns the stamp's lowest rod only
+when authored terrain exists under the crosshair; Absolute preserves source
+height.
 The data, generation, cache, and future smooth-surface seams are specified in
 [`creative_terrain.md`](creative_terrain.md).
 

@@ -164,6 +164,7 @@ enum class CreativeTerrainStampTransformControl : std::uint8_t {
   Rotation,
   MirrorX,
   MirrorZ,
+  HeightOffset,
   Count,
 };
 
@@ -180,6 +181,11 @@ struct CreativeTerrainStampPreviewCache {
   bool mirrorZ = false;
   iggy3d::creative::CreativeTerrainStampMode mode =
       iggy3d::creative::CreativeTerrainStampMode::Merge;
+  iggy3d::creative::CreativeTerrainStampElevationMode elevationMode =
+      iggy3d::creative::CreativeTerrainStampElevationMode::Surface;
+  bool targetSurfacePresent = false;
+  std::uint16_t targetSurfaceHeightCells = 0U;
+  std::int16_t manualHeightOffsetCells = 0;
   iggy3d::creative::CreativeTerrainStampPlan plan{};
   std::vector<iggy3d::creative::CreativeTerrainSurfacePatch> patches;
 };
@@ -189,6 +195,7 @@ struct CreativeTerrainStampPlacementState {
   std::uint8_t quarterTurns = 0U;
   bool mirrorX = false;
   bool mirrorZ = false;
+  std::int16_t heightOffsetCells = 0;
   CreativeTerrainStampTransformControl selectedControl =
       CreativeTerrainStampTransformControl::Rotation;
   iggy3d::creative::CreativeTerrainStampCopyReceipt lastCopy{};

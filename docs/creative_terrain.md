@@ -266,8 +266,8 @@ clipboard and are not saved into the map.
 |---|---|
 | Right mouse / PS5 X | Apply the preview as one terrain batch; the stamp stays active |
 | Left mouse / PS5 Circle | Cancel the stamp preview without changing terrain |
-| Up/down / D-pad up/down | Select Rotation, Mirror X, or Mirror Z |
-| Left/right / D-pad left/right | Rotate 90 degrees or toggle the selected mirror |
+| Up/down / D-pad up/down | Select Rotation, Mirror X, Mirror Z, or Height |
+| Left/right / D-pad left/right | Rotate 90 degrees, toggle the selected mirror, or adjust height by one cell |
 
 `CreativeTerrainStamp` stores at most 256 source-local rods plus the copied
 footprint dimensions and a content signature. `buildCreativeTerrainStampPlan`
@@ -277,10 +277,20 @@ preserving other rods in the footprint. `REPLACE` also removes destination-only
 rods inside the footprint. Either mode rejects coordinate or final-field
 overflow without emitting a partial prefix.
 
+Tool Options also owns `STAMP HEIGHT`. `SURFACE` is the default: when authored
+terrain exists under the crosshair, the copied stamp's lowest rod aligns to that
+derived surface height. Empty terrain preserves the copied elevation instead of
+inventing a floor height. `ABSOLUTE` always preserves copied heights. The
+selected Height quick-edit channel applies a signed manual offset after either
+policy, from -63 to +63 cells. If any final rod would leave the authored 1-64
+height range, the complete plan is rejected and remains a red non-mutating
+footprint.
+
 The crosshair anchors the transformed footprint's lower X/Z corner. Green rods
 and the exact terrain surface preview mean the batch is accepted, orange rods
 mark removals in Replace mode, and red means rejection. Preview data is cached
-by document, terrain revision, stamp signature, target, transform, and mode.
+by document, terrain revision, stamp signature, target, transform, merge mode,
+elevation mode, sampled destination height, and manual height offset.
 Aiming does not mutate or rebuild room geometry. Every X/right-click applies one
 Facade batch and creates one undo record; moving the crosshair and pressing again
 creates another independently undoable stamp.

@@ -60,6 +60,14 @@ void setStampFeedback(CreativeEditorState& editor, bool accepted) noexcept {
   request.mirrorX = editor.terrain.region.stamp.mirrorX;
   request.mirrorZ = editor.terrain.region.stamp.mirrorZ;
   request.mode = editor.toolSettings.terrainStampMode;
+  request.elevationMode = editor.toolSettings.terrainStampElevationMode;
+  const cr::CreativeTerrainHeightSample targetSurface =
+      cr::sampleCreativeTerrainHeight(document.terrainField(), targetMinimum);
+  request.targetSurfacePresent = targetSurface.present;
+  request.targetSurfaceHeightCells =
+      targetSurface.present ? targetSurface.heightCells : 0U;
+  request.manualHeightOffsetCells =
+      editor.terrain.region.stamp.heightOffsetCells;
   return request;
 }
 
@@ -68,15 +76,19 @@ void setStampFeedback(CreativeEditorState& editor, bool accepted) noexcept {
     const cr::CreativeDocument& document,
     const CreativeEditorState& editor,
     const cr::CreativeTerrainStamp& stamp,
-    cr::CreativeTerrainCoord2 targetMinimum) noexcept {
+    const cr::CreativeTerrainStampRequest& request) noexcept {
   const CreativeTerrainStampPlacementState& state = editor.terrain.region.stamp;
   return cache.valid && cache.documentId == document.id() &&
          cache.terrainRevision == document.terrainField().revision() &&
          cache.stampSignature == stamp.contentSignature &&
-         cache.targetMinimum == targetMinimum &&
+         cache.targetMinimum == request.targetMinimum &&
          cache.quarterTurns == state.quarterTurns &&
          cache.mirrorX == state.mirrorX && cache.mirrorZ == state.mirrorZ &&
-         cache.mode == editor.toolSettings.terrainStampMode;
+         cache.mode == request.mode &&
+         cache.elevationMode == request.elevationMode &&
+         cache.targetSurfacePresent == request.targetSurfacePresent &&
+         cache.targetSurfaceHeightCells == request.targetSurfaceHeightCells &&
+         cache.manualHeightOffsetCells == request.manualHeightOffsetCells;
 }
 
 [[nodiscard]] std::string_view transformControlLabel(
@@ -85,6 +97,7 @@ void setStampFeedback(CreativeEditorState& editor, bool accepted) noexcept {
     case CreativeTerrainStampTransformControl::Rotation: return "ROTATION";
     case CreativeTerrainStampTransformControl::MirrorX: return "MIRROR X";
     case CreativeTerrainStampTransformControl::MirrorZ: return "MIRROR Z";
+    case CreativeTerrainStampTransformControl::HeightOffset: return "HEIGHT";
     case CreativeTerrainStampTransformControl::Count: break;
   }
   return "INVALID";
@@ -248,6 +261,16 @@ bool processCreativeEditorTerrainStampQuickEdit(
           state.mirrorZ = !state.mirrorZ;
           changed = true;
           break;
+        case CreativeTerrainStampTransformControl::HeightOffset: {
+          const std::int32_t next =
+              static_cast<std::int32_t>(state.heightOffsetCells) + direction;
+          if (next >= cr::kCreativeTerrainStampMinimumHeightOffsetCells &&
+              next <= cr::kCreativeTerrainStampMaximumHeightOffsetCells) {
+            state.heightOffsetCells = static_cast<std::int16_t>(next);
+            changed = true;
+          }
+          break;
+        }
         case CreativeTerrainStampTransformControl::Count: return false;
       }
       break;
@@ -268,6 +291,8 @@ std::string creativeEditorTerrainStampQuickEditLabel(
   std::string output("STAMP ");
   output.append(cr::toString(editor.toolSettings.terrainStampMode));
   output.append(" | ");
+  output.append(cr::toString(editor.toolSettings.terrainStampElevationMode));
+  output.append(" | ");
   output.append(transformControlLabel(state.selectedControl));
   output.append(" | ROT ");
   output.append(std::to_string(static_cast<unsigned>(state.quarterTurns) * 90U));
@@ -275,6 +300,11 @@ std::string creativeEditorTerrainStampQuickEditLabel(
   output.append(state.mirrorX ? "ON" : "OFF");
   output.append(" | MZ ");
   output.append(state.mirrorZ ? "ON" : "OFF");
+  output.append(" | Y ");
+  if (state.heightOffsetCells >= 0) {
+    output.push_back('+');
+  }
+  output.append(std::to_string(state.heightOffsetCells));
   return output;
 }
 
@@ -293,8 +323,10 @@ bool refreshCreativeEditorTerrainStampPreview(
     invalidateStampPreview(state);
     return false;
   }
+  const cr::CreativeTerrainStampRequest request =
+      stampRequest(document, editor, stamp, targetMinimum);
   CreativeTerrainStampPreviewCache& cache = state.preview;
-  if (previewKeyMatches(cache, document, editor, stamp, targetMinimum)) {
+  if (previewKeyMatches(cache, document, editor, stamp, request)) {
     return false;
   }
 
@@ -309,9 +341,12 @@ bool refreshCreativeEditorTerrainStampPreview(
   cache.quarterTurns = state.quarterTurns;
   cache.mirrorX = state.mirrorX;
   cache.mirrorZ = state.mirrorZ;
-  cache.mode = editor.toolSettings.terrainStampMode;
-  cache.plan = cr::buildCreativeTerrainStampPlan(
-      stampRequest(document, editor, stamp, targetMinimum));
+  cache.mode = request.mode;
+  cache.elevationMode = request.elevationMode;
+  cache.targetSurfacePresent = request.targetSurfacePresent;
+  cache.targetSurfaceHeightCells = request.targetSurfaceHeightCells;
+  cache.manualHeightOffsetCells = request.manualHeightOffsetCells;
+  cache.plan = cr::buildCreativeTerrainStampPlan(request);
   if (!cache.plan.accepted) {
     return true;
   }

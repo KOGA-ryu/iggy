@@ -910,6 +910,7 @@ struct CreativeEditorVolumePreviewFacts {
     const creative::CreativeTerrainStampPlan& plan) noexcept {
   switch (plan.status) {
     case creative::CreativeTerrainStampPlanStatus::CapacityExceeded:
+    case creative::CreativeTerrainStampPlanStatus::HeightOutOfRange:
     case creative::CreativeTerrainStampPlanStatus::NoChange:
     case creative::CreativeTerrainStampPlanStatus::Ready:
       return plan.transformedWidthCells > 0U &&
@@ -1062,8 +1063,10 @@ void appendCreativeEditorVolumePreviewLabel(
     const CreativeTerrainStampPreviewCache& preview =
         editor.terrain.region.stamp.preview;
     std::snprintf(
-        label, sizeof(label), "STAMP %s %d x %d | %u rods | %s",
+        label, sizeof(label), "STAMP %s %s Y%+d | %d x %d | %u rods | %s",
         std::string(creative::toString(preview.mode)).c_str(),
+        std::string(creative::toString(preview.elevationMode)).c_str(),
+        preview.plan.appliedHeightOffsetCells,
         gridBounds.max.x - gridBounds.min.x,
         gridBounds.max.z - gridBounds.min.z,
         static_cast<unsigned>(preview.plan.finalControlCount),
