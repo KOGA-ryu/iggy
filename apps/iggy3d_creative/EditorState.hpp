@@ -12,6 +12,7 @@
 #include "EditorCapture.hpp"
 #include "EditorControls.hpp"
 #include "EditorEdits.hpp"
+#include "EditorGroup.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorPattern.hpp"
 #include "EditorTerrain.hpp"
@@ -43,6 +44,7 @@ struct CreativeEditorState {
       iggy3d::creative::makeDefaultCreativeToolSettings();
   CreativeEditorToolOptionsState toolOptions;
   CreativeEditorQuickEditState quickEdit;
+  CreativeEditorGroupFocusState groupFocus;
   CreativeEditorPatternState pattern;
   CreativeEditorSelectionTransformState transform;
   CreativeEditorTerrainState terrain;

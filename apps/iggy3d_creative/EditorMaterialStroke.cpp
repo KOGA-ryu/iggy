@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "EditorEdits.hpp"
+#include "EditorGroup.hpp"
 #include "EditorPlacement.hpp"
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
@@ -164,7 +165,8 @@ void applySingleMaterialMutation(cr::CreativeAppState& appState,
   }
   const std::uint64_t ordinal = editor.placedCount + 1U;
   const CreativeBrushPlacementMutationReceipt receipt = applyBrushPlacement(
-      appState.facade, admission.plan, ordinal);
+      appState.facade, admission.plan, ordinal,
+      activeCreativeEditorGroupFocusId(editor.groupFocus));
   if (receipt.accepted && receipt.changed &&
       (receipt.objectCreated || receipt.voxelCreated)) {
     editor.placedCount = ordinal;

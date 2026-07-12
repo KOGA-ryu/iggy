@@ -47,6 +47,8 @@ constexpr std::array kButtonMappings{
                   SDL_GAMEPAD_BUTTON_DPAD_LEFT},
     ButtonMapping{iggy3d::creative::CreativeControllerButton::DpadRight,
                   SDL_GAMEPAD_BUTTON_DPAD_RIGHT},
+    ButtonMapping{iggy3d::creative::CreativeControllerButton::Touchpad,
+                  SDL_GAMEPAD_BUTTON_TOUCHPAD},
 };
 
 }  // namespace

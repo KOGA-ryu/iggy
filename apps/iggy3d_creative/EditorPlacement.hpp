@@ -183,12 +183,16 @@ buildBrushCreateRequest(iggy3d::creative::CreativeObjectKind brush,
 [[nodiscard]] iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
     iggy3d::creative::Facade& facade,
     const CreativeBrushPlacementPlan& plan,
-    std::uint64_t ordinal);
+    std::uint64_t ordinal,
+    iggy3d::creative::CreativeObjectId parentObjectId =
+        iggy3d::creative::kInvalidObjectId);
 
 [[nodiscard]] CreativeBrushPlacementMutationReceipt applyBrushPlacement(
     iggy3d::creative::Facade& facade,
     const CreativeBrushPlacementPlan& plan,
-    std::uint64_t ordinal);
+    std::uint64_t ordinal,
+    iggy3d::creative::CreativeObjectId parentObjectId =
+        iggy3d::creative::kInvalidObjectId);
 
 [[nodiscard]] iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
     iggy3d::creative::Facade& facade,

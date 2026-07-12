@@ -17,6 +17,12 @@ class SdlWindow;
 
 }  // namespace iggy3d
 
+namespace iggy3d::creative {
+
+struct CreativeAppState;
+
+}  // namespace iggy3d::creative
+
 namespace iggy3d_creative_app {
 
 struct CreativeEditorState;
@@ -24,10 +30,12 @@ struct CreativeEditorState;
 enum class CreativeEditorToolOptionsCommandId : std::uint8_t {
   SetMaterialBrushSymmetryPivot,
   ClearMaterialBrushSymmetryPivot,
+  EditGroupContents,
+  UngroupSelection,
   Count,
 };
 
-inline constexpr std::size_t kCreativeEditorToolOptionsCommandCapacity = 2U;
+inline constexpr std::size_t kCreativeEditorToolOptionsCommandCapacity = 4U;
 
 struct CreativeEditorToolOptionsCommandList {
   std::array<CreativeEditorToolOptionsCommandId,
@@ -43,6 +51,8 @@ struct CreativeEditorToolOptionsState {
   iggy3d::creative::CreativeToolOptionList options;
   CreativeEditorToolOptionsCommandList commands;
   std::size_t selectedIndex = 0;
+  iggy3d::creative::CreativeObjectId contextGroupId =
+      iggy3d::creative::kInvalidObjectId;
 };
 
 struct CreativeEditorQuickEditState {
@@ -55,6 +65,7 @@ struct CreativeEditorQuickEditState {
 
 struct CreativeEditorToolOptionsFrameRequest {
   iggy3d::SdlWindow& window;
+  iggy3d::creative::CreativeAppState& appState;
   CreativeEditorState& editor;
   const iggy3d::creative::CreativeInputRouteResult& routedInput;
   bool openRequested = false;
@@ -83,6 +94,9 @@ creativeEditorToolOptionCommandsForEntry(
 [[nodiscard]] std::size_t creativeEditorToolOptionsRowCount(
     const CreativeEditorToolOptionsState& state) noexcept;
 [[nodiscard]] bool activateCreativeEditorToolOptionsSelection(
+    CreativeEditorState& editor);
+[[nodiscard]] bool activateCreativeEditorToolOptionsSelection(
+    iggy3d::creative::CreativeAppState& appState,
     CreativeEditorState& editor);
 
 void syncCreativeEditorQuickEdit(CreativeEditorState& editor);

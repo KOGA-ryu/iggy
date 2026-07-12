@@ -714,13 +714,23 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
                        hasBinding(cr::CreativeInputActionId::QuickEditNext,
                                   cr::CreativeInputKey::GamepadDpadDown,
                                   cr::CreativeInputContext::EditorViewport) &&
+                       hasBinding(cr::CreativeInputActionId::QuickEditNext,
+                                  cr::CreativeInputKey::GamepadWest,
+                                  cr::CreativeInputContext::EditorViewport) &&
                        hasBinding(cr::CreativeInputActionId::QuickEditDecrease,
                                   cr::CreativeInputKey::GamepadDpadLeft,
                                   cr::CreativeInputContext::EditorViewport) &&
                        hasBinding(cr::CreativeInputActionId::QuickEditIncrease,
                                   cr::CreativeInputKey::GamepadDpadRight,
                                   cr::CreativeInputContext::EditorViewport),
-                   "viewport dpad owns bounded quick editing") &&
+                   "viewport dpad and Square own bounded quick editing") &&
+            expect(hasBinding(cr::CreativeInputActionId::PickAction,
+                              cr::CreativeInputKey::GamepadTouchpad,
+                              cr::CreativeInputContext::EditorViewport) &&
+                       !hasBinding(cr::CreativeInputActionId::PickAction,
+                                   cr::CreativeInputKey::GamepadWest,
+                                   cr::CreativeInputContext::EditorViewport),
+                   "touchpad owns controller pick after Square cycles settings") &&
             expect(hasBinding(cr::CreativeInputActionId::ToolWheelConfirm,
                               cr::CreativeInputKey::GamepadConfirm,
                               cr::CreativeInputContext::ToolWheel) &&
@@ -888,6 +898,33 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
               "tool-wheel Square emits dedicated options action") &&
        expect(wheelOptionsHeld.actionCount == 0U,
               "held Square does not repeat tool options") &&
+       ok;
+
+  cr::CreativeInputRouterState quickEditRouter;
+  cr::CreativeInputFrame quickEditFrame;
+  quickEditFrame.context = cr::CreativeInputContext::EditorViewport;
+  cr::setCreativeInputKey(quickEditFrame,
+                          cr::CreativeInputKey::GamepadWest, true);
+  const cr::CreativeInputRouteResult quickEditPressed =
+      cr::routeCreativeInput(quickEditRouter, quickEditFrame, bindings);
+  const cr::CreativeInputRouteResult quickEditHeld =
+      cr::routeCreativeInput(quickEditRouter, quickEditFrame, bindings);
+  ok = expect(quickEditPressed.actionCount == 1U &&
+                  quickEditPressed.actions[0].action ==
+                      cr::CreativeInputActionId::QuickEditNext,
+              "viewport Square emits one next-setting action") &&
+       expect(quickEditHeld.actionCount == 0U,
+              "held viewport Square does not repeat setting changes") &&
+       ok;
+
+  cr::CreativeInputFrame touchpadFrame;
+  touchpadFrame.context = cr::CreativeInputContext::EditorViewport;
+  cr::setCreativeInputKey(touchpadFrame,
+                          cr::CreativeInputKey::GamepadTouchpad, true);
+  ok = expect(cr::creativeInputActionDown(
+                  touchpadFrame, cr::CreativeInputActionId::PickAction,
+                  bindings),
+              "touchpad preserves continuous pick and sample input") &&
        ok;
 
   cr::CreativeInputRouterState wheelSecondaryRouter;

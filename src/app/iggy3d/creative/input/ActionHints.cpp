@@ -31,17 +31,25 @@ namespace {
     CreativeInputActionId action,
     CreativeInputContext context,
     CreativeControlDevice device) noexcept {
-  for (const CreativeInputBinding& binding : profile.bindingSpan()) {
+  const CreativeInputBinding* fallback = nullptr;
+  for (std::size_t index = 0U; index < profile.bindingCount; ++index) {
+    const CreativeInputBinding& binding = profile.bindings[index];
     if (binding.action != action || binding.context != context ||
         binding.trigger == CreativeInputKey::Unbound) {
       continue;
     }
     const bool gamepad = creativeInputKeyIsGamepad(binding.trigger);
     if ((device == CreativeControlDevice::Gamepad) == gamepad) {
-      return &binding;
+      fallback = fallback == nullptr ? &binding : fallback;
+      const std::uint16_t group = profile.bindingGroups[index];
+      if (action == CreativeInputActionId::QuickEditNext && gamepad &&
+          group < profile.groupCount &&
+          profile.groupOrdinals[group] == 1U) {
+        return &binding;
+      }
     }
   }
-  return nullptr;
+  return fallback;
 }
 
 [[nodiscard]] bool appendModifierChord(

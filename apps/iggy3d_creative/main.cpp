@@ -16,6 +16,7 @@
 // The app may contain projection/hit-test glue, but object kind policy should
 // continue to come from descriptors and shared kernel systems.
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
@@ -39,6 +40,7 @@
 #include "EditorFrame.hpp"
 #include "EditorGamepad.hpp"
 #include "EditorGizmo.hpp"
+#include "EditorGroup.hpp"
 #include "EditorBootstrap.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorState.hpp"
@@ -65,9 +67,12 @@ using iggy3d_creative_app::cancelCreativeEditorSelectionTransformPreview;
 using iggy3d_creative_app::processCreativeEditorTransformFrame;
 using iggy3d_creative_app::CreativeEditorFrameInputResult;
 using iggy3d_creative_app::CreativeEditorGizmoFrame;
+using iggy3d_creative_app::creativeEditorGroupFocusActive;
+using iggy3d_creative_app::creativeEditorObjectInsideActiveGroup;
 using iggy3d_creative_app::CreativeEditorPickFrame;
 using iggy3d_creative_app::CreativeEditorSelectionFrame;
 using iggy3d_creative_app::CreativeEditorOverlayFrame;
+using iggy3d_creative_app::ObjectVisualPickBounds;
 using iggy3d_creative_app::firstBrushKind;
 using iggy3d_creative_app::logCreativeEditorPathHandleCaptureFrame;
 using iggy3d_creative_app::processCreativeEditorCatalogFrame;
@@ -78,6 +83,7 @@ using iggy3d_creative_app::submitCreativeEditorFrame;
 using iggy3d_creative_app::logCreativeEditorWorldPickProofFrame;
 using iggy3d_creative_app::resolveCreativeEditorSelectionFrame;
 using iggy3d_creative_app::runCreativeEditorCaptureScenarioFrame;
+using iggy3d_creative_app::syncCreativeEditorGroupFocus;
 using iggy3d_creative_app::StandaloneRoomBakePreviewScene;
 using iggy3d_creative_app::initializeCreativeEditorBootstrapData;
 
@@ -219,6 +225,7 @@ int main(int argc, char** argv) {
     const iggy3d_creative_app::CreativeEditorToolOptionsFrameResult
         toolOptionsFrame = processCreativeEditorToolOptionsFrame(
             {window,
+             appState,
              editor,
              frameInput.routedInput,
              catalogFrame.openToolOptionsRequested,
@@ -263,7 +270,9 @@ int main(int argc, char** argv) {
 
     // Scan every visible object's visual bounds once. Live interaction resolves
     // the center ray from this frame; scripted capture retains its fixed proof ray.
-    const CreativeEditorPickFrame pickFrame = buildCreativeEditorPickFrame(
+    static_cast<void>(syncCreativeEditorGroupFocus(
+        editor.groupFocus, appState.facade.document()));
+    CreativeEditorPickFrame pickFrame = buildCreativeEditorPickFrame(
         appState.facade.document(),
         frame.camera,
         extent.width,
@@ -271,6 +280,15 @@ int main(int argc, char** argv) {
         floorObjectId,
         editor.captureScript,
         !capturePath.empty());
+    if (creativeEditorGroupFocusActive(editor.groupFocus)) {
+      std::erase_if(
+          pickFrame.objectPickCandidates,
+          [&](const ObjectVisualPickBounds& candidate) {
+            return !creativeEditorObjectInsideActiveGroup(
+                appState.facade.document(), editor.groupFocus,
+                candidate.id);
+          });
+    }
     logCreativeEditorWorldPickProofFrame(appState.facade,
                                          frame.camera,
                                          extent.width,

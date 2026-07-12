@@ -799,7 +799,8 @@ iggy3d::creative::CreativeDocumentCreateRequest buildBrushCreateRequest(
 iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
     iggy3d::creative::Facade& facade,
     const CreativeBrushPlacementPlan& plan,
-    std::uint64_t ordinal) {
+    std::uint64_t ordinal,
+    iggy3d::creative::CreativeObjectId parentObjectId) {
   if (!plan.valid || plan.status != CreativeBrushPlacementPlanStatus::Ready) {
     iggy3d::creative::CreativeDocumentCreateReceipt rejected;
     rejected.requested = true;
@@ -814,8 +815,11 @@ iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
   }
   const iggy3d::creative::CreativeObjectDescriptor& descriptor =
       iggy3d::creative::describeObject(plan.brush);
-  const iggy3d::creative::CreativeDocumentCreateRequest request =
+  iggy3d::creative::CreativeDocumentCreateRequest request =
       buildBrushCreateRequest(plan, ordinal);
+  if (parentObjectId != iggy3d::creative::kInvalidObjectId) {
+    request.parentId = parentObjectId;
+  }
 
   const iggy3d::creative::CreativeDocumentCreateReceipt receipt =
       facade.createDocumentObject(request);
@@ -851,7 +855,8 @@ iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
 CreativeBrushPlacementMutationReceipt applyBrushPlacement(
     iggy3d::creative::Facade& facade,
     const CreativeBrushPlacementPlan& plan,
-    std::uint64_t ordinal) {
+    std::uint64_t ordinal,
+    iggy3d::creative::CreativeObjectId parentObjectId) {
   CreativeBrushPlacementMutationReceipt receipt;
   receipt.requested = true;
   receipt.storagePolicy = plan.storagePolicy;
@@ -884,7 +889,7 @@ CreativeBrushPlacementMutationReceipt applyBrushPlacement(
         return receipt;
       }
       const iggy3d::creative::CreativeDocumentCreateReceipt objectReceipt =
-          placeBrushObject(facade, plan, ordinal);
+          placeBrushObject(facade, plan, ordinal, parentObjectId);
       receipt.accepted = objectReceipt.accepted;
       receipt.changed = objectReceipt.changed;
       receipt.objectCreated = objectReceipt.objectCreated;

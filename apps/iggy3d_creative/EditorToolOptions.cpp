@@ -5,9 +5,11 @@
 #include <string_view>
 
 #include "EditorPlacement.hpp"
+#include "EditorGroup.hpp"
 #include "EditorState.hpp"
 #include "EditorTerrain.hpp"
 #include "EditorVolume.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/input/UiInput.hpp"
 #include "app/platform/SdlWindow.hpp"
@@ -61,6 +63,11 @@ creativeEditorToolOptionCommandsForEntry(
         CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot;
     commands.ids[commands.count++] =
         CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot;
+  } else if (entry.kind == cr::CreativeHeldItemKind::ObjectGroup) {
+    commands.ids[commands.count++] =
+        CreativeEditorToolOptionsCommandId::EditGroupContents;
+    commands.ids[commands.count++] =
+        CreativeEditorToolOptionsCommandId::UngroupSelection;
   }
   return commands;
 }
@@ -235,6 +242,7 @@ void rebuildQuickEditOptions(CreativeEditorState& editor,
 
 [[nodiscard]] bool commandEnabled(
     const CreativeEditorState& editor,
+    const CreativeEditorToolOptionsState& state,
     CreativeEditorToolOptionsCommandId command) noexcept {
   const CreativeMaterialBrushPivotState& pivot =
       editor.interaction.materialBrushPivot;
@@ -244,6 +252,11 @@ void rebuildQuickEditOptions(CreativeEditorState& editor,
              pivot.documentId != cr::kInvalidDocumentId;
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
       return pivot.locked;
+    case CreativeEditorToolOptionsCommandId::EditGroupContents:
+      return state.contextGroupId != cr::kInvalidObjectId &&
+             editor.groupFocus.depth < editor.groupFocus.groupIds.size();
+    case CreativeEditorToolOptionsCommandId::UngroupSelection:
+      return state.contextGroupId != cr::kInvalidObjectId;
     case CreativeEditorToolOptionsCommandId::Count:
       return false;
   }
@@ -270,6 +283,10 @@ void rebuildQuickEditOptions(CreativeEditorState& editor,
       return "SET SYMMETRY PIVOT";
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
       return "CLEAR SYMMETRY PIVOT";
+    case CreativeEditorToolOptionsCommandId::EditGroupContents:
+      return "EDIT GROUP CONTENTS";
+    case CreativeEditorToolOptionsCommandId::UngroupSelection:
+      return "UNGROUP";
     case CreativeEditorToolOptionsCommandId::Count:
       return "INVALID COMMAND";
   }
@@ -288,6 +305,14 @@ void rebuildQuickEditOptions(CreativeEditorState& editor,
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
       return pivot.locked ? pivotCellLabel("LOCKED", pivot.lockedCell)
                           : "NOT SET";
+    case CreativeEditorToolOptionsCommandId::EditGroupContents:
+      return editor.toolOptions.contextGroupId != cr::kInvalidObjectId
+                 ? "ENTER"
+                 : "SELECT GROUP";
+    case CreativeEditorToolOptionsCommandId::UngroupSelection:
+      return editor.toolOptions.contextGroupId != cr::kInvalidObjectId
+                 ? "REMOVE CONTAINER"
+                 : "SELECT GROUP";
     case CreativeEditorToolOptionsCommandId::Count:
       return "INVALID";
   }
@@ -325,7 +350,8 @@ void processPointerInput(const CreativeEditorToolOptionsFrameRequest& request,
       state.selectedIndex = row;
       if (row >= state.options.count) {
         result.committed =
-            activateCreativeEditorToolOptionsSelection(request.editor);
+            activateCreativeEditorToolOptionsSelection(
+                request.appState, request.editor);
       } else if (layout.panelWidth >= 112U) {
         const std::int32_t decreaseX = panelRight - 88;
         const std::int32_t increaseX = panelRight - 48;
@@ -371,7 +397,7 @@ bool activateCreativeEditorToolOptionsSelection(
   }
   const CreativeEditorToolOptionsCommandId command =
       state.commands.ids[commandIndex];
-  if (!commandEnabled(editor, command)) {
+  if (!commandEnabled(editor, state, command)) {
     return false;
   }
 
@@ -385,10 +411,49 @@ bool activateCreativeEditorToolOptionsSelection(
       accepted = clearCreativeMaterialBrushPivot(
           editor.interaction.materialBrushPivot);
       break;
+    case CreativeEditorToolOptionsCommandId::EditGroupContents:
+    case CreativeEditorToolOptionsCommandId::UngroupSelection:
+      break;
     case CreativeEditorToolOptionsCommandId::Count:
       break;
   }
   return accepted && commitOptions(editor);
+}
+
+bool activateCreativeEditorToolOptionsSelection(
+    cr::CreativeAppState& appState,
+    CreativeEditorState& editor) {
+  CreativeEditorToolOptionsState& state = editor.toolOptions;
+  if (!state.open || state.selectedIndex < state.options.count) {
+    return activateCreativeEditorToolOptionsSelection(editor);
+  }
+  const std::size_t commandIndex =
+      state.selectedIndex - state.options.count;
+  if (commandIndex >= state.commands.count ||
+      !cr::isValidCreativeToolSettings(state.draft)) {
+    return false;
+  }
+  const CreativeEditorToolOptionsCommandId command =
+      state.commands.ids[commandIndex];
+  if (command == CreativeEditorToolOptionsCommandId::EditGroupContents) {
+    const CreativeEditorGroupFocusReceipt receipt =
+        enterCreativeEditorGroupFocus(appState, editor.groupFocus,
+                                      state.contextGroupId);
+    if (receipt.accepted) {
+      state.open = false;
+    }
+    return receipt.accepted;
+  }
+  if (command == CreativeEditorToolOptionsCommandId::UngroupSelection) {
+    const cr::CreativeGroupCommandReceipt receipt =
+        applyCreativeEditorGroupCommandWithHistory(
+            appState, "creative_group_tool_options_ungroup");
+    if (receipt.accepted) {
+      state.open = false;
+    }
+    return receipt.accepted;
+  }
+  return activateCreativeEditorToolOptionsSelection(editor);
 }
 
 CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
@@ -411,6 +476,20 @@ CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
       state.options = options;
       state.commands = commands;
       state.selectedIndex = 0U;
+      state.contextGroupId = cr::kInvalidObjectId;
+      if (request.requestedEntry.kind ==
+          cr::CreativeHeldItemKind::ObjectGroup) {
+        const cr::TargetRef selected =
+            request.appState.facade.selectionState().selectedTarget;
+        if (selected.value != cr::kInvalidId) {
+          const cr::CreativeObject* object = request.appState.facade.findObject(
+              static_cast<cr::CreativeObjectId>(selected.value));
+          if (object != nullptr &&
+              object->kind == cr::CreativeObjectKind::Group) {
+            state.contextGroupId = object->id;
+          }
+        }
+      }
     }
   }
 
@@ -436,7 +515,8 @@ CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
           break;
         case cr::CreativeInputActionId::ToolOptionsConfirm:
           result.committed =
-              activateCreativeEditorToolOptionsSelection(request.editor);
+              activateCreativeEditorToolOptionsSelection(
+                  request.appState, request.editor);
           break;
         case cr::CreativeInputActionId::ToolOptionsClose:
           state.open = false;
@@ -665,7 +745,7 @@ void appendCreativeEditorToolOptionsOverlay(
     }
     const CreativeEditorToolOptionsCommandId command =
         state.commands.ids[commandIndex];
-    const bool enabled = commandEnabled(editor, command);
+    const bool enabled = commandEnabled(editor, state, command);
     const bool selected = row == state.selectedIndex;
     uiRects.push_back({layout.panelX + static_cast<std::int32_t>(rowInset), y,
                        rowWidth, layout.rowHeight - 4U,

@@ -807,7 +807,10 @@ void processToolWheelInput(const CreativeEditorCatalogFrameRequest& request,
         const cr::CreativeToolOptionList options =
             creativeEditorToolOptionsForEntry(selected->hotbarEntry,
                                               request.editor.toolSettings);
-        if (options.count == 0U || options.capacityExceeded) {
+        const CreativeEditorToolOptionsCommandList commands =
+            creativeEditorToolOptionCommandsForEntry(selected->hotbarEntry);
+        if ((options.count == 0U && commands.count == 0U) ||
+            options.capacityExceeded) {
           break;
         }
         result.openToolOptionsRequested = true;

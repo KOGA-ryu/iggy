@@ -124,7 +124,7 @@ bool resolverUsesLiveBindingsAndBoundedPairs() {
                        place->label.view() == "Place",
                    "PS5 confirm label comes from the live control profile") &&
             expect(setting != nullptr &&
-                       setting->chord.view() == "D-pad U/D" &&
+                       setting->chord.view() == "D-pad Up / Square" &&
                        setting->label.view() == "Setting",
                    "paired semantic actions remain one bounded hint") &&
             expect(std::is_trivially_copyable_v<cr::CreativeActionHintFrame>,
@@ -262,7 +262,7 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                   erase->chord.view() == "Circle" &&
                   erase->label.view() == "Erase" &&
                   brushSetting != nullptr &&
-                  brushSetting->chord.view() == "D-pad U/D",
+                  brushSetting->chord.view() == "D-pad Up / Square",
               "material brush advertises controller-native paint erase and settings") &&
        ok;
 
@@ -285,7 +285,7 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                   eraseRegion->chord.view() == "Circle" &&
                   eraseRegion->label.view() == "Erase region" &&
                   fillLimit != nullptr &&
-                  fillLimit->chord.view() == "D-pad U/D",
+                  fillLimit->chord.view() == "D-pad Up / Square",
               "connected fill exposes paint erase and bounded-limit controls") &&
        ok;
 
@@ -308,7 +308,7 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                   removeLayer->chord.view() == "Circle" &&
                   removeLayer->label.view() == "Remove layer" &&
                   surfaceSetting != nullptr &&
-                  surfaceSetting->chord.view() == "D-pad U/D",
+                  surfaceSetting->chord.view() == "D-pad Up / Square",
               "surface extrude exposes pull remove and bounded settings") &&
        ok;
 
@@ -333,7 +333,7 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                   terrainSelect != nullptr &&
                   terrainSelect->label.view() == "Select rod" &&
                   terrainHeight != nullptr &&
-                  terrainHeight->chord.view() == "D-pad U/D" &&
+                  terrainHeight->chord.view() == "D-pad Up / Square" &&
                   terrainHeight->label.view() == "Height" &&
                   terrainRadius != nullptr &&
                   terrainRadius->chord.view() == "D-pad L/R" &&
@@ -422,7 +422,7 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                   gradeCancel->chord.view() == "Circle" &&
                   gradeCancel->label.view() == "Cancel grade" &&
                   gradeAnchor != nullptr &&
-                  gradeAnchor->chord.view() == "Square" &&
+                  gradeAnchor->chord.view() == "Touchpad" &&
                   gradeAnchor->label.view() == "Set start rod" &&
                   gradeHeight != nullptr &&
                   gradeHeight->label.view() == "End height" &&
@@ -451,7 +451,7 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                   sculptCancel->chord.view() == "Circle" &&
                   sculptCancel->label.view() == "Cancel sculpt" &&
                   sculptSample != nullptr &&
-                  sculptSample->chord.view() == "Square" &&
+                  sculptSample->chord.view() == "Touchpad" &&
                   sculptSample->label.view() == "Sample height" &&
                   sculptStrength != nullptr &&
                   sculptStrength->label.view() == "Strength" &&
@@ -484,7 +484,7 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
   ok = expect(profileApply != nullptr && profileApply->chord.view() == "X" &&
                   profileApply->label.view() == "Apply profile" &&
                   profileLock != nullptr &&
-                  profileLock->chord.view() == "Square" &&
+                  profileLock->chord.view() == "Touchpad" &&
                   profileLock->label.view() == "Lock base" &&
                   findHint(terrainProfile,
                            cr::CreativeInputActionId::RejectAction) == nullptr &&
@@ -494,7 +494,7 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                   findHint(terrainProfile,
                            cr::CreativeInputActionId::QuickEditDecrease) !=
                       nullptr,
-              "profile advertises X apply Square lock and D-pad tuning") &&
+              "profile advertises X apply Touchpad lock and quick tuning") &&
        ok;
   editor.terrain.profile.baseLocked = true;
   const cr::CreativeActionHintFrame lockedProfile =
@@ -529,12 +529,13 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                   pathCommit->label.view() == "Commit path" &&
                   pathBack != nullptr && pathBack->chord.view() == "Circle" &&
                   pathBack->label.view() == "Back point" &&
-                  pathPoint != nullptr && pathPoint->chord.view() == "Square" &&
+                  pathPoint != nullptr &&
+                  pathPoint->chord.view() == "Touchpad" &&
                   pathPoint->label.view() == "Add point" &&
                   pathRise != nullptr && pathRise->label.view() == "Rise" &&
                   pathWidth != nullptr && pathWidth->label.view() == "Width" &&
                   !terrainPath.capacityExceeded,
-              "path advertises Square points X commit Circle back and D-pad tuning") &&
+              "path advertises Touchpad points X commit Circle back and tuning") &&
        ok;
   editor.toolSettings.terrainPathKind = cr::CreativeTerrainPathKind::River;
   const cr::CreativeActionHintFrame riverPath =
@@ -600,7 +601,7 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                   regionApply != nullptr &&
                   regionApply->label.view() == "Apply region" &&
                   regionSample != nullptr &&
-                  regionSample->chord.view() == "Square" &&
+                  regionSample->chord.view() == "Touchpad" &&
                   regionSample->label.view() == "Sample height" &&
                   regionTarget != nullptr &&
                   regionTarget->label.view() == "Target" &&
@@ -670,7 +671,7 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
   ok = expect(array.count == 6U && arrayApply != nullptr &&
                   arrayApply->label.view() == "Select/Use" &&
                   setting != nullptr &&
-                  setting->chord.view() == "D-pad U/D",
+                  setting->chord.view() == "D-pad Up / Square",
               "array ribbon prioritizes apply and quick-edit controls") &&
        ok;
 

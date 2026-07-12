@@ -19,6 +19,7 @@
 #include "EditorToolOptions.hpp"
 #include "EditorTransform.hpp"
 #include "EditorGizmo.hpp"
+#include "EditorGroup.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorPlacement.hpp"
 #include "EditorPattern.hpp"
@@ -1304,6 +1305,42 @@ void buildAndAttachCreativeEditorOverlayFrame(
     combinedWireLines.push_back(line);
   }
   documentWireLineCount = combinedWireLines.size();
+  const creative::CreativeObjectId focusedGroupId =
+      activeCreativeEditorGroupFocusId(editor.groupFocus);
+  if (focusedGroupId != creative::kInvalidObjectId) {
+    bool haveFocusedBounds = false;
+    VisualBounds focusedBounds{};
+    for (const creative::CreativeObject& object :
+         appState.facade.document().objects()) {
+      if (!object.visible ||
+          object.kind == creative::CreativeObjectKind::Group ||
+          !creativeEditorObjectInsideActiveGroup(
+              appState.facade.document(), editor.groupFocus, object.id)) {
+        continue;
+      }
+      const VisualBounds objectBounds = visualBoundsForObject(object);
+      if (!haveFocusedBounds) {
+        focusedBounds = objectBounds;
+        haveFocusedBounds = true;
+        continue;
+      }
+      focusedBounds.min.x = std::min(focusedBounds.min.x, objectBounds.min.x);
+      focusedBounds.min.y = std::min(focusedBounds.min.y, objectBounds.min.y);
+      focusedBounds.min.z = std::min(focusedBounds.min.z, objectBounds.min.z);
+      focusedBounds.max.x = std::max(focusedBounds.max.x, objectBounds.max.x);
+      focusedBounds.max.y = std::max(focusedBounds.max.y, objectBounds.max.y);
+      focusedBounds.max.z = std::max(focusedBounds.max.z, objectBounds.max.z);
+    }
+    if (haveFocusedBounds) {
+      const std::size_t before = combinedWireLines.size();
+      appendStandaloneWireframeBoxEdges(
+          combinedWireLines, focusedBounds.min, focusedBounds.max,
+          RenderLineColor{0.18F, 0.90F, 1.0F, 1.0F}, 0.045F);
+      for (std::size_t i = before; i < combinedWireLines.size(); ++i) {
+        combinedWireLines[i].objectId = focusedGroupId;
+      }
+    }
+  }
   for (const creative::CreativeObject& obj :
        appState.facade.document().objects()) {
     const creative::CreativeObjectDescriptor& descriptor =

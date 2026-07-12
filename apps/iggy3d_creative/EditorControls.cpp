@@ -23,6 +23,8 @@ namespace cr = iggy3d::creative;
 namespace {
 
 constexpr std::string_view kControlFileHeader =
+    "iggy3d_creative_controls 2";
+constexpr std::string_view kLegacyControlFileHeader =
     "iggy3d_creative_controls 1";
 constexpr cr::CreativeUiWidgetId kControlRowWidgetIdBase = 1U;
 constexpr cr::CreativeUiWidgetId kControlsResetWidgetId = 1000U;
@@ -856,7 +858,8 @@ CreativeEditorControlPersistenceReceipt parseControlProfileStream(
   CreativeEditorControlPersistenceReceipt receipt;
   std::string header;
   std::getline(input, header);
-  if (header != kControlFileHeader) {
+  const bool legacyV1 = header == kLegacyControlFileHeader;
+  if (header != kControlFileHeader && !legacyV1) {
     receipt.status = CreativeEditorControlPersistenceStatus::Invalid;
     return receipt;
   }
@@ -910,6 +913,11 @@ CreativeEditorControlPersistenceReceipt parseControlProfileStream(
           !cr::parseCreativeInputKey(keyName, key)) {
         receipt.status = CreativeEditorControlPersistenceStatus::Invalid;
         return receipt;
+      }
+      if (legacyV1 && action == cr::CreativeInputActionId::PickAction &&
+          device == cr::CreativeControlDevice::Gamepad && ordinal == 0U &&
+          key == cr::CreativeInputKey::GamepadWest) {
+        key = cr::CreativeInputKey::GamepadTouchpad;
       }
       std::size_t groupIndexValue = candidate.groupCount;
       for (std::size_t index = 0; index < candidate.groupCount; ++index) {

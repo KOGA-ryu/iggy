@@ -1837,6 +1837,11 @@ std::string creativeEditorHeldItemStatusLabel(
       appendHeldQuickEditStatus(output, editor);
       break;
   }
+  if (creativeEditorGroupFocusActive(editor.groupFocus)) {
+    output.append(" | EDIT GROUP ");
+    output.append(std::to_string(editor.groupFocus.depth));
+    output.append(" | CIRCLE EXIT");
+  }
   return output;
 }
 
@@ -2074,6 +2079,7 @@ void processCreativeEditorWorldInteractionFrame(
     const CreativeEditorWorldInteractionFrameRequest& request) {
   CreativeEditorState& editor = request.editor;
   const cr::CreativeDocument& document = request.appState.facade.document();
+  static_cast<void>(syncCreativeEditorGroupFocus(editor.groupFocus, document));
   const double targetCellSize =
       creativeEditorTargetCellSize(document, editor);
   const cr::CreativeGridSettings documentGrid = document.gridSettings();
@@ -2093,6 +2099,26 @@ void processCreativeEditorWorldInteractionFrame(
       request.drawableHeight, targetCellSize);
   const cr::CreativeHotbarEntry& aimedHeld =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const bool hierarchySelectionTool =
+      aimedHeld.kind == cr::CreativeHeldItemKind::ObjectSelect ||
+      aimedHeld.kind == cr::CreativeHeldItemKind::ObjectMove ||
+      aimedHeld.kind == cr::CreativeHeldItemKind::ObjectGroup ||
+      aimedHeld.kind == cr::CreativeHeldItemKind::LinearArray;
+  if (hierarchySelectionTool && editor.interaction.target.objectHit) {
+    const cr::CreativeObjectId resolvedObjectId =
+        resolveCreativeEditorGroupSelectionTarget(
+            document, editor.groupFocus, editor.interaction.target.objectId);
+    const cr::CreativeObject* resolvedObject =
+        document.findObject(resolvedObjectId);
+    if (resolvedObject == nullptr) {
+      editor.interaction.target.objectHit = false;
+      editor.interaction.target.objectId = cr::kInvalidObjectId;
+      editor.interaction.target.objectKind = cr::CreativeObjectKind::Unknown;
+    } else {
+      editor.interaction.target.objectId = resolvedObject->id;
+      editor.interaction.target.objectKind = resolvedObject->kind;
+    }
+  }
   if (cr::creativeHeldItemIsTerrainTool(aimedHeld.kind)) {
     updateCreativeEditorTerrainAim(
         editor.terrain, document, editor.interaction.target.ray,
@@ -2119,6 +2145,16 @@ void processCreativeEditorWorldInteractionFrame(
   if (request.captureMode) {
     finalizeCreativeEditorContinuousGestures(
         request.appState, editor, "creative_continuous_gesture_capture");
+    return;
+  }
+  if (creativeEditorGroupFocusActive(editor.groupFocus) &&
+      cr::creativeWorldActionPressed(
+          request.actions, cr::CreativeWorldActionId::Reject)) {
+    finalizeCreativeEditorContinuousGestures(
+        request.appState, editor, "creative_group_focus_exit");
+    static_cast<void>(exitCreativeEditorGroupFocus(
+        request.appState, editor.groupFocus));
+    editor.interaction.target = {};
     return;
   }
   if (editor.transform.active) {

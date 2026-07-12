@@ -178,6 +178,7 @@ enum class CreativeInputKey : std::uint8_t {
   GamepadRightStick,
   GamepadLeftTrigger,
   GamepadRightTrigger,
+  GamepadTouchpad,
   Unbound,
   Count,
 };

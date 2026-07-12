@@ -47,6 +47,7 @@ enum class CreativeControllerButton : std::uint8_t {
   DpadRight,
   LeftTrigger,
   RightTrigger,
+  Touchpad,
   Count,
 };
 

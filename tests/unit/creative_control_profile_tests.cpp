@@ -63,6 +63,9 @@ bool defaultsAreBoundedConflictFreeAndMinecraftShaped() {
   const cr::CreativeControlBindingRow* pickPad =
       findRow(rows, cr::CreativeInputActionId::PickAction,
               cr::CreativeControlDevice::Gamepad);
+  const cr::CreativeControlBindingRow* cycleSettingPad =
+      findRow(rows, cr::CreativeInputActionId::QuickEditNext,
+              cr::CreativeControlDevice::Gamepad, 1U);
   const cr::CreativeControlBindingRow* inventory =
       findRow(rows, cr::CreativeInputActionId::ToggleCatalog,
               cr::CreativeControlDevice::Gamepad);
@@ -112,14 +115,20 @@ bool defaultsAreBoundedConflictFreeAndMinecraftShaped() {
                     toolWheelPad->trigger ==
                         cr::CreativeInputKey::GamepadRightStick &&
                     pickPad != nullptr &&
-                    pickPad->trigger == cr::CreativeInputKey::GamepadWest,
-                "R3 opens tools and Square samples the target") &&
+                    pickPad->trigger ==
+                        cr::CreativeInputKey::GamepadTouchpad &&
+                    cycleSettingPad != nullptr &&
+                    cycleSettingPad->trigger ==
+                        cr::CreativeInputKey::GamepadWest,
+                "R3 opens tools, Square cycles settings, and touchpad picks") &&
          expect(inventory != nullptr &&
                     inventory->trigger ==
                         cr::CreativeInputKey::GamepadInventory,
                 "Triangle remains inventory") &&
          expect(cr::creativeControlKeyDisplayLabel(
                     cr::CreativeInputKey::GamepadConfirm) == "X" &&
+                    cr::creativeControlKeyDisplayLabel(
+                        cr::CreativeInputKey::GamepadTouchpad) == "Touchpad" &&
                     cr::creativeControlKeyDisplayLabel(
                         cr::CreativeInputKey::GamepadStart) == "Options",
                 "PS5 labels describe physical controls");

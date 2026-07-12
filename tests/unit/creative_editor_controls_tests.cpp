@@ -34,6 +34,20 @@ const cr::CreativeControlBindingRow* findRow(
   return found == list.items().end() ? nullptr : &*found;
 }
 
+const cr::CreativeControlBindingRow* findRow(
+    const cr::CreativeControlBindingList& list,
+    cr::CreativeInputActionId action,
+    cr::CreativeControlDevice device,
+    std::uint16_t ordinal) {
+  const auto found = std::find_if(
+      list.items().begin(), list.items().end(),
+      [=](const cr::CreativeControlBindingRow& row) {
+        return row.action == action && row.device == device &&
+               row.ordinal == ordinal;
+      });
+  return found == list.items().end() ? nullptr : &*found;
+}
+
 std::filesystem::path temporaryRoot() {
   const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
   return std::filesystem::temp_directory_path() /
@@ -155,6 +169,47 @@ bool missingAndMalformedFilesDoNotReplaceLiveProfile() {
                     app::CreativeEditorControlPersistenceStatus::Invalid &&
                     profile.mouseLookSensitivity == 0.42F,
                 "unexpected persisted fields fail atomically");
+}
+
+bool legacySquarePickMigratesWithoutDiscardingProfileTuning() {
+  std::ostringstream legacy;
+  constexpr cr::CreativeInputModifierMask kEveryModifier =
+      cr::kCreativeInputModifierShift |
+      cr::kCreativeInputModifierControl |
+      cr::kCreativeInputModifierAlt |
+      cr::kCreativeInputModifierCommand;
+  legacy << "iggy3d_creative_controls 1\n"
+            "gamepad_sensitivity 2.75\n"
+            "bind PickAction Gamepad 0 GamepadWest 0 0 "
+         << static_cast<unsigned>(kEveryModifier)
+         << "\n"
+            "bind QuickEditNext Gamepad 0 GamepadDpadDown 0 0 0\n";
+  cr::CreativeControlProfile profile = cr::makeDefaultCreativeControlProfile();
+  const app::CreativeEditorControlPersistenceReceipt loaded =
+      app::parseCreativeEditorControlProfile(legacy.str(), profile);
+  const cr::CreativeControlBindingList rows =
+      cr::buildCreativeControlBindingList(profile);
+  const cr::CreativeControlBindingRow* pick =
+      findRow(rows, cr::CreativeInputActionId::PickAction,
+              cr::CreativeControlDevice::Gamepad);
+  const cr::CreativeControlBindingRow* quickEditDown =
+      findRow(rows, cr::CreativeInputActionId::QuickEditNext,
+              cr::CreativeControlDevice::Gamepad, 0U);
+  const cr::CreativeControlBindingRow* quickEditSquare =
+      findRow(rows, cr::CreativeInputActionId::QuickEditNext,
+              cr::CreativeControlDevice::Gamepad, 1U);
+  return expect(loaded.accepted && profile.gamepadLookSensitivity == 2.75F,
+                "legacy profile tuning survives the Square migration") &&
+         expect(pick != nullptr &&
+                    pick->trigger == cr::CreativeInputKey::GamepadTouchpad,
+                "legacy default Square pick migrates to Touchpad") &&
+         expect(quickEditDown != nullptr && quickEditSquare != nullptr &&
+                    quickEditDown->trigger ==
+                        cr::CreativeInputKey::GamepadDpadDown &&
+                    quickEditSquare->trigger ==
+                        cr::CreativeInputKey::GamepadWest &&
+                    cr::isValidCreativeControlProfile(profile),
+                "legacy D-pad setting binding and new Square binding coexist");
 }
 
 bool toolWheelPreferenceRoundTripIsAtomic() {
@@ -309,6 +364,7 @@ int main() {
   bool ok = true;
   ok = profileRoundTripPreservesBindingsAndTuning() && ok;
   ok = missingAndMalformedFilesDoNotReplaceLiveProfile() && ok;
+  ok = legacySquarePickMigratesWithoutDiscardingProfileTuning() && ok;
   ok = toolWheelPreferenceRoundTripIsAtomic() && ok;
   ok = controlsOverlayUsesTheStandardWidgetFrame() && ok;
   ok = deviceTabsPartitionBindingsAndResetOnlyViewState() && ok;

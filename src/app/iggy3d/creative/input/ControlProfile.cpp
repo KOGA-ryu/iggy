@@ -536,6 +536,7 @@ std::string_view creativeControlKeyDisplayLabelView(
     case CreativeInputKey::GamepadWest: return "Square";
     case CreativeInputKey::GamepadBack: return "Create";
     case CreativeInputKey::GamepadStart: return "Options";
+    case CreativeInputKey::GamepadTouchpad: return "Touchpad";
     case CreativeInputKey::GamepadLeftShoulder: return "L1";
     case CreativeInputKey::GamepadRightShoulder: return "R1";
     case CreativeInputKey::GamepadLeftTrigger: return "L2";

@@ -231,6 +231,10 @@ void setSdlKey(creative::CreativeInputFrame& frame,
       frame, creative::CreativeInputKey::GamepadRightTrigger,
       creative::creativeControllerButtonDown(
           controller, creative::CreativeControllerButton::RightTrigger));
+  creative::setCreativeInputKey(
+      frame, creative::CreativeInputKey::GamepadTouchpad,
+      creative::creativeControllerButtonDown(
+          controller, creative::CreativeControllerButton::Touchpad));
   return frame;
 }
 

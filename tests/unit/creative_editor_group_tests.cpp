@@ -2,7 +2,9 @@
 #include "EditorEdits.hpp"
 #include "EditorFrame.hpp"
 #include "EditorInteraction.hpp"
+#include "EditorPlacement.hpp"
 #include "EditorState.hpp"
+#include "EditorToolOptions.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 
 #include <cstdlib>
@@ -279,6 +281,142 @@ bool clipboardCommandsPreserveAndSelectGroupRoots() {
                 "copy paste and cut preserve complete group hierarchies");
 }
 
+bool focusResolvesNestedGroupsAtTheCurrentEditingLevel() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Focus Group");
+  static_cast<void>(document.assignId(307U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId first = createCrate(appState.facade, 0.0);
+  const cr::CreativeObjectId second = createCrate(appState.facade, 2.0);
+  select(appState.facade, first, false);
+  select(appState.facade, second, true);
+  const cr::CreativeGroupCommandReceipt inner =
+      appState.facade.groupSelectedObjects();
+  const cr::CreativeObjectId third = createCrate(appState.facade, 4.0);
+  select(appState.facade, inner.groupObjectId, false);
+  select(appState.facade, third, true);
+  const cr::CreativeGroupCommandReceipt outer =
+      appState.facade.groupSelectedObjects();
+  const cr::CreativeObjectId outside = createCrate(appState.facade, 8.0);
+  app::CreativeEditorGroupFocusState focus;
+
+  bool ok = expect(
+      inner.accepted && outer.accepted &&
+          app::resolveCreativeEditorGroupSelectionTarget(
+              appState.facade.document(), focus, first) ==
+              outer.groupObjectId,
+      "outside focus a descendant resolves to the outermost group");
+  const app::CreativeEditorGroupFocusReceipt enteredOuter =
+      app::enterCreativeEditorGroupFocus(appState, focus,
+                                         outer.groupObjectId);
+  ok = expect(enteredOuter.accepted && focus.depth == 1U &&
+                  cr::selectedTargetCount(
+                      appState.facade.selectionState()) == 0U &&
+                  app::resolveCreativeEditorGroupSelectionTarget(
+                      appState.facade.document(), focus, first) ==
+                      inner.groupObjectId &&
+                  app::resolveCreativeEditorGroupSelectionTarget(
+                      appState.facade.document(), focus, outside) ==
+                      cr::kInvalidObjectId,
+              "outer focus exposes immediate children and rejects outsiders") &&
+       ok;
+  const app::CreativeEditorGroupFocusReceipt enteredInner =
+      app::enterCreativeEditorGroupFocus(appState, focus,
+                                         inner.groupObjectId);
+  ok = expect(enteredInner.accepted && focus.depth == 2U &&
+                  app::resolveCreativeEditorGroupSelectionTarget(
+                      appState.facade.document(), focus, first) == first,
+              "nested focus exposes the inner group's direct children") &&
+       ok;
+  const app::CreativeEditorGroupFocusReceipt exitedInner =
+      app::exitCreativeEditorGroupFocus(appState, focus);
+  const cr::CreativeObjectId selectedAfterExit =
+      static_cast<cr::CreativeObjectId>(
+          appState.facade.selectionState().selectedTarget.value);
+  return expect(exitedInner.accepted && focus.depth == 1U &&
+                    selectedAfterExit == inner.groupObjectId,
+                "exiting focus selects the group at the parent level") &&
+         ok;
+}
+
+bool focusedPlacementParentsAuthoredObjectsOnly() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Focused Placement");
+  static_cast<void>(document.assignId(308U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId first = createCrate(appState.facade, 0.0);
+  const cr::CreativeObjectId second = createCrate(appState.facade, 2.0);
+  select(appState.facade, first, false);
+  select(appState.facade, second, true);
+  const cr::CreativeGroupCommandReceipt grouped =
+      appState.facade.groupSelectedObjects();
+  const app::CreativeBrushPlacementPlan plan =
+      app::planBrushPlacement(cr::CreativeObjectKind::Crate,
+                              iggy3d::Vec3{10.0F, 0.5F, 0.0F});
+  const app::CreativeBrushPlacementMutationReceipt placed =
+      app::applyBrushPlacement(appState.facade, plan, 1U,
+                               grouped.groupObjectId);
+  const cr::CreativeObject* child =
+      appState.facade.findObject(placed.objectId);
+  return expect(grouped.accepted && plan.valid && placed.accepted &&
+                    placed.objectCreated && child != nullptr &&
+                    child->parentId == grouped.groupObjectId,
+                "authored placement inside focus joins the active group");
+}
+
+bool groupToolOptionsExposeEditAndUngroupCommands() {
+  cr::CreativeHotbarEntry entry;
+  entry.kind = cr::CreativeHeldItemKind::ObjectGroup;
+  const app::CreativeEditorToolOptionsCommandList commands =
+      app::creativeEditorToolOptionCommandsForEntry(entry);
+  return expect(
+      commands.count == 2U &&
+          commands.ids[0] ==
+              app::CreativeEditorToolOptionsCommandId::EditGroupContents &&
+          commands.ids[1] ==
+              app::CreativeEditorToolOptionsCommandId::UngroupSelection,
+      "Group options present edit contents before destructive ungroup");
+}
+
+bool groupToolOptionsEnterFocusAndUngroupWithHistory() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Group Options");
+  static_cast<void>(document.assignId(309U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId first = createCrate(appState.facade, 0.0);
+  const cr::CreativeObjectId second = createCrate(appState.facade, 2.0);
+  select(appState.facade, first, false);
+  select(appState.facade, second, true);
+  const cr::CreativeGroupCommandReceipt grouped =
+      appState.facade.groupSelectedObjects();
+  appState.history = {};
+  app::CreativeEditorState editor;
+  editor.toolOptions.open = true;
+  editor.toolOptions.commands =
+      app::creativeEditorToolOptionCommandsForEntry(
+          {cr::CreativeHeldItemKind::ObjectGroup,
+           cr::CreativeObjectKind::Unknown});
+  editor.toolOptions.contextGroupId = grouped.groupObjectId;
+  editor.toolOptions.selectedIndex = 0U;
+  editor.toolOptions.draft = editor.toolSettings;
+  const bool entered = app::activateCreativeEditorToolOptionsSelection(
+      appState, editor);
+  const bool exited =
+      app::exitCreativeEditorGroupFocus(appState, editor.groupFocus).accepted;
+  editor.toolOptions.open = true;
+  editor.toolOptions.contextGroupId = grouped.groupObjectId;
+  editor.toolOptions.selectedIndex = 1U;
+  const bool ungrouped = app::activateCreativeEditorToolOptionsSelection(
+      appState, editor);
+  return expect(entered && exited && ungrouped &&
+                    appState.facade.findObject(grouped.groupObjectId) ==
+                        nullptr &&
+                    cr::creativeUndoDepth(appState.history) == 1U,
+                "Group options enter focus and ungroup through one history step");
+}
+
 }  // namespace
 
 int main() {
@@ -287,7 +425,11 @@ int main() {
                  deletingASelectedGroupRemovesAndRestoresItsHierarchy() &&
                  arrayCopiesACompleteGroupAndSelectsOnlyTheNewRoot() &&
                  moveDragMovesTheCompleteGroupHierarchy() &&
-                 clipboardCommandsPreserveAndSelectGroupRoots()
+                 clipboardCommandsPreserveAndSelectGroupRoots() &&
+                 focusResolvesNestedGroupsAtTheCurrentEditingLevel() &&
+                 focusedPlacementParentsAuthoredObjectsOnly() &&
+                 groupToolOptionsExposeEditAndUngroupCommands() &&
+                 groupToolOptionsEnterFocusAndUngroupWithHistory()
              ? EXIT_SUCCESS
              : EXIT_FAILURE;
 }

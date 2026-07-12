@@ -494,6 +494,9 @@ constexpr std::array kDefaultBindings{
     catalogBinding(CreativeInputActionId::QuickEditNext,
                    CreativeInputKey::GamepadDpadDown,
                    CreativeInputContext::EditorViewport),
+    catalogBinding(CreativeInputActionId::QuickEditNext,
+                   CreativeInputKey::GamepadWest,
+                   CreativeInputContext::EditorViewport),
     catalogBinding(CreativeInputActionId::QuickEditDecrease,
                    CreativeInputKey::ArrowLeft,
                    CreativeInputContext::EditorViewport),
@@ -594,7 +597,7 @@ constexpr std::array kDefaultBindings{
                       CreativeInputKey::MouseMiddle,
                       CreativeInputContext::EditorViewport),
     continuousBinding(CreativeInputActionId::PickAction,
-                      CreativeInputKey::GamepadWest,
+                      CreativeInputKey::GamepadTouchpad,
                       CreativeInputContext::EditorViewport),
     continuousBinding(CreativeInputActionId::HotbarPrevious,
                       CreativeInputKey::GamepadLeftShoulder,
@@ -948,6 +951,7 @@ std::string_view toString(CreativeInputKey key) noexcept {
     case CreativeInputKey::GamepadRightStick: return "GamepadRightStick";
     case CreativeInputKey::GamepadLeftTrigger: return "GamepadLeftTrigger";
     case CreativeInputKey::GamepadRightTrigger: return "GamepadRightTrigger";
+    case CreativeInputKey::GamepadTouchpad: return "GamepadTouchpad";
     case CreativeInputKey::Unbound: return "Unbound";
     case CreativeInputKey::Count: break;
   }
@@ -1069,6 +1073,7 @@ bool creativeInputKeyIsGamepad(CreativeInputKey key) noexcept {
     case CreativeInputKey::GamepadRightStick:
     case CreativeInputKey::GamepadLeftTrigger:
     case CreativeInputKey::GamepadRightTrigger:
+    case CreativeInputKey::GamepadTouchpad:
       return true;
     default:
       return false;
