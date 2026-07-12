@@ -145,6 +145,7 @@ std::string_view toString(CreativeHeldItemKind kind) noexcept {
     case CreativeHeldItemKind::VolumeErase: return "Erase";
     case CreativeHeldItemKind::VolumeClone: return "Clone";
     case CreativeHeldItemKind::LinearArray: return "Array";
+    case CreativeHeldItemKind::ConnectedFill: return "Flood";
     case CreativeHeldItemKind::Count: break;
   }
   return "Unknown";
@@ -235,6 +236,7 @@ bool creativeHeldItemUsesMaterial(CreativeHeldItemKind kind) noexcept {
     case CreativeHeldItemKind::VolumeFill:
     case CreativeHeldItemKind::VolumeHollow:
     case CreativeHeldItemKind::VolumeReplace:
+    case CreativeHeldItemKind::ConnectedFill:
       return true;
     case CreativeHeldItemKind::ObjectSelect:
     case CreativeHeldItemKind::ObjectMove:

@@ -7,6 +7,7 @@
 #include <string>
 
 #include "EditorFrame.hpp"
+#include "EditorConnectedFill.hpp"
 #include "EditorGizmo.hpp"
 #include "EditorPattern.hpp"
 #include "EditorPreviewProxies.hpp"
@@ -78,6 +79,8 @@ constexpr std::array kHeldItemBehaviors{
                      cr::CreativeVolumeOperationKind::Clone},
     HeldItemBehavior{cr::CreativeHeldItemKind::LinearArray, cr::Tool::Select,
                      false, false},
+    HeldItemBehavior{cr::CreativeHeldItemKind::ConnectedFill,
+                     cr::Tool::Select, false, false},
 };
 static_assert(heldItemRowsMatchEnumOrder(kHeldItemBehaviors));
 
@@ -366,6 +369,20 @@ void acceptHeldArray(InteractionContext& context) {
   }
 }
 
+void paintConnectedFill(InteractionContext& context) {
+  static_cast<void>(applyCreativeEditorConnectedFillWithHistory(
+      context.request.appState, context.request.editor,
+      CreativeConnectedFillEditKind::Paint,
+      "minecraft_connected_fill_paint"));
+}
+
+void eraseConnectedFill(InteractionContext& context) {
+  static_cast<void>(applyCreativeEditorConnectedFillWithHistory(
+      context.request.appState, context.request.editor,
+      CreativeConnectedFillEditKind::Erase,
+      "minecraft_connected_fill_erase"));
+}
+
 constexpr std::array<HeldItemHandlerRow, cr::kCreativeHeldItemKindCount>
     kHeldItemHandlers{{
         {cr::CreativeHeldItemKind::Material,
@@ -404,6 +421,9 @@ constexpr std::array<HeldItemHandlerRow, cr::kCreativeHeldItemKindCount>
         {cr::CreativeHeldItemKind::LinearArray,
          {selectObject, applyHeldArray, sampleTargetMaterial},
          acceptHeldArray, rejectActiveInteraction},
+        {cr::CreativeHeldItemKind::ConnectedFill,
+         {eraseConnectedFill, paintConnectedFill, sampleTargetMaterial},
+         paintConnectedFill, eraseConnectedFill, true},
     }};
 static_assert(heldItemRowsMatchEnumOrder(kHeldItemHandlers));
 
@@ -780,6 +800,7 @@ double creativeEditorTargetCellSize(
     case cr::CreativeHeldItemKind::VolumeReplace:
     case cr::CreativeHeldItemKind::VolumeErase:
     case cr::CreativeHeldItemKind::VolumeClone:
+    case cr::CreativeHeldItemKind::ConnectedFill:
       return document.gridSettings().cellSizeMeters;
     case cr::CreativeHeldItemKind::ObjectSelect:
     case cr::CreativeHeldItemKind::ObjectMove:
@@ -889,6 +910,35 @@ std::string creativeEditorHeldItemStatusLabel(
           cr::toString(editor.toolSettings.radialArrayInstanceCount));
       output.append(" | ");
       output.append(cr::toString(editor.toolSettings.radialArraySweep));
+    }
+    appendQuickEdit();
+    return output;
+  }
+  if (held.kind == cr::CreativeHeldItemKind::ConnectedFill) {
+    output.append(" | ");
+    output.append(cr::toString(held.objectKind));
+    output.append(" | ");
+    output.append(cr::toString(editor.toolSettings.connectedFillLimit));
+    const CreativeEditorConnectedFillCache& cache =
+        editor.interaction.connectedFill;
+    const CreativeEditorWorldTarget& target = editor.interaction.target;
+    const bool cacheMatchesTarget =
+        cache.valid && target.voxelHit &&
+        cache.seedCell.x == target.voxelCell.x &&
+        cache.seedCell.y == target.voxelCell.y &&
+        cache.seedCell.z == target.voxelCell.z &&
+        cache.limit == editor.toolSettings.connectedFillLimit;
+    if (cacheMatchesTarget) {
+      output.append(" | ");
+      if (cache.plan.accepted) {
+        output.append(std::to_string(cache.plan.cellCount));
+        output.append(" CELLS");
+      } else if (cache.plan.status ==
+                 cr::CreativeConnectedFillStatus::CapacityExceeded) {
+        output.append("TOO LARGE");
+      } else {
+        output.append(cr::toString(cache.plan.status));
+      }
     }
     appendQuickEdit();
     return output;
@@ -1064,6 +1114,12 @@ bool confirmCreativeEditorHeldItem(cr::CreativeAppState& appState,
         appState, editor.pattern, editor.toolSettings, editor.placeCellSize,
         editor.interaction.target.grid.valid,
         editor.interaction.target.grid.placementAnchor, source);
+  }
+  if (held.kind == cr::CreativeHeldItemKind::ConnectedFill) {
+    return applyCreativeEditorConnectedFillWithHistory(
+               appState, editor, CreativeConnectedFillEditKind::Paint,
+               source)
+        .accepted;
   }
   if (cr::creativeHeldItemUsesDirectShapeGesture(held.kind)) {
     return false;

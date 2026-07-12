@@ -12,6 +12,7 @@
 #include <SDL3/SDL.h>
 
 #include "EditorActionHints.hpp"
+#include "EditorConnectedFill.hpp"
 #include "EditorFrame.hpp"
 #include "EditorCatalog.hpp"
 #include "EditorControls.hpp"
@@ -573,7 +574,7 @@ void buildAndAttachCreativeEditorOverlayFrame(
     const CreativeEditorOverlayFrameRequest& request,
     CreativeEditorOverlayFrame& output) {
   cr::CreativeAppState& appState = request.appState;
-  const CreativeEditorState& editor = request.editor;
+  CreativeEditorState& editor = request.editor;
   FrameInput& frame = request.frame;
   const cr::CreativeSpatialProjectionRequest& wireProjReq =
       request.wireProjectionRequest;
@@ -610,6 +611,7 @@ void buildAndAttachCreativeEditorOverlayFrame(
   output.materialBrushPivotEdgeCount = 0;
   output.materialBrushGuideLineCount = 0;
   output.materialBrushEdgeCount = 0;
+  output.connectedFillEdgeCount = 0;
   output.volumeEdgeCount = 0;
   output.patternEdgeCount = 0;
   output.transformPreviewEdgeCount = 0;
@@ -811,6 +813,43 @@ void buildAndAttachCreativeEditorOverlayFrame(
           gizmoThickness);
     }
     output.materialBrushEdgeCount = combinedWireLines.size() - before;
+  }
+
+  // ---- CONNECTED FILL PREVIEW -------------------------------------------
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const bool connectedFillBlocked =
+      request.captureMode || editor.catalog.model.open ||
+      editor.catalog.toolWheel.open || editor.toolOptions.open ||
+      editor.controls.open || editor.transform.active ||
+      editor.transform.controlsOpen;
+  if (!connectedFillBlocked &&
+      held.kind == cr::CreativeHeldItemKind::ConnectedFill &&
+      editor.interaction.target.voxelHit) {
+    const cr::CreativeConnectedFillPlan& connectedPlan =
+        resolveCreativeEditorConnectedFillPlan(
+            editor.interaction.connectedFill, appState.facade.document(),
+            editor.interaction.target.voxelCell,
+            editor.toolSettings.connectedFillLimit);
+    const bool replacementValid =
+        cr::creativeVolumeBrushSupported(held.objectKind);
+    const bool noChange = connectedPlan.accepted &&
+                          connectedPlan.sourceMaterial == held.objectKind;
+    const bool valid = connectedPlan.accepted && replacementValid && !noChange;
+    const RenderLineColor color =
+        valid ? RenderLineColor{0.12F, 0.92F, 1.0F, 1.0F}
+              : RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F};
+    const std::array<cr::CreativeGridCoord3, 1U> rejectedSeed{
+        editor.interaction.target.voxelCell};
+    const std::span<const cr::CreativeGridCoord3> cells =
+        connectedPlan.accepted
+            ? connectedPlan.generatedCells()
+            : std::span<const cr::CreativeGridCoord3>{rejectedSeed};
+    const std::size_t before = combinedWireLines.size();
+    appendCreativeMaterialBrushCellOutlines(
+        combinedWireLines, cells, appState.facade.document().gridSettings(),
+        color, gizmoThickness);
+    output.connectedFillEdgeCount = combinedWireLines.size() - before;
   }
 
   // ---- VOLUME PREVIEW ----------------------------------------------------

@@ -192,6 +192,7 @@ Initial tool grammar:
 |---|---|---|---|---|---|
 | Block/material | Remove target | Place at target | Place at target | Remove target | Sample material |
 | Material brush | Erase stamp | Paint stamp | Paint stamp | Erase stamp | Sample material |
+| Connected fill | Erase connected region | Recolor connected region | Recolor connected region | Erase connected region | Sample replacement material |
 | Object select | Select/toggle target | No action | Select/toggle target | Cancel active action | Sample material |
 | Transform | Fast ground-plane drag | Begin transform preview | Fast ground-plane drag | Cancel active drag | Sample material |
 | Selection wand | Set corner 1 | Set corner 2 | Advance corner 1/2 | Clear selection | Expand selection |
@@ -302,9 +303,9 @@ preview's contextual wheel. They do not each earn a permanent global key.
   Mouse direction or right stick selects a sector; arrow keys, D-pad up/down,
   and wheel cycle it; `Enter`, controller confirm, or click equips the tool into
   the active hotbar slot. `Escape`, controller cancel, or the toggle closes it.
-  Brush owns the first sector and Array owns the ninth; Erase remains available
-  from the default hotbar and searchable catalog instead of occupying a radial
-  sector.
+  Brush owns the first sector, Connected Fill owns the eighth, and Array owns
+  the ninth. Erase and Region Select remain available from the default hotbar
+  and searchable catalog instead of occupying radial sectors.
 - While the wheel is open, `O` or controller Square opens the highlighted
   tool's contextual options. Modal capture prevents X, Circle, and Square from
   mutating the world underneath the wheel.
@@ -327,7 +328,7 @@ preview's contextual wheel. They do not each earn a permanent global key.
   Overwrite occupancy masks, Replace
   Brush source filtering by material or Any, volume
   Replace source filtering by material or Any, Clone offsets on X/Y/Z at
-  1/2/4/8 cells, Linear Array
+  1/2/4/8 cells, Connected Fill limits of 64/128/256/512 cells, Linear Array
   direction on either world axis with 1/2/4/8/16/32 copies at 1/2/4/8-cell
   spacing, and Radial Array X/Y/Z rings or arcs with 2/4/8/16/32 total
   instances across 90/180/360 degrees.
@@ -430,6 +431,25 @@ preview's contextual wheel. They do not each earn a permanent global key.
   partial mutation. Circle erase is independent of the paint mask and source
   filter. Green wireframes paint; cyan wireframes mirror; red wireframes erase
   or mark blocked/invalid state.
+- Connected Fill is the bounded paint-bucket tool for voxel regions. Aim at an
+  occupied voxel; right mouse or controller X recolors its complete connected
+  same-material component to the material held in that hotbar slot. Left mouse
+  or controller Circle erases the same component. Pick block/Square changes the
+  slot's replacement material through the existing material-selection path;
+  Connected Fill has no duplicate material setting.
+  Connectivity is deterministic six-neighbor adjacency in
+  `-X,+X,-Y,+Y,-Z,+Z` order, so diagonal contact alone does not join regions.
+  The exact accepted component previews cyan. Choosing the source material as
+  its replacement previews the exact component red and performs no mutation.
+  A component larger than the selected 64/128/256/512-cell Tool Options limit
+  fails closed, previews only one red seed cell, and cannot partially edit the
+  document. One accepted action is one batched Facade mutation and one undo
+  record.
+  Preview planning is allocation-free and cached by document id, document
+  revision, aimed seed cell, and selected limit. Idle frames reuse the plan;
+  voxel edits, undo/redo, New/Load, aim movement, or limit changes force the
+  next preview to resolve fresh document truth. This bounded planner is the
+  shared region-discovery seam for later surface-selection and extrusion tools.
 - A material's thin green wireframe is only a placement preview. Right mouse or
   controller X attempts the placement. `Wall`, `Floor`, `Ceiling`,
   and `Roof` place one exact voxel cell; props, attachments, paths, lights, and

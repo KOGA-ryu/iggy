@@ -7,6 +7,7 @@
 #include <string_view>
 #include <vector>
 
+#include "EditorConnectedFill.hpp"
 #include "EditorEdits.hpp"
 #include "EditorPicking.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
@@ -229,6 +230,7 @@ struct CreativeEditorInteractionState {
   CreativeMaterialBrushPivotState materialBrushPivot{};
   CreativeMaterialBrushPresetBank materialBrushPresets{};
   CreativeMaterialStrokeState materialStroke{};
+  CreativeEditorConnectedFillCache connectedFill{};
   iggy3d::creative::CreativeObjectId moveTargetId =
       iggy3d::creative::kInvalidObjectId;
 };

@@ -348,6 +348,9 @@ bool optionDescriptorsAreContextualAndBounded() {
       cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::VolumeHollow);
   const cr::CreativeToolOptionList clone =
       cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::VolumeClone);
+  const cr::CreativeToolOptionList connectedFill =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::ConnectedFill);
   const cr::CreativeToolOptionList array =
       cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::LinearArray);
   cr::CreativeToolSettings radialSettings =
@@ -428,6 +431,10 @@ bool optionDescriptorsAreContextualAndBounded() {
                     clone.ids[2] ==
                         cr::CreativeToolOptionId::CloneOffsetDistance,
                 "clone exposes offset axis and distance") &&
+         expect(connectedFill.count == 1U &&
+                    connectedFill.ids[0] ==
+                        cr::CreativeToolOptionId::ConnectedFillLimit,
+                "connected fill exposes only its bounded region limit") &&
          expect(array.count == 4U &&
                     array.ids[0] ==
                         cr::CreativeToolOptionId::ArrayMode &&
@@ -455,6 +462,7 @@ bool optionDescriptorsAreContextualAndBounded() {
                     !cylinderReplaceBrush.capacityExceeded &&
                     !fill.capacityExceeded && !hollow.capacityExceeded &&
                     !replace.capacityExceeded && !clone.capacityExceeded &&
+                    !connectedFill.capacityExceeded &&
                     !array.capacityExceeded && !radialArray.capacityExceeded &&
                     array.count <= cr::kCreativeToolOptionCapacity,
                 "default option lists fit bounded storage") &&
@@ -486,6 +494,9 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
   cr::CreativeToolSettings invalidBrushPropSource = settings;
   invalidBrushPropSource.materialBrushReplaceSourceKind =
       cr::CreativeObjectKind::Crate;
+  cr::CreativeToolSettings invalidConnectedFillLimit = settings;
+  invalidConnectedFillLimit.connectedFillLimit =
+      cr::CreativeConnectedFillLimit::Count;
   bool ok = expect(cr::isValidCreativeToolSettings(settings),
                    "default settings valid") &&
             expect(!cr::isValidCreativeToolSettings(invalidMask),
@@ -502,6 +513,9 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                    "invalid material brush source fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidBrushPropSource),
                    "non-voxel brush source fails settings validation") &&
+            expect(!cr::isValidCreativeToolSettings(
+                       invalidConnectedFillLimit),
+                   "invalid connected fill limit fails settings validation") &&
             expect(cr::creativeToolOptionValueLabel(
                        settings,
                        cr::CreativeToolOptionId::MoveConstraint) == "FREE" &&
@@ -551,7 +565,11 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::
-                               MaterialBrushReplaceSource) == "ANY",
+                               MaterialBrushReplaceSource) == "ANY" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::ConnectedFillLimit) ==
+                           "256 CELLS",
                    "default labels and scalar conversions stable");
 
   const auto adjust = [&settings](cr::CreativeToolOptionId option,
@@ -606,6 +624,10 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                   settings.materialBrushMask ==
                       cr::CreativeMaterialBrushMask::AddOnly,
               "material brush mask cycles from overwrite to add-only") &&
+       expect(adjust(cr::CreativeToolOptionId::ConnectedFillLimit, 1).changed &&
+                  settings.connectedFillLimit ==
+                      cr::CreativeConnectedFillLimit::Cells512,
+              "connected fill limit cycles within fixed storage") &&
        expect(adjust(cr::CreativeToolOptionId::ShapeBrushKind, 1).changed &&
                   settings.shapeBrushKind == cr::CreativeShapeBrushKind::Line,
               "shape kind cycles") &&

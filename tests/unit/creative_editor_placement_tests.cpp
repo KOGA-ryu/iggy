@@ -1,4 +1,5 @@
 #include "EditorEdits.hpp"
+#include "EditorConnectedFill.hpp"
 #include "EditorFrame.hpp"
 #include "EditorGizmo.hpp"
 #include "EditorInteraction.hpp"
@@ -15,6 +16,7 @@
 #include <cstdint>
 #include <iostream>
 #include <limits>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -107,6 +109,24 @@ void setPlaceTarget(CreativeEditorState& editor,
       {static_cast<double>(x), static_cast<double>(y), static_cast<double>(z)},
       {static_cast<double>(x + 1), static_cast<double>(y + 1),
        static_cast<double>(z + 1)}};
+  editor.interaction.target = target;
+}
+
+void setVoxelTarget(CreativeEditorState& editor,
+                    cr::CreativeGridCoord3 cell,
+                    cr::CreativeObjectKind material) {
+  CreativeEditorWorldTarget target;
+  target.valid = true;
+  target.voxelHit = true;
+  target.voxelCell = cell;
+  target.objectKind = material;
+  target.grid.valid = true;
+  target.grid.targetCell = cell;
+  target.grid.adjacentCell = {cell.x, cell.y + 1, cell.z};
+  target.grid.targetCellBounds = cr::creativeVolumeCellBounds(
+      cell, 1.0, {});
+  target.grid.adjacentCellBounds = cr::creativeVolumeCellBounds(
+      target.grid.adjacentCell, 1.0, {});
   editor.interaction.target = target;
 }
 
@@ -2884,6 +2904,216 @@ bool strokeCapacityStopsAndInterruptionFinalizes() {
                 "interruption finalizes all bounded mutations as one undo");
 }
 
+bool connectedFillPreviewMutationCacheAndHistoryStayInParity() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 700U);
+  const std::array seedEdits{
+      cr::CreativeVoxelEdit{{0, 0, 0}, cr::CreativeObjectKind::Wall},
+      cr::CreativeVoxelEdit{{1, 0, 0}, cr::CreativeObjectKind::Wall},
+      cr::CreativeVoxelEdit{{1, 1, 0}, cr::CreativeObjectKind::Wall},
+      cr::CreativeVoxelEdit{{5, 0, 0}, cr::CreativeObjectKind::Wall},
+      cr::CreativeVoxelEdit{{0, 0, 1}, cr::CreativeObjectKind::Floor},
+  };
+  const cr::CreativeVoxelMutationReceipt seeded =
+      appState.facade.applyVoxelEdits(seedEdits);
+
+  CreativeEditorState editor;
+  editor.interaction.hotbar.selectedSlot = 0U;
+  editor.interaction.hotbar.entries[0] = {
+      cr::CreativeHeldItemKind::ConnectedFill, cr::CreativeObjectKind::Floor};
+  editor.placeBrush = cr::CreativeObjectKind::Floor;
+  editor.frameIndex = 20U;
+  setVoxelTarget(editor, {0, 0, 0}, cr::CreativeObjectKind::Wall);
+  syncCreativeEditorHeldItem(appState, editor);
+
+  CreativeEditorSelectionFrame selection;
+  CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  iggy3d::FrameInput frame;
+  CreativeEditorOverlayFrame firstOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      firstOverlay);
+  const bool firstPreviewCyan = std::any_of(
+      firstOverlay.combinedWireLines.begin(),
+      firstOverlay.combinedWireLines.end(),
+      [](const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return near(line.color.r, 0.12F) && near(line.color.g, 0.92F) &&
+               near(line.color.b, 1.0F);
+      });
+  CreativeEditorOverlayFrame cachedOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      cachedOverlay);
+  const bool cacheReused =
+      editor.interaction.connectedFill.refreshCount == 1U;
+  const std::string initialStatus =
+      creativeEditorHeldItemStatusLabel(editor);
+  editor.toolOptions.open = true;
+  CreativeEditorOverlayFrame blockedOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      blockedOverlay);
+  editor.toolOptions.open = false;
+  const CreativeEditorWorldTarget savedTarget = editor.interaction.target;
+  editor.interaction.target = {};
+  CreativeEditorOverlayFrame noTargetOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      noTargetOverlay);
+  editor.interaction.target = savedTarget;
+
+  const bool painted = confirmCreativeEditorHeldItem(
+      appState, editor, "test_connected_fill_paint");
+  const cr::CreativeVoxelField& paintedField =
+      appState.facade.document().voxelField();
+  const bool paintExact =
+      paintedField.materialAt({0, 0, 0}) == cr::CreativeObjectKind::Floor &&
+      paintedField.materialAt({1, 0, 0}) == cr::CreativeObjectKind::Floor &&
+      paintedField.materialAt({1, 1, 0}) == cr::CreativeObjectKind::Floor &&
+      paintedField.materialAt({5, 0, 0}) == cr::CreativeObjectKind::Wall &&
+      paintedField.materialAt({0, 0, 1}) == cr::CreativeObjectKind::Floor;
+  const bool onePaintUndo = cr::creativeUndoDepth(appState.history) == 1U;
+  const bool paintFeedback =
+      editor.interaction.placementFeedback.status ==
+          CreativeEditorPlacementFeedbackStatus::Placed &&
+      editor.interaction.placementFeedback.voxelPlaced &&
+      sameBounds(editor.interaction.placementFeedback.voxelBounds,
+                 {{0.0, 0.0, 0.0}, {2.0, 2.0, 1.0}});
+
+  const bool paintUndone =
+      undoLastEdit(appState, "test_connected_fill_paint_undo");
+  setVoxelTarget(editor, {0, 0, 0}, cr::CreativeObjectKind::Wall);
+  CreativeEditorOverlayFrame afterUndoOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      afterUndoOverlay);
+  const bool cacheRefreshedAfterRevision =
+      editor.interaction.connectedFill.refreshCount == 2U;
+
+  const CreativeEditorConnectedFillReceipt erased =
+      applyCreativeEditorConnectedFillWithHistory(
+          appState, editor, CreativeConnectedFillEditKind::Erase,
+          "test_connected_fill_erase");
+  const cr::CreativeVoxelField& erasedField =
+      appState.facade.document().voxelField();
+  const bool eraseExact =
+      erasedField.materialAt({0, 0, 0}) == cr::CreativeObjectKind::Unknown &&
+      erasedField.materialAt({1, 0, 0}) == cr::CreativeObjectKind::Unknown &&
+      erasedField.materialAt({1, 1, 0}) == cr::CreativeObjectKind::Unknown &&
+      erasedField.materialAt({5, 0, 0}) == cr::CreativeObjectKind::Wall &&
+      erasedField.materialAt({0, 0, 1}) == cr::CreativeObjectKind::Floor;
+  const bool eraseUndone =
+      undoLastEdit(appState, "test_connected_fill_erase_undo");
+
+  editor.interaction.hotbar.entries[0].objectKind =
+      cr::CreativeObjectKind::Wall;
+  setVoxelTarget(editor, {0, 0, 0}, cr::CreativeObjectKind::Wall);
+  CreativeEditorOverlayFrame noChangeOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      noChangeOverlay);
+  const bool noChangeRed = std::any_of(
+      noChangeOverlay.combinedWireLines.begin(),
+      noChangeOverlay.combinedWireLines.end(),
+      [](const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return near(line.color.r, 1.0F) && near(line.color.g, 0.15F) &&
+               near(line.color.b, 0.12F);
+      });
+  const CreativeEditorConnectedFillReceipt noChange =
+      applyCreativeEditorConnectedFillWithHistory(
+          appState, editor, CreativeConnectedFillEditKind::Paint,
+          "test_connected_fill_no_change");
+
+  return expect(seeded.accepted,
+                "connected fill fixture seeds through Facade") &&
+         expect(firstOverlay.connectedFillEdgeCount == 36U &&
+                    firstPreviewCyan && cacheReused &&
+                    blockedOverlay.connectedFillEdgeCount == 0U &&
+                    noTargetOverlay.connectedFillEdgeCount == 0U &&
+                    initialStatus ==
+                        "Flood | Floor | 256 CELLS | 3 CELLS | "
+                        "[FILL LIMIT 256 CELLS]",
+                "exact three-cell preview is cyan and cache-stable") &&
+         expect(painted && paintExact && onePaintUndo && paintFeedback,
+                "connected paint mutates exactly the preview as one undo") &&
+         expect(paintUndone && cacheRefreshedAfterRevision,
+                "undo restores voxels and invalidates the preview key") &&
+         expect(erased.accepted && erased.changed &&
+                    erased.changedCellCount == 3U && eraseExact &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "connected erase removes only the component") &&
+         expect(eraseUndone && noChangeOverlay.connectedFillEdgeCount == 36U &&
+                    noChangeRed && !noChange.accepted && !noChange.changed &&
+                    noChange.reasonCode ==
+                        "creative_connected_fill_no_change" &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "same-material fill previews red and creates no history");
+}
+
+bool connectedFillLimitRejectsWithoutPartialMutation() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 701U);
+  std::vector<cr::CreativeVoxelEdit> seedEdits;
+  seedEdits.reserve(65U);
+  for (std::int32_t x = 0; x < 65; ++x) {
+    seedEdits.push_back({{x, 0, 0}, cr::CreativeObjectKind::Wall});
+  }
+  const cr::CreativeVoxelMutationReceipt seeded =
+      appState.facade.applyVoxelEdits(seedEdits);
+
+  CreativeEditorState editor;
+  editor.interaction.hotbar.selectedSlot = 0U;
+  editor.interaction.hotbar.entries[0] = {
+      cr::CreativeHeldItemKind::ConnectedFill, cr::CreativeObjectKind::Floor};
+  editor.toolSettings.connectedFillLimit =
+      cr::CreativeConnectedFillLimit::Cells64;
+  editor.frameIndex = 30U;
+  setVoxelTarget(editor, {0, 0, 0}, cr::CreativeObjectKind::Wall);
+  syncCreativeEditorHeldItem(appState, editor);
+
+  CreativeEditorSelectionFrame selection;
+  CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  iggy3d::FrameInput frame;
+  CreativeEditorOverlayFrame overlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      overlay);
+  const bool seedIsRed = std::any_of(
+      overlay.combinedWireLines.begin(), overlay.combinedWireLines.end(),
+      [](const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return near(line.color.r, 1.0F) && near(line.color.g, 0.15F) &&
+               near(line.color.b, 0.12F);
+      });
+  const std::uint64_t revisionBefore =
+      appState.facade.document().revision();
+  const CreativeEditorConnectedFillReceipt rejected =
+      applyCreativeEditorConnectedFillWithHistory(
+          appState, editor, CreativeConnectedFillEditKind::Paint,
+          "test_connected_fill_overflow");
+
+  return expect(seeded.accepted && overlay.connectedFillEdgeCount == 12U &&
+                    seedIsRed && editor.interaction.connectedFill.plan.status ==
+                                     cr::CreativeConnectedFillStatus::
+                                         CapacityExceeded,
+                "over-limit preview fails closed to one red seed cell") &&
+         expect(!rejected.accepted && !rejected.changed &&
+                    rejected.plannedCellCount == 0U &&
+                    appState.facade.document().revision() == revisionBefore &&
+                    appState.facade.document().voxelField().occupiedCellCount() ==
+                        65U &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "over-limit action cannot partially mutate or create history");
+}
+
 bool heldShapeToolOwnsItsTwoCornerGesture() {
   CreativeEditorVolumeState volume;
   volume.selection.cellSize = 1.0;
@@ -3020,6 +3250,8 @@ int main() {
   ok = untrackedAndEmptyStrokesFailClosed() && ok;
   ok = removalStrokeDeduplicatesObjectsAndGroupsHistory() && ok;
   ok = strokeCapacityStopsAndInterruptionFinalizes() && ok;
+  ok = connectedFillPreviewMutationCacheAndHistoryStayInParity() && ok;
+  ok = connectedFillLimitRejectsWithoutPartialMutation() && ok;
   ok = heldShapeToolOwnsItsTwoCornerGesture() && ok;
   ok = radialSelectionRearmsOnlyRightStickLook() && ok;
   return ok ? 0 : 1;

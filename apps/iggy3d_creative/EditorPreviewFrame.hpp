@@ -21,7 +21,7 @@ struct CreativeEditorGizmoFrame;
 
 struct CreativeEditorOverlayFrameRequest {
   iggy3d::creative::CreativeAppState& appState;
-  const CreativeEditorState& editor;
+  CreativeEditorState& editor;
   const CreativeEditorSelectionFrame& selection;
   const CreativeEditorGizmoFrame& gizmoFrame;
   iggy3d::FrameInput& frame;
@@ -49,6 +49,7 @@ struct CreativeEditorOverlayFrame {
   std::size_t materialBrushPivotEdgeCount = 0;
   std::size_t materialBrushGuideLineCount = 0;
   std::size_t materialBrushEdgeCount = 0;
+  std::size_t connectedFillEdgeCount = 0;
   std::size_t volumeEdgeCount = 0;
   std::size_t patternEdgeCount = 0;
   std::size_t transformPreviewEdgeCount = 0;

@@ -71,6 +71,8 @@ constexpr CreativeHeldItemMask kPlacementItems =
     heldItemMask(CreativeHeldItemKind::Material);
 constexpr CreativeHeldItemMask kMaterialBrushItems =
     heldItemMask(CreativeHeldItemKind::MaterialBrush);
+constexpr CreativeHeldItemMask kConnectedFillItems =
+    heldItemMask(CreativeHeldItemKind::ConnectedFill);
 constexpr CreativeHeldItemMask kSnapItems =
     heldItemMask(CreativeHeldItemKind::Material) |
     heldItemMask(CreativeHeldItemKind::ObjectMove) |
@@ -189,6 +191,10 @@ constexpr std::array kToolOptionDescriptors{
                                  "SWEEP",
                                  CreativeToolOptionValueKind::Choice,
                                  kArrayItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::ConnectedFillLimit,
+                                 "FILL LIMIT",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kConnectedFillItems},
 };
 static_assert(kToolOptionDescriptors.size() ==
               kCreativeToolOptionDescriptorCount);
@@ -225,6 +231,7 @@ template <typename Enum>
          lhs.materialBrushMask == rhs.materialBrushMask &&
          lhs.materialBrushReplaceSourceKind ==
              rhs.materialBrushReplaceSourceKind &&
+         lhs.connectedFillLimit == rhs.connectedFillLimit &&
          lhs.shapeBrushKind == rhs.shapeBrushKind &&
          lhs.shapeBrushAxis == rhs.shapeBrushAxis &&
          lhs.replaceSourceKind == rhs.replaceSourceKind &&
@@ -547,6 +554,8 @@ bool isValidCreativeToolSettings(
          validEnum(settings.materialBrushMask,
                    CreativeMaterialBrushMask::Count) &&
          materialBrushReplaceSourceValid &&
+         validEnum(settings.connectedFillLimit,
+                   CreativeConnectedFillLimit::Count) &&
          validEnum(settings.shapeBrushKind, CreativeShapeBrushKind::Count) &&
          validEnum(settings.shapeBrushAxis, CreativeShapeBrushAxis::Count) &&
          replaceSourceValid &&
@@ -787,6 +796,8 @@ std::string_view creativeToolOptionValueLabel(
                      CreativeObjectKind::Unknown
                  ? std::string_view{"ANY"}
                  : toString(settings.materialBrushReplaceSourceKind);
+    case CreativeToolOptionId::ConnectedFillLimit:
+      return toString(settings.connectedFillLimit);
     case CreativeToolOptionId::ShapeBrushKind:
       return toString(settings.shapeBrushKind);
     case CreativeToolOptionId::ShapeBrushAxis:
@@ -906,6 +917,11 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
       adjusted.materialBrushReplaceSourceKind = next;
       break;
     }
+    case CreativeToolOptionId::ConnectedFillLimit:
+      adjusted.connectedFillLimit = cycleEnum(
+          adjusted.connectedFillLimit, CreativeConnectedFillLimit::Count,
+          direction);
+      break;
     case CreativeToolOptionId::ShapeBrushKind:
       adjusted.shapeBrushKind = cycleEnum(
           adjusted.shapeBrushKind, CreativeShapeBrushKind::Count, direction);

@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/creative/Core.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
+#include "app/iggy3d/creative/tools/ConnectedFill.hpp"
 #include "app/iggy3d/creative/tools/Pattern.hpp"
 #include "app/iggy3d/creative/tools/ShapeBrush.hpp"
 
@@ -133,6 +134,7 @@ enum class CreativeToolOptionId : std::uint8_t {
   RadialArrayAxis,
   RadialArrayInstanceCount,
   RadialArraySweep,
+  ConnectedFillLimit,
   Count,
 };
 
@@ -184,6 +186,8 @@ struct CreativeToolSettings {
       CreativeMaterialBrushMask::Overwrite;
   CreativeObjectKind materialBrushReplaceSourceKind =
       CreativeObjectKind::Unknown;
+  CreativeConnectedFillLimit connectedFillLimit =
+      CreativeConnectedFillLimit::Cells256;
   CreativeShapeBrushKind shapeBrushKind = CreativeShapeBrushKind::Box;
   CreativeShapeBrushAxis shapeBrushAxis = CreativeShapeBrushAxis::Y;
   CreativeObjectKind replaceSourceKind = CreativeObjectKind::Unknown;

@@ -266,6 +266,29 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
               "material brush advertises controller-native paint erase and settings") &&
        ok;
 
+  setHeld(editor, cr::CreativeHeldItemKind::ConnectedFill,
+          cr::CreativeObjectKind::Floor);
+  const cr::CreativeActionHintFrame connectedFill =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* fillRegion =
+      findHint(connectedFill, cr::CreativeInputActionId::AcceptAction);
+  const cr::CreativeActionHint* eraseRegion =
+      findHint(connectedFill, cr::CreativeInputActionId::RejectAction);
+  const cr::CreativeActionHint* fillLimit =
+      findHint(connectedFill,
+               cr::CreativeInputActionId::QuickEditPrevious);
+  ok = expect(fillRegion != nullptr && fillRegion->chord.view() == "X" &&
+                  fillRegion->label.view() == "Fill region" &&
+                  eraseRegion != nullptr &&
+                  eraseRegion->chord.view() == "Circle" &&
+                  eraseRegion->label.view() == "Erase region" &&
+                  fillLimit != nullptr &&
+                  fillLimit->chord.view() == "D-pad U/D",
+              "connected fill exposes paint erase and bounded-limit controls") &&
+       ok;
+
   setHeld(editor, cr::CreativeHeldItemKind::LinearArray);
   const cr::CreativeActionHintFrame array = resolveCreativeEditorActionHints(
       editor, cr::CreativeInputContext::EditorViewport,

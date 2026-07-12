@@ -79,6 +79,13 @@ void appendViewportKeyboardHints(HintSpecBuffer& buffer,
       appendHint(buffer, cr::CreativeInputActionId::PrimaryAction, "Erase");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
       break;
+    case cr::CreativeHeldItemKind::ConnectedFill:
+      appendHint(buffer, cr::CreativeInputActionId::SecondaryAction,
+                 "Fill region");
+      appendHint(buffer, cr::CreativeInputActionId::PrimaryAction,
+                 "Erase region");
+      appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
+      break;
     case cr::CreativeHeldItemKind::ObjectSelect:
       appendHint(buffer, cr::CreativeInputActionId::PrimaryAction, "Select");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
@@ -132,6 +139,13 @@ void appendViewportGamepadHints(HintSpecBuffer& buffer,
     case cr::CreativeHeldItemKind::MaterialBrush:
       appendHint(buffer, cr::CreativeInputActionId::AcceptAction, "Paint");
       appendHint(buffer, cr::CreativeInputActionId::RejectAction, "Erase");
+      appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
+      break;
+    case cr::CreativeHeldItemKind::ConnectedFill:
+      appendHint(buffer, cr::CreativeInputActionId::AcceptAction,
+                 "Fill region");
+      appendHint(buffer, cr::CreativeInputActionId::RejectAction,
+                 "Erase region");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
       break;
     case cr::CreativeHeldItemKind::ObjectSelect:

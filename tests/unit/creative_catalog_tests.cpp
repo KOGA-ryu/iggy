@@ -154,8 +154,8 @@ bool actionAvailabilityUsesExplicitFacts() {
 
 bool catalogBuildsMaterialsAndCreatorTools() {
   const cr::CreativeCatalogState state = catalog();
-  bool ok = expect(state.entries.size() == 12U,
-                   "two materials plus ten catalog tools") &&
+  bool ok = expect(state.entries.size() == 13U,
+                   "two materials plus eleven catalog tools") &&
             expect(state.filteredEntryIndices.size() == state.entries.size(),
                    "empty query exposes every entry") &&
             expect(state.entries[0].category ==
@@ -193,7 +193,9 @@ bool catalogOmitsToolsWithoutRequiredMaterial() {
                entry.hotbarEntry.kind ==
                    cr::CreativeHeldItemKind::VolumeHollow ||
                entry.hotbarEntry.kind ==
-                   cr::CreativeHeldItemKind::VolumeReplace;
+                   cr::CreativeHeldItemKind::VolumeReplace ||
+               entry.hotbarEntry.kind ==
+                   cr::CreativeHeldItemKind::ConnectedFill;
       });
   return expect(state.entries.size() == 6U,
                 "empty palette retains material-independent tools") &&
@@ -288,14 +290,27 @@ bool toolWheelIsBoundedDirectionalAndAssignable() {
         return entry.hotbarEntry.kind ==
                cr::CreativeHeldItemKind::VolumeErase;
       });
+  const auto regionSelect = std::find_if(
+      catalogState.entries.begin(), catalogState.entries.end(),
+      [](const cr::CreativeCatalogEntry& entry) {
+        return entry.hotbarEntry.kind ==
+               cr::CreativeHeldItemKind::VolumeSelect;
+      });
   ok = expect(erase != catalogState.entries.end() &&
-                  !erase->toolWheelEligible,
-              "erase remains catalog-only") &&
+                  !erase->toolWheelEligible &&
+                  regionSelect != catalogState.entries.end() &&
+                  !regionSelect->toolWheelEligible,
+              "erase and default-hotbar region select remain catalog-only") &&
        expect(wheel.catalogEntryIndices[8] < catalogState.entries.size() &&
                   catalogState.entries[wheel.catalogEntryIndices[8]]
                           .hotbarEntry.kind ==
                       cr::CreativeHeldItemKind::LinearArray,
               "array owns the ninth wheel sector") &&
+       expect(wheel.catalogEntryIndices[7] < catalogState.entries.size() &&
+                  catalogState.entries[wheel.catalogEntryIndices[7]]
+                          .hotbarEntry.kind ==
+                      cr::CreativeHeldItemKind::ConnectedFill,
+              "connected fill owns the wheel sector before array") &&
        ok;
 
   constexpr float kTurnRadians = 6.28318530717958647692F;
@@ -340,9 +355,9 @@ bool toolWheelIsBoundedDirectionalAndAssignable() {
       wheel, catalogState,
       {cr::CreativeHeldItemKind::VolumeReplace,
        cr::CreativeObjectKind::Crate}));
-  ok = expect(wheel.selectedIndex == 6U,
+  ok = expect(wheel.selectedIndex == 5U,
               "held tool kind restores radial selection") &&
-       expect(cr::moveCreativeToolWheelSelection(wheel, -7) &&
+       expect(cr::moveCreativeToolWheelSelection(wheel, -6) &&
                   wheel.selectedIndex == 8U,
               "radial keyboard navigation wraps") &&
        ok;
@@ -397,8 +412,8 @@ bool searchIsCaseInsensitiveBoundedAndStable() {
 
   ok = expect(cr::setCreativeCatalogQuery(state, "REGION"),
               "tool alias query accepted") &&
-       expect(state.filteredEntryIndices.size() == 6U,
-              "region query finds selection and five operations") &&
+       expect(state.filteredEntryIndices.size() == 7U,
+              "region query finds selection, five operations, and connected fill") &&
        expect(cr::setCreativeCatalogQuery(state, "no-such-entry"),
               "empty-result query accepted") &&
        expect(state.filteredEntryIndices.empty() &&
@@ -430,7 +445,7 @@ bool selectionWrapsAndAssignmentsAreExplicit() {
   cr::CreativeHotbarState hotbar = cr::makeDefaultCreativeHotbar(palette);
 
   bool ok = expect(cr::moveCreativeCatalogSelection(state, -1) &&
-                       state.selectedFilteredIndex == 11U,
+                       state.selectedFilteredIndex == 12U,
                    "previous wraps to final result") &&
             expect(cr::moveCreativeCatalogSelection(state, 1) &&
                        state.selectedFilteredIndex == 0U,

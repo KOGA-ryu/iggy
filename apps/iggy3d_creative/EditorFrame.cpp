@@ -461,6 +461,8 @@ void applyCreativeEditorCommandInput(
         clearToBlankScene(appState);
         clearEditHistory(appState.history, "new_clear");
         creative::clearCreativeVolumeSelection(editor.volume.selection);
+        invalidateCreativeEditorConnectedFillCache(
+            editor.interaction.connectedFill);
         resetCreativeMaterialBrushPivot(
             editor.interaction.materialBrushPivot,
             appState.facade.document().id());
@@ -470,6 +472,8 @@ void applyCreativeEditorCommandInput(
         if (loaded) {
           clearEditHistory(appState.history, "load_success");
           creative::clearCreativeVolumeSelection(editor.volume.selection);
+          invalidateCreativeEditorConnectedFillCache(
+              editor.interaction.connectedFill);
           resetCreativeMaterialBrushPivot(
               editor.interaction.materialBrushPivot,
               appState.facade.document().id());

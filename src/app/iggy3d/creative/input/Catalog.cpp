@@ -47,7 +47,7 @@ constexpr std::array kToolSpecs{
     CatalogToolSpec{CreativeHeldItemKind::ObjectMove, "Transform",
                     "object move drag translate rotate mirror copy"},
     CatalogToolSpec{CreativeHeldItemKind::VolumeSelect, "Region Select",
-                    "volume region wand corner selection"},
+                    "volume region wand corner selection", false},
     CatalogToolSpec{CreativeHeldItemKind::VolumeFill, "Fill",
                     "volume region solid create"},
     CatalogToolSpec{CreativeHeldItemKind::VolumeHollow, "Hollow",
@@ -58,6 +58,8 @@ constexpr std::array kToolSpecs{
                     "volume region remove delete", false},
     CatalogToolSpec{CreativeHeldItemKind::VolumeClone, "Clone",
                     "volume region copy duplicate"},
+    CatalogToolSpec{CreativeHeldItemKind::ConnectedFill, "Connected Fill",
+                    "flood paint bucket connected material region"},
     CatalogToolSpec{CreativeHeldItemKind::LinearArray, "Array",
                     "array pattern repeat duplicate line radial ring"},
 };

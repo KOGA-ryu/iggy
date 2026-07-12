@@ -399,6 +399,11 @@ bool heldVolumeItemsMapWithoutBranchesAtCallers() {
                     cr::toString(cr::CreativeHeldItemKind::LinearArray) ==
                         "Array",
                 "array is a distinct held tool") &&
+         expect(!cr::creativeHeldItemIsVolumeOperation(
+                    cr::CreativeHeldItemKind::ConnectedFill) &&
+                    cr::toString(cr::CreativeHeldItemKind::ConnectedFill) ==
+                        "Flood",
+                "connected fill is a distinct non-volume held tool") &&
          expect(cr::creativeHeldItemUsesDirectShapeGesture(
                     cr::CreativeHeldItemKind::VolumeFill) &&
                     cr::creativeHeldItemUsesDirectShapeGesture(
@@ -413,7 +418,9 @@ bool heldVolumeItemsMapWithoutBranchesAtCallers() {
                     cr::creativeHeldItemUsesMaterial(
                         cr::CreativeHeldItemKind::VolumeHollow) &&
                     cr::creativeHeldItemUsesMaterial(
-                        cr::CreativeHeldItemKind::VolumeReplace),
+                        cr::CreativeHeldItemKind::VolumeReplace) &&
+                    cr::creativeHeldItemUsesMaterial(
+                        cr::CreativeHeldItemKind::ConnectedFill),
                 "material-backed held items are explicit") &&
          expect(!cr::creativeHeldItemUsesMaterial(
                     cr::CreativeHeldItemKind::VolumeErase) &&
