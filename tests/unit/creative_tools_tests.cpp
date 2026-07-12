@@ -695,6 +695,10 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                   settings.terrainSculptMode ==
                       cr::CreativeTerrainSculptMode::Smooth,
               "terrain sculpt mode cycles to smooth") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainSculptMode, 1).changed &&
+                  settings.terrainSculptMode ==
+                      cr::CreativeTerrainSculptMode::Raise,
+              "terrain sculpt mode wraps from smooth to raise") &&
        expect(adjust(cr::CreativeToolOptionId::TerrainSculptRadius, 1).changed &&
                   settings.terrainSculptRadius ==
                       cr::CreativeTerrainSculptRadius::EightCells,

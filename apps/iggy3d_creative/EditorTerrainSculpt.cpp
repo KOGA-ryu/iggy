@@ -58,7 +58,9 @@ void invalidateSculptPreview(CreativeTerrainSculptState& sculpt) noexcept {
                                   editor.toolSettings.terrainSculptRadius) &&
          cache.strengthCells == cr::creativeTerrainSculptStrengthCells(
                                     editor.toolSettings.terrainSculptStrength) &&
-         cache.targetHeightCells == editor.terrain.sculpt.targetHeightCells;
+         (!cr::creativeTerrainSculptUsesTargetHeight(cache.mode) ||
+          cache.targetHeightCells ==
+              editor.terrain.sculpt.targetHeightCells);
 }
 
 [[nodiscard]] bool insideBrush(cr::CreativeTerrainCoord2 center,
@@ -314,8 +316,11 @@ std::string creativeEditorTerrainSculptQuickEditLabel(
   label.append(" | STRENGTH ");
   label.append(std::to_string(cr::creativeTerrainSculptStrengthCells(
       editor.toolSettings.terrainSculptStrength)));
-  label.append(" | TARGET ");
-  label.append(std::to_string(editor.terrain.sculpt.targetHeightCells));
+  if (cr::creativeTerrainSculptUsesTargetHeight(
+          editor.toolSettings.terrainSculptMode)) {
+    label.append(" | TARGET ");
+    label.append(std::to_string(editor.terrain.sculpt.targetHeightCells));
+  }
   return label;
 }
 

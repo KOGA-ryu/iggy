@@ -71,7 +71,8 @@ constexpr std::array kToolSpecs{
                     "terrain grade ramp slope hill smooth landscape ground",
                     false},
     CatalogToolSpec{CreativeHeldItemKind::TerrainSculpt, "Terrain Sculpt",
-                    "terrain sculpt flatten smooth brush plateau landscape",
+                    "terrain sculpt raise lower flatten smooth brush plateau "
+                    "landscape",
                     false},
 };
 

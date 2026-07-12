@@ -438,6 +438,18 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                   sculptRadius->label.view() == "Radius",
               "terrain sculpt advertises apply cancel sample strength and radius") &&
        ok;
+  editor.toolSettings.terrainSculptMode =
+      cr::CreativeTerrainSculptMode::Raise;
+  const cr::CreativeActionHintFrame terrainRaise =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  ok = expect(findHint(terrainRaise, cr::CreativeInputActionId::PickAction) ==
+                      nullptr &&
+                  creativeEditorTerrainSculptQuickEditLabel(editor) ==
+                      "RAISE | RADIUS 4 | STRENGTH 1",
+              "raise omits the Flatten-only sample action and target label") &&
+       ok;
 
   setHeld(editor, cr::CreativeHeldItemKind::LinearArray);
   const cr::CreativeActionHintFrame array = resolveCreativeEditorActionHints(

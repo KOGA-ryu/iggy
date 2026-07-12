@@ -480,6 +480,12 @@ bool searchIsCaseInsensitiveBoundedAndStable() {
               "tool alias query accepted") &&
        expect(state.filteredEntryIndices.size() == 7U,
               "region query finds selection, five operations, and connected fill") &&
+       expect(cr::setCreativeCatalogQuery(state, "raise") &&
+                  state.filteredEntryIndices.size() == 1U &&
+                  cr::selectedCreativeCatalogEntry(state) != nullptr &&
+                  cr::selectedCreativeCatalogEntry(state)->hotbarEntry.kind ==
+                      cr::CreativeHeldItemKind::TerrainSculpt,
+              "raise alias resolves uniquely to terrain sculpt") &&
        expect(cr::setCreativeCatalogQuery(state, "no-such-entry"),
               "empty-result query accepted") &&
        expect(state.filteredEntryIndices.empty() &&

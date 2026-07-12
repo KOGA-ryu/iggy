@@ -77,10 +77,40 @@ namespace {
                    (heightSum + neighborCount / 2U) / neighborCount);
 }
 
+[[nodiscard]] std::uint16_t sculptedHeight(
+    const CreativeTerrainSculptRequest& request,
+    const CreativeTerrainControlPoint& control) noexcept {
+  switch (request.mode) {
+    case CreativeTerrainSculptMode::Raise:
+      return static_cast<std::uint16_t>(std::min(
+          static_cast<int>(kCreativeTerrainMaximumHeightCells),
+          static_cast<int>(control.heightCells) + request.strengthCells));
+    case CreativeTerrainSculptMode::Lower:
+      return static_cast<std::uint16_t>(std::max(
+          static_cast<int>(kCreativeTerrainMinimumHeightCells),
+          static_cast<int>(control.heightCells) - request.strengthCells));
+    case CreativeTerrainSculptMode::Flatten:
+      return moveToward(control.heightCells, request.targetHeightCells,
+                        request.strengthCells);
+    case CreativeTerrainSculptMode::Smooth:
+      return moveToward(
+          control.heightCells,
+          smoothTargetHeight(request.controls, control, request.radiusCells),
+          request.strengthCells);
+    case CreativeTerrainSculptMode::Count:
+      break;
+  }
+  return control.heightCells;
+}
+
 }  // namespace
 
 std::string_view toString(CreativeTerrainSculptMode mode) noexcept {
   switch (mode) {
+    case CreativeTerrainSculptMode::Raise:
+      return "RAISE";
+    case CreativeTerrainSculptMode::Lower:
+      return "LOWER";
     case CreativeTerrainSculptMode::Flatten:
       return "FLATTEN";
     case CreativeTerrainSculptMode::Smooth:
@@ -141,6 +171,20 @@ std::string_view toString(CreativeTerrainSculptPlanStatus status) noexcept {
   return "Unknown";
 }
 
+bool creativeTerrainSculptUsesTargetHeight(
+    CreativeTerrainSculptMode mode) noexcept {
+  switch (mode) {
+    case CreativeTerrainSculptMode::Flatten:
+      return true;
+    case CreativeTerrainSculptMode::Raise:
+    case CreativeTerrainSculptMode::Lower:
+    case CreativeTerrainSculptMode::Smooth:
+    case CreativeTerrainSculptMode::Count:
+      return false;
+  }
+  return false;
+}
+
 std::uint16_t creativeTerrainSculptRadiusCells(
     CreativeTerrainSculptRadius radius) noexcept {
   constexpr std::array<std::uint16_t,
@@ -182,13 +226,7 @@ CreativeTerrainSculptPlan buildCreativeTerrainSculptPlan(
       continue;
     }
     ++plan.affectedControlCount;
-    const std::uint16_t target =
-        request.mode == CreativeTerrainSculptMode::Flatten
-            ? request.targetHeightCells
-            : smoothTargetHeight(request.controls, control,
-                                 request.radiusCells);
-    const std::uint16_t nextHeight =
-        moveToward(control.heightCells, target, request.strengthCells);
+    const std::uint16_t nextHeight = sculptedHeight(request, control);
     if (nextHeight == control.heightCells) {
       continue;
     }

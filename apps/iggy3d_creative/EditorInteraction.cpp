@@ -1503,6 +1503,8 @@ void processCreativeEditorWorldInteractionFrame(
         request.appState, editor, request.actions,
         request.monotonicTimeNanoseconds);
     if (!editor.terrain.sculpt.stroke.repeat.active &&
+        cr::creativeTerrainSculptUsesTargetHeight(
+            editor.toolSettings.terrainSculptMode) &&
         cr::creativeWorldActionPressed(request.actions,
                                        cr::CreativeWorldActionId::Pick)) {
       static_cast<void>(sampleCreativeEditorTerrainSculptHeight(

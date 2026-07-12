@@ -142,8 +142,11 @@ void appendViewportKeyboardHints(HintSpecBuffer& buffer,
       appendHint(buffer, cr::CreativeInputActionId::SecondaryAction, "Sculpt");
       appendHint(buffer, cr::CreativeInputActionId::PrimaryAction,
                  "Cancel sculpt");
-      appendHint(buffer, cr::CreativeInputActionId::PickAction,
-                 "Sample height");
+      if (cr::creativeTerrainSculptUsesTargetHeight(
+              editor.toolSettings.terrainSculptMode)) {
+        appendHint(buffer, cr::CreativeInputActionId::PickAction,
+                   "Sample height");
+      }
       appendQuickEdit(buffer, editor);
       break;
     case cr::CreativeHeldItemKind::ObjectSelect:
@@ -233,8 +236,11 @@ void appendViewportGamepadHints(HintSpecBuffer& buffer,
       appendHint(buffer, cr::CreativeInputActionId::AcceptAction, "Sculpt");
       appendHint(buffer, cr::CreativeInputActionId::RejectAction,
                  "Cancel sculpt");
-      appendHint(buffer, cr::CreativeInputActionId::PickAction,
-                 "Sample height");
+      if (cr::creativeTerrainSculptUsesTargetHeight(
+              editor.toolSettings.terrainSculptMode)) {
+        appendHint(buffer, cr::CreativeInputActionId::PickAction,
+                   "Sample height");
+      }
       break;
     case cr::CreativeHeldItemKind::ObjectSelect:
       appendHint(buffer, cr::CreativeInputActionId::AcceptAction, "Select");

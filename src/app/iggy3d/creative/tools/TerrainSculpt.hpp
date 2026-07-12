@@ -14,6 +14,8 @@ namespace iggy3d::creative {
 enum class CreativeTerrainSculptMode : std::uint8_t {
   Flatten,
   Smooth,
+  Raise,
+  Lower,
   Count,
 };
 
@@ -82,6 +84,8 @@ static_assert(std::is_standard_layout_v<CreativeTerrainSculptPlan>);
     CreativeTerrainSculptStrength strength) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeTerrainSculptPlanStatus status) noexcept;
+[[nodiscard]] bool creativeTerrainSculptUsesTargetHeight(
+    CreativeTerrainSculptMode mode) noexcept;
 
 [[nodiscard]] std::uint16_t creativeTerrainSculptRadiusCells(
     CreativeTerrainSculptRadius radius) noexcept;

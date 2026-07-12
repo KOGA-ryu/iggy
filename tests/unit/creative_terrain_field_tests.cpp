@@ -257,6 +257,14 @@ bool sculptPlanIsSnapshotBasedBoundedAndCanonical() {
       cr::buildCreativeTerrainSculptPlan(
           {controls, {0, 0}, cr::CreativeTerrainSculptMode::Smooth, 2U, 2U,
            8U});
+  const cr::CreativeTerrainSculptPlan raise =
+      cr::buildCreativeTerrainSculptPlan(
+          {controls, {0, 0}, cr::CreativeTerrainSculptMode::Raise, 2U, 4U,
+           8U});
+  const cr::CreativeTerrainSculptPlan lower =
+      cr::buildCreativeTerrainSculptPlan(
+          {controls, {0, 0}, cr::CreativeTerrainSculptMode::Lower, 2U, 4U,
+           8U});
   const cr::CreativeTerrainSculptPlan noControls =
       cr::buildCreativeTerrainSculptPlan(
           {controls, {100, 100}, cr::CreativeTerrainSculptMode::Flatten, 2U,
@@ -272,6 +280,22 @@ bool sculptPlanIsSnapshotBasedBoundedAndCanonical() {
   const cr::CreativeTerrainSculptPlan invalid =
       cr::buildCreativeTerrainSculptPlan(
           {unsorted, {}, cr::CreativeTerrainSculptMode::Count, 2U, 2U, 8U});
+  constexpr std::array boundaryControls{
+      cr::CreativeTerrainControlPoint{{0, 0},
+                                      cr::kCreativeTerrainMaximumHeightCells,
+                                      1U},
+      cr::CreativeTerrainControlPoint{{10, 0},
+                                      cr::kCreativeTerrainMinimumHeightCells,
+                                      1U},
+  };
+  const cr::CreativeTerrainSculptPlan raiseAtMaximum =
+      cr::buildCreativeTerrainSculptPlan(
+          {boundaryControls, {0, 0}, cr::CreativeTerrainSculptMode::Raise, 1U,
+           8U, 8U});
+  const cr::CreativeTerrainSculptPlan lowerAtMinimum =
+      cr::buildCreativeTerrainSculptPlan(
+          {boundaryControls, {10, 0}, cr::CreativeTerrainSculptMode::Lower, 1U,
+           8U, 8U});
 
   const auto hasHeights = [&controls](
                               const cr::CreativeTerrainSculptPlan& plan,
@@ -297,6 +321,16 @@ bool sculptPlanIsSnapshotBasedBoundedAndCanonical() {
          expect(smooth.accepted && smooth.affectedControlCount == 3U &&
                     hasHeights(smooth, {3U, 5U, 7U}),
                 "smooth derives every output from the same input snapshot") &&
+         expect(raise.accepted && raise.affectedControlCount == 3U &&
+                    hasHeights(raise, {5U, 8U, 13U}),
+                "raise adds strength to every existing rod in the brush") &&
+         expect(lower.accepted && lower.affectedControlCount == 3U &&
+                    lower.items().size() == 2U &&
+                    lower.items()[0].control.coord == controls[1].coord &&
+                    lower.items()[0].control.heightCells == 1U &&
+                    lower.items()[1].control.coord == controls[2].coord &&
+                    lower.items()[1].control.heightCells == 5U,
+                "lower subtracts strength and clamps rods at minimum height") &&
          expect(!noControls.accepted && noControls.items().empty() &&
                     noControls.status ==
                         cr::CreativeTerrainSculptPlanStatus::NoControlsInBrush,
@@ -309,11 +343,27 @@ bool sculptPlanIsSnapshotBasedBoundedAndCanonical() {
                     invalid.status ==
                         cr::CreativeTerrainSculptPlanStatus::InvalidRequest,
                 "invalid or noncanonical sculpt input fails closed") &&
+         expect(raiseAtMaximum.accepted && raiseAtMaximum.items().empty() &&
+                    raiseAtMaximum.status ==
+                        cr::CreativeTerrainSculptPlanStatus::NoChange &&
+                    lowerAtMinimum.accepted &&
+                    lowerAtMinimum.items().empty() &&
+                    lowerAtMinimum.status ==
+                        cr::CreativeTerrainSculptPlanStatus::NoChange,
+                "raise and lower stop cleanly at authored height bounds") &&
          expect(cr::creativeTerrainSculptRadiusCells(
                     cr::CreativeTerrainSculptRadius::EightCells) == 8U &&
                     cr::creativeTerrainSculptStrengthCells(
-                        cr::CreativeTerrainSculptStrength::FourCells) == 4U,
-                "sculpt option enums resolve to explicit cell values");
+                        cr::CreativeTerrainSculptStrength::FourCells) == 4U &&
+                    cr::toString(cr::CreativeTerrainSculptMode::Raise) ==
+                        "RAISE" &&
+                    cr::toString(cr::CreativeTerrainSculptMode::Lower) ==
+                        "LOWER" &&
+                    cr::creativeTerrainSculptUsesTargetHeight(
+                        cr::CreativeTerrainSculptMode::Flatten) &&
+                    !cr::creativeTerrainSculptUsesTargetHeight(
+                        cr::CreativeTerrainSculptMode::Raise),
+                "sculpt options expose explicit values and target semantics");
 }
 
 bool gradePlanIsDeterministicBoundedAndValidated() {
