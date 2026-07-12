@@ -625,7 +625,7 @@ std::string creativeEditorHeldItemStatusLabel(
   }
   if (held.kind == cr::CreativeHeldItemKind::MaterialBrush) {
     const CreativeMaterialBrushGestureConfig brushConfig =
-        editor.interaction.materialStroke.hasBrushPlaneAnchor
+        editor.interaction.materialStroke.hasBrushGuideAnchor
             ? editor.interaction.materialStroke.brushConfig
             : creativeMaterialBrushGestureConfig(editor.toolSettings);
     output.append(" | ");
@@ -640,7 +640,7 @@ std::string creativeEditorHeldItemStatusLabel(
     output.append(" | ");
     output.append(cr::toString(brushConfig.size));
     output.append(" | ");
-    output.append(cr::toString(brushConfig.plane));
+    output.append(cr::toString(brushConfig.guide));
     output.append(" | ");
     output.append(cr::toString(brushConfig.mask));
     if (brushConfig.mask ==
@@ -654,7 +654,7 @@ std::string creativeEditorHeldItemStatusLabel(
     const cr::CreativeMaterialBrushStampPlan stamp =
         cr::planCreativeMaterialBrushStamp(
             {brushConfig.shape, brushConfig.size, {}, brushConfig.axis,
-             brushConfig.plane});
+             brushConfig.guide});
     if (stamp.accepted) {
       output.append(" | ");
       output.append(std::to_string(stamp.cellCount));

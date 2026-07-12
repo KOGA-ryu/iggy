@@ -22,6 +22,14 @@ void appendCreativeMaterialBrushStampOutline(
     iggy3d::RenderLineColor color,
     float thickness);
 
+[[nodiscard]] bool appendCreativeMaterialBrushGuideLine(
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,
+    iggy3d::creative::CreativeMaterialBrushGuide guide,
+    iggy3d::creative::CreativeGridCoord3 anchor,
+    iggy3d::creative::CreativeGridCoord3 target,
+    const iggy3d::creative::CreativeGridSettings& grid,
+    float thickness);
+
 void appendCreativeShapeBrushOutline(
     std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,
     const iggy3d::creative::CreativeVolumeSelection& selection,

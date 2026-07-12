@@ -38,11 +38,14 @@ enum class CreativeMaterialBrushMask : std::uint8_t {
   Count,
 };
 
-enum class CreativeMaterialBrushPlane : std::uint8_t {
+enum class CreativeMaterialBrushGuide : std::uint8_t {
   Free,
-  X,
-  Y,
-  Z,
+  LineX,
+  LineY,
+  LineZ,
+  PlaneX,
+  PlaneY,
+  PlaneZ,
   Count,
 };
 
@@ -51,7 +54,7 @@ enum class CreativeMaterialBrushStampStatus : std::uint8_t {
   InvalidShape,
   InvalidSize,
   InvalidAxis,
-  InvalidPlane,
+  InvalidGuide,
   CoordinateOverflow,
   CapacityExceeded,
   Planned,
@@ -62,7 +65,7 @@ struct CreativeMaterialBrushStampRequest {
   CreativeMaterialBrushSize size = CreativeMaterialBrushSize::OneCell;
   CreativeGridCoord3 centerCell{};
   CreativeAxis3 axis = CreativeAxis3::Y;
-  CreativeMaterialBrushPlane plane = CreativeMaterialBrushPlane::Free;
+  CreativeMaterialBrushGuide guide = CreativeMaterialBrushGuide::Free;
 };
 
 struct CreativeMaterialBrushStampPlan {
@@ -71,7 +74,7 @@ struct CreativeMaterialBrushStampPlan {
   CreativeMaterialBrushShape shape = CreativeMaterialBrushShape::Cube;
   CreativeMaterialBrushSize size = CreativeMaterialBrushSize::OneCell;
   CreativeAxis3 axis = CreativeAxis3::Y;
-  CreativeMaterialBrushPlane plane = CreativeMaterialBrushPlane::Free;
+  CreativeMaterialBrushGuide guide = CreativeMaterialBrushGuide::Free;
   CreativeMaterialBrushStampStatus status =
       CreativeMaterialBrushStampStatus::NotRequested;
   CreativeGridCoord3 centerCell{};
@@ -192,7 +195,7 @@ struct CreativeShapeBrushPlanReceipt {
 [[nodiscard]] std::string_view toString(
     CreativeMaterialBrushMask mask) noexcept;
 [[nodiscard]] std::string_view toString(
-    CreativeMaterialBrushPlane plane) noexcept;
+    CreativeMaterialBrushGuide guide) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeMaterialBrushStampStatus status) noexcept;
 [[nodiscard]] std::string_view toString(
@@ -204,19 +207,24 @@ struct CreativeShapeBrushPlanReceipt {
     CreativeMaterialBrushMask mask,
     bool occupied) noexcept;
 
-// Holds one world-grid coordinate at the gesture anchor. Free returns the
-// candidate unchanged. Invalid modes fail without modifying output.
-[[nodiscard]] bool constrainCreativeMaterialBrushCenter(
-    CreativeMaterialBrushPlane plane,
+// Free returns the candidate unchanged. Line guides hold two coordinates at
+// the gesture anchor; plane guides hold one. Invalid modes fail without
+// modifying output.
+[[nodiscard]] bool guideCreativeMaterialBrushCenter(
+    CreativeMaterialBrushGuide guide,
     CreativeGridCoord3 anchor,
     CreativeGridCoord3 candidate,
     CreativeGridCoord3& output) noexcept;
+[[nodiscard]] bool creativeMaterialBrushLineAxis(
+    CreativeMaterialBrushGuide guide,
+    CreativeAxis3& output) noexcept;
 
 // Generates a canonical z/y/x cell batch centered on centerCell. Sizes are
 // fixed at 1, 3, and 5 cells across, so work and storage are bounded by 125
 // candidates with no allocation. Cylinder axis selects its extrusion axis;
-// cube and sphere geometry is axis-independent. A plane keeps only the cells
-// on the center slice perpendicular to that world axis.
+// cube and sphere geometry is axis-independent. Plane guides keep only the
+// center slice perpendicular to their world axis; line guides retain the full
+// stamp and constrain only the path center.
 [[nodiscard]] CreativeMaterialBrushStampPlan planCreativeMaterialBrushStamp(
     const CreativeMaterialBrushStampRequest& request) noexcept;
 

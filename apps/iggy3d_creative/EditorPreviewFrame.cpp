@@ -152,6 +152,11 @@ struct MaterialBrushPreviewPlan {
   bool visible = false;
   bool removing = false;
   bool admitted = false;
+  bool hasGuideAnchor = false;
+  cr::CreativeMaterialBrushGuide guide =
+      cr::CreativeMaterialBrushGuide::Free;
+  cr::CreativeGridCoord3 guideAnchor{};
+  cr::CreativeGridCoord3 center{};
   cr::CreativeMaterialBrushStampPlan stamp{};
   std::array<cr::CreativeGridCoord3,
              cr::kCreativeMaterialBrushStampCapacity>
@@ -201,18 +206,22 @@ struct MaterialBrushPreviewPlan {
   const CreativeMaterialStrokeState& stroke =
       editor.interaction.materialStroke;
   const CreativeMaterialBrushGestureConfig config =
-      stroke.hasBrushPlaneAnchor
+      stroke.hasBrushGuideAnchor
           ? stroke.brushConfig
           : creativeMaterialBrushGestureConfig(editor.toolSettings);
   const cr::CreativeGridCoord3 anchor =
-      stroke.hasBrushPlaneAnchor ? stroke.brushPlaneAnchor : rawCenter;
+      stroke.hasBrushGuideAnchor ? stroke.brushGuideAnchor : rawCenter;
   cr::CreativeGridCoord3 center{};
-  if (!cr::constrainCreativeMaterialBrushCenter(config.plane, anchor, rawCenter,
-                                                center)) {
+  if (!cr::guideCreativeMaterialBrushCenter(config.guide, anchor, rawCenter,
+                                            center)) {
     return output;
   }
+  output.hasGuideAnchor = stroke.hasBrushGuideAnchor;
+  output.guide = config.guide;
+  output.guideAnchor = anchor;
+  output.center = center;
   output.stamp = cr::planCreativeMaterialBrushStamp(
-      {config.shape, config.size, center, config.axis, config.plane});
+      {config.shape, config.size, center, config.axis, config.guide});
   output.visible = output.stamp.accepted;
   if (!output.visible) {
     return output;
@@ -533,6 +542,7 @@ void buildAndAttachCreativeEditorOverlayFrame(
   output.lineMarkerEdgeCount = 0;
   output.pathPointHandleEdgeCount = 0;
   output.ghostEdgeCount = 0;
+  output.materialBrushGuideLineCount = 0;
   output.materialBrushEdgeCount = 0;
   output.volumeEdgeCount = 0;
   output.patternEdgeCount = 0;
@@ -697,6 +707,16 @@ void buildAndAttachCreativeEditorOverlayFrame(
             : materialBrushPreview.admitted
                   ? RenderLineColor{0.22F, 1.0F, 0.34F, 1.0F}
                   : RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F};
+    const std::size_t guideBefore = combinedWireLines.size();
+    if (materialBrushPreview.hasGuideAnchor) {
+      static_cast<void>(appendCreativeMaterialBrushGuideLine(
+          combinedWireLines, materialBrushPreview.guide,
+          materialBrushPreview.guideAnchor, materialBrushPreview.center,
+          appState.facade.document().gridSettings(),
+          std::max(0.045F, gizmoThickness * 1.4F)));
+    }
+    output.materialBrushGuideLineCount =
+        combinedWireLines.size() - guideBefore;
     const std::size_t before = combinedWireLines.size();
     appendCreativeMaterialBrushCellOutlines(
         combinedWireLines, materialBrushPreview.renderedCells(),

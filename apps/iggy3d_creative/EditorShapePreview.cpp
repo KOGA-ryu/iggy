@@ -112,6 +112,48 @@ void appendCreativeMaterialBrushStampOutline(
       lines, plan.generatedCells(), grid, color, thickness);
 }
 
+bool appendCreativeMaterialBrushGuideLine(
+    std::vector<RenderCreativeWireframeDebugLine>& lines,
+    cr::CreativeMaterialBrushGuide guide,
+    cr::CreativeGridCoord3 anchor,
+    cr::CreativeGridCoord3 target,
+    const cr::CreativeGridSettings& grid,
+    float thickness) {
+  cr::CreativeAxis3 axis = cr::CreativeAxis3::X;
+  if (!cr::creativeMaterialBrushLineAxis(guide, axis)) {
+    return false;
+  }
+  const cr::CreativeBounds anchorBounds = cr::creativeVolumeCellBounds(
+      anchor, grid.cellSizeMeters, grid.origin);
+  const cr::CreativeBounds targetBounds = cr::creativeVolumeCellBounds(
+      target, grid.cellSizeMeters, grid.origin);
+  const cr::CreativeCoreVec3Conversion start = cr::creativeVec3ToCoreChecked(
+      cr::measureCreativeBounds(anchorBounds).center);
+  const cr::CreativeCoreVec3Conversion end = cr::creativeVec3ToCoreChecked(
+      cr::measureCreativeBounds(targetBounds).center);
+  if (!start.converted || !end.converted) {
+    return false;
+  }
+
+  RenderLineColor color;
+  switch (axis) {
+    case cr::CreativeAxis3::X:
+      color = {1.0F, 0.22F, 0.18F, 1.0F};
+      break;
+    case cr::CreativeAxis3::Y:
+      color = {0.24F, 1.0F, 0.34F, 1.0F};
+      break;
+    case cr::CreativeAxis3::Z:
+      color = {0.22F, 0.55F, 1.0F, 1.0F};
+      break;
+    case cr::CreativeAxis3::Count:
+      return false;
+  }
+  const std::size_t before = lines.size();
+  appendPreviewLine(lines, start.value, end.value, color, thickness);
+  return lines.size() == before + 1U;
+}
+
 void appendCreativeShapeBrushOutline(
     std::vector<RenderCreativeWireframeDebugLine>& lines,
     const cr::CreativeVolumeSelection& selection,

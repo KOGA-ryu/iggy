@@ -4,6 +4,7 @@
 #include "EditorInteraction.hpp"
 #include "EditorPlacement.hpp"
 #include "EditorPreviewFrame.hpp"
+#include "EditorShapePreview.hpp"
 #include "EditorState.hpp"
 #include "EditorToolOptions.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
@@ -16,6 +17,7 @@
 #include <limits>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace {
 namespace cr = iggy3d::creative;
@@ -1390,7 +1392,7 @@ bool materialBrushPaintsErasesPreviewsAndGroupsHistory() {
   ok = expect(processCreativeEditorQuickEditAction(
                   editor, cr::CreativeInputActionId::QuickEditNext) &&
                   creativeEditorQuickEditStatusLabel(editor) ==
-                      "BRUSH DEPTH FREE" &&
+                      "BRUSH GUIDE FREE" &&
                   processCreativeEditorQuickEditAction(
                       editor, cr::CreativeInputActionId::QuickEditNext) &&
                   creativeEditorQuickEditStatusLabel(editor) ==
@@ -1570,7 +1572,7 @@ bool materialBrushCylinderAxisDrivesPreviewAndMutation() {
   return ok;
 }
 
-bool materialBrushPlaneStaysAnchoredForTheGesture() {
+bool materialBrushPlaneGuideStaysAnchoredForTheGesture() {
   cr::CreativeAppState appState;
   installHistoryDocument(appState, 112U);
   CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
@@ -1580,8 +1582,8 @@ bool materialBrushPlaneStaysAnchoredForTheGesture() {
       cr::CreativeMaterialBrushShape::Cube;
   editor.toolSettings.materialBrushSize =
       cr::CreativeMaterialBrushSize::ThreeCells;
-  editor.toolSettings.materialBrushPlane =
-      cr::CreativeMaterialBrushPlane::Y;
+  editor.toolSettings.materialBrushGuide =
+      cr::CreativeMaterialBrushGuide::PlaneY;
   syncCreativeEditorHeldItem(appState, editor);
   syncCreativeEditorQuickEdit(editor);
   setPlaceTarget(editor, 0, 0, 0);
@@ -1592,17 +1594,17 @@ bool materialBrushPlaneStaysAnchoredForTheGesture() {
   bool ok = expect(appState.facade.document()
                            .voxelField()
                            .occupiedCellCount() == 9U &&
-                       editor.interaction.materialStroke.hasBrushPlaneAnchor &&
-                       editor.interaction.materialStroke.brushConfig.plane ==
-                           cr::CreativeMaterialBrushPlane::Y,
+                       editor.interaction.materialStroke.hasBrushGuideAnchor &&
+                       editor.interaction.materialStroke.brushConfig.guide ==
+                           cr::CreativeMaterialBrushGuide::PlaneY,
                    "first sample captures and flattens the gesture plane");
 
   editor.toolSettings.materialBrushShape =
       cr::CreativeMaterialBrushShape::Sphere;
   editor.toolSettings.materialBrushSize =
       cr::CreativeMaterialBrushSize::FiveCells;
-  editor.toolSettings.materialBrushPlane =
-      cr::CreativeMaterialBrushPlane::Free;
+  editor.toolSettings.materialBrushGuide =
+      cr::CreativeMaterialBrushGuide::Free;
   editor.toolSettings.materialBrushMask =
       cr::CreativeMaterialBrushMask::AddOnly;
   setPlaceTarget(editor, 2, 2, 0);
@@ -1650,8 +1652,103 @@ bool materialBrushPlaneStaysAnchoredForTheGesture() {
                     !voxels.occupied({2, 2, 0}) &&
                     cr::creativeUndoDepth(appState.history) == 1U,
                 "constrained sweep fills one flat layer in one undo") &&
-         expect(!editor.interaction.materialStroke.hasBrushPlaneAnchor,
+         expect(!editor.interaction.materialStroke.hasBrushGuideAnchor,
                 "release clears the gesture-local plane anchor") &&
+         ok;
+}
+
+bool materialBrushLineGuideConstrainsPathAndRendersAxis() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 116U);
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
+  editor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::MaterialBrush;
+  editor.toolSettings.materialBrushShape =
+      cr::CreativeMaterialBrushShape::Cube;
+  editor.toolSettings.materialBrushSize =
+      cr::CreativeMaterialBrushSize::OneCell;
+  editor.toolSettings.materialBrushGuide =
+      cr::CreativeMaterialBrushGuide::LineX;
+  syncCreativeEditorHeldItem(appState, editor);
+  syncCreativeEditorQuickEdit(editor);
+  editor.quickEdit.selectedIndex = 2U;
+  setPlaceTarget(editor, 0, 0, 0);
+
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, true, false), 0U);
+  setPlaceTarget(editor, 3, 2, 4);
+
+  CreativeEditorSelectionFrame selection;
+  CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  iggy3d::FrameInput previewFrame;
+  CreativeEditorOverlayFrame previewOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, previewFrame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      previewOverlay);
+  const std::size_t guideIndex =
+      previewOverlay.combinedWireLines.size() -
+      previewOverlay.materialBrushEdgeCount -
+      previewOverlay.materialBrushGuideLineCount;
+  const iggy3d::RenderCreativeWireframeDebugLine& guideLine =
+      previewOverlay.combinedWireLines[guideIndex];
+  bool ok = expect(previewOverlay.materialBrushGuideLineCount == 1U &&
+                       previewOverlay.materialBrushEdgeCount == 12U &&
+                       near(guideLine.start.x, 0.5F) &&
+                       near(guideLine.start.y, 0.5F) &&
+                       near(guideLine.start.z, 0.5F) &&
+                       near(guideLine.end.x, 3.5F) &&
+                       near(guideLine.end.y, 0.5F) &&
+                       near(guideLine.end.z, 0.5F) &&
+                       near(guideLine.color.r, 1.0F) &&
+                       near(guideLine.color.g, 0.22F) &&
+                       near(guideLine.color.b, 0.18F) &&
+                       creativeEditorQuickEditStatusLabel(editor) ==
+                           "BRUSH GUIDE LINE X",
+                   "X line guide renders from anchor to constrained target");
+
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, false, false),
+      cr::kCreativeMaterialStrokeRepeatNanoseconds);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, false, false, true),
+      cr::kCreativeMaterialStrokeRepeatNanoseconds + 1U);
+  const cr::CreativeVoxelField& voxels =
+      appState.facade.document().voxelField();
+  ok = expect(voxels.occupiedCellCount() == 4U &&
+                  voxels.occupied({0, 0, 0}) && voxels.occupied({1, 0, 0}) &&
+                  voxels.occupied({2, 0, 0}) && voxels.occupied({3, 0, 0}) &&
+                  !voxels.occupied({3, 2, 4}) &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "X line sweep ignores off-axis aim and commits one undo") &&
+       ok;
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> axisLines;
+  const cr::CreativeGridSettings grid =
+      appState.facade.document().gridSettings();
+  const bool yLine = appendCreativeMaterialBrushGuideLine(
+      axisLines, cr::CreativeMaterialBrushGuide::LineY, {0, 0, 0},
+      {0, 2, 0}, grid, 0.05F);
+  const bool zLine = appendCreativeMaterialBrushGuideLine(
+      axisLines, cr::CreativeMaterialBrushGuide::LineZ, {0, 0, 0},
+      {0, 0, 2}, grid, 0.05F);
+  const bool planeLine = appendCreativeMaterialBrushGuideLine(
+      axisLines, cr::CreativeMaterialBrushGuide::PlaneX, {0, 0, 0},
+      {0, 2, 0}, grid, 0.05F);
+  ok = expect(yLine && zLine && !planeLine && axisLines.size() == 2U &&
+                  near(axisLines[0].color.r, 0.24F) &&
+                  near(axisLines[0].color.g, 1.0F) &&
+                  near(axisLines[0].color.b, 0.34F) &&
+                  near(axisLines[1].color.r, 0.22F) &&
+                  near(axisLines[1].color.g, 0.55F) &&
+                  near(axisLines[1].color.b, 1.0F),
+              "line guide colors consistently encode X red Y green Z blue") &&
+       ok;
+  return expect(!editor.interaction.materialStroke.hasBrushGuideAnchor,
+                "line guide anchor clears on release") &&
          ok;
 }
 
@@ -2385,7 +2482,8 @@ int main() {
   ok = gamepadAcceptPlacesAndRejectRemoves() && ok;
   ok = materialBrushPaintsErasesPreviewsAndGroupsHistory() && ok;
   ok = materialBrushCylinderAxisDrivesPreviewAndMutation() && ok;
-  ok = materialBrushPlaneStaysAnchoredForTheGesture() && ok;
+  ok = materialBrushPlaneGuideStaysAnchoredForTheGesture() && ok;
+  ok = materialBrushLineGuideConstrainsPathAndRendersAxis() && ok;
   ok = materialBrushInterpolatesDiagonalsAndBreaksOnTargetLoss() && ok;
   ok = materialBrushInterpolatesEraseSweep() && ok;
   ok = materialBrushMasksMatchPreviewAndMutation() && ok;

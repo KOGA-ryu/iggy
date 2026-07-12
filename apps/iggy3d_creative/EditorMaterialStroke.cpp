@@ -214,7 +214,7 @@ struct MaterialBrushTargetSample {
   request.size = config.size;
   request.centerCell = center;
   request.axis = config.axis;
-  request.plane = config.plane;
+  request.guide = config.guide;
   return cr::planCreativeMaterialBrushStamp(request);
 }
 
@@ -268,15 +268,15 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
     rejectMaterialStroke(editor, held.objectKind);
     return;
   }
-  if (!stroke.hasBrushPlaneAnchor) {
-    stroke.hasBrushPlaneAnchor = true;
-    stroke.brushPlaneAnchor = sample.center;
+  if (!stroke.hasBrushGuideAnchor) {
+    stroke.hasBrushGuideAnchor = true;
+    stroke.brushGuideAnchor = sample.center;
     stroke.brushConfig =
         creativeMaterialBrushGestureConfig(editor.toolSettings);
   }
   cr::CreativeGridCoord3 constrainedCenter{};
-  if (!cr::constrainCreativeMaterialBrushCenter(
-          stroke.brushConfig.plane, stroke.brushPlaneAnchor, sample.center,
+  if (!cr::guideCreativeMaterialBrushCenter(
+          stroke.brushConfig.guide, stroke.brushGuideAnchor, sample.center,
           constrainedCenter)) {
     rejectMaterialStroke(editor, held.objectKind);
     return;

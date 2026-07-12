@@ -46,6 +46,7 @@ struct CreativeEditorOverlayFrame {
   std::size_t lineMarkerEdgeCount = 0;
   std::size_t pathPointHandleEdgeCount = 0;
   std::size_t ghostEdgeCount = 0;
+  std::size_t materialBrushGuideLineCount = 0;
   std::size_t materialBrushEdgeCount = 0;
   std::size_t volumeEdgeCount = 0;
   std::size_t patternEdgeCount = 0;

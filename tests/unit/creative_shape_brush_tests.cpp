@@ -58,10 +58,10 @@ cr::CreativeMaterialBrushStampPlan stamp(
     cr::CreativeMaterialBrushSize size,
     cr::CreativeGridCoord3 center = {},
     cr::CreativeAxis3 axis = cr::CreativeAxis3::Y,
-    cr::CreativeMaterialBrushPlane plane =
-        cr::CreativeMaterialBrushPlane::Free) {
+    cr::CreativeMaterialBrushGuide guide =
+        cr::CreativeMaterialBrushGuide::Free) {
   return cr::planCreativeMaterialBrushStamp(
-      {shape, size, center, axis, plane});
+      {shape, size, center, axis, guide});
 }
 
 bool materialBrushStampsAreBoundedAndCanonical() {
@@ -121,10 +121,10 @@ bool materialBrushInvalidInputsFailClosed() {
       cr::CreativeMaterialBrushShape::Cylinder,
       cr::CreativeMaterialBrushSize::ThreeCells, {},
       cr::CreativeAxis3::Count);
-  const auto invalidPlane = stamp(
+  const auto invalidGuide = stamp(
       cr::CreativeMaterialBrushShape::Cube,
       cr::CreativeMaterialBrushSize::ThreeCells, {}, cr::CreativeAxis3::Y,
-      cr::CreativeMaterialBrushPlane::Count);
+      cr::CreativeMaterialBrushGuide::Count);
   const auto overflow = stamp(
       cr::CreativeMaterialBrushShape::Cube,
       cr::CreativeMaterialBrushSize::FiveCells,
@@ -141,42 +141,64 @@ bool materialBrushInvalidInputsFailClosed() {
                     invalidAxis.status ==
                         cr::CreativeMaterialBrushStampStatus::InvalidAxis,
                 "invalid material brush axis fails closed") &&
-         expect(!invalidPlane.accepted && invalidPlane.cellCount == 0U &&
-                    invalidPlane.status ==
-                        cr::CreativeMaterialBrushStampStatus::InvalidPlane,
-                "invalid material brush plane fails closed") &&
+         expect(!invalidGuide.accepted && invalidGuide.cellCount == 0U &&
+                    invalidGuide.status ==
+                        cr::CreativeMaterialBrushStampStatus::InvalidGuide,
+                "invalid material brush guide fails closed") &&
          expect(!overflow.accepted && overflow.cellCount == 0U &&
                     overflow.status ==
                         cr::CreativeMaterialBrushStampStatus::CoordinateOverflow,
                 "material brush coordinate overflow rejects before enumeration");
 }
 
-bool materialBrushPlanesFlattenAndConstrain() {
+bool materialBrushGuidesFlattenAndConstrain() {
   const auto cubeY = stamp(
       cr::CreativeMaterialBrushShape::Cube,
       cr::CreativeMaterialBrushSize::ThreeCells, {}, cr::CreativeAxis3::Y,
-      cr::CreativeMaterialBrushPlane::Y);
+      cr::CreativeMaterialBrushGuide::PlaneY);
   const auto sphereZ = stamp(
       cr::CreativeMaterialBrushShape::Sphere,
       cr::CreativeMaterialBrushSize::ThreeCells, {}, cr::CreativeAxis3::Y,
-      cr::CreativeMaterialBrushPlane::Z);
+      cr::CreativeMaterialBrushGuide::PlaneZ);
   const auto cylinderDisk = stamp(
       cr::CreativeMaterialBrushShape::Cylinder,
       cr::CreativeMaterialBrushSize::ThreeCells, {}, cr::CreativeAxis3::X,
-      cr::CreativeMaterialBrushPlane::X);
+      cr::CreativeMaterialBrushGuide::PlaneX);
+  const auto lineStamp = stamp(
+      cr::CreativeMaterialBrushShape::Cube,
+      cr::CreativeMaterialBrushSize::ThreeCells, {}, cr::CreativeAxis3::Y,
+      cr::CreativeMaterialBrushGuide::LineX);
   const auto boundaryPlane = stamp(
       cr::CreativeMaterialBrushShape::Cube,
       cr::CreativeMaterialBrushSize::ThreeCells,
       {std::numeric_limits<std::int32_t>::max(), 0, 0},
-      cr::CreativeAxis3::Y, cr::CreativeMaterialBrushPlane::X);
+      cr::CreativeAxis3::Y, cr::CreativeMaterialBrushGuide::PlaneX);
 
   cr::CreativeGridCoord3 constrained{99, 99, 99};
-  const bool constrainedY = cr::constrainCreativeMaterialBrushCenter(
-      cr::CreativeMaterialBrushPlane::Y, {3, 4, 5}, {8, 9, 10},
+  const bool constrainedY = cr::guideCreativeMaterialBrushCenter(
+      cr::CreativeMaterialBrushGuide::PlaneY, {3, 4, 5}, {8, 9, 10},
       constrained);
+  cr::CreativeGridCoord3 lineX{};
+  const bool constrainedLineX = cr::guideCreativeMaterialBrushCenter(
+      cr::CreativeMaterialBrushGuide::LineX, {3, 4, 5}, {8, 9, 10},
+      lineX);
+  cr::CreativeGridCoord3 lineY{};
+  const bool constrainedLineY = cr::guideCreativeMaterialBrushCenter(
+      cr::CreativeMaterialBrushGuide::LineY, {3, 4, 5}, {8, 9, 10},
+      lineY);
+  cr::CreativeGridCoord3 lineZ{};
+  const bool constrainedLineZ = cr::guideCreativeMaterialBrushCenter(
+      cr::CreativeMaterialBrushGuide::LineZ, {3, 4, 5}, {8, 9, 10},
+      lineZ);
   cr::CreativeGridCoord3 unchanged{7, 8, 9};
-  const bool invalid = cr::constrainCreativeMaterialBrushCenter(
-      cr::CreativeMaterialBrushPlane::Count, {}, {}, unchanged);
+  const bool invalid = cr::guideCreativeMaterialBrushCenter(
+      cr::CreativeMaterialBrushGuide::Count, {}, {}, unchanged);
+  cr::CreativeAxis3 lineAxis = cr::CreativeAxis3::Z;
+  const bool hasLineAxis = cr::creativeMaterialBrushLineAxis(
+      cr::CreativeMaterialBrushGuide::LineX, lineAxis);
+  cr::CreativeAxis3 planeAxis = cr::CreativeAxis3::Z;
+  const bool planeHasLineAxis = cr::creativeMaterialBrushLineAxis(
+      cr::CreativeMaterialBrushGuide::PlaneX, planeAxis);
 
   return expect(cubeY.accepted && cubeY.cellCount == 9U &&
                     cubeY.minCell.y == 0 && cubeY.maxCell.y == 0,
@@ -188,6 +210,8 @@ bool materialBrushPlanesFlattenAndConstrain() {
                     cylinderDisk.minCell.x == 0 &&
                     cylinderDisk.maxCell.x == 0,
                 "matching cylinder and plane axes produce one disk") &&
+         expect(lineStamp.accepted && lineStamp.cellCount == 27U,
+                "line guide retains the complete stamp geometry") &&
          expect(boundaryPlane.accepted && boundaryPlane.cellCount == 9U &&
                     boundaryPlane.minCell.x ==
                         std::numeric_limits<std::int32_t>::max() &&
@@ -196,16 +220,31 @@ bool materialBrushPlanesFlattenAndConstrain() {
                 "flattened axis does not fabricate coordinate overflow") &&
          expect(constrainedY && sameCell(constrained, {8, 4, 10}),
                 "gesture center keeps the anchored Y coordinate") &&
+         expect(constrainedLineX && sameCell(lineX, {8, 4, 5}) &&
+                    hasLineAxis && lineAxis == cr::CreativeAxis3::X,
+                "X line keeps anchored YZ and reports its guide axis") &&
+         expect(constrainedLineY && sameCell(lineY, {3, 9, 5}),
+                "Y line keeps anchored XZ") &&
+         expect(constrainedLineZ && sameCell(lineZ, {3, 4, 10}),
+                "Z line keeps anchored XY") &&
+         expect(!planeHasLineAxis && planeAxis == cr::CreativeAxis3::Z,
+                "plane guides do not fabricate a line axis") &&
          expect(!invalid && sameCell(unchanged, {7, 8, 9}),
                 "invalid plane fails without modifying output") &&
-         expect(cr::toString(cr::CreativeMaterialBrushPlane::Free) == "FREE" &&
-                    cr::toString(cr::CreativeMaterialBrushPlane::X) ==
+         expect(cr::toString(cr::CreativeMaterialBrushGuide::Free) == "FREE" &&
+                    cr::toString(cr::CreativeMaterialBrushGuide::LineX) ==
+                        "LINE X" &&
+                    cr::toString(cr::CreativeMaterialBrushGuide::LineY) ==
+                        "LINE Y" &&
+                    cr::toString(cr::CreativeMaterialBrushGuide::LineZ) ==
+                        "LINE Z" &&
+                    cr::toString(cr::CreativeMaterialBrushGuide::PlaneX) ==
                         "PLANE X" &&
-                    cr::toString(cr::CreativeMaterialBrushPlane::Y) ==
+                    cr::toString(cr::CreativeMaterialBrushGuide::PlaneY) ==
                         "PLANE Y" &&
-                    cr::toString(cr::CreativeMaterialBrushPlane::Z) ==
+                    cr::toString(cr::CreativeMaterialBrushGuide::PlaneZ) ==
                         "PLANE Z",
-                "plane labels state their world-space constraint");
+                "guide labels state their world-space constraint");
 }
 
 bool materialBrushMasksPartitionOccupancy() {
@@ -441,7 +480,7 @@ bool limitsAndInvalidEnumsFailClosed() {
 int main() {
   const bool ok = materialBrushStampsAreBoundedAndCanonical() &&
                   materialBrushInvalidInputsFailClosed() &&
-                  materialBrushPlanesFlattenAndConstrain() &&
+                  materialBrushGuidesFlattenAndConstrain() &&
                   materialBrushMasksPartitionOccupancy() &&
                   materialBrushPathUsesExactBoundedSupercover() &&
                   materialBrushPathLimitsFailBeforePartialOutput() &&

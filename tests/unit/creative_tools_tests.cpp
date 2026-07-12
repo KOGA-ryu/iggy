@@ -370,10 +370,10 @@ bool optionDescriptorsAreContextualAndBounded() {
                     materialBrush.ids[1] ==
                         cr::CreativeToolOptionId::MaterialBrushSize &&
                     materialBrush.ids[2] ==
-                        cr::CreativeToolOptionId::MaterialBrushPlane &&
+                        cr::CreativeToolOptionId::MaterialBrushGuide &&
                     materialBrush.ids[3] ==
                         cr::CreativeToolOptionId::MaterialBrushMask,
-                "material brush exposes shape size plane and occupancy mask") &&
+                "material brush exposes shape size guide and occupancy mask") &&
          expect(cylinderBrush.count == 5U &&
                     cylinderBrush.ids[0] ==
                         cr::CreativeToolOptionId::MaterialBrushShape &&
@@ -382,7 +382,7 @@ bool optionDescriptorsAreContextualAndBounded() {
                     cylinderBrush.ids[2] ==
                         cr::CreativeToolOptionId::MaterialBrushSize &&
                     cylinderBrush.ids[3] ==
-                        cr::CreativeToolOptionId::MaterialBrushPlane &&
+                        cr::CreativeToolOptionId::MaterialBrushGuide &&
                     cylinderBrush.ids[4] ==
                         cr::CreativeToolOptionId::MaterialBrushMask,
                 "cylinder brush exposes its contextual extrusion axis") &&
@@ -464,9 +464,9 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
   invalidMask.materialBrushMask = cr::CreativeMaterialBrushMask::Count;
   cr::CreativeToolSettings invalidBrushAxis = settings;
   invalidBrushAxis.materialBrushAxis = cr::CreativeAxis3::Count;
-  cr::CreativeToolSettings invalidBrushPlane = settings;
-  invalidBrushPlane.materialBrushPlane =
-      cr::CreativeMaterialBrushPlane::Count;
+  cr::CreativeToolSettings invalidBrushGuide = settings;
+  invalidBrushGuide.materialBrushGuide =
+      cr::CreativeMaterialBrushGuide::Count;
   cr::CreativeToolSettings invalidBrushSource = settings;
   invalidBrushSource.materialBrushReplaceSourceKind =
       cr::CreativeObjectKind::Count;
@@ -479,8 +479,8 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                    "invalid material brush mask fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidBrushAxis),
                    "invalid material brush axis fails settings validation") &&
-            expect(!cr::isValidCreativeToolSettings(invalidBrushPlane),
-                   "invalid material brush plane fails settings validation") &&
+            expect(!cr::isValidCreativeToolSettings(invalidBrushGuide),
+                   "invalid material brush guide fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidBrushSource),
                    "invalid material brush source fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidBrushPropSource),
@@ -517,7 +517,7 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                            "3 CELLS" &&
                        cr::creativeToolOptionValueLabel(
                            settings,
-                           cr::CreativeToolOptionId::MaterialBrushPlane) ==
+                           cr::CreativeToolOptionId::MaterialBrushGuide) ==
                            "FREE" &&
                        cr::creativeToolOptionValueLabel(
                            settings,
@@ -564,10 +564,10 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                   settings.materialBrushSize ==
                       cr::CreativeMaterialBrushSize::FiveCells,
               "material brush size cycles within its fixed budget") &&
-       expect(adjust(cr::CreativeToolOptionId::MaterialBrushPlane, 1).changed &&
-                  settings.materialBrushPlane ==
-                      cr::CreativeMaterialBrushPlane::X,
-              "material brush plane cycles from free to X") &&
+       expect(adjust(cr::CreativeToolOptionId::MaterialBrushGuide, 1).changed &&
+                  settings.materialBrushGuide ==
+                      cr::CreativeMaterialBrushGuide::LineX,
+              "material brush guide cycles from free to line X") &&
        expect(adjust(cr::CreativeToolOptionId::MaterialBrushMask, 1).changed &&
                   settings.materialBrushMask ==
                       cr::CreativeMaterialBrushMask::AddOnly,
