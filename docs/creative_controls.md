@@ -310,8 +310,8 @@ preview's contextual wheel. They do not each earn a permanent global key.
   rotation, 0.25/0.5/1/2-meter grid increments, Material Brush Cube/Sphere/
   Cylinder shape, X/Y/Z cylinder axis, 1/3/5-cell size, Free/Plane X/Plane Y/
   Plane Z brush depth, and Add Only/Replace/Overwrite occupancy masks, Replace
-  source filtering by material or Any, Clone offsets on X/Y/Z at 1/2/4/8
-  cells, Linear Array
+  Brush source filtering by material or Any, volume Replace source filtering
+  by material or Any, Clone offsets on X/Y/Z at 1/2/4/8 cells, Linear Array
   direction on either world axis with 1/2/4/8/16/32 copies at 1/2/4/8-cell
   spacing, and Radial Array X/Y/Z rings or arcs with 2/4/8/16/32 total
   instances across 90/180/360 degrees.
@@ -375,20 +375,25 @@ preview's contextual wheel. They do not each earn a permanent global key.
   slice perpendicular to that world axis and anchors that coordinate at the
   gesture's first valid sample. The plane remains fixed until release even if
   aim moves across uneven geometry; losing the target still breaks path
-  interpolation without moving the anchor. A
-  held gesture repeats every 200 ms and fills every grid cell crossed between
+  interpolation without moving the anchor. A held gesture repeats every 200 ms
+  and fills every grid cell crossed between
   valid samples, so fast axial and diagonal sweeps do not leave holes. Losing
   the target breaks that interpolation chain instead of bridging empty space.
-  The gesture
-  deduplicates previously visited cells and commits one undo record on release.
+  The gesture deduplicates previously visited cells and commits one undo record
+  on release.
   The 256-cell gesture budget rejects a whole interpolated segment before
   mutation rather than clipping its shape. The target preview draws one wire
   box for every planned voxel and the status row reports the exact stamp count,
   so a 3-cell sphere visibly contains 7 voxels while a 3-cell cube contains 27.
   `ADD ONLY` writes only empty cells, `REPLACE` recolors only occupied cells,
-  and `OVERWRITE` preserves the previous write-anywhere behavior. The preview
-  uses the same occupancy predicate: admitted cells are green and a wholly
-  blocked stamp is red. Circle erase is independent of the paint mask. Green
+  and `OVERWRITE` preserves the previous write-anywhere behavior. Replace adds
+  a contextual Source option: Any accepts every occupied voxel, while a named
+  material accepts only matching voxels. The preview uses the same material-
+  aware predicate: admitted cells are green and a wholly blocked stamp is red.
+  Shape, cylinder axis, size, depth, mask, and replace source are frozen at the
+  first valid sample so a single held gesture cannot mix configurations inside
+  one undo record. Circle erase is independent of the paint mask and source
+  filter. Green
   wireframes paint; red wireframes erase or mark blocked/invalid state.
 - A material's thin green wireframe is only a placement preview. Right mouse or
   controller X attempts the placement. `Wall`, `Floor`, `Ceiling`,

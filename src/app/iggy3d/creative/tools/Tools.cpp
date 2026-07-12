@@ -127,6 +127,11 @@ constexpr std::array kToolOptionDescriptors{
                                  "BRUSH MASK",
                                  CreativeToolOptionValueKind::Choice,
                                  kMaterialBrushItems},
+    CreativeToolOptionDescriptor{
+        CreativeToolOptionId::MaterialBrushReplaceSource,
+        "REPLACE SOURCE",
+        CreativeToolOptionValueKind::MaterialOrAny,
+        kMaterialBrushItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::ShapeBrushKind,
                                  "SHAPE",
                                  CreativeToolOptionValueKind::Choice,
@@ -208,6 +213,8 @@ template <typename Enum>
          lhs.materialBrushSize == rhs.materialBrushSize &&
          lhs.materialBrushPlane == rhs.materialBrushPlane &&
          lhs.materialBrushMask == rhs.materialBrushMask &&
+         lhs.materialBrushReplaceSourceKind ==
+             rhs.materialBrushReplaceSourceKind &&
          lhs.shapeBrushKind == rhs.shapeBrushKind &&
          lhs.shapeBrushAxis == rhs.shapeBrushAxis &&
          lhs.replaceSourceKind == rhs.replaceSourceKind &&
@@ -286,6 +293,58 @@ bool setActiveTool(CreativeToolState& state, Tool tool) noexcept {
   state.moveDragActive = false;
   state.moveDragTarget = {};
   return true;
+}
+
+[[nodiscard]] bool nextMaterialBrushReplaceSource(
+    std::span<const CreativeObjectKind> palette,
+    CreativeObjectKind current,
+    std::int32_t direction,
+    CreativeObjectKind& output) noexcept {
+  std::size_t materialCount = 0U;
+  for (CreativeObjectKind kind : palette) {
+    if (creativeVolumeBrushSupported(kind)) {
+      ++materialCount;
+    }
+  }
+  if (materialCount == 0U) {
+    return false;
+  }
+
+  std::size_t currentIndex = 0U;
+  if (current != CreativeObjectKind::Unknown) {
+    std::size_t materialIndex = 0U;
+    for (CreativeObjectKind kind : palette) {
+      if (!creativeVolumeBrushSupported(kind)) {
+        continue;
+      }
+      ++materialIndex;
+      if (kind == current) {
+        currentIndex = materialIndex;
+        break;
+      }
+    }
+  }
+
+  const std::size_t candidateCount = materialCount + 1U;
+  const std::size_t nextIndex =
+      direction > 0 ? (currentIndex + 1U) % candidateCount
+                    : (currentIndex + candidateCount - 1U) % candidateCount;
+  if (nextIndex == 0U) {
+    output = CreativeObjectKind::Unknown;
+    return true;
+  }
+  std::size_t materialIndex = 0U;
+  for (CreativeObjectKind kind : palette) {
+    if (!creativeVolumeBrushSupported(kind)) {
+      continue;
+    }
+    ++materialIndex;
+    if (materialIndex == nextIndex) {
+      output = kind;
+      return true;
+    }
+  }
+  return false;
 }
 
 CreativeToolDispatchReceipt dispatchToolInput(
@@ -456,6 +515,10 @@ bool isValidCreativeToolSettings(
   const bool replaceSourceValid =
       settings.replaceSourceKind == CreativeObjectKind::Unknown ||
       validReplaceSourceKind(settings.replaceSourceKind);
+  const bool materialBrushReplaceSourceValid =
+      settings.materialBrushReplaceSourceKind == CreativeObjectKind::Unknown ||
+      creativeVolumeBrushSupported(
+          settings.materialBrushReplaceSourceKind);
   return validEnum(settings.moveConstraint, CreativeMoveConstraint::Count) &&
          validEnum(settings.rotationStep, CreativeRotationStep::Count) &&
          validEnum(settings.placementYaw, CreativePlacementYaw::Count) &&
@@ -469,6 +532,7 @@ bool isValidCreativeToolSettings(
                    CreativeMaterialBrushPlane::Count) &&
          validEnum(settings.materialBrushMask,
                    CreativeMaterialBrushMask::Count) &&
+         materialBrushReplaceSourceValid &&
          validEnum(settings.shapeBrushKind, CreativeShapeBrushKind::Count) &&
          validEnum(settings.shapeBrushAxis, CreativeShapeBrushAxis::Count) &&
          replaceSourceValid &&
@@ -534,10 +598,14 @@ CreativeToolOptionList creativeToolOptionsForHeldItem(
         descriptor.id == CreativeToolOptionId::RadialArraySweep;
     const bool cylinderOnly =
         descriptor.id == CreativeToolOptionId::MaterialBrushAxis;
+    const bool materialBrushReplaceOnly =
+        descriptor.id == CreativeToolOptionId::MaterialBrushReplaceSource;
     if ((linearOnly && settings.arrayMode != CreativeArrayMode::Linear) ||
         (radialOnly && settings.arrayMode != CreativeArrayMode::Radial) ||
         (cylinderOnly && settings.materialBrushShape !=
-                             CreativeMaterialBrushShape::Cylinder)) {
+                             CreativeMaterialBrushShape::Cylinder) ||
+        (materialBrushReplaceOnly && settings.materialBrushMask !=
+                                         CreativeMaterialBrushMask::Replace)) {
       continue;
     }
     if (result.count == result.ids.size()) {
@@ -560,6 +628,32 @@ bool creativeToolOptionAppliesToHeldItem(
     return false;
   }
   return (descriptor->applicableHeldItems & heldItemMask(heldItem)) != 0U;
+}
+
+bool creativeMaterialBrushPaintAllows(
+    CreativeMaterialBrushMask mask,
+    CreativeObjectKind currentMaterial,
+    CreativeObjectKind replaceSource) noexcept {
+  const bool currentValid = currentMaterial == CreativeObjectKind::Unknown ||
+                            creativeVolumeBrushSupported(currentMaterial);
+  const bool sourceValid = replaceSource == CreativeObjectKind::Unknown ||
+                           creativeVolumeBrushSupported(replaceSource);
+  if (!currentValid || !sourceValid) {
+    return false;
+  }
+  switch (mask) {
+    case CreativeMaterialBrushMask::AddOnly:
+      return currentMaterial == CreativeObjectKind::Unknown;
+    case CreativeMaterialBrushMask::Replace:
+      return currentMaterial != CreativeObjectKind::Unknown &&
+             (replaceSource == CreativeObjectKind::Unknown ||
+              currentMaterial == replaceSource);
+    case CreativeMaterialBrushMask::Overwrite:
+      return true;
+    case CreativeMaterialBrushMask::Count:
+      return false;
+  }
+  return false;
 }
 
 std::string_view toString(CreativeMoveConstraint constraint) noexcept {
@@ -670,6 +764,11 @@ std::string_view creativeToolOptionValueLabel(
       return toString(settings.materialBrushPlane);
     case CreativeToolOptionId::MaterialBrushMask:
       return toString(settings.materialBrushMask);
+    case CreativeToolOptionId::MaterialBrushReplaceSource:
+      return settings.materialBrushReplaceSourceKind ==
+                     CreativeObjectKind::Unknown
+                 ? std::string_view{"ANY"}
+                 : toString(settings.materialBrushReplaceSourceKind);
     case CreativeToolOptionId::ShapeBrushKind:
       return toString(settings.shapeBrushKind);
     case CreativeToolOptionId::ShapeBrushAxis:
@@ -767,6 +866,18 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
           cycleEnum(adjusted.materialBrushMask,
                     CreativeMaterialBrushMask::Count, direction);
       break;
+    case CreativeToolOptionId::MaterialBrushReplaceSource: {
+      CreativeObjectKind next = adjusted.materialBrushReplaceSourceKind;
+      if (!nextMaterialBrushReplaceSource(
+              materialPalette, adjusted.materialBrushReplaceSourceKind,
+              direction, next)) {
+        receipt.status = CreativeToolOptionAdjustStatus::NoAvailableValue;
+        receipt.reasonCode = "creative_tool_option_material_unavailable";
+        return receipt;
+      }
+      adjusted.materialBrushReplaceSourceKind = next;
+      break;
+    }
     case CreativeToolOptionId::ShapeBrushKind:
       adjusted.shapeBrushKind = cycleEnum(
           adjusted.shapeBrushKind, CreativeShapeBrushKind::Count, direction);

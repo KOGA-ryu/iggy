@@ -12,6 +12,7 @@
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
 #include "app/iggy3d/creative/tools/ShapeBrush.hpp"
+#include "app/iggy3d/creative/tools/Tools.hpp"
 #include "render/FrameInput.hpp"
 
 namespace iggy3d::creative {
@@ -79,6 +80,32 @@ struct CreativeMaterialStrokeVisitedKey {
       iggy3d::creative::kInvalidObjectId;
 };
 
+struct CreativeMaterialBrushGestureConfig {
+  iggy3d::creative::CreativeMaterialBrushShape shape =
+      iggy3d::creative::CreativeMaterialBrushShape::Sphere;
+  iggy3d::creative::CreativeAxis3 axis =
+      iggy3d::creative::CreativeAxis3::Y;
+  iggy3d::creative::CreativeMaterialBrushSize size =
+      iggy3d::creative::CreativeMaterialBrushSize::ThreeCells;
+  iggy3d::creative::CreativeMaterialBrushPlane plane =
+      iggy3d::creative::CreativeMaterialBrushPlane::Free;
+  iggy3d::creative::CreativeMaterialBrushMask mask =
+      iggy3d::creative::CreativeMaterialBrushMask::Overwrite;
+  iggy3d::creative::CreativeObjectKind replaceSourceKind =
+      iggy3d::creative::CreativeObjectKind::Unknown;
+};
+
+[[nodiscard]] inline CreativeMaterialBrushGestureConfig
+creativeMaterialBrushGestureConfig(
+    const iggy3d::creative::CreativeToolSettings& settings) noexcept {
+  return {settings.materialBrushShape,
+          settings.materialBrushAxis,
+          settings.materialBrushSize,
+          settings.materialBrushPlane,
+          settings.materialBrushMask,
+          settings.materialBrushReplaceSourceKind};
+}
+
 struct CreativeMaterialStrokeState {
   CreativeMaterialRepeatState repeat{};
   StandaloneEditTransaction transaction{};
@@ -92,8 +119,7 @@ struct CreativeMaterialStrokeState {
   iggy3d::creative::CreativeGridCoord3 lastBrushCenter{};
   bool hasBrushPlaneAnchor = false;
   iggy3d::creative::CreativeGridCoord3 brushPlaneAnchor{};
-  iggy3d::creative::CreativeMaterialBrushPlane brushPlane =
-      iggy3d::creative::CreativeMaterialBrushPlane::Free;
+  CreativeMaterialBrushGestureConfig brushConfig{};
 };
 
 [[nodiscard]] constexpr bool creativeEditorPlacementFeedbackVisible(

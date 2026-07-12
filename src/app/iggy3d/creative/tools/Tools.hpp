@@ -118,6 +118,7 @@ enum class CreativeToolOptionId : std::uint8_t {
   MaterialBrushSize,
   MaterialBrushPlane,
   MaterialBrushMask,
+  MaterialBrushReplaceSource,
   ShapeBrushKind,
   ShapeBrushAxis,
   ReplaceSource,
@@ -175,6 +176,8 @@ struct CreativeToolSettings {
       CreativeMaterialBrushPlane::Free;
   CreativeMaterialBrushMask materialBrushMask =
       CreativeMaterialBrushMask::Overwrite;
+  CreativeObjectKind materialBrushReplaceSourceKind =
+      CreativeObjectKind::Unknown;
   CreativeShapeBrushKind shapeBrushKind = CreativeShapeBrushKind::Box;
   CreativeShapeBrushAxis shapeBrushAxis = CreativeShapeBrushAxis::Y;
   CreativeObjectKind replaceSourceKind = CreativeObjectKind::Unknown;
@@ -309,6 +312,10 @@ creativeToolOptionDescriptors() noexcept;
 [[nodiscard]] bool creativeToolOptionAppliesToHeldItem(
     CreativeToolOptionId option,
     CreativeHeldItemKind heldItem) noexcept;
+[[nodiscard]] bool creativeMaterialBrushPaintAllows(
+    CreativeMaterialBrushMask mask,
+    CreativeObjectKind currentMaterial,
+    CreativeObjectKind replaceSource) noexcept;
 
 [[nodiscard]] std::string_view toString(
     CreativeMoveConstraint constraint) noexcept;

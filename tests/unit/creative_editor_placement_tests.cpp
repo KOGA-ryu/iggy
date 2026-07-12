@@ -1593,10 +1593,18 @@ bool materialBrushPlaneStaysAnchoredForTheGesture() {
                            .voxelField()
                            .occupiedCellCount() == 9U &&
                        editor.interaction.materialStroke.hasBrushPlaneAnchor &&
-                       editor.interaction.materialStroke.brushPlane ==
+                       editor.interaction.materialStroke.brushConfig.plane ==
                            cr::CreativeMaterialBrushPlane::Y,
                    "first sample captures and flattens the gesture plane");
 
+  editor.toolSettings.materialBrushShape =
+      cr::CreativeMaterialBrushShape::Sphere;
+  editor.toolSettings.materialBrushSize =
+      cr::CreativeMaterialBrushSize::FiveCells;
+  editor.toolSettings.materialBrushPlane =
+      cr::CreativeMaterialBrushPlane::Free;
+  editor.toolSettings.materialBrushMask =
+      cr::CreativeMaterialBrushMask::AddOnly;
   setPlaceTarget(editor, 2, 2, 0);
   CreativeEditorSelectionFrame selection;
   CreativeEditorGizmoFrame gizmo;
@@ -1624,7 +1632,7 @@ bool materialBrushPlaneStaysAnchoredForTheGesture() {
                   previewHeldAtAnchor &&
                   creativeEditorHeldItemStatusLabel(editor).find(
                       "3 CELLS | PLANE Y") != std::string::npos,
-              "preview shows eligible cells on the anchored uneven-aim plane") &&
+              "active preview freezes settings on the uneven-aim plane") &&
        ok;
 
   processCreativeMaterialStrokeFrame(
@@ -1877,8 +1885,42 @@ bool materialBrushMasksMatchPreviewAndMutation() {
               "replace previews and recolors occupied cells") &&
        ok;
 
+  editor.interaction.hotbar.entries[0].objectKind =
+      cr::CreativeObjectKind::Ceiling;
+  editor.toolSettings.materialBrushReplaceSourceKind =
+      cr::CreativeObjectKind::Floor;
+  syncCreativeEditorHeldItem(appState, editor);
+  syncCreativeEditorQuickEdit(editor);
+  editor.quickEdit.selectedIndex = editor.quickEdit.options.count - 1U;
+  const CreativeEditorOverlayFrame selectiveBlocked = previewAt(0);
+  const std::uint64_t revisionBeforeSelectiveBlock =
+      appState.facade.document().revision();
+  paintAt(0);
+  const CreativeEditorOverlayFrame selectiveAllowed = previewAt(2);
+  paintAt(2);
+  ok = expect(editor.quickEdit.options.count == 5U &&
+                  creativeEditorQuickEditStatusLabel(editor) ==
+                      "REPLACE SOURCE Floor" &&
+                  previewIsColor(selectiveBlocked, 1.0F, 0.15F) &&
+                  appState.facade.document().voxelField().materialAt(
+                      {0, 0, 0}) == cr::CreativeObjectKind::Wall &&
+                  revisionBeforeSelectiveBlock + 1U ==
+                      appState.facade.document().revision(),
+              "selective replace rejects a nonmatching occupied material") &&
+       expect(previewIsColor(selectiveAllowed, 0.22F, 1.0F) &&
+                  appState.facade.document().voxelField().materialAt(
+                      {2, 0, 0}) == cr::CreativeObjectKind::Ceiling &&
+                  cr::creativeUndoDepth(appState.history) == 3U,
+              "selective replace previews and repaints only its source") &&
+       ok;
+
+  editor.interaction.hotbar.entries[0].objectKind =
+      cr::CreativeObjectKind::Wall;
   editor.toolSettings.materialBrushMask =
       cr::CreativeMaterialBrushMask::Overwrite;
+  editor.toolSettings.materialBrushReplaceSourceKind =
+      cr::CreativeObjectKind::Unknown;
+  syncCreativeEditorHeldItem(appState, editor);
   const CreativeEditorOverlayFrame overwriteOccupied = previewAt(2);
   paintAt(2);
   const CreativeEditorOverlayFrame overwriteEmpty = previewAt(4);
@@ -1889,7 +1931,7 @@ bool materialBrushMasksMatchPreviewAndMutation() {
                       {2, 0, 0}) == cr::CreativeObjectKind::Wall &&
                   appState.facade.document().voxelField().materialAt(
                       {4, 0, 0}) == cr::CreativeObjectKind::Wall &&
-                  cr::creativeUndoDepth(appState.history) == 4U,
+                  cr::creativeUndoDepth(appState.history) == 5U,
               "overwrite admits both occupied and empty cells") &&
        ok;
 
@@ -1909,7 +1951,7 @@ bool materialBrushMasksMatchPreviewAndMutation() {
       now++);
   return expect(appState.facade.document().voxelField().materialAt(
                     {0, 0, 0}) == cr::CreativeObjectKind::Unknown &&
-                    cr::creativeUndoDepth(appState.history) == 5U,
+                    cr::creativeUndoDepth(appState.history) == 6U,
                 "Circle erase ignores the paint occupancy mask") &&
          ok;
 }

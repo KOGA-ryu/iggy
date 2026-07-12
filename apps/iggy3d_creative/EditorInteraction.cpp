@@ -624,31 +624,37 @@ std::string creativeEditorHeldItemStatusLabel(
     return output;
   }
   if (held.kind == cr::CreativeHeldItemKind::MaterialBrush) {
-    const cr::CreativeMaterialBrushPlane activePlane =
+    const CreativeMaterialBrushGestureConfig brushConfig =
         editor.interaction.materialStroke.hasBrushPlaneAnchor
-            ? editor.interaction.materialStroke.brushPlane
-            : editor.toolSettings.materialBrushPlane;
+            ? editor.interaction.materialStroke.brushConfig
+            : creativeMaterialBrushGestureConfig(editor.toolSettings);
     output.append(" | ");
     output.append(cr::toString(held.objectKind));
     output.append(" | ");
-    output.append(cr::toString(editor.toolSettings.materialBrushShape));
-    if (editor.toolSettings.materialBrushShape ==
+    output.append(cr::toString(brushConfig.shape));
+    if (brushConfig.shape ==
         cr::CreativeMaterialBrushShape::Cylinder) {
       output.push_back(' ');
-      output.append(cr::toString(editor.toolSettings.materialBrushAxis));
+      output.append(cr::toString(brushConfig.axis));
     }
     output.append(" | ");
-    output.append(cr::toString(editor.toolSettings.materialBrushSize));
+    output.append(cr::toString(brushConfig.size));
     output.append(" | ");
-    output.append(cr::toString(activePlane));
+    output.append(cr::toString(brushConfig.plane));
     output.append(" | ");
-    output.append(cr::toString(editor.toolSettings.materialBrushMask));
+    output.append(cr::toString(brushConfig.mask));
+    if (brushConfig.mask ==
+        cr::CreativeMaterialBrushMask::Replace) {
+      output.push_back(' ');
+      output.append(
+          brushConfig.replaceSourceKind == cr::CreativeObjectKind::Unknown
+              ? std::string_view{"ANY"}
+              : cr::toString(brushConfig.replaceSourceKind));
+    }
     const cr::CreativeMaterialBrushStampPlan stamp =
         cr::planCreativeMaterialBrushStamp(
-            {editor.toolSettings.materialBrushShape,
-             editor.toolSettings.materialBrushSize, {},
-             editor.toolSettings.materialBrushAxis,
-             activePlane});
+            {brushConfig.shape, brushConfig.size, {}, brushConfig.axis,
+             brushConfig.plane});
     if (stamp.accepted) {
       output.append(" | ");
       output.append(std::to_string(stamp.cellCount));

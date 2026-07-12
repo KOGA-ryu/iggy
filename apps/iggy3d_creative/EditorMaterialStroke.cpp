@@ -207,15 +207,14 @@ struct MaterialBrushTargetSample {
 }
 
 [[nodiscard]] cr::CreativeMaterialBrushStampPlan materialBrushStampPlan(
-    const CreativeEditorState& editor,
     cr::CreativeGridCoord3 center,
-    cr::CreativeMaterialBrushPlane plane) noexcept {
+    const CreativeMaterialBrushGestureConfig& config) noexcept {
   cr::CreativeMaterialBrushStampRequest request;
-  request.shape = editor.toolSettings.materialBrushShape;
-  request.size = editor.toolSettings.materialBrushSize;
+  request.shape = config.shape;
+  request.size = config.size;
   request.centerCell = center;
-  request.axis = editor.toolSettings.materialBrushAxis;
-  request.plane = plane;
+  request.axis = config.axis;
+  request.plane = config.plane;
   return cr::planCreativeMaterialBrushStamp(request);
 }
 
@@ -272,11 +271,12 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
   if (!stroke.hasBrushPlaneAnchor) {
     stroke.hasBrushPlaneAnchor = true;
     stroke.brushPlaneAnchor = sample.center;
-    stroke.brushPlane = editor.toolSettings.materialBrushPlane;
+    stroke.brushConfig =
+        creativeMaterialBrushGestureConfig(editor.toolSettings);
   }
   cr::CreativeGridCoord3 constrainedCenter{};
   if (!cr::constrainCreativeMaterialBrushCenter(
-          stroke.brushPlane, stroke.brushPlaneAnchor, sample.center,
+          stroke.brushConfig.plane, stroke.brushPlaneAnchor, sample.center,
           constrainedCenter)) {
     rejectMaterialStroke(editor, held.objectKind);
     return;
@@ -313,7 +313,7 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
   cr::CreativeGridCoord3 aggregateMax{};
   for (cr::CreativeGridCoord3 center : path.generatedCenters()) {
     const cr::CreativeMaterialBrushStampPlan stamp =
-        materialBrushStampPlan(editor, center, stroke.brushPlane);
+        materialBrushStampPlan(center, stroke.brushConfig);
     if (!stamp.accepted) {
       rejectMaterialStroke(editor, held.objectKind);
       return;
@@ -324,9 +324,9 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
       const cr::CreativeObjectKind currentMaterial = field.materialAt(cell);
       const bool maskAllows =
           kind == CreativeMaterialStrokeKind::Remove ||
-          cr::creativeMaterialBrushMaskAllows(
-              editor.toolSettings.materialBrushMask,
-              currentMaterial != cr::CreativeObjectKind::Unknown);
+          cr::creativeMaterialBrushPaintAllows(
+              stroke.brushConfig.mask, currentMaterial,
+              stroke.brushConfig.replaceSourceKind);
       if (strokeVisited(stroke, kind, cell, cr::kInvalidObjectId) ||
           editBatchContainsCell(edits, editCount, cell) ||
           currentMaterial == material || !maskAllows) {

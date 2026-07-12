@@ -200,20 +200,19 @@ struct MaterialBrushPreviewPlan {
                       : editor.interaction.target.grid.adjacentCell;
   const CreativeMaterialStrokeState& stroke =
       editor.interaction.materialStroke;
-  const cr::CreativeMaterialBrushPlane plane =
-      stroke.hasBrushPlaneAnchor ? stroke.brushPlane
-                                 : editor.toolSettings.materialBrushPlane;
+  const CreativeMaterialBrushGestureConfig config =
+      stroke.hasBrushPlaneAnchor
+          ? stroke.brushConfig
+          : creativeMaterialBrushGestureConfig(editor.toolSettings);
   const cr::CreativeGridCoord3 anchor =
       stroke.hasBrushPlaneAnchor ? stroke.brushPlaneAnchor : rawCenter;
   cr::CreativeGridCoord3 center{};
-  if (!cr::constrainCreativeMaterialBrushCenter(plane, anchor, rawCenter,
+  if (!cr::constrainCreativeMaterialBrushCenter(config.plane, anchor, rawCenter,
                                                 center)) {
     return output;
   }
   output.stamp = cr::planCreativeMaterialBrushStamp(
-      {editor.toolSettings.materialBrushShape,
-       editor.toolSettings.materialBrushSize, center,
-       editor.toolSettings.materialBrushAxis, plane});
+      {config.shape, config.size, center, config.axis, config.plane});
   output.visible = output.stamp.accepted;
   if (!output.visible) {
     return output;
@@ -227,8 +226,9 @@ struct MaterialBrushPreviewPlan {
         output.removing
             ? occupied
             : currentMaterial != held.objectKind &&
-                  cr::creativeMaterialBrushMaskAllows(
-                      editor.toolSettings.materialBrushMask, occupied);
+                  cr::creativeMaterialBrushPaintAllows(
+                      config.mask, currentMaterial,
+                      config.replaceSourceKind);
     if (!allowed || materialBrushCellVisited(
                         editor.interaction.materialStroke, cell)) {
       continue;

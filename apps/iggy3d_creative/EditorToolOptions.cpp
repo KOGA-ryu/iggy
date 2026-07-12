@@ -150,7 +150,8 @@ void adjustSelection(CreativeEditorState& editor,
                                    editor.brushPalette);
   const bool optionSetChanged =
       option == cr::CreativeToolOptionId::ArrayMode ||
-      option == cr::CreativeToolOptionId::MaterialBrushShape;
+      option == cr::CreativeToolOptionId::MaterialBrushShape ||
+      option == cr::CreativeToolOptionId::MaterialBrushMask;
   if (receipt.changed && optionSetChanged) {
     state.options =
         creativeEditorToolOptionsForEntry(state.targetEntry, state.draft);

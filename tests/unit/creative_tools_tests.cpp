@@ -325,6 +325,18 @@ bool optionDescriptorsAreContextualAndBounded() {
   const cr::CreativeToolOptionList cylinderBrush =
       cr::creativeToolOptionsForHeldItem(
           cr::CreativeHeldItemKind::MaterialBrush, cylinderSettings);
+  cr::CreativeToolSettings replaceBrushSettings =
+      cr::makeDefaultCreativeToolSettings();
+  replaceBrushSettings.materialBrushMask =
+      cr::CreativeMaterialBrushMask::Replace;
+  const cr::CreativeToolOptionList replaceBrush =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::MaterialBrush, replaceBrushSettings);
+  replaceBrushSettings.materialBrushShape =
+      cr::CreativeMaterialBrushShape::Cylinder;
+  const cr::CreativeToolOptionList cylinderReplaceBrush =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::MaterialBrush, replaceBrushSettings);
   const cr::CreativeToolOptionList move =
       cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::ObjectMove);
   const cr::CreativeToolOptionList replace =
@@ -374,6 +386,17 @@ bool optionDescriptorsAreContextualAndBounded() {
                     cylinderBrush.ids[4] ==
                         cr::CreativeToolOptionId::MaterialBrushMask,
                 "cylinder brush exposes its contextual extrusion axis") &&
+         expect(replaceBrush.count == 5U &&
+                    replaceBrush.ids[4] ==
+                        cr::CreativeToolOptionId::MaterialBrushReplaceSource,
+                "replace brush exposes its contextual source filter") &&
+         expect(cylinderReplaceBrush.count ==
+                        cr::kCreativeToolOptionCapacity &&
+                    cylinderReplaceBrush.ids[1] ==
+                        cr::CreativeToolOptionId::MaterialBrushAxis &&
+                    cylinderReplaceBrush.ids[5] ==
+                        cr::CreativeToolOptionId::MaterialBrushReplaceSource,
+                "cylinder replace options exactly fit bounded storage") &&
          expect(move.count == 3U &&
                     move.ids[0] ==
                         cr::CreativeToolOptionId::MoveConstraint &&
@@ -420,6 +443,8 @@ bool optionDescriptorsAreContextualAndBounded() {
          expect(!material.capacityExceeded &&
                     !materialBrush.capacityExceeded &&
                     !cylinderBrush.capacityExceeded && !move.capacityExceeded &&
+                    !replaceBrush.capacityExceeded &&
+                    !cylinderReplaceBrush.capacityExceeded &&
                     !fill.capacityExceeded && !hollow.capacityExceeded &&
                     !replace.capacityExceeded && !clone.capacityExceeded &&
                     !array.capacityExceeded && !radialArray.capacityExceeded &&
@@ -442,6 +467,12 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
   cr::CreativeToolSettings invalidBrushPlane = settings;
   invalidBrushPlane.materialBrushPlane =
       cr::CreativeMaterialBrushPlane::Count;
+  cr::CreativeToolSettings invalidBrushSource = settings;
+  invalidBrushSource.materialBrushReplaceSourceKind =
+      cr::CreativeObjectKind::Count;
+  cr::CreativeToolSettings invalidBrushPropSource = settings;
+  invalidBrushPropSource.materialBrushReplaceSourceKind =
+      cr::CreativeObjectKind::Crate;
   bool ok = expect(cr::isValidCreativeToolSettings(settings),
                    "default settings valid") &&
             expect(!cr::isValidCreativeToolSettings(invalidMask),
@@ -450,6 +481,10 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                    "invalid material brush axis fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidBrushPlane),
                    "invalid material brush plane fails settings validation") &&
+            expect(!cr::isValidCreativeToolSettings(invalidBrushSource),
+                   "invalid material brush source fails settings validation") &&
+            expect(!cr::isValidCreativeToolSettings(invalidBrushPropSource),
+                   "non-voxel brush source fails settings validation") &&
             expect(cr::creativeToolOptionValueLabel(
                        settings,
                        cr::CreativeToolOptionId::MoveConstraint) == "FREE" &&
@@ -487,7 +522,11 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::MaterialBrushMask) ==
-                           "OVERWRITE",
+                           "OVERWRITE" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::
+                               MaterialBrushReplaceSource) == "ANY",
                    "default labels and scalar conversions stable");
 
   const auto adjust = [&settings](cr::CreativeToolOptionId option,
@@ -609,6 +648,12 @@ bool replaceFilterAndCloneOffsetUseExplicitInputs() {
     return cr::adjustCreativeToolOption(
         settings, cr::CreativeToolOptionId::ReplaceSource, direction, palette);
   };
+  const auto adjustBrushSource = [&settings, &palette](
+                                     std::int32_t direction) {
+    return cr::adjustCreativeToolOption(
+        settings, cr::CreativeToolOptionId::MaterialBrushReplaceSource,
+        direction, palette);
+  };
 
   bool ok = expect(adjustSource(1).changed &&
                        settings.replaceSourceKind ==
@@ -625,7 +670,41 @@ bool replaceFilterAndCloneOffsetUseExplicitInputs() {
             expect(adjustSource(-1).changed &&
                        settings.replaceSourceKind ==
                            cr::CreativeObjectKind::Crate,
-                   "replace source cycles backward");
+                   "replace source cycles backward") &&
+            expect(adjustBrushSource(1).changed &&
+                       settings.materialBrushReplaceSourceKind ==
+                           cr::CreativeObjectKind::Wall,
+                   "material brush source cycles independently") &&
+            expect(adjustBrushSource(1).changed &&
+                       settings.materialBrushReplaceSourceKind ==
+                           cr::CreativeObjectKind::Unknown,
+                   "material brush source skips non-voxel palette entries") &&
+            expect(cr::creativeMaterialBrushPaintAllows(
+                       cr::CreativeMaterialBrushMask::Replace,
+                       cr::CreativeObjectKind::Wall,
+                       cr::CreativeObjectKind::Wall) &&
+                       !cr::creativeMaterialBrushPaintAllows(
+                           cr::CreativeMaterialBrushMask::Replace,
+                           cr::CreativeObjectKind::Floor,
+                           cr::CreativeObjectKind::Wall) &&
+                       cr::creativeMaterialBrushPaintAllows(
+                           cr::CreativeMaterialBrushMask::Replace,
+                           cr::CreativeObjectKind::Floor,
+                           cr::CreativeObjectKind::Unknown),
+                   "material-aware replace admits exact source or Any") &&
+            expect(cr::creativeMaterialBrushPaintAllows(
+                       cr::CreativeMaterialBrushMask::AddOnly,
+                       cr::CreativeObjectKind::Unknown,
+                       cr::CreativeObjectKind::Wall) &&
+                       cr::creativeMaterialBrushPaintAllows(
+                           cr::CreativeMaterialBrushMask::Overwrite,
+                           cr::CreativeObjectKind::Floor,
+                           cr::CreativeObjectKind::Wall) &&
+                       !cr::creativeMaterialBrushPaintAllows(
+                           cr::CreativeMaterialBrushMask::Count,
+                           cr::CreativeObjectKind::Floor,
+                           cr::CreativeObjectKind::Wall),
+                   "non-replace masks ignore source and invalid mask closes");
 
   settings.cloneOffsetAxis = cr::CreativeCloneOffsetAxis::Z;
   settings.cloneOffsetDistance =
@@ -643,12 +722,19 @@ bool replaceFilterAndCloneOffsetUseExplicitInputs() {
   const cr::CreativeToolOptionAdjustReceipt unavailable =
       cr::adjustCreativeToolOption(
           noPalette, cr::CreativeToolOptionId::ReplaceSource, 1);
+  const cr::CreativeToolOptionAdjustReceipt brushUnavailable =
+      cr::adjustCreativeToolOption(
+          noPalette, cr::CreativeToolOptionId::MaterialBrushReplaceSource, 1);
   return expect(!unavailable.accepted && !unavailable.changed &&
                     unavailable.status ==
                         cr::CreativeToolOptionAdjustStatus::NoAvailableValue &&
                     noPalette.replaceSourceKind ==
                         cr::CreativeObjectKind::Unknown,
                 "missing material palette leaves filter unchanged") &&
+         expect(!brushUnavailable.accepted && !brushUnavailable.changed &&
+                    noPalette.materialBrushReplaceSourceKind ==
+                        cr::CreativeObjectKind::Unknown,
+                "missing palette also leaves brush filter unchanged") &&
          ok;
 }
 
