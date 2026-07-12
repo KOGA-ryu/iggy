@@ -166,8 +166,8 @@ int main(int argc, char** argv) {
     }
     if (frameInput.skipFrame) {
       if (!frameInput.windowFocused) {
-        finalizeCreativeMaterialStroke(
-            appState, editor, "creative_material_stroke_focus_lost");
+        finalizeCreativeEditorContinuousGestures(
+            appState, editor, "creative_continuous_gesture_focus_lost");
         if (cancelCreativeEditorSelectionTransformPreview(
                 editor.transform, "selection_transform_focus_lost")) {
           static_cast<void>(window.setRelativeMouseMode(true));
@@ -229,10 +229,10 @@ int main(int argc, char** argv) {
         controlsFrame.blockWorldActions || transformFrame.blockWorldActions ||
         catalogFrame.blockWorldActions || toolOptionsFrame.blockWorldActions;
     if (modalBlocksWorldActions || !frameInput.windowFocused) {
-      finalizeCreativeMaterialStroke(
+      finalizeCreativeEditorContinuousGestures(
           appState, editor,
-          frameInput.windowFocused ? "creative_material_stroke_modal"
-                                   : "creative_material_stroke_focus_lost");
+          frameInput.windowFocused ? "creative_continuous_gesture_modal"
+                                   : "creative_continuous_gesture_focus_lost");
     }
     if (!catalogFrame.deferredCommandInput.actionEvents().empty()) {
       applyCreativeEditorCommandInput(catalogFrame.deferredCommandInput,
@@ -356,8 +356,8 @@ int main(int argc, char** argv) {
     std::this_thread::sleep_for(std::chrono::milliseconds(16));
   }
 
-  finalizeCreativeMaterialStroke(appState, editor,
-                                 "creative_material_stroke_shutdown");
+  finalizeCreativeEditorContinuousGestures(
+      appState, editor, "creative_continuous_gesture_shutdown");
 
   bool captureOk = true;
   if (!capturePath.empty()) {

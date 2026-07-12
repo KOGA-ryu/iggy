@@ -41,6 +41,9 @@ struct CreativeWorldActionFrame {
   std::int32_t hotbarWheelSteps = 0;
 };
 
+// Shared world-stroke cadence. Material retains the original type names, while
+// makeCreativeWorldStrokeRepeatRequest keeps button aliasing common to every
+// continuous editor gesture.
 inline constexpr std::uint64_t kCreativeMaterialStrokeRepeatNanoseconds =
     200'000'000ULL;
 
@@ -76,6 +79,9 @@ struct CreativeMaterialRepeatResult {
   bool primaryWon = false;
 };
 
+[[nodiscard]] CreativeMaterialRepeatRequest makeCreativeWorldStrokeRepeatRequest(
+    const CreativeWorldActionFrame& actions,
+    std::uint64_t nowNanoseconds) noexcept;
 [[nodiscard]] CreativeMaterialRepeatResult stepCreativeMaterialRepeat(
     CreativeMaterialRepeatState state,
     const CreativeMaterialRepeatRequest& request) noexcept;

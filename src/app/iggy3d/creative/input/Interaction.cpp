@@ -345,6 +345,32 @@ CreativeGridTarget resolveCreativeGridTargetFromHit(
   return target;
 }
 
+CreativeMaterialRepeatRequest makeCreativeWorldStrokeRepeatRequest(
+    const CreativeWorldActionFrame& actions,
+    std::uint64_t nowNanoseconds) noexcept {
+  CreativeMaterialRepeatRequest request;
+  request.nowNanoseconds = nowNanoseconds;
+  request.primaryPressed =
+      creativeWorldActionPressed(actions, CreativeWorldActionId::Primary) ||
+      creativeWorldActionPressed(actions, CreativeWorldActionId::Reject);
+  request.primaryDown =
+      creativeWorldActionDown(actions, CreativeWorldActionId::Primary) ||
+      creativeWorldActionDown(actions, CreativeWorldActionId::Reject);
+  request.primaryReleased =
+      creativeWorldActionReleased(actions, CreativeWorldActionId::Primary) ||
+      creativeWorldActionReleased(actions, CreativeWorldActionId::Reject);
+  request.secondaryPressed =
+      creativeWorldActionPressed(actions, CreativeWorldActionId::Secondary) ||
+      creativeWorldActionPressed(actions, CreativeWorldActionId::Accept);
+  request.secondaryDown =
+      creativeWorldActionDown(actions, CreativeWorldActionId::Secondary) ||
+      creativeWorldActionDown(actions, CreativeWorldActionId::Accept);
+  request.secondaryReleased =
+      creativeWorldActionReleased(actions, CreativeWorldActionId::Secondary) ||
+      creativeWorldActionReleased(actions, CreativeWorldActionId::Accept);
+  return request;
+}
+
 CreativeMaterialRepeatResult stepCreativeMaterialRepeat(
     CreativeMaterialRepeatState state,
     const CreativeMaterialRepeatRequest& request) noexcept {

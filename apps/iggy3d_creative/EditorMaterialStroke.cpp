@@ -399,28 +399,9 @@ void processMaterialStroke(cr::CreativeAppState& appState,
                            const cr::CreativeWorldActionFrame& actions,
                            std::uint64_t monotonicTimeNanoseconds) {
   CreativeMaterialStrokeState& stroke = editor.interaction.materialStroke;
-  CreativeMaterialRepeatRequest repeatRequest;
-  repeatRequest.nowNanoseconds = monotonicTimeNanoseconds;
-  repeatRequest.primaryPressed = cr::creativeWorldActionPressed(
-      actions, cr::CreativeWorldActionId::Primary) ||
-      cr::creativeWorldActionPressed(actions, cr::CreativeWorldActionId::Reject);
-  repeatRequest.primaryDown = cr::creativeWorldActionDown(
-      actions, cr::CreativeWorldActionId::Primary) ||
-      cr::creativeWorldActionDown(actions, cr::CreativeWorldActionId::Reject);
-  repeatRequest.primaryReleased = cr::creativeWorldActionReleased(
-      actions, cr::CreativeWorldActionId::Primary) ||
-      cr::creativeWorldActionReleased(actions,
-                                      cr::CreativeWorldActionId::Reject);
-  repeatRequest.secondaryPressed = cr::creativeWorldActionPressed(
-      actions, cr::CreativeWorldActionId::Secondary) ||
-      cr::creativeWorldActionPressed(actions, cr::CreativeWorldActionId::Accept);
-  repeatRequest.secondaryDown = cr::creativeWorldActionDown(
-      actions, cr::CreativeWorldActionId::Secondary) ||
-      cr::creativeWorldActionDown(actions, cr::CreativeWorldActionId::Accept);
-  repeatRequest.secondaryReleased = cr::creativeWorldActionReleased(
-      actions, cr::CreativeWorldActionId::Secondary) ||
-      cr::creativeWorldActionReleased(actions,
-                                      cr::CreativeWorldActionId::Accept);
+  const CreativeMaterialRepeatRequest repeatRequest =
+      cr::makeCreativeWorldStrokeRepeatRequest(actions,
+                                               monotonicTimeNanoseconds);
 
   const CreativeMaterialRepeatResult repeat =
       stepCreativeMaterialRepeat(stroke.repeat, repeatRequest);

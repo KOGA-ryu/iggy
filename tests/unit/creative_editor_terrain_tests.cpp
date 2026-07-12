@@ -11,6 +11,8 @@
 #include "render/vulkan/BufferImageResources.hpp"
 
 #include <algorithm>
+#include <array>
+#include <cstdint>
 #include <iostream>
 #include <span>
 #include <string>
@@ -49,13 +51,27 @@ CreativeEditorState terrainEditor(std::int32_t x, std::int32_t z) {
   return editor;
 }
 
-cr::CreativeWorldActionFrame pressedAction(
-    cr::CreativeWorldActionId action) {
+cr::CreativeWorldActionFrame strokeAction(
+    cr::CreativeWorldActionId action,
+    bool down,
+    bool pressed = false,
+    bool released = false) {
   cr::CreativeWorldActionFrame frame;
   const std::size_t index = static_cast<std::size_t>(action);
-  frame.down[index] = true;
-  frame.pressed[index] = true;
+  frame.down[index] = down;
+  frame.pressed[index] = pressed;
+  frame.released[index] = released;
   return frame;
+}
+
+void setTerrainStrokeTarget(CreativeEditorState& editor,
+                            std::int32_t x,
+                            std::int32_t z) {
+  editor.interaction.target = {};
+  editor.interaction.target.valid = true;
+  editor.interaction.target.grid.valid = true;
+  editor.interaction.target.grid.targetCell = {x, 0, z};
+  editor.terrain.hoverValid = false;
 }
 
 bool quickEditOwnsHeightAndRadiusWithoutNewBindings() {
@@ -269,15 +285,19 @@ bool semanticActionsRouteSelectionCommitCancelAndRemoval() {
   camera.worldForward = {0.0F, -1.0F, 0.0F};
   camera.worldUp = {0.0F, 0.0F, -1.0F};
   const CreativeEditorPickFrame pickFrame;
-  const auto process = [&](cr::CreativeWorldActionId action,
+  const auto process = [&](const cr::CreativeWorldActionFrame& actions,
                            std::uint64_t now) {
-    const cr::CreativeWorldActionFrame actions = pressedAction(action);
     processCreativeEditorWorldInteractionFrame(
         {appState, editor, actions, cr::kCreativeInputModifierNone, camera,
          pickFrame, 800U, 600U, now, false});
   };
+  const auto gesture = [&](cr::CreativeWorldActionId action,
+                           std::uint64_t now) {
+    process(strokeAction(action, true, true), now);
+    process(strokeAction(action, false, false, true), now + 1U);
+  };
 
-  process(cr::CreativeWorldActionId::Pick, 0U);
+  gesture(cr::CreativeWorldActionId::Pick, 0U);
   bool ok = expect(editor.terrain.hoverValid &&
                        editor.terrain.selectionValid &&
                        editor.terrain.selectedCoord ==
@@ -285,7 +305,7 @@ bool semanticActionsRouteSelectionCommitCancelAndRemoval() {
                    "Square routes through hover into terrain selection");
   static_cast<void>(processCreativeEditorTerrainQuickEdit(
       editor.terrain, cr::CreativeInputActionId::QuickEditPrevious));
-  process(cr::CreativeWorldActionId::Accept, 1U);
+  gesture(cr::CreativeWorldActionId::Accept, 2U);
   const cr::CreativeTerrainControlPoint* committed =
       appState.facade.document().terrainField().controlAt({0, 0});
   ok = expect(committed != nullptr && committed->heightCells == 5U &&
@@ -294,10 +314,10 @@ bool semanticActionsRouteSelectionCommitCancelAndRemoval() {
               "X commits selected terrain draft through semantic dispatcher") &&
        ok;
 
-  process(cr::CreativeWorldActionId::Pick, 2U);
+  gesture(cr::CreativeWorldActionId::Pick, 4U);
   static_cast<void>(processCreativeEditorTerrainQuickEdit(
       editor.terrain, cr::CreativeInputActionId::QuickEditPrevious));
-  process(cr::CreativeWorldActionId::Reject, 3U);
+  gesture(cr::CreativeWorldActionId::Reject, 6U);
   const cr::CreativeTerrainControlPoint* afterCancel =
       appState.facade.document().terrainField().controlAt({0, 0});
   ok = expect(afterCancel != nullptr && afterCancel->heightCells == 5U &&
@@ -306,10 +326,237 @@ bool semanticActionsRouteSelectionCommitCancelAndRemoval() {
               "Circle cancels selected terrain draft through semantic dispatcher") &&
        ok;
 
-  process(cr::CreativeWorldActionId::Reject, 4U);
+  gesture(cr::CreativeWorldActionId::Reject, 8U);
   return expect(appState.facade.document().terrainField().controlCount() == 0U &&
                     cr::creativeUndoDepth(appState.history) == 2U,
                 "Circle removes highlighted rod when no draft is selected") &&
+         ok;
+}
+
+bool terrainPaintStrokeRepeatsDeduplicatesCachesAndGroupsUndo() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 407U);
+  CreativeEditorState editor = terrainEditor(0, 0);
+  editor.terrain.heightCells = 6U;
+  editor.terrain.radiusCells = 3U;
+  iggy3d::ProductMapMakerGridSnapshot grid;
+  CreativeEditorSceneCache cache;
+  bool ok = expect(refreshCreativeEditorSceneCache(
+                       cache, appState.facade.document(), grid) &&
+                       cache.terrainSurfaceBuildCount == 1U,
+                   "stroke test begins from one empty terrain bake");
+
+  processCreativeTerrainStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Accept, true, true), 0U);
+  const bool firstRefresh = refreshCreativeEditorSceneCache(
+      cache, appState.facade.document(), grid);
+  const cr::CreativeTerrainControlPoint* first =
+      appState.facade.document().terrainField().controlAt({0, 0});
+  ok = expect(first != nullptr && first->heightCells == 6U &&
+                  editor.terrain.stroke.transaction.active &&
+                  editor.terrain.stroke.visitedCount == 1U &&
+                  cr::creativeUndoDepth(appState.history) == 0U,
+              "X mutates immediately while history remains open") &&
+       expect(firstRefresh && cache.terrainSurfaceBuildCount == 2U,
+              "first accepted stroke mutation refreshes terrain once") &&
+       ok;
+
+  setTerrainStrokeTarget(editor, 1, 0);
+  processCreativeTerrainStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Accept, true),
+      cr::kCreativeMaterialStrokeRepeatNanoseconds - 1U);
+  ok = expect(appState.facade.document().terrainField().controlAt({1, 0}) ==
+                  nullptr &&
+                  !refreshCreativeEditorSceneCache(
+                      cache, appState.facade.document(), grid),
+              "held X does not repeat before 200 ms") &&
+       ok;
+
+  processCreativeTerrainStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Accept, true),
+      cr::kCreativeMaterialStrokeRepeatNanoseconds);
+  const bool secondRefresh = refreshCreativeEditorSceneCache(
+      cache, appState.facade.document(), grid);
+  const std::uint64_t revisionAfterSecond =
+      appState.facade.document().revision();
+  ok = expect(appState.facade.document().terrainField().controlAt({1, 0}) !=
+                  nullptr &&
+                  editor.terrain.stroke.acceptedMutationCount == 2U &&
+                  editor.terrain.stroke.visitedCount == 2U,
+              "held X paints a moved target at 200 ms") &&
+       expect(secondRefresh && cache.terrainSurfaceBuildCount == 3U,
+              "second accepted stroke mutation refreshes once") &&
+       ok;
+
+  setTerrainStrokeTarget(editor, 0, 0);
+  processCreativeTerrainStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Accept, true),
+      2U * cr::kCreativeMaterialStrokeRepeatNanoseconds);
+  ok = expect(appState.facade.document().revision() == revisionAfterSecond &&
+                  !refreshCreativeEditorSceneCache(
+                      cache, appState.facade.document(), grid),
+              "revisiting a stroke coordinate does not mutate or rebake") &&
+       ok;
+
+  processCreativeTerrainStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Accept, false, false, true),
+      2U * cr::kCreativeMaterialStrokeRepeatNanoseconds + 1U);
+  const bool grouped = !editor.terrain.stroke.repeat.active &&
+                       !editor.terrain.stroke.transaction.active &&
+                       cr::creativeUndoDepth(appState.history) == 1U;
+  const bool undone = undoLastEdit(appState, "test_terrain_stroke_undo");
+  return expect(grouped,
+                "release commits the complete paint stroke as one undo") &&
+         expect(undone &&
+                    appState.facade.document().terrainField().controlCount() ==
+                        0U,
+                "one undo removes every rod painted by the gesture") &&
+         ok;
+}
+
+bool terrainCancelGestureCannotFallThroughIntoEraseStroke() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 408U);
+  const std::array initial{
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{0, 0}, 4U, 2U}},
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{1, 0}, 5U, 2U}},
+  };
+  static_cast<void>(appState.facade.applyTerrainControlEdits(initial));
+  appState.history = {};
+  CreativeEditorState editor = terrainEditor(0, 0);
+  editor.terrain.hoverValid = true;
+  editor.terrain.hoverCoord = {0, 0};
+  static_cast<void>(applyCreativeEditorTerrainEditWithHistory(
+      appState, editor, CreativeEditorTerrainEditKind::Sample,
+      "test_terrain_stroke_select"));
+  static_cast<void>(processCreativeEditorTerrainQuickEdit(
+      editor.terrain, cr::CreativeInputActionId::QuickEditPrevious));
+
+  processCreativeTerrainStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Reject, true, true), 0U);
+  processCreativeTerrainStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Reject, true),
+      cr::kCreativeMaterialStrokeRepeatNanoseconds);
+  bool ok = expect(!editor.terrain.selectionValid &&
+                       editor.terrain.stroke.cancelOnly &&
+                       appState.facade.document().terrainField().controlCount() ==
+                           2U &&
+                       cr::creativeUndoDepth(appState.history) == 0U,
+                   "holding Circle after draft cancel cannot erase the rod");
+  processCreativeTerrainStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Reject, false, false, true),
+      cr::kCreativeMaterialStrokeRepeatNanoseconds + 1U);
+
+  editor.terrain.hoverValid = true;
+  editor.terrain.hoverCoord = {0, 0};
+  processCreativeTerrainStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Reject, true, true),
+      2U * cr::kCreativeMaterialStrokeRepeatNanoseconds);
+  editor.terrain.hoverValid = true;
+  editor.terrain.hoverCoord = {1, 0};
+  processCreativeTerrainStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Reject, true),
+      3U * cr::kCreativeMaterialStrokeRepeatNanoseconds);
+  processCreativeTerrainStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Reject, false, false, true),
+      3U * cr::kCreativeMaterialStrokeRepeatNanoseconds + 1U);
+  const bool groupedErase =
+      appState.facade.document().terrainField().controlCount() == 0U &&
+      cr::creativeUndoDepth(appState.history) == 1U;
+  const bool undone = undoLastEdit(appState, "test_terrain_erase_stroke_undo");
+  return expect(groupedErase,
+                "held Circle erases moved rod targets in one transaction") &&
+         expect(undone &&
+                    appState.facade.document().terrainField().controlCount() ==
+                        2U,
+                "one undo restores the complete erase stroke") &&
+         ok;
+}
+
+bool terrainStrokeCapacityStopsFurtherMutation() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 409U);
+  CreativeEditorState editor = terrainEditor(0, 0);
+  for (std::size_t index = 0U;
+       index < kCreativeTerrainStrokeVisitedCapacity; ++index) {
+    setTerrainStrokeTarget(editor, static_cast<std::int32_t>(index), 0);
+    processCreativeTerrainStrokeFrame(
+        appState, editor,
+        strokeAction(cr::CreativeWorldActionId::Accept, true, index == 0U),
+        index * cr::kCreativeMaterialStrokeRepeatNanoseconds);
+  }
+  setTerrainStrokeTarget(
+      editor, static_cast<std::int32_t>(kCreativeTerrainStrokeVisitedCapacity),
+      0);
+  processCreativeTerrainStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Accept, true),
+      kCreativeTerrainStrokeVisitedCapacity *
+          cr::kCreativeMaterialStrokeRepeatNanoseconds);
+  const bool bounded =
+      editor.terrain.stroke.capacityReached &&
+      editor.terrain.stroke.visitedCount ==
+          kCreativeTerrainStrokeVisitedCapacity &&
+      editor.terrain.stroke.acceptedMutationCount ==
+          kCreativeTerrainStrokeVisitedCapacity &&
+      appState.facade.document().terrainField().controlCount() ==
+          cr::kCreativeTerrainControlCapacity &&
+      editor.interaction.placementFeedback.status ==
+          CreativeEditorPlacementFeedbackStatus::Rejected;
+  processCreativeTerrainStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Accept, false, false, true),
+      (kCreativeTerrainStrokeVisitedCapacity + 1U) *
+          cr::kCreativeMaterialStrokeRepeatNanoseconds);
+  const bool grouped = cr::creativeUndoDepth(appState.history) == 1U;
+  const bool undone = undoLastEdit(appState, "test_terrain_capacity_undo");
+  return expect(bounded,
+                "terrain stroke stops and rejects at 256 unique coordinates") &&
+         expect(grouped && undone &&
+                    appState.facade.document().terrainField().controlCount() ==
+                        0U,
+                "capacity-bound stroke still records exactly one undo");
+}
+
+bool terrainStrokeInterruptionFinalizesChangedAndEmptyGestures() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 410U);
+  CreativeEditorState editor = terrainEditor(0, 0);
+  processCreativeTerrainStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Accept, true, true), 0U);
+  finalizeCreativeEditorContinuousGestures(
+      appState, editor, "test_terrain_stroke_modal_interrupt");
+  bool ok = expect(cr::creativeUndoDepth(appState.history) == 1U &&
+                       !editor.terrain.stroke.repeat.active &&
+                       !editor.terrain.stroke.transaction.active,
+                   "modal interruption commits a changed terrain stroke");
+
+  editor.interaction.target = {};
+  editor.terrain.hoverValid = false;
+  processCreativeTerrainStrokeFrame(
+      appState, editor,
+      strokeAction(cr::CreativeWorldActionId::Accept, true, true),
+      cr::kCreativeMaterialStrokeRepeatNanoseconds);
+  finalizeCreativeEditorContinuousGestures(
+      appState, editor, "test_terrain_stroke_empty_interrupt");
+  return expect(cr::creativeUndoDepth(appState.history) == 1U &&
+                    !editor.terrain.stroke.repeat.active &&
+                    !editor.terrain.stroke.transaction.active,
+                "interrupted empty terrain gesture records no history") &&
          ok;
 }
 
@@ -508,6 +755,10 @@ int main() {
                  editSampleRemoveAndUndoUseDocumentTruth() &&
                  derivedSurfaceAndGuidesUseRevisionCaching() &&
                  semanticActionsRouteSelectionCommitCancelAndRemoval() &&
+                 terrainPaintStrokeRepeatsDeduplicatesCachesAndGroupsUndo() &&
+                 terrainCancelGestureCannotFallThroughIntoEraseStroke() &&
+                 terrainStrokeCapacityStopsFurtherMutation() &&
+                 terrainStrokeInterruptionFinalizesChangedAndEmptyGestures() &&
                  bentSurfacePatchesReachRendererAndRefreshWithHeight() &&
                  gridChangeRebuildsWorldSpaceTerrainPatches() &&
                  oversizedBentSurfaceFallsBackToTerrainPlanes() &&

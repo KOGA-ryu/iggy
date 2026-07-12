@@ -13,8 +13,8 @@ Equip **Terrain Rod** from the catalog or assign it to a tool-wheel sector.
 
 | Input | Operation |
 |---|---|
-| Right mouse / PS5 X | Place a rod, or commit the selected rod's draft |
-| Left mouse / PS5 Circle | Cancel a selected draft; otherwise remove the highlighted rod |
+| Hold right mouse / PS5 X | Paint or update rods, or commit the selected rod's draft |
+| Hold left mouse / PS5 Circle | Cancel a selected draft; otherwise erase rods |
 | Middle mouse / PS5 Square | Select the highlighted rod and sample its Height and Radius |
 | Up/down / D-pad up/down | Raise or lower Height directly |
 | Left/right / D-pad left/right | Shrink or widen Radius directly |
@@ -25,6 +25,15 @@ guide plus stepped cell-edge outline show the live draft and its exact circular
 influence membership. D-pad edits remain revision-free until X commits; Circle
 restores the sampled values without adding history. Guides are editor overlays;
 they never enter saved room geometry or change document revision.
+
+Paint and erase gestures act immediately, then repeat every 200 ms while held.
+Each gesture tracks at most 256 unique X/Z coordinates and never mutates one
+coordinate twice, even if the aim revisits it. Press-hold-release creates one
+lazy history transaction: accepted mutations join one undo record, while an
+empty or rejected gesture records nothing. If Circle begins while a rod draft
+is selected, that complete hold is cancel-only and cannot fall through into
+erasing the same rod. Focus loss, modal entry, commands, hotbar changes, capture
+mode, and shutdown finalize an active gesture.
 
 ## Authored Data
 
@@ -83,6 +92,9 @@ one terrain draw, includes their vertices in the room geometry signature, and
 frustum-culls them with the rest of the room. If the patch cap or the room's
 16-bit vertex budget is exceeded, the renderer automatically falls back to the
 stepped terrain planes instead of dropping the surface.
+
+Rejected, repeated, and revisited stroke samples do not advance document
+revision, so they do not rebuild or upload terrain scene data.
 
 Collision remains intentionally column-based in this batch. It supplies the
 existing walkable surfaces plus actor and projectile blocker boxes, so cliffs

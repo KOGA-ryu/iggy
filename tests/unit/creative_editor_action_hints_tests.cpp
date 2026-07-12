@@ -327,9 +327,9 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
   const cr::CreativeActionHint* terrainRadius =
       findHint(terrain, cr::CreativeInputActionId::QuickEditDecrease);
   ok = expect(terrainApply != nullptr &&
-                  terrainApply->label.view() == "Place rod" &&
+                  terrainApply->label.view() == "Paint rods" &&
                   terrainReject != nullptr &&
-                  terrainReject->label.view() == "Remove rod" &&
+                  terrainReject->label.view() == "Erase rods" &&
                   terrainSelect != nullptr &&
                   terrainSelect->label.view() == "Select rod" &&
                   terrainHeight != nullptr &&

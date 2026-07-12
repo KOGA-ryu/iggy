@@ -1181,8 +1181,8 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
 
 void syncCreativeEditorHeldItem(cr::CreativeAppState& appState,
                                 CreativeEditorState& editor) {
-  finalizeCreativeMaterialStroke(appState, editor,
-                                 "creative_material_stroke_tool_changed");
+  finalizeCreativeEditorContinuousGestures(
+      appState, editor, "creative_continuous_gesture_tool_changed");
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   const std::size_t behaviorIndex = static_cast<std::size_t>(held.kind);
@@ -1352,13 +1352,13 @@ void processCreativeEditorWorldInteractionFrame(
     editor.volume.cursorCell = editor.interaction.target.grid.targetCell;
   }
   if (request.captureMode) {
-    finalizeCreativeMaterialStroke(request.appState, editor,
-                                   "creative_material_stroke_capture");
+    finalizeCreativeEditorContinuousGestures(
+        request.appState, editor, "creative_continuous_gesture_capture");
     return;
   }
   if (editor.transform.active) {
-    finalizeCreativeMaterialStroke(request.appState, editor,
-                                   "creative_material_stroke_transform");
+    finalizeCreativeEditorContinuousGestures(
+        request.appState, editor, "creative_continuous_gesture_transform");
     const bool secondaryPressed =
         cr::creativeWorldActionPressed(
             request.actions, cr::CreativeWorldActionId::Secondary) ||
@@ -1383,8 +1383,8 @@ void processCreativeEditorWorldInteractionFrame(
     ++hotbarSteps;
   }
   if (hotbarSteps != 0) {
-    finalizeCreativeMaterialStroke(request.appState, editor,
-                                   "creative_material_stroke_hotbar");
+    finalizeCreativeEditorContinuousGestures(
+        request.appState, editor, "creative_continuous_gesture_hotbar");
     static_cast<void>(storeSelectedCreativeMaterialBrushPreset(
         editor.interaction.materialBrushPresets,
         editor.interaction.hotbar, editor.toolSettings));
@@ -1400,6 +1400,8 @@ void processCreativeEditorWorldInteractionFrame(
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   if (held.kind == cr::CreativeHeldItemKind::Material ||
       held.kind == cr::CreativeHeldItemKind::MaterialBrush) {
+    finalizeCreativeTerrainStroke(request.appState, editor,
+                                  "creative_terrain_stroke_material_tool");
     InteractionContext context{request, held};
     processCreativeMaterialStrokeFrame(
         request.appState, editor, request.actions,
@@ -1412,6 +1414,20 @@ void processCreativeEditorWorldInteractionFrame(
   }
   finalizeCreativeMaterialStroke(request.appState, editor,
                                  "creative_material_stroke_non_material_tool");
+  if (held.kind == cr::CreativeHeldItemKind::TerrainControl) {
+    InteractionContext context{request, held};
+    processCreativeTerrainStrokeFrame(
+        request.appState, editor, request.actions,
+        request.monotonicTimeNanoseconds);
+    if (!editor.terrain.stroke.repeat.active &&
+        cr::creativeWorldActionPressed(request.actions,
+                                       cr::CreativeWorldActionId::Pick)) {
+      sampleTerrainControl(context);
+    }
+    return;
+  }
+  finalizeCreativeTerrainStroke(request.appState, editor,
+                                "creative_terrain_stroke_non_terrain_tool");
   if (held.kind == cr::CreativeHeldItemKind::ObjectMove) {
     processMoveInteraction(request);
     if (cr::creativeWorldActionPressed(request.actions,
@@ -1452,6 +1468,14 @@ void processCreativeEditorWorldInteractionFrame(
       handler.handlers[index](context);
     }
   }
+}
+
+void finalizeCreativeEditorContinuousGestures(
+    cr::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    std::string_view reasonCode) {
+  finalizeCreativeMaterialStroke(appState, editor, reasonCode);
+  finalizeCreativeTerrainStroke(appState, editor, reasonCode);
 }
 
 void appendCreativeEditorInteractionOverlay(

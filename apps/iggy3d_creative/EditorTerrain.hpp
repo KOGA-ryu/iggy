@@ -1,9 +1,13 @@
 #pragma once
 
 #include "app/iggy3d/creative/document/TerrainField.hpp"
+#include "app/iggy3d/creative/history/History.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
+#include "app/iggy3d/creative/input/Interaction.hpp"
 #include "render/FrameInput.hpp"
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -21,6 +25,21 @@ namespace iggy3d_creative_app {
 struct CreativeEditorState;
 struct WorldRay;
 
+inline constexpr std::size_t kCreativeTerrainStrokeVisitedCapacity =
+    iggy3d::creative::kCreativeTerrainControlCapacity;
+
+struct CreativeTerrainStrokeState {
+  iggy3d::creative::CreativeMaterialRepeatState repeat{};
+  iggy3d::creative::CreativeDocumentHistoryTransaction transaction{};
+  std::array<iggy3d::creative::CreativeTerrainCoord2,
+             kCreativeTerrainStrokeVisitedCapacity>
+      visited{};
+  std::uint16_t visitedCount = 0U;
+  std::uint16_t acceptedMutationCount = 0U;
+  bool capacityReached = false;
+  bool cancelOnly = false;
+};
+
 struct CreativeEditorTerrainState {
   std::uint16_t heightCells = 4U;
   std::uint16_t radiusCells = 4U;
@@ -31,6 +50,7 @@ struct CreativeEditorTerrainState {
   iggy3d::creative::CreativeTerrainCoord2 selectedCoord{};
   iggy3d::creative::CreativeTerrainControlPoint selectedOriginal{};
   iggy3d::creative::CreativeTerrainMutationReceipt lastMutation{};
+  CreativeTerrainStrokeState stroke{};
 };
 
 enum class CreativeEditorTerrainEditKind : std::uint8_t {
@@ -71,6 +91,16 @@ void updateCreativeEditorTerrainAim(
     const iggy3d::creative::CreativeDocument& document,
     WorldRay ray,
     float occluderDistanceMeters) noexcept;
+
+void processCreativeTerrainStrokeFrame(
+    iggy3d::creative::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    const iggy3d::creative::CreativeWorldActionFrame& actions,
+    std::uint64_t monotonicTimeNanoseconds);
+void finalizeCreativeTerrainStroke(
+    iggy3d::creative::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    std::string_view reasonCode);
 
 void appendCreativeEditorTerrainOverlay(
     const iggy3d::creative::CreativeDocument& document,

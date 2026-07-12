@@ -624,6 +624,35 @@ bool materialRepeatCadenceAndPrecedenceAreDeterministic() {
                 "interruption finalizes active repeat state");
 }
 
+bool worldStrokeRepeatRequestUnifiesMouseAndControllerActions() {
+  cr::CreativeWorldActionFrame pressed;
+  const std::size_t primary =
+      static_cast<std::size_t>(cr::CreativeWorldActionId::Primary);
+  const std::size_t accept =
+      static_cast<std::size_t>(cr::CreativeWorldActionId::Accept);
+  pressed.down[primary] = true;
+  pressed.pressed[primary] = true;
+  pressed.down[accept] = true;
+  pressed.pressed[accept] = true;
+  const cr::CreativeMaterialRepeatRequest start =
+      cr::makeCreativeWorldStrokeRepeatRequest(pressed, 42U);
+
+  cr::CreativeWorldActionFrame released;
+  released.released[static_cast<std::size_t>(
+      cr::CreativeWorldActionId::Reject)] = true;
+  released.released[static_cast<std::size_t>(
+      cr::CreativeWorldActionId::Secondary)] = true;
+  const cr::CreativeMaterialRepeatRequest end =
+      cr::makeCreativeWorldStrokeRepeatRequest(released, 84U);
+  return expect(start.nowNanoseconds == 42U && start.primaryPressed &&
+                    start.primaryDown && start.secondaryPressed &&
+                    start.secondaryDown,
+                "stroke request unifies mouse primary with PS5 X") &&
+         expect(end.nowNanoseconds == 84U && end.primaryReleased &&
+                    end.secondaryReleased,
+                "stroke request unifies mouse and PS5 release aliases");
+}
+
 bool advancingTwoSecondHoldProducesElevenDueActions() {
   cr::CreativeMaterialRepeatRequest request;
   request.secondaryPressed = true;
@@ -729,6 +758,7 @@ int main() {
   ok = gridTargetResolvesHitFaceAndPlacementCell() && ok;
   ok = placementFeedbackHasABoundedVisibleLifetime() && ok;
   ok = materialRepeatCadenceAndPrecedenceAreDeterministic() && ok;
+  ok = worldStrokeRepeatRequestUnifiesMouseAndControllerActions() && ok;
   ok = advancingTwoSecondHoldProducesElevenDueActions() && ok;
   ok = minecraftBindingsAreConflictFreeAndEdgeTriggered() && ok;
   return ok ? 0 : 1;

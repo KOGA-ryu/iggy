@@ -293,6 +293,10 @@ void finalizeCreativeMaterialStroke(
     iggy3d::creative::CreativeAppState& appState,
     CreativeEditorState& editor,
     std::string_view reasonCode);
+void finalizeCreativeEditorContinuousGestures(
+    iggy3d::creative::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    std::string_view reasonCode);
 
 void appendCreativeEditorInteractionOverlay(
     const CreativeEditorState& editor,

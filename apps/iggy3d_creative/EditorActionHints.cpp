@@ -110,9 +110,9 @@ void appendViewportKeyboardHints(HintSpecBuffer& buffer,
       break;
     case cr::CreativeHeldItemKind::TerrainControl:
       appendHint(buffer, cr::CreativeInputActionId::SecondaryAction,
-                 editor.terrain.selectionValid ? "Apply edit" : "Place rod");
+                 editor.terrain.selectionValid ? "Apply edit" : "Paint rods");
       appendHint(buffer, cr::CreativeInputActionId::PrimaryAction,
-                 editor.terrain.selectionValid ? "Cancel edit" : "Remove rod");
+                 editor.terrain.selectionValid ? "Cancel edit" : "Erase rods");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Select rod");
       appendQuickEdit(buffer, editor);
       break;
@@ -186,9 +186,9 @@ void appendViewportGamepadHints(HintSpecBuffer& buffer,
       break;
     case cr::CreativeHeldItemKind::TerrainControl:
       appendHint(buffer, cr::CreativeInputActionId::AcceptAction,
-                 editor.terrain.selectionValid ? "Apply edit" : "Place rod");
+                 editor.terrain.selectionValid ? "Apply edit" : "Paint rods");
       appendHint(buffer, cr::CreativeInputActionId::RejectAction,
-                 editor.terrain.selectionValid ? "Cancel edit" : "Remove rod");
+                 editor.terrain.selectionValid ? "Cancel edit" : "Erase rods");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Select rod");
       break;
     case cr::CreativeHeldItemKind::ObjectSelect:

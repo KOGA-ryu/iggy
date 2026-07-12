@@ -156,6 +156,125 @@ void setFeedback(CreativeEditorState& editor, bool accepted) noexcept {
   editor.interaction.placementFeedback.frameIndex = editor.frameIndex;
 }
 
+[[nodiscard]] bool terrainStrokeVisited(
+    const CreativeTerrainStrokeState& stroke,
+    cr::CreativeTerrainCoord2 coord) noexcept {
+  return std::find(stroke.visited.begin(),
+                   stroke.visited.begin() + stroke.visitedCount,
+                   coord) != stroke.visited.begin() + stroke.visitedCount;
+}
+
+[[nodiscard]] bool rememberTerrainStrokeTarget(
+    CreativeTerrainStrokeState& stroke,
+    cr::CreativeTerrainCoord2 coord) noexcept {
+  if (stroke.visitedCount >= stroke.visited.size()) {
+    stroke.capacityReached = true;
+    return false;
+  }
+  stroke.visited[stroke.visitedCount++] = coord;
+  return true;
+}
+
+[[nodiscard]] bool ensureTerrainStrokeTransaction(
+    cr::CreativeAppState& appState,
+    CreativeTerrainStrokeState& stroke,
+    cr::CreativeMaterialStrokeKind kind) {
+  if (stroke.transaction.active) {
+    return true;
+  }
+  const std::string_view source =
+      kind == cr::CreativeMaterialStrokeKind::Remove
+          ? "creative_terrain_erase_stroke"
+          : "creative_terrain_paint_stroke";
+  stroke.transaction = beginEditTransaction(appState.facade, source);
+  return stroke.transaction.active;
+}
+
+void rejectTerrainStroke(CreativeEditorState& editor) noexcept {
+  setFeedback(editor, false);
+}
+
+void applyTerrainStrokeMutation(cr::CreativeAppState& appState,
+                                CreativeEditorState& editor,
+                                cr::CreativeMaterialStrokeKind kind) {
+  CreativeEditorTerrainState& terrain = editor.terrain;
+  CreativeTerrainStrokeState& stroke = terrain.stroke;
+  if (stroke.capacityReached) {
+    rejectTerrainStroke(editor);
+    return;
+  }
+
+  const CreativeEditorTerrainEditKind editKind =
+      kind == cr::CreativeMaterialStrokeKind::Remove
+          ? CreativeEditorTerrainEditKind::Remove
+          : CreativeEditorTerrainEditKind::Upsert;
+  cr::CreativeTerrainCoord2 coord{};
+  if (!terrainEditCoord(editor, editKind, coord)) {
+    rejectTerrainStroke(editor);
+    return;
+  }
+  if (terrainStrokeVisited(stroke, coord)) {
+    return;
+  }
+  if (stroke.visitedCount >= stroke.visited.size()) {
+    stroke.capacityReached = true;
+    rejectTerrainStroke(editor);
+    return;
+  }
+
+  const cr::CreativeTerrainControlPoint* existing =
+      appState.facade.document().terrainField().controlAt(coord);
+  if (editKind == CreativeEditorTerrainEditKind::Remove && existing == nullptr) {
+    static_cast<void>(rememberTerrainStrokeTarget(stroke, coord));
+    rejectTerrainStroke(editor);
+    return;
+  }
+  const cr::CreativeTerrainControlPoint requested{
+      coord, terrain.heightCells, terrain.radiusCells};
+  if (editKind == CreativeEditorTerrainEditKind::Upsert &&
+      existing != nullptr && *existing == requested) {
+    static_cast<void>(rememberTerrainStrokeTarget(stroke, coord));
+    terrain.selectionValid = false;
+    setFeedback(editor, true);
+    return;
+  }
+  if (editKind == CreativeEditorTerrainEditKind::Upsert && existing == nullptr &&
+      appState.facade.document().terrainField().controlCount() >=
+          cr::kCreativeTerrainControlCapacity) {
+    stroke.capacityReached = true;
+    rejectTerrainStroke(editor);
+    return;
+  }
+  if (!ensureTerrainStrokeTransaction(appState, stroke, kind) ||
+      !rememberTerrainStrokeTarget(stroke, coord)) {
+    rejectTerrainStroke(editor);
+    return;
+  }
+
+  const cr::CreativeTerrainControlEdit edit{
+      editKind == CreativeEditorTerrainEditKind::Remove
+          ? cr::CreativeTerrainEditKind::Remove
+          : cr::CreativeTerrainEditKind::Upsert,
+      requested};
+  terrain.lastMutation =
+      appState.facade.applyTerrainControlEdits(std::span{&edit, 1U});
+  if (terrain.lastMutation.status ==
+      cr::CreativeTerrainMutationStatus::CapacityExceeded) {
+    stroke.capacityReached = true;
+  }
+  const bool changed = terrain.lastMutation.accepted &&
+                       terrain.lastMutation.changed;
+  if (changed) {
+    ++stroke.acceptedMutationCount;
+    if (editKind == CreativeEditorTerrainEditKind::Remove) {
+      terrain.hoverValid = false;
+    } else {
+      terrain.selectionValid = false;
+    }
+  }
+  setFeedback(editor, terrain.lastMutation.accepted);
+}
+
 }  // namespace
 
 CreativeEditorTerrainEditReceipt applyCreativeEditorTerrainEditWithHistory(
@@ -338,6 +457,67 @@ void updateCreativeEditorTerrainAim(
     state.hoverValid = true;
     state.hoverCoord = control.coord;
   }
+}
+
+void finalizeCreativeTerrainStroke(cr::CreativeAppState& appState,
+                                   CreativeEditorState& editor,
+                                   std::string_view reasonCode) {
+  CreativeTerrainStrokeState& stroke = editor.terrain.stroke;
+  if (!stroke.repeat.active && !stroke.transaction.active) {
+    return;
+  }
+  cr::CreativeDocumentHistoryTransaction transaction =
+      std::move(stroke.transaction);
+  const bool changed = stroke.acceptedMutationCount > 0U;
+  stroke = {};
+  if (transaction.active) {
+    static_cast<void>(completeEditTransaction(
+        appState.history, std::move(transaction), appState.facade, changed,
+        reasonCode));
+  }
+}
+
+void processCreativeTerrainStrokeFrame(
+    cr::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    const cr::CreativeWorldActionFrame& actions,
+    std::uint64_t monotonicTimeNanoseconds) {
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  if (held.kind != cr::CreativeHeldItemKind::TerrainControl) {
+    finalizeCreativeTerrainStroke(appState, editor,
+                                  "creative_terrain_stroke_non_terrain_tool");
+    return;
+  }
+
+  CreativeTerrainStrokeState& stroke = editor.terrain.stroke;
+  const cr::CreativeMaterialRepeatRequest repeatRequest =
+      cr::makeCreativeWorldStrokeRepeatRequest(actions,
+                                               monotonicTimeNanoseconds);
+
+  const cr::CreativeMaterialRepeatResult repeat =
+      cr::stepCreativeMaterialRepeat(stroke.repeat, repeatRequest);
+  stroke.repeat = repeat.next;
+  if (repeat.finalized) {
+    finalizeCreativeTerrainStroke(appState, editor,
+                                  "creative_terrain_stroke_released");
+    return;
+  }
+  if (repeat.began) {
+    stroke.cancelOnly =
+        repeat.dueKind == cr::CreativeMaterialStrokeKind::Remove &&
+        editor.terrain.selectionValid;
+    if (stroke.cancelOnly) {
+      static_cast<void>(applyCreativeEditorTerrainEditWithHistory(
+          appState, editor, CreativeEditorTerrainEditKind::Remove,
+          "creative_terrain_stroke_cancel_draft"));
+      return;
+    }
+  }
+  if (!repeat.mutationDue || stroke.cancelOnly) {
+    return;
+  }
+  applyTerrainStrokeMutation(appState, editor, repeat.dueKind);
 }
 
 void appendCreativeEditorTerrainOverlay(

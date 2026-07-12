@@ -281,8 +281,8 @@ void applyCreativeEditorCommandInput(
     const std::filesystem::path& saveRoot,
     const std::string& saveId) {
   if (!routedInput.actionEvents().empty()) {
-    finalizeCreativeMaterialStroke(appState, editor,
-                                   "creative_material_stroke_command");
+    finalizeCreativeEditorContinuousGestures(
+        appState, editor, "creative_continuous_gesture_command");
   }
   if (routedInput.context ==
           creative::CreativeInputContext::TransformPreview ||
