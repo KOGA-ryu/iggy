@@ -8,6 +8,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
 
 namespace iggy3d::creative {
@@ -41,6 +42,7 @@ enum class CreativeMaterialBrushStampStatus : std::uint8_t {
   NotRequested,
   InvalidShape,
   InvalidSize,
+  InvalidAxis,
   CoordinateOverflow,
   CapacityExceeded,
   Planned,
@@ -50,6 +52,7 @@ struct CreativeMaterialBrushStampRequest {
   CreativeMaterialBrushShape shape = CreativeMaterialBrushShape::Cube;
   CreativeMaterialBrushSize size = CreativeMaterialBrushSize::OneCell;
   CreativeGridCoord3 centerCell{};
+  CreativeAxis3 axis = CreativeAxis3::Y;
 };
 
 struct CreativeMaterialBrushStampPlan {
@@ -57,6 +60,7 @@ struct CreativeMaterialBrushStampPlan {
   bool accepted = false;
   CreativeMaterialBrushShape shape = CreativeMaterialBrushShape::Cube;
   CreativeMaterialBrushSize size = CreativeMaterialBrushSize::OneCell;
+  CreativeAxis3 axis = CreativeAxis3::Y;
   CreativeMaterialBrushStampStatus status =
       CreativeMaterialBrushStampStatus::NotRequested;
   CreativeGridCoord3 centerCell{};
@@ -189,7 +193,8 @@ struct CreativeShapeBrushPlanReceipt {
 
 // Generates a canonical z/y/x cell batch centered on centerCell. Sizes are
 // fixed at 1, 3, and 5 cells across, so work and storage are bounded by 125
-// candidates with no allocation. Cylinders are vertical (Y axis).
+// candidates with no allocation. Cylinder axis selects its extrusion axis;
+// cube and sphere geometry is axis-independent.
 [[nodiscard]] CreativeMaterialBrushStampPlan planCreativeMaterialBrushStamp(
     const CreativeMaterialBrushStampRequest& request) noexcept;
 

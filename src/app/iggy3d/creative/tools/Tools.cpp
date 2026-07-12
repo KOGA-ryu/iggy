@@ -111,6 +111,10 @@ constexpr std::array kToolOptionDescriptors{
                                  "BRUSH SHAPE",
                                  CreativeToolOptionValueKind::Choice,
                                  kMaterialBrushItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::MaterialBrushAxis,
+                                 "CYLINDER AXIS",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kMaterialBrushItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::MaterialBrushSize,
                                  "BRUSH SIZE",
                                  CreativeToolOptionValueKind::Choice,
@@ -196,6 +200,7 @@ template <typename Enum>
          lhs.placementYaw == rhs.placementYaw &&
          lhs.snapIncrement == rhs.snapIncrement &&
          lhs.materialBrushShape == rhs.materialBrushShape &&
+         lhs.materialBrushAxis == rhs.materialBrushAxis &&
          lhs.materialBrushSize == rhs.materialBrushSize &&
          lhs.materialBrushMask == rhs.materialBrushMask &&
          lhs.shapeBrushKind == rhs.shapeBrushKind &&
@@ -452,6 +457,7 @@ bool isValidCreativeToolSettings(
          validEnum(settings.snapIncrement, CreativeSnapIncrement::Count) &&
          validEnum(settings.materialBrushShape,
                    CreativeMaterialBrushShape::Count) &&
+         isValidCreativeAxis3(settings.materialBrushAxis) &&
          validEnum(settings.materialBrushSize,
                    CreativeMaterialBrushSize::Count) &&
          validEnum(settings.materialBrushMask,
@@ -519,8 +525,12 @@ CreativeToolOptionList creativeToolOptionsForHeldItem(
         descriptor.id == CreativeToolOptionId::RadialArrayAxis ||
         descriptor.id == CreativeToolOptionId::RadialArrayInstanceCount ||
         descriptor.id == CreativeToolOptionId::RadialArraySweep;
+    const bool cylinderOnly =
+        descriptor.id == CreativeToolOptionId::MaterialBrushAxis;
     if ((linearOnly && settings.arrayMode != CreativeArrayMode::Linear) ||
-        (radialOnly && settings.arrayMode != CreativeArrayMode::Radial)) {
+        (radialOnly && settings.arrayMode != CreativeArrayMode::Radial) ||
+        (cylinderOnly && settings.materialBrushShape !=
+                             CreativeMaterialBrushShape::Cylinder)) {
       continue;
     }
     if (result.count == result.ids.size()) {
@@ -645,6 +655,8 @@ std::string_view creativeToolOptionValueLabel(
       return toString(settings.snapIncrement);
     case CreativeToolOptionId::MaterialBrushShape:
       return toString(settings.materialBrushShape);
+    case CreativeToolOptionId::MaterialBrushAxis:
+      return toString(settings.materialBrushAxis);
     case CreativeToolOptionId::MaterialBrushSize:
       return toString(settings.materialBrushSize);
     case CreativeToolOptionId::MaterialBrushMask:
@@ -726,6 +738,10 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
       adjusted.materialBrushShape =
           cycleEnum(adjusted.materialBrushShape,
                     CreativeMaterialBrushShape::Count, direction);
+      break;
+    case CreativeToolOptionId::MaterialBrushAxis:
+      adjusted.materialBrushAxis = cycleEnum(
+          adjusted.materialBrushAxis, CreativeAxis3::Count, direction);
       break;
     case CreativeToolOptionId::MaterialBrushSize:
       adjusted.materialBrushSize =

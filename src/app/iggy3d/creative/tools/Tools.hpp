@@ -114,6 +114,7 @@ enum class CreativeToolOptionId : std::uint8_t {
   PlacementYaw,
   SnapIncrement,
   MaterialBrushShape,
+  MaterialBrushAxis,
   MaterialBrushSize,
   MaterialBrushMask,
   ShapeBrushKind,
@@ -166,6 +167,7 @@ struct CreativeToolSettings {
   CreativeSnapIncrement snapIncrement = CreativeSnapIncrement::OneMeter;
   CreativeMaterialBrushShape materialBrushShape =
       CreativeMaterialBrushShape::Sphere;
+  CreativeAxis3 materialBrushAxis = CreativeAxis3::Y;
   CreativeMaterialBrushSize materialBrushSize =
       CreativeMaterialBrushSize::ThreeCells;
   CreativeMaterialBrushMask materialBrushMask =

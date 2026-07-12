@@ -1502,6 +1502,70 @@ bool materialBrushPaintsErasesPreviewsAndGroupsHistory() {
          ok;
 }
 
+bool materialBrushCylinderAxisDrivesPreviewAndMutation() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 111U);
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
+  editor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::MaterialBrush;
+  editor.toolSettings.materialBrushShape =
+      cr::CreativeMaterialBrushShape::Cylinder;
+  editor.toolSettings.materialBrushSize =
+      cr::CreativeMaterialBrushSize::ThreeCells;
+  editor.toolSettings.materialBrushAxis = cr::CreativeAxis3::X;
+  syncCreativeEditorHeldItem(appState, editor);
+  syncCreativeEditorQuickEdit(editor);
+  setPlaceTarget(editor, 0);
+
+  CreativeEditorSelectionFrame selection;
+  CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  iggy3d::FrameInput previewFrame;
+  CreativeEditorOverlayFrame previewOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, previewFrame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      previewOverlay);
+
+  constexpr std::size_t kWireEdgesPerVoxel = 12U;
+  bool ok = expect(previewOverlay.materialBrushEdgeCount ==
+                           15U * kWireEdgesPerVoxel &&
+                       editor.quickEdit.options.count == 4U &&
+                       editor.quickEdit.options.ids[1] ==
+                           cr::CreativeToolOptionId::MaterialBrushAxis &&
+                       creativeEditorHeldItemStatusLabel(editor).find(
+                           "CYLINDER X | 3 CELLS") != std::string::npos,
+                   "cylinder preview and HUD expose the selected X axis");
+
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, true, false), 0U);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, false, false, true), 1U);
+  const cr::CreativeVoxelField& voxels =
+      appState.facade.document().voxelField();
+  ok = expect(voxels.occupiedCellCount() == 15U &&
+                  voxels.occupied({1, 0, 1}) &&
+                  !voxels.occupied({0, 1, 1}) &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "stroke mutation uses the same X-cylinder plan as preview") &&
+       ok;
+
+  editor.quickEdit.selectedIndex = 0U;
+  ok = expect(processCreativeEditorQuickEditAction(
+                  editor, cr::CreativeInputActionId::QuickEditNext) &&
+                  creativeEditorQuickEditStatusLabel(editor) ==
+                      "CYLINDER AXIS X" &&
+                  processCreativeEditorQuickEditAction(
+                      editor, cr::CreativeInputActionId::QuickEditIncrease) &&
+                  editor.toolSettings.materialBrushAxis ==
+                      cr::CreativeAxis3::Y,
+              "D-pad quick edit rotates the cylinder without a new binding") &&
+       ok;
+  return ok;
+}
+
 bool materialBrushInterpolatesDiagonalsAndBreaksOnTargetLoss() {
   cr::CreativeAppState appState;
   installHistoryDocument(appState, 112U);
@@ -2197,6 +2261,7 @@ int main() {
   ok = removalStrokeDeletesVoxelAndGroupsHistory() && ok;
   ok = gamepadAcceptPlacesAndRejectRemoves() && ok;
   ok = materialBrushPaintsErasesPreviewsAndGroupsHistory() && ok;
+  ok = materialBrushCylinderAxisDrivesPreviewAndMutation() && ok;
   ok = materialBrushInterpolatesDiagonalsAndBreaksOnTargetLoss() && ok;
   ok = materialBrushInterpolatesEraseSweep() && ok;
   ok = materialBrushMasksMatchPreviewAndMutation() && ok;

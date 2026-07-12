@@ -200,7 +200,8 @@ struct MaterialBrushPreviewPlan {
                       : editor.interaction.target.grid.adjacentCell;
   output.stamp = cr::planCreativeMaterialBrushStamp(
       {editor.toolSettings.materialBrushShape,
-       editor.toolSettings.materialBrushSize, center});
+       editor.toolSettings.materialBrushSize, center,
+       editor.toolSettings.materialBrushAxis});
   output.visible = output.stamp.accepted;
   if (!output.visible) {
     return output;

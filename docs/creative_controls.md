@@ -308,9 +308,9 @@ preview's contextual wheel. They do not each earn a permanent global key.
 - Contextual settings currently provide Free/X/Z fast-drag movement,
   X/Y/Z precision-preview constraints, 15/45/90-degree
   rotation, 0.25/0.5/1/2-meter grid increments, Material Brush Cube/Sphere/
-  Cylinder shape, 1/3/5-cell size, and Add Only/Replace/Overwrite occupancy
-  masks, Replace source filtering by material or Any, Clone offsets on X/Y/Z
-  at 1/2/4/8 cells, Linear Array
+  Cylinder shape, X/Y/Z cylinder axis, 1/3/5-cell size, and Add Only/Replace/
+  Overwrite occupancy masks, Replace source filtering by material or Any,
+  Clone offsets on X/Y/Z at 1/2/4/8 cells, Linear Array
   direction on either world axis with 1/2/4/8/16/32 copies at 1/2/4/8-cell
   spacing, and Radial Array X/Y/Z rings or arcs with 2/4/8/16/32 total
   instances across 90/180/360 degrees.
@@ -367,11 +367,13 @@ preview's contextual wheel. They do not each earn a permanent global key.
   extra rotate key is required for normal placement.
 - Material, select, move, and volume tools use the held-tool grammar above.
 - Material Brush paints the selected voxel material with X/right mouse and
-  erases with Circle/left mouse. Cube, sphere, and vertical-cylinder stamps are
-  allocation-free fixed batches at 1, 3, or 5 cells across. A held gesture
-  repeats every 200 ms and fills every grid cell crossed between valid samples,
-  so fast axial and diagonal sweeps do not leave holes. Losing the target breaks
-  that interpolation chain instead of bridging empty space. The gesture
+  erases with Circle/left mouse. Cube, sphere, and cylinder stamps are
+  allocation-free fixed batches at 1, 3, or 5 cells across. Cylinder stamps
+  can be oriented along X, Y, or Z without changing the gesture controls. A
+  held gesture repeats every 200 ms and fills every grid cell crossed between
+  valid samples, so fast axial and diagonal sweeps do not leave holes. Losing
+  the target breaks that interpolation chain instead of bridging empty space.
+  The gesture
   deduplicates previously visited cells and commits one undo record on release.
   The 256-cell gesture budget rejects a whole interpolated segment before
   mutation rather than clipping its shape. The target preview draws one wire

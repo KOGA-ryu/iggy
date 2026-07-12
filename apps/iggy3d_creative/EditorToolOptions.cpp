@@ -148,7 +148,10 @@ void adjustSelection(CreativeEditorState& editor,
   const cr::CreativeToolOptionAdjustReceipt receipt =
       cr::adjustCreativeToolOption(state.draft, option, direction,
                                    editor.brushPalette);
-  if (receipt.changed && option == cr::CreativeToolOptionId::ArrayMode) {
+  const bool optionSetChanged =
+      option == cr::CreativeToolOptionId::ArrayMode ||
+      option == cr::CreativeToolOptionId::MaterialBrushShape;
+  if (receipt.changed && optionSetChanged) {
     state.options =
         creativeEditorToolOptionsForEntry(state.targetEntry, state.draft);
     state.selectedIndex = 0U;

@@ -56,8 +56,9 @@ bool containsStampCell(const cr::CreativeMaterialBrushStampPlan& plan,
 cr::CreativeMaterialBrushStampPlan stamp(
     cr::CreativeMaterialBrushShape shape,
     cr::CreativeMaterialBrushSize size,
-    cr::CreativeGridCoord3 center = {}) {
-  return cr::planCreativeMaterialBrushStamp({shape, size, center});
+    cr::CreativeGridCoord3 center = {},
+    cr::CreativeAxis3 axis = cr::CreativeAxis3::Y) {
+  return cr::planCreativeMaterialBrushStamp({shape, size, center, axis});
 }
 
 bool materialBrushStampsAreBoundedAndCanonical() {
@@ -68,8 +69,14 @@ bool materialBrushStampsAreBoundedAndCanonical() {
                           cr::CreativeMaterialBrushSize::FiveCells);
   const auto sphere = stamp(cr::CreativeMaterialBrushShape::Sphere,
                             cr::CreativeMaterialBrushSize::FiveCells);
-  const auto cylinder = stamp(cr::CreativeMaterialBrushShape::Cylinder,
-                              cr::CreativeMaterialBrushSize::FiveCells);
+  const auto cylinderX = stamp(cr::CreativeMaterialBrushShape::Cylinder,
+                               cr::CreativeMaterialBrushSize::FiveCells, {},
+                               cr::CreativeAxis3::X);
+  const auto cylinderY = stamp(cr::CreativeMaterialBrushShape::Cylinder,
+                               cr::CreativeMaterialBrushSize::FiveCells);
+  const auto cylinderZ = stamp(cr::CreativeMaterialBrushShape::Cylinder,
+                               cr::CreativeMaterialBrushSize::FiveCells, {},
+                               cr::CreativeAxis3::Z);
   return expect(one.accepted && one.cellCount == 1U &&
                     sameCell(one.cells[0], {4, -2, 7}),
                 "one-cell material brush contains only its center") &&
@@ -83,10 +90,21 @@ bool materialBrushStampsAreBoundedAndCanonical() {
                     containsStampCell(sphere, {}) &&
                     !containsStampCell(sphere, {2, 2, 2}),
                 "five-cell sphere uses integer radial inclusion") &&
-         expect(cylinder.accepted && cylinder.cellCount == 65U &&
-                    containsStampCell(cylinder, {0, 2, 0}) &&
-                    !containsStampCell(cylinder, {2, 0, 2}),
-                "five-cell cylinder extrudes its disk on Y");
+         expect(cylinderX.accepted && cylinderX.cellCount == 65U &&
+                    containsStampCell(cylinderX, {2, 0, 0}) &&
+                    containsStampCell(cylinderX, {2, 0, 2}) &&
+                    !containsStampCell(cylinderX, {0, 2, 2}),
+                "five-cell X cylinder extrudes its YZ disk") &&
+         expect(cylinderY.accepted && cylinderY.cellCount == 65U &&
+                    containsStampCell(cylinderY, {0, 2, 0}) &&
+                    containsStampCell(cylinderY, {2, 2, 0}) &&
+                    !containsStampCell(cylinderY, {2, 0, 2}),
+                "five-cell Y cylinder extrudes its XZ disk") &&
+         expect(cylinderZ.accepted && cylinderZ.cellCount == 65U &&
+                    containsStampCell(cylinderZ, {0, 0, 2}) &&
+                    containsStampCell(cylinderZ, {2, 0, 2}) &&
+                    !containsStampCell(cylinderZ, {2, 2, 0}),
+                "five-cell Z cylinder extrudes its XY disk");
 }
 
 bool materialBrushInvalidInputsFailClosed() {
@@ -96,6 +114,10 @@ bool materialBrushInvalidInputsFailClosed() {
   const auto invalidSize = stamp(
       cr::CreativeMaterialBrushShape::Cube,
       static_cast<cr::CreativeMaterialBrushSize>(255U));
+  const auto invalidAxis = stamp(
+      cr::CreativeMaterialBrushShape::Cylinder,
+      cr::CreativeMaterialBrushSize::ThreeCells, {},
+      cr::CreativeAxis3::Count);
   const auto overflow = stamp(
       cr::CreativeMaterialBrushShape::Cube,
       cr::CreativeMaterialBrushSize::FiveCells,
@@ -108,6 +130,10 @@ bool materialBrushInvalidInputsFailClosed() {
                     invalidSize.status ==
                         cr::CreativeMaterialBrushStampStatus::InvalidSize,
                 "invalid material brush size fails closed") &&
+         expect(!invalidAxis.accepted && invalidAxis.cellCount == 0U &&
+                    invalidAxis.status ==
+                        cr::CreativeMaterialBrushStampStatus::InvalidAxis,
+                "invalid material brush axis fails closed") &&
          expect(!overflow.accepted && overflow.cellCount == 0U &&
                     overflow.status ==
                         cr::CreativeMaterialBrushStampStatus::CoordinateOverflow,

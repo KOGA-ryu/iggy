@@ -628,6 +628,11 @@ std::string creativeEditorHeldItemStatusLabel(
     output.append(cr::toString(held.objectKind));
     output.append(" | ");
     output.append(cr::toString(editor.toolSettings.materialBrushShape));
+    if (editor.toolSettings.materialBrushShape ==
+        cr::CreativeMaterialBrushShape::Cylinder) {
+      output.push_back(' ');
+      output.append(cr::toString(editor.toolSettings.materialBrushAxis));
+    }
     output.append(" | ");
     output.append(cr::toString(editor.toolSettings.materialBrushSize));
     output.append(" | ");
@@ -635,7 +640,8 @@ std::string creativeEditorHeldItemStatusLabel(
     const cr::CreativeMaterialBrushStampPlan stamp =
         cr::planCreativeMaterialBrushStamp(
             {editor.toolSettings.materialBrushShape,
-             editor.toolSettings.materialBrushSize, {}});
+             editor.toolSettings.materialBrushSize, {},
+             editor.toolSettings.materialBrushAxis});
     if (stamp.accepted) {
       output.append(" | ");
       output.append(std::to_string(stamp.cellCount));

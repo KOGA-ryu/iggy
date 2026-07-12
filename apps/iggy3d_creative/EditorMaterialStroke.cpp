@@ -213,6 +213,7 @@ struct MaterialBrushTargetSample {
   request.shape = editor.toolSettings.materialBrushShape;
   request.size = editor.toolSettings.materialBrushSize;
   request.centerCell = center;
+  request.axis = editor.toolSettings.materialBrushAxis;
   return cr::planCreativeMaterialBrushStamp(request);
 }
 

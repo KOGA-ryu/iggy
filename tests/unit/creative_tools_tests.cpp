@@ -318,6 +318,13 @@ bool optionDescriptorsAreContextualAndBounded() {
   const cr::CreativeToolOptionList materialBrush =
       cr::creativeToolOptionsForHeldItem(
           cr::CreativeHeldItemKind::MaterialBrush);
+  cr::CreativeToolSettings cylinderSettings =
+      cr::makeDefaultCreativeToolSettings();
+  cylinderSettings.materialBrushShape =
+      cr::CreativeMaterialBrushShape::Cylinder;
+  const cr::CreativeToolOptionList cylinderBrush =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::MaterialBrush, cylinderSettings);
   const cr::CreativeToolOptionList move =
       cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::ObjectMove);
   const cr::CreativeToolOptionList replace =
@@ -353,6 +360,16 @@ bool optionDescriptorsAreContextualAndBounded() {
                     materialBrush.ids[2] ==
                         cr::CreativeToolOptionId::MaterialBrushMask,
                 "material brush exposes shape size and occupancy mask") &&
+         expect(cylinderBrush.count == 4U &&
+                    cylinderBrush.ids[0] ==
+                        cr::CreativeToolOptionId::MaterialBrushShape &&
+                    cylinderBrush.ids[1] ==
+                        cr::CreativeToolOptionId::MaterialBrushAxis &&
+                    cylinderBrush.ids[2] ==
+                        cr::CreativeToolOptionId::MaterialBrushSize &&
+                    cylinderBrush.ids[3] ==
+                        cr::CreativeToolOptionId::MaterialBrushMask,
+                "cylinder brush exposes its contextual extrusion axis") &&
          expect(move.count == 3U &&
                     move.ids[0] ==
                         cr::CreativeToolOptionId::MoveConstraint &&
@@ -396,7 +413,9 @@ bool optionDescriptorsAreContextualAndBounded() {
                     radialArray.ids[3] ==
                         cr::CreativeToolOptionId::RadialArraySweep,
                 "radial array hides irrelevant linear settings") &&
-         expect(!material.capacityExceeded && !move.capacityExceeded &&
+         expect(!material.capacityExceeded &&
+                    !materialBrush.capacityExceeded &&
+                    !cylinderBrush.capacityExceeded && !move.capacityExceeded &&
                     !fill.capacityExceeded && !hollow.capacityExceeded &&
                     !replace.capacityExceeded && !clone.capacityExceeded &&
                     !array.capacityExceeded && !radialArray.capacityExceeded &&
@@ -414,10 +433,14 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
   cr::CreativeToolSettings settings = cr::makeDefaultCreativeToolSettings();
   cr::CreativeToolSettings invalidMask = settings;
   invalidMask.materialBrushMask = cr::CreativeMaterialBrushMask::Count;
+  cr::CreativeToolSettings invalidBrushAxis = settings;
+  invalidBrushAxis.materialBrushAxis = cr::CreativeAxis3::Count;
   bool ok = expect(cr::isValidCreativeToolSettings(settings),
                    "default settings valid") &&
             expect(!cr::isValidCreativeToolSettings(invalidMask),
                    "invalid material brush mask fails settings validation") &&
+            expect(!cr::isValidCreativeToolSettings(invalidBrushAxis),
+                   "invalid material brush axis fails settings validation") &&
             expect(cr::creativeToolOptionValueLabel(
                        settings,
                        cr::CreativeToolOptionId::MoveConstraint) == "FREE" &&
@@ -440,6 +463,10 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                            settings,
                            cr::CreativeToolOptionId::MaterialBrushShape) ==
                            "SPHERE" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::MaterialBrushAxis) ==
+                           "Y" &&
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::MaterialBrushSize) ==
@@ -478,6 +505,9 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                   settings.materialBrushShape ==
                       cr::CreativeMaterialBrushShape::Cylinder,
               "material brush shape cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::MaterialBrushAxis, 1).changed &&
+                  settings.materialBrushAxis == cr::CreativeAxis3::Z,
+              "material brush cylinder axis cycles") &&
        expect(adjust(cr::CreativeToolOptionId::MaterialBrushSize, 1).changed &&
                   settings.materialBrushSize ==
                       cr::CreativeMaterialBrushSize::FiveCells,
