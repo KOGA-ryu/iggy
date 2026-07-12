@@ -24,6 +24,72 @@ struct InclusiveBounds {
   std::uint64_t depth = 1;
 };
 
+[[nodiscard]] bool validMaterialBrushShape(
+    CreativeMaterialBrushShape shape) noexcept {
+  return static_cast<std::size_t>(shape) <
+         static_cast<std::size_t>(CreativeMaterialBrushShape::Count);
+}
+
+[[nodiscard]] bool validMaterialBrushSize(
+    CreativeMaterialBrushSize size) noexcept {
+  return static_cast<std::size_t>(size) <
+         static_cast<std::size_t>(CreativeMaterialBrushSize::Count);
+}
+
+void rejectMaterialBrushStamp(CreativeMaterialBrushStampPlan& plan,
+                              CreativeMaterialBrushStampStatus status,
+                              std::string_view reasonCode) noexcept {
+  plan.accepted = false;
+  plan.status = status;
+  plan.cellCount = 0U;
+  plan.reasonCode = reasonCode;
+}
+
+[[nodiscard]] bool materialBrushCellIncluded(
+    CreativeMaterialBrushShape shape,
+    std::int32_t radius,
+    std::int32_t dx,
+    std::int32_t dy,
+    std::int32_t dz) noexcept {
+  const std::int64_t x = dx;
+  const std::int64_t y = dy;
+  const std::int64_t z = dz;
+  const std::int64_t radiusSquared =
+      static_cast<std::int64_t>(radius) * radius;
+  switch (shape) {
+    case CreativeMaterialBrushShape::Cube:
+      return true;
+    case CreativeMaterialBrushShape::Sphere:
+      return x * x + y * y + z * z <= radiusSquared;
+    case CreativeMaterialBrushShape::Cylinder:
+      return x * x + z * z <= radiusSquared;
+    case CreativeMaterialBrushShape::Count:
+      return false;
+  }
+  return false;
+}
+
+[[nodiscard]] bool offsetCell(CreativeGridCoord3 center,
+                              std::int32_t dx,
+                              std::int32_t dy,
+                              std::int32_t dz,
+                              CreativeGridCoord3& output) noexcept {
+  const std::int64_t x = static_cast<std::int64_t>(center.x) + dx;
+  const std::int64_t y = static_cast<std::int64_t>(center.y) + dy;
+  const std::int64_t z = static_cast<std::int64_t>(center.z) + dz;
+  if (x < std::numeric_limits<std::int32_t>::min() ||
+      x > std::numeric_limits<std::int32_t>::max() ||
+      y < std::numeric_limits<std::int32_t>::min() ||
+      y > std::numeric_limits<std::int32_t>::max() ||
+      z < std::numeric_limits<std::int32_t>::min() ||
+      z > std::numeric_limits<std::int32_t>::max()) {
+    return false;
+  }
+  output = {static_cast<std::int32_t>(x), static_cast<std::int32_t>(y),
+            static_cast<std::int32_t>(z)};
+  return true;
+}
+
 [[nodiscard]] bool validKind(CreativeShapeBrushKind kind) noexcept {
   return static_cast<std::size_t>(kind) <
          static_cast<std::size_t>(CreativeShapeBrushKind::Count);
@@ -326,6 +392,114 @@ std::string_view toString(CreativeShapeBrushPlanStatus status) noexcept {
     case CreativeShapeBrushPlanStatus::Planned: return "Planned";
   }
   return "Unknown";
+}
+
+std::string_view toString(CreativeMaterialBrushShape shape) noexcept {
+  switch (shape) {
+    case CreativeMaterialBrushShape::Cube: return "CUBE";
+    case CreativeMaterialBrushShape::Sphere: return "SPHERE";
+    case CreativeMaterialBrushShape::Cylinder: return "CYLINDER";
+    case CreativeMaterialBrushShape::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeMaterialBrushSize size) noexcept {
+  switch (size) {
+    case CreativeMaterialBrushSize::OneCell: return "1 CELL";
+    case CreativeMaterialBrushSize::ThreeCells: return "3 CELLS";
+    case CreativeMaterialBrushSize::FiveCells: return "5 CELLS";
+    case CreativeMaterialBrushSize::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeMaterialBrushStampStatus status) noexcept {
+  switch (status) {
+    case CreativeMaterialBrushStampStatus::NotRequested:
+      return "NotRequested";
+    case CreativeMaterialBrushStampStatus::InvalidShape: return "InvalidShape";
+    case CreativeMaterialBrushStampStatus::InvalidSize: return "InvalidSize";
+    case CreativeMaterialBrushStampStatus::CoordinateOverflow:
+      return "CoordinateOverflow";
+    case CreativeMaterialBrushStampStatus::CapacityExceeded:
+      return "CapacityExceeded";
+    case CreativeMaterialBrushStampStatus::Planned: return "Planned";
+  }
+  return "Unknown";
+}
+
+std::uint8_t creativeMaterialBrushRadiusCells(
+    CreativeMaterialBrushSize size) noexcept {
+  switch (size) {
+    case CreativeMaterialBrushSize::OneCell: return 0U;
+    case CreativeMaterialBrushSize::ThreeCells: return 1U;
+    case CreativeMaterialBrushSize::FiveCells: return 2U;
+    case CreativeMaterialBrushSize::Count: break;
+  }
+  return 0U;
+}
+
+CreativeMaterialBrushStampPlan planCreativeMaterialBrushStamp(
+    const CreativeMaterialBrushStampRequest& request) noexcept {
+  CreativeMaterialBrushStampPlan plan;
+  plan.requested = true;
+  plan.shape = request.shape;
+  plan.size = request.size;
+  plan.centerCell = request.centerCell;
+  if (!validMaterialBrushShape(request.shape)) {
+    rejectMaterialBrushStamp(plan,
+                             CreativeMaterialBrushStampStatus::InvalidShape,
+                             "creative_material_brush_shape_invalid");
+    return plan;
+  }
+  if (!validMaterialBrushSize(request.size)) {
+    rejectMaterialBrushStamp(plan, CreativeMaterialBrushStampStatus::InvalidSize,
+                             "creative_material_brush_size_invalid");
+    return plan;
+  }
+
+  const std::int32_t radius =
+      static_cast<std::int32_t>(creativeMaterialBrushRadiusCells(request.size));
+  if (!offsetCell(request.centerCell, -radius, -radius, -radius,
+                  plan.minCell) ||
+      !offsetCell(request.centerCell, radius, radius, radius, plan.maxCell)) {
+    rejectMaterialBrushStamp(
+        plan, CreativeMaterialBrushStampStatus::CoordinateOverflow,
+        "creative_material_brush_coordinate_overflow");
+    return plan;
+  }
+
+  for (std::int32_t dz = -radius; dz <= radius; ++dz) {
+    for (std::int32_t dy = -radius; dy <= radius; ++dy) {
+      for (std::int32_t dx = -radius; dx <= radius; ++dx) {
+        if (!materialBrushCellIncluded(request.shape, radius, dx, dy, dz)) {
+          continue;
+        }
+        if (plan.cellCount >= plan.cells.size()) {
+          rejectMaterialBrushStamp(
+              plan, CreativeMaterialBrushStampStatus::CapacityExceeded,
+              "creative_material_brush_capacity_exceeded");
+          return plan;
+        }
+        CreativeGridCoord3 cell;
+        if (!offsetCell(request.centerCell, dx, dy, dz, cell)) {
+          rejectMaterialBrushStamp(
+              plan, CreativeMaterialBrushStampStatus::CoordinateOverflow,
+              "creative_material_brush_coordinate_overflow");
+          return plan;
+        }
+        plan.cells[plan.cellCount++] = cell;
+      }
+    }
+  }
+
+  plan.accepted = plan.cellCount > 0U;
+  plan.status = plan.accepted ? CreativeMaterialBrushStampStatus::Planned
+                              : CreativeMaterialBrushStampStatus::InvalidShape;
+  plan.reasonCode = plan.accepted ? "creative_material_brush_planned"
+                                  : "creative_material_brush_empty";
+  return plan;
 }
 
 CreativeShapeBrushPlanReceipt planCreativeShapeBrush(

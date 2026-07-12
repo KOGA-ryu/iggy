@@ -135,6 +135,7 @@ std::string_view toString(CreativeWorldActionId action) noexcept {
 std::string_view toString(CreativeHeldItemKind kind) noexcept {
   switch (kind) {
     case CreativeHeldItemKind::Material: return "Material";
+    case CreativeHeldItemKind::MaterialBrush: return "Brush";
     case CreativeHeldItemKind::ObjectSelect: return "Select";
     case CreativeHeldItemKind::ObjectMove: return "Move";
     case CreativeHeldItemKind::VolumeSelect: return "VolumeSelect";
@@ -230,6 +231,7 @@ bool creativeHeldItemUsesDirectShapeGesture(
 bool creativeHeldItemUsesMaterial(CreativeHeldItemKind kind) noexcept {
   switch (kind) {
     case CreativeHeldItemKind::Material:
+    case CreativeHeldItemKind::MaterialBrush:
     case CreativeHeldItemKind::VolumeFill:
     case CreativeHeldItemKind::VolumeHollow:
     case CreativeHeldItemKind::VolumeReplace:

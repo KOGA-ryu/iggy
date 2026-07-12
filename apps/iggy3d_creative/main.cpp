@@ -215,7 +215,7 @@ int main(int argc, char** argv) {
              editor,
              frameInput.routedInput,
              catalogFrame.openToolOptionsRequested,
-             catalogFrame.toolOptionsHeldItem,
+             catalogFrame.toolOptionsEntry,
              extent.width,
              extent.height});
     const bool modalBlocksWorldActions =

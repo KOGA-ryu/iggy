@@ -40,6 +40,8 @@ constexpr std::array<CatalogShapePreset, kCreativeCatalogShapePresetCount>
     }};
 
 constexpr std::array kToolSpecs{
+    CatalogToolSpec{CreativeHeldItemKind::MaterialBrush, "Brush",
+                    "paint sculpt material sphere cube cylinder"},
     CatalogToolSpec{CreativeHeldItemKind::ObjectSelect, "Object Select",
                     "select pick object"},
     CatalogToolSpec{CreativeHeldItemKind::ObjectMove, "Transform",

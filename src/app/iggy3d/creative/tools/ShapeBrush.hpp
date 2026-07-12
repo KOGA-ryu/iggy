@@ -1,8 +1,11 @@
 #pragma once
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <span>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
@@ -10,6 +13,59 @@
 namespace iggy3d::creative {
 
 inline constexpr std::uint64_t kDefaultCreativeShapeBrushCellLimit = 16'384U;
+inline constexpr std::size_t kCreativeMaterialBrushStampCapacity = 125U;
+
+enum class CreativeMaterialBrushShape : std::uint8_t {
+  Cube,
+  Sphere,
+  Cylinder,
+  Count,
+};
+
+enum class CreativeMaterialBrushSize : std::uint8_t {
+  OneCell,
+  ThreeCells,
+  FiveCells,
+  Count,
+};
+
+enum class CreativeMaterialBrushStampStatus : std::uint8_t {
+  NotRequested,
+  InvalidShape,
+  InvalidSize,
+  CoordinateOverflow,
+  CapacityExceeded,
+  Planned,
+};
+
+struct CreativeMaterialBrushStampRequest {
+  CreativeMaterialBrushShape shape = CreativeMaterialBrushShape::Cube;
+  CreativeMaterialBrushSize size = CreativeMaterialBrushSize::OneCell;
+  CreativeGridCoord3 centerCell{};
+};
+
+struct CreativeMaterialBrushStampPlan {
+  bool requested = false;
+  bool accepted = false;
+  CreativeMaterialBrushShape shape = CreativeMaterialBrushShape::Cube;
+  CreativeMaterialBrushSize size = CreativeMaterialBrushSize::OneCell;
+  CreativeMaterialBrushStampStatus status =
+      CreativeMaterialBrushStampStatus::NotRequested;
+  CreativeGridCoord3 centerCell{};
+  CreativeGridCoord3 minCell{};
+  CreativeGridCoord3 maxCell{};
+  std::array<CreativeGridCoord3, kCreativeMaterialBrushStampCapacity> cells{};
+  std::uint16_t cellCount = 0U;
+  std::string_view reasonCode = "creative_material_brush_not_requested";
+
+  [[nodiscard]] std::span<const CreativeGridCoord3> generatedCells()
+      const noexcept {
+    return {cells.data(), cellCount};
+  }
+};
+
+static_assert(std::is_trivially_copyable_v<CreativeMaterialBrushStampPlan>);
+static_assert(std::is_standard_layout_v<CreativeMaterialBrushStampPlan>);
 
 enum class CreativeShapeBrushKind : std::uint8_t {
   Box,
@@ -72,6 +128,21 @@ struct CreativeShapeBrushPlanReceipt {
     CreativeShapeBrushAxis axis) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeShapeBrushPlanStatus status) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeMaterialBrushShape shape) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeMaterialBrushSize size) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeMaterialBrushStampStatus status) noexcept;
+
+[[nodiscard]] std::uint8_t creativeMaterialBrushRadiusCells(
+    CreativeMaterialBrushSize size) noexcept;
+
+// Generates a canonical z/y/x cell batch centered on centerCell. Sizes are
+// fixed at 1, 3, and 5 cells across, so work and storage are bounded by 125
+// candidates with no allocation. Cylinders are vertical (Y axis).
+[[nodiscard]] CreativeMaterialBrushStampPlan planCreativeMaterialBrushStamp(
+    const CreativeMaterialBrushStampRequest& request) noexcept;
 
 // Box, ellipsoid, and cylinder plans enumerate canonical z/y/x order. Lines use
 // a canonical endpoint order and integer 3D Bresenham traversal. Curved shapes

@@ -10,6 +10,7 @@
 
 #include "EditorInteraction.hpp"
 #include "EditorState.hpp"
+#include "EditorToolOptions.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/input/UiInput.hpp"
 #include "app/platform/SdlWindow.hpp"
@@ -646,13 +647,13 @@ void processToolWheelInput(const CreativeEditorCatalogFrameRequest& request,
           break;
         }
         const cr::CreativeToolOptionList options =
-            cr::creativeToolOptionsForHeldItem(selected->hotbarEntry.kind,
-                                               request.editor.toolSettings);
+            creativeEditorToolOptionsForEntry(selected->hotbarEntry,
+                                              request.editor.toolSettings);
         if (options.count == 0U || options.capacityExceeded) {
           break;
         }
         result.openToolOptionsRequested = true;
-        result.toolOptionsHeldItem = selected->hotbarEntry.kind;
+        result.toolOptionsEntry = selected->hotbarEntry;
         static_cast<void>(cr::setCreativeToolWheelOpen(state.toolWheel, false));
         return;
       }

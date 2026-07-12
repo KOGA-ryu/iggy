@@ -98,6 +98,7 @@ void setCreativeWorldAction(CreativeWorldInputSample& sample,
 
 enum class CreativeHeldItemKind : std::uint8_t {
   Material,
+  MaterialBrush,
   ObjectSelect,
   ObjectMove,
   VolumeSelect,

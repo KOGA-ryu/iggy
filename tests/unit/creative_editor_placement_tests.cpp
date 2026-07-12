@@ -5,6 +5,7 @@
 #include "EditorPlacement.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorState.hpp"
+#include "EditorToolOptions.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
 
 #include <algorithm>
@@ -628,6 +629,49 @@ bool quickEditOrientationFeedsPreviewAndCreatePlan() {
   return ok;
 }
 
+bool toolOptionsFollowTheRequestedMaterialEntry() {
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
+  const cr::CreativeHotbarEntry wall{
+      cr::CreativeHeldItemKind::Material, cr::CreativeObjectKind::Wall};
+  const cr::CreativeHotbarEntry door{
+      cr::CreativeHeldItemKind::Material, cr::CreativeObjectKind::Door};
+  const cr::CreativeHotbarEntry invalid{
+      cr::CreativeHeldItemKind::Material, cr::CreativeObjectKind::Unknown};
+
+  const cr::CreativeToolOptionList wallOptions =
+      creativeEditorToolOptionsForEntry(wall, editor.toolSettings);
+  const cr::CreativeToolOptionList doorOptions =
+      creativeEditorToolOptionsForEntry(door, editor.toolSettings);
+  const cr::CreativeToolOptionList invalidOptions =
+      creativeEditorToolOptionsForEntry(invalid, editor.toolSettings);
+
+  editor.interaction.hotbar.entries[0] = door;
+  syncCreativeEditorQuickEdit(editor);
+  const bool doorQuickEditReady =
+      editor.quickEdit.targetEntry.objectKind == cr::CreativeObjectKind::Door &&
+      creativeEditorQuickEditStatusLabel(editor) == "ORIENTATION 0 DEG";
+  editor.interaction.hotbar.entries[0] = wall;
+  const bool staleDoorStatusHidden =
+      creativeEditorQuickEditStatusLabel(editor).empty();
+  syncCreativeEditorQuickEdit(editor);
+
+  return expect(wallOptions.count == 0U,
+                "fixed-grid material does not advertise authored placement options") &&
+         expect(doorOptions.count == 2U &&
+                    doorOptions.ids[0] ==
+                        cr::CreativeToolOptionId::PlacementYaw &&
+                    doorOptions.ids[1] ==
+                        cr::CreativeToolOptionId::SnapIncrement,
+                "requested authored material owns its orientation and grid options") &&
+         expect(invalidOptions.count == 0U,
+                "invalid material option targets fail closed") &&
+         expect(doorQuickEditReady && staleDoorStatusHidden &&
+                    editor.quickEdit.targetEntry.objectKind ==
+                        cr::CreativeObjectKind::Wall &&
+                    editor.quickEdit.options.count == 0U,
+                "quick edit tracks the complete material entry without stale labels");
+}
+
 bool previewFrameUsesWorldTargetAndViewHeldTransforms() {
   CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
   setPlaceTarget(editor, 2, 1, -3);
@@ -760,6 +804,33 @@ bool previewHidesForEveryBlockingSurface() {
   editor.interaction.hotbar.entries[0].kind =
       cr::CreativeHeldItemKind::ObjectSelect;
   return expect(hidden(), "non-material tool hides placement previews") && ok;
+}
+
+bool quickEditHudHighlightsTheActiveSetting() {
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
+  editor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::MaterialBrush;
+  syncCreativeEditorQuickEdit(editor);
+
+  std::vector<iggy3d::RenderUiRect> rects;
+  std::vector<iggy3d::DebugHudGlyphQuad> glyphs;
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> wireLines;
+  appendCreativeEditorInteractionOverlay(editor, 1280U, 720U, 0.04F, rects,
+                                         glyphs, wireLines);
+
+  const auto isNeutralBrushGlyph = [](const iggy3d::DebugHudGlyphQuad& quad) {
+    return quad.source == 'B' && near(quad.r, 0.88F) &&
+           near(quad.g, 0.90F) && near(quad.b, 0.94F);
+  };
+  const auto isActiveBrushGlyph = [](const iggy3d::DebugHudGlyphQuad& quad) {
+    return quad.source == 'B' && near(quad.r, 0.24F) &&
+           near(quad.g, 1.0F) && near(quad.b, 0.34F);
+  };
+  return expect(std::any_of(glyphs.begin(), glyphs.end(),
+                            isNeutralBrushGlyph) &&
+                    std::any_of(glyphs.begin(), glyphs.end(),
+                                isActiveBrushGlyph),
+                "held tool stays neutral while active D-pad setting is green");
 }
 
 bool previewsDoNotAffectRoomGeometrySignature() {
@@ -1241,6 +1312,179 @@ bool gamepadAcceptPlacesAndRejectRemoves() {
          ok;
 }
 
+bool materialBrushPaintsErasesPreviewsAndGroupsHistory() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 110U);
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
+  editor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::MaterialBrush;
+  syncCreativeEditorHeldItem(appState, editor);
+  setPlaceTarget(editor, 0);
+
+  CreativeEditorSelectionFrame selection;
+  CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  iggy3d::FrameInput previewFrame;
+  CreativeEditorOverlayFrame previewOverlay;
+  const std::uint64_t revisionBeforePreview =
+      appState.facade.document().revision();
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, previewFrame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      previewOverlay);
+
+  bool ok = expect(previewOverlay.materialBrushEdgeCount > 0U &&
+                       previewFrame.creativePreview.itemCount == 1U &&
+                       previewFrame.creativePreview.items[0].role ==
+                           iggy3d::RenderCreativePreviewRole::Held &&
+                       appState.facade.document().revision() ==
+                           revisionBeforePreview,
+                   "material brush shows a bounded shape and held material") &&
+            expect(editor.quickEdit.options.count == 2U &&
+                       creativeEditorQuickEditStatusLabel(editor) ==
+                           "BRUSH SHAPE SPHERE",
+                   "material brush reuses the two-channel quick edit system");
+  ok = expect(processCreativeEditorQuickEditAction(
+                  editor, cr::CreativeInputActionId::QuickEditNext) &&
+                  creativeEditorQuickEditStatusLabel(editor) ==
+                      "BRUSH SIZE 3 CELLS" &&
+                  processCreativeEditorQuickEditAction(
+                      editor, cr::CreativeInputActionId::QuickEditIncrease) &&
+                  editor.toolSettings.materialBrushSize ==
+                      cr::CreativeMaterialBrushSize::FiveCells,
+              "dpad channel selection adjusts the bounded brush size") &&
+       ok;
+  editor.toolSettings.materialBrushSize =
+      cr::CreativeMaterialBrushSize::ThreeCells;
+  editor.quickEdit.selectedIndex = 0U;
+  syncCreativeEditorQuickEdit(editor);
+
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, true, false), 0U);
+  ok = expect(appState.facade.document()
+                          .voxelField()
+                          .occupiedCellCount() == 7U &&
+                  appState.facade.document().revision() ==
+                      revisionBeforePreview + 1U &&
+                  editor.interaction.materialStroke.visitedCount == 7U &&
+                  editor.interaction.materialStroke.transaction.active,
+              "X applies the default sphere as one atomic document mutation") &&
+       ok;
+
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, false, false),
+      cr::kCreativeMaterialStrokeRepeatNanoseconds);
+  ok = expect(appState.facade.document()
+                      .voxelField()
+                      .occupiedCellCount() == 7U &&
+                  editor.interaction.materialStroke.visitedCount == 7U,
+              "stationary brush hold deduplicates every stamped cell") &&
+       ok;
+
+  setPlaceTarget(editor, 4);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, false, false),
+      2U * cr::kCreativeMaterialStrokeRepeatNanoseconds);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, false, false, true),
+      2U * cr::kCreativeMaterialStrokeRepeatNanoseconds + 1U);
+  ok = expect(appState.facade.document()
+                          .voxelField()
+                          .occupiedCellCount() == 14U &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "moving brush adds a disjoint stamp and release records one undo") &&
+       ok;
+  ok = expect(undoLastEdit(appState, "test_material_brush_paint_undo") &&
+                  appState.facade.document()
+                          .voxelField()
+                          .occupiedCellCount() == 0U,
+              "one undo removes the complete paint gesture") &&
+       ok;
+
+  const cr::CreativeMaterialBrushStampPlan erasePlan =
+      cr::planCreativeMaterialBrushStamp(
+          {cr::CreativeMaterialBrushShape::Sphere,
+           cr::CreativeMaterialBrushSize::ThreeCells, {0, 0, 0}});
+  std::array<cr::CreativeVoxelEdit,
+             cr::kCreativeMaterialBrushStampCapacity>
+      seedEdits{};
+  for (std::size_t index = 0U; index < erasePlan.cellCount; ++index) {
+    seedEdits[index] = {erasePlan.cells[index], cr::CreativeObjectKind::Wall};
+  }
+  const cr::CreativeVoxelMutationReceipt seeded = appState.facade.applyVoxelEdits(
+      {seedEdits.data(), erasePlan.cellCount});
+  appState.history = {};
+  setPlaceTarget(editor, 0);
+  editor.interaction.target.voxelHit = true;
+  editor.interaction.target.voxelCell = {0, 0, 0};
+  editor.interaction.target.objectKind = cr::CreativeObjectKind::Wall;
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Reject, true, true, false), 10U);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Reject, false, false, true), 11U);
+  return expect(seeded.accepted && seeded.changed &&
+                    appState.facade.document()
+                            .voxelField()
+                            .occupiedCellCount() == 0U &&
+                    cr::creativeUndoDepth(appState.history) == 1U,
+                "Circle erases the aimed bounded brush shape in one gesture") &&
+         expect(undoLastEdit(appState, "test_material_brush_erase_undo") &&
+                    appState.facade.document()
+                            .voxelField()
+                            .occupiedCellCount() == 7U,
+                "one undo restores the complete erase gesture") &&
+         ok;
+}
+
+bool materialBrushCapacityRejectsWholeStamp() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 111U);
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
+  editor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::MaterialBrush;
+  editor.toolSettings.materialBrushShape =
+      cr::CreativeMaterialBrushShape::Cube;
+  editor.toolSettings.materialBrushSize =
+      cr::CreativeMaterialBrushSize::FiveCells;
+  syncCreativeEditorHeldItem(appState, editor);
+
+  setPlaceTarget(editor, 0);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, true, false), 0U);
+  setPlaceTarget(editor, 5);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, false, false),
+      cr::kCreativeMaterialStrokeRepeatNanoseconds);
+  setPlaceTarget(editor, 10);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, false, false),
+      2U * cr::kCreativeMaterialStrokeRepeatNanoseconds);
+
+  const bool bounded =
+      appState.facade.document().voxelField().occupiedCellCount() == 250U &&
+      editor.interaction.materialStroke.visitedCount == 250U &&
+      editor.interaction.materialStroke.capacityReached &&
+      editor.interaction.placementFeedback.status ==
+          CreativeEditorPlacementFeedbackStatus::Rejected;
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, false, false, true),
+      2U * cr::kCreativeMaterialStrokeRepeatNanoseconds + 1U);
+  return expect(bounded,
+                "brush capacity rejects an entire stamp before partial mutation") &&
+         expect(cr::creativeUndoDepth(appState.history) == 1U,
+                "capacity stop still commits prior accepted stamps as one undo");
+}
+
 bool placementStrokeDeduplicatesAndRecordsOneUndo() {
   cr::CreativeAppState appState;
   installHistoryDocument(appState, 101U);
@@ -1594,8 +1838,10 @@ int main() {
   ok = placementAdmissionOwnsPreviewAndExecutionTruth() && ok;
   ok = verticalSurfacePlacementFollowsTheAimedFace() && ok;
   ok = quickEditOrientationFeedsPreviewAndCreatePlan() && ok;
+  ok = toolOptionsFollowTheRequestedMaterialEntry() && ok;
   ok = previewFrameUsesWorldTargetAndViewHeldTransforms() && ok;
   ok = previewHidesForEveryBlockingSurface() && ok;
+  ok = quickEditHudHighlightsTheActiveSetting() && ok;
   ok = previewsDoNotAffectRoomGeometrySignature() && ok;
   ok = roomGeometryRendersStoredEulerRadians() && ok;
   ok = materialAimMovementDoesNotChangeUploadSignature() && ok;
@@ -1606,6 +1852,8 @@ int main() {
   ok = worldTargetPicksVoxelBeforeGround() && ok;
   ok = removalStrokeDeletesVoxelAndGroupsHistory() && ok;
   ok = gamepadAcceptPlacesAndRejectRemoves() && ok;
+  ok = materialBrushPaintsErasesPreviewsAndGroupsHistory() && ok;
+  ok = materialBrushCapacityRejectsWholeStamp() && ok;
   ok = placementStrokeDeduplicatesAndRecordsOneUndo() && ok;
   ok = identicalPlacementAcrossGesturesIsRejected() && ok;
   ok = untrackedAndEmptyStrokesFailClosed() && ok;

@@ -315,6 +315,9 @@ bool optionDescriptorsAreContextualAndBounded() {
       cr::creativeToolOptionDescriptors();
   const cr::CreativeToolOptionList material =
       cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::Material);
+  const cr::CreativeToolOptionList materialBrush =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::MaterialBrush);
   const cr::CreativeToolOptionList move =
       cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::ObjectMove);
   const cr::CreativeToolOptionList replace =
@@ -342,6 +345,12 @@ bool optionDescriptorsAreContextualAndBounded() {
                         cr::CreativeToolOptionId::PlacementYaw &&
                     material.ids[1] == cr::CreativeToolOptionId::SnapIncrement,
                 "material exposes orientation and grid size") &&
+         expect(materialBrush.count == 2U &&
+                    materialBrush.ids[0] ==
+                        cr::CreativeToolOptionId::MaterialBrushShape &&
+                    materialBrush.ids[1] ==
+                        cr::CreativeToolOptionId::MaterialBrushSize,
+                "material brush exposes shape and bounded size") &&
          expect(move.count == 3U &&
                     move.ids[0] ==
                         cr::CreativeToolOptionId::MoveConstraint &&
@@ -420,7 +429,15 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                            cr::CreativeToolOptionId::ShapeBrushKind) == "BOX" &&
                        cr::creativeToolOptionValueLabel(
                            settings,
-                           cr::CreativeToolOptionId::ShapeBrushAxis) == "Y",
+                           cr::CreativeToolOptionId::ShapeBrushAxis) == "Y" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::MaterialBrushShape) ==
+                           "SPHERE" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::MaterialBrushSize) ==
+                           "3 CELLS",
                    "default labels and scalar conversions stable");
 
   const auto adjust = [&settings](cr::CreativeToolOptionId option,
@@ -447,6 +464,14 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
        expect(adjust(cr::CreativeToolOptionId::SnapIncrement, 1).changed &&
                   settings.snapIncrement == cr::CreativeSnapIncrement::TwoMeters,
               "grid increment cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::MaterialBrushShape, 1).changed &&
+                  settings.materialBrushShape ==
+                      cr::CreativeMaterialBrushShape::Cylinder,
+              "material brush shape cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::MaterialBrushSize, 1).changed &&
+                  settings.materialBrushSize ==
+                      cr::CreativeMaterialBrushSize::FiveCells,
+              "material brush size cycles within its fixed budget") &&
        expect(adjust(cr::CreativeToolOptionId::ShapeBrushKind, 1).changed &&
                   settings.shapeBrushKind == cr::CreativeShapeBrushKind::Line,
               "shape kind cycles") &&

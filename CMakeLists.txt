@@ -210,6 +210,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorGamepad.cpp
   apps/iggy3d_creative/EditorGizmo.cpp
   apps/iggy3d_creative/EditorInteraction.cpp
+  apps/iggy3d_creative/EditorMaterialStroke.cpp
   apps/iggy3d_creative/EditorPattern.cpp
   apps/iggy3d_creative/EditorBootstrap.cpp
   apps/iggy3d_creative/EditorPlacement.cpp
@@ -220,6 +221,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorPersistence.cpp
   apps/iggy3d_creative/EditorPicking.cpp
   apps/iggy3d_creative/EditorPreviewProxies.cpp
+  apps/iggy3d_creative/EditorShapePreview.cpp
   apps/iggy3d_creative/EditorPreviewFrame.cpp)
 
 add_library(iggy3d_creative_app STATIC ${IGGY3D_CREATIVE_APP_SOURCES})

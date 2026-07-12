@@ -5,13 +5,10 @@
 #include <cmath>
 #include <cstdio>
 #include <string>
-#include <utility>
 
-#include "EditorEdits.hpp"
 #include "EditorFrame.hpp"
 #include "EditorGizmo.hpp"
 #include "EditorPattern.hpp"
-#include "EditorPlacement.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "EditorState.hpp"
 #include "EditorTransform.hpp"
@@ -55,6 +52,8 @@ consteval bool heldItemRowsMatchEnumOrder(
 constexpr std::array kHeldItemBehaviors{
     HeldItemBehavior{cr::CreativeHeldItemKind::Material, cr::Tool::Select, true,
                      false},
+    HeldItemBehavior{cr::CreativeHeldItemKind::MaterialBrush, cr::Tool::Select,
+                     false, false},
     HeldItemBehavior{cr::CreativeHeldItemKind::ObjectSelect, cr::Tool::Select,
                      false, false},
     HeldItemBehavior{cr::CreativeHeldItemKind::ObjectMove, cr::Tool::Move, false,
@@ -202,215 +201,6 @@ void selectObject(InteractionContext& context) {
                       toolModifiers(context.request.modifiers))));
 }
 
-[[nodiscard]] bool sameCell(cr::CreativeGridCoord3 lhs,
-                            cr::CreativeGridCoord3 rhs) noexcept {
-  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
-}
-
-[[nodiscard]] bool strokeVisited(
-    const CreativeMaterialStrokeState& stroke,
-    CreativeMaterialStrokeKind kind,
-    cr::CreativeGridCoord3 cell,
-    cr::CreativeObjectId objectId) noexcept {
-  for (std::size_t index = 0; index < stroke.visitedCount; ++index) {
-    const CreativeMaterialStrokeVisitedKey& key = stroke.visited[index];
-    if ((kind == CreativeMaterialStrokeKind::Place &&
-         sameCell(key.cell, cell)) ||
-        (kind == CreativeMaterialStrokeKind::Remove &&
-         ((objectId != cr::kInvalidObjectId && key.objectId == objectId) ||
-          (objectId == cr::kInvalidObjectId &&
-           key.objectId == cr::kInvalidObjectId &&
-           sameCell(key.cell, cell))))) {
-      return true;
-    }
-  }
-  return false;
-}
-
-[[nodiscard]] bool rememberStrokeTarget(
-    CreativeMaterialStrokeState& stroke,
-    cr::CreativeGridCoord3 cell,
-    cr::CreativeObjectId objectId) noexcept {
-  if (stroke.visitedCount >= stroke.visited.size()) {
-    stroke.capacityReached = true;
-    return false;
-  }
-  stroke.visited[stroke.visitedCount++] = {cell, objectId};
-  return true;
-}
-
-void rejectMaterialStroke(CreativeEditorState& editor,
-                          cr::CreativeObjectKind objectKind) {
-  editor.interaction.placementFeedback = {
-      CreativeEditorPlacementFeedbackStatus::Rejected,
-      cr::kInvalidObjectId, objectKind, editor.frameIndex};
-}
-
-[[nodiscard]] bool ensureMaterialStrokeTransaction(
-    cr::CreativeAppState& appState,
-    CreativeMaterialStrokeState& stroke,
-    CreativeMaterialStrokeKind kind) {
-  if (stroke.transaction.active) {
-    return true;
-  }
-  stroke.transaction = beginEditTransaction(
-      appState.facade,
-      kind == CreativeMaterialStrokeKind::Remove
-          ? "minecraft_primary_remove_stroke"
-          : "minecraft_secondary_place_stroke");
-  return stroke.transaction.active;
-}
-
-void applyMaterialStrokeMutation(cr::CreativeAppState& appState,
-                                 CreativeEditorState& editor,
-                                 const cr::CreativeHotbarEntry& held,
-                                 CreativeMaterialStrokeKind kind) {
-  CreativeMaterialStrokeState& stroke = editor.interaction.materialStroke;
-  const CreativeEditorWorldTarget& target = editor.interaction.target;
-
-  if (stroke.capacityReached) {
-    rejectMaterialStroke(editor, held.objectKind);
-    return;
-  }
-
-  if (kind == CreativeMaterialStrokeKind::Remove) {
-    if (!target.objectHit && !target.voxelHit) {
-      rejectMaterialStroke(editor, target.objectKind);
-      return;
-    }
-    const cr::CreativeGridCoord3 targetCell =
-        target.voxelHit ? target.voxelCell : cr::CreativeGridCoord3{};
-    const cr::CreativeObjectId targetObjectId =
-        target.voxelHit ? cr::kInvalidObjectId : target.objectId;
-    if (strokeVisited(stroke, kind, targetCell, targetObjectId)) {
-      return;
-    }
-    if (!ensureMaterialStrokeTransaction(appState, stroke, kind)) {
-      rejectMaterialStroke(editor, target.objectKind);
-      return;
-    }
-    if (!rememberStrokeTarget(stroke, targetCell, targetObjectId)) {
-      rejectMaterialStroke(editor, target.objectKind);
-      return;
-    }
-    bool changed = false;
-    if (target.voxelHit) {
-      const cr::CreativeVoxelEdit edit{target.voxelCell,
-                                       cr::CreativeObjectKind::Unknown};
-      const cr::CreativeVoxelMutationReceipt receipt =
-          appState.facade.applyVoxelEdits(std::span{&edit, 1U});
-      changed = receipt.accepted && receipt.changed;
-    } else {
-      const cr::CreativeDocumentRemoveReceipt receipt =
-          appState.facade.removeDocumentObject(target.objectId);
-      changed = receipt.accepted && receipt.objectRemoved && receipt.changed;
-    }
-    if (changed) {
-      ++stroke.acceptedMutationCount;
-      editor.interaction.placementFeedback = {};
-    } else {
-      rejectMaterialStroke(editor, target.objectKind);
-    }
-    return;
-  }
-
-  const cr::CreativeGridTarget& grid = target.grid;
-  if (!grid.valid || held.objectKind == cr::CreativeObjectKind::Unknown) {
-    rejectMaterialStroke(editor, held.objectKind);
-    return;
-  }
-  const CreativeBrushPlacementAdmission admission =
-      admitBrushPlacement(held.objectKind, grid,
-                          editor.toolSettings.placementYaw);
-  if (!admission.allowed) {
-    rejectMaterialStroke(editor, held.objectKind);
-    return;
-  }
-  if (creativeBrushPlacementAlreadyExists(
-          appState.facade.document(), admission.plan)) {
-    rejectMaterialStroke(editor, held.objectKind);
-    return;
-  }
-  if (strokeVisited(stroke, kind, grid.adjacentCell,
-                    cr::kInvalidObjectId)) {
-    return;
-  }
-  if (!ensureMaterialStrokeTransaction(appState, stroke, kind)) {
-    rejectMaterialStroke(editor, held.objectKind);
-    return;
-  }
-  if (!rememberStrokeTarget(stroke, grid.adjacentCell,
-                            cr::kInvalidObjectId)) {
-    rejectMaterialStroke(editor, held.objectKind);
-    return;
-  }
-  const std::uint64_t ordinal = editor.placedCount + 1U;
-  const CreativeBrushPlacementMutationReceipt receipt = applyBrushPlacement(
-      appState.facade, admission.plan, ordinal);
-  if (receipt.accepted && receipt.changed &&
-      (receipt.objectCreated || receipt.voxelCreated)) {
-    editor.placedCount = ordinal;
-    ++stroke.acceptedMutationCount;
-    CreativeEditorPlacementFeedback feedback;
-    feedback.status = CreativeEditorPlacementFeedbackStatus::Placed;
-    feedback.objectId = receipt.objectId;
-    feedback.objectKind = receipt.objectKind;
-    feedback.frameIndex = editor.frameIndex;
-    feedback.voxelPlaced = receipt.voxelCreated;
-    feedback.voxelCell = receipt.voxelCell;
-    feedback.voxelBounds = receipt.worldBounds;
-    editor.interaction.placementFeedback = feedback;
-  } else {
-    rejectMaterialStroke(editor, held.objectKind);
-  }
-}
-
-void processMaterialStroke(cr::CreativeAppState& appState,
-                           CreativeEditorState& editor,
-                           const cr::CreativeHotbarEntry& held,
-                           const cr::CreativeWorldActionFrame& actions,
-                           std::uint64_t monotonicTimeNanoseconds) {
-  CreativeMaterialStrokeState& stroke = editor.interaction.materialStroke;
-  CreativeMaterialRepeatRequest repeatRequest;
-  repeatRequest.nowNanoseconds = monotonicTimeNanoseconds;
-  repeatRequest.primaryPressed = cr::creativeWorldActionPressed(
-      actions, cr::CreativeWorldActionId::Primary) ||
-      cr::creativeWorldActionPressed(actions,
-                                     cr::CreativeWorldActionId::Reject);
-  repeatRequest.primaryDown = cr::creativeWorldActionDown(
-      actions, cr::CreativeWorldActionId::Primary) ||
-      cr::creativeWorldActionDown(actions,
-                                  cr::CreativeWorldActionId::Reject);
-  repeatRequest.primaryReleased = cr::creativeWorldActionReleased(
-      actions, cr::CreativeWorldActionId::Primary) ||
-      cr::creativeWorldActionReleased(actions,
-                                      cr::CreativeWorldActionId::Reject);
-  repeatRequest.secondaryPressed = cr::creativeWorldActionPressed(
-      actions, cr::CreativeWorldActionId::Secondary) ||
-      cr::creativeWorldActionPressed(actions,
-                                     cr::CreativeWorldActionId::Accept);
-  repeatRequest.secondaryDown = cr::creativeWorldActionDown(
-      actions, cr::CreativeWorldActionId::Secondary) ||
-      cr::creativeWorldActionDown(actions,
-                                  cr::CreativeWorldActionId::Accept);
-  repeatRequest.secondaryReleased = cr::creativeWorldActionReleased(
-      actions, cr::CreativeWorldActionId::Secondary) ||
-      cr::creativeWorldActionReleased(actions,
-                                      cr::CreativeWorldActionId::Accept);
-
-  const CreativeMaterialRepeatResult repeat =
-      stepCreativeMaterialRepeat(stroke.repeat, repeatRequest);
-  stroke.repeat = repeat.next;
-  if (repeat.finalized) {
-    finalizeCreativeMaterialStroke(appState, editor,
-                                   "creative_material_stroke_released");
-    return;
-  }
-  if (repeat.mutationDue) {
-    applyMaterialStrokeMutation(appState, editor, held, repeat.dueKind);
-  }
-}
-
 void sampleTargetMaterial(InteractionContext& context) {
   CreativeEditorState& editor = context.request.editor;
   const CreativeEditorWorldTarget& target = editor.interaction.target;
@@ -418,11 +208,13 @@ void sampleTargetMaterial(InteractionContext& context) {
       target.objectKind == cr::CreativeObjectKind::Unknown) {
     return;
   }
-  if (cr::creativeHeldItemIsVolumeOperation(context.held.kind)) {
+  if (context.held.kind != cr::CreativeHeldItemKind::Material &&
+      cr::creativeHeldItemUsesMaterial(context.held.kind)) {
     if (cr::creativeVolumeBrushSupported(target.objectKind)) {
       editor.placeBrush = target.objectKind;
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar).objectKind =
           target.objectKind;
+      syncCreativeEditorQuickEdit(editor);
     }
     return;
   }
@@ -576,6 +368,9 @@ void acceptHeldArray(InteractionContext& context) {
 constexpr std::array<HeldItemHandlerRow, cr::kCreativeHeldItemKindCount>
     kHeldItemHandlers{{
         {cr::CreativeHeldItemKind::Material,
+         {noInteraction, noInteraction, sampleTargetMaterial},
+         noInteraction, noInteraction},
+        {cr::CreativeHeldItemKind::MaterialBrush,
          {noInteraction, noInteraction, sampleTargetMaterial},
          noInteraction, noInteraction},
         {cr::CreativeHeldItemKind::ObjectSelect,
@@ -739,6 +534,26 @@ void appendColoredText(std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
   glyphs.insert(glyphs.end(), layout.quads.begin(), layout.quads.end());
 }
 
+void appendHeldItemStatusText(
+    std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
+    std::string_view text,
+    std::int32_t x,
+    std::int32_t y,
+    std::uint32_t width,
+    std::uint32_t height) {
+  iggy3d::DebugHudLayoutResult layout =
+      iggy3d::layoutDebugHudTextAt(text, x, y, width, height);
+  bool quickEditActive = false;
+  for (iggy3d::DebugHudGlyphQuad& quad : layout.quads) {
+    quickEditActive = quickEditActive || quad.source == '[';
+    quad.r = quickEditActive ? 0.24F : 0.88F;
+    quad.g = quickEditActive ? 1.0F : 0.90F;
+    quad.b = quickEditActive ? 0.34F : 0.94F;
+    quad.a = 1.0F;
+  }
+  glyphs.insert(glyphs.end(), layout.quads.begin(), layout.quads.end());
+}
+
 }  // namespace
 
 double creativeEditorTargetCellSize(
@@ -756,6 +571,8 @@ double creativeEditorTargetCellSize(
           return document.gridSettings().cellSizeMeters;
       }
       return editor.placeCellSize;
+    case cr::CreativeHeldItemKind::MaterialBrush:
+      return document.gridSettings().cellSizeMeters;
     case cr::CreativeHeldItemKind::VolumeSelect:
     case cr::CreativeHeldItemKind::VolumeFill:
     case cr::CreativeHeldItemKind::VolumeHollow:
@@ -805,6 +622,16 @@ std::string creativeEditorHeldItemStatusLabel(
     appendQuickEdit();
     return output;
   }
+  if (held.kind == cr::CreativeHeldItemKind::MaterialBrush) {
+    output.append(" | ");
+    output.append(cr::toString(held.objectKind));
+    output.append(" | ");
+    output.append(cr::toString(editor.toolSettings.materialBrushShape));
+    output.append(" | ");
+    output.append(cr::toString(editor.toolSettings.materialBrushSize));
+    appendQuickEdit();
+    return output;
+  }
   if (held.kind == cr::CreativeHeldItemKind::LinearArray) {
     output.append(" | ");
     output.append(cr::toString(editor.toolSettings.arrayMode));
@@ -827,40 +654,6 @@ std::string creativeEditorHeldItemStatusLabel(
   }
   appendQuickEdit();
   return output;
-}
-
-void finalizeCreativeMaterialStroke(cr::CreativeAppState& appState,
-                                    CreativeEditorState& editor,
-                                    std::string_view reasonCode) {
-  CreativeMaterialStrokeState& stroke = editor.interaction.materialStroke;
-  if (!stroke.repeat.active && !stroke.transaction.active) {
-    stroke = {};
-    return;
-  }
-  StandaloneEditTransaction transaction = std::move(stroke.transaction);
-  const bool changed = stroke.acceptedMutationCount > 0U;
-  stroke = {};
-  if (transaction.active) {
-    static_cast<void>(completeEditTransaction(
-        appState.history, std::move(transaction), appState.facade, changed,
-        reasonCode));
-  }
-}
-
-void processCreativeMaterialStrokeFrame(
-    cr::CreativeAppState& appState,
-    CreativeEditorState& editor,
-    const cr::CreativeWorldActionFrame& actions,
-    std::uint64_t monotonicTimeNanoseconds) {
-  const cr::CreativeHotbarEntry& held =
-      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  if (held.kind != cr::CreativeHeldItemKind::Material) {
-    finalizeCreativeMaterialStroke(appState, editor,
-                                   "creative_material_stroke_non_material_tool");
-    return;
-  }
-  processMaterialStroke(appState, editor, held, actions,
-                        monotonicTimeNanoseconds);
 }
 
 CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
@@ -977,8 +770,7 @@ void syncCreativeEditorHeldItem(cr::CreativeAppState& appState,
   const HeldItemBehavior& behavior = kHeldItemBehaviors[behaviorIndex];
   editor.placeMode = behavior.placeMode;
   if (held.objectKind != cr::CreativeObjectKind::Unknown &&
-      (held.kind == cr::CreativeHeldItemKind::Material ||
-       cr::creativeHeldItemIsVolumeOperation(held.kind))) {
+      cr::creativeHeldItemUsesMaterial(held.kind)) {
     editor.placeBrush = held.objectKind;
   }
   if (behavior.volumeMode) {
@@ -1115,7 +907,8 @@ void processCreativeEditorWorldInteractionFrame(
 
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  if (held.kind == cr::CreativeHeldItemKind::Material) {
+  if (held.kind == cr::CreativeHeldItemKind::Material ||
+      held.kind == cr::CreativeHeldItemKind::MaterialBrush) {
     InteractionContext context{request, held};
     processCreativeMaterialStrokeFrame(
         request.appState, editor, request.actions,
@@ -1254,15 +1047,16 @@ void appendCreativeEditorInteractionOverlay(
     const std::int32_t heldLabelX = std::max(
         4, static_cast<std::int32_t>(drawableWidth / 2U) -
                static_cast<std::int32_t>(heldLabel.size() * 4U));
-    appendColoredText(glyphs, heldLabel, heldLabelX, hotbarY - 22,
-                      drawableWidth, drawableHeight, false);
+    appendHeldItemStatusText(glyphs, heldLabel, heldLabelX, hotbarY - 22,
+                             drawableWidth, drawableHeight);
   }
 
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   if (!inventoryModalOpen && !editor.transform.active &&
       editor.interaction.target.grid.valid &&
-      held.kind != cr::CreativeHeldItemKind::Material) {
+      held.kind != cr::CreativeHeldItemKind::Material &&
+      held.kind != cr::CreativeHeldItemKind::MaterialBrush) {
     const cr::CreativeBounds& bounds =
         editor.interaction.target.grid.targetCellBounds;
     const cr::CreativeCoreVec3Conversion boxMin =

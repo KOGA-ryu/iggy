@@ -1,5 +1,6 @@
 #include "EditorActionHints.hpp"
 #include "EditorState.hpp"
+#include "EditorToolOptions.hpp"
 #include "app/iggy3d/creative/render/CreativeOverlayFrame.hpp"
 
 #include <array>
@@ -77,9 +78,10 @@ void setHeld(CreativeEditorState& editor,
                  cr::CreativeObjectKind::Unknown) {
   editor.interaction.hotbar.selectedSlot = 0U;
   editor.interaction.hotbar.entries[0] = {kind, objectKind};
-  editor.quickEdit.heldItem = kind;
+  editor.quickEdit.targetEntry = {kind, objectKind};
   editor.quickEdit.options =
-      cr::creativeToolOptionsForHeldItem(kind, editor.toolSettings);
+      creativeEditorToolOptionsForEntry(editor.quickEdit.targetEntry,
+                                        editor.toolSettings);
   editor.quickEdit.selectedIndex = 0U;
 }
 
@@ -243,6 +245,26 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                        keyboardPlace->chord.view() == "Mouse R" &&
                        keyboardPlace->label.view() == "Place",
                    "keyboard and mouse receive compact device-native hints");
+
+  setHeld(editor, cr::CreativeHeldItemKind::MaterialBrush,
+          cr::CreativeObjectKind::Wall);
+  const cr::CreativeActionHintFrame brush = resolveCreativeEditorActionHints(
+      editor, cr::CreativeInputContext::EditorViewport,
+      cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* paint =
+      findHint(brush, cr::CreativeInputActionId::AcceptAction);
+  const cr::CreativeActionHint* erase =
+      findHint(brush, cr::CreativeInputActionId::RejectAction);
+  const cr::CreativeActionHint* brushSetting =
+      findHint(brush, cr::CreativeInputActionId::QuickEditPrevious);
+  ok = expect(paint != nullptr && paint->chord.view() == "X" &&
+                  paint->label.view() == "Paint" && erase != nullptr &&
+                  erase->chord.view() == "Circle" &&
+                  erase->label.view() == "Erase" &&
+                  brushSetting != nullptr &&
+                  brushSetting->chord.view() == "D-pad U/D",
+              "material brush advertises controller-native paint erase and settings") &&
+       ok;
 
   setHeld(editor, cr::CreativeHeldItemKind::LinearArray);
   const cr::CreativeActionHintFrame array = resolveCreativeEditorActionHints(

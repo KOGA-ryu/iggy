@@ -191,6 +191,7 @@ Initial tool grammar:
 | Held tool | Mouse primary | Mouse secondary | PS5 X | PS5 Circle | Pick / Square |
 |---|---|---|---|---|---|
 | Block/material | Remove target | Place at target | Place at target | Remove target | Sample material |
+| Material brush | Erase stamp | Paint stamp | Paint stamp | Erase stamp | Sample material |
 | Object select | Select/toggle target | No action | Select/toggle target | Cancel active action | Sample material |
 | Transform | Fast ground-plane drag | Begin transform preview | Fast ground-plane drag | Cancel active drag | Sample material |
 | Selection wand | Set corner 1 | Set corner 2 | Advance corner 1/2 | Clear selection | Expand selection |
@@ -286,12 +287,13 @@ preview's contextual wheel. They do not each earn a permanent global key.
   pending confirmation.
 - `Escape`, the controller cancel button, or a second inventory press closes
   the catalog. Catalog input is modal and cannot mutate the world underneath it.
-- `R` or controller `R3` opens the eight-sector creator-tool wheel.
+- `R` or controller `R3` opens the nine-sector creator-tool wheel.
   Mouse direction or right stick selects a sector; arrow keys, D-pad up/down,
   and wheel cycle it; `Enter`, controller confirm, or click equips the tool into
   the active hotbar slot. `Escape`, controller cancel, or the toggle closes it.
-  Array owns the eighth sector; Erase remains available from the default hotbar
-  and searchable catalog instead of occupying a radial sector.
+  Brush owns the first sector and Array owns the ninth; Erase remains available
+  from the default hotbar and searchable catalog instead of occupying a radial
+  sector.
 - While the wheel is open, `O` or controller Square opens the highlighted
   tool's contextual options. Modal capture prevents X, Circle, and Square from
   mutating the world underneath the wheel.
@@ -305,8 +307,9 @@ preview's contextual wheel. They do not each earn a permanent global key.
   camera/document input during both opening and closing transitions.
 - Contextual settings currently provide Free/X/Z fast-drag movement,
   X/Y/Z precision-preview constraints, 15/45/90-degree
-  rotation, 0.25/0.5/1/2-meter grid increments, Replace source filtering by
-  material or Any, Clone offsets on X/Y/Z at 1/2/4/8 cells, Linear Array
+  rotation, 0.25/0.5/1/2-meter grid increments, Material Brush Cube/Sphere/
+  Cylinder shape and 1/3/5-cell size, Replace source filtering by material or
+  Any, Clone offsets on X/Y/Z at 1/2/4/8 cells, Linear Array
   direction on either world axis with 1/2/4/8/16/32 copies at 1/2/4/8-cell
   spacing, and Radial Array X/Y/Z rings or arcs with 2/4/8/16/32 total
   instances across 90/180/360 degrees.
@@ -362,6 +365,13 @@ preview's contextual wheel. They do not each earn a permanent global key.
   object's front toward the player. Voxel-backed materials remain unrotated. No
   extra rotate key is required for normal placement.
 - Material, select, move, and volume tools use the held-tool grammar above.
+- Material Brush paints the selected voxel material with X/right mouse and
+  erases with Circle/left mouse. Cube, sphere, and vertical-cylinder stamps are
+  allocation-free fixed batches at 1, 3, or 5 cells across. A held gesture
+  repeats every 200 ms, deduplicates previously visited cells, and commits one
+  undo record on release. The 256-cell gesture budget rejects a whole stamp
+  before mutation rather than clipping its shape. Green wireframe previews paint;
+  red wireframe previews erase or invalid material state.
 - A material's thin green wireframe is only a placement preview. Right mouse or
   controller X attempts the placement. `Wall`, `Floor`, `Ceiling`,
   and `Roof` place one exact voxel cell; props, attachments, paths, lights, and

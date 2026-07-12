@@ -5,7 +5,6 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
-#include <numbers>
 #include <string>
 #include <utility>
 
@@ -22,6 +21,7 @@
 #include "EditorPlacement.hpp"
 #include "EditorPattern.hpp"
 #include "EditorPreviewProxies.hpp"
+#include "EditorShapePreview.hpp"
 #include "EditorState.hpp"
 #include "EditorVolume.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
@@ -147,183 +147,57 @@ void appendCreativePreview(RenderCreativePreviewFrame& previews,
       role, clipFromModel, includePathWireframe};
 }
 
-void appendVolumePreviewLine(
-    std::vector<RenderCreativeWireframeDebugLine>& lines,
-    Vec3 start,
-    Vec3 end,
-    RenderLineColor color,
-    float thickness) {
-  if (!isFinite(start) || !isFinite(end) ||
-      (start.x == end.x && start.y == end.y && start.z == end.z)) {
-    return;
+[[nodiscard]] cr::CreativeShapeBrushKind materialBrushOutlineKind(
+    cr::CreativeMaterialBrushShape shape) noexcept {
+  switch (shape) {
+    case cr::CreativeMaterialBrushShape::Cube:
+      return cr::CreativeShapeBrushKind::Box;
+    case cr::CreativeMaterialBrushShape::Sphere:
+      return cr::CreativeShapeBrushKind::Ellipsoid;
+    case cr::CreativeMaterialBrushShape::Cylinder:
+      return cr::CreativeShapeBrushKind::Cylinder;
+    case cr::CreativeMaterialBrushShape::Count:
+      return cr::CreativeShapeBrushKind::Count;
   }
-  RenderCreativeWireframeDebugLine line;
-  line.start = start;
-  line.end = end;
-  line.color = color;
-  line.thickness = thickness;
-  lines.push_back(line);
+  return cr::CreativeShapeBrushKind::Count;
 }
 
-[[nodiscard]] Vec3 ellipsePoint(Vec3 center,
-                                Vec3 firstAxis,
-                                Vec3 secondAxis,
-                                float angle) noexcept {
-  const float cosine = std::cos(angle);
-  const float sine = std::sin(angle);
-  return {center.x + firstAxis.x * cosine + secondAxis.x * sine,
-          center.y + firstAxis.y * cosine + secondAxis.y * sine,
-          center.z + firstAxis.z * cosine + secondAxis.z * sine};
-}
-
-void appendEllipseLoop(
-    std::vector<RenderCreativeWireframeDebugLine>& lines,
-    Vec3 center,
-    Vec3 firstAxis,
-    Vec3 secondAxis,
-    RenderLineColor color,
-    float thickness) {
-  constexpr std::size_t kSegmentCount = 48U;
-  constexpr float kTurn = 2.0F * std::numbers::pi_v<float>;
-  Vec3 previous = ellipsePoint(center, firstAxis, secondAxis, 0.0F);
-  for (std::size_t segment = 1U; segment <= kSegmentCount; ++segment) {
-    const float angle = kTurn * static_cast<float>(segment) /
-                        static_cast<float>(kSegmentCount);
-    const Vec3 current =
-        ellipsePoint(center, firstAxis, secondAxis, angle);
-    appendVolumePreviewLine(lines, previous, current, color, thickness);
-    previous = current;
+[[nodiscard]] bool materialBrushPreviewSelection(
+    const CreativeEditorState& editor,
+    const cr::CreativeDocument& document,
+    cr::CreativeVolumeSelection& selection,
+    cr::CreativeShapeBrushKind& outlineKind,
+    bool& removing) noexcept {
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  if (held.kind != cr::CreativeHeldItemKind::MaterialBrush ||
+      !editor.interaction.target.grid.valid) {
+    return false;
   }
-}
-
-[[nodiscard]] Vec3 renderVec3(cr::CreativeVec3 value) noexcept {
-  return cr::creativeVec3ToCoreChecked(value).value;
-}
-
-[[nodiscard]] Vec3 cellCenter(const cr::CreativeVolumeSelection& selection,
-                              cr::CreativeGridCoord3 cell) noexcept {
-  const cr::CreativeBounds bounds = cr::creativeVolumeCellBounds(
-      cell, selection.cellSize, selection.origin);
-  return cr::creativeVec3ToCoreChecked(
-             cr::measureCreativeBounds(bounds).center)
-      .value;
-}
-
-void appendShapeBrushOutline(
-    std::vector<RenderCreativeWireframeDebugLine>& lines,
-    const cr::CreativeVolumeSelection& selection,
-    cr::CreativeShapeBrushKind kind,
-    cr::CreativeShapeBrushAxis axis,
-    RenderLineColor color,
-    float thickness) {
-  const cr::CreativeBounds bounds = cr::creativeVolumeWorldBounds(selection);
-  const Vec3 minimum = renderVec3(bounds.min);
-  const Vec3 maximum = renderVec3(bounds.max);
-  const Vec3 center{(minimum.x + maximum.x) * 0.5F,
-                    (minimum.y + maximum.y) * 0.5F,
-                    (minimum.z + maximum.z) * 0.5F};
-  const Vec3 radii{(maximum.x - minimum.x) * 0.5F,
-                   (maximum.y - minimum.y) * 0.5F,
-                   (maximum.z - minimum.z) * 0.5F};
-
-  switch (kind) {
-    case cr::CreativeShapeBrushKind::Box:
-      appendStandaloneWireframeBoxEdges(lines, minimum, maximum, color,
-                                        thickness);
-      return;
-    case cr::CreativeShapeBrushKind::Line: {
-      const Vec3 first = cellCenter(selection, selection.firstCell);
-      const Vec3 second = cellCenter(selection, selection.secondCell);
-      appendVolumePreviewLine(lines, first, second, color,
-                              std::max(thickness, 0.045F));
-      const cr::CreativeBounds firstBounds = cr::creativeVolumeCellBounds(
-          selection.firstCell, selection.cellSize, selection.origin);
-      appendStandaloneWireframeBoxEdges(lines, renderVec3(firstBounds.min),
-                                        renderVec3(firstBounds.max), color,
-                                        thickness);
-      if (selection.firstCell.x != selection.secondCell.x ||
-          selection.firstCell.y != selection.secondCell.y ||
-          selection.firstCell.z != selection.secondCell.z) {
-        const cr::CreativeBounds secondBounds = cr::creativeVolumeCellBounds(
-            selection.secondCell, selection.cellSize, selection.origin);
-        appendStandaloneWireframeBoxEdges(lines, renderVec3(secondBounds.min),
-                                          renderVec3(secondBounds.max), color,
-                                          thickness);
-      }
-      return;
-    }
-    case cr::CreativeShapeBrushKind::Ellipsoid:
-      appendEllipseLoop(lines, center, {radii.x, 0.0F, 0.0F},
-                        {0.0F, radii.y, 0.0F}, color, thickness);
-      appendEllipseLoop(lines, center, {radii.x, 0.0F, 0.0F},
-                        {0.0F, 0.0F, radii.z}, color, thickness);
-      appendEllipseLoop(lines, center, {0.0F, radii.y, 0.0F},
-                        {0.0F, 0.0F, radii.z}, color, thickness);
-      return;
-    case cr::CreativeShapeBrushKind::Cylinder: {
-      Vec3 firstCenter = center;
-      Vec3 secondCenter = center;
-      Vec3 firstRadius{};
-      Vec3 secondRadius{};
-      switch (axis) {
-        case cr::CreativeShapeBrushAxis::X:
-          firstCenter.x = minimum.x;
-          secondCenter.x = maximum.x;
-          firstRadius = {0.0F, radii.y, 0.0F};
-          secondRadius = {0.0F, 0.0F, radii.z};
-          break;
-        case cr::CreativeShapeBrushAxis::Y:
-          firstCenter.y = minimum.y;
-          secondCenter.y = maximum.y;
-          firstRadius = {radii.x, 0.0F, 0.0F};
-          secondRadius = {0.0F, 0.0F, radii.z};
-          break;
-        case cr::CreativeShapeBrushAxis::Z:
-          firstCenter.z = minimum.z;
-          secondCenter.z = maximum.z;
-          firstRadius = {radii.x, 0.0F, 0.0F};
-          secondRadius = {0.0F, radii.y, 0.0F};
-          break;
-        case cr::CreativeShapeBrushAxis::Count:
-          appendStandaloneWireframeBoxEdges(lines, minimum, maximum,
-                                            {1.0F, 0.15F, 0.12F, 1.0F},
-                                            thickness);
-          return;
-      }
-      appendEllipseLoop(lines, firstCenter, firstRadius, secondRadius, color,
-                        thickness);
-      appendEllipseLoop(lines, secondCenter, firstRadius, secondRadius, color,
-                        thickness);
-      for (const float sign : {-1.0F, 1.0F}) {
-        appendVolumePreviewLine(
-            lines,
-            {firstCenter.x + firstRadius.x * sign,
-             firstCenter.y + firstRadius.y * sign,
-             firstCenter.z + firstRadius.z * sign},
-            {secondCenter.x + firstRadius.x * sign,
-             secondCenter.y + firstRadius.y * sign,
-             secondCenter.z + firstRadius.z * sign},
-            color, thickness);
-        appendVolumePreviewLine(
-            lines,
-            {firstCenter.x + secondRadius.x * sign,
-             firstCenter.y + secondRadius.y * sign,
-             firstCenter.z + secondRadius.z * sign},
-            {secondCenter.x + secondRadius.x * sign,
-             secondCenter.y + secondRadius.y * sign,
-             secondCenter.z + secondRadius.z * sign},
-            color, thickness);
-      }
-      return;
-    }
-    case cr::CreativeShapeBrushKind::Count:
-      appendStandaloneWireframeBoxEdges(lines, minimum, maximum,
-                                        {1.0F, 0.15F, 0.12F, 1.0F},
-                                        thickness);
-      return;
+  removing = editor.interaction.materialStroke.repeat.active &&
+             editor.interaction.materialStroke.repeat.kind ==
+                 CreativeMaterialStrokeKind::Remove;
+  if (removing && !editor.interaction.target.voxelHit) {
+    return false;
   }
-  appendStandaloneWireframeBoxEdges(lines, minimum, maximum,
-                                    {1.0F, 0.15F, 0.12F, 1.0F}, thickness);
+  const cr::CreativeGridCoord3 center =
+      removing ? editor.interaction.target.voxelCell
+               : editor.interaction.target.grid.adjacentCell;
+  const cr::CreativeMaterialBrushStampPlan plan =
+      cr::planCreativeMaterialBrushStamp(
+          {editor.toolSettings.materialBrushShape,
+           editor.toolSettings.materialBrushSize, center});
+  outlineKind = materialBrushOutlineKind(editor.toolSettings.materialBrushShape);
+  if (!plan.accepted || outlineKind == cr::CreativeShapeBrushKind::Count) {
+    return false;
+  }
+  const cr::CreativeGridSettings grid = document.gridSettings();
+  selection.phase = cr::CreativeVolumeSelectionPhase::Complete;
+  selection.firstCell = plan.minCell;
+  selection.secondCell = plan.maxCell;
+  selection.origin = grid.origin;
+  selection.cellSize = grid.cellSizeMeters;
+  return cr::creativeVolumeSelectionValid(selection);
 }
 
 [[nodiscard]] bool voxelChunkCoordLess(
@@ -458,8 +332,12 @@ void attachCreativeEditorPlacementPreviews(
                          editor.transform.active;
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const bool materialPlacement =
+      held.kind == cr::CreativeHeldItemKind::Material;
+  const bool materialBrush =
+      held.kind == cr::CreativeHeldItemKind::MaterialBrush;
   if (captureMode || modalOpen ||
-      held.kind != cr::CreativeHeldItemKind::Material ||
+      (!materialPlacement && !materialBrush) ||
       held.objectKind == cr::CreativeObjectKind::Unknown) {
     return;
   }
@@ -481,7 +359,8 @@ void attachCreativeEditorPlacementPreviews(
   const bool mutationAcceptedThisFrame =
       feedback.frameIndex == editor.frameIndex &&
       feedback.status == CreativeEditorPlacementFeedbackStatus::Placed;
-  if (editor.interaction.target.grid.valid && !mutationAcceptedThisFrame) {
+  if (materialPlacement && editor.interaction.target.grid.valid &&
+      !mutationAcceptedThisFrame) {
     const CreativeBrushPlacementAdmission admission = admitBrushPlacement(
         held.objectKind, editor.interaction.target.grid,
         editor.toolSettings.placementYaw);
@@ -604,6 +483,7 @@ void buildAndAttachCreativeEditorOverlayFrame(
   output.lineMarkerEdgeCount = 0;
   output.pathPointHandleEdgeCount = 0;
   output.ghostEdgeCount = 0;
+  output.materialBrushEdgeCount = 0;
   output.volumeEdgeCount = 0;
   output.patternEdgeCount = 0;
   output.transformPreviewEdgeCount = 0;
@@ -757,6 +637,33 @@ void buildAndAttachCreativeEditorOverlayFrame(
       }
     }
   }
+  // ---- MATERIAL BRUSH PREVIEW --------------------------------------------
+  cr::CreativeVolumeSelection materialBrushSelection;
+  cr::CreativeShapeBrushKind materialBrushOutline =
+      cr::CreativeShapeBrushKind::Count;
+  bool materialBrushRemoving = false;
+  if (!editor.transform.active && materialBrushPreviewSelection(
+                                      editor, appState.facade.document(),
+                                      materialBrushSelection,
+                                      materialBrushOutline,
+                                      materialBrushRemoving)) {
+    const cr::CreativeHotbarEntry& held =
+        cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+    const bool validMaterial =
+        cr::creativeVolumeBrushSupported(held.objectKind) &&
+        !editor.interaction.materialStroke.capacityReached;
+    const RenderLineColor color =
+        materialBrushRemoving
+            ? RenderLineColor{1.0F, 0.2F, 0.16F, 1.0F}
+            : validMaterial ? RenderLineColor{0.22F, 1.0F, 0.34F, 1.0F}
+                            : RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F};
+    const std::size_t before = combinedWireLines.size();
+    appendCreativeShapeBrushOutline(
+        combinedWireLines, materialBrushSelection, materialBrushOutline,
+        cr::CreativeShapeBrushAxis::Y, color, gizmoThickness);
+    output.materialBrushEdgeCount = combinedWireLines.size() - before;
+  }
+
   // ---- VOLUME PREVIEW ----------------------------------------------------
   // The preview is transient editor state, not a document object. Curved
   // outlines stay bounded while the shared planner supplies the exact cell
@@ -790,7 +697,7 @@ void buildAndAttachCreativeEditorOverlayFrame(
           volumeUsesShapePlan && !volumeShapePlan.accepted
               ? RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F}
               : volumeOperationColor(editor.volume.operation);
-      appendShapeBrushOutline(
+      appendCreativeShapeBrushOutline(
           combinedWireLines, volumeSelection,
           volumeUsesShapePlan ? editor.toolSettings.shapeBrushKind
                               : creative::CreativeShapeBrushKind::Box,

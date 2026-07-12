@@ -16,7 +16,7 @@
 namespace iggy3d::creative {
 
 inline constexpr std::size_t kCreativeCatalogQueryCapacity = 64;
-inline constexpr std::size_t kCreativeToolWheelCapacity = 8;
+inline constexpr std::size_t kCreativeToolWheelCapacity = 9;
 inline constexpr std::size_t kCreativeCatalogActionCapacity = 9;
 inline constexpr std::size_t kCreativeCatalogShapePresetCount = 6;
 

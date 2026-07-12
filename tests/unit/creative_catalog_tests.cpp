@@ -154,8 +154,8 @@ bool actionAvailabilityUsesExplicitFacts() {
 
 bool catalogBuildsMaterialsAndCreatorTools() {
   const cr::CreativeCatalogState state = catalog();
-  bool ok = expect(state.entries.size() == 11U,
-                   "two materials plus nine catalog tools") &&
+  bool ok = expect(state.entries.size() == 12U,
+                   "two materials plus ten catalog tools") &&
             expect(state.filteredEntryIndices.size() == state.entries.size(),
                    "empty query exposes every entry") &&
             expect(state.entries[0].category ==
@@ -168,8 +168,11 @@ bool catalogBuildsMaterialsAndCreatorTools() {
             expect(state.entries[2].category ==
                        cr::CreativeCatalogEntryCategory::Tool &&
                        state.entries[2].hotbarEntry.kind ==
-                           cr::CreativeHeldItemKind::ObjectSelect,
-                   "tool lane follows materials");
+                           cr::CreativeHeldItemKind::MaterialBrush,
+                   "material brush starts the tool lane") &&
+            expect(state.entries[3].hotbarEntry.kind ==
+                       cr::CreativeHeldItemKind::ObjectSelect,
+                   "object tools follow the material brush");
   ok = expect(cr::toString(cr::CreativeCatalogEntryCategory::Material) ==
                   "Material" &&
                   cr::toString(cr::CreativeCatalogEntryCategory::Tool) ==
@@ -184,7 +187,9 @@ bool catalogOmitsToolsWithoutRequiredMaterial() {
   const bool materialDependentToolPresent = std::any_of(
       state.entries.begin(), state.entries.end(),
       [](const cr::CreativeCatalogEntry& entry) {
-        return entry.hotbarEntry.kind == cr::CreativeHeldItemKind::VolumeFill ||
+        return entry.hotbarEntry.kind ==
+                   cr::CreativeHeldItemKind::MaterialBrush ||
+               entry.hotbarEntry.kind == cr::CreativeHeldItemKind::VolumeFill ||
                entry.hotbarEntry.kind ==
                    cr::CreativeHeldItemKind::VolumeHollow ||
                entry.hotbarEntry.kind ==
@@ -201,20 +206,26 @@ bool catalogAssignmentDistinguishesMaterialsFromTools() {
   const cr::CreativeHotbarEntry material =
       cr::resolveCreativeCatalogHotbarEntry(
           state.entries[1], cr::CreativeObjectKind::Wall);
+  const cr::CreativeHotbarEntry brush =
+      cr::resolveCreativeCatalogHotbarEntry(
+          state.entries[2], cr::CreativeObjectKind::Wall);
   const cr::CreativeHotbarEntry fill =
       cr::resolveCreativeCatalogHotbarEntry(
-          state.entries[5], cr::CreativeObjectKind::Crate);
+          state.entries[6], cr::CreativeObjectKind::Crate);
   return expect(material.kind == cr::CreativeHeldItemKind::Material &&
                     material.objectKind == cr::CreativeObjectKind::Crate,
                 "clicked material is not replaced by active brush") &&
          expect(fill.kind == cr::CreativeHeldItemKind::VolumeFill &&
                     fill.objectKind == cr::CreativeObjectKind::Crate,
-                "material-dependent tool inherits active brush");
+                "material-dependent tool inherits active brush") &&
+         expect(brush.kind == cr::CreativeHeldItemKind::MaterialBrush &&
+                    brush.objectKind == cr::CreativeObjectKind::Wall,
+                "material brush inherits the active voxel material");
 }
 
 bool shapeSelectionIsVisibleBoundedAndDeterministic() {
   const cr::CreativeCatalogState state = catalog();
-  const cr::CreativeCatalogEntry& fill = state.entries[5];
+  const cr::CreativeCatalogEntry& fill = state.entries[6];
   cr::CreativeCatalogShapeSelection selection =
       cr::normalizeCreativeCatalogShapeSelection(
           cr::CreativeShapeBrushKind::Box,
@@ -222,7 +233,7 @@ bool shapeSelectionIsVisibleBoundedAndDeterministic() {
   bool ok = expect(cr::creativeCatalogEntryUsesShapeSelection(fill),
                    "fill exposes catalog shape selection") &&
             expect(!cr::creativeCatalogEntryUsesShapeSelection(
-                       state.entries[4]),
+                       state.entries[5]),
                    "region wand has no shape configuration") &&
             expect(selection.kind == cr::CreativeShapeBrushKind::Box &&
                        selection.axis == cr::CreativeShapeBrushAxis::Y &&
@@ -262,15 +273,15 @@ bool toolWheelIsBoundedDirectionalAndAssignable() {
   cr::CreativeToolWheelState wheel =
       cr::makeCreativeToolWheel(catalogState);
   bool ok = expect(wheel.entryCount == cr::kCreativeToolWheelCapacity,
-                   "all eight creator tools populate the bounded wheel") &&
+                   "all nine wheel tools populate the bounded wheel") &&
             expect(!wheel.capacityExceeded,
                    "default tool wheel fits its fixed capacity") &&
             expect(cr::selectedCreativeToolWheelEntry(wheel, catalogState) !=
                        nullptr &&
                        cr::selectedCreativeToolWheelEntry(wheel, catalogState)
                                ->hotbarEntry.kind ==
-                           cr::CreativeHeldItemKind::ObjectSelect,
-                   "first tool owns the up sector");
+                           cr::CreativeHeldItemKind::MaterialBrush,
+                   "material brush owns the up sector");
   const auto erase = std::find_if(
       catalogState.entries.begin(), catalogState.entries.end(),
       [](const cr::CreativeCatalogEntry& entry) {
@@ -280,22 +291,19 @@ bool toolWheelIsBoundedDirectionalAndAssignable() {
   ok = expect(erase != catalogState.entries.end() &&
                   !erase->toolWheelEligible,
               "erase remains catalog-only") &&
-       expect(wheel.catalogEntryIndices[7] < catalogState.entries.size() &&
-                  catalogState.entries[wheel.catalogEntryIndices[7]]
+       expect(wheel.catalogEntryIndices[8] < catalogState.entries.size() &&
+                  catalogState.entries[wheel.catalogEntryIndices[8]]
                           .hotbarEntry.kind ==
                       cr::CreativeHeldItemKind::LinearArray,
-              "array owns the eighth wheel sector") &&
+              "array owns the ninth wheel sector") &&
        ok;
 
-  const std::array directions{
-      std::array{0.0F, 1.0F},   std::array{1.0F, 1.0F},
-      std::array{1.0F, 0.0F},   std::array{1.0F, -1.0F},
-      std::array{0.0F, -1.0F},  std::array{-1.0F, -1.0F},
-      std::array{-1.0F, 0.0F},  std::array{-1.0F, 1.0F},
-  };
-  for (std::size_t index = 0; index < directions.size(); ++index) {
+  constexpr float kTurnRadians = 6.28318530717958647692F;
+  for (std::size_t index = 0; index < wheel.entryCount; ++index) {
+    const float angle = kTurnRadians * static_cast<float>(index) /
+                        static_cast<float>(wheel.entryCount);
     static_cast<void>(cr::selectCreativeToolWheelDirection(
-        wheel, directions[index][0], directions[index][1]));
+        wheel, std::sin(angle), std::cos(angle)));
     ok = expect(wheel.selectedIndex == index,
                 "tool wheel sectors run clockwise from up") &&
          ok;
@@ -309,8 +317,8 @@ bool toolWheelIsBoundedDirectionalAndAssignable() {
         wheel, std::sin(radians), std::cos(radians)));
     return wheel.selectedIndex;
   };
-  ok = expect(selectDegrees(22.0F) == 0U &&
-                  selectDegrees(23.0F) == 1U,
+  ok = expect(selectDegrees(19.0F) == 0U &&
+                  selectDegrees(21.0F) == 1U,
               "sector boundary has deterministic half-sector rounding") &&
        ok;
 
@@ -332,10 +340,10 @@ bool toolWheelIsBoundedDirectionalAndAssignable() {
       wheel, catalogState,
       {cr::CreativeHeldItemKind::VolumeReplace,
        cr::CreativeObjectKind::Crate}));
-  ok = expect(wheel.selectedIndex == 5U,
+  ok = expect(wheel.selectedIndex == 6U,
               "held tool kind restores radial selection") &&
-       expect(cr::moveCreativeToolWheelSelection(wheel, -6) &&
-                  wheel.selectedIndex == 7U,
+       expect(cr::moveCreativeToolWheelSelection(wheel, -7) &&
+                  wheel.selectedIndex == 8U,
               "radial keyboard navigation wraps") &&
        ok;
 
@@ -355,7 +363,8 @@ bool toolWheelIsBoundedDirectionalAndAssignable() {
        ok;
 
   cr::CreativeCatalogState oversized;
-  for (std::size_t index = 0; index < 9U; ++index) {
+  for (std::size_t index = 0;
+       index < cr::kCreativeToolWheelCapacity + 1U; ++index) {
     cr::CreativeCatalogEntry entry;
     entry.category = cr::CreativeCatalogEntryCategory::Tool;
     entry.hotbarEntry.kind = cr::CreativeHeldItemKind::ObjectSelect;
@@ -421,7 +430,7 @@ bool selectionWrapsAndAssignmentsAreExplicit() {
   cr::CreativeHotbarState hotbar = cr::makeDefaultCreativeHotbar(palette);
 
   bool ok = expect(cr::moveCreativeCatalogSelection(state, -1) &&
-                       state.selectedFilteredIndex == 10U,
+                       state.selectedFilteredIndex == 11U,
                    "previous wraps to final result") &&
             expect(cr::moveCreativeCatalogSelection(state, 1) &&
                        state.selectedFilteredIndex == 0U,

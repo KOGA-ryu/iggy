@@ -51,8 +51,7 @@ struct CreativeEditorCatalogFrameResult {
   bool assigned = false;
   bool openToolOptionsRequested = false;
   iggy3d::creative::CreativeInputRouteResult deferredCommandInput;
-  iggy3d::creative::CreativeHeldItemKind toolOptionsHeldItem =
-      iggy3d::creative::CreativeHeldItemKind::Material;
+  iggy3d::creative::CreativeHotbarEntry toolOptionsEntry{};
 };
 
 [[nodiscard]] CreativeEditorCatalogFrameResult

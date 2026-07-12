@@ -45,6 +45,75 @@ bool containsCell(const cr::CreativeShapeBrushPlanReceipt& receipt,
                      });
 }
 
+bool containsStampCell(const cr::CreativeMaterialBrushStampPlan& plan,
+                       cr::CreativeGridCoord3 cell) {
+  return std::any_of(plan.generatedCells().begin(), plan.generatedCells().end(),
+                     [cell](cr::CreativeGridCoord3 candidate) {
+                       return sameCell(candidate, cell);
+                     });
+}
+
+cr::CreativeMaterialBrushStampPlan stamp(
+    cr::CreativeMaterialBrushShape shape,
+    cr::CreativeMaterialBrushSize size,
+    cr::CreativeGridCoord3 center = {}) {
+  return cr::planCreativeMaterialBrushStamp({shape, size, center});
+}
+
+bool materialBrushStampsAreBoundedAndCanonical() {
+  const auto one = stamp(cr::CreativeMaterialBrushShape::Cube,
+                         cr::CreativeMaterialBrushSize::OneCell,
+                         {4, -2, 7});
+  const auto cube = stamp(cr::CreativeMaterialBrushShape::Cube,
+                          cr::CreativeMaterialBrushSize::FiveCells);
+  const auto sphere = stamp(cr::CreativeMaterialBrushShape::Sphere,
+                            cr::CreativeMaterialBrushSize::FiveCells);
+  const auto cylinder = stamp(cr::CreativeMaterialBrushShape::Cylinder,
+                              cr::CreativeMaterialBrushSize::FiveCells);
+  return expect(one.accepted && one.cellCount == 1U &&
+                    sameCell(one.cells[0], {4, -2, 7}),
+                "one-cell material brush contains only its center") &&
+         expect(cube.accepted && cube.cellCount == 125U &&
+                    sameCell(cube.minCell, {-2, -2, -2}) &&
+                    sameCell(cube.maxCell, {2, 2, 2}) &&
+                    sameCell(cube.cells.front(), {-2, -2, -2}) &&
+                    sameCell(cube.cells[cube.cellCount - 1U], {2, 2, 2}),
+                "largest cube fills bounded canonical z-y-x storage") &&
+         expect(sphere.accepted && sphere.cellCount == 33U &&
+                    containsStampCell(sphere, {}) &&
+                    !containsStampCell(sphere, {2, 2, 2}),
+                "five-cell sphere uses integer radial inclusion") &&
+         expect(cylinder.accepted && cylinder.cellCount == 65U &&
+                    containsStampCell(cylinder, {0, 2, 0}) &&
+                    !containsStampCell(cylinder, {2, 0, 2}),
+                "five-cell cylinder extrudes its disk on Y");
+}
+
+bool materialBrushInvalidInputsFailClosed() {
+  const auto invalidShape = stamp(
+      static_cast<cr::CreativeMaterialBrushShape>(255U),
+      cr::CreativeMaterialBrushSize::OneCell);
+  const auto invalidSize = stamp(
+      cr::CreativeMaterialBrushShape::Cube,
+      static_cast<cr::CreativeMaterialBrushSize>(255U));
+  const auto overflow = stamp(
+      cr::CreativeMaterialBrushShape::Cube,
+      cr::CreativeMaterialBrushSize::FiveCells,
+      {std::numeric_limits<std::int32_t>::max(), 0, 0});
+  return expect(!invalidShape.accepted && invalidShape.cellCount == 0U &&
+                    invalidShape.status ==
+                        cr::CreativeMaterialBrushStampStatus::InvalidShape,
+                "invalid material brush shape fails closed") &&
+         expect(!invalidSize.accepted && invalidSize.cellCount == 0U &&
+                    invalidSize.status ==
+                        cr::CreativeMaterialBrushStampStatus::InvalidSize,
+                "invalid material brush size fails closed") &&
+         expect(!overflow.accepted && overflow.cellCount == 0U &&
+                    overflow.status ==
+                        cr::CreativeMaterialBrushStampStatus::CoordinateOverflow,
+                "material brush coordinate overflow rejects before enumeration");
+}
+
 bool boxParityAndHollowBoundary() {
   const auto filled = plan(cr::CreativeShapeBrushKind::Box,
                            {0, 0, 0}, {2, 2, 2});
@@ -166,7 +235,9 @@ bool limitsAndInvalidEnumsFailClosed() {
 }  // namespace
 
 int main() {
-  const bool ok = boxParityAndHollowBoundary() &&
+  const bool ok = materialBrushStampsAreBoundedAndCanonical() &&
+                  materialBrushInvalidInputsFailClosed() &&
+                  boxParityAndHollowBoundary() &&
                   lineIsDeterministicAndEndpointInclusive() &&
                   ellipsoidUsesSymmetricCellCenters() &&
                   cylinderAxisAndDiskBehavior() &&

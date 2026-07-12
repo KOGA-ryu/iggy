@@ -69,6 +69,8 @@ constexpr CreativeHeldItemMask kRotationItems =
     heldItemMask(CreativeHeldItemKind::ObjectMove);
 constexpr CreativeHeldItemMask kPlacementItems =
     heldItemMask(CreativeHeldItemKind::Material);
+constexpr CreativeHeldItemMask kMaterialBrushItems =
+    heldItemMask(CreativeHeldItemKind::MaterialBrush);
 constexpr CreativeHeldItemMask kSnapItems =
     heldItemMask(CreativeHeldItemKind::Material) |
     heldItemMask(CreativeHeldItemKind::ObjectMove) |
@@ -105,6 +107,14 @@ constexpr std::array kToolOptionDescriptors{
                                  "GRID SIZE",
                                  CreativeToolOptionValueKind::Choice,
                                  kSnapItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::MaterialBrushShape,
+                                 "BRUSH SHAPE",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kMaterialBrushItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::MaterialBrushSize,
+                                 "BRUSH SIZE",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kMaterialBrushItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::ShapeBrushKind,
                                  "SHAPE",
                                  CreativeToolOptionValueKind::Choice,
@@ -181,6 +191,8 @@ template <typename Enum>
          lhs.rotationStep == rhs.rotationStep &&
          lhs.placementYaw == rhs.placementYaw &&
          lhs.snapIncrement == rhs.snapIncrement &&
+         lhs.materialBrushShape == rhs.materialBrushShape &&
+         lhs.materialBrushSize == rhs.materialBrushSize &&
          lhs.shapeBrushKind == rhs.shapeBrushKind &&
          lhs.shapeBrushAxis == rhs.shapeBrushAxis &&
          lhs.replaceSourceKind == rhs.replaceSourceKind &&
@@ -433,6 +445,10 @@ bool isValidCreativeToolSettings(
          validEnum(settings.rotationStep, CreativeRotationStep::Count) &&
          validEnum(settings.placementYaw, CreativePlacementYaw::Count) &&
          validEnum(settings.snapIncrement, CreativeSnapIncrement::Count) &&
+         validEnum(settings.materialBrushShape,
+                   CreativeMaterialBrushShape::Count) &&
+         validEnum(settings.materialBrushSize,
+                   CreativeMaterialBrushSize::Count) &&
          validEnum(settings.shapeBrushKind, CreativeShapeBrushKind::Count) &&
          validEnum(settings.shapeBrushAxis, CreativeShapeBrushAxis::Count) &&
          replaceSourceValid &&
@@ -620,6 +636,10 @@ std::string_view creativeToolOptionValueLabel(
       return toString(settings.placementYaw);
     case CreativeToolOptionId::SnapIncrement:
       return toString(settings.snapIncrement);
+    case CreativeToolOptionId::MaterialBrushShape:
+      return toString(settings.materialBrushShape);
+    case CreativeToolOptionId::MaterialBrushSize:
+      return toString(settings.materialBrushSize);
     case CreativeToolOptionId::ShapeBrushKind:
       return toString(settings.shapeBrushKind);
     case CreativeToolOptionId::ShapeBrushAxis:
@@ -692,6 +712,16 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
     case CreativeToolOptionId::SnapIncrement:
       adjusted.snapIncrement = cycleEnum(
           adjusted.snapIncrement, CreativeSnapIncrement::Count, direction);
+      break;
+    case CreativeToolOptionId::MaterialBrushShape:
+      adjusted.materialBrushShape =
+          cycleEnum(adjusted.materialBrushShape,
+                    CreativeMaterialBrushShape::Count, direction);
+      break;
+    case CreativeToolOptionId::MaterialBrushSize:
+      adjusted.materialBrushSize =
+          cycleEnum(adjusted.materialBrushSize,
+                    CreativeMaterialBrushSize::Count, direction);
       break;
     case CreativeToolOptionId::ShapeBrushKind:
       adjusted.shapeBrushKind = cycleEnum(

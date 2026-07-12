@@ -22,16 +22,16 @@ struct CreativeEditorState;
 
 struct CreativeEditorToolOptionsState {
   bool open = false;
-  iggy3d::creative::CreativeHeldItemKind heldItem =
-      iggy3d::creative::CreativeHeldItemKind::Material;
+  iggy3d::creative::CreativeHotbarEntry targetEntry{};
   iggy3d::creative::CreativeToolSettings draft;
   iggy3d::creative::CreativeToolOptionList options;
   std::size_t selectedIndex = 0;
 };
 
 struct CreativeEditorQuickEditState {
-  iggy3d::creative::CreativeHeldItemKind heldItem =
-      iggy3d::creative::CreativeHeldItemKind::Count;
+  iggy3d::creative::CreativeHotbarEntry targetEntry{
+      iggy3d::creative::CreativeHeldItemKind::Count,
+      iggy3d::creative::CreativeObjectKind::Unknown};
   iggy3d::creative::CreativeToolOptionList options;
   std::size_t selectedIndex = 0;
 };
@@ -41,8 +41,7 @@ struct CreativeEditorToolOptionsFrameRequest {
   CreativeEditorState& editor;
   const iggy3d::creative::CreativeInputRouteResult& routedInput;
   bool openRequested = false;
-  iggy3d::creative::CreativeHeldItemKind requestedHeldItem =
-      iggy3d::creative::CreativeHeldItemKind::Material;
+  iggy3d::creative::CreativeHotbarEntry requestedEntry{};
   std::uint32_t drawableWidth = 0;
   std::uint32_t drawableHeight = 0;
 };
@@ -56,6 +55,11 @@ struct CreativeEditorToolOptionsFrameResult {
 [[nodiscard]] CreativeEditorToolOptionsFrameResult
 processCreativeEditorToolOptionsFrame(
     const CreativeEditorToolOptionsFrameRequest& request);
+
+[[nodiscard]] iggy3d::creative::CreativeToolOptionList
+creativeEditorToolOptionsForEntry(
+    iggy3d::creative::CreativeHotbarEntry entry,
+    const iggy3d::creative::CreativeToolSettings& settings) noexcept;
 
 void syncCreativeEditorQuickEdit(CreativeEditorState& editor);
 [[nodiscard]] bool processCreativeEditorQuickEditAction(

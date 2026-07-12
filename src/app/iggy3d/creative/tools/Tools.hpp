@@ -113,6 +113,8 @@ enum class CreativeToolOptionId : std::uint8_t {
   RotationStep,
   PlacementYaw,
   SnapIncrement,
+  MaterialBrushShape,
+  MaterialBrushSize,
   ShapeBrushKind,
   ShapeBrushAxis,
   ReplaceSource,
@@ -161,6 +163,10 @@ struct CreativeToolSettings {
   CreativeRotationStep rotationStep = CreativeRotationStep::Degrees15;
   CreativePlacementYaw placementYaw = CreativePlacementYaw::Degrees0;
   CreativeSnapIncrement snapIncrement = CreativeSnapIncrement::OneMeter;
+  CreativeMaterialBrushShape materialBrushShape =
+      CreativeMaterialBrushShape::Sphere;
+  CreativeMaterialBrushSize materialBrushSize =
+      CreativeMaterialBrushSize::ThreeCells;
   CreativeShapeBrushKind shapeBrushKind = CreativeShapeBrushKind::Box;
   CreativeShapeBrushAxis shapeBrushAxis = CreativeShapeBrushAxis::Y;
   CreativeObjectKind replaceSourceKind = CreativeObjectKind::Unknown;

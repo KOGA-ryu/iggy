@@ -14,6 +14,43 @@
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
+
+cr::CreativeToolOptionList creativeEditorToolOptionsForEntry(
+    cr::CreativeHotbarEntry entry,
+    const cr::CreativeToolSettings& settings) noexcept {
+  cr::CreativeToolOptionList options =
+      cr::creativeToolOptionsForHeldItem(entry.kind, settings);
+  if (entry.kind != cr::CreativeHeldItemKind::Material) {
+    return options;
+  }
+
+  const cr::CreativeObjectDescriptor& descriptor =
+      cr::describeObject(entry.objectKind);
+  if (entry.objectKind == cr::CreativeObjectKind::Unknown ||
+      descriptor.kind != entry.objectKind ||
+      !descriptorSupportsBrushPlacement(descriptor)) {
+    return {};
+  }
+
+  const bool supportsYaw =
+      creativeBrushSupportsPlacementYaw(entry.objectKind);
+  const bool usesFixedVoxelGrid =
+      descriptor.placementPolicy.storagePolicy ==
+      cr::CreativePlacementStoragePolicy::VoxelCell;
+  std::size_t writeIndex = 0U;
+  for (std::size_t readIndex = 0U; readIndex < options.count; ++readIndex) {
+    const cr::CreativeToolOptionId option = options.ids[readIndex];
+    if ((!supportsYaw && option == cr::CreativeToolOptionId::PlacementYaw) ||
+        (usesFixedVoxelGrid &&
+         option == cr::CreativeToolOptionId::SnapIncrement)) {
+      continue;
+    }
+    options.ids[writeIndex++] = option;
+  }
+  options.count = writeIndex;
+  return options;
+}
+
 namespace {
 
 constexpr cr::CreativeWheelProfile kToolOptionsWheelProfile{
@@ -77,6 +114,17 @@ void appendText(std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
   glyphs.insert(glyphs.end(), layout.quads.begin(), layout.quads.end());
 }
 
+[[nodiscard]] std::string toolOptionsTargetLabel(
+    cr::CreativeHotbarEntry entry) {
+  std::string label(cr::toString(entry.kind));
+  if (entry.kind == cr::CreativeHeldItemKind::Material &&
+      entry.objectKind != cr::CreativeObjectKind::Unknown) {
+    label.append(" | ");
+    label.append(cr::toString(entry.objectKind));
+  }
+  return label;
+}
+
 void moveSelection(CreativeEditorToolOptionsState& state,
                    std::int32_t direction) noexcept {
   if (direction == 0 || state.options.count == 0U) {
@@ -101,39 +149,10 @@ void adjustSelection(CreativeEditorState& editor,
       cr::adjustCreativeToolOption(state.draft, option, direction,
                                    editor.brushPalette);
   if (receipt.changed && option == cr::CreativeToolOptionId::ArrayMode) {
-    state.options = cr::creativeToolOptionsForHeldItem(state.heldItem,
-                                                       state.draft);
+    state.options =
+        creativeEditorToolOptionsForEntry(state.targetEntry, state.draft);
     state.selectedIndex = 0U;
   }
-}
-
-[[nodiscard]] cr::CreativeToolOptionList editorToolOptionsForHeldItem(
-    const CreativeEditorState& editor,
-    cr::CreativeHeldItemKind heldItem) {
-  cr::CreativeToolOptionList options =
-      cr::creativeToolOptionsForHeldItem(heldItem, editor.toolSettings);
-  const cr::CreativeHotbarEntry& held =
-      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  if (heldItem != cr::CreativeHeldItemKind::Material ||
-      held.kind != cr::CreativeHeldItemKind::Material) {
-    return options;
-  }
-  const bool supportsYaw = creativeBrushSupportsPlacementYaw(held.objectKind);
-  const bool usesFixedVoxelGrid =
-      cr::describeObject(held.objectKind).placementPolicy.storagePolicy ==
-      cr::CreativePlacementStoragePolicy::VoxelCell;
-  std::size_t writeIndex = 0U;
-  for (std::size_t readIndex = 0U; readIndex < options.count; ++readIndex) {
-    const cr::CreativeToolOptionId option = options.ids[readIndex];
-    if ((!supportsYaw && option == cr::CreativeToolOptionId::PlacementYaw) ||
-        (usesFixedVoxelGrid &&
-         option == cr::CreativeToolOptionId::SnapIncrement)) {
-      continue;
-    }
-    options.ids[writeIndex++] = option;
-  }
-  options.count = writeIndex;
-  return options;
 }
 
 void rebuildQuickEditOptions(CreativeEditorState& editor,
@@ -141,10 +160,12 @@ void rebuildQuickEditOptions(CreativeEditorState& editor,
   CreativeEditorQuickEditState& state = editor.quickEdit;
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  const bool heldItemChanged = state.heldItem != held.kind;
-  state.heldItem = held.kind;
-  state.options = editorToolOptionsForHeldItem(editor, held.kind);
-  if (resetSelection || heldItemChanged || state.options.count == 0U) {
+  const bool targetChanged = state.targetEntry.kind != held.kind ||
+                             state.targetEntry.objectKind != held.objectKind;
+  state.targetEntry = held;
+  state.options =
+      creativeEditorToolOptionsForEntry(held, editor.toolSettings);
+  if (resetSelection || targetChanged || state.options.count == 0U) {
     state.selectedIndex = 0U;
   } else if (state.selectedIndex >= state.options.count) {
     state.selectedIndex = state.options.count - 1U;
@@ -227,11 +248,11 @@ CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
 
   if (request.openRequested && !state.open) {
     const cr::CreativeToolOptionList options =
-        editorToolOptionsForHeldItem(request.editor,
-                                     request.requestedHeldItem);
+        creativeEditorToolOptionsForEntry(request.requestedEntry,
+                                          request.editor.toolSettings);
     if (options.count > 0U && !options.capacityExceeded) {
       state.open = true;
-      state.heldItem = request.requestedHeldItem;
+      state.targetEntry = request.requestedEntry;
       state.draft = request.editor.toolSettings;
       state.options = options;
       state.selectedIndex = 0U;
@@ -347,7 +368,9 @@ std::string creativeEditorQuickEditStatusLabel(
   const CreativeEditorQuickEditState& state = editor.quickEdit;
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  if (state.heldItem != held.kind || state.selectedIndex >= state.options.count) {
+  if (state.targetEntry.kind != held.kind ||
+      state.targetEntry.objectKind != held.objectKind ||
+      state.selectedIndex >= state.options.count) {
     return {};
   }
   const cr::CreativeToolOptionId option =
@@ -382,8 +405,8 @@ void appendCreativeEditorToolOptionsOverlay(
   appendText(glyphs, "TOOL OPTIONS", layout.panelX + 18,
              layout.panelY + 16, drawableWidth, drawableHeight,
              0.91F, 0.94F, 0.96F);
-  appendText(glyphs, cr::toString(state.heldItem),
-             layout.panelX + 180, layout.panelY + 16,
+  const std::string targetLabel = toolOptionsTargetLabel(state.targetEntry);
+  appendText(glyphs, targetLabel, layout.panelX + 180, layout.panelY + 16,
              drawableWidth, drawableHeight, 0.64F, 0.72F, 0.76F);
 
   const std::int32_t panelWidth =
