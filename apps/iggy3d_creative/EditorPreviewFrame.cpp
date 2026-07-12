@@ -903,7 +903,26 @@ struct CreativeEditorVolumePreviewFacts {
   bool selectionVisible = false;
   bool usesShapePlan = false;
   bool terrainRegion = false;
+  bool terrainStamp = false;
 };
+
+[[nodiscard]] bool terrainStampHasPositionableFootprint(
+    const creative::CreativeTerrainStampPlan& plan) noexcept {
+  switch (plan.status) {
+    case creative::CreativeTerrainStampPlanStatus::CapacityExceeded:
+    case creative::CreativeTerrainStampPlanStatus::NoChange:
+    case creative::CreativeTerrainStampPlanStatus::Ready:
+      return plan.transformedWidthCells > 0U &&
+             plan.transformedDepthCells > 0U;
+    case creative::CreativeTerrainStampPlanStatus::NotRequested:
+    case creative::CreativeTerrainStampPlanStatus::InvalidStamp:
+    case creative::CreativeTerrainStampPlanStatus::InvalidDestination:
+    case creative::CreativeTerrainStampPlanStatus::InvalidRequest:
+    case creative::CreativeTerrainStampPlanStatus::CoordinateOverflow:
+      return false;
+  }
+  return false;
+}
 
 CreativeEditorVolumePreviewFacts appendCreativeEditorVolumeAndToolWireframes(
     const CreativeEditorOverlayFrameRequest& request,
@@ -913,11 +932,31 @@ CreativeEditorVolumePreviewFacts appendCreativeEditorVolumeAndToolWireframes(
   std::vector<RenderCreativeWireframeDebugLine>& lines =
       output.combinedWireLines;
   if (editor.volume.active && !editor.transform.active) {
-    facts.selection = creativeEditorVolumePreviewSelection(editor.volume);
     const creative::CreativeHotbarEntry& held =
         creative::selectedCreativeHotbarEntry(editor.interaction.hotbar);
     facts.terrainRegion =
         held.kind == creative::CreativeHeldItemKind::TerrainRegion;
+    facts.terrainStamp =
+        facts.terrainRegion && editor.terrain.region.stamp.active;
+    if (facts.terrainStamp) {
+      const CreativeTerrainStampPreviewCache& preview =
+          editor.terrain.region.stamp.preview;
+      if (preview.valid &&
+          terrainStampHasPositionableFootprint(preview.plan)) {
+        facts.selection.phase =
+            creative::CreativeVolumeSelectionPhase::Complete;
+        facts.selection.firstCell = {preview.plan.targetMinimum.x, 0,
+                                     preview.plan.targetMinimum.z};
+        facts.selection.secondCell = {preview.plan.targetMaximum.x, 0,
+                                      preview.plan.targetMaximum.z};
+        const creative::CreativeGridSettings grid =
+            request.appState.facade.document().gridSettings();
+        facts.selection.origin = grid.origin;
+        facts.selection.cellSize = grid.cellSizeMeters;
+      }
+    } else {
+      facts.selection = creativeEditorVolumePreviewSelection(editor.volume);
+    }
     const bool regionHidden =
         facts.terrainRegion &&
         (request.captureMode || editor.catalog.model.open ||
@@ -948,14 +987,23 @@ CreativeEditorVolumePreviewFacts appendCreativeEditorVolumeAndToolWireframes(
       const std::size_t before = lines.size();
       RenderLineColor color = volumeOperationColor(editor.volume.operation);
       if (facts.terrainRegion) {
-        const CreativeTerrainRegionPreviewCache& preview =
-            editor.terrain.region.preview;
-        const bool accepted = preview.valid && preview.plan.accepted &&
-                              preview.renderAccepted;
+        const bool accepted =
+            facts.terrainStamp
+                ? editor.terrain.region.stamp.preview.valid &&
+                      editor.terrain.region.stamp.preview.plan.accepted &&
+                      editor.terrain.region.stamp.preview.renderAccepted
+                : editor.terrain.region.preview.valid &&
+                      editor.terrain.region.preview.plan.accepted &&
+                      editor.terrain.region.preview.renderAccepted;
+        const bool replacing =
+            facts.terrainStamp
+                ? editor.terrain.region.stamp.preview.mode ==
+                      creative::CreativeTerrainStampMode::Replace
+                : editor.terrain.region.preview.operation ==
+                      creative::CreativeTerrainRegionOperation::Erase;
         color = !accepted
                     ? RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F}
-                    : preview.operation ==
-                              creative::CreativeTerrainRegionOperation::Erase
+                    : replacing
                           ? RenderLineColor{1.0F, 0.46F, 0.12F, 1.0F}
                           : RenderLineColor{0.20F, 1.0F, 0.35F, 1.0F};
       } else if (facts.usesShapePlan && !facts.shapePlan.accepted) {
@@ -1010,7 +1058,17 @@ void appendCreativeEditorVolumePreviewLabel(
     return;
   }
   char label[128];
-  if (facts.terrainRegion) {
+  if (facts.terrainStamp) {
+    const CreativeTerrainStampPreviewCache& preview =
+        editor.terrain.region.stamp.preview;
+    std::snprintf(
+        label, sizeof(label), "STAMP %s %d x %d | %u rods | %s",
+        std::string(creative::toString(preview.mode)).c_str(),
+        gridBounds.max.x - gridBounds.min.x,
+        gridBounds.max.z - gridBounds.min.z,
+        static_cast<unsigned>(preview.plan.finalControlCount),
+        std::string(creative::toString(preview.plan.status)).c_str());
+  } else if (facts.terrainRegion) {
     const CreativeTerrainRegionPreviewCache& preview =
         editor.terrain.region.preview;
     std::snprintf(

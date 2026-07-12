@@ -62,7 +62,9 @@ struct CreativeCatalogActionActivation {
 struct CreativeCatalogActionAvailability {
   bool undoAvailable = false;
   bool redoAvailable = false;
-  bool selectionAvailable = false;
+  bool copyAvailable = false;
+  bool cutAvailable = false;
+  bool duplicateAvailable = false;
   bool clipboardAvailable = false;
   bool saveAvailable = true;
   bool newAvailable = true;

@@ -721,6 +721,10 @@ void clearCreativeEditorTerrainInteraction(
   state.region.preview.valid = false;
   state.region.preview.renderAccepted = false;
   state.region.preview.patches.clear();
+  state.region.stamp.active = false;
+  state.region.stamp.preview.valid = false;
+  state.region.stamp.preview.renderAccepted = false;
+  state.region.stamp.preview.patches.clear();
 }
 
 void updateCreativeEditorTerrainAim(
@@ -903,8 +907,13 @@ void appendCreativeEditorTerrainOverlay(
   }
 
   if (terrainRegion) {
-    appendCreativeEditorTerrainRegionOverlay(document, editor, thickness,
-                                             wireLines);
+    if (editor.terrain.region.stamp.active) {
+      appendCreativeEditorTerrainStampOverlay(document, editor, thickness,
+                                              wireLines);
+    } else {
+      appendCreativeEditorTerrainRegionOverlay(document, editor, thickness,
+                                               wireLines);
+    }
     return;
   }
 

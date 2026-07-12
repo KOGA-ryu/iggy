@@ -9,6 +9,7 @@
 #include "app/iggy3d/creative/tools/TerrainProfile.hpp"
 #include "app/iggy3d/creative/tools/TerrainRegion.hpp"
 #include "app/iggy3d/creative/tools/TerrainSculpt.hpp"
+#include "app/iggy3d/creative/tools/TerrainStamp.hpp"
 #include "render/FrameInput.hpp"
 
 #include <array>
@@ -159,9 +160,46 @@ struct CreativeTerrainRegionPreviewCache {
   std::vector<iggy3d::creative::CreativeTerrainSurfacePatch> patches;
 };
 
+enum class CreativeTerrainStampTransformControl : std::uint8_t {
+  Rotation,
+  MirrorX,
+  MirrorZ,
+  Count,
+};
+
+struct CreativeTerrainStampPreviewCache {
+  bool valid = false;
+  bool renderAccepted = false;
+  std::uint64_t documentId = 0U;
+  std::uint64_t terrainRevision = 0U;
+  std::uint64_t stampSignature = 0U;
+  std::uint64_t buildCount = 0U;
+  iggy3d::creative::CreativeTerrainCoord2 targetMinimum{};
+  std::uint8_t quarterTurns = 0U;
+  bool mirrorX = false;
+  bool mirrorZ = false;
+  iggy3d::creative::CreativeTerrainStampMode mode =
+      iggy3d::creative::CreativeTerrainStampMode::Merge;
+  iggy3d::creative::CreativeTerrainStampPlan plan{};
+  std::vector<iggy3d::creative::CreativeTerrainSurfacePatch> patches;
+};
+
+struct CreativeTerrainStampPlacementState {
+  bool active = false;
+  std::uint8_t quarterTurns = 0U;
+  bool mirrorX = false;
+  bool mirrorZ = false;
+  CreativeTerrainStampTransformControl selectedControl =
+      CreativeTerrainStampTransformControl::Rotation;
+  iggy3d::creative::CreativeTerrainStampCopyReceipt lastCopy{};
+  iggy3d::creative::CreativeTerrainMutationReceipt lastMutation{};
+  CreativeTerrainStampPreviewCache preview{};
+};
+
 struct CreativeTerrainRegionState {
   std::uint16_t targetHeightCells = 4U;
   CreativeTerrainRegionPreviewCache preview{};
+  CreativeTerrainStampPlacementState stamp{};
 };
 
 struct CreativeEditorTerrainState {
@@ -289,6 +327,25 @@ struct CreativeEditorTerrainRegionReceipt {
   std::string_view reasonCode = "creative_editor_terrain_region_not_requested";
 };
 
+enum class CreativeEditorTerrainStampAction : std::uint8_t {
+  Copy,
+  BeginPreview,
+  Apply,
+  Cancel,
+};
+
+struct CreativeEditorTerrainStampReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  CreativeEditorTerrainStampAction action =
+      CreativeEditorTerrainStampAction::Copy;
+  iggy3d::creative::CreativeTerrainStampCopyReceipt copy{};
+  iggy3d::creative::CreativeTerrainStampPlan plan{};
+  iggy3d::creative::CreativeTerrainMutationReceipt mutation{};
+  std::string_view reasonCode = "creative_editor_terrain_stamp_not_requested";
+};
+
 [[nodiscard]] bool resolveCreativeEditorTerrainPointerCoord(
     const CreativeEditorState& editor,
     iggy3d::creative::CreativeTerrainCoord2& target) noexcept;
@@ -389,6 +446,22 @@ sampleCreativeEditorTerrainRegionHeight(
 [[nodiscard]] CreativeEditorTerrainRegionReceipt
 cancelCreativeEditorTerrainRegion(CreativeEditorState& editor) noexcept;
 
+[[nodiscard]] CreativeEditorTerrainStampReceipt
+copyCreativeEditorTerrainRegionToStamp(
+    iggy3d::creative::CreativeAppState& appState,
+    CreativeEditorState& editor) noexcept;
+[[nodiscard]] CreativeEditorTerrainStampReceipt
+beginCreativeEditorTerrainStampPreview(
+    const iggy3d::creative::CreativeAppState& appState,
+    CreativeEditorState& editor) noexcept;
+[[nodiscard]] CreativeEditorTerrainStampReceipt
+applyCreativeEditorTerrainStampWithHistory(
+    iggy3d::creative::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    std::string_view source);
+[[nodiscard]] CreativeEditorTerrainStampReceipt
+cancelCreativeEditorTerrainStamp(CreativeEditorState& editor) noexcept;
+
 [[nodiscard]] bool processCreativeEditorTerrainQuickEdit(
     CreativeEditorTerrainState& state,
     iggy3d::creative::CreativeInputActionId action) noexcept;
@@ -418,6 +491,11 @@ cancelCreativeEditorTerrainRegion(CreativeEditorState& editor) noexcept;
     CreativeEditorState& editor,
     iggy3d::creative::CreativeInputActionId action) noexcept;
 [[nodiscard]] std::string creativeEditorTerrainRegionQuickEditLabel(
+    const CreativeEditorState& editor);
+[[nodiscard]] bool processCreativeEditorTerrainStampQuickEdit(
+    CreativeEditorState& editor,
+    iggy3d::creative::CreativeInputActionId action) noexcept;
+[[nodiscard]] std::string creativeEditorTerrainStampQuickEditLabel(
     const CreativeEditorState& editor);
 
 void clearCreativeEditorTerrainInteraction(
@@ -480,6 +558,16 @@ void appendCreativeEditorTerrainPathOverlay(
     const iggy3d::creative::CreativeDocument& document,
     const CreativeEditorState& editor);
 void appendCreativeEditorTerrainRegionOverlay(
+    const iggy3d::creative::CreativeDocument& document,
+    const CreativeEditorState& editor,
+    float wireThickness,
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines);
+[[nodiscard]] bool refreshCreativeEditorTerrainStampPreview(
+    CreativeEditorTerrainState& state,
+    const iggy3d::creative::CreativeDocument& document,
+    const CreativeEditorState& editor,
+    const iggy3d::creative::CreativeTerrainStamp& stamp);
+void appendCreativeEditorTerrainStampOverlay(
     const iggy3d::creative::CreativeDocument& document,
     const CreativeEditorState& editor,
     float wireThickness,

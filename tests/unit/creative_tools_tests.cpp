@@ -546,15 +546,19 @@ bool optionDescriptorsAreContextualAndBounded() {
                     terrainPath.ids[3] ==
                         cr::CreativeToolOptionId::TerrainPathAmplitude,
                 "terrain path exposes type elevation width and rise depth") &&
-         expect(terrainRegion.count == 2U &&
+         expect(terrainRegion.count == 3U &&
                     terrainRegion.ids[0] ==
                         cr::CreativeToolOptionId::TerrainRegionOperation &&
                     terrainRegion.ids[1] ==
                         cr::CreativeToolOptionId::TerrainRegionAmount &&
-                    flattenRegion.count == 1U &&
+                    terrainRegion.ids[2] ==
+                        cr::CreativeToolOptionId::TerrainStampMode &&
+                    flattenRegion.count == 2U &&
                     flattenRegion.ids[0] ==
-                        cr::CreativeToolOptionId::TerrainRegionOperation,
-                "terrain region hides amount when flatten owns target height") &&
+                        cr::CreativeToolOptionId::TerrainRegionOperation &&
+                    flattenRegion.ids[1] ==
+                        cr::CreativeToolOptionId::TerrainStampMode,
+                "terrain region keeps stamp mode while flatten hides amount") &&
          expect(array.count == 4U &&
                     array.ids[0] ==
                         cr::CreativeToolOptionId::ArrayMode &&
@@ -658,6 +662,8 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
   cr::CreativeToolSettings invalidRegionAmount = settings;
   invalidRegionAmount.terrainRegionAmount =
       cr::CreativeTerrainRegionAmount::Count;
+  cr::CreativeToolSettings invalidStampMode = settings;
+  invalidStampMode.terrainStampMode = cr::CreativeTerrainStampMode::Count;
   bool ok = expect(cr::isValidCreativeToolSettings(settings),
                    "default settings valid") &&
             expect(!cr::isValidCreativeToolSettings(invalidMask),
@@ -690,7 +696,8 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
             expect(!cr::isValidCreativeToolSettings(invalidPath),
                    "invalid terrain path option fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidRegionOperation) &&
-                       !cr::isValidCreativeToolSettings(invalidRegionAmount),
+                       !cr::isValidCreativeToolSettings(invalidRegionAmount) &&
+                       !cr::isValidCreativeToolSettings(invalidStampMode),
                    "invalid terrain region options fail settings validation") &&
             expect(cr::creativeToolOptionValueLabel(
                        settings,
@@ -837,7 +844,11 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::TerrainRegionAmount) ==
-                           "1 CELL",
+                           "1 CELL" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainStampMode) ==
+                           "MERGE",
                    "default labels and scalar conversions stable");
 
   const auto adjust = [&settings](cr::CreativeToolOptionId option,
@@ -1002,6 +1013,10 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                   settings.terrainRegionAmount ==
                       cr::CreativeTerrainRegionAmount::TwoCells,
               "terrain region amount cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainStampMode, 1).changed &&
+                  settings.terrainStampMode ==
+                      cr::CreativeTerrainStampMode::Replace,
+              "terrain stamp mode cycles") &&
        expect(adjust(cr::CreativeToolOptionId::ShapeBrushKind, 1).changed &&
                   settings.shapeBrushKind == cr::CreativeShapeBrushKind::Line,
               "shape kind cycles") &&

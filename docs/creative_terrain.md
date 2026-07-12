@@ -254,6 +254,37 @@ invalid input or capacity failure. X submits that exact edit span through one
 Facade batch, so the complete region produces at most one document revision,
 scene refresh, and undo record.
 
+### Terrain Stamps
+
+A complete Terrain Region selection can be copied and reused as a transient
+terrain stamp. Open the catalog's Actions page and choose Copy, then Paste; on
+keyboard the same route is platform-command `C` followed by platform-command
+`V`. Duplicate performs both steps. Terrain stamps are separate from the object
+clipboard and are not saved into the map.
+
+| Stamp input | Operation |
+|---|---|
+| Right mouse / PS5 X | Apply the preview as one terrain batch; the stamp stays active |
+| Left mouse / PS5 Circle | Cancel the stamp preview without changing terrain |
+| Up/down / D-pad up/down | Select Rotation, Mirror X, or Mirror Z |
+| Left/right / D-pad left/right | Rotate 90 degrees or toggle the selected mirror |
+
+`CreativeTerrainStamp` stores at most 256 source-local rods plus the copied
+footprint dimensions and a content signature. `buildCreativeTerrainStampPlan`
+mirrors before applying a normalized quarter-turn rotation, then produces a
+canonical fixed-capacity edit batch. `MERGE` updates stamp coordinates while
+preserving other rods in the footprint. `REPLACE` also removes destination-only
+rods inside the footprint. Either mode rejects coordinate or final-field
+overflow without emitting a partial prefix.
+
+The crosshair anchors the transformed footprint's lower X/Z corner. Green rods
+and the exact terrain surface preview mean the batch is accepted, orange rods
+mark removals in Replace mode, and red means rejection. Preview data is cached
+by document, terrain revision, stamp signature, target, transform, and mode.
+Aiming does not mutate or rebuild room geometry. Every X/right-click applies one
+Facade batch and creates one undo record; moving the crosshair and pressing again
+creates another independently undoable stamp.
+
 ## Authored Data
 
 `CreativeTerrainField` owns a canonical vector sorted by Z then X. Coordinates

@@ -15,7 +15,9 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <filesystem>
 #include <iostream>
+#include <limits>
 #include <span>
 #include <string>
 #include <string_view>
@@ -1628,6 +1630,268 @@ bool terrainRegionRoutesCornersSampleCancelAndQuickEdit() {
          ok;
 }
 
+bool terrainStampCopiesPreviewsTransformsCommitsAndRepeats() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 425U);
+  const std::array initial{
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{0, 0}, 2U, 2U}},
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{2, 0}, 6U, 3U}},
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{10, 0}, 9U, 1U}},
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{11, 0}, 8U, 1U}},
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{20, 20}, 7U, 2U}},
+  };
+  static_cast<void>(appState.facade.applyTerrainControlEdits(initial));
+  appState.history = {};
+  CreativeEditorState editor = terrainRegionEditor(0, 0);
+  setTerrainRegionSelection(editor, {0, 0, 0}, {2, 0, 0});
+
+  const std::uint64_t revisionBeforeCopy =
+      appState.facade.document().revision();
+  const CreativeEditorTerrainStampReceipt copied =
+      copyCreativeEditorTerrainRegionToStamp(appState, editor);
+  const CreativeEditorTerrainStampReceipt began =
+      beginCreativeEditorTerrainStampPreview(appState, editor);
+  setTerrainStrokeTarget(editor, 10, 0);
+  const bool previewBuilt = refreshCreativeEditorTerrainStampPreview(
+      editor.terrain, appState.facade.document(), editor,
+      appState.terrainStamp);
+  const CreativeTerrainStampPreviewCache mergePreview =
+      editor.terrain.region.stamp.preview;
+  const bool previewReused = !refreshCreativeEditorTerrainStampPreview(
+      editor.terrain, appState.facade.document(), editor,
+      appState.terrainStamp);
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> mergeLines;
+  appendCreativeEditorTerrainOverlay(appState.facade.document(), editor, 0.1F,
+                                     mergeLines);
+  const bool mergeGreen = std::any_of(
+      mergeLines.begin(), mergeLines.end(),
+      [](const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return approx(line.color.r, 0.20F) && approx(line.color.g, 1.0F) &&
+               approx(line.color.b, 0.35F);
+      });
+  bool ok = expect(copied.accepted && copied.copy.copiedControlCount == 2U &&
+                       cr::isValidCreativeTerrainStamp(appState.terrainStamp) &&
+                       began.accepted && editor.terrain.region.stamp.active &&
+                       appState.facade.document().revision() ==
+                           revisionBeforeCopy &&
+                       cr::creativeUndoDepth(appState.history) == 0U,
+                   "terrain region copy starts a transient non-mutating stamp") &&
+            expect(previewBuilt && previewReused && mergePreview.valid &&
+                       mergePreview.renderAccepted &&
+                       mergePreview.plan.accepted &&
+                       mergePreview.plan.transformedWidthCells == 3U &&
+                       mergePreview.plan.transformedDepthCells == 1U &&
+                       mergePreview.plan.insertedControlCount == 1U &&
+                       mergePreview.plan.updatedControlCount == 1U &&
+                       mergePreview.plan.removedControlCount == 0U &&
+                       mergePreview.buildCount == 1U && mergeGreen,
+                   "merge preview is cached green and preserves footprint extras");
+
+  const bool rotated = processCreativeEditorTerrainStampQuickEdit(
+      editor, cr::CreativeInputActionId::QuickEditIncrease);
+  const bool selectedMirror = processCreativeEditorTerrainStampQuickEdit(
+      editor, cr::CreativeInputActionId::QuickEditNext);
+  const bool mirrored = processCreativeEditorTerrainStampQuickEdit(
+      editor, cr::CreativeInputActionId::QuickEditIncrease);
+  ok = expect(rotated && selectedMirror && mirrored &&
+                  editor.terrain.region.stamp.quarterTurns == 1U &&
+                  editor.terrain.region.stamp.mirrorX &&
+                  creativeEditorTerrainStampQuickEditLabel(editor) ==
+                      "STAMP MERGE | MIRROR X | ROT 90 | MX ON | MZ OFF",
+              "D-pad controls select and apply exact stamp transforms") &&
+       ok;
+
+  editor.terrain.region.stamp.quarterTurns = 0U;
+  editor.terrain.region.stamp.mirrorX = false;
+  editor.terrain.region.stamp.selectedControl =
+      CreativeTerrainStampTransformControl::Rotation;
+  editor.toolSettings.terrainStampMode =
+      cr::CreativeTerrainStampMode::Replace;
+  const bool replacePreviewBuilt = refreshCreativeEditorTerrainStampPreview(
+      editor.terrain, appState.facade.document(), editor,
+      appState.terrainStamp);
+  const CreativeTerrainStampPreviewCache replacePreview =
+      editor.terrain.region.stamp.preview;
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> replaceLines;
+  appendCreativeEditorTerrainOverlay(appState.facade.document(), editor, 0.1F,
+                                     replaceLines);
+  const bool removalOrange = std::any_of(
+      replaceLines.begin(), replaceLines.end(),
+      [](const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return approx(line.color.r, 1.0F) && approx(line.color.g, 0.46F) &&
+               approx(line.color.b, 0.12F);
+      });
+  editor.volume.active = true;
+  const CreativeEditorSelectionFrame selection;
+  const CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  iggy3d::FrameInput frame;
+  CreativeEditorOverlayFrame visibleOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      visibleOverlay);
+  editor.toolOptions.open = true;
+  CreativeEditorOverlayFrame modalOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      modalOverlay);
+  editor.toolOptions.open = false;
+  ok = expect(replacePreviewBuilt && replacePreview.plan.accepted &&
+                  replacePreview.plan.removedControlCount == 1U &&
+                  removalOrange && visibleOverlay.volumeEdgeCount > 0U &&
+                  visibleOverlay.terrainEdgeCount > 0U &&
+                  modalOverlay.volumeEdgeCount == 0U &&
+                  modalOverlay.terrainEdgeCount == 0U,
+              "replace preview marks removals orange and hides under modals") &&
+       ok;
+
+  const CreativeEditorTerrainStampReceipt firstStamp =
+      applyCreativeEditorTerrainStampWithHistory(
+          appState, editor, "test_terrain_stamp_first");
+  const cr::CreativeTerrainControlPoint* first =
+      appState.facade.document().terrainField().controlAt({10, 0});
+  const cr::CreativeTerrainControlPoint* second =
+      appState.facade.document().terrainField().controlAt({12, 0});
+  const cr::CreativeTerrainControlPoint* outside =
+      appState.facade.document().terrainField().controlAt({20, 20});
+  const bool rebuiltAfterMutation = refreshCreativeEditorTerrainStampPreview(
+      editor.terrain, appState.facade.document(), editor,
+      appState.terrainStamp);
+  ok = expect(firstStamp.accepted && firstStamp.changed && first != nullptr &&
+                  first->heightCells == 2U && second != nullptr &&
+                  second->heightCells == 6U &&
+                  appState.facade.document().terrainField().controlAt({11, 0}) ==
+                      nullptr &&
+                  outside != nullptr && outside->heightCells == 7U &&
+                  cr::creativeUndoDepth(appState.history) == 1U &&
+                  editor.terrain.region.stamp.active,
+              "one stamp commits one Facade batch and stays active for repeats") &&
+       expect(rebuiltAfterMutation &&
+                  editor.terrain.region.stamp.preview.buildCount ==
+                      replacePreview.buildCount + 1U &&
+                  editor.terrain.region.stamp.preview.plan.status ==
+                      cr::CreativeTerrainStampPlanStatus::NoChange,
+              "accepted mutation invalidates and rebuilds the stamp preview once") &&
+       ok;
+
+  setTerrainStrokeTarget(editor, 30, 0);
+  static_cast<void>(refreshCreativeEditorTerrainStampPreview(
+      editor.terrain, appState.facade.document(), editor,
+      appState.terrainStamp));
+  const CreativeEditorTerrainStampReceipt secondStamp =
+      applyCreativeEditorTerrainStampWithHistory(
+          appState, editor, "test_terrain_stamp_second");
+  const CreativeEditorTerrainStampReceipt cancelled =
+      cancelCreativeEditorTerrainStamp(editor);
+  ok = expect(secondStamp.accepted && secondStamp.changed &&
+                  appState.facade.document().terrainField().controlAt({30, 0}) !=
+                      nullptr &&
+                  appState.facade.document().terrainField().controlAt({32, 0}) !=
+                      nullptr &&
+                  cr::creativeUndoDepth(appState.history) == 2U &&
+                  cancelled.accepted && cancelled.changed &&
+                  !editor.terrain.region.stamp.active &&
+                  cr::creativeVolumeSelectionComplete(editor.volume.selection),
+              "repositioned stamp repeats as a second undoable batch and cancels cleanly") &&
+       ok;
+
+  static_cast<void>(beginCreativeEditorTerrainStampPreview(appState, editor));
+  setTerrainStrokeTarget(editor, std::numeric_limits<std::int32_t>::max(), 0);
+  static_cast<void>(refreshCreativeEditorTerrainStampPreview(
+      editor.terrain, appState.facade.document(), editor,
+      appState.terrainStamp));
+  CreativeEditorOverlayFrame overflowOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      overflowOverlay);
+  ok = expect(editor.terrain.region.stamp.preview.plan.status ==
+                  cr::CreativeTerrainStampPlanStatus::CoordinateOverflow &&
+                  overflowOverlay.volumeEdgeCount == 0U,
+              "non-positionable overflow rejects without constructing a bogus footprint") &&
+       ok;
+  static_cast<void>(cancelCreativeEditorTerrainStamp(editor));
+
+  const bool secondUndone =
+      undoLastEdit(appState, "test_terrain_stamp_second_undo");
+  const bool firstUndone =
+      undoLastEdit(appState, "test_terrain_stamp_first_undo");
+  return expect(secondUndone && firstUndone &&
+                    appState.facade.document().terrainField().controlAt({30, 0}) ==
+                        nullptr &&
+                    appState.facade.document().terrainField().controlAt({12, 0}) ==
+                        nullptr &&
+                    appState.facade.document().terrainField().controlAt({11, 0}) !=
+                        nullptr &&
+                    appState.facade.document().terrainField().controlCount() ==
+                        initial.size() &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "two undos restore each repeated stamp in reverse order") &&
+         ok;
+}
+
+bool terrainStampCommandsUseTheTerrainClipboardLane() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 426U);
+  const cr::CreativeTerrainControlEdit source{
+      cr::CreativeTerrainEditKind::Upsert, {{0, 0}, 5U, 2U}};
+  static_cast<void>(appState.facade.applyTerrainControlEdits(
+      std::span{&source, 1U}));
+  appState.history = {};
+  CreativeEditorState editor = terrainRegionEditor(0, 0);
+  setTerrainRegionSelection(editor, {0, 0, 0}, {0, 0, 0});
+  const std::uint64_t revisionBefore = appState.facade.document().revision();
+  const auto command = [&](cr::CreativeInputActionId action,
+                           cr::CreativeInputKey trigger) {
+    cr::CreativeInputRouteResult routed;
+    routed.context = cr::CreativeInputContext::EditorViewport;
+    routed.actions[0] = {action, trigger};
+    routed.actionCount = 1U;
+    applyCreativeEditorCommandInput(routed, appState, editor,
+                                    std::filesystem::path{}, "terrain_test");
+  };
+
+  command(cr::CreativeInputActionId::CopySelection,
+          cr::CreativeInputKey::C);
+  bool ok = expect(cr::isValidCreativeTerrainStamp(appState.terrainStamp) &&
+                       cr::creativeClipboardEmpty(appState.clipboard) &&
+                       appState.facade.document().revision() == revisionBefore &&
+                       cr::creativeUndoDepth(appState.history) == 0U,
+                   "Copy routes Terrain Region into its separate transient clipboard");
+  command(cr::CreativeInputActionId::CutSelection,
+          cr::CreativeInputKey::X);
+  command(cr::CreativeInputActionId::DeleteSelection,
+          cr::CreativeInputKey::Delete);
+  ok = expect(appState.facade.document().terrainField().controlAt({0, 0}) !=
+                  nullptr &&
+                  appState.facade.document().revision() == revisionBefore &&
+                  cr::creativeUndoDepth(appState.history) == 0U,
+              "terrain Cut and Delete fail closed instead of erasing region data") &&
+       ok;
+  command(cr::CreativeInputActionId::PasteClipboard,
+          cr::CreativeInputKey::V);
+  ok = expect(editor.terrain.region.stamp.active,
+              "Paste starts the terrain stamp preview through semantic routing") &&
+       ok;
+  static_cast<void>(cancelCreativeEditorTerrainStamp(editor));
+  command(cr::CreativeInputActionId::DuplicateSelection,
+          cr::CreativeInputKey::D);
+  return expect(editor.terrain.region.stamp.active &&
+                    cr::isValidCreativeTerrainStamp(appState.terrainStamp) &&
+                    cr::creativeClipboardEmpty(appState.clipboard) &&
+                    appState.facade.document().revision() == revisionBefore &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "Duplicate refreshes the terrain stamp and begins one preview") &&
+         ok;
+}
+
 bool bentSurfacePatchesReachRendererAndRefreshWithHeight() {
   cr::CreativeAppState appState;
   installDocument(appState, 404U);
@@ -2008,6 +2272,8 @@ int main() {
                  terrainPathRoutesSquareXAndCircleThroughWorldActions() &&
                  terrainRegionPreviewApplyAndUndoStayAtomic() &&
                  terrainRegionRoutesCornersSampleCancelAndQuickEdit() &&
+                 terrainStampCopiesPreviewsTransformsCommitsAndRepeats() &&
+                 terrainStampCommandsUseTheTerrainClipboardLane() &&
                  bentSurfacePatchesReachRendererAndRefreshWithHeight() &&
                  smoothTerrainCollisionMatchesRenderedTriangle() &&
                  gridChangeRebuildsWorldSpaceTerrainPatches() &&

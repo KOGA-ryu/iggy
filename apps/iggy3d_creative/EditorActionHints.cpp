@@ -138,6 +138,25 @@ void appendQuickEdit(HintSpecBuffer& buffer,
                      cr::CreativeInputActionId::QuickEditIncrease, "Width");
       return;
     case cr::CreativeHeldItemKind::TerrainRegion:
+      if (editor.terrain.region.stamp.active) {
+        appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
+                       cr::CreativeInputActionId::QuickEditNext, "Control");
+        std::string_view adjustment = "Rotate";
+        switch (editor.terrain.region.stamp.selectedControl) {
+          case CreativeTerrainStampTransformControl::Rotation: break;
+          case CreativeTerrainStampTransformControl::MirrorX:
+            adjustment = "Mirror X";
+            break;
+          case CreativeTerrainStampTransformControl::MirrorZ:
+            adjustment = "Mirror Z";
+            break;
+          case CreativeTerrainStampTransformControl::Count: return;
+        }
+        appendHintPair(buffer, cr::CreativeInputActionId::QuickEditDecrease,
+                       cr::CreativeInputActionId::QuickEditIncrease,
+                       adjustment);
+        return;
+      }
       if (cr::creativeTerrainRegionUsesTargetHeight(
               editor.toolSettings.terrainRegionOperation)) {
         appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
@@ -248,6 +267,12 @@ void appendViewportHints(HintSpecBuffer& buffer,
       keyboardQuickEdit = true;
       break;
     case cr::CreativeHeldItemKind::TerrainRegion: {
+      if (editor.terrain.region.stamp.active) {
+        appendHint(buffer, positiveAction, "Stamp terrain");
+        appendHint(buffer, negativeAction, "Cancel stamp");
+        keyboardQuickEdit = true;
+        break;
+      }
       std::string_view positiveLabel = "Corner 1";
       if (editor.volume.selection.phase ==
           cr::CreativeVolumeSelectionPhase::FirstCorner) {

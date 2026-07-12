@@ -209,6 +209,9 @@ CreativeEditorTerrainRegionReceipt cancelCreativeEditorTerrainRegion(
 bool processCreativeEditorTerrainRegionQuickEdit(
     CreativeEditorState& editor,
     cr::CreativeInputActionId action) noexcept {
+  if (editor.terrain.region.stamp.active) {
+    return processCreativeEditorTerrainStampQuickEdit(editor, action);
+  }
   bool changed = false;
   const cr::CreativeTerrainRegionOperation operation =
       editor.toolSettings.terrainRegionOperation;
@@ -251,6 +254,9 @@ bool processCreativeEditorTerrainRegionQuickEdit(
 
 std::string creativeEditorTerrainRegionQuickEditLabel(
     const CreativeEditorState& editor) {
+  if (editor.terrain.region.stamp.active) {
+    return creativeEditorTerrainStampQuickEditLabel(editor);
+  }
   const cr::CreativeTerrainRegionOperation operation =
       editor.toolSettings.terrainRegionOperation;
   std::string label(cr::toString(operation));

@@ -143,12 +143,31 @@ bool actionAvailabilityUsesExplicitFacts() {
                    "file actions remain available");
   availability.undoAvailable = true;
   availability.clipboardAvailable = true;
+  availability.copyAvailable = true;
+  bool enabled = expect(cr::creativeCatalogActionAvailable(
+                            cr::CreativeInputActionId::Undo, availability) &&
+                            cr::creativeCatalogActionAvailable(
+                                cr::CreativeInputActionId::PasteClipboard,
+                                availability) &&
+                            cr::creativeCatalogActionAvailable(
+                                cr::CreativeInputActionId::CopySelection,
+                                availability) &&
+                            !cr::creativeCatalogActionAvailable(
+                                cr::CreativeInputActionId::CutSelection,
+                                availability) &&
+                            !cr::creativeCatalogActionAvailable(
+                                cr::CreativeInputActionId::DuplicateSelection,
+                                availability),
+                        "selection actions consume independent availability facts");
+  availability.cutAvailable = true;
+  availability.duplicateAvailable = true;
   return expect(cr::creativeCatalogActionAvailable(
-                    cr::CreativeInputActionId::Undo, availability) &&
+                    cr::CreativeInputActionId::CutSelection, availability) &&
                     cr::creativeCatalogActionAvailable(
-                        cr::CreativeInputActionId::PasteClipboard,
+                        cr::CreativeInputActionId::DuplicateSelection,
                         availability),
-                "history and clipboard enable their actions") &&
+                "cut and duplicate enable without changing copy or paste") &&
+         enabled &&
          ok;
 }
 

@@ -197,7 +197,7 @@ Initial tool grammar:
 | Surface extrude | Remove exposed layer | Extrude exposed face | Extrude exposed face | Remove exposed layer | Sample extrusion material |
 | Terrain rod | Remove aimed rod | Place/update aimed rod | Place/update aimed rod | Remove aimed rod | Sample rod height/radius |
 | Terrain path | Remove latest point | Commit path | Commit path | Remove latest point | Add bend/start point |
-| Terrain region | Clear region | Advance corner/apply | Advance corner/apply | Clear region | Sample Flatten height |
+| Terrain region / stamp | Clear region or cancel stamp | Advance corner/apply or stamp | Advance corner/apply or stamp | Clear region or cancel stamp | Sample Flatten height |
 | Object select | Select/toggle target | No action | Select/toggle target | Cancel active action | Sample material |
 | Transform | Fast ground-plane drag | Begin transform preview | Fast ground-plane drag | Cancel active drag | Sample material |
 | Selection wand | Set corner 1 | Set corner 2 | Advance corner 1/2 | Clear selection | Expand selection |
@@ -216,7 +216,12 @@ the current aim remains its live endpoint, so a straight route is Square, aim,
 X. Terrain Region uses X to set corner 1, set corner 2, and then apply; Circle
 clears the region, and Square samples a target only while Flatten is selected.
 D-pad left/right cycles the region operation, while up/down adjusts its amount
-or Flatten target.
+or Flatten target. A copied region enters a repeatable stamp preview through
+Paste or Duplicate on the catalog Actions page. During that preview, up/down
+selects Rotation, Mirror X, or Mirror Z; left/right rotates by 90 degrees or
+toggles the selected mirror. X/right mouse stamps once and keeps the preview
+active at the next aimed cell; Circle/left mouse cancels it. Tool Options owns
+the persistent Merge/Replace stamp mode.
 The data, generation, cache, and future smooth-surface seams are specified in
 [`creative_terrain.md`](creative_terrain.md).
 
@@ -312,6 +317,10 @@ The data, generation, cache, and future smooth-surface seams are specified in
   Copy, Cut, Paste, Duplicate, Save, New, and Load through the same semantic
   command dispatcher used by keyboard input. Unavailable history, selection,
   and clipboard actions remain visible but dimmed and cannot emit a command.
+  With Terrain Region held and a complete region selected, Copy stores terrain
+  rods, Paste starts the terrain stamp preview, and Duplicate performs both.
+  Cut remains disabled because terrain stamping has no implicit destructive
+  source operation. The terrain and object clipboards are independent.
   New and Load require a second confirm on the same selected row; moving the
   selection, changing pages, closing the catalog, or canceling clears the
   pending confirmation.

@@ -3,6 +3,7 @@
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
 #include "app/iggy3d/creative/tools/Clipboard.hpp"
+#include "app/iggy3d/creative/tools/TerrainStamp.hpp"
 
 #include <cstdint>
 #include <string>
@@ -63,6 +64,7 @@ struct CreativeAppState {
   CreativeActiveIdentity identity;
   CreativeDocumentHistory history;
   CreativeClipboard clipboard;
+  CreativeTerrainStamp terrainStamp;
 };
 
 }  // namespace iggy3d::creative

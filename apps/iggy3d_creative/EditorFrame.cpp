@@ -398,6 +398,10 @@ void resetCreativeEditorForDocumentReplacement(
     CreativeEditorState& editor,
     creative::CreativeDocumentId documentId) noexcept {
   creative::clearCreativeVolumeSelection(editor.volume.selection);
+  editor.terrain.region.stamp.active = false;
+  editor.terrain.region.stamp.preview.valid = false;
+  editor.terrain.region.stamp.preview.renderAccepted = false;
+  editor.terrain.region.stamp.preview.patches.clear();
   invalidateCreativeEditorConnectedFillCache(editor.interaction.connectedFill);
   invalidateCreativeEditorSurfaceExtrudeCache(
       editor.interaction.surfaceExtrude);
@@ -426,6 +430,10 @@ void applyCreativeEditorCommandInput(
   if (routedInput.context != creative::CreativeInputContext::EditorViewport) {
     return;
   }
+  const auto terrainRegionHeld = [&editor] {
+    return creative::selectedCreativeHotbarEntry(editor.interaction.hotbar).kind ==
+           creative::CreativeHeldItemKind::TerrainRegion;
+  };
   for (const creative::CreativeInputActionEvent& event :
        routedInput.actionEvents()) {
     switch (event.action) {
@@ -515,6 +523,9 @@ void applyCreativeEditorCommandInput(
         static_cast<void>(cancelCreativeEditorHeldItem(appState, editor));
         break;
       case creative::CreativeInputActionId::DeleteSelection:
+        if (terrainRegionHeld()) {
+          break;
+        }
         if (editor.volume.active) {
           static_cast<void>(applyCreativeEditorVolumeOperationWithHistory(
               appState, editor.volume, editor.placeBrush,
@@ -539,19 +550,42 @@ void applyCreativeEditorCommandInput(
         (void)redoLastEdit(appState, "keyboard_redo");
         break;
       case creative::CreativeInputActionId::CopySelection:
-        (void)copySelectionToClipboard(appState, "keyboard_copy");
+        if (terrainRegionHeld()) {
+          static_cast<void>(
+              copyCreativeEditorTerrainRegionToStamp(appState, editor));
+        } else {
+          (void)copySelectionToClipboard(appState, "keyboard_copy");
+        }
         break;
       case creative::CreativeInputActionId::CutSelection:
-        (void)cutSelectionToClipboardWithHistory(appState, "keyboard_cut");
+        if (!terrainRegionHeld()) {
+          (void)cutSelectionToClipboardWithHistory(appState, "keyboard_cut");
+        }
         break;
       case creative::CreativeInputActionId::PasteClipboard:
-        static_cast<void>(beginCreativeEditorClipboardTransformPreview(
-            appState, appState.clipboard, editor.transform, "keyboard_paste"));
+        if (terrainRegionHeld()) {
+          static_cast<void>(
+              beginCreativeEditorTerrainStampPreview(appState, editor));
+        } else {
+          static_cast<void>(beginCreativeEditorClipboardTransformPreview(
+              appState, appState.clipboard, editor.transform,
+              "keyboard_paste"));
+        }
         break;
       case creative::CreativeInputActionId::DuplicateSelection:
-        (void)duplicateSelectedObjectsWithUndo(
-            appState, appState.history,
-            creative::CreativeDuplicateCommandRequest{}, "keyboard_duplicate");
+        if (terrainRegionHeld()) {
+          const CreativeEditorTerrainStampReceipt copied =
+              copyCreativeEditorTerrainRegionToStamp(appState, editor);
+          if (copied.accepted) {
+            static_cast<void>(
+                beginCreativeEditorTerrainStampPreview(appState, editor));
+          }
+        } else {
+          (void)duplicateSelectedObjectsWithUndo(
+              appState, appState.history,
+              creative::CreativeDuplicateCommandRequest{},
+              "keyboard_duplicate");
+        }
         break;
       case creative::CreativeInputActionId::RotateYawNegative:
       case creative::CreativeInputActionId::RotateYawPositive: {

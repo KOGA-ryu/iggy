@@ -513,22 +513,35 @@ void applyInventoryWindowMode(iggy3d::SdlWindow& window,
 }
 
 [[nodiscard]] cr::CreativeCatalogActionAvailability catalogActionAvailability(
-    const cr::CreativeAppState& appState) noexcept {
+    const cr::CreativeAppState& appState,
+    const CreativeEditorState& editor) noexcept {
   cr::CreativeCatalogActionAvailability availability;
   availability.undoAvailable = cr::creativeUndoAvailable(appState.history);
   availability.redoAvailable = cr::creativeRedoAvailable(appState.history);
-  availability.selectionAvailable =
+  const bool objectSelection =
       cr::selectedTargetCount(appState.facade.selectionState()) > 0U;
+  const cr::CreativeHeldItemKind held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar).kind;
+  const bool terrainRegion = held == cr::CreativeHeldItemKind::TerrainRegion;
+  const bool terrainSelection =
+      terrainRegion &&
+      cr::creativeVolumeSelectionComplete(editor.volume.selection);
+  availability.copyAvailable = terrainRegion ? terrainSelection : objectSelection;
+  availability.cutAvailable = !terrainRegion && objectSelection;
+  availability.duplicateAvailable =
+      terrainRegion ? terrainSelection : objectSelection;
   availability.clipboardAvailable =
-      !cr::creativeClipboardEmpty(appState.clipboard);
+      terrainRegion ? cr::isValidCreativeTerrainStamp(appState.terrainStamp)
+                    : !cr::creativeClipboardEmpty(appState.clipboard);
   return availability;
 }
 
 [[nodiscard]] bool catalogActionAvailable(
     const cr::CreativeAppState& appState,
+    const CreativeEditorState& editor,
     cr::CreativeInputActionId action) noexcept {
   return cr::creativeCatalogActionAvailable(
-      action, catalogActionAvailability(appState));
+      action, catalogActionAvailability(appState, editor));
 }
 
 void requestSelectedCatalogAction(
@@ -542,7 +555,8 @@ void requestSelectedCatalogAction(
   const cr::CreativeCatalogActionEntry* selected =
       cr::selectedCreativeCatalogAction(catalog.model);
   if (selected == nullptr ||
-      !catalogActionAvailable(request.appState, selected->action)) {
+      !catalogActionAvailable(request.appState, request.editor,
+                              selected->action)) {
     return;
   }
   const cr::CreativeCatalogActionActivation activation =
@@ -1253,7 +1267,8 @@ void appendCreativeEditorCatalogOverlay(
       const std::int32_t y =
           layout.rowsY + static_cast<std::int32_t>(row * layout.rowHeight);
       const bool selected = actionIndex == catalog.model.selectedActionIndex;
-      const bool available = catalogActionAvailable(appState, action.action);
+      const bool available =
+          catalogActionAvailable(appState, editor, action.action);
       const bool pending =
           catalog.model.pendingActionConfirmation == action.action;
       uiRects.push_back({layout.panelX + 16, y, catalogInnerWidth(layout),

@@ -420,9 +420,11 @@ bool creativeCatalogActionAvailable(
     case CreativeInputActionId::Undo: return availability.undoAvailable;
     case CreativeInputActionId::Redo: return availability.redoAvailable;
     case CreativeInputActionId::CopySelection:
+      return availability.copyAvailable;
     case CreativeInputActionId::CutSelection:
+      return availability.cutAvailable;
     case CreativeInputActionId::DuplicateSelection:
-      return availability.selectionAvailable;
+      return availability.duplicateAvailable;
     case CreativeInputActionId::PasteClipboard:
       return availability.clipboardAvailable;
     case CreativeInputActionId::Save: return availability.saveAvailable;

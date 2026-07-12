@@ -11,6 +11,7 @@
 #include "app/iggy3d/creative/tools/TerrainRegion.hpp"
 #include "app/iggy3d/creative/tools/TerrainSeed.hpp"
 #include "app/iggy3d/creative/tools/TerrainSculpt.hpp"
+#include "app/iggy3d/creative/tools/TerrainStamp.hpp"
 
 #include <array>
 #include <cstddef>
@@ -164,6 +165,7 @@ enum class CreativeToolOptionId : std::uint8_t {
   TerrainPathAmplitude,
   TerrainRegionOperation,
   TerrainRegionAmount,
+  TerrainStampMode,
   Count,
 };
 
@@ -280,6 +282,7 @@ struct CreativeToolSettings {
       CreativeTerrainRegionOperation::Raise;
   CreativeTerrainRegionAmount terrainRegionAmount =
       CreativeTerrainRegionAmount::OneCell;
+  CreativeTerrainStampMode terrainStampMode = CreativeTerrainStampMode::Merge;
 
   [[nodiscard]] bool operator==(
       const CreativeToolSettings&) const noexcept = default;

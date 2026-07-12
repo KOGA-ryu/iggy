@@ -608,6 +608,45 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
               "complete flatten region advertises apply sample and target tuning") &&
        ok;
 
+  editor.terrain.region.stamp.active = true;
+  const cr::CreativeActionHintFrame terrainStamp =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* stampApply =
+      findHint(terrainStamp, cr::CreativeInputActionId::AcceptAction);
+  const cr::CreativeActionHint* stampCancel =
+      findHint(terrainStamp, cr::CreativeInputActionId::RejectAction);
+  const cr::CreativeActionHint* stampControl =
+      findHint(terrainStamp, cr::CreativeInputActionId::QuickEditPrevious);
+  const cr::CreativeActionHint* stampRotate =
+      findHint(terrainStamp, cr::CreativeInputActionId::QuickEditDecrease);
+  ok = expect(stampApply != nullptr &&
+                  stampApply->chord.view() == "X" &&
+                  stampApply->label.view() == "Stamp terrain" &&
+                  stampCancel != nullptr &&
+                  stampCancel->chord.view() == "Circle" &&
+                  stampCancel->label.view() == "Cancel stamp" &&
+                  stampControl != nullptr &&
+                  stampControl->label.view() == "Control" &&
+                  stampRotate != nullptr &&
+                  stampRotate->label.view() == "Rotate",
+              "terrain stamp advertises repeatable apply cancel and transform controls") &&
+       ok;
+  editor.terrain.region.stamp.selectedControl =
+      CreativeTerrainStampTransformControl::MirrorX;
+  const cr::CreativeActionHintFrame mirroredStamp =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* stampMirror =
+      findHint(mirroredStamp, cr::CreativeInputActionId::QuickEditDecrease);
+  ok = expect(stampMirror != nullptr &&
+                  stampMirror->label.view() == "Mirror X",
+              "terrain stamp names the selected mirror channel") &&
+       ok;
+  editor.terrain.region.stamp = {};
+
   setHeld(editor, cr::CreativeHeldItemKind::LinearArray);
   const cr::CreativeActionHintFrame array = resolveCreativeEditorActionHints(
       editor, cr::CreativeInputContext::EditorViewport,

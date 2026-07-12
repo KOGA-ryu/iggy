@@ -486,6 +486,12 @@ void removeTerrainPathPoint(InteractionContext& context) {
 }
 
 void applyTerrainRegion(InteractionContext& context) {
+  if (context.request.editor.terrain.region.stamp.active) {
+    static_cast<void>(applyCreativeEditorTerrainStampWithHistory(
+        context.request.appState, context.request.editor,
+        "minecraft_terrain_stamp_apply"));
+    return;
+  }
   static_cast<void>(applyCreativeEditorTerrainRegionWithHistory(
       context.request.appState, context.request.editor,
       "minecraft_terrain_region_apply"));
@@ -501,11 +507,19 @@ void advanceTerrainRegion(InteractionContext& context) {
 }
 
 void sampleTerrainRegionHeight(InteractionContext& context) {
+  if (context.request.editor.terrain.region.stamp.active) {
+    return;
+  }
   static_cast<void>(sampleCreativeEditorTerrainRegionHeight(
       context.request.appState.facade.document(), context.request.editor));
 }
 
 void cancelTerrainRegion(InteractionContext& context) {
+  if (context.request.editor.terrain.region.stamp.active) {
+    static_cast<void>(
+        cancelCreativeEditorTerrainStamp(context.request.editor));
+    return;
+  }
   static_cast<void>(
       cancelCreativeEditorTerrainRegion(context.request.editor));
 }
@@ -687,6 +701,11 @@ HeldItemCommandResult confirmTerrainRegionCommand(
     cr::CreativeAppState& appState,
     CreativeEditorState& editor,
     std::string_view source) {
+  if (editor.terrain.region.stamp.active) {
+    const CreativeEditorTerrainStampReceipt receipt =
+        applyCreativeEditorTerrainStampWithHistory(appState, editor, source);
+    return {true, receipt.accepted};
+  }
   return {true, applyCreativeEditorTerrainRegionWithHistory(
                     appState, editor, source)
                     .accepted};
@@ -746,6 +765,9 @@ HeldItemCommandResult cancelTerrainPathCommand(
 HeldItemCommandResult cancelTerrainRegionCommand(
     cr::CreativeAppState&,
     CreativeEditorState& editor) {
+  if (editor.terrain.region.stamp.active) {
+    return {true, cancelCreativeEditorTerrainStamp(editor).changed};
+  }
   return {true, cancelCreativeEditorTerrainRegion(editor).changed};
 }
 
@@ -981,9 +1003,15 @@ void refreshHeldItemPreview(
           request.editor));
       return;
     case cr::CreativeHeldItemKind::TerrainRegion:
-      static_cast<void>(refreshCreativeEditorTerrainRegionPreview(
-          request.editor.terrain, request.appState.facade.document(),
-          request.editor));
+      if (request.editor.terrain.region.stamp.active) {
+        static_cast<void>(refreshCreativeEditorTerrainStampPreview(
+            request.editor.terrain, request.appState.facade.document(),
+            request.editor, request.appState.terrainStamp));
+      } else {
+        static_cast<void>(refreshCreativeEditorTerrainRegionPreview(
+            request.editor.terrain, request.appState.facade.document(),
+            request.editor));
+      }
       return;
     case cr::CreativeHeldItemKind::Material:
     case cr::CreativeHeldItemKind::MaterialBrush:
@@ -1273,6 +1301,20 @@ void appendTerrainRegionStatus(std::string& output,
                                const CreativeEditorState& editor) {
   output.append(" | ");
   output.append(creativeEditorTerrainRegionQuickEditLabel(editor));
+  if (editor.terrain.region.stamp.active) {
+    const CreativeTerrainStampPreviewCache& preview =
+        editor.terrain.region.stamp.preview;
+    if (preview.valid) {
+      output.append(" | ");
+      output.append(std::to_string(preview.plan.finalControlCount));
+      output.append(" RODS");
+      if (!preview.plan.accepted) {
+        output.append(" | ");
+        output.append(cr::toString(preview.plan.status));
+      }
+    }
+    return;
+  }
   const CreativeTerrainRegionPreviewCache& preview =
       editor.terrain.region.preview;
   if (preview.valid) {

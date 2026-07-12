@@ -305,6 +305,10 @@ constexpr std::array kToolOptionDescriptors{
                                  "AMOUNT",
                                  CreativeToolOptionValueKind::Choice,
                                  kTerrainRegionItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainStampMode,
+                                 "STAMP MODE",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainRegionItems},
 };
 static_assert(kToolOptionDescriptors.size() ==
               kCreativeToolOptionDescriptorCount);
@@ -704,7 +708,8 @@ bool isValidCreativeToolSettings(
          validEnum(settings.terrainRegionOperation,
                    CreativeTerrainRegionOperation::Count) &&
          validEnum(settings.terrainRegionAmount,
-                   CreativeTerrainRegionAmount::Count);
+                   CreativeTerrainRegionAmount::Count) &&
+         validEnum(settings.terrainStampMode, CreativeTerrainStampMode::Count);
 }
 
 std::span<const CreativeToolOptionDescriptor>
@@ -1023,6 +1028,8 @@ std::string_view creativeToolOptionValueLabel(
       return toString(settings.terrainRegionOperation);
     case CreativeToolOptionId::TerrainRegionAmount:
       return toString(settings.terrainRegionAmount);
+    case CreativeToolOptionId::TerrainStampMode:
+      return toString(settings.terrainStampMode);
     case CreativeToolOptionId::Count:
       break;
   }
@@ -1294,6 +1301,11 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
     case CreativeToolOptionId::TerrainRegionAmount:
       adjusted.terrainRegionAmount = cycleEnum(
           adjusted.terrainRegionAmount, CreativeTerrainRegionAmount::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::TerrainStampMode:
+      adjusted.terrainStampMode = cycleEnum(
+          adjusted.terrainStampMode, CreativeTerrainStampMode::Count,
           direction);
       break;
     case CreativeToolOptionId::Count:
