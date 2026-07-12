@@ -154,8 +154,8 @@ bool actionAvailabilityUsesExplicitFacts() {
 
 bool catalogBuildsMaterialsAndCreatorTools() {
   const cr::CreativeCatalogState state = catalog();
-  bool ok = expect(state.entries.size() == 18U,
-                   "two materials plus sixteen catalog tools") &&
+  bool ok = expect(state.entries.size() == 19U,
+                   "two materials plus seventeen catalog tools") &&
             expect(state.filteredEntryIndices.size() == state.entries.size(),
                    "empty query exposes every entry") &&
             expect(state.entries[0].category ==
@@ -174,9 +174,9 @@ bool catalogBuildsMaterialsAndCreatorTools() {
                        cr::CreativeHeldItemKind::ObjectSelect,
                    "object tools follow the material brush") &&
             expect(state.entries.back().hotbarEntry.kind ==
-                           cr::CreativeHeldItemKind::TerrainProfile &&
-                       state.entries.back().label == "Terrain Profile",
-                   "terrain profile closes the tool lane as a selectable tool");
+                           cr::CreativeHeldItemKind::TerrainPath &&
+                       state.entries.back().label == "Terrain Path",
+                   "terrain path closes the tool lane as a selectable tool");
   ok = expect(cr::toString(cr::CreativeCatalogEntryCategory::Material) ==
                   "Material" &&
                   cr::toString(cr::CreativeCatalogEntryCategory::Tool) ==
@@ -203,7 +203,7 @@ bool catalogOmitsToolsWithoutRequiredMaterial() {
                entry.hotbarEntry.kind ==
                    cr::CreativeHeldItemKind::SurfaceExtrude;
       });
-  return expect(state.entries.size() == 10U,
+  return expect(state.entries.size() == 11U,
                 "empty palette retains material-independent tools") &&
          expect(!materialDependentToolPresent,
                 "material-dependent tools require a valid material");
@@ -492,6 +492,12 @@ bool searchIsCaseInsensitiveBoundedAndStable() {
                   cr::selectedCreativeCatalogEntry(state)->hotbarEntry.kind ==
                       cr::CreativeHeldItemKind::TerrainProfile,
               "crater alias resolves uniquely to terrain profile") &&
+       expect(cr::setCreativeCatalogQuery(state, "road") &&
+                  state.filteredEntryIndices.size() == 1U &&
+                  cr::selectedCreativeCatalogEntry(state) != nullptr &&
+                  cr::selectedCreativeCatalogEntry(state)->hotbarEntry.kind ==
+                      cr::CreativeHeldItemKind::TerrainPath,
+              "road alias resolves uniquely to terrain path") &&
        expect(cr::setCreativeCatalogQuery(state, "no-such-entry"),
               "empty-result query accepted") &&
        expect(state.filteredEntryIndices.empty() &&
@@ -523,7 +529,7 @@ bool selectionWrapsAndAssignmentsAreExplicit() {
   cr::CreativeHotbarState hotbar = cr::makeDefaultCreativeHotbar(palette);
 
   bool ok = expect(cr::moveCreativeCatalogSelection(state, -1) &&
-                       state.selectedFilteredIndex == 17U,
+                       state.selectedFilteredIndex == 18U,
                    "previous wraps to final result") &&
             expect(cr::moveCreativeCatalogSelection(state, 1) &&
                        state.selectedFilteredIndex == 0U,

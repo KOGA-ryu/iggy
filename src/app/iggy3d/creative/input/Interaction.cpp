@@ -151,6 +151,7 @@ std::string_view toString(CreativeHeldItemKind kind) noexcept {
     case CreativeHeldItemKind::TerrainGrade: return "TerrainGrade";
     case CreativeHeldItemKind::TerrainSculpt: return "TerrainSculpt";
     case CreativeHeldItemKind::TerrainProfile: return "TerrainProfile";
+    case CreativeHeldItemKind::TerrainPath: return "TerrainPath";
     case CreativeHeldItemKind::Count: break;
   }
   return "Unknown";
@@ -269,6 +270,34 @@ bool creativeHeldItemUsesMaterial(CreativeHeldItemKind kind) noexcept {
     case CreativeHeldItemKind::TerrainGrade:
     case CreativeHeldItemKind::TerrainSculpt:
     case CreativeHeldItemKind::TerrainProfile:
+    case CreativeHeldItemKind::TerrainPath:
+    case CreativeHeldItemKind::Count:
+      return false;
+  }
+  return false;
+}
+
+bool creativeHeldItemIsTerrainTool(CreativeHeldItemKind kind) noexcept {
+  switch (kind) {
+    case CreativeHeldItemKind::TerrainControl:
+    case CreativeHeldItemKind::TerrainGrade:
+    case CreativeHeldItemKind::TerrainSculpt:
+    case CreativeHeldItemKind::TerrainProfile:
+    case CreativeHeldItemKind::TerrainPath:
+      return true;
+    case CreativeHeldItemKind::Material:
+    case CreativeHeldItemKind::MaterialBrush:
+    case CreativeHeldItemKind::ObjectSelect:
+    case CreativeHeldItemKind::ObjectMove:
+    case CreativeHeldItemKind::VolumeSelect:
+    case CreativeHeldItemKind::VolumeFill:
+    case CreativeHeldItemKind::VolumeHollow:
+    case CreativeHeldItemKind::VolumeReplace:
+    case CreativeHeldItemKind::VolumeErase:
+    case CreativeHeldItemKind::VolumeClone:
+    case CreativeHeldItemKind::LinearArray:
+    case CreativeHeldItemKind::ConnectedFill:
+    case CreativeHeldItemKind::SurfaceExtrude:
     case CreativeHeldItemKind::Count:
       return false;
   }

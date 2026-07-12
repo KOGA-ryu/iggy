@@ -78,6 +78,10 @@ constexpr std::array kToolSpecs{
                     "terrain profile hill basin ring crater ridge wave ripple "
                     "elevation landscape",
                     false},
+    CatalogToolSpec{CreativeHeldItemKind::TerrainPath, "Terrain Path",
+                    "terrain path road river ridge trench embankment route "
+                    "landscape",
+                    false},
 };
 
 constexpr std::array kActionEntries{

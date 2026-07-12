@@ -675,6 +675,428 @@ void logStandaloneRoomBakeFinal(
           preview.scene.room.meshes.size());
 }
 
+namespace {
+
+void resetCreativeEditorOverlayFrame(CreativeEditorOverlayFrame& output) {
+  output.uiRects.clear();
+  output.glyphs.clear();
+  output.combinedWireLines.clear();
+  output.documentWireLineCount = 0;
+  output.pointMarkerEdgeCount = 0;
+  output.lineMarkerEdgeCount = 0;
+  output.pathPointHandleEdgeCount = 0;
+  output.ghostEdgeCount = 0;
+  output.materialBrushPivotEdgeCount = 0;
+  output.materialBrushGuideLineCount = 0;
+  output.materialBrushEdgeCount = 0;
+  output.connectedFillEdgeCount = 0;
+  output.surfaceExtrudeEdgeCount = 0;
+  output.terrainEdgeCount = 0;
+  output.volumeEdgeCount = 0;
+  output.patternEdgeCount = 0;
+  output.transformPreviewEdgeCount = 0;
+  output.placementFeedbackEdgeCount = 0;
+}
+
+void attachCreativeEditorOverlayFrame(FrameInput& frame,
+                                      CreativeEditorOverlayFrame& output) {
+  frame.ui.visible = true;
+  frame.ui.rects = output.uiRects.data();
+  frame.ui.rectCount = output.uiRects.size();
+  frame.ui.textGlyphQuads = output.glyphs.data();
+  frame.ui.textGlyphQuadCount = output.glyphs.size();
+
+  RenderCreativeWireframeDebugFrame combinedWireFrame;
+  combinedWireFrame.available = true;
+  combinedWireFrame.visible = !output.combinedWireLines.empty();
+  combinedWireFrame.lines = output.combinedWireLines.data();
+  combinedWireFrame.lineCount = output.combinedWireLines.size();
+  frame.creativeWireframeDebug = combinedWireFrame;
+}
+
+void appendCreativeEditorPlacementFeedbackWireframe(
+    const CreativeEditorOverlayFrameRequest& request,
+    CreativeEditorOverlayFrame& output) {
+  CreativeEditorState& editor = request.editor;
+  std::vector<RenderCreativeWireframeDebugLine>& lines =
+      output.combinedWireLines;
+  const CreativeEditorPlacementFeedback& feedback =
+      editor.interaction.placementFeedback;
+  if (feedback.status != CreativeEditorPlacementFeedbackStatus::Placed ||
+      !creativeEditorPlacementFeedbackVisible(feedback, editor.frameIndex)) {
+    return;
+  }
+  const creative::CreativeObject* placedObject =
+      request.appState.facade.findObject(feedback.objectId);
+  if (placedObject != nullptr) {
+    const VisualBounds placedBounds = visualBoundsForObject(*placedObject);
+    const std::size_t before = lines.size();
+    appendStandaloneWireframeBoxEdges(
+        lines, placedBounds.min, placedBounds.max,
+        RenderLineColor{0.25F, 1.0F, 0.35F, 1.0F},
+        std::max(0.075F, request.gizmoThickness * 1.4F));
+    for (std::size_t index = before; index < lines.size(); ++index) {
+      lines[index].objectId = placedObject->id;
+    }
+    output.placementFeedbackEdgeCount = lines.size() - before;
+    return;
+  }
+  if (!feedback.voxelPlaced) {
+    return;
+  }
+  Vec3 center{};
+  Vec3 size{};
+  if (!previewBoundsTransform(feedback.voxelBounds, 1.0F, center, size)) {
+    return;
+  }
+  const Vec3 minimum =
+      cr::creativeVec3ToCoreChecked(feedback.voxelBounds.min).value;
+  const Vec3 maximum =
+      cr::creativeVec3ToCoreChecked(feedback.voxelBounds.max).value;
+  const std::size_t before = lines.size();
+  appendStandaloneWireframeBoxEdges(
+      lines, minimum, maximum,
+      RenderLineColor{0.25F, 1.0F, 0.35F, 1.0F},
+      std::max(0.075F, request.gizmoThickness * 1.4F));
+  output.placementFeedbackEdgeCount = lines.size() - before;
+}
+
+void appendCreativeEditorMaterialBrushWireframe(
+    const CreativeEditorOverlayFrameRequest& request,
+    CreativeEditorOverlayFrame& output) {
+  CreativeEditorState& editor = request.editor;
+  cr::CreativeAppState& appState = request.appState;
+  std::vector<RenderCreativeWireframeDebugLine>& lines =
+      output.combinedWireLines;
+  const MaterialBrushPreviewPlan preview =
+      materialBrushPreviewPlan(editor, appState.facade.document());
+  if (editor.transform.active ||
+      (!preview.visible && !preview.showSymmetryPivot)) {
+    return;
+  }
+  const RenderLineColor directColor =
+      preview.removing
+          ? RenderLineColor{1.0F, 0.2F, 0.16F, 1.0F}
+          : preview.admitted
+                ? RenderLineColor{0.22F, 1.0F, 0.34F, 1.0F}
+                : RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F};
+  const RenderLineColor mirroredColor =
+      preview.admitted ? RenderLineColor{0.18F, 0.9F, 1.0F, 1.0F}
+                       : RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F};
+  const cr::CreativeGridSettings grid = appState.facade.document().gridSettings();
+  const std::size_t pivotBefore = lines.size();
+  if (preview.showSymmetryPivot) {
+    static_cast<void>(appendCreativeMaterialBrushPivotMarker(
+        lines, preview.symmetryPivot, grid,
+        std::max(0.045F, request.gizmoThickness * 1.4F)));
+  }
+  output.materialBrushPivotEdgeCount = lines.size() - pivotBefore;
+  const std::size_t guideBefore = lines.size();
+  if (preview.visible && preview.hasGuideAnchor) {
+    static_cast<void>(appendCreativeMaterialBrushGuideLine(
+        lines, preview.guide, preview.guideAnchor, preview.center, grid,
+        std::max(0.045F, request.gizmoThickness * 1.4F)));
+  }
+  output.materialBrushGuideLineCount = lines.size() - guideBefore;
+  const std::size_t before = lines.size();
+  if (preview.visible) {
+    appendCreativeMaterialBrushCellOutlines(
+        lines, preview.renderedDirectCells(), grid, directColor,
+        request.gizmoThickness);
+    appendCreativeMaterialBrushCellOutlines(
+        lines, preview.renderedMirroredCells(), grid, mirroredColor,
+        request.gizmoThickness);
+  }
+  output.materialBrushEdgeCount = lines.size() - before;
+}
+
+[[nodiscard]] bool creativeEditorWorldPreviewBlocked(
+    const CreativeEditorOverlayFrameRequest& request) noexcept {
+  const CreativeEditorState& editor = request.editor;
+  return request.captureMode || editor.catalog.model.open ||
+         editor.catalog.toolWheel.open || editor.toolOptions.open ||
+         editor.controls.open || editor.transform.active ||
+         editor.transform.controlsOpen;
+}
+
+void appendCreativeEditorConnectedFillWireframe(
+    const CreativeEditorOverlayFrameRequest& request,
+    CreativeEditorOverlayFrame& output) {
+  CreativeEditorState& editor = request.editor;
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  if (creativeEditorWorldPreviewBlocked(request) ||
+      held.kind != cr::CreativeHeldItemKind::ConnectedFill ||
+      !editor.interaction.target.voxelHit) {
+    return;
+  }
+  const cr::CreativeConnectedFillPlan& plan =
+      resolveCreativeEditorConnectedFillPlan(
+          editor.interaction.connectedFill,
+          request.appState.facade.document(),
+          editor.interaction.target.voxelCell,
+          editor.toolSettings.connectedFillLimit);
+  const bool valid =
+      plan.accepted && cr::creativeVolumeBrushSupported(held.objectKind) &&
+      plan.sourceMaterial != held.objectKind;
+  const RenderLineColor color =
+      valid ? RenderLineColor{0.12F, 0.92F, 1.0F, 1.0F}
+            : RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F};
+  const std::array<cr::CreativeGridCoord3, 1U> rejectedSeed{
+      editor.interaction.target.voxelCell};
+  const std::span<const cr::CreativeGridCoord3> cells =
+      plan.accepted ? plan.generatedCells()
+                    : std::span<const cr::CreativeGridCoord3>{rejectedSeed};
+  const std::size_t before = output.combinedWireLines.size();
+  appendCreativeMaterialBrushCellOutlines(
+      output.combinedWireLines, cells,
+      request.appState.facade.document().gridSettings(), color,
+      request.gizmoThickness);
+  output.connectedFillEdgeCount = output.combinedWireLines.size() - before;
+}
+
+void appendCreativeEditorSurfaceExtrudeWireframe(
+    const CreativeEditorOverlayFrameRequest& request,
+    CreativeEditorOverlayFrame& output) {
+  CreativeEditorState& editor = request.editor;
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  if (creativeEditorWorldPreviewBlocked(request) ||
+      held.kind != cr::CreativeHeldItemKind::SurfaceExtrude ||
+      !editor.interaction.target.voxelHit) {
+    return;
+  }
+  cr::CreativeGridCoord3 outward{};
+  const bool faceValid = creativeSurfaceFaceOffset(
+      editor.interaction.target.grid.faceNormal, outward);
+  const cr::CreativeSurfaceExtrudePlan* plan = nullptr;
+  if (faceValid) {
+    plan = &resolveCreativeEditorSurfaceExtrudePlan(
+        editor.interaction.surfaceExtrude,
+        request.appState.facade.document(),
+        editor.interaction.target.voxelCell, outward,
+        cr::CreativeSurfaceExtrudeKind::Extrude,
+        editor.toolSettings.surfaceExtrudeDepth,
+        editor.toolSettings.surfaceExtrudeLimit);
+  }
+  const bool valid = plan != nullptr && plan->accepted &&
+                     cr::creativeVolumeBrushSupported(held.objectKind);
+  const RenderLineColor color =
+      valid ? RenderLineColor{0.12F, 0.82F, 1.0F, 1.0F}
+            : RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F};
+  const std::array<cr::CreativeGridCoord3, 1U> rejectedSeed{
+      editor.interaction.target.voxelCell};
+  const std::span<const cr::CreativeGridCoord3> cells =
+      valid ? plan->generatedCells()
+            : std::span<const cr::CreativeGridCoord3>{rejectedSeed};
+  const std::size_t before = output.combinedWireLines.size();
+  appendCreativeMaterialBrushCellOutlines(
+      output.combinedWireLines, cells,
+      request.appState.facade.document().gridSettings(), color,
+      request.gizmoThickness);
+  output.surfaceExtrudeEdgeCount = output.combinedWireLines.size() - before;
+}
+
+struct CreativeEditorVolumePreviewFacts {
+  creative::CreativeVolumeSelection selection{};
+  creative::CreativeShapeBrushPlanReceipt shapePlan{};
+  bool selectionVisible = false;
+  bool usesShapePlan = false;
+};
+
+CreativeEditorVolumePreviewFacts appendCreativeEditorVolumeAndToolWireframes(
+    const CreativeEditorOverlayFrameRequest& request,
+    CreativeEditorOverlayFrame& output) {
+  CreativeEditorVolumePreviewFacts facts;
+  CreativeEditorState& editor = request.editor;
+  std::vector<RenderCreativeWireframeDebugLine>& lines =
+      output.combinedWireLines;
+  if (editor.volume.active && !editor.transform.active) {
+    facts.selection = creativeEditorVolumePreviewSelection(editor.volume);
+    if (creative::creativeVolumeSelectionValid(facts.selection)) {
+      facts.selectionVisible = true;
+      facts.usesShapePlan =
+          editor.volume.operation == creative::CreativeVolumeOperationKind::Fill ||
+          editor.volume.operation ==
+              creative::CreativeVolumeOperationKind::Hollow;
+      if (facts.usesShapePlan) {
+        creative::CreativeShapeBrushPlanRequest planRequest;
+        planRequest.kind = editor.toolSettings.shapeBrushKind;
+        planRequest.axis = editor.toolSettings.shapeBrushAxis;
+        planRequest.firstCell = facts.selection.firstCell;
+        planRequest.secondCell = facts.selection.secondCell;
+        planRequest.hollow =
+            editor.volume.operation ==
+            creative::CreativeVolumeOperationKind::Hollow;
+        planRequest.maxCandidateCellCount = kCreativeEditorVolumeCellLimit;
+        planRequest.maxGeneratedCellCount = kCreativeEditorVolumeCellLimit;
+        facts.shapePlan = creative::planCreativeShapeBrush(planRequest);
+      }
+      const std::size_t before = lines.size();
+      const RenderLineColor color =
+          facts.usesShapePlan && !facts.shapePlan.accepted
+              ? RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F}
+              : volumeOperationColor(editor.volume.operation);
+      appendCreativeShapeBrushOutline(
+          lines, facts.selection,
+          facts.usesShapePlan ? editor.toolSettings.shapeBrushKind
+                              : creative::CreativeShapeBrushKind::Box,
+          editor.toolSettings.shapeBrushAxis, color, request.gizmoThickness);
+      output.volumeEdgeCount = lines.size() - before;
+    }
+  }
+  if (!editor.transform.active) {
+    output.patternEdgeCount = appendCreativeEditorArrayPreview(
+        request.appState, editor, request.gizmoThickness, lines);
+  }
+  output.transformPreviewEdgeCount =
+      appendCreativeEditorSelectionTransformPreview(
+          editor.transform, request.gizmoThickness, lines);
+  const std::size_t terrainBefore = lines.size();
+  appendCreativeEditorTerrainOverlay(
+      request.appState.facade.document(), editor, request.gizmoThickness, lines,
+      request.captureMode);
+  output.terrainEdgeCount = lines.size() - terrainBefore;
+  return facts;
+}
+
+void appendCreativeEditorVolumePreviewLabel(
+    const CreativeEditorOverlayFrameRequest& request,
+    CreativeEditorOverlayFrame& output,
+    const CreativeEditorVolumePreviewFacts& facts) {
+  if (output.volumeEdgeCount == 0U || !facts.selectionVisible) {
+    return;
+  }
+  CreativeEditorState& editor = request.editor;
+  const creative::CreativeGridBounds3 gridBounds =
+      creative::creativeVolumeGridBounds(facts.selection);
+  const creative::CreativeBounds bounds =
+      creative::creativeVolumeWorldBounds(facts.selection);
+  const creative::CreativeBoundsMetrics metrics =
+      creative::measureCreativeBounds(bounds);
+  const Vec3 labelPosition = creative::creativeVec3ToCoreChecked(
+                                 {metrics.center.x, bounds.max.y,
+                                  metrics.center.z})
+                                 .value;
+  const creative::CreativeScreenPoint screenPoint =
+      creative::projectCreativeWorldPointToScreen(
+          request.frame.camera.clipFromWorld, labelPosition,
+          request.drawableWidth, request.drawableHeight);
+  if (!screenPoint.valid) {
+    return;
+  }
+  const std::uint64_t plannedCellCount =
+      facts.usesShapePlan && facts.shapePlan.accepted
+          ? facts.shapePlan.generatedCellCount
+          : facts.usesShapePlan
+                ? 0U
+                : creative::creativeVolumeCellCount(facts.selection);
+  const std::string shapeLabel =
+      facts.usesShapePlan
+          ? std::string(creative::toString(editor.toolSettings.shapeBrushKind))
+          : std::string{"BOX"};
+  const std::string axisLabel =
+      facts.usesShapePlan &&
+              editor.toolSettings.shapeBrushKind ==
+                  creative::CreativeShapeBrushKind::Cylinder
+          ? " " + std::string(
+                      creative::toString(editor.toolSettings.shapeBrushAxis))
+          : std::string{};
+  char label[128];
+  if (editor.volume.lastReceipt.requested) {
+    std::snprintf(
+        label, sizeof(label), "%s %s%s %d x %d x %d | %llu cells | %s",
+        std::string(creative::toString(editor.volume.operation)).c_str(),
+        shapeLabel.c_str(), axisLabel.c_str(),
+        gridBounds.max.x - gridBounds.min.x,
+        gridBounds.max.y - gridBounds.min.y,
+        gridBounds.max.z - gridBounds.min.z,
+        static_cast<unsigned long long>(plannedCellCount),
+        std::string(creative::toString(editor.volume.lastReceipt.status))
+            .c_str());
+  } else {
+    std::snprintf(
+        label, sizeof(label), "%s %s%s %d x %d x %d | %llu cells",
+        std::string(creative::toString(editor.volume.operation)).c_str(),
+        shapeLabel.c_str(), axisLabel.c_str(),
+        gridBounds.max.x - gridBounds.min.x,
+        gridBounds.max.y - gridBounds.min.y,
+        gridBounds.max.z - gridBounds.min.z,
+        static_cast<unsigned long long>(plannedCellCount));
+  }
+  const DebugHudLayoutResult layout = layoutDebugHudTextAt(
+      label, static_cast<std::int32_t>(screenPoint.x),
+      static_cast<std::int32_t>(screenPoint.y), request.drawableWidth,
+      request.drawableHeight);
+  output.glyphs.insert(output.glyphs.end(), layout.quads.begin(),
+                       layout.quads.end());
+}
+
+void appendCreativeEditorSelectionDimensionLabel(
+    const CreativeEditorOverlayFrameRequest& request,
+    CreativeEditorOverlayFrame& output,
+    bool hasSelection) {
+  if (!hasSelection) {
+    return;
+  }
+  const Vec3 center{
+      (request.selection.boxMin.x + request.selection.boxMax.x) * 0.5F,
+      (request.selection.boxMin.y + request.selection.boxMax.y) * 0.5F,
+      (request.selection.boxMin.z + request.selection.boxMax.z) * 0.5F};
+  const creative::CreativeScreenPoint screenPoint =
+      creative::projectCreativeWorldPointToScreen(
+          request.frame.camera.clipFromWorld, center, request.drawableWidth,
+          request.drawableHeight);
+  if (!screenPoint.valid) {
+    return;
+  }
+  const float width = request.selection.boxMax.x - request.selection.boxMin.x;
+  const float height = request.selection.boxMax.y - request.selection.boxMin.y;
+  const float depth = request.selection.boxMax.z - request.selection.boxMin.z;
+  char label[64];
+  std::snprintf(label, sizeof(label), "%.1f x %.1f x %.1f m",
+                static_cast<double>(width), static_cast<double>(height),
+                static_cast<double>(depth));
+  const DebugHudLayoutResult layout = layoutDebugHudTextAt(
+      label, static_cast<std::int32_t>(screenPoint.x),
+      static_cast<std::int32_t>(screenPoint.y), request.drawableWidth,
+      request.drawableHeight);
+  output.glyphs.insert(output.glyphs.end(), layout.quads.begin(),
+                       layout.quads.end());
+}
+
+void appendCreativeEditorHudOverlays(
+    const CreativeEditorOverlayFrameRequest& request,
+    CreativeEditorOverlayFrame& output,
+    const CreativeEditorVolumePreviewFacts& volumeFacts,
+    bool hasSelection) {
+  CreativeEditorState& editor = request.editor;
+  appendCreativeEditorInteractionOverlay(
+      editor, request.drawableWidth, request.drawableHeight,
+      request.gizmoThickness, output.uiRects, output.glyphs,
+      output.combinedWireLines);
+  appendCreativeEditorTransformOverlay(
+      editor.transform, request.drawableWidth, request.drawableHeight,
+      output.uiRects, output.glyphs);
+  appendCreativeEditorCatalogOverlay(
+      request.appState, editor, request.drawableWidth, request.drawableHeight,
+      output.uiRects, output.glyphs);
+  appendCreativeEditorToolOptionsOverlay(
+      editor, request.drawableWidth, request.drawableHeight, output.uiRects,
+      output.glyphs);
+  appendCreativeEditorControlsOverlay(
+      editor, request.drawableWidth, request.drawableHeight, output.uiRects,
+      output.glyphs);
+  appendCreativeEditorVolumePreviewLabel(request, output, volumeFacts);
+  appendCreativeEditorSelectionDimensionLabel(request, output, hasSelection);
+  appendCreativeEditorActionHintsOverlay(
+      editor, request.inputContext, request.activeControlDevice,
+      request.captureMode, request.drawableWidth, request.drawableHeight,
+      output.uiRects, output.glyphs);
+}
+
+}  // namespace
+
 void buildAndAttachCreativeEditorOverlayFrame(
     const CreativeEditorOverlayFrameRequest& request,
     CreativeEditorOverlayFrame& output) {
@@ -683,8 +1105,6 @@ void buildAndAttachCreativeEditorOverlayFrame(
   FrameInput& frame = request.frame;
   const cr::CreativeSpatialProjectionRequest& wireProjReq =
       request.wireProjectionRequest;
-  const std::uint32_t drawableWidth = request.drawableWidth;
-  const std::uint32_t drawableHeight = request.drawableHeight;
   const float gizmoThickness = request.gizmoThickness;
 
   attachCreativeEditorPlacementPreviews(
@@ -705,24 +1125,7 @@ void buildAndAttachCreativeEditorOverlayFrame(
   const bool selectedIsPathForHandles =
       request.gizmoFrame.selectedIsPathForHandles;
 
-  output.uiRects.clear();
-  output.glyphs.clear();
-  output.combinedWireLines.clear();
-  output.documentWireLineCount = 0;
-  output.pointMarkerEdgeCount = 0;
-  output.lineMarkerEdgeCount = 0;
-  output.pathPointHandleEdgeCount = 0;
-  output.ghostEdgeCount = 0;
-  output.materialBrushPivotEdgeCount = 0;
-  output.materialBrushGuideLineCount = 0;
-  output.materialBrushEdgeCount = 0;
-  output.connectedFillEdgeCount = 0;
-  output.surfaceExtrudeEdgeCount = 0;
-  output.terrainEdgeCount = 0;
-  output.volumeEdgeCount = 0;
-  output.patternEdgeCount = 0;
-  output.transformPreviewEdgeCount = 0;
-  output.placementFeedbackEdgeCount = 0;
+  resetCreativeEditorOverlayFrame(output);
 
   // ---- BOUNDS BOX (wireframe) --------------------------------------------
   const creative::CreativeDocumentWireframeSegmentBuildResult segs =
@@ -832,351 +1235,23 @@ void buildAndAttachCreativeEditorOverlayFrame(
       combinedWireLines.push_back(gizmoLine);
     }
   }
-  const CreativeEditorPlacementFeedback& placementFeedback =
-      editor.interaction.placementFeedback;
-  if (placementFeedback.status ==
-          CreativeEditorPlacementFeedbackStatus::Placed &&
-      creativeEditorPlacementFeedbackVisible(placementFeedback,
-                                              editor.frameIndex)) {
-    const creative::CreativeObject* placedObject =
-        appState.facade.findObject(placementFeedback.objectId);
-    if (placedObject != nullptr) {
-      const VisualBounds placedBounds = visualBoundsForObject(*placedObject);
-      const std::size_t before = combinedWireLines.size();
-      appendStandaloneWireframeBoxEdges(
-          combinedWireLines, placedBounds.min, placedBounds.max,
-          RenderLineColor{0.25F, 1.0F, 0.35F, 1.0F},
-          std::max(0.075F, gizmoThickness * 1.4F));
-      for (std::size_t index = before; index < combinedWireLines.size();
-           ++index) {
-        combinedWireLines[index].objectId = placedObject->id;
-      }
-      output.placementFeedbackEdgeCount =
-          combinedWireLines.size() - before;
-    } else if (placementFeedback.voxelPlaced) {
-      const cr::CreativeBounds& bounds = placementFeedback.voxelBounds;
-      Vec3 center{};
-      Vec3 size{};
-      if (previewBoundsTransform(bounds, 1.0F, center, size)) {
-        const Vec3 minimum =
-            cr::creativeVec3ToCoreChecked(bounds.min).value;
-        const Vec3 maximum =
-            cr::creativeVec3ToCoreChecked(bounds.max).value;
-        const std::size_t before = combinedWireLines.size();
-        appendStandaloneWireframeBoxEdges(
-            combinedWireLines, minimum, maximum,
-            RenderLineColor{0.25F, 1.0F, 0.35F, 1.0F},
-            std::max(0.075F, gizmoThickness * 1.4F));
-        output.placementFeedbackEdgeCount =
-            combinedWireLines.size() - before;
-      }
-    }
-  }
+  appendCreativeEditorPlacementFeedbackWireframe(request, output);
   // ---- MATERIAL BRUSH PREVIEW --------------------------------------------
-  const MaterialBrushPreviewPlan materialBrushPreview =
-      materialBrushPreviewPlan(editor, appState.facade.document());
-  if (!editor.transform.active &&
-      (materialBrushPreview.visible ||
-       materialBrushPreview.showSymmetryPivot)) {
-    const RenderLineColor directColor =
-        materialBrushPreview.removing
-            ? RenderLineColor{1.0F, 0.2F, 0.16F, 1.0F}
-            : materialBrushPreview.admitted
-                  ? RenderLineColor{0.22F, 1.0F, 0.34F, 1.0F}
-                  : RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F};
-    const RenderLineColor mirroredColor =
-        materialBrushPreview.admitted
-            ? RenderLineColor{0.18F, 0.9F, 1.0F, 1.0F}
-            : RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F};
-    const std::size_t pivotBefore = combinedWireLines.size();
-    if (materialBrushPreview.showSymmetryPivot) {
-      static_cast<void>(appendCreativeMaterialBrushPivotMarker(
-          combinedWireLines, materialBrushPreview.symmetryPivot,
-          appState.facade.document().gridSettings(),
-          std::max(0.045F, gizmoThickness * 1.4F)));
-    }
-    output.materialBrushPivotEdgeCount =
-        combinedWireLines.size() - pivotBefore;
-    const std::size_t guideBefore = combinedWireLines.size();
-    if (materialBrushPreview.visible &&
-        materialBrushPreview.hasGuideAnchor) {
-      static_cast<void>(appendCreativeMaterialBrushGuideLine(
-          combinedWireLines, materialBrushPreview.guide,
-          materialBrushPreview.guideAnchor, materialBrushPreview.center,
-          appState.facade.document().gridSettings(),
-          std::max(0.045F, gizmoThickness * 1.4F)));
-    }
-    output.materialBrushGuideLineCount =
-        combinedWireLines.size() - guideBefore;
-    const std::size_t before = combinedWireLines.size();
-    if (materialBrushPreview.visible) {
-      appendCreativeMaterialBrushCellOutlines(
-          combinedWireLines, materialBrushPreview.renderedDirectCells(),
-          appState.facade.document().gridSettings(), directColor,
-          gizmoThickness);
-      appendCreativeMaterialBrushCellOutlines(
-          combinedWireLines, materialBrushPreview.renderedMirroredCells(),
-          appState.facade.document().gridSettings(), mirroredColor,
-          gizmoThickness);
-    }
-    output.materialBrushEdgeCount = combinedWireLines.size() - before;
-  }
+  appendCreativeEditorMaterialBrushWireframe(request, output);
 
   // ---- CONNECTED FILL PREVIEW -------------------------------------------
-  const cr::CreativeHotbarEntry& held =
-      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  const bool connectedFillBlocked =
-      request.captureMode || editor.catalog.model.open ||
-      editor.catalog.toolWheel.open || editor.toolOptions.open ||
-      editor.controls.open || editor.transform.active ||
-      editor.transform.controlsOpen;
-  if (!connectedFillBlocked &&
-      held.kind == cr::CreativeHeldItemKind::ConnectedFill &&
-      editor.interaction.target.voxelHit) {
-    const cr::CreativeConnectedFillPlan& connectedPlan =
-        resolveCreativeEditorConnectedFillPlan(
-            editor.interaction.connectedFill, appState.facade.document(),
-            editor.interaction.target.voxelCell,
-            editor.toolSettings.connectedFillLimit);
-    const bool replacementValid =
-        cr::creativeVolumeBrushSupported(held.objectKind);
-    const bool noChange = connectedPlan.accepted &&
-                          connectedPlan.sourceMaterial == held.objectKind;
-    const bool valid = connectedPlan.accepted && replacementValid && !noChange;
-    const RenderLineColor color =
-        valid ? RenderLineColor{0.12F, 0.92F, 1.0F, 1.0F}
-              : RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F};
-    const std::array<cr::CreativeGridCoord3, 1U> rejectedSeed{
-        editor.interaction.target.voxelCell};
-    const std::span<const cr::CreativeGridCoord3> cells =
-        connectedPlan.accepted
-            ? connectedPlan.generatedCells()
-            : std::span<const cr::CreativeGridCoord3>{rejectedSeed};
-    const std::size_t before = combinedWireLines.size();
-    appendCreativeMaterialBrushCellOutlines(
-        combinedWireLines, cells, appState.facade.document().gridSettings(),
-        color, gizmoThickness);
-    output.connectedFillEdgeCount = combinedWireLines.size() - before;
-  }
+  appendCreativeEditorConnectedFillWireframe(request, output);
 
   // ---- SURFACE EXTRUDE PREVIEW ------------------------------------------
-  const bool surfaceExtrudeBlocked =
-      request.captureMode || editor.catalog.model.open ||
-      editor.catalog.toolWheel.open || editor.toolOptions.open ||
-      editor.controls.open || editor.transform.active ||
-      editor.transform.controlsOpen;
-  if (!surfaceExtrudeBlocked &&
-      held.kind == cr::CreativeHeldItemKind::SurfaceExtrude &&
-      editor.interaction.target.voxelHit) {
-    cr::CreativeGridCoord3 outward{};
-    const bool faceValid = creativeSurfaceFaceOffset(
-        editor.interaction.target.grid.faceNormal, outward);
-    const cr::CreativeSurfaceExtrudePlan* surfacePlan = nullptr;
-    if (faceValid) {
-      surfacePlan = &resolveCreativeEditorSurfaceExtrudePlan(
-          editor.interaction.surfaceExtrude, appState.facade.document(),
-          editor.interaction.target.voxelCell, outward,
-          cr::CreativeSurfaceExtrudeKind::Extrude,
-          editor.toolSettings.surfaceExtrudeDepth,
-          editor.toolSettings.surfaceExtrudeLimit);
-    }
-    const bool valid =
-        surfacePlan != nullptr && surfacePlan->accepted &&
-        cr::creativeVolumeBrushSupported(held.objectKind);
-    const RenderLineColor color =
-        valid ? RenderLineColor{0.12F, 0.82F, 1.0F, 1.0F}
-              : RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F};
-    const std::array<cr::CreativeGridCoord3, 1U> rejectedSeed{
-        editor.interaction.target.voxelCell};
-    const std::span<const cr::CreativeGridCoord3> cells =
-        valid ? surfacePlan->generatedCells()
-              : std::span<const cr::CreativeGridCoord3>{rejectedSeed};
-    const std::size_t before = combinedWireLines.size();
-    appendCreativeMaterialBrushCellOutlines(
-        combinedWireLines, cells, appState.facade.document().gridSettings(),
-        color, gizmoThickness);
-    output.surfaceExtrudeEdgeCount = combinedWireLines.size() - before;
-  }
+  appendCreativeEditorSurfaceExtrudeWireframe(request, output);
 
   // ---- VOLUME PREVIEW ----------------------------------------------------
-  // The preview is transient editor state, not a document object. Curved
-  // outlines stay bounded while the shared planner supplies the exact cell
-  // count and admission result used by commit.
-  creative::CreativeVolumeSelection volumeSelection;
-  creative::CreativeShapeBrushPlanReceipt volumeShapePlan;
-  bool volumeSelectionVisible = false;
-  bool volumeUsesShapePlan = false;
-  if (editor.volume.active && !editor.transform.active) {
-    volumeSelection = creativeEditorVolumePreviewSelection(editor.volume);
-    if (creative::creativeVolumeSelectionValid(volumeSelection)) {
-      volumeSelectionVisible = true;
-      volumeUsesShapePlan =
-          editor.volume.operation == creative::CreativeVolumeOperationKind::Fill ||
-          editor.volume.operation ==
-              creative::CreativeVolumeOperationKind::Hollow;
-      if (volumeUsesShapePlan) {
-        creative::CreativeShapeBrushPlanRequest planRequest;
-        planRequest.kind = editor.toolSettings.shapeBrushKind;
-        planRequest.axis = editor.toolSettings.shapeBrushAxis;
-        planRequest.firstCell = volumeSelection.firstCell;
-        planRequest.secondCell = volumeSelection.secondCell;
-        planRequest.hollow = editor.volume.operation ==
-                             creative::CreativeVolumeOperationKind::Hollow;
-        planRequest.maxCandidateCellCount = kCreativeEditorVolumeCellLimit;
-        planRequest.maxGeneratedCellCount = kCreativeEditorVolumeCellLimit;
-        volumeShapePlan = creative::planCreativeShapeBrush(planRequest);
-      }
-      const std::size_t before = combinedWireLines.size();
-      const RenderLineColor color =
-          volumeUsesShapePlan && !volumeShapePlan.accepted
-              ? RenderLineColor{1.0F, 0.15F, 0.12F, 1.0F}
-              : volumeOperationColor(editor.volume.operation);
-      appendCreativeShapeBrushOutline(
-          combinedWireLines, volumeSelection,
-          volumeUsesShapePlan ? editor.toolSettings.shapeBrushKind
-                              : creative::CreativeShapeBrushKind::Box,
-          editor.toolSettings.shapeBrushAxis, color, gizmoThickness);
-      output.volumeEdgeCount = combinedWireLines.size() - before;
-    }
-  }
-  if (!editor.transform.active) {
-    output.patternEdgeCount = appendCreativeEditorArrayPreview(
-        appState, editor, gizmoThickness, combinedWireLines);
-  }
-  output.transformPreviewEdgeCount =
-      appendCreativeEditorSelectionTransformPreview(
-          editor.transform, gizmoThickness, combinedWireLines);
-  const std::size_t terrainBefore = combinedWireLines.size();
-  appendCreativeEditorTerrainOverlay(appState.facade.document(), editor,
-                                     gizmoThickness, combinedWireLines,
-                                     request.captureMode);
-  output.terrainEdgeCount = combinedWireLines.size() - terrainBefore;
-  std::vector<DebugHudGlyphQuad>& glyphs = output.glyphs;
-  appendCreativeEditorInteractionOverlay(
-      editor, drawableWidth, drawableHeight, gizmoThickness, output.uiRects,
-      glyphs, combinedWireLines);
-  appendCreativeEditorTransformOverlay(editor.transform, drawableWidth,
-                                       drawableHeight, output.uiRects, glyphs);
-  appendCreativeEditorCatalogOverlay(appState, editor, drawableWidth,
-                                     drawableHeight, output.uiRects, glyphs);
-  appendCreativeEditorToolOptionsOverlay(editor, drawableWidth, drawableHeight,
-                                         output.uiRects, glyphs);
-  appendCreativeEditorControlsOverlay(editor, drawableWidth, drawableHeight,
-                                      output.uiRects, glyphs);
+  const CreativeEditorVolumePreviewFacts volumeFacts =
+      appendCreativeEditorVolumeAndToolWireframes(request, output);
+  appendCreativeEditorHudOverlays(request, output, volumeFacts, hasSelection);
 
-  if (output.volumeEdgeCount > 0U && volumeSelectionVisible) {
-    const creative::CreativeGridBounds3 gridBounds =
-        creative::creativeVolumeGridBounds(volumeSelection);
-    const creative::CreativeBounds bounds =
-        creative::creativeVolumeWorldBounds(volumeSelection);
-    const creative::CreativeBoundsMetrics metrics =
-        creative::measureCreativeBounds(bounds);
-    const Vec3 labelPosition = creative::creativeVec3ToCoreChecked(
-                                   {metrics.center.x, bounds.max.y,
-                                    metrics.center.z})
-                                   .value;
-    const creative::CreativeScreenPoint screenPoint =
-        creative::projectCreativeWorldPointToScreen(
-            frame.camera.clipFromWorld, labelPosition, drawableWidth,
-            drawableHeight);
-    if (screenPoint.valid) {
-      const std::uint64_t plannedCellCount =
-          volumeUsesShapePlan && volumeShapePlan.accepted
-              ? volumeShapePlan.generatedCellCount
-              : volumeUsesShapePlan ? 0U
-                                    : creative::creativeVolumeCellCount(
-                                          volumeSelection);
-      const std::string shapeLabel =
-          volumeUsesShapePlan
-              ? std::string(creative::toString(
-                    editor.toolSettings.shapeBrushKind))
-              : std::string{"BOX"};
-      const std::string axisLabel =
-          volumeUsesShapePlan &&
-                  editor.toolSettings.shapeBrushKind ==
-                      creative::CreativeShapeBrushKind::Cylinder
-              ? " " + std::string(creative::toString(
-                            editor.toolSettings.shapeBrushAxis))
-              : std::string{};
-      char labelBuf[128];
-      if (editor.volume.lastReceipt.requested) {
-        std::snprintf(
-            labelBuf, sizeof(labelBuf),
-            "%s %s%s %d x %d x %d | %llu cells | %s",
-            std::string(creative::toString(editor.volume.operation)).c_str(),
-            shapeLabel.c_str(), axisLabel.c_str(),
-            gridBounds.max.x - gridBounds.min.x,
-            gridBounds.max.y - gridBounds.min.y,
-            gridBounds.max.z - gridBounds.min.z,
-            static_cast<unsigned long long>(plannedCellCount),
-            std::string(
-                creative::toString(editor.volume.lastReceipt.status)).c_str());
-      } else {
-        std::snprintf(
-            labelBuf, sizeof(labelBuf),
-            "%s %s%s %d x %d x %d | %llu cells",
-            std::string(creative::toString(editor.volume.operation)).c_str(),
-            shapeLabel.c_str(), axisLabel.c_str(),
-            gridBounds.max.x - gridBounds.min.x,
-            gridBounds.max.y - gridBounds.min.y,
-            gridBounds.max.z - gridBounds.min.z,
-            static_cast<unsigned long long>(plannedCellCount));
-      }
-      const DebugHudLayoutResult labelLayout = layoutDebugHudTextAt(
-          labelBuf, static_cast<std::int32_t>(screenPoint.x),
-          static_cast<std::int32_t>(screenPoint.y), drawableWidth,
-          drawableHeight);
-      glyphs.insert(glyphs.end(), labelLayout.quads.begin(),
-                    labelLayout.quads.end());
-    }
-  }
-
-  // ---- DIMENSION LABEL + glyph merge -------------------------------------
-  // Merge the inspector-panel glyphs with the dimension-label glyphs into ONE
-  // vector so a single .data() pointer stays valid for the whole frame.
-  if (hasSelection) {
-    const Vec3 center{(request.selection.boxMin.x + request.selection.boxMax.x) * 0.5F,
-                      (request.selection.boxMin.y + request.selection.boxMax.y) * 0.5F,
-                      (request.selection.boxMin.z + request.selection.boxMax.z) * 0.5F};
-    const creative::CreativeScreenPoint screenPoint =
-        creative::projectCreativeWorldPointToScreen(
-            frame.camera.clipFromWorld, center, drawableWidth,
-            drawableHeight);
-    if (screenPoint.valid) {
-      const float dimW = request.selection.boxMax.x - request.selection.boxMin.x;
-      const float dimH = request.selection.boxMax.y - request.selection.boxMin.y;
-      const float dimD = request.selection.boxMax.z - request.selection.boxMin.z;
-      char labelBuf[64];
-      std::snprintf(labelBuf, sizeof(labelBuf), "%.1f x %.1f x %.1f m",
-                    static_cast<double>(dimW), static_cast<double>(dimH),
-                    static_cast<double>(dimD));
-      const DebugHudLayoutResult labelLayout = layoutDebugHudTextAt(
-          labelBuf, static_cast<std::int32_t>(screenPoint.x),
-          static_cast<std::int32_t>(screenPoint.y), drawableWidth,
-          drawableHeight);
-      glyphs.insert(glyphs.end(), labelLayout.quads.begin(),
-                    labelLayout.quads.end());
-    }
-  }
-
-  appendCreativeEditorActionHintsOverlay(
-      editor, request.inputContext, request.activeControlDevice,
-      request.captureMode, drawableWidth, drawableHeight, output.uiRects,
-      glyphs);
-
-  // ---- ATTACH overlays to the frame --------------------------------------
-  frame.ui.visible = true;
-  frame.ui.rects = output.uiRects.data();
-  frame.ui.rectCount = output.uiRects.size();
-  frame.ui.textGlyphQuads = output.glyphs.data();
-  frame.ui.textGlyphQuadCount = output.glyphs.size();
-  // The combined vector (selection box + gizmo shafts), NOT dbg.frame.
-  RenderCreativeWireframeDebugFrame combinedWireFrame;
-  combinedWireFrame.available = true;
-  combinedWireFrame.visible = !output.combinedWireLines.empty();
-  combinedWireFrame.lines = output.combinedWireLines.data();
-  combinedWireFrame.lineCount = output.combinedWireLines.size();
-  frame.creativeWireframeDebug = combinedWireFrame;
+  // Attach only after every backing vector has reached its final size.
+  attachCreativeEditorOverlayFrame(frame, output);
 }
 
 }  // namespace iggy3d_creative_app

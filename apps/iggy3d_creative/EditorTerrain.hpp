@@ -5,6 +5,7 @@
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
 #include "app/iggy3d/creative/tools/TerrainGrade.hpp"
+#include "app/iggy3d/creative/tools/TerrainPath.hpp"
 #include "app/iggy3d/creative/tools/TerrainProfile.hpp"
 #include "app/iggy3d/creative/tools/TerrainSculpt.hpp"
 #include "render/FrameInput.hpp"
@@ -112,6 +113,35 @@ struct CreativeTerrainProfileState {
   CreativeTerrainProfilePreviewCache preview{};
 };
 
+struct CreativeTerrainPathPreviewCache {
+  bool valid = false;
+  bool renderAccepted = false;
+  std::uint64_t documentId = 0U;
+  std::uint64_t terrainRevision = 0U;
+  std::uint64_t buildCount = 0U;
+  std::array<iggy3d::creative::CreativeTerrainPathPoint,
+             iggy3d::creative::kCreativeTerrainPathPointCapacity>
+      points{};
+  std::uint8_t pointCount = 0U;
+  std::uint8_t lockedPointCount = 0U;
+  iggy3d::creative::CreativeTerrainPathKind kind =
+      iggy3d::creative::CreativeTerrainPathKind::Road;
+  iggy3d::creative::CreativeTerrainPathElevation elevation =
+      iggy3d::creative::CreativeTerrainPathElevation::Follow;
+  std::uint16_t halfWidthCells = 1U;
+  std::uint16_t amplitudeCells = 1U;
+  iggy3d::creative::CreativeTerrainPathPlan plan{};
+  std::vector<iggy3d::creative::CreativeTerrainSurfacePatch> patches;
+};
+
+struct CreativeTerrainPathState {
+  std::array<iggy3d::creative::CreativeTerrainPathPoint,
+             iggy3d::creative::kCreativeTerrainPathPointCapacity>
+      points{};
+  std::uint8_t pointCount = 0U;
+  CreativeTerrainPathPreviewCache preview{};
+};
+
 struct CreativeEditorTerrainState {
   std::uint16_t heightCells = 4U;
   std::uint16_t radiusCells = 4U;
@@ -126,6 +156,7 @@ struct CreativeEditorTerrainState {
   CreativeTerrainGradeState grade{};
   CreativeTerrainSculptState sculpt{};
   CreativeTerrainProfileState profile{};
+  CreativeTerrainPathState path{};
 };
 
 enum class CreativeEditorTerrainEditKind : std::uint8_t {
@@ -199,6 +230,25 @@ struct CreativeEditorTerrainProfileReceipt {
   std::string_view reasonCode = "creative_editor_terrain_profile_not_requested";
 };
 
+enum class CreativeEditorTerrainPathAction : std::uint8_t {
+  AddPoint,
+  RemovePoint,
+  Apply,
+  Cancel,
+};
+
+struct CreativeEditorTerrainPathReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  CreativeEditorTerrainPathAction action =
+      CreativeEditorTerrainPathAction::AddPoint;
+  iggy3d::creative::CreativeTerrainPathPoint targetPoint{};
+  iggy3d::creative::CreativeTerrainPathPlan plan{};
+  iggy3d::creative::CreativeTerrainMutationReceipt mutation{};
+  std::string_view reasonCode = "creative_editor_terrain_path_not_requested";
+};
+
 [[nodiscard]] bool resolveCreativeEditorTerrainPointerCoord(
     const CreativeEditorState& editor,
     iggy3d::creative::CreativeTerrainCoord2& target) noexcept;
@@ -264,6 +314,24 @@ lockCreativeEditorTerrainProfileBase(
 [[nodiscard]] CreativeEditorTerrainProfileReceipt
 unlockCreativeEditorTerrainProfileBase(CreativeEditorState& editor) noexcept;
 
+[[nodiscard]] iggy3d::creative::CreativeTerrainPathPlan
+planCreativeEditorTerrainPath(
+    const iggy3d::creative::CreativeDocument& document,
+    const CreativeEditorState& editor) noexcept;
+[[nodiscard]] CreativeEditorTerrainPathReceipt
+addCreativeEditorTerrainPathPoint(
+    const iggy3d::creative::CreativeDocument& document,
+    CreativeEditorState& editor) noexcept;
+[[nodiscard]] CreativeEditorTerrainPathReceipt
+removeCreativeEditorTerrainPathPoint(CreativeEditorState& editor) noexcept;
+[[nodiscard]] CreativeEditorTerrainPathReceipt
+cancelCreativeEditorTerrainPath(CreativeEditorState& editor) noexcept;
+[[nodiscard]] CreativeEditorTerrainPathReceipt
+applyCreativeEditorTerrainPathWithHistory(
+    iggy3d::creative::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    std::string_view source);
+
 [[nodiscard]] bool processCreativeEditorTerrainQuickEdit(
     CreativeEditorTerrainState& state,
     iggy3d::creative::CreativeInputActionId action) noexcept;
@@ -283,6 +351,11 @@ unlockCreativeEditorTerrainProfileBase(CreativeEditorState& editor) noexcept;
     CreativeEditorState& editor,
     iggy3d::creative::CreativeInputActionId action) noexcept;
 [[nodiscard]] std::string creativeEditorTerrainProfileQuickEditLabel(
+    const CreativeEditorState& editor);
+[[nodiscard]] bool processCreativeEditorTerrainPathQuickEdit(
+    CreativeEditorState& editor,
+    iggy3d::creative::CreativeInputActionId action) noexcept;
+[[nodiscard]] std::string creativeEditorTerrainPathQuickEditLabel(
     const CreativeEditorState& editor);
 
 void clearCreativeEditorTerrainInteraction(
@@ -327,6 +400,15 @@ void appendCreativeEditorTerrainSculptOverlay(
     const iggy3d::creative::CreativeDocument& document,
     const CreativeEditorState& editor);
 void appendCreativeEditorTerrainProfileOverlay(
+    const iggy3d::creative::CreativeDocument& document,
+    const CreativeEditorState& editor,
+    float wireThickness,
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines);
+[[nodiscard]] bool refreshCreativeEditorTerrainPathPreview(
+    CreativeEditorTerrainState& state,
+    const iggy3d::creative::CreativeDocument& document,
+    const CreativeEditorState& editor);
+void appendCreativeEditorTerrainPathOverlay(
     const iggy3d::creative::CreativeDocument& document,
     const CreativeEditorState& editor,
     float wireThickness,

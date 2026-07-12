@@ -16,19 +16,11 @@ namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 namespace {
 
-[[nodiscard]] bool sameCell(cr::CreativeGridCoord3 lhs,
-                            cr::CreativeGridCoord3 rhs) noexcept {
-  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
-}
-
 void setRejectedFeedback(CreativeEditorState& editor,
                          cr::CreativeObjectKind material) noexcept {
-  editor.interaction.placementFeedback = {
-      CreativeEditorPlacementFeedbackStatus::Rejected,
-      cr::kInvalidObjectId,
-      material,
-      editor.frameIndex,
-  };
+  setCreativeEditorPlacementFeedback(
+      editor.interaction, CreativeEditorPlacementFeedbackStatus::Rejected,
+      editor.frameIndex, material);
 }
 
 [[nodiscard]] cr::CreativeBounds mutationBounds(
@@ -78,7 +70,7 @@ const cr::CreativeSurfaceExtrudePlan& resolveCreativeEditorSurfaceExtrudePlan(
     cr::CreativeConnectedFillLimit affectedCellLimit) noexcept {
   if (cache.valid && cache.documentId == document.id() &&
       cache.documentRevision == document.revision() &&
-      sameCell(cache.seedCell, seedCell) && sameCell(cache.outward, outward) &&
+      cache.seedCell == seedCell && cache.outward == outward &&
       cache.kind == kind && cache.depth == depth &&
       cache.affectedCellLimit == affectedCellLimit) {
     return cache.plan;
@@ -183,17 +175,12 @@ applyCreativeEditorSurfaceExtrudeWithHistory(
     return receipt;
   }
 
-  CreativeEditorPlacementFeedback feedback;
-  feedback.status = CreativeEditorPlacementFeedbackStatus::Placed;
-  feedback.objectKind = replacement == cr::CreativeObjectKind::Unknown
-                            ? plan.sourceMaterial
-                            : replacement;
-  feedback.frameIndex = editor.frameIndex;
-  feedback.voxelPlaced = true;
-  feedback.voxelCell = plan.seedCell;
-  feedback.voxelBounds =
-      mutationBounds(plan, appState.facade.document().gridSettings());
-  editor.interaction.placementFeedback = feedback;
+  setCreativeEditorVoxelPlacementFeedback(
+      editor.interaction, editor.frameIndex,
+      replacement == cr::CreativeObjectKind::Unknown ? plan.sourceMaterial
+                                                     : replacement,
+      plan.seedCell,
+      mutationBounds(plan, appState.facade.document().gridSettings()));
   editor.interaction.surfaceExtrude.valid = false;
   return receipt;
 }

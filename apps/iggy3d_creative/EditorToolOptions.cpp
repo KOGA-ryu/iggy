@@ -479,18 +479,20 @@ bool processCreativeEditorQuickEditAction(
     cr::CreativeInputActionId action) {
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  if (held.kind == cr::CreativeHeldItemKind::TerrainControl) {
-    return processCreativeEditorTerrainQuickEdit(editor.terrain, action);
-  }
-  if (held.kind == cr::CreativeHeldItemKind::TerrainGrade) {
-    return processCreativeEditorTerrainGradeQuickEdit(editor.terrain.grade,
-                                                      action);
-  }
-  if (held.kind == cr::CreativeHeldItemKind::TerrainSculpt) {
-    return processCreativeEditorTerrainSculptQuickEdit(editor, action);
-  }
-  if (held.kind == cr::CreativeHeldItemKind::TerrainProfile) {
-    return processCreativeEditorTerrainProfileQuickEdit(editor, action);
+  switch (held.kind) {
+    case cr::CreativeHeldItemKind::TerrainControl:
+      return processCreativeEditorTerrainQuickEdit(editor.terrain, action);
+    case cr::CreativeHeldItemKind::TerrainGrade:
+      return processCreativeEditorTerrainGradeQuickEdit(editor.terrain.grade,
+                                                        action);
+    case cr::CreativeHeldItemKind::TerrainSculpt:
+      return processCreativeEditorTerrainSculptQuickEdit(editor, action);
+    case cr::CreativeHeldItemKind::TerrainProfile:
+      return processCreativeEditorTerrainProfileQuickEdit(editor, action);
+    case cr::CreativeHeldItemKind::TerrainPath:
+      return processCreativeEditorTerrainPathQuickEdit(editor, action);
+    default:
+      break;
   }
   rebuildQuickEditOptions(editor, false);
   CreativeEditorQuickEditState& state = editor.quickEdit;
@@ -540,17 +542,19 @@ std::string creativeEditorQuickEditStatusLabel(
     const CreativeEditorState& editor) {
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  if (held.kind == cr::CreativeHeldItemKind::TerrainControl) {
-    return creativeEditorTerrainQuickEditLabel(editor.terrain);
-  }
-  if (held.kind == cr::CreativeHeldItemKind::TerrainGrade) {
-    return creativeEditorTerrainGradeQuickEditLabel(editor.terrain.grade);
-  }
-  if (held.kind == cr::CreativeHeldItemKind::TerrainSculpt) {
-    return creativeEditorTerrainSculptQuickEditLabel(editor);
-  }
-  if (held.kind == cr::CreativeHeldItemKind::TerrainProfile) {
-    return creativeEditorTerrainProfileQuickEditLabel(editor);
+  switch (held.kind) {
+    case cr::CreativeHeldItemKind::TerrainControl:
+      return creativeEditorTerrainQuickEditLabel(editor.terrain);
+    case cr::CreativeHeldItemKind::TerrainGrade:
+      return creativeEditorTerrainGradeQuickEditLabel(editor.terrain.grade);
+    case cr::CreativeHeldItemKind::TerrainSculpt:
+      return creativeEditorTerrainSculptQuickEditLabel(editor);
+    case cr::CreativeHeldItemKind::TerrainProfile:
+      return creativeEditorTerrainProfileQuickEditLabel(editor);
+    case cr::CreativeHeldItemKind::TerrainPath:
+      return creativeEditorTerrainPathQuickEditLabel(editor);
+    default:
+      break;
   }
   const CreativeEditorQuickEditState& state = editor.quickEdit;
   if (state.targetEntry.kind != held.kind ||

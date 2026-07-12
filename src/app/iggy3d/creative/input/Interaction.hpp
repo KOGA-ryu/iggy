@@ -120,6 +120,7 @@ enum class CreativeHeldItemKind : std::uint8_t {
   TerrainGrade,
   TerrainSculpt,
   TerrainProfile,
+  TerrainPath,
   Count,
 };
 
@@ -161,6 +162,8 @@ struct CreativeHotbarState {
 [[nodiscard]] bool creativeHeldItemUsesDirectShapeGesture(
     CreativeHeldItemKind kind) noexcept;
 [[nodiscard]] bool creativeHeldItemUsesMaterial(
+    CreativeHeldItemKind kind) noexcept;
+[[nodiscard]] bool creativeHeldItemIsTerrainTool(
     CreativeHeldItemKind kind) noexcept;
 [[nodiscard]] bool applyCreativeHeldItemMaterial(
     CreativeHotbarEntry& entry,

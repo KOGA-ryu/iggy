@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace iggy3d {
@@ -80,6 +81,14 @@ struct CreativeEditorControlsFrameResult {
   bool toolWheelSaved = false;
 };
 
+[[nodiscard]] CreativeEditorControlPersistenceReceipt
+parseCreativeEditorControlProfile(
+    std::string_view text,
+    iggy3d::creative::CreativeControlProfile& profile);
+[[nodiscard]] CreativeEditorControlPersistenceReceipt
+serializeCreativeEditorControlProfile(
+    const iggy3d::creative::CreativeControlProfile& profile,
+    std::string& text);
 [[nodiscard]] CreativeEditorControlPersistenceReceipt
 loadCreativeEditorControlProfile(
     iggy3d::creative::CreativeControlProfile& profile,

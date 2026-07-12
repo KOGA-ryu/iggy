@@ -510,6 +510,43 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
               "Circle appears only when profile base is locked") &&
        ok;
 
+  setHeld(editor, cr::CreativeHeldItemKind::TerrainPath);
+  const cr::CreativeActionHintFrame terrainPath =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* pathCommit =
+      findHint(terrainPath, cr::CreativeInputActionId::AcceptAction);
+  const cr::CreativeActionHint* pathBack =
+      findHint(terrainPath, cr::CreativeInputActionId::RejectAction);
+  const cr::CreativeActionHint* pathPoint =
+      findHint(terrainPath, cr::CreativeInputActionId::PickAction);
+  const cr::CreativeActionHint* pathRise =
+      findHint(terrainPath, cr::CreativeInputActionId::QuickEditPrevious);
+  const cr::CreativeActionHint* pathWidth =
+      findHint(terrainPath, cr::CreativeInputActionId::QuickEditDecrease);
+  ok = expect(pathCommit != nullptr && pathCommit->chord.view() == "X" &&
+                  pathCommit->label.view() == "Commit path" &&
+                  pathBack != nullptr && pathBack->chord.view() == "Circle" &&
+                  pathBack->label.view() == "Back point" &&
+                  pathPoint != nullptr && pathPoint->chord.view() == "Square" &&
+                  pathPoint->label.view() == "Add point" &&
+                  pathRise != nullptr && pathRise->label.view() == "Rise" &&
+                  pathWidth != nullptr && pathWidth->label.view() == "Width" &&
+                  !terrainPath.capacityExceeded,
+              "path advertises Square points X commit Circle back and D-pad tuning") &&
+       ok;
+  editor.toolSettings.terrainPathKind = cr::CreativeTerrainPathKind::River;
+  const cr::CreativeActionHintFrame riverPath =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* riverDepth =
+      findHint(riverPath, cr::CreativeInputActionId::QuickEditPrevious);
+  ok = expect(riverDepth != nullptr && riverDepth->label.view() == "Depth",
+              "river path names vertical tuning as depth") &&
+       ok;
+
   setHeld(editor, cr::CreativeHeldItemKind::LinearArray);
   const cr::CreativeActionHintFrame array = resolveCreativeEditorActionHints(
       editor, cr::CreativeInputContext::EditorViewport,

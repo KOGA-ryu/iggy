@@ -83,6 +83,8 @@ constexpr CreativeHeldItemMask kTerrainControlItems =
     heldItemMask(CreativeHeldItemKind::TerrainControl);
 constexpr CreativeHeldItemMask kTerrainProfileItems =
     heldItemMask(CreativeHeldItemKind::TerrainProfile);
+constexpr CreativeHeldItemMask kTerrainPathItems =
+    heldItemMask(CreativeHeldItemKind::TerrainPath);
 constexpr CreativeHeldItemMask kSnapItems =
     heldItemMask(CreativeHeldItemKind::Material) |
     heldItemMask(CreativeHeldItemKind::ObjectMove) |
@@ -277,6 +279,22 @@ constexpr std::array kToolOptionDescriptors{
         "FREQUENCY",
         CreativeToolOptionValueKind::Choice,
         kTerrainProfileItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainPathKind,
+                                 "PATH TYPE",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainPathItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainPathElevation,
+                                 "ELEVATION",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainPathItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainPathWidth,
+                                 "WIDTH",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainPathItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainPathAmplitude,
+                                 "RISE / DEPTH",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainPathItems},
 };
 static_assert(kToolOptionDescriptors.size() ==
               kCreativeToolOptionDescriptorCount);
@@ -665,7 +683,14 @@ bool isValidCreativeToolSettings(
          validEnum(settings.terrainProfileDirection,
                    CreativeTerrainProfileDirection::Count) &&
          validEnum(settings.terrainProfileFrequency,
-                   CreativeTerrainProfileFrequency::Count);
+                   CreativeTerrainProfileFrequency::Count) &&
+         validEnum(settings.terrainPathKind, CreativeTerrainPathKind::Count) &&
+         validEnum(settings.terrainPathElevation,
+                   CreativeTerrainPathElevation::Count) &&
+         validEnum(settings.terrainPathWidth,
+                   CreativeTerrainPathWidth::Count) &&
+         validEnum(settings.terrainPathAmplitude,
+                   CreativeTerrainPathAmplitude::Count);
 }
 
 std::span<const CreativeToolOptionDescriptor>
@@ -967,6 +992,14 @@ std::string_view creativeToolOptionValueLabel(
       return toString(settings.terrainProfileDirection);
     case CreativeToolOptionId::TerrainProfileFrequency:
       return toString(settings.terrainProfileFrequency);
+    case CreativeToolOptionId::TerrainPathKind:
+      return toString(settings.terrainPathKind);
+    case CreativeToolOptionId::TerrainPathElevation:
+      return toString(settings.terrainPathElevation);
+    case CreativeToolOptionId::TerrainPathWidth:
+      return toString(settings.terrainPathWidth);
+    case CreativeToolOptionId::TerrainPathAmplitude:
+      return toString(settings.terrainPathAmplitude);
     case CreativeToolOptionId::Count:
       break;
   }
@@ -1210,6 +1243,25 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
       adjusted.terrainProfileFrequency = cycleEnum(
           adjusted.terrainProfileFrequency,
           CreativeTerrainProfileFrequency::Count, direction);
+      break;
+    case CreativeToolOptionId::TerrainPathKind:
+      adjusted.terrainPathKind = cycleEnum(
+          adjusted.terrainPathKind, CreativeTerrainPathKind::Count, direction);
+      break;
+    case CreativeToolOptionId::TerrainPathElevation:
+      adjusted.terrainPathElevation = cycleEnum(
+          adjusted.terrainPathElevation, CreativeTerrainPathElevation::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::TerrainPathWidth:
+      adjusted.terrainPathWidth = cycleEnum(
+          adjusted.terrainPathWidth, CreativeTerrainPathWidth::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::TerrainPathAmplitude:
+      adjusted.terrainPathAmplitude = cycleEnum(
+          adjusted.terrainPathAmplitude, CreativeTerrainPathAmplitude::Count,
+          direction);
       break;
     case CreativeToolOptionId::Count:
       receipt.status = CreativeToolOptionAdjustStatus::InvalidOption;

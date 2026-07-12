@@ -19,11 +19,6 @@ struct VisitedCells {
   std::array<std::uint8_t, kVisitedCapacity> occupied{};
 };
 
-[[nodiscard]] bool sameCell(CreativeGridCoord3 lhs,
-                            CreativeGridCoord3 rhs) noexcept {
-  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
-}
-
 [[nodiscard]] std::uint64_t coordinateHash(
     CreativeGridCoord3 cell) noexcept {
   std::uint64_t hash = 1469598103934665603ULL;
@@ -47,7 +42,7 @@ struct VisitedCells {
       visited.cells[index] = cell;
       return true;
     }
-    if (sameCell(visited.cells[index], cell)) {
+    if (visited.cells[index] == cell) {
       return false;
     }
   }

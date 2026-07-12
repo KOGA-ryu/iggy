@@ -291,17 +291,12 @@ void fillBoundsCells(std::vector<CreativeSpatialCell>& cells,
                      });
 }
 
-[[nodiscard]] bool sameCoord(CreativeGridCoord3 lhs,
-                             CreativeGridCoord3 rhs) noexcept {
-  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
-}
-
 [[nodiscard]] bool containsCoord(std::span<const CreativeSpatialCell> cells,
                                  CreativeGridCoord3 coord) noexcept {
   return std::any_of(cells.begin(),
                      cells.end(),
                      [coord](const CreativeSpatialCell& cell) {
-                       return sameCoord(cell.coord, coord);
+                       return cell.coord == coord;
                      });
 }
 
@@ -322,7 +317,7 @@ void forEachSampledLineCoord(CreativeGridCoord3 start,
         start.y + static_cast<std::int32_t>(std::round(dy * t)),
         start.z + static_cast<std::int32_t>(std::round(dz * t)),
     };
-    if (sameCoord(coord, previous)) {
+    if (coord == previous) {
       continue;
     }
     previous = coord;
@@ -380,7 +375,7 @@ void appendSampledLineCells(std::vector<CreativeSpatialCell>& cells,
         end,
         [&](CreativeGridCoord3 coord, std::int32_t priorStep) {
           if (priorSegment < segmentIndex || priorStep < sampleStep) {
-            found = found || sameCoord(coord, candidate);
+            found = found || coord == candidate;
           }
         });
     if (found) {

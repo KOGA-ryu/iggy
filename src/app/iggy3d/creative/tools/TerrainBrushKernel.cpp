@@ -4,6 +4,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 
 namespace iggy3d::creative {
 namespace {
@@ -62,6 +63,46 @@ std::int32_t creativeTerrainMultiplyQ15(std::int32_t lhs,
                                        std::int32_t rhs) noexcept {
   return static_cast<std::int32_t>(creativeTerrainRoundDivideSymmetric(
       static_cast<std::int64_t>(lhs) * rhs, kCreativeTerrainQ15One));
+}
+
+CreativeTerrainGridLine rasterizeCreativeTerrainGridLine(
+    CreativeTerrainCoord2 start,
+    CreativeTerrainCoord2 end) noexcept {
+  CreativeTerrainGridLine line;
+  std::int64_t x = start.x;
+  std::int64_t z = start.z;
+  const std::int64_t endX = end.x;
+  const std::int64_t endZ = end.z;
+  const std::int64_t deltaX = std::abs(endX - x);
+  const std::int64_t deltaZ = std::abs(endZ - z);
+  const std::int64_t segmentCount = std::max(deltaX, deltaZ);
+  if (segmentCount >=
+      static_cast<std::int64_t>(kCreativeTerrainControlCapacity)) {
+    return line;
+  }
+
+  const std::int64_t stepX = x < endX ? 1 : -1;
+  const std::int64_t stepZ = z < endZ ? 1 : -1;
+  std::int64_t error = deltaX - deltaZ;
+  for (;;) {
+    line.coords[line.count++] = {
+        static_cast<std::int32_t>(x), static_cast<std::int32_t>(z)};
+    if (x == endX && z == endZ) {
+      break;
+    }
+    const std::int64_t twiceError = error * 2;
+    if (twiceError > -deltaZ) {
+      error -= deltaZ;
+      x += stepX;
+    }
+    if (twiceError < deltaX) {
+      error += deltaX;
+      z += stepZ;
+    }
+  }
+  line.accepted = true;
+  line.status = CreativeTerrainGridLineStatus::Ready;
+  return line;
 }
 
 bool creativeTerrainInsideRadius(CreativeTerrainCoord2 center,

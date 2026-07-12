@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/document/TerrainField.hpp"
+#include "app/iggy3d/creative/tools/TerrainBrushKernel.hpp"
 #include "app/iggy3d/creative/tools/TerrainGrade.hpp"
 #include "app/iggy3d/creative/tools/TerrainSeed.hpp"
 #include "app/iggy3d/creative/tools/TerrainSculpt.hpp"
@@ -664,6 +665,59 @@ bool gradePlanIsDeterministicBoundedAndValidated() {
                 "grade rejects coordinates unsafe for terrain influence");
 }
 
+bool sharedGridLineAndMutationPreviewAreBoundedAndPure() {
+  const cr::CreativeTerrainGridLine line =
+      cr::rasterizeCreativeTerrainGridLine({0, 0}, {4, 2});
+  constexpr std::array expectedCoords{
+      cr::CreativeTerrainCoord2{0, 0}, cr::CreativeTerrainCoord2{1, 0},
+      cr::CreativeTerrainCoord2{2, 1}, cr::CreativeTerrainCoord2{3, 1},
+      cr::CreativeTerrainCoord2{4, 2}};
+  const cr::CreativeTerrainGridLine point =
+      cr::rasterizeCreativeTerrainGridLine({7, -4}, {7, -4});
+  const cr::CreativeTerrainGridLine oversized =
+      cr::rasterizeCreativeTerrainGridLine({0, 0}, {256, 0});
+
+  cr::CreativeTerrainField field;
+  constexpr std::array edits{
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{2, 3}, 8U, 2U}}};
+  const cr::CreativeTerrainMutationPreviewReceipt preview =
+      cr::buildCreativeTerrainMutationPreview(field, edits, {}, 1.0);
+  constexpr std::array duplicateEdits{
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Upsert,
+                                     {{2, 3}, 8U, 2U}},
+      cr::CreativeTerrainControlEdit{cr::CreativeTerrainEditKind::Remove,
+                                     {{2, 3}, 8U, 2U}}};
+  const cr::CreativeTerrainMutationPreviewReceipt mutationRejected =
+      cr::buildCreativeTerrainMutationPreview(field, duplicateEdits, {}, 1.0);
+  const cr::CreativeTerrainMutationPreviewReceipt renderRejected =
+      cr::buildCreativeTerrainMutationPreview(field, edits, {}, 0.0);
+
+  return expect(line.accepted && line.items().size() == expectedCoords.size() &&
+                    std::equal(line.items().begin(), line.items().end(),
+                               expectedCoords.begin()),
+                "shared grid line pins canonical Bresenham ordering") &&
+         expect(point.accepted && point.items().size() == 1U &&
+                    point.items().front() == cr::CreativeTerrainCoord2{7, -4},
+                "shared grid line accepts one-cell segments") &&
+         expect(!oversized.accepted && oversized.items().empty() &&
+                    oversized.status ==
+                        cr::CreativeTerrainGridLineStatus::CapacityExceeded,
+                "shared grid line rejects before exceeding fixed capacity") &&
+         expect(preview.accepted && preview.mutation.accepted &&
+                    preview.render.accepted && !preview.render.patches.empty() &&
+                    field.controlCount() == 0U,
+                "terrain mutation preview renders a copy without mutating source") &&
+         expect(!mutationRejected.accepted &&
+                    mutationRejected.status ==
+                        cr::CreativeTerrainMutationPreviewStatus::MutationRejected,
+                "terrain mutation preview exposes mutation rejection") &&
+         expect(!renderRejected.accepted &&
+                    renderRejected.status ==
+                        cr::CreativeTerrainMutationPreviewStatus::RenderRejected,
+                "terrain mutation preview exposes render rejection");
+}
+
 }  // namespace
 
 int main() {
@@ -676,6 +730,7 @@ int main() {
                  terrainSeedPlansMissingRodsAndClearAtomically() &&
                  sculptPlanIsSnapshotBasedBoundedAndCanonical() &&
                  sculptFalloffIsDeterministicSymmetricAndSharedByModes() &&
+                 sharedGridLineAndMutationPreviewAreBoundedAndPure() &&
                  gradePlanIsDeterministicBoundedAndValidated()
              ? 0
              : 1;

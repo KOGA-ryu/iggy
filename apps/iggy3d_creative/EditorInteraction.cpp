@@ -93,6 +93,8 @@ constexpr std::array kHeldItemBehaviors{
                      cr::Tool::Select, false, false},
     HeldItemBehavior{cr::CreativeHeldItemKind::TerrainProfile,
                      cr::Tool::Select, false, false},
+    HeldItemBehavior{cr::CreativeHeldItemKind::TerrainPath,
+                     cr::Tool::Select, false, false},
 };
 static_assert(heldItemRowsMatchEnumOrder(kHeldItemBehaviors));
 
@@ -303,10 +305,11 @@ void applyHeldVolumeOperation(InteractionContext& context) {
 
 void setVolumeGestureFeedback(CreativeEditorState& editor,
                               bool accepted) noexcept {
-  editor.interaction.placementFeedback = {
+  setCreativeEditorPlacementFeedback(
+      editor.interaction,
       accepted ? CreativeEditorPlacementFeedbackStatus::Placed
                : CreativeEditorPlacementFeedbackStatus::Rejected,
-      cr::kInvalidObjectId, editor.placeBrush, editor.frameIndex};
+      editor.frameIndex, editor.placeBrush);
 }
 
 void beginHeldShapeVolume(InteractionContext& context) {
@@ -317,7 +320,7 @@ void beginHeldShapeVolume(InteractionContext& context) {
           editor.interaction.target.grid.valid,
           editor.interaction.target.grid.targetCell);
   if (receipt.accepted) {
-    editor.interaction.placementFeedback = {};
+    clearCreativeEditorPlacementFeedback(editor.interaction);
   } else {
     setVolumeGestureFeedback(editor, false);
   }
@@ -464,6 +467,22 @@ void unlockTerrainProfileBase(InteractionContext& context) {
       unlockCreativeEditorTerrainProfileBase(context.request.editor));
 }
 
+void addTerrainPathPoint(InteractionContext& context) {
+  static_cast<void>(addCreativeEditorTerrainPathPoint(
+      context.request.appState.facade.document(), context.request.editor));
+}
+
+void applyTerrainPath(InteractionContext& context) {
+  static_cast<void>(applyCreativeEditorTerrainPathWithHistory(
+      context.request.appState, context.request.editor,
+      "minecraft_terrain_path_apply"));
+}
+
+void removeTerrainPathPoint(InteractionContext& context) {
+  static_cast<void>(
+      removeCreativeEditorTerrainPathPoint(context.request.editor));
+}
+
 constexpr std::array<HeldItemHandlerRow, cr::kCreativeHeldItemKindCount>
     kHeldItemHandlers{{
         {cr::CreativeHeldItemKind::Material,
@@ -521,8 +540,197 @@ constexpr std::array<HeldItemHandlerRow, cr::kCreativeHeldItemKindCount>
          {unlockTerrainProfileBase, applyTerrainProfile,
           lockTerrainProfileBase},
          applyTerrainProfile, unlockTerrainProfileBase, true},
+        {cr::CreativeHeldItemKind::TerrainPath,
+         {removeTerrainPathPoint, applyTerrainPath, addTerrainPathPoint},
+         applyTerrainPath, removeTerrainPathPoint, true},
     }};
 static_assert(heldItemRowsMatchEnumOrder(kHeldItemHandlers));
+
+struct HeldItemCommandResult {
+  bool handled = false;
+  bool changed = false;
+};
+
+using HeldItemConfirmCommand = HeldItemCommandResult (*)(
+    cr::CreativeHeldItemKind,
+    cr::CreativeAppState&,
+    CreativeEditorState&,
+    std::string_view);
+using HeldItemCancelCommand = HeldItemCommandResult (*)(
+    cr::CreativeAppState&,
+    CreativeEditorState&);
+
+struct HeldItemCommandRow {
+  cr::CreativeHeldItemKind kind = cr::CreativeHeldItemKind::Count;
+  HeldItemConfirmCommand confirm = nullptr;
+  HeldItemCancelCommand cancel = nullptr;
+};
+
+HeldItemCommandResult confirmArrayCommand(
+    cr::CreativeHeldItemKind,
+    cr::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    std::string_view source) {
+  return {true, applyCreativeEditorArrayWithHistory(
+                    appState, editor.pattern, editor.toolSettings,
+                    editor.placeCellSize,
+                    editor.interaction.target.grid.valid,
+                    editor.interaction.target.grid.placementAnchor, source)};
+}
+
+HeldItemCommandResult confirmConnectedFillCommand(
+    cr::CreativeHeldItemKind,
+    cr::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    std::string_view source) {
+  return {true, applyCreativeEditorConnectedFillWithHistory(
+                    appState, editor, CreativeConnectedFillEditKind::Paint,
+                    source)
+                    .accepted};
+}
+
+HeldItemCommandResult confirmSurfaceExtrudeCommand(
+    cr::CreativeHeldItemKind,
+    cr::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    std::string_view source) {
+  return {true, applyCreativeEditorSurfaceExtrudeWithHistory(
+                    appState, editor,
+                    cr::CreativeSurfaceExtrudeKind::Extrude, source)
+                    .accepted};
+}
+
+HeldItemCommandResult confirmTerrainControlCommand(
+    cr::CreativeHeldItemKind,
+    cr::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    std::string_view source) {
+  return {true, applyCreativeEditorTerrainEditWithHistory(
+                    appState, editor,
+                    CreativeEditorTerrainEditKind::Upsert, source)
+                    .accepted};
+}
+
+HeldItemCommandResult confirmTerrainGradeCommand(
+    cr::CreativeHeldItemKind,
+    cr::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    std::string_view source) {
+  return {true, applyCreativeEditorTerrainGradeWithHistory(
+                    appState, editor, source)
+                    .accepted};
+}
+
+HeldItemCommandResult confirmTerrainSculptCommand(
+    cr::CreativeHeldItemKind,
+    cr::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    std::string_view source) {
+  return {true, applyCreativeEditorTerrainSculptWithHistory(
+                    appState, editor, source)
+                    .accepted};
+}
+
+HeldItemCommandResult confirmTerrainProfileCommand(
+    cr::CreativeHeldItemKind,
+    cr::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    std::string_view source) {
+  return {true, applyCreativeEditorTerrainProfileWithHistory(
+                    appState, editor, source)
+                    .accepted};
+}
+
+HeldItemCommandResult confirmTerrainPathCommand(
+    cr::CreativeHeldItemKind,
+    cr::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    std::string_view source) {
+  return {true, applyCreativeEditorTerrainPathWithHistory(
+                    appState, editor, source)
+                    .accepted};
+}
+
+HeldItemCommandResult confirmVolumeCommand(
+    cr::CreativeHeldItemKind kind,
+    cr::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    std::string_view source) {
+  const cr::CreativeVolumeOperationReceipt receipt =
+      applyCreativeEditorVolumeOperationWithHistory(
+          appState, editor.volume, editor.placeBrush,
+          cr::creativeVolumeOperationForHeldItem(kind), editor.toolSettings,
+          source);
+  return {true, receipt.accepted};
+}
+
+HeldItemCommandResult cancelTerrainControlCommand(
+    cr::CreativeAppState& appState,
+    CreativeEditorState& editor) {
+  if (!editor.terrain.selectionValid) {
+    return {};
+  }
+  return {true, applyCreativeEditorTerrainEditWithHistory(
+                    appState, editor, CreativeEditorTerrainEditKind::Remove,
+                    "creative_terrain_cancel_active_tool")
+                    .accepted};
+}
+
+HeldItemCommandResult cancelTerrainGradeCommand(
+    cr::CreativeAppState&,
+    CreativeEditorState& editor) {
+  return {true, cancelCreativeEditorTerrainGrade(editor).accepted};
+}
+
+HeldItemCommandResult cancelTerrainSculptCommand(
+    cr::CreativeAppState& appState,
+    CreativeEditorState& editor) {
+  finalizeCreativeTerrainSculptStroke(
+      appState, editor, "creative_terrain_sculpt_cancel_active_tool");
+  return {true, cancelCreativeEditorTerrainSculpt(editor).accepted};
+}
+
+HeldItemCommandResult cancelTerrainProfileCommand(
+    cr::CreativeAppState&,
+    CreativeEditorState& editor) {
+  return {true, unlockCreativeEditorTerrainProfileBase(editor).accepted};
+}
+
+HeldItemCommandResult cancelTerrainPathCommand(
+    cr::CreativeAppState&,
+    CreativeEditorState& editor) {
+  return {true, removeCreativeEditorTerrainPathPoint(editor).accepted};
+}
+
+constexpr std::array<HeldItemCommandRow, cr::kCreativeHeldItemKindCount>
+    kHeldItemCommands{{
+        {cr::CreativeHeldItemKind::Material},
+        {cr::CreativeHeldItemKind::MaterialBrush},
+        {cr::CreativeHeldItemKind::ObjectSelect},
+        {cr::CreativeHeldItemKind::ObjectMove},
+        {cr::CreativeHeldItemKind::VolumeSelect},
+        {cr::CreativeHeldItemKind::VolumeFill},
+        {cr::CreativeHeldItemKind::VolumeHollow},
+        {cr::CreativeHeldItemKind::VolumeReplace, confirmVolumeCommand},
+        {cr::CreativeHeldItemKind::VolumeErase, confirmVolumeCommand},
+        {cr::CreativeHeldItemKind::VolumeClone, confirmVolumeCommand},
+        {cr::CreativeHeldItemKind::LinearArray, confirmArrayCommand},
+        {cr::CreativeHeldItemKind::ConnectedFill,
+         confirmConnectedFillCommand},
+        {cr::CreativeHeldItemKind::SurfaceExtrude,
+         confirmSurfaceExtrudeCommand},
+        {cr::CreativeHeldItemKind::TerrainControl,
+         confirmTerrainControlCommand, cancelTerrainControlCommand},
+        {cr::CreativeHeldItemKind::TerrainGrade,
+         confirmTerrainGradeCommand, cancelTerrainGradeCommand},
+        {cr::CreativeHeldItemKind::TerrainSculpt,
+         confirmTerrainSculptCommand, cancelTerrainSculptCommand},
+        {cr::CreativeHeldItemKind::TerrainProfile,
+         confirmTerrainProfileCommand, cancelTerrainProfileCommand},
+        {cr::CreativeHeldItemKind::TerrainPath,
+         confirmTerrainPathCommand, cancelTerrainPathCommand},
+    }};
+static_assert(heldItemRowsMatchEnumOrder(kHeldItemCommands));
 
 void processMoveInteraction(
     const CreativeEditorWorldInteractionFrameRequest& request) {
@@ -600,6 +808,146 @@ void processMoveInteraction(
         request.appState, request.appState.history, release,
         editor.interaction.moveTargetId, "minecraft_primary_move_release"));
     editor.interaction.moveTargetId = cr::kInvalidObjectId;
+  }
+}
+
+void refreshHeldItemPreview(
+    const CreativeEditorWorldInteractionFrameRequest& request,
+    cr::CreativeHeldItemKind kind);
+
+[[nodiscard]] bool processExclusiveHeldItemFrame(
+    const CreativeEditorWorldInteractionFrameRequest& request,
+    const cr::CreativeHotbarEntry& held) {
+  CreativeEditorState& editor = request.editor;
+  switch (held.kind) {
+    case cr::CreativeHeldItemKind::Material:
+    case cr::CreativeHeldItemKind::MaterialBrush: {
+      finalizeCreativeTerrainStroke(request.appState, editor,
+                                    "creative_terrain_stroke_material_tool");
+      InteractionContext context{request, held};
+      processCreativeMaterialStrokeFrame(
+          request.appState, editor, request.actions,
+          request.monotonicTimeNanoseconds);
+      if (cr::creativeWorldActionPressed(request.actions,
+                                         cr::CreativeWorldActionId::Pick)) {
+        sampleTargetMaterial(context);
+      }
+      return true;
+    }
+    case cr::CreativeHeldItemKind::TerrainControl: {
+      finalizeCreativeMaterialStroke(
+          request.appState, editor,
+          "creative_material_stroke_non_material_tool");
+      finalizeCreativeTerrainSculptStroke(
+          request.appState, editor, "creative_terrain_sculpt_non_sculpt_tool");
+      InteractionContext context{request, held};
+      processCreativeTerrainStrokeFrame(
+          request.appState, editor, request.actions,
+          request.monotonicTimeNanoseconds);
+      if (!editor.terrain.stroke.repeat.active &&
+          cr::creativeWorldActionPressed(request.actions,
+                                         cr::CreativeWorldActionId::Pick)) {
+        sampleTerrainControl(context);
+      }
+      return true;
+    }
+    case cr::CreativeHeldItemKind::TerrainSculpt:
+      finalizeCreativeMaterialStroke(
+          request.appState, editor,
+          "creative_material_stroke_non_material_tool");
+      finalizeCreativeTerrainStroke(
+          request.appState, editor,
+          "creative_terrain_stroke_non_terrain_tool");
+      processCreativeTerrainSculptStrokeFrame(
+          request.appState, editor, request.actions,
+          request.monotonicTimeNanoseconds);
+      if (!editor.terrain.sculpt.stroke.repeat.active &&
+          cr::creativeTerrainSculptUsesTargetHeight(
+              editor.toolSettings.terrainSculptMode) &&
+          cr::creativeWorldActionPressed(request.actions,
+                                         cr::CreativeWorldActionId::Pick)) {
+        static_cast<void>(sampleCreativeEditorTerrainSculptHeight(
+            request.appState.facade.document(), editor));
+      }
+      static_cast<void>(refreshCreativeEditorTerrainSculptPreview(
+          editor.terrain, request.appState.facade.document(), editor));
+      return true;
+    case cr::CreativeHeldItemKind::ObjectMove: {
+      finalizeCreativeMaterialStroke(
+          request.appState, editor,
+          "creative_material_stroke_non_material_tool");
+      finalizeCreativeTerrainStroke(
+          request.appState, editor,
+          "creative_terrain_stroke_non_terrain_tool");
+      finalizeCreativeTerrainSculptStroke(
+          request.appState, editor,
+          "creative_terrain_sculpt_non_sculpt_tool");
+      processMoveInteraction(request);
+      if (cr::creativeWorldActionPressed(request.actions,
+                                         cr::CreativeWorldActionId::Pick)) {
+        InteractionContext context{request, held};
+        sampleTargetMaterial(context);
+      }
+      return true;
+    }
+    case cr::CreativeHeldItemKind::ObjectSelect:
+    case cr::CreativeHeldItemKind::VolumeSelect:
+    case cr::CreativeHeldItemKind::VolumeFill:
+    case cr::CreativeHeldItemKind::VolumeHollow:
+    case cr::CreativeHeldItemKind::VolumeReplace:
+    case cr::CreativeHeldItemKind::VolumeErase:
+    case cr::CreativeHeldItemKind::VolumeClone:
+    case cr::CreativeHeldItemKind::LinearArray:
+    case cr::CreativeHeldItemKind::ConnectedFill:
+    case cr::CreativeHeldItemKind::SurfaceExtrude:
+    case cr::CreativeHeldItemKind::TerrainGrade:
+    case cr::CreativeHeldItemKind::TerrainProfile:
+    case cr::CreativeHeldItemKind::TerrainPath:
+    case cr::CreativeHeldItemKind::Count:
+      break;
+  }
+  finalizeCreativeMaterialStroke(
+      request.appState, editor, "creative_material_stroke_non_material_tool");
+  finalizeCreativeTerrainStroke(
+      request.appState, editor, "creative_terrain_stroke_non_terrain_tool");
+  finalizeCreativeTerrainSculptStroke(
+      request.appState, editor, "creative_terrain_sculpt_non_sculpt_tool");
+  refreshHeldItemPreview(request, held.kind);
+  return false;
+}
+
+void refreshHeldItemPreview(
+    const CreativeEditorWorldInteractionFrameRequest& request,
+    cr::CreativeHeldItemKind kind) {
+  switch (kind) {
+    case cr::CreativeHeldItemKind::TerrainProfile:
+      static_cast<void>(refreshCreativeEditorTerrainProfilePreview(
+          request.editor.terrain, request.appState.facade.document(),
+          request.editor));
+      return;
+    case cr::CreativeHeldItemKind::TerrainPath:
+      static_cast<void>(refreshCreativeEditorTerrainPathPreview(
+          request.editor.terrain, request.appState.facade.document(),
+          request.editor));
+      return;
+    case cr::CreativeHeldItemKind::Material:
+    case cr::CreativeHeldItemKind::MaterialBrush:
+    case cr::CreativeHeldItemKind::ObjectSelect:
+    case cr::CreativeHeldItemKind::ObjectMove:
+    case cr::CreativeHeldItemKind::VolumeSelect:
+    case cr::CreativeHeldItemKind::VolumeFill:
+    case cr::CreativeHeldItemKind::VolumeHollow:
+    case cr::CreativeHeldItemKind::VolumeReplace:
+    case cr::CreativeHeldItemKind::VolumeErase:
+    case cr::CreativeHeldItemKind::VolumeClone:
+    case cr::CreativeHeldItemKind::LinearArray:
+    case cr::CreativeHeldItemKind::ConnectedFill:
+    case cr::CreativeHeldItemKind::SurfaceExtrude:
+    case cr::CreativeHeldItemKind::TerrainControl:
+    case cr::CreativeHeldItemKind::TerrainGrade:
+    case cr::CreativeHeldItemKind::TerrainSculpt:
+    case cr::CreativeHeldItemKind::Count:
+      return;
   }
 }
 
@@ -681,7 +1029,290 @@ void appendHeldItemStatusText(
   glyphs.insert(glyphs.end(), layout.quads.begin(), layout.quads.end());
 }
 
+void appendHeldQuickEditStatus(std::string& output,
+                               const CreativeEditorState& editor) {
+  const std::string quickEdit = creativeEditorQuickEditStatusLabel(editor);
+  if (!quickEdit.empty()) {
+    output.append(" | [");
+    output.append(quickEdit);
+    output.push_back(']');
+  }
+}
+
+void appendDirectShapeStatus(std::string& output,
+                             const CreativeEditorState& editor) {
+  output.append(" | ");
+  output.append(cr::toString(editor.toolSettings.shapeBrushKind));
+  if (editor.toolSettings.shapeBrushKind ==
+      cr::CreativeShapeBrushKind::Cylinder) {
+    output.push_back(' ');
+    output.append(cr::toString(editor.toolSettings.shapeBrushAxis));
+  }
+  output.append(" | ");
+  output.append(cr::toString(editor.placeBrush));
+  if (editor.volume.selection.phase ==
+      cr::CreativeVolumeSelectionPhase::FirstCorner) {
+    output.append(" | Corner 1");
+  } else if (editor.volume.selection.phase ==
+             cr::CreativeVolumeSelectionPhase::Complete) {
+    output.append(" | Ready");
+  }
+  appendHeldQuickEditStatus(output, editor);
+}
+
+void appendMaterialBrushStatus(std::string& output,
+                               const CreativeEditorState& editor,
+                               const cr::CreativeHotbarEntry& held) {
+  const CreativeMaterialBrushGestureConfig brushConfig =
+      editor.interaction.materialStroke.hasBrushAnchor
+          ? editor.interaction.materialStroke.brushConfig
+          : creativeMaterialBrushGestureConfig(editor.toolSettings);
+  output.append(" | ");
+  output.append(cr::toString(held.objectKind));
+  output.append(" | ");
+  output.append(cr::toString(brushConfig.shape));
+  if (brushConfig.shape == cr::CreativeMaterialBrushShape::Cylinder) {
+    output.push_back(' ');
+    output.append(cr::toString(brushConfig.axis));
+  }
+  output.append(" | ");
+  output.append(cr::toString(brushConfig.size));
+  output.append(" | ");
+  output.append(cr::toString(brushConfig.fill));
+  output.append(" | ");
+  output.append(cr::toString(brushConfig.guide));
+  if (brushConfig.symmetry != cr::CreativeMaterialBrushSymmetry::Off) {
+    output.append(" | ");
+    output.append(cr::toString(brushConfig.symmetry));
+    const CreativeMaterialBrushPivotState& pivot =
+        editor.interaction.materialBrushPivot;
+    if (pivot.locked) {
+      output.append(" | PIVOT LOCKED ");
+      output.append(std::to_string(pivot.lockedCell.x));
+      output.push_back(' ');
+      output.append(std::to_string(pivot.lockedCell.y));
+      output.push_back(' ');
+      output.append(std::to_string(pivot.lockedCell.z));
+    }
+  }
+  output.append(" | ");
+  output.append(cr::toString(brushConfig.mask));
+  if (brushConfig.mask == cr::CreativeMaterialBrushMask::Replace) {
+    output.push_back(' ');
+    output.append(
+        brushConfig.replaceSourceKind == cr::CreativeObjectKind::Unknown
+            ? std::string_view{"ANY"}
+            : cr::toString(brushConfig.replaceSourceKind));
+  }
+  const cr::CreativeMaterialBrushStampPlan stamp =
+      cr::planCreativeMaterialBrushStamp(
+          creativeMaterialBrushStampRequest(brushConfig));
+  if (stamp.accepted) {
+    output.append(" | ");
+    output.append(std::to_string(stamp.cellCount));
+    output.append(" VOXELS");
+  }
+  appendHeldQuickEditStatus(output, editor);
+}
+
+void appendLinearArrayStatus(std::string& output,
+                             const CreativeEditorState& editor) {
+  output.append(" | ");
+  output.append(cr::toString(editor.toolSettings.arrayMode));
+  if (editor.toolSettings.arrayMode == cr::CreativeArrayMode::Radial) {
+    output.append(" | ");
+    output.append(cr::toString(editor.toolSettings.radialArrayAxis));
+    output.append(" | ");
+    output.append(cr::toString(editor.toolSettings.radialArrayInstanceCount));
+    output.append(" | ");
+    output.append(cr::toString(editor.toolSettings.radialArraySweep));
+  }
+  appendHeldQuickEditStatus(output, editor);
+}
+
+void appendTerrainControlStatus(std::string& output,
+                                const CreativeEditorState& editor) {
+  const bool seedMode = editor.toolSettings.terrainRodStampMode ==
+                        cr::CreativeTerrainRodStampMode::Seed;
+  if (!seedMode && editor.terrain.selectionValid) {
+    output.append(" | EDIT ");
+    output.append(std::to_string(editor.terrain.selectedCoord.x));
+    output.push_back(' ');
+    output.append(std::to_string(editor.terrain.selectedCoord.z));
+  } else if (!seedMode && editor.terrain.hoverValid) {
+    output.append(" | ROD ");
+    output.append(std::to_string(editor.terrain.hoverCoord.x));
+    output.push_back(' ');
+    output.append(std::to_string(editor.terrain.hoverCoord.z));
+  }
+  if (seedMode) {
+    output.append(" | SEED RADIUS ");
+    output.append(std::to_string(cr::creativeTerrainSeedRadiusCells(
+        editor.toolSettings.terrainSeedRadius)));
+    output.append(" | SPACING ");
+    output.append(std::to_string(cr::creativeTerrainSeedSpacingCells(
+        editor.toolSettings.terrainSeedSpacing)));
+  }
+  appendHeldQuickEditStatus(output, editor);
+}
+
+void appendTerrainGradeStatus(std::string& output,
+                              const CreativeEditorState& editor) {
+  if (editor.terrain.grade.anchorValid) {
+    output.append(" | START ");
+    output.append(std::to_string(editor.terrain.grade.anchorCoord.x));
+    output.push_back(' ');
+    output.append(std::to_string(editor.terrain.grade.anchorCoord.z));
+  } else {
+    output.append(" | SET START ROD");
+  }
+  appendHeldQuickEditStatus(output, editor);
+}
+
+void appendTerrainSculptStatus(std::string& output,
+                               const CreativeEditorState& editor) {
+  output.append(" | ");
+  output.append(creativeEditorTerrainSculptQuickEditLabel(editor));
+  if (editor.terrain.sculpt.preview.valid &&
+      !editor.terrain.sculpt.preview.plan.accepted) {
+    output.append(" | NO RODS");
+  }
+}
+
+void appendTerrainProfileStatus(std::string& output,
+                                const CreativeEditorState& editor) {
+  output.append(" | ");
+  output.append(cr::toString(editor.toolSettings.terrainProfileKind));
+  output.append(" | ");
+  output.append(cr::toString(editor.toolSettings.terrainProfileBlend));
+  output.append(" | ");
+  output.append(cr::toString(editor.toolSettings.terrainProfileRodPolicy));
+  output.append(" | ");
+  output.append(creativeEditorTerrainProfileQuickEditLabel(editor));
+  if (editor.terrain.profile.preview.valid &&
+      !editor.terrain.profile.preview.plan.accepted) {
+    output.append(" | ");
+    output.append(cr::toString(editor.terrain.profile.preview.plan.status));
+  }
+}
+
+void appendTerrainPathStatus(std::string& output,
+                             const CreativeEditorState& editor) {
+  output.append(" | ");
+  output.append(cr::toString(editor.toolSettings.terrainPathKind));
+  output.append(" | ");
+  output.append(cr::toString(editor.toolSettings.terrainPathElevation));
+  output.append(" | ");
+  output.append(creativeEditorTerrainPathQuickEditLabel(editor));
+  output.append(" | POINTS ");
+  output.append(std::to_string(editor.terrain.path.pointCount));
+  if (editor.terrain.path.preview.valid &&
+      editor.terrain.path.preview.pointCount >= 2U &&
+      !editor.terrain.path.preview.plan.accepted) {
+    output.append(" | ");
+    output.append(cr::toString(editor.terrain.path.preview.plan.status));
+  }
+}
+
+void appendConnectedFillStatus(std::string& output,
+                               const CreativeEditorState& editor,
+                               const cr::CreativeHotbarEntry& held) {
+  output.append(" | ");
+  output.append(cr::toString(held.objectKind));
+  output.append(" | ");
+  output.append(cr::toString(editor.toolSettings.connectedFillLimit));
+  const CreativeEditorConnectedFillCache& cache =
+      editor.interaction.connectedFill;
+  const CreativeEditorWorldTarget& target = editor.interaction.target;
+  const bool cacheMatchesTarget =
+      cache.valid && target.voxelHit && cache.seedCell == target.voxelCell &&
+      cache.limit == editor.toolSettings.connectedFillLimit;
+  if (cacheMatchesTarget) {
+    output.append(" | ");
+    if (cache.plan.accepted) {
+      output.append(std::to_string(cache.plan.cellCount));
+      output.append(" CELLS");
+    } else if (cache.plan.status ==
+               cr::CreativeConnectedFillStatus::CapacityExceeded) {
+      output.append("TOO LARGE");
+    } else {
+      output.append(cr::toString(cache.plan.status));
+    }
+  }
+  appendHeldQuickEditStatus(output, editor);
+}
+
+void appendSurfaceExtrudeStatus(std::string& output,
+                                const CreativeEditorState& editor,
+                                const cr::CreativeHotbarEntry& held) {
+  output.append(" | ");
+  output.append(cr::toString(held.objectKind));
+  output.append(" | ");
+  output.append(cr::toString(editor.toolSettings.surfaceExtrudeDepth));
+  output.append(" | ");
+  output.append(cr::toString(editor.toolSettings.surfaceExtrudeLimit));
+  const CreativeEditorSurfaceExtrudeCache& cache =
+      editor.interaction.surfaceExtrude;
+  const CreativeEditorWorldTarget& target = editor.interaction.target;
+  cr::CreativeGridCoord3 outward{};
+  const bool faceValid =
+      creativeSurfaceFaceOffset(target.grid.faceNormal, outward);
+  const bool cacheMatchesTarget =
+      cache.valid && target.voxelHit && faceValid &&
+      cache.seedCell == target.voxelCell && cache.outward == outward &&
+      cache.kind == cr::CreativeSurfaceExtrudeKind::Extrude &&
+      cache.depth == editor.toolSettings.surfaceExtrudeDepth &&
+      cache.affectedCellLimit == editor.toolSettings.surfaceExtrudeLimit;
+  if (cacheMatchesTarget) {
+    output.append(" | ");
+    if (cache.plan.accepted) {
+      output.append(std::to_string(cache.plan.surfaceCellCount));
+      output.append(" FACE / ");
+      output.append(std::to_string(cache.plan.mutationCellCount));
+      output.append(" CELLS");
+    } else if (cache.plan.status ==
+               cr::CreativeSurfaceExtrudeStatus::CapacityExceeded) {
+      output.append("TOO LARGE");
+    } else {
+      output.append(cr::toString(cache.plan.status));
+    }
+  }
+  appendHeldQuickEditStatus(output, editor);
+}
+
 }  // namespace
+
+void clearCreativeEditorPlacementFeedback(
+    CreativeEditorInteractionState& interaction) noexcept {
+  interaction.placementFeedback = {};
+}
+
+void setCreativeEditorPlacementFeedback(
+    CreativeEditorInteractionState& interaction,
+    CreativeEditorPlacementFeedbackStatus status,
+    std::uint64_t frameIndex,
+    cr::CreativeObjectKind objectKind,
+    cr::CreativeObjectId objectId) noexcept {
+  interaction.placementFeedback = {};
+  interaction.placementFeedback.status = status;
+  interaction.placementFeedback.objectId = objectId;
+  interaction.placementFeedback.objectKind = objectKind;
+  interaction.placementFeedback.frameIndex = frameIndex;
+}
+
+void setCreativeEditorVoxelPlacementFeedback(
+    CreativeEditorInteractionState& interaction,
+    std::uint64_t frameIndex,
+    cr::CreativeObjectKind objectKind,
+    cr::CreativeGridCoord3 voxelCell,
+    cr::CreativeBounds voxelBounds) noexcept {
+  setCreativeEditorPlacementFeedback(
+      interaction, CreativeEditorPlacementFeedbackStatus::Placed, frameIndex,
+      objectKind);
+  interaction.placementFeedback.voxelPlaced = true;
+  interaction.placementFeedback.voxelCell = voxelCell;
+  interaction.placementFeedback.voxelBounds = voxelBounds;
+}
 
 void resetCreativeMaterialBrushPivot(
     CreativeMaterialBrushPivotState& state,
@@ -903,6 +1534,7 @@ double creativeEditorTargetCellSize(
     case cr::CreativeHeldItemKind::TerrainGrade:
     case cr::CreativeHeldItemKind::TerrainSculpt:
     case cr::CreativeHeldItemKind::TerrainProfile:
+    case cr::CreativeHeldItemKind::TerrainPath:
       return document.gridSettings().cellSizeMeters;
     case cr::CreativeHeldItemKind::ObjectSelect:
     case cr::CreativeHeldItemKind::ObjectMove:
@@ -918,243 +1550,53 @@ std::string creativeEditorHeldItemStatusLabel(
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   std::string output(cr::toString(held.kind));
-  const auto appendQuickEdit = [&editor, &output]() {
-    const std::string quickEdit = creativeEditorQuickEditStatusLabel(editor);
-    if (!quickEdit.empty()) {
-      output.append(" | [");
-      output.append(quickEdit);
-      output.push_back(']');
-    }
-  };
-  if (cr::creativeHeldItemUsesDirectShapeGesture(held.kind)) {
-    output.append(" | ");
-    output.append(cr::toString(editor.toolSettings.shapeBrushKind));
-    if (editor.toolSettings.shapeBrushKind ==
-        cr::CreativeShapeBrushKind::Cylinder) {
-      output.push_back(' ');
-      output.append(cr::toString(editor.toolSettings.shapeBrushAxis));
-    }
-    output.append(" | ");
-    output.append(cr::toString(editor.placeBrush));
-    if (editor.volume.selection.phase ==
-        cr::CreativeVolumeSelectionPhase::FirstCorner) {
-      output.append(" | Corner 1");
-    } else if (editor.volume.selection.phase ==
-               cr::CreativeVolumeSelectionPhase::Complete) {
-      output.append(" | Ready");
-    }
-    appendQuickEdit();
-    return output;
-  }
-  if (held.kind == cr::CreativeHeldItemKind::MaterialBrush) {
-    const CreativeMaterialBrushGestureConfig brushConfig =
-        editor.interaction.materialStroke.hasBrushAnchor
-            ? editor.interaction.materialStroke.brushConfig
-            : creativeMaterialBrushGestureConfig(editor.toolSettings);
-    output.append(" | ");
-    output.append(cr::toString(held.objectKind));
-    output.append(" | ");
-    output.append(cr::toString(brushConfig.shape));
-    if (brushConfig.shape ==
-        cr::CreativeMaterialBrushShape::Cylinder) {
-      output.push_back(' ');
-      output.append(cr::toString(brushConfig.axis));
-    }
-    output.append(" | ");
-    output.append(cr::toString(brushConfig.size));
-    output.append(" | ");
-    output.append(cr::toString(brushConfig.fill));
-    output.append(" | ");
-    output.append(cr::toString(brushConfig.guide));
-    if (brushConfig.symmetry != cr::CreativeMaterialBrushSymmetry::Off) {
+  switch (held.kind) {
+    case cr::CreativeHeldItemKind::MaterialBrush:
+      appendMaterialBrushStatus(output, editor, held);
+      break;
+    case cr::CreativeHeldItemKind::VolumeFill:
+    case cr::CreativeHeldItemKind::VolumeHollow:
+      appendDirectShapeStatus(output, editor);
+      break;
+    case cr::CreativeHeldItemKind::LinearArray:
+      appendLinearArrayStatus(output, editor);
+      break;
+    case cr::CreativeHeldItemKind::TerrainControl:
+      appendTerrainControlStatus(output, editor);
+      break;
+    case cr::CreativeHeldItemKind::TerrainGrade:
+      appendTerrainGradeStatus(output, editor);
+      break;
+    case cr::CreativeHeldItemKind::TerrainSculpt:
+      appendTerrainSculptStatus(output, editor);
+      break;
+    case cr::CreativeHeldItemKind::TerrainProfile:
+      appendTerrainProfileStatus(output, editor);
+      break;
+    case cr::CreativeHeldItemKind::TerrainPath:
+      appendTerrainPathStatus(output, editor);
+      break;
+    case cr::CreativeHeldItemKind::ConnectedFill:
+      appendConnectedFillStatus(output, editor, held);
+      break;
+    case cr::CreativeHeldItemKind::SurfaceExtrude:
+      appendSurfaceExtrudeStatus(output, editor, held);
+      break;
+    case cr::CreativeHeldItemKind::Material:
+    case cr::CreativeHeldItemKind::VolumeReplace:
       output.append(" | ");
-      output.append(cr::toString(brushConfig.symmetry));
-      const CreativeMaterialBrushPivotState& pivot =
-          editor.interaction.materialBrushPivot;
-      if (pivot.locked) {
-        output.append(" | PIVOT LOCKED ");
-        output.append(std::to_string(pivot.lockedCell.x));
-        output.append(" ");
-        output.append(std::to_string(pivot.lockedCell.y));
-        output.append(" ");
-        output.append(std::to_string(pivot.lockedCell.z));
-      }
-    }
-    output.append(" | ");
-    output.append(cr::toString(brushConfig.mask));
-    if (brushConfig.mask ==
-        cr::CreativeMaterialBrushMask::Replace) {
-      output.push_back(' ');
-      output.append(
-          brushConfig.replaceSourceKind == cr::CreativeObjectKind::Unknown
-              ? std::string_view{"ANY"}
-              : cr::toString(brushConfig.replaceSourceKind));
-    }
-    const cr::CreativeMaterialBrushStampPlan stamp =
-        cr::planCreativeMaterialBrushStamp(
-            creativeMaterialBrushStampRequest(brushConfig));
-    if (stamp.accepted) {
-      output.append(" | ");
-      output.append(std::to_string(stamp.cellCount));
-      output.append(" VOXELS");
-    }
-    appendQuickEdit();
-    return output;
+      output.append(cr::toString(held.objectKind));
+      appendHeldQuickEditStatus(output, editor);
+      break;
+    case cr::CreativeHeldItemKind::ObjectSelect:
+    case cr::CreativeHeldItemKind::ObjectMove:
+    case cr::CreativeHeldItemKind::VolumeSelect:
+    case cr::CreativeHeldItemKind::VolumeErase:
+    case cr::CreativeHeldItemKind::VolumeClone:
+    case cr::CreativeHeldItemKind::Count:
+      appendHeldQuickEditStatus(output, editor);
+      break;
   }
-  if (held.kind == cr::CreativeHeldItemKind::LinearArray) {
-    output.append(" | ");
-    output.append(cr::toString(editor.toolSettings.arrayMode));
-    if (editor.toolSettings.arrayMode == cr::CreativeArrayMode::Radial) {
-      output.append(" | ");
-      output.append(cr::toString(editor.toolSettings.radialArrayAxis));
-      output.append(" | ");
-      output.append(
-          cr::toString(editor.toolSettings.radialArrayInstanceCount));
-      output.append(" | ");
-      output.append(cr::toString(editor.toolSettings.radialArraySweep));
-    }
-    appendQuickEdit();
-    return output;
-  }
-  if (held.kind == cr::CreativeHeldItemKind::TerrainControl) {
-    const bool seedMode =
-        editor.toolSettings.terrainRodStampMode ==
-        cr::CreativeTerrainRodStampMode::Seed;
-    if (!seedMode && editor.terrain.selectionValid) {
-      output.append(" | EDIT ");
-      output.append(std::to_string(editor.terrain.selectedCoord.x));
-      output.push_back(' ');
-      output.append(std::to_string(editor.terrain.selectedCoord.z));
-    } else if (!seedMode && editor.terrain.hoverValid) {
-      output.append(" | ROD ");
-      output.append(std::to_string(editor.terrain.hoverCoord.x));
-      output.push_back(' ');
-      output.append(std::to_string(editor.terrain.hoverCoord.z));
-    }
-    if (seedMode) {
-      output.append(" | SEED RADIUS ");
-      output.append(std::to_string(cr::creativeTerrainSeedRadiusCells(
-          editor.toolSettings.terrainSeedRadius)));
-      output.append(" | SPACING ");
-      output.append(std::to_string(cr::creativeTerrainSeedSpacingCells(
-          editor.toolSettings.terrainSeedSpacing)));
-    }
-    appendQuickEdit();
-    return output;
-  }
-  if (held.kind == cr::CreativeHeldItemKind::TerrainGrade) {
-    if (editor.terrain.grade.anchorValid) {
-      output.append(" | START ");
-      output.append(std::to_string(editor.terrain.grade.anchorCoord.x));
-      output.push_back(' ');
-      output.append(std::to_string(editor.terrain.grade.anchorCoord.z));
-    } else {
-      output.append(" | SET START ROD");
-    }
-    appendQuickEdit();
-    return output;
-  }
-  if (held.kind == cr::CreativeHeldItemKind::TerrainSculpt) {
-    output.append(" | ");
-    output.append(creativeEditorTerrainSculptQuickEditLabel(editor));
-    if (editor.terrain.sculpt.preview.valid &&
-        !editor.terrain.sculpt.preview.plan.accepted) {
-      output.append(" | NO RODS");
-    }
-    return output;
-  }
-  if (held.kind == cr::CreativeHeldItemKind::TerrainProfile) {
-    output.append(" | ");
-    output.append(cr::toString(editor.toolSettings.terrainProfileKind));
-    output.append(" | ");
-    output.append(cr::toString(editor.toolSettings.terrainProfileBlend));
-    output.append(" | ");
-    output.append(cr::toString(editor.toolSettings.terrainProfileRodPolicy));
-    output.append(" | ");
-    output.append(creativeEditorTerrainProfileQuickEditLabel(editor));
-    if (editor.terrain.profile.preview.valid &&
-        !editor.terrain.profile.preview.plan.accepted) {
-      output.append(" | ");
-      output.append(
-          cr::toString(editor.terrain.profile.preview.plan.status));
-    }
-    return output;
-  }
-  if (held.kind == cr::CreativeHeldItemKind::ConnectedFill) {
-    output.append(" | ");
-    output.append(cr::toString(held.objectKind));
-    output.append(" | ");
-    output.append(cr::toString(editor.toolSettings.connectedFillLimit));
-    const CreativeEditorConnectedFillCache& cache =
-        editor.interaction.connectedFill;
-    const CreativeEditorWorldTarget& target = editor.interaction.target;
-    const bool cacheMatchesTarget =
-        cache.valid && target.voxelHit &&
-        cache.seedCell.x == target.voxelCell.x &&
-        cache.seedCell.y == target.voxelCell.y &&
-        cache.seedCell.z == target.voxelCell.z &&
-        cache.limit == editor.toolSettings.connectedFillLimit;
-    if (cacheMatchesTarget) {
-      output.append(" | ");
-      if (cache.plan.accepted) {
-        output.append(std::to_string(cache.plan.cellCount));
-        output.append(" CELLS");
-      } else if (cache.plan.status ==
-                 cr::CreativeConnectedFillStatus::CapacityExceeded) {
-        output.append("TOO LARGE");
-      } else {
-        output.append(cr::toString(cache.plan.status));
-      }
-    }
-    appendQuickEdit();
-    return output;
-  }
-  if (held.kind == cr::CreativeHeldItemKind::SurfaceExtrude) {
-    output.append(" | ");
-    output.append(cr::toString(held.objectKind));
-    output.append(" | ");
-    output.append(cr::toString(editor.toolSettings.surfaceExtrudeDepth));
-    output.append(" | ");
-    output.append(cr::toString(editor.toolSettings.surfaceExtrudeLimit));
-    const CreativeEditorSurfaceExtrudeCache& cache =
-        editor.interaction.surfaceExtrude;
-    const CreativeEditorWorldTarget& target = editor.interaction.target;
-    cr::CreativeGridCoord3 outward{};
-    const bool faceValid =
-        creativeSurfaceFaceOffset(target.grid.faceNormal, outward);
-    const bool cacheMatchesTarget =
-        cache.valid && target.voxelHit && faceValid &&
-        cache.seedCell.x == target.voxelCell.x &&
-        cache.seedCell.y == target.voxelCell.y &&
-        cache.seedCell.z == target.voxelCell.z &&
-        cache.outward.x == outward.x && cache.outward.y == outward.y &&
-        cache.outward.z == outward.z &&
-        cache.kind == cr::CreativeSurfaceExtrudeKind::Extrude &&
-        cache.depth == editor.toolSettings.surfaceExtrudeDepth &&
-        cache.affectedCellLimit == editor.toolSettings.surfaceExtrudeLimit;
-    if (cacheMatchesTarget) {
-      output.append(" | ");
-      if (cache.plan.accepted) {
-        output.append(std::to_string(cache.plan.surfaceCellCount));
-        output.append(" FACE / ");
-        output.append(std::to_string(cache.plan.mutationCellCount));
-        output.append(" CELLS");
-      } else if (cache.plan.status ==
-                 cr::CreativeSurfaceExtrudeStatus::CapacityExceeded) {
-        output.append("TOO LARGE");
-      } else {
-        output.append(cr::toString(cache.plan.status));
-      }
-    }
-    appendQuickEdit();
-    return output;
-  }
-  if (held.kind == cr::CreativeHeldItemKind::Material ||
-      cr::creativeHeldItemUsesMaterial(held.kind)) {
-    output.append(" | ");
-    output.append(cr::toString(held.objectKind));
-  }
-  appendQuickEdit();
   return output;
 }
 
@@ -1350,76 +1792,29 @@ bool confirmCreativeEditorHeldItem(cr::CreativeAppState& appState,
                                    std::string_view source) {
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  if (held.kind == cr::CreativeHeldItemKind::LinearArray) {
-    return applyCreativeEditorArrayWithHistory(
-        appState, editor.pattern, editor.toolSettings, editor.placeCellSize,
-        editor.interaction.target.grid.valid,
-        editor.interaction.target.grid.placementAnchor, source);
-  }
-  if (held.kind == cr::CreativeHeldItemKind::ConnectedFill) {
-    return applyCreativeEditorConnectedFillWithHistory(
-               appState, editor, CreativeConnectedFillEditKind::Paint,
-               source)
-        .accepted;
-  }
-  if (held.kind == cr::CreativeHeldItemKind::TerrainControl) {
-    return applyCreativeEditorTerrainEditWithHistory(
-               appState, editor, CreativeEditorTerrainEditKind::Upsert, source)
-        .accepted;
-  }
-  if (held.kind == cr::CreativeHeldItemKind::TerrainGrade) {
-    return applyCreativeEditorTerrainGradeWithHistory(appState, editor, source)
-        .accepted;
-  }
-  if (held.kind == cr::CreativeHeldItemKind::TerrainSculpt) {
-    return applyCreativeEditorTerrainSculptWithHistory(appState, editor, source)
-        .accepted;
-  }
-  if (held.kind == cr::CreativeHeldItemKind::TerrainProfile) {
-    return applyCreativeEditorTerrainProfileWithHistory(appState, editor, source)
-        .accepted;
-  }
-  if (held.kind == cr::CreativeHeldItemKind::SurfaceExtrude) {
-    return applyCreativeEditorSurfaceExtrudeWithHistory(
-               appState, editor, cr::CreativeSurfaceExtrudeKind::Extrude,
-               source)
-        .accepted;
-  }
-  if (cr::creativeHeldItemUsesDirectShapeGesture(held.kind)) {
+  const std::size_t row = static_cast<std::size_t>(held.kind);
+  if (row >= kHeldItemCommands.size()) {
     return false;
   }
-  if (!cr::creativeHeldItemIsVolumeOperation(held.kind)) {
+  const HeldItemConfirmCommand command = kHeldItemCommands[row].confirm;
+  if (command == nullptr) {
     return false;
   }
-  const cr::CreativeVolumeOperationReceipt receipt =
-      applyCreativeEditorVolumeOperationWithHistory(
-          appState, editor.volume, editor.placeBrush,
-          cr::creativeVolumeOperationForHeldItem(held.kind),
-          editor.toolSettings, source);
-  return receipt.accepted;
+  return command(held.kind, appState, editor, source).changed;
 }
 
 bool cancelCreativeEditorHeldItem(cr::CreativeAppState& appState,
                                   CreativeEditorState& editor) {
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  if (held.kind == cr::CreativeHeldItemKind::TerrainControl &&
-      editor.terrain.selectionValid) {
-    return applyCreativeEditorTerrainEditWithHistory(
-               appState, editor, CreativeEditorTerrainEditKind::Remove,
-               "creative_terrain_cancel_active_tool")
-        .accepted;
-  }
-  if (held.kind == cr::CreativeHeldItemKind::TerrainGrade) {
-    return cancelCreativeEditorTerrainGrade(editor).accepted;
-  }
-  if (held.kind == cr::CreativeHeldItemKind::TerrainSculpt) {
-    finalizeCreativeTerrainSculptStroke(
-        appState, editor, "creative_terrain_sculpt_cancel_active_tool");
-    return cancelCreativeEditorTerrainSculpt(editor).accepted;
-  }
-  if (held.kind == cr::CreativeHeldItemKind::TerrainProfile) {
-    return unlockCreativeEditorTerrainProfileBase(editor).accepted;
+  const std::size_t row = static_cast<std::size_t>(held.kind);
+  if (row < kHeldItemCommands.size() &&
+      kHeldItemCommands[row].cancel != nullptr) {
+    const HeldItemCommandResult command =
+        kHeldItemCommands[row].cancel(appState, editor);
+    if (command.handled) {
+      return command.changed;
+    }
   }
   if (editor.volume.active &&
       editor.volume.selection.phase != cr::CreativeVolumeSelectionPhase::Empty) {
@@ -1458,10 +1853,7 @@ void processCreativeEditorWorldInteractionFrame(
       request.drawableHeight, targetCellSize);
   const cr::CreativeHotbarEntry& aimedHeld =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  if (aimedHeld.kind == cr::CreativeHeldItemKind::TerrainControl ||
-      aimedHeld.kind == cr::CreativeHeldItemKind::TerrainGrade ||
-      aimedHeld.kind == cr::CreativeHeldItemKind::TerrainSculpt ||
-      aimedHeld.kind == cr::CreativeHeldItemKind::TerrainProfile) {
+  if (cr::creativeHeldItemIsTerrainTool(aimedHeld.kind)) {
     updateCreativeEditorTerrainAim(
         editor.terrain, document, editor.interaction.target.ray,
         editor.interaction.target.valid ? editor.interaction.target.distanceMeters
@@ -1531,67 +1923,7 @@ void processCreativeEditorWorldInteractionFrame(
 
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  if (held.kind == cr::CreativeHeldItemKind::Material ||
-      held.kind == cr::CreativeHeldItemKind::MaterialBrush) {
-    finalizeCreativeTerrainStroke(request.appState, editor,
-                                  "creative_terrain_stroke_material_tool");
-    InteractionContext context{request, held};
-    processCreativeMaterialStrokeFrame(
-        request.appState, editor, request.actions,
-        request.monotonicTimeNanoseconds);
-    if (cr::creativeWorldActionPressed(request.actions,
-                                       cr::CreativeWorldActionId::Pick)) {
-      sampleTargetMaterial(context);
-    }
-    return;
-  }
-  finalizeCreativeMaterialStroke(request.appState, editor,
-                                 "creative_material_stroke_non_material_tool");
-  if (held.kind == cr::CreativeHeldItemKind::TerrainControl) {
-    finalizeCreativeTerrainSculptStroke(
-        request.appState, editor, "creative_terrain_sculpt_non_sculpt_tool");
-    InteractionContext context{request, held};
-    processCreativeTerrainStrokeFrame(
-        request.appState, editor, request.actions,
-        request.monotonicTimeNanoseconds);
-    if (!editor.terrain.stroke.repeat.active &&
-        cr::creativeWorldActionPressed(request.actions,
-                                       cr::CreativeWorldActionId::Pick)) {
-      sampleTerrainControl(context);
-    }
-    return;
-  }
-  finalizeCreativeTerrainStroke(request.appState, editor,
-                                "creative_terrain_stroke_non_terrain_tool");
-  if (held.kind == cr::CreativeHeldItemKind::TerrainSculpt) {
-    processCreativeTerrainSculptStrokeFrame(
-        request.appState, editor, request.actions,
-        request.monotonicTimeNanoseconds);
-    if (!editor.terrain.sculpt.stroke.repeat.active &&
-        cr::creativeTerrainSculptUsesTargetHeight(
-            editor.toolSettings.terrainSculptMode) &&
-        cr::creativeWorldActionPressed(request.actions,
-                                       cr::CreativeWorldActionId::Pick)) {
-      static_cast<void>(sampleCreativeEditorTerrainSculptHeight(
-          request.appState.facade.document(), editor));
-    }
-    static_cast<void>(refreshCreativeEditorTerrainSculptPreview(
-        editor.terrain, request.appState.facade.document(), editor));
-    return;
-  }
-  finalizeCreativeTerrainSculptStroke(
-      request.appState, editor, "creative_terrain_sculpt_non_sculpt_tool");
-  if (held.kind == cr::CreativeHeldItemKind::TerrainProfile) {
-    static_cast<void>(refreshCreativeEditorTerrainProfilePreview(
-        editor.terrain, request.appState.facade.document(), editor));
-  }
-  if (held.kind == cr::CreativeHeldItemKind::ObjectMove) {
-    processMoveInteraction(request);
-    if (cr::creativeWorldActionPressed(request.actions,
-                                       cr::CreativeWorldActionId::Pick)) {
-      InteractionContext context{request, held};
-      sampleTargetMaterial(context);
-    }
+  if (processExclusiveHeldItemFrame(request, held)) {
     return;
   }
 

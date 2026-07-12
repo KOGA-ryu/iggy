@@ -2,12 +2,32 @@
 
 #include "app/iggy3d/creative/document/TerrainField.hpp"
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
+#include <span>
 
 namespace iggy3d::creative {
 
 inline constexpr std::int32_t kCreativeTerrainQ15One = 32'767;
 inline constexpr std::uint32_t kCreativeTerrainQ16One = 65'536U;
+
+enum class CreativeTerrainGridLineStatus : std::uint8_t {
+  Ready,
+  CapacityExceeded,
+};
+
+struct CreativeTerrainGridLine {
+  bool accepted = false;
+  CreativeTerrainGridLineStatus status =
+      CreativeTerrainGridLineStatus::CapacityExceeded;
+  std::array<CreativeTerrainCoord2, kCreativeTerrainControlCapacity> coords{};
+  std::uint16_t count = 0U;
+
+  [[nodiscard]] std::span<const CreativeTerrainCoord2> items() const noexcept {
+    return {coords.data(), count};
+  }
+};
 
 [[nodiscard]] constexpr std::uint64_t creativeTerrainIntegerSquareRoot(
     std::uint64_t value) noexcept {
@@ -34,6 +54,12 @@ inline constexpr std::uint32_t kCreativeTerrainQ16One = 65'536U;
 [[nodiscard]] std::int32_t creativeTerrainMultiplyQ15(
     std::int32_t lhs,
     std::int32_t rhs) noexcept;
+
+// O(max(|dx|, |dz|)) with a hard 256-coordinate output bound. The endpoint
+// order is preserved and ties follow one canonical integer Bresenham rule.
+[[nodiscard]] CreativeTerrainGridLine rasterizeCreativeTerrainGridLine(
+    CreativeTerrainCoord2 start,
+    CreativeTerrainCoord2 end) noexcept;
 
 [[nodiscard]] bool creativeTerrainInsideRadius(
     CreativeTerrainCoord2 center,

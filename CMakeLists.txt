@@ -59,6 +59,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/history/History.cpp
     src/app/iggy3d/creative/tools/TerrainGrade.cpp
     src/app/iggy3d/creative/tools/TerrainBrushKernel.cpp
+    src/app/iggy3d/creative/tools/TerrainPath.cpp
     src/app/iggy3d/creative/tools/TerrainProfile.cpp
     src/app/iggy3d/creative/tools/TerrainSeed.cpp
     src/app/iggy3d/creative/tools/TerrainSculpt.cpp
@@ -223,6 +224,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorSurfaceExtrude.cpp
   apps/iggy3d_creative/EditorTerrain.cpp
   apps/iggy3d_creative/EditorTerrainGrade.cpp
+  apps/iggy3d_creative/EditorTerrainPath.cpp
   apps/iggy3d_creative/EditorTerrainProfile.cpp
   apps/iggy3d_creative/EditorTerrainSculpt.cpp
   apps/iggy3d_creative/EditorMaterialStroke.cpp

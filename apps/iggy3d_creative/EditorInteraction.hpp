@@ -239,6 +239,23 @@ struct CreativeEditorInteractionState {
       iggy3d::creative::kInvalidObjectId;
 };
 
+void clearCreativeEditorPlacementFeedback(
+    CreativeEditorInteractionState& interaction) noexcept;
+void setCreativeEditorPlacementFeedback(
+    CreativeEditorInteractionState& interaction,
+    CreativeEditorPlacementFeedbackStatus status,
+    std::uint64_t frameIndex,
+    iggy3d::creative::CreativeObjectKind objectKind =
+        iggy3d::creative::CreativeObjectKind::Unknown,
+    iggy3d::creative::CreativeObjectId objectId =
+        iggy3d::creative::kInvalidObjectId) noexcept;
+void setCreativeEditorVoxelPlacementFeedback(
+    CreativeEditorInteractionState& interaction,
+    std::uint64_t frameIndex,
+    iggy3d::creative::CreativeObjectKind objectKind,
+    iggy3d::creative::CreativeGridCoord3 voxelCell,
+    iggy3d::creative::CreativeBounds voxelBounds) noexcept;
+
 struct CreativeEditorWorldInteractionFrameRequest {
   iggy3d::creative::CreativeAppState& appState;
   CreativeEditorState& editor;

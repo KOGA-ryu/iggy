@@ -13,19 +13,11 @@ namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 namespace {
 
-[[nodiscard]] bool sameCell(cr::CreativeGridCoord3 lhs,
-                            cr::CreativeGridCoord3 rhs) noexcept {
-  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
-}
-
 void setRejectedFeedback(CreativeEditorState& editor,
                          cr::CreativeObjectKind material) noexcept {
-  editor.interaction.placementFeedback = {
-      CreativeEditorPlacementFeedbackStatus::Rejected,
-      cr::kInvalidObjectId,
-      material,
-      editor.frameIndex,
-  };
+  setCreativeEditorPlacementFeedback(
+      editor.interaction, CreativeEditorPlacementFeedbackStatus::Rejected,
+      editor.frameIndex, material);
 }
 
 [[nodiscard]] cr::CreativeBounds connectedFillBounds(
@@ -47,7 +39,7 @@ const cr::CreativeConnectedFillPlan& resolveCreativeEditorConnectedFillPlan(
     cr::CreativeConnectedFillLimit limit) noexcept {
   if (cache.valid && cache.documentId == document.id() &&
       cache.documentRevision == document.revision() &&
-      sameCell(cache.seedCell, seedCell) && cache.limit == limit) {
+      cache.seedCell == seedCell && cache.limit == limit) {
     return cache.plan;
   }
 
@@ -141,17 +133,12 @@ applyCreativeEditorConnectedFillWithHistory(
     return receipt;
   }
 
-  CreativeEditorPlacementFeedback feedback;
-  feedback.status = CreativeEditorPlacementFeedbackStatus::Placed;
-  feedback.objectKind = replacement == cr::CreativeObjectKind::Unknown
-                            ? plan.sourceMaterial
-                            : replacement;
-  feedback.frameIndex = editor.frameIndex;
-  feedback.voxelPlaced = true;
-  feedback.voxelCell = plan.seedCell;
-  feedback.voxelBounds = connectedFillBounds(
-      plan, appState.facade.document().gridSettings());
-  editor.interaction.placementFeedback = feedback;
+  setCreativeEditorVoxelPlacementFeedback(
+      editor.interaction, editor.frameIndex,
+      replacement == cr::CreativeObjectKind::Unknown ? plan.sourceMaterial
+                                                     : replacement,
+      plan.seedCell,
+      connectedFillBounds(plan, appState.facade.document().gridSettings()));
   editor.interaction.connectedFill.valid = false;
   return receipt;
 }

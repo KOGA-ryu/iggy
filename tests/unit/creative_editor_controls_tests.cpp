@@ -67,6 +67,13 @@ bool profileRoundTripPreservesBindingsAndTuning() {
   source.menuRepeatDelayMilliseconds = 375;
   source.menuRepeatIntervalMilliseconds = 90;
 
+  std::string serialized;
+  const app::CreativeEditorControlPersistenceReceipt serializedReceipt =
+      app::serializeCreativeEditorControlProfile(source, serialized);
+  cr::CreativeControlProfile parsed = cr::makeDefaultCreativeControlProfile();
+  const app::CreativeEditorControlPersistenceReceipt parsedReceipt =
+      app::parseCreativeEditorControlProfile(serialized, parsed);
+
   const app::CreativeEditorControlPersistenceReceipt saved =
       app::saveCreativeEditorControlProfile(source, path);
   cr::CreativeControlProfile loaded = cr::makeDefaultCreativeControlProfile();
@@ -80,6 +87,12 @@ bool profileRoundTripPreservesBindingsAndTuning() {
   std::filesystem::remove_all(root, error);
 
   return expect(swapped.changed, "source binding swap applied") &&
+         expect(serializedReceipt.accepted && !serialized.empty() &&
+                    parsedReceipt.accepted &&
+                    parsed.lookStick.deadzone == source.lookStick.deadzone &&
+                    parsed.lookStick.invertY == source.lookStick.invertY &&
+                    parsed.menuRepeatDelayMilliseconds == 375U,
+                "pure control codec round trips without filesystem IO") &&
          expect(saved.status ==
                     app::CreativeEditorControlPersistenceStatus::Saved &&
                     saved.accepted,
@@ -150,19 +163,19 @@ bool toolWheelPreferenceRoundTripIsAtomic() {
   const cr::CreativeCatalogState catalog =
       cr::makeCreativeCatalog(palette);
   cr::CreativeToolWheelState source = cr::makeCreativeToolWheel(catalog);
-  const auto terrainProfile = std::find_if(
+  const auto terrainPath = std::find_if(
       catalog.entries.begin(), catalog.entries.end(),
       [](const cr::CreativeCatalogEntry& entry) {
         return entry.hotbarEntry.kind ==
-               cr::CreativeHeldItemKind::TerrainProfile;
+               cr::CreativeHeldItemKind::TerrainPath;
       });
-  if (terrainProfile == catalog.entries.end()) {
-    return expect(false, "terrain profile exists for wheel preference test");
+  if (terrainPath == catalog.entries.end()) {
+    return expect(false, "terrain path exists for wheel preference test");
   }
-  const std::size_t terrainProfileIndex = static_cast<std::size_t>(
-      std::distance(catalog.entries.begin(), terrainProfile));
+  const std::size_t terrainPathIndex = static_cast<std::size_t>(
+      std::distance(catalog.entries.begin(), terrainPath));
   if (!cr::assignCreativeToolWheelCatalogEntry(
-          source, catalog, 0U, terrainProfileIndex)) {
+          source, catalog, 0U, terrainPathIndex)) {
     return expect(false, "custom wheel assignment applies before save");
   }
 

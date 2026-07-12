@@ -371,6 +371,9 @@ bool optionDescriptorsAreContextualAndBounded() {
   const cr::CreativeToolOptionList terrainProfile =
       cr::creativeToolOptionsForHeldItem(
           cr::CreativeHeldItemKind::TerrainProfile);
+  const cr::CreativeToolOptionList terrainPath =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::TerrainPath);
   cr::CreativeToolSettings ridgeSettings =
       cr::makeDefaultCreativeToolSettings();
   ridgeSettings.terrainProfileKind = cr::CreativeTerrainProfileKind::Ridge;
@@ -523,6 +526,16 @@ bool optionDescriptorsAreContextualAndBounded() {
                               cr::CreativeToolOptionId::TerrainProfileSpacing) ==
                         terrainWaveExisting.items().end(),
                 "existing-only profile hides lattice spacing") &&
+         expect(terrainPath.count == 4U &&
+                    terrainPath.ids[0] ==
+                        cr::CreativeToolOptionId::TerrainPathKind &&
+                    terrainPath.ids[1] ==
+                        cr::CreativeToolOptionId::TerrainPathElevation &&
+                    terrainPath.ids[2] ==
+                        cr::CreativeToolOptionId::TerrainPathWidth &&
+                    terrainPath.ids[3] ==
+                        cr::CreativeToolOptionId::TerrainPathAmplitude,
+                "terrain path exposes type elevation width and rise depth") &&
          expect(array.count == 4U &&
                     array.ids[0] ==
                         cr::CreativeToolOptionId::ArrayMode &&
@@ -556,6 +569,7 @@ bool optionDescriptorsAreContextualAndBounded() {
                     !terrainRodSingle.capacityExceeded &&
                     !terrainSeed.capacityExceeded &&
                     !terrainProfile.capacityExceeded &&
+                    !terrainPath.capacityExceeded &&
                     !terrainRidge.capacityExceeded &&
                     !terrainWaveExisting.capacityExceeded &&
                     !array.capacityExceeded && !radialArray.capacityExceeded &&
@@ -611,6 +625,9 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
   invalidSeed.terrainSeedSpacing = cr::CreativeTerrainSeedSpacing::Count;
   cr::CreativeToolSettings invalidProfile = settings;
   invalidProfile.terrainProfileKind = cr::CreativeTerrainProfileKind::Count;
+  cr::CreativeToolSettings invalidPath = settings;
+  invalidPath.terrainPathElevation =
+      cr::CreativeTerrainPathElevation::Count;
   bool ok = expect(cr::isValidCreativeToolSettings(settings),
                    "default settings valid") &&
             expect(!cr::isValidCreativeToolSettings(invalidMask),
@@ -640,6 +657,8 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                    "invalid terrain seed option fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidProfile),
                    "invalid terrain profile option fails settings validation") &&
+            expect(!cr::isValidCreativeToolSettings(invalidPath),
+                   "invalid terrain path option fails settings validation") &&
             expect(cr::creativeToolOptionValueLabel(
                        settings,
                        cr::CreativeToolOptionId::MoveConstraint) == "FREE" &&
@@ -761,7 +780,23 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::TerrainProfileFrequency) ==
-                           "1 CYCLE",
+                           "1 CYCLE" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainPathKind) ==
+                           "ROAD" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainPathElevation) ==
+                           "FOLLOW" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainPathWidth) ==
+                           "3 CELLS" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainPathAmplitude) ==
+                           "1 CELL",
                    "default labels and scalar conversions stable");
 
   const auto adjust = [&settings](cr::CreativeToolOptionId option,
@@ -899,6 +934,24 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                   settings.terrainProfileFrequency ==
                       cr::CreativeTerrainProfileFrequency::TwoCycles,
               "terrain profile frequency cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainPathKind, 1).changed &&
+                  settings.terrainPathKind ==
+                      cr::CreativeTerrainPathKind::River,
+              "terrain path kind cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainPathElevation, 1)
+                  .changed &&
+                  settings.terrainPathElevation ==
+                      cr::CreativeTerrainPathElevation::Level,
+              "terrain path elevation cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainPathWidth, 1).changed &&
+                  settings.terrainPathWidth ==
+                      cr::CreativeTerrainPathWidth::FiveCells,
+              "terrain path width cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainPathAmplitude, 1)
+                  .changed &&
+                  settings.terrainPathAmplitude ==
+                      cr::CreativeTerrainPathAmplitude::TwoCells,
+              "terrain path rise depth cycles") &&
        expect(adjust(cr::CreativeToolOptionId::ShapeBrushKind, 1).changed &&
                   settings.shapeBrushKind == cr::CreativeShapeBrushKind::Line,
               "shape kind cycles") &&

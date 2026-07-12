@@ -15,11 +15,11 @@ namespace cr = iggy3d::creative;
 namespace {
 
 void setGradeFeedback(CreativeEditorState& editor, bool accepted) noexcept {
-  editor.interaction.placementFeedback = {};
-  editor.interaction.placementFeedback.status =
+  setCreativeEditorPlacementFeedback(
+      editor.interaction,
       accepted ? CreativeEditorPlacementFeedbackStatus::Placed
-               : CreativeEditorPlacementFeedbackStatus::Rejected;
-  editor.interaction.placementFeedback.frameIndex = editor.frameIndex;
+               : CreativeEditorPlacementFeedbackStatus::Rejected,
+      editor.frameIndex);
 }
 
 }  // namespace
@@ -109,7 +109,7 @@ CreativeEditorTerrainGradeReceipt cancelCreativeEditorTerrainGrade(
   receipt.reasonCode = receipt.accepted
                            ? "creative_editor_terrain_grade_cancelled"
                            : "creative_editor_terrain_grade_not_active";
-  editor.interaction.placementFeedback = {};
+  clearCreativeEditorPlacementFeedback(editor.interaction);
   return receipt;
 }
 

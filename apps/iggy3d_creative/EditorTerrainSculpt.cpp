@@ -32,11 +32,11 @@ namespace {
 }
 
 void setSculptFeedback(CreativeEditorState& editor, bool accepted) noexcept {
-  editor.interaction.placementFeedback = {};
-  editor.interaction.placementFeedback.status =
+  setCreativeEditorPlacementFeedback(
+      editor.interaction,
       accepted ? CreativeEditorPlacementFeedbackStatus::Placed
-               : CreativeEditorPlacementFeedbackStatus::Rejected;
-  editor.interaction.placementFeedback.frameIndex = editor.frameIndex;
+               : CreativeEditorPlacementFeedbackStatus::Rejected,
+      editor.frameIndex);
 }
 
 void invalidateSculptPreview(CreativeTerrainSculptState& sculpt) noexcept {
@@ -211,7 +211,7 @@ CreativeEditorTerrainSculptReceipt cancelCreativeEditorTerrainSculpt(
   receipt.changed = editor.terrain.sculpt.preview.valid;
   receipt.reasonCode = "creative_editor_terrain_sculpt_cancelled";
   invalidateSculptPreview(editor.terrain.sculpt);
-  editor.interaction.placementFeedback = {};
+  clearCreativeEditorPlacementFeedback(editor.interaction);
   return receipt;
 }
 
@@ -307,21 +307,9 @@ void processCreativeTerrainSculptStrokeFrame(
     return;
   }
 
-  cr::CreativeMaterialRepeatRequest request;
-  request.nowNanoseconds = monotonicTimeNanoseconds;
-  request.secondaryPressed =
-      cr::creativeWorldActionPressed(actions,
-                                     cr::CreativeWorldActionId::Secondary) ||
-      cr::creativeWorldActionPressed(actions, cr::CreativeWorldActionId::Accept);
-  request.secondaryDown =
-      cr::creativeWorldActionDown(actions,
-                                  cr::CreativeWorldActionId::Secondary) ||
-      cr::creativeWorldActionDown(actions, cr::CreativeWorldActionId::Accept);
-  request.secondaryReleased =
-      cr::creativeWorldActionReleased(actions,
-                                      cr::CreativeWorldActionId::Secondary) ||
-      cr::creativeWorldActionReleased(actions,
-                                      cr::CreativeWorldActionId::Accept);
+  const cr::CreativeMaterialRepeatRequest request =
+      cr::makeCreativeWorldStrokeRepeatRequest(actions,
+                                               monotonicTimeNanoseconds);
 
   CreativeTerrainSculptStrokeState& stroke = editor.terrain.sculpt.stroke;
   const cr::CreativeMaterialRepeatResult repeat =
@@ -371,23 +359,16 @@ bool refreshCreativeEditorTerrainSculptPreview(
     return true;
   }
 
-  cr::CreativeTerrainField previewField = document.terrainField();
-  if (!cache.plan.items().empty()) {
-    const cr::CreativeTerrainMutationReceipt mutation =
-        previewField.apply(cache.plan.items());
-    if (!mutation.accepted) {
-      return true;
-    }
-  }
   const cr::CreativeGridSettings grid = document.gridSettings();
-  const cr::CreativeTerrainRenderPlan render =
-      cr::buildCreativeTerrainRenderPlan(previewField, grid.origin,
-                                         grid.cellSizeMeters);
-  if (!render.accepted) {
+  const cr::CreativeTerrainMutationPreviewReceipt preview =
+      cr::buildCreativeTerrainMutationPreview(
+          document.terrainField(), cache.plan.items(), grid.origin,
+          grid.cellSizeMeters);
+  if (!preview.accepted) {
     return true;
   }
-  cache.patches.reserve(render.patches.size());
-  for (const cr::CreativeTerrainSurfacePatch& patch : render.patches) {
+  cache.patches.reserve(preview.render.patches.size());
+  for (const cr::CreativeTerrainSurfacePatch& patch : preview.render.patches) {
     if (insideBrush(center, patch.coord, cache.radiusCells)) {
       cache.patches.push_back(patch);
     }

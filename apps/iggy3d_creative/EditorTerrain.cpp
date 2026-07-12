@@ -282,11 +282,11 @@ void appendTerrainGradePreview(
 }
 
 void setFeedback(CreativeEditorState& editor, bool accepted) noexcept {
-  editor.interaction.placementFeedback = {};
-  editor.interaction.placementFeedback.status =
+  setCreativeEditorPlacementFeedback(
+      editor.interaction,
       accepted ? CreativeEditorPlacementFeedbackStatus::Placed
-               : CreativeEditorPlacementFeedbackStatus::Rejected;
-  editor.interaction.placementFeedback.frameIndex = editor.frameIndex;
+               : CreativeEditorPlacementFeedbackStatus::Rejected,
+      editor.frameIndex);
 }
 
 void clearTerrainGradeAnchor(CreativeTerrainGradeState& grade) noexcept {
@@ -621,7 +621,7 @@ CreativeEditorTerrainEditReceipt applyCreativeEditorTerrainEditWithHistory(
     editor.terrain.radiusCells = editor.terrain.selectedOriginal.radiusCells;
     editor.terrain.selectionValid = false;
     receipt.reasonCode = "creative_editor_terrain_edit_cancelled";
-    editor.interaction.placementFeedback = {};
+    clearCreativeEditorPlacementFeedback(editor.interaction);
     return receipt;
   }
 
@@ -714,6 +714,10 @@ void clearCreativeEditorTerrainInteraction(
   state.profile.preview.valid = false;
   state.profile.preview.renderAccepted = false;
   state.profile.preview.patches.clear();
+  state.path.pointCount = 0U;
+  state.path.preview.valid = false;
+  state.path.preview.renderAccepted = false;
+  state.path.preview.patches.clear();
 }
 
 void updateCreativeEditorTerrainAim(
@@ -843,8 +847,10 @@ void appendCreativeEditorTerrainOverlay(
       held.kind == cr::CreativeHeldItemKind::TerrainSculpt;
   const bool terrainProfile =
       held.kind == cr::CreativeHeldItemKind::TerrainProfile;
+  const bool terrainPath = held.kind == cr::CreativeHeldItemKind::TerrainPath;
   if (captureMode ||
-      (!terrainControl && !terrainGrade && !terrainSculpt && !terrainProfile) ||
+      (!terrainControl && !terrainGrade && !terrainSculpt && !terrainProfile &&
+       !terrainPath) ||
       editor.catalog.model.open || editor.catalog.toolWheel.open ||
       editor.toolOptions.open || editor.controls.open || editor.transform.active ||
       editor.transform.controlsOpen) {
@@ -882,6 +888,12 @@ void appendCreativeEditorTerrainOverlay(
   if (terrainProfile) {
     appendCreativeEditorTerrainProfileOverlay(document, editor, thickness,
                                               wireLines);
+    return;
+  }
+
+  if (terrainPath) {
+    appendCreativeEditorTerrainPathOverlay(document, editor, thickness,
+                                           wireLines);
     return;
   }
 

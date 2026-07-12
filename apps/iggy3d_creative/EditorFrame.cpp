@@ -6,8 +6,10 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <span>
 #include <string>
 #include <thread>
+#include <utility>
 
 #include "app/iggy3d/creative/camera/Fly.hpp"
 #include "app/iggy3d/creative/input/ActionHints.hpp"
@@ -272,6 +274,137 @@ void setSdlKey(creative::CreativeInputFrame& frame,
              : active->context;
 }
 
+[[nodiscard]] bool prepareCreativeEditorDrawableFrame(
+    iggy3d::SdlWindow& window,
+    iggy3d::VulkanBackend& backend,
+    CreativeEditorState& editor,
+    CreativeEditorFrameInputResult& result) {
+  window.pollEvents();
+  result.monotonicTimeNanoseconds = SDL_GetTicksNS();
+  result.windowFocused = window.eventState().focused;
+  if (window.eventState().quitRequested) {
+    result.keepRunning = false;
+    return false;
+  }
+  if (!window.isDrawable()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(16));
+    result.skipFrame = true;
+    return false;
+  }
+
+  const iggy3d::SdlDrawableExtent extent = window.drawableExtent();
+  if (extent.width == 0U || extent.height == 0U) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(16));
+    result.skipFrame = true;
+    return false;
+  }
+  result.extent = extent;
+  if (extent.width != editor.lastWidth || extent.height != editor.lastHeight) {
+    iggy3d::RenderViewport viewport;
+    viewport.width = extent.width;
+    viewport.height = extent.height;
+    viewport.aspectRatio =
+        static_cast<float>(extent.width) / static_cast<float>(extent.height);
+    backend.resize(viewport);
+    editor.lastWidth = extent.width;
+    editor.lastHeight = extent.height;
+  }
+  return true;
+}
+
+[[nodiscard]] creative::CreativeWorldInputSample makeCreativeWorldInputSample(
+    const creative::CreativeInputFrame& inputFrame,
+    const creative::CreativeInputRouteResult& routedInput,
+    std::span<const creative::CreativeInputBinding> bindings,
+    bool enabled,
+    std::int32_t hotbarWheelSteps) noexcept {
+  creative::CreativeWorldInputSample sample;
+  if (!enabled) {
+    return sample;
+  }
+  const auto actionDown = [&](creative::CreativeInputActionId action) {
+    return creative::creativeInputActionDown(inputFrame, action, bindings,
+                                             &routedInput);
+  };
+  constexpr std::array mappings{
+      std::pair{creative::CreativeWorldActionId::Primary,
+                creative::CreativeInputActionId::PrimaryAction},
+      std::pair{creative::CreativeWorldActionId::Secondary,
+                creative::CreativeInputActionId::SecondaryAction},
+      std::pair{creative::CreativeWorldActionId::Accept,
+                creative::CreativeInputActionId::AcceptAction},
+      std::pair{creative::CreativeWorldActionId::Reject,
+                creative::CreativeInputActionId::RejectAction},
+      std::pair{creative::CreativeWorldActionId::Pick,
+                creative::CreativeInputActionId::PickAction},
+      std::pair{creative::CreativeWorldActionId::HotbarPrevious,
+                creative::CreativeInputActionId::HotbarPrevious},
+      std::pair{creative::CreativeWorldActionId::HotbarNext,
+                creative::CreativeInputActionId::HotbarNext},
+  };
+  for (const auto& [worldAction, inputAction] : mappings) {
+    creative::setCreativeWorldAction(sample, worldAction,
+                                     actionDown(inputAction));
+  }
+  sample.hotbarWheelSteps = hotbarWheelSteps;
+  return sample;
+}
+
+[[nodiscard]] iggy3d::ProductCreativeFlyInput makeCreativeEditorFlyInput(
+    const creative::CreativeInputFrame& inputFrame,
+    const creative::CreativeInputRouteResult& routedInput,
+    std::span<const creative::CreativeInputBinding> bindings,
+    creative::CreativeStickSignal moveStick,
+    bool navigationActive,
+    bool transformContext,
+    std::int32_t transformNudgeWheelSteps,
+    bool transformFineNudge) noexcept {
+  iggy3d::ProductCreativeFlyInput flyInput;
+  if (!navigationActive) {
+    return flyInput;
+  }
+  const auto actionDown = [&](creative::CreativeInputActionId action) {
+    return creative::creativeInputActionDown(inputFrame, action, bindings,
+                                             &routedInput);
+  };
+  const bool precisionNudgeRequested =
+      transformContext &&
+      (transformNudgeWheelSteps != 0 ||
+       routedActionPresent(
+           routedInput,
+           creative::CreativeInputActionId::TransformNudgeNegative) ||
+       routedActionPresent(
+           routedInput,
+           creative::CreativeInputActionId::TransformNudgePositive));
+  const float keyboardMoveX =
+      (actionDown(creative::CreativeInputActionId::MoveRight) ? 1.0F : 0.0F) -
+      (actionDown(creative::CreativeInputActionId::MoveLeft) ? 1.0F : 0.0F);
+  const float keyboardMoveY =
+      (actionDown(creative::CreativeInputActionId::MoveForward) ? 1.0F : 0.0F) -
+      (actionDown(creative::CreativeInputActionId::MoveBackward) ? 1.0F : 0.0F);
+  const bool ascend = actionDown(creative::CreativeInputActionId::FlyUp);
+  const bool descendRequested =
+      actionDown(creative::CreativeInputActionId::FlyDown);
+  const bool descend =
+      descendRequested && !(precisionNudgeRequested && transformFineNudge);
+  flyInput.moveX = std::clamp(keyboardMoveX + moveStick.x, -1.0F, 1.0F);
+  flyInput.moveY = std::clamp(keyboardMoveY + moveStick.y, -1.0F, 1.0F);
+  flyInput.moveZ = (ascend ? 1.0F : 0.0F) - (descend ? 1.0F : 0.0F);
+  flyInput.sprinting = actionDown(creative::CreativeInputActionId::Sprint);
+  return flyInput;
+}
+
+void resetCreativeEditorForDocumentReplacement(
+    CreativeEditorState& editor,
+    creative::CreativeDocumentId documentId) noexcept {
+  creative::clearCreativeVolumeSelection(editor.volume.selection);
+  invalidateCreativeEditorConnectedFillCache(editor.interaction.connectedFill);
+  invalidateCreativeEditorSurfaceExtrudeCache(
+      editor.interaction.surfaceExtrude);
+  resetCreativeMaterialBrushPivot(editor.interaction.materialBrushPivot,
+                                  documentId);
+}
+
 }  // namespace
 
 void applyCreativeEditorCommandInput(
@@ -461,27 +594,15 @@ void applyCreativeEditorCommandInput(
       case creative::CreativeInputActionId::NewDocument:
         clearToBlankScene(appState);
         clearEditHistory(appState.history, "new_clear");
-        creative::clearCreativeVolumeSelection(editor.volume.selection);
-        invalidateCreativeEditorConnectedFillCache(
-            editor.interaction.connectedFill);
-        invalidateCreativeEditorSurfaceExtrudeCache(
-            editor.interaction.surfaceExtrude);
-        resetCreativeMaterialBrushPivot(
-            editor.interaction.materialBrushPivot,
-            appState.facade.document().id());
+        resetCreativeEditorForDocumentReplacement(
+            editor, appState.facade.document().id());
         break;
       case creative::CreativeInputActionId::Load: {
         const bool loaded = loadStandaloneScene(appState, saveRoot, saveId);
         if (loaded) {
           clearEditHistory(appState.history, "load_success");
-          creative::clearCreativeVolumeSelection(editor.volume.selection);
-          invalidateCreativeEditorConnectedFillCache(
-              editor.interaction.connectedFill);
-          invalidateCreativeEditorSurfaceExtrudeCache(
-              editor.interaction.surfaceExtrude);
-          resetCreativeMaterialBrushPivot(
-              editor.interaction.materialBrushPivot,
-              appState.facade.document().id());
+          resetCreativeEditorForDocumentReplacement(
+              editor, appState.facade.document().id());
         }
         break;
       }
@@ -528,37 +649,8 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
     bool captureMode) {
   CreativeEditorFrameInputResult result;
   result.activeControlDevice = editor.activeControlDevice;
-
-  window.pollEvents();
-  result.monotonicTimeNanoseconds = SDL_GetTicksNS();
-  result.windowFocused = window.eventState().focused;
-  if (window.eventState().quitRequested) {
-    result.keepRunning = false;
+  if (!prepareCreativeEditorDrawableFrame(window, backend, editor, result)) {
     return result;
-  }
-  if (!window.isDrawable()) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(16));
-    result.skipFrame = true;
-    return result;
-  }
-
-  const iggy3d::SdlDrawableExtent extent = window.drawableExtent();
-  if (extent.width == 0U || extent.height == 0U) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(16));
-    result.skipFrame = true;
-    return result;
-  }
-  result.extent = extent;
-
-  if (extent.width != editor.lastWidth || extent.height != editor.lastHeight) {
-    iggy3d::RenderViewport viewport;
-    viewport.width = extent.width;
-    viewport.height = extent.height;
-    viewport.aspectRatio =
-        static_cast<float>(extent.width) / static_cast<float>(extent.height);
-    backend.resize(viewport);
-    editor.lastWidth = extent.width;
-    editor.lastHeight = extent.height;
   }
 
   const bool* keys = SDL_GetKeyboardState(nullptr);
@@ -575,12 +667,6 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
   result.routedInput =
       creative::routeCreativeInput(editor.inputRouterState, inputFrame,
                                    editor.controlProfile.bindingSpan());
-  const auto actionDown = [&inputFrame, &result, &editor](
-                              creative::CreativeInputActionId action) {
-    return creative::creativeInputActionDown(
-        inputFrame, action, editor.controlProfile.bindingSpan(),
-        &result.routedInput);
-  };
   const creative::CreativeStickSignal moveStick =
       creative::creativeControllerStick(
           controller, creative::CreativeControllerStick::Left,
@@ -598,10 +684,11 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
                                             editor.controlProfile
                                                 .gamepadLookSensitivity);
   result.modifiers = inputFrame.modifiers;
+  const std::int32_t wheelSteps = creative::quantizeCreativeWheelSteps(
+      window.eventState().mouseWheelY, kFrameWheelProfile);
   result.transformNudgeWheelSteps =
       inputContext == creative::CreativeInputContext::TransformPreview
-          ? creative::quantizeCreativeWheelSteps(
-                window.eventState().mouseWheelY, kFrameWheelProfile)
+          ? wheelSteps
           : 0;
   result.transformFineNudge =
       (inputFrame.modifiers & creative::kCreativeInputModifierShift) != 0U ||
@@ -609,35 +696,12 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
           controller, creative::CreativeControllerButton::LeftShoulder);
   result.toolWheelDirectionX = radialStick.x;
   result.toolWheelDirectionY = radialStick.y;
-  creative::CreativeWorldInputSample worldInput;
-  if (!captureMode && result.windowFocused) {
-    creative::setCreativeWorldAction(
-        worldInput, creative::CreativeWorldActionId::Primary,
-        actionDown(creative::CreativeInputActionId::PrimaryAction));
-    creative::setCreativeWorldAction(
-        worldInput, creative::CreativeWorldActionId::Secondary,
-        actionDown(creative::CreativeInputActionId::SecondaryAction));
-    creative::setCreativeWorldAction(
-        worldInput, creative::CreativeWorldActionId::Accept,
-        actionDown(creative::CreativeInputActionId::AcceptAction));
-    creative::setCreativeWorldAction(
-        worldInput, creative::CreativeWorldActionId::Reject,
-        actionDown(creative::CreativeInputActionId::RejectAction));
-    creative::setCreativeWorldAction(
-        worldInput, creative::CreativeWorldActionId::Pick,
-        actionDown(creative::CreativeInputActionId::PickAction));
-    creative::setCreativeWorldAction(
-        worldInput, creative::CreativeWorldActionId::HotbarPrevious,
-        actionDown(creative::CreativeInputActionId::HotbarPrevious));
-    creative::setCreativeWorldAction(
-        worldInput, creative::CreativeWorldActionId::HotbarNext,
-        actionDown(creative::CreativeInputActionId::HotbarNext));
-    worldInput.hotbarWheelSteps = creative::quantizeCreativeWheelSteps(
-        window.eventState().mouseWheelY, kFrameWheelProfile);
-  }
+  const creative::CreativeWorldInputSample worldInput =
+      makeCreativeWorldInputSample(
+          inputFrame, result.routedInput, editor.controlProfile.bindingSpan(),
+          !captureMode && result.windowFocused, wheelSteps);
   result.worldActions = creative::routeCreativeWorldActions(
       editor.interaction.actionRouter, worldInput);
-  iggy3d::ProductCreativeFlyInput flyInput;
   const CreativeEditorNavigationAdmission navigation =
       admitCreativeEditorNavigation(
           inputContext, editor.transform.controlsOpen,
@@ -650,45 +714,11 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
   if (navigation.clearRightStickLookRearm) {
     editor.rightStickLookRearmRequired = false;
   }
-  if (navigation.navigationActive) {
-    const bool precisionNudgeRequested =
-        inputContext == creative::CreativeInputContext::TransformPreview &&
-        (result.transformNudgeWheelSteps != 0 ||
-         routedActionPresent(
-             result.routedInput,
-             creative::CreativeInputActionId::TransformNudgeNegative) ||
-         routedActionPresent(
-             result.routedInput,
-             creative::CreativeInputActionId::TransformNudgePositive));
-    const float keyboardMoveX =
-        (actionDown(creative::CreativeInputActionId::MoveRight)
-             ? 1.0F
-             : 0.0F) -
-        (actionDown(creative::CreativeInputActionId::MoveLeft)
-             ? 1.0F
-             : 0.0F);
-    const float keyboardMoveY =
-        (actionDown(creative::CreativeInputActionId::MoveForward)
-             ? 1.0F
-             : 0.0F) -
-        (actionDown(creative::CreativeInputActionId::MoveBackward)
-             ? 1.0F
-             : 0.0F);
-    const bool ascend = actionDown(creative::CreativeInputActionId::FlyUp);
-    const bool descendRequested =
-        actionDown(creative::CreativeInputActionId::FlyDown);
-    const bool descend =
-        descendRequested &&
-        !(precisionNudgeRequested && result.transformFineNudge);
-    const float moveZ =
-        (ascend ? 1.0F : 0.0F) - (descend ? 1.0F : 0.0F);
-    flyInput.moveX =
-        std::clamp(keyboardMoveX + moveStick.x, -1.0F, 1.0F);
-    flyInput.moveY =
-        std::clamp(keyboardMoveY + moveStick.y, -1.0F, 1.0F);
-    flyInput.moveZ = moveZ;
-    flyInput.sprinting = actionDown(creative::CreativeInputActionId::Sprint);
-  }
+  iggy3d::ProductCreativeFlyInput flyInput = makeCreativeEditorFlyInput(
+      inputFrame, result.routedInput, editor.controlProfile.bindingSpan(),
+      moveStick, navigation.navigationActive,
+      inputContext == creative::CreativeInputContext::TransformPreview,
+      result.transformNudgeWheelSteps, result.transformFineNudge);
 
   float mouseDx = 0.0F;
   float mouseDy = 0.0F;

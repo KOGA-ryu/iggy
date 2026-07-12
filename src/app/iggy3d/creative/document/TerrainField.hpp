@@ -194,6 +194,24 @@ struct CreativeTerrainRenderPlan {
   std::string_view reasonCode = "creative_terrain_render_not_requested";
 };
 
+enum class CreativeTerrainMutationPreviewStatus : std::uint8_t {
+  NotRequested,
+  InvalidField,
+  MutationRejected,
+  RenderRejected,
+  Ready,
+};
+
+struct CreativeTerrainMutationPreviewReceipt {
+  bool requested = false;
+  bool accepted = false;
+  CreativeTerrainMutationPreviewStatus status =
+      CreativeTerrainMutationPreviewStatus::NotRequested;
+  CreativeTerrainMutationReceipt mutation{};
+  CreativeTerrainRenderPlan render{};
+  std::string_view reasonCode = "creative_terrain_preview_not_requested";
+};
+
 [[nodiscard]] bool isValidCreativeTerrainControlPoint(
     CreativeTerrainControlPoint control) noexcept;
 [[nodiscard]] std::string_view toString(
@@ -204,6 +222,8 @@ struct CreativeTerrainRenderPlan {
     CreativeTerrainRaycastStatus status) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeTerrainRenderPlanStatus status) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeTerrainMutationPreviewStatus status) noexcept;
 
 [[nodiscard]] CreativeTerrainHeightSample sampleCreativeTerrainHeight(
     const CreativeTerrainField& field,
@@ -233,6 +253,17 @@ struct CreativeTerrainRenderPlan {
     std::size_t maxPatchCount = kCreativeTerrainRenderPatchCapacity);
 [[nodiscard]] CreativeTerrainRenderPlan buildCreativeTerrainRenderPlan(
     const CreativeTerrainSurfacePlan& surface,
+    CreativeVec3 gridOrigin,
+    double cellSize,
+    std::size_t maxPatchCount = kCreativeTerrainRenderPatchCapacity);
+
+// Applies a proposed edit batch to a copy of the field and renders that copy.
+// The source field is never mutated, so editor previews and commit plans can
+// share one fail-closed apply-and-render contract.
+[[nodiscard]] CreativeTerrainMutationPreviewReceipt
+buildCreativeTerrainMutationPreview(
+    const CreativeTerrainField& field,
+    std::span<const CreativeTerrainControlEdit> edits,
     CreativeVec3 gridOrigin,
     double cellSize,
     std::size_t maxPatchCount = kCreativeTerrainRenderPatchCapacity);

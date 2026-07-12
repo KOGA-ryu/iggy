@@ -77,6 +77,13 @@ CreativeEditorState terrainProfileEditor(std::int32_t x, std::int32_t z) {
   return editor;
 }
 
+CreativeEditorState terrainPathEditor(std::int32_t x, std::int32_t z) {
+  CreativeEditorState editor = terrainEditor(x, z);
+  editor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::TerrainPath;
+  return editor;
+}
+
 cr::CreativeWorldActionFrame strokeAction(
     cr::CreativeWorldActionId action,
     bool down,
@@ -1265,6 +1272,136 @@ bool terrainProfileRejectionIsVisibleAtomicAndModalSafe() {
                 "catalog and capture ownership hide profile preview completely");
 }
 
+bool terrainPathLocksBendsPreviewsCommitsAndUndoesOneBatch() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 421U);
+  CreativeEditorState editor = terrainPathEditor(0, 0);
+  const CreativeEditorTerrainPathReceipt start =
+      addCreativeEditorTerrainPathPoint(appState.facade.document(), editor);
+  setTerrainStrokeTarget(editor, 2, 2);
+  const CreativeEditorTerrainPathReceipt bend =
+      addCreativeEditorTerrainPathPoint(appState.facade.document(), editor);
+  const CreativeEditorTerrainPathReceipt backed =
+      removeCreativeEditorTerrainPathPoint(editor);
+  setTerrainStrokeTarget(editor, 4, 0);
+
+  const std::uint64_t revisionBeforePreview =
+      appState.facade.document().revision();
+  const bool previewBuilt = refreshCreativeEditorTerrainPathPreview(
+      editor.terrain, appState.facade.document(), editor);
+  const CreativeTerrainPathPreviewCache preview = editor.terrain.path.preview;
+  const bool previewReused = !refreshCreativeEditorTerrainPathPreview(
+      editor.terrain, appState.facade.document(), editor);
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> lines;
+  appendCreativeEditorTerrainOverlay(appState.facade.document(), editor, 0.1F,
+                                     lines);
+  editor.toolOptions.open = true;
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> hiddenLines;
+  appendCreativeEditorTerrainOverlay(appState.facade.document(), editor, 0.1F,
+                                     hiddenLines);
+  editor.toolOptions.open = false;
+  bool ok = expect(start.accepted && start.changed && bend.accepted &&
+                       bend.changed && backed.accepted && backed.changed &&
+                       editor.terrain.path.pointCount == 1U,
+                   "Square locks points and Circle removes only the latest bend") &&
+            expect(previewBuilt && previewReused && preview.valid &&
+                       preview.pointCount == 2U &&
+                       preview.lockedPointCount == 1U &&
+                       preview.plan.accepted && preview.renderAccepted &&
+                       preview.buildCount == 1U && !lines.empty() &&
+                       hiddenLines.empty() &&
+                       appState.facade.document().revision() ==
+                           revisionBeforePreview,
+                   "locked start plus live aim previews exact path without mutation");
+
+  const CreativeEditorTerrainPathReceipt applied =
+      applyCreativeEditorTerrainPathWithHistory(
+          appState, editor, "test_terrain_path_apply");
+  bool parity = applied.plan.finalControls().size() ==
+                preview.plan.finalControls().size();
+  for (const cr::CreativeTerrainControlPoint& control :
+       preview.plan.finalControls()) {
+    const cr::CreativeTerrainControlPoint* stored =
+        appState.facade.document().terrainField().controlAt(control.coord);
+    parity = parity && stored != nullptr && *stored == control;
+  }
+  ok = expect(applied.accepted && applied.changed && parity &&
+                  editor.terrain.path.pointCount == 0U &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "X commits the visible plan as one terrain batch and one undo") &&
+       ok;
+
+  const bool undone = undoLastEdit(appState, "test_terrain_path_undo");
+  CreativeEditorState tuning = terrainPathEditor(0, 0);
+  const bool widened = processCreativeEditorQuickEditAction(
+      tuning, cr::CreativeInputActionId::QuickEditIncrease);
+  const bool raised = processCreativeEditorQuickEditAction(
+      tuning, cr::CreativeInputActionId::QuickEditPrevious);
+  return expect(undone &&
+                    appState.facade.document().terrainField().controlCount() ==
+                        0U,
+                "one undo removes the complete path") &&
+         expect(widened && raised &&
+                    tuning.toolSettings.terrainPathWidth ==
+                        cr::CreativeTerrainPathWidth::FiveCells &&
+                    tuning.toolSettings.terrainPathAmplitude ==
+                        cr::CreativeTerrainPathAmplitude::TwoCells &&
+                    creativeEditorTerrainPathQuickEditLabel(tuning) ==
+                        "WIDTH 5 | RISE 2",
+                "D-pad adjusts path width and rise through semantic quick edits") &&
+         ok;
+}
+
+bool terrainPathRoutesSquareXAndCircleThroughWorldActions() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 422U);
+  const cr::CreativeTerrainControlEdit initial{
+      cr::CreativeTerrainEditKind::Upsert, {{0, 0}, 4U, 2U}};
+  static_cast<void>(appState.facade.applyTerrainControlEdits(
+      std::span{&initial, 1U}));
+  appState.history = {};
+  CreativeEditorState editor = terrainPathEditor(0, 0);
+  iggy3d::RenderCameraFrame camera;
+  camera.worldEye = {0.5F, 10.0F, 0.5F};
+  camera.worldForward = {0.0F, -1.0F, 0.0F};
+  camera.worldUp = {0.0F, 0.0F, -1.0F};
+  const CreativeEditorPickFrame pickFrame;
+  const auto process = [&](const cr::CreativeWorldActionFrame& actions,
+                           std::uint64_t now) {
+    processCreativeEditorWorldInteractionFrame(
+        {appState, editor, actions, cr::kCreativeInputModifierNone, camera,
+         pickFrame, 800U, 600U, now, false});
+  };
+  const auto press = [&](cr::CreativeWorldActionId action,
+                         std::uint64_t now) {
+    process(strokeAction(action, true, true), now);
+    process(strokeAction(action, false, false, true), now + 1U);
+  };
+
+  press(cr::CreativeWorldActionId::Pick, 0U);
+  camera.worldEye.x = 2.5F;
+  press(cr::CreativeWorldActionId::Pick, 2U);
+  press(cr::CreativeWorldActionId::Reject, 4U);
+  bool ok = expect(editor.terrain.path.pointCount == 1U &&
+                       editor.terrain.path.points[0].coord ==
+                           cr::CreativeTerrainCoord2{0, 0},
+                   "PS5 Square locks route points and Circle backs up one point");
+
+  camera.worldEye.x = 4.5F;
+  press(cr::CreativeWorldActionId::Accept, 6U);
+  ok = expect(editor.terrain.path.pointCount == 0U &&
+                  appState.facade.document().terrainField().controlAt({4, 0}) !=
+                      nullptr &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "PS5 X commits the locked start plus live endpoint once") &&
+       ok;
+  return expect(undoLastEdit(appState, "test_terrain_path_world_undo") &&
+                    appState.facade.document().terrainField().controlCount() ==
+                        1U,
+                "controller path commit remains one undo record") &&
+         ok;
+}
+
 bool bentSurfacePatchesReachRendererAndRefreshWithHeight() {
   cr::CreativeAppState appState;
   installDocument(appState, 404U);
@@ -1641,6 +1778,8 @@ int main() {
                  terrainProfilePreviewApplyBaseLockAndUndoStayInParity() &&
                  terrainProfileWorldActionsArePressOnlyAndControllerNative() &&
                  terrainProfileRejectionIsVisibleAtomicAndModalSafe() &&
+                 terrainPathLocksBendsPreviewsCommitsAndUndoesOneBatch() &&
+                 terrainPathRoutesSquareXAndCircleThroughWorldActions() &&
                  bentSurfacePatchesReachRendererAndRefreshWithHeight() &&
                  smoothTerrainCollisionMatchesRenderedTriangle() &&
                  gridChangeRebuildsWorldSpaceTerrainPatches() &&

@@ -196,6 +196,7 @@ Initial tool grammar:
 | Connected fill | Erase connected region | Recolor connected region | Recolor connected region | Erase connected region | Sample replacement material |
 | Surface extrude | Remove exposed layer | Extrude exposed face | Extrude exposed face | Remove exposed layer | Sample extrusion material |
 | Terrain rod | Remove aimed rod | Place/update aimed rod | Place/update aimed rod | Remove aimed rod | Sample rod height/radius |
+| Terrain path | Remove latest point | Commit path | Commit path | Remove latest point | Add bend/start point |
 | Object select | Select/toggle target | No action | Select/toggle target | Cancel active action | Sample material |
 | Transform | Fast ground-plane drag | Begin transform preview | Fast ground-plane drag | Cancel active drag | Sample material |
 | Selection wand | Set corner 1 | Set corner 2 | Advance corner 1/2 | Clear selection | Expand selection |
@@ -207,8 +208,11 @@ Tool-specific operations such as fill, hollow, replace, clone, mirror, array,
 rotate, and axis constraints belong in visible tool options or an active
 preview's contextual wheel. They do not each earn a permanent global key.
 
-Terrain Rod follows the same rule. D-pad/arrow quick edit selects Height or
-Radius and adjusts the value; no terrain-specific global button is reserved.
+Terrain tools follow the same rule. D-pad/arrow quick edit adjusts contextual
+height, radius, width, strength, amplitude, rise, or depth; no terrain-specific
+global button is reserved. Terrain Path uses Square/Pick to lock bends while
+the current aim remains its live endpoint, so a straight route is Square, aim,
+X.
 The data, generation, cache, and future smooth-surface seams are specified in
 [`creative_terrain.md`](creative_terrain.md).
 

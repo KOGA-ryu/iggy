@@ -54,11 +54,6 @@ struct InclusiveBounds {
          static_cast<std::size_t>(CreativeMaterialBrushSymmetry::Count);
 }
 
-[[nodiscard]] bool sameGridCell(CreativeGridCoord3 lhs,
-                                CreativeGridCoord3 rhs) noexcept {
-  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
-}
-
 void rejectMaterialBrushSymmetry(
     CreativeMaterialBrushSymmetryPlan& plan,
     CreativeMaterialBrushSymmetryStatus status,
@@ -73,7 +68,7 @@ void rejectMaterialBrushSymmetry(
     const CreativeMaterialBrushSymmetryPlan& plan,
     CreativeGridCoord3 cell) noexcept {
   for (std::size_t index = 0U; index < plan.cellCount; ++index) {
-    if (sameGridCell(plan.cells[index], cell)) {
+    if (plan.cells[index] == cell) {
       return true;
     }
   }

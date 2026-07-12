@@ -20,11 +20,6 @@ namespace {
 static_assert(cr::kCreativeMaterialBrushStampCapacity <=
               kCreativeMaterialStrokeVisitedCapacity);
 
-[[nodiscard]] bool sameCell(cr::CreativeGridCoord3 lhs,
-                            cr::CreativeGridCoord3 rhs) noexcept {
-  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
-}
-
 [[nodiscard]] bool strokeVisited(
     const CreativeMaterialStrokeState& stroke,
     CreativeMaterialStrokeKind kind,
@@ -33,12 +28,12 @@ static_assert(cr::kCreativeMaterialBrushStampCapacity <=
   for (std::size_t index = 0; index < stroke.visitedCount; ++index) {
     const CreativeMaterialStrokeVisitedKey& key = stroke.visited[index];
     if ((kind == CreativeMaterialStrokeKind::Place &&
-         sameCell(key.cell, cell)) ||
+         key.cell == cell) ||
         (kind == CreativeMaterialStrokeKind::Remove &&
          ((objectId != cr::kInvalidObjectId && key.objectId == objectId) ||
           (objectId == cr::kInvalidObjectId &&
            key.objectId == cr::kInvalidObjectId &&
-           sameCell(key.cell, cell))))) {
+           key.cell == cell)))) {
       return true;
     }
   }
@@ -59,9 +54,9 @@ static_assert(cr::kCreativeMaterialBrushStampCapacity <=
 
 void rejectMaterialStroke(CreativeEditorState& editor,
                           cr::CreativeObjectKind objectKind) {
-  editor.interaction.placementFeedback = {
-      CreativeEditorPlacementFeedbackStatus::Rejected,
-      cr::kInvalidObjectId, objectKind, editor.frameIndex};
+  setCreativeEditorPlacementFeedback(
+      editor.interaction, CreativeEditorPlacementFeedbackStatus::Rejected,
+      editor.frameIndex, objectKind);
 }
 
 [[nodiscard]] std::string_view strokeTransactionSource(
@@ -135,7 +130,7 @@ void applySingleMaterialMutation(cr::CreativeAppState& appState,
     }
     if (changed) {
       ++stroke.acceptedMutationCount;
-      editor.interaction.placementFeedback = {};
+      clearCreativeEditorPlacementFeedback(editor.interaction);
     } else {
       rejectMaterialStroke(editor, target.objectKind);
     }
@@ -174,15 +169,15 @@ void applySingleMaterialMutation(cr::CreativeAppState& appState,
       (receipt.objectCreated || receipt.voxelCreated)) {
     editor.placedCount = ordinal;
     ++stroke.acceptedMutationCount;
-    CreativeEditorPlacementFeedback feedback;
-    feedback.status = CreativeEditorPlacementFeedbackStatus::Placed;
-    feedback.objectId = receipt.objectId;
-    feedback.objectKind = receipt.objectKind;
-    feedback.frameIndex = editor.frameIndex;
-    feedback.voxelPlaced = receipt.voxelCreated;
-    feedback.voxelCell = receipt.voxelCell;
-    feedback.voxelBounds = receipt.worldBounds;
-    editor.interaction.placementFeedback = feedback;
+    if (receipt.voxelCreated) {
+      setCreativeEditorVoxelPlacementFeedback(
+          editor.interaction, editor.frameIndex, receipt.objectKind,
+          receipt.voxelCell, receipt.worldBounds);
+    } else {
+      setCreativeEditorPlacementFeedback(
+          editor.interaction, CreativeEditorPlacementFeedbackStatus::Placed,
+          editor.frameIndex, receipt.objectKind, receipt.objectId);
+    }
   } else {
     rejectMaterialStroke(editor, held.objectKind);
   }
@@ -212,7 +207,7 @@ struct MaterialBrushTargetSample {
     std::size_t editCount,
     cr::CreativeGridCoord3 cell) noexcept {
   for (std::size_t index = 0U; index < editCount; ++index) {
-    if (sameCell(edits[index].cell, cell)) {
+    if (edits[index].cell == cell) {
       return true;
     }
   }
@@ -373,7 +368,7 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
   }
   ++stroke.acceptedMutationCount;
   if (kind == CreativeMaterialStrokeKind::Remove) {
-    editor.interaction.placementFeedback = {};
+    clearCreativeEditorPlacementFeedback(editor.interaction);
     return;
   }
 
@@ -383,14 +378,9 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
       aggregateMin, grid.cellSizeMeters, grid.origin);
   const cr::CreativeBounds maxBounds = cr::creativeVolumeCellBounds(
       aggregateMax, grid.cellSizeMeters, grid.origin);
-  CreativeEditorPlacementFeedback feedback;
-  feedback.status = CreativeEditorPlacementFeedbackStatus::Placed;
-  feedback.objectKind = held.objectKind;
-  feedback.frameIndex = editor.frameIndex;
-  feedback.voxelPlaced = true;
-  feedback.voxelCell = sample.center;
-  feedback.voxelBounds = {minBounds.min, maxBounds.max};
-  editor.interaction.placementFeedback = feedback;
+  setCreativeEditorVoxelPlacementFeedback(
+      editor.interaction, editor.frameIndex, held.objectKind, sample.center,
+      {minBounds.min, maxBounds.max});
 }
 
 void processMaterialStroke(cr::CreativeAppState& appState,

@@ -376,6 +376,23 @@ std::string_view toString(CreativeTerrainRenderPlanStatus status) noexcept {
   return "Unknown";
 }
 
+std::string_view toString(
+    CreativeTerrainMutationPreviewStatus status) noexcept {
+  switch (status) {
+    case CreativeTerrainMutationPreviewStatus::NotRequested:
+      return "NotRequested";
+    case CreativeTerrainMutationPreviewStatus::InvalidField:
+      return "InvalidField";
+    case CreativeTerrainMutationPreviewStatus::MutationRejected:
+      return "MutationRejected";
+    case CreativeTerrainMutationPreviewStatus::RenderRejected:
+      return "RenderRejected";
+    case CreativeTerrainMutationPreviewStatus::Ready:
+      return "Ready";
+  }
+  return "Unknown";
+}
+
 bool CreativeTerrainField::isValid() const noexcept {
   return valid_;
 }
@@ -837,6 +854,43 @@ CreativeTerrainRenderPlan buildCreativeTerrainRenderPlan(
   plan.status = CreativeTerrainRenderPlanStatus::Ready;
   plan.reasonCode = "creative_terrain_render_ready";
   return plan;
+}
+
+CreativeTerrainMutationPreviewReceipt buildCreativeTerrainMutationPreview(
+    const CreativeTerrainField& field,
+    std::span<const CreativeTerrainControlEdit> edits,
+    CreativeVec3 gridOrigin,
+    double cellSize,
+    std::size_t maxPatchCount) {
+  CreativeTerrainMutationPreviewReceipt receipt;
+  receipt.requested = true;
+  if (!field.validateInvariants()) {
+    receipt.status = CreativeTerrainMutationPreviewStatus::InvalidField;
+    receipt.reasonCode = "creative_terrain_preview_field_invalid";
+    return receipt;
+  }
+
+  CreativeTerrainField previewField = field;
+  if (!edits.empty()) {
+    receipt.mutation = previewField.apply(edits);
+    if (!receipt.mutation.accepted) {
+      receipt.status =
+          CreativeTerrainMutationPreviewStatus::MutationRejected;
+      receipt.reasonCode = "creative_terrain_preview_mutation_rejected";
+      return receipt;
+    }
+  }
+  receipt.render = buildCreativeTerrainRenderPlan(
+      previewField, gridOrigin, cellSize, maxPatchCount);
+  if (!receipt.render.accepted) {
+    receipt.status = CreativeTerrainMutationPreviewStatus::RenderRejected;
+    receipt.reasonCode = "creative_terrain_preview_render_rejected";
+    return receipt;
+  }
+  receipt.accepted = true;
+  receipt.status = CreativeTerrainMutationPreviewStatus::Ready;
+  receipt.reasonCode = "creative_terrain_preview_ready";
+  return receipt;
 }
 
 }  // namespace iggy3d::creative

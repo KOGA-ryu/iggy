@@ -183,6 +183,50 @@ is known. An unsupported combination remains visible as a red, non-mutating
 preview. One accepted profile is one Facade terrain batch, document revision,
 undo record, and scene-cache refresh.
 
+Equip **Terrain Path** to connect terrain features as a road, riverbed, ridge,
+or trench. The tool uses locked bends plus one live endpoint; it does not add a
+new controller binding.
+
+| Input | Operation |
+|---|---|
+| Middle mouse / PS5 Square | Lock the aimed start or bend point |
+| Right mouse / PS5 X | Commit the locked route plus its current live endpoint |
+| Left mouse / PS5 Circle | Remove the latest locked point; an empty route is cancelled |
+| Up/down / D-pad up/down | Increase or decrease rise for Road/Ridge or depth for River/Trench |
+| Left/right / D-pad left/right | Shrink or widen the path through 1, 3, 5, and 7 cells |
+
+A straight path takes Square once, aim at the endpoint, then X. Square can lock
+additional bends before X. Cyan guides are locked points, yellow is the live
+endpoint, green is an accepted exact route, and red is a rejected route. Tool
+options choose `PATH TYPE` (Road, River, Ridge, Trench), `ELEVATION` (Follow,
+Level, Grade), `WIDTH`, and `RISE / DEPTH` (1, 2, 4, 8 cells).
+
+- Road is a flat raised corridor across its selected width.
+- River is a smooth depressed bowl returning to base at its banks.
+- Ridge is the positive smooth cross-section.
+- Trench is a flat full-depth cut across its selected width.
+- Follow samples the pre-edit derived terrain along the centerline.
+- Level holds the first locked point's elevation.
+- Grade interpolates from the first point to the live/final endpoint by route
+  progress.
+
+`buildCreativeTerrainPathPlan` owns centerline rasterization, cross-section
+geometry, final preview controls, and mutation edits. It walks each segment with
+deterministic integer Bresenham traversal, deduplicates joins and overlapping
+corridor cells, sorts output by Z then X, and computes smooth cross-sections
+with the shared fixed-point terrain kernel. The input is capped at 32 path
+points, each segment at 255 cells, and the final authored field at 256 controls.
+Coordinate, traversal, or capacity failure returns zero edits; paths never stamp
+a partial prefix.
+
+Preview applies the same plan to a copied terrain field and caches the result by
+document ID, terrain revision, effective point list, and path settings. Aiming
+within one grid cell reuses the cache and never mutates room geometry. X submits
+the plan through one Facade terrain batch, producing at most one document
+revision, scene refresh, and undo record. One undo restores the complete
+pre-path terrain field.
+Catalogs, tool options, controls, transforms, and capture mode hide the overlay.
+
 ## Authored Data
 
 `CreativeTerrainField` owns a canonical vector sorted by Z then X. Coordinates

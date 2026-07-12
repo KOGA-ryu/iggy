@@ -438,8 +438,23 @@ bool heldVolumeItemsMapWithoutBranchesAtCallers() {
                     !cr::creativeHeldItemUsesMaterial(
                         cr::CreativeHeldItemKind::LinearArray) &&
                     !cr::creativeHeldItemUsesMaterial(
-                        cr::CreativeHeldItemKind::TerrainProfile),
+                        cr::CreativeHeldItemKind::TerrainProfile) &&
+                    !cr::creativeHeldItemUsesMaterial(
+                        cr::CreativeHeldItemKind::TerrainPath),
                 "material-free held items remain explicit") &&
+         expect(cr::creativeHeldItemIsTerrainTool(
+                    cr::CreativeHeldItemKind::TerrainControl) &&
+                    cr::creativeHeldItemIsTerrainTool(
+                        cr::CreativeHeldItemKind::TerrainGrade) &&
+                    cr::creativeHeldItemIsTerrainTool(
+                        cr::CreativeHeldItemKind::TerrainSculpt) &&
+                    cr::creativeHeldItemIsTerrainTool(
+                        cr::CreativeHeldItemKind::TerrainProfile) &&
+                    cr::creativeHeldItemIsTerrainTool(
+                        cr::CreativeHeldItemKind::TerrainPath) &&
+                    !cr::creativeHeldItemIsTerrainTool(
+                        cr::CreativeHeldItemKind::MaterialBrush),
+                "terrain aim admission has one closed held-item classifier") &&
          expect([] {
                   cr::CreativeHeldItemKind parsed =
                       cr::CreativeHeldItemKind::Count;
@@ -451,6 +466,15 @@ bool heldVolumeItemsMapWithoutBranchesAtCallers() {
                          parsed == cr::CreativeHeldItemKind::TerrainProfile;
                 }(),
                 "terrain profile held kind round trips through stable text") &&
+         expect([] {
+                  cr::CreativeHeldItemKind parsed =
+                      cr::CreativeHeldItemKind::Count;
+                  return cr::toString(cr::CreativeHeldItemKind::TerrainPath) ==
+                             "TerrainPath" &&
+                         cr::parseCreativeHeldItemKind("TerrainPath", parsed) &&
+                         parsed == cr::CreativeHeldItemKind::TerrainPath;
+                }(),
+                "terrain path held kind round trips through stable text") &&
          expect(cr::applyCreativeHeldItemMaterial(
                     materialTool, cr::CreativeObjectKind::Crate) &&
                     materialTool.objectKind == cr::CreativeObjectKind::Crate &&

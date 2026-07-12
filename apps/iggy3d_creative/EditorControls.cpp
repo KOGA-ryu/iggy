@@ -848,14 +848,12 @@ bool selectCreativeEditorControlsTab(
   return true;
 }
 
-CreativeEditorControlPersistenceReceipt loadCreativeEditorControlProfile(
-    cr::CreativeControlProfile& profile,
-    const std::filesystem::path& path) {
+namespace {
+
+CreativeEditorControlPersistenceReceipt parseControlProfileStream(
+    std::istream& input,
+    cr::CreativeControlProfile& profile) {
   CreativeEditorControlPersistenceReceipt receipt;
-  std::ifstream input(path);
-  if (!input.is_open()) {
-    return receipt;
-  }
   std::string header;
   std::getline(input, header);
   if (header != kControlFileHeader) {
@@ -961,25 +959,13 @@ CreativeEditorControlPersistenceReceipt loadCreativeEditorControlProfile(
   return receipt;
 }
 
-CreativeEditorControlPersistenceReceipt saveCreativeEditorControlProfile(
-    const cr::CreativeControlProfile& profile,
-    const std::filesystem::path& path) {
+CreativeEditorControlPersistenceReceipt serializeControlProfileStream(
+    std::ostream& output,
+    const cr::CreativeControlProfile& profile) {
   CreativeEditorControlPersistenceReceipt receipt;
   receipt.status = CreativeEditorControlPersistenceStatus::IoError;
   if (!cr::isValidCreativeControlProfile(profile)) {
     receipt.status = CreativeEditorControlPersistenceStatus::Invalid;
-    return receipt;
-  }
-  std::error_code error;
-  if (!path.parent_path().empty()) {
-    std::filesystem::create_directories(path.parent_path(), error);
-    if (error) {
-      return receipt;
-    }
-  }
-  const std::filesystem::path temporary = path.string() + ".tmp";
-  std::ofstream output(temporary, std::ios::trunc);
-  if (!output.is_open()) {
     return receipt;
   }
   output << kControlFileHeader << '\n' << std::setprecision(
@@ -1003,8 +989,6 @@ CreativeEditorControlPersistenceReceipt saveCreativeEditorControlProfile(
     const cr::CreativeInputBinding* binding = cr::creativeControlGroupBinding(
         profile, static_cast<std::uint16_t>(group));
     if (binding == nullptr) {
-      output.close();
-      std::filesystem::remove(temporary, error);
       receipt.status = CreativeEditorControlPersistenceStatus::Invalid;
       return receipt;
     }
@@ -1016,6 +1000,73 @@ CreativeEditorControlPersistenceReceipt saveCreativeEditorControlProfile(
            << static_cast<unsigned>(binding->requiredAnyModifiers) << ' '
            << static_cast<unsigned>(binding->allowedModifiers) << '\n';
   }
+  if (!output) {
+    return receipt;
+  }
+  receipt.status = CreativeEditorControlPersistenceStatus::Saved;
+  receipt.bindingCount = profile.bindingCount;
+  receipt.accepted = true;
+  return receipt;
+}
+
+}  // namespace
+
+CreativeEditorControlPersistenceReceipt parseCreativeEditorControlProfile(
+    std::string_view text,
+    cr::CreativeControlProfile& profile) {
+  std::istringstream input{std::string{text}};
+  return parseControlProfileStream(input, profile);
+}
+
+CreativeEditorControlPersistenceReceipt serializeCreativeEditorControlProfile(
+    const cr::CreativeControlProfile& profile,
+    std::string& text) {
+  std::ostringstream output;
+  CreativeEditorControlPersistenceReceipt receipt =
+      serializeControlProfileStream(output, profile);
+  if (receipt.accepted) {
+    text = output.str();
+  } else {
+    text.clear();
+  }
+  return receipt;
+}
+
+CreativeEditorControlPersistenceReceipt loadCreativeEditorControlProfile(
+    cr::CreativeControlProfile& profile,
+    const std::filesystem::path& path) {
+  std::ifstream input(path);
+  if (!input.is_open()) {
+    return {};
+  }
+  return parseControlProfileStream(input, profile);
+}
+
+CreativeEditorControlPersistenceReceipt saveCreativeEditorControlProfile(
+    const cr::CreativeControlProfile& profile,
+    const std::filesystem::path& path) {
+  std::string text;
+  CreativeEditorControlPersistenceReceipt receipt =
+      serializeCreativeEditorControlProfile(profile, text);
+  if (!receipt.accepted) {
+    return receipt;
+  }
+
+  receipt.accepted = false;
+  receipt.status = CreativeEditorControlPersistenceStatus::IoError;
+  std::error_code error;
+  if (!path.parent_path().empty()) {
+    std::filesystem::create_directories(path.parent_path(), error);
+    if (error) {
+      return receipt;
+    }
+  }
+  const std::filesystem::path temporary = path.string() + ".tmp";
+  std::ofstream output(temporary, std::ios::trunc);
+  if (!output.is_open()) {
+    return receipt;
+  }
+  output << text;
   output.close();
   if (!output) {
     std::filesystem::remove(temporary, error);

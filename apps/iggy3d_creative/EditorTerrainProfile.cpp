@@ -23,11 +23,11 @@ void invalidateProfilePreview(CreativeTerrainProfileState& profile) noexcept {
 }
 
 void setProfileFeedback(CreativeEditorState& editor, bool accepted) noexcept {
-  editor.interaction.placementFeedback = {};
-  editor.interaction.placementFeedback.status =
+  setCreativeEditorPlacementFeedback(
+      editor.interaction,
       accepted ? CreativeEditorPlacementFeedbackStatus::Placed
-               : CreativeEditorPlacementFeedbackStatus::Rejected;
-  editor.interaction.placementFeedback.frameIndex = editor.frameIndex;
+               : CreativeEditorPlacementFeedbackStatus::Rejected,
+      editor.frameIndex);
 }
 
 [[nodiscard]] std::uint16_t resolvedBaseHeight(
@@ -192,7 +192,7 @@ CreativeEditorTerrainProfileReceipt unlockCreativeEditorTerrainProfileBase(
                            ? "creative_editor_terrain_profile_base_auto"
                            : "creative_editor_terrain_profile_base_already_auto";
   invalidateProfilePreview(editor.terrain.profile);
-  editor.interaction.placementFeedback = {};
+  clearCreativeEditorPlacementFeedback(editor.interaction);
   return receipt;
 }
 
@@ -281,23 +281,16 @@ bool refreshCreativeEditorTerrainProfilePreview(
     return true;
   }
 
-  cr::CreativeTerrainField previewField = document.terrainField();
-  if (!cache.plan.items().empty()) {
-    const cr::CreativeTerrainMutationReceipt mutation =
-        previewField.apply(cache.plan.items());
-    if (!mutation.accepted) {
-      return true;
-    }
-  }
   const cr::CreativeGridSettings grid = document.gridSettings();
-  const cr::CreativeTerrainRenderPlan render =
-      cr::buildCreativeTerrainRenderPlan(previewField, grid.origin,
-                                         grid.cellSizeMeters);
-  if (!render.accepted) {
+  const cr::CreativeTerrainMutationPreviewReceipt preview =
+      cr::buildCreativeTerrainMutationPreview(
+          document.terrainField(), cache.plan.items(), grid.origin,
+          grid.cellSizeMeters);
+  if (!preview.accepted) {
     return true;
   }
-  cache.patches.reserve(render.patches.size());
-  for (const cr::CreativeTerrainSurfacePatch& patch : render.patches) {
+  cache.patches.reserve(preview.render.patches.size());
+  for (const cr::CreativeTerrainSurfacePatch& patch : preview.render.patches) {
     if (cr::creativeTerrainInsideRadius(center, patch.coord,
                                         cache.radiusCells)) {
       cache.patches.push_back(patch);
