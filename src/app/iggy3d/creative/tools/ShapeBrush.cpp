@@ -36,6 +36,12 @@ struct InclusiveBounds {
          static_cast<std::size_t>(CreativeMaterialBrushSize::Count);
 }
 
+[[nodiscard]] bool validMaterialBrushFill(
+    CreativeMaterialBrushFill fill) noexcept {
+  return static_cast<std::size_t>(fill) <
+         static_cast<std::size_t>(CreativeMaterialBrushFill::Count);
+}
+
 [[nodiscard]] bool validMaterialBrushGuide(
     CreativeMaterialBrushGuide guide) noexcept {
   return static_cast<std::size_t>(guide) <
@@ -157,7 +163,7 @@ void rejectMaterialBrushStamp(CreativeMaterialBrushStampPlan& plan,
   plan.reasonCode = reasonCode;
 }
 
-[[nodiscard]] bool materialBrushCellIncluded(
+[[nodiscard]] bool materialBrushFilledCellIncluded(
     CreativeMaterialBrushShape shape,
     CreativeAxis3 axis,
     CreativeMaterialBrushGuide guide,
@@ -165,6 +171,10 @@ void rejectMaterialBrushStamp(CreativeMaterialBrushStampPlan& plan,
     std::int32_t dx,
     std::int32_t dy,
     std::int32_t dz) noexcept {
+  if (dx < -radius || dx > radius || dy < -radius || dy > radius ||
+      dz < -radius || dz > radius) {
+    return false;
+  }
   if (!materialBrushGuideIncludesOffset(guide, dx, dy, dz)) {
     return false;
   }
@@ -190,6 +200,37 @@ void rejectMaterialBrushStamp(CreativeMaterialBrushStampPlan& plan,
       return false;
   }
   return false;
+}
+
+[[nodiscard]] bool materialBrushCellIncluded(
+    CreativeMaterialBrushShape shape,
+    CreativeAxis3 axis,
+    CreativeMaterialBrushGuide guide,
+    CreativeMaterialBrushFill fill,
+    std::int32_t radius,
+    std::int32_t dx,
+    std::int32_t dy,
+    std::int32_t dz) noexcept {
+  if (!materialBrushFilledCellIncluded(shape, axis, guide, radius, dx, dy,
+                                       dz)) {
+    return false;
+  }
+  if (fill == CreativeMaterialBrushFill::Solid) {
+    return true;
+  }
+  if (fill != CreativeMaterialBrushFill::Shell) {
+    return false;
+  }
+  constexpr std::array<std::array<std::int32_t, 3>, 6> kNeighbors{{
+      {{-1, 0, 0}}, {{1, 0, 0}}, {{0, -1, 0}},
+      {{0, 1, 0}},  {{0, 0, -1}}, {{0, 0, 1}},
+  }};
+  return std::any_of(kNeighbors.begin(), kNeighbors.end(),
+                     [&](const auto& offset) {
+                       return !materialBrushFilledCellIncluded(
+                           shape, axis, guide, radius, dx + offset[0],
+                           dy + offset[1], dz + offset[2]);
+                     });
 }
 
 [[nodiscard]] bool offsetCell(CreativeGridCoord3 center,
@@ -572,6 +613,15 @@ std::string_view toString(CreativeMaterialBrushSize size) noexcept {
   return "INVALID";
 }
 
+std::string_view toString(CreativeMaterialBrushFill fill) noexcept {
+  switch (fill) {
+    case CreativeMaterialBrushFill::Solid: return "SOLID";
+    case CreativeMaterialBrushFill::Shell: return "SHELL";
+    case CreativeMaterialBrushFill::Count: break;
+  }
+  return "INVALID";
+}
+
 std::string_view toString(CreativeMaterialBrushMask mask) noexcept {
   switch (mask) {
     case CreativeMaterialBrushMask::AddOnly: return "ADD ONLY";
@@ -615,6 +665,7 @@ std::string_view toString(CreativeMaterialBrushStampStatus status) noexcept {
       return "NotRequested";
     case CreativeMaterialBrushStampStatus::InvalidShape: return "InvalidShape";
     case CreativeMaterialBrushStampStatus::InvalidSize: return "InvalidSize";
+    case CreativeMaterialBrushStampStatus::InvalidFill: return "InvalidFill";
     case CreativeMaterialBrushStampStatus::InvalidAxis: return "InvalidAxis";
     case CreativeMaterialBrushStampStatus::InvalidGuide:
       return "InvalidGuide";
@@ -745,6 +796,7 @@ CreativeMaterialBrushStampPlan planCreativeMaterialBrushStamp(
   plan.requested = true;
   plan.shape = request.shape;
   plan.size = request.size;
+  plan.fill = request.fill;
   plan.axis = request.axis;
   plan.guide = request.guide;
   plan.centerCell = request.centerCell;
@@ -757,6 +809,11 @@ CreativeMaterialBrushStampPlan planCreativeMaterialBrushStamp(
   if (!validMaterialBrushSize(request.size)) {
     rejectMaterialBrushStamp(plan, CreativeMaterialBrushStampStatus::InvalidSize,
                              "creative_material_brush_size_invalid");
+    return plan;
+  }
+  if (!validMaterialBrushFill(request.fill)) {
+    rejectMaterialBrushStamp(plan, CreativeMaterialBrushStampStatus::InvalidFill,
+                             "creative_material_brush_fill_invalid");
     return plan;
   }
   if (!isValidCreativeAxis3(request.axis)) {
@@ -812,8 +869,9 @@ CreativeMaterialBrushStampPlan planCreativeMaterialBrushStamp(
   for (std::int32_t dz = -radius; dz <= radius; ++dz) {
     for (std::int32_t dy = -radius; dy <= radius; ++dy) {
       for (std::int32_t dx = -radius; dx <= radius; ++dx) {
-        if (!materialBrushCellIncluded(request.shape, request.axis,
-                                       request.guide, radius, dx, dy, dz)) {
+        if (!materialBrushCellIncluded(
+                request.shape, request.axis, request.guide, request.fill,
+                radius, dx, dy, dz)) {
           continue;
         }
         if (plan.cellCount >= plan.cells.size()) {

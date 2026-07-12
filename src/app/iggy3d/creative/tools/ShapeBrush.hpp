@@ -32,6 +32,12 @@ enum class CreativeMaterialBrushSize : std::uint8_t {
   Count,
 };
 
+enum class CreativeMaterialBrushFill : std::uint8_t {
+  Solid,
+  Shell,
+  Count,
+};
+
 enum class CreativeMaterialBrushMask : std::uint8_t {
   AddOnly,
   Replace,
@@ -63,6 +69,7 @@ enum class CreativeMaterialBrushStampStatus : std::uint8_t {
   NotRequested,
   InvalidShape,
   InvalidSize,
+  InvalidFill,
   InvalidAxis,
   InvalidGuide,
   CoordinateOverflow,
@@ -76,6 +83,7 @@ struct CreativeMaterialBrushStampRequest {
   CreativeGridCoord3 centerCell{};
   CreativeAxis3 axis = CreativeAxis3::Y;
   CreativeMaterialBrushGuide guide = CreativeMaterialBrushGuide::Free;
+  CreativeMaterialBrushFill fill = CreativeMaterialBrushFill::Solid;
 };
 
 struct CreativeMaterialBrushStampPlan {
@@ -83,6 +91,7 @@ struct CreativeMaterialBrushStampPlan {
   bool accepted = false;
   CreativeMaterialBrushShape shape = CreativeMaterialBrushShape::Cube;
   CreativeMaterialBrushSize size = CreativeMaterialBrushSize::OneCell;
+  CreativeMaterialBrushFill fill = CreativeMaterialBrushFill::Solid;
   CreativeAxis3 axis = CreativeAxis3::Y;
   CreativeMaterialBrushGuide guide = CreativeMaterialBrushGuide::Free;
   CreativeMaterialBrushStampStatus status =
@@ -256,6 +265,8 @@ struct CreativeShapeBrushPlanReceipt {
 [[nodiscard]] std::string_view toString(
     CreativeMaterialBrushSize size) noexcept;
 [[nodiscard]] std::string_view toString(
+    CreativeMaterialBrushFill fill) noexcept;
+[[nodiscard]] std::string_view toString(
     CreativeMaterialBrushMask mask) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeMaterialBrushGuide guide) noexcept;
@@ -289,7 +300,8 @@ struct CreativeShapeBrushPlanReceipt {
 // Generates a canonical z/y/x cell batch centered on centerCell. Sizes are
 // fixed at 1, 3, and 5 cells across, so work and storage are bounded by 125
 // candidates with no allocation. Cylinder axis selects its extrusion axis;
-// cube and sphere geometry is axis-independent. Plane guides keep only the
+// cube and sphere geometry is axis-independent. Shell retains filled cells
+// with at least one six-neighbor outside the stamp. Plane guides keep only the
 // center slice perpendicular to their world axis; line guides retain the full
 // stamp and constrain only the path center.
 [[nodiscard]] CreativeMaterialBrushStampPlan planCreativeMaterialBrushStamp(

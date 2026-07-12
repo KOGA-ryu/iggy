@@ -796,6 +796,8 @@ bool materialBrushPresetsFollowHotbarSlots() {
               "D-pad editing writes through to the selected brush slot") &&
        ok;
   editor.toolSettings.materialBrushAxis = cr::CreativeAxis3::X;
+  editor.toolSettings.materialBrushFill =
+      cr::CreativeMaterialBrushFill::Shell;
   editor.toolSettings.materialBrushGuide =
       cr::CreativeMaterialBrushGuide::LineY;
   editor.toolSettings.materialBrushSymmetry =
@@ -813,6 +815,8 @@ bool materialBrushPresetsFollowHotbarSlots() {
                       cr::CreativeMaterialBrushShape::Sphere &&
                   editor.toolSettings.materialBrushSize ==
                       cr::CreativeMaterialBrushSize::ThreeCells &&
+                  editor.toolSettings.materialBrushFill ==
+                      cr::CreativeMaterialBrushFill::Solid &&
                   editor.toolSettings.materialBrushGuide ==
                       cr::CreativeMaterialBrushGuide::Free &&
                   editor.toolSettings.materialBrushSymmetry ==
@@ -837,6 +841,8 @@ bool materialBrushPresetsFollowHotbarSlots() {
                   editor.toolSettings.materialBrushAxis == cr::CreativeAxis3::X &&
                   editor.toolSettings.materialBrushSize ==
                       cr::CreativeMaterialBrushSize::ThreeCells &&
+                  editor.toolSettings.materialBrushFill ==
+                      cr::CreativeMaterialBrushFill::Shell &&
                   editor.toolSettings.materialBrushGuide ==
                       cr::CreativeMaterialBrushGuide::LineY &&
                   editor.toolSettings.materialBrushSymmetry ==
@@ -859,7 +865,7 @@ bool materialBrushPresetsFollowHotbarSlots() {
                   creativeMaterialBrushPresetHotbarLabel(firstPreset) ==
                       "S5" &&
                   creativeMaterialBrushPresetHotbarLabel(secondPreset) ==
-                      "CX3M",
+                      "CX3HM",
               "compact hotbar labels distinguish independent brush presets") &&
        ok;
   CreativeMaterialBrushGestureConfig invalidPreset = secondPreset;
@@ -875,7 +881,9 @@ bool materialBrushPresetsFollowHotbarSlots() {
   return expect(editor.toolSettings.materialBrushShape ==
                     cr::CreativeMaterialBrushShape::Sphere &&
                     editor.toolSettings.materialBrushSize ==
-                        cr::CreativeMaterialBrushSize::FiveCells,
+                        cr::CreativeMaterialBrushSize::FiveCells &&
+                    editor.toolSettings.materialBrushFill ==
+                        cr::CreativeMaterialBrushFill::Solid,
                 "cleared slot clones the current brush instead of stale data") &&
          expect(appState.facade.document().revision() == revisionBefore &&
                     cr::creativeUndoDepth(appState.history) == 0U,
@@ -1560,11 +1568,11 @@ bool materialBrushPaintsErasesPreviewsAndGroupsHistory() {
                        appState.facade.document().revision() ==
                            revisionBeforePreview,
                    "sphere preview shows its exact seven green voxel cells") &&
-            expect(editor.quickEdit.options.count == 5U &&
+            expect(editor.quickEdit.options.count == 6U &&
                        creativeEditorQuickEditStatusLabel(editor) ==
                            "BRUSH SHAPE SPHERE" &&
                        creativeEditorHeldItemStatusLabel(editor) ==
-                           "Brush | Wall | SPHERE | 3 CELLS | FREE | "
+                           "Brush | Wall | SPHERE | 3 CELLS | SOLID | FREE | "
                            "OVERWRITE | 7 VOXELS | [BRUSH SHAPE SPHERE]",
                    "material brush status exposes channel and stamp count");
 
@@ -1601,6 +1609,14 @@ bool materialBrushPaintsErasesPreviewsAndGroupsHistory() {
   ok = expect(processCreativeEditorQuickEditAction(
                   editor, cr::CreativeInputActionId::QuickEditNext) &&
                   creativeEditorQuickEditStatusLabel(editor) ==
+                      "BRUSH BODY SOLID" &&
+                  processCreativeEditorQuickEditAction(
+                      editor, cr::CreativeInputActionId::QuickEditIncrease) &&
+                  editor.toolSettings.materialBrushFill ==
+                      cr::CreativeMaterialBrushFill::Shell &&
+                  processCreativeEditorQuickEditAction(
+                      editor, cr::CreativeInputActionId::QuickEditNext) &&
+                  creativeEditorQuickEditStatusLabel(editor) ==
                       "BRUSH GUIDE FREE" &&
                   processCreativeEditorQuickEditAction(
                       editor, cr::CreativeInputActionId::QuickEditNext) &&
@@ -1614,10 +1630,12 @@ bool materialBrushPaintsErasesPreviewsAndGroupsHistory() {
                       editor, cr::CreativeInputActionId::QuickEditIncrease) &&
                   editor.toolSettings.materialBrushMask ==
                       cr::CreativeMaterialBrushMask::AddOnly,
-              "dpad exposes plane and occupancy mask as bounded channels") &&
+              "dpad exposes body guide symmetry and mask as bounded channels") &&
        ok;
   editor.toolSettings.materialBrushSize =
       cr::CreativeMaterialBrushSize::ThreeCells;
+  editor.toolSettings.materialBrushFill =
+      cr::CreativeMaterialBrushFill::Solid;
   editor.toolSettings.materialBrushMask =
       cr::CreativeMaterialBrushMask::Overwrite;
   editor.quickEdit.selectedIndex = 0U;
@@ -1721,6 +1739,73 @@ bool materialBrushPaintsErasesPreviewsAndGroupsHistory() {
          ok;
 }
 
+bool materialBrushShellPreviewMatchesMutationAndUndo() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 119U);
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
+  editor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::MaterialBrush;
+  editor.toolSettings.materialBrushShape =
+      cr::CreativeMaterialBrushShape::Sphere;
+  editor.toolSettings.materialBrushSize =
+      cr::CreativeMaterialBrushSize::FiveCells;
+  editor.toolSettings.materialBrushFill =
+      cr::CreativeMaterialBrushFill::Shell;
+  syncCreativeEditorHeldItem(appState, editor);
+  syncCreativeEditorQuickEdit(editor);
+  setPlaceTarget(editor, 0);
+
+  CreativeEditorSelectionFrame selection;
+  CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  iggy3d::FrameInput previewFrame;
+  CreativeEditorOverlayFrame previewOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, previewFrame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      previewOverlay);
+
+  constexpr std::size_t kWireEdgesPerVoxel = 12U;
+  bool ok = expect(previewOverlay.materialBrushEdgeCount ==
+                           26U * kWireEdgesPerVoxel &&
+                       creativeEditorHeldItemStatusLabel(editor).find(
+                           "5 CELLS | SHELL | FREE") != std::string::npos &&
+                       creativeEditorHeldItemStatusLabel(editor).find(
+                           "26 VOXELS") != std::string::npos,
+                   "shell preview shows the exact planned sphere boundary");
+
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, true, false), 0U);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, false, false, true), 1U);
+  const cr::CreativeVoxelField& voxels =
+      appState.facade.document().voxelField();
+  ok = expect(voxels.occupiedCellCount() == 26U &&
+                  voxels.validateInvariants(),
+              "shell mutation writes a valid preview-sized voxel field") &&
+       ok;
+  ok = expect(!voxels.occupied({0, 0, 0}),
+              "shell mutation omits its center interior") &&
+       ok;
+  ok = expect(!voxels.occupied({1, 0, 0}),
+              "shell mutation omits its axial interior") &&
+       ok;
+  ok = expect(voxels.occupied({2, 0, 0}),
+              "shell mutation retains its outer boundary") &&
+       ok;
+  ok = expect(cr::creativeUndoDepth(appState.history) == 1U,
+              "shell mutation records one gesture history entry") &&
+       ok;
+  return expect(undoLastEdit(appState, "test_material_brush_shell_undo") &&
+                    appState.facade.document()
+                            .voxelField()
+                            .occupiedCellCount() == 0U,
+                "one undo removes the complete shell gesture") &&
+         ok;
+}
+
 bool materialBrushCylinderAxisDrivesPreviewAndMutation() {
   cr::CreativeAppState appState;
   installHistoryDocument(appState, 111U);
@@ -1749,7 +1834,7 @@ bool materialBrushCylinderAxisDrivesPreviewAndMutation() {
   constexpr std::size_t kWireEdgesPerVoxel = 12U;
   bool ok = expect(previewOverlay.materialBrushEdgeCount ==
                            15U * kWireEdgesPerVoxel &&
-                       editor.quickEdit.options.count == 6U &&
+                       editor.quickEdit.options.count == 7U &&
                        editor.quickEdit.options.ids[1] ==
                            cr::CreativeToolOptionId::MaterialBrushAxis &&
                        creativeEditorHeldItemStatusLabel(editor).find(
@@ -1846,7 +1931,7 @@ bool materialBrushPlaneGuideStaysAnchoredForTheGesture() {
                       6U * kWireEdgesPerVoxel &&
                   previewHeldAtAnchor &&
                   creativeEditorHeldItemStatusLabel(editor).find(
-                      "3 CELLS | PLANE Y") != std::string::npos,
+                      "3 CELLS | SOLID | PLANE Y") != std::string::npos,
               "active preview freezes settings on the uneven-aim plane") &&
        ok;
 
@@ -1884,7 +1969,7 @@ bool materialBrushLineGuideConstrainsPathAndRendersAxis() {
       cr::CreativeMaterialBrushGuide::LineX;
   syncCreativeEditorHeldItem(appState, editor);
   syncCreativeEditorQuickEdit(editor);
-  editor.quickEdit.selectedIndex = 2U;
+  editor.quickEdit.selectedIndex = 3U;
   setPlaceTarget(editor, 0, 0, 0);
 
   processCreativeMaterialStrokeFrame(
@@ -1979,7 +2064,7 @@ bool materialBrushSymmetryUsesGesturePivotPreviewAndHistory() {
       cr::CreativeMaterialBrushSymmetry::MirrorX;
   syncCreativeEditorHeldItem(appState, editor);
   syncCreativeEditorQuickEdit(editor);
-  editor.quickEdit.selectedIndex = 3U;
+  editor.quickEdit.selectedIndex = 4U;
   setPlaceTarget(editor, 0, 0, 0);
 
   processCreativeMaterialStrokeFrame(
@@ -2432,7 +2517,7 @@ bool materialBrushMasksMatchPreviewAndMutation() {
   paintAt(0);
   const CreativeEditorOverlayFrame selectiveAllowed = previewAt(2);
   paintAt(2);
-  ok = expect(editor.quickEdit.options.count == 6U &&
+  ok = expect(editor.quickEdit.options.count == 7U &&
                   creativeEditorQuickEditStatusLabel(editor) ==
                       "REPLACE SOURCE Floor" &&
                   previewIsColor(selectiveBlocked, 1.0F, 0.15F) &&
@@ -2920,6 +3005,7 @@ int main() {
   ok = removalStrokeDeletesVoxelAndGroupsHistory() && ok;
   ok = gamepadAcceptPlacesAndRejectRemoves() && ok;
   ok = materialBrushPaintsErasesPreviewsAndGroupsHistory() && ok;
+  ok = materialBrushShellPreviewMatchesMutationAndUndo() && ok;
   ok = materialBrushCylinderAxisDrivesPreviewAndMutation() && ok;
   ok = materialBrushPlaneGuideStaysAnchoredForTheGesture() && ok;
   ok = materialBrushLineGuideConstrainsPathAndRendersAxis() && ok;

@@ -60,6 +60,16 @@ namespace {
           floorDivByChunk(cell.z)};
 }
 
+[[nodiscard]] bool voxelEditLess(const CreativeVoxelEdit& lhs,
+                                 const CreativeVoxelEdit& rhs) noexcept {
+  const CreativeVoxelChunkCoord lhsChunk = chunkCoordForCell(lhs.cell);
+  const CreativeVoxelChunkCoord rhsChunk = chunkCoordForCell(rhs.cell);
+  if (!(lhsChunk == rhsChunk)) {
+    return chunkCoordLess(lhsChunk, rhsChunk);
+  }
+  return cellLess(lhs.cell, rhs.cell);
+}
+
 [[nodiscard]] std::int32_t localCoord(std::int32_t cell,
                                       std::int32_t chunk) noexcept {
   return cell - chunk * kCreativeVoxelChunkEdge;
@@ -273,10 +283,7 @@ CreativeVoxelMutationReceipt CreativeVoxelField::apply(
       return receipt;
     }
   }
-  std::sort(ordered.begin(), ordered.end(),
-            [](const CreativeVoxelEdit& lhs, const CreativeVoxelEdit& rhs) {
-              return cellLess(lhs.cell, rhs.cell);
-            });
+  std::sort(ordered.begin(), ordered.end(), voxelEditLess);
   for (std::size_t index = 1; index < ordered.size(); ++index) {
     if (!cellLess(ordered[index - 1].cell, ordered[index].cell) &&
         !cellLess(ordered[index].cell, ordered[index - 1].cell)) {

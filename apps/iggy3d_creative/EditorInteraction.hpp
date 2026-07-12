@@ -116,6 +116,8 @@ struct CreativeMaterialBrushGestureConfig {
       iggy3d::creative::CreativeAxis3::Y;
   iggy3d::creative::CreativeMaterialBrushSize size =
       iggy3d::creative::CreativeMaterialBrushSize::ThreeCells;
+  iggy3d::creative::CreativeMaterialBrushFill fill =
+      iggy3d::creative::CreativeMaterialBrushFill::Solid;
   iggy3d::creative::CreativeMaterialBrushGuide guide =
       iggy3d::creative::CreativeMaterialBrushGuide::Free;
   iggy3d::creative::CreativeMaterialBrushSymmetry symmetry =
@@ -132,10 +134,25 @@ creativeMaterialBrushGestureConfig(
   return {settings.materialBrushShape,
           settings.materialBrushAxis,
           settings.materialBrushSize,
+          settings.materialBrushFill,
           settings.materialBrushGuide,
           settings.materialBrushSymmetry,
           settings.materialBrushMask,
           settings.materialBrushReplaceSourceKind};
+}
+
+[[nodiscard]] inline iggy3d::creative::CreativeMaterialBrushStampRequest
+creativeMaterialBrushStampRequest(
+    const CreativeMaterialBrushGestureConfig& config,
+    iggy3d::creative::CreativeGridCoord3 center = {}) noexcept {
+  iggy3d::creative::CreativeMaterialBrushStampRequest request;
+  request.shape = config.shape;
+  request.size = config.size;
+  request.centerCell = center;
+  request.axis = config.axis;
+  request.guide = config.guide;
+  request.fill = config.fill;
+  return request;
 }
 
 inline void applyCreativeMaterialBrushGestureConfig(
@@ -144,6 +161,7 @@ inline void applyCreativeMaterialBrushGestureConfig(
   settings.materialBrushShape = config.shape;
   settings.materialBrushAxis = config.axis;
   settings.materialBrushSize = config.size;
+  settings.materialBrushFill = config.fill;
   settings.materialBrushGuide = config.guide;
   settings.materialBrushSymmetry = config.symmetry;
   settings.materialBrushMask = config.mask;

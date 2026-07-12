@@ -68,9 +68,17 @@ cr::CreativeMaterialBrushStampPlan stamp(
     cr::CreativeGridCoord3 center = {},
     cr::CreativeAxis3 axis = cr::CreativeAxis3::Y,
     cr::CreativeMaterialBrushGuide guide =
-        cr::CreativeMaterialBrushGuide::Free) {
-  return cr::planCreativeMaterialBrushStamp(
-      {shape, size, center, axis, guide});
+        cr::CreativeMaterialBrushGuide::Free,
+    cr::CreativeMaterialBrushFill fill =
+        cr::CreativeMaterialBrushFill::Solid) {
+  cr::CreativeMaterialBrushStampRequest request;
+  request.shape = shape;
+  request.size = size;
+  request.centerCell = center;
+  request.axis = axis;
+  request.guide = guide;
+  request.fill = fill;
+  return cr::planCreativeMaterialBrushStamp(request);
 }
 
 bool materialBrushStampsAreBoundedAndCanonical() {
@@ -134,6 +142,11 @@ bool materialBrushInvalidInputsFailClosed() {
       cr::CreativeMaterialBrushShape::Cube,
       cr::CreativeMaterialBrushSize::ThreeCells, {}, cr::CreativeAxis3::Y,
       cr::CreativeMaterialBrushGuide::Count);
+  const auto invalidFill = stamp(
+      cr::CreativeMaterialBrushShape::Cube,
+      cr::CreativeMaterialBrushSize::ThreeCells, {}, cr::CreativeAxis3::Y,
+      cr::CreativeMaterialBrushGuide::Free,
+      cr::CreativeMaterialBrushFill::Count);
   const auto overflow = stamp(
       cr::CreativeMaterialBrushShape::Cube,
       cr::CreativeMaterialBrushSize::FiveCells,
@@ -154,10 +167,70 @@ bool materialBrushInvalidInputsFailClosed() {
                     invalidGuide.status ==
                         cr::CreativeMaterialBrushStampStatus::InvalidGuide,
                 "invalid material brush guide fails closed") &&
+         expect(!invalidFill.accepted && invalidFill.cellCount == 0U &&
+                    invalidFill.status ==
+                        cr::CreativeMaterialBrushStampStatus::InvalidFill,
+                "invalid material brush fill fails closed") &&
          expect(!overflow.accepted && overflow.cellCount == 0U &&
                     overflow.status ==
                         cr::CreativeMaterialBrushStampStatus::CoordinateOverflow,
                 "material brush coordinate overflow rejects before enumeration");
+}
+
+bool materialBrushShellsRetainSixNeighborBoundaries() {
+  const auto one = stamp(
+      cr::CreativeMaterialBrushShape::Sphere,
+      cr::CreativeMaterialBrushSize::OneCell, {}, cr::CreativeAxis3::Y,
+      cr::CreativeMaterialBrushGuide::Free,
+      cr::CreativeMaterialBrushFill::Shell);
+  const auto cube = stamp(
+      cr::CreativeMaterialBrushShape::Cube,
+      cr::CreativeMaterialBrushSize::FiveCells, {}, cr::CreativeAxis3::Y,
+      cr::CreativeMaterialBrushGuide::Free,
+      cr::CreativeMaterialBrushFill::Shell);
+  const auto sphere = stamp(
+      cr::CreativeMaterialBrushShape::Sphere,
+      cr::CreativeMaterialBrushSize::FiveCells, {}, cr::CreativeAxis3::Y,
+      cr::CreativeMaterialBrushGuide::Free,
+      cr::CreativeMaterialBrushFill::Shell);
+  const auto cylinder = stamp(
+      cr::CreativeMaterialBrushShape::Cylinder,
+      cr::CreativeMaterialBrushSize::FiveCells, {}, cr::CreativeAxis3::Y,
+      cr::CreativeMaterialBrushGuide::Free,
+      cr::CreativeMaterialBrushFill::Shell);
+  const auto plane = stamp(
+      cr::CreativeMaterialBrushShape::Cube,
+      cr::CreativeMaterialBrushSize::FiveCells, {}, cr::CreativeAxis3::Y,
+      cr::CreativeMaterialBrushGuide::PlaneY,
+      cr::CreativeMaterialBrushFill::Shell);
+
+  return expect(one.accepted && one.cellCount == 1U &&
+                    containsStampCell(one, {}),
+                "one-cell shell retains its only voxel") &&
+         expect(cube.accepted && cube.cellCount == 98U &&
+                    !containsStampCell(cube, {}) &&
+                    containsStampCell(cube, {2, 2, 2}) &&
+                    sameCell(cube.cells.front(), {-2, -2, -2}) &&
+                    sameCell(cube.cells[cube.cellCount - 1U], {2, 2, 2}),
+                "cube shell removes its canonical three-cubed interior") &&
+         expect(sphere.accepted && sphere.cellCount == 26U &&
+                    !containsStampCell(sphere, {}) &&
+                    !containsStampCell(sphere, {1, 0, 0}) &&
+                    containsStampCell(sphere, {2, 0, 0}),
+                "sphere shell retains only six-neighbor boundary cells") &&
+         expect(cylinder.accepted && cylinder.cellCount == 50U &&
+                    !containsStampCell(cylinder, {}) &&
+                    !containsStampCell(cylinder, {0, 1, 0}) &&
+                    containsStampCell(cylinder, {0, 2, 0}) &&
+                    containsStampCell(cylinder, {2, 0, 0}),
+                "cylinder shell keeps end caps and radial boundary") &&
+         expect(plane.accepted && plane.cellCount == 25U &&
+                    containsStampCell(plane, {}) &&
+                    cr::toString(cr::CreativeMaterialBrushFill::Solid) ==
+                        "SOLID" &&
+                    cr::toString(cr::CreativeMaterialBrushFill::Shell) ==
+                        "SHELL",
+                "one-cell-thick guide planes remain complete shells");
 }
 
 bool materialBrushGuidesFlattenAndConstrain() {
@@ -620,6 +693,7 @@ bool limitsAndInvalidEnumsFailClosed() {
 int main() {
   const bool ok = materialBrushStampsAreBoundedAndCanonical() &&
                   materialBrushInvalidInputsFailClosed() &&
+                  materialBrushShellsRetainSixNeighborBoundaries() &&
                   materialBrushGuidesFlattenAndConstrain() &&
                   materialBrushMasksPartitionOccupancy() &&
                   materialBrushPathUsesExactBoundedSupercover() &&

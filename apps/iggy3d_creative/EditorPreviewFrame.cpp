@@ -262,7 +262,7 @@ struct MaterialBrushPreviewPlan {
   output.guideAnchor = anchor;
   output.center = center;
   output.stamp = cr::planCreativeMaterialBrushStamp(
-      {config.shape, config.size, center, config.axis, config.guide});
+      creativeMaterialBrushStampRequest(config, center));
   output.visible = output.stamp.accepted;
   if (!output.visible) {
     return output;

@@ -119,6 +119,10 @@ constexpr std::array kToolOptionDescriptors{
                                  "BRUSH SIZE",
                                  CreativeToolOptionValueKind::Choice,
                                  kMaterialBrushItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::MaterialBrushFill,
+                                 "BRUSH BODY",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kMaterialBrushItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::MaterialBrushGuide,
                                  "BRUSH GUIDE",
                                  CreativeToolOptionValueKind::Choice,
@@ -215,6 +219,7 @@ template <typename Enum>
          lhs.materialBrushShape == rhs.materialBrushShape &&
          lhs.materialBrushAxis == rhs.materialBrushAxis &&
          lhs.materialBrushSize == rhs.materialBrushSize &&
+         lhs.materialBrushFill == rhs.materialBrushFill &&
          lhs.materialBrushGuide == rhs.materialBrushGuide &&
          lhs.materialBrushSymmetry == rhs.materialBrushSymmetry &&
          lhs.materialBrushMask == rhs.materialBrushMask &&
@@ -533,6 +538,8 @@ bool isValidCreativeToolSettings(
          isValidCreativeAxis3(settings.materialBrushAxis) &&
          validEnum(settings.materialBrushSize,
                    CreativeMaterialBrushSize::Count) &&
+         validEnum(settings.materialBrushFill,
+                   CreativeMaterialBrushFill::Count) &&
          validEnum(settings.materialBrushGuide,
                    CreativeMaterialBrushGuide::Count) &&
          validEnum(settings.materialBrushSymmetry,
@@ -767,6 +774,8 @@ std::string_view creativeToolOptionValueLabel(
       return toString(settings.materialBrushAxis);
     case CreativeToolOptionId::MaterialBrushSize:
       return toString(settings.materialBrushSize);
+    case CreativeToolOptionId::MaterialBrushFill:
+      return toString(settings.materialBrushFill);
     case CreativeToolOptionId::MaterialBrushGuide:
       return toString(settings.materialBrushGuide);
     case CreativeToolOptionId::MaterialBrushSymmetry:
@@ -864,6 +873,11 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
       adjusted.materialBrushSize =
           cycleEnum(adjusted.materialBrushSize,
                     CreativeMaterialBrushSize::Count, direction);
+      break;
+    case CreativeToolOptionId::MaterialBrushFill:
+      adjusted.materialBrushFill =
+          cycleEnum(adjusted.materialBrushFill,
+                    CreativeMaterialBrushFill::Count, direction);
       break;
     case CreativeToolOptionId::MaterialBrushGuide:
       adjusted.materialBrushGuide = cycleEnum(

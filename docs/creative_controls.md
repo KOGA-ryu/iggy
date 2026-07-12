@@ -266,15 +266,16 @@ preview's contextual wheel. They do not each earn a permanent global key.
 - Wheel, `1`-`9`, and controller bumpers select a nine-slot hotbar. Movement
   modifiers do not block slot selection or get consumed by it.
 - Material Brush slots own independent fixed presets for shape, cylinder axis,
-  size, guide, symmetry, occupancy mask, and Replace source. Equipping Brush
-  into a fresh slot clones the current brush; D-pad quick edit and Tool Options
-  write back only to the selected slot. Switching slots restores that preset
+  size, Solid/Shell body, guide, symmetry, occupancy mask, and Replace source.
+  Equipping Brush into a fresh slot clones the current brush; D-pad quick edit
+  and Tool Options write back only to the selected slot. Switching slots
+  restores that preset
   without changing array, volume, transform, or general snap settings. Compact
   labels identify the preset: `S3` is a 3-cell sphere, `C5` a 5-cell cube,
-  `CX3` a 3-cell X-axis cylinder, and `M` marks enabled symmetry. Replacing the
-  slot with a different held-item kind clears its old brush preset. Presets are
-  transient editor/hotbar state: they survive document New/Load for the current
-  run but are not written into the world save.
+  `CX3` a 3-cell X-axis cylinder, `H` marks a Shell body, and `M` marks enabled
+  symmetry. Replacing the slot with a different held-item kind clears its old
+  brush preset. Presets are transient editor/hotbar state: they survive
+  document New/Load for the current run but are not written into the world save.
 - Default slots are material, object select, object move, selection wand, fill,
   hollow, replace, erase, and clone.
 - `E` or the controller inventory button opens the searchable material/tool
@@ -320,9 +321,10 @@ preview's contextual wheel. They do not each earn a permanent global key.
 - Contextual settings currently provide Free/X/Z fast-drag movement,
   X/Y/Z precision-preview constraints, 15/45/90-degree
   rotation, 0.25/0.5/1/2-meter grid increments, Material Brush Cube/Sphere/
-  Cylinder shape, X/Y/Z cylinder axis, 1/3/5-cell size, Free/Line X/Line Y/
-  Line Z/Plane X/Plane Y/Plane Z brush guides, Off/Mirror X/Mirror Y/Mirror Z/
-  Mirror XZ symmetry, and Add Only/Replace/Overwrite occupancy masks, Replace
+  Cylinder shape, X/Y/Z cylinder axis, 1/3/5-cell size, Solid/Shell body,
+  Free/Line X/Line Y/Line Z/Plane X/Plane Y/Plane Z brush guides,
+  Off/Mirror X/Mirror Y/Mirror Z/Mirror XZ symmetry, and Add Only/Replace/
+  Overwrite occupancy masks, Replace
   Brush source filtering by material or Any, volume
   Replace source filtering by material or Any, Clone offsets on X/Y/Z at
   1/2/4/8 cells, Linear Array
@@ -384,7 +386,11 @@ preview's contextual wheel. They do not each earn a permanent global key.
 - Material Brush paints the selected voxel material with X/right mouse and
   erases with Circle/left mouse. Cube, sphere, and cylinder stamps are
   allocation-free fixed batches at 1, 3, or 5 cells across. Cylinder stamps
-  can be oriented along X, Y, or Z without changing the gesture controls. A
+  can be oriented along X, Y, or Z without changing the gesture controls.
+  Solid emits the complete stamp. Shell retains only cells with at least one
+  six-neighbor outside the filled stamp, matching the existing Hollow volume
+  boundary law; a 1-cell stamp remains one cell, and a one-cell-thick Plane
+  guide remains a complete sheet. A
   Free retains the complete stamp and unconstrained path. Line X/Y/Z retains
   the complete stamp while holding the other two world coordinates at the
   gesture's first valid sample; a red, green, or blue anchor line exposes the
@@ -417,8 +423,8 @@ preview's contextual wheel. They do not each earn a permanent global key.
   a contextual Source option: Any accepts every occupied voxel, while a named
   material accepts only matching voxels. The preview uses the same material-
   aware predicate: admitted cells are green and a wholly blocked stamp is red.
-  Shape, cylinder axis, size, guide, symmetry, mask, and replace source are
-  frozen at the first valid sample so a single held gesture cannot mix
+  Shape, cylinder axis, size, body, guide, symmetry, mask, and replace source
+  are frozen at the first valid sample so a single held gesture cannot mix
   configurations inside one undo record. Symmetry expansion shares the
   256-cell planner budget and rejects oversized mirrored batches without
   partial mutation. Circle erase is independent of the paint mask and source

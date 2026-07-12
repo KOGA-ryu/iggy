@@ -116,6 +116,7 @@ enum class CreativeToolOptionId : std::uint8_t {
   MaterialBrushShape,
   MaterialBrushAxis,
   MaterialBrushSize,
+  MaterialBrushFill,
   MaterialBrushGuide,
   MaterialBrushSymmetry,
   MaterialBrushMask,
@@ -141,7 +142,7 @@ enum class CreativeToolOptionValueKind : std::uint8_t {
 };
 
 using CreativeHeldItemMask = std::uint16_t;
-inline constexpr std::size_t kCreativeToolOptionCapacity = 7;
+inline constexpr std::size_t kCreativeToolOptionCapacity = 8;
 inline constexpr std::size_t kCreativeToolOptionDescriptorCount =
     static_cast<std::size_t>(CreativeToolOptionId::Count);
 
@@ -173,6 +174,8 @@ struct CreativeToolSettings {
   CreativeAxis3 materialBrushAxis = CreativeAxis3::Y;
   CreativeMaterialBrushSize materialBrushSize =
       CreativeMaterialBrushSize::ThreeCells;
+  CreativeMaterialBrushFill materialBrushFill =
+      CreativeMaterialBrushFill::Solid;
   CreativeMaterialBrushGuide materialBrushGuide =
       CreativeMaterialBrushGuide::Free;
   CreativeMaterialBrushSymmetry materialBrushSymmetry =

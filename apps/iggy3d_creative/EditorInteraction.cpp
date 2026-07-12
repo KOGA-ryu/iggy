@@ -732,6 +732,16 @@ std::string creativeMaterialBrushPresetHotbarLabel(
       return "B?";
   }
 
+  switch (preset.fill) {
+    case cr::CreativeMaterialBrushFill::Solid:
+      break;
+    case cr::CreativeMaterialBrushFill::Shell:
+      output.append("H");
+      break;
+    case cr::CreativeMaterialBrushFill::Count:
+      return "B?";
+  }
+
   switch (preset.symmetry) {
     case cr::CreativeMaterialBrushSymmetry::Off:
       break;
@@ -830,6 +840,8 @@ std::string creativeEditorHeldItemStatusLabel(
     output.append(" | ");
     output.append(cr::toString(brushConfig.size));
     output.append(" | ");
+    output.append(cr::toString(brushConfig.fill));
+    output.append(" | ");
     output.append(cr::toString(brushConfig.guide));
     if (brushConfig.symmetry != cr::CreativeMaterialBrushSymmetry::Off) {
       output.append(" | ");
@@ -857,8 +869,7 @@ std::string creativeEditorHeldItemStatusLabel(
     }
     const cr::CreativeMaterialBrushStampPlan stamp =
         cr::planCreativeMaterialBrushStamp(
-            {brushConfig.shape, brushConfig.size, {}, brushConfig.axis,
-             brushConfig.guide});
+            creativeMaterialBrushStampRequest(brushConfig));
     if (stamp.accepted) {
       output.append(" | ");
       output.append(std::to_string(stamp.cellCount));

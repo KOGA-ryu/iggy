@@ -206,18 +206,6 @@ struct MaterialBrushTargetSample {
                     : target.grid.adjacentCell};
 }
 
-[[nodiscard]] cr::CreativeMaterialBrushStampPlan materialBrushStampPlan(
-    cr::CreativeGridCoord3 center,
-    const CreativeMaterialBrushGestureConfig& config) noexcept {
-  cr::CreativeMaterialBrushStampRequest request;
-  request.shape = config.shape;
-  request.size = config.size;
-  request.centerCell = center;
-  request.axis = config.axis;
-  request.guide = config.guide;
-  return cr::planCreativeMaterialBrushStamp(request);
-}
-
 [[nodiscard]] bool editBatchContainsCell(
     const std::array<cr::CreativeVoxelEdit,
                      kCreativeMaterialStrokeVisitedCapacity>& edits,
@@ -324,7 +312,8 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
   cr::CreativeGridCoord3 aggregateMax{};
   for (cr::CreativeGridCoord3 center : path.generatedCenters()) {
     const cr::CreativeMaterialBrushStampPlan stamp =
-        materialBrushStampPlan(center, stroke.brushConfig);
+        cr::planCreativeMaterialBrushStamp(
+            creativeMaterialBrushStampRequest(stroke.brushConfig, center));
     if (!stamp.accepted) {
       rejectMaterialStroke(editor, held.objectKind);
       return;

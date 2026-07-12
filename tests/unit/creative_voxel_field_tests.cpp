@@ -46,6 +46,29 @@ bool chunksHandleNegativeCoordinates() {
          expect(field.validateInvariants(), "field invariants");
 }
 
+bool interleavedWorldOrderStillStagesEachChunkOnce() {
+  cr::CreativeVoxelField field;
+  const std::array edits{
+      cr::CreativeVoxelEdit{{0, 0, -2}, cr::CreativeObjectKind::Wall},
+      cr::CreativeVoxelEdit{{0, -1, -1}, cr::CreativeObjectKind::Wall},
+      cr::CreativeVoxelEdit{{0, 0, -1}, cr::CreativeObjectKind::Wall},
+  };
+  const cr::CreativeVoxelMutationReceipt receipt = field.apply(edits);
+  return expect(receipt.accepted && receipt.changed &&
+                    receipt.createdCellCount == edits.size(),
+                "interleaved chunk edits apply once") &&
+         expect(receipt.stagedChunkCount == 2U &&
+                    receipt.chunkCountAfter == 2U,
+                "canonical ordering groups both spans of one chunk") &&
+         expect(field.occupiedCellCount() == edits.size() &&
+                    field.occupied({0, 0, -2}) &&
+                    field.occupied({0, -1, -1}) &&
+                    field.occupied({0, 0, -1}),
+                "later chunk staging cannot overwrite earlier cells") &&
+         expect(field.validateInvariants(),
+                "interleaved chunk batch preserves field invariants");
+}
+
 bool mutationsAreAtomicAndCanonical() {
   cr::CreativeVoxelField field;
   const cr::CreativeVoxelEdit initial{{2, 3, 4},
@@ -259,6 +282,7 @@ bool documentAdvancesOncePerBatch() {
 
 int main() {
   return chunksHandleNegativeCoordinates() &&
+                 interleavedWorldOrderStillStagesEachChunkOnce() &&
                  mutationsAreAtomicAndCanonical() &&
                  singleChunkEditStagesConstantWorkAcrossLargeField() &&
                  chunkInsertionAndRemovalCommitTogether() &&

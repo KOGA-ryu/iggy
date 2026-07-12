@@ -364,19 +364,21 @@ bool optionDescriptorsAreContextualAndBounded() {
                         cr::CreativeToolOptionId::PlacementYaw &&
                     material.ids[1] == cr::CreativeToolOptionId::SnapIncrement,
                 "material exposes orientation and grid size") &&
-         expect(materialBrush.count == 5U &&
+         expect(materialBrush.count == 6U &&
                     materialBrush.ids[0] ==
                         cr::CreativeToolOptionId::MaterialBrushShape &&
                     materialBrush.ids[1] ==
                         cr::CreativeToolOptionId::MaterialBrushSize &&
                     materialBrush.ids[2] ==
-                        cr::CreativeToolOptionId::MaterialBrushGuide &&
+                        cr::CreativeToolOptionId::MaterialBrushFill &&
                     materialBrush.ids[3] ==
-                        cr::CreativeToolOptionId::MaterialBrushSymmetry &&
+                        cr::CreativeToolOptionId::MaterialBrushGuide &&
                     materialBrush.ids[4] ==
+                        cr::CreativeToolOptionId::MaterialBrushSymmetry &&
+                    materialBrush.ids[5] ==
                         cr::CreativeToolOptionId::MaterialBrushMask,
-                "material brush exposes shape size guide symmetry and mask") &&
-         expect(cylinderBrush.count == 6U &&
+                "material brush exposes shape size body guide symmetry and mask") &&
+         expect(cylinderBrush.count == 7U &&
                     cylinderBrush.ids[0] ==
                         cr::CreativeToolOptionId::MaterialBrushShape &&
                     cylinderBrush.ids[1] ==
@@ -384,21 +386,23 @@ bool optionDescriptorsAreContextualAndBounded() {
                     cylinderBrush.ids[2] ==
                         cr::CreativeToolOptionId::MaterialBrushSize &&
                     cylinderBrush.ids[3] ==
-                        cr::CreativeToolOptionId::MaterialBrushGuide &&
+                        cr::CreativeToolOptionId::MaterialBrushFill &&
                     cylinderBrush.ids[4] ==
-                        cr::CreativeToolOptionId::MaterialBrushSymmetry &&
+                        cr::CreativeToolOptionId::MaterialBrushGuide &&
                     cylinderBrush.ids[5] ==
+                        cr::CreativeToolOptionId::MaterialBrushSymmetry &&
+                    cylinderBrush.ids[6] ==
                         cr::CreativeToolOptionId::MaterialBrushMask,
                 "cylinder brush exposes its contextual extrusion axis") &&
-         expect(replaceBrush.count == 6U &&
-                    replaceBrush.ids[5] ==
+         expect(replaceBrush.count == 7U &&
+                    replaceBrush.ids[6] ==
                         cr::CreativeToolOptionId::MaterialBrushReplaceSource,
                 "replace brush exposes its contextual source filter") &&
          expect(cylinderReplaceBrush.count ==
                         cr::kCreativeToolOptionCapacity &&
                     cylinderReplaceBrush.ids[1] ==
                         cr::CreativeToolOptionId::MaterialBrushAxis &&
-                    cylinderReplaceBrush.ids[6] ==
+                    cylinderReplaceBrush.ids[7] ==
                         cr::CreativeToolOptionId::MaterialBrushReplaceSource,
                 "cylinder replace options exactly fit bounded storage") &&
          expect(move.count == 3U &&
@@ -468,6 +472,8 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
   invalidMask.materialBrushMask = cr::CreativeMaterialBrushMask::Count;
   cr::CreativeToolSettings invalidBrushAxis = settings;
   invalidBrushAxis.materialBrushAxis = cr::CreativeAxis3::Count;
+  cr::CreativeToolSettings invalidBrushFill = settings;
+  invalidBrushFill.materialBrushFill = cr::CreativeMaterialBrushFill::Count;
   cr::CreativeToolSettings invalidBrushGuide = settings;
   invalidBrushGuide.materialBrushGuide =
       cr::CreativeMaterialBrushGuide::Count;
@@ -486,6 +492,8 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                    "invalid material brush mask fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidBrushAxis),
                    "invalid material brush axis fails settings validation") &&
+            expect(!cr::isValidCreativeToolSettings(invalidBrushFill),
+                   "invalid material brush fill fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidBrushGuide),
                    "invalid material brush guide fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidBrushSymmetry),
@@ -524,6 +532,10 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                            settings,
                            cr::CreativeToolOptionId::MaterialBrushSize) ==
                            "3 CELLS" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::MaterialBrushFill) ==
+                           "SOLID" &&
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::MaterialBrushGuide) ==
@@ -577,6 +589,10 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                   settings.materialBrushSize ==
                       cr::CreativeMaterialBrushSize::FiveCells,
               "material brush size cycles within its fixed budget") &&
+       expect(adjust(cr::CreativeToolOptionId::MaterialBrushFill, 1).changed &&
+                  settings.materialBrushFill ==
+                      cr::CreativeMaterialBrushFill::Shell,
+              "material brush body cycles from solid to shell") &&
        expect(adjust(cr::CreativeToolOptionId::MaterialBrushGuide, 1).changed &&
                   settings.materialBrushGuide ==
                       cr::CreativeMaterialBrushGuide::LineX,
