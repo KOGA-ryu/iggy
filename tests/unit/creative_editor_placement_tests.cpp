@@ -721,6 +721,11 @@ bool toolOptionsActivateSymmetryPivotCommands() {
   bool ok = expect(setAccepted && !editor.toolOptions.open &&
                        editor.toolSettings.materialBrushSymmetry ==
                            cr::CreativeMaterialBrushSymmetry::MirrorXZ &&
+                       editor.interaction.materialBrushPresets.initialized[0] !=
+                           0U &&
+                       editor.interaction.materialBrushPresets.slots[0]
+                               .symmetry ==
+                           cr::CreativeMaterialBrushSymmetry::MirrorXZ &&
                        editor.interaction.materialBrushPivot.locked &&
                        editor.interaction.materialBrushPivot.lockedCell.x == 4 &&
                        editor.interaction.materialBrushPivot.lockedCell.y == 2 &&
@@ -748,6 +753,133 @@ bool toolOptionsActivateSymmetryPivotCommands() {
                     creativeEditorToolOptionsRowCount(editor.toolOptions) ==
                         editor.toolOptions.options.count + 2U,
                 "set command fails closed without a viewport aim snapshot") &&
+         ok;
+}
+
+bool materialBrushPresetsFollowHotbarSlots() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 106U);
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
+  editor.interaction.hotbar.entries[0] = {
+      cr::CreativeHeldItemKind::MaterialBrush,
+      cr::CreativeObjectKind::Wall};
+  editor.interaction.hotbar.entries[1] = {
+      cr::CreativeHeldItemKind::MaterialBrush,
+      cr::CreativeObjectKind::Floor};
+  editor.toolSettings.arrayMode = cr::CreativeArrayMode::Radial;
+  syncCreativeEditorHeldItem(appState, editor);
+  const bool initializedFirst =
+      activateSelectedCreativeMaterialBrushPreset(
+          editor.interaction.materialBrushPresets,
+          editor.interaction.hotbar, editor.toolSettings);
+  const std::uint64_t revisionBefore =
+      appState.facade.document().revision();
+
+  bool ok = expect(initializedFirst &&
+                       editor.interaction.materialBrushPresets.initialized[0] !=
+                           0U &&
+                       editor.toolSettings.materialBrushShape ==
+                           cr::CreativeMaterialBrushShape::Sphere,
+                   "first brush slot captures the current brush configuration");
+  ok = expect(selectCreativeEditorHotbarSlot(appState, editor, 1U) &&
+                  editor.interaction.materialBrushPresets.initialized[1] != 0U &&
+                  editor.toolSettings.materialBrushShape ==
+                      cr::CreativeMaterialBrushShape::Sphere,
+              "new brush slot clones the outgoing brush configuration") &&
+       ok;
+  ok = expect(processCreativeEditorQuickEditAction(
+                  editor, cr::CreativeInputActionId::QuickEditIncrease) &&
+                  editor.toolSettings.materialBrushShape ==
+                      cr::CreativeMaterialBrushShape::Cylinder &&
+                  editor.interaction.materialBrushPresets.slots[1].shape ==
+                      cr::CreativeMaterialBrushShape::Cylinder,
+              "D-pad editing writes through to the selected brush slot") &&
+       ok;
+  editor.toolSettings.materialBrushAxis = cr::CreativeAxis3::X;
+  editor.toolSettings.materialBrushGuide =
+      cr::CreativeMaterialBrushGuide::LineY;
+  editor.toolSettings.materialBrushSymmetry =
+      cr::CreativeMaterialBrushSymmetry::MirrorX;
+  editor.toolSettings.materialBrushMask =
+      cr::CreativeMaterialBrushMask::Replace;
+  editor.toolSettings.materialBrushReplaceSourceKind =
+      cr::CreativeObjectKind::Wall;
+  static_cast<void>(storeSelectedCreativeMaterialBrushPreset(
+      editor.interaction.materialBrushPresets,
+      editor.interaction.hotbar, editor.toolSettings));
+
+  ok = expect(selectCreativeEditorHotbarSlot(appState, editor, 0U) &&
+                  editor.toolSettings.materialBrushShape ==
+                      cr::CreativeMaterialBrushShape::Sphere &&
+                  editor.toolSettings.materialBrushSize ==
+                      cr::CreativeMaterialBrushSize::ThreeCells &&
+                  editor.toolSettings.materialBrushGuide ==
+                      cr::CreativeMaterialBrushGuide::Free &&
+                  editor.toolSettings.materialBrushSymmetry ==
+                      cr::CreativeMaterialBrushSymmetry::Off &&
+                  editor.toolSettings.materialBrushMask ==
+                      cr::CreativeMaterialBrushMask::Overwrite &&
+                  editor.toolSettings.materialBrushReplaceSourceKind ==
+                      cr::CreativeObjectKind::Unknown,
+              "returning to slot one restores only its brush fields") &&
+       ok;
+  ok = expect(processCreativeEditorQuickEditAction(
+                  editor, cr::CreativeInputActionId::QuickEditNext) &&
+                  processCreativeEditorQuickEditAction(
+                      editor, cr::CreativeInputActionId::QuickEditIncrease) &&
+                  editor.toolSettings.materialBrushSize ==
+                      cr::CreativeMaterialBrushSize::FiveCells,
+              "slot one keeps an independent D-pad size preset") &&
+       ok;
+  ok = expect(selectCreativeEditorHotbarSlot(appState, editor, 1U) &&
+                  editor.toolSettings.materialBrushShape ==
+                      cr::CreativeMaterialBrushShape::Cylinder &&
+                  editor.toolSettings.materialBrushAxis == cr::CreativeAxis3::X &&
+                  editor.toolSettings.materialBrushSize ==
+                      cr::CreativeMaterialBrushSize::ThreeCells &&
+                  editor.toolSettings.materialBrushGuide ==
+                      cr::CreativeMaterialBrushGuide::LineY &&
+                  editor.toolSettings.materialBrushSymmetry ==
+                      cr::CreativeMaterialBrushSymmetry::MirrorX &&
+                  editor.toolSettings.materialBrushMask ==
+                      cr::CreativeMaterialBrushMask::Replace &&
+                  editor.toolSettings.materialBrushReplaceSourceKind ==
+                      cr::CreativeObjectKind::Wall &&
+                  editor.toolSettings.arrayMode == cr::CreativeArrayMode::Radial,
+              "slot two restores its preset without changing array settings") &&
+       ok;
+
+  CreativeMaterialBrushGestureConfig firstPreset;
+  CreativeMaterialBrushGestureConfig secondPreset;
+  const bool foundFirst = creativeMaterialBrushPresetForSlot(
+      editor.interaction.materialBrushPresets, 0U, firstPreset);
+  const bool foundSecond = creativeMaterialBrushPresetForSlot(
+      editor.interaction.materialBrushPresets, 1U, secondPreset);
+  ok = expect(foundFirst && foundSecond &&
+                  creativeMaterialBrushPresetHotbarLabel(firstPreset) ==
+                      "S5" &&
+                  creativeMaterialBrushPresetHotbarLabel(secondPreset) ==
+                      "CX3M",
+              "compact hotbar labels distinguish independent brush presets") &&
+       ok;
+  CreativeMaterialBrushGestureConfig invalidPreset = secondPreset;
+  invalidPreset.size = cr::CreativeMaterialBrushSize::Count;
+  ok = expect(creativeMaterialBrushPresetHotbarLabel(invalidPreset) == "B?",
+              "invalid brush presets fail closed in the hotbar label") &&
+       ok;
+
+  static_cast<void>(selectCreativeEditorHotbarSlot(appState, editor, 0U));
+  clearCreativeMaterialBrushPresetSlot(
+      editor.interaction.materialBrushPresets, 1U);
+  static_cast<void>(selectCreativeEditorHotbarSlot(appState, editor, 1U));
+  return expect(editor.toolSettings.materialBrushShape ==
+                    cr::CreativeMaterialBrushShape::Sphere &&
+                    editor.toolSettings.materialBrushSize ==
+                        cr::CreativeMaterialBrushSize::FiveCells,
+                "cleared slot clones the current brush instead of stale data") &&
+         expect(appState.facade.document().revision() == revisionBefore &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "preset switching does not mutate the document or history") &&
          ok;
 }
 
@@ -2773,6 +2905,7 @@ int main() {
   ok = quickEditOrientationFeedsPreviewAndCreatePlan() && ok;
   ok = toolOptionsFollowTheRequestedMaterialEntry() && ok;
   ok = toolOptionsActivateSymmetryPivotCommands() && ok;
+  ok = materialBrushPresetsFollowHotbarSlots() && ok;
   ok = previewFrameUsesWorldTargetAndViewHeldTransforms() && ok;
   ok = previewHidesForEveryBlockingSurface() && ok;
   ok = quickEditHudHighlightsTheActiveSetting() && ok;

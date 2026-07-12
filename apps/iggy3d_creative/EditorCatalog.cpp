@@ -271,11 +271,28 @@ void ensureActionSelectionVisible(CreativeEditorCatalogState& catalog,
   if (selected == nullptr) {
     return false;
   }
+  const std::size_t targetSlot = slot.value_or(
+      static_cast<std::size_t>(editor.interaction.hotbar.selectedSlot));
+  if (targetSlot >= cr::kCreativeHotbarSlotCount) {
+    return false;
+  }
+  static_cast<void>(storeSelectedCreativeMaterialBrushPreset(
+      editor.interaction.materialBrushPresets,
+      editor.interaction.hotbar, editor.toolSettings));
+  const cr::CreativeHeldItemKind previousKind =
+      editor.interaction.hotbar.entries[targetSlot].kind;
   static_cast<void>(cr::assignSelectedCreativeCatalogEntry(
       editor.catalog.model, editor.interaction.hotbar, slot));
   cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   held = cr::resolveCreativeCatalogHotbarEntry(*selected, editor.placeBrush);
+  if (previousKind != held.kind) {
+    clearCreativeMaterialBrushPresetSlot(
+        editor.interaction.materialBrushPresets, targetSlot);
+  }
+  static_cast<void>(activateSelectedCreativeMaterialBrushPreset(
+      editor.interaction.materialBrushPresets,
+      editor.interaction.hotbar, editor.toolSettings));
   if (cr::creativeCatalogEntryUsesShapeSelection(*selected)) {
     editor.toolSettings.shapeBrushKind = editor.catalog.shapeSelection.kind;
     editor.toolSettings.shapeBrushAxis = editor.catalog.shapeSelection.axis;
@@ -297,12 +314,27 @@ void ensureActionSelectionVisible(CreativeEditorCatalogState& catalog,
   if (selected == nullptr) {
     return false;
   }
+  const std::size_t targetSlot =
+      std::min<std::size_t>(editor.interaction.hotbar.selectedSlot,
+                            cr::kCreativeHotbarSlotCount - 1U);
+  static_cast<void>(storeSelectedCreativeMaterialBrushPreset(
+      editor.interaction.materialBrushPresets,
+      editor.interaction.hotbar, editor.toolSettings));
+  const cr::CreativeHeldItemKind previousKind =
+      editor.interaction.hotbar.entries[targetSlot].kind;
   static_cast<void>(cr::assignSelectedCreativeToolWheelEntry(
       editor.catalog.toolWheel, editor.catalog.model,
       editor.interaction.hotbar));
   cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   held = cr::resolveCreativeCatalogHotbarEntry(*selected, editor.placeBrush);
+  if (previousKind != held.kind) {
+    clearCreativeMaterialBrushPresetSlot(
+        editor.interaction.materialBrushPresets, targetSlot);
+  }
+  static_cast<void>(activateSelectedCreativeMaterialBrushPreset(
+      editor.interaction.materialBrushPresets,
+      editor.interaction.hotbar, editor.toolSettings));
   syncCreativeEditorHeldItem(appState, editor);
   return true;
 }

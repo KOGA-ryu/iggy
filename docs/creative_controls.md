@@ -265,6 +265,16 @@ preview's contextual wheel. They do not each earn a permanent global key.
   world actions with press, hold, and release state.
 - Wheel, `1`-`9`, and controller bumpers select a nine-slot hotbar. Movement
   modifiers do not block slot selection or get consumed by it.
+- Material Brush slots own independent fixed presets for shape, cylinder axis,
+  size, guide, symmetry, occupancy mask, and Replace source. Equipping Brush
+  into a fresh slot clones the current brush; D-pad quick edit and Tool Options
+  write back only to the selected slot. Switching slots restores that preset
+  without changing array, volume, transform, or general snap settings. Compact
+  labels identify the preset: `S3` is a 3-cell sphere, `C5` a 5-cell cube,
+  `CX3` a 3-cell X-axis cylinder, and `M` marks enabled symmetry. Replacing the
+  slot with a different held-item kind clears its old brush preset. Presets are
+  transient editor/hotbar state: they survive document New/Load for the current
+  run but are not written into the world save.
 - Default slots are material, object select, object move, selection wand, fill,
   hollow, replace, erase, and clone.
 - `E` or the controller inventory button opens the searchable material/tool

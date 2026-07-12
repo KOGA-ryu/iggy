@@ -208,6 +208,9 @@ void rebuildQuickEditOptions(CreativeEditorState& editor,
     return false;
   }
   editor.toolSettings = state.draft;
+  static_cast<void>(storeSelectedCreativeMaterialBrushPreset(
+      editor.interaction.materialBrushPresets,
+      editor.interaction.hotbar, editor.toolSettings));
   editor.placeCellSize =
       cr::creativeSnapIncrementMeters(editor.toolSettings.snapIncrement);
   syncCreativeEditorQuickEdit(editor);
@@ -493,6 +496,9 @@ bool processCreativeEditorQuickEditAction(
       }
       editor.placeCellSize =
           cr::creativeSnapIncrementMeters(editor.toolSettings.snapIncrement);
+      static_cast<void>(storeSelectedCreativeMaterialBrushPreset(
+          editor.interaction.materialBrushPresets,
+          editor.interaction.hotbar, editor.toolSettings));
       rebuildQuickEditOptions(editor, false);
       return true;
     }

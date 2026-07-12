@@ -506,9 +506,18 @@ void processMoveInteraction(
 
 [[nodiscard]] std::string hotbarLabel(
     const cr::CreativeHotbarEntry& entry,
-    const cr::CreativeToolSettings& settings) {
+    const cr::CreativeToolSettings& settings,
+    const CreativeMaterialBrushPresetBank& brushPresets,
+    std::size_t slot) {
   if (cr::creativeHeldItemUsesDirectShapeGesture(entry.kind)) {
     return shapeHotbarLabel(entry.kind, settings);
+  }
+  if (entry.kind == cr::CreativeHeldItemKind::MaterialBrush) {
+    CreativeMaterialBrushGestureConfig config =
+        creativeMaterialBrushGestureConfig(settings);
+    static_cast<void>(
+        creativeMaterialBrushPresetForSlot(brushPresets, slot, config));
+    return creativeMaterialBrushPresetHotbarLabel(config);
   }
   if (entry.kind != cr::CreativeHeldItemKind::Material) {
     return std::string(cr::toString(entry.kind)).substr(0, 4);
@@ -616,6 +625,126 @@ bool creativeMaterialBrushLockedPivot(
   }
   pivot = state.lockedCell;
   return true;
+}
+
+bool storeSelectedCreativeMaterialBrushPreset(
+    CreativeMaterialBrushPresetBank& presets,
+    const cr::CreativeHotbarState& hotbar,
+    const cr::CreativeToolSettings& settings) noexcept {
+  const std::size_t slot = std::min<std::size_t>(
+      hotbar.selectedSlot, cr::kCreativeHotbarSlotCount - 1U);
+  if (hotbar.entries[slot].kind !=
+          cr::CreativeHeldItemKind::MaterialBrush ||
+      !cr::isValidCreativeToolSettings(settings)) {
+    return false;
+  }
+  presets.slots[slot] = creativeMaterialBrushGestureConfig(settings);
+  presets.initialized[slot] = 1U;
+  return true;
+}
+
+bool activateSelectedCreativeMaterialBrushPreset(
+    CreativeMaterialBrushPresetBank& presets,
+    const cr::CreativeHotbarState& hotbar,
+    cr::CreativeToolSettings& settings) noexcept {
+  const std::size_t slot = std::min<std::size_t>(
+      hotbar.selectedSlot, cr::kCreativeHotbarSlotCount - 1U);
+  if (hotbar.entries[slot].kind !=
+      cr::CreativeHeldItemKind::MaterialBrush) {
+    return false;
+  }
+  if (presets.initialized[slot] == 0U) {
+    return storeSelectedCreativeMaterialBrushPreset(presets, hotbar,
+                                                    settings);
+  }
+  cr::CreativeToolSettings adjusted = settings;
+  applyCreativeMaterialBrushGestureConfig(adjusted, presets.slots[slot]);
+  if (!cr::isValidCreativeToolSettings(adjusted)) {
+    return false;
+  }
+  settings = adjusted;
+  return true;
+}
+
+void clearCreativeMaterialBrushPresetSlot(
+    CreativeMaterialBrushPresetBank& presets,
+    std::size_t slot) noexcept {
+  if (slot >= cr::kCreativeHotbarSlotCount) {
+    return;
+  }
+  presets.slots[slot] = {};
+  presets.initialized[slot] = 0U;
+}
+
+bool creativeMaterialBrushPresetForSlot(
+    const CreativeMaterialBrushPresetBank& presets,
+    std::size_t slot,
+    CreativeMaterialBrushGestureConfig& preset) noexcept {
+  if (slot >= cr::kCreativeHotbarSlotCount ||
+      presets.initialized[slot] == 0U) {
+    return false;
+  }
+  preset = presets.slots[slot];
+  return true;
+}
+
+std::string creativeMaterialBrushPresetHotbarLabel(
+    const CreativeMaterialBrushGestureConfig& preset) {
+  std::string output;
+  switch (preset.shape) {
+    case cr::CreativeMaterialBrushShape::Cube:
+      output = "C";
+      break;
+    case cr::CreativeMaterialBrushShape::Sphere:
+      output = "S";
+      break;
+    case cr::CreativeMaterialBrushShape::Cylinder:
+      output = "C";
+      switch (preset.axis) {
+        case cr::CreativeAxis3::X:
+          output.append("X");
+          break;
+        case cr::CreativeAxis3::Y:
+          output.append("Y");
+          break;
+        case cr::CreativeAxis3::Z:
+          output.append("Z");
+          break;
+        case cr::CreativeAxis3::Count:
+          return "B?";
+      }
+      break;
+    case cr::CreativeMaterialBrushShape::Count:
+      return "B?";
+  }
+
+  switch (preset.size) {
+    case cr::CreativeMaterialBrushSize::OneCell:
+      output.append("1");
+      break;
+    case cr::CreativeMaterialBrushSize::ThreeCells:
+      output.append("3");
+      break;
+    case cr::CreativeMaterialBrushSize::FiveCells:
+      output.append("5");
+      break;
+    case cr::CreativeMaterialBrushSize::Count:
+      return "B?";
+  }
+
+  switch (preset.symmetry) {
+    case cr::CreativeMaterialBrushSymmetry::Off:
+      break;
+    case cr::CreativeMaterialBrushSymmetry::MirrorX:
+    case cr::CreativeMaterialBrushSymmetry::MirrorY:
+    case cr::CreativeMaterialBrushSymmetry::MirrorZ:
+    case cr::CreativeMaterialBrushSymmetry::MirrorXZ:
+      output.append("M");
+      break;
+    case cr::CreativeMaterialBrushSymmetry::Count:
+      return "B?";
+  }
+  return output;
 }
 
 double creativeEditorTargetCellSize(
@@ -900,8 +1029,16 @@ void syncCreativeEditorHeldItem(cr::CreativeAppState& appState,
 bool selectCreativeEditorHotbarSlot(cr::CreativeAppState& appState,
                                     CreativeEditorState& editor,
                                     std::size_t slot) {
+  static_cast<void>(storeSelectedCreativeMaterialBrushPreset(
+      editor.interaction.materialBrushPresets,
+      editor.interaction.hotbar, editor.toolSettings));
   const bool changed =
       cr::selectCreativeHotbarSlot(editor.interaction.hotbar, slot);
+  if (changed) {
+    static_cast<void>(activateSelectedCreativeMaterialBrushPreset(
+        editor.interaction.materialBrushPresets,
+        editor.interaction.hotbar, editor.toolSettings));
+  }
   syncCreativeEditorHeldItem(appState, editor);
   return changed;
 }
@@ -1017,7 +1154,13 @@ void processCreativeEditorWorldInteractionFrame(
   if (hotbarSteps != 0) {
     finalizeCreativeMaterialStroke(request.appState, editor,
                                    "creative_material_stroke_hotbar");
+    static_cast<void>(storeSelectedCreativeMaterialBrushPreset(
+        editor.interaction.materialBrushPresets,
+        editor.interaction.hotbar, editor.toolSettings));
     if (cr::cycleCreativeHotbar(editor.interaction.hotbar, hotbarSteps)) {
+      static_cast<void>(activateSelectedCreativeMaterialBrushPreset(
+          editor.interaction.materialBrushPresets,
+          editor.interaction.hotbar, editor.toolSettings));
       syncCreativeEditorHeldItem(request.appState, editor);
     }
   }
@@ -1154,7 +1297,9 @@ void appendCreativeEditorInteractionOverlay(
                       drawableWidth, drawableHeight, selected);
     appendColoredText(glyphs,
                       hotbarLabel(editor.interaction.hotbar.entries[slot],
-                                  editor.toolSettings),
+                                  editor.toolSettings,
+                                  editor.interaction.materialBrushPresets,
+                                  slot),
                       x + 4, hotbarY + 22, drawableWidth, drawableHeight,
                       selected);
   }

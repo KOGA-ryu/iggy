@@ -138,6 +138,44 @@ creativeMaterialBrushGestureConfig(
           settings.materialBrushReplaceSourceKind};
 }
 
+inline void applyCreativeMaterialBrushGestureConfig(
+    iggy3d::creative::CreativeToolSettings& settings,
+    const CreativeMaterialBrushGestureConfig& config) noexcept {
+  settings.materialBrushShape = config.shape;
+  settings.materialBrushAxis = config.axis;
+  settings.materialBrushSize = config.size;
+  settings.materialBrushGuide = config.guide;
+  settings.materialBrushSymmetry = config.symmetry;
+  settings.materialBrushMask = config.mask;
+  settings.materialBrushReplaceSourceKind = config.replaceSourceKind;
+}
+
+struct CreativeMaterialBrushPresetBank {
+  std::array<CreativeMaterialBrushGestureConfig,
+             iggy3d::creative::kCreativeHotbarSlotCount>
+      slots{};
+  std::array<std::uint8_t, iggy3d::creative::kCreativeHotbarSlotCount>
+      initialized{};
+};
+
+[[nodiscard]] bool storeSelectedCreativeMaterialBrushPreset(
+    CreativeMaterialBrushPresetBank& presets,
+    const iggy3d::creative::CreativeHotbarState& hotbar,
+    const iggy3d::creative::CreativeToolSettings& settings) noexcept;
+[[nodiscard]] bool activateSelectedCreativeMaterialBrushPreset(
+    CreativeMaterialBrushPresetBank& presets,
+    const iggy3d::creative::CreativeHotbarState& hotbar,
+    iggy3d::creative::CreativeToolSettings& settings) noexcept;
+void clearCreativeMaterialBrushPresetSlot(
+    CreativeMaterialBrushPresetBank& presets,
+    std::size_t slot) noexcept;
+[[nodiscard]] bool creativeMaterialBrushPresetForSlot(
+    const CreativeMaterialBrushPresetBank& presets,
+    std::size_t slot,
+    CreativeMaterialBrushGestureConfig& preset) noexcept;
+[[nodiscard]] std::string creativeMaterialBrushPresetHotbarLabel(
+    const CreativeMaterialBrushGestureConfig& preset);
+
 struct CreativeMaterialStrokeState {
   CreativeMaterialRepeatState repeat{};
   StandaloneEditTransaction transaction{};
@@ -171,6 +209,7 @@ struct CreativeEditorInteractionState {
   CreativeEditorWorldTarget target{};
   CreativeEditorPlacementFeedback placementFeedback{};
   CreativeMaterialBrushPivotState materialBrushPivot{};
+  CreativeMaterialBrushPresetBank materialBrushPresets{};
   CreativeMaterialStrokeState materialStroke{};
   iggy3d::creative::CreativeObjectId moveTargetId =
       iggy3d::creative::kInvalidObjectId;
