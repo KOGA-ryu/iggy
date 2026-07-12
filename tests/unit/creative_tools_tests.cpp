@@ -2,6 +2,7 @@
 #include "app/iggy3d/creative/tools/Transform.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdlib>
@@ -367,6 +368,26 @@ bool optionDescriptorsAreContextualAndBounded() {
   const cr::CreativeToolOptionList terrainSeed =
       cr::creativeToolOptionsForHeldItem(
           cr::CreativeHeldItemKind::TerrainControl, terrainSeedSettings);
+  const cr::CreativeToolOptionList terrainProfile =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::TerrainProfile);
+  cr::CreativeToolSettings ridgeSettings =
+      cr::makeDefaultCreativeToolSettings();
+  ridgeSettings.terrainProfileKind = cr::CreativeTerrainProfileKind::Ridge;
+  const cr::CreativeToolOptionList terrainRidge =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::TerrainProfile, ridgeSettings);
+  cr::CreativeToolSettings waveSettings =
+      cr::makeDefaultCreativeToolSettings();
+  waveSettings.terrainProfileKind = cr::CreativeTerrainProfileKind::Wave;
+  const cr::CreativeToolOptionList terrainWave =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::TerrainProfile, waveSettings);
+  waveSettings.terrainProfileRodPolicy =
+      cr::CreativeTerrainProfileRodPolicy::Existing;
+  const cr::CreativeToolOptionList terrainWaveExisting =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::TerrainProfile, waveSettings);
   const cr::CreativeToolOptionList array =
       cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::LinearArray);
   cr::CreativeToolSettings radialSettings =
@@ -479,6 +500,29 @@ bool optionDescriptorsAreContextualAndBounded() {
                     terrainSeed.ids[2] ==
                         cr::CreativeToolOptionId::TerrainSeedSpacing,
                 "terrain seed exposes stamp mode radius and spacing") &&
+         expect(terrainProfile.count == 6U &&
+                    terrainProfile.ids[0] ==
+                        cr::CreativeToolOptionId::TerrainProfileKind &&
+                    terrainProfile.ids[5] ==
+                        cr::CreativeToolOptionId::TerrainProfileSpacing,
+                "hill profile exposes six relevant settings") &&
+         expect(terrainRidge.count == 7U &&
+                    terrainRidge.ids[6] ==
+                        cr::CreativeToolOptionId::TerrainProfileDirection,
+                "ridge adds direction without frequency") &&
+         expect(terrainWave.count == cr::kCreativeToolOptionCapacity &&
+                    terrainWave.ids[6] ==
+                        cr::CreativeToolOptionId::TerrainProfileDirection &&
+                    terrainWave.ids[7] ==
+                        cr::CreativeToolOptionId::TerrainProfileFrequency &&
+                    !terrainWave.capacityExceeded,
+                "wave exactly fits all eight contextual options") &&
+         expect(terrainWaveExisting.count == 7U &&
+                    std::find(terrainWaveExisting.items().begin(),
+                              terrainWaveExisting.items().end(),
+                              cr::CreativeToolOptionId::TerrainProfileSpacing) ==
+                        terrainWaveExisting.items().end(),
+                "existing-only profile hides lattice spacing") &&
          expect(array.count == 4U &&
                     array.ids[0] ==
                         cr::CreativeToolOptionId::ArrayMode &&
@@ -511,6 +555,9 @@ bool optionDescriptorsAreContextualAndBounded() {
                     !terrainSculpt.capacityExceeded &&
                     !terrainRodSingle.capacityExceeded &&
                     !terrainSeed.capacityExceeded &&
+                    !terrainProfile.capacityExceeded &&
+                    !terrainRidge.capacityExceeded &&
+                    !terrainWaveExisting.capacityExceeded &&
                     !array.capacityExceeded && !radialArray.capacityExceeded &&
                     array.count <= cr::kCreativeToolOptionCapacity,
                 "default option lists fit bounded storage") &&
@@ -518,7 +565,11 @@ bool optionDescriptorsAreContextualAndBounded() {
                     cr::CreativeToolOptionId::Count) == nullptr &&
                     !cr::creativeToolOptionAppliesToHeldItem(
                         cr::CreativeToolOptionId::MoveConstraint,
-                        cr::CreativeHeldItemKind::Material),
+                        cr::CreativeHeldItemKind::Material) &&
+                    sizeof(cr::CreativeHeldItemMask) == sizeof(std::uint32_t) &&
+                    cr::creativeToolOptionAppliesToHeldItem(
+                        cr::CreativeToolOptionId::TerrainProfileKind,
+                        cr::CreativeHeldItemKind::TerrainProfile),
                 "invalid and inapplicable options are rejected");
 }
 
@@ -558,6 +609,8 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
       cr::CreativeTerrainSculptFalloff::Count;
   cr::CreativeToolSettings invalidSeed = settings;
   invalidSeed.terrainSeedSpacing = cr::CreativeTerrainSeedSpacing::Count;
+  cr::CreativeToolSettings invalidProfile = settings;
+  invalidProfile.terrainProfileKind = cr::CreativeTerrainProfileKind::Count;
   bool ok = expect(cr::isValidCreativeToolSettings(settings),
                    "default settings valid") &&
             expect(!cr::isValidCreativeToolSettings(invalidMask),
@@ -585,6 +638,8 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                    "invalid terrain sculpt option fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidSeed),
                    "invalid terrain seed option fails settings validation") &&
+            expect(!cr::isValidCreativeToolSettings(invalidProfile),
+                   "invalid terrain profile option fails settings validation") &&
             expect(cr::creativeToolOptionValueLabel(
                        settings,
                        cr::CreativeToolOptionId::MoveConstraint) == "FREE" &&
@@ -674,7 +729,39 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::TerrainSeedSpacing) ==
-                           "2 CELLS",
+                           "2 CELLS" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainProfileKind) ==
+                           "HILL" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainProfileBlend) ==
+                           "SET" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainProfileRodPolicy) ==
+                           "FILL" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainProfileRadius) ==
+                           "4 CELLS" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainProfileAmplitude) ==
+                           "4 CELLS" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainProfileSpacing) ==
+                           "1 CELL" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainProfileDirection) ==
+                           "+X" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainProfileFrequency) ==
+                           "1 CYCLE",
                    "default labels and scalar conversions stable");
 
   const auto adjust = [&settings](cr::CreativeToolOptionId option,
@@ -775,6 +862,43 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                   settings.terrainSeedSpacing ==
                       cr::CreativeTerrainSeedSpacing::FourCells,
               "terrain seed spacing cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainProfileKind, 1).changed &&
+                  settings.terrainProfileKind ==
+                      cr::CreativeTerrainProfileKind::Basin,
+              "terrain profile kind cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainProfileBlend, 1).changed &&
+                  settings.terrainProfileBlend ==
+                      cr::CreativeTerrainProfileBlend::Add,
+              "terrain profile blend cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainProfileRodPolicy, 1)
+                  .changed &&
+                  settings.terrainProfileRodPolicy ==
+                      cr::CreativeTerrainProfileRodPolicy::Existing,
+              "terrain profile rod policy cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainProfileRadius, 1).changed &&
+                  settings.terrainProfileRadius ==
+                      cr::CreativeTerrainProfileRadius::EightCells,
+              "terrain profile radius cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainProfileAmplitude, 1)
+                  .changed &&
+                  settings.terrainProfileAmplitude ==
+                      cr::CreativeTerrainProfileAmplitude::EightCells,
+              "terrain profile amplitude cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainProfileSpacing, 1)
+                  .changed &&
+                  settings.terrainProfileSpacing ==
+                      cr::CreativeTerrainProfileSpacing::TwoCells,
+              "terrain profile spacing cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainProfileDirection, 1)
+                  .changed &&
+                  settings.terrainProfileDirection ==
+                      cr::CreativeTerrainProfileDirection::PositiveXPositiveZ,
+              "terrain profile direction cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainProfileFrequency, 1)
+                  .changed &&
+                  settings.terrainProfileFrequency ==
+                      cr::CreativeTerrainProfileFrequency::TwoCycles,
+              "terrain profile frequency cycles") &&
        expect(adjust(cr::CreativeToolOptionId::ShapeBrushKind, 1).changed &&
                   settings.shapeBrushKind == cr::CreativeShapeBrushKind::Line,
               "shape kind cycles") &&

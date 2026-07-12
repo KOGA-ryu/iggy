@@ -70,6 +70,13 @@ CreativeEditorState terrainSculptEditor(std::int32_t x, std::int32_t z) {
   return editor;
 }
 
+CreativeEditorState terrainProfileEditor(std::int32_t x, std::int32_t z) {
+  CreativeEditorState editor = terrainEditor(x, z);
+  editor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::TerrainProfile;
+  return editor;
+}
+
 cr::CreativeWorldActionFrame strokeAction(
     cr::CreativeWorldActionId action,
     bool down,
@@ -1065,6 +1072,199 @@ bool terrainSculptPreviewCachesAndUsesRuntimeSlopeBands() {
          ok;
 }
 
+bool terrainProfilePreviewApplyBaseLockAndUndoStayInParity() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 417U);
+  CreativeEditorState editor = terrainProfileEditor(0, 0);
+  iggy3d::ProductMapMakerGridSnapshot grid;
+  CreativeEditorSceneCache sceneCache;
+  const bool sceneBuilt = refreshCreativeEditorSceneCache(
+      sceneCache, appState.facade.document(), grid);
+  const std::uint64_t documentRevisionBefore =
+      appState.facade.document().revision();
+  const bool previewBuilt = refreshCreativeEditorTerrainProfilePreview(
+      editor.terrain, appState.facade.document(), editor);
+  const cr::CreativeTerrainProfilePlan previewPlan =
+      editor.terrain.profile.preview.plan;
+  const bool previewReused = refreshCreativeEditorTerrainProfilePreview(
+      editor.terrain, appState.facade.document(), editor);
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> guides;
+  appendCreativeEditorTerrainOverlay(appState.facade.document(), editor, 0.08F,
+                                     guides);
+
+  bool ok = expect(sceneBuilt && previewBuilt && !previewReused &&
+                       previewPlan.accepted && previewPlan.editCount == 49U &&
+                       editor.terrain.profile.preview.renderAccepted &&
+                       !editor.terrain.profile.preview.patches.empty(),
+                   "profile preview builds once from exact bounded hill plan") &&
+            expect(!guides.empty() &&
+                       appState.facade.document().revision() ==
+                           documentRevisionBefore &&
+                       sceneCache.terrainSurfaceBuildCount == 1U,
+                   "profile aiming draws guides without document or scene mutation");
+
+  const CreativeEditorTerrainProfileReceipt applied =
+      applyCreativeEditorTerrainProfileWithHistory(
+          appState, editor, "test_terrain_profile_apply");
+  const bool planParity =
+      applied.plan.items().size() == previewPlan.items().size() &&
+      std::equal(applied.plan.items().begin(), applied.plan.items().end(),
+                 previewPlan.items().begin(),
+                 [](const auto& lhs, const auto& rhs) {
+                   return lhs.kind == rhs.kind && lhs.control == rhs.control;
+                 });
+  const bool sceneRefreshed = refreshCreativeEditorSceneCache(
+      sceneCache, appState.facade.document(), grid);
+  const bool sceneReused = refreshCreativeEditorSceneCache(
+      sceneCache, appState.facade.document(), grid);
+  ok = expect(applied.accepted && applied.changed && planParity &&
+                  appState.facade.document().terrainField().controlCount() ==
+                      49U &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "X applies the exact preview as one Facade batch and undo") &&
+       expect(sceneRefreshed && !sceneReused &&
+                  sceneCache.terrainSurfaceBuildCount == 2U,
+              "accepted profile stamp refreshes scene exactly once") &&
+       ok;
+
+  setTerrainStrokeTarget(editor, 0, 0);
+  const cr::CreativeTerrainHeightSample expectedLockedSample =
+      cr::sampleCreativeTerrainHeight(appState.facade.document().terrainField(),
+                                      {0, 0});
+  const CreativeEditorTerrainProfileReceipt locked =
+      lockCreativeEditorTerrainProfileBase(appState.facade.document(), editor);
+  setTerrainStrokeTarget(editor, 10, 0);
+  const bool lockedPreview = refreshCreativeEditorTerrainProfilePreview(
+      editor.terrain, appState.facade.document(), editor);
+  const std::uint16_t lockedBase =
+      editor.terrain.profile.resolvedBaseHeightCells;
+  const CreativeEditorTerrainProfileReceipt unlocked =
+      unlockCreativeEditorTerrainProfileBase(editor);
+  const bool autoPreview = refreshCreativeEditorTerrainProfilePreview(
+      editor.terrain, appState.facade.document(), editor);
+  ok = expect(expectedLockedSample.present && locked.accepted &&
+                  locked.changed &&
+                  lockedBase == expectedLockedSample.heightCells &&
+                  editor.terrain.profile.preview.resolvedBaseHeightCells == 4U &&
+                  unlocked.accepted && unlocked.changed && lockedPreview &&
+                  autoPreview,
+              "Square locks sampled base and Circle restores aimed auto base") &&
+       ok;
+
+  const bool amplitudeRaised = processCreativeEditorTerrainProfileQuickEdit(
+      editor, cr::CreativeInputActionId::QuickEditPrevious);
+  const bool radiusRaised = processCreativeEditorTerrainProfileQuickEdit(
+      editor, cr::CreativeInputActionId::QuickEditIncrease);
+  ok = expect(amplitudeRaised && radiusRaised &&
+                  editor.toolSettings.terrainProfileAmplitude ==
+                      cr::CreativeTerrainProfileAmplitude::EightCells &&
+                  editor.toolSettings.terrainProfileRadius ==
+                      cr::CreativeTerrainProfileRadius::EightCells &&
+                  creativeEditorTerrainProfileQuickEditLabel(editor).find(
+                      "AMP 8 | RADIUS 8") != std::string::npos,
+              "D-pad quick edits own profile amplitude and radius") &&
+       ok;
+
+  const bool undone = undoLastEdit(appState, "test_terrain_profile_undo");
+  return expect(undone &&
+                    appState.facade.document().terrainField().controlCount() ==
+                        0U,
+                "one undo removes the complete profile stamp") &&
+         ok;
+}
+
+bool terrainProfileWorldActionsArePressOnlyAndControllerNative() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 418U);
+  const cr::CreativeTerrainControlEdit initial{
+      cr::CreativeTerrainEditKind::Upsert, {{0, 0}, 4U, 2U}};
+  static_cast<void>(appState.facade.applyTerrainControlEdits(
+      std::span{&initial, 1U}));
+  appState.history = {};
+  CreativeEditorState editor = terrainProfileEditor(0, 0);
+  iggy3d::RenderCameraFrame camera;
+  camera.worldEye = {0.5F, 10.0F, 0.5F};
+  camera.worldForward = {0.0F, -1.0F, 0.0F};
+  camera.worldUp = {0.0F, 0.0F, -1.0F};
+  const CreativeEditorPickFrame pickFrame;
+  const auto process = [&](const cr::CreativeWorldActionFrame& actions,
+                           std::uint64_t now) {
+    processCreativeEditorWorldInteractionFrame(
+        {appState, editor, actions, cr::kCreativeInputModifierNone, camera,
+         pickFrame, 800U, 600U, now, false});
+  };
+
+  process(strokeAction(cr::CreativeWorldActionId::Accept, true, true), 0U);
+  const std::uint64_t revisionAfterPress =
+      appState.facade.document().terrainField().revision();
+  process(strokeAction(cr::CreativeWorldActionId::Accept, true), 200'000'000U);
+  process(strokeAction(cr::CreativeWorldActionId::Accept, false, false, true),
+          201'000'000U);
+  bool ok = expect(revisionAfterPress > 1U &&
+                       appState.facade.document().terrainField().revision() ==
+                           revisionAfterPress &&
+                       cr::creativeUndoDepth(appState.history) == 1U,
+                   "PS5 X applies once and held frames never repeat profile") ;
+
+  process(strokeAction(cr::CreativeWorldActionId::Pick, true, true),
+          202'000'000U);
+  process(strokeAction(cr::CreativeWorldActionId::Pick, false, false, true),
+          203'000'000U);
+  ok = expect(editor.terrain.profile.baseLocked,
+              "PS5 Square locks profile base") &&
+       ok;
+  process(strokeAction(cr::CreativeWorldActionId::Reject, true, true),
+          204'000'000U);
+  process(strokeAction(cr::CreativeWorldActionId::Reject, false, false, true),
+          205'000'000U);
+  return expect(!editor.terrain.profile.baseLocked &&
+                    cr::creativeUndoDepth(appState.history) == 1U,
+                "PS5 Circle restores auto base without history") &&
+         ok;
+}
+
+bool terrainProfileRejectionIsVisibleAtomicAndModalSafe() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 419U);
+  CreativeEditorState editor = terrainProfileEditor(0, 0);
+  editor.toolSettings.terrainProfileKind =
+      cr::CreativeTerrainProfileKind::Ripple;
+  editor.toolSettings.terrainProfileRadius =
+      cr::CreativeTerrainProfileRadius::TwoCells;
+  const bool built = refreshCreativeEditorTerrainProfilePreview(
+      editor.terrain, appState.facade.document(), editor);
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> rejectedLines;
+  appendCreativeEditorTerrainOverlay(appState.facade.document(), editor, 0.08F,
+                                     rejectedLines);
+  const bool hasRed = std::any_of(
+      rejectedLines.begin(), rejectedLines.end(), [](const auto& line) {
+        return approx(line.color.r, 1.0F) && approx(line.color.g, 0.20F);
+      });
+  const CreativeEditorTerrainProfileReceipt rejected =
+      applyCreativeEditorTerrainProfileWithHistory(
+          appState, editor, "test_terrain_profile_rejected");
+  editor.catalog.model.open = true;
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> modalLines;
+  appendCreativeEditorTerrainOverlay(appState.facade.document(), editor, 0.08F,
+                                     modalLines);
+  editor.catalog.model.open = false;
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> captureLines;
+  appendCreativeEditorTerrainOverlay(appState.facade.document(), editor, 0.08F,
+                                     captureLines, true);
+  return expect(built && !editor.terrain.profile.preview.plan.accepted &&
+                    editor.terrain.profile.preview.plan.status ==
+                        cr::CreativeTerrainProfilePlanStatus::UnderSampled &&
+                    hasRed,
+                "under-sampled ripple produces red bounded feedback") &&
+         expect(!rejected.accepted && !rejected.changed &&
+                    appState.facade.document().terrainField().controlCount() ==
+                        0U &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "rejected profile creates no mutation or history") &&
+         expect(modalLines.empty() && captureLines.empty(),
+                "catalog and capture ownership hide profile preview completely");
+}
+
 bool bentSurfacePatchesReachRendererAndRefreshWithHeight() {
   cr::CreativeAppState appState;
   installDocument(appState, 404U);
@@ -1438,6 +1638,9 @@ int main() {
                  terrainSculptSamplesFlattensAndUndoesOneBatch() &&
                  terrainSculptHoldRepeatsAndCommitsOneUndo() &&
                  terrainSculptPreviewCachesAndUsesRuntimeSlopeBands() &&
+                 terrainProfilePreviewApplyBaseLockAndUndoStayInParity() &&
+                 terrainProfileWorldActionsArePressOnlyAndControllerNative() &&
+                 terrainProfileRejectionIsVisibleAtomicAndModalSafe() &&
                  bentSurfacePatchesReachRendererAndRefreshWithHeight() &&
                  smoothTerrainCollisionMatchesRenderedTriangle() &&
                  gridChangeRebuildsWorldSpaceTerrainPatches() &&

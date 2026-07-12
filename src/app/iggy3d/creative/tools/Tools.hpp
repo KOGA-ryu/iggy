@@ -6,6 +6,7 @@
 #include "app/iggy3d/creative/tools/Pattern.hpp"
 #include "app/iggy3d/creative/tools/ShapeBrush.hpp"
 #include "app/iggy3d/creative/tools/SurfaceExtrude.hpp"
+#include "app/iggy3d/creative/tools/TerrainProfile.hpp"
 #include "app/iggy3d/creative/tools/TerrainSeed.hpp"
 #include "app/iggy3d/creative/tools/TerrainSculpt.hpp"
 
@@ -147,6 +148,14 @@ enum class CreativeToolOptionId : std::uint8_t {
   TerrainRodStampMode,
   TerrainSeedRadius,
   TerrainSeedSpacing,
+  TerrainProfileKind,
+  TerrainProfileBlend,
+  TerrainProfileRodPolicy,
+  TerrainProfileRadius,
+  TerrainProfileAmplitude,
+  TerrainProfileSpacing,
+  TerrainProfileDirection,
+  TerrainProfileFrequency,
   Count,
 };
 
@@ -155,7 +164,7 @@ enum class CreativeToolOptionValueKind : std::uint8_t {
   MaterialOrAny,
 };
 
-using CreativeHeldItemMask = std::uint16_t;
+using CreativeHeldItemMask = std::uint32_t;
 inline constexpr std::size_t kCreativeToolOptionCapacity = 8;
 inline constexpr std::size_t kCreativeToolOptionDescriptorCount =
     static_cast<std::size_t>(CreativeToolOptionId::Count);
@@ -236,6 +245,22 @@ struct CreativeToolSettings {
       CreativeTerrainSeedRadius::FourCells;
   CreativeTerrainSeedSpacing terrainSeedSpacing =
       CreativeTerrainSeedSpacing::TwoCells;
+  CreativeTerrainProfileKind terrainProfileKind =
+      CreativeTerrainProfileKind::Hill;
+  CreativeTerrainProfileBlend terrainProfileBlend =
+      CreativeTerrainProfileBlend::Set;
+  CreativeTerrainProfileRodPolicy terrainProfileRodPolicy =
+      CreativeTerrainProfileRodPolicy::Fill;
+  CreativeTerrainProfileRadius terrainProfileRadius =
+      CreativeTerrainProfileRadius::FourCells;
+  CreativeTerrainProfileAmplitude terrainProfileAmplitude =
+      CreativeTerrainProfileAmplitude::FourCells;
+  CreativeTerrainProfileSpacing terrainProfileSpacing =
+      CreativeTerrainProfileSpacing::OneCell;
+  CreativeTerrainProfileDirection terrainProfileDirection =
+      CreativeTerrainProfileDirection::PositiveX;
+  CreativeTerrainProfileFrequency terrainProfileFrequency =
+      CreativeTerrainProfileFrequency::OneCycle;
 
   [[nodiscard]] bool operator==(
       const CreativeToolSettings&) const noexcept = default;

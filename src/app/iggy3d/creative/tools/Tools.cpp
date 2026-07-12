@@ -81,6 +81,8 @@ constexpr CreativeHeldItemMask kTerrainSculptItems =
     heldItemMask(CreativeHeldItemKind::TerrainSculpt);
 constexpr CreativeHeldItemMask kTerrainControlItems =
     heldItemMask(CreativeHeldItemKind::TerrainControl);
+constexpr CreativeHeldItemMask kTerrainProfileItems =
+    heldItemMask(CreativeHeldItemKind::TerrainProfile);
 constexpr CreativeHeldItemMask kSnapItems =
     heldItemMask(CreativeHeldItemKind::Material) |
     heldItemMask(CreativeHeldItemKind::ObjectMove) |
@@ -239,6 +241,42 @@ constexpr std::array kToolOptionDescriptors{
                                  "SEED SPACING",
                                  CreativeToolOptionValueKind::Choice,
                                  kTerrainControlItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainProfileKind,
+                                 "PROFILE",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainProfileItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainProfileBlend,
+                                 "BLEND",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainProfileItems},
+    CreativeToolOptionDescriptor{
+        CreativeToolOptionId::TerrainProfileRodPolicy,
+        "ROD POLICY",
+        CreativeToolOptionValueKind::Choice,
+        kTerrainProfileItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainProfileRadius,
+                                 "RADIUS",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainProfileItems},
+    CreativeToolOptionDescriptor{
+        CreativeToolOptionId::TerrainProfileAmplitude,
+        "AMPLITUDE",
+        CreativeToolOptionValueKind::Choice,
+        kTerrainProfileItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainProfileSpacing,
+                                 "SPACING",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainProfileItems},
+    CreativeToolOptionDescriptor{
+        CreativeToolOptionId::TerrainProfileDirection,
+        "DIRECTION",
+        CreativeToolOptionValueKind::Choice,
+        kTerrainProfileItems},
+    CreativeToolOptionDescriptor{
+        CreativeToolOptionId::TerrainProfileFrequency,
+        "FREQUENCY",
+        CreativeToolOptionValueKind::Choice,
+        kTerrainProfileItems},
 };
 static_assert(kToolOptionDescriptors.size() ==
               kCreativeToolOptionDescriptorCount);
@@ -611,7 +649,23 @@ bool isValidCreativeToolSettings(
          validEnum(settings.terrainSeedRadius,
                    CreativeTerrainSeedRadius::Count) &&
          validEnum(settings.terrainSeedSpacing,
-                   CreativeTerrainSeedSpacing::Count);
+                   CreativeTerrainSeedSpacing::Count) &&
+         validEnum(settings.terrainProfileKind,
+                   CreativeTerrainProfileKind::Count) &&
+         validEnum(settings.terrainProfileBlend,
+                   CreativeTerrainProfileBlend::Count) &&
+         validEnum(settings.terrainProfileRodPolicy,
+                   CreativeTerrainProfileRodPolicy::Count) &&
+         validEnum(settings.terrainProfileRadius,
+                   CreativeTerrainProfileRadius::Count) &&
+         validEnum(settings.terrainProfileAmplitude,
+                   CreativeTerrainProfileAmplitude::Count) &&
+         validEnum(settings.terrainProfileSpacing,
+                   CreativeTerrainProfileSpacing::Count) &&
+         validEnum(settings.terrainProfileDirection,
+                   CreativeTerrainProfileDirection::Count) &&
+         validEnum(settings.terrainProfileFrequency,
+                   CreativeTerrainProfileFrequency::Count);
 }
 
 std::span<const CreativeToolOptionDescriptor>
@@ -663,6 +717,12 @@ CreativeToolOptionList creativeToolOptionsForHeldItem(
     const bool terrainSeedOnly =
         descriptor.id == CreativeToolOptionId::TerrainSeedRadius ||
         descriptor.id == CreativeToolOptionId::TerrainSeedSpacing;
+    const bool terrainProfileSpacingOnly =
+        descriptor.id == CreativeToolOptionId::TerrainProfileSpacing;
+    const bool terrainProfileDirectionOnly =
+        descriptor.id == CreativeToolOptionId::TerrainProfileDirection;
+    const bool terrainProfileFrequencyOnly =
+        descriptor.id == CreativeToolOptionId::TerrainProfileFrequency;
     if ((linearOnly && settings.arrayMode != CreativeArrayMode::Linear) ||
         (radialOnly && settings.arrayMode != CreativeArrayMode::Radial) ||
         (cylinderOnly && settings.materialBrushShape !=
@@ -670,7 +730,14 @@ CreativeToolOptionList creativeToolOptionsForHeldItem(
         (materialBrushReplaceOnly && settings.materialBrushMask !=
                                          CreativeMaterialBrushMask::Replace) ||
         (terrainSeedOnly && settings.terrainRodStampMode !=
-                                CreativeTerrainRodStampMode::Seed)) {
+                                CreativeTerrainRodStampMode::Seed) ||
+        (terrainProfileSpacingOnly &&
+         settings.terrainProfileRodPolicy !=
+             CreativeTerrainProfileRodPolicy::Fill) ||
+        (terrainProfileDirectionOnly &&
+         !creativeTerrainProfileUsesDirection(settings.terrainProfileKind)) ||
+        (terrainProfileFrequencyOnly &&
+         !creativeTerrainProfileUsesFrequency(settings.terrainProfileKind))) {
       continue;
     }
     if (result.count == result.ids.size()) {
@@ -884,6 +951,22 @@ std::string_view creativeToolOptionValueLabel(
       return toString(settings.terrainSeedRadius);
     case CreativeToolOptionId::TerrainSeedSpacing:
       return toString(settings.terrainSeedSpacing);
+    case CreativeToolOptionId::TerrainProfileKind:
+      return toString(settings.terrainProfileKind);
+    case CreativeToolOptionId::TerrainProfileBlend:
+      return toString(settings.terrainProfileBlend);
+    case CreativeToolOptionId::TerrainProfileRodPolicy:
+      return toString(settings.terrainProfileRodPolicy);
+    case CreativeToolOptionId::TerrainProfileRadius:
+      return toString(settings.terrainProfileRadius);
+    case CreativeToolOptionId::TerrainProfileAmplitude:
+      return toString(settings.terrainProfileAmplitude);
+    case CreativeToolOptionId::TerrainProfileSpacing:
+      return toString(settings.terrainProfileSpacing);
+    case CreativeToolOptionId::TerrainProfileDirection:
+      return toString(settings.terrainProfileDirection);
+    case CreativeToolOptionId::TerrainProfileFrequency:
+      return toString(settings.terrainProfileFrequency);
     case CreativeToolOptionId::Count:
       break;
   }
@@ -1087,6 +1170,46 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
       adjusted.terrainSeedSpacing = cycleEnum(
           adjusted.terrainSeedSpacing, CreativeTerrainSeedSpacing::Count,
           direction);
+      break;
+    case CreativeToolOptionId::TerrainProfileKind:
+      adjusted.terrainProfileKind = cycleEnum(
+          adjusted.terrainProfileKind, CreativeTerrainProfileKind::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::TerrainProfileBlend:
+      adjusted.terrainProfileBlend = cycleEnum(
+          adjusted.terrainProfileBlend, CreativeTerrainProfileBlend::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::TerrainProfileRodPolicy:
+      adjusted.terrainProfileRodPolicy = cycleEnum(
+          adjusted.terrainProfileRodPolicy,
+          CreativeTerrainProfileRodPolicy::Count, direction);
+      break;
+    case CreativeToolOptionId::TerrainProfileRadius:
+      adjusted.terrainProfileRadius = cycleEnum(
+          adjusted.terrainProfileRadius, CreativeTerrainProfileRadius::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::TerrainProfileAmplitude:
+      adjusted.terrainProfileAmplitude = cycleEnum(
+          adjusted.terrainProfileAmplitude,
+          CreativeTerrainProfileAmplitude::Count, direction);
+      break;
+    case CreativeToolOptionId::TerrainProfileSpacing:
+      adjusted.terrainProfileSpacing = cycleEnum(
+          adjusted.terrainProfileSpacing,
+          CreativeTerrainProfileSpacing::Count, direction);
+      break;
+    case CreativeToolOptionId::TerrainProfileDirection:
+      adjusted.terrainProfileDirection = cycleEnum(
+          adjusted.terrainProfileDirection,
+          CreativeTerrainProfileDirection::Count, direction);
+      break;
+    case CreativeToolOptionId::TerrainProfileFrequency:
+      adjusted.terrainProfileFrequency = cycleEnum(
+          adjusted.terrainProfileFrequency,
+          CreativeTerrainProfileFrequency::Count, direction);
       break;
     case CreativeToolOptionId::Count:
       receipt.status = CreativeToolOptionAdjustStatus::InvalidOption;

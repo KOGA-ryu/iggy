@@ -1048,7 +1048,8 @@ void buildAndAttachCreativeEditorOverlayFrame(
           editor.transform, gizmoThickness, combinedWireLines);
   const std::size_t terrainBefore = combinedWireLines.size();
   appendCreativeEditorTerrainOverlay(appState.facade.document(), editor,
-                                     gizmoThickness, combinedWireLines);
+                                     gizmoThickness, combinedWireLines,
+                                     request.captureMode);
   output.terrainEdgeCount = combinedWireLines.size() - terrainBefore;
   std::vector<DebugHudGlyphQuad>& glyphs = output.glyphs;
   appendCreativeEditorInteractionOverlay(

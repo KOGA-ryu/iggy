@@ -179,7 +179,9 @@ void adjustSelection(CreativeEditorState& editor,
       option == cr::CreativeToolOptionId::ArrayMode ||
       option == cr::CreativeToolOptionId::MaterialBrushShape ||
       option == cr::CreativeToolOptionId::MaterialBrushMask ||
-      option == cr::CreativeToolOptionId::TerrainRodStampMode;
+      option == cr::CreativeToolOptionId::TerrainRodStampMode ||
+      option == cr::CreativeToolOptionId::TerrainProfileKind ||
+      option == cr::CreativeToolOptionId::TerrainProfileRodPolicy;
   if (receipt.changed && optionSetChanged) {
     state.options =
         creativeEditorToolOptionsForEntry(state.targetEntry, state.draft);
@@ -487,6 +489,9 @@ bool processCreativeEditorQuickEditAction(
   if (held.kind == cr::CreativeHeldItemKind::TerrainSculpt) {
     return processCreativeEditorTerrainSculptQuickEdit(editor, action);
   }
+  if (held.kind == cr::CreativeHeldItemKind::TerrainProfile) {
+    return processCreativeEditorTerrainProfileQuickEdit(editor, action);
+  }
   rebuildQuickEditOptions(editor, false);
   CreativeEditorQuickEditState& state = editor.quickEdit;
   if (state.options.count == 0U || state.options.capacityExceeded) {
@@ -543,6 +548,9 @@ std::string creativeEditorQuickEditStatusLabel(
   }
   if (held.kind == cr::CreativeHeldItemKind::TerrainSculpt) {
     return creativeEditorTerrainSculptQuickEditLabel(editor);
+  }
+  if (held.kind == cr::CreativeHeldItemKind::TerrainProfile) {
+    return creativeEditorTerrainProfileQuickEditLabel(editor);
   }
   const CreativeEditorQuickEditState& state = editor.quickEdit;
   if (state.targetEntry.kind != held.kind ||

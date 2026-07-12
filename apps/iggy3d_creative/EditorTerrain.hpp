@@ -5,6 +5,7 @@
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
 #include "app/iggy3d/creative/tools/TerrainGrade.hpp"
+#include "app/iggy3d/creative/tools/TerrainProfile.hpp"
 #include "app/iggy3d/creative/tools/TerrainSculpt.hpp"
 #include "render/FrameInput.hpp"
 
@@ -80,6 +81,37 @@ struct CreativeTerrainSculptState {
   CreativeTerrainSculptPreviewCache preview{};
 };
 
+struct CreativeTerrainProfilePreviewCache {
+  bool valid = false;
+  bool renderAccepted = false;
+  std::uint64_t documentId = 0U;
+  std::uint64_t terrainRevision = 0U;
+  std::uint64_t buildCount = 0U;
+  iggy3d::creative::CreativeTerrainCoord2 center{};
+  std::uint16_t resolvedBaseHeightCells = 4U;
+  iggy3d::creative::CreativeTerrainProfileKind profile =
+      iggy3d::creative::CreativeTerrainProfileKind::Hill;
+  iggy3d::creative::CreativeTerrainProfileBlend blend =
+      iggy3d::creative::CreativeTerrainProfileBlend::Set;
+  iggy3d::creative::CreativeTerrainProfileRodPolicy rodPolicy =
+      iggy3d::creative::CreativeTerrainProfileRodPolicy::Fill;
+  iggy3d::creative::CreativeTerrainProfileDirection direction =
+      iggy3d::creative::CreativeTerrainProfileDirection::PositiveX;
+  std::uint16_t radiusCells = 4U;
+  std::uint16_t amplitudeCells = 4U;
+  std::uint16_t spacingCells = 1U;
+  std::uint8_t frequency = 1U;
+  iggy3d::creative::CreativeTerrainProfilePlan plan{};
+  std::vector<iggy3d::creative::CreativeTerrainSurfacePatch> patches;
+};
+
+struct CreativeTerrainProfileState {
+  bool baseLocked = false;
+  std::uint16_t lockedBaseHeightCells = 4U;
+  std::uint16_t resolvedBaseHeightCells = 4U;
+  CreativeTerrainProfilePreviewCache preview{};
+};
+
 struct CreativeEditorTerrainState {
   std::uint16_t heightCells = 4U;
   std::uint16_t radiusCells = 4U;
@@ -93,6 +125,7 @@ struct CreativeEditorTerrainState {
   CreativeTerrainStrokeState stroke{};
   CreativeTerrainGradeState grade{};
   CreativeTerrainSculptState sculpt{};
+  CreativeTerrainProfileState profile{};
 };
 
 enum class CreativeEditorTerrainEditKind : std::uint8_t {
@@ -148,6 +181,24 @@ struct CreativeEditorTerrainSculptReceipt {
   std::string_view reasonCode = "creative_editor_terrain_sculpt_not_requested";
 };
 
+enum class CreativeEditorTerrainProfileAction : std::uint8_t {
+  Apply,
+  LockBase,
+  UnlockBase,
+};
+
+struct CreativeEditorTerrainProfileReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  CreativeEditorTerrainProfileAction action =
+      CreativeEditorTerrainProfileAction::Apply;
+  iggy3d::creative::CreativeTerrainCoord2 targetCoord{};
+  iggy3d::creative::CreativeTerrainProfilePlan plan{};
+  iggy3d::creative::CreativeTerrainMutationReceipt mutation{};
+  std::string_view reasonCode = "creative_editor_terrain_profile_not_requested";
+};
+
 [[nodiscard]] bool resolveCreativeEditorTerrainPointerCoord(
     const CreativeEditorState& editor,
     iggy3d::creative::CreativeTerrainCoord2& target) noexcept;
@@ -196,6 +247,23 @@ sampleCreativeEditorTerrainSculptHeight(
 [[nodiscard]] CreativeEditorTerrainSculptReceipt
 cancelCreativeEditorTerrainSculpt(CreativeEditorState& editor) noexcept;
 
+[[nodiscard]] iggy3d::creative::CreativeTerrainProfilePlan
+planCreativeEditorTerrainProfile(
+    const iggy3d::creative::CreativeDocument& document,
+    const CreativeEditorState& editor,
+    iggy3d::creative::CreativeTerrainCoord2 target) noexcept;
+[[nodiscard]] CreativeEditorTerrainProfileReceipt
+applyCreativeEditorTerrainProfileWithHistory(
+    iggy3d::creative::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    std::string_view source);
+[[nodiscard]] CreativeEditorTerrainProfileReceipt
+lockCreativeEditorTerrainProfileBase(
+    const iggy3d::creative::CreativeDocument& document,
+    CreativeEditorState& editor) noexcept;
+[[nodiscard]] CreativeEditorTerrainProfileReceipt
+unlockCreativeEditorTerrainProfileBase(CreativeEditorState& editor) noexcept;
+
 [[nodiscard]] bool processCreativeEditorTerrainQuickEdit(
     CreativeEditorTerrainState& state,
     iggy3d::creative::CreativeInputActionId action) noexcept;
@@ -210,6 +278,11 @@ cancelCreativeEditorTerrainSculpt(CreativeEditorState& editor) noexcept;
     CreativeEditorState& editor,
     iggy3d::creative::CreativeInputActionId action) noexcept;
 [[nodiscard]] std::string creativeEditorTerrainSculptQuickEditLabel(
+    const CreativeEditorState& editor);
+[[nodiscard]] bool processCreativeEditorTerrainProfileQuickEdit(
+    CreativeEditorState& editor,
+    iggy3d::creative::CreativeInputActionId action) noexcept;
+[[nodiscard]] std::string creativeEditorTerrainProfileQuickEditLabel(
     const CreativeEditorState& editor);
 
 void clearCreativeEditorTerrainInteraction(
@@ -249,6 +322,15 @@ void appendCreativeEditorTerrainSculptOverlay(
     const CreativeEditorState& editor,
     float wireThickness,
     std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines);
+[[nodiscard]] bool refreshCreativeEditorTerrainProfilePreview(
+    CreativeEditorTerrainState& state,
+    const iggy3d::creative::CreativeDocument& document,
+    const CreativeEditorState& editor);
+void appendCreativeEditorTerrainProfileOverlay(
+    const iggy3d::creative::CreativeDocument& document,
+    const CreativeEditorState& editor,
+    float wireThickness,
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines);
 
 void appendCreativeEditorTerrainFootprintOutline(
     std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,
@@ -256,11 +338,22 @@ void appendCreativeEditorTerrainFootprintOutline(
     iggy3d::creative::CreativeTerrainControlPoint control,
     iggy3d::RenderLineColor color,
     float thickness);
+void appendCreativeEditorTerrainControlGuide(
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,
+    iggy3d::creative::CreativeGridSettings grid,
+    iggy3d::creative::CreativeTerrainControlPoint control,
+    iggy3d::RenderLineColor color,
+    float thickness);
+void appendCreativeEditorTerrainPatchSlopeTriangles(
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,
+    const iggy3d::creative::CreativeTerrainSurfacePatch& patch,
+    float thickness);
 
 void appendCreativeEditorTerrainOverlay(
     const iggy3d::creative::CreativeDocument& document,
     const CreativeEditorState& editor,
     float wireThickness,
-    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines);
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines,
+    bool captureMode = false);
 
 }  // namespace iggy3d_creative_app

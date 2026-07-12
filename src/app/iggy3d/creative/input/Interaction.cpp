@@ -150,6 +150,7 @@ std::string_view toString(CreativeHeldItemKind kind) noexcept {
     case CreativeHeldItemKind::TerrainControl: return "Terrain";
     case CreativeHeldItemKind::TerrainGrade: return "TerrainGrade";
     case CreativeHeldItemKind::TerrainSculpt: return "TerrainSculpt";
+    case CreativeHeldItemKind::TerrainProfile: return "TerrainProfile";
     case CreativeHeldItemKind::Count: break;
   }
   return "Unknown";
@@ -267,6 +268,7 @@ bool creativeHeldItemUsesMaterial(CreativeHeldItemKind kind) noexcept {
     case CreativeHeldItemKind::TerrainControl:
     case CreativeHeldItemKind::TerrainGrade:
     case CreativeHeldItemKind::TerrainSculpt:
+    case CreativeHeldItemKind::TerrainProfile:
     case CreativeHeldItemKind::Count:
       return false;
   }

@@ -121,6 +121,11 @@ iggy3d_add_unit_test(creative_tools_tests
 set_tests_properties(creative_tools_tests PROPERTIES
   LABELS "unit;app;creative;tools;iggy3d")
 
+iggy3d_add_unit_test(creative_terrain_profile_tests
+  tests/unit/creative_terrain_profile_tests.cpp)
+set_tests_properties(creative_terrain_profile_tests PROPERTIES
+  LABELS "unit;app;creative;tools;terrain;profile;iggy3d")
+
 iggy3d_add_unit_test(creative_pattern_tests
   tests/unit/creative_pattern_tests.cpp)
 set_tests_properties(creative_pattern_tests PROPERTIES

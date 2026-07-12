@@ -154,8 +154,8 @@ bool actionAvailabilityUsesExplicitFacts() {
 
 bool catalogBuildsMaterialsAndCreatorTools() {
   const cr::CreativeCatalogState state = catalog();
-  bool ok = expect(state.entries.size() == 17U,
-                   "two materials plus fifteen catalog tools") &&
+  bool ok = expect(state.entries.size() == 18U,
+                   "two materials plus sixteen catalog tools") &&
             expect(state.filteredEntryIndices.size() == state.entries.size(),
                    "empty query exposes every entry") &&
             expect(state.entries[0].category ==
@@ -174,9 +174,9 @@ bool catalogBuildsMaterialsAndCreatorTools() {
                        cr::CreativeHeldItemKind::ObjectSelect,
                    "object tools follow the material brush") &&
             expect(state.entries.back().hotbarEntry.kind ==
-                           cr::CreativeHeldItemKind::TerrainSculpt &&
-                       state.entries.back().label == "Terrain Sculpt",
-                   "terrain sculpt closes the tool lane as a selectable tool");
+                           cr::CreativeHeldItemKind::TerrainProfile &&
+                       state.entries.back().label == "Terrain Profile",
+                   "terrain profile closes the tool lane as a selectable tool");
   ok = expect(cr::toString(cr::CreativeCatalogEntryCategory::Material) ==
                   "Material" &&
                   cr::toString(cr::CreativeCatalogEntryCategory::Tool) ==
@@ -203,7 +203,7 @@ bool catalogOmitsToolsWithoutRequiredMaterial() {
                entry.hotbarEntry.kind ==
                    cr::CreativeHeldItemKind::SurfaceExtrude;
       });
-  return expect(state.entries.size() == 9U,
+  return expect(state.entries.size() == 10U,
                 "empty palette retains material-independent tools") &&
          expect(!materialDependentToolPresent,
                 "material-dependent tools require a valid material");
@@ -469,7 +469,7 @@ bool searchIsCaseInsensitiveBoundedAndStable() {
   bool ok = expect(cr::setCreativeCatalogQuery(state, "cRaTe"),
                    "mixed-case query changes filter") &&
             expect(state.filteredEntryIndices.size() == 1U,
-                   "crate query finds one material") &&
+                   "exact crate query excludes the crater profile alias") &&
             expect(cr::selectedCreativeCatalogEntry(state) != nullptr &&
                        cr::selectedCreativeCatalogEntry(state)
                                ->hotbarEntry.objectKind ==
@@ -486,6 +486,12 @@ bool searchIsCaseInsensitiveBoundedAndStable() {
                   cr::selectedCreativeCatalogEntry(state)->hotbarEntry.kind ==
                       cr::CreativeHeldItemKind::TerrainSculpt,
               "raise alias resolves uniquely to terrain sculpt") &&
+       expect(cr::setCreativeCatalogQuery(state, "crater") &&
+                  state.filteredEntryIndices.size() == 1U &&
+                  cr::selectedCreativeCatalogEntry(state) != nullptr &&
+                  cr::selectedCreativeCatalogEntry(state)->hotbarEntry.kind ==
+                      cr::CreativeHeldItemKind::TerrainProfile,
+              "crater alias resolves uniquely to terrain profile") &&
        expect(cr::setCreativeCatalogQuery(state, "no-such-entry"),
               "empty-result query accepted") &&
        expect(state.filteredEntryIndices.empty() &&
@@ -517,7 +523,7 @@ bool selectionWrapsAndAssignmentsAreExplicit() {
   cr::CreativeHotbarState hotbar = cr::makeDefaultCreativeHotbar(palette);
 
   bool ok = expect(cr::moveCreativeCatalogSelection(state, -1) &&
-                       state.selectedFilteredIndex == 16U,
+                       state.selectedFilteredIndex == 17U,
                    "previous wraps to final result") &&
             expect(cr::moveCreativeCatalogSelection(state, 1) &&
                        state.selectedFilteredIndex == 0U,

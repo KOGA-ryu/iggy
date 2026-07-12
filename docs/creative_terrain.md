@@ -125,6 +125,64 @@ selected in Tool Options and repeated in the sculpt HUD. Square and the `TARGET`
 HUD value are available only in Flatten mode because the other three modes do
 not consume a target height.
 
+Equip **Terrain Profile** to stamp a complete mathematical elevation in one
+action. It is a catalog/hotbar tool and does not replace a default tool-wheel
+sector.
+
+| Input | Operation |
+|---|---|
+| Right mouse / PS5 X | Apply the exact preview once on press |
+| Middle mouse / PS5 Square | Lock the currently sampled derived base height |
+| Left mouse / PS5 Circle | Return a locked base to automatic sampling |
+| Up/down / D-pad up/down | Increase or decrease Amplitude |
+| Left/right / D-pad left/right | Shrink or widen Radius |
+
+Profile stamps are intentionally one-shot. Holding X or right mouse does not
+repeat after 200 ms. This prevents accidental overlapping Add stamps and avoids
+unbounded scene rebuilds while a large brush is held.
+
+Tool Options exposes these bounded settings:
+
+- `PROFILE`: Hill, Basin, Ring, Crater, Ridge, Wave, or Ripple.
+- `BLEND`: Set computes `base + delta`; Add computes `pre-edit height + delta`.
+- `ROD POLICY`: Fill adds a canonical lattice where rods are missing; Existing
+  edits only authored rods already inside the footprint.
+- `RADIUS`: 2, 4, or 8 cells.
+- `AMPLITUDE`: 1, 2, 4, 8, or 16 cells.
+- `SPACING`: 1, 2, or 4 cells, visible only for Fill.
+- `DIRECTION`: eight X/Z axis and diagonal directions for Ridge and Wave.
+- `FREQUENCY`: one or two cycles for Wave and Ripple.
+
+Fill is the default, so a Hill works on an empty map. New rods use twice the
+selected spacing as their influence radius; existing rods retain their authored
+radius. Set is idempotent at unchanged settings. Add intentionally compounds.
+Square samples the same derived terrain height used by rendering; the lock
+persists while aiming elsewhere, and Circle restores automatic per-aim sampling.
+If no terrain is present at the aim point, automatic base uses the Terrain Rod
+HUD height.
+
+`buildCreativeTerrainProfilePlan` is the sole profile geometry and mutation
+owner. It merges existing controls and the Fill lattice in canonical Z/X order,
+uses at most 256 fixed entries, computes from one pre-edit snapshot, and rejects
+capacity or coordinate failure without partial edits. Preview applies that plan
+to a copied terrain field and runs the existing render planner, so green planned
+rods and slope-colored surface triangles match the accepted Facade batch.
+Rejected footprints are red. Catalogs, settings, controls, transform modals, and
+capture mode hide the preview.
+
+Profile math is deterministic integer fixed point. A checked-in 65-entry Q15
+quarter-wave table supplies sine; cosine is a quarter-turn phase offset. Radial
+distance and profile coordinates use Q16, 64-bit intermediates, and explicit
+symmetric nearest rounding. Runtime profile planning does not call `std::sin`
+or `std::cos`. Secant, cosecant, and cotangent are deliberately excluded because
+their poles conflict with finite bounded terrain output.
+
+Wave requires `2 * frequency * spacing <= radius`; Ripple requires
+`4 * frequency * spacing <= radius`. Both also require Fill so lattice spacing
+is known. An unsupported combination remains visible as a red, non-mutating
+preview. One accepted profile is one Facade terrain batch, document revision,
+undo record, and scene-cache refresh.
+
 ## Authored Data
 
 `CreativeTerrainField` owns a canonical vector sorted by Z then X. Coordinates
@@ -206,9 +264,6 @@ stepped fallback.
 
 Keep these as explicit later work, with profiling and visual tests before use:
 
-- Procedural Hill, Basin, Ring, Crater, Ridge, Wave, and Ripple stamping is
-  specified in [creative_terrain_profiles_plan.md](creative_terrain_profiles_plan.md).
-  It remains planned until its pure planner and editor integration gates pass.
 - AI navigation over smooth terrain must consume the bounded height-patch query
   and prove route/slope parity before replacing its current footprint model.
 - Material layers, erosion, spline ridges, caves, and overhangs are separate

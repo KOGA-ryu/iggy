@@ -436,8 +436,21 @@ bool heldVolumeItemsMapWithoutBranchesAtCallers() {
                     !cr::creativeHeldItemUsesMaterial(
                         cr::CreativeHeldItemKind::ObjectSelect) &&
                     !cr::creativeHeldItemUsesMaterial(
-                        cr::CreativeHeldItemKind::LinearArray),
+                        cr::CreativeHeldItemKind::LinearArray) &&
+                    !cr::creativeHeldItemUsesMaterial(
+                        cr::CreativeHeldItemKind::TerrainProfile),
                 "material-free held items remain explicit") &&
+         expect([] {
+                  cr::CreativeHeldItemKind parsed =
+                      cr::CreativeHeldItemKind::Count;
+                  return cr::toString(
+                             cr::CreativeHeldItemKind::TerrainProfile) ==
+                             "TerrainProfile" &&
+                         cr::parseCreativeHeldItemKind("TerrainProfile",
+                                                      parsed) &&
+                         parsed == cr::CreativeHeldItemKind::TerrainProfile;
+                }(),
+                "terrain profile held kind round trips through stable text") &&
          expect(cr::applyCreativeHeldItemMaterial(
                     materialTool, cr::CreativeObjectKind::Crate) &&
                     materialTool.objectKind == cr::CreativeObjectKind::Crate &&

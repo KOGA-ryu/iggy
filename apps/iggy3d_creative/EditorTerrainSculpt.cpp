@@ -5,7 +5,6 @@
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/document/Document.hpp"
-#include "runtime/movement/MovementPolicy.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -75,67 +74,6 @@ void invalidateSculptPreview(CreativeTerrainSculptState& sculpt) noexcept {
     return false;
   }
   return dx * dx + dz * dz <= radius * radius;
-}
-
-void appendLine(
-    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,
-    iggy3d::Vec3 start,
-    iggy3d::Vec3 end,
-    iggy3d::RenderLineColor color,
-    float thickness) {
-  iggy3d::RenderCreativeWireframeDebugLine line;
-  line.start = start;
-  line.end = end;
-  line.color = color;
-  line.thickness = thickness;
-  lines.push_back(line);
-}
-
-[[nodiscard]] iggy3d::RenderLineColor slopeColor(
-    iggy3d::Vec3 first,
-    iggy3d::Vec3 second,
-    iggy3d::Vec3 third) noexcept {
-  constexpr iggy3d::RenderLineColor walkable{0.20F, 1.0F, 0.35F, 1.0F};
-  constexpr iggy3d::RenderLineColor careful{1.0F, 0.82F, 0.16F, 1.0F};
-  constexpr iggy3d::RenderLineColor blocked{1.0F, 0.20F, 0.18F, 1.0F};
-  iggy3d::Vec3 normal;
-  if (!iggy3d::tryNormalize(iggy3d::cross(second - first, third - first),
-                            normal)) {
-    return blocked;
-  }
-  if (normal.y < 0.0F) {
-    normal = normal * -1.0F;
-  }
-  const iggy3d::SlopeSample slope = iggy3d::sampleSlope(normal);
-  if (!slope.valid || !slope.walkable) {
-    return blocked;
-  }
-  return slope.carefulFooting ? careful : walkable;
-}
-
-void appendPatchSlopeTriangles(
-    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,
-    const cr::CreativeTerrainSurfacePatch& patch,
-    float thickness) {
-  const cr::CreativeCoreVec3Conversion center =
-      cr::creativeVec3ToCoreChecked(patch.center);
-  if (!center.converted) {
-    return;
-  }
-  for (std::size_t index = 0U; index < patch.corners.size(); ++index) {
-    const cr::CreativeCoreVec3Conversion first =
-        cr::creativeVec3ToCoreChecked(patch.corners[index]);
-    const cr::CreativeCoreVec3Conversion second = cr::creativeVec3ToCoreChecked(
-        patch.corners[(index + 1U) % patch.corners.size()]);
-    if (!first.converted || !second.converted) {
-      continue;
-    }
-    const iggy3d::RenderLineColor color =
-        slopeColor(center.value, first.value, second.value);
-    appendLine(lines, center.value, first.value, color, thickness);
-    appendLine(lines, first.value, second.value, color, thickness);
-    appendLine(lines, second.value, center.value, color, thickness);
-  }
 }
 
 [[nodiscard]] cr::CreativeDocumentHistoryTransaction& ensureSculptTransaction(
@@ -480,7 +418,8 @@ void appendCreativeEditorTerrainSculptOverlay(
     return;
   }
   for (const cr::CreativeTerrainSurfacePatch& patch : preview.patches) {
-    appendPatchSlopeTriangles(wireLines, patch, wireThickness * 0.75F);
+    appendCreativeEditorTerrainPatchSlopeTriangles(
+        wireLines, patch, wireThickness * 0.75F);
   }
 }
 

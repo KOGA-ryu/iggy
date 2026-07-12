@@ -123,6 +123,13 @@ void appendQuickEdit(HintSpecBuffer& buffer,
                    cr::CreativeInputActionId::QuickEditIncrease, "Radius");
     return;
   }
+  if (held == cr::CreativeHeldItemKind::TerrainProfile) {
+    appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
+                   cr::CreativeInputActionId::QuickEditNext, "Amplitude");
+    appendHintPair(buffer, cr::CreativeInputActionId::QuickEditDecrease,
+                   cr::CreativeInputActionId::QuickEditIncrease, "Radius");
+    return;
+  }
   if (editor.quickEdit.options.count == 0U) {
     return;
   }
@@ -187,6 +194,16 @@ void appendViewportKeyboardHints(HintSpecBuffer& buffer,
         appendHint(buffer, cr::CreativeInputActionId::PickAction,
                    "Sample height");
       }
+      appendQuickEdit(buffer, editor);
+      break;
+    case cr::CreativeHeldItemKind::TerrainProfile:
+      appendHint(buffer, cr::CreativeInputActionId::SecondaryAction,
+                 "Apply profile");
+      if (editor.terrain.profile.baseLocked) {
+        appendHint(buffer, cr::CreativeInputActionId::PrimaryAction,
+                   "Auto base");
+      }
+      appendHint(buffer, cr::CreativeInputActionId::PickAction, "Lock base");
       appendQuickEdit(buffer, editor);
       break;
     case cr::CreativeHeldItemKind::ObjectSelect:
@@ -282,6 +299,15 @@ void appendViewportGamepadHints(HintSpecBuffer& buffer,
         appendHint(buffer, cr::CreativeInputActionId::PickAction,
                    "Sample height");
       }
+      break;
+    case cr::CreativeHeldItemKind::TerrainProfile:
+      appendHint(buffer, cr::CreativeInputActionId::AcceptAction,
+                 "Apply profile");
+      if (editor.terrain.profile.baseLocked) {
+        appendHint(buffer, cr::CreativeInputActionId::RejectAction,
+                   "Auto base");
+      }
+      appendHint(buffer, cr::CreativeInputActionId::PickAction, "Lock base");
       break;
     case cr::CreativeHeldItemKind::ObjectSelect:
       appendHint(buffer, cr::CreativeInputActionId::AcceptAction, "Select");

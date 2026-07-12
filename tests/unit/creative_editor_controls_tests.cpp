@@ -150,19 +150,19 @@ bool toolWheelPreferenceRoundTripIsAtomic() {
   const cr::CreativeCatalogState catalog =
       cr::makeCreativeCatalog(palette);
   cr::CreativeToolWheelState source = cr::makeCreativeToolWheel(catalog);
-  const auto objectSelect = std::find_if(
+  const auto terrainProfile = std::find_if(
       catalog.entries.begin(), catalog.entries.end(),
       [](const cr::CreativeCatalogEntry& entry) {
         return entry.hotbarEntry.kind ==
-               cr::CreativeHeldItemKind::ObjectSelect;
+               cr::CreativeHeldItemKind::TerrainProfile;
       });
-  if (objectSelect == catalog.entries.end()) {
-    return expect(false, "object select exists for wheel preference test");
+  if (terrainProfile == catalog.entries.end()) {
+    return expect(false, "terrain profile exists for wheel preference test");
   }
-  const std::size_t objectSelectIndex = static_cast<std::size_t>(
-      std::distance(catalog.entries.begin(), objectSelect));
+  const std::size_t terrainProfileIndex = static_cast<std::size_t>(
+      std::distance(catalog.entries.begin(), terrainProfile));
   if (!cr::assignCreativeToolWheelCatalogEntry(
-          source, catalog, 0U, objectSelectIndex)) {
+          source, catalog, 0U, terrainProfileIndex)) {
     return expect(false, "custom wheel assignment applies before save");
   }
 

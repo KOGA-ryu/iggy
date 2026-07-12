@@ -74,6 +74,10 @@ constexpr std::array kToolSpecs{
                     "terrain sculpt raise lower flatten smooth brush plateau "
                     "landscape",
                     false},
+    CatalogToolSpec{CreativeHeldItemKind::TerrainProfile, "Terrain Profile",
+                    "terrain profile hill basin ring crater ridge wave ripple "
+                    "elevation landscape",
+                    false},
 };
 
 constexpr std::array kActionEntries{
@@ -119,6 +123,24 @@ static_assert(kActionEntries.size() == kCreativeCatalogActionCapacity);
   return output;
 }
 
+[[nodiscard]] bool containsSearchWord(std::string_view text,
+                                      std::string_view word) noexcept {
+  if (word.empty() || word.find(' ') != std::string_view::npos) {
+    return false;
+  }
+  std::size_t offset = text.find(word);
+  while (offset != std::string_view::npos) {
+    const std::size_t end = offset + word.size();
+    const bool startsWord = offset == 0U || text[offset - 1U] == ' ';
+    const bool endsWord = end == text.size() || text[end] == ' ';
+    if (startsWord && endsWord) {
+      return true;
+    }
+    offset = text.find(word, offset + 1U);
+  }
+  return false;
+}
+
 [[nodiscard]] std::optional<std::size_t> selectedEntryIndex(
     const CreativeCatalogState& catalog) noexcept {
   if (catalog.selectedFilteredIndex >= catalog.filteredEntryIndices.size()) {
@@ -130,11 +152,22 @@ static_assert(kActionEntries.size() == kCreativeCatalogActionCapacity);
 void refreshFilter(CreativeCatalogState& catalog) {
   const std::optional<std::size_t> previous = selectedEntryIndex(catalog);
   const std::string query = lowerAscii(catalog.query);
+  const bool exactWordMode =
+      !query.empty() &&
+      std::any_of(catalog.entries.begin(), catalog.entries.end(),
+                  [&query](const CreativeCatalogEntry& entry) {
+                    return containsSearchWord(entry.searchText, query);
+                  });
   catalog.filteredEntryIndices.clear();
   catalog.filteredEntryIndices.reserve(catalog.entries.size());
   for (std::size_t index = 0; index < catalog.entries.size(); ++index) {
-    if (query.empty() ||
-        catalog.entries[index].searchText.find(query) != std::string::npos) {
+    const bool matches =
+        query.empty() ||
+        (exactWordMode
+             ? containsSearchWord(catalog.entries[index].searchText, query)
+             : catalog.entries[index].searchText.find(query) !=
+                   std::string::npos);
+    if (matches) {
       catalog.filteredEntryIndices.push_back(index);
     }
   }

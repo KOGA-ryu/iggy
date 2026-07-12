@@ -91,6 +91,8 @@ constexpr std::array kHeldItemBehaviors{
                      cr::Tool::Select, false, false},
     HeldItemBehavior{cr::CreativeHeldItemKind::TerrainSculpt,
                      cr::Tool::Select, false, false},
+    HeldItemBehavior{cr::CreativeHeldItemKind::TerrainProfile,
+                     cr::Tool::Select, false, false},
 };
 static_assert(heldItemRowsMatchEnumOrder(kHeldItemBehaviors));
 
@@ -446,6 +448,22 @@ void cancelTerrainGrade(InteractionContext& context) {
   static_cast<void>(cancelCreativeEditorTerrainGrade(context.request.editor));
 }
 
+void applyTerrainProfile(InteractionContext& context) {
+  static_cast<void>(applyCreativeEditorTerrainProfileWithHistory(
+      context.request.appState, context.request.editor,
+      "minecraft_terrain_profile_apply"));
+}
+
+void lockTerrainProfileBase(InteractionContext& context) {
+  static_cast<void>(lockCreativeEditorTerrainProfileBase(
+      context.request.appState.facade.document(), context.request.editor));
+}
+
+void unlockTerrainProfileBase(InteractionContext& context) {
+  static_cast<void>(
+      unlockCreativeEditorTerrainProfileBase(context.request.editor));
+}
+
 constexpr std::array<HeldItemHandlerRow, cr::kCreativeHeldItemKindCount>
     kHeldItemHandlers{{
         {cr::CreativeHeldItemKind::Material,
@@ -499,6 +517,10 @@ constexpr std::array<HeldItemHandlerRow, cr::kCreativeHeldItemKindCount>
         {cr::CreativeHeldItemKind::TerrainSculpt,
          {noInteraction, noInteraction, noInteraction},
          noInteraction, noInteraction},
+        {cr::CreativeHeldItemKind::TerrainProfile,
+         {unlockTerrainProfileBase, applyTerrainProfile,
+          lockTerrainProfileBase},
+         applyTerrainProfile, unlockTerrainProfileBase, true},
     }};
 static_assert(heldItemRowsMatchEnumOrder(kHeldItemHandlers));
 
@@ -880,6 +902,7 @@ double creativeEditorTargetCellSize(
     case cr::CreativeHeldItemKind::TerrainControl:
     case cr::CreativeHeldItemKind::TerrainGrade:
     case cr::CreativeHeldItemKind::TerrainSculpt:
+    case cr::CreativeHeldItemKind::TerrainProfile:
       return document.gridSettings().cellSizeMeters;
     case cr::CreativeHeldItemKind::ObjectSelect:
     case cr::CreativeHeldItemKind::ObjectMove:
@@ -1037,6 +1060,23 @@ std::string creativeEditorHeldItemStatusLabel(
     if (editor.terrain.sculpt.preview.valid &&
         !editor.terrain.sculpt.preview.plan.accepted) {
       output.append(" | NO RODS");
+    }
+    return output;
+  }
+  if (held.kind == cr::CreativeHeldItemKind::TerrainProfile) {
+    output.append(" | ");
+    output.append(cr::toString(editor.toolSettings.terrainProfileKind));
+    output.append(" | ");
+    output.append(cr::toString(editor.toolSettings.terrainProfileBlend));
+    output.append(" | ");
+    output.append(cr::toString(editor.toolSettings.terrainProfileRodPolicy));
+    output.append(" | ");
+    output.append(creativeEditorTerrainProfileQuickEditLabel(editor));
+    if (editor.terrain.profile.preview.valid &&
+        !editor.terrain.profile.preview.plan.accepted) {
+      output.append(" | ");
+      output.append(
+          cr::toString(editor.terrain.profile.preview.plan.status));
     }
     return output;
   }
@@ -1335,6 +1375,10 @@ bool confirmCreativeEditorHeldItem(cr::CreativeAppState& appState,
     return applyCreativeEditorTerrainSculptWithHistory(appState, editor, source)
         .accepted;
   }
+  if (held.kind == cr::CreativeHeldItemKind::TerrainProfile) {
+    return applyCreativeEditorTerrainProfileWithHistory(appState, editor, source)
+        .accepted;
+  }
   if (held.kind == cr::CreativeHeldItemKind::SurfaceExtrude) {
     return applyCreativeEditorSurfaceExtrudeWithHistory(
                appState, editor, cr::CreativeSurfaceExtrudeKind::Extrude,
@@ -1373,6 +1417,9 @@ bool cancelCreativeEditorHeldItem(cr::CreativeAppState& appState,
     finalizeCreativeTerrainSculptStroke(
         appState, editor, "creative_terrain_sculpt_cancel_active_tool");
     return cancelCreativeEditorTerrainSculpt(editor).accepted;
+  }
+  if (held.kind == cr::CreativeHeldItemKind::TerrainProfile) {
+    return unlockCreativeEditorTerrainProfileBase(editor).accepted;
   }
   if (editor.volume.active &&
       editor.volume.selection.phase != cr::CreativeVolumeSelectionPhase::Empty) {
@@ -1413,7 +1460,8 @@ void processCreativeEditorWorldInteractionFrame(
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   if (aimedHeld.kind == cr::CreativeHeldItemKind::TerrainControl ||
       aimedHeld.kind == cr::CreativeHeldItemKind::TerrainGrade ||
-      aimedHeld.kind == cr::CreativeHeldItemKind::TerrainSculpt) {
+      aimedHeld.kind == cr::CreativeHeldItemKind::TerrainSculpt ||
+      aimedHeld.kind == cr::CreativeHeldItemKind::TerrainProfile) {
     updateCreativeEditorTerrainAim(
         editor.terrain, document, editor.interaction.target.ray,
         editor.interaction.target.valid ? editor.interaction.target.distanceMeters
@@ -1533,6 +1581,10 @@ void processCreativeEditorWorldInteractionFrame(
   }
   finalizeCreativeTerrainSculptStroke(
       request.appState, editor, "creative_terrain_sculpt_non_sculpt_tool");
+  if (held.kind == cr::CreativeHeldItemKind::TerrainProfile) {
+    static_cast<void>(refreshCreativeEditorTerrainProfilePreview(
+        editor.terrain, request.appState.facade.document(), editor));
+  }
   if (held.kind == cr::CreativeHeldItemKind::ObjectMove) {
     processMoveInteraction(request);
     if (cr::creativeWorldActionPressed(request.actions,

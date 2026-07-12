@@ -1,6 +1,6 @@
 # Terrain Profile Stamp Plan
 
-Status: implementation-ready research plan
+Status: implemented; retained as research and acceptance rationale
 
 Verified against repository HEAD `c43e9db7696ad640ab8406841fa945aeb6db1e23`
 on 2026-07-12.
@@ -90,7 +90,7 @@ and PS5 controller. It adds no physical binding.
 | Accept | Right click | X | Apply one previewed stamp on press |
 | Pick | Middle click | Square | Lock the currently sampled base height |
 | Reject | Left click | Circle | Return a locked base to automatic sampling |
-| Quick previous / next | Up / down | D-pad up / down | Decrease / increase amplitude |
+| Quick previous / next | Up / down | D-pad up / down | Increase / decrease amplitude |
 | Quick decrease / increase | Left / right | D-pad left / right | Decrease / increase radius |
 
 Accept is deliberately press-only in this batch. Holding X or right click must
@@ -251,7 +251,7 @@ enum class CreativeTerrainProfileRodPolicy : std::uint8_t {
 };
 
 struct CreativeTerrainProfileRequest {
-  std::span<const CreativeTerrainControlPoint> controls;
+  const CreativeTerrainField* field;
   CreativeTerrainCoord2 center;
   std::uint16_t baseHeightCells;
   CreativeTerrainProfileKind profile;
@@ -429,6 +429,8 @@ profile preview/base-lock state; it does not mutate the document.
   - Pin catalog discovery, search aliases, and eligibility.
 - `tests/unit/creative_editor_action_hints_tests.cpp`
   - Pin mouse/keyboard and PS5 semantic hints, including conditional unlock.
+- `tests/unit/creative_editor_controls_tests.cpp`
+  - Pin tool-wheel preference round trip for the seventeenth held-item kind.
 - `tests/unit/creative_editor_terrain_tests.cpp`
   - Pin preview/apply/history/cache/base-lock/modal behavior.
 - `tests/unit/creative_terrain_field_tests.cpp`
@@ -438,11 +440,14 @@ profile preview/base-lock state; it does not mutate the document.
   - Replace the plan link with the implemented interaction and algorithm
     contract only after the complete feature passes.
 
-### Explicit no-change surfaces
+### Boundary Notes
 
-- `apps/iggy3d_creative/EditorPreviewFrame.cpp`
-  - It already calls the single terrain overlay boundary. Profile integrates
-    behind that boundary.
+- `apps/iggy3d_creative/EditorPreviewFrame.cpp` changes only at the existing
+  terrain-overlay call site to forward `captureMode`. The common terrain
+  overlay previously had no way to honor the required capture hiding law.
+
+The following surfaces remain unchanged:
+
 - `render/`, `src/render/`, and Vulkan pipeline files
   - Profile preview uses existing editor overlays; no new render pipeline.
 - `src/app/iggy3d/creative/document/TerrainField.*`
@@ -552,10 +557,11 @@ cmake --build build --target \
   creative_interaction_tests \
   creative_catalog_tests \
   creative_editor_action_hints_tests \
+  creative_editor_controls_tests \
   creative_editor_terrain_tests \
   iggy3d_creative
 ctest --test-dir build -R \
-  '^(creative_terrain_profile_tests|creative_terrain_field_tests|creative_tools_tests|creative_interaction_tests|creative_catalog_tests|creative_editor_action_hints_tests|creative_editor_terrain_tests)$' \
+  '^(creative_terrain_profile_tests|creative_terrain_field_tests|creative_tools_tests|creative_interaction_tests|creative_catalog_tests|creative_editor_action_hints_tests|creative_editor_controls_tests|creative_editor_terrain_tests)$' \
   --output-on-failure
 git diff --check
 ```

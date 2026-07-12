@@ -472,6 +472,44 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
               "raise omits the Flatten-only sample action and target label") &&
        ok;
 
+  setHeld(editor, cr::CreativeHeldItemKind::TerrainProfile);
+  const cr::CreativeActionHintFrame terrainProfile =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* profileApply =
+      findHint(terrainProfile, cr::CreativeInputActionId::AcceptAction);
+  const cr::CreativeActionHint* profileLock =
+      findHint(terrainProfile, cr::CreativeInputActionId::PickAction);
+  ok = expect(profileApply != nullptr && profileApply->chord.view() == "X" &&
+                  profileApply->label.view() == "Apply profile" &&
+                  profileLock != nullptr &&
+                  profileLock->chord.view() == "Square" &&
+                  profileLock->label.view() == "Lock base" &&
+                  findHint(terrainProfile,
+                           cr::CreativeInputActionId::RejectAction) == nullptr &&
+                  findHint(terrainProfile,
+                           cr::CreativeInputActionId::QuickEditPrevious) !=
+                      nullptr &&
+                  findHint(terrainProfile,
+                           cr::CreativeInputActionId::QuickEditDecrease) !=
+                      nullptr,
+              "profile advertises X apply Square lock and D-pad tuning") &&
+       ok;
+  editor.terrain.profile.baseLocked = true;
+  const cr::CreativeActionHintFrame lockedProfile =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* profileUnlock =
+      findHint(lockedProfile, cr::CreativeInputActionId::RejectAction);
+  ok = expect(profileUnlock != nullptr &&
+                  profileUnlock->chord.view() == "Circle" &&
+                  profileUnlock->label.view() == "Auto base" &&
+                  !lockedProfile.capacityExceeded,
+              "Circle appears only when profile base is locked") &&
+       ok;
+
   setHeld(editor, cr::CreativeHeldItemKind::LinearArray);
   const cr::CreativeActionHintFrame array = resolveCreativeEditorActionHints(
       editor, cr::CreativeInputContext::EditorViewport,

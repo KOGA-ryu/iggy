@@ -6,6 +6,7 @@
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/document/Document.hpp"
+#include "runtime/movement/MovementPolicy.hpp"
 
 #include <algorithm>
 #include <array>
@@ -503,6 +504,64 @@ void appendCreativeEditorTerrainFootprintOutline(
   appendTerrainFootprintOutline(lines, grid, control, color, thickness);
 }
 
+void appendCreativeEditorTerrainControlGuide(
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,
+    cr::CreativeGridSettings grid,
+    cr::CreativeTerrainControlPoint control,
+    iggy3d::RenderLineColor color,
+    float thickness) {
+  appendBounds(lines, terrainRodBounds(grid, control, 0.18), color, thickness);
+}
+
+void appendCreativeEditorTerrainPatchSlopeTriangles(
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,
+    const cr::CreativeTerrainSurfacePatch& patch,
+    float thickness) {
+  constexpr iggy3d::RenderLineColor walkable{0.20F, 1.0F, 0.35F, 1.0F};
+  constexpr iggy3d::RenderLineColor careful{1.0F, 0.82F, 0.16F, 1.0F};
+  constexpr iggy3d::RenderLineColor blocked{1.0F, 0.20F, 0.18F, 1.0F};
+  const cr::CreativeCoreVec3Conversion center =
+      cr::creativeVec3ToCoreChecked(patch.center);
+  if (!center.converted) {
+    return;
+  }
+  for (std::size_t index = 0U; index < patch.corners.size(); ++index) {
+    const cr::CreativeCoreVec3Conversion first =
+        cr::creativeVec3ToCoreChecked(patch.corners[index]);
+    const cr::CreativeCoreVec3Conversion second = cr::creativeVec3ToCoreChecked(
+        patch.corners[(index + 1U) % patch.corners.size()]);
+    if (!first.converted || !second.converted) {
+      continue;
+    }
+    iggy3d::RenderLineColor color = blocked;
+    iggy3d::Vec3 normal;
+    if (iggy3d::tryNormalize(
+            iggy3d::cross(first.value - center.value,
+                          second.value - center.value),
+            normal)) {
+      if (normal.y < 0.0F) {
+        normal = normal * -1.0F;
+      }
+      const iggy3d::SlopeSample slope = iggy3d::sampleSlope(normal);
+      if (slope.valid && slope.walkable) {
+        color = slope.carefulFooting ? careful : walkable;
+      }
+    }
+    const auto append = [&lines, color, thickness](iggy3d::Vec3 start,
+                                                    iggy3d::Vec3 end) {
+      iggy3d::RenderCreativeWireframeDebugLine line;
+      line.start = start;
+      line.end = end;
+      line.color = color;
+      line.thickness = thickness;
+      lines.push_back(line);
+    };
+    append(center.value, first.value);
+    append(first.value, second.value);
+    append(second.value, center.value);
+  }
+}
+
 bool resolveCreativeEditorTerrainGradeTarget(
     const CreativeEditorState& editor,
     cr::CreativeTerrainCoord2& target) noexcept {
@@ -650,6 +709,11 @@ void clearCreativeEditorTerrainInteraction(
   state.sculpt.preview.valid = false;
   state.sculpt.preview.renderAccepted = false;
   state.sculpt.preview.patches.clear();
+  state.profile.baseLocked = false;
+  state.profile.resolvedBaseHeightCells = state.heightCells;
+  state.profile.preview.valid = false;
+  state.profile.preview.renderAccepted = false;
+  state.profile.preview.patches.clear();
 }
 
 void updateCreativeEditorTerrainAim(
@@ -768,7 +832,8 @@ void appendCreativeEditorTerrainOverlay(
     const cr::CreativeDocument& document,
     const CreativeEditorState& editor,
     float wireThickness,
-    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines) {
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines,
+    bool captureMode) {
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   const bool terrainControl =
@@ -776,9 +841,13 @@ void appendCreativeEditorTerrainOverlay(
   const bool terrainGrade = held.kind == cr::CreativeHeldItemKind::TerrainGrade;
   const bool terrainSculpt =
       held.kind == cr::CreativeHeldItemKind::TerrainSculpt;
-  if ((!terrainControl && !terrainGrade && !terrainSculpt) ||
+  const bool terrainProfile =
+      held.kind == cr::CreativeHeldItemKind::TerrainProfile;
+  if (captureMode ||
+      (!terrainControl && !terrainGrade && !terrainSculpt && !terrainProfile) ||
       editor.catalog.model.open || editor.catalog.toolWheel.open ||
-      editor.toolOptions.open || editor.transform.active) {
+      editor.toolOptions.open || editor.controls.open || editor.transform.active ||
+      editor.transform.controlsOpen) {
     return;
   }
 
@@ -807,6 +876,12 @@ void appendCreativeEditorTerrainOverlay(
   if (terrainSculpt) {
     appendCreativeEditorTerrainSculptOverlay(document, editor, thickness,
                                              wireLines);
+    return;
+  }
+
+  if (terrainProfile) {
+    appendCreativeEditorTerrainProfileOverlay(document, editor, thickness,
+                                              wireLines);
     return;
   }
 
