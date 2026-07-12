@@ -10,20 +10,8 @@ namespace {
   return lhs.z != rhs.z ? lhs.z < rhs.z : lhs.x < rhs.x;
 }
 
-using Iterator = std::vector<CreativeTerrainMaterialOverride>::iterator;
 using ConstIterator =
     std::vector<CreativeTerrainMaterialOverride>::const_iterator;
-
-[[nodiscard]] Iterator lowerBound(
-    std::vector<CreativeTerrainMaterialOverride>& values,
-    CreativeTerrainCoord2 coord) noexcept {
-  return std::lower_bound(
-      values.begin(), values.end(), coord,
-      [](const CreativeTerrainMaterialOverride& value,
-         CreativeTerrainCoord2 candidate) {
-        return coordLess(value.coord, candidate);
-      });
-}
 
 [[nodiscard]] ConstIterator lowerBound(
     const std::vector<CreativeTerrainMaterialOverride>& values,
@@ -167,6 +155,11 @@ CreativeTerrainMaterialMutationReceipt CreativeTerrainMaterialField::apply(
     receipt.reasonCode = "creative_terrain_material_field_invalid";
     return receipt;
   }
+  if (edits.size() > kCreativeTerrainMaterialOverrideCapacity) {
+    receipt.status = CreativeTerrainMaterialMutationStatus::CapacityExceeded;
+    receipt.reasonCode = "creative_terrain_material_edit_capacity_exceeded";
+    return receipt;
+  }
 
   std::vector<CreativeTerrainMaterialEdit> ordered{edits.begin(), edits.end()};
   for (const CreativeTerrainMaterialEdit& edit : ordered) {
@@ -190,26 +183,42 @@ CreativeTerrainMaterialMutationReceipt CreativeTerrainMaterialField::apply(
     }
   }
 
-  std::vector<CreativeTerrainMaterialOverride> staged = overrides_;
-  for (const CreativeTerrainMaterialEdit& edit : ordered) {
-    Iterator found = lowerBound(staged, edit.coord);
-    const bool exists = found != staged.end() && found->coord == edit.coord;
-    if (edit.kind == CreativeTerrainMaterialEditKind::Clear) {
-      if (exists) {
-        staged.erase(found);
-        ++receipt.changedOverrideCount;
-      }
+  std::vector<CreativeTerrainMaterialOverride> staged;
+  staged.reserve(std::min(
+      kCreativeTerrainMaterialOverrideCapacity + 1U,
+      overrides_.size() + ordered.size()));
+  std::size_t overrideIndex = 0U;
+  std::size_t editIndex = 0U;
+  while (overrideIndex < overrides_.size() || editIndex < ordered.size()) {
+    if (editIndex == ordered.size() ||
+        (overrideIndex < overrides_.size() &&
+         coordLess(overrides_[overrideIndex].coord,
+                   ordered[editIndex].coord))) {
+      staged.push_back(overrides_[overrideIndex++]);
       continue;
     }
-    if (exists) {
-      if (found->material != edit.material) {
-        found->material = edit.material;
+    const CreativeTerrainMaterialEdit& edit = ordered[editIndex];
+    if (overrideIndex == overrides_.size() ||
+        coordLess(edit.coord, overrides_[overrideIndex].coord)) {
+      if (edit.kind == CreativeTerrainMaterialEditKind::Set) {
+        staged.push_back({edit.coord, edit.material});
         ++receipt.changedOverrideCount;
       }
-    } else {
-      staged.insert(found, {edit.coord, edit.material});
-      ++receipt.changedOverrideCount;
+      ++editIndex;
+      continue;
     }
+    const CreativeTerrainMaterialOverride& existing =
+        overrides_[overrideIndex];
+    if (edit.kind == CreativeTerrainMaterialEditKind::Clear) {
+      ++receipt.changedOverrideCount;
+    } else {
+      staged.push_back({edit.coord, edit.material});
+      if (existing.material != edit.material) {
+        ++receipt.changedOverrideCount;
+      }
+    }
+    ++overrideIndex;
+    ++editIndex;
   }
   if (staged.size() > kCreativeTerrainMaterialOverrideCapacity) {
     receipt.changedOverrideCount = 0U;

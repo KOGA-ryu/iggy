@@ -240,8 +240,33 @@ void appendViewportHints(HintSpecBuffer& buffer,
       keyboardQuickEdit = true;
       break;
     case cr::CreativeHeldItemKind::TerrainPaint:
-      appendHint(buffer, positiveAction, "Paint surface");
-      appendHint(buffer, negativeAction, "Restore grass");
+      switch (editor.toolSettings.terrainPaintMode) {
+        case cr::CreativeTerrainPaintMode::Brush:
+          appendHint(buffer, positiveAction, "Paint surface");
+          appendHint(buffer, negativeAction, "Restore grass");
+          break;
+        case cr::CreativeTerrainPaintMode::Connected:
+          appendHint(buffer, positiveAction, "Fill connected");
+          appendHint(buffer, negativeAction, "Restore connected");
+          break;
+        case cr::CreativeTerrainPaintMode::Region:
+          switch (editor.terrainPaint.regionPhase) {
+            case CreativeEditorTerrainPaintRegionPhase::Empty:
+              appendHint(buffer, positiveAction, "Corner 1");
+              break;
+            case CreativeEditorTerrainPaintRegionPhase::FirstCorner:
+              appendHint(buffer, positiveAction, "Corner 2");
+              appendHint(buffer, negativeAction, "Cancel region");
+              break;
+            case CreativeEditorTerrainPaintRegionPhase::Complete:
+              appendHint(buffer, positiveAction, "Replace region");
+              appendHint(buffer, negativeAction, "Back to corner 2");
+              break;
+          }
+          break;
+        case cr::CreativeTerrainPaintMode::Count:
+          break;
+      }
       appendHint(buffer, cr::CreativeInputActionId::PickAction,
                  "Sample surface");
       keyboardQuickEdit = true;

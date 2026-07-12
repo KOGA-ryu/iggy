@@ -18,12 +18,57 @@ namespace iggy3d_creative_app {
 
 struct CreativeEditorState;
 
+enum class CreativeEditorTerrainPaintRegionPhase : std::uint8_t {
+  Empty,
+  FirstCorner,
+  Complete,
+};
+
+struct CreativeEditorTerrainPaintPreviewEdge {
+  iggy3d::Vec3 start{};
+  iggy3d::Vec3 end{};
+};
+
+struct CreativeEditorTerrainPaintPreviewCache {
+  bool valid = false;
+  bool targetValid = false;
+  std::uint64_t documentId = 0U;
+  std::uint64_t terrainRevision = 0U;
+  std::uint64_t materialRevision = 0U;
+  std::uint64_t buildCount = 0U;
+  iggy3d::creative::CreativeVec3 gridOrigin{};
+  double gridCellSizeMeters = 0.0;
+  iggy3d::creative::CreativeTerrainPaintMode mode =
+      iggy3d::creative::CreativeTerrainPaintMode::Brush;
+  iggy3d::creative::CreativeTerrainMaterial material =
+      iggy3d::creative::CreativeTerrainMaterial::Grass;
+  iggy3d::creative::CreativeTerrainPaintSource source =
+      iggy3d::creative::CreativeTerrainPaintSource::Any;
+  iggy3d::creative::CreativeTerrainPaintRadius radius =
+      iggy3d::creative::CreativeTerrainPaintRadius::OneCell;
+  CreativeEditorTerrainPaintRegionPhase regionPhase =
+      CreativeEditorTerrainPaintRegionPhase::Empty;
+  iggy3d::creative::CreativeTerrainCoord2 target{};
+  iggy3d::creative::CreativeTerrainCoord2 firstCorner{};
+  iggy3d::creative::CreativeTerrainCoord2 secondCorner{};
+  iggy3d::creative::CreativeTerrainPaintPlan plan{};
+  std::vector<CreativeEditorTerrainPaintPreviewEdge> edges;
+};
+
 struct CreativeEditorTerrainPaintState {
   iggy3d::creative::CreativeMaterialRepeatState repeat{};
   iggy3d::creative::CreativeDocumentHistoryTransaction transaction{};
   iggy3d::creative::CreativeTerrainPaintPlan lastPlan{};
   iggy3d::creative::CreativeTerrainMaterialMutationReceipt lastMutation{};
+  CreativeEditorTerrainPaintPreviewCache preview{};
+  iggy3d::creative::CreativeTerrainPaintMode activeMode =
+      iggy3d::creative::CreativeTerrainPaintMode::Brush;
+  CreativeEditorTerrainPaintRegionPhase regionPhase =
+      CreativeEditorTerrainPaintRegionPhase::Empty;
+  iggy3d::creative::CreativeTerrainCoord2 firstCorner{};
+  iggy3d::creative::CreativeTerrainCoord2 secondCorner{};
   std::uint16_t acceptedMutationCount = 0U;
+  bool modeInitialized = false;
 };
 
 void processCreativeEditorTerrainPaintFrame(

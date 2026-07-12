@@ -484,6 +484,113 @@ bool terrainSurfacePaintRoutesGesturesHistorySamplingAndRendering() {
          ok;
 }
 
+bool terrainConnectedAndRegionModesUsePressBasedAtomicGestures() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 431U);
+  const cr::CreativeTerrainControlEdit control{
+      cr::CreativeTerrainEditKind::Upsert, {{0, 0}, 4U, 2U}};
+  static_cast<void>(appState.facade.applyTerrainControlEdits(
+      std::span{&control, 1U}));
+  appState.history = {};
+  CreativeEditorState editor = terrainPaintEditor();
+  editor.toolSettings.terrainPaintMode =
+      cr::CreativeTerrainPaintMode::Connected;
+  editor.toolSettings.terrainPaintMaterial = cr::CreativeTerrainMaterial::Dirt;
+  iggy3d::RenderCameraFrame camera;
+  camera.worldEye = {0.5F, 10.0F, 0.5F};
+  camera.worldForward = {0.0F, -1.0F, 0.0F};
+  camera.worldUp = {0.0F, 0.0F, -1.0F};
+  const CreativeEditorPickFrame pickFrame;
+  const auto process = [&](const cr::CreativeWorldActionFrame& actions,
+                           std::uint64_t now) {
+    processCreativeEditorWorldInteractionFrame(
+        {appState, editor, actions, cr::kCreativeInputModifierNone, camera,
+         pickFrame, 800U, 600U, now, false});
+  };
+  const auto press = [&](cr::CreativeWorldActionId action,
+                         std::uint64_t now) {
+    process(strokeAction(action, true, true), now);
+    process(strokeAction(action, false, false, true), now + 1U);
+  };
+
+  press(cr::CreativeWorldActionId::Accept, 0U);
+  const std::uint64_t connectedPreviewBuilds =
+      editor.terrainPaint.preview.buildCount;
+  const std::size_t connectedPreviewEdges =
+      editor.terrainPaint.preview.edges.size();
+  process({}, 1U);
+  bool ok = expect(
+      appState.facade.document().terrainMaterialField().overrideCount() == 13U &&
+          cr::creativeUndoDepth(appState.history) == 1U &&
+          connectedPreviewBuilds == 1U &&
+          connectedPreviewEdges > 0U &&
+          editor.terrainPaint.preview.buildCount == connectedPreviewBuilds &&
+          editor.terrainPaint.preview.edges.size() == connectedPreviewEdges,
+      "connected X fills once and idle frames reuse plan and boundary geometry");
+  press(cr::CreativeWorldActionId::Reject, 2U);
+  ok = expect(
+           appState.facade.document().terrainMaterialField().overrideCount() ==
+                   0U &&
+               cr::creativeUndoDepth(appState.history) == 2U,
+           "connected Circle restores the component in one undoable batch") &&
+       ok;
+
+  const std::array stoneEdits{
+      cr::CreativeTerrainMaterialEdit{cr::CreativeTerrainMaterialEditKind::Set,
+                                      {0, 0},
+                                      cr::CreativeTerrainMaterial::Stone},
+      cr::CreativeTerrainMaterialEdit{cr::CreativeTerrainMaterialEditKind::Set,
+                                      {1, 0},
+                                      cr::CreativeTerrainMaterial::Stone},
+  };
+  static_cast<void>(appState.facade.applyTerrainMaterialEdits(stoneEdits));
+  appState.history = {};
+  editor.toolSettings.terrainPaintMode = cr::CreativeTerrainPaintMode::Region;
+  editor.toolSettings.terrainPaintMaterial = cr::CreativeTerrainMaterial::Sand;
+  editor.toolSettings.terrainPaintSource =
+      cr::CreativeTerrainPaintSource::Stone;
+  camera.worldEye.x = -0.5F;
+  press(cr::CreativeWorldActionId::Accept, 10U);
+  camera.worldEye.x = 1.5F;
+  press(cr::CreativeWorldActionId::Accept, 12U);
+  ok = expect(editor.terrainPaint.regionPhase ==
+                  CreativeEditorTerrainPaintRegionPhase::Complete &&
+                  cr::creativeUndoDepth(appState.history) == 0U,
+              "region stores two corners without mutating history") &&
+       ok;
+  camera.worldForward = {1.0F, 0.0F, 0.0F};
+  press(cr::CreativeWorldActionId::Accept, 14U);
+  ok = expect(
+           appState.facade.document().terrainMaterialField().materialAt({0, 0}) ==
+                   cr::CreativeTerrainMaterial::Sand &&
+               appState.facade.document().terrainMaterialField().materialAt(
+                   {1, 0}) == cr::CreativeTerrainMaterial::Sand &&
+               appState.facade.document().terrainMaterialField().materialAt(
+                   {-1, 0}) == cr::CreativeTerrainMaterial::Grass &&
+               cr::creativeUndoDepth(appState.history) == 1U &&
+               editor.terrainPaint.regionPhase ==
+                   CreativeEditorTerrainPaintRegionPhase::Empty,
+           "third X replaces only the selected source material atomically") &&
+       ok;
+
+  camera.worldForward = {0.0F, -1.0F, 0.0F};
+  camera.worldEye.x = -0.5F;
+  press(cr::CreativeWorldActionId::Accept, 20U);
+  camera.worldEye.x = 1.5F;
+  press(cr::CreativeWorldActionId::Accept, 22U);
+  press(cr::CreativeWorldActionId::Reject, 24U);
+  const bool backedToSecond =
+      editor.terrainPaint.regionPhase ==
+      CreativeEditorTerrainPaintRegionPhase::FirstCorner;
+  press(cr::CreativeWorldActionId::Reject, 26U);
+  return expect(backedToSecond &&
+                    editor.terrainPaint.regionPhase ==
+                        CreativeEditorTerrainPaintRegionPhase::Empty &&
+                    cr::creativeUndoDepth(appState.history) == 1U,
+                "Circle backs through region corners without mutation") &&
+         ok;
+}
+
 bool terrainPaintStrokeRepeatsDeduplicatesCachesAndGroupsUndo() {
   cr::CreativeAppState appState;
   installDocument(appState, 407U);
@@ -2491,6 +2598,7 @@ int main() {
                  derivedSurfaceAndGuidesUseRevisionCaching() &&
                  semanticActionsRouteSelectionCommitCancelAndRemoval() &&
                  terrainSurfacePaintRoutesGesturesHistorySamplingAndRendering() &&
+                 terrainConnectedAndRegionModesUsePressBasedAtomicGestures() &&
                  terrainPaintStrokeRepeatsDeduplicatesCachesAndGroupsUndo() &&
                  terrainSeedPreviewsStampsClearsAndGroupsHistory() &&
                  terrainCancelGestureCannotFallThroughIntoEraseStroke() &&

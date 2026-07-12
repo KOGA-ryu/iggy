@@ -235,12 +235,20 @@ constexpr std::array kToolOptionDescriptors{
                                  "FALLOFF",
                                  CreativeToolOptionValueKind::Choice,
                                  kTerrainSculptItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainPaintMode,
+                                 "PAINT MODE",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainPaintItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainPaintMaterial,
                                  "SURFACE",
                                  CreativeToolOptionValueKind::Choice,
                                  kTerrainPaintItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainPaintRadius,
                                  "PAINT RADIUS",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainPaintItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainPaintSource,
+                                 "REPLACE",
                                  CreativeToolOptionValueKind::Choice,
                                  kTerrainPaintItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainRodStampMode,
@@ -690,9 +698,13 @@ bool isValidCreativeToolSettings(
                    CreativeTerrainSculptStrength::Count) &&
          validEnum(settings.terrainSculptFalloff,
                    CreativeTerrainSculptFalloff::Count) &&
+         validEnum(settings.terrainPaintMode,
+                   CreativeTerrainPaintMode::Count) &&
          isValidCreativeTerrainMaterial(settings.terrainPaintMaterial) &&
          validEnum(settings.terrainPaintRadius,
                    CreativeTerrainPaintRadius::Count) &&
+         validEnum(settings.terrainPaintSource,
+                   CreativeTerrainPaintSource::Count) &&
          validEnum(settings.terrainRodStampMode,
                    CreativeTerrainRodStampMode::Count) &&
          validEnum(settings.terrainSeedRadius,
@@ -788,6 +800,10 @@ CreativeToolOptionList creativeToolOptionsForHeldItem(
         descriptor.id == CreativeToolOptionId::TerrainProfileFrequency;
     const bool terrainRegionAmountOnly =
         descriptor.id == CreativeToolOptionId::TerrainRegionAmount;
+    const bool terrainPaintRadiusOnly =
+        descriptor.id == CreativeToolOptionId::TerrainPaintRadius;
+    const bool terrainPaintSourceOnly =
+        descriptor.id == CreativeToolOptionId::TerrainPaintSource;
     if ((linearOnly && settings.arrayMode != CreativeArrayMode::Linear) ||
         (radialOnly && settings.arrayMode != CreativeArrayMode::Radial) ||
         (cylinderOnly && settings.materialBrushShape !=
@@ -805,7 +821,11 @@ CreativeToolOptionList creativeToolOptionsForHeldItem(
          !creativeTerrainProfileUsesFrequency(settings.terrainProfileKind)) ||
         (terrainRegionAmountOnly &&
          !creativeTerrainRegionUsesAmount(
-             settings.terrainRegionOperation))) {
+             settings.terrainRegionOperation)) ||
+        (terrainPaintRadiusOnly &&
+         settings.terrainPaintMode != CreativeTerrainPaintMode::Brush) ||
+        (terrainPaintSourceOnly &&
+         settings.terrainPaintMode != CreativeTerrainPaintMode::Region)) {
       continue;
     }
     if (result.count == result.ids.size()) {
@@ -1013,10 +1033,14 @@ std::string_view creativeToolOptionValueLabel(
       return toString(settings.terrainSculptStrength);
     case CreativeToolOptionId::TerrainSculptFalloff:
       return toString(settings.terrainSculptFalloff);
+    case CreativeToolOptionId::TerrainPaintMode:
+      return toString(settings.terrainPaintMode);
     case CreativeToolOptionId::TerrainPaintMaterial:
       return toString(settings.terrainPaintMaterial);
     case CreativeToolOptionId::TerrainPaintRadius:
       return toString(settings.terrainPaintRadius);
+    case CreativeToolOptionId::TerrainPaintSource:
+      return toString(settings.terrainPaintSource);
     case CreativeToolOptionId::TerrainRodStampMode:
       return toString(settings.terrainRodStampMode);
     case CreativeToolOptionId::TerrainSeedRadius:
@@ -1244,6 +1268,11 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
           cycleEnum(adjusted.terrainSculptFalloff,
                     CreativeTerrainSculptFalloff::Count, direction);
       break;
+    case CreativeToolOptionId::TerrainPaintMode:
+      adjusted.terrainPaintMode = cycleEnum(
+          adjusted.terrainPaintMode, CreativeTerrainPaintMode::Count,
+          direction);
+      break;
     case CreativeToolOptionId::TerrainPaintMaterial:
       adjusted.terrainPaintMaterial = cycleEnum(
           adjusted.terrainPaintMaterial, CreativeTerrainMaterial::Count,
@@ -1252,6 +1281,11 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
     case CreativeToolOptionId::TerrainPaintRadius:
       adjusted.terrainPaintRadius = cycleEnum(
           adjusted.terrainPaintRadius, CreativeTerrainPaintRadius::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::TerrainPaintSource:
+      adjusted.terrainPaintSource = cycleEnum(
+          adjusted.terrainPaintSource, CreativeTerrainPaintSource::Count,
           direction);
       break;
     case CreativeToolOptionId::TerrainRodStampMode:

@@ -149,8 +149,10 @@ enum class CreativeToolOptionId : std::uint8_t {
   TerrainSculptRadius,
   TerrainSculptStrength,
   TerrainSculptFalloff,
+  TerrainPaintMode,
   TerrainPaintMaterial,
   TerrainPaintRadius,
+  TerrainPaintSource,
   TerrainRodStampMode,
   TerrainSeedRadius,
   TerrainSeedSpacing,
@@ -253,9 +255,12 @@ struct CreativeToolSettings {
       CreativeTerrainSculptStrength::OneCell;
   CreativeTerrainSculptFalloff terrainSculptFalloff =
       CreativeTerrainSculptFalloff::Uniform;
+  CreativeTerrainPaintMode terrainPaintMode = CreativeTerrainPaintMode::Brush;
   CreativeTerrainMaterial terrainPaintMaterial = CreativeTerrainMaterial::Grass;
   CreativeTerrainPaintRadius terrainPaintRadius =
       CreativeTerrainPaintRadius::TwoCells;
+  CreativeTerrainPaintSource terrainPaintSource =
+      CreativeTerrainPaintSource::Any;
   CreativeTerrainRodStampMode terrainRodStampMode =
       CreativeTerrainRodStampMode::Single;
   CreativeTerrainSeedRadius terrainSeedRadius =

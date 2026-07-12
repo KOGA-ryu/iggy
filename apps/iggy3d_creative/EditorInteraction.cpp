@@ -1714,9 +1714,34 @@ std::string creativeEditorHeldItemStatusLabel(
       break;
     case cr::CreativeHeldItemKind::TerrainPaint:
       output.append(" | ");
+      output.append(cr::toString(editor.toolSettings.terrainPaintMode));
+      output.append(" | ");
       output.append(cr::toString(editor.toolSettings.terrainPaintMaterial));
-      output.append(" | RADIUS ");
-      output.append(cr::toString(editor.toolSettings.terrainPaintRadius));
+      switch (editor.toolSettings.terrainPaintMode) {
+        case cr::CreativeTerrainPaintMode::Brush:
+          output.append(" | RADIUS ");
+          output.append(cr::toString(editor.toolSettings.terrainPaintRadius));
+          break;
+        case cr::CreativeTerrainPaintMode::Connected:
+          break;
+        case cr::CreativeTerrainPaintMode::Region:
+          output.append(" | FROM ");
+          output.append(cr::toString(editor.toolSettings.terrainPaintSource));
+          switch (editor.terrainPaint.regionPhase) {
+            case CreativeEditorTerrainPaintRegionPhase::Empty:
+              output.append(" | CORNER 1");
+              break;
+            case CreativeEditorTerrainPaintRegionPhase::FirstCorner:
+              output.append(" | CORNER 2");
+              break;
+            case CreativeEditorTerrainPaintRegionPhase::Complete:
+              output.append(" | READY");
+              break;
+          }
+          break;
+        case cr::CreativeTerrainPaintMode::Count:
+          break;
+      }
       appendHeldQuickEditStatus(output, editor);
       break;
     case cr::CreativeHeldItemKind::TerrainGrade:

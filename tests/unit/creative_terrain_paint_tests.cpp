@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <string_view>
+#include <vector>
 
 namespace {
 namespace cr = iggy3d::creative;
@@ -68,6 +69,42 @@ bool sparseFieldIsCanonicalAndAtomic() {
                 "material owns stable render role");
 }
 
+bool fullCapacityMaterialBatchesApplyAndClearLinearly() {
+  std::vector<cr::CreativeTerrainMaterialEdit> sets;
+  std::vector<cr::CreativeTerrainMaterialEdit> clears;
+  sets.reserve(cr::kCreativeTerrainMaterialOverrideCapacity);
+  clears.reserve(cr::kCreativeTerrainMaterialOverrideCapacity);
+  for (std::size_t index = 0U;
+       index < cr::kCreativeTerrainMaterialOverrideCapacity; ++index) {
+    const cr::CreativeTerrainCoord2 coord{static_cast<std::int32_t>(index), 0};
+    sets.push_back({cr::CreativeTerrainMaterialEditKind::Set, coord,
+                    cr::CreativeTerrainMaterial::Sand});
+    clears.push_back({cr::CreativeTerrainMaterialEditKind::Clear, coord,
+                      cr::CreativeTerrainMaterial::Grass});
+  }
+  cr::CreativeTerrainMaterialField field;
+  const cr::CreativeTerrainMaterialMutationReceipt filled = field.apply(sets);
+  const cr::CreativeTerrainMaterialMutationReceipt emptied =
+      field.apply(clears);
+  sets.push_back({cr::CreativeTerrainMaterialEditKind::Set,
+                  {static_cast<std::int32_t>(sets.size()), 0},
+                  cr::CreativeTerrainMaterial::Dirt});
+  const cr::CreativeTerrainMaterialMutationReceipt overCapacity =
+      field.apply(sets);
+  return expect(filled.accepted && filled.changed &&
+                    filled.changedOverrideCount ==
+                        cr::kCreativeTerrainMaterialOverrideCapacity,
+                "full-capacity set batch applies") &&
+         expect(emptied.accepted && emptied.changed &&
+                    field.overrideCount() == 0U,
+                "full-capacity clear batch applies") &&
+         expect(!overCapacity.accepted && !overCapacity.changed &&
+                    overCapacity.status ==
+                        cr::CreativeTerrainMaterialMutationStatus::
+                            CapacityExceeded,
+                "over-capacity edit batch rejects before staging");
+}
+
 bool brushPlansOnlyPresentSurfaceAndSkipsNoOps() {
   cr::CreativeTerrainField terrain;
   const cr::CreativeTerrainControlEdit control{
@@ -94,19 +131,114 @@ bool brushPlansOnlyPresentSurfaceAndSkipsNoOps() {
 
   return expect(paint.accepted &&
                     paint.status == cr::CreativeTerrainPaintPlanStatus::Ready &&
-                    paint.surfaceCellCount == 5U && paint.editCount == 5U,
+                    paint.cells().size() == 5U && paint.items().size() == 5U,
                 "radius-one brush owns five circular surface cells") &&
          expect(applied.accepted && applied.changed &&
                     materials.overrideCount() == 5U,
                 "paint plan applies as one batch") &&
-         expect(repeated.accepted && repeated.editCount == 0U &&
+         expect(repeated.accepted && repeated.items().empty() &&
                     repeated.status ==
                         cr::CreativeTerrainPaintPlanStatus::NoChange,
                 "revisiting painted surface is a no-op") &&
-         expect(restored.accepted && restored.editCount == 5U &&
+         expect(restored.accepted && restored.items().size() == 5U &&
                     restored.items().front().kind ==
                         cr::CreativeTerrainMaterialEditKind::Clear,
                 "grass brush restores sparse default");
+}
+
+bool connectedAndRegionPlansAreBoundedFilteredAndCanonical() {
+  const std::array columns{
+      cr::CreativeTerrainColumn{{0, 0}, 4U},
+      cr::CreativeTerrainColumn{{1, 0}, 4U},
+      cr::CreativeTerrainColumn{{3, 0}, 4U},
+      cr::CreativeTerrainColumn{{3, 1}, 4U},
+  };
+  cr::CreativeTerrainMaterialField materials;
+  const cr::CreativeTerrainMaterialEdit dirt{
+      cr::CreativeTerrainMaterialEditKind::Set, {1, 0},
+      cr::CreativeTerrainMaterial::Dirt};
+  static_cast<void>(materials.apply(std::span{&dirt, 1U}));
+
+  cr::CreativeTerrainPaintRequest request;
+  request.surfaceColumns = columns;
+  request.materialField = &materials;
+  request.mode = cr::CreativeTerrainPaintMode::Connected;
+  request.center = {0, 0};
+  request.material = cr::CreativeTerrainMaterial::Stone;
+  const cr::CreativeTerrainPaintPlan connected =
+      cr::buildCreativeTerrainPaintPlan(request);
+
+  request.mode = cr::CreativeTerrainPaintMode::Region;
+  request.minimumCoord = {0, 0};
+  request.maximumCoord = {3, 1};
+  request.material = cr::CreativeTerrainMaterial::Sand;
+  request.source = cr::CreativeTerrainPaintSource::Grass;
+  const cr::CreativeTerrainPaintPlan region =
+      cr::buildCreativeTerrainPaintPlan(request);
+  request.maxAffectedCellCount = 2U;
+  const cr::CreativeTerrainPaintPlan bounded =
+      cr::buildCreativeTerrainPaintPlan(request);
+
+  const std::array expectedRegion{
+      cr::CreativeTerrainCoord2{0, 0},
+      cr::CreativeTerrainCoord2{3, 0},
+      cr::CreativeTerrainCoord2{3, 1},
+  };
+  return expect(connected.accepted && connected.cells().size() == 1U &&
+                    connected.cells().front() ==
+                        cr::CreativeTerrainCoord2{0, 0} &&
+                    connected.source == cr::CreativeTerrainPaintSource::Grass,
+                "connected fill stops at material and topology boundaries") &&
+         expect(region.accepted &&
+                    std::equal(region.cells().begin(), region.cells().end(),
+                               expectedRegion.begin(), expectedRegion.end()) &&
+                    region.items().size() == expectedRegion.size(),
+                "region replace filters source and preserves canonical order") &&
+         expect(!bounded.accepted && bounded.cells().empty() &&
+                    bounded.items().empty() &&
+                    bounded.status ==
+                        cr::CreativeTerrainPaintPlanStatus::CapacityExceeded,
+                "region rejects atomically before exceeding its bound");
+}
+
+bool maximumConnectedPlanAppliesAtomicallyAtTheBound() {
+  std::vector<cr::CreativeTerrainColumn> columns;
+  columns.reserve(cr::kCreativeTerrainPaintCellCapacity);
+  for (std::size_t index = 0U;
+       index < cr::kCreativeTerrainPaintCellCapacity; ++index) {
+    columns.push_back({{static_cast<std::int32_t>(index), 0}, 1U});
+  }
+  cr::CreativeTerrainMaterialField materials;
+  cr::CreativeTerrainPaintRequest request;
+  request.surfaceColumns = columns;
+  request.materialField = &materials;
+  request.mode = cr::CreativeTerrainPaintMode::Connected;
+  request.center = {0, 0};
+  request.material = cr::CreativeTerrainMaterial::Stone;
+  const cr::CreativeTerrainPaintPlan plan =
+      cr::buildCreativeTerrainPaintPlan(request);
+  const cr::CreativeTerrainMaterialMutationReceipt applied =
+      materials.apply(plan.items());
+
+  request.maxAffectedCellCount =
+      cr::kCreativeTerrainPaintCellCapacity - 1U;
+  const cr::CreativeTerrainPaintPlan rejected =
+      cr::buildCreativeTerrainPaintPlan(request);
+  return expect(plan.accepted &&
+                    plan.cells().size() ==
+                        cr::kCreativeTerrainPaintCellCapacity &&
+                    plan.items().size() ==
+                        cr::kCreativeTerrainPaintCellCapacity,
+                "connected planning reaches the full bounded capacity") &&
+         expect(applied.accepted && applied.changed &&
+                    materials.overrideCount() ==
+                        cr::kCreativeTerrainPaintCellCapacity,
+                "full connected plan applies as one atomic material batch") &&
+         expect(!rejected.accepted && rejected.cells().empty() &&
+                    rejected.items().empty() &&
+                    rejected.status ==
+                        cr::CreativeTerrainPaintPlanStatus::CapacityExceeded,
+                "connected overflow exposes no partial plan");
 }
 
 bool renderPlanJoinsMaterialWithoutChangingGeometry() {
@@ -153,7 +285,7 @@ bool renderPlanJoinsMaterialWithoutChangingGeometry() {
 }
 
 bool toolOptionsOwnMaterialAndRadiusWithoutNewBindings() {
-  const cr::CreativeToolOptionList options =
+  const cr::CreativeToolOptionList brushOptions =
       cr::creativeToolOptionsForHeldItem(
           cr::CreativeHeldItemKind::TerrainPaint);
   cr::CreativeToolSettings settings = cr::makeDefaultCreativeToolSettings();
@@ -163,18 +295,42 @@ bool toolOptionsOwnMaterialAndRadiusWithoutNewBindings() {
   const cr::CreativeToolOptionAdjustReceipt radius =
       cr::adjustCreativeToolOption(
           settings, cr::CreativeToolOptionId::TerrainPaintRadius, 1);
-  return expect(options.count == 2U &&
-                    options.ids[0] ==
+  const cr::CreativeToolOptionAdjustReceipt connectedMode =
+      cr::adjustCreativeToolOption(
+          settings, cr::CreativeToolOptionId::TerrainPaintMode, 1);
+  const cr::CreativeToolOptionList connectedOptions =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::TerrainPaint, settings);
+  const cr::CreativeToolOptionAdjustReceipt regionMode =
+      cr::adjustCreativeToolOption(
+          settings, cr::CreativeToolOptionId::TerrainPaintMode, 1);
+  const cr::CreativeToolOptionList regionOptions =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::TerrainPaint, settings);
+  const cr::CreativeToolOptionAdjustReceipt source =
+      cr::adjustCreativeToolOption(
+          settings, cr::CreativeToolOptionId::TerrainPaintSource, 1);
+  return expect(brushOptions.count == 3U &&
+                    brushOptions.ids[0] ==
+                        cr::CreativeToolOptionId::TerrainPaintMode &&
+                    brushOptions.ids[1] ==
                         cr::CreativeToolOptionId::TerrainPaintMaterial &&
-                    options.ids[1] ==
+                    brushOptions.ids[2] ==
                         cr::CreativeToolOptionId::TerrainPaintRadius,
-                "terrain paint exposes only material and radius") &&
-         expect(material.changed && radius.changed &&
+                "brush exposes mode material and radius") &&
+         expect(material.changed && radius.changed && connectedMode.changed &&
                     settings.terrainPaintMaterial ==
                         cr::CreativeTerrainMaterial::Dirt &&
                     settings.terrainPaintRadius ==
                         cr::CreativeTerrainPaintRadius::FourCells,
                 "shared option router adjusts paint settings") &&
+         expect(connectedOptions.count == 2U && regionMode.changed &&
+                    regionOptions.count == 3U && source.changed &&
+                    settings.terrainPaintMode ==
+                        cr::CreativeTerrainPaintMode::Region &&
+                    settings.terrainPaintSource ==
+                        cr::CreativeTerrainPaintSource::Grass,
+                "connected hides radius while region exposes source filter") &&
          expect(cr::creativeHeldItemIsTerrainTool(
                     cr::CreativeHeldItemKind::TerrainPaint) &&
                     !cr::creativeHeldItemUsesMaterial(
@@ -186,7 +342,10 @@ bool toolOptionsOwnMaterialAndRadiusWithoutNewBindings() {
 
 int main() {
   return sparseFieldIsCanonicalAndAtomic() &&
+                 fullCapacityMaterialBatchesApplyAndClearLinearly() &&
                  brushPlansOnlyPresentSurfaceAndSkipsNoOps() &&
+                 connectedAndRegionPlansAreBoundedFilteredAndCanonical() &&
+                 maximumConnectedPlanAppliesAtomicallyAtTheBound() &&
                  renderPlanJoinsMaterialWithoutChangingGeometry() &&
                  toolOptionsOwnMaterialAndRadiusWithoutNewBindings()
              ? EXIT_SUCCESS
