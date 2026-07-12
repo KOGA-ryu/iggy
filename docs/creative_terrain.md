@@ -35,6 +35,34 @@ is selected, that complete hold is cancel-only and cannot fall through into
 erasing the same rod. Focus loss, modal entry, commands, hotbar changes, capture
 mode, and shutdown finalize an active gesture.
 
+Equip **Terrain Grade** when a deliberate ramp is needed between authored
+rods. This tool uses the same world-action vocabulary without adding bindings:
+
+| Input | Operation |
+|---|---|
+| Middle mouse / PS5 Square | Set the starting authored rod and sample its exact height |
+| Right mouse / PS5 X | Apply the previewed grade as one atomic edit and one undo record |
+| Left mouse / PS5 Circle | Cancel the current grade without history |
+| Up/down / D-pad up/down | Raise or lower the endpoint height |
+| Left/right / D-pad left/right | Shrink or widen every grade rod's influence |
+
+The HUD reports Width as the full influence diameter in cells (`2r+1`), while
+the authored control continues to store the canonical radius.
+
+The grade starts only from an authored rod; selecting an interpolated surface
+cell cannot silently rewrite an unseen control. After anchoring, aim at any grid
+cell to preview the path. Green rod boxes and a connected top line are the exact
+control batch that X will submit. Cyan and green footprint outlines show the
+start and endpoint influence widths. An over-capacity plan turns red and cannot
+mutate the document.
+
+`buildCreativeTerrainGradePlan` owns both preview and mutation geometry. It
+walks the X/Z grid with deterministic Bresenham traversal, interpolates heights
+with explicit symmetric integer nearest rounding, and emits at most 256 unique
+upserts in fixed storage. A rejected plan emits no partial edits. Facade applies
+an accepted plan as one batch, so document revision, scene-cache refresh, and
+history each advance at most once.
+
 ## Authored Data
 
 `CreativeTerrainField` owns a canonical vector sorted by Z then X. Coordinates

@@ -67,6 +67,9 @@ constexpr std::array kToolSpecs{
     CatalogToolSpec{CreativeHeldItemKind::TerrainControl, "Terrain Rod",
                     "terrain heightfield rod elevation radius landscape ground",
                     false},
+    CatalogToolSpec{CreativeHeldItemKind::TerrainGrade, "Terrain Grade",
+                    "terrain grade ramp slope hill smooth landscape ground",
+                    false},
 };
 
 constexpr std::array kActionEntries{

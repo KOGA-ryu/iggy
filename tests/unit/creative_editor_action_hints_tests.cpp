@@ -379,6 +379,36 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
        ok;
   editor.terrain.selectionValid = false;
 
+  setHeld(editor, cr::CreativeHeldItemKind::TerrainGrade);
+  editor.terrain.grade.anchorValid = true;
+  const cr::CreativeActionHintFrame terrainGrade =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* gradeApply =
+      findHint(terrainGrade, cr::CreativeInputActionId::AcceptAction);
+  const cr::CreativeActionHint* gradeCancel =
+      findHint(terrainGrade, cr::CreativeInputActionId::RejectAction);
+  const cr::CreativeActionHint* gradeAnchor =
+      findHint(terrainGrade, cr::CreativeInputActionId::PickAction);
+  const cr::CreativeActionHint* gradeHeight =
+      findHint(terrainGrade, cr::CreativeInputActionId::QuickEditPrevious);
+  const cr::CreativeActionHint* gradeWidth =
+      findHint(terrainGrade, cr::CreativeInputActionId::QuickEditDecrease);
+  ok = expect(gradeApply != nullptr && gradeApply->chord.view() == "X" &&
+                  gradeApply->label.view() == "Apply grade" &&
+                  gradeCancel != nullptr &&
+                  gradeCancel->chord.view() == "Circle" &&
+                  gradeCancel->label.view() == "Cancel grade" &&
+                  gradeAnchor != nullptr &&
+                  gradeAnchor->chord.view() == "Square" &&
+                  gradeAnchor->label.view() == "Set start rod" &&
+                  gradeHeight != nullptr &&
+                  gradeHeight->label.view() == "End height" &&
+                  gradeWidth != nullptr && gradeWidth->label.view() == "Width",
+              "terrain grade advertises anchor apply cancel height and width") &&
+       ok;
+
   setHeld(editor, cr::CreativeHeldItemKind::LinearArray);
   const cr::CreativeActionHintFrame array = resolveCreativeEditorActionHints(
       editor, cr::CreativeInputContext::EditorViewport,

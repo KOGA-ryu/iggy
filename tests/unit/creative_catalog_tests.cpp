@@ -154,8 +154,8 @@ bool actionAvailabilityUsesExplicitFacts() {
 
 bool catalogBuildsMaterialsAndCreatorTools() {
   const cr::CreativeCatalogState state = catalog();
-  bool ok = expect(state.entries.size() == 15U,
-                   "two materials plus thirteen catalog tools") &&
+  bool ok = expect(state.entries.size() == 16U,
+                   "two materials plus fourteen catalog tools") &&
             expect(state.filteredEntryIndices.size() == state.entries.size(),
                    "empty query exposes every entry") &&
             expect(state.entries[0].category ==
@@ -172,7 +172,11 @@ bool catalogBuildsMaterialsAndCreatorTools() {
                    "material brush starts the tool lane") &&
             expect(state.entries[3].hotbarEntry.kind ==
                        cr::CreativeHeldItemKind::ObjectSelect,
-                   "object tools follow the material brush");
+                   "object tools follow the material brush") &&
+            expect(state.entries.back().hotbarEntry.kind ==
+                           cr::CreativeHeldItemKind::TerrainGrade &&
+                       state.entries.back().label == "Terrain Grade",
+                   "terrain grade closes the tool lane as a selectable tool");
   ok = expect(cr::toString(cr::CreativeCatalogEntryCategory::Material) ==
                   "Material" &&
                   cr::toString(cr::CreativeCatalogEntryCategory::Tool) ==
@@ -199,7 +203,7 @@ bool catalogOmitsToolsWithoutRequiredMaterial() {
                entry.hotbarEntry.kind ==
                    cr::CreativeHeldItemKind::SurfaceExtrude;
       });
-  return expect(state.entries.size() == 7U,
+  return expect(state.entries.size() == 8U,
                 "empty palette retains material-independent tools") &&
          expect(!materialDependentToolPresent,
                 "material-dependent tools require a valid material");
@@ -507,7 +511,7 @@ bool selectionWrapsAndAssignmentsAreExplicit() {
   cr::CreativeHotbarState hotbar = cr::makeDefaultCreativeHotbar(palette);
 
   bool ok = expect(cr::moveCreativeCatalogSelection(state, -1) &&
-                       state.selectedFilteredIndex == 14U,
+                       state.selectedFilteredIndex == 15U,
                    "previous wraps to final result") &&
             expect(cr::moveCreativeCatalogSelection(state, 1) &&
                        state.selectedFilteredIndex == 0U,

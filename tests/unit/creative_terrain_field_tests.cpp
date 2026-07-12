@@ -1,10 +1,12 @@
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/document/TerrainField.hpp"
+#include "app/iggy3d/creative/tools/TerrainGrade.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <string_view>
 #include <vector>
 
@@ -239,6 +241,67 @@ bool documentRevisionAdvancesOncePerTerrainBatch() {
          expect(document.dirtyFlags() != 0U, "terrain edit marks dirty");
 }
 
+bool gradePlanIsDeterministicBoundedAndValidated() {
+  const cr::CreativeTerrainGradePlan ascending =
+      cr::buildCreativeTerrainGradePlan({{0, 0}, {4, 2}, 2U, 8U, 3U});
+  constexpr std::array expectedCoords{
+      cr::CreativeTerrainCoord2{0, 0}, cr::CreativeTerrainCoord2{1, 0},
+      cr::CreativeTerrainCoord2{2, 1}, cr::CreativeTerrainCoord2{3, 1},
+      cr::CreativeTerrainCoord2{4, 2}};
+  constexpr std::array<std::uint16_t, 5U> expectedHeights{2U, 4U, 5U, 7U,
+                                                         8U};
+  bool exact = ascending.items().size() == expectedCoords.size();
+  for (std::size_t index = 0U;
+       exact && index < expectedCoords.size(); ++index) {
+    exact = ascending.items()[index].kind ==
+                cr::CreativeTerrainEditKind::Upsert &&
+            ascending.items()[index].control.coord == expectedCoords[index] &&
+            ascending.items()[index].control.heightCells ==
+                expectedHeights[index] &&
+            ascending.items()[index].control.radiusCells == 3U;
+  }
+
+  const cr::CreativeTerrainGradePlan descending =
+      cr::buildCreativeTerrainGradePlan({{4, 2}, {0, 0}, 8U, 2U, 3U});
+  const cr::CreativeTerrainGradePlan point =
+      cr::buildCreativeTerrainGradePlan({{7, -4}, {7, -4}, 2U, 9U, 2U});
+  const cr::CreativeTerrainGradePlan tooLong =
+      cr::buildCreativeTerrainGradePlan({{0, 0}, {256, 0}, 2U, 8U, 3U});
+  const cr::CreativeTerrainGradePlan invalidHeight =
+      cr::buildCreativeTerrainGradePlan({{0, 0}, {1, 0}, 0U, 8U, 3U});
+  const std::int32_t maximum = std::numeric_limits<std::int32_t>::max();
+  const cr::CreativeTerrainGradePlan invalidCoordinate =
+      cr::buildCreativeTerrainGradePlan(
+          {{maximum, 0}, {maximum, 0}, 2U, 8U, 3U});
+
+  return expect(ascending.accepted &&
+                    ascending.status ==
+                        cr::CreativeTerrainGradePlanStatus::Ready &&
+                    exact,
+                "grade emits exact Bresenham coordinates and rounded heights") &&
+         expect(descending.accepted && descending.items().size() == 5U &&
+                    descending.items().front().control.heightCells == 8U &&
+                    descending.items()[1].control.heightCells == 6U &&
+                    descending.items().back().control.heightCells == 2U,
+                "descending grade rounds symmetrically") &&
+         expect(point.accepted && point.items().size() == 1U &&
+                    point.items().front().control.heightCells == 9U,
+                "zero-length grade applies the requested endpoint height") &&
+         expect(!tooLong.accepted && tooLong.items().empty() &&
+                    tooLong.status ==
+                        cr::CreativeTerrainGradePlanStatus::CapacityExceeded,
+                "grade rejects before exceeding 256 edits") &&
+         expect(!invalidHeight.accepted && invalidHeight.items().empty() &&
+                    invalidHeight.status ==
+                        cr::CreativeTerrainGradePlanStatus::InvalidRequest,
+                "grade rejects invalid height") &&
+         expect(!invalidCoordinate.accepted &&
+                    invalidCoordinate.items().empty() &&
+                    invalidCoordinate.status ==
+                        cr::CreativeTerrainGradePlanStatus::InvalidRequest,
+                "grade rejects coordinates unsafe for terrain influence");
+}
+
 }  // namespace
 
 int main() {
@@ -247,7 +310,8 @@ int main() {
                  overlappingRodsBlendWithDeterministicIntegerWeights() &&
                  raycastHitsTerrainTopsSidesAndFailsClosed() &&
                  renderPlanBendsSharedCornersAndEnforcesBudget() &&
-                 documentRevisionAdvancesOncePerTerrainBatch()
+                 documentRevisionAdvancesOncePerTerrainBatch() &&
+                 gradePlanIsDeterministicBoundedAndValidated()
              ? 0
              : 1;
 }

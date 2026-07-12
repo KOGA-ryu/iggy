@@ -34,6 +34,38 @@ namespace {
   return {cell.x, cell.z};
 }
 
+[[nodiscard]] bool terrainPointerCoord(
+    const CreativeEditorState& editor,
+    cr::CreativeTerrainCoord2& coord) noexcept {
+  if (editor.terrain.hoverValid) {
+    coord = editor.terrain.hoverCoord;
+    return true;
+  }
+  if (editor.interaction.target.terrainHit) {
+    coord = editor.interaction.target.terrainCell;
+    return true;
+  }
+  if (!editor.interaction.target.grid.valid) {
+    return false;
+  }
+  const cr::CreativeGridCoord3 cell =
+      editor.interaction.target.grid.targetCell;
+  coord = {cell.x, cell.z};
+  return true;
+}
+
+[[nodiscard]] cr::CreativeTerrainGradePlan terrainGradePlan(
+    const CreativeEditorState& editor,
+    cr::CreativeTerrainCoord2 target) noexcept {
+  const CreativeTerrainGradeState& grade = editor.terrain.grade;
+  if (!grade.anchorValid) {
+    return {};
+  }
+  return cr::buildCreativeTerrainGradePlan(
+      {grade.anchorCoord, target, grade.anchorHeightCells,
+       grade.targetHeightCells, grade.radiusCells});
+}
+
 [[nodiscard]] bool terrainEditCoord(
     const CreativeEditorState& editor,
     CreativeEditorTerrainEditKind kind,
@@ -148,12 +180,116 @@ void appendTerrainFootprintOutline(
   }
 }
 
+[[nodiscard]] cr::CreativeVec3 terrainRodTopCenter(
+    cr::CreativeGridSettings grid,
+    cr::CreativeTerrainControlPoint control) noexcept {
+  return {grid.origin.x +
+              (static_cast<double>(control.coord.x) + 0.5) *
+                  grid.cellSizeMeters,
+          grid.origin.y + control.heightCells * grid.cellSizeMeters,
+          grid.origin.z +
+              (static_cast<double>(control.coord.z) + 0.5) *
+                  grid.cellSizeMeters};
+}
+
+void appendTerrainLine(
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,
+    cr::CreativeVec3 start,
+    cr::CreativeVec3 end,
+    iggy3d::RenderLineColor color,
+    float thickness) {
+  const cr::CreativeCoreVec3Conversion coreStart =
+      cr::creativeVec3ToCoreChecked(start);
+  const cr::CreativeCoreVec3Conversion coreEnd =
+      cr::creativeVec3ToCoreChecked(end);
+  if (!coreStart.converted || !coreEnd.converted) {
+    return;
+  }
+  iggy3d::RenderCreativeWireframeDebugLine line;
+  line.start = coreStart.value;
+  line.end = coreEnd.value;
+  line.color = color;
+  line.thickness = thickness;
+  lines.push_back(line);
+}
+
+void appendTerrainGradePreview(
+    const cr::CreativeDocument& document,
+    const CreativeEditorState& editor,
+    float thickness,
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines) {
+  constexpr iggy3d::RenderLineColor anchorColor{0.18F, 0.82F, 0.92F, 1.0F};
+  constexpr iggy3d::RenderLineColor gradeColor{0.30F, 1.0F, 0.38F, 1.0F};
+  constexpr iggy3d::RenderLineColor invalidColor{1.0F, 0.20F, 0.16F, 1.0F};
+  const cr::CreativeGridSettings grid = document.gridSettings();
+  cr::CreativeTerrainCoord2 target{};
+  if (!editor.terrain.grade.anchorValid) {
+    if (!terrainPointerCoord(editor, target)) {
+      return;
+    }
+    const cr::CreativeTerrainControlPoint* control =
+        document.terrainField().controlAt(target);
+    if (control != nullptr) {
+      appendBounds(lines, terrainRodBounds(grid, *control, 0.24), anchorColor,
+                   thickness * 1.4F);
+    }
+    return;
+  }
+
+  const CreativeTerrainGradeState& grade = editor.terrain.grade;
+  const cr::CreativeTerrainControlPoint anchor{
+      grade.anchorCoord, grade.anchorHeightCells, grade.radiusCells};
+  if (!terrainPointerCoord(editor, target)) {
+    appendBounds(lines, terrainRodBounds(grid, anchor, 0.24), anchorColor,
+                 thickness * 1.4F);
+    return;
+  }
+  const cr::CreativeTerrainGradePlan plan = terrainGradePlan(editor, target);
+  if (!plan.accepted) {
+    const cr::CreativeTerrainControlPoint rejected{
+        target, grade.targetHeightCells, grade.radiusCells};
+    appendBounds(lines, terrainRodBounds(grid, anchor, 0.24), invalidColor,
+                 thickness * 1.4F);
+    appendBounds(lines, terrainRodBounds(grid, rejected, 0.24), invalidColor,
+                 thickness * 1.4F);
+    appendTerrainLine(lines, terrainRodTopCenter(grid, anchor),
+                      terrainRodTopCenter(grid, rejected), invalidColor,
+                      thickness * 1.2F);
+    return;
+  }
+
+  cr::CreativeVec3 previousTop{};
+  bool hasPrevious = false;
+  for (const cr::CreativeTerrainControlEdit& edit : plan.items()) {
+    appendBounds(lines, terrainRodBounds(grid, edit.control, 0.20), gradeColor,
+                 thickness);
+    const cr::CreativeVec3 top = terrainRodTopCenter(grid, edit.control);
+    if (hasPrevious) {
+      appendTerrainLine(lines, previousTop, top, gradeColor, thickness * 1.2F);
+    }
+    previousTop = top;
+    hasPrevious = true;
+  }
+  if (!plan.items().empty()) {
+    appendTerrainFootprintOutline(lines, grid, plan.items().front().control,
+                                  anchorColor, thickness);
+    if (plan.items().size() > 1U) {
+      appendTerrainFootprintOutline(lines, grid, plan.items().back().control,
+                                    gradeColor, thickness);
+    }
+  }
+}
+
 void setFeedback(CreativeEditorState& editor, bool accepted) noexcept {
   editor.interaction.placementFeedback = {};
   editor.interaction.placementFeedback.status =
       accepted ? CreativeEditorPlacementFeedbackStatus::Placed
                : CreativeEditorPlacementFeedbackStatus::Rejected;
   editor.interaction.placementFeedback.frameIndex = editor.frameIndex;
+}
+
+void clearTerrainGradeAnchor(CreativeTerrainGradeState& grade) noexcept {
+  grade.anchorValid = false;
 }
 
 [[nodiscard]] bool terrainStrokeVisited(
@@ -276,6 +412,18 @@ void applyTerrainStrokeMutation(cr::CreativeAppState& appState,
 }
 
 }  // namespace
+
+bool resolveCreativeEditorTerrainGradeTarget(
+    const CreativeEditorState& editor,
+    cr::CreativeTerrainCoord2& target) noexcept {
+  return terrainPointerCoord(editor, target);
+}
+
+cr::CreativeTerrainGradePlan planCreativeEditorTerrainGrade(
+    const CreativeEditorState& editor,
+    cr::CreativeTerrainCoord2 target) noexcept {
+  return terrainGradePlan(editor, target);
+}
 
 CreativeEditorTerrainEditReceipt applyCreativeEditorTerrainEditWithHistory(
     cr::CreativeAppState& appState,
@@ -408,6 +556,7 @@ void clearCreativeEditorTerrainInteraction(
   state.documentId = documentId;
   state.hoverValid = false;
   state.selectionValid = false;
+  clearTerrainGradeAnchor(state.grade);
 }
 
 void updateCreativeEditorTerrainAim(
@@ -527,7 +676,10 @@ void appendCreativeEditorTerrainOverlay(
     std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines) {
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  if (held.kind != cr::CreativeHeldItemKind::TerrainControl ||
+  const bool terrainControl =
+      held.kind == cr::CreativeHeldItemKind::TerrainControl;
+  const bool terrainGrade = held.kind == cr::CreativeHeldItemKind::TerrainGrade;
+  if ((!terrainControl && !terrainGrade) ||
       editor.catalog.model.open || editor.catalog.toolWheel.open ||
       editor.toolOptions.open || editor.transform.active) {
     return;
@@ -553,6 +705,11 @@ void appendCreativeEditorTerrainOverlay(
         grid, control, static_cast<double>(control.radiusCells * 2U + 1U));
     influence.max.y = influence.min.y + grid.cellSizeMeters * 0.08;
     appendBounds(wireLines, influence, influenceColor, thickness * 0.65F);
+  }
+
+  if (terrainGrade) {
+    appendTerrainGradePreview(document, editor, thickness, wireLines);
+    return;
   }
 
   if (editor.terrain.selectionValid || editor.terrain.hoverValid ||

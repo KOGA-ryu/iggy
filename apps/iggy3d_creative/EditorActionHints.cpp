@@ -70,8 +70,14 @@ void appendQuickEdit(HintSpecBuffer& buffer,
                    cr::CreativeInputActionId::QuickEditIncrease, "Radius");
     return;
   }
-  if (editor.quickEdit.options.count == 0U &&
-      held != cr::CreativeHeldItemKind::TerrainControl) {
+  if (held == cr::CreativeHeldItemKind::TerrainGrade) {
+    appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
+                   cr::CreativeInputActionId::QuickEditNext, "End height");
+    appendHintPair(buffer, cr::CreativeInputActionId::QuickEditDecrease,
+                   cr::CreativeInputActionId::QuickEditIncrease, "Width");
+    return;
+  }
+  if (editor.quickEdit.options.count == 0U) {
     return;
   }
   appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
@@ -114,6 +120,15 @@ void appendViewportKeyboardHints(HintSpecBuffer& buffer,
       appendHint(buffer, cr::CreativeInputActionId::PrimaryAction,
                  editor.terrain.selectionValid ? "Cancel edit" : "Erase rods");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Select rod");
+      appendQuickEdit(buffer, editor);
+      break;
+    case cr::CreativeHeldItemKind::TerrainGrade:
+      appendHint(buffer, cr::CreativeInputActionId::SecondaryAction,
+                 "Apply grade");
+      appendHint(buffer, cr::CreativeInputActionId::PrimaryAction,
+                 "Cancel grade");
+      appendHint(buffer, cr::CreativeInputActionId::PickAction,
+                 "Set start rod");
       appendQuickEdit(buffer, editor);
       break;
     case cr::CreativeHeldItemKind::ObjectSelect:
@@ -190,6 +205,14 @@ void appendViewportGamepadHints(HintSpecBuffer& buffer,
       appendHint(buffer, cr::CreativeInputActionId::RejectAction,
                  editor.terrain.selectionValid ? "Cancel edit" : "Erase rods");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Select rod");
+      break;
+    case cr::CreativeHeldItemKind::TerrainGrade:
+      appendHint(buffer, cr::CreativeInputActionId::AcceptAction,
+                 "Apply grade");
+      appendHint(buffer, cr::CreativeInputActionId::RejectAction,
+                 "Cancel grade");
+      appendHint(buffer, cr::CreativeInputActionId::PickAction,
+                 "Set start rod");
       break;
     case cr::CreativeHeldItemKind::ObjectSelect:
       appendHint(buffer, cr::CreativeInputActionId::AcceptAction, "Select");

@@ -51,6 +51,13 @@ CreativeEditorState terrainEditor(std::int32_t x, std::int32_t z) {
   return editor;
 }
 
+CreativeEditorState terrainGradeEditor(std::int32_t x, std::int32_t z) {
+  CreativeEditorState editor = terrainEditor(x, z);
+  editor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::TerrainGrade;
+  return editor;
+}
+
 cr::CreativeWorldActionFrame strokeAction(
     cr::CreativeWorldActionId action,
     bool down,
@@ -560,6 +567,188 @@ bool terrainStrokeInterruptionFinalizesChangedAndEmptyGestures() {
          ok;
 }
 
+bool terrainGradeAnchorsPreviewsAppliesAndUndoesOneBatch() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 411U);
+  const cr::CreativeTerrainControlEdit initial{
+      cr::CreativeTerrainEditKind::Upsert, {{0, 0}, 2U, 2U}};
+  static_cast<void>(appState.facade.applyTerrainControlEdits(
+      std::span{&initial, 1U}));
+  appState.history = {};
+  CreativeEditorState editor = terrainGradeEditor(0, 0);
+  editor.terrain.hoverValid = true;
+  editor.terrain.hoverCoord = {0, 0};
+  const CreativeEditorTerrainGradeReceipt anchored =
+      beginCreativeEditorTerrainGrade(appState, editor);
+  bool ok = expect(anchored.accepted && anchored.changed &&
+                       editor.terrain.grade.anchorValid &&
+                       editor.terrain.grade.anchorCoord ==
+                           cr::CreativeTerrainCoord2{0, 0} &&
+                       editor.terrain.grade.anchorHeightCells == 2U &&
+                       editor.terrain.grade.targetHeightCells == 2U,
+                   "Square anchors the exact authored start rod");
+
+  static_cast<void>(processCreativeEditorTerrainGradeQuickEdit(
+      editor.terrain.grade, cr::CreativeInputActionId::QuickEditPrevious));
+  static_cast<void>(processCreativeEditorTerrainGradeQuickEdit(
+      editor.terrain.grade, cr::CreativeInputActionId::QuickEditPrevious));
+  static_cast<void>(processCreativeEditorTerrainGradeQuickEdit(
+      editor.terrain.grade, cr::CreativeInputActionId::QuickEditIncrease));
+  setTerrainStrokeTarget(editor, 4, 2);
+  iggy3d::ProductMapMakerGridSnapshot grid;
+  CreativeEditorSceneCache cache;
+  static_cast<void>(refreshCreativeEditorSceneCache(
+      cache, appState.facade.document(), grid));
+  const std::uint64_t buildsBeforePreview = cache.terrainSurfaceBuildCount;
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> preview;
+  appendCreativeEditorTerrainOverlay(appState.facade.document(), editor, 0.04F,
+                                     preview);
+  ok = expect(!preview.empty() &&
+                  !refreshCreativeEditorSceneCache(
+                      cache, appState.facade.document(), grid) &&
+                  cache.terrainSurfaceBuildCount == buildsBeforePreview,
+              "grade preview is visible without mutating or rebuilding terrain") &&
+       expect(creativeEditorTerrainGradeQuickEditLabel(editor.terrain.grade) ==
+                  "END HEIGHT 4 | WIDTH 11",
+              "D-pad edits endpoint height and width without new bindings") &&
+       ok;
+
+  const std::uint64_t revisionBefore = appState.facade.document().revision();
+  const CreativeEditorTerrainGradeReceipt applied =
+      applyCreativeEditorTerrainGradeWithHistory(
+          appState, editor, "test_terrain_grade_apply");
+  const cr::CreativeTerrainControlPoint* middle =
+      appState.facade.document().terrainField().controlAt({2, 1});
+  const cr::CreativeTerrainControlPoint* end =
+      appState.facade.document().terrainField().controlAt({4, 2});
+  const bool refreshed = refreshCreativeEditorSceneCache(
+      cache, appState.facade.document(), grid);
+  ok = expect(applied.accepted && applied.changed &&
+                  applied.plan.items().size() == 5U &&
+                  !editor.terrain.grade.anchorValid &&
+                  appState.facade.document().terrainField().controlCount() ==
+                      5U &&
+                  middle != nullptr && middle->heightCells == 3U &&
+                  middle->radiusCells == 5U && end != nullptr &&
+                  end->heightCells == 4U && end->radiusCells == 5U,
+              "X applies the exact previewed grade controls") &&
+       expect(appState.facade.document().revision() == revisionBefore + 1U &&
+                  cr::creativeUndoDepth(appState.history) == 1U && refreshed &&
+                  cache.terrainSurfaceBuildCount == buildsBeforePreview + 1U,
+              "grade advances revision and rebuilds once as one undo entry") &&
+       ok;
+
+  const bool undone = undoLastEdit(appState, "test_terrain_grade_undo");
+  const cr::CreativeTerrainControlPoint* restored =
+      appState.facade.document().terrainField().controlAt({0, 0});
+  return expect(undone &&
+                    appState.facade.document().terrainField().controlCount() ==
+                        1U &&
+                    restored != nullptr && restored->heightCells == 2U &&
+                    restored->radiusCells == 2U,
+                "one undo restores all controls replaced by the grade") &&
+         ok;
+}
+
+bool terrainGradeCancelAndCapacityFailureDoNotCreateHistory() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 412U);
+  const cr::CreativeTerrainControlEdit initial{
+      cr::CreativeTerrainEditKind::Upsert, {{0, 0}, 3U, 2U}};
+  static_cast<void>(appState.facade.applyTerrainControlEdits(
+      std::span{&initial, 1U}));
+  appState.history = {};
+  CreativeEditorState editor = terrainGradeEditor(0, 0);
+  editor.terrain.hoverValid = true;
+  editor.terrain.hoverCoord = {0, 0};
+  static_cast<void>(beginCreativeEditorTerrainGrade(appState, editor));
+  static_cast<void>(processCreativeEditorTerrainGradeQuickEdit(
+      editor.terrain.grade, cr::CreativeInputActionId::QuickEditPrevious));
+  const CreativeEditorTerrainGradeReceipt cancelled =
+      cancelCreativeEditorTerrainGrade(editor);
+  bool ok = expect(cancelled.accepted && cancelled.changed &&
+                       !editor.terrain.grade.anchorValid &&
+                       appState.facade.document().terrainField().controlCount() ==
+                           1U &&
+                       cr::creativeUndoDepth(appState.history) == 0U,
+                   "Circle cancels grade setup without document history");
+
+  editor.terrain.hoverValid = true;
+  editor.terrain.hoverCoord = {0, 0};
+  static_cast<void>(beginCreativeEditorTerrainGrade(appState, editor));
+  setTerrainStrokeTarget(editor, 256, 0);
+  const std::uint64_t revisionBefore = appState.facade.document().revision();
+  const CreativeEditorTerrainGradeReceipt rejected =
+      applyCreativeEditorTerrainGradeWithHistory(
+          appState, editor, "test_terrain_grade_capacity");
+  return expect(!rejected.accepted && !rejected.changed &&
+                    rejected.plan.status ==
+                        cr::CreativeTerrainGradePlanStatus::CapacityExceeded &&
+                    editor.terrain.grade.anchorValid &&
+                    appState.facade.document().revision() == revisionBefore &&
+                    cr::creativeUndoDepth(appState.history) == 0U &&
+                    editor.interaction.placementFeedback.status ==
+                        CreativeEditorPlacementFeedbackStatus::Rejected,
+                "over-capacity grade fails before mutation and remains editable") &&
+         ok;
+}
+
+bool terrainGradeRoutesSquareXAndCircleThroughWorldActions() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 413U);
+  const cr::CreativeTerrainControlEdit initial{
+      cr::CreativeTerrainEditKind::Upsert, {{0, 0}, 2U, 2U}};
+  static_cast<void>(appState.facade.applyTerrainControlEdits(
+      std::span{&initial, 1U}));
+  appState.history = {};
+  CreativeEditorState editor = terrainGradeEditor(0, 0);
+  iggy3d::RenderCameraFrame camera;
+  camera.worldEye = {0.5F, 10.0F, 0.5F};
+  camera.worldForward = {0.0F, -1.0F, 0.0F};
+  camera.worldUp = {0.0F, 0.0F, -1.0F};
+  const CreativeEditorPickFrame pickFrame;
+  const auto process = [&](const cr::CreativeWorldActionFrame& actions,
+                           std::uint64_t now) {
+    processCreativeEditorWorldInteractionFrame(
+        {appState, editor, actions, cr::kCreativeInputModifierNone, camera,
+         pickFrame, 800U, 600U, now, false});
+  };
+  const auto gesture = [&](cr::CreativeWorldActionId action,
+                           std::uint64_t now) {
+    process(strokeAction(action, true, true), now);
+    process(strokeAction(action, false, false, true), now + 1U);
+  };
+
+  gesture(cr::CreativeWorldActionId::Pick, 0U);
+  bool ok = expect(editor.terrain.grade.anchorValid &&
+                       editor.terrain.grade.anchorCoord ==
+                           cr::CreativeTerrainCoord2{0, 0},
+                   "PS5 Square routes to grade start selection");
+  static_cast<void>(processCreativeEditorTerrainGradeQuickEdit(
+      editor.terrain.grade, cr::CreativeInputActionId::QuickEditPrevious));
+  static_cast<void>(processCreativeEditorTerrainGradeQuickEdit(
+      editor.terrain.grade, cr::CreativeInputActionId::QuickEditPrevious));
+  camera.worldEye.x = 2.5F;
+  gesture(cr::CreativeWorldActionId::Accept, 2U);
+  const cr::CreativeTerrainControlPoint* endpoint =
+      appState.facade.document().terrainField().controlAt({2, 0});
+  ok = expect(endpoint != nullptr && endpoint->heightCells == 4U &&
+                  !editor.terrain.grade.anchorValid &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "PS5 X routes to one grade batch") &&
+       ok;
+
+  camera.worldEye.x = 0.5F;
+  gesture(cr::CreativeWorldActionId::Pick, 4U);
+  gesture(cr::CreativeWorldActionId::Reject, 6U);
+  return expect(!editor.terrain.grade.anchorValid &&
+                    appState.facade.document().terrainField().controlCount() ==
+                        3U &&
+                    cr::creativeUndoDepth(appState.history) == 1U,
+                "PS5 Circle cancels grade setup without mutation") &&
+         ok;
+}
+
 bool bentSurfacePatchesReachRendererAndRefreshWithHeight() {
   cr::CreativeAppState appState;
   installDocument(appState, 404U);
@@ -759,6 +948,9 @@ int main() {
                  terrainCancelGestureCannotFallThroughIntoEraseStroke() &&
                  terrainStrokeCapacityStopsFurtherMutation() &&
                  terrainStrokeInterruptionFinalizesChangedAndEmptyGestures() &&
+                 terrainGradeAnchorsPreviewsAppliesAndUndoesOneBatch() &&
+                 terrainGradeCancelAndCapacityFailureDoNotCreateHistory() &&
+                 terrainGradeRoutesSquareXAndCircleThroughWorldActions() &&
                  bentSurfacePatchesReachRendererAndRefreshWithHeight() &&
                  gridChangeRebuildsWorldSpaceTerrainPatches() &&
                  oversizedBentSurfaceFallsBackToTerrainPlanes() &&

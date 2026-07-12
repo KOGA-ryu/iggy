@@ -57,6 +57,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/input/Catalog.cpp
     src/app/iggy3d/creative/input/Interaction.cpp
     src/app/iggy3d/creative/history/History.cpp
+    src/app/iggy3d/creative/tools/TerrainGrade.cpp
     src/app/iggy3d/creative/tools/Tools.cpp
     src/app/iggy3d/creative/tools/Select.cpp
     src/app/iggy3d/creative/tools/Clipboard.cpp
@@ -217,6 +218,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorConnectedFill.cpp
   apps/iggy3d_creative/EditorSurfaceExtrude.cpp
   apps/iggy3d_creative/EditorTerrain.cpp
+  apps/iggy3d_creative/EditorTerrainGrade.cpp
   apps/iggy3d_creative/EditorMaterialStroke.cpp
   apps/iggy3d_creative/EditorPattern.cpp
   apps/iggy3d_creative/EditorBootstrap.cpp
