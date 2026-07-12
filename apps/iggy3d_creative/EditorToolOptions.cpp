@@ -6,6 +6,7 @@
 
 #include "EditorPlacement.hpp"
 #include "EditorState.hpp"
+#include "EditorTerrain.hpp"
 #include "EditorVolume.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/input/UiInput.hpp"
@@ -463,6 +464,11 @@ void syncCreativeEditorQuickEdit(CreativeEditorState& editor) {
 bool processCreativeEditorQuickEditAction(
     CreativeEditorState& editor,
     cr::CreativeInputActionId action) {
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  if (held.kind == cr::CreativeHeldItemKind::TerrainControl) {
+    return processCreativeEditorTerrainQuickEdit(editor.terrain, action);
+  }
   rebuildQuickEditOptions(editor, false);
   CreativeEditorQuickEditState& state = editor.quickEdit;
   if (state.options.count == 0U || state.options.capacityExceeded) {
@@ -509,9 +515,12 @@ bool processCreativeEditorQuickEditAction(
 
 std::string creativeEditorQuickEditStatusLabel(
     const CreativeEditorState& editor) {
-  const CreativeEditorQuickEditState& state = editor.quickEdit;
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  if (held.kind == cr::CreativeHeldItemKind::TerrainControl) {
+    return creativeEditorTerrainQuickEditLabel(editor.terrain);
+  }
+  const CreativeEditorQuickEditState& state = editor.quickEdit;
   if (state.targetEntry.kind != held.kind ||
       state.targetEntry.objectKind != held.objectKind ||
       state.selectedIndex >= state.options.count) {

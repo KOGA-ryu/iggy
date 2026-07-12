@@ -308,6 +308,28 @@ void Reader::readCreativeDocument() {
       }
     }
   }
+  if (nextKeyIs("creativeDocument.terrainControl.count")) {
+    std::uint64_t controlCount = 0;
+    readUnsigned("creativeDocument.terrainControl.count", controlCount);
+    if (controlCount > 256U) {
+      result_ = fail(SaveCodecStatus::InvalidNumber,
+                     "creativeDocument.terrainControl.count", index_,
+                     "terrain control count exceeds limit");
+      return;
+    }
+    section.terrainControls.resize(static_cast<std::size_t>(controlCount));
+    for (std::size_t controlIndex = 0;
+         controlIndex < section.terrainControls.size(); ++controlIndex) {
+      SaveCreativeDocumentTerrainControlRecord& control =
+          section.terrainControls[controlIndex];
+      const std::string p = "creativeDocument.terrainControl." +
+                            std::to_string(controlIndex) + ".";
+      readI32(p + "x", control.x);
+      readI32(p + "z", control.z);
+      readUnsigned(p + "heightCells", control.heightCells);
+      readUnsigned(p + "radiusCells", control.radiusCells);
+    }
+  }
 }
 
 void Reader::readPlayers() {

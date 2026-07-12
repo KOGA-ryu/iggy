@@ -591,6 +591,19 @@ void appendVoxelCuboid(CreativeRoomBakeResult& result,
     appendSpatialSurfaceSource(result.spatialSurfaceSources,
                                kInvalidObjectId, surface);
     result.room.spatialSurfaces.push_back(std::move(surface));
+    if (cuboid.material == CreativeObjectKind::TerrainPatch) {
+      const Vec3 normal = blockerNormalForRole(bounds, BakedRoomRole::Prop);
+      RoomSpatialSurface actorSurface =
+          blockerSurfaceForStableId(stableId, bounds, normal, false);
+      appendSpatialSurfaceSource(result.spatialSurfaceSources,
+                                 kInvalidObjectId, actorSurface);
+      result.room.spatialSurfaces.push_back(std::move(actorSurface));
+      RoomSpatialSurface projectileSurface =
+          blockerSurfaceForStableId(stableId, bounds, normal, true);
+      appendSpatialSurfaceSource(result.spatialSurfaceSources,
+                                 kInvalidObjectId, projectileSurface);
+      result.room.spatialSurfaces.push_back(std::move(projectileSurface));
+    }
     return;
   }
 

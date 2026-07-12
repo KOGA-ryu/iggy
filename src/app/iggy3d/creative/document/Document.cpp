@@ -307,6 +307,8 @@ std::string_view toString(CreativeDocumentRestoreStatus status) noexcept {
       return "DuplicateObjectId";
     case CreativeDocumentRestoreStatus::InvalidVoxelField:
       return "InvalidVoxelField";
+    case CreativeDocumentRestoreStatus::InvalidTerrainField:
+      return "InvalidTerrainField";
     case CreativeDocumentRestoreStatus::InvalidNextObjectId:
       return "InvalidNextObjectId";
     case CreativeDocumentRestoreStatus::Restored:
@@ -348,7 +350,7 @@ CreativeDocument CreativeDocument::create(std::string name) {
 }
 
 bool CreativeDocument::isValid() const noexcept {
-  return valid_ && voxelField_.isValid();
+  return valid_ && voxelField_.isValid() && terrainField_.isValid();
 }
 
 CreativeDocumentId CreativeDocument::id() const noexcept {
@@ -469,6 +471,7 @@ void CreativeDocument::reset() {
   objectIndex_.clear();
   nextObjectId_ = 1;
   voxelField_.clear();
+  terrainField_.clear();
   units_ = CreativeUnits::Meters;
   gridSettings_ = {};
   snapSettings_ = makeDefaultCreativeDocumentSnapSettings();
@@ -512,6 +515,10 @@ std::span<const CreativeObject> CreativeDocument::objects() const noexcept {
 
 const CreativeVoxelField& CreativeDocument::voxelField() const noexcept {
   return voxelField_;
+}
+
+const CreativeTerrainField& CreativeDocument::terrainField() const noexcept {
+  return terrainField_;
 }
 
 CreativeDocumentCreateReceipt CreativeDocument::createObject(
@@ -768,6 +775,26 @@ CreativeVoxelMutationReceipt CreativeDocument::applyVoxelEdits(
   return receipt;
 }
 
+CreativeTerrainMutationReceipt CreativeDocument::applyTerrainControlEdits(
+    std::span<const CreativeTerrainControlEdit> edits) {
+  if (!valid_) {
+    CreativeTerrainMutationReceipt receipt;
+    receipt.requested = true;
+    receipt.attemptedEditCount = edits.size();
+    receipt.status = CreativeTerrainMutationStatus::InvalidField;
+    receipt.reasonCode = "creative_terrain_document_invalid";
+    return receipt;
+  }
+
+  CreativeTerrainMutationReceipt receipt = terrainField_.apply(edits);
+  if (receipt.changed) {
+    markObjectMutationChanged(
+        dirtyFlagsForCreation(CreativeObjectKind::TerrainPatch) |
+        documentSettingsDirtyFlags());
+  }
+  return receipt;
+}
+
 CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
     const CreativeDocumentRestoreRequest& request) {
   CreativeDocumentRestoreReceipt receipt;
@@ -775,6 +802,7 @@ CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
   receipt.documentId = request.documentId;
   receipt.objectCount = request.objects.size();
   receipt.voxelCellCount = request.voxelField.occupiedCellCount();
+  receipt.terrainControlCount = request.terrainField.controlCount();
   receipt.nextObjectId = request.nextObjectId;
 
   if (!valid_) {
@@ -867,6 +895,13 @@ CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
     return receipt;
   }
 
+  if (!request.terrainField.validateInvariants()) {
+    setRestoreStatus(receipt,
+                     CreativeDocumentRestoreStatus::InvalidTerrainField,
+                     "invalid_terrain_field");
+    return receipt;
+  }
+
   if (request.nextObjectId == kInvalidObjectId ||
       request.nextObjectId <= maxObjectId) {
     setRestoreStatus(receipt,
@@ -886,6 +921,7 @@ CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
   objectIndex_ = std::move(restoredIndex);
   nextObjectId_ = request.nextObjectId;
   voxelField_ = request.voxelField;
+  terrainField_ = request.terrainField;
   revision_ = 0;
   dirtyFlags_ = 0;
 

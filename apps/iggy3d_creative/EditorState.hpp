@@ -14,6 +14,7 @@
 #include "EditorEdits.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorPattern.hpp"
+#include "EditorTerrain.hpp"
 #include "EditorToolOptions.hpp"
 #include "EditorTransform.hpp"
 #include "EditorVolume.hpp"
@@ -43,6 +44,7 @@ struct CreativeEditorState {
   CreativeEditorQuickEditState quickEdit;
   CreativeEditorPatternState pattern;
   CreativeEditorSelectionTransformState transform;
+  CreativeEditorTerrainState terrain;
 
   bool placeMode = false;
   std::vector<iggy3d::creative::CreativeObjectKind> brushPalette;

@@ -13,6 +13,7 @@
 #include "EditorPreviewProxies.hpp"
 #include "EditorState.hpp"
 #include "EditorSurfaceExtrude.hpp"
+#include "EditorTerrain.hpp"
 #include "EditorTransform.hpp"
 #include "EditorVolume.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
@@ -83,6 +84,8 @@ constexpr std::array kHeldItemBehaviors{
     HeldItemBehavior{cr::CreativeHeldItemKind::ConnectedFill,
                      cr::Tool::Select, false, false},
     HeldItemBehavior{cr::CreativeHeldItemKind::SurfaceExtrude,
+                     cr::Tool::Select, false, false},
+    HeldItemBehavior{cr::CreativeHeldItemKind::TerrainControl,
                      cr::Tool::Select, false, false},
 };
 static_assert(heldItemRowsMatchEnumOrder(kHeldItemBehaviors));
@@ -400,6 +403,24 @@ void insetSurface(InteractionContext& context) {
       "minecraft_surface_inset"));
 }
 
+void upsertTerrainControl(InteractionContext& context) {
+  static_cast<void>(applyCreativeEditorTerrainEditWithHistory(
+      context.request.appState, context.request.editor,
+      CreativeEditorTerrainEditKind::Upsert, "minecraft_terrain_rod_upsert"));
+}
+
+void removeTerrainControl(InteractionContext& context) {
+  static_cast<void>(applyCreativeEditorTerrainEditWithHistory(
+      context.request.appState, context.request.editor,
+      CreativeEditorTerrainEditKind::Remove, "minecraft_terrain_rod_remove"));
+}
+
+void sampleTerrainControl(InteractionContext& context) {
+  static_cast<void>(applyCreativeEditorTerrainEditWithHistory(
+      context.request.appState, context.request.editor,
+      CreativeEditorTerrainEditKind::Sample, "minecraft_terrain_rod_sample"));
+}
+
 constexpr std::array<HeldItemHandlerRow, cr::kCreativeHeldItemKindCount>
     kHeldItemHandlers{{
         {cr::CreativeHeldItemKind::Material,
@@ -444,6 +465,9 @@ constexpr std::array<HeldItemHandlerRow, cr::kCreativeHeldItemKindCount>
         {cr::CreativeHeldItemKind::SurfaceExtrude,
          {insetSurface, extrudeSurface, sampleTargetMaterial},
          extrudeSurface, insetSurface, true},
+        {cr::CreativeHeldItemKind::TerrainControl,
+         {removeTerrainControl, upsertTerrainControl, sampleTerrainControl},
+         upsertTerrainControl, removeTerrainControl, true},
     }};
 static_assert(heldItemRowsMatchEnumOrder(kHeldItemHandlers));
 
@@ -822,6 +846,7 @@ double creativeEditorTargetCellSize(
     case cr::CreativeHeldItemKind::VolumeClone:
     case cr::CreativeHeldItemKind::ConnectedFill:
     case cr::CreativeHeldItemKind::SurfaceExtrude:
+    case cr::CreativeHeldItemKind::TerrainControl:
       return document.gridSettings().cellSizeMeters;
     case cr::CreativeHeldItemKind::ObjectSelect:
     case cr::CreativeHeldItemKind::ObjectMove:
@@ -1180,6 +1205,11 @@ bool confirmCreativeEditorHeldItem(cr::CreativeAppState& appState,
     return applyCreativeEditorConnectedFillWithHistory(
                appState, editor, CreativeConnectedFillEditKind::Paint,
                source)
+        .accepted;
+  }
+  if (held.kind == cr::CreativeHeldItemKind::TerrainControl) {
+    return applyCreativeEditorTerrainEditWithHistory(
+               appState, editor, CreativeEditorTerrainEditKind::Upsert, source)
         .accepted;
   }
   if (held.kind == cr::CreativeHeldItemKind::SurfaceExtrude) {

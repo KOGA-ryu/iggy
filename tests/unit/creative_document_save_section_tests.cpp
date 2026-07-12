@@ -948,6 +948,54 @@ bool voxelChunksEncodeDecodeAndRestore() {
                 "restored voxel coordinates and materials match");
 }
 
+bool terrainControlsEncodeDecodeAndRestore() {
+  cr::CreativeDocument document = authoredDocument();
+  const std::array edits{
+      cr::CreativeTerrainControlEdit{
+          cr::CreativeTerrainEditKind::Upsert, {{-4, 7}, 5, 3}},
+      cr::CreativeTerrainControlEdit{
+          cr::CreativeTerrainEditKind::Upsert, {{8, -2}, 12, 6}},
+  };
+  const cr::CreativeTerrainMutationReceipt mutation =
+      document.applyTerrainControlEdits(edits);
+  const iggy3d::ProductCreativeDocumentSectionBuildResult built =
+      iggy3d::buildSaveCreativeDocumentSection(document);
+  iggy3d::SaveEnvelope envelope = minimalEnvelope();
+  envelope.creativeDocument = built.section;
+  const iggy3d::SaveEncodeResult encoded =
+      iggy3d::encodeSaveEnvelope(envelope);
+  const iggy3d::SaveDecodeResult decoded =
+      iggy3d::decodeSaveEnvelope(encoded.encodedText);
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult restored =
+      iggy3d::restoreCreativeDocumentFromSaveSection(
+          decoded.envelope.creativeDocument);
+  const cr::CreativeTerrainControlPoint* first =
+      restored.document.terrainField().controlAt({-4, 7});
+  const cr::CreativeTerrainControlPoint* second =
+      restored.document.terrainField().controlAt({8, -2});
+
+  return expect(mutation.accepted && mutation.changed,
+                "terrain save setup applies") &&
+         expect(built.receipt.accepted &&
+                    built.receipt.terrainControlCount == 2U &&
+                    built.section.terrainControls.size() == 2U,
+                "save section stores terrain controls") &&
+         expect(encoded.status == iggy3d::SaveCodecStatus::Ok &&
+                    encoded.encodedText.find(
+                        "creativeDocument.terrainControl.count=2\n") !=
+                        std::string::npos,
+                "codec writes terrain control block") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok &&
+                    decoded.envelope.creativeDocument.terrainControls.size() ==
+                        2U,
+                "codec decodes terrain controls") &&
+         expect(restored.receipt.accepted && first != nullptr &&
+                    first->heightCells == 5U && first->radiusCells == 3U &&
+                    second != nullptr && second->heightCells == 12U &&
+                    second->radiusCells == 6U,
+                "restore preserves terrain coordinates and settings");
+}
+
 }  // namespace
 
 int main() {
@@ -973,5 +1021,6 @@ int main() {
   ok = restoreRejectsInvalidSnapModeAndAxes() && ok;
   ok = restoreRejectsTooLargeGridDimension() && ok;
   ok = voxelChunksEncodeDecodeAndRestore() && ok;
+  ok = terrainControlsEncodeDecodeAndRestore() && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

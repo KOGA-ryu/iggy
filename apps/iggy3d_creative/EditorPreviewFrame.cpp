@@ -26,6 +26,7 @@
 #include "EditorShapePreview.hpp"
 #include "EditorState.hpp"
 #include "EditorSurfaceExtrude.hpp"
+#include "EditorTerrain.hpp"
 #include "EditorVolume.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/DocumentWireframe.hpp"
@@ -376,6 +377,21 @@ refreshVoxelChunkMeshPlans(CreativeEditorSceneCache& cache,
   return cuboids;
 }
 
+void refreshTerrainSurfacePlan(CreativeEditorSceneCache& cache,
+                               const cr::CreativeDocument& document) {
+  if (cache.valid &&
+      cache.terrainRevision == document.terrainField().revision() &&
+      cache.documentId == document.id()) {
+    return;
+  }
+  const cr::CreativeTerrainSurfacePlan plan =
+      cr::buildCreativeTerrainSurfacePlan(document.terrainField());
+  cache.terrainCuboids = plan.accepted ? plan.cuboids
+                                      : std::vector<cr::CreativeVoxelCuboid>{};
+  cache.terrainRevision = document.terrainField().revision();
+  ++cache.terrainSurfaceBuildCount;
+}
+
 [[nodiscard]] StandaloneRoomBakePreviewScene
 buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
     const iggy3d::creative::CreativeDocument& document,
@@ -412,8 +428,16 @@ buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
 StandaloneRoomBakePreviewScene buildStandaloneRoomBakePreviewScene(
     const iggy3d::creative::CreativeDocument& document,
     const iggy3d::ProductMapMakerGridSnapshot& gridSnapshot) {
+  std::vector<cr::CreativeVoxelCuboid> cuboids =
+      cr::buildCreativeVoxelCuboids(document.voxelField());
+  const cr::CreativeTerrainSurfacePlan terrain =
+      cr::buildCreativeTerrainSurfacePlan(document.terrainField());
+  if (terrain.accepted) {
+    cuboids.insert(cuboids.end(), terrain.cuboids.begin(),
+                   terrain.cuboids.end());
+  }
   return buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
-      document, gridSnapshot, {}, false);
+      document, gridSnapshot, cuboids, true);
 }
 
 bool refreshCreativeEditorSceneCache(
@@ -426,9 +450,14 @@ bool refreshCreativeEditorSceneCache(
   }
   if (cache.documentId != document.id()) {
     cache.voxelChunkMeshes.clear();
+    cache.terrainCuboids.clear();
+    cache.terrainRevision = 0;
   }
-  const std::vector<cr::CreativeVoxelCuboid> voxelCuboids =
+  std::vector<cr::CreativeVoxelCuboid> voxelCuboids =
       refreshVoxelChunkMeshPlans(cache, document);
+  refreshTerrainSurfacePlan(cache, document);
+  voxelCuboids.insert(voxelCuboids.end(), cache.terrainCuboids.begin(),
+                      cache.terrainCuboids.end());
   cache.preview = buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
       document, gridSnapshot, voxelCuboids, true);
   cache.documentId = document.id();
@@ -444,6 +473,8 @@ void invalidateCreativeEditorSceneCache(
   cache.documentId = iggy3d::creative::kInvalidDocumentId;
   cache.documentRevision = 0;
   cache.voxelChunkMeshes.clear();
+  cache.terrainCuboids.clear();
+  cache.terrainRevision = 0;
 }
 
 void attachCreativeEditorPlacementPreviews(
@@ -614,6 +645,7 @@ void buildAndAttachCreativeEditorOverlayFrame(
   output.materialBrushEdgeCount = 0;
   output.connectedFillEdgeCount = 0;
   output.surfaceExtrudeEdgeCount = 0;
+  output.terrainEdgeCount = 0;
   output.volumeEdgeCount = 0;
   output.patternEdgeCount = 0;
   output.transformPreviewEdgeCount = 0;
@@ -941,6 +973,10 @@ void buildAndAttachCreativeEditorOverlayFrame(
   output.transformPreviewEdgeCount =
       appendCreativeEditorSelectionTransformPreview(
           editor.transform, gizmoThickness, combinedWireLines);
+  const std::size_t terrainBefore = combinedWireLines.size();
+  appendCreativeEditorTerrainOverlay(appState.facade.document(), editor,
+                                     gizmoThickness, combinedWireLines);
+  output.terrainEdgeCount = combinedWireLines.size() - terrainBefore;
   std::vector<DebugHudGlyphQuad>& glyphs = output.glyphs;
   appendCreativeEditorInteractionOverlay(
       editor, drawableWidth, drawableHeight, gizmoThickness, output.uiRects,

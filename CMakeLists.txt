@@ -41,6 +41,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/Geometry.cpp
     src/app/iggy3d/creative/document/Object.cpp
     src/app/iggy3d/creative/document/Document.cpp
+    src/app/iggy3d/creative/document/TerrainField.cpp
     src/app/iggy3d/creative/document/VoxelField.cpp
     src/app/iggy3d/creative/mutation/Mutation.cpp
     src/app/iggy3d/creative/document/ObjectDescriptor.cpp
@@ -215,6 +216,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorInteraction.cpp
   apps/iggy3d_creative/EditorConnectedFill.cpp
   apps/iggy3d_creative/EditorSurfaceExtrude.cpp
+  apps/iggy3d_creative/EditorTerrain.cpp
   apps/iggy3d_creative/EditorMaterialStroke.cpp
   apps/iggy3d_creative/EditorPattern.cpp
   apps/iggy3d_creative/EditorBootstrap.cpp

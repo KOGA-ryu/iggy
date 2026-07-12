@@ -57,7 +57,10 @@ void appendGamepadHotbar(HintSpecBuffer& buffer) noexcept {
 
 void appendQuickEdit(HintSpecBuffer& buffer,
                      const CreativeEditorState& editor) noexcept {
-  if (editor.quickEdit.options.count == 0U) {
+  const cr::CreativeHeldItemKind held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar).kind;
+  if (editor.quickEdit.options.count == 0U &&
+      held != cr::CreativeHeldItemKind::TerrainControl) {
     return;
   }
   appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
@@ -92,6 +95,11 @@ void appendViewportKeyboardHints(HintSpecBuffer& buffer,
       appendHint(buffer, cr::CreativeInputActionId::PrimaryAction,
                  "Remove layer");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
+      break;
+    case cr::CreativeHeldItemKind::TerrainControl:
+      appendHint(buffer, cr::CreativeInputActionId::SecondaryAction, "Place rod");
+      appendHint(buffer, cr::CreativeInputActionId::PrimaryAction, "Remove rod");
+      appendHint(buffer, cr::CreativeInputActionId::PickAction, "Sample rod");
       break;
     case cr::CreativeHeldItemKind::ObjectSelect:
       appendHint(buffer, cr::CreativeInputActionId::PrimaryAction, "Select");
@@ -160,6 +168,11 @@ void appendViewportGamepadHints(HintSpecBuffer& buffer,
       appendHint(buffer, cr::CreativeInputActionId::RejectAction,
                  "Remove layer");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
+      break;
+    case cr::CreativeHeldItemKind::TerrainControl:
+      appendHint(buffer, cr::CreativeInputActionId::AcceptAction, "Place rod");
+      appendHint(buffer, cr::CreativeInputActionId::RejectAction, "Remove rod");
+      appendHint(buffer, cr::CreativeInputActionId::PickAction, "Sample rod");
       break;
     case cr::CreativeHeldItemKind::ObjectSelect:
       appendHint(buffer, cr::CreativeInputActionId::AcceptAction, "Select");

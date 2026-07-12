@@ -231,6 +231,8 @@ class Facade {
       const CreativeVolumeOperationRequest& request);
   [[nodiscard]] CreativeVoxelMutationReceipt applyVoxelEdits(
       std::span<const CreativeVoxelEdit> edits);
+  [[nodiscard]] CreativeTerrainMutationReceipt applyTerrainControlEdits(
+      std::span<const CreativeTerrainControlEdit> edits);
 
   [[nodiscard]] CreativeDocumentCreateReceipt createDocumentObject(
       const CreativeDocumentCreateRequest& request);

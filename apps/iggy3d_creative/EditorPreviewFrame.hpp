@@ -51,6 +51,7 @@ struct CreativeEditorOverlayFrame {
   std::size_t materialBrushEdgeCount = 0;
   std::size_t connectedFillEdgeCount = 0;
   std::size_t surfaceExtrudeEdgeCount = 0;
+  std::size_t terrainEdgeCount = 0;
   std::size_t volumeEdgeCount = 0;
   std::size_t patternEdgeCount = 0;
   std::size_t transformPreviewEdgeCount = 0;
@@ -86,7 +87,10 @@ struct CreativeEditorSceneCache {
   std::uint64_t documentRevision = 0;
   std::uint64_t refreshCount = 0;
   std::uint64_t voxelChunkMeshBuildCount = 0;
+  std::uint64_t terrainRevision = 0;
+  std::uint64_t terrainSurfaceBuildCount = 0;
   std::vector<CreativeEditorVoxelChunkMeshCache> voxelChunkMeshes;
+  std::vector<iggy3d::creative::CreativeVoxelCuboid> terrainCuboids;
   bool valid = false;
 };
 

@@ -154,8 +154,8 @@ bool actionAvailabilityUsesExplicitFacts() {
 
 bool catalogBuildsMaterialsAndCreatorTools() {
   const cr::CreativeCatalogState state = catalog();
-  bool ok = expect(state.entries.size() == 14U,
-                   "two materials plus twelve catalog tools") &&
+  bool ok = expect(state.entries.size() == 15U,
+                   "two materials plus thirteen catalog tools") &&
             expect(state.filteredEntryIndices.size() == state.entries.size(),
                    "empty query exposes every entry") &&
             expect(state.entries[0].category ==
@@ -199,7 +199,7 @@ bool catalogOmitsToolsWithoutRequiredMaterial() {
                entry.hotbarEntry.kind ==
                    cr::CreativeHeldItemKind::SurfaceExtrude;
       });
-  return expect(state.entries.size() == 6U,
+  return expect(state.entries.size() == 7U,
                 "empty palette retains material-independent tools") &&
          expect(!materialDependentToolPresent,
                 "material-dependent tools require a valid material");
@@ -304,13 +304,21 @@ bool toolWheelIsBoundedDirectionalAndAssignable() {
         return entry.hotbarEntry.kind ==
                cr::CreativeHeldItemKind::ObjectSelect;
       });
+  const auto terrain = std::find_if(
+      catalogState.entries.begin(), catalogState.entries.end(),
+      [](const cr::CreativeCatalogEntry& entry) {
+        return entry.hotbarEntry.kind ==
+               cr::CreativeHeldItemKind::TerrainControl;
+      });
   ok = expect(erase != catalogState.entries.end() &&
                   !erase->toolWheelEligible &&
                   regionSelect != catalogState.entries.end() &&
                   !regionSelect->toolWheelEligible &&
                   objectSelect != catalogState.entries.end() &&
-                  !objectSelect->toolWheelEligible,
-              "default-hotbar select and erase tools remain catalog-only") &&
+                  !objectSelect->toolWheelEligible &&
+                  terrain != catalogState.entries.end() &&
+                  !terrain->toolWheelEligible,
+              "specialized tools remain assignable but outside defaults") &&
        expect(wheel.catalogEntryIndices[8] < catalogState.entries.size() &&
                   catalogState.entries[wheel.catalogEntryIndices[8]]
                           .hotbarEntry.kind ==
@@ -394,12 +402,18 @@ bool toolWheelIsBoundedDirectionalAndAssignable() {
 
   const std::size_t objectSelectIndex = static_cast<std::size_t>(
       std::distance(catalogState.entries.begin(), objectSelect));
+  const std::size_t terrainIndex = static_cast<std::size_t>(
+      std::distance(catalogState.entries.begin(), terrain));
   const std::size_t extrudeIndex = wheel.catalogEntryIndices[7];
   ok = expect(cr::assignCreativeToolWheelCatalogEntry(
                   wheel, catalogState, 0U, objectSelectIndex) &&
                   wheel.catalogEntryIndices[0] == objectSelectIndex &&
                   cr::isValidCreativeToolWheel(wheel, catalogState),
               "catalog-only tools can replace a favorite sector") &&
+       expect(cr::assignCreativeToolWheelCatalogEntry(
+                  wheel, catalogState, 1U, terrainIndex) &&
+                  wheel.catalogEntryIndices[1] == terrainIndex,
+              "terrain rod can be assigned as a favorite") &&
        expect(cr::assignCreativeToolWheelCatalogEntry(
                   wheel, catalogState, 0U, extrudeIndex) &&
                   wheel.catalogEntryIndices[0] == extrudeIndex &&
@@ -493,7 +507,7 @@ bool selectionWrapsAndAssignmentsAreExplicit() {
   cr::CreativeHotbarState hotbar = cr::makeDefaultCreativeHotbar(palette);
 
   bool ok = expect(cr::moveCreativeCatalogSelection(state, -1) &&
-                       state.selectedFilteredIndex == 13U,
+                       state.selectedFilteredIndex == 14U,
                    "previous wraps to final result") &&
             expect(cr::moveCreativeCatalogSelection(state, 1) &&
                        state.selectedFilteredIndex == 0U,

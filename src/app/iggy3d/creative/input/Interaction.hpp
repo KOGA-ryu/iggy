@@ -110,6 +110,7 @@ enum class CreativeHeldItemKind : std::uint8_t {
   LinearArray,
   ConnectedFill,
   SurfaceExtrude,
+  TerrainControl,
   Count,
 };
 

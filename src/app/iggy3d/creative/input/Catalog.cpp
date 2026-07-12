@@ -64,6 +64,9 @@ constexpr std::array kToolSpecs{
                     "extrude inset pull push connected face surface"},
     CatalogToolSpec{CreativeHeldItemKind::LinearArray, "Array",
                     "array pattern repeat duplicate line radial ring"},
+    CatalogToolSpec{CreativeHeldItemKind::TerrainControl, "Terrain Rod",
+                    "terrain heightfield rod elevation radius landscape ground",
+                    false},
 };
 
 constexpr std::array kActionEntries{

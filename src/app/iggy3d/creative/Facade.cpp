@@ -802,6 +802,19 @@ CreativeVoxelMutationReceipt Facade::applyVoxelEdits(
   return receipt;
 }
 
+CreativeTerrainMutationReceipt Facade::applyTerrainControlEdits(
+    std::span<const CreativeTerrainControlEdit> edits) {
+  recordCommandAttempt(stats_);
+  CreativeTerrainMutationReceipt receipt =
+      document_.applyTerrainControlEdits(edits);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
 CreativeDocumentCreateReceipt Facade::createDocumentObject(
     const CreativeDocumentCreateRequest& request) {
   recordCommandAttempt(stats_);

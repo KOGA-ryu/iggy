@@ -216,6 +216,17 @@ set_tests_properties(creative_editor_action_hints_tests PROPERTIES
 set_tests_properties(creative_editor_action_hints_tests PROPERTIES
   LABELS "unit;app;creative;editor;controls;hints;ui;iggy3d")
 
+add_executable(creative_editor_terrain_tests
+  tests/unit/creative_editor_terrain_tests.cpp)
+target_link_libraries(creative_editor_terrain_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_terrain_tests)
+add_test(NAME creative_editor_terrain_tests
+  COMMAND "$<TARGET_FILE:creative_editor_terrain_tests>")
+set_tests_properties(creative_editor_terrain_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;editor;terrain;history;preview;iggy3d")
+
 iggy3d_add_unit_test(creative_catalog_tests
   tests/unit/creative_catalog_tests.cpp)
 set_tests_properties(creative_catalog_tests PROPERTIES
@@ -230,6 +241,11 @@ iggy3d_add_unit_test(creative_voxel_field_tests
   tests/unit/creative_voxel_field_tests.cpp)
 set_tests_properties(creative_voxel_field_tests PROPERTIES
   LABELS "unit;app;creative;document;voxel;iggy3d")
+
+iggy3d_add_unit_test(creative_terrain_field_tests
+  tests/unit/creative_terrain_field_tests.cpp)
+set_tests_properties(creative_terrain_field_tests PROPERTIES
+  LABELS "unit;app;creative;document;terrain;iggy3d")
 
 iggy3d_add_unit_test(creative_select_tests
   tests/unit/creative_select_tests.cpp)

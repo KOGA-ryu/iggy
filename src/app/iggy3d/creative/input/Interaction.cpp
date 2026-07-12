@@ -147,6 +147,7 @@ std::string_view toString(CreativeHeldItemKind kind) noexcept {
     case CreativeHeldItemKind::LinearArray: return "Array";
     case CreativeHeldItemKind::ConnectedFill: return "Flood";
     case CreativeHeldItemKind::SurfaceExtrude: return "Extrude";
+    case CreativeHeldItemKind::TerrainControl: return "Terrain";
     case CreativeHeldItemKind::Count: break;
   }
   return "Unknown";
@@ -261,6 +262,7 @@ bool creativeHeldItemUsesMaterial(CreativeHeldItemKind kind) noexcept {
     case CreativeHeldItemKind::VolumeErase:
     case CreativeHeldItemKind::VolumeClone:
     case CreativeHeldItemKind::LinearArray:
+    case CreativeHeldItemKind::TerrainControl:
     case CreativeHeldItemKind::Count:
       return false;
   }
