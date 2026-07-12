@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -20,11 +21,27 @@ namespace iggy3d_creative_app {
 
 struct CreativeEditorState;
 
+enum class CreativeEditorToolOptionsCommandId : std::uint8_t {
+  SetMaterialBrushSymmetryPivot,
+  ClearMaterialBrushSymmetryPivot,
+  Count,
+};
+
+inline constexpr std::size_t kCreativeEditorToolOptionsCommandCapacity = 2U;
+
+struct CreativeEditorToolOptionsCommandList {
+  std::array<CreativeEditorToolOptionsCommandId,
+             kCreativeEditorToolOptionsCommandCapacity>
+      ids{};
+  std::size_t count = 0U;
+};
+
 struct CreativeEditorToolOptionsState {
   bool open = false;
   iggy3d::creative::CreativeHotbarEntry targetEntry{};
   iggy3d::creative::CreativeToolSettings draft;
   iggy3d::creative::CreativeToolOptionList options;
+  CreativeEditorToolOptionsCommandList commands;
   std::size_t selectedIndex = 0;
 };
 
@@ -60,6 +77,13 @@ processCreativeEditorToolOptionsFrame(
 creativeEditorToolOptionsForEntry(
     iggy3d::creative::CreativeHotbarEntry entry,
     const iggy3d::creative::CreativeToolSettings& settings) noexcept;
+[[nodiscard]] CreativeEditorToolOptionsCommandList
+creativeEditorToolOptionCommandsForEntry(
+    iggy3d::creative::CreativeHotbarEntry entry) noexcept;
+[[nodiscard]] std::size_t creativeEditorToolOptionsRowCount(
+    const CreativeEditorToolOptionsState& state) noexcept;
+[[nodiscard]] bool activateCreativeEditorToolOptionsSelection(
+    CreativeEditorState& editor);
 
 void syncCreativeEditorQuickEdit(CreativeEditorState& editor);
 [[nodiscard]] bool processCreativeEditorQuickEditAction(

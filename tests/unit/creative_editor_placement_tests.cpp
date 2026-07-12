@@ -639,6 +639,9 @@ bool toolOptionsFollowTheRequestedMaterialEntry() {
       cr::CreativeHeldItemKind::Material, cr::CreativeObjectKind::Door};
   const cr::CreativeHotbarEntry invalid{
       cr::CreativeHeldItemKind::Material, cr::CreativeObjectKind::Unknown};
+  const cr::CreativeHotbarEntry materialBrush{
+      cr::CreativeHeldItemKind::MaterialBrush,
+      cr::CreativeObjectKind::Wall};
 
   const cr::CreativeToolOptionList wallOptions =
       creativeEditorToolOptionsForEntry(wall, editor.toolSettings);
@@ -646,6 +649,10 @@ bool toolOptionsFollowTheRequestedMaterialEntry() {
       creativeEditorToolOptionsForEntry(door, editor.toolSettings);
   const cr::CreativeToolOptionList invalidOptions =
       creativeEditorToolOptionsForEntry(invalid, editor.toolSettings);
+  const CreativeEditorToolOptionsCommandList brushCommands =
+      creativeEditorToolOptionCommandsForEntry(materialBrush);
+  const CreativeEditorToolOptionsCommandList doorCommands =
+      creativeEditorToolOptionCommandsForEntry(door);
 
   editor.interaction.hotbar.entries[0] = door;
   syncCreativeEditorQuickEdit(editor);
@@ -667,11 +674,81 @@ bool toolOptionsFollowTheRequestedMaterialEntry() {
                 "requested authored material owns its orientation and grid options") &&
          expect(invalidOptions.count == 0U,
                 "invalid material option targets fail closed") &&
+         expect(brushCommands.count == 2U &&
+                    brushCommands.ids[0] ==
+                        CreativeEditorToolOptionsCommandId::
+                            SetMaterialBrushSymmetryPivot &&
+                    brushCommands.ids[1] ==
+                        CreativeEditorToolOptionsCommandId::
+                            ClearMaterialBrushSymmetryPivot &&
+                    doorCommands.count == 0U,
+                "only material brush options expose bounded pivot commands") &&
          expect(doorQuickEditReady && staleDoorStatusHidden &&
                     editor.quickEdit.targetEntry.objectKind ==
                         cr::CreativeObjectKind::Wall &&
                     editor.quickEdit.options.count == 0U,
                 "quick edit tracks the complete material entry without stale labels");
+}
+
+bool toolOptionsActivateSymmetryPivotCommands() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 105U);
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
+  const cr::CreativeHotbarEntry brush{
+      cr::CreativeHeldItemKind::MaterialBrush,
+      cr::CreativeObjectKind::Wall};
+  editor.interaction.hotbar.entries[0] = brush;
+  const cr::CreativeDocumentId documentId = appState.facade.document().id();
+  updateCreativeMaterialBrushPivotAim(
+      editor.interaction.materialBrushPivot, documentId, true, {4, 2, -3});
+
+  const auto openOptions = [&]() {
+    editor.toolOptions.open = true;
+    editor.toolOptions.targetEntry = brush;
+    editor.toolOptions.draft = editor.toolSettings;
+    editor.toolOptions.options =
+        creativeEditorToolOptionsForEntry(brush, editor.toolSettings);
+    editor.toolOptions.commands =
+        creativeEditorToolOptionCommandsForEntry(brush);
+  };
+
+  openOptions();
+  editor.toolOptions.draft.materialBrushSymmetry =
+      cr::CreativeMaterialBrushSymmetry::MirrorXZ;
+  editor.toolOptions.selectedIndex = editor.toolOptions.options.count;
+  const bool setAccepted =
+      activateCreativeEditorToolOptionsSelection(editor);
+  bool ok = expect(setAccepted && !editor.toolOptions.open &&
+                       editor.toolSettings.materialBrushSymmetry ==
+                           cr::CreativeMaterialBrushSymmetry::MirrorXZ &&
+                       editor.interaction.materialBrushPivot.locked &&
+                       editor.interaction.materialBrushPivot.lockedCell.x == 4 &&
+                       editor.interaction.materialBrushPivot.lockedCell.y == 2 &&
+                       editor.interaction.materialBrushPivot.lockedCell.z == -3,
+                   "modal confirm commits draft settings and locks aimed pivot");
+
+  openOptions();
+  editor.toolOptions.selectedIndex =
+      editor.toolOptions.options.count + 1U;
+  const bool clearAccepted =
+      activateCreativeEditorToolOptionsSelection(editor);
+  ok = expect(clearAccepted && !editor.toolOptions.open &&
+                  !editor.interaction.materialBrushPivot.locked,
+              "clear command removes the pivot through the same confirm path") &&
+       ok;
+
+  resetCreativeMaterialBrushPivot(editor.interaction.materialBrushPivot,
+                                  documentId);
+  openOptions();
+  editor.toolOptions.selectedIndex = editor.toolOptions.options.count;
+  const bool unavailableSet =
+      activateCreativeEditorToolOptionsSelection(editor);
+  return expect(!unavailableSet && editor.toolOptions.open &&
+                    !editor.interaction.materialBrushPivot.locked &&
+                    creativeEditorToolOptionsRowCount(editor.toolOptions) ==
+                        editor.toolOptions.options.count + 2U,
+                "set command fails closed without a viewport aim snapshot") &&
+         ok;
 }
 
 bool previewFrameUsesWorldTargetAndViewHeldTransforms() {
@@ -1866,6 +1943,120 @@ bool materialBrushSymmetryUsesGesturePivotPreviewAndHistory() {
          ok;
 }
 
+bool materialBrushLockedPivotAvoidsCenterMutationAndPersists() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 118U);
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
+  editor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::MaterialBrush;
+  editor.toolSettings.materialBrushShape =
+      cr::CreativeMaterialBrushShape::Cube;
+  editor.toolSettings.materialBrushSize =
+      cr::CreativeMaterialBrushSize::OneCell;
+  editor.toolSettings.materialBrushSymmetry =
+      cr::CreativeMaterialBrushSymmetry::MirrorX;
+  syncCreativeEditorHeldItem(appState, editor);
+  syncCreativeEditorQuickEdit(editor);
+  const cr::CreativeDocumentId documentId = appState.facade.document().id();
+  updateCreativeMaterialBrushPivotAim(
+      editor.interaction.materialBrushPivot, documentId, true, {0, 0, 0});
+  const bool pivotLocked = lockCreativeMaterialBrushPivotFromAim(
+      editor.interaction.materialBrushPivot);
+  setPlaceTarget(editor, 2, 0, 0);
+
+  CreativeEditorSelectionFrame selection;
+  CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  iggy3d::FrameInput previewFrame;
+  CreativeEditorOverlayFrame previewOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, previewFrame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      previewOverlay);
+
+  constexpr std::size_t kWireEdgesPerVoxel = 12U;
+  const bool previewLayoutValid =
+      previewOverlay.materialBrushPivotEdgeCount == kWireEdgesPerVoxel &&
+      previewOverlay.materialBrushEdgeCount == 2U * kWireEdgesPerVoxel &&
+      previewOverlay.combinedWireLines.size() >=
+          previewOverlay.materialBrushPivotEdgeCount +
+              previewOverlay.materialBrushEdgeCount;
+  const std::size_t boxesBegin =
+      previewLayoutValid
+          ? previewOverlay.combinedWireLines.size() -
+                previewOverlay.materialBrushEdgeCount
+          : 0U;
+  const iggy3d::RenderCreativeWireframeDebugLine* directLine =
+      previewLayoutValid
+          ? &previewOverlay.combinedWireLines[boxesBegin]
+          : nullptr;
+  const iggy3d::RenderCreativeWireframeDebugLine* mirroredLine =
+      previewLayoutValid
+          ? &previewOverlay
+                 .combinedWireLines[boxesBegin + kWireEdgesPerVoxel]
+          : nullptr;
+  bool ok = expect(
+      pivotLocked && previewLayoutValid &&
+          near(directLine->color.r, 0.22F) &&
+          near(directLine->color.g, 1.0F) &&
+          near(mirroredLine->color.r, 0.18F) &&
+          near(mirroredLine->color.g, 0.9F) &&
+          creativeEditorHeldItemStatusLabel(editor).find(
+              "PIVOT LOCKED 0 0 0") != std::string::npos,
+      "locked pivot previews direct and mirrored cells before a stroke");
+
+  editor.interaction.target = {};
+  iggy3d::FrameInput noAimFrame;
+  CreativeEditorOverlayFrame noAimOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, noAimFrame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      noAimOverlay);
+  ok = expect(noAimOverlay.materialBrushPivotEdgeCount ==
+                      kWireEdgesPerVoxel &&
+                  noAimOverlay.materialBrushEdgeCount == 0U,
+              "locked yellow pivot remains visible without a paint target") &&
+       ok;
+
+  setPlaceTarget(editor, 2, 0, 0);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, true, false), 0U);
+  ok = expect(editor.interaction.materialStroke.hasBrushAnchor &&
+                  editor.interaction.materialStroke.brushAnchor.x == 2 &&
+                  editor.interaction.materialStroke.hasSymmetryPivot &&
+                  editor.interaction.materialStroke.symmetryPivot.x == 0,
+              "stroke guide anchor remains separate from its locked pivot") &&
+       ok;
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, false, false, true), 1U);
+  const cr::CreativeVoxelField& voxels =
+      appState.facade.document().voxelField();
+  ok = expect(voxels.occupiedCellCount() == 2U &&
+                  voxels.occupied({-2, 0, 0}) &&
+                  !voxels.occupied({0, 0, 0}) &&
+                  voxels.occupied({2, 0, 0}) &&
+                  cr::creativeUndoDepth(appState.history) == 1U &&
+                  editor.interaction.materialBrushPivot.locked,
+              "locked pivot mirrors immediately without painting its center") &&
+       ok;
+  ok = expect(undoLastEdit(appState, "test_locked_symmetry_pivot_undo") &&
+                  appState.facade.document()
+                          .voxelField()
+                          .occupiedCellCount() == 0U &&
+                  editor.interaction.materialBrushPivot.locked,
+              "one undo removes the mirrored pair without clearing the pivot") &&
+       ok;
+
+  resetCreativeMaterialBrushPivot(editor.interaction.materialBrushPivot,
+                                  documentId);
+  return expect(!editor.interaction.materialBrushPivot.locked &&
+                    !editor.interaction.materialBrushPivot.aimAvailable,
+                "document replacement reset clears even a same-id pivot") &&
+         ok;
+}
+
 bool materialBrushInterpolatesDiagonalsAndBreaksOnTargetLoss() {
   cr::CreativeAppState appState;
   installHistoryDocument(appState, 112U);
@@ -2581,6 +2772,7 @@ int main() {
   ok = verticalSurfacePlacementFollowsTheAimedFace() && ok;
   ok = quickEditOrientationFeedsPreviewAndCreatePlan() && ok;
   ok = toolOptionsFollowTheRequestedMaterialEntry() && ok;
+  ok = toolOptionsActivateSymmetryPivotCommands() && ok;
   ok = previewFrameUsesWorldTargetAndViewHeldTransforms() && ok;
   ok = previewHidesForEveryBlockingSurface() && ok;
   ok = quickEditHudHighlightsTheActiveSetting() && ok;
@@ -2599,6 +2791,7 @@ int main() {
   ok = materialBrushPlaneGuideStaysAnchoredForTheGesture() && ok;
   ok = materialBrushLineGuideConstrainsPathAndRendersAxis() && ok;
   ok = materialBrushSymmetryUsesGesturePivotPreviewAndHistory() && ok;
+  ok = materialBrushLockedPivotAvoidsCenterMutationAndPersists() && ok;
   ok = materialBrushInterpolatesDiagonalsAndBreaksOnTargetLoss() && ok;
   ok = materialBrushInterpolatesEraseSweep() && ok;
   ok = materialBrushMasksMatchPreviewAndMutation() && ok;

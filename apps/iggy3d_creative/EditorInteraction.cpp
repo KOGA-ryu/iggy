@@ -557,6 +557,67 @@ void appendHeldItemStatusText(
 
 }  // namespace
 
+void resetCreativeMaterialBrushPivot(
+    CreativeMaterialBrushPivotState& state,
+    cr::CreativeDocumentId documentId) noexcept {
+  state = {};
+  state.documentId = documentId;
+}
+
+void synchronizeCreativeMaterialBrushPivotDocument(
+    CreativeMaterialBrushPivotState& state,
+    cr::CreativeDocumentId documentId) noexcept {
+  if (state.documentId != documentId) {
+    resetCreativeMaterialBrushPivot(state, documentId);
+  }
+}
+
+void updateCreativeMaterialBrushPivotAim(
+    CreativeMaterialBrushPivotState& state,
+    cr::CreativeDocumentId documentId,
+    bool aimAvailable,
+    cr::CreativeGridCoord3 aimCell) noexcept {
+  synchronizeCreativeMaterialBrushPivotDocument(state, documentId);
+  state.aimAvailable =
+      aimAvailable && documentId != cr::kInvalidDocumentId;
+  if (state.aimAvailable) {
+    state.aimCell = aimCell;
+  }
+}
+
+bool lockCreativeMaterialBrushPivotFromAim(
+    CreativeMaterialBrushPivotState& state) noexcept {
+  if (!state.aimAvailable ||
+      state.documentId == cr::kInvalidDocumentId) {
+    return false;
+  }
+  state.locked = true;
+  state.lockedCell = state.aimCell;
+  return true;
+}
+
+bool clearCreativeMaterialBrushPivot(
+    CreativeMaterialBrushPivotState& state) noexcept {
+  if (!state.locked) {
+    return false;
+  }
+  state.locked = false;
+  state.lockedCell = {};
+  return true;
+}
+
+bool creativeMaterialBrushLockedPivot(
+    const CreativeMaterialBrushPivotState& state,
+    cr::CreativeDocumentId documentId,
+    cr::CreativeGridCoord3& pivot) noexcept {
+  if (!state.locked || documentId == cr::kInvalidDocumentId ||
+      state.documentId != documentId) {
+    return false;
+  }
+  pivot = state.lockedCell;
+  return true;
+}
+
 double creativeEditorTargetCellSize(
     const cr::CreativeDocument& document,
     const CreativeEditorState& editor) noexcept {
@@ -644,6 +705,16 @@ std::string creativeEditorHeldItemStatusLabel(
     if (brushConfig.symmetry != cr::CreativeMaterialBrushSymmetry::Off) {
       output.append(" | ");
       output.append(cr::toString(brushConfig.symmetry));
+      const CreativeMaterialBrushPivotState& pivot =
+          editor.interaction.materialBrushPivot;
+      if (pivot.locked) {
+        output.append(" | PIVOT LOCKED ");
+        output.append(std::to_string(pivot.lockedCell.x));
+        output.append(" ");
+        output.append(std::to_string(pivot.lockedCell.y));
+        output.append(" ");
+        output.append(std::to_string(pivot.lockedCell.z));
+      }
     }
     output.append(" | ");
     output.append(cr::toString(brushConfig.mask));
@@ -897,6 +968,17 @@ void processCreativeEditorWorldInteractionFrame(
   editor.interaction.target = resolveCreativeEditorWorldTarget(
       document, request.camera, request.pickFrame, request.drawableWidth,
       request.drawableHeight, targetCellSize);
+  cr::CreativeGridTarget brushPivotAim;
+  if (editor.interaction.target.grid.valid) {
+    const cr::CreativeGridTarget& targetGrid = editor.interaction.target.grid;
+    brushPivotAim = cr::resolveCreativeGridTargetFromHit(
+        targetGrid.hitPoint, targetGrid.faceNormal,
+        documentGrid.cellSizeMeters, documentGrid.origin,
+        targetGrid.placerForward);
+  }
+  updateCreativeMaterialBrushPivotAim(
+      editor.interaction.materialBrushPivot, document.id(),
+      brushPivotAim.valid, brushPivotAim.adjacentCell);
   editor.volume.cursorValid = editor.interaction.target.grid.valid;
   if (editor.volume.cursorValid) {
     editor.volume.cursorCell = editor.interaction.target.grid.targetCell;

@@ -300,7 +300,9 @@ preview's contextual wheel. They do not each earn a permanent global key.
   Up/down or wheel selects a row;
   left/right changes its value; `Enter`/controller confirm applies the draft;
   `Escape`/controller cancel discards it. Mouse rows, `-`/`+`, Apply, and Cancel
-  expose the same semantic actions.
+  expose the same semantic actions. Material Brush adds bounded Set/Clear
+  Symmetry Pivot command rows; confirm runs the selected command, while a mouse
+  click runs that command row directly.
 - `R` is an explicit builder extension: it is outside Minecraft's reserved
   movement/world grammar and keeps `Left Alt` available for cursor capture.
   Catalog, tool-wheel, and tool-options contexts are isolated and block
@@ -380,11 +382,17 @@ preview's contextual wheel. They do not each earn a permanent global key.
   that world axis and anchors that coordinate at the first valid sample. The
   guide remains fixed until release even if aim moves across uneven geometry;
   losing the target still breaks path interpolation without moving the anchor.
-  Symmetry uses that same first valid sample as a gesture-local pivot. Mirror X,
-  Y, or Z reflects across one world plane; Mirror XZ produces the unique
-  four-way set. Direct cells preview green, mirrored cells preview cyan, and a
-  small yellow wire box marks the pivot. Cells on a mirror plane are emitted
-  once, and direct/mirrored overlap across the stroke is deduplicated.
+  With no locked pivot, symmetry uses that same first valid sample as a
+  gesture-local pivot. To mirror around empty space, aim at the desired pivot,
+  open `R3`, highlight Brush, open Tool Options with Square, select Set Symmetry
+  Pivot, and confirm with X. Clear Symmetry Pivot restores gesture-local mode.
+  The aim snapshot is resolved on the document's fixed voxel grid before the
+  modal opens. A locked pivot survives strokes and tool changes, remains visible
+  as a small yellow wire box while Material Brush is held, and clears on New or
+  Load. Mirror X, Y, or Z reflects across one world plane; Mirror XZ produces
+  the unique four-way set. Direct cells preview green and mirrored cells preview
+  cyan. Cells on a mirror plane are emitted once, and direct/mirrored overlap
+  across the stroke is deduplicated.
   A held gesture repeats every 200 ms and fills every grid cell crossed between
   valid samples, so fast axial and diagonal sweeps do not leave holes. Losing
   the target breaks that interpolation chain instead of bridging empty space.

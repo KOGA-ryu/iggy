@@ -157,6 +157,7 @@ struct MaterialBrushPreviewPlan {
   cr::CreativeMaterialBrushGuide guide =
       cr::CreativeMaterialBrushGuide::Free;
   cr::CreativeGridCoord3 guideAnchor{};
+  cr::CreativeGridCoord3 symmetryPivot{};
   cr::CreativeGridCoord3 center{};
   cr::CreativeMaterialBrushStampPlan stamp{};
   std::array<cr::CreativeGridCoord3,
@@ -213,8 +214,28 @@ struct MaterialBrushPreviewPlan {
   MaterialBrushPreviewPlan output;
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  if (held.kind != cr::CreativeHeldItemKind::MaterialBrush ||
-      !editor.interaction.target.grid.valid) {
+  if (held.kind != cr::CreativeHeldItemKind::MaterialBrush) {
+    return output;
+  }
+  const CreativeMaterialStrokeState& stroke =
+      editor.interaction.materialStroke;
+  const CreativeMaterialBrushGestureConfig config =
+      stroke.hasBrushAnchor
+          ? stroke.brushConfig
+          : creativeMaterialBrushGestureConfig(editor.toolSettings);
+  cr::CreativeGridCoord3 lockedPivot{};
+  const bool hasLockedPivot = creativeMaterialBrushLockedPivot(
+      editor.interaction.materialBrushPivot, document.id(), lockedPivot);
+  if (config.symmetry != cr::CreativeMaterialBrushSymmetry::Off) {
+    if (stroke.hasSymmetryPivot) {
+      output.showSymmetryPivot = true;
+      output.symmetryPivot = stroke.symmetryPivot;
+    } else if (hasLockedPivot) {
+      output.showSymmetryPivot = true;
+      output.symmetryPivot = lockedPivot;
+    }
+  }
+  if (!editor.interaction.target.grid.valid) {
     return output;
   }
   output.removing = editor.interaction.materialStroke.repeat.active &&
@@ -226,12 +247,6 @@ struct MaterialBrushPreviewPlan {
   const cr::CreativeGridCoord3 rawCenter =
       output.removing ? editor.interaction.target.voxelCell
                       : editor.interaction.target.grid.adjacentCell;
-  const CreativeMaterialStrokeState& stroke =
-      editor.interaction.materialStroke;
-  const CreativeMaterialBrushGestureConfig config =
-      stroke.hasBrushAnchor
-          ? stroke.brushConfig
-          : creativeMaterialBrushGestureConfig(editor.toolSettings);
   const cr::CreativeGridCoord3 anchor =
       stroke.hasBrushAnchor ? stroke.brushAnchor : rawCenter;
   cr::CreativeGridCoord3 center{};
@@ -240,9 +255,9 @@ struct MaterialBrushPreviewPlan {
     return output;
   }
   output.hasGuideAnchor = stroke.hasBrushAnchor;
-  output.showSymmetryPivot =
-      stroke.hasBrushAnchor &&
-      config.symmetry != cr::CreativeMaterialBrushSymmetry::Off;
+  if (!output.showSymmetryPivot) {
+    output.symmetryPivot = anchor;
+  }
   output.guide = config.guide;
   output.guideAnchor = anchor;
   output.center = center;
@@ -255,7 +270,8 @@ struct MaterialBrushPreviewPlan {
 
   const cr::CreativeMaterialBrushSymmetryPlan symmetry =
       cr::planCreativeMaterialBrushSymmetry(
-          {config.symmetry, anchor, output.stamp.generatedCells()});
+          {config.symmetry, output.symmetryPivot,
+           output.stamp.generatedCells()});
   if (!symmetry.accepted) {
     for (cr::CreativeGridCoord3 cell : output.stamp.generatedCells()) {
       output.plannedDirectCells[output.plannedDirectCellCount++] = cell;
@@ -750,7 +766,9 @@ void buildAndAttachCreativeEditorOverlayFrame(
   // ---- MATERIAL BRUSH PREVIEW --------------------------------------------
   const MaterialBrushPreviewPlan materialBrushPreview =
       materialBrushPreviewPlan(editor, appState.facade.document());
-  if (!editor.transform.active && materialBrushPreview.visible) {
+  if (!editor.transform.active &&
+      (materialBrushPreview.visible ||
+       materialBrushPreview.showSymmetryPivot)) {
     const RenderLineColor directColor =
         materialBrushPreview.removing
             ? RenderLineColor{1.0F, 0.2F, 0.16F, 1.0F}
@@ -764,14 +782,15 @@ void buildAndAttachCreativeEditorOverlayFrame(
     const std::size_t pivotBefore = combinedWireLines.size();
     if (materialBrushPreview.showSymmetryPivot) {
       static_cast<void>(appendCreativeMaterialBrushPivotMarker(
-          combinedWireLines, materialBrushPreview.guideAnchor,
+          combinedWireLines, materialBrushPreview.symmetryPivot,
           appState.facade.document().gridSettings(),
           std::max(0.045F, gizmoThickness * 1.4F)));
     }
     output.materialBrushPivotEdgeCount =
         combinedWireLines.size() - pivotBefore;
     const std::size_t guideBefore = combinedWireLines.size();
-    if (materialBrushPreview.hasGuideAnchor) {
+    if (materialBrushPreview.visible &&
+        materialBrushPreview.hasGuideAnchor) {
       static_cast<void>(appendCreativeMaterialBrushGuideLine(
           combinedWireLines, materialBrushPreview.guide,
           materialBrushPreview.guideAnchor, materialBrushPreview.center,
@@ -781,13 +800,16 @@ void buildAndAttachCreativeEditorOverlayFrame(
     output.materialBrushGuideLineCount =
         combinedWireLines.size() - guideBefore;
     const std::size_t before = combinedWireLines.size();
-    appendCreativeMaterialBrushCellOutlines(
-        combinedWireLines, materialBrushPreview.renderedDirectCells(),
-        appState.facade.document().gridSettings(), directColor, gizmoThickness);
-    appendCreativeMaterialBrushCellOutlines(
-        combinedWireLines, materialBrushPreview.renderedMirroredCells(),
-        appState.facade.document().gridSettings(), mirroredColor,
-        gizmoThickness);
+    if (materialBrushPreview.visible) {
+      appendCreativeMaterialBrushCellOutlines(
+          combinedWireLines, materialBrushPreview.renderedDirectCells(),
+          appState.facade.document().gridSettings(), directColor,
+          gizmoThickness);
+      appendCreativeMaterialBrushCellOutlines(
+          combinedWireLines, materialBrushPreview.renderedMirroredCells(),
+          appState.facade.document().gridSettings(), mirroredColor,
+          gizmoThickness);
+    }
     output.materialBrushEdgeCount = combinedWireLines.size() - before;
   }
 

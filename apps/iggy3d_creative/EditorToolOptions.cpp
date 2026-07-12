@@ -51,6 +51,24 @@ cr::CreativeToolOptionList creativeEditorToolOptionsForEntry(
   return options;
 }
 
+CreativeEditorToolOptionsCommandList
+creativeEditorToolOptionCommandsForEntry(
+    cr::CreativeHotbarEntry entry) noexcept {
+  CreativeEditorToolOptionsCommandList commands;
+  if (entry.kind == cr::CreativeHeldItemKind::MaterialBrush) {
+    commands.ids[commands.count++] =
+        CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot;
+    commands.ids[commands.count++] =
+        CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot;
+  }
+  return commands;
+}
+
+std::size_t creativeEditorToolOptionsRowCount(
+    const CreativeEditorToolOptionsState& state) noexcept {
+  return state.options.count + state.commands.count;
+}
+
 namespace {
 
 constexpr cr::CreativeWheelProfile kToolOptionsWheelProfile{
@@ -76,9 +94,16 @@ struct ToolOptionsLayout {
   const std::int32_t width = static_cast<std::int32_t>(drawableWidth);
   const std::int32_t height = static_cast<std::int32_t>(drawableHeight);
   const std::int32_t availableWidth = std::max(1, width - 16);
+  const std::int32_t availableHeight = std::max(1, height - 16);
+  if (optionCount > 0U) {
+    const std::int32_t rowBudget = std::max(1, availableHeight - 104);
+    const std::int32_t fittedRowHeight =
+        rowBudget / static_cast<std::int32_t>(optionCount);
+    layout.rowHeight = static_cast<std::uint32_t>(
+        std::clamp(fittedRowHeight, 24, 42));
+  }
   const std::int32_t desiredHeight =
       104 + static_cast<std::int32_t>(optionCount * layout.rowHeight);
-  const std::int32_t availableHeight = std::max(1, height - 16);
   layout.panelWidth =
       static_cast<std::uint32_t>(std::min(560, availableWidth));
   layout.panelHeight =
@@ -127,11 +152,12 @@ void appendText(std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
 
 void moveSelection(CreativeEditorToolOptionsState& state,
                    std::int32_t direction) noexcept {
-  if (direction == 0 || state.options.count == 0U) {
+  const std::size_t rowCount = creativeEditorToolOptionsRowCount(state);
+  if (direction == 0 || rowCount == 0U) {
     return;
   }
   const cr::CreativeWrappedIndexResult next = cr::stepCreativeWrappedIndex(
-      state.selectedIndex, state.options.count, direction);
+      state.selectedIndex, rowCount, direction);
   if (next.valid) {
     state.selectedIndex = next.index;
   }
@@ -189,6 +215,67 @@ void rebuildQuickEditOptions(CreativeEditorState& editor,
   return true;
 }
 
+[[nodiscard]] bool commandEnabled(
+    const CreativeEditorState& editor,
+    CreativeEditorToolOptionsCommandId command) noexcept {
+  const CreativeMaterialBrushPivotState& pivot =
+      editor.interaction.materialBrushPivot;
+  switch (command) {
+    case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
+      return pivot.aimAvailable &&
+             pivot.documentId != cr::kInvalidDocumentId;
+    case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
+      return pivot.locked;
+    case CreativeEditorToolOptionsCommandId::Count:
+      return false;
+  }
+  return false;
+}
+
+[[nodiscard]] std::string pivotCellLabel(
+    std::string_view prefix,
+    cr::CreativeGridCoord3 cell) {
+  std::string label(prefix);
+  label.append(" ");
+  label.append(std::to_string(cell.x));
+  label.append(" ");
+  label.append(std::to_string(cell.y));
+  label.append(" ");
+  label.append(std::to_string(cell.z));
+  return label;
+}
+
+[[nodiscard]] std::string_view commandLabel(
+    CreativeEditorToolOptionsCommandId command) noexcept {
+  switch (command) {
+    case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
+      return "SET SYMMETRY PIVOT";
+    case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
+      return "CLEAR SYMMETRY PIVOT";
+    case CreativeEditorToolOptionsCommandId::Count:
+      return "INVALID COMMAND";
+  }
+  return "INVALID COMMAND";
+}
+
+[[nodiscard]] std::string commandValueLabel(
+    const CreativeEditorState& editor,
+    CreativeEditorToolOptionsCommandId command) {
+  const CreativeMaterialBrushPivotState& pivot =
+      editor.interaction.materialBrushPivot;
+  switch (command) {
+    case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
+      return pivot.aimAvailable ? pivotCellLabel("AIM", pivot.aimCell)
+                                : "NO AIM";
+    case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
+      return pivot.locked ? pivotCellLabel("LOCKED", pivot.lockedCell)
+                          : "NOT SET";
+    case CreativeEditorToolOptionsCommandId::Count:
+      return "INVALID";
+  }
+  return "INVALID";
+}
+
 void processPointerInput(const CreativeEditorToolOptionsFrameRequest& request,
                          CreativeEditorToolOptionsFrameResult& result) {
   CreativeEditorToolOptionsState& state = request.editor.toolOptions;
@@ -197,7 +284,8 @@ void processPointerInput(const CreativeEditorToolOptionsFrameRequest& request,
     return;
   }
   const ToolOptionsLayout layout = toolOptionsLayout(
-      request.drawableWidth, request.drawableHeight, state.options.count);
+      request.drawableWidth, request.drawableHeight,
+      creativeEditorToolOptionsRowCount(state));
   const cr::CreativeDrawablePointer pointer =
       cr::resolveCreativeDrawablePointer(
           {events.pointerX, events.pointerY, events.windowWidth,
@@ -215,9 +303,12 @@ void processPointerInput(const CreativeEditorToolOptionsFrameRequest& request,
       x >= layout.panelX && x < panelRight) {
     const std::size_t row = static_cast<std::size_t>(
         (y - layout.rowsY) / static_cast<std::int32_t>(layout.rowHeight));
-    if (row < state.options.count) {
+    if (row < creativeEditorToolOptionsRowCount(state)) {
       state.selectedIndex = row;
-      if (layout.panelWidth >= 112U) {
+      if (row >= state.options.count) {
+        result.committed =
+            activateCreativeEditorToolOptionsSelection(request.editor);
+      } else if (layout.panelWidth >= 112U) {
         const std::int32_t decreaseX = panelRight - 88;
         const std::int32_t increaseX = panelRight - 48;
         if (x >= increaseX) {
@@ -244,6 +335,44 @@ void processPointerInput(const CreativeEditorToolOptionsFrameRequest& request,
 
 }  // namespace
 
+bool activateCreativeEditorToolOptionsSelection(
+    CreativeEditorState& editor) {
+  CreativeEditorToolOptionsState& state = editor.toolOptions;
+  if (!state.open) {
+    return false;
+  }
+  if (state.selectedIndex < state.options.count) {
+    return commitOptions(editor);
+  }
+  const std::size_t commandIndex =
+      state.selectedIndex - state.options.count;
+  if (commandIndex >= state.commands.count ||
+      state.targetEntry.kind != cr::CreativeHeldItemKind::MaterialBrush ||
+      !cr::isValidCreativeToolSettings(state.draft)) {
+    return false;
+  }
+  const CreativeEditorToolOptionsCommandId command =
+      state.commands.ids[commandIndex];
+  if (!commandEnabled(editor, command)) {
+    return false;
+  }
+
+  bool accepted = false;
+  switch (command) {
+    case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
+      accepted = lockCreativeMaterialBrushPivotFromAim(
+          editor.interaction.materialBrushPivot);
+      break;
+    case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
+      accepted = clearCreativeMaterialBrushPivot(
+          editor.interaction.materialBrushPivot);
+      break;
+    case CreativeEditorToolOptionsCommandId::Count:
+      break;
+  }
+  return accepted && commitOptions(editor);
+}
+
 CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
     const CreativeEditorToolOptionsFrameRequest& request) {
   CreativeEditorToolOptionsFrameResult result;
@@ -254,11 +383,15 @@ CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
     const cr::CreativeToolOptionList options =
         creativeEditorToolOptionsForEntry(request.requestedEntry,
                                           request.editor.toolSettings);
-    if (options.count > 0U && !options.capacityExceeded) {
+    const CreativeEditorToolOptionsCommandList commands =
+        creativeEditorToolOptionCommandsForEntry(request.requestedEntry);
+    if (options.count + commands.count > 0U &&
+        !options.capacityExceeded) {
       state.open = true;
       state.targetEntry = request.requestedEntry;
       state.draft = request.editor.toolSettings;
       state.options = options;
+      state.commands = commands;
       state.selectedIndex = 0U;
     }
   }
@@ -284,7 +417,8 @@ CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
           adjustSelection(request.editor, 1);
           break;
         case cr::CreativeInputActionId::ToolOptionsConfirm:
-          result.committed = commitOptions(request.editor);
+          result.committed =
+              activateCreativeEditorToolOptionsSelection(request.editor);
           break;
         case cr::CreativeInputActionId::ToolOptionsClose:
           state.open = false;
@@ -401,7 +535,8 @@ void appendCreativeEditorToolOptionsOverlay(
     return;
   }
   const ToolOptionsLayout layout =
-      toolOptionsLayout(drawableWidth, drawableHeight, state.options.count);
+      toolOptionsLayout(drawableWidth, drawableHeight,
+                        creativeEditorToolOptionsRowCount(state));
   uiRects.push_back(
       {0, 0, drawableWidth, drawableHeight, 0.01F, 0.015F, 0.02F, 0.66F});
   uiRects.push_back({layout.panelX, layout.panelY, layout.panelWidth,
@@ -425,6 +560,8 @@ void appendCreativeEditorToolOptionsOverlay(
   const std::int32_t valueInset = std::clamp(
       std::min(252, panelWidth / 2), labelInset, maxTextInset);
   const bool showAdjustButtons = layout.panelWidth >= 112U;
+  const std::uint32_t adjustButtonHeight =
+      std::min(30U, std::max(1U, layout.rowHeight - 8U));
 
   for (std::size_t row = 0; row < state.options.count; ++row) {
     const cr::CreativeToolOptionDescriptor* descriptor =
@@ -451,15 +588,43 @@ void appendCreativeEditorToolOptionsOverlay(
                layout.panelX + valueInset, y + 12,
                drawableWidth, drawableHeight, 0.92F, 0.78F, 0.31F);
     if (showAdjustButtons) {
-      uiRects.push_back({panelRight - 88, y + 4, 32U, 30U,
+      uiRects.push_back({panelRight - 88, y + 4, 32U, adjustButtonHeight,
                          0.10F, 0.11F, 0.12F, 1.0F});
-      uiRects.push_back({panelRight - 48, y + 4, 32U, 30U,
+      uiRects.push_back({panelRight - 48, y + 4, 32U, adjustButtonHeight,
                          0.10F, 0.11F, 0.12F, 1.0F});
       appendText(glyphs, "-", panelRight - 76, y + 11,
                  drawableWidth, drawableHeight, 0.88F, 0.90F, 0.92F);
       appendText(glyphs, "+", panelRight - 37, y + 11,
                  drawableWidth, drawableHeight, 0.88F, 0.90F, 0.92F);
     }
+  }
+
+  for (std::size_t commandIndex = 0U;
+       commandIndex < state.commands.count; ++commandIndex) {
+    const std::size_t row = state.options.count + commandIndex;
+    const std::int32_t y =
+        layout.rowsY + static_cast<std::int32_t>(row * layout.rowHeight);
+    if (y + static_cast<std::int32_t>(layout.rowHeight) > layout.footerY) {
+      break;
+    }
+    const CreativeEditorToolOptionsCommandId command =
+        state.commands.ids[commandIndex];
+    const bool enabled = commandEnabled(editor, command);
+    const bool selected = row == state.selectedIndex;
+    uiRects.push_back({layout.panelX + static_cast<std::int32_t>(rowInset), y,
+                       rowWidth, layout.rowHeight - 4U,
+                       selected && enabled ? 0.10F : 0.06F,
+                       selected && enabled ? 0.18F : 0.07F,
+                       selected && enabled ? 0.12F : 0.08F, 0.98F});
+    appendText(glyphs, commandLabel(command), layout.panelX + labelInset,
+               y + 12, drawableWidth, drawableHeight,
+               enabled ? 0.78F : 0.42F, enabled ? 0.92F : 0.46F,
+               enabled ? 0.80F : 0.48F);
+    const std::string value = commandValueLabel(editor, command);
+    appendText(glyphs, value, layout.panelX + valueInset, y + 12,
+               drawableWidth, drawableHeight,
+               enabled ? 0.32F : 0.42F, enabled ? 1.0F : 0.46F,
+               enabled ? 0.48F : 0.48F);
   }
 
   const std::uint32_t halfWidth = layout.panelWidth / 2U;

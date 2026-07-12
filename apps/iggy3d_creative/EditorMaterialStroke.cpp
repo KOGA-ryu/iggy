@@ -273,6 +273,17 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
     stroke.brushAnchor = sample.center;
     stroke.brushConfig =
         creativeMaterialBrushGestureConfig(editor.toolSettings);
+    stroke.hasSymmetryPivot =
+        stroke.brushConfig.symmetry !=
+        cr::CreativeMaterialBrushSymmetry::Off;
+    stroke.symmetryPivot = stroke.brushAnchor;
+    cr::CreativeGridCoord3 lockedPivot{};
+    if (stroke.hasSymmetryPivot &&
+        creativeMaterialBrushLockedPivot(
+            editor.interaction.materialBrushPivot,
+            appState.facade.document().id(), lockedPivot)) {
+      stroke.symmetryPivot = lockedPivot;
+    }
   }
   cr::CreativeGridCoord3 constrainedCenter{};
   if (!cr::guideCreativeMaterialBrushCenter(
@@ -320,7 +331,9 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
     }
     const cr::CreativeMaterialBrushSymmetryPlan symmetry =
         cr::planCreativeMaterialBrushSymmetry(
-            {stroke.brushConfig.symmetry, stroke.brushAnchor,
+            {stroke.brushConfig.symmetry,
+             stroke.hasSymmetryPivot ? stroke.symmetryPivot
+                                     : stroke.brushAnchor,
              stamp.generatedCells()});
     if (!symmetry.accepted) {
       stroke.capacityReached =

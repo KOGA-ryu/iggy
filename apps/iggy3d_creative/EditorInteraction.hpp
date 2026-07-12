@@ -80,6 +80,35 @@ struct CreativeMaterialStrokeVisitedKey {
       iggy3d::creative::kInvalidObjectId;
 };
 
+struct CreativeMaterialBrushPivotState {
+  iggy3d::creative::CreativeDocumentId documentId =
+      iggy3d::creative::kInvalidDocumentId;
+  bool aimAvailable = false;
+  bool locked = false;
+  iggy3d::creative::CreativeGridCoord3 aimCell{};
+  iggy3d::creative::CreativeGridCoord3 lockedCell{};
+};
+
+void synchronizeCreativeMaterialBrushPivotDocument(
+    CreativeMaterialBrushPivotState& state,
+    iggy3d::creative::CreativeDocumentId documentId) noexcept;
+void resetCreativeMaterialBrushPivot(
+    CreativeMaterialBrushPivotState& state,
+    iggy3d::creative::CreativeDocumentId documentId) noexcept;
+void updateCreativeMaterialBrushPivotAim(
+    CreativeMaterialBrushPivotState& state,
+    iggy3d::creative::CreativeDocumentId documentId,
+    bool aimAvailable,
+    iggy3d::creative::CreativeGridCoord3 aimCell = {}) noexcept;
+[[nodiscard]] bool lockCreativeMaterialBrushPivotFromAim(
+    CreativeMaterialBrushPivotState& state) noexcept;
+[[nodiscard]] bool clearCreativeMaterialBrushPivot(
+    CreativeMaterialBrushPivotState& state) noexcept;
+[[nodiscard]] bool creativeMaterialBrushLockedPivot(
+    const CreativeMaterialBrushPivotState& state,
+    iggy3d::creative::CreativeDocumentId documentId,
+    iggy3d::creative::CreativeGridCoord3& pivot) noexcept;
+
 struct CreativeMaterialBrushGestureConfig {
   iggy3d::creative::CreativeMaterialBrushShape shape =
       iggy3d::creative::CreativeMaterialBrushShape::Sphere;
@@ -122,6 +151,8 @@ struct CreativeMaterialStrokeState {
   iggy3d::creative::CreativeGridCoord3 lastBrushCenter{};
   bool hasBrushAnchor = false;
   iggy3d::creative::CreativeGridCoord3 brushAnchor{};
+  bool hasSymmetryPivot = false;
+  iggy3d::creative::CreativeGridCoord3 symmetryPivot{};
   CreativeMaterialBrushGestureConfig brushConfig{};
 };
 
@@ -139,6 +170,7 @@ struct CreativeEditorInteractionState {
   iggy3d::creative::CreativeWorldActionRouterState actionRouter{};
   CreativeEditorWorldTarget target{};
   CreativeEditorPlacementFeedback placementFeedback{};
+  CreativeMaterialBrushPivotState materialBrushPivot{};
   CreativeMaterialStrokeState materialStroke{};
   iggy3d::creative::CreativeObjectId moveTargetId =
       iggy3d::creative::kInvalidObjectId;

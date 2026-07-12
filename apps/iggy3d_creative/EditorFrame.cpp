@@ -461,12 +461,18 @@ void applyCreativeEditorCommandInput(
         clearToBlankScene(appState);
         clearEditHistory(appState.history, "new_clear");
         creative::clearCreativeVolumeSelection(editor.volume.selection);
+        resetCreativeMaterialBrushPivot(
+            editor.interaction.materialBrushPivot,
+            appState.facade.document().id());
         break;
       case creative::CreativeInputActionId::Load: {
         const bool loaded = loadStandaloneScene(appState, saveRoot, saveId);
         if (loaded) {
           clearEditHistory(appState.history, "load_success");
           creative::clearCreativeVolumeSelection(editor.volume.selection);
+          resetCreativeMaterialBrushPivot(
+              editor.interaction.materialBrushPivot,
+              appState.facade.document().id());
         }
         break;
       }
