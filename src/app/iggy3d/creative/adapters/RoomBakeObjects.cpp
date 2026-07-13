@@ -296,7 +296,9 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
     BakedRoomRole role) {
   RoomStaticMeshAsset mesh;
   mesh.id = stableObjectId(object);
-  mesh.meshId = std::string(meshIdForRole(role));
+  mesh.meshId = object.assetId.empty()
+                    ? std::string(meshIdForRole(role))
+                    : "asset:" + object.assetId;
   mesh.materialId = std::string(materialIdForRole(role));
   mesh.role = std::string(roleName(role));
   const CreativeTransformedBounds resolved =

@@ -113,6 +113,7 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
   object.id = 42;
   object.kind = "PatrolRoute";
   object.name = "Visible Route";
+  object.assetId = "boulder_01";
   object.transform.position = {kOneThird, 2.0, kPrecise};
   object.transform.rotation = {0.0, kPrecise, 1.5};
   object.transform.scale = {1.0, 2.0, 3.0};
@@ -165,6 +166,10 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
             expect(encoded.encodedText.find("creativeDocument.object.0.kind=PatrolRoute\n") !=
                        std::string::npos,
                    "object kind encoded") &&
+            expect(encoded.encodedText.find(
+                       "creativeDocument.object.0.assetId=boulder_01\n") !=
+                       std::string::npos,
+                   "object asset id encoded") &&
             expect(encoded.encodedText.find("creativeDocument.object.0.hasParent=true\n") !=
                        std::string::npos,
                    "object parent presence encoded") &&
@@ -215,6 +220,8 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
               "object kind decoded") &&
        expect(decodedObject != nullptr && decodedObject->name == "Visible Route",
               "object name decoded") &&
+       expect(decodedObject != nullptr && decodedObject->assetId == "boulder_01",
+              "object asset id decoded") &&
        expect(decodedObject != nullptr &&
                   decodedObject->transform.position.x == kOneThird &&
                   decodedObject->transform.position.z == kPrecise,
@@ -247,6 +254,31 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
                   decodedObject->pathPoints[2].x == -7.25 &&
                   decodedObject->pathPoints[2].z == kOneThird,
               "object path points decoded exactly");
+
+  std::string legacyText = encoded.encodedText;
+  const std::string assetLine =
+      "creativeDocument.object.0.assetId=boulder_01\n";
+  if (const std::size_t assetPosition = legacyText.find(assetLine);
+      assetPosition != std::string::npos) {
+    legacyText.erase(assetPosition, assetLine.size());
+  }
+  if (const std::size_t versionPosition =
+          legacyText.find("creativeDocument.version=6\n");
+      versionPosition != std::string::npos) {
+    legacyText.replace(versionPosition,
+                       std::string("creativeDocument.version=6\n").size(),
+                       "creativeDocument.version=5\n");
+  }
+  const iggy3d::SaveDecodeResult legacyDecoded =
+      iggy3d::decodeSaveEnvelope(legacyText);
+  ok = expect(legacyDecoded.status == iggy3d::SaveCodecStatus::Ok &&
+                  legacyDecoded.envelope.creativeDocument.version == 5U &&
+                  legacyDecoded.envelope.creativeDocument.objects.size() ==
+                      1U &&
+                  legacyDecoded.envelope.creativeDocument.objects[0]
+                      .assetId.empty(),
+              "version 5 object without asset id remains readable") &&
+       ok;
   return ok;
 }
 

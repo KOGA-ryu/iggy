@@ -142,6 +142,7 @@ void includePlacementPoint(CreativeObjectWorldExtent& extent,
   CreativeDocumentCreateRequest create;
   create.kind = object.kind;
   create.name = request.appendCopySuffix ? object.name + " Copy" : object.name;
+  create.assetId = object.assetId;
   create.transform = object.transform;
   create.hasTransformOverride = descriptor.hasTransform;
   create.bounds = object.bounds;

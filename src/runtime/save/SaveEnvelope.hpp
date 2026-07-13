@@ -26,7 +26,7 @@ namespace iggy3d {
 inline constexpr std::uint32_t kSaveSchemaVersion = 3;
 inline constexpr std::uint32_t kMinimumReadableSaveSchemaVersion = 1;
 inline constexpr std::uint32_t kRuntimeSaveVersion = 1;
-inline constexpr std::uint32_t kSaveCreativeDocumentSectionVersion = 5;
+inline constexpr std::uint32_t kSaveCreativeDocumentSectionVersion = 6;
 
 struct SaveEnvelopeMetadata {
   std::uint32_t schemaVersion = kSaveSchemaVersion;
@@ -182,6 +182,7 @@ struct SaveCreativeDocumentObjectRecord {
   std::uint64_t id = 0;
   std::string kind;
   std::string name;
+  std::string assetId;
   SaveCreativeDocumentTransformRecord transform;
   SaveCreativeDocumentBoundsRecord bounds;
   std::uint64_t layerId = 0;

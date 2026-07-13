@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <memory>
@@ -28,6 +29,8 @@
 #include <SDL3/SDL.h>
 
 #include "app/iggy3d/creative/render/CreativeSceneFrame.hpp"
+#include "app/iggy3d/creative/world/MapTemplate.hpp"
+#include "app/iggy3d/creative/world/WorldService.hpp"
 #include "app/platform/SdlWindow.hpp"
 #include "core/math/Vec3.hpp"
 #include "projection/scene/SceneProjection.hpp"
@@ -47,6 +50,7 @@
 #include "EditorToolOptions.hpp"
 #include "EditorToolWheelPreferences.hpp"
 #include "EditorPlacement.hpp"
+#include "EditorPersistence.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorTransform.hpp"
 
@@ -86,6 +90,66 @@ using iggy3d_creative_app::runCreativeEditorCaptureScenarioFrame;
 using iggy3d_creative_app::syncCreativeEditorGroupFocus;
 using iggy3d_creative_app::StandaloneRoomBakePreviewScene;
 using iggy3d_creative_app::initializeCreativeEditorBootstrapData;
+using iggy3d_creative_app::loadStandaloneScene;
+
+std::filesystem::path creativeStandaloneSaveRoot() {
+  if (const char* home = std::getenv("HOME"); home != nullptr) {
+    return std::filesystem::path{home} / ".iggy3d" / "creative_standalone";
+  }
+  return std::filesystem::path{".iggy3d"} / "creative_standalone";
+}
+
+bool generateCreativeMapSave(std::string_view templateId) {
+  if (!creative::isCreativeMapTemplateId(templateId)) {
+    std::fprintf(stderr, "iggy3d_creative: unknown map template '%.*s'\n",
+                 static_cast<int>(templateId.size()), templateId.data());
+    return false;
+  }
+
+  creative::CreativeMapTemplateResult map =
+      creative::buildCreativeMapTemplate(templateId);
+  if (!map.accepted) {
+    std::fprintf(stderr,
+                 "iggy3d_creative: map generation failed reason='%.*s'\n",
+                 static_cast<int>(map.reasonCode.size()),
+                 map.reasonCode.data());
+    return false;
+  }
+
+  CreativeWorldSaveRequest request;
+  request.saveRoot = creativeStandaloneSaveRoot();
+  request.saveId = std::string{templateId};
+  request.document = &map.document;
+  request.worldTitle = "Ditch House";
+  request.saveTitle = "Ditch House";
+  request.saveType = "creative";
+  const CreativeWorldSaveResult saved = saveCreativeWorld(request);
+  if (!saved.accepted) {
+    std::fprintf(stderr,
+                 "iggy3d_creative: map save failed reason='%s'\n",
+                 saved.reasonCode.c_str());
+    return false;
+  }
+
+  std::fprintf(stdout,
+               "iggy3d_creative: generated map='%.*s' objects=%llu "
+               "terrain_controls=%llu path='%s'\n",
+               static_cast<int>(templateId.size()), templateId.data(),
+               static_cast<unsigned long long>(map.objectCount),
+               static_cast<unsigned long long>(map.terrainControlCount),
+               saved.path.generic_string().c_str());
+  return true;
+}
+
+creative::CreativeObjectId firstFloorObjectId(
+    const creative::CreativeDocument& document) noexcept {
+  for (const creative::CreativeObject& object : document.objects()) {
+    if (object.kind == creative::CreativeObjectKind::Floor) {
+      return object.id;
+    }
+  }
+  return creative::kInvalidObjectId;
+}
 
 }  // namespace
 
@@ -93,15 +157,38 @@ int main(int argc, char** argv) {
   // Optional flags:
   //   --frames N        auto-exit after N presented frames (scriptable run)
   //   --capture <path>  render a few frames, write <path>.png, then exit
+  //   --map <template>  generate if absent, then open a built-in map
+  //   --load <save-id>  open an existing Creative save slot
+  //   --generate-map <template>  write a map save headlessly, then exit
   std::uint64_t maxFrames = 0;  // 0 = run until window close.
   std::string capturePath;
+  std::string mapTemplateId;
+  std::string loadSaveId;
+  std::string generateMapTemplateId;
   for (int i = 1; i < argc; ++i) {
     const std::string arg = argv[i];
     if (arg == "--frames" && i + 1 < argc) {
       maxFrames = std::strtoull(argv[++i], nullptr, 10);
     } else if (arg == "--capture" && i + 1 < argc) {
       capturePath = argv[++i];
+    } else if (arg == "--map" && i + 1 < argc) {
+      mapTemplateId = argv[++i];
+    } else if (arg == "--load" && i + 1 < argc) {
+      loadSaveId = argv[++i];
+    } else if (arg == "--generate-map" && i + 1 < argc) {
+      generateMapTemplateId = argv[++i];
     }
+  }
+  if (!generateMapTemplateId.empty()) {
+    return generateCreativeMapSave(generateMapTemplateId) ? 0 : 1;
+  }
+  if (!mapTemplateId.empty()) {
+    const CreativeWorldOpenResult existing = openCreativeWorld(
+        {creativeStandaloneSaveRoot(), mapTemplateId});
+    if (!existing.accepted && !generateCreativeMapSave(mapTemplateId)) {
+      return 1;
+    }
+    loadSaveId = mapTemplateId;
   }
   // In capture mode, render a handful of frames to let the swapchain settle,
   // then grab the last one.
@@ -144,10 +231,23 @@ int main(int argc, char** argv) {
   const ProductMapMakerGridSnapshot& gridSnapshot =
       bootstrapData.gridSnapshot;
   creative::CreativeAppState& appState = bootstrapData.appState;
-  const creative::CreativeObjectId& floorObjectId =
-      bootstrapData.floorObjectId;
+  creative::CreativeObjectId floorObjectId = bootstrapData.floorObjectId;
   const std::filesystem::path& saveRoot = bootstrapData.saveRoot;
-  const std::string& saveId = bootstrapData.saveId;
+  std::string saveId = bootstrapData.saveId;
+  if (!loadSaveId.empty()) {
+    saveId = loadSaveId;
+    if (!loadStandaloneScene(appState, saveRoot, saveId)) {
+      SDL_Log("iggy3d_creative: startup load failed saveId='%s'",
+              saveId.c_str());
+      return 1;
+    }
+    floorObjectId = firstFloorObjectId(appState.facade.document());
+    if (mapTemplateId == creative::kDitchHouseMapTemplateId) {
+      editor.flyPos = {4.0F, 16.0F, 34.0F};
+      editor.yawDegrees = 18.0F;
+      editor.pitchDegrees = -22.0F;
+    }
+  }
   const std::filesystem::path controlsPath =
       saveRoot / "creative_controls_v1.cfg";
   const std::filesystem::path toolWheelPath =

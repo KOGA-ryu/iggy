@@ -208,6 +208,9 @@ void Reader::readCreativeDocumentObject(const std::string& prefix,
   readUnsigned(prefix + "id", object.id);
   readString(prefix + "kind", object.kind);
   readString(prefix + "name", object.name);
+  if (nextKeyIs(prefix + "assetId")) {
+    readString(prefix + "assetId", object.assetId);
+  }
   readCreativeVec3(prefix + "transform.position",
                    object.transform.position);
   readCreativeVec3(prefix + "transform.rotation",

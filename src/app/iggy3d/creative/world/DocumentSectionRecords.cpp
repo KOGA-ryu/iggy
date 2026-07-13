@@ -199,6 +199,7 @@ namespace {
   record.id = object.id;
   record.kind = std::string{creative::serializedObjectKindId(object.kind)};
   record.name = object.name;
+  record.assetId = object.assetId;
   record.transform = toSaveTransform(object.transform);
   record.bounds = toSaveBounds(object.bounds);
   record.layerId = object.layerId;
@@ -224,6 +225,7 @@ namespace {
   out.id = record.id;
   out.kind = kind;
   out.name = record.name;
+  out.assetId = record.assetId;
   out.transform = toCreativeTransform(record.transform);
   out.bounds = toCreativeBounds(record.bounds);
   out.layerId = record.layerId;

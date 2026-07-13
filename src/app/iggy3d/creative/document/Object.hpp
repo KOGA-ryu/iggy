@@ -174,6 +174,9 @@ struct CreativeObject {
   CreativeObjectId id{kInvalidObjectId};
   CreativeObjectKind kind{CreativeObjectKind::Unknown};
   std::string name{};
+  // Stable content key resolved by the render asset library. Empty keeps the
+  // descriptor-backed generated mesh.
+  std::string assetId{};
 
   CreativeTransform transform{};
   CreativeBounds bounds{};

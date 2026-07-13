@@ -197,6 +197,7 @@ void VulkanBackend::initializePacket7FirstRoomModules() {
   resourcesInfo.graphicsQueueFamily = bootstrap_.queues().graphicsFamily;
   resourcesInfo.extent = swapchain_.info().extent;
   resourcesInfo.depthFormat = VK_FORMAT_D32_SFLOAT;
+  resourcesInfo.staticMeshAssetRoot = config_.staticMeshAssetRoot;
   const vulkan::BufferImageResourcesResult resourcesResult =
       firstRoomResources_.createFirstRoomResources(resourcesInfo);
   diagnostics_ = resourcesResult.receipt;

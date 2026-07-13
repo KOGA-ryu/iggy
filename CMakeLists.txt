@@ -123,6 +123,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/world/DocumentSection.cpp
     src/app/iggy3d/creative/world/DocumentSectionRecords.cpp
     src/app/iggy3d/creative/world/DocumentSectionFields.cpp
+    src/app/iggy3d/creative/world/MapTemplate.cpp
     src/app/iggy3d/save/Catalog.cpp
     src/app/iggy3d/save/CatalogProjector.cpp
     src/app/iggy3d/creative/world/WorldService.cpp
@@ -130,6 +131,7 @@ target_sources(iggy3d
     src/app/frontend/SaveSlotModel.cpp
     src/app/platform/ExecutablePath.cpp
     src/content/assets/TraversalTag.cpp
+    src/content/assets/StaticMeshAsset.cpp
     src/runtime/player/PlayerRoster.cpp
     src/runtime/player/PlayerPhysicsMovePlanner.cpp
     src/runtime/player/PlayerMotor.cpp
@@ -194,7 +196,9 @@ target_sources(iggy3d
     src/render/debug/DebugHudText.cpp
     src/render/mesh/BeanMesh.cpp
 )
-target_include_directories(iggy3d PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_include_directories(iggy3d
+  PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src"
+  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 iggy3d_apply_warnings(iggy3d)
 
 if(NOT IGGY3D_HAS_SDL3_TARGET)
@@ -304,6 +308,8 @@ add_library(iggy3d_creative_app STATIC ${IGGY3D_CREATIVE_APP_SOURCES})
 target_link_libraries(iggy3d_creative_app PUBLIC iggy3d)
 target_include_directories(iggy3d_creative_app PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/apps/iggy3d_creative")
+target_compile_definitions(iggy3d_creative_app PRIVATE
+  IGGY3D_CREATIVE_ASSET_ROOT_VALUE="${CMAKE_CURRENT_SOURCE_DIR}/assets/creative")
 iggy3d_apply_warnings(iggy3d_creative_app)
 
 add_executable(i3dc apps/iggy3d_creative/main.cpp)

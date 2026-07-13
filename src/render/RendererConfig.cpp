@@ -58,6 +58,10 @@ void appendConfigReceiptFields(RenderReceipt& receipt,
   appendReceiptField(receipt, "present_mode_request", presentModeRequestName(config.presentMode));
   appendReceiptField(receipt, "shader_root",
                      config.shaderRoot.empty() ? "unavailable" : config.shaderRoot.generic_string());
+  appendReceiptField(receipt, "static_mesh_asset_root",
+                     config.staticMeshAssetRoot.empty()
+                         ? "unavailable"
+                         : config.staticMeshAssetRoot.generic_string());
   appendReceiptField(receipt, "diagnostics_dir",
                      config.diagnosticsDir.empty() ? "unavailable"
                                                    : config.diagnosticsDir.generic_string());

@@ -194,6 +194,8 @@ iggy3d::RendererConfig makeCreativeVulkanRendererConfig() {
   config.renderer = iggy3d::RendererMode::Vulkan;
   config.rendererRequirement = iggy3d::RendererRequirement::Optional;
   config.allowSoftwareVulkan = true;
+  config.staticMeshAssetRoot =
+      std::filesystem::path{IGGY3D_CREATIVE_ASSET_ROOT_VALUE};
   if (lookup.outcome == iggy3d::RenderOutcome::Ok) {
     config.shaderRoot = lookup.lookup.shaderRoot;
     config.diagnosticsDir = lookup.lookup.diagnosticsDir;

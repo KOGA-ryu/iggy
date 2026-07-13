@@ -239,7 +239,7 @@ bool sectionObjectMatches(const iggy3d::SaveCreativeDocumentObjectRecord& save,
                           const cr::CreativeObject& object) {
   return save.id == object.id &&
          save.kind == std::string{cr::serializedObjectKindId(object.kind)} &&
-         save.name == object.name &&
+         save.name == object.name && save.assetId == object.assetId &&
          save.transform.position.x == object.transform.position.x &&
          save.transform.position.y == object.transform.position.y &&
          save.transform.position.z == object.transform.position.z &&
@@ -266,6 +266,7 @@ bool sectionObjectMatches(const iggy3d::SaveCreativeDocumentObjectRecord& save,
 bool documentObjectMatches(const cr::CreativeObject& lhs,
                            const cr::CreativeObject& rhs) {
   return lhs.id == rhs.id && lhs.kind == rhs.kind && lhs.name == rhs.name &&
+         lhs.assetId == rhs.assetId &&
          sameTransform(lhs.transform, rhs.transform) &&
          sameBounds(lhs.bounds, rhs.bounds) && lhs.layerId == rhs.layerId &&
          lhs.visible == rhs.visible && lhs.locked == rhs.locked &&

@@ -68,6 +68,7 @@ struct CreativeGridSettings {
 struct CreativeDocumentCreateRequest {
   CreativeObjectKind kind = CreativeObjectKind::Unknown;
   std::string name;
+  std::string assetId;
   CreativeTransform transform;
   bool hasTransformOverride = false;
   CreativeBounds bounds;

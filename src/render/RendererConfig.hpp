@@ -46,6 +46,7 @@ struct RendererConfig {
   DebugLabelsMode debugLabels = DebugLabelsMode::Off;
   PresentModeRequest presentMode = PresentModeRequest::Auto;
   std::filesystem::path shaderRoot;
+  std::filesystem::path staticMeshAssetRoot;
   std::filesystem::path diagnosticsDir;
   bool strictVulkan = false;
   bool allowSoftwareVulkan = false;

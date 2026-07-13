@@ -18,6 +18,11 @@ endfunction()
 iggy3d_add_unit_test(math_tests tests/unit/math_tests.cpp)
 set_tests_properties(math_tests PROPERTIES LABELS "unit;core;iggy3d")
 
+iggy3d_add_unit_test(static_mesh_asset_tests
+  tests/unit/static_mesh_asset_tests.cpp)
+set_tests_properties(static_mesh_asset_tests PROPERTIES
+  LABELS "unit;content;asset;glb;render;creative;iggy3d")
+
 iggy3d_add_unit_test(render_projectile_overlay_projection_tests
   tests/unit/render_projectile_overlay_projection_tests.cpp)
 
@@ -317,6 +322,11 @@ iggy3d_add_unit_test(creative_world_service_tests
   tests/unit/creative_world_service_tests.cpp)
 set_tests_properties(creative_world_service_tests PROPERTIES
   LABELS "unit;app;product;creative;world;service;iggy3d")
+
+iggy3d_add_unit_test(creative_map_template_tests
+  tests/unit/creative_map_template_tests.cpp)
+set_tests_properties(creative_map_template_tests PROPERTIES
+  LABELS "unit;app;creative;world;map_template;iggy3d")
 
 iggy3d_add_unit_test(product_save_catalog_tests tests/unit/product_save_catalog_tests.cpp)
 set_tests_properties(product_save_catalog_tests PROPERTIES

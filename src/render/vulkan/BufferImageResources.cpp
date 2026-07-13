@@ -290,6 +290,7 @@ std::uint64_t roomGeometrySignature(const SceneRoomProjection& room) {
   hashString(hash, room.assetId);
   for (const SceneRoomMeshItem& mesh : room.meshes) {
     hashString(hash, mesh.id);
+    hashString(hash, mesh.meshId);
     hashString(hash, mesh.role);
     hashString(hash, mesh.materialId);
     hashFloat(hash, mesh.position.x);
@@ -752,6 +753,103 @@ bool appendBean(std::vector<FirstRoomVertex>& vertices,
   return true;
 }
 
+[[nodiscard]] bool externalStaticMeshId(std::string_view meshId,
+                                        std::string_view& assetId) noexcept {
+  constexpr std::string_view prefix = "asset:";
+  if (!meshId.starts_with(prefix) || meshId.size() == prefix.size()) {
+    return false;
+  }
+  assetId = meshId.substr(prefix.size());
+  return true;
+}
+
+[[nodiscard]] Vec3 componentProduct(Vec3 lhs, Vec3 rhs) noexcept {
+  return {lhs.x * rhs.x, lhs.y * rhs.y, lhs.z * rhs.z};
+}
+
+[[nodiscard]] Vec3 importedTriangleColor(
+    const StaticMeshAsset& asset,
+    std::uint32_t materialIndex,
+    Vec3 worldNormal) noexcept {
+  Vec3 base{0.48F, 0.44F, 0.38F};
+  if (materialIndex < asset.materials.size()) {
+    const StaticMeshMaterial& material = asset.materials[materialIndex];
+    if (std::isfinite(material.baseColorFactor[0]) &&
+        std::isfinite(material.baseColorFactor[1]) &&
+        std::isfinite(material.baseColorFactor[2])) {
+      base = {std::clamp(material.baseColorFactor[0], 0.0F, 1.0F),
+              std::clamp(material.baseColorFactor[1], 0.0F, 1.0F),
+              std::clamp(material.baseColorFactor[2], 0.0F, 1.0F)};
+    }
+  }
+  const Vec3 light = normalized(Vec3{-0.35F, 0.85F, 0.40F});
+  const float brightness =
+      0.52F + 0.48F * std::max(0.0F, dot(worldNormal, light));
+  return base * brightness;
+}
+
+bool appendStaticMeshAsset(std::vector<FirstRoomVertex>& vertices,
+                           std::vector<std::uint16_t>& indices,
+                           std::vector<IndexedDrawRange>& draws,
+                           const SceneRoomMeshItem& item,
+                           const StaticMeshAsset& asset) {
+  const Vec3 inputSize = asset.boundsMax - asset.boundsMin;
+  if (!asset.hasBounds || !finiteVec3(inputSize) ||
+      inputSize.x <= 0.0F || inputSize.y <= 0.0F || inputSize.z <= 0.0F ||
+      !finiteVec3(item.position) || !finiteVec3(item.size) ||
+      item.size.x <= 0.0F || item.size.y <= 0.0F || item.size.z <= 0.0F) {
+    return false;
+  }
+  const Vec3 inputCenter = (asset.boundsMin + asset.boundsMax) * 0.5F;
+  const Vec3 scale{item.size.x / inputSize.x, item.size.y / inputSize.y,
+                   item.size.z / inputSize.z};
+  for (const StaticMeshPrimitive& primitive : asset.primitives) {
+    if (primitive.indexCount == 0U || primitive.indexCount % 3U != 0U ||
+        primitive.firstIndex > asset.indices.size() ||
+        primitive.indexCount > asset.indices.size() - primitive.firstIndex ||
+        vertices.size() + primitive.indexCount >
+            static_cast<std::size_t>(
+                std::numeric_limits<std::uint16_t>::max())) {
+      return false;
+    }
+    IndexedDrawRange draw;
+    draw.firstIndex = static_cast<std::uint32_t>(indices.size());
+    for (std::uint32_t triangle = 0U; triangle < primitive.indexCount;
+         triangle += 3U) {
+      Vec3 world[3]{};
+      for (std::uint32_t corner = 0U; corner < 3U; ++corner) {
+        const std::uint32_t sourceIndex =
+            asset.indices[primitive.firstIndex + triangle + corner];
+        if (sourceIndex >= asset.vertices.size()) {
+          return false;
+        }
+        const Vec3 local = componentProduct(
+            asset.vertices[sourceIndex].position - inputCenter, scale);
+        world[corner] = item.position +
+                        rotateEulerXyz(local, item.rotationEulerRadians);
+        if (!finiteVec3(world[corner])) {
+          return false;
+        }
+      }
+      const Vec3 faceNormal =
+          normalized(cross(world[1] - world[0], world[2] - world[0]));
+      const Vec3 color =
+          importedTriangleColor(asset, primitive.materialIndex, faceNormal);
+      for (Vec3 position : world) {
+        const std::uint16_t index =
+            static_cast<std::uint16_t>(vertices.size());
+        vertices.push_back({{position.x, position.y, position.z},
+                            {color.x, color.y, color.z}});
+        indices.push_back(index);
+      }
+    }
+    draw.indexCount =
+        static_cast<std::uint32_t>(indices.size()) - draw.firstIndex;
+    draws.push_back(draw);
+  }
+  return true;
+}
+
 // A thin, double-sided horizontal triangle from `start` to `end` (a debug
 // "gaze blade" showing an NPC's vision direction and range). Base half-width
 // is `halfWidth`. Returns false on a degenerate segment or vertex overflow.
@@ -916,6 +1014,10 @@ std::vector<FloorDraw> buildOptimizedFloorDraws(const SceneRoomProjection& room)
   std::vector<FloorDraw> floorDraws;
   for (const SceneRoomMeshItem& mesh : room.meshes) {
     if (mesh.role != "floor") {
+      continue;
+    }
+    std::string_view externalAssetId;
+    if (externalStaticMeshId(mesh.meshId, externalAssetId)) {
       continue;
     }
     FloorMergeKey key;
@@ -1121,6 +1223,10 @@ bool buildOptimizedWallDraws(const SceneRoomProjection& room,
     if (mesh.role != "wall") {
       continue;
     }
+    std::string_view externalAssetId;
+    if (externalStaticMeshId(mesh.meshId, externalAssetId)) {
+      continue;
+    }
     if (!mesh.hasWallSegment) {
       WallBoxDraw fallback;
       if (!wallBoxForMesh(mesh, fallback)) {
@@ -1286,7 +1392,8 @@ void appendCreativeWireframeDebugGeometry(RoomMeshCpuGeometry& roomGeometry,
 
 RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
     const SceneRoomProjection& room,
-    const RenderCreativeWireframeDebugFrame* creativeWireframeDebug) {
+    const RenderCreativeWireframeDebugFrame* creativeWireframeDebug,
+    StaticMeshAssetCache* staticMeshAssets) {
   RoomMeshCpuGeometry result;
   result.sourceRoomAssetId = room.assetId;
   result.sourceRoomStaticMeshCount = room.meshes.size();
@@ -1351,6 +1458,28 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
       result.indices.clear();
       result.indexedDraws.clear();
       return result;
+    }
+    std::string_view externalAssetId;
+    if (externalStaticMeshId(mesh.meshId, externalAssetId)) {
+      const StaticMeshAsset* asset =
+          staticMeshAssets != nullptr
+              ? staticMeshAssets->find(externalAssetId)
+              : nullptr;
+      if (asset != nullptr &&
+          appendStaticMeshAsset(result.vertices, result.indices,
+                                result.indexedDraws, mesh, *asset)) {
+        continue;
+      }
+      if (!appendBoxIfFits(result.vertices, result.indices,
+                           result.indexedDraws, mesh.position, mesh.size,
+                           {1.0F, 0.0F, 1.0F},
+                           mesh.rotationEulerRadians)) {
+        result.vertices.clear();
+        result.indices.clear();
+        result.indexedDraws.clear();
+        return result;
+      }
+      continue;
     }
     if (mesh.role == "terrain") {
       continue;
@@ -1437,6 +1566,10 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
       if (mesh.role != "terrain") {
         continue;
       }
+      std::string_view externalAssetId;
+      if (externalStaticMeshId(mesh.meshId, externalAssetId)) {
+        continue;
+      }
       const FloorDraw terrain{mesh.position, mesh.size,
                               mesh.rotationEulerRadians};
       if (!canEmitFloorDraw(terrain) ||
@@ -1459,7 +1592,13 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
 }
 
 RoomMeshCpuGeometry buildRoomMeshCpuGeometry(const SceneRoomProjection& room) {
-  return buildRoomMeshCpuGeometry(room, nullptr);
+  return buildRoomMeshCpuGeometry(room, nullptr, nullptr);
+}
+
+RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
+    const SceneRoomProjection& room,
+    const RenderCreativeWireframeDebugFrame* creativeWireframeDebug) {
+  return buildRoomMeshCpuGeometry(room, creativeWireframeDebug, nullptr);
 }
 
 CreativePreviewCpuGeometry buildCreativePreviewCpuGeometry() {
@@ -1507,6 +1646,7 @@ BufferImageResources::~BufferImageResources() {
 BufferImageResourcesResult BufferImageResources::createFirstRoomResources(
     const BufferImageResourcesCreateInfo& createInfo) {
   createInfo_ = createInfo;
+  staticMeshAssets_.setRoot(createInfo.staticMeshAssetRoot);
   BufferImageResourcesResult result;
   result.receipt = baseReceipt("fail", "memory_allocation_failed");
 #if defined(IGGY3D_HAS_VULKAN)
@@ -1705,6 +1845,12 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
     appendReceiptField(result.receipt, "room_asset_id", room.assetId);
     appendReceiptField(result.receipt, "mesh_draw_count",
                        static_cast<std::uint64_t>(geometry_.indexedDraws.size()));
+    appendReceiptField(result.receipt, "static_mesh_asset_loaded_count",
+                       static_cast<std::uint64_t>(
+                           staticMeshAssets_.loadedAssetCount()));
+    appendReceiptField(result.receipt, "static_mesh_asset_failed_count",
+                       static_cast<std::uint64_t>(
+                           staticMeshAssets_.failedAssetCount()));
     appendReceiptField(result.receipt, "room_floor_draw_count",
                        static_cast<std::uint64_t>(geometry_.roomFloorDrawCount));
     appendReceiptField(result.receipt, "room_wall_draw_count",
@@ -1718,7 +1864,8 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
   }
 
   const RoomMeshCpuGeometry cpuGeometry =
-      buildRoomMeshCpuGeometry(room, creativeWireframeDebug);
+      buildRoomMeshCpuGeometry(room, creativeWireframeDebug,
+                               &staticMeshAssets_);
   if (!cpuGeometry.ready) {
     result.reason = {"vertex_buffer_create_failed", "vertex buffer create failed"};
     result.receipt = baseReceipt("fail", result.reason.code);
@@ -1793,6 +1940,12 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
                      static_cast<std::uint64_t>(room.meshes.size()));
   appendReceiptField(result.receipt, "mesh_draw_count",
                      static_cast<std::uint64_t>(geometry_.indexedDraws.size()));
+  appendReceiptField(result.receipt, "static_mesh_asset_loaded_count",
+                     static_cast<std::uint64_t>(
+                         staticMeshAssets_.loadedAssetCount()));
+  appendReceiptField(result.receipt, "static_mesh_asset_failed_count",
+                     static_cast<std::uint64_t>(
+                         staticMeshAssets_.failedAssetCount()));
   appendReceiptField(result.receipt, "room_floor_draw_count",
                      static_cast<std::uint64_t>(geometry_.roomFloorDrawCount));
   appendReceiptField(result.receipt, "room_wall_draw_count",

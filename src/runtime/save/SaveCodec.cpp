@@ -313,6 +313,9 @@ private:
     line(prefix + "id", unsignedText(object.id));
     lineString(prefix + "kind", object.kind);
     lineString(prefix + "name", object.name);
+    if (!object.assetId.empty()) {
+      lineString(prefix + "assetId", object.assetId);
+    }
     lineCreativeVec3(prefix + "transform.position", object.transform.position);
     lineCreativeVec3(prefix + "transform.rotation", object.transform.rotation);
     lineCreativeVec3(prefix + "transform.scale", object.transform.scale);

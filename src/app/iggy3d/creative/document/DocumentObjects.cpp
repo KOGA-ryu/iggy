@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/document/Document.hpp"
 
 #include "app/iggy3d/creative/document/DocumentInternal.hpp"
+#include "content/assets/StaticMeshAsset.hpp"
 
 #include <cstddef>
 #include <string>
@@ -116,6 +117,12 @@ CreativeDocumentCreateReceipt CreativeDocument::createObject(
     return receipt;
   }
 
+  if (!request.assetId.empty() && !validStaticMeshAssetId(request.assetId)) {
+    setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
+                    "invalid_asset_id");
+    return receipt;
+  }
+
   if (request.parentId.has_value()) {
     if (!descriptor.canHaveParent) {
       setCreateStatus(receipt,
@@ -168,6 +175,7 @@ CreativeDocumentCreateReceipt CreativeDocument::createObject(
   object.kind = request.kind;
   object.name = request.name.empty() ? descriptorDefaultName(descriptor)
                                      : request.name;
+  object.assetId = request.assetId;
   object.transform = request.hasTransformOverride
                          ? request.transform
                          : descriptor.defaults.transform;

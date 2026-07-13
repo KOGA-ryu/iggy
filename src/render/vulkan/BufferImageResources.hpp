@@ -9,6 +9,7 @@
 #include "render/FrameInput.hpp"
 #include "render/RenderDiagnostics.hpp"
 #include "render/vulkan/FirstRoomPipeline.hpp"
+#include "content/assets/StaticMeshAsset.hpp"
 #include "render/vulkan/VulkanMemoryAllocator.hpp"
 #include "render/vulkan/VulkanTypes.hpp"
 
@@ -152,6 +153,7 @@ struct BufferImageResourcesCreateInfo {
   std::uint32_t graphicsQueueFamily = kInvalidVulkanQueueFamily;
   VkExtent2D extent{};
   VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
+  std::filesystem::path staticMeshAssetRoot;
 };
 
 struct BufferImageResourcesResult {
@@ -189,6 +191,7 @@ private:
   CreativePreviewGeometryResources creativePreviewGeometry_;
   DepthResourceRecord depth_;
   BufferImageResourcesCreateInfo createInfo_;
+  StaticMeshAssetCache staticMeshAssets_;
   bool ready_ = false;
 };
 
@@ -198,6 +201,10 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(const SceneRoomProjection& room);
 RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
     const SceneRoomProjection& room,
     const RenderCreativeWireframeDebugFrame* creativeWireframeDebug);
+RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
+    const SceneRoomProjection& room,
+    const RenderCreativeWireframeDebugFrame* creativeWireframeDebug,
+    StaticMeshAssetCache* staticMeshAssets);
 CreativeWireframeDebugCpuGeometry buildCreativeWireframeDebugCpuGeometry(
     const RenderCreativeWireframeDebugFrame* creativeWireframeDebug);
 CreativePreviewCpuGeometry buildCreativePreviewCpuGeometry();

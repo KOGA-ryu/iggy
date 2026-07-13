@@ -551,6 +551,32 @@ bool facadeBatchCreateInstallFailurePreservesLiveDocument() {
                 "batch install fail live revision");
 }
 
+bool staticAssetReferenceIsStoredAndUnsafeReferenceRejected() {
+  cr::CreativeDocument document;
+  cr::CreativeDocumentCreateRequest valid;
+  valid.kind = cr::CreativeObjectKind::Rock;
+  valid.assetId = "environment/boulder_01";
+  const cr::CreativeDocumentCreateReceipt created =
+      document.createObject(valid);
+  const cr::CreativeObject* object = document.findObject(created.objectId);
+
+  cr::CreativeDocumentCreateRequest unsafe;
+  unsafe.kind = cr::CreativeObjectKind::Rock;
+  unsafe.assetId = "../outside";
+  const cr::CreativeDocumentCreateReceipt rejected =
+      document.createObject(unsafe);
+
+  return expect(created.accepted && object != nullptr,
+                "static asset object created") &&
+         expect(object->assetId == "environment/boulder_01",
+                "static asset id stored") &&
+         expect(!rejected.accepted &&
+                    rejected.reasonCode == "invalid_asset_id",
+                "unsafe static asset id rejected") &&
+         expect(document.objectCount() == 1U,
+                "unsafe static asset does not mutate document");
+}
+
 }  // namespace
 
 int main() {
@@ -567,6 +593,7 @@ int main() {
                   facadeGenericCreateFailureRecordsFailureOnly() &&
                   facadeBatchCreateAppliesAllRequestsAtomically() &&
                   facadeBatchCreateRejectionPreservesLiveDocument() &&
-                  facadeBatchCreateInstallFailurePreservesLiveDocument();
+                  facadeBatchCreateInstallFailurePreservesLiveDocument() &&
+                  staticAssetReferenceIsStoredAndUnsafeReferenceRejected();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
