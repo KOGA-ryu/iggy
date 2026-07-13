@@ -41,6 +41,9 @@ target_sources(iggy3d
     src/app/iggy3d/creative/Geometry.cpp
     src/app/iggy3d/creative/document/Object.cpp
     src/app/iggy3d/creative/document/Document.cpp
+    src/app/iggy3d/creative/document/DocumentObjects.cpp
+    src/app/iggy3d/creative/document/DocumentRestore.cpp
+    src/app/iggy3d/creative/document/DocumentValidation.cpp
     src/app/iggy3d/creative/document/TerrainField.cpp
     src/app/iggy3d/creative/document/TerrainMaterialField.cpp
     src/app/iggy3d/creative/document/VoxelField.cpp
