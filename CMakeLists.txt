@@ -57,6 +57,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/input/InputRouter.cpp
     src/app/iggy3d/creative/input/Catalog.cpp
     src/app/iggy3d/creative/input/Interaction.cpp
+    src/app/iggy3d/creative/input/HeldItemRegistry.cpp
     src/app/iggy3d/creative/history/History.cpp
     src/app/iggy3d/creative/tools/TerrainGrade.cpp
     src/app/iggy3d/creative/tools/TerrainBrushKernel.cpp

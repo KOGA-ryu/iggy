@@ -21,6 +21,7 @@
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
 #include "app/iggy3d/creative/tools/ShapeBrush.hpp"
 #include "core/math/EulerRotation.hpp"
 #include "core/math/Transform3.hpp"
@@ -31,80 +32,6 @@ namespace cr = iggy3d::creative;
 namespace {
 
 constexpr float kCreativeReachMeters = 128.0F;
-
-struct HeldItemBehavior {
-  cr::CreativeHeldItemKind kind = cr::CreativeHeldItemKind::Count;
-  cr::Tool facadeTool = cr::Tool::Select;
-  bool placeMode = false;
-  bool volumeMode = false;
-  cr::CreativeVolumeOperationKind volumeOperation =
-      cr::CreativeVolumeOperationKind::Fill;
-};
-
-template <typename Row, std::size_t Size>
-consteval bool heldItemRowsMatchEnumOrder(
-    const std::array<Row, Size>& rows) {
-  if (Size != cr::kCreativeHeldItemKindCount) {
-    return false;
-  }
-  for (std::size_t index = 0; index < rows.size(); ++index) {
-    if (static_cast<std::size_t>(rows[index].kind) != index) {
-      return false;
-    }
-  }
-  return true;
-}
-
-constexpr std::array kHeldItemBehaviors{
-    HeldItemBehavior{cr::CreativeHeldItemKind::Material, cr::Tool::Select, true,
-                     false},
-    HeldItemBehavior{cr::CreativeHeldItemKind::MaterialBrush, cr::Tool::Select,
-                     false, false},
-    HeldItemBehavior{cr::CreativeHeldItemKind::ObjectSelect, cr::Tool::Select,
-                     false, false},
-    HeldItemBehavior{cr::CreativeHeldItemKind::ObjectMove, cr::Tool::Move, false,
-                     false},
-    HeldItemBehavior{cr::CreativeHeldItemKind::VolumeSelect, cr::Tool::Select,
-                     false, true},
-    HeldItemBehavior{cr::CreativeHeldItemKind::VolumeFill, cr::Tool::Select,
-                     false, true,
-                     cr::CreativeVolumeOperationKind::Fill},
-    HeldItemBehavior{cr::CreativeHeldItemKind::VolumeHollow, cr::Tool::Select,
-                     false, true,
-                     cr::CreativeVolumeOperationKind::Hollow},
-    HeldItemBehavior{cr::CreativeHeldItemKind::VolumeReplace, cr::Tool::Select,
-                     false, true,
-                     cr::CreativeVolumeOperationKind::Replace},
-    HeldItemBehavior{cr::CreativeHeldItemKind::VolumeErase, cr::Tool::Select,
-                     false, true,
-                     cr::CreativeVolumeOperationKind::Erase},
-    HeldItemBehavior{cr::CreativeHeldItemKind::VolumeClone, cr::Tool::Select,
-                     false, true,
-                     cr::CreativeVolumeOperationKind::Clone},
-    HeldItemBehavior{cr::CreativeHeldItemKind::LinearArray, cr::Tool::Select,
-                     false, false},
-    HeldItemBehavior{cr::CreativeHeldItemKind::ConnectedFill,
-                     cr::Tool::Select, false, false},
-    HeldItemBehavior{cr::CreativeHeldItemKind::SurfaceExtrude,
-                     cr::Tool::Select, false, false},
-    HeldItemBehavior{cr::CreativeHeldItemKind::TerrainControl,
-                     cr::Tool::Select, false, false},
-    HeldItemBehavior{cr::CreativeHeldItemKind::TerrainPaint,
-                     cr::Tool::Select, false, false},
-    HeldItemBehavior{cr::CreativeHeldItemKind::TerrainGrade,
-                     cr::Tool::Select, false, false},
-    HeldItemBehavior{cr::CreativeHeldItemKind::TerrainSculpt,
-                     cr::Tool::Select, false, false},
-    HeldItemBehavior{cr::CreativeHeldItemKind::TerrainProfile,
-                     cr::Tool::Select, false, false},
-    HeldItemBehavior{cr::CreativeHeldItemKind::TerrainPath,
-                     cr::Tool::Select, false, false},
-    HeldItemBehavior{cr::CreativeHeldItemKind::TerrainRegion,
-                     cr::Tool::Select, false, true},
-    HeldItemBehavior{cr::CreativeHeldItemKind::ObjectGroup,
-                     cr::Tool::Select, false, false},
-};
-static_assert(heldItemRowsMatchEnumOrder(kHeldItemBehaviors));
 
 [[nodiscard]] iggy3d::Vec3 aabbFaceNormal(VisualBounds bounds,
                                           iggy3d::Vec3 point) noexcept {
@@ -203,21 +130,6 @@ struct InteractionContext {
   const CreativeEditorWorldInteractionFrameRequest& request;
   const cr::CreativeHotbarEntry& held;
 };
-
-using InteractionHandler = void (*)(InteractionContext&);
-using HeldItemActionHandlers = std::array<InteractionHandler, 3>;
-
-void noInteraction(InteractionContext&);
-
-struct HeldItemHandlerRow {
-  cr::CreativeHeldItemKind kind = cr::CreativeHeldItemKind::Count;
-  HeldItemActionHandlers handlers{};
-  InteractionHandler accept = noInteraction;
-  InteractionHandler reject = noInteraction;
-  bool primaryWinsSimultaneous = false;
-};
-
-void noInteraction(InteractionContext&) {}
 
 void selectObject(InteractionContext& context) {
   static_cast<void>(
@@ -542,97 +454,122 @@ void applyObjectGroup(InteractionContext& context) {
       context.request.appState, "creative_group_world_action"));
 }
 
-constexpr std::array<HeldItemHandlerRow, cr::kCreativeHeldItemKindCount>
-    kHeldItemHandlers{{
-        {cr::CreativeHeldItemKind::Material,
-         {noInteraction, noInteraction, sampleTargetMaterial},
-         noInteraction, noInteraction},
-        {cr::CreativeHeldItemKind::MaterialBrush,
-         {noInteraction, noInteraction, sampleTargetMaterial},
-         noInteraction, noInteraction},
-        {cr::CreativeHeldItemKind::ObjectSelect,
-         {selectObject, noInteraction, sampleTargetMaterial},
-         selectObject, noInteraction},
-        {cr::CreativeHeldItemKind::ObjectMove,
-         {noInteraction, noInteraction, sampleTargetMaterial},
-         noInteraction, rejectActiveInteraction},
-        {cr::CreativeHeldItemKind::VolumeSelect,
-         {setVolumeFirstCorner, setVolumeSecondCorner,
-          expandVolumeSelection},
-         advanceVolumeSelection, rejectActiveInteraction},
-        {cr::CreativeHeldItemKind::VolumeFill,
-         {beginHeldShapeVolume, commitHeldShapeVolume, sampleTargetMaterial},
-         advanceHeldShapeVolume, rejectActiveInteraction,
-         true},
-        {cr::CreativeHeldItemKind::VolumeHollow,
-         {beginHeldShapeVolume, commitHeldShapeVolume, sampleTargetMaterial},
-         advanceHeldShapeVolume, rejectActiveInteraction,
-         true},
-        {cr::CreativeHeldItemKind::VolumeReplace,
-         {noInteraction, applyHeldVolumeOperation, sampleTargetMaterial},
-         applyHeldVolumeOperation, rejectActiveInteraction},
-        {cr::CreativeHeldItemKind::VolumeErase,
-         {noInteraction, applyHeldVolumeOperation, sampleTargetMaterial},
-         applyHeldVolumeOperation, rejectActiveInteraction},
-        {cr::CreativeHeldItemKind::VolumeClone,
-         {noInteraction, applyHeldVolumeOperation, sampleTargetMaterial},
-         applyHeldVolumeOperation, rejectActiveInteraction},
-        {cr::CreativeHeldItemKind::LinearArray,
-         {selectObject, applyHeldArray, sampleTargetMaterial},
-         acceptHeldArray, rejectActiveInteraction},
-        {cr::CreativeHeldItemKind::ConnectedFill,
-         {eraseConnectedFill, paintConnectedFill, sampleTargetMaterial},
-         paintConnectedFill, eraseConnectedFill, true},
-        {cr::CreativeHeldItemKind::SurfaceExtrude,
-         {insetSurface, extrudeSurface, sampleTargetMaterial},
-         extrudeSurface, insetSurface, true},
-        {cr::CreativeHeldItemKind::TerrainControl,
-         {removeTerrainControl, upsertTerrainControl, sampleTerrainControl},
-         upsertTerrainControl, removeTerrainControl, true},
-        {cr::CreativeHeldItemKind::TerrainPaint,
-         {noInteraction, noInteraction, noInteraction},
-         noInteraction, noInteraction},
-        {cr::CreativeHeldItemKind::TerrainGrade,
-         {cancelTerrainGrade, applyTerrainGrade, beginTerrainGrade},
-         applyTerrainGrade, cancelTerrainGrade, true},
-        {cr::CreativeHeldItemKind::TerrainSculpt,
-         {noInteraction, noInteraction, noInteraction},
-         noInteraction, noInteraction},
-        {cr::CreativeHeldItemKind::TerrainProfile,
-         {unlockTerrainProfileBase, applyTerrainProfile,
-          lockTerrainProfileBase},
-         applyTerrainProfile, unlockTerrainProfileBase, true},
-        {cr::CreativeHeldItemKind::TerrainPath,
-         {removeTerrainPathPoint, applyTerrainPath, addTerrainPathPoint},
-         applyTerrainPath, removeTerrainPathPoint, true},
-        {cr::CreativeHeldItemKind::TerrainRegion,
-         {cancelTerrainRegion, advanceTerrainRegion,
-          sampleTerrainRegionHeight},
-         advanceTerrainRegion, cancelTerrainRegion, true},
-        {cr::CreativeHeldItemKind::ObjectGroup,
-         {selectObject, applyObjectGroup, noInteraction},
-         applyObjectGroup, noInteraction},
-    }};
-static_assert(heldItemRowsMatchEnumOrder(kHeldItemHandlers));
+void dispatchHeldItemWorldOperation(
+    cr::CreativeHeldItemWorldOperation operation,
+    InteractionContext& context) {
+  switch (operation) {
+    case cr::CreativeHeldItemWorldOperation::None:
+      return;
+    case cr::CreativeHeldItemWorldOperation::SelectObject:
+      selectObject(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::SampleTargetMaterial:
+      sampleTargetMaterial(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::RejectActiveInteraction:
+      rejectActiveInteraction(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::SetVolumeFirstCorner:
+      setVolumeFirstCorner(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::SetVolumeSecondCorner:
+      setVolumeSecondCorner(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::ExpandVolumeSelection:
+      expandVolumeSelection(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::AdvanceVolumeSelection:
+      advanceVolumeSelection(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::BeginShapeVolume:
+      beginHeldShapeVolume(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::CommitShapeVolume:
+      commitHeldShapeVolume(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::AdvanceShapeVolume:
+      advanceHeldShapeVolume(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::ApplyVolumeOperation:
+      applyHeldVolumeOperation(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::ApplyArray:
+      applyHeldArray(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::AcceptArray:
+      acceptHeldArray(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::PaintConnectedFill:
+      paintConnectedFill(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::EraseConnectedFill:
+      eraseConnectedFill(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::ExtrudeSurface:
+      extrudeSurface(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::InsetSurface:
+      insetSurface(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::UpsertTerrainControl:
+      upsertTerrainControl(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::RemoveTerrainControl:
+      removeTerrainControl(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::SampleTerrainControl:
+      sampleTerrainControl(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::BeginTerrainGrade:
+      beginTerrainGrade(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::ApplyTerrainGrade:
+      applyTerrainGrade(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::CancelTerrainGrade:
+      cancelTerrainGrade(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::ApplyTerrainProfile:
+      applyTerrainProfile(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::LockTerrainProfileBase:
+      lockTerrainProfileBase(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::UnlockTerrainProfileBase:
+      unlockTerrainProfileBase(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::AddTerrainPathPoint:
+      addTerrainPathPoint(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::ApplyTerrainPath:
+      applyTerrainPath(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::RemoveTerrainPathPoint:
+      removeTerrainPathPoint(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::ApplyTerrainRegion:
+      applyTerrainRegion(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::AdvanceTerrainRegion:
+      advanceTerrainRegion(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::SampleTerrainRegionHeight:
+      sampleTerrainRegionHeight(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::CancelTerrainRegion:
+      cancelTerrainRegion(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::ApplyObjectGroup:
+      applyObjectGroup(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::Count:
+      return;
+  }
+}
 
 struct HeldItemCommandResult {
   bool handled = false;
   bool changed = false;
-};
-
-using HeldItemConfirmCommand = HeldItemCommandResult (*)(
-    cr::CreativeHeldItemKind,
-    cr::CreativeAppState&,
-    CreativeEditorState&,
-    std::string_view);
-using HeldItemCancelCommand = HeldItemCommandResult (*)(
-    cr::CreativeAppState&,
-    CreativeEditorState&);
-
-struct HeldItemCommandRow {
-  cr::CreativeHeldItemKind kind = cr::CreativeHeldItemKind::Count;
-  HeldItemConfirmCommand confirm = nullptr;
-  HeldItemCancelCommand cancel = nullptr;
 };
 
 HeldItemCommandResult confirmArrayCommand(
@@ -805,39 +742,54 @@ HeldItemCommandResult cancelTerrainRegionCommand(
   return {true, cancelCreativeEditorTerrainRegion(editor).changed};
 }
 
-constexpr std::array<HeldItemCommandRow, cr::kCreativeHeldItemKindCount>
-    kHeldItemCommands{{
-        {cr::CreativeHeldItemKind::Material},
-        {cr::CreativeHeldItemKind::MaterialBrush},
-        {cr::CreativeHeldItemKind::ObjectSelect},
-        {cr::CreativeHeldItemKind::ObjectMove},
-        {cr::CreativeHeldItemKind::VolumeSelect},
-        {cr::CreativeHeldItemKind::VolumeFill},
-        {cr::CreativeHeldItemKind::VolumeHollow},
-        {cr::CreativeHeldItemKind::VolumeReplace, confirmVolumeCommand},
-        {cr::CreativeHeldItemKind::VolumeErase, confirmVolumeCommand},
-        {cr::CreativeHeldItemKind::VolumeClone, confirmVolumeCommand},
-        {cr::CreativeHeldItemKind::LinearArray, confirmArrayCommand},
-        {cr::CreativeHeldItemKind::ConnectedFill,
-         confirmConnectedFillCommand},
-        {cr::CreativeHeldItemKind::SurfaceExtrude,
-         confirmSurfaceExtrudeCommand},
-        {cr::CreativeHeldItemKind::TerrainControl,
-         confirmTerrainControlCommand, cancelTerrainControlCommand},
-        {cr::CreativeHeldItemKind::TerrainPaint},
-        {cr::CreativeHeldItemKind::TerrainGrade,
-         confirmTerrainGradeCommand, cancelTerrainGradeCommand},
-        {cr::CreativeHeldItemKind::TerrainSculpt,
-         confirmTerrainSculptCommand, cancelTerrainSculptCommand},
-        {cr::CreativeHeldItemKind::TerrainProfile,
-         confirmTerrainProfileCommand, cancelTerrainProfileCommand},
-        {cr::CreativeHeldItemKind::TerrainPath,
-         confirmTerrainPathCommand, cancelTerrainPathCommand},
-        {cr::CreativeHeldItemKind::TerrainRegion,
-         confirmTerrainRegionCommand, cancelTerrainRegionCommand},
-        {cr::CreativeHeldItemKind::ObjectGroup, confirmGroupCommand},
-    }};
-static_assert(heldItemRowsMatchEnumOrder(kHeldItemCommands));
+HeldItemCommandResult dispatchHeldItemCommand(
+    cr::CreativeHeldItemCommandOperation operation,
+    cr::CreativeHeldItemKind kind,
+    cr::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    std::string_view source) {
+  switch (operation) {
+    case cr::CreativeHeldItemCommandOperation::None:
+      return {};
+    case cr::CreativeHeldItemCommandOperation::ConfirmArray:
+      return confirmArrayCommand(kind, appState, editor, source);
+    case cr::CreativeHeldItemCommandOperation::ConfirmConnectedFill:
+      return confirmConnectedFillCommand(kind, appState, editor, source);
+    case cr::CreativeHeldItemCommandOperation::ConfirmSurfaceExtrude:
+      return confirmSurfaceExtrudeCommand(kind, appState, editor, source);
+    case cr::CreativeHeldItemCommandOperation::ConfirmTerrainControl:
+      return confirmTerrainControlCommand(kind, appState, editor, source);
+    case cr::CreativeHeldItemCommandOperation::ConfirmTerrainGrade:
+      return confirmTerrainGradeCommand(kind, appState, editor, source);
+    case cr::CreativeHeldItemCommandOperation::ConfirmTerrainSculpt:
+      return confirmTerrainSculptCommand(kind, appState, editor, source);
+    case cr::CreativeHeldItemCommandOperation::ConfirmTerrainProfile:
+      return confirmTerrainProfileCommand(kind, appState, editor, source);
+    case cr::CreativeHeldItemCommandOperation::ConfirmTerrainPath:
+      return confirmTerrainPathCommand(kind, appState, editor, source);
+    case cr::CreativeHeldItemCommandOperation::ConfirmTerrainRegion:
+      return confirmTerrainRegionCommand(kind, appState, editor, source);
+    case cr::CreativeHeldItemCommandOperation::ConfirmVolume:
+      return confirmVolumeCommand(kind, appState, editor, source);
+    case cr::CreativeHeldItemCommandOperation::ConfirmGroup:
+      return confirmGroupCommand(kind, appState, editor, source);
+    case cr::CreativeHeldItemCommandOperation::CancelTerrainControl:
+      return cancelTerrainControlCommand(appState, editor);
+    case cr::CreativeHeldItemCommandOperation::CancelTerrainGrade:
+      return cancelTerrainGradeCommand(appState, editor);
+    case cr::CreativeHeldItemCommandOperation::CancelTerrainSculpt:
+      return cancelTerrainSculptCommand(appState, editor);
+    case cr::CreativeHeldItemCommandOperation::CancelTerrainProfile:
+      return cancelTerrainProfileCommand(appState, editor);
+    case cr::CreativeHeldItemCommandOperation::CancelTerrainPath:
+      return cancelTerrainPathCommand(appState, editor);
+    case cr::CreativeHeldItemCommandOperation::CancelTerrainRegion:
+      return cancelTerrainRegionCommand(appState, editor);
+    case cr::CreativeHeldItemCommandOperation::Count:
+      return {};
+  }
+  return {};
+}
 
 void processMoveInteraction(
     const CreativeEditorWorldInteractionFrameRequest& request) {
@@ -950,13 +902,14 @@ void refreshHeldItemPreview(
     const CreativeEditorWorldInteractionFrameRequest& request,
     const cr::CreativeHotbarEntry& held) {
   CreativeEditorState& editor = request.editor;
-  if (held.kind != cr::CreativeHeldItemKind::TerrainPaint) {
+  const cr::CreativeHeldItemDefinition& definition =
+      cr::describeCreativeHeldItem(held.kind);
+  if (definition.frameMode != cr::CreativeHeldItemFrameMode::TerrainPaint) {
     finalizeCreativeEditorTerrainPaintStroke(
         request.appState, editor, "creative_terrain_paint_non_paint_tool");
   }
-  switch (held.kind) {
-    case cr::CreativeHeldItemKind::Material:
-    case cr::CreativeHeldItemKind::MaterialBrush: {
+  switch (definition.frameMode) {
+    case cr::CreativeHeldItemFrameMode::MaterialStroke: {
       finalizeCreativeTerrainStroke(request.appState, editor,
                                     "creative_terrain_stroke_material_tool");
       InteractionContext context{request, held};
@@ -969,7 +922,7 @@ void refreshHeldItemPreview(
       }
       return true;
     }
-    case cr::CreativeHeldItemKind::TerrainControl: {
+    case cr::CreativeHeldItemFrameMode::TerrainControlStroke: {
       finalizeCreativeMaterialStroke(
           request.appState, editor,
           "creative_material_stroke_non_material_tool");
@@ -986,7 +939,7 @@ void refreshHeldItemPreview(
       }
       return true;
     }
-    case cr::CreativeHeldItemKind::TerrainPaint:
+    case cr::CreativeHeldItemFrameMode::TerrainPaint:
       finalizeCreativeMaterialStroke(
           request.appState, editor,
           "creative_material_stroke_terrain_paint_tool");
@@ -1006,7 +959,7 @@ void refreshHeldItemPreview(
             request.appState.facade.document(), editor));
       }
       return true;
-    case cr::CreativeHeldItemKind::TerrainSculpt:
+    case cr::CreativeHeldItemFrameMode::TerrainSculpt:
       finalizeCreativeMaterialStroke(
           request.appState, editor,
           "creative_material_stroke_non_material_tool");
@@ -1027,7 +980,7 @@ void refreshHeldItemPreview(
       static_cast<void>(refreshCreativeEditorTerrainSculptPreview(
           editor.terrain, request.appState.facade.document(), editor));
       return true;
-    case cr::CreativeHeldItemKind::ObjectMove: {
+    case cr::CreativeHeldItemFrameMode::ObjectMove: {
       finalizeCreativeMaterialStroke(
           request.appState, editor,
           "creative_material_stroke_non_material_tool");
@@ -1045,22 +998,8 @@ void refreshHeldItemPreview(
       }
       return true;
     }
-    case cr::CreativeHeldItemKind::ObjectSelect:
-    case cr::CreativeHeldItemKind::VolumeSelect:
-    case cr::CreativeHeldItemKind::VolumeFill:
-    case cr::CreativeHeldItemKind::VolumeHollow:
-    case cr::CreativeHeldItemKind::VolumeReplace:
-    case cr::CreativeHeldItemKind::VolumeErase:
-    case cr::CreativeHeldItemKind::VolumeClone:
-    case cr::CreativeHeldItemKind::LinearArray:
-    case cr::CreativeHeldItemKind::ConnectedFill:
-    case cr::CreativeHeldItemKind::SurfaceExtrude:
-    case cr::CreativeHeldItemKind::TerrainGrade:
-    case cr::CreativeHeldItemKind::TerrainProfile:
-    case cr::CreativeHeldItemKind::TerrainPath:
-    case cr::CreativeHeldItemKind::TerrainRegion:
-    case cr::CreativeHeldItemKind::ObjectGroup:
-    case cr::CreativeHeldItemKind::Count:
+    case cr::CreativeHeldItemFrameMode::Standard:
+    case cr::CreativeHeldItemFrameMode::Count:
       break;
   }
   finalizeCreativeMaterialStroke(
@@ -1076,18 +1015,18 @@ void refreshHeldItemPreview(
 void refreshHeldItemPreview(
     const CreativeEditorWorldInteractionFrameRequest& request,
     cr::CreativeHeldItemKind kind) {
-  switch (kind) {
-    case cr::CreativeHeldItemKind::TerrainProfile:
+  switch (cr::describeCreativeHeldItem(kind).previewMode) {
+    case cr::CreativeHeldItemPreviewMode::TerrainProfile:
       static_cast<void>(refreshCreativeEditorTerrainProfilePreview(
           request.editor.terrain, request.appState.facade.document(),
           request.editor));
       return;
-    case cr::CreativeHeldItemKind::TerrainPath:
+    case cr::CreativeHeldItemPreviewMode::TerrainPath:
       static_cast<void>(refreshCreativeEditorTerrainPathPreview(
           request.editor.terrain, request.appState.facade.document(),
           request.editor));
       return;
-    case cr::CreativeHeldItemKind::TerrainRegion:
+    case cr::CreativeHeldItemPreviewMode::TerrainRegion:
       if (request.editor.terrain.region.stamp.active) {
         static_cast<void>(refreshCreativeEditorTerrainStampPreview(
             request.editor.terrain, request.appState.facade.document(),
@@ -1098,25 +1037,8 @@ void refreshHeldItemPreview(
             request.editor));
       }
       return;
-    case cr::CreativeHeldItemKind::Material:
-    case cr::CreativeHeldItemKind::MaterialBrush:
-    case cr::CreativeHeldItemKind::ObjectSelect:
-    case cr::CreativeHeldItemKind::ObjectMove:
-    case cr::CreativeHeldItemKind::VolumeSelect:
-    case cr::CreativeHeldItemKind::VolumeFill:
-    case cr::CreativeHeldItemKind::VolumeHollow:
-    case cr::CreativeHeldItemKind::VolumeReplace:
-    case cr::CreativeHeldItemKind::VolumeErase:
-    case cr::CreativeHeldItemKind::VolumeClone:
-    case cr::CreativeHeldItemKind::LinearArray:
-    case cr::CreativeHeldItemKind::ConnectedFill:
-    case cr::CreativeHeldItemKind::SurfaceExtrude:
-    case cr::CreativeHeldItemKind::TerrainControl:
-    case cr::CreativeHeldItemKind::TerrainPaint:
-    case cr::CreativeHeldItemKind::TerrainGrade:
-    case cr::CreativeHeldItemKind::TerrainSculpt:
-    case cr::CreativeHeldItemKind::ObjectGroup:
-    case cr::CreativeHeldItemKind::Count:
+    case cr::CreativeHeldItemPreviewMode::None:
+    case cr::CreativeHeldItemPreviewMode::Count:
       return;
   }
 }
@@ -1125,7 +1047,10 @@ void refreshHeldItemPreview(
     cr::CreativeHeldItemKind kind,
     const cr::CreativeToolSettings& settings) {
   std::string output =
-      kind == cr::CreativeHeldItemKind::VolumeFill ? "F" : "H";
+      cr::creativeVolumeOperationForHeldItem(kind) ==
+              cr::CreativeVolumeOperationKind::Fill
+          ? "F"
+          : "H";
   switch (settings.shapeBrushKind) {
     case cr::CreativeShapeBrushKind::Box: return output + "B";
     case cr::CreativeShapeBrushKind::Line: return output + "L";
@@ -1144,21 +1069,25 @@ void refreshHeldItemPreview(
     const cr::CreativeToolSettings& settings,
     const CreativeMaterialBrushPresetBank& brushPresets,
     std::size_t slot) {
-  if (cr::creativeHeldItemUsesDirectShapeGesture(entry.kind)) {
-    return shapeHotbarLabel(entry.kind, settings);
+  switch (cr::describeCreativeHeldItem(entry.kind).hotbarLabelMode) {
+    case cr::CreativeHeldItemHotbarLabelMode::DirectShape:
+      return shapeHotbarLabel(entry.kind, settings);
+    case cr::CreativeHeldItemHotbarLabelMode::MaterialBrush: {
+      CreativeMaterialBrushGestureConfig config =
+          creativeMaterialBrushGestureConfig(settings);
+      static_cast<void>(
+          creativeMaterialBrushPresetForSlot(brushPresets, slot, config));
+      return creativeMaterialBrushPresetHotbarLabel(config);
+    }
+    case cr::CreativeHeldItemHotbarLabelMode::Material: {
+      const std::string name(cr::toString(entry.objectKind));
+      return name.substr(0, std::min<std::size_t>(4U, name.size()));
+    }
+    case cr::CreativeHeldItemHotbarLabelMode::KindPrefix:
+    case cr::CreativeHeldItemHotbarLabelMode::Count:
+      return std::string(cr::toString(entry.kind)).substr(0, 4);
   }
-  if (entry.kind == cr::CreativeHeldItemKind::MaterialBrush) {
-    CreativeMaterialBrushGestureConfig config =
-        creativeMaterialBrushGestureConfig(settings);
-    static_cast<void>(
-        creativeMaterialBrushPresetForSlot(brushPresets, slot, config));
-    return creativeMaterialBrushPresetHotbarLabel(config);
-  }
-  if (entry.kind != cr::CreativeHeldItemKind::Material) {
-    return std::string(cr::toString(entry.kind)).substr(0, 4);
-  }
-  const std::string name(cr::toString(entry.objectKind));
-  return name.substr(0, std::min<std::size_t>(4U, name.size()));
+  return {};
 }
 
 void appendColoredText(std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
@@ -1711,8 +1640,8 @@ double creativeEditorTargetCellSize(
     const CreativeEditorState& editor) noexcept {
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  switch (held.kind) {
-    case cr::CreativeHeldItemKind::Material:
+  switch (cr::describeCreativeHeldItem(held.kind).targetCellPolicy) {
+    case cr::CreativeHeldItemTargetCellPolicy::MaterialStorage:
       switch (cr::describeObject(held.objectKind)
                   .placementPolicy.storagePolicy) {
         case cr::CreativePlacementStoragePolicy::AuthoredObject:
@@ -1721,29 +1650,10 @@ double creativeEditorTargetCellSize(
           return document.gridSettings().cellSizeMeters;
       }
       return editor.placeCellSize;
-    case cr::CreativeHeldItemKind::MaterialBrush:
+    case cr::CreativeHeldItemTargetCellPolicy::DocumentGrid:
       return document.gridSettings().cellSizeMeters;
-    case cr::CreativeHeldItemKind::VolumeSelect:
-    case cr::CreativeHeldItemKind::VolumeFill:
-    case cr::CreativeHeldItemKind::VolumeHollow:
-    case cr::CreativeHeldItemKind::VolumeReplace:
-    case cr::CreativeHeldItemKind::VolumeErase:
-    case cr::CreativeHeldItemKind::VolumeClone:
-    case cr::CreativeHeldItemKind::ConnectedFill:
-    case cr::CreativeHeldItemKind::SurfaceExtrude:
-    case cr::CreativeHeldItemKind::TerrainControl:
-    case cr::CreativeHeldItemKind::TerrainPaint:
-    case cr::CreativeHeldItemKind::TerrainGrade:
-    case cr::CreativeHeldItemKind::TerrainSculpt:
-    case cr::CreativeHeldItemKind::TerrainProfile:
-    case cr::CreativeHeldItemKind::TerrainPath:
-    case cr::CreativeHeldItemKind::TerrainRegion:
-      return document.gridSettings().cellSizeMeters;
-    case cr::CreativeHeldItemKind::ObjectSelect:
-    case cr::CreativeHeldItemKind::ObjectMove:
-    case cr::CreativeHeldItemKind::LinearArray:
-    case cr::CreativeHeldItemKind::ObjectGroup:
-    case cr::CreativeHeldItemKind::Count:
+    case cr::CreativeHeldItemTargetCellPolicy::PlaceCell:
+    case cr::CreativeHeldItemTargetCellPolicy::Count:
       return editor.placeCellSize;
   }
   return editor.placeCellSize;
@@ -1754,21 +1664,20 @@ std::string creativeEditorHeldItemStatusLabel(
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   std::string output(cr::toString(held.kind));
-  switch (held.kind) {
-    case cr::CreativeHeldItemKind::MaterialBrush:
+  switch (cr::describeCreativeHeldItem(held.kind).statusMode) {
+    case cr::CreativeHeldItemStatusMode::MaterialBrush:
       appendMaterialBrushStatus(output, editor, held);
       break;
-    case cr::CreativeHeldItemKind::VolumeFill:
-    case cr::CreativeHeldItemKind::VolumeHollow:
+    case cr::CreativeHeldItemStatusMode::DirectShape:
       appendDirectShapeStatus(output, editor);
       break;
-    case cr::CreativeHeldItemKind::LinearArray:
+    case cr::CreativeHeldItemStatusMode::LinearArray:
       appendLinearArrayStatus(output, editor);
       break;
-    case cr::CreativeHeldItemKind::TerrainControl:
+    case cr::CreativeHeldItemStatusMode::TerrainControl:
       appendTerrainControlStatus(output, editor);
       break;
-    case cr::CreativeHeldItemKind::TerrainPaint:
+    case cr::CreativeHeldItemStatusMode::TerrainPaint:
       output.append(" | ");
       output.append(cr::toString(editor.toolSettings.terrainPaintMode));
       output.append(" | ");
@@ -1800,40 +1709,34 @@ std::string creativeEditorHeldItemStatusLabel(
       }
       appendHeldQuickEditStatus(output, editor);
       break;
-    case cr::CreativeHeldItemKind::TerrainGrade:
+    case cr::CreativeHeldItemStatusMode::TerrainGrade:
       appendTerrainGradeStatus(output, editor);
       break;
-    case cr::CreativeHeldItemKind::TerrainSculpt:
+    case cr::CreativeHeldItemStatusMode::TerrainSculpt:
       appendTerrainSculptStatus(output, editor);
       break;
-    case cr::CreativeHeldItemKind::TerrainProfile:
+    case cr::CreativeHeldItemStatusMode::TerrainProfile:
       appendTerrainProfileStatus(output, editor);
       break;
-    case cr::CreativeHeldItemKind::TerrainPath:
+    case cr::CreativeHeldItemStatusMode::TerrainPath:
       appendTerrainPathStatus(output, editor);
       break;
-    case cr::CreativeHeldItemKind::TerrainRegion:
+    case cr::CreativeHeldItemStatusMode::TerrainRegion:
       appendTerrainRegionStatus(output, editor);
       break;
-    case cr::CreativeHeldItemKind::ConnectedFill:
+    case cr::CreativeHeldItemStatusMode::ConnectedFill:
       appendConnectedFillStatus(output, editor, held);
       break;
-    case cr::CreativeHeldItemKind::SurfaceExtrude:
+    case cr::CreativeHeldItemStatusMode::SurfaceExtrude:
       appendSurfaceExtrudeStatus(output, editor, held);
       break;
-    case cr::CreativeHeldItemKind::Material:
-    case cr::CreativeHeldItemKind::VolumeReplace:
+    case cr::CreativeHeldItemStatusMode::Material:
       output.append(" | ");
       output.append(cr::toString(held.objectKind));
       appendHeldQuickEditStatus(output, editor);
       break;
-    case cr::CreativeHeldItemKind::ObjectSelect:
-    case cr::CreativeHeldItemKind::ObjectMove:
-    case cr::CreativeHeldItemKind::VolumeSelect:
-    case cr::CreativeHeldItemKind::VolumeErase:
-    case cr::CreativeHeldItemKind::VolumeClone:
-    case cr::CreativeHeldItemKind::ObjectGroup:
-    case cr::CreativeHeldItemKind::Count:
+    case cr::CreativeHeldItemStatusMode::QuickEdit:
+    case cr::CreativeHeldItemStatusMode::Count:
       appendHeldQuickEditStatus(output, editor);
       break;
   }
@@ -1977,42 +1880,36 @@ void syncCreativeEditorHeldItem(cr::CreativeAppState& appState,
       appState, editor, "creative_continuous_gesture_tool_changed");
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  const std::size_t behaviorIndex = static_cast<std::size_t>(held.kind);
-  if (behaviorIndex >= kHeldItemBehaviors.size()) {
-    editor.placeMode = false;
-    deactivateCreativeEditorVolumeMode(editor.volume);
-    editor.interaction.moveTargetId = cr::kInvalidObjectId;
-    static_cast<void>(appState.facade.setActiveTool(cr::Tool::Select));
-    return;
-  }
-  const HeldItemBehavior& behavior = kHeldItemBehaviors[behaviorIndex];
-  editor.placeMode = behavior.placeMode;
+  const cr::CreativeHeldItemDefinition& definition =
+      cr::describeCreativeHeldItem(held.kind);
+  editor.placeMode = definition.placeMode;
   if (held.objectKind != cr::CreativeObjectKind::Unknown &&
       cr::creativeHeldItemUsesMaterial(held.kind)) {
     editor.placeBrush = held.objectKind;
   }
-  if (behavior.volumeMode) {
+  if (definition.volumeMode) {
     const cr::CreativeGridSettings grid =
         appState.facade.document().gridSettings();
     activateCreativeEditorVolumeMode(
         editor.volume, creativeEditorTargetCellSize(
                            appState.facade.document(), editor),
         grid.origin);
-    editor.volume.operation = behavior.volumeOperation;
+    editor.volume.operation = definition.volumeOperation;
   } else {
     deactivateCreativeEditorVolumeMode(editor.volume);
   }
-  if (held.kind != cr::CreativeHeldItemKind::ObjectMove) {
+  if (definition.frameMode != cr::CreativeHeldItemFrameMode::ObjectMove) {
     editor.interaction.moveTargetId = cr::kInvalidObjectId;
   }
-  if (held.kind != cr::CreativeHeldItemKind::TerrainControl) {
+  if (definition.frameMode !=
+      cr::CreativeHeldItemFrameMode::TerrainControlStroke) {
     clearCreativeEditorTerrainInteraction(editor.terrain,
                                           appState.facade.document().id());
   } else {
     static_cast<void>(cancelCreativeEditorTerrainGrade(editor));
   }
   syncCreativeEditorQuickEdit(editor);
-  static_cast<void>(appState.facade.setActiveTool(behavior.facadeTool));
+  static_cast<void>(appState.facade.setActiveTool(definition.facadeTool));
 }
 
 bool selectCreativeEditorHotbarSlot(cr::CreativeAppState& appState,
@@ -2037,29 +1934,23 @@ bool confirmCreativeEditorHeldItem(cr::CreativeAppState& appState,
                                    std::string_view source) {
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  const std::size_t row = static_cast<std::size_t>(held.kind);
-  if (row >= kHeldItemCommands.size()) {
-    return false;
-  }
-  const HeldItemConfirmCommand command = kHeldItemCommands[row].confirm;
-  if (command == nullptr) {
-    return false;
-  }
-  return command(held.kind, appState, editor, source).changed;
+  const cr::CreativeHeldItemDefinition& definition =
+      cr::describeCreativeHeldItem(held.kind);
+  return dispatchHeldItemCommand(definition.confirmCommand, held.kind,
+                                 appState, editor, source)
+      .changed;
 }
 
 bool cancelCreativeEditorHeldItem(cr::CreativeAppState& appState,
                                   CreativeEditorState& editor) {
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  const std::size_t row = static_cast<std::size_t>(held.kind);
-  if (row < kHeldItemCommands.size() &&
-      kHeldItemCommands[row].cancel != nullptr) {
-    const HeldItemCommandResult command =
-        kHeldItemCommands[row].cancel(appState, editor);
-    if (command.handled) {
-      return command.changed;
-    }
+  const cr::CreativeHeldItemDefinition& definition =
+      cr::describeCreativeHeldItem(held.kind);
+  const HeldItemCommandResult command = dispatchHeldItemCommand(
+      definition.cancelCommand, held.kind, appState, editor, {});
+  if (command.handled) {
+    return command.changed;
   }
   if (editor.volume.active &&
       editor.volume.selection.phase != cr::CreativeVolumeSelectionPhase::Empty) {
@@ -2100,10 +1991,7 @@ void processCreativeEditorWorldInteractionFrame(
   const cr::CreativeHotbarEntry& aimedHeld =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   const bool hierarchySelectionTool =
-      aimedHeld.kind == cr::CreativeHeldItemKind::ObjectSelect ||
-      aimedHeld.kind == cr::CreativeHeldItemKind::ObjectMove ||
-      aimedHeld.kind == cr::CreativeHeldItemKind::ObjectGroup ||
-      aimedHeld.kind == cr::CreativeHeldItemKind::LinearArray;
+      cr::describeCreativeHeldItem(aimedHeld.kind).hierarchySelectionTool;
   if (hierarchySelectionTool && editor.interaction.target.objectHit) {
     const cr::CreativeObjectId resolvedObjectId =
         resolveCreativeEditorGroupSelectionTarget(
@@ -2204,33 +2092,31 @@ void processCreativeEditorWorldInteractionFrame(
   }
 
   InteractionContext context{request, held};
+  const cr::CreativeHeldItemDefinition& definition =
+      cr::describeCreativeHeldItem(held.kind);
   constexpr std::array actions{
       cr::CreativeWorldActionId::Primary,
       cr::CreativeWorldActionId::Secondary,
       cr::CreativeWorldActionId::Pick,
   };
-  const std::size_t handlerRow = static_cast<std::size_t>(held.kind);
-  if (handlerRow >= kHeldItemHandlers.size()) {
-    return;
-  }
-  const HeldItemHandlerRow& handler = kHeldItemHandlers[handlerRow];
   const bool rejectPressed = cr::creativeWorldActionPressed(
       request.actions, cr::CreativeWorldActionId::Reject);
   const bool acceptPressed = cr::creativeWorldActionPressed(
       request.actions, cr::CreativeWorldActionId::Accept);
   if (rejectPressed) {
-    handler.reject(context);
+    dispatchHeldItemWorldOperation(definition.rejectOperation, context);
   } else if (acceptPressed) {
-    handler.accept(context);
+    dispatchHeldItemWorldOperation(definition.acceptOperation, context);
   }
   const bool primaryPressed = cr::creativeWorldActionPressed(
       request.actions, cr::CreativeWorldActionId::Primary);
   for (std::size_t index = 0; index < actions.size(); ++index) {
-    if (handler.primaryWinsSimultaneous && index == 1U && primaryPressed) {
+    if (definition.primaryWinsSimultaneous && index == 1U && primaryPressed) {
       continue;
     }
     if (cr::creativeWorldActionPressed(request.actions, actions[index])) {
-      handler.handlers[index](context);
+      dispatchHeldItemWorldOperation(definition.worldOperations[index],
+                                     context);
     }
   }
 }
@@ -2337,10 +2223,11 @@ void appendCreativeEditorInteractionOverlay(
 
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const cr::CreativeHeldItemFrameMode heldFrameMode =
+      cr::describeCreativeHeldItem(held.kind).frameMode;
   if (!inventoryModalOpen && !editor.transform.active &&
       editor.interaction.target.grid.valid &&
-      held.kind != cr::CreativeHeldItemKind::Material &&
-      held.kind != cr::CreativeHeldItemKind::MaterialBrush) {
+      heldFrameMode != cr::CreativeHeldItemFrameMode::MaterialStroke) {
     const cr::CreativeBounds& bounds =
         editor.interaction.target.grid.targetCellBounds;
     const cr::CreativeCoreVec3Conversion boxMin =

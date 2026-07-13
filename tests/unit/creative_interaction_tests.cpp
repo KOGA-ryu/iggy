@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/input/InputRouter.hpp"
+#include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
 #include "app/iggy3d/creative/camera/Fly.hpp"
 #include "EditorInteraction.hpp"
@@ -358,6 +359,92 @@ bool hotbarHasStableNineSlotGrammar() {
               "out-of-range direct slot rejected") &&
        ok;
   return ok;
+}
+
+bool heldItemRegistryOwnsEveryKind() {
+  const std::span<const cr::CreativeHeldItemDefinition> definitions =
+      cr::creativeHeldItemDefinitions();
+  bool ok = expect(definitions.size() == cr::kCreativeHeldItemKindCount,
+                   "held registry covers every valid kind");
+  std::size_t primaryWinsCount = 0U;
+  std::size_t confirmCommandCount = 0U;
+  for (std::size_t index = 0; index < definitions.size(); ++index) {
+    const cr::CreativeHeldItemDefinition& definition = definitions[index];
+    const cr::CreativeHeldItemKind kind =
+        static_cast<cr::CreativeHeldItemKind>(index);
+    bool operationsValid = true;
+    for (cr::CreativeHeldItemWorldOperation operation :
+         definition.worldOperations) {
+      operationsValid = operationsValid &&
+                        operation < cr::CreativeHeldItemWorldOperation::Count;
+    }
+    operationsValid =
+        operationsValid &&
+        definition.acceptOperation <
+            cr::CreativeHeldItemWorldOperation::Count &&
+        definition.rejectOperation <
+            cr::CreativeHeldItemWorldOperation::Count &&
+        definition.confirmCommand <
+            cr::CreativeHeldItemCommandOperation::Count &&
+        definition.cancelCommand <
+            cr::CreativeHeldItemCommandOperation::Count &&
+        definition.frameMode < cr::CreativeHeldItemFrameMode::Count &&
+        definition.previewMode < cr::CreativeHeldItemPreviewMode::Count &&
+        definition.targetCellPolicy <
+            cr::CreativeHeldItemTargetCellPolicy::Count &&
+        definition.hotbarLabelMode <
+            cr::CreativeHeldItemHotbarLabelMode::Count &&
+        definition.statusMode < cr::CreativeHeldItemStatusMode::Count;
+    primaryWinsCount += definition.primaryWinsSimultaneous ? 1U : 0U;
+    confirmCommandCount +=
+        definition.confirmCommand !=
+                cr::CreativeHeldItemCommandOperation::None
+            ? 1U
+            : 0U;
+    ok = expect(definition.kind == kind,
+                "held registry row order matches enum") &&
+         expect(&cr::describeCreativeHeldItem(kind) == &definition,
+                "held registry lookup returns canonical row") &&
+         expect(operationsValid,
+                "held registry contains only valid semantic operations") &&
+         expect(cr::creativeHeldItemIsVolumeOperation(kind) ==
+                    definition.volumeOperationItem &&
+                    cr::creativeHeldItemUsesDirectShapeGesture(kind) ==
+                        definition.directShapeGesture &&
+                    cr::creativeHeldItemUsesMaterial(kind) ==
+                        definition.usesMaterial &&
+                    cr::creativeHeldItemIsTerrainTool(kind) ==
+                        definition.terrainTool,
+                "legacy held-item queries delegate to registry truth") &&
+         ok;
+  }
+
+  const cr::CreativeHeldItemDefinition& material =
+      cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::Material);
+  const cr::CreativeHeldItemDefinition& move =
+      cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::ObjectMove);
+  const cr::CreativeHeldItemDefinition& invalid =
+      cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::Count);
+  return expect(material.placeMode && material.usesMaterial &&
+                    material.frameMode ==
+                        cr::CreativeHeldItemFrameMode::MaterialStroke &&
+                    material.targetCellPolicy ==
+                        cr::CreativeHeldItemTargetCellPolicy::MaterialStorage,
+                "material row owns placement and display policy") &&
+         expect(move.facadeTool == cr::Tool::Move &&
+                    move.hierarchySelectionTool &&
+                    move.frameMode ==
+                        cr::CreativeHeldItemFrameMode::ObjectMove,
+                "move row owns facade and hierarchy policy") &&
+         expect(primaryWinsCount == 9U,
+                "simultaneous-action precedence is registry-pinned") &&
+         expect(confirmCommandCount == 13U,
+                "confirm command ownership is registry-pinned") &&
+         expect(invalid.kind == cr::CreativeHeldItemKind::Count &&
+                    !invalid.placeMode && !invalid.volumeMode &&
+                    !invalid.terrainTool,
+                "invalid held kind resolves to inert definition") &&
+         ok;
 }
 
 bool heldVolumeItemsMapWithoutBranchesAtCallers() {
@@ -805,6 +892,7 @@ int main() {
   ok = controllerMovementPreservesDirectionAndFineTravel() && ok;
   ok = worldActionsAreEdgeTriggered() && ok;
   ok = hotbarHasStableNineSlotGrammar() && ok;
+  ok = heldItemRegistryOwnsEveryKind() && ok;
   ok = heldVolumeItemsMapWithoutBranchesAtCallers() && ok;
   ok = gridTargetResolvesHitFaceAndPlacementCell() && ok;
   ok = placementFeedbackHasABoundedVisibleLifetime() && ok;

@@ -6,6 +6,7 @@
 #include <limits>
 
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
 #include "app/iggy3d/creative/input/UiInput.hpp"
 
 namespace iggy3d::creative {
@@ -243,74 +244,20 @@ bool assignCreativeHotbarMaterial(CreativeHotbarState& hotbar,
 }
 
 bool creativeHeldItemIsVolumeOperation(CreativeHeldItemKind kind) noexcept {
-  return kind >= CreativeHeldItemKind::VolumeFill &&
-         kind <= CreativeHeldItemKind::VolumeClone;
+  return describeCreativeHeldItem(kind).volumeOperationItem;
 }
 
 bool creativeHeldItemUsesDirectShapeGesture(
     CreativeHeldItemKind kind) noexcept {
-  return kind == CreativeHeldItemKind::VolumeFill ||
-         kind == CreativeHeldItemKind::VolumeHollow;
+  return describeCreativeHeldItem(kind).directShapeGesture;
 }
 
 bool creativeHeldItemUsesMaterial(CreativeHeldItemKind kind) noexcept {
-  switch (kind) {
-    case CreativeHeldItemKind::Material:
-    case CreativeHeldItemKind::MaterialBrush:
-    case CreativeHeldItemKind::VolumeFill:
-    case CreativeHeldItemKind::VolumeHollow:
-    case CreativeHeldItemKind::VolumeReplace:
-    case CreativeHeldItemKind::ConnectedFill:
-    case CreativeHeldItemKind::SurfaceExtrude:
-      return true;
-    case CreativeHeldItemKind::ObjectSelect:
-    case CreativeHeldItemKind::ObjectMove:
-    case CreativeHeldItemKind::VolumeSelect:
-    case CreativeHeldItemKind::VolumeErase:
-    case CreativeHeldItemKind::VolumeClone:
-    case CreativeHeldItemKind::LinearArray:
-    case CreativeHeldItemKind::TerrainControl:
-    case CreativeHeldItemKind::TerrainPaint:
-    case CreativeHeldItemKind::TerrainGrade:
-    case CreativeHeldItemKind::TerrainSculpt:
-    case CreativeHeldItemKind::TerrainProfile:
-    case CreativeHeldItemKind::TerrainPath:
-    case CreativeHeldItemKind::TerrainRegion:
-    case CreativeHeldItemKind::ObjectGroup:
-    case CreativeHeldItemKind::Count:
-      return false;
-  }
-  return false;
+  return describeCreativeHeldItem(kind).usesMaterial;
 }
 
 bool creativeHeldItemIsTerrainTool(CreativeHeldItemKind kind) noexcept {
-  switch (kind) {
-    case CreativeHeldItemKind::TerrainControl:
-    case CreativeHeldItemKind::TerrainPaint:
-    case CreativeHeldItemKind::TerrainGrade:
-    case CreativeHeldItemKind::TerrainSculpt:
-    case CreativeHeldItemKind::TerrainProfile:
-    case CreativeHeldItemKind::TerrainPath:
-    case CreativeHeldItemKind::TerrainRegion:
-      return true;
-    case CreativeHeldItemKind::Material:
-    case CreativeHeldItemKind::MaterialBrush:
-    case CreativeHeldItemKind::ObjectSelect:
-    case CreativeHeldItemKind::ObjectMove:
-    case CreativeHeldItemKind::VolumeSelect:
-    case CreativeHeldItemKind::VolumeFill:
-    case CreativeHeldItemKind::VolumeHollow:
-    case CreativeHeldItemKind::VolumeReplace:
-    case CreativeHeldItemKind::VolumeErase:
-    case CreativeHeldItemKind::VolumeClone:
-    case CreativeHeldItemKind::LinearArray:
-    case CreativeHeldItemKind::ConnectedFill:
-    case CreativeHeldItemKind::SurfaceExtrude:
-    case CreativeHeldItemKind::ObjectGroup:
-    case CreativeHeldItemKind::Count:
-      return false;
-  }
-  return false;
+  return describeCreativeHeldItem(kind).terrainTool;
 }
 
 bool applyCreativeHeldItemMaterial(CreativeHotbarEntry& entry,
@@ -326,20 +273,11 @@ bool applyCreativeHeldItemMaterial(CreativeHotbarEntry& entry,
 
 CreativeVolumeOperationKind creativeVolumeOperationForHeldItem(
     CreativeHeldItemKind kind) noexcept {
-  constexpr std::array operations{
-      CreativeVolumeOperationKind::Fill,
-      CreativeVolumeOperationKind::Hollow,
-      CreativeVolumeOperationKind::Replace,
-      CreativeVolumeOperationKind::Erase,
-      CreativeVolumeOperationKind::Clone,
-  };
-  if (!creativeHeldItemIsVolumeOperation(kind)) {
-    return CreativeVolumeOperationKind::Fill;
-  }
-  const std::size_t index =
-      static_cast<std::size_t>(kind) -
-      static_cast<std::size_t>(CreativeHeldItemKind::VolumeFill);
-  return operations[index];
+  const CreativeHeldItemDefinition& definition =
+      describeCreativeHeldItem(kind);
+  return definition.volumeOperationItem
+             ? definition.volumeOperation
+             : CreativeVolumeOperationKind::Fill;
 }
 
 CreativeGridTarget resolveCreativeGridTargetFromHit(
