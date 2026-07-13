@@ -61,6 +61,42 @@ constexpr std::string_view kAuthoredAssetScenarioId =
   return stream.str();
 }
 
+[[nodiscard]] cr::CreativeCatalogAsset authoredCatalogAsset(
+    const cr::CreativeAuthoredAssetDefinition& definition) {
+  cr::CreativeCatalogAsset asset;
+  asset.objectKind = cr::CreativeObjectKind::PrefabInstance;
+  asset.assetId = definition.assetId;
+  asset.label = definition.label;
+  asset.sourceBounds = definition.sourceBounds;
+  asset.authoredComposite = true;
+  return asset;
+}
+
+[[nodiscard]] iggy3d::ProductCreativeSaveWriteResult
+writeAuthoredAssetDocument(
+    const CreativeEditorAuthoredAssetLibrary& library,
+    std::string_view assetId,
+    std::string_view label,
+    const cr::CreativeDocument& document,
+    bool replacing) {
+  const std::string timestamp = iggy3d::productSaveTimestampNowUtc();
+  iggy3d::ProductCreativeSaveWriteRequest request;
+  request.saveRoot = library.root;
+  request.saveIdHint = assetId;
+  request.attemptToken = replacing ? "authored_asset_update"
+                                   : "authored_asset_write";
+  request.document = &document;
+  request.packageId = kAuthoredAssetPackageId;
+  request.scenarioId = kAuthoredAssetScenarioId;
+  request.worldId = assetId;
+  request.worldTitle = label;
+  request.saveTitle = label;
+  request.saveType = "creative-authored-asset";
+  request.createdAtUtc = replacing ? std::string{} : timestamp;
+  request.savedAtUtc = timestamp;
+  return iggy3d::writeCreativeDocumentSaveDurably(request);
+}
+
 [[nodiscard]] std::vector<cr::CreativeObjectId> selectedObjectIds(
     const cr::CreativeSelectionState& selection) {
   std::vector<cr::CreativeObjectId> result;
@@ -217,13 +253,7 @@ std::vector<cr::CreativeCatalogAsset> creativeEditorAuthoredAssetCatalogEntries(
   entries.reserve(library.definitions.size());
   for (const cr::CreativeAuthoredAssetDefinition& definition :
        library.definitions) {
-    cr::CreativeCatalogAsset entry;
-    entry.objectKind = cr::CreativeObjectKind::PrefabInstance;
-    entry.assetId = definition.assetId;
-    entry.label = definition.label;
-    entry.sourceBounds = definition.sourceBounds;
-    entry.authoredComposite = true;
-    entries.push_back(std::move(entry));
+    entries.push_back(authoredCatalogAsset(definition));
   }
   return entries;
 }
@@ -318,22 +348,9 @@ saveCreativeEditorSelectionAsAuthoredAsset(
     return receipt;
   }
 
-  const std::string timestamp = iggy3d::productSaveTimestampNowUtc();
-  iggy3d::ProductCreativeSaveWriteRequest writeRequest;
-  writeRequest.saveRoot = library.root;
-  writeRequest.saveIdHint = receipt.assetId;
-  writeRequest.attemptToken = "authored_asset_write";
-  writeRequest.document = &receipt.capture.storageDocument;
-  writeRequest.packageId = kAuthoredAssetPackageId;
-  writeRequest.scenarioId = kAuthoredAssetScenarioId;
-  writeRequest.worldId = receipt.assetId;
-  writeRequest.worldTitle = receipt.label;
-  writeRequest.saveTitle = receipt.label;
-  writeRequest.saveType = "creative-authored-asset";
-  writeRequest.createdAtUtc = timestamp;
-  writeRequest.savedAtUtc = timestamp;
   const iggy3d::ProductCreativeSaveWriteResult write =
-      iggy3d::writeCreativeDocumentSaveDurably(writeRequest);
+      writeAuthoredAssetDocument(library, receipt.assetId, receipt.label,
+                                 receipt.capture.storageDocument, false);
   receipt.durableWriteOk = write.ok;
   if (!write.ok) {
     receipt.reasonCode = write.reasonCode;
@@ -347,6 +364,96 @@ saveCreativeEditorSelectionAsAuthoredAsset(
   receipt.accepted = true;
   receipt.reasonCode = "creative_authored_asset_saved";
   library.statusLabel = receipt.reasonCode;
+  return receipt;
+}
+
+CreativeEditorAuthoredAssetUpdateReceipt
+updateCreativeEditorAuthoredAssetFromInstance(
+    cr::CreativeAppState& appState,
+    CreativeEditorAuthoredAssetLibrary& library,
+    cr::CreativeObjectId instanceRootObjectId) {
+  CreativeEditorAuthoredAssetUpdateReceipt receipt;
+  receipt.requested = true;
+  receipt.instanceRootObjectId = instanceRootObjectId;
+  const cr::CreativeObject* instance =
+      appState.facade.findObject(instanceRootObjectId);
+  if (instance == nullptr ||
+      instance->kind != cr::CreativeObjectKind::PrefabInstance) {
+    receipt.reasonCode = "creative_authored_asset_update_instance_missing";
+    library.statusLabel = receipt.reasonCode;
+    return receipt;
+  }
+  receipt.assetId = instance->assetId;
+  const cr::CreativeAuthoredAssetDefinition* existing =
+      findCreativeEditorAuthoredAsset(library, receipt.assetId);
+  if (existing == nullptr) {
+    receipt.reasonCode = "creative_authored_asset_update_source_missing";
+    library.statusLabel = receipt.reasonCode;
+    return receipt;
+  }
+
+  cr::CreativeAuthoredAssetInstanceCaptureRequest captureRequest;
+  captureRequest.sourceDocument = &appState.facade.document();
+  captureRequest.existingDefinition = existing;
+  captureRequest.instanceRootObjectId = instanceRootObjectId;
+  captureRequest.definitionDocumentId = library.nextDocumentId;
+  receipt.capture =
+      cr::captureCreativeAuthoredAssetInstance(captureRequest);
+  if (!receipt.capture.accepted) {
+    receipt.reasonCode = receipt.capture.reasonCode;
+    library.statusLabel = receipt.reasonCode;
+    return receipt;
+  }
+
+  const iggy3d::ProductCreativeSaveWriteResult write =
+      writeAuthoredAssetDocument(
+          library, receipt.assetId, receipt.capture.definition.label,
+          receipt.capture.storageDocument, true);
+  receipt.durableWriteOk = write.ok;
+  if (!write.ok) {
+    receipt.reasonCode = write.reasonCode;
+    library.statusLabel = receipt.reasonCode;
+    return receipt;
+  }
+
+  const auto definition = std::find_if(
+      library.definitions.begin(), library.definitions.end(),
+      [&receipt](const cr::CreativeAuthoredAssetDefinition& candidate) {
+        return candidate.assetId == receipt.assetId;
+      });
+  if (definition == library.definitions.end()) {
+    receipt.reasonCode = "creative_authored_asset_update_source_missing";
+    library.statusLabel = receipt.reasonCode;
+    return receipt;
+  }
+  *definition = receipt.capture.definition;
+  ++library.nextDocumentId;
+  receipt.accepted = true;
+  receipt.reasonCode = "creative_authored_asset_updated";
+  library.statusLabel = receipt.reasonCode;
+  return receipt;
+}
+
+CreativeEditorAuthoredAssetReferenceRefreshReceipt
+refreshCreativeEditorAuthoredAssetReferences(
+    CreativeEditorState& editor,
+    const cr::CreativeAuthoredAssetDefinition& definition) {
+  CreativeEditorAuthoredAssetReferenceRefreshReceipt receipt;
+  const cr::CreativeCatalogAsset asset = authoredCatalogAsset(definition);
+  receipt.catalogUpdated =
+      cr::updateCreativeCatalogAsset(editor.catalog.model, asset) ||
+      cr::appendCreativeCatalogAsset(editor.catalog.model, asset);
+  for (cr::CreativeHotbarEntry& entry :
+       editor.interaction.hotbar.entries) {
+    if (cr::creativeHotbarAssetId(entry) != definition.assetId) {
+      continue;
+    }
+    if (cr::setCreativeHotbarAsset(entry, definition.assetId,
+                                   definition.sourceBounds)) {
+      ++receipt.hotbarSlotCount;
+    }
+  }
+  receipt.accepted = receipt.catalogUpdated;
   return receipt;
 }
 

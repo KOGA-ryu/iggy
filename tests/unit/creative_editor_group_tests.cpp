@@ -416,14 +416,16 @@ bool groupToolOptionsExposeEditAndUngroupCommands() {
   const app::CreativeEditorToolOptionsCommandList commands =
       app::creativeEditorToolOptionCommandsForEntry(entry);
   return expect(
-      commands.count == 3U &&
+      commands.count == 4U &&
           commands.ids[0] ==
               app::CreativeEditorToolOptionsCommandId::EditGroupContents &&
           commands.ids[1] ==
               app::CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset &&
           commands.ids[2] ==
+              app::CreativeEditorToolOptionsCommandId::UpdateSavedAsset &&
+          commands.ids[3] ==
               app::CreativeEditorToolOptionsCommandId::UngroupSelection,
-      "Group options present edit and save before destructive ungroup");
+      "Group options present edit, save, and update before destructive ungroup");
 }
 
 bool transformToolOptionsExposeAndRouteSharedObjectActions() {
@@ -432,7 +434,7 @@ bool transformToolOptionsExposeAndRouteSharedObjectActions() {
           {cr::CreativeHeldItemKind::ObjectMove,
            cr::CreativeObjectKind::Unknown});
   bool ok = expect(
-      commands.count == 10U &&
+      commands.count == 11U &&
           commands.ids[0] ==
               app::CreativeEditorToolOptionsCommandId::TransformSelection &&
           commands.ids[1] ==
@@ -452,7 +454,9 @@ bool transformToolOptionsExposeAndRouteSharedObjectActions() {
           commands.ids[8] ==
               app::CreativeEditorToolOptionsCommandId::EditGroupContents &&
           commands.ids[9] ==
-              app::CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset,
+              app::CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset &&
+          commands.ids[10] ==
+              app::CreativeEditorToolOptionsCommandId::UpdateSavedAsset,
       "Transform options expose the bounded shared object-action order");
 
   cr::CreativeAppState appState;
@@ -602,7 +606,7 @@ bool groupToolOptionsEnterFocusAndUngroupWithHistory() {
       app::exitCreativeEditorGroupFocus(appState, editor.groupFocus).accepted;
   editor.toolOptions.open = true;
   editor.toolOptions.contextGroupId = grouped.groupObjectId;
-  editor.toolOptions.selectedIndex = 2U;
+  editor.toolOptions.selectedIndex = 3U;
   const bool ungrouped = app::activateCreativeEditorToolOptionsSelection(
       appState, editor);
   return expect(entered && exited && ungrouped &&

@@ -36,6 +36,25 @@ bool expect(bool condition, std::string_view message) {
   return condition;
 }
 
+bool near(double lhs, double rhs) {
+  return std::fabs(lhs - rhs) < 1.0e-8;
+}
+
+bool vecNear(cr::CreativeVec3 lhs, cr::CreativeVec3 rhs) {
+  return near(lhs.x, rhs.x) && near(lhs.y, rhs.y) && near(lhs.z, rhs.z);
+}
+
+const cr::CreativeObject* clipboardObjectNamed(
+    const cr::CreativeClipboard& clipboard,
+    std::string_view name) {
+  const auto found = std::find_if(
+      clipboard.objects.begin(), clipboard.objects.end(),
+      [name](const cr::CreativeObject& object) {
+        return object.name == name;
+      });
+  return found == clipboard.objects.end() ? nullptr : &*found;
+}
+
 cr::CreativeObjectId createCrate(cr::CreativeDocument& document,
                                  std::string_view name,
                                  cr::CreativeVec3 position,
@@ -75,8 +94,8 @@ bool captureInstantiateSelectAndUnpack() {
   cr::CreativeAuthoredAssetCaptureResult captured =
       makeTwoCrateDefinition();
   if (!expect(captured.accepted && captured.capturedObjectCount == 2U &&
-                  captured.storageDocument.objectCount() == 2U,
-              "selection captures into a bounded normalized document")) {
+                  captured.storageDocument.objectCount() == 3U,
+              "selection captures with a durable source-root wrapper")) {
     return false;
   }
 
@@ -205,6 +224,39 @@ bool definitionsAreBoundedAndFailClosed() {
                 "non-finite placement fails before mutation");
 }
 
+bool transformedInstanceUpdateFailsClosed() {
+  const cr::CreativeAuthoredAssetCaptureResult captured =
+      makeTwoCrateDefinition();
+  cr::CreativeDocument target = cr::CreativeDocument::create("Scaled");
+  static_cast<void>(target.assignId(714U));
+  cr::CreativeAuthoredAssetPlacementRequest placement;
+  placement.definition = &captured.definition;
+  const cr::CreativeAuthoredAssetInstanceReceipt placed =
+      cr::instantiateCreativeAuthoredAssetAtomically(target, placement);
+  const cr::CreativeDocumentMutationReceipt scaled = cr::applyDocumentMutation(
+      target, placed.instanceRootObjectId, cr::CreativeMutationKind::Scale,
+      cr::CreativeMutationPayload{
+          cr::ScaleMutation{{2.0, 1.0, 1.0}}});
+  const cr::CreativeObject* root =
+      target.findObject(placed.instanceRootObjectId);
+  cr::CreativeAuthoredAssetInstanceCaptureRequest update;
+  update.sourceDocument = &target;
+  update.existingDefinition = &captured.definition;
+  update.instanceRootObjectId = placed.instanceRootObjectId;
+  update.definitionDocumentId = 715U;
+  const cr::CreativeAuthoredAssetCaptureResult rejected =
+      cr::captureCreativeAuthoredAssetInstance(update);
+  return expect(placed.accepted &&
+                    cr::documentMutationChanged(scaled.status) &&
+                    root != nullptr &&
+                    !cr::creativeAuthoredAssetInstanceTransformSupported(
+                        *root) &&
+                    !rejected.accepted &&
+                    rejected.status ==
+                        cr::CreativeAuthoredAssetStatus::InvalidGeometry,
+                "scaled wrappers reject source update without partial output");
+}
+
 bool durableLibraryRoundTripsSelection() {
   const auto nonce = std::chrono::steady_clock::now()
                          .time_since_epoch()
@@ -287,6 +339,191 @@ bool durableLibraryRoundTripsSelection() {
                     definition->content.objects.size() == 1U &&
                     commandDefinition != nullptr,
                 "startup scan reconstructs the authored definition");
+}
+
+bool updateCommandRoundTripsEditedInstance() {
+  const auto nonce = std::chrono::steady_clock::now()
+                         .time_since_epoch()
+                         .count();
+  const std::filesystem::path root =
+      std::filesystem::temp_directory_path() /
+      ("iggy3d_authored_asset_update_test_" + std::to_string(nonce));
+  cr::CreativeAppState sourceState;
+  cr::CreativeDocument source = cr::CreativeDocument::create("Source");
+  static_cast<void>(source.assignId(711U));
+  const cr::CreativeObjectId sourceObjectId =
+      createCrate(source, "Pillar", {});
+  if (!expect(sourceState.facade.installDocument(std::move(source)).accepted,
+              "update source document installed")) {
+    return false;
+  }
+  selectOnly(sourceState.facade, sourceObjectId);
+  app::CreativeEditorAuthoredAssetLibrary library;
+  const app::CreativeEditorAuthoredAssetLoadReceipt initialized =
+      app::loadCreativeEditorAuthoredAssetLibrary(library, root);
+  const app::CreativeEditorAuthoredAssetSaveReceipt saved =
+      app::saveCreativeEditorSelectionAsAuthoredAsset(sourceState, library);
+  const cr::CreativeAuthoredAssetDefinition* savedDefinition =
+      app::findCreativeEditorAuthoredAsset(library, saved.assetId);
+  if (!expect(initialized.accepted && saved.accepted &&
+                  savedDefinition != nullptr,
+              "update source asset initialized")) {
+    std::error_code ignored;
+    std::filesystem::remove_all(root, ignored);
+    return false;
+  }
+  const cr::CreativeAuthoredAssetDefinition originalDefinition =
+      *savedDefinition;
+
+  cr::CreativeDocument instances = cr::CreativeDocument::create("Instances");
+  static_cast<void>(instances.assignId(712U));
+  cr::CreativeAuthoredAssetPlacementRequest firstPlacement;
+  firstPlacement.definition = savedDefinition;
+  firstPlacement.targetAnchor = {10.0, 0.0, 10.0};
+  firstPlacement.yawRadians = 1.5707963267948966;
+  const cr::CreativeAuthoredAssetInstanceReceipt first =
+      cr::instantiateCreativeAuthoredAssetAtomically(instances,
+                                                     firstPlacement);
+  cr::CreativeAuthoredAssetPlacementRequest secondPlacement;
+  secondPlacement.definition = savedDefinition;
+  secondPlacement.targetAnchor = {20.0, 0.0, 20.0};
+  const cr::CreativeAuthoredAssetInstanceReceipt second =
+      cr::instantiateCreativeAuthoredAssetAtomically(instances,
+                                                     secondPlacement);
+  const cr::CreativeObjectId addedObjectId = createCrate(
+      instances, "Added Detail", {10.0, 0.0, 12.0},
+      first.instanceRootObjectId);
+  cr::CreativeAppState appState;
+  if (!expect(first.accepted && second.accepted &&
+                  addedObjectId != cr::kInvalidObjectId &&
+                  appState.facade.installDocument(std::move(instances)).accepted,
+              "two instances and one local edit installed")) {
+    std::error_code ignored;
+    std::filesystem::remove_all(root, ignored);
+    return false;
+  }
+  selectOnly(appState.facade, first.instanceRootObjectId);
+
+  app::CreativeEditorState editor;
+  editor.authoredAssets = std::move(library);
+  const std::vector<cr::CreativeCatalogAsset> catalogAssets =
+      app::creativeEditorAuthoredAssetCatalogEntries(editor.authoredAssets);
+  editor.catalog.model = cr::makeCreativeCatalog(
+      std::span<const cr::CreativeObjectKind>{}, catalogAssets);
+  editor.interaction.hotbar.selectedSlot = 0U;
+  cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  held = {cr::CreativeHeldItemKind::Material,
+          cr::CreativeObjectKind::PrefabInstance};
+  static_cast<void>(cr::setCreativeHotbarAsset(
+      held, originalDefinition.assetId, originalDefinition.sourceBounds));
+  editor.toolOptions.open = true;
+  editor.toolOptions.commands =
+      app::creativeEditorToolOptionCommandsForEntry(
+          {cr::CreativeHeldItemKind::ObjectGroup,
+           cr::CreativeObjectKind::Unknown});
+  app::refreshCreativeEditorObjectActionContext(appState,
+                                                editor.toolOptions);
+  const auto updateCommand = std::find(
+      editor.toolOptions.commands.ids.begin(),
+      editor.toolOptions.commands.ids.begin() +
+          editor.toolOptions.commands.count,
+      app::CreativeEditorToolOptionsCommandId::UpdateSavedAsset);
+  editor.toolOptions.selectedIndex = static_cast<std::size_t>(
+      updateCommand - editor.toolOptions.commands.ids.begin());
+  const std::uint64_t revisionBeforeUpdate =
+      appState.facade.document().revision();
+  const bool updated =
+      updateCommand != editor.toolOptions.commands.ids.begin() +
+                           editor.toolOptions.commands.count &&
+      app::activateCreativeEditorToolOptionsSelection(appState, editor);
+
+  const cr::CreativeAuthoredAssetDefinition* updatedDefinition =
+      app::findCreativeEditorAuthoredAsset(editor.authoredAssets,
+                                          originalDefinition.assetId);
+  const cr::CreativeHierarchySelection untouchedSecond =
+      cr::resolveCreativeObjectHierarchy(
+          appState.facade.document(),
+          std::span{&second.instanceRootObjectId, 1U});
+  const cr::CreativeObject* originalSourceObject =
+      clipboardObjectNamed(originalDefinition.content, "Pillar");
+  const cr::CreativeObject* updatedSourceObject =
+      updatedDefinition == nullptr
+          ? nullptr
+          : clipboardObjectNamed(updatedDefinition->content, "Pillar");
+  const bool sourceFramePreserved =
+      originalSourceObject != nullptr && updatedSourceObject != nullptr &&
+      vecNear(originalSourceObject->transform.position,
+              updatedSourceObject->transform.position) &&
+      vecNear(originalSourceObject->transform.rotationEulerRadians,
+              updatedSourceObject->transform.rotationEulerRadians);
+  const bool hotbarRefreshed =
+      updatedDefinition != nullptr && held.hasAssetBounds &&
+      cr::creativeBoundsExactlyEqual(held.assetSourceBounds,
+                                     updatedDefinition->sourceBounds);
+  const bool catalogRefreshed =
+      updatedDefinition != nullptr &&
+      std::any_of(editor.catalog.model.entries.begin(),
+                  editor.catalog.model.entries.end(),
+                  [updatedDefinition](const cr::CreativeCatalogEntry& entry) {
+                    return entry.authoredComposite &&
+                           cr::creativeHotbarAssetId(entry.hotbarEntry) ==
+                               updatedDefinition->assetId &&
+                           cr::creativeBoundsExactlyEqual(
+                               entry.hotbarEntry.assetSourceBounds,
+                               updatedDefinition->sourceBounds);
+                  });
+
+  app::CreativeEditorAuthoredAssetLibrary reloaded;
+  const app::CreativeEditorAuthoredAssetLoadReceipt loaded =
+      app::loadCreativeEditorAuthoredAssetLibrary(reloaded, root);
+  const cr::CreativeAuthoredAssetDefinition* durableDefinition =
+      app::findCreativeEditorAuthoredAsset(reloaded,
+                                          originalDefinition.assetId);
+  cr::CreativeDocument replay = cr::CreativeDocument::create("Replay");
+  static_cast<void>(replay.assignId(713U));
+  cr::CreativeAuthoredAssetPlacementRequest replayPlacement;
+  replayPlacement.definition = durableDefinition;
+  const cr::CreativeAuthoredAssetInstanceReceipt replayed =
+      durableDefinition == nullptr
+          ? cr::CreativeAuthoredAssetInstanceReceipt{}
+          : cr::instantiateCreativeAuthoredAssetAtomically(replay,
+                                                           replayPlacement);
+  const cr::CreativeObject* replaySourceObject = nullptr;
+  for (cr::CreativeObjectId objectId : replayed.instanceObjectIds) {
+    const cr::CreativeObject* object = replay.findObject(objectId);
+    if (object != nullptr && object->name == "Pillar") {
+      replaySourceObject = object;
+      break;
+    }
+  }
+  std::error_code ignored;
+  std::filesystem::remove_all(root, ignored);
+
+  return expect(updated && updatedDefinition != nullptr &&
+                    updatedDefinition->content.objects.size() == 2U,
+                "explicit update captures the edited instance contents") &&
+         expect(appState.facade.document().revision() ==
+                        revisionBeforeUpdate &&
+                    untouchedSecond.accepted &&
+                    untouchedSecond.objectIds.size() == 2U,
+                "source update does not rewrite existing instances") &&
+         expect(sourceFramePreserved,
+                "rotated instance update removes placement yaw") &&
+         expect(hotbarRefreshed && catalogRefreshed,
+                "updated source bounds refresh catalog and hotbar facts") &&
+         expect(loaded.accepted && loaded.loadedCount == 1U &&
+                    durableDefinition != nullptr &&
+                    durableDefinition->content.objects.size() == 2U,
+                "updated source survives durable reload") &&
+         expect(replayed.accepted &&
+                    replayed.instanceObjectIds.size() == 2U &&
+                    replaySourceObject != nullptr,
+                "reloaded source instantiates every edited child") &&
+         expect(replaySourceObject != nullptr &&
+                    vecNear(replaySourceObject->transform.position,
+                            originalSourceObject->transform.position),
+                "reloaded placement preserves the source-local frame");
 }
 
 app::CreativeEditorState authoredEditor(
@@ -423,6 +660,7 @@ bool previewUsesCanonicalCompositeProxies() {
              cr::CreativeObjectKind::Unknown});
     bool save = false;
     bool edit = false;
+    bool update = false;
     for (std::size_t index = 0U; index < commands.count; ++index) {
       save = save || commands.ids[index] ==
                          app::CreativeEditorToolOptionsCommandId::
@@ -430,8 +668,11 @@ bool previewUsesCanonicalCompositeProxies() {
       edit = edit || commands.ids[index] ==
                          app::CreativeEditorToolOptionsCommandId::
                              EditGroupContents;
+      update = update || commands.ids[index] ==
+                             app::CreativeEditorToolOptionsCommandId::
+                                 UpdateSavedAsset;
     }
-    return commands.count == 10U && save && edit;
+    return commands.count == 11U && save && edit && update;
   }();
   return expect(frame.creativePreview.itemCount == 2U &&
                     frame.creativePreview.items[0].role ==
@@ -456,7 +697,9 @@ int main() {
   return captureInstantiateSelectAndUnpack() &&
                  invalidDefinitionCannotPartiallyMutate() &&
                  definitionsAreBoundedAndFailClosed() &&
+                 transformedInstanceUpdateFailsClosed() &&
                  durableLibraryRoundTripsSelection() &&
+                 updateCommandRoundTripsEditedInstance() &&
                  gestureDeduplicatesAndCommitsOneUndo() &&
                  interruptionFinalizesChangedGesture() &&
                  previewUsesCanonicalCompositeProxies()

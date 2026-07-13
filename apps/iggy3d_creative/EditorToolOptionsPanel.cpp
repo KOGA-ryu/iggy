@@ -207,6 +207,7 @@ void adjustSelection(CreativeEditorState& editor,
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
+    case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
     case CreativeEditorToolOptionsCommandId::Count:
       return false;
   }
@@ -256,6 +257,7 @@ void adjustSelection(CreativeEditorState& editor,
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
+    case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
     case CreativeEditorToolOptionsCommandId::Count:
       return "INVALID COMMAND";
   }
@@ -291,6 +293,7 @@ void adjustSelection(CreativeEditorState& editor,
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
+    case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
     case CreativeEditorToolOptionsCommandId::Count:
       return "INVALID";
   }
@@ -410,6 +413,7 @@ bool activateCreativeEditorToolOptionsSelection(
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
+    case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
       break;
     case CreativeEditorToolOptionsCommandId::Count:
       break;
@@ -458,6 +462,7 @@ bool activateCreativeEditorToolOptionsSelection(
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
+    case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
     case CreativeEditorToolOptionsCommandId::Count:
       break;
   }

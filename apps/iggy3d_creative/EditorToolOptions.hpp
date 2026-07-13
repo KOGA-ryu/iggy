@@ -40,10 +40,11 @@ enum class CreativeEditorToolOptionsCommandId : std::uint8_t {
   GroupSelection,
   UngroupSelection,
   SaveSelectionAsAsset,
+  UpdateSavedAsset,
   Count,
 };
 
-inline constexpr std::size_t kCreativeEditorToolOptionsCommandCapacity = 10U;
+inline constexpr std::size_t kCreativeEditorToolOptionsCommandCapacity = 11U;
 
 struct CreativeEditorToolOptionsCommandList {
   std::array<CreativeEditorToolOptionsCommandId,
@@ -67,12 +68,14 @@ struct CreativeEditorToolOptionsState {
       iggy3d::creative::CreativeObjectKind::Unknown;
   iggy3d::creative::CreativeObjectKind contextContainerKind =
       iggy3d::creative::CreativeObjectKind::Unknown;
+  std::string contextContainerAssetId;
   std::size_t contextSelectionCount = 0U;
   bool contextPrimaryVisible = true;
   bool contextPrimaryLocked = false;
   bool contextAllUnlocked = false;
   bool contextAllMovable = false;
   bool contextAllResettable = false;
+  bool contextPrefabUpdateTransformSupported = false;
 };
 
 struct CreativeEditorQuickEditState {

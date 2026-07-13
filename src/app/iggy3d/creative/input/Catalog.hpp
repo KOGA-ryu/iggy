@@ -133,6 +133,9 @@ struct CreativeToolWheelState {
 [[nodiscard]] bool appendCreativeCatalogAsset(
     CreativeCatalogState& catalog,
     const CreativeCatalogAsset& asset);
+[[nodiscard]] bool updateCreativeCatalogAsset(
+    CreativeCatalogState& catalog,
+    const CreativeCatalogAsset& asset);
 
 [[nodiscard]] std::span<const CreativeCatalogActionEntry>
 creativeCatalogActionEntries() noexcept;

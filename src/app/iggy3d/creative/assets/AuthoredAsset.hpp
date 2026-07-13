@@ -49,6 +49,13 @@ struct CreativeAuthoredAssetCaptureRequest {
   CreativeDocumentId definitionDocumentId = kInvalidDocumentId;
 };
 
+struct CreativeAuthoredAssetInstanceCaptureRequest {
+  const CreativeDocument* sourceDocument = nullptr;
+  const CreativeAuthoredAssetDefinition* existingDefinition = nullptr;
+  CreativeObjectId instanceRootObjectId = kInvalidObjectId;
+  CreativeDocumentId definitionDocumentId = kInvalidDocumentId;
+};
+
 struct CreativeAuthoredAssetCaptureResult {
   bool requested = false;
   bool accepted = false;
@@ -118,6 +125,11 @@ struct CreativeAuthoredAssetInstanceReceipt {
 
 [[nodiscard]] CreativeAuthoredAssetCaptureResult captureCreativeAuthoredAsset(
     const CreativeAuthoredAssetCaptureRequest& request);
+[[nodiscard]] bool creativeAuthoredAssetInstanceTransformSupported(
+    const CreativeObject& instanceRoot) noexcept;
+[[nodiscard]] CreativeAuthoredAssetCaptureResult
+captureCreativeAuthoredAssetInstance(
+    const CreativeAuthoredAssetInstanceCaptureRequest& request);
 
 [[nodiscard]] CreativeAuthoredAssetLoadResult
 loadCreativeAuthoredAssetDefinition(const CreativeDocument& storageDocument,

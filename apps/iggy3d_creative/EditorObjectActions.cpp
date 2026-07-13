@@ -3,6 +3,7 @@
 #include <span>
 #include <vector>
 
+#include "EditorAuthoredAssets.hpp"
 #include "EditorEdits.hpp"
 #include "EditorGroup.hpp"
 #include "EditorState.hpp"
@@ -24,6 +25,7 @@ bool creativeEditorCommandIsObjectAction(
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
+    case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
       return true;
     case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
@@ -41,12 +43,14 @@ void refreshCreativeEditorObjectActionContext(
   state.contextPrimaryObjectId = cr::kInvalidObjectId;
   state.contextPrimaryObjectKind = cr::CreativeObjectKind::Unknown;
   state.contextContainerKind = cr::CreativeObjectKind::Unknown;
+  state.contextContainerAssetId.clear();
   state.contextSelectionCount = 0U;
   state.contextPrimaryVisible = true;
   state.contextPrimaryLocked = false;
   state.contextAllUnlocked = true;
   state.contextAllMovable = true;
   state.contextAllResettable = true;
+  state.contextPrefabUpdateTransformSupported = false;
 
   const cr::CreativeSelectionState& selection =
       appState.facade.selectionState();
@@ -116,6 +120,9 @@ void refreshCreativeEditorObjectActionContext(
   if (cr::creativeObjectIsHierarchyContainer(object->kind)) {
     state.contextGroupId = object->id;
     state.contextContainerKind = object->kind;
+    state.contextContainerAssetId = object->assetId;
+    state.contextPrefabUpdateTransformSupported =
+        cr::creativeAuthoredAssetInstanceTransformSupported(*object);
     return;
   }
   if (!object->parentId.has_value()) {
@@ -127,6 +134,9 @@ void refreshCreativeEditorObjectActionContext(
       cr::creativeObjectIsHierarchyContainer(parent->kind)) {
     state.contextGroupId = parent->id;
     state.contextContainerKind = parent->kind;
+    state.contextContainerAssetId = parent->assetId;
+    state.contextPrefabUpdateTransformSupported =
+        cr::creativeAuthoredAssetInstanceTransformSupported(*parent);
   }
 }
 
@@ -156,6 +166,14 @@ bool creativeEditorObjectActionEnabled(
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
       return state.contextSelectionCount > 0U && state.contextAllUnlocked &&
              !editor.authoredAssets.root.empty();
+    case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
+      return state.contextGroupId != cr::kInvalidObjectId &&
+             state.contextContainerKind ==
+                 cr::CreativeObjectKind::PrefabInstance &&
+             state.contextPrefabUpdateTransformSupported &&
+             findCreativeEditorAuthoredAsset(
+                 editor.authoredAssets,
+                 state.contextContainerAssetId) != nullptr;
     case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
@@ -186,6 +204,8 @@ std::string_view creativeEditorObjectActionLabel(
       return "UNGROUP";
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
       return "SAVE AS ASSET";
+    case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
+      return "UPDATE SAVED ASSET";
     case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
@@ -238,6 +258,15 @@ std::string creativeEditorObjectActionValueLabel(
         return "1 ROOT";
       }
       return std::to_string(state.contextSelectionCount) + " ROOTS";
+    case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
+      if (state.contextContainerKind !=
+          cr::CreativeObjectKind::PrefabInstance) {
+        return "SELECT ASSET INSTANCE";
+      }
+      if (!state.contextPrefabUpdateTransformSupported) {
+        return "RESET INSTANCE SCALE + TILT";
+      }
+      return state.contextContainerAssetId;
     case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
@@ -318,14 +347,12 @@ bool activateCreativeEditorObjectAction(
           accepted = false;
           break;
         }
-        cr::CreativeCatalogAsset asset;
-        asset.objectKind = cr::CreativeObjectKind::PrefabInstance;
-        asset.assetId = definition->assetId;
-        asset.label = definition->label;
-        asset.sourceBounds = definition->sourceBounds;
-        asset.authoredComposite = true;
-        static_cast<void>(
-            cr::appendCreativeCatalogAsset(editor.catalog.model, asset));
+        if (!refreshCreativeEditorAuthoredAssetReferences(
+                 editor, *definition)
+                 .accepted) {
+          accepted = false;
+          break;
+        }
         const std::size_t slot = static_cast<std::size_t>(
             editor.interaction.hotbar.selectedSlot);
         cr::CreativeHotbarEntry& held =
@@ -347,6 +374,27 @@ bool activateCreativeEditorObjectAction(
           editor.catalog.statusLabel = "SAVED + EQUIPPED " +
                                        definition->label;
         }
+      }
+      break;
+    }
+    case CreativeEditorToolOptionsCommandId::UpdateSavedAsset: {
+      const CreativeEditorAuthoredAssetUpdateReceipt update =
+          updateCreativeEditorAuthoredAssetFromInstance(
+              appState, editor.authoredAssets, state.contextGroupId);
+      accepted = update.accepted;
+      if (accepted) {
+        const cr::CreativeAuthoredAssetDefinition* definition =
+            findCreativeEditorAuthoredAsset(editor.authoredAssets,
+                                            update.assetId);
+        if (definition == nullptr ||
+            !refreshCreativeEditorAuthoredAssetReferences(
+                 editor, *definition)
+                 .accepted) {
+          accepted = false;
+          break;
+        }
+        syncCreativeEditorHeldItem(appState, editor);
+        editor.catalog.statusLabel = "UPDATED ASSET " + definition->label;
       }
       break;
     }
