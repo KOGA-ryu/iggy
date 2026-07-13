@@ -79,6 +79,8 @@ target_sources(iggy3d
     src/app/iggy3d/creative/tools/SelectionPlacement.cpp
     src/app/iggy3d/creative/tools/SelectionTransformCommands.cpp
     src/app/iggy3d/creative/tools/Pattern.cpp
+    src/app/iggy3d/creative/tools/MaterialBrush.cpp
+    src/app/iggy3d/creative/tools/MaterialBrushPath.cpp
     src/app/iggy3d/creative/tools/ShapeBrush.cpp
     src/app/iggy3d/creative/tools/ConnectedFill.cpp
     src/app/iggy3d/creative/tools/SurfaceExtrude.cpp
