@@ -5,6 +5,7 @@
 #include <span>
 
 #include "EditorState.hpp"
+#include "EditorToolCapabilities.hpp"
 #include "app/iggy3d/creative/render/CreativeOverlayFrame.hpp"
 
 namespace iggy3d_creative_app {
@@ -102,32 +103,32 @@ void appendQuickEdit(HintSpecBuffer& buffer,
                      const CreativeEditorState& editor) noexcept {
   const cr::CreativeHeldItemKind held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar).kind;
-  switch (held) {
-    case cr::CreativeHeldItemKind::TerrainControl:
+  switch (describeCreativeEditorToolCapability(held).quickEditProfile) {
+    case CreativeEditorQuickEditProfile::TerrainControl:
       appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
                      cr::CreativeInputActionId::QuickEditNext, "Height");
       appendHintPair(buffer, cr::CreativeInputActionId::QuickEditDecrease,
                      cr::CreativeInputActionId::QuickEditIncrease, "Radius");
       return;
-    case cr::CreativeHeldItemKind::TerrainGrade:
+    case CreativeEditorQuickEditProfile::TerrainGrade:
       appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
                      cr::CreativeInputActionId::QuickEditNext, "End height");
       appendHintPair(buffer, cr::CreativeInputActionId::QuickEditDecrease,
                      cr::CreativeInputActionId::QuickEditIncrease, "Width");
       return;
-    case cr::CreativeHeldItemKind::TerrainSculpt:
+    case CreativeEditorQuickEditProfile::TerrainSculpt:
       appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
                      cr::CreativeInputActionId::QuickEditNext, "Strength");
       appendHintPair(buffer, cr::CreativeInputActionId::QuickEditDecrease,
                      cr::CreativeInputActionId::QuickEditIncrease, "Radius");
       return;
-    case cr::CreativeHeldItemKind::TerrainProfile:
+    case CreativeEditorQuickEditProfile::TerrainProfile:
       appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
                      cr::CreativeInputActionId::QuickEditNext, "Amplitude");
       appendHintPair(buffer, cr::CreativeInputActionId::QuickEditDecrease,
                      cr::CreativeInputActionId::QuickEditIncrease, "Radius");
       return;
-    case cr::CreativeHeldItemKind::TerrainPath:
+    case CreativeEditorQuickEditProfile::TerrainPath:
       appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
                      cr::CreativeInputActionId::QuickEditNext,
                      cr::creativeTerrainPathUsesDepth(
@@ -137,7 +138,7 @@ void appendQuickEdit(HintSpecBuffer& buffer,
       appendHintPair(buffer, cr::CreativeInputActionId::QuickEditDecrease,
                      cr::CreativeInputActionId::QuickEditIncrease, "Width");
       return;
-    case cr::CreativeHeldItemKind::TerrainRegion:
+    case CreativeEditorQuickEditProfile::TerrainRegion:
       if (editor.terrain.region.stamp.active) {
         appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
                        cr::CreativeInputActionId::QuickEditNext, "Control");
@@ -173,23 +174,10 @@ void appendQuickEdit(HintSpecBuffer& buffer,
                      cr::CreativeInputActionId::QuickEditIncrease,
                      "Operation");
       return;
-    case cr::CreativeHeldItemKind::ObjectMove:
+    case CreativeEditorQuickEditProfile::None:
       return;
-    case cr::CreativeHeldItemKind::Material:
-    case cr::CreativeHeldItemKind::MaterialBrush:
-    case cr::CreativeHeldItemKind::ObjectSelect:
-    case cr::CreativeHeldItemKind::VolumeSelect:
-    case cr::CreativeHeldItemKind::VolumeFill:
-    case cr::CreativeHeldItemKind::VolumeHollow:
-    case cr::CreativeHeldItemKind::VolumeReplace:
-    case cr::CreativeHeldItemKind::VolumeErase:
-    case cr::CreativeHeldItemKind::VolumeClone:
-    case cr::CreativeHeldItemKind::LinearArray:
-    case cr::CreativeHeldItemKind::ConnectedFill:
-    case cr::CreativeHeldItemKind::SurfaceExtrude:
-    case cr::CreativeHeldItemKind::TerrainPaint:
-    case cr::CreativeHeldItemKind::ObjectGroup:
-    case cr::CreativeHeldItemKind::Count:
+    case CreativeEditorQuickEditProfile::Generic:
+    case CreativeEditorQuickEditProfile::Count:
       break;
   }
   if (editor.quickEdit.options.count == 0U) {
@@ -212,36 +200,37 @@ void appendViewportHints(HintSpecBuffer& buffer,
   const cr::CreativeInputActionId negativeAction =
       gamepad ? cr::CreativeInputActionId::RejectAction
               : cr::CreativeInputActionId::PrimaryAction;
-  bool keyboardQuickEdit = false;
-  switch (held) {
-    case cr::CreativeHeldItemKind::Material:
+  const CreativeEditorToolCapability& capability =
+      describeCreativeEditorToolCapability(held);
+  const bool keyboardQuickEdit = capability.keyboardQuickEditHints;
+  switch (capability.actionHintProfile) {
+    case CreativeEditorActionHintProfile::Material:
       appendHint(buffer, positiveAction, "Place");
       appendHint(buffer, negativeAction, "Remove");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
       break;
-    case cr::CreativeHeldItemKind::MaterialBrush:
+    case CreativeEditorActionHintProfile::MaterialBrush:
       appendHint(buffer, positiveAction, "Paint");
       appendHint(buffer, negativeAction, "Erase");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
       break;
-    case cr::CreativeHeldItemKind::ConnectedFill:
+    case CreativeEditorActionHintProfile::ConnectedFill:
       appendHint(buffer, positiveAction, "Fill region");
       appendHint(buffer, negativeAction, "Erase region");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
       break;
-    case cr::CreativeHeldItemKind::SurfaceExtrude:
+    case CreativeEditorActionHintProfile::SurfaceExtrude:
       appendHint(buffer, positiveAction, "Extrude");
       appendHint(buffer, negativeAction, "Remove layer");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
       break;
-    case cr::CreativeHeldItemKind::TerrainControl:
+    case CreativeEditorActionHintProfile::TerrainControl:
       appendHint(buffer, positiveAction, terrainControlApplyLabel(editor));
       appendHint(buffer, negativeAction, terrainControlRejectLabel(editor));
       appendHint(buffer, cr::CreativeInputActionId::PickAction,
                  terrainControlPickLabel(editor));
-      keyboardQuickEdit = true;
       break;
-    case cr::CreativeHeldItemKind::TerrainPaint:
+    case CreativeEditorActionHintProfile::TerrainPaint:
       switch (editor.toolSettings.terrainPaintMode) {
         case cr::CreativeTerrainPaintMode::Brush:
           appendHint(buffer, positiveAction, "Paint surface");
@@ -271,16 +260,14 @@ void appendViewportHints(HintSpecBuffer& buffer,
       }
       appendHint(buffer, cr::CreativeInputActionId::PickAction,
                  "Sample surface");
-      keyboardQuickEdit = true;
       break;
-    case cr::CreativeHeldItemKind::TerrainGrade:
+    case CreativeEditorActionHintProfile::TerrainGrade:
       appendHint(buffer, positiveAction, "Apply grade");
       appendHint(buffer, negativeAction, "Cancel grade");
       appendHint(buffer, cr::CreativeInputActionId::PickAction,
                  "Set start rod");
-      keyboardQuickEdit = true;
       break;
-    case cr::CreativeHeldItemKind::TerrainSculpt:
+    case CreativeEditorActionHintProfile::TerrainSculpt:
       appendHint(buffer, positiveAction, "Sculpt");
       appendHint(buffer, negativeAction, "Cancel sculpt");
       if (cr::creativeTerrainSculptUsesTargetHeight(
@@ -288,27 +275,23 @@ void appendViewportHints(HintSpecBuffer& buffer,
         appendHint(buffer, cr::CreativeInputActionId::PickAction,
                    "Sample height");
       }
-      keyboardQuickEdit = true;
       break;
-    case cr::CreativeHeldItemKind::TerrainProfile:
+    case CreativeEditorActionHintProfile::TerrainProfile:
       appendHint(buffer, positiveAction, "Apply profile");
       if (editor.terrain.profile.baseLocked) {
         appendHint(buffer, negativeAction, "Auto base");
       }
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Lock base");
-      keyboardQuickEdit = true;
       break;
-    case cr::CreativeHeldItemKind::TerrainPath:
+    case CreativeEditorActionHintProfile::TerrainPath:
       appendHint(buffer, positiveAction, "Commit path");
       appendHint(buffer, negativeAction, "Back point");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Add point");
-      keyboardQuickEdit = true;
       break;
-    case cr::CreativeHeldItemKind::TerrainRegion: {
+    case CreativeEditorActionHintProfile::TerrainRegion: {
       if (editor.terrain.region.stamp.active) {
         appendHint(buffer, positiveAction, "Stamp terrain");
         appendHint(buffer, negativeAction, "Cancel stamp");
-        keyboardQuickEdit = true;
         break;
       }
       std::string_view positiveLabel = "Corner 1";
@@ -326,14 +309,13 @@ void appendViewportHints(HintSpecBuffer& buffer,
         appendHint(buffer, cr::CreativeInputActionId::PickAction,
                    "Sample height");
       }
-      keyboardQuickEdit = true;
       break;
     }
-    case cr::CreativeHeldItemKind::ObjectSelect:
+    case CreativeEditorActionHintProfile::ObjectSelect:
       appendHint(buffer, gamepad ? positiveAction : negativeAction, "Select");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
       break;
-    case cr::CreativeHeldItemKind::ObjectMove:
+    case CreativeEditorActionHintProfile::ObjectMove:
       appendHint(buffer, gamepad ? positiveAction : negativeAction, "Move");
       appendHint(buffer, gamepad ? negativeAction : positiveAction,
                  gamepad ? "Cancel" : "Transform");
@@ -343,18 +325,17 @@ void appendViewportHints(HintSpecBuffer& buffer,
       }
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
       break;
-    case cr::CreativeHeldItemKind::ObjectGroup:
+    case CreativeEditorActionHintProfile::ObjectGroup:
       appendHint(buffer, positiveAction, "Group / ungroup");
       break;
-    case cr::CreativeHeldItemKind::VolumeSelect:
+    case CreativeEditorActionHintProfile::VolumeSelect:
       appendHint(buffer, gamepad ? positiveAction : negativeAction,
                  gamepad ? "Next corner" : "Corner 1");
       appendHint(buffer, gamepad ? negativeAction : positiveAction,
                  gamepad ? "Cancel" : "Corner 2");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Expand");
       break;
-    case cr::CreativeHeldItemKind::VolumeFill:
-    case cr::CreativeHeldItemKind::VolumeHollow:
+    case CreativeEditorActionHintProfile::DirectShapeVolume:
       if (gamepad) {
         appendHint(buffer, positiveAction,
                    editor.volume.selection.phase ==
@@ -368,16 +349,14 @@ void appendViewportHints(HintSpecBuffer& buffer,
       }
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
       break;
-    case cr::CreativeHeldItemKind::VolumeReplace:
-    case cr::CreativeHeldItemKind::VolumeErase:
-    case cr::CreativeHeldItemKind::VolumeClone:
+    case CreativeEditorActionHintProfile::VolumeOperation:
       appendHint(buffer, positiveAction, "Apply");
       if (gamepad) {
         appendHint(buffer, negativeAction, "Cancel");
       }
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
       break;
-    case cr::CreativeHeldItemKind::LinearArray:
+    case CreativeEditorActionHintProfile::LinearArray:
       if (gamepad) {
         appendHint(buffer, positiveAction, "Select/Use");
         appendHint(buffer, negativeAction, "Cancel");
@@ -387,7 +366,8 @@ void appendViewportHints(HintSpecBuffer& buffer,
       }
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
       break;
-    case cr::CreativeHeldItemKind::Count:
+    case CreativeEditorActionHintProfile::None:
+    case CreativeEditorActionHintProfile::Count:
       return;
   }
   if (gamepad || keyboardQuickEdit) {

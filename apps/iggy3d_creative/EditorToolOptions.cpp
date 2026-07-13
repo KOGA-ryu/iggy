@@ -9,6 +9,7 @@
 #include "EditorObjectActions.hpp"
 #include "EditorState.hpp"
 #include "EditorTerrain.hpp"
+#include "EditorToolCapabilities.hpp"
 #include "EditorVolume.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
@@ -24,7 +25,8 @@ cr::CreativeToolOptionList creativeEditorToolOptionsForEntry(
     const cr::CreativeToolSettings& settings) noexcept {
   cr::CreativeToolOptionList options =
       cr::creativeToolOptionsForHeldItem(entry.kind, settings);
-  if (entry.kind != cr::CreativeHeldItemKind::Material) {
+  if (describeCreativeEditorToolCapability(entry.kind).optionFilterProfile !=
+      CreativeEditorToolOptionFilterProfile::MaterialPlacement) {
     return options;
   }
 
@@ -59,33 +61,41 @@ CreativeEditorToolOptionsCommandList
 creativeEditorToolOptionCommandsForEntry(
     cr::CreativeHotbarEntry entry) noexcept {
   CreativeEditorToolOptionsCommandList commands;
-  if (entry.kind == cr::CreativeHeldItemKind::MaterialBrush) {
-    commands.ids[commands.count++] =
-        CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot;
-    commands.ids[commands.count++] =
-        CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot;
-  } else if (entry.kind == cr::CreativeHeldItemKind::ObjectGroup) {
-    commands.ids[commands.count++] =
-        CreativeEditorToolOptionsCommandId::EditGroupContents;
-    commands.ids[commands.count++] =
-        CreativeEditorToolOptionsCommandId::UngroupSelection;
-  } else if (entry.kind == cr::CreativeHeldItemKind::ObjectMove) {
-    commands.ids[commands.count++] =
-        CreativeEditorToolOptionsCommandId::TransformSelection;
-    commands.ids[commands.count++] =
-        CreativeEditorToolOptionsCommandId::ResetSelectionTransform;
-    commands.ids[commands.count++] =
-        CreativeEditorToolOptionsCommandId::DuplicateSelection;
-    commands.ids[commands.count++] =
-        CreativeEditorToolOptionsCommandId::DeleteSelection;
-    commands.ids[commands.count++] =
-        CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility;
-    commands.ids[commands.count++] =
-        CreativeEditorToolOptionsCommandId::ToggleSelectionLocked;
-    commands.ids[commands.count++] =
-        CreativeEditorToolOptionsCommandId::GroupSelection;
-    commands.ids[commands.count++] =
-        CreativeEditorToolOptionsCommandId::UngroupSelection;
+  switch (describeCreativeEditorToolCapability(entry.kind).commandProfile) {
+    case CreativeEditorToolCommandProfile::None:
+      break;
+    case CreativeEditorToolCommandProfile::MaterialBrush:
+      commands.ids[commands.count++] =
+          CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot;
+      commands.ids[commands.count++] =
+          CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot;
+      break;
+    case CreativeEditorToolCommandProfile::ObjectGroup:
+      commands.ids[commands.count++] =
+          CreativeEditorToolOptionsCommandId::EditGroupContents;
+      commands.ids[commands.count++] =
+          CreativeEditorToolOptionsCommandId::UngroupSelection;
+      break;
+    case CreativeEditorToolCommandProfile::ObjectMove:
+      commands.ids[commands.count++] =
+          CreativeEditorToolOptionsCommandId::TransformSelection;
+      commands.ids[commands.count++] =
+          CreativeEditorToolOptionsCommandId::ResetSelectionTransform;
+      commands.ids[commands.count++] =
+          CreativeEditorToolOptionsCommandId::DuplicateSelection;
+      commands.ids[commands.count++] =
+          CreativeEditorToolOptionsCommandId::DeleteSelection;
+      commands.ids[commands.count++] =
+          CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility;
+      commands.ids[commands.count++] =
+          CreativeEditorToolOptionsCommandId::ToggleSelectionLocked;
+      commands.ids[commands.count++] =
+          CreativeEditorToolOptionsCommandId::GroupSelection;
+      commands.ids[commands.count++] =
+          CreativeEditorToolOptionsCommandId::UngroupSelection;
+      break;
+    case CreativeEditorToolCommandProfile::Count:
+      break;
   }
   return commands;
 }
@@ -167,23 +177,31 @@ void appendText(std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
 
 [[nodiscard]] std::string toolOptionsTargetLabel(
     const CreativeEditorToolOptionsState& state) {
-  if (state.targetEntry.kind == cr::CreativeHeldItemKind::ObjectMove) {
-    if (state.contextSelectionCount == 0U) {
-      return "NO SELECTION";
+  switch (describeCreativeEditorToolCapability(state.targetEntry.kind)
+              .displayProfile) {
+    case CreativeEditorToolDisplayProfile::Selection: {
+      if (state.contextSelectionCount == 0U) {
+        return "NO SELECTION";
+      }
+      std::string label(cr::toString(state.contextPrimaryObjectKind));
+      label.append(" | ");
+      label.append(std::to_string(state.contextSelectionCount));
+      label.append(" SELECTED");
+      return label;
     }
-    std::string label(cr::toString(state.contextPrimaryObjectKind));
-    label.append(" | ");
-    label.append(std::to_string(state.contextSelectionCount));
-    label.append(" SELECTED");
-    return label;
+    case CreativeEditorToolDisplayProfile::Material: {
+      std::string label(cr::toString(state.targetEntry.kind));
+      if (state.targetEntry.objectKind != cr::CreativeObjectKind::Unknown) {
+        label.append(" | ");
+        label.append(cr::toString(state.targetEntry.objectKind));
+      }
+      return label;
+    }
+    case CreativeEditorToolDisplayProfile::Standard:
+    case CreativeEditorToolDisplayProfile::Count:
+      return std::string(cr::toString(state.targetEntry.kind));
   }
-  std::string label(cr::toString(state.targetEntry.kind));
-  if (state.targetEntry.kind == cr::CreativeHeldItemKind::Material &&
-      state.targetEntry.objectKind != cr::CreativeObjectKind::Unknown) {
-    label.append(" | ");
-    label.append(cr::toString(state.targetEntry.objectKind));
-  }
-  return label;
+  return {};
 }
 
 void moveSelection(CreativeEditorToolOptionsState& state,
@@ -451,7 +469,9 @@ bool activateCreativeEditorToolOptionsSelection(
   const std::size_t commandIndex =
       state.selectedIndex - state.options.count;
   if (commandIndex >= state.commands.count ||
-      state.targetEntry.kind != cr::CreativeHeldItemKind::MaterialBrush ||
+      describeCreativeEditorToolCapability(state.targetEntry.kind)
+              .commandProfile !=
+          CreativeEditorToolCommandProfile::MaterialBrush ||
       !cr::isValidCreativeToolSettings(state.draft)) {
     return false;
   }
@@ -630,21 +650,24 @@ bool processCreativeEditorQuickEditAction(
     cr::CreativeInputActionId action) {
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  switch (held.kind) {
-    case cr::CreativeHeldItemKind::TerrainControl:
+  switch (describeCreativeEditorToolCapability(held.kind).quickEditProfile) {
+    case CreativeEditorQuickEditProfile::TerrainControl:
       return processCreativeEditorTerrainQuickEdit(editor.terrain, action);
-    case cr::CreativeHeldItemKind::TerrainGrade:
+    case CreativeEditorQuickEditProfile::TerrainGrade:
       return processCreativeEditorTerrainGradeQuickEdit(editor.terrain.grade,
                                                         action);
-    case cr::CreativeHeldItemKind::TerrainSculpt:
+    case CreativeEditorQuickEditProfile::TerrainSculpt:
       return processCreativeEditorTerrainSculptQuickEdit(editor, action);
-    case cr::CreativeHeldItemKind::TerrainProfile:
+    case CreativeEditorQuickEditProfile::TerrainProfile:
       return processCreativeEditorTerrainProfileQuickEdit(editor, action);
-    case cr::CreativeHeldItemKind::TerrainPath:
+    case CreativeEditorQuickEditProfile::TerrainPath:
       return processCreativeEditorTerrainPathQuickEdit(editor, action);
-    case cr::CreativeHeldItemKind::TerrainRegion:
+    case CreativeEditorQuickEditProfile::TerrainRegion:
       return processCreativeEditorTerrainRegionQuickEdit(editor, action);
-    default:
+    case CreativeEditorQuickEditProfile::None:
+      return false;
+    case CreativeEditorQuickEditProfile::Generic:
+    case CreativeEditorQuickEditProfile::Count:
       break;
   }
   rebuildQuickEditOptions(editor, false);
@@ -695,20 +718,23 @@ std::string creativeEditorQuickEditStatusLabel(
     const CreativeEditorState& editor) {
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  switch (held.kind) {
-    case cr::CreativeHeldItemKind::TerrainControl:
+  switch (describeCreativeEditorToolCapability(held.kind).quickEditProfile) {
+    case CreativeEditorQuickEditProfile::TerrainControl:
       return creativeEditorTerrainQuickEditLabel(editor.terrain);
-    case cr::CreativeHeldItemKind::TerrainGrade:
+    case CreativeEditorQuickEditProfile::TerrainGrade:
       return creativeEditorTerrainGradeQuickEditLabel(editor.terrain.grade);
-    case cr::CreativeHeldItemKind::TerrainSculpt:
+    case CreativeEditorQuickEditProfile::TerrainSculpt:
       return creativeEditorTerrainSculptQuickEditLabel(editor);
-    case cr::CreativeHeldItemKind::TerrainProfile:
+    case CreativeEditorQuickEditProfile::TerrainProfile:
       return creativeEditorTerrainProfileQuickEditLabel(editor);
-    case cr::CreativeHeldItemKind::TerrainPath:
+    case CreativeEditorQuickEditProfile::TerrainPath:
       return creativeEditorTerrainPathQuickEditLabel(editor);
-    case cr::CreativeHeldItemKind::TerrainRegion:
+    case CreativeEditorQuickEditProfile::TerrainRegion:
       return creativeEditorTerrainRegionQuickEditLabel(editor);
-    default:
+    case CreativeEditorQuickEditProfile::None:
+      return {};
+    case CreativeEditorQuickEditProfile::Generic:
+    case CreativeEditorQuickEditProfile::Count:
       break;
   }
   const CreativeEditorQuickEditState& state = editor.quickEdit;
@@ -748,7 +774,8 @@ void appendCreativeEditorToolOptionsOverlay(
   uiRects.push_back({layout.panelX, layout.panelY, layout.panelWidth,
                      layout.panelHeight, 0.05F, 0.06F, 0.07F, 0.98F});
   const bool objectActions =
-      state.targetEntry.kind == cr::CreativeHeldItemKind::ObjectMove;
+      describeCreativeEditorToolCapability(state.targetEntry.kind)
+          .displayProfile == CreativeEditorToolDisplayProfile::Selection;
   appendText(glyphs, objectActions ? "OBJECT ACTIONS" : "TOOL OPTIONS",
              layout.panelX + 18,
              layout.panelY + 16, drawableWidth, drawableHeight,

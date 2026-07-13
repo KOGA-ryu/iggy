@@ -1,5 +1,6 @@
 #include "EditorActionHints.hpp"
 #include "EditorState.hpp"
+#include "EditorToolCapabilities.hpp"
 #include "EditorToolOptions.hpp"
 #include "app/iggy3d/creative/render/CreativeOverlayFrame.hpp"
 
@@ -95,6 +96,97 @@ std::uint16_t groupFor(const cr::CreativeControlProfile& profile,
     }
   }
   return static_cast<std::uint16_t>(profile.groupCount);
+}
+
+bool toolCapabilitiesCoverBehaviorAndUiProfiles() {
+  const std::span<const CreativeEditorToolCapability> capabilities =
+      creativeEditorToolCapabilities();
+  bool ok = expect(capabilities.size() == cr::kCreativeHeldItemKindCount,
+                   "tool capabilities cover every held kind");
+  std::size_t specializedCommandProfiles = 0U;
+  std::size_t keyboardQuickEditProfiles = 0U;
+  std::size_t materialFilters = 0U;
+  for (std::size_t index = 0U; index < capabilities.size(); ++index) {
+    const cr::CreativeHeldItemKind kind =
+        static_cast<cr::CreativeHeldItemKind>(index);
+    const CreativeEditorToolCapability& capability = capabilities[index];
+    const cr::CreativeHeldItemDefinition& behavior =
+        cr::describeCreativeHeldItem(kind);
+    const CreativeEditorToolOptionsCommandList commands =
+        creativeEditorToolOptionCommandsForEntry({kind, {}});
+    std::size_t expectedCommandCount = 0U;
+    switch (capability.commandProfile) {
+      case CreativeEditorToolCommandProfile::None:
+        break;
+      case CreativeEditorToolCommandProfile::MaterialBrush:
+      case CreativeEditorToolCommandProfile::ObjectGroup:
+        expectedCommandCount = 2U;
+        ++specializedCommandProfiles;
+        break;
+      case CreativeEditorToolCommandProfile::ObjectMove:
+        expectedCommandCount = 8U;
+        ++specializedCommandProfiles;
+        break;
+      case CreativeEditorToolCommandProfile::Count:
+        break;
+    }
+    keyboardQuickEditProfiles +=
+        capability.keyboardQuickEditHints ? 1U : 0U;
+    materialFilters +=
+        capability.optionFilterProfile ==
+                CreativeEditorToolOptionFilterProfile::MaterialPlacement
+            ? 1U
+            : 0U;
+    const bool directShapeProfile =
+        capability.actionHintProfile ==
+        CreativeEditorActionHintProfile::DirectShapeVolume;
+    const bool volumeOperationProfile =
+        capability.actionHintProfile ==
+        CreativeEditorActionHintProfile::VolumeOperation;
+    ok = expect(capability.kind == kind,
+                "capability row order matches held enum") &&
+         expect(&describeCreativeEditorToolCapability(kind) == &capability,
+                "capability lookup returns canonical row") &&
+         expect(capability.optionFilterProfile <
+                        CreativeEditorToolOptionFilterProfile::Count &&
+                    capability.commandProfile <
+                        CreativeEditorToolCommandProfile::Count &&
+                    capability.quickEditProfile <
+                        CreativeEditorQuickEditProfile::Count &&
+                    capability.actionHintProfile <
+                        CreativeEditorActionHintProfile::Count &&
+                    capability.displayProfile <
+                        CreativeEditorToolDisplayProfile::Count,
+                "capability row contains valid presentation profiles") &&
+         expect(capability.actionHintProfile !=
+                    CreativeEditorActionHintProfile::None,
+                "every valid held kind has a viewport hint profile") &&
+         expect(commands.count == expectedCommandCount,
+                "command profile produces its bounded command set") &&
+         expect(directShapeProfile == behavior.directShapeGesture,
+                "direct-shape hints agree with behavior truth") &&
+         expect(volumeOperationProfile ==
+                    (behavior.volumeOperationItem &&
+                     !behavior.directShapeGesture),
+                "volume-operation hints agree with behavior truth") &&
+         ok;
+  }
+
+  const CreativeEditorToolCapability& invalid =
+      describeCreativeEditorToolCapability(cr::CreativeHeldItemKind::Count);
+  return expect(specializedCommandProfiles == 3U,
+                "three tools own specialized command profiles") &&
+         expect(keyboardQuickEditProfiles == 7U,
+                "seven terrain tools expose keyboard quick-edit hints") &&
+         expect(materialFilters == 1U,
+                "only direct material placement filters descriptor options") &&
+         expect(invalid.kind == cr::CreativeHeldItemKind::Count &&
+                    invalid.actionHintProfile ==
+                        CreativeEditorActionHintProfile::None &&
+                    invalid.quickEditProfile ==
+                        CreativeEditorQuickEditProfile::None,
+                "invalid held kind resolves to inert presentation profile") &&
+         ok;
 }
 
 bool resolverUsesLiveBindingsAndBoundedPairs() {
@@ -883,6 +975,7 @@ bool widgetProjectionIsResponsiveAndUsesTheStandardFrame() {
 
 int main() {
   bool ok = true;
+  ok = toolCapabilitiesCoverBehaviorAndUiProfiles() && ok;
   ok = resolverUsesLiveBindingsAndBoundedPairs() && ok;
   ok = resolverSkipsMissingBindingsAndFailsClosedAtCapacity() && ok;
   ok = activeDeviceUsesUnambiguousPhysicalActivity() && ok;
