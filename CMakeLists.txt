@@ -93,6 +93,8 @@ target_sources(iggy3d
     src/app/iggy3d/creative/tools/SurfaceExtrude.cpp
     src/app/iggy3d/creative/tools/VolumeSelection.cpp
     src/app/iggy3d/creative/tools/Volume.cpp
+    src/app/iggy3d/creative/tools/VolumeFill.cpp
+    src/app/iggy3d/creative/tools/VolumeObjects.cpp
     src/app/iggy3d/creative/tools/Measure.cpp
     src/app/iggy3d/creative/spatial/Snap.cpp
     src/app/iggy3d/creative/document/DocumentSnap.cpp
