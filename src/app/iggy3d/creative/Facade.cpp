@@ -507,7 +507,7 @@ CreativeDuplicateCommandReceipt Facade::duplicateSelectedObjects(
       CreativeDuplicateCommandReceipt receipt;
       receipt.requested = true;
       receipt.requestedObjectCount = objectIds.size();
-      receipt.status = CreativeTransformCommandStatus::InvalidRequest;
+      receipt.status = CreativeDuplicateCommandStatus::InvalidRequest;
       receipt.revisionBefore = document_.revision();
       receipt.revisionAfter = receipt.revisionBefore;
       receipt.message = "duplicate_target_id_exhausted";

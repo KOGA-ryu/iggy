@@ -453,10 +453,38 @@ void appendContextHints(HintSpecBuffer& buffer,
         switch (editor.transform.transformMode) {
           case CreativeEditorTransformMode::Move: break;
           case CreativeEditorTransformMode::Rotate:
-            adjustment = "Rotate";
+            switch (editor.transform.constraint) {
+              case cr::CreativeSelectionPlacementAxis::X:
+                adjustment = "Rotate X";
+                break;
+              case cr::CreativeSelectionPlacementAxis::Z:
+                adjustment = "Rotate Z";
+                break;
+              case cr::CreativeSelectionPlacementAxis::Free:
+              case cr::CreativeSelectionPlacementAxis::Y:
+              case cr::CreativeSelectionPlacementAxis::Count:
+                adjustment = "Rotate Y";
+                break;
+            }
             break;
           case CreativeEditorTransformMode::Scale:
-            adjustment = "Scale";
+            switch (editor.transform.constraint) {
+              case cr::CreativeSelectionPlacementAxis::X:
+                adjustment = "Scale X";
+                break;
+              case cr::CreativeSelectionPlacementAxis::Y:
+                adjustment = "Scale Y";
+                break;
+              case cr::CreativeSelectionPlacementAxis::Z:
+                adjustment = "Scale Z";
+                break;
+              case cr::CreativeSelectionPlacementAxis::Free:
+                adjustment = "Scale all";
+                break;
+              case cr::CreativeSelectionPlacementAxis::Count:
+                adjustment = "Scale";
+                break;
+            }
             break;
           case CreativeEditorTransformMode::Count:
             adjustment = "Adjust";

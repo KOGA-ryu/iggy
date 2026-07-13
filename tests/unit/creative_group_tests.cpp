@@ -1,5 +1,7 @@
 #include "app/iggy3d/creative/tools/Group.hpp"
-#include "app/iggy3d/creative/tools/Transform.hpp"
+#include "app/iggy3d/creative/tools/Clipboard.hpp"
+#include "app/iggy3d/creative/tools/SelectionPlacement.hpp"
+#include "app/iggy3d/creative/tools/SelectionTransformCommands.hpp"
 
 #include <array>
 #include <cstdlib>

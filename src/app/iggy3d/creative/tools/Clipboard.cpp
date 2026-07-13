@@ -12,6 +12,7 @@
 
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/tools/Group.hpp"
 #include "app/iggy3d/creative/tools/SelectionPlacement.hpp"
 
 namespace iggy3d::creative {
@@ -216,6 +217,20 @@ std::string_view toString(CreativeClipboardStatus status) noexcept {
   return "Unknown";
 }
 
+std::string_view toString(CreativeDuplicateCommandStatus status) noexcept {
+  switch (status) {
+    case CreativeDuplicateCommandStatus::NotRequested: return "NotRequested";
+    case CreativeDuplicateCommandStatus::EmptySelection:
+      return "EmptySelection";
+    case CreativeDuplicateCommandStatus::InvalidRequest:
+      return "InvalidRequest";
+    case CreativeDuplicateCommandStatus::MissingObject: return "MissingObject";
+    case CreativeDuplicateCommandStatus::Applied: return "Applied";
+    case CreativeDuplicateCommandStatus::Rejected: return "Rejected";
+  }
+  return "Unknown";
+}
+
 bool creativeClipboardEmpty(const CreativeClipboard& clipboard) noexcept {
   return clipboard.objects.empty();
 }
@@ -379,9 +394,7 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
          !isFiniteCreativeVec3(request.transformAnchor)) ||
         !isValidCreativeAxis3(request.rotationAxis) ||
         !std::isfinite(request.rotationRadians) ||
-        (request.hasAxisAngleRotation &&
-         (request.quarterTurns != 0U || request.mirrorX ||
-          request.mirrorZ))) {
+        (request.hasAxisAngleRotation && request.quarterTurns != 0U)) {
       receipt.failedPasteIndex = requestIndex;
       receipt.status = CreativeClipboardStatus::InvalidRequest;
       receipt.reasonCode = "creative_clipboard_rigid_transform_invalid";
@@ -498,6 +511,90 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
   receipt.pastedObjectCount = receipt.pastedObjectIds.size();
   receipt.revisionAfter = document.revision();
   receipt.reasonCode = "creative_clipboard_pasted";
+  return receipt;
+}
+
+CreativeDuplicateCommandReceipt duplicateDocumentObjectsAtomically(
+    CreativeDocument& document,
+    std::span<const CreativeObjectId> objectIds,
+    const CreativeDuplicateCommandRequest& request) {
+  CreativeDuplicateCommandReceipt receipt;
+  receipt.requested = true;
+  receipt.requestedObjectCount = objectIds.size();
+  receipt.revisionBefore = document.revision();
+  receipt.revisionAfter = receipt.revisionBefore;
+
+  if (objectIds.empty()) {
+    receipt.status = CreativeDuplicateCommandStatus::EmptySelection;
+    receipt.message = "duplicate_selection_empty";
+    return receipt;
+  }
+  if (!isFiniteCreativeVec3(request.offset)) {
+    receipt.status = CreativeDuplicateCommandStatus::InvalidRequest;
+    receipt.message = "duplicate_request_invalid";
+    return receipt;
+  }
+
+  const CreativeHierarchySelection hierarchy =
+      resolveCreativeObjectHierarchy(document, objectIds);
+  if (!hierarchy.accepted) {
+    receipt.failedObjectId = hierarchy.missingObjectId;
+    receipt.status =
+        hierarchy.status == CreativeHierarchySelectionStatus::MissingObject
+            ? CreativeDuplicateCommandStatus::MissingObject
+            : CreativeDuplicateCommandStatus::InvalidRequest;
+    receipt.message = hierarchy.reasonCode;
+    return receipt;
+  }
+
+  CreativeClipboard clipboard;
+  const CreativeClipboardCopyReceipt copyReceipt =
+      copyDocumentObjectsToClipboard(document, hierarchy.objectIds, clipboard);
+  if (!copyReceipt.accepted) {
+    receipt.failedObjectId = copyReceipt.failedObjectId;
+    receipt.status = CreativeDuplicateCommandStatus::MissingObject;
+    receipt.message = "duplicate_object_missing";
+    return receipt;
+  }
+
+  CreativeClipboardPasteRequest pasteRequest;
+  pasteRequest.offset = request.offset;
+  pasteRequest.appendCopySuffix = request.appendCopySuffix;
+  pasteRequest.externalParentPolicy =
+      CreativeClipboardExternalParentPolicy::PreserveIfPresent;
+  CreativeClipboardPasteReceipt pasteReceipt =
+      pasteCreativeClipboardAtomically(document, clipboard, pasteRequest);
+  if (!pasteReceipt.accepted) {
+    receipt.failedObjectId = pasteReceipt.failedObjectId;
+    receipt.status =
+        pasteReceipt.status == CreativeClipboardStatus::ObjectIdExhausted
+            ? CreativeDuplicateCommandStatus::InvalidRequest
+            : CreativeDuplicateCommandStatus::Rejected;
+    receipt.message =
+        pasteReceipt.status == CreativeClipboardStatus::ObjectIdExhausted
+            ? "duplicate_object_id_exhausted"
+            : pasteReceipt.reasonCode;
+    return receipt;
+  }
+
+  receipt.accepted = true;
+  receipt.changed = true;
+  receipt.status = CreativeDuplicateCommandStatus::Applied;
+  receipt.duplicatedObjectIds = std::move(pasteReceipt.pastedObjectIds);
+  receipt.duplicatedObjectCount = receipt.duplicatedObjectIds.size();
+  receipt.duplicatedSelectionObjectIds.reserve(hierarchy.rootObjectIds.size());
+  for (CreativeObjectId rootObjectId : hierarchy.rootObjectIds) {
+    const auto remap = std::find_if(
+        pasteReceipt.idRemaps.begin(), pasteReceipt.idRemaps.end(),
+        [rootObjectId](const CreativeClipboardIdRemap& item) {
+          return item.sourceObjectId == rootObjectId;
+        });
+    if (remap != pasteReceipt.idRemaps.end()) {
+      receipt.duplicatedSelectionObjectIds.push_back(remap->pastedObjectId);
+    }
+  }
+  receipt.revisionAfter = document.revision();
+  receipt.message = "duplicate_applied";
   return receipt;
 }
 

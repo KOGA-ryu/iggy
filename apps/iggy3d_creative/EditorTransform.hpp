@@ -41,9 +41,9 @@ enum class CreativeEditorTransformAnchorPolicy : std::uint8_t {
   FixedSource,
 };
 
-inline constexpr std::array<double, 9U> kCreativeEditorUniformScaleFactors{
+inline constexpr std::array<double, 9U> kCreativeEditorScaleFactors{
     0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0};
-inline constexpr std::size_t kCreativeEditorDefaultUniformScaleIndex = 3U;
+inline constexpr std::size_t kCreativeEditorDefaultScaleIndex = 3U;
 
 enum class CreativeEditorTransformControl : std::uint8_t {
   RotatePositive,
@@ -91,8 +91,11 @@ struct CreativeEditorSelectionTransformState {
   cr::CreativeSelectionPlacementAxis constraint =
       cr::CreativeSelectionPlacementAxis::Free;
   std::size_t selectedControl = 0;
-  std::size_t uniformScaleIndex =
-      kCreativeEditorDefaultUniformScaleIndex;
+  std::array<std::size_t, 3U> scaleFactorIndices{
+      kCreativeEditorDefaultScaleIndex,
+      kCreativeEditorDefaultScaleIndex,
+      kCreativeEditorDefaultScaleIndex};
+  std::int8_t rotationQuarterSteps = 0;
   cr::CreativeVec3 aimTargetAnchor{};
   cr::CreativeVec3 nudgeOffset{};
   double snapStepMeters = 1.0;
@@ -126,7 +129,7 @@ struct CreativeEditorTransformFrameResult {
     CreativeEditorTransformControl control) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeEditorTransformMode mode) noexcept;
-[[nodiscard]] double creativeEditorTransformUniformScale(
+[[nodiscard]] cr::CreativeVec3 creativeEditorTransformScaleFactor(
     const CreativeEditorSelectionTransformState& state) noexcept;
 
 [[nodiscard]] bool beginCreativeEditorClipboardTransformPreview(

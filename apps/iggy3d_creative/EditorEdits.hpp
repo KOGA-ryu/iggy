@@ -5,7 +5,8 @@
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
-#include "app/iggy3d/creative/tools/Transform.hpp"
+#include "app/iggy3d/creative/tools/Clipboard.hpp"
+#include "app/iggy3d/creative/tools/SelectionTransformCommands.hpp"
 
 namespace iggy3d_creative_app {
 

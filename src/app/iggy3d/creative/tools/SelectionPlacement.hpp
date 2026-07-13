@@ -56,8 +56,10 @@ struct CreativeSelectionPlacementRequest {
   CreativeSelectionPlacementMode mode = CreativeSelectionPlacementMode::Copy;
   CreativeVec3 sourceAnchor{};
   CreativeVec3 targetAnchor{};
-  // Scaling is currently a Move-only operation; Copy requests require 1.0.
-  double uniformScale = 1.0;
+  // Scaling is currently a Move-only operation; Copy requires {1, 1, 1}.
+  // Selection offsets use world axes while each object's authored scale
+  // channels remain local to its stored transform.
+  CreativeVec3 scaleFactor{1.0, 1.0, 1.0};
   std::uint8_t quarterTurns = 0;
   bool mirrorX = false;
   bool mirrorZ = false;

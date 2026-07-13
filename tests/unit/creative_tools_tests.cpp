@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/tools/Tools.hpp"
-#include "app/iggy3d/creative/tools/Transform.hpp"
+#include "app/iggy3d/creative/tools/SelectionPlacement.hpp"
+#include "app/iggy3d/creative/tools/SelectionTransformCommands.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
 
 #include <algorithm>
@@ -1262,6 +1263,65 @@ bool transformCommandsStoreRadiansAndResolveLiveGeometry() {
          ok;
 }
 
+bool immediateTransformUsesSelectionPlacementKernel() {
+  cr::CreativeDocument commandDocument =
+      cr::CreativeDocument::create("Immediate Transform");
+  cr::CreativeDocumentCreateRequest create;
+  create.kind = cr::CreativeObjectKind::Crate;
+  create.name = "First";
+  create.transform.position = {2.0, 0.0, 0.0};
+  create.hasTransformOverride = true;
+  const cr::CreativeDocumentCreateReceipt first =
+      commandDocument.createObject(create);
+  create.name = "Second";
+  create.transform.position = {0.0, 0.0, 4.0};
+  const cr::CreativeDocumentCreateReceipt second =
+      commandDocument.createObject(create);
+  cr::CreativeDocument placementDocument = commandDocument;
+  const std::array objectIds{first.objectId, second.objectId};
+  const cr::CreativeVec3 pivot{1.0, 0.0, 2.0};
+
+  cr::CreativeTransformCommandRequest command;
+  command.kind = cr::CreativeTransformCommandKind::RotateYaw;
+  command.yawDegrees = 45.0;
+  const cr::CreativeTransformCommandReceipt commandReceipt =
+      cr::transformDocumentObjectsAtomically(commandDocument, objectIds,
+                                             command);
+
+  cr::CreativeSelectionPlacementRequest placement;
+  placement.mode = cr::CreativeSelectionPlacementMode::Move;
+  placement.sourceAnchor = pivot;
+  placement.targetAnchor = pivot;
+  placement.hasAxisAngleRotation = true;
+  placement.rotationAxis = cr::CreativeAxis3::Y;
+  placement.rotationRadians = std::numbers::pi * 0.25;
+  const cr::CreativeSelectionPlacementReceipt placementReceipt =
+      cr::placeDocumentObjectsAtomically(placementDocument, objectIds,
+                                         placement);
+
+  bool objectsMatch = true;
+  for (cr::CreativeObjectId objectId : objectIds) {
+    const cr::CreativeObject* commanded = commandDocument.findObject(objectId);
+    const cr::CreativeObject* placed = placementDocument.findObject(objectId);
+    objectsMatch = objectsMatch && commanded != nullptr && placed != nullptr &&
+                   cr::creativeVec3ExactlyEqual(
+                       commanded->transform.position,
+                       placed->transform.position) &&
+                   cr::creativeVec3ExactlyEqual(
+                       commanded->transform.rotationEulerRadians,
+                       placed->transform.rotationEulerRadians) &&
+                   cr::creativeVec3ExactlyEqual(commanded->transform.scale,
+                                                placed->transform.scale);
+  }
+  return expect(commandReceipt.accepted && commandReceipt.changed &&
+                    placementReceipt.accepted && placementReceipt.changed,
+                "immediate and previewable transform paths both apply") &&
+         expect(cr::creativeVec3ExactlyEqual(commandReceipt.pivot, pivot),
+                "immediate transform preserves the root-average pivot") &&
+         expect(objectsMatch,
+                "immediate transform delegates exact geometry to placement");
+}
+
 bool resetTransformPreservesPositionAndAppliesAtomically() {
   cr::CreativeDocument document = cr::CreativeDocument::create("Reset Transform");
   cr::CreativeDocumentCreateRequest create;
@@ -1473,7 +1533,7 @@ bool selectionPlacementScalePlanMatchesAtomicCommit() {
   request.mode = cr::CreativeSelectionPlacementMode::Move;
   request.sourceAnchor = {1.0, 0.5, 0.0};
   request.targetAnchor = request.sourceAnchor;
-  request.uniformScale = 1.5;
+  request.scaleFactor = {1.5, 2.0, 0.5};
   const cr::CreativeSelectionPlacementPlan plan =
       cr::planCreativeSelectionPlacement(document.objects(), request);
   const std::uint64_t revisionBefore = document.revision();
@@ -1484,7 +1544,7 @@ bool selectionPlacementScalePlanMatchesAtomicCommit() {
 
   bool ok = expect(plan.accepted && plan.objects.size() == 2U &&
                        applied.accepted && applied.changed,
-                   "uniform scale plans and commits") &&
+                   "three-axis scale plans and commits") &&
             expect(scaledLeft != nullptr && scaledRight != nullptr &&
                        cr::creativeVec3ExactlyEqual(
                            scaledLeft->transform.position,
@@ -1497,7 +1557,8 @@ bool selectionPlacementScalePlanMatchesAtomicCommit() {
                            plan.objects[0].transform.scale) &&
                        scaledLeft->transform.position.x == -0.5 &&
                        scaledRight->transform.position.x == 2.5 &&
-                       scaledLeft->transform.scale.x == 1.5,
+                       cr::creativeVec3ExactlyEqual(
+                           scaledLeft->transform.scale, {1.5, 2.0, 0.5}),
                    "commit publishes the exact planned pivot-relative scale") &&
             expect(document.revision() == revisionBefore + 1U,
                    "scaled batch advances document revision once");
@@ -1505,14 +1566,18 @@ bool selectionPlacementScalePlanMatchesAtomicCommit() {
   cr::CreativeObject route;
   route.id = 99U;
   route.kind = cr::CreativeObjectKind::PatrolRoute;
-  route.pathPoints = {{{0.0, 0.0, 0.0}}, {{2.0, 0.0, 0.0}}};
+  route.pathPoints = {{{0.0, 0.0, 2.0}}, {{2.0, 1.0, 4.0}}};
   const std::array routeSource{route};
   const cr::CreativeSelectionPlacementPlan routePlan =
       cr::planCreativeSelectionPlacement(routeSource, request);
   ok = expect(routePlan.accepted &&
                   routePlan.objects[0].pathPoints[0].position.x == -0.5 &&
-                  routePlan.objects[0].pathPoints[1].position.x == 2.5,
-              "path points scale around the same selection anchor") &&
+                  routePlan.objects[0].pathPoints[0].position.y == -0.5 &&
+                  routePlan.objects[0].pathPoints[0].position.z == 1.0 &&
+                  routePlan.objects[0].pathPoints[1].position.x == 2.5 &&
+                  routePlan.objects[0].pathPoints[1].position.y == 1.5 &&
+                  routePlan.objects[0].pathPoints[1].position.z == 2.0,
+              "path points use the same three-axis pivot scale") &&
        ok;
   cr::CreativeSelectionPlacementRequest unsupportedCopy = request;
   unsupportedCopy.mode = cr::CreativeSelectionPlacementMode::Copy;
@@ -1525,7 +1590,7 @@ bool selectionPlacementScalePlanMatchesAtomicCommit() {
        ok;
 
   cr::CreativeDocument invalidDocument = document;
-  request.uniformScale = 0.0;
+  request.scaleFactor = {0.0, 1.0, 1.0};
   const std::uint64_t invalidRevision = invalidDocument.revision();
   const cr::CreativeSelectionPlacementReceipt rejected =
       cr::placeDocumentObjectsAtomically(invalidDocument, ids, request);
@@ -1629,6 +1694,7 @@ int main() {
                   optionAdjustmentIsDeterministicAndAtomic() &&
                   replaceFilterAndCloneOffsetUseExplicitInputs() &&
                   transformCommandsStoreRadiansAndResolveLiveGeometry() &&
+                  immediateTransformUsesSelectionPlacementKernel() &&
                   resetTransformPreservesPositionAndAppliesAtomically() &&
                   selectionPlacementPlanOwnsPreviewAndCommitGeometry() &&
                   selectionPlacementScalePlanMatchesAtomicCommit() &&

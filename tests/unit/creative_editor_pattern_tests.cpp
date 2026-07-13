@@ -1,6 +1,7 @@
 #include "EditorPattern.hpp"
 #include "EditorState.hpp"
 
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -31,11 +32,13 @@ bool installDocument(cr::CreativeAppState& appState,
   return appState.facade.installDocument(std::move(document)).accepted;
 }
 
-cr::CreativeObjectId createAndSelectRoom(cr::CreativeAppState& appState) {
+cr::CreativeObjectId createAndSelectRoom(
+    cr::CreativeAppState& appState,
+    cr::CreativeBounds bounds = {{0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}}) {
   cr::CreativeDocumentCreateRequest create;
   create.kind = cr::CreativeObjectKind::Room;
   create.name = "Array Source";
-  create.bounds = {{0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}};
+  create.bounds = bounds;
   create.hasBoundsOverride = true;
   const cr::CreativeDocumentCreateReceipt created =
       appState.facade.createDocumentObject(create);
@@ -503,8 +506,10 @@ bool selectionTransformScalePreviewMatchesCommitAndOneUndo() {
                        appState, editor.transform, 1) &&
                        app::adjustCreativeEditorTransformSetting(
                            appState, editor.transform, 1) &&
-                       app::creativeEditorTransformUniformScale(
-                           editor.transform) == 1.5 &&
+                       cr::creativeVec3ExactlyEqual(
+                           app::creativeEditorTransformScaleFactor(
+                               editor.transform),
+                           {1.5, 1.5, 1.5}) &&
                        editor.transform.plan.accepted,
                    "D-pad scale adjustment reaches bounded 1.5x preview");
 
@@ -548,6 +553,147 @@ bool selectionTransformScalePreviewMatchesCommitAndOneUndo() {
                     scaled->bounds.min.x == 0.0 &&
                     scaled->bounds.max.x == 1.0,
                 "one undo restores pre-scale geometry") &&
+         ok;
+}
+
+bool selectionTransformUsesAllAxesAndNonUniformScale() {
+  cr::CreativeAppState appState;
+  const cr::CreativeBounds originalBounds{{0.0, 0.0, 0.0},
+                                           {1.0, 2.0, 3.0}};
+  if (!expect(installDocument(appState, "Axis Transform", 80U),
+              "axis transform document installed") ||
+      !expect(createAndSelectRoom(appState, originalBounds) !=
+                  cr::kInvalidObjectId,
+              "rectangular transform source selected")) {
+    return false;
+  }
+  app::CreativeEditorState editor;
+  if (!expect(app::beginCreativeEditorSelectionTransformPreview(
+                  appState, editor.transform, "test_axis_transform_begin"),
+              "axis transform begins")) {
+    return false;
+  }
+  const cr::CreativeVec3 anchor =
+      editor.transform.sourceClipboard.placementAnchor;
+  static_cast<void>(app::processCreativeEditorSelectionTransformPreview(
+      appState, editor.transform, true, anchor, false,
+      "test_axis_transform_aim"));
+  const auto planSize = [&editor]() {
+    return cr::measureCreativeBounds(
+               editor.transform.plan.objects.front().bounds)
+        .size;
+  };
+  const auto near = [](double actual, double expected) {
+    return std::fabs(actual - expected) <= 1.0e-9;
+  };
+
+  bool ok = expect(app::cycleCreativeEditorTransformMode(
+                       appState, editor.transform) &&
+                       app::adjustCreativeEditorTransformSetting(
+                           appState, editor.transform, 1) &&
+                       editor.transform.request.hasAxisAngleRotation &&
+                       editor.transform.request.rotationAxis ==
+                           cr::CreativeAxis3::Y &&
+                       editor.transform.rotationQuarterSteps == 1,
+                   "Free rotation uses the familiar Y axis") &&
+            expect(near(planSize().x, 3.0) && near(planSize().y, 2.0) &&
+                       near(planSize().z, 1.0),
+                   "Y rotation swaps rectangular X and Z extents");
+
+  ok = expect(app::setCreativeEditorTransformConstraint(
+                       appState, editor.transform,
+                       cr::CreativeSelectionPlacementAxis::X) &&
+                       editor.transform.request.rotationAxis ==
+                           cr::CreativeAxis3::X &&
+                       near(planSize().x, 1.0) && near(planSize().y, 3.0) &&
+                       near(planSize().z, 2.0),
+                   "X rotation swaps rectangular Y and Z extents") &&
+       expect(app::setCreativeEditorTransformConstraint(
+                  appState, editor.transform,
+                  cr::CreativeSelectionPlacementAxis::Z) &&
+                  editor.transform.request.rotationAxis ==
+                      cr::CreativeAxis3::Z &&
+                  near(planSize().x, 2.0) && near(planSize().y, 1.0) &&
+                  near(planSize().z, 3.0),
+              "Z rotation swaps rectangular X and Y extents") &&
+       ok;
+
+  ok = expect(app::setCreativeEditorTransformConstraint(
+                       appState, editor.transform,
+                       cr::CreativeSelectionPlacementAxis::X) &&
+                       app::cycleCreativeEditorTransformMode(
+                           appState, editor.transform) &&
+                       editor.transform.transformMode ==
+                           app::CreativeEditorTransformMode::Scale &&
+                       app::adjustCreativeEditorTransformSetting(
+                           appState, editor.transform, 1) &&
+                       cr::creativeVec3ExactlyEqual(
+                           app::creativeEditorTransformScaleFactor(
+                               editor.transform),
+                           {1.25, 1.0, 1.0}),
+                   "Scale adjusts only the active X channel") &&
+       expect(app::applyCreativeEditorTransformControl(
+                  appState, editor.transform,
+                  app::CreativeEditorTransformControl::CycleConstraint) &&
+                  editor.transform.transformMode ==
+                      app::CreativeEditorTransformMode::Scale &&
+                  editor.transform.constraint ==
+                      cr::CreativeSelectionPlacementAxis::Y &&
+                  editor.transform.request.rotationAxis ==
+                      cr::CreativeAxis3::X &&
+                  app::adjustCreativeEditorTransformSetting(
+                      appState, editor.transform, 1) &&
+                  cr::creativeVec3ExactlyEqual(
+                      app::creativeEditorTransformScaleFactor(editor.transform),
+                      {1.25, 1.25, 1.0}),
+              "Radial Axis preserves Scale mode and previous X rotation") &&
+       expect(near(planSize().x, 1.25) && near(planSize().y, 3.0) &&
+                  near(planSize().z, 2.5),
+              "non-uniform scale composes before X rotation") &&
+       ok;
+
+  app::CreativeEditorSelectionTransformState resetProbe = editor.transform;
+  ok = expect(app::applyCreativeEditorTransformControl(
+                       appState, resetProbe,
+                       app::CreativeEditorTransformControl::Reset) &&
+                       resetProbe.transformMode ==
+                           app::CreativeEditorTransformMode::Move &&
+                       resetProbe.constraint ==
+                           cr::CreativeSelectionPlacementAxis::Free &&
+                       resetProbe.rotationQuarterSteps == 0 &&
+                       !resetProbe.request.hasAxisAngleRotation &&
+                       resetProbe.request.rotationAxis == cr::CreativeAxis3::Y &&
+                       cr::creativeVec3ExactlyEqual(
+                           app::creativeEditorTransformScaleFactor(resetProbe),
+                           {1.0, 1.0, 1.0}),
+                   "reset clears every axis-aware transform channel") &&
+       ok;
+
+  const cr::CreativeObject planned = editor.transform.plan.objects.front();
+  const std::uint64_t revisionBefore = appState.facade.document().revision();
+  static_cast<void>(app::requestCreativeEditorSelectionTransformCommit(
+      editor.transform));
+  const app::CreativeEditorTransformCommitReceipt committed =
+      app::processCreativeEditorSelectionTransformPreview(
+          appState, editor.transform, true, anchor, false,
+          "test_axis_transform_commit");
+  const cr::CreativeObject* transformed = appState.facade.findObject(1U);
+  ok = expect(committed.accepted && committed.changed &&
+                  transformed != nullptr &&
+                  cr::creativeBoundsExactlyEqual(transformed->bounds,
+                                                 planned.bounds) &&
+                  appState.facade.document().revision() == revisionBefore + 1U &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "axis transform commit exactly matches preview in one undo") &&
+       ok;
+
+  const cr::CreativeHistoryApplyReceipt undo = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+  transformed = appState.facade.findObject(1U);
+  return expect(undo.accepted && transformed != nullptr &&
+                    cr::creativeBoundsExactlyEqual(transformed->bounds,
+                                                   originalBounds),
+                "axis transform undo restores original bounds") &&
          ok;
 }
 
@@ -641,6 +787,7 @@ int main() {
                   transformCopyPreviewIsTransientAndConfirmable() &&
                   selectionTransformMoveUsesControlsAndOneUndo() &&
                   selectionTransformScalePreviewMatchesCommitAndOneUndo() &&
+                  selectionTransformUsesAllAxesAndNonUniformScale() &&
                   precisionTransformConstrainsNudgesAndCommitsOnce() &&
                   lockedSelectionTransformStaysRedAndNonMutating() &&
                   largeTransformPreviewUsesOneAggregateBox();

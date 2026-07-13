@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 #include <string>
 #include <utility>
 
@@ -125,9 +126,103 @@ void refreshResolvedTarget(const cr::CreativeAppState& appState,
          state.mode == cr::CreativeSelectionPlacementMode::Move;
 }
 
-void resetUniformScale(CreativeEditorSelectionTransformState& state) noexcept {
-  state.uniformScaleIndex = kCreativeEditorDefaultUniformScaleIndex;
-  state.request.uniformScale = 1.0;
+[[nodiscard]] std::size_t scaleAxisIndex(
+    cr::CreativeSelectionPlacementAxis axis) noexcept {
+  switch (axis) {
+    case cr::CreativeSelectionPlacementAxis::X: return 0U;
+    case cr::CreativeSelectionPlacementAxis::Y: return 1U;
+    case cr::CreativeSelectionPlacementAxis::Z: return 2U;
+    case cr::CreativeSelectionPlacementAxis::Free:
+    case cr::CreativeSelectionPlacementAxis::Count:
+      return 3U;
+  }
+  return 3U;
+}
+
+[[nodiscard]] cr::CreativeAxis3 rotationAxis(
+    cr::CreativeSelectionPlacementAxis axis) noexcept {
+  switch (axis) {
+    case cr::CreativeSelectionPlacementAxis::X: return cr::CreativeAxis3::X;
+    case cr::CreativeSelectionPlacementAxis::Z: return cr::CreativeAxis3::Z;
+    case cr::CreativeSelectionPlacementAxis::Free:
+    case cr::CreativeSelectionPlacementAxis::Y:
+    case cr::CreativeSelectionPlacementAxis::Count:
+      return cr::CreativeAxis3::Y;
+  }
+  return cr::CreativeAxis3::Y;
+}
+
+[[nodiscard]] cr::CreativeVec3 scaleFactorFromIndices(
+    const CreativeEditorSelectionTransformState& state) noexcept {
+  const auto factor = [](std::size_t index) {
+    return index < kCreativeEditorScaleFactors.size()
+               ? kCreativeEditorScaleFactors[index]
+               : 1.0;
+  };
+  return {factor(state.scaleFactorIndices[0]),
+          factor(state.scaleFactorIndices[1]),
+          factor(state.scaleFactorIndices[2])};
+}
+
+void syncScaleFactor(CreativeEditorSelectionTransformState& state) noexcept {
+  state.request.scaleFactor = scaleFactorFromIndices(state);
+}
+
+void resetScaleFactor(CreativeEditorSelectionTransformState& state) noexcept {
+  state.scaleFactorIndices.fill(kCreativeEditorDefaultScaleIndex);
+  syncScaleFactor(state);
+}
+
+void syncRotation(CreativeEditorSelectionTransformState& state) noexcept {
+  state.request.quarterTurns = 0U;
+  state.request.rotationAxis = rotationAxis(state.constraint);
+  state.request.rotationRadians =
+      static_cast<double>(state.rotationQuarterSteps) * std::numbers::pi * 0.5;
+  state.request.hasAxisAngleRotation = state.rotationQuarterSteps != 0;
+}
+
+[[nodiscard]] bool stepScaleIndex(std::size_t& index,
+                                  std::int32_t direction) noexcept {
+  const std::size_t before = index;
+  if (direction < 0 && index > 0U) {
+    --index;
+  } else if (direction > 0 &&
+             index + 1U < kCreativeEditorScaleFactors.size()) {
+    ++index;
+  }
+  return index != before;
+}
+
+[[nodiscard]] bool adjustScaleFactor(
+    CreativeEditorSelectionTransformState& state,
+    std::int32_t direction) noexcept {
+  bool changed = false;
+  const std::size_t axisIndex = scaleAxisIndex(state.constraint);
+  if (axisIndex < state.scaleFactorIndices.size()) {
+    changed = stepScaleIndex(state.scaleFactorIndices[axisIndex], direction);
+  } else {
+    for (std::size_t& index : state.scaleFactorIndices) {
+      changed = stepScaleIndex(index, direction) || changed;
+    }
+  }
+  if (changed) {
+    syncScaleFactor(state);
+  }
+  return changed;
+}
+
+[[nodiscard]] bool adjustRotation(
+    CreativeEditorSelectionTransformState& state,
+    std::int32_t direction) noexcept {
+  if (direction == 0) {
+    return false;
+  }
+  const std::int8_t before = state.rotationQuarterSteps;
+  const std::int32_t next =
+      (static_cast<std::int32_t>(before) + (direction < 0 ? -1 : 1)) % 4;
+  state.rotationQuarterSteps = static_cast<std::int8_t>(next);
+  syncRotation(state);
+  return state.rotationQuarterSteps != before;
 }
 
 [[nodiscard]] bool beginTransformPreview(
@@ -204,6 +299,9 @@ void resetUniformScale(CreativeEditorSelectionTransformState& state) noexcept {
   request.quarterTurns = state.request.quarterTurns;
   request.mirrorX = state.request.mirrorX;
   request.mirrorZ = state.request.mirrorZ;
+  request.hasAxisAngleRotation = state.request.hasAxisAngleRotation;
+  request.rotationAxis = state.request.rotationAxis;
+  request.rotationRadians = state.request.rotationRadians;
   return request;
 }
 
@@ -336,11 +434,9 @@ std::string_view toString(CreativeEditorTransformMode mode) noexcept {
   return "INVALID";
 }
 
-double creativeEditorTransformUniformScale(
+cr::CreativeVec3 creativeEditorTransformScaleFactor(
     const CreativeEditorSelectionTransformState& state) noexcept {
-  return state.uniformScaleIndex < kCreativeEditorUniformScaleFactors.size()
-             ? kCreativeEditorUniformScaleFactors[state.uniformScaleIndex]
-             : 1.0;
+  return scaleFactorFromIndices(state);
 }
 
 bool beginCreativeEditorClipboardTransformPreview(
@@ -409,6 +505,9 @@ bool setCreativeEditorTransformConstraint(
     return false;
   }
   state.constraint = next;
+  if (state.transformMode == CreativeEditorTransformMode::Rotate) {
+    syncRotation(state);
+  }
   state.lastCommit = {};
   state.lastNudge = {};
   refreshResolvedTarget(appState, state);
@@ -444,6 +543,7 @@ bool cycleCreativeEditorTransformMode(
   switch (state.transformMode) {
     case CreativeEditorTransformMode::Move:
       state.transformMode = CreativeEditorTransformMode::Rotate;
+      syncRotation(state);
       break;
     case CreativeEditorTransformMode::Rotate:
       state.transformMode = transformScaleAvailable(state)
@@ -484,30 +584,21 @@ bool adjustCreativeEditorTransformSetting(
       return true;
     }
     case CreativeEditorTransformMode::Rotate: {
-      const std::uint8_t before = state.request.quarterTurns;
-      state.request.quarterTurns = static_cast<std::uint8_t>(
-          (state.request.quarterTurns + (direction < 0 ? 3U : 1U)) % 4U);
+      const bool changed = adjustRotation(state, direction);
+      if (!changed) {
+        return false;
+      }
       state.lastCommit = {};
       refreshTransformPlan(appState, state);
-      return state.request.quarterTurns != before;
+      return true;
     }
     case CreativeEditorTransformMode::Scale: {
       if (!transformScaleAvailable(state)) {
         return false;
       }
-      const std::size_t before = state.uniformScaleIndex;
-      if (direction < 0 && state.uniformScaleIndex > 0U) {
-        --state.uniformScaleIndex;
-      } else if (direction > 0 &&
-                 state.uniformScaleIndex + 1U <
-                     kCreativeEditorUniformScaleFactors.size()) {
-        ++state.uniformScaleIndex;
-      }
-      if (state.uniformScaleIndex == before) {
+      if (!adjustScaleFactor(state, direction)) {
         return false;
       }
-      const double scale = creativeEditorTransformUniformScale(state);
-      state.request.uniformScale = scale;
       state.lastCommit = {};
       refreshTransformPlan(appState, state);
       return true;
@@ -530,23 +621,24 @@ bool applyCreativeEditorTransformControl(
   switch (control) {
     case CreativeEditorTransformControl::RotatePositive:
       state.transformMode = CreativeEditorTransformMode::Rotate;
-      state.request.quarterTurns =
-          static_cast<std::uint8_t>((state.request.quarterTurns + 1U) % 4U);
+      changed = adjustRotation(state, 1);
       break;
     case CreativeEditorTransformControl::MirrorX:
       state.transformMode = CreativeEditorTransformMode::Rotate;
       state.request.mirrorX = !state.request.mirrorX;
       break;
     case CreativeEditorTransformControl::CycleConstraint:
-      state.transformMode = CreativeEditorTransformMode::Move;
       state.constraint = nextConstraint(state.constraint);
+      if (state.transformMode == CreativeEditorTransformMode::Rotate) {
+        syncRotation(state);
+      }
       state.lastNudge = {};
-      targetChanged = true;
+      targetChanged = state.transformMode == CreativeEditorTransformMode::Move;
       break;
     case CreativeEditorTransformControl::ToggleMode:
       if (state.mode == cr::CreativeSelectionPlacementMode::Move) {
         state.mode = cr::CreativeSelectionPlacementMode::Copy;
-        resetUniformScale(state);
+        resetScaleFactor(state);
         if (state.transformMode == CreativeEditorTransformMode::Scale) {
           state.transformMode = CreativeEditorTransformMode::Move;
         }
@@ -569,23 +661,26 @@ bool applyCreativeEditorTransformControl(
       break;
     case CreativeEditorTransformControl::RotateNegative:
       state.transformMode = CreativeEditorTransformMode::Rotate;
-      state.request.quarterTurns =
-          static_cast<std::uint8_t>((state.request.quarterTurns + 3U) % 4U);
+      changed = adjustRotation(state, -1);
       break;
     case CreativeEditorTransformControl::Reset:
-      changed = state.request.quarterTurns != 0U || state.request.mirrorX ||
+      changed = state.rotationQuarterSteps != 0 || state.request.mirrorX ||
                 state.request.mirrorZ ||
                 state.constraint != cr::CreativeSelectionPlacementAxis::Free ||
                 !cr::creativeVec3ExactlyEqual(state.nudgeOffset, {}) ||
-                state.uniformScaleIndex !=
-                    kCreativeEditorDefaultUniformScaleIndex ||
+                std::any_of(state.scaleFactorIndices.begin(),
+                            state.scaleFactorIndices.end(),
+                            [](std::size_t index) {
+                              return index != kCreativeEditorDefaultScaleIndex;
+                            }) ||
                 state.transformMode != CreativeEditorTransformMode::Move;
-      state.request.quarterTurns = 0U;
+      state.rotationQuarterSteps = 0;
+      state.constraint = cr::CreativeSelectionPlacementAxis::Free;
+      syncRotation(state);
       state.request.mirrorX = false;
       state.request.mirrorZ = false;
-      resetUniformScale(state);
+      resetScaleFactor(state);
       state.transformMode = CreativeEditorTransformMode::Move;
-      state.constraint = cr::CreativeSelectionPlacementAxis::Free;
       state.nudgeOffset = {};
       state.lastNudge = {};
       targetChanged = true;

@@ -201,11 +201,26 @@ void appendText(std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
   glyphs.insert(glyphs.end(), layout.quads.begin(), layout.quads.end());
 }
 
+[[nodiscard]] std::string_view activeRotationAxisLabel(
+    const CreativeEditorSelectionTransformState& state) noexcept {
+  switch (state.constraint) {
+    case cr::CreativeSelectionPlacementAxis::X: return "X";
+    case cr::CreativeSelectionPlacementAxis::Z: return "Z";
+    case cr::CreativeSelectionPlacementAxis::Free:
+    case cr::CreativeSelectionPlacementAxis::Y:
+    case cr::CreativeSelectionPlacementAxis::Count:
+      return "Y";
+  }
+  return "Y";
+}
+
 [[nodiscard]] std::string controlLabel(
     const CreativeEditorSelectionTransformState& state,
     CreativeEditorTransformControl control) {
   switch (control) {
-    case CreativeEditorTransformControl::RotatePositive: return "ROTATE +90";
+    case CreativeEditorTransformControl::RotatePositive:
+      return std::string{"ROTATE "} +
+             std::string{activeRotationAxisLabel(state)} + " +90";
     case CreativeEditorTransformControl::MirrorX: return "MIRROR X";
     case CreativeEditorTransformControl::CycleConstraint:
       return std::string{"AXIS "} + std::string{cr::toString(state.constraint)};
@@ -216,7 +231,9 @@ void appendText(std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
     case CreativeEditorTransformControl::Confirm: return "CONFIRM";
     case CreativeEditorTransformControl::Cancel: return "CANCEL";
     case CreativeEditorTransformControl::MirrorZ: return "MIRROR Z";
-    case CreativeEditorTransformControl::RotateNegative: return "ROTATE -90";
+    case CreativeEditorTransformControl::RotateNegative:
+      return std::string{"ROTATE "} +
+             std::string{activeRotationAxisLabel(state)} + " -90";
     case CreativeEditorTransformControl::Reset: return "RESET";
     case CreativeEditorTransformControl::Count: return "UNKNOWN";
   }
@@ -302,12 +319,14 @@ void appendCreativeEditorTransformOverlay(
       std::string(cr::toString(state.constraint)).c_str(),
       state.fineNudgeActive ? "FINE" : "STEP", visibleStep);
   char valueStatus[160];
+  const cr::CreativeVec3 scale = creativeEditorTransformScaleFactor(state);
   std::snprintf(
       valueStatus, sizeof(valueStatus),
-      "D %+.3g %+.3g %+.3g | R%u | S%.2f%s%s", displacement.x,
-      displacement.y, displacement.z,
-      static_cast<unsigned>(state.request.quarterTurns) * 90U,
-      creativeEditorTransformUniformScale(state),
+      "D %+.3g %+.3g %+.3g | R%s %+.0f | S %.2g %.2g %.2g%s%s",
+      displacement.x, displacement.y, displacement.z,
+      std::string(cr::toString(state.request.rotationAxis)).c_str(),
+      static_cast<double>(state.rotationQuarterSteps) * 90.0, scale.x,
+      scale.y, scale.z,
       state.request.mirrorX ? " | MX" : "",
       state.request.mirrorZ ? " | MZ" : "");
   const bool ready = state.targetPositionable && state.plan.accepted;

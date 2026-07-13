@@ -729,8 +729,31 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
   transformAdjustment =
       findHint(scaleTransform, cr::CreativeInputActionId::QuickEditDecrease);
   ok = expect(transformAdjustment != nullptr &&
-                  transformAdjustment->label.view() == "Scale",
+                  transformAdjustment->label.view() == "Scale all",
               "transform ribbon follows the active scale channel") &&
+       ok;
+  editor.transform.constraint = cr::CreativeSelectionPlacementAxis::Z;
+  const cr::CreativeActionHintFrame zScaleTransform =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::TransformPreview,
+          cr::CreativeControlDevice::Gamepad, false);
+  transformAdjustment =
+      findHint(zScaleTransform, cr::CreativeInputActionId::QuickEditDecrease);
+  ok = expect(transformAdjustment != nullptr &&
+                  transformAdjustment->label.view() == "Scale Z",
+              "transform ribbon names the active scale axis") &&
+       ok;
+  editor.transform.transformMode = CreativeEditorTransformMode::Rotate;
+  editor.transform.constraint = cr::CreativeSelectionPlacementAxis::X;
+  const cr::CreativeActionHintFrame xRotateTransform =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::TransformPreview,
+          cr::CreativeControlDevice::Gamepad, false);
+  transformAdjustment =
+      findHint(xRotateTransform, cr::CreativeInputActionId::QuickEditDecrease);
+  ok = expect(transformAdjustment != nullptr &&
+                  transformAdjustment->label.view() == "Rotate X",
+              "transform ribbon names the active rotation axis") &&
        ok;
 
   const cr::CreativeActionHintFrame catalog = resolveCreativeEditorActionHints(

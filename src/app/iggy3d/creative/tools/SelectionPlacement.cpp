@@ -23,8 +23,8 @@ namespace {
 }
 
 [[nodiscard]] CreativeVec3 multiply(CreativeVec3 lhs,
-                                    double rhs) noexcept {
-  return {lhs.x * rhs, lhs.y * rhs, lhs.z * rhs};
+                                    CreativeVec3 rhs) noexcept {
+  return {lhs.x * rhs.x, lhs.y * rhs.y, lhs.z * rhs.z};
 }
 
 [[nodiscard]] bool samePathPoints(
@@ -159,16 +159,16 @@ void addNudgeStep(CreativeVec3& offset,
 [[nodiscard]] CreativeVec3 transformPlacementOffset(
     CreativeVec3 offset,
     const CreativeSelectionPlacementRequest& request) noexcept {
-  offset = multiply(offset, request.uniformScale);
-  if (request.hasAxisAngleRotation) {
-    return rotateCreativeVectorAxisAngle(offset, request.rotationAxis,
-                                         request.rotationRadians);
-  }
+  offset = multiply(offset, request.scaleFactor);
   if (request.mirrorX) {
     offset.x = -offset.x;
   }
   if (request.mirrorZ) {
     offset.z = -offset.z;
+  }
+  if (request.hasAxisAngleRotation) {
+    return rotateCreativeVectorAxisAngle(offset, request.rotationAxis,
+                                         request.rotationRadians);
   }
   switch (request.quarterTurns) {
     case 0U: return offset;
@@ -190,13 +190,6 @@ void addNudgeStep(CreativeVec3& offset,
 [[nodiscard]] CreativeVec3 transformPlacementRotation(
     CreativeVec3 eulerRadians,
     const CreativeSelectionPlacementRequest& request) noexcept {
-  if (request.hasAxisAngleRotation) {
-    return composeCreativeWorldAxisRotation(
-        eulerRadians, request.rotationAxis, request.rotationRadians);
-  }
-  if (request.quarterTurns == 0U && !request.mirrorX && !request.mirrorZ) {
-    return eulerRadians;
-  }
   double transformed = eulerRadians.y;
   if (request.mirrorX) {
     transformed = -transformed;
@@ -207,6 +200,10 @@ void addNudgeStep(CreativeVec3& offset,
   transformed += static_cast<double>(request.quarterTurns) *
                  std::numbers::pi * 0.5;
   eulerRadians.y = std::remainder(transformed, std::numbers::pi * 2.0);
+  if (request.hasAxisAngleRotation) {
+    return composeCreativeWorldAxisRotation(
+        eulerRadians, request.rotationAxis, request.rotationRadians);
+  }
   return eulerRadians;
 }
 
@@ -262,7 +259,7 @@ void addNudgeStep(CreativeVec3& offset,
     output.transform.rotationEulerRadians = transformPlacementRotation(
         source.transform.rotationEulerRadians, request);
     output.transform.scale =
-        multiply(source.transform.scale, request.uniformScale);
+        multiply(source.transform.scale, request.scaleFactor);
     if (objectHasBounds(source.kind)) {
       output.bounds = translateBounds(
           source.bounds,
@@ -530,17 +527,15 @@ CreativeSelectionPlacementPlan planCreativeSelectionPlacement(
     plan.reasonCode = "selection_placement_source_empty";
     return plan;
   }
-  const bool legacyRotationRequested =
-      request.quarterTurns != 0U || request.mirrorX || request.mirrorZ;
   if (!validPlacementMode(request.mode) || request.quarterTurns > 3U ||
       !isFiniteCreativeVec3(request.sourceAnchor) ||
       !isFiniteCreativeVec3(request.targetAnchor) ||
-      !std::isfinite(request.uniformScale) || request.uniformScale <= 0.0 ||
+      !isPositiveCreativeVec3(request.scaleFactor) ||
       (request.mode == CreativeSelectionPlacementMode::Copy &&
-       request.uniformScale != 1.0) ||
+       !creativeVec3ExactlyEqual(request.scaleFactor, {1.0, 1.0, 1.0})) ||
       !isValidCreativeAxis3(request.rotationAxis) ||
       !std::isfinite(request.rotationRadians) ||
-      (request.hasAxisAngleRotation && legacyRotationRequested)) {
+      (request.hasAxisAngleRotation && request.quarterTurns != 0U)) {
     plan.status = CreativeSelectionPlacementStatus::InvalidRequest;
     plan.reasonCode = "selection_placement_request_invalid";
     return plan;

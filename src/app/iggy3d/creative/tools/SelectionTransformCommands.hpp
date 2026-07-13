@@ -1,16 +1,17 @@
 #pragma once
 
-#include "app/iggy3d/creative/document/DocumentMutation.hpp"
 #include "app/iggy3d/creative/tools/SelectionPlacement.hpp"
 
 #include <cstdint>
 #include <span>
 #include <string>
 #include <string_view>
-#include <vector>
 
 namespace iggy3d::creative {
 
+// Immediate commands are a compatibility adapter over SelectionPlacement.
+// Previewed and immediate transforms therefore share geometry, validation,
+// mutation generation, and atomic application.
 enum class CreativeTransformCommandKind : std::uint8_t {
   Translate,
   RotateYaw,
@@ -54,28 +55,6 @@ struct CreativeTransformCommandReceipt {
   std::string message = "transform_not_requested";
 };
 
-struct CreativeDuplicateCommandRequest {
-  CreativeVec3 offset{1.0, 0.0, 1.0};
-  bool appendCopySuffix = true;
-};
-
-struct CreativeDuplicateCommandReceipt {
-  bool requested = false;
-  bool accepted = false;
-  bool changed = false;
-  CreativeTransformCommandStatus status = CreativeTransformCommandStatus::Unknown;
-  std::uint64_t requestedObjectCount = 0;
-  std::uint64_t duplicatedObjectCount = 0;
-  CreativeObjectId failedObjectId = kInvalidObjectId;
-  std::uint64_t revisionBefore = 0;
-  std::uint64_t revisionAfter = 0;
-  std::vector<CreativeObjectId> duplicatedObjectIds;
-  // Mirrors the requested hierarchy roots after ID remapping. Callers should
-  // select these roots rather than every copied descendant.
-  std::vector<CreativeObjectId> duplicatedSelectionObjectIds;
-  std::string message = "duplicate_not_requested";
-};
-
 [[nodiscard]] std::string_view toString(
     CreativeTransformCommandKind kind) noexcept;
 [[nodiscard]] std::string_view toString(
@@ -85,10 +64,5 @@ struct CreativeDuplicateCommandReceipt {
     CreativeDocument& document,
     std::span<const CreativeObjectId> objectIds,
     const CreativeTransformCommandRequest& request);
-
-[[nodiscard]] CreativeDuplicateCommandReceipt duplicateDocumentObjectsAtomically(
-    CreativeDocument& document,
-    std::span<const CreativeObjectId> objectIds,
-    const CreativeDuplicateCommandRequest& request = {});
 
 }  // namespace iggy3d::creative

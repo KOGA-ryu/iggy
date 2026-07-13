@@ -32,6 +32,15 @@ enum class CreativeClipboardExternalParentPolicy : std::uint8_t {
   PreserveIfPresent,
 };
 
+enum class CreativeDuplicateCommandStatus : std::uint8_t {
+  NotRequested,
+  EmptySelection,
+  InvalidRequest,
+  MissingObject,
+  Applied,
+  Rejected,
+};
+
 struct CreativeClipboard {
   CreativeDocumentId sourceDocumentId = kInvalidDocumentId;
   std::uint64_t sourceRevision = 0;
@@ -121,8 +130,33 @@ struct CreativeClipboardCutReceipt {
   std::string reasonCode = "creative_clipboard_not_requested";
 };
 
+struct CreativeDuplicateCommandRequest {
+  CreativeVec3 offset{1.0, 0.0, 1.0};
+  bool appendCopySuffix = true;
+};
+
+struct CreativeDuplicateCommandReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  CreativeDuplicateCommandStatus status =
+      CreativeDuplicateCommandStatus::NotRequested;
+  std::uint64_t requestedObjectCount = 0;
+  std::uint64_t duplicatedObjectCount = 0;
+  CreativeObjectId failedObjectId = kInvalidObjectId;
+  std::uint64_t revisionBefore = 0;
+  std::uint64_t revisionAfter = 0;
+  std::vector<CreativeObjectId> duplicatedObjectIds;
+  // Mirrors requested hierarchy roots after ID remapping. Callers should
+  // select these roots rather than every copied descendant.
+  std::vector<CreativeObjectId> duplicatedSelectionObjectIds;
+  std::string message = "duplicate_not_requested";
+};
+
 [[nodiscard]] std::string_view toString(
     CreativeClipboardStatus status) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeDuplicateCommandStatus status) noexcept;
 [[nodiscard]] bool creativeClipboardEmpty(
     const CreativeClipboard& clipboard) noexcept;
 void clearCreativeClipboard(CreativeClipboard& clipboard) noexcept;
@@ -154,5 +188,12 @@ pasteCreativeClipboardBatchAtomically(
     CreativeDocument& document,
     std::span<const CreativeObjectId> objectIds,
     CreativeClipboard& outClipboard);
+
+// Resolves hierarchy roots, copies the complete hierarchy once, and remaps
+// internal parents through the clipboard's atomic paste path.
+[[nodiscard]] CreativeDuplicateCommandReceipt duplicateDocumentObjectsAtomically(
+    CreativeDocument& document,
+    std::span<const CreativeObjectId> objectIds,
+    const CreativeDuplicateCommandRequest& request = {});
 
 }  // namespace iggy3d::creative

@@ -1,5 +1,5 @@
 #include "app/iggy3d/creative/tools/Pattern.hpp"
-#include "app/iggy3d/creative/tools/Transform.hpp"
+#include "app/iggy3d/creative/tools/SelectionPlacement.hpp"
 
 #include <array>
 #include <cmath>
@@ -272,6 +272,16 @@ bool axisAngleClipboardPasteRotatesRigidly() {
                                           ? nullptr
                                           : document.findObject(
                                                 zReceipt.pastedObjectIds.front());
+  const bool zRotationMatches =
+      zReceipt.accepted && zPasted != nullptr &&
+      near(zPasted->transform.position.x, -2.0) &&
+      near(zPasted->transform.position.y, 0.0) &&
+      near(zPasted->transform.position.z, 0.0) &&
+      near(zPasted->transform.rotationEulerRadians.z,
+           std::numbers::pi * 0.5);
+  request.mirrorX = true;
+  const cr::CreativeClipboardPasteReceipt mirroredRotation =
+      cr::pasteCreativeClipboardAtomically(document, clipboard, request);
   const std::size_t countBeforeInvalid = document.objectCount();
   const std::uint64_t revisionBeforeInvalid = document.revision();
   request.quarterTurns = 1U;
@@ -279,13 +289,10 @@ bool axisAngleClipboardPasteRotatesRigidly() {
       cr::pasteCreativeClipboardAtomically(document, clipboard, request);
   return expect(xRotationMatches,
                 "axis-angle paste revolves and orients around X") &&
-         expect(zReceipt.accepted && zPasted != nullptr &&
-                    near(zPasted->transform.position.x, -2.0) &&
-                    near(zPasted->transform.position.y, 0.0) &&
-                    near(zPasted->transform.position.z, 0.0) &&
-                    near(zPasted->transform.rotationEulerRadians.z,
-                         std::numbers::pi * 0.5),
+         expect(zRotationMatches,
                 "axis-angle paste supports Z-axis rigid rotation") &&
+         expect(mirroredRotation.accepted,
+                "axis-angle paste composes with reflection") &&
          expect(!mixedRotation.accepted &&
                     document.objectCount() == countBeforeInvalid &&
                     document.revision() == revisionBeforeInvalid,
