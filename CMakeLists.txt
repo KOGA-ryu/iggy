@@ -120,6 +120,8 @@ target_sources(iggy3d
     src/app/iggy3d/creative/render/CreativeScreenProjection.cpp
     src/app/iggy3d/creative/render/CreativeSceneFrame.cpp
     src/app/iggy3d/creative/world/DocumentSection.cpp
+    src/app/iggy3d/creative/world/DocumentSectionRecords.cpp
+    src/app/iggy3d/creative/world/DocumentSectionFields.cpp
     src/app/iggy3d/save/Catalog.cpp
     src/app/iggy3d/save/CatalogProjector.cpp
     src/app/iggy3d/creative/world/WorldService.cpp

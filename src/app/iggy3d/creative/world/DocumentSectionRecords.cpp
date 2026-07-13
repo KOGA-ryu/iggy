@@ -1,0 +1,243 @@
+#include "app/iggy3d/creative/world/DocumentSectionInternal.hpp"
+
+#include <limits>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace iggy3d::document_section_internal {
+namespace {
+
+[[nodiscard]] SaveCreativeDocumentVec3Record toSaveVec3(
+    creative::CreativeVec3 value) noexcept {
+  return {value.x, value.y, value.z};
+}
+
+[[nodiscard]] creative::CreativeVec3 toCreativeVec3(
+    SaveCreativeDocumentVec3Record value) noexcept {
+  return {value.x, value.y, value.z};
+}
+
+[[nodiscard]] SaveCreativeDocumentTransformRecord toSaveTransform(
+    creative::CreativeTransform transform) noexcept {
+  SaveCreativeDocumentTransformRecord record;
+  record.position = toSaveVec3(transform.position);
+  record.rotation = toSaveVec3(transform.rotationEulerRadians);
+  record.scale = toSaveVec3(transform.scale);
+  return record;
+}
+
+[[nodiscard]] creative::CreativeTransform toCreativeTransform(
+    SaveCreativeDocumentTransformRecord record) noexcept {
+  creative::CreativeTransform transform;
+  transform.position = toCreativeVec3(record.position);
+  transform.rotationEulerRadians = toCreativeVec3(record.rotation);
+  transform.scale = toCreativeVec3(record.scale);
+  return transform;
+}
+
+}  // namespace
+
+[[nodiscard]] SaveCreativeDocumentBoundsRecord toSaveBounds(
+    creative::CreativeBounds bounds) noexcept {
+  return {toSaveVec3(bounds.min), toSaveVec3(bounds.max)};
+}
+
+[[nodiscard]] creative::CreativeBounds toCreativeBounds(
+    SaveCreativeDocumentBoundsRecord record) noexcept {
+  return {toCreativeVec3(record.min), toCreativeVec3(record.max)};
+}
+
+namespace {
+
+[[nodiscard]] SaveCreativeDocumentVec3Record toSavePathPoint(
+    creative::CreativePathPoint point) noexcept {
+  return toSaveVec3(point.position);
+}
+
+[[nodiscard]] creative::CreativePathPoint toCreativePathPoint(
+    SaveCreativeDocumentVec3Record record) noexcept {
+  return {toCreativeVec3(record)};
+}
+
+}  // namespace
+
+[[nodiscard]] std::string_view toSaveUnits(
+    creative::CreativeUnits units) noexcept {
+  switch (units) {
+    case creative::CreativeUnits::Meters:
+      return "Meters";
+  }
+  return {};
+}
+
+[[nodiscard]] bool parseUnits(std::string_view value,
+                              creative::CreativeUnits& out) noexcept {
+  if (value == "Meters") {
+    out = creative::CreativeUnits::Meters;
+    return true;
+  }
+  return false;
+}
+
+namespace {
+
+[[nodiscard]] std::string_view toSaveSnapMode(
+    creative::CreativeDocumentSnapMode mode) noexcept {
+  switch (mode) {
+    case creative::CreativeDocumentSnapMode::Disabled:
+      return "Disabled";
+    case creative::CreativeDocumentSnapMode::Grid:
+      return "Grid";
+  }
+  return {};
+}
+
+[[nodiscard]] bool parseSnapMode(
+    std::string_view value,
+    creative::CreativeDocumentSnapMode& out) noexcept {
+  if (value == "Disabled") {
+    out = creative::CreativeDocumentSnapMode::Disabled;
+    return true;
+  }
+  if (value == "Grid") {
+    out = creative::CreativeDocumentSnapMode::Grid;
+    return true;
+  }
+  return false;
+}
+
+[[nodiscard]] bool toCreativeGridSize(
+    std::uint32_t width,
+    std::uint32_t height,
+    std::uint32_t depth,
+    creative::CreativeGridSize3& out) noexcept {
+  constexpr auto maxValue =
+      static_cast<std::uint32_t>(std::numeric_limits<std::int32_t>::max());
+  if (width > maxValue || height > maxValue || depth > maxValue) {
+    return false;
+  }
+  out.width = static_cast<std::int32_t>(width);
+  out.height = static_cast<std::int32_t>(height);
+  out.depth = static_cast<std::int32_t>(depth);
+  return true;
+}
+
+[[nodiscard]] bool toSaveGridDimension(std::int32_t value,
+                                       std::uint32_t& out) noexcept {
+  if (value < 0) {
+    return false;
+  }
+  out = static_cast<std::uint32_t>(value);
+  return true;
+}
+
+}  // namespace
+
+[[nodiscard]] bool toSaveGridSettings(
+    creative::CreativeGridSettings settings,
+    SaveCreativeDocumentSection& section) noexcept {
+  section.gridOrigin = toSaveVec3(settings.origin);
+  section.cellSizeMeters = settings.cellSizeMeters;
+  return toSaveGridDimension(settings.size.width, section.gridWidth) &&
+         toSaveGridDimension(settings.size.height, section.gridHeight) &&
+         toSaveGridDimension(settings.size.depth, section.gridDepth);
+}
+
+[[nodiscard]] bool toCreativeGridSettings(
+    const SaveCreativeDocumentSection& section,
+    creative::CreativeGridSettings& out) noexcept {
+  out.origin = toCreativeVec3(section.gridOrigin);
+  out.cellSizeMeters = section.cellSizeMeters;
+  return toCreativeGridSize(section.gridWidth,
+                            section.gridHeight,
+                            section.gridDepth,
+                            out.size);
+}
+
+[[nodiscard]] bool toSaveSnapSettings(
+    creative::CreativeDocumentSnapSettings settings,
+    SaveCreativeDocumentSection& section) noexcept {
+  const std::string_view snapMode = toSaveSnapMode(settings.mode);
+  if (snapMode.empty()) {
+    return false;
+  }
+  section.snapMode = std::string{snapMode};
+  section.snapAxes = settings.axes;
+  section.snapStepX = settings.stepX;
+  section.snapStepY = settings.stepY;
+  section.snapStepZ = settings.stepZ;
+  section.snapOriginX = settings.originX;
+  section.snapOriginY = settings.originY;
+  section.snapOriginZ = settings.originZ;
+  return true;
+}
+
+[[nodiscard]] bool toCreativeSnapSettings(
+    const SaveCreativeDocumentSection& section,
+    creative::CreativeDocumentSnapSettings& out) noexcept {
+  if (!parseSnapMode(section.snapMode, out.mode) ||
+      section.snapAxes > std::numeric_limits<
+                             creative::CreativeDocumentSnapAxisMask>::max()) {
+    return false;
+  }
+  out.axes =
+      static_cast<creative::CreativeDocumentSnapAxisMask>(section.snapAxes);
+  out.stepX = section.snapStepX;
+  out.stepY = section.snapStepY;
+  out.stepZ = section.snapStepZ;
+  out.originX = section.snapOriginX;
+  out.originY = section.snapOriginY;
+  out.originZ = section.snapOriginZ;
+  return creative::isValidCreativeDocumentSnapSettings(out);
+}
+
+[[nodiscard]] SaveCreativeDocumentObjectRecord toSaveObject(
+    const creative::CreativeObject& object) {
+  SaveCreativeDocumentObjectRecord record;
+  record.id = object.id;
+  record.kind = std::string{creative::serializedObjectKindId(object.kind)};
+  record.name = object.name;
+  record.transform = toSaveTransform(object.transform);
+  record.bounds = toSaveBounds(object.bounds);
+  record.layerId = object.layerId;
+  record.visible = object.visible;
+  record.locked = object.locked;
+  record.hasParent = object.parentId.has_value();
+  record.parentId = object.parentId.value_or(creative::kInvalidObjectId);
+  record.tags = object.tags;
+  record.pathPoints.reserve(object.pathPoints.size());
+  for (const creative::CreativePathPoint& point : object.pathPoints) {
+    record.pathPoints.push_back(toSavePathPoint(point));
+  }
+  return record;
+}
+
+[[nodiscard]] bool toCreativeObject(
+    const SaveCreativeDocumentObjectRecord& record,
+    creative::CreativeObject& out) noexcept {
+  creative::CreativeObjectKind kind = creative::CreativeObjectKind::Unknown;
+  if (!creative::parseSerializedObjectKindId(record.kind, kind)) {
+    return false;
+  }
+  out.id = record.id;
+  out.kind = kind;
+  out.name = record.name;
+  out.transform = toCreativeTransform(record.transform);
+  out.bounds = toCreativeBounds(record.bounds);
+  out.layerId = record.layerId;
+  out.visible = record.visible;
+  out.locked = record.locked;
+  out.parentId = record.hasParent
+                     ? std::optional<creative::CreativeObjectId>{record.parentId}
+                     : std::nullopt;
+  out.tags = record.tags;
+  out.pathPoints.reserve(record.pathPoints.size());
+  for (const SaveCreativeDocumentVec3Record& point : record.pathPoints) {
+    out.pathPoints.push_back(toCreativePathPoint(point));
+  }
+  return true;
+}
+
+}  // namespace iggy3d::document_section_internal
