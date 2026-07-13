@@ -17,17 +17,20 @@ RenderReason reason(std::string_view code) {
   return {"pipeline_layout_create_failed", "pipeline layout create failed"};
 }
 
-RenderReceipt baseReceipt(std::string_view result, std::string_view reasonCode) {
+RenderReceipt baseReceipt(std::string_view result,
+                          std::string_view reasonCode,
+                          const PipelineLayoutKey& key) {
   RenderReceipt receipt;
   appendReceiptField(receipt, "receipt_version", "1");
   appendReceiptField(receipt, "repo", "iggy3d");
   appendReceiptField(receipt, "file_plan", "src/render/vulkan/PipelineLayout.cpp");
   appendReceiptField(receipt, "packet_order", "6");
   appendReceiptField(receipt, "backend", "vulkan");
-  appendReceiptField(receipt, "pipeline_family", "first_room");
-  appendReceiptField(receipt, "pipeline_layout", "push_constants_only");
+  appendReceiptField(receipt, "pipeline_family", key.family);
+  appendReceiptField(receipt, "pipeline_layout", key.layout);
   appendReceiptField(receipt, "descriptor_set_layout_count",
-                     static_cast<std::uint64_t>(kFirstRoomDescriptorSetLayoutCount));
+                     static_cast<std::uint64_t>(
+                         key.descriptorSetLayoutCount));
   appendReceiptField(receipt, "push_constant_clip_from_model_size",
                      static_cast<std::uint64_t>(kFirstRoomPushConstantSize));
   appendReceiptField(receipt, "result", result);
@@ -43,6 +46,13 @@ bool firstRoomPipelineLayoutKeyValid(const PipelineLayoutKey& key) {
          key.pushConstantSize == kFirstRoomPushConstantSize;
 }
 
+bool materialTexturePipelineLayoutKeyValid(const PipelineLayoutKey& key) {
+  return key.family == "first_room" && key.layout == "material_texture" &&
+         key.descriptorSetLayoutCount ==
+             kMaterialTextureDescriptorSetLayoutCount &&
+         key.pushConstantSize == kFirstRoomPushConstantSize;
+}
+
 VkPushConstantRange firstRoomPushConstantRange() {
   VkPushConstantRange range{};
   range.stageFlags = static_cast<VkShaderStageFlags>(0x00000001U);
@@ -55,40 +65,48 @@ PipelineLayoutResult createFirstRoomPipelineLayout(const PipelineLayoutCreateInf
   PipelineLayoutResult result;
   result.record.key = createInfo.key;
   result.record.pushConstantRange = firstRoomPushConstantRange();
-  if (!firstRoomPipelineLayoutKeyValid(createInfo.key)) {
+  const bool keyValid = firstRoomPipelineLayoutKeyValid(createInfo.key) ||
+                        materialTexturePipelineLayoutKeyValid(createInfo.key);
+  if (!keyValid ||
+      (createInfo.key.descriptorSetLayoutCount > 0U &&
+       createInfo.descriptorSetLayouts == nullptr)) {
     result.reason = reason("pipeline_push_constant_mismatch");
-    result.receipt = baseReceipt("fail", result.reason.code);
+    result.receipt = baseReceipt("fail", result.reason.code,
+                                 createInfo.key);
     return result;
   }
 #if defined(IGGY3D_HAS_VULKAN)
   if (createInfo.device == VK_NULL_HANDLE) {
     result.reason = reason("pipeline_layout_create_failed");
-    result.receipt = baseReceipt("fail", result.reason.code);
+    result.receipt = baseReceipt("fail", result.reason.code,
+                                 createInfo.key);
     return result;
   }
   const VkPushConstantRange range = firstRoomPushConstantRange();
   VkPipelineLayoutCreateInfo layoutInfo{};
   layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-  layoutInfo.setLayoutCount = 0U;
-  layoutInfo.pSetLayouts = nullptr;
+  layoutInfo.setLayoutCount = createInfo.key.descriptorSetLayoutCount;
+  layoutInfo.pSetLayouts = createInfo.descriptorSetLayouts;
   layoutInfo.pushConstantRangeCount = 1U;
   layoutInfo.pPushConstantRanges = &range;
   VkPipelineLayout layout = VK_NULL_HANDLE;
   if (vkCreatePipelineLayout(createInfo.device, &layoutInfo, nullptr, &layout) != VK_SUCCESS) {
     result.reason = reason("pipeline_layout_create_failed");
-    result.receipt = baseReceipt("fail", result.reason.code);
+    result.receipt = baseReceipt("fail", result.reason.code,
+                                 createInfo.key);
     return result;
   }
   result.record.layout = layout;
 #endif
   result.outcome = RenderOutcome::Ok;
   result.reason = reason("packet6_resource_ready");
-  result.receipt = baseReceipt("pass", result.reason.code);
+  result.receipt = baseReceipt("pass", result.reason.code, createInfo.key);
   return result;
 }
 
 RenderReceipt destroyPipelineLayout(VkDevice device, PipelineLayoutRecord& record) {
-  RenderReceipt receipt = baseReceipt("pass", "packet6_resource_ready");
+  RenderReceipt receipt =
+      baseReceipt("pass", "packet6_resource_ready", record.key);
 #if defined(IGGY3D_HAS_VULKAN)
   if (device != VK_NULL_HANDLE && record.layout != VK_NULL_HANDLE) {
     vkDestroyPipelineLayout(device, record.layout, nullptr);

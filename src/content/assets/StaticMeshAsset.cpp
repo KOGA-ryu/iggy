@@ -1,5 +1,7 @@
 #include "content/assets/StaticMeshAsset.hpp"
 
+#include "content/assets/StaticMeshMaterialImport.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cctype>
@@ -180,48 +182,6 @@ void extendBounds(StaticMeshAsset& asset, Vec3 position) noexcept {
              : 0U;
 }
 
-[[nodiscard]] std::string textureUri(const cgltf_texture_view& view,
-                                     const cgltf_data& data) {
-  if (view.texture == nullptr || view.texture->image == nullptr) {
-    return {};
-  }
-  const cgltf_image* image = view.texture->image;
-  if (image->uri != nullptr) {
-    return image->uri;
-  }
-  if (data.images != nullptr) {
-    const std::ptrdiff_t index = image - data.images;
-    if (index >= 0 && static_cast<cgltf_size>(index) < data.images_count) {
-      return "embedded://image/" + std::to_string(index);
-    }
-  }
-  return {};
-}
-
-void appendMaterials(const cgltf_data& data, StaticMeshAsset& asset) {
-  asset.materials.reserve(std::max<cgltf_size>(1U, data.materials_count));
-  if (data.materials_count == 0U) {
-    asset.materials.push_back({});
-    return;
-  }
-  for (cgltf_size index = 0; index < data.materials_count; ++index) {
-    const cgltf_material& source = data.materials[index];
-    StaticMeshMaterial material;
-    if (source.name != nullptr) {
-      material.name = source.name;
-    }
-    if (source.has_pbr_metallic_roughness) {
-      const cgltf_pbr_metallic_roughness& pbr =
-          source.pbr_metallic_roughness;
-      std::copy_n(pbr.base_color_factor, 4U, material.baseColorFactor);
-      material.metallicFactor = pbr.metallic_factor;
-      material.roughnessFactor = pbr.roughness_factor;
-      material.baseColorTextureUri = textureUri(pbr.base_color_texture, data);
-    }
-    asset.materials.push_back(std::move(material));
-  }
-}
-
 [[nodiscard]] bool appendPrimitive(const cgltf_data& data,
                                    const cgltf_node& node,
                                    const cgltf_primitive& primitive,
@@ -291,6 +251,7 @@ void appendMaterials(const cgltf_data& data, StaticMeshAsset& asset) {
   output.firstIndex = static_cast<std::uint32_t>(asset.indices.size());
   output.indexCount = static_cast<std::uint32_t>(indexCount);
   output.materialIndex = materialIndexFor(data, primitive.material);
+  output.hasTexcoord0 = uvs != nullptr;
   asset.indices.reserve(asset.indices.size() + indexCount);
   for (cgltf_size index = 0; index < indexCount; ++index) {
     const cgltf_size localIndex = primitive.indices != nullptr
@@ -365,7 +326,7 @@ StaticMeshImportResult importStaticMeshGlb(
   result.asset.id = std::string(assetId);
   result.asset.sourcePath = path;
   result.asset.contentHash = fileHash(path);
-  appendMaterials(*data, result.asset);
+  detail::importStaticMeshMaterialsAndImages(*data, path, result.asset);
   std::string failureReason;
   for (cgltf_size nodeIndex = 0; nodeIndex < data->nodes_count; ++nodeIndex) {
     const cgltf_node& node = data->nodes[nodeIndex];

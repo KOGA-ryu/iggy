@@ -69,6 +69,22 @@ struct CreativePreviewCommandPlan {
   std::uint8_t stepCount = 0;
 };
 
+struct RoomDrawPipelineSelection {
+  bool textured = false;
+  std::uint32_t textureIndex = kInvalidMaterialTextureIndex;
+};
+
+[[nodiscard]] constexpr RoomDrawPipelineSelection selectRoomDrawPipeline(
+    const IndexedDrawRange& draw,
+    std::size_t availableTextureCount,
+    bool materialPipelineReady) noexcept {
+  if (materialPipelineReady &&
+      draw.materialTextureIndex < availableTextureCount) {
+    return {true, draw.materialTextureIndex};
+  }
+  return {};
+}
+
 [[nodiscard]] CreativePreviewCommandPlan buildCreativePreviewCommandPlan(
     const CreativePreviewDrawInfo* draws,
     std::size_t drawCount,
@@ -87,7 +103,11 @@ struct FirstRoomFrameRecordInfo {
   std::uint32_t imageIndex = 0;
   VkPipeline pipeline{};
   VkPipeline viewModelPipeline{};
+  VkPipeline materialTexturePipeline{};
   VkPipelineLayout pipelineLayout{};
+  VkPipelineLayout materialTexturePipelineLayout{};
+  const VkDescriptorSet* materialTextureDescriptorSets = nullptr;
+  std::size_t materialTextureDescriptorSetCount = 0;
   VkBuffer vertexBuffer{};
   VkBuffer indexBuffer{};
   std::uint32_t indexCount = 0;

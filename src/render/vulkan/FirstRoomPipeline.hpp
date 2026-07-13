@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <string_view>
 
@@ -33,6 +34,7 @@ struct VkVertexInputAttributeDescription {
   std::uint32_t offset{};
 };
 constexpr VkFormat VK_FORMAT_R32G32B32_SFLOAT = 106U;
+constexpr VkFormat VK_FORMAT_R32G32_SFLOAT = 103U;
 constexpr VkFormat VK_FORMAT_B8G8R8A8_SRGB = 50U;
 constexpr VkFormat VK_FORMAT_D32_SFLOAT = 126U;
 constexpr VkVertexInputRate VK_VERTEX_INPUT_RATE_VERTEX = 0U;
@@ -43,20 +45,34 @@ namespace iggy3d::vulkan {
 struct FirstRoomVertex {
   float position[3]{};
   float color[3]{};
+  float uv0[2]{};
 };
+
+inline constexpr std::uint32_t kInvalidMaterialTextureIndex =
+    std::numeric_limits<std::uint32_t>::max();
 
 struct IndexedDrawRange {
   std::uint32_t firstIndex = 0;
   std::uint32_t indexCount = 0;
+  std::uint32_t materialTextureIndex = kInvalidMaterialTextureIndex;
 };
 
 constexpr std::uint32_t kFirstRoomPositionLocation = 0U;
-constexpr std::uint32_t kFirstRoomColorLocation = 1U;
-constexpr std::string_view kFirstRoomVertexFormatName = "FirstRoomVertex_Pos3_Color3";
+constexpr std::uint32_t kFirstRoomUv0Location = 1U;
+constexpr std::uint32_t kFirstRoomColorLocation = 2U;
+constexpr std::string_view kFirstRoomVertexFormatName =
+    "FirstRoomVertex_Pos3_Color3_Uv2";
 constexpr std::string_view kFirstRoomPipelineVariant =
     "first_room.vertex_color.opaque.depth.backface";
 constexpr std::string_view kCreativeViewModelPipelineVariant =
     "creative_view_model.vertex_color.opaque.no_depth.backface";
+constexpr std::string_view kStaticMeshMaterialPipelineVariant =
+    "first_room.material_unlit_textured.opaque.depth.backface";
+
+enum class FirstRoomPipelineFlavor : std::uint8_t {
+  VertexColor,
+  MaterialTextured,
+};
 
 enum class FirstRoomDepthMode : std::uint8_t {
   ReadWrite,
@@ -73,6 +89,7 @@ enum class FirstRoomDepthMode : std::uint8_t {
 struct FirstRoomVertexFormat {
   VkVertexInputBindingDescription binding{};
   VkVertexInputAttributeDescription position{};
+  VkVertexInputAttributeDescription uv0{};
   VkVertexInputAttributeDescription color{};
 };
 
@@ -84,6 +101,7 @@ struct FirstRoomPipelineCreateInfo {
   ShaderModuleRecord fragmentShader;
   PipelineLayoutRecord layout;
   FirstRoomDepthMode depthMode = FirstRoomDepthMode::ReadWrite;
+  FirstRoomPipelineFlavor flavor = FirstRoomPipelineFlavor::VertexColor;
 };
 
 struct FirstRoomPipelineRecord {
@@ -92,6 +110,7 @@ struct FirstRoomPipelineRecord {
   VkFormat colorFormat = VK_FORMAT_B8G8R8A8_SRGB;
   VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
   FirstRoomDepthMode depthMode = FirstRoomDepthMode::ReadWrite;
+  FirstRoomPipelineFlavor flavor = FirstRoomPipelineFlavor::VertexColor;
 };
 
 struct FirstRoomPipelineResult {

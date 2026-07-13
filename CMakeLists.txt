@@ -131,7 +131,9 @@ target_sources(iggy3d
     src/app/frontend/SaveSlotModel.cpp
     src/app/platform/ExecutablePath.cpp
     src/content/assets/TraversalTag.cpp
+    src/content/assets/ImageDecode.cpp
     src/content/assets/StaticMeshAsset.cpp
+    src/content/assets/StaticMeshMaterialImport.cpp
     src/runtime/player/PlayerRoster.cpp
     src/runtime/player/PlayerPhysicsMovePlanner.cpp
     src/runtime/player/PlayerMotor.cpp
@@ -226,6 +228,7 @@ target_sources(iggy3d
     src/render/vulkan/PipelineLayout.cpp
     src/render/vulkan/FirstRoomPipeline.cpp
     src/render/vulkan/VulkanMemoryAllocator.cpp
+    src/render/vulkan/StaticMeshMaterialTextures.cpp
     src/render/vulkan/BufferImageResources.cpp
     src/render/vulkan/FrameCapture.cpp
     src/render/vulkan/VulkanBackend.cpp)

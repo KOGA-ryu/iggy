@@ -456,7 +456,20 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     recordInfo.pipeline = createInfo_.firstRoomPipeline->pipeline;
     recordInfo.viewModelPipeline =
         createInfo_.creativeViewModelPipeline->pipeline;
+    if (createInfo_.materialTexturePipeline != nullptr &&
+        createInfo_.materialTextureLayout != nullptr) {
+      recordInfo.materialTexturePipeline =
+          createInfo_.materialTexturePipeline->pipeline;
+      recordInfo.materialTexturePipelineLayout =
+          createInfo_.materialTextureLayout->layout;
+    }
     recordInfo.pipelineLayout = createInfo_.firstRoomLayout->layout;
+    const StaticMeshMaterialTextureResources& materialTextures =
+        createInfo_.firstRoomResources->staticMeshMaterialTextures();
+    recordInfo.materialTextureDescriptorSets =
+        materialTextures.descriptorSets.data();
+    recordInfo.materialTextureDescriptorSetCount =
+        materialTextures.descriptorSets.size();
     recordInfo.vertexBuffer =
         createInfo_.firstRoomResources->geometry().vertexBuffer.allocation.buffer;
     recordInfo.indexBuffer =
@@ -531,7 +544,20 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     recordInfo.pipeline = createInfo_.firstRoomPipeline->pipeline;
     recordInfo.viewModelPipeline =
         createInfo_.creativeViewModelPipeline->pipeline;
+    if (createInfo_.materialTexturePipeline != nullptr &&
+        createInfo_.materialTextureLayout != nullptr) {
+      recordInfo.materialTexturePipeline =
+          createInfo_.materialTexturePipeline->pipeline;
+      recordInfo.materialTexturePipelineLayout =
+          createInfo_.materialTextureLayout->layout;
+    }
     recordInfo.pipelineLayout = createInfo_.firstRoomLayout->layout;
+    const StaticMeshMaterialTextureResources& materialTextures =
+        createInfo_.firstRoomResources->staticMeshMaterialTextures();
+    recordInfo.materialTextureDescriptorSets =
+        materialTextures.descriptorSets.data();
+    recordInfo.materialTextureDescriptorSetCount =
+        materialTextures.descriptorSets.size();
     recordInfo.vertexBuffer =
         createInfo_.firstRoomResources->geometry().vertexBuffer.allocation.buffer;
     recordInfo.indexBuffer =

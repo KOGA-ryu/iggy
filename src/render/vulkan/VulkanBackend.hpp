@@ -46,6 +46,8 @@ private:
   void initializePacket5Modules(std::uint32_t drawableWidth, std::uint32_t drawableHeight);
   void initializePacket7FirstRoomModules();
   void destroyPacket7FirstRoomModules();
+  bool initializeStaticMeshMaterialPipeline();
+  void destroyStaticMeshMaterialPipeline();
 
   RendererConfig config_;
   vulkan::InstanceDeviceSurface bootstrap_;
@@ -58,6 +60,10 @@ private:
   vulkan::PipelineLayoutRecord firstRoomLayout_;
   vulkan::FirstRoomPipelineRecord firstRoomPipeline_;
   vulkan::FirstRoomPipelineRecord creativeViewModelPipeline_;
+  vulkan::ShaderModuleRecord materialTextureVertexShader_;
+  vulkan::ShaderModuleRecord materialTextureFragmentShader_;
+  vulkan::PipelineLayoutRecord materialTextureLayout_;
+  vulkan::FirstRoomPipelineRecord materialTexturePipeline_;
   vulkan::BufferImageResources firstRoomResources_;
   vulkan::FrameCapture frameCapture_;
   bool firstRoomReady_ = false;

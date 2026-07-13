@@ -26,6 +26,7 @@ namespace iggy3d::vulkan {
 
 constexpr std::uint32_t kFirstRoomPushConstantSize = 64U;
 constexpr std::uint32_t kFirstRoomDescriptorSetLayoutCount = 0U;
+constexpr std::uint32_t kMaterialTextureDescriptorSetLayoutCount = 1U;
 
 struct FirstRoomPushConstants {
   std::array<float, 16> clipFromModel{};
@@ -41,6 +42,7 @@ struct PipelineLayoutKey {
 struct PipelineLayoutCreateInfo {
   VkDevice device{};
   PipelineLayoutKey key;
+  const VkDescriptorSetLayout* descriptorSetLayouts = nullptr;
 };
 
 struct PipelineLayoutRecord {
@@ -59,6 +61,7 @@ struct PipelineLayoutResult {
 static_assert(sizeof(FirstRoomPushConstants) == kFirstRoomPushConstantSize);
 
 bool firstRoomPipelineLayoutKeyValid(const PipelineLayoutKey& key);
+bool materialTexturePipelineLayoutKeyValid(const PipelineLayoutKey& key);
 VkPushConstantRange firstRoomPushConstantRange();
 PipelineLayoutResult createFirstRoomPipelineLayout(const PipelineLayoutCreateInfo& createInfo);
 RenderReceipt destroyPipelineLayout(VkDevice device, PipelineLayoutRecord& record);

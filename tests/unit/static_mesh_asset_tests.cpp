@@ -1,12 +1,16 @@
 #include "content/assets/StaticMeshAsset.hpp"
+#include "content/assets/ImageDecode.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <string>
+#include <string_view>
 
 namespace {
 
@@ -193,6 +197,93 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
                 "renderer resolves exact held and outlined target ranges");
 }
 
+bool texturedFixtureBuildsOneCachedMaterialBinding() {
+  const iggy3d::StaticMeshImportResult walkway =
+      iggy3d::importStaticMeshGlb(
+          "assets/creative/walkway_stone_01.glb", "walkway_stone_01");
+  iggy3d::StaticMeshAssetCache cache;
+  cache.setRoot("assets/creative");
+  const iggy3d::vulkan::StaticMeshTextureCpuResources textures =
+      iggy3d::vulkan::buildStaticMeshTextureCpuResources(&cache);
+  iggy3d::vulkan::StaticMeshMaterialTextureResources materialTextures;
+  materialTextures.materialBindings = textures.materialBindings;
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(
+          roomWith("asset:walkway_stone_01"), nullptr, &cache,
+          &materialTextures);
+  const std::array<std::uint8_t, 4> invalidBytes{0U, 1U, 2U, 3U};
+  const iggy3d::DecodedImageRgba8 invalid =
+      iggy3d::decodeImageRgba8(invalidBytes);
+
+  bool hasNonzeroUv = false;
+  for (const iggy3d::vulkan::FirstRoomVertex& vertex : geometry.vertices) {
+    hasNonzeroUv = hasNonzeroUv || vertex.uv0[0] != 0.0F ||
+                                      vertex.uv0[1] != 0.0F;
+  }
+  return expect(walkway.ok() && walkway.asset.images.size() == 1U &&
+                    walkway.asset.textureFailureCount == 0U,
+                "embedded PNG decodes without rejecting the mesh") &&
+         expect(walkway.asset.images[0].width == 4U &&
+                    walkway.asset.images[0].height == 4U &&
+                    walkway.asset.images[0].rgba8.size() == 64U,
+                "decoded image is bounded RGBA8") &&
+         expect(walkway.asset.materials[0].baseColorImageIndex == 0U &&
+                    walkway.asset.primitives[0].hasTexcoord0,
+                "material and primitive retain texture ownership") &&
+         expect(textures.textures.size() == 1U &&
+                    textures.materialBindings.size() == 1U &&
+                    textures.rejectedTextureCount == 0U,
+                "startup cache deduplicates one texture binding") &&
+         expect(geometry.ready && geometry.indexedDraws.size() == 1U &&
+                    geometry.indexedDraws[0].materialTextureIndex == 0U &&
+                    hasNonzeroUv,
+                "room draw carries texture binding and transformed UVs") &&
+         expect(!invalid.ok() &&
+                    invalid.reasonCode == "image_dimensions_invalid",
+                "malformed image fails without an unsafe allocation");
+}
+
+bool importsBase64DataUriTexture() {
+  constexpr std::string_view kGeometryBase64 =
+      "AAAAvwAAAL8AAAC/AAAAPwAAAL8AAAC/AAAAPwAAAD8AAAC/AAAAvwAAAD8A"
+      "AAC/AAAAvwAAAL8AAAA/AAAAPwAAAL8AAAA/AAAAPwAAAD8AAAA/AAAAvwAA"
+      "AD8AAAA/AAAAAAAAAAAAAIA/AAAAAAAAgD8AAIA/AAAAAAAAgD8AAAAAAAAA"
+      "AAAAgD8AAAAAAACAPwAAgD8AAAAAAACAPwAAAQACAAAAAgADAAQABgAFAAQABw"
+      "AGAAAAAwAHAAAABwAEAAEABQAGAAEABgACAAMAAgAGAAMABgAHAAAABAAFAAAA"
+      "BQABAA==";
+  constexpr std::string_view kPngBase64 =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP4"
+      "z8DwHwAFAAH/VscvDQAAAABJRU5ErkJggg==";
+  const std::string document =
+      R"json({"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],"nodes":[{"mesh":0}],"meshes":[{"primitives":[{"attributes":{"POSITION":0,"TEXCOORD_0":1},"indices":2,"material":0}]}],"materials":[{"pbrMetallicRoughness":{"baseColorTexture":{"index":0}}}],"images":[{"uri":"data:image/png;base64,)json" +
+      std::string(kPngBase64) +
+      R"json("}],"textures":[{"source":0}],"buffers":[{"byteLength":232,"uri":"data:application/octet-stream;base64,)json" +
+      std::string(kGeometryBase64) +
+      R"json("}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":96,"target":34962},{"buffer":0,"byteOffset":96,"byteLength":64,"target":34962},{"buffer":0,"byteOffset":160,"byteLength":72,"target":34963}],"accessors":[{"bufferView":0,"componentType":5126,"count":8,"type":"VEC3","min":[-0.5,-0.5,-0.5],"max":[0.5,0.5,0.5]},{"bufferView":1,"componentType":5126,"count":8,"type":"VEC2","min":[0,0],"max":[1,1]},{"bufferView":2,"componentType":5123,"count":36,"type":"SCALAR","min":[0],"max":[7]}]})json";
+  const std::filesystem::path path =
+      std::filesystem::temp_directory_path() /
+      "iggy3d_static_mesh_data_uri_test.gltf";
+  {
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    output << document;
+  }
+  const iggy3d::StaticMeshImportResult imported =
+      iggy3d::importStaticMeshGlb(path, "data_uri_fixture");
+  std::error_code removeError;
+  std::filesystem::remove(path, removeError);
+  return expect(imported.ok(), "base64 data URI mesh imports") &&
+         expect(imported.asset.images.size() == 1U &&
+                    imported.asset.images[0].source ==
+                        "embedded://data_uri" &&
+                    imported.asset.images[0].width == 1U &&
+                    imported.asset.images[0].height == 1U,
+                "base64 image decodes through bounded material importer") &&
+         expect(imported.asset.materials.size() == 1U &&
+                    imported.asset.materials[0].baseColorImageIndex == 0U &&
+                    imported.asset.textureFailureCount == 0U,
+                "base64 material retains its decoded image binding");
+}
+
 }  // namespace
 
 int main() {
@@ -201,7 +292,9 @@ int main() {
                   cacheReusesImportAndRendererEmitsIrregularGeometry() &&
                   missingAssetIsVisibleAndMemoized() &&
                   externalFloorAndWallBypassGeneratedBatching() &&
-                  discoveryAndPreviewAtlasCoverEveryValidFixture();
+                  discoveryAndPreviewAtlasCoverEveryValidFixture() &&
+                  texturedFixtureBuildsOneCachedMaterialBinding() &&
+                  importsBase64DataUriTexture();
   if (!ok) {
     return 1;
   }

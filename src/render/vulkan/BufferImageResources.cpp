@@ -155,6 +155,7 @@ bool uploadBuffer(VulkanMemoryAllocator& allocator,
   out.allocationName = std::string(resourceName);
   return true;
 }
+
 #endif
 
 Vec3 colorForRoomRole(const std::string& role) {
@@ -806,7 +807,9 @@ bool appendStaticMeshAsset(std::vector<FirstRoomVertex>& vertices,
                            std::vector<std::uint16_t>& indices,
                            std::vector<IndexedDrawRange>& draws,
                            const SceneRoomMeshItem& item,
-                           const StaticMeshAsset& asset) {
+                           const StaticMeshAsset& asset,
+                           const StaticMeshMaterialTextureResources*
+                               materialTextures) {
   const Vec3 inputSize = asset.boundsMax - asset.boundsMin;
   if (!asset.hasBounds || !finiteVec3(inputSize) ||
       inputSize.x <= 0.0F || inputSize.y <= 0.0F || inputSize.z <= 0.0F ||
@@ -828,9 +831,21 @@ bool appendStaticMeshAsset(std::vector<FirstRoomVertex>& vertices,
     }
     IndexedDrawRange draw;
     draw.firstIndex = static_cast<std::uint32_t>(indices.size());
+    const StaticMeshMaterial* material =
+        primitive.materialIndex < asset.materials.size()
+            ? &asset.materials[primitive.materialIndex]
+            : nullptr;
+    if (primitive.hasTexcoord0 && material != nullptr &&
+        material->baseColorImageIndex != kInvalidStaticMeshImageIndex &&
+        materialTextures != nullptr) {
+      draw.materialTextureIndex = findStaticMeshMaterialTextureIndex(
+          materialTextures->materialBindings, asset.id,
+          primitive.materialIndex);
+    }
     for (std::uint32_t triangle = 0U; triangle < primitive.indexCount;
          triangle += 3U) {
       Vec3 world[3]{};
+      float uv[3][2]{};
       for (std::uint32_t corner = 0U; corner < 3U; ++corner) {
         const std::uint32_t sourceIndex =
             asset.indices[primitive.firstIndex + triangle + corner];
@@ -844,16 +859,36 @@ bool appendStaticMeshAsset(std::vector<FirstRoomVertex>& vertices,
         if (!finiteVec3(world[corner])) {
           return false;
         }
+        if (draw.materialTextureIndex != kInvalidMaterialTextureIndex) {
+          const StaticMeshVertex& sourceVertex = asset.vertices[sourceIndex];
+          const float scaledU =
+              sourceVertex.uv[0] * material->baseColorUvScale[0];
+          const float scaledV =
+              sourceVertex.uv[1] * material->baseColorUvScale[1];
+          const float cosine =
+              std::cos(material->baseColorUvRotationRadians);
+          const float sine = std::sin(material->baseColorUvRotationRadians);
+          uv[corner][0] = material->baseColorUvOffset[0] +
+                          cosine * scaledU - sine * scaledV;
+          uv[corner][1] = material->baseColorUvOffset[1] +
+                          sine * scaledU + cosine * scaledV;
+          if (!std::isfinite(uv[corner][0]) ||
+              !std::isfinite(uv[corner][1])) {
+            return false;
+          }
+        }
       }
       const Vec3 faceNormal =
           normalized(cross(world[1] - world[0], world[2] - world[0]));
       const Vec3 color =
           importedTriangleColor(asset, primitive.materialIndex, faceNormal);
-      for (Vec3 position : world) {
+      for (std::size_t corner = 0U; corner < 3U; ++corner) {
+        const Vec3 position = world[corner];
         const std::uint16_t index =
             static_cast<std::uint16_t>(vertices.size());
         vertices.push_back({{position.x, position.y, position.z},
-                            {color.x, color.y, color.z}});
+                            {color.x, color.y, color.z},
+                            {uv[corner][0], uv[corner][1]}});
         indices.push_back(index);
       }
     }
@@ -1466,7 +1501,8 @@ void appendCreativeWireframeDebugGeometry(RoomMeshCpuGeometry& roomGeometry,
 RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
     const SceneRoomProjection& room,
     const RenderCreativeWireframeDebugFrame* creativeWireframeDebug,
-    StaticMeshAssetCache* staticMeshAssets) {
+    StaticMeshAssetCache* staticMeshAssets,
+    const StaticMeshMaterialTextureResources* materialTextures) {
   RoomMeshCpuGeometry result;
   result.sourceRoomAssetId = room.assetId;
   result.sourceRoomStaticMeshCount = room.meshes.size();
@@ -1540,7 +1576,8 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
               : nullptr;
       if (asset != nullptr &&
           appendStaticMeshAsset(result.vertices, result.indices,
-                                result.indexedDraws, mesh, *asset)) {
+                                result.indexedDraws, mesh, *asset,
+                                materialTextures)) {
         continue;
       }
       if (!appendBoxIfFits(result.vertices, result.indices,
@@ -1665,13 +1702,21 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
 }
 
 RoomMeshCpuGeometry buildRoomMeshCpuGeometry(const SceneRoomProjection& room) {
-  return buildRoomMeshCpuGeometry(room, nullptr, nullptr);
+  return buildRoomMeshCpuGeometry(room, nullptr, nullptr, nullptr);
 }
 
 RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
     const SceneRoomProjection& room,
     const RenderCreativeWireframeDebugFrame* creativeWireframeDebug) {
   return buildRoomMeshCpuGeometry(room, creativeWireframeDebug, nullptr);
+}
+
+RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
+    const SceneRoomProjection& room,
+    const RenderCreativeWireframeDebugFrame* creativeWireframeDebug,
+    StaticMeshAssetCache* staticMeshAssets) {
+  return buildRoomMeshCpuGeometry(room, creativeWireframeDebug,
+                                  staticMeshAssets, nullptr);
 }
 
 CreativePreviewCpuGeometry buildCreativePreviewCpuGeometry(
@@ -1807,6 +1852,13 @@ BufferImageResourcesResult BufferImageResources::createFirstRoomResources(
     result.receipt = baseReceipt("fail", result.reason.code);
     return result;
   }
+
+  StaticMeshMaterialTextureCreateInfo textureCreateInfo;
+  textureCreateInfo.device = createInfo.device;
+  textureCreateInfo.graphicsQueue = createInfo.graphicsQueue;
+  textureCreateInfo.graphicsQueueFamily = createInfo.graphicsQueueFamily;
+  staticMeshMaterialTextures_.create(textureCreateInfo, allocator_,
+                                     &staticMeshAssets_);
 
   const std::vector<FirstRoomVertex> vertices = firstRoomBootstrapVertices();
   const std::vector<std::uint16_t> indices = firstRoomBootstrapIndices();
@@ -1948,6 +2000,16 @@ BufferImageResourcesResult BufferImageResources::createFirstRoomResources(
   appendReceiptField(result.receipt, "creative_preview_draw_count",
                      static_cast<std::uint64_t>(
                          creativePreviewGeometry_.indexedDraws.size()));
+  const StaticMeshMaterialTextureResources& materialTextures =
+      staticMeshMaterialTextures_.resources();
+  appendReceiptField(result.receipt, "static_mesh_texture_count",
+                     static_cast<std::uint64_t>(
+                         materialTextures.textures.size()));
+  appendReceiptField(result.receipt, "static_mesh_texture_rejected_count",
+                     static_cast<std::uint64_t>(
+                         materialTextures.rejectedTextureCount));
+  appendReceiptField(result.receipt, "static_mesh_texture_descriptor_ready",
+                     materialTextures.ready);
   appendReceiptField(result.receipt, "depth_image_created", true);
   appendReceiptField(result.receipt, "depth_extent",
                      std::to_string(createInfo.extent.width) + "x" +
@@ -1993,6 +2055,10 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
     appendReceiptField(result.receipt, "static_mesh_asset_failed_count",
                        static_cast<std::uint64_t>(
                            staticMeshAssets_.failedAssetCount()));
+    appendReceiptField(result.receipt, "static_mesh_texture_count",
+                       static_cast<std::uint64_t>(
+                           staticMeshMaterialTextures_.resources()
+                               .textures.size()));
     appendReceiptField(result.receipt, "room_floor_draw_count",
                        static_cast<std::uint64_t>(geometry_.roomFloorDrawCount));
     appendReceiptField(result.receipt, "room_wall_draw_count",
@@ -2007,7 +2073,8 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
 
   const RoomMeshCpuGeometry cpuGeometry =
       buildRoomMeshCpuGeometry(room, creativeWireframeDebug,
-                               &staticMeshAssets_);
+                               &staticMeshAssets_,
+                               &staticMeshMaterialTextures_.resources());
   if (!cpuGeometry.ready) {
     result.reason = {"vertex_buffer_create_failed", "vertex buffer create failed"};
     result.receipt = baseReceipt("fail", result.reason.code);
@@ -2088,6 +2155,10 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
   appendReceiptField(result.receipt, "static_mesh_asset_failed_count",
                      static_cast<std::uint64_t>(
                          staticMeshAssets_.failedAssetCount()));
+  appendReceiptField(result.receipt, "static_mesh_texture_count",
+                     static_cast<std::uint64_t>(
+                         staticMeshMaterialTextures_.resources()
+                             .textures.size()));
   appendReceiptField(result.receipt, "room_floor_draw_count",
                      static_cast<std::uint64_t>(geometry_.roomFloorDrawCount));
   appendReceiptField(result.receipt, "room_wall_draw_count",
@@ -2112,6 +2183,7 @@ RenderReceipt BufferImageResources::destroy() {
   allocator_.destroyImage(depth_.depthImage.allocation);
   destroyGeometryBuffers();
   destroyCreativePreviewBuffers();
+  staticMeshMaterialTextures_.destroy(createInfo_.device, allocator_);
   allocator_.destroy();
   geometry_ = {};
   creativePreviewGeometry_ = {};
@@ -2128,6 +2200,11 @@ const FirstRoomGeometryResources& BufferImageResources::geometry() const {
 const CreativePreviewGeometryResources&
 BufferImageResources::creativePreviewGeometry() const {
   return creativePreviewGeometry_;
+}
+
+const StaticMeshMaterialTextureResources&
+BufferImageResources::staticMeshMaterialTextures() const {
+  return staticMeshMaterialTextures_.resources();
 }
 
 const DepthResourceRecord& BufferImageResources::depth() const {

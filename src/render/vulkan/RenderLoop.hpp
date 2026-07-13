@@ -44,7 +44,9 @@ struct RenderLoopCreateInfo {
   CommandRecording* commandRecording = nullptr;
   FirstRoomPipelineRecord* firstRoomPipeline = nullptr;
   FirstRoomPipelineRecord* creativeViewModelPipeline = nullptr;
+  FirstRoomPipelineRecord* materialTexturePipeline = nullptr;
   PipelineLayoutRecord* firstRoomLayout = nullptr;
+  PipelineLayoutRecord* materialTextureLayout = nullptr;
   BufferImageResources* firstRoomResources = nullptr;
   FrameCapture* frameCapture = nullptr;
 };

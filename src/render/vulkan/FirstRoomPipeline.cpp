@@ -31,8 +31,14 @@ RenderReceipt baseReceipt(std::string_view result,
   appendReceiptField(receipt, "backend", "vulkan");
   appendReceiptField(receipt, "pipeline_family", "first_room");
   appendReceiptField(receipt, "pipeline_variant", variant);
-  appendReceiptField(receipt, "pipeline_layout", "push_constants_only");
-  appendReceiptField(receipt, "descriptor_set_layout_count", static_cast<std::uint64_t>(0));
+  appendReceiptField(receipt, "pipeline_layout",
+                     variant == kStaticMeshMaterialPipelineVariant
+                         ? "material_texture"
+                         : "push_constants_only");
+  appendReceiptField(
+      receipt, "descriptor_set_layout_count",
+      static_cast<std::uint64_t>(
+          variant == kStaticMeshMaterialPipelineVariant ? 1U : 0U));
   appendReceiptField(receipt, "push_constant_clip_from_model_size",
                      static_cast<std::uint64_t>(kFirstRoomPushConstantSize));
   appendReceiptField(receipt, "vertex_format", kFirstRoomVertexFormatName);
@@ -59,6 +65,10 @@ FirstRoomVertexFormat firstRoomVertexFormat() {
   format.position.binding = 0U;
   format.position.format = VK_FORMAT_R32G32B32_SFLOAT;
   format.position.offset = static_cast<std::uint32_t>(offsetof(FirstRoomVertex, position));
+  format.uv0.location = kFirstRoomUv0Location;
+  format.uv0.binding = 0U;
+  format.uv0.format = VK_FORMAT_R32G32_SFLOAT;
+  format.uv0.offset = static_cast<std::uint32_t>(offsetof(FirstRoomVertex, uv0));
   format.color.location = kFirstRoomColorLocation;
   format.color.binding = 0U;
   format.color.format = VK_FORMAT_R32G32B32_SFLOAT;
@@ -70,9 +80,11 @@ bool firstRoomVertexFormatMatchesShader() {
   const FirstRoomVertexFormat format = firstRoomVertexFormat();
   return format.binding.stride == sizeof(FirstRoomVertex) &&
          format.position.location == kFirstRoomPositionLocation &&
+         format.uv0.location == kFirstRoomUv0Location &&
          format.color.location == kFirstRoomColorLocation &&
          format.position.offset == 0U &&
-         format.color.offset == sizeof(float) * 3U;
+         format.color.offset == sizeof(float) * 3U &&
+         format.uv0.offset == sizeof(float) * 6U;
 }
 
 FirstRoomPipelineResult createFirstRoomPipeline(const FirstRoomPipelineCreateInfo& createInfo) {
@@ -80,10 +92,17 @@ FirstRoomPipelineResult createFirstRoomPipeline(const FirstRoomPipelineCreateInf
   result.record.colorFormat = createInfo.colorFormat;
   result.record.depthFormat = createInfo.depthFormat;
   result.record.depthMode = createInfo.depthMode;
-  result.record.variant =
-      std::string(firstRoomPipelineVariant(createInfo.depthMode));
-  if (!firstRoomVertexFormatMatchesShader() ||
-      !firstRoomPipelineLayoutKeyValid(createInfo.layout.key)) {
+  result.record.flavor = createInfo.flavor;
+  result.record.variant = createInfo.flavor ==
+                                  FirstRoomPipelineFlavor::MaterialTextured
+                              ? std::string(kStaticMeshMaterialPipelineVariant)
+                              : std::string(firstRoomPipelineVariant(
+                                    createInfo.depthMode));
+  const bool layoutMatches =
+      createInfo.flavor == FirstRoomPipelineFlavor::MaterialTextured
+          ? materialTexturePipelineLayoutKeyValid(createInfo.layout.key)
+          : firstRoomPipelineLayoutKeyValid(createInfo.layout.key);
+  if (!firstRoomVertexFormatMatchesShader() || !layoutMatches) {
     result.reason = reason("vertex_format_mismatch");
     result.receipt = baseReceipt("fail", result.reason.code,
                                  result.record.variant,
@@ -116,8 +135,9 @@ FirstRoomPipelineResult createFirstRoomPipeline(const FirstRoomPipelineCreateInf
   vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
   vertexInput.vertexBindingDescriptionCount = 1U;
   vertexInput.pVertexBindingDescriptions = &vertexFormat.binding;
-  VkVertexInputAttributeDescription attributes[2]{vertexFormat.position, vertexFormat.color};
-  vertexInput.vertexAttributeDescriptionCount = 2U;
+  VkVertexInputAttributeDescription attributes[3]{
+      vertexFormat.position, vertexFormat.uv0, vertexFormat.color};
+  vertexInput.vertexAttributeDescriptionCount = 3U;
   vertexInput.pVertexAttributeDescriptions = attributes;
 
   VkPipelineInputAssemblyStateCreateInfo inputAssembly{};

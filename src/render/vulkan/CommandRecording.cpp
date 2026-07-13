@@ -505,20 +505,55 @@ CommandRecordResult CommandRecording::recordFirstRoomFrame(
   VkDeviceSize vertexOffset = 0;
   vkCmdBindVertexBuffers(info.commandBuffer, 0, 1, &info.vertexBuffer, &vertexOffset);
   vkCmdBindIndexBuffer(info.commandBuffer, info.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
-  vkCmdPushConstants(info.commandBuffer, info.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
-                     sizeof(FirstRoomPushConstants), &info.pushConstants);
   std::uint32_t indexedDrawCount = 0;
   if (info.indexedDraws != nullptr && info.indexedDrawCount > 0U) {
+    bool materialPipelineBound = false;
+    std::uint32_t boundTextureIndex = kInvalidMaterialTextureIndex;
+    const bool materialPipelineReady =
+        info.materialTexturePipeline != VK_NULL_HANDLE &&
+        info.materialTexturePipelineLayout != VK_NULL_HANDLE &&
+        info.materialTextureDescriptorSets != nullptr &&
+        info.materialTextureDescriptorSetCount > 0U;
     for (std::size_t drawIndex = 0; drawIndex < info.indexedDrawCount; ++drawIndex) {
       const IndexedDrawRange& draw = info.indexedDraws[drawIndex];
       if (draw.indexCount == 0U) {
         continue;
       }
+      const RoomDrawPipelineSelection selection = selectRoomDrawPipeline(
+          draw, info.materialTextureDescriptorSetCount,
+          materialPipelineReady);
+      if (selection.textured != materialPipelineBound) {
+        vkCmdBindPipeline(
+            info.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+            selection.textured ? info.materialTexturePipeline : info.pipeline);
+        materialPipelineBound = selection.textured;
+        boundTextureIndex = kInvalidMaterialTextureIndex;
+      }
+      const VkPipelineLayout activeLayout =
+          selection.textured ? info.materialTexturePipelineLayout
+                             : info.pipelineLayout;
+      if (selection.textured && selection.textureIndex != boundTextureIndex) {
+        const VkDescriptorSet descriptorSet =
+            info.materialTextureDescriptorSets[selection.textureIndex];
+        vkCmdBindDescriptorSets(
+            info.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+            activeLayout, 0U, 1U, &descriptorSet, 0U, nullptr);
+        boundTextureIndex = selection.textureIndex;
+      }
+      vkCmdPushConstants(info.commandBuffer, activeLayout,
+                         VK_SHADER_STAGE_VERTEX_BIT, 0,
+                         sizeof(FirstRoomPushConstants),
+                         &info.pushConstants);
       vkCmdDrawIndexed(info.commandBuffer, draw.indexCount, 1, draw.firstIndex, 0, 0);
       ++indexedDrawCount;
     }
   }
   if (indexedDrawCount == 0U) {
+    vkCmdBindPipeline(info.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                      info.pipeline);
+    vkCmdPushConstants(info.commandBuffer, info.pipelineLayout,
+                       VK_SHADER_STAGE_VERTEX_BIT, 0,
+                       sizeof(FirstRoomPushConstants), &info.pushConstants);
     vkCmdDrawIndexed(info.commandBuffer, info.indexCount, 1, 0, 0, 0);
     indexedDrawCount = 1U;
   }

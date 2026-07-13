@@ -66,20 +66,31 @@ coordinate conversion; do not rotate the root object to compensate again.
 - Node transforms flattened into asset-local geometry.
 - Material base-color, metallic, roughness, and base-color texture references
   retained in the imported material contract.
+- `TEXCOORD_0`, base-color UV transforms, and glTF wrap/filter settings.
+- Embedded buffer-view and base64 PNG/JPEG images plus safe relative external
+  PNG/JPEG files.
+- Bounded RGBA8 decoding: maximum 64 MiB encoded, 8192 pixels per axis, and
+  16 million decoded pixels per image.
+- Startup GPU texture/sampler/descriptor creation, deduplicated by image
+  content and sampler state.
 - Object bounds used as the collision and placement envelope.
 - Dedicated Assets catalog page with search and hotbar assignment.
 - Exact imported held and placement previews with the existing bounds outline.
 - Per-object Creative translation, Euler rotation, and non-uniform scale.
 - Deterministic content hash and one-load process cache.
 
-The current room shader is position plus vertex color. Imported material base
-color is rendered with deterministic face shading so irregular geometry is
-readable. Image textures are recorded but not sampled by Vulkan yet.
+Textured primitives use their Blender base-color texture multiplied by the
+material base-color factor and deterministic face shading. Untextured objects,
+missing textures, unsupported texture coordinates, decode failures, and GPU
+texture failures retain the vertex-color fallback instead of disappearing or
+preventing Creative from starting. Texture descriptors are selected per mesh
+primitive; no decoding, image allocation, descriptor creation, or texture
+upload occurs in the frame loop.
 
 ## Explicitly deferred
 
-- PNG/JPEG decoding, GPU texture images, samplers, mipmaps, and material
-  descriptor sets.
+- Mipmap generation, anisotropic filtering, and cross-run cooked texture
+  caches.
 - Normal, occlusion, metallic-roughness, and emissive texture evaluation.
 - Alpha blend/mask materials.
 - Collision hulls or triangle collision from Blender custom properties.
@@ -111,7 +122,8 @@ filenames containing `walkway`/`bridge` map to `Bridge`, and other assets map to
 The repository carries two end-to-end fixtures:
 
 - `assets/creative/boulder_01.glb`: low-poly 18-vertex, 32-triangle boulder.
-- `assets/creative/walkway_stone_01.glb`: four-slab, 32-vertex modular walkway.
+- `assets/creative/walkway_stone_01.glb`: four-slab, 32-vertex modular walkway
+  with `TEXCOORD_0` and an embedded 4x4 PNG checker material.
 
 Regenerate them with:
 
@@ -131,3 +143,6 @@ should be exported from Blender.
   https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html
 - cgltf loader, vendored at v1.15 under MIT:
   https://github.com/jkuhlmann/cgltf
+- stb_image PNG/JPEG decoder, vendored at a pinned commit under public
+  domain/MIT terms:
+  https://github.com/nothings/stb

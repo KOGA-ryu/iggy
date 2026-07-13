@@ -9,6 +9,7 @@
 #include "render/FrameInput.hpp"
 #include "render/RenderDiagnostics.hpp"
 #include "render/vulkan/FirstRoomPipeline.hpp"
+#include "render/vulkan/StaticMeshMaterialTextures.hpp"
 #include "content/assets/StaticMeshAsset.hpp"
 #include "render/vulkan/VulkanMemoryAllocator.hpp"
 #include "render/vulkan/VulkanTypes.hpp"
@@ -184,6 +185,7 @@ public:
 
   const FirstRoomGeometryResources& geometry() const;
   const CreativePreviewGeometryResources& creativePreviewGeometry() const;
+  const StaticMeshMaterialTextureResources& staticMeshMaterialTextures() const;
   const DepthResourceRecord& depth() const;
   bool ready() const;
 
@@ -194,6 +196,7 @@ private:
   VulkanMemoryAllocator allocator_;
   FirstRoomGeometryResources geometry_;
   CreativePreviewGeometryResources creativePreviewGeometry_;
+  StaticMeshMaterialTextureStore staticMeshMaterialTextures_;
   DepthResourceRecord depth_;
   BufferImageResourcesCreateInfo createInfo_;
   StaticMeshAssetCache staticMeshAssets_;
@@ -210,6 +213,11 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
     const SceneRoomProjection& room,
     const RenderCreativeWireframeDebugFrame* creativeWireframeDebug,
     StaticMeshAssetCache* staticMeshAssets);
+RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
+    const SceneRoomProjection& room,
+    const RenderCreativeWireframeDebugFrame* creativeWireframeDebug,
+    StaticMeshAssetCache* staticMeshAssets,
+    const StaticMeshMaterialTextureResources* materialTextures);
 CreativeWireframeDebugCpuGeometry buildCreativeWireframeDebugCpuGeometry(
     const RenderCreativeWireframeDebugFrame* creativeWireframeDebug);
 CreativePreviewCpuGeometry buildCreativePreviewCpuGeometry();

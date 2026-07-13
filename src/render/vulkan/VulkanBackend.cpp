@@ -103,6 +103,8 @@ RenderReceipt VulkanBackend::makeReceipt(std::string_view result,
   appendReceiptField(receipt, "pipeline_created", firstRoomPipeline_.pipeline != VkPipeline{});
   appendReceiptField(receipt, "creative_view_model_pipeline_created",
                      creativeViewModelPipeline_.pipeline != VkPipeline{});
+  appendReceiptField(receipt, "material_texture_pipeline_created",
+                     materialTexturePipeline_.pipeline != VkPipeline{});
   appendReceiptField(receipt, "vertex_buffer_count",
                      firstRoomResources_.ready() ? static_cast<std::uint64_t>(1)
                                                  : static_cast<std::uint64_t>(0));
@@ -119,6 +121,84 @@ RenderReceipt VulkanBackend::makeReceipt(std::string_view result,
   appendReceiptField(receipt, "result", result);
   appendReceiptField(receipt, "reason_code", reasonCode);
   return receipt;
+}
+
+bool VulkanBackend::initializeStaticMeshMaterialPipeline() {
+  destroyStaticMeshMaterialPipeline();
+  const VkDescriptorSetLayout textureLayout =
+      firstRoomResources_.staticMeshMaterialTextures().descriptorSetLayout;
+  if (textureLayout == VK_NULL_HANDLE) {
+    return false;
+  }
+
+  vulkan::ShaderModuleCreateInfo vertexInfo;
+  vertexInfo.device = bootstrap_.handles().device;
+  vertexInfo.spirvPath =
+      config_.shaderRoot / "material_unlit_textured.vert.spv";
+  vertexInfo.stage = vulkan::ShaderStage::Vertex;
+  vertexInfo.debugName = "material_unlit_textured.vertex";
+  const vulkan::ShaderModuleResult vertexResult =
+      vulkan::createShaderModule(vertexInfo);
+  if (vertexResult.outcome != RenderOutcome::Ok) {
+    return false;
+  }
+  materialTextureVertexShader_ = vertexResult.record;
+
+  vulkan::ShaderModuleCreateInfo fragmentInfo;
+  fragmentInfo.device = bootstrap_.handles().device;
+  fragmentInfo.spirvPath =
+      config_.shaderRoot / "material_unlit_textured.frag.spv";
+  fragmentInfo.stage = vulkan::ShaderStage::Fragment;
+  fragmentInfo.debugName = "material_unlit_textured.fragment";
+  const vulkan::ShaderModuleResult fragmentResult =
+      vulkan::createShaderModule(fragmentInfo);
+  if (fragmentResult.outcome != RenderOutcome::Ok) {
+    destroyStaticMeshMaterialPipeline();
+    return false;
+  }
+  materialTextureFragmentShader_ = fragmentResult.record;
+
+  vulkan::PipelineLayoutCreateInfo layoutInfo;
+  layoutInfo.device = bootstrap_.handles().device;
+  layoutInfo.key.layout = "material_texture";
+  layoutInfo.key.descriptorSetLayoutCount =
+      vulkan::kMaterialTextureDescriptorSetLayoutCount;
+  layoutInfo.descriptorSetLayouts = &textureLayout;
+  const vulkan::PipelineLayoutResult layoutResult =
+      vulkan::createFirstRoomPipelineLayout(layoutInfo);
+  if (layoutResult.outcome != RenderOutcome::Ok) {
+    destroyStaticMeshMaterialPipeline();
+    return false;
+  }
+  materialTextureLayout_ = layoutResult.record;
+
+  vulkan::FirstRoomPipelineCreateInfo pipelineInfo;
+  pipelineInfo.device = bootstrap_.handles().device;
+  pipelineInfo.colorFormat = swapchain_.info().colorFormat;
+  pipelineInfo.depthFormat = VK_FORMAT_D32_SFLOAT;
+  pipelineInfo.vertexShader = materialTextureVertexShader_;
+  pipelineInfo.fragmentShader = materialTextureFragmentShader_;
+  pipelineInfo.layout = materialTextureLayout_;
+  pipelineInfo.flavor = vulkan::FirstRoomPipelineFlavor::MaterialTextured;
+  const vulkan::FirstRoomPipelineResult pipelineResult =
+      vulkan::createFirstRoomPipeline(pipelineInfo);
+  if (pipelineResult.outcome != RenderOutcome::Ok) {
+    destroyStaticMeshMaterialPipeline();
+    return false;
+  }
+  materialTexturePipeline_ = pipelineResult.record;
+  return true;
+}
+
+void VulkanBackend::destroyStaticMeshMaterialPipeline() {
+  vulkan::destroyFirstRoomPipeline(bootstrap_.handles().device,
+                                   materialTexturePipeline_);
+  vulkan::destroyPipelineLayout(bootstrap_.handles().device,
+                                materialTextureLayout_);
+  vulkan::destroyShaderModule(bootstrap_.handles().device,
+                              materialTextureFragmentShader_);
+  vulkan::destroyShaderModule(bootstrap_.handles().device,
+                              materialTextureVertexShader_);
 }
 
 void VulkanBackend::initializePacket7FirstRoomModules() {
@@ -205,6 +285,8 @@ void VulkanBackend::initializePacket7FirstRoomModules() {
     return;
   }
 
+  static_cast<void>(initializeStaticMeshMaterialPipeline());
+
   if (swapchain_.info().transferSourceSupported) {
     const RenderReceipt captureReceipt = frameCapture_.create(
         {bootstrap_.handles().physicalDevice, bootstrap_.handles().device,
@@ -219,6 +301,7 @@ void VulkanBackend::initializePacket7FirstRoomModules() {
 void VulkanBackend::destroyPacket7FirstRoomModules() {
   firstRoomReady_ = false;
   frameCapture_.destroy();
+  destroyStaticMeshMaterialPipeline();
   vulkan::destroyFirstRoomPipeline(bootstrap_.handles().device,
                                    creativeViewModelPipeline_);
   vulkan::destroyFirstRoomPipeline(bootstrap_.handles().device, firstRoomPipeline_);
@@ -277,7 +360,9 @@ void VulkanBackend::initializePacket5Modules(std::uint32_t drawableWidth,
   loopInfo.commandRecording = &commandRecording_;
   loopInfo.firstRoomPipeline = &firstRoomPipeline_;
   loopInfo.creativeViewModelPipeline = &creativeViewModelPipeline_;
+  loopInfo.materialTexturePipeline = &materialTexturePipeline_;
   loopInfo.firstRoomLayout = &firstRoomLayout_;
+  loopInfo.materialTextureLayout = &materialTextureLayout_;
   loopInfo.firstRoomResources = &firstRoomResources_;
   loopInfo.frameCapture = &frameCapture_;
   const vulkan::VulkanFrameResult loopResult = renderLoop_.initialize(loopInfo);
@@ -359,7 +444,9 @@ RenderSubmitResult VulkanBackend::resize(RenderViewport viewport) {
     loopInfo.commandRecording = &commandRecording_;
     loopInfo.firstRoomPipeline = &firstRoomPipeline_;
     loopInfo.creativeViewModelPipeline = &creativeViewModelPipeline_;
+    loopInfo.materialTexturePipeline = &materialTexturePipeline_;
     loopInfo.firstRoomLayout = &firstRoomLayout_;
+    loopInfo.materialTextureLayout = &materialTextureLayout_;
     loopInfo.firstRoomResources = &firstRoomResources_;
     loopInfo.frameCapture = &frameCapture_;
     renderLoop_.initialize(loopInfo);

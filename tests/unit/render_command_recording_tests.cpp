@@ -54,11 +54,30 @@ bool creativePreviewCommandsAreBoundedAndValidateGeometry() {
                 "over-capacity preview input produces no commands");
 }
 
+bool roomDrawPipelineSelectionFallsBackDeterministically() {
+  iggy3d::vulkan::IndexedDrawRange textured{0U, 6U, 1U};
+  const iggy3d::vulkan::RoomDrawPipelineSelection selected =
+      iggy3d::vulkan::selectRoomDrawPipeline(textured, 2U, true);
+  const iggy3d::vulkan::RoomDrawPipelineSelection missingPipeline =
+      iggy3d::vulkan::selectRoomDrawPipeline(textured, 2U, false);
+  const iggy3d::vulkan::RoomDrawPipelineSelection missingTexture =
+      iggy3d::vulkan::selectRoomDrawPipeline(textured, 1U, true);
+  iggy3d::vulkan::IndexedDrawRange untextured{0U, 6U};
+  const iggy3d::vulkan::RoomDrawPipelineSelection plain =
+      iggy3d::vulkan::selectRoomDrawPipeline(untextured, 2U, true);
+  return expect(selected.textured && selected.textureIndex == 1U,
+                "valid material texture selects textured pipeline") &&
+         expect(!missingPipeline.textured && !missingTexture.textured &&
+                    !plain.textured,
+                "missing resources and untextured draws use color fallback");
+}
+
 }  // namespace
 
 int main() {
   return creativePreviewCommandsKeepTargetBeforeHeld() &&
-                 creativePreviewCommandsAreBoundedAndValidateGeometry()
+                 creativePreviewCommandsAreBoundedAndValidateGeometry() &&
+                 roomDrawPipelineSelectionFallsBackDeterministically()
              ? 0
              : 1;
 }
