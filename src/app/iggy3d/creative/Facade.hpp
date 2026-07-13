@@ -275,18 +275,13 @@ class Facade {
   CreativeMeasurementState measurementState_;
   CreativeSnapSettings snapSettings_;
   CreativeGhostState ghostState_;
-  // Move-drag tracking (TV1-G): the resolved drag target + its start corner
-  // anchor, recorded on BeginMove and consumed on Preview/Commit. Y is held
-  // fixed to startAnchor.y for the whole drag (TD-7).
+  // Move-drag tracking (TV1-G): the resolved drag target, its start corner
+  // anchor, and hierarchy-expanded IDs consumed by SelectionPlacement.
   bool moveDragActive_ = false;
   TargetRef moveDragTarget_;
   CreativeObjectId moveDragObjectId_ = kInvalidObjectId;
   CreativeVec3 moveDragStartAnchor_;
-  struct MoveDragObject {
-    CreativeObjectId objectId = kInvalidObjectId;
-    CreativeVec3 startAnchor{};
-  };
-  std::vector<MoveDragObject> moveDragObjects_;
+  std::vector<CreativeObjectId> moveDragObjectIds_;
   CreativeFacadeMoveDragReceipt moveDragReceipt_;
 };
 

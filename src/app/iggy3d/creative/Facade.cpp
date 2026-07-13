@@ -296,7 +296,7 @@ void Facade::reset() noexcept {
   moveDragTarget_ = {};
   moveDragObjectId_ = kInvalidObjectId;
   moveDragStartAnchor_ = {};
-  moveDragObjects_.clear();
+  moveDragObjectIds_.clear();
   moveDragReceipt_ = {};
 }
 
@@ -355,7 +355,7 @@ bool Facade::setActiveTool(Tool tool) noexcept {
     moveDragTarget_ = {};
     moveDragObjectId_ = kInvalidObjectId;
     moveDragStartAnchor_ = {};
-    moveDragObjects_.clear();
+    moveDragObjectIds_.clear();
   }
   state_.tool = toolState_.activeTool;
   return changed;
@@ -1064,7 +1064,7 @@ CreativeFacadeDocumentInstallReceipt Facade::installDocument(
   moveDragTarget_ = {};
   moveDragObjectId_ = kInvalidObjectId;
   moveDragStartAnchor_ = {};
-  moveDragObjects_.clear();
+  moveDragObjectIds_.clear();
   moveDragReceipt_ = {};
 
   receipt.accepted = true;

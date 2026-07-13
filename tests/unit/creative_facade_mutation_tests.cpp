@@ -515,6 +515,9 @@ bool dragCommitMovesRoomByCornerAnchor() {
                 "drag commit stage") &&
          expect(drag.outcome == cr::CreativeFacadeMoveDragOutcome::Applied,
                 "drag commit applied") &&
+         expect(drag.documentStatus ==
+                    cr::CreativeDocumentMutationStatus::BatchApplied,
+                "drag commit preserves applied document status") &&
          expect(drag.committed, "drag commit committed flag") &&
          expect(drag.changed, "drag commit changed") &&
          expect(drag.snappedAnchor.x == 5.0 && drag.snappedAnchor.y == 6.0,
@@ -544,6 +547,13 @@ bool dragCommitHeldYAxisSnapsOnlyXZWithCoreMask() {
           cr::CreativeToolInputKind::PointerMove,
           destination,
           cr::CreativeToolMoveHeldAxis::Y));
+  cr::CreativeSelectionPlacementRequest expectedRequest;
+  expectedRequest.mode = cr::CreativeSelectionPlacementMode::Move;
+  expectedRequest.sourceAnchor = preview.moveDrag.startAnchor;
+  expectedRequest.targetAnchor = preview.moveDrag.snappedAnchor;
+  const cr::CreativeSelectionPlacementPlan expectedPlan =
+      cr::planCreativeSelectionPlacement(facade.document().objects(),
+                                         expectedRequest);
   const cr::CreativeFacadeToolDispatchReceipt commit =
       facade.dispatchToolInput(moveDragToWorld(
           cr::CreativeToolInputKind::PointerRelease,
@@ -564,6 +574,10 @@ bool dragCommitHeldYAxisSnapsOnlyXZWithCoreMask() {
          expect(room->bounds.min.x == 10.0, "held-y commit bounds x") &&
          expect(room->bounds.min.y == 5.0, "held-y commit bounds y held") &&
          expect(room->bounds.min.z == 11.0, "held-y commit bounds z") &&
+         expect(expectedPlan.accepted && expectedPlan.objects.size() == 1U &&
+                    cr::creativeBoundsExactlyEqual(
+                        room->bounds, expectedPlan.objects[0].bounds),
+                "move drag commits the exact shared placement plan") &&
          expect(drag.snappedAnchor.x == 10.0, "held-y commit snapped x") &&
          expect(drag.snappedAnchor.y == 5.0,
                 "held-y commit snapped y held") &&
@@ -736,6 +750,9 @@ bool dragCommitOnLockedRoomRefused() {
                 "locked drag outcome") &&
          expect(drag.locked, "locked drag locked flag") &&
          expect(!drag.changed, "locked drag not changed") &&
+         expect(drag.documentStatus ==
+                    cr::CreativeDocumentMutationStatus::ApplyFailed,
+                "locked drag preserves failed document status") &&
          // TV1-A: the lock-refusal truth is observable in the receipt message.
          expect(!drag.message.empty(), "locked drag message present") &&
          expect(facade.document().revision() == revisionBefore,
