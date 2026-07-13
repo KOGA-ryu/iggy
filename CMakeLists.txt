@@ -50,6 +50,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/document/TerrainMaterialField.cpp
     src/app/iggy3d/creative/document/VoxelField.cpp
     src/app/iggy3d/creative/mutation/Mutation.cpp
+    src/app/iggy3d/creative/mutation/MutationAllowed.cpp
     src/app/iggy3d/creative/document/ObjectDescriptor.cpp
     src/app/iggy3d/creative/mutation/MutationApply.cpp
     src/app/iggy3d/creative/document/DocumentMutation.cpp
