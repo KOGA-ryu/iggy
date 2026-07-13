@@ -38,6 +38,7 @@
 #include "render/vulkan/VulkanBackend.hpp"
 
 #include "EditorCapture.hpp"
+#include "EditorAssets.hpp"
 #include "EditorCatalog.hpp"
 #include "EditorControls.hpp"
 #include "EditorFrame.hpp"
@@ -91,6 +92,7 @@ using iggy3d_creative_app::syncCreativeEditorGroupFocus;
 using iggy3d_creative_app::StandaloneRoomBakePreviewScene;
 using iggy3d_creative_app::initializeCreativeEditorBootstrapData;
 using iggy3d_creative_app::loadStandaloneScene;
+using iggy3d_creative_app::reloadCreativeEditorAssets;
 
 std::filesystem::path creativeStandaloneSaveRoot() {
   if (const char* home = std::getenv("HOME"); home != nullptr) {
@@ -340,6 +342,15 @@ int main(int argc, char** argv) {
           appState, editor,
           frameInput.windowFocused ? "creative_continuous_gesture_modal"
                                    : "creative_continuous_gesture_focus_lost");
+    }
+    if (catalogFrame.assetReloadRequested) {
+      static_cast<void>(reloadCreativeEditorAssets(
+          {*backend,
+           appState,
+           editor,
+           sceneCache,
+           bootstrapData.staticMeshAssetCatalog,
+           bootstrapData.assetRoot}));
     }
     if (!catalogFrame.deferredCommandInput.actionEvents().empty()) {
       applyCreativeEditorCommandInput(catalogFrame.deferredCommandInput,

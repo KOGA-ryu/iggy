@@ -23,8 +23,25 @@ At startup, Creative recursively discovers valid `.glb` files beneath
 `assets/creative/`. The relative path without `.glb` is the catalog and save
 identity. Discovery is sorted, validates every file through the production
 importer, imports bounded authoring metadata, and reports rejected paths with a
-reason code. The resulting catalog is immutable for the run. RoomBake receives
-that catalog directly; it never reopens Blender assets in the frame loop.
+reason code. RoomBake receives the resulting catalog directly; neither RoomBake
+nor the renderer reopens Blender assets in the frame loop.
+
+Asset discovery can be repeated explicitly without restarting Creative. Open
+the `ASSETS` catalog page, select `RELOAD ASSETS`, and confirm with `X` on a
+controller or `Enter` on a keyboard. Reload is a user-requested transaction at
+a safe frame boundary, not a background watcher or per-frame filesystem poll.
+It waits for the renderer to become idle, stages a complete replacement mesh
+atlas, texture set, descriptor layout, and material pipeline, and publishes
+them only when all required GPU resources are ready.
+
+Stable `assetId` values preserve equipped hotbar entries and catalog selection
+across reload. Existing objects whose bounds still match their prior imported
+source bounds adopt new source bounds and pivot geometry in one undoable
+document mutation. Objects that the creator resized explicitly keep those
+custom bounds. Updated collision and walkability metadata take effect through
+the refreshed catalog on the next scene bake. Deleted or newly broken files
+remain visible as explicit catalog errors, while already placed references use
+the existing magenta missing-asset proxy instead of disappearing.
 
 ## Creative workflow
 
@@ -35,6 +52,8 @@ that catalog directly; it never reopens Blender assets in the frame loop.
    imported mesh, while green/red role colors retain placement validity.
 5. Place normally. Pick-block on an imported object restores its `assetId` and
    authored dimensions to the selected hotbar slot.
+6. After exporting a changed `.glb`, use `RELOAD ASSETS` on this page. Restarting
+   Creative is not required.
 
 The hotbar carries a bounded asset ID and the exact source-space minimum and
 maximum bounds. The placement plan aligns the rotated bottom-center of those
@@ -95,6 +114,8 @@ editable pivot for every node.
 - Unsupported `convex` and `mesh` collision modes remain visible in the scene
   and catalog but fail closed to no physics until their cookers exist.
 - Dedicated Assets catalog page with search and hotbar assignment.
+- Explicit `RELOAD ASSETS` command with stable-ID selection/hotbar retention,
+  transactional GPU replacement, and catalog-visible import failures.
 - Exact imported held and placement previews with the existing bounds outline.
 - Source-origin rotation and scale pivots, including off-center mesh bounds.
 - Per-object Creative translation, Euler rotation, and non-uniform scale.

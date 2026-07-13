@@ -173,10 +173,16 @@ bool actionAvailabilityUsesExplicitFacts() {
 
 bool catalogBuildsMaterialsAndCreatorTools() {
   const cr::CreativeCatalogState state = catalog();
-  bool ok = expect(state.entries.size() == 22U,
-                   "two materials plus twenty catalog tools") &&
-            expect(state.filteredEntryIndices.size() == state.entries.size(),
-                   "empty query exposes every entry") &&
+  const auto terrainRegion = std::find_if(
+      state.entries.begin(), state.entries.end(),
+      [](const cr::CreativeCatalogEntry& entry) {
+        return entry.hotbarEntry.kind ==
+               cr::CreativeHeldItemKind::TerrainRegion;
+      });
+  bool ok = expect(state.entries.size() == 23U,
+                   "materials and tools retain one asset reload command") &&
+            expect(state.filteredEntryIndices.size() == 22U,
+                   "build page exposes only materials and tools") &&
             expect(state.entries[0].category ==
                        cr::CreativeCatalogEntryCategory::Material &&
                        state.entries[0].hotbarEntry.kind ==
@@ -192,12 +198,13 @@ bool catalogBuildsMaterialsAndCreatorTools() {
             expect(state.entries[3].hotbarEntry.kind ==
                        cr::CreativeHeldItemKind::ObjectSelect,
                    "object tools follow the material brush") &&
-            expect(state.entries.back().hotbarEntry.kind ==
-                           cr::CreativeHeldItemKind::TerrainRegion &&
-                       state.entries.back().label == "Terrain Region",
+            expect(terrainRegion != state.entries.end() &&
+                       terrainRegion->label == "Terrain Region",
                    "terrain region closes the tool lane as a selectable tool");
   ok = expect(cr::toString(cr::CreativeCatalogEntryCategory::Material) ==
                   "Material" &&
+                  cr::toString(cr::CreativeCatalogEntryCategory::Command) ==
+                      "Command" &&
                   cr::toString(cr::CreativeCatalogEntryCategory::Tool) ==
                   "Tool",
               "catalog categories have stable labels") &&
@@ -222,8 +229,9 @@ bool catalogOmitsToolsWithoutRequiredMaterial() {
                entry.hotbarEntry.kind ==
                    cr::CreativeHeldItemKind::SurfaceExtrude;
       });
-  return expect(state.entries.size() == 14U,
-                "empty palette retains material-independent tools") &&
+  return expect(state.entries.size() == 15U &&
+                    state.filteredEntryIndices.size() == 14U,
+                "empty palette retains tools plus the asset reload command") &&
          expect(!materialDependentToolPresent,
                 "material-dependent tools require a valid material");
 }
@@ -1076,7 +1084,7 @@ bool assetPagePreservesBuildIndicesAndEquipsDurableIdentity() {
       cr::selectedCreativeCatalogEntry(state);
   const bool assetPageReady =
       pageChanged && state.page == cr::CreativeCatalogPage::Assets &&
-      state.filteredEntryIndices.size() == assets.size() &&
+      state.filteredEntryIndices.size() == assets.size() + 1U &&
       state.rejectedAssetCount == 1U;
   cr::CreativeHotbarState hotbar = cr::makeDefaultCreativeHotbar(palette);
   const bool assigned = cr::assignSelectedCreativeCatalogEntry(state, hotbar);
@@ -1137,6 +1145,48 @@ bool assetPagePreservesBuildIndicesAndEquipsDurableIdentity() {
                 "actions page does not expose build or asset rows");
 }
 
+bool assetReloadCommandAndFailuresAreExplicitAndNotAssignable() {
+  constexpr std::array palette{cr::CreativeObjectKind::Wall};
+  cr::CreativeCatalogAsset asset;
+  asset.objectKind = cr::CreativeObjectKind::Rock;
+  asset.assetId = "boulder_01";
+  asset.label = "Boulder 01";
+  asset.sourceBounds = {{-1.0, -1.0, -1.0}, {1.0, 1.0, 1.0}};
+  const cr::CreativeCatalogAssetFailure failure{
+      "broken_prop", "assets/creative/broken_prop.glb",
+      "static_mesh_glb_parse_failed"};
+  cr::CreativeCatalogState state =
+      cr::makeCreativeCatalog(palette, std::span{&asset, 1U}, 1U,
+                              std::span{&failure, 1U});
+  static_cast<void>(
+      cr::setCreativeCatalogPage(state, cr::CreativeCatalogPage::Assets));
+  const bool selectedFailure =
+      cr::setCreativeCatalogQuery(state, "broken_prop");
+  const cr::CreativeCatalogEntry* failureEntry =
+      cr::selectedCreativeCatalogEntry(state);
+  cr::CreativeHotbarState hotbar = cr::makeDefaultCreativeHotbar(palette);
+  const bool failureAssigned =
+      cr::assignSelectedCreativeCatalogEntry(state, hotbar);
+  const bool selectedReload = cr::setCreativeCatalogQuery(state, "reload");
+  const cr::CreativeCatalogEntry* reload =
+      cr::selectedCreativeCatalogEntry(state);
+  const bool reloadAssigned =
+      cr::assignSelectedCreativeCatalogEntry(state, hotbar);
+
+  return expect(selectedFailure && failureEntry != nullptr &&
+                    failureEntry->category ==
+                        cr::CreativeCatalogEntryCategory::AssetFailure &&
+                    failureEntry->detail.find("static_mesh_glb_parse_failed") !=
+                        std::string::npos &&
+                    !failureAssigned,
+                "failed imports remain visible with a reason and cannot equip") &&
+         expect(selectedReload && reload != nullptr &&
+                    cr::creativeCatalogEntryRequestsAssetReload(*reload) &&
+                    !cr::creativeCatalogEntryAssignable(*reload) &&
+                    !reloadAssigned,
+                "reload is a typed command rather than a fake hotbar item");
+}
+
 }  // namespace
 
 int main() {
@@ -1152,5 +1202,6 @@ int main() {
   ok = selectionWrapsAndAssignmentsAreExplicit() && ok;
   ok = modalBindingsAreIsolatedAndDoNotRetrigger() && ok;
   ok = assetPagePreservesBuildIndicesAndEquipsDurableIdentity() && ok;
+  ok = assetReloadCommandAndFailuresAreExplicitAndNotAssignable() && ok;
   return ok ? 0 : 1;
 }

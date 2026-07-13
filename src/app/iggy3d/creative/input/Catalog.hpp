@@ -31,7 +31,14 @@ enum class CreativeCatalogPage : std::uint8_t {
 enum class CreativeCatalogEntryCategory : std::uint8_t {
   Material,
   Asset,
+  AssetFailure,
+  Command,
   Tool,
+};
+
+enum class CreativeCatalogCommand : std::uint8_t {
+  None,
+  ReloadAssets,
 };
 
 struct CreativeCatalogAsset {
@@ -42,6 +49,12 @@ struct CreativeCatalogAsset {
   StaticMeshAuthoringMetadata authoringMetadata;
 };
 
+struct CreativeCatalogAssetFailure {
+  std::string label;
+  std::string sourcePath;
+  std::string reasonCode;
+};
+
 struct CreativeCatalogEntry {
   CreativeCatalogEntryCategory category =
       CreativeCatalogEntryCategory::Material;
@@ -49,8 +62,10 @@ struct CreativeCatalogEntry {
   // Marks entries admitted to the default wheel. Any Tool entry can be
   // assigned to a wheel sector by the user.
   bool toolWheelEligible = false;
+  CreativeCatalogCommand command = CreativeCatalogCommand::None;
   std::string label;
   std::string searchText;
+  std::string detail;
   StaticMeshAuthoringMetadata assetAuthoringMetadata;
 };
 
@@ -111,7 +126,8 @@ struct CreativeToolWheelState {
 [[nodiscard]] CreativeCatalogState makeCreativeCatalog(
     std::span<const CreativeObjectKind> materialPalette,
     std::span<const CreativeCatalogAsset> assets = {},
-    std::size_t rejectedAssetCount = 0U);
+    std::size_t rejectedAssetCount = 0U,
+    std::span<const CreativeCatalogAssetFailure> assetFailures = {});
 
 [[nodiscard]] std::span<const CreativeCatalogActionEntry>
 creativeCatalogActionEntries() noexcept;
@@ -158,6 +174,10 @@ activateSelectedCreativeCatalogAction(CreativeCatalogState& catalog) noexcept;
 [[nodiscard]] CreativeHotbarEntry resolveCreativeCatalogHotbarEntry(
     const CreativeCatalogEntry& entry,
     CreativeObjectKind activeMaterial) noexcept;
+[[nodiscard]] bool creativeCatalogEntryAssignable(
+    const CreativeCatalogEntry& entry) noexcept;
+[[nodiscard]] bool creativeCatalogEntryRequestsAssetReload(
+    const CreativeCatalogEntry& entry) noexcept;
 [[nodiscard]] bool creativeCatalogEntryUsesShapeSelection(
     const CreativeCatalogEntry& entry) noexcept;
 [[nodiscard]] CreativeCatalogShapeSelection normalizeCreativeCatalogShapeSelection(

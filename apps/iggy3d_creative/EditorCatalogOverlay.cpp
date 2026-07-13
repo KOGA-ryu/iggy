@@ -207,7 +207,7 @@ void appendCatalogBuildDetails(
       entry->category == cr::CreativeCatalogEntryCategory::Material;
   const bool isAsset =
       entry->category == cr::CreativeCatalogEntryCategory::Asset;
-  appendText(glyphs, isMaterial ? "MATERIAL" : isAsset ? "ASSET" : "TOOL",
+  appendText(glyphs, cr::toString(entry->category),
              layout.detailX + 4, layout.searchY + 8, drawableWidth,
              drawableHeight, 0.58F, 0.66F, 0.71F);
   appendText(glyphs,
@@ -217,6 +217,25 @@ void appendCatalogBuildDetails(
 
   const bool shapeTool = cr::creativeCatalogEntryUsesShapeSelection(*entry);
   std::int32_t detailY = layout.rowsY + 12;
+  if (entry->category == cr::CreativeCatalogEntryCategory::AssetFailure ||
+      entry->category == cr::CreativeCatalogEntryCategory::Command) {
+    appendText(glyphs, "DETAIL", layout.detailX + 4, detailY,
+               drawableWidth, drawableHeight, 0.58F, 0.66F, 0.71F);
+    appendText(glyphs,
+               fitCatalogText(entry->detail, layout.detailWidth - 8U),
+               layout.detailX + 4, detailY + 21, drawableWidth,
+               drawableHeight,
+               entry->category == cr::CreativeCatalogEntryCategory::AssetFailure
+                   ? 0.94F
+                   : 0.90F,
+               entry->category == cr::CreativeCatalogEntryCategory::AssetFailure
+                   ? 0.42F
+                   : 0.93F,
+               entry->category == cr::CreativeCatalogEntryCategory::AssetFailure
+                   ? 0.32F
+                   : 0.95F);
+    detailY += 58;
+  }
   if (isAsset) {
     appendText(glyphs, "ASSET ID", layout.detailX + 4, detailY,
                drawableWidth, drawableHeight, 0.58F, 0.66F, 0.71F);
@@ -384,12 +403,16 @@ void appendCreativeEditorCatalogOverlay(
                          selected ? 0.76F : 0.085F,
                          selected ? 0.28F : 0.095F,
                          selected ? 0.98F : 0.92F});
-      const std::string_view prefix =
-          entry->category == cr::CreativeCatalogEntryCategory::Material
-              ? "MAT  "
-              : entry->category == cr::CreativeCatalogEntryCategory::Asset
-                    ? "ASSET "
-                    : "TOOL ";
+      std::string_view prefix = "TOOL ";
+      switch (entry->category) {
+        case cr::CreativeCatalogEntryCategory::Material: prefix = "MAT  "; break;
+        case cr::CreativeCatalogEntryCategory::Asset: prefix = "ASSET "; break;
+        case cr::CreativeCatalogEntryCategory::AssetFailure:
+          prefix = "ERROR ";
+          break;
+        case cr::CreativeCatalogEntryCategory::Command: prefix = "ACTION "; break;
+        case cr::CreativeCatalogEntryCategory::Tool: break;
+      }
       std::string rowText(prefix);
       if (entry->category == cr::CreativeCatalogEntryCategory::Asset) {
         rowText.push_back('[');
@@ -429,17 +452,29 @@ void appendCreativeEditorCatalogOverlay(
                    wheelButton.y + 7, drawableWidth, drawableHeight, 0.90F,
                    0.96F, 0.92F);
       }
-      const CatalogRect button = equipButton(layout);
-      uiRects.push_back({button.x, button.y, button.width, button.height,
-                         0.86F, 0.76F, 0.28F, 0.98F});
-      appendText(glyphs, "EQUIP", button.x + 20, button.y + 7, drawableWidth,
-                 drawableHeight, 0.06F, 0.065F, 0.07F);
+      if (cr::creativeCatalogEntryAssignable(*selectedEntry) ||
+          cr::creativeCatalogEntryRequestsAssetReload(*selectedEntry)) {
+        const CatalogRect button = equipButton(layout);
+        uiRects.push_back({button.x, button.y, button.width, button.height,
+                           0.86F, 0.76F, 0.28F, 0.98F});
+        appendText(glyphs,
+                   cr::creativeCatalogEntryRequestsAssetReload(*selectedEntry)
+                       ? "RELOAD"
+                       : "EQUIP",
+                   button.x + 20, button.y + 7, drawableWidth,
+                   drawableHeight, 0.06F, 0.065F, 0.07F);
+      }
     }
     if (!catalog.statusLabel.empty()) {
       std::snprintf(footer, sizeof(footer), "%s", catalog.statusLabel.c_str());
     } else if (catalog.model.page == cr::CreativeCatalogPage::Assets) {
+      const std::size_t assetCount = static_cast<std::size_t>(std::count_if(
+          catalog.model.entries.begin(), catalog.model.entries.end(),
+          [](const cr::CreativeCatalogEntry& entry) {
+            return entry.category == cr::CreativeCatalogEntryCategory::Asset;
+          }));
       std::snprintf(footer, sizeof(footer), "%zu assets | %zu rejected | slot %u",
-                    resultCount, catalog.model.rejectedAssetCount,
+                    assetCount, catalog.model.rejectedAssetCount,
                     static_cast<unsigned>(
                         editor.interaction.hotbar.selectedSlot) +
                         1U);

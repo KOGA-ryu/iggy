@@ -21,9 +21,10 @@ struct CreativeEditorBootstrapData {
   CreativeEditorState editor;
   iggy3d::ProductMapMakerGridSnapshot gridSnapshot;
   iggy3d::creative::CreativeAppState appState;
-  // Immutable for the run. Scene-cache validity therefore remains keyed only
-  // by document identity and revision.
+  // Replaced only by the explicit Assets-catalog reload transaction. That
+  // transaction invalidates the document-revision scene cache after the swap.
   iggy3d::StaticMeshAssetCatalog staticMeshAssetCatalog;
+  std::filesystem::path assetRoot;
   iggy3d::creative::CreativeObjectId floorObjectId =
       iggy3d::creative::kInvalidObjectId;
   std::filesystem::path saveRoot;

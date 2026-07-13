@@ -128,7 +128,7 @@ void ensureActionSelectionVisible(CreativeEditorCatalogState& catalog,
     std::optional<std::size_t> slot) {
   const cr::CreativeCatalogEntry* selected =
       cr::selectedCreativeCatalogEntry(editor.catalog.model);
-  if (selected == nullptr) {
+  if (selected == nullptr || !cr::creativeCatalogEntryAssignable(*selected)) {
     return false;
   }
   const std::size_t targetSlot = slot.value_or(
@@ -163,6 +163,33 @@ void ensureActionSelectionVisible(CreativeEditorCatalogState& catalog,
     editor.volume.lastReceipt = {};
   }
   return true;
+}
+
+void activateSelectedCatalogEntry(
+    const CreativeEditorCatalogFrameRequest& request,
+    std::optional<std::size_t> slot,
+    CreativeEditorCatalogFrameResult& result) {
+  CreativeEditorCatalogState& catalog = request.editor.catalog;
+  const cr::CreativeCatalogEntry* selected =
+      cr::selectedCreativeCatalogEntry(catalog.model);
+  if (selected == nullptr) {
+    return;
+  }
+  if (cr::creativeCatalogEntryRequestsAssetReload(*selected)) {
+    result.assetReloadRequested = true;
+    catalog.statusLabel = "RELOADING ASSETS...";
+    return;
+  }
+  if (selected->category == cr::CreativeCatalogEntryCategory::AssetFailure) {
+    catalog.statusLabel = "ASSET ERROR: " + selected->detail;
+    return;
+  }
+  result.assigned =
+      assignCatalogSelection(request.appState, request.editor, slot) ||
+      result.assigned;
+  if (result.assigned) {
+    static_cast<void>(cr::setCreativeCatalogOpen(catalog.model, false));
+  }
 }
 
 
@@ -380,13 +407,7 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
         break;
       case cr::CreativeInputActionId::CatalogConfirm:
         if (catalogShowsEntries(catalog.model.page)) {
-          result.assigned =
-              assignCatalogSelection(request.appState, request.editor,
-                                     std::nullopt) ||
-              result.assigned;
-          if (result.assigned) {
-            static_cast<void>(cr::setCreativeCatalogOpen(catalog.model, false));
-          }
+          activateSelectedCatalogEntry(request, std::nullopt, result);
         } else {
           requestSelectedCatalogAction(request, event.trigger, result);
         }
@@ -452,13 +473,7 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
     }
     if (selected != nullptr &&
         contains(equipButton(layout), pointer.x, pointer.y)) {
-      result.assigned =
-          assignCatalogSelection(request.appState, request.editor,
-                                 std::nullopt) ||
-          result.assigned;
-      if (result.assigned) {
-        static_cast<void>(cr::setCreativeCatalogOpen(catalog.model, false));
-      }
+      activateSelectedCatalogEntry(request, std::nullopt, result);
       return;
     }
     if (layout.showDetails && selected != nullptr &&

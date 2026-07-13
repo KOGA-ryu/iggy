@@ -23,6 +23,17 @@ struct VulkanBackendCreateInfo {
   std::uint32_t drawableHeight = 360;
 };
 
+struct VulkanStaticMeshAssetReloadResult {
+  RenderOutcome outcome = RenderOutcome::RendererNotReady;
+  RenderReason reason{"static_mesh_asset_reload_not_requested",
+                      "static mesh asset reload not requested"};
+  RenderReceipt receipt;
+
+  [[nodiscard]] bool ok() const noexcept {
+    return outcome == RenderOutcome::Ok;
+  }
+};
+
 class VulkanBackend final : public RenderBackend {
 public:
   explicit VulkanBackend(VulkanBackendCreateInfo createInfo);
@@ -37,16 +48,29 @@ public:
   RenderSubmitResult resize(RenderViewport viewport) override;
   RenderReceipt diagnostics() const override;
   RenderOutcome waitIdle() override;
+  [[nodiscard]] VulkanStaticMeshAssetReloadResult reloadStaticMeshAssets();
   void shutdown() override;
   bool frameCaptureReady() const;
   vulkan::NormalizedCapture readLastFrameCapture() const;
 
 private:
+  struct StaticMeshMaterialPipelineBundle {
+    vulkan::ShaderModuleRecord vertexShader;
+    vulkan::ShaderModuleRecord fragmentShader;
+    vulkan::PipelineLayoutRecord layout;
+    vulkan::FirstRoomPipelineRecord pipeline;
+  };
+
   RenderReceipt makeReceipt(std::string_view result, std::string_view reasonCode) const;
   void initializePacket5Modules(std::uint32_t drawableWidth, std::uint32_t drawableHeight);
   void initializePacket7FirstRoomModules();
   void destroyPacket7FirstRoomModules();
   bool initializeStaticMeshMaterialPipeline();
+  bool createStaticMeshMaterialPipeline(
+      VkDescriptorSetLayout textureLayout,
+      StaticMeshMaterialPipelineBundle& output);
+  void destroyStaticMeshMaterialPipelineBundle(
+      StaticMeshMaterialPipelineBundle& bundle);
   void destroyStaticMeshMaterialPipeline();
 
   RendererConfig config_;

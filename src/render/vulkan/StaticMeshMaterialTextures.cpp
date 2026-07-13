@@ -403,6 +403,12 @@ void StaticMeshMaterialTextureStore::destroy(
   resources_ = {};
 }
 
+void StaticMeshMaterialTextureStore::swap(
+    StaticMeshMaterialTextureStore& other) noexcept {
+  using std::swap;
+  swap(resources_, other.resources_);
+}
+
 const StaticMeshMaterialTextureResources&
 StaticMeshMaterialTextureStore::resources() const noexcept {
   return resources_;

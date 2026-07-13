@@ -55,6 +55,7 @@ struct CreativeEditorCatalogFrameResult {
   bool openChanged = false;
   bool pageChanged = false;
   bool assigned = false;
+  bool assetReloadRequested = false;
   bool toolWheelChanged = false;
   bool toolWheelSaved = false;
   bool openToolOptionsRequested = false;

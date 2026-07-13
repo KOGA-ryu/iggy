@@ -37,7 +37,7 @@ bool assignSelectedCreativeCatalogEntry(
   const CreativeCatalogEntry* entry = selectedCreativeCatalogEntry(catalog);
   const std::size_t targetSlot =
       slot.value_or(static_cast<std::size_t>(hotbar.selectedSlot));
-  if (entry == nullptr) {
+  if (entry == nullptr || !creativeCatalogEntryAssignable(*entry)) {
     return false;
   }
   return assignHotbarEntry(entry->hotbarEntry, hotbar, targetSlot);

@@ -2172,6 +2172,134 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
   return result;
 }
 
+BufferImageResourcesResult BufferImageResources::prepareStaticMeshAssetReload() {
+  BufferImageResourcesResult result;
+  result.receipt = baseReceipt("fail", "static_mesh_asset_reload_not_ready");
+  cancelStaticMeshAssetReload();
+  if (!ready_ || !allocator_.ready()) {
+    result.outcome = RenderOutcome::RendererNotReady;
+    result.reason = {"static_mesh_asset_reload_not_ready",
+                     "static mesh asset reload not ready"};
+    return result;
+  }
+
+  pendingStaticMeshAssets_.setRoot(createInfo_.staticMeshAssetRoot);
+  const CreativePreviewCpuGeometry preview =
+      buildCreativePreviewCpuGeometry(&pendingStaticMeshAssets_);
+  if (!preview.ready) {
+    result.reason = {"static_mesh_asset_reload_preview_failed",
+                     "static mesh asset reload preview failed"};
+    result.receipt = baseReceipt("fail", result.reason.code);
+    cancelStaticMeshAssetReload();
+    return result;
+  }
+
+#if defined(IGGY3D_HAS_VULKAN)
+  const VkDeviceSize vertexBytes = static_cast<VkDeviceSize>(
+      preview.vertices.size() * sizeof(FirstRoomVertex));
+  const VkDeviceSize indexBytes = static_cast<VkDeviceSize>(
+      preview.indices.size() * sizeof(std::uint16_t));
+  if (!uploadBuffer(
+          allocator_, createInfo_.device, createInfo_.graphicsQueue,
+          createInfo_.graphicsQueueFamily,
+          "buffer.staging.upload.creative_preview_reload",
+          "buffer.creative_preview.reload.vertices", vertexBytes,
+          VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, preview.vertices.data(),
+          pendingCreativePreviewGeometry_.vertexBuffer)) {
+    result.reason = {"static_mesh_asset_reload_preview_upload_failed",
+                     "static mesh asset reload preview upload failed"};
+    result.receipt = baseReceipt("fail", result.reason.code);
+    cancelStaticMeshAssetReload();
+    return result;
+  }
+  if (!uploadBuffer(
+          allocator_, createInfo_.device, createInfo_.graphicsQueue,
+          createInfo_.graphicsQueueFamily,
+          "buffer.staging.upload.creative_preview_reload",
+          "buffer.creative_preview.reload.indices", indexBytes,
+          VK_BUFFER_USAGE_INDEX_BUFFER_BIT, preview.indices.data(),
+          pendingCreativePreviewGeometry_.indexBuffer)) {
+    result.reason = {"static_mesh_asset_reload_preview_upload_failed",
+                     "static mesh asset reload preview upload failed"};
+    result.receipt = baseReceipt("fail", result.reason.code);
+    cancelStaticMeshAssetReload();
+    return result;
+  }
+  pendingCreativePreviewGeometry_.indexedDraws = preview.indexedDraws;
+  pendingCreativePreviewGeometry_.assetDraws = preview.assetDraws;
+  pendingCreativePreviewGeometry_.vertexCount =
+      static_cast<std::uint32_t>(preview.vertices.size());
+  pendingCreativePreviewGeometry_.indexCount =
+      static_cast<std::uint32_t>(preview.indices.size());
+  pendingCreativePreviewGeometry_.ready = true;
+
+  StaticMeshMaterialTextureCreateInfo textureCreateInfo;
+  textureCreateInfo.device = createInfo_.device;
+  textureCreateInfo.graphicsQueue = createInfo_.graphicsQueue;
+  textureCreateInfo.graphicsQueueFamily = createInfo_.graphicsQueueFamily;
+  pendingStaticMeshMaterialTextures_.create(
+      textureCreateInfo, allocator_, &pendingStaticMeshAssets_);
+  if (!pendingStaticMeshMaterialTextures_.resources().ready) {
+    result.outcome = RenderOutcome::OutOfMemory;
+    result.reason = {"static_mesh_asset_reload_texture_prepare_failed",
+                     "static mesh asset reload texture prepare failed"};
+    result.receipt = baseReceipt("fail", result.reason.code);
+    cancelStaticMeshAssetReload();
+    return result;
+  }
+#endif
+
+  staticMeshAssetReloadPending_ = true;
+  result.outcome = RenderOutcome::Ok;
+  result.reason = {"static_mesh_asset_reload_prepared",
+                   "static mesh asset reload prepared"};
+  result.receipt = baseReceipt("pass", result.reason.code);
+  appendReceiptField(result.receipt, "creative_preview_draw_count",
+                     static_cast<std::uint64_t>(
+                         pendingCreativePreviewGeometry_.indexedDraws.size()));
+  appendReceiptField(result.receipt, "static_mesh_asset_loaded_count",
+                     static_cast<std::uint64_t>(
+                         pendingStaticMeshAssets_.loadedAssetCount()));
+  appendReceiptField(result.receipt, "static_mesh_asset_failed_count",
+                     static_cast<std::uint64_t>(
+                         pendingStaticMeshAssets_.failedAssetCount()));
+  appendReceiptField(
+      result.receipt, "static_mesh_texture_count",
+      static_cast<std::uint64_t>(pendingStaticMeshMaterialTextures_
+                                     .resources()
+                                     .textures.size()));
+  return result;
+}
+
+bool BufferImageResources::commitStaticMeshAssetReload() {
+  if (!staticMeshAssetReloadPending_ ||
+      !pendingCreativePreviewGeometry_.ready ||
+      !pendingStaticMeshMaterialTextures_.resources().ready) {
+    return false;
+  }
+  destroyGeometryBuffers();
+  destroyCreativePreviewBuffers();
+  staticMeshMaterialTextures_.destroy(createInfo_.device, allocator_);
+  staticMeshMaterialTextures_.swap(pendingStaticMeshMaterialTextures_);
+  staticMeshAssets_ = std::move(pendingStaticMeshAssets_);
+  creativePreviewGeometry_ = std::move(pendingCreativePreviewGeometry_);
+  pendingStaticMeshAssets_ = {};
+  pendingCreativePreviewGeometry_ = {};
+  staticMeshAssetReloadPending_ = false;
+  return true;
+}
+
+void BufferImageResources::cancelStaticMeshAssetReload() {
+  allocator_.destroyBuffer(
+      pendingCreativePreviewGeometry_.indexBuffer.allocation);
+  allocator_.destroyBuffer(
+      pendingCreativePreviewGeometry_.vertexBuffer.allocation);
+  pendingCreativePreviewGeometry_ = {};
+  pendingStaticMeshMaterialTextures_.destroy(createInfo_.device, allocator_);
+  pendingStaticMeshAssets_ = {};
+  staticMeshAssetReloadPending_ = false;
+}
+
 RenderReceipt BufferImageResources::destroy() {
   RenderReceipt receipt = baseReceipt("pass", "packet6_resource_ready");
 #if defined(IGGY3D_HAS_VULKAN)
@@ -2180,6 +2308,7 @@ RenderReceipt BufferImageResources::destroy() {
   }
 #endif
   depth_.depthImage.imageView = {};
+  cancelStaticMeshAssetReload();
   allocator_.destroyImage(depth_.depthImage.allocation);
   destroyGeometryBuffers();
   destroyCreativePreviewBuffers();
@@ -2205,6 +2334,11 @@ BufferImageResources::creativePreviewGeometry() const {
 const StaticMeshMaterialTextureResources&
 BufferImageResources::staticMeshMaterialTextures() const {
   return staticMeshMaterialTextures_.resources();
+}
+
+const StaticMeshMaterialTextureResources&
+BufferImageResources::pendingStaticMeshMaterialTextures() const {
+  return pendingStaticMeshMaterialTextures_.resources();
 }
 
 const DepthResourceRecord& BufferImageResources::depth() const {

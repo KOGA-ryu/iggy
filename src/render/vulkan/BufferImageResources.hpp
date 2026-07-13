@@ -181,11 +181,16 @@ public:
   BufferImageResourcesResult createRoomMeshResources(
       const SceneRoomProjection& room,
       const RenderCreativeWireframeDebugFrame* creativeWireframeDebug = nullptr);
+  BufferImageResourcesResult prepareStaticMeshAssetReload();
+  [[nodiscard]] bool commitStaticMeshAssetReload();
+  void cancelStaticMeshAssetReload();
   RenderReceipt destroy();
 
   const FirstRoomGeometryResources& geometry() const;
   const CreativePreviewGeometryResources& creativePreviewGeometry() const;
   const StaticMeshMaterialTextureResources& staticMeshMaterialTextures() const;
+  const StaticMeshMaterialTextureResources&
+  pendingStaticMeshMaterialTextures() const;
   const DepthResourceRecord& depth() const;
   bool ready() const;
 
@@ -197,9 +202,13 @@ private:
   FirstRoomGeometryResources geometry_;
   CreativePreviewGeometryResources creativePreviewGeometry_;
   StaticMeshMaterialTextureStore staticMeshMaterialTextures_;
+  StaticMeshMaterialTextureStore pendingStaticMeshMaterialTextures_;
   DepthResourceRecord depth_;
   BufferImageResourcesCreateInfo createInfo_;
   StaticMeshAssetCache staticMeshAssets_;
+  StaticMeshAssetCache pendingStaticMeshAssets_;
+  CreativePreviewGeometryResources pendingCreativePreviewGeometry_;
+  bool staticMeshAssetReloadPending_ = false;
   bool ready_ = false;
 };
 

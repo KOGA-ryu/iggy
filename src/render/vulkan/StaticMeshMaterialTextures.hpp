@@ -89,6 +89,7 @@ public:
               VulkanMemoryAllocator& allocator,
               StaticMeshAssetCache* staticMeshAssets);
   void destroy(VkDevice device, VulkanMemoryAllocator& allocator);
+  void swap(StaticMeshMaterialTextureStore& other) noexcept;
 
   [[nodiscard]] const StaticMeshMaterialTextureResources& resources() const
       noexcept;

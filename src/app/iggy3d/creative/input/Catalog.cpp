@@ -170,7 +170,9 @@ static_assert(kActionEntries.size() == kCreativeCatalogActionCapacity);
       return entry.category == CreativeCatalogEntryCategory::Material ||
              entry.category == CreativeCatalogEntryCategory::Tool;
     case CreativeCatalogPage::Assets:
-      return entry.category == CreativeCatalogEntryCategory::Asset;
+      return entry.category == CreativeCatalogEntryCategory::Asset ||
+             entry.category == CreativeCatalogEntryCategory::AssetFailure ||
+             entry.category == CreativeCatalogEntryCategory::Command;
     case CreativeCatalogPage::Actions:
     case CreativeCatalogPage::Count:
       return false;
@@ -274,6 +276,8 @@ std::string_view toString(CreativeCatalogEntryCategory category) noexcept {
   switch (category) {
     case CreativeCatalogEntryCategory::Material: return "Material";
     case CreativeCatalogEntryCategory::Asset: return "Asset";
+    case CreativeCatalogEntryCategory::AssetFailure: return "Asset Failure";
+    case CreativeCatalogEntryCategory::Command: return "Command";
     case CreativeCatalogEntryCategory::Tool: return "Tool";
   }
   return "Unknown";
@@ -313,11 +317,12 @@ std::string_view creativeCatalogAssetPhysicsLabel(
 CreativeCatalogState makeCreativeCatalog(
     std::span<const CreativeObjectKind> materialPalette,
     std::span<const CreativeCatalogAsset> assets,
-    std::size_t rejectedAssetCount) {
+    std::size_t rejectedAssetCount,
+    std::span<const CreativeCatalogAssetFailure> assetFailures) {
   CreativeCatalogState catalog;
   catalog.rejectedAssetCount = rejectedAssetCount;
   catalog.entries.reserve(materialPalette.size() + kToolSpecs.size() +
-                          assets.size());
+                          assets.size() + assetFailures.size() + 1U);
 
   CreativeObjectKind defaultMaterial = CreativeObjectKind::Unknown;
   for (CreativeObjectKind kind : materialPalette) {
@@ -386,6 +391,27 @@ CreativeCatalogState makeCreativeCatalog(
         " asset imported glb blender mesh");
     catalog.entries.push_back(std::move(entry));
   }
+  for (const CreativeCatalogAssetFailure& failure : assetFailures) {
+    CreativeCatalogEntry entry;
+    entry.category = CreativeCatalogEntryCategory::AssetFailure;
+    entry.label = failure.label.empty() ? failure.sourcePath : failure.label;
+    entry.detail = failure.reasonCode;
+    if (!failure.sourcePath.empty()) {
+      entry.detail.append(" | ");
+      entry.detail.append(failure.sourcePath);
+    }
+    entry.searchText = lowerAscii(
+        entry.label + " " + failure.sourcePath + " " + failure.reasonCode +
+        " failed rejected broken asset glb blender");
+    catalog.entries.push_back(std::move(entry));
+  }
+  CreativeCatalogEntry reload;
+  reload.category = CreativeCatalogEntryCategory::Command;
+  reload.command = CreativeCatalogCommand::ReloadAssets;
+  reload.label = "Reload Assets";
+  reload.searchText = "reload assets refresh rescan blender glb";
+  reload.detail = "Rescan GLB files and rebuild imported mesh resources";
+  catalog.entries.push_back(std::move(reload));
   refreshFilter(catalog);
   return catalog;
 }
@@ -593,12 +619,28 @@ const CreativeCatalogEntry* creativeCatalogEntryAtFilteredIndex(
 CreativeHotbarEntry resolveCreativeCatalogHotbarEntry(
     const CreativeCatalogEntry& entry,
     CreativeObjectKind activeMaterial) noexcept {
+  if (!creativeCatalogEntryAssignable(entry)) {
+    return {};
+  }
   CreativeHotbarEntry resolved = entry.hotbarEntry;
   if (entry.category == CreativeCatalogEntryCategory::Tool) {
     static_cast<void>(
         applyCreativeHeldItemMaterial(resolved, activeMaterial));
   }
   return resolved;
+}
+
+bool creativeCatalogEntryAssignable(
+    const CreativeCatalogEntry& entry) noexcept {
+  return entry.category == CreativeCatalogEntryCategory::Material ||
+         entry.category == CreativeCatalogEntryCategory::Asset ||
+         entry.category == CreativeCatalogEntryCategory::Tool;
+}
+
+bool creativeCatalogEntryRequestsAssetReload(
+    const CreativeCatalogEntry& entry) noexcept {
+  return entry.category == CreativeCatalogEntryCategory::Command &&
+         entry.command == CreativeCatalogCommand::ReloadAssets;
 }
 
 bool creativeCatalogEntryUsesShapeSelection(
