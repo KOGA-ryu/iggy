@@ -54,6 +54,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/input/ActionHints.cpp
     src/app/iggy3d/creative/input/ControlProfile.cpp
     src/app/iggy3d/creative/input/UiInput.cpp
+    src/app/iggy3d/creative/input/InputDefaults.cpp
     src/app/iggy3d/creative/input/InputRouter.cpp
     src/app/iggy3d/creative/input/Catalog.cpp
     src/app/iggy3d/creative/input/Interaction.cpp
