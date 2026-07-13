@@ -20,8 +20,8 @@ namespace {
                        before.objectKind != entry.objectKind ||
                        before.assetId != entry.assetId ||
                        before.hasAssetBounds != entry.hasAssetBounds ||
-                       !creativeVec3ExactlyEqual(before.assetBoundsSize,
-                                                 entry.assetBoundsSize) ||
+                       !creativeBoundsExactlyEqual(before.assetSourceBounds,
+                                                   entry.assetSourceBounds) ||
                        hotbar.selectedSlot != targetSlot;
   hotbar.entries[targetSlot] = entry;
   hotbar.selectedSlot = static_cast<std::uint8_t>(targetSlot);

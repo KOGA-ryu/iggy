@@ -3432,14 +3432,20 @@ bool importedAssetPlacementPreviewAndDocumentStayInParity() {
   CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Rock);
   cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const cr::CreativeBounds sourceBounds{
+      {-0.25, -0.2, -1.0}, {1.25, 1.2, 0.2}};
   const bool assetSet = cr::setCreativeHotbarAsset(
-      held, "boulder_01", {1.5, 1.4, 1.2});
+      held, "boulder_01", sourceBounds);
   setPlaceTarget(editor, 2, 0, -1);
+  editor.toolSettings.placementYaw = cr::CreativePlacementYaw::Degrees90;
   const CreativeBrushPlacementAdmission admission = admitBrushPlacement(
       held, editor.interaction.target.grid,
       editor.toolSettings.placementYaw);
   const cr::CreativeBoundsMetrics planned =
       cr::measureCreativeBounds(admission.plan.authoredBounds);
+  const cr::CreativeTransformedBounds resolved =
+      cr::resolveCreativeTransformedBounds(admission.plan.authoredBounds,
+                                           admission.plan.transform);
   const cr::CreativeDocumentCreateRequest request =
       buildBrushCreateRequest(admission.plan, 7U,
                               cr::creativeHotbarAssetId(held));
@@ -3452,6 +3458,8 @@ bool importedAssetPlacementPreviewAndDocumentStayInParity() {
           frame.creativePreview.items[0]) == "boulder_01" &&
       iggy3d::renderCreativePreviewAssetId(
           frame.creativePreview.items[1]) == "boulder_01";
+  const iggy3d::Mat4& targetPreview =
+      frame.creativePreview.items[0].clipFromModel;
 
   cr::CreativeAppState appState;
   const CreativeBrushPlacementMutationReceipt placed = applyBrushPlacement(
@@ -3470,14 +3478,35 @@ bool importedAssetPlacementPreviewAndDocumentStayInParity() {
                     near(static_cast<float>(planned.size.y), 1.4F) &&
                     near(static_cast<float>(planned.size.z), 1.2F),
                 "asset natural dimensions replace descriptor proxy bounds") &&
+         expect(resolved.valid &&
+                    near(static_cast<float>(
+                             admission.plan.transform.position.x),
+                         2.9F) &&
+                    near(static_cast<float>(
+                             admission.plan.transform.position.y),
+                         0.2F) &&
+                    near(static_cast<float>(
+                             admission.plan.transform.position.z),
+                         0.0F) &&
+                    near(static_cast<float>(resolved.center.x), 2.5F) &&
+                    near(static_cast<float>(resolved.center.y), 0.7F) &&
+                    near(static_cast<float>(resolved.center.z), -0.5F),
+                "placement retains the rotated source origin under target") &&
          expect(request.assetId == "boulder_01" &&
-                    sameBounds(request.bounds, admission.plan.authoredBounds),
-                "create request shares asset identity and planned bounds") &&
-         expect(previewIdentity,
-                "target and held previews request the exact imported mesh") &&
+                    sameBounds(request.bounds, admission.plan.authoredBounds) &&
+                    sameTransform(request.transform,
+                                  admission.plan.transform),
+                "create request shares asset identity, bounds, and pivot") &&
+         expect(previewIdentity &&
+                    near(iggy3d::at(targetPreview, 0U, 3U), 2.5F) &&
+                    near(iggy3d::at(targetPreview, 1U, 3U), 0.7F) &&
+                    near(iggy3d::at(targetPreview, 2U, 3U), -0.5F),
+                "target and held previews use resolved imported geometry") &&
          expect(placed.accepted && placed.objectCreated && object != nullptr &&
-                    object->assetId == "boulder_01",
-                "accepted placement stores the durable asset reference") &&
+                    object->assetId == "boulder_01" &&
+                    sameTransform(object->transform,
+                                  admission.plan.transform),
+                "accepted placement stores the asset reference and pivot") &&
          expect(sameAssetDuplicate && differentAssetDistinct,
                 "duplicate admission distinguishes imported asset identity");
 }

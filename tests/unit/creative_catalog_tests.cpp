@@ -1052,7 +1052,7 @@ bool assetPagePreservesBuildIndicesAndEquipsDurableIdentity() {
   assets[0].objectKind = cr::CreativeObjectKind::Rock;
   assets[0].assetId = "boulder_01";
   assets[0].label = "Boulder 01";
-  assets[0].boundsSize = {1.5, 1.4, 1.2};
+  assets[0].sourceBounds = {{-0.25, -0.2, -1.0}, {1.25, 1.2, 0.2}};
   assets[0].authoringMetadata.status =
       iggy3d::StaticMeshAuthoringMetadataStatus::Authored;
   assets[0].authoringMetadata.categoryId = "boulder";
@@ -1060,7 +1060,7 @@ bool assetPagePreservesBuildIndicesAndEquipsDurableIdentity() {
   assets[1].objectKind = cr::CreativeObjectKind::Bridge;
   assets[1].assetId = "walkway_stone_01";
   assets[1].label = "Walkway Stone 01";
-  assets[1].boundsSize = {3.0, 0.3, 1.2};
+  assets[1].sourceBounds = {{-1.5, 0.0, -0.6}, {1.5, 0.3, 0.6}};
   assets[1].authoringMetadata.status =
       iggy3d::StaticMeshAuthoringMetadataStatus::Authored;
   assets[1].authoringMetadata.categoryId = "walkway";
@@ -1112,8 +1112,10 @@ bool assetPagePreservesBuildIndicesAndEquipsDurableIdentity() {
          expect(assigned && held.kind == cr::CreativeHeldItemKind::Material &&
                     held.objectKind == cr::CreativeObjectKind::Rock &&
                     cr::creativeHotbarAssetId(held) == "boulder_01" &&
-                    held.hasAssetBounds && held.assetBoundsSize.y == 1.4,
-                "asset assignment carries bounded identity and dimensions") &&
+                    held.hasAssetBounds &&
+                    cr::creativeBoundsExactlyEqual(
+                        held.assetSourceBounds, assets[0].sourceBounds),
+                "asset assignment carries identity and source-space bounds") &&
          expect(searched && walkway != nullptr &&
                     cr::creativeHotbarAssetId(walkway->hotbarEntry) ==
                         "walkway_stone_01" &&

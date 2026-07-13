@@ -109,7 +109,9 @@ struct StaticMeshImportResult {
 struct StaticMeshAssetCatalogEntry {
   std::string assetId;
   std::string label;
-  Vec3 boundsSize;
+  // Flattened asset-space bounds relative to the shared glTF origin.
+  Vec3 boundsMin;
+  Vec3 boundsMax;
   std::uint64_t contentHash = 0;
   StaticMeshAuthoringMetadata authoringMetadata;
 };

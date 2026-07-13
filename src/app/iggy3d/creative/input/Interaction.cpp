@@ -251,9 +251,17 @@ bool assignCreativeHotbarFromObject(CreativeHotbarState& hotbar,
   }
   CreativeHotbarEntry replacement{CreativeHeldItemKind::Material, object.kind};
   if (!object.assetId.empty()) {
-    const CreativeBoundsMetrics metrics = measureCreativeBounds(object.bounds);
-    if (!metrics.valid ||
-        !setCreativeHotbarAsset(replacement, object.assetId, metrics.size)) {
+    if (!isFiniteCreativeVec3(object.transform.position)) {
+      return false;
+    }
+    const CreativeBounds sourceBounds{
+        {object.bounds.min.x - object.transform.position.x,
+         object.bounds.min.y - object.transform.position.y,
+         object.bounds.min.z - object.transform.position.z},
+        {object.bounds.max.x - object.transform.position.x,
+         object.bounds.max.y - object.transform.position.y,
+         object.bounds.max.z - object.transform.position.z}};
+    if (!setCreativeHotbarAsset(replacement, object.assetId, sourceBounds)) {
       return false;
     }
   }
@@ -272,7 +280,7 @@ std::string_view creativeHotbarAssetId(
 
 bool setCreativeHotbarAsset(CreativeHotbarEntry& entry,
                             std::string_view assetId,
-                            CreativeVec3 boundsSize) noexcept {
+                            CreativeBounds sourceBounds) noexcept {
   const bool validId = !assetId.empty() &&
                        assetId.size() <= kCreativeHotbarAssetIdCapacity &&
                        assetId.front() != '/' &&
@@ -285,22 +293,21 @@ bool setCreativeHotbarAsset(CreativeHotbarEntry& entry,
                                 (c >= '0' && c <= '9') || c == '_' ||
                                 c == '-' || c == '/';
                        });
-  const bool validBounds = isFiniteCreativeVec3(boundsSize) &&
-                           boundsSize.x > 0.0 && boundsSize.y > 0.0 &&
-                           boundsSize.z > 0.0;
+  const CreativeBoundsMetrics bounds = measureCreativeBounds(sourceBounds);
+  const bool validBounds = bounds.valid && isPositiveCreativeVec3(bounds.size);
   if (!validId || !validBounds) {
     return false;
   }
   entry.assetId.fill('\0');
   std::copy(assetId.begin(), assetId.end(), entry.assetId.begin());
-  entry.assetBoundsSize = boundsSize;
+  entry.assetSourceBounds = sourceBounds;
   entry.hasAssetBounds = true;
   return true;
 }
 
 void clearCreativeHotbarAsset(CreativeHotbarEntry& entry) noexcept {
   entry.assetId.fill('\0');
-  entry.assetBoundsSize = {};
+  entry.assetSourceBounds = {};
   entry.hasAssetBounds = false;
 }
 

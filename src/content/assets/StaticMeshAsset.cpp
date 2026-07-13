@@ -418,9 +418,8 @@ StaticMeshAssetCatalog discoverStaticMeshAssetCatalog(
       continue;
     }
     catalog.entries.push_back(
-        {assetId, assetLabel(assetId),
-         imported.asset.boundsMax - imported.asset.boundsMin,
-         imported.asset.contentHash,
+        {assetId, assetLabel(assetId), imported.asset.boundsMin,
+         imported.asset.boundsMax, imported.asset.contentHash,
          imported.asset.authoringMetadata});
   }
   return catalog;

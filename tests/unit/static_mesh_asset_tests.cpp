@@ -189,7 +189,10 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
                     !boulder->authoringMetadata.walkable &&
                     walkway != catalog.entries.end() &&
                     walkway->label == "Walkway Stone 01" &&
-                    walkway->boundsSize.x > 2.9F &&
+                    walkway->boundsMax.x - walkway->boundsMin.x > 2.9F &&
+                    walkway->boundsMin.x < walkway->boundsMax.x &&
+                    walkway->boundsMin.y < walkway->boundsMax.y &&
+                    walkway->boundsMin.z < walkway->boundsMax.z &&
                     walkway->authoringMetadata.status ==
                         iggy3d::StaticMeshAuthoringMetadataStatus::Authored &&
                     walkway->authoringMetadata.walkable &&

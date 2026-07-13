@@ -38,7 +38,7 @@ struct CreativeCatalogAsset {
   CreativeObjectKind objectKind = CreativeObjectKind::Prop;
   std::string assetId;
   std::string label;
-  CreativeVec3 boundsSize{};
+  CreativeBounds sourceBounds{};
   StaticMeshAuthoringMetadata authoringMetadata;
 };
 

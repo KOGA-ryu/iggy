@@ -159,9 +159,11 @@ initialPathPointsForAnchor(iggy3d::Vec3 cellCenter);
     const iggy3d::creative::CreativeGridTarget& target,
     iggy3d::creative::CreativePlacementYaw placementYaw =
         iggy3d::creative::CreativePlacementYaw::Degrees0) noexcept;
+// Aligns the oriented source bottom-center while retaining source origin as
+// the transform pivot.
 [[nodiscard]] bool applyCreativeAssetPlacementBounds(
     CreativeBrushPlacementPlan& plan,
-    iggy3d::creative::CreativeVec3 boundsSize) noexcept;
+    iggy3d::creative::CreativeBounds sourceBounds) noexcept;
 [[nodiscard]] bool creativeBrushPlacementAlreadyExists(
     const iggy3d::creative::CreativeDocument& document,
     const CreativeBrushPlacementPlan& plan,

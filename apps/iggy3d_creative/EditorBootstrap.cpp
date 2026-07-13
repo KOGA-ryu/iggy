@@ -95,8 +95,9 @@ discoverCreativeCatalogAssets() {
         source.assetId, source.authoringMetadata.categoryId);
     asset.assetId = source.assetId;
     asset.label = source.label;
-    asset.boundsSize = {source.boundsSize.x, source.boundsSize.y,
-                        source.boundsSize.z};
+    asset.sourceBounds = {
+        {source.boundsMin.x, source.boundsMin.y, source.boundsMin.z},
+        {source.boundsMax.x, source.boundsMax.y, source.boundsMax.z}};
     asset.authoringMetadata = source.authoringMetadata;
     output.assets.push_back(std::move(asset));
   }

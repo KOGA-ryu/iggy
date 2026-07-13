@@ -372,7 +372,7 @@ CreativeCatalogState makeCreativeCatalog(
     entry.category = CreativeCatalogEntryCategory::Asset;
     entry.hotbarEntry = {CreativeHeldItemKind::Material, asset.objectKind};
     if (!setCreativeHotbarAsset(entry.hotbarEntry, asset.assetId,
-                                asset.boundsSize)) {
+                                asset.sourceBounds)) {
       continue;
     }
     entry.label = asset.label.empty() ? asset.assetId : asset.label;

@@ -137,7 +137,8 @@ struct CreativeHotbarEntry {
   CreativeHeldItemKind kind = CreativeHeldItemKind::Material;
   CreativeObjectKind objectKind = CreativeObjectKind::Unknown;
   std::array<char, kCreativeHotbarAssetIdCapacity + 1U> assetId{};
-  CreativeVec3 assetBoundsSize{};
+  // Imported bounds remain relative to the asset origin used as its pivot.
+  CreativeBounds assetSourceBounds{};
   bool hasAssetBounds = false;
 };
 
@@ -172,7 +173,7 @@ struct CreativeHotbarState {
 [[nodiscard]] bool setCreativeHotbarAsset(
     CreativeHotbarEntry& entry,
     std::string_view assetId,
-    CreativeVec3 boundsSize) noexcept;
+    CreativeBounds sourceBounds) noexcept;
 void clearCreativeHotbarAsset(CreativeHotbarEntry& entry) noexcept;
 [[nodiscard]] bool creativeHeldItemIsVolumeOperation(
     CreativeHeldItemKind kind) noexcept;

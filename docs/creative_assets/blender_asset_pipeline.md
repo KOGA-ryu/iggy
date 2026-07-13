@@ -36,10 +36,13 @@ that catalog directly; it never reopens Blender assets in the frame loop.
 5. Place normally. Pick-block on an imported object restores its `assetId` and
    authored dimensions to the selected hotbar slot.
 
-The hotbar carries a bounded asset ID and natural imported dimensions. The
-placement plan uses those dimensions for the authored bounds, preview, create
-request, duplicate check, undo transaction, and saved object. Generic materials
-and imported assets with the same object kind remain distinct placement items.
+The hotbar carries a bounded asset ID and the exact source-space minimum and
+maximum bounds. The placement plan aligns the rotated bottom-center of those
+bounds to the target while retaining the asset coordinate origin as the object
+transform pivot. The same bounds and pivot feed the preview, create request,
+duplicate check, undo transaction, and saved object. Pick-block reconstructs
+the source bounds relative to the stored pivot. Generic materials and imported
+assets with the same object kind remain distinct placement items.
 
 Preview geometry is flattened into one startup GPU atlas with held-yellow,
 valid-green, and invalid-red ranges per asset. Aim movement only changes the
@@ -48,7 +51,8 @@ preview matrix; it does not rebuild room geometry or upload meshes per frame.
 ## Blender export
 
 1. Model at real scale. One Blender unit should mean one meter.
-2. Set the object origin where Creative rotation and scaling should pivot.
+2. Set the object origin where Creative rotation and scaling should pivot, then
+   place that origin at the exported scene origin.
 3. Apply rotation and scale before export.
 4. Keep triangle count and material count appropriate for repeated map props.
 5. Export with `File > Export > glTF 2.0`.
@@ -59,6 +63,9 @@ preview matrix; it does not rebuild room geometry or upload meshes per frame.
 
 glTF is right-handed, Y-up, and meter-based. Blender's exporter performs the
 coordinate conversion; do not rotate the root object to compensate again.
+Creative has one pivot per imported asset: the glTF asset coordinate origin.
+Multi-node assets therefore share that origin rather than retaining a separate
+editable pivot for every node.
 
 ## Supported now
 
@@ -89,6 +96,7 @@ coordinate conversion; do not rotate the root object to compensate again.
   and catalog but fail closed to no physics until their cookers exist.
 - Dedicated Assets catalog page with search and hotbar assignment.
 - Exact imported held and placement previews with the existing bounds outline.
+- Source-origin rotation and scale pivots, including off-center mesh bounds.
 - Per-object Creative translation, Euler rotation, and non-uniform scale.
 - Deterministic content hash and one-load process cache.
 
@@ -132,7 +140,9 @@ no collision for that asset.
 
 Authoring metadata belongs to the imported asset catalog, not the Creative
 document schema. Saved objects continue to store only the stable `assetId`, so
-this feature does not add persistence fields or migrate existing maps.
+this feature does not add persistence fields or migrate existing maps. The
+existing authored bounds plus transform position already encode the source
+bounds and pivot relationship.
 
 ## Fixture and regeneration
 

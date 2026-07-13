@@ -45,7 +45,8 @@ iggy3d::StaticMeshAssetCatalogEntry catalogEntry(
   iggy3d::StaticMeshAssetCatalogEntry entry;
   entry.assetId = std::move(assetId);
   entry.label = entry.assetId;
-  entry.boundsSize = {1.0F, 1.0F, 1.0F};
+  entry.boundsMin = {-0.5F, -0.5F, -0.5F};
+  entry.boundsMax = {0.5F, 0.5F, 0.5F};
   entry.authoringMetadata.collisionMode = mode;
   entry.authoringMetadata.status = status;
   entry.authoringMetadata.walkable = walkable;

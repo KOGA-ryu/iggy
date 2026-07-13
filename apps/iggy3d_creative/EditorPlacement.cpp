@@ -579,27 +579,43 @@ CreativeBrushPlacementAdmission admitBrushPlacement(
 
 bool applyCreativeAssetPlacementBounds(
     CreativeBrushPlacementPlan& plan,
-    iggy3d::creative::CreativeVec3 boundsSize) noexcept {
+    iggy3d::creative::CreativeBounds sourceBounds) noexcept {
+  const iggy3d::creative::CreativeBoundsMetrics source =
+      iggy3d::creative::measureCreativeBounds(sourceBounds);
   if (!plan.valid ||
       plan.storagePolicy !=
           iggy3d::creative::CreativePlacementStoragePolicy::AuthoredObject ||
-      !iggy3d::creative::isFiniteCreativeVec3(boundsSize) ||
-      boundsSize.x <= 0.0 || boundsSize.y <= 0.0 || boundsSize.z <= 0.0 ||
+      !source.valid ||
+      !iggy3d::creative::isPositiveCreativeVec3(source.size) ||
       !plan.hasTransformOverride || !plan.hasBoundsOverride) {
     return false;
   }
-  const double centerX = plan.transform.position.x;
-  const double bottomY = plan.authoredBounds.min.y;
-  const double centerZ = plan.transform.position.z;
+  const iggy3d::creative::CreativeVec3 targetBottomCenter{
+      plan.transform.position.x, plan.authoredBounds.min.y,
+      plan.transform.position.z};
+  const iggy3d::creative::CreativeVec3 sourceBottomCenter{
+      source.center.x, sourceBounds.min.y, source.center.z};
+  const iggy3d::creative::CreativeVec3 orientedSourceBottomCenter =
+      iggy3d::creative::rotateCreativeVectorEulerXyz(
+          sourceBottomCenter, plan.transform.rotationEulerRadians);
+  const iggy3d::creative::CreativeVec3 pivot{
+      targetBottomCenter.x - orientedSourceBottomCenter.x,
+      targetBottomCenter.y - orientedSourceBottomCenter.y,
+      targetBottomCenter.z - orientedSourceBottomCenter.z};
+  if (!iggy3d::creative::isFiniteCreativeVec3(pivot)) {
+    return false;
+  }
   plan.authoredBounds = {
-      {centerX - boundsSize.x * 0.5, bottomY,
-       centerZ - boundsSize.z * 0.5},
-      {centerX + boundsSize.x * 0.5, bottomY + boundsSize.y,
-       centerZ + boundsSize.z * 0.5}};
+      {pivot.x + sourceBounds.min.x, pivot.y + sourceBounds.min.y,
+       pivot.z + sourceBounds.min.z},
+      {pivot.x + sourceBounds.max.x, pivot.y + sourceBounds.max.y,
+       pivot.z + sourceBounds.max.z}};
   plan.previewBounds = plan.authoredBounds;
-  plan.transform.position = {centerX, bottomY + boundsSize.y * 0.5,
-                             centerZ};
-  return positiveBounds(plan.authoredBounds);
+  plan.transform.position = pivot;
+  return positiveBounds(plan.authoredBounds) &&
+         iggy3d::creative::resolveCreativeTransformedBounds(
+             plan.authoredBounds, plan.transform)
+             .valid;
 }
 
 CreativeBrushPlacementAdmission admitBrushPlacement(
@@ -615,7 +631,7 @@ CreativeBrushPlacementAdmission admitBrushPlacement(
   }
   if (!admission.allowed || !held.hasAssetBounds ||
       !applyCreativeAssetPlacementBounds(admission.plan,
-                                         held.assetBoundsSize)) {
+                                         held.assetSourceBounds)) {
     admission.status = CreativeBrushPlacementAdmissionStatus::InvalidGeometry;
     admission.allowed = false;
   }

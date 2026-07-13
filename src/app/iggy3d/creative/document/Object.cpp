@@ -142,24 +142,6 @@ constexpr auto kSerializedCreativeObjectKindIds =
 static_assert(kSerializedCreativeObjectKindIds.size() ==
               creativeObjectKindCount());
 
-[[nodiscard]] CreativeVec3 rotateEulerXyz(CreativeVec3 point,
-                                          CreativeVec3 radians) noexcept {
-    const double cx = std::cos(radians.x);
-    const double sx = std::sin(radians.x);
-    const double cy = std::cos(radians.y);
-    const double sy = std::sin(radians.y);
-    const double cz = std::cos(radians.z);
-    const double sz = std::sin(radians.z);
-
-    const double y1 = point.y * cx - point.z * sx;
-    const double z1 = point.y * sx + point.z * cx;
-    const double x1 = point.x;
-    const double x2 = x1 * cy + z1 * sy;
-    const double z2 = -x1 * sy + z1 * cy;
-    const double y2 = y1;
-    return {x2 * cz - y2 * sz, x2 * sz + y2 * cz, z2};
-}
-
 [[nodiscard]] CreativeVec3 add(CreativeVec3 lhs,
                                CreativeVec3 rhs) noexcept {
     return {lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z};
@@ -193,7 +175,7 @@ CreativeTransformedBounds resolveCreativeTransformedBounds(
     result.rotationEulerRadians = transform.rotationEulerRadians;
     result.center = add(
         transform.position,
-        rotateEulerXyz(
+        rotateCreativeVectorEulerXyz(
             multiply(subtract(authored.center, transform.position),
                      transform.scale),
             transform.rotationEulerRadians));
@@ -212,7 +194,8 @@ CreativeTransformedBounds resolveCreativeTransformedBounds(
         };
         result.corners[index] =
             add(result.center,
-                rotateEulerXyz(local, transform.rotationEulerRadians));
+                rotateCreativeVectorEulerXyz(
+                    local, transform.rotationEulerRadians));
         if (!isFiniteCreativeVec3(result.corners[index])) {
             return {};
         }

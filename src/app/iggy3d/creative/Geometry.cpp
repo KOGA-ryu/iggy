@@ -8,25 +8,20 @@
 #include <numbers>
 
 namespace iggy3d::creative {
-namespace {
-
-[[nodiscard]] CreativeVec3 rotateCreativeEulerXyz(
-    CreativeVec3 point,
-    CreativeVec3 radians) noexcept {
+CreativeVec3 rotateCreativeVectorEulerXyz(CreativeVec3 vector,
+                                          CreativeVec3 radians) noexcept {
   const double cx = std::cos(radians.x);
   const double sx = std::sin(radians.x);
   const double cy = std::cos(radians.y);
   const double sy = std::sin(radians.y);
   const double cz = std::cos(radians.z);
   const double sz = std::sin(radians.z);
-  const double y1 = point.y * cx - point.z * sx;
-  const double z1 = point.y * sx + point.z * cx;
-  const double x2 = point.x * cy + z1 * sy;
-  const double z2 = -point.x * sy + z1 * cy;
+  const double y1 = vector.y * cx - vector.z * sx;
+  const double z1 = vector.y * sx + vector.z * cx;
+  const double x2 = vector.x * cy + z1 * sy;
+  const double z2 = -vector.x * sy + z1 * cy;
   return {x2 * cz - y1 * sz, x2 * sz + y1 * cz, z2};
 }
-
-}  // namespace
 
 bool isValidCreativeAxis3(CreativeAxis3 axis) noexcept {
   return static_cast<std::uint8_t>(axis) <
@@ -71,11 +66,14 @@ CreativeVec3 composeCreativeWorldAxisRotation(CreativeVec3 eulerRadians,
     return eulerRadians;
   }
   const CreativeVec3 basisX = rotateCreativeVectorAxisAngle(
-      rotateCreativeEulerXyz({1.0, 0.0, 0.0}, eulerRadians), axis, radians);
+      rotateCreativeVectorEulerXyz({1.0, 0.0, 0.0}, eulerRadians), axis,
+      radians);
   const CreativeVec3 basisY = rotateCreativeVectorAxisAngle(
-      rotateCreativeEulerXyz({0.0, 1.0, 0.0}, eulerRadians), axis, radians);
+      rotateCreativeVectorEulerXyz({0.0, 1.0, 0.0}, eulerRadians), axis,
+      radians);
   const CreativeVec3 basisZ = rotateCreativeVectorAxisAngle(
-      rotateCreativeEulerXyz({0.0, 0.0, 1.0}, eulerRadians), axis, radians);
+      rotateCreativeVectorEulerXyz({0.0, 0.0, 1.0}, eulerRadians), axis,
+      radians);
 
   const double sinY = std::clamp(-basisX.z, -1.0, 1.0);
   CreativeVec3 result;

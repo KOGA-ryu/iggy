@@ -51,6 +51,9 @@ struct CreativeObjectWorldExtent {
     CreativeVec3 vector,
     CreativeAxis3 axis,
     double radians) noexcept;
+[[nodiscard]] CreativeVec3 rotateCreativeVectorEulerXyz(
+    CreativeVec3 vector,
+    CreativeVec3 radians) noexcept;
 [[nodiscard]] CreativeVec3 composeCreativeWorldAxisRotation(
     CreativeVec3 eulerRadians,
     CreativeAxis3 axis,

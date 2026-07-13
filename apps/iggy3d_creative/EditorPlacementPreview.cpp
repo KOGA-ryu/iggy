@@ -59,6 +59,35 @@ namespace {
          size.y > 0.0F && size.z > 0.0F;
 }
 
+[[nodiscard]] bool previewPlanTransform(
+    const CreativeBrushPlacementPlan& plan,
+    const creative::CreativeBounds& bounds,
+    float inset,
+    Vec3& center,
+    Vec3& size,
+    Vec3& rotation) {
+  if (!plan.valid || !plan.hasTransformOverride) {
+    rotation = {};
+    return previewBoundsTransform(bounds, inset, center, size);
+  }
+  const creative::CreativeTransformedBounds resolved =
+      creative::resolveCreativeTransformedBounds(bounds, plan.transform);
+  const creative::CreativeCoreVec3Conversion coreCenter =
+      creative::creativeVec3ToCoreChecked(resolved.center);
+  const creative::CreativeCoreVec3Conversion coreSize =
+      creative::creativeVec3ToCoreChecked(resolved.size);
+  const creative::CreativeCoreVec3Conversion coreRotation =
+      creative::creativeVec3ToCoreChecked(resolved.rotationEulerRadians);
+  if (!resolved.valid || !coreCenter.converted || !coreSize.converted ||
+      !coreRotation.converted || !std::isfinite(inset)) {
+    return false;
+  }
+  center = coreCenter.value;
+  size = coreSize.value * inset;
+  rotation = coreRotation.value;
+  return isFinite(size) && size.x > 0.0F && size.y > 0.0F && size.z > 0.0F;
+}
+
 void appendCreativePreview(RenderCreativePreviewFrame& previews,
                            RenderCreativePreviewRole role,
                            const Mat4& clipFromModel,
@@ -108,7 +137,8 @@ void attachCreativeEditorPlacementPreviews(
       planBrushPlacement(held.objectKind, {});
   if (!cr::creativeHotbarAssetId(held).empty() &&
       (!held.hasAssetBounds ||
-       !applyCreativeAssetPlacementBounds(heldPlan, held.assetBoundsSize))) {
+       !applyCreativeAssetPlacementBounds(heldPlan,
+                                          held.assetSourceBounds))) {
     return;
   }
   Vec3 heldCenter{};
@@ -137,8 +167,9 @@ void attachCreativeEditorPlacementPreviews(
                          : editor.interaction.target.grid.adjacentCellBounds;
     Vec3 targetCenter{};
     Vec3 targetSize{};
-    if (previewBoundsTransform(targetBounds, 1.0F, targetCenter,
-                               targetSize)) {
+    Vec3 targetRotation{};
+    if (previewPlanTransform(targetPlan, targetBounds, 1.0F, targetCenter,
+                             targetSize, targetRotation)) {
       const bool rejectedThisFrame =
           feedback.frameIndex == editor.frameIndex &&
           feedback.status == CreativeEditorPlacementFeedbackStatus::Rejected;
@@ -154,14 +185,7 @@ void attachCreativeEditorPlacementPreviews(
           targetInvalid ? RenderCreativePreviewRole::PlacementInvalid
                         : RenderCreativePreviewRole::PlacementValid,
           frame.camera.clipFromWorld *
-              modelMatrix(
-                  targetCenter,
-                  targetPlan.valid
-                      ? cr::creativeVec3ToCoreChecked(
-                            targetPlan.transform.rotationEulerRadians)
-                            .value
-                      : Vec3{},
-                  targetSize),
+              modelMatrix(targetCenter, targetRotation, targetSize),
           targetPlan.valid &&
               targetPlan.shapeKind == cr::CreativeObjectShapeKind::Path,
           cr::creativeHotbarAssetId(held));

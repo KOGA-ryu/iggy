@@ -361,15 +361,41 @@ bool hotbarHasStableNineSlotGrammar() {
   cr::CreativeObject imported;
   imported.kind = cr::CreativeObjectKind::Rock;
   imported.assetId = "boulder_01";
-  imported.bounds = {{-0.75, 0.0, -0.6}, {0.75, 1.4, 0.6}};
+  imported.transform.position = {4.5, 0.2, -2.0};
+  imported.bounds = {{4.25, 0.0, -3.0}, {5.75, 1.4, -1.8}};
   ok = expect(cr::assignCreativeHotbarFromObject(hotbar, imported) &&
                   cr::creativeHotbarAssetId(
                       cr::selectedCreativeHotbarEntry(hotbar)) ==
                       "boulder_01" &&
-                  cr::selectedCreativeHotbarEntry(hotbar).hasAssetBounds,
-              "pick block restores imported asset identity and dimensions") &&
+                  cr::selectedCreativeHotbarEntry(hotbar).hasAssetBounds &&
+                  near(cr::selectedCreativeHotbarEntry(hotbar)
+                               .assetSourceBounds.min.x,
+                       -0.25) &&
+                  near(cr::selectedCreativeHotbarEntry(hotbar)
+                               .assetSourceBounds.min.y,
+                       -0.2) &&
+                  near(cr::selectedCreativeHotbarEntry(hotbar)
+                               .assetSourceBounds.min.z,
+                       -1.0) &&
+                  near(cr::selectedCreativeHotbarEntry(hotbar)
+                               .assetSourceBounds.max.x,
+                       1.25) &&
+                  near(cr::selectedCreativeHotbarEntry(hotbar)
+                               .assetSourceBounds.max.y,
+                       1.2) &&
+                  near(cr::selectedCreativeHotbarEntry(hotbar)
+                               .assetSourceBounds.max.z,
+                       0.2),
+              "pick block restores imported identity and pivot-relative bounds") &&
        ok;
-  return ok;
+  cr::CreativeHotbarEntry invalidAsset;
+  return expect(!cr::setCreativeHotbarAsset(
+                    invalidAsset, "bad_bounds",
+                    {{1.0, 0.0, 0.0}, {0.0, 1.0, 1.0}}) &&
+                    cr::creativeHotbarAssetId(invalidAsset).empty() &&
+                    !invalidAsset.hasAssetBounds,
+                "reversed source bounds fail without partially equipping") &&
+         ok;
 }
 
 bool heldItemRegistryOwnsEveryKind() {
