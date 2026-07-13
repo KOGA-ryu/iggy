@@ -332,6 +332,17 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
       [](const iggy3d::StaticMeshAssetCatalogEntry& entry) {
         return entry.assetId == "walkway_stone_01";
       });
+  const auto wall = std::find_if(
+      catalog.entries.begin(), catalog.entries.end(),
+      [](const iggy3d::StaticMeshAssetCatalogEntry& entry) {
+        return entry.assetId == "homestead/wall_bay_basic";
+      });
+  const auto table = std::find_if(
+      catalog.entries.begin(), catalog.entries.end(),
+      [](const iggy3d::StaticMeshAssetCatalogEntry& entry) {
+        return entry.assetId ==
+               "homestead/turned_leg_apron_table_v1";
+      });
 
   iggy3d::vulkan::CreativePreviewGeometryResources resources;
   resources.indexedDraws = preview.indexedDraws;
@@ -347,8 +358,8 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
   const std::uint32_t targetDraw =
       iggy3d::vulkan::resolveCreativePreviewGeometryDrawIndex(resources, target);
 
-  return expect(catalog.failures.empty() && catalog.entries.size() == 2U,
-                "catalog discovers both valid GLB fixtures") &&
+  return expect(catalog.failures.empty() && catalog.entries.size() == 4U,
+                "catalog discovers every valid GLB fixture") &&
          expect(boulder != catalog.entries.end() &&
                     boulder->label == "Boulder 01" &&
                     boulder->authoringMetadata.collisionMode ==
@@ -364,17 +375,32 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
                         iggy3d::StaticMeshAuthoringMetadataStatus::Authored &&
                     walkway->authoringMetadata.walkable &&
                     walkway->authoringMetadata.categoryId == "walkway" &&
+                    wall != catalog.entries.end() &&
+                    wall->label == "Wall Bay Basic" &&
+                    wall->authoringMetadata.categoryId == "wall" &&
+                    wall->authoringMetadata.collisionMode ==
+                        iggy3d::StaticMeshCollisionMode::Bounds &&
+                    !wall->authoringMetadata.walkable &&
+                    table != catalog.entries.end() &&
+                    table->label == "Turned Leg Apron Table V1" &&
+                    table->authoringMetadata.categoryId == "furniture" &&
+                    table->authoringMetadata.collisionMode ==
+                        iggy3d::StaticMeshCollisionMode::Bounds &&
+                    !table->authoringMetadata.walkable &&
                     catalog.find("walkway_stone_01") == &*walkway &&
+                    catalog.find("homestead/wall_bay_basic") == &*wall &&
+                    catalog.find("homestead/turned_leg_apron_table_v1") ==
+                        &*table &&
                     catalog.find("missing") == nullptr,
                 "discovery retains labels, bounds, metadata, and lookup") &&
          expect(missing.entries.empty() && missing.failures.size() == 1U &&
                     missing.failures[0].reasonCode ==
                         "static_mesh_asset_root_not_directory",
                 "missing catalog root reports one explicit failure") &&
-         expect(preview.ready && preview.assetDraws.size() == 2U &&
+         expect(preview.ready && preview.assetDraws.size() == 4U &&
                     preview.indexedDraws.size() ==
                         iggy3d::vulkan::kCreativePreviewGeometryDrawRangeCount +
-                            2U * iggy3d::kRenderCreativePreviewRoleCount,
+                            4U * iggy3d::kRenderCreativePreviewRoleCount,
                 "startup atlas contains three colored roles per asset") &&
          expect(heldDraw >=
                     iggy3d::vulkan::kCreativePreviewGeometryDrawRangeCount &&
