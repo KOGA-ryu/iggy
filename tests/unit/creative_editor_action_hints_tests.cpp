@@ -306,6 +306,17 @@ bool activeDeviceUsesUnambiguousPhysicalActivity() {
 
 bool editorHintsMatchToolsContextsAndPs5Language() {
   CreativeEditorState editor;
+  const bool assetActionToggle = expect(
+      moveCreativeEditorCatalogAssetAction(
+          CreativeEditorCatalogAssetAction::Equip, 1) ==
+              CreativeEditorCatalogAssetAction::ReplaceSelection &&
+          moveCreativeEditorCatalogAssetAction(
+              CreativeEditorCatalogAssetAction::ReplaceSelection, -1) ==
+              CreativeEditorCatalogAssetAction::Equip &&
+          moveCreativeEditorCatalogAssetAction(
+              CreativeEditorCatalogAssetAction::Equip, 0) ==
+              CreativeEditorCatalogAssetAction::Equip,
+      "asset catalog action toggle is bounded and direction-neutral");
   setHeld(editor, cr::CreativeHeldItemKind::Material,
           cr::CreativeObjectKind::Wall);
   editor.quickEdit.options = {};
@@ -336,7 +347,8 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
             expect(keyboardPlace != nullptr &&
                        keyboardPlace->chord.view() == "Mouse R" &&
                        keyboardPlace->label.view() == "Place",
-                   "keyboard and mouse receive compact device-native hints");
+                   "keyboard and mouse receive compact device-native hints") &&
+            assetActionToggle;
 
   setHeld(editor, cr::CreativeHeldItemKind::MaterialBrush,
           cr::CreativeObjectKind::Wall);
@@ -795,6 +807,25 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
       resolveCreativeEditorActionHints(
           editor, cr::CreativeInputContext::TransformPreview,
           cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHintFrame assetReplacement =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::AssetReplacementPreview,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* replacementConfirm =
+      findHint(assetReplacement,
+               cr::CreativeInputActionId::ConfirmActiveTool);
+  const cr::CreativeActionHint* replacementCancel =
+      findHint(assetReplacement,
+               cr::CreativeInputActionId::CancelActiveTool);
+  ok = expect(assetReplacement.count == 3U &&
+                  replacementConfirm != nullptr &&
+                  replacementConfirm->chord.view() == "X" &&
+                  replacementConfirm->label.view() == "Replace" &&
+                  replacementCancel != nullptr &&
+                  replacementCancel->chord.view() == "Circle" &&
+                  replacementCancel->label.view() == "Cancel",
+              "asset replacement preview exposes PS5 confirm and cancel") &&
+       ok;
   const cr::CreativeActionHint* transformControls =
       findHint(transform,
                cr::CreativeInputActionId::ToggleTransformControls);
@@ -856,6 +887,15 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
   const cr::CreativeActionHint* assignWheel =
       findHint(catalog,
                cr::CreativeInputActionId::CatalogAssignToolWheel);
+  editor.catalog.assetAction =
+      CreativeEditorCatalogAssetAction::ReplaceSelection;
+  const cr::CreativeActionHintFrame replaceCatalog =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::Catalog,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* replace =
+      findHint(replaceCatalog, cr::CreativeInputActionId::CatalogConfirm);
+  editor.catalog.assetAction = CreativeEditorCatalogAssetAction::Equip;
   editor.catalog.toolWheelAssignmentCatalogEntryIndex = 0U;
   const cr::CreativeActionHintFrame wheelAssignment =
       resolveCreativeEditorActionHints(
@@ -879,6 +919,9 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                     assignWheel->chord.view() == "Square" &&
                     assignWheel->label.view() == "Assign wheel",
                 "catalog advertises the contextual PS5 wheel assignment") &&
+         expect(replace != nullptr && replace->chord.view() == "X" &&
+                    replace->label.view() == "Replace",
+                "catalog confirm hint follows focused asset action") &&
          expect(wheelAssignment.count == 3U &&
                     assignmentConfirm != nullptr &&
                     assignmentConfirm->label.view() == "Assign" &&
@@ -896,6 +939,7 @@ bool everyInteractiveContextResolvesOnlyLiveBindings() {
       cr::CreativeInputContext::Catalog,
       cr::CreativeInputContext::ToolWheel,
       cr::CreativeInputContext::ToolOptions,
+      cr::CreativeInputContext::AssetReplacementPreview,
       cr::CreativeInputContext::TransformPreview,
       cr::CreativeInputContext::TransformControls,
       cr::CreativeInputContext::Controls,

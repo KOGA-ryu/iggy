@@ -57,6 +57,8 @@ namespace iggy3d_creative_app {
   layout.equipY = layout.footerY + 5;
   layout.assignWheelX =
       layout.equipX - 8 - static_cast<std::int32_t>(layout.assignWheelWidth);
+  layout.replaceX =
+      layout.equipX - 8 - static_cast<std::int32_t>(layout.replaceWidth);
   return layout;
 }
 
@@ -79,6 +81,12 @@ namespace iggy3d_creative_app {
 [[nodiscard]] CatalogRect assignWheelButton(
     const CatalogLayout& layout) noexcept {
   return {layout.assignWheelX, layout.equipY, layout.assignWheelWidth,
+          layout.equipHeight};
+}
+
+[[nodiscard]] CatalogRect replaceSelectionButton(
+    const CatalogLayout& layout) noexcept {
+  return {layout.replaceX, layout.equipY, layout.replaceWidth,
           layout.equipHeight};
 }
 

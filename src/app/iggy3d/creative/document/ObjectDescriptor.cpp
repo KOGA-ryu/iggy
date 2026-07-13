@@ -2043,7 +2043,8 @@ CreativeObjectDirtyFlags dirtyFlagsForMutation(CreativeObjectKind objectKind, Cr
         flags = flags | transformSpatialDirtyFlags(descriptor) | systemFlags;
     }
 
-    if (isShapeMutation(mutationKind)) {
+    if (isShapeMutation(mutationKind) ||
+        mutationKind == CreativeMutationKind::SetAsset) {
         flags = flags | shapeSpatialDirtyFlags(descriptor) | systemFlags;
     }
 

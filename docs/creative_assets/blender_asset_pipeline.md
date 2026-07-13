@@ -47,13 +47,28 @@ the existing magenta missing-asset proxy instead of disappearing.
 
 1. Open the Creative catalog.
 2. Choose the `ASSETS` tab.
-3. Search or select an imported mesh and equip it into the active hotbar slot.
-4. Aim at a placement surface. The held viewmodel and placement target use the
+3. Search or select an imported mesh. The detail panel reports its asset ID,
+   dimensions, pivot offset, and physics mode.
+4. Equip remains the default action. To replace existing imported objects,
+   select them first, use left/right or controller D-pad left/right to focus
+   `REPLACE SELECTION`, then press `Enter` or controller X. Pointer users can
+   click `EQUIP` or `REPLACE SELECTION` directly.
+5. Replacement opens a full-scene preview using the actual imported mesh.
+   `Enter` or controller X applies it; `Escape` or controller Circle cancels.
+   Multi-selection is one atomic document revision and one undo record. Object
+   IDs, transforms, hierarchy, layer, tags, and visibility remain unchanged.
+6. Aim at a placement surface. The held viewmodel and placement target use the
    imported mesh, while green/red role colors retain placement validity.
-5. Place normally. Pick-block on an imported object restores its `assetId` and
+7. Place normally. Pick-block on an imported object restores its `assetId` and
    authored dimensions to the selected hotbar slot.
-6. After exporting a changed `.glb`, use `RELOAD ASSETS` on this page. Restarting
+8. After exporting a changed `.glb`, use `RELOAD ASSETS` on this page. Restarting
    Creative is not required.
+
+Replacement is intentionally conservative. It accepts only imported Prop,
+Rock, and Bridge objects whose stored bounds still match the source asset's
+natural bounds at the object's pivot. Locked objects, missing source assets,
+unsupported kinds, invalid targets, and custom resized bounds fail closed. No
+eligible object is changed unless the complete selected batch validates.
 
 The hotbar carries a bounded asset ID and the exact source-space minimum and
 maximum bounds. The placement plan aligns the rotated bottom-center of those
@@ -117,6 +132,8 @@ editable pivot for every node.
 - Explicit `RELOAD ASSETS` command with stable-ID selection/hotbar retention,
   transactional GPU replacement, and catalog-visible import failures.
 - Exact imported held and placement previews with the existing bounds outline.
+- Non-destructive exact-mesh replacement preview with atomic multi-selection,
+  stable authored metadata, and one-step undo.
 - Source-origin rotation and scale pivots, including off-center mesh bounds.
 - Per-object Creative translation, Euler rotation, and non-uniform scale.
 - Deterministic content hash and one-load process cache.

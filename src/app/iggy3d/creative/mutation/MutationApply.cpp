@@ -3,6 +3,7 @@
 #include "app/iggy3d/creative/mutation/MutationApply.hpp"
 
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "content/assets/StaticMeshAsset.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -42,6 +43,7 @@ CreativeMutationApplyReceipt applySetTransformMutation(CreativeObject& object, c
 CreativeMutationApplyReceipt applyResizeMutation(CreativeObject& object, const ResizeMutation& mutation);
 CreativeMutationApplyReceipt applyStretchMutation(CreativeObject& object, const StretchMutation& mutation);
 CreativeMutationApplyReceipt applySetBoundsMutation(CreativeObject& object, const SetBoundsMutation& mutation);
+CreativeMutationApplyReceipt applySetAssetMutation(CreativeObject& object, const SetAssetMutation& mutation);
 CreativeMutationApplyReceipt applyScalarMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ScalarMutation& mutation);
 CreativeMutationApplyReceipt applySetParentMutation(CreativeObject& object, const SetParentMutation& mutation);
 CreativeMutationApplyReceipt applyClearParentMutation(CreativeObject& object, CreativeMutationKind mutationKind);
@@ -330,6 +332,9 @@ CreativeMutationApplyReceipt applyObjectKindMutation(CreativeObject& object, Cre
         }
         return applyStringIdMutation(object, mutationKind, std::get<StringIdMutation>(value));
 
+    case CreativeMutationKind::SetAsset:
+        return applySetAssetMutation(object, std::get<SetAssetMutation>(value));
+
     case CreativeMutationKind::SetPatrolRoute:
         if (std::holds_alternative<PathPointsMutation>(value)) {
             return applyPathPointsMutation(object, mutationKind, std::get<PathPointsMutation>(value));
@@ -533,6 +538,39 @@ CreativeMutationApplyReceipt applyStretchMutation(CreativeObject& object, const 
 
 CreativeMutationApplyReceipt applySetBoundsMutation(CreativeObject& object, const SetBoundsMutation& mutation) {
     return applySetBoundsMutationAs(object, CreativeMutationKind::SetBounds, mutation);
+}
+
+CreativeMutationApplyReceipt applySetAssetMutation(
+    CreativeObject& object,
+    const SetAssetMutation& mutation) {
+    const bool supportedKind = mutation.objectKind == CreativeObjectKind::Prop ||
+                               mutation.objectKind == CreativeObjectKind::Rock ||
+                               mutation.objectKind == CreativeObjectKind::Bridge;
+    const CreativeBoundsMetrics metrics = measureCreativeBounds(mutation.bounds);
+    if (!supportedKind || !validStaticMeshAssetId(mutation.assetId) ||
+        !metrics.valid || !isPositiveCreativeVec3(metrics.size)) {
+        return rejectMutation(object, CreativeMutationKind::SetAsset,
+                              CreativeMutationApplyStatus::Rejected,
+                              "replacement asset payload is invalid");
+    }
+    if (object.kind == mutation.objectKind && object.assetId == mutation.assetId &&
+        creativeBoundsExactlyEqual(object.bounds, mutation.bounds)) {
+        return makeNoChangeReceipt(
+            object, CreativeMutationKind::SetAsset,
+            "object asset already matches requested value");
+    }
+
+    const CreativeObjectKind previousKind = object.kind;
+    object.kind = mutation.objectKind;
+    object.assetId = mutation.assetId;
+    object.bounds = mutation.bounds;
+    const CreativeObjectDirtyFlags dirtyFlags =
+        dirtyFlagsForMutation(previousKind, CreativeMutationKind::SetAsset) |
+        dirtyFlagsForCreation(mutation.objectKind);
+    return makeMutationApplyReceipt(
+        CreativeMutationApplyStatus::Applied, object,
+        CreativeMutationKind::SetAsset, dirtyFlags, true, true,
+        "object asset changed");
 }
 
 CreativeMutationApplyReceipt applyScalarMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ScalarMutation& mutation) {

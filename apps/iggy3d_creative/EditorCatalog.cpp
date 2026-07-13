@@ -122,6 +122,21 @@ void ensureActionSelectionVisible(CreativeEditorCatalogState& catalog,
       std::min(catalog.actionScrollOffset, maxOffset);
 }
 
+void resetAssetAction(CreativeEditorCatalogState& catalog) noexcept {
+  catalog.assetAction = CreativeEditorCatalogAssetAction::Equip;
+  catalog.statusLabel.clear();
+}
+
+void moveAssetAction(CreativeEditorCatalogState& catalog,
+                     std::int32_t direction) noexcept {
+  if (direction == 0) {
+    return;
+  }
+  catalog.assetAction = moveCreativeEditorCatalogAssetAction(
+      catalog.assetAction, direction);
+  catalog.statusLabel.clear();
+}
+
 [[nodiscard]] bool assignCatalogSelection(
     cr::CreativeAppState& appState,
     CreativeEditorState& editor,
@@ -192,6 +207,32 @@ void activateSelectedCatalogEntry(
   }
 }
 
+void requestSelectedAssetReplacement(
+    const CreativeEditorCatalogFrameRequest& request,
+    CreativeEditorCatalogFrameResult& result) {
+  CreativeEditorCatalogState& catalog = request.editor.catalog;
+  const cr::CreativeCatalogEntry* selected =
+      cr::selectedCreativeCatalogEntry(catalog.model);
+  if (selected == nullptr ||
+      selected->category != cr::CreativeCatalogEntryCategory::Asset) {
+    return;
+  }
+  if (cr::selectedTargetCount(request.appState.facade.selectionState()) == 0U) {
+    catalog.statusLabel = "REPLACE REQUIRES AN OBJECT SELECTION";
+    return;
+  }
+  const std::string_view assetId =
+      cr::creativeHotbarAssetId(selected->hotbarEntry);
+  if (assetId.empty()) {
+    catalog.statusLabel = "REPLACE TARGET IS INVALID";
+    return;
+  }
+  result.assetReplacementRequested = true;
+  result.replacementObjectKind = selected->hotbarEntry.objectKind;
+  result.replacementAssetId = assetId;
+  catalog.statusLabel.clear();
+}
+
 
 [[nodiscard]] bool actionPresent(
     const cr::CreativeInputRouteResult& routedInput,
@@ -215,6 +256,7 @@ void applyInventoryModeActions(
         state.shapeSelection = cr::normalizeCreativeCatalogShapeSelection(
             request.editor.toolSettings.shapeBrushKind,
             request.editor.toolSettings.shapeBrushAxis);
+        resetAssetAction(state);
         static_cast<void>(cr::setCreativeCatalogOpen(state.model, true));
         static_cast<void>(cr::setCreativeToolWheelOpen(state.toolWheel, false));
         return;
@@ -253,6 +295,7 @@ void applyInventoryModeActions(
       }
       return;
     case cr::CreativeInputContext::ToolOptions:
+    case cr::CreativeInputContext::AssetReplacementPreview:
     case cr::CreativeInputContext::TransformPreview:
     case cr::CreativeInputContext::TransformControls:
     case cr::CreativeInputContext::Controls:
@@ -358,19 +401,22 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
     }
     switch (event.action) {
       case cr::CreativeInputActionId::CatalogPreviousPage:
-        result.pageChanged =
-            cr::moveCreativeCatalogPage(catalog.model, -1) ||
-            result.pageChanged;
+        if (cr::moveCreativeCatalogPage(catalog.model, -1)) {
+          result.pageChanged = true;
+          resetAssetAction(catalog);
+        }
         break;
       case cr::CreativeInputActionId::CatalogNextPage:
-        result.pageChanged =
-            cr::moveCreativeCatalogPage(catalog.model, 1) ||
-            result.pageChanged;
+        if (cr::moveCreativeCatalogPage(catalog.model, 1)) {
+          result.pageChanged = true;
+          resetAssetAction(catalog);
+        }
         break;
       case cr::CreativeInputActionId::CatalogPrevious:
         if (catalogShowsEntries(catalog.model.page)) {
           static_cast<void>(
               cr::moveCreativeCatalogSelection(catalog.model, -1));
+          resetAssetAction(catalog);
         } else {
           static_cast<void>(
               cr::moveCreativeCatalogActionSelection(catalog.model, -1));
@@ -380,6 +426,7 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
         if (catalogShowsEntries(catalog.model.page)) {
           static_cast<void>(
               cr::moveCreativeCatalogSelection(catalog.model, 1));
+          resetAssetAction(catalog);
         } else {
           static_cast<void>(
               cr::moveCreativeCatalogActionSelection(catalog.model, 1));
@@ -390,6 +437,13 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
         const cr::CreativeCatalogEntry* selected =
             cr::selectedCreativeCatalogEntry(catalog.model);
         if (selected != nullptr &&
+            selected->category == cr::CreativeCatalogEntryCategory::Asset) {
+          moveAssetAction(
+              catalog,
+              event.action == cr::CreativeInputActionId::CatalogPreviousVariant
+                  ? -1
+                  : 1);
+        } else if (selected != nullptr &&
             cr::creativeCatalogEntryUsesShapeSelection(*selected)) {
           const std::int32_t direction =
               event.action == cr::CreativeInputActionId::CatalogPreviousVariant
@@ -407,7 +461,16 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
         break;
       case cr::CreativeInputActionId::CatalogConfirm:
         if (catalogShowsEntries(catalog.model.page)) {
-          activateSelectedCatalogEntry(request, std::nullopt, result);
+          const cr::CreativeCatalogEntry* selected =
+              cr::selectedCreativeCatalogEntry(catalog.model);
+          if (selected != nullptr &&
+              selected->category == cr::CreativeCatalogEntryCategory::Asset &&
+              catalog.assetAction ==
+                  CreativeEditorCatalogAssetAction::ReplaceSelection) {
+            requestSelectedAssetReplacement(request, result);
+          } else {
+            activateSelectedCatalogEntry(request, std::nullopt, result);
+          }
         } else {
           requestSelectedCatalogAction(request, event.trigger, result);
         }
@@ -436,6 +499,7 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
     if (catalogShowsEntries(catalog.model.page)) {
       static_cast<void>(
           cr::moveCreativeCatalogSelection(catalog.model, wheelSteps));
+      resetAssetAction(catalog);
     } else {
       static_cast<void>(
           cr::moveCreativeCatalogActionSelection(catalog.model, wheelSteps));
@@ -459,6 +523,7 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
       page.has_value()) {
     result.pageChanged = cr::setCreativeCatalogPage(catalog.model, *page) ||
                          result.pageChanged;
+    resetAssetAction(catalog);
     return;
   }
   if (catalogShowsEntries(catalog.model.page)) {
@@ -469,6 +534,13 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
         layout.assignWheelX >= layout.contentX &&
         contains(assignWheelButton(layout), pointer.x, pointer.y)) {
       static_cast<void>(beginToolWheelAssignment(catalog));
+      return;
+    }
+    if (selected != nullptr &&
+        selected->category == cr::CreativeCatalogEntryCategory::Asset &&
+        layout.replaceX >= layout.contentX &&
+        contains(replaceSelectionButton(layout), pointer.x, pointer.y)) {
+      requestSelectedAssetReplacement(request, result);
       return;
     }
     if (selected != nullptr &&
@@ -521,10 +593,27 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
   }
   static_cast<void>(cr::selectCreativeCatalogFilteredIndex(
       catalog.model, filteredIndex));
+  resetAssetAction(catalog);
 }
 
 
 }  // namespace
+
+CreativeEditorCatalogAssetAction moveCreativeEditorCatalogAssetAction(
+    CreativeEditorCatalogAssetAction action,
+    std::int32_t direction) noexcept {
+  if (direction == 0) {
+    return action;
+  }
+  switch (action) {
+    case CreativeEditorCatalogAssetAction::Equip:
+      return CreativeEditorCatalogAssetAction::ReplaceSelection;
+    case CreativeEditorCatalogAssetAction::ReplaceSelection:
+    case CreativeEditorCatalogAssetAction::Count:
+      return CreativeEditorCatalogAssetAction::Equip;
+  }
+  return CreativeEditorCatalogAssetAction::Equip;
+}
 
 bool creativeEditorCatalogActionAvailable(
     const cr::CreativeAppState& appState,

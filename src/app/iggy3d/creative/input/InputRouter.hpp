@@ -16,6 +16,7 @@ enum class CreativeInputContext : std::uint8_t {
   Catalog,
   ToolWheel,
   ToolOptions,
+  AssetReplacementPreview,
   TransformPreview,
   TransformControls,
   Controls,
@@ -243,7 +244,7 @@ struct CreativeInputBinding {
 
 inline constexpr std::size_t kCreativeInputKeyCount =
     static_cast<std::size_t>(CreativeInputKey::Count);
-inline constexpr std::size_t kCreativeInputBindingCapacity = 176;
+inline constexpr std::size_t kCreativeInputBindingCapacity = 192;
 inline constexpr std::size_t kCreativeInputConflictCapacity =
     kCreativeInputBindingCapacity * (kCreativeInputBindingCapacity - 1U) / 2U;
 

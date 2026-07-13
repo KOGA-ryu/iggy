@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "EditorFrame.hpp"
+#include "EditorAssetReplacement.hpp"
 #include "EditorGizmo.hpp"
 #include "EditorGroup.hpp"
 #include "EditorInteraction.hpp"
@@ -43,6 +44,7 @@ void resetCreativeEditorOverlayFrame(CreativeEditorOverlayFrame& output) {
   output.volumeEdgeCount = 0;
   output.patternEdgeCount = 0;
   output.transformPreviewEdgeCount = 0;
+  output.assetReplacementEdgeCount = 0;
   output.placementFeedbackEdgeCount = 0;
 }
 
@@ -266,6 +268,10 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
     }
   }
   appendCreativeEditorPlacementFeedbackWireframe(request, output);
+  output.assetReplacementEdgeCount =
+      appendCreativeEditorAssetReplacementWireframes(
+          editor.assetReplacement, std::max(0.06F, gizmoThickness * 1.2F),
+          combinedWireLines);
   // ---- MATERIAL BRUSH PREVIEW --------------------------------------------
   appendCreativeEditorMaterialBrushWireframe(request, output);
 

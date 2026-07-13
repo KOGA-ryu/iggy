@@ -67,17 +67,6 @@ namespace {
          reasonCode == "static_mesh_asset_catalog_scan_failed";
 }
 
-[[nodiscard]] cr::CreativeBounds translatedCatalogBounds(
-    const iggy3d::StaticMeshAssetCatalogEntry& entry,
-    cr::CreativeVec3 pivot) noexcept {
-  return {{pivot.x + static_cast<double>(entry.boundsMin.x),
-           pivot.y + static_cast<double>(entry.boundsMin.y),
-           pivot.z + static_cast<double>(entry.boundsMin.z)},
-          {pivot.x + static_cast<double>(entry.boundsMax.x),
-           pivot.y + static_cast<double>(entry.boundsMax.y),
-           pivot.z + static_cast<double>(entry.boundsMax.z)}};
-}
-
 [[nodiscard]] const cr::CreativeCatalogAsset* findCatalogAsset(
     std::span<const cr::CreativeCatalogAsset> assets,
     std::string_view assetId) noexcept {
@@ -136,6 +125,17 @@ void restoreCatalogState(const cr::CreativeCatalogState& previous,
 }
 
 }  // namespace
+
+cr::CreativeBounds creativeAssetBoundsAtPivot(
+    const iggy3d::StaticMeshAssetCatalogEntry& entry,
+    cr::CreativeVec3 pivot) noexcept {
+  return {{pivot.x + static_cast<double>(entry.boundsMin.x),
+           pivot.y + static_cast<double>(entry.boundsMin.y),
+           pivot.z + static_cast<double>(entry.boundsMin.z)},
+          {pivot.x + static_cast<double>(entry.boundsMax.x),
+           pivot.y + static_cast<double>(entry.boundsMax.y),
+           pivot.z + static_cast<double>(entry.boundsMax.z)}};
+}
 
 CreativeCatalogAssetDiscovery discoverCreativeCatalogAssets(
     const std::filesystem::path& root) {
@@ -211,13 +211,13 @@ CreativeAssetBoundsRefreshPlan planCreativeAssetBoundsRefresh(
       continue;
     }
     const cr::CreativeBounds expectedPrevious =
-        translatedCatalogBounds(*previous, object.transform.position);
+        creativeAssetBoundsAtPivot(*previous, object.transform.position);
     if (!cr::creativeBoundsExactlyEqual(object.bounds, expectedPrevious)) {
       ++plan.customBoundsSkippedCount;
       continue;
     }
     const cr::CreativeBounds expectedNext =
-        translatedCatalogBounds(*next, object.transform.position);
+        creativeAssetBoundsAtPivot(*next, object.transform.position);
     if (cr::creativeBoundsExactlyEqual(object.bounds, expectedNext)) {
       continue;
     }

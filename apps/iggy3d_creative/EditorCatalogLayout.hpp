@@ -31,6 +31,8 @@ struct CatalogLayout {
   std::uint32_t equipHeight = 28;
   std::int32_t assignWheelX = 0;
   std::uint32_t assignWheelWidth = 136;
+  std::int32_t replaceX = 0;
+  std::uint32_t replaceWidth = 176;
 };
 
 struct CatalogRect {
@@ -50,6 +52,8 @@ struct CatalogRect {
 [[nodiscard]] CatalogRect equipButton(
     const CatalogLayout& layout) noexcept;
 [[nodiscard]] CatalogRect assignWheelButton(
+    const CatalogLayout& layout) noexcept;
+[[nodiscard]] CatalogRect replaceSelectionButton(
     const CatalogLayout& layout) noexcept;
 
 }  // namespace iggy3d_creative_app

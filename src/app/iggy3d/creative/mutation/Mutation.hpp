@@ -96,6 +96,7 @@ enum class CreativeMutationKind {
     EditText,
     SetLabel,
     SetNotes,
+    SetAsset,
     SetReferenceSource,
     SetBlueprintOpacity,
 
@@ -194,6 +195,12 @@ struct SetBoundsMutation {
     CreativeBounds bounds{};
 };
 
+struct SetAssetMutation {
+    CreativeObjectKind objectKind{CreativeObjectKind::Unknown};
+    std::string assetId{};
+    CreativeBounds bounds{};
+};
+
 struct ScalarMutation {
     double value{0.0};
 };
@@ -264,6 +271,7 @@ struct CreativeMutationPayload {
         ResizeMutation,
         StretchMutation,
         SetBoundsMutation,
+        SetAssetMutation,
         ScalarMutation,
         SetParentMutation,
         AttachToMutation,
@@ -348,6 +356,10 @@ struct CreativeMutationDescriptor {
 [[nodiscard]] CreativeMutationPayload makeRotatePayload(
     CreativeVec3 rotationEulerRadians);
 [[nodiscard]] CreativeMutationPayload makeBoundsPayload(CreativeBounds bounds);
+[[nodiscard]] CreativeMutationPayload makeAssetPayload(
+    CreativeObjectKind objectKind,
+    std::string assetId,
+    CreativeBounds bounds);
 [[nodiscard]] CreativeMutationPayload makeScalarPayload(double value);
 [[nodiscard]] CreativeMutationPayload makeParentPayload(CreativeObjectId parentId);
 [[nodiscard]] CreativeMutationPayload makeAttachPayload(CreativeObjectId targetId, std::string socket);

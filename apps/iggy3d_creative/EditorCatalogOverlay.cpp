@@ -255,6 +255,26 @@ void appendCatalogBuildDetails(
                detailY + 21, drawableWidth, drawableHeight, 0.90F, 0.93F,
                0.95F);
     detailY += 58;
+    const cr::CreativeBoundsMetrics assetBounds =
+        cr::measureCreativeBounds(entry->hotbarEntry.assetSourceBounds);
+    char dimensions[96];
+    std::snprintf(dimensions, sizeof(dimensions), "%.2f x %.2f x %.2f m",
+                  assetBounds.size.x, assetBounds.size.y, assetBounds.size.z);
+    appendText(glyphs, "DIMENSIONS", layout.detailX + 4, detailY,
+               drawableWidth, drawableHeight, 0.58F, 0.66F, 0.71F);
+    appendText(glyphs, dimensions, layout.detailX + 4, detailY + 21,
+               drawableWidth, drawableHeight, 0.90F, 0.93F, 0.95F);
+    detailY += 58;
+    const cr::CreativeVec3 pivotFromCenter{
+        -assetBounds.center.x, -assetBounds.center.y, -assetBounds.center.z};
+    char pivot[96];
+    std::snprintf(pivot, sizeof(pivot), "ORIGIN %+.2f %+.2f %+.2f",
+                  pivotFromCenter.x, pivotFromCenter.y, pivotFromCenter.z);
+    appendText(glyphs, "PIVOT FROM CENTER", layout.detailX + 4, detailY,
+               drawableWidth, drawableHeight, 0.58F, 0.66F, 0.71F);
+    appendText(glyphs, pivot, layout.detailX + 4, detailY + 21,
+               drawableWidth, drawableHeight, 0.90F, 0.93F, 0.95F);
+    detailY += 58;
   }
   if (shapeTool) {
     appendText(glyphs, "SHAPE", layout.detailX + 4, detailY, drawableWidth,
@@ -455,14 +475,42 @@ void appendCreativeEditorCatalogOverlay(
       if (cr::creativeCatalogEntryAssignable(*selectedEntry) ||
           cr::creativeCatalogEntryRequestsAssetReload(*selectedEntry)) {
         const CatalogRect button = equipButton(layout);
+        const bool assetEntry = selectedEntry->category ==
+                                cr::CreativeCatalogEntryCategory::Asset;
+        const bool equipFocused =
+            !assetEntry || catalog.assetAction ==
+                               CreativeEditorCatalogAssetAction::Equip;
         uiRects.push_back({button.x, button.y, button.width, button.height,
-                           0.86F, 0.76F, 0.28F, 0.98F});
+                           equipFocused ? 0.86F : 0.12F,
+                           equipFocused ? 0.76F : 0.14F,
+                           equipFocused ? 0.28F : 0.16F, 0.98F});
         appendText(glyphs,
                    cr::creativeCatalogEntryRequestsAssetReload(*selectedEntry)
                        ? "RELOAD"
                        : "EQUIP",
                    button.x + 20, button.y + 7, drawableWidth,
-                   drawableHeight, 0.06F, 0.065F, 0.07F);
+                   drawableHeight, equipFocused ? 0.06F : 0.82F,
+                   equipFocused ? 0.065F : 0.86F,
+                   equipFocused ? 0.07F : 0.88F);
+        if (assetEntry && layout.replaceX >= layout.contentX) {
+          const CatalogRect replace = replaceSelectionButton(layout);
+          const bool replaceFocused =
+              catalog.assetAction ==
+              CreativeEditorCatalogAssetAction::ReplaceSelection;
+          const bool replaceAvailable =
+              cr::selectedTargetCount(appState.facade.selectionState()) > 0U;
+          uiRects.push_back(
+              {replace.x, replace.y, replace.width, replace.height,
+               replaceFocused && replaceAvailable ? 0.16F : 0.085F,
+               replaceFocused && replaceAvailable ? 0.72F : 0.10F,
+               replaceFocused && replaceAvailable ? 0.32F : 0.11F,
+               replaceAvailable ? 0.98F : 0.68F});
+          appendText(glyphs, "REPLACE SELECTION", replace.x + 14,
+                     replace.y + 7, drawableWidth, drawableHeight,
+                     replaceAvailable ? 0.88F : 0.42F,
+                     replaceAvailable ? 0.96F : 0.45F,
+                     replaceAvailable ? 0.90F : 0.48F);
+        }
       }
     }
     if (!catalog.statusLabel.empty()) {

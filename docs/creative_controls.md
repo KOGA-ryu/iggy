@@ -311,6 +311,16 @@ The data, generation, cache, and future smooth-surface seams are specified in
   While open, `1`-`9` assigns the selected result directly to that slot without
   closing the catalog. Highlighting any tool and pressing controller Square or
   clicking Assign Wheel opens sector assignment without equipping it.
+- Asset rows show their imported dimensions, pivot offset, and physics mode.
+  Equip remains the default action. Left/right or controller D-pad left/right
+  switches the focused action between Equip and Replace Selection; `Enter` or
+  controller X activates it. Pointer users can click either command directly.
+  Replace Selection opens a non-destructive full-scene preview while preserving
+  camera and fly controls. `Enter` or controller X applies every eligible
+  selected object in one undo step; `Escape` or controller Circle cancels.
+  Replacement preserves object IDs, transforms, hierarchy, layer, tags, and
+  visibility. Locked objects, missing source assets, unsupported object kinds,
+  and objects with custom resized bounds are rejected without a partial edit.
 - Fill and Hollow expose Shape, Axis, and Material beside the selected catalog
   row. Left/right or controller D-pad left/right cycles the bounded presets:
   Box, Line, Ellipsoid, and Cylinder X/Y/Z. The values are a draft until Equip;

@@ -120,6 +120,7 @@ void attachCreativeEditorPlacementPreviews(
   const bool modalOpen = editor.catalog.model.open ||
                          editor.catalog.toolWheel.open ||
                          editor.toolOptions.open ||
+                         editor.assetReplacement.active ||
                          editor.transform.active;
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);

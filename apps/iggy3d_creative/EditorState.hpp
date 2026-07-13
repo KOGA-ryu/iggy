@@ -9,6 +9,7 @@
 #include "core/math/Vec3.hpp"
 
 #include "EditorCatalog.hpp"
+#include "EditorAssetReplacement.hpp"
 #include "EditorCapture.hpp"
 #include "EditorControls.hpp"
 #include "EditorEdits.hpp"
@@ -46,6 +47,7 @@ struct CreativeEditorState {
   CreativeEditorQuickEditState quickEdit;
   CreativeEditorGroupFocusState groupFocus;
   CreativeEditorPatternState pattern;
+  CreativeEditorAssetReplacementState assetReplacement;
   CreativeEditorSelectionTransformState transform;
   CreativeEditorTerrainState terrain;
   CreativeEditorTerrainPaintState terrainPaint;

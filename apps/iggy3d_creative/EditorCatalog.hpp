@@ -27,10 +27,23 @@ namespace iggy3d_creative_app {
 
 struct CreativeEditorState;
 
+enum class CreativeEditorCatalogAssetAction : std::uint8_t {
+  Equip,
+  ReplaceSelection,
+  Count,
+};
+
+[[nodiscard]] CreativeEditorCatalogAssetAction
+moveCreativeEditorCatalogAssetAction(
+    CreativeEditorCatalogAssetAction action,
+    std::int32_t direction) noexcept;
+
 struct CreativeEditorCatalogState {
   iggy3d::creative::CreativeCatalogState model;
   iggy3d::creative::CreativeToolWheelState toolWheel;
   iggy3d::creative::CreativeCatalogShapeSelection shapeSelection{};
+  CreativeEditorCatalogAssetAction assetAction =
+      CreativeEditorCatalogAssetAction::Equip;
   std::size_t scrollOffset = 0;
   std::size_t actionScrollOffset = 0;
   std::optional<std::size_t> toolWheelAssignmentCatalogEntryIndex;
@@ -56,11 +69,15 @@ struct CreativeEditorCatalogFrameResult {
   bool pageChanged = false;
   bool assigned = false;
   bool assetReloadRequested = false;
+  bool assetReplacementRequested = false;
   bool toolWheelChanged = false;
   bool toolWheelSaved = false;
   bool openToolOptionsRequested = false;
   iggy3d::creative::CreativeInputRouteResult deferredCommandInput;
   iggy3d::creative::CreativeHotbarEntry toolOptionsEntry{};
+  iggy3d::creative::CreativeObjectKind replacementObjectKind =
+      iggy3d::creative::CreativeObjectKind::Unknown;
+  std::string replacementAssetId;
 };
 
 [[nodiscard]] CreativeEditorCatalogFrameResult

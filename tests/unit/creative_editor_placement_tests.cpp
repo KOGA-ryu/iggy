@@ -1040,6 +1040,9 @@ bool previewHidesForEveryBlockingSurface() {
   editor.toolOptions.open = true;
   ok = expect(hidden(), "tool options hide placement previews") && ok;
   editor.toolOptions.open = false;
+  editor.assetReplacement.active = true;
+  ok = expect(hidden(), "asset replacement hides placement previews") && ok;
+  editor.assetReplacement.active = false;
   editor.transform.active = true;
   ok = expect(hidden(), "transform preview hides placement previews") && ok;
   editor.transform.active = false;

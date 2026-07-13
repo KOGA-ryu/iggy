@@ -392,7 +392,12 @@ void appendContextHints(HintSpecBuffer& buffer,
                      cr::CreativeInputActionId::CatalogNextVariant, "Variant");
       appendHintPair(buffer, cr::CreativeInputActionId::CatalogPreviousPage,
                      cr::CreativeInputActionId::CatalogNextPage, "Page");
-      appendHint(buffer, cr::CreativeInputActionId::CatalogConfirm, "Equip");
+      appendHint(
+          buffer, cr::CreativeInputActionId::CatalogConfirm,
+          editor.catalog.assetAction ==
+                  CreativeEditorCatalogAssetAction::ReplaceSelection
+              ? "Replace"
+              : "Equip");
       appendHint(buffer, cr::CreativeInputActionId::CatalogAssignToolWheel,
                  "Assign wheel");
       appendHint(buffer, cr::CreativeInputActionId::CatalogClose, "Close");
@@ -421,6 +426,13 @@ void appendContextHints(HintSpecBuffer& buffer,
       appendHint(buffer, cr::CreativeInputActionId::ToolOptionsConfirm,
                  "Apply");
       appendHint(buffer, cr::CreativeInputActionId::ToolOptionsClose, "Close");
+      return;
+    case cr::CreativeInputContext::AssetReplacementPreview:
+      appendHint(buffer, cr::CreativeInputActionId::ConfirmActiveTool,
+                 "Replace");
+      appendHint(buffer, cr::CreativeInputActionId::CancelActiveTool, "Cancel");
+      appendHintPair(buffer, cr::CreativeInputActionId::FlyDown,
+                     cr::CreativeInputActionId::FlyUp, "Fly");
       return;
     case cr::CreativeInputContext::TransformPreview:
       appendHint(buffer, cr::CreativeInputActionId::ConfirmActiveTool, "Apply");

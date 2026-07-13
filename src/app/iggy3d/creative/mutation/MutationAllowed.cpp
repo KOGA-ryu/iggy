@@ -181,6 +181,12 @@ void appendReferencePlaneMutations(std::vector<CreativeMutationKind>& mutations)
            descriptor.projectionProfile == CreativeSpatialProjectionProfile::NoProjection;
 }
 
+[[nodiscard]] bool supportsImportedAssetReplacement(
+    CreativeObjectKind kind) noexcept {
+    return kind == CreativeObjectKind::Prop || kind == CreativeObjectKind::Rock ||
+           kind == CreativeObjectKind::Bridge;
+}
+
 void appendDescriptorProfileMutations(
     const CreativeObjectDescriptor& descriptor,
     std::vector<CreativeMutationKind>& mutations) {
@@ -265,6 +271,9 @@ std::vector<CreativeMutationKind> allowedMutations(CreativeObjectKind objectKind
 
     auto mutations = commonIdentityMutations();
     appendDescriptorProfileMutations(descriptor, mutations);
+    if (supportsImportedAssetReplacement(objectKind)) {
+        mutations.push_back(CreativeMutationKind::SetAsset);
+    }
     return mutations;
 }
 

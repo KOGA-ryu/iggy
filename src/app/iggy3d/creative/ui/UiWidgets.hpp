@@ -14,7 +14,7 @@ namespace iggy3d::creative {
 using CreativeUiWidgetId = std::uint32_t;
 
 inline constexpr CreativeUiWidgetId kInvalidCreativeUiWidgetId = 0U;
-inline constexpr std::size_t kCreativeUiWidgetCapacity = 192U;
+inline constexpr std::size_t kCreativeUiWidgetCapacity = 224U;
 inline constexpr std::size_t kCreativeUiWidgetVisualCapacity = 256U;
 inline constexpr std::size_t kCreativeUiWidgetTextCapacity = 96U;
 

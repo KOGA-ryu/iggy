@@ -69,6 +69,10 @@ struct CreativeEditorAssetReloadReceipt {
 [[nodiscard]] CreativeCatalogAssetDiscovery discoverCreativeCatalogAssets(
     const std::filesystem::path& root);
 
+[[nodiscard]] iggy3d::creative::CreativeBounds creativeAssetBoundsAtPivot(
+    const iggy3d::StaticMeshAssetCatalogEntry& entry,
+    iggy3d::creative::CreativeVec3 pivot) noexcept;
+
 void appendDeletedCreativeAssetFailures(
     CreativeCatalogAssetDiscovery& discovery,
     const iggy3d::StaticMeshAssetCatalog& previousCatalog,

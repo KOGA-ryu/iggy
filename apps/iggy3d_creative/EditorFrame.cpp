@@ -248,6 +248,8 @@ void setSdlKey(creative::CreativeInputFrame& frame,
       Candidate{captureMode, creative::CreativeInputContext::Capture},
       Candidate{editor.controls.open,
                 creative::CreativeInputContext::Controls},
+      Candidate{editor.assetReplacement.active,
+                creative::CreativeInputContext::AssetReplacementPreview},
       Candidate{editor.transform.active,
                 editor.transform.controlsOpen
                     ? creative::CreativeInputContext::TransformControls
@@ -406,6 +408,8 @@ CreativeEditorNavigationAdmission admitCreativeEditorNavigation(
     bool toolWheelToggleRouted) noexcept {
   const bool viewportContext =
       inputContext == creative::CreativeInputContext::EditorViewport ||
+      inputContext ==
+          creative::CreativeInputContext::AssetReplacementPreview ||
       inputContext == creative::CreativeInputContext::TransformPreview;
   CreativeEditorNavigationAdmission admission;
   admission.navigationActive =

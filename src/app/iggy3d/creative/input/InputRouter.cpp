@@ -226,6 +226,8 @@ std::string_view toString(CreativeInputContext context) noexcept {
     case CreativeInputContext::Catalog: return "Catalog";
     case CreativeInputContext::ToolWheel: return "ToolWheel";
     case CreativeInputContext::ToolOptions: return "ToolOptions";
+    case CreativeInputContext::AssetReplacementPreview:
+      return "AssetReplacementPreview";
     case CreativeInputContext::TransformPreview: return "TransformPreview";
     case CreativeInputContext::TransformControls: return "TransformControls";
     case CreativeInputContext::Controls: return "Controls";

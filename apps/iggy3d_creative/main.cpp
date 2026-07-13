@@ -38,6 +38,7 @@
 #include "render/vulkan/VulkanBackend.hpp"
 
 #include "EditorCapture.hpp"
+#include "EditorAssetReplacement.hpp"
 #include "EditorAssets.hpp"
 #include "EditorCatalog.hpp"
 #include "EditorControls.hpp"
@@ -67,6 +68,7 @@ using iggy3d_creative_app::CreativeEditorBootstrapData;
 using iggy3d_creative_app::CreativeEditorGamepad;
 using iggy3d_creative_app::CreativeEditorState;
 using iggy3d_creative_app::applyCreativeEditorCommandInput;
+using iggy3d_creative_app::beginCreativeEditorAssetReplacement;
 using iggy3d_creative_app::beginCreativeEditorFrameInput;
 using iggy3d_creative_app::cancelCreativeEditorSelectionTransformPreview;
 using iggy3d_creative_app::processCreativeEditorTransformFrame;
@@ -81,6 +83,7 @@ using iggy3d_creative_app::ObjectVisualPickBounds;
 using iggy3d_creative_app::firstBrushKind;
 using iggy3d_creative_app::logCreativeEditorPathHandleCaptureFrame;
 using iggy3d_creative_app::processCreativeEditorCatalogFrame;
+using iggy3d_creative_app::processCreativeEditorAssetReplacementFrame;
 using iggy3d_creative_app::processCreativeEditorControlsFrame;
 using iggy3d_creative_app::processCreativeEditorToolOptionsFrame;
 using iggy3d_creative_app::processCreativeEditorWorldInteractionFrame;
@@ -280,6 +283,10 @@ int main(int argc, char** argv) {
                 editor.transform, "selection_transform_focus_lost")) {
           static_cast<void>(window.setRelativeMouseMode(true));
         }
+        static_cast<void>(iggy3d_creative_app::
+                              cancelCreativeEditorAssetReplacement(
+                                  editor.assetReplacement,
+                                  "creative_asset_replace_focus_lost"));
       }
       continue;
     }
@@ -288,6 +295,12 @@ int main(int argc, char** argv) {
         cancelCreativeEditorSelectionTransformPreview(
             editor.transform, "selection_transform_focus_lost")) {
       static_cast<void>(window.setRelativeMouseMode(true));
+    }
+    if (!frameInput.windowFocused) {
+      static_cast<void>(iggy3d_creative_app::
+                            cancelCreativeEditorAssetReplacement(
+                                editor.assetReplacement,
+                                "creative_asset_replace_focus_lost"));
     }
     const iggy3d_creative_app::CreativeEditorControlsFrameResult controlsFrame =
         processCreativeEditorControlsFrame(
@@ -324,6 +337,29 @@ int main(int argc, char** argv) {
              frameInput.toolWheelDirectionY,
              extent.width,
              extent.height});
+    if (catalogFrame.assetReplacementRequested) {
+      const iggy3d_creative_app::CreativeAssetReplacementBeginReceipt begun =
+          beginCreativeEditorAssetReplacement(
+              appState, bootstrapData.staticMeshAssetCatalog,
+              catalogFrame.replacementObjectKind,
+              catalogFrame.replacementAssetId, editor.assetReplacement);
+      if (begun.accepted) {
+        static_cast<void>(creative::setCreativeCatalogOpen(
+            editor.catalog.model, false));
+        static_cast<void>(window.setTextInputActive(false));
+        static_cast<void>(window.setRelativeMouseMode(true));
+      } else {
+        editor.catalog.statusLabel =
+            "REPLACE FAILED: " + std::string(begun.reasonCode);
+      }
+    }
+    const iggy3d_creative_app::CreativeEditorAssetReplacementFrameResult
+        assetReplacementFrame = processCreativeEditorAssetReplacementFrame(
+            {appState, editor.assetReplacement, frameInput.routedInput});
+    if (assetReplacementFrame.finished &&
+        !assetReplacementFrame.commitReceipt.accepted) {
+      invalidateCreativeEditorSceneCache(sceneCache);
+    }
     const iggy3d_creative_app::CreativeEditorToolOptionsFrameResult
         toolOptionsFrame = processCreativeEditorToolOptionsFrame(
             {window,
@@ -336,7 +372,9 @@ int main(int argc, char** argv) {
              extent.height});
     const bool modalBlocksWorldActions =
         controlsFrame.blockWorldActions || transformFrame.blockWorldActions ||
-        catalogFrame.blockWorldActions || toolOptionsFrame.blockWorldActions;
+        catalogFrame.blockWorldActions ||
+        assetReplacementFrame.blockWorldActions ||
+        toolOptionsFrame.blockWorldActions;
     if (modalBlocksWorldActions || !frameInput.windowFocused) {
       finalizeCreativeEditorContinuousGestures(
           appState, editor,
@@ -366,8 +404,11 @@ int main(int argc, char** argv) {
     // eventually consume, then project that RoomAsset through the runtime scene
     // path. Standalone-only editor proxies remain only for objects that RoomBake
     // did not emit as static geometry, such as Point anchors and Path routes.
+    const creative::CreativeDocument& renderDocument =
+        iggy3d_creative_app::creativeEditorAssetReplacementRenderDocument(
+            editor.assetReplacement, appState.facade.document());
     static_cast<void>(refreshCreativeEditorSceneCache(
-        sceneCache, appState.facade.document(), gridSnapshot,
+        sceneCache, renderDocument, gridSnapshot,
         &bootstrapData.staticMeshAssetCatalog));
     StandaloneRoomBakePreviewScene& roomBakePreview = sceneCache.preview;
     SceneProjectionResult& scene = roomBakePreview.scene;
@@ -431,7 +472,7 @@ int main(int argc, char** argv) {
     // bake. Refresh only changed frames so an accepted placement is submitted
     // immediately rather than leaving the renderer on the pre-click snapshot.
     if (refreshCreativeEditorSceneCache(
-            sceneCache, appState.facade.document(), gridSnapshot,
+            sceneCache, renderDocument, gridSnapshot,
             &bootstrapData.staticMeshAssetCatalog)) {
       frame.projections.scene = &roomBakePreview.scene;
       frame.clock.sourceTick = roomBakePreview.scene.sourceTick;
@@ -489,6 +530,8 @@ int main(int argc, char** argv) {
 
   finalizeCreativeEditorContinuousGestures(
       appState, editor, "creative_continuous_gesture_shutdown");
+  static_cast<void>(iggy3d_creative_app::cancelCreativeEditorAssetReplacement(
+      editor.assetReplacement, "creative_asset_replace_shutdown"));
 
   bool captureOk = true;
   if (!capturePath.empty()) {

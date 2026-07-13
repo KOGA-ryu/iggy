@@ -21,6 +21,7 @@ enum class CreativeMutationPayloadKind {
     Resize,
     Stretch,
     SetBounds,
+    SetAsset,
     Scalar,
     SetParent,
     AttachTo,
@@ -67,7 +68,8 @@ struct CreativeMutationMetadataRow {
     CreativeMutationPayloadKind payloadKind,
     bool alsoChangesGeometry = false,
     bool alsoChangesRelationships = false,
-    CreativeMutationStoragePolicy storagePolicy = CreativeMutationStoragePolicy::StoredObject) noexcept {
+    CreativeMutationStoragePolicy storagePolicy = CreativeMutationStoragePolicy::StoredObject,
+    bool alsoChangesRuntimeMeaning = false) noexcept {
     return CreativeMutationMetadataRow{
         kind,
         name,
@@ -75,7 +77,8 @@ struct CreativeMutationMetadataRow {
         storagePolicy,
         mutationCategoryChangesGeometry(category) || alsoChangesGeometry,
         mutationCategoryChangesRelationships(category) || alsoChangesRelationships,
-        mutationCategoryChangesRuntimeMeaning(category),
+        mutationCategoryChangesRuntimeMeaning(category) ||
+            alsoChangesRuntimeMeaning,
         payloadKind,
     };
 }
@@ -160,6 +163,10 @@ constexpr std::array kCreativeMutationMetadataRows{
     mutationMetadata(CreativeMutationKind::SetNotes, "SetNotes", CreativeMutationCategory::Content,
                      CreativeMutationPayloadKind::TextOrStringId, false, false,
                      CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetAsset, "SetAsset",
+                     CreativeMutationCategory::Content,
+                     CreativeMutationPayloadKind::SetAsset, true, false,
+                     CreativeMutationStoragePolicy::StoredObject, true),
     mutationMetadata(CreativeMutationKind::SetReferenceSource, "SetReferenceSource", CreativeMutationCategory::Content,
                      CreativeMutationPayloadKind::ReferenceSource, false, false,
                      CreativeMutationStoragePolicy::FutureStoragePlaceholder),
@@ -317,6 +324,8 @@ constexpr std::array kCreativeMutationMetadataRows{
         return std::holds_alternative<StretchMutation>(value);
     case CreativeMutationPayloadKind::SetBounds:
         return std::holds_alternative<SetBoundsMutation>(value);
+    case CreativeMutationPayloadKind::SetAsset:
+        return std::holds_alternative<SetAssetMutation>(value);
     case CreativeMutationPayloadKind::Scalar:
         return std::holds_alternative<ScalarMutation>(value);
     case CreativeMutationPayloadKind::SetParent:
@@ -536,6 +545,13 @@ CreativeMutationPayload makeRotatePayload(CreativeVec3 rotationEulerRadians) {
 
 CreativeMutationPayload makeBoundsPayload(CreativeBounds bounds) {
     return CreativeMutationPayload{SetBoundsMutation{bounds}};
+}
+
+CreativeMutationPayload makeAssetPayload(CreativeObjectKind objectKind,
+                                         std::string assetId,
+                                         CreativeBounds bounds) {
+    return CreativeMutationPayload{
+        SetAssetMutation{objectKind, std::move(assetId), bounds}};
 }
 
 CreativeMutationPayload makeScalarPayload(double value) {

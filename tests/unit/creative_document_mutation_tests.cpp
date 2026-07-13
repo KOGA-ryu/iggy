@@ -134,6 +134,7 @@ constexpr std::array kAuthoredMutationKinds{
     cr::CreativeMutationKind::EditText,
     cr::CreativeMutationKind::SetLabel,
     cr::CreativeMutationKind::SetNotes,
+    cr::CreativeMutationKind::SetAsset,
     cr::CreativeMutationKind::SetReferenceSource,
     cr::CreativeMutationKind::SetBlueprintOpacity,
     cr::CreativeMutationKind::SetTriggerShape,
@@ -383,6 +384,19 @@ bool mutationPayloadMetadataMatchesExpectedPayloadFamilies() {
                                                   cr::CreativeVec3{0.0, 0.0, 0.0},
                                                   cr::CreativeVec3{1.0, 1.0, 1.0}})),
                 "trigger shape payload matches bounds") &&
+         expect(cr::payloadMatchesMutation(
+                    cr::CreativeMutationKind::SetAsset,
+                    cr::makeAssetPayload(
+                        cr::CreativeObjectKind::Rock, "asset_b",
+                        cr::CreativeBounds{{-1.0, 0.0, -2.0},
+                                           {1.0, 3.0, 2.0}})),
+                "set asset payload matches") &&
+         expect(!cr::payloadMatchesMutation(
+                    cr::CreativeMutationKind::SetAsset,
+                    cr::makeBoundsPayload(
+                        cr::CreativeBounds{{-1.0, 0.0, -2.0},
+                                           {1.0, 3.0, 2.0}})),
+                "set asset rejects bounds-only payload") &&
          expect(cr::payloadMatchesMutation(cr::CreativeMutationKind::SetLightIntensity,
                                           cr::makeScalarPayload(3.0)),
                 "scalar sensory payload matches") &&
@@ -1388,6 +1402,107 @@ bool lockedObjectUnlockThenRenameApplies() {
                 "unlock rename object unlocked");
 }
 
+bool setAssetAtomicallyChangesImportedRenderIdentity() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Assets");
+  static_cast<void>(document.assignId(91U));
+  cr::CreativeDocumentCreateRequest create;
+  create.kind = cr::CreativeObjectKind::Prop;
+  create.name = "Imported prop";
+  create.assetId = "asset_a";
+  create.transform.position = {4.0, 2.0, -3.0};
+  create.transform.rotationEulerRadians = {0.1, 0.2, 0.3};
+  create.transform.scale = {1.5, 2.0, 0.5};
+  create.hasTransformOverride = true;
+  create.bounds = {{3.0, 2.0, -4.0}, {5.0, 4.0, -2.0}};
+  create.hasBoundsOverride = true;
+  create.layerId = 7U;
+  create.hasLayerOverride = true;
+  create.tags = {"exterior", "stone"};
+  const cr::CreativeDocumentCreateReceipt created =
+      document.createObject(create);
+  const cr::CreativeObject* createdObject =
+      document.findObject(created.objectId);
+  if (!expect(created.accepted && createdObject != nullptr,
+              "set asset fixture created")) {
+    return false;
+  }
+  const cr::CreativeObject before = *createdObject;
+  const std::uint64_t revisionBefore = document.revision();
+  const cr::CreativeBounds replacementBounds{{3.5, 2.0, -5.0},
+                                              {4.5, 6.0, -1.0}};
+  const cr::CreativeDocumentMutationReceipt applied =
+      cr::applyDocumentMutation(
+          document, created.objectId, cr::CreativeMutationKind::SetAsset,
+          cr::makeAssetPayload(cr::CreativeObjectKind::Rock, "asset_b",
+                               replacementBounds));
+  const cr::CreativeObject* after = document.findObject(created.objectId);
+
+  bool ok = expect(applied.status ==
+                           cr::CreativeDocumentMutationStatus::Applied &&
+                       applied.changed && applied.allowed &&
+                       applied.revisionBefore == revisionBefore &&
+                       applied.revisionAfter == revisionBefore + 1U,
+                   "set asset applies as one document revision") &&
+            expect(after != nullptr &&
+                       after->kind == cr::CreativeObjectKind::Rock &&
+                       after->assetId == "asset_b" &&
+                       sameBounds(after->bounds, replacementBounds),
+                   "set asset changes kind id and bounds together") &&
+            expect(after != nullptr && after->id == before.id &&
+                       after->name == before.name &&
+                       sameVec3(after->transform.position,
+                                before.transform.position) &&
+                       sameVec3(after->transform.rotationEulerRadians,
+                                before.transform.rotationEulerRadians) &&
+                       sameVec3(after->transform.scale,
+                                before.transform.scale) &&
+                       after->layerId == before.layerId &&
+                       after->visible == before.visible &&
+                       after->locked == before.locked &&
+                       after->tags == before.tags &&
+                       after->parentId == before.parentId,
+                   "set asset preserves authored object identity and metadata") &&
+            expect(cr::categoryOf(cr::CreativeMutationKind::SetAsset) ==
+                           cr::CreativeMutationCategory::Content &&
+                       cr::mutationChangesGeometry(
+                           cr::CreativeMutationKind::SetAsset) &&
+                       cr::mutationChangesRuntimeMeaning(
+                           cr::CreativeMutationKind::SetAsset) &&
+                       cr::mutationStoragePolicy(
+                           cr::CreativeMutationKind::SetAsset) ==
+                           cr::CreativeMutationStoragePolicy::StoredObject,
+                   "set asset metadata marks durable geometry and runtime change") &&
+            expect(cr::canMutate(cr::CreativeObjectKind::Prop,
+                                 cr::CreativeMutationKind::SetAsset) &&
+                       cr::canMutate(cr::CreativeObjectKind::Rock,
+                                    cr::CreativeMutationKind::SetAsset) &&
+                       cr::canMutate(cr::CreativeObjectKind::Bridge,
+                                    cr::CreativeMutationKind::SetAsset) &&
+                       !cr::canMutate(cr::CreativeObjectKind::Crate,
+                                     cr::CreativeMutationKind::SetAsset),
+                   "set asset is restricted to imported mesh object kinds");
+
+  const cr::CreativeObject unchanged = *after;
+  const std::uint64_t revisionBeforeInvalid = document.revision();
+  const cr::CreativeDocumentMutationReceipt invalid =
+      cr::applyDocumentMutation(
+          document, created.objectId, cr::CreativeMutationKind::SetAsset,
+          cr::makeAssetPayload(cr::CreativeObjectKind::Unknown, "",
+                               replacementBounds));
+  after = document.findObject(created.objectId);
+  ok = expect(invalid.status ==
+                      cr::CreativeDocumentMutationStatus::ApplyFailed &&
+                  !invalid.changed &&
+                  document.revision() == revisionBeforeInvalid,
+              "invalid set asset fails without revision") &&
+       expect(after != nullptr && after->kind == unchanged.kind &&
+                  after->assetId == unchanged.assetId &&
+                  sameBounds(after->bounds, unchanged.bounds),
+              "invalid set asset cannot partially change object") &&
+       ok;
+  return ok;
+}
+
 int main() {
   const bool ok = mutationMetadataRegistryIsInternallyConsistent() &&
                   mutationStoragePolicySignalDistinguishesStoredAndFuturePlaceholders() &&
@@ -1414,6 +1529,7 @@ int main() {
                   wrongPayloadFailureMessagesAreStable() &&
                   invalidMutationRequestRejectsBeforeApply() &&
                   lockedObjectRenameRejectsThroughPipeline() &&
-                  lockedObjectUnlockThenRenameApplies();
+                  lockedObjectUnlockThenRenameApplies() &&
+                  setAssetAtomicallyChangesImportedRenderIdentity();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
