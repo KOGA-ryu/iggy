@@ -45,6 +45,8 @@ target_sources(iggy3d
     src/app/iggy3d/creative/document/DocumentRestore.cpp
     src/app/iggy3d/creative/document/DocumentValidation.cpp
     src/app/iggy3d/creative/document/TerrainField.cpp
+    src/app/iggy3d/creative/document/TerrainRaycast.cpp
+    src/app/iggy3d/creative/document/TerrainRender.cpp
     src/app/iggy3d/creative/document/TerrainMaterialField.cpp
     src/app/iggy3d/creative/document/VoxelField.cpp
     src/app/iggy3d/creative/mutation/Mutation.cpp
