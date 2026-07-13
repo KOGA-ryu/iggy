@@ -246,6 +246,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorConnectedFill.cpp
   apps/iggy3d_creative/EditorSurfaceExtrude.cpp
   apps/iggy3d_creative/EditorTerrain.cpp
+  apps/iggy3d_creative/EditorTerrainOverlay.cpp
   apps/iggy3d_creative/EditorTerrainGrade.cpp
   apps/iggy3d_creative/EditorTerrainPath.cpp
   apps/iggy3d_creative/EditorTerrainPaint.cpp
