@@ -228,7 +228,9 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorGamepad.cpp
   apps/iggy3d_creative/EditorGizmo.cpp
   apps/iggy3d_creative/EditorGroup.cpp
+  apps/iggy3d_creative/EditorHeldItemCommands.cpp
   apps/iggy3d_creative/EditorHeldItemDispatch.cpp
+  apps/iggy3d_creative/EditorHeldItemWorldOperations.cpp
   apps/iggy3d_creative/EditorInteraction.cpp
   apps/iggy3d_creative/EditorInteractionOverlay.cpp
   apps/iggy3d_creative/EditorWorldTargeting.cpp
