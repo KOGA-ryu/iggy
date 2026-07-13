@@ -26,9 +26,11 @@ namespace iggy3d_creative_app {
                    static_cast<std::int32_t>(layout.panelHeight) - 38;
   const std::uint32_t tabAreaWidth =
       layout.panelWidth > 16U ? layout.panelWidth - 16U : layout.panelWidth;
-  layout.tabWidth = std::min(92U, std::max(1U, tabAreaWidth / 2U));
+  constexpr std::uint32_t kCatalogTabCount = 3U;
+  layout.tabWidth =
+      std::min(92U, std::max(1U, tabAreaWidth / kCatalogTabCount));
   const std::int32_t tabsWidth =
-      static_cast<std::int32_t>(layout.tabWidth * 2U);
+      static_cast<std::int32_t>(layout.tabWidth * kCatalogTabCount);
   layout.tabsX =
       layout.panelX +
       std::max(0, static_cast<std::int32_t>(layout.panelWidth) - tabsWidth - 8);

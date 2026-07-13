@@ -105,11 +105,13 @@ enum class RenderCreativePreviewRole : std::uint8_t {
 inline constexpr std::size_t kRenderCreativePreviewRoleCount =
     static_cast<std::size_t>(RenderCreativePreviewRole::Count);
 inline constexpr std::size_t kRenderCreativePreviewCapacity = 2U;
+inline constexpr std::size_t kRenderCreativePreviewAssetIdCapacity = 128U;
 
 struct RenderCreativePreviewItem {
   RenderCreativePreviewRole role = RenderCreativePreviewRole::Held;
   Mat4 clipFromModel = identityMat4();
   bool includePathWireframe = false;
+  std::array<char, kRenderCreativePreviewAssetIdCapacity + 1U> assetId{};
 };
 
 struct RenderCreativePreviewFrame {
@@ -126,6 +128,12 @@ struct FrameInput {
   RenderCreativeWireframeDebugFrame creativeWireframeDebug;
   RenderCreativePreviewFrame creativePreview;
 };
+
+[[nodiscard]] std::string_view renderCreativePreviewAssetId(
+    const RenderCreativePreviewItem& item) noexcept;
+[[nodiscard]] bool setRenderCreativePreviewAssetId(
+    RenderCreativePreviewItem& item,
+    std::string_view assetId) noexcept;
 
 enum class FrameInputStatus : std::uint8_t {
   Valid,

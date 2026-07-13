@@ -1045,6 +1045,59 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
   return ok;
 }
 
+bool assetPagePreservesBuildIndicesAndEquipsDurableIdentity() {
+  constexpr std::array palette{cr::CreativeObjectKind::Wall,
+                               cr::CreativeObjectKind::Crate};
+  const std::array assets{
+      cr::CreativeCatalogAsset{cr::CreativeObjectKind::Rock, "boulder_01",
+                               "Boulder 01", {1.5, 1.4, 1.2}},
+      cr::CreativeCatalogAsset{cr::CreativeObjectKind::Bridge,
+                               "walkway_stone_01", "Walkway Stone 01",
+                               {3.0, 0.3, 1.2}},
+  };
+  cr::CreativeCatalogState state =
+      cr::makeCreativeCatalog(palette, assets, 1U);
+  const std::size_t buildCount = state.filteredEntryIndices.size();
+  const bool pageChanged = cr::setCreativeCatalogPage(
+      state, cr::CreativeCatalogPage::Assets);
+  const cr::CreativeCatalogEntry* first =
+      cr::selectedCreativeCatalogEntry(state);
+  const bool assetPageReady =
+      pageChanged && state.page == cr::CreativeCatalogPage::Assets &&
+      state.filteredEntryIndices.size() == assets.size() &&
+      state.rejectedAssetCount == 1U;
+  cr::CreativeHotbarState hotbar = cr::makeDefaultCreativeHotbar(palette);
+  const bool assigned = cr::assignSelectedCreativeCatalogEntry(state, hotbar);
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(hotbar);
+  const bool searched =
+      cr::setCreativeCatalogQuery(state, "walkway");
+  const cr::CreativeCatalogEntry* walkway =
+      cr::selectedCreativeCatalogEntry(state);
+  static_cast<void>(cr::setCreativeCatalogPage(
+      state, cr::CreativeCatalogPage::Actions));
+
+  return expect(buildCount == 22U,
+                "assets do not shift the existing build lane") &&
+         expect(assetPageReady, "asset page is reachable before actions") &&
+         expect(first != nullptr &&
+                    first->category == cr::CreativeCatalogEntryCategory::Asset &&
+                    cr::creativeHotbarAssetId(first->hotbarEntry) ==
+                        "boulder_01",
+                "asset page exposes the first discovered mesh") &&
+         expect(assigned && held.kind == cr::CreativeHeldItemKind::Material &&
+                    held.objectKind == cr::CreativeObjectKind::Rock &&
+                    cr::creativeHotbarAssetId(held) == "boulder_01" &&
+                    held.hasAssetBounds && held.assetBoundsSize.y == 1.4,
+                "asset assignment carries bounded identity and dimensions") &&
+         expect(searched && walkway != nullptr &&
+                    cr::creativeHotbarAssetId(walkway->hotbarEntry) ==
+                        "walkway_stone_01",
+                "asset search remains isolated to the asset lane") &&
+         expect(state.filteredEntryIndices.empty(),
+                "actions page does not expose build or asset rows");
+}
+
 }  // namespace
 
 int main() {
@@ -1059,5 +1112,6 @@ int main() {
   ok = searchIsCaseInsensitiveBoundedAndStable() && ok;
   ok = selectionWrapsAndAssignmentsAreExplicit() && ok;
   ok = modalBindingsAreIsolatedAndDoNotRetrigger() && ok;
+  ok = assetPagePreservesBuildIndicesAndEquipsDurableIdentity() && ok;
   return ok ? 0 : 1;
 }

@@ -1,6 +1,8 @@
 #include "EditorBootstrap.hpp"
 
 #include <filesystem>
+#include <algorithm>
+#include <cctype>
 #include <memory>
 #include <string>
 #include <utility>
@@ -18,12 +20,66 @@
 #include "app/iggy3d/creative/tools/Tools.hpp"
 #include "app/iggy3d/map_maker/Grid.hpp"
 #include "app/platform/SdlVulkanSurface.hpp"
+#include "content/assets/StaticMeshAsset.hpp"
 #include "render/RendererApi.hpp"
 #include "render/vulkan/FrameCapture.hpp"
 
 #include "EditorPlacement.hpp"
 
 namespace iggy3d_creative_app {
+namespace {
+
+[[nodiscard]] iggy3d::creative::CreativeObjectKind assetObjectKind(
+    std::string_view assetId) {
+  std::string lowered(assetId);
+  std::transform(lowered.begin(), lowered.end(), lowered.begin(), [](char value) {
+    return static_cast<char>(
+        std::tolower(static_cast<unsigned char>(value)));
+  });
+  if (lowered.find("boulder") != std::string::npos ||
+      lowered.find("rock") != std::string::npos) {
+    return iggy3d::creative::CreativeObjectKind::Rock;
+  }
+  if (lowered.find("walkway") != std::string::npos ||
+      lowered.find("bridge") != std::string::npos) {
+    return iggy3d::creative::CreativeObjectKind::Bridge;
+  }
+  return iggy3d::creative::CreativeObjectKind::Prop;
+}
+
+struct CreativeCatalogAssetDiscovery {
+  std::vector<iggy3d::creative::CreativeCatalogAsset> assets;
+  std::size_t rejectedCount = 0U;
+};
+
+[[nodiscard]] CreativeCatalogAssetDiscovery
+discoverCreativeCatalogAssets() {
+  const std::filesystem::path root{IGGY3D_CREATIVE_ASSET_ROOT_VALUE};
+  const iggy3d::StaticMeshAssetCatalog discovered =
+      iggy3d::discoverStaticMeshAssetCatalog(root);
+  CreativeCatalogAssetDiscovery output;
+  output.assets.reserve(discovered.entries.size());
+  output.rejectedCount = discovered.failures.size();
+  for (const iggy3d::StaticMeshAssetCatalogEntry& source :
+       discovered.entries) {
+    output.assets.push_back(
+        {assetObjectKind(source.assetId), source.assetId, source.label,
+         {source.boundsSize.x, source.boundsSize.y, source.boundsSize.z}});
+  }
+  SDL_Log("iggy3d_creative: asset catalog root='%s' ready=%llu failed=%llu",
+          root.generic_string().c_str(),
+          static_cast<unsigned long long>(output.assets.size()),
+          static_cast<unsigned long long>(discovered.failures.size()));
+  for (const iggy3d::StaticMeshAssetCatalogFailure& failure :
+       discovered.failures) {
+    SDL_Log("iggy3d_creative: asset catalog rejected path='%s' reason='%s'",
+            failure.sourcePath.generic_string().c_str(),
+            failure.reasonCode.c_str());
+  }
+  return output;
+}
+
+}  // namespace
 
 void initializeCreativeEditorBootstrapData(
     CreativeEditorBootstrapData& output,
@@ -157,8 +213,11 @@ void initializeCreativeEditorBootstrapData(
   output.editor.interaction.hotbar =
       iggy3d::creative::makeDefaultCreativeHotbar(
           output.editor.brushPalette);
-  output.editor.catalog.model =
-      iggy3d::creative::makeCreativeCatalog(output.editor.brushPalette);
+  const CreativeCatalogAssetDiscovery catalogAssets =
+      discoverCreativeCatalogAssets();
+  output.editor.catalog.model = iggy3d::creative::makeCreativeCatalog(
+      output.editor.brushPalette, catalogAssets.assets,
+      catalogAssets.rejectedCount);
   output.editor.catalog.toolWheel =
       iggy3d::creative::makeCreativeToolWheel(output.editor.catalog.model);
   output.editor.placeMode = true;

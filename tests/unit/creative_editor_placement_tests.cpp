@@ -3428,6 +3428,60 @@ bool radialSelectionRearmsOnlyRightStickLook() {
                 "tool wheel toggle cannot leak motion into its opening frame");
 }
 
+bool importedAssetPlacementPreviewAndDocumentStayInParity() {
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Rock);
+  cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const bool assetSet = cr::setCreativeHotbarAsset(
+      held, "boulder_01", {1.5, 1.4, 1.2});
+  setPlaceTarget(editor, 2, 0, -1);
+  const CreativeBrushPlacementAdmission admission = admitBrushPlacement(
+      held, editor.interaction.target.grid,
+      editor.toolSettings.placementYaw);
+  const cr::CreativeBoundsMetrics planned =
+      cr::measureCreativeBounds(admission.plan.authoredBounds);
+  const cr::CreativeDocumentCreateRequest request =
+      buildBrushCreateRequest(admission.plan, 7U,
+                              cr::creativeHotbarAssetId(held));
+
+  iggy3d::FrameInput frame;
+  attachCreativeEditorPlacementPreviews(editor, false, frame);
+  const bool previewIdentity =
+      frame.creativePreview.itemCount == 2U &&
+      iggy3d::renderCreativePreviewAssetId(
+          frame.creativePreview.items[0]) == "boulder_01" &&
+      iggy3d::renderCreativePreviewAssetId(
+          frame.creativePreview.items[1]) == "boulder_01";
+
+  cr::CreativeAppState appState;
+  const CreativeBrushPlacementMutationReceipt placed = applyBrushPlacement(
+      appState.facade, admission.plan, 7U, cr::kInvalidObjectId,
+      cr::creativeHotbarAssetId(held));
+  const cr::CreativeObject* object =
+      appState.facade.document().findObject(placed.objectId);
+  const bool sameAssetDuplicate = creativeBrushPlacementTargetOccupied(
+      appState.facade.document(), admission.plan, "boulder_01");
+  const bool differentAssetDistinct = !creativeBrushPlacementTargetOccupied(
+      appState.facade.document(), admission.plan, "walkway_stone_01");
+
+  return expect(assetSet && admission.allowed && planned.valid,
+                "asset hotbar entry admits normal authored placement") &&
+         expect(near(static_cast<float>(planned.size.x), 1.5F) &&
+                    near(static_cast<float>(planned.size.y), 1.4F) &&
+                    near(static_cast<float>(planned.size.z), 1.2F),
+                "asset natural dimensions replace descriptor proxy bounds") &&
+         expect(request.assetId == "boulder_01" &&
+                    sameBounds(request.bounds, admission.plan.authoredBounds),
+                "create request shares asset identity and planned bounds") &&
+         expect(previewIdentity,
+                "target and held previews request the exact imported mesh") &&
+         expect(placed.accepted && placed.objectCreated && object != nullptr &&
+                    object->assetId == "boulder_01",
+                "accepted placement stores the durable asset reference") &&
+         expect(sameAssetDuplicate && differentAssetDistinct,
+                "duplicate admission distinguishes imported asset identity");
+}
+
 }  // namespace
 
 int main() {
@@ -3474,5 +3528,6 @@ int main() {
   ok = surfaceExtrudePreviewMutationAndRemovalStayAtomic() && ok;
   ok = heldShapeToolOwnsItsTwoCornerGesture() && ok;
   ok = radialSelectionRearmsOnlyRightStickLook() && ok;
+  ok = importedAssetPlacementPreviewAndDocumentStayInParity() && ok;
   return ok ? 0 : 1;
 }

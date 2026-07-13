@@ -154,12 +154,22 @@ initialPathPointsForAnchor(iggy3d::Vec3 cellCenter);
     const iggy3d::creative::CreativeGridTarget& target,
     iggy3d::creative::CreativePlacementYaw placementYaw =
         iggy3d::creative::CreativePlacementYaw::Degrees0) noexcept;
+[[nodiscard]] CreativeBrushPlacementAdmission admitBrushPlacement(
+    const iggy3d::creative::CreativeHotbarEntry& held,
+    const iggy3d::creative::CreativeGridTarget& target,
+    iggy3d::creative::CreativePlacementYaw placementYaw =
+        iggy3d::creative::CreativePlacementYaw::Degrees0) noexcept;
+[[nodiscard]] bool applyCreativeAssetPlacementBounds(
+    CreativeBrushPlacementPlan& plan,
+    iggy3d::creative::CreativeVec3 boundsSize) noexcept;
 [[nodiscard]] bool creativeBrushPlacementAlreadyExists(
     const iggy3d::creative::CreativeDocument& document,
-    const CreativeBrushPlacementPlan& plan) noexcept;
+    const CreativeBrushPlacementPlan& plan,
+    std::string_view assetId = {}) noexcept;
 [[nodiscard]] bool creativeBrushPlacementTargetOccupied(
     const iggy3d::creative::CreativeDocument& document,
-    const CreativeBrushPlacementPlan& plan) noexcept;
+    const CreativeBrushPlacementPlan& plan,
+    std::string_view assetId = {}) noexcept;
 [[nodiscard]] iggy3d::creative::CreativeBounds
 creativeBrushHeldPreviewBounds(
     const CreativeBrushPlacementPlan& plan) noexcept;
@@ -173,7 +183,8 @@ creativeBrushHeldPreviewBounds(
 
 [[nodiscard]] iggy3d::creative::CreativeDocumentCreateRequest
 buildBrushCreateRequest(const CreativeBrushPlacementPlan& plan,
-                        std::uint64_t ordinal);
+                        std::uint64_t ordinal,
+                        std::string_view assetId = {});
 
 [[nodiscard]] iggy3d::creative::CreativeDocumentCreateRequest
 buildBrushCreateRequest(iggy3d::creative::CreativeObjectKind brush,
@@ -185,14 +196,16 @@ buildBrushCreateRequest(iggy3d::creative::CreativeObjectKind brush,
     const CreativeBrushPlacementPlan& plan,
     std::uint64_t ordinal,
     iggy3d::creative::CreativeObjectId parentObjectId =
-        iggy3d::creative::kInvalidObjectId);
+        iggy3d::creative::kInvalidObjectId,
+    std::string_view assetId = {});
 
 [[nodiscard]] CreativeBrushPlacementMutationReceipt applyBrushPlacement(
     iggy3d::creative::Facade& facade,
     const CreativeBrushPlacementPlan& plan,
     std::uint64_t ordinal,
     iggy3d::creative::CreativeObjectId parentObjectId =
-        iggy3d::creative::kInvalidObjectId);
+        iggy3d::creative::kInvalidObjectId,
+    std::string_view assetId = {});
 
 [[nodiscard]] iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
     iggy3d::creative::Facade& facade,

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cmath>
 #include <cstddef>
 #include <fstream>
@@ -45,6 +46,31 @@ void setFailure(StaticMeshImportResult& result,
   }
   const float inverseLength = 1.0F / std::sqrt(lengthSquared);
   return value * inverseLength;
+}
+
+[[nodiscard]] std::string assetLabel(std::string_view assetId) {
+  const std::size_t slash = assetId.find_last_of('/');
+  const std::string_view name = slash == std::string_view::npos
+                                    ? assetId
+                                    : assetId.substr(slash + 1U);
+  std::string label;
+  label.reserve(name.size());
+  bool capitalize = true;
+  for (char value : name) {
+    if (value == '_' || value == '-') {
+      if (!label.empty() && label.back() != ' ') {
+        label.push_back(' ');
+      }
+      capitalize = true;
+      continue;
+    }
+    const unsigned char byte = static_cast<unsigned char>(value);
+    label.push_back(capitalize
+                        ? static_cast<char>(std::toupper(byte))
+                        : value);
+    capitalize = value == ' ';
+  }
+  return label;
 }
 
 [[nodiscard]] Vec3 transformPoint(const cgltf_float matrix[16],
@@ -375,6 +401,64 @@ StaticMeshImportResult importStaticMeshGlb(
   result.status = StaticMeshImportStatus::Imported;
   result.reasonCode = "static_mesh_imported";
   return result;
+}
+
+StaticMeshAssetCatalog discoverStaticMeshAssetCatalog(
+    const std::filesystem::path& root) {
+  StaticMeshAssetCatalog catalog;
+  std::error_code error;
+  if (!std::filesystem::is_directory(root, error) || error) {
+    catalog.failures.push_back(
+        {root, "static_mesh_asset_root_not_directory"});
+    return catalog;
+  }
+
+  std::vector<std::filesystem::path> sources;
+  std::filesystem::recursive_directory_iterator iterator(
+      root, std::filesystem::directory_options::skip_permission_denied, error);
+  const std::filesystem::recursive_directory_iterator end;
+  while (!error && iterator != end) {
+    const std::filesystem::directory_entry& entry = *iterator;
+    if (entry.is_regular_file(error) && !error) {
+      std::string extension = entry.path().extension().string();
+      std::transform(extension.begin(), extension.end(), extension.begin(),
+                     [](char value) {
+                       return static_cast<char>(std::tolower(
+                           static_cast<unsigned char>(value)));
+                     });
+      if (extension == ".glb") {
+        sources.push_back(entry.path());
+      }
+    }
+    iterator.increment(error);
+  }
+  if (error) {
+    catalog.failures.push_back(
+        {root, "static_mesh_asset_catalog_scan_failed"});
+  }
+  std::sort(sources.begin(), sources.end());
+
+  for (const std::filesystem::path& source : sources) {
+    std::filesystem::path relative = std::filesystem::relative(source, root, error);
+    if (error) {
+      error.clear();
+      catalog.failures.push_back(
+          {source, "static_mesh_asset_relative_path_failed"});
+      continue;
+    }
+    relative.replace_extension();
+    const std::string assetId = relative.generic_string();
+    const StaticMeshImportResult imported = importStaticMeshGlb(source, assetId);
+    if (!imported.ok()) {
+      catalog.failures.push_back({source, imported.reasonCode});
+      continue;
+    }
+    catalog.entries.push_back(
+        {assetId, assetLabel(assetId),
+         imported.asset.boundsMax - imported.asset.boundsMin,
+         imported.asset.contentHash});
+  }
+  return catalog;
 }
 
 void StaticMeshAssetCache::setRoot(std::filesystem::path root) {

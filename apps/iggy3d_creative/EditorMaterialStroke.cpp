@@ -144,9 +144,11 @@ void applySingleMaterialMutation(cr::CreativeAppState& appState,
     return;
   }
   const CreativeBrushPlacementAdmission admission = admitBrushPlacement(
-      held.objectKind, grid, editor.toolSettings.placementYaw);
+      held, grid, editor.toolSettings.placementYaw);
+  const std::string_view assetId = cr::creativeHotbarAssetId(held);
   if (!admission.allowed || creativeBrushPlacementAlreadyExists(
-                                appState.facade.document(), admission.plan)) {
+                                appState.facade.document(), admission.plan,
+                                assetId)) {
     rejectMaterialStroke(editor, held.objectKind);
     return;
   }
@@ -166,7 +168,7 @@ void applySingleMaterialMutation(cr::CreativeAppState& appState,
   const std::uint64_t ordinal = editor.placedCount + 1U;
   const CreativeBrushPlacementMutationReceipt receipt = applyBrushPlacement(
       appState.facade, admission.plan, ordinal,
-      activeCreativeEditorGroupFocusId(editor.groupFocus));
+      activeCreativeEditorGroupFocusId(editor.groupFocus), assetId);
   if (receipt.accepted && receipt.changed &&
       (receipt.objectCreated || receipt.voxelCreated)) {
     editor.placedCount = ordinal;

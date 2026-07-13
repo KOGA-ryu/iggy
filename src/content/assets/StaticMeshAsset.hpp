@@ -66,10 +66,29 @@ struct StaticMeshImportResult {
   }
 };
 
+struct StaticMeshAssetCatalogEntry {
+  std::string assetId;
+  std::string label;
+  Vec3 boundsSize;
+  std::uint64_t contentHash = 0;
+};
+
+struct StaticMeshAssetCatalogFailure {
+  std::filesystem::path sourcePath;
+  std::string reasonCode;
+};
+
+struct StaticMeshAssetCatalog {
+  std::vector<StaticMeshAssetCatalogEntry> entries;
+  std::vector<StaticMeshAssetCatalogFailure> failures;
+};
+
 [[nodiscard]] bool validStaticMeshAssetId(std::string_view assetId) noexcept;
 [[nodiscard]] StaticMeshImportResult importStaticMeshGlb(
     const std::filesystem::path& path,
     std::string_view assetId);
+[[nodiscard]] StaticMeshAssetCatalog discoverStaticMeshAssetCatalog(
+    const std::filesystem::path& root);
 
 class StaticMeshAssetCache {
 public:

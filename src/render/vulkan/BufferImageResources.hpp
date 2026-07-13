@@ -88,8 +88,13 @@ struct FirstRoomGeometryResources {
 struct CreativePreviewGeometryResources {
   GpuBufferRecord vertexBuffer;
   GpuBufferRecord indexBuffer;
-  std::array<IndexedDrawRange, kCreativePreviewGeometryDrawRangeCount>
-      indexedDraws{};
+  struct AssetDrawRanges {
+    std::string assetId;
+    std::array<std::uint32_t, kRenderCreativePreviewRoleCount>
+        geometryDrawIndices{};
+  };
+  std::vector<IndexedDrawRange> indexedDraws;
+  std::vector<AssetDrawRanges> assetDraws;
   std::uint32_t vertexCount = 0;
   std::uint32_t indexCount = 0;
   bool ready = false;
@@ -135,8 +140,8 @@ struct CreativeWireframeDebugCpuGeometry {
 struct CreativePreviewCpuGeometry {
   std::vector<FirstRoomVertex> vertices;
   std::vector<std::uint16_t> indices;
-  std::array<IndexedDrawRange, kCreativePreviewGeometryDrawRangeCount>
-      indexedDraws{};
+  std::vector<IndexedDrawRange> indexedDraws;
+  std::vector<CreativePreviewGeometryResources::AssetDrawRanges> assetDraws;
   bool ready = false;
 };
 
@@ -208,5 +213,10 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
 CreativeWireframeDebugCpuGeometry buildCreativeWireframeDebugCpuGeometry(
     const RenderCreativeWireframeDebugFrame* creativeWireframeDebug);
 CreativePreviewCpuGeometry buildCreativePreviewCpuGeometry();
+CreativePreviewCpuGeometry buildCreativePreviewCpuGeometry(
+    StaticMeshAssetCache* staticMeshAssets);
+[[nodiscard]] std::uint32_t resolveCreativePreviewGeometryDrawIndex(
+    const CreativePreviewGeometryResources& geometry,
+    const RenderCreativePreviewItem& item) noexcept;
 
 }  // namespace iggy3d::vulkan

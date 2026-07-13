@@ -74,11 +74,23 @@ void sampleTargetMaterial(InteractionContext& context) {
       cr::creativeHeldItemUsesMaterial(context.held.kind)) {
     if (cr::creativeVolumeBrushSupported(target.objectKind)) {
       editor.placeBrush = target.objectKind;
-      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar).objectKind =
-          target.objectKind;
+      cr::CreativeHotbarEntry& selected =
+          cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+      selected.objectKind = target.objectKind;
+      cr::clearCreativeHotbarAsset(selected);
       syncCreativeEditorQuickEdit(editor);
     }
     return;
+  }
+  if (target.objectHit) {
+    const cr::CreativeObject* object =
+        context.request.appState.facade.document().findObject(target.objectId);
+    if (object != nullptr &&
+        cr::assignCreativeHotbarFromObject(editor.interaction.hotbar,
+                                           *object)) {
+      syncCreativeEditorHeldItem(context.request.appState, editor);
+      return;
+    }
   }
   static_cast<void>(
       cr::assignCreativeHotbarMaterial(editor.interaction.hotbar,

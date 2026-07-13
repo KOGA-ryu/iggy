@@ -22,13 +22,22 @@ inline constexpr std::size_t kCreativeCatalogShapePresetCount = 6;
 
 enum class CreativeCatalogPage : std::uint8_t {
   Build,
+  Assets,
   Actions,
   Count,
 };
 
 enum class CreativeCatalogEntryCategory : std::uint8_t {
   Material,
+  Asset,
   Tool,
+};
+
+struct CreativeCatalogAsset {
+  CreativeObjectKind objectKind = CreativeObjectKind::Prop;
+  std::string assetId;
+  std::string label;
+  CreativeVec3 boundsSize{};
 };
 
 struct CreativeCatalogEntry {
@@ -79,6 +88,7 @@ struct CreativeCatalogState {
   std::vector<std::size_t> filteredEntryIndices;
   std::size_t selectedFilteredIndex = 0;
   std::size_t selectedActionIndex = 0;
+  std::size_t rejectedAssetCount = 0;
   std::optional<CreativeInputActionId> pendingActionConfirmation;
 };
 
@@ -94,14 +104,16 @@ struct CreativeToolWheelState {
     CreativeCatalogEntryCategory category) noexcept;
 [[nodiscard]] std::string_view toString(CreativeCatalogPage page) noexcept;
 [[nodiscard]] CreativeCatalogState makeCreativeCatalog(
-    std::span<const CreativeObjectKind> materialPalette);
+    std::span<const CreativeObjectKind> materialPalette,
+    std::span<const CreativeCatalogAsset> assets = {},
+    std::size_t rejectedAssetCount = 0U);
 
 [[nodiscard]] std::span<const CreativeCatalogActionEntry>
 creativeCatalogActionEntries() noexcept;
 [[nodiscard]] bool setCreativeCatalogPage(CreativeCatalogState& catalog,
-                                          CreativeCatalogPage page) noexcept;
+                                          CreativeCatalogPage page);
 [[nodiscard]] bool moveCreativeCatalogPage(CreativeCatalogState& catalog,
-                                           std::int32_t steps) noexcept;
+                                           std::int32_t steps);
 [[nodiscard]] bool moveCreativeCatalogActionSelection(
     CreativeCatalogState& catalog,
     std::int32_t steps) noexcept;

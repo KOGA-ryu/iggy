@@ -205,7 +205,9 @@ void appendCatalogBuildDetails(
                      0.24F, 0.28F, 0.31F, 0.9F});
   const bool isMaterial =
       entry->category == cr::CreativeCatalogEntryCategory::Material;
-  appendText(glyphs, isMaterial ? "MATERIAL" : "TOOL",
+  const bool isAsset =
+      entry->category == cr::CreativeCatalogEntryCategory::Asset;
+  appendText(glyphs, isMaterial ? "MATERIAL" : isAsset ? "ASSET" : "TOOL",
              layout.detailX + 4, layout.searchY + 8, drawableWidth,
              drawableHeight, 0.58F, 0.66F, 0.71F);
   appendText(glyphs,
@@ -215,6 +217,17 @@ void appendCatalogBuildDetails(
 
   const bool shapeTool = cr::creativeCatalogEntryUsesShapeSelection(*entry);
   std::int32_t detailY = layout.rowsY + 12;
+  if (isAsset) {
+    appendText(glyphs, "ASSET ID", layout.detailX + 4, detailY,
+               drawableWidth, drawableHeight, 0.58F, 0.66F, 0.71F);
+    appendText(
+        glyphs,
+        fitCatalogText(cr::creativeHotbarAssetId(entry->hotbarEntry),
+                       layout.detailWidth - 8U),
+        layout.detailX + 4, detailY + 21, drawableWidth, drawableHeight,
+        0.90F, 0.93F, 0.95F);
+    detailY += 58;
+  }
   if (shapeTool) {
     appendText(glyphs, "SHAPE", layout.detailX + 4, detailY, drawableWidth,
                drawableHeight, 0.58F, 0.66F, 0.71F);
@@ -252,12 +265,13 @@ void appendCatalogBuildDetails(
   }
 
   const cr::CreativeObjectKind material =
-      isMaterial ? entry->hotbarEntry.objectKind
+      (isMaterial || isAsset) ? entry->hotbarEntry.objectKind
                  : cr::creativeHeldItemUsesMaterial(entry->hotbarEntry.kind)
                        ? editor.placeBrush
                        : cr::CreativeObjectKind::Unknown;
   if (material != cr::CreativeObjectKind::Unknown) {
-    appendText(glyphs, "MATERIAL", layout.detailX + 4, detailY, drawableWidth,
+    appendText(glyphs, isAsset ? "OBJECT KIND" : "MATERIAL",
+               layout.detailX + 4, detailY, drawableWidth,
                drawableHeight, 0.58F, 0.66F, 0.71F);
     appendText(glyphs,
                fitCatalogText(cr::toString(material), layout.detailWidth - 8U),
@@ -292,8 +306,10 @@ void appendCreativeEditorCatalogOverlay(
       {0, 0, drawableWidth, drawableHeight, 0.01F, 0.015F, 0.02F, 0.74F});
   uiRects.push_back({layout.panelX, layout.panelY, layout.panelWidth,
                      layout.panelHeight, 0.055F, 0.065F, 0.075F, 0.98F});
+  const bool entryPage =
+      catalog.model.page != cr::CreativeCatalogPage::Actions;
   uiRects.push_back({layout.panelX + 16, layout.searchY,
-                     catalog.model.page == cr::CreativeCatalogPage::Build
+                     entryPage
                          ? layout.listWidth
                          : catalogInnerWidth(layout),
                      34U,
@@ -306,6 +322,7 @@ void appendCreativeEditorCatalogOverlay(
                drawableHeight, 0.90F, 0.94F, 0.96F);
   }
   constexpr std::array pages{cr::CreativeCatalogPage::Build,
+                             cr::CreativeCatalogPage::Assets,
                              cr::CreativeCatalogPage::Actions};
   for (std::size_t index = 0; index < pages.size(); ++index) {
     const bool selected = catalog.model.page == pages[index];
@@ -317,9 +334,13 @@ void appendCreativeEditorCatalogOverlay(
                        selected ? 0.28F : 0.095F,
                        selected ? 0.98F : 0.92F});
     const bool compactTab = layout.tabWidth < 70U;
-    appendText(glyphs,
-               index == 0U ? (compactTab ? "BLD" : "BUILD")
-                           : (compactTab ? "ACT" : "ACTIONS"),
+    const std::string_view tabLabel =
+        pages[index] == cr::CreativeCatalogPage::Build
+            ? (compactTab ? "BLD" : "BUILD")
+            : pages[index] == cr::CreativeCatalogPage::Assets
+                  ? (compactTab ? "AST" : "ASSETS")
+                  : (compactTab ? "ACT" : "ACTIONS");
+    appendText(glyphs, tabLabel,
                x + (compactTab ? 6 : 10),
                layout.tabsY + 7, drawableWidth, drawableHeight,
                selected ? 0.06F : 0.82F, selected ? 0.065F : 0.86F,
@@ -327,7 +348,7 @@ void appendCreativeEditorCatalogOverlay(
   }
 
   char footer[128];
-  if (catalog.model.page == cr::CreativeCatalogPage::Build) {
+  if (entryPage) {
     const std::string queryText = fitCatalogText(
         "Search: " + catalog.model.query + "_", layout.listWidth - 16U);
     appendText(glyphs, queryText, layout.panelX + 24, layout.searchY + 9,
@@ -354,12 +375,13 @@ void appendCreativeEditorCatalogOverlay(
                          selected ? 0.76F : 0.085F,
                          selected ? 0.28F : 0.095F,
                          selected ? 0.98F : 0.92F});
-      const std::string rowText =
-          std::string(entry->category ==
-                              cr::CreativeCatalogEntryCategory::Material
-                          ? "MAT  "
-                          : "TOOL ") +
-          entry->label;
+      const std::string_view prefix =
+          entry->category == cr::CreativeCatalogEntryCategory::Material
+              ? "MAT  "
+              : entry->category == cr::CreativeCatalogEntryCategory::Asset
+                    ? "ASSET "
+                    : "TOOL ";
+      const std::string rowText = std::string(prefix) + entry->label;
       appendText(glyphs,
                  fitCatalogText(rowText, layout.listWidth - 16U),
                  layout.panelX + 24, y + 8, drawableWidth,
@@ -369,7 +391,11 @@ void appendCreativeEditorCatalogOverlay(
     }
 
     if (resultCount == 0U) {
-      appendText(glyphs, "No matching materials or tools", layout.panelX + 24,
+      appendText(glyphs,
+                 catalog.model.page == cr::CreativeCatalogPage::Assets
+                     ? "No matching imported assets"
+                     : "No matching materials or tools",
+                 layout.panelX + 24,
                  layout.rowsY + 8, drawableWidth, drawableHeight, 0.82F, 0.54F,
                  0.48F);
     }
@@ -395,6 +421,12 @@ void appendCreativeEditorCatalogOverlay(
     }
     if (!catalog.statusLabel.empty()) {
       std::snprintf(footer, sizeof(footer), "%s", catalog.statusLabel.c_str());
+    } else if (catalog.model.page == cr::CreativeCatalogPage::Assets) {
+      std::snprintf(footer, sizeof(footer), "%zu assets | %zu rejected | slot %u",
+                    resultCount, catalog.model.rejectedAssetCount,
+                    static_cast<unsigned>(
+                        editor.interaction.hotbar.selectedSlot) +
+                        1U);
     } else {
       std::snprintf(footer, sizeof(footer), "%zu results | slot %u",
                     resultCount,

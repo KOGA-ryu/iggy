@@ -1,5 +1,6 @@
 #include "render/FrameInput.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 namespace iggy3d {
@@ -35,6 +36,21 @@ bool isValidCreativePreviewRole(RenderCreativePreviewRole role) {
   return false;
 }
 
+bool isValidCreativePreviewAssetId(
+    const RenderCreativePreviewItem& item) noexcept {
+  const std::string_view assetId = renderCreativePreviewAssetId(item);
+  if (assetId.empty()) {
+    return item.assetId.front() == '\0';
+  }
+  return item.assetId.back() == '\0' && assetId.front() != '/' &&
+         assetId.find("..") == std::string_view::npos &&
+         std::all_of(assetId.begin(), assetId.end(), [](char value) {
+           const unsigned char c = static_cast<unsigned char>(value);
+           return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                  (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '/';
+         });
+}
+
 bool hasUiContent(const RenderUiFrame& ui) {
   return ui.visible &&
          ((ui.rects != nullptr && ui.rectCount > 0U) ||
@@ -42,6 +58,34 @@ bool hasUiContent(const RenderUiFrame& ui) {
 }
 
 }  // namespace
+
+std::string_view renderCreativePreviewAssetId(
+    const RenderCreativePreviewItem& item) noexcept {
+  const auto terminator =
+      std::find(item.assetId.begin(), item.assetId.end(), '\0');
+  return {item.assetId.data(),
+          static_cast<std::size_t>(terminator - item.assetId.begin())};
+}
+
+bool setRenderCreativePreviewAssetId(RenderCreativePreviewItem& item,
+                                     std::string_view assetId) noexcept {
+  if (assetId.empty()) {
+    item.assetId.fill('\0');
+    return true;
+  }
+  if (assetId.size() > kRenderCreativePreviewAssetIdCapacity ||
+      assetId.front() == '/' || assetId.find("..") != std::string_view::npos ||
+      !std::all_of(assetId.begin(), assetId.end(), [](char value) {
+        const unsigned char c = static_cast<unsigned char>(value);
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+               (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '/';
+      })) {
+    return false;
+  }
+  item.assetId.fill('\0');
+  std::copy(assetId.begin(), assetId.end(), item.assetId.begin());
+  return true;
+}
 
 std::string_view renderCameraModeName(RenderCameraMode mode) {
   switch (mode) {
@@ -135,7 +179,8 @@ FrameInputStatus validateFrameInput(const FrameInput& frame) {
     const RenderCreativePreviewItem& item =
         frame.creativePreview.items[index];
     if (!isValidCreativePreviewRole(item.role) ||
-        !isFinite(item.clipFromModel)) {
+        !isFinite(item.clipFromModel) ||
+        !isValidCreativePreviewAssetId(item)) {
       return FrameInputStatus::InvalidCreativePreviewItems;
     }
   }

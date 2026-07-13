@@ -577,6 +577,51 @@ CreativeBrushPlacementAdmission admitBrushPlacement(
   return admission;
 }
 
+bool applyCreativeAssetPlacementBounds(
+    CreativeBrushPlacementPlan& plan,
+    iggy3d::creative::CreativeVec3 boundsSize) noexcept {
+  if (!plan.valid ||
+      plan.storagePolicy !=
+          iggy3d::creative::CreativePlacementStoragePolicy::AuthoredObject ||
+      !iggy3d::creative::isFiniteCreativeVec3(boundsSize) ||
+      boundsSize.x <= 0.0 || boundsSize.y <= 0.0 || boundsSize.z <= 0.0 ||
+      !plan.hasTransformOverride || !plan.hasBoundsOverride) {
+    return false;
+  }
+  const double centerX = plan.transform.position.x;
+  const double bottomY = plan.authoredBounds.min.y;
+  const double centerZ = plan.transform.position.z;
+  plan.authoredBounds = {
+      {centerX - boundsSize.x * 0.5, bottomY,
+       centerZ - boundsSize.z * 0.5},
+      {centerX + boundsSize.x * 0.5, bottomY + boundsSize.y,
+       centerZ + boundsSize.z * 0.5}};
+  plan.previewBounds = plan.authoredBounds;
+  plan.transform.position = {centerX, bottomY + boundsSize.y * 0.5,
+                             centerZ};
+  return positiveBounds(plan.authoredBounds);
+}
+
+CreativeBrushPlacementAdmission admitBrushPlacement(
+    const iggy3d::creative::CreativeHotbarEntry& held,
+    const iggy3d::creative::CreativeGridTarget& target,
+    iggy3d::creative::CreativePlacementYaw placementYaw) noexcept {
+  CreativeBrushPlacementAdmission admission =
+      admitBrushPlacement(held.objectKind, target, placementYaw);
+  const std::string_view assetId =
+      iggy3d::creative::creativeHotbarAssetId(held);
+  if (assetId.empty()) {
+    return admission;
+  }
+  if (!admission.allowed || !held.hasAssetBounds ||
+      !applyCreativeAssetPlacementBounds(admission.plan,
+                                         held.assetBoundsSize)) {
+    admission.status = CreativeBrushPlacementAdmissionStatus::InvalidGeometry;
+    admission.allowed = false;
+  }
+  return admission;
+}
+
 iggy3d::creative::CreativeBounds creativeBrushHeldPreviewBounds(
     const CreativeBrushPlacementPlan& plan) noexcept {
   if (plan.storagePolicy !=

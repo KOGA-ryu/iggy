@@ -62,12 +62,14 @@ namespace {
 void appendCreativePreview(RenderCreativePreviewFrame& previews,
                            RenderCreativePreviewRole role,
                            const Mat4& clipFromModel,
-                           bool includePathWireframe = false) {
+                           bool includePathWireframe = false,
+                           std::string_view assetId = {}) {
   if (previews.itemCount >= previews.items.size()) {
     return;
   }
-  previews.items[previews.itemCount++] = {
-      role, clipFromModel, includePathWireframe};
+  RenderCreativePreviewItem& item = previews.items[previews.itemCount++];
+  item = {role, clipFromModel, includePathWireframe};
+  static_cast<void>(setRenderCreativePreviewAssetId(item, assetId));
 }
 
 }  // namespace
@@ -102,8 +104,13 @@ void attachCreativeEditorPlacementPreviews(
     return;
   }
 
-  const CreativeBrushPlacementPlan heldPlan =
+  CreativeBrushPlacementPlan heldPlan =
       planBrushPlacement(held.objectKind, {});
+  if (!cr::creativeHotbarAssetId(held).empty() &&
+      (!held.hasAssetBounds ||
+       !applyCreativeAssetPlacementBounds(heldPlan, held.assetBoundsSize))) {
+    return;
+  }
   Vec3 heldCenter{};
   Vec3 heldSize{};
   const cr::CreativeBounds heldBounds =
@@ -122,7 +129,7 @@ void attachCreativeEditorPlacementPreviews(
   if (materialPlacement && editor.interaction.target.grid.valid &&
       !mutationAcceptedThisFrame) {
     const CreativeBrushPlacementAdmission admission = admitBrushPlacement(
-        held.objectKind, editor.interaction.target.grid,
+        held, editor.interaction.target.grid,
         editor.toolSettings.placementYaw);
     const CreativeBrushPlacementPlan& targetPlan = admission.plan;
     const cr::CreativeBounds& targetBounds =
@@ -137,7 +144,8 @@ void attachCreativeEditorPlacementPreviews(
           feedback.status == CreativeEditorPlacementFeedbackStatus::Rejected;
       const bool duplicate =
           document != nullptr && admission.allowed &&
-          creativeBrushPlacementTargetOccupied(*document, targetPlan);
+          creativeBrushPlacementTargetOccupied(
+              *document, targetPlan, cr::creativeHotbarAssetId(held));
       const bool targetInvalid =
           !admission.allowed || duplicate || rejectedThisFrame ||
           editor.interaction.materialStroke.capacityReached;
@@ -155,7 +163,8 @@ void attachCreativeEditorPlacementPreviews(
                       : Vec3{},
                   targetSize),
           targetPlan.valid &&
-              targetPlan.shapeKind == cr::CreativeObjectShapeKind::Path);
+              targetPlan.shapeKind == cr::CreativeObjectShapeKind::Path,
+          cr::creativeHotbarAssetId(held));
     }
   }
 
@@ -176,7 +185,8 @@ void attachCreativeEditorPlacementPreviews(
   appendCreativePreview(
       frame.creativePreview, RenderCreativePreviewRole::Held,
       frame.camera.clipFromView *
-          modelMatrix({0.42F, -0.32F, -0.82F}, heldRotation, heldSize));
+          modelMatrix({0.42F, -0.32F, -0.82F}, heldRotation, heldSize),
+      false, cr::creativeHotbarAssetId(held));
 }
 
 }  // namespace iggy3d_creative_app

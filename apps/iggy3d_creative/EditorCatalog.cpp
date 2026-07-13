@@ -15,6 +15,11 @@ namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 namespace {
 
+[[nodiscard]] bool catalogShowsEntries(
+    cr::CreativeCatalogPage page) noexcept {
+  return page != cr::CreativeCatalogPage::Actions &&
+         page != cr::CreativeCatalogPage::Count;
+}
 
 [[nodiscard]] bool contains(CatalogRect rect,
                             std::int32_t x,
@@ -51,7 +56,9 @@ struct CatalogPointer {
       pointer.y >= layout.tabsY + static_cast<std::int32_t>(layout.tabHeight) ||
       pointer.x < layout.tabsX ||
       pointer.x >= layout.tabsX +
-                       static_cast<std::int32_t>(layout.tabWidth * 2U)) {
+                       static_cast<std::int32_t>(
+                           layout.tabWidth * static_cast<std::uint32_t>(
+                               cr::CreativeCatalogPage::Count))) {
     return std::nullopt;
   }
   const std::int32_t relativeX = pointer.x - layout.tabsX;
@@ -239,7 +246,7 @@ void applyInventoryWindowMode(iggy3d::SdlWindow& window,
                              keepPointerAvailable;
   static_cast<void>(window.setTextInputActive(
       editor.catalog.model.open &&
-      editor.catalog.model.page == cr::CreativeCatalogPage::Build));
+      catalogShowsEntries(editor.catalog.model.page)));
   static_cast<void>(window.setRelativeMouseMode(!inventoryOpen));
   if (centerToolWheelPointer) {
     window.centerPointer();
@@ -310,7 +317,7 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
                          CreativeEditorCatalogFrameResult& result) {
   CreativeEditorCatalogState& catalog = request.editor.catalog;
   const iggy3d::SdlWindowEventState& events = request.window.eventState();
-  if (catalog.model.page == cr::CreativeCatalogPage::Build) {
+  if (catalogShowsEntries(catalog.model.page)) {
     static_cast<void>(cr::appendCreativeCatalogQueryText(
         catalog.model, events.textInput));
     static_cast<void>(cr::eraseCreativeCatalogQuery(
@@ -334,7 +341,7 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
             result.pageChanged;
         break;
       case cr::CreativeInputActionId::CatalogPrevious:
-        if (catalog.model.page == cr::CreativeCatalogPage::Build) {
+        if (catalogShowsEntries(catalog.model.page)) {
           static_cast<void>(
               cr::moveCreativeCatalogSelection(catalog.model, -1));
         } else {
@@ -343,7 +350,7 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
         }
         break;
       case cr::CreativeInputActionId::CatalogNext:
-        if (catalog.model.page == cr::CreativeCatalogPage::Build) {
+        if (catalogShowsEntries(catalog.model.page)) {
           static_cast<void>(
               cr::moveCreativeCatalogSelection(catalog.model, 1));
         } else {
@@ -372,7 +379,7 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
         }
         break;
       case cr::CreativeInputActionId::CatalogConfirm:
-        if (catalog.model.page == cr::CreativeCatalogPage::Build) {
+        if (catalogShowsEntries(catalog.model.page)) {
           result.assigned =
               assignCatalogSelection(request.appState, request.editor,
                                      std::nullopt) ||
@@ -385,7 +392,7 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
         }
         break;
       default:
-        if (catalog.model.page == cr::CreativeCatalogPage::Build) {
+        if (catalogShowsEntries(catalog.model.page)) {
           const std::optional<std::size_t> slot =
               hotbarSlotForAction(event.action);
           if (!slot.has_value()) {
@@ -405,7 +412,7 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
   const std::int32_t wheelSteps = cr::quantizeCreativeWheelSteps(
       events.mouseWheelY, kCatalogWheelProfile);
   if (wheelSteps != 0) {
-    if (catalog.model.page == cr::CreativeCatalogPage::Build) {
+    if (catalogShowsEntries(catalog.model.page)) {
       static_cast<void>(
           cr::moveCreativeCatalogSelection(catalog.model, wheelSteps));
     } else {
@@ -416,7 +423,7 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
 
   const CatalogLayout layout =
       catalogLayout(request.drawableWidth, request.drawableHeight);
-  if (catalog.model.page == cr::CreativeCatalogPage::Build) {
+  if (catalogShowsEntries(catalog.model.page)) {
     ensureSelectionVisible(catalog, layout.visibleRows);
   } else {
     ensureActionSelectionVisible(catalog, layout.visibleRows);
@@ -433,7 +440,7 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
                          result.pageChanged;
     return;
   }
-  if (catalog.model.page == cr::CreativeCatalogPage::Build) {
+  if (catalogShowsEntries(catalog.model.page)) {
     const cr::CreativeCatalogEntry* selected =
         cr::selectedCreativeCatalogEntry(catalog.model);
     if (selected != nullptr &&
@@ -469,7 +476,7 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
     }
   }
   const std::uint32_t pointerRowsWidth =
-      catalog.model.page == cr::CreativeCatalogPage::Build
+      catalogShowsEntries(catalog.model.page)
           ? layout.listWidth
           : layout.contentWidth;
   const bool insideRows =

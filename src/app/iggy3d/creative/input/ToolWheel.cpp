@@ -18,6 +18,10 @@ namespace {
   const CreativeHotbarEntry before = hotbar.entries[targetSlot];
   const bool changed = before.kind != entry.kind ||
                        before.objectKind != entry.objectKind ||
+                       before.assetId != entry.assetId ||
+                       before.hasAssetBounds != entry.hasAssetBounds ||
+                       !creativeVec3ExactlyEqual(before.assetBoundsSize,
+                                                 entry.assetBoundsSize) ||
                        hotbar.selectedSlot != targetSlot;
   hotbar.entries[targetSlot] = entry;
   hotbar.selectedSlot = static_cast<std::uint8_t>(targetSlot);

@@ -236,11 +236,72 @@ bool assignCreativeHotbarMaterial(CreativeHotbarState& hotbar,
   }
   CreativeHotbarEntry& selected = selectedCreativeHotbarEntry(hotbar);
   if (selected.kind == CreativeHeldItemKind::Material &&
-      selected.objectKind == objectKind) {
+      selected.objectKind == objectKind &&
+      creativeHotbarAssetId(selected).empty()) {
     return false;
   }
   selected = {CreativeHeldItemKind::Material, objectKind};
   return true;
+}
+
+bool assignCreativeHotbarFromObject(CreativeHotbarState& hotbar,
+                                    const CreativeObject& object) noexcept {
+  if (object.kind == CreativeObjectKind::Unknown) {
+    return false;
+  }
+  CreativeHotbarEntry replacement{CreativeHeldItemKind::Material, object.kind};
+  if (!object.assetId.empty()) {
+    const CreativeBoundsMetrics metrics = measureCreativeBounds(object.bounds);
+    if (!metrics.valid ||
+        !setCreativeHotbarAsset(replacement, object.assetId, metrics.size)) {
+      return false;
+    }
+  }
+  CreativeHotbarEntry& selected = selectedCreativeHotbarEntry(hotbar);
+  selected = replacement;
+  return true;
+}
+
+std::string_view creativeHotbarAssetId(
+    const CreativeHotbarEntry& entry) noexcept {
+  const auto terminator =
+      std::find(entry.assetId.begin(), entry.assetId.end(), '\0');
+  return {entry.assetId.data(),
+          static_cast<std::size_t>(terminator - entry.assetId.begin())};
+}
+
+bool setCreativeHotbarAsset(CreativeHotbarEntry& entry,
+                            std::string_view assetId,
+                            CreativeVec3 boundsSize) noexcept {
+  const bool validId = !assetId.empty() &&
+                       assetId.size() <= kCreativeHotbarAssetIdCapacity &&
+                       assetId.front() != '/' &&
+                       assetId.find("..") == std::string_view::npos &&
+                       std::all_of(assetId.begin(), assetId.end(), [](char value) {
+                         const unsigned char c =
+                             static_cast<unsigned char>(value);
+                         return (c >= 'a' && c <= 'z') ||
+                                (c >= 'A' && c <= 'Z') ||
+                                (c >= '0' && c <= '9') || c == '_' ||
+                                c == '-' || c == '/';
+                       });
+  const bool validBounds = isFiniteCreativeVec3(boundsSize) &&
+                           boundsSize.x > 0.0 && boundsSize.y > 0.0 &&
+                           boundsSize.z > 0.0;
+  if (!validId || !validBounds) {
+    return false;
+  }
+  entry.assetId.fill('\0');
+  std::copy(assetId.begin(), assetId.end(), entry.assetId.begin());
+  entry.assetBoundsSize = boundsSize;
+  entry.hasAssetBounds = true;
+  return true;
+}
+
+void clearCreativeHotbarAsset(CreativeHotbarEntry& entry) noexcept {
+  entry.assetId.fill('\0');
+  entry.assetBoundsSize = {};
+  entry.hasAssetBounds = false;
 }
 
 bool creativeHeldItemIsVolumeOperation(CreativeHeldItemKind kind) noexcept {
@@ -268,6 +329,7 @@ bool applyCreativeHeldItemMaterial(CreativeHotbarEntry& entry,
     return false;
   }
   entry.objectKind = objectKind;
+  clearCreativeHotbarAsset(entry);
   return true;
 }
 

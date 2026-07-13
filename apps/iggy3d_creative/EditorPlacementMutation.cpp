@@ -50,8 +50,10 @@ namespace {
 
 [[nodiscard]] bool objectMatchesPlacementPlan(
     const iggy3d::creative::CreativeObject& object,
-    const CreativeBrushPlacementPlan& plan) noexcept {
+    const CreativeBrushPlacementPlan& plan,
+    std::string_view assetId) noexcept {
   if (object.kind != plan.brush ||
+      object.assetId != assetId ||
       !sameTransform(object.transform, plan.transform) ||
       !iggy3d::creative::creativeBoundsExactlyEqual(object.bounds,
                                                      plan.authoredBounds) ||
@@ -87,13 +89,15 @@ namespace {
 
 bool creativeBrushPlacementAlreadyExists(
     const iggy3d::creative::CreativeDocument& document,
-    const CreativeBrushPlacementPlan& plan) noexcept {
-  return creativeBrushPlacementTargetOccupied(document, plan);
+    const CreativeBrushPlacementPlan& plan,
+    std::string_view assetId) noexcept {
+  return creativeBrushPlacementTargetOccupied(document, plan, assetId);
 }
 
 bool creativeBrushPlacementTargetOccupied(
     const iggy3d::creative::CreativeDocument& document,
-    const CreativeBrushPlacementPlan& plan) noexcept {
+    const CreativeBrushPlacementPlan& plan,
+    std::string_view assetId) noexcept {
   if (!plan.valid) {
     return false;
   }
@@ -101,8 +105,8 @@ bool creativeBrushPlacementTargetOccupied(
     case iggy3d::creative::CreativePlacementStoragePolicy::AuthoredObject:
       return std::any_of(
           document.objects().begin(), document.objects().end(),
-          [&plan](const iggy3d::creative::CreativeObject& object) {
-            return objectMatchesPlacementPlan(object, plan);
+          [&plan, assetId](const iggy3d::creative::CreativeObject& object) {
+            return objectMatchesPlacementPlan(object, plan, assetId);
           });
     case iggy3d::creative::CreativePlacementStoragePolicy::VoxelCell:
       return plan.hasVoxelCell && document.voxelField().occupied(plan.voxelCell);
@@ -112,9 +116,11 @@ bool creativeBrushPlacementTargetOccupied(
 
 iggy3d::creative::CreativeDocumentCreateRequest buildBrushCreateRequest(
     const CreativeBrushPlacementPlan& plan,
-    std::uint64_t ordinal) {
+    std::uint64_t ordinal,
+    std::string_view assetId) {
   iggy3d::creative::CreativeDocumentCreateRequest request;
   request.kind = plan.brush;
+  request.assetId = std::string(assetId);
   request.name = std::string(iggy3d::creative::toString(plan.brush)) +
                  " placed#" + std::to_string(ordinal);
   if (!plan.valid) {
@@ -150,7 +156,8 @@ iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
     iggy3d::creative::Facade& facade,
     const CreativeBrushPlacementPlan& plan,
     std::uint64_t ordinal,
-    iggy3d::creative::CreativeObjectId parentObjectId) {
+    iggy3d::creative::CreativeObjectId parentObjectId,
+    std::string_view assetId) {
   if (!plan.valid || plan.status != CreativeBrushPlacementPlanStatus::Ready) {
     iggy3d::creative::CreativeDocumentCreateReceipt rejected;
     rejected.requested = true;
@@ -166,7 +173,7 @@ iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
   const iggy3d::creative::CreativeObjectDescriptor& descriptor =
       iggy3d::creative::describeObject(plan.brush);
   iggy3d::creative::CreativeDocumentCreateRequest request =
-      buildBrushCreateRequest(plan, ordinal);
+      buildBrushCreateRequest(plan, ordinal, assetId);
   if (parentObjectId != iggy3d::creative::kInvalidObjectId) {
     request.parentId = parentObjectId;
   }
@@ -206,7 +213,8 @@ CreativeBrushPlacementMutationReceipt applyBrushPlacement(
     iggy3d::creative::Facade& facade,
     const CreativeBrushPlacementPlan& plan,
     std::uint64_t ordinal,
-    iggy3d::creative::CreativeObjectId parentObjectId) {
+    iggy3d::creative::CreativeObjectId parentObjectId,
+    std::string_view assetId) {
   CreativeBrushPlacementMutationReceipt receipt;
   receipt.requested = true;
   receipt.storagePolicy = plan.storagePolicy;
@@ -219,7 +227,10 @@ CreativeBrushPlacementMutationReceipt applyBrushPlacement(
   const iggy3d::creative::CreativeObjectPlacementPolicy& policy =
       iggy3d::creative::describeObject(plan.brush).placementPolicy;
   if (!plan.valid || plan.status != CreativeBrushPlacementPlanStatus::Ready ||
-      !policy.enabled || policy.storagePolicy != plan.storagePolicy) {
+      !policy.enabled || policy.storagePolicy != plan.storagePolicy ||
+      (!assetId.empty() &&
+       plan.storagePolicy !=
+           iggy3d::creative::CreativePlacementStoragePolicy::AuthoredObject)) {
     receipt.status = CreativeBrushPlacementMutationStatus::InvalidPlan;
     receipt.reasonCode = placementPlanRejectionReason(plan.status);
     return receipt;
@@ -233,13 +244,14 @@ CreativeBrushPlacementMutationReceipt applyBrushPlacement(
         receipt.reasonCode = "creative_placement_object_plan_invalid";
         return receipt;
       }
-      if (creativeBrushPlacementTargetOccupied(facade.document(), plan)) {
+      if (creativeBrushPlacementTargetOccupied(facade.document(), plan,
+                                               assetId)) {
         receipt.status = CreativeBrushPlacementMutationStatus::Occupied;
         receipt.reasonCode = "creative_placement_target_occupied";
         return receipt;
       }
       const iggy3d::creative::CreativeDocumentCreateReceipt objectReceipt =
-          placeBrushObject(facade, plan, ordinal, parentObjectId);
+          placeBrushObject(facade, plan, ordinal, parentObjectId, assetId);
       receipt.accepted = objectReceipt.accepted;
       receipt.changed = objectReceipt.changed;
       receipt.objectCreated = objectReceipt.objectCreated;

@@ -358,6 +358,17 @@ bool hotbarHasStableNineSlotGrammar() {
                                             cr::kCreativeHotbarSlotCount),
               "out-of-range direct slot rejected") &&
        ok;
+  cr::CreativeObject imported;
+  imported.kind = cr::CreativeObjectKind::Rock;
+  imported.assetId = "boulder_01";
+  imported.bounds = {{-0.75, 0.0, -0.6}, {0.75, 1.4, 0.6}};
+  ok = expect(cr::assignCreativeHotbarFromObject(hotbar, imported) &&
+                  cr::creativeHotbarAssetId(
+                      cr::selectedCreativeHotbarEntry(hotbar)) ==
+                      "boulder_01" &&
+                  cr::selectedCreativeHotbarEntry(hotbar).hasAssetBounds,
+              "pick block restores imported asset identity and dimensions") &&
+       ok;
   return ok;
 }
 

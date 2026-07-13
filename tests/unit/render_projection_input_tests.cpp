@@ -133,6 +133,8 @@ bool creativePreviewChannelIsFixedAndValidated() {
       iggy3d::RenderCreativePreviewRole::PlacementValid;
   valid.creativePreview.items[1].role =
       iggy3d::RenderCreativePreviewRole::Held;
+  const bool assetSet = iggy3d::setRenderCreativePreviewAssetId(
+      valid.creativePreview.items[1], "boulder_01");
 
   iggy3d::FrameInput tooMany = valid;
   tooMany.creativePreview.itemCount =
@@ -143,8 +145,14 @@ bool creativePreviewChannelIsFixedAndValidated() {
   iggy3d::FrameInput invalidMatrix = valid;
   invalidMatrix.creativePreview.items[1].clipFromModel.m[0] =
       std::numeric_limits<float>::quiet_NaN();
+  iggy3d::FrameInput invalidAsset = valid;
+  invalidAsset.creativePreview.items[1].assetId[0] = '/';
 
-  return expect(iggy3d::validateFrameInput(valid) ==
+  return expect(assetSet &&
+                    iggy3d::renderCreativePreviewAssetId(
+                        valid.creativePreview.items[1]) == "boulder_01",
+                "bounded creative preview asset id accepted") &&
+         expect(iggy3d::validateFrameInput(valid) ==
                     iggy3d::FrameInputStatus::Valid,
                 "two creative previews are valid") &&
          expect(iggy3d::validateFrameInput(tooMany) ==
@@ -156,6 +164,9 @@ bool creativePreviewChannelIsFixedAndValidated() {
          expect(iggy3d::validateFrameInput(invalidMatrix) ==
                     iggy3d::FrameInputStatus::InvalidCreativePreviewItems,
                 "creative preview matrix must be finite") &&
+         expect(iggy3d::validateFrameInput(invalidAsset) ==
+                    iggy3d::FrameInputStatus::InvalidCreativePreviewItems,
+                "creative preview asset id must be safe") &&
          expect(iggy3d::frameInputReasonCode(
                     iggy3d::FrameInputStatus::InvalidCreativePreviewItems) ==
                     "frame_creative_preview_items_invalid",

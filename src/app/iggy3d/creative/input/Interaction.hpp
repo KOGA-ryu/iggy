@@ -131,10 +131,14 @@ inline constexpr std::size_t kCreativeHeldItemKindCount =
     static_cast<std::size_t>(CreativeHeldItemKind::Count);
 
 inline constexpr std::size_t kCreativeHotbarSlotCount = 9;
+inline constexpr std::size_t kCreativeHotbarAssetIdCapacity = 128;
 
 struct CreativeHotbarEntry {
   CreativeHeldItemKind kind = CreativeHeldItemKind::Material;
   CreativeObjectKind objectKind = CreativeObjectKind::Unknown;
+  std::array<char, kCreativeHotbarAssetIdCapacity + 1U> assetId{};
+  CreativeVec3 assetBoundsSize{};
+  bool hasAssetBounds = false;
 };
 
 struct CreativeHotbarState {
@@ -160,6 +164,16 @@ struct CreativeHotbarState {
 [[nodiscard]] bool assignCreativeHotbarMaterial(
     CreativeHotbarState& hotbar,
     CreativeObjectKind objectKind) noexcept;
+[[nodiscard]] bool assignCreativeHotbarFromObject(
+    CreativeHotbarState& hotbar,
+    const CreativeObject& object) noexcept;
+[[nodiscard]] std::string_view creativeHotbarAssetId(
+    const CreativeHotbarEntry& entry) noexcept;
+[[nodiscard]] bool setCreativeHotbarAsset(
+    CreativeHotbarEntry& entry,
+    std::string_view assetId,
+    CreativeVec3 boundsSize) noexcept;
+void clearCreativeHotbarAsset(CreativeHotbarEntry& entry) noexcept;
 [[nodiscard]] bool creativeHeldItemIsVolumeOperation(
     CreativeHeldItemKind kind) noexcept;
 [[nodiscard]] bool creativeHeldItemUsesDirectShapeGesture(

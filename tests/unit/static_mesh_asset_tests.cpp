@@ -1,7 +1,9 @@
 #include "content/assets/StaticMeshAsset.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
 
+#include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
 #include <iostream>
 #include <string>
@@ -131,6 +133,66 @@ bool externalFloorAndWallBypassGeneratedBatching() {
                 "external structural geometry not duplicated by batching");
 }
 
+bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
+  const iggy3d::StaticMeshAssetCatalog catalog =
+      iggy3d::discoverStaticMeshAssetCatalog("assets/creative");
+  const iggy3d::StaticMeshAssetCatalog missing =
+      iggy3d::discoverStaticMeshAssetCatalog("assets/not-a-directory");
+  iggy3d::StaticMeshAssetCache cache;
+  cache.setRoot("assets/creative");
+  const iggy3d::vulkan::CreativePreviewCpuGeometry preview =
+      iggy3d::vulkan::buildCreativePreviewCpuGeometry(&cache);
+  const auto boulder = std::find_if(
+      catalog.entries.begin(), catalog.entries.end(),
+      [](const iggy3d::StaticMeshAssetCatalogEntry& entry) {
+        return entry.assetId == "boulder_01";
+      });
+  const auto walkway = std::find_if(
+      catalog.entries.begin(), catalog.entries.end(),
+      [](const iggy3d::StaticMeshAssetCatalogEntry& entry) {
+        return entry.assetId == "walkway_stone_01";
+      });
+
+  iggy3d::vulkan::CreativePreviewGeometryResources resources;
+  resources.indexedDraws = preview.indexedDraws;
+  resources.assetDraws = preview.assetDraws;
+  iggy3d::RenderCreativePreviewItem held;
+  held.role = iggy3d::RenderCreativePreviewRole::Held;
+  static_cast<void>(iggy3d::setRenderCreativePreviewAssetId(
+      held, "boulder_01"));
+  iggy3d::RenderCreativePreviewItem target = held;
+  target.role = iggy3d::RenderCreativePreviewRole::PlacementValid;
+  const std::uint32_t heldDraw =
+      iggy3d::vulkan::resolveCreativePreviewGeometryDrawIndex(resources, held);
+  const std::uint32_t targetDraw =
+      iggy3d::vulkan::resolveCreativePreviewGeometryDrawIndex(resources, target);
+
+  return expect(catalog.failures.empty() && catalog.entries.size() == 2U,
+                "catalog discovers both valid GLB fixtures") &&
+         expect(boulder != catalog.entries.end() &&
+                    boulder->label == "Boulder 01" &&
+                    walkway != catalog.entries.end() &&
+                    walkway->label == "Walkway Stone 01" &&
+                    walkway->boundsSize.x > 2.9F,
+                "discovery retains stable labels and natural bounds") &&
+         expect(missing.entries.empty() && missing.failures.size() == 1U &&
+                    missing.failures[0].reasonCode ==
+                        "static_mesh_asset_root_not_directory",
+                "missing catalog root reports one explicit failure") &&
+         expect(preview.ready && preview.assetDraws.size() == 2U &&
+                    preview.indexedDraws.size() ==
+                        iggy3d::vulkan::kCreativePreviewGeometryDrawRangeCount +
+                            2U * iggy3d::kRenderCreativePreviewRoleCount,
+                "startup atlas contains three colored roles per asset") &&
+         expect(heldDraw >=
+                    iggy3d::vulkan::kCreativePreviewGeometryDrawRangeCount &&
+                    targetDraw != heldDraw &&
+                    targetDraw < resources.indexedDraws.size() &&
+                    resources.indexedDraws[targetDraw].indexCount >
+                        resources.indexedDraws[heldDraw].indexCount,
+                "renderer resolves exact held and outlined target ranges");
+}
+
 }  // namespace
 
 int main() {
@@ -138,7 +200,8 @@ int main() {
                   rejectsUnsafeAndMissingAssetIds() &&
                   cacheReusesImportAndRendererEmitsIrregularGeometry() &&
                   missingAssetIsVisibleAndMemoized() &&
-                  externalFloorAndWallBypassGeneratedBatching();
+                  externalFloorAndWallBypassGeneratedBatching() &&
+                  discoveryAndPreviewAtlasCoverEveryValidFixture();
   if (!ok) {
     return 1;
   }

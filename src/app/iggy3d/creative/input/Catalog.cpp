@@ -162,18 +162,38 @@ static_assert(kActionEntries.size() == kCreativeCatalogActionCapacity);
   return catalog.filteredEntryIndices[catalog.selectedFilteredIndex];
 }
 
+[[nodiscard]] bool entryVisibleOnPage(
+    const CreativeCatalogEntry& entry,
+    CreativeCatalogPage page) noexcept {
+  switch (page) {
+    case CreativeCatalogPage::Build:
+      return entry.category == CreativeCatalogEntryCategory::Material ||
+             entry.category == CreativeCatalogEntryCategory::Tool;
+    case CreativeCatalogPage::Assets:
+      return entry.category == CreativeCatalogEntryCategory::Asset;
+    case CreativeCatalogPage::Actions:
+    case CreativeCatalogPage::Count:
+      return false;
+  }
+  return false;
+}
+
 void refreshFilter(CreativeCatalogState& catalog) {
   const std::optional<std::size_t> previous = selectedEntryIndex(catalog);
   const std::string query = lowerAscii(catalog.query);
   const bool exactWordMode =
       !query.empty() &&
       std::any_of(catalog.entries.begin(), catalog.entries.end(),
-                  [&query](const CreativeCatalogEntry& entry) {
-                    return containsSearchWord(entry.searchText, query);
+                  [&catalog, &query](const CreativeCatalogEntry& entry) {
+                    return entryVisibleOnPage(entry, catalog.page) &&
+                           containsSearchWord(entry.searchText, query);
                   });
   catalog.filteredEntryIndices.clear();
   catalog.filteredEntryIndices.reserve(catalog.entries.size());
   for (std::size_t index = 0; index < catalog.entries.size(); ++index) {
+    if (!entryVisibleOnPage(catalog.entries[index], catalog.page)) {
+      continue;
+    }
     const bool matches =
         query.empty() ||
         (exactWordMode
@@ -253,6 +273,7 @@ void refreshFilter(CreativeCatalogState& catalog) {
 std::string_view toString(CreativeCatalogEntryCategory category) noexcept {
   switch (category) {
     case CreativeCatalogEntryCategory::Material: return "Material";
+    case CreativeCatalogEntryCategory::Asset: return "Asset";
     case CreativeCatalogEntryCategory::Tool: return "Tool";
   }
   return "Unknown";
@@ -261,6 +282,7 @@ std::string_view toString(CreativeCatalogEntryCategory category) noexcept {
 std::string_view toString(CreativeCatalogPage page) noexcept {
   switch (page) {
     case CreativeCatalogPage::Build: return "Build";
+    case CreativeCatalogPage::Assets: return "Assets";
     case CreativeCatalogPage::Actions: return "Actions";
     case CreativeCatalogPage::Count: break;
   }
@@ -268,9 +290,13 @@ std::string_view toString(CreativeCatalogPage page) noexcept {
 }
 
 CreativeCatalogState makeCreativeCatalog(
-    std::span<const CreativeObjectKind> materialPalette) {
+    std::span<const CreativeObjectKind> materialPalette,
+    std::span<const CreativeCatalogAsset> assets,
+    std::size_t rejectedAssetCount) {
   CreativeCatalogState catalog;
-  catalog.entries.reserve(materialPalette.size() + kToolSpecs.size());
+  catalog.rejectedAssetCount = rejectedAssetCount;
+  catalog.entries.reserve(materialPalette.size() + kToolSpecs.size() +
+                          assets.size());
 
   CreativeObjectKind defaultMaterial = CreativeObjectKind::Unknown;
   for (CreativeObjectKind kind : materialPalette) {
@@ -316,6 +342,23 @@ CreativeCatalogState makeCreativeCatalog(
                                   std::string(spec.aliases));
     catalog.entries.push_back(std::move(entry));
   }
+  for (const CreativeCatalogAsset& asset : assets) {
+    if (asset.objectKind == CreativeObjectKind::Unknown ||
+        asset.assetId.empty()) {
+      continue;
+    }
+    CreativeCatalogEntry entry;
+    entry.category = CreativeCatalogEntryCategory::Asset;
+    entry.hotbarEntry = {CreativeHeldItemKind::Material, asset.objectKind};
+    if (!setCreativeHotbarAsset(entry.hotbarEntry, asset.assetId,
+                                asset.boundsSize)) {
+      continue;
+    }
+    entry.label = asset.label.empty() ? asset.assetId : asset.label;
+    entry.searchText = lowerAscii(entry.label + " " + asset.assetId +
+                                  " asset imported glb blender mesh");
+    catalog.entries.push_back(std::move(entry));
+  }
   refreshFilter(catalog);
   return catalog;
 }
@@ -326,17 +369,18 @@ creativeCatalogActionEntries() noexcept {
 }
 
 bool setCreativeCatalogPage(CreativeCatalogState& catalog,
-                            CreativeCatalogPage page) noexcept {
+                            CreativeCatalogPage page) {
   if (page == CreativeCatalogPage::Count || catalog.page == page) {
     return false;
   }
   catalog.page = page;
   catalog.pendingActionConfirmation.reset();
+  refreshFilter(catalog);
   return true;
 }
 
 bool moveCreativeCatalogPage(CreativeCatalogState& catalog,
-                             std::int32_t steps) noexcept {
+                             std::int32_t steps) {
   if (steps == 0) {
     return false;
   }
