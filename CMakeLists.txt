@@ -52,6 +52,8 @@ target_sources(iggy3d
     src/app/iggy3d/creative/mutation/MutationApply.cpp
     src/app/iggy3d/creative/document/DocumentMutation.cpp
     src/app/iggy3d/creative/spatial/SpatialProjection.cpp
+    src/app/iggy3d/creative/spatial/SpatialProjectionGrid.cpp
+    src/app/iggy3d/creative/spatial/SpatialProjectionPlans.cpp
     src/app/iggy3d/creative/document/DocumentWireframe.cpp
     src/app/iggy3d/creative/input/ControllerInput.cpp
     src/app/iggy3d/creative/input/ActionHints.cpp
