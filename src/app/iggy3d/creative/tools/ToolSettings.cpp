@@ -153,6 +153,20 @@ bool isValidCreativeToolSettings(
          validEnum(settings.rotationStep, CreativeRotationStep::Count) &&
          validEnum(settings.placementYaw, CreativePlacementYaw::Count) &&
          validEnum(settings.snapIncrement, CreativeSnapIncrement::Count) &&
+         validEnum(settings.assetPlacementMode,
+                   CreativeAssetPlacementMode::Count) &&
+         validEnum(settings.assetScatterRadius,
+                   CreativeAssetScatterRadius::Count) &&
+         validEnum(settings.assetScatterDensity,
+                   CreativeAssetScatterDensity::Count) &&
+         validEnum(settings.assetScatterSpacing,
+                   CreativeAssetScatterSpacing::Count) &&
+         validEnum(settings.assetScatterYaw,
+                   CreativeAssetScatterYaw::Count) &&
+         validEnum(settings.assetScatterScale,
+                   CreativeAssetScatterScale::Count) &&
+         validEnum(settings.assetScatterSlope,
+                   CreativeAssetScatterSlope::Count) &&
          validEnum(settings.materialBrushShape,
                    CreativeMaterialBrushShape::Count) &&
          isValidCreativeAxis3(settings.materialBrushAxis) &&
@@ -285,6 +299,41 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
     case CreativeToolOptionId::SnapIncrement:
       adjusted.snapIncrement = cycleEnum(
           adjusted.snapIncrement, CreativeSnapIncrement::Count, direction);
+      break;
+    case CreativeToolOptionId::AssetPlacementMode:
+      adjusted.assetPlacementMode = cycleEnum(
+          adjusted.assetPlacementMode, CreativeAssetPlacementMode::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::AssetScatterRadius:
+      adjusted.assetScatterRadius = cycleEnum(
+          adjusted.assetScatterRadius, CreativeAssetScatterRadius::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::AssetScatterDensity:
+      adjusted.assetScatterDensity = cycleEnum(
+          adjusted.assetScatterDensity, CreativeAssetScatterDensity::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::AssetScatterSpacing:
+      adjusted.assetScatterSpacing = cycleEnum(
+          adjusted.assetScatterSpacing, CreativeAssetScatterSpacing::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::AssetScatterYaw:
+      adjusted.assetScatterYaw = cycleEnum(
+          adjusted.assetScatterYaw, CreativeAssetScatterYaw::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::AssetScatterScale:
+      adjusted.assetScatterScale = cycleEnum(
+          adjusted.assetScatterScale, CreativeAssetScatterScale::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::AssetScatterSlope:
+      adjusted.assetScatterSlope = cycleEnum(
+          adjusted.assetScatterSlope, CreativeAssetScatterSlope::Count,
+          direction);
       break;
     case CreativeToolOptionId::MaterialBrushShape:
       adjusted.materialBrushShape =
@@ -583,6 +632,44 @@ double creativePlacementYawRadians(CreativePlacementYaw yaw) noexcept {
 double creativeSnapIncrementMeters(CreativeSnapIncrement increment) noexcept {
   constexpr std::array values{0.25, 0.5, 1.0, 2.0};
   const std::size_t index = static_cast<std::size_t>(increment);
+  return index < values.size() ? values[index] : 0.0;
+}
+
+std::uint32_t creativeAssetScatterRadiusCells(
+    CreativeAssetScatterRadius radius) noexcept {
+  constexpr std::array<std::uint32_t, 3> values{2U, 4U, 8U};
+  const std::size_t index = static_cast<std::size_t>(radius);
+  return index < values.size() ? values[index] : 0U;
+}
+
+double creativeAssetScatterDensityFraction(
+    CreativeAssetScatterDensity density) noexcept {
+  constexpr std::array values{0.35, 0.65, 1.0};
+  const std::size_t index = static_cast<std::size_t>(density);
+  return index < values.size() ? values[index] : 0.0;
+}
+
+std::uint32_t creativeAssetScatterSpacingCells(
+    CreativeAssetScatterSpacing spacing) noexcept {
+  constexpr std::array<std::uint32_t, 3> values{1U, 2U, 4U};
+  const std::size_t index = static_cast<std::size_t>(spacing);
+  return index < values.size() ? values[index] : 0U;
+}
+
+double creativeAssetScatterScaleVariation(
+    CreativeAssetScatterScale scale) noexcept {
+  constexpr std::array values{0.0, 0.10, 0.25};
+  const std::size_t index = static_cast<std::size_t>(scale);
+  return index < values.size() ? values[index] : 0.0;
+}
+
+double creativeAssetScatterMaximumSlopeRadians(
+    CreativeAssetScatterSlope slope) noexcept {
+  constexpr std::array values{0.26179938779914943654,
+                              0.52359877559829887308,
+                              0.78539816339744830962,
+                              1.57079632679489661923};
+  const std::size_t index = static_cast<std::size_t>(slope);
   return index < values.size() ? values[index] : 0.0;
 }
 

@@ -227,6 +227,20 @@ set_tests_properties(creative_editor_placement_tests PROPERTIES
 set_tests_properties(creative_editor_placement_tests PROPERTIES
   LABELS "unit;app;creative;editor;placement;preview;history;iggy3d")
 
+add_executable(creative_asset_scatter_tests
+  tests/unit/creative_asset_scatter_tests.cpp)
+target_link_libraries(creative_asset_scatter_tests PRIVATE
+  iggy3d_creative_app)
+target_include_directories(creative_asset_scatter_tests PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/apps/iggy3d_creative")
+iggy3d_apply_warnings(creative_asset_scatter_tests)
+add_test(NAME creative_asset_scatter_tests
+  COMMAND "$<TARGET_FILE:creative_asset_scatter_tests>")
+set_tests_properties(creative_asset_scatter_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+set_tests_properties(creative_asset_scatter_tests PROPERTIES
+  LABELS "unit;app;creative;editor;asset;scatter;placement;history;iggy3d")
+
 add_executable(creative_editor_controls_tests
   tests/unit/creative_editor_controls_tests.cpp)
 target_link_libraries(creative_editor_controls_tests PRIVATE

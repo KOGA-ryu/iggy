@@ -58,6 +58,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/spatial/SpatialProjection.cpp
     src/app/iggy3d/creative/spatial/SpatialProjectionGrid.cpp
     src/app/iggy3d/creative/spatial/SpatialProjectionPlans.cpp
+    src/app/iggy3d/creative/spatial/SurfacePose.cpp
     src/app/iggy3d/creative/document/DocumentWireframe.cpp
     src/app/iggy3d/creative/input/ControllerInput.cpp
     src/app/iggy3d/creative/input/ActionHints.cpp
@@ -83,6 +84,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/tools/ToolSettingLabels.cpp
     src/app/iggy3d/creative/tools/ToolSettings.cpp
     src/app/iggy3d/creative/tools/Tools.cpp
+    src/app/iggy3d/creative/tools/AssetScatter.cpp
     src/app/iggy3d/creative/tools/Select.cpp
     src/app/iggy3d/creative/tools/Clipboard.cpp
     src/app/iggy3d/creative/tools/Group.cpp
@@ -250,6 +252,7 @@ endif()
 set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorActionHints.cpp
   apps/iggy3d_creative/EditorAssetReplacement.cpp
+  apps/iggy3d_creative/EditorAssetScatter.cpp
   apps/iggy3d_creative/EditorAssets.cpp
   apps/iggy3d_creative/EditorToolCapabilities.cpp
   apps/iggy3d_creative/EditorCatalog.cpp

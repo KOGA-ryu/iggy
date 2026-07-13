@@ -422,13 +422,37 @@ CreativeMaterialRepeatRequest makeCreativeWorldStrokeRepeatRequest(
   return request;
 }
 
-CreativeMaterialRepeatResult stepCreativeMaterialRepeat(
-    CreativeMaterialRepeatState state,
-    const CreativeMaterialRepeatRequest& request) noexcept {
-  CreativeMaterialRepeatResult result;
+bool creativeWorldGestureVisited(
+    const CreativeWorldGestureVisitedKeys& visited,
+    std::uint64_t key) noexcept {
+  for (std::size_t index = 0; index < visited.count; ++index) {
+    if (visited.keys[index] == key) {
+      return true;
+    }
+  }
+  return false;
+}
+
+CreativeWorldGestureVisitStatus rememberCreativeWorldGestureKey(
+    CreativeWorldGestureVisitedKeys& visited,
+    std::uint64_t key) noexcept {
+  if (creativeWorldGestureVisited(visited, key)) {
+    return CreativeWorldGestureVisitStatus::AlreadyPresent;
+  }
+  if (visited.count >= visited.keys.size()) {
+    return CreativeWorldGestureVisitStatus::CapacityExceeded;
+  }
+  visited.keys[visited.count++] = key;
+  return CreativeWorldGestureVisitStatus::Inserted;
+}
+
+CreativeWorldGestureRepeatResult stepCreativeWorldGestureRepeat(
+    CreativeWorldGestureRepeatState state,
+    const CreativeWorldGestureRepeatRequest& request) noexcept {
+  CreativeWorldGestureRepeatResult result;
   result.next = state;
   if (state.active) {
-    const bool primary = state.kind == CreativeMaterialStrokeKind::Remove;
+    const bool primary = state.kind == CreativeWorldGestureKind::Remove;
     const bool down = primary ? request.primaryDown : request.secondaryDown;
     const bool released =
         primary ? request.primaryReleased : request.secondaryReleased;
@@ -443,15 +467,15 @@ CreativeMaterialRepeatResult stepCreativeMaterialRepeat(
       const std::uint64_t elapsed =
           request.nowNanoseconds - state.nextRepeatAtNanoseconds;
       const std::uint64_t steps =
-          elapsed / kCreativeMaterialStrokeRepeatNanoseconds + 1U;
+          elapsed / kCreativeWorldGestureRepeatNanoseconds + 1U;
       const std::uint64_t remaining =
           std::numeric_limits<std::uint64_t>::max() -
           state.nextRepeatAtNanoseconds;
       result.next.nextRepeatAtNanoseconds =
-          steps > remaining / kCreativeMaterialStrokeRepeatNanoseconds
+          steps > remaining / kCreativeWorldGestureRepeatNanoseconds
               ? std::numeric_limits<std::uint64_t>::max()
               : state.nextRepeatAtNanoseconds +
-                    steps * kCreativeMaterialStrokeRepeatNanoseconds;
+                    steps * kCreativeWorldGestureRepeatNanoseconds;
     }
     return result;
   }
@@ -464,18 +488,24 @@ CreativeMaterialRepeatResult stepCreativeMaterialRepeat(
   result.mutationDue = true;
   result.primaryWon = request.primaryPressed && request.secondaryPressed;
   result.dueKind = request.primaryPressed
-                       ? CreativeMaterialStrokeKind::Remove
-                       : CreativeMaterialStrokeKind::Place;
+                       ? CreativeWorldGestureKind::Remove
+                       : CreativeWorldGestureKind::Place;
   result.next.active = true;
   result.next.kind = result.dueKind;
   result.next.nextRepeatAtNanoseconds =
       request.nowNanoseconds >
               std::numeric_limits<std::uint64_t>::max() -
-                  kCreativeMaterialStrokeRepeatNanoseconds
+                  kCreativeWorldGestureRepeatNanoseconds
           ? std::numeric_limits<std::uint64_t>::max()
           : request.nowNanoseconds +
-                kCreativeMaterialStrokeRepeatNanoseconds;
+                kCreativeWorldGestureRepeatNanoseconds;
   return result;
+}
+
+CreativeMaterialRepeatResult stepCreativeMaterialRepeat(
+    CreativeMaterialRepeatState state,
+    const CreativeMaterialRepeatRequest& request) noexcept {
+  return stepCreativeWorldGestureRepeat(state, request);
 }
 
 }  // namespace iggy3d::creative

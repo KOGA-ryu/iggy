@@ -1,5 +1,6 @@
 #include "EditorToolOptions.hpp"
 
+#include <array>
 #include <string>
 #include <string_view>
 
@@ -12,6 +13,34 @@
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
+namespace {
+
+[[nodiscard]] bool assetPlacementOption(
+    cr::CreativeToolOptionId option) noexcept {
+  switch (option) {
+    case cr::CreativeToolOptionId::AssetPlacementMode:
+    case cr::CreativeToolOptionId::AssetScatterRadius:
+    case cr::CreativeToolOptionId::AssetScatterDensity:
+    case cr::CreativeToolOptionId::AssetScatterSpacing:
+    case cr::CreativeToolOptionId::AssetScatterYaw:
+    case cr::CreativeToolOptionId::AssetScatterScale:
+    case cr::CreativeToolOptionId::AssetScatterSlope:
+      return true;
+    default:
+      return false;
+  }
+}
+
+constexpr std::array kAssetScatterOptions{
+    cr::CreativeToolOptionId::AssetScatterRadius,
+    cr::CreativeToolOptionId::AssetScatterDensity,
+    cr::CreativeToolOptionId::AssetScatterSpacing,
+    cr::CreativeToolOptionId::AssetScatterYaw,
+    cr::CreativeToolOptionId::AssetScatterScale,
+    cr::CreativeToolOptionId::AssetScatterSlope,
+};
+
+}  // namespace
 
 cr::CreativeToolOptionList creativeEditorToolOptionsForEntry(
     cr::CreativeHotbarEntry entry,
@@ -36,18 +65,36 @@ cr::CreativeToolOptionList creativeEditorToolOptionsForEntry(
   const bool usesFixedVoxelGrid =
       descriptor.placementPolicy.storagePolicy ==
       cr::CreativePlacementStoragePolicy::VoxelCell;
-  std::size_t writeIndex = 0U;
+  const bool importedAsset = !cr::creativeHotbarAssetId(entry).empty();
+  cr::CreativeToolOptionList filtered;
+  const auto appendOption = [&filtered](cr::CreativeToolOptionId option) {
+    if (filtered.count >= filtered.ids.size()) {
+      filtered.capacityExceeded = true;
+      return;
+    }
+    filtered.ids[filtered.count++] = option;
+  };
+  if (importedAsset) {
+    appendOption(cr::CreativeToolOptionId::AssetPlacementMode);
+    if (settings.assetPlacementMode ==
+        cr::CreativeAssetPlacementMode::Scatter) {
+      for (const cr::CreativeToolOptionId option : kAssetScatterOptions) {
+        appendOption(option);
+      }
+      return filtered;
+    }
+  }
   for (std::size_t readIndex = 0U; readIndex < options.count; ++readIndex) {
     const cr::CreativeToolOptionId option = options.ids[readIndex];
-    if ((!supportsYaw && option == cr::CreativeToolOptionId::PlacementYaw) ||
+    if (assetPlacementOption(option) ||
+        (!supportsYaw && option == cr::CreativeToolOptionId::PlacementYaw) ||
         (usesFixedVoxelGrid &&
          option == cr::CreativeToolOptionId::SnapIncrement)) {
       continue;
     }
-    options.ids[writeIndex++] = option;
+    appendOption(option);
   }
-  options.count = writeIndex;
-  return options;
+  return filtered;
 }
 
 CreativeEditorToolOptionsCommandList
@@ -100,13 +147,19 @@ std::size_t creativeEditorToolOptionsRowCount(
 
 namespace {
 
+[[nodiscard]] bool sameQuickEditTarget(
+    const cr::CreativeHotbarEntry& lhs,
+    const cr::CreativeHotbarEntry& rhs) noexcept {
+  return lhs.kind == rhs.kind && lhs.objectKind == rhs.objectKind &&
+         cr::creativeHotbarAssetId(lhs) == cr::creativeHotbarAssetId(rhs);
+}
+
 void rebuildQuickEditOptions(CreativeEditorState& editor,
                              bool resetSelection) {
   CreativeEditorQuickEditState& state = editor.quickEdit;
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  const bool targetChanged = state.targetEntry.kind != held.kind ||
-                             state.targetEntry.objectKind != held.objectKind;
+  const bool targetChanged = !sameQuickEditTarget(state.targetEntry, held);
   state.targetEntry = held;
   state.options =
       creativeEditorToolOptionsForEntry(held, editor.toolSettings);
@@ -216,8 +269,7 @@ std::string creativeEditorQuickEditStatusLabel(
       break;
   }
   const CreativeEditorQuickEditState& state = editor.quickEdit;
-  if (state.targetEntry.kind != held.kind ||
-      state.targetEntry.objectKind != held.objectKind ||
+  if (!sameQuickEditTarget(state.targetEntry, held) ||
       state.selectedIndex >= state.options.count) {
     return {};
   }

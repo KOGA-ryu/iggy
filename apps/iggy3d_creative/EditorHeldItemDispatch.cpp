@@ -23,6 +23,13 @@ void refreshHeldItemPreview(
   CreativeEditorState& editor = request.editor;
   const cr::CreativeHeldItemDefinition& definition =
       cr::describeCreativeHeldItem(held.kind);
+  const bool assetScatter =
+      creativeEditorUsesAssetScatter(held, editor.toolSettings);
+  if (!assetScatter) {
+    finalizeCreativeAssetScatterStroke(
+        request.appState, editor,
+        "creative_asset_scatter_non_scatter_tool");
+  }
   if (definition.frameMode != cr::CreativeHeldItemFrameMode::TerrainPaint) {
     finalizeCreativeEditorTerrainPaintStroke(
         request.appState, editor, "creative_terrain_paint_non_paint_tool");
@@ -31,9 +38,18 @@ void refreshHeldItemPreview(
     case cr::CreativeHeldItemFrameMode::MaterialStroke: {
       finalizeCreativeTerrainStroke(request.appState, editor,
                                     "creative_terrain_stroke_material_tool");
-      processCreativeMaterialStrokeFrame(
-          request.appState, editor, request.actions,
-          request.monotonicTimeNanoseconds);
+      if (assetScatter) {
+        finalizeCreativeMaterialStroke(
+            request.appState, editor,
+            "creative_material_stroke_asset_scatter");
+        processCreativeAssetScatterFrame(
+            request.appState, editor, request.actions,
+            request.monotonicTimeNanoseconds);
+      } else {
+        processCreativeMaterialStrokeFrame(
+            request.appState, editor, request.actions,
+            request.monotonicTimeNanoseconds);
+      }
       if (cr::creativeWorldActionPressed(request.actions,
                                          cr::CreativeWorldActionId::Pick)) {
         dispatchCreativeEditorHeldItemWorldOperation(

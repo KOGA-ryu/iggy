@@ -96,6 +96,55 @@ enum class CreativeSnapIncrement : std::uint8_t {
   Count,
 };
 
+enum class CreativeAssetPlacementMode : std::uint8_t {
+  Single,
+  Scatter,
+  Count,
+};
+
+enum class CreativeAssetScatterRadius : std::uint8_t {
+  TwoCells,
+  FourCells,
+  EightCells,
+  Count,
+};
+
+enum class CreativeAssetScatterDensity : std::uint8_t {
+  Sparse,
+  Normal,
+  Dense,
+  Count,
+};
+
+enum class CreativeAssetScatterSpacing : std::uint8_t {
+  OneCell,
+  TwoCells,
+  FourCells,
+  Count,
+};
+
+enum class CreativeAssetScatterYaw : std::uint8_t {
+  Fixed,
+  QuarterTurns,
+  Full,
+  Count,
+};
+
+enum class CreativeAssetScatterScale : std::uint8_t {
+  Fixed,
+  PlusMinus10Percent,
+  PlusMinus25Percent,
+  Count,
+};
+
+enum class CreativeAssetScatterSlope : std::uint8_t {
+  Degrees15,
+  Degrees30,
+  Degrees45,
+  Any,
+  Count,
+};
+
 enum class CreativeCloneOffsetAxis : std::uint8_t {
   X,
   Y,
@@ -122,6 +171,13 @@ enum class CreativeToolOptionId : std::uint8_t {
   RotationStep,
   PlacementYaw,
   SnapIncrement,
+  AssetPlacementMode,
+  AssetScatterRadius,
+  AssetScatterDensity,
+  AssetScatterSpacing,
+  AssetScatterYaw,
+  AssetScatterScale,
+  AssetScatterSlope,
   MaterialBrushShape,
   MaterialBrushAxis,
   MaterialBrushSize,
@@ -208,6 +264,20 @@ struct CreativeToolSettings {
   CreativeRotationStep rotationStep = CreativeRotationStep::Degrees15;
   CreativePlacementYaw placementYaw = CreativePlacementYaw::Degrees0;
   CreativeSnapIncrement snapIncrement = CreativeSnapIncrement::OneMeter;
+  CreativeAssetPlacementMode assetPlacementMode =
+      CreativeAssetPlacementMode::Single;
+  CreativeAssetScatterRadius assetScatterRadius =
+      CreativeAssetScatterRadius::FourCells;
+  CreativeAssetScatterDensity assetScatterDensity =
+      CreativeAssetScatterDensity::Normal;
+  CreativeAssetScatterSpacing assetScatterSpacing =
+      CreativeAssetScatterSpacing::TwoCells;
+  CreativeAssetScatterYaw assetScatterYaw =
+      CreativeAssetScatterYaw::Full;
+  CreativeAssetScatterScale assetScatterScale =
+      CreativeAssetScatterScale::PlusMinus10Percent;
+  CreativeAssetScatterSlope assetScatterSlope =
+      CreativeAssetScatterSlope::Degrees30;
   CreativeMaterialBrushShape materialBrushShape =
       CreativeMaterialBrushShape::Sphere;
   CreativeAxis3 materialBrushAxis = CreativeAxis3::Y;
@@ -430,6 +500,20 @@ creativeToolOptionDescriptors() noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeSnapIncrement increment) noexcept;
 [[nodiscard]] std::string_view toString(
+    CreativeAssetPlacementMode mode) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeAssetScatterRadius radius) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeAssetScatterDensity density) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeAssetScatterSpacing spacing) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeAssetScatterYaw yaw) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeAssetScatterScale scale) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeAssetScatterSlope slope) noexcept;
+[[nodiscard]] std::string_view toString(
     CreativeCloneOffsetAxis axis) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeCloneOffsetDistance distance) noexcept;
@@ -454,6 +538,16 @@ creativeToolOptionDescriptors() noexcept;
     CreativePlacementYaw yaw) noexcept;
 [[nodiscard]] double creativeSnapIncrementMeters(
     CreativeSnapIncrement increment) noexcept;
+[[nodiscard]] std::uint32_t creativeAssetScatterRadiusCells(
+    CreativeAssetScatterRadius radius) noexcept;
+[[nodiscard]] double creativeAssetScatterDensityFraction(
+    CreativeAssetScatterDensity density) noexcept;
+[[nodiscard]] std::uint32_t creativeAssetScatterSpacingCells(
+    CreativeAssetScatterSpacing spacing) noexcept;
+[[nodiscard]] double creativeAssetScatterScaleVariation(
+    CreativeAssetScatterScale scale) noexcept;
+[[nodiscard]] double creativeAssetScatterMaximumSlopeRadians(
+    CreativeAssetScatterSlope slope) noexcept;
 [[nodiscard]] bool tryCreativeCloneOffset(
     const CreativeToolSettings& settings,
     double cellSize,

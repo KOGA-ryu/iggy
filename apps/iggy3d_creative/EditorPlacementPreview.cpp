@@ -128,6 +128,8 @@ void attachCreativeEditorPlacementPreviews(
       held.kind == cr::CreativeHeldItemKind::Material;
   const bool materialBrush =
       held.kind == cr::CreativeHeldItemKind::MaterialBrush;
+  const bool assetScatter =
+      creativeEditorUsesAssetScatter(held, editor.toolSettings);
   if (captureMode || modalOpen ||
       (!materialPlacement && !materialBrush) ||
       held.objectKind == cr::CreativeObjectKind::Unknown) {
@@ -157,7 +159,8 @@ void attachCreativeEditorPlacementPreviews(
   const bool mutationAcceptedThisFrame =
       feedback.frameIndex == editor.frameIndex &&
       feedback.status == CreativeEditorPlacementFeedbackStatus::Placed;
-  if (materialPlacement && editor.interaction.target.grid.valid &&
+  if (materialPlacement && !assetScatter &&
+      editor.interaction.target.grid.valid &&
       !mutationAcceptedThisFrame) {
     const CreativeBrushPlacementAdmission admission = admitBrushPlacement(
         held, editor.interaction.target.grid,

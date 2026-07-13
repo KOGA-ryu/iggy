@@ -44,6 +44,76 @@ std::string_view toString(CreativeSnapIncrement increment) noexcept {
   return "INVALID";
 }
 
+std::string_view toString(CreativeAssetPlacementMode mode) noexcept {
+  switch (mode) {
+    case CreativeAssetPlacementMode::Single: return "SINGLE";
+    case CreativeAssetPlacementMode::Scatter: return "SCATTER";
+    case CreativeAssetPlacementMode::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeAssetScatterRadius radius) noexcept {
+  switch (radius) {
+    case CreativeAssetScatterRadius::TwoCells: return "2 CELLS";
+    case CreativeAssetScatterRadius::FourCells: return "4 CELLS";
+    case CreativeAssetScatterRadius::EightCells: return "8 CELLS";
+    case CreativeAssetScatterRadius::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeAssetScatterDensity density) noexcept {
+  switch (density) {
+    case CreativeAssetScatterDensity::Sparse: return "SPARSE";
+    case CreativeAssetScatterDensity::Normal: return "NORMAL";
+    case CreativeAssetScatterDensity::Dense: return "DENSE";
+    case CreativeAssetScatterDensity::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeAssetScatterSpacing spacing) noexcept {
+  switch (spacing) {
+    case CreativeAssetScatterSpacing::OneCell: return "1 CELL";
+    case CreativeAssetScatterSpacing::TwoCells: return "2 CELLS";
+    case CreativeAssetScatterSpacing::FourCells: return "4 CELLS";
+    case CreativeAssetScatterSpacing::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeAssetScatterYaw yaw) noexcept {
+  switch (yaw) {
+    case CreativeAssetScatterYaw::Fixed: return "FIXED";
+    case CreativeAssetScatterYaw::QuarterTurns: return "90 DEG RANDOM";
+    case CreativeAssetScatterYaw::Full: return "FULL RANDOM";
+    case CreativeAssetScatterYaw::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeAssetScatterScale scale) noexcept {
+  switch (scale) {
+    case CreativeAssetScatterScale::Fixed: return "FIXED";
+    case CreativeAssetScatterScale::PlusMinus10Percent: return "+/- 10%";
+    case CreativeAssetScatterScale::PlusMinus25Percent: return "+/- 25%";
+    case CreativeAssetScatterScale::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeAssetScatterSlope slope) noexcept {
+  switch (slope) {
+    case CreativeAssetScatterSlope::Degrees15: return "15 DEG";
+    case CreativeAssetScatterSlope::Degrees30: return "30 DEG";
+    case CreativeAssetScatterSlope::Degrees45: return "45 DEG";
+    case CreativeAssetScatterSlope::Any: return "ANY";
+    case CreativeAssetScatterSlope::Count: break;
+  }
+  return "INVALID";
+}
+
 std::string_view toString(CreativeCloneOffsetAxis axis) noexcept {
   switch (axis) {
     case CreativeCloneOffsetAxis::X: return "X";
@@ -100,6 +170,20 @@ std::string_view creativeToolOptionValueLabel(
       return toString(settings.placementYaw);
     case CreativeToolOptionId::SnapIncrement:
       return toString(settings.snapIncrement);
+    case CreativeToolOptionId::AssetPlacementMode:
+      return toString(settings.assetPlacementMode);
+    case CreativeToolOptionId::AssetScatterRadius:
+      return toString(settings.assetScatterRadius);
+    case CreativeToolOptionId::AssetScatterDensity:
+      return toString(settings.assetScatterDensity);
+    case CreativeToolOptionId::AssetScatterSpacing:
+      return toString(settings.assetScatterSpacing);
+    case CreativeToolOptionId::AssetScatterYaw:
+      return toString(settings.assetScatterYaw);
+    case CreativeToolOptionId::AssetScatterScale:
+      return toString(settings.assetScatterScale);
+    case CreativeToolOptionId::AssetScatterSlope:
+      return toString(settings.assetScatterSlope);
     case CreativeToolOptionId::MaterialBrushShape:
       return toString(settings.materialBrushShape);
     case CreativeToolOptionId::MaterialBrushAxis:

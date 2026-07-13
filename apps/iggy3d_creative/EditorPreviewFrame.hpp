@@ -56,6 +56,7 @@ struct CreativeEditorOverlayFrame {
   std::size_t patternEdgeCount = 0;
   std::size_t transformPreviewEdgeCount = 0;
   std::size_t assetReplacementEdgeCount = 0;
+  std::size_t assetScatterEdgeCount = 0;
   std::size_t placementFeedbackEdgeCount = 0;
 };
 

@@ -595,9 +595,13 @@ bool applyCreativeAssetPlacementBounds(
       plan.transform.position.z};
   const iggy3d::creative::CreativeVec3 sourceBottomCenter{
       source.center.x, sourceBounds.min.y, source.center.z};
+  const iggy3d::creative::CreativeVec3 scaledSourceBottomCenter{
+      sourceBottomCenter.x * plan.transform.scale.x,
+      sourceBottomCenter.y * plan.transform.scale.y,
+      sourceBottomCenter.z * plan.transform.scale.z};
   const iggy3d::creative::CreativeVec3 orientedSourceBottomCenter =
       iggy3d::creative::rotateCreativeVectorEulerXyz(
-          sourceBottomCenter, plan.transform.rotationEulerRadians);
+          scaledSourceBottomCenter, plan.transform.rotationEulerRadians);
   const iggy3d::creative::CreativeVec3 pivot{
       targetBottomCenter.x - orientedSourceBottomCenter.x,
       targetBottomCenter.y - orientedSourceBottomCenter.y,

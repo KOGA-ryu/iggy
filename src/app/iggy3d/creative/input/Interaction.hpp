@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <span>
 #include <string_view>
+#include <type_traits>
 
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/tools/Volume.hpp"
@@ -41,25 +42,26 @@ struct CreativeWorldActionFrame {
   std::int32_t hotbarWheelSteps = 0;
 };
 
-// Shared world-stroke cadence. Material retains the original type names, while
-// makeCreativeWorldStrokeRepeatRequest keeps button aliasing common to every
-// continuous editor gesture.
-inline constexpr std::uint64_t kCreativeMaterialStrokeRepeatNanoseconds =
+// Shared cadence and bounded visited-key storage for continuous world edits.
+inline constexpr std::uint64_t kCreativeWorldGestureRepeatNanoseconds =
     200'000'000ULL;
+inline constexpr std::uint64_t kCreativeMaterialStrokeRepeatNanoseconds =
+    kCreativeWorldGestureRepeatNanoseconds;
+inline constexpr std::size_t kCreativeWorldGestureVisitedKeyCapacity = 256U;
 
-enum class CreativeMaterialStrokeKind : std::uint8_t {
+enum class CreativeWorldGestureKind : std::uint8_t {
   None,
   Remove,
   Place,
 };
 
-struct CreativeMaterialRepeatState {
-  CreativeMaterialStrokeKind kind = CreativeMaterialStrokeKind::None;
+struct CreativeWorldGestureRepeatState {
+  CreativeWorldGestureKind kind = CreativeWorldGestureKind::None;
   std::uint64_t nextRepeatAtNanoseconds = 0;
   bool active = false;
 };
 
-struct CreativeMaterialRepeatRequest {
+struct CreativeWorldGestureRepeatRequest {
   std::uint64_t nowNanoseconds = 0;
   bool primaryPressed = false;
   bool primaryDown = false;
@@ -70,18 +72,50 @@ struct CreativeMaterialRepeatRequest {
   bool interrupted = false;
 };
 
-struct CreativeMaterialRepeatResult {
-  CreativeMaterialRepeatState next{};
-  CreativeMaterialStrokeKind dueKind = CreativeMaterialStrokeKind::None;
+struct CreativeWorldGestureRepeatResult {
+  CreativeWorldGestureRepeatState next{};
+  CreativeWorldGestureKind dueKind = CreativeWorldGestureKind::None;
   bool began = false;
   bool mutationDue = false;
   bool finalized = false;
   bool primaryWon = false;
 };
 
-[[nodiscard]] CreativeMaterialRepeatRequest makeCreativeWorldStrokeRepeatRequest(
+using CreativeMaterialStrokeKind = CreativeWorldGestureKind;
+using CreativeMaterialRepeatState = CreativeWorldGestureRepeatState;
+using CreativeMaterialRepeatRequest = CreativeWorldGestureRepeatRequest;
+using CreativeMaterialRepeatResult = CreativeWorldGestureRepeatResult;
+
+enum class CreativeWorldGestureVisitStatus : std::uint8_t {
+  Inserted,
+  AlreadyPresent,
+  CapacityExceeded,
+};
+
+struct CreativeWorldGestureVisitedKeys {
+  std::array<std::uint64_t, kCreativeWorldGestureVisitedKeyCapacity> keys{};
+  std::uint16_t count = 0;
+};
+
+static_assert(std::is_trivially_copyable_v<CreativeWorldGestureRepeatState>);
+static_assert(std::is_standard_layout_v<CreativeWorldGestureRepeatState>);
+static_assert(std::is_trivially_copyable_v<CreativeWorldGestureVisitedKeys>);
+static_assert(std::is_standard_layout_v<CreativeWorldGestureVisitedKeys>);
+
+[[nodiscard]] bool creativeWorldGestureVisited(
+    const CreativeWorldGestureVisitedKeys& visited,
+    std::uint64_t key) noexcept;
+[[nodiscard]] CreativeWorldGestureVisitStatus rememberCreativeWorldGestureKey(
+    CreativeWorldGestureVisitedKeys& visited,
+    std::uint64_t key) noexcept;
+
+[[nodiscard]] CreativeWorldGestureRepeatRequest
+makeCreativeWorldStrokeRepeatRequest(
     const CreativeWorldActionFrame& actions,
     std::uint64_t nowNanoseconds) noexcept;
+[[nodiscard]] CreativeWorldGestureRepeatResult stepCreativeWorldGestureRepeat(
+    CreativeWorldGestureRepeatState state,
+    const CreativeWorldGestureRepeatRequest& request) noexcept;
 [[nodiscard]] CreativeMaterialRepeatResult stepCreativeMaterialRepeat(
     CreativeMaterialRepeatState state,
     const CreativeMaterialRepeatRequest& request) noexcept;
