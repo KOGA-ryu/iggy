@@ -102,6 +102,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/spatial/Snap.cpp
     src/app/iggy3d/creative/document/DocumentSnap.cpp
     src/app/iggy3d/creative/adapters/RoomBake.cpp
+    src/app/iggy3d/creative/adapters/RoomBakeAssetSurfaces.cpp
     src/app/iggy3d/creative/adapters/RoomBakeFields.cpp
     src/app/iggy3d/creative/adapters/RoomBakeObjects.cpp
     src/app/iggy3d/creative/adapters/RoomBakeGreedyFloors.cpp
@@ -133,6 +134,7 @@ target_sources(iggy3d
     src/content/assets/TraversalTag.cpp
     src/content/assets/ImageDecode.cpp
     src/content/assets/StaticMeshAsset.cpp
+    src/content/assets/StaticMeshAuthoringMetadata.cpp
     src/content/assets/StaticMeshMaterialImport.cpp
     src/runtime/player/PlayerRoster.cpp
     src/runtime/player/PlayerPhysicsMovePlanner.cpp

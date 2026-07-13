@@ -289,6 +289,27 @@ std::string_view toString(CreativeCatalogPage page) noexcept {
   return "Unknown";
 }
 
+std::string_view creativeCatalogAssetPhysicsLabel(
+    const StaticMeshAuthoringMetadata& metadata) noexcept {
+  if (metadata.status == StaticMeshAuthoringMetadataStatus::Invalid ||
+      metadata.collisionMode == StaticMeshCollisionMode::Invalid) {
+    return "INVALID";
+  }
+  if (metadata.status ==
+          StaticMeshAuthoringMetadataStatus::UnsupportedCollision ||
+      metadata.collisionMode == StaticMeshCollisionMode::Convex ||
+      metadata.collisionMode == StaticMeshCollisionMode::Mesh) {
+    return "UNSUPPORTED";
+  }
+  if (metadata.collisionMode == StaticMeshCollisionMode::None) {
+    return "DECOR";
+  }
+  if (metadata.walkable) {
+    return "SOLID WALKABLE";
+  }
+  return !metadata.collisionSpecified ? "SOLID DEFAULT" : "SOLID";
+}
+
 CreativeCatalogState makeCreativeCatalog(
     std::span<const CreativeObjectKind> materialPalette,
     std::span<const CreativeCatalogAsset> assets,
@@ -355,8 +376,14 @@ CreativeCatalogState makeCreativeCatalog(
       continue;
     }
     entry.label = asset.label.empty() ? asset.assetId : asset.label;
-    entry.searchText = lowerAscii(entry.label + " " + asset.assetId +
-                                  " asset imported glb blender mesh");
+    entry.assetAuthoringMetadata = asset.authoringMetadata;
+    entry.searchText = lowerAscii(
+        entry.label + " " + asset.assetId + " " +
+        asset.authoringMetadata.categoryId + " " +
+        std::string(toString(asset.authoringMetadata.collisionMode)) + " " +
+        std::string(toString(asset.authoringMetadata.status)) +
+        (asset.authoringMetadata.walkable ? " walkable" : "") +
+        " asset imported glb blender mesh");
     catalog.entries.push_back(std::move(entry));
   }
   refreshFilter(catalog);

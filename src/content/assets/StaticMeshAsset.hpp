@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "content/assets/StaticMeshAuthoringMetadata.hpp"
 #include "core/math/Vec3.hpp"
 
 namespace iggy3d {
@@ -76,6 +77,7 @@ struct StaticMeshAsset {
   std::vector<StaticMeshPrimitive> primitives;
   std::vector<StaticMeshMaterial> materials;
   std::vector<StaticMeshImage> images;
+  StaticMeshAuthoringMetadata authoringMetadata;
   std::size_t textureFailureCount = 0;
   Vec3 boundsMin;
   Vec3 boundsMax;
@@ -109,6 +111,7 @@ struct StaticMeshAssetCatalogEntry {
   std::string label;
   Vec3 boundsSize;
   std::uint64_t contentHash = 0;
+  StaticMeshAuthoringMetadata authoringMetadata;
 };
 
 struct StaticMeshAssetCatalogFailure {
@@ -119,6 +122,11 @@ struct StaticMeshAssetCatalogFailure {
 struct StaticMeshAssetCatalog {
   std::vector<StaticMeshAssetCatalogEntry> entries;
   std::vector<StaticMeshAssetCatalogFailure> failures;
+
+  // Discovery stores entries in asset-id order. Keeping lookup on the compact
+  // immutable vector avoids a second catalog index in the frame path.
+  [[nodiscard]] const StaticMeshAssetCatalogEntry* find(
+      std::string_view assetId) const noexcept;
 };
 
 [[nodiscard]] bool validStaticMeshAssetId(std::string_view assetId) noexcept;

@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/adapters/RoomBakeInternal.hpp"
+#include "app/iggy3d/creative/adapters/RoomBakeAssetSurfaces.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/adapters/RoomBakeGreedyFloors.hpp"
 #include "content/assets/TraversalTag.hpp"
@@ -31,7 +32,17 @@ struct RoomBakeObjectClassification {
   Vec3 orientedSize{};
   BakedRoomRole role{BakedRoomRole::Unsupported};
   std::string_view anchorKind{};
+  RoomBakeAssetSurfaceClassification assetSurfaces;
 };
+
+[[nodiscard]] RoomBakeObjectClassification skippedClassification(
+    RoomBakeObjectDecision decision,
+    bool countedAsConsidered) noexcept {
+  RoomBakeObjectClassification classification;
+  classification.decision = decision;
+  classification.countedAsConsidered = countedAsConsidered;
+  return classification;
+}
 
 struct BakeStaticMeshEntry {
   const CreativeObject* object = nullptr;
@@ -443,10 +454,18 @@ void appendSpatialSurfaceSource(
 
 void appendSpatialSurfaces(RoomAsset& room,
                            std::vector<CreativeRoomBakeSpatialSurfaceSource>& sources,
+                           CreativeRoomBakeReceipt& receipt,
                            const CreativeObject& object,
                            const CreativeObjectDescriptor& descriptor,
-                           BakeBounds bounds,
-                           BakedRoomRole role) {
+                           const RoomBakeObjectClassification& classification) {
+  const BakeBounds bounds = classification.bounds;
+  const BakedRoomRole role = classification.role;
+  if (appendRoomBakeAssetSpatialSurfaces(
+          room, sources, receipt, object, bounds, role,
+          classification.assetSurfaces)) {
+    return;
+  }
+
   if (role == BakedRoomRole::Floor) {
     RoomSpatialSurface surface =
         walkableSurfaceForObject(object, bounds, stableObjectId(object));
@@ -473,17 +492,20 @@ void appendSpatialSurfaces(RoomAsset& room,
 [[nodiscard]] RoomBakeObjectClassification classifyRoomBakeObject(
     const CreativeObject& object,
     const CreativeObjectDescriptor& descriptor,
-    bool includeHidden) noexcept {
+    bool includeHidden,
+    const StaticMeshAssetCatalog* assetCatalog) noexcept {
   if (!object.visible && !includeHidden) {
-    return {RoomBakeObjectDecision::SkipHidden, false};
+    return skippedClassification(RoomBakeObjectDecision::SkipHidden, false);
   }
 
   if (descriptor.isEditorOnly) {
-    return {RoomBakeObjectDecision::SkipEditorOnly, false};
+    return skippedClassification(RoomBakeObjectDecision::SkipEditorOnly,
+                                 false);
   }
 
   if (object.kind == CreativeObjectKind::Room) {
-    return {RoomBakeObjectDecision::SkipRoomMetadata, false};
+    return skippedClassification(RoomBakeObjectDecision::SkipRoomMetadata,
+                                 false);
   }
 
   RoomBakeObjectClassification classification;
@@ -533,6 +555,9 @@ void appendSpatialSurfaces(RoomAsset& room,
     return classification;
   }
 
+  classification.assetSurfaces =
+      classifyRoomBakeAssetSurfaces(object, assetCatalog);
+
   classification.decision = RoomBakeObjectDecision::BakeStaticMesh;
   return classification;
 }
@@ -567,6 +592,7 @@ void applySkipClassification(CreativeRoomBakeReceipt& receipt,
 [[nodiscard]] bool isGreedyFloorCandidate(
     const BakeStaticMeshEntry& entry) noexcept {
   return entry.object != nullptr && entry.descriptor != nullptr &&
+         entry.object->assetId.empty() &&
          entry.classification.role == BakedRoomRole::Floor &&
          entry.object->kind == CreativeObjectKind::Floor &&
          identityRotation(entry.object->transform.rotationEulerRadians) &&
@@ -635,14 +661,16 @@ void appendGreedyFloorMesh(
 
 void appendRoomBakeObjects(CreativeRoomBakeResult& result,
                            const CreativeDocument& document,
-                           bool includeHidden) {
+                           bool includeHidden,
+                           const StaticMeshAssetCatalog* assetCatalog) {
   std::vector<BakeStaticMeshEntry> staticMeshEntries;
   staticMeshEntries.reserve(document.objects().size());
   std::size_t documentIndex = 0;
   for (const CreativeObject& object : document.objects()) {
     const CreativeObjectDescriptor& descriptor = describeObject(object.kind);
     const RoomBakeObjectClassification classification =
-        classifyRoomBakeObject(object, descriptor, includeHidden);
+        classifyRoomBakeObject(object, descriptor, includeHidden,
+                               assetCatalog);
     if (classification.countedAsConsidered) {
       ++result.receipt.consideredObjectCount;
     }
@@ -689,10 +717,10 @@ void appendRoomBakeObjects(CreativeRoomBakeResult& result,
     result.room.staticMeshes.push_back(std::move(mesh));
     appendSpatialSurfaces(result.room,
                           result.spatialSurfaceSources,
+                          result.receipt,
                           *entry.object,
                           *entry.descriptor,
-                          entry.classification.bounds,
-                          entry.classification.role);
+                          entry.classification);
   }
 }
 

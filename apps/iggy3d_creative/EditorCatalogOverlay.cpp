@@ -227,6 +227,15 @@ void appendCatalogBuildDetails(
         layout.detailX + 4, detailY + 21, drawableWidth, drawableHeight,
         0.90F, 0.93F, 0.95F);
     detailY += 58;
+    appendText(glyphs, "PHYSICS", layout.detailX + 4, detailY,
+               drawableWidth, drawableHeight, 0.58F, 0.66F, 0.71F);
+    appendText(glyphs,
+               cr::creativeCatalogAssetPhysicsLabel(
+                   entry->assetAuthoringMetadata),
+               layout.detailX + 4,
+               detailY + 21, drawableWidth, drawableHeight, 0.90F, 0.93F,
+               0.95F);
+    detailY += 58;
   }
   if (shapeTool) {
     appendText(glyphs, "SHAPE", layout.detailX + 4, detailY, drawableWidth,
@@ -381,7 +390,14 @@ void appendCreativeEditorCatalogOverlay(
               : entry->category == cr::CreativeCatalogEntryCategory::Asset
                     ? "ASSET "
                     : "TOOL ";
-      const std::string rowText = std::string(prefix) + entry->label;
+      std::string rowText(prefix);
+      if (entry->category == cr::CreativeCatalogEntryCategory::Asset) {
+        rowText.push_back('[');
+        rowText.append(cr::creativeCatalogAssetPhysicsLabel(
+            entry->assetAuthoringMetadata));
+        rowText.append("] ");
+      }
+      rowText.append(entry->label);
       appendText(glyphs,
                  fitCatalogText(rowText, layout.listWidth - 16U),
                  layout.panelX + 24, y + 8, drawableWidth,

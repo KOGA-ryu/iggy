@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "content/assets/RoomAsset.hpp"
+#include "content/assets/StaticMeshAsset.hpp"
 
 #include <cstdint>
 #include <span>
@@ -44,6 +45,7 @@ struct CreativeRoomBakeRequest {
   bool usePrecomputedTerrainSurfacePatches = false;
   std::span<const CreativeTerrainSurfacePatch>
       precomputedTerrainSurfacePatches{};
+  const StaticMeshAssetCatalog* staticMeshAssetCatalog = nullptr;
 };
 
 struct CreativeRoomBakeReceipt {
@@ -65,6 +67,13 @@ struct CreativeRoomBakeReceipt {
   std::uint64_t skippedUnsupportedAnchorCount = 0;
   std::uint64_t skippedUnsupportedShapeCount = 0;
   std::uint64_t skippedRoomMetadataCount = 0;
+  std::uint64_t bakedAssetBoundsCollisionCount = 0;
+  std::uint64_t bakedAssetWalkableSurfaceCount = 0;
+  std::uint64_t skippedAssetNoCollisionCount = 0;
+  std::uint64_t skippedMissingAssetMetadataCount = 0;
+  std::uint64_t skippedUnsupportedAssetCollisionCount = 0;
+  std::uint64_t skippedInvalidAssetMetadataCount = 0;
+  std::uint64_t skippedAssetWalkableTransformCount = 0;
   bool usedSmoothTerrainCollision = false;
   CreativeRoomBakeStatus status = CreativeRoomBakeStatus::Unknown;
   std::string reasonCode = "creative_room_bake_not_requested";

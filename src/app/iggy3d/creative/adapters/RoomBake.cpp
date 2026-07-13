@@ -106,7 +106,8 @@ CreativeRoomBakeResult buildRoomAssetFromCreativeDocument(
   result.receipt.voxelCellCount = document.voxelField().occupiedCellCount();
   result.receipt.voxelChunkCount = document.voxelField().chunkCount();
   room_bake_internal::appendRoomBakeObjects(
-      result, document, request.includeHidden);
+      result, document, request.includeHidden,
+      request.staticMeshAssetCatalog);
   room_bake_internal::appendRoomBakeFields(result, request, document);
 
   result.receipt.bakedStaticMeshCount = result.room.staticMeshes.size();

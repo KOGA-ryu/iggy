@@ -22,7 +22,9 @@ magenta bounds proxy so broken content is visible without blanking the room.
 At startup, Creative recursively discovers valid `.glb` files beneath
 `assets/creative/`. The relative path without `.glb` is the catalog and save
 identity. Discovery is sorted, validates every file through the production
-importer, and reports rejected paths with a reason code.
+importer, imports bounded authoring metadata, and reports rejected paths with a
+reason code. The resulting catalog is immutable for the run. RoomBake receives
+that catalog directly; it never reopens Blender assets in the frame loop.
 
 ## Creative workflow
 
@@ -74,6 +76,17 @@ coordinate conversion; do not rotate the root object to compensate again.
 - Startup GPU texture/sampler/descriptor creation, deduplicated by image
   content and sampler state.
 - Object bounds used as the collision and placement envelope.
+- `iggy_collision="bounds"` emits actor and projectile bounds blockers.
+- `iggy_collision="none"` keeps the object renderable without collision.
+- Authored `iggy_walkable=true` adds one walkable top surface to bounds
+  collision for upright or yaw-rotated instances. Pitched or rolled instances
+  retain bounds blockers but do not fabricate a horizontal walkable top.
+  Walkability is never inferred from shape or filename.
+- An omitted `iggy_collision` property uses explicit legacy defaults: bounds
+  collision, not walkable unless `iggy_walkable=true` is authored. The Assets
+  catalog marks default collision as `SOLID DEFAULT`.
+- Unsupported `convex` and `mesh` collision modes remain visible in the scene
+  and catalog but fail closed to no physics until their cookers exist.
 - Dedicated Assets catalog page with search and hotbar assignment.
 - Exact imported held and placement previews with the existing bounds outline.
 - Per-object Creative translation, Euler rotation, and non-uniform scale.
@@ -93,8 +106,8 @@ upload occurs in the frame loop.
   caches.
 - Normal, occlusion, metallic-roughness, and emissive texture evaluation.
 - Alpha blend/mask materials.
-- Collision hulls or triangle collision from Blender custom properties.
-- Walkable-surface extraction, sockets, and attachment points from glTF extras.
+- Convex-hull and triangle-mesh collision cooking.
+- Sockets and attachment points from glTF extras.
 - Skinning, armatures, morph targets, animation clips, and character graphs.
 - Offline cooked mesh packages and cross-run derived-data caching.
 
@@ -102,20 +115,24 @@ Static import rejects skins, morph targets, non-triangle primitives, malformed
 accessors, unsafe asset IDs, non-finite geometry, and degenerate three-axis
 bounds. Do not silently convert those cases to boxes.
 
-## Reserved Blender custom properties
+## Blender custom properties
 
-The fixtures use these names so future cooker work has a stable source
-vocabulary. They are metadata-only today. Until glTF extras are promoted into
-the importer contract, filenames containing `boulder`/`rock` map to `Rock`,
-filenames containing `walkway`/`bridge` map to `Bridge`, and other assets map to
-`Prop`:
+Blender custom properties exported into glTF `extras` are scanned at the glTF
+document, asset, node, and mesh levels. Identical repeated values are accepted;
+conflicting values, wrong types, oversized extras, and impossible combinations
+are marked invalid. Invalid metadata does not hide geometry, but RoomBake emits
+no collision for that asset.
 
-| Property | Intended values | Future owner |
+| Property | Values | Runtime behavior |
 |---|---|---|
-| `iggy_category` | `boulder`, `building`, `walkway`, `prop` | Creative catalog |
-| `iggy_collision` | `bounds`, `convex`, `mesh`, `none` | Physics cooker |
-| `iggy_walkable` | boolean | Surface bake |
-| `iggy_socket_*` | local transform | Attachment/socket cooker |
+| `iggy_category` | bounded ASCII identifier such as `boulder`, `walkway`, `prop` | Catalog object-kind classification, with filename fallback |
+| `iggy_collision` | `bounds`, `none`, `convex`, `mesh` | Bounds and none are live; convex and mesh are visibly unsupported |
+| `iggy_walkable` | boolean | `true` adds a top walkable surface only when collision is bounds |
+| `iggy_socket_*` | local transform | Reserved for a future attachment/socket cooker |
+
+Authoring metadata belongs to the imported asset catalog, not the Creative
+document schema. Saved objects continue to store only the stable `assetId`, so
+this feature does not add persistence fields or migrate existing maps.
 
 ## Fixture and regeneration
 

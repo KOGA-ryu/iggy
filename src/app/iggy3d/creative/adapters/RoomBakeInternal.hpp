@@ -50,7 +50,8 @@ void appendSpatialSurfaceSource(
 
 void appendRoomBakeObjects(CreativeRoomBakeResult& result,
                            const CreativeDocument& document,
-                           bool includeHidden);
+                           bool includeHidden,
+                           const StaticMeshAssetCatalog* assetCatalog);
 void appendRoomBakeFields(CreativeRoomBakeResult& result,
                           const CreativeRoomBakeRequest& request,
                           const CreativeDocument& document);

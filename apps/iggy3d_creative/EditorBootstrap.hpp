@@ -9,6 +9,7 @@
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
 #include "app/iggy3d/map_maker/Grid.hpp"
 #include "app/platform/SdlWindow.hpp"
+#include "content/assets/StaticMeshAsset.hpp"
 #include "render/RendererConfig.hpp"
 #include "render/vulkan/VulkanBackend.hpp"
 
@@ -20,6 +21,9 @@ struct CreativeEditorBootstrapData {
   CreativeEditorState editor;
   iggy3d::ProductMapMakerGridSnapshot gridSnapshot;
   iggy3d::creative::CreativeAppState appState;
+  // Immutable for the run. Scene-cache validity therefore remains keyed only
+  // by document identity and revision.
+  iggy3d::StaticMeshAssetCatalog staticMeshAssetCatalog;
   iggy3d::creative::CreativeObjectId floorObjectId =
       iggy3d::creative::kInvalidObjectId;
   std::filesystem::path saveRoot;

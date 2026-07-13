@@ -1048,13 +1048,25 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
 bool assetPagePreservesBuildIndicesAndEquipsDurableIdentity() {
   constexpr std::array palette{cr::CreativeObjectKind::Wall,
                                cr::CreativeObjectKind::Crate};
-  const std::array assets{
-      cr::CreativeCatalogAsset{cr::CreativeObjectKind::Rock, "boulder_01",
-                               "Boulder 01", {1.5, 1.4, 1.2}},
-      cr::CreativeCatalogAsset{cr::CreativeObjectKind::Bridge,
-                               "walkway_stone_01", "Walkway Stone 01",
-                               {3.0, 0.3, 1.2}},
-  };
+  std::array<cr::CreativeCatalogAsset, 2> assets{};
+  assets[0].objectKind = cr::CreativeObjectKind::Rock;
+  assets[0].assetId = "boulder_01";
+  assets[0].label = "Boulder 01";
+  assets[0].boundsSize = {1.5, 1.4, 1.2};
+  assets[0].authoringMetadata.status =
+      iggy3d::StaticMeshAuthoringMetadataStatus::Authored;
+  assets[0].authoringMetadata.categoryId = "boulder";
+  assets[0].authoringMetadata.collisionSpecified = true;
+  assets[1].objectKind = cr::CreativeObjectKind::Bridge;
+  assets[1].assetId = "walkway_stone_01";
+  assets[1].label = "Walkway Stone 01";
+  assets[1].boundsSize = {3.0, 0.3, 1.2};
+  assets[1].authoringMetadata.status =
+      iggy3d::StaticMeshAuthoringMetadataStatus::Authored;
+  assets[1].authoringMetadata.categoryId = "walkway";
+  assets[1].authoringMetadata.collisionSpecified = true;
+  assets[1].authoringMetadata.walkable = true;
+  assets[1].authoringMetadata.walkableSpecified = true;
   cr::CreativeCatalogState state =
       cr::makeCreativeCatalog(palette, assets, 1U);
   const std::size_t buildCount = state.filteredEntryIndices.size();
@@ -1074,6 +1086,18 @@ bool assetPagePreservesBuildIndicesAndEquipsDurableIdentity() {
       cr::setCreativeCatalogQuery(state, "walkway");
   const cr::CreativeCatalogEntry* walkway =
       cr::selectedCreativeCatalogEntry(state);
+  iggy3d::StaticMeshAuthoringMetadata decor;
+  decor.status = iggy3d::StaticMeshAuthoringMetadataStatus::Authored;
+  decor.collisionMode = iggy3d::StaticMeshCollisionMode::None;
+  decor.collisionSpecified = true;
+  iggy3d::StaticMeshAuthoringMetadata unsupported;
+  unsupported.status =
+      iggy3d::StaticMeshAuthoringMetadataStatus::UnsupportedCollision;
+  unsupported.collisionMode = iggy3d::StaticMeshCollisionMode::Convex;
+  unsupported.collisionSpecified = true;
+  iggy3d::StaticMeshAuthoringMetadata invalid;
+  invalid.status = iggy3d::StaticMeshAuthoringMetadataStatus::Invalid;
+  invalid.collisionMode = iggy3d::StaticMeshCollisionMode::Invalid;
   static_cast<void>(cr::setCreativeCatalogPage(
       state, cr::CreativeCatalogPage::Actions));
 
@@ -1092,8 +1116,21 @@ bool assetPagePreservesBuildIndicesAndEquipsDurableIdentity() {
                 "asset assignment carries bounded identity and dimensions") &&
          expect(searched && walkway != nullptr &&
                     cr::creativeHotbarAssetId(walkway->hotbarEntry) ==
-                        "walkway_stone_01",
-                "asset search remains isolated to the asset lane") &&
+                        "walkway_stone_01" &&
+                    walkway->assetAuthoringMetadata.walkable &&
+                    walkway->assetAuthoringMetadata.categoryId == "walkway",
+                "asset search retains physics status in the asset lane") &&
+         expect(cr::creativeCatalogAssetPhysicsLabel(
+                    assets[0].authoringMetadata) == "SOLID" &&
+                    cr::creativeCatalogAssetPhysicsLabel(
+                        assets[1].authoringMetadata) == "SOLID WALKABLE" &&
+                    cr::creativeCatalogAssetPhysicsLabel({}) ==
+                        "SOLID DEFAULT" &&
+                    cr::creativeCatalogAssetPhysicsLabel(decor) == "DECOR" &&
+                    cr::creativeCatalogAssetPhysicsLabel(unsupported) ==
+                        "UNSUPPORTED" &&
+                    cr::creativeCatalogAssetPhysicsLabel(invalid) == "INVALID",
+                "asset physics labels expose every catalog state") &&
          expect(state.filteredEntryIndices.empty(),
                 "actions page does not expose build or asset rows");
 }

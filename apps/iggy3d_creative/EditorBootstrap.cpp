@@ -1,8 +1,9 @@
 #include "EditorBootstrap.hpp"
 
-#include <filesystem>
 #include <algorithm>
+#include <array>
 #include <cctype>
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <utility>
@@ -29,25 +30,53 @@
 namespace iggy3d_creative_app {
 namespace {
 
-[[nodiscard]] iggy3d::creative::CreativeObjectKind assetObjectKind(
-    std::string_view assetId) {
-  std::string lowered(assetId);
+[[nodiscard]] iggy3d::creative::CreativeObjectKind classifyAssetText(
+    std::string_view value) {
+  std::string lowered(value);
   std::transform(lowered.begin(), lowered.end(), lowered.begin(), [](char value) {
     return static_cast<char>(
         std::tolower(static_cast<unsigned char>(value)));
   });
-  if (lowered.find("boulder") != std::string::npos ||
-      lowered.find("rock") != std::string::npos) {
-    return iggy3d::creative::CreativeObjectKind::Rock;
+  constexpr std::array classifications{
+      std::pair{std::string_view{"boulder"},
+                iggy3d::creative::CreativeObjectKind::Rock},
+      std::pair{std::string_view{"rock"},
+                iggy3d::creative::CreativeObjectKind::Rock},
+      std::pair{std::string_view{"walkway"},
+                iggy3d::creative::CreativeObjectKind::Bridge},
+      std::pair{std::string_view{"bridge"},
+                iggy3d::creative::CreativeObjectKind::Bridge},
+      std::pair{std::string_view{"prop"},
+                iggy3d::creative::CreativeObjectKind::Prop},
+  };
+  const auto found = std::find_if(
+      classifications.begin(), classifications.end(),
+      [&lowered](const auto& classification) {
+        return lowered.find(classification.first) != std::string::npos;
+      });
+  return found == classifications.end()
+             ? iggy3d::creative::CreativeObjectKind::Unknown
+             : found->second;
+}
+
+[[nodiscard]] iggy3d::creative::CreativeObjectKind assetObjectKind(
+    std::string_view assetId,
+    std::string_view categoryId) {
+  const iggy3d::creative::CreativeObjectKind categoryKind =
+      classifyAssetText(categoryId);
+  if (categoryKind != iggy3d::creative::CreativeObjectKind::Unknown) {
+    return categoryKind;
   }
-  if (lowered.find("walkway") != std::string::npos ||
-      lowered.find("bridge") != std::string::npos) {
-    return iggy3d::creative::CreativeObjectKind::Bridge;
+  const iggy3d::creative::CreativeObjectKind filenameKind =
+      classifyAssetText(assetId);
+  if (filenameKind != iggy3d::creative::CreativeObjectKind::Unknown) {
+    return filenameKind;
   }
   return iggy3d::creative::CreativeObjectKind::Prop;
 }
 
 struct CreativeCatalogAssetDiscovery {
+  iggy3d::StaticMeshAssetCatalog catalog;
   std::vector<iggy3d::creative::CreativeCatalogAsset> assets;
   std::size_t rejectedCount = 0U;
 };
@@ -55,23 +84,28 @@ struct CreativeCatalogAssetDiscovery {
 [[nodiscard]] CreativeCatalogAssetDiscovery
 discoverCreativeCatalogAssets() {
   const std::filesystem::path root{IGGY3D_CREATIVE_ASSET_ROOT_VALUE};
-  const iggy3d::StaticMeshAssetCatalog discovered =
-      iggy3d::discoverStaticMeshAssetCatalog(root);
   CreativeCatalogAssetDiscovery output;
-  output.assets.reserve(discovered.entries.size());
-  output.rejectedCount = discovered.failures.size();
+  output.catalog = iggy3d::discoverStaticMeshAssetCatalog(root);
+  output.assets.reserve(output.catalog.entries.size());
+  output.rejectedCount = output.catalog.failures.size();
   for (const iggy3d::StaticMeshAssetCatalogEntry& source :
-       discovered.entries) {
-    output.assets.push_back(
-        {assetObjectKind(source.assetId), source.assetId, source.label,
-         {source.boundsSize.x, source.boundsSize.y, source.boundsSize.z}});
+       output.catalog.entries) {
+    iggy3d::creative::CreativeCatalogAsset asset;
+    asset.objectKind = assetObjectKind(
+        source.assetId, source.authoringMetadata.categoryId);
+    asset.assetId = source.assetId;
+    asset.label = source.label;
+    asset.boundsSize = {source.boundsSize.x, source.boundsSize.y,
+                        source.boundsSize.z};
+    asset.authoringMetadata = source.authoringMetadata;
+    output.assets.push_back(std::move(asset));
   }
   SDL_Log("iggy3d_creative: asset catalog root='%s' ready=%llu failed=%llu",
           root.generic_string().c_str(),
           static_cast<unsigned long long>(output.assets.size()),
-          static_cast<unsigned long long>(discovered.failures.size()));
+          static_cast<unsigned long long>(output.catalog.failures.size()));
   for (const iggy3d::StaticMeshAssetCatalogFailure& failure :
-       discovered.failures) {
+       output.catalog.failures) {
     SDL_Log("iggy3d_creative: asset catalog rejected path='%s' reason='%s'",
             failure.sourcePath.generic_string().c_str(),
             failure.reasonCode.c_str());
@@ -213,11 +247,12 @@ void initializeCreativeEditorBootstrapData(
   output.editor.interaction.hotbar =
       iggy3d::creative::makeDefaultCreativeHotbar(
           output.editor.brushPalette);
-  const CreativeCatalogAssetDiscovery catalogAssets =
+  CreativeCatalogAssetDiscovery catalogAssets =
       discoverCreativeCatalogAssets();
   output.editor.catalog.model = iggy3d::creative::makeCreativeCatalog(
       output.editor.brushPalette, catalogAssets.assets,
       catalogAssets.rejectedCount);
+  output.staticMeshAssetCatalog = std::move(catalogAssets.catalog);
   output.editor.catalog.toolWheel =
       iggy3d::creative::makeCreativeToolWheel(output.editor.catalog.model);
   output.editor.placeMode = true;

@@ -1,4 +1,5 @@
 #include "content/assets/StaticMeshAsset.hpp"
+#include "content/assets/StaticMeshAuthoringMetadata.hpp"
 #include "content/assets/ImageDecode.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
 
@@ -11,6 +12,7 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace {
 
@@ -39,6 +41,13 @@ bool importsBoulderFixture() {
                     result.asset.materials[0].baseColorFactor[0] < 0.43F,
                 "boulder base color") &&
          expect(result.asset.hasBounds, "boulder bounds") &&
+         expect(result.asset.authoringMetadata.status ==
+                    iggy3d::StaticMeshAuthoringMetadataStatus::Authored &&
+                    result.asset.authoringMetadata.collisionMode ==
+                        iggy3d::StaticMeshCollisionMode::Bounds &&
+                    !result.asset.authoringMetadata.walkable &&
+                    result.asset.authoringMetadata.categoryId == "boulder",
+                "boulder authoring metadata imports") &&
          expect(result.asset.boundsMin.y < -0.65F &&
                     result.asset.boundsMax.y > 0.71F,
                 "boulder vertical extent") &&
@@ -175,10 +184,19 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
                 "catalog discovers both valid GLB fixtures") &&
          expect(boulder != catalog.entries.end() &&
                     boulder->label == "Boulder 01" &&
+                    boulder->authoringMetadata.collisionMode ==
+                        iggy3d::StaticMeshCollisionMode::Bounds &&
+                    !boulder->authoringMetadata.walkable &&
                     walkway != catalog.entries.end() &&
                     walkway->label == "Walkway Stone 01" &&
-                    walkway->boundsSize.x > 2.9F,
-                "discovery retains stable labels and natural bounds") &&
+                    walkway->boundsSize.x > 2.9F &&
+                    walkway->authoringMetadata.status ==
+                        iggy3d::StaticMeshAuthoringMetadataStatus::Authored &&
+                    walkway->authoringMetadata.walkable &&
+                    walkway->authoringMetadata.categoryId == "walkway" &&
+                    catalog.find("walkway_stone_01") == &*walkway &&
+                    catalog.find("missing") == nullptr,
+                "discovery retains labels, bounds, metadata, and lookup") &&
          expect(missing.entries.empty() && missing.failures.size() == 1U &&
                     missing.failures[0].reasonCode ==
                         "static_mesh_asset_root_not_directory",
@@ -281,7 +299,90 @@ bool importsBase64DataUriTexture() {
          expect(imported.asset.materials.size() == 1U &&
                     imported.asset.materials[0].baseColorImageIndex == 0U &&
                     imported.asset.textureFailureCount == 0U,
-                "base64 material retains its decoded image binding");
+                "base64 material retains its decoded image binding") &&
+         expect(imported.asset.authoringMetadata.status ==
+                    iggy3d::StaticMeshAuthoringMetadataStatus::DefaultsApplied &&
+                    imported.asset.authoringMetadata.collisionMode ==
+                        iggy3d::StaticMeshCollisionMode::Bounds &&
+                    !imported.asset.authoringMetadata.walkable,
+                "assets without extras receive explicit safe defaults");
+}
+
+bool authoringMetadataKernelIsBoundedAndFailClosed() {
+  const std::array<std::string_view, 1> authored{
+      R"json({"iggy_collision":"bounds","iggy_walkable":true,"iggy_category":"walkway","ignored":{"nested":[1,true,null]}})json"};
+  const std::array<std::string_view, 1> decor{
+      R"json({"iggy_collision":"none","iggy_walkable":false})json"};
+  const std::array<std::string_view, 1> unsupported{
+      R"json({"iggy_collision":"convex"})json"};
+  const std::array<std::string_view, 2> conflict{
+      R"json({"iggy_collision":"bounds"})json",
+      R"json({"iggy_collision":"none"})json"};
+  const std::array<std::string_view, 1> impossible{
+      R"json({"iggy_collision":"none","iggy_walkable":true})json"};
+  const std::array<std::string_view, 1> duplicate{
+      R"json({"iggy_collision":"bounds","iggy_collision":"bounds"})json"};
+  const std::array<std::string_view, 1> malformedUnknown{
+      R"json({"ignored":wat})json"};
+  const std::string oversized(4097U, 'x');
+  const std::array<std::string_view, 1> oversizedInput{oversized};
+  const std::vector<std::string_view> tooMany(257U, "{}");
+
+  const iggy3d::StaticMeshAuthoringMetadata defaults =
+      iggy3d::detail::parseStaticMeshAuthoringMetadata({});
+  const iggy3d::StaticMeshAuthoringMetadata walkable =
+      iggy3d::detail::parseStaticMeshAuthoringMetadata(authored);
+  const iggy3d::StaticMeshAuthoringMetadata noCollision =
+      iggy3d::detail::parseStaticMeshAuthoringMetadata(decor);
+  const iggy3d::StaticMeshAuthoringMetadata deferred =
+      iggy3d::detail::parseStaticMeshAuthoringMetadata(unsupported);
+  const iggy3d::StaticMeshAuthoringMetadata conflicting =
+      iggy3d::detail::parseStaticMeshAuthoringMetadata(conflict);
+  const iggy3d::StaticMeshAuthoringMetadata invalidPair =
+      iggy3d::detail::parseStaticMeshAuthoringMetadata(impossible);
+  const iggy3d::StaticMeshAuthoringMetadata tooLarge =
+      iggy3d::detail::parseStaticMeshAuthoringMetadata(oversizedInput);
+  const iggy3d::StaticMeshAuthoringMetadata duplicateKey =
+      iggy3d::detail::parseStaticMeshAuthoringMetadata(duplicate);
+  const iggy3d::StaticMeshAuthoringMetadata malformed =
+      iggy3d::detail::parseStaticMeshAuthoringMetadata(malformedUnknown);
+  const iggy3d::StaticMeshAuthoringMetadata tooManyObjects =
+      iggy3d::detail::parseStaticMeshAuthoringMetadata(tooMany);
+
+  return expect(defaults.status ==
+                    iggy3d::StaticMeshAuthoringMetadataStatus::DefaultsApplied &&
+                    defaults.collisionMode ==
+                        iggy3d::StaticMeshCollisionMode::Bounds,
+                "empty metadata has explicit bounds defaults") &&
+         expect(walkable.status ==
+                    iggy3d::StaticMeshAuthoringMetadataStatus::Authored &&
+                    walkable.walkable && walkable.categoryId == "walkway",
+                "authored bounds and walkable metadata parse") &&
+         expect(noCollision.status ==
+                    iggy3d::StaticMeshAuthoringMetadataStatus::Authored &&
+                    noCollision.collisionMode ==
+                        iggy3d::StaticMeshCollisionMode::None &&
+                    !noCollision.walkable,
+                "render-only metadata parses") &&
+         expect(deferred.status ==
+                    iggy3d::StaticMeshAuthoringMetadataStatus::
+                        UnsupportedCollision &&
+                    deferred.collisionMode ==
+                        iggy3d::StaticMeshCollisionMode::Convex,
+                "deferred collision mode remains visible") &&
+         expect(conflicting.status ==
+                    iggy3d::StaticMeshAuthoringMetadataStatus::Invalid &&
+                    invalidPair.status ==
+                        iggy3d::StaticMeshAuthoringMetadataStatus::Invalid &&
+                    tooLarge.status ==
+                        iggy3d::StaticMeshAuthoringMetadataStatus::Invalid &&
+                    duplicateKey.status ==
+                        iggy3d::StaticMeshAuthoringMetadataStatus::Invalid &&
+                    malformed.status ==
+                        iggy3d::StaticMeshAuthoringMetadataStatus::Invalid &&
+                    tooManyObjects.status ==
+                        iggy3d::StaticMeshAuthoringMetadataStatus::Invalid,
+                "conflicts and bounded malformed extras fail closed");
 }
 
 }  // namespace
@@ -294,7 +395,8 @@ int main() {
                   externalFloorAndWallBypassGeneratedBatching() &&
                   discoveryAndPreviewAtlasCoverEveryValidFixture() &&
                   texturedFixtureBuildsOneCachedMaterialBinding() &&
-                  importsBase64DataUriTexture();
+                  importsBase64DataUriTexture() &&
+                  authoringMetadataKernelIsBoundedAndFailClosed();
   if (!ok) {
     return 1;
   }

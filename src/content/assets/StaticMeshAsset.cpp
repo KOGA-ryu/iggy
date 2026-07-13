@@ -1,5 +1,6 @@
 #include "content/assets/StaticMeshAsset.hpp"
 
+#include "content/assets/StaticMeshAuthoringMetadata.hpp"
 #include "content/assets/StaticMeshMaterialImport.hpp"
 
 #include <algorithm>
@@ -326,6 +327,8 @@ StaticMeshImportResult importStaticMeshGlb(
   result.asset.id = std::string(assetId);
   result.asset.sourcePath = path;
   result.asset.contentHash = fileHash(path);
+  result.asset.authoringMetadata =
+      detail::importStaticMeshAuthoringMetadata(*data);
   detail::importStaticMeshMaterialsAndImages(*data, path, result.asset);
   std::string failureReason;
   for (cgltf_size nodeIndex = 0; nodeIndex < data->nodes_count; ++nodeIndex) {
@@ -417,9 +420,21 @@ StaticMeshAssetCatalog discoverStaticMeshAssetCatalog(
     catalog.entries.push_back(
         {assetId, assetLabel(assetId),
          imported.asset.boundsMax - imported.asset.boundsMin,
-         imported.asset.contentHash});
+         imported.asset.contentHash,
+         imported.asset.authoringMetadata});
   }
   return catalog;
+}
+
+const StaticMeshAssetCatalogEntry* StaticMeshAssetCatalog::find(
+    std::string_view assetId) const noexcept {
+  const auto found = std::lower_bound(
+      entries.begin(), entries.end(), assetId,
+      [](const StaticMeshAssetCatalogEntry& entry, std::string_view id) {
+        return entry.assetId < id;
+      });
+  return found != entries.end() && found->assetId == assetId ? &*found
+                                                             : nullptr;
 }
 
 void StaticMeshAssetCache::setRoot(std::filesystem::path root) {

@@ -356,7 +356,8 @@ int main(int argc, char** argv) {
     // path. Standalone-only editor proxies remain only for objects that RoomBake
     // did not emit as static geometry, such as Point anchors and Path routes.
     static_cast<void>(refreshCreativeEditorSceneCache(
-        sceneCache, appState.facade.document(), gridSnapshot));
+        sceneCache, appState.facade.document(), gridSnapshot,
+        &bootstrapData.staticMeshAssetCatalog));
     StandaloneRoomBakePreviewScene& roomBakePreview = sceneCache.preview;
     SceneProjectionResult& scene = roomBakePreview.scene;
     DebugProjectionResult debug{};
@@ -419,7 +420,8 @@ int main(int argc, char** argv) {
     // bake. Refresh only changed frames so an accepted placement is submitted
     // immediately rather than leaving the renderer on the pre-click snapshot.
     if (refreshCreativeEditorSceneCache(
-            sceneCache, appState.facade.document(), gridSnapshot)) {
+            sceneCache, appState.facade.document(), gridSnapshot,
+            &bootstrapData.staticMeshAssetCatalog)) {
       frame.projections.scene = &roomBakePreview.scene;
       frame.clock.sourceTick = roomBakePreview.scene.sourceTick;
     }

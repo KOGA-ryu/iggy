@@ -23,6 +23,11 @@ iggy3d_add_unit_test(static_mesh_asset_tests
 set_tests_properties(static_mesh_asset_tests PROPERTIES
   LABELS "unit;content;asset;glb;render;creative;iggy3d")
 
+iggy3d_add_unit_test(creative_asset_room_bake_tests
+  tests/unit/creative_asset_room_bake_tests.cpp)
+set_tests_properties(creative_asset_room_bake_tests PROPERTIES
+  LABELS "unit;content;asset;room_bake;physics;creative;iggy3d")
+
 iggy3d_add_unit_test(render_projectile_overlay_projection_tests
   tests/unit/render_projectile_overlay_projection_tests.cpp)
 

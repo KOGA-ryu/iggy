@@ -200,7 +200,8 @@ buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
     std::span<const cr::CreativeVoxelCuboid> voxelCuboids,
     std::span<const cr::CreativeTerrainSurfacePatch> terrainCollisionPatches,
     std::span<const iggy3d::SceneRoomSurfacePatchItem> terrainSurfacePatches,
-    bool usePrecomputedVoxelCuboids) {
+    bool usePrecomputedVoxelCuboids,
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog) {
   iggy3d::creative::CreativeRoomBakeRequest bakeRequest;
   bakeRequest.document = &document;
   bakeRequest.roomId = "iggy3d_creative_preview";
@@ -211,6 +212,7 @@ buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
   bakeRequest.usePrecomputedTerrainSurfacePatches =
       !terrainCollisionPatches.empty();
   bakeRequest.precomputedTerrainSurfacePatches = terrainCollisionPatches;
+  bakeRequest.staticMeshAssetCatalog = assetCatalog;
 
   StandaloneRoomBakePreviewScene preview;
   preview.roomBake =
@@ -236,7 +238,8 @@ buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
 
 StandaloneRoomBakePreviewScene buildStandaloneRoomBakePreviewScene(
     const iggy3d::creative::CreativeDocument& document,
-    const iggy3d::ProductMapMakerGridSnapshot& gridSnapshot) {
+    const iggy3d::ProductMapMakerGridSnapshot& gridSnapshot,
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog) {
   std::vector<cr::CreativeVoxelCuboid> cuboids =
       cr::buildCreativeVoxelCuboids(document.voxelField());
   const cr::CreativeTerrainSurfacePlan terrain =
@@ -257,13 +260,14 @@ StandaloneRoomBakePreviewScene buildStandaloneRoomBakePreviewScene(
   }
   return buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
       document, gridSnapshot, cuboids, terrainCollisionPatches,
-      terrainSurfacePatches, true);
+      terrainSurfacePatches, true, assetCatalog);
 }
 
 bool refreshCreativeEditorSceneCache(
     CreativeEditorSceneCache& cache,
     const iggy3d::creative::CreativeDocument& document,
-    const iggy3d::ProductMapMakerGridSnapshot& gridSnapshot) {
+    const iggy3d::ProductMapMakerGridSnapshot& gridSnapshot,
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog) {
   if (cache.valid && cache.documentId == document.id() &&
       cache.documentRevision == document.revision()) {
     return false;
@@ -285,7 +289,7 @@ bool refreshCreativeEditorSceneCache(
                       cache.terrainCuboids.end());
   cache.preview = buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
       document, gridSnapshot, voxelCuboids, cache.terrainCollisionPatches,
-      cache.terrainSurfacePatches, true);
+      cache.terrainSurfacePatches, true, assetCatalog);
   cache.documentId = document.id();
   cache.documentRevision = document.revision();
   ++cache.refreshCount;
@@ -316,7 +320,10 @@ void logStandaloneRoomBakeFinal(
           "accepted=%d objectCount=%llu considered=%llu staticMeshes=%llu "
           "spatialSurfaces=%llu skippedHidden=%llu skippedEditorOnly=%llu "
           "skippedNoBounds=%llu skippedUnsupported=%llu "
-          "skippedRoomMetadata=%llu standalonePreviewMeshes=%zu "
+          "skippedRoomMetadata=%llu assetBounds=%llu assetWalkable=%llu "
+          "assetNoCollision=%llu assetMissing=%llu assetUnsupported=%llu "
+          "assetInvalid=%llu assetWalkableTransformSkipped=%llu "
+          "standalonePreviewMeshes=%zu "
           "sceneMeshes=%zu",
           std::string(iggy3d::creative::toString(receipt.status)).c_str(),
           receipt.reasonCode.c_str(), receipt.accepted ? 1 : 0,
@@ -330,6 +337,20 @@ void logStandaloneRoomBakeFinal(
           static_cast<unsigned long long>(
               receipt.skippedUnsupportedShapeCount),
           static_cast<unsigned long long>(receipt.skippedRoomMetadataCount),
+          static_cast<unsigned long long>(
+              receipt.bakedAssetBoundsCollisionCount),
+          static_cast<unsigned long long>(
+              receipt.bakedAssetWalkableSurfaceCount),
+          static_cast<unsigned long long>(
+              receipt.skippedAssetNoCollisionCount),
+          static_cast<unsigned long long>(
+              receipt.skippedMissingAssetMetadataCount),
+          static_cast<unsigned long long>(
+              receipt.skippedUnsupportedAssetCollisionCount),
+          static_cast<unsigned long long>(
+              receipt.skippedInvalidAssetMetadataCount),
+          static_cast<unsigned long long>(
+              receipt.skippedAssetWalkableTransformCount),
           preview.standalonePreviewMeshCount,
           preview.scene.room.meshes.size());
 }

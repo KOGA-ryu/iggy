@@ -12,6 +12,7 @@
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
 #include "app/iggy3d/creative/tools/ShapeBrush.hpp"
+#include "content/assets/StaticMeshAuthoringMetadata.hpp"
 
 namespace iggy3d::creative {
 
@@ -38,6 +39,7 @@ struct CreativeCatalogAsset {
   std::string assetId;
   std::string label;
   CreativeVec3 boundsSize{};
+  StaticMeshAuthoringMetadata authoringMetadata;
 };
 
 struct CreativeCatalogEntry {
@@ -49,6 +51,7 @@ struct CreativeCatalogEntry {
   bool toolWheelEligible = false;
   std::string label;
   std::string searchText;
+  StaticMeshAuthoringMetadata assetAuthoringMetadata;
 };
 
 struct CreativeCatalogShapeSelection {
@@ -103,6 +106,8 @@ struct CreativeToolWheelState {
 [[nodiscard]] std::string_view toString(
     CreativeCatalogEntryCategory category) noexcept;
 [[nodiscard]] std::string_view toString(CreativeCatalogPage page) noexcept;
+[[nodiscard]] std::string_view creativeCatalogAssetPhysicsLabel(
+    const StaticMeshAuthoringMetadata& metadata) noexcept;
 [[nodiscard]] CreativeCatalogState makeCreativeCatalog(
     std::span<const CreativeObjectKind> materialPalette,
     std::span<const CreativeCatalogAsset> assets = {},

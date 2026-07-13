@@ -103,12 +103,14 @@ struct CreativeEditorSceneCache {
 
 [[nodiscard]] StandaloneRoomBakePreviewScene buildStandaloneRoomBakePreviewScene(
     const iggy3d::creative::CreativeDocument& document,
-    const iggy3d::ProductMapMakerGridSnapshot& gridSnapshot);
+    const iggy3d::ProductMapMakerGridSnapshot& gridSnapshot,
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr);
 
 [[nodiscard]] bool refreshCreativeEditorSceneCache(
     CreativeEditorSceneCache& cache,
     const iggy3d::creative::CreativeDocument& document,
-    const iggy3d::ProductMapMakerGridSnapshot& gridSnapshot);
+    const iggy3d::ProductMapMakerGridSnapshot& gridSnapshot,
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr);
 void invalidateCreativeEditorSceneCache(
     CreativeEditorSceneCache& cache) noexcept;
 
