@@ -73,18 +73,32 @@ bool firstRoomBundleReady(const RenderLoopCreateInfo& createInfo) {
     return false;
   }
   const VkExtent2D swapchainExtent = createInfo.swapchain->info().extent;
+  if (createInfo.firstRoomResources == nullptr) {
+    return false;
+  }
+  const FirstRoomGeometryResources& geometry =
+      createInfo.firstRoomResources->geometry();
+  const StaticMeshAssetAtlasResources& assetAtlas =
+      createInfo.firstRoomResources->staticMeshAssetAtlas();
+  const bool baseGeometryReady =
+      geometry.indexCount > 0U &&
+      geometry.vertexBuffer.allocation.buffer != VK_NULL_HANDLE &&
+      geometry.indexBuffer.allocation.buffer != VK_NULL_HANDLE;
+  const bool instanceGeometryReady =
+      geometry.staticMeshInstanceCount > 0U && assetAtlas.ready &&
+      geometry.staticMeshInstanceBuffer.allocation.buffer != VK_NULL_HANDLE &&
+      createInfo.staticMeshInstancePipeline != nullptr &&
+      createInfo.staticMeshInstancePipeline->pipeline != VK_NULL_HANDLE;
   return createInfo.firstRoomPipeline != nullptr &&
          createInfo.firstRoomPipeline->pipeline != VK_NULL_HANDLE &&
          createInfo.creativeViewModelPipeline != nullptr &&
          createInfo.creativeViewModelPipeline->pipeline != VK_NULL_HANDLE &&
          createInfo.firstRoomLayout != nullptr &&
          createInfo.firstRoomLayout->layout != VK_NULL_HANDLE &&
-         createInfo.firstRoomResources != nullptr && createInfo.firstRoomResources->ready() &&
+         createInfo.firstRoomResources->ready() &&
          createInfo.firstRoomResources->depth().extent.width == swapchainExtent.width &&
          createInfo.firstRoomResources->depth().extent.height == swapchainExtent.height &&
-         createInfo.firstRoomResources->geometry().indexCount > 0U &&
-         createInfo.firstRoomResources->geometry().vertexBuffer.allocation.buffer != VK_NULL_HANDLE &&
-         createInfo.firstRoomResources->geometry().indexBuffer.allocation.buffer != VK_NULL_HANDLE &&
+         (baseGeometryReady || instanceGeometryReady) &&
          createInfo.firstRoomResources->creativePreviewGeometry().ready &&
          createInfo.firstRoomResources->creativePreviewGeometry()
                  .vertexBuffer.allocation.buffer != VK_NULL_HANDLE &&
@@ -112,6 +126,35 @@ FirstRoomPushConstants pushConstantsFromMat4(const Mat4& matrix) {
     }
   }
   return constants;
+}
+
+void populateStaticMeshInstanceRecordInfo(
+    const RenderLoopCreateInfo& createInfo,
+    FirstRoomFrameRecordInfo& recordInfo) {
+  if (createInfo.firstRoomResources == nullptr) {
+    return;
+  }
+  if (createInfo.staticMeshInstancePipeline != nullptr) {
+    recordInfo.staticMeshInstancePipeline =
+        createInfo.staticMeshInstancePipeline->pipeline;
+  }
+  if (createInfo.staticMeshInstanceMaterialPipeline != nullptr) {
+    recordInfo.staticMeshInstanceMaterialPipeline =
+        createInfo.staticMeshInstanceMaterialPipeline->pipeline;
+  }
+  const StaticMeshAssetAtlasResources& atlas =
+      createInfo.firstRoomResources->staticMeshAssetAtlas();
+  const FirstRoomGeometryResources& geometry =
+      createInfo.firstRoomResources->geometry();
+  recordInfo.staticMeshAssetVertexBuffer =
+      atlas.vertexBuffer.allocation.buffer;
+  recordInfo.staticMeshAssetIndexBuffer = atlas.indexBuffer.allocation.buffer;
+  recordInfo.staticMeshInstanceBuffer =
+      geometry.staticMeshInstanceBuffer.allocation.buffer;
+  recordInfo.staticMeshInstanceBatches =
+      geometry.staticMeshInstanceBatches.data();
+  recordInfo.staticMeshInstanceBatchCount =
+      geometry.staticMeshInstanceBatches.size();
 }
 
 struct ProxySceneFacts {
@@ -479,6 +522,7 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     recordInfo.indexedDrawCount =
         createInfo_.firstRoomResources->geometry().indexedDraws.size();
     recordInfo.pushConstants = pushConstantsFromMat4(frame.camera.clipFromWorld);
+    populateStaticMeshInstanceRecordInfo(createInfo_, recordInfo);
     const CreativePreviewGeometryResources& previewGeometry =
         createInfo_.firstRoomResources->creativePreviewGeometry();
     recordInfo.creativePreviewVertexBuffer =
@@ -564,6 +608,7 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
         createInfo_.firstRoomResources->geometry().indexBuffer.allocation.buffer;
     recordInfo.indexCount = createInfo_.firstRoomResources->geometry().indexCount;
     recordInfo.pushConstants = firstRoomClipFromModel();
+    populateStaticMeshInstanceRecordInfo(createInfo_, recordInfo);
     const CreativePreviewGeometryResources& previewGeometry =
         createInfo_.firstRoomResources->creativePreviewGeometry();
     recordInfo.creativePreviewVertexBuffer =
@@ -734,7 +779,9 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
   appendReceiptField(result.receipt, "draw_count",
                      static_cast<std::uint64_t>(
                          drawPackageRoom
-                             ? createInfo_.firstRoomResources->geometry().indexedDraws.size()
+                             ? createInfo_.firstRoomResources->geometry().indexedDraws.size() +
+                                   createInfo_.firstRoomResources->geometry()
+                                       .staticMeshInstanceBatches.size()
                          : drawProxyPrimitives ? proxyDrawCount(proxyFacts)
                          // branch-gate: BG-1078
                          : drawUiFrame ? frame.ui.primitiveCount
@@ -772,10 +819,17 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
                        static_cast<std::uint64_t>(room.anchorCount));
     appendReceiptField(result.receipt, "mesh_draw_count",
                        static_cast<std::uint64_t>(
-                           createInfo_.firstRoomResources->geometry().indexedDraws.size()));
+                           geometry.indexedDraws.size() +
+                           geometry.staticMeshInstanceBatches.size()));
     appendReceiptField(result.receipt, "indexed_draw_count",
                        static_cast<std::uint64_t>(
-                           createInfo_.firstRoomResources->geometry().indexedDraws.size()));
+                           geometry.indexedDraws.size()));
+    appendReceiptField(
+        result.receipt, "static_mesh_instance_draw_count",
+        static_cast<std::uint64_t>(geometry.staticMeshInstanceBatches.size()));
+    appendReceiptField(result.receipt, "static_mesh_instance_count",
+                       static_cast<std::uint64_t>(
+                           geometry.staticMeshInstanceCount));
     appendReceiptField(result.receipt, "room_floor_draw_count",
                        static_cast<std::uint64_t>(geometry.roomFloorDrawCount));
     appendReceiptField(result.receipt, "room_wall_draw_count",

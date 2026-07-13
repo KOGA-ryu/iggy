@@ -65,8 +65,16 @@ bool roomDrawPipelineSelectionFallsBackDeterministically() {
   iggy3d::vulkan::IndexedDrawRange untextured{0U, 6U};
   const iggy3d::vulkan::RoomDrawPipelineSelection plain =
       iggy3d::vulkan::selectRoomDrawPipeline(untextured, 2U, true);
+  iggy3d::vulkan::StaticMeshInstanceBatch instance;
+  instance.indexCount = 6U;
+  instance.instanceCount = 300U;
+  instance.materialTextureIndex = 1U;
+  const iggy3d::vulkan::RoomDrawPipelineSelection instanced =
+      iggy3d::vulkan::selectRoomDrawPipeline(instance, 2U, true);
   return expect(selected.textured && selected.textureIndex == 1U,
                 "valid material texture selects textured pipeline") &&
+         expect(instanced.textured && instanced.textureIndex == 1U,
+                "instanced material selects textured pipeline") &&
          expect(!missingPipeline.textured && !missingTexture.textured &&
                     !plain.textured,
                 "missing resources and untextured draws use color fallback");

@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -9,6 +10,7 @@
 #include "render/FrameInput.hpp"
 #include "render/RenderDiagnostics.hpp"
 #include "render/vulkan/FirstRoomPipeline.hpp"
+#include "render/vulkan/StaticMeshInstances.hpp"
 #include "render/vulkan/StaticMeshMaterialTextures.hpp"
 #include "content/assets/StaticMeshAsset.hpp"
 #include "render/vulkan/VulkanMemoryAllocator.hpp"
@@ -63,9 +65,12 @@ struct GpuImageRecord {
 struct FirstRoomGeometryResources {
   GpuBufferRecord vertexBuffer;
   GpuBufferRecord indexBuffer;
+  GpuBufferRecord staticMeshInstanceBuffer;
   std::uint32_t vertexCount = 0;
   std::uint32_t indexCount = 0;
+  std::uint32_t staticMeshInstanceCount = 0;
   std::vector<IndexedDrawRange> indexedDraws;
+  std::vector<StaticMeshInstanceBatch> staticMeshInstanceBatches;
   std::string sourceRoomAssetId;
   std::size_t sourceRoomStaticMeshCount = 0;
   std::uint64_t sourceRoomGeometrySignature = 0;
@@ -101,10 +106,22 @@ struct CreativePreviewGeometryResources {
   bool ready = false;
 };
 
+struct StaticMeshAssetAtlasResources {
+  GpuBufferRecord vertexBuffer;
+  GpuBufferRecord indexBuffer;
+  std::vector<StaticMeshAssetDrawRanges> assetDraws;
+  std::uint32_t vertexCount = 0;
+  std::uint32_t indexCount = 0;
+  bool valid = false;
+  bool ready = false;
+};
+
 struct RoomMeshCpuGeometry {
   std::vector<FirstRoomVertex> vertices;
   std::vector<std::uint16_t> indices;
   std::vector<IndexedDrawRange> indexedDraws;
+  std::vector<StaticMeshInstanceTransform> staticMeshInstances;
+  std::vector<StaticMeshInstanceBatch> staticMeshInstanceBatches;
   std::string sourceRoomAssetId;
   std::size_t sourceRoomStaticMeshCount = 0;
   std::uint64_t sourceRoomGeometrySignature = 0;
@@ -188,6 +205,7 @@ public:
 
   const FirstRoomGeometryResources& geometry() const;
   const CreativePreviewGeometryResources& creativePreviewGeometry() const;
+  const StaticMeshAssetAtlasResources& staticMeshAssetAtlas() const;
   const StaticMeshMaterialTextureResources& staticMeshMaterialTextures() const;
   const StaticMeshMaterialTextureResources&
   pendingStaticMeshMaterialTextures() const;
@@ -197,10 +215,12 @@ public:
 private:
   void destroyGeometryBuffers();
   void destroyCreativePreviewBuffers();
+  void destroyStaticMeshAssetAtlasBuffers();
 
   VulkanMemoryAllocator allocator_;
   FirstRoomGeometryResources geometry_;
   CreativePreviewGeometryResources creativePreviewGeometry_;
+  StaticMeshAssetAtlasResources staticMeshAssetAtlas_;
   StaticMeshMaterialTextureStore staticMeshMaterialTextures_;
   StaticMeshMaterialTextureStore pendingStaticMeshMaterialTextures_;
   DepthResourceRecord depth_;
@@ -208,6 +228,7 @@ private:
   StaticMeshAssetCache staticMeshAssets_;
   StaticMeshAssetCache pendingStaticMeshAssets_;
   CreativePreviewGeometryResources pendingCreativePreviewGeometry_;
+  StaticMeshAssetAtlasResources pendingStaticMeshAssetAtlas_;
   bool staticMeshAssetReloadPending_ = false;
   bool ready_ = false;
 };
@@ -227,6 +248,10 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
     const RenderCreativeWireframeDebugFrame* creativeWireframeDebug,
     StaticMeshAssetCache* staticMeshAssets,
     const StaticMeshMaterialTextureResources* materialTextures);
+RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
+    const SceneRoomProjection& room,
+    const RenderCreativeWireframeDebugFrame* creativeWireframeDebug,
+    std::span<const StaticMeshAssetDrawRanges> staticMeshAssetDraws);
 CreativeWireframeDebugCpuGeometry buildCreativeWireframeDebugCpuGeometry(
     const RenderCreativeWireframeDebugFrame* creativeWireframeDebug);
 CreativePreviewCpuGeometry buildCreativePreviewCpuGeometry();

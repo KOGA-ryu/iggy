@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -87,6 +88,50 @@ iggy3d::SceneRoomProjection roomWith(std::string meshId,
   return room;
 }
 
+iggy3d::Vec3 transformInstancePoint(
+    const iggy3d::vulkan::StaticMeshInstanceTransform& transform,
+    iggy3d::Vec3 point) {
+  return {
+      transform.modelColumn0[0] * point.x +
+          transform.modelColumn1[0] * point.y +
+          transform.modelColumn2[0] * point.z + transform.modelColumn3[0],
+      transform.modelColumn0[1] * point.x +
+          transform.modelColumn1[1] * point.y +
+          transform.modelColumn2[1] * point.z + transform.modelColumn3[1],
+      transform.modelColumn0[2] * point.x +
+          transform.modelColumn1[2] * point.y +
+          transform.modelColumn2[2] * point.z + transform.modelColumn3[2],
+  };
+}
+
+iggy3d::Vec3 transformInstanceNormal(
+    const iggy3d::vulkan::StaticMeshInstanceTransform& transform,
+    iggy3d::Vec3 normal) {
+  iggy3d::Vec3 world{
+      transform.normalColumn0[0] * normal.x +
+          transform.normalColumn1[0] * normal.y +
+          transform.normalColumn2[0] * normal.z,
+      transform.normalColumn0[1] * normal.x +
+          transform.normalColumn1[1] * normal.y +
+          transform.normalColumn2[1] * normal.z,
+      transform.normalColumn0[2] * normal.x +
+          transform.normalColumn1[2] * normal.y +
+          transform.normalColumn2[2] * normal.z,
+  };
+  const float length =
+      std::sqrt(world.x * world.x + world.y * world.y + world.z * world.z);
+  if (length > 0.000001F) {
+    world.x /= length;
+    world.y /= length;
+    world.z /= length;
+  }
+  return world;
+}
+
+bool near(float lhs, float rhs, float epsilon = 0.0001F) {
+  return std::abs(lhs - rhs) <= epsilon;
+}
+
 bool cacheReusesImportAndRendererEmitsIrregularGeometry() {
   iggy3d::StaticMeshAssetCache cache;
   cache.setRoot("assets/creative");
@@ -109,6 +154,118 @@ bool cacheReusesImportAndRendererEmitsIrregularGeometry() {
                 "imported world transform finite");
 }
 
+bool repeatedAssetsUseOneAtlasMeshAndCompactTransforms() {
+  iggy3d::StaticMeshAssetCache cache;
+  cache.setRoot("assets/creative");
+  const iggy3d::vulkan::StaticMeshAssetAtlasCpuGeometry atlas =
+      iggy3d::vulkan::buildStaticMeshAssetAtlasCpuGeometry(&cache);
+  const auto boulder = std::find_if(
+      atlas.assetDraws.begin(), atlas.assetDraws.end(),
+      [](const iggy3d::vulkan::StaticMeshAssetDrawRanges& asset) {
+        return asset.assetId == "boulder_01";
+      });
+  if (!expect(atlas.valid && boulder != atlas.assetDraws.end() &&
+                  boulder->indexedDraws.size() == 1U,
+              "boulder exists once in immutable asset atlas")) {
+    return false;
+  }
+
+  iggy3d::SceneRoomProjection repeated;
+  repeated.loaded = true;
+  repeated.assetId = "repeated_asset_room";
+  repeated.meshes.reserve(300U);
+  for (std::size_t index = 0U; index < 300U; ++index) {
+    iggy3d::SceneRoomMeshItem mesh =
+        roomWith("asset:boulder_01").meshes.front();
+    mesh.id = "rock_" + std::to_string(index);
+    mesh.position.x += static_cast<float>(index % 30U) * 4.0F;
+    mesh.position.z += static_cast<float>(index / 30U) * 5.0F;
+    repeated.meshes.push_back(std::move(mesh));
+  }
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(
+          repeated, nullptr, atlas.assetDraws);
+  const iggy3d::vulkan::StaticMeshInstanceBatch* batch =
+      geometry.staticMeshInstanceBatches.empty()
+          ? nullptr
+          : &geometry.staticMeshInstanceBatches.front();
+
+  const iggy3d::SceneRoomProjection one = roomWith("asset:boulder_01");
+  const iggy3d::vulkan::RoomMeshCpuGeometry legacy =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(one, nullptr, &cache);
+  const std::uint32_t firstAtlasIndex =
+      atlas.indices[boulder->indexedDraws.front().firstIndex];
+  const iggy3d::vulkan::StaticMeshInstanceVertex& firstAtlasVertex =
+      atlas.vertices[firstAtlasIndex];
+  const iggy3d::Vec3 transformed = transformInstancePoint(
+      geometry.staticMeshInstances.front(),
+      {firstAtlasVertex.position[0], firstAtlasVertex.position[1],
+       firstAtlasVertex.position[2]});
+  const iggy3d::Vec3 transformedNormal = transformInstanceNormal(
+      geometry.staticMeshInstances.front(),
+      {firstAtlasVertex.normal[0], firstAtlasVertex.normal[1],
+       firstAtlasVertex.normal[2]});
+  iggy3d::Vec3 light{-0.35F, 0.85F, 0.40F};
+  const float lightLength =
+      std::sqrt(light.x * light.x + light.y * light.y + light.z * light.z);
+  light = {light.x / lightLength, light.y / lightLength,
+           light.z / lightLength};
+  const float brightness =
+      0.52F + 0.48F * std::max(
+                           0.0F, transformedNormal.x * light.x +
+                                     transformedNormal.y * light.y +
+                                     transformedNormal.z * light.z);
+
+  return expect(geometry.ready, "instanced room geometry ready") &&
+         expect(geometry.vertices.empty() && geometry.indices.empty() &&
+                    geometry.indexedDraws.empty(),
+                "room geometry does not duplicate imported triangles") &&
+         expect(boulder->indexedDraws.front().indexCount == 96U,
+                "one immutable boulder triangle range retained") &&
+         expect(geometry.staticMeshInstances.size() == 300U,
+                "three hundred compact transforms emitted") &&
+         expect(geometry.staticMeshInstanceBatches.size() == 1U &&
+                    batch != nullptr && batch->instanceCount == 300U &&
+                    batch->firstInstance == 0U &&
+                    batch->firstIndex ==
+                        boulder->indexedDraws.front().firstIndex &&
+                    batch->indexCount == 96U,
+                "one instanced draw owns all repeated boulders") &&
+         expect(legacy.ready && legacy.vertices.size() == 96U &&
+                    near(transformed.x, legacy.vertices.front().position[0]) &&
+                    near(transformed.y, legacy.vertices.front().position[1]) &&
+                    near(transformed.z, legacy.vertices.front().position[2]),
+                "instance transform preserves legacy world geometry") &&
+         expect(near(firstAtlasVertex.baseColor[0] * brightness,
+                     legacy.vertices.front().color[0]) &&
+                    near(firstAtlasVertex.baseColor[1] * brightness,
+                         legacy.vertices.front().color[1]) &&
+                    near(firstAtlasVertex.baseColor[2] * brightness,
+                         legacy.vertices.front().color[2]),
+                "instance normal transform preserves legacy face lighting");
+}
+
+bool instanceTransformRejectsInvalidGeometry() {
+  iggy3d::SceneRoomMeshItem item =
+      roomWith("asset:boulder_01").meshes.front();
+  iggy3d::vulkan::StaticMeshInstanceTransform output;
+  output.modelColumn0.fill(1.0F);
+  const bool flatBounds =
+      iggy3d::vulkan::buildStaticMeshInstanceTransform(
+          item, {-1.0F, 0.0F, -1.0F}, {1.0F, 0.0F, 1.0F}, output);
+  const bool clearedAfterFlatBounds =
+      std::all_of(output.modelColumn0.begin(), output.modelColumn0.end(),
+                  [](float value) { return value == 0.0F; });
+  item.position.x = std::numeric_limits<float>::quiet_NaN();
+  const bool nonFiniteItem =
+      iggy3d::vulkan::buildStaticMeshInstanceTransform(
+          item, {-1.0F, -1.0F, -1.0F}, {1.0F, 1.0F, 1.0F}, output);
+  return expect(!flatBounds && clearedAfterFlatBounds,
+                "degenerate asset bounds fail closed") &&
+         expect(!nonFiniteItem,
+                "non-finite instance transform input fails closed");
+}
+
 bool missingAssetIsVisibleAndMemoized() {
   iggy3d::StaticMeshAssetCache cache;
   cache.setRoot("assets/creative");
@@ -117,6 +274,11 @@ bool missingAssetIsVisibleAndMemoized() {
       iggy3d::vulkan::buildRoomMeshCpuGeometry(room, nullptr, &cache);
   const iggy3d::vulkan::RoomMeshCpuGeometry second =
       iggy3d::vulkan::buildRoomMeshCpuGeometry(room, nullptr, &cache);
+  const iggy3d::vulkan::StaticMeshAssetAtlasCpuGeometry atlas =
+      iggy3d::vulkan::buildStaticMeshAssetAtlasCpuGeometry(&cache);
+  const iggy3d::vulkan::RoomMeshCpuGeometry instanced =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(room, nullptr,
+                                               atlas.assetDraws);
   return expect(first.ready && second.ready, "missing asset proxy ready") &&
          expect(first.vertices.size() == 8U, "missing asset uses box proxy") &&
          expect(first.vertices[0].color[0] == 1.0F &&
@@ -127,7 +289,12 @@ bool missingAssetIsVisibleAndMemoized() {
                 "missing asset failure memoized") &&
          expect(cache.failureReason("not_here") ==
                     "static_mesh_file_not_found",
-                "missing asset reason retained");
+                "missing asset reason retained") &&
+         expect(instanced.ready && instanced.vertices.size() == 8U &&
+                    instanced.staticMeshInstances.empty() &&
+                    instanced.vertices[0].color[0] == 1.0F &&
+                    instanced.vertices[0].color[2] == 1.0F,
+                "instanced path retains visible missing-asset proxy");
 }
 
 bool externalFloorAndWallBypassGeneratedBatching() {
@@ -232,6 +399,17 @@ bool texturedFixtureBuildsOneCachedMaterialBinding() {
       iggy3d::vulkan::buildRoomMeshCpuGeometry(
           roomWith("asset:walkway_stone_01"), nullptr, &cache,
           &materialTextures);
+  const iggy3d::vulkan::StaticMeshAssetAtlasCpuGeometry atlas =
+      iggy3d::vulkan::buildStaticMeshAssetAtlasCpuGeometry(
+          &cache, &materialTextures);
+  const auto walkwayDraw = std::find_if(
+      atlas.assetDraws.begin(), atlas.assetDraws.end(),
+      [](const iggy3d::vulkan::StaticMeshAssetDrawRanges& asset) {
+        return asset.assetId == "walkway_stone_01";
+      });
+  const iggy3d::vulkan::RoomMeshCpuGeometry instanced =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(
+          roomWith("asset:walkway_stone_01"), nullptr, atlas.assetDraws);
   const std::array<std::uint8_t, 4> invalidBytes{0U, 1U, 2U, 3U};
   const iggy3d::DecodedImageRgba8 invalid =
       iggy3d::decodeImageRgba8(invalidBytes);
@@ -259,6 +437,15 @@ bool texturedFixtureBuildsOneCachedMaterialBinding() {
                     geometry.indexedDraws[0].materialTextureIndex == 0U &&
                     hasNonzeroUv,
                 "room draw carries texture binding and transformed UVs") &&
+         expect(atlas.valid && walkwayDraw != atlas.assetDraws.end() &&
+                    walkwayDraw->indexedDraws.size() == 1U &&
+                    walkwayDraw->indexedDraws[0].materialTextureIndex == 0U &&
+                    instanced.ready && instanced.vertices.empty() &&
+                    instanced.staticMeshInstances.size() == 1U &&
+                    instanced.staticMeshInstanceBatches.size() == 1U &&
+                    instanced.staticMeshInstanceBatches[0]
+                            .materialTextureIndex == 0U,
+                "instanced atlas retains textured primitive binding") &&
          expect(!invalid.ok() &&
                     invalid.reasonCode == "image_dimensions_invalid",
                 "malformed image fails without an unsafe allocation");
@@ -394,6 +581,8 @@ int main() {
   const bool ok = importsBoulderFixture() &&
                   rejectsUnsafeAndMissingAssetIds() &&
                   cacheReusesImportAndRendererEmitsIrregularGeometry() &&
+                  repeatedAssetsUseOneAtlasMeshAndCompactTransforms() &&
+                  instanceTransformRejectsInvalidGeometry() &&
                   missingAssetIsVisibleAndMemoized() &&
                   externalFloorAndWallBypassGeneratedBatching() &&
                   discoveryAndPreviewAtlasCoverEveryValidFixture() &&

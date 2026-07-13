@@ -122,4 +122,6 @@ iggy3d_add_vulkan_shader_set(
     shaders/vulkan/src/first_room.vert.glsl
     shaders/vulkan/src/first_room.frag.glsl
     shaders/vulkan/src/material_unlit_textured.vert.glsl
-    shaders/vulkan/src/material_unlit_textured.frag.glsl)
+    shaders/vulkan/src/material_unlit_textured.frag.glsl
+    shaders/vulkan/src/static_mesh_instanced.vert.glsl
+    shaders/vulkan/src/static_mesh_instanced_textured.vert.glsl)

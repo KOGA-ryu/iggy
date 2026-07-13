@@ -106,6 +106,11 @@ RenderReceipt VulkanBackend::makeReceipt(std::string_view result,
                      creativeViewModelPipeline_.pipeline != VkPipeline{});
   appendReceiptField(receipt, "material_texture_pipeline_created",
                      materialTexturePipeline_.pipeline != VkPipeline{});
+  appendReceiptField(receipt, "static_mesh_instance_pipeline_created",
+                     staticMeshInstancePipeline_.pipeline != VkPipeline{});
+  appendReceiptField(
+      receipt, "static_mesh_instance_material_pipeline_created",
+      materialTextureInstancePipeline_.pipeline != VkPipeline{});
   appendReceiptField(receipt, "vertex_buffer_count",
                      firstRoomResources_.ready() ? static_cast<std::uint64_t>(1)
                                                  : static_cast<std::uint64_t>(0));
@@ -137,9 +142,13 @@ bool VulkanBackend::initializeStaticMeshMaterialPipeline() {
   }
   destroyStaticMeshMaterialPipeline();
   materialTextureVertexShader_ = std::move(replacement.vertexShader);
+  materialTextureInstanceVertexShader_ =
+      std::move(replacement.instanceVertexShader);
   materialTextureFragmentShader_ = std::move(replacement.fragmentShader);
   materialTextureLayout_ = std::move(replacement.layout);
   materialTexturePipeline_ = std::move(replacement.pipeline);
+  materialTextureInstancePipeline_ =
+      std::move(replacement.instancePipeline);
   return true;
 }
 
@@ -163,6 +172,17 @@ bool VulkanBackend::createStaticMeshMaterialPipeline(
     return false;
   }
   output.vertexShader = vertexResult.record;
+
+  vertexInfo.spirvPath =
+      config_.shaderRoot / "static_mesh_instanced_textured.vert.spv";
+  vertexInfo.debugName = "static_mesh_instanced_textured.vertex";
+  const vulkan::ShaderModuleResult instanceVertexResult =
+      vulkan::createShaderModule(vertexInfo);
+  if (instanceVertexResult.outcome != RenderOutcome::Ok) {
+    destroyStaticMeshMaterialPipelineBundle(output);
+    return false;
+  }
+  output.instanceVertexShader = instanceVertexResult.record;
 
   vulkan::ShaderModuleCreateInfo fragmentInfo;
   fragmentInfo.device = bootstrap_.handles().device;
@@ -207,6 +227,15 @@ bool VulkanBackend::createStaticMeshMaterialPipeline(
     return false;
   }
   output.pipeline = pipelineResult.record;
+  pipelineInfo.vertexShader = output.instanceVertexShader;
+  pipelineInfo.instanced = true;
+  const vulkan::FirstRoomPipelineResult instancePipelineResult =
+      vulkan::createFirstRoomPipeline(pipelineInfo);
+  if (instancePipelineResult.outcome != RenderOutcome::Ok) {
+    destroyStaticMeshMaterialPipelineBundle(output);
+    return false;
+  }
+  output.instancePipeline = instancePipelineResult.record;
   return true;
 }
 
@@ -214,22 +243,30 @@ void VulkanBackend::destroyStaticMeshMaterialPipelineBundle(
     StaticMeshMaterialPipelineBundle& bundle) {
   vulkan::destroyFirstRoomPipeline(bootstrap_.handles().device,
                                    bundle.pipeline);
+  vulkan::destroyFirstRoomPipeline(bootstrap_.handles().device,
+                                   bundle.instancePipeline);
   vulkan::destroyPipelineLayout(bootstrap_.handles().device, bundle.layout);
   vulkan::destroyShaderModule(bootstrap_.handles().device,
                               bundle.fragmentShader);
   vulkan::destroyShaderModule(bootstrap_.handles().device,
                               bundle.vertexShader);
+  vulkan::destroyShaderModule(bootstrap_.handles().device,
+                              bundle.instanceVertexShader);
 }
 
 void VulkanBackend::destroyStaticMeshMaterialPipeline() {
   vulkan::destroyFirstRoomPipeline(bootstrap_.handles().device,
                                    materialTexturePipeline_);
+  vulkan::destroyFirstRoomPipeline(bootstrap_.handles().device,
+                                   materialTextureInstancePipeline_);
   vulkan::destroyPipelineLayout(bootstrap_.handles().device,
                                 materialTextureLayout_);
   vulkan::destroyShaderModule(bootstrap_.handles().device,
                               materialTextureFragmentShader_);
   vulkan::destroyShaderModule(bootstrap_.handles().device,
                               materialTextureVertexShader_);
+  vulkan::destroyShaderModule(bootstrap_.handles().device,
+                              materialTextureInstanceVertexShader_);
 }
 
 void VulkanBackend::initializePacket7FirstRoomModules() {
@@ -254,6 +291,17 @@ void VulkanBackend::initializePacket7FirstRoomModules() {
     return;
   }
   firstRoomVertexShader_ = vertexResult.record;
+
+  vertexInfo.spirvPath =
+      config_.shaderRoot / "static_mesh_instanced.vert.spv";
+  vertexInfo.debugName = "static_mesh_instanced.vertex";
+  const vulkan::ShaderModuleResult instanceVertexResult =
+      vulkan::createShaderModule(vertexInfo);
+  diagnostics_ = instanceVertexResult.receipt;
+  if (instanceVertexResult.outcome != RenderOutcome::Ok) {
+    return;
+  }
+  staticMeshInstanceVertexShader_ = instanceVertexResult.record;
 
   vulkan::ShaderModuleCreateInfo fragmentInfo;
   fragmentInfo.device = bootstrap_.handles().device;
@@ -292,6 +340,18 @@ void VulkanBackend::initializePacket7FirstRoomModules() {
   }
   firstRoomPipeline_ = pipelineResult.record;
 
+  pipelineInfo.vertexShader = staticMeshInstanceVertexShader_;
+  pipelineInfo.instanced = true;
+  const vulkan::FirstRoomPipelineResult instancePipelineResult =
+      vulkan::createFirstRoomPipeline(pipelineInfo);
+  diagnostics_ = instancePipelineResult.receipt;
+  if (instancePipelineResult.outcome != RenderOutcome::Ok) {
+    return;
+  }
+  staticMeshInstancePipeline_ = instancePipelineResult.record;
+
+  pipelineInfo.vertexShader = firstRoomVertexShader_;
+  pipelineInfo.instanced = false;
   pipelineInfo.depthMode = vulkan::FirstRoomDepthMode::Disabled;
   const vulkan::FirstRoomPipelineResult viewModelPipelineResult =
       vulkan::createFirstRoomPipeline(pipelineInfo);
@@ -334,10 +394,14 @@ void VulkanBackend::destroyPacket7FirstRoomModules() {
   frameCapture_.destroy();
   destroyStaticMeshMaterialPipeline();
   vulkan::destroyFirstRoomPipeline(bootstrap_.handles().device,
+                                   staticMeshInstancePipeline_);
+  vulkan::destroyFirstRoomPipeline(bootstrap_.handles().device,
                                    creativeViewModelPipeline_);
   vulkan::destroyFirstRoomPipeline(bootstrap_.handles().device, firstRoomPipeline_);
   vulkan::destroyPipelineLayout(bootstrap_.handles().device, firstRoomLayout_);
   vulkan::destroyShaderModule(bootstrap_.handles().device, firstRoomFragmentShader_);
+  vulkan::destroyShaderModule(bootstrap_.handles().device,
+                              staticMeshInstanceVertexShader_);
   vulkan::destroyShaderModule(bootstrap_.handles().device, firstRoomVertexShader_);
   firstRoomResources_.destroy();
 }
@@ -392,6 +456,9 @@ void VulkanBackend::initializePacket5Modules(std::uint32_t drawableWidth,
   loopInfo.firstRoomPipeline = &firstRoomPipeline_;
   loopInfo.creativeViewModelPipeline = &creativeViewModelPipeline_;
   loopInfo.materialTexturePipeline = &materialTexturePipeline_;
+  loopInfo.staticMeshInstancePipeline = &staticMeshInstancePipeline_;
+  loopInfo.staticMeshInstanceMaterialPipeline =
+      &materialTextureInstancePipeline_;
   loopInfo.firstRoomLayout = &firstRoomLayout_;
   loopInfo.materialTextureLayout = &materialTextureLayout_;
   loopInfo.firstRoomResources = &firstRoomResources_;
@@ -476,6 +543,9 @@ RenderSubmitResult VulkanBackend::resize(RenderViewport viewport) {
     loopInfo.firstRoomPipeline = &firstRoomPipeline_;
     loopInfo.creativeViewModelPipeline = &creativeViewModelPipeline_;
     loopInfo.materialTexturePipeline = &materialTexturePipeline_;
+    loopInfo.staticMeshInstancePipeline = &staticMeshInstancePipeline_;
+    loopInfo.staticMeshInstanceMaterialPipeline =
+        &materialTextureInstancePipeline_;
     loopInfo.firstRoomLayout = &firstRoomLayout_;
     loopInfo.materialTextureLayout = &materialTextureLayout_;
     loopInfo.firstRoomResources = &firstRoomResources_;
@@ -568,9 +638,13 @@ VulkanStaticMeshAssetReloadResult VulkanBackend::reloadStaticMeshAssets() {
     return result;
   }
   materialTextureVertexShader_ = std::move(replacement.vertexShader);
+  materialTextureInstanceVertexShader_ =
+      std::move(replacement.instanceVertexShader);
   materialTextureFragmentShader_ = std::move(replacement.fragmentShader);
   materialTextureLayout_ = std::move(replacement.layout);
   materialTexturePipeline_ = std::move(replacement.pipeline);
+  materialTextureInstancePipeline_ =
+      std::move(replacement.instancePipeline);
 
   result.outcome = RenderOutcome::Ok;
   result.reason = {"static_mesh_asset_reload_applied",

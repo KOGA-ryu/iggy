@@ -43,6 +43,29 @@ int main() {
   ok = expect(iggy3d::vulkan::firstRoomVertexFormatMatchesShader(),
               "format matches shader") &&
        ok;
+  const iggy3d::vulkan::StaticMeshInstanceVertexFormat instanceFormat =
+      iggy3d::vulkan::staticMeshInstanceVertexFormat();
+  ok = expect(sizeof(iggy3d::vulkan::StaticMeshInstanceVertex) ==
+                  sizeof(float) * 11U,
+              "static mesh vertex stride storage") &&
+       expect(sizeof(iggy3d::vulkan::StaticMeshInstanceTransform) ==
+                  sizeof(float) * 28U,
+              "static mesh instance stride storage") &&
+       expect(instanceFormat.bindings[0].inputRate ==
+                  VK_VERTEX_INPUT_RATE_VERTEX &&
+                  instanceFormat.bindings[1].inputRate ==
+                      VK_VERTEX_INPUT_RATE_INSTANCE,
+              "static mesh vertex and instance rates") &&
+       expect(instanceFormat.attributes[3].location ==
+                  iggy3d::vulkan::kStaticMeshNormalLocation &&
+                  instanceFormat.attributes[4].location ==
+                      iggy3d::vulkan::kStaticMeshModelColumn0Location &&
+                  instanceFormat.attributes[10].location ==
+                      iggy3d::vulkan::kStaticMeshNormalColumn2Location,
+              "static mesh instance attribute locations") &&
+       expect(iggy3d::vulkan::staticMeshInstanceVertexFormatMatchesShader(),
+              "static mesh instance format matches shader") &&
+       ok;
   iggy3d::vulkan::PipelineLayoutKey materialLayout;
   materialLayout.layout = "material_texture";
   materialLayout.descriptorSetLayoutCount =
@@ -60,6 +83,9 @@ int main() {
                   iggy3d::vulkan::FirstRoomDepthMode::Disabled) ==
                   iggy3d::vulkan::kCreativeViewModelPipelineVariant,
               "held preview uses depth-disabled pipeline") &&
+       expect(iggy3d::vulkan::kStaticMeshInstancePipelineVariant !=
+                  iggy3d::vulkan::kStaticMeshInstanceMaterialPipelineVariant,
+              "instanced material and color pipelines remain distinct") &&
        ok;
   return ok ? 0 : 1;
 }

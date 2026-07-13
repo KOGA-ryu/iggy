@@ -231,6 +231,7 @@ target_sources(iggy3d
     src/render/vulkan/FirstRoomPipeline.cpp
     src/render/vulkan/VulkanMemoryAllocator.cpp
     src/render/vulkan/StaticMeshMaterialTextures.cpp
+    src/render/vulkan/StaticMeshInstances.cpp
     src/render/vulkan/BufferImageResources.cpp
     src/render/vulkan/FrameCapture.cpp
     src/render/vulkan/VulkanBackend.cpp)

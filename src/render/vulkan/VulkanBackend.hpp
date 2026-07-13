@@ -56,9 +56,11 @@ public:
 private:
   struct StaticMeshMaterialPipelineBundle {
     vulkan::ShaderModuleRecord vertexShader;
+    vulkan::ShaderModuleRecord instanceVertexShader;
     vulkan::ShaderModuleRecord fragmentShader;
     vulkan::PipelineLayoutRecord layout;
     vulkan::FirstRoomPipelineRecord pipeline;
+    vulkan::FirstRoomPipelineRecord instancePipeline;
   };
 
   RenderReceipt makeReceipt(std::string_view result, std::string_view reasonCode) const;
@@ -84,10 +86,14 @@ private:
   vulkan::PipelineLayoutRecord firstRoomLayout_;
   vulkan::FirstRoomPipelineRecord firstRoomPipeline_;
   vulkan::FirstRoomPipelineRecord creativeViewModelPipeline_;
+  vulkan::ShaderModuleRecord staticMeshInstanceVertexShader_;
+  vulkan::FirstRoomPipelineRecord staticMeshInstancePipeline_;
   vulkan::ShaderModuleRecord materialTextureVertexShader_;
+  vulkan::ShaderModuleRecord materialTextureInstanceVertexShader_;
   vulkan::ShaderModuleRecord materialTextureFragmentShader_;
   vulkan::PipelineLayoutRecord materialTextureLayout_;
   vulkan::FirstRoomPipelineRecord materialTexturePipeline_;
+  vulkan::FirstRoomPipelineRecord materialTextureInstancePipeline_;
   vulkan::BufferImageResources firstRoomResources_;
   vulkan::FrameCapture frameCapture_;
   bool firstRoomReady_ = false;

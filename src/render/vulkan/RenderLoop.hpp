@@ -45,6 +45,8 @@ struct RenderLoopCreateInfo {
   FirstRoomPipelineRecord* firstRoomPipeline = nullptr;
   FirstRoomPipelineRecord* creativeViewModelPipeline = nullptr;
   FirstRoomPipelineRecord* materialTexturePipeline = nullptr;
+  FirstRoomPipelineRecord* staticMeshInstancePipeline = nullptr;
+  FirstRoomPipelineRecord* staticMeshInstanceMaterialPipeline = nullptr;
   PipelineLayoutRecord* firstRoomLayout = nullptr;
   PipelineLayoutRecord* materialTextureLayout = nullptr;
   BufferImageResources* firstRoomResources = nullptr;

@@ -19,6 +19,15 @@ load. Imported files are cached by `assetId`; an unchanged scene reuses both the
 parsed asset and the existing room GPU buffer. A missing asset renders as a
 magenta bounds proxy so broken content is visible without blanking the room.
 
+Valid imported geometry is uploaded once into an immutable asset atlas at
+startup or explicit asset reload. Placed copies contribute only a compact model
+transform and normal transform to the room revision. The renderer groups those
+records by asset, primitive, and material, then issues one instanced indexed
+draw per group. Repeating one boulder 300 times therefore retains one boulder
+triangle range plus 300 transforms instead of expanding the boulder vertices
+300 times into room geometry. Missing assets remain ordinary magenta room
+proxies and do not enter an invalid instance batch.
+
 At startup, Creative recursively discovers valid `.glb` files beneath
 `assets/creative/`. The relative path without `.glb` is the catalog and save
 identity. Discovery is sorted, validates every file through the production
@@ -137,6 +146,8 @@ editable pivot for every node.
 - Source-origin rotation and scale pivots, including off-center mesh bounds.
 - Per-object Creative translation, Euler rotation, and non-uniform scale.
 - Deterministic content hash and one-load process cache.
+- Immutable 32-bit imported-mesh atlas with revision-cached per-room instance
+  transforms and material-aware instanced draws.
 
 Textured primitives use their Blender base-color texture multiplied by the
 material base-color factor and deterministic face shading. Untextured objects,
@@ -156,6 +167,9 @@ upload occurs in the frame loop.
 - Sockets and attachment points from glTF extras.
 - Skinning, armatures, morph targets, animation clips, and character graphs.
 - Offline cooked mesh packages and cross-run derived-data caching.
+- GPU-driven visibility culling, indirect draws, LOD selection, and per-instance
+  material overrides. The current instance batches remain CPU-planned whenever
+  the Creative document revision changes.
 
 Static import rejects skins, morph targets, non-triangle primitives, malformed
 accessors, unsafe asset IDs, non-finite geometry, and degenerate three-axis

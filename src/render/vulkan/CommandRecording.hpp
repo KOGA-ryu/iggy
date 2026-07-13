@@ -85,6 +85,17 @@ struct RoomDrawPipelineSelection {
   return {};
 }
 
+[[nodiscard]] constexpr RoomDrawPipelineSelection selectRoomDrawPipeline(
+    const StaticMeshInstanceBatch& draw,
+    std::size_t availableTextureCount,
+    bool materialPipelineReady) noexcept {
+  if (materialPipelineReady &&
+      draw.materialTextureIndex < availableTextureCount) {
+    return {true, draw.materialTextureIndex};
+  }
+  return {};
+}
+
 [[nodiscard]] CreativePreviewCommandPlan buildCreativePreviewCommandPlan(
     const CreativePreviewDrawInfo* draws,
     std::size_t drawCount,
@@ -104,6 +115,8 @@ struct FirstRoomFrameRecordInfo {
   VkPipeline pipeline{};
   VkPipeline viewModelPipeline{};
   VkPipeline materialTexturePipeline{};
+  VkPipeline staticMeshInstancePipeline{};
+  VkPipeline staticMeshInstanceMaterialPipeline{};
   VkPipelineLayout pipelineLayout{};
   VkPipelineLayout materialTexturePipelineLayout{};
   const VkDescriptorSet* materialTextureDescriptorSets = nullptr;
@@ -113,6 +126,11 @@ struct FirstRoomFrameRecordInfo {
   std::uint32_t indexCount = 0;
   const IndexedDrawRange* indexedDraws = nullptr;
   std::size_t indexedDrawCount = 0;
+  VkBuffer staticMeshAssetVertexBuffer{};
+  VkBuffer staticMeshAssetIndexBuffer{};
+  VkBuffer staticMeshInstanceBuffer{};
+  const StaticMeshInstanceBatch* staticMeshInstanceBatches = nullptr;
+  std::size_t staticMeshInstanceBatchCount = 0;
   FirstRoomPushConstants pushConstants;
   VkBuffer creativePreviewVertexBuffer{};
   VkBuffer creativePreviewIndexBuffer{};

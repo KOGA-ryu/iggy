@@ -35,6 +35,12 @@ int main() {
   ok = expect(fileExists(sourceRoot / "material_unlit_textured.frag.glsl"),
               "material fragment shader") &&
        ok;
+  ok = expect(fileExists(sourceRoot / "static_mesh_instanced.vert.glsl"),
+              "instanced static mesh vertex shader") &&
+       expect(fileExists(sourceRoot /
+                         "static_mesh_instanced_textured.vert.glsl"),
+              "instanced textured static mesh vertex shader") &&
+       ok;
   ok = expect(binaryRoot.find("generated/shaders/vulkan") != std::string::npos,
               "generated shader root") &&
        ok;

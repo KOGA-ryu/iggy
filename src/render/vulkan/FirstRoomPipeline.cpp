@@ -31,17 +31,25 @@ RenderReceipt baseReceipt(std::string_view result,
   appendReceiptField(receipt, "backend", "vulkan");
   appendReceiptField(receipt, "pipeline_family", "first_room");
   appendReceiptField(receipt, "pipeline_variant", variant);
+  const bool materialPipeline =
+      variant == kStaticMeshMaterialPipelineVariant ||
+      variant == kStaticMeshInstanceMaterialPipelineVariant;
   appendReceiptField(receipt, "pipeline_layout",
-                     variant == kStaticMeshMaterialPipelineVariant
+                     materialPipeline
                          ? "material_texture"
                          : "push_constants_only");
   appendReceiptField(
       receipt, "descriptor_set_layout_count",
       static_cast<std::uint64_t>(
-          variant == kStaticMeshMaterialPipelineVariant ? 1U : 0U));
+          materialPipeline ? 1U : 0U));
   appendReceiptField(receipt, "push_constant_clip_from_model_size",
                      static_cast<std::uint64_t>(kFirstRoomPushConstantSize));
-  appendReceiptField(receipt, "vertex_format", kFirstRoomVertexFormatName);
+  appendReceiptField(
+      receipt, "vertex_format",
+      variant == kStaticMeshInstancePipelineVariant ||
+              variant == kStaticMeshInstanceMaterialPipelineVariant
+          ? "StaticMeshInstanceVertex_Pos3_Uv2_Color3_Normal3_Mat4_NormalMat3"
+          : kFirstRoomVertexFormatName);
   appendReceiptField(receipt, "rendering_path", "dynamic");
   appendReceiptField(receipt, "depth_test",
                      depthMode == FirstRoomDepthMode::ReadWrite ? "enabled"
@@ -87,22 +95,110 @@ bool firstRoomVertexFormatMatchesShader() {
          format.uv0.offset == sizeof(float) * 6U;
 }
 
+StaticMeshInstanceVertexFormat staticMeshInstanceVertexFormat() {
+  StaticMeshInstanceVertexFormat format;
+  format.bindings[0] = {
+      0U, static_cast<std::uint32_t>(sizeof(StaticMeshInstanceVertex)),
+      VK_VERTEX_INPUT_RATE_VERTEX};
+  format.bindings[1] = {
+      1U, static_cast<std::uint32_t>(sizeof(StaticMeshInstanceTransform)),
+      VK_VERTEX_INPUT_RATE_INSTANCE};
+
+  const auto attribute = [](std::uint32_t location,
+                            std::uint32_t binding,
+                            VkFormat valueFormat,
+                            std::uint32_t offset) {
+    VkVertexInputAttributeDescription description{};
+    description.location = location;
+    description.binding = binding;
+    description.format = valueFormat;
+    description.offset = offset;
+    return description;
+  };
+  format.attributes[0] = attribute(
+      kFirstRoomPositionLocation, 0U, VK_FORMAT_R32G32B32_SFLOAT,
+      static_cast<std::uint32_t>(offsetof(StaticMeshInstanceVertex, position)));
+  format.attributes[1] = attribute(
+      kFirstRoomUv0Location, 0U, VK_FORMAT_R32G32_SFLOAT,
+      static_cast<std::uint32_t>(offsetof(StaticMeshInstanceVertex, uv0)));
+  format.attributes[2] = attribute(
+      kFirstRoomColorLocation, 0U, VK_FORMAT_R32G32B32_SFLOAT,
+      static_cast<std::uint32_t>(offsetof(StaticMeshInstanceVertex, baseColor)));
+  format.attributes[3] = attribute(
+      kStaticMeshNormalLocation, 0U, VK_FORMAT_R32G32B32_SFLOAT,
+      static_cast<std::uint32_t>(offsetof(StaticMeshInstanceVertex, normal)));
+  format.attributes[4] = attribute(
+      kStaticMeshModelColumn0Location, 1U, VK_FORMAT_R32G32B32A32_SFLOAT,
+      static_cast<std::uint32_t>(
+          offsetof(StaticMeshInstanceTransform, modelColumn0)));
+  format.attributes[5] = attribute(
+      kStaticMeshModelColumn1Location, 1U, VK_FORMAT_R32G32B32A32_SFLOAT,
+      static_cast<std::uint32_t>(
+          offsetof(StaticMeshInstanceTransform, modelColumn1)));
+  format.attributes[6] = attribute(
+      kStaticMeshModelColumn2Location, 1U, VK_FORMAT_R32G32B32A32_SFLOAT,
+      static_cast<std::uint32_t>(
+          offsetof(StaticMeshInstanceTransform, modelColumn2)));
+  format.attributes[7] = attribute(
+      kStaticMeshModelColumn3Location, 1U, VK_FORMAT_R32G32B32A32_SFLOAT,
+      static_cast<std::uint32_t>(
+          offsetof(StaticMeshInstanceTransform, modelColumn3)));
+  format.attributes[8] = attribute(
+      kStaticMeshNormalColumn0Location, 1U, VK_FORMAT_R32G32B32A32_SFLOAT,
+      static_cast<std::uint32_t>(
+          offsetof(StaticMeshInstanceTransform, normalColumn0)));
+  format.attributes[9] = attribute(
+      kStaticMeshNormalColumn1Location, 1U, VK_FORMAT_R32G32B32A32_SFLOAT,
+      static_cast<std::uint32_t>(
+          offsetof(StaticMeshInstanceTransform, normalColumn1)));
+  format.attributes[10] = attribute(
+      kStaticMeshNormalColumn2Location, 1U, VK_FORMAT_R32G32B32A32_SFLOAT,
+      static_cast<std::uint32_t>(
+          offsetof(StaticMeshInstanceTransform, normalColumn2)));
+  return format;
+}
+
+bool staticMeshInstanceVertexFormatMatchesShader() {
+  const StaticMeshInstanceVertexFormat format =
+      staticMeshInstanceVertexFormat();
+  return sizeof(StaticMeshInstanceVertex) == sizeof(float) * 11U &&
+         sizeof(StaticMeshInstanceTransform) == sizeof(float) * 28U &&
+         format.bindings[0].stride == sizeof(StaticMeshInstanceVertex) &&
+         format.bindings[0].inputRate == VK_VERTEX_INPUT_RATE_VERTEX &&
+         format.bindings[1].stride == sizeof(StaticMeshInstanceTransform) &&
+         format.bindings[1].inputRate == VK_VERTEX_INPUT_RATE_INSTANCE &&
+         format.attributes[0].location == kFirstRoomPositionLocation &&
+         format.attributes[3].location == kStaticMeshNormalLocation &&
+         format.attributes[4].location == kStaticMeshModelColumn0Location &&
+         format.attributes[10].location == kStaticMeshNormalColumn2Location;
+}
+
 FirstRoomPipelineResult createFirstRoomPipeline(const FirstRoomPipelineCreateInfo& createInfo) {
   FirstRoomPipelineResult result;
   result.record.colorFormat = createInfo.colorFormat;
   result.record.depthFormat = createInfo.depthFormat;
   result.record.depthMode = createInfo.depthMode;
   result.record.flavor = createInfo.flavor;
-  result.record.variant = createInfo.flavor ==
-                                  FirstRoomPipelineFlavor::MaterialTextured
-                              ? std::string(kStaticMeshMaterialPipelineVariant)
-                              : std::string(firstRoomPipelineVariant(
-                                    createInfo.depthMode));
+  result.record.instanced = createInfo.instanced;
+  if (createInfo.instanced) {
+    result.record.variant =
+        createInfo.flavor == FirstRoomPipelineFlavor::MaterialTextured
+            ? std::string(kStaticMeshInstanceMaterialPipelineVariant)
+            : std::string(kStaticMeshInstancePipelineVariant);
+  } else {
+    result.record.variant =
+        createInfo.flavor == FirstRoomPipelineFlavor::MaterialTextured
+            ? std::string(kStaticMeshMaterialPipelineVariant)
+            : std::string(firstRoomPipelineVariant(createInfo.depthMode));
+  }
   const bool layoutMatches =
       createInfo.flavor == FirstRoomPipelineFlavor::MaterialTextured
           ? materialTexturePipelineLayoutKeyValid(createInfo.layout.key)
           : firstRoomPipelineLayoutKeyValid(createInfo.layout.key);
-  if (!firstRoomVertexFormatMatchesShader() || !layoutMatches) {
+  const bool formatMatches = createInfo.instanced
+                                 ? staticMeshInstanceVertexFormatMatchesShader()
+                                 : firstRoomVertexFormatMatchesShader();
+  if (!formatMatches || !layoutMatches) {
     result.reason = reason("vertex_format_mismatch");
     result.receipt = baseReceipt("fail", result.reason.code,
                                  result.record.variant,
@@ -121,6 +217,8 @@ FirstRoomPipelineResult createFirstRoomPipeline(const FirstRoomPipelineCreateInf
   }
 
   const FirstRoomVertexFormat vertexFormat = firstRoomVertexFormat();
+  const StaticMeshInstanceVertexFormat instanceVertexFormat =
+      staticMeshInstanceVertexFormat();
   VkPipelineShaderStageCreateInfo stages[2]{};
   stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
   stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
@@ -133,12 +231,23 @@ FirstRoomPipelineResult createFirstRoomPipeline(const FirstRoomPipelineCreateInf
 
   VkPipelineVertexInputStateCreateInfo vertexInput{};
   vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-  vertexInput.vertexBindingDescriptionCount = 1U;
-  vertexInput.pVertexBindingDescriptions = &vertexFormat.binding;
   VkVertexInputAttributeDescription attributes[3]{
       vertexFormat.position, vertexFormat.uv0, vertexFormat.color};
-  vertexInput.vertexAttributeDescriptionCount = 3U;
-  vertexInput.pVertexAttributeDescriptions = attributes;
+  if (createInfo.instanced) {
+    vertexInput.vertexBindingDescriptionCount =
+        static_cast<std::uint32_t>(instanceVertexFormat.bindings.size());
+    vertexInput.pVertexBindingDescriptions =
+        instanceVertexFormat.bindings.data();
+    vertexInput.vertexAttributeDescriptionCount =
+        static_cast<std::uint32_t>(instanceVertexFormat.attributes.size());
+    vertexInput.pVertexAttributeDescriptions =
+        instanceVertexFormat.attributes.data();
+  } else {
+    vertexInput.vertexBindingDescriptionCount = 1U;
+    vertexInput.pVertexBindingDescriptions = &vertexFormat.binding;
+    vertexInput.vertexAttributeDescriptionCount = 3U;
+    vertexInput.pVertexAttributeDescriptions = attributes;
+  }
 
   VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
   inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;

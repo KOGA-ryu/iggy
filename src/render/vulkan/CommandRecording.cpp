@@ -384,11 +384,23 @@ CommandRecordResult CommandRecording::recordFirstRoomFrame(
        info.creativePreviewIndexedDraws == nullptr ||
        info.creativePreviewIndexedDrawCount == 0U ||
        info.creativePreviewDraws == nullptr);
+  const bool baseGeometryInvalid =
+      info.indexCount > 0U &&
+      (info.vertexBuffer == VK_NULL_HANDLE ||
+       info.indexBuffer == VK_NULL_HANDLE);
+  const bool staticMeshInstancesInvalid =
+      info.staticMeshInstanceBatchCount > 0U &&
+      (info.staticMeshInstancePipeline == VK_NULL_HANDLE ||
+       info.staticMeshAssetVertexBuffer == VK_NULL_HANDLE ||
+       info.staticMeshAssetIndexBuffer == VK_NULL_HANDLE ||
+       info.staticMeshInstanceBuffer == VK_NULL_HANDLE ||
+       info.staticMeshInstanceBatches == nullptr);
   if (!ready_ || info.commandBuffer == VK_NULL_HANDLE || info.swapchainImage == VK_NULL_HANDLE ||
       info.swapchainImageView == VK_NULL_HANDLE || info.depthImage == VK_NULL_HANDLE ||
       info.depthImageView == VK_NULL_HANDLE || info.pipeline == VK_NULL_HANDLE ||
-      info.pipelineLayout == VK_NULL_HANDLE || info.vertexBuffer == VK_NULL_HANDLE ||
-      info.indexBuffer == VK_NULL_HANDLE || info.indexCount == 0U ||
+      info.pipelineLayout == VK_NULL_HANDLE ||
+      (info.indexCount == 0U && info.staticMeshInstanceBatchCount == 0U) ||
+      baseGeometryInvalid || staticMeshInstancesInvalid ||
       info.extent.width == 0U || info.extent.height == 0U ||
       creativePreviewInvalid) {
     result.outcome = RenderOutcome::RendererNotReady;
@@ -501,12 +513,19 @@ CommandRecordResult CommandRecording::recordFirstRoomFrame(
   vkCmdSetScissor(info.commandBuffer, 0, 1, &scissor);
 
   createInfo_.deviceFunctions.cmdBeginRendering(info.commandBuffer, &renderingInfo);
-  vkCmdBindPipeline(info.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, info.pipeline);
   VkDeviceSize vertexOffset = 0;
-  vkCmdBindVertexBuffers(info.commandBuffer, 0, 1, &info.vertexBuffer, &vertexOffset);
-  vkCmdBindIndexBuffer(info.commandBuffer, info.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
   std::uint32_t indexedDrawCount = 0;
-  if (info.indexedDraws != nullptr && info.indexedDrawCount > 0U) {
+  if (info.indexCount > 0U) {
+    vkCmdBindPipeline(info.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                      info.pipeline);
+    vkCmdBindVertexBuffers(info.commandBuffer, 0, 1, &info.vertexBuffer,
+                           &vertexOffset);
+    vkCmdBindIndexBuffer(info.commandBuffer, info.indexBuffer, 0,
+                         VK_INDEX_TYPE_UINT16);
+  }
+  if (info.indexCount > 0U && info.indexedDraws != nullptr &&
+      info.indexedDrawCount > 0U) {
+    bool pipelineBound = false;
     bool materialPipelineBound = false;
     std::uint32_t boundTextureIndex = kInvalidMaterialTextureIndex;
     const bool materialPipelineReady =
@@ -522,11 +541,12 @@ CommandRecordResult CommandRecording::recordFirstRoomFrame(
       const RoomDrawPipelineSelection selection = selectRoomDrawPipeline(
           draw, info.materialTextureDescriptorSetCount,
           materialPipelineReady);
-      if (selection.textured != materialPipelineBound) {
+      if (!pipelineBound || selection.textured != materialPipelineBound) {
         vkCmdBindPipeline(
             info.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
             selection.textured ? info.materialTexturePipeline : info.pipeline);
         materialPipelineBound = selection.textured;
+        pipelineBound = true;
         boundTextureIndex = kInvalidMaterialTextureIndex;
       }
       const VkPipelineLayout activeLayout =
@@ -548,7 +568,7 @@ CommandRecordResult CommandRecording::recordFirstRoomFrame(
       ++indexedDrawCount;
     }
   }
-  if (indexedDrawCount == 0U) {
+  if (info.indexCount > 0U && indexedDrawCount == 0U) {
     vkCmdBindPipeline(info.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                       info.pipeline);
     vkCmdPushConstants(info.commandBuffer, info.pipelineLayout,
@@ -556,6 +576,70 @@ CommandRecordResult CommandRecording::recordFirstRoomFrame(
                        sizeof(FirstRoomPushConstants), &info.pushConstants);
     vkCmdDrawIndexed(info.commandBuffer, info.indexCount, 1, 0, 0, 0);
     indexedDrawCount = 1U;
+  }
+  std::uint32_t staticMeshInstanceDrawCount = 0U;
+  std::uint64_t staticMeshInstanceCount = 0U;
+  if (info.staticMeshInstanceBatchCount > 0U) {
+    const VkBuffer vertexBuffers[2]{info.staticMeshAssetVertexBuffer,
+                                    info.staticMeshInstanceBuffer};
+    const VkDeviceSize vertexOffsets[2]{0U, 0U};
+    vkCmdBindVertexBuffers(info.commandBuffer, 0U, 2U, vertexBuffers,
+                           vertexOffsets);
+    vkCmdBindIndexBuffer(info.commandBuffer, info.staticMeshAssetIndexBuffer,
+                         0U, VK_INDEX_TYPE_UINT32);
+    bool pipelineBound = false;
+    bool materialPipelineBound = false;
+    std::uint32_t boundTextureIndex = kInvalidMaterialTextureIndex;
+    const bool materialPipelineReady =
+        info.staticMeshInstanceMaterialPipeline != VK_NULL_HANDLE &&
+        info.materialTexturePipelineLayout != VK_NULL_HANDLE &&
+        info.materialTextureDescriptorSets != nullptr &&
+        info.materialTextureDescriptorSetCount > 0U;
+    for (std::size_t batchIndex = 0U;
+         batchIndex < info.staticMeshInstanceBatchCount; ++batchIndex) {
+      const StaticMeshInstanceBatch& batch =
+          info.staticMeshInstanceBatches[batchIndex];
+      if (batch.indexCount == 0U || batch.instanceCount == 0U) {
+        continue;
+      }
+      const RoomDrawPipelineSelection selection = selectRoomDrawPipeline(
+          batch, info.materialTextureDescriptorSetCount,
+          materialPipelineReady);
+      if (!pipelineBound || selection.textured != materialPipelineBound) {
+        vkCmdBindPipeline(
+            info.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+            selection.textured ? info.staticMeshInstanceMaterialPipeline
+                               : info.staticMeshInstancePipeline);
+        pipelineBound = true;
+        materialPipelineBound = selection.textured;
+        boundTextureIndex = kInvalidMaterialTextureIndex;
+      }
+      const VkPipelineLayout activeLayout =
+          selection.textured ? info.materialTexturePipelineLayout
+                             : info.pipelineLayout;
+      if (selection.textured && selection.textureIndex != boundTextureIndex) {
+        const VkDescriptorSet descriptorSet =
+            info.materialTextureDescriptorSets[selection.textureIndex];
+        vkCmdBindDescriptorSets(
+            info.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+            activeLayout, 0U, 1U, &descriptorSet, 0U, nullptr);
+        boundTextureIndex = selection.textureIndex;
+      }
+      vkCmdPushConstants(info.commandBuffer, activeLayout,
+                         VK_SHADER_STAGE_VERTEX_BIT, 0,
+                         sizeof(FirstRoomPushConstants),
+                         &info.pushConstants);
+      vkCmdDrawIndexed(info.commandBuffer, batch.indexCount,
+                       batch.instanceCount, batch.firstIndex, 0,
+                       batch.firstInstance);
+      ++staticMeshInstanceDrawCount;
+      const std::uint64_t instanceEnd =
+          static_cast<std::uint64_t>(batch.firstInstance) +
+          batch.instanceCount;
+      if (instanceEnd > staticMeshInstanceCount) {
+        staticMeshInstanceCount = instanceEnd;
+      }
+    }
   }
   std::uint32_t creativePreviewDrawCount = 0U;
   if (info.creativePreviewDrawCount > 0U) {
@@ -683,9 +767,16 @@ CommandRecordResult CommandRecording::recordFirstRoomFrame(
   appendReceiptField(result.receipt, "frame_slot", static_cast<std::uint64_t>(info.frameSlot));
   appendReceiptField(result.receipt, "swapchain_image_index",
                      static_cast<std::uint64_t>(info.imageIndex));
-  appendReceiptField(result.receipt, "draw_count", static_cast<std::uint64_t>(indexedDrawCount));
+  appendReceiptField(
+      result.receipt, "draw_count",
+      static_cast<std::uint64_t>(indexedDrawCount) + staticMeshInstanceDrawCount);
   appendReceiptField(result.receipt, "indexed_draw_count",
                      static_cast<std::uint64_t>(indexedDrawCount));
+  appendReceiptField(
+      result.receipt, "static_mesh_instance_draw_count",
+      static_cast<std::uint64_t>(staticMeshInstanceDrawCount));
+  appendReceiptField(result.receipt, "static_mesh_instance_count",
+                     staticMeshInstanceCount);
   appendReceiptField(result.receipt, "creative_preview_draw_count",
                      static_cast<std::uint64_t>(creativePreviewDrawCount));
   appendReceiptField(result.receipt, "index_count", static_cast<std::uint64_t>(info.indexCount));

@@ -782,21 +782,29 @@ bool appendBean(std::vector<FirstRoomVertex>& vertices,
   return {lhs.x * rhs.x, lhs.y * rhs.y, lhs.z * rhs.z};
 }
 
+[[nodiscard]] Vec3 importedMaterialBaseColor(
+    const StaticMeshAsset& asset,
+    std::uint32_t materialIndex) noexcept {
+  Vec3 base{0.48F, 0.44F, 0.38F};
+  if (materialIndex >= asset.materials.size()) {
+    return base;
+  }
+  const StaticMeshMaterial& material = asset.materials[materialIndex];
+  if (std::isfinite(material.baseColorFactor[0]) &&
+      std::isfinite(material.baseColorFactor[1]) &&
+      std::isfinite(material.baseColorFactor[2])) {
+    base = {std::clamp(material.baseColorFactor[0], 0.0F, 1.0F),
+            std::clamp(material.baseColorFactor[1], 0.0F, 1.0F),
+            std::clamp(material.baseColorFactor[2], 0.0F, 1.0F)};
+  }
+  return base;
+}
+
 [[nodiscard]] Vec3 importedTriangleColor(
     const StaticMeshAsset& asset,
     std::uint32_t materialIndex,
     Vec3 worldNormal) noexcept {
-  Vec3 base{0.48F, 0.44F, 0.38F};
-  if (materialIndex < asset.materials.size()) {
-    const StaticMeshMaterial& material = asset.materials[materialIndex];
-    if (std::isfinite(material.baseColorFactor[0]) &&
-        std::isfinite(material.baseColorFactor[1]) &&
-        std::isfinite(material.baseColorFactor[2])) {
-      base = {std::clamp(material.baseColorFactor[0], 0.0F, 1.0F),
-              std::clamp(material.baseColorFactor[1], 0.0F, 1.0F),
-              std::clamp(material.baseColorFactor[2], 0.0F, 1.0F)};
-    }
-  }
+  const Vec3 base = importedMaterialBaseColor(asset, materialIndex);
   const Vec3 light = normalized(Vec3{-0.35F, 0.85F, 0.40F});
   const float brightness =
       0.52F + 0.48F * std::max(0.0F, dot(worldNormal, light));
@@ -1498,11 +1506,30 @@ void appendCreativeWireframeDebugGeometry(RoomMeshCpuGeometry& roomGeometry,
   }
 }
 
-RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
+namespace {
+
+const StaticMeshAssetDrawRanges* findStaticMeshAssetDrawRanges(
+    std::span<const StaticMeshAssetDrawRanges> assets,
+    std::string_view assetId,
+    std::size_t& index) noexcept {
+  const auto found = std::lower_bound(
+      assets.begin(), assets.end(), assetId,
+      [](const StaticMeshAssetDrawRanges& asset, std::string_view id) {
+        return asset.assetId < id;
+      });
+  if (found == assets.end() || found->assetId != assetId) {
+    return nullptr;
+  }
+  index = static_cast<std::size_t>(found - assets.begin());
+  return &*found;
+}
+
+RoomMeshCpuGeometry buildRoomMeshCpuGeometryImpl(
     const SceneRoomProjection& room,
     const RenderCreativeWireframeDebugFrame* creativeWireframeDebug,
     StaticMeshAssetCache* staticMeshAssets,
-    const StaticMeshMaterialTextureResources* materialTextures) {
+    const StaticMeshMaterialTextureResources* materialTextures,
+    const std::span<const StaticMeshAssetDrawRanges>* staticMeshAssetDraws) {
   RoomMeshCpuGeometry result;
   result.sourceRoomAssetId = room.assetId;
   result.sourceRoomStaticMeshCount = room.meshes.size();
@@ -1515,6 +1542,10 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
                           room.surfacePatches.size() * 5U);
   result.indices.reserve(room.meshes.size() * 144U +
                          room.surfacePatches.size() * 24U);
+  std::vector<std::vector<StaticMeshInstanceTransform>> instanceGroups;
+  if (staticMeshAssetDraws != nullptr) {
+    instanceGroups.resize(staticMeshAssetDraws->size());
+  }
 
   const std::vector<FloorDraw> floorDraws = buildOptimizedFloorDraws(room);
   std::vector<WallBoxDraw> wallDraws;
@@ -1570,6 +1601,29 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
     }
     std::string_view externalAssetId;
     if (externalStaticMeshId(mesh.meshId, externalAssetId)) {
+      if (staticMeshAssetDraws != nullptr) {
+        std::size_t assetIndex = 0U;
+        const StaticMeshAssetDrawRanges* asset =
+            findStaticMeshAssetDrawRanges(*staticMeshAssetDraws,
+                                          externalAssetId, assetIndex);
+        StaticMeshInstanceTransform transform;
+        if (asset != nullptr && buildStaticMeshInstanceTransform(
+                                    mesh, asset->boundsMin, asset->boundsMax,
+                                    transform)) {
+          instanceGroups[assetIndex].push_back(transform);
+          continue;
+        }
+        if (!appendBoxIfFits(result.vertices, result.indices,
+                             result.indexedDraws, mesh.position, mesh.size,
+                             {1.0F, 0.0F, 1.0F},
+                             mesh.rotationEulerRadians)) {
+          result.vertices.clear();
+          result.indices.clear();
+          result.indexedDraws.clear();
+          return result;
+        }
+        continue;
+      }
       const StaticMeshAsset* asset =
           staticMeshAssets != nullptr
               ? staticMeshAssets->find(externalAssetId)
@@ -1695,10 +1749,67 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
     }
   }
 
+  if (staticMeshAssetDraws != nullptr) {
+    for (std::size_t assetIndex = 0U; assetIndex < instanceGroups.size();
+         ++assetIndex) {
+      const std::vector<StaticMeshInstanceTransform>& instances =
+          instanceGroups[assetIndex];
+      if (instances.empty()) {
+        continue;
+      }
+      if (instances.size() > std::numeric_limits<std::uint32_t>::max() ||
+          result.staticMeshInstances.size() >
+              std::numeric_limits<std::uint32_t>::max() - instances.size()) {
+        result.staticMeshInstances.clear();
+        result.staticMeshInstanceBatches.clear();
+        return result;
+      }
+      const std::uint32_t firstInstance =
+          static_cast<std::uint32_t>(result.staticMeshInstances.size());
+      const std::uint32_t instanceCount =
+          static_cast<std::uint32_t>(instances.size());
+      result.staticMeshInstances.insert(result.staticMeshInstances.end(),
+                                        instances.begin(), instances.end());
+      for (const IndexedDrawRange& draw :
+           (*staticMeshAssetDraws)[assetIndex].indexedDraws) {
+        if (draw.indexCount == 0U) {
+          continue;
+        }
+        result.staticMeshInstanceBatches.push_back(
+            {draw.firstIndex, draw.indexCount, draw.materialTextureIndex,
+             firstInstance, instanceCount});
+      }
+    }
+  }
+
   appendCreativeWireframeDebugGeometry(result, creativeWireframeDebug);
-  result.ready = !result.vertices.empty() && !result.indices.empty() &&
-                 !result.indexedDraws.empty();
+  const bool baseGeometryReady = !result.vertices.empty() &&
+                                 !result.indices.empty() &&
+                                 !result.indexedDraws.empty();
+  const bool instanceGeometryReady = !result.staticMeshInstances.empty() &&
+                                     !result.staticMeshInstanceBatches.empty();
+  result.ready = baseGeometryReady || instanceGeometryReady;
   return result;
+}
+
+}  // namespace
+
+RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
+    const SceneRoomProjection& room,
+    const RenderCreativeWireframeDebugFrame* creativeWireframeDebug,
+    StaticMeshAssetCache* staticMeshAssets,
+    const StaticMeshMaterialTextureResources* materialTextures) {
+  return buildRoomMeshCpuGeometryImpl(room, creativeWireframeDebug,
+                                      staticMeshAssets, materialTextures,
+                                      nullptr);
+}
+
+RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
+    const SceneRoomProjection& room,
+    const RenderCreativeWireframeDebugFrame* creativeWireframeDebug,
+    std::span<const StaticMeshAssetDrawRanges> staticMeshAssetDraws) {
+  return buildRoomMeshCpuGeometryImpl(room, creativeWireframeDebug, nullptr,
+                                      nullptr, &staticMeshAssetDraws);
 }
 
 RoomMeshCpuGeometry buildRoomMeshCpuGeometry(const SceneRoomProjection& room) {
@@ -1860,6 +1971,48 @@ BufferImageResourcesResult BufferImageResources::createFirstRoomResources(
   staticMeshMaterialTextures_.create(textureCreateInfo, allocator_,
                                      &staticMeshAssets_);
 
+  const StaticMeshAssetAtlasCpuGeometry assetAtlas =
+      buildStaticMeshAssetAtlasCpuGeometry(
+          &staticMeshAssets_, &staticMeshMaterialTextures_.resources());
+  if (!assetAtlas.valid) {
+    result.reason = {"vertex_buffer_create_failed",
+                     "static mesh asset atlas build failed"};
+    result.receipt = baseReceipt("fail", result.reason.code);
+    return result;
+  }
+  staticMeshAssetAtlas_.assetDraws = assetAtlas.assetDraws;
+  staticMeshAssetAtlas_.valid = true;
+  if (!assetAtlas.vertices.empty()) {
+    const VkDeviceSize assetVertexBytes = static_cast<VkDeviceSize>(
+        assetAtlas.vertices.size() * sizeof(StaticMeshInstanceVertex));
+    const VkDeviceSize assetIndexBytes = static_cast<VkDeviceSize>(
+        assetAtlas.indices.size() * sizeof(std::uint32_t));
+    if (!uploadBuffer(
+            allocator_, createInfo.device, createInfo.graphicsQueue,
+            createInfo.graphicsQueueFamily,
+            "buffer.staging.upload.static_mesh_asset_atlas",
+            "buffer.static_mesh_asset_atlas.vertices", assetVertexBytes,
+            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, assetAtlas.vertices.data(),
+            staticMeshAssetAtlas_.vertexBuffer) ||
+        !uploadBuffer(
+            allocator_, createInfo.device, createInfo.graphicsQueue,
+            createInfo.graphicsQueueFamily,
+            "buffer.staging.upload.static_mesh_asset_atlas",
+            "buffer.static_mesh_asset_atlas.indices", assetIndexBytes,
+            VK_BUFFER_USAGE_INDEX_BUFFER_BIT, assetAtlas.indices.data(),
+            staticMeshAssetAtlas_.indexBuffer)) {
+      result.reason = {"vertex_buffer_create_failed",
+                       "static mesh asset atlas upload failed"};
+      result.receipt = baseReceipt("fail", result.reason.code);
+      return result;
+    }
+    staticMeshAssetAtlas_.vertexCount =
+        static_cast<std::uint32_t>(assetAtlas.vertices.size());
+    staticMeshAssetAtlas_.indexCount =
+        static_cast<std::uint32_t>(assetAtlas.indices.size());
+    staticMeshAssetAtlas_.ready = true;
+  }
+
   const std::vector<FirstRoomVertex> vertices = firstRoomBootstrapVertices();
   const std::vector<std::uint16_t> indices = firstRoomBootstrapIndices();
   const VkDeviceSize vertexBytes =
@@ -1995,8 +2148,21 @@ BufferImageResourcesResult BufferImageResources::createFirstRoomResources(
                      static_cast<std::uint64_t>(allocator_.allocations().size()));
   appendReceiptField(result.receipt, "allocation_names",
                      allocationNamesCsv(allocator_.allocations()));
-  appendReceiptField(result.receipt, "vertex_buffer_count", static_cast<std::uint64_t>(2));
-  appendReceiptField(result.receipt, "index_buffer_count", static_cast<std::uint64_t>(2));
+  appendReceiptField(
+      result.receipt, "vertex_buffer_count",
+      static_cast<std::uint64_t>(staticMeshAssetAtlas_.ready ? 3U : 2U));
+  appendReceiptField(
+      result.receipt, "index_buffer_count",
+      static_cast<std::uint64_t>(staticMeshAssetAtlas_.ready ? 3U : 2U));
+  appendReceiptField(
+      result.receipt, "static_mesh_asset_atlas_vertex_count",
+      static_cast<std::uint64_t>(staticMeshAssetAtlas_.vertexCount));
+  appendReceiptField(
+      result.receipt, "static_mesh_asset_atlas_index_count",
+      static_cast<std::uint64_t>(staticMeshAssetAtlas_.indexCount));
+  appendReceiptField(
+      result.receipt, "static_mesh_asset_atlas_asset_count",
+      static_cast<std::uint64_t>(staticMeshAssetAtlas_.assetDraws.size()));
   appendReceiptField(result.receipt, "creative_preview_draw_count",
                      static_cast<std::uint64_t>(
                          creativePreviewGeometry_.indexedDraws.size()));
@@ -2033,22 +2199,51 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
   const std::uint64_t geometrySignature = roomGeometrySignature(room);
   const std::uint64_t creativeWireframeDebugSignature =
       creativeWireframeDebugGeometrySignature(creativeWireframeDebug);
+  const bool cachedBaseGeometryReady =
+      geometry_.indexCount == 0U ||
+      (geometry_.vertexBuffer.allocation.buffer != VK_NULL_HANDLE &&
+       geometry_.indexBuffer.allocation.buffer != VK_NULL_HANDLE);
+  const bool cachedInstanceGeometryReady =
+      geometry_.staticMeshInstanceCount == 0U ||
+      (geometry_.staticMeshInstanceBuffer.allocation.buffer != VK_NULL_HANDLE &&
+       !geometry_.staticMeshInstanceBatches.empty() &&
+       staticMeshAssetAtlas_.ready &&
+       staticMeshAssetAtlas_.vertexBuffer.allocation.buffer != VK_NULL_HANDLE &&
+       staticMeshAssetAtlas_.indexBuffer.allocation.buffer != VK_NULL_HANDLE);
   if (geometry_.packageRoomGeometry && geometry_.sourceRoomAssetId == room.assetId &&
       geometry_.sourceRoomStaticMeshCount == room.meshes.size() &&
       geometry_.sourceRoomGeometrySignature == geometrySignature &&
       geometry_.sourceCreativeWireframeDebugSignature ==
           creativeWireframeDebugSignature &&
-      geometry_.indexCount > 0U &&
-      geometry_.vertexBuffer.allocation.buffer != VK_NULL_HANDLE &&
-      geometry_.indexBuffer.allocation.buffer != VK_NULL_HANDLE) {
+      (geometry_.indexCount > 0U ||
+       geometry_.staticMeshInstanceCount > 0U) &&
+      cachedBaseGeometryReady && cachedInstanceGeometryReady) {
     result.outcome = RenderOutcome::Ok;
     result.reason = {"packet6_resource_ready", "packet 6 resource ready"};
     result.receipt = baseReceipt("pass", result.reason.code);
-    appendReceiptField(result.receipt, "vertex_buffer_count", static_cast<std::uint64_t>(1));
-    appendReceiptField(result.receipt, "index_buffer_count", static_cast<std::uint64_t>(1));
+    appendReceiptField(
+        result.receipt, "vertex_buffer_count",
+        static_cast<std::uint64_t>((geometry_.vertexCount > 0U ? 1U : 0U) +
+                                   (geometry_.staticMeshInstanceCount > 0U
+                                        ? 1U
+                                        : 0U)));
+    appendReceiptField(
+        result.receipt, "index_buffer_count",
+        static_cast<std::uint64_t>(geometry_.indexCount > 0U ? 1U : 0U));
     appendReceiptField(result.receipt, "room_asset_id", room.assetId);
     appendReceiptField(result.receipt, "mesh_draw_count",
-                       static_cast<std::uint64_t>(geometry_.indexedDraws.size()));
+                       static_cast<std::uint64_t>(
+                           geometry_.indexedDraws.size() +
+                           geometry_.staticMeshInstanceBatches.size()));
+    appendReceiptField(
+        result.receipt, "static_mesh_instance_count",
+        static_cast<std::uint64_t>(geometry_.staticMeshInstanceCount));
+    appendReceiptField(
+        result.receipt, "static_mesh_instance_batch_count",
+        static_cast<std::uint64_t>(
+            geometry_.staticMeshInstanceBatches.size()));
+    appendReceiptField(result.receipt, "static_mesh_instance_upload_count",
+                       static_cast<std::uint64_t>(0));
     appendReceiptField(result.receipt, "static_mesh_asset_loaded_count",
                        static_cast<std::uint64_t>(
                            staticMeshAssets_.loadedAssetCount()));
@@ -2073,8 +2268,7 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
 
   const RoomMeshCpuGeometry cpuGeometry =
       buildRoomMeshCpuGeometry(room, creativeWireframeDebug,
-                               &staticMeshAssets_,
-                               &staticMeshMaterialTextures_.resources());
+                               staticMeshAssetAtlas_.assetDraws);
   if (!cpuGeometry.ready) {
     result.reason = {"vertex_buffer_create_failed", "vertex buffer create failed"};
     result.receipt = baseReceipt("fail", result.reason.code);
@@ -2087,26 +2281,58 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
       static_cast<VkDeviceSize>(cpuGeometry.vertices.size() * sizeof(FirstRoomVertex));
   const VkDeviceSize indexBytes =
       static_cast<VkDeviceSize>(cpuGeometry.indices.size() * sizeof(std::uint16_t));
-  if (!uploadBuffer(allocator_, createInfo_.device, createInfo_.graphicsQueue,
-                    createInfo_.graphicsQueueFamily, "buffer.staging.upload.room_mesh",
-                    "buffer.room_asset.vertices", vertexBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                    cpuGeometry.vertices.data(), replacement.vertexBuffer)) {
-    result.reason = {"vertex_buffer_create_failed", "vertex buffer create failed"};
-    result.receipt = baseReceipt("fail", result.reason.code);
-    return result;
+  if (!cpuGeometry.vertices.empty()) {
+    if (!uploadBuffer(
+            allocator_, createInfo_.device, createInfo_.graphicsQueue,
+            createInfo_.graphicsQueueFamily, "buffer.staging.upload.room_mesh",
+            "buffer.room_asset.vertices", vertexBytes,
+            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, cpuGeometry.vertices.data(),
+            replacement.vertexBuffer)) {
+      result.reason = {"vertex_buffer_create_failed",
+                       "vertex buffer create failed"};
+      result.receipt = baseReceipt("fail", result.reason.code);
+      return result;
+    }
+    if (!uploadBuffer(
+            allocator_, createInfo_.device, createInfo_.graphicsQueue,
+            createInfo_.graphicsQueueFamily, "buffer.staging.upload.room_mesh",
+            "buffer.room_asset.indices", indexBytes,
+            VK_BUFFER_USAGE_INDEX_BUFFER_BIT, cpuGeometry.indices.data(),
+            replacement.indexBuffer)) {
+      allocator_.destroyBuffer(replacement.vertexBuffer.allocation);
+      result.reason = {"index_buffer_create_failed",
+                       "index buffer create failed"};
+      result.receipt = baseReceipt("fail", result.reason.code);
+      return result;
+    }
   }
-  if (!uploadBuffer(allocator_, createInfo_.device, createInfo_.graphicsQueue,
-                    createInfo_.graphicsQueueFamily, "buffer.staging.upload.room_mesh",
-                    "buffer.room_asset.indices", indexBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                    cpuGeometry.indices.data(), replacement.indexBuffer)) {
-    allocator_.destroyBuffer(replacement.vertexBuffer.allocation);
-    result.reason = {"index_buffer_create_failed", "index buffer create failed"};
-    result.receipt = baseReceipt("fail", result.reason.code);
-    return result;
+  if (!cpuGeometry.staticMeshInstances.empty()) {
+    const VkDeviceSize instanceBytes = static_cast<VkDeviceSize>(
+        cpuGeometry.staticMeshInstances.size() *
+        sizeof(StaticMeshInstanceTransform));
+    if (!uploadBuffer(
+            allocator_, createInfo_.device, createInfo_.graphicsQueue,
+            createInfo_.graphicsQueueFamily,
+            "buffer.staging.upload.room_static_mesh_instances",
+            "buffer.room_asset.static_mesh_instances", instanceBytes,
+            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            cpuGeometry.staticMeshInstances.data(),
+            replacement.staticMeshInstanceBuffer)) {
+      allocator_.destroyBuffer(replacement.indexBuffer.allocation);
+      allocator_.destroyBuffer(replacement.vertexBuffer.allocation);
+      result.reason = {"vertex_buffer_create_failed",
+                       "static mesh instance buffer create failed"};
+      result.receipt = baseReceipt("fail", result.reason.code);
+      return result;
+    }
   }
   replacement.vertexCount = static_cast<std::uint32_t>(cpuGeometry.vertices.size());
   replacement.indexCount = static_cast<std::uint32_t>(cpuGeometry.indices.size());
   replacement.indexedDraws = cpuGeometry.indexedDraws;
+  replacement.staticMeshInstanceCount =
+      static_cast<std::uint32_t>(cpuGeometry.staticMeshInstances.size());
+  replacement.staticMeshInstanceBatches =
+      cpuGeometry.staticMeshInstanceBatches;
   replacement.sourceRoomAssetId = cpuGeometry.sourceRoomAssetId;
   replacement.sourceRoomStaticMeshCount = cpuGeometry.sourceRoomStaticMeshCount;
   replacement.sourceRoomGeometrySignature = cpuGeometry.sourceRoomGeometrySignature;
@@ -2142,13 +2368,33 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
                      static_cast<std::uint64_t>(allocator_.allocations().size()));
   appendReceiptField(result.receipt, "allocation_names",
                      allocationNamesCsv(allocator_.allocations()));
-  appendReceiptField(result.receipt, "vertex_buffer_count", static_cast<std::uint64_t>(1));
-  appendReceiptField(result.receipt, "index_buffer_count", static_cast<std::uint64_t>(1));
+  appendReceiptField(
+      result.receipt, "vertex_buffer_count",
+      static_cast<std::uint64_t>((geometry_.vertexCount > 0U ? 1U : 0U) +
+                                 (geometry_.staticMeshInstanceCount > 0U
+                                      ? 1U
+                                      : 0U)));
+  appendReceiptField(
+      result.receipt, "index_buffer_count",
+      static_cast<std::uint64_t>(geometry_.indexCount > 0U ? 1U : 0U));
   appendReceiptField(result.receipt, "room_asset_id", room.assetId);
   appendReceiptField(result.receipt, "room_static_mesh_count",
                      static_cast<std::uint64_t>(room.meshes.size()));
   appendReceiptField(result.receipt, "mesh_draw_count",
-                     static_cast<std::uint64_t>(geometry_.indexedDraws.size()));
+                     static_cast<std::uint64_t>(
+                         geometry_.indexedDraws.size() +
+                         geometry_.staticMeshInstanceBatches.size()));
+  appendReceiptField(
+      result.receipt, "static_mesh_instance_count",
+      static_cast<std::uint64_t>(geometry_.staticMeshInstanceCount));
+  appendReceiptField(
+      result.receipt, "static_mesh_instance_batch_count",
+      static_cast<std::uint64_t>(
+          geometry_.staticMeshInstanceBatches.size()));
+  appendReceiptField(
+      result.receipt, "static_mesh_instance_upload_count",
+      static_cast<std::uint64_t>(geometry_.staticMeshInstanceCount > 0U ? 1U
+                                                                       : 0U));
   appendReceiptField(result.receipt, "static_mesh_asset_loaded_count",
                      static_cast<std::uint64_t>(
                          staticMeshAssets_.loadedAssetCount()));
@@ -2247,6 +2493,54 @@ BufferImageResourcesResult BufferImageResources::prepareStaticMeshAssetReload() 
     cancelStaticMeshAssetReload();
     return result;
   }
+
+  const StaticMeshAssetAtlasCpuGeometry assetAtlas =
+      buildStaticMeshAssetAtlasCpuGeometry(
+          &pendingStaticMeshAssets_,
+          &pendingStaticMeshMaterialTextures_.resources());
+  if (!assetAtlas.valid) {
+    result.outcome = RenderOutcome::OutOfMemory;
+    result.reason = {"static_mesh_asset_reload_atlas_prepare_failed",
+                     "static mesh asset reload atlas prepare failed"};
+    result.receipt = baseReceipt("fail", result.reason.code);
+    cancelStaticMeshAssetReload();
+    return result;
+  }
+  pendingStaticMeshAssetAtlas_.assetDraws = assetAtlas.assetDraws;
+  pendingStaticMeshAssetAtlas_.valid = true;
+  if (!assetAtlas.vertices.empty()) {
+    const VkDeviceSize assetVertexBytes = static_cast<VkDeviceSize>(
+        assetAtlas.vertices.size() * sizeof(StaticMeshInstanceVertex));
+    const VkDeviceSize assetIndexBytes = static_cast<VkDeviceSize>(
+        assetAtlas.indices.size() * sizeof(std::uint32_t));
+    if (!uploadBuffer(
+            allocator_, createInfo_.device, createInfo_.graphicsQueue,
+            createInfo_.graphicsQueueFamily,
+            "buffer.staging.upload.static_mesh_asset_atlas_reload",
+            "buffer.static_mesh_asset_atlas.reload.vertices",
+            assetVertexBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            assetAtlas.vertices.data(),
+            pendingStaticMeshAssetAtlas_.vertexBuffer) ||
+        !uploadBuffer(
+            allocator_, createInfo_.device, createInfo_.graphicsQueue,
+            createInfo_.graphicsQueueFamily,
+            "buffer.staging.upload.static_mesh_asset_atlas_reload",
+            "buffer.static_mesh_asset_atlas.reload.indices", assetIndexBytes,
+            VK_BUFFER_USAGE_INDEX_BUFFER_BIT, assetAtlas.indices.data(),
+            pendingStaticMeshAssetAtlas_.indexBuffer)) {
+      result.outcome = RenderOutcome::OutOfMemory;
+      result.reason = {"static_mesh_asset_reload_atlas_upload_failed",
+                       "static mesh asset reload atlas upload failed"};
+      result.receipt = baseReceipt("fail", result.reason.code);
+      cancelStaticMeshAssetReload();
+      return result;
+    }
+    pendingStaticMeshAssetAtlas_.vertexCount =
+        static_cast<std::uint32_t>(assetAtlas.vertices.size());
+    pendingStaticMeshAssetAtlas_.indexCount =
+        static_cast<std::uint32_t>(assetAtlas.indices.size());
+    pendingStaticMeshAssetAtlas_.ready = true;
+  }
 #endif
 
   staticMeshAssetReloadPending_ = true;
@@ -2268,23 +2562,31 @@ BufferImageResourcesResult BufferImageResources::prepareStaticMeshAssetReload() 
       static_cast<std::uint64_t>(pendingStaticMeshMaterialTextures_
                                      .resources()
                                      .textures.size()));
+  appendReceiptField(
+      result.receipt, "static_mesh_asset_atlas_asset_count",
+      static_cast<std::uint64_t>(
+          pendingStaticMeshAssetAtlas_.assetDraws.size()));
   return result;
 }
 
 bool BufferImageResources::commitStaticMeshAssetReload() {
   if (!staticMeshAssetReloadPending_ ||
       !pendingCreativePreviewGeometry_.ready ||
-      !pendingStaticMeshMaterialTextures_.resources().ready) {
+      !pendingStaticMeshMaterialTextures_.resources().ready ||
+      !pendingStaticMeshAssetAtlas_.valid) {
     return false;
   }
   destroyGeometryBuffers();
   destroyCreativePreviewBuffers();
+  destroyStaticMeshAssetAtlasBuffers();
   staticMeshMaterialTextures_.destroy(createInfo_.device, allocator_);
   staticMeshMaterialTextures_.swap(pendingStaticMeshMaterialTextures_);
   staticMeshAssets_ = std::move(pendingStaticMeshAssets_);
   creativePreviewGeometry_ = std::move(pendingCreativePreviewGeometry_);
+  staticMeshAssetAtlas_ = std::move(pendingStaticMeshAssetAtlas_);
   pendingStaticMeshAssets_ = {};
   pendingCreativePreviewGeometry_ = {};
+  pendingStaticMeshAssetAtlas_ = {};
   staticMeshAssetReloadPending_ = false;
   return true;
 }
@@ -2295,6 +2597,10 @@ void BufferImageResources::cancelStaticMeshAssetReload() {
   allocator_.destroyBuffer(
       pendingCreativePreviewGeometry_.vertexBuffer.allocation);
   pendingCreativePreviewGeometry_ = {};
+  allocator_.destroyBuffer(pendingStaticMeshAssetAtlas_.indexBuffer.allocation);
+  allocator_.destroyBuffer(
+      pendingStaticMeshAssetAtlas_.vertexBuffer.allocation);
+  pendingStaticMeshAssetAtlas_ = {};
   pendingStaticMeshMaterialTextures_.destroy(createInfo_.device, allocator_);
   pendingStaticMeshAssets_ = {};
   staticMeshAssetReloadPending_ = false;
@@ -2312,10 +2618,12 @@ RenderReceipt BufferImageResources::destroy() {
   allocator_.destroyImage(depth_.depthImage.allocation);
   destroyGeometryBuffers();
   destroyCreativePreviewBuffers();
+  destroyStaticMeshAssetAtlasBuffers();
   staticMeshMaterialTextures_.destroy(createInfo_.device, allocator_);
   allocator_.destroy();
   geometry_ = {};
   creativePreviewGeometry_ = {};
+  staticMeshAssetAtlas_ = {};
   depth_ = {};
   createInfo_ = {};
   ready_ = false;
@@ -2329,6 +2637,11 @@ const FirstRoomGeometryResources& BufferImageResources::geometry() const {
 const CreativePreviewGeometryResources&
 BufferImageResources::creativePreviewGeometry() const {
   return creativePreviewGeometry_;
+}
+
+const StaticMeshAssetAtlasResources&
+BufferImageResources::staticMeshAssetAtlas() const {
+  return staticMeshAssetAtlas_;
 }
 
 const StaticMeshMaterialTextureResources&
@@ -2350,6 +2663,7 @@ bool BufferImageResources::ready() const {
 }
 
 void BufferImageResources::destroyGeometryBuffers() {
+  allocator_.destroyBuffer(geometry_.staticMeshInstanceBuffer.allocation);
   allocator_.destroyBuffer(geometry_.indexBuffer.allocation);
   allocator_.destroyBuffer(geometry_.vertexBuffer.allocation);
   geometry_ = {};
@@ -2359,6 +2673,12 @@ void BufferImageResources::destroyCreativePreviewBuffers() {
   allocator_.destroyBuffer(creativePreviewGeometry_.indexBuffer.allocation);
   allocator_.destroyBuffer(creativePreviewGeometry_.vertexBuffer.allocation);
   creativePreviewGeometry_ = {};
+}
+
+void BufferImageResources::destroyStaticMeshAssetAtlasBuffers() {
+  allocator_.destroyBuffer(staticMeshAssetAtlas_.indexBuffer.allocation);
+  allocator_.destroyBuffer(staticMeshAssetAtlas_.vertexBuffer.allocation);
+  staticMeshAssetAtlas_ = {};
 }
 
 }  // namespace iggy3d::vulkan
