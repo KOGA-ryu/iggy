@@ -95,6 +95,8 @@ target_sources(iggy3d
     src/app/iggy3d/creative/ui/UiTheme.cpp
     src/app/iggy3d/creative/ui/UiWidgets.cpp
     src/app/iggy3d/creative/Facade.cpp
+    src/app/iggy3d/creative/FacadeDocumentMutations.cpp
+    src/app/iggy3d/creative/FacadeObjectCommands.cpp
     src/app/iggy3d/creative/FacadeMoveDrag.cpp
     src/app/iggy3d/creative/camera/Fly.cpp
     src/app/iggy3d/map_maker/Grid.cpp

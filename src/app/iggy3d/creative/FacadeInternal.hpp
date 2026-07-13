@@ -5,7 +5,33 @@
 
 #include <limits>
 
+namespace iggy3d::creative {
+
+struct CreativeGhostState;
+struct CreativeMeasurementState;
+struct CreativeSelectionState;
+struct CreativeToolState;
+struct State;
+struct Stats;
+
+}  // namespace iggy3d::creative
+
 namespace iggy3d::creative::facade_internal {
+
+void resetStats(Stats& stats) noexcept;
+void recordCommandAttempt(Stats& stats) noexcept;
+void recordCommandSuccess(Stats& stats) noexcept;
+void recordCommandFailure(Stats& stats) noexcept;
+void recordObjectCreated(Stats& stats) noexcept;
+void recordRoomCreated(Stats& stats) noexcept;
+
+void invalidateRemovedObjectEditorState(
+    CreativeObjectId objectId,
+    State& state,
+    CreativeToolState& toolState,
+    CreativeSelectionState& selectionState,
+    CreativeMeasurementState& measurementState,
+    CreativeGhostState& ghostState) noexcept;
 
 // branch-gate-relocation: BG-1228 from=src/app/iggy3d/creative/Facade.cpp
 [[nodiscard]] inline bool targetRefToObjectId(
