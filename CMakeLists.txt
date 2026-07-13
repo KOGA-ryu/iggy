@@ -228,10 +228,12 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorControlsUi.cpp
   apps/iggy3d_creative/EditorToolOptions.cpp
   apps/iggy3d_creative/EditorObjectActions.cpp
+  apps/iggy3d_creative/EditorCommandInput.cpp
   apps/iggy3d_creative/EditorTransform.cpp
   apps/iggy3d_creative/EditorTransformOverlay.cpp
   apps/iggy3d_creative/EditorCapture.cpp
   apps/iggy3d_creative/EditorFrame.cpp
+  apps/iggy3d_creative/EditorFrameSubmit.cpp
   apps/iggy3d_creative/EditorGamepad.cpp
   apps/iggy3d_creative/EditorGizmo.cpp
   apps/iggy3d_creative/EditorGroup.cpp
@@ -261,6 +263,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorFrustumCull.cpp
   apps/iggy3d_creative/EditorPathEditing.cpp
   apps/iggy3d_creative/EditorPersistence.cpp
+  apps/iggy3d_creative/EditorPickFrame.cpp
   apps/iggy3d_creative/EditorPicking.cpp
   apps/iggy3d_creative/EditorOverlayHud.cpp
   apps/iggy3d_creative/EditorOverlayWireframes.cpp
