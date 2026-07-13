@@ -258,6 +258,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorPattern.cpp
   apps/iggy3d_creative/EditorBootstrap.cpp
   apps/iggy3d_creative/EditorPlacement.cpp
+  apps/iggy3d_creative/EditorPlacementMutation.cpp
   apps/iggy3d_creative/EditorPlacementPreview.cpp
   apps/iggy3d_creative/EditorEdits.cpp
   apps/iggy3d_creative/EditorVolume.cpp
