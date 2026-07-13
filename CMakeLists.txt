@@ -220,6 +220,8 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorActionHints.cpp
   apps/iggy3d_creative/EditorToolCapabilities.cpp
   apps/iggy3d_creative/EditorCatalog.cpp
+  apps/iggy3d_creative/EditorCatalogLayout.cpp
+  apps/iggy3d_creative/EditorCatalogOverlay.cpp
   apps/iggy3d_creative/EditorToolWheelPreferences.cpp
   apps/iggy3d_creative/EditorControls.cpp
   apps/iggy3d_creative/EditorToolOptions.cpp
