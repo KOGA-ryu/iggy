@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/iggy3d/creative/Core.hpp"
+#include "app/iggy3d/creative/assets/AuthoredAsset.hpp"
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
 #include "app/iggy3d/creative/spatial/Ghost.hpp"
@@ -222,6 +223,8 @@ class Facade {
   [[nodiscard]] CreativeGroupCommandReceipt ungroupObject(
       CreativeObjectId groupObjectId);
   [[nodiscard]] CreativeGroupCommandReceipt ungroupSelectedObject();
+  [[nodiscard]] CreativeAuthoredAssetInstanceReceipt instantiateAuthoredAsset(
+      const CreativeAuthoredAssetPlacementRequest& request);
   [[nodiscard]] CreativeLinearArrayReceipt createLinearArrayFromSelection(
       const CreativeLinearArrayRequest& request = {});
   [[nodiscard]] CreativeRadialArrayReceipt createRadialArrayFromSelection(

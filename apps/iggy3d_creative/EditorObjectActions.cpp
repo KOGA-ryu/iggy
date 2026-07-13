@@ -23,6 +23,7 @@ bool creativeEditorCommandIsObjectAction(
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
+    case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
       return true;
     case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
@@ -39,6 +40,7 @@ void refreshCreativeEditorObjectActionContext(
   state.contextGroupId = cr::kInvalidObjectId;
   state.contextPrimaryObjectId = cr::kInvalidObjectId;
   state.contextPrimaryObjectKind = cr::CreativeObjectKind::Unknown;
+  state.contextContainerKind = cr::CreativeObjectKind::Unknown;
   state.contextSelectionCount = 0U;
   state.contextPrimaryVisible = true;
   state.contextPrimaryLocked = false;
@@ -111,8 +113,9 @@ void refreshCreativeEditorObjectActionContext(
   if (state.contextSelectionCount != 1U) {
     return;
   }
-  if (object->kind == cr::CreativeObjectKind::Group) {
+  if (cr::creativeObjectIsHierarchyContainer(object->kind)) {
     state.contextGroupId = object->id;
+    state.contextContainerKind = object->kind;
     return;
   }
   if (!object->parentId.has_value()) {
@@ -120,13 +123,15 @@ void refreshCreativeEditorObjectActionContext(
   }
   const cr::CreativeObject* parent =
       appState.facade.findObject(*object->parentId);
-  if (parent != nullptr && parent->kind == cr::CreativeObjectKind::Group) {
+  if (parent != nullptr &&
+      cr::creativeObjectIsHierarchyContainer(parent->kind)) {
     state.contextGroupId = parent->id;
+    state.contextContainerKind = parent->kind;
   }
 }
 
 bool creativeEditorObjectActionEnabled(
-    const CreativeEditorState&,
+    const CreativeEditorState& editor,
     const CreativeEditorToolOptionsState& state,
     CreativeEditorToolOptionsCommandId command) noexcept {
   switch (command) {
@@ -148,6 +153,9 @@ bool creativeEditorObjectActionEnabled(
       return state.contextSelectionCount > 1U && state.contextAllUnlocked;
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
       return state.contextGroupId != cr::kInvalidObjectId;
+    case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
+      return state.contextSelectionCount > 0U && state.contextAllUnlocked &&
+             !editor.authoredAssets.root.empty();
     case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
@@ -176,6 +184,8 @@ std::string_view creativeEditorObjectActionLabel(
       return "GROUP";
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
       return "UNGROUP";
+    case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
+      return "SAVE AS ASSET";
     case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
@@ -215,8 +225,19 @@ std::string creativeEditorObjectActionValueLabel(
                  : "SELECT MULTIPLE";
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
       return state.contextGroupId != cr::kInvalidObjectId
-                 ? "REMOVE CONTAINER"
+                 ? state.contextContainerKind ==
+                           cr::CreativeObjectKind::PrefabInstance
+                       ? "UNPACK INSTANCE"
+                       : "REMOVE CONTAINER"
                  : "SELECT GROUP";
+    case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
+      if (state.contextSelectionCount == 0U) {
+        return "SELECT OBJECTS";
+      }
+      if (state.contextSelectionCount == 1U) {
+        return "1 ROOT";
+      }
+      return std::to_string(state.contextSelectionCount) + " ROOTS";
     case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
@@ -284,6 +305,51 @@ bool activateCreativeEditorObjectAction(
                          : "object_actions_ungroup")
                      .accepted;
       break;
+    case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset: {
+      const CreativeEditorAuthoredAssetSaveReceipt receipt =
+          saveCreativeEditorSelectionAsAuthoredAsset(
+              appState, editor.authoredAssets);
+      accepted = receipt.accepted;
+      if (accepted) {
+        const cr::CreativeAuthoredAssetDefinition* definition =
+            findCreativeEditorAuthoredAsset(editor.authoredAssets,
+                                            receipt.assetId);
+        if (definition == nullptr) {
+          accepted = false;
+          break;
+        }
+        cr::CreativeCatalogAsset asset;
+        asset.objectKind = cr::CreativeObjectKind::PrefabInstance;
+        asset.assetId = definition->assetId;
+        asset.label = definition->label;
+        asset.sourceBounds = definition->sourceBounds;
+        asset.authoredComposite = true;
+        static_cast<void>(
+            cr::appendCreativeCatalogAsset(editor.catalog.model, asset));
+        const std::size_t slot = static_cast<std::size_t>(
+            editor.interaction.hotbar.selectedSlot);
+        cr::CreativeHotbarEntry& held =
+            cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+        const cr::CreativeHeldItemKind previousKind = held.kind;
+        held = {cr::CreativeHeldItemKind::Material,
+                cr::CreativeObjectKind::PrefabInstance};
+        accepted = cr::setCreativeHotbarAsset(
+            held, definition->assetId, definition->sourceBounds);
+        if (accepted) {
+          if (previousKind != held.kind) {
+            clearCreativeMaterialBrushPresetSlot(
+                editor.interaction.materialBrushPresets, slot);
+          }
+          static_cast<void>(activateSelectedCreativeMaterialBrushPreset(
+              editor.interaction.materialBrushPresets,
+              editor.interaction.hotbar, editor.toolSettings));
+          syncCreativeEditorHeldItem(appState, editor);
+          editor.catalog.statusLabel = "SAVED + EQUIPPED " +
+                                       definition->label;
+        }
+      }
+      break;
+    }
     case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::EditGroupContents:

@@ -382,13 +382,21 @@ CreativeCatalogState makeCreativeCatalog(
     }
     entry.label = asset.label.empty() ? asset.assetId : asset.label;
     entry.assetAuthoringMetadata = asset.authoringMetadata;
-    entry.searchText = lowerAscii(
-        entry.label + " " + asset.assetId + " " +
-        asset.authoringMetadata.categoryId + " " +
-        std::string(toString(asset.authoringMetadata.collisionMode)) + " " +
-        std::string(toString(asset.authoringMetadata.status)) +
-        (asset.authoringMetadata.walkable ? " walkable" : "") +
-        " asset imported glb blender mesh");
+    entry.authoredComposite = asset.authoredComposite;
+    entry.searchText = asset.authoredComposite
+                           ? lowerAscii(entry.label + " " + asset.assetId +
+                                        " authored reusable composite prefab")
+                           : lowerAscii(
+                                 entry.label + " " + asset.assetId + " " +
+                                 asset.authoringMetadata.categoryId + " " +
+                                 std::string(toString(
+                                     asset.authoringMetadata.collisionMode)) +
+                                 " " + std::string(toString(
+                                           asset.authoringMetadata.status)) +
+                                 (asset.authoringMetadata.walkable
+                                      ? " walkable"
+                                      : "") +
+                                 " asset imported glb blender mesh");
     catalog.entries.push_back(std::move(entry));
   }
   for (const CreativeCatalogAssetFailure& failure : assetFailures) {
@@ -414,6 +422,39 @@ CreativeCatalogState makeCreativeCatalog(
   catalog.entries.push_back(std::move(reload));
   refreshFilter(catalog);
   return catalog;
+}
+
+bool appendCreativeCatalogAsset(CreativeCatalogState& catalog,
+                                const CreativeCatalogAsset& asset) {
+  if (asset.objectKind == CreativeObjectKind::Unknown ||
+      asset.assetId.empty() ||
+      std::any_of(catalog.entries.begin(), catalog.entries.end(),
+                  [&asset](const CreativeCatalogEntry& entry) {
+                    return entry.category ==
+                               CreativeCatalogEntryCategory::Asset &&
+                           creativeHotbarAssetId(entry.hotbarEntry) ==
+                               asset.assetId;
+                  })) {
+    return false;
+  }
+  CreativeCatalogEntry entry;
+  entry.category = CreativeCatalogEntryCategory::Asset;
+  entry.hotbarEntry = {CreativeHeldItemKind::Material, asset.objectKind};
+  if (!setCreativeHotbarAsset(entry.hotbarEntry, asset.assetId,
+                              asset.sourceBounds)) {
+    return false;
+  }
+  entry.label = asset.label.empty() ? asset.assetId : asset.label;
+  entry.assetAuthoringMetadata = asset.authoringMetadata;
+  entry.authoredComposite = asset.authoredComposite;
+  entry.searchText = asset.authoredComposite
+                         ? lowerAscii(entry.label + " " + asset.assetId +
+                                      " authored reusable composite prefab")
+                         : lowerAscii(entry.label + " " + asset.assetId +
+                                      " asset imported glb blender mesh");
+  catalog.entries.push_back(std::move(entry));
+  refreshFilter(catalog);
+  return true;
 }
 
 std::span<const CreativeCatalogActionEntry>

@@ -303,6 +303,17 @@ set_tests_properties(creative_editor_asset_reload_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;assets;catalog;history;iggy3d")
 
+add_executable(creative_authored_asset_tests
+  tests/unit/creative_authored_asset_tests.cpp)
+target_link_libraries(creative_authored_asset_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_authored_asset_tests)
+add_test(NAME creative_authored_asset_tests
+  COMMAND "$<TARGET_FILE:creative_authored_asset_tests>")
+set_tests_properties(creative_authored_asset_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;assets;catalog;history;prefab;iggy3d")
+
 iggy3d_add_unit_test(creative_volume_tests
   tests/unit/creative_volume_tests.cpp)
 set_tests_properties(creative_volume_tests PROPERTIES

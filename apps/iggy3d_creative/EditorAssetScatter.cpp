@@ -319,6 +319,7 @@ bool creativeEditorUsesAssetScatter(
     const cr::CreativeHotbarEntry& held,
     const cr::CreativeToolSettings& settings) noexcept {
   return held.kind == cr::CreativeHeldItemKind::Material &&
+         held.objectKind != cr::CreativeObjectKind::PrefabInstance &&
          !cr::creativeHotbarAssetId(held).empty() &&
          held.hasAssetBounds &&
          settings.assetPlacementMode == cr::CreativeAssetPlacementMode::Scatter;

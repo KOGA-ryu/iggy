@@ -41,6 +41,7 @@ struct CreativeEditorState {
   CreativeEditorControlsState controls;
   CreativeEditorInteractionState interaction;
   CreativeEditorCatalogState catalog;
+  CreativeEditorAuthoredAssetLibrary authoredAssets;
   iggy3d::creative::CreativeToolSettings toolSettings =
       iggy3d::creative::makeDefaultCreativeToolSettings();
   CreativeEditorToolOptionsState toolOptions;

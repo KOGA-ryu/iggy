@@ -352,6 +352,7 @@ void finalizeCreativeEditorContinuousGestures(
     std::string_view reasonCode) {
   finalizeCreativeMaterialStroke(appState, editor, reasonCode);
   finalizeCreativeAssetScatterStroke(appState, editor, reasonCode);
+  finalizeCreativeAuthoredAssetStroke(appState, editor, reasonCode);
   finalizeCreativeTerrainStroke(appState, editor, reasonCode);
   finalizeCreativeTerrainSculptStroke(appState, editor, reasonCode);
   finalizeCreativeEditorTerrainPaintStroke(appState, editor, reasonCode);

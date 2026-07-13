@@ -69,7 +69,8 @@ bool syncCreativeEditorGroupFocus(
   for (; validDepth < state.depth; ++validDepth) {
     const cr::CreativeObject* group =
         document.findObject(state.groupIds[validDepth]);
-    if (group == nullptr || group->kind != cr::CreativeObjectKind::Group ||
+    if (group == nullptr ||
+        !cr::creativeObjectIsHierarchyContainer(group->kind) ||
         (validDepth > 0U && group->parentId != expectedParent)) {
       break;
     }
@@ -126,7 +127,7 @@ cr::CreativeObjectId resolveCreativeEditorGroupSelectionTarget(
       if (current == nullptr) {
         return cr::kInvalidObjectId;
       }
-      if (current->kind == cr::CreativeObjectKind::Group) {
+      if (cr::creativeObjectIsHierarchyContainer(current->kind)) {
         target = current->id;
       }
     }
@@ -169,7 +170,7 @@ CreativeEditorGroupFocusReceipt enterCreativeEditorGroupFocus(
     receipt.reasonCode = "creative_group_focus_missing";
     return receipt;
   }
-  if (group->kind != cr::CreativeObjectKind::Group) {
+  if (!cr::creativeObjectIsHierarchyContainer(group->kind)) {
     receipt.status = CreativeEditorGroupFocusStatus::NotGroup;
     receipt.reasonCode = "creative_group_focus_requires_group";
     return receipt;
@@ -233,12 +234,13 @@ cr::CreativeGroupCommandReceipt applyCreativeEditorGroupCommandWithHistory(
                     selection.selectedTarget.value));
   cr::CreativeObjectId ungroupObjectId = cr::kInvalidObjectId;
   if (primary != nullptr && cr::selectedTargetCount(selection) == 1U) {
-    if (primary->kind == cr::CreativeObjectKind::Group) {
+    if (cr::creativeObjectIsHierarchyContainer(primary->kind)) {
       ungroupObjectId = primary->id;
     } else if (primary->parentId.has_value()) {
       const cr::CreativeObject* parent =
           appState.facade.findObject(*primary->parentId);
-      if (parent != nullptr && parent->kind == cr::CreativeObjectKind::Group) {
+      if (parent != nullptr &&
+          cr::creativeObjectIsHierarchyContainer(parent->kind)) {
         ungroupObjectId = parent->id;
       }
     }

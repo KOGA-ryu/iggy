@@ -47,6 +47,7 @@ struct CreativeCatalogAsset {
   std::string label;
   CreativeBounds sourceBounds{};
   StaticMeshAuthoringMetadata authoringMetadata;
+  bool authoredComposite = false;
 };
 
 struct CreativeCatalogAssetFailure {
@@ -67,6 +68,7 @@ struct CreativeCatalogEntry {
   std::string searchText;
   std::string detail;
   StaticMeshAuthoringMetadata assetAuthoringMetadata;
+  bool authoredComposite = false;
 };
 
 struct CreativeCatalogShapeSelection {
@@ -128,6 +130,9 @@ struct CreativeToolWheelState {
     std::span<const CreativeCatalogAsset> assets = {},
     std::size_t rejectedAssetCount = 0U,
     std::span<const CreativeCatalogAssetFailure> assetFailures = {});
+[[nodiscard]] bool appendCreativeCatalogAsset(
+    CreativeCatalogState& catalog,
+    const CreativeCatalogAsset& asset);
 
 [[nodiscard]] std::span<const CreativeCatalogActionEntry>
 creativeCatalogActionEntries() noexcept;

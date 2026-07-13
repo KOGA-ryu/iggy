@@ -39,10 +39,11 @@ enum class CreativeEditorToolOptionsCommandId : std::uint8_t {
   ToggleSelectionLocked,
   GroupSelection,
   UngroupSelection,
+  SaveSelectionAsAsset,
   Count,
 };
 
-inline constexpr std::size_t kCreativeEditorToolOptionsCommandCapacity = 8U;
+inline constexpr std::size_t kCreativeEditorToolOptionsCommandCapacity = 10U;
 
 struct CreativeEditorToolOptionsCommandList {
   std::array<CreativeEditorToolOptionsCommandId,
@@ -63,6 +64,8 @@ struct CreativeEditorToolOptionsState {
   iggy3d::creative::CreativeObjectId contextPrimaryObjectId =
       iggy3d::creative::kInvalidObjectId;
   iggy3d::creative::CreativeObjectKind contextPrimaryObjectKind =
+      iggy3d::creative::CreativeObjectKind::Unknown;
+  iggy3d::creative::CreativeObjectKind contextContainerKind =
       iggy3d::creative::CreativeObjectKind::Unknown;
   std::size_t contextSelectionCount = 0U;
   bool contextPrimaryVisible = true;

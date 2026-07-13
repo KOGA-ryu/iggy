@@ -206,6 +206,7 @@ void adjustSelection(CreativeEditorState& editor,
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
+    case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
     case CreativeEditorToolOptionsCommandId::Count:
       return false;
   }
@@ -226,7 +227,13 @@ void adjustSelection(CreativeEditorState& editor,
 }
 
 [[nodiscard]] std::string_view commandLabel(
+    const CreativeEditorState& editor,
     CreativeEditorToolOptionsCommandId command) noexcept {
+  if (command == CreativeEditorToolOptionsCommandId::UngroupSelection &&
+      editor.toolOptions.contextContainerKind ==
+          cr::CreativeObjectKind::PrefabInstance) {
+    return "UNPACK INSTANCE";
+  }
   if (creativeEditorCommandIsObjectAction(command)) {
     return creativeEditorObjectActionLabel(command);
   }
@@ -236,7 +243,10 @@ void adjustSelection(CreativeEditorState& editor,
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
       return "CLEAR SYMMETRY PIVOT";
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
-      return "EDIT GROUP CONTENTS";
+      return editor.toolOptions.contextContainerKind ==
+                     cr::CreativeObjectKind::PrefabInstance
+                 ? "EDIT CONTENTS"
+                 : "EDIT GROUP CONTENTS";
     case CreativeEditorToolOptionsCommandId::TransformSelection:
     case CreativeEditorToolOptionsCommandId::ResetSelectionTransform:
     case CreativeEditorToolOptionsCommandId::DuplicateSelection:
@@ -245,6 +255,7 @@ void adjustSelection(CreativeEditorState& editor,
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
+    case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
     case CreativeEditorToolOptionsCommandId::Count:
       return "INVALID COMMAND";
   }
@@ -279,6 +290,7 @@ void adjustSelection(CreativeEditorState& editor,
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
+    case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
     case CreativeEditorToolOptionsCommandId::Count:
       return "INVALID";
   }
@@ -397,6 +409,7 @@ bool activateCreativeEditorToolOptionsSelection(
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
+    case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
       break;
     case CreativeEditorToolOptionsCommandId::Count:
       break;
@@ -444,6 +457,7 @@ bool activateCreativeEditorToolOptionsSelection(
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
+    case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
     case CreativeEditorToolOptionsCommandId::Count:
       break;
   }
@@ -631,7 +645,8 @@ void appendCreativeEditorToolOptionsOverlay(
                        selected && enabled ? 0.10F : 0.06F,
                        selected && enabled ? 0.18F : 0.07F,
                        selected && enabled ? 0.12F : 0.08F, 0.98F});
-    appendText(glyphs, commandLabel(command), layout.panelX + labelInset,
+    appendText(glyphs, commandLabel(editor, command),
+               layout.panelX + labelInset,
                y + 12, drawableWidth, drawableHeight,
                enabled ? 0.78F : 0.42F, enabled ? 0.92F : 0.46F,
                enabled ? 0.80F : 0.48F);

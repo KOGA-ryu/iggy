@@ -123,7 +123,7 @@ CreativeDocumentRemoveReceipt Facade::removeDocumentObject(
   const CreativeObject* requestedObject =
       document_.findObject(request.objectId);
   if (requestedObject != nullptr &&
-      requestedObject->kind == CreativeObjectKind::Group) {
+      creativeObjectIsHierarchyContainer(requestedObject->kind)) {
     CreativeHierarchyRemoveReceipt hierarchy =
         removeCreativeObjectHierarchyAtomically(document_, request.objectId);
     if (!hierarchy.accepted) {

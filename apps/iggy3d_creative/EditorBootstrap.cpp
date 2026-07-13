@@ -1,9 +1,11 @@
 #include "EditorBootstrap.hpp"
 
 #include <filesystem>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <cstdlib>
 
@@ -162,10 +164,25 @@ void initializeCreativeEditorBootstrapData(
       std::filesystem::path{IGGY3D_CREATIVE_ASSET_ROOT_VALUE};
   CreativeCatalogAssetDiscovery catalogAssets =
       discoverCreativeCatalogAssets(output.assetRoot);
+  const CreativeEditorAuthoredAssetLoadReceipt authoredAssets =
+      loadCreativeEditorAuthoredAssetLibrary(output.editor.authoredAssets,
+                                             output.saveRoot);
+  std::vector<iggy3d::creative::CreativeCatalogAsset> authoredCatalogAssets =
+      creativeEditorAuthoredAssetCatalogEntries(output.editor.authoredAssets);
+  catalogAssets.assets.insert(
+      catalogAssets.assets.end(),
+      std::make_move_iterator(authoredCatalogAssets.begin()),
+      std::make_move_iterator(authoredCatalogAssets.end()));
   SDL_Log("iggy3d_creative: asset catalog root='%s' ready=%llu failed=%llu",
           output.assetRoot.generic_string().c_str(),
           static_cast<unsigned long long>(catalogAssets.assets.size()),
           static_cast<unsigned long long>(catalogAssets.failures.size()));
+  SDL_Log("iggy3d_creative: authored assets root='%s' ready=%llu rejected=%llu "
+          "status='%s'",
+          output.editor.authoredAssets.root.generic_string().c_str(),
+          static_cast<unsigned long long>(authoredAssets.loadedCount),
+          static_cast<unsigned long long>(authoredAssets.rejectedCount),
+          authoredAssets.reasonCode.c_str());
   for (const iggy3d::creative::CreativeCatalogAssetFailure& failure :
        catalogAssets.failures) {
     SDL_Log("iggy3d_creative: asset catalog rejected path='%s' reason='%s'",

@@ -130,6 +130,11 @@ void attachCreativeEditorPlacementPreviews(
       held.kind == cr::CreativeHeldItemKind::MaterialBrush;
   const bool assetScatter =
       creativeEditorUsesAssetScatter(held, editor.toolSettings);
+  const bool authoredAsset =
+      creativeEditorUsesAuthoredAsset(held, editor.authoredAssets);
+  const std::string_view previewAssetId =
+      authoredAsset ? std::string_view{}
+                    : cr::creativeHotbarAssetId(held);
   if (captureMode || modalOpen ||
       (!materialPlacement && !materialBrush) ||
       held.objectKind == cr::CreativeObjectKind::Unknown) {
@@ -172,7 +177,8 @@ void attachCreativeEditorPlacementPreviews(
     Vec3 targetCenter{};
     Vec3 targetSize{};
     Vec3 targetRotation{};
-    if (previewPlanTransform(targetPlan, targetBounds, 1.0F, targetCenter,
+    if (previewPlanTransform(targetPlan, targetBounds,
+                             authoredAsset ? 0.96F : 1.0F, targetCenter,
                              targetSize, targetRotation)) {
       const bool rejectedThisFrame =
           feedback.frameIndex == editor.frameIndex &&
@@ -183,7 +189,9 @@ void attachCreativeEditorPlacementPreviews(
               *document, targetPlan, cr::creativeHotbarAssetId(held));
       const bool targetInvalid =
           !admission.allowed || duplicate || rejectedThisFrame ||
-          editor.interaction.materialStroke.capacityReached;
+          (authoredAsset
+               ? editor.interaction.authoredAssetStroke.capacityReached
+               : editor.interaction.materialStroke.capacityReached);
       appendCreativePreview(
           frame.creativePreview,
           targetInvalid ? RenderCreativePreviewRole::PlacementInvalid
@@ -192,7 +200,7 @@ void attachCreativeEditorPlacementPreviews(
               modelMatrix(targetCenter, targetRotation, targetSize),
           targetPlan.valid &&
               targetPlan.shapeKind == cr::CreativeObjectShapeKind::Path,
-          cr::creativeHotbarAssetId(held));
+          previewAssetId);
     }
   }
 
@@ -214,7 +222,7 @@ void attachCreativeEditorPlacementPreviews(
       frame.creativePreview, RenderCreativePreviewRole::Held,
       frame.camera.clipFromView *
           modelMatrix({0.42F, -0.32F, -0.82F}, heldRotation, heldSize),
-      false, cr::creativeHotbarAssetId(held));
+      false, previewAssetId);
 }
 
 }  // namespace iggy3d_creative_app

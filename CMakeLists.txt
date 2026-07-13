@@ -39,6 +39,7 @@ target_sources(iggy3d
     src/core/math/Mat4.cpp
     src/app/PackageRuntimeLookup.cpp
     src/app/iggy3d/creative/Geometry.cpp
+    src/app/iggy3d/creative/assets/AuthoredAsset.cpp
     src/app/iggy3d/creative/document/Object.cpp
     src/app/iggy3d/creative/document/Document.cpp
     src/app/iggy3d/creative/document/DocumentObjects.cpp
@@ -253,6 +254,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorActionHints.cpp
   apps/iggy3d_creative/EditorAssetReplacement.cpp
   apps/iggy3d_creative/EditorAssetScatter.cpp
+  apps/iggy3d_creative/EditorAuthoredAssets.cpp
   apps/iggy3d_creative/EditorAssets.cpp
   apps/iggy3d_creative/EditorToolCapabilities.cpp
   apps/iggy3d_creative/EditorCatalog.cpp

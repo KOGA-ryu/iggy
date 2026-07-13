@@ -23,8 +23,15 @@ void refreshHeldItemPreview(
   CreativeEditorState& editor = request.editor;
   const cr::CreativeHeldItemDefinition& definition =
       cr::describeCreativeHeldItem(held.kind);
+  const bool authoredAsset =
+      creativeEditorUsesAuthoredAsset(held, editor.authoredAssets);
   const bool assetScatter =
       creativeEditorUsesAssetScatter(held, editor.toolSettings);
+  if (!authoredAsset) {
+    finalizeCreativeAuthoredAssetStroke(
+        request.appState, editor,
+        "creative_authored_asset_non_authored_tool");
+  }
   if (!assetScatter) {
     finalizeCreativeAssetScatterStroke(
         request.appState, editor,
@@ -38,7 +45,17 @@ void refreshHeldItemPreview(
     case cr::CreativeHeldItemFrameMode::MaterialStroke: {
       finalizeCreativeTerrainStroke(request.appState, editor,
                                     "creative_terrain_stroke_material_tool");
-      if (assetScatter) {
+      if (authoredAsset) {
+        finalizeCreativeMaterialStroke(
+            request.appState, editor,
+            "creative_material_stroke_authored_asset");
+        finalizeCreativeAssetScatterStroke(
+            request.appState, editor,
+            "creative_asset_scatter_authored_asset");
+        processCreativeAuthoredAssetFrame(
+            request.appState, editor, request.actions,
+            request.monotonicTimeNanoseconds);
+      } else if (assetScatter) {
         finalizeCreativeMaterialStroke(
             request.appState, editor,
             "creative_material_stroke_asset_scatter");

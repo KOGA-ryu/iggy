@@ -183,6 +183,11 @@ std::string_view toString(CreativeGroupCommandStatus status) noexcept {
   return "Unknown";
 }
 
+bool creativeObjectIsHierarchyContainer(CreativeObjectKind kind) noexcept {
+  return kind == CreativeObjectKind::Group ||
+         kind == CreativeObjectKind::PrefabInstance;
+}
+
 CreativeHierarchySelection resolveCreativeObjectHierarchy(
     const CreativeDocument& document,
     std::span<const CreativeObjectId> selectedObjectIds) {
@@ -253,7 +258,8 @@ CreativeObjectId resolveCreativeHierarchyInteractionRoot(
   }
   for (CreativeObjectId rootObjectId : hierarchy.rootObjectIds) {
     const CreativeObject* root = document.findObject(rootObjectId);
-    if (root == nullptr || root->kind != CreativeObjectKind::Group) {
+    if (root == nullptr ||
+        !creativeObjectIsHierarchyContainer(root->kind)) {
       continue;
     }
     const CreativeHierarchySelection rootHierarchy =
@@ -382,7 +388,7 @@ CreativeGroupCommandReceipt ungroupDocumentObjectAtomically(
            "creative_ungroup_object_missing", groupObjectId);
     return receipt;
   }
-  if (group->kind != CreativeObjectKind::Group) {
+  if (!creativeObjectIsHierarchyContainer(group->kind)) {
     reject(receipt, CreativeGroupCommandStatus::NotGroup,
            "creative_ungroup_requires_group", groupObjectId);
     return receipt;

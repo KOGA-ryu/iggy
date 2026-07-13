@@ -4,8 +4,10 @@
 #include <array>
 #include <cctype>
 #include <cstdio>
+#include <iterator>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include <SDL3/SDL.h>
 
@@ -275,6 +277,13 @@ CreativeEditorAssetReloadReceipt reloadCreativeEditorAssets(
       discoverCreativeCatalogAssets(request.assetRoot);
   appendDeletedCreativeAssetFailures(discovery, request.liveCatalog,
                                      request.assetRoot);
+  std::vector<cr::CreativeCatalogAsset> authoredAssets =
+      creativeEditorAuthoredAssetCatalogEntries(
+          request.editor.authoredAssets);
+  discovery.assets.insert(
+      discovery.assets.end(),
+      std::make_move_iterator(authoredAssets.begin()),
+      std::make_move_iterator(authoredAssets.end()));
   receipt.readyAssetCount = discovery.assets.size();
   receipt.failedAssetCount = discovery.failures.size();
   if (discovery.fatal) {

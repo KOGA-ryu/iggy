@@ -92,6 +92,8 @@ struct CreativeHierarchyRemoveReceipt {
     CreativeGroupCommandKind kind) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeGroupCommandStatus status) noexcept;
+[[nodiscard]] bool creativeObjectIsHierarchyContainer(
+    CreativeObjectKind kind) noexcept;
 
 // Resolves unique selected roots and every descendant in document order.
 // Selecting both an ancestor and its descendant keeps only the ancestor root.
@@ -100,8 +102,9 @@ struct CreativeHierarchyRemoveReceipt {
     const CreativeDocument& document,
     std::span<const CreativeObjectId> selectedObjectIds);
 
-// Keeps a selected Group as the interaction root when the visible hit belongs
-// to one of its descendants. Otherwise returns hitObjectId unchanged.
+// Keeps a selected hierarchy container as the interaction root when the
+// visible hit belongs to one of its descendants. Otherwise returns
+// hitObjectId unchanged.
 [[nodiscard]] CreativeObjectId resolveCreativeHierarchyInteractionRoot(
     const CreativeDocument& document,
     std::span<const CreativeObjectId> selectedObjectIds,

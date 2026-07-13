@@ -9,6 +9,7 @@
 
 #include "EditorConnectedFill.hpp"
 #include "EditorAssetScatter.hpp"
+#include "EditorAuthoredAssets.hpp"
 #include "EditorEdits.hpp"
 #include "EditorPicking.hpp"
 #include "EditorSurfaceExtrude.hpp"
@@ -235,6 +236,7 @@ struct CreativeEditorInteractionState {
   CreativeMaterialBrushPresetBank materialBrushPresets{};
   CreativeMaterialStrokeState materialStroke{};
   CreativeAssetScatterStrokeState assetScatter{};
+  CreativeAuthoredAssetStrokeState authoredAssetStroke{};
   CreativeEditorConnectedFillCache connectedFill{};
   CreativeEditorSurfaceExtrudeCache surfaceExtrude{};
   iggy3d::creative::CreativeObjectId moveTargetId =

@@ -246,11 +246,13 @@ void appendCatalogBuildDetails(
         layout.detailX + 4, detailY + 21, drawableWidth, drawableHeight,
         0.90F, 0.93F, 0.95F);
     detailY += 58;
-    appendText(glyphs, "PHYSICS", layout.detailX + 4, detailY,
+    appendText(glyphs, entry->authoredComposite ? "CONTENT" : "PHYSICS",
+               layout.detailX + 4, detailY,
                drawableWidth, drawableHeight, 0.58F, 0.66F, 0.71F);
-    appendText(glyphs,
-               cr::creativeCatalogAssetPhysicsLabel(
-                   entry->assetAuthoringMetadata),
+    appendText(glyphs, entry->authoredComposite
+                           ? std::string_view{"EXPANDED EDITABLE OBJECTS"}
+                           : cr::creativeCatalogAssetPhysicsLabel(
+                                 entry->assetAuthoringMetadata),
                layout.detailX + 4,
                detailY + 21, drawableWidth, drawableHeight, 0.90F, 0.93F,
                0.95F);
@@ -452,7 +454,7 @@ void appendCreativeEditorCatalogOverlay(
     if (resultCount == 0U) {
       appendText(glyphs,
                  catalog.model.page == cr::CreativeCatalogPage::Assets
-                     ? "No matching imported assets"
+                     ? "No matching assets"
                      : "No matching materials or tools",
                  layout.panelX + 24,
                  layout.rowsY + 8, drawableWidth, drawableHeight, 0.82F, 0.54F,
@@ -475,11 +477,13 @@ void appendCreativeEditorCatalogOverlay(
       if (cr::creativeCatalogEntryAssignable(*selectedEntry) ||
           cr::creativeCatalogEntryRequestsAssetReload(*selectedEntry)) {
         const CatalogRect button = equipButton(layout);
-        const bool assetEntry = selectedEntry->category ==
-                                cr::CreativeCatalogEntryCategory::Asset;
+        const bool assetEntry =
+            selectedEntry->category == cr::CreativeCatalogEntryCategory::Asset;
+        const bool replaceableAssetEntry =
+            assetEntry && !selectedEntry->authoredComposite;
         const bool equipFocused =
-            !assetEntry || catalog.assetAction ==
-                               CreativeEditorCatalogAssetAction::Equip;
+            !replaceableAssetEntry ||
+            catalog.assetAction == CreativeEditorCatalogAssetAction::Equip;
         uiRects.push_back({button.x, button.y, button.width, button.height,
                            equipFocused ? 0.86F : 0.12F,
                            equipFocused ? 0.76F : 0.14F,
@@ -492,7 +496,7 @@ void appendCreativeEditorCatalogOverlay(
                    drawableHeight, equipFocused ? 0.06F : 0.82F,
                    equipFocused ? 0.065F : 0.86F,
                    equipFocused ? 0.07F : 0.88F);
-        if (assetEntry && layout.replaceX >= layout.contentX) {
+        if (replaceableAssetEntry && layout.replaceX >= layout.contentX) {
           const CatalogRect replace = replaceSelectionButton(layout);
           const bool replaceFocused =
               catalog.assetAction ==

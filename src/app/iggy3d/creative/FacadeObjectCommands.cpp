@@ -292,6 +292,27 @@ CreativeGroupCommandReceipt Facade::ungroupObject(
   return receipt;
 }
 
+CreativeAuthoredAssetInstanceReceipt Facade::instantiateAuthoredAsset(
+    const CreativeAuthoredAssetPlacementRequest& request) {
+  recordCommandAttempt(stats_);
+  CreativeAuthoredAssetInstanceReceipt receipt =
+      instantiateCreativeAuthoredAssetAtomically(document_, request);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  const TargetRef root = objectIdToTargetRef(receipt.instanceRootObjectId);
+  static_cast<void>(setSelectedTargets(selectionState_, std::span{&root, 1U},
+                                       root));
+  state_.selected = selectionState_.selectedTarget;
+  for (std::size_t index = 0U;
+       index < receipt.instanceObjectIds.size() + 1U; ++index) {
+    recordObjectCreated(stats_);
+  }
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
 CreativeLinearArrayReceipt Facade::createLinearArrayFromSelection(
     const CreativeLinearArrayRequest& request) {
   recordCommandAttempt(stats_);

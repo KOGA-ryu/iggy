@@ -214,7 +214,8 @@ void requestSelectedAssetReplacement(
   const cr::CreativeCatalogEntry* selected =
       cr::selectedCreativeCatalogEntry(catalog.model);
   if (selected == nullptr ||
-      selected->category != cr::CreativeCatalogEntryCategory::Asset) {
+      selected->category != cr::CreativeCatalogEntryCategory::Asset ||
+      selected->authoredComposite) {
     return;
   }
   if (cr::selectedTargetCount(request.appState.facade.selectionState()) == 0U) {
@@ -437,7 +438,8 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
         const cr::CreativeCatalogEntry* selected =
             cr::selectedCreativeCatalogEntry(catalog.model);
         if (selected != nullptr &&
-            selected->category == cr::CreativeCatalogEntryCategory::Asset) {
+            selected->category == cr::CreativeCatalogEntryCategory::Asset &&
+            !selected->authoredComposite) {
           moveAssetAction(
               catalog,
               event.action == cr::CreativeInputActionId::CatalogPreviousVariant
@@ -465,6 +467,7 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
               cr::selectedCreativeCatalogEntry(catalog.model);
           if (selected != nullptr &&
               selected->category == cr::CreativeCatalogEntryCategory::Asset &&
+              !selected->authoredComposite &&
               catalog.assetAction ==
                   CreativeEditorCatalogAssetAction::ReplaceSelection) {
             requestSelectedAssetReplacement(request, result);
@@ -538,6 +541,7 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
     }
     if (selected != nullptr &&
         selected->category == cr::CreativeCatalogEntryCategory::Asset &&
+        !selected->authoredComposite &&
         layout.replaceX >= layout.contentX &&
         contains(replaceSelectionButton(layout), pointer.x, pointer.y)) {
       requestSelectedAssetReplacement(request, result);
