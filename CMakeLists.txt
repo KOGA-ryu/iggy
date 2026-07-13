@@ -68,6 +68,9 @@ target_sources(iggy3d
     src/app/iggy3d/creative/tools/TerrainSeed.cpp
     src/app/iggy3d/creative/tools/TerrainSculpt.cpp
     src/app/iggy3d/creative/tools/TerrainStamp.cpp
+    src/app/iggy3d/creative/tools/ToolOptions.cpp
+    src/app/iggy3d/creative/tools/ToolSettingLabels.cpp
+    src/app/iggy3d/creative/tools/ToolSettings.cpp
     src/app/iggy3d/creative/tools/Tools.cpp
     src/app/iggy3d/creative/tools/Select.cpp
     src/app/iggy3d/creative/tools/Clipboard.cpp
