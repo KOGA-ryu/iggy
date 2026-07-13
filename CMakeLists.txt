@@ -253,13 +253,17 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorPattern.cpp
   apps/iggy3d_creative/EditorBootstrap.cpp
   apps/iggy3d_creative/EditorPlacement.cpp
+  apps/iggy3d_creative/EditorPlacementPreview.cpp
   apps/iggy3d_creative/EditorEdits.cpp
   apps/iggy3d_creative/EditorVolume.cpp
   apps/iggy3d_creative/EditorFrustumCull.cpp
   apps/iggy3d_creative/EditorPathEditing.cpp
   apps/iggy3d_creative/EditorPersistence.cpp
   apps/iggy3d_creative/EditorPicking.cpp
+  apps/iggy3d_creative/EditorOverlayHud.cpp
+  apps/iggy3d_creative/EditorOverlayWireframes.cpp
   apps/iggy3d_creative/EditorPreviewProxies.cpp
+  apps/iggy3d_creative/EditorScenePreview.cpp
   apps/iggy3d_creative/EditorShapePreview.cpp
   apps/iggy3d_creative/EditorPreviewFrame.cpp)
 
