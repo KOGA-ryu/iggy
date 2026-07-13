@@ -227,6 +227,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorControlsPersistence.cpp
   apps/iggy3d_creative/EditorControlsUi.cpp
   apps/iggy3d_creative/EditorToolOptions.cpp
+  apps/iggy3d_creative/EditorToolOptionsPanel.cpp
   apps/iggy3d_creative/EditorObjectActions.cpp
   apps/iggy3d_creative/EditorCommandInput.cpp
   apps/iggy3d_creative/EditorTransform.cpp
