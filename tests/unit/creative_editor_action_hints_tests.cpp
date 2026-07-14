@@ -119,12 +119,15 @@ bool toolCapabilitiesCoverBehaviorAndUiProfiles() {
       case CreativeEditorToolCommandProfile::None:
         break;
       case CreativeEditorToolCommandProfile::MaterialBrush:
-      case CreativeEditorToolCommandProfile::ObjectGroup:
         expectedCommandCount = 2U;
         ++specializedCommandProfiles;
         break;
+      case CreativeEditorToolCommandProfile::ObjectGroup:
+        expectedCommandCount = 5U;
+        ++specializedCommandProfiles;
+        break;
       case CreativeEditorToolCommandProfile::ObjectMove:
-        expectedCommandCount = 8U;
+        expectedCommandCount = 12U;
         ++specializedCommandProfiles;
         break;
       case CreativeEditorToolCommandProfile::Count:

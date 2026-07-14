@@ -184,6 +184,178 @@ bool invalidDefinitionCannotPartiallyMutate() {
                 "missing source-root remap rejects the complete transaction");
 }
 
+bool refreshAllInstancesIsAtomic() {
+  const cr::CreativeAuthoredAssetCaptureResult original =
+      makeTwoCrateDefinition();
+  cr::CreativeDocument updatedSource =
+      cr::CreativeDocument::create("Updated Source");
+  static_cast<void>(updatedSource.assignId(716U));
+  const cr::CreativeObjectId left =
+      createCrate(updatedSource, "Left", {10.0, 0.0, 20.0});
+  const cr::CreativeObjectId right =
+      createCrate(updatedSource, "Right", {12.0, 0.0, 20.0});
+  const cr::CreativeObjectId detail =
+      createCrate(updatedSource, "Detail", {11.0, 2.0, 20.0});
+  const std::array updatedSelection{left, right, detail};
+  const cr::CreativeAuthoredAssetCaptureResult updated =
+      cr::captureCreativeAuthoredAsset(
+          {&updatedSource, updatedSelection, "authored_0001", "Twin Crates",
+           717U});
+
+  cr::CreativeDocument target = cr::CreativeDocument::create("Refresh");
+  static_cast<void>(target.assignId(718U));
+  cr::CreativeDocumentCreateRequest groupRequest;
+  groupRequest.kind = cr::CreativeObjectKind::Group;
+  groupRequest.name = "Parent";
+  const cr::CreativeObjectId parentId = target.createObject(groupRequest).objectId;
+  cr::CreativeAuthoredAssetPlacementRequest firstPlacement;
+  firstPlacement.definition = &original.definition;
+  firstPlacement.targetAnchor = {5.0, 1.0, -3.0};
+  firstPlacement.yawRadians = 1.5707963267948966;
+  firstPlacement.parentId = parentId;
+  const cr::CreativeAuthoredAssetInstanceReceipt first =
+      cr::instantiateCreativeAuthoredAssetAtomically(target, firstPlacement);
+  cr::CreativeAuthoredAssetPlacementRequest secondPlacement;
+  secondPlacement.definition = &original.definition;
+  secondPlacement.targetAnchor = {-7.0, 3.0, 9.0};
+  secondPlacement.yawRadians = -0.5;
+  const cr::CreativeAuthoredAssetInstanceReceipt second =
+      cr::instantiateCreativeAuthoredAssetAtomically(target, secondPlacement);
+  if (!expect(original.accepted && updated.accepted && first.accepted &&
+                  second.accepted && parentId != cr::kInvalidObjectId,
+              "refresh fixtures are valid")) {
+    return false;
+  }
+  const cr::CreativeObject firstRootBefore =
+      *target.findObject(first.instanceRootObjectId);
+  const cr::CreativeObject secondRootBefore =
+      *target.findObject(second.instanceRootObjectId);
+  std::vector<cr::CreativeObjectId> oldChildIds = first.instanceObjectIds;
+  oldChildIds.insert(oldChildIds.end(), second.instanceObjectIds.begin(),
+                     second.instanceObjectIds.end());
+
+  const cr::CreativeAuthoredAssetRefreshReceipt refreshed =
+      cr::refreshCreativeAuthoredAssetInstancesAtomically(target,
+                                                          updated.definition);
+  const cr::CreativeObject* firstRootAfter =
+      target.findObject(first.instanceRootObjectId);
+  const cr::CreativeObject* secondRootAfter =
+      target.findObject(second.instanceRootObjectId);
+  const cr::CreativeHierarchySelection firstHierarchy =
+      cr::resolveCreativeObjectHierarchy(
+          target, std::span{&first.instanceRootObjectId, 1U});
+  const cr::CreativeHierarchySelection secondHierarchy =
+      cr::resolveCreativeObjectHierarchy(
+          target, std::span{&second.instanceRootObjectId, 1U});
+  const bool oldChildrenRemoved =
+      std::all_of(oldChildIds.begin(), oldChildIds.end(),
+                  [&target](cr::CreativeObjectId objectId) {
+                    return !target.containsObject(objectId);
+                  });
+  cr::CreativeAuthoredAssetPlacementRequest firstUpdatedPlacement =
+      firstPlacement;
+  firstUpdatedPlacement.definition = &updated.definition;
+  const cr::CreativeAuthoredAssetPlacementPlan expectedFirst =
+      cr::planCreativeAuthoredAssetPlacement(firstUpdatedPlacement);
+  const bool rootsPreserved =
+      firstRootAfter != nullptr && secondRootAfter != nullptr &&
+      firstRootAfter->id == firstRootBefore.id &&
+      secondRootAfter->id == secondRootBefore.id &&
+      firstRootAfter->name == firstRootBefore.name &&
+      secondRootAfter->name == secondRootBefore.name &&
+      firstRootAfter->parentId == firstRootBefore.parentId &&
+      secondRootAfter->parentId == secondRootBefore.parentId &&
+      vecNear(firstRootAfter->transform.position,
+              firstRootBefore.transform.position) &&
+      vecNear(firstRootAfter->transform.rotationEulerRadians,
+              firstRootBefore.transform.rotationEulerRadians) &&
+      vecNear(secondRootAfter->transform.position,
+              secondRootBefore.transform.position) &&
+      vecNear(secondRootAfter->transform.rotationEulerRadians,
+              secondRootBefore.transform.rotationEulerRadians) &&
+      expectedFirst.accepted &&
+      cr::creativeBoundsExactlyEqual(firstRootAfter->bounds,
+                                     expectedFirst.rootRequest.bounds);
+
+  const cr::CreativeObjectId lockedChildId =
+      firstHierarchy.objectIds.size() > 1U ? firstHierarchy.objectIds.back()
+                                          : cr::kInvalidObjectId;
+  const cr::CreativeDocumentMutationReceipt locked =
+      cr::setDocumentObjectLocked(target, lockedChildId, true);
+  const std::uint64_t lockedRevision = target.revision();
+  const std::size_t lockedObjectCount = target.objectCount();
+  const cr::CreativeAuthoredAssetRefreshReceipt lockRejected =
+      cr::refreshCreativeAuthoredAssetInstancesAtomically(target,
+                                                          updated.definition);
+  const bool lockWasAtomic =
+      cr::documentMutationChanged(locked.status) && !lockRejected.accepted &&
+      lockRejected.status ==
+          cr::CreativeAuthoredAssetRefreshStatus::LockedObject &&
+      lockRejected.refreshedInstanceCount == 0U &&
+      lockRejected.removedObjectCount == 0U &&
+      lockRejected.createdObjectCount == 0U &&
+      target.revision() == lockedRevision &&
+      target.objectCount() == lockedObjectCount &&
+      target.containsObject(lockedChildId);
+
+  static_cast<void>(cr::setDocumentObjectLocked(target, lockedChildId, false));
+  const cr::CreativeDocumentMutationReceipt scaled = cr::applyDocumentMutation(
+      target, second.instanceRootObjectId, cr::CreativeMutationKind::Scale,
+      cr::CreativeMutationPayload{cr::ScaleMutation{{2.0, 1.0, 1.0}}});
+  const std::uint64_t scaledRevision = target.revision();
+  const std::size_t scaledObjectCount = target.objectCount();
+  const cr::CreativeAuthoredAssetRefreshReceipt scaleRejected =
+      cr::refreshCreativeAuthoredAssetInstancesAtomically(target,
+                                                          updated.definition);
+  const bool scaleWasAtomic =
+      cr::documentMutationChanged(scaled.status) && !scaleRejected.accepted &&
+      scaleRejected.status ==
+          cr::CreativeAuthoredAssetRefreshStatus::UnsupportedInstance &&
+      target.revision() == scaledRevision &&
+      target.objectCount() == scaledObjectCount;
+
+  cr::CreativeAuthoredAssetDefinition recursive = updated.definition;
+  recursive.content.objects.front().kind =
+      cr::CreativeObjectKind::PrefabInstance;
+  recursive.content.objects.front().assetId = recursive.assetId;
+  const std::uint64_t recursiveRevision = target.revision();
+  const cr::CreativeAuthoredAssetRefreshReceipt recursionRejected =
+      cr::refreshCreativeAuthoredAssetInstancesAtomically(target, recursive);
+  cr::CreativeDocument empty = cr::CreativeDocument::create("No Instances");
+  static_cast<void>(empty.assignId(719U));
+  const cr::CreativeAuthoredAssetRefreshReceipt noMatches =
+      cr::refreshCreativeAuthoredAssetInstancesAtomically(empty,
+                                                          updated.definition);
+
+  return expect(refreshed.accepted && refreshed.changed &&
+                    refreshed.status ==
+                        cr::CreativeAuthoredAssetRefreshStatus::Refreshed &&
+                    refreshed.matchedInstanceCount == 2U &&
+                    refreshed.refreshedInstanceCount == 2U &&
+                    refreshed.removedObjectCount == 4U &&
+                    refreshed.createdObjectCount == 6U,
+                "refresh replaces every matching instance in one receipt") &&
+         expect(firstHierarchy.accepted && secondHierarchy.accepted &&
+                    firstHierarchy.objectIds.size() == 4U &&
+                    secondHierarchy.objectIds.size() == 4U &&
+                    oldChildrenRemoved && rootsPreserved,
+                "refresh preserves roots and replaces only descendants") &&
+         expect(lockWasAtomic,
+                "locked descendants reject the complete refresh") &&
+         expect(scaleWasAtomic,
+                "unsupported instance transforms reject the complete refresh") &&
+         expect(!recursionRejected.accepted &&
+                    recursionRejected.status ==
+                        cr::CreativeAuthoredAssetRefreshStatus::InvalidDefinition &&
+                    target.revision() == recursiveRevision,
+                "self-recursive definitions fail before mutation") &&
+         expect(!noMatches.accepted &&
+                    noMatches.status ==
+                        cr::CreativeAuthoredAssetRefreshStatus::NoMatchingInstances &&
+                    empty.objectCount() == 0U,
+                "refresh reports when no placed instances match");
+}
+
 bool definitionsAreBoundedAndFailClosed() {
   cr::CreativeDocument oversized = cr::CreativeDocument::create("Oversized");
   static_cast<void>(oversized.assignId(708U));
@@ -445,6 +617,9 @@ bool updateCommandRoundTripsEditedInstance() {
       cr::resolveCreativeObjectHierarchy(
           appState.facade.document(),
           std::span{&second.instanceRootObjectId, 1U});
+  const bool updateDidNotRewriteInstances =
+      appState.facade.document().revision() == revisionBeforeUpdate &&
+      untouchedSecond.accepted && untouchedSecond.objectIds.size() == 2U;
   const cr::CreativeObject* originalSourceObject =
       clipboardObjectNamed(originalDefinition.content, "Pillar");
   const cr::CreativeObject* updatedSourceObject =
@@ -473,6 +648,100 @@ bool updateCommandRoundTripsEditedInstance() {
                                entry.hotbarEntry.assetSourceBounds,
                                updatedDefinition->sourceBounds);
                   });
+
+  const cr::CreativeObject firstRootBeforeRefresh =
+      *appState.facade.findObject(first.instanceRootObjectId);
+  const cr::CreativeObject secondRootBeforeRefresh =
+      *appState.facade.findObject(second.instanceRootObjectId);
+  std::vector<cr::CreativeObjectId> staleChildIds = first.instanceObjectIds;
+  staleChildIds.insert(staleChildIds.end(), second.instanceObjectIds.begin(),
+                       second.instanceObjectIds.end());
+  staleChildIds.push_back(addedObjectId);
+  const std::size_t objectCountBeforeRefresh =
+      appState.facade.document().objectCount();
+  const std::uint64_t undoDepthBeforeRefresh =
+      cr::creativeUndoDepth(appState.history);
+  editor.toolOptions.open = true;
+  editor.toolOptions.commands =
+      app::creativeEditorToolOptionCommandsForEntry(
+          {cr::CreativeHeldItemKind::ObjectGroup,
+           cr::CreativeObjectKind::Unknown});
+  app::refreshCreativeEditorObjectActionContext(appState,
+                                                editor.toolOptions);
+  const auto refreshCommand = std::find(
+      editor.toolOptions.commands.ids.begin(),
+      editor.toolOptions.commands.ids.begin() +
+          editor.toolOptions.commands.count,
+      app::CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances);
+  editor.toolOptions.selectedIndex = static_cast<std::size_t>(
+      refreshCommand - editor.toolOptions.commands.ids.begin());
+  const bool instancesRefreshed =
+      refreshCommand != editor.toolOptions.commands.ids.begin() +
+                            editor.toolOptions.commands.count &&
+      app::activateCreativeEditorToolOptionsSelection(appState, editor);
+  const cr::CreativeHierarchySelection refreshedFirst =
+      cr::resolveCreativeObjectHierarchy(
+          appState.facade.document(),
+          std::span{&first.instanceRootObjectId, 1U});
+  const cr::CreativeHierarchySelection refreshedSecond =
+      cr::resolveCreativeObjectHierarchy(
+          appState.facade.document(),
+          std::span{&second.instanceRootObjectId, 1U});
+  const bool staleChildrenRemoved =
+      std::all_of(staleChildIds.begin(), staleChildIds.end(),
+                  [&appState](cr::CreativeObjectId objectId) {
+                    return !appState.facade.document().containsObject(objectId);
+                  });
+  const cr::CreativeObject* firstRootAfterRefresh =
+      appState.facade.findObject(first.instanceRootObjectId);
+  const cr::CreativeObject* secondRootAfterRefresh =
+      appState.facade.findObject(second.instanceRootObjectId);
+  const bool rootsPreserved =
+      firstRootAfterRefresh != nullptr && secondRootAfterRefresh != nullptr &&
+      vecNear(firstRootAfterRefresh->transform.position,
+              firstRootBeforeRefresh.transform.position) &&
+      vecNear(firstRootAfterRefresh->transform.rotationEulerRadians,
+              firstRootBeforeRefresh.transform.rotationEulerRadians) &&
+      vecNear(secondRootAfterRefresh->transform.position,
+              secondRootBeforeRefresh.transform.position) &&
+      vecNear(secondRootAfterRefresh->transform.rotationEulerRadians,
+              secondRootBeforeRefresh.transform.rotationEulerRadians);
+  const bool refreshRecordedOnce =
+      cr::creativeUndoDepth(appState.history) == undoDepthBeforeRefresh + 1U;
+  const bool selectionPreserved =
+      appState.facade.selectionState().selectedTarget.value ==
+      static_cast<cr::Id>(first.instanceRootObjectId);
+
+  const cr::CreativeHistoryApplyReceipt undoRefresh = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+  const cr::CreativeHierarchySelection undoFirst =
+      cr::resolveCreativeObjectHierarchy(
+          appState.facade.document(),
+          std::span{&first.instanceRootObjectId, 1U});
+  const cr::CreativeHierarchySelection undoSecond =
+      cr::resolveCreativeObjectHierarchy(
+          appState.facade.document(),
+          std::span{&second.instanceRootObjectId, 1U});
+  const bool undoRestoredLocalState =
+      undoRefresh.accepted &&
+      appState.facade.document().objectCount() == objectCountBeforeRefresh &&
+      undoFirst.accepted && undoFirst.objectIds.size() == 3U &&
+      undoSecond.accepted && undoSecond.objectIds.size() == 2U &&
+      appState.facade.document().containsObject(addedObjectId);
+  const cr::CreativeHistoryApplyReceipt redoRefresh = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Redo);
+  const cr::CreativeHierarchySelection redoFirst =
+      cr::resolveCreativeObjectHierarchy(
+          appState.facade.document(),
+          std::span{&first.instanceRootObjectId, 1U});
+  const cr::CreativeHierarchySelection redoSecond =
+      cr::resolveCreativeObjectHierarchy(
+          appState.facade.document(),
+          std::span{&second.instanceRootObjectId, 1U});
+  const bool redoRestoredRefresh =
+      redoRefresh.accepted && redoFirst.accepted && redoSecond.accepted &&
+      redoFirst.objectIds.size() == 3U && redoSecond.objectIds.size() == 3U &&
+      !appState.facade.document().containsObject(addedObjectId);
 
   app::CreativeEditorAuthoredAssetLibrary reloaded;
   const app::CreativeEditorAuthoredAssetLoadReceipt loaded =
@@ -503,15 +772,22 @@ bool updateCommandRoundTripsEditedInstance() {
   return expect(updated && updatedDefinition != nullptr &&
                     updatedDefinition->content.objects.size() == 2U,
                 "explicit update captures the edited instance contents") &&
-         expect(appState.facade.document().revision() ==
-                        revisionBeforeUpdate &&
-                    untouchedSecond.accepted &&
-                    untouchedSecond.objectIds.size() == 2U,
+         expect(updateDidNotRewriteInstances,
                 "source update does not rewrite existing instances") &&
          expect(sourceFramePreserved,
                 "rotated instance update removes placement yaw") &&
          expect(hotbarRefreshed && catalogRefreshed,
                 "updated source bounds refresh catalog and hotbar facts") &&
+         expect(instancesRefreshed && refreshedFirst.accepted &&
+                    refreshedSecond.accepted &&
+                    refreshedFirst.objectIds.size() == 3U &&
+                    refreshedSecond.objectIds.size() == 3U &&
+                    staleChildrenRemoved && rootsPreserved &&
+                    selectionPreserved,
+                "explicit refresh replaces all instances and preserves roots") &&
+         expect(refreshRecordedOnce && undoRestoredLocalState &&
+                    redoRestoredRefresh,
+                "instance refresh is one undoable and redoable edit") &&
          expect(loaded.accepted && loaded.loadedCount == 1U &&
                     durableDefinition != nullptr &&
                     durableDefinition->content.objects.size() == 2U,
@@ -661,6 +937,7 @@ bool previewUsesCanonicalCompositeProxies() {
     bool save = false;
     bool edit = false;
     bool update = false;
+    bool refresh = false;
     for (std::size_t index = 0U; index < commands.count; ++index) {
       save = save || commands.ids[index] ==
                          app::CreativeEditorToolOptionsCommandId::
@@ -671,8 +948,12 @@ bool previewUsesCanonicalCompositeProxies() {
       update = update || commands.ids[index] ==
                              app::CreativeEditorToolOptionsCommandId::
                                  UpdateSavedAsset;
+      refresh = refresh ||
+                commands.ids[index] ==
+                    app::CreativeEditorToolOptionsCommandId::
+                        RefreshSavedAssetInstances;
     }
-    return commands.count == 11U && save && edit && update;
+    return commands.count == 12U && save && edit && update && refresh;
   }();
   return expect(frame.creativePreview.itemCount == 2U &&
                     frame.creativePreview.items[0].role ==
@@ -696,6 +977,7 @@ bool previewUsesCanonicalCompositeProxies() {
 int main() {
   return captureInstantiateSelectAndUnpack() &&
                  invalidDefinitionCannotPartiallyMutate() &&
+                 refreshAllInstancesIsAtomic() &&
                  definitionsAreBoundedAndFailClosed() &&
                  transformedInstanceUpdateFailsClosed() &&
                  durableLibraryRoundTripsSelection() &&

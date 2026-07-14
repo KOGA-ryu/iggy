@@ -225,6 +225,10 @@ class Facade {
   [[nodiscard]] CreativeGroupCommandReceipt ungroupSelectedObject();
   [[nodiscard]] CreativeAuthoredAssetInstanceReceipt instantiateAuthoredAsset(
       const CreativeAuthoredAssetPlacementRequest& request);
+  [[nodiscard]] CreativeAuthoredAssetRefreshReceipt
+  refreshAuthoredAssetInstances(
+      const CreativeAuthoredAssetDefinition& definition,
+      CreativeObjectId preferredInstanceRootObjectId);
   [[nodiscard]] CreativeLinearArrayReceipt createLinearArrayFromSelection(
       const CreativeLinearArrayRequest& request = {});
   [[nodiscard]] CreativeRadialArrayReceipt createRadialArrayFromSelection(

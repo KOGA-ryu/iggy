@@ -320,10 +320,11 @@ std::uint64_t roomGeometrySignature(const SceneRoomProjection& room) {
   return hash;
 }
 
-void appendTriangle(std::vector<std::uint16_t>& indices,
-                    std::uint16_t a,
-                    std::uint16_t b,
-                    std::uint16_t c);
+template <typename Index>
+void appendTriangle(std::vector<Index>& indices,
+                    std::uint32_t a,
+                    std::uint32_t b,
+                    std::uint32_t c);
 bool finiteVec3(Vec3 value);
 
 bool canAppendPlane(const std::vector<FirstRoomVertex>& vertices) {
@@ -430,26 +431,28 @@ bool canAppendSurfacePatches(
       });
 }
 
-void appendTriangle(std::vector<std::uint16_t>& indices,
-                    std::uint16_t a,
-                    std::uint16_t b,
-                    std::uint16_t c) {
-  indices.push_back(a);
-  indices.push_back(b);
-  indices.push_back(c);
-  indices.push_back(c);
-  indices.push_back(b);
-  indices.push_back(a);
+template <typename Index>
+void appendTriangle(std::vector<Index>& indices,
+                    std::uint32_t a,
+                    std::uint32_t b,
+                    std::uint32_t c) {
+  indices.push_back(static_cast<Index>(a));
+  indices.push_back(static_cast<Index>(b));
+  indices.push_back(static_cast<Index>(c));
+  indices.push_back(static_cast<Index>(c));
+  indices.push_back(static_cast<Index>(b));
+  indices.push_back(static_cast<Index>(a));
 }
 
+template <typename Index>
 void appendBox(std::vector<FirstRoomVertex>& vertices,
-               std::vector<std::uint16_t>& indices,
+               std::vector<Index>& indices,
                std::vector<IndexedDrawRange>& draws,
                Vec3 center,
                Vec3 size,
                Vec3 color,
                Vec3 rotationEulerRadians = {}) {
-  const std::uint16_t base = static_cast<std::uint16_t>(vertices.size());
+  const Index base = static_cast<Index>(vertices.size());
   const float hx = std::max(size.x * 0.5F, 0.001F);
   const float hy = std::max(size.y * 0.5F, 0.001F);
   const float hz = std::max(size.z * 0.5F, 0.001F);
@@ -484,15 +487,17 @@ void appendBox(std::vector<FirstRoomVertex>& vertices,
   draws.push_back(range);
 }
 
+template <typename Index>
 void appendCreativeTargetWireframe(
     std::vector<FirstRoomVertex>& vertices,
-    std::vector<std::uint16_t>& indices,
+    std::vector<Index>& indices,
     std::vector<IndexedDrawRange>& componentDraws,
     Vec3 color);
 
+template <typename Index>
 void appendCreativeTargetPreview(
     std::vector<FirstRoomVertex>& vertices,
-    std::vector<std::uint16_t>& indices,
+    std::vector<Index>& indices,
     std::vector<IndexedDrawRange>& componentDraws,
     Vec3 color) {
   constexpr float kSolidInset = 0.96F;
@@ -501,9 +506,10 @@ void appendCreativeTargetPreview(
   appendCreativeTargetWireframe(vertices, indices, componentDraws, color);
 }
 
+template <typename Index>
 void appendCreativeTargetWireframe(
     std::vector<FirstRoomVertex>& vertices,
-    std::vector<std::uint16_t>& indices,
+    std::vector<Index>& indices,
     std::vector<IndexedDrawRange>& componentDraws,
     Vec3 color) {
   constexpr float kWireThickness = 0.015F;
@@ -521,9 +527,10 @@ void appendCreativeTargetWireframe(
   }
 }
 
+template <typename Index>
 void appendCreativePathWireframe(
     std::vector<FirstRoomVertex>& vertices,
-    std::vector<std::uint16_t>& indices,
+    std::vector<Index>& indices,
     std::vector<IndexedDrawRange>& componentDraws,
     Vec3 color) {
   constexpr float kEndpoint = 1.0F / 2.16F;
@@ -909,7 +916,7 @@ bool appendStaticMeshAsset(std::vector<FirstRoomVertex>& vertices,
 
 bool appendStaticMeshPreviewRole(
     std::vector<FirstRoomVertex>& vertices,
-    std::vector<std::uint16_t>& indices,
+    std::vector<std::uint32_t>& indices,
     std::vector<IndexedDrawRange>& componentDraws,
     const StaticMeshAsset& asset,
     RenderCreativePreviewRole role,
@@ -923,7 +930,7 @@ bool appendStaticMeshPreviewRole(
   if (!asset.hasBounds || !finiteVec3(size) || size.x <= 0.0F ||
       size.y <= 0.0F || size.z <= 0.0F || asset.vertices.empty() ||
       vertices.size() + extraVertices >
-          static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max())) {
+          static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max())) {
     return false;
   }
   for (const StaticMeshPrimitive& primitive : asset.primitives) {
@@ -942,7 +949,7 @@ bool appendStaticMeshPreviewRole(
   const float inset = target ? 0.96F : 1.0F;
   const Vec3 center = (asset.boundsMin + asset.boundsMax) * 0.5F;
   const Vec3 scale{inset / size.x, inset / size.y, inset / size.z};
-  const std::uint16_t base = static_cast<std::uint16_t>(vertices.size());
+  const std::uint32_t base = static_cast<std::uint32_t>(vertices.size());
   for (const StaticMeshVertex& source : asset.vertices) {
     const Vec3 position = componentProduct(source.position - center, scale);
     if (!finiteVec3(position)) {
@@ -954,8 +961,7 @@ bool appendStaticMeshPreviewRole(
   range.firstIndex = static_cast<std::uint32_t>(indices.size());
   for (const StaticMeshPrimitive& primitive : asset.primitives) {
     for (std::uint32_t offset = 0; offset < primitive.indexCount; ++offset) {
-      indices.push_back(static_cast<std::uint16_t>(
-          base + asset.indices[primitive.firstIndex + offset]));
+      indices.push_back(base + asset.indices[primitive.firstIndex + offset]);
     }
   }
   if (target) {
@@ -2068,7 +2074,7 @@ BufferImageResourcesResult BufferImageResources::createFirstRoomResources(
   const VkDeviceSize previewVertexBytes = static_cast<VkDeviceSize>(
       creativePreview.vertices.size() * sizeof(FirstRoomVertex));
   const VkDeviceSize previewIndexBytes = static_cast<VkDeviceSize>(
-      creativePreview.indices.size() * sizeof(std::uint16_t));
+      creativePreview.indices.size() * sizeof(std::uint32_t));
   if (!uploadBuffer(
           allocator_, createInfo.device, createInfo.graphicsQueue,
           createInfo.graphicsQueueFamily,
@@ -2444,7 +2450,7 @@ BufferImageResourcesResult BufferImageResources::prepareStaticMeshAssetReload() 
   const VkDeviceSize vertexBytes = static_cast<VkDeviceSize>(
       preview.vertices.size() * sizeof(FirstRoomVertex));
   const VkDeviceSize indexBytes = static_cast<VkDeviceSize>(
-      preview.indices.size() * sizeof(std::uint16_t));
+      preview.indices.size() * sizeof(std::uint32_t));
   if (!uploadBuffer(
           allocator_, createInfo_.device, createInfo_.graphicsQueue,
           createInfo_.graphicsQueueFamily,

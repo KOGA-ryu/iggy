@@ -177,6 +177,21 @@ void reject(CreativeAuthoredAssetInstanceReceipt& receipt,
   receipt.reasonCode = reasonCode;
 }
 
+void reject(CreativeAuthoredAssetRefreshReceipt& receipt,
+            CreativeAuthoredAssetRefreshStatus status,
+            std::string_view reasonCode,
+            CreativeObjectId failedInstanceRootObjectId = kInvalidObjectId,
+            CreativeObjectId failedObjectId = kInvalidObjectId) noexcept {
+  receipt.status = status;
+  receipt.reasonCode = reasonCode;
+  receipt.failedInstanceRootObjectId = failedInstanceRootObjectId;
+  receipt.failedObjectId = failedObjectId;
+  receipt.refreshedInstanceCount = 0U;
+  receipt.removedObjectCount = 0U;
+  receipt.createdObjectCount = 0U;
+  receipt.revisionAfter = receipt.revisionBefore;
+}
+
 struct CaptureNormalization {
   bool inverseInstanceYaw = false;
   CreativeVec3 instanceAnchor{};
@@ -278,6 +293,30 @@ std::string_view toString(CreativeAuthoredAssetStatus status) noexcept {
     case CreativeAuthoredAssetStatus::MutationRejected: return "MutationRejected";
     case CreativeAuthoredAssetStatus::Ready: return "Ready";
     case CreativeAuthoredAssetStatus::Instantiated: return "Instantiated";
+  }
+  return "Unknown";
+}
+
+std::string_view toString(CreativeAuthoredAssetRefreshStatus status) noexcept {
+  switch (status) {
+    case CreativeAuthoredAssetRefreshStatus::NotRequested:
+      return "NotRequested";
+    case CreativeAuthoredAssetRefreshStatus::InvalidDocument:
+      return "InvalidDocument";
+    case CreativeAuthoredAssetRefreshStatus::InvalidDefinition:
+      return "InvalidDefinition";
+    case CreativeAuthoredAssetRefreshStatus::NoMatchingInstances:
+      return "NoMatchingInstances";
+    case CreativeAuthoredAssetRefreshStatus::UnsupportedInstance:
+      return "UnsupportedInstance";
+    case CreativeAuthoredAssetRefreshStatus::LockedObject:
+      return "LockedObject";
+    case CreativeAuthoredAssetRefreshStatus::InvalidHierarchy:
+      return "InvalidHierarchy";
+    case CreativeAuthoredAssetRefreshStatus::MutationRejected:
+      return "MutationRejected";
+    case CreativeAuthoredAssetRefreshStatus::Refreshed:
+      return "Refreshed";
   }
   return "Unknown";
 }
@@ -635,6 +674,228 @@ CreativeAuthoredAssetInstanceReceipt instantiateCreativeAuthoredAssetAtomically(
   receipt.rootCreateReceipt.revisionBefore = receipt.revisionBefore;
   receipt.rootCreateReceipt.revisionAfter = receipt.revisionAfter;
   receipt.reasonCode = "creative_authored_asset_instantiated";
+  return receipt;
+}
+
+CreativeAuthoredAssetRefreshReceipt
+refreshCreativeAuthoredAssetInstancesAtomically(
+    CreativeDocument& document,
+    const CreativeAuthoredAssetDefinition& definition) {
+  CreativeAuthoredAssetRefreshReceipt receipt;
+  receipt.requested = true;
+  receipt.assetId = definition.assetId;
+  receipt.revisionBefore = document.revision();
+  receipt.revisionAfter = receipt.revisionBefore;
+  if (!document.isValid() || document.id() == kInvalidDocumentId) {
+    reject(receipt, CreativeAuthoredAssetRefreshStatus::InvalidDocument,
+           "creative_authored_asset_refresh_document_invalid");
+    return receipt;
+  }
+
+  CreativeAuthoredAssetPlacementRequest validationRequest;
+  validationRequest.definition = &definition;
+  const CreativeAuthoredAssetPlacementPlan validationPlan =
+      planCreativeAuthoredAssetPlacement(validationRequest);
+  const CreativeBoundsMetrics bounds = measureCreativeBounds(
+      definition.sourceBounds);
+  if (!validationPlan.accepted || !bounds.valid ||
+      !isPositiveCreativeVec3(bounds.size)) {
+    reject(receipt, CreativeAuthoredAssetRefreshStatus::InvalidDefinition,
+           "creative_authored_asset_refresh_definition_invalid");
+    return receipt;
+  }
+  for (const CreativeObject& object : definition.content.objects) {
+    if (object.kind == CreativeObjectKind::PrefabInstance &&
+        object.assetId == definition.assetId) {
+      reject(receipt, CreativeAuthoredAssetRefreshStatus::InvalidDefinition,
+             "creative_authored_asset_refresh_recursive_definition");
+      return receipt;
+    }
+  }
+  if (!validateCreativeObjectParentGraph(document.objects()).empty()) {
+    reject(receipt, CreativeAuthoredAssetRefreshStatus::InvalidHierarchy,
+           "creative_authored_asset_refresh_hierarchy_invalid");
+    return receipt;
+  }
+
+  for (const CreativeObject& object : document.objects()) {
+    if (object.kind == CreativeObjectKind::PrefabInstance &&
+        object.assetId == definition.assetId) {
+      receipt.instanceRootObjectIds.push_back(object.id);
+    }
+  }
+  receipt.matchedInstanceCount = receipt.instanceRootObjectIds.size();
+  if (receipt.instanceRootObjectIds.empty()) {
+    reject(receipt,
+           CreativeAuthoredAssetRefreshStatus::NoMatchingInstances,
+           "creative_authored_asset_refresh_instances_missing");
+    return receipt;
+  }
+
+  const std::unordered_set<CreativeObjectId> matchingRoots(
+      receipt.instanceRootObjectIds.begin(),
+      receipt.instanceRootObjectIds.end());
+  for (CreativeObjectId rootObjectId : receipt.instanceRootObjectIds) {
+    const CreativeObject* root = document.findObject(rootObjectId);
+    if (root == nullptr ||
+        !creativeAuthoredAssetInstanceTransformSupported(*root)) {
+      reject(receipt,
+             CreativeAuthoredAssetRefreshStatus::UnsupportedInstance,
+             "creative_authored_asset_refresh_instance_unsupported",
+             rootObjectId, rootObjectId);
+      return receipt;
+    }
+    if (root->locked) {
+      reject(receipt, CreativeAuthoredAssetRefreshStatus::LockedObject,
+             "creative_authored_asset_refresh_object_locked", rootObjectId,
+             rootObjectId);
+      return receipt;
+    }
+
+    std::vector<CreativeObjectId> directChildren;
+    for (const CreativeObject& object : document.objects()) {
+      if (object.parentId == rootObjectId) {
+        directChildren.push_back(object.id);
+      }
+    }
+    if (directChildren.empty()) {
+      continue;
+    }
+    const CreativeHierarchySelection hierarchy =
+        resolveCreativeObjectHierarchy(document, directChildren);
+    if (!hierarchy.accepted) {
+      reject(receipt, CreativeAuthoredAssetRefreshStatus::InvalidHierarchy,
+             hierarchy.reasonCode, rootObjectId, hierarchy.missingObjectId);
+      return receipt;
+    }
+    for (CreativeObjectId objectId : hierarchy.objectIds) {
+      const CreativeObject* object = document.findObject(objectId);
+      if (object == nullptr) {
+        reject(receipt, CreativeAuthoredAssetRefreshStatus::InvalidHierarchy,
+               "creative_authored_asset_refresh_descendant_missing",
+               rootObjectId, objectId);
+        return receipt;
+      }
+      if (matchingRoots.contains(objectId)) {
+        reject(receipt, CreativeAuthoredAssetRefreshStatus::InvalidHierarchy,
+               "creative_authored_asset_refresh_nested_instance",
+               rootObjectId, objectId);
+        return receipt;
+      }
+      if (object->locked) {
+        reject(receipt, CreativeAuthoredAssetRefreshStatus::LockedObject,
+               "creative_authored_asset_refresh_object_locked", rootObjectId,
+               objectId);
+        return receipt;
+      }
+    }
+  }
+
+  CreativeDocument staged = document;
+  for (CreativeObjectId rootObjectId : receipt.instanceRootObjectIds) {
+    const CreativeObject* root = staged.findObject(rootObjectId);
+    if (root == nullptr) {
+      reject(receipt, CreativeAuthoredAssetRefreshStatus::InvalidHierarchy,
+             "creative_authored_asset_refresh_instance_missing",
+             rootObjectId, rootObjectId);
+      return receipt;
+    }
+    const CreativeVec3 rootPosition = root->transform.position;
+    const double rootYaw = root->transform.rotationEulerRadians.y;
+    const std::optional<CreativeObjectId> rootParentId = root->parentId;
+
+    std::vector<CreativeObjectId> directChildren;
+    for (const CreativeObject& object : staged.objects()) {
+      if (object.parentId == rootObjectId) {
+        directChildren.push_back(object.id);
+      }
+    }
+    if (!directChildren.empty()) {
+      const CreativeHierarchySelection hierarchy =
+          resolveCreativeObjectHierarchy(staged, directChildren);
+      if (!hierarchy.accepted) {
+        reject(receipt, CreativeAuthoredAssetRefreshStatus::InvalidHierarchy,
+               hierarchy.reasonCode, rootObjectId,
+               hierarchy.missingObjectId);
+        return receipt;
+      }
+      CreativeClipboard discarded;
+      const CreativeClipboardCutReceipt removed =
+          cutDocumentObjectsAtomically(staged, hierarchy.objectIds,
+                                       discarded);
+      if (!removed.accepted) {
+        reject(receipt, CreativeAuthoredAssetRefreshStatus::MutationRejected,
+               "creative_authored_asset_refresh_remove_rejected",
+               rootObjectId, removed.failedObjectId);
+        return receipt;
+      }
+      receipt.removedObjectCount += removed.cutObjectCount;
+    }
+
+    CreativeAuthoredAssetPlacementRequest placementRequest;
+    placementRequest.definition = &definition;
+    placementRequest.targetAnchor = rootPosition;
+    placementRequest.yawRadians = rootYaw;
+    placementRequest.parentId = rootParentId;
+    const CreativeAuthoredAssetPlacementPlan plan =
+        planCreativeAuthoredAssetPlacement(placementRequest);
+    if (!plan.accepted) {
+      reject(receipt, CreativeAuthoredAssetRefreshStatus::InvalidDefinition,
+             plan.reasonCode, rootObjectId);
+      return receipt;
+    }
+
+    const CreativeClipboardPasteReceipt pasted =
+        pasteCreativeClipboardAtomically(staged, definition.content,
+                                         plan.contentPasteRequest);
+    if (!pasted.accepted) {
+      reject(receipt, CreativeAuthoredAssetRefreshStatus::MutationRejected,
+             "creative_authored_asset_refresh_paste_rejected", rootObjectId,
+             pasted.failedObjectId);
+      return receipt;
+    }
+
+    std::unordered_map<CreativeObjectId, CreativeObjectId> remaps;
+    remaps.reserve(pasted.idRemaps.size());
+    for (const CreativeClipboardIdRemap& remap : pasted.idRemaps) {
+      remaps.emplace(remap.sourceObjectId, remap.pastedObjectId);
+    }
+    std::vector<CreativeMutationRequest> mutations;
+    mutations.reserve(plan.sourceRootObjectCount + 1U);
+    for (CreativeObjectId sourceRootId : plan.sourceRoots()) {
+      const auto pastedRoot = remaps.find(sourceRootId);
+      if (pastedRoot == remaps.end()) {
+        reject(receipt, CreativeAuthoredAssetRefreshStatus::InvalidDefinition,
+               "creative_authored_asset_refresh_root_remap_missing",
+               rootObjectId, sourceRootId);
+        return receipt;
+      }
+      mutations.push_back(
+          {0U, pastedRoot->second, CreativeMutationKind::SetParent,
+           makeParentPayload(rootObjectId)});
+    }
+    mutations.push_back(
+        {0U, rootObjectId, CreativeMutationKind::SetBounds,
+         makeBoundsPayload(plan.rootRequest.bounds)});
+    const CreativeDocumentBatchMutationReceipt mutated =
+        applyDocumentMutationsAtomically(staged, mutations);
+    if (!mutated.committed || !documentMutationSucceeded(mutated.status)) {
+      reject(receipt, CreativeAuthoredAssetRefreshStatus::MutationRejected,
+             "creative_authored_asset_refresh_mutation_rejected",
+             rootObjectId);
+      return receipt;
+    }
+
+    receipt.createdObjectCount += pasted.pastedObjectCount;
+    ++receipt.refreshedInstanceCount;
+  }
+
+  document = std::move(staged);
+  receipt.accepted = true;
+  receipt.changed = true;
+  receipt.status = CreativeAuthoredAssetRefreshStatus::Refreshed;
+  receipt.revisionAfter = document.revision();
+  receipt.reasonCode = "creative_authored_asset_instances_refreshed";
   return receipt;
 }
 

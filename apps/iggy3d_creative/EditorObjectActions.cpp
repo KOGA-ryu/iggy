@@ -1,6 +1,7 @@
 #include "EditorObjectActions.hpp"
 
 #include <span>
+#include <string>
 #include <vector>
 
 #include "EditorAuthoredAssets.hpp"
@@ -26,6 +27,7 @@ bool creativeEditorCommandIsObjectAction(
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
     case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
+    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances:
       return true;
     case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
@@ -167,6 +169,7 @@ bool creativeEditorObjectActionEnabled(
       return state.contextSelectionCount > 0U && state.contextAllUnlocked &&
              !editor.authoredAssets.root.empty();
     case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
+    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances:
       return state.contextGroupId != cr::kInvalidObjectId &&
              state.contextContainerKind ==
                  cr::CreativeObjectKind::PrefabInstance &&
@@ -206,6 +209,8 @@ std::string_view creativeEditorObjectActionLabel(
       return "SAVE AS ASSET";
     case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
       return "UPDATE SAVED ASSET";
+    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances:
+      return "REFRESH ALL INSTANCES";
     case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
@@ -259,6 +264,7 @@ std::string creativeEditorObjectActionValueLabel(
       }
       return std::to_string(state.contextSelectionCount) + " ROOTS";
     case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
+    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances:
       if (state.contextContainerKind !=
           cr::CreativeObjectKind::PrefabInstance) {
         return "SELECT ASSET INSTANCE";
@@ -395,6 +401,21 @@ bool activateCreativeEditorObjectAction(
         }
         syncCreativeEditorHeldItem(appState, editor);
         editor.catalog.statusLabel = "UPDATED ASSET " + definition->label;
+      }
+      break;
+    }
+    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances: {
+      const CreativeEditorAuthoredAssetInstanceRefreshReceipt refresh =
+          refreshCreativeEditorAuthoredAssetInstances(
+              appState, editor.authoredAssets, state.contextGroupId);
+      accepted = refresh.accepted;
+      if (accepted) {
+        editor.catalog.statusLabel =
+            "REFRESHED " +
+            std::to_string(refresh.refresh.refreshedInstanceCount) +
+            " INSTANCES";
+      } else {
+        editor.catalog.statusLabel = refresh.reasonCode;
       }
       break;
     }

@@ -157,7 +157,7 @@ struct CreativeWireframeDebugCpuGeometry {
 
 struct CreativePreviewCpuGeometry {
   std::vector<FirstRoomVertex> vertices;
-  std::vector<std::uint16_t> indices;
+  std::vector<std::uint32_t> indices;
   std::vector<IndexedDrawRange> indexedDraws;
   std::vector<CreativePreviewGeometryResources::AssetDrawRanges> assetDraws;
   bool ready = false;

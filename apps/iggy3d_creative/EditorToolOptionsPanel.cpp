@@ -208,6 +208,7 @@ void adjustSelection(CreativeEditorState& editor,
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
     case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
+    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances:
     case CreativeEditorToolOptionsCommandId::Count:
       return false;
   }
@@ -258,6 +259,7 @@ void adjustSelection(CreativeEditorState& editor,
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
     case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
+    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances:
     case CreativeEditorToolOptionsCommandId::Count:
       return "INVALID COMMAND";
   }
@@ -294,6 +296,7 @@ void adjustSelection(CreativeEditorState& editor,
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
     case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
+    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances:
     case CreativeEditorToolOptionsCommandId::Count:
       return "INVALID";
   }
@@ -414,6 +417,7 @@ bool activateCreativeEditorToolOptionsSelection(
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
     case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
+    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances:
       break;
     case CreativeEditorToolOptionsCommandId::Count:
       break;
@@ -463,6 +467,7 @@ bool activateCreativeEditorToolOptionsSelection(
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
     case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
+    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances:
     case CreativeEditorToolOptionsCommandId::Count:
       break;
   }

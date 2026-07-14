@@ -343,6 +343,16 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
         return entry.assetId ==
                "homestead/turned_leg_apron_table_v1";
       });
+  const auto riverbankBoulder = std::find_if(
+      catalog.entries.begin(), catalog.entries.end(),
+      [](const iggy3d::StaticMeshAssetCatalogEntry& entry) {
+        return entry.assetId == "riverbank/irregular_boulder_01";
+      });
+  const auto fallenLog = std::find_if(
+      catalog.entries.begin(), catalog.entries.end(),
+      [](const iggy3d::StaticMeshAssetCatalogEntry& entry) {
+        return entry.assetId == "riverbank/fallen_log_01";
+      });
 
   iggy3d::vulkan::CreativePreviewGeometryResources resources;
   resources.indexedDraws = preview.indexedDraws;
@@ -357,8 +367,10 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
       iggy3d::vulkan::resolveCreativePreviewGeometryDrawIndex(resources, held);
   const std::uint32_t targetDraw =
       iggy3d::vulkan::resolveCreativePreviewGeometryDrawIndex(resources, target);
+  const auto maximumPreviewIndex =
+      std::max_element(preview.indices.begin(), preview.indices.end());
 
-  return expect(catalog.failures.empty() && catalog.entries.size() == 4U,
+  return expect(catalog.failures.empty() && catalog.entries.size() == 6U,
                 "catalog discovers every valid GLB fixture") &&
          expect(boulder != catalog.entries.end() &&
                     boulder->label == "Boulder 01" &&
@@ -387,21 +399,67 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
                     table->authoringMetadata.collisionMode ==
                         iggy3d::StaticMeshCollisionMode::Bounds &&
                     !table->authoringMetadata.walkable &&
+                    riverbankBoulder != catalog.entries.end() &&
+                    riverbankBoulder->label == "Irregular Boulder 01" &&
+                    riverbankBoulder->authoringMetadata.categoryId ==
+                        "boulder" &&
+                    riverbankBoulder->authoringMetadata.collisionMode ==
+                        iggy3d::StaticMeshCollisionMode::Bounds &&
+                    !riverbankBoulder->authoringMetadata.walkable &&
+                    riverbankBoulder->boundsMax.x -
+                            riverbankBoulder->boundsMin.x >
+                        1.4F &&
+                    riverbankBoulder->boundsMax.y -
+                            riverbankBoulder->boundsMin.y >
+                        1.4F &&
+                    riverbankBoulder->boundsMax.z -
+                            riverbankBoulder->boundsMin.z >
+                        1.4F &&
+                    fallenLog != catalog.entries.end() &&
+                    fallenLog->label == "Fallen Log 01" &&
+                    fallenLog->authoringMetadata.categoryId == "log" &&
+                    fallenLog->authoringMetadata.collisionMode ==
+                        iggy3d::StaticMeshCollisionMode::Bounds &&
+                    !fallenLog->authoringMetadata.walkable &&
+                    fallenLog->boundsMax.x - fallenLog->boundsMin.x >
+                        2.3F &&
+                    fallenLog->boundsMax.y - fallenLog->boundsMin.y >
+                        0.65F &&
+                    fallenLog->boundsMax.z - fallenLog->boundsMin.z >
+                        0.65F &&
+                    fallenLog->boundsMax.x - fallenLog->boundsMin.x >
+                        2.0F *
+                            (fallenLog->boundsMax.y -
+                             fallenLog->boundsMin.y) &&
+                    fallenLog->boundsMax.x - fallenLog->boundsMin.x >
+                        2.0F *
+                            (fallenLog->boundsMax.z -
+                             fallenLog->boundsMin.z) &&
                     catalog.find("walkway_stone_01") == &*walkway &&
                     catalog.find("homestead/wall_bay_basic") == &*wall &&
                     catalog.find("homestead/turned_leg_apron_table_v1") ==
                         &*table &&
+                    catalog.find("riverbank/irregular_boulder_01") ==
+                        &*riverbankBoulder &&
+                    catalog.find("riverbank/fallen_log_01") == &*fallenLog &&
                     catalog.find("missing") == nullptr,
                 "discovery retains labels, bounds, metadata, and lookup") &&
          expect(missing.entries.empty() && missing.failures.size() == 1U &&
                     missing.failures[0].reasonCode ==
                         "static_mesh_asset_root_not_directory",
                 "missing catalog root reports one explicit failure") &&
-         expect(preview.ready && preview.assetDraws.size() == 4U &&
+         expect(preview.ready && preview.assetDraws.size() == 6U &&
                     preview.indexedDraws.size() ==
                         iggy3d::vulkan::kCreativePreviewGeometryDrawRangeCount +
-                            4U * iggy3d::kRenderCreativePreviewRoleCount,
+                            6U * iggy3d::kRenderCreativePreviewRoleCount,
                 "startup atlas contains three colored roles per asset") &&
+         expect(preview.vertices.size() >
+                        std::numeric_limits<std::uint16_t>::max() &&
+                    maximumPreviewIndex != preview.indices.end() &&
+                    *maximumPreviewIndex >
+                        std::numeric_limits<std::uint16_t>::max() &&
+                    *maximumPreviewIndex < preview.vertices.size(),
+                "preview atlas crosses the 16-bit index ceiling safely") &&
          expect(heldDraw >=
                     iggy3d::vulkan::kCreativePreviewGeometryDrawRangeCount &&
                     targetDraw != heldDraw &&

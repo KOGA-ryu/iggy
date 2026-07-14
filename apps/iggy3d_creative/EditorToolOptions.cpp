@@ -118,6 +118,8 @@ creativeEditorToolOptionCommandsForEntry(
       commands.ids[commands.count++] =
           CreativeEditorToolOptionsCommandId::UpdateSavedAsset;
       commands.ids[commands.count++] =
+          CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances;
+      commands.ids[commands.count++] =
           CreativeEditorToolOptionsCommandId::UngroupSelection;
       break;
     case CreativeEditorToolCommandProfile::ObjectMove:
@@ -143,6 +145,8 @@ creativeEditorToolOptionCommandsForEntry(
           CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset;
       commands.ids[commands.count++] =
           CreativeEditorToolOptionsCommandId::UpdateSavedAsset;
+      commands.ids[commands.count++] =
+          CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances;
       break;
     case CreativeEditorToolCommandProfile::Count:
       break;

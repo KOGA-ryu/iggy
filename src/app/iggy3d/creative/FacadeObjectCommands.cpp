@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/creative/FacadeInternal.hpp"
 
+#include <algorithm>
 #include <limits>
 #include <span>
 #include <vector>
@@ -307,6 +308,36 @@ CreativeAuthoredAssetInstanceReceipt Facade::instantiateAuthoredAsset(
   state_.selected = selectionState_.selectedTarget;
   for (std::size_t index = 0U;
        index < receipt.instanceObjectIds.size() + 1U; ++index) {
+    recordObjectCreated(stats_);
+  }
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
+CreativeAuthoredAssetRefreshReceipt Facade::refreshAuthoredAssetInstances(
+    const CreativeAuthoredAssetDefinition& definition,
+    CreativeObjectId preferredInstanceRootObjectId) {
+  recordCommandAttempt(stats_);
+  CreativeAuthoredAssetRefreshReceipt receipt =
+      refreshCreativeAuthoredAssetInstancesAtomically(document_, definition);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+
+  const bool preferredWasRefreshed =
+      std::find(receipt.instanceRootObjectIds.begin(),
+                receipt.instanceRootObjectIds.end(),
+                preferredInstanceRootObjectId) !=
+      receipt.instanceRootObjectIds.end();
+  if (preferredWasRefreshed &&
+      document_.containsObject(preferredInstanceRootObjectId)) {
+    const TargetRef root = objectIdToTargetRef(preferredInstanceRootObjectId);
+    static_cast<void>(setSelectedTargets(selectionState_,
+                                         std::span{&root, 1U}, root));
+    state_.selected = selectionState_.selectedTarget;
+  }
+  for (std::size_t index = 0U; index < receipt.createdObjectCount; ++index) {
     recordObjectCreated(stats_);
   }
   recordCommandSuccess(stats_);

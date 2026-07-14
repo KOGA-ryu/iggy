@@ -118,8 +118,42 @@ struct CreativeAuthoredAssetInstanceReceipt {
   std::string_view reasonCode = "creative_authored_asset_not_requested";
 };
 
+enum class CreativeAuthoredAssetRefreshStatus : std::uint8_t {
+  NotRequested,
+  InvalidDocument,
+  InvalidDefinition,
+  NoMatchingInstances,
+  UnsupportedInstance,
+  LockedObject,
+  InvalidHierarchy,
+  MutationRejected,
+  Refreshed,
+};
+
+struct CreativeAuthoredAssetRefreshReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  CreativeAuthoredAssetRefreshStatus status =
+      CreativeAuthoredAssetRefreshStatus::NotRequested;
+  std::string_view assetId;
+  std::vector<CreativeObjectId> instanceRootObjectIds;
+  std::size_t matchedInstanceCount = 0U;
+  std::size_t refreshedInstanceCount = 0U;
+  std::size_t removedObjectCount = 0U;
+  std::size_t createdObjectCount = 0U;
+  CreativeObjectId failedInstanceRootObjectId = kInvalidObjectId;
+  CreativeObjectId failedObjectId = kInvalidObjectId;
+  std::uint64_t revisionBefore = 0U;
+  std::uint64_t revisionAfter = 0U;
+  std::string_view reasonCode =
+      "creative_authored_asset_refresh_not_requested";
+};
+
 [[nodiscard]] std::string_view toString(
     CreativeAuthoredAssetStatus status) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeAuthoredAssetRefreshStatus status) noexcept;
 [[nodiscard]] bool isValidCreativeAuthoredAssetId(
     std::string_view assetId) noexcept;
 
@@ -144,5 +178,14 @@ planCreativeAuthoredAssetPlacement(
 instantiateCreativeAuthoredAssetAtomically(
     CreativeDocument& document,
     const CreativeAuthoredAssetPlacementRequest& request);
+
+// Replaces the children of every matching instance in one staged transaction.
+// Instance root identity, transform, and parent are preserved. Complexity is
+// O(I * (N + A log A)), where I is the matching-instance count, N is document
+// size, and A is the number of objects below one instance.
+[[nodiscard]] CreativeAuthoredAssetRefreshReceipt
+refreshCreativeAuthoredAssetInstancesAtomically(
+    CreativeDocument& document,
+    const CreativeAuthoredAssetDefinition& definition);
 
 }  // namespace iggy3d::creative

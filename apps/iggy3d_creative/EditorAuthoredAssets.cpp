@@ -434,6 +434,51 @@ updateCreativeEditorAuthoredAssetFromInstance(
   return receipt;
 }
 
+CreativeEditorAuthoredAssetInstanceRefreshReceipt
+refreshCreativeEditorAuthoredAssetInstances(
+    cr::CreativeAppState& appState,
+    CreativeEditorAuthoredAssetLibrary& library,
+    cr::CreativeObjectId instanceRootObjectId) {
+  CreativeEditorAuthoredAssetInstanceRefreshReceipt receipt;
+  receipt.requested = true;
+  receipt.instanceRootObjectId = instanceRootObjectId;
+  const cr::CreativeObject* instance =
+      appState.facade.findObject(instanceRootObjectId);
+  if (instance == nullptr ||
+      instance->kind != cr::CreativeObjectKind::PrefabInstance) {
+    receipt.reasonCode = "creative_authored_asset_refresh_instance_missing";
+    library.statusLabel = receipt.reasonCode;
+    return receipt;
+  }
+  const cr::CreativeAuthoredAssetDefinition* definition =
+      findCreativeEditorAuthoredAsset(library, instance->assetId);
+  if (definition == nullptr) {
+    receipt.reasonCode = "creative_authored_asset_refresh_source_missing";
+    library.statusLabel = receipt.reasonCode;
+    return receipt;
+  }
+
+  StandaloneEditTransaction transaction = beginEditTransaction(
+      appState.facade, "creative_authored_asset_refresh_instances");
+  receipt.refresh = appState.facade.refreshAuthoredAssetInstances(
+      *definition, instanceRootObjectId);
+  receipt.history = completeEditTransaction(
+      appState.history, std::move(transaction), appState.facade,
+      receipt.refresh.accepted && receipt.refresh.changed,
+      receipt.refresh.reasonCode);
+  receipt.accepted = receipt.refresh.accepted && receipt.refresh.changed &&
+                     receipt.history.accepted;
+  if (receipt.accepted) {
+    receipt.reasonCode = "creative_authored_asset_instances_refreshed";
+  } else if (!receipt.refresh.accepted) {
+    receipt.reasonCode = receipt.refresh.reasonCode;
+  } else {
+    receipt.reasonCode = receipt.history.reasonCode;
+  }
+  library.statusLabel = receipt.reasonCode;
+  return receipt;
+}
+
 CreativeEditorAuthoredAssetReferenceRefreshReceipt
 refreshCreativeEditorAuthoredAssetReferences(
     CreativeEditorState& editor,

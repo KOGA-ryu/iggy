@@ -41,10 +41,11 @@ enum class CreativeEditorToolOptionsCommandId : std::uint8_t {
   UngroupSelection,
   SaveSelectionAsAsset,
   UpdateSavedAsset,
+  RefreshSavedAssetInstances,
   Count,
 };
 
-inline constexpr std::size_t kCreativeEditorToolOptionsCommandCapacity = 11U;
+inline constexpr std::size_t kCreativeEditorToolOptionsCommandCapacity = 12U;
 
 struct CreativeEditorToolOptionsCommandList {
   std::array<CreativeEditorToolOptionsCommandId,

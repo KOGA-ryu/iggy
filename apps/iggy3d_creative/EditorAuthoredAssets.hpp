@@ -61,6 +61,16 @@ struct CreativeEditorAuthoredAssetUpdateReceipt {
   std::string reasonCode = "creative_authored_asset_update_not_requested";
 };
 
+struct CreativeEditorAuthoredAssetInstanceRefreshReceipt {
+  bool requested = false;
+  bool accepted = false;
+  iggy3d::creative::CreativeObjectId instanceRootObjectId =
+      iggy3d::creative::kInvalidObjectId;
+  iggy3d::creative::CreativeAuthoredAssetRefreshReceipt refresh;
+  iggy3d::creative::CreativeHistoryRecordReceipt history;
+  std::string reasonCode = "creative_authored_asset_refresh_not_requested";
+};
+
 struct CreativeEditorAuthoredAssetReferenceRefreshReceipt {
   bool accepted = false;
   bool catalogUpdated = false;
@@ -98,6 +108,12 @@ saveCreativeEditorSelectionAsAuthoredAsset(
 
 [[nodiscard]] CreativeEditorAuthoredAssetUpdateReceipt
 updateCreativeEditorAuthoredAssetFromInstance(
+    iggy3d::creative::CreativeAppState& appState,
+    CreativeEditorAuthoredAssetLibrary& library,
+    iggy3d::creative::CreativeObjectId instanceRootObjectId);
+
+[[nodiscard]] CreativeEditorAuthoredAssetInstanceRefreshReceipt
+refreshCreativeEditorAuthoredAssetInstances(
     iggy3d::creative::CreativeAppState& appState,
     CreativeEditorAuthoredAssetLibrary& library,
     iggy3d::creative::CreativeObjectId instanceRootObjectId);

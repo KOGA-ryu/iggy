@@ -647,7 +647,7 @@ CommandRecordResult CommandRecording::recordFirstRoomFrame(
                            &info.creativePreviewVertexBuffer, &vertexOffset);
     vkCmdBindIndexBuffer(info.commandBuffer,
                          info.creativePreviewIndexBuffer, 0,
-                         VK_INDEX_TYPE_UINT16);
+                         VK_INDEX_TYPE_UINT32);
     const CreativePreviewCommandPlan plan = buildCreativePreviewCommandPlan(
         info.creativePreviewDraws, info.creativePreviewDrawCount,
         info.creativePreviewIndexedDrawCount);
