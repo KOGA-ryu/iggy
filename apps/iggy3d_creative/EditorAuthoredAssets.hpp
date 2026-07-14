@@ -57,6 +57,7 @@ struct CreativeEditorAuthoredAssetUpdateReceipt {
       iggy3d::creative::kInvalidObjectId;
   std::string assetId;
   iggy3d::creative::CreativeAuthoredAssetCaptureResult capture;
+  iggy3d::creative::CreativeDocumentBatchMutationReceipt provenance;
   bool durableWriteOk = false;
   std::string reasonCode = "creative_authored_asset_update_not_requested";
 };
@@ -116,7 +117,9 @@ updateCreativeEditorAuthoredAssetFromInstance(
 refreshCreativeEditorAuthoredAssetInstances(
     iggy3d::creative::CreativeAppState& appState,
     CreativeEditorAuthoredAssetLibrary& library,
-    iggy3d::creative::CreativeObjectId instanceRootObjectId);
+    iggy3d::creative::CreativeObjectId instanceRootObjectId,
+    iggy3d::creative::CreativeAuthoredAssetRefreshMode mode =
+        iggy3d::creative::CreativeAuthoredAssetRefreshMode::ForceAll);
 
 [[nodiscard]] CreativeEditorAuthoredAssetReferenceRefreshReceipt
 refreshCreativeEditorAuthoredAssetReferences(

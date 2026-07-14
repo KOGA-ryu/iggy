@@ -7,11 +7,14 @@
 
 namespace iggy3d_creative_app {
 
+struct CreativeEditorAuthoredAssetLibrary;
+
 [[nodiscard]] bool creativeEditorCommandIsObjectAction(
     CreativeEditorToolOptionsCommandId command) noexcept;
 
 void refreshCreativeEditorObjectActionContext(
     const iggy3d::creative::CreativeAppState& appState,
+    const CreativeEditorAuthoredAssetLibrary& authoredAssets,
     CreativeEditorToolOptionsState& state) noexcept;
 
 [[nodiscard]] bool creativeEditorObjectActionEnabled(

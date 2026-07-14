@@ -356,6 +356,158 @@ bool refreshAllInstancesIsAtomic() {
                 "refresh reports when no placed instances match");
 }
 
+bool syncStatesProtectLocalInstanceEdits() {
+  const cr::CreativeAuthoredAssetCaptureResult original =
+      makeTwoCrateDefinition();
+  cr::CreativeDocument updatedSource =
+      cr::CreativeDocument::create("Updated Sync Source");
+  static_cast<void>(updatedSource.assignId(720U));
+  const cr::CreativeObjectId left =
+      createCrate(updatedSource, "Left", {10.0, 0.0, 20.0});
+  const cr::CreativeObjectId right =
+      createCrate(updatedSource, "Right", {12.0, 0.0, 20.0});
+  const cr::CreativeObjectId detail =
+      createCrate(updatedSource, "Detail", {11.0, 2.0, 20.0});
+  const std::array updatedSelection{left, right, detail};
+  const cr::CreativeAuthoredAssetCaptureResult updated =
+      cr::captureCreativeAuthoredAsset(
+          {&updatedSource, updatedSelection, "authored_0001", "Twin Crates",
+           721U});
+
+  cr::CreativeDocument target = cr::CreativeDocument::create("Sync States");
+  static_cast<void>(target.assignId(722U));
+  const auto place = [&target](const cr::CreativeAuthoredAssetDefinition& source,
+                               cr::CreativeVec3 position,
+                               double yaw) {
+    cr::CreativeAuthoredAssetPlacementRequest request;
+    request.definition = &source;
+    request.targetAnchor = position;
+    request.yawRadians = yaw;
+    return cr::instantiateCreativeAuthoredAssetAtomically(target, request);
+  };
+  const cr::CreativeAuthoredAssetInstanceReceipt first =
+      place(original.definition, {4.0, 0.0, 8.0}, 1.5707963267948966);
+  const cr::CreativeAuthoredAssetInstanceReceipt second =
+      place(original.definition, {14.0, 0.0, 8.0}, 0.0);
+  const cr::CreativeAuthoredAssetInstanceReceipt third =
+      place(original.definition, {24.0, 0.0, 8.0}, -0.5);
+  const cr::CreativeAuthoredAssetInstanceReceipt fourth =
+      place(updated.definition, {34.0, 0.0, 8.0}, 0.25);
+  const cr::CreativeObjectId secondLocal =
+      createCrate(target, "Second Local", {14.0, 1.0, 8.0},
+                  second.instanceRootObjectId);
+  const cr::CreativeObjectId thirdLocal =
+      createCrate(target, "Third Local", {24.0, 1.0, 8.0},
+                  third.instanceRootObjectId);
+  const cr::CreativeDocumentMutationReceipt locked =
+      cr::setDocumentObjectLocked(target, thirdLocal, true);
+  if (!expect(original.accepted && updated.accepted && first.accepted &&
+                  second.accepted && third.accepted && fourth.accepted &&
+                  secondLocal != cr::kInvalidObjectId &&
+                  thirdLocal != cr::kInvalidObjectId &&
+                  cr::documentMutationChanged(locked.status),
+              "sync fixture creates current, stale, and edited instances")) {
+    return false;
+  }
+
+  const cr::CreativeAuthoredAssetSyncReceipt sourceChanged =
+      cr::inspectCreativeAuthoredAssetInstanceSync(
+          target, updated.definition, first.instanceRootObjectId);
+  const cr::CreativeAuthoredAssetSyncReceipt locallyModified =
+      cr::inspectCreativeAuthoredAssetInstanceSync(
+          target, original.definition, second.instanceRootObjectId);
+  const cr::CreativeAuthoredAssetSyncReceipt conflict =
+      cr::inspectCreativeAuthoredAssetInstanceSync(
+          target, updated.definition, second.instanceRootObjectId);
+  const cr::CreativeAuthoredAssetSyncReceipt current =
+      cr::inspectCreativeAuthoredAssetInstanceSync(
+          target, updated.definition, fourth.instanceRootObjectId);
+  const cr::CreativeAuthoredAssetSyncSummary before =
+      cr::summarizeCreativeAuthoredAssetSync(target, updated.definition);
+  const cr::CreativeObject* firstRoot =
+      target.findObject(first.instanceRootObjectId);
+  const bool provenanceStored =
+      firstRoot != nullptr &&
+      cr::creativeAuthoredAssetStoredSourceFingerprint(*firstRoot).has_value();
+
+  cr::CreativeAuthoredAssetRefreshRequest safeRequest;
+  safeRequest.definition = &updated.definition;
+  safeRequest.mode = cr::CreativeAuthoredAssetRefreshMode::SafeInstances;
+  const cr::CreativeAuthoredAssetRefreshReceipt safe =
+      cr::refreshCreativeAuthoredAssetInstancesAtomically(target, safeRequest);
+  const bool safeProtectedEdits =
+      safe.accepted && safe.refreshedInstanceCount == 1U &&
+      safe.instanceRootObjectIds.size() == 1U &&
+      safe.instanceRootObjectIds.front() == first.instanceRootObjectId &&
+      target.containsObject(secondLocal) && target.containsObject(thirdLocal);
+
+  cr::CreativeAuthoredAssetRefreshRequest selectedRequest;
+  selectedRequest.definition = &updated.definition;
+  selectedRequest.mode =
+      cr::CreativeAuthoredAssetRefreshMode::SelectedInstance;
+  selectedRequest.selectedInstanceRootObjectId = second.instanceRootObjectId;
+  const cr::CreativeAuthoredAssetRefreshReceipt selected =
+      cr::refreshCreativeAuthoredAssetInstancesAtomically(target,
+                                                          selectedRequest);
+  const bool selectedOnly =
+      selected.accepted && selected.refreshedInstanceCount == 1U &&
+      !target.containsObject(secondLocal) && target.containsObject(thirdLocal);
+
+  cr::CreativeAuthoredAssetRefreshRequest forceRequest;
+  forceRequest.definition = &updated.definition;
+  forceRequest.mode = cr::CreativeAuthoredAssetRefreshMode::ForceAll;
+  const std::uint64_t revisionBeforeRejectedForce = target.revision();
+  const cr::CreativeAuthoredAssetRefreshReceipt rejectedForce =
+      cr::refreshCreativeAuthoredAssetInstancesAtomically(target,
+                                                          forceRequest);
+  const bool forceRejectedAtomically =
+      !rejectedForce.accepted &&
+      rejectedForce.status ==
+          cr::CreativeAuthoredAssetRefreshStatus::LockedObject &&
+      target.revision() == revisionBeforeRejectedForce &&
+      target.containsObject(thirdLocal);
+  static_cast<void>(cr::setDocumentObjectLocked(target, thirdLocal, false));
+  const cr::CreativeAuthoredAssetRefreshReceipt forced =
+      cr::refreshCreativeAuthoredAssetInstancesAtomically(target,
+                                                          forceRequest);
+  const cr::CreativeAuthoredAssetSyncSummary after =
+      cr::summarizeCreativeAuthoredAssetSync(target, updated.definition);
+
+  return expect(sourceChanged.accepted &&
+                    sourceChanged.state ==
+                        cr::CreativeAuthoredAssetSyncState::SourceChanged &&
+                    locallyModified.accepted &&
+                    locallyModified.state ==
+                        cr::CreativeAuthoredAssetSyncState::LocallyModified &&
+                    conflict.accepted &&
+                    conflict.state ==
+                        cr::CreativeAuthoredAssetSyncState::Conflict &&
+                    current.accepted &&
+                    current.state ==
+                        cr::CreativeAuthoredAssetSyncState::Current,
+                "sync classifier exposes all four source/local states") &&
+         expect(provenanceStored && before.accepted &&
+                    before.matchedInstanceCount == 4U &&
+                    before.currentInstanceCount == 1U &&
+                    before.sourceChangedInstanceCount == 1U &&
+                    before.locallyModifiedInstanceCount == 0U &&
+                    before.conflictInstanceCount == 2U,
+                "placement stores provenance and summary counts each state") &&
+         expect(safeProtectedEdits,
+                "safe refresh updates only source-changed instances") &&
+         expect(selectedOnly,
+                "selected refresh overwrites only the requested instance") &&
+         expect(forceRejectedAtomically,
+                "force refresh still rolls back when any target is locked") &&
+         expect(forced.accepted && forced.refreshedInstanceCount == 4U &&
+                    !target.containsObject(thirdLocal) && after.accepted &&
+                    after.currentInstanceCount == 4U &&
+                    after.sourceChangedInstanceCount == 0U &&
+                    after.locallyModifiedInstanceCount == 0U &&
+                    after.conflictInstanceCount == 0U,
+                "force refresh overwrites conflicts and restores current state");
+}
+
 bool definitionsAreBoundedAndFailClosed() {
   cr::CreativeDocument oversized = cr::CreativeDocument::create("Oversized");
   static_cast<void>(oversized.assignId(708U));
@@ -460,8 +612,8 @@ bool durableLibraryRoundTripsSelection() {
       app::creativeEditorToolOptionCommandsForEntry(
           {cr::CreativeHeldItemKind::ObjectMove,
            cr::CreativeObjectKind::Unknown});
-  app::refreshCreativeEditorObjectActionContext(appState,
-                                                editor.toolOptions);
+  app::refreshCreativeEditorObjectActionContext(
+      appState, editor.authoredAssets, editor.toolOptions);
   const auto saveCommand = std::find(
       editor.toolOptions.commands.ids.begin(),
       editor.toolOptions.commands.ids.begin() +
@@ -594,8 +746,8 @@ bool updateCommandRoundTripsEditedInstance() {
       app::creativeEditorToolOptionCommandsForEntry(
           {cr::CreativeHeldItemKind::ObjectGroup,
            cr::CreativeObjectKind::Unknown});
-  app::refreshCreativeEditorObjectActionContext(appState,
-                                                editor.toolOptions);
+  app::refreshCreativeEditorObjectActionContext(
+      appState, editor.authoredAssets, editor.toolOptions);
   const auto updateCommand = std::find(
       editor.toolOptions.commands.ids.begin(),
       editor.toolOptions.commands.ids.begin() +
@@ -613,13 +765,42 @@ bool updateCommandRoundTripsEditedInstance() {
   const cr::CreativeAuthoredAssetDefinition* updatedDefinition =
       app::findCreativeEditorAuthoredAsset(editor.authoredAssets,
                                           originalDefinition.assetId);
+  const cr::CreativeHierarchySelection untouchedFirst =
+      cr::resolveCreativeObjectHierarchy(
+          appState.facade.document(),
+          std::span{&first.instanceRootObjectId, 1U});
   const cr::CreativeHierarchySelection untouchedSecond =
       cr::resolveCreativeObjectHierarchy(
           appState.facade.document(),
           std::span{&second.instanceRootObjectId, 1U});
   const bool updateDidNotRewriteInstances =
-      appState.facade.document().revision() == revisionBeforeUpdate &&
+      appState.facade.document().revision() == revisionBeforeUpdate + 1U &&
+      untouchedFirst.accepted && untouchedFirst.objectIds.size() == 3U &&
+      appState.facade.document().containsObject(addedObjectId) &&
       untouchedSecond.accepted && untouchedSecond.objectIds.size() == 2U;
+  const cr::CreativeAuthoredAssetFingerprint updatedFingerprint =
+      updatedDefinition == nullptr
+          ? cr::CreativeAuthoredAssetFingerprint{}
+          : cr::fingerprintCreativeAuthoredAssetDefinition(*updatedDefinition);
+  const cr::CreativeObject* acknowledgedRoot =
+      appState.facade.findObject(first.instanceRootObjectId);
+  cr::CreativeAuthoredAssetPlacementRequest acknowledgedPlacement;
+  acknowledgedPlacement.definition = updatedDefinition;
+  if (acknowledgedRoot != nullptr) {
+    acknowledgedPlacement.targetAnchor = acknowledgedRoot->transform.position;
+    acknowledgedPlacement.yawRadians =
+        acknowledgedRoot->transform.rotationEulerRadians.y;
+    acknowledgedPlacement.parentId = acknowledgedRoot->parentId;
+  }
+  const cr::CreativeAuthoredAssetPlacementPlan acknowledgedPlan =
+      cr::planCreativeAuthoredAssetPlacement(acknowledgedPlacement);
+  const bool updateAcknowledgedSource =
+      updatedFingerprint.valid && acknowledgedRoot != nullptr &&
+      cr::creativeAuthoredAssetStoredSourceFingerprint(*acknowledgedRoot) ==
+          std::optional<std::uint64_t>{updatedFingerprint.value} &&
+      acknowledgedPlan.accepted &&
+      cr::creativeBoundsExactlyEqual(acknowledgedRoot->bounds,
+                                     acknowledgedPlan.rootRequest.bounds);
   const cr::CreativeObject* originalSourceObject =
       clipboardObjectNamed(originalDefinition.content, "Pillar");
   const cr::CreativeObject* updatedSourceObject =
@@ -666,13 +847,13 @@ bool updateCommandRoundTripsEditedInstance() {
       app::creativeEditorToolOptionCommandsForEntry(
           {cr::CreativeHeldItemKind::ObjectGroup,
            cr::CreativeObjectKind::Unknown});
-  app::refreshCreativeEditorObjectActionContext(appState,
-                                                editor.toolOptions);
+  app::refreshCreativeEditorObjectActionContext(
+      appState, editor.authoredAssets, editor.toolOptions);
   const auto refreshCommand = std::find(
       editor.toolOptions.commands.ids.begin(),
       editor.toolOptions.commands.ids.begin() +
           editor.toolOptions.commands.count,
-      app::CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances);
+      app::CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances);
   editor.toolOptions.selectedIndex = static_cast<std::size_t>(
       refreshCommand - editor.toolOptions.commands.ids.begin());
   const bool instancesRefreshed =
@@ -772,8 +953,8 @@ bool updateCommandRoundTripsEditedInstance() {
   return expect(updated && updatedDefinition != nullptr &&
                     updatedDefinition->content.objects.size() == 2U,
                 "explicit update captures the edited instance contents") &&
-         expect(updateDidNotRewriteInstances,
-                "source update does not rewrite existing instances") &&
+         expect(updateDidNotRewriteInstances && updateAcknowledgedSource,
+                "source update changes only selected instance metadata") &&
          expect(sourceFramePreserved,
                 "rotated instance update removes placement yaw") &&
          expect(hotbarRefreshed && catalogRefreshed,
@@ -800,6 +981,110 @@ bool updateCommandRoundTripsEditedInstance() {
                     vecNear(replaySourceObject->transform.position,
                             originalSourceObject->transform.position),
                 "reloaded placement preserves the source-local frame");
+}
+
+bool editorSyncCommandsExposeStatusAndOneUndo() {
+  const cr::CreativeAuthoredAssetCaptureResult original =
+      makeTwoCrateDefinition();
+  cr::CreativeDocument updatedSource =
+      cr::CreativeDocument::create("Editor Sync Source");
+  static_cast<void>(updatedSource.assignId(723U));
+  const cr::CreativeObjectId left =
+      createCrate(updatedSource, "Left", {10.0, 0.0, 20.0});
+  const cr::CreativeObjectId right =
+      createCrate(updatedSource, "Right", {12.0, 0.0, 20.0});
+  const cr::CreativeObjectId detail =
+      createCrate(updatedSource, "Detail", {11.0, 2.0, 20.0});
+  const std::array selected{left, right, detail};
+  const cr::CreativeAuthoredAssetCaptureResult updated =
+      cr::captureCreativeAuthoredAsset(
+          {&updatedSource, selected, "authored_0001", "Twin Crates", 724U});
+
+  cr::CreativeDocument instances =
+      cr::CreativeDocument::create("Editor Sync Instances");
+  static_cast<void>(instances.assignId(725U));
+  cr::CreativeAuthoredAssetPlacementRequest placement;
+  placement.definition = &original.definition;
+  const cr::CreativeAuthoredAssetInstanceReceipt first =
+      cr::instantiateCreativeAuthoredAssetAtomically(instances, placement);
+  placement.targetAnchor = {8.0, 0.0, 0.0};
+  const cr::CreativeAuthoredAssetInstanceReceipt second =
+      cr::instantiateCreativeAuthoredAssetAtomically(instances, placement);
+  const cr::CreativeObjectId localObjectId =
+      createCrate(instances, "Local", {8.0, 1.0, 0.0},
+                  second.instanceRootObjectId);
+
+  cr::CreativeAppState appState;
+  if (!expect(original.accepted && updated.accepted && first.accepted &&
+                  second.accepted && localObjectId != cr::kInvalidObjectId &&
+                  appState.facade.installDocument(std::move(instances)).accepted,
+              "editor sync fixture installed")) {
+    return false;
+  }
+  selectOnly(appState.facade, first.instanceRootObjectId);
+  app::CreativeEditorState editor;
+  editor.authoredAssets.definitions.push_back(updated.definition);
+  app::refreshCreativeEditorObjectActionContext(
+      appState, editor.authoredAssets, editor.toolOptions);
+
+  const std::string selectedStatus =
+      app::creativeEditorObjectActionValueLabel(
+          editor.toolOptions,
+          app::CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance);
+  const std::string safeStatus = app::creativeEditorObjectActionValueLabel(
+      editor.toolOptions,
+      app::CreativeEditorToolOptionsCommandId::
+          RefreshSafeSavedAssetInstances);
+  const std::string forceStatus = app::creativeEditorObjectActionValueLabel(
+      editor.toolOptions,
+      app::CreativeEditorToolOptionsCommandId::
+          ForceRefreshSavedAssetInstances);
+  const bool commandsEnabled =
+      app::creativeEditorObjectActionEnabled(
+          editor, editor.toolOptions,
+          app::CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance) &&
+      app::creativeEditorObjectActionEnabled(
+          editor, editor.toolOptions,
+          app::CreativeEditorToolOptionsCommandId::
+              RefreshSafeSavedAssetInstances) &&
+      app::creativeEditorObjectActionEnabled(
+          editor, editor.toolOptions,
+          app::CreativeEditorToolOptionsCommandId::
+              ForceRefreshSavedAssetInstances);
+
+  const std::uint64_t undoBeforeSafe =
+      cr::creativeUndoDepth(appState.history);
+  const app::CreativeEditorAuthoredAssetInstanceRefreshReceipt safe =
+      app::refreshCreativeEditorAuthoredAssetInstances(
+          appState, editor.authoredAssets, first.instanceRootObjectId,
+          cr::CreativeAuthoredAssetRefreshMode::SafeInstances);
+  const bool safeRecordedOnce =
+      safe.accepted && safe.refresh.refreshedInstanceCount == 1U &&
+      cr::creativeUndoDepth(appState.history) == undoBeforeSafe + 1U &&
+      appState.facade.document().containsObject(localObjectId);
+  const cr::CreativeHistoryApplyReceipt undoSafe = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+
+  const std::uint64_t undoBeforeSelected =
+      cr::creativeUndoDepth(appState.history);
+  const app::CreativeEditorAuthoredAssetInstanceRefreshReceipt selectedRefresh =
+      app::refreshCreativeEditorAuthoredAssetInstances(
+          appState, editor.authoredAssets, second.instanceRootObjectId,
+          cr::CreativeAuthoredAssetRefreshMode::SelectedInstance);
+  const bool selectedRecordedOnce =
+      undoSafe.accepted && selectedRefresh.accepted &&
+      selectedRefresh.refresh.refreshedInstanceCount == 1U &&
+      cr::creativeUndoDepth(appState.history) == undoBeforeSelected + 1U &&
+      !appState.facade.document().containsObject(localObjectId);
+
+  return expect(selectedStatus == "SOURCE CHANGED" &&
+                    safeStatus == "1 SOURCE CHANGED" &&
+                    forceStatus == "2 INSTANCES" && commandsEnabled,
+                "tool options expose cached sync states and refresh choices") &&
+         expect(safeRecordedOnce,
+                "safe refresh records exactly one history entry") &&
+         expect(selectedRecordedOnce,
+                "selected refresh records exactly one history entry");
 }
 
 app::CreativeEditorState authoredEditor(
@@ -937,7 +1222,9 @@ bool previewUsesCanonicalCompositeProxies() {
     bool save = false;
     bool edit = false;
     bool update = false;
-    bool refresh = false;
+    bool refreshThis = false;
+    bool refreshSafe = false;
+    bool refreshForce = false;
     for (std::size_t index = 0U; index < commands.count; ++index) {
       save = save || commands.ids[index] ==
                          app::CreativeEditorToolOptionsCommandId::
@@ -948,12 +1235,21 @@ bool previewUsesCanonicalCompositeProxies() {
       update = update || commands.ids[index] ==
                              app::CreativeEditorToolOptionsCommandId::
                                  UpdateSavedAsset;
-      refresh = refresh ||
-                commands.ids[index] ==
-                    app::CreativeEditorToolOptionsCommandId::
-                        RefreshSavedAssetInstances;
+      refreshThis = refreshThis ||
+                    commands.ids[index] ==
+                        app::CreativeEditorToolOptionsCommandId::
+                            RefreshSavedAssetInstance;
+      refreshSafe = refreshSafe ||
+                    commands.ids[index] ==
+                        app::CreativeEditorToolOptionsCommandId::
+                            RefreshSafeSavedAssetInstances;
+      refreshForce = refreshForce ||
+                     commands.ids[index] ==
+                         app::CreativeEditorToolOptionsCommandId::
+                             ForceRefreshSavedAssetInstances;
     }
-    return commands.count == 12U && save && edit && update && refresh;
+    return commands.count == 14U && save && edit && update && refreshThis &&
+           refreshSafe && refreshForce;
   }();
   return expect(frame.creativePreview.itemCount == 2U &&
                     frame.creativePreview.items[0].role ==
@@ -978,10 +1274,12 @@ int main() {
   return captureInstantiateSelectAndUnpack() &&
                  invalidDefinitionCannotPartiallyMutate() &&
                  refreshAllInstancesIsAtomic() &&
+                 syncStatesProtectLocalInstanceEdits() &&
                  definitionsAreBoundedAndFailClosed() &&
                  transformedInstanceUpdateFailsClosed() &&
                  durableLibraryRoundTripsSelection() &&
                  updateCommandRoundTripsEditedInstance() &&
+                 editorSyncCommandsExposeStatusAndOneUndo() &&
                  gestureDeduplicatesAndCommitsOneUndo() &&
                  interruptionFinalizesChangedGesture() &&
                  previewUsesCanonicalCompositeProxies()

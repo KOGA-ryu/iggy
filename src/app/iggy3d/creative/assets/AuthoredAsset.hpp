@@ -41,6 +41,44 @@ struct CreativeAuthoredAssetDefinition {
   std::vector<CreativeObjectId> rootObjectIds;
 };
 
+struct CreativeAuthoredAssetFingerprint {
+  bool valid = false;
+  std::uint64_t value = 0U;
+};
+
+enum class CreativeAuthoredAssetSyncState : std::uint8_t {
+  Current,
+  SourceChanged,
+  LocallyModified,
+  Conflict,
+};
+
+struct CreativeAuthoredAssetSyncReceipt {
+  bool requested = false;
+  bool accepted = false;
+  CreativeAuthoredAssetSyncState state =
+      CreativeAuthoredAssetSyncState::Conflict;
+  CreativeObjectId instanceRootObjectId = kInvalidObjectId;
+  CreativeAuthoredAssetFingerprint sourceFingerprint;
+  CreativeAuthoredAssetFingerprint instanceFingerprint;
+  std::optional<std::uint64_t> storedSourceFingerprint;
+  std::string_view reasonCode =
+      "creative_authored_asset_sync_not_requested";
+};
+
+struct CreativeAuthoredAssetSyncSummary {
+  bool requested = false;
+  bool accepted = false;
+  std::string_view assetId;
+  std::size_t matchedInstanceCount = 0U;
+  std::size_t currentInstanceCount = 0U;
+  std::size_t sourceChangedInstanceCount = 0U;
+  std::size_t locallyModifiedInstanceCount = 0U;
+  std::size_t conflictInstanceCount = 0U;
+  std::string_view reasonCode =
+      "creative_authored_asset_sync_not_requested";
+};
+
 struct CreativeAuthoredAssetCaptureRequest {
   const CreativeDocument* sourceDocument = nullptr;
   std::span<const CreativeObjectId> selectedObjectIds;
@@ -123,11 +161,25 @@ enum class CreativeAuthoredAssetRefreshStatus : std::uint8_t {
   InvalidDocument,
   InvalidDefinition,
   NoMatchingInstances,
+  NoEligibleInstances,
   UnsupportedInstance,
   LockedObject,
   InvalidHierarchy,
   MutationRejected,
   Refreshed,
+};
+
+enum class CreativeAuthoredAssetRefreshMode : std::uint8_t {
+  SelectedInstance,
+  SafeInstances,
+  ForceAll,
+};
+
+struct CreativeAuthoredAssetRefreshRequest {
+  const CreativeAuthoredAssetDefinition* definition = nullptr;
+  CreativeAuthoredAssetRefreshMode mode =
+      CreativeAuthoredAssetRefreshMode::ForceAll;
+  CreativeObjectId selectedInstanceRootObjectId = kInvalidObjectId;
 };
 
 struct CreativeAuthoredAssetRefreshReceipt {
@@ -136,9 +188,15 @@ struct CreativeAuthoredAssetRefreshReceipt {
   bool changed = false;
   CreativeAuthoredAssetRefreshStatus status =
       CreativeAuthoredAssetRefreshStatus::NotRequested;
+  CreativeAuthoredAssetRefreshMode mode =
+      CreativeAuthoredAssetRefreshMode::ForceAll;
   std::string_view assetId;
   std::vector<CreativeObjectId> instanceRootObjectIds;
   std::size_t matchedInstanceCount = 0U;
+  std::size_t currentInstanceCount = 0U;
+  std::size_t sourceChangedInstanceCount = 0U;
+  std::size_t locallyModifiedInstanceCount = 0U;
+  std::size_t conflictInstanceCount = 0U;
   std::size_t refreshedInstanceCount = 0U;
   std::size_t removedObjectCount = 0U;
   std::size_t createdObjectCount = 0U;
@@ -154,8 +212,36 @@ struct CreativeAuthoredAssetRefreshReceipt {
     CreativeAuthoredAssetStatus status) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeAuthoredAssetRefreshStatus status) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeAuthoredAssetSyncState state) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeAuthoredAssetRefreshMode mode) noexcept;
 [[nodiscard]] bool isValidCreativeAuthoredAssetId(
     std::string_view assetId) noexcept;
+
+// Hashes authored content independently of object IDs and instance placement.
+// Floating-point fields are quantized to one micrometer / microradian so a
+// rigid placement followed by inverse capture produces the same fingerprint.
+[[nodiscard]] CreativeAuthoredAssetFingerprint
+fingerprintCreativeAuthoredAssetDefinition(
+    const CreativeAuthoredAssetDefinition& definition) noexcept;
+[[nodiscard]] std::optional<std::uint64_t>
+creativeAuthoredAssetStoredSourceFingerprint(
+    const CreativeObject& instanceRoot) noexcept;
+[[nodiscard]] CreativeAuthoredAssetSyncReceipt
+inspectCreativeAuthoredAssetInstanceSync(
+    const CreativeDocument& document,
+    const CreativeAuthoredAssetDefinition& definition,
+    CreativeObjectId instanceRootObjectId);
+[[nodiscard]] CreativeAuthoredAssetSyncSummary
+summarizeCreativeAuthoredAssetSync(
+    const CreativeDocument& document,
+    const CreativeAuthoredAssetDefinition& definition);
+[[nodiscard]] CreativeDocumentBatchMutationReceipt
+acknowledgeCreativeAuthoredAssetInstanceSource(
+    CreativeDocument& document,
+    const CreativeAuthoredAssetDefinition& definition,
+    CreativeObjectId instanceRootObjectId);
 
 [[nodiscard]] CreativeAuthoredAssetCaptureResult captureCreativeAuthoredAsset(
     const CreativeAuthoredAssetCaptureRequest& request);
@@ -187,5 +273,9 @@ instantiateCreativeAuthoredAssetAtomically(
 refreshCreativeAuthoredAssetInstancesAtomically(
     CreativeDocument& document,
     const CreativeAuthoredAssetDefinition& definition);
+[[nodiscard]] CreativeAuthoredAssetRefreshReceipt
+refreshCreativeAuthoredAssetInstancesAtomically(
+    CreativeDocument& document,
+    const CreativeAuthoredAssetRefreshRequest& request);
 
 }  // namespace iggy3d::creative

@@ -228,7 +228,13 @@ class Facade {
   [[nodiscard]] CreativeAuthoredAssetRefreshReceipt
   refreshAuthoredAssetInstances(
       const CreativeAuthoredAssetDefinition& definition,
-      CreativeObjectId preferredInstanceRootObjectId);
+      CreativeObjectId preferredInstanceRootObjectId,
+      CreativeAuthoredAssetRefreshMode mode =
+          CreativeAuthoredAssetRefreshMode::ForceAll);
+  [[nodiscard]] CreativeDocumentBatchMutationReceipt
+  acknowledgeAuthoredAssetInstanceSource(
+      const CreativeAuthoredAssetDefinition& definition,
+      CreativeObjectId instanceRootObjectId);
   [[nodiscard]] CreativeLinearArrayReceipt createLinearArrayFromSelection(
       const CreativeLinearArrayRequest& request = {});
   [[nodiscard]] CreativeRadialArrayReceipt createRadialArrayFromSelection(

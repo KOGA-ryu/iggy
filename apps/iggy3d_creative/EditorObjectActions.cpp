@@ -27,7 +27,9 @@ bool creativeEditorCommandIsObjectAction(
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
     case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
-    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances:
+    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance:
+    case CreativeEditorToolOptionsCommandId::RefreshSafeSavedAssetInstances:
+    case CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances:
       return true;
     case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
@@ -40,7 +42,10 @@ bool creativeEditorCommandIsObjectAction(
 
 void refreshCreativeEditorObjectActionContext(
     const cr::CreativeAppState& appState,
+    const CreativeEditorAuthoredAssetLibrary& authoredAssets,
     CreativeEditorToolOptionsState& state) noexcept {
+  state.contextDocumentId = appState.facade.document().id();
+  state.contextDocumentRevision = appState.facade.document().revision();
   state.contextGroupId = cr::kInvalidObjectId;
   state.contextPrimaryObjectId = cr::kInvalidObjectId;
   state.contextPrimaryObjectKind = cr::CreativeObjectKind::Unknown;
@@ -53,6 +58,14 @@ void refreshCreativeEditorObjectActionContext(
   state.contextAllMovable = true;
   state.contextAllResettable = true;
   state.contextPrefabUpdateTransformSupported = false;
+  state.contextPrefabSyncInspected = false;
+  state.contextPrefabSyncState =
+      cr::CreativeAuthoredAssetSyncState::Conflict;
+  state.contextPrefabMatchedInstanceCount = 0U;
+  state.contextPrefabCurrentInstanceCount = 0U;
+  state.contextPrefabSourceChangedInstanceCount = 0U;
+  state.contextPrefabLocallyModifiedInstanceCount = 0U;
+  state.contextPrefabConflictInstanceCount = 0U;
 
   const cr::CreativeSelectionState& selection =
       appState.facade.selectionState();
@@ -107,12 +120,13 @@ void refreshCreativeEditorObjectActionContext(
   if (primary.value == cr::kInvalidId) {
     return;
   }
-  const cr::CreativeObject* object = appState.facade.findObject(
-      static_cast<cr::CreativeObjectId>(primary.value));
+  state.contextPrimaryObjectId =
+      static_cast<cr::CreativeObjectId>(primary.value);
+  const cr::CreativeObject* object =
+      appState.facade.findObject(state.contextPrimaryObjectId);
   if (object == nullptr) {
     return;
   }
-  state.contextPrimaryObjectId = object->id;
   state.contextPrimaryObjectKind = object->kind;
   state.contextPrimaryVisible = object->visible;
   state.contextPrimaryLocked = object->locked;
@@ -125,27 +139,59 @@ void refreshCreativeEditorObjectActionContext(
     state.contextContainerAssetId = object->assetId;
     state.contextPrefabUpdateTransformSupported =
         cr::creativeAuthoredAssetInstanceTransformSupported(*object);
+  } else if (object->parentId.has_value()) {
+    const cr::CreativeObject* parent =
+        appState.facade.findObject(*object->parentId);
+    if (parent != nullptr &&
+        cr::creativeObjectIsHierarchyContainer(parent->kind)) {
+      state.contextGroupId = parent->id;
+      state.contextContainerKind = parent->kind;
+      state.contextContainerAssetId = parent->assetId;
+      state.contextPrefabUpdateTransformSupported =
+          cr::creativeAuthoredAssetInstanceTransformSupported(*parent);
+    }
+  }
+
+  if (state.contextContainerKind != cr::CreativeObjectKind::PrefabInstance) {
     return;
   }
-  if (!object->parentId.has_value()) {
+  const cr::CreativeAuthoredAssetDefinition* definition =
+      findCreativeEditorAuthoredAsset(authoredAssets,
+                                     state.contextContainerAssetId);
+  if (definition == nullptr) {
     return;
   }
-  const cr::CreativeObject* parent =
-      appState.facade.findObject(*object->parentId);
-  if (parent != nullptr &&
-      cr::creativeObjectIsHierarchyContainer(parent->kind)) {
-    state.contextGroupId = parent->id;
-    state.contextContainerKind = parent->kind;
-    state.contextContainerAssetId = parent->assetId;
-    state.contextPrefabUpdateTransformSupported =
-        cr::creativeAuthoredAssetInstanceTransformSupported(*parent);
-  }
+  const cr::CreativeAuthoredAssetSyncReceipt inspected =
+      cr::inspectCreativeAuthoredAssetInstanceSync(
+          appState.facade.document(), *definition, state.contextGroupId);
+  const cr::CreativeAuthoredAssetSyncSummary summary =
+      cr::summarizeCreativeAuthoredAssetSync(appState.facade.document(),
+                                             *definition);
+  state.contextPrefabSyncInspected = true;
+  state.contextPrefabSyncState =
+      inspected.accepted ? inspected.state
+                         : cr::CreativeAuthoredAssetSyncState::Conflict;
+  state.contextPrefabMatchedInstanceCount = summary.matchedInstanceCount;
+  state.contextPrefabCurrentInstanceCount = summary.currentInstanceCount;
+  state.contextPrefabSourceChangedInstanceCount =
+      summary.sourceChangedInstanceCount;
+  state.contextPrefabLocallyModifiedInstanceCount =
+      summary.locallyModifiedInstanceCount;
+  state.contextPrefabConflictInstanceCount = summary.conflictInstanceCount;
 }
 
 bool creativeEditorObjectActionEnabled(
     const CreativeEditorState& editor,
     const CreativeEditorToolOptionsState& state,
     CreativeEditorToolOptionsCommandId command) noexcept {
+  const bool hasAuthoredInstanceDefinition =
+      state.contextGroupId != cr::kInvalidObjectId &&
+      state.contextContainerKind == cr::CreativeObjectKind::PrefabInstance &&
+      findCreativeEditorAuthoredAsset(
+          editor.authoredAssets, state.contextContainerAssetId) != nullptr;
+  const bool hasRefreshableAuthoredInstance =
+      hasAuthoredInstanceDefinition &&
+      state.contextPrefabUpdateTransformSupported;
   switch (command) {
     case CreativeEditorToolOptionsCommandId::TransformSelection:
       return state.contextSelectionCount > 0U && state.contextAllUnlocked &&
@@ -169,14 +215,18 @@ bool creativeEditorObjectActionEnabled(
       return state.contextSelectionCount > 0U && state.contextAllUnlocked &&
              !editor.authoredAssets.root.empty();
     case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
-    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances:
-      return state.contextGroupId != cr::kInvalidObjectId &&
-             state.contextContainerKind ==
-                 cr::CreativeObjectKind::PrefabInstance &&
-             state.contextPrefabUpdateTransformSupported &&
-             findCreativeEditorAuthoredAsset(
-                 editor.authoredAssets,
-                 state.contextContainerAssetId) != nullptr;
+      return hasRefreshableAuthoredInstance;
+    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance:
+      return hasRefreshableAuthoredInstance &&
+             state.contextPrefabSyncInspected &&
+             state.contextPrefabSyncState !=
+                 cr::CreativeAuthoredAssetSyncState::Current;
+    case CreativeEditorToolOptionsCommandId::RefreshSafeSavedAssetInstances:
+      return hasAuthoredInstanceDefinition &&
+             state.contextPrefabSourceChangedInstanceCount > 0U;
+    case CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances:
+      return hasAuthoredInstanceDefinition &&
+             state.contextPrefabMatchedInstanceCount > 0U;
     case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
@@ -209,8 +259,12 @@ std::string_view creativeEditorObjectActionLabel(
       return "SAVE AS ASSET";
     case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
       return "UPDATE SAVED ASSET";
-    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances:
-      return "REFRESH ALL INSTANCES";
+    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance:
+      return "REFRESH THIS INSTANCE";
+    case CreativeEditorToolOptionsCommandId::RefreshSafeSavedAssetInstances:
+      return "REFRESH SAFE INSTANCES";
+    case CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances:
+      return "FORCE REFRESH ALL";
     case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
@@ -264,7 +318,6 @@ std::string creativeEditorObjectActionValueLabel(
       }
       return std::to_string(state.contextSelectionCount) + " ROOTS";
     case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
-    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances:
       if (state.contextContainerKind !=
           cr::CreativeObjectKind::PrefabInstance) {
         return "SELECT ASSET INSTANCE";
@@ -273,6 +326,22 @@ std::string creativeEditorObjectActionValueLabel(
         return "RESET INSTANCE SCALE + TILT";
       }
       return state.contextContainerAssetId;
+    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance:
+      if (!state.contextPrefabSyncInspected) {
+        return "SELECT ASSET INSTANCE";
+      }
+      return std::string(cr::toString(state.contextPrefabSyncState));
+    case CreativeEditorToolOptionsCommandId::RefreshSafeSavedAssetInstances:
+      return state.contextPrefabSourceChangedInstanceCount == 0U
+                 ? "NO SAFE UPDATES"
+                 : std::to_string(
+                       state.contextPrefabSourceChangedInstanceCount) +
+                       " SOURCE CHANGED";
+    case CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances:
+      return state.contextPrefabMatchedInstanceCount == 0U
+                 ? "NO INSTANCES"
+                 : std::to_string(state.contextPrefabMatchedInstanceCount) +
+                       " INSTANCES";
     case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
@@ -404,16 +473,47 @@ bool activateCreativeEditorObjectAction(
       }
       break;
     }
-    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances: {
+    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance:
+    case CreativeEditorToolOptionsCommandId::RefreshSafeSavedAssetInstances:
+    case CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances: {
+      cr::CreativeAuthoredAssetRefreshMode mode =
+          cr::CreativeAuthoredAssetRefreshMode::ForceAll;
+      switch (command) {
+        case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance:
+          mode = cr::CreativeAuthoredAssetRefreshMode::SelectedInstance;
+          break;
+        case CreativeEditorToolOptionsCommandId::
+            RefreshSafeSavedAssetInstances:
+          mode = cr::CreativeAuthoredAssetRefreshMode::SafeInstances;
+          break;
+        case CreativeEditorToolOptionsCommandId::
+            ForceRefreshSavedAssetInstances:
+          break;
+        default:
+          break;
+      }
       const CreativeEditorAuthoredAssetInstanceRefreshReceipt refresh =
           refreshCreativeEditorAuthoredAssetInstances(
-              appState, editor.authoredAssets, state.contextGroupId);
+              appState, editor.authoredAssets, state.contextGroupId, mode);
       accepted = refresh.accepted;
       if (accepted) {
-        editor.catalog.statusLabel =
-            "REFRESHED " +
-            std::to_string(refresh.refresh.refreshedInstanceCount) +
-            " INSTANCES";
+        switch (mode) {
+          case cr::CreativeAuthoredAssetRefreshMode::SelectedInstance:
+            editor.catalog.statusLabel = "REFRESHED THIS INSTANCE";
+            break;
+          case cr::CreativeAuthoredAssetRefreshMode::SafeInstances:
+            editor.catalog.statusLabel =
+                "REFRESHED " +
+                std::to_string(refresh.refresh.refreshedInstanceCount) +
+                " SAFE INSTANCES";
+            break;
+          case cr::CreativeAuthoredAssetRefreshMode::ForceAll:
+            editor.catalog.statusLabel =
+                "FORCE REFRESHED " +
+                std::to_string(refresh.refresh.refreshedInstanceCount) +
+                " INSTANCES";
+            break;
+        }
       } else {
         editor.catalog.statusLabel = refresh.reasonCode;
       }

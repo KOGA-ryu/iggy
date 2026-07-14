@@ -383,6 +383,11 @@ updateCreativeEditorAuthoredAssetFromInstance(
     library.statusLabel = receipt.reasonCode;
     return receipt;
   }
+  if (instance->locked) {
+    receipt.reasonCode = "creative_authored_asset_update_instance_locked";
+    library.statusLabel = receipt.reasonCode;
+    return receipt;
+  }
   receipt.assetId = instance->assetId;
   const cr::CreativeAuthoredAssetDefinition* existing =
       findCreativeEditorAuthoredAsset(library, receipt.assetId);
@@ -426,6 +431,15 @@ updateCreativeEditorAuthoredAssetFromInstance(
     library.statusLabel = receipt.reasonCode;
     return receipt;
   }
+  receipt.provenance =
+      appState.facade.acknowledgeAuthoredAssetInstanceSource(
+          receipt.capture.definition, instanceRootObjectId);
+  if (!receipt.provenance.committed ||
+      !cr::documentMutationSucceeded(receipt.provenance.status)) {
+    receipt.reasonCode = "creative_authored_asset_update_provenance_rejected";
+    library.statusLabel = receipt.reasonCode;
+    return receipt;
+  }
   *definition = receipt.capture.definition;
   ++library.nextDocumentId;
   receipt.accepted = true;
@@ -438,7 +452,8 @@ CreativeEditorAuthoredAssetInstanceRefreshReceipt
 refreshCreativeEditorAuthoredAssetInstances(
     cr::CreativeAppState& appState,
     CreativeEditorAuthoredAssetLibrary& library,
-    cr::CreativeObjectId instanceRootObjectId) {
+    cr::CreativeObjectId instanceRootObjectId,
+    cr::CreativeAuthoredAssetRefreshMode mode) {
   CreativeEditorAuthoredAssetInstanceRefreshReceipt receipt;
   receipt.requested = true;
   receipt.instanceRootObjectId = instanceRootObjectId;
@@ -458,10 +473,22 @@ refreshCreativeEditorAuthoredAssetInstances(
     return receipt;
   }
 
-  StandaloneEditTransaction transaction = beginEditTransaction(
-      appState.facade, "creative_authored_asset_refresh_instances");
+  std::string_view transactionSource =
+      "creative_authored_asset_force_refresh_all";
+  switch (mode) {
+    case cr::CreativeAuthoredAssetRefreshMode::SelectedInstance:
+      transactionSource = "creative_authored_asset_refresh_instance";
+      break;
+    case cr::CreativeAuthoredAssetRefreshMode::SafeInstances:
+      transactionSource = "creative_authored_asset_refresh_safe_instances";
+      break;
+    case cr::CreativeAuthoredAssetRefreshMode::ForceAll:
+      break;
+  }
+  StandaloneEditTransaction transaction =
+      beginEditTransaction(appState.facade, transactionSource);
   receipt.refresh = appState.facade.refreshAuthoredAssetInstances(
-      *definition, instanceRootObjectId);
+      *definition, instanceRootObjectId, mode);
   receipt.history = completeEditTransaction(
       appState.history, std::move(transaction), appState.facade,
       receipt.refresh.accepted && receipt.refresh.changed,

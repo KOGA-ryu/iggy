@@ -417,7 +417,7 @@ bool groupToolOptionsExposeEditAndUngroupCommands() {
   const app::CreativeEditorToolOptionsCommandList commands =
       app::creativeEditorToolOptionCommandsForEntry(entry);
   return expect(
-      commands.count == 5U &&
+      commands.count == 7U &&
           commands.ids[0] ==
               app::CreativeEditorToolOptionsCommandId::EditGroupContents &&
           commands.ids[1] ==
@@ -426,10 +426,16 @@ bool groupToolOptionsExposeEditAndUngroupCommands() {
               app::CreativeEditorToolOptionsCommandId::UpdateSavedAsset &&
           commands.ids[3] ==
               app::CreativeEditorToolOptionsCommandId::
-                  RefreshSavedAssetInstances &&
+                  RefreshSavedAssetInstance &&
           commands.ids[4] ==
+              app::CreativeEditorToolOptionsCommandId::
+                  RefreshSafeSavedAssetInstances &&
+          commands.ids[5] ==
+              app::CreativeEditorToolOptionsCommandId::
+                  ForceRefreshSavedAssetInstances &&
+          commands.ids[6] ==
               app::CreativeEditorToolOptionsCommandId::UngroupSelection,
-      "Group options present edit, save, update, and refresh before ungroup");
+      "Group options present edit, save, update, safe refresh, and force refresh before ungroup");
 }
 
 bool transformToolOptionsExposeAndRouteSharedObjectActions() {
@@ -438,7 +444,7 @@ bool transformToolOptionsExposeAndRouteSharedObjectActions() {
           {cr::CreativeHeldItemKind::ObjectMove,
            cr::CreativeObjectKind::Unknown});
   bool ok = expect(
-      commands.count == 12U &&
+      commands.count == 14U &&
           commands.ids[0] ==
               app::CreativeEditorToolOptionsCommandId::TransformSelection &&
           commands.ids[1] ==
@@ -463,7 +469,13 @@ bool transformToolOptionsExposeAndRouteSharedObjectActions() {
               app::CreativeEditorToolOptionsCommandId::UpdateSavedAsset &&
           commands.ids[11] ==
               app::CreativeEditorToolOptionsCommandId::
-                  RefreshSavedAssetInstances,
+                  RefreshSavedAssetInstance &&
+          commands.ids[12] ==
+              app::CreativeEditorToolOptionsCommandId::
+                  RefreshSafeSavedAssetInstances &&
+          commands.ids[13] ==
+              app::CreativeEditorToolOptionsCommandId::
+                  ForceRefreshSavedAssetInstances,
       "Transform options expose the bounded shared object-action order");
 
   cr::CreativeAppState appState;
@@ -564,8 +576,8 @@ bool objectActionsInspectCompleteGroupCapability() {
   editor.toolOptions.targetEntry = {
       cr::CreativeHeldItemKind::ObjectMove,
       cr::CreativeObjectKind::Unknown};
-  app::refreshCreativeEditorObjectActionContext(appState,
-                                                editor.toolOptions);
+  app::refreshCreativeEditorObjectActionContext(
+      appState, editor.authoredAssets, editor.toolOptions);
   return expect(grouped.accepted && locked.accepted &&
                     editor.toolOptions.contextSelectionCount == 1U &&
                     !editor.toolOptions.contextAllUnlocked,

@@ -316,10 +316,15 @@ CreativeAuthoredAssetInstanceReceipt Facade::instantiateAuthoredAsset(
 
 CreativeAuthoredAssetRefreshReceipt Facade::refreshAuthoredAssetInstances(
     const CreativeAuthoredAssetDefinition& definition,
-    CreativeObjectId preferredInstanceRootObjectId) {
+    CreativeObjectId preferredInstanceRootObjectId,
+    CreativeAuthoredAssetRefreshMode mode) {
   recordCommandAttempt(stats_);
+  CreativeAuthoredAssetRefreshRequest request;
+  request.definition = &definition;
+  request.mode = mode;
+  request.selectedInstanceRootObjectId = preferredInstanceRootObjectId;
   CreativeAuthoredAssetRefreshReceipt receipt =
-      refreshCreativeAuthoredAssetInstancesAtomically(document_, definition);
+      refreshCreativeAuthoredAssetInstancesAtomically(document_, request);
   if (!receipt.accepted) {
     recordCommandFailure(stats_);
     return receipt;
@@ -339,6 +344,22 @@ CreativeAuthoredAssetRefreshReceipt Facade::refreshAuthoredAssetInstances(
   }
   for (std::size_t index = 0U; index < receipt.createdObjectCount; ++index) {
     recordObjectCreated(stats_);
+  }
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
+CreativeDocumentBatchMutationReceipt
+Facade::acknowledgeAuthoredAssetInstanceSource(
+    const CreativeAuthoredAssetDefinition& definition,
+    CreativeObjectId instanceRootObjectId) {
+  recordCommandAttempt(stats_);
+  CreativeDocumentBatchMutationReceipt receipt =
+      acknowledgeCreativeAuthoredAssetInstanceSource(
+          document_, definition, instanceRootObjectId);
+  if (!receipt.committed || !documentMutationSucceeded(receipt.status)) {
+    recordCommandFailure(stats_);
+    return receipt;
   }
   recordCommandSuccess(stats_);
   return receipt;

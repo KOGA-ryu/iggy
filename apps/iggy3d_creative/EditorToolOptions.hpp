@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "app/iggy3d/creative/assets/AuthoredAsset.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
@@ -41,11 +42,13 @@ enum class CreativeEditorToolOptionsCommandId : std::uint8_t {
   UngroupSelection,
   SaveSelectionAsAsset,
   UpdateSavedAsset,
-  RefreshSavedAssetInstances,
+  RefreshSavedAssetInstance,
+  RefreshSafeSavedAssetInstances,
+  ForceRefreshSavedAssetInstances,
   Count,
 };
 
-inline constexpr std::size_t kCreativeEditorToolOptionsCommandCapacity = 12U;
+inline constexpr std::size_t kCreativeEditorToolOptionsCommandCapacity = 14U;
 
 struct CreativeEditorToolOptionsCommandList {
   std::array<CreativeEditorToolOptionsCommandId,
@@ -61,6 +64,9 @@ struct CreativeEditorToolOptionsState {
   iggy3d::creative::CreativeToolOptionList options;
   CreativeEditorToolOptionsCommandList commands;
   std::size_t selectedIndex = 0;
+  iggy3d::creative::CreativeDocumentId contextDocumentId =
+      iggy3d::creative::kInvalidDocumentId;
+  std::uint64_t contextDocumentRevision = 0U;
   iggy3d::creative::CreativeObjectId contextGroupId =
       iggy3d::creative::kInvalidObjectId;
   iggy3d::creative::CreativeObjectId contextPrimaryObjectId =
@@ -77,6 +83,14 @@ struct CreativeEditorToolOptionsState {
   bool contextAllMovable = false;
   bool contextAllResettable = false;
   bool contextPrefabUpdateTransformSupported = false;
+  bool contextPrefabSyncInspected = false;
+  iggy3d::creative::CreativeAuthoredAssetSyncState contextPrefabSyncState =
+      iggy3d::creative::CreativeAuthoredAssetSyncState::Conflict;
+  std::size_t contextPrefabMatchedInstanceCount = 0U;
+  std::size_t contextPrefabCurrentInstanceCount = 0U;
+  std::size_t contextPrefabSourceChangedInstanceCount = 0U;
+  std::size_t contextPrefabLocallyModifiedInstanceCount = 0U;
+  std::size_t contextPrefabConflictInstanceCount = 0U;
 };
 
 struct CreativeEditorQuickEditState {

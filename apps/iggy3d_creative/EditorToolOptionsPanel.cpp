@@ -208,7 +208,9 @@ void adjustSelection(CreativeEditorState& editor,
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
     case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
-    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances:
+    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance:
+    case CreativeEditorToolOptionsCommandId::RefreshSafeSavedAssetInstances:
+    case CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances:
     case CreativeEditorToolOptionsCommandId::Count:
       return false;
   }
@@ -259,7 +261,9 @@ void adjustSelection(CreativeEditorState& editor,
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
     case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
-    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances:
+    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance:
+    case CreativeEditorToolOptionsCommandId::RefreshSafeSavedAssetInstances:
+    case CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances:
     case CreativeEditorToolOptionsCommandId::Count:
       return "INVALID COMMAND";
   }
@@ -296,7 +300,9 @@ void adjustSelection(CreativeEditorState& editor,
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
     case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
-    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances:
+    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance:
+    case CreativeEditorToolOptionsCommandId::RefreshSafeSavedAssetInstances:
+    case CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances:
     case CreativeEditorToolOptionsCommandId::Count:
       return "INVALID";
   }
@@ -417,7 +423,9 @@ bool activateCreativeEditorToolOptionsSelection(
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
     case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
-    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances:
+    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance:
+    case CreativeEditorToolOptionsCommandId::RefreshSafeSavedAssetInstances:
+    case CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances:
       break;
     case CreativeEditorToolOptionsCommandId::Count:
       break;
@@ -467,7 +475,9 @@ bool activateCreativeEditorToolOptionsSelection(
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
     case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
-    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances:
+    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance:
+    case CreativeEditorToolOptionsCommandId::RefreshSafeSavedAssetInstances:
+    case CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances:
     case CreativeEditorToolOptionsCommandId::Count:
       break;
   }
@@ -483,6 +493,28 @@ CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
   CreativeEditorToolOptionsState& state = request.editor.toolOptions;
   const bool wasOpen = state.open;
 
+  const cr::CreativeSelectionState& liveSelection =
+      request.appState.facade.selectionState();
+  std::size_t liveSelectionCount = cr::selectedTargetCount(liveSelection);
+  if (liveSelectionCount == 0U &&
+      liveSelection.selectedTarget.value != cr::kInvalidId) {
+    liveSelectionCount = 1U;
+  }
+  const cr::CreativeObjectId livePrimaryObjectId =
+      liveSelection.selectedTarget.value == cr::kInvalidId
+          ? cr::kInvalidObjectId
+          : static_cast<cr::CreativeObjectId>(
+                liveSelection.selectedTarget.value);
+  if (state.open &&
+      (state.contextDocumentId != request.appState.facade.document().id() ||
+       state.contextDocumentRevision !=
+           request.appState.facade.document().revision() ||
+       state.contextPrimaryObjectId != livePrimaryObjectId ||
+       state.contextSelectionCount != liveSelectionCount)) {
+    refreshCreativeEditorObjectActionContext(
+        request.appState, request.editor.authoredAssets, state);
+  }
+
   if (request.openRequested && !state.open) {
     const cr::CreativeToolOptionList options =
         creativeEditorToolOptionsForEntry(request.requestedEntry,
@@ -497,7 +529,8 @@ CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
       state.options = options;
       state.commands = commands;
       state.selectedIndex = 0U;
-      refreshCreativeEditorObjectActionContext(request.appState, state);
+      refreshCreativeEditorObjectActionContext(
+          request.appState, request.editor.authoredAssets, state);
     }
   }
 

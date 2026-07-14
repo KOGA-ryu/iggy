@@ -118,7 +118,11 @@ creativeEditorToolOptionCommandsForEntry(
       commands.ids[commands.count++] =
           CreativeEditorToolOptionsCommandId::UpdateSavedAsset;
       commands.ids[commands.count++] =
-          CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances;
+          CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance;
+      commands.ids[commands.count++] =
+          CreativeEditorToolOptionsCommandId::RefreshSafeSavedAssetInstances;
+      commands.ids[commands.count++] =
+          CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances;
       commands.ids[commands.count++] =
           CreativeEditorToolOptionsCommandId::UngroupSelection;
       break;
@@ -146,7 +150,11 @@ creativeEditorToolOptionCommandsForEntry(
       commands.ids[commands.count++] =
           CreativeEditorToolOptionsCommandId::UpdateSavedAsset;
       commands.ids[commands.count++] =
-          CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstances;
+          CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance;
+      commands.ids[commands.count++] =
+          CreativeEditorToolOptionsCommandId::RefreshSafeSavedAssetInstances;
+      commands.ids[commands.count++] =
+          CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances;
       break;
     case CreativeEditorToolCommandProfile::Count:
       break;
