@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/creative/document/DocumentInternal.hpp"
 
+#include <algorithm>
 #include <utility>
 
 namespace iggy3d::creative {
@@ -36,6 +37,8 @@ std::string_view toString(CreativeDocumentRestoreStatus status) noexcept {
       return "InvalidSettings";
     case CreativeDocumentRestoreStatus::InvalidObject:
       return "InvalidObject";
+    case CreativeDocumentRestoreStatus::InvalidLogicLink:
+      return "InvalidLogicLink";
     case CreativeDocumentRestoreStatus::DuplicateObjectId:
       return "DuplicateObjectId";
     case CreativeDocumentRestoreStatus::InvalidVoxelField:
@@ -58,6 +61,7 @@ CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
   receipt.requested = true;
   receipt.documentId = request.documentId;
   receipt.objectCount = request.objects.size();
+  receipt.logicLinkCount = request.logicLinks.size();
   receipt.voxelCellCount = request.voxelField.occupiedCellCount();
   receipt.terrainControlCount = request.terrainField.controlCount();
   receipt.terrainMaterialOverrideCount =
@@ -147,6 +151,15 @@ CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
     return receipt;
   }
 
+  const CreativeLogicLinkValidationReceipt logicLinkValidation =
+      validateCreativeLogicLinks(request.logicLinks, request.objects);
+  if (!logicLinkValidation.valid) {
+    setRestoreStatus(receipt,
+                     CreativeDocumentRestoreStatus::InvalidLogicLink,
+                     logicLinkValidation.reasonCode);
+    return receipt;
+  }
+
   if (!request.voxelField.validateInvariants()) {
     setRestoreStatus(receipt,
                      CreativeDocumentRestoreStatus::InvalidVoxelField,
@@ -185,6 +198,14 @@ CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
   worldBounds_ = request.worldBounds;
   objects_ = request.objects;
   objectIndex_ = std::move(restoredIndex);
+  logicLinks_ = request.logicLinks;
+  std::sort(logicLinks_.begin(), logicLinks_.end(),
+            [](const CreativeLogicLink& lhs, const CreativeLogicLink& rhs) {
+              if (lhs.sourceObjectId != rhs.sourceObjectId) {
+                return lhs.sourceObjectId < rhs.sourceObjectId;
+              }
+              return lhs.targetObjectId < rhs.targetObjectId;
+            });
   nextObjectId_ = request.nextObjectId;
   voxelField_ = request.voxelField;
   terrainField_ = request.terrainField;

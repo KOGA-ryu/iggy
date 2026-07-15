@@ -138,6 +138,12 @@ using DisplayProfile = CreativeEditorToolDisplayProfile;
     row.commandProfile = CommandProfile::ObjectGroup;
     row.actionHintProfile = HintProfile::ObjectGroup;
   }
+  {
+    auto& row = rows[capabilityIndex(cr::CreativeHeldItemKind::LogicLink)];
+    row.quickEditProfile = QuickEditProfile::LogicLink;
+    row.actionHintProfile = HintProfile::LogicLink;
+    row.keyboardQuickEditHints = true;
+  }
   return rows;
 }
 

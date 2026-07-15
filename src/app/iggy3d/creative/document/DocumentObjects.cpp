@@ -292,6 +292,11 @@ CreativeDocumentRemoveReceipt CreativeDocument::removeDocumentObject(
   }
 
   receipt.removalDirtyFlags = dirtyFlagsForRemoval(object.kind);
+  receipt.removedLogicLinkCount = eraseLogicLinksForObject(request.objectId);
+  if (receipt.removedLogicLinkCount > 0U) {
+    receipt.removalDirtyFlags |=
+        static_cast<CreativeObjectDirtyFlags>(CreativeObjectDirtyFlag::Logic);
+  }
 
   objectIndex_.erase(found);
   objects_.erase(objects_.begin() + static_cast<std::ptrdiff_t>(index));

@@ -31,6 +31,7 @@ enum class CreativeEditorQuickEditProfile : std::uint8_t {
   TerrainProfile,
   TerrainPath,
   TerrainRegion,
+  LogicLink,
   Count,
 };
 
@@ -54,6 +55,7 @@ enum class CreativeEditorActionHintProfile : std::uint8_t {
   DirectShapeVolume,
   VolumeOperation,
   LinearArray,
+  LogicLink,
   Count,
 };
 

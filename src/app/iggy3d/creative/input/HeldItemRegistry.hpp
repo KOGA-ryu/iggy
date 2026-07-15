@@ -48,6 +48,8 @@ enum class CreativeHeldItemWorldOperation : std::uint8_t {
   SampleTerrainRegionHeight,
   CancelTerrainRegion,
   ApplyObjectGroup,
+  AdvanceLogicLink,
+  ClearLogicLinkSource,
   Count,
 };
 
@@ -121,6 +123,7 @@ enum class CreativeHeldItemStatusMode : std::uint8_t {
   TerrainProfile,
   TerrainPath,
   TerrainRegion,
+  LogicLink,
   Count,
 };
 

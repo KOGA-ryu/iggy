@@ -26,7 +26,7 @@ namespace iggy3d {
 inline constexpr std::uint32_t kSaveSchemaVersion = 3;
 inline constexpr std::uint32_t kMinimumReadableSaveSchemaVersion = 1;
 inline constexpr std::uint32_t kRuntimeSaveVersion = 1;
-inline constexpr std::uint32_t kSaveCreativeDocumentSectionVersion = 6;
+inline constexpr std::uint32_t kSaveCreativeDocumentSectionVersion = 7;
 
 struct SaveEnvelopeMetadata {
   std::uint32_t schemaVersion = kSaveSchemaVersion;
@@ -195,6 +195,12 @@ struct SaveCreativeDocumentObjectRecord {
   std::vector<SaveCreativeDocumentVec3Record> pathPoints;
 };
 
+struct SaveCreativeDocumentLogicLinkRecord {
+  std::uint64_t sourceObjectId = 0;
+  std::uint64_t targetObjectId = 0;
+  std::string action;
+};
+
 struct SaveCreativeDocumentVoxelCellRecord {
   std::uint16_t localIndex = 0;
   std::string material;
@@ -242,6 +248,7 @@ struct SaveCreativeDocumentSection {
   SaveCreativeDocumentBoundsRecord worldBounds;
   std::uint64_t nextObjectId = 1;
   std::vector<SaveCreativeDocumentObjectRecord> objects;
+  std::vector<SaveCreativeDocumentLogicLinkRecord> logicLinks;
   std::vector<SaveCreativeDocumentVoxelChunkRecord> voxelChunks;
   std::vector<SaveCreativeDocumentTerrainControlRecord> terrainControls;
   std::vector<SaveCreativeDocumentTerrainMaterialRecord> terrainMaterials;

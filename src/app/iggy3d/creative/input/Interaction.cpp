@@ -156,6 +156,7 @@ std::string_view toString(CreativeHeldItemKind kind) noexcept {
     case CreativeHeldItemKind::TerrainPath: return "TerrainPath";
     case CreativeHeldItemKind::TerrainRegion: return "TerrainRegion";
     case CreativeHeldItemKind::ObjectGroup: return "Group";
+    case CreativeHeldItemKind::LogicLink: return "Link";
     case CreativeHeldItemKind::Count: break;
   }
   return "Unknown";

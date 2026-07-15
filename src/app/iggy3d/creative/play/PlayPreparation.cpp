@@ -121,6 +121,7 @@ CreativePlayPreparationResult prepareCreativePlay(
   payload.roomId = evaluation.roomBake.room.id;
   payload.playerSpawn = *spawn;
   payload.interactables = std::move(interactables.definitions);
+  payload.logicLinks = std::move(interactables.logicLinks);
   payload.room = std::move(evaluation.roomBake.room);
   result.payload.emplace(std::move(payload));
   setStatus(result,

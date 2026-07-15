@@ -33,6 +33,13 @@ struct CreativeRuntimeInteractableDefinition {
   Aabb3 localBounds;
 };
 
+struct CreativeRuntimeLogicLink {
+  CreativeObjectId sourceObjectId = kInvalidObjectId;
+  CreativeObjectId targetObjectId = kInvalidObjectId;
+  CreativeLogicLinkAction action = CreativeLogicLinkAction::Toggle;
+  bool compatibilityFallback = false;
+};
+
 struct CreativeRuntimeInteractableCatalog {
   bool ok = false;
   std::string_view reasonCode =
@@ -40,12 +47,15 @@ struct CreativeRuntimeInteractableCatalog {
   std::size_t doorCount = 0U;
   std::size_t controlCount = 0U;
   std::size_t pickupCount = 0U;
+  std::size_t explicitLogicLinkCount = 0U;
+  std::size_t compatibilityLogicLinkCount = 0U;
   std::vector<CreativeRuntimeInteractableDefinition> definitions;
+  std::vector<CreativeRuntimeLogicLink> logicLinks;
 };
 
-// Pure activation-data kernel. Controls and doors sharing the same non-zero
-// parent id form one explicit activation circuit; no proximity links are
-// inferred.
+// Pure activation-data kernel. Authored links take precedence. A control with
+// no authored links inherits the legacy same-parent Toggle circuit; no
+// proximity links are inferred.
 [[nodiscard]] CreativeRuntimeInteractableCatalog
 buildCreativeRuntimeInteractableCatalog(const CreativeDocument& document,
                                         const RoomAsset& room);
@@ -91,6 +101,8 @@ enum class CreativeRuntimeInteractionEffectStatus : std::uint8_t {
   DoorClosed,
   CircuitOpened,
   CircuitClosed,
+  LinksApplied,
+  LinksNoChange,
   PickupAcquired,
 };
 

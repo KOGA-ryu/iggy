@@ -101,6 +101,7 @@ struct CreativeRuntimeSandbox {
   std::vector<std::string> roomSpatialSurfaceOrder;
   SpatialSurfaceSet collisionSurfaces;
   std::vector<CreativeRuntimeInteractableState> interactables;
+  std::vector<CreativeRuntimeLogicLink> logicLinks;
   std::uint64_t geometryRevision = 0U;
   Session session;
 };

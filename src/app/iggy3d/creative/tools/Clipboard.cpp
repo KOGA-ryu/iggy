@@ -281,6 +281,13 @@ CreativeClipboardCopyReceipt copyDocumentObjectsToClipboard(
       staged.objects.push_back(object);
     }
   }
+  staged.logicLinks.reserve(document.logicLinks().size());
+  for (const CreativeLogicLink& link : document.logicLinks()) {
+    if (requested.contains(link.sourceObjectId) &&
+        requested.contains(link.targetObjectId)) {
+      staged.logicLinks.push_back(link);
+    }
+  }
   if (staged.objects.size() != requested.size()) {
     for (CreativeObjectId objectId : requested) {
       if (!document.containsObject(objectId)) {
@@ -310,6 +317,7 @@ CreativeClipboardCopyReceipt copyDocumentObjectsToClipboard(
   receipt.accepted = true;
   receipt.status = CreativeClipboardStatus::Copied;
   receipt.copiedObjectCount = staged.objects.size();
+  receipt.copiedLogicLinkCount = staged.logicLinks.size();
   receipt.reasonCode = "creative_clipboard_copied";
   outClipboard = std::move(staged);
   return receipt;
@@ -329,6 +337,7 @@ CreativeClipboardPasteReceipt pasteCreativeClipboardAtomically(
   receipt.status = batch.status;
   receipt.requestedObjectCount = batch.requestedObjectCount;
   receipt.pastedObjectCount = batch.pastedObjectCount;
+  receipt.pastedLogicLinkCount = batch.pastedLogicLinkCount;
   receipt.failedObjectId = batch.failedObjectId;
   receipt.revisionBefore = batch.revisionBefore;
   receipt.revisionAfter = batch.revisionAfter;
@@ -375,6 +384,24 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
       std::numeric_limits<std::size_t>::max()) {
     receipt.status = CreativeClipboardStatus::InvalidRequest;
     receipt.reasonCode = "creative_clipboard_batch_size_overflow";
+    return receipt;
+  }
+  if (clipboard.logicLinks.size() >
+      std::numeric_limits<std::uint64_t>::max() / requests.size()) {
+    receipt.status = CreativeClipboardStatus::InvalidRequest;
+    receipt.reasonCode = "creative_clipboard_link_batch_size_overflow";
+    return receipt;
+  }
+  receipt.requestedLogicLinkCount =
+      static_cast<std::uint64_t>(clipboard.logicLinks.size()) *
+      requests.size();
+
+  const CreativeLogicLinkValidationReceipt linkValidation =
+      validateCreativeLogicLinks(clipboard.logicLinks, clipboard.objects);
+  if (!linkValidation.valid) {
+    receipt.status = CreativeClipboardStatus::InvalidClipboard;
+    receipt.failedObjectId = linkValidation.sourceObjectId;
+    receipt.reasonCode = std::string(linkValidation.reasonCode);
     return receipt;
   }
 
@@ -503,6 +530,33 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
         return receipt;
       }
       receipt.pastedObjectIds.push_back(createReceipt.objectId);
+    }
+    for (const CreativeLogicLink& link : clipboard.logicLinks) {
+      const auto source = remaps.find(link.sourceObjectId);
+      const auto target = remaps.find(link.targetObjectId);
+      if (source == remaps.end() || target == remaps.end()) {
+        receipt.failedPasteIndex = requestIndex;
+        receipt.failedObjectId = link.sourceObjectId;
+        receipt.status = CreativeClipboardStatus::InvalidClipboard;
+        receipt.reasonCode = "creative_clipboard_link_endpoint_missing";
+        receipt.pastedPasteCount = 0U;
+        receipt.idRemaps.clear();
+        receipt.pastedObjectIds.clear();
+        return receipt;
+      }
+      const CreativeLogicLinkMutationReceipt linkReceipt = staged.setLogicLink(
+          {source->second, target->second, link.action});
+      if (!linkReceipt.accepted || !linkReceipt.changed) {
+        receipt.failedPasteIndex = requestIndex;
+        receipt.failedObjectId = link.sourceObjectId;
+        receipt.status = CreativeClipboardStatus::CreateRejected;
+        receipt.reasonCode = std::string(linkReceipt.reasonCode);
+        receipt.pastedPasteCount = 0U;
+        receipt.idRemaps.clear();
+        receipt.pastedObjectIds.clear();
+        return receipt;
+      }
+      ++receipt.pastedLogicLinkCount;
     }
     ++receipt.pastedPasteCount;
   }

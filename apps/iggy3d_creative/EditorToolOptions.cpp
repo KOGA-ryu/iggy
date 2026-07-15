@@ -206,6 +206,17 @@ bool processCreativeEditorQuickEditAction(
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   switch (describeCreativeEditorToolCapability(held.kind).quickEditProfile) {
+    case CreativeEditorQuickEditProfile::LogicLink:
+      switch (action) {
+        case cr::CreativeInputActionId::QuickEditPrevious:
+        case cr::CreativeInputActionId::QuickEditDecrease:
+          return cycleCreativeEditorLogicLinkAction(editor.logicLinks, -1);
+        case cr::CreativeInputActionId::QuickEditNext:
+        case cr::CreativeInputActionId::QuickEditIncrease:
+          return cycleCreativeEditorLogicLinkAction(editor.logicLinks, 1);
+        default:
+          return false;
+      }
     case CreativeEditorQuickEditProfile::TerrainControl:
       return processCreativeEditorTerrainQuickEdit(editor.terrain, action);
     case CreativeEditorQuickEditProfile::TerrainGrade:
@@ -274,6 +285,8 @@ std::string creativeEditorQuickEditStatusLabel(
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   switch (describeCreativeEditorToolCapability(held.kind).quickEditProfile) {
+    case CreativeEditorQuickEditProfile::LogicLink:
+      return std::string{cr::toString(editor.logicLinks.action)};
     case CreativeEditorQuickEditProfile::TerrainControl:
       return creativeEditorTerrainQuickEditLabel(editor.terrain);
     case CreativeEditorQuickEditProfile::TerrainGrade:

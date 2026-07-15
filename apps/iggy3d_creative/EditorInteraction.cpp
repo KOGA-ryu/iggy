@@ -196,6 +196,13 @@ void syncCreativeEditorHeldItem(cr::CreativeAppState& appState,
   if (definition.frameMode != cr::CreativeHeldItemFrameMode::ObjectMove) {
     editor.interaction.moveTargetId = cr::kInvalidObjectId;
   }
+  if (held.kind == cr::CreativeHeldItemKind::LogicLink) {
+    syncCreativeEditorLogicLinkState(editor.logicLinks,
+                                     appState.facade.document());
+  } else {
+    static_cast<void>(clearCreativeEditorLogicLinkSource(editor.logicLinks));
+    editor.logicLinks.documentId = appState.facade.document().id();
+  }
   if (definition.frameMode !=
       cr::CreativeHeldItemFrameMode::TerrainControlStroke) {
     clearCreativeEditorTerrainInteraction(editor.terrain,
@@ -228,6 +235,7 @@ void processCreativeEditorWorldInteractionFrame(
     const CreativeEditorWorldInteractionFrameRequest& request) {
   CreativeEditorState& editor = request.editor;
   const cr::CreativeDocument& document = request.appState.facade.document();
+  syncCreativeEditorLogicLinkState(editor.logicLinks, document);
   static_cast<void>(syncCreativeEditorGroupFocus(editor.groupFocus, document));
   const double targetCellSize =
       creativeEditorTargetCellSize(document, editor);

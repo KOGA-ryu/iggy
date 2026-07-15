@@ -115,7 +115,10 @@ void buildCreativeEditorDesktopMenuBar(
   }
 }
 
-void buildCreativeEditorDesktopPanels(CreativeEditorDesktopUiState& desktopUi) {
+void buildCreativeEditorDesktopPanels(
+    CreativeEditorDesktopUiState& desktopUi,
+    const CreativeEditorState& editor,
+    const cr::CreativeAppState& appState) {
   // Toolbar strip above the central viewport (placeholder tools for now).
   const ImGuiWindowFlags toolbarFlags =
       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
@@ -143,8 +146,49 @@ void buildCreativeEditorDesktopPanels(CreativeEditorDesktopUiState& desktopUi) {
   // Inspector (right).
   if (desktopUi.showInspector) {
     if (ImGui::Begin("Inspector", &desktopUi.showInspector)) {
-      ImGui::TextDisabled("Inspector");
-      ImGui::TextDisabled("Token / Provenance / Diagnostics — coming soon");
+      const cr::CreativeDocument& document = appState.facade.document();
+      cr::CreativeObjectId inspectedId = editor.logicLinks.sourceObjectId;
+      const cr::TargetRef selected =
+          appState.facade.selectionState().selectedTarget;
+      if (selected.value != cr::kInvalidId) {
+        inspectedId = static_cast<cr::CreativeObjectId>(selected.value);
+      }
+      const cr::CreativeObject* inspected = document.findObject(inspectedId);
+      if (inspected == nullptr) {
+        ImGui::TextDisabled("Select an object to inspect its logic links.");
+      } else {
+        ImGui::TextUnformatted(inspected->name.c_str());
+        ImGui::TextDisabled("%s  |  id %llu",
+                            std::string(cr::toString(inspected->kind)).c_str(),
+                            static_cast<unsigned long long>(inspected->id));
+        ImGui::SeparatorText("Logic links");
+        std::size_t shown = 0U;
+        for (const cr::CreativeLogicLink& link : document.logicLinks()) {
+          if (link.sourceObjectId != inspected->id &&
+              link.targetObjectId != inspected->id) {
+            continue;
+          }
+          const bool outgoing = link.sourceObjectId == inspected->id;
+          const cr::CreativeObjectId otherId =
+              outgoing ? link.targetObjectId : link.sourceObjectId;
+          const cr::CreativeObject* other = document.findObject(otherId);
+          const std::string_view otherName =
+              other != nullptr ? std::string_view{other->name}
+                               : std::string_view{"<missing>"};
+          ImGui::BulletText("%s %.*s  [%s]",
+                            outgoing ? "to" : "from",
+                            static_cast<int>(otherName.size()),
+                            otherName.data(),
+                            std::string(cr::toString(link.action)).c_str());
+          ++shown;
+        }
+        if (shown == 0U) {
+          ImGui::TextDisabled("No logic links");
+        }
+        ImGui::TextDisabled("Document links: %llu",
+                            static_cast<unsigned long long>(
+                                document.logicLinks().size()));
+      }
     }
     ImGui::End();
   }

@@ -271,6 +271,11 @@ class Facade {
       const CreativeDocumentRemoveRequest& request);
   [[nodiscard]] CreativeDocumentRemoveReceipt removeDocumentObject(
       CreativeObjectId id);
+  [[nodiscard]] CreativeLogicLinkMutationReceipt setLogicLink(
+      const CreativeLogicLinkMutationRequest& request);
+  [[nodiscard]] CreativeLogicLinkMutationReceipt removeLogicLink(
+      CreativeObjectId sourceObjectId,
+      CreativeObjectId targetObjectId);
   [[nodiscard]] CreativeHierarchyBatchRemoveReceipt
   removeDocumentObjectsAtomically(
       std::span<const CreativeObjectId> objectIds);

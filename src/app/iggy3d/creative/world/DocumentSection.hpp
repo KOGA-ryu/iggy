@@ -19,6 +19,7 @@ enum class ProductCreativeDocumentSectionStatus : std::uint8_t {
   InvalidWorldBounds,
   InvalidObject,
   InvalidObjectKind,
+  InvalidLogicLink,
   DuplicateObjectId,
   InvalidVoxelData,
   InvalidTerrainData,
@@ -35,6 +36,7 @@ struct ProductCreativeDocumentSectionReceipt {
       ProductCreativeDocumentSectionStatus::Unknown;
   creative::CreativeDocumentId documentId = creative::kInvalidDocumentId;
   std::uint64_t objectCount = 0;
+  std::uint64_t logicLinkCount = 0;
   std::uint64_t voxelCellCount = 0;
   std::uint64_t terrainControlCount = 0;
   std::uint64_t terrainMaterialOverrideCount = 0;

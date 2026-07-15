@@ -8,6 +8,7 @@
 #include "EditorConnectedFill.hpp"
 #include "EditorGizmo.hpp"
 #include "EditorGroup.hpp"
+#include "EditorLogicLinks.hpp"
 #include "EditorPattern.hpp"
 #include "EditorState.hpp"
 #include "EditorSurfaceExtrude.hpp"
@@ -390,6 +391,22 @@ void applyObjectGroup(InteractionContext& context) {
       context.request.appState, "creative_group_world_action"));
 }
 
+void advanceLogicLink(InteractionContext& context) {
+  CreativeEditorState& editor = context.request.editor;
+  if (!editor.interaction.target.objectHit) {
+    editor.logicLinks.status = CreativeEditorLogicLinkStatus::InvalidTarget;
+    return;
+  }
+  static_cast<void>(advanceCreativeEditorLogicLink(
+      context.request.appState, editor.logicLinks,
+      editor.interaction.target.objectId, "creative_logic_link_world_action"));
+}
+
+void clearLogicLinkSource(InteractionContext& context) {
+  static_cast<void>(
+      clearCreativeEditorLogicLinkSource(context.request.editor.logicLinks));
+}
+
 void dispatchHeldItemWorldOperation(
     cr::CreativeHeldItemWorldOperation operation,
     InteractionContext& context) {
@@ -497,6 +514,12 @@ void dispatchHeldItemWorldOperation(
       return;
     case cr::CreativeHeldItemWorldOperation::ApplyObjectGroup:
       applyObjectGroup(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::AdvanceLogicLink:
+      advanceLogicLink(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::ClearLogicLinkSource:
+      clearLogicLinkSource(context);
       return;
     case cr::CreativeHeldItemWorldOperation::Count:
       return;

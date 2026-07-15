@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/iggy3d/creative/document/DocumentSnap.hpp"
+#include "app/iggy3d/creative/document/LogicLink.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/document/TerrainField.hpp"
@@ -47,6 +48,7 @@ enum class CreativeDocumentRestoreStatus : std::uint8_t {
   InvalidDocumentId,
   InvalidSettings,
   InvalidObject,
+  InvalidLogicLink,
   DuplicateObjectId,
   InvalidVoxelField,
   InvalidTerrainField,
@@ -117,6 +119,7 @@ struct CreativeDocumentRemoveReceipt {
   std::string objectName;
   std::uint64_t revisionBefore = 0;
   std::uint64_t revisionAfter = 0;
+  std::uint64_t removedLogicLinkCount = 0;
   CreativeObjectDirtyFlags removalDirtyFlags = 0;
   std::string_view message = "document_remove_not_requested";
   std::string_view reasonCode = "document_remove_not_requested";
@@ -132,6 +135,7 @@ struct CreativeDocumentRestoreRequest {
   CreativeBounds worldBounds;
   CreativeObjectId nextObjectId = 1;
   std::vector<CreativeObject> objects;
+  std::vector<CreativeLogicLink> logicLinks;
   CreativeVoxelField voxelField;
   CreativeTerrainField terrainField;
   CreativeTerrainMaterialField terrainMaterialField;
@@ -145,6 +149,7 @@ struct CreativeDocumentRestoreReceipt {
       CreativeDocumentRestoreStatus::Unknown;
   CreativeDocumentId documentId = kInvalidDocumentId;
   std::uint64_t objectCount = 0;
+  std::uint64_t logicLinkCount = 0;
   std::uint64_t voxelCellCount = 0;
   std::uint64_t terrainControlCount = 0;
   std::uint64_t terrainMaterialOverrideCount = 0;
@@ -205,6 +210,10 @@ class CreativeDocument {
       CreativeObjectId id) const noexcept;
   [[nodiscard]] CreativeObject* findObject(CreativeObjectId id) noexcept;
   [[nodiscard]] std::span<const CreativeObject> objects() const noexcept;
+  [[nodiscard]] std::span<const CreativeLogicLink> logicLinks() const noexcept;
+  [[nodiscard]] const CreativeLogicLink* findLogicLink(
+      CreativeObjectId sourceObjectId,
+      CreativeObjectId targetObjectId) const noexcept;
   [[nodiscard]] const CreativeVoxelField& voxelField() const noexcept;
   [[nodiscard]] const CreativeTerrainField& terrainField() const noexcept;
   [[nodiscard]] const CreativeTerrainMaterialField& terrainMaterialField()
@@ -216,6 +225,11 @@ class CreativeDocument {
       const CreativeDocumentRemoveRequest& request);
   [[nodiscard]] CreativeDocumentRemoveReceipt removeDocumentObject(
       CreativeObjectId id);
+  [[nodiscard]] CreativeLogicLinkMutationReceipt setLogicLink(
+      const CreativeLogicLinkMutationRequest& request);
+  [[nodiscard]] CreativeLogicLinkMutationReceipt removeLogicLink(
+      CreativeObjectId sourceObjectId,
+      CreativeObjectId targetObjectId);
   void markObjectMutationChanged(CreativeObjectDirtyFlags dirtyFlags = 0) noexcept;
   [[nodiscard]] CreativeVoxelMutationReceipt applyVoxelEdits(
       std::span<const CreativeVoxelEdit> edits);
@@ -244,6 +258,8 @@ class CreativeDocument {
 
  private:
   [[nodiscard]] CreativeObjectId appendObject(CreativeObject object);
+  [[nodiscard]] std::size_t eraseLogicLinksForObject(
+      CreativeObjectId objectId) noexcept;
   void markContentChanged() noexcept;
   void markDirty(CreativeObjectDirtyFlags dirtyFlags) noexcept;
 
@@ -255,6 +271,7 @@ class CreativeDocument {
 
   std::vector<CreativeObject> objects_{};
   std::unordered_map<CreativeObjectId, std::size_t> objectIndex_{};
+  std::vector<CreativeLogicLink> logicLinks_{};
   CreativeObjectId nextObjectId_{1};
   CreativeVoxelField voxelField_{};
   CreativeTerrainField terrainField_{};

@@ -179,8 +179,8 @@ bool toolCapabilitiesCoverBehaviorAndUiProfiles() {
       describeCreativeEditorToolCapability(cr::CreativeHeldItemKind::Count);
   return expect(specializedCommandProfiles == 3U,
                 "three tools own specialized command profiles") &&
-         expect(keyboardQuickEditProfiles == 7U,
-                "seven terrain tools expose keyboard quick-edit hints") &&
+         expect(keyboardQuickEditProfiles == 8U,
+                "terrain tools and Logic Link expose keyboard quick-edit hints") &&
          expect(materialFilters == 1U,
                 "only direct material placement filters descriptor options") &&
          expect(invalid.kind == cr::CreativeHeldItemKind::Count &&

@@ -185,6 +185,32 @@ CreativeDocumentRemoveReceipt Facade::removeDocumentObject(
   return removeDocumentObject(request);
 }
 
+CreativeLogicLinkMutationReceipt Facade::setLogicLink(
+    const CreativeLogicLinkMutationRequest& request) {
+  recordCommandAttempt(stats_);
+  CreativeLogicLinkMutationReceipt receipt = document_.setLogicLink(request);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
+CreativeLogicLinkMutationReceipt Facade::removeLogicLink(
+    CreativeObjectId sourceObjectId,
+    CreativeObjectId targetObjectId) {
+  recordCommandAttempt(stats_);
+  CreativeLogicLinkMutationReceipt receipt =
+      document_.removeLogicLink(sourceObjectId, targetObjectId);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
 CreativeHierarchyBatchRemoveReceipt Facade::removeDocumentObjectsAtomically(
     std::span<const CreativeObjectId> objectIds) {
   recordCommandAttempt(stats_);

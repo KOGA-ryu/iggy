@@ -132,6 +132,7 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
       {-7.25, 2.5, kOneThird},
   };
   section.objects.push_back(object);
+  section.logicLinks.push_back({7U, 42U, "Open"});
 
   const iggy3d::SaveEncodeResult encoded = iggy3d::encodeSaveEnvelope(envelope);
   const std::size_t authoredPos =
@@ -185,6 +186,10 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
                        "creativeDocument.object.0.pathPoint.1.position=") !=
                        std::string::npos,
                    "object path point position encoded") &&
+            expect(encoded.encodedText.find(
+                       "creativeDocument.logicLink.0.action=Open\n") !=
+                       std::string::npos,
+                   "logic link action encoded") &&
             expect(decoded.status == iggy3d::SaveCodecStatus::Ok, "creative decode ok") &&
             expect(decodedSection.present, "creative present decoded") &&
             expect(decodedSection.documentId == 77U, "document id decoded") &&
@@ -213,7 +218,12 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
                        decodedSection.worldBounds.max.y == 32.0,
                    "world bounds decoded") &&
             expect(decodedSection.nextObjectId == 43U, "next object id decoded") &&
-            expect(decodedSection.objects.size() == 1U, "object count decoded");
+            expect(decodedSection.objects.size() == 1U, "object count decoded") &&
+            expect(decodedSection.logicLinks.size() == 1U &&
+                       decodedSection.logicLinks[0].sourceObjectId == 7U &&
+                       decodedSection.logicLinks[0].targetObjectId == 42U &&
+                       decodedSection.logicLinks[0].action == "Open",
+                   "logic link decoded");
 
   ok = ok && expect(decodedObject != nullptr && decodedObject->id == 42U,
                     "object id decoded") &&
@@ -259,27 +269,56 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
                   decodedObject->pathPoints[2].z == kOneThird,
               "object path points decoded exactly");
 
-  std::string legacyText = encoded.encodedText;
+  std::string version6Text = encoded.encodedText;
+  if (const std::size_t versionPosition =
+          version6Text.find("creativeDocument.version=7\n");
+      versionPosition != std::string::npos) {
+    version6Text.replace(versionPosition,
+                         std::string("creativeDocument.version=7\n").size(),
+                         "creativeDocument.version=6\n");
+  }
+  const std::string linkBlock =
+      "creativeDocument.logicLink.count=1\n"
+      "creativeDocument.logicLink.0.sourceObjectId=7\n"
+      "creativeDocument.logicLink.0.targetObjectId=42\n"
+      "creativeDocument.logicLink.0.action=Open\n";
+  if (const std::size_t linkPosition = version6Text.find(linkBlock);
+      linkPosition != std::string::npos) {
+    version6Text.erase(linkPosition, linkBlock.size());
+  }
+  const iggy3d::SaveDecodeResult version6Decoded =
+      iggy3d::decodeSaveEnvelope(version6Text);
+  ok = expect(version6Decoded.status == iggy3d::SaveCodecStatus::Ok &&
+                  version6Decoded.envelope.creativeDocument.version == 6U &&
+                  version6Decoded.envelope.creativeDocument.objects.size() ==
+                      1U &&
+                  version6Decoded.envelope.creativeDocument.objects[0]
+                          .assetId == "boulder_01" &&
+                  version6Decoded.envelope.creativeDocument.logicLinks.empty(),
+              "version 6 document without link block remains readable") &&
+       ok;
+
+  std::string version5Text = version6Text;
+  if (const std::size_t versionPosition =
+          version5Text.find("creativeDocument.version=6\n");
+      versionPosition != std::string::npos) {
+    version5Text.replace(versionPosition,
+                         std::string("creativeDocument.version=6\n").size(),
+                         "creativeDocument.version=5\n");
+  }
   const std::string assetLine =
       "creativeDocument.object.0.assetId=boulder_01\n";
-  if (const std::size_t assetPosition = legacyText.find(assetLine);
+  if (const std::size_t assetPosition = version5Text.find(assetLine);
       assetPosition != std::string::npos) {
-    legacyText.erase(assetPosition, assetLine.size());
+    version5Text.erase(assetPosition, assetLine.size());
   }
-  if (const std::size_t versionPosition =
-          legacyText.find("creativeDocument.version=6\n");
-      versionPosition != std::string::npos) {
-    legacyText.replace(versionPosition,
-                       std::string("creativeDocument.version=6\n").size(),
-                       "creativeDocument.version=5\n");
-  }
-  const iggy3d::SaveDecodeResult legacyDecoded =
-      iggy3d::decodeSaveEnvelope(legacyText);
-  ok = expect(legacyDecoded.status == iggy3d::SaveCodecStatus::Ok &&
-                  legacyDecoded.envelope.creativeDocument.version == 5U &&
-                  legacyDecoded.envelope.creativeDocument.objects.size() ==
+  const iggy3d::SaveDecodeResult version5Decoded =
+      iggy3d::decodeSaveEnvelope(version5Text);
+  ok = expect(version5Decoded.status == iggy3d::SaveCodecStatus::Ok &&
+                  version5Decoded.envelope.creativeDocument.version == 5U &&
+                  version5Decoded.envelope.creativeDocument.objects.size() ==
                       1U &&
-                  legacyDecoded.envelope.creativeDocument.objects[0]
+                  version5Decoded.envelope.creativeDocument.objects[0]
                       .assetId.empty(),
               "version 5 object without asset id remains readable") &&
        ok;

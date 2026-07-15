@@ -34,6 +34,11 @@ namespace iggy3d::document_section_internal {
 [[nodiscard]] bool toCreativeObject(
     const SaveCreativeDocumentObjectRecord& record,
     creative::CreativeObject& out) noexcept;
+[[nodiscard]] SaveCreativeDocumentLogicLinkRecord toSaveLogicLink(
+    const creative::CreativeLogicLink& link);
+[[nodiscard]] bool toCreativeLogicLink(
+    const SaveCreativeDocumentLogicLinkRecord& record,
+    creative::CreativeLogicLink& out) noexcept;
 
 [[nodiscard]] std::vector<SaveCreativeDocumentVoxelChunkRecord>
 toSaveVoxelChunks(const creative::CreativeVoxelField& field);

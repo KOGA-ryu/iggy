@@ -23,7 +23,10 @@ void buildCreativeEditorDesktopMenuBar(
 // layout. Content is filled in later steps; these are placeholders that honor
 // the View-menu visibility toggles. Must run inside the ImGui frame, after the
 // dockspace is laid out.
-void buildCreativeEditorDesktopPanels(CreativeEditorDesktopUiState& desktopUi);
+void buildCreativeEditorDesktopPanels(
+    CreativeEditorDesktopUiState& desktopUi,
+    const CreativeEditorState& editor,
+    const iggy3d::creative::CreativeAppState& appState);
 
 // Renders the bottom status bar — a read-only projection of document + editor
 // state (name, dirty, revision, selection count, active device, last result).

@@ -47,6 +47,7 @@ struct CreativeClipboard {
   bool hasPlacementAnchor = false;
   CreativeVec3 placementAnchor{};
   std::vector<CreativeObject> objects;
+  std::vector<CreativeLogicLink> logicLinks;
 };
 
 struct CreativeClipboardIdRemap {
@@ -60,6 +61,7 @@ struct CreativeClipboardCopyReceipt {
   CreativeClipboardStatus status = CreativeClipboardStatus::NotRequested;
   std::uint64_t requestedObjectCount = 0;
   std::uint64_t copiedObjectCount = 0;
+  std::uint64_t copiedLogicLinkCount = 0;
   CreativeObjectId failedObjectId = kInvalidObjectId;
   std::string reasonCode = "creative_clipboard_not_requested";
 };
@@ -86,6 +88,7 @@ struct CreativeClipboardPasteReceipt {
   CreativeClipboardStatus status = CreativeClipboardStatus::NotRequested;
   std::uint64_t requestedObjectCount = 0;
   std::uint64_t pastedObjectCount = 0;
+  std::uint64_t pastedLogicLinkCount = 0;
   CreativeObjectId failedObjectId = kInvalidObjectId;
   std::uint64_t revisionBefore = 0;
   std::uint64_t revisionAfter = 0;
@@ -106,6 +109,8 @@ struct CreativeClipboardBatchPasteReceipt {
   std::uint64_t pastedPasteCount = 0;
   std::uint64_t requestedObjectCount = 0;
   std::uint64_t pastedObjectCount = 0;
+  std::uint64_t requestedLogicLinkCount = 0;
+  std::uint64_t pastedLogicLinkCount = 0;
   std::size_t failedPasteIndex = kInvalidCreativeClipboardPasteIndex;
   CreativeObjectId failedObjectId = kInvalidObjectId;
   std::uint64_t revisionBefore = 0;

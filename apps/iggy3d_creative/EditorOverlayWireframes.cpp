@@ -50,6 +50,87 @@ void resetCreativeEditorOverlayFrame(CreativeEditorOverlayFrame& output) {
   output.assetScatterEdgeCount = 0;
   output.attachmentSocketMarkerEdgeCount = 0;
   output.placementFeedbackEdgeCount = 0;
+  output.logicLinkEdgeCount = 0;
+}
+
+void appendCreativeEditorLogicLinks(
+    const CreativeEditorOverlayFrameRequest& request,
+    CreativeEditorOverlayFrame& output) {
+  const CreativeEditorState& editor = request.editor;
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const bool modalOpen = editor.catalog.model.open ||
+                         editor.catalog.toolWheel.open ||
+                         editor.toolOptions.open ||
+                         editor.assetReplacement.active ||
+                         editor.transform.active;
+  if (request.captureMode || modalOpen ||
+      held.kind != cr::CreativeHeldItemKind::LogicLink) {
+    return;
+  }
+  const cr::CreativeDocument& document = request.appState.facade.document();
+  std::vector<RenderCreativeWireframeDebugLine>& lines =
+      output.combinedWireLines;
+  const float thickness = std::max(0.045F, request.gizmoThickness);
+  for (const cr::CreativeLogicLink& link : document.logicLinks()) {
+    const cr::CreativeObject* source = document.findObject(link.sourceObjectId);
+    const cr::CreativeObject* target = document.findObject(link.targetObjectId);
+    if (source == nullptr || target == nullptr || !source->visible ||
+        !target->visible) {
+      continue;
+    }
+    RenderCreativeWireframeDebugLine line;
+    line.start = visualBoundsCenter(visualBoundsForObject(*source));
+    line.end = visualBoundsCenter(visualBoundsForObject(*target));
+    line.color = {0.20F, 1.0F, 0.35F, 1.0F};
+    line.objectId = source->id;
+    line.thickness = thickness;
+    lines.push_back(line);
+    ++output.logicLinkEdgeCount;
+  }
+
+  const cr::CreativeObject* selectedSource =
+      document.findObject(editor.logicLinks.sourceObjectId);
+  if (selectedSource != nullptr && selectedSource->visible) {
+    const VisualBounds bounds = visualBoundsForObject(*selectedSource);
+    const std::size_t before = lines.size();
+    appendStandaloneWireframeBoxEdges(
+        lines, bounds.min, bounds.max,
+        RenderLineColor{0.15F, 0.90F, 1.0F, 1.0F}, thickness);
+    for (std::size_t index = before; index < lines.size(); ++index) {
+      lines[index].objectId = selectedSource->id;
+    }
+    output.logicLinkEdgeCount += lines.size() - before;
+  }
+
+  if (!editor.interaction.target.objectHit) {
+    return;
+  }
+  const cr::CreativeObject* hovered =
+      document.findObject(editor.interaction.target.objectId);
+  if (hovered == nullptr || !hovered->visible) {
+    return;
+  }
+  if (hovered->id == editor.logicLinks.sourceObjectId) {
+    return;
+  }
+  const bool valid =
+      cr::creativeObjectCanSourceLogicLink(hovered->kind) ||
+      (editor.logicLinks.sourceObjectId != cr::kInvalidObjectId &&
+       cr::creativeObjectCanTargetLogicLink(hovered->kind) &&
+       cr::creativeLogicLinkActionSupported(hovered->kind,
+                                            editor.logicLinks.action));
+  const VisualBounds hoveredBounds = visualBoundsForObject(*hovered);
+  const std::size_t before = lines.size();
+  appendStandaloneWireframeBoxEdges(
+      lines, hoveredBounds.min, hoveredBounds.max,
+      valid ? RenderLineColor{0.20F, 1.0F, 0.35F, 1.0F}
+            : RenderLineColor{1.0F, 0.20F, 0.20F, 1.0F},
+      thickness);
+  for (std::size_t index = before; index < lines.size(); ++index) {
+    lines[index].objectId = hovered->id;
+  }
+  output.logicLinkEdgeCount += lines.size() - before;
 }
 
 [[nodiscard]] RenderLineColor attachmentSocketMarkerColor(
@@ -233,7 +314,7 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
   std::vector<RenderCreativeWireframeDebugLine>& combinedWireLines =
       output.combinedWireLines;
   combinedWireLines.reserve(
-      dbg.lines.size() + 48U +
+      dbg.lines.size() + appState.facade.document().logicLinks().size() + 72U +
       kMaxStaticMeshAttachmentSocketCount * 3U +
       editor.interaction.assetScatter.preview.candidateCount * 12U);
   std::size_t& documentWireLineCount = output.documentWireLineCount;
@@ -350,6 +431,7 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
   }
   appendCreativeEditorAttachmentSocketMarkers(request, output);
   appendCreativeEditorPlacementFeedbackWireframe(request, output);
+  appendCreativeEditorLogicLinks(request, output);
   output.assetReplacementEdgeCount =
       appendCreativeEditorAssetReplacementWireframes(
           editor.assetReplacement, std::max(0.06F, gizmoThickness * 1.2F),

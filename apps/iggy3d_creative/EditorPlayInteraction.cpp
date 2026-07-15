@@ -194,6 +194,15 @@ void appendText(CreativeEditorPlayHudFrame& hud,
                     "CLOSED %zu LINKED DOOR%s", effect.affectedDoorCount,
                     effect.affectedDoorCount == 1U ? "" : "S");
       break;
+    case Status::LinksApplied:
+      std::snprintf(result.chars.data(), result.chars.size(),
+                    "ACTIVATED %zu LINKED DOOR%s", effect.affectedDoorCount,
+                    effect.affectedDoorCount == 1U ? "" : "S");
+      break;
+    case Status::LinksNoChange:
+      std::snprintf(result.chars.data(), result.chars.size(),
+                    "LINKED DOORS ALREADY SET");
+      break;
     case Status::PickupAcquired:
       std::snprintf(result.chars.data(), result.chars.size(), "PICKED UP %.78s",
                     effect.displayName.c_str());

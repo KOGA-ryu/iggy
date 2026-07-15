@@ -11,6 +11,7 @@ namespace iggy3d {
 using document_section_internal::parseUnits;
 using document_section_internal::toCreativeBounds;
 using document_section_internal::toCreativeGridSettings;
+using document_section_internal::toCreativeLogicLink;
 using document_section_internal::toCreativeObject;
 using document_section_internal::toCreativeSnapSettings;
 using document_section_internal::toCreativeTerrainField;
@@ -18,6 +19,7 @@ using document_section_internal::toCreativeTerrainMaterialField;
 using document_section_internal::toCreativeVoxelField;
 using document_section_internal::toSaveBounds;
 using document_section_internal::toSaveGridSettings;
+using document_section_internal::toSaveLogicLink;
 using document_section_internal::toSaveObject;
 using document_section_internal::toSaveSnapSettings;
 using document_section_internal::toSaveTerrainControls;
@@ -113,6 +115,11 @@ void mirrorRestoreFailure(ProductCreativeDocumentSectionReceipt& receipt,
                 ProductCreativeDocumentSectionStatus::InvalidObject,
                 reason);
       return;
+    case creative::CreativeDocumentRestoreStatus::InvalidLogicLink:
+      setStatus(receipt,
+                ProductCreativeDocumentSectionStatus::InvalidLogicLink,
+                reason);
+      return;
     case creative::CreativeDocumentRestoreStatus::DuplicateObjectId:
       setStatus(receipt,
                 ProductCreativeDocumentSectionStatus::DuplicateObjectId,
@@ -173,6 +180,8 @@ std::string_view toString(
       return "InvalidObject";
     case ProductCreativeDocumentSectionStatus::InvalidObjectKind:
       return "InvalidObjectKind";
+    case ProductCreativeDocumentSectionStatus::InvalidLogicLink:
+      return "InvalidLogicLink";
     case ProductCreativeDocumentSectionStatus::DuplicateObjectId:
       return "DuplicateObjectId";
     case ProductCreativeDocumentSectionStatus::InvalidVoxelData:
@@ -196,6 +205,7 @@ ProductCreativeDocumentSectionBuildResult buildSaveCreativeDocumentSection(
   receipt.requested = true;
   receipt.documentId = document.id();
   receipt.objectCount = document.objectCount();
+  receipt.logicLinkCount = document.logicLinks().size();
   receipt.voxelCellCount = document.voxelField().occupiedCellCount();
   receipt.terrainControlCount = document.terrainField().controlCount();
   receipt.terrainMaterialOverrideCount =
@@ -249,6 +259,10 @@ ProductCreativeDocumentSectionBuildResult buildSaveCreativeDocumentSection(
   for (const creative::CreativeObject& object : document.objects()) {
     result.section.objects.push_back(toSaveObject(object));
   }
+  result.section.logicLinks.reserve(document.logicLinks().size());
+  for (const creative::CreativeLogicLink& link : document.logicLinks()) {
+    result.section.logicLinks.push_back(toSaveLogicLink(link));
+  }
   result.section.voxelChunks = toSaveVoxelChunks(document.voxelField());
   result.section.terrainControls =
       toSaveTerrainControls(document.terrainField());
@@ -259,6 +273,7 @@ ProductCreativeDocumentSectionBuildResult buildSaveCreativeDocumentSection(
   receipt.changed = true;
   receipt.status = ProductCreativeDocumentSectionStatus::Converted;
   receipt.objectCount = result.section.objects.size();
+  receipt.logicLinkCount = result.section.logicLinks.size();
   receipt.voxelCellCount = document.voxelField().occupiedCellCount();
   receipt.terrainControlCount = document.terrainField().controlCount();
   receipt.terrainMaterialOverrideCount =
@@ -276,6 +291,7 @@ ProductCreativeDocumentSectionRestoreResult restoreCreativeDocumentFromSaveSecti
   receipt.requested = true;
   receipt.documentId = section.documentId;
   receipt.objectCount = section.objects.size();
+  receipt.logicLinkCount = section.logicLinks.size();
   for (const SaveCreativeDocumentVoxelChunkRecord& chunk :
        section.voxelChunks) {
     receipt.voxelCellCount += chunk.cells.size();
@@ -351,6 +367,18 @@ ProductCreativeDocumentSectionRestoreResult restoreCreativeDocumentFromSaveSecti
       return result;
     }
     request.objects.push_back(std::move(object));
+  }
+  request.logicLinks.reserve(section.logicLinks.size());
+  for (const SaveCreativeDocumentLogicLinkRecord& linkRecord :
+       section.logicLinks) {
+    creative::CreativeLogicLink link;
+    if (!toCreativeLogicLink(linkRecord, link)) {
+      setStatus(receipt,
+                ProductCreativeDocumentSectionStatus::InvalidLogicLink,
+                "creative_logic_link_action_invalid");
+      return result;
+    }
+    request.logicLinks.push_back(link);
   }
 
   const creative::CreativeDocumentRestoreReceipt restored =

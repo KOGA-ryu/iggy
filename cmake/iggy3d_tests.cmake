@@ -76,6 +76,11 @@ iggy3d_add_unit_test(creative_document_remove_tests
 set_tests_properties(creative_document_remove_tests PROPERTIES
   LABELS "unit;app;creative;document;remove;iggy3d")
 
+iggy3d_add_unit_test(creative_logic_link_tests
+  tests/unit/creative_logic_link_tests.cpp)
+set_tests_properties(creative_logic_link_tests PROPERTIES
+  LABELS "unit;app;creative;document;logic;clipboard;iggy3d")
+
 iggy3d_add_unit_test(creative_document_dirty_tests
   tests/unit/creative_document_dirty_tests.cpp)
 set_tests_properties(creative_document_dirty_tests PROPERTIES
@@ -291,6 +296,17 @@ add_test(NAME creative_editor_group_tests
 set_tests_properties(creative_editor_group_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;editor;group;history;iggy3d")
+
+add_executable(creative_editor_logic_link_tests
+  tests/unit/creative_editor_logic_link_tests.cpp)
+target_link_libraries(creative_editor_logic_link_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_logic_link_tests)
+add_test(NAME creative_editor_logic_link_tests
+  COMMAND "$<TARGET_FILE:creative_editor_logic_link_tests>")
+set_tests_properties(creative_editor_logic_link_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;editor;logic;history;iggy3d")
 
 add_executable(creative_editor_terrain_tests
   tests/unit/creative_editor_terrain_tests.cpp)

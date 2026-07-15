@@ -538,6 +538,40 @@ CreativeAuthoredAssetFingerprint fingerprintCreativeAuthoredAssetDefinition(
     appendDefinitionObject(builder, definition.content.objects, object);
   }
 
+  builder.appendUnsigned(definition.content.logicLinks.size());
+  std::size_t appendedLinkCount = 0U;
+  for (std::size_t sourceIndex = 0U;
+       sourceIndex < definition.content.objects.size(); ++sourceIndex) {
+    const CreativeObject& source = definition.content.objects[sourceIndex];
+    for (std::size_t targetIndex = 0U;
+         targetIndex < definition.content.objects.size(); ++targetIndex) {
+      const CreativeObject& target = definition.content.objects[targetIndex];
+      std::size_t pairCount = 0U;
+      for (const CreativeLogicLink& link : definition.content.logicLinks) {
+        if (link.sourceObjectId != source.id ||
+            link.targetObjectId != target.id) {
+          continue;
+        }
+        ++pairCount;
+        ++appendedLinkCount;
+        builder.appendUnsigned(sourceIndex);
+        builder.appendUnsigned(targetIndex);
+        builder.appendUnsigned(static_cast<std::uint64_t>(link.action));
+        if (!creativeObjectCanSourceLogicLink(source.kind) ||
+            !creativeObjectCanTargetLogicLink(target.kind) ||
+            !creativeLogicLinkActionSupported(target.kind, link.action)) {
+          builder.valid = false;
+        }
+      }
+      if (pairCount > 1U) {
+        builder.valid = false;
+      }
+    }
+  }
+  if (appendedLinkCount != definition.content.logicLinks.size()) {
+    builder.valid = false;
+  }
+
   builder.appendUnsigned(definition.rootObjectIds.size());
   for (CreativeObjectId rootId : definition.rootObjectIds) {
     const std::optional<std::size_t> rootIndex =

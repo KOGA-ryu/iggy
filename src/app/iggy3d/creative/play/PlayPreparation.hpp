@@ -36,6 +36,7 @@ struct CreativePlayActivationPayload {
   std::string roomId;
   RoomAnchorAsset playerSpawn;
   std::vector<CreativeRuntimeInteractableDefinition> interactables;
+  std::vector<CreativeRuntimeLogicLink> logicLinks;
   RoomAsset room;
 };
 

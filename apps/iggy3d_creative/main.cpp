@@ -447,7 +447,8 @@ int main(int argc, char** argv) {
               activeAppState, editor, "creative_continuous_gesture_play_start");
         }
       }
-      iggy3d_creative_app::buildCreativeEditorDesktopPanels(editor.desktopUi);
+      iggy3d_creative_app::buildCreativeEditorDesktopPanels(
+          editor.desktopUi, editor, activeAppState);
       iggy3d_creative_app::buildCreativeEditorDesktopStatusBar(
           editor.desktopUi, editor, activeAppState);
     }

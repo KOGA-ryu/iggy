@@ -166,6 +166,7 @@ void CreativeDocument::reset() {
 
   objects_.clear();
   objectIndex_.clear();
+  logicLinks_.clear();
   nextObjectId_ = 1;
   voxelField_.clear();
   terrainField_.clear();

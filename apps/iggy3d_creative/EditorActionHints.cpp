@@ -104,6 +104,10 @@ void appendQuickEdit(HintSpecBuffer& buffer,
   const cr::CreativeHeldItemKind held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar).kind;
   switch (describeCreativeEditorToolCapability(held).quickEditProfile) {
+    case CreativeEditorQuickEditProfile::LogicLink:
+      appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
+                     cr::CreativeInputActionId::QuickEditNext, "Link action");
+      return;
     case CreativeEditorQuickEditProfile::TerrainControl:
       appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
                      cr::CreativeInputActionId::QuickEditNext, "Height");
@@ -327,6 +331,12 @@ void appendViewportHints(HintSpecBuffer& buffer,
       break;
     case CreativeEditorActionHintProfile::ObjectGroup:
       appendHint(buffer, positiveAction, "Group / ungroup");
+      break;
+    case CreativeEditorActionHintProfile::LogicLink:
+      appendHint(buffer, gamepad ? positiveAction : negativeAction,
+                 "Select / link");
+      appendHint(buffer, gamepad ? negativeAction : positiveAction,
+                 "Clear source");
       break;
     case CreativeEditorActionHintProfile::VolumeSelect:
       appendHint(buffer, gamepad ? positiveAction : negativeAction,

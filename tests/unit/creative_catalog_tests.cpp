@@ -179,9 +179,15 @@ bool catalogBuildsMaterialsAndCreatorTools() {
         return entry.hotbarEntry.kind ==
                cr::CreativeHeldItemKind::TerrainRegion;
       });
-  bool ok = expect(state.entries.size() == 23U,
+  const auto logicLink = std::find_if(
+      state.entries.begin(), state.entries.end(),
+      [](const cr::CreativeCatalogEntry& entry) {
+        return entry.hotbarEntry.kind ==
+               cr::CreativeHeldItemKind::LogicLink;
+      });
+  bool ok = expect(state.entries.size() == 24U,
                    "materials and tools retain one asset reload command") &&
-            expect(state.filteredEntryIndices.size() == 22U,
+            expect(state.filteredEntryIndices.size() == 23U,
                    "build page exposes only materials and tools") &&
             expect(state.entries[0].category ==
                        cr::CreativeCatalogEntryCategory::Material &&
@@ -200,7 +206,11 @@ bool catalogBuildsMaterialsAndCreatorTools() {
                    "object tools follow the material brush") &&
             expect(terrainRegion != state.entries.end() &&
                        terrainRegion->label == "Terrain Region",
-                   "terrain region closes the tool lane as a selectable tool");
+                   "terrain region remains a selectable tool") &&
+            expect(logicLink != state.entries.end() &&
+                       logicLink->label == "Logic Link" &&
+                       !logicLink->toolWheelEligible,
+                   "Logic Link closes the catalog lane without shifting the wheel");
   ok = expect(cr::toString(cr::CreativeCatalogEntryCategory::Material) ==
                   "Material" &&
                   cr::toString(cr::CreativeCatalogEntryCategory::Command) ==
@@ -229,8 +239,8 @@ bool catalogOmitsToolsWithoutRequiredMaterial() {
                entry.hotbarEntry.kind ==
                    cr::CreativeHeldItemKind::SurfaceExtrude;
       });
-  return expect(state.entries.size() == 15U &&
-                    state.filteredEntryIndices.size() == 14U,
+  return expect(state.entries.size() == 16U &&
+                    state.filteredEntryIndices.size() == 15U,
                 "empty palette retains tools plus the asset reload command") &&
          expect(!materialDependentToolPresent,
                 "material-dependent tools require a valid material");
@@ -581,7 +591,8 @@ bool selectionWrapsAndAssignmentsAreExplicit() {
   cr::CreativeHotbarState hotbar = cr::makeDefaultCreativeHotbar(palette);
 
   bool ok = expect(cr::moveCreativeCatalogSelection(state, -1) &&
-                       state.selectedFilteredIndex == 21U,
+                       state.selectedFilteredIndex + 1U ==
+                           state.filteredEntryIndices.size(),
                    "previous wraps to final result") &&
             expect(cr::moveCreativeCatalogSelection(state, 1) &&
                        state.selectedFilteredIndex == 0U,
@@ -1212,8 +1223,8 @@ bool assetPagePreservesBuildIndicesAndEquipsDurableIdentity() {
   static_cast<void>(cr::setCreativeCatalogPage(
       state, cr::CreativeCatalogPage::Actions));
 
-  return expect(buildCount == 22U,
-                "assets do not shift the existing build lane") &&
+  return expect(buildCount == 23U,
+                "assets do not shift the build lane including Logic Link") &&
          expect(assetPageReady, "asset page is reachable before actions") &&
          expect(first != nullptr &&
                     first->category == cr::CreativeCatalogEntryCategory::Asset &&

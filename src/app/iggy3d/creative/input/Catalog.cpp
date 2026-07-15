@@ -91,6 +91,8 @@ constexpr std::array kToolSpecs{
                     "terrain region area raise lower flatten smooth erase "
                     "landscape selection",
                     false},
+    CatalogToolSpec{CreativeHeldItemKind::LogicLink, "Logic Link",
+                    "connect wire switch lever button door logic", false},
 };
 
 constexpr std::array kActionEntries{

@@ -351,6 +351,20 @@ bool activationRejectsStaleAndMalformedPayloads() {
   const cr::CreativeRuntimeSandboxActivationResult invalidConfig =
       cr::activateCreativeRuntimeSandbox(std::move(invalidConfigRequest));
 
+  cr::CreativeDocument invalidLinkDocument = playableDocument(false, 45U);
+  cr::CreativePlayPreparationResult invalidLinkPrepared =
+      prepare(invalidLinkDocument);
+  if (!invalidLinkPrepared.payload.has_value()) {
+    return expect(false, "invalid link setup prepares payload");
+  }
+  invalidLinkPrepared.payload->logicLinks.push_back(
+      {999'998U, 999'999U, cr::CreativeLogicLinkAction::Toggle, false});
+  cr::CreativeRuntimeSandboxActivationRequest invalidLinkRequest;
+  invalidLinkRequest.sourceDocument = &invalidLinkDocument;
+  invalidLinkRequest.payload = std::move(*invalidLinkPrepared.payload);
+  const cr::CreativeRuntimeSandboxActivationResult invalidLink =
+      cr::activateCreativeRuntimeSandbox(std::move(invalidLinkRequest));
+
   return expect(mutated && !stale.receipt.accepted &&
                     stale.receipt.status ==
                         cr::CreativeRuntimeSandboxActivationStatus::StalePayload &&
@@ -366,7 +380,12 @@ bool activationRejectsStaleAndMalformedPayloads() {
                     invalidConfig.receipt.status ==
                         cr::CreativeRuntimeSandboxActivationStatus::InvalidConfig &&
                     !invalidConfig.sandbox.has_value(),
-                "invalid runtime config fails before session creation");
+                "invalid runtime config fails before session creation") &&
+         expect(!invalidLink.receipt.accepted &&
+                    invalidLink.receipt.status ==
+                        cr::CreativeRuntimeSandboxActivationStatus::InvalidPayload &&
+                    !invalidLink.sandbox.has_value(),
+                "runtime link endpoints fail closed before session creation");
 }
 
 bool sandboxFreshnessAndStopAreExplicit() {
@@ -476,6 +495,15 @@ bool authoredInteractablesOwnExplicitCircuitsAndDynamicGeometry() {
       !pickup.accepted) {
     return expect(false, "interactable setup creates authored objects");
   }
+  const cr::CreativeLogicLinkMutationReceipt leverOpens =
+      document.setLogicLink(
+          {lever.objectId, door.objectId, cr::CreativeLogicLinkAction::Open});
+  const cr::CreativeLogicLinkMutationReceipt leverCloses =
+      document.setLogicLink({lever.objectId, secondDoor.objectId,
+                             cr::CreativeLogicLinkAction::Close});
+  if (!leverOpens.accepted || !leverCloses.accepted) {
+    return expect(false, "interactable setup creates explicit links");
+  }
   const std::uint64_t authoredRevision = document.revision();
   const std::size_t authoredObjectCount = document.objectCount();
 
@@ -498,10 +526,12 @@ bool authoredInteractablesOwnExplicitCircuitsAndDynamicGeometry() {
   };
   const auto doorDefinition = findDefinition(door.objectId);
   const auto buttonDefinition = findDefinition(button.objectId);
+  const auto leverDefinition = findDefinition(lever.objectId);
   const auto unlinkedDefinition = findDefinition(unlinked.objectId);
   const auto pickupDefinition = findDefinition(pickup.objectId);
   if (doorDefinition == prepared.payload->interactables.end() ||
       buttonDefinition == prepared.payload->interactables.end() ||
+      leverDefinition == prepared.payload->interactables.end() ||
       unlinkedDefinition == prepared.payload->interactables.end() ||
       pickupDefinition == prepared.payload->interactables.end()) {
     return expect(false, "catalog contains all authored interactables");
@@ -509,9 +539,17 @@ bool authoredInteractablesOwnExplicitCircuitsAndDynamicGeometry() {
 
   const std::string doorStableName = doorDefinition->stableName;
   const std::string buttonStableName = buttonDefinition->stableName;
+  const std::string leverStableName = leverDefinition->stableName;
   const std::string unlinkedStableName = unlinkedDefinition->stableName;
   const std::string pickupStableName = pickupDefinition->stableName;
   const std::string pickupItemId = pickupDefinition->itemId;
+  const std::size_t explicitLinkCount = static_cast<std::size_t>(std::count_if(
+      prepared.payload->logicLinks.begin(), prepared.payload->logicLinks.end(),
+      [](const cr::CreativeRuntimeLogicLink& link) {
+        return !link.compatibilityFallback;
+      }));
+  const std::size_t compatibilityLinkCount =
+      prepared.payload->logicLinks.size() - explicitLinkCount;
   cr::CreativeRuntimeSandboxActivationRequest request;
   request.sourceDocument = &document;
   request.payload = std::move(*prepared.payload);
@@ -525,11 +563,14 @@ bool authoredInteractablesOwnExplicitCircuitsAndDynamicGeometry() {
       sandbox.session.state().world.findByStableName(doorStableName);
   const iggy3d::EntityState* buttonEntity =
       sandbox.session.state().world.findByStableName(buttonStableName);
+  const iggy3d::EntityState* leverEntity =
+      sandbox.session.state().world.findByStableName(leverStableName);
   const iggy3d::EntityState* unlinkedEntity =
       sandbox.session.state().world.findByStableName(unlinkedStableName);
   const iggy3d::EntityState* pickupEntity =
       sandbox.session.state().world.findByStableName(pickupStableName);
   if (doorEntity == nullptr || buttonEntity == nullptr ||
+      leverEntity == nullptr ||
       unlinkedEntity == nullptr || pickupEntity == nullptr) {
     return expect(false, "interactable seeds become runtime entities");
   }
@@ -550,6 +591,15 @@ bool authoredInteractablesOwnExplicitCircuitsAndDynamicGeometry() {
       });
   const cr::CreativeRuntimeInteractionEffectReceipt closed =
       cr::applyCreativeRuntimeInteractionEffect(sandbox, doorEntity->id);
+  const cr::CreativeRuntimeInteractionEffectReceipt explicitApplied =
+      cr::applyCreativeRuntimeInteractionEffect(sandbox, leverEntity->id);
+  const cr::CreativeRuntimeInteractionEffectReceipt explicitNoChange =
+      cr::applyCreativeRuntimeInteractionEffect(sandbox, leverEntity->id);
+  const std::uint64_t liveGeometryRevision = sandbox.geometryRevision;
+  sandbox.geometryRevision = std::numeric_limits<std::uint64_t>::max();
+  const cr::CreativeRuntimeInteractionEffectReceipt saturatedNoChange =
+      cr::applyCreativeRuntimeInteractionEffect(sandbox, leverEntity->id);
+  sandbox.geometryRevision = liveGeometryRevision;
   const cr::CreativeRuntimeInteractionEffectReceipt circuitOpened =
       cr::applyCreativeRuntimeInteractionEffect(sandbox, buttonEntity->id);
   const cr::CreativeRuntimeInteractionEffectReceipt circuitClosed =
@@ -575,7 +625,9 @@ bool authoredInteractablesOwnExplicitCircuitsAndDynamicGeometry() {
                     seed.summary.doorEntityCount == 2U &&
                     seed.summary.controlEntityCount == 3U &&
                     seed.summary.pickupEntityCount == 1U &&
-                    seed.summary.ignoredAnchorCount == 0U,
+                    seed.summary.ignoredAnchorCount == 0U &&
+                    explicitLinkCount == 2U &&
+                    compatibilityLinkCount == 2U,
                 "catalog maps authored roles without proximity inference") &&
          expect(doorEntity->kind == iggy3d::EntityKind::Door &&
                     buttonEntity->kind == iggy3d::EntityKind::Marker &&
@@ -587,7 +639,7 @@ bool authoredInteractablesOwnExplicitCircuitsAndDynamicGeometry() {
                     opened.status ==
                         cr::CreativeRuntimeInteractionEffectStatus::DoorOpened &&
                     opened.geometryRevision == 1U && doorMeshRemoved &&
-                    sandbox.geometryRevision == 4U,
+                    sandbox.geometryRevision == 5U,
                 "direct door activation publishes an open geometry revision") &&
          expect(closed.accepted &&
                     closed.status ==
@@ -596,6 +648,18 @@ bool authoredInteractablesOwnExplicitCircuitsAndDynamicGeometry() {
                     closedSurfaceCount == sandbox.room.spatialSurfaces.size() &&
                     closedColliderCount == sandbox.collisionSurfaces.size(),
                 "closing restores exact geometry and collision cardinality") &&
+         expect(explicitApplied.accepted && explicitApplied.changed &&
+                    explicitApplied.status ==
+                        cr::CreativeRuntimeInteractionEffectStatus::LinksApplied &&
+                    explicitApplied.affectedDoorCount == 2U &&
+                    explicitNoChange.accepted && !explicitNoChange.changed &&
+                    explicitNoChange.status ==
+                        cr::CreativeRuntimeInteractionEffectStatus::LinksNoChange &&
+                    saturatedNoChange.accepted &&
+                    !saturatedNoChange.changed &&
+                    saturatedNoChange.status ==
+                        cr::CreativeRuntimeInteractionEffectStatus::LinksNoChange,
+                "authored Open and Close links apply exactly and then no-op") &&
          expect(circuitOpened.status ==
                         cr::CreativeRuntimeInteractionEffectStatus::CircuitOpened &&
                     circuitOpened.affectedDoorCount == 2U &&

@@ -43,6 +43,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/assets/AuthoredAsset.cpp
     src/app/iggy3d/creative/document/Object.cpp
     src/app/iggy3d/creative/document/Document.cpp
+    src/app/iggy3d/creative/document/DocumentLogicLinks.cpp
     src/app/iggy3d/creative/document/DocumentObjects.cpp
     src/app/iggy3d/creative/document/DocumentRestore.cpp
     src/app/iggy3d/creative/document/DocumentValidation.cpp
@@ -268,6 +269,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorAuthoredAssets.cpp
   apps/iggy3d_creative/EditorAssets.cpp
   apps/iggy3d_creative/EditorToolCapabilities.cpp
+  apps/iggy3d_creative/EditorLogicLinks.cpp
   apps/iggy3d_creative/EditorCatalog.cpp
   apps/iggy3d_creative/EditorToolWheel.cpp
   apps/iggy3d_creative/EditorCatalogLayout.cpp

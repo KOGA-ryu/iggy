@@ -365,6 +365,17 @@ private:
       const std::string p = "creativeDocument.object." + std::to_string(index) + ".";
       writeCreativeDocumentObject(p, object);
     }
+    line("creativeDocument.logicLink.count",
+         unsignedText(section.logicLinks.size()));
+    for (std::size_t index = 0; index < section.logicLinks.size(); ++index) {
+      const SaveCreativeDocumentLogicLinkRecord& link =
+          section.logicLinks[index];
+      const std::string p = "creativeDocument.logicLink." +
+                            std::to_string(index) + ".";
+      line(p + "sourceObjectId", unsignedText(link.sourceObjectId));
+      line(p + "targetObjectId", unsignedText(link.targetObjectId));
+      lineString(p + "action", link.action);
+    }
     line("creativeDocument.voxelChunk.count",
          unsignedText(section.voxelChunks.size()));
     for (std::size_t chunkIndex = 0;

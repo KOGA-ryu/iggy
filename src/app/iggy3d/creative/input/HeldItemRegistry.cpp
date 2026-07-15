@@ -277,6 +277,15 @@ using StatusMode = CreativeHeldItemStatusMode;
     row.confirmCommand = CommandOp::ConfirmGroup;
     row.hierarchySelectionTool = true;
   }
+  {
+    auto& row = rows[heldIndex(CreativeHeldItemKind::LogicLink)];
+    row.worldOperations = {WorldOp::AdvanceLogicLink,
+                           WorldOp::ClearLogicLinkSource,
+                           WorldOp::None};
+    row.acceptOperation = WorldOp::AdvanceLogicLink;
+    row.rejectOperation = WorldOp::ClearLogicLinkSource;
+    row.statusMode = StatusMode::LogicLink;
+  }
   return rows;
 }
 

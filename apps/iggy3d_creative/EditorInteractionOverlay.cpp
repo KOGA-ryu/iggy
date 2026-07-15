@@ -529,6 +529,17 @@ std::string creativeEditorHeldItemStatusLabel(
     case cr::CreativeHeldItemStatusMode::SurfaceExtrude:
       appendSurfaceExtrudeStatus(output, editor, held);
       break;
+    case cr::CreativeHeldItemStatusMode::LogicLink: {
+      output.append(" | ");
+      output.append(cr::toString(editor.logicLinks.action));
+      if (editor.logicLinks.sourceObjectId == cr::kInvalidObjectId) {
+        output.append(" | SELECT CONTROL");
+      } else {
+        output.append(" | SOURCE ");
+        output.append(std::to_string(editor.logicLinks.sourceObjectId));
+      }
+      break;
+    }
     case cr::CreativeHeldItemStatusMode::Material:
       output.append(" | ");
       output.append(cr::toString(held.objectKind));

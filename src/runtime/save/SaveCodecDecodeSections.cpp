@@ -270,6 +270,28 @@ void Reader::readCreativeDocument() {
     const std::string p = "creativeDocument.object." + std::to_string(index) + ".";
     readCreativeDocumentObject(p, object);
   }
+  if (nextKeyIs("creativeDocument.logicLink.count")) {
+    constexpr std::uint64_t kMaxCreativeLogicLinkCount = 1'048'576U;
+    std::uint64_t linkCount = 0U;
+    readUnsigned("creativeDocument.logicLink.count", linkCount);
+    if (linkCount > kMaxCreativeLogicLinkCount) {
+      result_ = fail(SaveCodecStatus::InvalidNumber,
+                     "creativeDocument.logicLink.count", index_,
+                     "logic link count exceeds limit");
+      return;
+    }
+    section.logicLinks.resize(static_cast<std::size_t>(linkCount));
+    for (std::size_t linkIndex = 0U;
+         linkIndex < section.logicLinks.size(); ++linkIndex) {
+      SaveCreativeDocumentLogicLinkRecord& link =
+          section.logicLinks[linkIndex];
+      const std::string p = "creativeDocument.logicLink." +
+                            std::to_string(linkIndex) + ".";
+      readUnsigned(p + "sourceObjectId", link.sourceObjectId);
+      readUnsigned(p + "targetObjectId", link.targetObjectId);
+      readString(p + "action", link.action);
+    }
+  }
   if (nextKeyIs("creativeDocument.voxelChunk.count")) {
     constexpr std::uint64_t kMaxCreativeVoxelChunkCount = 1'048'576U;
     constexpr std::uint64_t kMaxCreativeVoxelCellCount = 16'777'216U;

@@ -122,6 +122,47 @@ bool interactablesHaveUniqueIdentity(
   return true;
 }
 
+bool logicLinksAreValid(
+    const std::vector<CreativeRuntimeLogicLink>& links,
+    const std::vector<CreativeRuntimeInteractableDefinition>& definitions)
+    noexcept {
+  for (std::size_t index = 0U; index < links.size(); ++index) {
+    const CreativeRuntimeLogicLink& link = links[index];
+    const auto source = std::find_if(
+        definitions.begin(), definitions.end(),
+        [&link](const CreativeRuntimeInteractableDefinition& definition) {
+          return definition.objectId == link.sourceObjectId;
+        });
+    const auto target = std::find_if(
+        definitions.begin(), definitions.end(),
+        [&link](const CreativeRuntimeInteractableDefinition& definition) {
+          return definition.objectId == link.targetObjectId;
+        });
+    if (source == definitions.end() || target == definitions.end() ||
+        source->kind != CreativeRuntimeInteractableKind::Control ||
+        target->kind != CreativeRuntimeInteractableKind::Door ||
+        !creativeLogicLinkActionSupported(CreativeObjectKind::Door,
+                                          link.action) ||
+        (link.compatibilityFallback &&
+         (link.action != CreativeLogicLinkAction::Toggle ||
+          source->circuitId == kInvalidObjectId ||
+          target->circuitId != source->circuitId))) {
+      return false;
+    }
+    for (std::size_t prior = 0U; prior < index; ++prior) {
+      if (links[prior].sourceObjectId == link.sourceObjectId &&
+          links[prior].targetObjectId == link.targetObjectId) {
+        return false;
+      }
+      if (links[prior].sourceObjectId == link.sourceObjectId &&
+          links[prior].compatibilityFallback != link.compatibilityFallback) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 bool payloadShapeIsValid(
     const CreativePlayActivationPayload& payload) noexcept {
   if (payload.documentId == kInvalidDocumentId || payload.roomId.empty() ||
@@ -145,7 +186,8 @@ bool payloadShapeIsValid(
   }
   return spawnCount == 1U && matchedPreparedSpawn &&
          anchorsHaveUniqueIdentity(payload.room.anchors) &&
-         interactablesHaveUniqueIdentity(payload.interactables);
+         interactablesHaveUniqueIdentity(payload.interactables) &&
+         logicLinksAreValid(payload.logicLinks, payload.interactables);
 }
 
 bool sandboxConfigIsValid(const CreativeRuntimeSandboxConfig& config) {
@@ -494,6 +536,7 @@ CreativeRuntimeSandboxActivationResult activateCreativeRuntimeSandbox(
   }
   sandbox.collisionSurfaces = std::move(collisionSurfaces);
   sandbox.interactables = std::move(interactableStates.states);
+  sandbox.logicLinks = std::move(request.payload.logicLinks);
   sandbox.session = std::move(created.value);
   result.sandbox.emplace(std::move(sandbox));
   setActivationStatus(receipt,

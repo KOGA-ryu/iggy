@@ -244,4 +244,21 @@ namespace {
   return true;
 }
 
+[[nodiscard]] SaveCreativeDocumentLogicLinkRecord toSaveLogicLink(
+    const creative::CreativeLogicLink& link) {
+  SaveCreativeDocumentLogicLinkRecord record;
+  record.sourceObjectId = link.sourceObjectId;
+  record.targetObjectId = link.targetObjectId;
+  record.action = std::string{creative::toString(link.action)};
+  return record;
+}
+
+[[nodiscard]] bool toCreativeLogicLink(
+    const SaveCreativeDocumentLogicLinkRecord& record,
+    creative::CreativeLogicLink& out) noexcept {
+  out.sourceObjectId = record.sourceObjectId;
+  out.targetObjectId = record.targetObjectId;
+  return creative::parseCreativeLogicLinkAction(record.action, out.action);
+}
+
 }  // namespace iggy3d::document_section_internal
