@@ -50,10 +50,12 @@ SdlWindow::~SdlWindow() {
 SdlWindow::SdlWindow(SdlWindow&& other) noexcept
     : window_(other.window_),
       eventState_(other.eventState_),
+      eventHook_(other.eventHook_),
       videoInitialized_(other.videoInitialized_) {
   other.window_ = nullptr;
   other.videoInitialized_ = false;
   other.eventState_ = {};
+  other.eventHook_ = {};
 }
 
 SdlWindow& SdlWindow::operator=(SdlWindow&& other) noexcept {
@@ -61,10 +63,12 @@ SdlWindow& SdlWindow::operator=(SdlWindow&& other) noexcept {
     release();
     window_ = other.window_;
     eventState_ = other.eventState_;
+    eventHook_ = other.eventHook_;
     videoInitialized_ = other.videoInitialized_;
     other.window_ = nullptr;
     other.videoInitialized_ = false;
     other.eventState_ = {};
+    other.eventHook_ = {};
   }
   return *this;
 }
@@ -141,6 +145,10 @@ void SdlWindow::centerPointer() {
   SDL_WarpMouseInWindow(window_, eventState_.pointerX, eventState_.pointerY);
 }
 
+void SdlWindow::setEventHook(SdlWindowEventHook hook) {
+  eventHook_ = hook;
+}
+
 void SdlWindow::pollEvents() {
   eventState_.resized = false;
   eventState_.restored = false;
@@ -152,6 +160,9 @@ void SdlWindow::pollEvents() {
 
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
+    if (eventHook_.onEvent != nullptr) {
+      eventHook_.onEvent(eventHook_.context, event);
+    }
     switch (event.type) {
       case SDL_EVENT_QUIT:
         eventState_.quitRequested = true;

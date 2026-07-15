@@ -5,6 +5,7 @@
 #include <string_view>
 
 struct SDL_Window;
+union SDL_Event;
 
 namespace iggy3d {
 
@@ -48,6 +49,16 @@ struct SdlMouseCaptureResult {
   std::string reasonCode = "mouse_capture_not_requested";
 };
 
+// Allocation-free observer over the raw SDL event stream. The hook fires for
+// EVERY polled event — including kinds pollEvents itself discards (key-up,
+// non-left button-down, button-up) — before the window's own handling, which
+// always runs regardless of the hook. Context is caller-owned and must
+// outlive the window (or be cleared via setEventHook({})).
+struct SdlWindowEventHook {
+  void (*onEvent)(void* context, const SDL_Event& event) = nullptr;
+  void* context = nullptr;
+};
+
 class SdlWindow {
 public:
   explicit SdlWindow(const SdlWindowCreateInfo& createInfo);
@@ -66,6 +77,7 @@ public:
   SdlMouseCaptureResult setRelativeMouseMode(bool enabled);
   bool setTextInputActive(bool enabled);
   void centerPointer();
+  void setEventHook(SdlWindowEventHook hook);
   void pollEvents();
 
   SDL_Window* nativeWindow() const;
@@ -76,6 +88,7 @@ private:
 
   SDL_Window* window_ = nullptr;
   SdlWindowEventState eventState_;
+  SdlWindowEventHook eventHook_;
   bool videoInitialized_ = false;
 };
 
