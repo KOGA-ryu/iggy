@@ -24,6 +24,9 @@ struct FrameCaptureArtifacts {
   std::filesystem::path rawPath;
   std::filesystem::path metaPath;
   std::filesystem::path hashPath;
+  // Whether a desktop-UI pass was recorded into the captured frame; lands in
+  // .meta.kv so capture automation can assert the shell stayed off (plan T-0).
+  bool externalUiRecorded = false;
 };
 
 struct FrameCaptureCreateInfo {

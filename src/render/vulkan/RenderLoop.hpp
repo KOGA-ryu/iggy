@@ -4,6 +4,7 @@
 
 #include "render/FrameInput.hpp"
 #include "render/vulkan/CommandRecording.hpp"
+#include "render/vulkan/ExternalUiRecordHook.hpp"
 #include "render/vulkan/FrameSync.hpp"
 #include "render/vulkan/InstanceDeviceSurface.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
@@ -51,6 +52,7 @@ struct RenderLoopCreateInfo {
   PipelineLayoutRecord* materialTextureLayout = nullptr;
   BufferImageResources* firstRoomResources = nullptr;
   FrameCapture* frameCapture = nullptr;
+  ExternalUiRecordHook externalUiHook;
 };
 
 class RenderLoop {

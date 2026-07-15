@@ -405,7 +405,8 @@ FrameCaptureResult writePacket7CaptureArtifacts(const NormalizedCapture& capture
                            "\ncapture_source_format=" + capture.sourceFormat +
                            "\nnormalized_format=RGBA8\nframe_hash_algorithm=sha256_normalized_rgb\n"
                            "frame_hash_exact=" +
-                           result.hash + "\n";
+                           result.hash + "\nexternal_ui_recorded=" +
+                           (artifacts.externalUiRecorded ? "1" : "0") + "\n";
   const bool wroteMeta = !artifacts.metaPath.empty() && writeText(artifacts.metaPath, meta);
   const bool wroteHash =
       !artifacts.hashPath.empty() && writeText(artifacts.hashPath, result.hash + "\n");

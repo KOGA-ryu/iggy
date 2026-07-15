@@ -228,6 +228,7 @@ target_sources(iggy3d
     src/render/vulkan/Swapchain.cpp
     src/render/vulkan/FrameSync.cpp
     src/render/vulkan/CommandRecording.cpp
+    src/render/vulkan/DearImGuiVulkanBridge.cpp
     src/render/vulkan/ProjectileOverlayProjection.cpp
     src/render/vulkan/RenderLoop.cpp
     src/render/vulkan/ShaderModule.cpp
@@ -242,6 +243,7 @@ target_sources(iggy3d
 target_link_libraries(iggy3d PUBLIC
   "${IGGY3D_SDL3_TARGET}"
   "${IGGY3D_VULKAN_TARGET}")
+target_link_libraries(iggy3d PRIVATE iggy3d_imgui)
 target_compile_definitions(iggy3d PUBLIC
   IGGY3D_HAS_SDL3=1
   IGGY3D_HAS_VULKAN=1
@@ -319,10 +321,15 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorPreviewProxies.cpp
   apps/iggy3d_creative/EditorScenePreview.cpp
   apps/iggy3d_creative/EditorShapePreview.cpp
-  apps/iggy3d_creative/EditorPreviewFrame.cpp)
+  apps/iggy3d_creative/EditorPreviewFrame.cpp
+  apps/iggy3d_creative/EditorDesktopUi.cpp)
 
 add_library(iggy3d_creative_app STATIC ${IGGY3D_CREATIVE_APP_SOURCES})
 target_link_libraries(iggy3d_creative_app PUBLIC iggy3d)
+# PRIVATE on both targets: only the DL-2 allowlist TUs (the bridge inside
+# iggy3d, the EditorDesktop*.cpp files here) may include imgui headers; no
+# PUBLIC header anywhere exposes them, so tests never see ImGui types.
+target_link_libraries(iggy3d_creative_app PRIVATE iggy3d_imgui)
 target_include_directories(iggy3d_creative_app PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/apps/iggy3d_creative")
 target_compile_definitions(iggy3d_creative_app PRIVATE

@@ -40,7 +40,7 @@ void initializeCreativeEditorBootstrapData(
 
 [[nodiscard]] iggy3d::RendererConfig makeCreativeVulkanRendererConfig();
 [[nodiscard]] std::unique_ptr<iggy3d::VulkanBackend> createCreativeRenderer(
-    iggy3d::SdlWindow& window);
+    iggy3d::SdlWindow& window, bool enableExternalUi);
 [[nodiscard]] bool captureFrameToPng(iggy3d::VulkanBackend& backend,
                                      const std::string& pngPath);
 

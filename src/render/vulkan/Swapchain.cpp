@@ -415,6 +415,7 @@ SwapchainOperationResult Swapchain::createInternal(std::uint32_t drawableWidth,
   info_.presentMode = presentMode;
   info_.extent = extent;
   info_.imageCount = actualImageCount;
+  info_.requestedMinImageCount = imageCount;
   info_.generation += 1U;
   if (recreating) {
     info_.recreateCount += 1U;
@@ -448,6 +449,7 @@ void Swapchain::destroy() {
   swapchain_ = VK_NULL_HANDLE;
   images_.clear();
   info_.imageCount = 0;
+  info_.requestedMinImageCount = 0;
   info_.state = SwapchainState::Uninitialized;
 }
 

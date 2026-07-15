@@ -8,6 +8,7 @@
 #include "render/RenderDiagnostics.hpp"
 #include "render/FrameInput.hpp"
 #include "render/debug/DebugHudText.hpp"
+#include "render/vulkan/ExternalUiRecordHook.hpp"
 #include "render/vulkan/FirstRoomPipeline.hpp"
 #include "render/vulkan/PipelineLayout.hpp"
 #include "render/vulkan/VulkanFunctions.hpp"
@@ -51,6 +52,7 @@ struct EmptyFrameRecordInfo {
   std::size_t uiTextGlyphQuadCount = 0;
   const DebugHudGlyphQuad* debugHudQuads = nullptr;
   std::size_t debugHudQuadCount = 0;
+  ExternalUiRecordHook externalUiHook;
 };
 
 struct CreativePreviewDrawInfo {
@@ -149,6 +151,7 @@ struct FirstRoomFrameRecordInfo {
   std::size_t uiTextGlyphQuadCount = 0;
   const DebugHudGlyphQuad* debugHudQuads = nullptr;
   std::size_t debugHudQuadCount = 0;
+  ExternalUiRecordHook externalUiHook;
 };
 
 struct ProxyPrimitiveFrameRecordInfo {
@@ -168,6 +171,7 @@ struct ProxyPrimitiveFrameRecordInfo {
   std::size_t projectileOverlayRectCount = 0;
   const DebugHudGlyphQuad* debugHudQuads = nullptr;
   std::size_t debugHudQuadCount = 0;
+  ExternalUiRecordHook externalUiHook;
 };
 
 struct CommandRecordResult {

@@ -676,3 +676,21 @@ set_tests_properties(${IGGY3D_VULKAN_SMOKE_TESTS} PROPERTIES
   LABELS "smoke;vulkan;render;iggy3d")
 # The strict smoke exercises the fail-closed path on purpose: failure is the pass.
 set_tests_properties(vulkan_strict_unsupported_smoke PROPERTIES WILL_FAIL TRUE)
+
+# T-0 capture regression guard (docs/creative_desktop_ui_plan.md §6): spawns
+# the real i3dc binary twice in --capture mode and asserts artifact quartet +
+# run-to-run hash determinism + external_ui_recorded=0. Self-skips (77)
+# without a usable Vulkan device, like every other smoke.
+add_executable(creative_capture_stability_smoke
+  tests/smoke/creative_capture_stability_smoke.cpp)
+target_link_libraries(creative_capture_stability_smoke PRIVATE iggy3d)
+iggy3d_apply_warnings(creative_capture_stability_smoke)
+target_compile_definitions(creative_capture_stability_smoke PRIVATE
+  I3DC_BINARY_PATH="$<TARGET_FILE:i3dc>")
+add_dependencies(creative_capture_stability_smoke i3dc)
+add_test(NAME creative_capture_stability_smoke
+         COMMAND "$<TARGET_FILE:creative_capture_stability_smoke>")
+set_tests_properties(creative_capture_stability_smoke PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  SKIP_RETURN_CODE 77
+  LABELS "smoke;vulkan;render;creative;iggy3d")

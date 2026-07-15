@@ -5,6 +5,7 @@
 #include "render/RenderBackend.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
 #include "render/vulkan/CommandRecording.hpp"
+#include "render/vulkan/DearImGuiVulkanBridge.hpp"
 #include "render/vulkan/FirstRoomPipeline.hpp"
 #include "render/vulkan/FrameCapture.hpp"
 #include "render/vulkan/FrameSync.hpp"
@@ -14,6 +15,8 @@
 #include "render/vulkan/ShaderModule.hpp"
 #include "render/vulkan/Swapchain.hpp"
 
+union SDL_Event;
+
 namespace iggy3d {
 
 struct VulkanBackendCreateInfo {
@@ -21,6 +24,12 @@ struct VulkanBackendCreateInfo {
   vulkan::VulkanSurfaceProvider surfaceProvider;
   std::uint32_t drawableWidth = 640;
   std::uint32_t drawableHeight = 360;
+  // Desktop UI shell (Dear ImGui). nativeWindow is the SDL_Window*; the shell
+  // is only ever constructed when enableExternalUi is true — the --capture
+  // construction gate (plan DL-1). Defaults keep every existing caller (and
+  // all smokes) shell-free.
+  void* nativeWindow = nullptr;
+  bool enableExternalUi = false;
 };
 
 struct VulkanStaticMeshAssetReloadResult {
@@ -52,6 +61,11 @@ public:
   void shutdown() override;
   bool frameCaptureReady() const;
   vulkan::NormalizedCapture readLastFrameCapture() const;
+  // Desktop UI shell surface (no-ops when the shell is disabled/unbuilt).
+  void forwardExternalUiEvent(const SDL_Event& event);
+  bool beginExternalUiFrame();
+  bool externalUiFrameActive() const;
+  bool externalUiRecordedLastFrame() const;
 
 private:
   struct StaticMeshMaterialPipelineBundle {
@@ -96,6 +110,9 @@ private:
   vulkan::FirstRoomPipelineRecord materialTextureInstancePipeline_;
   vulkan::BufferImageResources firstRoomResources_;
   vulkan::FrameCapture frameCapture_;
+  vulkan::DearImGuiVulkanBridge externalUiBridge_;
+  void* externalUiNativeWindow_ = nullptr;
+  bool externalUiEnabled_ = false;
   bool firstRoomReady_ = false;
   RendererLifecycleState lifecycleState_ = RendererLifecycleState::NotInitialized;
   RenderReceipt diagnostics_;

@@ -43,6 +43,7 @@
 #include "EditorAssets.hpp"
 #include "EditorCatalog.hpp"
 #include "EditorControls.hpp"
+#include "EditorDesktopUi.hpp"
 #include "EditorFrame.hpp"
 #include "EditorGamepad.hpp"
 #include "EditorGizmo.hpp"
@@ -219,13 +220,25 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  std::unique_ptr<VulkanBackend> backend = createCreativeRenderer(window);
+  std::unique_ptr<VulkanBackend> backend =
+      createCreativeRenderer(window, capturePath.empty());
   if (backend == nullptr ||
       backend->lifecycleState() != RendererLifecycleState::Ready) {
     SDL_Log("iggy3d_creative: renderer not ready (lifecycle=%d)",
             backend == nullptr ? -1
                                : static_cast<int>(backend->lifecycleState()));
     return 1;
+  }
+
+  // Desktop shell event feed (interactive only; --capture never constructs
+  // the shell, so the hook stays uninstalled and pollEvents runs untapped).
+  if (capturePath.empty()) {
+    SdlWindowEventHook desktopUiEventHook;
+    desktopUiEventHook.onEvent = [](void* context, const SDL_Event& event) {
+      static_cast<VulkanBackend*>(context)->forwardExternalUiEvent(event);
+    };
+    desktopUiEventHook.context = backend.get();
+    window.setEventHook(desktopUiEventHook);
   }
 
   // Relative mouse mode for a free-look fly camera (interactive only — don't
@@ -237,6 +250,7 @@ int main(int argc, char** argv) {
   CreativeEditorBootstrapData bootstrapData;
   initializeCreativeEditorBootstrapData(bootstrapData, !capturePath.empty());
   CreativeEditorState& editor = bootstrapData.editor;
+  editor.desktopUi.shellEnabled = capturePath.empty();
   const ProductMapMakerGridSnapshot& gridSnapshot =
       bootstrapData.gridSnapshot;
   creative::CreativeAppState& appState = bootstrapData.appState;
@@ -308,6 +322,8 @@ int main(int argc, char** argv) {
                                 editor.assetReplacement,
                                 "creative_asset_replace_focus_lost"));
     }
+    static_cast<void>(iggy3d_creative_app::beginCreativeEditorDesktopFrame(
+        editor.desktopUi, *backend));
     const iggy3d_creative_app::CreativeEditorAssetLibraryFrameResult
         assetLibraryFrame = processCreativeEditorAssetLibraryFrame(
             {window, appState, editor, frameInput.routedInput});
@@ -545,6 +561,7 @@ int main(int argc, char** argv) {
          frameInput.activeControlDevice},
         overlayFrame);
 
+    iggy3d_creative_app::endCreativeEditorDesktopFrame(editor.desktopUi);
     if (submitCreativeEditorFrame({
             *backend,
             frame,

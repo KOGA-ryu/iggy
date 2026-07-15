@@ -13,6 +13,7 @@
 #include "EditorAssetReplacement.hpp"
 #include "EditorCapture.hpp"
 #include "EditorControls.hpp"
+#include "EditorDesktopUi.hpp"
 #include "EditorEdits.hpp"
 #include "EditorGroup.hpp"
 #include "EditorInteraction.hpp"
@@ -78,6 +79,7 @@ struct CreativeEditorState {
   iggy3d::creative::CreativeInputRouterState inputRouterState;
   iggy3d::creative::CreativeControllerState controllerInputState;
   CreativeEditorControlsState controls;
+  CreativeEditorDesktopUiState desktopUi;
   CreativeEditorInteractionState interaction;
   CreativeEditorCatalogState catalog;
   CreativeEditorAuthoredAssetLibrary authoredAssets;

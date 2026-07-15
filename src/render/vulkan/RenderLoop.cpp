@@ -550,6 +550,7 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     recordInfo.uiTextGlyphQuadCount = frame.ui.textGlyphQuadCount;
     recordInfo.debugHudQuads = debugHud.quads.data();
     recordInfo.debugHudQuadCount = debugHud.quads.size();
+    recordInfo.externalUiHook = createInfo_.externalUiHook;
     recordResult = createInfo_.commandRecording->recordFirstRoomFrame(recordInfo);
   } else if (drawProxyPrimitives) {
     ProxyPrimitiveFrameRecordInfo recordInfo;
@@ -571,6 +572,7 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     recordInfo.projectileOverlayRectCount = projectileOverlay.rects.size();
     recordInfo.debugHudQuads = debugHud.quads.data();
     recordInfo.debugHudQuadCount = debugHud.quads.size();
+    recordInfo.externalUiHook = createInfo_.externalUiHook;
     recordResult = createInfo_.commandRecording->recordProxyPrimitiveFrame(recordInfo);
   } else if (drawFirstRoom) {
     FirstRoomFrameRecordInfo recordInfo;
@@ -636,6 +638,7 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     recordInfo.uiTextGlyphQuadCount = frame.ui.textGlyphQuadCount;
     recordInfo.debugHudQuads = debugHud.quads.data();
     recordInfo.debugHudQuadCount = debugHud.quads.size();
+    recordInfo.externalUiHook = createInfo_.externalUiHook;
     recordResult = createInfo_.commandRecording->recordFirstRoomFrame(recordInfo);
   } else {
     EmptyFrameRecordInfo recordInfo;
@@ -658,6 +661,7 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     }
     recordInfo.debugHudQuads = debugHud.quads.data();
     recordInfo.debugHudQuadCount = debugHud.quads.size();
+    recordInfo.externalUiHook = createInfo_.externalUiHook;
     recordResult = createInfo_.commandRecording->recordEmptyFrame(recordInfo);
   }
   if (!recordResult.recorded) {

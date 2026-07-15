@@ -38,6 +38,9 @@ struct SwapchainInfo {
   VkPresentModeKHR presentMode{};
   VkExtent2D extent{};
   std::uint32_t imageCount = 0;
+  // What chooseImageCount asked vkCreateSwapchainKHR for; imageCount above is
+  // what the driver actually returned. ImGui_ImplVulkan wants the request.
+  std::uint32_t requestedMinImageCount = 0;
   std::uint32_t generation = 0;
   std::uint32_t recreateCount = 0;
   bool transferSourceSupported = false;

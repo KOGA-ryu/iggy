@@ -49,7 +49,9 @@ vulkan::DebugValidationConfig validationConfigFromRendererConfig(const RendererC
 }  // namespace
 
 VulkanBackend::VulkanBackend(VulkanBackendCreateInfo createInfo)
-    : config_(std::move(createInfo.config)) {
+    : config_(std::move(createInfo.config)),
+      externalUiNativeWindow_(createInfo.nativeWindow),
+      externalUiEnabled_(createInfo.enableExternalUi) {
   vulkan::InstanceDeviceSurfaceCreateInfo bootstrapInfo;
   bootstrapInfo.config = config_;
   bootstrapInfo.surfaceProvider = std::move(createInfo.surfaceProvider);
@@ -448,6 +450,21 @@ void VulkanBackend::initializePacket5Modules(std::uint32_t drawableWidth,
 
   initializePacket7FirstRoomModules();
 
+  vulkan::DearImGuiVulkanBridgeCreateInfo bridgeInfo;
+  bridgeInfo.enabled = externalUiEnabled_;
+  bridgeInfo.nativeWindow = externalUiNativeWindow_;
+  bridgeInfo.instance = bootstrap_.handles().instance;
+  bridgeInfo.physicalDevice = bootstrap_.handles().physicalDevice;
+  bridgeInfo.device = bootstrap_.handles().device;
+  bridgeInfo.graphicsQueueFamily = bootstrap_.queues().graphicsFamily;
+  bridgeInfo.graphicsQueue = bootstrap_.handles().graphicsQueue;
+#if defined(IGGY3D_HAS_VULKAN)
+  bridgeInfo.apiVersion = VK_API_VERSION_1_3;
+#endif
+  bridgeInfo.deviceFunctions = bootstrap_.functions().device;
+  bridgeInfo.swapchain = &swapchain_;
+  static_cast<void>(externalUiBridge_.initialize(bridgeInfo));
+
   vulkan::RenderLoopCreateInfo loopInfo;
   loopInfo.deviceSurface = &bootstrap_;
   loopInfo.swapchain = &swapchain_;
@@ -463,6 +480,7 @@ void VulkanBackend::initializePacket5Modules(std::uint32_t drawableWidth,
   loopInfo.materialTextureLayout = &materialTextureLayout_;
   loopInfo.firstRoomResources = &firstRoomResources_;
   loopInfo.frameCapture = &frameCapture_;
+  loopInfo.externalUiHook = externalUiBridge_.recordHook();
   const vulkan::VulkanFrameResult loopResult = renderLoop_.initialize(loopInfo);
   diagnostics_ = loopResult.receipt;
   lifecycleState_ = loopResult.outcome == RenderOutcome::Ok ? RendererLifecycleState::Ready
@@ -550,6 +568,9 @@ RenderSubmitResult VulkanBackend::resize(RenderViewport viewport) {
     loopInfo.materialTextureLayout = &materialTextureLayout_;
     loopInfo.firstRoomResources = &firstRoomResources_;
     loopInfo.frameCapture = &frameCapture_;
+    // Both RenderLoopCreateInfo build sites must re-supply the hook or the
+    // desktop UI disappears after the first window resize.
+    loopInfo.externalUiHook = externalUiBridge_.recordHook();
     renderLoop_.initialize(loopInfo);
   }
   result.outcome = resizeResult.outcome;
@@ -565,6 +586,22 @@ RenderReceipt VulkanBackend::diagnostics() const {
 
 bool VulkanBackend::frameCaptureReady() const {
   return frameCapture_.ready();
+}
+
+void VulkanBackend::forwardExternalUiEvent(const SDL_Event& event) {
+  externalUiBridge_.processEvent(event);
+}
+
+bool VulkanBackend::beginExternalUiFrame() {
+  return externalUiBridge_.beginFrame();
+}
+
+bool VulkanBackend::externalUiFrameActive() const {
+  return externalUiBridge_.frameActive();
+}
+
+bool VulkanBackend::externalUiRecordedLastFrame() const {
+  return externalUiBridge_.recordedLastFrame();
 }
 
 vulkan::NormalizedCapture VulkanBackend::readLastFrameCapture() const {
@@ -668,6 +705,7 @@ void VulkanBackend::shutdown() {
   }
   renderLoop_.shutdown();
   waitIdle();
+  externalUiBridge_.shutdown();
   destroyPacket7FirstRoomModules();
   commandRecording_.destroy();
   frameSync_.destroy();

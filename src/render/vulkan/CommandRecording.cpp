@@ -105,6 +105,27 @@ void recordOverlayRects(VkCommandBuffer commandBuffer,
   }
 }
 
+// The frame's rendering block has ended and the color image is still in
+// COLOR_ATTACHMENT_OPTIMAL; the hook owner records its own UI pass before
+// the capture-copy/present barriers.
+bool recordExternalUi(const ExternalUiRecordHook& hook,
+                      VkCommandBuffer commandBuffer,
+                      VkImage colorImage,
+                      VkImageView colorImageView,
+                      VkExtent2D extent,
+                      std::uint32_t frameSlot) {
+  if (hook.record == nullptr) {
+    return false;
+  }
+  ExternalUiRecordTarget target;
+  target.commandBuffer = commandBuffer;
+  target.colorImage = colorImage;
+  target.colorImageView = colorImageView;
+  target.extent = extent;
+  target.frameSlot = frameSlot;
+  return hook.record(hook.user, target);
+}
+
 }  // namespace
 
 CreativePreviewCommandPlan buildCreativePreviewCommandPlan(
@@ -329,6 +350,10 @@ CommandRecordResult CommandRecording::recordEmptyFrame(const EmptyFrameRecordInf
   recordHudGlyphQuads(info.commandBuffer, info.debugHudQuads, info.debugHudQuadCount);
   createInfo_.deviceFunctions.cmdEndRendering(info.commandBuffer);
 
+  const bool externalUiRecorded = recordExternalUi(
+      info.externalUiHook, info.commandBuffer, info.swapchainImage,
+      info.swapchainImageView, info.extent, info.frameSlot);
+
   VkImageMemoryBarrier toPresent{};
   toPresent.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
   toPresent.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
@@ -369,6 +394,7 @@ CommandRecordResult CommandRecording::recordEmptyFrame(const EmptyFrameRecordInf
                      static_cast<std::uint64_t>(info.uiOverlayRectCount));
   appendReceiptField(result.receipt, "ui_text_glyph_quad_count",
                      static_cast<std::uint64_t>(info.uiTextGlyphQuadCount));
+  appendReceiptField(result.receipt, "external_ui_recorded", externalUiRecorded);
   return result;
 }
 
@@ -688,6 +714,10 @@ CommandRecordResult CommandRecording::recordFirstRoomFrame(
   recordHudGlyphQuads(info.commandBuffer, info.debugHudQuads, info.debugHudQuadCount);
   createInfo_.deviceFunctions.cmdEndRendering(info.commandBuffer);
 
+  const bool externalUiRecorded = recordExternalUi(
+      info.externalUiHook, info.commandBuffer, info.swapchainImage,
+      info.swapchainImageView, info.extent, info.frameSlot);
+
   if (info.captureEnabled && info.captureBuffer != VK_NULL_HANDLE &&
       info.captureBufferSize >= static_cast<VkDeviceSize>(info.extent.width) *
                                     info.extent.height * 4ULL) {
@@ -786,6 +816,7 @@ CommandRecordResult CommandRecording::recordFirstRoomFrame(
                      static_cast<std::uint64_t>(info.uiTextGlyphQuadCount));
   appendReceiptField(result.receipt, "capture_copy_recorded",
                      info.captureEnabled && info.captureBuffer != VK_NULL_HANDLE);
+  appendReceiptField(result.receipt, "external_ui_recorded", externalUiRecorded);
   return result;
 }
 
@@ -932,6 +963,10 @@ CommandRecordResult CommandRecording::recordProxyPrimitiveFrame(
   recordHudGlyphQuads(info.commandBuffer, info.debugHudQuads, info.debugHudQuadCount);
   createInfo_.deviceFunctions.cmdEndRendering(info.commandBuffer);
 
+  const bool externalUiRecorded = recordExternalUi(
+      info.externalUiHook, info.commandBuffer, info.swapchainImage,
+      info.swapchainImageView, info.extent, info.frameSlot);
+
   VkImageMemoryBarrier toPresent{};
   toPresent.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
   toPresent.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
@@ -970,6 +1005,7 @@ CommandRecordResult CommandRecording::recordProxyPrimitiveFrame(
   appendReceiptField(result.receipt, "draw_count", static_cast<std::uint64_t>(drawCount));
   appendReceiptField(result.receipt, "projectile_overlay_rect_count",
                      static_cast<std::uint64_t>(info.projectileOverlayRectCount));
+  appendReceiptField(result.receipt, "external_ui_recorded", externalUiRecorded);
   return result;
 }
 

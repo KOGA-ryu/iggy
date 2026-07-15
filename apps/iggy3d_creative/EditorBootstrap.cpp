@@ -240,7 +240,7 @@ iggy3d::RendererConfig makeCreativeVulkanRendererConfig() {
 }
 
 std::unique_ptr<iggy3d::VulkanBackend> createCreativeRenderer(
-    iggy3d::SdlWindow& window) {
+    iggy3d::SdlWindow& window, bool enableExternalUi) {
   iggy3d::SdlVulkanSurfaceProvider sdlVulkanProvider;
   const iggy3d::SdlVulkanExtensionList extensions =
       sdlVulkanProvider.requiredInstanceExtensions(window);
@@ -252,6 +252,8 @@ std::unique_ptr<iggy3d::VulkanBackend> createCreativeRenderer(
 
   iggy3d::VulkanBackendCreateInfo backendInfo;
   backendInfo.config = makeCreativeVulkanRendererConfig();
+  backendInfo.nativeWindow = window.nativeWindow();
+  backendInfo.enableExternalUi = enableExternalUi;
   const iggy3d::SdlDrawableExtent drawable = window.drawableExtent();
   backendInfo.drawableWidth = drawable.width == 0U ? 1280U : drawable.width;
   backendInfo.drawableHeight = drawable.height == 0U ? 720U : drawable.height;
@@ -283,6 +285,7 @@ bool captureFrameToPng(iggy3d::VulkanBackend& backend,
       backend.readLastFrameCapture();
   const std::filesystem::path png{pngPath};
   iggy3d::vulkan::FrameCaptureArtifacts artifacts;
+  artifacts.externalUiRecorded = backend.externalUiRecordedLastFrame();
   artifacts.screenshotPath = png;
   artifacts.rawPath = std::filesystem::path{png}.replace_extension(".rgba");
   artifacts.metaPath = std::filesystem::path{png}.replace_extension(".meta.kv");
