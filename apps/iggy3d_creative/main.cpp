@@ -464,7 +464,8 @@ int main(int argc, char** argv) {
     FrameInput frame = makeCreativeVulkanFrame(
         scene, debug, editor.frameIndex++, extent.width, extent.height,
         editor.yawDegrees, editor.pitchDegrees,
-        /*cameraAnchorOverrideAvailable=*/true, editor.flyPos);
+        /*cameraAnchorOverrideAvailable=*/true, editor.flyPos,
+        editor.desktopUi.contentViewport);
 
     // Scan every visible object's visual bounds once. Live interaction resolves
     // the center ray from this frame; scripted capture retains its fixed proof ray.

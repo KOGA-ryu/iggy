@@ -90,6 +90,40 @@ CreativeDrawablePointer resolveCreativeDrawablePointer(
   return result;
 }
 
+CreativeContentRect resolveCreativeContentViewport(
+    float logicalMinX,
+    float logicalMinY,
+    float logicalMaxX,
+    float logicalMaxY,
+    float scaleX,
+    float scaleY,
+    std::uint32_t drawableWidth,
+    std::uint32_t drawableHeight) noexcept {
+  CreativeContentRect result;
+  if (drawableWidth == 0U || drawableHeight == 0U ||
+      !std::isfinite(logicalMinX) || !std::isfinite(logicalMinY) ||
+      !std::isfinite(logicalMaxX) || !std::isfinite(logicalMaxY) ||
+      !std::isfinite(scaleX) || !std::isfinite(scaleY) || scaleX <= 0.0F ||
+      scaleY <= 0.0F) {
+    return result;
+  }
+  const float drawableW = static_cast<float>(drawableWidth);
+  const float drawableH = static_cast<float>(drawableHeight);
+  const float minX = std::clamp(std::round(logicalMinX * scaleX), 0.0F, drawableW);
+  const float minY = std::clamp(std::round(logicalMinY * scaleY), 0.0F, drawableH);
+  const float maxX = std::clamp(std::round(logicalMaxX * scaleX), 0.0F, drawableW);
+  const float maxY = std::clamp(std::round(logicalMaxY * scaleY), 0.0F, drawableH);
+  if (maxX <= minX || maxY <= minY) {
+    return result;
+  }
+  result.x = static_cast<std::int32_t>(minX);
+  result.y = static_cast<std::int32_t>(minY);
+  result.width = static_cast<std::uint32_t>(maxX - minX);
+  result.height = static_cast<std::uint32_t>(maxY - minY);
+  result.valid = true;
+  return result;
+}
+
 CreativeWrappedIndexResult stepCreativeWrappedIndex(
     std::size_t current,
     std::size_t count,

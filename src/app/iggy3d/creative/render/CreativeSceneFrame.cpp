@@ -61,13 +61,21 @@ FrameInput makeCreativeVulkanFrame(const SceneProjectionResult& scene,
                                    float cameraYawDegrees,
                                    float cameraPitchDegrees,
                                    bool cameraAnchorOverrideAvailable,
-                                   Vec3 cameraAnchorOverrideMeters) {
+                                   Vec3 cameraAnchorOverrideMeters,
+                                   RenderContentViewport contentViewport) {
   constexpr float kPi = 3.14159265358979323846F;
   constexpr float kEyeHeightMeters = 1.7F;
   FrameInput frame;
   frame.viewport = {viewportWidth, viewportHeight,
                     static_cast<float>(viewportWidth) /
                         static_cast<float>(viewportHeight)};
+  frame.contentViewport = contentViewport;
+  // The camera aspect follows the sub-rectangle the scene actually occupies.
+  // The sentinel resolves to the full viewport, so this is identical to the
+  // swapchain aspect until a panel layout shrinks the content rect.
+  const RenderContentViewport effectiveContent = effectiveContentViewport(frame);
+  const float contentAspect = static_cast<float>(effectiveContent.width) /
+                              static_cast<float>(effectiveContent.height);
   frame.clock = {scene.sourceTick, frameIndex, 0.0F, 1.0F / 60.0F};
   frame.camera.mode = RenderCameraMode::FirstPerson;
   Vec3 eye{0.0F, kEyeHeightMeters, 0.0F};
@@ -93,7 +101,7 @@ FrameInput makeCreativeVulkanFrame(const SceneProjectionResult& scene,
       viewFromCamera(frame.camera.worldEye, frame.camera.worldForward,
                      frame.camera.worldUp);
   frame.camera.clipFromView = perspectiveMat4(
-      68.0F * kPi / 180.0F, frame.viewport.aspectRatio,
+      68.0F * kPi / 180.0F, contentAspect,
       frame.camera.nearPlane, frame.camera.farPlane);
   frame.camera.clipFromWorld =
       frame.camera.clipFromView * frame.camera.viewFromWorld;

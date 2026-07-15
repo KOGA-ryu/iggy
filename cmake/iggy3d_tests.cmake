@@ -314,6 +314,17 @@ set_tests_properties(creative_authored_asset_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;assets;catalog;history;prefab;iggy3d")
 
+add_executable(creative_viewport_layout_tests
+  tests/unit/creative_viewport_layout_tests.cpp)
+target_link_libraries(creative_viewport_layout_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_viewport_layout_tests)
+add_test(NAME creative_viewport_layout_tests
+  COMMAND "$<TARGET_FILE:creative_viewport_layout_tests>")
+set_tests_properties(creative_viewport_layout_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;render;frame_input;iggy3d")
+
 iggy3d_add_unit_test(creative_volume_tests
   tests/unit/creative_volume_tests.cpp)
 set_tests_properties(creative_volume_tests PROPERTIES
