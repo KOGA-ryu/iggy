@@ -30,6 +30,7 @@ const char* controlDeviceName(cr::CreativeControlDevice device) noexcept {
 void buildCreativeEditorDesktopMenuBar(
     CreativeEditorDesktopUiState& desktopUi,
     const cr::CreativeAppState& appState,
+    bool playModeActive,
     CreativeDesktopCommandFrame& commands) {
   const cr::CreativeSelectionState& selection = appState.facade.selectionState();
   const bool hasSelection = cr::selectedTargetCount(selection) > 0U;
@@ -82,7 +83,7 @@ void buildCreativeEditorDesktopMenuBar(
       }
       ImGui::EndMenu();
     }
-    if (ImGui::MenuItem("Play")) {
+    if (ImGui::MenuItem(playModeActive ? "Stop" : "Play")) {
       commands.push(CreativeDesktopCommandId::Play);
     }
     ImGui::EndMainMenuBar();

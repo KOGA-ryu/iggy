@@ -9,9 +9,16 @@
 #include "EditorDesktopCommandPayloads.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 
+namespace iggy3d {
+
+struct StaticMeshAssetCatalog;
+
+}  // namespace iggy3d
+
 namespace iggy3d_creative_app {
 
 struct CreativeEditorState;
+struct CreativeEditorPlayMode;
 
 // Fixed-layout semantic command IDs the desktop UI emits. Widgets never touch
 // documents/history/assets directly — they push one of these (plus a typed
@@ -88,6 +95,8 @@ struct CreativeDesktopCommandContext {
   CreativeEditorState& editor;
   std::filesystem::path saveRoot;
   std::string* activeSaveId = nullptr;  // Save As rebinds the active id here.
+  CreativeEditorPlayMode* playMode = nullptr;
+  const iggy3d::StaticMeshAssetCatalog* staticMeshAssetCatalog = nullptr;
 };
 
 // Applies every command in the frame to the existing kernels (New/Open/Save/

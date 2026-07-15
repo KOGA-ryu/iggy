@@ -11,6 +11,7 @@
 #include "EditorFrame.hpp"
 #include "EditorObjectActions.hpp"
 #include "EditorPersistence.hpp"
+#include "EditorPlayMode.hpp"
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 
@@ -75,6 +76,14 @@ void dispatchOne(const CreativeDesktopCommand& command,
   result.documentReplaced = false;
   result.affectedObjectCount = 0U;
   result.message.clear();
+
+  if (context.playMode != nullptr &&
+      creativeEditorPlayModeActive(*context.playMode) &&
+      command.id != CreativeDesktopCommandId::Play &&
+      command.id != CreativeDesktopCommandId::None) {
+    result.message = "stop play before editing";
+    return;
+  }
 
   switch (command.id) {
     case CreativeDesktopCommandId::NewDocument:
@@ -430,9 +439,31 @@ void dispatchOne(const CreativeDesktopCommand& command,
       break;
     }
     case CreativeDesktopCommandId::Play:
-      // No runtime/play mode exists in the standalone editor yet (plan DD-12).
-      result.accepted = false;
-      result.message = "play is not available in this build";
+      if (context.playMode == nullptr) {
+        result.message = "play owner is unavailable";
+        break;
+      }
+      if (creativeEditorPlayModeActive(*context.playMode)) {
+        const creative::CreativeRuntimeSandboxStopReceipt stopped =
+            stopCreativeEditorPlayMode(*context.playMode);
+        result.accepted = stopped.stopped;
+        result.changed = stopped.stopped;
+        result.message = stopped.stopped ? "play stopped"
+                                         : "play stop failed";
+        break;
+      }
+      {
+        CreativeEditorPlayStartRequest request;
+        request.document = &appState.facade.document();
+        request.staticMeshAssetCatalog = context.staticMeshAssetCatalog;
+        const CreativeEditorPlayStartReceipt started =
+            startCreativeEditorPlayMode(*context.playMode, std::move(request));
+        result.accepted = started.accepted;
+        result.changed = started.accepted;
+        result.message = started.accepted
+                             ? "play started"
+                             : "play failed: " + started.reasonCode;
+      }
       break;
     case CreativeDesktopCommandId::None:
     case CreativeDesktopCommandId::Count:

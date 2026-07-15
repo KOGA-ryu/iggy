@@ -15,6 +15,7 @@ namespace iggy3d_creative_app {
 void buildCreativeEditorDesktopMenuBar(
     CreativeEditorDesktopUiState& desktopUi,
     const iggy3d::creative::CreativeAppState& appState,
+    bool playModeActive,
     CreativeDesktopCommandFrame& commands);
 
 // Renders the empty docked workspace panels (Project left, Inspector right,

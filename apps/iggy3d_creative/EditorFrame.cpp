@@ -239,6 +239,7 @@ void setSdlKey(creative::CreativeInputFrame& frame,
 [[nodiscard]] creative::CreativeInputContext resolveInputContext(
     bool captureMode,
     bool desktopUiWantsInput,
+    bool editorInteractionEnabled,
     const CreativeEditorState& editor) noexcept {
   struct Candidate {
     bool active = false;
@@ -253,23 +254,24 @@ void setSdlKey(creative::CreativeInputFrame& frame,
       // first so scripted --capture runs remain input-inert.
       Candidate{desktopUiWantsInput,
                 creative::CreativeInputContext::DesktopUi},
-      Candidate{editor.assetLibrary.open,
+      Candidate{editorInteractionEnabled && editor.assetLibrary.open,
                 creative::CreativeInputContext::AssetLibrary},
-      Candidate{editor.assetEdit.active && editor.assetEdit.menuOpen,
+      Candidate{editorInteractionEnabled && editor.assetEdit.active &&
+                    editor.assetEdit.menuOpen,
                 creative::CreativeInputContext::AuthoredAssetEditMenu},
-      Candidate{editor.controls.open,
+      Candidate{editorInteractionEnabled && editor.controls.open,
                 creative::CreativeInputContext::Controls},
-      Candidate{editor.assetReplacement.active,
+      Candidate{editorInteractionEnabled && editor.assetReplacement.active,
                 creative::CreativeInputContext::AssetReplacementPreview},
-      Candidate{editor.transform.active,
+      Candidate{editorInteractionEnabled && editor.transform.active,
                 editor.transform.controlsOpen
                     ? creative::CreativeInputContext::TransformControls
                     : creative::CreativeInputContext::TransformPreview},
-      Candidate{editor.catalog.model.open,
+      Candidate{editorInteractionEnabled && editor.catalog.model.open,
                 creative::CreativeInputContext::Catalog},
-      Candidate{editor.catalog.toolWheel.open,
+      Candidate{editorInteractionEnabled && editor.catalog.toolWheel.open,
                 creative::CreativeInputContext::ToolWheel},
-      Candidate{editor.toolOptions.open,
+      Candidate{editorInteractionEnabled && editor.toolOptions.open,
                 creative::CreativeInputContext::ToolOptions},
   };
   const auto active = std::find_if(
@@ -440,7 +442,8 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
     iggy3d::VulkanBackend& backend,
     CreativeEditorGamepad& gamepad,
     CreativeEditorState& editor,
-    bool captureMode) {
+    bool captureMode,
+    bool applyEditorNavigation) {
   CreativeEditorFrameInputResult result;
   result.activeControlDevice = editor.activeControlDevice;
   if (!prepareCreativeEditorDrawableFrame(window, backend, editor, result)) {
@@ -468,7 +471,8 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
       editor.desktopUi.viewportPointerCaptured, backend.externalUiWantsMouse(),
       backend.externalUiWantsKeyboard());
   const creative::CreativeInputContext inputContext =
-      resolveInputContext(captureMode, desktopUiWantsInput, editor);
+      resolveInputContext(captureMode, desktopUiWantsInput,
+                          applyEditorNavigation, editor);
   const creative::CreativeInputFrame inputFrame = makeCreativeInputFrame(
       keys, SDL_GetModState(), inputContext, controller);
   result.inputFrame = inputFrame;
@@ -512,7 +516,8 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
       editor.interaction.actionRouter, worldInput);
   const CreativeEditorNavigationAdmission navigation =
       admitCreativeEditorNavigation(
-          inputContext, editor.transform.controlsOpen,
+          inputContext,
+          applyEditorNavigation && editor.transform.controlsOpen,
           editor.rightStickLookRearmRequired, lookStick,
           routedActionPresent(result.routedInput,
                               creative::CreativeInputActionId::ToggleCatalog),
@@ -540,28 +545,39 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
   editor.activeControlDevice = creative::resolveCreativeActiveControlDevice(
       editor.activeControlDevice, deviceActivity);
   result.activeControlDevice = editor.activeControlDevice;
-  if (navigation.navigationActive) {
-    const float gamepadYaw = navigation.rightStickLookActive
-                                 ? gamepadLook.yawDegrees
+  const float gamepadYaw = navigation.rightStickLookActive
+                               ? gamepadLook.yawDegrees
+                               : 0.0F;
+  const float gamepadPitch = navigation.rightStickLookActive
+                                 ? gamepadLook.pitchDegrees
                                  : 0.0F;
-    const float gamepadPitch = navigation.rightStickLookActive
-                                   ? gamepadLook.pitchDegrees
-                                   : 0.0F;
-    editor.yawDegrees += mouseDx * editor.controlProfile.mouseLookSensitivity +
-                         gamepadYaw;
+  result.navigationActive = navigation.navigationActive;
+  result.navigationMoveRight = flyInput.moveX;
+  result.navigationMoveForward = flyInput.moveY;
+  result.navigationSprinting = flyInput.sprinting;
+  result.navigationYawDeltaDegrees =
+      navigation.navigationActive
+          ? mouseDx * editor.controlProfile.mouseLookSensitivity + gamepadYaw
+          : 0.0F;
+  result.navigationPitchDeltaDegrees =
+      navigation.navigationActive
+          ? -mouseDy * editor.controlProfile.mouseLookSensitivity + gamepadPitch
+          : 0.0F;
+  if (applyEditorNavigation && navigation.navigationActive) {
+    editor.yawDegrees += result.navigationYawDeltaDegrees;
     editor.pitchDegrees = std::clamp(
-        editor.pitchDegrees -
-            mouseDy * editor.controlProfile.mouseLookSensitivity +
-            gamepadPitch,
+        editor.pitchDegrees + result.navigationPitchDeltaDegrees,
         -80.0F, 80.0F);
   }
   flyInput.cameraYawDegrees = editor.yawDegrees;
   flyInput.cameraPitchDegrees = editor.pitchDegrees;
 
-  const iggy3d::ProductCreativeFlyResult flyResult =
-      applyProductCreativeFlyInput(editor.flyConfig, flyInput, editor.flyPos);
-  if (flyResult.applied) {
-    editor.flyPos = flyResult.finalPositionMeters;
+  if (applyEditorNavigation) {
+    const iggy3d::ProductCreativeFlyResult flyResult =
+        applyProductCreativeFlyInput(editor.flyConfig, flyInput, editor.flyPos);
+    if (flyResult.applied) {
+      editor.flyPos = flyResult.finalPositionMeters;
+    }
   }
 
   return result;

@@ -44,6 +44,12 @@ struct CreativeEditorFrameInputResult {
       iggy3d::creative::kCreativeInputModifierNone;
   float toolWheelDirectionX = 0.0F;
   float toolWheelDirectionY = 0.0F;
+  float navigationMoveRight = 0.0F;
+  float navigationMoveForward = 0.0F;
+  float navigationYawDeltaDegrees = 0.0F;
+  float navigationPitchDeltaDegrees = 0.0F;
+  bool navigationActive = false;
+  bool navigationSprinting = false;
   std::int32_t transformNudgeWheelSteps = 0;
   bool transformFineNudge = false;
   std::uint64_t monotonicTimeNanoseconds = 0;
@@ -72,7 +78,8 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
     iggy3d::VulkanBackend& backend,
     CreativeEditorGamepad& gamepad,
     CreativeEditorState& editor,
-    bool captureMode);
+    bool captureMode,
+    bool applyEditorNavigation);
 
 void applyCreativeEditorCommandInput(
     const iggy3d::creative::CreativeInputRouteResult& routedInput,
