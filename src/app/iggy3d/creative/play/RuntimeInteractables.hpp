@@ -29,6 +29,19 @@ enum class CreativeRuntimeLogicSourceMode : std::uint8_t {
   Count,
 };
 
+enum class CreativeRuntimeOccupancyTransition : std::uint8_t {
+  None,
+  Entered,
+  Exited,
+};
+
+[[nodiscard]] CreativeRuntimeLogicSourceMode
+creativeRuntimeLogicSourceModeForObject(CreativeObjectKind kind) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeRuntimeLogicSourceMode mode) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeRuntimeOccupancyTransition transition) noexcept;
+
 struct CreativeRuntimeInteractableDefinition {
   CreativeObjectId objectId = kInvalidObjectId;
   CreativeObjectId circuitId = kInvalidObjectId;
@@ -88,6 +101,9 @@ struct CreativeRuntimeInteractableState {
   bool doorOpen = false;
   bool pickupConsumed = false;
   std::size_t occupantCount = 0U;
+  CreativeRuntimeOccupancyTransition lastOccupancyTransition =
+      CreativeRuntimeOccupancyTransition::None;
+  std::uint64_t lastOccupancyTransitionTick = 0U;
   std::vector<CreativeRuntimeRoomMeshSnapshot> closedDoorMeshes;
   std::vector<CreativeRuntimeRoomSurfaceSnapshot> closedDoorSurfaces;
 };
@@ -202,6 +218,10 @@ struct CreativeRuntimeAutomaticLogicReceipt {
 [[nodiscard]] const CreativeRuntimeInteractableState*
 findCreativeRuntimeInteractable(const CreativeRuntimeSandbox& sandbox,
                                EntityId entity) noexcept;
+[[nodiscard]] const CreativeRuntimeInteractableState*
+findCreativeRuntimeInteractableByObjectId(
+    const CreativeRuntimeSandbox& sandbox,
+    CreativeObjectId objectId) noexcept;
 [[nodiscard]] CreativeRuntimeInteractionEffectReceipt
 applyCreativeRuntimeInteractionEffect(CreativeRuntimeSandbox& sandbox,
                                      EntityId target);

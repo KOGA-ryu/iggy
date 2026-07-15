@@ -136,11 +136,19 @@ bool overlayShowsLinksOnlyInConnectMode() {
   app::CreativeEditorOverlayFrameRequest request{
       appState, editor, selection, gizmo, frame, projection};
   static_cast<void>(app::buildCreativeEditorWorldWireframes(request, visible));
+  editor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::Material;
+  app::CreativeEditorOverlayFrame inspected;
+  static_cast<void>(
+      app::buildCreativeEditorWorldWireframes(request, inspected));
   app::CreativeEditorOverlayFrame hidden;
   request.captureMode = true;
   static_cast<void>(app::buildCreativeEditorWorldWireframes(request, hidden));
   return expect(visible.logicLinkEdgeCount == 25U,
                 "connect overlay draws one edge and two endpoint boxes") &&
+         expect(inspected.logicLinkEdgeCount == 13U &&
+                    inspected.combinedWireLines.back().color.g < 0.7F,
+                "inspected circuit stays visible as a grey idle edge and box") &&
          expect(hidden.logicLinkEdgeCount == 0U,
                 "capture mode hides connect overlays");
 }

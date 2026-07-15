@@ -45,7 +45,7 @@ interactableKindFor(CreativeObjectKind kind) noexcept {
   }
 }
 
-[[nodiscard]] CreativeRuntimeLogicSourceMode logicSourceModeFor(
+[[nodiscard]] CreativeRuntimeLogicSourceMode logicSourceModeForObjectInternal(
     CreativeObjectKind kind) noexcept {
   switch (kind) {
     case CreativeObjectKind::Switch:
@@ -357,6 +357,40 @@ struct DoorStateChange {
 
 }  // namespace
 
+CreativeRuntimeLogicSourceMode creativeRuntimeLogicSourceModeForObject(
+    CreativeObjectKind kind) noexcept {
+  return logicSourceModeForObjectInternal(kind);
+}
+
+std::string_view toString(CreativeRuntimeLogicSourceMode mode) noexcept {
+  switch (mode) {
+    case CreativeRuntimeLogicSourceMode::None:
+      return "none";
+    case CreativeRuntimeLogicSourceMode::Manual:
+      return "manual";
+    case CreativeRuntimeLogicSourceMode::PulseOnEnter:
+      return "pulse_on_enter";
+    case CreativeRuntimeLogicSourceMode::HoldWhileOccupied:
+      return "hold_while_occupied";
+    case CreativeRuntimeLogicSourceMode::Count:
+      break;
+  }
+  return "none";
+}
+
+std::string_view toString(
+    CreativeRuntimeOccupancyTransition transition) noexcept {
+  switch (transition) {
+    case CreativeRuntimeOccupancyTransition::None:
+      return "none";
+    case CreativeRuntimeOccupancyTransition::Entered:
+      return "entered";
+    case CreativeRuntimeOccupancyTransition::Exited:
+      return "exited";
+  }
+  return "none";
+}
+
 CreativeRuntimeLogicActivationPlan planCreativeRuntimeLogicActivation(
     std::span<const CreativeRuntimeLogicLink> links,
     std::span<const CreativeRuntimeDoorStateFact> doors,
@@ -581,7 +615,8 @@ CreativeRuntimeInteractableCatalog buildCreativeRuntimeInteractableCatalog(
     definition.objectId = object.id;
     definition.circuitId = object.parentId.value_or(kInvalidObjectId);
     definition.kind = *kind;
-    definition.logicSourceMode = logicSourceModeFor(object.kind);
+    definition.logicSourceMode =
+        creativeRuntimeLogicSourceModeForObject(object.kind);
     definition.stableName = stableObjectName(object.id);
     definition.displayName = object.name.empty()
                                  ? std::string(toString(object.kind))
@@ -778,6 +813,18 @@ const CreativeRuntimeInteractableState* findCreativeRuntimeInteractable(
   return found == sandbox.interactables.end() ? nullptr : &*found;
 }
 
+const CreativeRuntimeInteractableState*
+findCreativeRuntimeInteractableByObjectId(
+    const CreativeRuntimeSandbox& sandbox,
+    CreativeObjectId objectId) noexcept {
+  const auto found = std::find_if(
+      sandbox.interactables.begin(), sandbox.interactables.end(),
+      [objectId](const CreativeRuntimeInteractableState& state) {
+        return state.definition.objectId == objectId;
+      });
+  return found == sandbox.interactables.end() ? nullptr : &*found;
+}
+
 CreativeRuntimeInteractionEffectReceipt applyCreativeRuntimeInteractionEffect(
     CreativeRuntimeSandbox& sandbox,
     EntityId target) {
@@ -899,6 +946,11 @@ CreativeRuntimeAutomaticLogicReceipt updateCreativeRuntimeAutomaticLogic(
       continue;
     }
     ++result.occupancyTransitionCount;
+    source.lastOccupancyTransition =
+        entered ? CreativeRuntimeOccupancyTransition::Entered
+                : CreativeRuntimeOccupancyTransition::Exited;
+    source.lastOccupancyTransitionTick =
+        sandbox.session.state().clock.tickIndex;
 
     std::optional<CreativeRuntimeLogicSignal> signal;
     if (entered) {

@@ -233,7 +233,9 @@ struct CreativeEditorPlayScene {
 };
 
 [[nodiscard]] CreativeEditorPlayScene buildCreativeEditorPlayScene(
-    const CreativeEditorPlayMode& mode);
+    const CreativeEditorPlayMode& mode,
+    iggy3d::creative::CreativeObjectId highlightedLogicSourceObjectId =
+        iggy3d::creative::kInvalidObjectId);
 
 struct CreativeEditorPlayView {
   bool available = false;

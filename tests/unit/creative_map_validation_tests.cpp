@@ -370,6 +370,47 @@ bool invalidReachabilityConfigurationFailsClosed() {
                 "invalid cell size has dedicated diagnostic");
 }
 
+bool competingPressurePlatesFailValidation() {
+  iggy3d::StaticMeshAssetCatalog catalog;
+  cr::CreativeDocument document = playableDocument("Competing Plates");
+  cr::CreativeDocumentCreateRequest plateRequest;
+  plateRequest.kind = cr::CreativeObjectKind::PressurePlate;
+  plateRequest.name = "Plate A";
+  const cr::CreativeDocumentCreateReceipt plateA =
+      document.createObject(plateRequest);
+  plateRequest.name = "Plate B";
+  const cr::CreativeDocumentCreateReceipt plateB =
+      document.createObject(plateRequest);
+  cr::CreativeDocumentCreateRequest doorRequest;
+  doorRequest.kind = cr::CreativeObjectKind::Door;
+  doorRequest.name = "Shared Door";
+  const cr::CreativeDocumentCreateReceipt door =
+      document.createObject(doorRequest);
+  const bool linked =
+      document
+          .setLogicLink({plateA.objectId, door.objectId,
+                         cr::CreativeLogicLinkAction::Open})
+          .accepted &&
+      document
+          .setLogicLink({plateB.objectId, door.objectId,
+                         cr::CreativeLogicLinkAction::Open})
+          .accepted;
+  const cr::CreativeMapValidationResult result =
+      cr::validateCreativeMap({&document, &catalog});
+  const cr::CreativeMapDiagnostic* conflict = findDiagnostic(
+      result, cr::CreativeMapDiagnosticCode::ConflictingPressurePlates);
+
+  return expect(plateA.accepted && plateB.accepted && door.accepted && linked,
+                "pressure plate conflict fixture is authored") &&
+         expect(!result.passed && conflict != nullptr &&
+                    conflict->objectId == plateB.objectId &&
+                    conflict->fact == door.objectId,
+                "map validation rejects competing hold sources") &&
+         expect(cr::toString(conflict->code) ==
+                    "conflicting_pressure_plates",
+                "pressure plate validation code is stable");
+}
+
 bool diagnosticsStayBoundedAndDeterministic() {
   iggy3d::StaticMeshAssetCatalog catalog;
   cr::CreativeDocument document = playableDocument("Diagnostic Capacity");
@@ -412,6 +453,7 @@ int main() {
                   skippedRuntimeObjectFailsValidation() &&
                   disconnectedWalkableIslandFailsValidation() &&
                   invalidReachabilityConfigurationFailsClosed() &&
+                  competingPressurePlatesFailValidation() &&
                   diagnosticsStayBoundedAndDeterministic();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

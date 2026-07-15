@@ -1,5 +1,7 @@
 #include "EditorDesktopCommands.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <span>
 #include <string>
 #include <utility>
@@ -14,6 +16,7 @@
 #include "EditorPlayMode.hpp"
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/creative/Geometry.hpp"
 
 namespace iggy3d_creative_app {
 
@@ -60,6 +63,54 @@ template <typename Payload>
   return std::get_if<Payload>(&command.payload);
 }
 
+[[nodiscard]] bool commandAllowedDuringPlay(
+    CreativeDesktopCommandId id) noexcept {
+  return id == CreativeDesktopCommandId::None ||
+         id == CreativeDesktopCommandId::Play ||
+         id == CreativeDesktopCommandId::SelectObjects ||
+         id == CreativeDesktopCommandId::ClearSelection;
+}
+
+[[nodiscard]] bool focusEditorCameraOnObject(
+    CreativeEditorState& editor,
+    const creative::CreativeObject& object) noexcept {
+  const creative::CreativeTransformedBounds bounds =
+      creative::resolveCreativeObjectBounds(object);
+  const creative::CreativeCoreVec3Conversion center =
+      creative::creativeVec3ToCoreChecked(
+          bounds.valid ? bounds.center : object.transform.position);
+  if (!center.converted || !std::isfinite(editor.yawDegrees) ||
+      !std::isfinite(editor.pitchDegrees)) {
+    return false;
+  }
+
+  constexpr float kPi = 3.14159265358979323846F;
+  constexpr float kEyeHeightMeters = 1.7F;
+  const float yaw = editor.yawDegrees * kPi / 180.0F;
+  const float pitch = editor.pitchDegrees * kPi / 180.0F;
+  const float cosPitch = std::cos(pitch);
+  const iggy3d::Vec3 forward{std::sin(yaw) * cosPitch, std::sin(pitch),
+                             -std::cos(yaw) * cosPitch};
+  const float longestDimension = bounds.valid
+                                     ? static_cast<float>(std::max(
+                                           {bounds.size.x, bounds.size.y,
+                                            bounds.size.z, 0.0}))
+                                     : 1.0F;
+  if (!std::isfinite(longestDimension)) {
+    return false;
+  }
+  const float distance = std::max(3.0F, longestDimension * 2.2F + 1.0F);
+  const iggy3d::Vec3 eye = center.value - forward * distance;
+  const iggy3d::Vec3 anchor =
+      eye - iggy3d::Vec3{0.0F, kEyeHeightMeters, 0.0F};
+  if (!std::isfinite(anchor.x) || !std::isfinite(anchor.y) ||
+      !std::isfinite(anchor.z)) {
+    return false;
+  }
+  editor.flyPos = anchor;
+  return true;
+}
+
 void dispatchOne(const CreativeDesktopCommand& command,
                  const CreativeDesktopCommandContext& context,
                  CreativeDesktopCommandResult& result) {
@@ -79,8 +130,7 @@ void dispatchOne(const CreativeDesktopCommand& command,
 
   if (context.playMode != nullptr &&
       creativeEditorPlayModeActive(*context.playMode) &&
-      command.id != CreativeDesktopCommandId::Play &&
-      command.id != CreativeDesktopCommandId::None) {
+      !commandAllowedDuringPlay(command.id)) {
     result.message = "stop play before editing";
     return;
   }
@@ -195,6 +245,33 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.changed = receipt.changed;
       result.affectedObjectCount = receipt.selectedCountAfter;
       result.message = "selection updated";
+      break;
+    }
+    case CreativeDesktopCommandId::FocusObject: {
+      const auto* payload = payloadAs<CreativeDesktopSelectPayload>(command);
+      if (payload == nullptr) {
+        result.message = "focus: payload mismatch";
+        break;
+      }
+      const creative::CreativeObjectId objectId =
+          payload->primaryObjectId != creative::kInvalidObjectId
+              ? payload->primaryObjectId
+              : payload->objectIds.empty() ? creative::kInvalidObjectId
+                                           : payload->objectIds.front();
+      const creative::CreativeObject* object =
+          activeAppState.facade.findObject(objectId);
+      if (object == nullptr || !focusEditorCameraOnObject(editor, *object)) {
+        result.message = "focus: object unavailable";
+        break;
+      }
+      const creative::CreativeSelectionReceipt receipt =
+          activeAppState.facade.selectTargets(
+              std::span<const creative::CreativeObjectId>{&objectId, 1U},
+              objectId);
+      result.accepted = true;
+      result.changed = true;
+      result.affectedObjectCount = receipt.selectedCountAfter;
+      result.message = "object focused";
       break;
     }
     case CreativeDesktopCommandId::ClearSelection: {

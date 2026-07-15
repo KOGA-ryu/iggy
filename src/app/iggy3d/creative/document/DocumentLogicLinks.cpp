@@ -53,6 +53,31 @@ void setValidationFailure(CreativeLogicLinkValidationReceipt& receipt,
   receipt.reasonCode = reasonCode;
 }
 
+[[nodiscard]] const CreativeObject* findObject(
+    std::span<const CreativeObject> objects,
+    CreativeObjectId objectId) noexcept {
+  const auto found = std::find_if(
+      objects.begin(), objects.end(), [objectId](const CreativeObject& object) {
+        return object.id == objectId;
+      });
+  return found == objects.end() ? nullptr : &*found;
+}
+
+void appendLogicDiagnostic(CreativeLogicDiagnosticReport& report,
+                           CreativeLogicDiagnostic diagnostic) noexcept {
+  if (diagnostic.severity == CreativeLogicDiagnosticSeverity::Error) {
+    ++report.errorCount;
+  } else {
+    ++report.warningCount;
+  }
+  if (report.issueCount < report.issues.size()) {
+    report.issues[report.issueCount++] = diagnostic;
+    return;
+  }
+  report.capacityExceeded = true;
+  ++report.droppedIssueCount;
+}
+
 }  // namespace
 
 std::string_view toString(CreativeLogicLinkAction action) noexcept {
@@ -113,6 +138,41 @@ std::string_view toString(CreativeLogicLinkValidationStatus status) noexcept {
       return "DuplicatePair";
   }
   return "Unknown";
+}
+
+std::string_view toString(
+    CreativeLogicDiagnosticSeverity severity) noexcept {
+  switch (severity) {
+    case CreativeLogicDiagnosticSeverity::Warning:
+      return "warning";
+    case CreativeLogicDiagnosticSeverity::Error:
+      return "error";
+  }
+  return "warning";
+}
+
+std::string_view toString(CreativeLogicDiagnosticCode code) noexcept {
+  switch (code) {
+    case CreativeLogicDiagnosticCode::Unknown:
+      return "unknown";
+    case CreativeLogicDiagnosticCode::UnlinkedSource:
+      return "unlinked_source";
+    case CreativeLogicDiagnosticCode::InvalidAction:
+      return "invalid_action";
+    case CreativeLogicDiagnosticCode::MissingSource:
+      return "missing_source";
+    case CreativeLogicDiagnosticCode::MissingTarget:
+      return "missing_target";
+    case CreativeLogicDiagnosticCode::UnsupportedSource:
+      return "unsupported_source";
+    case CreativeLogicDiagnosticCode::UnsupportedTarget:
+      return "unsupported_target";
+    case CreativeLogicDiagnosticCode::DuplicatePair:
+      return "duplicate_pair";
+    case CreativeLogicDiagnosticCode::ConflictingPressurePlates:
+      return "conflicting_pressure_plates";
+  }
+  return "unknown";
 }
 
 std::string_view toString(CreativeLogicLinkMutationStatus status) noexcept {
@@ -225,6 +285,106 @@ CreativeLogicLinkValidationReceipt validateCreativeLogicLinks(
   receipt.failedLinkIndex = links.size();
   receipt.reasonCode = "creative_logic_links_valid";
   return receipt;
+}
+
+CreativeLogicDiagnosticReport buildCreativeLogicDiagnostics(
+    std::span<const CreativeLogicLink> links,
+    std::span<const CreativeObject> objects) noexcept {
+  CreativeLogicDiagnosticReport report;
+
+  for (const CreativeObject& object : objects) {
+    if (!creativeObjectCanSourceLogicLink(object.kind)) {
+      continue;
+    }
+    ++report.sourceCount;
+    const bool linked = std::any_of(
+        links.begin(), links.end(), [&object](const CreativeLogicLink& link) {
+          return link.sourceObjectId == object.id;
+        });
+    if (linked) {
+      ++report.linkedSourceCount;
+      continue;
+    }
+    appendLogicDiagnostic(
+        report,
+        {CreativeLogicDiagnosticSeverity::Warning,
+         CreativeLogicDiagnosticCode::UnlinkedSource,
+         object.id,
+         kInvalidObjectId,
+         kInvalidObjectId,
+         links.size()});
+  }
+
+  for (std::size_t index = 0U; index < links.size(); ++index) {
+    const CreativeLogicLink& link = links[index];
+    const CreativeObject* source = findObject(objects, link.sourceObjectId);
+    const CreativeObject* target = findObject(objects, link.targetObjectId);
+    const auto appendError = [&](CreativeLogicDiagnosticCode code) {
+      appendLogicDiagnostic(
+          report,
+          {CreativeLogicDiagnosticSeverity::Error,
+           code,
+           link.sourceObjectId,
+           link.targetObjectId,
+           kInvalidObjectId,
+           index});
+    };
+
+    const bool validAction = isValidCreativeLogicLinkAction(link.action);
+    if (!validAction) {
+      appendError(CreativeLogicDiagnosticCode::InvalidAction);
+    }
+    if (source == nullptr) {
+      appendError(CreativeLogicDiagnosticCode::MissingSource);
+    } else if (!creativeObjectCanSourceLogicLink(source->kind)) {
+      appendError(CreativeLogicDiagnosticCode::UnsupportedSource);
+    }
+    if (target == nullptr) {
+      appendError(CreativeLogicDiagnosticCode::MissingTarget);
+    } else if (!creativeObjectCanTargetLogicLink(target->kind) ||
+               (validAction && !creativeLogicLinkActionSupported(
+                                   target->kind, link.action))) {
+      appendError(CreativeLogicDiagnosticCode::UnsupportedTarget);
+    }
+
+    for (std::size_t prior = 0U; prior < index; ++prior) {
+      const CreativeLogicLink& previous = links[prior];
+      if (previous.sourceObjectId == link.sourceObjectId &&
+          previous.targetObjectId == link.targetObjectId) {
+        appendError(CreativeLogicDiagnosticCode::DuplicatePair);
+        break;
+      }
+    }
+
+    if (source == nullptr ||
+        source->kind != CreativeObjectKind::PressurePlate) {
+      continue;
+    }
+    for (std::size_t prior = 0U; prior < index; ++prior) {
+      const CreativeLogicLink& previous = links[prior];
+      if (previous.targetObjectId != link.targetObjectId ||
+          previous.sourceObjectId == link.sourceObjectId) {
+        continue;
+      }
+      const CreativeObject* previousSource =
+          findObject(objects, previous.sourceObjectId);
+      if (previousSource == nullptr ||
+          previousSource->kind != CreativeObjectKind::PressurePlate) {
+        continue;
+      }
+      appendLogicDiagnostic(
+          report,
+          {CreativeLogicDiagnosticSeverity::Error,
+           CreativeLogicDiagnosticCode::ConflictingPressurePlates,
+           link.sourceObjectId,
+           link.targetObjectId,
+           previous.sourceObjectId,
+           index});
+      break;
+    }
+  }
+
+  return report;
 }
 
 std::span<const CreativeLogicLink> CreativeDocument::logicLinks()

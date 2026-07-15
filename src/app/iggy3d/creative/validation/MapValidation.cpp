@@ -171,6 +171,54 @@ void appendReachabilityDiagnostic(
   }
 }
 
+[[nodiscard]] CreativeMapDiagnosticCode mapLogicDiagnosticCode(
+    CreativeLogicDiagnosticCode code) noexcept {
+  switch (code) {
+    case CreativeLogicDiagnosticCode::UnlinkedSource:
+      return CreativeMapDiagnosticCode::LogicSourceUnlinked;
+    case CreativeLogicDiagnosticCode::MissingTarget:
+      return CreativeMapDiagnosticCode::LogicTargetMissing;
+    case CreativeLogicDiagnosticCode::ConflictingPressurePlates:
+      return CreativeMapDiagnosticCode::ConflictingPressurePlates;
+    case CreativeLogicDiagnosticCode::Unknown:
+    case CreativeLogicDiagnosticCode::InvalidAction:
+    case CreativeLogicDiagnosticCode::MissingSource:
+    case CreativeLogicDiagnosticCode::UnsupportedSource:
+    case CreativeLogicDiagnosticCode::UnsupportedTarget:
+    case CreativeLogicDiagnosticCode::DuplicatePair:
+      return CreativeMapDiagnosticCode::LogicLinkInvalid;
+  }
+  return CreativeMapDiagnosticCode::LogicLinkInvalid;
+}
+
+void appendLogicDiagnostics(const CreativeDocument& document,
+                            DiagnosticCollector& diagnostics) {
+  const CreativeLogicDiagnosticReport report = buildCreativeLogicDiagnostics(
+      document.logicLinks(), document.objects());
+  for (std::size_t index = 0U; index < report.issueCount; ++index) {
+    const CreativeLogicDiagnostic& issue = report.issues[index];
+    const CreativeObject* source =
+        document.findObject(issue.sourceObjectId);
+    diagnostics.add(
+        issue.severity == CreativeLogicDiagnosticSeverity::Error
+            ? CreativeMapDiagnosticSeverity::Error
+            : CreativeMapDiagnosticSeverity::Warning,
+        mapLogicDiagnosticCode(issue.code),
+        issue.sourceObjectId,
+        source != nullptr ? source->name : std::string{},
+        std::string(toString(issue.code)),
+        issue.targetObjectId);
+  }
+  if (report.capacityExceeded) {
+    diagnostics.add(CreativeMapDiagnosticSeverity::Warning,
+                    CreativeMapDiagnosticCode::DiagnosticCapacityExceeded,
+                    kInvalidObjectId,
+                    {},
+                    "creative_logic_diagnostic_capacity_exceeded",
+                    report.droppedIssueCount);
+  }
+}
+
 }  // namespace
 
 std::string_view toString(CreativeMapValidationStatus status) noexcept {
@@ -241,6 +289,14 @@ std::string_view toString(CreativeMapDiagnosticCode code) noexcept {
       return "reachability_blocked_seed";
     case CreativeMapDiagnosticCode::ReachabilityIslands:
       return "reachability_islands";
+    case CreativeMapDiagnosticCode::LogicSourceUnlinked:
+      return "logic_source_unlinked";
+    case CreativeMapDiagnosticCode::LogicTargetMissing:
+      return "logic_target_missing";
+    case CreativeMapDiagnosticCode::LogicLinkInvalid:
+      return "logic_link_invalid";
+    case CreativeMapDiagnosticCode::ConflictingPressurePlates:
+      return "conflicting_pressure_plates";
     case CreativeMapDiagnosticCode::DiagnosticCapacityExceeded:
       return "diagnostic_capacity_exceeded";
   }
@@ -352,6 +408,8 @@ CreativeMapEvaluationResult evaluateCreativeMap(
                     "creative_map_player_spawn_not_unique",
                     result.summary.playerSpawnCount);
   }
+
+  appendLogicDiagnostics(document, diagnostics);
 
   CreativeRoomBakeRequest bakeRequest;
   bakeRequest.document = &document;

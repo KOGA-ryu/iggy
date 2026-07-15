@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -49,6 +50,50 @@ struct CreativeLogicLinkValidationReceipt {
   std::string_view reasonCode = "creative_logic_link_not_validated";
 };
 
+inline constexpr std::size_t kCreativeLogicDiagnosticCapacity = 64U;
+
+enum class CreativeLogicDiagnosticSeverity : std::uint8_t {
+  Warning,
+  Error,
+};
+
+enum class CreativeLogicDiagnosticCode : std::uint8_t {
+  Unknown,
+  UnlinkedSource,
+  InvalidAction,
+  MissingSource,
+  MissingTarget,
+  UnsupportedSource,
+  UnsupportedTarget,
+  DuplicatePair,
+  ConflictingPressurePlates,
+};
+
+struct CreativeLogicDiagnostic {
+  CreativeLogicDiagnosticSeverity severity =
+      CreativeLogicDiagnosticSeverity::Warning;
+  CreativeLogicDiagnosticCode code = CreativeLogicDiagnosticCode::Unknown;
+  CreativeObjectId sourceObjectId = kInvalidObjectId;
+  CreativeObjectId targetObjectId = kInvalidObjectId;
+  CreativeObjectId relatedSourceObjectId = kInvalidObjectId;
+  std::size_t linkIndex = 0U;
+};
+
+// Fixed-layout authoring report. It is cheap enough for an Inspector frame and
+// is also consumed by map validation, keeping both views on one definition of
+// missing links and conflicting automatic sources.
+struct CreativeLogicDiagnosticReport {
+  std::array<CreativeLogicDiagnostic, kCreativeLogicDiagnosticCapacity>
+      issues{};
+  std::size_t issueCount = 0U;
+  std::size_t sourceCount = 0U;
+  std::size_t linkedSourceCount = 0U;
+  std::size_t warningCount = 0U;
+  std::size_t errorCount = 0U;
+  std::size_t droppedIssueCount = 0U;
+  bool capacityExceeded = false;
+};
+
 enum class CreativeLogicLinkMutationStatus : std::uint8_t {
   NotRequested,
   InvalidDocument,
@@ -92,6 +137,10 @@ struct CreativeLogicLinkMutationReceipt {
 [[nodiscard]] std::string_view toString(
     CreativeLogicLinkValidationStatus status) noexcept;
 [[nodiscard]] std::string_view toString(
+    CreativeLogicDiagnosticSeverity severity) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeLogicDiagnosticCode code) noexcept;
+[[nodiscard]] std::string_view toString(
     CreativeLogicLinkMutationStatus status) noexcept;
 
 [[nodiscard]] bool creativeObjectCanSourceLogicLink(
@@ -107,5 +156,9 @@ struct CreativeLogicLinkMutationReceipt {
 [[nodiscard]] CreativeLogicLinkValidationReceipt validateCreativeLogicLinks(
     std::span<const CreativeLogicLink> links,
     std::span<const CreativeObject> objects);
+
+[[nodiscard]] CreativeLogicDiagnosticReport buildCreativeLogicDiagnostics(
+    std::span<const CreativeLogicLink> links,
+    std::span<const CreativeObject> objects) noexcept;
 
 }  // namespace iggy3d::creative

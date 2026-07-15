@@ -689,6 +689,8 @@ bool automaticSourcesCountOccupantsAndRearm() {
   const cr::CreativeRuntimeAutomaticLogicReceipt triggerReentered =
       cr::updateCreativeRuntimeAutomaticLogic(sandbox);
   const bool triggerClosed = !triggerDoorState->doorOpen;
+  const cr::CreativeRuntimeOccupancyTransition triggerReentryTransition =
+      triggerState->lastOccupancyTransition;
 
   if (!moveEntity(sandbox, {1U}, {2.5F, 0.25F, 0.0F})) {
     return expect(false, "player moves onto plate");
@@ -749,6 +751,17 @@ bool automaticSourcesCountOccupantsAndRearm() {
                 "trigger counts actors and rearms only when empty") &&
          expect(triggerReentered.activationEffectCount == 1U && triggerClosed,
                 "rearmed trigger pulses again on a later entry") &&
+         expect(triggerReentryTransition ==
+                        cr::CreativeRuntimeOccupancyTransition::Entered &&
+                    cr::toString(triggerReentryTransition) ==
+                        "entered" &&
+                    cr::toString(triggerState->definition.logicSourceMode) ==
+                        "pulse_on_enter" &&
+                    cr::findCreativeRuntimeInteractableByObjectId(
+                        sandbox, trigger.objectId) == triggerState &&
+                    triggerState->lastOccupancyTransition ==
+                        cr::CreativeRuntimeOccupancyTransition::Exited,
+                "runtime source exposes stable monitor facts") &&
          expect(plateEntered.activationEffectCount == 1U && plateOpened &&
                     plateCountAfterEnter == 1U &&
                     sharedPlate.occupancyTransitionCount == 0U &&
@@ -761,7 +774,11 @@ bool automaticSourcesCountOccupantsAndRearm() {
                     exitedPlateCount == 0U &&
                     plateExited.status ==
                         cr::CreativeRuntimeAutomaticLogicStatus::Applied &&
-                    cr::toString(plateExited.status) == "applied",
+                    cr::toString(plateExited.status) == "applied" &&
+                    plateState->lastOccupancyTransition ==
+                        cr::CreativeRuntimeOccupancyTransition::Exited &&
+                    cr::toString(plateState->definition.logicSourceMode) ==
+                        "hold_while_occupied",
                 "final plate exit reverses its Open action");
 }
 

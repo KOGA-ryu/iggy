@@ -413,6 +413,9 @@ int main(int argc, char** argv) {
           editor.desktopUi, activeAppState,
           iggy3d_creative_app::creativeEditorPlayModeActive(playMode),
           desktopCommands);
+      iggy3d_creative_app::buildCreativeEditorDesktopPanels(
+          editor.desktopUi, editor, activeAppState, &playMode,
+          desktopCommands);
       if (desktopCommands.count > 0U) {
         const bool playWasActive =
             iggy3d_creative_app::creativeEditorPlayModeActive(playMode);
@@ -447,8 +450,6 @@ int main(int argc, char** argv) {
               activeAppState, editor, "creative_continuous_gesture_play_start");
         }
       }
-      iggy3d_creative_app::buildCreativeEditorDesktopPanels(
-          editor.desktopUi, editor, activeAppState);
       iggy3d_creative_app::buildCreativeEditorDesktopStatusBar(
           editor.desktopUi, editor, activeAppState);
     }
@@ -477,8 +478,27 @@ int main(int argc, char** argv) {
       }
 
       if (iggy3d_creative_app::creativeEditorPlayModeActive(playMode)) {
+        creative::CreativeObjectId highlightedLogicSourceId =
+            creative::kInvalidObjectId;
+        const creative::TargetRef selectedTarget =
+            appState.facade.selectionState().selectedTarget;
+        if (selectedTarget.value != creative::kInvalidId) {
+          const creative::CreativeObjectId selectedObjectId =
+              static_cast<creative::CreativeObjectId>(selectedTarget.value);
+          const creative::CreativeObject* selectedObject =
+              appState.facade.findObject(selectedObjectId);
+          if (selectedObject != nullptr &&
+              creative::creativeObjectCanSourceLogicLink(
+                  selectedObject->kind)) {
+            highlightedLogicSourceId = selectedObjectId;
+          }
+        }
+        if (highlightedLogicSourceId == creative::kInvalidObjectId) {
+          highlightedLogicSourceId = editor.logicLinks.sourceObjectId;
+        }
         iggy3d_creative_app::CreativeEditorPlayScene playScene =
-            iggy3d_creative_app::buildCreativeEditorPlayScene(playMode);
+            iggy3d_creative_app::buildCreativeEditorPlayScene(
+                playMode, highlightedLogicSourceId);
         if (!playScene.available) {
           static_cast<void>(
               iggy3d_creative_app::stopCreativeEditorPlayMode(playMode));

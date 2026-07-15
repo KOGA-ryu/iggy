@@ -64,25 +64,53 @@ void appendCreativeEditorLogicLinks(
                          editor.toolOptions.open ||
                          editor.assetReplacement.active ||
                          editor.transform.active;
-  if (request.captureMode || modalOpen ||
-      held.kind != cr::CreativeHeldItemKind::LogicLink) {
+  if (request.captureMode || modalOpen) {
     return;
   }
   const cr::CreativeDocument& document = request.appState.facade.document();
+  const bool connectToolHeld =
+      held.kind == cr::CreativeHeldItemKind::LogicLink;
+  cr::CreativeObjectId selectedSourceId = cr::kInvalidObjectId;
+  if (request.selection.selected != nullptr &&
+      cr::creativeObjectCanSourceLogicLink(
+          request.selection.selected->kind)) {
+    selectedSourceId = request.selection.selected->id;
+  }
+  if (selectedSourceId == cr::kInvalidObjectId) {
+    selectedSourceId = editor.logicLinks.sourceObjectId;
+  }
+  if (!connectToolHeld && selectedSourceId == cr::kInvalidObjectId) {
+    return;
+  }
+  const cr::CreativeLogicDiagnosticReport diagnostics =
+      cr::buildCreativeLogicDiagnostics(document.logicLinks(),
+                                        document.objects());
   std::vector<RenderCreativeWireframeDebugLine>& lines =
       output.combinedWireLines;
   const float thickness = std::max(0.045F, request.gizmoThickness);
   for (const cr::CreativeLogicLink& link : document.logicLinks()) {
+    if (!connectToolHeld && link.sourceObjectId != selectedSourceId) {
+      continue;
+    }
     const cr::CreativeObject* source = document.findObject(link.sourceObjectId);
     const cr::CreativeObject* target = document.findObject(link.targetObjectId);
-    if (source == nullptr || target == nullptr || !source->visible ||
-        !target->visible) {
+    if (source == nullptr || !source->visible) {
+      continue;
+    }
+    if (target != nullptr && !target->visible) {
       continue;
     }
     RenderCreativeWireframeDebugLine line;
     line.start = visualBoundsCenter(visualBoundsForObject(*source));
-    line.end = visualBoundsCenter(visualBoundsForObject(*target));
-    line.color = {0.20F, 1.0F, 0.35F, 1.0F};
+    line.end = target != nullptr
+                   ? visualBoundsCenter(visualBoundsForObject(*target))
+                   : line.start + Vec3{0.0F, 1.0F, 0.0F};
+    const bool valid =
+        target != nullptr && target->visible &&
+        cr::creativeObjectCanTargetLogicLink(target->kind) &&
+        cr::creativeLogicLinkActionSupported(target->kind, link.action);
+    line.color = valid ? RenderLineColor{0.45F, 0.55F, 0.60F, 1.0F}
+                       : RenderLineColor{1.0F, 0.20F, 0.20F, 1.0F};
     line.objectId = source->id;
     line.thickness = thickness;
     lines.push_back(line);
@@ -90,20 +118,30 @@ void appendCreativeEditorLogicLinks(
   }
 
   const cr::CreativeObject* selectedSource =
-      document.findObject(editor.logicLinks.sourceObjectId);
+      document.findObject(selectedSourceId);
   if (selectedSource != nullptr && selectedSource->visible) {
+    bool sourceInvalid = false;
+    for (std::size_t index = 0U; index < diagnostics.issueCount; ++index) {
+      sourceInvalid =
+          sourceInvalid ||
+          diagnostics.issues[index].sourceObjectId == selectedSource->id ||
+          diagnostics.issues[index].relatedSourceObjectId ==
+              selectedSource->id;
+    }
     const VisualBounds bounds = visualBoundsForObject(*selectedSource);
     const std::size_t before = lines.size();
     appendStandaloneWireframeBoxEdges(
         lines, bounds.min, bounds.max,
-        RenderLineColor{0.15F, 0.90F, 1.0F, 1.0F}, thickness);
+        sourceInvalid ? RenderLineColor{1.0F, 0.20F, 0.20F, 1.0F}
+                      : RenderLineColor{0.45F, 0.55F, 0.60F, 1.0F},
+        thickness);
     for (std::size_t index = before; index < lines.size(); ++index) {
       lines[index].objectId = selectedSource->id;
     }
     output.logicLinkEdgeCount += lines.size() - before;
   }
 
-  if (!editor.interaction.target.objectHit) {
+  if (!connectToolHeld || !editor.interaction.target.objectHit) {
     return;
   }
   const cr::CreativeObject* hovered =

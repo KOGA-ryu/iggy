@@ -385,11 +385,15 @@ bool automaticLogicRunsInPlayAndProjectsOccupancy() {
   }
   const app::CreativeEditorPlayScene inactiveScene =
       app::buildCreativeEditorPlayScene(mode);
+  const app::CreativeEditorPlayScene selectedInactiveScene =
+      app::buildCreativeEditorPlayScene(mode, trigger.objectId);
   static_cast<void>(tickAt(mode, document, 1U));
   const app::CreativeEditorPlayTickReceipt entered =
       tickAt(mode, document, 50'000'001U);
   const app::CreativeEditorPlayScene activeScene =
       app::buildCreativeEditorPlayScene(mode);
+  const app::CreativeEditorPlayScene selectedActiveScene =
+      app::buildCreativeEditorPlayScene(mode, trigger.objectId);
 
   const auto doorState = std::find_if(
       mode.sandbox->interactables.begin(), mode.sandbox->interactables.end(),
@@ -419,6 +423,12 @@ bool automaticLogicRunsInPlayAndProjectsOccupancy() {
                     inactiveScene.automaticLogicSourceLines.front().color.g <
                         0.7F,
                 "empty trigger projects a restrained inactive box") &&
+         expect(selectedInactiveScene.automaticLogicSourceLines.size() == 13U &&
+                    selectedInactiveScene.automaticLogicSourceLines.back()
+                            .objectId == trigger.objectId &&
+                    selectedInactiveScene.automaticLogicSourceLines.back()
+                            .color.g < 0.7F,
+                "selected idle circuit adds one grey source-to-door edge") &&
          expect(entered.status == app::CreativeEditorPlayTickStatus::Advanced &&
                     entered.automaticSourceTransitions == 1U &&
                     entered.automaticEffectsApplied == 1U &&
@@ -433,6 +443,12 @@ bool automaticLogicRunsInPlayAndProjectsOccupancy() {
                     activeScene.automaticLogicSourceLines.front().objectId ==
                         trigger.objectId,
                 "occupied trigger projects a green active box") &&
+         expect(selectedActiveScene.automaticLogicSourceLines.size() == 13U &&
+                    selectedActiveScene.automaticLogicSourceLines.back()
+                            .style == 1U &&
+                    selectedActiveScene.automaticLogicSourceLines.back()
+                            .color.g > 0.9F,
+                "selected active circuit edge turns green") &&
          expect(iggy3d::validateFrameInput(frame) ==
                     iggy3d::FrameInputStatus::Valid,
                 "automatic source overlay is valid bounded frame data");

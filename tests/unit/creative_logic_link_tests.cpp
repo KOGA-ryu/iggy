@@ -6,6 +6,7 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace {
 namespace cr = iggy3d::creative;
@@ -223,6 +224,57 @@ bool automaticSourcesUseTheSameAuthoredLinkContract() {
                 "automatic controls use canonical source-target links");
 }
 
+bool diagnosticsExposeUnlinkedMissingAndCompetingSources() {
+  cr::CreativeDocument document = documentWithId();
+  const auto trigger =
+      create(document, cr::CreativeObjectKind::TriggerZone, "Trigger");
+  const auto plateA =
+      create(document, cr::CreativeObjectKind::PressurePlate, "Plate A");
+  const auto plateB =
+      create(document, cr::CreativeObjectKind::PressurePlate, "Plate B");
+  static_cast<void>(
+      create(document, cr::CreativeObjectKind::Button, "Unlinked Button"));
+  const auto door = create(document, cr::CreativeObjectKind::Door, "Door");
+  const std::vector<cr::CreativeLogicLink> malformed{
+      {trigger.objectId, 999'999U, cr::CreativeLogicLinkAction::Toggle},
+      {plateA.objectId, door.objectId, cr::CreativeLogicLinkAction::Open},
+      {plateB.objectId, door.objectId, cr::CreativeLogicLinkAction::Open},
+  };
+  const cr::CreativeLogicDiagnosticReport report =
+      cr::buildCreativeLogicDiagnostics(malformed, document.objects());
+
+  bool unlinked = false;
+  bool missingTarget = false;
+  bool competingPlates = false;
+  for (std::size_t index = 0U; index < report.issueCount; ++index) {
+    unlinked = unlinked ||
+               report.issues[index].code ==
+                   cr::CreativeLogicDiagnosticCode::UnlinkedSource;
+    missingTarget = missingTarget ||
+                    report.issues[index].code ==
+                        cr::CreativeLogicDiagnosticCode::MissingTarget;
+    competingPlates =
+        competingPlates ||
+        (report.issues[index].code ==
+             cr::CreativeLogicDiagnosticCode::ConflictingPressurePlates &&
+         report.issues[index].relatedSourceObjectId == plateA.objectId &&
+         report.issues[index].sourceObjectId == plateB.objectId);
+  }
+
+  return expect(report.sourceCount == 4U &&
+                    report.linkedSourceCount == 3U &&
+                    report.warningCount == 1U && report.errorCount == 2U &&
+                    !report.capacityExceeded,
+                "logic diagnostics summarize bounded source health") &&
+         expect(unlinked && missingTarget && competingPlates,
+                "logic diagnostics expose authoring hazards") &&
+         expect(cr::toString(
+                    cr::CreativeLogicDiagnosticCode::
+                        ConflictingPressurePlates) ==
+                    "conflicting_pressure_plates",
+                "logic diagnostic ids are stable");
+}
+
 }  // namespace
 
 int main() {
@@ -231,6 +283,7 @@ int main() {
                   restoreValidatesAndCanonicalizesLinks() &&
                   clipboardRemapsInternalLinks() &&
                   saveSectionRoundTripsLogicLinks() &&
-                  automaticSourcesUseTheSameAuthoredLinkContract();
+                  automaticSourcesUseTheSameAuthoredLinkContract() &&
+                  diagnosticsExposeUnlinkedMissingAndCompetingSources();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

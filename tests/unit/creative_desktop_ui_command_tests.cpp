@@ -315,6 +315,42 @@ bool selectCommandsRoundTripAndRespectIdBoundary() {
                 "SelectObjects drops missing and out-of-range object ids");
 }
 
+bool focusObjectSelectsAndFramesThroughDispatcher() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Cmd Focus");
+  static_cast<void>(document.assignId(422U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId target = createCrate(appState.facade, 6.0);
+
+  app::CreativeEditorState editor;
+  editor.flyPos = {40.0F, 20.0F, 40.0F};
+  editor.yawDegrees = 0.0F;
+  editor.pitchDegrees = 0.0F;
+  const iggy3d::Vec3 before = editor.flyPos;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const app::CreativeDesktopCommandResult focused = dispatchPayload(
+      app::CreativeDesktopCommandId::FocusObject, context,
+      app::CreativeDesktopSelectPayload{{target}, target});
+  const app::CreativeDesktopCommandResult mismatch = dispatchPayload(
+      app::CreativeDesktopCommandId::FocusObject, context,
+      app::CreativeDesktopDeletePayload{{target}});
+
+  return expect(focused.accepted && focused.changed &&
+                    focused.affectedObjectCount == 1U &&
+                    appState.facade.selectionState().selectedTarget.value ==
+                        static_cast<cr::Id>(target),
+                "focus command selects exactly one authored object") &&
+         expect(editor.flyPos.x != before.x || editor.flyPos.y != before.y ||
+                    editor.flyPos.z != before.z,
+                "focus command frames through the editor camera anchor") &&
+         expect(!mismatch.accepted &&
+                    mismatch.message == "focus: payload mismatch",
+                "focus command rejects a mismatched payload");
+}
+
 bool deleteObjectsCommandRemovesGroupHierarchy() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document = cr::CreativeDocument::create("Cmd DeleteMulti");
@@ -921,6 +957,7 @@ int main() {
   ok = playIsUnsupportedAndFrameIsBounded() && ok;
   // Step 3 — Desktop Command Expansion.
   ok = selectCommandsRoundTripAndRespectIdBoundary() && ok;
+  ok = focusObjectSelectsAndFramesThroughDispatcher() && ok;
   ok = deleteObjectsCommandRemovesGroupHierarchy() && ok;
   ok = deleteObjectsRejectsWithoutPartialHierarchy() && ok;
   ok = renameObjectCommandChangesNameWithHistory() && ok;

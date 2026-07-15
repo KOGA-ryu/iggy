@@ -566,7 +566,8 @@ CreativeEditorPlayTickReceipt tickCreativeEditorPlayMode(
 }
 
 CreativeEditorPlayScene buildCreativeEditorPlayScene(
-    const CreativeEditorPlayMode& mode) {
+    const CreativeEditorPlayMode& mode,
+    iggy3d::creative::CreativeObjectId highlightedLogicSourceObjectId) {
   CreativeEditorPlayScene result;
   if (!mode.sandbox.has_value()) {
     return result;
@@ -598,6 +599,50 @@ CreativeEditorPlayScene buildCreativeEditorPlayScene(
       line.end = corners[edge[1]];
       line.color = color;
       line.objectId = source.definition.objectId;
+      line.style = active ? 1U : 0U;
+      line.thickness = active ? 3.0F : 1.5F;
+      result.automaticLogicSourceLines.push_back(line);
+    }
+  }
+  const iggy3d::creative::CreativeRuntimeInteractableState*
+      highlightedSource =
+          iggy3d::creative::findCreativeRuntimeInteractableByObjectId(
+              sandbox, highlightedLogicSourceObjectId);
+  const bool highlightedAutomaticSource =
+      highlightedSource != nullptr &&
+      highlightedSource->definition.kind ==
+          iggy3d::creative::CreativeRuntimeInteractableKind::Control &&
+      (highlightedSource->definition.logicSourceMode ==
+           iggy3d::creative::CreativeRuntimeLogicSourceMode::PulseOnEnter ||
+       highlightedSource->definition.logicSourceMode ==
+           iggy3d::creative::CreativeRuntimeLogicSourceMode::
+               HoldWhileOccupied);
+  if (highlightedAutomaticSource) {
+    const bool active = highlightedSource->occupantCount > 0U;
+    for (const iggy3d::creative::CreativeRuntimeLogicLink& link :
+         sandbox.logicLinks) {
+      if (link.sourceObjectId != highlightedLogicSourceObjectId) {
+        continue;
+      }
+      const iggy3d::creative::CreativeRuntimeInteractableState* target =
+          iggy3d::creative::findCreativeRuntimeInteractableByObjectId(
+              sandbox, link.targetObjectId);
+      const bool validTarget =
+          target != nullptr &&
+          target->definition.kind ==
+              iggy3d::creative::CreativeRuntimeInteractableKind::Door;
+      iggy3d::RenderCreativeWireframeDebugLine line;
+      line.start = highlightedSource->definition.transform.position;
+      line.end = validTarget ? target->definition.transform.position
+                             : line.start + iggy3d::Vec3{0.0F, 1.0F, 0.0F};
+      line.color = !validTarget
+                       ? iggy3d::RenderLineColor{1.0F, 0.20F, 0.20F, 1.0F}
+                       : active
+                             ? iggy3d::RenderLineColor{0.15F, 1.0F, 0.25F,
+                                                      1.0F}
+                             : iggy3d::RenderLineColor{0.45F, 0.55F, 0.60F,
+                                                      1.0F};
+      line.objectId = highlightedLogicSourceObjectId;
       line.style = active ? 1U : 0U;
       line.thickness = active ? 3.0F : 1.5F;
       result.automaticLogicSourceLines.push_back(line);

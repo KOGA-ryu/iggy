@@ -38,6 +38,7 @@ enum class CreativeDesktopCommandId : std::uint8_t {
   Play,
   // Step 3 — Desktop Command Expansion.
   SelectObjects,
+  FocusObject,
   ClearSelection,
   DeleteObjects,
   RenameObject,

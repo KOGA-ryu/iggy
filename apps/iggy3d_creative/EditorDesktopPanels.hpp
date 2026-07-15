@@ -18,15 +18,16 @@ void buildCreativeEditorDesktopMenuBar(
     bool playModeActive,
     CreativeDesktopCommandFrame& commands);
 
-// Renders the empty docked workspace panels (Project left, Inspector right,
-// Diagnostics bottom, toolbar above the viewport) that establish the target
-// layout. Content is filled in later steps; these are placeholders that honor
-// the View-menu visibility toggles. Must run inside the ImGui frame, after the
-// dockspace is laid out.
+// Renders the docked workspace panels. Inspector and Diagnostics project the
+// bounded authored-logic report plus read-only Play monitor facts; clickable
+// rows emit semantic selection/focus commands and never mutate the document.
+// Must run inside the ImGui frame, after the dockspace is laid out.
 void buildCreativeEditorDesktopPanels(
     CreativeEditorDesktopUiState& desktopUi,
     const CreativeEditorState& editor,
-    const iggy3d::creative::CreativeAppState& appState);
+    const iggy3d::creative::CreativeAppState& appState,
+    const CreativeEditorPlayMode* playMode,
+    CreativeDesktopCommandFrame& commands);
 
 // Renders the bottom status bar — a read-only projection of document + editor
 // state (name, dirty, revision, selection count, active device, last result).
