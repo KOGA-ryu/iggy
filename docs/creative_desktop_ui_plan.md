@@ -18,7 +18,9 @@ This plan was cut against a full recon of the tree (8-agent sweep, 2026-07-14). 
 | UI-1a content-viewport type + validation | `fe3c4332` | ✅ landed |
 | UI-1b pt.1 content-rect seam + DL-6 helper + camera aspect | `2e8857cc` | ✅ landed |
 | UI-1b pt.2 free-pointer policy + DesktopUi context | `511cc0e1` | ✅ landed |
-| UI-1c picking / UI-2 menu+dispatcher+panels / UI-3 outliner+inspector+history+tabs | — | ⏳ pending |
+| UI-1c scene scissor (renderer); app-side fan-out folded into UI-3 | `b865a95b` | ✅ landed (renderer half) |
+| UI-2a command dispatcher + menu bar + status bar | `2a160b90` | ✅ landed |
+| UI-2b Asset Library + Instance Updates + Import / UI-3 Outliner+Inspector+ToolSettings+History+tabs + app-side content-rect fan-out | — | ⏳ pending |
 
 **Verifiability note.** Everything above is verified by headless unit tests + the T-0 capture smoke (shell-off path byte-identical). The remaining slices render the actual IDE panels and the scissored sub-viewport, which **cannot be verified in this headless environment** — `--capture` disables the shell, so the on-screen dockspace, panels, free cursor, and click-to-capture need a human to launch `i3dc` and look. The command **dispatcher** (DD-7) is the exception: it is headless-testable via `creative_desktop_ui_command_tests` independent of the (unverifiable) menu UI that feeds it.
 
@@ -226,3 +228,7 @@ The content rect is **full-frame until docked panels shrink the central node (UI
 - **Picking fan-out** (`buildCreativeEditorPickFrame` / `resolveCreativeEditorWorldTarget` still take raw `extent`) → moves to **UI-1c** (picking's home): center-ray from the content-rect center (correct-by-construction, unchanged when full-frame).
 - **Pointer-driven free-cursor picking** (DD-9 "ray origin = captured ? rect center : pointer pos") → **UI-3**, verifiable against a real sub-viewport; the click-to-capture model already gives crosshair aiming once captured.
 - **Clean Esc → ReleaseViewportPointer** → **UI-2a** dispatcher reinterpretation. Interim: Esc frees the pointer by opening Controls (the free-pointer gate passes the release through).
+
+### UI-1c split (2026-07-14)
+
+Landed the **renderer half** now (`b865a95b`): `recordFirstRoomFrame` scissors the scene to `frame.contentViewport` (sentinel → full extent), dormant while full-frame, T-0 byte-identical. The **coupled app-side fan-out** — pick-ray center, crosshair/hotbar centering, and world-anchored label + projectile-overlay pixel mapping, all to the content-rect center — is **deferred to UI-3**, because it must move together with real side panels and is only verifiable against them. Consequence for **UI-2a**: the main menu bar keeps the dockspace at the **full** viewport `Pos/Size` (not `WorkPos`), so the central node stays full-frame and scene/crosshair/pick/labels stay aligned while the menu overlays the top strip; UI-3 switches to `WorkPos` + side panels + the app-side fan-out in one verifiable step.
