@@ -3,14 +3,17 @@
 #include <SDL3/SDL_log.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <numbers>
 #include <span>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/mutation/Mutation.hpp"
 #include "app/iggy3d/creative/tools/Group.hpp"
@@ -430,51 +433,23 @@ CreativeStandaloneBatchEditReceipt deleteObjectsWithUndo(
     return outcome;
   }
 
-  // Expand each selected root to its full hierarchy so a group root takes its
-  // descendants with it, then remove deepest-first so a parent is only removed
-  // once its children are gone (avoids ParentHasChildren).
-  const creative::CreativeHierarchySelection hierarchy =
-      creative::resolveCreativeObjectHierarchy(appState.facade.document(),
-                                               targets);
-  std::vector<creative::CreativeObjectId> ordered =
-      hierarchy.accepted ? hierarchy.objectIds : targets;
-  const auto depthOf = [&appState](creative::CreativeObjectId id) {
-    std::uint32_t depth = 0U;
-    const creative::CreativeObject* object = appState.facade.findObject(id);
-    while (object != nullptr && object->parentId.has_value()) {
-      ++depth;
-      object = appState.facade.findObject(*object->parentId);
-    }
-    return depth;
-  };
-  std::stable_sort(ordered.begin(), ordered.end(),
-                   [&depthOf](creative::CreativeObjectId a,
-                              creative::CreativeObjectId b) {
-                     return depthOf(a) > depthOf(b);
-                   });
-
   const std::uint64_t depthBefore = creative::creativeUndoDepth(history);
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
-  std::uint64_t removed = 0U;
-  for (const creative::CreativeObjectId id : ordered) {
-    const creative::CreativeDocumentRemoveReceipt receipt =
-        appState.facade.removeDocumentObject(id);
-    if (receipt.accepted && receipt.objectRemoved && receipt.changed) {
-      ++removed;
-    }
-  }
-  outcome.accepted = true;
-  outcome.changed = removed > 0U;
-  outcome.affectedObjectCount = removed;
-  outcome.message = outcome.changed ? "deleted_objects" : "delete_no_change";
+  const creative::CreativeHierarchyBatchRemoveReceipt receipt =
+      appState.facade.removeDocumentObjectsAtomically(targets);
+  outcome.accepted = receipt.accepted;
+  outcome.changed = receipt.changed;
+  outcome.affectedObjectCount = receipt.removedObjectIds.size();
+  outcome.message = std::string(receipt.reasonCode);
   (void)completeEditTransaction(history, std::move(transaction),
                                 appState.facade, outcome.changed,
                                 outcome.message);
   SDL_Log("iggy3d_creative: DELETE MULTI source='%s' requested=%zu resolved=%zu "
           "removed=%llu undoBefore=%llu undoAfter=%llu",
-          std::string(source).c_str(), targets.size(), ordered.size(),
-          static_cast<unsigned long long>(removed),
+          std::string(source).c_str(), targets.size(),
+          receipt.removedObjectIds.size(),
+          static_cast<unsigned long long>(outcome.affectedObjectCount),
           static_cast<unsigned long long>(depthBefore),
           static_cast<unsigned long long>(creative::creativeUndoDepth(history)));
   return outcome;
@@ -506,16 +481,12 @@ creative::CreativeDocumentMutationReceipt renameObjectWithUndo(
 
 namespace {
 
-using DocBoolMutation = creative::CreativeDocumentMutationReceipt (*)(
-    creative::CreativeDocument&, creative::CreativeObjectId, bool,
-    const creative::CreativeDocumentMutationOptions&);
-
 CreativeStandaloneBatchEditReceipt applyObjectsBoolStateWithUndo(
     creative::CreativeAppState& appState,
     StandaloneEditHistory& history,
     std::span<const creative::CreativeObjectId> objectIds,
     bool value,
-    DocBoolMutation apply,
+    creative::CreativeMutationKind mutationKind,
     const char* verb,
     std::string_view source) {
   CreativeStandaloneBatchEditReceipt outcome;
@@ -525,30 +496,33 @@ CreativeStandaloneBatchEditReceipt applyObjectsBoolStateWithUndo(
     outcome.message = "no_targets";
     return outcome;
   }
-  creative::CreativeDocument& document =
-      appState.facade.documentForPersistence();
+  std::vector<creative::CreativeMutationRequest> requests;
+  requests.reserve(targets.size());
+  const creative::CreativeMutationPayload payload =
+      mutationKind == creative::CreativeMutationKind::SetVisible
+          ? creative::makeVisibilityPayload(value)
+          : creative::makeLockPayload(value);
+  for (creative::CreativeObjectId id : targets) {
+    requests.push_back({0U, id, mutationKind, payload});
+  }
+
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
-  std::uint64_t affected = 0U;
-  for (const creative::CreativeObjectId id : targets) {
-    const creative::CreativeDocumentMutationReceipt receipt =
-        apply(document, id, value, creative::CreativeDocumentMutationOptions{});
-    if (receipt.status == creative::CreativeDocumentMutationStatus::Applied &&
-        receipt.changed) {
-      ++affected;
-    }
-  }
-  outcome.accepted = true;
-  outcome.changed = affected > 0U;
-  outcome.affectedObjectCount = affected;
-  outcome.message = outcome.changed ? "state_changed" : "state_no_change";
+  const creative::CreativeDocumentBatchMutationReceipt batch =
+      creative::applyDocumentMutationsAtomically(
+          appState.facade.documentForPersistence(), requests);
+  outcome.accepted = batch.committed &&
+                     creative::documentMutationSucceeded(batch.status);
+  outcome.changed = outcome.accepted && batch.changed;
+  outcome.affectedObjectCount = outcome.changed ? batch.appliedCount : 0U;
+  outcome.message = batch.message;
   (void)completeEditTransaction(history, std::move(transaction),
                                 appState.facade, outcome.changed,
                                 outcome.message);
   SDL_Log("iggy3d_creative: OBJECT SET %s source='%s' targets=%zu value=%d "
           "affected=%llu",
           verb, std::string(source).c_str(), targets.size(), value ? 1 : 0,
-          static_cast<unsigned long long>(affected));
+          static_cast<unsigned long long>(outcome.affectedObjectCount));
   return outcome;
 }
 
@@ -561,7 +535,7 @@ CreativeStandaloneBatchEditReceipt setObjectsVisibleWithUndo(
     bool visible,
     std::string_view source) {
   return applyObjectsBoolStateWithUndo(appState, history, objectIds, visible,
-                                       &creative::setDocumentObjectVisible,
+                                       creative::CreativeMutationKind::SetVisible,
                                        "VISIBLE", source);
 }
 
@@ -572,7 +546,7 @@ CreativeStandaloneBatchEditReceipt setObjectsLockedWithUndo(
     bool locked,
     std::string_view source) {
   return applyObjectsBoolStateWithUndo(appState, history, objectIds, locked,
-                                       &creative::setDocumentObjectLocked,
+                                       creative::CreativeMutationKind::SetLocked,
                                        "LOCKED", source);
 }
 
@@ -590,56 +564,151 @@ CreativeStandaloneBatchEditReceipt setObjectTransformWithUndo(
     outcome.message = "no_transform_components";
     return outcome;
   }
-  if (appState.facade.findObject(objectId) == nullptr) {
+  const creative::CreativeObject* object = appState.facade.findObject(objectId);
+  if (object == nullptr) {
     outcome.message = "missing_object";
+    return outcome;
+  }
+  if ((setPosition &&
+       !creative::isFiniteCreativeVec3(transform.position)) ||
+      (setRotation &&
+       !creative::isFiniteCreativeVec3(transform.rotationEulerRadians)) ||
+      (setScale && !creative::isPositiveCreativeVec3(transform.scale))) {
+    outcome.message = "invalid_transform";
     return outcome;
   }
 
   creative::CreativeDocument& document =
       appState.facade.documentForPersistence();
+  const creative::CreativeHierarchySelection hierarchy =
+      creative::resolveCreativeObjectHierarchy(
+          document, std::span<const creative::CreativeObjectId>{&objectId, 1U});
+  if (!hierarchy.accepted) {
+    outcome.message = std::string(hierarchy.reasonCode);
+    return outcome;
+  }
+  const bool hasDescendants = hierarchy.objectIds.size() > 1U;
+  if (hasDescendants && setRotation &&
+      (transform.rotationEulerRadians.x !=
+           object->transform.rotationEulerRadians.x ||
+       transform.rotationEulerRadians.z !=
+           object->transform.rotationEulerRadians.z)) {
+    outcome.message = "hierarchy_rotation_requires_yaw";
+    return outcome;
+  }
+
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
-  bool anyChanged = false;
-  const auto record =
-      [&anyChanged](const creative::CreativeDocumentMutationReceipt& receipt) {
-        if (receipt.status ==
-                creative::CreativeDocumentMutationStatus::Applied &&
-            receipt.changed) {
-          anyChanged = true;
-        }
-      };
-  if (setPosition && setRotation && setScale) {
-    // All three components collapse to a single whole-transform mutation.
-    record(creative::applyDocumentMutation(
-        document, objectId, creative::CreativeMutationKind::SetTransform,
-        creative::makeSetTransformPayload(transform)));
+  if (!hasDescendants) {
+    std::vector<creative::CreativeMutationRequest> requests;
+    requests.reserve(setPosition && setRotation && setScale ? 1U : 3U);
+    if (setPosition && setRotation && setScale) {
+      requests.push_back(
+          {0U, objectId, creative::CreativeMutationKind::SetTransform,
+           creative::makeSetTransformPayload(transform)});
+    } else {
+      if (setPosition) {
+        requests.push_back(
+            {0U, objectId, creative::CreativeMutationKind::Move,
+             creative::makeMovePayload(transform.position)});
+      }
+      if (setRotation) {
+        requests.push_back(
+            {0U, objectId, creative::CreativeMutationKind::Rotate,
+             creative::makeRotatePayload(transform.rotationEulerRadians)});
+      }
+      if (setScale) {
+        requests.push_back(
+            {0U, objectId, creative::CreativeMutationKind::Scale,
+             creative::makeScalePayload(transform.scale)});
+      }
+    }
+    const creative::CreativeDocumentBatchMutationReceipt batch =
+        creative::applyDocumentMutationsAtomically(document, requests);
+    outcome.accepted = batch.committed &&
+                       creative::documentMutationSucceeded(batch.status);
+    outcome.changed = outcome.accepted && batch.changed;
+    outcome.affectedObjectCount = outcome.changed ? batch.appliedCount : 0U;
+    outcome.message = batch.message;
   } else {
-    if (setPosition) {
-      record(creative::applyDocumentMutation(
-          document, objectId, creative::CreativeMutationKind::Move,
-          creative::makeMovePayload(transform.position)));
-    }
-    if (setRotation) {
-      record(creative::applyDocumentMutation(
-          document, objectId, creative::CreativeMutationKind::Rotate,
-          creative::makeRotatePayload(transform.rotationEulerRadians)));
-    }
+    creative::CreativeDocument staged = document;
+    bool changed = false;
+    std::uint64_t affectedObjectCount = 0U;
+    std::string failure;
+    const auto applyHierarchyTransform =
+        [&](const creative::CreativeTransformCommandRequest& request) {
+          const creative::CreativeTransformCommandReceipt receipt =
+              creative::transformDocumentObjectsAtomically(
+                  staged,
+                  std::span<const creative::CreativeObjectId>{&objectId, 1U},
+                  request);
+          if (!receipt.accepted) {
+            failure = receipt.message;
+            return false;
+          }
+          changed = changed || receipt.changed;
+          if (receipt.changed) {
+            affectedObjectCount =
+                std::max(affectedObjectCount, receipt.objectCount);
+          }
+          return true;
+        };
+
     if (setScale) {
-      record(creative::applyDocumentMutation(
-          document, objectId, creative::CreativeMutationKind::Scale,
-          creative::makeScalePayload(transform.scale)));
+      const creative::CreativeObject* current = staged.findObject(objectId);
+      creative::CreativeTransformCommandRequest request;
+      request.kind = creative::CreativeTransformCommandKind::Scale;
+      request.scaleFactor = {
+          transform.scale.x / current->transform.scale.x,
+          transform.scale.y / current->transform.scale.y,
+          transform.scale.z / current->transform.scale.z};
+      if (!applyHierarchyTransform(request)) {
+        outcome.message = failure;
+      }
+    }
+    if (outcome.message.empty() && setRotation) {
+      const creative::CreativeObject* current = staged.findObject(objectId);
+      creative::CreativeTransformCommandRequest request;
+      request.kind = creative::CreativeTransformCommandKind::RotateYaw;
+      request.yawDegrees =
+          (transform.rotationEulerRadians.y -
+           current->transform.rotationEulerRadians.y) *
+          180.0 / std::numbers::pi;
+      if (!applyHierarchyTransform(request)) {
+        outcome.message = failure;
+      }
+    }
+    if (outcome.message.empty() && setPosition) {
+      const creative::CreativeObject* current = staged.findObject(objectId);
+      creative::CreativeTransformCommandRequest request;
+      request.kind = creative::CreativeTransformCommandKind::Translate;
+      request.translation = {
+          transform.position.x - current->transform.position.x,
+          transform.position.y - current->transform.position.y,
+          transform.position.z - current->transform.position.z};
+      if (!applyHierarchyTransform(request)) {
+        outcome.message = failure;
+      }
+    }
+    if (outcome.message.empty()) {
+      if (changed) {
+        document = std::move(staged);
+      }
+      outcome.accepted = true;
+      outcome.changed = changed;
+      outcome.affectedObjectCount = changed ? affectedObjectCount : 0U;
+      outcome.message = changed ? "set_hierarchy_transform"
+                                : "transform_no_change";
     }
   }
-  outcome.accepted = true;
-  outcome.changed = anyChanged;
-  outcome.affectedObjectCount = anyChanged ? 1U : 0U;
-  outcome.message = anyChanged ? "set_transform" : "transform_no_change";
   (void)completeEditTransaction(history, std::move(transaction),
-                                appState.facade, anyChanged, outcome.message);
+                                appState.facade, outcome.changed,
+                                outcome.message);
   SDL_Log("iggy3d_creative: SET TRANSFORM objectId=%llu pos=%d rot=%d scale=%d "
           "changed=%d source='%s'",
           static_cast<unsigned long long>(objectId), setPosition ? 1 : 0,
-          setRotation ? 1 : 0, setScale ? 1 : 0, anyChanged ? 1 : 0,
+          setRotation ? 1 : 0, setScale ? 1 : 0,
+          outcome.changed ? 1 : 0,
           std::string(source).c_str());
   return outcome;
 }

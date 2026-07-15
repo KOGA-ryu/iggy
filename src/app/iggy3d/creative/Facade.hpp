@@ -271,6 +271,9 @@ class Facade {
       const CreativeDocumentRemoveRequest& request);
   [[nodiscard]] CreativeDocumentRemoveReceipt removeDocumentObject(
       CreativeObjectId id);
+  [[nodiscard]] CreativeHierarchyBatchRemoveReceipt
+  removeDocumentObjectsAtomically(
+      std::span<const CreativeObjectId> objectIds);
   [[nodiscard]] CreativeFacadeDocumentInstallReceipt installDocument(
       CreativeDocument document);
   [[nodiscard]] CreativeFacadeDocumentBatchCreateReceipt

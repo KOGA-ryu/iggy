@@ -180,12 +180,17 @@ CreativeSelectionReceipt Facade::selectTargets(
   std::vector<TargetRef> targets;
   targets.reserve(objectIds.size());
   for (const CreativeObjectId objectId : objectIds) {
+    if (document_.findObject(objectId) == nullptr) {
+      continue;
+    }
     const TargetRef target = objectIdToTargetRef(objectId);
     if (target.value != kInvalidId) {
       targets.push_back(target);
     }
   }
-  TargetRef primary = objectIdToTargetRef(primaryObjectId);
+  TargetRef primary = document_.findObject(primaryObjectId) != nullptr
+                          ? objectIdToTargetRef(primaryObjectId)
+                          : TargetRef{};
   if (primary.value == kInvalidId && !targets.empty()) {
     primary = targets.back();
   }

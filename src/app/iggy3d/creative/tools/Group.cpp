@@ -129,6 +129,18 @@ void reject(CreativeGroupCommandReceipt& receipt,
   return depth;
 }
 
+[[nodiscard]] std::size_t objectHierarchyDepth(
+    const CreativeDocument& document,
+    CreativeObjectId objectId) noexcept {
+  std::size_t depth = 0U;
+  const CreativeObject* object = document.findObject(objectId);
+  while (object != nullptr && object->parentId.has_value()) {
+    ++depth;
+    object = document.findObject(*object->parentId);
+  }
+  return depth;
+}
+
 }  // namespace
 
 std::string_view toString(CreativeHierarchySelectionStatus status) noexcept {
@@ -493,6 +505,55 @@ CreativeHierarchyRemoveReceipt removeCreativeObjectHierarchyAtomically(
   receipt.rootReceipt.reasonCode = "object_hierarchy_removed";
   receipt.rootReceipt.message = "object_hierarchy_removed";
   receipt.reasonCode = "creative_hierarchy_removed";
+  return receipt;
+}
+
+CreativeHierarchyBatchRemoveReceipt
+removeCreativeObjectHierarchiesAtomically(
+    CreativeDocument& document,
+    std::span<const CreativeObjectId> rootObjectIds) {
+  CreativeHierarchyBatchRemoveReceipt receipt;
+  receipt.requested = true;
+  receipt.requestedObjectCount = rootObjectIds.size();
+  receipt.revisionBefore = document.revision();
+  receipt.revisionAfter = receipt.revisionBefore;
+
+  const CreativeHierarchySelection hierarchy =
+      resolveCreativeObjectHierarchy(document, rootObjectIds);
+  if (!hierarchy.accepted) {
+    receipt.failedObjectId = hierarchy.missingObjectId;
+    receipt.reasonCode = hierarchy.reasonCode;
+    return receipt;
+  }
+
+  receipt.rootObjectIds = hierarchy.rootObjectIds;
+  std::vector<CreativeObjectId> removalOrder = hierarchy.objectIds;
+  std::stable_sort(
+      removalOrder.begin(), removalOrder.end(),
+      [&document](CreativeObjectId lhs, CreativeObjectId rhs) {
+        return objectHierarchyDepth(document, lhs) >
+               objectHierarchyDepth(document, rhs);
+      });
+
+  CreativeDocument staged = document;
+  receipt.removeReceipts.reserve(removalOrder.size());
+  for (CreativeObjectId objectId : removalOrder) {
+    CreativeDocumentRemoveReceipt item = staged.removeDocumentObject(objectId);
+    receipt.removeReceipts.push_back(item);
+    if (!item.accepted || !item.objectRemoved || !item.changed) {
+      receipt.failedObjectId = objectId;
+      receipt.reasonCode = item.reasonCode;
+      receipt.removedObjectIds.clear();
+      return receipt;
+    }
+    receipt.removedObjectIds.push_back(objectId);
+  }
+
+  document = std::move(staged);
+  receipt.accepted = true;
+  receipt.changed = true;
+  receipt.revisionAfter = document.revision();
+  receipt.reasonCode = "creative_hierarchy_batch_removed";
   return receipt;
 }
 

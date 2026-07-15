@@ -183,12 +183,51 @@ bool ungroupAndHierarchyRemovalAreAtomic() {
          ok;
 }
 
+bool batchHierarchyRemovalPublishesOnlyOnCompleteSuccess() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Batch Remove");
+  static_cast<void>(document.assignId(204U));
+  const cr::CreativeObjectId first =
+      createCrate(document, "First", {0, 0, 0});
+  const cr::CreativeObjectId child =
+      createCrate(document, "Child", {1, 0, 0});
+  const std::array groupMembers{first, child};
+  const cr::CreativeGroupCommandReceipt grouped =
+      cr::groupDocumentObjectsAtomically(document, groupMembers);
+  const cr::CreativeObjectId parent = grouped.groupObjectId;
+  const cr::CreativeObjectId independent =
+      createCrate(document, "Independent", {4, 0, 0});
+  const std::array roots{parent, independent};
+  static_cast<void>(cr::setDocumentObjectLocked(document, child, true));
+  const std::uint64_t revisionBefore = document.revision();
+  const cr::CreativeHierarchyBatchRemoveReceipt rejected =
+      cr::removeCreativeObjectHierarchiesAtomically(document, roots);
+  const bool rolledBack =
+      !rejected.accepted && !rejected.changed &&
+      rejected.failedObjectId == child &&
+      document.revision() == revisionBefore &&
+      document.findObject(parent) != nullptr &&
+      document.findObject(child) != nullptr &&
+      document.findObject(independent) != nullptr;
+
+  static_cast<void>(cr::setDocumentObjectLocked(document, child, false));
+  const cr::CreativeHierarchyBatchRemoveReceipt removed =
+      cr::removeCreativeObjectHierarchiesAtomically(document, roots);
+  return expect(rolledBack,
+                "batch hierarchy removal rolls back on a locked descendant") &&
+         expect(removed.accepted && removed.changed &&
+                    removed.rootObjectIds.size() == 2U &&
+                    removed.removedObjectIds.size() == 4U &&
+                    document.objectCount() == 0U,
+                "batch hierarchy removal publishes every requested root once");
+}
+
 }  // namespace
 
 int main() {
   return groupingPreservesGeometryAndCanonicalHierarchy() &&
                  groupTransformsAndDuplicatesAsOneSelectionRoot() &&
-                 ungroupAndHierarchyRemovalAreAtomic()
+                 ungroupAndHierarchyRemovalAreAtomic() &&
+                 batchHierarchyRemovalPublishesOnlyOnCompleteSuccess()
              ? EXIT_SUCCESS
              : EXIT_FAILURE;
 }

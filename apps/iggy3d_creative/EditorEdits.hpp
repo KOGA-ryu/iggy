@@ -105,10 +105,9 @@ struct CreativeStandaloneBatchEditReceipt {
   std::string message;
 };
 
-// K-2: removes an explicit id list (or the current selection when the span is
-// empty) under a single history transaction. Each target root expands to its
-// full hierarchy and objects are removed deepest-first so a group root never
-// trips CreativeDocumentRemoveStatus::ParentHasChildren.
+// K-2: atomically removes an explicit id list (or the current selection when
+// the span is empty) under one history transaction. Each target root expands
+// to its full hierarchy; any missing or locked object rejects the whole batch.
 [[nodiscard]] CreativeStandaloneBatchEditReceipt deleteObjectsWithUndo(
     cr::CreativeAppState& appState,
     StandaloneEditHistory& history,
@@ -141,9 +140,9 @@ struct CreativeStandaloneBatchEditReceipt {
     std::string_view source);
 
 // K-7: absolute transform of a single object. The component flags select which
-// of position/rotation/scale to write; all three set collapses to one
-// SetTransform mutation, otherwise the requested components apply as
-// Move/Rotate/Scale under a single transaction.
+// of position/rotation/scale to write. Hierarchy roots propagate translation,
+// yaw, and scale through descendants; unsupported hierarchy pitch/roll edits
+// fail closed. Every accepted command is one history transaction.
 [[nodiscard]] CreativeStandaloneBatchEditReceipt setObjectTransformWithUndo(
     cr::CreativeAppState& appState,
     StandaloneEditHistory& history,

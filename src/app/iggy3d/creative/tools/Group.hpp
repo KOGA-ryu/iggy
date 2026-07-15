@@ -86,6 +86,21 @@ struct CreativeHierarchyRemoveReceipt {
   std::string_view reasonCode = "creative_hierarchy_remove_not_requested";
 };
 
+struct CreativeHierarchyBatchRemoveReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  std::uint64_t requestedObjectCount = 0U;
+  CreativeObjectId failedObjectId = kInvalidObjectId;
+  std::uint64_t revisionBefore = 0U;
+  std::uint64_t revisionAfter = 0U;
+  std::vector<CreativeObjectId> rootObjectIds;
+  std::vector<CreativeObjectId> removedObjectIds;
+  std::vector<CreativeDocumentRemoveReceipt> removeReceipts;
+  std::string_view reasonCode =
+      "creative_hierarchy_batch_remove_not_requested";
+};
+
 [[nodiscard]] std::string_view toString(
     CreativeHierarchySelectionStatus status) noexcept;
 [[nodiscard]] std::string_view toString(
@@ -124,5 +139,12 @@ struct CreativeHierarchyRemoveReceipt {
 removeCreativeObjectHierarchyAtomically(
     CreativeDocument& document,
     CreativeObjectId rootObjectId);
+
+// Resolves all requested roots and descendants, stages the complete removal,
+// and publishes only when every object can be removed.
+[[nodiscard]] CreativeHierarchyBatchRemoveReceipt
+removeCreativeObjectHierarchiesAtomically(
+    CreativeDocument& document,
+    std::span<const CreativeObjectId> rootObjectIds);
 
 }  // namespace iggy3d::creative

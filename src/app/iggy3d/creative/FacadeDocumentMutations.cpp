@@ -185,4 +185,22 @@ CreativeDocumentRemoveReceipt Facade::removeDocumentObject(
   return removeDocumentObject(request);
 }
 
+CreativeHierarchyBatchRemoveReceipt Facade::removeDocumentObjectsAtomically(
+    std::span<const CreativeObjectId> objectIds) {
+  recordCommandAttempt(stats_);
+  CreativeHierarchyBatchRemoveReceipt receipt =
+      removeCreativeObjectHierarchiesAtomically(document_, objectIds);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  for (CreativeObjectId objectId : receipt.removedObjectIds) {
+    invalidateRemovedObjectEditorState(objectId, state_, toolState_,
+                                       selectionState_, measurementState_,
+                                       ghostState_);
+  }
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
 }  // namespace iggy3d::creative
