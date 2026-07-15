@@ -325,6 +325,17 @@ set_tests_properties(creative_viewport_layout_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;render;frame_input;iggy3d")
 
+add_executable(creative_desktop_ui_command_tests
+  tests/unit/creative_desktop_ui_command_tests.cpp)
+target_link_libraries(creative_desktop_ui_command_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_desktop_ui_command_tests)
+add_test(NAME creative_desktop_ui_command_tests
+  COMMAND "$<TARGET_FILE:creative_desktop_ui_command_tests>")
+set_tests_properties(creative_desktop_ui_command_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;editor;desktop;command;iggy3d")
+
 iggy3d_add_unit_test(creative_volume_tests
   tests/unit/creative_volume_tests.cpp)
 set_tests_properties(creative_volume_tests PROPERTIES

@@ -1,5 +1,9 @@
 #pragma once
 
+#include <array>
+#include <cstdint>
+#include <string>
+
 #include "render/FrameInput.hpp"
 
 namespace iggy3d {
@@ -23,6 +27,24 @@ struct CreativeEditorDesktopUiState {
   // resting state in desktop mode is a free cursor; a click on the viewport
   // captures it and leaving the viewport context releases it (plan DD-9).
   bool viewportPointerCaptured = false;
+
+  // View-menu panel visibility. The panels themselves land in UI-2b/UI-3;
+  // these toggles are wired now so the menu is complete and the panels honor
+  // them when they arrive.
+  bool showOutliner = true;
+  bool showInspector = true;
+  bool showToolSettings = true;
+  bool showAssetLibrary = true;
+  bool showHistory = true;
+
+  // Save As modal (in-app, no native dialog — plan DD-14).
+  bool saveAsModalOpen = false;
+  std::array<char, 96> saveAsNameBuffer{};
+
+  // Last dispatched command message, surfaced in the status bar (plan DD-11).
+  std::string statusMessage;
+  // Document revision at the last successful save; dirty = current != this.
+  std::uint64_t lastSavedRevision = 0;
 };
 
 // Result of the free-pointer capture policy: the new capture state and whether

@@ -81,6 +81,14 @@ void applyCreativeEditorCommandInput(
     const std::filesystem::path& saveRoot,
     const std::string& saveId);
 
+// Resets editor transient state (volume/terrain/brush/fill caches) after the
+// live document is swapped (New / Open / tab switch). Shared by the keyboard
+// dispatcher and the desktop command dispatcher so both replace documents the
+// same way.
+void resetCreativeEditorForDocumentReplacement(
+    CreativeEditorState& editor,
+    iggy3d::creative::CreativeDocumentId documentId) noexcept;
+
 [[nodiscard]] iggy3d::creative::CreativeToolWorldPoint
 resolveCreativeEditorGroundPoint(const iggy3d::RenderCameraFrame& camera);
 

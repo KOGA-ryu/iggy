@@ -43,6 +43,8 @@
 #include "EditorAssets.hpp"
 #include "EditorCatalog.hpp"
 #include "EditorControls.hpp"
+#include "EditorDesktopCommands.hpp"
+#include "EditorDesktopPanels.hpp"
 #include "EditorDesktopUi.hpp"
 #include "EditorFrame.hpp"
 #include "EditorGamepad.hpp"
@@ -358,6 +360,40 @@ int main(int argc, char** argv) {
     }
     creative::CreativeAppState& activeAppState =
         activeCreativeEditorAppState(editor, appState);
+
+    // Desktop shell chrome: the menu emits semantic command IDs, the sole
+    // dispatcher applies them to the existing kernels, and the status bar
+    // reads the result. Only runs when the shell is active (never under
+    // --capture, so image output is unchanged). DL-3: widgets emit, the
+    // dispatcher mutates.
+    if (editor.desktopUi.frameActive) {
+      iggy3d_creative_app::CreativeDesktopCommandFrame desktopCommands;
+      iggy3d_creative_app::buildCreativeEditorDesktopMenuBar(
+          editor.desktopUi, activeAppState, desktopCommands);
+      if (desktopCommands.count > 0U) {
+        const iggy3d_creative_app::CreativeDesktopCommandResult desktopResult =
+            iggy3d_creative_app::dispatchCreativeDesktopCommands(
+                desktopCommands,
+                {activeAppState, editor, saveRoot, &saveId});
+        if (!desktopResult.message.empty()) {
+          editor.desktopUi.statusMessage = desktopResult.message;
+        }
+        if (desktopResult.accepted &&
+            (desktopResult.lastCommand ==
+                 iggy3d_creative_app::CreativeDesktopCommandId::SaveDocument ||
+             desktopResult.lastCommand ==
+                 iggy3d_creative_app::CreativeDesktopCommandId::SaveDocumentAs)) {
+          editor.desktopUi.lastSavedRevision =
+              activeAppState.facade.document().revision();
+        }
+        if (desktopResult.documentReplaced) {
+          invalidateCreativeEditorSceneCache(sceneCache);
+        }
+      }
+      iggy3d_creative_app::buildCreativeEditorDesktopStatusBar(
+          editor.desktopUi, editor, activeAppState);
+    }
+
     const creative::CreativeInputRouteResult& routedInput =
         assetLibraryFrame.remainingInput;
     const iggy3d_creative_app::CreativeEditorControlsFrameResult controlsFrame =

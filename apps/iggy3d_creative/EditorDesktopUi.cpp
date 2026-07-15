@@ -59,9 +59,14 @@ bool beginCreativeEditorDesktopFrame(CreativeEditorDesktopUiState& desktopUi,
   // Full-window host with a passthru central node: the 3D scene renders
   // straight to the swapchain underneath, so the host window must not paint
   // a background and mouse input over the central node must reach the app.
+  // Uses the FULL viewport (not WorkPos/WorkSize) so the main menu bar and
+  // status bar overlay the scene edges rather than shrinking the central node
+  // — the content rect stays full-frame, keeping the scene, crosshair, and
+  // pick ray aligned until UI-3 introduces real side panels and the app-side
+  // content-rect fan-out together.
   const ImGuiViewport* mainViewport = ImGui::GetMainViewport();
-  ImGui::SetNextWindowPos(mainViewport->WorkPos);
-  ImGui::SetNextWindowSize(mainViewport->WorkSize);
+  ImGui::SetNextWindowPos(mainViewport->Pos);
+  ImGui::SetNextWindowSize(mainViewport->Size);
   const ImGuiWindowFlags hostFlags =
       ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
       ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |

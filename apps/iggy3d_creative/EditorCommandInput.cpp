@@ -20,7 +20,6 @@
 namespace iggy3d_creative_app {
 
 namespace creative = iggy3d::creative;
-namespace {
 
 void resetCreativeEditorForDocumentReplacement(
     CreativeEditorState& editor,
@@ -36,6 +35,8 @@ void resetCreativeEditorForDocumentReplacement(
   resetCreativeMaterialBrushPivot(editor.interaction.materialBrushPivot,
                                   documentId);
 }
+
+namespace {
 
 [[nodiscard]] bool isControllerTransformShortcut(
     const CreativeEditorState& editor,
