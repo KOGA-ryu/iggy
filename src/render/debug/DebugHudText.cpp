@@ -75,12 +75,14 @@ bool blankGlyph(const GlyphRows& rows) {
   return true;
 }
 
-void appendGlyphQuadsForText(DebugHudLayoutResult& result,
+template <typename AppendQuad>
+void appendGlyphQuadsForText(std::size_t& glyphCount,
                              std::string_view text,
                              std::int32_t baseX,
                              std::int32_t baseY,
                              std::uint32_t viewportWidth,
-                             std::uint32_t viewportHeight) {
+                             std::uint32_t viewportHeight,
+                             AppendQuad appendQuad) {
   // branch-gate: BG-1077
   if (baseX < 0 || baseY < 0) {
     return;
@@ -107,19 +109,19 @@ void appendGlyphQuadsForText(DebugHudLayoutResult& result,
     if (blankGlyph(rows)) {
       continue;
     }
-    ++result.glyphCount;
+    ++glyphCount;
     for (std::uint32_t row = 0; row < kGlyphHeight; ++row) {
       for (std::uint32_t column = 0; column < kGlyphWidth; ++column) {
         // branch-gate: BG-1077
         if (rows[row][column] != '1') {
           continue;
         }
-        result.quads.push_back(
-            {static_cast<std::int32_t>(glyphBaseX + column * kPixel),
-             static_cast<std::int32_t>(originY + row * kPixel),
-             kPixel,
-             kPixel,
-             text[charIndex]});
+        appendQuad({static_cast<std::int32_t>(
+                        glyphBaseX + column * kPixel),
+                    static_cast<std::int32_t>(originY + row * kPixel),
+                    kPixel,
+                    kPixel,
+                    text[charIndex]});
       }
     }
   }
@@ -143,12 +145,13 @@ DebugHudLayoutResult layoutDebugHudText(std::span<const std::string> lines,
     if (baseY + kGlyphHeight * kPixel > maxY) {
       break;
     }
-    appendGlyphQuadsForText(result,
-                            lines[lineIndex],
-                            static_cast<std::int32_t>(kMargin),
-                            static_cast<std::int32_t>(baseY),
-                            viewportWidth,
-                            viewportHeight);
+    appendGlyphQuadsForText(
+        result.glyphCount, lines[lineIndex],
+        static_cast<std::int32_t>(kMargin),
+        static_cast<std::int32_t>(baseY), viewportWidth, viewportHeight,
+        [&result](DebugHudGlyphQuad quad) {
+          result.quads.push_back(quad);
+        });
   }
   return result;
 }
@@ -165,7 +168,34 @@ DebugHudLayoutResult layoutDebugHudTextAt(std::string_view text,
   }
   result.projected = true;
   result.lineCount = 1U;
-  appendGlyphQuadsForText(result, text, x, y, viewportWidth, viewportHeight);
+  appendGlyphQuadsForText(
+      result.glyphCount, text, x, y, viewportWidth, viewportHeight,
+      [&result](DebugHudGlyphQuad quad) { result.quads.push_back(quad); });
+  return result;
+}
+
+DebugHudFixedLayoutResult layoutDebugHudTextAtInto(
+    std::string_view text,
+    std::int32_t x,
+    std::int32_t y,
+    std::uint32_t viewportWidth,
+    std::uint32_t viewportHeight,
+    std::span<DebugHudGlyphQuad> output) noexcept {
+  DebugHudFixedLayoutResult result;
+  if (text.empty() || viewportWidth == 0U || viewportHeight == 0U) {
+    return result;
+  }
+  result.projected = true;
+  result.lineCount = 1U;
+  appendGlyphQuadsForText(
+      result.glyphCount, text, x, y, viewportWidth, viewportHeight,
+      [&result, output](DebugHudGlyphQuad quad) {
+        if (result.quadCount >= output.size()) {
+          result.capacityExceeded = true;
+          return;
+        }
+        output[result.quadCount++] = quad;
+      });
   return result;
 }
 

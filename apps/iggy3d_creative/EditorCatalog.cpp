@@ -324,6 +324,7 @@ void applyInventoryModeActions(
       }
       return;
     case cr::CreativeInputContext::ToolOptions:
+    case cr::CreativeInputContext::RuntimePlay:
     case cr::CreativeInputContext::AssetReplacementPreview:
     case cr::CreativeInputContext::AssetLibrary:
     case cr::CreativeInputContext::AuthoredAssetEditMenu:

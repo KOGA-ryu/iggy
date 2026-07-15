@@ -199,6 +199,8 @@ std::string_view toString(CreativeInputActionId action) noexcept {
     case CreativeInputActionId::FlyUp: return "FlyUp";
     case CreativeInputActionId::FlyDown: return "FlyDown";
     case CreativeInputActionId::Sprint: return "Sprint";
+    case CreativeInputActionId::RuntimeAttack: return "RuntimeAttack";
+    case CreativeInputActionId::RuntimeInteract: return "RuntimeInteract";
     case CreativeInputActionId::PrimaryAction: return "PrimaryAction";
     case CreativeInputActionId::SecondaryAction: return "SecondaryAction";
     case CreativeInputActionId::AcceptAction: return "AcceptAction";
@@ -223,6 +225,7 @@ std::string_view toString(CreativeInputActionId action) noexcept {
 std::string_view toString(CreativeInputContext context) noexcept {
   switch (context) {
     case CreativeInputContext::EditorViewport: return "EditorViewport";
+    case CreativeInputContext::RuntimePlay: return "RuntimePlay";
     case CreativeInputContext::Catalog: return "Catalog";
     case CreativeInputContext::ToolWheel: return "ToolWheel";
     case CreativeInputContext::ToolOptions: return "ToolOptions";

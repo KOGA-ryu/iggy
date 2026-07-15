@@ -528,6 +528,7 @@ void appendContextHints(HintSpecBuffer& buffer,
       appendHint(buffer, cr::CreativeInputActionId::ControlsClose, "Close");
       return;
     case cr::CreativeInputContext::EditorViewport:
+    case cr::CreativeInputContext::RuntimePlay:
     case cr::CreativeInputContext::TextEntry:
     case cr::CreativeInputContext::Modal:
     case cr::CreativeInputContext::Capture:

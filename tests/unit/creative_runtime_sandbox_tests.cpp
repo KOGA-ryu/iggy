@@ -158,6 +158,18 @@ bool pureSeedMapsPlayerAndActorPolicies() {
                     monsterAi != nullptr &&
                     monsterAi->behaviorProfileId == "default",
                 "npc and monster profiles follow semantic policy") &&
+         expect(std::all_of(
+                    result.seed.entities.begin() + 1U,
+                    result.seed.entities.end(),
+                    [](const iggy3d::ScenarioEntitySeed& entity) {
+                      return iggy3d::isScenarioTargetActionSupported(
+                                 entity.targeting,
+                                 iggy3d::ScenarioTargetAction::Interact) &&
+                             entity.interaction.kind ==
+                                 iggy3d::ScenarioInteractionKind::Inspect &&
+                             entity.interaction.repeatable;
+                    }),
+                "runtime actors expose repeatable inspect interaction") &&
          expect(result.seed.objectives.size() == 1U &&
                     result.seed.objectives.front().condition == "None" &&
                     result.seed.objectives.front().initialStatus ==

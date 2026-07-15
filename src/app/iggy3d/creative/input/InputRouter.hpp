@@ -13,6 +13,7 @@ namespace iggy3d::creative {
 
 enum class CreativeInputContext : std::uint8_t {
   EditorViewport,
+  RuntimePlay,
   Catalog,
   ToolWheel,
   ToolOptions,
@@ -101,6 +102,8 @@ enum class CreativeInputActionId : std::uint8_t {
   FlyUp,
   FlyDown,
   Sprint,
+  RuntimeAttack,
+  RuntimeInteract,
   PrimaryAction,
   SecondaryAction,
   AcceptAction,
@@ -247,7 +250,7 @@ struct CreativeInputBinding {
 
 inline constexpr std::size_t kCreativeInputKeyCount =
     static_cast<std::size_t>(CreativeInputKey::Count);
-inline constexpr std::size_t kCreativeInputBindingCapacity = 208;
+inline constexpr std::size_t kCreativeInputBindingCapacity = 240;
 inline constexpr std::size_t kCreativeInputConflictCapacity =
     kCreativeInputBindingCapacity * (kCreativeInputBindingCapacity - 1U) / 2U;
 

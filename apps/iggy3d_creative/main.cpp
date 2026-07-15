@@ -370,7 +370,9 @@ int main(int argc, char** argv) {
             !backend->externalUiWantsMouse();
         const bool viewportContext =
             frameInput.routedInput.context ==
-            creative::CreativeInputContext::EditorViewport;
+                creative::CreativeInputContext::EditorViewport ||
+            frameInput.routedInput.context ==
+                creative::CreativeInputContext::RuntimePlay;
         const iggy3d_creative_app::CreativeDesktopPointerDecision
             pointerDecision =
                 iggy3d_creative_app::decideCreativeDesktopPointerCapture(
@@ -461,6 +463,10 @@ int main(int argc, char** argv) {
           frameInput.navigationPitchDeltaDegrees;
       playTick.input.sprinting = frameInput.navigationSprinting;
       playTick.input.windowFocused = frameInput.windowFocused;
+      playTick.input.actions =
+          iggy3d_creative_app::sampleCreativeEditorPlayActions(
+              frameInput.inputFrame, frameInput.routedInput,
+              editor.controlProfile.bindingSpan());
       playTick.monotonicTimeNanoseconds =
           frameInput.monotonicTimeNanoseconds;
       const iggy3d_creative_app::CreativeEditorPlayTickReceipt tickReceipt =
@@ -484,6 +490,9 @@ int main(int argc, char** argv) {
               playMode.cameraPitchDegrees,
               /*cameraAnchorOverrideAvailable=*/true,
               playScene.cameraAnchorMeters, editor.desktopUi.contentViewport);
+          const iggy3d_creative_app::CreativeEditorPlayHudFrame playHud =
+              iggy3d_creative_app::buildCreativeEditorPlayHud(playMode, frame);
+          iggy3d_creative_app::attachCreativeEditorPlayHud(playHud, frame);
           const iggy3d_creative_app::StandaloneFrustumCullResult frustumCull =
               iggy3d_creative_app::cullStandaloneSceneRoomMeshesByFrustum(
                   playScene.scene, frame.camera.clipFromWorld);

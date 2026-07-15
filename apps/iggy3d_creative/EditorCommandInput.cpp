@@ -152,6 +152,8 @@ void applyCreativeEditorCommandInput(
       case creative::CreativeInputActionId::FlyUp:
       case creative::CreativeInputActionId::FlyDown:
       case creative::CreativeInputActionId::Sprint:
+      case creative::CreativeInputActionId::RuntimeAttack:
+      case creative::CreativeInputActionId::RuntimeInteract:
       case creative::CreativeInputActionId::PrimaryAction:
       case creative::CreativeInputActionId::SecondaryAction:
       case creative::CreativeInputActionId::AcceptAction:

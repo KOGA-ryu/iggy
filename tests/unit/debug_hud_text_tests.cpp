@@ -1,5 +1,6 @@
 #include "render/debug/DebugHudText.hpp"
 
+#include <array>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -80,10 +81,39 @@ bool positionedTextProducesBoundedQuads() {
          expect(bounded, "positioned bounded");
 }
 
+bool fixedLayoutMatchesVectorLayoutAndReportsCapacity() {
+  const iggy3d::DebugHudLayoutResult dynamic =
+      iggy3d::layoutDebugHudTextAt("PLAY HP 10/10", 24, 30, 640, 360);
+  std::array<iggy3d::DebugHudGlyphQuad, 512U> fixedStorage{};
+  const iggy3d::DebugHudFixedLayoutResult fixed =
+      iggy3d::layoutDebugHudTextAtInto(
+          "PLAY HP 10/10", 24, 30, 640, 360, fixedStorage);
+  bool same = fixed.quadCount == dynamic.quads.size();
+  for (std::size_t index = 0U; same && index < fixed.quadCount; ++index) {
+    const iggy3d::DebugHudGlyphQuad& lhs = fixedStorage[index];
+    const iggy3d::DebugHudGlyphQuad& rhs = dynamic.quads[index];
+    same = lhs.x == rhs.x && lhs.y == rhs.y &&
+           lhs.width == rhs.width && lhs.height == rhs.height &&
+           lhs.source == rhs.source;
+  }
+  std::array<iggy3d::DebugHudGlyphQuad, 1U> insufficient{};
+  const iggy3d::DebugHudFixedLayoutResult overflow =
+      iggy3d::layoutDebugHudTextAtInto(
+          "PLAY", 24, 30, 640, 360, insufficient);
+  return expect(fixed.projected && !fixed.capacityExceeded,
+                "fixed layout projects inside capacity") &&
+         expect(fixed.glyphCount == dynamic.glyphCount && same,
+                "fixed and vector layouts are source equivalent") &&
+         expect(overflow.projected && overflow.capacityExceeded &&
+                    overflow.quadCount == insufficient.size(),
+                "fixed layout reports truncation without overrunning output");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = knownStringProducesBoundedQuads() && unknownGlyphIsDeterministic() &&
-                  emptyOrZeroViewportIsUnavailable() && positionedTextProducesBoundedQuads();
+                  emptyOrZeroViewportIsUnavailable() && positionedTextProducesBoundedQuads() &&
+                  fixedLayoutMatchesVectorLayoutAndReportsCapacity();
   return ok ? 0 : 1;
 }

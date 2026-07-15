@@ -69,6 +69,18 @@ bool defaultsAreBoundedConflictFreeAndMinecraftShaped() {
   const cr::CreativeControlBindingRow* inventory =
       findRow(rows, cr::CreativeInputActionId::ToggleCatalog,
               cr::CreativeControlDevice::Gamepad);
+  const cr::CreativeControlBindingRow* runtimeAttackMouse =
+      findRow(rows, cr::CreativeInputActionId::RuntimeAttack,
+              cr::CreativeControlDevice::KeyboardMouse);
+  const cr::CreativeControlBindingRow* runtimeAttackPad =
+      findRow(rows, cr::CreativeInputActionId::RuntimeAttack,
+              cr::CreativeControlDevice::Gamepad);
+  const cr::CreativeControlBindingRow* runtimeInteractMouse =
+      findRow(rows, cr::CreativeInputActionId::RuntimeInteract,
+              cr::CreativeControlDevice::KeyboardMouse);
+  const cr::CreativeControlBindingRow* runtimeInteractPad =
+      findRow(rows, cr::CreativeInputActionId::RuntimeInteract,
+              cr::CreativeControlDevice::Gamepad);
   const cr::CreativeInputBindingAuditResult audit =
       cr::auditCreativeInputBindings(profile.bindingSpan());
   if (audit.conflictCount != 0U) {
@@ -125,6 +137,19 @@ bool defaultsAreBoundedConflictFreeAndMinecraftShaped() {
                     inventory->trigger ==
                         cr::CreativeInputKey::GamepadInventory,
                 "Triangle remains inventory") &&
+         expect(runtimeAttackMouse != nullptr &&
+                    runtimeAttackMouse->trigger ==
+                        cr::CreativeInputKey::MousePrimary &&
+                    runtimeAttackPad != nullptr &&
+                    runtimeAttackPad->trigger ==
+                        cr::CreativeInputKey::GamepadRightTrigger &&
+                    runtimeInteractMouse != nullptr &&
+                    runtimeInteractMouse->trigger ==
+                        cr::CreativeInputKey::MouseSecondary &&
+                    runtimeInteractPad != nullptr &&
+                    runtimeInteractPad->trigger ==
+                        cr::CreativeInputKey::GamepadLeftTrigger,
+                "Play maps mouse buttons and PS5 triggers by semantic action") &&
          expect(cr::creativeControlKeyDisplayLabel(
                     cr::CreativeInputKey::GamepadConfirm) == "X" &&
                     cr::creativeControlKeyDisplayLabel(

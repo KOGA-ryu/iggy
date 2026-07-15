@@ -1,12 +1,17 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 
 #include "app/iggy3d/creative/play/RuntimeSandbox.hpp"
+#include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "projection/scene/SceneProjection.hpp"
+#include "render/FrameInput.hpp"
+#include "runtime/physics/PhysicsSpatialSurfaceColliderBake.hpp"
 
 namespace iggy3d_creative_app {
 
@@ -15,12 +20,92 @@ struct CreativeEditorPlayTuning {
   float sprintMultiplier = 1.75F;
   float minimumPitchDegrees = -80.0F;
   float maximumPitchDegrees = 80.0F;
+  float targetProbeDistanceMeters = 12.0F;
+  float targetRadiusMeters = 0.0F;
+  float targetOcclusionMarginMeters = 0.01F;
+  std::int32_t attackDamage = 1;
   std::uint32_t maximumCatchUpTicks = 4U;
 };
 
+enum class CreativeEditorPlayAction : std::uint8_t {
+  None,
+  Attack,
+  Interact,
+};
+
+struct CreativeEditorPlayActionSample {
+  bool attackDown = false;
+  bool interactDown = false;
+  bool enabled = true;
+};
+
+struct CreativeEditorPlayActionRouterState {
+  bool attackDown = false;
+  bool interactDown = false;
+  bool rearmRequired = false;
+};
+
+[[nodiscard]] CreativeEditorPlayActionSample sampleCreativeEditorPlayActions(
+    const iggy3d::creative::CreativeInputFrame& inputFrame,
+    const iggy3d::creative::CreativeInputRouteResult& routedInput,
+    std::span<const iggy3d::creative::CreativeInputBinding> bindings) noexcept;
+[[nodiscard]] CreativeEditorPlayAction routeCreativeEditorPlayAction(
+    CreativeEditorPlayActionRouterState& state,
+    CreativeEditorPlayActionSample sample) noexcept;
+
+enum class CreativeEditorPlayTargetStatus : std::uint8_t {
+  None,
+  Valid,
+  Blocked,
+  Friendly,
+  OutOfRange,
+  Unsupported,
+  Defeated,
+  Invalid,
+};
+
+struct CreativeEditorPlayTarget {
+  CreativeEditorPlayTargetStatus status =
+      CreativeEditorPlayTargetStatus::None;
+  iggy3d::EntityId entity;
+  std::string stableName = "none";
+  iggy3d::Vec3 hitPointMeters;
+  float hitDistanceMeters = 0.0F;
+  float reachDistanceMeters = 0.0F;
+  bool supportsAttack = false;
+  bool supportsInteract = false;
+  bool friendly = false;
+  bool defeated = false;
+};
+
+struct CreativeEditorPlayTargetRequest {
+  const iggy3d::WorldState* world = nullptr;
+  const iggy3d::CombatState* combat = nullptr;
+  std::span<const iggy3d::PhysicsAabbCollider> colliders;
+  iggy3d::EntityId actor;
+  iggy3d::Vec3 eyeMeters;
+  iggy3d::Vec3 forward;
+  float probeDistanceMeters = 12.0F;
+  float targetRadiusMeters = 0.0F;
+  float interactionRangeMeters = 1.5F;
+  float occlusionMarginMeters = 0.01F;
+  std::int32_t attackDamage = 1;
+};
+
+[[nodiscard]] std::string_view toString(
+    CreativeEditorPlayTargetStatus status) noexcept;
+[[nodiscard]] CreativeEditorPlayTarget resolveCreativeEditorPlayTarget(
+    const CreativeEditorPlayTargetRequest& request);
+[[nodiscard]] bool creativeEditorPlayTargetAcceptsAction(
+    const CreativeEditorPlayTarget& target,
+    CreativeEditorPlayAction action) noexcept;
+
 struct CreativeEditorPlayMode {
   std::optional<iggy3d::creative::CreativeRuntimeSandbox> sandbox;
+  iggy3d::PhysicsSpatialSurfaceColliderBakeResult targetingBake;
   CreativeEditorPlayTuning tuning;
+  CreativeEditorPlayActionRouterState actionRouter;
+  CreativeEditorPlayTarget target;
   float cameraYawDegrees = 0.0F;
   float cameraPitchDegrees = 0.0F;
   std::uint64_t lastFrameTimeNanoseconds = 0U;
@@ -34,6 +119,7 @@ enum class CreativeEditorPlayStartStatus : std::uint8_t {
   InvalidTuning,
   PreparationRejected,
   ActivationRejected,
+  TargetingBakeRejected,
   Started,
 };
 
@@ -75,6 +161,7 @@ struct CreativeEditorPlayInput {
   float pitchDeltaDegrees = 0.0F;
   bool sprinting = false;
   bool windowFocused = true;
+  CreativeEditorPlayActionSample actions;
 };
 
 enum class CreativeEditorPlayTickStatus : std::uint8_t {
@@ -105,6 +192,11 @@ struct CreativeEditorPlayTickReceipt {
   std::uint32_t ticksAdvanced = 0U;
   std::uint32_t commandsSubmitted = 0U;
   std::uint32_t movementCommandsSubmitted = 0U;
+  std::uint32_t attackCommandsSubmitted = 0U;
+  std::uint32_t interactionCommandsSubmitted = 0U;
+  CreativeEditorPlayAction action = CreativeEditorPlayAction::None;
+  bool actionAttempted = false;
+  bool actionSubmitted = false;
   std::uint64_t sourceTick = 0U;
   iggy3d::CommandRejectionReason commandRejection =
       iggy3d::CommandRejectionReason::None;
@@ -124,5 +216,34 @@ struct CreativeEditorPlayScene {
 
 [[nodiscard]] CreativeEditorPlayScene buildCreativeEditorPlayScene(
     const CreativeEditorPlayMode& mode);
+
+struct CreativeEditorPlayView {
+  bool available = false;
+  iggy3d::Vec3 eyeMeters;
+  iggy3d::Vec3 forward;
+};
+
+[[nodiscard]] CreativeEditorPlayView buildCreativeEditorPlayView(
+    const CreativeEditorPlayMode& mode) noexcept;
+
+inline constexpr std::size_t kCreativeEditorPlayHudRectCapacity = 10U;
+inline constexpr std::size_t kCreativeEditorPlayHudGlyphQuadCapacity = 1664U;
+
+struct CreativeEditorPlayHudFrame {
+  std::array<iggy3d::RenderUiRect, kCreativeEditorPlayHudRectCapacity> rects{};
+  std::array<iggy3d::DebugHudGlyphQuad,
+             kCreativeEditorPlayHudGlyphQuadCapacity>
+      glyphQuads{};
+  std::size_t rectCount = 0U;
+  std::size_t glyphQuadCount = 0U;
+  std::size_t textGlyphCount = 0U;
+  bool capacityExceeded = false;
+};
+
+[[nodiscard]] CreativeEditorPlayHudFrame buildCreativeEditorPlayHud(
+    const CreativeEditorPlayMode& mode,
+    const iggy3d::FrameInput& frame);
+void attachCreativeEditorPlayHud(const CreativeEditorPlayHudFrame& hud,
+                                 iggy3d::FrameInput& frame) noexcept;
 
 }  // namespace iggy3d_creative_app

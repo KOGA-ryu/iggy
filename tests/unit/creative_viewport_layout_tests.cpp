@@ -212,10 +212,15 @@ bool desktopUiContextDisablesFlyNavigation() {
   const auto viewport = admitCreativeEditorNavigation(
       cr::CreativeInputContext::EditorViewport, false, false, noStick, false,
       false);
+  const auto runtimePlay = admitCreativeEditorNavigation(
+      cr::CreativeInputContext::RuntimePlay, false, false, noStick, false,
+      false);
   const auto desktopUi = admitCreativeEditorNavigation(
       cr::CreativeInputContext::DesktopUi, false, false, noStick, false, false);
   return expect(viewport.navigationActive,
                 "fly navigation is active in the viewport context") &&
+         expect(runtimePlay.navigationActive,
+                "runtime movement and look stay active in Play") &&
          expect(!desktopUi.navigationActive,
                 "fly navigation is off while the desktop UI owns input");
 }

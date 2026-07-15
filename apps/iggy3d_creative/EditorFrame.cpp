@@ -278,7 +278,9 @@ void setSdlKey(creative::CreativeInputFrame& frame,
       candidates.begin(), candidates.end(),
       [](const Candidate& candidate) { return candidate.active; });
   return active == candidates.end()
-             ? creative::CreativeInputContext::EditorViewport
+             ? (editorInteractionEnabled
+                    ? creative::CreativeInputContext::EditorViewport
+                    : creative::CreativeInputContext::RuntimePlay)
              : active->context;
 }
 
@@ -421,6 +423,7 @@ CreativeEditorNavigationAdmission admitCreativeEditorNavigation(
     bool toolWheelToggleRouted) noexcept {
   const bool viewportContext =
       inputContext == creative::CreativeInputContext::EditorViewport ||
+      inputContext == creative::CreativeInputContext::RuntimePlay ||
       inputContext ==
           creative::CreativeInputContext::AssetReplacementPreview ||
       inputContext == creative::CreativeInputContext::TransformPreview;

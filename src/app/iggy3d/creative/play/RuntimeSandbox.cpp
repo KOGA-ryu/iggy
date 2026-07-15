@@ -144,7 +144,10 @@ ScenarioEntitySeed makeCombatantEntity(const RoomAnchorAsset& anchor,
   entity.persistent = true;
   entity.targeting.targetable = true;
   entity.targeting.actions = {ScenarioTargetAction::Attack,
+                              ScenarioTargetAction::Interact,
                               ScenarioTargetAction::Inspect};
+  entity.interaction.kind = ScenarioInteractionKind::Inspect;
+  entity.interaction.repeatable = true;
   entity.combatantEnabled = true;
   entity.combatant.factionId = factionId;
   entity.combatant.hitPoints = hitPoints;

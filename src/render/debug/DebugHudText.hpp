@@ -30,6 +30,14 @@ struct DebugHudLayoutResult {
   std::vector<DebugHudGlyphQuad> quads;
 };
 
+struct DebugHudFixedLayoutResult {
+  bool projected = false;
+  std::size_t lineCount = 0;
+  std::size_t glyphCount = 0;
+  std::size_t quadCount = 0;
+  bool capacityExceeded = false;
+};
+
 DebugHudLayoutResult layoutDebugHudText(std::span<const std::string> lines,
                                         std::uint32_t viewportWidth,
                                         std::uint32_t viewportHeight);
@@ -38,5 +46,12 @@ DebugHudLayoutResult layoutDebugHudTextAt(std::string_view text,
                                           std::int32_t y,
                                           std::uint32_t viewportWidth,
                                           std::uint32_t viewportHeight);
+DebugHudFixedLayoutResult layoutDebugHudTextAtInto(
+    std::string_view text,
+    std::int32_t x,
+    std::int32_t y,
+    std::uint32_t viewportWidth,
+    std::uint32_t viewportHeight,
+    std::span<DebugHudGlyphQuad> output) noexcept;
 
 }  // namespace iggy3d
