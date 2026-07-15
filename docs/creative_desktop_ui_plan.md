@@ -6,6 +6,24 @@
 
 This plan was cut against a full recon of the tree (8-agent sweep, 2026-07-14). Every seam below is a verified file:line on this branch.
 
+## Build status (2026-07-14)
+
+**Foundation complete and landed on `creative-only` (6 commits, `0a785cad`→`511cc0e1`).** Every slice gated: full build green, unit + smoke suites green, and the T-0 capture smoke's frame hash **byte-identical across all six commits** (`556db015…`, `external_ui_recorded=0`) — i.e. the desktop shell is a proven no-op under `--capture`.
+
+| Slice | Commit | State |
+|---|---|---|
+| UI-0a vendor ImGui + cmake | `0a785cad` | ✅ landed |
+| UI-0b SDL event tap | `0809aa82` | ✅ landed |
+| UI-0c Vulkan bridge + record hook + blank dockspace + T-0 | `30896b91` | ✅ landed |
+| UI-1a content-viewport type + validation | `fe3c4332` | ✅ landed |
+| UI-1b pt.1 content-rect seam + DL-6 helper + camera aspect | `2e8857cc` | ✅ landed |
+| UI-1b pt.2 free-pointer policy + DesktopUi context | `511cc0e1` | ✅ landed |
+| UI-1c picking / UI-2 menu+dispatcher+panels / UI-3 outliner+inspector+history+tabs | — | ⏳ pending |
+
+**Verifiability note.** Everything above is verified by headless unit tests + the T-0 capture smoke (shell-off path byte-identical). The remaining slices render the actual IDE panels and the scissored sub-viewport, which **cannot be verified in this headless environment** — `--capture` disables the shell, so the on-screen dockspace, panels, free cursor, and click-to-capture need a human to launch `i3dc` and look. The command **dispatcher** (DD-7) is the exception: it is headless-testable via `creative_desktop_ui_command_tests` independent of the (unverifiable) menu UI that feeds it.
+
+Current interactive state after the foundation: launching `i3dc` shows a full-window passthru dockspace over the existing 3D editor with a **free cursor** (click the viewport to enter fly-look, Esc/opening a panel releases). No panels yet. `--capture` output is unchanged.
+
 ---
 
 ## 0. Verdict on the work order
@@ -194,3 +212,13 @@ v0.1 → v0.2: 4-lens adversarial review (coverage / code-facts / sequencing / i
 | R-13 | minor | DD-2 omitted `info.ImageCount` (sizes the backend buffer ring vs frameSlotCount=2) | Added, with recreate re-check |
 | R-14 | minor | Bridge silent on colorFormat change across swapchain recreate; generation check ran too early for in-frame recreates | DD-3: check moved into the record hook; format change ⇒ skip-frame + rebuild at next begin-frame |
 | R-15 | minor | DL-5 "no new submits" is violated by the 1.92 backend's internal texture-upload submit | DL-5 scoped to first-party; backend upload whitelisted; Queue/QueueFamily pinned in DD-2 |
+| R-16 | major (found during UI-0c implementation) | The work order's "record ImGui before ending dynamic rendering" is unimplementable with one UI pipeline: the first-room block has a D32 depth attachment while empty/proxy blocks are color-only, and a dynamic-rendering pipeline must match the block's attachment formats exactly | Hook moved to AFTER each path's `cmdEndRendering`, before the capture-copy/present barriers; the bridge records its own color-only LOAD_OP_LOAD rendering block with a write-write barrier (the recon's alternative seam). Landed in UI-0c (`30896b91`); DD-4/DD-6 insertion-point text superseded accordingly |
+
+### UI-1b implementation notes (deferrals, 2026-07-14)
+
+The content rect is **full-frame until docked panels shrink the central node (UI-3)**, so the render-side re-anchoring is a runtime no-op now and carries capture-hash risk if mis-ordered. UI-1b therefore landed as two commits — content-rect seam + DL-6 helper + camera aspect (`2e8857cc`), then free-pointer policy + DesktopUi context (`511cc0e1`) — and **deferred to UI-3** (where panels make the content rect sub-full and it is verifiable against real panels):
+
+- **DD-6 scene scissor + overlay/HUD/projectile-overlay pixel re-anchoring** to the content rect. Only viewport/scissor and the 2D pixel mappings need it, and only once the rect is sub-full. `frame.contentViewport` is already populated + validated + drives camera aspect, so this is a consumer-side migration.
+- **Picking fan-out** (`buildCreativeEditorPickFrame` / `resolveCreativeEditorWorldTarget` still take raw `extent`) → moves to **UI-1c** (picking's home): center-ray from the content-rect center (correct-by-construction, unchanged when full-frame).
+- **Pointer-driven free-cursor picking** (DD-9 "ray origin = captured ? rect center : pointer pos") → **UI-3**, verifiable against a real sub-viewport; the click-to-capture model already gives crosshair aiming once captured.
+- **Clean Esc → ReleaseViewportPointer** → **UI-2a** dispatcher reinterpretation. Interim: Esc frees the pointer by opening Controls (the free-pointer gate passes the release through).
