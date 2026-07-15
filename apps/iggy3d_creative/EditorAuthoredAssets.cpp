@@ -247,6 +247,25 @@ const cr::CreativeAuthoredAssetDefinition* findCreativeEditorAuthoredAsset(
   return found == library.definitions.end() ? nullptr : &*found;
 }
 
+std::string nextCreativeEditorAuthoredAssetId(
+    const CreativeEditorAuthoredAssetLibrary& library) {
+  std::uint64_t ordinal = library.nextAssetOrdinal;
+  std::string assetId = assetIdForOrdinal(ordinal);
+  while (findCreativeEditorAuthoredAsset(library, assetId) != nullptr) {
+    assetId = assetIdForOrdinal(++ordinal);
+  }
+  return assetId;
+}
+
+void advanceCreativeEditorAuthoredAssetOrdinal(
+    CreativeEditorAuthoredAssetLibrary& library) noexcept {
+  ++library.nextAssetOrdinal;
+  while (findCreativeEditorAuthoredAsset(
+             library, assetIdForOrdinal(library.nextAssetOrdinal)) != nullptr) {
+    ++library.nextAssetOrdinal;
+  }
+}
+
 std::vector<cr::CreativeCatalogAsset> creativeEditorAuthoredAssetCatalogEntries(
     const CreativeEditorAuthoredAssetLibrary& library) {
   std::vector<cr::CreativeCatalogAsset> entries;
@@ -329,7 +348,7 @@ saveCreativeEditorSelectionAsAuthoredAsset(
     std::string_view requestedLabel) {
   CreativeEditorAuthoredAssetSaveReceipt receipt;
   receipt.requested = true;
-  receipt.assetId = assetIdForOrdinal(library.nextAssetOrdinal);
+  receipt.assetId = nextCreativeEditorAuthoredAssetId(library);
   receipt.label = requestedLabel.empty()
                       ? defaultAssetLabel(appState, library.nextAssetOrdinal)
                       : std::string(requestedLabel);
@@ -359,7 +378,7 @@ saveCreativeEditorSelectionAsAuthoredAsset(
   }
 
   library.definitions.push_back(receipt.capture.definition);
-  ++library.nextAssetOrdinal;
+  advanceCreativeEditorAuthoredAssetOrdinal(library);
   ++library.nextDocumentId;
   receipt.accepted = true;
   receipt.reasonCode = "creative_authored_asset_saved";
@@ -526,6 +545,19 @@ refreshCreativeEditorAuthoredAssetReferences(
     }
   }
   receipt.accepted = receipt.catalogUpdated;
+  return receipt;
+}
+
+CreativeEditorAuthoredAssetDurableWriteReceipt
+writeCreativeEditorAuthoredAssetDocument(
+    const CreativeEditorAuthoredAssetLibrary& library, std::string_view assetId,
+    std::string_view label, const cr::CreativeDocument& document,
+    bool replacing) {
+  CreativeEditorAuthoredAssetDurableWriteReceipt receipt;
+  const iggy3d::ProductCreativeSaveWriteResult write =
+      writeAuthoredAssetDocument(library, assetId, label, document, replacing);
+  receipt.accepted = write.ok;
+  receipt.reasonCode = write.reasonCode;
   return receipt;
 }
 

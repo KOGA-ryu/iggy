@@ -397,7 +397,10 @@ void appendContextHints(HintSpecBuffer& buffer,
           editor.catalog.assetAction ==
                   CreativeEditorCatalogAssetAction::ReplaceSelection
               ? "Replace"
-              : "Equip");
+              : editor.catalog.assetAction ==
+                        CreativeEditorCatalogAssetAction::ManageAsset
+                    ? "Manage"
+                    : "Equip");
       appendHint(buffer, cr::CreativeInputActionId::CatalogAssignToolWheel,
                  "Assign wheel");
       appendHint(buffer, cr::CreativeInputActionId::CatalogClose, "Close");
@@ -433,6 +436,21 @@ void appendContextHints(HintSpecBuffer& buffer,
       appendHint(buffer, cr::CreativeInputActionId::CancelActiveTool, "Cancel");
       appendHintPair(buffer, cr::CreativeInputActionId::FlyDown,
                      cr::CreativeInputActionId::FlyUp, "Fly");
+      return;
+    case cr::CreativeInputContext::AssetLibrary:
+      appendHintPair(buffer, cr::CreativeInputActionId::CatalogPrevious,
+                     cr::CreativeInputActionId::CatalogNext, "Asset");
+      appendHintPair(buffer, cr::CreativeInputActionId::CatalogPreviousVariant,
+                     cr::CreativeInputActionId::CatalogNextVariant, "Action");
+      appendHint(buffer, cr::CreativeInputActionId::CatalogConfirm, "Apply");
+      appendHint(buffer, cr::CreativeInputActionId::CatalogClose, "Back");
+      return;
+    case cr::CreativeInputContext::AuthoredAssetEditMenu:
+      appendHintPair(buffer, cr::CreativeInputActionId::ToolOptionsPrevious,
+                     cr::CreativeInputActionId::ToolOptionsNext, "Action");
+      appendHint(buffer, cr::CreativeInputActionId::ConfirmActiveTool,
+                 "Select");
+      appendHint(buffer, cr::CreativeInputActionId::CancelActiveTool, "Back");
       return;
     case cr::CreativeInputContext::TransformPreview:
       appendHint(buffer, cr::CreativeInputActionId::ConfirmActiveTool, "Apply");

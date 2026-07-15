@@ -246,6 +246,10 @@ void setSdlKey(creative::CreativeInputFrame& frame,
   };
   const std::array candidates{
       Candidate{captureMode, creative::CreativeInputContext::Capture},
+      Candidate{editor.assetLibrary.open,
+                creative::CreativeInputContext::AssetLibrary},
+      Candidate{editor.assetEdit.active && editor.assetEdit.menuOpen,
+                creative::CreativeInputContext::AuthoredAssetEditMenu},
       Candidate{editor.controls.open,
                 creative::CreativeInputContext::Controls},
       Candidate{editor.assetReplacement.active,

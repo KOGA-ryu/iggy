@@ -37,6 +37,7 @@
 #include "render/FrameInput.hpp"
 #include "render/vulkan/VulkanBackend.hpp"
 
+#include "EditorAssetLibrary.hpp"
 #include "EditorCapture.hpp"
 #include "EditorAssetReplacement.hpp"
 #include "EditorAssets.hpp"
@@ -59,6 +60,7 @@
 namespace {
 
 using namespace iggy3d;
+using iggy3d_creative_app::activeCreativeEditorAppState;
 using iggy3d_creative_app::buildCreativeEditorGizmoFrame;
 using iggy3d_creative_app::buildCreativeEditorPickFrame;
 using iggy3d_creative_app::buildStandaloneRoomBakePreviewScene;
@@ -68,6 +70,7 @@ using iggy3d_creative_app::CreativeEditorBootstrapData;
 using iggy3d_creative_app::CreativeEditorGamepad;
 using iggy3d_creative_app::CreativeEditorState;
 using iggy3d_creative_app::applyCreativeEditorCommandInput;
+using iggy3d_creative_app::beginCreativeEditorAssetLibrary;
 using iggy3d_creative_app::beginCreativeEditorAssetReplacement;
 using iggy3d_creative_app::beginCreativeEditorFrameInput;
 using iggy3d_creative_app::cancelCreativeEditorSelectionTransformPreview;
@@ -82,6 +85,7 @@ using iggy3d_creative_app::CreativeEditorOverlayFrame;
 using iggy3d_creative_app::ObjectVisualPickBounds;
 using iggy3d_creative_app::firstBrushKind;
 using iggy3d_creative_app::logCreativeEditorPathHandleCaptureFrame;
+using iggy3d_creative_app::processCreativeEditorAssetLibraryFrame;
 using iggy3d_creative_app::processCreativeEditorCatalogFrame;
 using iggy3d_creative_app::processCreativeEditorAssetReplacementFrame;
 using iggy3d_creative_app::processCreativeEditorControlsFrame;
@@ -277,8 +281,10 @@ int main(int argc, char** argv) {
     }
     if (frameInput.skipFrame) {
       if (!frameInput.windowFocused) {
+        creative::CreativeAppState& activeAppState =
+            activeCreativeEditorAppState(editor, appState);
         finalizeCreativeEditorContinuousGestures(
-            appState, editor, "creative_continuous_gesture_focus_lost");
+            activeAppState, editor, "creative_continuous_gesture_focus_lost");
         if (cancelCreativeEditorSelectionTransformPreview(
                 editor.transform, "selection_transform_focus_lost")) {
           static_cast<void>(window.setRelativeMouseMode(true));
@@ -302,11 +308,21 @@ int main(int argc, char** argv) {
                                 editor.assetReplacement,
                                 "creative_asset_replace_focus_lost"));
     }
+    const iggy3d_creative_app::CreativeEditorAssetLibraryFrameResult
+        assetLibraryFrame = processCreativeEditorAssetLibraryFrame(
+            {window, appState, editor, frameInput.routedInput});
+    if (assetLibraryFrame.activeDocumentChanged) {
+      invalidateCreativeEditorSceneCache(sceneCache);
+    }
+    creative::CreativeAppState& activeAppState =
+        activeCreativeEditorAppState(editor, appState);
+    const creative::CreativeInputRouteResult& routedInput =
+        assetLibraryFrame.remainingInput;
     const iggy3d_creative_app::CreativeEditorControlsFrameResult controlsFrame =
         processCreativeEditorControlsFrame(
             {window,
              editor,
-             frameInput.routedInput,
+             routedInput,
              frameInput.inputFrame,
              controlsPath,
              toolWheelPath,
@@ -316,9 +332,9 @@ int main(int argc, char** argv) {
     const iggy3d_creative_app::CreativeEditorTransformFrameResult
         transformFrame = processCreativeEditorTransformFrame(
             {window,
-             appState,
+             activeAppState,
              editor,
-             frameInput.routedInput,
+             routedInput,
              frameInput.toolWheelDirectionX,
              frameInput.toolWheelDirectionY,
              frameInput.transformNudgeWheelSteps,
@@ -328,19 +344,31 @@ int main(int argc, char** argv) {
     const iggy3d_creative_app::CreativeEditorCatalogFrameResult catalogFrame =
         processCreativeEditorCatalogFrame(
             {window,
-             appState,
+             activeAppState,
              editor,
-             frameInput.routedInput,
+             routedInput,
              frameInput.worldActions,
              toolWheelPath,
              frameInput.toolWheelDirectionX,
              frameInput.toolWheelDirectionY,
              extent.width,
              extent.height});
+    if (catalogFrame.authoredAssetLibraryRequested) {
+      const bool opened = beginCreativeEditorAssetLibrary(
+          editor, appState.facade.document(), catalogFrame.authoredAssetId);
+      if (opened) {
+        static_cast<void>(creative::setCreativeCatalogOpen(
+            editor.catalog.model, false));
+        static_cast<void>(window.setTextInputActive(true));
+        static_cast<void>(window.setRelativeMouseMode(false));
+      } else {
+        editor.catalog.statusLabel = "AUTHORED ASSET LIBRARY UNAVAILABLE";
+      }
+    }
     if (catalogFrame.assetReplacementRequested) {
       const iggy3d_creative_app::CreativeAssetReplacementBeginReceipt begun =
           beginCreativeEditorAssetReplacement(
-              appState, bootstrapData.staticMeshAssetCatalog,
+              activeAppState, bootstrapData.staticMeshAssetCatalog,
               catalogFrame.replacementObjectKind,
               catalogFrame.replacementAssetId, editor.assetReplacement);
       if (begun.accepted) {
@@ -355,7 +383,7 @@ int main(int argc, char** argv) {
     }
     const iggy3d_creative_app::CreativeEditorAssetReplacementFrameResult
         assetReplacementFrame = processCreativeEditorAssetReplacementFrame(
-            {appState, editor.assetReplacement, frameInput.routedInput});
+            {activeAppState, editor.assetReplacement, routedInput});
     if (assetReplacementFrame.finished &&
         !assetReplacementFrame.commitReceipt.accepted) {
       invalidateCreativeEditorSceneCache(sceneCache);
@@ -363,28 +391,29 @@ int main(int argc, char** argv) {
     const iggy3d_creative_app::CreativeEditorToolOptionsFrameResult
         toolOptionsFrame = processCreativeEditorToolOptionsFrame(
             {window,
-             appState,
+             activeAppState,
              editor,
-             frameInput.routedInput,
+             routedInput,
              catalogFrame.openToolOptionsRequested,
              catalogFrame.toolOptionsEntry,
              extent.width,
              extent.height});
     const bool modalBlocksWorldActions =
+        assetLibraryFrame.blockWorldActions ||
         controlsFrame.blockWorldActions || transformFrame.blockWorldActions ||
         catalogFrame.blockWorldActions ||
         assetReplacementFrame.blockWorldActions ||
         toolOptionsFrame.blockWorldActions;
     if (modalBlocksWorldActions || !frameInput.windowFocused) {
       finalizeCreativeEditorContinuousGestures(
-          appState, editor,
+          activeAppState, editor,
           frameInput.windowFocused ? "creative_continuous_gesture_modal"
                                    : "creative_continuous_gesture_focus_lost");
     }
     if (catalogFrame.assetReloadRequested) {
       static_cast<void>(reloadCreativeEditorAssets(
           {*backend,
-           appState,
+           activeAppState,
            editor,
            sceneCache,
            bootstrapData.staticMeshAssetCatalog,
@@ -392,11 +421,11 @@ int main(int argc, char** argv) {
     }
     if (!catalogFrame.deferredCommandInput.actionEvents().empty()) {
       applyCreativeEditorCommandInput(catalogFrame.deferredCommandInput,
-                                      appState, editor, saveRoot, saveId);
+                                      activeAppState, editor, saveRoot, saveId);
     }
     if (!modalBlocksWorldActions && frameInput.windowFocused) {
       applyCreativeEditorCommandInput(
-          frameInput.routedInput, appState, editor, saveRoot, saveId);
+          routedInput, activeAppState, editor, saveRoot, saveId);
     }
 
     // SCENE (local, must outlive submitFrame): bake supported room geometry
@@ -406,7 +435,7 @@ int main(int argc, char** argv) {
     // did not emit as static geometry, such as Point anchors and Path routes.
     const creative::CreativeDocument& renderDocument =
         iggy3d_creative_app::creativeEditorAssetReplacementRenderDocument(
-            editor.assetReplacement, appState.facade.document());
+            editor.assetReplacement, activeAppState.facade.document());
     static_cast<void>(refreshCreativeEditorSceneCache(
         sceneCache, renderDocument, gridSnapshot,
         &bootstrapData.staticMeshAssetCatalog));
@@ -424,13 +453,13 @@ int main(int argc, char** argv) {
     // Scan every visible object's visual bounds once. Live interaction resolves
     // the center ray from this frame; scripted capture retains its fixed proof ray.
     static_cast<void>(syncCreativeEditorGroupFocus(
-        editor.groupFocus, appState.facade.document()));
+        editor.groupFocus, activeAppState.facade.document()));
     CreativeEditorPickFrame pickFrame = buildCreativeEditorPickFrame(
-        appState.facade.document(),
+        activeAppState.facade.document(),
         frame.camera,
         extent.width,
         extent.height,
-        floorObjectId,
+        editor.assetEdit.active ? creative::kInvalidObjectId : floorObjectId,
         editor.captureScript,
         !capturePath.empty());
     if (creativeEditorGroupFocusActive(editor.groupFocus)) {
@@ -438,22 +467,24 @@ int main(int argc, char** argv) {
           pickFrame.objectPickCandidates,
           [&](const ObjectVisualPickBounds& candidate) {
             return !creativeEditorObjectInsideActiveGroup(
-                appState.facade.document(), editor.groupFocus,
+                activeAppState.facade.document(), editor.groupFocus,
                 candidate.id);
           });
     }
-    logCreativeEditorWorldPickProofFrame(appState.facade,
+    logCreativeEditorWorldPickProofFrame(activeAppState.facade,
                                          frame.camera,
                                          extent.width,
                                          extent.height,
                                          pickFrame,
-                                         floorObjectId,
+                                         editor.assetEdit.active
+                                             ? creative::kInvalidObjectId
+                                             : floorObjectId,
                                          editor,
                                          !capturePath.empty());
 
     if (!modalBlocksWorldActions && frameInput.windowFocused) {
       processCreativeEditorWorldInteractionFrame(
-          {appState,
+          {activeAppState,
            editor,
            frameInput.worldActions,
            frameInput.modifiers,
@@ -484,7 +515,7 @@ int main(int argc, char** argv) {
     // findObject the inspector uses. No hardcoded crate id, no kind check. When
     // nothing is selected we draw no gizmo/box and skip Move.
     const CreativeEditorSelectionFrame selection =
-        resolveCreativeEditorSelectionFrame(appState.facade);
+        resolveCreativeEditorSelectionFrame(activeAppState.facade);
 
     // ---- GIZMO GEOMETRY -----------------------------------------------------
     // Build the 3 axis shafts at the selected object's center C = (min+max)/2.
@@ -500,7 +531,7 @@ int main(int argc, char** argv) {
 
     CreativeEditorOverlayFrame overlayFrame;
     buildAndAttachCreativeEditorOverlayFrame(
-        {appState,
+        {activeAppState,
          editor,
          selection,
          gizmoFrame,
@@ -517,7 +548,7 @@ int main(int argc, char** argv) {
     if (submitCreativeEditorFrame({
             *backend,
             frame,
-            appState,
+            activeAppState,
             editor,
             selection,
             overlayFrame,
@@ -528,8 +559,12 @@ int main(int argc, char** argv) {
     std::this_thread::sleep_for(std::chrono::milliseconds(16));
   }
 
+  creative::CreativeAppState& shutdownAppState =
+      activeCreativeEditorAppState(editor, appState);
   finalizeCreativeEditorContinuousGestures(
-      appState, editor, "creative_continuous_gesture_shutdown");
+      shutdownAppState, editor, "creative_continuous_gesture_shutdown");
+  static_cast<void>(iggy3d_creative_app::cancelCreativeEditorAuthoredAssetEdit(
+      editor, "creative_authored_asset_edit_shutdown"));
   static_cast<void>(iggy3d_creative_app::cancelCreativeEditorAssetReplacement(
       editor.assetReplacement, "creative_asset_replace_shutdown"));
 

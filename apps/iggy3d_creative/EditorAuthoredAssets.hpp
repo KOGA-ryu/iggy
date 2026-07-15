@@ -78,6 +78,11 @@ struct CreativeEditorAuthoredAssetReferenceRefreshReceipt {
   std::size_t hotbarSlotCount = 0U;
 };
 
+struct CreativeEditorAuthoredAssetDurableWriteReceipt {
+  bool accepted = false;
+  std::string reasonCode = "creative_authored_asset_write_not_requested";
+};
+
 struct CreativeAuthoredAssetStrokeState {
   iggy3d::creative::CreativeWorldGestureRepeatState repeat{};
   StandaloneEditTransaction transaction{};
@@ -91,6 +96,12 @@ struct CreativeAuthoredAssetStrokeState {
 findCreativeEditorAuthoredAsset(
     const CreativeEditorAuthoredAssetLibrary& library,
     std::string_view assetId) noexcept;
+
+[[nodiscard]] std::string nextCreativeEditorAuthoredAssetId(
+    const CreativeEditorAuthoredAssetLibrary& library);
+
+void advanceCreativeEditorAuthoredAssetOrdinal(
+    CreativeEditorAuthoredAssetLibrary& library) noexcept;
 
 [[nodiscard]] std::vector<iggy3d::creative::CreativeCatalogAsset>
 creativeEditorAuthoredAssetCatalogEntries(
@@ -125,6 +136,12 @@ refreshCreativeEditorAuthoredAssetInstances(
 refreshCreativeEditorAuthoredAssetReferences(
     CreativeEditorState& editor,
     const iggy3d::creative::CreativeAuthoredAssetDefinition& definition);
+
+[[nodiscard]] CreativeEditorAuthoredAssetDurableWriteReceipt
+writeCreativeEditorAuthoredAssetDocument(
+    const CreativeEditorAuthoredAssetLibrary& library, std::string_view assetId,
+    std::string_view label, const iggy3d::creative::CreativeDocument& document,
+    bool replacing);
 
 [[nodiscard]] bool creativeEditorUsesAuthoredAsset(
     const iggy3d::creative::CreativeHotbarEntry& held,

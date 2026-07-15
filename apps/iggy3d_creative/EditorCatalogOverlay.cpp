@@ -479,10 +479,8 @@ void appendCreativeEditorCatalogOverlay(
         const CatalogRect button = equipButton(layout);
         const bool assetEntry =
             selectedEntry->category == cr::CreativeCatalogEntryCategory::Asset;
-        const bool replaceableAssetEntry =
-            assetEntry && !selectedEntry->authoredComposite;
         const bool equipFocused =
-            !replaceableAssetEntry ||
+            !assetEntry ||
             catalog.assetAction == CreativeEditorCatalogAssetAction::Equip;
         uiRects.push_back({button.x, button.y, button.width, button.height,
                            equipFocused ? 0.86F : 0.12F,
@@ -496,12 +494,15 @@ void appendCreativeEditorCatalogOverlay(
                    drawableHeight, equipFocused ? 0.06F : 0.82F,
                    equipFocused ? 0.065F : 0.86F,
                    equipFocused ? 0.07F : 0.88F);
-        if (replaceableAssetEntry && layout.replaceX >= layout.contentX) {
+        if (assetEntry && layout.replaceX >= layout.contentX) {
           const CatalogRect replace = replaceSelectionButton(layout);
+          const bool manage = selectedEntry->authoredComposite;
           const bool replaceFocused =
               catalog.assetAction ==
-              CreativeEditorCatalogAssetAction::ReplaceSelection;
+              (manage ? CreativeEditorCatalogAssetAction::ManageAsset
+                       : CreativeEditorCatalogAssetAction::ReplaceSelection);
           const bool replaceAvailable =
+              manage ||
               cr::selectedTargetCount(appState.facade.selectionState()) > 0U;
           uiRects.push_back(
               {replace.x, replace.y, replace.width, replace.height,
@@ -509,9 +510,9 @@ void appendCreativeEditorCatalogOverlay(
                replaceFocused && replaceAvailable ? 0.72F : 0.10F,
                replaceFocused && replaceAvailable ? 0.32F : 0.11F,
                replaceAvailable ? 0.98F : 0.68F});
-          appendText(glyphs, "REPLACE SELECTION", replace.x + 14,
-                     replace.y + 7, drawableWidth, drawableHeight,
-                     replaceAvailable ? 0.88F : 0.42F,
+          appendText(glyphs, manage ? "MANAGE ASSET" : "REPLACE SELECTION",
+                     replace.x + 14, replace.y + 7, drawableWidth,
+                     drawableHeight, replaceAvailable ? 0.88F : 0.42F,
                      replaceAvailable ? 0.96F : 0.45F,
                      replaceAvailable ? 0.90F : 0.48F);
         }

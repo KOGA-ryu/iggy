@@ -661,6 +661,32 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
                                   cr::CreativeInputKey::GamepadCancel,
                                   cr::CreativeInputContext::Catalog),
                    "controller confirm and cancel own catalog actions") &&
+            expect(hasBinding(cr::CreativeInputActionId::CatalogPrevious,
+                              cr::CreativeInputKey::GamepadDpadUp,
+                              cr::CreativeInputContext::AssetLibrary) &&
+                       hasBinding(cr::CreativeInputActionId::CatalogNextVariant,
+                                  cr::CreativeInputKey::GamepadDpadRight,
+                                  cr::CreativeInputContext::AssetLibrary) &&
+                       hasBinding(cr::CreativeInputActionId::CatalogConfirm,
+                                  cr::CreativeInputKey::GamepadConfirm,
+                                  cr::CreativeInputContext::AssetLibrary) &&
+                       hasBinding(cr::CreativeInputActionId::CatalogClose,
+                                  cr::CreativeInputKey::GamepadCancel,
+                                  cr::CreativeInputContext::AssetLibrary),
+                   "asset library owns directional, confirm, and cancel input") &&
+            expect(hasBinding(
+                       cr::CreativeInputActionId::ToolOptionsPrevious,
+                       cr::CreativeInputKey::GamepadDpadUp,
+                       cr::CreativeInputContext::AuthoredAssetEditMenu) &&
+                       hasBinding(
+                           cr::CreativeInputActionId::ConfirmActiveTool,
+                           cr::CreativeInputKey::GamepadConfirm,
+                           cr::CreativeInputContext::AuthoredAssetEditMenu) &&
+                       hasBinding(
+                           cr::CreativeInputActionId::CancelActiveTool,
+                           cr::CreativeInputKey::GamepadCancel,
+                           cr::CreativeInputContext::AuthoredAssetEditMenu),
+                   "asset edit menu follows shared select and back semantics") &&
             expect(hasBinding(
                        cr::CreativeInputActionId::CatalogAssignToolWheel,
                        cr::CreativeInputKey::GamepadWest,
@@ -1053,6 +1079,78 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
   return ok;
 }
 
+bool assetRemovalCompactsCatalogAndToolWheelIndices() {
+  constexpr std::array palette{cr::CreativeObjectKind::Wall};
+  std::array<cr::CreativeCatalogAsset, 3> assets{};
+  assets[0].objectKind = cr::CreativeObjectKind::Crate;
+  assets[0].assetId = "authored_0001";
+  assets[0].label = "First";
+  assets[0].sourceBounds = {{-0.5, 0.0, -0.5}, {0.5, 1.0, 0.5}};
+  assets[1] = assets[0];
+  assets[1].assetId = "authored_0002";
+  assets[1].label = "Second";
+  assets[2] = assets[0];
+  assets[2].assetId = "authored_0003";
+  assets[2].label = "Third";
+  cr::CreativeCatalogState state = cr::makeCreativeCatalog(palette, assets);
+  const auto second = std::find_if(
+      state.entries.begin(), state.entries.end(),
+      [](const cr::CreativeCatalogEntry& entry) {
+        return cr::creativeHotbarAssetId(entry.hotbarEntry) == "authored_0002";
+      });
+  if (!expect(second != state.entries.end(),
+              "asset removal fixture contains the middle asset")) {
+    return false;
+  }
+  const std::size_t removedIndex =
+      static_cast<std::size_t>(std::distance(state.entries.begin(), second));
+  cr::CreativeToolWheelState wheel;
+  wheel.open = true;
+  wheel.entryCount = 3U;
+  wheel.selectedIndex = 2U;
+  wheel.catalogEntryIndices[0] = removedIndex - 1U;
+  wheel.catalogEntryIndices[1] = removedIndex;
+  wheel.catalogEntryIndices[2] = removedIndex + 1U;
+
+  cr::CreativeToolWheelState shiftedSelection = wheel;
+  shiftedSelection.selectedIndex = 2U;
+  shiftedSelection.catalogEntryIndices[0] = removedIndex;
+  shiftedSelection.catalogEntryIndices[1] = removedIndex + 1U;
+  shiftedSelection.catalogEntryIndices[2] = removedIndex + 2U;
+
+  std::size_t reportedIndex = std::numeric_limits<std::size_t>::max();
+  const bool removed =
+      cr::removeCreativeCatalogAsset(state, "authored_0002", &reportedIndex);
+  const bool wheelChanged =
+      cr::removeCreativeToolWheelCatalogEntry(wheel, reportedIndex);
+  const bool shiftedSelectionChanged =
+      cr::removeCreativeToolWheelCatalogEntry(shiftedSelection, reportedIndex);
+
+  return expect(removed && reportedIndex == removedIndex &&
+                    std::none_of(state.entries.begin(), state.entries.end(),
+                                 [](const cr::CreativeCatalogEntry& entry) {
+                                   return cr::creativeHotbarAssetId(
+                                              entry.hotbarEntry) ==
+                                          "authored_0002";
+                                 }),
+                "catalog removes exactly the requested authored identity") &&
+         expect(
+             wheelChanged && wheel.entryCount == 2U &&
+                 wheel.catalogEntryIndices[0] == removedIndex - 1U &&
+                 wheel.catalogEntryIndices[1] == removedIndex &&
+                 wheel.selectedIndex == 1U,
+             "tool wheel drops the removed index and shifts later entries") &&
+         expect(shiftedSelectionChanged &&
+                    shiftedSelection.entryCount == 2U &&
+                    shiftedSelection.selectedIndex == 1U &&
+                    shiftedSelection.catalogEntryIndices[1] == removedIndex + 1U,
+                "tool wheel preserves a selected sector shifted by deletion") &&
+         expect(!cr::removeCreativeCatalogAsset(state, "authored_0002") &&
+                    !cr::removeCreativeToolWheelCatalogEntry(
+                        wheel, state.entries.size() + 10U),
+                "repeated and unrelated removals are no-ops");
+}
+
 bool assetPagePreservesBuildIndicesAndEquipsDurableIdentity() {
   constexpr std::array palette{cr::CreativeObjectKind::Wall,
                                cr::CreativeObjectKind::Crate};
@@ -1201,6 +1299,7 @@ int main() {
   ok = searchIsCaseInsensitiveBoundedAndStable() && ok;
   ok = selectionWrapsAndAssignmentsAreExplicit() && ok;
   ok = modalBindingsAreIsolatedAndDoNotRetrigger() && ok;
+  ok = assetRemovalCompactsCatalogAndToolWheelIndices() && ok;
   ok = assetPagePreservesBuildIndicesAndEquipsDurableIdentity() && ok;
   ok = assetReloadCommandAndFailuresAreExplicitAndNotAssignable() && ok;
   return ok ? 0 : 1;

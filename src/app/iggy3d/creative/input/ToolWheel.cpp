@@ -162,6 +162,41 @@ bool assignCreativeToolWheelCatalogEntry(
   return true;
 }
 
+bool removeCreativeToolWheelCatalogEntry(
+    CreativeToolWheelState& wheel,
+    std::size_t removedCatalogEntryIndex) noexcept {
+  bool changed = false;
+  std::size_t output = 0U;
+  const std::size_t previousSelectedIndex = wheel.selectedIndex;
+  std::size_t removedBeforeSelection = 0U;
+  for (std::size_t index = 0U; index < wheel.entryCount; ++index) {
+    std::size_t catalogIndex = wheel.catalogEntryIndices[index];
+    if (catalogIndex == removedCatalogEntryIndex) {
+      changed = true;
+      removedBeforeSelection += index < previousSelectedIndex ? 1U : 0U;
+      continue;
+    }
+    if (catalogIndex > removedCatalogEntryIndex) {
+      --catalogIndex;
+      changed = true;
+    }
+    wheel.catalogEntryIndices[output++] = catalogIndex;
+  }
+  for (std::size_t index = output;
+       index < wheel.catalogEntryIndices.size(); ++index) {
+    wheel.catalogEntryIndices[index] = 0U;
+  }
+  wheel.entryCount = output;
+  if (wheel.entryCount == 0U) {
+    wheel.selectedIndex = 0U;
+    wheel.open = false;
+  } else {
+    wheel.selectedIndex = std::min(
+        previousSelectedIndex - removedBeforeSelection, wheel.entryCount - 1U);
+  }
+  return changed;
+}
+
 bool resetCreativeToolWheel(CreativeToolWheelState& wheel,
                             const CreativeCatalogState& catalog) noexcept {
   const CreativeToolWheelState defaults = makeCreativeToolWheel(catalog);

@@ -136,6 +136,10 @@ struct CreativeToolWheelState {
 [[nodiscard]] bool updateCreativeCatalogAsset(
     CreativeCatalogState& catalog,
     const CreativeCatalogAsset& asset);
+[[nodiscard]] bool removeCreativeCatalogAsset(
+    CreativeCatalogState& catalog,
+    std::string_view assetId,
+    std::size_t* removedEntryIndex = nullptr);
 
 [[nodiscard]] std::span<const CreativeCatalogActionEntry>
 creativeCatalogActionEntries() noexcept;
@@ -234,6 +238,9 @@ activateSelectedCreativeCatalogAction(CreativeCatalogState& catalog) noexcept;
     const CreativeCatalogState& catalog,
     std::size_t sectorIndex,
     std::size_t catalogEntryIndex) noexcept;
+[[nodiscard]] bool removeCreativeToolWheelCatalogEntry(
+    CreativeToolWheelState& wheel,
+    std::size_t removedCatalogEntryIndex) noexcept;
 [[nodiscard]] bool resetCreativeToolWheel(
     CreativeToolWheelState& wheel,
     const CreativeCatalogState& catalog) noexcept;

@@ -6,6 +6,7 @@
 #include <string>
 
 #include "EditorActionHints.hpp"
+#include "EditorAssetLibrary.hpp"
 #include "EditorAssetReplacement.hpp"
 #include "EditorFrame.hpp"
 #include "EditorCatalog.hpp"
@@ -173,6 +174,9 @@ void appendCreativeEditorHudOverlays(
   appendCreativeEditorAssetReplacementOverlay(
       editor.assetReplacement, request.drawableWidth, request.drawableHeight,
       output.uiRects, output.glyphs);
+  appendCreativeEditorAssetLibraryOverlay(editor, request.drawableWidth,
+                                          request.drawableHeight,
+                                          output.uiRects, output.glyphs);
   appendCreativeEditorCatalogOverlay(
       request.appState, editor, request.drawableWidth, request.drawableHeight,
       output.uiRects, output.glyphs);

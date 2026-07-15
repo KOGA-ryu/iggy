@@ -30,6 +30,7 @@ struct CreativeEditorState;
 enum class CreativeEditorCatalogAssetAction : std::uint8_t {
   Equip,
   ReplaceSelection,
+  ManageAsset,
   Count,
 };
 
@@ -70,6 +71,7 @@ struct CreativeEditorCatalogFrameResult {
   bool assigned = false;
   bool assetReloadRequested = false;
   bool assetReplacementRequested = false;
+  bool authoredAssetLibraryRequested = false;
   bool toolWheelChanged = false;
   bool toolWheelSaved = false;
   bool openToolOptionsRequested = false;
@@ -78,6 +80,7 @@ struct CreativeEditorCatalogFrameResult {
   iggy3d::creative::CreativeObjectKind replacementObjectKind =
       iggy3d::creative::CreativeObjectKind::Unknown;
   std::string replacementAssetId;
+  std::string authoredAssetId;
 };
 
 [[nodiscard]] CreativeEditorCatalogFrameResult

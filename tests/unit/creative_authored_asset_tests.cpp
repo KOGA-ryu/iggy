@@ -1,3 +1,4 @@
+#include "EditorAssetLibrary.hpp"
 #include "EditorAuthoredAssets.hpp"
 #include "EditorObjectActions.hpp"
 #include "EditorPreviewFrame.hpp"
@@ -1087,6 +1088,267 @@ bool editorSyncCommandsExposeStatusAndOneUndo() {
                 "selected refresh records exactly one history entry");
 }
 
+bool libraryManagementIsDurableAndReferenceSafe() {
+  const auto nonce =
+      std::chrono::steady_clock::now().time_since_epoch().count();
+  const std::filesystem::path root =
+      std::filesystem::temp_directory_path() /
+      ("iggy3d_asset_library_management_" + std::to_string(nonce));
+  cr::CreativeAppState sourceState;
+  cr::CreativeDocument source = cr::CreativeDocument::create("Library Source");
+  static_cast<void>(source.assignId(740U));
+  const cr::CreativeObjectId sourceId =
+      createCrate(source, "Column", {4.0, 0.0, 7.0});
+  if (!expect(sourceState.facade.installDocument(std::move(source)).accepted,
+              "asset library source installed")) {
+    return false;
+  }
+  selectOnly(sourceState.facade, sourceId);
+  app::CreativeEditorAuthoredAssetLibrary library;
+  const app::CreativeEditorAuthoredAssetLoadReceipt initialized =
+      app::loadCreativeEditorAuthoredAssetLibrary(library, root);
+  const app::CreativeEditorAuthoredAssetSaveReceipt saved =
+      app::saveCreativeEditorSelectionAsAuthoredAsset(sourceState, library);
+  const cr::CreativeAuthoredAssetDefinition* original =
+      app::findCreativeEditorAuthoredAsset(library, saved.assetId);
+  if (!expect(initialized.accepted && saved.accepted && original != nullptr,
+              "asset library fixture saved")) {
+    std::error_code ignored;
+    std::filesystem::remove_all(root, ignored);
+    return false;
+  }
+  const cr::CreativeAuthoredAssetFingerprint originalFingerprint =
+      cr::fingerprintCreativeAuthoredAssetDefinition(*original);
+
+  const app::CreativeEditorAuthoredAssetMutationReceipt renamed =
+      app::renameCreativeEditorAuthoredAsset(library, saved.assetId,
+                                             "Stone Column");
+  const cr::CreativeAuthoredAssetDefinition* renamedDefinition =
+      app::findCreativeEditorAuthoredAsset(library, saved.assetId);
+  const cr::CreativeAuthoredAssetFingerprint renamedFingerprint =
+      renamedDefinition == nullptr
+          ? cr::CreativeAuthoredAssetFingerprint{}
+          : cr::fingerprintCreativeAuthoredAssetDefinition(*renamedDefinition);
+  const bool renamePreservedGeometry =
+      renamedDefinition != nullptr &&
+      renamedDefinition->assetId == saved.assetId &&
+      renamedDefinition->label == "Stone Column" && originalFingerprint.valid &&
+      renamedFingerprint.valid &&
+      originalFingerprint.value == renamedFingerprint.value;
+  const cr::CreativeAuthoredAssetDefinition renamedSnapshot =
+      renamedDefinition == nullptr ? cr::CreativeAuthoredAssetDefinition{}
+                                   : *renamedDefinition;
+  const app::CreativeEditorAuthoredAssetMutationReceipt duplicate =
+      app::duplicateCreativeEditorAuthoredAsset(library, saved.assetId);
+  renamedDefinition =
+      app::findCreativeEditorAuthoredAsset(library, saved.assetId);
+  const cr::CreativeAuthoredAssetDefinition* duplicateDefinition =
+      app::findCreativeEditorAuthoredAsset(library, duplicate.assetId);
+  const bool duplicateGeometryMatches =
+      renamedDefinition != nullptr && duplicateDefinition != nullptr &&
+      duplicateDefinition->assetId != renamedDefinition->assetId &&
+      duplicateDefinition->content.objects.size() ==
+          renamedSnapshot.content.objects.size() &&
+      cr::creativeBoundsExactlyEqual(duplicateDefinition->sourceBounds,
+                                     renamedSnapshot.sourceBounds);
+
+  cr::CreativeDocument map = cr::CreativeDocument::create("Reference Map");
+  static_cast<void>(map.assignId(741U));
+  cr::CreativeAuthoredAssetPlacementRequest placement;
+  placement.definition = renamedDefinition;
+  const cr::CreativeAuthoredAssetInstanceReceipt instance =
+      cr::instantiateCreativeAuthoredAssetAtomically(map, placement);
+  cr::CreativeAuthoredAssetDefinition* dependency = nullptr;
+  for (cr::CreativeAuthoredAssetDefinition& definition : library.definitions) {
+    if (definition.assetId == duplicate.assetId) {
+      dependency = &definition;
+      break;
+    }
+  }
+  if (dependency != nullptr && !dependency->content.objects.empty()) {
+    dependency->content.objects.front().kind =
+        cr::CreativeObjectKind::PrefabInstance;
+    dependency->content.objects.front().assetId = saved.assetId;
+  }
+  const app::CreativeEditorAuthoredAssetReferenceSummary references =
+      app::summarizeCreativeEditorAuthoredAssetReferences(map, library,
+                                                          saved.assetId);
+  const app::CreativeEditorAuthoredAssetMutationReceipt rejectedDelete =
+      app::deleteCreativeEditorAuthoredAsset(map, library, saved.assetId);
+  const app::CreativeEditorAuthoredAssetMutationReceipt deletedDuplicate =
+      app::deleteCreativeEditorAuthoredAsset(map, library, duplicate.assetId);
+
+  app::CreativeEditorAuthoredAssetLibrary reloaded;
+  const app::CreativeEditorAuthoredAssetLoadReceipt loaded =
+      app::loadCreativeEditorAuthoredAssetLibrary(reloaded, root);
+  const cr::CreativeAuthoredAssetDefinition* durable =
+      app::findCreativeEditorAuthoredAsset(reloaded, saved.assetId);
+  const bool duplicateGone = app::findCreativeEditorAuthoredAsset(
+                                 reloaded, duplicate.assetId) == nullptr;
+  std::error_code ignored;
+  std::filesystem::remove_all(root, ignored);
+
+  return expect(renamed.accepted && renamed.durableWriteOk &&
+                    renamed.assetId == saved.assetId && renamePreservedGeometry,
+                "rename preserves identity and authored geometry") &&
+         expect(duplicate.accepted && duplicate.durableWriteOk &&
+                    duplicate.label == "Stone Column Copy" &&
+                    duplicateGeometryMatches,
+                "duplicate creates an independent durable identity") &&
+         expect(instance.accepted && references.mapInstanceCount == 1U &&
+                    references.authoredAssetDependencyCount == 1U &&
+                    !rejectedDelete.accepted &&
+                    rejectedDelete.reasonCode ==
+                        "creative_asset_library_delete_referenced",
+                "delete refuses map and authored-asset references") &&
+         expect(deletedDuplicate.accepted && deletedDuplicate.durableWriteOk &&
+                    loaded.accepted && loaded.loadedCount == 1U &&
+                    durable != nullptr && durable->label == "Stone Column" &&
+                    duplicateGone,
+                "unreferenced delete is soft and durable");
+}
+
+bool isolatedAssetEditPreservesMapAndRequiresExplicitRefresh() {
+  const auto nonce =
+      std::chrono::steady_clock::now().time_since_epoch().count();
+  const std::filesystem::path root =
+      std::filesystem::temp_directory_path() /
+      ("iggy3d_asset_edit_session_" + std::to_string(nonce));
+  cr::CreativeAppState sourceState;
+  cr::CreativeDocument source = cr::CreativeDocument::create("Edit Source");
+  static_cast<void>(source.assignId(750U));
+  const cr::CreativeObjectId sourceId =
+      createCrate(source, "Base", {6.0, 0.0, 9.0});
+  if (!expect(sourceState.facade.installDocument(std::move(source)).accepted,
+              "asset edit source installed")) {
+    return false;
+  }
+  selectOnly(sourceState.facade, sourceId);
+  app::CreativeEditorAuthoredAssetLibrary library;
+  static_cast<void>(app::loadCreativeEditorAuthoredAssetLibrary(library, root));
+  const app::CreativeEditorAuthoredAssetSaveReceipt saved =
+      app::saveCreativeEditorSelectionAsAuthoredAsset(sourceState, library);
+  const cr::CreativeAuthoredAssetDefinition* original =
+      app::findCreativeEditorAuthoredAsset(library, saved.assetId);
+  if (!expect(saved.accepted && original != nullptr,
+              "asset edit fixture saved")) {
+    std::error_code ignored;
+    std::filesystem::remove_all(root, ignored);
+    return false;
+  }
+
+  cr::CreativeDocument map = cr::CreativeDocument::create("Live Map");
+  static_cast<void>(map.assignId(751U));
+  cr::CreativeAuthoredAssetPlacementRequest placement;
+  placement.definition = original;
+  placement.targetAnchor = {20.0, 0.0, 20.0};
+  const cr::CreativeAuthoredAssetInstanceReceipt instance =
+      cr::instantiateCreativeAuthoredAssetAtomically(map, placement);
+  cr::CreativeAppState mapState;
+  if (!expect(instance.accepted &&
+                  mapState.facade.installDocument(std::move(map)).accepted,
+              "asset edit map installed")) {
+    std::error_code ignored;
+    std::filesystem::remove_all(root, ignored);
+    return false;
+  }
+  const std::size_t mapObjectCount = mapState.facade.document().objectCount();
+  const std::uint64_t mapRevision = mapState.facade.document().revision();
+  const std::uint64_t mapUndoDepth = cr::creativeUndoDepth(mapState.history);
+
+  app::CreativeEditorState editor;
+  editor.authoredAssets = std::move(library);
+  editor.flyPos = {3.0F, 4.0F, 5.0F};
+  editor.yawDegrees = 17.0F;
+  editor.pitchDegrees = -11.0F;
+  editor.interaction.moveTargetId = instance.instanceRootObjectId;
+  editor.groupFocus.documentId = mapState.facade.document().id();
+  editor.terrain.documentId = mapState.facade.document().id();
+  editor.volume.active = true;
+  editor.volume.cursorValid = true;
+  const app::CreativeEditorAuthoredAssetMutationReceipt begun =
+      app::beginCreativeEditorAuthoredAssetEdit(editor, saved.assetId);
+  const bool workspaceTransientsStartedClean =
+      editor.interaction.moveTargetId == cr::kInvalidObjectId &&
+      editor.groupFocus.documentId == cr::kInvalidDocumentId &&
+      editor.terrain.documentId == cr::kInvalidDocumentId &&
+      !editor.volume.active && !editor.volume.cursorValid;
+  cr::CreativeAppState& workspace =
+      app::activeCreativeEditorAppState(editor, mapState);
+  const cr::CreativeObjectId detailId = createCrate(
+      workspace.facade.documentForPersistence(), "Capital", {0.0, 2.0, 0.0});
+  const app::CreativeEditorAuthoredAssetMutationReceipt committed =
+      app::saveCreativeEditorAuthoredAssetEdit(editor);
+  const cr::CreativeAuthoredAssetDefinition* updated =
+      app::findCreativeEditorAuthoredAsset(editor.authoredAssets,
+                                           saved.assetId);
+  const cr::CreativeAuthoredAssetSyncReceipt sync =
+      updated == nullptr ? cr::CreativeAuthoredAssetSyncReceipt{}
+                         : cr::inspectCreativeAuthoredAssetInstanceSync(
+                               mapState.facade.document(), *updated,
+                               instance.instanceRootObjectId);
+  const bool mapPreserved =
+      mapState.facade.document().objectCount() == mapObjectCount &&
+      mapState.facade.document().revision() == mapRevision &&
+      cr::creativeUndoDepth(mapState.history) == mapUndoDepth &&
+      &app::activeCreativeEditorAppState(editor, mapState) == &mapState &&
+      editor.interaction.moveTargetId == instance.instanceRootObjectId &&
+      editor.groupFocus.documentId == mapState.facade.document().id() &&
+      editor.terrain.documentId == mapState.facade.document().id() &&
+      editor.volume.active && editor.volume.cursorValid;
+  const bool cameraRestored =
+      editor.flyPos.x == 3.0F && editor.flyPos.y == 4.0F &&
+      editor.flyPos.z == 5.0F && editor.yawDegrees == 17.0F &&
+      editor.pitchDegrees == -11.0F;
+
+  const cr::CreativeAuthoredAssetFingerprint savedFingerprint =
+      updated == nullptr
+          ? cr::CreativeAuthoredAssetFingerprint{}
+          : cr::fingerprintCreativeAuthoredAssetDefinition(*updated);
+  const app::CreativeEditorAuthoredAssetMutationReceipt begunAgain =
+      app::beginCreativeEditorAuthoredAssetEdit(editor, saved.assetId);
+  cr::CreativeAppState& discardedWorkspace =
+      app::activeCreativeEditorAppState(editor, mapState);
+  static_cast<void>(
+      createCrate(discardedWorkspace.facade.documentForPersistence(),
+                  "Discarded", {0.0, 4.0, 0.0}));
+  const bool cancelled = app::cancelCreativeEditorAuthoredAssetEdit(editor);
+  const cr::CreativeAuthoredAssetDefinition* afterCancel =
+      app::findCreativeEditorAuthoredAsset(editor.authoredAssets,
+                                           saved.assetId);
+  const cr::CreativeAuthoredAssetFingerprint cancelledFingerprint =
+      afterCancel == nullptr
+          ? cr::CreativeAuthoredAssetFingerprint{}
+          : cr::fingerprintCreativeAuthoredAssetDefinition(*afterCancel);
+
+  app::CreativeEditorAuthoredAssetLibrary reloaded;
+  const app::CreativeEditorAuthoredAssetLoadReceipt loaded =
+      app::loadCreativeEditorAuthoredAssetLibrary(reloaded, root);
+  const cr::CreativeAuthoredAssetDefinition* durable =
+      app::findCreativeEditorAuthoredAsset(reloaded, saved.assetId);
+  std::error_code ignored;
+  std::filesystem::remove_all(root, ignored);
+
+  return expect(begun.accepted && detailId != cr::kInvalidObjectId &&
+                    committed.accepted && committed.durableWriteOk &&
+                    updated != nullptr && updated->content.objects.size() == 2U,
+                "isolated workspace saves edited authored content") &&
+         expect(workspaceTransientsStartedClean && mapPreserved &&
+                    cameraRestored,
+                "asset editing isolates transients and preserves map state") &&
+         expect(sync.accepted &&
+                    sync.state ==
+                        cr::CreativeAuthoredAssetSyncState::SourceChanged,
+                "saving marks instances source-changed without refreshing") &&
+         expect(begunAgain.accepted && cancelled && savedFingerprint.valid &&
+                    cancelledFingerprint.valid &&
+                    savedFingerprint.value == cancelledFingerprint.value,
+                "cancel discards the isolated workspace") &&
+         expect(loaded.accepted && durable != nullptr &&
+                    durable->content.objects.size() == 2U,
+                "saved edit round-trips durably");
+}
+
 app::CreativeEditorState authoredEditor(
     const cr::CreativeAuthoredAssetDefinition& definition) {
   app::CreativeEditorState editor;
@@ -1280,6 +1542,8 @@ int main() {
                  durableLibraryRoundTripsSelection() &&
                  updateCommandRoundTripsEditedInstance() &&
                  editorSyncCommandsExposeStatusAndOneUndo() &&
+                 libraryManagementIsDurableAndReferenceSafe() &&
+                 isolatedAssetEditPreservesMapAndRequiresExplicitRefresh() &&
                  gestureDeduplicatesAndCommitsOneUndo() &&
                  interruptionFinalizesChangedGesture() &&
                  previewUsesCanonicalCompositeProxies()

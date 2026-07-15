@@ -474,6 +474,28 @@ bool updateCreativeCatalogAsset(CreativeCatalogState& catalog,
   return true;
 }
 
+bool removeCreativeCatalogAsset(CreativeCatalogState& catalog,
+                                std::string_view assetId,
+                                std::size_t* removedEntryIndex) {
+  const auto found = std::find_if(
+      catalog.entries.begin(), catalog.entries.end(),
+      [assetId](const CreativeCatalogEntry& entry) {
+        return entry.category == CreativeCatalogEntryCategory::Asset &&
+               creativeHotbarAssetId(entry.hotbarEntry) == assetId;
+      });
+  if (found == catalog.entries.end()) {
+    return false;
+  }
+  const std::size_t index =
+      static_cast<std::size_t>(std::distance(catalog.entries.begin(), found));
+  catalog.entries.erase(found);
+  if (removedEntryIndex != nullptr) {
+    *removedEntryIndex = index;
+  }
+  refreshFilter(catalog);
+  return true;
+}
+
 std::span<const CreativeCatalogActionEntry>
 creativeCatalogActionEntries() noexcept {
   return kActionEntries;

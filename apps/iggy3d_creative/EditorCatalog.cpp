@@ -128,12 +128,20 @@ void resetAssetAction(CreativeEditorCatalogState& catalog) noexcept {
 }
 
 void moveAssetAction(CreativeEditorCatalogState& catalog,
+                     const cr::CreativeCatalogEntry& selected,
                      std::int32_t direction) noexcept {
   if (direction == 0) {
     return;
   }
-  catalog.assetAction = moveCreativeEditorCatalogAssetAction(
-      catalog.assetAction, direction);
+  if (selected.authoredComposite) {
+    catalog.assetAction =
+        catalog.assetAction == CreativeEditorCatalogAssetAction::ManageAsset
+            ? CreativeEditorCatalogAssetAction::Equip
+            : CreativeEditorCatalogAssetAction::ManageAsset;
+  } else {
+    catalog.assetAction = moveCreativeEditorCatalogAssetAction(
+        catalog.assetAction, direction);
+  }
   catalog.statusLabel.clear();
 }
 
@@ -234,6 +242,26 @@ void requestSelectedAssetReplacement(
   catalog.statusLabel.clear();
 }
 
+void requestSelectedAuthoredAssetLibrary(
+    const CreativeEditorCatalogFrameRequest& request,
+    CreativeEditorCatalogFrameResult& result) {
+  const cr::CreativeCatalogEntry* selected =
+      cr::selectedCreativeCatalogEntry(request.editor.catalog.model);
+  if (selected == nullptr ||
+      selected->category != cr::CreativeCatalogEntryCategory::Asset ||
+      !selected->authoredComposite) {
+    return;
+  }
+  const std::string_view assetId =
+      cr::creativeHotbarAssetId(selected->hotbarEntry);
+  if (assetId.empty()) {
+    request.editor.catalog.statusLabel = "AUTHORED ASSET IS INVALID";
+    return;
+  }
+  result.authoredAssetLibraryRequested = true;
+  result.authoredAssetId = assetId;
+  request.editor.catalog.statusLabel.clear();
+}
 
 [[nodiscard]] bool actionPresent(
     const cr::CreativeInputRouteResult& routedInput,
@@ -297,6 +325,8 @@ void applyInventoryModeActions(
       return;
     case cr::CreativeInputContext::ToolOptions:
     case cr::CreativeInputContext::AssetReplacementPreview:
+    case cr::CreativeInputContext::AssetLibrary:
+    case cr::CreativeInputContext::AuthoredAssetEditMenu:
     case cr::CreativeInputContext::TransformPreview:
     case cr::CreativeInputContext::TransformControls:
     case cr::CreativeInputContext::Controls:
@@ -347,6 +377,9 @@ void applyInventoryWindowMode(iggy3d::SdlWindow& window,
   availability.clipboardAvailable =
       terrainRegion ? cr::isValidCreativeTerrainStamp(appState.terrainStamp)
                     : !cr::creativeClipboardEmpty(appState.clipboard);
+  availability.saveAvailable = !editor.assetEdit.active;
+  availability.newAvailable = !editor.assetEdit.active;
+  availability.loadAvailable = !editor.assetEdit.active;
   return availability;
 }
 
@@ -438,10 +471,9 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
         const cr::CreativeCatalogEntry* selected =
             cr::selectedCreativeCatalogEntry(catalog.model);
         if (selected != nullptr &&
-            selected->category == cr::CreativeCatalogEntryCategory::Asset &&
-            !selected->authoredComposite) {
+            selected->category == cr::CreativeCatalogEntryCategory::Asset) {
           moveAssetAction(
-              catalog,
+              catalog, *selected,
               event.action == cr::CreativeInputActionId::CatalogPreviousVariant
                   ? -1
                   : 1);
@@ -471,6 +503,13 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
               catalog.assetAction ==
                   CreativeEditorCatalogAssetAction::ReplaceSelection) {
             requestSelectedAssetReplacement(request, result);
+          } else if (selected != nullptr &&
+                     selected->category ==
+                         cr::CreativeCatalogEntryCategory::Asset &&
+                     selected->authoredComposite &&
+                     catalog.assetAction ==
+                         CreativeEditorCatalogAssetAction::ManageAsset) {
+            requestSelectedAuthoredAssetLibrary(request, result);
           } else {
             activateSelectedCatalogEntry(request, std::nullopt, result);
           }
@@ -541,10 +580,13 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
     }
     if (selected != nullptr &&
         selected->category == cr::CreativeCatalogEntryCategory::Asset &&
-        !selected->authoredComposite &&
         layout.replaceX >= layout.contentX &&
         contains(replaceSelectionButton(layout), pointer.x, pointer.y)) {
-      requestSelectedAssetReplacement(request, result);
+      if (selected->authoredComposite) {
+        requestSelectedAuthoredAssetLibrary(request, result);
+      } else {
+        requestSelectedAssetReplacement(request, result);
+      }
       return;
     }
     if (selected != nullptr &&
@@ -613,6 +655,7 @@ CreativeEditorCatalogAssetAction moveCreativeEditorCatalogAssetAction(
     case CreativeEditorCatalogAssetAction::Equip:
       return CreativeEditorCatalogAssetAction::ReplaceSelection;
     case CreativeEditorCatalogAssetAction::ReplaceSelection:
+    case CreativeEditorCatalogAssetAction::ManageAsset:
     case CreativeEditorCatalogAssetAction::Count:
       return CreativeEditorCatalogAssetAction::Equip;
   }

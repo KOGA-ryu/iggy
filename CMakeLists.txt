@@ -252,6 +252,9 @@ endif()
 
 set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorActionHints.cpp
+  apps/iggy3d_creative/EditorAssetLibrary.cpp
+  apps/iggy3d_creative/EditorAssetLibraryFrame.cpp
+  apps/iggy3d_creative/EditorAssetLibraryOverlay.cpp
   apps/iggy3d_creative/EditorAssetReplacement.cpp
   apps/iggy3d_creative/EditorAssetScatter.cpp
   apps/iggy3d_creative/EditorAuthoredAssets.cpp
