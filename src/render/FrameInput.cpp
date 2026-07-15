@@ -123,8 +123,21 @@ std::string_view frameInputReasonCode(FrameInputStatus status) {
       return "frame_creative_wireframe_debug_lines_invalid";
     case FrameInputStatus::InvalidCreativePreviewItems:
       return "frame_creative_preview_items_invalid";
+    case FrameInputStatus::InvalidContentViewport:
+      return "frame_content_viewport_invalid";
   }
   return "frame_input_invalid";
+}
+
+bool isFullFrameContentViewport(const RenderContentViewport& rect) noexcept {
+  return rect.x == 0 && rect.y == 0 && rect.width == 0U && rect.height == 0U;
+}
+
+RenderContentViewport effectiveContentViewport(const FrameInput& frame) noexcept {
+  if (isFullFrameContentViewport(frame.contentViewport)) {
+    return {0, 0, frame.viewport.width, frame.viewport.height};
+  }
+  return frame.contentViewport;
 }
 
 FrameInputStatus validateFrameInput(const FrameInput& frame) {
@@ -138,6 +151,24 @@ FrameInputStatus validateFrameInput(const FrameInput& frame) {
                                static_cast<float>(frame.viewport.height);
   if (std::fabs(frame.viewport.aspectRatio - expectedAspect) > 0.001F) {
     return FrameInputStatus::InvalidAspectRatio;
+  }
+
+  // Content viewport: the all-zero sentinel is full-frame; any explicit rect
+  // must be non-zero, non-negative, and fit inside the swapchain viewport.
+  // (Producers must clamp a transient zero-sized dock node to full-frame
+  // before it reaches here — plan DD-5.)
+  if (!isFullFrameContentViewport(frame.contentViewport)) {
+    const RenderContentViewport& rect = frame.contentViewport;
+    if (rect.x < 0 || rect.y < 0 || rect.width == 0U || rect.height == 0U) {
+      return FrameInputStatus::InvalidContentViewport;
+    }
+    const std::uint64_t right =
+        static_cast<std::uint64_t>(rect.x) + rect.width;
+    const std::uint64_t bottom =
+        static_cast<std::uint64_t>(rect.y) + rect.height;
+    if (right > frame.viewport.width || bottom > frame.viewport.height) {
+      return FrameInputStatus::InvalidContentViewport;
+    }
   }
 
   if (!isFiniteScalar(frame.clock.interpolationAlpha) ||

@@ -25,6 +25,20 @@ struct RenderViewport {
   float aspectRatio = 1.0F;
 };
 
+// Sub-rectangle of the swapchain-sized viewport that the 3D scene occupies,
+// in drawable-pixel space. The all-zero default is the full-frame sentinel
+// (content rect == viewport), so every existing producer is unaffected and
+// --capture stays byte-identical. Distinct from RenderViewport, which remains
+// swapchain-truth and also drives swapchain recreation; only camera aspect and
+// picking/overlay math read the content rect. See
+// docs/creative_desktop_ui_plan.md DD-5.
+struct RenderContentViewport {
+  std::int32_t x = 0;
+  std::int32_t y = 0;
+  std::uint32_t width = 0;
+  std::uint32_t height = 0;
+};
+
 struct RenderFrameClock {
   std::uint64_t sourceTick = 0;
   std::uint64_t frameIndex = 0;
@@ -121,6 +135,7 @@ struct RenderCreativePreviewFrame {
 
 struct FrameInput {
   RenderViewport viewport;
+  RenderContentViewport contentViewport;
   RenderFrameClock clock;
   RenderCameraFrame camera;
   RenderSceneFrame projections;
@@ -128,6 +143,14 @@ struct FrameInput {
   RenderCreativeWireframeDebugFrame creativeWireframeDebug;
   RenderCreativePreviewFrame creativePreview;
 };
+
+// True for the all-zero sentinel that means "content rect == full viewport".
+[[nodiscard]] bool isFullFrameContentViewport(
+    const RenderContentViewport& rect) noexcept;
+// Resolves the sentinel to the full viewport rect; otherwise returns the
+// explicit content rect. Only call on a frame that passed validateFrameInput.
+[[nodiscard]] RenderContentViewport effectiveContentViewport(
+    const FrameInput& frame) noexcept;
 
 [[nodiscard]] std::string_view renderCreativePreviewAssetId(
     const RenderCreativePreviewItem& item) noexcept;
@@ -147,6 +170,7 @@ enum class FrameInputStatus : std::uint8_t {
   InvalidClipPlanes,
   InvalidCreativeWireframeDebugLines,
   InvalidCreativePreviewItems,
+  InvalidContentViewport,
 };
 
 FrameInputStatus validateFrameInput(const FrameInput& frame);

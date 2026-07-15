@@ -578,6 +578,9 @@ set_tests_properties(render_diagnostics_tests PROPERTIES LABELS "unit;render;dia
 iggy3d_add_unit_test(render_projection_input_tests tests/unit/render_projection_input_tests.cpp)
 set_tests_properties(render_projection_input_tests PROPERTIES LABELS "unit;render;frame_input;iggy3d")
 
+iggy3d_add_unit_test(render_content_viewport_tests tests/unit/render_content_viewport_tests.cpp)
+set_tests_properties(render_content_viewport_tests PROPERTIES LABELS "unit;render;frame_input;iggy3d")
+
 iggy3d_add_unit_test(render_camera_frame_tests tests/unit/render_camera_frame_tests.cpp)
 set_tests_properties(render_camera_frame_tests PROPERTIES LABELS "unit;render;camera;iggy3d")
 
