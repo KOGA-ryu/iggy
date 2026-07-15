@@ -9,6 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(cmake/iggy3d_options.cmake)
 include(cmake/iggy3d_warnings.cmake)
 include(cmake/iggy3d_vulkan_deps.cmake)
+include(cmake/iggy3d_imgui.cmake)
 include(cmake/iggy3d_shaders.cmake)
 
 add_library(iggy3d)
