@@ -235,6 +235,45 @@ render, an assembled-house proof, and an optional inspection `.blend` file.
 The stairs, porch, and bridge in that kit are the production compound-collision
 fixtures.
 
+The matching room-scale prop set is documented in
+[`homestead_interior_kit.md`](homestead_interior_kit.md). Its generator exports
+ten floor-aligned furniture and decor assets plus gallery and furnished-room
+proofs. The bookshelf, dresser, chest, hearth, crate, and lantern also exercise
+the production attachment-socket import path with reusable `decor.surface` and
+stacking compatibility families.
+
+The exterior prop set is documented in
+[`homestead_yard_kit.md`](homestead_yard_kit.md). Its generator exports eleven
+fence, gate, landmark, and work-yard assets plus gallery and assembled-yard
+proofs. The frame/leaf pair exercises a dedicated `yard.gate` compatibility
+family, while the signpost reuses the interior lantern's `decor.surface` plug.
+
+The natural boundary set is documented in
+[`woodland_edge_kit.md`](woodland_edge_kit.md). Its generator exports thirteen
+solid-foliage trees and ground-dressing assets plus gallery and woodland-edge
+proofs. Tree collision is restricted to one authored trunk part; small dressing
+assets are intentionally non-colliding for dense placement.
+
+The connective infrastructure set is documented in
+[`road_retaining_kit.md`](road_retaining_kit.md). Its generator exports fifteen
+path, junction, wall, stair, culvert, and roadside assets plus gallery and
+connected-road proofs. Walkable collision follows visible path stones and
+treads, while retaining masonry uses compact structural cores.
+
+The natural terrain set is documented in
+[`rock_cliff_kit.md`](rock_cliff_kit.md). Its generator exports sixteen
+boulder, outcrop, cliff, cave, transition, step, and ledge assets plus gallery
+and assembled-ridge proofs. Structural rock uses bounded compound collision;
+only explicit caps and treads are walkable, while scree and rubble remain
+non-colliding dressing.
+
+The modular cave set is documented in
+[`cave_interior_kit.md`](cave_interior_kit.md). Its generator exports sixteen
+floor, wall, ceiling, tunnel, chamber, traversal, and dressing assets plus
+gallery and connected-cutaway proofs. Complete stamps and refinement pieces
+share the same collision kernels, keeping openings clear without triangle-mesh
+physics.
+
 ## References
 
 - Blender glTF 2.0 exporter:

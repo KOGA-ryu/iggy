@@ -374,6 +374,270 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
                               iggy3d::StaticMeshCollisionMode::CompoundBounds,
                               true, 3U, 1U},
   };
+  constexpr std::array kInteriorAssets{
+      ModularAssetExpectation{
+          "homestead/interior/bed_single_2p1x1p1", "prop",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "homestead/interior/chair_ladderback_0p56", "prop",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "homestead/interior/bench_rustic_1p6", "prop",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "homestead/interior/bookshelf_1p1x2p1", "prop",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 0U,
+          1U},
+      ModularAssetExpectation{
+          "homestead/interior/dresser_1p3", "prop",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 0U,
+          1U},
+      ModularAssetExpectation{
+          "homestead/interior/storage_chest_1p1", "prop",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 0U,
+          1U},
+      ModularAssetExpectation{
+          "homestead/interior/hearth_stone_1p8", "prop",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 0U,
+          1U},
+      ModularAssetExpectation{
+          "homestead/interior/barrel_oak_0p8", "prop",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "homestead/interior/crate_wood_0p6", "prop",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 2U, 1U,
+          1U},
+      ModularAssetExpectation{
+          "homestead/interior/lantern_iron_0p7", "prop",
+          iggy3d::StaticMeshCollisionMode::None, false, 0U, 0U, 1U, 1U,
+          0U},
+  };
+  constexpr std::array kYardAssets{
+      ModularAssetExpectation{
+          "homestead/yard/fence_2m", "prop",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "homestead/yard/fence_4m", "prop",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "homestead/yard/fence_corner_2x2", "prop",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 7U},
+      ModularAssetExpectation{
+          "homestead/yard/gate_frame_1p8", "prop",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 3U, 0U,
+          1U, 0U, 1U},
+      ModularAssetExpectation{
+          "homestead/yard/gate_leaf_1p4", "prop",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 1U,
+          0U},
+      ModularAssetExpectation{
+          "homestead/yard/well_roofed_1p8", "prop",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "homestead/yard/handcart_2p4", "prop",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "homestead/yard/signpost_2p2", "prop",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 0U,
+          1U},
+      ModularAssetExpectation{
+          "homestead/yard/woodpile_1p5", "prop",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "homestead/yard/trough_1p6", "prop",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "homestead/yard/hay_bale_1p0", "prop",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+  };
+  constexpr std::array kWoodlandAssets{
+      ModularAssetExpectation{
+          "woodland/broadleaf_young_4p7m", "tree",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 1U},
+      ModularAssetExpectation{
+          "woodland/broadleaf_mature_7p3m", "tree",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 1U},
+      ModularAssetExpectation{
+          "woodland/broadleaf_ancient_9p5m", "tree",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 1U},
+      ModularAssetExpectation{
+          "woodland/pine_medium_6p3m", "tree",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 1U},
+      ModularAssetExpectation{
+          "woodland/pine_tall_9p3m", "tree",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 1U},
+      ModularAssetExpectation{
+          "woodland/dead_tree_snag_6m", "tree",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 1U},
+      ModularAssetExpectation{
+          "woodland/tree_stump_0p8m", "log",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "woodland/fallen_branch_pile_2m", "log",
+          iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "woodland/shrub_low_1p2m", "shrub",
+          iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "woodland/shrub_dense_1p8m", "shrub",
+          iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "woodland/fern_cluster_1p2m", "foliage",
+          iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "woodland/reed_grass_clump_1p4m", "foliage",
+          iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "woodland/rock_cluster_small_1p5m", "rock",
+          iggy3d::StaticMeshCollisionMode::None},
+  };
+  constexpr std::array kInfrastructureAssets{
+      ModularAssetExpectation{
+          "infrastructure/stone_path_straight_2x2", "walkway",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 4U, 4U},
+      ModularAssetExpectation{
+          "infrastructure/stone_path_straight_4x2", "walkway",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 8U, 8U},
+      ModularAssetExpectation{
+          "infrastructure/stone_path_turn_4x4", "walkway",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 7U, 7U},
+      ModularAssetExpectation{
+          "infrastructure/stone_path_t_4x4", "walkway",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 10U, 10U},
+      ModularAssetExpectation{
+          "infrastructure/stone_path_cross_4x4", "walkway",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 12U, 12U},
+      ModularAssetExpectation{
+          "infrastructure/stone_path_end_2x2", "walkway",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 4U, 4U},
+      ModularAssetExpectation{
+          "infrastructure/doorway_threshold_2x1", "walkway",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 2U, 2U},
+      ModularAssetExpectation{
+          "infrastructure/stepping_stones_4x1p5", "walkway",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 7U, 7U},
+      ModularAssetExpectation{
+          "infrastructure/retaining_wall_2x1p2", "structure",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 1U},
+      ModularAssetExpectation{
+          "infrastructure/retaining_wall_4x1p2", "structure",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 1U},
+      ModularAssetExpectation{
+          "infrastructure/retaining_wall_corner_2x2x1p2", "structure",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 2U},
+      ModularAssetExpectation{
+          "infrastructure/retaining_wall_end_1x1p2", "structure",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 1U},
+      ModularAssetExpectation{
+          "infrastructure/terrain_steps_2x3x1p2", "stairs",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 6U, 6U},
+      ModularAssetExpectation{
+          "infrastructure/drainage_culvert_2x2", "bridge",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 6U, 4U},
+      ModularAssetExpectation{
+          "infrastructure/roadside_marker_0p4x1p2", "marker",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+  };
+  constexpr std::array kRockCliffAssets{
+      ModularAssetExpectation{
+          "rock_cliff/boulder_medium_1p8m", "rock",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "rock_cliff/boulder_large_3m", "rock",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "rock_cliff/rock_outcrop_low_3x2", "terrain",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 4U},
+      ModularAssetExpectation{
+          "rock_cliff/rock_outcrop_tall_3x3", "terrain",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 5U},
+      ModularAssetExpectation{
+          "rock_cliff/cliff_face_2x2", "terrain",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 4U},
+      ModularAssetExpectation{
+          "rock_cliff/cliff_face_4x3", "terrain",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 12U},
+      ModularAssetExpectation{
+          "rock_cliff/cliff_corner_inner_2x2x2", "terrain",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 8U},
+      ModularAssetExpectation{
+          "rock_cliff/cliff_corner_outer_2x2x2", "terrain",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 8U},
+      ModularAssetExpectation{
+          "rock_cliff/cliff_cap_walkable_4x2", "terrain",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 6U, 2U},
+      ModularAssetExpectation{
+          "rock_cliff/natural_stone_steps_2x3x1p5", "stairs",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 6U, 6U},
+      ModularAssetExpectation{
+          "rock_cliff/cave_mouth_arch_4x3p5", "structure",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 9U},
+      ModularAssetExpectation{
+          "rock_cliff/scree_pile_3x2", "rock",
+          iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "rock_cliff/rubble_cluster_2x1p5", "rock",
+          iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "rock_cliff/terrain_transition_left_4x2x2", "terrain",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 4U},
+      ModularAssetExpectation{
+          "rock_cliff/terrain_transition_right_4x2x2", "terrain",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 4U},
+      ModularAssetExpectation{
+          "rock_cliff/overlook_ledge_4x2", "terrain",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 5U, 2U},
+  };
+  constexpr std::array kCaveAssets{
+      ModularAssetExpectation{
+          "cave/floor_4x4", "terrain",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 6U, 6U},
+      ModularAssetExpectation{
+          "cave/ramp_4x4x1p5", "stairs",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 8U, 8U},
+      ModularAssetExpectation{
+          "cave/wall_straight_4x3", "terrain",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 8U},
+      ModularAssetExpectation{
+          "cave/wall_corner_inner_4x4x3", "terrain",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 12U},
+      ModularAssetExpectation{
+          "cave/wall_corner_outer_4x4x3", "terrain",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 12U},
+      ModularAssetExpectation{
+          "cave/ceiling_4x4", "terrain",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 6U},
+      ModularAssetExpectation{
+          "cave/tunnel_straight_4x4x3p5", "structure",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 20U, 6U},
+      ModularAssetExpectation{
+          "cave/tunnel_turn_6x6x3p5", "structure",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 30U, 5U},
+      ModularAssetExpectation{
+          "cave/tunnel_t_junction_6x6x3p5", "structure",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 28U, 5U},
+      ModularAssetExpectation{
+          "cave/tunnel_dead_end_4x4x3p5", "structure",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 26U, 6U},
+      ModularAssetExpectation{
+          "cave/chamber_8x8x4", "structure",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 40U, 9U},
+      ModularAssetExpectation{
+          "cave/rock_column_1p4x3p2", "structure",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 3U},
+      ModularAssetExpectation{
+          "cave/stalactite_cluster_2x2x3", "decor",
+          iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "cave/stalagmite_cluster_2x2x2", "decor",
+          iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "cave/collapsed_passage_4x3", "structure",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 9U},
+      ModularAssetExpectation{
+          "cave/ledge_walkable_4x2", "terrain",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 5U, 2U},
+  };
   const iggy3d::StaticMeshAssetCatalog catalog =
       iggy3d::discoverStaticMeshAssetCatalog("assets/creative");
   const iggy3d::StaticMeshAssetCatalog missing =
@@ -429,64 +693,90 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
       iggy3d::vulkan::resolveCreativePreviewGeometryDrawIndex(resources, target);
   const auto maximumPreviewIndex =
       std::max_element(preview.indices.begin(), preview.indices.end());
-  bool modularAssetsValid = true;
-  for (const ModularAssetExpectation& expected : kModularAssets) {
-    const iggy3d::StaticMeshAssetCatalogEntry* entry =
-        catalog.find(expected.assetId);
-    const bool validBounds =
-        entry != nullptr && std::isfinite(entry->boundsMin.x) &&
-        std::isfinite(entry->boundsMin.y) &&
-        std::isfinite(entry->boundsMin.z) &&
-        std::isfinite(entry->boundsMax.x) &&
-        std::isfinite(entry->boundsMax.y) &&
-        std::isfinite(entry->boundsMax.z) &&
-        entry->boundsMin.x < entry->boundsMax.x &&
-        entry->boundsMin.y < entry->boundsMax.y &&
-        entry->boundsMin.z < entry->boundsMax.z;
-    const bool validMetadata =
-        entry != nullptr &&
-        entry->authoringMetadata.status ==
-            iggy3d::StaticMeshAuthoringMetadataStatus::Authored &&
-        entry->authoringMetadata.categoryId == expected.category &&
-        entry->authoringMetadata.collisionMode == expected.collision &&
-        entry->authoringMetadata.walkable == expected.walkable;
-    const bool validCollisionParts =
-        entry != nullptr &&
-        entry->collisionParts.size() == expected.collisionPartCount &&
-        static_cast<std::size_t>(std::count_if(
-            entry->collisionParts.begin(), entry->collisionParts.end(),
-            [](const iggy3d::StaticMeshCollisionPart& part) {
-              return part.walkable;
-            })) == expected.walkablePartCount;
-    const bool validSockets =
-        entry != nullptr &&
-        entry->attachmentSockets.size() == expected.socketCount &&
-        static_cast<std::size_t>(std::count_if(
-            entry->attachmentSockets.begin(), entry->attachmentSockets.end(),
-            [](const iggy3d::StaticMeshAttachmentSocket& socket) {
-              return socket.role ==
-                     iggy3d::StaticMeshAttachmentSocketRole::Plug;
-            })) == expected.plugCount &&
-        static_cast<std::size_t>(std::count_if(
-            entry->attachmentSockets.begin(), entry->attachmentSockets.end(),
-            [](const iggy3d::StaticMeshAttachmentSocket& socket) {
-              return socket.role ==
-                     iggy3d::StaticMeshAttachmentSocketRole::Receiver;
-            })) == expected.receiverCount;
-    const std::string message =
-        "modular asset imports with authored contract: " +
-        std::string(expected.assetId);
-    modularAssetsValid =
-        expect(validBounds && validMetadata && validCollisionParts &&
-                   validSockets,
-               message.c_str()) &&
-        modularAssetsValid;
-  }
+  const auto validateAssetFamily = [&](const auto& expectedAssets,
+                                       std::string_view family) {
+    bool assetsValid = true;
+    for (const ModularAssetExpectation& expected : expectedAssets) {
+      const iggy3d::StaticMeshAssetCatalogEntry* entry =
+          catalog.find(expected.assetId);
+      const bool validBounds =
+          entry != nullptr && std::isfinite(entry->boundsMin.x) &&
+          std::isfinite(entry->boundsMin.y) &&
+          std::isfinite(entry->boundsMin.z) &&
+          std::isfinite(entry->boundsMax.x) &&
+          std::isfinite(entry->boundsMax.y) &&
+          std::isfinite(entry->boundsMax.z) &&
+          entry->boundsMin.x < entry->boundsMax.x &&
+          entry->boundsMin.y < entry->boundsMax.y &&
+          entry->boundsMin.z < entry->boundsMax.z;
+      const bool validMetadata =
+          entry != nullptr &&
+          entry->authoringMetadata.status ==
+              iggy3d::StaticMeshAuthoringMetadataStatus::Authored &&
+          entry->authoringMetadata.categoryId == expected.category &&
+          entry->authoringMetadata.collisionMode == expected.collision &&
+          entry->authoringMetadata.walkable == expected.walkable;
+      const bool validCollisionParts =
+          entry != nullptr &&
+          entry->collisionParts.size() == expected.collisionPartCount &&
+          static_cast<std::size_t>(std::count_if(
+              entry->collisionParts.begin(), entry->collisionParts.end(),
+              [](const iggy3d::StaticMeshCollisionPart& part) {
+                return part.walkable;
+              })) == expected.walkablePartCount;
+      const bool validSockets =
+          entry != nullptr &&
+          entry->attachmentSockets.size() == expected.socketCount &&
+          static_cast<std::size_t>(std::count_if(
+              entry->attachmentSockets.begin(), entry->attachmentSockets.end(),
+              [](const iggy3d::StaticMeshAttachmentSocket& socket) {
+                return socket.role ==
+                       iggy3d::StaticMeshAttachmentSocketRole::Plug;
+              })) == expected.plugCount &&
+          static_cast<std::size_t>(std::count_if(
+              entry->attachmentSockets.begin(), entry->attachmentSockets.end(),
+              [](const iggy3d::StaticMeshAttachmentSocket& socket) {
+                return socket.role ==
+                       iggy3d::StaticMeshAttachmentSocketRole::Receiver;
+              })) == expected.receiverCount;
+      const std::string message = std::string(family) +
+                                  " asset imports with authored contract: " +
+                                  std::string(expected.assetId);
+      assetsValid =
+          expect(validBounds && validMetadata && validCollisionParts &&
+                     validSockets,
+                 message.c_str()) &&
+          assetsValid;
+    }
+    return assetsValid;
+  };
+  const bool modularAssetsValid =
+      validateAssetFamily(kModularAssets, "modular");
+  const bool interiorAssetsValid =
+      validateAssetFamily(kInteriorAssets, "interior");
+  const bool yardAssetsValid = validateAssetFamily(kYardAssets, "yard");
+  const bool woodlandAssetsValid =
+      validateAssetFamily(kWoodlandAssets, "woodland");
+  const bool infrastructureAssetsValid =
+      validateAssetFamily(kInfrastructureAssets, "infrastructure");
+  const bool rockCliffAssetsValid =
+      validateAssetFamily(kRockCliffAssets, "rock and cliff");
+  const bool caveAssetsValid = validateAssetFamily(kCaveAssets, "cave");
 
   return expect(catalog.failures.empty() &&
-                    catalog.entries.size() == 6U + kModularAssets.size(),
+                    catalog.entries.size() ==
+                        6U + kModularAssets.size() + kInteriorAssets.size() +
+                            kYardAssets.size() + kWoodlandAssets.size() +
+                            kInfrastructureAssets.size() +
+                            kRockCliffAssets.size() + kCaveAssets.size(),
                 "catalog discovers every valid GLB fixture") &&
          modularAssetsValid &&
+         interiorAssetsValid &&
+         yardAssetsValid &&
+         woodlandAssetsValid &&
+         infrastructureAssetsValid &&
+         rockCliffAssetsValid &&
+         caveAssetsValid &&
          expect(boulder != catalog.entries.end() &&
                     boulder->label == "Boulder 01" &&
                     boulder->authoringMetadata.collisionMode ==
