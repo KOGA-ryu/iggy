@@ -214,6 +214,11 @@ python3 tools/generate_walkway_glb.py
 The generator is only for the deterministic test fixture. Production art
 should be exported from Blender.
 
+The procedural homestead construction set is documented separately in
+[`homestead_modular_kit.md`](homestead_modular_kit.md). Its Blender script is
+the editable source of truth and exports the checked-in runtime GLBs, a gallery
+render, an assembled-house proof, and an optional inspection `.blend` file.
+
 ## References
 
 - Blender glTF 2.0 exporter:

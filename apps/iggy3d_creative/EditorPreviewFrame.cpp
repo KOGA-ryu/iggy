@@ -1,6 +1,9 @@
 #include "EditorPreviewFrame.hpp"
 #include "EditorPreviewFrameInternal.hpp"
 
+#include "EditorInteraction.hpp"
+#include "EditorState.hpp"
+
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 namespace creative = iggy3d::creative;
@@ -37,8 +40,24 @@ void buildAndAttachCreativeEditorOverlayFrame(
 
   const CreativeEditorWorldOverlayFacts worldFacts =
       buildCreativeEditorWorldWireframes(request, output);
-  appendCreativeEditorHudOverlays(
-      request, output, worldFacts.volume, worldFacts.hasSelection);
+
+  // DD-15: with the desktop shell on, the legacy controller HUD (hotbar,
+  // catalog, tool wheel, action hints, held-item labels) renders only for a
+  // gamepad; on keyboard/mouse the ImGui panels are primary, so it is
+  // suppressed to stop it colliding with the status bar. The center crosshair
+  // and the selection wireframes are always kept. Under --capture the shell is
+  // off (shellEnabled == false), so the legacy HUD builds exactly as before and
+  // image output is unchanged.
+  const bool suppressLegacyHud =
+      editor.desktopUi.shellEnabled && !request.captureMode &&
+      editor.activeControlDevice ==
+          iggy3d::creative::CreativeControlDevice::KeyboardMouse;
+  appendCreativeEditorCrosshairOverlay(editor, request.drawableWidth,
+                                       request.drawableHeight, output.uiRects);
+  if (!suppressLegacyHud) {
+    appendCreativeEditorHudOverlays(
+        request, output, worldFacts.volume, worldFacts.hasSelection);
+  }
 
   // Attach only after every backing vector has reached its final size.
   attachCreativeEditorOverlayFrame(frame, output);

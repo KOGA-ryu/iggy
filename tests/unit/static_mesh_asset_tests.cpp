@@ -314,6 +314,47 @@ bool externalFloorAndWallBypassGeneratedBatching() {
 }
 
 bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
+  struct ModularAssetExpectation {
+    std::string_view assetId;
+    std::string_view category;
+    iggy3d::StaticMeshCollisionMode collision;
+    bool walkable = false;
+  };
+  constexpr std::array kModularAssets{
+      ModularAssetExpectation{"homestead/modular/beam_4x0p4", "structure",
+                              iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{"homestead/modular/ceiling_4x4", "ceiling",
+                              iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{"homestead/modular/door_leaf_1p1x2p2", "door",
+                              iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{"homestead/modular/floor_4x4", "floor",
+                              iggy3d::StaticMeshCollisionMode::Bounds, true},
+      ModularAssetExpectation{"homestead/modular/foundation_4x4", "foundation",
+                              iggy3d::StaticMeshCollisionMode::Bounds, true},
+      ModularAssetExpectation{"homestead/modular/gable_cap_4x1p5", "roof",
+                              iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{"homestead/modular/lintel_2x0p6", "wall",
+                              iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{"homestead/modular/pillar_0p5x3", "structure",
+                              iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "homestead/modular/roof_gable_slope_4p4x2p2", "roof",
+          iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{"homestead/modular/roof_ridge_4p4", "roof",
+                              iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{"homestead/modular/roof_shed_4x4", "roof",
+                              iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{"homestead/modular/wall_full_4x3", "wall",
+                              iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{"homestead/modular/wall_half_2x3", "wall",
+                              iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{"homestead/modular/wall_low_4x1p2", "wall",
+                              iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{"homestead/modular/wall_pier_1x3", "wall",
+                              iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{"homestead/modular/window_frame_1p5x1p2", "window",
+                              iggy3d::StaticMeshCollisionMode::None},
+  };
   const iggy3d::StaticMeshAssetCatalog catalog =
       iggy3d::discoverStaticMeshAssetCatalog("assets/creative");
   const iggy3d::StaticMeshAssetCatalog missing =
@@ -369,9 +410,39 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
       iggy3d::vulkan::resolveCreativePreviewGeometryDrawIndex(resources, target);
   const auto maximumPreviewIndex =
       std::max_element(preview.indices.begin(), preview.indices.end());
+  bool modularAssetsValid = true;
+  for (const ModularAssetExpectation& expected : kModularAssets) {
+    const iggy3d::StaticMeshAssetCatalogEntry* entry =
+        catalog.find(expected.assetId);
+    const bool validBounds =
+        entry != nullptr && std::isfinite(entry->boundsMin.x) &&
+        std::isfinite(entry->boundsMin.y) &&
+        std::isfinite(entry->boundsMin.z) &&
+        std::isfinite(entry->boundsMax.x) &&
+        std::isfinite(entry->boundsMax.y) &&
+        std::isfinite(entry->boundsMax.z) &&
+        entry->boundsMin.x < entry->boundsMax.x &&
+        entry->boundsMin.y < entry->boundsMax.y &&
+        entry->boundsMin.z < entry->boundsMax.z;
+    const bool validMetadata =
+        entry != nullptr &&
+        entry->authoringMetadata.status ==
+            iggy3d::StaticMeshAuthoringMetadataStatus::Authored &&
+        entry->authoringMetadata.categoryId == expected.category &&
+        entry->authoringMetadata.collisionMode == expected.collision &&
+        entry->authoringMetadata.walkable == expected.walkable;
+    const std::string message =
+        "modular asset imports with authored contract: " +
+        std::string(expected.assetId);
+    modularAssetsValid =
+        expect(validBounds && validMetadata, message.c_str()) &&
+        modularAssetsValid;
+  }
 
-  return expect(catalog.failures.empty() && catalog.entries.size() == 6U,
+  return expect(catalog.failures.empty() &&
+                    catalog.entries.size() == 6U + kModularAssets.size(),
                 "catalog discovers every valid GLB fixture") &&
+         modularAssetsValid &&
          expect(boulder != catalog.entries.end() &&
                     boulder->label == "Boulder 01" &&
                     boulder->authoringMetadata.collisionMode ==
@@ -448,10 +519,12 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
                     missing.failures[0].reasonCode ==
                         "static_mesh_asset_root_not_directory",
                 "missing catalog root reports one explicit failure") &&
-         expect(preview.ready && preview.assetDraws.size() == 6U &&
+         expect(preview.ready &&
+                    preview.assetDraws.size() == catalog.entries.size() &&
                     preview.indexedDraws.size() ==
                         iggy3d::vulkan::kCreativePreviewGeometryDrawRangeCount +
-                            6U * iggy3d::kRenderCreativePreviewRoleCount,
+                            catalog.entries.size() *
+                                iggy3d::kRenderCreativePreviewRoleCount,
                 "startup atlas contains three colored roles per asset") &&
          expect(preview.vertices.size() >
                         std::numeric_limits<std::uint16_t>::max() &&

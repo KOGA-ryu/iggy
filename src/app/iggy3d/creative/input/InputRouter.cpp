@@ -479,6 +479,30 @@ bool creativeInputActionDown(
       });
 }
 
+bool creativeInputRouteContains(const CreativeInputRouteResult& route,
+                                CreativeInputActionId action) noexcept {
+  for (std::size_t index = 0; index < route.actionCount; ++index) {
+    if (route.actions[index].action == action) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void creativeInputRouteRemove(CreativeInputRouteResult& route,
+                              CreativeInputActionId action) noexcept {
+  std::size_t write = 0;
+  for (std::size_t read = 0; read < route.actionCount; ++read) {
+    if (route.actions[read].action != action) {
+      if (write != read) {
+        route.actions[write] = route.actions[read];
+      }
+      ++write;
+    }
+  }
+  route.actionCount = write;
+}
+
 CreativeInputRouteResult routeCreativeInput(
     CreativeInputRouterState& state,
     const CreativeInputFrame& frame,

@@ -66,11 +66,30 @@ struct CreativeDesktopPointerDecision {
     bool viewportContext,
     bool windowFocused) noexcept;
 
-// ImGui NewFrame + the full-window passthru dockspace. No-op returning false
-// when the shell is disabled or the bridge is dormant. When this returns
+// Whether the desktop shell should claim the keyboard/mouse this frame, so the
+// editor input context resolves to DesktopUi. While the viewport owns the
+// pointer (fly-look) the app owns the mouse and ImGui only sees a warped,
+// wandering cursor, so its want-capture must be ignored — otherwise the shell
+// reclaims the context and releases the capture the instant the camera moves
+// (plan DD-9). Pure so the regression is pinned directly.
+[[nodiscard]] bool creativeDesktopUiWantsInput(
+    bool viewportPointerCaptured,
+    bool imguiWantsMouse,
+    bool imguiWantsKeyboard) noexcept;
+
+// Starts the ImGui frame (NewFrame) if the shell is enabled, returning whether
+// it is now active. MUST run after event polling and BEFORE the input context
+// is resolved, so the shell's WantCapture reflects this frame's events rather
+// than the previous frame (NewFrame-before-context ordering). When this returns
 // true, endCreativeEditorDesktopFrame MUST run before submit this frame.
-bool beginCreativeEditorDesktopFrame(CreativeEditorDesktopUiState& desktopUi,
-                                     iggy3d::VulkanBackend& backend);
+bool beginCreativeEditorDesktopUiFrame(CreativeEditorDesktopUiState& desktopUi,
+                                       iggy3d::VulkanBackend& backend);
+
+// Builds the full-window passthru dockspace and resolves the central-node
+// content rect. The ImGui frame must already be active (see
+// beginCreativeEditorDesktopUiFrame); no-op otherwise.
+void layoutCreativeEditorDesktopDockspace(
+    CreativeEditorDesktopUiState& desktopUi);
 
 // ImGui::Render(). Never called from the renderer's record hook — a skipped
 // submit must still leave the frame Rendered or the next NewFrame asserts.

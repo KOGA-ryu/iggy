@@ -328,4 +328,12 @@ void appendCreativeEditorInteractionOverlay(
     std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
     std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines);
 
+// The center aim reticle, split out of the interaction overlay so it can be
+// drawn even when the legacy HUD is suppressed on keyboard/mouse (plan DD-15).
+void appendCreativeEditorCrosshairOverlay(
+    const CreativeEditorState& editor,
+    std::uint32_t drawableWidth,
+    std::uint32_t drawableHeight,
+    std::vector<iggy3d::RenderUiRect>& uiRects);
+
 }  // namespace iggy3d_creative_app

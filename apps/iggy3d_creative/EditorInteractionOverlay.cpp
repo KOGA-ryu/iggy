@@ -547,6 +547,52 @@ std::string creativeEditorHeldItemStatusLabel(
   return output;
 }
 
+void appendCreativeEditorCrosshairOverlay(
+    const CreativeEditorState& editor,
+    std::uint32_t drawableWidth,
+    std::uint32_t drawableHeight,
+    std::vector<iggy3d::RenderUiRect>& uiRects) {
+  if (drawableWidth == 0U || drawableHeight == 0U) {
+    return;
+  }
+  const bool inventoryModalOpen = editor.catalog.model.open ||
+                                  editor.catalog.toolWheel.open ||
+                                  editor.toolOptions.open ||
+                                  editor.transform.controlsOpen;
+  if (inventoryModalOpen) {
+    return;
+  }
+  const std::int32_t centerX = static_cast<std::int32_t>(drawableWidth / 2U);
+  const std::int32_t centerY = static_cast<std::int32_t>(drawableHeight / 2U);
+  const CreativeEditorPlacementFeedback& feedback =
+      editor.interaction.placementFeedback;
+  const bool feedbackVisible =
+      creativeEditorPlacementFeedbackVisible(feedback, editor.frameIndex);
+  const bool placed =
+      feedbackVisible &&
+      feedback.status == CreativeEditorPlacementFeedbackStatus::Placed;
+  const bool rejected =
+      feedbackVisible &&
+      feedback.status == CreativeEditorPlacementFeedbackStatus::Rejected;
+  const float crosshairR = rejected ? 1.0F : placed ? 0.25F : 0.95F;
+  const float crosshairG = rejected ? 0.18F : placed ? 1.0F : 0.95F;
+  const float crosshairB = rejected ? 0.14F : placed ? 0.35F : 0.95F;
+  uiRects.push_back({centerX - 8, centerY - 1, 17, 3, crosshairR, crosshairG,
+                     crosshairB, 0.92F});
+  uiRects.push_back({centerX - 1, centerY - 8, 3, 17, crosshairR, crosshairG,
+                     crosshairB, 0.92F});
+  if (feedbackVisible) {
+    uiRects.push_back({centerX - 13, centerY - 13, 11, 3, crosshairR,
+                       crosshairG, crosshairB, 0.94F});
+    uiRects.push_back({centerX + 3, centerY - 13, 11, 3, crosshairR, crosshairG,
+                       crosshairB, 0.94F});
+    uiRects.push_back({centerX - 13, centerY + 11, 11, 3, crosshairR,
+                       crosshairG, crosshairB, 0.94F});
+    uiRects.push_back({centerX + 3, centerY + 11, 11, 3, crosshairR, crosshairG,
+                       crosshairB, 0.94F});
+  }
+}
+
 void appendCreativeEditorInteractionOverlay(
     const CreativeEditorState& editor,
     std::uint32_t drawableWidth,
@@ -559,41 +605,12 @@ void appendCreativeEditorInteractionOverlay(
     return;
   }
 
-  const std::int32_t centerX = static_cast<std::int32_t>(drawableWidth / 2U);
-  const std::int32_t centerY = static_cast<std::int32_t>(drawableHeight / 2U);
+  // The crosshair is emitted separately (appendCreativeEditorCrosshairOverlay)
+  // so it survives when the legacy HUD is suppressed on keyboard/mouse (DD-15).
   const bool inventoryModalOpen = editor.catalog.model.open ||
                                   editor.catalog.toolWheel.open ||
                                   editor.toolOptions.open ||
                                   editor.transform.controlsOpen;
-  if (!inventoryModalOpen) {
-    const CreativeEditorPlacementFeedback& feedback =
-        editor.interaction.placementFeedback;
-    const bool feedbackVisible = creativeEditorPlacementFeedbackVisible(
-        feedback, editor.frameIndex);
-    const bool placed = feedbackVisible &&
-                        feedback.status ==
-                            CreativeEditorPlacementFeedbackStatus::Placed;
-    const bool rejected = feedbackVisible &&
-                          feedback.status ==
-                              CreativeEditorPlacementFeedbackStatus::Rejected;
-    const float crosshairR = rejected ? 1.0F : placed ? 0.25F : 0.95F;
-    const float crosshairG = rejected ? 0.18F : placed ? 1.0F : 0.95F;
-    const float crosshairB = rejected ? 0.14F : placed ? 0.35F : 0.95F;
-    uiRects.push_back({centerX - 8, centerY - 1, 17, 3,
-                       crosshairR, crosshairG, crosshairB, 0.92F});
-    uiRects.push_back({centerX - 1, centerY - 8, 3, 17,
-                       crosshairR, crosshairG, crosshairB, 0.92F});
-    if (feedbackVisible) {
-      uiRects.push_back({centerX - 13, centerY - 13, 11, 3,
-                         crosshairR, crosshairG, crosshairB, 0.94F});
-      uiRects.push_back({centerX + 3, centerY - 13, 11, 3,
-                         crosshairR, crosshairG, crosshairB, 0.94F});
-      uiRects.push_back({centerX - 13, centerY + 11, 11, 3,
-                         crosshairR, crosshairG, crosshairB, 0.94F});
-      uiRects.push_back({centerX + 3, centerY + 11, 11, 3,
-                         crosshairR, crosshairG, crosshairB, 0.94F});
-    }
-  }
 
   constexpr std::int32_t slotSize = 44;
   constexpr std::int32_t gap = 4;

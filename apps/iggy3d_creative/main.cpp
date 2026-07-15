@@ -294,9 +294,10 @@ int main(int argc, char** argv) {
   iggy3d_creative_app::CreativeEditorSceneCache sceneCache;
 
   while (window.isOpen()) {
-    const CreativeEditorFrameInputResult frameInput =
-        beginCreativeEditorFrameInput(
-            window, *backend, gamepad, editor, !capturePath.empty());
+    // Non-const: captured Esc release consumes the ToggleControls action from
+    // the route this frame so Controls does not also open (plan DD-9 / FC-4).
+    CreativeEditorFrameInputResult frameInput = beginCreativeEditorFrameInput(
+        window, *backend, gamepad, editor, !capturePath.empty());
     if (!frameInput.keepRunning) {
       break;
     }
@@ -329,27 +330,46 @@ int main(int argc, char** argv) {
                                 editor.assetReplacement,
                                 "creative_asset_replace_focus_lost"));
     }
-    static_cast<void>(iggy3d_creative_app::beginCreativeEditorDesktopFrame(
-        editor.desktopUi, *backend));
+    // The ImGui frame's NewFrame already ran inside beginCreativeEditorFrameInput
+    // (NewFrame-before-context); here we only build the dockspace + content rect.
+    iggy3d_creative_app::layoutCreativeEditorDesktopDockspace(editor.desktopUi);
     // Free-pointer capture policy (DD-9). Runs after the dockspace's NewFrame
     // so externalUiWantsMouse() reflects whether this frame's click landed on
     // a panel; a viewport click enters fly-look, leaving the viewport releases.
     {
-      const bool primaryOverViewport =
-          window.eventState().primaryPointerPressed &&
-          !backend->externalUiWantsMouse();
-      const bool viewportContext =
-          frameInput.routedInput.context ==
-          creative::CreativeInputContext::EditorViewport;
-      const iggy3d_creative_app::CreativeDesktopPointerDecision pointerDecision =
-          iggy3d_creative_app::decideCreativeDesktopPointerCapture(
-              editor.desktopUi.shellEnabled,
-              editor.desktopUi.viewportPointerCaptured, primaryOverViewport,
-              viewportContext, frameInput.windowFocused);
-      if (pointerDecision.changed) {
-        editor.desktopUi.viewportPointerCaptured = pointerDecision.captured;
-        static_cast<void>(
-            window.setViewportPointerCapture(pointerDecision.captured));
+      // Captured Esc = release only: while flying, Esc frees the pointer
+      // WITHOUT opening the Controls panel. Consume the ToggleControls action
+      // this frame so no downstream panel acts on it.
+      const bool capturedEscRelease =
+          editor.desktopUi.viewportPointerCaptured &&
+          creative::creativeInputRouteContains(
+              frameInput.routedInput,
+              creative::CreativeInputActionId::ToggleControls);
+      if (capturedEscRelease) {
+        editor.desktopUi.viewportPointerCaptured = false;
+        static_cast<void>(window.setViewportPointerCapture(false));
+        creative::creativeInputRouteRemove(
+            frameInput.routedInput,
+            creative::CreativeInputActionId::ToggleControls);
+      } else {
+        const bool primaryOverViewport =
+            window.eventState().primaryPointerPressed &&
+            !backend->externalUiWantsMouse();
+        const bool viewportContext =
+            frameInput.routedInput.context ==
+            creative::CreativeInputContext::EditorViewport;
+        const iggy3d_creative_app::CreativeDesktopPointerDecision
+            pointerDecision =
+                iggy3d_creative_app::decideCreativeDesktopPointerCapture(
+                    editor.desktopUi.shellEnabled,
+                    editor.desktopUi.viewportPointerCaptured,
+                    primaryOverViewport, viewportContext,
+                    frameInput.windowFocused);
+        if (pointerDecision.changed) {
+          editor.desktopUi.viewportPointerCaptured = pointerDecision.captured;
+          static_cast<void>(
+              window.setViewportPointerCapture(pointerDecision.captured));
+        }
       }
     }
     const iggy3d_creative_app::CreativeEditorAssetLibraryFrameResult

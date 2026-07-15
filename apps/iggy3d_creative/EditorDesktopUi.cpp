@@ -44,8 +44,8 @@ iggy3d::RenderContentViewport resolveCentralNodeContentViewport(
 
 }  // namespace
 
-bool beginCreativeEditorDesktopFrame(CreativeEditorDesktopUiState& desktopUi,
-                                     iggy3d::VulkanBackend& backend) {
+bool beginCreativeEditorDesktopUiFrame(CreativeEditorDesktopUiState& desktopUi,
+                                       iggy3d::VulkanBackend& backend) {
   desktopUi.frameActive = false;
   desktopUi.contentViewport = {};  // sentinel: scene fills the whole window
   if (!desktopUi.shellEnabled) {
@@ -55,6 +55,14 @@ bool beginCreativeEditorDesktopFrame(CreativeEditorDesktopUiState& desktopUi,
     return false;
   }
   desktopUi.frameActive = true;
+  return true;
+}
+
+void layoutCreativeEditorDesktopDockspace(
+    CreativeEditorDesktopUiState& desktopUi) {
+  if (!desktopUi.frameActive) {
+    return;
+  }
 
   // Full-window host with a passthru central node: the 3D scene renders
   // straight to the swapchain underneath, so the host window must not paint
@@ -82,7 +90,6 @@ bool beginCreativeEditorDesktopFrame(CreativeEditorDesktopUiState& desktopUi,
                    ImGuiDockNodeFlags_PassthruCentralNode);
   desktopUi.contentViewport = resolveCentralNodeContentViewport(dockspaceId);
   ImGui::End();
-  return true;
 }
 
 void endCreativeEditorDesktopFrame(CreativeEditorDesktopUiState& desktopUi) {
@@ -116,6 +123,12 @@ CreativeDesktopPointerDecision decideCreativeDesktopPointerCapture(
   decision.captured = next;
   decision.changed = next != currentlyCaptured;
   return decision;
+}
+
+bool creativeDesktopUiWantsInput(bool viewportPointerCaptured,
+                                 bool imguiWantsMouse,
+                                 bool imguiWantsKeyboard) noexcept {
+  return !viewportPointerCaptured && (imguiWantsMouse || imguiWantsKeyboard);
 }
 
 }  // namespace iggy3d_creative_app

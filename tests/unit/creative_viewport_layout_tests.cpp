@@ -167,6 +167,44 @@ bool pointerPolicyIsInertWhenShellOff() {
                 "shell-off releases a stale capture");
 }
 
+bool wantInputHelperIgnoresImGuiWhileCaptured() {
+  using iggy3d_creative_app::creativeDesktopUiWantsInput;
+  // The pointer-fix invariant: while the viewport owns the pointer, the shell
+  // never claims input no matter what ImGui's want-capture flags say (that was
+  // releasing fly-look the instant the camera moved).
+  return expect(!creativeDesktopUiWantsInput(true, true, true),
+                "captured viewport suppresses the desktop-UI input claim") &&
+         expect(!creativeDesktopUiWantsInput(true, false, false),
+                "captured + no ImGui intent is still no claim") &&
+         expect(creativeDesktopUiWantsInput(false, true, false),
+                "free pointer + ImGui wants mouse claims input") &&
+         expect(creativeDesktopUiWantsInput(false, false, true),
+                "free pointer + ImGui wants keyboard claims input") &&
+         expect(!creativeDesktopUiWantsInput(false, false, false),
+                "free pointer + no ImGui intent does not claim input");
+}
+
+bool routeRemoveDropsActionForEscRelease() {
+  namespace cr = iggy3d::creative;
+  cr::CreativeInputRouteResult route;
+  route.actions[0].action = cr::CreativeInputActionId::ToggleControls;
+  route.actions[1].action = cr::CreativeInputActionId::Undo;
+  route.actions[2].action = cr::CreativeInputActionId::ToggleControls;
+  route.actionCount = 3;
+  const bool had = cr::creativeInputRouteContains(
+      route, cr::CreativeInputActionId::ToggleControls);
+  cr::creativeInputRouteRemove(route,
+                               cr::CreativeInputActionId::ToggleControls);
+  return expect(had, "route reports the action present before removal") &&
+         expect(!cr::creativeInputRouteContains(
+                    route, cr::CreativeInputActionId::ToggleControls),
+                "route no longer contains the removed action") &&
+         expect(route.actionCount == 1U &&
+                    route.actions[0].action ==
+                        cr::CreativeInputActionId::Undo,
+                "remove compacts the route and preserves other actions");
+}
+
 bool desktopUiContextDisablesFlyNavigation() {
   using iggy3d_creative_app::admitCreativeEditorNavigation;
   namespace cr = iggy3d::creative;
@@ -195,6 +233,8 @@ int main() {
   ok = pointerPolicyCapturesOnViewportClick() && ok;
   ok = pointerPolicyReleasesWhenLeavingViewport() && ok;
   ok = pointerPolicyIsInertWhenShellOff() && ok;
+  ok = wantInputHelperIgnoresImGuiWhileCaptured() && ok;
+  ok = routeRemoveDropsActionForEscRelease() && ok;
   ok = desktopUiContextDisablesFlyNavigation() && ok;
   return ok ? 0 : 1;
 }

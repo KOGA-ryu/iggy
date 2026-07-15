@@ -368,6 +368,17 @@ void setCreativeInputKey(CreativeInputFrame& frame,
     std::span<const CreativeInputBinding> bindings =
         defaultCreativeInputBindings());
 
+// Whether a routed action is present this frame.
+[[nodiscard]] bool creativeInputRouteContains(
+    const CreativeInputRouteResult& route,
+    CreativeInputActionId action) noexcept;
+
+// Removes every occurrence of an action from the route (stable compaction), so
+// a consumer downstream never sees it. Used to make captured Esc release-only:
+// the pointer is freed without the ToggleControls action also opening Controls.
+void creativeInputRouteRemove(CreativeInputRouteResult& route,
+                              CreativeInputActionId action) noexcept;
+
 // O(n^2 * 16) over a registry bounded by kCreativeInputBindingCapacity. The
 // modifier domain is four bits, so every possible overlap is checked exactly.
 [[nodiscard]] CreativeInputBindingAuditResult auditCreativeInputBindings(

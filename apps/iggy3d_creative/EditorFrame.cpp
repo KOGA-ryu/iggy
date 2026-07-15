@@ -447,14 +447,26 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
     return result;
   }
 
+  // NewFrame-before-context: start the ImGui frame now — after pollEvents (in
+  // prepareCreativeEditorDrawableFrame) forwarded this frame's events, and
+  // before the input context is resolved — so WantCapture is current, not one
+  // frame stale. Only reached on non-skipped frames, so NewFrame stays balanced
+  // with the Render in endCreativeEditorDesktopFrame.
+  static_cast<void>(beginCreativeEditorDesktopUiFrame(editor.desktopUi, backend));
+
   const bool* keys = SDL_GetKeyboardState(nullptr);
   const creative::CreativeControllerSample controllerSample = gamepad.sample();
   const creative::CreativeControllerFrame controller =
       creative::stepCreativeControllerInput(editor.controllerInputState,
                                             controllerSample);
   editor.controllerInputState = controller.next;
-  const bool desktopUiWantsInput =
-      backend.externalUiWantsMouse() || backend.externalUiWantsKeyboard();
+  // While the viewport owns the pointer (relative-mouse fly-look), the app owns
+  // the mouse — ImGui only sees a warped, wandering cursor, so its want-capture
+  // must be ignored or the shell reclaims the context and releases the capture
+  // the instant the camera moves (plan DD-9).
+  const bool desktopUiWantsInput = creativeDesktopUiWantsInput(
+      editor.desktopUi.viewportPointerCaptured, backend.externalUiWantsMouse(),
+      backend.externalUiWantsKeyboard());
   const creative::CreativeInputContext inputContext =
       resolveInputContext(captureMode, desktopUiWantsInput, editor);
   const creative::CreativeInputFrame inputFrame = makeCreativeInputFrame(
