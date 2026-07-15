@@ -73,11 +73,13 @@ void buildCreativeEditorDesktopMenuBar(
       ImGui::EndMenu();
     }
     if (ImGui::BeginMenu("View")) {
-      ImGui::MenuItem("Outliner", nullptr, &desktopUi.showOutliner);
+      ImGui::MenuItem("Project", nullptr, &desktopUi.showOutliner);
       ImGui::MenuItem("Inspector", nullptr, &desktopUi.showInspector);
-      ImGui::MenuItem("Tool Settings", nullptr, &desktopUi.showToolSettings);
-      ImGui::MenuItem("Asset Library", nullptr, &desktopUi.showAssetLibrary);
-      ImGui::MenuItem("History", nullptr, &desktopUi.showHistory);
+      ImGui::MenuItem("Diagnostics", nullptr, &desktopUi.showDiagnostics);
+      ImGui::Separator();
+      if (ImGui::MenuItem("Reset Layout")) {
+        desktopUi.resetLayoutRequested = true;
+      }
       ImGui::EndMenu();
     }
     if (ImGui::MenuItem("Play")) {
@@ -109,6 +111,59 @@ void buildCreativeEditorDesktopMenuBar(
       ImGui::CloseCurrentPopup();
     }
     ImGui::EndPopup();
+  }
+}
+
+void buildCreativeEditorDesktopPanels(CreativeEditorDesktopUiState& desktopUi) {
+  // Toolbar strip above the central viewport (placeholder tools for now).
+  const ImGuiWindowFlags toolbarFlags =
+      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+  if (ImGui::Begin("Toolbar##desktop", nullptr, toolbarFlags)) {
+    const char* const tools[] = {"Select", "Pan",  "Move",  "Rotate",
+                                 "Scale",  "Place", "Erase", "Measure"};
+    for (int index = 0; index < IM_ARRAYSIZE(tools); ++index) {
+      if (index != 0) {
+        ImGui::SameLine();
+      }
+      ImGui::Button(tools[index]);
+    }
+  }
+  ImGui::End();
+
+  // Project tree (left).
+  if (desktopUi.showOutliner) {
+    if (ImGui::Begin("Project", &desktopUi.showOutliner)) {
+      ImGui::TextDisabled("Project tree");
+      ImGui::TextDisabled("Sources / Floors / Objects — coming soon");
+    }
+    ImGui::End();
+  }
+
+  // Inspector (right).
+  if (desktopUi.showInspector) {
+    if (ImGui::Begin("Inspector", &desktopUi.showInspector)) {
+      ImGui::TextDisabled("Inspector");
+      ImGui::TextDisabled("Token / Provenance / Diagnostics — coming soon");
+    }
+    ImGui::End();
+  }
+
+  // Diagnostics (bottom) — the tabbed utility area.
+  if (desktopUi.showDiagnostics) {
+    if (ImGui::Begin("Diagnostics##bottom", &desktopUi.showDiagnostics)) {
+      if (ImGui::BeginTabBar("##desktop_bottom_tabs")) {
+        const char* const tabs[] = {"Diagnostics", "Pass Status", "Diffs",
+                                     "Stale Outputs", "Proof Receipts"};
+        for (const char* tab : tabs) {
+          if (ImGui::BeginTabItem(tab)) {
+            ImGui::TextDisabled("%s — coming soon", tab);
+            ImGui::EndTabItem();
+          }
+        }
+        ImGui::EndTabBar();
+      }
+    }
+    ImGui::End();
   }
 }
 

@@ -58,23 +58,63 @@ bool beginCreativeEditorDesktopUiFrame(CreativeEditorDesktopUiState& desktopUi,
   return true;
 }
 
+namespace {
+
+// Reserved height for the bottom status bar so the dockspace never overlaps it.
+constexpr float kStatusBarReserveScale = 1.0F;
+
+// Builds the default docked arrangement: Project left (~18%), Inspector right
+// (~24%), Diagnostics bottom (~22%), a thin toolbar above the central 3D
+// viewport. Ratios are of the shrinking node, so later splits compensate for
+// earlier ones to hit the target fractions of the whole workspace.
+void buildDefaultDesktopLayout(ImGuiID dockspaceId, ImVec2 workspaceSize) {
+  ImGui::DockBuilderRemoveNode(dockspaceId);
+  ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_PassthruCentralNode |
+                                             ImGuiDockNodeFlags_DockSpace);
+  ImGui::DockBuilderSetNodeSize(dockspaceId, workspaceSize);
+
+  ImGuiID centerId = dockspaceId;
+  const ImGuiID leftId =
+      ImGui::DockBuilderSplitNode(centerId, ImGuiDir_Left, 0.18F, nullptr, &centerId);
+  // Right is 24% of the whole; after the left split the remainder is 82%.
+  const ImGuiID rightId = ImGui::DockBuilderSplitNode(
+      centerId, ImGuiDir_Right, 0.24F / 0.82F, nullptr, &centerId);
+  // Bottom is 22% of the whole height.
+  const ImGuiID bottomId =
+      ImGui::DockBuilderSplitNode(centerId, ImGuiDir_Down, 0.22F, nullptr, &centerId);
+  // A thin toolbar strip above the central viewport.
+  const float toolbarFraction =
+      workspaceSize.y > 1.0F ? 44.0F / workspaceSize.y : 0.06F;
+  const ImGuiID toolbarId = ImGui::DockBuilderSplitNode(
+      centerId, ImGuiDir_Up, toolbarFraction, nullptr, &centerId);
+
+  ImGui::DockBuilderDockWindow("Project", leftId);
+  ImGui::DockBuilderDockWindow("Inspector", rightId);
+  ImGui::DockBuilderDockWindow("Diagnostics##bottom", bottomId);
+  ImGui::DockBuilderDockWindow("Toolbar##desktop", toolbarId);
+  ImGui::DockBuilderFinish(dockspaceId);
+}
+
+}  // namespace
+
 void layoutCreativeEditorDesktopDockspace(
     CreativeEditorDesktopUiState& desktopUi) {
   if (!desktopUi.frameActive) {
     return;
   }
 
-  // Full-window host with a passthru central node: the 3D scene renders
-  // straight to the swapchain underneath, so the host window must not paint
-  // a background and mouse input over the central node must reach the app.
-  // Uses the FULL viewport (not WorkPos/WorkSize) so the main menu bar and
-  // status bar overlay the scene edges rather than shrinking the central node
-  // — the content rect stays full-frame, keeping the scene, crosshair, and
-  // pick ray aligned until UI-3 introduces real side panels and the app-side
-  // content-rect fan-out together.
+  // Host spans the work area (below the menu bar) minus a reserved strip for
+  // the bottom status bar, so docked panels never collide with either. The
+  // host paints no background; the central node stays passthru so the 3D scene
+  // shows through it while the docked panels frame it.
   const ImGuiViewport* mainViewport = ImGui::GetMainViewport();
-  ImGui::SetNextWindowPos(mainViewport->Pos);
-  ImGui::SetNextWindowSize(mainViewport->Size);
+  const float statusBarHeight =
+      ImGui::GetFrameHeight() * kStatusBarReserveScale;
+  const ImVec2 hostPos = mainViewport->WorkPos;
+  const ImVec2 hostSize(mainViewport->WorkSize.x,
+                        mainViewport->WorkSize.y - statusBarHeight);
+  ImGui::SetNextWindowPos(hostPos);
+  ImGui::SetNextWindowSize(hostSize);
   const ImGuiWindowFlags hostFlags =
       ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
       ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
@@ -86,6 +126,11 @@ void layoutCreativeEditorDesktopDockspace(
   ImGui::Begin("##creative_desktop_shell", nullptr, hostFlags);
   ImGui::PopStyleVar(3);
   const ImGuiID dockspaceId = ImGui::GetID("creative_desktop_dockspace");
+  if (!desktopUi.dockLayoutBuilt || desktopUi.resetLayoutRequested) {
+    buildDefaultDesktopLayout(dockspaceId, hostSize);
+    desktopUi.dockLayoutBuilt = true;
+    desktopUi.resetLayoutRequested = false;
+  }
   ImGui::DockSpace(dockspaceId, ImVec2(0.0F, 0.0F),
                    ImGuiDockNodeFlags_PassthruCentralNode);
   desktopUi.contentViewport = resolveCentralNodeContentViewport(dockspaceId);

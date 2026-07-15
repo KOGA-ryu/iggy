@@ -244,8 +244,8 @@ void processCreativeEditorWorldInteractionFrame(
                                      documentGrid.origin);
   }
   editor.interaction.target = resolveCreativeEditorWorldTarget(
-      document, request.camera, request.pickFrame, request.drawableWidth,
-      request.drawableHeight, targetCellSize);
+      document, request.camera, request.pickFrame, request.contentRegion,
+      targetCellSize);
   const cr::CreativeHotbarEntry& aimedHeld =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   const bool hierarchySelectionTool =

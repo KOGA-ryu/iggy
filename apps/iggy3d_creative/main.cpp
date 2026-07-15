@@ -410,6 +410,7 @@ int main(int argc, char** argv) {
           invalidateCreativeEditorSceneCache(sceneCache);
         }
       }
+      iggy3d_creative_app::buildCreativeEditorDesktopPanels(editor.desktopUi);
       iggy3d_creative_app::buildCreativeEditorDesktopStatusBar(
           editor.desktopUi, editor, activeAppState);
     }
@@ -589,8 +590,7 @@ int main(int argc, char** argv) {
            frameInput.modifiers,
            frame.camera,
            pickFrame,
-           extent.width,
-           extent.height,
+           effectiveContentViewport(frame),
            frameInput.monotonicTimeNanoseconds,
            !capturePath.empty()});
     }

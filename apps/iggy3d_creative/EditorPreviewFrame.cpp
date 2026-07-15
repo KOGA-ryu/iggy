@@ -52,8 +52,10 @@ void buildAndAttachCreativeEditorOverlayFrame(
       editor.desktopUi.shellEnabled && !request.captureMode &&
       editor.activeControlDevice ==
           iggy3d::creative::CreativeControlDevice::KeyboardMouse;
-  appendCreativeEditorCrosshairOverlay(editor, request.drawableWidth,
-                                       request.drawableHeight, output.uiRects);
+  const iggy3d::RenderContentViewport crosshairRegion =
+      iggy3d::effectiveContentViewport(request.frame);
+  appendCreativeEditorCrosshairOverlay(editor, crosshairRegion,
+                                       output.uiRects);
   if (!suppressLegacyHud) {
     appendCreativeEditorHudOverlays(
         request, output, worldFacts.volume, worldFacts.hasSelection);

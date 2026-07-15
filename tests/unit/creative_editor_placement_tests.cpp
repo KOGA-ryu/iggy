@@ -1455,7 +1455,7 @@ bool activeVolumeSelectionRebindsToLoadedDocumentGrid() {
   CreativeEditorPickFrame pickFrame;
   processCreativeEditorWorldInteractionFrame(
       {appState, editor, actions, cr::kCreativeInputModifierNone, camera,
-       pickFrame, 800U, 600U, 0U, false});
+       pickFrame, iggy3d::RenderContentViewport{0, 0, 800U, 600U}, 0U, false});
   return expect(install.accepted && install.changed,
                 "replacement document installs") &&
          expect(editor.volume.selection.cellSize == 2.0 &&
@@ -1477,7 +1477,8 @@ bool worldTargetPicksVoxelBeforeGround() {
   camera.worldForward = {1.0F, 0.0F, 0.0F};
   camera.worldUp = {0.0F, 1.0F, 0.0F};
   const CreativeEditorWorldTarget target = resolveCreativeEditorWorldTarget(
-      document, camera, CreativeEditorPickFrame{}, 800U, 600U, 1.0);
+      document, camera, CreativeEditorPickFrame{},
+      iggy3d::RenderContentViewport{0, 0, 800U, 600U}, 1.0);
   return expect(target.valid && target.voxelHit && !target.objectHit,
                 "world target reports voxel hit") &&
          expect(target.voxelCell.x == 2 && target.voxelCell.y == 0 &&
@@ -1503,7 +1504,8 @@ bool worldTargetPicksDerivedTerrainAndPreservesVoxelTiePriority() {
   camera.worldForward = {0.0F, -1.0F, 0.0F};
   camera.worldUp = {0.0F, 0.0F, -1.0F};
   const CreativeEditorWorldTarget terrain = resolveCreativeEditorWorldTarget(
-      document, camera, CreativeEditorPickFrame{}, 800U, 600U, 1.0);
+      document, camera, CreativeEditorPickFrame{},
+      iggy3d::RenderContentViewport{0, 0, 800U, 600U}, 1.0);
   bool ok = expect(terrain.valid && terrain.terrainHit && !terrain.voxelHit &&
                        !terrain.objectHit,
                    "world target reports derived terrain hit") &&
@@ -1519,7 +1521,8 @@ bool worldTargetPicksDerivedTerrainAndPreservesVoxelTiePriority() {
                                          cr::CreativeObjectKind::Crate};
   static_cast<void>(document.applyVoxelEdits(std::span{&voxelEdit, 1U}));
   const CreativeEditorWorldTarget tied = resolveCreativeEditorWorldTarget(
-      document, camera, CreativeEditorPickFrame{}, 800U, 600U, 1.0);
+      document, camera, CreativeEditorPickFrame{},
+      iggy3d::RenderContentViewport{0, 0, 800U, 600U}, 1.0);
   return expect(tied.voxelHit && !tied.terrainHit &&
                     tied.voxelCell.x == voxelEdit.cell.x &&
                     tied.voxelCell.y == voxelEdit.cell.y &&
@@ -3226,7 +3229,7 @@ bool surfaceExtrudePreviewMutationAndRemovalStayAtomic() {
       actionFrame(cr::CreativeWorldActionId::Accept, true, true, false);
   processCreativeEditorWorldInteractionFrame(
       {appState, editor, accept, cr::kCreativeInputModifierNone, camera,
-       pickFrame, 800U, 600U, 0U, false});
+       pickFrame, iggy3d::RenderContentViewport{0, 0, 800U, 600U}, 0U, false});
   const bool extruded =
       editor.interaction.placementFeedback.status ==
       CreativeEditorPlacementFeedbackStatus::Placed;
@@ -3260,7 +3263,7 @@ bool surfaceExtrudePreviewMutationAndRemovalStayAtomic() {
       actionFrame(cr::CreativeWorldActionId::Reject, true, true, false);
   processCreativeEditorWorldInteractionFrame(
       {appState, editor, reject, cr::kCreativeInputModifierNone, camera,
-       pickFrame, 800U, 600U, 0U, false});
+       pickFrame, iggy3d::RenderContentViewport{0, 0, 800U, 600U}, 0U, false});
   const bool removed =
       editor.interaction.placementFeedback.status ==
       CreativeEditorPlacementFeedbackStatus::Placed;

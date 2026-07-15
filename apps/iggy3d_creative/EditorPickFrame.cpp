@@ -163,9 +163,12 @@ void logCreativeEditorWorldPickProofFrame(
         if (!screenPoint.valid) {
           return;
         }
-        const WorldRay ray =
-            worldRayFromPixel(camera, screenPoint.x, screenPoint.y,
-                              drawableWidth, drawableHeight);
+        // Capture-proof projection works in full-drawable space (content rect
+        // equals the whole swapchain under --capture).
+        const iggy3d::RenderContentViewport fullRegion{
+            0, 0, drawableWidth, drawableHeight};
+        const WorldRay ray = worldRayFromPixel(camera, screenPoint.x,
+                                               screenPoint.y, fullRegion);
         const ObjectVisualPickResult pick = pickNearestVisualBoundsObject(
             pickFrame.objectPickCandidates, ray);
         SDL_Log("iggy3d_creative: WORLD_PICK_PROOF label='%s' "

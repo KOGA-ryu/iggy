@@ -169,8 +169,9 @@ void narrowPickCandidate(ObjectVisualPickResult& result,
 WorldRay worldRayFromPixel(const iggy3d::RenderCameraFrame& camera,
                            float pixelX,
                            float pixelY,
-                           std::uint32_t widthPx,
-                           std::uint32_t heightPx) {
+                           const iggy3d::RenderContentViewport& region) {
+  const std::uint32_t widthPx = region.width;
+  const std::uint32_t heightPx = region.height;
   if (widthPx == 0U || heightPx == 0U || !iggy3d::isFinite(camera.worldEye) ||
       !iggy3d::isFinite(camera.worldForward) ||
       !iggy3d::isFinite(camera.worldUp) ||
@@ -188,9 +189,13 @@ WorldRay worldRayFromPixel(const iggy3d::RenderCameraFrame& camera,
   }
 
   const float ndcX =
-      (pixelX / static_cast<float>(widthPx)) * 2.0F - 1.0F;
+      ((pixelX - static_cast<float>(region.x)) / static_cast<float>(widthPx)) *
+          2.0F -
+      1.0F;
   const float ndcY =
-      1.0F - (pixelY / static_cast<float>(heightPx)) * 2.0F;
+      1.0F - ((pixelY - static_cast<float>(region.y)) /
+              static_cast<float>(heightPx)) *
+                 2.0F;
   const float viewX = ndcX / clipXScale;
   const float viewY = ndcY / clipYScale;
 

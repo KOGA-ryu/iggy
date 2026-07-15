@@ -549,10 +549,9 @@ std::string creativeEditorHeldItemStatusLabel(
 
 void appendCreativeEditorCrosshairOverlay(
     const CreativeEditorState& editor,
-    std::uint32_t drawableWidth,
-    std::uint32_t drawableHeight,
+    const iggy3d::RenderContentViewport& region,
     std::vector<iggy3d::RenderUiRect>& uiRects) {
-  if (drawableWidth == 0U || drawableHeight == 0U) {
+  if (region.width == 0U || region.height == 0U) {
     return;
   }
   const bool inventoryModalOpen = editor.catalog.model.open ||
@@ -562,8 +561,10 @@ void appendCreativeEditorCrosshairOverlay(
   if (inventoryModalOpen) {
     return;
   }
-  const std::int32_t centerX = static_cast<std::int32_t>(drawableWidth / 2U);
-  const std::int32_t centerY = static_cast<std::int32_t>(drawableHeight / 2U);
+  const std::int32_t centerX =
+      region.x + static_cast<std::int32_t>(region.width / 2U);
+  const std::int32_t centerY =
+      region.y + static_cast<std::int32_t>(region.height / 2U);
   const CreativeEditorPlacementFeedback& feedback =
       editor.interaction.placementFeedback;
   const bool feedbackVisible =

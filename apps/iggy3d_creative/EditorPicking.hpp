@@ -43,11 +43,14 @@ struct PathPointHandleHit {
   cr::CreativeScreenBounds aabb{};
   cr::CreativeVec3 position{};
 };
+// pixelX/pixelY are drawable-pixel coordinates; region is the sub-rectangle
+// the 3D scene occupies (the ImGui central node). NDC is computed relative to
+// the region so the ray is correct when panels shrink the viewport. A region
+// spanning the full drawable is identical to the historical full-window ray.
 [[nodiscard]] WorldRay worldRayFromPixel(const iggy3d::RenderCameraFrame& camera,
                                          float pixelX,
                                          float pixelY,
-                                         std::uint32_t widthPx,
-                                         std::uint32_t heightPx);
+                                         const iggy3d::RenderContentViewport& region);
 [[nodiscard]] bool rayEntryDistanceForAabb(WorldRay ray,
                                            VisualBounds bounds,
                                            float& outT);

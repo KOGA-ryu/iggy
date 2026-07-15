@@ -31,11 +31,19 @@ struct CreativeEditorDesktopUiState {
   // View-menu panel visibility. The panels themselves land in UI-2b/UI-3;
   // these toggles are wired now so the menu is complete and the panels honor
   // them when they arrive.
-  bool showOutliner = true;
-  bool showInspector = true;
+  bool showOutliner = true;    // Project panel (left)
+  bool showInspector = true;   // Inspector panel (right)
+  bool showDiagnostics = true; // Diagnostics panel (bottom)
   bool showToolSettings = true;
   bool showAssetLibrary = true;
   bool showHistory = true;
+
+  // Docked workspace layout. Built once via DockBuilder, rebuilt on Reset
+  // Layout. The default arrangement follows the target proportions: Project
+  // left, Inspector right, Diagnostics bottom, toolbar above the central 3D
+  // viewport (plan §Workspace Skeleton).
+  bool dockLayoutBuilt = false;
+  bool resetLayoutRequested = false;
 
   // Save As modal (in-app, no native dialog — plan DD-14).
   bool saveAsModalOpen = false;

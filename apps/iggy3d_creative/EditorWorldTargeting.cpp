@@ -111,13 +111,16 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
     const cr::CreativeDocument& document,
     const iggy3d::RenderCameraFrame& camera,
     const CreativeEditorPickFrame& pickFrame,
-    std::uint32_t drawableWidth,
-    std::uint32_t drawableHeight,
+    const iggy3d::RenderContentViewport& region,
     double cellSize) {
   CreativeEditorWorldTarget target;
+  // Crosshair pick from the center of the content region (the 3D viewport
+  // sub-rectangle), so aiming matches what the user sees when panels frame it.
   target.ray = worldRayFromPixel(
-      camera, static_cast<float>(drawableWidth) * 0.5F,
-      static_cast<float>(drawableHeight) * 0.5F, drawableWidth, drawableHeight);
+      camera,
+      static_cast<float>(region.x) + static_cast<float>(region.width) * 0.5F,
+      static_cast<float>(region.y) + static_cast<float>(region.height) * 0.5F,
+      region);
   if (!target.ray.valid) {
     return target;
   }

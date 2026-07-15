@@ -268,8 +268,9 @@ struct CreativeEditorWorldInteractionFrameRequest {
       iggy3d::creative::kCreativeInputModifierNone;
   const iggy3d::RenderCameraFrame& camera;
   const CreativeEditorPickFrame& pickFrame;
-  std::uint32_t drawableWidth = 0;
-  std::uint32_t drawableHeight = 0;
+  // The 3D viewport sub-rectangle (drawable px); crosshair picking is centered
+  // on it so aiming matches the visible region when panels frame the viewport.
+  iggy3d::RenderContentViewport contentRegion;
   std::uint64_t monotonicTimeNanoseconds = 0;
   bool captureMode = false;
 };
@@ -278,8 +279,7 @@ struct CreativeEditorWorldInteractionFrameRequest {
     const iggy3d::creative::CreativeDocument& document,
     const iggy3d::RenderCameraFrame& camera,
     const CreativeEditorPickFrame& pickFrame,
-    std::uint32_t drawableWidth,
-    std::uint32_t drawableHeight,
+    const iggy3d::RenderContentViewport& region,
     double cellSize);
 [[nodiscard]] double creativeEditorTargetCellSize(
     const iggy3d::creative::CreativeDocument& document,
@@ -330,10 +330,10 @@ void appendCreativeEditorInteractionOverlay(
 
 // The center aim reticle, split out of the interaction overlay so it can be
 // drawn even when the legacy HUD is suppressed on keyboard/mouse (plan DD-15).
+// Centered on the content region so it tracks the 3D viewport sub-rectangle.
 void appendCreativeEditorCrosshairOverlay(
     const CreativeEditorState& editor,
-    std::uint32_t drawableWidth,
-    std::uint32_t drawableHeight,
+    const iggy3d::RenderContentViewport& region,
     std::vector<iggy3d::RenderUiRect>& uiRects);
 
 }  // namespace iggy3d_creative_app

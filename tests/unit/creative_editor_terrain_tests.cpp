@@ -361,7 +361,8 @@ bool semanticActionsRouteSelectionCommitCancelAndRemoval() {
                            std::uint64_t now) {
     processCreativeEditorWorldInteractionFrame(
         {appState, editor, actions, cr::kCreativeInputModifierNone, camera,
-         pickFrame, 800U, 600U, now, false});
+         pickFrame, iggy3d::RenderContentViewport{0, 0, 800U, 600U}, now,
+         false});
   };
   const auto gesture = [&](cr::CreativeWorldActionId action,
                            std::uint64_t now) {
@@ -427,7 +428,8 @@ bool terrainSurfacePaintRoutesGesturesHistorySamplingAndRendering() {
                            std::uint64_t now) {
     processCreativeEditorWorldInteractionFrame(
         {appState, editor, actions, cr::kCreativeInputModifierNone, camera,
-         pickFrame, 800U, 600U, now, false});
+         pickFrame, iggy3d::RenderContentViewport{0, 0, 800U, 600U}, now,
+         false});
   };
   iggy3d::ProductMapMakerGridSnapshot grid;
   CreativeEditorSceneCache cache;
@@ -505,7 +507,8 @@ bool terrainConnectedAndRegionModesUsePressBasedAtomicGestures() {
                            std::uint64_t now) {
     processCreativeEditorWorldInteractionFrame(
         {appState, editor, actions, cr::kCreativeInputModifierNone, camera,
-         pickFrame, 800U, 600U, now, false});
+         pickFrame, iggy3d::RenderContentViewport{0, 0, 800U, 600U}, now,
+         false});
   };
   const auto press = [&](cr::CreativeWorldActionId action,
                          std::uint64_t now) {
@@ -1056,7 +1059,8 @@ bool terrainGradeRoutesSquareXAndCircleThroughWorldActions() {
                            std::uint64_t now) {
     processCreativeEditorWorldInteractionFrame(
         {appState, editor, actions, cr::kCreativeInputModifierNone, camera,
-         pickFrame, 800U, 600U, now, false});
+         pickFrame, iggy3d::RenderContentViewport{0, 0, 800U, 600U}, now,
+         false});
   };
   const auto gesture = [&](cr::CreativeWorldActionId action,
                            std::uint64_t now) {
@@ -1413,7 +1417,8 @@ bool terrainProfileWorldActionsArePressOnlyAndControllerNative() {
                            std::uint64_t now) {
     processCreativeEditorWorldInteractionFrame(
         {appState, editor, actions, cr::kCreativeInputModifierNone, camera,
-         pickFrame, 800U, 600U, now, false});
+         pickFrame, iggy3d::RenderContentViewport{0, 0, 800U, 600U}, now,
+         false});
   };
 
   process(strokeAction(cr::CreativeWorldActionId::Accept, true, true), 0U);
@@ -1585,7 +1590,8 @@ bool terrainPathRoutesSquareXAndCircleThroughWorldActions() {
                            std::uint64_t now) {
     processCreativeEditorWorldInteractionFrame(
         {appState, editor, actions, cr::kCreativeInputModifierNone, camera,
-         pickFrame, 800U, 600U, now, false});
+         pickFrame, iggy3d::RenderContentViewport{0, 0, 800U, 600U}, now,
+         false});
   };
   const auto press = [&](cr::CreativeWorldActionId action,
                          std::uint64_t now) {
@@ -1770,7 +1776,8 @@ bool terrainRegionRoutesCornersSampleCancelAndQuickEdit() {
                            std::uint64_t now) {
     processCreativeEditorWorldInteractionFrame(
         {appState, editor, actions, cr::kCreativeInputModifierNone, camera,
-         pickFrame, 800U, 600U, now, false});
+         pickFrame, iggy3d::RenderContentViewport{0, 0, 800U, 600U}, now,
+         false});
   };
   const auto press = [&](cr::CreativeWorldActionId action,
                          std::uint64_t now) {
