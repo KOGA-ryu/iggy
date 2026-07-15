@@ -4,6 +4,7 @@
 #include <cmath>
 #include <utility>
 
+#include "core/math/OrientedBox.hpp"
 #include "runtime/command/Command.hpp"
 #include "runtime/world/EntityState.hpp"
 
@@ -15,6 +16,11 @@ constexpr iggy3d::PlayerSlotId kLocalPlayerSlot = 0U;
 constexpr float kInputEpsilon = 0.0001F;
 constexpr float kPi = 3.14159265358979323846F;
 constexpr std::uint32_t kMaximumCatchUpTickLimit = 16U;
+constexpr auto kBoxEdgeIndices = std::to_array<std::array<std::size_t, 2U>>({
+    {0U, 1U}, {2U, 3U}, {4U, 5U}, {6U, 7U},
+    {0U, 2U}, {1U, 3U}, {4U, 6U}, {5U, 7U},
+    {0U, 4U}, {1U, 5U}, {2U, 6U}, {3U, 7U},
+});
 
 bool validTuning(const CreativeEditorPlayTuning& tuning,
                  const iggy3d::RuntimeConfig& runtimeConfig) noexcept {
@@ -236,6 +242,18 @@ bool applyRuntimeInteractionEvents(
     }
   }
   mode.processedRuntimeEventCount = events.size();
+
+  const iggy3d::creative::CreativeRuntimeAutomaticLogicReceipt automatic =
+      iggy3d::creative::updateCreativeRuntimeAutomaticLogic(sandbox);
+  mode.lastAutomaticLogic = automatic;
+  receipt.automaticLogic = automatic.status;
+  receipt.automaticSourceTransitions +=
+      static_cast<std::uint32_t>(automatic.occupancyTransitionCount);
+  receipt.automaticEffectsApplied +=
+      static_cast<std::uint32_t>(automatic.activationEffectCount);
+  if (!automatic.accepted) {
+    return false;
+  }
   if (mode.targetingGeometryRevision != sandbox.geometryRevision &&
       !refreshTargetingBake(mode)) {
     return false;
@@ -341,6 +359,7 @@ CreativeEditorPlayStartReceipt startCreativeEditorPlayMode(
   mode.actionRouter = {};
   mode.target = {};
   mode.lastInteractionEffect = {};
+  mode.lastAutomaticLogic = {};
   mode.processedRuntimeEventCount = 0U;
   mode.cameraYawDegrees = 0.0F;
   mode.cameraPitchDegrees = 0.0F;
@@ -360,6 +379,7 @@ iggy3d::creative::CreativeRuntimeSandboxStopReceipt stopCreativeEditorPlayMode(
   mode.actionRouter = {};
   mode.target = {};
   mode.lastInteractionEffect = {};
+  mode.lastAutomaticLogic = {};
   mode.processedRuntimeEventCount = 0U;
   resetPlayClock(mode);
   return receipt;
@@ -554,6 +574,35 @@ CreativeEditorPlayScene buildCreativeEditorPlayScene(
   const iggy3d::creative::CreativeRuntimeSandbox& sandbox = *mode.sandbox;
   result.scene =
       iggy3d::buildSceneProjection(sandbox.session.state(), &sandbox.room);
+  for (const iggy3d::creative::CreativeRuntimeInteractableState& source :
+       sandbox.interactables) {
+    if (source.definition.kind !=
+            iggy3d::creative::CreativeRuntimeInteractableKind::Control ||
+        (source.definition.logicSourceMode !=
+             iggy3d::creative::CreativeRuntimeLogicSourceMode::PulseOnEnter &&
+         source.definition.logicSourceMode !=
+             iggy3d::creative::CreativeRuntimeLogicSourceMode::
+                 HoldWhileOccupied)) {
+      continue;
+    }
+    const std::array<iggy3d::Vec3, 8U> corners =
+        iggy3d::orientedBoxCorners(iggy3d::makeOrientedBox(
+            source.definition.transform, source.definition.localBounds));
+    const bool active = source.occupantCount > 0U;
+    const iggy3d::RenderLineColor color = active
+        ? iggy3d::RenderLineColor{0.15F, 1.0F, 0.25F, 1.0F}
+        : iggy3d::RenderLineColor{0.45F, 0.55F, 0.60F, 1.0F};
+    for (const auto& edge : kBoxEdgeIndices) {
+      iggy3d::RenderCreativeWireframeDebugLine line;
+      line.start = corners[edge[0]];
+      line.end = corners[edge[1]];
+      line.color = color;
+      line.objectId = source.definition.objectId;
+      line.style = active ? 1U : 0U;
+      line.thickness = active ? 3.0F : 1.5F;
+      result.automaticLogicSourceLines.push_back(line);
+    }
+  }
   const iggy3d::EntityState* player =
       sandbox.session.state().world.findById(kLocalPlayerEntity);
   if (player == nullptr) {

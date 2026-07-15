@@ -7,6 +7,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "runtime/collision/CollisionQuery.hpp"
 
@@ -126,6 +127,115 @@ const iggy3d::CombatantState* findCombatant(
         return combatant.entity == entity;
       });
   return found == state.combat.combatants.end() ? nullptr : &*found;
+}
+
+cr::CreativeRuntimeInteractableState* findInteractable(
+    cr::CreativeRuntimeSandbox& sandbox,
+    cr::CreativeObjectId objectId) {
+  const auto found = std::find_if(
+      sandbox.interactables.begin(), sandbox.interactables.end(),
+      [objectId](const cr::CreativeRuntimeInteractableState& state) {
+        return state.definition.objectId == objectId;
+      });
+  return found == sandbox.interactables.end() ? nullptr : &*found;
+}
+
+bool moveEntity(cr::CreativeRuntimeSandbox& sandbox,
+                iggy3d::EntityId entityId,
+                iggy3d::Vec3 position) {
+  const iggy3d::EntityState* entity =
+      sandbox.session.state().world.findById(entityId);
+  if (entity == nullptr) {
+    return false;
+  }
+  iggy3d::Transform3 transform = entity->transform;
+  transform.position = position;
+  return sandbox.session.mutableStateForOwnedSystems()
+             .world.updateTransform(entityId, transform)
+             .status == iggy3d::WorldStatus::Ok;
+}
+
+const cr::CreativeRuntimeDoorStateCommand* findCommand(
+    const cr::CreativeRuntimeLogicActivationPlan& plan,
+    cr::CreativeObjectId objectId) {
+  const auto found = std::find_if(
+      plan.commands.begin(), plan.commands.end(),
+      [objectId](const cr::CreativeRuntimeDoorStateCommand& command) {
+        return command.objectId == objectId;
+      });
+  return found == plan.commands.end() ? nullptr : &*found;
+}
+
+bool pureLogicPlannerPairsAutomaticSignals() {
+  constexpr cr::CreativeObjectId kSource = 11U;
+  const std::vector<cr::CreativeRuntimeLogicLink> links{
+      {kSource, 21U, cr::CreativeLogicLinkAction::Toggle, false},
+      {kSource, 22U, cr::CreativeLogicLinkAction::Open, false},
+      {kSource, 23U, cr::CreativeLogicLinkAction::Close, false},
+  };
+  const std::vector<cr::CreativeRuntimeDoorStateFact> doors{
+      {21U, false}, {22U, true}, {23U, true}};
+  const cr::CreativeRuntimeLogicActivationPlan pulse =
+      cr::planCreativeRuntimeLogicActivation(
+          links, doors, kSource, cr::CreativeRuntimeLogicSignal::Pulse);
+  const cr::CreativeRuntimeLogicActivationPlan activate =
+      cr::planCreativeRuntimeLogicActivation(
+          links, doors, kSource, cr::CreativeRuntimeLogicSignal::Activate);
+  const std::vector<cr::CreativeRuntimeDoorStateFact> activatedDoors{
+      {21U, true}, {22U, true}, {23U, false}};
+  const cr::CreativeRuntimeLogicActivationPlan deactivate =
+      cr::planCreativeRuntimeLogicActivation(
+          links, activatedDoors, kSource,
+          cr::CreativeRuntimeLogicSignal::Deactivate);
+  const std::vector<cr::CreativeRuntimeLogicLink> missingDoorLinks{
+      {kSource, 99U, cr::CreativeLogicLinkAction::Toggle, false}};
+  const cr::CreativeRuntimeLogicActivationPlan missingDoor =
+      cr::planCreativeRuntimeLogicActivation(
+          missingDoorLinks, doors, kSource,
+          cr::CreativeRuntimeLogicSignal::Pulse);
+  const cr::CreativeRuntimeLogicActivationPlan invalidSignal =
+      cr::planCreativeRuntimeLogicActivation(
+          links, doors, kSource,
+          static_cast<cr::CreativeRuntimeLogicSignal>(255U));
+  const std::vector<cr::CreativeRuntimeDoorStateFact> duplicateDoors{
+      {21U, false}, {21U, true}};
+  const cr::CreativeRuntimeLogicActivationPlan duplicateDoorFacts =
+      cr::planCreativeRuntimeLogicActivation(
+          links, duplicateDoors, kSource,
+          cr::CreativeRuntimeLogicSignal::Pulse);
+
+  const cr::CreativeRuntimeDoorStateCommand* pulseToggle =
+      findCommand(pulse, 21U);
+  const cr::CreativeRuntimeDoorStateCommand* pulseOpen =
+      findCommand(pulse, 22U);
+  const cr::CreativeRuntimeDoorStateCommand* pulseClose =
+      findCommand(pulse, 23U);
+  const cr::CreativeRuntimeDoorStateCommand* activeToggle =
+      findCommand(activate, 21U);
+  const cr::CreativeRuntimeDoorStateCommand* inactiveToggle =
+      findCommand(deactivate, 21U);
+  const cr::CreativeRuntimeDoorStateCommand* inactiveOpen =
+      findCommand(deactivate, 22U);
+  const cr::CreativeRuntimeDoorStateCommand* inactiveClose =
+      findCommand(deactivate, 23U);
+
+  return expect(pulse.ok && pulse.commands.size() == 3U &&
+                    pulseToggle != nullptr && pulseToggle->open &&
+                    pulseOpen != nullptr && pulseOpen->open &&
+                    pulseClose != nullptr && !pulseClose->open,
+                "pulse applies authored Toggle Open and Close actions") &&
+         expect(activate.ok && activeToggle != nullptr &&
+                    activeToggle->open,
+                "activation applies Toggle against the entry state") &&
+         expect(deactivate.ok && inactiveToggle != nullptr &&
+                    !inactiveToggle->open && inactiveOpen != nullptr &&
+                    !inactiveOpen->open && inactiveClose != nullptr &&
+                    inactiveClose->open,
+                "deactivation reverses paired pressure-plate actions") &&
+         expect(!missingDoor.ok && missingDoor.commands.empty(),
+                "planner fails closed when a linked door fact is absent") &&
+         expect(!invalidSignal.ok && !duplicateDoorFacts.ok,
+                "planner rejects invalid enums and duplicate door facts");
 }
 
 bool pureSeedMapsPlayerAndActorPolicies() {
@@ -465,6 +575,196 @@ bool runningSnapshotDoesNotTrackLaterDocumentEdits() {
                 "running snapshot does not absorb later authoring edits");
 }
 
+bool automaticSourcesCountOccupantsAndRearm() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Automatic Logic Sources");
+  static_cast<void>(document.assignId(48U));
+  const bool floor = addObject(
+      document, cr::CreativeObjectKind::Floor, "Floor", {0.0, 0.0, 0.0},
+      cr::CreativeBounds{{-10.0, 0.0, -10.0}, {10.0, 0.25, 10.0}});
+  const bool spawn = addObject(document, cr::CreativeObjectKind::SpawnPoint,
+                               "Player Spawn", {-4.0, 0.25, 0.0});
+  const bool npc = addObject(document, cr::CreativeObjectKind::NpcSpawn,
+                             "Occupancy NPC", {-4.0, 0.25, 3.0});
+  const cr::CreativeDocumentCreateReceipt trigger = createObject(
+      document, cr::CreativeObjectKind::TriggerZone, "Entry Trigger",
+      {-1.0, 0.25, -1.0}, std::nullopt,
+      cr::CreativeBounds{{-1.0, 0.25, -1.0}, {1.0, 2.25, 1.0}});
+  const cr::CreativeDocumentCreateReceipt plate = createObject(
+      document, cr::CreativeObjectKind::PressurePlate, "Door Plate",
+      {2.0, 0.25, -0.75}, std::nullopt,
+      cr::CreativeBounds{{2.0, 0.25, -0.75}, {3.5, 0.35, 0.75}});
+  const cr::CreativeDocumentCreateReceipt triggerDoor = createObject(
+      document, cr::CreativeObjectKind::Door, "Trigger Door",
+      {4.0, 0.25, -0.25}, std::nullopt,
+      cr::CreativeBounds{{4.0, 0.25, -0.25}, {5.0, 2.5, 0.25}});
+  const cr::CreativeDocumentCreateReceipt plateDoor = createObject(
+      document, cr::CreativeObjectKind::Door, "Plate Door",
+      {6.0, 0.25, -0.25}, std::nullopt,
+      cr::CreativeBounds{{6.0, 0.25, -0.25}, {7.0, 2.5, 0.25}});
+  if (!floor || !spawn || !npc || !trigger.accepted || !plate.accepted ||
+      !triggerDoor.accepted || !plateDoor.accepted ||
+      !document
+           .setLogicLink({trigger.objectId, triggerDoor.objectId,
+                          cr::CreativeLogicLinkAction::Toggle})
+           .accepted ||
+      !document
+           .setLogicLink({plate.objectId, plateDoor.objectId,
+                          cr::CreativeLogicLinkAction::Open})
+           .accepted) {
+    return expect(false, "automatic source setup creates authored map");
+  }
+
+  cr::CreativePlayPreparationResult prepared = prepare(document);
+  if (!prepared.payload.has_value()) {
+    return expect(false, "automatic source setup prepares payload");
+  }
+  cr::CreativeRuntimeSandboxActivationRequest request;
+  request.sourceDocument = &document;
+  request.payload = std::move(*prepared.payload);
+  cr::CreativeRuntimeSandboxActivationResult activated =
+      cr::activateCreativeRuntimeSandbox(std::move(request));
+  if (!activated.sandbox.has_value()) {
+    return expect(false, "automatic source sandbox activates");
+  }
+
+  cr::CreativeRuntimeSandbox& sandbox = *activated.sandbox;
+  cr::CreativeRuntimeInteractableState* triggerState =
+      findInteractable(sandbox, trigger.objectId);
+  cr::CreativeRuntimeInteractableState* plateState =
+      findInteractable(sandbox, plate.objectId);
+  cr::CreativeRuntimeInteractableState* triggerDoorState =
+      findInteractable(sandbox, triggerDoor.objectId);
+  cr::CreativeRuntimeInteractableState* plateDoorState =
+      findInteractable(sandbox, plateDoor.objectId);
+  const iggy3d::RoomAnchorAsset* npcAnchor = findAnchor(sandbox.room, "npc");
+  const iggy3d::EntityState* npcEntity =
+      npcAnchor == nullptr
+          ? nullptr
+          : sandbox.session.state().world.findByStableName(
+                npcAnchor->runtimeStableName);
+  if (triggerState == nullptr || plateState == nullptr ||
+      triggerDoorState == nullptr || plateDoorState == nullptr ||
+      npcEntity == nullptr) {
+    return expect(false, "automatic source runtime states are addressable");
+  }
+  const iggy3d::EntityId npcEntityId = npcEntity->id;
+  const iggy3d::EntityState* triggerEntity =
+      sandbox.session.state().world.findById(triggerState->entity);
+  const iggy3d::EntityState* plateEntity =
+      sandbox.session.state().world.findById(plateState->entity);
+
+  const cr::CreativeRuntimeAutomaticLogicReceipt idle =
+      cr::updateCreativeRuntimeAutomaticLogic(sandbox);
+  const cr::CreativeRuntimeInteractionEffectReceipt directAutomatic =
+      cr::applyCreativeRuntimeInteractionEffect(sandbox, triggerState->entity);
+  if (!moveEntity(sandbox, {1U}, {0.0F, 0.25F, 0.0F})) {
+    return expect(false, "player moves into trigger");
+  }
+  const cr::CreativeRuntimeAutomaticLogicReceipt triggerEntered =
+      cr::updateCreativeRuntimeAutomaticLogic(sandbox);
+  const bool triggerOpened = triggerDoorState->doorOpen;
+  const std::size_t triggerCountAfterEnter = triggerState->occupantCount;
+  if (!moveEntity(sandbox, npcEntityId, {0.5F, 0.25F, 0.0F})) {
+    return expect(false, "npc moves into occupied trigger");
+  }
+  const cr::CreativeRuntimeAutomaticLogicReceipt sharedTrigger =
+      cr::updateCreativeRuntimeAutomaticLogic(sandbox);
+  const std::size_t sharedTriggerCount = triggerState->occupantCount;
+  if (!moveEntity(sandbox, {1U}, {-4.0F, 0.25F, 0.0F})) {
+    return expect(false, "player leaves shared trigger");
+  }
+  const cr::CreativeRuntimeAutomaticLogicReceipt oneTriggerOccupant =
+      cr::updateCreativeRuntimeAutomaticLogic(sandbox);
+  const std::size_t oneTriggerOccupantCount = triggerState->occupantCount;
+  if (!moveEntity(sandbox, npcEntityId, {-4.0F, 0.25F, 3.0F})) {
+    return expect(false, "npc leaves trigger");
+  }
+  const cr::CreativeRuntimeAutomaticLogicReceipt triggerRearmed =
+      cr::updateCreativeRuntimeAutomaticLogic(sandbox);
+  const std::size_t rearmedTriggerCount = triggerState->occupantCount;
+  if (!moveEntity(sandbox, {1U}, {0.0F, 0.25F, 0.0F})) {
+    return expect(false, "player re-enters trigger");
+  }
+  const cr::CreativeRuntimeAutomaticLogicReceipt triggerReentered =
+      cr::updateCreativeRuntimeAutomaticLogic(sandbox);
+  const bool triggerClosed = !triggerDoorState->doorOpen;
+
+  if (!moveEntity(sandbox, {1U}, {2.5F, 0.25F, 0.0F})) {
+    return expect(false, "player moves onto plate");
+  }
+  const cr::CreativeRuntimeAutomaticLogicReceipt plateEntered =
+      cr::updateCreativeRuntimeAutomaticLogic(sandbox);
+  const bool plateOpened = plateDoorState->doorOpen;
+  const std::size_t plateCountAfterEnter = plateState->occupantCount;
+  if (!moveEntity(sandbox, npcEntityId, {2.75F, 0.25F, 0.0F})) {
+    return expect(false, "npc moves onto occupied plate");
+  }
+  const cr::CreativeRuntimeAutomaticLogicReceipt sharedPlate =
+      cr::updateCreativeRuntimeAutomaticLogic(sandbox);
+  const std::size_t sharedPlateCount = plateState->occupantCount;
+  if (!moveEntity(sandbox, {1U}, {-4.0F, 0.25F, 0.0F})) {
+    return expect(false, "player leaves shared plate");
+  }
+  const cr::CreativeRuntimeAutomaticLogicReceipt onePlateOccupant =
+      cr::updateCreativeRuntimeAutomaticLogic(sandbox);
+  const std::size_t onePlateOccupantCount = plateState->occupantCount;
+  if (!moveEntity(sandbox, npcEntityId, {-4.0F, 0.25F, 3.0F})) {
+    return expect(false, "npc leaves plate");
+  }
+  const cr::CreativeRuntimeAutomaticLogicReceipt plateExited =
+      cr::updateCreativeRuntimeAutomaticLogic(sandbox);
+  const std::size_t exitedPlateCount = plateState->occupantCount;
+
+  return expect(activated.receipt.scenario.controlEntityCount == 2U &&
+                    activated.receipt.scenario.automaticControlEntityCount ==
+                        2U &&
+                    triggerEntity != nullptr && plateEntity != nullptr &&
+                    !triggerEntity->targeting.targetable &&
+                    !plateEntity->targeting.targetable,
+                "automatic sources seed as non-targetable controls") &&
+         expect(idle.accepted &&
+                    idle.status ==
+                        cr::CreativeRuntimeAutomaticLogicStatus::NoTransition &&
+                    idle.evaluatedSourceCount == 2U &&
+                    idle.occupiedSourceCount == 0U,
+                "empty automatic sources remain idle") &&
+         expect(!directAutomatic.accepted &&
+                    directAutomatic.status ==
+                        cr::CreativeRuntimeInteractionEffectStatus::
+                            UnsupportedTarget,
+                "automatic source cannot be activated through interaction") &&
+         expect(triggerEntered.accepted &&
+                    triggerEntered.occupancyTransitionCount == 1U &&
+                    triggerEntered.activationEffectCount == 1U &&
+                    triggerCountAfterEnter == 1U && triggerOpened,
+                "first trigger entry pulses linked door") &&
+         expect(sharedTrigger.occupancyTransitionCount == 0U &&
+                    sharedTriggerCount == 2U &&
+                    oneTriggerOccupant.occupancyTransitionCount == 0U &&
+                    oneTriggerOccupantCount == 1U &&
+                    triggerRearmed.occupancyTransitionCount == 1U &&
+                    triggerRearmed.activationEffectCount == 0U &&
+                    rearmedTriggerCount == 0U,
+                "trigger counts actors and rearms only when empty") &&
+         expect(triggerReentered.activationEffectCount == 1U && triggerClosed,
+                "rearmed trigger pulses again on a later entry") &&
+         expect(plateEntered.activationEffectCount == 1U && plateOpened &&
+                    plateCountAfterEnter == 1U &&
+                    sharedPlate.occupancyTransitionCount == 0U &&
+                    sharedPlateCount == 2U &&
+                    onePlateOccupant.occupancyTransitionCount == 0U &&
+                    onePlateOccupantCount == 1U,
+                "plate stays active until every occupant leaves") &&
+         expect(plateExited.activationEffectCount == 1U &&
+                    !plateDoorState->doorOpen &&
+                    exitedPlateCount == 0U &&
+                    plateExited.status ==
+                        cr::CreativeRuntimeAutomaticLogicStatus::Applied &&
+                    cr::toString(plateExited.status) == "applied",
+                "final plate exit reverses its Open action");
+}
+
 bool authoredInteractablesOwnExplicitCircuitsAndDynamicGeometry() {
   cr::CreativeDocument document = playableDocument(false, 47U);
   const cr::CreativeDocumentCreateReceipt circuit = createObject(
@@ -680,11 +980,13 @@ bool authoredInteractablesOwnExplicitCircuitsAndDynamicGeometry() {
 }  // namespace
 
 int main() {
-  const bool ok = pureSeedMapsPlayerAndActorPolicies() &&
+  const bool ok = pureLogicPlannerPairsAutomaticSignals() &&
+                  pureSeedMapsPlayerAndActorPolicies() &&
                   activationOwnsCollisionSessionAndReasoning() &&
                   activationRejectsStaleAndMalformedPayloads() &&
                   sandboxFreshnessAndStopAreExplicit() &&
                   runningSnapshotDoesNotTrackLaterDocumentEdits() &&
+                  automaticSourcesCountOccupantsAndRearm() &&
                   authoredInteractablesOwnExplicitCircuitsAndDynamicGeometry();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

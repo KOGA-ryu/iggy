@@ -6,6 +6,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "app/iggy3d/creative/play/RuntimeSandbox.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
@@ -110,6 +111,7 @@ struct CreativeEditorPlayMode {
   CreativeEditorPlayTarget target;
   iggy3d::creative::CreativeRuntimeInteractionEffectReceipt
       lastInteractionEffect;
+  iggy3d::creative::CreativeRuntimeAutomaticLogicReceipt lastAutomaticLogic;
   std::uint64_t targetingGeometryRevision = 0U;
   std::size_t processedRuntimeEventCount = 0U;
   float cameraYawDegrees = 0.0F;
@@ -201,6 +203,8 @@ struct CreativeEditorPlayTickReceipt {
   std::uint32_t attackCommandsSubmitted = 0U;
   std::uint32_t interactionCommandsSubmitted = 0U;
   std::uint32_t interactionEffectsApplied = 0U;
+  std::uint32_t automaticSourceTransitions = 0U;
+  std::uint32_t automaticEffectsApplied = 0U;
   CreativeEditorPlayAction action = CreativeEditorPlayAction::None;
   bool actionAttempted = false;
   bool actionSubmitted = false;
@@ -209,6 +213,8 @@ struct CreativeEditorPlayTickReceipt {
       iggy3d::CommandRejectionReason::None;
   iggy3d::creative::CreativeRuntimeInteractionEffectStatus interactionEffect =
       iggy3d::creative::CreativeRuntimeInteractionEffectStatus::NotRequested;
+  iggy3d::creative::CreativeRuntimeAutomaticLogicStatus automaticLogic =
+      iggy3d::creative::CreativeRuntimeAutomaticLogicStatus::NotRequested;
   std::uint64_t runtimeGeometryRevision = 0U;
 };
 
@@ -222,6 +228,8 @@ struct CreativeEditorPlayScene {
   bool available = false;
   iggy3d::Vec3 cameraAnchorMeters;
   iggy3d::SceneProjectionResult scene;
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine>
+      automaticLogicSourceLines;
 };
 
 [[nodiscard]] CreativeEditorPlayScene buildCreativeEditorPlayScene(

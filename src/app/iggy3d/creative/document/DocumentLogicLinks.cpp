@@ -146,8 +146,10 @@ std::string_view toString(CreativeLogicLinkMutationStatus status) noexcept {
 }
 
 bool creativeObjectCanSourceLogicLink(CreativeObjectKind kind) noexcept {
-  return kind == CreativeObjectKind::Switch ||
+  return kind == CreativeObjectKind::TriggerZone ||
+         kind == CreativeObjectKind::Switch ||
          kind == CreativeObjectKind::Lever ||
+         kind == CreativeObjectKind::PressurePlate ||
          kind == CreativeObjectKind::Button;
 }
 

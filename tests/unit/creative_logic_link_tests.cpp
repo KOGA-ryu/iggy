@@ -198,6 +198,31 @@ bool saveSectionRoundTripsLogicLinks() {
                 "save section restores logic link semantics");
 }
 
+bool automaticSourcesUseTheSameAuthoredLinkContract() {
+  cr::CreativeDocument document = documentWithId();
+  const auto trigger =
+      create(document, cr::CreativeObjectKind::TriggerZone, "Trigger");
+  const auto plate =
+      create(document, cr::CreativeObjectKind::PressurePlate, "Plate");
+  const auto door = create(document, cr::CreativeObjectKind::Door, "Door");
+  const cr::CreativeLogicLinkMutationReceipt triggerLink =
+      document.setLogicLink({trigger.objectId, door.objectId,
+                             cr::CreativeLogicLinkAction::Toggle});
+  const cr::CreativeLogicLinkMutationReceipt plateLink =
+      document.setLogicLink(
+          {plate.objectId, door.objectId, cr::CreativeLogicLinkAction::Open});
+
+  return expect(cr::creativeObjectCanSourceLogicLink(
+                    cr::CreativeObjectKind::TriggerZone) &&
+                    cr::creativeObjectCanSourceLogicLink(
+                        cr::CreativeObjectKind::PressurePlate),
+                "automatic controls are authored link sources") &&
+         expect(triggerLink.accepted && triggerLink.changed &&
+                    plateLink.accepted && plateLink.changed &&
+                    document.logicLinks().size() == 2U,
+                "automatic controls use canonical source-target links");
+}
+
 }  // namespace
 
 int main() {
@@ -205,6 +230,7 @@ int main() {
                   endpointDeletionRemovesIncidentLinksInOneRevision() &&
                   restoreValidatesAndCanonicalizesLinks() &&
                   clipboardRemapsInternalLinks() &&
-                  saveSectionRoundTripsLogicLinks();
+                  saveSectionRoundTripsLogicLinks() &&
+                  automaticSourcesUseTheSameAuthoredLinkContract();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

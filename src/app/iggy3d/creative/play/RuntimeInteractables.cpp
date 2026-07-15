@@ -8,13 +8,16 @@
 
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/play/RuntimeSandbox.hpp"
+#include "core/math/OrientedBox.hpp"
 #include "runtime/ai/ReasoningGraph.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
+#include "runtime/world/EntityState.hpp"
 
 namespace iggy3d::creative {
 namespace {
 
 constexpr float kDoorTargetPaddingMeters = 0.08F;
+constexpr float kAutomaticSourceOccupancyMarginMeters = 0.02F;
 constexpr Aabb3 kControlBounds{{-0.25F, -0.25F, -0.25F},
                                {0.25F, 0.25F, 0.25F}};
 constexpr Aabb3 kPickupBounds{{-0.30F, -0.30F, -0.30F},
@@ -31,12 +34,30 @@ interactableKindFor(CreativeObjectKind kind) noexcept {
       return CreativeRuntimeInteractableKind::Door;
     case CreativeObjectKind::Switch:
     case CreativeObjectKind::Lever:
+    case CreativeObjectKind::PressurePlate:
     case CreativeObjectKind::Button:
+    case CreativeObjectKind::TriggerZone:
       return CreativeRuntimeInteractableKind::Control;
     case CreativeObjectKind::LootPoint:
       return CreativeRuntimeInteractableKind::Pickup;
     default:
       return std::nullopt;
+  }
+}
+
+[[nodiscard]] CreativeRuntimeLogicSourceMode logicSourceModeFor(
+    CreativeObjectKind kind) noexcept {
+  switch (kind) {
+    case CreativeObjectKind::Switch:
+    case CreativeObjectKind::Lever:
+    case CreativeObjectKind::Button:
+      return CreativeRuntimeLogicSourceMode::Manual;
+    case CreativeObjectKind::TriggerZone:
+      return CreativeRuntimeLogicSourceMode::PulseOnEnter;
+    case CreativeObjectKind::PressurePlate:
+      return CreativeRuntimeLogicSourceMode::HoldWhileOccupied;
+    default:
+      return CreativeRuntimeLogicSourceMode::None;
   }
 }
 
@@ -96,6 +117,42 @@ interactableKindFor(CreativeObjectKind kind) noexcept {
                     ? kPickupBounds
                     : kControlBounds;
   return isFinite(transform) && isValid(localBounds);
+}
+
+[[nodiscard]] bool buildAutomaticSourceTransformAndBounds(
+    const CreativeObject& object,
+    Transform3& transform,
+    Aabb3& localBounds) noexcept {
+  const CreativeTransformedBounds resolved = resolveCreativeObjectBounds(object);
+  const CreativeCoreVec3Conversion center =
+      creativeVec3ToCoreChecked(resolved.center);
+  const CreativeCoreVec3Conversion rotation =
+      creativeVec3ToCoreChecked(resolved.rotationEulerRadians);
+  const CreativeCoreVec3Conversion size =
+      creativeVec3ToCoreChecked(resolved.size);
+  if (!resolved.valid || !center.converted || !rotation.converted ||
+      !size.converted || size.value.x <= 0.0F || size.value.y <= 0.0F ||
+      size.value.z <= 0.0F) {
+    return false;
+  }
+
+  transform = identityTransform3();
+  transform.position = center.value;
+  transform.rotationEulerRadians = rotation.value;
+  const Vec3 half = size.value * 0.5F;
+  localBounds = makeAabb3(half * -1.0F, half);
+  return isFinite(transform) && isValid(localBounds);
+}
+
+[[nodiscard]] bool isAutomaticSourceMode(
+    CreativeRuntimeLogicSourceMode mode) noexcept {
+  return mode == CreativeRuntimeLogicSourceMode::PulseOnEnter ||
+         mode == CreativeRuntimeLogicSourceMode::HoldWhileOccupied;
+}
+
+[[nodiscard]] bool isOccupancyActor(const EntityState& entity) noexcept {
+  return entity.active &&
+         (entity.kind == EntityKind::Player || entity.kind == EntityKind::Npc);
 }
 
 [[nodiscard]] bool definitionIsUnique(
@@ -300,6 +357,209 @@ struct DoorStateChange {
 
 }  // namespace
 
+CreativeRuntimeLogicActivationPlan planCreativeRuntimeLogicActivation(
+    std::span<const CreativeRuntimeLogicLink> links,
+    std::span<const CreativeRuntimeDoorStateFact> doors,
+    CreativeObjectId sourceObjectId,
+    CreativeRuntimeLogicSignal signal) {
+  CreativeRuntimeLogicActivationPlan result;
+  if (sourceObjectId == kInvalidObjectId ||
+      static_cast<std::uint8_t>(signal) >=
+          static_cast<std::uint8_t>(CreativeRuntimeLogicSignal::Count)) {
+    result.reasonCode = "creative_runtime_logic_plan_request_invalid";
+    return result;
+  }
+  for (std::size_t index = 0U; index < doors.size(); ++index) {
+    bool duplicate = false;
+    for (std::size_t prior = 0U; prior < index; ++prior) {
+      duplicate = duplicate ||
+                  doors[prior].objectId == doors[index].objectId;
+    }
+    if (doors[index].objectId == kInvalidObjectId || duplicate) {
+      result.reasonCode = "creative_runtime_logic_plan_door_facts_invalid";
+      return result;
+    }
+  }
+
+  std::vector<const CreativeRuntimeLogicLink*> sourceLinks;
+  sourceLinks.reserve(links.size());
+  for (const CreativeRuntimeLogicLink& link : links) {
+    if (link.sourceObjectId == sourceObjectId) {
+      sourceLinks.push_back(&link);
+    }
+  }
+  if (sourceLinks.empty()) {
+    result.ok = true;
+    result.reasonCode = "creative_runtime_logic_plan_no_linked_door";
+    return result;
+  }
+
+  const bool compatibilityFallback =
+      sourceLinks.front()->compatibilityFallback;
+  if (std::any_of(sourceLinks.begin(), sourceLinks.end(),
+                  [compatibilityFallback](const auto* link) {
+                    return link->compatibilityFallback !=
+                           compatibilityFallback;
+                  })) {
+    result.reasonCode = "creative_runtime_logic_plan_link_modes_mixed";
+    return result;
+  }
+  result.compatibilityFallback = compatibilityFallback;
+
+  bool compatibilityOpen = false;
+  if (compatibilityFallback) {
+    if (signal == CreativeRuntimeLogicSignal::Pulse) {
+      compatibilityOpen = std::any_of(
+          sourceLinks.begin(), sourceLinks.end(),
+          [doors](const auto* link) {
+            const auto door = std::find_if(
+                doors.begin(), doors.end(), [link](const auto& fact) {
+                  return fact.objectId == link->targetObjectId;
+                });
+            return door != doors.end() && !door->open;
+          });
+    } else {
+      compatibilityOpen = signal == CreativeRuntimeLogicSignal::Activate;
+    }
+  }
+
+  result.commands.reserve(sourceLinks.size());
+  for (const CreativeRuntimeLogicLink* link : sourceLinks) {
+    const auto door = std::find_if(
+        doors.begin(), doors.end(), [link](const auto& fact) {
+          return fact.objectId == link->targetObjectId;
+        });
+    if (door == doors.end() ||
+        std::any_of(result.commands.begin(), result.commands.end(),
+                    [link](const auto& command) {
+                      return command.objectId == link->targetObjectId;
+                    })) {
+      result.commands.clear();
+      result.reasonCode = "creative_runtime_logic_plan_door_invalid";
+      return result;
+    }
+
+    bool open = compatibilityOpen;
+    if (!compatibilityFallback) {
+      switch (link->action) {
+        case CreativeLogicLinkAction::Toggle:
+          open = !door->open;
+          break;
+        case CreativeLogicLinkAction::Open:
+          open = signal != CreativeRuntimeLogicSignal::Deactivate;
+          break;
+        case CreativeLogicLinkAction::Close:
+          open = signal == CreativeRuntimeLogicSignal::Deactivate;
+          break;
+        case CreativeLogicLinkAction::Enable:
+        case CreativeLogicLinkAction::Disable:
+        case CreativeLogicLinkAction::Count:
+          result.commands.clear();
+          result.reasonCode = "creative_runtime_logic_plan_action_invalid";
+          return result;
+      }
+    }
+    result.commands.push_back({link->targetObjectId, open});
+  }
+
+  result.ok = true;
+  result.reasonCode = "creative_runtime_logic_plan_built";
+  return result;
+}
+
+namespace {
+
+CreativeRuntimeInteractionEffectReceipt applyLogicSourceSignal(
+    CreativeRuntimeSandbox& sandbox,
+    CreativeRuntimeInteractableState& source,
+    CreativeRuntimeLogicSignal signal) {
+  CreativeRuntimeInteractionEffectReceipt result;
+  result.requested = true;
+  result.target = source.entity;
+  result.objectId = source.definition.objectId;
+  result.displayName = source.definition.displayName;
+  result.geometryRevision = sandbox.geometryRevision;
+  if (source.definition.kind != CreativeRuntimeInteractableKind::Control ||
+      source.definition.logicSourceMode ==
+          CreativeRuntimeLogicSourceMode::None) {
+    result.status = CreativeRuntimeInteractionEffectStatus::UnsupportedTarget;
+    result.reasonCode = "creative_runtime_logic_source_unsupported";
+    return result;
+  }
+
+  std::vector<CreativeRuntimeDoorStateFact> doorFacts;
+  doorFacts.reserve(sandbox.interactables.size());
+  for (const CreativeRuntimeInteractableState& state : sandbox.interactables) {
+    if (state.definition.kind == CreativeRuntimeInteractableKind::Door) {
+      doorFacts.push_back({state.definition.objectId, state.doorOpen});
+    }
+  }
+  const CreativeRuntimeLogicActivationPlan plan =
+      planCreativeRuntimeLogicActivation(
+          sandbox.logicLinks, doorFacts, source.definition.objectId, signal);
+  if (!plan.ok) {
+    result.status = CreativeRuntimeInteractionEffectStatus::GeometryRejected;
+    result.reasonCode = plan.reasonCode;
+    return result;
+  }
+  if (plan.commands.empty()) {
+    result.accepted = true;
+    result.status = CreativeRuntimeInteractionEffectStatus::NoLinkedDoor;
+    result.reasonCode = "creative_runtime_control_has_no_linked_door";
+    return result;
+  }
+
+  std::vector<DoorStateChange> changes;
+  changes.reserve(plan.commands.size());
+  bool allOpen = true;
+  bool allClosed = true;
+  for (const CreativeRuntimeDoorStateCommand& command : plan.commands) {
+    const auto door = std::find_if(
+        sandbox.interactables.begin(), sandbox.interactables.end(),
+        [&command](const CreativeRuntimeInteractableState& candidate) {
+          return candidate.definition.objectId == command.objectId &&
+                 candidate.definition.kind ==
+                     CreativeRuntimeInteractableKind::Door;
+        });
+    if (door == sandbox.interactables.end()) {
+      result.status = CreativeRuntimeInteractionEffectStatus::GeometryRejected;
+      result.reasonCode = "creative_runtime_linked_door_missing";
+      return result;
+    }
+    allOpen = allOpen && command.open;
+    allClosed = allClosed && !command.open;
+    changes.push_back({&*door, command.open});
+  }
+
+  bool geometryChanged = false;
+  if (!publishDoorStates(sandbox, changes, geometryChanged)) {
+    result.status = CreativeRuntimeInteractionEffectStatus::GeometryRejected;
+    result.reasonCode = "creative_runtime_door_geometry_rejected";
+    return result;
+  }
+
+  result.accepted = true;
+  result.changed = geometryChanged;
+  result.affectedDoorCount = changes.size();
+  result.geometryRevision = sandbox.geometryRevision;
+  if (plan.compatibilityFallback && (allOpen || allClosed)) {
+    result.status = allOpen
+                        ? CreativeRuntimeInteractionEffectStatus::CircuitOpened
+                        : CreativeRuntimeInteractionEffectStatus::CircuitClosed;
+    result.reasonCode = allOpen ? "creative_runtime_circuit_opened"
+                                : "creative_runtime_circuit_closed";
+  } else if (geometryChanged) {
+    result.status = CreativeRuntimeInteractionEffectStatus::LinksApplied;
+    result.reasonCode = "creative_runtime_links_applied";
+  } else {
+    result.status = CreativeRuntimeInteractionEffectStatus::LinksNoChange;
+    result.reasonCode = "creative_runtime_links_no_change";
+  }
+  return result;
+}
+
+}  // namespace
+
 CreativeRuntimeInteractableCatalog buildCreativeRuntimeInteractableCatalog(
     const CreativeDocument& document,
     const RoomAsset& room) {
@@ -321,12 +581,14 @@ CreativeRuntimeInteractableCatalog buildCreativeRuntimeInteractableCatalog(
     definition.objectId = object.id;
     definition.circuitId = object.parentId.value_or(kInvalidObjectId);
     definition.kind = *kind;
+    definition.logicSourceMode = logicSourceModeFor(object.kind);
     definition.stableName = stableObjectName(object.id);
     definition.displayName = object.name.empty()
                                  ? std::string(toString(object.kind))
                                  : object.name;
     definition.roomMeshId =
-        *kind == CreativeRuntimeInteractableKind::Door
+        *kind == CreativeRuntimeInteractableKind::Door ||
+                object.kind == CreativeObjectKind::PressurePlate
             ? definition.stableName
             : std::string{};
     definition.itemId =
@@ -334,14 +596,21 @@ CreativeRuntimeInteractableCatalog buildCreativeRuntimeInteractableCatalog(
             ? "creative_loot_" + std::to_string(object.id)
             : std::string{};
 
-    const bool geometryValid =
-        *kind == CreativeRuntimeInteractableKind::Door
-            ? buildDoorTransformAndBounds(object, definition.transform,
-                                          definition.localBounds)
-            : buildPointTransformAndBounds(object, *kind, definition.transform,
-                                            definition.localBounds);
+    const bool automaticSource =
+        isAutomaticSourceMode(definition.logicSourceMode);
+    bool geometryValid = false;
+    if (*kind == CreativeRuntimeInteractableKind::Door) {
+      geometryValid = buildDoorTransformAndBounds(
+          object, definition.transform, definition.localBounds);
+    } else if (automaticSource) {
+      geometryValid = buildAutomaticSourceTransformAndBounds(
+          object, definition.transform, definition.localBounds);
+    } else {
+      geometryValid = buildPointTransformAndBounds(
+          object, *kind, definition.transform, definition.localBounds);
+    }
     const bool roomSourceExists =
-        *kind == CreativeRuntimeInteractableKind::Door
+        !definition.roomMeshId.empty()
             ? hasRoomMesh(room, definition.roomMeshId)
             : hasRoomAnchor(room, definition.stableName);
     if (!geometryValid || !roomSourceExists ||
@@ -356,6 +625,7 @@ CreativeRuntimeInteractableCatalog buildCreativeRuntimeInteractableCatalog(
         break;
       case CreativeRuntimeInteractableKind::Control:
         ++result.controlCount;
+        result.automaticControlCount += automaticSource ? 1U : 0U;
         break;
       case CreativeRuntimeInteractableKind::Pickup:
         ++result.pickupCount;
@@ -385,7 +655,8 @@ CreativeRuntimeInteractableCatalog buildCreativeRuntimeInteractableCatalog(
 
   for (const CreativeRuntimeInteractableDefinition& source :
        result.definitions) {
-    if (source.kind != CreativeRuntimeInteractableKind::Control) {
+    if (source.kind != CreativeRuntimeInteractableKind::Control ||
+        source.logicSourceMode != CreativeRuntimeLogicSourceMode::Manual) {
       continue;
     }
     const bool hasExplicit = std::any_of(
@@ -448,6 +719,21 @@ buildCreativeRuntimeInteractableStates(
   result.ok = true;
   result.reasonCode = "creative_runtime_interactable_state_built";
   return result;
+}
+
+std::string_view toString(
+    CreativeRuntimeAutomaticLogicStatus status) noexcept {
+  switch (status) {
+    case CreativeRuntimeAutomaticLogicStatus::NotRequested:
+      return "not_requested";
+    case CreativeRuntimeAutomaticLogicStatus::NoTransition:
+      return "no_transition";
+    case CreativeRuntimeAutomaticLogicStatus::Applied:
+      return "applied";
+    case CreativeRuntimeAutomaticLogicStatus::EffectRejected:
+      return "effect_rejected";
+  }
+  return "not_requested";
 }
 
 std::string_view toString(
@@ -537,85 +823,25 @@ CreativeRuntimeInteractionEffectReceipt applyCreativeRuntimeInteractionEffect(
     return result;
   }
 
-  std::vector<DoorStateChange> changes;
-  bool circuit = false;
-  bool compatibilityCircuit = false;
-  bool allOpen = true;
-  bool allClosed = true;
-  if (state.definition.kind == CreativeRuntimeInteractableKind::Door) {
-    changes.push_back({&state, !state.doorOpen});
-  } else {
-    circuit = true;
-    std::vector<const CreativeRuntimeLogicLink*> links;
-    for (const CreativeRuntimeLogicLink& link : sandbox.logicLinks) {
-      if (link.sourceObjectId == state.definition.objectId) {
-        links.push_back(&link);
-      }
+  if (state.definition.kind == CreativeRuntimeInteractableKind::Control) {
+    if (state.definition.logicSourceMode !=
+        CreativeRuntimeLogicSourceMode::Manual) {
+      result.status = CreativeRuntimeInteractionEffectStatus::UnsupportedTarget;
+      result.reasonCode = "creative_runtime_automatic_source_not_interactable";
+      return result;
     }
-    compatibilityCircuit = !links.empty() &&
-        std::all_of(links.begin(), links.end(), [](const auto* link) {
-          return link->compatibilityFallback;
-        });
-    bool compatibilityOpen = false;
-    if (compatibilityCircuit) {
-      compatibilityOpen = std::any_of(
-          links.begin(), links.end(), [&sandbox](const auto* link) {
-            const auto door = std::find_if(
-                sandbox.interactables.begin(), sandbox.interactables.end(),
-                [link](const CreativeRuntimeInteractableState& candidate) {
-                  return candidate.definition.objectId == link->targetObjectId;
-                });
-            return door != sandbox.interactables.end() && !door->doorOpen;
-          });
-    }
-    for (const CreativeRuntimeLogicLink* link : links) {
-      const auto door = std::find_if(
-          sandbox.interactables.begin(), sandbox.interactables.end(),
-          [link](const CreativeRuntimeInteractableState& candidate) {
-            return candidate.definition.objectId == link->targetObjectId &&
-                   candidate.definition.kind ==
-                       CreativeRuntimeInteractableKind::Door;
-          });
-      if (door == sandbox.interactables.end()) {
-        result.status =
-            CreativeRuntimeInteractionEffectStatus::GeometryRejected;
-        result.reasonCode = "creative_runtime_linked_door_missing";
-        return result;
-      }
-      bool open = compatibilityCircuit ? compatibilityOpen : !door->doorOpen;
-      if (!compatibilityCircuit) {
-        switch (link->action) {
-          case CreativeLogicLinkAction::Toggle:
-            open = !door->doorOpen;
-            break;
-          case CreativeLogicLinkAction::Open:
-            open = true;
-            break;
-          case CreativeLogicLinkAction::Close:
-            open = false;
-            break;
-          case CreativeLogicLinkAction::Enable:
-          case CreativeLogicLinkAction::Disable:
-          case CreativeLogicLinkAction::Count:
-            result.status =
-                CreativeRuntimeInteractionEffectStatus::GeometryRejected;
-            result.reasonCode = "creative_runtime_logic_action_unsupported";
-            return result;
-        }
-      }
-      allOpen = allOpen && open;
-      allClosed = allClosed && !open;
-      changes.push_back({&*door, open});
-    }
+    return applyLogicSourceSignal(sandbox, state,
+                                  CreativeRuntimeLogicSignal::Pulse);
   }
 
-  if (changes.empty()) {
-    result.accepted = true;
-    result.status = CreativeRuntimeInteractionEffectStatus::NoLinkedDoor;
-    result.reasonCode = "creative_runtime_control_has_no_linked_door";
+  if (state.definition.kind != CreativeRuntimeInteractableKind::Door) {
+    result.status = CreativeRuntimeInteractionEffectStatus::UnsupportedTarget;
+    result.reasonCode = "creative_runtime_interaction_target_unsupported";
     return result;
   }
 
+  const bool open = !state.doorOpen;
+  const std::vector<DoorStateChange> changes{{&state, open}};
   bool geometryChanged = false;
   if (!publishDoorStates(sandbox, changes, geometryChanged)) {
     result.status = CreativeRuntimeInteractionEffectStatus::GeometryRejected;
@@ -627,25 +853,91 @@ CreativeRuntimeInteractionEffectReceipt applyCreativeRuntimeInteractionEffect(
   result.changed = geometryChanged;
   result.affectedDoorCount = changes.size();
   result.geometryRevision = sandbox.geometryRevision;
-  if (!circuit) {
-    const bool open = changes.front().open;
-    result.status = open
-                        ? CreativeRuntimeInteractionEffectStatus::DoorOpened
-                        : CreativeRuntimeInteractionEffectStatus::DoorClosed;
-    result.reasonCode = open ? "creative_runtime_door_opened"
-                             : "creative_runtime_door_closed";
-  } else if (compatibilityCircuit && (allOpen || allClosed)) {
-    result.status = allOpen
-                        ? CreativeRuntimeInteractionEffectStatus::CircuitOpened
-                        : CreativeRuntimeInteractionEffectStatus::CircuitClosed;
-    result.reasonCode = allOpen ? "creative_runtime_circuit_opened"
-                                : "creative_runtime_circuit_closed";
-  } else if (geometryChanged) {
-    result.status = CreativeRuntimeInteractionEffectStatus::LinksApplied;
-    result.reasonCode = "creative_runtime_links_applied";
+  result.status = open ? CreativeRuntimeInteractionEffectStatus::DoorOpened
+                       : CreativeRuntimeInteractionEffectStatus::DoorClosed;
+  result.reasonCode = open ? "creative_runtime_door_opened"
+                           : "creative_runtime_door_closed";
+  return result;
+}
+
+CreativeRuntimeAutomaticLogicReceipt updateCreativeRuntimeAutomaticLogic(
+    CreativeRuntimeSandbox& sandbox) {
+  CreativeRuntimeAutomaticLogicReceipt result;
+  result.requested = true;
+  result.geometryRevision = sandbox.geometryRevision;
+
+  const std::vector<EntityState>& entities =
+      sandbox.session.state().world.entities();
+  for (CreativeRuntimeInteractableState& source : sandbox.interactables) {
+    if (source.definition.kind != CreativeRuntimeInteractableKind::Control ||
+        !isAutomaticSourceMode(source.definition.logicSourceMode)) {
+      continue;
+    }
+    ++result.evaluatedSourceCount;
+
+    const Vec3 occupancyMargin{kAutomaticSourceOccupancyMarginMeters,
+                               kAutomaticSourceOccupancyMarginMeters,
+                               kAutomaticSourceOccupancyMarginMeters};
+    const Aabb3 occupancyBounds = makeAabb3(
+        source.definition.localBounds.min - occupancyMargin,
+        source.definition.localBounds.max + occupancyMargin);
+    const OrientedBox volume =
+        makeOrientedBox(source.definition.transform, occupancyBounds);
+    std::size_t occupantCount = 0U;
+    for (const EntityState& entity : entities) {
+      if (isOccupancyActor(entity) &&
+          contains(volume, entity.transform.position)) {
+        ++occupantCount;
+      }
+    }
+    result.occupiedSourceCount += occupantCount > 0U ? 1U : 0U;
+
+    const bool entered = source.occupantCount == 0U && occupantCount > 0U;
+    const bool exited = source.occupantCount > 0U && occupantCount == 0U;
+    if (!entered && !exited) {
+      source.occupantCount = occupantCount;
+      continue;
+    }
+    ++result.occupancyTransitionCount;
+
+    std::optional<CreativeRuntimeLogicSignal> signal;
+    if (entered) {
+      signal = source.definition.logicSourceMode ==
+                       CreativeRuntimeLogicSourceMode::PulseOnEnter
+                   ? CreativeRuntimeLogicSignal::Pulse
+                   : CreativeRuntimeLogicSignal::Activate;
+    } else if (source.definition.logicSourceMode ==
+               CreativeRuntimeLogicSourceMode::HoldWhileOccupied) {
+      signal = CreativeRuntimeLogicSignal::Deactivate;
+    }
+
+    if (signal.has_value()) {
+      const CreativeRuntimeInteractionEffectReceipt effect =
+          applyLogicSourceSignal(sandbox, source, *signal);
+      result.lastEffect = effect.status;
+      ++result.activationEffectCount;
+      result.affectedDoorCount += effect.affectedDoorCount;
+      if (!effect.accepted ||
+          effect.status ==
+              CreativeRuntimeInteractionEffectStatus::GeometryRejected) {
+        result.status = CreativeRuntimeAutomaticLogicStatus::EffectRejected;
+        result.reasonCode = effect.reasonCode;
+        result.geometryRevision = sandbox.geometryRevision;
+        return result;
+      }
+      result.changed = result.changed || effect.changed;
+    }
+    source.occupantCount = occupantCount;
+  }
+
+  result.accepted = true;
+  result.geometryRevision = sandbox.geometryRevision;
+  if (result.occupancyTransitionCount == 0U) {
+    result.status = CreativeRuntimeAutomaticLogicStatus::NoTransition;
+    result.reasonCode = "creative_runtime_automatic_logic_no_transition";
   } else {
-    result.status = CreativeRuntimeInteractionEffectStatus::LinksNoChange;
-    result.reasonCode = "creative_runtime_links_no_change";
+    result.status = CreativeRuntimeAutomaticLogicStatus::Applied;
+    result.reasonCode = "creative_runtime_automatic_logic_applied";
   }
   return result;
 }

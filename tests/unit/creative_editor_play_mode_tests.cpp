@@ -44,6 +44,24 @@ bool addObject(cr::CreativeDocument& document,
   return document.createObject(request).accepted;
 }
 
+cr::CreativeDocumentCreateReceipt createObject(
+    cr::CreativeDocument& document,
+    cr::CreativeObjectKind kind,
+    std::string name,
+    cr::CreativeVec3 position,
+    std::optional<cr::CreativeBounds> bounds = std::nullopt) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = kind;
+  request.name = std::move(name);
+  request.transform.position = position;
+  request.hasTransformOverride = true;
+  if (bounds.has_value()) {
+    request.bounds = *bounds;
+    request.hasBoundsOverride = true;
+  }
+  return document.createObject(request);
+}
+
 cr::CreativeDocument playableDocument(bool includeActors = true,
                                       cr::CreativeDocumentId id = 901U) {
   cr::CreativeDocument document = cr::CreativeDocument::create("Editor Play");
@@ -342,6 +360,84 @@ bool playHudIsBoundedAndUsesTargetState() {
                 "bounded HUD attaches to a valid render frame");
 }
 
+bool automaticLogicRunsInPlayAndProjectsOccupancy() {
+  cr::CreativeDocument document = playableDocument(false, 919U);
+  const cr::CreativeDocumentCreateReceipt trigger = createObject(
+      document, cr::CreativeObjectKind::TriggerZone, "Play Trigger",
+      {-1.0, 0.25, -1.0},
+      cr::CreativeBounds{{-1.0, 0.25, -1.0}, {1.0, 2.25, 1.0}});
+  const cr::CreativeDocumentCreateReceipt door = createObject(
+      document, cr::CreativeObjectKind::Door, "Triggered Door",
+      {3.0, 0.25, -0.25},
+      cr::CreativeBounds{{3.0, 0.25, -0.25}, {4.0, 2.5, 0.25}});
+  if (!trigger.accepted || !door.accepted ||
+      !document
+           .setLogicLink({trigger.objectId, door.objectId,
+                          cr::CreativeLogicLinkAction::Toggle})
+           .accepted) {
+    return expect(false, "play automatic logic setup creates link");
+  }
+
+  iggy3d::StaticMeshAssetCatalog catalog;
+  app::CreativeEditorPlayMode mode;
+  if (!start(mode, document, catalog).accepted || !mode.sandbox.has_value()) {
+    return expect(false, "play automatic logic setup starts");
+  }
+  const app::CreativeEditorPlayScene inactiveScene =
+      app::buildCreativeEditorPlayScene(mode);
+  static_cast<void>(tickAt(mode, document, 1U));
+  const app::CreativeEditorPlayTickReceipt entered =
+      tickAt(mode, document, 50'000'001U);
+  const app::CreativeEditorPlayScene activeScene =
+      app::buildCreativeEditorPlayScene(mode);
+
+  const auto doorState = std::find_if(
+      mode.sandbox->interactables.begin(), mode.sandbox->interactables.end(),
+      [&door](const cr::CreativeRuntimeInteractableState& state) {
+        return state.definition.objectId == door.objectId;
+      });
+  if (doorState == mode.sandbox->interactables.end() ||
+      inactiveScene.automaticLogicSourceLines.empty() ||
+      activeScene.automaticLogicSourceLines.empty()) {
+    return expect(false, "play automatic logic states project");
+  }
+
+  const iggy3d::DebugProjectionResult debug;
+  iggy3d::FrameInput frame = iggy3d::makeCreativeVulkanFrame(
+      activeScene.scene, debug, 2U, 1280U, 720U, mode.cameraYawDegrees,
+      mode.cameraPitchDegrees, true, activeScene.cameraAnchorMeters);
+  frame.creativeWireframeDebug.available = true;
+  frame.creativeWireframeDebug.visible = true;
+  frame.creativeWireframeDebug.lines =
+      activeScene.automaticLogicSourceLines.data();
+  frame.creativeWireframeDebug.lineCount =
+      activeScene.automaticLogicSourceLines.size();
+
+  return expect(inactiveScene.automaticLogicSourceLines.size() == 12U &&
+                    inactiveScene.automaticLogicSourceLines.front().style ==
+                        0U &&
+                    inactiveScene.automaticLogicSourceLines.front().color.g <
+                        0.7F,
+                "empty trigger projects a restrained inactive box") &&
+         expect(entered.status == app::CreativeEditorPlayTickStatus::Advanced &&
+                    entered.automaticSourceTransitions == 1U &&
+                    entered.automaticEffectsApplied == 1U &&
+                    entered.automaticLogic ==
+                        cr::CreativeRuntimeAutomaticLogicStatus::Applied &&
+                    doorState->doorOpen,
+                "play tick applies first-entry trigger effect") &&
+         expect(activeScene.automaticLogicSourceLines.size() == 12U &&
+                    activeScene.automaticLogicSourceLines.front().style == 1U &&
+                    activeScene.automaticLogicSourceLines.front().color.g >
+                        0.9F &&
+                    activeScene.automaticLogicSourceLines.front().objectId ==
+                        trigger.objectId,
+                "occupied trigger projects a green active box") &&
+         expect(iggy3d::validateFrameInput(frame) ==
+                    iggy3d::FrameInputStatus::Valid,
+                "automatic source overlay is valid bounded frame data");
+}
+
 bool startStopAndProjectionPreserveAuthoredDocument() {
   cr::CreativeDocument document = playableDocument();
   iggy3d::StaticMeshAssetCatalog catalog;
@@ -637,6 +733,7 @@ int main() {
                   targetResolverClassifiesRuntimeTruth() &&
                   attackAndInteractSubmitOncePerPress() &&
                   playHudIsBoundedAndUsesTargetState() &&
+                  automaticLogicRunsInPlayAndProjectsOccupancy() &&
                   startStopAndProjectionPreserveAuthoredDocument() &&
                   fixedTickMovementAndCatchUpAreBounded() &&
                   idleTicksAdvanceAndStaleDocumentsStop() &&

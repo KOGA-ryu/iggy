@@ -122,6 +122,8 @@ struct BakeStaticMeshEntry {
 [[nodiscard]] std::string_view runtimeInteractableAnchorKind(
     CreativeObjectKind kind) noexcept {
   switch (kind) {
+    case CreativeObjectKind::TriggerZone:
+      return "trigger_zone";
     case CreativeObjectKind::Switch:
     case CreativeObjectKind::Lever:
     case CreativeObjectKind::Button:

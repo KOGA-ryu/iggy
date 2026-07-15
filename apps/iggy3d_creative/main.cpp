@@ -494,6 +494,13 @@ int main(int argc, char** argv) {
           const iggy3d_creative_app::CreativeEditorPlayHudFrame playHud =
               iggy3d_creative_app::buildCreativeEditorPlayHud(playMode, frame);
           iggy3d_creative_app::attachCreativeEditorPlayHud(playHud, frame);
+          frame.creativeWireframeDebug.available = true;
+          frame.creativeWireframeDebug.visible =
+              !playScene.automaticLogicSourceLines.empty();
+          frame.creativeWireframeDebug.lines =
+              playScene.automaticLogicSourceLines.data();
+          frame.creativeWireframeDebug.lineCount =
+              playScene.automaticLogicSourceLines.size();
           const iggy3d_creative_app::StandaloneFrustumCullResult frustumCull =
               iggy3d_creative_app::cullStandaloneSceneRoomMeshesByFrustum(
                   playScene.scene, frame.camera.clipFromWorld);

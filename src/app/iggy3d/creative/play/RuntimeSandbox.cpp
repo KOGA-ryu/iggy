@@ -96,11 +96,28 @@ bool interactableDefinitionIsValid(
   }
   switch (definition.kind) {
     case CreativeRuntimeInteractableKind::Door:
-      return !definition.roomMeshId.empty() && definition.itemId.empty();
+      return definition.logicSourceMode ==
+                 CreativeRuntimeLogicSourceMode::None &&
+             !definition.roomMeshId.empty() && definition.itemId.empty();
     case CreativeRuntimeInteractableKind::Control:
-      return definition.roomMeshId.empty() && definition.itemId.empty();
+      if (!definition.itemId.empty()) {
+        return false;
+      }
+      switch (definition.logicSourceMode) {
+        case CreativeRuntimeLogicSourceMode::Manual:
+        case CreativeRuntimeLogicSourceMode::PulseOnEnter:
+          return definition.roomMeshId.empty();
+        case CreativeRuntimeLogicSourceMode::HoldWhileOccupied:
+          return !definition.roomMeshId.empty();
+        case CreativeRuntimeLogicSourceMode::None:
+        case CreativeRuntimeLogicSourceMode::Count:
+          return false;
+      }
+      return false;
     case CreativeRuntimeInteractableKind::Pickup:
-      return definition.roomMeshId.empty() && !definition.itemId.empty();
+      return definition.logicSourceMode ==
+                 CreativeRuntimeLogicSourceMode::None &&
+             definition.roomMeshId.empty() && !definition.itemId.empty();
   }
   return false;
 }
@@ -241,12 +258,12 @@ ScenarioEntitySeed makeInteractableEntity(
   entity.localBounds = definition.localBounds;
   entity.active = true;
   entity.persistent = true;
-  entity.targeting.targetable = true;
-  entity.targeting.actions = {ScenarioTargetAction::Interact,
-                              ScenarioTargetAction::Inspect};
   switch (definition.kind) {
     case CreativeRuntimeInteractableKind::Door:
       entity.kind = ScenarioEntityKind::Door;
+      entity.targeting.targetable = true;
+      entity.targeting.actions = {ScenarioTargetAction::Interact,
+                                  ScenarioTargetAction::Inspect};
       entity.interaction.kind = ScenarioInteractionKind::Activate;
       entity.interaction.primaryEffect =
           ScenarioInteractionEffectKind::EmitEventOnly;
@@ -254,13 +271,22 @@ ScenarioEntitySeed makeInteractableEntity(
       break;
     case CreativeRuntimeInteractableKind::Control:
       entity.kind = ScenarioEntityKind::Marker;
-      entity.interaction.kind = ScenarioInteractionKind::Activate;
-      entity.interaction.primaryEffect =
-          ScenarioInteractionEffectKind::EmitEventOnly;
-      entity.interaction.repeatable = true;
+      if (definition.logicSourceMode ==
+          CreativeRuntimeLogicSourceMode::Manual) {
+        entity.targeting.targetable = true;
+        entity.targeting.actions = {ScenarioTargetAction::Interact,
+                                    ScenarioTargetAction::Inspect};
+        entity.interaction.kind = ScenarioInteractionKind::Activate;
+        entity.interaction.primaryEffect =
+            ScenarioInteractionEffectKind::EmitEventOnly;
+        entity.interaction.repeatable = true;
+      }
       break;
     case CreativeRuntimeInteractableKind::Pickup:
       entity.kind = ScenarioEntityKind::Pickup;
+      entity.targeting.targetable = true;
+      entity.targeting.actions = {ScenarioTargetAction::Interact,
+                                  ScenarioTargetAction::Inspect};
       entity.interaction.kind = ScenarioInteractionKind::Pickup;
       entity.interaction.primaryEffect =
           ScenarioInteractionEffectKind::AddItemToInventory;
@@ -388,6 +414,11 @@ CreativeRuntimeScenarioSeedResult buildCreativeRuntimeScenarioSeed(
         break;
       case CreativeRuntimeInteractableKind::Control:
         ++result.summary.controlEntityCount;
+        result.summary.automaticControlEntityCount +=
+            definition.logicSourceMode ==
+                    CreativeRuntimeLogicSourceMode::Manual
+                ? 0U
+                : 1U;
         break;
       case CreativeRuntimeInteractableKind::Pickup:
         ++result.summary.pickupEntityCount;

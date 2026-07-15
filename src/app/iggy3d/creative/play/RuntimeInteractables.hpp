@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -20,11 +21,21 @@ enum class CreativeRuntimeInteractableKind : std::uint8_t {
   Pickup,
 };
 
+enum class CreativeRuntimeLogicSourceMode : std::uint8_t {
+  None,
+  Manual,
+  PulseOnEnter,
+  HoldWhileOccupied,
+  Count,
+};
+
 struct CreativeRuntimeInteractableDefinition {
   CreativeObjectId objectId = kInvalidObjectId;
   CreativeObjectId circuitId = kInvalidObjectId;
   CreativeRuntimeInteractableKind kind =
       CreativeRuntimeInteractableKind::Control;
+  CreativeRuntimeLogicSourceMode logicSourceMode =
+      CreativeRuntimeLogicSourceMode::None;
   std::string stableName;
   std::string displayName;
   std::string roomMeshId;
@@ -46,6 +57,7 @@ struct CreativeRuntimeInteractableCatalog {
       "creative_runtime_interactable_catalog_invalid";
   std::size_t doorCount = 0U;
   std::size_t controlCount = 0U;
+  std::size_t automaticControlCount = 0U;
   std::size_t pickupCount = 0U;
   std::size_t explicitLogicLinkCount = 0U;
   std::size_t compatibilityLogicLinkCount = 0U;
@@ -75,9 +87,43 @@ struct CreativeRuntimeInteractableState {
   EntityId entity;
   bool doorOpen = false;
   bool pickupConsumed = false;
+  std::size_t occupantCount = 0U;
   std::vector<CreativeRuntimeRoomMeshSnapshot> closedDoorMeshes;
   std::vector<CreativeRuntimeRoomSurfaceSnapshot> closedDoorSurfaces;
 };
+
+enum class CreativeRuntimeLogicSignal : std::uint8_t {
+  Pulse,
+  Activate,
+  Deactivate,
+  Count,
+};
+
+struct CreativeRuntimeDoorStateFact {
+  CreativeObjectId objectId = kInvalidObjectId;
+  bool open = false;
+};
+
+struct CreativeRuntimeDoorStateCommand {
+  CreativeObjectId objectId = kInvalidObjectId;
+  bool open = false;
+};
+
+struct CreativeRuntimeLogicActivationPlan {
+  bool ok = false;
+  bool compatibilityFallback = false;
+  std::string_view reasonCode = "creative_runtime_logic_plan_invalid";
+  std::vector<CreativeRuntimeDoorStateCommand> commands;
+};
+
+// Pure source-to-door planner. Pulse preserves manual toggle behavior;
+// Activate/Deactivate provide paired pressure-plate semantics.
+[[nodiscard]] CreativeRuntimeLogicActivationPlan
+planCreativeRuntimeLogicActivation(
+    std::span<const CreativeRuntimeLogicLink> links,
+    std::span<const CreativeRuntimeDoorStateFact> doors,
+    CreativeObjectId sourceObjectId,
+    CreativeRuntimeLogicSignal signal);
 
 struct CreativeRuntimeInteractableStateBuildResult {
   bool ok = false;
@@ -124,6 +170,33 @@ struct CreativeRuntimeInteractionEffectReceipt {
 
 struct CreativeRuntimeSandbox;
 
+enum class CreativeRuntimeAutomaticLogicStatus : std::uint8_t {
+  NotRequested,
+  NoTransition,
+  Applied,
+  EffectRejected,
+};
+
+struct CreativeRuntimeAutomaticLogicReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  CreativeRuntimeAutomaticLogicStatus status =
+      CreativeRuntimeAutomaticLogicStatus::NotRequested;
+  std::string_view reasonCode =
+      "creative_runtime_automatic_logic_not_requested";
+  std::size_t evaluatedSourceCount = 0U;
+  std::size_t occupiedSourceCount = 0U;
+  std::size_t occupancyTransitionCount = 0U;
+  std::size_t activationEffectCount = 0U;
+  std::size_t affectedDoorCount = 0U;
+  CreativeRuntimeInteractionEffectStatus lastEffect =
+      CreativeRuntimeInteractionEffectStatus::NotRequested;
+  std::uint64_t geometryRevision = 0U;
+};
+
+[[nodiscard]] std::string_view toString(
+    CreativeRuntimeAutomaticLogicStatus status) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeRuntimeInteractionEffectStatus status) noexcept;
 [[nodiscard]] const CreativeRuntimeInteractableState*
@@ -132,5 +205,7 @@ findCreativeRuntimeInteractable(const CreativeRuntimeSandbox& sandbox,
 [[nodiscard]] CreativeRuntimeInteractionEffectReceipt
 applyCreativeRuntimeInteractionEffect(CreativeRuntimeSandbox& sandbox,
                                      EntityId target);
+[[nodiscard]] CreativeRuntimeAutomaticLogicReceipt
+updateCreativeRuntimeAutomaticLogic(CreativeRuntimeSandbox& sandbox);
 
 }  // namespace iggy3d::creative

@@ -679,6 +679,8 @@ bool representativeDescriptorsPinAuthoringBrushPaletteVisibility() {
       cr::describeObject(cr::CreativeObjectKind::PointLight);
   const cr::CreativeObjectDescriptor& patrolRoute =
       cr::describeObject(cr::CreativeObjectKind::PatrolRoute);
+  const cr::CreativeObjectDescriptor& triggerZone =
+      cr::describeObject(cr::CreativeObjectKind::TriggerZone);
   const cr::CreativeObjectDescriptor& testLane =
       cr::describeObject(cr::CreativeObjectKind::TestLane);
   const cr::CreativeObjectDescriptor& fallShaft =
@@ -726,6 +728,8 @@ bool representativeDescriptorsPinAuthoringBrushPaletteVisibility() {
                 "point light visible in brush palette") &&
          expect(cr::descriptorShowsInAuthoringBrushPalette(patrolRoute),
                 "patrol route visible in brush palette") &&
+         expect(cr::descriptorShowsInAuthoringBrushPalette(triggerZone),
+                "trigger zone visible in brush palette") &&
          expect(testLane.authoringPaletteVisibility ==
                     cr::CreativeAuthoringPaletteVisibility::Hidden,
                 "test lane descriptor explicitly hidden from brush palette") &&

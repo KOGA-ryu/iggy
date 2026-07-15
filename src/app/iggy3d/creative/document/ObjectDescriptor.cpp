@@ -852,7 +852,7 @@ constexpr auto kLogicDescriptors = std::to_array<CreativeObjectDescriptor>({
         "event trigger volume",
         logicCreationDirtyFlags() | flagValue(CreativeObjectDirtyFlag::Bounds),
         boxDefaults(2.0, 2.0, 2.0),
-        kHasTransform | kHasBounds | kRuntimeMeaningful
+        kHasTransform | kHasBounds | kRuntimeMeaningful | kAuthoringBrushPalette
     ),
     descriptor(
         CreativeObjectKind::Switch,
