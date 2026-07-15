@@ -237,6 +237,7 @@ std::string_view toString(CreativeInputContext context) noexcept {
     case CreativeInputContext::TextEntry: return "TextEntry";
     case CreativeInputContext::Modal: return "Modal";
     case CreativeInputContext::Capture: return "Capture";
+    case CreativeInputContext::DesktopUi: return "DesktopUi";
     case CreativeInputContext::Count: break;
   }
   return "Unknown";

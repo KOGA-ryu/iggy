@@ -75,6 +75,13 @@ public:
   const SdlWindowEventState& eventState() const;
   void setTitle(std::string_view title);
   SdlMouseCaptureResult setRelativeMouseMode(bool enabled);
+  // Desktop free-pointer gate (plan DD-9). While enabled, the resting state is
+  // a free cursor: setRelativeMouseMode(true) requests are suppressed so the
+  // ~15 scattered modal-close re-grab sites cannot steal the pointer, and only
+  // setViewportPointerCapture() can enter relative mode (viewport fly-look).
+  // Disabled by default, so capture mode and shell-off behave exactly as before.
+  void setDesktopFreePointerMode(bool enabled);
+  SdlMouseCaptureResult setViewportPointerCapture(bool captured);
   bool setTextInputActive(bool enabled);
   void centerPointer();
   void setEventHook(SdlWindowEventHook hook);
@@ -86,9 +93,12 @@ private:
   void release();
   void refreshExtents();
 
+  SdlMouseCaptureResult applyRelativeMouseMode(bool enabled);
+
   SDL_Window* window_ = nullptr;
   SdlWindowEventState eventState_;
   SdlWindowEventHook eventHook_;
+  bool desktopFreePointerMode_ = false;
   bool videoInitialized_ = false;
 };
 

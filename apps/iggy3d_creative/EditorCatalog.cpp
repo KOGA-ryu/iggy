@@ -333,6 +333,7 @@ void applyInventoryModeActions(
     case cr::CreativeInputContext::TextEntry:
     case cr::CreativeInputContext::Modal:
     case cr::CreativeInputContext::Capture:
+    case cr::CreativeInputContext::DesktopUi:
     case cr::CreativeInputContext::Count:
       return;
   }

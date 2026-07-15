@@ -54,6 +54,10 @@ public:
   bool enabled() const;
   bool frameActive() const;
   bool recordedLastFrame() const;
+  // ImGui's input-capture intent (valid after the frame's NewFrame; reflects
+  // last frame when read at begin-frame). False when the shell is disabled.
+  bool wantsMouse() const;
+  bool wantsKeyboard() const;
   void processEvent(const SDL_Event& event);
   bool beginFrame();
   ExternalUiRecordHook recordHook();

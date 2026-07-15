@@ -25,6 +25,7 @@ enum class CreativeInputContext : std::uint8_t {
   TextEntry,
   Modal,
   Capture,
+  DesktopUi,
   Count,
 };
 

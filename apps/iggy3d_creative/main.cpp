@@ -239,10 +239,15 @@ int main(int argc, char** argv) {
     };
     desktopUiEventHook.context = backend.get();
     window.setEventHook(desktopUiEventHook);
+    // Desktop mode rests on a free cursor: the shell owns pointer capture, so
+    // the ~15 modal-close re-grab sites and the startup grab below are
+    // suppressed until a viewport click enters fly-look (plan DD-9).
+    window.setDesktopFreePointerMode(true);
   }
 
   // Relative mouse mode for a free-look fly camera (interactive only — don't
-  // grab the mouse during a scripted --capture run).
+  // grab the mouse during a scripted --capture run). In desktop mode this is
+  // suppressed by the free-pointer gate above; click-to-capture enters fly-look.
   if (capturePath.empty()) {
     window.setRelativeMouseMode(true);
   }
@@ -324,6 +329,27 @@ int main(int argc, char** argv) {
     }
     static_cast<void>(iggy3d_creative_app::beginCreativeEditorDesktopFrame(
         editor.desktopUi, *backend));
+    // Free-pointer capture policy (DD-9). Runs after the dockspace's NewFrame
+    // so externalUiWantsMouse() reflects whether this frame's click landed on
+    // a panel; a viewport click enters fly-look, leaving the viewport releases.
+    {
+      const bool primaryOverViewport =
+          window.eventState().primaryPointerPressed &&
+          !backend->externalUiWantsMouse();
+      const bool viewportContext =
+          frameInput.routedInput.context ==
+          creative::CreativeInputContext::EditorViewport;
+      const iggy3d_creative_app::CreativeDesktopPointerDecision pointerDecision =
+          iggy3d_creative_app::decideCreativeDesktopPointerCapture(
+              editor.desktopUi.shellEnabled,
+              editor.desktopUi.viewportPointerCaptured, primaryOverViewport,
+              viewportContext, frameInput.windowFocused);
+      if (pointerDecision.changed) {
+        editor.desktopUi.viewportPointerCaptured = pointerDecision.captured;
+        static_cast<void>(
+            window.setViewportPointerCapture(pointerDecision.captured));
+      }
+    }
     const iggy3d_creative_app::CreativeEditorAssetLibraryFrameResult
         assetLibraryFrame = processCreativeEditorAssetLibraryFrame(
             {window, appState, editor, frameInput.routedInput});

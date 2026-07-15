@@ -117,6 +117,14 @@ bool DearImGuiVulkanBridge::recordedLastFrame() const {
   return recordedLastFrame_;
 }
 
+bool DearImGuiVulkanBridge::wantsMouse() const {
+  return initialized_ && ImGui::GetIO().WantCaptureMouse;
+}
+
+bool DearImGuiVulkanBridge::wantsKeyboard() const {
+  return initialized_ && ImGui::GetIO().WantCaptureKeyboard;
+}
+
 void DearImGuiVulkanBridge::processEvent(const SDL_Event& event) {
   if (!initialized_) {
     return;
@@ -259,6 +267,14 @@ bool DearImGuiVulkanBridge::frameActive() const {
 }
 
 bool DearImGuiVulkanBridge::recordedLastFrame() const {
+  return false;
+}
+
+bool DearImGuiVulkanBridge::wantsMouse() const {
+  return false;
+}
+
+bool DearImGuiVulkanBridge::wantsKeyboard() const {
   return false;
 }
 

@@ -604,6 +604,14 @@ bool VulkanBackend::externalUiRecordedLastFrame() const {
   return externalUiBridge_.recordedLastFrame();
 }
 
+bool VulkanBackend::externalUiWantsMouse() const {
+  return externalUiBridge_.wantsMouse();
+}
+
+bool VulkanBackend::externalUiWantsKeyboard() const {
+  return externalUiBridge_.wantsKeyboard();
+}
+
 vulkan::NormalizedCapture VulkanBackend::readLastFrameCapture() const {
   return frameCapture_.readMappedRgba();
 }

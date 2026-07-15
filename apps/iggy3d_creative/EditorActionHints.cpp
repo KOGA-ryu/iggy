@@ -531,6 +531,7 @@ void appendContextHints(HintSpecBuffer& buffer,
     case cr::CreativeInputContext::TextEntry:
     case cr::CreativeInputContext::Modal:
     case cr::CreativeInputContext::Capture:
+    case cr::CreativeInputContext::DesktopUi:
     case cr::CreativeInputContext::Count:
       return;
   }
@@ -553,7 +554,8 @@ cr::CreativeActionHintFrame resolveCreativeEditorActionHints(
     bool captureMode) noexcept {
   if (captureMode || inputContext == cr::CreativeInputContext::Capture ||
       inputContext == cr::CreativeInputContext::TextEntry ||
-      inputContext == cr::CreativeInputContext::Modal) {
+      inputContext == cr::CreativeInputContext::Modal ||
+      inputContext == cr::CreativeInputContext::DesktopUi) {
     return {};
   }
   HintSpecBuffer specs;

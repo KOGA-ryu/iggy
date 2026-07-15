@@ -238,6 +238,7 @@ void setSdlKey(creative::CreativeInputFrame& frame,
 
 [[nodiscard]] creative::CreativeInputContext resolveInputContext(
     bool captureMode,
+    bool desktopUiWantsInput,
     const CreativeEditorState& editor) noexcept {
   struct Candidate {
     bool active = false;
@@ -246,6 +247,12 @@ void setSdlKey(creative::CreativeInputFrame& frame,
   };
   const std::array candidates{
       Candidate{captureMode, creative::CreativeInputContext::Capture},
+      // When the desktop shell wants the mouse/keyboard (cursor over a panel or
+      // a text field focused) it wins over every editor modal, so viewport and
+      // panel bindings stay quiet while the user drives ImGui. Capture stays
+      // first so scripted --capture runs remain input-inert.
+      Candidate{desktopUiWantsInput,
+                creative::CreativeInputContext::DesktopUi},
       Candidate{editor.assetLibrary.open,
                 creative::CreativeInputContext::AssetLibrary},
       Candidate{editor.assetEdit.active && editor.assetEdit.menuOpen,
@@ -446,8 +453,10 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
       creative::stepCreativeControllerInput(editor.controllerInputState,
                                             controllerSample);
   editor.controllerInputState = controller.next;
+  const bool desktopUiWantsInput =
+      backend.externalUiWantsMouse() || backend.externalUiWantsKeyboard();
   const creative::CreativeInputContext inputContext =
-      resolveInputContext(captureMode, editor);
+      resolveInputContext(captureMode, desktopUiWantsInput, editor);
   const creative::CreativeInputFrame inputFrame = makeCreativeInputFrame(
       keys, SDL_GetModState(), inputContext, controller);
   result.inputFrame = inputFrame;

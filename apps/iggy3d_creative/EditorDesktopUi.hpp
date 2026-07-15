@@ -19,7 +19,30 @@ struct CreativeEditorDesktopUiState {
   // dock node). The all-zero sentinel means full-frame; it stays full-frame
   // until docked panels shrink the central node (UI-3).
   iggy3d::RenderContentViewport contentViewport;
+  // Whether the viewport owns the pointer (relative-mouse fly-look). The
+  // resting state in desktop mode is a free cursor; a click on the viewport
+  // captures it and leaving the viewport context releases it (plan DD-9).
+  bool viewportPointerCaptured = false;
 };
+
+// Result of the free-pointer capture policy: the new capture state and whether
+// it changed (so the caller only touches relative-mouse mode on a transition).
+struct CreativeDesktopPointerDecision {
+  bool captured = false;
+  bool changed = false;
+};
+
+// Pure DD-9 policy. Free cursor is the resting state in desktop mode; a primary
+// click that landed on the viewport (not an ImGui panel) with no modal open
+// captures the pointer for fly-look; leaving the viewport context (a modal
+// opened — e.g. Esc routed to Controls — or focus lost) releases it. Shell-off
+// forces released, so capture mode / non-desktop runs are unaffected.
+[[nodiscard]] CreativeDesktopPointerDecision decideCreativeDesktopPointerCapture(
+    bool shellEnabled,
+    bool currentlyCaptured,
+    bool primaryPressedOverViewport,
+    bool viewportContext,
+    bool windowFocused) noexcept;
 
 // ImGui NewFrame + the full-window passthru dockspace. No-op returning false
 // when the shell is disabled or the bridge is dormant. When this returns

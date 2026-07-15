@@ -51,11 +51,13 @@ SdlWindow::SdlWindow(SdlWindow&& other) noexcept
     : window_(other.window_),
       eventState_(other.eventState_),
       eventHook_(other.eventHook_),
+      desktopFreePointerMode_(other.desktopFreePointerMode_),
       videoInitialized_(other.videoInitialized_) {
   other.window_ = nullptr;
   other.videoInitialized_ = false;
   other.eventState_ = {};
   other.eventHook_ = {};
+  other.desktopFreePointerMode_ = false;
 }
 
 SdlWindow& SdlWindow::operator=(SdlWindow&& other) noexcept {
@@ -64,11 +66,13 @@ SdlWindow& SdlWindow::operator=(SdlWindow&& other) noexcept {
     window_ = other.window_;
     eventState_ = other.eventState_;
     eventHook_ = other.eventHook_;
+    desktopFreePointerMode_ = other.desktopFreePointerMode_;
     videoInitialized_ = other.videoInitialized_;
     other.window_ = nullptr;
     other.videoInitialized_ = false;
     other.eventState_ = {};
     other.eventHook_ = {};
+    other.desktopFreePointerMode_ = false;
   }
   return *this;
 }
@@ -98,7 +102,7 @@ void SdlWindow::setTitle(std::string_view title) {
   (void)SDL_SetWindowTitle(window_, ownedTitle.c_str());
 }
 
-SdlMouseCaptureResult SdlWindow::setRelativeMouseMode(bool enabled) {
+SdlMouseCaptureResult SdlWindow::applyRelativeMouseMode(bool enabled) {
   SdlMouseCaptureResult result;
   result.requested = enabled;
   // branch-gate: BG-1075
@@ -120,6 +124,35 @@ SdlMouseCaptureResult SdlWindow::setRelativeMouseMode(bool enabled) {
       kMouseCaptureStatuses[static_cast<unsigned>(result.active)];
   result.reasonCode = result.status;
   return result;
+}
+
+SdlMouseCaptureResult SdlWindow::setRelativeMouseMode(bool enabled) {
+  // In desktop free-pointer mode a grab request is suppressed to keep the
+  // cursor free; a release request still passes through. Only
+  // setViewportPointerCapture() may grab. Outside desktop mode this is a
+  // straight pass-through — identical to the historical behavior.
+  if (desktopFreePointerMode_ && enabled) {
+    SdlMouseCaptureResult result = applyRelativeMouseMode(false);
+    result.requested = true;
+    result.status = "mouse_capture_suppressed_desktop_free_pointer";
+    result.reasonCode = result.status;
+    return result;
+  }
+  return applyRelativeMouseMode(enabled);
+}
+
+void SdlWindow::setDesktopFreePointerMode(bool enabled) {
+  desktopFreePointerMode_ = enabled;
+  if (enabled) {
+    static_cast<void>(applyRelativeMouseMode(false));
+  }
+}
+
+SdlMouseCaptureResult SdlWindow::setViewportPointerCapture(bool captured) {
+  // The one path that may enter relative mode while the desktop free-pointer
+  // gate is active (viewport fly-look). Bypasses the suppression in
+  // setRelativeMouseMode by calling the raw applier directly.
+  return applyRelativeMouseMode(captured);
 }
 
 bool SdlWindow::setTextInputActive(bool enabled) {

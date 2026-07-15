@@ -1,8 +1,12 @@
+#include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/input/UiInput.hpp"
 #include "app/iggy3d/creative/render/CreativeSceneFrame.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/FrameInput.hpp"
+
+#include "EditorDesktopUi.hpp"
+#include "EditorFrame.hpp"
 
 #include <iostream>
 #include <string_view>
@@ -114,6 +118,70 @@ bool narrowerContentTightensCameraAspect() {
                 "vertical projection scale is unchanged by content width");
 }
 
+bool pointerPolicyCapturesOnViewportClick() {
+  using iggy3d_creative_app::decideCreativeDesktopPointerCapture;
+  // Click on the viewport (not a panel), no modal, focused -> capture.
+  const auto capture = decideCreativeDesktopPointerCapture(
+      /*shellEnabled=*/true, /*currentlyCaptured=*/false,
+      /*primaryPressedOverViewport=*/true, /*viewportContext=*/true,
+      /*windowFocused=*/true);
+  // Click that ImGui consumed (over a panel) must NOT capture.
+  const auto overPanel = decideCreativeDesktopPointerCapture(
+      true, false, /*primaryPressedOverViewport=*/false, true, true);
+  return expect(capture.captured && capture.changed,
+                "viewport click captures the pointer") &&
+         expect(!overPanel.captured && !overPanel.changed,
+                "a click consumed by a panel does not capture");
+}
+
+bool pointerPolicyReleasesWhenLeavingViewport() {
+  using iggy3d_creative_app::decideCreativeDesktopPointerCapture;
+  // Held capture + a modal opened (context left EditorViewport) -> release.
+  const auto modalOpened = decideCreativeDesktopPointerCapture(
+      true, /*currentlyCaptured=*/true, false, /*viewportContext=*/false, true);
+  // Held capture + focus lost -> release.
+  const auto focusLost = decideCreativeDesktopPointerCapture(
+      true, true, false, true, /*windowFocused=*/false);
+  // Held capture + still in the viewport, focused -> stays captured.
+  const auto stays = decideCreativeDesktopPointerCapture(true, true, false,
+                                                         true, true);
+  return expect(!modalOpened.captured && modalOpened.changed,
+                "leaving the viewport context releases the pointer") &&
+         expect(!focusLost.captured && focusLost.changed,
+                "losing focus releases the pointer") &&
+         expect(stays.captured && !stays.changed,
+                "staying in the viewport keeps the pointer captured");
+}
+
+bool pointerPolicyIsInertWhenShellOff() {
+  using iggy3d_creative_app::decideCreativeDesktopPointerCapture;
+  // Shell off (capture mode / non-desktop): never captures, and reports a
+  // release only if we were somehow holding it.
+  const auto clean = decideCreativeDesktopPointerCapture(
+      /*shellEnabled=*/false, false, true, true, true);
+  const auto releaseStale = decideCreativeDesktopPointerCapture(
+      false, /*currentlyCaptured=*/true, true, true, true);
+  return expect(!clean.captured && !clean.changed,
+                "shell-off never captures") &&
+         expect(!releaseStale.captured && releaseStale.changed,
+                "shell-off releases a stale capture");
+}
+
+bool desktopUiContextDisablesFlyNavigation() {
+  using iggy3d_creative_app::admitCreativeEditorNavigation;
+  namespace cr = iggy3d::creative;
+  const cr::CreativeStickSignal noStick{};
+  const auto viewport = admitCreativeEditorNavigation(
+      cr::CreativeInputContext::EditorViewport, false, false, noStick, false,
+      false);
+  const auto desktopUi = admitCreativeEditorNavigation(
+      cr::CreativeInputContext::DesktopUi, false, false, noStick, false, false);
+  return expect(viewport.navigationActive,
+                "fly navigation is active in the viewport context") &&
+         expect(!desktopUi.navigationActive,
+                "fly navigation is off while the desktop UI owns input");
+}
+
 }  // namespace
 
 int main() {
@@ -124,5 +192,9 @@ int main() {
   ok = degenerateConversionsAreInvalid() && ok;
   ok = sentinelContentKeepsSwapchainAspect() && ok;
   ok = narrowerContentTightensCameraAspect() && ok;
+  ok = pointerPolicyCapturesOnViewportClick() && ok;
+  ok = pointerPolicyReleasesWhenLeavingViewport() && ok;
+  ok = pointerPolicyIsInertWhenShellOff() && ok;
+  ok = desktopUiContextDisablesFlyNavigation() && ok;
   return ok ? 0 : 1;
 }

@@ -88,4 +88,29 @@ void endCreativeEditorDesktopFrame(CreativeEditorDesktopUiState& desktopUi) {
   desktopUi.frameActive = false;
 }
 
+CreativeDesktopPointerDecision decideCreativeDesktopPointerCapture(
+    bool shellEnabled,
+    bool currentlyCaptured,
+    bool primaryPressedOverViewport,
+    bool viewportContext,
+    bool windowFocused) noexcept {
+  CreativeDesktopPointerDecision decision;
+  if (!shellEnabled) {
+    decision.captured = false;
+    decision.changed = currentlyCaptured;
+    return decision;
+  }
+  bool next = currentlyCaptured;
+  if (currentlyCaptured) {
+    if (!windowFocused || !viewportContext) {
+      next = false;
+    }
+  } else if (windowFocused && viewportContext && primaryPressedOverViewport) {
+    next = true;
+  }
+  decision.captured = next;
+  decision.changed = next != currentlyCaptured;
+  return decision;
+}
+
 }  // namespace iggy3d_creative_app

@@ -66,6 +66,8 @@ public:
   bool beginExternalUiFrame();
   bool externalUiFrameActive() const;
   bool externalUiRecordedLastFrame() const;
+  bool externalUiWantsMouse() const;
+  bool externalUiWantsKeyboard() const;
 
 private:
   struct StaticMeshMaterialPipelineBundle {
