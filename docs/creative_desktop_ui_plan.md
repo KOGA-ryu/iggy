@@ -24,6 +24,8 @@ This plan was cut against a full recon of the tree (8-agent sweep, 2026-07-14). 
 
 Current interactive state after the foundation: launching `i3dc` shows a full-window passthru dockspace over the existing 3D editor with a **free cursor** (click the viewport to enter fly-look, Esc/opening a panel releases). No panels yet. `--capture` output is unchanged.
 
+**Foundation verified interactively by the user (2026-07-14):** free cursor at startup, click→fly-look, Esc→cursor back, scene aspect correct. DD-9 + UI-1b aspect wiring confirmed. Cleared to build panels. Next sequence: **UI-1c** (content-rect consumer fan-out — a no-op while full-frame, correct-by-construction for the sub-rect the menu bar creates) → **UI-2a** (menu + status bar + headless dispatcher) → re-verify → UI-2b/UI-3 panels.
+
 ---
 
 ## 0. Verdict on the work order
@@ -77,6 +79,8 @@ Direction confirmed: the shell is buildable exactly along the UI-0→UI-3 order,
 - **DD-11 · Dirty state** = `lastSavedRevision != facade.document().revision()` cached at dispatch time. (`saveStandaloneScene` saves a *copy* — the live doc's dirtyFlags are never drained, EditorPersistence.cpp:94 — so dirtyFlags would read dirty forever.) Last-transaction result for the History panel = a small receipt cache written only by the dispatcher (receipts are currently return-and-log-only).
 - **DD-12 · Play** is a menu item that dispatches `CreativeDesktopCommandId::Play` to a stub returning `unsupported` receipt (disabled in UI). No mode machinery exists; building it is not part of this batch.
 - **DD-13 · UI prefs** persist as `creative_desktop_ui_v1.cfg` at saveRoot (panel visibility + last layout preset), following the controls/tool-wheel cfg pattern (main.cpp:261-268). `io.IniFilename` points into saveRoot as `creative_imgui_layout_v1.ini` (never the CWD).
+- **DD-14 · Save As / Import UX** (user decision 2026-07-14): **in-app ImGui, no native dialogs, no new deps.** Save As = an ImGui modal with a name text-field plus a clickable list of existing slots from `scanProductSaves` (SaveBridge.hpp:259); the chosen/typed id flows to `saveStandaloneScene` via K-4. Import = an ImGui modal with a `.glb` path text-field → `importStaticMeshGlb` (K-5) → catalog rescan. Both emit semantic command IDs into the bounded frame like every other action (DL-3); the modal state lives in `CreativeEditorDesktopUiState`, never mutating documents directly. SDL3 native file dialogs were considered and rejected for this batch (async callbacks, not headless-testable).
+- **DD-15 · Legacy overlay gating** (user decision 2026-07-14): the legacy controller quick-UI overlays (hotbar, catalog, tool wheel, asset-library overlay, action hints — the `appendCreativeEditorHudOverlays` family, EditorOverlayHud.cpp:161-195) render **only when the active control device is a gamepad** while the desktop shell is on; on mouse/keyboard the ImGui docked panels are primary and the legacy overlays are suppressed. This honors "keep the controller quick UI" without double-UI. Gate: `editor.activeControlDevice == Gamepad || !desktopUi.shellEnabled` around the legacy overlay build (buildAndAttachCreativeEditorOverlayFrame, main.cpp:548+). **Under `--capture` the shell is off, so the legacy overlays build exactly as today — capture output unchanged (DL-1 / T-0).** The crosshair/HUD text that the capture proofs depend on is part of this legacy path and stays intact in capture.
 
 ---
 
