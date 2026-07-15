@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <string>
 
+#include "EditorDesktopCommandPayloads.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 
 namespace iggy3d_creative_app {
@@ -13,9 +14,10 @@ namespace iggy3d_creative_app {
 struct CreativeEditorState;
 
 // Fixed-layout semantic command IDs the desktop UI emits. Widgets never touch
-// documents/history/assets directly — they push one of these into the bounded
-// frame, and EditorDesktopCommands.cpp is the sole dispatcher (plan DD-7 /
-// DL-3). Import + asset/instance/selection commands arrive in later slices.
+// documents/history/assets directly — they push one of these (plus a typed
+// payload) into the bounded frame, and EditorDesktopCommands.cpp is the sole
+// dispatcher (plan DD-7 / DL-3). Step 3 adds the selection/edit/asset families
+// the functional panels (Step 4+) will emit. Import commands arrive later.
 enum class CreativeDesktopCommandId : std::uint8_t {
   None,
   NewDocument,
@@ -27,12 +29,29 @@ enum class CreativeDesktopCommandId : std::uint8_t {
   DuplicateSelection,
   DeleteSelection,
   Play,
+  // Step 3 — Desktop Command Expansion.
+  SelectObjects,
+  ClearSelection,
+  DeleteObjects,
+  RenameObject,
+  SetObjectsVisible,
+  SetObjectsLocked,
+  SetObjectTransform,
+  EquipAsset,
+  EditAssetSource,
+  RenameAsset,
+  DuplicateAsset,
+  DeleteAsset,
+  RefreshInstances,
+  UpdateAssetFromInstance,
   Count,
 };
 
 struct CreativeDesktopCommand {
   CreativeDesktopCommandId id = CreativeDesktopCommandId::None;
-  std::string arg;  // SaveDocumentAs: the target save id. Unused otherwise.
+  // Typed, discriminated payload (see EditorDesktopCommandPayloads.hpp).
+  // monostate for the no-argument commands.
+  CreativeDesktopCommandPayload payload;
 };
 
 inline constexpr std::size_t kCreativeDesktopCommandCapacity = 16U;
@@ -44,7 +63,12 @@ struct CreativeDesktopCommandFrame {
   std::size_t count = 0U;
   bool overflowed = false;
 
-  void push(CreativeDesktopCommandId id, std::string arg = {});
+  // No-payload commands (monostate).
+  void push(CreativeDesktopCommandId id);
+  // SaveDocumentAs convenience: wraps the target save id into a SaveAs payload.
+  void push(CreativeDesktopCommandId id, std::string saveId);
+  // Typed-payload commands.
+  void push(CreativeDesktopCommandId id, CreativeDesktopCommandPayload payload);
   void clear() noexcept;
 };
 
@@ -55,6 +79,7 @@ struct CreativeDesktopCommandResult {
   bool accepted = false;
   bool changed = false;
   bool documentReplaced = false;
+  std::uint64_t affectedObjectCount = 0U;  // objects a batch command touched.
   std::string message;
 };
 

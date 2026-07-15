@@ -6,12 +6,18 @@
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
+#include "app/iggy3d/creative/tools/Group.hpp"
 
+#include <array>
+#include <cstdint>
 #include <filesystem>
 #include <iostream>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <variant>
+#include <vector>
 
 // UI-2a (docs/creative_desktop_ui_plan.md DD-7): the desktop UI emits semantic
 // command IDs into a bounded frame; EditorDesktopCommands.cpp is the sole
@@ -52,6 +58,16 @@ app::CreativeDesktopCommandResult dispatchOne(
     std::string arg = {}) {
   app::CreativeDesktopCommandFrame frame;
   frame.push(id, std::move(arg));
+  return app::dispatchCreativeDesktopCommands(frame, context);
+}
+
+// Step 3: push a single typed-payload command and dispatch it.
+app::CreativeDesktopCommandResult dispatchPayload(
+    app::CreativeDesktopCommandId id,
+    const app::CreativeDesktopCommandContext& context,
+    app::CreativeDesktopCommandPayload payload) {
+  app::CreativeDesktopCommandFrame frame;
+  frame.push(id, std::move(payload));
   return app::dispatchCreativeDesktopCommands(frame, context);
 }
 
@@ -205,6 +221,334 @@ bool playIsUnsupportedAndFrameIsBounded() {
                 "the command frame is bounded and records overflow");
 }
 
+// --- Step 3: Desktop Command Expansion -------------------------------------
+
+bool selectCommandsRoundTripAndRespectIdBoundary() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Cmd Select");
+  static_cast<void>(document.assignId(415U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId a = createCrate(appState.facade, 0.0);
+  const cr::CreativeObjectId b = createCrate(appState.facade, 2.0);
+  const cr::CreativeObjectId c = createCrate(appState.facade, 4.0);
+
+  app::CreativeEditorState editor;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+
+  const app::CreativeDesktopCommandResult single = dispatchPayload(
+      app::CreativeDesktopCommandId::SelectObjects, context,
+      app::CreativeDesktopSelectPayload{{a}, a});
+  const bool singleOk =
+      single.accepted && single.affectedObjectCount == 1U &&
+      appState.facade.selectionState().selectedTarget.value ==
+          static_cast<cr::Id>(a);
+
+  const app::CreativeDesktopCommandResult multi = dispatchPayload(
+      app::CreativeDesktopCommandId::SelectObjects, context,
+      app::CreativeDesktopSelectPayload{{a, b, c}, b});
+  const bool multiOk =
+      multi.accepted && multi.affectedObjectCount == 3U &&
+      appState.facade.selectionState().selectedTarget.value ==
+          static_cast<cr::Id>(b);
+
+  const app::CreativeDesktopCommandResult cleared =
+      dispatchPayload(app::CreativeDesktopCommandId::ClearSelection, context,
+                      std::monostate{});
+  const bool clearOk =
+      cleared.accepted && cleared.affectedObjectCount == 0U &&
+      appState.facade.selectionState().selectedTarget.value == cr::kInvalidId;
+
+  // uint64 CreativeObjectId -> uint32 TargetRef boundary: an id beyond the
+  // 32-bit target space is dropped, never truncated into a bogus selection.
+  const cr::CreativeObjectId hugeId =
+      static_cast<cr::CreativeObjectId>(0x1'0000'0000ULL);
+  const app::CreativeDesktopCommandResult dropped = dispatchPayload(
+      app::CreativeDesktopCommandId::SelectObjects, context,
+      app::CreativeDesktopSelectPayload{{hugeId}, hugeId});
+  const bool boundaryOk =
+      dropped.accepted && dropped.affectedObjectCount == 0U &&
+      appState.facade.selectionState().selectedTarget.value == cr::kInvalidId;
+
+  return expect(singleOk, "SelectObjects selects a single primary") &&
+         expect(multiOk,
+                "SelectObjects replaces with a multi-selection + primary") &&
+         expect(clearOk, "ClearSelection empties the selection") &&
+         expect(boundaryOk,
+                "SelectObjects drops ids beyond the 32-bit target boundary");
+}
+
+bool deleteObjectsCommandRemovesGroupHierarchy() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Cmd DeleteMulti");
+  static_cast<void>(document.assignId(416U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId a = createCrate(appState.facade, 0.0);
+  const cr::CreativeObjectId b = createCrate(appState.facade, 2.0);
+  const std::array<cr::CreativeObjectId, 2U> members{a, b};
+  const cr::CreativeGroupCommandReceipt grouped =
+      cr::groupDocumentObjectsAtomically(
+          appState.facade.documentForPersistence(), members);
+  appState.history = {};
+
+  app::CreativeEditorState editor;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+
+  // Select the group root, then delete the current selection: the root would
+  // trip ParentHasChildren on its own, so the whole hierarchy must go.
+  selectPrimary(appState.facade, grouped.groupObjectId);
+  const std::uint64_t before = appState.facade.document().objectCount();
+  const app::CreativeDesktopCommandResult del =
+      dispatchPayload(app::CreativeDesktopCommandId::DeleteObjects, context,
+                      app::CreativeDesktopDeletePayload{});
+
+  return expect(grouped.accepted && before >= 3U,
+                "group creates a root over both crates") &&
+         expect(del.accepted && del.changed &&
+                    appState.facade.document().objectCount() == 0U,
+                "DeleteObjects removes the whole group hierarchy") &&
+         expect(cr::creativeUndoDepth(appState.history) == 1U,
+                "multi-delete records exactly one undo step") &&
+         expect(appState.facade.findObject(a) == nullptr &&
+                    appState.facade.findObject(b) == nullptr &&
+                    appState.facade.findObject(grouped.groupObjectId) == nullptr,
+                "no group member survives the delete");
+}
+
+bool renameObjectCommandChangesNameWithHistory() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Cmd Rename");
+  static_cast<void>(document.assignId(417U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId a = createCrate(appState.facade, 0.0);
+  appState.history = {};
+
+  app::CreativeEditorState editor;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+
+  const app::CreativeDesktopCommandResult renamed = dispatchPayload(
+      app::CreativeDesktopCommandId::RenameObject, context,
+      app::CreativeDesktopRenamePayload{a, "Renamed Crate"});
+  const cr::CreativeObject* object = appState.facade.findObject(a);
+  const bool nameOk =
+      object != nullptr && object->name == "Renamed Crate";
+
+  const app::CreativeDesktopCommandResult empty = dispatchPayload(
+      app::CreativeDesktopCommandId::RenameObject, context,
+      app::CreativeDesktopRenamePayload{a, ""});
+
+  return expect(renamed.accepted && renamed.changed && nameOk,
+                "RenameObject sets the object name") &&
+         expect(cr::creativeUndoDepth(appState.history) == 1U,
+                "rename records exactly one undo step") &&
+         expect(!empty.accepted,
+                "rename with an empty name is rejected");
+}
+
+bool visibilityAndLockCommandsSetAbsoluteState() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Cmd Flags");
+  static_cast<void>(document.assignId(418U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId a = createCrate(appState.facade, 0.0);
+  const cr::CreativeObjectId b = createCrate(appState.facade, 2.0);
+  appState.history = {};
+
+  app::CreativeEditorState editor;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+
+  const app::CreativeDesktopCommandResult hidden = dispatchPayload(
+      app::CreativeDesktopCommandId::SetObjectsVisible, context,
+      app::CreativeDesktopObjectFlagPayload{{a, b}, false});
+  const cr::CreativeObject* oa = appState.facade.findObject(a);
+  const cr::CreativeObject* ob = appState.facade.findObject(b);
+  const bool hiddenOk = hidden.accepted && hidden.changed && oa != nullptr &&
+                        !oa->visible && ob != nullptr && !ob->visible;
+
+  // Lock the current selection (empty id list drives from selection).
+  selectPrimary(appState.facade, a);
+  const app::CreativeDesktopCommandResult locked = dispatchPayload(
+      app::CreativeDesktopCommandId::SetObjectsLocked, context,
+      app::CreativeDesktopObjectFlagPayload{{}, true});
+  const cr::CreativeObject* la = appState.facade.findObject(a);
+  const bool lockedOk =
+      locked.accepted && locked.changed && la != nullptr && la->locked;
+
+  return expect(hiddenOk, "SetObjectsVisible hides both listed objects") &&
+         expect(lockedOk, "SetObjectsLocked locks the current selection") &&
+         expect(cr::creativeUndoDepth(appState.history) == 2U,
+                "visibility + lock each record one undo step");
+}
+
+bool transformCommandSetsAbsoluteWithMask() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Cmd Transform");
+  static_cast<void>(document.assignId(419U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId a = createCrate(appState.facade, 0.0);
+  appState.history = {};
+
+  app::CreativeEditorState editor;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+
+  cr::CreativeTransform target;
+  target.position = {7.0, 8.0, 9.0};
+  target.rotationEulerRadians = {0.5, 0.0, 0.0};
+  target.scale = {2.0, 2.0, 2.0};
+
+  // Position-only: the scale/rotation components in the payload are ignored.
+  const app::CreativeDesktopCommandResult posOnly = dispatchPayload(
+      app::CreativeDesktopCommandId::SetObjectTransform, context,
+      app::CreativeDesktopTransformPayload{a, target, true, false, false});
+  const cr::CreativeObject* afterPos = appState.facade.findObject(a);
+  const bool posOk =
+      posOnly.accepted && posOnly.changed && afterPos != nullptr &&
+      afterPos->transform.position.x == 7.0 &&
+      afterPos->transform.position.y == 8.0 &&
+      afterPos->transform.scale.x == 1.0;  // scale mask was off.
+
+  // Scale-only afterwards.
+  const app::CreativeDesktopCommandResult scaleOnly = dispatchPayload(
+      app::CreativeDesktopCommandId::SetObjectTransform, context,
+      app::CreativeDesktopTransformPayload{a, target, false, false, true});
+  const cr::CreativeObject* afterScale = appState.facade.findObject(a);
+  const bool scaleOk =
+      scaleOnly.accepted && scaleOnly.changed && afterScale != nullptr &&
+      afterScale->transform.scale.x == 2.0 &&
+      afterScale->transform.scale.y == 2.0;
+
+  const app::CreativeDesktopCommandResult missing = dispatchPayload(
+      app::CreativeDesktopCommandId::SetObjectTransform, context,
+      app::CreativeDesktopTransformPayload{999999U, target, true, true, true});
+
+  return expect(posOk, "position-only transform moves without scaling") &&
+         expect(scaleOk, "scale-only transform scales after the fact") &&
+         expect(cr::creativeUndoDepth(appState.history) == 2U,
+                "two masked transforms record two undo steps") &&
+         expect(!missing.accepted, "transform on a missing object is rejected");
+}
+
+bool assetAndInstanceCommandsRouteAndRejectCleanly() {
+  // Verifies the asset/instance families route to the right kernels and honor
+  // payload typing. The success paths reuse existing kernels covered by
+  // creative_authored_asset_tests (K-6 equip is exercised there via the
+  // refactored SaveSelectionAsAsset action), so they are not re-fixtured here.
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Cmd Assets");
+  static_cast<void>(document.assignId(420U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId a = createCrate(appState.facade, 0.0);
+
+  app::CreativeEditorState editor;  // empty authored-asset library.
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+
+  const app::CreativeDesktopCommandResult equip = dispatchPayload(
+      app::CreativeDesktopCommandId::EquipAsset, context,
+      app::CreativeDesktopAssetOpPayload{"missing_asset", "",
+                                         app::CreativeDesktopAssetEditPhase::None});
+  const app::CreativeDesktopCommandResult renameAsset = dispatchPayload(
+      app::CreativeDesktopCommandId::RenameAsset, context,
+      app::CreativeDesktopAssetOpPayload{"missing_asset", "New Label",
+                                         app::CreativeDesktopAssetEditPhase::None});
+  const app::CreativeDesktopCommandResult dupAsset = dispatchPayload(
+      app::CreativeDesktopCommandId::DuplicateAsset, context,
+      app::CreativeDesktopAssetOpPayload{"missing_asset", "",
+                                         app::CreativeDesktopAssetEditPhase::None});
+  const app::CreativeDesktopCommandResult delAsset = dispatchPayload(
+      app::CreativeDesktopCommandId::DeleteAsset, context,
+      app::CreativeDesktopAssetOpPayload{"missing_asset", "",
+                                         app::CreativeDesktopAssetEditPhase::None});
+  const app::CreativeDesktopCommandResult editNone = dispatchPayload(
+      app::CreativeDesktopCommandId::EditAssetSource, context,
+      app::CreativeDesktopAssetOpPayload{"missing_asset", "",
+                                         app::CreativeDesktopAssetEditPhase::None});
+  const app::CreativeDesktopCommandResult editCancel = dispatchPayload(
+      app::CreativeDesktopCommandId::EditAssetSource, context,
+      app::CreativeDesktopAssetOpPayload{
+          "missing_asset", "", app::CreativeDesktopAssetEditPhase::Cancel});
+  const app::CreativeDesktopCommandResult refresh = dispatchPayload(
+      app::CreativeDesktopCommandId::RefreshInstances, context,
+      app::CreativeDesktopInstanceRefreshPayload{
+          cr::kInvalidObjectId,
+          cr::CreativeAuthoredAssetRefreshMode::ForceAll});
+  const app::CreativeDesktopCommandResult update = dispatchPayload(
+      app::CreativeDesktopCommandId::UpdateAssetFromInstance, context,
+      app::CreativeDesktopInstanceRefreshPayload{
+          cr::kInvalidObjectId,
+          cr::CreativeAuthoredAssetRefreshMode::ForceAll});
+  const app::CreativeDesktopCommandResult mismatch = dispatchPayload(
+      app::CreativeDesktopCommandId::EquipAsset, context,
+      app::CreativeDesktopSelectPayload{{a}, a});
+
+  return expect(!equip.accepted && equip.message == "equip: unknown asset",
+                "EquipAsset routes to the library and rejects an unknown id") &&
+         expect(!renameAsset.accepted && !dupAsset.accepted && !delAsset.accepted,
+                "rename/duplicate/delete of an unknown asset reject cleanly") &&
+         expect(!editNone.accepted && !editCancel.accepted,
+                "edit-source with no phase / no session rejects") &&
+         expect(!refresh.accepted && !update.accepted,
+                "instance ops on an invalid root reject") &&
+         expect(!mismatch.accepted && mismatch.message == "equip: payload mismatch",
+                "an asset command fed the wrong payload is a no-op failure");
+}
+
+bool mismatchedPayloadsAreNoOpFailures() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Cmd Mismatch");
+  static_cast<void>(document.assignId(421U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId a = createCrate(appState.facade, 0.0);
+  static_cast<void>(createCrate(appState.facade, 2.0));
+  selectPrimary(appState.facade, a);
+  appState.history = {};
+
+  app::CreativeEditorState editor;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const std::uint64_t before = appState.facade.document().objectCount();
+
+  const app::CreativeDesktopCommandResult badDelete = dispatchPayload(
+      app::CreativeDesktopCommandId::DeleteObjects, context,
+      app::CreativeDesktopSelectPayload{{a}, a});
+  const app::CreativeDesktopCommandResult badRename = dispatchPayload(
+      app::CreativeDesktopCommandId::RenameObject, context, std::monostate{});
+  const app::CreativeDesktopCommandResult badTransform = dispatchPayload(
+      app::CreativeDesktopCommandId::SetObjectTransform, context,
+      app::CreativeDesktopDeletePayload{{a}});
+
+  return expect(!badDelete.accepted &&
+                    badDelete.message == "delete objects: payload mismatch",
+                "DeleteObjects with the wrong payload is a no-op failure") &&
+         expect(!badRename.accepted &&
+                    badRename.message == "rename: payload mismatch",
+                "RenameObject with no payload is a no-op failure") &&
+         expect(!badTransform.accepted &&
+                    badTransform.message == "transform: payload mismatch",
+                "SetObjectTransform with the wrong payload is a no-op failure") &&
+         expect(appState.facade.document().objectCount() == before &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "mismatched payloads mutate nothing and record no history");
+}
+
 }  // namespace
 
 int main() {
@@ -214,5 +558,13 @@ int main() {
   ok = undoRedoMoveTheHistoryRings() && ok;
   ok = saveAsRebindsTheActiveSlotAndClearsHistory() && ok;
   ok = playIsUnsupportedAndFrameIsBounded() && ok;
+  // Step 3 — Desktop Command Expansion.
+  ok = selectCommandsRoundTripAndRespectIdBoundary() && ok;
+  ok = deleteObjectsCommandRemovesGroupHierarchy() && ok;
+  ok = renameObjectCommandChangesNameWithHistory() && ok;
+  ok = visibilityAndLockCommandsSetAbsoluteState() && ok;
+  ok = transformCommandSetsAbsoluteWithMask() && ok;
+  ok = assetAndInstanceCommandsRouteAndRejectCleanly() && ok;
+  ok = mismatchedPayloadsAreNoOpFailures() && ok;
   return ok ? 0 : 1;
 }
