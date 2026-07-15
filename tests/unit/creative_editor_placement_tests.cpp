@@ -3585,6 +3585,16 @@ bool doorwaySocketPreviewPlacementAndUndoStayInParity() {
   iggy3d::FrameInput readyFrame;
   attachCreativeEditorPlacementPreviews(
       editor, false, readyFrame, &appState.facade.document(), &catalog);
+  CreativeEditorSelectionFrame markerSelection;
+  CreativeEditorGizmoFrame markerGizmo;
+  cr::CreativeSpatialProjectionRequest markerProjection;
+  CreativeEditorOverlayFrame readyOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, markerSelection, markerGizmo, readyFrame,
+       markerProjection, 1280U, 720U, 0.03F, false,
+       cr::CreativeInputContext::EditorViewport,
+       cr::CreativeControlDevice::KeyboardMouse, &catalog},
+      readyOverlay);
   processCreativeMaterialStrokeFrame(
       appState, editor,
       actionFrame(cr::CreativeWorldActionId::Accept, true, true, false), 0U,
@@ -3608,6 +3618,22 @@ bool doorwaySocketPreviewPlacementAndUndoStayInParity() {
   iggy3d::FrameInput occupiedFrame;
   attachCreativeEditorPlacementPreviews(
       editor, false, occupiedFrame, &appState.facade.document(), &catalog);
+  CreativeEditorOverlayFrame occupiedOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, markerSelection, markerGizmo, occupiedFrame,
+       markerProjection, 1280U, 720U, 0.03F, false,
+       cr::CreativeInputContext::EditorViewport,
+       cr::CreativeControlDevice::KeyboardMouse, &catalog},
+      occupiedOverlay);
+  editor.toolOptions.open = true;
+  iggy3d::FrameInput hiddenFrame;
+  CreativeEditorOverlayFrame hiddenOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, markerSelection, markerGizmo, hiddenFrame,
+       markerProjection, 1280U, 720U, 0.03F, false,
+       cr::CreativeInputContext::ToolOptions,
+       cr::CreativeControlDevice::KeyboardMouse, &catalog},
+      hiddenOverlay);
 
   return expect(frameCreated.accepted && heldSet,
                 "doorway placement setup accepted") &&
@@ -3619,8 +3645,12 @@ bool doorwaySocketPreviewPlacementAndUndoStayInParity() {
                 "door leaf plan resolves the aimed frame receiver") &&
          expect(readyFrame.creativePreview.itemCount == 2U &&
                     readyFrame.creativePreview.items[0].role ==
-                        iggy3d::RenderCreativePreviewRole::PlacementValid,
-                "available doorway receiver renders green") &&
+                        iggy3d::RenderCreativePreviewRole::PlacementValid &&
+                    readyOverlay.attachmentSocketMarkerEdgeCount == 3U &&
+                    readyOverlay.combinedWireLines.size() >= 3U &&
+                    near(readyOverlay.combinedWireLines.back().color.g, 1.0F) &&
+                    near(readyOverlay.combinedWireLines.back().color.r, 0.20F),
+                "available doorway receiver renders green preview and marker") &&
          expect(door != nullptr && door->kind == cr::CreativeObjectKind::Door &&
                     door->assetId == leafAsset->assetId &&
                     door->parentId == frameCreated.objectId &&
@@ -3636,7 +3666,17 @@ bool doorwaySocketPreviewPlacementAndUndoStayInParity() {
                     occupiedFrame.creativePreview.itemCount == 2U &&
                     occupiedFrame.creativePreview.items[0].role ==
                         iggy3d::RenderCreativePreviewRole::PlacementInvalid,
-                "occupied doorway receiver renders red and rejects a duplicate");
+                "occupied doorway receiver rejects a duplicate") &&
+         expect(
+                    occupiedOverlay.attachmentSocketMarkerEdgeCount == 3U &&
+                    occupiedOverlay.combinedWireLines.size() >= 3U &&
+                    near(occupiedOverlay.combinedWireLines.back().color.r,
+                         1.0F) &&
+                    near(occupiedOverlay.combinedWireLines.back().color.g,
+                         0.20F),
+                "occupied doorway receiver renders a red marker") &&
+         expect(hiddenOverlay.attachmentSocketMarkerEdgeCount == 0U,
+                "modal tool options hide attachment socket markers");
 }
 
 }  // namespace

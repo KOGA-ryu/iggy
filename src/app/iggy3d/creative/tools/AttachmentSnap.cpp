@@ -29,6 +29,14 @@ namespace {
           static_cast<double>(value.z)};
 }
 
+struct WorldAttachmentSocketFrame {
+  CreativeVec3 position{};
+  CreativeVec3 forward{};
+  CreativeVec3 up{};
+  bool positioned = false;
+  bool oriented = false;
+};
+
 [[nodiscard]] double squaredLength(CreativeVec3 value) noexcept {
   return value.x * value.x + value.y * value.y + value.z * value.z;
 }
@@ -47,6 +55,26 @@ namespace {
 
 [[nodiscard]] double yawForForward(CreativeVec3 forward) noexcept {
   return std::atan2(forward.x, forward.z);
+}
+
+[[nodiscard]] WorldAttachmentSocketFrame worldAttachmentSocketFrame(
+    const StaticMeshAttachmentSocket& socket,
+    const CreativeTransform& targetTransform) noexcept {
+  WorldAttachmentSocketFrame result;
+  const CreativeVec3 localPosition =
+      multiply(toCreative(socket.position), targetTransform.scale);
+  result.position = add(
+      targetTransform.position,
+      rotateCreativeVectorEulerXyz(
+          localPosition, targetTransform.rotationEulerRadians));
+  result.forward = rotateCreativeVectorEulerXyz(
+      toCreative(socket.forward), targetTransform.rotationEulerRadians);
+  result.up = rotateCreativeVectorEulerXyz(
+      toCreative(socket.up), targetTransform.rotationEulerRadians);
+  result.positioned = isFiniteCreativeVec3(result.position);
+  result.oriented = result.positioned &&
+                    horizontalFrame(result.forward, result.up);
+  return result;
 }
 
 [[nodiscard]] double normalizeRadians(double radians) noexcept {
@@ -163,22 +191,13 @@ CreativeAttachmentSnapResult resolveCreativeAttachmentSnap(
     if (receiver.role != StaticMeshAttachmentSocketRole::Receiver) {
       continue;
     }
-    const CreativeVec3 targetLocalPosition = multiply(
-        toCreative(receiver.position), target->transform.scale);
-    const CreativeVec3 targetWorldPosition = add(
-        target->transform.position,
-        rotateCreativeVectorEulerXyz(
-            targetLocalPosition, target->transform.rotationEulerRadians));
-    const CreativeVec3 targetWorldForward = rotateCreativeVectorEulerXyz(
-        toCreative(receiver.forward), target->transform.rotationEulerRadians);
-    const CreativeVec3 targetWorldUp = rotateCreativeVectorEulerXyz(
-        toCreative(receiver.up), target->transform.rotationEulerRadians);
-    if (!horizontalFrame(targetWorldForward, targetWorldUp) ||
-        !isFiniteCreativeVec3(targetWorldPosition)) {
+    const WorldAttachmentSocketFrame targetFrame =
+        worldAttachmentSocketFrame(receiver, target->transform);
+    if (!targetFrame.oriented) {
       continue;
     }
     const CreativeVec3 aimDelta =
-        subtract(targetWorldPosition, request.aimPoint);
+        subtract(targetFrame.position, request.aimPoint);
     const double distanceSquared = squaredLength(aimDelta);
 
     for (const StaticMeshAttachmentSocket& plug : source->attachmentSockets) {
@@ -198,13 +217,13 @@ CreativeAttachmentSnapResult resolveCreativeAttachmentSnap(
         continue;
       }
       const double yaw = normalizeRadians(
-          yawForForward(targetWorldForward) - yawForForward(sourceForward));
+          yawForForward(targetFrame.forward) - yawForForward(sourceForward));
       const CreativeVec3 sourceSocketOffset =
           rotateCreativeVectorEulerXyz(
               multiply(toCreative(plug.position), request.sourceScale),
               {0.0, yaw, 0.0});
       CreativeTransform transform;
-      transform.position = subtract(targetWorldPosition, sourceSocketOffset);
+      transform.position = subtract(targetFrame.position, sourceSocketOffset);
       transform.rotationEulerRadians = {0.0, yaw, 0.0};
       transform.scale = request.sourceScale;
       if (!isFiniteCreativeVec3(transform.position) ||
@@ -274,6 +293,119 @@ CreativeAttachmentSnapResult resolveCreativeAttachmentSnap(
     result.status = CreativeAttachmentSnapStatus::InvalidRequest;
   }
   return result;
+}
+
+CreativeAttachmentSocketMarkerFrame buildCreativeAttachmentSocketMarkers(
+    const CreativeAttachmentSocketMarkerRequest& request) noexcept {
+  CreativeAttachmentSocketMarkerFrame frame;
+  if (request.document == nullptr || request.assetCatalog == nullptr ||
+      request.sourceAssetId.empty() ||
+      request.targetObjectId == kInvalidObjectId ||
+      !isFiniteCreativeVec3(request.aimPoint) ||
+      !std::isfinite(request.maxDistanceMeters) ||
+      request.maxDistanceMeters <= 0.0) {
+    frame.status = CreativeAttachmentSocketMarkerStatus::InvalidRequest;
+    return frame;
+  }
+
+  const StaticMeshAssetCatalogEntry* source =
+      request.assetCatalog->find(request.sourceAssetId);
+  if (source == nullptr) {
+    frame.status = CreativeAttachmentSocketMarkerStatus::SourceAssetMissing;
+    return frame;
+  }
+  const bool hasPlug = std::any_of(
+      source->attachmentSockets.begin(), source->attachmentSockets.end(),
+      [](const StaticMeshAttachmentSocket& socket) {
+        return socket.role == StaticMeshAttachmentSocketRole::Plug;
+      });
+  if (!hasPlug) {
+    frame.status = CreativeAttachmentSocketMarkerStatus::SourcePlugMissing;
+    return frame;
+  }
+
+  const CreativeObject* target =
+      request.document->findObject(request.targetObjectId);
+  if (target == nullptr) {
+    frame.status = CreativeAttachmentSocketMarkerStatus::TargetObjectMissing;
+    return frame;
+  }
+  const StaticMeshAssetCatalogEntry* targetAsset =
+      request.assetCatalog->find(target->assetId);
+  if (targetAsset == nullptr) {
+    frame.status = CreativeAttachmentSocketMarkerStatus::TargetAssetMissing;
+    return frame;
+  }
+  if (!isFiniteCreativeVec3(target->transform.position) ||
+      !isFiniteCreativeVec3(target->transform.rotationEulerRadians) ||
+      !isPositiveCreativeVec3(target->transform.scale)) {
+    frame.status = CreativeAttachmentSocketMarkerStatus::InvalidRequest;
+    return frame;
+  }
+
+  for (const StaticMeshAttachmentSocket& receiver :
+       targetAsset->attachmentSockets) {
+    if (receiver.role != StaticMeshAttachmentSocketRole::Receiver) {
+      continue;
+    }
+    ++frame.receiverCount;
+    const WorldAttachmentSocketFrame targetFrame =
+        worldAttachmentSocketFrame(receiver, target->transform);
+    if (!targetFrame.positioned) {
+      ++frame.skippedCount;
+      continue;
+    }
+
+    bool compatible = false;
+    if (targetFrame.oriented) {
+      compatible = std::any_of(
+          source->attachmentSockets.begin(), source->attachmentSockets.end(),
+          [&receiver](const StaticMeshAttachmentSocket& plug) {
+            return plug.role == StaticMeshAttachmentSocketRole::Plug &&
+                   plug.compatibility == receiver.compatibility &&
+                   horizontalFrame(toCreative(plug.forward),
+                                   toCreative(plug.up));
+          });
+    }
+    const CreativeVec3 aimDelta =
+        subtract(targetFrame.position, request.aimPoint);
+    const double distanceSquared = squaredLength(aimDelta);
+    const double maxDistanceSquared =
+        request.maxDistanceMeters * request.maxDistanceMeters;
+    const bool inRange = std::isfinite(distanceSquared) &&
+                         std::isfinite(maxDistanceSquared) &&
+                         distanceSquared <= maxDistanceSquared;
+
+    if (frame.markerCount == frame.markers.size()) {
+      frame.truncated = true;
+      ++frame.skippedCount;
+      continue;
+    }
+    CreativeAttachmentSocketMarker& marker =
+        frame.markers[frame.markerCount++];
+    marker.worldPosition = targetFrame.position;
+    marker.targetObjectId = target->id;
+    marker.targetSocket = receiver.name;
+    marker.compatibility = receiver.compatibility;
+    marker.state = CreativeAttachmentSocketMarkerState::Incompatible;
+    if (compatible) {
+      marker.state =
+          !inRange
+              ? CreativeAttachmentSocketMarkerState::OutOfRange
+              : socketOccupied(*request.document, target->id, receiver.name)
+                    ? CreativeAttachmentSocketMarkerState::Occupied
+                    : CreativeAttachmentSocketMarkerState::Available;
+    }
+  }
+
+  if (frame.receiverCount == 0U) {
+    frame.status =
+        CreativeAttachmentSocketMarkerStatus::TargetReceiverMissing;
+    return frame;
+  }
+  frame.status = CreativeAttachmentSocketMarkerStatus::Built;
+  frame.accepted = true;
+  return frame;
 }
 
 }  // namespace iggy3d::creative

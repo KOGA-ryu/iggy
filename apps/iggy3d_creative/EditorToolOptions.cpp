@@ -140,6 +140,8 @@ creativeEditorToolOptionCommandsForEntry(
       commands.ids[commands.count++] =
           CreativeEditorToolOptionsCommandId::ToggleSelectionLocked;
       commands.ids[commands.count++] =
+          CreativeEditorToolOptionsCommandId::DetachAttachment;
+      commands.ids[commands.count++] =
           CreativeEditorToolOptionsCommandId::GroupSelection;
       commands.ids[commands.count++] =
           CreativeEditorToolOptionsCommandId::UngroupSelection;

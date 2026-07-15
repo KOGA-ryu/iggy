@@ -127,7 +127,7 @@ bool toolCapabilitiesCoverBehaviorAndUiProfiles() {
         ++specializedCommandProfiles;
         break;
       case CreativeEditorToolCommandProfile::ObjectMove:
-        expectedCommandCount = 14U;
+        expectedCommandCount = 15U;
         ++specializedCommandProfiles;
         break;
       case CreativeEditorToolCommandProfile::Count:

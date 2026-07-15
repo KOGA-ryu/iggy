@@ -232,6 +232,17 @@ iggy3d_add_unit_test(creative_attachment_snap_tests
 set_tests_properties(creative_attachment_snap_tests PROPERTIES
   LABELS "unit;app;creative;placement;attachment;iggy3d")
 
+add_executable(creative_editor_attachment_tests
+  tests/unit/creative_editor_attachment_tests.cpp)
+target_link_libraries(creative_editor_attachment_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_attachment_tests)
+add_test(NAME creative_editor_attachment_tests
+  COMMAND "$<TARGET_FILE:creative_editor_attachment_tests>")
+set_tests_properties(creative_editor_attachment_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;editor;attachment;history;iggy3d")
+
 add_executable(creative_asset_scatter_tests
   tests/unit/creative_asset_scatter_tests.cpp)
 target_link_libraries(creative_asset_scatter_tests PRIVATE

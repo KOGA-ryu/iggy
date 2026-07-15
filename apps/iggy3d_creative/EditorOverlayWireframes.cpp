@@ -19,6 +19,7 @@
 #include "app/iggy3d/creative/document/DocumentWireframe.hpp"
 #include "app/iggy3d/creative/render/CreativeOverlayFrame.hpp"
 #include "app/iggy3d/creative/render/WireframeDebugLines.hpp"
+#include "app/iggy3d/creative/tools/AttachmentSnap.hpp"
 #include "projection/debug/DebugProjection.hpp"
 
 namespace iggy3d_creative_app {
@@ -47,7 +48,82 @@ void resetCreativeEditorOverlayFrame(CreativeEditorOverlayFrame& output) {
   output.transformPreviewEdgeCount = 0;
   output.assetReplacementEdgeCount = 0;
   output.assetScatterEdgeCount = 0;
+  output.attachmentSocketMarkerEdgeCount = 0;
   output.placementFeedbackEdgeCount = 0;
+}
+
+[[nodiscard]] RenderLineColor attachmentSocketMarkerColor(
+    cr::CreativeAttachmentSocketMarkerState state) noexcept {
+  switch (state) {
+    case cr::CreativeAttachmentSocketMarkerState::Incompatible:
+    case cr::CreativeAttachmentSocketMarkerState::OutOfRange:
+      return {0.55F, 0.62F, 0.68F, 1.0F};
+    case cr::CreativeAttachmentSocketMarkerState::Available:
+      return {0.20F, 1.0F, 0.35F, 1.0F};
+    case cr::CreativeAttachmentSocketMarkerState::Occupied:
+      return {1.0F, 0.20F, 0.20F, 1.0F};
+  }
+  return {0.55F, 0.62F, 0.68F, 1.0F};
+}
+
+void appendCreativeEditorAttachmentSocketMarkers(
+    const CreativeEditorOverlayFrameRequest& request,
+    CreativeEditorOverlayFrame& output) {
+  const CreativeEditorState& editor = request.editor;
+  const bool modalOpen = editor.catalog.model.open ||
+                         editor.catalog.toolWheel.open ||
+                         editor.toolOptions.open ||
+                         editor.assetReplacement.active ||
+                         editor.transform.active;
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const std::string_view sourceAssetId = cr::creativeHotbarAssetId(held);
+  if (request.captureMode || modalOpen || request.assetCatalog == nullptr ||
+      held.kind != cr::CreativeHeldItemKind::Material ||
+      sourceAssetId.empty() ||
+      creativeEditorUsesAssetScatter(held, editor.toolSettings) ||
+      !editor.interaction.target.objectHit ||
+      !editor.interaction.target.grid.valid) {
+    return;
+  }
+
+  cr::CreativeAttachmentSocketMarkerRequest markerRequest;
+  markerRequest.document = &request.appState.facade.document();
+  markerRequest.assetCatalog = request.assetCatalog;
+  markerRequest.sourceAssetId = sourceAssetId;
+  markerRequest.targetObjectId = editor.interaction.target.objectId;
+  markerRequest.aimPoint = editor.interaction.target.grid.hitPoint;
+  const cr::CreativeAttachmentSocketMarkerFrame markers =
+      cr::buildCreativeAttachmentSocketMarkers(markerRequest);
+  if (!markers.accepted) {
+    return;
+  }
+
+  constexpr float kMarkerHalfExtentMeters = 0.11F;
+  const float thickness = std::max(0.035F, request.gizmoThickness);
+  for (std::size_t index = 0U; index < markers.markerCount; ++index) {
+    const cr::CreativeAttachmentSocketMarker& marker = markers.markers[index];
+    const cr::CreativeCoreVec3Conversion position =
+        cr::creativeVec3ToCoreChecked(marker.worldPosition);
+    if (!position.converted) {
+      continue;
+    }
+    const RenderLineColor color = attachmentSocketMarkerColor(marker.state);
+    const std::array<Vec3, 3U> axes{
+        Vec3{kMarkerHalfExtentMeters, 0.0F, 0.0F},
+        Vec3{0.0F, kMarkerHalfExtentMeters, 0.0F},
+        Vec3{0.0F, 0.0F, kMarkerHalfExtentMeters}};
+    for (const Vec3 axis : axes) {
+      RenderCreativeWireframeDebugLine line;
+      line.start = position.value - axis;
+      line.end = position.value + axis;
+      line.color = color;
+      line.objectId = marker.targetObjectId;
+      line.thickness = thickness;
+      output.combinedWireLines.push_back(line);
+      ++output.attachmentSocketMarkerEdgeCount;
+    }
+  }
 }
 
 void appendCreativeEditorPlacementFeedbackWireframe(
@@ -158,6 +234,7 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
       output.combinedWireLines;
   combinedWireLines.reserve(
       dbg.lines.size() + 48U +
+      kMaxStaticMeshAttachmentSocketCount * 3U +
       editor.interaction.assetScatter.preview.candidateCount * 12U);
   std::size_t& documentWireLineCount = output.documentWireLineCount;
   std::size_t& pointMarkerEdgeCount = output.pointMarkerEdgeCount;
@@ -271,6 +348,7 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
       combinedWireLines.push_back(gizmoLine);
     }
   }
+  appendCreativeEditorAttachmentSocketMarkers(request, output);
   appendCreativeEditorPlacementFeedbackWireframe(request, output);
   output.assetReplacementEdgeCount =
       appendCreativeEditorAssetReplacementWireframes(

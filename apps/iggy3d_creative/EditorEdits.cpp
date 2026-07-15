@@ -306,6 +306,33 @@ creative::CreativeFacadeMutationReceipt toggleSelectedObjectLockedWithUndo(
       appState, history, creative::CreativeMutationKind::SetLocked, source);
 }
 
+creative::CreativeDocumentMutationReceipt detachObjectWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    creative::CreativeObjectId objectId,
+    std::string_view source) {
+  StandaloneEditTransaction transaction =
+      beginEditTransaction(appState.facade, source);
+  creative::CreativeDocumentMutationReceipt receipt =
+      creative::applyDocumentMutation(
+          appState.facade.documentForPersistence(), objectId,
+          creative::CreativeMutationKind::DetachFrom,
+          creative::CreativeMutationPayload{});
+  const bool accepted = creative::documentMutationSucceeded(receipt.status);
+  static_cast<void>(completeEditTransaction(
+      history, std::move(transaction), appState.facade,
+      accepted && receipt.changed, receipt.message));
+  SDL_Log("iggy3d_creative: DETACH source='%s' objectId=%llu accepted=%d "
+          "changed=%d revisionBefore=%llu revisionAfter=%llu message='%s'",
+          std::string(source).c_str(),
+          static_cast<unsigned long long>(objectId), accepted ? 1 : 0,
+          receipt.changed ? 1 : 0,
+          static_cast<unsigned long long>(receipt.revisionBefore),
+          static_cast<unsigned long long>(receipt.revisionAfter),
+          receipt.message.c_str());
+  return receipt;
+}
+
 creative::CreativeClipboardCopyReceipt copySelectionToClipboard(
     creative::CreativeAppState& appState,
     std::string_view source) {

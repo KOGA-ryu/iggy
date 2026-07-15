@@ -444,7 +444,7 @@ bool transformToolOptionsExposeAndRouteSharedObjectActions() {
           {cr::CreativeHeldItemKind::ObjectMove,
            cr::CreativeObjectKind::Unknown});
   bool ok = expect(
-      commands.count == 14U &&
+      commands.count == 15U &&
           commands.ids[0] ==
               app::CreativeEditorToolOptionsCommandId::TransformSelection &&
           commands.ids[1] ==
@@ -458,22 +458,24 @@ bool transformToolOptionsExposeAndRouteSharedObjectActions() {
           commands.ids[5] ==
               app::CreativeEditorToolOptionsCommandId::ToggleSelectionLocked &&
           commands.ids[6] ==
-              app::CreativeEditorToolOptionsCommandId::GroupSelection &&
+              app::CreativeEditorToolOptionsCommandId::DetachAttachment &&
           commands.ids[7] ==
-              app::CreativeEditorToolOptionsCommandId::UngroupSelection &&
+              app::CreativeEditorToolOptionsCommandId::GroupSelection &&
           commands.ids[8] ==
-              app::CreativeEditorToolOptionsCommandId::EditGroupContents &&
+              app::CreativeEditorToolOptionsCommandId::UngroupSelection &&
           commands.ids[9] ==
-              app::CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset &&
+              app::CreativeEditorToolOptionsCommandId::EditGroupContents &&
           commands.ids[10] ==
-              app::CreativeEditorToolOptionsCommandId::UpdateSavedAsset &&
+              app::CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset &&
           commands.ids[11] ==
-              app::CreativeEditorToolOptionsCommandId::
-                  RefreshSavedAssetInstance &&
+              app::CreativeEditorToolOptionsCommandId::UpdateSavedAsset &&
           commands.ids[12] ==
               app::CreativeEditorToolOptionsCommandId::
-                  RefreshSafeSavedAssetInstances &&
+                  RefreshSavedAssetInstance &&
           commands.ids[13] ==
+              app::CreativeEditorToolOptionsCommandId::
+                  RefreshSafeSavedAssetInstances &&
+          commands.ids[14] ==
               app::CreativeEditorToolOptionsCommandId::
                   ForceRefreshSavedAssetInstances,
       "Transform options expose the bounded shared object-action order");

@@ -155,6 +155,92 @@ bool reportsOutsideIncompatibleAndOccupiedWithoutInventingPlacement() {
                 "occupied receiver retains a red-preview transform");
 }
 
+bool markerFrameIsWorldSpaceBoundedAndUsesSnapCompatibility() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("markers");
+  const cr::CreativeDocumentCreateReceipt target =
+      createTarget(document, std::numbers::pi * 0.5);
+  const cr::CreativeDocumentMutationReceipt scaled = cr::applyDocumentMutation(
+      document, target.objectId, cr::CreativeMutationKind::Scale,
+      cr::makeScalePayload({2.0, 1.0, 1.0}));
+  iggy3d::StaticMeshAssetCatalog catalog = catalogWith({
+      socket("available", iggy3d::StaticMeshAttachmentSocketRole::Receiver,
+             {1.0F, 0.0F, 0.0F}),
+      socket("incompatible",
+             iggy3d::StaticMeshAttachmentSocketRole::Receiver,
+             {2.0F, 0.0F, 0.0F}),
+      socket("occupied", iggy3d::StaticMeshAttachmentSocketRole::Receiver,
+             {3.0F, 0.0F, 0.0F}),
+  });
+  catalog.entries.front().attachmentSockets[1].compatibility = "window.frame";
+  cr::CreativeDocumentCreateRequest childRequest;
+  childRequest.kind = cr::CreativeObjectKind::Door;
+  childRequest.name = "Occupied Door";
+  childRequest.parentId = target.objectId;
+  childRequest.attachmentSocket = "occupied";
+  const cr::CreativeDocumentCreateReceipt child =
+      document.createObject(childRequest);
+
+  cr::CreativeAttachmentSocketMarkerRequest request;
+  request.document = &document;
+  request.assetCatalog = &catalog;
+  request.sourceAssetId = "door_leaf";
+  request.targetObjectId = target.objectId;
+  request.aimPoint = {4.0, 1.0, -4.0};
+  request.maxDistanceMeters = 10.0;
+  const cr::CreativeAttachmentSocketMarkerFrame markers =
+      cr::buildCreativeAttachmentSocketMarkers(request);
+  request.maxDistanceMeters = 0.5;
+  const cr::CreativeAttachmentSocketMarkerFrame tightRadius =
+      cr::buildCreativeAttachmentSocketMarkers(request);
+
+  iggy3d::StaticMeshAssetCatalog oversized = catalogWith({});
+  for (std::size_t index = 0U;
+       index < iggy3d::kMaxStaticMeshAttachmentSocketCount + 6U; ++index) {
+    oversized.entries.front().attachmentSockets.push_back(socket(
+        "receiver_" + std::to_string(index),
+        iggy3d::StaticMeshAttachmentSocketRole::Receiver));
+  }
+  request.assetCatalog = &oversized;
+  request.maxDistanceMeters = 10.0;
+  const cr::CreativeAttachmentSocketMarkerFrame bounded =
+      cr::buildCreativeAttachmentSocketMarkers(request);
+
+  return expect(target.accepted &&
+                    cr::documentMutationSucceeded(scaled.status) &&
+                    child.accepted,
+                "marker state setup accepted") &&
+         expect(markers.accepted &&
+                    markers.status ==
+                        cr::CreativeAttachmentSocketMarkerStatus::Built &&
+                    markers.markerCount == 3U &&
+                    markers.receiverCount == 3U,
+                "marker frame contains every receiver") &&
+         expect(markers.markers[0].state ==
+                        cr::CreativeAttachmentSocketMarkerState::Available &&
+                    markers.markers[1].state ==
+                        cr::CreativeAttachmentSocketMarkerState::Incompatible &&
+                    markers.markers[2].state ==
+                        cr::CreativeAttachmentSocketMarkerState::Occupied,
+                "markers distinguish free compatible incompatible and occupied") &&
+         expect(tightRadius.accepted &&
+                    tightRadius.markers[0].state ==
+                        cr::CreativeAttachmentSocketMarkerState::Available &&
+                    tightRadius.markers[2].state ==
+                        cr::CreativeAttachmentSocketMarkerState::OutOfRange,
+                "marker colors do not advertise sockets outside snap radius") &&
+         expect(near(markers.markers[0].worldPosition.x, 4.0) &&
+                    near(markers.markers[0].worldPosition.y, 1.0) &&
+                    near(markers.markers[0].worldPosition.z, -4.0),
+                "marker position applies target scale rotation and translation") &&
+         expect(bounded.accepted && bounded.truncated &&
+                    bounded.markerCount ==
+                        iggy3d::kMaxStaticMeshAttachmentSocketCount &&
+                    bounded.receiverCount ==
+                        iggy3d::kMaxStaticMeshAttachmentSocketCount + 6U &&
+                    bounded.skippedCount == 6U,
+                "marker frame stays within the asset socket capacity");
+}
+
 bool attachMutationStoresSocketAndOrdinaryReparentingClearsIt() {
   cr::CreativeDocument document = cr::CreativeDocument::create("relationship");
   const cr::CreativeDocumentCreateReceipt target = createTarget(document);
@@ -228,6 +314,7 @@ bool attachMutationStoresSocketAndOrdinaryReparentingClearsIt() {
 int main() {
   const bool ok = alignsPlugToReceiverAndResolvesTiesDeterministically() &&
                   reportsOutsideIncompatibleAndOccupiedWithoutInventingPlacement() &&
+                  markerFrameIsWorldSpaceBoundedAndUsesSnapCompatibility() &&
                   attachMutationStoresSocketAndOrdinaryReparentingClearsIt();
   if (!ok) {
     return 1;

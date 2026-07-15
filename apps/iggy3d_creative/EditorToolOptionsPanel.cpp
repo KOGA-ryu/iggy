@@ -204,6 +204,7 @@ void adjustSelection(CreativeEditorState& editor,
     case CreativeEditorToolOptionsCommandId::DeleteSelection:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
+    case CreativeEditorToolOptionsCommandId::DetachAttachment:
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
@@ -257,6 +258,7 @@ void adjustSelection(CreativeEditorState& editor,
     case CreativeEditorToolOptionsCommandId::DeleteSelection:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
+    case CreativeEditorToolOptionsCommandId::DetachAttachment:
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
@@ -296,6 +298,7 @@ void adjustSelection(CreativeEditorState& editor,
     case CreativeEditorToolOptionsCommandId::DeleteSelection:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
+    case CreativeEditorToolOptionsCommandId::DetachAttachment:
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
@@ -419,6 +422,7 @@ bool activateCreativeEditorToolOptionsSelection(
     case CreativeEditorToolOptionsCommandId::DeleteSelection:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
+    case CreativeEditorToolOptionsCommandId::DetachAttachment:
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
@@ -471,6 +475,7 @@ bool activateCreativeEditorToolOptionsSelection(
     case CreativeEditorToolOptionsCommandId::DeleteSelection:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
+    case CreativeEditorToolOptionsCommandId::DetachAttachment:
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:

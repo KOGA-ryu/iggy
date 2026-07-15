@@ -1510,7 +1510,7 @@ bool previewUsesCanonicalCompositeProxies() {
                          app::CreativeEditorToolOptionsCommandId::
                              ForceRefreshSavedAssetInstances;
     }
-    return commands.count == 14U && save && edit && update && refreshThis &&
+    return commands.count == 15U && save && edit && update && refreshThis &&
            refreshSafe && refreshForce;
   }();
   return expect(frame.creativePreview.itemCount == 2U &&

@@ -49,6 +49,7 @@ bool creativeEditorCommandIsObjectAction(
     case CreativeEditorToolOptionsCommandId::DeleteSelection:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
+    case CreativeEditorToolOptionsCommandId::DetachAttachment:
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
@@ -77,6 +78,8 @@ void refreshCreativeEditorObjectActionContext(
   state.contextPrimaryObjectKind = cr::CreativeObjectKind::Unknown;
   state.contextContainerKind = cr::CreativeObjectKind::Unknown;
   state.contextContainerAssetId.clear();
+  state.contextAttachmentParentId = cr::kInvalidObjectId;
+  state.contextAttachmentSocket.clear();
   state.contextSelectionCount = 0U;
   state.contextPrimaryVisible = true;
   state.contextPrimaryLocked = false;
@@ -159,6 +162,10 @@ void refreshCreativeEditorObjectActionContext(
   if (state.contextSelectionCount != 1U) {
     return;
   }
+  if (object->parentId.has_value() && !object->attachmentSocket.empty()) {
+    state.contextAttachmentParentId = *object->parentId;
+    state.contextAttachmentSocket = object->attachmentSocket;
+  }
   if (cr::creativeObjectIsHierarchyContainer(object->kind)) {
     state.contextGroupId = object->id;
     state.contextContainerKind = object->kind;
@@ -233,6 +240,12 @@ bool creativeEditorObjectActionEnabled(
              !state.contextPrimaryLocked;
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
       return state.contextPrimaryObjectId != cr::kInvalidObjectId;
+    case CreativeEditorToolOptionsCommandId::DetachAttachment:
+      return state.contextSelectionCount == 1U &&
+             state.contextPrimaryObjectId != cr::kInvalidObjectId &&
+             state.contextAttachmentParentId != cr::kInvalidObjectId &&
+             !state.contextAttachmentSocket.empty() &&
+             !state.contextPrimaryLocked;
     case CreativeEditorToolOptionsCommandId::GroupSelection:
       return state.contextSelectionCount > 1U && state.contextAllUnlocked;
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
@@ -277,6 +290,8 @@ std::string_view creativeEditorObjectActionLabel(
       return "VISIBILITY";
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
       return "LOCK";
+    case CreativeEditorToolOptionsCommandId::DetachAttachment:
+      return "DETACH";
     case CreativeEditorToolOptionsCommandId::GroupSelection:
       return "GROUP";
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
@@ -324,6 +339,10 @@ std::string creativeEditorObjectActionValueLabel(
       return state.contextPrimaryObjectId == cr::kInvalidObjectId
                  ? "SELECT OBJECT"
                  : state.contextPrimaryLocked ? "UNLOCK" : "LOCK";
+    case CreativeEditorToolOptionsCommandId::DetachAttachment:
+      return state.contextAttachmentSocket.empty()
+                 ? "NOT ATTACHED"
+                 : "FROM " + state.contextAttachmentSocket;
     case CreativeEditorToolOptionsCommandId::GroupSelection:
       return state.contextSelectionCount > 1U
                  ? std::to_string(state.contextSelectionCount) + " OBJECTS"
@@ -425,6 +444,13 @@ bool activateCreativeEditorObjectAction(
                      appState, appState.history,
                      "object_actions_toggle_locked")
                      .accepted;
+      break;
+    case CreativeEditorToolOptionsCommandId::DetachAttachment:
+      accepted = cr::documentMutationSucceeded(
+          detachObjectWithUndo(appState, appState.history,
+                               state.contextPrimaryObjectId,
+                               "object_actions_detach")
+              .status);
       break;
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:

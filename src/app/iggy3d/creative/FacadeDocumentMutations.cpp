@@ -122,8 +122,18 @@ CreativeDocumentRemoveReceipt Facade::removeDocumentObject(
   recordCommandAttempt(stats_);
   const CreativeObject* requestedObject =
       document_.findObject(request.objectId);
+  bool requestedObjectHasChildren = false;
+  if (requestedObject != nullptr) {
+    for (const CreativeObject& candidate : document_.objects()) {
+      if (candidate.parentId == requestedObject->id) {
+        requestedObjectHasChildren = true;
+        break;
+      }
+    }
+  }
   if (requestedObject != nullptr &&
-      creativeObjectIsHierarchyContainer(requestedObject->kind)) {
+      (creativeObjectIsHierarchyContainer(requestedObject->kind) ||
+       requestedObjectHasChildren)) {
     CreativeHierarchyRemoveReceipt hierarchy =
         removeCreativeObjectHierarchyAtomically(document_, request.objectId);
     if (!hierarchy.accepted) {

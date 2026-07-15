@@ -67,6 +67,14 @@ toggleSelectedObjectLockedWithUndo(
     StandaloneEditHistory& history,
     std::string_view source);
 
+// Clears an attachment relationship without changing the object's stored
+// world transform. The relationship change and its undo snapshot are one edit.
+[[nodiscard]] cr::CreativeDocumentMutationReceipt detachObjectWithUndo(
+    cr::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    cr::CreativeObjectId objectId,
+    std::string_view source);
+
 [[nodiscard]] cr::CreativeClipboardCopyReceipt copySelectionToClipboard(
     cr::CreativeAppState& appState,
     std::string_view source);
