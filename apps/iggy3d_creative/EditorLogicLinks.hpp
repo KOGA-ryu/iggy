@@ -22,6 +22,7 @@ enum class CreativeEditorLogicLinkStatus : std::uint8_t {
   Added,
   Updated,
   Removed,
+  Unchanged,
 };
 
 struct CreativeEditorLogicLinkState {
@@ -60,6 +61,24 @@ void syncCreativeEditorLogicLinkState(
 [[nodiscard]] std::size_t creativeEditorOutgoingLogicLinkCount(
     const iggy3d::creative::CreativeDocument& document,
     iggy3d::creative::CreativeObjectId sourceObjectId) noexcept;
+[[nodiscard]] CreativeEditorLogicLinkReceipt
+selectCreativeEditorLogicLinkSource(
+    iggy3d::creative::CreativeAppState& appState,
+    CreativeEditorLogicLinkState& state,
+    iggy3d::creative::CreativeObjectId sourceObjectId);
+[[nodiscard]] CreativeEditorLogicLinkReceipt setCreativeEditorLogicLink(
+    iggy3d::creative::CreativeAppState& appState,
+    CreativeEditorLogicLinkState& state,
+    iggy3d::creative::CreativeObjectId sourceObjectId,
+    iggy3d::creative::CreativeObjectId targetObjectId,
+    iggy3d::creative::CreativeLogicLinkAction action,
+    std::string_view source);
+[[nodiscard]] CreativeEditorLogicLinkReceipt removeCreativeEditorLogicLink(
+    iggy3d::creative::CreativeAppState& appState,
+    CreativeEditorLogicLinkState& state,
+    iggy3d::creative::CreativeObjectId sourceObjectId,
+    iggy3d::creative::CreativeObjectId targetObjectId,
+    std::string_view source);
 [[nodiscard]] CreativeEditorLogicLinkReceipt
 advanceCreativeEditorLogicLink(
     iggy3d::creative::CreativeAppState& appState,

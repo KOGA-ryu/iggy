@@ -275,6 +275,28 @@ bool diagnosticsExposeUnlinkedMissingAndCompetingSources() {
                 "logic diagnostic ids are stable");
 }
 
+bool validRepairClearsUnlinkedDiagnostic() {
+  cr::CreativeDocument document = documentWithId();
+  const auto source =
+      create(document, cr::CreativeObjectKind::TriggerZone, "Trigger");
+  const auto target = create(document, cr::CreativeObjectKind::Door, "Door");
+  const cr::CreativeLogicDiagnosticReport before =
+      cr::buildCreativeLogicDiagnostics(document.logicLinks(),
+                                        document.objects());
+  const cr::CreativeLogicLinkMutationReceipt linked = document.setLogicLink(
+      {source.objectId, target.objectId,
+       cr::CreativeLogicLinkAction::Toggle});
+  const cr::CreativeLogicDiagnosticReport after =
+      cr::buildCreativeLogicDiagnostics(document.logicLinks(),
+                                        document.objects());
+
+  return expect(before.warningCount == 1U && before.issueCount == 1U,
+                "unlinked source begins with one warning") &&
+         expect(linked.accepted && linked.changed && after.issueCount == 0U &&
+                    after.warningCount == 0U && after.errorCount == 0U,
+                "valid link repair clears the diagnostic");
+}
+
 }  // namespace
 
 int main() {
@@ -284,6 +306,7 @@ int main() {
                   clipboardRemapsInternalLinks() &&
                   saveSectionRoundTripsLogicLinks() &&
                   automaticSourcesUseTheSameAuthoredLinkContract() &&
-                  diagnosticsExposeUnlinkedMissingAndCompetingSources();
+                  diagnosticsExposeUnlinkedMissingAndCompetingSources() &&
+                  validRepairClearsUnlinkedDiagnostic();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

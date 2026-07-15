@@ -18,14 +18,60 @@ constexpr std::array kEditableActions{
     cr::CreativeLogicLinkAction::Close,
 };
 
-void selectSource(cr::CreativeAppState& appState,
-                  CreativeEditorLogicLinkState& state,
-                  cr::CreativeObjectId objectId) {
+void applySelectedSource(cr::CreativeAppState& appState,
+                         CreativeEditorLogicLinkState& state,
+                         cr::CreativeObjectId objectId) {
   state.sourceObjectId = objectId;
   state.status = CreativeEditorLogicLinkStatus::SourceSelected;
   state.lastMutation = {};
   const std::array ids{objectId};
   static_cast<void>(appState.facade.selectTargets(ids, objectId));
+}
+
+[[nodiscard]] CreativeEditorLogicLinkStatus statusForMutation(
+    cr::CreativeLogicLinkMutationStatus status) noexcept {
+  switch (status) {
+    case cr::CreativeLogicLinkMutationStatus::Added:
+      return CreativeEditorLogicLinkStatus::Added;
+    case cr::CreativeLogicLinkMutationStatus::Updated:
+      return CreativeEditorLogicLinkStatus::Updated;
+    case cr::CreativeLogicLinkMutationStatus::Removed:
+      return CreativeEditorLogicLinkStatus::Removed;
+    case cr::CreativeLogicLinkMutationStatus::NoChange:
+      return CreativeEditorLogicLinkStatus::Unchanged;
+    case cr::CreativeLogicLinkMutationStatus::MissingSource:
+    case cr::CreativeLogicLinkMutationStatus::UnsupportedSource:
+      return CreativeEditorLogicLinkStatus::InvalidSource;
+    case cr::CreativeLogicLinkMutationStatus::NotRequested:
+    case cr::CreativeLogicLinkMutationStatus::InvalidDocument:
+    case cr::CreativeLogicLinkMutationStatus::InvalidAction:
+    case cr::CreativeLogicLinkMutationStatus::MissingTarget:
+    case cr::CreativeLogicLinkMutationStatus::UnsupportedTarget:
+    case cr::CreativeLogicLinkMutationStatus::MissingLink:
+      return CreativeEditorLogicLinkStatus::InvalidTarget;
+  }
+  return CreativeEditorLogicLinkStatus::InvalidTarget;
+}
+
+[[nodiscard]] CreativeEditorLogicLinkReceipt mutationReceipt(
+    CreativeEditorLogicLinkState& state,
+    cr::CreativeObjectId sourceObjectId,
+    cr::CreativeObjectId targetObjectId,
+    cr::CreativeLogicLinkAction action) noexcept {
+  state.status = statusForMutation(state.lastMutation.status);
+  if (state.lastMutation.accepted) {
+    state.sourceObjectId = sourceObjectId;
+    state.action = action;
+  }
+  CreativeEditorLogicLinkReceipt receipt;
+  receipt.accepted = state.lastMutation.accepted;
+  receipt.changed = state.lastMutation.changed;
+  receipt.status = state.status;
+  receipt.sourceObjectId = sourceObjectId;
+  receipt.targetObjectId = targetObjectId;
+  receipt.action = action;
+  receipt.reasonCode = state.lastMutation.reasonCode;
+  return receipt;
 }
 
 }  // namespace
@@ -89,6 +135,73 @@ std::size_t creativeEditorOutgoingLogicLinkCount(
   return count;
 }
 
+CreativeEditorLogicLinkReceipt selectCreativeEditorLogicLinkSource(
+    cr::CreativeAppState& appState,
+    CreativeEditorLogicLinkState& state,
+    cr::CreativeObjectId sourceObjectId) {
+  const cr::CreativeDocument& document = appState.facade.document();
+  syncCreativeEditorLogicLinkState(state, document);
+  CreativeEditorLogicLinkReceipt receipt;
+  receipt.sourceObjectId = sourceObjectId;
+  const cr::CreativeObject* source = document.findObject(sourceObjectId);
+  if (source == nullptr || !cr::creativeObjectCanSourceLogicLink(source->kind)) {
+    state.status = CreativeEditorLogicLinkStatus::InvalidSource;
+    state.lastMutation = {};
+    receipt.status = state.status;
+    receipt.reasonCode = source == nullptr
+                             ? "creative_logic_link_source_missing"
+                             : "creative_logic_link_source_unsupported";
+    return receipt;
+  }
+  applySelectedSource(appState, state, sourceObjectId);
+  receipt.accepted = true;
+  receipt.status = state.status;
+  receipt.reasonCode = "creative_logic_link_source_selected";
+  return receipt;
+}
+
+CreativeEditorLogicLinkReceipt setCreativeEditorLogicLink(
+    cr::CreativeAppState& appState,
+    CreativeEditorLogicLinkState& state,
+    cr::CreativeObjectId sourceObjectId,
+    cr::CreativeObjectId targetObjectId,
+    cr::CreativeLogicLinkAction action,
+    std::string_view source) {
+  syncCreativeEditorLogicLinkState(state, appState.facade.document());
+  StandaloneEditTransaction transaction =
+      beginEditTransaction(appState.facade, source);
+  state.lastMutation = appState.facade.setLogicLink(
+      {sourceObjectId, targetObjectId, action});
+  static_cast<void>(completeEditTransaction(
+      appState.history, std::move(transaction), appState.facade,
+      state.lastMutation.accepted && state.lastMutation.changed,
+      state.lastMutation.reasonCode));
+  return mutationReceipt(state, sourceObjectId, targetObjectId, action);
+}
+
+CreativeEditorLogicLinkReceipt removeCreativeEditorLogicLink(
+    cr::CreativeAppState& appState,
+    CreativeEditorLogicLinkState& state,
+    cr::CreativeObjectId sourceObjectId,
+    cr::CreativeObjectId targetObjectId,
+    std::string_view source) {
+  const cr::CreativeDocument& document = appState.facade.document();
+  syncCreativeEditorLogicLinkState(state, document);
+  const cr::CreativeLogicLink* existing =
+      document.findLogicLink(sourceObjectId, targetObjectId);
+  const cr::CreativeLogicLinkAction action =
+      existing != nullptr ? existing->action : state.action;
+  StandaloneEditTransaction transaction =
+      beginEditTransaction(appState.facade, source);
+  state.lastMutation =
+      appState.facade.removeLogicLink(sourceObjectId, targetObjectId);
+  static_cast<void>(completeEditTransaction(
+      appState.history, std::move(transaction), appState.facade,
+      state.lastMutation.accepted && state.lastMutation.changed,
+      state.lastMutation.reasonCode));
+  return mutationReceipt(state, sourceObjectId, targetObjectId, action);
+}
+
 CreativeEditorLogicLinkReceipt advanceCreativeEditorLogicLink(
     cr::CreativeAppState& appState,
     CreativeEditorLogicLinkState& state,
@@ -108,12 +221,8 @@ CreativeEditorLogicLinkReceipt advanceCreativeEditorLogicLink(
     return receipt;
   }
   if (cr::creativeObjectCanSourceLogicLink(target->kind)) {
-    selectSource(appState, state, targetObjectId);
-    receipt.accepted = true;
-    receipt.status = state.status;
-    receipt.sourceObjectId = targetObjectId;
-    receipt.reasonCode = "creative_logic_link_source_selected";
-    return receipt;
+    return selectCreativeEditorLogicLinkSource(appState, state,
+                                               targetObjectId);
   }
   if (state.sourceObjectId == cr::kInvalidObjectId) {
     state.status = CreativeEditorLogicLinkStatus::InvalidSource;
@@ -129,39 +238,15 @@ CreativeEditorLogicLinkReceipt advanceCreativeEditorLogicLink(
     return receipt;
   }
 
-  StandaloneEditTransaction transaction =
-      beginEditTransaction(appState.facade, source);
   const cr::CreativeLogicLink* existing =
       document.findLogicLink(state.sourceObjectId, targetObjectId);
-  state.lastMutation = existing != nullptr && existing->action == state.action
-                           ? appState.facade.removeLogicLink(
-                                 state.sourceObjectId, targetObjectId)
-                           : appState.facade.setLogicLink(
-                                 {state.sourceObjectId, targetObjectId,
-                                  state.action});
-  static_cast<void>(completeEditTransaction(
-      appState.history, std::move(transaction), appState.facade,
-      state.lastMutation.accepted && state.lastMutation.changed,
-      state.lastMutation.reasonCode));
-  receipt.accepted = state.lastMutation.accepted;
-  receipt.changed = state.lastMutation.changed;
-  receipt.reasonCode = state.lastMutation.reasonCode;
-  switch (state.lastMutation.status) {
-    case cr::CreativeLogicLinkMutationStatus::Added:
-      state.status = CreativeEditorLogicLinkStatus::Added;
-      break;
-    case cr::CreativeLogicLinkMutationStatus::Updated:
-      state.status = CreativeEditorLogicLinkStatus::Updated;
-      break;
-    case cr::CreativeLogicLinkMutationStatus::Removed:
-      state.status = CreativeEditorLogicLinkStatus::Removed;
-      break;
-    default:
-      state.status = CreativeEditorLogicLinkStatus::InvalidTarget;
-      break;
-  }
-  receipt.status = state.status;
-  return receipt;
+  return existing != nullptr && existing->action == state.action
+             ? removeCreativeEditorLogicLink(
+                   appState, state, state.sourceObjectId, targetObjectId,
+                   source)
+             : setCreativeEditorLogicLink(
+                   appState, state, state.sourceObjectId, targetObjectId,
+                   state.action, source);
 }
 
 }  // namespace iggy3d_creative_app

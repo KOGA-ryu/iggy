@@ -11,6 +11,7 @@
 #include "EditorAuthoredAssets.hpp"
 #include "EditorEdits.hpp"
 #include "EditorFrame.hpp"
+#include "EditorLogicLinks.hpp"
 #include "EditorObjectActions.hpp"
 #include "EditorPersistence.hpp"
 #include "EditorPlayMode.hpp"
@@ -283,6 +284,71 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.changed = receipt.changed;
       result.affectedObjectCount = receipt.selectedCountAfter;
       result.message = "selection cleared";
+      break;
+    }
+    case CreativeDesktopCommandId::SetLogicSource: {
+      const auto* payload = payloadAs<CreativeDesktopLogicLinkPayload>(command);
+      if (payload == nullptr) {
+        result.message = "logic source: payload mismatch";
+        break;
+      }
+      const creative::CreativeObjectId sourceBefore =
+          editor.logicLinks.sourceObjectId;
+      const CreativeEditorLogicLinkReceipt receipt =
+          selectCreativeEditorLogicLinkSource(
+              activeAppState, editor.logicLinks, payload->sourceObjectId);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.accepted &&
+                       sourceBefore != editor.logicLinks.sourceObjectId;
+      result.affectedObjectCount = receipt.accepted ? 1U : 0U;
+      result.message = receipt.accepted
+                           ? "logic source selected"
+                           : std::string(receipt.reasonCode);
+      break;
+    }
+    case CreativeDesktopCommandId::ClearLogicSource:
+      result.accepted = true;
+      result.changed =
+          clearCreativeEditorLogicLinkSource(editor.logicLinks);
+      result.message = result.changed ? "logic source cleared"
+                                      : "logic source already clear";
+      break;
+    case CreativeDesktopCommandId::SetLogicLink: {
+      const auto* payload = payloadAs<CreativeDesktopLogicLinkPayload>(command);
+      if (payload == nullptr) {
+        result.message = "set logic link: payload mismatch";
+        break;
+      }
+      const CreativeEditorLogicLinkReceipt receipt =
+          setCreativeEditorLogicLink(
+              activeAppState, editor.logicLinks, payload->sourceObjectId,
+              payload->targetObjectId, payload->action,
+              "desktop_set_logic_link");
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.affectedObjectCount = receipt.accepted ? 1U : 0U;
+      result.message = receipt.accepted
+                           ? (receipt.changed ? "logic link updated"
+                                              : "logic link unchanged")
+                           : std::string(receipt.reasonCode);
+      break;
+    }
+    case CreativeDesktopCommandId::RemoveLogicLink: {
+      const auto* payload = payloadAs<CreativeDesktopLogicLinkPayload>(command);
+      if (payload == nullptr) {
+        result.message = "remove logic link: payload mismatch";
+        break;
+      }
+      const CreativeEditorLogicLinkReceipt receipt =
+          removeCreativeEditorLogicLink(
+              activeAppState, editor.logicLinks, payload->sourceObjectId,
+              payload->targetObjectId, "desktop_remove_logic_link");
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.affectedObjectCount = receipt.changed ? 1U : 0U;
+      result.message = receipt.accepted
+                           ? "logic link removed"
+                           : std::string(receipt.reasonCode);
       break;
     }
     case CreativeDesktopCommandId::DeleteObjects: {

@@ -95,6 +95,67 @@ bool actionCycleAndDocumentSyncAreBounded() {
                 "document change clears stale source identity");
 }
 
+bool explicitInspectorKernelsShareHistoryAndReceipts() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Inspector Logic");
+  static_cast<void>(document.assignId(703U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId source =
+      create(appState.facade, cr::CreativeObjectKind::PressurePlate, "Plate");
+  const cr::CreativeObjectId target =
+      create(appState.facade, cr::CreativeObjectKind::Door, "Door");
+  appState.history = {};
+  app::CreativeEditorLogicLinkState state;
+
+  const app::CreativeEditorLogicLinkReceipt selected =
+      app::selectCreativeEditorLogicLinkSource(appState, state, source);
+  const app::CreativeEditorLogicLinkReceipt added =
+      app::setCreativeEditorLogicLink(
+          appState, state, source, target,
+          cr::CreativeLogicLinkAction::Toggle, "inspector_add");
+  const app::CreativeEditorLogicLinkReceipt updated =
+      app::setCreativeEditorLogicLink(
+          appState, state, source, target,
+          cr::CreativeLogicLinkAction::Open, "inspector_update");
+  const app::CreativeEditorLogicLinkReceipt unchanged =
+      app::setCreativeEditorLogicLink(
+          appState, state, source, target,
+          cr::CreativeLogicLinkAction::Open, "inspector_no_change");
+  const std::size_t depthBeforeRemove =
+      cr::creativeUndoDepth(appState.history);
+  const app::CreativeEditorLogicLinkReceipt removed =
+      app::removeCreativeEditorLogicLink(
+          appState, state, source, target, "inspector_remove");
+  const std::size_t depthAfterRemove =
+      cr::creativeUndoDepth(appState.history);
+  const bool undone = app::undoLastEdit(appState, "undo_remove");
+  const cr::CreativeLogicLink* restored =
+      appState.facade.document().findLogicLink(source, target);
+
+  return expect(selected.accepted && state.sourceObjectId == source,
+                "Inspector can arm the canonical logic source") &&
+         expect(added.accepted && added.changed &&
+                    added.status == app::CreativeEditorLogicLinkStatus::Added,
+                "explicit set adds a link") &&
+         expect(updated.accepted && updated.changed &&
+                    updated.status ==
+                        app::CreativeEditorLogicLinkStatus::Updated,
+                "explicit set updates the action") &&
+         expect(unchanged.accepted && !unchanged.changed &&
+                    unchanged.status ==
+                        app::CreativeEditorLogicLinkStatus::Unchanged &&
+                    depthBeforeRemove == 2U,
+                "same action is history-free") &&
+         expect(removed.accepted && removed.changed &&
+                    depthAfterRemove == 3U &&
+                    cr::creativeUndoDepth(appState.history) == 2U,
+                "remove adds one history entry and undo consumes it") &&
+         expect(undone && restored != nullptr &&
+                    restored->action == cr::CreativeLogicLinkAction::Open,
+                "undo restores the exact updated link");
+}
+
 bool connectInputMappingMatchesMouseAndControllerLanguage() {
   const cr::CreativeHeldItemDefinition& definition =
       cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::LogicLink);
@@ -158,6 +219,7 @@ bool overlayShowsLinksOnlyInConnectMode() {
 int main() {
   const bool ok = selectionLinkingAndHistoryAreOneKernel() &&
                   actionCycleAndDocumentSyncAreBounded() &&
+                  explicitInspectorKernelsShareHistoryAndReceipts() &&
                   connectInputMappingMatchesMouseAndControllerLanguage() &&
                   overlayShowsLinksOnlyInConnectMode();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

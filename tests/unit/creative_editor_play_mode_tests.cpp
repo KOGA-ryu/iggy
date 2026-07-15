@@ -608,6 +608,12 @@ bool desktopPlayTogglesAndBlocksEditing() {
   const app::CreativeDesktopCommandResult blocked =
       app::dispatchCreativeDesktopCommands(frame, context);
   frame.clear();
+  frame.push(app::CreativeDesktopCommandId::SetLogicLink,
+             app::CreativeDesktopLogicLinkPayload{
+                 1U, 2U, cr::CreativeLogicLinkAction::Toggle});
+  const app::CreativeDesktopCommandResult logicBlocked =
+      app::dispatchCreativeDesktopCommands(frame, context);
+  frame.clear();
   frame.push(app::CreativeDesktopCommandId::Play);
   const app::CreativeDesktopCommandResult stopped =
       app::dispatchCreativeDesktopCommands(frame, context);
@@ -618,6 +624,10 @@ bool desktopPlayTogglesAndBlocksEditing() {
          expect(!blocked.accepted && !blocked.documentReplaced &&
                     appState.facade.document().revision() == revision,
                 "desktop mutations are rejected while play owns the frame") &&
+         expect(!logicBlocked.accepted &&
+                    logicBlocked.message == "stop play before editing" &&
+                    appState.facade.document().revision() == revision,
+                "Inspector logic edits are read-only during Play") &&
          expect(stopped.accepted && inactiveAfterStop,
                 "desktop Play toggles to Stop");
 }

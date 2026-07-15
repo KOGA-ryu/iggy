@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "app/iggy3d/creative/assets/AuthoredAsset.hpp"
-#include "app/iggy3d/creative/document/Object.hpp"
+#include "app/iggy3d/creative/document/LogicLink.hpp"
 
 namespace iggy3d_creative_app {
 
@@ -29,6 +29,18 @@ struct CreativeDesktopSelectPayload {
   std::vector<iggy3d::creative::CreativeObjectId> objectIds;
   iggy3d::creative::CreativeObjectId primaryObjectId =
       iggy3d::creative::kInvalidObjectId;
+};
+
+// SetLogicSource reads sourceObjectId. SetLogicLink and RemoveLogicLink read
+// both endpoints; RemoveLogicLink ignores action. One typed payload keeps the
+// desktop dispatcher aligned with the canonical CreativeLogicLink contract.
+struct CreativeDesktopLogicLinkPayload {
+  iggy3d::creative::CreativeObjectId sourceObjectId =
+      iggy3d::creative::kInvalidObjectId;
+  iggy3d::creative::CreativeObjectId targetObjectId =
+      iggy3d::creative::kInvalidObjectId;
+  iggy3d::creative::CreativeLogicLinkAction action =
+      iggy3d::creative::CreativeLogicLinkAction::Toggle;
 };
 
 // DeleteObjects: an explicit id list, or the current selection when empty.
@@ -91,6 +103,7 @@ using CreativeDesktopCommandPayload = std::variant<
     std::monostate,
     CreativeDesktopSaveAsPayload,
     CreativeDesktopSelectPayload,
+    CreativeDesktopLogicLinkPayload,
     CreativeDesktopDeletePayload,
     CreativeDesktopRenamePayload,
     CreativeDesktopObjectFlagPayload,

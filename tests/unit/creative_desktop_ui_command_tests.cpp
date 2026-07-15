@@ -351,6 +351,70 @@ bool focusObjectSelectsAndFramesThroughDispatcher() {
                 "focus command rejects a mismatched payload");
 }
 
+bool logicCommandsRouteThroughTypedHistoryKernel() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Cmd Logic");
+  static_cast<void>(document.assignId(423U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  cr::CreativeDocumentCreateRequest sourceRequest;
+  sourceRequest.kind = cr::CreativeObjectKind::TriggerZone;
+  sourceRequest.name = "Trigger";
+  const cr::CreativeObjectId source =
+      appState.facade.createDocumentObject(sourceRequest).objectId;
+  cr::CreativeDocumentCreateRequest targetRequest;
+  targetRequest.kind = cr::CreativeObjectKind::Door;
+  targetRequest.name = "Door";
+  const cr::CreativeObjectId target =
+      appState.facade.createDocumentObject(targetRequest).objectId;
+  appState.history = {};
+
+  app::CreativeEditorState editor;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const app::CreativeDesktopCommandResult sourceResult = dispatchPayload(
+      app::CreativeDesktopCommandId::SetLogicSource, context,
+      app::CreativeDesktopLogicLinkPayload{source});
+  const app::CreativeDesktopCommandResult added = dispatchPayload(
+      app::CreativeDesktopCommandId::SetLogicLink, context,
+      app::CreativeDesktopLogicLinkPayload{
+          source, target, cr::CreativeLogicLinkAction::Toggle});
+  const app::CreativeDesktopCommandResult updated = dispatchPayload(
+      app::CreativeDesktopCommandId::SetLogicLink, context,
+      app::CreativeDesktopLogicLinkPayload{
+          source, target, cr::CreativeLogicLinkAction::Open});
+  const app::CreativeDesktopCommandResult unchanged = dispatchPayload(
+      app::CreativeDesktopCommandId::SetLogicLink, context,
+      app::CreativeDesktopLogicLinkPayload{
+          source, target, cr::CreativeLogicLinkAction::Open});
+  const std::size_t depthBeforeRemove =
+      cr::creativeUndoDepth(appState.history);
+  const app::CreativeDesktopCommandResult removed = dispatchPayload(
+      app::CreativeDesktopCommandId::RemoveLogicLink, context,
+      app::CreativeDesktopLogicLinkPayload{source, target});
+  const app::CreativeDesktopCommandResult cleared = dispatchPayload(
+      app::CreativeDesktopCommandId::ClearLogicSource, context,
+      std::monostate{});
+
+  return expect(sourceResult.accepted && sourceResult.changed &&
+                    editor.logicLinks.sourceObjectId ==
+                        cr::kInvalidObjectId,
+                "desktop command selects then clears a logic source") &&
+         expect(added.accepted && added.changed && updated.accepted &&
+                    updated.changed,
+                "desktop commands add and update a typed logic link") &&
+         expect(unchanged.accepted && !unchanged.changed &&
+                    depthBeforeRemove == 2U,
+                "unchanged desktop action adds no history") &&
+         expect(removed.accepted && removed.changed && cleared.accepted &&
+                    cleared.changed &&
+                    cr::creativeUndoDepth(appState.history) == 3U &&
+                    appState.facade.document().findLogicLink(source, target) ==
+                        nullptr,
+                "remove and source-clear finish through semantic commands");
+}
+
 bool deleteObjectsCommandRemovesGroupHierarchy() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document = cr::CreativeDocument::create("Cmd DeleteMulti");
@@ -931,6 +995,9 @@ bool mismatchedPayloadsAreNoOpFailures() {
   const app::CreativeDesktopCommandResult badTransform = dispatchPayload(
       app::CreativeDesktopCommandId::SetObjectTransform, context,
       app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badLogic = dispatchPayload(
+      app::CreativeDesktopCommandId::SetLogicLink, context,
+      app::CreativeDesktopSelectPayload{{a}, a});
 
   return expect(!badDelete.accepted &&
                     badDelete.message == "delete objects: payload mismatch",
@@ -941,6 +1008,9 @@ bool mismatchedPayloadsAreNoOpFailures() {
          expect(!badTransform.accepted &&
                     badTransform.message == "transform: payload mismatch",
                 "SetObjectTransform with the wrong payload is a no-op failure") &&
+         expect(!badLogic.accepted &&
+                    badLogic.message == "set logic link: payload mismatch",
+                "SetLogicLink with the wrong payload is a no-op failure") &&
          expect(appState.facade.document().objectCount() == before &&
                     cr::creativeUndoDepth(appState.history) == 0U,
                 "mismatched payloads mutate nothing and record no history");
@@ -958,6 +1028,7 @@ int main() {
   // Step 3 — Desktop Command Expansion.
   ok = selectCommandsRoundTripAndRespectIdBoundary() && ok;
   ok = focusObjectSelectsAndFramesThroughDispatcher() && ok;
+  ok = logicCommandsRouteThroughTypedHistoryKernel() && ok;
   ok = deleteObjectsCommandRemovesGroupHierarchy() && ok;
   ok = deleteObjectsRejectsWithoutPartialHierarchy() && ok;
   ok = renameObjectCommandChangesNameWithHistory() && ok;

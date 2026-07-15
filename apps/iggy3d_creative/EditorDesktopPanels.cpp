@@ -1,5 +1,6 @@
 #include "EditorDesktopPanels.hpp"
 
+#include <array>
 #include <string>
 #include <string_view>
 
@@ -15,6 +16,12 @@ namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 
 namespace {
+
+constexpr std::array kInspectorLogicActions{
+    cr::CreativeLogicLinkAction::Toggle,
+    cr::CreativeLogicLinkAction::Open,
+    cr::CreativeLogicLinkAction::Close,
+};
 
 const char* controlDeviceName(cr::CreativeControlDevice device) noexcept {
   switch (device) {
@@ -38,6 +45,29 @@ void queueObjectNavigation(CreativeDesktopCommandFrame& commands,
       playModeActive ? CreativeDesktopCommandId::SelectObjects
                      : CreativeDesktopCommandId::FocusObject,
       CreativeDesktopSelectPayload{{objectId}, objectId});
+}
+
+void queueLogicSource(CreativeDesktopCommandFrame& commands,
+                      cr::CreativeObjectId sourceObjectId) {
+  commands.push(CreativeDesktopCommandId::SetLogicSource,
+                CreativeDesktopLogicLinkPayload{sourceObjectId});
+}
+
+void queueSetLogicLink(CreativeDesktopCommandFrame& commands,
+                       cr::CreativeObjectId sourceObjectId,
+                       cr::CreativeObjectId targetObjectId,
+                       cr::CreativeLogicLinkAction action) {
+  commands.push(CreativeDesktopCommandId::SetLogicLink,
+                CreativeDesktopLogicLinkPayload{sourceObjectId,
+                                                targetObjectId, action});
+}
+
+void queueRemoveLogicLink(CreativeDesktopCommandFrame& commands,
+                          cr::CreativeObjectId sourceObjectId,
+                          cr::CreativeObjectId targetObjectId) {
+  commands.push(CreativeDesktopCommandId::RemoveLogicLink,
+                CreativeDesktopLogicLinkPayload{sourceObjectId,
+                                                targetObjectId});
 }
 
 [[nodiscard]] const cr::CreativeLogicDiagnostic* diagnosticForSource(
@@ -86,7 +116,68 @@ void appendLogicLinkRow(const cr::CreativeDocument& document,
   if (ImGui::Selectable(label.c_str())) {
     queueObjectNavigation(commands, otherId, playModeActive);
   }
+  if (!playModeActive) {
+    ImGui::SetNextItemWidth(132.0F);
+    if (ImGui::BeginCombo("##logic_action",
+                          std::string(cr::toString(link.action)).c_str())) {
+      for (const cr::CreativeLogicLinkAction action :
+           kInspectorLogicActions) {
+        const bool selected = action == link.action;
+        if (ImGui::Selectable(std::string(cr::toString(action)).c_str(),
+                              selected) &&
+            !selected) {
+          queueSetLogicLink(commands, link.sourceObjectId,
+                            link.targetObjectId, action);
+        }
+      }
+      ImGui::EndCombo();
+    }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("X")) {
+      queueRemoveLogicLink(commands, link.sourceObjectId,
+                           link.targetObjectId);
+    }
+    if (ImGui::IsItemHovered()) {
+      ImGui::BeginTooltip();
+      ImGui::TextUnformatted("Remove logic link");
+      ImGui::EndTooltip();
+    }
+  }
   ImGui::PopID();
+}
+
+void appendNewLogicLinkControl(const cr::CreativeDocument& document,
+                               const CreativeEditorState& editor,
+                               const cr::CreativeObject& target,
+                               bool playModeActive,
+                               CreativeDesktopCommandFrame& commands) {
+  if (playModeActive ||
+      !cr::creativeObjectCanTargetLogicLink(target.kind) ||
+      editor.logicLinks.sourceObjectId == cr::kInvalidObjectId) {
+    return;
+  }
+  const cr::CreativeObject* source =
+      document.findObject(editor.logicLinks.sourceObjectId);
+  if (source == nullptr ||
+      !cr::creativeObjectCanSourceLogicLink(source->kind)) {
+    return;
+  }
+  const cr::CreativeLogicLink* existing = document.findLogicLink(
+      source->id, target.id);
+  if (existing != nullptr) {
+    return;
+  }
+  ImGui::SeparatorText("Active source");
+  ImGui::TextUnformatted(source->name.c_str());
+  ImGui::SetNextItemWidth(160.0F);
+  if (ImGui::BeginCombo("##new_logic_action", "Add link...")) {
+    for (const cr::CreativeLogicLinkAction action : kInspectorLogicActions) {
+      if (ImGui::Selectable(std::string(cr::toString(action)).c_str())) {
+        queueSetLogicLink(commands, source->id, target.id, action);
+      }
+    }
+    ImGui::EndCombo();
+  }
 }
 
 void appendRuntimeLogicMonitor(
@@ -315,6 +406,26 @@ void buildCreativeEditorDesktopPanels(
                 logicDiagnosticColor(sourceDiagnostic->severity), "%s",
                 std::string(cr::toString(sourceDiagnostic->code)).c_str());
           }
+          const bool activeSource =
+              editor.logicLinks.sourceObjectId == inspected->id;
+          if (activeSource) {
+            ImGui::TextColored(ImVec4{0.20F, 1.0F, 0.35F, 1.0F},
+                               "ACTIVE SOURCE");
+            if (!playModeActive) {
+              ImGui::SameLine();
+              if (ImGui::SmallButton("X##logic_source")) {
+                commands.push(CreativeDesktopCommandId::ClearLogicSource);
+              }
+              if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::TextUnformatted("Clear active logic source");
+                ImGui::EndTooltip();
+              }
+            }
+          } else if (!playModeActive &&
+                     ImGui::Button("Set as source##logic_source")) {
+            queueLogicSource(commands, inspected->id);
+          }
         }
         ImGui::SeparatorText("Logic links");
         std::size_t shown = 0U;
@@ -331,6 +442,8 @@ void buildCreativeEditorDesktopPanels(
         if (shown == 0U) {
           ImGui::TextDisabled("No logic links");
         }
+        appendNewLogicLinkControl(document, editor, *inspected,
+                                  playModeActive, commands);
         ImGui::TextDisabled("Document links: %llu",
                             static_cast<unsigned long long>(
                                 document.logicLinks().size()));
