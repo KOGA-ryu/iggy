@@ -5,6 +5,7 @@
 #include "app/iggy3d/creative/render/CreativeSceneFrame.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "render/FrameInput.hpp"
+#include "runtime/inventory/InventorySystem.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -537,6 +538,98 @@ bool invalidMapAndTuningFailClosed() {
                 "invalid fixed-step tuning fails before preparation");
 }
 
+bool authoredDoorAndPickupCompleteTheRuntimeInteractionLoop() {
+  iggy3d::StaticMeshAssetCatalog catalog;
+
+  cr::CreativeDocument doorDocument = playableDocument(false, 917U);
+  static_cast<void>(addObject(
+      doorDocument, cr::CreativeObjectKind::Door, "Play Door",
+      {0.0, 0.25, -0.8},
+      cr::CreativeBounds{{-0.5, 0.25, -0.9}, {0.5, 2.5, -0.7}}));
+  const std::uint64_t doorRevision = doorDocument.revision();
+  const std::size_t doorObjectCount = doorDocument.objectCount();
+  app::CreativeEditorPlayMode doorMode;
+  if (!start(doorMode, doorDocument, catalog).accepted ||
+      !doorMode.sandbox.has_value()) {
+    return expect(false, "door interaction setup starts");
+  }
+  const std::size_t closedMeshCount =
+      doorMode.sandbox->room.staticMeshes.size();
+  const std::size_t closedColliderCount =
+      doorMode.sandbox->collisionSurfaces.size();
+  const app::CreativeEditorPlayTickReceipt doorPressed = tickAt(
+      doorMode, doorDocument, 1U, {false, true});
+  const std::string openPrompt = doorMode.target.actionPrompt;
+  const app::CreativeEditorPlayTickReceipt doorOpened = tickAt(
+      doorMode, doorDocument, 50'000'001U, {false, true});
+  const bool openMeshRemoved =
+      doorMode.sandbox->room.staticMeshes.size() + 1U == closedMeshCount;
+  const std::size_t openColliderCount =
+      doorMode.sandbox->collisionSurfaces.size();
+  static_cast<void>(tickAt(doorMode, doorDocument, 100'000'001U, {}));
+  const std::string closePrompt = doorMode.target.actionPrompt;
+  const app::CreativeEditorPlayTickReceipt doorClosed = tickAt(
+      doorMode, doorDocument, 150'000'001U, {false, true});
+
+  cr::CreativeDocument pickupDocument = playableDocument(false, 918U);
+  static_cast<void>(addObject(pickupDocument, cr::CreativeObjectKind::LootPoint,
+                              "Play Key", {0.0, 1.65, -0.4}));
+  const std::uint64_t pickupRevision = pickupDocument.revision();
+  app::CreativeEditorPlayMode pickupMode;
+  if (!start(pickupMode, pickupDocument, catalog).accepted ||
+      !pickupMode.sandbox.has_value()) {
+    return expect(false, "pickup interaction setup starts");
+  }
+  const app::CreativeEditorPlayTickReceipt pickupPressed = tickAt(
+      pickupMode, pickupDocument, 1U, {false, true});
+  const iggy3d::EntityId pickupEntityId = pickupMode.target.entity;
+  const std::string pickupItemId =
+      pickupMode.sandbox->interactables.front().definition.itemId;
+  const app::CreativeEditorPlayTickReceipt pickupExecuted = tickAt(
+      pickupMode, pickupDocument, 50'000'001U, {false, true});
+  const iggy3d::EntityState* pickupEntity =
+      pickupMode.sandbox->session.state().world.findById(pickupEntityId);
+  const iggy3d::PlayerInventory* inventory = iggy3d::findInventory(
+      pickupMode.sandbox->session.state().inventory, 0U);
+  const bool inventoryContainsPickup =
+      inventory != nullptr &&
+      std::any_of(inventory->stacks.begin(), inventory->stacks.end(),
+                  [&pickupItemId](const iggy3d::InventoryStack& stack) {
+                    return stack.itemId == pickupItemId && stack.count == 1U;
+                  });
+
+  return expect(doorPressed.actionSubmitted && openPrompt == "OPEN",
+                "door press is admitted through the semantic action path") &&
+         expect(doorOpened.interactionEffectsApplied == 1U &&
+                    doorOpened.interactionEffect ==
+                        cr::CreativeRuntimeInteractionEffectStatus::DoorOpened &&
+                    doorOpened.runtimeGeometryRevision == 1U &&
+                    openMeshRemoved && openColliderCount < closedColliderCount,
+                "executed door interaction refreshes scene and collision") &&
+         expect(closePrompt == "CLOSE" &&
+                    doorClosed.interactionEffect ==
+                        cr::CreativeRuntimeInteractionEffectStatus::DoorClosed &&
+                    doorMode.targetingGeometryRevision == 2U &&
+                    doorMode.sandbox->room.staticMeshes.size() ==
+                        closedMeshCount &&
+                    doorMode.sandbox->collisionSurfaces.size() ==
+                        closedColliderCount,
+                "open door stays targetable and closes with restored targeting") &&
+         expect(doorDocument.revision() == doorRevision &&
+                    doorDocument.objectCount() == doorObjectCount,
+                "door runtime state never leaks into authored content") &&
+         expect(pickupPressed.actionSubmitted &&
+                    pickupExecuted.interactionEffect ==
+                        cr::CreativeRuntimeInteractionEffectStatus::PickupAcquired &&
+                    pickupExecuted.interactionEffectsApplied == 1U &&
+                    pickupEntity != nullptr && !pickupEntity->active &&
+                    inventoryContainsPickup,
+                "pickup enters inventory and disappears after one interaction") &&
+         expect(pickupMode.lastInteractionEffect.displayName == "Play Key" &&
+                    pickupDocument.revision() == pickupRevision,
+                "pickup feedback is authored-name aware and sandbox isolated");
+}
+
 }  // namespace
 
 int main() {
@@ -548,7 +641,8 @@ int main() {
                   fixedTickMovementAndCatchUpAreBounded() &&
                   idleTicksAdvanceAndStaleDocumentsStop() &&
                   desktopPlayTogglesAndBlocksEditing() &&
-                  invalidMapAndTuningFailClosed();
+                  invalidMapAndTuningFailClosed() &&
+                  authoredDoorAndPickupCompleteTheRuntimeInteractionLoop();
   if (!ok) {
     return 1;
   }

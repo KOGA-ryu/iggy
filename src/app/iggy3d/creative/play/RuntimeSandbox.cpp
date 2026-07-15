@@ -87,6 +87,41 @@ bool surfacesHaveUniqueIdentity(
   return true;
 }
 
+bool interactableDefinitionIsValid(
+    const CreativeRuntimeInteractableDefinition& definition) noexcept {
+  if (definition.objectId == kInvalidObjectId ||
+      definition.stableName.empty() || definition.displayName.empty() ||
+      !isFinite(definition.transform) || !isValid(definition.localBounds)) {
+    return false;
+  }
+  switch (definition.kind) {
+    case CreativeRuntimeInteractableKind::Door:
+      return !definition.roomMeshId.empty() && definition.itemId.empty();
+    case CreativeRuntimeInteractableKind::Control:
+      return definition.roomMeshId.empty() && definition.itemId.empty();
+    case CreativeRuntimeInteractableKind::Pickup:
+      return definition.roomMeshId.empty() && !definition.itemId.empty();
+  }
+  return false;
+}
+
+bool interactablesHaveUniqueIdentity(
+    const std::vector<CreativeRuntimeInteractableDefinition>& definitions)
+    noexcept {
+  for (std::size_t index = 0U; index < definitions.size(); ++index) {
+    if (!interactableDefinitionIsValid(definitions[index])) {
+      return false;
+    }
+    for (std::size_t other = index + 1U; other < definitions.size(); ++other) {
+      if (definitions[index].objectId == definitions[other].objectId ||
+          definitions[index].stableName == definitions[other].stableName) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 bool payloadShapeIsValid(
     const CreativePlayActivationPayload& payload) noexcept {
   if (payload.documentId == kInvalidDocumentId || payload.roomId.empty() ||
@@ -109,7 +144,8 @@ bool payloadShapeIsValid(
     }
   }
   return spawnCount == 1U && matchedPreparedSpawn &&
-         anchorsHaveUniqueIdentity(payload.room.anchors);
+         anchorsHaveUniqueIdentity(payload.room.anchors) &&
+         interactablesHaveUniqueIdentity(payload.interactables);
 }
 
 bool sandboxConfigIsValid(const CreativeRuntimeSandboxConfig& config) {
@@ -155,6 +191,56 @@ ScenarioEntitySeed makeCombatantEntity(const RoomAnchorAsset& anchor,
   return entity;
 }
 
+ScenarioEntitySeed makeInteractableEntity(
+    const CreativeRuntimeInteractableDefinition& definition) {
+  ScenarioEntitySeed entity;
+  entity.stableName = definition.stableName;
+  entity.transform = definition.transform;
+  entity.localBounds = definition.localBounds;
+  entity.active = true;
+  entity.persistent = true;
+  entity.targeting.targetable = true;
+  entity.targeting.actions = {ScenarioTargetAction::Interact,
+                              ScenarioTargetAction::Inspect};
+  switch (definition.kind) {
+    case CreativeRuntimeInteractableKind::Door:
+      entity.kind = ScenarioEntityKind::Door;
+      entity.interaction.kind = ScenarioInteractionKind::Activate;
+      entity.interaction.primaryEffect =
+          ScenarioInteractionEffectKind::EmitEventOnly;
+      entity.interaction.repeatable = true;
+      break;
+    case CreativeRuntimeInteractableKind::Control:
+      entity.kind = ScenarioEntityKind::Marker;
+      entity.interaction.kind = ScenarioInteractionKind::Activate;
+      entity.interaction.primaryEffect =
+          ScenarioInteractionEffectKind::EmitEventOnly;
+      entity.interaction.repeatable = true;
+      break;
+    case CreativeRuntimeInteractableKind::Pickup:
+      entity.kind = ScenarioEntityKind::Pickup;
+      entity.interaction.kind = ScenarioInteractionKind::Pickup;
+      entity.interaction.primaryEffect =
+          ScenarioInteractionEffectKind::AddItemToInventory;
+      entity.interaction.itemId = definition.itemId;
+      entity.interaction.itemCount = 1U;
+      entity.interaction.deactivateTargetOnSuccess = true;
+      break;
+  }
+  return entity;
+}
+
+bool anchorBacksInteractable(
+    const RoomAnchorAsset& anchor,
+    const std::vector<CreativeRuntimeInteractableDefinition>& definitions)
+    noexcept {
+  return std::any_of(
+      definitions.begin(), definitions.end(),
+      [&anchor](const CreativeRuntimeInteractableDefinition& definition) {
+        return definition.stableName == anchor.runtimeStableName;
+      });
+}
+
 ScenarioObjectiveSeed makeSandboxObjective() {
   ScenarioObjectiveSeed objective;
   objective.id = "creative_sandbox_active";
@@ -195,6 +281,7 @@ CreativeRuntimeScenarioSeedResult buildCreativeRuntimeScenarioSeed(
     const CreativeRuntimeSandboxConfig& config) {
   CreativeRuntimeScenarioSeedResult result;
   result.summary.sourceAnchorCount = payload.room.anchors.size();
+  result.summary.sourceInteractableCount = payload.interactables.size();
   if (!sandboxConfigIsValid(config)) {
     result.status = CreativeRuntimeScenarioSeedStatus::InvalidConfig;
     result.reasonCode = "creative_runtime_seed_config_invalid";
@@ -224,7 +311,8 @@ CreativeRuntimeScenarioSeedResult buildCreativeRuntimeScenarioSeed(
   for (const RoomAnchorAsset& anchor : payload.room.anchors) {
     const RuntimeAnchorActorPolicy* policy = actorPolicyFor(anchor.kind);
     if (policy == nullptr) {
-      if (anchor.kind != "spawn") {
+      if (anchor.kind != "spawn" &&
+          !anchorBacksInteractable(anchor, payload.interactables)) {
         ++result.summary.ignoredAnchorCount;
       }
       continue;
@@ -249,6 +337,22 @@ CreativeRuntimeScenarioSeedResult buildCreativeRuntimeScenarioSeed(
     }
   }
 
+  for (const CreativeRuntimeInteractableDefinition& definition :
+       payload.interactables) {
+    seed.entities.push_back(makeInteractableEntity(definition));
+    switch (definition.kind) {
+      case CreativeRuntimeInteractableKind::Door:
+        ++result.summary.doorEntityCount;
+        break;
+      case CreativeRuntimeInteractableKind::Control:
+        ++result.summary.controlEntityCount;
+        break;
+      case CreativeRuntimeInteractableKind::Pickup:
+        ++result.summary.pickupEntityCount;
+        break;
+    }
+  }
+
   result.accepted = true;
   result.status = CreativeRuntimeScenarioSeedStatus::Built;
   result.reasonCode = "creative_runtime_seed_built";
@@ -269,6 +373,8 @@ std::string_view toString(
       return "invalid_config";
     case CreativeRuntimeSandboxActivationStatus::InvalidPayload:
       return "invalid_payload";
+    case CreativeRuntimeSandboxActivationStatus::InvalidInteractables:
+      return "invalid_interactables";
     case CreativeRuntimeSandboxActivationStatus::InvalidCollisionSurfaces:
       return "invalid_collision_surfaces";
     case CreativeRuntimeSandboxActivationStatus::SessionCreationFailed:
@@ -332,6 +438,17 @@ CreativeRuntimeSandboxActivationResult activateCreativeRuntimeSandbox(
       buildReasoningGraph(request.payload.room, {});
   receipt.reasoningGraph = summarizeReasoningGraph(reasoningGraph);
 
+  CreativeRuntimeInteractableStateBuildResult interactableStates =
+      buildCreativeRuntimeInteractableStates(
+          request.payload.room, std::move(request.payload.interactables));
+  if (!interactableStates.ok) {
+    setActivationStatus(
+        receipt,
+        CreativeRuntimeSandboxActivationStatus::InvalidInteractables,
+        std::string(interactableStates.reasonCode));
+    return result;
+  }
+
   SessionCreateRequest sessionRequest;
   sessionRequest.packageId = request.config.packageId;
   sessionRequest.config = request.config.runtimeConfig;
@@ -345,6 +462,18 @@ CreativeRuntimeSandboxActivationResult activateCreativeRuntimeSandbox(
     return result;
   }
   created.value.setReasoningGraph(std::move(reasoningGraph));
+  for (CreativeRuntimeInteractableState& state : interactableStates.states) {
+    const EntityState* entity = created.value.state().world.findByStableName(
+        state.definition.stableName);
+    if (entity == nullptr) {
+      setActivationStatus(
+          receipt,
+          CreativeRuntimeSandboxActivationStatus::InvalidInteractables,
+          "creative_runtime_interactable_entity_missing");
+      return result;
+    }
+    state.entity = entity->id;
+  }
   receipt.initialStateHash = created.value.stateHash();
 
   CreativeRuntimeSandbox sandbox;
@@ -354,7 +483,17 @@ CreativeRuntimeSandboxActivationResult activateCreativeRuntimeSandbox(
   sandbox.scenario = receipt.scenario;
   sandbox.reasoningGraph = receipt.reasoningGraph;
   sandbox.room = std::move(request.payload.room);
+  sandbox.roomStaticMeshOrder.reserve(sandbox.room.staticMeshes.size());
+  for (const RoomStaticMeshAsset& mesh : sandbox.room.staticMeshes) {
+    sandbox.roomStaticMeshOrder.push_back(mesh.id);
+  }
+  sandbox.roomSpatialSurfaceOrder.reserve(
+      sandbox.room.spatialSurfaces.size());
+  for (const RoomSpatialSurface& surface : sandbox.room.spatialSurfaces) {
+    sandbox.roomSpatialSurfaceOrder.push_back(surface.id);
+  }
   sandbox.collisionSurfaces = std::move(collisionSurfaces);
+  sandbox.interactables = std::move(interactableStates.states);
   sandbox.session = std::move(created.value);
   result.sandbox.emplace(std::move(sandbox));
   setActivationStatus(receipt,

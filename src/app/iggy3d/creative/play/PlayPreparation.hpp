@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/iggy3d/creative/play/RuntimeInteractables.hpp"
 #include "app/iggy3d/creative/validation/MapValidation.hpp"
 
 #include <cstdint>
@@ -16,6 +17,7 @@ enum class CreativePlayPreparationStatus : std::uint8_t {
   InvalidDocumentIdentity,
   ValidationFailed,
   PlayerSpawnUnavailable,
+  InteractableCatalogInvalid,
   Prepared,
 };
 
@@ -33,6 +35,7 @@ struct CreativePlayActivationPayload {
   std::uint64_t documentRevision = 0;
   std::string roomId;
   RoomAnchorAsset playerSpawn;
+  std::vector<CreativeRuntimeInteractableDefinition> interactables;
   RoomAsset room;
 };
 

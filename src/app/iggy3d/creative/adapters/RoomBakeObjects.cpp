@@ -119,6 +119,18 @@ struct BakeStaticMeshEntry {
          descriptor.runtimeAnchorSemantic != CreativeRuntimeAnchorSemantic::None;
 }
 
+[[nodiscard]] std::string_view runtimeInteractableAnchorKind(
+    CreativeObjectKind kind) noexcept {
+  switch (kind) {
+    case CreativeObjectKind::Switch:
+    case CreativeObjectKind::Lever:
+    case CreativeObjectKind::Button:
+      return "control";
+    default:
+      return {};
+  }
+}
+
 [[nodiscard]] bool projectionSupportsBoundsBackedLineGeometry(
     CreativeSpatialProjectionProfile projection) noexcept {
   return projection == CreativeSpatialProjectionProfile::BoxProjection ||
@@ -498,7 +510,8 @@ void appendSpatialSurfaces(RoomAsset& room,
     return skippedClassification(RoomBakeObjectDecision::SkipHidden, false);
   }
 
-  if (descriptor.isEditorOnly) {
+  if (descriptor.isEditorOnly ||
+      descriptor.occupancyKind == CreativeSpatialOccupancyKind::Authoring) {
     return skippedClassification(RoomBakeObjectDecision::SkipEditorOnly,
                                  false);
   }
@@ -510,6 +523,18 @@ void appendSpatialSurfaces(RoomAsset& room,
 
   RoomBakeObjectClassification classification;
   classification.countedAsConsidered = true;
+  const std::string_view interactableAnchorKind =
+      runtimeInteractableAnchorKind(object.kind);
+  if (!interactableAnchorKind.empty()) {
+    if (!validAnchorPosition(object.transform.position)) {
+      classification.decision =
+          RoomBakeObjectDecision::SkipUnsupportedAnchor;
+      return classification;
+    }
+    classification.decision = RoomBakeObjectDecision::BakeAnchor;
+    classification.anchorKind = interactableAnchorKind;
+    return classification;
+  }
   if (descriptor.shapeKind == CreativeObjectShapeKind::Point) {
     if (!descriptorSupportsRuntimeRoomAnchor(descriptor) ||
         !validAnchorPosition(object.transform.position)) {

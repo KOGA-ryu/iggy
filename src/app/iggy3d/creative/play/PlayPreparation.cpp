@@ -52,6 +52,8 @@ std::string_view toString(CreativePlayPreparationStatus status) noexcept {
       return "validation_failed";
     case CreativePlayPreparationStatus::PlayerSpawnUnavailable:
       return "player_spawn_unavailable";
+    case CreativePlayPreparationStatus::InteractableCatalogInvalid:
+      return "interactable_catalog_invalid";
     case CreativePlayPreparationStatus::Prepared:
       return "prepared";
   }
@@ -103,11 +105,22 @@ CreativePlayPreparationResult prepareCreativePlay(
     return result;
   }
 
+  CreativeRuntimeInteractableCatalog interactables =
+      buildCreativeRuntimeInteractableCatalog(*request.document,
+                                              evaluation.roomBake.room);
+  if (!interactables.ok) {
+    setStatus(result,
+              CreativePlayPreparationStatus::InteractableCatalogInvalid,
+              interactables.reasonCode);
+    return result;
+  }
+
   CreativePlayActivationPayload payload;
   payload.documentId = request.document->id();
   payload.documentRevision = request.document->revision();
   payload.roomId = evaluation.roomBake.room.id;
   payload.playerSpawn = *spawn;
+  payload.interactables = std::move(interactables.definitions);
   payload.room = std::move(evaluation.roomBake.room);
   result.payload.emplace(std::move(payload));
   setStatus(result,

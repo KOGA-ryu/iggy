@@ -134,22 +134,80 @@ void appendText(CreativeEditorPlayHudFrame& hud,
     return result;
   }
   constexpr std::size_t kMaximumNameLength = 22U;
+  const std::string& label =
+      target.displayName.empty() ? target.stableName : target.displayName;
   const int nameLength = static_cast<int>(
-      std::min(target.stableName.size(), kMaximumNameLength));
+      std::min(label.size(), kMaximumNameLength));
   const std::string_view status = toString(target.status);
+  const bool actionable =
+      (target.status == CreativeEditorPlayTargetStatus::Valid ||
+       target.status == CreativeEditorPlayTargetStatus::Friendly) &&
+      !target.actionPrompt.empty();
   if (std::isfinite(target.reachDistanceMeters) &&
       target.reachDistanceMeters > 0.0F) {
-    std::snprintf(result.chars.data(), result.chars.size(),
-                  "%.*s %.*s %.1fM", nameLength,
-                  target.stableName.c_str(), static_cast<int>(status.size()),
-                  status.data(), target.reachDistanceMeters);
+    if (actionable) {
+      std::snprintf(result.chars.data(), result.chars.size(),
+                    "%s %.*s %.1fM", target.actionPrompt.c_str(), nameLength,
+                    label.c_str(), target.reachDistanceMeters);
+    } else {
+      std::snprintf(result.chars.data(), result.chars.size(),
+                    "%.*s %.*s %.1fM", nameLength, label.c_str(),
+                    static_cast<int>(status.size()), status.data(),
+                    target.reachDistanceMeters);
+    }
   } else {
-    std::snprintf(result.chars.data(), result.chars.size(),
-                  "%.*s %.*s", nameLength, target.stableName.c_str(),
-                  static_cast<int>(status.size()), status.data());
+    if (actionable) {
+      std::snprintf(result.chars.data(), result.chars.size(), "%s %.*s",
+                    target.actionPrompt.c_str(), nameLength, label.c_str());
+    } else {
+      std::snprintf(result.chars.data(), result.chars.size(), "%.*s %.*s",
+                    nameLength, label.c_str(), static_cast<int>(status.size()),
+                    status.data());
+    }
   }
   result.chars[std::min(maximumCharacterCount,
                         result.chars.size() - 1U)] = '\0';
+  return result;
+}
+
+[[nodiscard]] FixedHudText interactionEffectHudText(
+    const iggy3d::creative::CreativeRuntimeInteractionEffectReceipt& effect) {
+  FixedHudText result;
+  using Status =
+      iggy3d::creative::CreativeRuntimeInteractionEffectStatus;
+  switch (effect.status) {
+    case Status::DoorOpened:
+      std::snprintf(result.chars.data(), result.chars.size(), "OPENED %.80s",
+                    effect.displayName.c_str());
+      break;
+    case Status::DoorClosed:
+      std::snprintf(result.chars.data(), result.chars.size(), "CLOSED %.80s",
+                    effect.displayName.c_str());
+      break;
+    case Status::CircuitOpened:
+      std::snprintf(result.chars.data(), result.chars.size(),
+                    "OPENED %zu LINKED DOOR%s", effect.affectedDoorCount,
+                    effect.affectedDoorCount == 1U ? "" : "S");
+      break;
+    case Status::CircuitClosed:
+      std::snprintf(result.chars.data(), result.chars.size(),
+                    "CLOSED %zu LINKED DOOR%s", effect.affectedDoorCount,
+                    effect.affectedDoorCount == 1U ? "" : "S");
+      break;
+    case Status::PickupAcquired:
+      std::snprintf(result.chars.data(), result.chars.size(), "PICKED UP %.78s",
+                    effect.displayName.c_str());
+      break;
+    case Status::NoLinkedDoor:
+      std::snprintf(result.chars.data(), result.chars.size(),
+                    "NO LINKED DOOR");
+      break;
+    case Status::NotRequested:
+    case Status::TargetMissing:
+    case Status::UnsupportedTarget:
+    case Status::GeometryRejected:
+      break;
+  }
   return result;
 }
 
@@ -380,7 +438,7 @@ CreativeEditorPlayHudFrame buildCreativeEditorPlayHud(
   const std::int32_t panelY = content.y + 12;
   const std::uint32_t panelWidth = std::min<std::uint32_t>(
       420U, content.width > 24U ? content.width - 24U : content.width);
-  appendRect(hud, {panelX, panelY, panelWidth, 76U,
+  appendRect(hud, {panelX, panelY, panelWidth, 96U,
                    0.04F, 0.055F, 0.065F, 0.88F});
 
   FixedHudText healthText;
@@ -398,8 +456,20 @@ CreativeEditorPlayHudFrame buildCreativeEditorPlayHud(
              frame.viewport.width, frame.viewport.height,
              targetColor(mode.target.status));
 
+  const FixedHudText effectText =
+      interactionEffectHudText(mode.lastInteractionEffect);
+  if (!effectText.view().empty()) {
+    const bool warning =
+        mode.lastInteractionEffect.status ==
+        iggy3d::creative::CreativeRuntimeInteractionEffectStatus::NoLinkedDoor;
+    appendText(hud, effectText.view(), panelX + 10, panelY + 49,
+               frame.viewport.width, frame.viewport.height,
+               warning ? HudColor{0.98F, 0.84F, 0.24F, 1.0F}
+                       : HudColor{0.30F, 0.95F, 0.48F, 1.0F});
+  }
+
   const std::int32_t healthBarX = panelX + 10;
-  const std::int32_t healthBarY = panelY + 55;
+  const std::int32_t healthBarY = panelY + 75;
   const std::uint32_t healthBarWidth = panelWidth > 20U ? panelWidth - 20U : 0U;
   appendRect(hud, {healthBarX, healthBarY, healthBarWidth, 8U,
                    0.18F, 0.20F, 0.22F, 1.0F});

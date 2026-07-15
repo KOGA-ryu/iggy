@@ -11,6 +11,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace iggy3d::creative {
 
@@ -33,9 +34,13 @@ struct CreativeRuntimeSandboxConfig {
 
 struct CreativeRuntimeScenarioSummary {
   std::size_t sourceAnchorCount = 0;
+  std::size_t sourceInteractableCount = 0;
   std::size_t playerEntityCount = 0;
   std::size_t npcEntityCount = 0;
   std::size_t monsterEntityCount = 0;
+  std::size_t doorEntityCount = 0;
+  std::size_t controlEntityCount = 0;
+  std::size_t pickupEntityCount = 0;
   std::size_t ignoredAnchorCount = 0;
 };
 
@@ -64,6 +69,7 @@ enum class CreativeRuntimeSandboxActivationStatus : std::uint8_t {
   StalePayload,
   InvalidConfig,
   InvalidPayload,
+  InvalidInteractables,
   InvalidCollisionSurfaces,
   SessionCreationFailed,
   Activated,
@@ -91,7 +97,11 @@ struct CreativeRuntimeSandbox {
   CreativeRuntimeScenarioSummary scenario;
   ReasoningGraphSummary reasoningGraph;
   RoomAsset room;
+  std::vector<std::string> roomStaticMeshOrder;
+  std::vector<std::string> roomSpatialSurfaceOrder;
   SpatialSurfaceSet collisionSurfaces;
+  std::vector<CreativeRuntimeInteractableState> interactables;
+  std::uint64_t geometryRevision = 0U;
   Session session;
 };
 

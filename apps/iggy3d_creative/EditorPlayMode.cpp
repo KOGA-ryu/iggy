@@ -146,7 +146,7 @@ CreativeEditorPlayTarget resolveModeTarget(
     return invalid;
   }
   const iggy3d::SessionState& state = mode.sandbox->session.state();
-  return resolveCreativeEditorPlayTarget(
+  CreativeEditorPlayTarget result = resolveCreativeEditorPlayTarget(
       {&state.world,
        &state.combat,
        mode.targetingBake.colliders,
@@ -158,6 +158,90 @@ CreativeEditorPlayTarget resolveModeTarget(
        state.config.interactionRangeMeters,
        mode.tuning.targetOcclusionMarginMeters,
        mode.tuning.attackDamage});
+  result.displayName = result.stableName;
+  const iggy3d::creative::CreativeRuntimeInteractableState* interactable =
+      iggy3d::creative::findCreativeRuntimeInteractable(*mode.sandbox,
+                                                       result.entity);
+  if (interactable != nullptr) {
+    result.displayName = interactable->definition.displayName;
+    switch (interactable->definition.kind) {
+      case iggy3d::creative::CreativeRuntimeInteractableKind::Door:
+        result.actionPrompt = interactable->doorOpen ? "CLOSE" : "OPEN";
+        break;
+      case iggy3d::creative::CreativeRuntimeInteractableKind::Control:
+        result.actionPrompt = "ACTIVATE";
+        break;
+      case iggy3d::creative::CreativeRuntimeInteractableKind::Pickup:
+        result.actionPrompt = "PICK UP";
+        break;
+    }
+  } else if (result.friendly && result.supportsInteract) {
+    result.actionPrompt = "INTERACT";
+  } else if (result.supportsAttack) {
+    result.actionPrompt = "ATTACK";
+  } else if (result.supportsInteract) {
+    result.actionPrompt = "INTERACT";
+  }
+  return result;
+}
+
+bool refreshTargetingBake(CreativeEditorPlayMode& mode) {
+  if (!mode.sandbox.has_value()) {
+    return false;
+  }
+  iggy3d::PhysicsSpatialSurfaceColliderBakeRequest request;
+  request.surfaces = &mode.sandbox->collisionSurfaces;
+  iggy3d::PhysicsSpatialSurfaceColliderBakeResult baked =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces(request);
+  if (!baked.ok) {
+    return false;
+  }
+  mode.targetingBake = std::move(baked);
+  mode.targetingGeometryRevision = mode.sandbox->geometryRevision;
+  return true;
+}
+
+bool applyRuntimeInteractionEvents(
+    CreativeEditorPlayMode& mode,
+    CreativeEditorPlayTickReceipt& receipt) {
+  if (!mode.sandbox.has_value()) {
+    return false;
+  }
+  iggy3d::creative::CreativeRuntimeSandbox& sandbox = *mode.sandbox;
+  const std::vector<iggy3d::RuntimeEvent>& events =
+      sandbox.session.state().transient.events;
+  if (mode.processedRuntimeEventCount > events.size()) {
+    return false;
+  }
+  for (std::size_t index = mode.processedRuntimeEventCount;
+       index < events.size(); ++index) {
+    const iggy3d::RuntimeEvent& event = events[index];
+    if (event.kind != iggy3d::RuntimeEventKind::Interacted ||
+        iggy3d::creative::findCreativeRuntimeInteractable(sandbox,
+                                                         event.target) ==
+            nullptr) {
+      continue;
+    }
+    iggy3d::creative::CreativeRuntimeInteractionEffectReceipt effect =
+        iggy3d::creative::applyCreativeRuntimeInteractionEffect(sandbox,
+                                                               event.target);
+    mode.lastInteractionEffect = effect;
+    receipt.interactionEffect = effect.status;
+    ++receipt.interactionEffectsApplied;
+    if (!effect.accepted ||
+        effect.status == iggy3d::creative::
+                             CreativeRuntimeInteractionEffectStatus::
+                                 GeometryRejected) {
+      return false;
+    }
+  }
+  mode.processedRuntimeEventCount = events.size();
+  if (mode.targetingGeometryRevision != sandbox.geometryRevision &&
+      !refreshTargetingBake(mode)) {
+    return false;
+  }
+  receipt.runtimeGeometryRevision = sandbox.geometryRevision;
+  return true;
 }
 
 void failAndStop(CreativeEditorPlayMode& mode,
@@ -253,8 +337,11 @@ CreativeEditorPlayStartReceipt startCreativeEditorPlayMode(
     return receipt;
   }
   mode.tuning = request.tuning;
+  mode.targetingGeometryRevision = mode.sandbox->geometryRevision;
   mode.actionRouter = {};
   mode.target = {};
+  mode.lastInteractionEffect = {};
+  mode.processedRuntimeEventCount = 0U;
   mode.cameraYawDegrees = 0.0F;
   mode.cameraPitchDegrees = 0.0F;
   resetPlayClock(mode);
@@ -269,8 +356,11 @@ iggy3d::creative::CreativeRuntimeSandboxStopReceipt stopCreativeEditorPlayMode(
   iggy3d::creative::CreativeRuntimeSandboxStopReceipt receipt =
       iggy3d::creative::stopCreativeRuntimeSandbox(mode.sandbox);
   mode.targetingBake = {};
+  mode.targetingGeometryRevision = 0U;
   mode.actionRouter = {};
   mode.target = {};
+  mode.lastInteractionEffect = {};
+  mode.processedRuntimeEventCount = 0U;
   resetPlayClock(mode);
   return receipt;
 }
@@ -314,6 +404,7 @@ CreativeEditorPlayTickReceipt tickCreativeEditorPlayMode(
   }
 
   iggy3d::creative::CreativeRuntimeSandbox& sandbox = *mode.sandbox;
+  receipt.runtimeGeometryRevision = sandbox.geometryRevision;
   if (request.sourceDocument == nullptr ||
       !iggy3d::creative::creativeRuntimeSandboxIsCurrent(
           sandbox, *request.sourceDocument)) {
@@ -430,6 +521,12 @@ CreativeEditorPlayTickReceipt tickCreativeEditorPlayMode(
       failAndStop(mode, receipt,
                   CreativeEditorPlayTickStatus::RuntimeTickFailed,
                   std::string(tick.error.code));
+      return receipt;
+    }
+    if (!applyRuntimeInteractionEvents(mode, receipt)) {
+      failAndStop(mode, receipt,
+                  CreativeEditorPlayTickStatus::RuntimeTickFailed,
+                  "creative_editor_play_interaction_effect_failed");
       return receipt;
     }
     mode.accumulatedTimeNanoseconds -= tickNanoseconds;

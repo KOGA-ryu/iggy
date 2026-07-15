@@ -37,6 +37,26 @@ bool addObject(cr::CreativeDocument& document,
   return document.createObject(request).accepted;
 }
 
+cr::CreativeDocumentCreateReceipt createObject(
+    cr::CreativeDocument& document,
+    cr::CreativeObjectKind kind,
+    std::string name,
+    cr::CreativeVec3 position,
+    std::optional<cr::CreativeObjectId> parentId = std::nullopt,
+    std::optional<cr::CreativeBounds> bounds = std::nullopt) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = kind;
+  request.name = std::move(name);
+  request.transform.position = position;
+  request.hasTransformOverride = true;
+  request.parentId = parentId;
+  if (bounds.has_value()) {
+    request.bounds = *bounds;
+    request.hasBoundsOverride = true;
+  }
+  return document.createObject(request);
+}
+
 cr::CreativeDocument playableDocument(bool includeActors = true,
                                       cr::CreativeDocumentId id = 41U) {
   cr::CreativeDocument document =
@@ -426,6 +446,173 @@ bool runningSnapshotDoesNotTrackLaterDocumentEdits() {
                 "running snapshot does not absorb later authoring edits");
 }
 
+bool authoredInteractablesOwnExplicitCircuitsAndDynamicGeometry() {
+  cr::CreativeDocument document = playableDocument(false, 47U);
+  const cr::CreativeDocumentCreateReceipt circuit = createObject(
+      document, cr::CreativeObjectKind::Group, "West Door Circuit",
+      {0.0, 0.0, 0.0});
+  const cr::CreativeDocumentCreateReceipt door = createObject(
+      document, cr::CreativeObjectKind::Door, "West Door",
+      {0.0, 0.25, -2.0}, circuit.objectId,
+      cr::CreativeBounds{{-0.5, 0.25, -2.1}, {0.5, 2.5, -1.9}});
+  const cr::CreativeDocumentCreateReceipt secondDoor = createObject(
+      document, cr::CreativeObjectKind::Door, "East Door",
+      {2.0, 0.25, -2.0}, circuit.objectId,
+      cr::CreativeBounds{{1.5, 0.25, -2.1}, {2.5, 2.5, -1.9}});
+  const cr::CreativeDocumentCreateReceipt button = createObject(
+      document, cr::CreativeObjectKind::Button, "West Door Button",
+      {0.5, 1.0, -1.7}, circuit.objectId);
+  const cr::CreativeDocumentCreateReceipt lever = createObject(
+      document, cr::CreativeObjectKind::Lever, "West Door Lever",
+      {1.0, 1.0, -1.7}, circuit.objectId);
+  const cr::CreativeDocumentCreateReceipt unlinked = createObject(
+      document, cr::CreativeObjectKind::Switch, "Unlinked Switch",
+      {-0.5, 1.0, -1.7});
+  const cr::CreativeDocumentCreateReceipt pickup = createObject(
+      document, cr::CreativeObjectKind::LootPoint, "Map Key",
+      {1.0, 0.6, -1.0});
+  if (!circuit.accepted || !door.accepted || !secondDoor.accepted ||
+      !button.accepted || !lever.accepted || !unlinked.accepted ||
+      !pickup.accepted) {
+    return expect(false, "interactable setup creates authored objects");
+  }
+  const std::uint64_t authoredRevision = document.revision();
+  const std::size_t authoredObjectCount = document.objectCount();
+
+  cr::CreativePlayPreparationResult prepared = prepare(document);
+  if (!prepared.payload.has_value()) {
+    return expect(false, "interactable setup prepares payload");
+  }
+  const cr::CreativeRuntimeScenarioSeedResult seed =
+      cr::buildCreativeRuntimeScenarioSeed(*prepared.payload);
+  if (!seed.accepted) {
+    return expect(false, "interactable payload builds runtime seed");
+  }
+  const auto findDefinition = [&](cr::CreativeObjectId objectId) {
+    return std::find_if(
+        prepared.payload->interactables.begin(),
+        prepared.payload->interactables.end(),
+        [objectId](const cr::CreativeRuntimeInteractableDefinition& definition) {
+          return definition.objectId == objectId;
+        });
+  };
+  const auto doorDefinition = findDefinition(door.objectId);
+  const auto buttonDefinition = findDefinition(button.objectId);
+  const auto unlinkedDefinition = findDefinition(unlinked.objectId);
+  const auto pickupDefinition = findDefinition(pickup.objectId);
+  if (doorDefinition == prepared.payload->interactables.end() ||
+      buttonDefinition == prepared.payload->interactables.end() ||
+      unlinkedDefinition == prepared.payload->interactables.end() ||
+      pickupDefinition == prepared.payload->interactables.end()) {
+    return expect(false, "catalog contains all authored interactables");
+  }
+
+  const std::string doorStableName = doorDefinition->stableName;
+  const std::string buttonStableName = buttonDefinition->stableName;
+  const std::string unlinkedStableName = unlinkedDefinition->stableName;
+  const std::string pickupStableName = pickupDefinition->stableName;
+  const std::string pickupItemId = pickupDefinition->itemId;
+  cr::CreativeRuntimeSandboxActivationRequest request;
+  request.sourceDocument = &document;
+  request.payload = std::move(*prepared.payload);
+  cr::CreativeRuntimeSandboxActivationResult activated =
+      cr::activateCreativeRuntimeSandbox(std::move(request));
+  if (!activated.sandbox.has_value()) {
+    return expect(false, "interactable sandbox activates");
+  }
+  cr::CreativeRuntimeSandbox& sandbox = *activated.sandbox;
+  const iggy3d::EntityState* doorEntity =
+      sandbox.session.state().world.findByStableName(doorStableName);
+  const iggy3d::EntityState* buttonEntity =
+      sandbox.session.state().world.findByStableName(buttonStableName);
+  const iggy3d::EntityState* unlinkedEntity =
+      sandbox.session.state().world.findByStableName(unlinkedStableName);
+  const iggy3d::EntityState* pickupEntity =
+      sandbox.session.state().world.findByStableName(pickupStableName);
+  if (doorEntity == nullptr || buttonEntity == nullptr ||
+      unlinkedEntity == nullptr || pickupEntity == nullptr) {
+    return expect(false, "interactable seeds become runtime entities");
+  }
+
+  const std::size_t closedMeshCount = sandbox.room.staticMeshes.size();
+  const std::size_t closedSurfaceCount = sandbox.room.spatialSurfaces.size();
+  const std::size_t closedColliderCount = sandbox.collisionSurfaces.size();
+  const std::vector<std::string> closedMeshOrder =
+      sandbox.roomStaticMeshOrder;
+  const std::vector<std::string> closedSurfaceOrder =
+      sandbox.roomSpatialSurfaceOrder;
+  const cr::CreativeRuntimeInteractionEffectReceipt opened =
+      cr::applyCreativeRuntimeInteractionEffect(sandbox, doorEntity->id);
+  const bool doorMeshRemoved = std::none_of(
+      sandbox.room.staticMeshes.begin(), sandbox.room.staticMeshes.end(),
+      [&doorStableName](const iggy3d::RoomStaticMeshAsset& mesh) {
+        return mesh.id == doorStableName;
+      });
+  const cr::CreativeRuntimeInteractionEffectReceipt closed =
+      cr::applyCreativeRuntimeInteractionEffect(sandbox, doorEntity->id);
+  const cr::CreativeRuntimeInteractionEffectReceipt circuitOpened =
+      cr::applyCreativeRuntimeInteractionEffect(sandbox, buttonEntity->id);
+  const cr::CreativeRuntimeInteractionEffectReceipt circuitClosed =
+      cr::applyCreativeRuntimeInteractionEffect(sandbox, buttonEntity->id);
+  const cr::CreativeRuntimeInteractionEffectReceipt noLink =
+      cr::applyCreativeRuntimeInteractionEffect(sandbox, unlinkedEntity->id);
+  const bool meshOrderRestored =
+      sandbox.room.staticMeshes.size() == closedMeshOrder.size() &&
+      std::equal(sandbox.room.staticMeshes.begin(),
+                 sandbox.room.staticMeshes.end(), closedMeshOrder.begin(),
+                 [](const iggy3d::RoomStaticMeshAsset& mesh,
+                    const std::string& id) { return mesh.id == id; });
+  const bool surfaceOrderRestored =
+      sandbox.room.spatialSurfaces.size() == closedSurfaceOrder.size() &&
+      std::equal(sandbox.room.spatialSurfaces.begin(),
+                 sandbox.room.spatialSurfaces.end(),
+                 closedSurfaceOrder.begin(),
+                 [](const iggy3d::RoomSpatialSurface& surface,
+                    const std::string& id) { return surface.id == id; });
+
+  return expect(prepared.validation.passed &&
+                    seed.summary.sourceInteractableCount == 6U &&
+                    seed.summary.doorEntityCount == 2U &&
+                    seed.summary.controlEntityCount == 3U &&
+                    seed.summary.pickupEntityCount == 1U &&
+                    seed.summary.ignoredAnchorCount == 0U,
+                "catalog maps authored roles without proximity inference") &&
+         expect(doorEntity->kind == iggy3d::EntityKind::Door &&
+                    buttonEntity->kind == iggy3d::EntityKind::Marker &&
+                    pickupEntity->kind == iggy3d::EntityKind::Pickup &&
+                    pickupEntity->interaction.itemId == pickupItemId &&
+                    pickupEntity->interaction.deactivateTargetOnSuccess,
+                "scenario entities expose deterministic interaction contracts") &&
+         expect(opened.accepted && opened.changed &&
+                    opened.status ==
+                        cr::CreativeRuntimeInteractionEffectStatus::DoorOpened &&
+                    opened.geometryRevision == 1U && doorMeshRemoved &&
+                    sandbox.geometryRevision == 4U,
+                "direct door activation publishes an open geometry revision") &&
+         expect(closed.accepted &&
+                    closed.status ==
+                        cr::CreativeRuntimeInteractionEffectStatus::DoorClosed &&
+                    closedMeshCount == sandbox.room.staticMeshes.size() &&
+                    closedSurfaceCount == sandbox.room.spatialSurfaces.size() &&
+                    closedColliderCount == sandbox.collisionSurfaces.size(),
+                "closing restores exact geometry and collision cardinality") &&
+         expect(circuitOpened.status ==
+                        cr::CreativeRuntimeInteractionEffectStatus::CircuitOpened &&
+                    circuitOpened.affectedDoorCount == 2U &&
+                    circuitClosed.status ==
+                        cr::CreativeRuntimeInteractionEffectStatus::CircuitClosed &&
+                    circuitClosed.affectedDoorCount == 2U &&
+                    meshOrderRestored && surfaceOrderRestored,
+                "shared parent circuit toggles linked doors and restores order") &&
+         expect(noLink.accepted && !noLink.changed &&
+                    noLink.status ==
+                        cr::CreativeRuntimeInteractionEffectStatus::NoLinkedDoor,
+                "ungrouped control reports no link instead of guessing") &&
+         expect(document.revision() == authoredRevision &&
+                    document.objectCount() == authoredObjectCount,
+                "runtime interactable effects leave authored content untouched");
+}
+
 }  // namespace
 
 int main() {
@@ -433,6 +620,7 @@ int main() {
                   activationOwnsCollisionSessionAndReasoning() &&
                   activationRejectsStaleAndMalformedPayloads() &&
                   sandboxFreshnessAndStopAreExplicit() &&
-                  runningSnapshotDoesNotTrackLaterDocumentEdits();
+                  runningSnapshotDoesNotTrackLaterDocumentEdits() &&
+                  authoredInteractablesOwnExplicitCircuitsAndDynamicGeometry();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

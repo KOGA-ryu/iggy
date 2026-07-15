@@ -72,6 +72,8 @@ struct CreativeEditorPlayTarget {
   iggy3d::Vec3 hitPointMeters;
   float hitDistanceMeters = 0.0F;
   float reachDistanceMeters = 0.0F;
+  std::string displayName;
+  std::string actionPrompt;
   bool supportsAttack = false;
   bool supportsInteract = false;
   bool friendly = false;
@@ -106,6 +108,10 @@ struct CreativeEditorPlayMode {
   CreativeEditorPlayTuning tuning;
   CreativeEditorPlayActionRouterState actionRouter;
   CreativeEditorPlayTarget target;
+  iggy3d::creative::CreativeRuntimeInteractionEffectReceipt
+      lastInteractionEffect;
+  std::uint64_t targetingGeometryRevision = 0U;
+  std::size_t processedRuntimeEventCount = 0U;
   float cameraYawDegrees = 0.0F;
   float cameraPitchDegrees = 0.0F;
   std::uint64_t lastFrameTimeNanoseconds = 0U;
@@ -194,12 +200,16 @@ struct CreativeEditorPlayTickReceipt {
   std::uint32_t movementCommandsSubmitted = 0U;
   std::uint32_t attackCommandsSubmitted = 0U;
   std::uint32_t interactionCommandsSubmitted = 0U;
+  std::uint32_t interactionEffectsApplied = 0U;
   CreativeEditorPlayAction action = CreativeEditorPlayAction::None;
   bool actionAttempted = false;
   bool actionSubmitted = false;
   std::uint64_t sourceTick = 0U;
   iggy3d::CommandRejectionReason commandRejection =
       iggy3d::CommandRejectionReason::None;
+  iggy3d::creative::CreativeRuntimeInteractionEffectStatus interactionEffect =
+      iggy3d::creative::CreativeRuntimeInteractionEffectStatus::NotRequested;
+  std::uint64_t runtimeGeometryRevision = 0U;
 };
 
 [[nodiscard]] std::string_view toString(
