@@ -113,6 +113,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/adapters/RoomBakeGreedyFloors.cpp
     src/app/iggy3d/creative/adapters/RoomBakeReachability.cpp
     src/app/iggy3d/creative/validation/MapValidation.cpp
+    src/app/iggy3d/creative/play/PlayPreparation.cpp
     src/app/iggy3d/creative/spatial/Ghost.cpp
     src/app/iggy3d/creative/tools/RoomShell.cpp
     src/app/iggy3d/creative/ui/UiTheme.cpp

@@ -412,6 +412,11 @@ iggy3d_add_unit_test(creative_map_validation_tests
 set_tests_properties(creative_map_validation_tests PROPERTIES
   LABELS "unit;app;creative;validation;iggy3d")
 
+iggy3d_add_unit_test(creative_play_preparation_tests
+  tests/unit/creative_play_preparation_tests.cpp)
+set_tests_properties(creative_play_preparation_tests PROPERTIES
+  LABELS "unit;app;creative;play;validation;iggy3d")
+
 iggy3d_add_unit_test(product_save_catalog_tests tests/unit/product_save_catalog_tests.cpp)
 set_tests_properties(product_save_catalog_tests PROPERTIES
   LABELS "unit;app;product;save;catalog;iggy3d")

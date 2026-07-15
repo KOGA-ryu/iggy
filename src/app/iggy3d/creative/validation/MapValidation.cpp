@@ -247,9 +247,10 @@ std::string_view toString(CreativeMapDiagnosticCode code) noexcept {
   return "unknown";
 }
 
-CreativeMapValidationResult validateCreativeMap(
+CreativeMapEvaluationResult evaluateCreativeMap(
     const CreativeMapValidationRequest& request) {
-  CreativeMapValidationResult result;
+  CreativeMapEvaluationResult evaluation;
+  CreativeMapValidationResult& result = evaluation.validation;
   result.requested = true;
   DiagnosticCollector diagnostics(result);
 
@@ -261,7 +262,7 @@ CreativeMapValidationResult validateCreativeMap(
                     {},
                     "creative_map_validation_document_missing");
     diagnostics.finish();
-    return result;
+    return evaluation;
   }
 
   const CreativeDocument& document = *request.document;
@@ -275,7 +276,7 @@ CreativeMapValidationResult validateCreativeMap(
                     {},
                     "creative_map_validation_document_invalid");
     diagnostics.finish();
-    return result;
+    return evaluation;
   }
 
   result.status = CreativeMapValidationStatus::Validated;
@@ -361,8 +362,8 @@ CreativeMapValidationResult validateCreativeMap(
   bakeRequest.reachabilityCellSizeMeters =
       request.reachabilityCellSizeMeters;
   bakeRequest.staticMeshAssetCatalog = request.staticMeshAssetCatalog;
-  const CreativeRoomBakeResult baked =
-      buildRoomAssetFromCreativeDocument(bakeRequest);
+  evaluation.roomBake = buildRoomAssetFromCreativeDocument(bakeRequest);
+  const CreativeRoomBakeResult& baked = evaluation.roomBake;
   result.roomBake = baked.receipt;
   result.reachability = baked.reachability;
 
@@ -449,7 +450,13 @@ CreativeMapValidationResult validateCreativeMap(
 
   diagnostics.finish();
   result.passed = result.summary.errorCount == 0U;
-  return result;
+  return evaluation;
+}
+
+CreativeMapValidationResult validateCreativeMap(
+    const CreativeMapValidationRequest& request) {
+  CreativeMapEvaluationResult evaluation = evaluateCreativeMap(request);
+  return std::move(evaluation.validation);
 }
 
 }  // namespace iggy3d::creative

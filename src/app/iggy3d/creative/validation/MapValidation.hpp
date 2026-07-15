@@ -96,6 +96,11 @@ struct CreativeMapValidationResult {
   std::vector<CreativeMapDiagnostic> diagnostics;
 };
 
+struct CreativeMapEvaluationResult {
+  CreativeMapValidationResult validation;
+  CreativeRoomBakeResult roomBake;
+};
+
 [[nodiscard]] std::string_view toString(
     CreativeMapValidationStatus status) noexcept;
 [[nodiscard]] std::string_view toString(
@@ -105,6 +110,10 @@ struct CreativeMapValidationResult {
 
 // This is an on-demand authoring check, not frame state. Diagnostics are
 // emitted in document order within fixed validation phases and remain bounded.
+// evaluateCreativeMap exposes the exact bake used by validation so activation
+// preparation can move it into a payload without baking the document again.
+[[nodiscard]] CreativeMapEvaluationResult evaluateCreativeMap(
+    const CreativeMapValidationRequest& request);
 [[nodiscard]] CreativeMapValidationResult validateCreativeMap(
     const CreativeMapValidationRequest& request);
 
