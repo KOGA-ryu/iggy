@@ -125,13 +125,22 @@ editable pivot for every node.
   16 million decoded pixels per image.
 - Startup GPU texture/sampler/descriptor creation, deduplicated by image
   content and sampler state.
-- Object bounds used as the collision and placement envelope.
+- Object bounds used as the placement envelope and as the collision envelope
+  for legacy/default bounds assets.
 - `iggy_collision="bounds"` emits actor and projectile bounds blockers.
+- `iggy_collision="compound_bounds"` emits up to 256 authored node-local box
+  parts. Each part can independently add a walkable top while sharing the
+  imported asset's placement pivot and object transform.
 - `iggy_collision="none"` keeps the object renderable without collision.
 - Authored `iggy_walkable=true` adds one walkable top surface to bounds
   collision for upright or yaw-rotated instances. Pitched or rolled instances
   retain bounds blockers but do not fabricate a horizontal walkable top.
   Walkability is never inferred from shape or filename.
+- Compound collision uses `iggy_collision_part="bounds"` on each participating
+  Blender object. `iggy_collision_part_walkable=true` applies only to that
+  part. Missing parts, malformed parts, parts outside the imported source
+  bounds, and global walkability on a compound asset fail closed to no physics
+  without hiding the rendered mesh.
 - An omitted `iggy_collision` property uses explicit legacy defaults: bounds
   collision, not walkable unless `iggy_walkable=true` is authored. The Assets
   catalog marks default collision as `SOLID DEFAULT`.
@@ -186,8 +195,10 @@ no collision for that asset.
 | Property | Values | Runtime behavior |
 |---|---|---|
 | `iggy_category` | bounded ASCII identifier such as `boulder`, `walkway`, `prop` | Catalog object-kind classification, with filename fallback |
-| `iggy_collision` | `bounds`, `none`, `convex`, `mesh` | Bounds and none are live; convex and mesh are visibly unsupported |
-| `iggy_walkable` | boolean | `true` adds a top walkable surface only when collision is bounds |
+| `iggy_collision` | `bounds`, `compound_bounds`, `none`, `convex`, `mesh` | Bounds, bounded compound boxes, and none are live; convex and mesh are visibly unsupported |
+| `iggy_walkable` | boolean | `true` adds one aggregate top surface only when collision is bounds |
+| `iggy_collision_part` | node-local `bounds` | Marks the transformed bounds of this Blender object as one compound collision part |
+| `iggy_collision_part_walkable` | node-local boolean | `true` adds a top surface for this compound part; invalid without `iggy_collision_part` |
 | `iggy_socket_*` | local transform | Reserved for a future attachment/socket cooker |
 
 Authoring metadata belongs to the imported asset catalog, not the Creative
@@ -218,6 +229,8 @@ The procedural homestead construction set is documented separately in
 [`homestead_modular_kit.md`](homestead_modular_kit.md). Its Blender script is
 the editable source of truth and exports the checked-in runtime GLBs, a gallery
 render, an assembled-house proof, and an optional inspection `.blend` file.
+The stairs, porch, and bridge in that kit are the production compound-collision
+fixtures.
 
 ## References
 

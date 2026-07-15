@@ -28,6 +28,12 @@ namespace {
 constexpr std::uint64_t kFnvOffset = 1469598103934665603ULL;
 constexpr std::uint64_t kFnvPrime = 1099511628211ULL;
 
+struct BoundsAccumulator {
+  Vec3 min;
+  Vec3 max;
+  bool hasBounds = false;
+};
+
 void setFailure(StaticMeshImportResult& result,
                 StaticMeshImportStatus status,
                 std::string_view reasonCode) {
@@ -156,6 +162,39 @@ void extendBounds(StaticMeshAsset& asset, Vec3 position) noexcept {
   asset.boundsMax.z = std::max(asset.boundsMax.z, position.z);
 }
 
+void extendBounds(BoundsAccumulator& bounds, Vec3 position) noexcept {
+  if (!bounds.hasBounds) {
+    bounds.min = position;
+    bounds.max = position;
+    bounds.hasBounds = true;
+    return;
+  }
+  bounds.min.x = std::min(bounds.min.x, position.x);
+  bounds.min.y = std::min(bounds.min.y, position.y);
+  bounds.min.z = std::min(bounds.min.z, position.z);
+  bounds.max.x = std::max(bounds.max.x, position.x);
+  bounds.max.y = std::max(bounds.max.y, position.y);
+  bounds.max.z = std::max(bounds.max.z, position.z);
+}
+
+[[nodiscard]] bool validCollisionPartBounds(
+    const BoundsAccumulator& bounds) noexcept {
+  const Vec3 extent = bounds.max - bounds.min;
+  return bounds.hasBounds && finiteVec3(bounds.min) && finiteVec3(bounds.max) &&
+         finiteVec3(extent) && extent.x > 0.0F && extent.y > 0.0F &&
+         extent.z > 0.0F;
+}
+
+void invalidateCollisionParts(StaticMeshAsset& asset,
+                              std::string_view reasonCode) {
+  asset.collisionParts.clear();
+  asset.authoringMetadata.collisionMode = StaticMeshCollisionMode::Invalid;
+  asset.authoringMetadata.status = StaticMeshAuthoringMetadataStatus::Invalid;
+  asset.authoringMetadata.reasonCode = reasonCode;
+  asset.authoringMetadata.walkable = false;
+  asset.authoringMetadata.walkableSpecified = false;
+}
+
 [[nodiscard]] std::uint64_t fileHash(const std::filesystem::path& path) {
   std::ifstream input(path, std::ios::binary);
   std::uint64_t hash = kFnvOffset;
@@ -187,6 +226,7 @@ void extendBounds(StaticMeshAsset& asset, Vec3 position) noexcept {
                                    const cgltf_node& node,
                                    const cgltf_primitive& primitive,
                                    StaticMeshAsset& asset,
+                                   BoundsAccumulator* collisionPartBounds,
                                    std::string& failureReason) {
   if (primitive.type != cgltf_primitive_type_triangles ||
       primitive.targets_count != 0U || node.skin != nullptr) {
@@ -236,6 +276,9 @@ void extendBounds(StaticMeshAsset& asset, Vec3 position) noexcept {
     }
     vertex.normal = transformDirection(world, localNormal);
     extendBounds(asset, vertex.position);
+    if (collisionPartBounds != nullptr) {
+      extendBounds(*collisionPartBounds, vertex.position);
+    }
     asset.vertices.push_back(vertex);
   }
 
@@ -331,16 +374,33 @@ StaticMeshImportResult importStaticMeshGlb(
       detail::importStaticMeshAuthoringMetadata(*data);
   detail::importStaticMeshMaterialsAndImages(*data, path, result.asset);
   std::string failureReason;
+  bool collisionPartContractInvalid = false;
+  bool sawCollisionPart = false;
   for (cgltf_size nodeIndex = 0; nodeIndex < data->nodes_count; ++nodeIndex) {
     const cgltf_node& node = data->nodes[nodeIndex];
+    const std::string_view extras = node.extras.data != nullptr
+                                        ? std::string_view(node.extras.data)
+                                        : std::string_view{};
+    const StaticMeshCollisionPartMetadata partMetadata =
+        detail::parseStaticMeshCollisionPartMetadata(extras);
+    const bool authoredCollisionPart =
+        partMetadata.status == StaticMeshCollisionPartMetadataStatus::Authored;
+    if (partMetadata.status == StaticMeshCollisionPartMetadataStatus::Invalid) {
+      collisionPartContractInvalid = true;
+    }
+    sawCollisionPart = sawCollisionPart || authoredCollisionPart;
     if (node.mesh == nullptr) {
+      collisionPartContractInvalid =
+          collisionPartContractInvalid || authoredCollisionPart;
       continue;
     }
+    BoundsAccumulator collisionPartBounds;
     for (cgltf_size primitiveIndex = 0;
          primitiveIndex < node.mesh->primitives_count; ++primitiveIndex) {
-      if (!appendPrimitive(*data, node,
-                           node.mesh->primitives[primitiveIndex],
-                           result.asset, failureReason)) {
+      if (!appendPrimitive(
+              *data, node, node.mesh->primitives[primitiveIndex], result.asset,
+              authoredCollisionPart ? &collisionPartBounds : nullptr,
+              failureReason)) {
         freeData();
         setFailure(result,
                    failureReason == "static_mesh_feature_unsupported"
@@ -350,6 +410,32 @@ StaticMeshImportResult importStaticMeshGlb(
         return result;
       }
     }
+    if (authoredCollisionPart) {
+      if (!validCollisionPartBounds(collisionPartBounds) ||
+          result.asset.collisionParts.size() ==
+              kMaxStaticMeshCollisionPartCount) {
+        collisionPartContractInvalid = true;
+      } else {
+        result.asset.collisionParts.push_back({collisionPartBounds.min,
+                                               collisionPartBounds.max,
+                                               partMetadata.walkable});
+      }
+    }
+  }
+  const bool compoundBounds = result.asset.authoringMetadata.collisionMode ==
+                              StaticMeshCollisionMode::CompoundBounds;
+  if (collisionPartContractInvalid || (sawCollisionPart && !compoundBounds) ||
+      (compoundBounds && result.asset.collisionParts.empty())) {
+    invalidateCollisionParts(result.asset,
+                             "static_mesh_compound_collision_invalid");
+  } else if (compoundBounds) {
+    result.asset.authoringMetadata.walkable = std::any_of(
+        result.asset.collisionParts.begin(), result.asset.collisionParts.end(),
+        [](const StaticMeshCollisionPart& part) { return part.walkable; });
+    result.asset.authoringMetadata.walkableSpecified =
+        result.asset.authoringMetadata.walkable;
+  } else {
+    result.asset.collisionParts.clear();
   }
   freeData();
 
@@ -420,7 +506,7 @@ StaticMeshAssetCatalog discoverStaticMeshAssetCatalog(
     catalog.entries.push_back(
         {assetId, assetLabel(assetId), imported.asset.boundsMin,
          imported.asset.boundsMax, imported.asset.contentHash,
-         imported.asset.authoringMetadata});
+         imported.asset.authoringMetadata, imported.asset.collisionParts});
   }
   return catalog;
 }

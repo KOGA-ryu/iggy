@@ -235,6 +235,16 @@ void attachPhysicsDebugPackets(MovementResult& result,
   attachPhysicsDebugGeometry(result, planned);
 }
 
+void attachStepFacts(MovementResult& result,
+                     const PlayerPhysicsMovePlannerResult& planned) {
+  result.stepAttempted = planned.stepAttempted;
+  result.stepAccepted = planned.stepAccepted;
+  result.stepHeightMetersApplied = planned.stepHeightMetersApplied;
+  if (result.hitSurfaceId.empty()) {
+    result.hitSurfaceId = planned.stepObstacleSourceSurfaceId;
+  }
+}
+
 MovementResult blockedPhysicsResult(const MovementRequest& request,
                                     Vec3 start,
                                     MovementBlockedReason reason,
@@ -251,6 +261,7 @@ MovementResult blockedPhysicsResult(const MovementRequest& request,
                            reason == MovementBlockedReason::BlockedByCollision;
   result.movementSlid = physicsMovementSlid(planned);
   attachPhysicsDebugPackets(result, planned);
+  attachStepFacts(result, planned);
   return result;
 }
 
@@ -267,6 +278,7 @@ MovementResult executePhysicsPlannedMovement(MovementSystemContext& context,
   plannerConfig.motor.groundSnapDistanceMeters = params.groundSnapMeters;
   plannerConfig.motor.maxMoveDistanceMeters =
       std::max(plannerConfig.motor.maxMoveDistanceMeters, movementLimit + 0.001F);
+  plannerConfig.maxStepHeightMeters = params.stepHeightMeters;
 
   PlayerPhysicsMovePlannerRequest plannerRequest;
   plannerRequest.collisionSurfaces = context.collisionSurfaces;
@@ -345,6 +357,7 @@ MovementResult executePhysicsPlannedMovement(MovementSystemContext& context,
   result.hitSurfaceId = planned.firstHitSourceSurfaceId;
   result.reasonCode = "movement_ok";
   attachPhysicsDebugPackets(result, planned);
+  attachStepFacts(result, planned);
   applySlopeToResult(result, slope);
   applyTravelFacts(result);
   return result;

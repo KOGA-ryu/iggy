@@ -1,8 +1,13 @@
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
+#include "runtime/player/PlayerPhysicsMovePlanner.hpp"
 
 #include <algorithm>
+#include <array>
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <numbers>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -41,12 +46,15 @@ iggy3d::StaticMeshAssetCatalogEntry catalogEntry(
     std::string assetId,
     iggy3d::StaticMeshCollisionMode mode,
     iggy3d::StaticMeshAuthoringMetadataStatus status,
-    bool walkable = false) {
+    bool walkable = false,
+    iggy3d::Vec3 boundsMin = {-0.5F, -0.5F, -0.5F},
+    iggy3d::Vec3 boundsMax = {0.5F, 0.5F, 0.5F},
+    std::span<const iggy3d::StaticMeshCollisionPart> collisionParts = {}) {
   iggy3d::StaticMeshAssetCatalogEntry entry;
   entry.assetId = std::move(assetId);
   entry.label = entry.assetId;
-  entry.boundsMin = {-0.5F, -0.5F, -0.5F};
-  entry.boundsMax = {0.5F, 0.5F, 0.5F};
+  entry.boundsMin = boundsMin;
+  entry.boundsMax = boundsMax;
   entry.authoringMetadata.collisionMode = mode;
   entry.authoringMetadata.status = status;
   entry.authoringMetadata.walkable = walkable;
@@ -54,7 +62,42 @@ iggy3d::StaticMeshAssetCatalogEntry catalogEntry(
       status !=
       iggy3d::StaticMeshAuthoringMetadataStatus::DefaultsApplied;
   entry.authoringMetadata.walkableSpecified = walkable;
+  entry.collisionParts.assign(collisionParts.begin(), collisionParts.end());
   return entry;
+}
+
+cr::CreativeDocumentCreateReceipt addAssetWithTransform(
+    cr::CreativeDocument& document,
+    cr::CreativeObjectKind kind,
+    std::string_view assetId,
+    cr::CreativeVec3 pivot,
+    cr::CreativeBounds bounds,
+    cr::CreativeVec3 rotation = {},
+    cr::CreativeVec3 scale = {1.0, 1.0, 1.0}) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = kind;
+  request.name = std::string(assetId);
+  request.assetId = std::string(assetId);
+  request.transform.position = pivot;
+  request.transform.rotationEulerRadians = rotation;
+  request.transform.scale = scale;
+  request.hasTransformOverride = true;
+  request.bounds = bounds;
+  request.hasBoundsOverride = true;
+  return document.createObject(request);
+}
+
+cr::CreativeDocumentCreateReceipt addCatalogAsset(
+    cr::CreativeDocument& document,
+    const iggy3d::StaticMeshAssetCatalogEntry& entry,
+    double x) {
+  const cr::CreativeVec3 pivot{x, 0.0, 0.0};
+  return addAssetWithTransform(
+      document, cr::CreativeObjectKind::Bridge, entry.assetId, pivot,
+      {{pivot.x + entry.boundsMin.x, pivot.y + entry.boundsMin.y,
+        pivot.z + entry.boundsMin.z},
+       {pivot.x + entry.boundsMax.x, pivot.y + entry.boundsMax.y,
+        pivot.z + entry.boundsMax.z}});
 }
 
 cr::CreativeRoomBakeResult bake(
@@ -74,6 +117,35 @@ std::size_t countRole(const iggy3d::RoomAsset& room,
       [role](const iggy3d::RoomSpatialSurface& surface) {
         return surface.role == role;
       }));
+}
+
+const iggy3d::RoomSpatialSurface* findSurface(const iggy3d::RoomAsset& room,
+                                              std::string_view id) {
+  const auto found =
+      std::find_if(room.spatialSurfaces.begin(), room.spatialSurfaces.end(),
+                   [id](const iggy3d::RoomSpatialSurface& surface) {
+                     return surface.id == id;
+                   });
+  return found == room.spatialSurfaces.end() ? nullptr : &*found;
+}
+
+iggy3d::RoomSpatialSurface traversalFloorSurface() {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = "traversal_floor";
+  surface.sourceStaticMeshId = "traversal_floor_mesh";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Plane;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Walkable;
+  surface.pointsMeters = {
+      {-4.0F, 0.0F, -4.0F},
+      {4.0F, 0.0F, -4.0F},
+      {4.0F, 0.0F, 4.0F},
+      {-4.0F, 0.0F, 4.0F},
+  };
+  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.traversalTags = {"walkable"};
+  surface.collisionMask = {"actor"};
+  surface.runtimeOwnerStableName = "owner.traversal_floor";
+  return surface;
 }
 
 bool fixtureMetadataProducesHonestPhysicsSurfaces() {
@@ -108,6 +180,109 @@ bool fixtureMetadataProducesHonestPhysicsSurfaces() {
                 "surface roles match authored collision intent") &&
          expect(physics.ok && physics.colliderCount == 3U,
                 "physics consumes two actor bounds and the walkable top");
+}
+
+bool compoundFixtureAssetsReachRuntimePhysics() {
+  const iggy3d::StaticMeshAssetCatalog catalog =
+      iggy3d::discoverStaticMeshAssetCatalog("assets/creative");
+  const iggy3d::StaticMeshAssetCatalogEntry* stairs =
+      catalog.find("homestead/modular/stair_straight_2x3x1p5");
+  const iggy3d::StaticMeshAssetCatalogEntry* porch =
+      catalog.find("homestead/modular/porch_4x2x0p5");
+  const iggy3d::StaticMeshAssetCatalogEntry* bridge =
+      catalog.find("homestead/modular/bridge_4x2");
+  if (stairs == nullptr || porch == nullptr || bridge == nullptr) {
+    return expect(false, "compound fixture catalog entries exist");
+  }
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("compound fixtures");
+  const bool created = addCatalogAsset(document, *stairs, -8.0).accepted &&
+                       addCatalogAsset(document, *porch, 0.0).accepted &&
+                       addCatalogAsset(document, *bridge, 8.0).accepted;
+  const cr::CreativeRoomBakeResult result = bake(document, &catalog);
+  const iggy3d::SpatialSurfaceSet surfaces =
+      iggy3d::buildSpatialSurfaceSet(result.room);
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult physics =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces({&surfaces, {}});
+
+  return expect(created && result.receipt.accepted &&
+                    result.receipt.bakedStaticMeshCount == 3U,
+                "compound fixtures remain renderable room meshes") &&
+         expect(result.receipt.bakedAssetBoundsCollisionCount == 12U &&
+                    result.receipt.bakedAssetWalkableSurfaceCount == 10U &&
+                    result.room.spatialSurfaces.size() == 34U,
+                "fixture part counts reach RoomBake unchanged") &&
+         expect(
+             countRole(result.room, iggy3d::RoomSpatialSurfaceRole::Blocker) ==
+                     12U &&
+                 countRole(result.room,
+                           iggy3d::RoomSpatialSurfaceRole::ProjectileBlocker) ==
+                     12U &&
+                 countRole(result.room,
+                           iggy3d::RoomSpatialSurfaceRole::Walkable) == 10U,
+             "fixture surface roles preserve per-part intent") &&
+         expect(physics.ok && physics.colliderCount == 22U,
+                "runtime physics receives compound boxes and walkable tops");
+}
+
+bool importedStairSupportsFullBoundedRuntimeTraversal() {
+  const iggy3d::StaticMeshAssetCatalog catalog =
+      iggy3d::discoverStaticMeshAssetCatalog("assets/creative");
+  const iggy3d::StaticMeshAssetCatalogEntry* stairs =
+      catalog.find("homestead/modular/stair_straight_2x3x1p5");
+  if (stairs == nullptr) {
+    return expect(false, "runtime stair fixture exists");
+  }
+
+  cr::CreativeDocument document = cr::CreativeDocument::create("stair traversal");
+  const cr::CreativeDocumentCreateReceipt created =
+      addCatalogAsset(document, *stairs, 0.0);
+  const cr::CreativeRoomBakeResult baked = bake(document, &catalog);
+  iggy3d::RoomAsset traversalRoom = baked.room;
+  traversalRoom.spatialSurfaces.push_back(traversalFloorSurface());
+  const iggy3d::SpatialSurfaceSet surfaces =
+      iggy3d::buildSpatialSurfaceSet(traversalRoom);
+
+  iggy3d::PlayerPhysicsMovePlannerConfig config;
+  config.motor.skinMeters = 0.02F;
+  config.motor.groundProbeDistanceMeters = 0.10F;
+  config.motor.groundSnapDistanceMeters = 0.10F;
+  config.maxStepHeightMeters = 0.35F;
+  iggy3d::Vec3 center{0.0F, 0.90F, 2.0F};
+  bool everyStepAccepted = true;
+  bool everyObstacleMatched = true;
+  for (std::size_t stepIndex = 0U; stepIndex < 6U; ++stepIndex) {
+    iggy3d::PlayerPhysicsMovePlannerRequest request;
+    request.collisionSurfaces = &surfaces;
+    request.startCenterMeters = center;
+    request.bodyHalfExtentsMeters = {0.30F, 0.90F, 0.30F};
+    request.desiredDisplacementMeters = {0.0F, 0.0F, -0.50F};
+    request.config = config;
+    const iggy3d::PlayerPhysicsMovePlannerResult planned =
+        iggy3d::planPlayerPhysicsMove(request);
+    const std::string expectedObstacle =
+        "creative_object_" + std::to_string(created.objectId) +
+        "_collision_part_" + std::to_string(stepIndex) +
+        "_actor_blocker";
+    everyStepAccepted = everyStepAccepted && planned.ok &&
+                        planned.stepAttempted && planned.stepAccepted &&
+                        std::fabs(planned.stepHeightMetersApplied - 0.25F) <=
+                            0.001F &&
+                        planned.grounded;
+    everyObstacleMatched =
+        everyObstacleMatched &&
+        planned.stepObstacleSourceSurfaceId == expectedObstacle;
+    center = planned.finalCenterMeters;
+  }
+
+  return expect(created.accepted && baked.receipt.accepted,
+                "runtime stair room bake accepted") &&
+         expect(everyStepAccepted,
+                "runtime stair accepts all six bounded steps") &&
+         expect(everyObstacleMatched,
+                "runtime stair reports each imported collision part") &&
+         expect(iggy3d::nearlyEqual(center, {0.0F, 2.40F, -1.0F}),
+                "runtime stair reaches the sixth authored tread");
 }
 
 bool renderOnlyAndUnsafeMetadataStayVisibleWithoutPhysics() {
@@ -192,12 +367,168 @@ bool tiltedWalkableAssetDoesNotFabricateAHorizontalTop() {
                 "tilted asset keeps bounds but skips false walkable top");
 }
 
+bool compoundBoundsMapResizeAndEmitIndependentWalkableTops() {
+  constexpr std::array parts{
+      iggy3d::StaticMeshCollisionPart{
+          {-1.0F, 0.0F, -1.0F}, {1.0F, 0.25F, 0.0F}, true},
+      iggy3d::StaticMeshCollisionPart{
+          {-1.0F, 0.0F, 0.0F}, {1.0F, 0.5F, 1.0F}, true},
+  };
+  iggy3d::StaticMeshAssetCatalog catalog;
+  catalog.entries.push_back(catalogEntry(
+      "compound_steps", iggy3d::StaticMeshCollisionMode::CompoundBounds,
+      iggy3d::StaticMeshAuthoringMetadataStatus::Authored, true,
+      {-1.0F, 0.0F, -1.0F}, {1.0F, 1.0F, 1.0F}, parts));
+  cr::CreativeDocument document = cr::CreativeDocument::create("compound");
+  const cr::CreativeDocumentCreateReceipt created = addAssetWithTransform(
+      document, cr::CreativeObjectKind::Bridge, "compound_steps",
+      {10.0, 0.0, 4.0}, {{8.0, 0.0, 3.0}, {12.0, 2.0, 5.0}});
+  const cr::CreativeRoomBakeResult result = bake(document, &catalog);
+  const iggy3d::SpatialSurfaceSet surfaces =
+      iggy3d::buildSpatialSurfaceSet(result.room);
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult physics =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces({&surfaces, {}});
+  const std::string stable =
+      "creative_object_" + std::to_string(created.objectId);
+  const iggy3d::RoomSpatialSurface* lower =
+      findSurface(result.room, stable + "_collision_part_0_actor_blocker");
+  const iggy3d::RoomSpatialSurface* upper =
+      findSurface(result.room, stable + "_collision_part_1_actor_blocker");
+
+  return expect(created.accepted && result.receipt.accepted,
+                "compound asset bake accepted") &&
+         expect(result.receipt.bakedAssetBoundsCollisionCount == 2U &&
+                    result.receipt.bakedAssetWalkableSurfaceCount == 2U &&
+                    result.room.spatialSurfaces.size() == 6U,
+                "each compound part emits blockers and a walkable top") &&
+         expect(lower != nullptr && upper != nullptr &&
+                    lower->pointsMeters.size() == 4U &&
+                    upper->pointsMeters.size() == 4U &&
+                    iggy3d::nearlyEqual(lower->pointsMeters[0],
+                                        {8.0F, 0.0F, 3.0F}) &&
+                    iggy3d::nearlyEqual(lower->pointsMeters[2],
+                                        {12.0F, 0.5F, 4.0F}) &&
+                    iggy3d::nearlyEqual(upper->pointsMeters[0],
+                                        {8.0F, 0.0F, 4.0F}) &&
+                    iggy3d::nearlyEqual(upper->pointsMeters[2],
+                                        {12.0F, 1.0F, 5.0F}),
+                "source parts map through custom authored bounds") &&
+         expect(physics.ok && physics.colliderCount == 4U,
+                "physics consumes both boxes and both walkable tops");
+}
+
+bool compoundBoundsFollowNonuniformScaleAndYaw() {
+  constexpr std::array parts{
+      iggy3d::StaticMeshCollisionPart{
+          {-1.0F, 0.0F, -1.0F}, {0.0F, 1.0F, 1.0F}, false},
+  };
+  iggy3d::StaticMeshAssetCatalog catalog;
+  catalog.entries.push_back(catalogEntry(
+      "compound_rotated", iggy3d::StaticMeshCollisionMode::CompoundBounds,
+      iggy3d::StaticMeshAuthoringMetadataStatus::Authored, false,
+      {-1.0F, 0.0F, -1.0F}, {1.0F, 1.0F, 1.0F}, parts));
+  cr::CreativeDocument document = cr::CreativeDocument::create("transform");
+  const cr::CreativeDocumentCreateReceipt created = addAssetWithTransform(
+      document, cr::CreativeObjectKind::Bridge, "compound_rotated",
+      {2.0, 0.0, 3.0}, {{1.0, 0.0, 2.0}, {3.0, 1.0, 4.0}},
+      {0.0, std::numbers::pi * 0.5, 0.0}, {2.0, 1.0, 1.0});
+  const cr::CreativeRoomBakeResult result = bake(document, &catalog);
+  const std::string surfaceId = "creative_object_" +
+                                std::to_string(created.objectId) +
+                                "_collision_part_0_actor_blocker";
+  const iggy3d::RoomSpatialSurface* surface =
+      findSurface(result.room, surfaceId);
+
+  return expect(created.accepted && result.receipt.accepted &&
+                    result.receipt.bakedAssetBoundsCollisionCount == 1U,
+                "scaled and rotated compound asset bakes") &&
+         expect(surface != nullptr && surface->pointsMeters.size() == 4U &&
+                    iggy3d::nearlyEqual(surface->pointsMeters[0],
+                                        {1.0F, 0.0F, 3.0F}) &&
+                    iggy3d::nearlyEqual(surface->pointsMeters[2],
+                                        {3.0F, 1.0F, 5.0F}),
+                "compound AABB follows nonuniform scale and quarter-turn yaw");
+}
+
+bool invalidAndTiltedCompoundContractsFailClosed() {
+  constexpr std::array walkableParts{
+      iggy3d::StaticMeshCollisionPart{
+          {-1.0F, 0.0F, -1.0F}, {1.0F, 0.25F, 0.0F}, true},
+      iggy3d::StaticMeshCollisionPart{
+          {-1.0F, 0.0F, 0.0F}, {1.0F, 0.5F, 1.0F}, true},
+  };
+  constexpr std::array outsidePart{
+      iggy3d::StaticMeshCollisionPart{
+          {-2.0F, 0.0F, -1.0F}, {1.0F, 0.5F, 1.0F}, true},
+  };
+  std::array<iggy3d::StaticMeshCollisionPart,
+             iggy3d::kMaxStaticMeshCollisionPartCount + 1U>
+      excessiveParts;
+  excessiveParts.fill(walkableParts.front());
+  iggy3d::StaticMeshAssetCatalog invalidCatalog;
+  invalidCatalog.entries.push_back(catalogEntry(
+      "empty_compound", iggy3d::StaticMeshCollisionMode::CompoundBounds,
+      iggy3d::StaticMeshAuthoringMetadataStatus::Authored));
+  invalidCatalog.entries.push_back(catalogEntry(
+      "excessive_compound", iggy3d::StaticMeshCollisionMode::CompoundBounds,
+      iggy3d::StaticMeshAuthoringMetadataStatus::Authored, true,
+      {-1.0F, 0.0F, -1.0F}, {1.0F, 1.0F, 1.0F}, excessiveParts));
+  invalidCatalog.entries.push_back(catalogEntry(
+      "outside_compound", iggy3d::StaticMeshCollisionMode::CompoundBounds,
+      iggy3d::StaticMeshAuthoringMetadataStatus::Authored, true,
+      {-1.0F, 0.0F, -1.0F}, {1.0F, 1.0F, 1.0F}, outsidePart));
+  cr::CreativeDocument invalidDocument =
+      cr::CreativeDocument::create("invalid compound");
+  const bool invalidCreated =
+      addAsset(invalidDocument, cr::CreativeObjectKind::Bridge,
+               "empty_compound", -2.0) &&
+      addAsset(invalidDocument, cr::CreativeObjectKind::Bridge,
+               "outside_compound", 0.0) &&
+      addAsset(invalidDocument, cr::CreativeObjectKind::Bridge,
+               "excessive_compound", 2.0);
+  const cr::CreativeRoomBakeResult invalidResult =
+      bake(invalidDocument, &invalidCatalog);
+
+  iggy3d::StaticMeshAssetCatalog tiltedCatalog;
+  tiltedCatalog.entries.push_back(catalogEntry(
+      "tilted_compound", iggy3d::StaticMeshCollisionMode::CompoundBounds,
+      iggy3d::StaticMeshAuthoringMetadataStatus::Authored, true,
+      {-1.0F, 0.0F, -1.0F}, {1.0F, 1.0F, 1.0F}, walkableParts));
+  cr::CreativeDocument tiltedDocument =
+      cr::CreativeDocument::create("tilted compound");
+  const cr::CreativeDocumentCreateReceipt tiltedCreated = addAssetWithTransform(
+      tiltedDocument, cr::CreativeObjectKind::Bridge, "tilted_compound",
+      {0.0, 0.0, 0.0}, {{-1.0, 0.0, -1.0}, {1.0, 1.0, 1.0}}, {0.25, 0.0, 0.0});
+  const cr::CreativeRoomBakeResult tiltedResult =
+      bake(tiltedDocument, &tiltedCatalog);
+
+  return expect(invalidCreated, "invalid compound fixtures create") &&
+         expect(invalidResult.receipt.accepted,
+                "invalid compound fixture room bake accepted") &&
+         expect(invalidResult.room.spatialSurfaces.empty(),
+                "invalid compound fixtures emit no physics") &&
+         expect(invalidResult.receipt.skippedInvalidAssetMetadataCount == 3U,
+                "every invalid compound contract is counted") &&
+         expect(tiltedCreated.accepted && tiltedResult.receipt.accepted &&
+                    tiltedResult.receipt.bakedAssetBoundsCollisionCount == 2U &&
+                    tiltedResult.receipt.bakedAssetWalkableSurfaceCount == 0U &&
+                    tiltedResult.receipt.skippedAssetWalkableTransformCount ==
+                        1U &&
+                    tiltedResult.room.spatialSurfaces.size() == 4U,
+                "tilted compound keeps blockers but fabricates no flat tops");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = fixtureMetadataProducesHonestPhysicsSurfaces() &&
+                  compoundFixtureAssetsReachRuntimePhysics() &&
+                  importedStairSupportsFullBoundedRuntimeTraversal() &&
                   renderOnlyAndUnsafeMetadataStayVisibleWithoutPhysics() &&
                   defaultMetadataUsesBoundsButNeverInventsWalkability() &&
-                  tiltedWalkableAssetDoesNotFabricateAHorizontalTop();
+                  tiltedWalkableAssetDoesNotFabricateAHorizontalTop() &&
+                  compoundBoundsMapResizeAndEmitIndependentWalkableTops() &&
+                  compoundBoundsFollowNonuniformScaleAndYaw() &&
+                  invalidAndTiltedCompoundContractsFailClosed();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -61,6 +61,64 @@ iggy3d::RoomSpatialSurface wallSurface(std::string_view id = "wall",
   return surface;
 }
 
+iggy3d::RoomSpatialSurface stepBlockerSurface(
+    std::string_view id,
+    float heightMeters,
+    float minX = 1.0F,
+    float maxX = 2.0F) {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = std::string(id);
+  surface.sourceStaticMeshId = "step_mesh";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Box;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Blocker;
+  surface.pointsMeters = {
+      {minX, 0.0F, -1.0F},
+      {maxX, 0.0F, -1.0F},
+      {maxX, heightMeters, 1.0F},
+      {minX, heightMeters, 1.0F},
+  };
+  surface.normal = {-1.0F, 0.0F, 0.0F};
+  surface.collisionMask = {"actor"};
+  surface.blocksActor = true;
+  surface.runtimeOwnerStableName = "owner.step";
+  return surface;
+}
+
+iggy3d::RoomSpatialSurface stepTopSurface(
+    std::string_view id,
+    float heightMeters,
+    float minX = 1.0F,
+    float maxX = 2.0F) {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = std::string(id);
+  surface.sourceStaticMeshId = "step_mesh";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Plane;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Walkable;
+  surface.pointsMeters = {
+      {minX, heightMeters, -1.0F},
+      {maxX, heightMeters, -1.0F},
+      {maxX, heightMeters, 1.0F},
+      {minX, heightMeters, 1.0F},
+  };
+  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.collisionMask = {"actor"};
+  surface.runtimeOwnerStableName = "owner.step";
+  return surface;
+}
+
+iggy3d::RoomSpatialSurface ceilingSurface() {
+  iggy3d::RoomSpatialSurface surface =
+      stepBlockerSurface("low_ceiling", 2.10F, -1.0F, 0.50F);
+  surface.pointsMeters = {
+      {-1.0F, 2.0F, -1.0F},
+      {0.5F, 2.0F, -1.0F},
+      {0.5F, 2.1F, 1.0F},
+      {-1.0F, 2.1F, 1.0F},
+  };
+  surface.normal = {0.0F, -1.0F, 0.0F};
+  return surface;
+}
+
 iggy3d::RoomSpatialSurface projectileOnlySurface() {
   iggy3d::RoomSpatialSurface surface;
   surface.id = "projectile_wall";
@@ -167,6 +225,11 @@ bool statusNamesAndConfigValidation() {
   invalidBake.surfaceBake.firstGeneratedBodyId = {};
   iggy3d::PlayerPhysicsMovePlannerConfig invalidMotor = valid;
   invalidMotor.motor.maxIterations = 0U;
+  iggy3d::PlayerPhysicsMovePlannerConfig invalidStep = valid;
+  invalidStep.maxStepHeightMeters = -0.01F;
+  iggy3d::PlayerPhysicsMovePlannerConfig nonfiniteStep = valid;
+  nonfiniteStep.maxStepHeightMeters =
+      std::numeric_limits<float>::quiet_NaN();
 
   return expect(iggy3d::playerPhysicsMovePlannerStatusName(
                     iggy3d::PlayerPhysicsMovePlannerStatus::Planned) ==
@@ -217,7 +280,11 @@ bool statusNamesAndConfigValidation() {
          expect(!iggy3d::isValidPlayerPhysicsMovePlannerConfig(invalidBake),
                 "invalid bake config") &&
          expect(!iggy3d::isValidPlayerPhysicsMovePlannerConfig(invalidMotor),
-                "invalid motor config");
+                "invalid motor config") &&
+         expect(!iggy3d::isValidPlayerPhysicsMovePlannerConfig(invalidStep),
+                "negative step config") &&
+         expect(!iggy3d::isValidPlayerPhysicsMovePlannerConfig(nonfiniteStep),
+                "nonfinite step config");
 }
 
 bool invalidRequestsRejectBeforeMovement() {
@@ -551,6 +618,91 @@ bool projectileOnlySurfacePolicyIsExplicit() {
                 "projectile included source id");
 }
 
+bool walkableLowRiserUsesBoundedStepPlan() {
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet(
+      {floorSurface(), stepBlockerSurface("step_blocker", 0.25F),
+       stepTopSurface("step_top", 0.25F)});
+  const iggy3d::PlayerPhysicsMovePlannerResult disabled =
+      iggy3d::planPlayerPhysicsMove(requestFor(
+          &surfaces, {0.0F, 0.90F, 0.0F}, {1.40F, 0.0F, 0.0F}));
+  iggy3d::PlayerPhysicsMovePlannerConfig config = plannerConfig();
+  config.maxStepHeightMeters = 0.35F;
+  const iggy3d::Vec3 desired{1.40F, 0.0F, 0.0F};
+  const iggy3d::PlayerPhysicsMovePlannerResult result =
+      iggy3d::planPlayerPhysicsMove(
+          requestFor(&surfaces, {0.0F, 0.90F, 0.0F}, desired, config));
+
+  return expect(disabled.ok && disabled.blocked &&
+                    !disabled.stepAttempted && !disabled.stepAccepted,
+                "step policy defaults off for direct callers") &&
+         expect(result.ok, "step plan ok") &&
+         expect(result.stepAttempted, "step attempted") &&
+         expect(result.stepAccepted, "step accepted") &&
+         expect(near(result.stepHeightMetersApplied, 0.25F),
+                "step height receipt") &&
+         expect(result.stepObstacleSourceSurfaceId == "step_blocker",
+                "step obstacle receipt") &&
+         expect(!result.blocked && result.hitCount == 0U,
+                "accepted step clears chosen path") &&
+         expect(result.grounded, "accepted step grounded") &&
+         expect(near(result.finalCenterMeters.x, 1.40F) &&
+                    near(result.finalCenterMeters.y, 1.15F),
+                "accepted step final center") &&
+         expect(result.iterationCount >= 3U,
+                "step accounts for candidate sweeps") &&
+         expect(displacementFactsMatch(result, desired),
+                "step displacement facts");
+}
+
+bool stepPlanRejectsUnwalkableUnsafeAndUnsupportedCandidates() {
+  iggy3d::PlayerPhysicsMovePlannerConfig config = plannerConfig();
+  config.maxStepHeightMeters = 0.35F;
+  const iggy3d::Vec3 start{0.0F, 0.90F, 0.0F};
+  const iggy3d::Vec3 desired{1.40F, 0.0F, 0.0F};
+
+  const iggy3d::SpatialSurfaceSet tooTall = makeSurfaceSet(
+      {floorSurface(), stepBlockerSurface("tall_step", 0.50F),
+       stepTopSurface("tall_step_top", 0.50F)});
+  const iggy3d::PlayerPhysicsMovePlannerResult tallResult =
+      iggy3d::planPlayerPhysicsMove(
+          requestFor(&tooTall, start, desired, config));
+
+  const iggy3d::SpatialSurfaceSet unwalkable = makeSurfaceSet(
+      {floorSurface(), stepBlockerSurface("unwalkable_step", 0.25F)});
+  const iggy3d::PlayerPhysicsMovePlannerResult unwalkableResult =
+      iggy3d::planPlayerPhysicsMove(
+          requestFor(&unwalkable, start, desired, config));
+
+  const iggy3d::SpatialSurfaceSet unsupported = makeSurfaceSet(
+      {stepBlockerSurface("unsupported_step", 0.25F),
+       stepTopSurface("unsupported_step_top", 0.25F)});
+  const iggy3d::PlayerPhysicsMovePlannerResult unsupportedResult =
+      iggy3d::planPlayerPhysicsMove(
+          requestFor(&unsupported, start, desired, config));
+
+  const iggy3d::SpatialSurfaceSet lowHeadroom = makeSurfaceSet(
+      {floorSurface(), stepBlockerSurface("covered_step", 0.25F),
+       stepTopSurface("covered_step_top", 0.25F), ceilingSurface()});
+  const iggy3d::PlayerPhysicsMovePlannerResult headroomResult =
+      iggy3d::planPlayerPhysicsMove(
+          requestFor(&lowHeadroom, start, desired, config));
+
+  return expect(tallResult.ok && tallResult.stepAttempted &&
+                    !tallResult.stepAccepted && tallResult.blocked,
+                "tall riser rejected") &&
+         expect(unwalkableResult.ok && unwalkableResult.stepAttempted &&
+                    !unwalkableResult.stepAccepted &&
+                    unwalkableResult.blocked,
+                "unwalkable riser rejected") &&
+         expect(unsupportedResult.ok && unsupportedResult.stepAttempted &&
+                    !unsupportedResult.stepAccepted &&
+                    unsupportedResult.blocked,
+                "unsupported start rejected") &&
+         expect(headroomResult.ok && headroomResult.stepAttempted &&
+                    !headroomResult.stepAccepted && headroomResult.blocked,
+                "low headroom rejected");
+}
+
 }  // namespace
 
 int main() {
@@ -563,6 +715,8 @@ int main() {
                   failedPrecomputedBakeDoesNotFallBackToInternalBake() &&
                   diagonalMoveSlidesAlongActorWall() &&
                   groundSnapRefreshesDisplacementFacts() &&
-                  projectileOnlySurfacePolicyIsExplicit();
+                  projectileOnlySurfacePolicyIsExplicit() &&
+                  walkableLowRiserUsesBoundedStepPlan() &&
+                  stepPlanRejectsUnwalkableUnsafeAndUnsupportedCandidates();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

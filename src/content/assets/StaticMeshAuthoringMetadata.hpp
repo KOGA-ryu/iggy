@@ -11,10 +11,24 @@ namespace iggy3d {
 
 enum class StaticMeshCollisionMode : std::uint8_t {
   Bounds,
+  CompoundBounds,
   None,
   Convex,
   Mesh,
   Invalid,
+};
+
+enum class StaticMeshCollisionPartMetadataStatus : std::uint8_t {
+  NotAuthored,
+  Authored,
+  Invalid,
+};
+
+struct StaticMeshCollisionPartMetadata {
+  StaticMeshCollisionPartMetadataStatus status =
+      StaticMeshCollisionPartMetadataStatus::NotAuthored;
+  std::string_view reasonCode = "static_mesh_collision_part_not_authored";
+  bool walkable = false;
 };
 
 enum class StaticMeshAuthoringMetadataStatus : std::uint8_t {
@@ -46,6 +60,11 @@ namespace detail {
 // glTF extras object from the asset, document, node, or mesh level.
 [[nodiscard]] StaticMeshAuthoringMetadata parseStaticMeshAuthoringMetadata(
     std::span<const std::string_view> extrasObjects) noexcept;
+
+// Node-local contract for compound AABB assets. Other extras keys are ignored,
+// but malformed JSON and partial collision-part declarations fail closed.
+[[nodiscard]] StaticMeshCollisionPartMetadata
+parseStaticMeshCollisionPartMetadata(std::string_view extrasObject) noexcept;
 
 [[nodiscard]] StaticMeshAuthoringMetadata importStaticMeshAuthoringMetadata(
     const ::cgltf_data& data);

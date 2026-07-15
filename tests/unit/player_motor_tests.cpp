@@ -93,6 +93,43 @@ iggy3d::RoomSpatialSurface wallSurface(std::string_view id = "wall") {
   return surface;
 }
 
+iggy3d::RoomSpatialSurface stepBlockerSurface() {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = "step_blocker";
+  surface.sourceStaticMeshId = "synthetic_step";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Box;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Blocker;
+  surface.pointsMeters = {
+      {1.0F, 0.0F, -1.0F},
+      {2.0F, 0.0F, -1.0F},
+      {2.0F, 0.25F, 1.0F},
+      {1.0F, 0.25F, 1.0F},
+  };
+  surface.normal = {-1.0F, 0.0F, 0.0F};
+  surface.traversalTags = {"blocker"};
+  surface.collisionMask = {"actor"};
+  surface.blocksActor = true;
+  return surface;
+}
+
+iggy3d::RoomSpatialSurface stepTopSurface() {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = "step_top";
+  surface.sourceStaticMeshId = "synthetic_step";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Plane;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Walkable;
+  surface.pointsMeters = {
+      {1.0F, 0.25F, -1.0F},
+      {2.0F, 0.25F, -1.0F},
+      {2.0F, 0.25F, 1.0F},
+      {1.0F, 0.25F, 1.0F},
+  };
+  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.traversalTags = {"walkable"};
+  surface.collisionMask = {"actor"};
+  return surface;
+}
+
 iggy3d::RoomSpatialSurface projectileOnlySurface() {
   iggy3d::RoomSpatialSurface surface;
   surface.id = "projectile_wall";
@@ -452,6 +489,55 @@ bool physicsDashClampsAgainstActorBlocker() {
                 "physics dash player stayed before wall");
 }
 
+bool groundedPhysicsDashCanStepButAirControlCannot() {
+  iggy3d::WorldState dashWorld = makeWorldAt({0.0F, 0.0F, 0.0F});
+  const iggy3d::SpatialSurfaceSet surfaces =
+      makeSurfaceSet({floorSurface(), stepBlockerSurface(), stepTopSurface()});
+  iggy3d::PlayerMotorContext dashContext{&dashWorld, &surfaces};
+  iggy3d::PlayerMotorState dashState = motorState();
+  iggy3d::PlayerMotorParams params;
+  params.usePhysicsMovePlanner = true;
+  params.dashSpeedMetersPerSecond = 7.0F;
+  params.dashDurationSeconds = 0.20F;
+  iggy3d::PlayerMotorInput dashInput;
+  dashInput.moveIntent = {1.0F, 0.0F, 0.0F};
+  dashInput.dashPressed = true;
+  dashInput.seconds = 0.20F;
+  const iggy3d::PlayerMotorResult dash =
+      iggy3d::updatePlayerMotor(dashContext, dashState, dashInput, params);
+
+  iggy3d::WorldState airWorld = makeWorldAt({0.0F, 0.0F, 0.0F});
+  iggy3d::PlayerMotorContext airContext{&airWorld, &surfaces};
+  iggy3d::PlayerMotorState airState = motorState();
+  iggy3d::PlayerMotorInput airInput;
+  airInput.moveIntent = {1.0F, 0.0F, 0.0F};
+  airInput.jumpPressed = true;
+  airInput.seconds = 0.20F;
+  params.airMaxSpeedMetersPerSecond = 7.0F;
+  params.airAccelerationMetersPerSecondSquared = 35.0F;
+  params.airLaunchSpeedMetersPerSecond = 7.0F;
+  const iggy3d::PlayerMotorResult air =
+      iggy3d::updatePlayerMotor(airContext, airState, airInput, params);
+
+  return expect(iggy3d::playerMotorSucceeded(dash),
+                "grounded physics dash result ok") &&
+         expect(dash.stepAttempted && dash.stepAccepted,
+                "grounded physics dash steps") &&
+         expect(approx(dash.stepHeightMetersApplied, 0.25F),
+                "grounded physics dash step height") &&
+         expect(dash.hitSurfaceId == "step_blocker",
+                "grounded physics dash obstacle id") &&
+         expect(dashWorld.findById({1}) != nullptr &&
+                    iggy3d::nearlyEqual(
+                        dashWorld.findById({1})->transform.position,
+                        {1.40F, 0.25F, 0.0F}),
+                "grounded physics dash final position") &&
+         expect(iggy3d::playerMotorSucceeded(air),
+                "air physics result ok") &&
+         expect(!air.stepAttempted && !air.stepAccepted,
+                "air physics never invokes step policy");
+}
+
 bool gravityLandsAndRearmsJump() {
   iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.0F});
   const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet();
@@ -588,6 +674,15 @@ bool missingAndInvalidInputsDoNotMutate() {
   ok = ok && expect(bad.status == iggy3d::PlayerMotorStatus::InvalidParameters,
                     "bad params");
 
+  iggy3d::PlayerMotorParams badStepParams;
+  badStepParams.stepHeightMeters = -0.01F;
+  const iggy3d::PlayerMotorResult badStep =
+      iggy3d::updatePlayerMotor(context, state, input, badStepParams);
+  ok = ok && expect(
+                    badStep.status ==
+                        iggy3d::PlayerMotorStatus::InvalidParameters,
+                    "bad step params");
+
   iggy3d::PlayerMotorParams badPhysicsParams;
   badPhysicsParams.usePhysicsMovePlanner = true;
   badPhysicsParams.physicsBodyHalfExtentsMeters.x = 0.0F;
@@ -617,6 +712,7 @@ int main() {
                   dashRequiresIntentAndRejectsCooldown() &&
                   dashClampsAgainstActorBlocker() &&
                   physicsDashClampsAgainstActorBlocker() &&
+                  groundedPhysicsDashCanStepButAirControlCannot() &&
                   gravityLandsAndRearmsJump() &&
                   wireWalkMovesAlongRailAndClampsAtEndpoint() &&
                   wireWalkJumpDetachesIntoAirbornePhase() &&

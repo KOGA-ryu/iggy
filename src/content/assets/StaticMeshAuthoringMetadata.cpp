@@ -12,6 +12,7 @@ namespace iggy3d {
 std::string_view toString(StaticMeshCollisionMode mode) noexcept {
   switch (mode) {
     case StaticMeshCollisionMode::Bounds: return "bounds";
+    case StaticMeshCollisionMode::CompoundBounds: return "compound_bounds";
     case StaticMeshCollisionMode::None: return "none";
     case StaticMeshCollisionMode::Convex: return "convex";
     case StaticMeshCollisionMode::Mesh: return "mesh";
@@ -120,6 +121,70 @@ public:
     }
   }
 
+  [[nodiscard]] bool parseCollisionPart(
+      StaticMeshCollisionPartMetadata& metadata) noexcept {
+    skipWhitespace();
+    if (!take('{')) {
+      return false;
+    }
+    bool sawPart = false;
+    bool sawWalkable = false;
+    skipWhitespace();
+    if (take('}')) {
+      return atEnd();
+    }
+
+    while (true) {
+      std::string key;
+      bool keyOverflow = false;
+      if (!parseString(&key, keyOverflow)) {
+        return false;
+      }
+      skipWhitespace();
+      if (!take(':')) {
+        return false;
+      }
+      skipWhitespace();
+
+      if (keyOverflow) {
+        if (!skipValue(0U)) {
+          return false;
+        }
+      } else if (key == "iggy_collision_part") {
+        std::string value;
+        bool valueOverflow = false;
+        if (sawPart || !parseString(&value, valueOverflow) || valueOverflow ||
+            value != "bounds") {
+          return false;
+        }
+        sawPart = true;
+      } else if (key == "iggy_collision_part_walkable") {
+        if (sawWalkable || !parseBoolean(metadata.walkable)) {
+          return false;
+        }
+        sawWalkable = true;
+      } else if (!skipValue(0U)) {
+        return false;
+      }
+
+      skipWhitespace();
+      if (take('}')) {
+        if (!atEnd() || (sawWalkable && !sawPart)) {
+          return false;
+        }
+        if (sawPart) {
+          metadata.status = StaticMeshCollisionPartMetadataStatus::Authored;
+          metadata.reasonCode = "static_mesh_collision_part_authored";
+        }
+        return true;
+      }
+      if (!take(',')) {
+        return false;
+      }
+      skipWhitespace();
+    }
+  }
+
 private:
   [[nodiscard]] bool atEnd() noexcept {
     skipWhitespace();
@@ -217,6 +282,8 @@ private:
     StaticMeshCollisionMode mode = StaticMeshCollisionMode::Invalid;
     if (value == "bounds") {
       mode = StaticMeshCollisionMode::Bounds;
+    } else if (value == "compound_bounds") {
+      mode = StaticMeshCollisionMode::CompoundBounds;
     } else if (value == "none") {
       mode = StaticMeshCollisionMode::None;
     } else if (value == "convex") {
@@ -237,12 +304,7 @@ private:
   [[nodiscard]] bool parseWalkable(
       StaticMeshAuthoringMetadata& metadata) noexcept {
     bool value = false;
-    if (source_.substr(cursor_, 4U) == "true") {
-      cursor_ += 4U;
-      value = true;
-    } else if (source_.substr(cursor_, 5U) == "false") {
-      cursor_ += 5U;
-    } else {
+    if (!parseBoolean(value)) {
       return false;
     }
     if (metadata.walkableSpecified && metadata.walkable != value) {
@@ -251,6 +313,20 @@ private:
     metadata.walkable = value;
     metadata.walkableSpecified = true;
     return true;
+  }
+
+  [[nodiscard]] bool parseBoolean(bool& value) noexcept {
+    if (source_.substr(cursor_, 4U) == "true") {
+      cursor_ += 4U;
+      value = true;
+      return true;
+    }
+    if (source_.substr(cursor_, 5U) == "false") {
+      cursor_ += 5U;
+      value = false;
+      return true;
+    }
+    return false;
   }
 
   [[nodiscard]] bool parseCategory(
@@ -437,7 +513,8 @@ StaticMeshAuthoringMetadata parseStaticMeshAuthoringMetadata(
   }
 
   if (metadata.walkable &&
-      metadata.collisionMode == StaticMeshCollisionMode::None) {
+      (metadata.collisionMode == StaticMeshCollisionMode::None ||
+       metadata.collisionMode == StaticMeshCollisionMode::CompoundBounds)) {
     return invalidMetadata();
   }
   if (metadata.collisionMode == StaticMeshCollisionMode::Convex ||
@@ -450,6 +527,26 @@ StaticMeshAuthoringMetadata parseStaticMeshAuthoringMetadata(
   if (anyAuthored) {
     metadata.status = StaticMeshAuthoringMetadataStatus::Authored;
     metadata.reasonCode = "static_mesh_authoring_metadata_authored";
+  }
+  return metadata;
+}
+
+StaticMeshCollisionPartMetadata parseStaticMeshCollisionPartMetadata(
+    std::string_view extrasObject) noexcept {
+  StaticMeshCollisionPartMetadata metadata;
+  if (extrasObject.empty()) {
+    return metadata;
+  }
+  if (extrasObject.size() > kMaxExtrasBytes) {
+    metadata.status = StaticMeshCollisionPartMetadataStatus::Invalid;
+    metadata.reasonCode = "static_mesh_collision_part_invalid";
+    return metadata;
+  }
+  ExtrasReader reader(extrasObject);
+  if (!reader.parseCollisionPart(metadata)) {
+    metadata = {};
+    metadata.status = StaticMeshCollisionPartMetadataStatus::Invalid;
+    metadata.reasonCode = "static_mesh_collision_part_invalid";
   }
   return metadata;
 }

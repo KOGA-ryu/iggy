@@ -117,6 +117,43 @@ iggy3d::RoomSpatialSurface wallSurface(std::string_view id = "wall") {
   return surface;
 }
 
+iggy3d::RoomSpatialSurface stepBlockerSurface(float heightMeters) {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = "step_blocker";
+  surface.sourceStaticMeshId = "synthetic_step";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Box;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Blocker;
+  surface.pointsMeters = {
+      {1.0F, 0.0F, -1.0F},
+      {2.0F, 0.0F, -1.0F},
+      {2.0F, heightMeters, 1.0F},
+      {1.0F, heightMeters, 1.0F},
+  };
+  surface.normal = {-1.0F, 0.0F, 0.0F};
+  surface.traversalTags = {"blocker"};
+  surface.collisionMask = {"actor"};
+  surface.blocksActor = true;
+  return surface;
+}
+
+iggy3d::RoomSpatialSurface stepTopSurface(float heightMeters) {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = "step_top";
+  surface.sourceStaticMeshId = "synthetic_step";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Plane;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Walkable;
+  surface.pointsMeters = {
+      {1.0F, heightMeters, -1.0F},
+      {2.0F, heightMeters, -1.0F},
+      {2.0F, heightMeters, 1.0F},
+      {1.0F, heightMeters, 1.0F},
+  };
+  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.traversalTags = {"walkable"};
+  surface.collisionMask = {"actor"};
+  return surface;
+}
+
 iggy3d::RoomSpatialSurface openingSurface() {
   iggy3d::RoomSpatialSurface surface;
   surface.id = "opening";
@@ -774,6 +811,38 @@ bool physicsPlannerSkipsProjectileOnlyBlocker() {
                 "physics projectile skipped mutated");
 }
 
+bool physicsPlannerStepsOntoAuthoredWalkableRiser() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.0F});
+  iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet(
+      {floorSurface(), stepBlockerSurface(0.25F), stepTopSurface(0.25F)});
+  iggy3d::MovementSystemContext context{&world, &config, &surfaces, true};
+
+  const iggy3d::MovementResult result =
+      iggy3d::executeMovement(context, moveRequest({1.40F, 0.0F, 0.0F}));
+
+  return expect(result.blocked == iggy3d::MovementBlockedReason::None,
+                "physics step accepted") &&
+         expect(result.stepAttempted && result.stepAccepted,
+                "physics step receipt accepted") &&
+         expect(approx(result.stepHeightMetersApplied, 0.25F),
+                "physics step height receipt") &&
+         expect(!result.movementClamped && !result.movementSlid,
+                "physics step path not clamped") &&
+         expect(!result.groundSnapApplied,
+                "physics step distinct from ground snap") &&
+         expect(result.collisionSweepCount >= 3U,
+                "physics step sweep count") &&
+         expect(result.hitSurfaceId == "step_blocker",
+                "physics step obstacle id") &&
+         expect(iggy3d::nearlyEqual(result.finalPosition,
+                                    {1.40F, 0.25F, 0.0F}),
+                "physics step final position") &&
+         expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
+                                    result.finalPosition),
+                "physics step mutates world once");
+}
+
 bool physicsPlannerWithoutSurfacesUsesLegacyNoCollisionPath() {
   iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.0F});
   iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
@@ -820,6 +889,7 @@ int main() {
                   physicsPlannerWallMoveClampsAndMutatesPartial() &&
                   physicsPlannerDiagonalWallMoveSlides() &&
                   physicsPlannerSkipsProjectileOnlyBlocker() &&
+                  physicsPlannerStepsOntoAuthoredWalkableRiser() &&
                   physicsPlannerWithoutSurfacesUsesLegacyNoCollisionPath();
   return ok ? 0 : 1;
 }

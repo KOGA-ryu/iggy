@@ -24,6 +24,7 @@ bool validParams(const PlayerMotorParams& params) {
          params.jumpImpulseMetersPerSecond > 0.0F && std::isfinite(params.groundProbeMeters) &&
          params.groundProbeMeters >= 0.0F && std::isfinite(params.landingSnapMeters) &&
          params.landingSnapMeters >= 0.0F &&
+         std::isfinite(params.stepHeightMeters) && params.stepHeightMeters >= 0.0F &&
          std::isfinite(params.footprintToleranceMeters) &&
          params.footprintToleranceMeters >= 0.0F &&
          std::isfinite(params.maxWalkableSlopeDegrees) &&
@@ -196,6 +197,9 @@ Vec3 withoutNormal(Vec3 value, Vec3 normal) {
 struct HorizontalCollisionResult {
   bool clamped = false;
   bool slid = false;
+  bool stepAttempted = false;
+  bool stepAccepted = false;
+  float stepHeightMetersApplied = 0.0F;
   std::string hitSurfaceId;
 };
 
@@ -270,7 +274,8 @@ HorizontalCollisionResult applyPhysicsHorizontalCollision(const SpatialSurfaceSe
                                                           Vec3 start,
                                                           Vec3 horizontalDisplacement,
                                                           Vec3& finalPosition,
-                                                          Vec3& horizontalVelocity) {
+                                                          Vec3& horizontalVelocity,
+                                                          bool allowStepUp) {
   HorizontalCollisionResult result;
   const float horizontalDistance = vectorLength(horizontalDisplacement);
   // branch-gate: BG-1101
@@ -284,6 +289,7 @@ HorizontalCollisionResult applyPhysicsHorizontalCollision(const SpatialSurfaceSe
   config.motor.groundSnapDistanceMeters = 0.0F;
   config.motor.maxMoveDistanceMeters =
       std::max(config.motor.maxMoveDistanceMeters, horizontalDistance + 1.0F);
+  config.maxStepHeightMeters = allowStepUp ? params.stepHeightMeters : 0.0F;
 
   PlayerPhysicsMovePlannerRequest request;
   request.collisionSurfaces = &surfaces;
@@ -303,9 +309,18 @@ HorizontalCollisionResult applyPhysicsHorizontalCollision(const SpatialSurfaceSe
   }
 
   finalPosition.x = planned.finalCenterMeters.x;
+  if (planned.stepAccepted) {
+    finalPosition.y = planned.finalCenterMeters.y -
+                      params.physicsBodyHalfExtentsMeters.y;
+  }
   finalPosition.z = planned.finalCenterMeters.z;
   result.clamped = planned.blocked || planned.hitCount > 0U;
-  result.hitSurfaceId = planned.firstHitSourceSurfaceId;
+  result.stepAttempted = planned.stepAttempted;
+  result.stepAccepted = planned.stepAccepted;
+  result.stepHeightMetersApplied = planned.stepHeightMetersApplied;
+  result.hitSurfaceId = planned.firstHitSourceSurfaceId.empty()
+                            ? planned.stepObstacleSourceSurfaceId
+                            : planned.firstHitSourceSurfaceId;
   for (const PhysicsKinematicMotorHit& hit : planned.hits) {
     horizontalVelocity = withoutNormal(horizontalVelocity, hit.normalFromColliderToMotor);
   }
@@ -325,11 +340,13 @@ HorizontalCollisionResult applyConfiguredHorizontalCollision(
     Vec3 start,
     Vec3 horizontalDisplacement,
     Vec3& finalPosition,
-    Vec3& horizontalVelocity) {
+    Vec3& horizontalVelocity,
+    bool allowStepUp) {
   // branch-gate: BG-1101
   if (params.usePhysicsMovePlanner) {
     return applyPhysicsHorizontalCollision(
-        surfaces, params, start, horizontalDisplacement, finalPosition, horizontalVelocity);
+        surfaces, params, start, horizontalDisplacement, finalPosition,
+        horizontalVelocity, allowStepUp);
   }
   return applyHorizontalCollision(
       surfaces, params, start, horizontalDisplacement, finalPosition, horizontalVelocity);
@@ -548,9 +565,14 @@ PlayerMotorResult updatePlayerMotor(PlayerMotorContext& context,
                                            start,
                                            horizontalDisplacement,
                                            finalPosition,
-                                           state.horizontalVelocityMetersPerSecond);
+                                           state.horizontalVelocityMetersPerSecond,
+                                           state.phase == PlayerMotorPhase::Grounded &&
+                                               state.grounded);
     result.dashMovementClamped = dashCollision.clamped;
     result.dashMovementSlid = dashCollision.slid;
+    result.stepAttempted = dashCollision.stepAttempted;
+    result.stepAccepted = dashCollision.stepAccepted;
+    result.stepHeightMetersApplied = dashCollision.stepHeightMetersApplied;
     if (!dashCollision.hitSurfaceId.empty()) {
       result.hitSurfaceId = std::move(dashCollision.hitSurfaceId);
     }
@@ -584,7 +606,8 @@ PlayerMotorResult updatePlayerMotor(PlayerMotorContext& context,
                                            start,
                                            horizontalDisplacement,
                                            finalPosition,
-                                           state.horizontalVelocityMetersPerSecond);
+                                           state.horizontalVelocityMetersPerSecond,
+                                           false);
     result.airMovementClamped = airCollision.clamped;
     result.airMovementSlid = airCollision.slid;
     if (!airCollision.hitSurfaceId.empty()) {

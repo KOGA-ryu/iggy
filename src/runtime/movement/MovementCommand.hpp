@@ -61,6 +61,9 @@ struct MovementResult {
   bool movementClamped = false;
   bool movementSlid = false;
   bool groundSnapApplied = false;
+  bool stepAttempted = false;
+  bool stepAccepted = false;
+  float stepHeightMetersApplied = 0.0F;
   bool carefulFooting = false;
   float slopeAngleDegrees = 0.0F;
   float slopeUpDot = 0.0F;

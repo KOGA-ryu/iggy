@@ -28,6 +28,7 @@ enum class PlayerPhysicsMovePlannerStatus : std::uint8_t {
 struct PlayerPhysicsMovePlannerConfig {
   PhysicsSpatialSurfaceColliderBakeConfig surfaceBake;
   PhysicsKinematicMotorConfig motor;
+  float maxStepHeightMeters = 0.0F;
 };
 
 struct PlayerPhysicsMovePlannerRequest {
@@ -56,6 +57,9 @@ struct PlayerPhysicsMovePlannerResult {
   bool grounded = false;
   bool snappedToGround = false;
   bool blocked = false;
+  bool stepAttempted = false;
+  bool stepAccepted = false;
+  float stepHeightMetersApplied = 0.0F;
   std::size_t hitCount = 0U;
   std::size_t iterationCount = 0U;
   std::size_t bakedSurfaceCount = 0U;
@@ -64,6 +68,7 @@ struct PlayerPhysicsMovePlannerResult {
   std::size_t invalidSurfaceIndex = 0U;
   PhysicsBodyId firstHitBodyId;
   std::string firstHitSourceSurfaceId;
+  std::string stepObstacleSourceSurfaceId;
   std::vector<PhysicsKinematicMotorHit> hits;
   std::vector<std::string> hitSourceSurfaceIds;
   bool debugGeometryAvailable = false;

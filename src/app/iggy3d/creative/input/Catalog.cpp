@@ -342,6 +342,9 @@ std::string_view creativeCatalogAssetPhysicsLabel(
   if (metadata.collisionMode == StaticMeshCollisionMode::None) {
     return "DECOR";
   }
+  if (metadata.collisionMode == StaticMeshCollisionMode::CompoundBounds) {
+    return metadata.walkable ? "COMPOUND WALKABLE" : "COMPOUND";
+  }
   if (metadata.walkable) {
     return "SOLID WALKABLE";
   }

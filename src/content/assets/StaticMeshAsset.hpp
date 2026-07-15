@@ -16,6 +16,7 @@ namespace iggy3d {
 
 inline constexpr std::uint32_t kInvalidStaticMeshImageIndex =
     std::numeric_limits<std::uint32_t>::max();
+inline constexpr std::size_t kMaxStaticMeshCollisionPartCount = 256U;
 
 enum class StaticMeshTextureWrap : std::uint8_t {
   Repeat,
@@ -68,6 +69,12 @@ struct StaticMeshPrimitive {
   bool hasTexcoord0 = false;
 };
 
+struct StaticMeshCollisionPart {
+  Vec3 boundsMin;
+  Vec3 boundsMax;
+  bool walkable = false;
+};
+
 struct StaticMeshAsset {
   std::string id;
   std::filesystem::path sourcePath;
@@ -77,6 +84,7 @@ struct StaticMeshAsset {
   std::vector<StaticMeshPrimitive> primitives;
   std::vector<StaticMeshMaterial> materials;
   std::vector<StaticMeshImage> images;
+  std::vector<StaticMeshCollisionPart> collisionParts;
   StaticMeshAuthoringMetadata authoringMetadata;
   std::size_t textureFailureCount = 0;
   Vec3 boundsMin;
@@ -114,6 +122,7 @@ struct StaticMeshAssetCatalogEntry {
   Vec3 boundsMax;
   std::uint64_t contentHash = 0;
   StaticMeshAuthoringMetadata authoringMetadata;
+  std::vector<StaticMeshCollisionPart> collisionParts;
 };
 
 struct StaticMeshAssetCatalogFailure {

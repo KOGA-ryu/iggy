@@ -36,6 +36,9 @@ instanced draw path.
 | `homestead/modular/roof_shed_4x4` | Single-slope roof panel | None | No |
 | `homestead/modular/roof_gable_slope_4p4x2p2` | Half-gable roof panel | None | No |
 | `homestead/modular/roof_ridge_4p4` | Gable ridge cap | None | No |
+| `homestead/modular/stair_straight_2x3x1p5` | Six-step straight stair | Compound bounds (6) | Yes (6) |
+| `homestead/modular/porch_4x2x0p5` | Two steps and entry deck | Compound bounds (3) | Yes (3) |
+| `homestead/modular/bridge_4x2` | Walkable deck with side barriers | Compound bounds (3) | Deck only |
 
 ## Assembly rules
 
@@ -49,13 +52,27 @@ instanced draw path.
 - Pair two gable-slope panels and cap their meeting edge with the ridge module.
 - Use the gable cap only as visual infill. The roof family intentionally emits
   no aggregate collision until convex or mesh collision cooking exists.
+- Use the stair on a 0.5 m horizontal cadence. Its six 0.25 m rises reach 1.5 m.
+- Use the porch at entrances that need a 0.5 m approach. Its two steps and deck
+  are separate walkable collision parts.
+- Scale or rotate the bridge as one object. The deck remains walkable while the
+  two parapet collision parts remain blockers.
 - Preserve each module's bottom-center source origin when rotating or scaling.
 
-Creative currently cooks one aggregate AABB for a `bounds` asset. A decorative
-wall mesh with a hole would therefore still block the entire opening. The
-separate pier/lintel recipe is deliberate: collision follows visible solid
-pieces instead of fabricating an invisible wall across doors. Window frames and
-pitched roof pieces use `collision=none` for the same reason.
+Creative cooks one aggregate AABB for a `bounds` asset and up to 256 node-local
+AABBs for a `compound_bounds` asset. A decorative wall mesh with a hole would
+still block the entire opening when authored as one bounds asset. The separate
+pier/lintel recipe is deliberate: collision follows visible solid pieces
+instead of fabricating an invisible wall across doors. Window frames and
+pitched roof pieces use `collision=none` because their shapes still require
+convex or triangle-mesh collision.
+
+Compound boxes follow custom object bounds, non-uniform scale, yaw, and the
+asset pivot. Pitch or roll retains the blocker boxes but suppresses horizontal
+walkable tops. The stair risers are deliberately 0.25 m, below the runtime's
+0.35 m step-height policy. The physics movement planner uses an authored
+walkable-only up-forward-down step candidate, so each stair tread can be
+traversed without treating decorative or unsupported blockers as ground.
 
 ## Regeneration
 
@@ -77,17 +94,22 @@ uses the complete GLB byte hash as the asset content revision.
 Verify the production importer and catalog contract with:
 
 ```sh
-cmake --build build --target static_mesh_asset_tests
-ctest --test-dir build -R '^static_mesh_asset_tests$' --output-on-failure
+cmake --build build --target static_mesh_asset_tests creative_asset_room_bake_tests
+ctest --test-dir build \
+  -R '^(static_mesh_asset_tests|creative_asset_room_bake_tests)$' \
+  --output-on-failure
 ```
 
 The catalog test pins every stable ID, metadata category, collision mode,
-walkability flag, finite non-degenerate bounds, and preview-atlas inclusion.
+walkability flag, finite non-degenerate bounds, collision-part count, and
+preview-atlas inclusion. The RoomBake test loads the checked-in stair, porch,
+and bridge GLBs through the production importer and pins their independent
+blocker and walkable surfaces.
 
 ## Deferred extensions
 
 - Convex or triangle-mesh collision for pitched roofs and non-box architecture.
 - Hinges, sockets, opening state, and attachment metadata for doors/windows.
 - Textured and weathered material variants.
-- Stair, railing, corner-wall, arch, chimney, and trim modules.
+- Railings, corner walls, arches, chimneys, curved stairs, and trim modules.
 - LODs and cooked cross-run mesh packages.

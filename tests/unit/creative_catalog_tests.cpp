@@ -1201,6 +1201,11 @@ bool assetPagePreservesBuildIndicesAndEquipsDurableIdentity() {
       iggy3d::StaticMeshAuthoringMetadataStatus::UnsupportedCollision;
   unsupported.collisionMode = iggy3d::StaticMeshCollisionMode::Convex;
   unsupported.collisionSpecified = true;
+  iggy3d::StaticMeshAuthoringMetadata compound;
+  compound.status = iggy3d::StaticMeshAuthoringMetadataStatus::Authored;
+  compound.collisionMode = iggy3d::StaticMeshCollisionMode::CompoundBounds;
+  compound.collisionSpecified = true;
+  compound.walkable = true;
   iggy3d::StaticMeshAuthoringMetadata invalid;
   invalid.status = iggy3d::StaticMeshAuthoringMetadataStatus::Invalid;
   invalid.collisionMode = iggy3d::StaticMeshCollisionMode::Invalid;
@@ -1235,6 +1240,8 @@ bool assetPagePreservesBuildIndicesAndEquipsDurableIdentity() {
                     cr::creativeCatalogAssetPhysicsLabel({}) ==
                         "SOLID DEFAULT" &&
                     cr::creativeCatalogAssetPhysicsLabel(decor) == "DECOR" &&
+                 cr::creativeCatalogAssetPhysicsLabel(compound) ==
+                     "COMPOUND WALKABLE" &&
                     cr::creativeCatalogAssetPhysicsLabel(unsupported) ==
                         "UNSUPPORTED" &&
                     cr::creativeCatalogAssetPhysicsLabel(invalid) == "INVALID",

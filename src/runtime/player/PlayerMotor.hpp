@@ -32,6 +32,7 @@ struct PlayerMotorParams {
   float jumpImpulseMetersPerSecond = 5.8F;
   float groundProbeMeters = 0.20F;
   float landingSnapMeters = 0.30F;
+  float stepHeightMeters = 0.35F;
   float footprintToleranceMeters = 0.30F;
   float maxWalkableSlopeDegrees = 40.0F;
   float terminalVelocityMetersPerSecond = -40.0F;
@@ -88,6 +89,9 @@ struct PlayerMotorResult {
   bool dashRejectedCooldown = false;
   bool landed = false;
   bool groundSnapApplied = false;
+  bool stepAttempted = false;
+  bool stepAccepted = false;
+  float stepHeightMetersApplied = 0.0F;
   bool airMoveIntent = false;
   bool airControlActive = false;
   bool airMovementClamped = false;

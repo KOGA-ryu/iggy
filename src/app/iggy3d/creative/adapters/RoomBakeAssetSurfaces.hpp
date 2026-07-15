@@ -7,6 +7,7 @@ namespace iggy3d::creative::room_bake_internal {
 enum class RoomBakeAssetSurfacePolicy {
   Descriptor,
   Bounds,
+  CompoundBounds,
   None,
   MissingMetadata,
   UnsupportedCollision,
@@ -17,6 +18,7 @@ struct RoomBakeAssetSurfaceClassification {
   RoomBakeAssetSurfacePolicy policy{RoomBakeAssetSurfacePolicy::Descriptor};
   bool walkable = false;
   bool walkableTransformUnsupported = false;
+  const StaticMeshAssetCatalogEntry* catalogEntry = nullptr;
 };
 
 [[nodiscard]] RoomBakeAssetSurfaceClassification

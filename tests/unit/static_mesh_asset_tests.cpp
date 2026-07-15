@@ -319,6 +319,8 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
     std::string_view category;
     iggy3d::StaticMeshCollisionMode collision;
     bool walkable = false;
+    std::size_t collisionPartCount = 0U;
+    std::size_t walkablePartCount = 0U;
   };
   constexpr std::array kModularAssets{
       ModularAssetExpectation{"homestead/modular/beam_4x0p4", "structure",
@@ -354,6 +356,15 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
                               iggy3d::StaticMeshCollisionMode::Bounds},
       ModularAssetExpectation{"homestead/modular/window_frame_1p5x1p2", "window",
                               iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "homestead/modular/stair_straight_2x3x1p5", "stairs",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 6U, 6U},
+      ModularAssetExpectation{"homestead/modular/porch_4x2x0p5", "structure",
+                              iggy3d::StaticMeshCollisionMode::CompoundBounds,
+                              true, 3U, 3U},
+      ModularAssetExpectation{"homestead/modular/bridge_4x2", "bridge",
+                              iggy3d::StaticMeshCollisionMode::CompoundBounds,
+                              true, 3U, 1U},
   };
   const iggy3d::StaticMeshAssetCatalog catalog =
       iggy3d::discoverStaticMeshAssetCatalog("assets/creative");
@@ -431,11 +442,20 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
         entry->authoringMetadata.categoryId == expected.category &&
         entry->authoringMetadata.collisionMode == expected.collision &&
         entry->authoringMetadata.walkable == expected.walkable;
+    const bool validCollisionParts =
+        entry != nullptr &&
+        entry->collisionParts.size() == expected.collisionPartCount &&
+        static_cast<std::size_t>(std::count_if(
+            entry->collisionParts.begin(), entry->collisionParts.end(),
+            [](const iggy3d::StaticMeshCollisionPart& part) {
+              return part.walkable;
+            })) == expected.walkablePartCount;
     const std::string message =
         "modular asset imports with authored contract: " +
         std::string(expected.assetId);
     modularAssetsValid =
-        expect(validBounds && validMetadata, message.c_str()) &&
+        expect(validBounds && validMetadata && validCollisionParts,
+               message.c_str()) &&
         modularAssetsValid;
   }
 
@@ -662,6 +682,10 @@ bool authoringMetadataKernelIsBoundedAndFailClosed() {
       R"json({"iggy_collision":"none","iggy_walkable":false})json"};
   const std::array<std::string_view, 1> unsupported{
       R"json({"iggy_collision":"convex"})json"};
+  const std::array<std::string_view, 1> compound{
+      R"json({"iggy_collision":"compound_bounds","iggy_category":"stairs"})json"};
+  const std::array<std::string_view, 1> compoundGlobalWalkable{
+      R"json({"iggy_collision":"compound_bounds","iggy_walkable":true})json"};
   const std::array<std::string_view, 2> conflict{
       R"json({"iggy_collision":"bounds"})json",
       R"json({"iggy_collision":"none"})json"};
@@ -683,6 +707,10 @@ bool authoringMetadataKernelIsBoundedAndFailClosed() {
       iggy3d::detail::parseStaticMeshAuthoringMetadata(decor);
   const iggy3d::StaticMeshAuthoringMetadata deferred =
       iggy3d::detail::parseStaticMeshAuthoringMetadata(unsupported);
+  const iggy3d::StaticMeshAuthoringMetadata compoundBounds =
+      iggy3d::detail::parseStaticMeshAuthoringMetadata(compound);
+  const iggy3d::StaticMeshAuthoringMetadata invalidCompoundWalkable =
+      iggy3d::detail::parseStaticMeshAuthoringMetadata(compoundGlobalWalkable);
   const iggy3d::StaticMeshAuthoringMetadata conflicting =
       iggy3d::detail::parseStaticMeshAuthoringMetadata(conflict);
   const iggy3d::StaticMeshAuthoringMetadata invalidPair =
@@ -717,9 +745,19 @@ bool authoringMetadataKernelIsBoundedAndFailClosed() {
                     deferred.collisionMode ==
                         iggy3d::StaticMeshCollisionMode::Convex,
                 "deferred collision mode remains visible") &&
+         expect(compoundBounds.status ==
+                        iggy3d::StaticMeshAuthoringMetadataStatus::Authored &&
+                    compoundBounds.collisionMode ==
+                        iggy3d::StaticMeshCollisionMode::CompoundBounds &&
+                    compoundBounds.categoryId == "stairs" &&
+                    iggy3d::toString(compoundBounds.collisionMode) ==
+                        "compound_bounds",
+                "compound bounds metadata is explicit") &&
          expect(conflicting.status ==
                     iggy3d::StaticMeshAuthoringMetadataStatus::Invalid &&
                     invalidPair.status ==
+                        iggy3d::StaticMeshAuthoringMetadataStatus::Invalid &&
+                    invalidCompoundWalkable.status ==
                         iggy3d::StaticMeshAuthoringMetadataStatus::Invalid &&
                     tooLarge.status ==
                         iggy3d::StaticMeshAuthoringMetadataStatus::Invalid &&
@@ -730,6 +768,55 @@ bool authoringMetadataKernelIsBoundedAndFailClosed() {
                     tooManyObjects.status ==
                         iggy3d::StaticMeshAuthoringMetadataStatus::Invalid,
                 "conflicts and bounded malformed extras fail closed");
+}
+
+bool collisionPartMetadataKernelIsBoundedAndFailClosed() {
+  const iggy3d::StaticMeshCollisionPartMetadata absent =
+      iggy3d::detail::parseStaticMeshCollisionPartMetadata(
+          R"json({"iggy_category":"stairs"})json");
+  const iggy3d::StaticMeshCollisionPartMetadata solid =
+      iggy3d::detail::parseStaticMeshCollisionPartMetadata(
+          R"json({"iggy_collision_part":"bounds"})json");
+  const iggy3d::StaticMeshCollisionPartMetadata walkable =
+      iggy3d::detail::parseStaticMeshCollisionPartMetadata(
+          R"json({"iggy_collision":"compound_bounds","iggy_collision_part":"bounds","iggy_collision_part_walkable":true})json");
+  const iggy3d::StaticMeshCollisionPartMetadata orphanWalkable =
+      iggy3d::detail::parseStaticMeshCollisionPartMetadata(
+          R"json({"iggy_collision_part_walkable":true})json");
+  const iggy3d::StaticMeshCollisionPartMetadata unsupportedKind =
+      iggy3d::detail::parseStaticMeshCollisionPartMetadata(
+          R"json({"iggy_collision_part":"mesh"})json");
+  const iggy3d::StaticMeshCollisionPartMetadata duplicate =
+      iggy3d::detail::parseStaticMeshCollisionPartMetadata(
+          R"json({"iggy_collision_part":"bounds","iggy_collision_part":"bounds"})json");
+  const std::string oversized(4097U, 'x');
+  const iggy3d::StaticMeshCollisionPartMetadata tooLarge =
+      iggy3d::detail::parseStaticMeshCollisionPartMetadata(oversized);
+
+  return expect(absent.status ==
+                    iggy3d::StaticMeshCollisionPartMetadataStatus::NotAuthored,
+                "unrelated node extras do not invent collision parts") &&
+         expect(
+             solid.status ==
+                     iggy3d::StaticMeshCollisionPartMetadataStatus::Authored &&
+                 !solid.walkable,
+             "solid collision part parses") &&
+         expect(
+             walkable.status ==
+                     iggy3d::StaticMeshCollisionPartMetadataStatus::Authored &&
+                 walkable.walkable,
+             "walkable collision part parses independently") &&
+         expect(
+             orphanWalkable.status ==
+                     iggy3d::StaticMeshCollisionPartMetadataStatus::Invalid &&
+                 unsupportedKind.status ==
+                     iggy3d::StaticMeshCollisionPartMetadataStatus::Invalid &&
+                 duplicate.status ==
+                     iggy3d::StaticMeshCollisionPartMetadataStatus::Invalid &&
+                 tooLarge.status ==
+                     iggy3d::StaticMeshCollisionPartMetadataStatus::Invalid,
+             "partial, unsupported, duplicate, and oversized parts fail "
+             "closed");
 }
 
 }  // namespace
@@ -745,7 +832,8 @@ int main() {
                   discoveryAndPreviewAtlasCoverEveryValidFixture() &&
                   texturedFixtureBuildsOneCachedMaterialBinding() &&
                   importsBase64DataUriTexture() &&
-                  authoringMetadataKernelIsBoundedAndFailClosed();
+                  authoringMetadataKernelIsBoundedAndFailClosed() &&
+                  collisionPartMetadataKernelIsBoundedAndFailClosed();
   if (!ok) {
     return 1;
   }

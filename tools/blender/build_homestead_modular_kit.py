@@ -73,6 +73,11 @@ def assign_material(obj: bpy.types.Object, value: bpy.types.Material) -> None:
     obj.data.materials.append(value)
 
 
+def mark_collision_part(obj: bpy.types.Object, walkable: bool = False) -> None:
+    obj["iggy_collision_part"] = "bounds"
+    obj["iggy_collision_part_walkable"] = walkable
+
+
 def box(name: str, dimensions: tuple[float, float, float],
         location: tuple[float, float, float], value: bpy.types.Material,
         bevel: float = 0.025,
@@ -325,6 +330,47 @@ def build_window_frame(materials: dict[str, bpy.types.Material]) -> list[bpy.typ
     ]
 
 
+def build_stair_straight(
+        materials: dict[str, bpy.types.Material]) -> list[bpy.types.Object]:
+    objects: list[bpy.types.Object] = []
+    for index in range(6):
+        height = 0.25 * (index + 1)
+        step = box(
+            f"stair_step_{index + 1:02d}", (2.0, 0.5, height),
+            (0.0, -1.25 + index * 0.5, height * 0.5), materials["floor"],
+            0.018)
+        mark_collision_part(step, True)
+        objects.append(step)
+    return objects
+
+
+def build_porch(materials: dict[str, bpy.types.Material]) -> list[bpy.types.Object]:
+    objects = [
+        box("porch_lower_step", (4.0, 0.5, 0.25),
+            (0.0, -0.75, 0.125), materials["stone"], 0.022),
+        box("porch_upper_step", (4.0, 0.5, 0.5),
+            (0.0, -0.25, 0.25), materials["floor"], 0.022),
+        box("porch_deck", (4.0, 1.0, 0.20),
+            (0.0, 0.5, 0.40), materials["floor"], 0.022),
+    ]
+    for obj in objects:
+        mark_collision_part(obj, True)
+    return objects
+
+
+def build_bridge(materials: dict[str, bpy.types.Material]) -> list[bpy.types.Object]:
+    deck = box("bridge_deck", (4.0, 2.0, 0.20), (0.0, 0.0, 0.10),
+               materials["floor"], 0.022)
+    left = box("bridge_left_parapet", (4.0, 0.16, 1.0),
+               (0.0, -0.92, 0.70), materials["timber"], 0.025)
+    right = box("bridge_right_parapet", (4.0, 0.16, 1.0),
+                (0.0, 0.92, 0.70), materials["timber"], 0.025)
+    mark_collision_part(deck, True)
+    mark_collision_part(left)
+    mark_collision_part(right)
+    return [deck, left, right]
+
+
 ASSET_SPECS = (
     AssetSpec("wall_full_4x3", "wall", "bounds", False, build_wall_full,
               (-10.0, 5.0, 0.0)),
@@ -358,6 +404,12 @@ ASSET_SPECS = (
               (7.0, -5.0, 0.0)),
     AssetSpec("window_frame_1p5x1p2", "window", "none", False,
               build_window_frame, (9.5, -5.0, 0.0)),
+    AssetSpec("stair_straight_2x3x1p5", "stairs", "compound_bounds", False,
+              build_stair_straight, (-7.0, -10.0, 0.0)),
+    AssetSpec("porch_4x2x0p5", "structure", "compound_bounds", False,
+              build_porch, (-1.5, -10.0, 0.0)),
+    AssetSpec("bridge_4x2", "bridge", "compound_bounds", False,
+              build_bridge, (5.0, -10.0, 0.0)),
 )
 
 
@@ -365,7 +417,8 @@ def apply_metadata(objects: list[bpy.types.Object], spec: AssetSpec) -> None:
     for obj in objects:
         obj["iggy_category"] = spec.category
         obj["iggy_collision"] = spec.collision
-        obj["iggy_walkable"] = spec.walkable
+        if spec.collision != "compound_bounds":
+            obj["iggy_walkable"] = spec.walkable
 
 
 def export_asset(output_root: pathlib.Path, spec: AssetSpec,
@@ -403,7 +456,7 @@ def look_at(obj: bpy.types.Object, point: tuple[float, float, float]) -> None:
 
 
 def add_preview_environment(materials: dict[str, bpy.types.Material]) -> None:
-    ground = box("gallery_ground", (30.0, 19.0, 0.08), (0.0, 0.0, -0.08),
+    ground = box("gallery_ground", (32.0, 24.0, 0.08), (0.0, 0.0, -0.08),
                  materials["stone"], 0.0)
     ground.data.materials.clear()
     ground_material = material("Gallery Ground", (0.075, 0.085, 0.09, 1.0), 0.94)
@@ -442,11 +495,11 @@ def build_preview(materials: dict[str, bpy.types.Material], preview: pathlib.Pat
             obj.location += offset
 
     add_preview_environment(materials)
-    bpy.ops.object.camera_add(location=(23.0, -29.0, 23.0))
+    bpy.ops.object.camera_add(location=(24.0, -36.0, 25.0))
     camera = bpy.context.object
     camera.name = "Gallery Camera"
     camera.data.lens = 50.0
-    look_at(camera, (0.0, 0.5, 1.3))
+    look_at(camera, (0.0, -1.5, 1.3))
     bpy.context.scene.camera = camera
 
     scene = bpy.context.scene
@@ -499,6 +552,7 @@ def build_assembly_preview(materials: dict[str, bpy.types.Material],
     place_asset(build_door, materials, (0.0, -2.10, wall_base))
     place_asset(build_window_frame, materials, (2.13, 0.0, wall_base + 0.9),
                 math.radians(90.0))
+    place_asset(build_porch, materials, (0.0, -3.0, 0.14))
     roof_base = wall_base + 3.0
     place_asset(build_roof_gable_slope, materials, (0.0, -1.1, roof_base))
     place_asset(build_roof_gable_slope, materials, (0.0, 1.1, roof_base),
