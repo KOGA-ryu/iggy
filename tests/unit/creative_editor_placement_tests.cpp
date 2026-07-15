@@ -1,5 +1,6 @@
 #include "EditorEdits.hpp"
 #include "EditorConnectedFill.hpp"
+#include "EditorAttachmentPlacement.hpp"
 #include "EditorFrame.hpp"
 #include "EditorGizmo.hpp"
 #include "EditorInteraction.hpp"
@@ -3517,6 +3518,127 @@ bool importedAssetPlacementPreviewAndDocumentStayInParity() {
                 "duplicate admission distinguishes imported asset identity");
 }
 
+bool doorwaySocketPreviewPlacementAndUndoStayInParity() {
+  const iggy3d::StaticMeshAssetCatalog catalog =
+      iggy3d::discoverStaticMeshAssetCatalog("assets/creative");
+  const iggy3d::StaticMeshAssetCatalogEntry* frameAsset =
+      catalog.find("homestead/modular/door_frame_1p5x2p46");
+  const iggy3d::StaticMeshAssetCatalogEntry* leafAsset =
+      catalog.find("homestead/modular/door_leaf_1p1x2p2");
+  if (!expect(frameAsset != nullptr && leafAsset != nullptr,
+              "doorway socket fixtures exist")) {
+    return false;
+  }
+  const auto receiver = std::find_if(
+      frameAsset->attachmentSockets.begin(),
+      frameAsset->attachmentSockets.end(),
+      [](const iggy3d::StaticMeshAttachmentSocket& socket) {
+        return socket.role ==
+               iggy3d::StaticMeshAttachmentSocketRole::Receiver;
+      });
+  if (!expect(receiver != frameAsset->attachmentSockets.end(),
+              "doorway receiver fixture exists")) {
+    return false;
+  }
+
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 140U);
+  cr::CreativeDocumentCreateRequest frameRequest;
+  frameRequest.kind = cr::CreativeObjectKind::Prop;
+  frameRequest.name = "Socket Door Frame";
+  frameRequest.assetId = frameAsset->assetId;
+  frameRequest.transform.position = {2.0, 0.0, 3.0};
+  frameRequest.hasTransformOverride = true;
+  frameRequest.bounds = {
+      {2.0 + frameAsset->boundsMin.x, frameAsset->boundsMin.y,
+       3.0 + frameAsset->boundsMin.z},
+      {2.0 + frameAsset->boundsMax.x, frameAsset->boundsMax.y,
+       3.0 + frameAsset->boundsMax.z}};
+  frameRequest.hasBoundsOverride = true;
+  const cr::CreativeDocumentCreateReceipt frameCreated =
+      appState.facade.createDocumentObject(frameRequest);
+  appState.history = {};
+
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Door);
+  cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const cr::CreativeBounds leafBounds{
+      {leafAsset->boundsMin.x, leafAsset->boundsMin.y, leafAsset->boundsMin.z},
+      {leafAsset->boundsMax.x, leafAsset->boundsMax.y,
+       leafAsset->boundsMax.z}};
+  const bool heldSet = cr::setCreativeHotbarAsset(
+      held, leafAsset->assetId, leafBounds);
+  setPlaceTarget(editor, 2, 0, 3);
+  editor.interaction.target.objectHit = true;
+  editor.interaction.target.objectId = frameCreated.objectId;
+  editor.interaction.target.objectKind = cr::CreativeObjectKind::Prop;
+  editor.interaction.target.grid.faceNormal = {0.0, 0.0, 1.0};
+  editor.interaction.target.grid.hitPoint = {
+      2.0 + receiver->position.x, receiver->position.y,
+      3.0 + receiver->position.z};
+  editor.interaction.target.grid.placerForward = {0.0, 0.0, -1.0};
+
+  const CreativeEditorPlacementResolution ready =
+      resolveCreativeEditorPlacement(
+          held, editor.interaction.target, editor.toolSettings.placementYaw,
+          appState.facade.document(), &catalog);
+  iggy3d::FrameInput readyFrame;
+  attachCreativeEditorPlacementPreviews(
+      editor, false, readyFrame, &appState.facade.document(), &catalog);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, true, false), 0U,
+      &catalog);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, false, false, true), 1U,
+      &catalog);
+
+  const cr::CreativeObject* door = nullptr;
+  for (const cr::CreativeObject& object : appState.facade.document().objects()) {
+    if (object.id != frameCreated.objectId) {
+      door = &object;
+    }
+  }
+  editor.interaction.placementFeedback = {};
+  const CreativeEditorPlacementResolution occupied =
+      resolveCreativeEditorPlacement(
+          held, editor.interaction.target, editor.toolSettings.placementYaw,
+          appState.facade.document(), &catalog);
+  iggy3d::FrameInput occupiedFrame;
+  attachCreativeEditorPlacementPreviews(
+      editor, false, occupiedFrame, &appState.facade.document(), &catalog);
+
+  return expect(frameCreated.accepted && heldSet,
+                "doorway placement setup accepted") &&
+         expect(ready.socketTargeted && ready.admission.allowed &&
+                    ready.admission.plan.hasAttachment &&
+                    ready.admission.plan.attachmentTargetId ==
+                        frameCreated.objectId &&
+                    ready.admission.plan.attachmentSocket == "door_frame",
+                "door leaf plan resolves the aimed frame receiver") &&
+         expect(readyFrame.creativePreview.itemCount == 2U &&
+                    readyFrame.creativePreview.items[0].role ==
+                        iggy3d::RenderCreativePreviewRole::PlacementValid,
+                "available doorway receiver renders green") &&
+         expect(door != nullptr && door->kind == cr::CreativeObjectKind::Door &&
+                    door->assetId == leafAsset->assetId &&
+                    door->parentId == frameCreated.objectId &&
+                    door->attachmentSocket == "door_frame" &&
+                    sameTransform(door->transform,
+                                  ready.admission.plan.transform),
+                "placed door stores the exact preview transform and socket") &&
+         expect(cr::creativeUndoDepth(appState.history) == 1U,
+                "socket placement records one gesture undo") &&
+         expect(occupied.socketTargeted && !occupied.admission.allowed &&
+                    occupied.admission.status ==
+                        CreativeBrushPlacementAdmissionStatus::AttachmentOccupied &&
+                    occupiedFrame.creativePreview.itemCount == 2U &&
+                    occupiedFrame.creativePreview.items[0].role ==
+                        iggy3d::RenderCreativePreviewRole::PlacementInvalid,
+                "occupied doorway receiver renders red and rejects a duplicate");
+}
+
 }  // namespace
 
 int main() {
@@ -3564,5 +3686,6 @@ int main() {
   ok = heldShapeToolOwnsItsTwoCornerGesture() && ok;
   ok = radialSelectionRearmsOnlyRightStickLook() && ok;
   ok = importedAssetPlacementPreviewAndDocumentStayInParity() && ok;
+  ok = doorwaySocketPreviewPlacementAndUndoStayInParity() && ok;
   return ok ? 0 : 1;
 }

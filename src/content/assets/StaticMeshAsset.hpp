@@ -17,6 +17,7 @@ namespace iggy3d {
 inline constexpr std::uint32_t kInvalidStaticMeshImageIndex =
     std::numeric_limits<std::uint32_t>::max();
 inline constexpr std::size_t kMaxStaticMeshCollisionPartCount = 256U;
+inline constexpr std::size_t kMaxStaticMeshAttachmentSocketCount = 64U;
 
 enum class StaticMeshTextureWrap : std::uint8_t {
   Repeat,
@@ -75,6 +76,16 @@ struct StaticMeshCollisionPart {
   bool walkable = false;
 };
 
+struct StaticMeshAttachmentSocket {
+  std::string name;
+  std::string compatibility;
+  StaticMeshAttachmentSocketRole role =
+      StaticMeshAttachmentSocketRole::Invalid;
+  Vec3 position;
+  Vec3 forward{0.0F, 0.0F, 1.0F};
+  Vec3 up{0.0F, 1.0F, 0.0F};
+};
+
 struct StaticMeshAsset {
   std::string id;
   std::filesystem::path sourcePath;
@@ -85,6 +96,7 @@ struct StaticMeshAsset {
   std::vector<StaticMeshMaterial> materials;
   std::vector<StaticMeshImage> images;
   std::vector<StaticMeshCollisionPart> collisionParts;
+  std::vector<StaticMeshAttachmentSocket> attachmentSockets;
   StaticMeshAuthoringMetadata authoringMetadata;
   std::size_t textureFailureCount = 0;
   Vec3 boundsMin;
@@ -123,6 +135,7 @@ struct StaticMeshAssetCatalogEntry {
   std::uint64_t contentHash = 0;
   StaticMeshAuthoringMetadata authoringMetadata;
   std::vector<StaticMeshCollisionPart> collisionParts;
+  std::vector<StaticMeshAttachmentSocket> attachmentSockets;
 };
 
 struct StaticMeshAssetCatalogFailure {

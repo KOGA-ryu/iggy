@@ -597,11 +597,13 @@ CreativeMutationApplyReceipt applyScalarMutation(CreativeObject& object, Creativ
 }
 
 CreativeMutationApplyReceipt applySetParentMutation(CreativeObject& object, const SetParentMutation& mutation) {
-    if (object.parentId.has_value() && object.parentId.value() == mutation.parentId) {
+    if (object.parentId.has_value() && object.parentId.value() == mutation.parentId &&
+        object.attachmentSocket.empty()) {
         return makeNoChangeReceipt(object, CreativeMutationKind::SetParent, "object parent already matches requested parent");
     }
 
     object.parentId = mutation.parentId;
+    object.attachmentSocket.clear();
     return makeAppliedReceipt(object, CreativeMutationKind::SetParent, "object parent changed");
 }
 
@@ -611,6 +613,7 @@ CreativeMutationApplyReceipt applyClearParentMutation(CreativeObject& object, Cr
     }
 
     object.parentId.reset();
+    object.attachmentSocket.clear();
     return makeAppliedReceipt(object, mutationKind, "object parent cleared");
 }
 
@@ -653,12 +656,19 @@ CreativeMutationApplyReceipt applyClearTagsMutation(CreativeObject& object, Crea
 }
 
 CreativeMutationApplyReceipt applyAttachMutation(CreativeObject& object, CreativeMutationKind mutationKind, const AttachToMutation& mutation) {
-    if (object.parentId.has_value() && object.parentId.value() == mutation.targetId) {
-        return makeNoChangeReceipt(object, mutationKind, "object parent already matches requested parent");
+    if (!validCreativeAttachmentSocketName(mutation.socket)) {
+        return rejectMutation(object, mutationKind,
+                              CreativeMutationApplyStatus::Rejected,
+                              "attachment socket is invalid");
+    }
+    if (object.parentId.has_value() && object.parentId.value() == mutation.targetId &&
+        object.attachmentSocket == mutation.socket) {
+        return makeNoChangeReceipt(object, mutationKind, "object attachment already matches requested socket");
     }
 
     object.parentId = mutation.targetId;
-    return makeAppliedReceipt(object, mutationKind, "object parent changed");
+    object.attachmentSocket = mutation.socket;
+    return makeAppliedReceipt(object, mutationKind, "object attachment changed");
 }
 
 CreativeMutationApplyReceipt applyLinkMutation(CreativeObject& object, CreativeMutationKind mutationKind, const LinkTargetMutation& mutation) {

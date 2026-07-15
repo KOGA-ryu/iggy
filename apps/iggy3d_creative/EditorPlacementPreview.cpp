@@ -5,6 +5,7 @@
 #include <cmath>
 
 #include "EditorInteraction.hpp"
+#include "EditorAttachmentPlacement.hpp"
 #include "EditorPlacement.hpp"
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
@@ -115,7 +116,8 @@ void attachCreativeEditorPlacementPreviews(
     const CreativeEditorState& editor,
     bool captureMode,
     FrameInput& frame,
-    const cr::CreativeDocument* document) {
+    const cr::CreativeDocument* document,
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog) {
   frame.creativePreview = {};
   const bool modalOpen = editor.catalog.model.open ||
                          editor.catalog.toolWheel.open ||
@@ -167,9 +169,17 @@ void attachCreativeEditorPlacementPreviews(
   if (materialPlacement && !assetScatter &&
       editor.interaction.target.grid.valid &&
       !mutationAcceptedThisFrame) {
-    const CreativeBrushPlacementAdmission admission = admitBrushPlacement(
-        held, editor.interaction.target.grid,
-        editor.toolSettings.placementYaw);
+    CreativeEditorPlacementResolution placement;
+    if (document != nullptr) {
+      placement = resolveCreativeEditorPlacement(
+          held, editor.interaction.target,
+          editor.toolSettings.placementYaw, *document, assetCatalog);
+    } else {
+      placement.admission = admitBrushPlacement(
+          held, editor.interaction.target.grid,
+          editor.toolSettings.placementYaw);
+    }
+    const CreativeBrushPlacementAdmission& admission = placement.admission;
     const CreativeBrushPlacementPlan& targetPlan = admission.plan;
     const cr::CreativeBounds& targetBounds =
         targetPlan.valid ? targetPlan.previewBounds

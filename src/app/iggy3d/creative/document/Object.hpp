@@ -16,6 +16,7 @@ using CreativeLayerId = std::uint64_t;
 
 inline constexpr CreativeObjectId kInvalidObjectId = 0;
 inline constexpr CreativeLayerId kDefaultLayerId = 0;
+inline constexpr std::size_t kCreativeAttachmentSocketNameCapacity = 64U;
 
 struct CreativeVec3 {
   double x{0.0};
@@ -187,6 +188,8 @@ struct CreativeObject {
 
   std::vector<std::string> tags{};
   std::optional<CreativeObjectId> parentId{};
+  // Name of the receiver on parentId. Empty means an ordinary hierarchy edge.
+  std::string attachmentSocket{};
   std::vector<CreativePathPoint> pathPoints{};
 };
 
@@ -224,6 +227,8 @@ struct CreativeTransformedBounds {
 [[nodiscard]] bool parseSerializedObjectKindId(
     std::string_view value,
     CreativeObjectKind& out) noexcept;
+[[nodiscard]] bool validCreativeAttachmentSocketName(
+    std::string_view value) noexcept;
 [[nodiscard]] std::span<const CreativeObjectKind> allCreativeObjectKinds()
     noexcept;
 [[nodiscard]] bool isStructuralObject(CreativeObjectKind kind) noexcept;

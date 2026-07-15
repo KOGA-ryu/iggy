@@ -31,6 +31,28 @@ struct StaticMeshCollisionPartMetadata {
   bool walkable = false;
 };
 
+enum class StaticMeshAttachmentSocketRole : std::uint8_t {
+  Receiver,
+  Plug,
+  Invalid,
+};
+
+enum class StaticMeshAttachmentSocketMetadataStatus : std::uint8_t {
+  NotAuthored,
+  Authored,
+  Invalid,
+};
+
+struct StaticMeshAttachmentSocketMetadata {
+  StaticMeshAttachmentSocketMetadataStatus status =
+      StaticMeshAttachmentSocketMetadataStatus::NotAuthored;
+  StaticMeshAttachmentSocketRole role =
+      StaticMeshAttachmentSocketRole::Invalid;
+  std::string name;
+  std::string compatibility;
+  std::string_view reasonCode = "static_mesh_attachment_socket_not_authored";
+};
+
 enum class StaticMeshAuthoringMetadataStatus : std::uint8_t {
   DefaultsApplied,
   Authored,
@@ -65,6 +87,11 @@ namespace detail {
 // but malformed JSON and partial collision-part declarations fail closed.
 [[nodiscard]] StaticMeshCollisionPartMetadata
 parseStaticMeshCollisionPartMetadata(std::string_view extrasObject) noexcept;
+
+// Node-local contract. Position and orientation come from the node transform;
+// extras only identify the socket, its role, and its compatibility family.
+[[nodiscard]] StaticMeshAttachmentSocketMetadata
+parseStaticMeshAttachmentSocketMetadata(std::string_view extrasObject) noexcept;
 
 [[nodiscard]] StaticMeshAuthoringMetadata importStaticMeshAuthoringMetadata(
     const ::cgltf_data& data);

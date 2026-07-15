@@ -103,6 +103,12 @@ void setFailure(StaticMeshImportResult& result,
   });
 }
 
+[[nodiscard]] bool validSocketFrame(Vec3 forward, Vec3 up) noexcept {
+  return finiteVec3(forward) && finiteVec3(up) &&
+         lengthSquared(forward) > 0.999F && lengthSquared(up) > 0.999F &&
+         std::fabs(dot(forward, up)) <= 0.001F;
+}
+
 [[nodiscard]] const cgltf_accessor* findAttribute(
     const cgltf_primitive& primitive,
     cgltf_attribute_type type,
@@ -383,6 +389,40 @@ StaticMeshImportResult importStaticMeshGlb(
                                         : std::string_view{};
     const StaticMeshCollisionPartMetadata partMetadata =
         detail::parseStaticMeshCollisionPartMetadata(extras);
+    const StaticMeshAttachmentSocketMetadata socketMetadata =
+        detail::parseStaticMeshAttachmentSocketMetadata(extras);
+    if (socketMetadata.status ==
+        StaticMeshAttachmentSocketMetadataStatus::Invalid) {
+      freeData();
+      setFailure(result, StaticMeshImportStatus::ValidationFailed,
+                 "static_mesh_attachment_socket_invalid");
+      return result;
+    }
+    if (socketMetadata.status ==
+        StaticMeshAttachmentSocketMetadataStatus::Authored) {
+      cgltf_float world[16]{};
+      cgltf_node_transform_world(&node, world);
+      const Vec3 position = transformPoint(world, {});
+      const Vec3 forward = transformDirection(world, {0.0F, 0.0F, 1.0F});
+      const Vec3 up = transformDirection(world, {0.0F, 1.0F, 0.0F});
+      const bool duplicateName = std::any_of(
+          result.asset.attachmentSockets.begin(),
+          result.asset.attachmentSockets.end(),
+          [&socketMetadata](const StaticMeshAttachmentSocket& socket) {
+            return socket.name == socketMetadata.name;
+          });
+      if (!finiteVec3(position) || !validSocketFrame(forward, up) ||
+          duplicateName || result.asset.attachmentSockets.size() ==
+                               kMaxStaticMeshAttachmentSocketCount) {
+        freeData();
+        setFailure(result, StaticMeshImportStatus::ValidationFailed,
+                   "static_mesh_attachment_socket_invalid");
+        return result;
+      }
+      result.asset.attachmentSockets.push_back(
+          {socketMetadata.name, socketMetadata.compatibility,
+           socketMetadata.role, position, forward, up});
+    }
     const bool authoredCollisionPart =
         partMetadata.status == StaticMeshCollisionPartMetadataStatus::Authored;
     if (partMetadata.status == StaticMeshCollisionPartMetadataStatus::Invalid) {
@@ -506,7 +546,8 @@ StaticMeshAssetCatalog discoverStaticMeshAssetCatalog(
     catalog.entries.push_back(
         {assetId, assetLabel(assetId), imported.asset.boundsMin,
          imported.asset.boundsMax, imported.asset.contentHash,
-         imported.asset.authoringMetadata, imported.asset.collisionParts});
+         imported.asset.authoringMetadata, imported.asset.collisionParts,
+         imported.asset.attachmentSockets});
   }
   return catalog;
 }

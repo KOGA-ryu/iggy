@@ -217,6 +217,14 @@ class Facade {
   [[nodiscard]] CreativeSelectionPlacementReceipt placeObjects(
       std::span<const CreativeObjectId> objectIds,
       const CreativeSelectionPlacementRequest& request);
+  // Sets the persistent selection from an explicit object-id list, resolving
+  // the CreativeObjectId(uint64) -> TargetRef(uint32) boundary here (ids beyond
+  // the 32-bit target space are dropped, mirroring placeObjects). An empty list
+  // clears the selection. primaryObjectId picks the primary; kInvalidObjectId
+  // falls back to the last surviving target.
+  [[nodiscard]] CreativeSelectionReceipt selectTargets(
+      std::span<const CreativeObjectId> objectIds,
+      CreativeObjectId primaryObjectId = kInvalidObjectId);
   [[nodiscard]] CreativeDuplicateCommandReceipt duplicateSelectedObjects(
       const CreativeDuplicateCommandRequest& request = {});
   [[nodiscard]] CreativeGroupCommandReceipt groupSelectedObjects();

@@ -2,13 +2,19 @@
 
 #include <SDL3/SDL_log.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
+#include "app/iggy3d/creative/mutation/Mutation.hpp"
+#include "app/iggy3d/creative/tools/Group.hpp"
+#include "app/iggy3d/creative/tools/Select.hpp"
 
 namespace iggy3d_creative_app {
 namespace creative = iggy3d::creative;
@@ -65,6 +71,37 @@ creative::CreativeFacadeMutationReceipt toggleSelectedObjectStateWithUndo(
           static_cast<unsigned long long>(receipt.revisionBefore),
           static_cast<unsigned long long>(receipt.revisionAfter));
   return receipt;
+}
+
+// Resolves the object ids a batch desktop edit should act on: the explicit span
+// when non-empty, otherwise the current selection (mirroring the facade's
+// selectedObjectIds fallback — the ordered list, or the primary alone).
+[[nodiscard]] std::vector<creative::CreativeObjectId> gatherDesktopTargetIds(
+    const creative::CreativeAppState& appState,
+    std::span<const creative::CreativeObjectId> explicitIds) {
+  std::vector<creative::CreativeObjectId> ids;
+  if (!explicitIds.empty()) {
+    ids.assign(explicitIds.begin(), explicitIds.end());
+    return ids;
+  }
+  const creative::CreativeSelectionState& selection =
+      appState.facade.selectionState();
+  const std::span<const creative::TargetRef> targets =
+      creative::selectedTargetList(selection);
+  if (targets.empty()) {
+    if (selection.selectedTarget.value != creative::kInvalidId) {
+      ids.push_back(static_cast<creative::CreativeObjectId>(
+          selection.selectedTarget.value));
+    }
+    return ids;
+  }
+  ids.reserve(targets.size());
+  for (const creative::TargetRef& target : targets) {
+    if (target.value != creative::kInvalidId) {
+      ids.push_back(static_cast<creative::CreativeObjectId>(target.value));
+    }
+  }
+  return ids;
 }
 
 }  // namespace
@@ -349,6 +386,235 @@ creative::CreativeClipboardPasteReceipt pasteClipboardWithHistory(
               creative::creativeUndoDepth(appState.history)),
           receipt.reasonCode.c_str());
   return receipt;
+}
+
+CreativeStandaloneBatchEditReceipt deleteObjectsWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    std::span<const creative::CreativeObjectId> objectIds,
+    std::string_view source) {
+  CreativeStandaloneBatchEditReceipt outcome;
+  std::vector<creative::CreativeObjectId> targets =
+      gatherDesktopTargetIds(appState, objectIds);
+  if (targets.empty()) {
+    SDL_Log("iggy3d_creative: DELETE MULTI no targets source='%s'",
+            std::string(source).c_str());
+    outcome.message = "no_delete_targets";
+    return outcome;
+  }
+
+  // Expand each selected root to its full hierarchy so a group root takes its
+  // descendants with it, then remove deepest-first so a parent is only removed
+  // once its children are gone (avoids ParentHasChildren).
+  const creative::CreativeHierarchySelection hierarchy =
+      creative::resolveCreativeObjectHierarchy(appState.facade.document(),
+                                               targets);
+  std::vector<creative::CreativeObjectId> ordered =
+      hierarchy.accepted ? hierarchy.objectIds : targets;
+  const auto depthOf = [&appState](creative::CreativeObjectId id) {
+    std::uint32_t depth = 0U;
+    const creative::CreativeObject* object = appState.facade.findObject(id);
+    while (object != nullptr && object->parentId.has_value()) {
+      ++depth;
+      object = appState.facade.findObject(*object->parentId);
+    }
+    return depth;
+  };
+  std::stable_sort(ordered.begin(), ordered.end(),
+                   [&depthOf](creative::CreativeObjectId a,
+                              creative::CreativeObjectId b) {
+                     return depthOf(a) > depthOf(b);
+                   });
+
+  const std::uint64_t depthBefore = creative::creativeUndoDepth(history);
+  StandaloneEditTransaction transaction =
+      beginEditTransaction(appState.facade, source);
+  std::uint64_t removed = 0U;
+  for (const creative::CreativeObjectId id : ordered) {
+    const creative::CreativeDocumentRemoveReceipt receipt =
+        appState.facade.removeDocumentObject(id);
+    if (receipt.accepted && receipt.objectRemoved && receipt.changed) {
+      ++removed;
+    }
+  }
+  outcome.accepted = true;
+  outcome.changed = removed > 0U;
+  outcome.affectedObjectCount = removed;
+  outcome.message = outcome.changed ? "deleted_objects" : "delete_no_change";
+  (void)completeEditTransaction(history, std::move(transaction),
+                                appState.facade, outcome.changed,
+                                outcome.message);
+  SDL_Log("iggy3d_creative: DELETE MULTI source='%s' requested=%zu resolved=%zu "
+          "removed=%llu undoBefore=%llu undoAfter=%llu",
+          std::string(source).c_str(), targets.size(), ordered.size(),
+          static_cast<unsigned long long>(removed),
+          static_cast<unsigned long long>(depthBefore),
+          static_cast<unsigned long long>(creative::creativeUndoDepth(history)));
+  return outcome;
+}
+
+creative::CreativeDocumentMutationReceipt renameObjectWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    creative::CreativeObjectId objectId,
+    std::string name,
+    std::string_view source) {
+  StandaloneEditTransaction transaction =
+      beginEditTransaction(appState.facade, source);
+  creative::CreativeDocumentMutationReceipt receipt =
+      creative::renameDocumentObject(appState.facade.documentForPersistence(),
+                                     objectId, std::move(name));
+  const bool applied =
+      receipt.status == creative::CreativeDocumentMutationStatus::Applied;
+  (void)completeEditTransaction(history, std::move(transaction),
+                                appState.facade, applied && receipt.changed,
+                                receipt.message);
+  SDL_Log("iggy3d_creative: RENAME objectId=%llu accepted=%d changed=%d "
+          "status=%d source='%s'",
+          static_cast<unsigned long long>(objectId), applied ? 1 : 0,
+          receipt.changed ? 1 : 0, static_cast<int>(receipt.status),
+          std::string(source).c_str());
+  return receipt;
+}
+
+namespace {
+
+using DocBoolMutation = creative::CreativeDocumentMutationReceipt (*)(
+    creative::CreativeDocument&, creative::CreativeObjectId, bool,
+    const creative::CreativeDocumentMutationOptions&);
+
+CreativeStandaloneBatchEditReceipt applyObjectsBoolStateWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    std::span<const creative::CreativeObjectId> objectIds,
+    bool value,
+    DocBoolMutation apply,
+    const char* verb,
+    std::string_view source) {
+  CreativeStandaloneBatchEditReceipt outcome;
+  const std::vector<creative::CreativeObjectId> targets =
+      gatherDesktopTargetIds(appState, objectIds);
+  if (targets.empty()) {
+    outcome.message = "no_targets";
+    return outcome;
+  }
+  creative::CreativeDocument& document =
+      appState.facade.documentForPersistence();
+  StandaloneEditTransaction transaction =
+      beginEditTransaction(appState.facade, source);
+  std::uint64_t affected = 0U;
+  for (const creative::CreativeObjectId id : targets) {
+    const creative::CreativeDocumentMutationReceipt receipt =
+        apply(document, id, value, creative::CreativeDocumentMutationOptions{});
+    if (receipt.status == creative::CreativeDocumentMutationStatus::Applied &&
+        receipt.changed) {
+      ++affected;
+    }
+  }
+  outcome.accepted = true;
+  outcome.changed = affected > 0U;
+  outcome.affectedObjectCount = affected;
+  outcome.message = outcome.changed ? "state_changed" : "state_no_change";
+  (void)completeEditTransaction(history, std::move(transaction),
+                                appState.facade, outcome.changed,
+                                outcome.message);
+  SDL_Log("iggy3d_creative: OBJECT SET %s source='%s' targets=%zu value=%d "
+          "affected=%llu",
+          verb, std::string(source).c_str(), targets.size(), value ? 1 : 0,
+          static_cast<unsigned long long>(affected));
+  return outcome;
+}
+
+}  // namespace
+
+CreativeStandaloneBatchEditReceipt setObjectsVisibleWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    std::span<const creative::CreativeObjectId> objectIds,
+    bool visible,
+    std::string_view source) {
+  return applyObjectsBoolStateWithUndo(appState, history, objectIds, visible,
+                                       &creative::setDocumentObjectVisible,
+                                       "VISIBLE", source);
+}
+
+CreativeStandaloneBatchEditReceipt setObjectsLockedWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    std::span<const creative::CreativeObjectId> objectIds,
+    bool locked,
+    std::string_view source) {
+  return applyObjectsBoolStateWithUndo(appState, history, objectIds, locked,
+                                       &creative::setDocumentObjectLocked,
+                                       "LOCKED", source);
+}
+
+CreativeStandaloneBatchEditReceipt setObjectTransformWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    creative::CreativeObjectId objectId,
+    const creative::CreativeTransform& transform,
+    bool setPosition,
+    bool setRotation,
+    bool setScale,
+    std::string_view source) {
+  CreativeStandaloneBatchEditReceipt outcome;
+  if (!setPosition && !setRotation && !setScale) {
+    outcome.message = "no_transform_components";
+    return outcome;
+  }
+  if (appState.facade.findObject(objectId) == nullptr) {
+    outcome.message = "missing_object";
+    return outcome;
+  }
+
+  creative::CreativeDocument& document =
+      appState.facade.documentForPersistence();
+  StandaloneEditTransaction transaction =
+      beginEditTransaction(appState.facade, source);
+  bool anyChanged = false;
+  const auto record =
+      [&anyChanged](const creative::CreativeDocumentMutationReceipt& receipt) {
+        if (receipt.status ==
+                creative::CreativeDocumentMutationStatus::Applied &&
+            receipt.changed) {
+          anyChanged = true;
+        }
+      };
+  if (setPosition && setRotation && setScale) {
+    // All three components collapse to a single whole-transform mutation.
+    record(creative::applyDocumentMutation(
+        document, objectId, creative::CreativeMutationKind::SetTransform,
+        creative::makeSetTransformPayload(transform)));
+  } else {
+    if (setPosition) {
+      record(creative::applyDocumentMutation(
+          document, objectId, creative::CreativeMutationKind::Move,
+          creative::makeMovePayload(transform.position)));
+    }
+    if (setRotation) {
+      record(creative::applyDocumentMutation(
+          document, objectId, creative::CreativeMutationKind::Rotate,
+          creative::makeRotatePayload(transform.rotationEulerRadians)));
+    }
+    if (setScale) {
+      record(creative::applyDocumentMutation(
+          document, objectId, creative::CreativeMutationKind::Scale,
+          creative::makeScalePayload(transform.scale)));
+    }
+  }
+  outcome.accepted = true;
+  outcome.changed = anyChanged;
+  outcome.affectedObjectCount = anyChanged ? 1U : 0U;
+  outcome.message = anyChanged ? "set_transform" : "transform_no_change";
+  (void)completeEditTransaction(history, std::move(transaction),
+                                appState.facade, anyChanged, outcome.message);
+  SDL_Log("iggy3d_creative: SET TRANSFORM objectId=%llu pos=%d rot=%d scale=%d "
+          "changed=%d source='%s'",
+          static_cast<unsigned long long>(objectId), setPosition ? 1 : 0,
+          setRotation ? 1 : 0, setScale ? 1 : 0, anyChanged ? 1 : 0,
+          std::string(source).c_str());
+  return outcome;
 }
 
 }  // namespace iggy3d_creative_app

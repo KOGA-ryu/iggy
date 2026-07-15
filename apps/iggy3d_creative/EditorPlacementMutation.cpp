@@ -140,6 +140,10 @@ iggy3d::creative::CreativeDocumentCreateRequest buildBrushCreateRequest(
   request.hasVisibleOverride = true;
   request.locked = false;
   request.hasLockedOverride = true;
+  if (plan.hasAttachment) {
+    request.parentId = plan.attachmentTargetId;
+    request.attachmentSocket = plan.attachmentSocket;
+  }
 
   return request;
 }
@@ -174,7 +178,8 @@ iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
       iggy3d::creative::describeObject(plan.brush);
   iggy3d::creative::CreativeDocumentCreateRequest request =
       buildBrushCreateRequest(plan, ordinal, assetId);
-  if (parentObjectId != iggy3d::creative::kInvalidObjectId) {
+  if (!plan.hasAttachment &&
+      parentObjectId != iggy3d::creative::kInvalidObjectId) {
     request.parentId = parentObjectId;
   }
 
@@ -221,6 +226,8 @@ CreativeBrushPlacementMutationReceipt applyBrushPlacement(
   receipt.objectKind = plan.brush;
   receipt.voxelCell = plan.voxelCell;
   receipt.worldBounds = plan.previewBounds;
+  receipt.attachmentTargetId = plan.attachmentTargetId;
+  receipt.attachmentSocket = plan.attachmentSocket;
   receipt.revisionBefore = facade.document().revision();
   receipt.revisionAfter = receipt.revisionBefore;
 
@@ -228,6 +235,11 @@ CreativeBrushPlacementMutationReceipt applyBrushPlacement(
       iggy3d::creative::describeObject(plan.brush).placementPolicy;
   if (!plan.valid || plan.status != CreativeBrushPlacementPlanStatus::Ready ||
       !policy.enabled || policy.storagePolicy != plan.storagePolicy ||
+      (plan.hasAttachment &&
+       (plan.attachmentTargetId ==
+            iggy3d::creative::kInvalidObjectId ||
+        !iggy3d::creative::validCreativeAttachmentSocketName(
+            plan.attachmentSocket))) ||
       (!assetId.empty() &&
        plan.storagePolicy !=
            iggy3d::creative::CreativePlacementStoragePolicy::AuthoredObject)) {
@@ -252,12 +264,16 @@ CreativeBrushPlacementMutationReceipt applyBrushPlacement(
       }
       const iggy3d::creative::CreativeDocumentCreateReceipt objectReceipt =
           placeBrushObject(facade, plan, ordinal, parentObjectId, assetId);
+      receipt.attached = plan.hasAttachment && objectReceipt.accepted &&
+                         objectReceipt.objectCreated && objectReceipt.changed;
       receipt.accepted = objectReceipt.accepted;
       receipt.changed = objectReceipt.changed;
       receipt.objectCreated = objectReceipt.objectCreated;
       receipt.objectId = objectReceipt.objectId;
-      receipt.revisionAfter = objectReceipt.revisionAfter;
-      receipt.reasonCode = objectReceipt.reasonCode;
+      receipt.revisionAfter = facade.document().revision();
+      receipt.reasonCode = receipt.attached
+                               ? "creative_placement_attached"
+                               : objectReceipt.reasonCode;
       receipt.status = objectReceipt.accepted && objectReceipt.objectCreated &&
                                objectReceipt.changed
                            ? CreativeBrushPlacementMutationStatus::Applied

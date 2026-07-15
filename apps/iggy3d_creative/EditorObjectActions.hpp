@@ -5,9 +5,22 @@
 
 #include "EditorToolOptions.hpp"
 
+namespace iggy3d::creative {
+struct CreativeAuthoredAssetDefinition;
+}  // namespace iggy3d::creative
+
 namespace iggy3d_creative_app {
 
 struct CreativeEditorAuthoredAssetLibrary;
+
+// Equips a saved authored-asset definition into the active hotbar slot
+// (extracted from the SaveSelectionAsAsset object action so the desktop command
+// dispatcher can equip too). Returns whether the hotbar accepted the asset. Does
+// NOT set a status label — the caller owns messaging.
+[[nodiscard]] bool equipCreativeEditorAuthoredAssetToHotbar(
+    iggy3d::creative::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    const iggy3d::creative::CreativeAuthoredAssetDefinition& definition);
 
 [[nodiscard]] bool creativeEditorCommandIsObjectAction(
     CreativeEditorToolOptionsCommandId command) noexcept;

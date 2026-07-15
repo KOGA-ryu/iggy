@@ -91,7 +91,14 @@ std::string_view validateRestoredParentPayload(
     const std::unordered_map<CreativeObjectId, std::size_t>& restoredIndex)
     noexcept {
   if (!object.parentId.has_value()) {
-    return {};
+    return object.attachmentSocket.empty()
+               ? std::string_view{}
+               : std::string_view{"attachment_socket_without_parent"};
+  }
+
+  if (!object.attachmentSocket.empty() &&
+      !validCreativeAttachmentSocketName(object.attachmentSocket)) {
+    return "attachment_socket_invalid";
   }
 
   if (!descriptor.canHaveParent) {
@@ -189,6 +196,20 @@ std::string_view validateCreativeObjectParentGraph(
         validateRestoredParentPayload(descriptor, object, objects, objectIndex);
     if (!parentValidation.empty()) {
       return parentValidation;
+    }
+  }
+
+  for (std::size_t index = 0; index < objects.size(); ++index) {
+    const CreativeObject& object = objects[index];
+    if (object.attachmentSocket.empty()) {
+      continue;
+    }
+    for (std::size_t previous = 0; previous < index; ++previous) {
+      const CreativeObject& candidate = objects[previous];
+      if (candidate.parentId == object.parentId &&
+          candidate.attachmentSocket == object.attachmentSocket) {
+        return "attachment_socket_occupied";
+      }
     }
   }
 

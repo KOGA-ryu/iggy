@@ -227,6 +227,11 @@ set_tests_properties(creative_editor_placement_tests PROPERTIES
 set_tests_properties(creative_editor_placement_tests PROPERTIES
   LABELS "unit;app;creative;editor;placement;preview;history;iggy3d")
 
+iggy3d_add_unit_test(creative_attachment_snap_tests
+  tests/unit/creative_attachment_snap_tests.cpp)
+set_tests_properties(creative_attachment_snap_tests PROPERTIES
+  LABELS "unit;app;creative;placement;attachment;iggy3d")
+
 add_executable(creative_asset_scatter_tests
   tests/unit/creative_asset_scatter_tests.cpp)
 target_link_libraries(creative_asset_scatter_tests PRIVATE

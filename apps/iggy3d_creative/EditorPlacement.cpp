@@ -439,6 +439,8 @@ std::string_view toString(
       return "creative_placement_policy_unsupported";
     case CreativeBrushPlacementAdmissionStatus::FaceDisallowed:
       return "creative_placement_face_disallowed";
+    case CreativeBrushPlacementAdmissionStatus::AttachmentOccupied:
+      return "creative_placement_attachment_occupied";
   }
   return "creative_placement_status_invalid";
 }
@@ -616,6 +618,41 @@ bool applyCreativeAssetPlacementBounds(
        pivot.z + sourceBounds.max.z}};
   plan.previewBounds = plan.authoredBounds;
   plan.transform.position = pivot;
+  return positiveBounds(plan.authoredBounds) &&
+         iggy3d::creative::resolveCreativeTransformedBounds(
+             plan.authoredBounds, plan.transform)
+             .valid;
+}
+
+bool applyCreativeAssetPlacementTransform(
+    CreativeBrushPlacementPlan& plan,
+    iggy3d::creative::CreativeBounds sourceBounds,
+    iggy3d::creative::CreativeTransform transform) noexcept {
+  const iggy3d::creative::CreativeBoundsMetrics source =
+      iggy3d::creative::measureCreativeBounds(sourceBounds);
+  if (!plan.valid ||
+      plan.storagePolicy !=
+          iggy3d::creative::CreativePlacementStoragePolicy::AuthoredObject ||
+      !source.valid ||
+      !iggy3d::creative::isPositiveCreativeVec3(source.size) ||
+      !iggy3d::creative::isFiniteCreativeVec3(transform.position) ||
+      !iggy3d::creative::isFiniteCreativeVec3(
+          transform.rotationEulerRadians) ||
+      !iggy3d::creative::isPositiveCreativeVec3(transform.scale)) {
+    return false;
+  }
+  plan.transform = transform;
+  plan.authoredBounds = {
+      {transform.position.x + sourceBounds.min.x,
+       transform.position.y + sourceBounds.min.y,
+       transform.position.z + sourceBounds.min.z},
+      {transform.position.x + sourceBounds.max.x,
+       transform.position.y + sourceBounds.max.y,
+       transform.position.z + sourceBounds.max.z}};
+  plan.previewBounds = plan.authoredBounds;
+  plan.hasTransformOverride = true;
+  plan.hasBoundsOverride = true;
+  plan.orientationResolved = true;
   return positiveBounds(plan.authoredBounds) &&
          iggy3d::creative::resolveCreativeTransformedBounds(
              plan.authoredBounds, plan.transform)

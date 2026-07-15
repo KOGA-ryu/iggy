@@ -321,6 +321,9 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
     bool walkable = false;
     std::size_t collisionPartCount = 0U;
     std::size_t walkablePartCount = 0U;
+    std::size_t socketCount = 0U;
+    std::size_t plugCount = 0U;
+    std::size_t receiverCount = 0U;
   };
   constexpr std::array kModularAssets{
       ModularAssetExpectation{"homestead/modular/beam_4x0p4", "structure",
@@ -328,7 +331,12 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
       ModularAssetExpectation{"homestead/modular/ceiling_4x4", "ceiling",
                               iggy3d::StaticMeshCollisionMode::Bounds},
       ModularAssetExpectation{"homestead/modular/door_leaf_1p1x2p2", "door",
-                              iggy3d::StaticMeshCollisionMode::Bounds},
+                              iggy3d::StaticMeshCollisionMode::Bounds, false,
+                              0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{
+          "homestead/modular/door_frame_1p5x2p46", "prop",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 3U, 0U,
+          1U, 0U, 1U},
       ModularAssetExpectation{"homestead/modular/floor_4x4", "floor",
                               iggy3d::StaticMeshCollisionMode::Bounds, true},
       ModularAssetExpectation{"homestead/modular/foundation_4x4", "foundation",
@@ -450,11 +458,27 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
             [](const iggy3d::StaticMeshCollisionPart& part) {
               return part.walkable;
             })) == expected.walkablePartCount;
+    const bool validSockets =
+        entry != nullptr &&
+        entry->attachmentSockets.size() == expected.socketCount &&
+        static_cast<std::size_t>(std::count_if(
+            entry->attachmentSockets.begin(), entry->attachmentSockets.end(),
+            [](const iggy3d::StaticMeshAttachmentSocket& socket) {
+              return socket.role ==
+                     iggy3d::StaticMeshAttachmentSocketRole::Plug;
+            })) == expected.plugCount &&
+        static_cast<std::size_t>(std::count_if(
+            entry->attachmentSockets.begin(), entry->attachmentSockets.end(),
+            [](const iggy3d::StaticMeshAttachmentSocket& socket) {
+              return socket.role ==
+                     iggy3d::StaticMeshAttachmentSocketRole::Receiver;
+            })) == expected.receiverCount;
     const std::string message =
         "modular asset imports with authored contract: " +
         std::string(expected.assetId);
     modularAssetsValid =
-        expect(validBounds && validMetadata && validCollisionParts,
+        expect(validBounds && validMetadata && validCollisionParts &&
+                   validSockets,
                message.c_str()) &&
         modularAssetsValid;
   }
@@ -819,6 +843,50 @@ bool collisionPartMetadataKernelIsBoundedAndFailClosed() {
              "closed");
 }
 
+bool attachmentSocketMetadataKernelIsBoundedAndFailClosed() {
+  const iggy3d::StaticMeshAttachmentSocketMetadata absent =
+      iggy3d::detail::parseStaticMeshAttachmentSocketMetadata(
+          R"json({"iggy_category":"door"})json");
+  const iggy3d::StaticMeshAttachmentSocketMetadata receiver =
+      iggy3d::detail::parseStaticMeshAttachmentSocketMetadata(
+          R"json({"iggy_socket":"door_frame","iggy_socket_role":"receiver","iggy_socket_compatibility":"door.frame"})json");
+  const iggy3d::StaticMeshAttachmentSocketMetadata plug =
+      iggy3d::detail::parseStaticMeshAttachmentSocketMetadata(
+          R"json({"iggy_socket":"door_leaf","iggy_socket_role":"plug","iggy_socket_compatibility":"door.frame"})json");
+  const iggy3d::StaticMeshAttachmentSocketMetadata partial =
+      iggy3d::detail::parseStaticMeshAttachmentSocketMetadata(
+          R"json({"iggy_socket":"orphan"})json");
+  const iggy3d::StaticMeshAttachmentSocketMetadata invalidRole =
+      iggy3d::detail::parseStaticMeshAttachmentSocketMetadata(
+          R"json({"iggy_socket":"door","iggy_socket_role":"hinge","iggy_socket_compatibility":"door.frame"})json");
+  const iggy3d::StaticMeshAttachmentSocketMetadata invalidName =
+      iggy3d::detail::parseStaticMeshAttachmentSocketMetadata(
+          R"json({"iggy_socket":"bad socket","iggy_socket_role":"plug","iggy_socket_compatibility":"door.frame"})json");
+
+  return expect(
+             absent.status ==
+                 iggy3d::StaticMeshAttachmentSocketMetadataStatus::NotAuthored,
+             "unrelated extras do not invent sockets") &&
+         expect(receiver.status ==
+                        iggy3d::StaticMeshAttachmentSocketMetadataStatus::Authored &&
+                    receiver.role ==
+                        iggy3d::StaticMeshAttachmentSocketRole::Receiver &&
+                    receiver.name == "door_frame" &&
+                    receiver.compatibility == "door.frame" &&
+                    plug.status ==
+                        iggy3d::StaticMeshAttachmentSocketMetadataStatus::Authored &&
+                    plug.role ==
+                        iggy3d::StaticMeshAttachmentSocketRole::Plug,
+                "receiver and plug metadata parse") &&
+         expect(partial.status ==
+                        iggy3d::StaticMeshAttachmentSocketMetadataStatus::Invalid &&
+                    invalidRole.status ==
+                        iggy3d::StaticMeshAttachmentSocketMetadataStatus::Invalid &&
+                    invalidName.status ==
+                        iggy3d::StaticMeshAttachmentSocketMetadataStatus::Invalid,
+                "partial and malformed sockets fail closed");
+}
+
 }  // namespace
 
 int main() {
@@ -833,7 +901,8 @@ int main() {
                   texturedFixtureBuildsOneCachedMaterialBinding() &&
                   importsBase64DataUriTexture() &&
                   authoringMetadataKernelIsBoundedAndFailClosed() &&
-                  collisionPartMetadataKernelIsBoundedAndFailClosed();
+                  collisionPartMetadataKernelIsBoundedAndFailClosed() &&
+                  attachmentSocketMetadataKernelIsBoundedAndFailClosed();
   if (!ok) {
     return 1;
   }

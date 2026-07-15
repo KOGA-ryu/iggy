@@ -120,6 +120,7 @@ struct CreativeAuthoredAssetPlacementRequest {
   CreativeVec3 targetAnchor{};
   double yawRadians = 0.0;
   std::optional<CreativeObjectId> parentId;
+  std::string attachmentSocket;
 };
 
 struct CreativeAuthoredAssetPlacementPlan {

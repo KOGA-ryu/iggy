@@ -173,7 +173,6 @@ upload occurs in the frame loop.
 - Normal, occlusion, metallic-roughness, and emissive texture evaluation.
 - Alpha blend/mask materials.
 - Convex-hull and triangle-mesh collision cooking.
-- Sockets and attachment points from glTF extras.
 - Skinning, armatures, morph targets, animation clips, and character graphs.
 - Offline cooked mesh packages and cross-run derived-data caching.
 - GPU-driven visibility culling, indirect draws, LOD selection, and per-instance
@@ -199,13 +198,17 @@ no collision for that asset.
 | `iggy_walkable` | boolean | `true` adds one aggregate top surface only when collision is bounds |
 | `iggy_collision_part` | node-local `bounds` | Marks the transformed bounds of this Blender object as one compound collision part |
 | `iggy_collision_part_walkable` | node-local boolean | `true` adds a top surface for this compound part; invalid without `iggy_collision_part` |
-| `iggy_socket_*` | local transform | Reserved for a future attachment/socket cooker |
+| `iggy_socket` | bounded ASCII socket name | Node-local socket identity; names are unique within an asset |
+| `iggy_socket_role` | `receiver`, `plug` | Receivers own one attached child; plugs are aligned to compatible receivers |
+| `iggy_socket_compatibility` | bounded ASCII family such as `door.frame` | Only equal plug/receiver families can snap |
 
-Authoring metadata belongs to the imported asset catalog, not the Creative
-document schema. Saved objects continue to store only the stable `assetId`, so
-this feature does not add persistence fields or migrate existing maps. The
-existing authored bounds plus transform position already encode the source
-bounds and pivot relationship.
+Asset-level authoring metadata belongs to the imported catalog. Socket position
+and orientation come from the owning Blender node's local transform after glTF
+hierarchy resolution; partial declarations, duplicate names, invalid frames,
+and more than 64 sockets fail import closed. A snapped Creative object stores
+the parent object ID plus receiver name. The optional receiver field is omitted
+for ordinary hierarchy edges and from older maps, preserving backward save
+compatibility without a schema migration.
 
 ## Fixture and regeneration
 

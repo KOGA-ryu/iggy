@@ -355,6 +355,9 @@ struct CreativeMutationDescriptor {
 [[nodiscard]] CreativeMutationPayload makeMovePayload(CreativeVec3 position);
 [[nodiscard]] CreativeMutationPayload makeRotatePayload(
     CreativeVec3 rotationEulerRadians);
+[[nodiscard]] CreativeMutationPayload makeScalePayload(CreativeVec3 scale);
+[[nodiscard]] CreativeMutationPayload makeSetTransformPayload(
+    CreativeTransform transform);
 [[nodiscard]] CreativeMutationPayload makeBoundsPayload(CreativeBounds bounds);
 [[nodiscard]] CreativeMutationPayload makeAssetPayload(
     CreativeObjectKind objectKind,

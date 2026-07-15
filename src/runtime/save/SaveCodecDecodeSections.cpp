@@ -223,6 +223,9 @@ void Reader::readCreativeDocumentObject(const std::string& prefix,
   readBool(prefix + "locked", object.locked);
   readBool(prefix + "hasParent", object.hasParent);
   readUnsigned(prefix + "parentId", object.parentId);
+  if (nextKeyIs(prefix + "attachmentSocket")) {
+    readString(prefix + "attachmentSocket", object.attachmentSocket);
+  }
   readStringVector(prefix + "tag.count", prefix + "tag.", object.tags);
   readOptionalCreativeVec3Vector(prefix + "pathPoint.count",
                                  prefix + "pathPoint.",

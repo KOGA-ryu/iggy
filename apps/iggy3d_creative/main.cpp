@@ -592,7 +592,8 @@ int main(int argc, char** argv) {
            pickFrame,
            effectiveContentViewport(frame),
            frameInput.monotonicTimeNanoseconds,
-           !capturePath.empty()});
+           !capturePath.empty(),
+           &bootstrapData.staticMeshAssetCatalog});
     }
 
     runCreativeEditorCaptureScenarioFrame(
@@ -641,7 +642,8 @@ int main(int argc, char** argv) {
          kGizmoThickness,
          !capturePath.empty(),
          frameInput.inputFrame.context,
-         frameInput.activeControlDevice},
+         frameInput.activeControlDevice,
+         &bootstrapData.staticMeshAssetCatalog},
         overlayFrame);
 
     iggy3d_creative_app::endCreativeEditorDesktopFrame(editor.desktopUi);

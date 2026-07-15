@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "EditorEdits.hpp"
+#include "EditorAttachmentPlacement.hpp"
 #include "EditorGroup.hpp"
 #include "EditorPlacement.hpp"
 #include "EditorState.hpp"
@@ -89,7 +90,9 @@ void rejectMaterialStroke(CreativeEditorState& editor,
 void applySingleMaterialMutation(cr::CreativeAppState& appState,
                                  CreativeEditorState& editor,
                                  const cr::CreativeHotbarEntry& held,
-                                 CreativeMaterialStrokeKind kind) {
+                                 CreativeMaterialStrokeKind kind,
+                                 const iggy3d::StaticMeshAssetCatalog*
+                                     assetCatalog) {
   CreativeMaterialStrokeState& stroke = editor.interaction.materialStroke;
   const CreativeEditorWorldTarget& target = editor.interaction.target;
   if (stroke.capacityReached) {
@@ -143,8 +146,11 @@ void applySingleMaterialMutation(cr::CreativeAppState& appState,
     rejectMaterialStroke(editor, held.objectKind);
     return;
   }
-  const CreativeBrushPlacementAdmission admission = admitBrushPlacement(
-      held, grid, editor.toolSettings.placementYaw);
+  const CreativeEditorPlacementResolution placement =
+      resolveCreativeEditorPlacement(
+          held, target, editor.toolSettings.placementYaw,
+          appState.facade.document(), assetCatalog);
+  const CreativeBrushPlacementAdmission& admission = placement.admission;
   const std::string_view assetId = cr::creativeHotbarAssetId(held);
   if (!admission.allowed || creativeBrushPlacementAlreadyExists(
                                 appState.facade.document(), admission.plan,
@@ -391,7 +397,9 @@ void processMaterialStroke(cr::CreativeAppState& appState,
                            CreativeEditorState& editor,
                            const cr::CreativeHotbarEntry& held,
                            const cr::CreativeWorldActionFrame& actions,
-                           std::uint64_t monotonicTimeNanoseconds) {
+                           std::uint64_t monotonicTimeNanoseconds,
+                           const iggy3d::StaticMeshAssetCatalog*
+                               assetCatalog) {
   CreativeMaterialStrokeState& stroke = editor.interaction.materialStroke;
   const CreativeMaterialRepeatRequest repeatRequest =
       cr::makeCreativeWorldStrokeRepeatRequest(actions,
@@ -417,7 +425,8 @@ void processMaterialStroke(cr::CreativeAppState& appState,
   if (held.kind == cr::CreativeHeldItemKind::MaterialBrush) {
     applyMaterialBrushMutation(appState, editor, held, repeat.dueKind);
   } else {
-    applySingleMaterialMutation(appState, editor, held, repeat.dueKind);
+    applySingleMaterialMutation(appState, editor, held, repeat.dueKind,
+                                assetCatalog);
   }
 }
 
@@ -445,7 +454,8 @@ void processCreativeMaterialStrokeFrame(
     cr::CreativeAppState& appState,
     CreativeEditorState& editor,
     const cr::CreativeWorldActionFrame& actions,
-    std::uint64_t monotonicTimeNanoseconds) {
+    std::uint64_t monotonicTimeNanoseconds,
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog) {
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   if (held.kind != cr::CreativeHeldItemKind::Material &&
@@ -455,7 +465,7 @@ void processCreativeMaterialStrokeFrame(
     return;
   }
   processMaterialStroke(appState, editor, held, actions,
-                        monotonicTimeNanoseconds);
+                        monotonicTimeNanoseconds, assetCatalog);
 }
 
 }  // namespace iggy3d_creative_app

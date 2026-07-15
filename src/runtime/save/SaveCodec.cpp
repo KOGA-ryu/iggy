@@ -326,6 +326,9 @@ private:
     lineBool(prefix + "locked", object.locked);
     lineBool(prefix + "hasParent", object.hasParent);
     line(prefix + "parentId", unsignedText(object.parentId));
+    if (!object.attachmentSocket.empty()) {
+      lineString(prefix + "attachmentSocket", object.attachmentSocket);
+    }
     writeCreativeDocumentObjectTags(prefix, object);
     writeCreativeDocumentObjectPathPoints(prefix, object);
   }

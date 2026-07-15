@@ -543,6 +543,14 @@ CreativeMutationPayload makeRotatePayload(CreativeVec3 rotationEulerRadians) {
     return CreativeMutationPayload{RotateMutation{rotationEulerRadians}};
 }
 
+CreativeMutationPayload makeScalePayload(CreativeVec3 scale) {
+    return CreativeMutationPayload{ScaleMutation{scale}};
+}
+
+CreativeMutationPayload makeSetTransformPayload(CreativeTransform transform) {
+    return CreativeMutationPayload{SetTransformMutation{transform}};
+}
+
 CreativeMutationPayload makeBoundsPayload(CreativeBounds bounds) {
     return CreativeMutationPayload{SetBoundsMutation{bounds}};
 }

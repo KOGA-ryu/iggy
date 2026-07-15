@@ -36,7 +36,7 @@ void buildAndAttachCreativeEditorOverlayFrame(
 
   attachCreativeEditorPlacementPreviews(
       editor, request.captureMode, frame,
-      &request.appState.facade.document());
+      &request.appState.facade.document(), request.assetCatalog);
 
   const CreativeEditorWorldOverlayFacts worldFacts =
       buildCreativeEditorWorldWireframes(request, output);

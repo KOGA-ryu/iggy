@@ -207,6 +207,7 @@ namespace {
   record.locked = object.locked;
   record.hasParent = object.parentId.has_value();
   record.parentId = object.parentId.value_or(creative::kInvalidObjectId);
+  record.attachmentSocket = object.attachmentSocket;
   record.tags = object.tags;
   record.pathPoints.reserve(object.pathPoints.size());
   for (const creative::CreativePathPoint& point : object.pathPoints) {
@@ -234,6 +235,7 @@ namespace {
   out.parentId = record.hasParent
                      ? std::optional<creative::CreativeObjectId>{record.parentId}
                      : std::nullopt;
+  out.attachmentSocket = record.attachmentSocket;
   out.tags = record.tags;
   out.pathPoints.reserve(record.pathPoints.size());
   for (const SaveCreativeDocumentVec3Record& point : record.pathPoints) {

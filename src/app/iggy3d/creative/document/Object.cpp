@@ -283,6 +283,20 @@ bool parseSerializedObjectKindId(std::string_view value,
     return false;
 }
 
+bool validCreativeAttachmentSocketName(std::string_view value) noexcept {
+    if (value.empty() ||
+        value.size() > kCreativeAttachmentSocketNameCapacity) {
+        return false;
+    }
+    return std::all_of(value.begin(), value.end(), [](char valueByte) {
+        const unsigned char byte = static_cast<unsigned char>(valueByte);
+        return (byte >= 'a' && byte <= 'z') ||
+               (byte >= 'A' && byte <= 'Z') ||
+               (byte >= '0' && byte <= '9') || byte == '_' || byte == '-' ||
+               byte == '.';
+    });
+}
+
 std::span<const CreativeObjectKind> allCreativeObjectKinds() noexcept {
     return std::span<const CreativeObjectKind>{kAllCreativeObjectKinds.data(),
                                                kAllCreativeObjectKinds.size()};

@@ -53,6 +53,17 @@ bool objectHasChildren(std::span<const CreativeObject> objects,
   return false;
 }
 
+bool attachmentSocketOccupied(std::span<const CreativeObject> objects,
+                              CreativeObjectId parentId,
+                              std::string_view socket) noexcept {
+  for (const CreativeObject& object : objects) {
+    if (object.parentId == parentId && object.attachmentSocket == socket) {
+      return true;
+    }
+  }
+  return false;
+}
+
 }  // namespace
 
 std::string_view toString(CreativeDocumentCreateStatus status) noexcept {
@@ -146,6 +157,23 @@ CreativeDocumentCreateReceipt CreativeDocument::createObject(
                       "parent_owner_unsupported");
       return receipt;
     }
+    if (!request.attachmentSocket.empty() &&
+        !validCreativeAttachmentSocketName(request.attachmentSocket)) {
+      setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
+                      "attachment_socket_invalid");
+      return receipt;
+    }
+    if (!request.attachmentSocket.empty() &&
+        attachmentSocketOccupied(objects_, *request.parentId,
+                                 request.attachmentSocket)) {
+      setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
+                      "attachment_socket_occupied");
+      return receipt;
+    }
+  } else if (!request.attachmentSocket.empty()) {
+    setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
+                    "attachment_socket_without_parent");
+    return receipt;
   }
 
   if (request.hasTransformOverride && !descriptor.hasTransform) {
@@ -189,6 +217,7 @@ CreativeDocumentCreateReceipt CreativeDocument::createObject(
                                             : descriptor.defaults.locked;
   object.tags = request.tags;
   object.parentId = request.parentId;
+  object.attachmentSocket = request.attachmentSocket;
   object.pathPoints = request.pathPoints;
 
   const CreativeObjectId id = appendObject(std::move(object));

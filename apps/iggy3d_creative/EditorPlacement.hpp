@@ -57,11 +57,15 @@ struct CreativeBrushPlacementPlan {
   iggy3d::creative::CreativePlacementStoragePolicy storagePolicy =
       iggy3d::creative::CreativePlacementStoragePolicy::AuthoredObject;
   iggy3d::creative::CreativeGridCoord3 voxelCell{};
+  iggy3d::creative::CreativeObjectId attachmentTargetId =
+      iggy3d::creative::kInvalidObjectId;
+  std::string_view attachmentSocket;
   bool hasTransformOverride = false;
   bool hasBoundsOverride = false;
   bool hasPathOverride = false;
   bool hasVoxelCell = false;
   bool orientationResolved = false;
+  bool hasAttachment = false;
   bool valid = false;
 };
 
@@ -80,6 +84,7 @@ struct CreativeBrushPlacementMutationReceipt {
   bool changed = false;
   bool objectCreated = false;
   bool voxelCreated = false;
+  bool attached = false;
   CreativeBrushPlacementMutationStatus status =
       CreativeBrushPlacementMutationStatus::NotRequested;
   iggy3d::creative::CreativePlacementStoragePolicy storagePolicy =
@@ -88,6 +93,9 @@ struct CreativeBrushPlacementMutationReceipt {
       iggy3d::creative::CreativeObjectKind::Unknown;
   iggy3d::creative::CreativeObjectId objectId =
       iggy3d::creative::kInvalidObjectId;
+  iggy3d::creative::CreativeObjectId attachmentTargetId =
+      iggy3d::creative::kInvalidObjectId;
+  std::string_view attachmentSocket;
   iggy3d::creative::CreativeGridCoord3 voxelCell{};
   iggy3d::creative::CreativeBounds worldBounds{};
   std::uint64_t revisionBefore = 0;
@@ -102,6 +110,7 @@ enum class CreativeBrushPlacementAdmissionStatus : std::uint8_t {
   InvalidGeometry,
   UnsupportedPolicy,
   FaceDisallowed,
+  AttachmentOccupied,
 };
 
 struct CreativeBrushPlacementAdmission {
@@ -164,6 +173,10 @@ initialPathPointsForAnchor(iggy3d::Vec3 cellCenter);
 [[nodiscard]] bool applyCreativeAssetPlacementBounds(
     CreativeBrushPlacementPlan& plan,
     iggy3d::creative::CreativeBounds sourceBounds) noexcept;
+[[nodiscard]] bool applyCreativeAssetPlacementTransform(
+    CreativeBrushPlacementPlan& plan,
+    iggy3d::creative::CreativeBounds sourceBounds,
+    iggy3d::creative::CreativeTransform transform) noexcept;
 [[nodiscard]] bool creativeBrushPlacementAlreadyExists(
     const iggy3d::creative::CreativeDocument& document,
     const CreativeBrushPlacementPlan& plan,

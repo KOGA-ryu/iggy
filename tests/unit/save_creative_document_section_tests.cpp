@@ -124,6 +124,7 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
   object.locked = true;
   object.hasParent = true;
   object.parentId = 7;
+  object.attachmentSocket = "door_frame";
   object.tags = {"boss=room", "line\nbreak"};
   object.pathPoints = {
       {kOneThird, 0.0, kPrecise},
@@ -240,6 +241,9 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
        expect(decodedObject != nullptr && decodedObject->hasParent &&
                   decodedObject->parentId == 7U,
               "object parent decoded") &&
+       expect(decodedObject != nullptr &&
+                  decodedObject->attachmentSocket == "door_frame",
+              "object attachment socket decoded") &&
        expect(decodedObject != nullptr && decodedObject->tags.size() == 2U &&
                   decodedObject->tags[0] == "boss=room" &&
                   decodedObject->tags[1] == "line\nbreak",

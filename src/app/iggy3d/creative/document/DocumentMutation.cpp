@@ -63,17 +63,25 @@ void incrementDocumentRevisionForMutation(CreativeDocument& document,
     document.markObjectMutationChanged(dirtyFlags);
 }
 
-[[nodiscard]] std::optional<CreativeObjectId> requestedRelationshipParentId(
-    const CreativeMutationRequest& request) {
+struct RequestedRelationshipAssignment {
+    CreativeObjectId parentId = kInvalidObjectId;
+    std::string_view attachmentSocket;
+};
+
+[[nodiscard]] std::optional<RequestedRelationshipAssignment>
+requestedRelationshipAssignment(const CreativeMutationRequest& request) {
     const auto& value = request.payload.value;
     if (request.kind == CreativeMutationKind::SetParent &&
         std::holds_alternative<SetParentMutation>(value)) {
-        return std::get<SetParentMutation>(value).parentId;
+        return RequestedRelationshipAssignment{
+            std::get<SetParentMutation>(value).parentId, {}};
     }
 
     if (request.kind == CreativeMutationKind::AttachTo &&
         std::holds_alternative<AttachToMutation>(value)) {
-        return std::get<AttachToMutation>(value).targetId;
+        const AttachToMutation& attachment = std::get<AttachToMutation>(value);
+        return RequestedRelationshipAssignment{
+            attachment.targetId, attachment.socket};
     }
 
     return std::nullopt;
@@ -107,12 +115,13 @@ void incrementDocumentRevisionForMutation(CreativeDocument& document,
 [[nodiscard]] std::string_view validateRelationshipParentAssignment(
     const CreativeDocument& document,
     CreativeObjectId objectId,
-    CreativeObjectId parentId) {
+    const RequestedRelationshipAssignment& assignment) {
     std::vector<CreativeObject> proposedObjects{
         document.objects().begin(), document.objects().end()};
     for (CreativeObject& object : proposedObjects) {
         if (object.id == objectId) {
-            object.parentId = parentId;
+            object.parentId = assignment.parentId;
+            object.attachmentSocket = assignment.attachmentSocket;
             break;
         }
     }
@@ -232,12 +241,12 @@ CreativeDocumentMutationReceipt applyDocumentMutation(
         return rejectDocumentMutation(document, request.objectId, request.kind, CreativeDocumentMutationStatus::MissingObject, "document does not contain requested object");
     }
 
-    const std::optional<CreativeObjectId> relationshipParentId =
-        requestedRelationshipParentId(request);
-    if (relationshipParentId.has_value() && canMutate(object->kind, request.kind)) {
+    const std::optional<RequestedRelationshipAssignment> relationship =
+        requestedRelationshipAssignment(request);
+    if (relationship.has_value() && canMutate(object->kind, request.kind)) {
         const std::string_view relationshipValidation =
             validateRelationshipParentAssignment(
-                document, object->id, *relationshipParentId);
+                document, object->id, *relationship);
         if (!relationshipValidation.empty()) {
             return rejectDocumentRelationshipMutation(
                 document, *object, request.kind, std::string{relationshipValidation});

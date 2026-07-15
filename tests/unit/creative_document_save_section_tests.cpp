@@ -152,6 +152,7 @@ cr::CreativeObject restoredWallObject() {
   object.visible = false;
   object.locked = true;
   object.parentId = 2;
+  object.attachmentSocket = "door_frame";
   object.tags = {"wall", "imported"};
   return object;
 }
@@ -259,6 +260,7 @@ bool sectionObjectMatches(const iggy3d::SaveCreativeDocumentObjectRecord& save,
          save.locked == object.locked &&
          save.hasParent == object.parentId.has_value() &&
          save.parentId == object.parentId.value_or(cr::kInvalidObjectId) &&
+         save.attachmentSocket == object.attachmentSocket &&
          save.tags == object.tags &&
          savePathPointsMatch(save.pathPoints, object.pathPoints);
 }
@@ -270,7 +272,9 @@ bool documentObjectMatches(const cr::CreativeObject& lhs,
          sameTransform(lhs.transform, rhs.transform) &&
          sameBounds(lhs.bounds, rhs.bounds) && lhs.layerId == rhs.layerId &&
          lhs.visible == rhs.visible && lhs.locked == rhs.locked &&
-         lhs.parentId == rhs.parentId && lhs.tags == rhs.tags &&
+         lhs.parentId == rhs.parentId &&
+         lhs.attachmentSocket == rhs.attachmentSocket &&
+         lhs.tags == rhs.tags &&
          samePathPoints(lhs.pathPoints, rhs.pathPoints);
 }
 
@@ -689,6 +693,7 @@ bool restoreRejectsUnsupportedParentOwnerPayload() {
   crateParent.name = "Unsupported Owner Crate";
   crateParent.hasParent = false;
   crateParent.parentId = cr::kInvalidObjectId;
+  crateParent.attachmentSocket.clear();
 
   iggy3d::SaveCreativeDocumentObjectRecord wallChild = section.objects[1];
   wallChild.parentId = crateParent.id;

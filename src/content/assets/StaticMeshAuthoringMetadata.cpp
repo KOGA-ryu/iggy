@@ -54,6 +54,10 @@ constexpr std::size_t kMaxJsonDepth = 16U;
          (value >= '0' && value <= '9') || value == '_' || value == '-';
 }
 
+[[nodiscard]] bool asciiSocketByte(unsigned char value) noexcept {
+  return asciiIdentifierByte(value) || value == '.';
+}
+
 class ExtrasReader {
 public:
   explicit ExtrasReader(std::string_view source) noexcept : source_(source) {}
@@ -175,6 +179,79 @@ public:
         if (sawPart) {
           metadata.status = StaticMeshCollisionPartMetadataStatus::Authored;
           metadata.reasonCode = "static_mesh_collision_part_authored";
+        }
+        return true;
+      }
+      if (!take(',')) {
+        return false;
+      }
+      skipWhitespace();
+    }
+  }
+
+  [[nodiscard]] bool parseAttachmentSocket(
+      StaticMeshAttachmentSocketMetadata& metadata) noexcept {
+    skipWhitespace();
+    if (!take('{')) {
+      return false;
+    }
+    bool sawName = false;
+    bool sawRole = false;
+    bool sawCompatibility = false;
+    skipWhitespace();
+    if (take('}')) {
+      return atEnd();
+    }
+
+    while (true) {
+      std::string key;
+      bool keyOverflow = false;
+      if (!parseString(&key, keyOverflow)) {
+        return false;
+      }
+      skipWhitespace();
+      if (!take(':')) {
+        return false;
+      }
+      skipWhitespace();
+
+      if (keyOverflow) {
+        if (!skipValue(0U)) {
+          return false;
+        }
+      } else if (key == "iggy_socket") {
+        if (sawName || !parseSocketIdentifier(metadata.name)) {
+          return false;
+        }
+        sawName = true;
+      } else if (key == "iggy_socket_role") {
+        if (sawRole || !parseSocketRole(metadata.role)) {
+          return false;
+        }
+        sawRole = true;
+      } else if (key == "iggy_socket_compatibility") {
+        if (sawCompatibility ||
+            !parseSocketIdentifier(metadata.compatibility)) {
+          return false;
+        }
+        sawCompatibility = true;
+      } else if (!skipValue(0U)) {
+        return false;
+      }
+
+      skipWhitespace();
+      if (take('}')) {
+        if (!atEnd()) {
+          return false;
+        }
+        const bool any = sawName || sawRole || sawCompatibility;
+        if (any && !(sawName && sawRole && sawCompatibility)) {
+          return false;
+        }
+        if (any) {
+          metadata.status =
+              StaticMeshAttachmentSocketMetadataStatus::Authored;
+          metadata.reasonCode = "static_mesh_attachment_socket_authored";
         }
         return true;
       }
@@ -347,6 +424,37 @@ private:
     }
     metadata.categoryId = std::move(value);
     return true;
+  }
+
+  [[nodiscard]] bool parseSocketIdentifier(std::string& output) noexcept {
+    bool overflow = false;
+    if (!parseString(&output, overflow) || overflow || output.empty()) {
+      return false;
+    }
+    for (char character : output) {
+      if (!asciiSocketByte(static_cast<unsigned char>(character))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  [[nodiscard]] bool parseSocketRole(
+      StaticMeshAttachmentSocketRole& role) noexcept {
+    std::string value;
+    bool overflow = false;
+    if (!parseString(&value, overflow) || overflow) {
+      return false;
+    }
+    if (value == "receiver") {
+      role = StaticMeshAttachmentSocketRole::Receiver;
+      return true;
+    }
+    if (value == "plug") {
+      role = StaticMeshAttachmentSocketRole::Plug;
+      return true;
+    }
+    return false;
   }
 
   [[nodiscard]] bool skipValue(std::size_t depth) noexcept {
@@ -547,6 +655,26 @@ StaticMeshCollisionPartMetadata parseStaticMeshCollisionPartMetadata(
     metadata = {};
     metadata.status = StaticMeshCollisionPartMetadataStatus::Invalid;
     metadata.reasonCode = "static_mesh_collision_part_invalid";
+  }
+  return metadata;
+}
+
+StaticMeshAttachmentSocketMetadata parseStaticMeshAttachmentSocketMetadata(
+    std::string_view extrasObject) noexcept {
+  StaticMeshAttachmentSocketMetadata metadata;
+  if (extrasObject.empty()) {
+    return metadata;
+  }
+  if (extrasObject.size() > kMaxExtrasBytes) {
+    metadata.status = StaticMeshAttachmentSocketMetadataStatus::Invalid;
+    metadata.reasonCode = "static_mesh_attachment_socket_invalid";
+    return metadata;
+  }
+  ExtrasReader reader(extrasObject);
+  if (!reader.parseAttachmentSocket(metadata)) {
+    metadata = {};
+    metadata.status = StaticMeshAttachmentSocketMetadataStatus::Invalid;
+    metadata.reasonCode = "static_mesh_attachment_socket_invalid";
   }
   return metadata;
 }

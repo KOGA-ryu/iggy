@@ -190,6 +190,7 @@ struct SaveCreativeDocumentObjectRecord {
   bool locked = false;
   bool hasParent = false;
   std::uint64_t parentId = 0;
+  std::string attachmentSocket;
   std::vector<std::string> tags;
   std::vector<SaveCreativeDocumentVec3Record> pathPoints;
 };

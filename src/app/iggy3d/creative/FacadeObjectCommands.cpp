@@ -173,6 +173,29 @@ CreativeSelectionPlacementReceipt Facade::placeObjects(
   return receipt;
 }
 
+CreativeSelectionReceipt Facade::selectTargets(
+    std::span<const CreativeObjectId> objectIds,
+    CreativeObjectId primaryObjectId) {
+  recordCommandAttempt(stats_);
+  std::vector<TargetRef> targets;
+  targets.reserve(objectIds.size());
+  for (const CreativeObjectId objectId : objectIds) {
+    const TargetRef target = objectIdToTargetRef(objectId);
+    if (target.value != kInvalidId) {
+      targets.push_back(target);
+    }
+  }
+  TargetRef primary = objectIdToTargetRef(primaryObjectId);
+  if (primary.value == kInvalidId && !targets.empty()) {
+    primary = targets.back();
+  }
+  CreativeSelectionReceipt receipt =
+      setSelectedTargets(selectionState_, targets, primary);
+  state_.selected = selectionState_.selectedTarget;
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
 CreativeDuplicateCommandReceipt Facade::duplicateSelectedObjects(
     const CreativeDuplicateCommandRequest& request) {
   recordCommandAttempt(stats_);

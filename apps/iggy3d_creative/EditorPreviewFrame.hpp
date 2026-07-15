@@ -35,6 +35,7 @@ struct CreativeEditorOverlayFrameRequest {
       iggy3d::creative::CreativeInputContext::EditorViewport;
   iggy3d::creative::CreativeControlDevice activeControlDevice =
       iggy3d::creative::CreativeControlDevice::KeyboardMouse;
+  const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr;
 };
 
 struct CreativeEditorOverlayFrame {
@@ -68,7 +69,8 @@ void attachCreativeEditorPlacementPreviews(
     const CreativeEditorState& editor,
     bool captureMode,
     iggy3d::FrameInput& frame,
-    const iggy3d::creative::CreativeDocument* document = nullptr);
+    const iggy3d::creative::CreativeDocument* document = nullptr,
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr);
 
 struct StandaloneRoomBakePreviewScene {
   iggy3d::SceneProjectionResult scene;

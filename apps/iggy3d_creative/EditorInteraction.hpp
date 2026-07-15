@@ -26,6 +26,12 @@ class CreativeDocument;
 
 }  // namespace iggy3d::creative
 
+namespace iggy3d {
+
+struct StaticMeshAssetCatalog;
+
+}  // namespace iggy3d
+
 namespace iggy3d_creative_app {
 
 struct CreativeEditorState;
@@ -273,6 +279,7 @@ struct CreativeEditorWorldInteractionFrameRequest {
   iggy3d::RenderContentViewport contentRegion;
   std::uint64_t monotonicTimeNanoseconds = 0;
   bool captureMode = false;
+  const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr;
 };
 
 [[nodiscard]] CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
@@ -308,7 +315,8 @@ void processCreativeMaterialStrokeFrame(
     iggy3d::creative::CreativeAppState& appState,
     CreativeEditorState& editor,
     const iggy3d::creative::CreativeWorldActionFrame& actions,
-    std::uint64_t monotonicTimeNanoseconds);
+    std::uint64_t monotonicTimeNanoseconds,
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr);
 
 void finalizeCreativeMaterialStroke(
     iggy3d::creative::CreativeAppState& appState,

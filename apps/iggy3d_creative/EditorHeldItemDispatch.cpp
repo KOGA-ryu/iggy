@@ -65,7 +65,7 @@ void refreshHeldItemPreview(
       } else {
         processCreativeMaterialStrokeFrame(
             request.appState, editor, request.actions,
-            request.monotonicTimeNanoseconds);
+            request.monotonicTimeNanoseconds, request.assetCatalog);
       }
       if (cr::creativeWorldActionPressed(request.actions,
                                          cr::CreativeWorldActionId::Pick)) {

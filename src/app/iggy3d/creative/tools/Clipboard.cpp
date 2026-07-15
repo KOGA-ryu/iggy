@@ -158,10 +158,12 @@ void includePlacementPoint(CreativeObjectWorldExtent& extent,
     const auto remappedParent = remaps.find(*object.parentId);
     if (remappedParent != remaps.end()) {
       create.parentId = remappedParent->second;
+      create.attachmentSocket = object.attachmentSocket;
     } else if (request.externalParentPolicy ==
                    CreativeClipboardExternalParentPolicy::PreserveIfPresent &&
                targetDocument.containsObject(*object.parentId)) {
       create.parentId = object.parentId;
+      create.attachmentSocket = object.attachmentSocket;
     }
   }
   create.pathPoints = object.pathPoints;

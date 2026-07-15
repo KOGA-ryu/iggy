@@ -78,6 +78,20 @@ def mark_collision_part(obj: bpy.types.Object, walkable: bool = False) -> None:
     obj["iggy_collision_part_walkable"] = walkable
 
 
+def attachment_socket(name: str, compatibility: str, role: str,
+                      location: tuple[float, float, float] =
+                      (0.0, 0.0, 0.0)) -> bpy.types.Object:
+    obj = bpy.data.objects.new(f"socket_{name}", None)
+    bpy.context.collection.objects.link(obj)
+    obj.location = location
+    obj.empty_display_type = "ARROWS"
+    obj.empty_display_size = 0.35
+    obj["iggy_socket"] = name
+    obj["iggy_socket_role"] = role
+    obj["iggy_socket_compatibility"] = compatibility
+    return obj
+
+
 def box(name: str, dimensions: tuple[float, float, float],
         location: tuple[float, float, float], value: bpy.types.Material,
         bevel: float = 0.025,
@@ -304,6 +318,36 @@ def build_door(materials: dict[str, bpy.types.Material]) -> list[bpy.types.Objec
     objects.append(
         box("door_handle", (0.11, 0.11, 0.11), (0.36, -0.10, 1.08),
             materials["iron"], 0.04))
+    objects.append(
+        attachment_socket("door_leaf", "door.frame", "plug",
+                          (0.0, 0.0, 1.10)))
+    return objects
+
+
+def build_door_frame(
+        materials: dict[str, bpy.types.Material]) -> list[bpy.types.Object]:
+    opening_width = 1.14
+    opening_height = 2.24
+    jamb_width = 0.18
+    depth = 0.24
+    outer_width = opening_width + 2.0 * jamb_width
+    head_height = 0.22
+    objects = [
+        box("door_frame_left", (jamb_width, depth, opening_height),
+            (-outer_width * 0.5 + jamb_width * 0.5, 0.0,
+             opening_height * 0.5), materials["timber"], 0.022),
+        box("door_frame_right", (jamb_width, depth, opening_height),
+            (outer_width * 0.5 - jamb_width * 0.5, 0.0,
+             opening_height * 0.5), materials["timber"], 0.022),
+        box("door_frame_head", (outer_width, depth, head_height),
+            (0.0, 0.0, opening_height + head_height * 0.5),
+            materials["dark_timber"], 0.025),
+    ]
+    for obj in objects:
+        mark_collision_part(obj)
+    objects.append(
+        attachment_socket("door_frame", "door.frame", "receiver",
+                          (0.0, 0.0, opening_height * 0.5)))
     return objects
 
 
@@ -402,6 +446,8 @@ ASSET_SPECS = (
               (4.0, -5.0, 0.0)),
     AssetSpec("door_leaf_1p1x2p2", "door", "bounds", False, build_door,
               (7.0, -5.0, 0.0)),
+    AssetSpec("door_frame_1p5x2p46", "prop", "compound_bounds", False,
+              build_door_frame, (7.0, -8.0, 0.0)),
     AssetSpec("window_frame_1p5x1p2", "window", "none", False,
               build_window_frame, (9.5, -5.0, 0.0)),
     AssetSpec("stair_straight_2x3x1p5", "stairs", "compound_bounds", False,

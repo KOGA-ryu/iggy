@@ -34,6 +34,8 @@ namespace {
       std::pair{std::string_view{"rock"}, cr::CreativeObjectKind::Rock},
       std::pair{std::string_view{"walkway"}, cr::CreativeObjectKind::Bridge},
       std::pair{std::string_view{"bridge"}, cr::CreativeObjectKind::Bridge},
+      std::pair{std::string_view{"door"}, cr::CreativeObjectKind::Door},
+      std::pair{std::string_view{"window"}, cr::CreativeObjectKind::Window},
       std::pair{std::string_view{"prop"}, cr::CreativeObjectKind::Prop},
   };
   const auto found = std::find_if(

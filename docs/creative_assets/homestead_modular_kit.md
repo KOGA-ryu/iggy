@@ -31,6 +31,7 @@ instanced draw path.
 | `homestead/modular/pillar_0p5x3` | Freestanding timber post | Bounds | No |
 | `homestead/modular/beam_4x0p4` | Horizontal structural beam | Bounds | No |
 | `homestead/modular/door_leaf_1p1x2p2` | Hingeless door leaf | Bounds | No |
+| `homestead/modular/door_frame_1p5x2p46` | Socketed timber doorway | Compound bounds (3) | No |
 | `homestead/modular/window_frame_1p5x1p2` | Open timber window frame | None | No |
 | `homestead/modular/gable_cap_4x1p5` | Gable infill | None | No |
 | `homestead/modular/roof_shed_4x4` | Single-slope roof panel | None | No |
@@ -45,8 +46,13 @@ instanced draw path.
 - Snap foundations, floors, ceilings, and full walls on a 4 m bay grid.
 - Place walls at foundation/floor height. Their 3 m height defines the normal
   story height.
-- Build a physically open doorway from two separated wall piers and one lintel.
-  Add the door leaf only when the opening should be closed.
+- Place the doorway frame, then aim the door leaf at it. Its `door.frame` plug
+  snaps to the frame receiver; an available receiver previews green and an
+  occupied receiver previews red. The accepted leaf is stored as an attached
+  child, so save/load, clipboard, undo, and authored-asset refresh preserve the
+  relationship.
+- For wider custom openings, continue using two separated wall piers and one
+  lintel. Add an unsnapped door leaf only when the opening should be closed.
 - Build a window opening from solid surrounding modules, then place the
   no-collision window frame inside the opening.
 - Pair two gable-slope panels and cap their meeting edge with the ridge module.
@@ -101,15 +107,15 @@ ctest --test-dir build \
 ```
 
 The catalog test pins every stable ID, metadata category, collision mode,
-walkability flag, finite non-degenerate bounds, collision-part count, and
-preview-atlas inclusion. The RoomBake test loads the checked-in stair, porch,
-and bridge GLBs through the production importer and pins their independent
-blocker and walkable surfaces.
+walkability flag, finite non-degenerate bounds, collision-part/socket count,
+and preview-atlas inclusion. The RoomBake test loads the checked-in stair,
+porch, bridge, and doorway GLBs through the production importer and pins their
+independent blocker and walkable surfaces.
 
 ## Deferred extensions
 
 - Convex or triangle-mesh collision for pitched roofs and non-box architecture.
-- Hinges, sockets, opening state, and attachment metadata for doors/windows.
+- Hinges, opening state, and socketed window variants.
 - Textured and weathered material variants.
 - Railings, corner walls, arches, chimneys, curved stairs, and trim modules.
 - LODs and cooked cross-run mesh packages.

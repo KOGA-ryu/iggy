@@ -14,6 +14,32 @@
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 
+bool equipCreativeEditorAuthoredAssetToHotbar(
+    cr::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    const cr::CreativeAuthoredAssetDefinition& definition) {
+  const std::size_t slot =
+      static_cast<std::size_t>(editor.interaction.hotbar.selectedSlot);
+  cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const cr::CreativeHeldItemKind previousKind = held.kind;
+  held = {cr::CreativeHeldItemKind::Material,
+          cr::CreativeObjectKind::PrefabInstance};
+  const bool equipped = cr::setCreativeHotbarAsset(held, definition.assetId,
+                                                   definition.sourceBounds);
+  if (equipped) {
+    if (previousKind != held.kind) {
+      clearCreativeMaterialBrushPresetSlot(
+          editor.interaction.materialBrushPresets, slot);
+    }
+    static_cast<void>(activateSelectedCreativeMaterialBrushPreset(
+        editor.interaction.materialBrushPresets, editor.interaction.hotbar,
+        editor.toolSettings));
+    syncCreativeEditorHeldItem(appState, editor);
+  }
+  return equipped;
+}
+
 bool creativeEditorCommandIsObjectAction(
     CreativeEditorToolOptionsCommandId command) noexcept {
   switch (command) {
@@ -428,24 +454,9 @@ bool activateCreativeEditorObjectAction(
           accepted = false;
           break;
         }
-        const std::size_t slot = static_cast<std::size_t>(
-            editor.interaction.hotbar.selectedSlot);
-        cr::CreativeHotbarEntry& held =
-            cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-        const cr::CreativeHeldItemKind previousKind = held.kind;
-        held = {cr::CreativeHeldItemKind::Material,
-                cr::CreativeObjectKind::PrefabInstance};
-        accepted = cr::setCreativeHotbarAsset(
-            held, definition->assetId, definition->sourceBounds);
+        accepted = equipCreativeEditorAuthoredAssetToHotbar(appState, editor,
+                                                            *definition);
         if (accepted) {
-          if (previousKind != held.kind) {
-            clearCreativeMaterialBrushPresetSlot(
-                editor.interaction.materialBrushPresets, slot);
-          }
-          static_cast<void>(activateSelectedCreativeMaterialBrushPreset(
-              editor.interaction.materialBrushPresets,
-              editor.interaction.hotbar, editor.toolSettings));
-          syncCreativeEditorHeldItem(appState, editor);
           editor.catalog.statusLabel = "SAVED + EQUIPPED " +
                                        definition->label;
         }

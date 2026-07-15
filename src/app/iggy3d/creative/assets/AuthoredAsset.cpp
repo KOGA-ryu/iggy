@@ -158,6 +158,9 @@ void appendDefinitionObject(FingerprintBuilder& builder,
   if (parentIndex.has_value()) {
     builder.appendUnsigned(*parentIndex);
   }
+  if (!object.attachmentSocket.empty()) {
+    builder.appendString(object.attachmentSocket);
+  }
   builder.appendUnsigned(object.pathPoints.size());
   for (const CreativePathPoint& point : object.pathPoints) {
     builder.appendVec3(point.position);
@@ -921,6 +924,7 @@ acknowledgeCreativeAuthoredAssetInstanceSource(
   placementRequest.targetAnchor = root->transform.position;
   placementRequest.yawRadians = root->transform.rotationEulerRadians.y;
   placementRequest.parentId = root->parentId;
+  placementRequest.attachmentSocket = root->attachmentSocket;
   const CreativeAuthoredAssetPlacementPlan placementPlan =
       planCreativeAuthoredAssetPlacement(placementRequest);
   if (!placementPlan.accepted) {
@@ -1004,6 +1008,7 @@ CreativeAuthoredAssetPlacementPlan planCreativeAuthoredAssetPlacement(
   plan.rootRequest.locked = false;
   plan.rootRequest.hasLockedOverride = true;
   plan.rootRequest.parentId = request.parentId;
+  plan.rootRequest.attachmentSocket = request.attachmentSocket;
   plan.rootRequest.tags.push_back(
       sourceFingerprintTag(sourceFingerprint.value));
 
@@ -1314,6 +1319,7 @@ refreshCreativeAuthoredAssetInstancesAtomically(
     const CreativeVec3 rootPosition = root->transform.position;
     const double rootYaw = root->transform.rotationEulerRadians.y;
     const std::optional<CreativeObjectId> rootParentId = root->parentId;
+    const std::string rootAttachmentSocket = root->attachmentSocket;
     std::vector<std::string> previousSourceFingerprintTags;
     for (const std::string& tag : root->tags) {
       if (hasSourceFingerprintTag(tag)) {
@@ -1354,6 +1360,7 @@ refreshCreativeAuthoredAssetInstancesAtomically(
     placementRequest.targetAnchor = rootPosition;
     placementRequest.yawRadians = rootYaw;
     placementRequest.parentId = rootParentId;
+    placementRequest.attachmentSocket = rootAttachmentSocket;
     const CreativeAuthoredAssetPlacementPlan plan =
         planCreativeAuthoredAssetPlacement(placementRequest);
     if (!plan.accepted) {

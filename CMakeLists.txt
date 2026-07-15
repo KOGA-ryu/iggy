@@ -87,6 +87,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/tools/ToolSettings.cpp
     src/app/iggy3d/creative/tools/Tools.cpp
     src/app/iggy3d/creative/tools/AssetScatter.cpp
+    src/app/iggy3d/creative/tools/AttachmentSnap.cpp
     src/app/iggy3d/creative/tools/Select.cpp
     src/app/iggy3d/creative/tools/Clipboard.cpp
     src/app/iggy3d/creative/tools/Group.cpp
@@ -305,6 +306,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorPattern.cpp
   apps/iggy3d_creative/EditorBootstrap.cpp
   apps/iggy3d_creative/EditorPlacement.cpp
+  apps/iggy3d_creative/EditorAttachmentPlacement.cpp
   apps/iggy3d_creative/EditorPlacementMutation.cpp
   apps/iggy3d_creative/EditorPlacementPreview.cpp
   apps/iggy3d_creative/EditorEdits.cpp
