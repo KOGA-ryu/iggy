@@ -143,6 +143,10 @@ struct FirstRoomFrameRecordInfo {
   bool captureEnabled = false;
   VkBuffer captureBuffer{};
   VkDeviceSize captureBufferSize = 0;
+  // The swapchain sub-rectangle the 3D scene renders into (drawable px). The
+  // all-zero sentinel means the full extent, so scene draws are scissored to
+  // this rect while overlays/HUD stay in full-extent space (plan DD-6).
+  RenderContentViewport sceneViewport;
   const OverlayRect* projectileOverlayRects = nullptr;
   std::size_t projectileOverlayRectCount = 0;
   const OverlayRect* uiOverlayRects = nullptr;

@@ -550,6 +550,7 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     recordInfo.uiTextGlyphQuadCount = frame.ui.textGlyphQuadCount;
     recordInfo.debugHudQuads = debugHud.quads.data();
     recordInfo.debugHudQuadCount = debugHud.quads.size();
+    recordInfo.sceneViewport = frame.contentViewport;
     recordInfo.externalUiHook = createInfo_.externalUiHook;
     recordResult = createInfo_.commandRecording->recordFirstRoomFrame(recordInfo);
   } else if (drawProxyPrimitives) {
@@ -638,6 +639,7 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     recordInfo.uiTextGlyphQuadCount = frame.ui.textGlyphQuadCount;
     recordInfo.debugHudQuads = debugHud.quads.data();
     recordInfo.debugHudQuadCount = debugHud.quads.size();
+    recordInfo.sceneViewport = frame.contentViewport;
     recordInfo.externalUiHook = createInfo_.externalUiHook;
     recordResult = createInfo_.commandRecording->recordFirstRoomFrame(recordInfo);
   } else {

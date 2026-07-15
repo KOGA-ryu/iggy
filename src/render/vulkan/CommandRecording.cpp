@@ -1,5 +1,7 @@
 #include "render/vulkan/CommandRecording.hpp"
 
+#include <algorithm>
+
 #include "render/vulkan/FirstRoomPipeline.hpp"
 #include "render/vulkan/VulkanResult.hpp"
 
@@ -103,6 +105,58 @@ void recordOverlayRects(VkCommandBuffer commandBuffer,
         clearRect(overlay.x, overlay.y, overlay.width, overlay.height);
     vkCmdClearAttachments(commandBuffer, 1, &clear, 1, &rect);
   }
+}
+
+struct ResolvedSceneRect {
+  std::int32_t x = 0;
+  std::int32_t y = 0;
+  std::uint32_t width = 0;
+  std::uint32_t height = 0;
+};
+
+// Resolves the content-viewport sentinel (all-zero) to the full swapchain
+// extent; otherwise clamps the explicit rect into the extent so the scene
+// viewport/scissor can never exceed the render area.
+ResolvedSceneRect resolveSceneRect(const RenderContentViewport& sceneViewport,
+                                   VkExtent2D extent) {
+  if (sceneViewport.x == 0 && sceneViewport.y == 0 &&
+      sceneViewport.width == 0U && sceneViewport.height == 0U) {
+    return {0, 0, extent.width, extent.height};
+  }
+  ResolvedSceneRect rect;
+  rect.x = sceneViewport.x < 0 ? 0 : sceneViewport.x;
+  rect.y = sceneViewport.y < 0 ? 0 : sceneViewport.y;
+  const std::uint32_t offsetX = static_cast<std::uint32_t>(rect.x);
+  const std::uint32_t offsetY = static_cast<std::uint32_t>(rect.y);
+  rect.width = offsetX >= extent.width
+                   ? 0U
+                   : std::min(sceneViewport.width, extent.width - offsetX);
+  rect.height = offsetY >= extent.height
+                    ? 0U
+                    : std::min(sceneViewport.height, extent.height - offsetY);
+  if (rect.width == 0U || rect.height == 0U) {
+    return {0, 0, extent.width, extent.height};
+  }
+  return rect;
+}
+
+void setViewportAndScissor(VkCommandBuffer commandBuffer,
+                           std::int32_t x,
+                           std::int32_t y,
+                           std::uint32_t width,
+                           std::uint32_t height) {
+  VkViewport viewport{};
+  viewport.x = static_cast<float>(x);
+  viewport.y = static_cast<float>(y);
+  viewport.width = static_cast<float>(width);
+  viewport.height = static_cast<float>(height);
+  viewport.minDepth = 0.0F;
+  viewport.maxDepth = 1.0F;
+  VkRect2D scissor{};
+  scissor.offset = {x, y};
+  scissor.extent = {width, height};
+  vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+  vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 }
 
 // The frame's rendering block has ended and the color image is still in
@@ -526,17 +580,14 @@ CommandRecordResult CommandRecording::recordFirstRoomFrame(
   renderingInfo.pColorAttachments = &colorAttachment;
   renderingInfo.pDepthAttachment = &depthAttachment;
 
-  VkViewport viewport{};
-  viewport.x = 0.0F;
-  viewport.y = 0.0F;
-  viewport.width = static_cast<float>(info.extent.width);
-  viewport.height = static_cast<float>(info.extent.height);
-  viewport.minDepth = 0.0F;
-  viewport.maxDepth = 1.0F;
-  VkRect2D scissor{};
-  scissor.extent = info.extent;
-  vkCmdSetViewport(info.commandBuffer, 0, 1, &viewport);
-  vkCmdSetScissor(info.commandBuffer, 0, 1, &scissor);
+  // The 3D scene is scissored to the content sub-rectangle (the ImGui central
+  // node); the surrounding area stays the LOAD_OP_CLEAR background that docked
+  // panels cover. The sentinel resolves to the full extent, so this is
+  // identical to full-window rendering until a panel shrinks the rect.
+  const ResolvedSceneRect sceneRect =
+      resolveSceneRect(info.sceneViewport, info.extent);
+  setViewportAndScissor(info.commandBuffer, sceneRect.x, sceneRect.y,
+                        sceneRect.width, sceneRect.height);
 
   createInfo_.deviceFunctions.cmdBeginRendering(info.commandBuffer, &renderingInfo);
   VkDeviceSize vertexOffset = 0;
@@ -705,6 +756,12 @@ CommandRecordResult CommandRecording::recordFirstRoomFrame(
       ++creativePreviewDrawCount;
     }
   }
+  // Overlays and HUD text live in full swapchain-pixel space; restore the
+  // full-extent viewport/scissor after the content-rect scene draws so any
+  // draw-based overlay is not clipped to the scene sub-rect (the existing
+  // vkCmdClearAttachments overlays are bounded by the full renderArea).
+  setViewportAndScissor(info.commandBuffer, 0, 0, info.extent.width,
+                        info.extent.height);
   recordOverlayRects(info.commandBuffer, info.projectileOverlayRects,
                      info.projectileOverlayRectCount);
   recordOverlayRects(info.commandBuffer, info.uiOverlayRects,
