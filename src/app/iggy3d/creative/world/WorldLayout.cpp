@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -274,6 +275,7 @@ std::string_view toString(CreativeWorldLayoutTable table) noexcept {
   switch (table) {
     case CreativeWorldLayoutTable::None: return "None";
     case CreativeWorldLayoutTable::Building: return "Building";
+    case CreativeWorldLayoutTable::Room: return "Room";
     case CreativeWorldLayoutTable::Box: return "Box";
     case CreativeWorldLayoutTable::Wall: return "Wall";
     case CreativeWorldLayoutTable::Opening: return "Opening";
@@ -329,6 +331,21 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     return result;
   }
 
+  const CreativeWorldLayoutRoomCompileResult roomExpansion =
+      expandCreativeWorldLayoutRooms(layout);
+  if (!roomExpansion.accepted) {
+    result.receipt.failedTable =
+        roomExpansion.status ==
+                CreativeWorldLayoutRoomCompileStatus::InvalidOpeningHost
+            ? CreativeWorldLayoutTable::Opening
+            : CreativeWorldLayoutTable::Room;
+    result.receipt.failedIndex = roomExpansion.failedIndex;
+    setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidSymbol,
+              roomExpansion.reasonCode);
+    return result;
+  }
+  const CreativeWorldLayout& expanded = roomExpansion.expanded;
+
   result.plan.layoutKey = layout.stableKey;
   result.plan.sourceDocumentId = document.id();
   result.plan.sourceDocumentRevision = document.revision();
@@ -383,8 +400,25 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     }
   }
 
-  for (std::size_t index = 0U; index < layout.boxes.size(); ++index) {
-    const CreativeWorldLayoutBox& symbol = layout.boxes[index];
+  for (std::size_t index = 0U; index < layout.rooms.size(); ++index) {
+    const CreativeWorldLayoutRoom& symbol = layout.rooms[index];
+    if (symbol.buildingIndex >= buildings.size() || symbol.name.empty()) {
+      result.receipt.failedTable = CreativeWorldLayoutTable::Room;
+      result.receipt.failedIndex = index;
+      setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidSymbol,
+                "creative_world_layout_room_invalid");
+      return result;
+    }
+    const std::string key = childKey(
+        layout.buildings[symbol.buildingIndex].stableKey, symbol.stableKey);
+    if (!registerKey(stableKeys, key, CreativeWorldLayoutTable::Room, index,
+                     result.receipt)) {
+      return result;
+    }
+  }
+
+  for (std::size_t index = 0U; index < expanded.boxes.size(); ++index) {
+    const CreativeWorldLayoutBox& symbol = expanded.boxes[index];
     if (symbol.buildingIndex >= buildings.size() || symbol.name.empty()) {
       result.receipt.failedTable = CreativeWorldLayoutTable::Box;
       result.receipt.failedIndex = index;
@@ -412,9 +446,9 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
   }
 
   std::vector<std::size_t> localWallIndices(
-      layout.walls.size(), kInvalidCreativeWorldLayoutIndex);
-  for (std::size_t index = 0U; index < layout.walls.size(); ++index) {
-    const CreativeWorldLayoutWall& symbol = layout.walls[index];
+      expanded.walls.size(), kInvalidCreativeWorldLayoutIndex);
+  for (std::size_t index = 0U; index < expanded.walls.size(); ++index) {
+    const CreativeWorldLayoutWall& symbol = expanded.walls[index];
     if (symbol.buildingIndex >= buildings.size() || symbol.name.empty() ||
         symbol.heightCells == 0U || !std::isfinite(symbol.thicknessCells) ||
         symbol.thicknessCells <= 0.0) {
@@ -447,16 +481,17 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     buildings[symbol.buildingIndex].walls.push_back(std::move(wall));
   }
 
-  for (std::size_t index = 0U; index < layout.openings.size(); ++index) {
-    const CreativeWorldLayoutOpening& symbol = layout.openings[index];
-    if (symbol.wallIndex >= layout.walls.size() || symbol.name.empty()) {
+  for (std::size_t index = 0U; index < expanded.openings.size(); ++index) {
+    const CreativeWorldLayoutOpening& symbol = expanded.openings[index];
+    if (symbol.hostKind != CreativeWorldLayoutOpeningHostKind::Wall ||
+        symbol.wallIndex >= expanded.walls.size() || symbol.name.empty()) {
       result.receipt.failedTable = CreativeWorldLayoutTable::Opening;
       result.receipt.failedIndex = index;
       setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidSymbol,
                 "creative_world_layout_opening_invalid");
       return result;
     }
-    const CreativeWorldLayoutWall& wallSymbol = layout.walls[symbol.wallIndex];
+    const CreativeWorldLayoutWall& wallSymbol = expanded.walls[symbol.wallIndex];
     const std::size_t buildingIndex = wallSymbol.buildingIndex;
     const std::string key = childKey(
         layout.buildings[buildingIndex].stableKey, symbol.stableKey);

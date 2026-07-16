@@ -1260,13 +1260,18 @@ bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
   const app::CreativeDesktopCommandResult tool = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutSetTool, context,
       app::CreativeDesktopWorldLayoutToolPayload{
-          app::CreativeEditorWorldLayoutTool::Floor});
+          app::CreativeEditorWorldLayoutTool::Room});
   const app::CreativeDesktopCommandResult anchor = dispatchPayload(
-      app::CreativeDesktopCommandId::WorldLayoutCanvasPoint, context,
-      app::CreativeDesktopWorldLayoutPointPayload{{0.0, 0.0}});
-  const app::CreativeDesktopCommandResult floor = dispatchPayload(
-      app::CreativeDesktopCommandId::WorldLayoutCanvasPoint, context,
-      app::CreativeDesktopWorldLayoutPointPayload{{6.0, 5.0}});
+      app::CreativeDesktopCommandId::WorldLayoutCanvasGesture, context,
+      app::CreativeDesktopWorldLayoutGesturePayload{
+          app::CreativeEditorWorldLayoutGesturePhase::Begin, {0.0, 0.0}});
+  const app::CreativeDesktopCommandResult room = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutCanvasGesture, context,
+      app::CreativeDesktopWorldLayoutGesturePayload{
+          app::CreativeEditorWorldLayoutGesturePhase::Commit, {6.0, 5.0}});
+  const app::CreativeDesktopCommandResult resized = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutResizeRoom, context,
+      app::CreativeDesktopWorldLayoutRoomRectPayload{0U, {{0, 0}, {8, 6}}});
 
   const std::uint64_t liveCountBefore =
       appState.facade.document().objectCount();
@@ -1288,8 +1293,11 @@ bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
       app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
 
   return expect(tool.accepted && anchor.accepted && !anchor.changed &&
-                    floor.accepted && floor.worldLayoutChanged,
-                "layout tools and canvas points route through typed payloads") &&
+                    room.accepted && room.worldLayoutChanged &&
+                    resized.accepted && resized.worldLayoutChanged &&
+                    editor.worldLayout.source.rooms[0].footprint.maximum ==
+                        cr::CreativeTerrainCoord2{8, 6},
+                "room drag and resize route through typed payloads") &&
          expect(preview.accepted && preview.sceneChanged &&
                     exactPreviewVisible && !editor.desktopUi.showWorldLayout,
                 "layout preview is exact, transient, and closes the canvas") &&

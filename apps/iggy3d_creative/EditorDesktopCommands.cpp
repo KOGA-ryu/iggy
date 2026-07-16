@@ -712,6 +712,44 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutCanvasGesture: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutGesturePayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout gesture: payload mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          applyCreativeEditorWorldLayoutGesture(
+              editor.worldLayout, payload->phase, payload->point);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutResizeRoom: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutRoomRectPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout room resize: payload mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          resizeCreativeEditorWorldLayoutRoom(
+              editor.worldLayout, payload->roomIndex, payload->footprint);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutDeleteSelection: {
       const bool previewWasActive =
           creativeEditorWorldLayoutPreviewActive(editor.worldLayout);

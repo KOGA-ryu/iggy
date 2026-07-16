@@ -138,11 +138,43 @@ bool corruptEmbeddedLayoutRejectsTheWholeWorldOpen() {
   return ok;
 }
 
+bool versionOneLayoutSectionMigratesInsideWorldOpen() {
+  const std::filesystem::path root = testRoot();
+  std::filesystem::remove_all(root);
+  std::filesystem::create_directories(root);
+  cr::CreativeDocument doc = document();
+  const std::string versionOne =
+      "IGGY3D_WORLD_LAYOUT 1\n"
+      "L 1 6c65676163795f73617665 0 0 0 0 0 0 0 0\n"
+      "END\n";
+  iggy3d::ProductCreativeSaveWriteRequest write;
+  write.saveRoot = root;
+  write.saveIdHint = "legacy_layout";
+  write.attemptToken = "attempt_legacy_layout";
+  write.document = &doc;
+  write.creativeWorldLayoutEncoded = &versionOne;
+  write.creativeWorldLayoutVersion = 1U;
+  const iggy3d::ProductCreativeSaveWriteResult written =
+      iggy3d::writeCreativeDocumentSaveDurably(write);
+  const iggy3d::CreativeWorldOpenResult opened =
+      iggy3d::openCreativeWorld({root, "legacy_layout"});
+  const bool ok =
+      expect(written.ok && opened.accepted && opened.worldLayoutPresent,
+             "version-one layout section remains openable") &&
+      expect(opened.worldLayout.schemaVersion ==
+                     cr::kCreativeWorldLayoutSchemaVersion &&
+                 opened.worldLayout.stableKey == "legacy_save",
+             "world open migrates version-one source to current schema");
+  std::filesystem::remove_all(root);
+  return ok;
+}
+
 }  // namespace
 
 int main() {
   const bool ok = layoutTravelsInsideTheAtomicSaveEnvelope() &&
                   oldSaveWithoutLayoutRemainsReadable() &&
-                  corruptEmbeddedLayoutRejectsTheWholeWorldOpen();
+                  corruptEmbeddedLayoutRejectsTheWholeWorldOpen() &&
+                  versionOneLayoutSectionMigratesInsideWorldOpen();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

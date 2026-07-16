@@ -126,6 +126,11 @@ iggy3d_add_unit_test(creative_world_layout_tests
 set_tests_properties(creative_world_layout_tests PROPERTIES
   LABELS "unit;app;creative;world;layout;recipe;history;iggy3d")
 
+iggy3d_add_unit_test(creative_world_layout_room_tests
+  tests/unit/creative_world_layout_room_tests.cpp)
+set_tests_properties(creative_world_layout_room_tests PROPERTIES
+  LABELS "unit;app;creative;world;layout;room;topology;iggy3d")
+
 iggy3d_add_unit_test(creative_world_layout_codec_tests
   tests/unit/creative_world_layout_codec_tests.cpp)
 set_tests_properties(creative_world_layout_codec_tests PROPERTIES

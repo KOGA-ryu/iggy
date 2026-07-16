@@ -13,6 +13,7 @@ namespace cr = iggy3d::creative;
 
 enum class CreativeEditorWorldLayoutTool : std::uint8_t {
   Select,
+  Room,
   Floor,
   Wall,
   Door,
@@ -22,6 +23,7 @@ enum class CreativeEditorWorldLayoutTool : std::uint8_t {
 
 enum class CreativeEditorWorldLayoutSelectionKind : std::uint8_t {
   None,
+  Room,
   Box,
   Wall,
   Opening,
@@ -36,6 +38,13 @@ struct CreativeEditorWorldLayoutSelection {
 struct CreativeEditorWorldLayoutPoint {
   double x = 0.0;
   double z = 0.0;
+};
+
+enum class CreativeEditorWorldLayoutGesturePhase : std::uint8_t {
+  Begin,
+  Commit,
+  Cancel,
+  Count,
 };
 
 struct CreativeEditorWorldLayoutState {
@@ -107,6 +116,15 @@ setCreativeEditorWorldLayoutTool(CreativeEditorWorldLayoutState& state,
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 applyCreativeEditorWorldLayoutPoint(CreativeEditorWorldLayoutState& state,
                                     CreativeEditorWorldLayoutPoint point);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+applyCreativeEditorWorldLayoutGesture(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutGesturePhase phase,
+    CreativeEditorWorldLayoutPoint point = {});
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+resizeCreativeEditorWorldLayoutRoom(
+    CreativeEditorWorldLayoutState& state, std::size_t roomIndex,
+    cr::CreativeWorldLayoutRect footprint);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 deleteCreativeEditorWorldLayoutSelection(CreativeEditorWorldLayoutState& state);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt

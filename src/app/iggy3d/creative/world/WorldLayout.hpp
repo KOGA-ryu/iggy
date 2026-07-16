@@ -13,7 +13,7 @@
 
 namespace iggy3d::creative {
 
-inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 1U;
+inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 2U;
 inline constexpr std::size_t kInvalidCreativeWorldLayoutIndex =
     std::numeric_limits<std::size_t>::max();
 
@@ -46,6 +46,31 @@ struct CreativeWorldLayoutBox {
   std::uint16_t heightCells = 1U;
 };
 
+struct CreativeWorldLayoutRoom {
+  std::size_t buildingIndex = kInvalidCreativeWorldLayoutIndex;
+  std::string stableKey;
+  std::string name;
+  CreativeWorldLayoutRect footprint;
+  std::int32_t baseLayer = 0;
+  std::uint16_t wallHeightCells = 3U;
+  double wallThicknessCells = 0.25;
+  std::uint16_t floorThicknessCells = 1U;
+};
+
+enum class CreativeWorldLayoutRoomEdge : std::uint8_t {
+  MinimumZ,
+  MaximumX,
+  MaximumZ,
+  MinimumX,
+  Count,
+};
+
+enum class CreativeWorldLayoutOpeningHostKind : std::uint8_t {
+  Wall,
+  RoomEdge,
+  Count,
+};
+
 struct CreativeWorldLayoutWall {
   std::size_t buildingIndex = kInvalidCreativeWorldLayoutIndex;
   std::string stableKey;
@@ -58,7 +83,12 @@ struct CreativeWorldLayoutWall {
 };
 
 struct CreativeWorldLayoutOpening {
+  CreativeWorldLayoutOpeningHostKind hostKind =
+      CreativeWorldLayoutOpeningHostKind::Wall;
   std::size_t wallIndex = kInvalidCreativeWorldLayoutIndex;
+  std::size_t roomIndex = kInvalidCreativeWorldLayoutIndex;
+  CreativeWorldLayoutRoomEdge roomEdge =
+      CreativeWorldLayoutRoomEdge::MinimumZ;
   CreativeBuildingOpeningKind kind = CreativeBuildingOpeningKind::Door;
   CreativeBuildingOpeningPose pose = CreativeBuildingOpeningPose::Closed;
   std::string stableKey;
@@ -116,6 +146,7 @@ struct CreativeWorldLayout {
   CreativeWorldLayoutTerrainOwnership terrainOwnership =
       CreativeWorldLayoutTerrainOwnership::PreserveExisting;
   std::vector<CreativeWorldLayoutBuilding> buildings;
+  std::vector<CreativeWorldLayoutRoom> rooms;
   std::vector<CreativeWorldLayoutBox> boxes;
   std::vector<CreativeWorldLayoutWall> walls;
   std::vector<CreativeWorldLayoutOpening> openings;
@@ -127,6 +158,7 @@ struct CreativeWorldLayout {
 enum class CreativeWorldLayoutTable : std::uint8_t {
   None,
   Building,
+  Room,
   Box,
   Wall,
   Opening,

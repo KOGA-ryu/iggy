@@ -32,6 +32,15 @@ cr::CreativeWorldLayout richLayout() {
   building.tags = {"interior", "author=map maker"};
   layout.buildings.push_back(building);
 
+  cr::CreativeWorldLayoutRoom room;
+  room.buildingIndex = 0U;
+  room.stableKey = "room.study";
+  room.name = "Study";
+  room.footprint = {{0, 0}, {4, 3}};
+  room.wallHeightCells = 4U;
+  room.wallThicknessCells = 0.375;
+  layout.rooms.push_back(room);
+
   cr::CreativeWorldLayoutBox floor;
   floor.buildingIndex = 0U;
   floor.kind = cr::CreativeObjectKind::Floor;
@@ -64,6 +73,16 @@ cr::CreativeWorldLayout richLayout() {
   opening.insertWidthCells = 1.5;
   opening.insertThicknessCells = 0.1;
   layout.openings.push_back(opening);
+
+  cr::CreativeWorldLayoutOpening roomDoor;
+  roomDoor.hostKind = cr::CreativeWorldLayoutOpeningHostKind::RoomEdge;
+  roomDoor.roomIndex = 0U;
+  roomDoor.roomEdge = cr::CreativeWorldLayoutRoomEdge::MaximumZ;
+  roomDoor.kind = cr::CreativeBuildingOpeningKind::Door;
+  roomDoor.stableKey = "door.study";
+  roomDoor.name = "Study Door";
+  roomDoor.centerOffsetCells = 2.0;
+  layout.openings.push_back(roomDoor);
 
   cr::CreativeWorldLayoutTerrainProfile profile;
   profile.stableKey = "hill.west";
@@ -115,10 +134,15 @@ bool deterministicRoundTripPreservesEveryTable() {
                  decoded.layout.buildings[0].name == source.buildings[0].name &&
                  decoded.layout.buildings[0].tags == source.buildings[0].tags,
              "building strings and tags round trip") &&
-         expect(decoded.layout.boxes.size() == 1U &&
+         expect(decoded.layout.rooms.size() == 1U &&
+                    decoded.layout.rooms[0].footprint.maximum ==
+                        source.rooms[0].footprint.maximum &&
+                    decoded.layout.boxes.size() == 1U &&
                     decoded.layout.walls.size() == 1U &&
-                    decoded.layout.openings.size() == 1U,
-                "building symbol tables round trip") &&
+                    decoded.layout.openings.size() == 2U &&
+                    decoded.layout.openings[1].hostKind ==
+                        cr::CreativeWorldLayoutOpeningHostKind::RoomEdge,
+                "building, room, and opening host tables round trip") &&
          expect(
              decoded.layout.terrainProfiles.size() == 1U &&
                  decoded.layout.terrainPaths.size() == 1U &&
@@ -127,6 +151,11 @@ bool deterministicRoundTripPreservesEveryTable() {
 }
 
 bool malformedAndNonFiniteInputsFailClosed() {
+  cr::CreativeWorldLayout wrongEncodeSchema = richLayout();
+  wrongEncodeSchema.schemaVersion = 99U;
+  const cr::CreativeWorldLayoutEncodeResult invalidSchema =
+      cr::encodeCreativeWorldLayout(wrongEncodeSchema);
+
   cr::CreativeWorldLayout layout = richLayout();
   layout.walls[0].thicknessCells = std::numeric_limits<double>::quiet_NaN();
   const cr::CreativeWorldLayoutEncodeResult nonFinite =
@@ -138,11 +167,20 @@ bool malformedAndNonFiniteInputsFailClosed() {
       cr::decodeCreativeWorldLayout(
           valid.encodedText.substr(0U, valid.encodedText.find("END")));
   std::string unsupported = valid.encodedText;
-  unsupported.replace(unsupported.find("IGGY3D_WORLD_LAYOUT 1"),
-                      std::string("IGGY3D_WORLD_LAYOUT 1").size(),
+  const std::string currentHeader =
+      "IGGY3D_WORLD_LAYOUT " +
+      std::to_string(cr::kCreativeWorldLayoutCodecVersion);
+  unsupported.replace(unsupported.find(currentHeader), currentHeader.size(),
                       "IGGY3D_WORLD_LAYOUT 99");
   const cr::CreativeWorldLayoutDecodeResult wrongVersion =
       cr::decodeCreativeWorldLayout(unsupported);
+  std::string wrongSchema = valid.encodedText;
+  const std::string currentLayoutPrefix =
+      "L " + std::to_string(cr::kCreativeWorldLayoutSchemaVersion) + " ";
+  wrongSchema.replace(wrongSchema.find(currentLayoutPrefix),
+                      currentLayoutPrefix.size(), "L 99 ");
+  const cr::CreativeWorldLayoutDecodeResult schemaMismatch =
+      cr::decodeCreativeWorldLayout(wrongSchema);
   const std::string overflowingCount =
       "IGGY3D_WORLD_LAYOUT 1\n"
       "L 1 776f726c645f6c61796f7574 0 18446744073709551615 0 0 0 0 0 0\n"
@@ -150,7 +188,11 @@ bool malformedAndNonFiniteInputsFailClosed() {
   const cr::CreativeWorldLayoutDecodeResult overflow =
       cr::decodeCreativeWorldLayout(overflowingCount);
 
-  return expect(!nonFinite.accepted &&
+  return expect(!invalidSchema.accepted &&
+                    invalidSchema.status ==
+                        cr::CreativeWorldLayoutCodecStatus::InvalidRecord,
+                "obsolete in-memory schema is not encoded") &&
+         expect(!nonFinite.accepted &&
                     nonFinite.status ==
                         cr::CreativeWorldLayoutCodecStatus::NonFiniteValue,
                 "non-finite source is not encoded") &&
@@ -159,16 +201,40 @@ bool malformedAndNonFiniteInputsFailClosed() {
                     wrongVersion.status ==
                         cr::CreativeWorldLayoutCodecStatus::UnsupportedVersion,
                 "unsupported codec version is rejected") &&
+         expect(!schemaMismatch.accepted &&
+                    schemaMismatch.status ==
+                        cr::CreativeWorldLayoutCodecStatus::InvalidRecord,
+                "codec and source schema mismatch is rejected") &&
          expect(!overflow.accepted &&
                     overflow.status ==
                         cr::CreativeWorldLayoutCodecStatus::CapacityExceeded,
                 "overflowing declared record counts fail before allocation");
 }
 
+bool versionOneSourceMigratesToCurrentSchema() {
+  const std::string versionOne =
+      "IGGY3D_WORLD_LAYOUT 1\n"
+      "L 1 6c65676163795f6c61796f7574 0 0 0 0 0 0 0 0\n"
+      "END\n";
+  const cr::CreativeWorldLayoutDecodeResult decoded =
+      cr::decodeCreativeWorldLayout(versionOne);
+  const cr::CreativeWorldLayoutEncodeResult encoded =
+      cr::encodeCreativeWorldLayout(decoded.layout);
+  return expect(decoded.accepted &&
+                    decoded.layout.schemaVersion ==
+                        cr::kCreativeWorldLayoutSchemaVersion &&
+                    decoded.layout.rooms.empty(),
+                "version-one source migrates without fabricated rooms") &&
+         expect(encoded.accepted &&
+                    encoded.encodedText.starts_with("IGGY3D_WORLD_LAYOUT 2\n"),
+                "migrated source writes the current codec version");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = deterministicRoundTripPreservesEveryTable() &&
-                  malformedAndNonFiniteInputsFailClosed();
+                  malformedAndNonFiniteInputsFailClosed() &&
+                  versionOneSourceMigratesToCurrentSchema();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

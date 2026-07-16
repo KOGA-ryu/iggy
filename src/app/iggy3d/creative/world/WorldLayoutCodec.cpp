@@ -208,6 +208,7 @@ bool boundedRecordCount(const CreativeWorldLayout& layout,
   output = 3U;  // Header, layout record, and END.
   const std::size_t counts[] = {
       layout.buildings.size(),
+      layout.rooms.size(),
       layout.boxes.size(),
       layout.walls.size(),
       layout.openings.size(),
@@ -230,6 +231,11 @@ bool validateForEncoding(const CreativeWorldLayout& layout,
   if (!boundedRecordCount(layout, records)) {
     failure = {CreativeWorldLayoutCodecStatus::CapacityExceeded,
                "creative_world_layout_encode_capacity_exceeded"};
+    return false;
+  }
+  if (layout.schemaVersion != kCreativeWorldLayoutSchemaVersion) {
+    failure = {CreativeWorldLayoutCodecStatus::InvalidRecord,
+               "creative_world_layout_encode_schema_mismatch"};
     return false;
   }
   if (!validString(layout.stableKey)) {
@@ -266,6 +272,17 @@ bool validateForEncoding(const CreativeWorldLayout& layout,
       return false;
     }
   }
+  for (const CreativeWorldLayoutRoom& room : layout.rooms) {
+    if (!validKeyName(room.stableKey, room.name) ||
+        !validRect(room.footprint) ||
+        !std::isfinite(room.wallThicknessCells)) {
+      failure = {std::isfinite(room.wallThicknessCells)
+                     ? CreativeWorldLayoutCodecStatus::InvalidRecord
+                     : CreativeWorldLayoutCodecStatus::NonFiniteValue,
+                 "creative_world_layout_encode_invalid_room"};
+      return false;
+    }
+  }
   for (const CreativeWorldLayoutBox& box : layout.boxes) {
     if (!validKeyName(box.stableKey, box.name) || !validRect(box.footprint) ||
         enumValue(box.kind) >= enumValue(CreativeObjectKind::Count)) {
@@ -294,6 +311,10 @@ bool validateForEncoding(const CreativeWorldLayout& layout,
                         std::isfinite(opening.insertWidthCells) &&
                         std::isfinite(opening.insertThicknessCells);
     if (!validKeyName(opening.stableKey, opening.name) || !finite ||
+        enumValue(opening.hostKind) >=
+            enumValue(CreativeWorldLayoutOpeningHostKind::Count) ||
+        enumValue(opening.roomEdge) >=
+            enumValue(CreativeWorldLayoutRoomEdge::Count) ||
         enumValue(opening.kind) >
             enumValue(CreativeBuildingOpeningKind::Window) ||
         enumValue(opening.pose) >
@@ -451,8 +472,9 @@ CreativeWorldLayoutEncodeResult encodeCreativeWorldLayout(
   output << kHeader << ' ' << kCreativeWorldLayoutCodecVersion << '\n';
   output << "L " << layout.schemaVersion << ' ' << hexString(layout.stableKey)
          << ' ' << static_cast<unsigned>(enumValue(layout.terrainOwnership))
-         << ' ' << layout.buildings.size() << ' ' << layout.boxes.size() << ' '
-         << layout.walls.size() << ' ' << layout.openings.size() << ' '
+         << ' ' << layout.buildings.size() << ' ' << layout.rooms.size() << ' '
+         << layout.boxes.size() << ' ' << layout.walls.size() << ' '
+         << layout.openings.size() << ' '
          << layout.terrainProfiles.size() << ' ' << layout.terrainPaths.size()
          << ' ' << layout.terrainPathPoints.size() << '\n';
   for (const CreativeWorldLayoutBuilding& building : layout.buildings) {
@@ -466,6 +488,14 @@ CreativeWorldLayoutEncodeResult encodeCreativeWorldLayout(
       output << ' ' << hexString(tag);
     }
     output << '\n';
+  }
+  for (const CreativeWorldLayoutRoom& room : layout.rooms) {
+    output << "R " << room.buildingIndex << ' '
+           << hexString(room.stableKey) << ' ' << hexString(room.name);
+    writeRect(output, room.footprint);
+    output << ' ' << room.baseLayer << ' ' << room.wallHeightCells << ' '
+           << room.wallThicknessCells << ' ' << room.floorThicknessCells
+           << '\n';
   }
   for (const CreativeWorldLayoutBox& box : layout.boxes) {
     output << "X " << box.buildingIndex << ' '
@@ -482,7 +512,9 @@ CreativeWorldLayoutEncodeResult encodeCreativeWorldLayout(
            << wall.thicknessCells << '\n';
   }
   for (const CreativeWorldLayoutOpening& opening : layout.openings) {
-    output << "O " << opening.wallIndex << ' '
+    output << "O " << static_cast<unsigned>(enumValue(opening.hostKind)) << ' '
+           << opening.wallIndex << ' ' << opening.roomIndex << ' '
+           << static_cast<unsigned>(enumValue(opening.roomEdge)) << ' '
            << static_cast<unsigned>(enumValue(opening.kind)) << ' '
            << static_cast<unsigned>(enumValue(opening.pose)) << ' '
            << hexString(opening.stableKey) << ' ' << hexString(opening.name)
@@ -563,7 +595,7 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
     result.reasonCode = "creative_world_layout_decode_invalid_header";
     return result;
   }
-  if (codecVersion != kCreativeWorldLayoutCodecVersion) {
+  if (codecVersion == 0U || codecVersion > kCreativeWorldLayoutCodecVersion) {
     result.status = CreativeWorldLayoutCodecStatus::UnsupportedVersion;
     result.failedLine = 1U;
     result.reasonCode = "creative_world_layout_decode_unsupported_version";
@@ -573,17 +605,22 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
   RecordReader layoutRecord(lines[1]);
   std::uint8_t ownership = 0U;
   std::size_t buildingCount = 0U;
+  std::size_t roomCount = 0U;
   std::size_t boxCount = 0U;
   std::size_t wallCount = 0U;
   std::size_t openingCount = 0U;
   std::size_t profileCount = 0U;
   std::size_t pathCount = 0U;
   std::size_t pointCount = 0U;
-  if (!layoutRecord.readLiteral("L") ||
+  const bool layoutPrefix =
+      !layoutRecord.readLiteral("L") ||
       !layoutRecord.readUnsigned(result.layout.schemaVersion) ||
       !layoutRecord.readHex(result.layout.stableKey) ||
       !layoutRecord.readUnsigned(ownership) || ownership > 1U ||
-      !layoutRecord.readSize(buildingCount) ||
+      !layoutRecord.readSize(buildingCount);
+  const bool roomCountInvalid =
+      codecVersion >= 2U && !layoutRecord.readSize(roomCount);
+  if (layoutPrefix || roomCountInvalid ||
       !layoutRecord.readSize(boxCount) || !layoutRecord.readSize(wallCount) ||
       !layoutRecord.readSize(openingCount) ||
       !layoutRecord.readSize(profileCount) ||
@@ -594,10 +631,18 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
     result.reasonCode = "creative_world_layout_decode_invalid_layout_record";
     return result;
   }
+  const std::uint32_t expectedSchemaVersion =
+      codecVersion == 1U ? 1U : kCreativeWorldLayoutSchemaVersion;
+  if (result.layout.schemaVersion != expectedSchemaVersion) {
+    result.status = CreativeWorldLayoutCodecStatus::InvalidRecord;
+    result.failedLine = 2U;
+    result.reasonCode = "creative_world_layout_decode_schema_mismatch";
+    return result;
+  }
   std::size_t declaredRecords = 3U;
   const std::size_t declaredCounts[] = {
-      buildingCount, boxCount,  wallCount,  openingCount,
-      profileCount,  pathCount, pointCount,
+      buildingCount, roomCount, boxCount, wallCount, openingCount,
+      profileCount, pathCount, pointCount,
   };
   for (const std::size_t count : declaredCounts) {
     if (count > kCreativeWorldLayoutCodecMaxRecords - declaredRecords) {
@@ -647,6 +692,21 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
                  readBuilding, result)) {
     return result;
   }
+  const auto readRoom = [](RecordReader& reader,
+                           CreativeWorldLayoutRoom& room) {
+    return reader.readLiteral("R") && reader.readSize(room.buildingIndex) &&
+           reader.readHex(room.stableKey) && reader.readHex(room.name) &&
+           readRect(reader, room.footprint) &&
+           reader.readI32(room.baseLayer) &&
+           reader.readUnsigned(room.wallHeightCells) &&
+           reader.readDouble(room.wallThicknessCells) &&
+           std::isfinite(room.wallThicknessCells) &&
+           reader.readUnsigned(room.floorThicknessCells);
+  };
+  if (!readTable(lines, lineIndex, roomCount, result.layout.rooms, readRoom,
+                 result)) {
+    return result;
+  }
   const auto readBox = [](RecordReader& reader, CreativeWorldLayoutBox& box) {
     std::uint16_t kind = 0U;
     if (!reader.readLiteral("X") || !reader.readSize(box.buildingIndex) ||
@@ -679,12 +739,24 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
                  result)) {
     return result;
   }
-  const auto readOpening = [](RecordReader& reader,
-                              CreativeWorldLayoutOpening& opening) {
+  const auto readOpening = [codecVersion](
+                               RecordReader& reader,
+                               CreativeWorldLayoutOpening& opening) {
+    std::uint8_t hostKind = 0U;
+    std::uint8_t roomEdge = 0U;
     std::uint8_t kind = 0U;
     std::uint8_t pose = 0U;
-    const bool parsed =
-        reader.readLiteral("O") && reader.readSize(opening.wallIndex) &&
+    const bool hostParsed =
+        codecVersion == 1U
+            ? reader.readLiteral("O") && reader.readSize(opening.wallIndex)
+            : reader.readLiteral("O") && reader.readUnsigned(hostKind) &&
+                  hostKind <
+                      enumValue(CreativeWorldLayoutOpeningHostKind::Count) &&
+                  reader.readSize(opening.wallIndex) &&
+                  reader.readSize(opening.roomIndex) &&
+                  reader.readUnsigned(roomEdge) &&
+                  roomEdge < enumValue(CreativeWorldLayoutRoomEdge::Count);
+    const bool parsed = hostParsed &&
         reader.readUnsigned(kind) &&
         kind <= enumValue(CreativeBuildingOpeningKind::Window) &&
         reader.readUnsigned(pose) &&
@@ -710,6 +782,9 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
         !std::isfinite(opening.insertThicknessCells)) {
       return false;
     }
+    opening.hostKind =
+        static_cast<CreativeWorldLayoutOpeningHostKind>(hostKind);
+    opening.roomEdge = static_cast<CreativeWorldLayoutRoomEdge>(roomEdge);
     opening.kind = static_cast<CreativeBuildingOpeningKind>(kind);
     opening.pose = static_cast<CreativeBuildingOpeningPose>(pose);
     return true;
@@ -802,6 +877,10 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
     result.reasonCode = "creative_world_layout_decode_trailing_data";
     return result;
   }
+
+  // Version 1 had no room table and every opening referenced an explicit wall.
+  // Decoding migrates it to current in-memory truth before callers compile it.
+  result.layout.schemaVersion = kCreativeWorldLayoutSchemaVersion;
 
   result.accepted = true;
   result.status = CreativeWorldLayoutCodecStatus::Ready;

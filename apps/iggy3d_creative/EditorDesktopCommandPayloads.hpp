@@ -128,6 +128,17 @@ struct CreativeDesktopWorldLayoutPointPayload {
   CreativeEditorWorldLayoutPoint point;
 };
 
+struct CreativeDesktopWorldLayoutGesturePayload {
+  CreativeEditorWorldLayoutGesturePhase phase =
+      CreativeEditorWorldLayoutGesturePhase::Begin;
+  CreativeEditorWorldLayoutPoint point;
+};
+
+struct CreativeDesktopWorldLayoutRoomRectPayload {
+  std::size_t roomIndex = iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  iggy3d::creative::CreativeWorldLayoutRect footprint;
+};
+
 // The discriminated payload carried by every command (monostate = no payload).
 using CreativeDesktopCommandPayload = std::variant<
     std::monostate,
@@ -144,6 +155,8 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopAssetOpPayload,
     CreativeDesktopInstanceRefreshPayload,
     CreativeDesktopWorldLayoutToolPayload,
-    CreativeDesktopWorldLayoutPointPayload>;
+    CreativeDesktopWorldLayoutPointPayload,
+    CreativeDesktopWorldLayoutGesturePayload,
+    CreativeDesktopWorldLayoutRoomRectPayload>;
 
 }  // namespace iggy3d_creative_app

@@ -268,8 +268,9 @@ CreativeWorldOpenResult openCreativeWorld(
   }
 
   if (load.creativeWorldLayoutPresent) {
-    if (load.creativeWorldLayoutVersion !=
-        creative::kCreativeWorldLayoutCodecVersion) {
+    if (load.creativeWorldLayoutVersion == 0U ||
+        load.creativeWorldLayoutVersion >
+            creative::kCreativeWorldLayoutCodecVersion) {
       result.worldLayoutCodecStatus =
           creative::CreativeWorldLayoutCodecStatus::UnsupportedVersion;
       setResultStatus(result, "creative_world_layout_section_unsupported");

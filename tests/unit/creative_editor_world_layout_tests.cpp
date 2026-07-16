@@ -111,6 +111,76 @@ bool deletingWallCascadesItsOpenings() {
                 "wall deletion cascades dependent openings");
 }
 
+bool roomGestureHostsOpeningsAndSupportsResize() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state);
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Room));
+  const auto begin = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {0, 0});
+  const auto commit = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {6, 4});
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Door));
+  const auto door =
+      app::applyCreativeEditorWorldLayoutPoint(state, {3.0, 0.1});
+  const auto resized = app::resizeCreativeEditorWorldLayoutRoom(
+      state, 0U, {{0, 0}, {8, 5}});
+
+  return expect(begin.accepted && !begin.changed && commit.accepted &&
+                    commit.changed,
+                "room drag mutates only when committed") &&
+         expect(state.source.rooms.size() == 1U &&
+                    state.source.boxes.empty() && state.source.walls.empty(),
+                "room remains semantic source instead of sprayed symbols") &&
+         expect(door.accepted &&
+                    state.source.openings[0].hostKind ==
+                        cr::CreativeWorldLayoutOpeningHostKind::RoomEdge &&
+                    state.source.openings[0].roomEdge ==
+                        cr::CreativeWorldLayoutRoomEdge::MinimumZ,
+                "door slots into a semantic room edge") &&
+         expect(resized.accepted && resized.changed &&
+                    state.source.rooms[0].footprint.maximum ==
+                        cr::CreativeTerrainCoord2{8, 5},
+                "selected room dimensions can be changed exactly");
+}
+
+bool roomDeletionCascadesHostedOpeningsAndCancelIsEmpty() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state);
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Room));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {0, 0}));
+  const auto restarted = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {2, 2});
+  const bool restartReplacedAnchor =
+      restarted.accepted && !restarted.changed && state.source.rooms.empty() &&
+      state.anchor == cr::CreativeTerrainCoord2{2, 2};
+  const auto cancelled = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Cancel);
+  const std::uint64_t revisionAfterCancel = state.revision;
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {0, 0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {5, 4}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Window));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(state, {5, 2}));
+  state.selection = {app::CreativeEditorWorldLayoutSelectionKind::Room, 0U};
+  const auto removed = app::deleteCreativeEditorWorldLayoutSelection(state);
+
+  return expect(restartReplacedAnchor,
+                "repeated begin replaces a stale anchor without committing") &&
+         expect(cancelled.accepted && !cancelled.changed &&
+                    revisionAfterCancel == 1U,
+                "cancelled room draft records no source revision") &&
+         expect(removed.accepted && removed.changed &&
+                    state.source.rooms.empty() &&
+                    state.source.openings.empty(),
+                "room deletion removes its hosted openings");
+}
+
 bool exactPreviewAndConfirmUseOneHistoryEntry() {
   cr::CreativeAppState live = appState();
   app::CreativeEditorWorldLayoutState state;
@@ -156,6 +226,8 @@ int main() {
   const bool ok = floorAndWallGesturesProduceNormalizedSymbols() &&
                   openingsSnapInsideWallsAndRejectOverlap() &&
                   deletingWallCascadesItsOpenings() &&
+                  roomGestureHostsOpeningsAndSupportsResize() &&
+                  roomDeletionCascadesHostedOpeningsAndCancelIsEmpty() &&
                   exactPreviewAndConfirmUseOneHistoryEntry();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
