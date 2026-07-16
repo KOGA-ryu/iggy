@@ -393,6 +393,225 @@ bool invalidRoomManipulationsRejectWithoutMutation() {
                 "room shrink rejects before clipping a hosted opening");
 }
 
+bool floorSettingsMoveAndResizeCommitOnce() {
+  cr::CreativeAppState live = appState();
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state);
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Floor));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {0, 0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {4, 3}));
+
+  app::CreativeEditorWorldLayoutBoxSettings settings;
+  const bool read = app::readCreativeEditorWorldLayoutBoxSettings(
+      state, 0U, settings);
+  settings.baseLayer = 1;
+  settings.heightCells = 2U;
+  const std::uint64_t revisionBeforeSettings = state.revision;
+  const auto configured = app::setCreativeEditorWorldLayoutBoxSettings(
+      state, 0U, settings);
+  const std::uint64_t revisionAfterSettings = state.revision;
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Select));
+
+  const auto moveTarget = app::findCreativeEditorWorldLayoutBoxTarget(
+      state, {2.0, 1.5}, 0.2);
+  const std::uint64_t revisionBeforeMove = state.revision;
+  const auto moveBegin = app::applyCreativeEditorWorldLayoutBoxManipulation(
+      state, app::CreativeEditorWorldLayoutBoxManipulationPhase::Begin,
+      {2.0, 1.5}, 0.2);
+  const auto moveUpdate = app::applyCreativeEditorWorldLayoutBoxManipulation(
+      state, app::CreativeEditorWorldLayoutBoxManipulationPhase::Update,
+      {4.2, 2.7}, 0.2);
+  const bool movePreviewOnly =
+      state.source.boxes[0].footprint.minimum ==
+          cr::CreativeTerrainCoord2{0, 0} &&
+      state.boxManipulation.previewFootprint.minimum ==
+          cr::CreativeTerrainCoord2{2, 1} &&
+      state.boxManipulation.previewFootprint.maximum ==
+          cr::CreativeTerrainCoord2{6, 4} &&
+      state.revision == revisionBeforeMove;
+  const auto moveCommit = app::applyCreativeEditorWorldLayoutBoxManipulation(
+      state, app::CreativeEditorWorldLayoutBoxManipulationPhase::Commit,
+      {4.2, 2.7}, 0.2);
+  const std::uint64_t revisionAfterMove = state.revision;
+
+  const auto cornerTarget = app::findCreativeEditorWorldLayoutBoxTarget(
+      state, {6.0, 4.0}, 0.2);
+  const std::uint64_t revisionBeforeResize = state.revision;
+  static_cast<void>(app::applyCreativeEditorWorldLayoutBoxManipulation(
+      state, app::CreativeEditorWorldLayoutBoxManipulationPhase::Begin,
+      {6.0, 4.0}, 0.2));
+  const auto resizeCommit = app::applyCreativeEditorWorldLayoutBoxManipulation(
+      state, app::CreativeEditorWorldLayoutBoxManipulationPhase::Commit,
+      {8.2, 5.1}, 0.2);
+  const std::uint64_t revisionAfterResize = state.revision;
+
+  const std::uint64_t revisionBeforeInvalid = state.revision;
+  static_cast<void>(app::applyCreativeEditorWorldLayoutBoxManipulation(
+      state, app::CreativeEditorWorldLayoutBoxManipulationPhase::Begin,
+      {2.0, 3.0}, 0.2));
+  const auto invalidPreview =
+      app::applyCreativeEditorWorldLayoutBoxManipulation(
+          state, app::CreativeEditorWorldLayoutBoxManipulationPhase::Update,
+          {8.0, 3.0}, 0.2);
+  const bool invalidShown =
+      invalidPreview.accepted && !state.boxManipulation.previewValid;
+  const auto invalidCommit =
+      app::applyCreativeEditorWorldLayoutBoxManipulation(
+          state, app::CreativeEditorWorldLayoutBoxManipulationPhase::Commit,
+          {8.0, 3.0}, 0.2);
+  const auto preview =
+      app::previewCreativeEditorWorldLayout(state, live.facade.document());
+
+  return expect(read && configured.accepted && configured.changed &&
+                    revisionAfterSettings == revisionBeforeSettings + 1U &&
+                    state.source.boxes[0].baseLayer == 1 &&
+                    state.source.boxes[0].heightCells == 2U,
+                "floor settings commit as one source edit") &&
+         expect(moveTarget.handle ==
+                        app::CreativeEditorWorldLayoutBoxHandle::Move &&
+                    moveBegin.accepted && moveUpdate.accepted &&
+                    movePreviewOnly && moveCommit.accepted &&
+                    moveCommit.changed &&
+                    revisionAfterMove == revisionBeforeMove + 1U,
+                "floor move previews before one source commit") &&
+         expect(cornerTarget.handle ==
+                        app::CreativeEditorWorldLayoutBoxHandle::SouthEast &&
+                    resizeCommit.accepted && resizeCommit.changed &&
+                    revisionAfterResize == revisionBeforeResize + 1U &&
+                    state.source.boxes[0].footprint.minimum ==
+                        cr::CreativeTerrainCoord2{2, 1} &&
+                    state.source.boxes[0].footprint.maximum ==
+                        cr::CreativeTerrainCoord2{8, 5},
+                "floor corner resizes its owned sides") &&
+         expect(invalidShown && !invalidCommit.accepted &&
+                    state.revision == revisionBeforeInvalid &&
+                    state.source.boxes[0].footprint.minimum ==
+                        cr::CreativeTerrainCoord2{2, 1},
+                "degenerate floor resize rejects without source mutation") &&
+         expect(preview.accepted,
+                "edited floor remains exact 3D-previewable");
+}
+
+bool partitionManipulationPreservesHostedOpeningWorldPositions() {
+  cr::CreativeAppState live = appState();
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state);
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Wall));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {0, 0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {10, 0}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Door));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(state, {3, 0}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Window));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(state, {7, 0}));
+
+  app::CreativeEditorWorldLayoutWallSettings settings;
+  const bool read = app::readCreativeEditorWorldLayoutWallSettings(
+      state, 0U, settings);
+  settings.heightCells = 4U;
+  settings.thicknessCells = 0.5;
+  const std::uint64_t revisionBeforeSettings = state.revision;
+  const auto configured = app::setCreativeEditorWorldLayoutWallSettings(
+      state, 0U, settings);
+  const std::uint64_t revisionAfterSettings = state.revision;
+  app::CreativeEditorWorldLayoutWallSettings tooShort = settings;
+  tooShort.heightCells = 1U;
+  const auto rejectedHeight = app::setCreativeEditorWorldLayoutWallSettings(
+      state, 0U, tooShort);
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Select));
+
+  const auto moveTarget = app::findCreativeEditorWorldLayoutWallTarget(
+      state, {5.0, 0.0}, 0.2);
+  const std::uint64_t revisionBeforeMove = state.revision;
+  static_cast<void>(app::applyCreativeEditorWorldLayoutWallManipulation(
+      state, app::CreativeEditorWorldLayoutWallManipulationPhase::Begin,
+      {5.0, 0.0}, 0.2));
+  const auto moveUpdate = app::applyCreativeEditorWorldLayoutWallManipulation(
+      state, app::CreativeEditorWorldLayoutWallManipulationPhase::Update,
+      {6.2, 2.1}, 0.2);
+  const bool movePreviewOnly =
+      state.source.walls[0].start == cr::CreativeTerrainCoord2{0, 0} &&
+      state.wallManipulation.previewStart ==
+          cr::CreativeTerrainCoord2{1, 2} &&
+      state.wallManipulation.previewEnd == cr::CreativeTerrainCoord2{11, 2} &&
+      state.revision == revisionBeforeMove;
+  const auto moveCommit = app::applyCreativeEditorWorldLayoutWallManipulation(
+      state, app::CreativeEditorWorldLayoutWallManipulationPhase::Commit,
+      {6.2, 2.1}, 0.2);
+  const std::uint64_t revisionAfterMove = state.revision;
+  const cr::CreativeTerrainCoord2 startAfterMove = state.source.walls[0].start;
+  const cr::CreativeTerrainCoord2 endAfterMove = state.source.walls[0].end;
+
+  const auto startTarget = app::findCreativeEditorWorldLayoutWallTarget(
+      state, {1.0, 2.0}, 0.2);
+  const std::uint64_t revisionBeforeTrim = state.revision;
+  static_cast<void>(app::applyCreativeEditorWorldLayoutWallManipulation(
+      state, app::CreativeEditorWorldLayoutWallManipulationPhase::Begin,
+      {1.0, 2.0}, 0.2));
+  const auto trimCommit = app::applyCreativeEditorWorldLayoutWallManipulation(
+      state, app::CreativeEditorWorldLayoutWallManipulationPhase::Commit,
+      {2.1, 2.0}, 0.2);
+  const std::uint64_t revisionAfterTrim = state.revision;
+  const double doorWorldX = state.source.walls[0].start.x +
+                            state.source.openings[0].centerOffsetCells;
+  const double windowWorldX = state.source.walls[0].start.x +
+                              state.source.openings[1].centerOffsetCells;
+
+  const std::uint64_t revisionBeforeClip = state.revision;
+  static_cast<void>(app::applyCreativeEditorWorldLayoutWallManipulation(
+      state, app::CreativeEditorWorldLayoutWallManipulationPhase::Begin,
+      {2.0, 2.0}, 0.2));
+  const auto clipPreview = app::applyCreativeEditorWorldLayoutWallManipulation(
+      state, app::CreativeEditorWorldLayoutWallManipulationPhase::Update,
+      {6.1, 2.0}, 0.2);
+  const bool clipShown =
+      clipPreview.accepted && !state.wallManipulation.previewValid;
+  const auto clipCommit = app::applyCreativeEditorWorldLayoutWallManipulation(
+      state, app::CreativeEditorWorldLayoutWallManipulationPhase::Commit,
+      {6.1, 2.0}, 0.2);
+  const auto preview =
+      app::previewCreativeEditorWorldLayout(state, live.facade.document());
+
+  return expect(read && configured.accepted && configured.changed &&
+                    revisionAfterSettings == revisionBeforeSettings + 1U &&
+                    !rejectedHeight.accepted &&
+                    state.source.walls[0].heightCells == 4U &&
+                    state.source.walls[0].thicknessCells == 0.5,
+                "partition settings validate hosted opening height") &&
+         expect(moveTarget.handle ==
+                        app::CreativeEditorWorldLayoutWallHandle::Move &&
+                    moveUpdate.accepted && movePreviewOnly &&
+                    moveCommit.accepted && moveCommit.changed &&
+                    revisionAfterMove == revisionBeforeMove + 1U &&
+                    startAfterMove == cr::CreativeTerrainCoord2{1, 2} &&
+                    endAfterMove == cr::CreativeTerrainCoord2{11, 2},
+                "partition move previews before one source commit") &&
+         expect(startTarget.handle ==
+                        app::CreativeEditorWorldLayoutWallHandle::Start &&
+                    trimCommit.accepted && trimCommit.changed &&
+                    revisionAfterTrim == revisionBeforeTrim + 1U &&
+                    doorWorldX == 4.0 && windowWorldX == 8.0 &&
+                    state.source.openings[0].centerOffsetCells == 2.0 &&
+                    state.source.openings[1].centerOffsetCells == 6.0,
+                "partition start trim preserves opening world positions") &&
+         expect(clipShown && !clipCommit.accepted &&
+                    state.revision == revisionBeforeClip &&
+                    state.source.walls[0].start ==
+                        cr::CreativeTerrainCoord2{2, 2},
+                "partition trim cannot clip a hosted opening") &&
+         expect(preview.accepted,
+                "edited partition and openings remain exact 3D-previewable");
+}
+
 bool openingSettingsApplyOnceAndMatchExactPreview() {
   cr::CreativeAppState live = appState();
   app::CreativeEditorWorldLayoutState state;
@@ -776,6 +995,8 @@ int main() {
                   roomMovePreviewCommitsOnceAndKeepsOpeningHosted() &&
                   roomEdgesAndCornersResizeFromTheirOwnedSides() &&
                   invalidRoomManipulationsRejectWithoutMutation() &&
+                  floorSettingsMoveAndResizeCommitOnce() &&
+                  partitionManipulationPreservesHostedOpeningWorldPositions() &&
                   openingSettingsApplyOnceAndMatchExactPreview() &&
                   openingDragAndWidthHandlesAreQuarterCellTransactional() &&
                   openingDragPreservesSharedRoomWallOwnership() &&

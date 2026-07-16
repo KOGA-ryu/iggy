@@ -1,5 +1,7 @@
 #include "EditorWorldLayout.hpp"
 
+#include "EditorWorldLayoutInternal.hpp"
+
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
 #include <algorithm>
@@ -18,6 +20,12 @@ constexpr double kOpeningSnapCells = 0.25;
 constexpr double kOpeningEndClearanceCells = 0.25;
 constexpr double kOpeningMinimumWidthCells = 0.25;
 constexpr double kOpeningGeometryEpsilon = 1.0e-9;
+
+using detail::clearWorldLayoutInteraction;
+using detail::invalidateWorldLayoutPreview;
+using detail::noteWorldLayoutSourceChange;
+using detail::worldLayoutManipulatedRect;
+using detail::worldLayoutRectHandleAt;
 
 bool finitePoint(CreativeEditorWorldLayoutPoint point) noexcept {
   return std::isfinite(point.x) && std::isfinite(point.z);
@@ -39,28 +47,6 @@ bool toGridCoord(CreativeEditorWorldLayoutPoint point,
   output.x = static_cast<std::int32_t>(roundedX);
   output.z = static_cast<std::int32_t>(roundedZ);
   return true;
-}
-
-void invalidatePreview(CreativeEditorWorldLayoutState& state) {
-  state.previewVisible = false;
-  state.previewLayoutRevision = 0U;
-  state.preview = {};
-}
-
-void clearLayoutInteraction(CreativeEditorWorldLayoutState& state) {
-  state.roomManipulation = {};
-  state.openingManipulation = {};
-  state.openingSettingsDraft = {};
-}
-
-void noteSourceChange(CreativeEditorWorldLayoutState& state,
-                      std::string reason) {
-  if (state.revision != std::numeric_limits<std::uint64_t>::max()) {
-    ++state.revision;
-  }
-  clearLayoutInteraction(state);
-  invalidatePreview(state);
-  state.statusMessage = std::move(reason);
 }
 
 bool keyExists(const cr::CreativeWorldLayout& layout, std::string_view key) {
@@ -351,7 +337,7 @@ CreativeEditorWorldLayoutEditReceipt selectAt(
                        selected.index != state.selection.index;
   state.selection = selected;
   state.anchorActive = false;
-  clearLayoutInteraction(state);
+  clearWorldLayoutInteraction(state);
   state.statusMessage =
       selected.kind == CreativeEditorWorldLayoutSelectionKind::None
           ? "selection cleared"
@@ -592,7 +578,7 @@ CreativeEditorWorldLayoutEditReceipt commitOpeningCandidate(
   state.source.openings[openingIndex] = candidate;
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Opening,
                      openingIndex};
-  noteSourceChange(state, std::move(statusMessage));
+  noteWorldLayoutSourceChange(state, std::move(statusMessage));
   return {true, true,
           "creative_editor_world_layout_opening_settings_updated"};
 }
@@ -682,146 +668,6 @@ RoomSettingsValidation validateRoomSettings(
   }
   return {true, "creative_editor_world_layout_room_settings_ready",
           "room shell settings ready"};
-}
-
-CreativeEditorWorldLayoutRoomHandle roomHandleAt(
-    cr::CreativeWorldLayoutRect footprint,
-    CreativeEditorWorldLayoutPoint point, double toleranceCells) noexcept {
-  if (!finitePoint(point) || !std::isfinite(toleranceCells) ||
-      toleranceCells <= 0.0 ||
-      point.x < footprint.minimum.x - toleranceCells ||
-      point.x > footprint.maximum.x + toleranceCells ||
-      point.z < footprint.minimum.z - toleranceCells ||
-      point.z > footprint.maximum.z + toleranceCells) {
-    return CreativeEditorWorldLayoutRoomHandle::None;
-  }
-  const bool north =
-      std::fabs(point.z - footprint.minimum.z) <= toleranceCells;
-  const bool east =
-      std::fabs(point.x - footprint.maximum.x) <= toleranceCells;
-  const bool south =
-      std::fabs(point.z - footprint.maximum.z) <= toleranceCells;
-  const bool west =
-      std::fabs(point.x - footprint.minimum.x) <= toleranceCells;
-  if (north && west) {
-    return CreativeEditorWorldLayoutRoomHandle::NorthWest;
-  }
-  if (north && east) {
-    return CreativeEditorWorldLayoutRoomHandle::NorthEast;
-  }
-  if (south && east) {
-    return CreativeEditorWorldLayoutRoomHandle::SouthEast;
-  }
-  if (south && west) {
-    return CreativeEditorWorldLayoutRoomHandle::SouthWest;
-  }
-  if (north) {
-    return CreativeEditorWorldLayoutRoomHandle::North;
-  }
-  if (east) {
-    return CreativeEditorWorldLayoutRoomHandle::East;
-  }
-  if (south) {
-    return CreativeEditorWorldLayoutRoomHandle::South;
-  }
-  if (west) {
-    return CreativeEditorWorldLayoutRoomHandle::West;
-  }
-  if (point.x >= footprint.minimum.x && point.x <= footprint.maximum.x &&
-      point.z >= footprint.minimum.z && point.z <= footprint.maximum.z) {
-    return CreativeEditorWorldLayoutRoomHandle::Move;
-  }
-  return CreativeEditorWorldLayoutRoomHandle::None;
-}
-
-bool offsetCoordinate(std::int32_t value, std::int64_t delta,
-                      std::int32_t& output) noexcept {
-  const std::int64_t candidate = static_cast<std::int64_t>(value) + delta;
-  if (candidate < std::numeric_limits<std::int32_t>::min() ||
-      candidate > std::numeric_limits<std::int32_t>::max()) {
-    return false;
-  }
-  output = static_cast<std::int32_t>(candidate);
-  return true;
-}
-
-bool snappedPointerDelta(double current, double start,
-                         std::int64_t& output) noexcept {
-  constexpr double kMaximumUsefulDelta = 4294967295.0;
-  const double delta = std::round(current - start);
-  if (!std::isfinite(delta) || delta < -kMaximumUsefulDelta ||
-      delta > kMaximumUsefulDelta) {
-    return false;
-  }
-  output = static_cast<std::int64_t>(delta);
-  return true;
-}
-
-bool moveNorth(CreativeEditorWorldLayoutRoomHandle handle) noexcept {
-  return handle == CreativeEditorWorldLayoutRoomHandle::North ||
-         handle == CreativeEditorWorldLayoutRoomHandle::NorthWest ||
-         handle == CreativeEditorWorldLayoutRoomHandle::NorthEast;
-}
-
-bool moveEast(CreativeEditorWorldLayoutRoomHandle handle) noexcept {
-  return handle == CreativeEditorWorldLayoutRoomHandle::East ||
-         handle == CreativeEditorWorldLayoutRoomHandle::NorthEast ||
-         handle == CreativeEditorWorldLayoutRoomHandle::SouthEast;
-}
-
-bool moveSouth(CreativeEditorWorldLayoutRoomHandle handle) noexcept {
-  return handle == CreativeEditorWorldLayoutRoomHandle::South ||
-         handle == CreativeEditorWorldLayoutRoomHandle::SouthEast ||
-         handle == CreativeEditorWorldLayoutRoomHandle::SouthWest;
-}
-
-bool moveWest(CreativeEditorWorldLayoutRoomHandle handle) noexcept {
-  return handle == CreativeEditorWorldLayoutRoomHandle::West ||
-         handle == CreativeEditorWorldLayoutRoomHandle::NorthWest ||
-         handle == CreativeEditorWorldLayoutRoomHandle::SouthWest;
-}
-
-bool roomManipulationFootprint(
-    const CreativeEditorWorldLayoutRoomManipulationState& manipulation,
-    CreativeEditorWorldLayoutPoint point,
-    cr::CreativeWorldLayoutRect& output) noexcept {
-  output = manipulation.originalFootprint;
-  std::int64_t deltaX = 0;
-  std::int64_t deltaZ = 0;
-  if (!snappedPointerDelta(point.x, manipulation.startPoint.x, deltaX) ||
-      !snappedPointerDelta(point.z, manipulation.startPoint.z, deltaZ)) {
-    return false;
-  }
-  const CreativeEditorWorldLayoutRoomHandle handle =
-      manipulation.target.handle;
-  if (handle == CreativeEditorWorldLayoutRoomHandle::Move) {
-    return offsetCoordinate(manipulation.originalFootprint.minimum.x, deltaX,
-                            output.minimum.x) &&
-           offsetCoordinate(manipulation.originalFootprint.maximum.x, deltaX,
-                            output.maximum.x) &&
-           offsetCoordinate(manipulation.originalFootprint.minimum.z, deltaZ,
-                            output.minimum.z) &&
-           offsetCoordinate(manipulation.originalFootprint.maximum.z, deltaZ,
-                            output.maximum.z);
-  }
-  if (moveWest(handle) &&
-      !offsetCoordinate(manipulation.originalFootprint.minimum.x, deltaX,
-                        output.minimum.x)) {
-    return false;
-  }
-  if (moveEast(handle) &&
-      !offsetCoordinate(manipulation.originalFootprint.maximum.x, deltaX,
-                        output.maximum.x)) {
-    return false;
-  }
-  if (moveNorth(handle) &&
-      !offsetCoordinate(manipulation.originalFootprint.minimum.z, deltaZ,
-                        output.minimum.z)) {
-    return false;
-  }
-  return !moveSouth(handle) ||
-         offsetCoordinate(manipulation.originalFootprint.maximum.z, deltaZ,
-                          output.maximum.z);
 }
 
 bool snappedOpeningDelta(double current, double start,
@@ -915,7 +761,7 @@ CreativeEditorWorldLayoutEditReceipt addRoomPoint(
   state.source.rooms.push_back(std::move(room));
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Room,
                      state.source.rooms.size() - 1U};
-  noteSourceChange(state, "room added");
+  noteWorldLayoutSourceChange(state, "room added");
   return {true, true, "creative_editor_world_layout_room_added"};
 }
 
@@ -944,7 +790,7 @@ CreativeEditorWorldLayoutEditReceipt addFloorPoint(
   state.source.boxes.push_back(std::move(box));
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Box,
                      state.source.boxes.size() - 1U};
-  noteSourceChange(state, "floor added");
+  noteWorldLayoutSourceChange(state, "floor added");
   return {true, true, "creative_editor_world_layout_floor_added"};
 }
 
@@ -972,7 +818,7 @@ CreativeEditorWorldLayoutEditReceipt addWallPoint(
   state.source.walls.push_back(std::move(wall));
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Wall,
                      state.source.walls.size() - 1U};
-  noteSourceChange(state, "wall added");
+  noteWorldLayoutSourceChange(state, "wall added");
   return {true, true, "creative_editor_world_layout_wall_added"};
 }
 
@@ -1052,9 +898,9 @@ CreativeEditorWorldLayoutEditReceipt addOpening(
   state.source.openings.push_back(std::move(opening));
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Opening,
                      state.source.openings.size() - 1U};
-  noteSourceChange(state, kind == cr::CreativeBuildingOpeningKind::Door
-                              ? "door added"
-                              : "window added");
+  noteWorldLayoutSourceChange(
+      state, kind == cr::CreativeBuildingOpeningKind::Door ? "door added"
+                                                           : "window added");
   return {true, true, "creative_editor_world_layout_opening_added"};
 }
 
@@ -1132,11 +978,15 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutTool(
   }
   const bool changed = state.tool != tool || state.anchorActive ||
                        state.roomManipulation.active ||
+                       state.boxManipulation.active ||
+                       state.wallManipulation.active ||
                        state.openingManipulation.active ||
+                       state.boxSettingsDraft.active ||
+                       state.wallSettingsDraft.active ||
                        state.openingSettingsDraft.active;
   state.tool = tool;
   state.anchorActive = false;
-  clearLayoutInteraction(state);
+  clearWorldLayoutInteraction(state);
   state.statusMessage =
       std::string(creativeEditorWorldLayoutToolLabel(tool)) + " tool";
   return {true, changed, "creative_editor_world_layout_tool_set"};
@@ -1198,7 +1048,7 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutGesture(
     }
     state.anchorActive = true;
     state.anchor = gridPoint;
-    clearLayoutInteraction(state);
+    clearWorldLayoutInteraction(state);
     state.statusMessage =
         state.tool == CreativeEditorWorldLayoutTool::Room
             ? "drag room to its opposite corner"
@@ -1239,7 +1089,7 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutRoomSettings(
   room.wallThicknessCells = settings.wallThicknessCells;
   room.floorThicknessCells = settings.floorThicknessCells;
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Room, roomIndex};
-  noteSourceChange(state, "room shell settings updated");
+  noteWorldLayoutSourceChange(state, "room shell settings updated");
   return {true, true, "creative_editor_world_layout_room_settings_updated"};
 }
 
@@ -1253,7 +1103,7 @@ CreativeEditorWorldLayoutRoomTarget findCreativeEditorWorldLayoutRoomTarget(
   const CreativeEditorWorldLayoutSelection hit = hitTest(state.source, point);
   if (hit.kind == CreativeEditorWorldLayoutSelectionKind::Room &&
       hit.index < state.source.rooms.size()) {
-    const CreativeEditorWorldLayoutRoomHandle handle = roomHandleAt(
+    const CreativeEditorWorldLayoutRoomHandle handle = worldLayoutRectHandleAt(
         state.source.rooms[hit.index].footprint, point, toleranceCells);
     if (handle != CreativeEditorWorldLayoutRoomHandle::None) {
       return {hit.index, handle};
@@ -1264,7 +1114,7 @@ CreativeEditorWorldLayoutRoomTarget findCreativeEditorWorldLayoutRoomTarget(
   }
   if (state.selection.kind == CreativeEditorWorldLayoutSelectionKind::Room &&
       state.selection.index < state.source.rooms.size()) {
-    const CreativeEditorWorldLayoutRoomHandle handle = roomHandleAt(
+    const CreativeEditorWorldLayoutRoomHandle handle = worldLayoutRectHandleAt(
         state.source.rooms[state.selection.index].footprint, point,
         toleranceCells);
     if (handle != CreativeEditorWorldLayoutRoomHandle::None) {
@@ -1303,11 +1153,10 @@ applyCreativeEditorWorldLayoutRoomManipulation(
     }
     const cr::CreativeWorldLayoutRect footprint =
         state.source.rooms[target.roomIndex].footprint;
+    clearWorldLayoutInteraction(state);
     state.selection = {CreativeEditorWorldLayoutSelectionKind::Room,
                        target.roomIndex};
     state.anchorActive = false;
-    state.openingManipulation = {};
-    state.openingSettingsDraft = {};
     state.roomManipulation = {
         true,
         state.revision,
@@ -1344,7 +1193,7 @@ applyCreativeEditorWorldLayoutRoomManipulation(
   }
   if (phase == CreativeEditorWorldLayoutRoomManipulationPhase::Update) {
     cr::CreativeWorldLayoutRect footprint;
-    const bool coordinateValid = roomManipulationFootprint(
+    const bool coordinateValid = worldLayoutManipulatedRect(
         state.roomManipulation, point, footprint);
     if (coordinateValid &&
         footprint.minimum == state.roomManipulation.previewFootprint.minimum &&
@@ -1404,7 +1253,27 @@ resolveCreativeEditorWorldLayoutOpeningHost(
   if (openingIndex >= state.source.openings.size()) {
     return {};
   }
-  return openingHost(state.source, state.source.openings[openingIndex]);
+  const cr::CreativeWorldLayoutOpening& opening =
+      state.source.openings[openingIndex];
+  CreativeEditorWorldLayoutOpeningHost host =
+      openingHost(state.source, opening);
+  if (!state.wallManipulation.active ||
+      opening.hostKind != cr::CreativeWorldLayoutOpeningHostKind::Wall ||
+      opening.wallIndex != state.wallManipulation.target.wallIndex) {
+    return host;
+  }
+  host.start = {
+      static_cast<double>(state.wallManipulation.previewStart.x),
+      static_cast<double>(state.wallManipulation.previewStart.z),
+  };
+  host.end = {
+      static_cast<double>(state.wallManipulation.previewEnd.x),
+      static_cast<double>(state.wallManipulation.previewEnd.z),
+  };
+  host.lengthCells =
+      std::hypot(host.end.x - host.start.x, host.end.z - host.start.z);
+  host.valid = std::isfinite(host.lengthCells) && host.lengthCells > 0.0;
+  return host;
 }
 
 CreativeEditorWorldLayoutOpeningTarget
@@ -1490,11 +1359,10 @@ applyCreativeEditorWorldLayoutOpeningManipulation(
       return {false, false,
               "creative_editor_world_layout_opening_host_invalid"};
     }
+    clearWorldLayoutInteraction(state);
     state.selection = {CreativeEditorWorldLayoutSelectionKind::Opening,
                        target.openingIndex};
     state.anchorActive = false;
-    state.roomManipulation = {};
-    state.openingSettingsDraft = {};
     state.openingManipulation = {
         true,
         state.revision,
@@ -1673,14 +1541,14 @@ CreativeEditorWorldLayoutEditReceipt deleteCreativeEditorWorldLayoutSelection(
     return {false, false, "creative_editor_world_layout_selection_missing"};
   }
   state.selection = {};
-  noteSourceChange(state, "layout symbol deleted");
+  noteWorldLayoutSourceChange(state, "layout symbol deleted");
   return {true, true, "creative_editor_world_layout_selection_deleted"};
 }
 
 CreativeEditorWorldLayoutEditReceipt cancelCreativeEditorWorldLayoutPreview(
     CreativeEditorWorldLayoutState& state) noexcept {
   const bool changed = state.previewVisible;
-  invalidatePreview(state);
+  invalidateWorldLayoutPreview(state);
   state.statusMessage = "3D preview closed";
   return {true, changed, "creative_editor_world_layout_preview_cancelled"};
 }
@@ -1690,14 +1558,14 @@ CreativeEditorWorldLayoutPreviewReceipt previewCreativeEditorWorldLayout(
     const cr::CreativeDocument& document) {
   CreativeEditorWorldLayoutPreviewReceipt receipt;
   state.anchorActive = false;
-  clearLayoutInteraction(state);
+  clearWorldLayoutInteraction(state);
   const cr::CreativeWorldLayoutCompileResult compiled =
       cr::buildCreativeWorldLayoutPlan(document, state.source);
   receipt.status = compiled.receipt.status;
   if (!compiled.receipt.accepted) {
     state.statusMessage = compiled.receipt.reasonCode;
     receipt.reasonCode = compiled.receipt.reasonCode;
-    invalidatePreview(state);
+    invalidateWorldLayoutPreview(state);
     return receipt;
   }
   cr::CreativeWorldLayoutPreviewResult preview =
@@ -1708,7 +1576,7 @@ CreativeEditorWorldLayoutPreviewReceipt previewCreativeEditorWorldLayout(
   receipt.reasonCode = preview.reasonCode;
   if (!preview.accepted) {
     state.statusMessage = preview.reasonCode;
-    invalidatePreview(state);
+    invalidateWorldLayoutPreview(state);
     return receipt;
   }
   state.preview = std::move(preview);
@@ -1722,7 +1590,7 @@ CreativeEditorWorldLayoutApplyReceipt confirmCreativeEditorWorldLayout(
     CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState) {
   CreativeEditorWorldLayoutApplyReceipt result;
   state.anchorActive = false;
-  clearLayoutInteraction(state);
+  clearWorldLayoutInteraction(state);
   const cr::CreativeWorldLayoutCompileResult compiled =
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(),
                                        state.source);
@@ -1738,7 +1606,7 @@ CreativeEditorWorldLayoutApplyReceipt confirmCreativeEditorWorldLayout(
   result.reasonCode = result.apply.reasonCode;
   if (result.accepted) {
     state.generatedRevision = state.revision;
-    invalidatePreview(state);
+    invalidateWorldLayoutPreview(state);
     state.statusMessage =
         result.changed ? "layout generated in 3D" : "3D output already current";
   } else {

@@ -1218,6 +1218,22 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutManipulateRoom, context,
           app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutBoxSettings =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutSetBoxSettings, context,
+          app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutBoxManipulation =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutManipulateBox, context,
+          app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutWallSettings =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutSetWallSettings, context,
+          app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutWallManipulation =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutManipulateWall, context,
+          app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult badWorldLayoutOpeningSettings =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSetOpeningSettings, context,
@@ -1255,6 +1271,22 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badWorldLayoutManipulation.message ==
                         "layout room manipulation: payload mismatch",
                 "room manipulation rejects a mismatched payload") &&
+         expect(!badWorldLayoutBoxSettings.accepted &&
+                    badWorldLayoutBoxSettings.message ==
+                        "layout floor settings: payload mismatch",
+                "floor settings reject a mismatched payload") &&
+         expect(!badWorldLayoutBoxManipulation.accepted &&
+                    badWorldLayoutBoxManipulation.message ==
+                        "layout floor manipulation: payload mismatch",
+                "floor manipulation rejects a mismatched payload") &&
+         expect(!badWorldLayoutWallSettings.accepted &&
+                    badWorldLayoutWallSettings.message ==
+                        "layout partition settings: payload mismatch",
+                "partition settings reject a mismatched payload") &&
+         expect(!badWorldLayoutWallManipulation.accepted &&
+                    badWorldLayoutWallManipulation.message ==
+                        "layout partition manipulation: payload mismatch",
+                "partition manipulation rejects a mismatched payload") &&
          expect(!badWorldLayoutOpeningSettings.accepted &&
                     badWorldLayoutOpeningSettings.message ==
                         "layout opening settings: payload mismatch",
@@ -1266,6 +1298,155 @@ bool mismatchedPayloadsAreNoOpFailures() {
          expect(appState.facade.document().objectCount() == before &&
                     cr::creativeUndoDepth(appState.history) == 0U,
                 "mismatched payloads mutate nothing and record no history");
+}
+
+bool worldLayoutStructuralCommandsRouteThroughDispatcher() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Structural Layout");
+  static_cast<void>(document.assignId(423U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+
+  const auto setFloorTool = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSetTool, context,
+      app::CreativeDesktopWorldLayoutToolPayload{
+          app::CreativeEditorWorldLayoutTool::Floor});
+  const auto floorBegin = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutCanvasGesture, context,
+      app::CreativeDesktopWorldLayoutGesturePayload{
+          app::CreativeEditorWorldLayoutGesturePhase::Begin, {0.0, 0.0}});
+  const auto floorCreate = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutCanvasGesture, context,
+      app::CreativeDesktopWorldLayoutGesturePayload{
+          app::CreativeEditorWorldLayoutGesturePhase::Commit, {4.0, 3.0}});
+  const std::uint64_t revisionBeforeFloorSettings = editor.worldLayout.revision;
+  const auto floorSettings = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSetBoxSettings, context,
+      app::CreativeDesktopWorldLayoutBoxSettingsPayload{
+          0U, {{{0, 0}, {4, 3}}, 1, 2U}});
+  const bool floorSettingsCommittedOnce =
+      editor.worldLayout.revision == revisionBeforeFloorSettings + 1U;
+  static_cast<void>(dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSetTool, context,
+      app::CreativeDesktopWorldLayoutToolPayload{
+          app::CreativeEditorWorldLayoutTool::Select}));
+  const std::uint64_t revisionBeforeFloorMove = editor.worldLayout.revision;
+  const auto floorMoveBegin = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateBox, context,
+      app::CreativeDesktopWorldLayoutBoxManipulationPayload{
+          app::CreativeEditorWorldLayoutBoxManipulationPhase::Begin,
+          {2.0, 1.5}, 0.2});
+  const auto floorMoveUpdate = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateBox, context,
+      app::CreativeDesktopWorldLayoutBoxManipulationPayload{
+          app::CreativeEditorWorldLayoutBoxManipulationPhase::Update,
+          {4.2, 2.6}, 0.2});
+  const bool floorMovePreviewOnly =
+      editor.worldLayout.revision == revisionBeforeFloorMove &&
+      editor.worldLayout.source.boxes[0].footprint.minimum ==
+          cr::CreativeTerrainCoord2{0, 0} &&
+      editor.worldLayout.boxManipulation.previewFootprint.minimum ==
+          cr::CreativeTerrainCoord2{2, 1};
+  const auto floorMoveCommit = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateBox, context,
+      app::CreativeDesktopWorldLayoutBoxManipulationPayload{
+          app::CreativeEditorWorldLayoutBoxManipulationPhase::Commit,
+          {4.2, 2.6}, 0.2});
+  const bool floorMoveCommittedOnce =
+      editor.worldLayout.revision == revisionBeforeFloorMove + 1U;
+
+  const auto setWallTool = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSetTool, context,
+      app::CreativeDesktopWorldLayoutToolPayload{
+          app::CreativeEditorWorldLayoutTool::Wall});
+  const auto wallBegin = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutCanvasGesture, context,
+      app::CreativeDesktopWorldLayoutGesturePayload{
+          app::CreativeEditorWorldLayoutGesturePhase::Begin, {0.0, 0.0}});
+  const auto wallCreate = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutCanvasGesture, context,
+      app::CreativeDesktopWorldLayoutGesturePayload{
+          app::CreativeEditorWorldLayoutGesturePhase::Commit, {8.0, 0.0}});
+  const std::uint64_t revisionBeforeWallSettings = editor.worldLayout.revision;
+  const auto wallSettings = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSetWallSettings, context,
+      app::CreativeDesktopWorldLayoutWallSettingsPayload{
+          0U, {{0, 0}, {8, 0}, 0.5, 4U, 0.5}});
+  const bool wallSettingsCommittedOnce =
+      editor.worldLayout.revision == revisionBeforeWallSettings + 1U;
+  static_cast<void>(dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSetTool, context,
+      app::CreativeDesktopWorldLayoutToolPayload{
+          app::CreativeEditorWorldLayoutTool::Select}));
+  const std::uint64_t revisionBeforeWallMove = editor.worldLayout.revision;
+  const auto wallMoveBegin = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateWall, context,
+      app::CreativeDesktopWorldLayoutWallManipulationPayload{
+          app::CreativeEditorWorldLayoutWallManipulationPhase::Begin,
+          {4.0, 0.0}, 0.2});
+  const auto wallMoveUpdate = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateWall, context,
+      app::CreativeDesktopWorldLayoutWallManipulationPayload{
+          app::CreativeEditorWorldLayoutWallManipulationPhase::Update,
+          {5.2, 2.1}, 0.2});
+  const bool wallMovePreviewOnly =
+      editor.worldLayout.revision == revisionBeforeWallMove &&
+      editor.worldLayout.source.walls[0].start ==
+          cr::CreativeTerrainCoord2{0, 0} &&
+      editor.worldLayout.wallManipulation.previewStart ==
+          cr::CreativeTerrainCoord2{1, 2};
+  const auto wallMoveCommit = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateWall, context,
+      app::CreativeDesktopWorldLayoutWallManipulationPayload{
+          app::CreativeEditorWorldLayoutWallManipulationPhase::Commit,
+          {5.2, 2.1}, 0.2});
+
+  return expect(setFloorTool.accepted && floorBegin.accepted &&
+                    floorCreate.accepted && floorCreate.worldLayoutChanged &&
+                    floorSettings.accepted && floorSettings.changed &&
+                    floorSettings.worldLayoutChanged &&
+                    floorSettingsCommittedOnce && floorMoveBegin.accepted &&
+                    floorMoveBegin.changed &&
+                    !floorMoveBegin.worldLayoutChanged &&
+                    floorMoveUpdate.accepted && floorMoveUpdate.changed &&
+                    !floorMoveUpdate.worldLayoutChanged &&
+                    floorMovePreviewOnly && floorMoveCommit.accepted &&
+                    floorMoveCommit.changed &&
+                    floorMoveCommit.worldLayoutChanged &&
+                    floorMoveCommittedOnce &&
+                    editor.worldLayout.source.boxes[0].footprint.minimum ==
+                        cr::CreativeTerrainCoord2{2, 1} &&
+                    editor.worldLayout.source.boxes[0].baseLayer == 1 &&
+                    editor.worldLayout.source.boxes[0].heightCells == 2U,
+                "floor settings and manipulation use typed dispatcher commands") &&
+         expect(setWallTool.accepted && wallBegin.accepted &&
+                    wallCreate.accepted && wallCreate.worldLayoutChanged &&
+                    wallSettings.accepted && wallSettings.changed &&
+                    wallSettings.worldLayoutChanged &&
+                    wallSettingsCommittedOnce && wallMoveBegin.accepted &&
+                    wallMoveBegin.changed &&
+                    !wallMoveBegin.worldLayoutChanged &&
+                    wallMoveUpdate.accepted && wallMoveUpdate.changed &&
+                    !wallMoveUpdate.worldLayoutChanged &&
+                    wallMovePreviewOnly && wallMoveCommit.accepted &&
+                    wallMoveCommit.changed &&
+                    wallMoveCommit.worldLayoutChanged &&
+                    editor.worldLayout.revision ==
+                        revisionBeforeWallMove + 1U &&
+                    editor.worldLayout.source.walls[0].start ==
+                        cr::CreativeTerrainCoord2{1, 2} &&
+                    editor.worldLayout.source.walls[0].end ==
+                        cr::CreativeTerrainCoord2{9, 2} &&
+                    editor.worldLayout.source.walls[0].baseLayer == 0.5 &&
+                    editor.worldLayout.source.walls[0].heightCells == 4U &&
+                    editor.worldLayout.source.walls[0].thicknessCells == 0.5,
+                "partition settings and manipulation use typed dispatcher commands");
 }
 
 bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
@@ -1466,6 +1647,7 @@ int main() {
   ok = assetAndInstanceCommandsRouteAndRejectCleanly() && ok;
   ok = assetAndInstanceCommandsCompleteSuccessPaths() && ok;
   ok = mismatchedPayloadsAreNoOpFailures() && ok;
+  ok = worldLayoutStructuralCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutCommandsPreviewAndGenerateThroughDispatcher() && ok;
   return ok ? 0 : 1;
 }

@@ -774,6 +774,92 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutSetBoxSettings: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutBoxSettingsPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout floor settings: payload mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          setCreativeEditorWorldLayoutBoxSettings(
+              editor.worldLayout, payload->boxIndex, payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutManipulateBox: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutBoxManipulationPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout floor manipulation: payload mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          applyCreativeEditorWorldLayoutBoxManipulation(
+              editor.worldLayout, payload->phase, payload->point,
+              payload->toleranceCells);
+      const bool sourceChanged =
+          payload->phase ==
+              CreativeEditorWorldLayoutBoxManipulationPhase::Commit &&
+          receipt.changed;
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = sourceChanged;
+      result.sceneChanged = previewWasActive && sourceChanged;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutSetWallSettings: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutWallSettingsPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout partition settings: payload mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          setCreativeEditorWorldLayoutWallSettings(
+              editor.worldLayout, payload->wallIndex, payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutManipulateWall: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutWallManipulationPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout partition manipulation: payload mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          applyCreativeEditorWorldLayoutWallManipulation(
+              editor.worldLayout, payload->phase, payload->point,
+              payload->toleranceCells);
+      const bool sourceChanged =
+          payload->phase ==
+              CreativeEditorWorldLayoutWallManipulationPhase::Commit &&
+          receipt.changed;
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = sourceChanged;
+      result.sceneChanged = previewWasActive && sourceChanged;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutSetOpeningSettings: {
       const auto* payload =
           payloadAs<CreativeDesktopWorldLayoutOpeningSettingsPayload>(command);

@@ -146,6 +146,30 @@ struct CreativeDesktopWorldLayoutRoomManipulationPayload {
   double toleranceCells = 0.25;
 };
 
+struct CreativeDesktopWorldLayoutBoxSettingsPayload {
+  std::size_t boxIndex = iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  CreativeEditorWorldLayoutBoxSettings settings;
+};
+
+struct CreativeDesktopWorldLayoutBoxManipulationPayload {
+  CreativeEditorWorldLayoutBoxManipulationPhase phase =
+      CreativeEditorWorldLayoutBoxManipulationPhase::Begin;
+  CreativeEditorWorldLayoutPoint point;
+  double toleranceCells = 0.25;
+};
+
+struct CreativeDesktopWorldLayoutWallSettingsPayload {
+  std::size_t wallIndex = iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  CreativeEditorWorldLayoutWallSettings settings;
+};
+
+struct CreativeDesktopWorldLayoutWallManipulationPayload {
+  CreativeEditorWorldLayoutWallManipulationPhase phase =
+      CreativeEditorWorldLayoutWallManipulationPhase::Begin;
+  CreativeEditorWorldLayoutPoint point;
+  double toleranceCells = 0.25;
+};
+
 struct CreativeDesktopWorldLayoutOpeningSettingsPayload {
   std::size_t openingIndex =
       iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
@@ -179,6 +203,10 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutGesturePayload,
     CreativeDesktopWorldLayoutRoomSettingsPayload,
     CreativeDesktopWorldLayoutRoomManipulationPayload,
+    CreativeDesktopWorldLayoutBoxSettingsPayload,
+    CreativeDesktopWorldLayoutBoxManipulationPayload,
+    CreativeDesktopWorldLayoutWallSettingsPayload,
+    CreativeDesktopWorldLayoutWallManipulationPayload,
     CreativeDesktopWorldLayoutOpeningSettingsPayload,
     CreativeDesktopWorldLayoutOpeningManipulationPayload>;
 

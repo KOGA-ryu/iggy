@@ -1,5 +1,7 @@
 #include "EditorWorldLayoutPanel.hpp"
 
+#include "EditorDesktopWorldLayoutInspector.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -108,22 +110,13 @@ std::pair<ImVec2, ImVec2> screenRect(
           {std::max(first.x, second.x), std::max(first.y, second.y)}};
 }
 
-void drawRoomManipulation(ImDrawList& drawList,
+void drawRectManipulation(ImDrawList& drawList,
                           const CanvasTransform& transform,
-                          const CreativeEditorWorldLayoutState& state) {
-  if (state.selection.kind != CreativeEditorWorldLayoutSelectionKind::Room ||
-      state.selection.index >= state.source.rooms.size()) {
-    return;
-  }
-  const bool active = state.roomManipulation.active &&
-                      state.roomManipulation.target.roomIndex ==
-                          state.selection.index;
-  const cr::CreativeWorldLayoutRect footprint =
-      active ? state.roomManipulation.previewFootprint
-             : state.source.rooms[state.selection.index].footprint;
+                          cr::CreativeWorldLayoutRect footprint, bool active,
+                          bool previewValid) {
   const auto [minimum, maximum] = screenRect(transform, footprint);
   if (active) {
-    const ImVec4 tint = state.roomManipulation.previewValid
+    const ImVec4 tint = previewValid
                             ? ImVec4{0.20F, 0.78F, 0.38F, 1.0F}
                             : ImVec4{0.92F, 0.29F, 0.24F, 1.0F};
     ImVec4 fill = tint;
@@ -149,7 +142,7 @@ void drawRoomManipulation(ImDrawList& drawList,
       ImVec2{minimum.x, maximum.y}, ImVec2{minimum.x, centerY},
   };
   const ImU32 handleColor =
-      active ? (state.roomManipulation.previewValid
+      active ? (previewValid
                     ? color({0.20F, 0.78F, 0.38F, 1.0F})
                     : color({0.92F, 0.29F, 0.24F, 1.0F}))
              : color({0.96F, 0.82F, 0.22F, 1.0F});
@@ -159,38 +152,102 @@ void drawRoomManipulation(ImDrawList& drawList,
   }
 }
 
-ImGuiMouseCursor roomHandleCursor(
-    CreativeEditorWorldLayoutRoomHandle handle) noexcept {
+void drawRoomManipulation(ImDrawList& drawList,
+                          const CanvasTransform& transform,
+                          const CreativeEditorWorldLayoutState& state) {
+  if (state.selection.kind != CreativeEditorWorldLayoutSelectionKind::Room ||
+      state.selection.index >= state.source.rooms.size()) {
+    return;
+  }
+  const bool active = state.roomManipulation.active &&
+                      state.roomManipulation.target.roomIndex ==
+                          state.selection.index;
+  drawRectManipulation(
+      drawList, transform,
+      active ? state.roomManipulation.previewFootprint
+             : state.source.rooms[state.selection.index].footprint,
+      active, state.roomManipulation.previewValid);
+}
+
+void drawBoxManipulation(ImDrawList& drawList,
+                         const CanvasTransform& transform,
+                         const CreativeEditorWorldLayoutState& state) {
+  if (state.selection.kind != CreativeEditorWorldLayoutSelectionKind::Box ||
+      state.selection.index >= state.source.boxes.size()) {
+    return;
+  }
+  const bool active = state.boxManipulation.active &&
+                      state.boxManipulation.target.boxIndex ==
+                          state.selection.index;
+  drawRectManipulation(
+      drawList, transform,
+      active ? state.boxManipulation.previewFootprint
+             : state.source.boxes[state.selection.index].footprint,
+      active, state.boxManipulation.previewValid);
+}
+
+ImGuiMouseCursor rectHandleCursor(
+    CreativeEditorWorldLayoutRectHandle handle) noexcept {
   switch (handle) {
-    case CreativeEditorWorldLayoutRoomHandle::Move:
+    case CreativeEditorWorldLayoutRectHandle::Move:
       return ImGuiMouseCursor_ResizeAll;
-    case CreativeEditorWorldLayoutRoomHandle::North:
-    case CreativeEditorWorldLayoutRoomHandle::South:
+    case CreativeEditorWorldLayoutRectHandle::North:
+    case CreativeEditorWorldLayoutRectHandle::South:
       return ImGuiMouseCursor_ResizeNS;
-    case CreativeEditorWorldLayoutRoomHandle::East:
-    case CreativeEditorWorldLayoutRoomHandle::West:
+    case CreativeEditorWorldLayoutRectHandle::East:
+    case CreativeEditorWorldLayoutRectHandle::West:
       return ImGuiMouseCursor_ResizeEW;
-    case CreativeEditorWorldLayoutRoomHandle::NorthWest:
-    case CreativeEditorWorldLayoutRoomHandle::SouthEast:
+    case CreativeEditorWorldLayoutRectHandle::NorthWest:
+    case CreativeEditorWorldLayoutRectHandle::SouthEast:
       return ImGuiMouseCursor_ResizeNWSE;
-    case CreativeEditorWorldLayoutRoomHandle::NorthEast:
-    case CreativeEditorWorldLayoutRoomHandle::SouthWest:
+    case CreativeEditorWorldLayoutRectHandle::NorthEast:
+    case CreativeEditorWorldLayoutRectHandle::SouthWest:
       return ImGuiMouseCursor_ResizeNESW;
-    case CreativeEditorWorldLayoutRoomHandle::None:
-    case CreativeEditorWorldLayoutRoomHandle::Count:
+    case CreativeEditorWorldLayoutRectHandle::None:
+    case CreativeEditorWorldLayoutRectHandle::Count:
       break;
   }
   return ImGuiMouseCursor_Arrow;
 }
 
 void drawWall(ImDrawList& drawList, const CanvasTransform& transform,
-              const cr::CreativeWorldLayoutWall& wall, bool isSelected) {
-  const ImVec2 start = toScreen(transform, wall.start.x, wall.start.z);
-  const ImVec2 end = toScreen(transform, wall.end.x, wall.end.z);
-  drawList.AddLine(start, end,
-                   isSelected ? color({0.96F, 0.82F, 0.22F, 1.0F})
-                              : color({0.72F, 0.76F, 0.81F, 1.0F}),
-                   isSelected ? 7.0F : 5.0F);
+              const CreativeEditorWorldLayoutState& state,
+              std::size_t wallIndex) {
+  const cr::CreativeWorldLayoutWall& wall = state.source.walls[wallIndex];
+  const bool isSelected =
+      selected(state, CreativeEditorWorldLayoutSelectionKind::Wall, wallIndex);
+  const bool active = state.wallManipulation.active &&
+                      state.wallManipulation.target.wallIndex == wallIndex;
+  const cr::CreativeTerrainCoord2 startPoint =
+      active ? state.wallManipulation.previewStart : wall.start;
+  const cr::CreativeTerrainCoord2 endPoint =
+      active ? state.wallManipulation.previewEnd : wall.end;
+  const ImVec2 start = toScreen(transform, startPoint.x, startPoint.z);
+  const ImVec2 end = toScreen(transform, endPoint.x, endPoint.z);
+  const ImU32 wallColor =
+      active ? (state.wallManipulation.previewValid
+                    ? color({0.20F, 0.78F, 0.38F, 1.0F})
+                    : color({0.92F, 0.29F, 0.24F, 1.0F}))
+      : isSelected ? color({0.96F, 0.82F, 0.22F, 1.0F})
+                   : color({0.72F, 0.76F, 0.81F, 1.0F});
+  drawList.AddLine(start, end, wallColor,
+                   active || isSelected ? 7.0F : 5.0F);
+  if (active || isSelected) {
+    drawList.AddRectFilled({start.x - 4.0F, start.y - 4.0F},
+                           {start.x + 4.0F, start.y + 4.0F}, wallColor);
+    drawList.AddRectFilled({end.x - 4.0F, end.y - 4.0F},
+                           {end.x + 4.0F, end.y + 4.0F}, wallColor);
+  }
+  if (active) {
+    char dimensions[48]{};
+    const double length =
+        std::hypot(static_cast<double>(endPoint.x) - startPoint.x,
+                   static_cast<double>(endPoint.z) - startPoint.z);
+    std::snprintf(dimensions, sizeof(dimensions), "%.0f long", length);
+    drawList.AddText({(start.x + end.x) * 0.5F + 7.0F,
+                      (start.y + end.y) * 0.5F + 7.0F},
+                     wallColor, dimensions);
+  }
 }
 
 CreativeEditorWorldLayoutPoint openingPoint(
@@ -215,9 +272,18 @@ void drawOpenings(ImDrawList& drawList, const CanvasTransform& transform,
         selected(state, CreativeEditorWorldLayoutSelectionKind::Opening, index);
     const bool active = state.openingManipulation.active &&
                         state.openingManipulation.target.openingIndex == index;
-    const double centerOffset =
-        active ? state.openingManipulation.previewCenterOffsetCells
-               : opening.centerOffsetCells;
+    const bool hostWallActive =
+        state.wallManipulation.active &&
+        opening.hostKind == cr::CreativeWorldLayoutOpeningHostKind::Wall &&
+        opening.wallIndex == state.wallManipulation.target.wallIndex;
+    const double centerOffset = active
+                                    ? state.openingManipulation
+                                          .previewCenterOffsetCells
+                                    : hostWallActive
+                                          ? opening.centerOffsetCells +
+                                                state.wallManipulation
+                                                    .previewOpeningOffsetDeltaCells
+                                          : opening.centerOffsetCells;
     const double width = active ? state.openingManipulation.previewWidthCells
                                 : opening.widthCells;
     const CreativeEditorWorldLayoutPoint centerPoint =
@@ -230,20 +296,24 @@ void drawOpenings(ImDrawList& drawList, const CanvasTransform& transform,
         toScreen(transform, centerPoint.x, centerPoint.z);
     const ImVec2 start = toScreen(transform, startPoint.x, startPoint.z);
     const ImVec2 end = toScreen(transform, endPoint.x, endPoint.z);
+    const bool previewing = active || hostWallActive;
+    const bool previewValid =
+        active ? state.openingManipulation.previewValid
+               : state.wallManipulation.previewValid;
     const ImU32 markerColor =
-        active ? (state.openingManipulation.previewValid
-                      ? color({0.20F, 0.78F, 0.38F, 1.0F})
-                      : color({0.92F, 0.29F, 0.24F, 1.0F}))
-        : isSelected ? color({0.96F, 0.82F, 0.22F, 1.0F})
-        : isDoor     ? color({0.31F, 0.82F, 0.43F, 1.0F})
-                     : color({0.27F, 0.72F, 0.91F, 1.0F});
+        previewing ? (previewValid
+                          ? color({0.20F, 0.78F, 0.38F, 1.0F})
+                          : color({0.92F, 0.29F, 0.24F, 1.0F}))
+        : isSelected  ? color({0.96F, 0.82F, 0.22F, 1.0F})
+        : isDoor      ? color({0.31F, 0.82F, 0.43F, 1.0F})
+                      : color({0.27F, 0.72F, 0.91F, 1.0F});
     drawList.AddLine(start, end, markerColor,
-                     active || isSelected ? 7.0F : 5.0F);
+                     previewing || isSelected ? 7.0F : 5.0F);
     if (isDoor) {
-      drawList.AddCircleFilled(center, active || isSelected ? 7.0F : 5.0F,
+      drawList.AddCircleFilled(center, previewing || isSelected ? 7.0F : 5.0F,
                                markerColor);
     } else {
-      const float half = active || isSelected ? 7.0F : 5.0F;
+      const float half = previewing || isSelected ? 7.0F : 5.0F;
       drawList.AddRectFilled({center.x - half, center.y - half},
                              {center.x + half, center.y + half}, markerColor);
     }
@@ -324,6 +394,26 @@ void queueRoomManipulation(
                                                         toleranceCells});
 }
 
+void queueBoxManipulation(
+    CreativeDesktopCommandFrame& commands,
+    CreativeEditorWorldLayoutBoxManipulationPhase phase,
+    CreativeEditorWorldLayoutPoint point, double toleranceCells) {
+  commands.push(
+      CreativeDesktopCommandId::WorldLayoutManipulateBox,
+      CreativeDesktopWorldLayoutBoxManipulationPayload{phase, point,
+                                                       toleranceCells});
+}
+
+void queueWallManipulation(
+    CreativeDesktopCommandFrame& commands,
+    CreativeEditorWorldLayoutWallManipulationPhase phase,
+    CreativeEditorWorldLayoutPoint point, double toleranceCells) {
+  commands.push(
+      CreativeDesktopCommandId::WorldLayoutManipulateWall,
+      CreativeDesktopWorldLayoutWallManipulationPayload{phase, point,
+                                                        toleranceCells});
+}
+
 void queueOpeningManipulation(
     CreativeDesktopCommandFrame& commands,
     CreativeEditorWorldLayoutOpeningManipulationPhase phase,
@@ -332,6 +422,28 @@ void queueOpeningManipulation(
       CreativeDesktopCommandId::WorldLayoutManipulateOpening,
       CreativeDesktopWorldLayoutOpeningManipulationPayload{
           phase, point, toleranceCells});
+}
+
+void queueLayoutManipulationCancel(
+    const CreativeEditorWorldLayoutState& state,
+    CreativeDesktopCommandFrame& commands) {
+  if (state.openingManipulation.active) {
+    queueOpeningManipulation(
+        commands, CreativeEditorWorldLayoutOpeningManipulationPhase::Cancel, {},
+        0.25);
+  } else if (state.wallManipulation.active) {
+    queueWallManipulation(
+        commands, CreativeEditorWorldLayoutWallManipulationPhase::Cancel, {},
+        0.25);
+  } else if (state.roomManipulation.active) {
+    queueRoomManipulation(
+        commands, CreativeEditorWorldLayoutRoomManipulationPhase::Cancel, {},
+        0.25);
+  } else if (state.boxManipulation.active) {
+    queueBoxManipulation(
+        commands, CreativeEditorWorldLayoutBoxManipulationPhase::Cancel, {},
+        0.25);
+  }
 }
 
 ImGuiMouseCursor openingHandleCursor(
@@ -346,6 +458,20 @@ ImGuiMouseCursor openingHandleCursor(
                  std::fabs(host.end.z - host.start.z)
              ? ImGuiMouseCursor_ResizeEW
              : ImGuiMouseCursor_ResizeNS;
+}
+
+ImGuiMouseCursor wallHandleCursor(
+    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutWallTarget target) {
+  if (target.handle == CreativeEditorWorldLayoutWallHandle::Move) {
+    return ImGuiMouseCursor_ResizeAll;
+  }
+  if (target.wallIndex >= state.source.walls.size()) {
+    return ImGuiMouseCursor_Arrow;
+  }
+  const cr::CreativeWorldLayoutWall& wall = state.source.walls[target.wallIndex];
+  return wall.start.z == wall.end.z ? ImGuiMouseCursor_ResizeEW
+                                   : ImGuiMouseCursor_ResizeNS;
 }
 
 bool dragTool(CreativeEditorWorldLayoutTool tool) noexcept {
@@ -597,12 +723,11 @@ void drawLayoutCanvas(CreativeEditorState& editor,
         selected(state, CreativeEditorWorldLayoutSelectionKind::Box, index));
   }
   for (std::size_t index = 0U; index < state.source.walls.size(); ++index) {
-    drawWall(
-        *drawList, transform, state.source.walls[index],
-        selected(state, CreativeEditorWorldLayoutSelectionKind::Wall, index));
+    drawWall(*drawList, transform, state, index);
   }
   drawOpenings(*drawList, transform, state);
   drawRoomManipulation(*drawList, transform, state);
+  drawBoxManipulation(*drawList, transform, state);
   const CreativeEditorWorldLayoutPoint pointerPoint =
       toWorld(transform, io.MousePos);
   const ImVec2 boundedPointer{
@@ -610,9 +735,8 @@ void drawLayoutCanvas(CreativeEditorState& editor,
       std::clamp(io.MousePos.y, minimum.y, maximum.y)};
   const CreativeEditorWorldLayoutPoint hoveredPoint =
       toWorld(transform, boundedPointer);
-  const double roomHandleTolerance = std::clamp(
+  const double handleTolerance = std::clamp(
       8.0 / static_cast<double>(transform.pixelsPerCell), 0.10, 0.45);
-  const double openingHandleTolerance = roomHandleTolerance;
   if (hovered) {
     drawAnchorPreview(*drawList, transform, state, hoveredPoint);
   }
@@ -625,26 +749,49 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   const CreativeEditorWorldLayoutOpeningTarget hoveredOpeningTarget =
       hovered && state.tool == CreativeEditorWorldLayoutTool::Select
           ? findCreativeEditorWorldLayoutOpeningTarget(
-                state, hoveredPoint, openingHandleTolerance)
+                state, hoveredPoint, handleTolerance)
           : CreativeEditorWorldLayoutOpeningTarget{};
+  const CreativeEditorWorldLayoutWallTarget hoveredWallTarget =
+      hovered && state.tool == CreativeEditorWorldLayoutTool::Select
+          ? findCreativeEditorWorldLayoutWallTarget(state, hoveredPoint,
+                                                    handleTolerance)
+          : CreativeEditorWorldLayoutWallTarget{};
+  const CreativeEditorWorldLayoutRoomTarget hoveredRoomTarget =
+      hovered && state.tool == CreativeEditorWorldLayoutTool::Select
+          ? findCreativeEditorWorldLayoutRoomTarget(state, hoveredPoint,
+                                                    handleTolerance)
+          : CreativeEditorWorldLayoutRoomTarget{};
+  const CreativeEditorWorldLayoutBoxTarget hoveredBoxTarget =
+      hovered && state.tool == CreativeEditorWorldLayoutTool::Select
+          ? findCreativeEditorWorldLayoutBoxTarget(state, hoveredPoint,
+                                                   handleTolerance)
+          : CreativeEditorWorldLayoutBoxTarget{};
   if (state.openingManipulation.active) {
     ImGui::SetMouseCursor(openingHandleCursor(
         state, state.openingManipulation.target));
+  } else if (state.wallManipulation.active) {
+    ImGui::SetMouseCursor(
+        wallHandleCursor(state, state.wallManipulation.target));
   } else if (state.roomManipulation.active) {
     ImGui::SetMouseCursor(
-        roomHandleCursor(state.roomManipulation.target.handle));
+        rectHandleCursor(state.roomManipulation.target.handle));
+  } else if (state.boxManipulation.active) {
+    ImGui::SetMouseCursor(
+        rectHandleCursor(state.boxManipulation.target.handle));
   } else if (hovered && state.tool == CreativeEditorWorldLayoutTool::Select) {
     if (hoveredOpeningTarget.handle !=
         CreativeEditorWorldLayoutOpeningHandle::None) {
       ImGui::SetMouseCursor(
           openingHandleCursor(state, hoveredOpeningTarget));
-    } else {
-      const CreativeEditorWorldLayoutRoomTarget target =
-          findCreativeEditorWorldLayoutRoomTarget(
-              state, hoveredPoint, roomHandleTolerance);
-      if (target.handle != CreativeEditorWorldLayoutRoomHandle::None) {
-        ImGui::SetMouseCursor(roomHandleCursor(target.handle));
-      }
+    } else if (hoveredWallTarget.handle !=
+               CreativeEditorWorldLayoutWallHandle::None) {
+      ImGui::SetMouseCursor(wallHandleCursor(state, hoveredWallTarget));
+    } else if (hoveredRoomTarget.handle !=
+               CreativeEditorWorldLayoutRoomHandle::None) {
+      ImGui::SetMouseCursor(rectHandleCursor(hoveredRoomTarget.handle));
+    } else if (hoveredBoxTarget.handle !=
+               CreativeEditorWorldLayoutBoxHandle::None) {
+      ImGui::SetMouseCursor(rectHandleCursor(hoveredBoxTarget.handle));
     }
   }
 
@@ -655,11 +802,26 @@ void drawLayoutCanvas(CreativeEditorState& editor,
         queueOpeningManipulation(
             commands,
             CreativeEditorWorldLayoutOpeningManipulationPhase::Begin,
-            hoveredPoint, openingHandleTolerance);
+            hoveredPoint, handleTolerance);
+      } else if (hoveredWallTarget.handle !=
+                 CreativeEditorWorldLayoutWallHandle::None) {
+        queueWallManipulation(
+            commands, CreativeEditorWorldLayoutWallManipulationPhase::Begin,
+            hoveredPoint, handleTolerance);
+      } else if (hoveredRoomTarget.handle !=
+                 CreativeEditorWorldLayoutRoomHandle::None) {
+        queueRoomManipulation(
+            commands, CreativeEditorWorldLayoutRoomManipulationPhase::Begin,
+            hoveredPoint, handleTolerance);
+      } else if (hoveredBoxTarget.handle !=
+                 CreativeEditorWorldLayoutBoxHandle::None) {
+        queueBoxManipulation(
+            commands, CreativeEditorWorldLayoutBoxManipulationPhase::Begin,
+            hoveredPoint, handleTolerance);
       } else {
         queueRoomManipulation(
             commands, CreativeEditorWorldLayoutRoomManipulationPhase::Begin,
-            hoveredPoint, roomHandleTolerance);
+            hoveredPoint, handleTolerance);
       }
     } else if (dragTool(state.tool)) {
       queueGesture(commands, CreativeEditorWorldLayoutGesturePhase::Begin,
@@ -678,42 +840,85 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   if (cancelOpeningManipulation) {
     queueOpeningManipulation(
         commands, CreativeEditorWorldLayoutOpeningManipulationPhase::Cancel,
-        pointerPoint, openingHandleTolerance);
+        pointerPoint, handleTolerance);
   } else if (state.openingManipulation.active &&
              ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
     queueOpeningManipulation(
         commands, CreativeEditorWorldLayoutOpeningManipulationPhase::Commit,
-        pointerPoint, openingHandleTolerance);
+        pointerPoint, handleTolerance);
   } else if (state.openingManipulation.active &&
              ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
     queueOpeningManipulation(
         commands, CreativeEditorWorldLayoutOpeningManipulationPhase::Update,
-        pointerPoint, openingHandleTolerance);
+        pointerPoint, handleTolerance);
+  }
+
+  const bool cancelWallManipulation =
+      state.wallManipulation.active &&
+      (io.AppFocusLost ||
+       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
+       ImGui::IsKeyPressed(ImGuiKey_Escape));
+  if (cancelWallManipulation) {
+    queueWallManipulation(
+        commands, CreativeEditorWorldLayoutWallManipulationPhase::Cancel,
+        pointerPoint, handleTolerance);
+  } else if (state.wallManipulation.active &&
+             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+    queueWallManipulation(
+        commands, CreativeEditorWorldLayoutWallManipulationPhase::Commit,
+        pointerPoint, handleTolerance);
+  } else if (state.wallManipulation.active &&
+             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+    queueWallManipulation(
+        commands, CreativeEditorWorldLayoutWallManipulationPhase::Update,
+        pointerPoint, handleTolerance);
   }
 
   const bool cancelRoomManipulation =
-      !state.openingManipulation.active && state.roomManipulation.active &&
+      state.roomManipulation.active &&
       (io.AppFocusLost ||
        (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
        ImGui::IsKeyPressed(ImGuiKey_Escape));
   if (cancelRoomManipulation) {
     queueRoomManipulation(
         commands, CreativeEditorWorldLayoutRoomManipulationPhase::Cancel,
-        pointerPoint, roomHandleTolerance);
+        pointerPoint, handleTolerance);
   } else if (state.roomManipulation.active &&
              ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
     queueRoomManipulation(
         commands, CreativeEditorWorldLayoutRoomManipulationPhase::Commit,
-        pointerPoint, roomHandleTolerance);
+        pointerPoint, handleTolerance);
   } else if (state.roomManipulation.active &&
              ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
     queueRoomManipulation(
         commands, CreativeEditorWorldLayoutRoomManipulationPhase::Update,
-        pointerPoint, roomHandleTolerance);
+        pointerPoint, handleTolerance);
+  }
+
+  const bool cancelBoxManipulation =
+      state.boxManipulation.active &&
+      (io.AppFocusLost ||
+       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
+       ImGui::IsKeyPressed(ImGuiKey_Escape));
+  if (cancelBoxManipulation) {
+    queueBoxManipulation(
+        commands, CreativeEditorWorldLayoutBoxManipulationPhase::Cancel,
+        pointerPoint, handleTolerance);
+  } else if (state.boxManipulation.active &&
+             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+    queueBoxManipulation(
+        commands, CreativeEditorWorldLayoutBoxManipulationPhase::Commit,
+        pointerPoint, handleTolerance);
+  } else if (state.boxManipulation.active &&
+             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+    queueBoxManipulation(
+        commands, CreativeEditorWorldLayoutBoxManipulationPhase::Update,
+        pointerPoint, handleTolerance);
   }
 
   const bool cancelGesture =
-      !state.openingManipulation.active && !state.roomManipulation.active &&
+      !state.openingManipulation.active && !state.wallManipulation.active &&
+      !state.roomManipulation.active && !state.boxManipulation.active &&
       state.anchorActive &&
       ((hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
        ImGui::IsKeyPressed(ImGuiKey_Escape));
@@ -734,47 +939,18 @@ void buildCreativeEditorWorldLayoutPanel(
     bool playModeActive, CreativeDesktopCommandFrame& commands) {
   CreativeEditorWorldLayoutState& state = editor.worldLayout;
   if (!desktopUi.showWorldLayout) {
-    if (state.openingManipulation.active) {
-      queueOpeningManipulation(
-          commands,
-          CreativeEditorWorldLayoutOpeningManipulationPhase::Cancel, {},
-          0.25);
-    }
-    if (state.roomManipulation.active) {
-      queueRoomManipulation(
-          commands, CreativeEditorWorldLayoutRoomManipulationPhase::Cancel, {},
-          0.25);
-    }
+    queueLayoutManipulationCancel(state, commands);
     return;
   }
   if (!ImGui::Begin("World Layout", &desktopUi.showWorldLayout,
                     ImGuiWindowFlags_NoCollapse)) {
-    if (state.openingManipulation.active) {
-      queueOpeningManipulation(
-          commands,
-          CreativeEditorWorldLayoutOpeningManipulationPhase::Cancel, {},
-          0.25);
-    }
-    if (state.roomManipulation.active) {
-      queueRoomManipulation(
-          commands, CreativeEditorWorldLayoutRoomManipulationPhase::Cancel, {},
-          0.25);
-    }
+    queueLayoutManipulationCancel(state, commands);
     ImGui::End();
     return;
   }
 
-  if (state.openingManipulation.active &&
-      (playModeActive || editor.assetEdit.active)) {
-    queueOpeningManipulation(
-        commands, CreativeEditorWorldLayoutOpeningManipulationPhase::Cancel, {},
-        0.25);
-  }
-  if (state.roomManipulation.active &&
-      (playModeActive || editor.assetEdit.active)) {
-    queueRoomManipulation(
-        commands, CreativeEditorWorldLayoutRoomManipulationPhase::Cancel, {},
-        0.25);
+  if (playModeActive || editor.assetEdit.active) {
+    queueLayoutManipulationCancel(state, commands);
   }
   ImGui::BeginDisabled(playModeActive || editor.assetEdit.active);
   toolButton(commands, state.tool, CreativeEditorWorldLayoutTool::Select);
@@ -808,6 +984,7 @@ void buildCreativeEditorWorldLayoutPanel(
 
   ImGui::BeginDisabled(playModeActive || editor.assetEdit.active);
   drawSelectedRoomSettings(state, commands);
+  drawCreativeEditorWorldLayoutStructureInspector(state, commands);
   drawSelectedOpeningSettings(state, commands);
   ImGui::EndDisabled();
 

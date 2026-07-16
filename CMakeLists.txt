@@ -306,6 +306,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorInteractionOverlay.cpp
   apps/iggy3d_creative/EditorWorldTargeting.cpp
   apps/iggy3d_creative/EditorWorldLayout.cpp
+  apps/iggy3d_creative/EditorWorldLayoutStructures.cpp
   apps/iggy3d_creative/EditorConnectedFill.cpp
   apps/iggy3d_creative/EditorSurfaceExtrude.cpp
   apps/iggy3d_creative/EditorTerrain.cpp
@@ -349,6 +350,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorDesktopModel.cpp
   apps/iggy3d_creative/EditorDesktopOutliner.cpp
   apps/iggy3d_creative/EditorDesktopInspector.cpp
+  apps/iggy3d_creative/EditorDesktopWorldLayoutInspector.cpp
   apps/iggy3d_creative/EditorDesktopPanels.cpp
   apps/iggy3d_creative/EditorWorldLayoutPanel.cpp)
 
