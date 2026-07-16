@@ -61,6 +61,11 @@ struct CreativeEditorOverlayFrame {
   std::size_t attachmentSocketMarkerEdgeCount = 0;
   std::size_t placementFeedbackEdgeCount = 0;
   std::size_t logicLinkEdgeCount = 0;
+  std::size_t logicLinkShaftCount = 0;
+  std::size_t logicLinkArrowEdgeCount = 0;
+  std::size_t logicLinkEndpointEdgeCount = 0;
+  std::size_t logicLinkLabelGlyphCount = 0;
+  std::size_t invalidLogicLinkCount = 0;
 };
 
 void buildAndAttachCreativeEditorOverlayFrame(

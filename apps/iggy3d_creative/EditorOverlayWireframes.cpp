@@ -13,14 +13,17 @@
 #include "EditorGizmo.hpp"
 #include "EditorGroup.hpp"
 #include "EditorInteraction.hpp"
+#include "EditorLogicLinkOverlay.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/DocumentWireframe.hpp"
 #include "app/iggy3d/creative/render/CreativeOverlayFrame.hpp"
+#include "app/iggy3d/creative/render/CreativeScreenProjection.hpp"
 #include "app/iggy3d/creative/render/WireframeDebugLines.hpp"
 #include "app/iggy3d/creative/tools/AttachmentSnap.hpp"
 #include "projection/debug/DebugProjection.hpp"
+#include "render/debug/DebugHudText.hpp"
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
@@ -51,6 +54,70 @@ void resetCreativeEditorOverlayFrame(CreativeEditorOverlayFrame& output) {
   output.attachmentSocketMarkerEdgeCount = 0;
   output.placementFeedbackEdgeCount = 0;
   output.logicLinkEdgeCount = 0;
+  output.logicLinkShaftCount = 0;
+  output.logicLinkArrowEdgeCount = 0;
+  output.logicLinkEndpointEdgeCount = 0;
+  output.logicLinkLabelGlyphCount = 0;
+  output.invalidLogicLinkCount = 0;
+}
+
+[[nodiscard]] RenderLineColor logicLinkOverlayColor(
+    CreativeLogicLinkOverlayRole role) noexcept {
+  switch (role) {
+    case CreativeLogicLinkOverlayRole::Toggle:
+      return {0.20F, 0.82F, 1.0F, 1.0F};
+    case CreativeLogicLinkOverlayRole::Open:
+      return {0.20F, 1.0F, 0.35F, 1.0F};
+    case CreativeLogicLinkOverlayRole::Close:
+      return {1.0F, 0.64F, 0.18F, 1.0F};
+    case CreativeLogicLinkOverlayRole::Enable:
+      return {0.52F, 0.88F, 1.0F, 1.0F};
+    case CreativeLogicLinkOverlayRole::Disable:
+      return {0.58F, 0.64F, 0.70F, 1.0F};
+    case CreativeLogicLinkOverlayRole::Invalid:
+      return {1.0F, 0.20F, 0.20F, 1.0F};
+  }
+  return {1.0F, 0.20F, 0.20F, 1.0F};
+}
+
+void appendCreativeEditorLogicLinkLabel(
+    const CreativeEditorOverlayFrameRequest& request,
+    const CreativeLogicLinkOverlayPlan& plan,
+    RenderLineColor color,
+    CreativeEditorOverlayFrame& output) {
+  constexpr std::size_t kLabelQuadCapacity = 256U;
+  const RenderContentViewport content = effectiveContentViewport(request.frame);
+  if (content.width == 0U || content.height == 0U) {
+    return;
+  }
+  const cr::CreativeScreenPoint projected =
+      cr::projectCreativeWorldPointToScreen(
+          request.frame.camera.clipFromWorld, plan.labelWorldPosition,
+          content.width, content.height);
+  if (!projected.valid || !projected.insideViewport) {
+    return;
+  }
+  const std::int32_t x =
+      content.x + static_cast<std::int32_t>(projected.x) + 6;
+  const std::int32_t y =
+      content.y + static_cast<std::int32_t>(projected.y) - 6;
+  std::array<DebugHudGlyphQuad, kLabelQuadCapacity> quads{};
+  const DebugHudFixedLayoutResult layout = layoutDebugHudTextAtInto(
+      creativeLogicLinkOverlayLabel(plan.role), x, y, request.drawableWidth,
+      request.drawableHeight, quads);
+  if (layout.capacityExceeded) {
+    return;
+  }
+  for (std::size_t index = 0U; index < layout.quadCount; ++index) {
+    DebugHudGlyphQuad& quad = quads[index];
+    quad.r = color.r;
+    quad.g = color.g;
+    quad.b = color.b;
+    quad.a = color.a;
+  }
+  output.logicLinkLabelGlyphCount += layout.glyphCount;
+  output.glyphs.insert(output.glyphs.end(), quads.begin(),
+                       quads.begin() + layout.quadCount);
 }
 
 void appendCreativeEditorLogicLinks(
@@ -100,21 +167,67 @@ void appendCreativeEditorLogicLinks(
     if (target != nullptr && !target->visible) {
       continue;
     }
-    RenderCreativeWireframeDebugLine line;
-    line.start = visualBoundsCenter(visualBoundsForObject(*source));
-    line.end = target != nullptr
-                   ? visualBoundsCenter(visualBoundsForObject(*target))
-                   : line.start + Vec3{0.0F, 1.0F, 0.0F};
     const bool valid =
+        cr::creativeObjectCanSourceLogicLink(source->kind) &&
         target != nullptr && target->visible &&
         cr::creativeObjectCanTargetLogicLink(target->kind) &&
         cr::creativeLogicLinkActionSupported(target->kind, link.action);
-    line.color = valid ? RenderLineColor{0.45F, 0.55F, 0.60F, 1.0F}
-                       : RenderLineColor{1.0F, 0.20F, 0.20F, 1.0F};
-    line.objectId = source->id;
-    line.thickness = thickness;
-    lines.push_back(line);
-    ++output.logicLinkEdgeCount;
+    const VisualBounds sourceBounds = visualBoundsForObject(*source);
+    CreativeLogicLinkOverlayRequest overlayRequest;
+    overlayRequest.source = {sourceBounds.min, sourceBounds.max, true};
+    overlayRequest.action = link.action;
+    overlayRequest.linkValid = valid;
+    const bool targetIsHovered =
+        connectToolHeld && editor.interaction.target.objectHit &&
+        target != nullptr && editor.interaction.target.objectId == target->id;
+    if (target != nullptr) {
+      const VisualBounds targetBounds = visualBoundsForObject(*target);
+      overlayRequest.target = {targetBounds.min, targetBounds.max, true};
+    } else {
+      overlayRequest.target.available = false;
+    }
+    const CreativeLogicLinkOverlayPlan plan =
+        planCreativeLogicLinkOverlay(overlayRequest);
+    if (!plan.accepted) {
+      continue;
+    }
+    const RenderLineColor color = logicLinkOverlayColor(plan.role);
+    for (std::size_t segmentIndex = 0U;
+         segmentIndex < plan.segmentCount; ++segmentIndex) {
+      RenderCreativeWireframeDebugLine line;
+      line.start = plan.segments[segmentIndex].start;
+      line.end = plan.segments[segmentIndex].end;
+      line.color = color;
+      line.objectId = source->id;
+      line.style = static_cast<std::uint32_t>(plan.role);
+      line.segmentKind = segmentIndex == 0U ? 0U : 1U;
+      line.thickness = segmentIndex == 0U ? thickness : thickness * 0.82F;
+      lines.push_back(line);
+    }
+    output.logicLinkEdgeCount += plan.segmentCount;
+    ++output.logicLinkShaftCount;
+    output.logicLinkArrowEdgeCount += plan.segmentCount - 1U;
+    if (plan.role == CreativeLogicLinkOverlayRole::Invalid) {
+      ++output.invalidLogicLinkCount;
+    }
+
+    if (link.sourceObjectId != selectedSourceId) {
+      continue;
+    }
+    appendCreativeEditorLogicLinkLabel(request, plan, color, output);
+    if (target != nullptr && !targetIsHovered) {
+      const VisualBounds targetBounds = visualBoundsForObject(*target);
+      const std::size_t before = lines.size();
+      appendStandaloneWireframeBoxEdges(
+          lines, targetBounds.min, targetBounds.max, color, thickness * 0.88F);
+      for (std::size_t index = before; index < lines.size(); ++index) {
+        lines[index].objectId = target->id;
+        lines[index].style = static_cast<std::uint32_t>(plan.role);
+      }
+      const std::size_t added = lines.size() - before;
+      output.logicLinkEndpointEdgeCount += added;
+      output.logicLinkEdgeCount += added;
+    }
   }
 
   const cr::CreativeObject* selectedSource =
@@ -133,12 +246,14 @@ void appendCreativeEditorLogicLinks(
     appendStandaloneWireframeBoxEdges(
         lines, bounds.min, bounds.max,
         sourceInvalid ? RenderLineColor{1.0F, 0.20F, 0.20F, 1.0F}
-                      : RenderLineColor{0.45F, 0.55F, 0.60F, 1.0F},
+                      : RenderLineColor{0.20F, 0.82F, 1.0F, 1.0F},
         thickness);
     for (std::size_t index = before; index < lines.size(); ++index) {
       lines[index].objectId = selectedSource->id;
     }
-    output.logicLinkEdgeCount += lines.size() - before;
+    const std::size_t added = lines.size() - before;
+    output.logicLinkEndpointEdgeCount += added;
+    output.logicLinkEdgeCount += added;
   }
 
   if (!connectToolHeld || !editor.interaction.target.objectHit) {
@@ -168,7 +283,9 @@ void appendCreativeEditorLogicLinks(
   for (std::size_t index = before; index < lines.size(); ++index) {
     lines[index].objectId = hovered->id;
   }
-  output.logicLinkEdgeCount += lines.size() - before;
+  const std::size_t added = lines.size() - before;
+  output.logicLinkEndpointEdgeCount += added;
+  output.logicLinkEdgeCount += added;
 }
 
 [[nodiscard]] RenderLineColor attachmentSocketMarkerColor(
@@ -352,7 +469,8 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
   std::vector<RenderCreativeWireframeDebugLine>& combinedWireLines =
       output.combinedWireLines;
   combinedWireLines.reserve(
-      dbg.lines.size() + appState.facade.document().logicLinks().size() + 72U +
+      dbg.lines.size() +
+      appState.facade.document().logicLinks().size() * 15U + 72U +
       kMaxStaticMeshAttachmentSocketCount * 3U +
       editor.interaction.assetScatter.preview.candidateCount * 12U);
   std::size_t& documentWireLineCount = output.documentWireLineCount;

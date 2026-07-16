@@ -1,4 +1,5 @@
 #include "EditorLogicLinks.hpp"
+#include "EditorLogicLinkOverlay.hpp"
 #include "EditorFrame.hpp"
 #include "EditorGizmo.hpp"
 #include "EditorPreviewFrameInternal.hpp"
@@ -23,10 +24,13 @@ bool expect(bool condition, std::string_view message) {
 
 cr::CreativeObjectId create(cr::Facade& facade,
                             cr::CreativeObjectKind kind,
-                            std::string name) {
+                            std::string name,
+                            cr::CreativeVec3 position = {}) {
   cr::CreativeDocumentCreateRequest request;
   request.kind = kind;
   request.name = std::move(name);
+  request.transform.position = position;
+  request.hasTransformOverride = true;
   return facade.createDocumentObject(request).objectId;
 }
 
@@ -171,15 +175,90 @@ bool connectInputMappingMatchesMouseAndControllerLanguage() {
       "left click and X link while right click and Circle clear the source");
 }
 
+bool directionalOverlayPlanClipsBoundsAndHandlesFailures() {
+  app::CreativeLogicLinkOverlayRequest horizontal;
+  horizontal.source = {{-1.0F, -1.0F, -1.0F},
+                       {1.0F, 1.0F, 1.0F}, true};
+  horizontal.target = {{4.0F, -1.0F, -1.0F},
+                       {6.0F, 1.0F, 1.0F}, true};
+  horizontal.action = cr::CreativeLogicLinkAction::Open;
+  horizontal.linkValid = true;
+  const app::CreativeLogicLinkOverlayPlan planned =
+      app::planCreativeLogicLinkOverlay(horizontal);
+
+  app::CreativeLogicLinkOverlayRequest vertical = horizontal;
+  vertical.target = {{-1.0F, 4.0F, -1.0F},
+                     {1.0F, 6.0F, 1.0F}, true};
+  vertical.action = cr::CreativeLogicLinkAction::Close;
+  const app::CreativeLogicLinkOverlayPlan verticalPlan =
+      app::planCreativeLogicLinkOverlay(vertical);
+
+  app::CreativeLogicLinkOverlayRequest missing = horizontal;
+  missing.target.available = false;
+  const app::CreativeLogicLinkOverlayPlan missingPlan =
+      app::planCreativeLogicLinkOverlay(missing);
+
+  app::CreativeLogicLinkOverlayRequest invalid = horizontal;
+  invalid.source.min = {2.0F, 0.0F, 0.0F};
+  invalid.source.max = {1.0F, 1.0F, 1.0F};
+  const app::CreativeLogicLinkOverlayPlan rejected =
+      app::planCreativeLogicLinkOverlay(invalid);
+
+  app::CreativeLogicLinkOverlayRequest invalidAction = horizontal;
+  invalidAction.action = cr::CreativeLogicLinkAction::Count;
+  const app::CreativeLogicLinkOverlayPlan invalidActionPlan =
+      app::planCreativeLogicLinkOverlay(invalidAction);
+
+  return expect(planned.accepted && planned.segmentCount == 3U &&
+                    planned.status ==
+                        app::CreativeLogicLinkOverlayStatus::Planned &&
+                    planned.role ==
+                        app::CreativeLogicLinkOverlayRole::Open,
+                "valid link produces one shaft and two arrow edges") &&
+         expect(iggy3d::nearlyEqual(planned.sourceAnchor,
+                                    {1.0F, 0.0F, 0.0F}) &&
+                    iggy3d::nearlyEqual(planned.targetAnchor,
+                                        {4.0F, 0.0F, 0.0F}) &&
+                    app::creativeLogicLinkOverlayLabel(planned.role) ==
+                        "OPEN",
+                "shaft clips to both object surfaces and exposes action text") &&
+         expect(verticalPlan.accepted &&
+                    iggy3d::isFinite(verticalPlan.segments[1].end) &&
+                    iggy3d::isFinite(verticalPlan.segments[2].end) &&
+                    !iggy3d::nearlyEqual(verticalPlan.segments[1].end,
+                                         verticalPlan.segments[2].end),
+                "vertical links choose a stable non-degenerate arrow plane") &&
+         expect(missingPlan.accepted &&
+                    missingPlan.status ==
+                        app::CreativeLogicLinkOverlayStatus::MissingTarget &&
+                    missingPlan.role ==
+                        app::CreativeLogicLinkOverlayRole::Invalid &&
+                    app::creativeLogicLinkOverlayLabel(missingPlan.role) ==
+                        "INVALID",
+                "missing targets remain visible as an invalid directional stub") &&
+         expect(!rejected.accepted && rejected.segmentCount == 0U &&
+                    rejected.status ==
+                        app::CreativeLogicLinkOverlayStatus::InvalidSourceBounds,
+                "invalid source bounds fail closed without geometry") &&
+         expect(invalidActionPlan.accepted &&
+                    invalidActionPlan.role ==
+                        app::CreativeLogicLinkOverlayRole::Invalid &&
+                    invalidActionPlan.status ==
+                        app::CreativeLogicLinkOverlayStatus::InvalidLink,
+                "invalid actions remain visible but cannot claim a valid style");
+}
+
 bool overlayShowsLinksOnlyInConnectMode() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document = cr::CreativeDocument::create("Overlay");
   static_cast<void>(document.assignId(702U));
   static_cast<void>(appState.facade.installDocument(std::move(document)));
   const cr::CreativeObjectId source =
-      create(appState.facade, cr::CreativeObjectKind::Switch, "Switch");
+      create(appState.facade, cr::CreativeObjectKind::Switch, "Switch",
+             {-0.60F, 0.0F, 0.0F});
   const cr::CreativeObjectId target =
-      create(appState.facade, cr::CreativeObjectKind::Door, "Door");
+      create(appState.facade, cr::CreativeObjectKind::Door, "Door",
+             {0.60F, 0.0F, 0.0F});
   static_cast<void>(appState.facade.setLogicLink(
       {source, target, cr::CreativeLogicLinkAction::Toggle}));
 
@@ -192,10 +271,14 @@ bool overlayShowsLinksOnlyInConnectMode() {
   app::CreativeEditorSelectionFrame selection;
   app::CreativeEditorGizmoFrame gizmo;
   iggy3d::FrameInput frame;
+  frame.viewport.width = 800U;
+  frame.viewport.height = 600U;
   cr::CreativeSpatialProjectionRequest projection;
   app::CreativeEditorOverlayFrame visible;
   app::CreativeEditorOverlayFrameRequest request{
       appState, editor, selection, gizmo, frame, projection};
+  request.drawableWidth = 800U;
+  request.drawableHeight = 600U;
   static_cast<void>(app::buildCreativeEditorWorldWireframes(request, visible));
   editor.interaction.hotbar.entries[0].kind =
       cr::CreativeHeldItemKind::Material;
@@ -205,12 +288,25 @@ bool overlayShowsLinksOnlyInConnectMode() {
   app::CreativeEditorOverlayFrame hidden;
   request.captureMode = true;
   static_cast<void>(app::buildCreativeEditorWorldWireframes(request, hidden));
-  return expect(visible.logicLinkEdgeCount == 25U,
-                "connect overlay draws one edge and two endpoint boxes") &&
-         expect(inspected.logicLinkEdgeCount == 13U &&
-                    inspected.combinedWireLines.back().color.g < 0.7F,
-                "inspected circuit stays visible as a grey idle edge and box") &&
-         expect(hidden.logicLinkEdgeCount == 0U,
+  return expect(visible.logicLinkEdgeCount == 27U &&
+                    visible.logicLinkShaftCount == 1U &&
+                    visible.logicLinkArrowEdgeCount == 2U &&
+                    visible.logicLinkEndpointEdgeCount == 24U &&
+                    visible.logicLinkLabelGlyphCount == 6U,
+                "connect overlay draws an arrow, action label, source, and "
+                "hover boxes") &&
+         expect(inspected.logicLinkEdgeCount == 27U &&
+                    inspected.logicLinkShaftCount == 1U &&
+                    inspected.logicLinkArrowEdgeCount == 2U &&
+                    inspected.logicLinkEndpointEdgeCount == 24U &&
+                    inspected.logicLinkLabelGlyphCount == 6U &&
+                    inspected.invalidLogicLinkCount == 0U &&
+                    inspected.combinedWireLines[
+                        inspected.documentWireLineCount]
+                            .color.b == 1.0F,
+                "selected circuit stays visible with directional Toggle styling") &&
+         expect(hidden.logicLinkEdgeCount == 0U &&
+                    hidden.logicLinkLabelGlyphCount == 0U,
                 "capture mode hides connect overlays");
 }
 
@@ -221,6 +317,7 @@ int main() {
                   actionCycleAndDocumentSyncAreBounded() &&
                   explicitInspectorKernelsShareHistoryAndReceipts() &&
                   connectInputMappingMatchesMouseAndControllerLanguage() &&
+                  directionalOverlayPlanClipsBoundsAndHandlesFailures() &&
                   overlayShowsLinksOnlyInConnectMode();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
