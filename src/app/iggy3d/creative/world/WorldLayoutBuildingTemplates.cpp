@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -92,6 +93,9 @@ CreativeWorldLayout isolateBuilding(const CreativeWorldLayout& source,
 
   CreativeWorldLayoutBuilding building = source.buildings[buildingIndex];
   building.name = std::move(label);
+  std::erase_if(building.tags, [](const std::string& tag) {
+    return isCreativeWorldLayoutBuildingTemplateProvenanceTag(tag);
+  });
   isolated.buildings.push_back(std::move(building));
 
   std::vector<std::size_t> roomMap(source.rooms.size(),
@@ -176,11 +180,20 @@ bool validCreativeWorldLayoutBuildingTemplate(
       !value.normalizedLayout.terrainProfiles.empty() ||
       !value.normalizedLayout.terrainPaths.empty() ||
       !value.normalizedLayout.terrainPathPoints.empty() ||
+      !value.sourceFingerprint.valid ||
+      value.orientation >=
+          CreativeWorldLayoutBuildingTemplateOrientation::Count ||
       !validCreativeWorldLayoutBuildingOwnership(value.normalizedLayout)) {
     return false;
   }
   CreativeWorldLayoutBuildingBounds measured;
-  return measureCreativeWorldLayoutBuildingBounds(value.normalizedLayout, 0U,
+  const CreativeWorldLayoutBuildingTemplateFingerprint currentFingerprint =
+      fingerprintCreativeWorldLayoutBuilding(value.normalizedLayout, 0U);
+  return currentFingerprint.valid &&
+         (value.orientation !=
+              CreativeWorldLayoutBuildingTemplateOrientation::Identity ||
+          currentFingerprint == value.sourceFingerprint) &&
+         measureCreativeWorldLayoutBuildingBounds(value.normalizedLayout, 0U,
                                                   measured) &&
          measured.minimum == CreativeTerrainCoord2{} &&
          sameBounds(value.bounds, measured) &&
@@ -244,6 +257,10 @@ captureCreativeWorldLayoutBuildingTemplate(
   result.value.templateId = request.templateId;
   result.value.label = label;
   result.value.normalizedLayout = std::move(normalized.edited);
+  result.value.orientation =
+      CreativeWorldLayoutBuildingTemplateOrientation::Identity;
+  result.value.sourceFingerprint = fingerprintCreativeWorldLayoutBuilding(
+      result.value.normalizedLayout, 0U);
   if (!measureCreativeWorldLayoutBuildingBounds(result.value.normalizedLayout,
                                                 0U, result.value.bounds) ||
       !validCreativeWorldLayoutBuildingTemplate(result.value)) {
@@ -271,6 +288,10 @@ loadCreativeWorldLayoutBuildingTemplate(CreativeWorldLayout normalizedLayout) {
   result.value.templateId = normalizedLayout.stableKey;
   result.value.label = normalizedLayout.buildings[0].name;
   result.value.normalizedLayout = std::move(normalizedLayout);
+  result.value.orientation =
+      CreativeWorldLayoutBuildingTemplateOrientation::Identity;
+  result.value.sourceFingerprint = fingerprintCreativeWorldLayoutBuilding(
+      result.value.normalizedLayout, 0U);
   if (!measureCreativeWorldLayoutBuildingBounds(result.value.normalizedLayout,
                                                 0U, result.value.bounds) ||
       !validCreativeWorldLayoutBuildingTemplate(result.value)) {
@@ -314,6 +335,9 @@ transformCreativeWorldLayoutBuildingTemplate(
   result.value = source;
   result.value.normalizedLayout = std::move(transformed.transformed);
   result.value.bounds = transformed.transformedBounds;
+  result.value.orientation =
+      composeCreativeWorldLayoutBuildingTemplateOrientation(source.orientation,
+                                                            operation);
   if (!validCreativeWorldLayoutBuildingTemplate(result.value)) {
     setTemplateFailure(
         result, CreativeWorldLayoutBuildingTemplateStatus::InvalidTemplate,
@@ -419,6 +443,27 @@ CreativeWorldLayoutBuildingEditResult stampCreativeWorldLayoutBuildingTemplate(
         opening.kind == CreativeBuildingOpeningKind::Door ? "door" : "window");
     opening.name = copiedName(opening.name, request.appendCopySuffix);
     edited.openings.push_back(std::move(opening));
+  }
+
+  if (request.linkTemplateInstance) {
+    const CreativeWorldLayoutBuildingTemplateFingerprint baseline =
+        fingerprintCreativeWorldLayoutBuilding(source.normalizedLayout, 0U);
+    CreativeWorldLayoutBuildingTemplateInstanceProvenance provenance;
+    provenance.present = true;
+    provenance.valid = baseline.valid && source.sourceFingerprint.valid;
+    provenance.templateId = source.templateId;
+    provenance.sourceFingerprint = source.sourceFingerprint.value;
+    provenance.instanceBaselineFingerprint = baseline.value;
+    provenance.orientation = source.orientation;
+    provenance.anchor = request.anchor;
+    if (!provenance.valid ||
+        !setCreativeWorldLayoutBuildingTemplateInstanceProvenance(
+            edited, newBuildingIndex, provenance)) {
+      setEditFailure(
+          result, CreativeWorldLayoutBuildingEditStatus::InvalidRequest,
+          "creative_world_layout_building_template_stamp_provenance_invalid");
+      return result;
+    }
   }
 
   result.accepted = true;

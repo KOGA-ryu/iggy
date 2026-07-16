@@ -481,6 +481,12 @@ CreativeWorldLayoutBuildingTransformResult transformCreativeWorldLayoutBuilding(
     return result;
   }
 
+  CreativeWorldLayoutBuildingTemplateInstanceProvenance provenance =
+      creativeWorldLayoutBuildingTemplateInstanceProvenance(
+          source, request.buildingIndex);
+  const CreativeWorldLayoutBuildingTemplateFingerprint sourceFingerprint =
+      fingerprintCreativeWorldLayoutBuilding(source, request.buildingIndex);
+
   result.transformed = source;
   CreativeWorldLayoutBuildingTransformStatus failureStatus =
       CreativeWorldLayoutBuildingTransformStatus::InvalidGeometry;
@@ -502,6 +508,34 @@ CreativeWorldLayoutBuildingTransformResult transformCreativeWorldLayoutBuilding(
                CreativeWorldLayoutBuildingTransformStatus::InvalidGeometry,
                "creative_world_layout_building_transform_result_invalid");
     return result;
+  }
+  if (provenance.valid) {
+    provenance.orientation =
+        composeCreativeWorldLayoutBuildingTemplateOrientation(
+            provenance.orientation, request.operation);
+    provenance.anchor = result.transformedBounds.minimum;
+    const CreativeWorldLayoutBuildingTemplateFingerprint transformedFingerprint =
+        fingerprintCreativeWorldLayoutBuilding(result.transformed,
+                                               request.buildingIndex);
+    if (provenance.orientation >=
+            CreativeWorldLayoutBuildingTemplateOrientation::Count ||
+        !transformedFingerprint.valid) {
+      setFailure(result,
+                 CreativeWorldLayoutBuildingTransformStatus::InvalidGeometry,
+                 "creative_world_layout_building_transform_provenance_invalid");
+      return result;
+    }
+    if (sourceFingerprint.valid &&
+        sourceFingerprint.value == provenance.instanceBaselineFingerprint) {
+      provenance.instanceBaselineFingerprint = transformedFingerprint.value;
+    }
+    if (!setCreativeWorldLayoutBuildingTemplateInstanceProvenance(
+            result.transformed, request.buildingIndex, provenance)) {
+      setFailure(result,
+                 CreativeWorldLayoutBuildingTransformStatus::InvalidGeometry,
+                 "creative_world_layout_building_transform_provenance_invalid");
+      return result;
+    }
   }
   result.accepted = true;
   result.status = CreativeWorldLayoutBuildingTransformStatus::Ready;

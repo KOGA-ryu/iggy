@@ -304,6 +304,19 @@ CreativeWorldLayoutBuildingEditResult moveCreativeWorldLayoutBuilding(
                "creative_world_layout_building_move_coordinate_overflow");
     return result;
   }
+  CreativeWorldLayoutBuildingTemplateInstanceProvenance provenance =
+      creativeWorldLayoutBuildingTemplateInstanceProvenance(
+          source, request.buildingIndex);
+  if (provenance.valid &&
+      (!offsetPoint(provenance.anchor, request.deltaXCells,
+                    request.deltaZCells) ||
+       !setCreativeWorldLayoutBuildingTemplateInstanceProvenance(
+           edited, request.buildingIndex, provenance))) {
+    setFailure(result,
+               CreativeWorldLayoutBuildingEditStatus::CoordinateOverflow,
+               "creative_world_layout_building_move_provenance_invalid");
+    return result;
+  }
   setReady(result, true, std::move(edited),
            "creative_world_layout_building_move_ready");
   return result;
@@ -360,9 +373,30 @@ CreativeWorldLayoutBuildingEditResult duplicateCreativeWorldLayoutBuilding(
       source, captured.value,
       {{static_cast<std::int32_t>(anchorX), static_cast<std::int32_t>(anchorZ)},
        request.nextStableOrdinal,
-       true});
+       true,
+       false});
   result.sourceBuildingIndex = request.buildingIndex;
   if (result.accepted) {
+    CreativeWorldLayoutBuildingTemplateInstanceProvenance provenance =
+        creativeWorldLayoutBuildingTemplateInstanceProvenance(
+            source, request.buildingIndex);
+    if (provenance.valid) {
+      CreativeWorldLayoutBuildingBounds duplicateBounds;
+      if (!measureCreativeWorldLayoutBuildingBounds(
+              result.edited, result.resultBuildingIndex, duplicateBounds)) {
+        setFailure(result, CreativeWorldLayoutBuildingEditStatus::InvalidRequest,
+                   "creative_world_layout_building_duplicate_result_invalid");
+        return result;
+      }
+      provenance.anchor = duplicateBounds.minimum;
+      if (!setCreativeWorldLayoutBuildingTemplateInstanceProvenance(
+              result.edited, result.resultBuildingIndex, provenance)) {
+        setFailure(
+            result, CreativeWorldLayoutBuildingEditStatus::InvalidRequest,
+            "creative_world_layout_building_duplicate_provenance_invalid");
+        return result;
+      }
+    }
     result.reasonCode = "creative_world_layout_building_duplicate_ready";
   }
   return result;

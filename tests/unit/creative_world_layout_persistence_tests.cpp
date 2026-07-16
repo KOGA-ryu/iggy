@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/world/WorldService.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
 
 #include <cstdlib>
 #include <filesystem>
@@ -43,6 +44,12 @@ cr::CreativeWorldLayout layout() {
   floor.name = "Floor";
   floor.footprint = {{0, 0}, {8, 6}};
   result.boxes.push_back(floor);
+  static_cast<void>(
+      cr::setCreativeWorldLayoutBuildingTemplateInstanceProvenance(
+          result, 0U,
+          {true, true, "house_template", 0x1234U, 0x5678U,
+           cr::CreativeWorldLayoutBuildingTemplateOrientation::Rotate180,
+           {12, -4}}));
   return result;
 }
 
@@ -72,6 +79,9 @@ bool layoutTravelsInsideTheAtomicSaveEnvelope() {
       cr::encodeCreativeWorldLayout(source);
   const cr::CreativeWorldLayoutEncodeResult openedBytes =
       cr::encodeCreativeWorldLayout(opened.worldLayout);
+  const auto provenance =
+      cr::creativeWorldLayoutBuildingTemplateInstanceProvenance(
+          opened.worldLayout, 0U);
 
   const bool ok =
       expect(saved.accepted && saved.saved && saved.worldLayoutPresent,
@@ -85,7 +95,15 @@ bool layoutTravelsInsideTheAtomicSaveEnvelope() {
              "world open restores the layout source") &&
       expect(sourceBytes.accepted && openedBytes.accepted &&
                  sourceBytes.encodedText == openedBytes.encodedText,
-             "restored layout source is byte-equivalent");
+             "restored layout source is byte-equivalent") &&
+      expect(provenance.valid && provenance.templateId == "house_template" &&
+                 provenance.sourceFingerprint == 0x1234U &&
+                 provenance.instanceBaselineFingerprint == 0x5678U &&
+                 provenance.orientation ==
+                     cr::CreativeWorldLayoutBuildingTemplateOrientation::
+                         Rotate180 &&
+                 provenance.anchor == cr::CreativeTerrainCoord2{12, -4},
+             "building template provenance travels inside the world save");
   std::filesystem::remove_all(root);
   return ok;
 }

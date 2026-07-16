@@ -589,6 +589,157 @@ bool buildingTemplatesNormalizeTransformPersistAndStamp() {
                 "building template cannot absorb unowned terrain");
 }
 
+bool buildingTemplateSyncIsSafeAtomicAndPersistent() {
+  const cr::CreativeWorldLayoutBuildingTemplateResult captured =
+      cr::captureCreativeWorldLayoutBuildingTemplate(
+          transformableBuildingLayout(), {0U, "sync_house", "Sync House"});
+  if (!captured.accepted) {
+    return expect(false, "sync template capture accepted");
+  }
+  cr::CreativeWorldLayout destination;
+  destination.stableKey = "sync_destination";
+  const cr::CreativeWorldLayoutBuildingEditResult first =
+      cr::stampCreativeWorldLayoutBuildingTemplate(
+          destination, captured.value, {{10, 20}, 100U, false});
+  const cr::CreativeWorldLayoutBuildingTemplateResult rotated =
+      cr::transformCreativeWorldLayoutBuildingTemplate(
+          captured.value,
+          cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90);
+  const cr::CreativeWorldLayoutBuildingEditResult second =
+      cr::stampCreativeWorldLayoutBuildingTemplate(
+          first.edited, rotated.value,
+          {{40, 50}, first.nextStableOrdinal, false});
+  const cr::CreativeWorldLayoutBuildingEditResult moved =
+      cr::moveCreativeWorldLayoutBuilding(second.edited, {1U, 3, -2});
+  const cr::CreativeWorldLayoutBuildingTransformResult mirrored =
+      cr::transformCreativeWorldLayoutBuilding(
+          moved.edited,
+          {1U, cr::CreativeWorldLayoutBuildingTransformOperation::MirrorX});
+  if (!first.accepted || !rotated.accepted || !second.accepted ||
+      !moved.accepted || !mirrored.accepted) {
+    return expect(false, "linked instance setup accepted");
+  }
+
+  cr::CreativeWorldLayout edited = mirrored.transformed;
+  const auto currentAfterPlacement =
+      cr::inspectCreativeWorldLayoutBuildingTemplateSync(
+          edited, 1U, &captured.value);
+  const auto movedProvenance =
+      cr::creativeWorldLayoutBuildingTemplateInstanceProvenance(edited, 1U);
+  const bool rigidPlacementRemainsCurrent =
+      currentAfterPlacement.accepted &&
+      currentAfterPlacement.state ==
+          cr::CreativeWorldLayoutBuildingTemplateSyncState::Current &&
+      movedProvenance.anchor == cr::CreativeTerrainCoord2{43, 48} &&
+      movedProvenance.orientation ==
+          cr::CreativeWorldLayoutBuildingTemplateOrientation::MirrorDiagonal;
+
+  const auto firstRoom = std::find_if(
+      edited.rooms.begin(), edited.rooms.end(),
+      [](const cr::CreativeWorldLayoutRoom& room) {
+        return room.buildingIndex == 0U;
+      });
+  firstRoom->wallHeightCells = 9U;
+
+  cr::CreativeWorldLayout updatedSource = captured.value.normalizedLayout;
+  updatedSource.rooms[0].wallHeightCells += 2U;
+  const cr::CreativeWorldLayoutBuildingTemplateResult updated =
+      cr::loadCreativeWorldLayoutBuildingTemplate(std::move(updatedSource));
+  if (!updated.accepted) {
+    return expect(false, "updated sync template accepted");
+  }
+  const auto conflict = cr::inspectCreativeWorldLayoutBuildingTemplateSync(
+      edited, 0U, &updated.value);
+  const auto sourceChanged =
+      cr::inspectCreativeWorldLayoutBuildingTemplateSync(edited, 1U,
+                                                         &updated.value);
+  const auto sourceMissing =
+      cr::inspectCreativeWorldLayoutBuildingTemplateSync(edited, 1U, nullptr);
+
+  const cr::CreativeWorldLayoutBuildingTemplateRefreshResult safe =
+      cr::refreshCreativeWorldLayoutBuildingTemplateInstances(
+          edited,
+          {&updated.value,
+           cr::CreativeWorldLayoutBuildingTemplateRefreshMode::SafeInstances,
+           cr::kInvalidCreativeWorldLayoutIndex, second.nextStableOrdinal});
+  const auto firstAfterSafe =
+      safe.accepted
+          ? cr::inspectCreativeWorldLayoutBuildingTemplateSync(
+                safe.edited, 0U, &updated.value)
+          : cr::CreativeWorldLayoutBuildingTemplateSyncReceipt{};
+  const auto secondAfterSafe =
+      safe.accepted
+          ? cr::inspectCreativeWorldLayoutBuildingTemplateSync(
+                safe.edited, 1U, &updated.value)
+          : cr::CreativeWorldLayoutBuildingTemplateSyncReceipt{};
+  const auto provenanceAfterSafe =
+      safe.accepted
+          ? cr::creativeWorldLayoutBuildingTemplateInstanceProvenance(
+                safe.edited, 1U)
+          : cr::CreativeWorldLayoutBuildingTemplateInstanceProvenance{};
+
+  const cr::CreativeWorldLayoutBuildingTemplateRefreshResult forced =
+      safe.accepted
+          ? cr::refreshCreativeWorldLayoutBuildingTemplateInstances(
+                safe.edited,
+                {&updated.value,
+                 cr::CreativeWorldLayoutBuildingTemplateRefreshMode::ForceAll,
+                 cr::kInvalidCreativeWorldLayoutIndex,
+                 safe.nextStableOrdinal})
+          : cr::CreativeWorldLayoutBuildingTemplateRefreshResult{};
+  const auto firstAfterForce =
+      forced.accepted
+          ? cr::inspectCreativeWorldLayoutBuildingTemplateSync(
+                forced.edited, 0U, &updated.value)
+          : cr::CreativeWorldLayoutBuildingTemplateSyncReceipt{};
+
+  const cr::CreativeWorldLayoutEncodeResult encoded =
+      forced.accepted ? cr::encodeCreativeWorldLayout(forced.edited)
+                      : cr::CreativeWorldLayoutEncodeResult{};
+  const cr::CreativeWorldLayoutDecodeResult decoded =
+      encoded.accepted ? cr::decodeCreativeWorldLayout(encoded.encodedText)
+                       : cr::CreativeWorldLayoutDecodeResult{};
+  const auto persistedSync =
+      decoded.accepted
+          ? cr::inspectCreativeWorldLayoutBuildingTemplateSync(
+                decoded.layout, 1U, &updated.value)
+          : cr::CreativeWorldLayoutBuildingTemplateSyncReceipt{};
+
+  return expect(rigidPlacementRemainsCurrent,
+                "instance move and orientation remain placement provenance") &&
+         expect(conflict.state ==
+                        cr::CreativeWorldLayoutBuildingTemplateSyncState::
+                            Conflict &&
+                    sourceChanged.state ==
+                        cr::CreativeWorldLayoutBuildingTemplateSyncState::
+                            SourceChanged &&
+                    sourceMissing.state ==
+                        cr::CreativeWorldLayoutBuildingTemplateSyncState::
+                            SourceMissing,
+                "sync separates conflicts, source changes, and missing sources") &&
+         expect(safe.accepted && safe.refreshedInstanceCount == 1U &&
+                    firstAfterSafe.state ==
+                        cr::CreativeWorldLayoutBuildingTemplateSyncState::
+                            Conflict &&
+                    secondAfterSafe.state ==
+                        cr::CreativeWorldLayoutBuildingTemplateSyncState::
+                            Current &&
+                    provenanceAfterSafe.anchor ==
+                        cr::CreativeTerrainCoord2{43, 48} &&
+                    provenanceAfterSafe.orientation ==
+                        cr::CreativeWorldLayoutBuildingTemplateOrientation::
+                            MirrorDiagonal,
+                "safe refresh updates only untouched instances at their pose") &&
+         expect(forced.accepted && forced.refreshedInstanceCount == 1U &&
+                    firstAfterForce.state ==
+                        cr::CreativeWorldLayoutBuildingTemplateSyncState::Current,
+                "force refresh explicitly replaces the remaining conflict") &&
+         expect(encoded.accepted && decoded.accepted &&
+                    persistedSync.state ==
+                        cr::CreativeWorldLayoutBuildingTemplateSyncState::Current,
+                "instance provenance survives the existing layout codec");
+}
+
 bool twoDimensionalBuildingCompilesToExactThreeDimensionalOutput() {
   const cr::CreativeDocument document = makeDocument(201U);
   const cr::CreativeWorldLayout layout = smallHouseLayout();
@@ -808,6 +959,7 @@ int main() {
       buildingTransformsRoundTripAndRejectOverflow() &&
       buildingEditKernelsAreAtomicAndRemapOwnership() &&
       buildingTemplatesNormalizeTransformPersistAndStamp() &&
+      buildingTemplateSyncIsSafeAtomicAndPersistent() &&
       invalidAndStaleSourcesFailClosed();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

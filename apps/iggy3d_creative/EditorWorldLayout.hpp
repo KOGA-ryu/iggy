@@ -524,6 +524,19 @@ captureCreativeEditorWorldLayoutBuildingTemplate(
     CreativeEditorWorldLayoutState& state,
     std::size_t buildingIndex,
     std::string label = {});
+[[nodiscard]] cr::CreativeWorldLayoutBuildingTemplateSyncReceipt
+inspectCreativeEditorWorldLayoutBuildingTemplateSync(
+    const CreativeEditorWorldLayoutState& state,
+    std::size_t buildingIndex);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+updateCreativeEditorWorldLayoutBuildingTemplateFromInstance(
+    CreativeEditorWorldLayoutState& state,
+    std::size_t buildingIndex);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+refreshCreativeEditorWorldLayoutBuildingTemplateInstances(
+    CreativeEditorWorldLayoutState& state,
+    std::size_t buildingIndex,
+    cr::CreativeWorldLayoutBuildingTemplateRefreshMode mode);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 selectCreativeEditorWorldLayoutBuildingTemplate(
     CreativeEditorWorldLayoutState& state,

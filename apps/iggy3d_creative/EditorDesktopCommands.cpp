@@ -809,6 +809,50 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutUpdateBuildingTemplate: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutBuildingTemplateSyncPayload>(
+              command);
+      if (payload == nullptr) {
+        result.message = "layout template update: payload mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          updateCreativeEditorWorldLayoutBuildingTemplateFromInstance(
+              editor.worldLayout, payload->buildingIndex);
+      result.accepted = receipt.accepted;
+      result.changed =
+          receipt.accepted &&
+          receipt.reasonCode !=
+              "creative_editor_world_layout_building_template_update_no_change";
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::
+        WorldLayoutRefreshBuildingTemplateInstances: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutBuildingTemplateSyncPayload>(
+              command);
+      if (payload == nullptr) {
+        result.message = "layout template refresh: payload mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          refreshCreativeEditorWorldLayoutBuildingTemplateInstances(
+              editor.worldLayout, payload->buildingIndex, payload->mode);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutSelectBuildingTemplate: {
       const auto* payload =
           payloadAs<CreativeDesktopWorldLayoutBuildingTemplateSelectionPayload>(

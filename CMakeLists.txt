@@ -127,6 +127,8 @@ target_sources(iggy3d
     src/app/iggy3d/creative/world/WorldLayoutRooms.cpp
     src/app/iggy3d/creative/world/WorldLayoutBuildingOps.cpp
     src/app/iggy3d/creative/world/WorldLayoutBuildingTemplates.cpp
+    src/app/iggy3d/creative/world/WorldLayoutBuildingTemplateSync.cpp
+    src/app/iggy3d/creative/world/WorldLayoutBuildingTemplateRefresh.cpp
     src/app/iggy3d/creative/world/WorldLayoutTransform.cpp
     src/app/iggy3d/creative/world/WorldLayoutApply.cpp
     src/app/iggy3d/creative/world/WorldLayoutCodec.cpp

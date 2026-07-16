@@ -1030,6 +1030,156 @@ bool buildingTemplatesPersistPreviewAndStampOneRevision() {
                 "building template library survives reset and disk reload");
 }
 
+bool buildingTemplateUpdateAndRefreshLifecycleIsExplicit() {
+  const std::filesystem::path saveRoot =
+      std::filesystem::temp_directory_path() /
+      "iggy3d_world_layout_building_template_sync_tests";
+  std::error_code error;
+  std::filesystem::remove_all(saveRoot, error);
+
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "template_sync_source");
+  const auto loaded =
+      app::loadCreativeEditorWorldLayoutBuildingTemplateLibrary(
+          state.buildingTemplates, saveRoot);
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Room));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {0, 0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {6, 4}));
+  static_cast<void>(app::selectCreativeEditorWorldLayoutBuilding(state, 0U));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Select));
+  const auto captured = app::captureCreativeEditorWorldLayoutBuildingTemplate(
+      state, 0U, "Linked House");
+
+  const auto stampAt = [&](app::CreativeEditorWorldLayoutPoint point) {
+    const auto began =
+        app::applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
+            state,
+            app::CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::
+                Begin,
+            point);
+    const auto committed =
+        app::applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
+            state,
+            app::CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::
+                Commit);
+    return began.accepted && committed.accepted && committed.changed;
+  };
+  const bool twoInstancesStamped = stampAt({10, 0}) && stampAt({20, 0});
+  if (!loaded.accepted || !captured.accepted || !twoInstancesStamped) {
+    std::filesystem::remove_all(saveRoot, error);
+    return expect(false, "linked editor instance setup accepted");
+  }
+
+  const auto roomIndexForBuilding = [&](std::size_t buildingIndex) {
+    for (std::size_t index = 0U; index < state.source.rooms.size(); ++index) {
+      if (state.source.rooms[index].buildingIndex == buildingIndex) {
+        return index;
+      }
+    }
+    return cr::kInvalidCreativeWorldLayoutIndex;
+  };
+
+  const std::size_t firstRoomIndex = roomIndexForBuilding(1U);
+  const cr::CreativeWorldLayoutRoom& firstRoom =
+      state.source.rooms[firstRoomIndex];
+  app::CreativeEditorWorldLayoutRoomSettings firstSettings{
+      firstRoom.footprint, firstRoom.baseLayer, firstRoom.wallHeightCells,
+      firstRoom.wallThicknessCells, firstRoom.floorThicknessCells};
+  firstSettings.wallHeightCells += 2U;
+  static_cast<void>(app::setCreativeEditorWorldLayoutRoomSettings(
+      state, firstRoomIndex, firstSettings));
+  const auto localBeforeUpdate =
+      app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(state, 1U);
+  const std::uint64_t revisionBeforeUpdate = state.revision;
+  const auto updated =
+      app::updateCreativeEditorWorldLayoutBuildingTemplateFromInstance(state,
+                                                                      1U);
+  const auto firstAfterUpdate =
+      app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(state, 1U);
+  const auto secondAfterUpdate =
+      app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(state, 2U);
+
+  const std::uint64_t revisionBeforeSafe = state.revision;
+  const auto safe =
+      app::refreshCreativeEditorWorldLayoutBuildingTemplateInstances(
+          state, 1U,
+          cr::CreativeWorldLayoutBuildingTemplateRefreshMode::SafeInstances);
+  const std::uint64_t revisionAfterSafe = state.revision;
+  const auto firstAfterSafe =
+      app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(state, 1U);
+  const auto secondAfterSafe =
+      app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(state, 2U);
+
+  const std::size_t secondRoomIndex = roomIndexForBuilding(2U);
+  const cr::CreativeWorldLayoutRoom& secondRoom =
+      state.source.rooms[secondRoomIndex];
+  app::CreativeEditorWorldLayoutRoomSettings secondSettings{
+      secondRoom.footprint, secondRoom.baseLayer, secondRoom.wallHeightCells,
+      secondRoom.wallThicknessCells, secondRoom.floorThicknessCells};
+  secondSettings.wallHeightCells += 3U;
+  static_cast<void>(app::setCreativeEditorWorldLayoutRoomSettings(
+      state, secondRoomIndex, secondSettings));
+  const auto secondLocal =
+      app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(state, 2U);
+  const std::uint64_t revisionBeforeSkippedSafe = state.revision;
+  const auto skippedSafe =
+      app::refreshCreativeEditorWorldLayoutBuildingTemplateInstances(
+          state, 1U,
+          cr::CreativeWorldLayoutBuildingTemplateRefreshMode::SafeInstances);
+  const std::uint64_t revisionBeforeForce = state.revision;
+  const auto forced =
+      app::refreshCreativeEditorWorldLayoutBuildingTemplateInstances(
+          state, 1U,
+          cr::CreativeWorldLayoutBuildingTemplateRefreshMode::ForceAll);
+  const auto secondAfterForce =
+      app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(state, 2U);
+
+  app::CreativeEditorWorldLayoutBuildingTemplateLibrary reloadedLibrary;
+  const auto reloaded =
+      app::loadCreativeEditorWorldLayoutBuildingTemplateLibrary(reloadedLibrary,
+                                                                 saveRoot);
+  const bool durableUpdate =
+      reloaded.accepted && reloadedLibrary.templates.size() == 1U &&
+      reloadedLibrary.templates[0].sourceFingerprint ==
+          state.buildingTemplates.templates[0].sourceFingerprint;
+
+  std::filesystem::remove_all(saveRoot, error);
+  return expect(localBeforeUpdate.state ==
+                        cr::CreativeWorldLayoutBuildingTemplateSyncState::
+                            LocallyModified &&
+                    updated.accepted && updated.changed &&
+                    revisionBeforeSafe == revisionBeforeUpdate + 1U &&
+                    firstAfterUpdate.state ==
+                        cr::CreativeWorldLayoutBuildingTemplateSyncState::Current &&
+                    secondAfterUpdate.state ==
+                        cr::CreativeWorldLayoutBuildingTemplateSyncState::
+                            SourceChanged,
+                "updating from one instance advances its source once") &&
+         expect(safe.accepted && safe.changed &&
+                    revisionAfterSafe == revisionBeforeSafe + 1U &&
+                    firstAfterSafe.state ==
+                        cr::CreativeWorldLayoutBuildingTemplateSyncState::Current &&
+                    secondAfterSafe.state ==
+                        cr::CreativeWorldLayoutBuildingTemplateSyncState::Current,
+                "safe refresh updates untouched sibling instances") &&
+         expect(secondLocal.state ==
+                        cr::CreativeWorldLayoutBuildingTemplateSyncState::
+                            LocallyModified &&
+                    !skippedSafe.accepted && !skippedSafe.changed &&
+                    revisionBeforeSkippedSafe == revisionBeforeForce &&
+                    forced.accepted && forced.changed &&
+                    state.revision == revisionBeforeForce + 1U &&
+                    secondAfterForce.state ==
+                        cr::CreativeWorldLayoutBuildingTemplateSyncState::Current,
+                "safe refresh skips local work and force refresh is explicit") &&
+         expect(durableUpdate,
+                "updated template fingerprint is durable on disk");
+}
+
 bool openingSettingsApplyOnceAndMatchExactPreview() {
   cr::CreativeAppState live = appState();
   app::CreativeEditorWorldLayoutState state;
@@ -1418,6 +1568,7 @@ int main() {
                   buildingGroupMoveDuplicateAndDeleteAreAtomic() &&
                   buildingTransformPreviewsAndCommitsOneRevision() &&
                   buildingTemplatesPersistPreviewAndStampOneRevision() &&
+                  buildingTemplateUpdateAndRefreshLifecycleIsExplicit() &&
                   openingSettingsApplyOnceAndMatchExactPreview() &&
                   openingDragAndWidthHandlesAreQuarterCellTransactional() &&
                   openingDragPreservesSharedRoomWallOwnership() &&

@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <fstream>
 #include <iomanip>
+#include <iterator>
 #include <limits>
 #include <sstream>
 #include <string>
@@ -52,6 +53,20 @@ bool templateIdExists(
                      [templateId](const auto& value) {
                        return value.templateId == templateId;
                      });
+}
+
+std::size_t templateIndexForId(
+    const CreativeEditorWorldLayoutBuildingTemplateLibrary& library,
+    std::string_view templateId) noexcept {
+  const auto found = std::find_if(
+      library.templates.begin(), library.templates.end(),
+      [templateId](const auto& value) {
+        return value.templateId == templateId;
+      });
+  return found == library.templates.end()
+             ? cr::kInvalidCreativeWorldLayoutIndex
+             : static_cast<std::size_t>(
+                   std::distance(library.templates.begin(), found));
 }
 
 std::string nextTemplateId(
@@ -308,6 +323,181 @@ captureCreativeEditorWorldLayoutBuildingTemplate(
   library.statusMessage = "building template saved";
   state.statusMessage = "building template saved";
   return {true, true, "creative_editor_world_layout_building_template_saved"};
+}
+
+cr::CreativeWorldLayoutBuildingTemplateSyncReceipt
+inspectCreativeEditorWorldLayoutBuildingTemplateSync(
+    const CreativeEditorWorldLayoutState& state,
+    std::size_t buildingIndex) {
+  const cr::CreativeWorldLayoutBuildingTemplateInstanceProvenance provenance =
+      cr::creativeWorldLayoutBuildingTemplateInstanceProvenance(state.source,
+                                                                buildingIndex);
+  const std::size_t templateIndex =
+      provenance.valid
+          ? templateIndexForId(state.buildingTemplates, provenance.templateId)
+          : cr::kInvalidCreativeWorldLayoutIndex;
+  const cr::CreativeWorldLayoutBuildingTemplate* sourceTemplate =
+      templateIndex < state.buildingTemplates.templates.size()
+          ? &state.buildingTemplates.templates[templateIndex]
+          : nullptr;
+  return cr::inspectCreativeWorldLayoutBuildingTemplateSync(
+      state.source, buildingIndex, sourceTemplate);
+}
+
+CreativeEditorWorldLayoutEditReceipt
+updateCreativeEditorWorldLayoutBuildingTemplateFromInstance(
+    CreativeEditorWorldLayoutState& state,
+    std::size_t buildingIndex) {
+  CreativeEditorWorldLayoutBuildingTemplateLibrary& library =
+      state.buildingTemplates;
+  const cr::CreativeWorldLayoutBuildingTemplateInstanceProvenance provenance =
+      cr::creativeWorldLayoutBuildingTemplateInstanceProvenance(state.source,
+                                                                buildingIndex);
+  const std::size_t templateIndex =
+      provenance.valid ? templateIndexForId(library, provenance.templateId)
+                       : cr::kInvalidCreativeWorldLayoutIndex;
+  if (!provenance.valid || templateIndex >= library.templates.size() ||
+      library.root.empty()) {
+    state.statusMessage = "selected building has no template source";
+    return {false, false,
+            "creative_editor_world_layout_building_template_update_source_missing"};
+  }
+
+  const cr::CreativeWorldLayoutBuildingTemplate& existing =
+      library.templates[templateIndex];
+  cr::CreativeWorldLayoutBuildingTemplateResult captured =
+      cr::captureCreativeWorldLayoutBuildingTemplate(
+          state.source,
+          {buildingIndex, existing.templateId, existing.label});
+  if (!captured.accepted) {
+    state.statusMessage = "building could not update its template";
+    return {false, false, captured.reasonCode};
+  }
+  cr::CreativeWorldLayoutBuildingTemplateResult canonicalized =
+      cr::orientCreativeWorldLayoutBuildingTemplate(
+          captured.value,
+          cr::inverseCreativeWorldLayoutBuildingTemplateOrientation(
+              provenance.orientation));
+  if (!canonicalized.accepted) {
+    state.statusMessage = "building orientation could not be normalized";
+    return {false, false, canonicalized.reasonCode};
+  }
+  cr::CreativeWorldLayoutBuildingTemplateResult replacement =
+      cr::loadCreativeWorldLayoutBuildingTemplate(
+          std::move(canonicalized.value.normalizedLayout));
+  if (!replacement.accepted) {
+    state.statusMessage = "updated building template is invalid";
+    return {false, false, replacement.reasonCode};
+  }
+
+  const cr::CreativeWorldLayoutBuildingTemplateFingerprint instanceFingerprint =
+      cr::fingerprintCreativeWorldLayoutBuilding(state.source, buildingIndex);
+  if (!instanceFingerprint.valid) {
+    state.statusMessage = "selected building cannot be fingerprinted";
+    return {false, false,
+            "creative_editor_world_layout_building_template_update_fingerprint_invalid"};
+  }
+  const bool libraryChanged =
+      replacement.value.sourceFingerprint != existing.sourceFingerprint;
+  const bool provenanceChanged =
+      provenance.sourceFingerprint != replacement.value.sourceFingerprint.value ||
+      provenance.instanceBaselineFingerprint != instanceFingerprint.value;
+  if (!libraryChanged && !provenanceChanged) {
+    library.statusMessage = "building template is already current";
+    state.statusMessage = library.statusMessage;
+    return {true, false,
+            "creative_editor_world_layout_building_template_update_no_change"};
+  }
+
+  cr::CreativeWorldLayout candidate = state.source;
+  if (provenanceChanged) {
+    cr::CreativeWorldLayoutBuildingTemplateInstanceProvenance updated =
+        provenance;
+    updated.sourceFingerprint = replacement.value.sourceFingerprint.value;
+    updated.instanceBaselineFingerprint = instanceFingerprint.value;
+    if (!cr::setCreativeWorldLayoutBuildingTemplateInstanceProvenance(
+            candidate, buildingIndex, updated)) {
+      state.statusMessage = "building template provenance could not be updated";
+      return {false, false,
+              "creative_editor_world_layout_building_template_update_provenance_invalid"};
+    }
+  }
+
+  if (libraryChanged) {
+    const cr::CreativeWorldLayoutEncodeResult encoded =
+        cr::encodeCreativeWorldLayout(replacement.value.normalizedLayout);
+    const std::filesystem::path path =
+        library.root /
+        (replacement.value.templateId + std::string(kBuildingTemplateExtension));
+    if (!encoded.accepted ||
+        !writeTemplateFileAtomically(path, encoded.encodedText)) {
+      library.statusMessage = "building template update could not be written";
+      state.statusMessage = library.statusMessage;
+      return {false, false,
+              "creative_editor_world_layout_building_template_update_write_failed"};
+    }
+    library.templates[templateIndex] = std::move(replacement.value);
+  }
+  library.selectedIndex = templateIndex;
+  library.statusMessage = "building template updated from selected instance";
+  if (provenanceChanged) {
+    state.source = std::move(candidate);
+    detail::noteWorldLayoutSourceChange(
+        state, "building template updated from selected instance");
+  } else {
+    state.statusMessage = library.statusMessage;
+  }
+  return {true, provenanceChanged,
+          "creative_editor_world_layout_building_template_updated"};
+}
+
+CreativeEditorWorldLayoutEditReceipt
+refreshCreativeEditorWorldLayoutBuildingTemplateInstances(
+    CreativeEditorWorldLayoutState& state,
+    std::size_t buildingIndex,
+    cr::CreativeWorldLayoutBuildingTemplateRefreshMode mode) {
+  const cr::CreativeWorldLayoutBuildingTemplateInstanceProvenance provenance =
+      cr::creativeWorldLayoutBuildingTemplateInstanceProvenance(state.source,
+                                                                buildingIndex);
+  const std::size_t templateIndex =
+      provenance.valid
+          ? templateIndexForId(state.buildingTemplates, provenance.templateId)
+          : cr::kInvalidCreativeWorldLayoutIndex;
+  if (!provenance.valid ||
+      templateIndex >= state.buildingTemplates.templates.size()) {
+    state.statusMessage = "selected building has no template source";
+    return {false, false,
+            "creative_editor_world_layout_building_template_refresh_source_missing"};
+  }
+
+  const cr::CreativeWorldLayoutBuildingTemplateRefreshResult refreshed =
+      cr::refreshCreativeWorldLayoutBuildingTemplateInstances(
+          state.source,
+          {&state.buildingTemplates.templates[templateIndex], mode,
+           buildingIndex, state.nextStableOrdinal});
+  if (!refreshed.accepted) {
+    state.buildingTemplates.statusMessage = refreshed.reasonCode;
+    state.statusMessage =
+        refreshed.status ==
+                cr::CreativeWorldLayoutBuildingTemplateRefreshStatus::
+                    NoEligibleInstances
+            ? "no building template instances need refresh"
+            : "building template instances could not be refreshed";
+    return {false, false, refreshed.reasonCode};
+  }
+
+  state.source = refreshed.edited;
+  state.nextStableOrdinal = refreshed.nextStableOrdinal;
+  state.selection = {CreativeEditorWorldLayoutSelectionKind::Building,
+                     buildingIndex};
+  state.buildingTemplates.selectedIndex = templateIndex;
+  state.buildingTemplates.statusMessage =
+      std::to_string(refreshed.refreshedInstanceCount) +
+      " building template instance(s) refreshed";
+  detail::noteWorldLayoutSourceChange(state,
+                                      state.buildingTemplates.statusMessage);
+  return {true, true,
+          "creative_editor_world_layout_building_template_instances_refreshed"};
 }
 
 CreativeEditorWorldLayoutEditReceipt

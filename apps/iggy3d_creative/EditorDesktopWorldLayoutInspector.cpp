@@ -158,6 +158,83 @@ void drawBuildingTemplateActions(CreativeEditorWorldLayoutState& state,
   }
   ImGui::EndDisabled();
 
+  cr::CreativeWorldLayoutBuildingTemplateSyncReceipt sync;
+  if (buildingAvailable) {
+    sync = inspectCreativeEditorWorldLayoutBuildingTemplateSync(
+        state, selectedBuilding);
+    ImVec4 syncColor{0.55F, 0.58F, 0.62F, 1.0F};
+    switch (sync.state) {
+      case cr::CreativeWorldLayoutBuildingTemplateSyncState::Current:
+        syncColor = {0.20F, 0.78F, 0.38F, 1.0F};
+        break;
+      case cr::CreativeWorldLayoutBuildingTemplateSyncState::SourceChanged:
+        syncColor = {0.88F, 0.72F, 0.20F, 1.0F};
+        break;
+      case cr::CreativeWorldLayoutBuildingTemplateSyncState::LocallyModified:
+        syncColor = {0.94F, 0.52F, 0.18F, 1.0F};
+        break;
+      case cr::CreativeWorldLayoutBuildingTemplateSyncState::Conflict:
+      case cr::CreativeWorldLayoutBuildingTemplateSyncState::SourceMissing:
+        syncColor = {0.92F, 0.28F, 0.24F, 1.0F};
+        break;
+      case cr::CreativeWorldLayoutBuildingTemplateSyncState::Unlinked:
+        break;
+    }
+    ImGui::TextColored(syncColor, "Instance: %s",
+                       cr::toString(sync.state).data());
+  }
+
+  const bool linkedSourceAvailable =
+      buildingAvailable && sync.provenance.valid &&
+      sync.state !=
+          cr::CreativeWorldLayoutBuildingTemplateSyncState::SourceMissing;
+  const bool templateActionsBlocked =
+      state.buildingTransform.active || state.buildingManipulation.active ||
+      state.buildingTemplatePlacement.active;
+  ImGui::BeginDisabled(!linkedSourceAvailable || templateActionsBlocked);
+  if (ImGui::Button("Update template from selected")) {
+    commands.push(
+        CreativeDesktopCommandId::WorldLayoutUpdateBuildingTemplate,
+        CreativeDesktopWorldLayoutBuildingTemplateSyncPayload{
+            selectedBuilding,
+            cr::CreativeWorldLayoutBuildingTemplateRefreshMode::
+                SelectedInstance});
+  }
+  const bool selectedNeedsRefresh =
+      linkedSourceAvailable &&
+      sync.state != cr::CreativeWorldLayoutBuildingTemplateSyncState::Current;
+  ImGui::BeginDisabled(!selectedNeedsRefresh);
+  if (ImGui::Button("Refresh selected")) {
+    commands.push(
+        CreativeDesktopCommandId::
+            WorldLayoutRefreshBuildingTemplateInstances,
+        CreativeDesktopWorldLayoutBuildingTemplateSyncPayload{
+            selectedBuilding,
+            cr::CreativeWorldLayoutBuildingTemplateRefreshMode::
+                SelectedInstance});
+  }
+  ImGui::EndDisabled();
+  ImGui::SameLine();
+  if (ImGui::Button("Refresh safe instances")) {
+    commands.push(
+        CreativeDesktopCommandId::
+            WorldLayoutRefreshBuildingTemplateInstances,
+        CreativeDesktopWorldLayoutBuildingTemplateSyncPayload{
+            selectedBuilding,
+            cr::CreativeWorldLayoutBuildingTemplateRefreshMode::
+                SafeInstances});
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Force refresh all")) {
+    commands.push(
+        CreativeDesktopCommandId::
+            WorldLayoutRefreshBuildingTemplateInstances,
+        CreativeDesktopWorldLayoutBuildingTemplateSyncPayload{
+            selectedBuilding,
+            cr::CreativeWorldLayoutBuildingTemplateRefreshMode::ForceAll});
+  }
+  ImGui::EndDisabled();
+
   if (library.templates.empty()) {
     ImGui::TextDisabled("No saved building templates");
     ImGui::TextDisabled("%s", library.statusMessage.c_str());

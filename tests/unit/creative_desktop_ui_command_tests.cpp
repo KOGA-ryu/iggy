@@ -1238,6 +1238,15 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutCaptureBuildingTemplate,
           context, app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutTemplateUpdate =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutUpdateBuildingTemplate,
+          context, app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutTemplateRefresh =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::
+              WorldLayoutRefreshBuildingTemplateInstances,
+          context, app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult badWorldLayoutTemplateSelection =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSelectBuildingTemplate,
@@ -1319,6 +1328,14 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badWorldLayoutTemplateCapture.message ==
                         "layout template capture: payload mismatch",
                 "building template capture rejects a mismatched payload") &&
+         expect(!badWorldLayoutTemplateUpdate.accepted &&
+                    badWorldLayoutTemplateUpdate.message ==
+                        "layout template update: payload mismatch",
+                "building template update rejects a mismatched payload") &&
+         expect(!badWorldLayoutTemplateRefresh.accepted &&
+                    badWorldLayoutTemplateRefresh.message ==
+                        "layout template refresh: payload mismatch",
+                "building template refresh rejects a mismatched payload") &&
          expect(!badWorldLayoutTemplateSelection.accepted &&
                     badWorldLayoutTemplateSelection.message ==
                         "layout template selection: payload mismatch",
@@ -1709,6 +1726,123 @@ bool worldLayoutBuildingTemplateCommandsRouteThroughDispatcher() {
   return ok;
 }
 
+bool worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Building Template Sync");
+  static_cast<void>(document.assignId(425U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "template_sync_commands");
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      editor.worldLayout, app::CreativeEditorWorldLayoutTool::Room));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      editor.worldLayout, app::CreativeEditorWorldLayoutGesturePhase::Begin,
+      {0.0, 0.0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      editor.worldLayout, app::CreativeEditorWorldLayoutGesturePhase::Commit,
+      {6.0, 4.0}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      editor.worldLayout, app::CreativeEditorWorldLayoutTool::Select));
+
+  const std::filesystem::path root =
+      std::filesystem::temp_directory_path() /
+      "iggy3d_desktop_building_template_sync_command_tests";
+  std::error_code error;
+  std::filesystem::remove_all(root, error);
+  const auto libraryLoaded =
+      app::loadCreativeEditorWorldLayoutBuildingTemplateLibrary(
+          editor.worldLayout.buildingTemplates, root);
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor, root,
+                                                    &saveId};
+  const auto captured = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutCaptureBuildingTemplate,
+      context, app::CreativeDesktopWorldLayoutBuildingTemplateCapturePayload{
+                   0U, "Sync Command House"});
+
+  const auto stampAt = [&](app::CreativeEditorWorldLayoutPoint point) {
+    const auto began = dispatchPayload(
+        app::CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate,
+        context,
+        app::CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload{
+            app::CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::
+                Begin,
+            point,
+            cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90});
+    const auto committed = dispatchPayload(
+        app::CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate,
+        context,
+        app::CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload{
+            app::CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::
+                Commit,
+            {},
+            cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90});
+    return began.accepted && committed.accepted && committed.changed;
+  };
+  const bool stamped = stampAt({10.0, 0.0}) && stampAt({20.0, 0.0});
+  if (!libraryLoaded.accepted || !captured.accepted || !stamped) {
+    std::filesystem::remove_all(root, error);
+    return expect(false, "template sync command setup accepted");
+  }
+
+  const auto room = std::find_if(
+      editor.worldLayout.source.rooms.begin(),
+      editor.worldLayout.source.rooms.end(),
+      [](const cr::CreativeWorldLayoutRoom& value) {
+        return value.buildingIndex == 1U;
+      });
+  const std::size_t roomIndex = static_cast<std::size_t>(
+      std::distance(editor.worldLayout.source.rooms.begin(), room));
+  app::CreativeEditorWorldLayoutRoomSettings settings{
+      room->footprint, room->baseLayer,
+      static_cast<std::uint16_t>(room->wallHeightCells + 1U),
+      room->wallThicknessCells, room->floorThicknessCells};
+  static_cast<void>(app::setCreativeEditorWorldLayoutRoomSettings(
+      editor.worldLayout, roomIndex, settings));
+
+  const std::uint64_t revisionBeforeUpdate = editor.worldLayout.revision;
+  const auto updated = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutUpdateBuildingTemplate,
+      context, app::CreativeDesktopWorldLayoutBuildingTemplateSyncPayload{
+                   1U,
+                   cr::CreativeWorldLayoutBuildingTemplateRefreshMode::
+                       SelectedInstance});
+  const auto siblingOutdated =
+      app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(
+          editor.worldLayout, 2U);
+  const std::uint64_t revisionBeforeRefresh = editor.worldLayout.revision;
+  const auto refreshed = dispatchPayload(
+      app::CreativeDesktopCommandId::
+          WorldLayoutRefreshBuildingTemplateInstances,
+      context, app::CreativeDesktopWorldLayoutBuildingTemplateSyncPayload{
+                   1U,
+                   cr::CreativeWorldLayoutBuildingTemplateRefreshMode::
+                       SafeInstances});
+  const auto siblingCurrent =
+      app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(
+          editor.worldLayout, 2U);
+
+  const bool ok =
+      expect(updated.accepted && updated.changed &&
+                 updated.worldLayoutChanged &&
+                 editor.worldLayout.revision == revisionBeforeRefresh + 1U &&
+                 revisionBeforeRefresh == revisionBeforeUpdate + 1U &&
+                 siblingOutdated.state ==
+                     cr::CreativeWorldLayoutBuildingTemplateSyncState::
+                         SourceChanged,
+             "template update command publishes one source revision") &&
+      expect(refreshed.accepted && refreshed.changed &&
+                 refreshed.worldLayoutChanged &&
+                 siblingCurrent.state ==
+                     cr::CreativeWorldLayoutBuildingTemplateSyncState::Current,
+             "safe template refresh command updates the stale sibling once");
+  std::filesystem::remove_all(root, error);
+  return ok;
+}
+
 bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document =
@@ -1909,6 +2043,7 @@ int main() {
   ok = mismatchedPayloadsAreNoOpFailures() && ok;
   ok = worldLayoutStructuralCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutBuildingTemplateCommandsRouteThroughDispatcher() && ok;
+  ok = worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutCommandsPreviewAndGenerateThroughDispatcher() && ok;
   return ok ? 0 : 1;
 }

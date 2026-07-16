@@ -157,6 +157,14 @@ struct CreativeDesktopWorldLayoutBuildingTemplateCapturePayload {
   std::string label;
 };
 
+struct CreativeDesktopWorldLayoutBuildingTemplateSyncPayload {
+  std::size_t buildingIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  iggy3d::creative::CreativeWorldLayoutBuildingTemplateRefreshMode mode =
+      iggy3d::creative::CreativeWorldLayoutBuildingTemplateRefreshMode::
+          SafeInstances;
+};
+
 struct CreativeDesktopWorldLayoutBuildingTemplateSelectionPayload {
   std::size_t templateIndex =
       iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
@@ -251,6 +259,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutBuildingDuplicatePayload,
     CreativeDesktopWorldLayoutBuildingTransformPayload,
     CreativeDesktopWorldLayoutBuildingTemplateCapturePayload,
+    CreativeDesktopWorldLayoutBuildingTemplateSyncPayload,
     CreativeDesktopWorldLayoutBuildingTemplateSelectionPayload,
     CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload,
     CreativeDesktopWorldLayoutPointPayload,

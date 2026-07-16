@@ -65,11 +65,37 @@ enum class CreativeWorldLayoutBuildingTemplateStatus : std::uint8_t {
   Ready,
 };
 
+struct CreativeWorldLayoutBuildingTemplateFingerprint {
+  bool valid = false;
+  std::uint64_t value = 0U;
+
+  friend bool operator==(
+      const CreativeWorldLayoutBuildingTemplateFingerprint&,
+      const CreativeWorldLayoutBuildingTemplateFingerprint&) = default;
+};
+
+// The eight rigid transforms of a rectangle. This is persisted as provenance
+// so a changed template can be rebuilt at the instance's authored pose.
+enum class CreativeWorldLayoutBuildingTemplateOrientation : std::uint8_t {
+  Identity,
+  RotateRight90,
+  Rotate180,
+  RotateLeft90,
+  MirrorX,
+  MirrorZ,
+  MirrorDiagonal,
+  MirrorAntiDiagonal,
+  Count,
+};
+
 struct CreativeWorldLayoutBuildingTemplate {
   std::string templateId;
   std::string label;
   CreativeWorldLayout normalizedLayout;
   CreativeWorldLayoutBuildingBounds bounds;
+  CreativeWorldLayoutBuildingTemplateFingerprint sourceFingerprint;
+  CreativeWorldLayoutBuildingTemplateOrientation orientation =
+      CreativeWorldLayoutBuildingTemplateOrientation::Identity;
 };
 
 struct CreativeWorldLayoutBuildingTemplateCaptureRequest {
@@ -92,6 +118,85 @@ struct CreativeWorldLayoutBuildingTemplateStampRequest {
   CreativeTerrainCoord2 anchor;
   std::uint64_t nextStableOrdinal = 1U;
   bool appendCopySuffix = false;
+  bool linkTemplateInstance = true;
+};
+
+struct CreativeWorldLayoutBuildingTemplateInstanceProvenance {
+  bool present = false;
+  bool valid = false;
+  std::string templateId;
+  std::uint64_t sourceFingerprint = 0U;
+  std::uint64_t instanceBaselineFingerprint = 0U;
+  CreativeWorldLayoutBuildingTemplateOrientation orientation =
+      CreativeWorldLayoutBuildingTemplateOrientation::Identity;
+  CreativeTerrainCoord2 anchor;
+};
+
+enum class CreativeWorldLayoutBuildingTemplateSyncState : std::uint8_t {
+  Unlinked,
+  Current,
+  SourceChanged,
+  LocallyModified,
+  Conflict,
+  SourceMissing,
+};
+
+struct CreativeWorldLayoutBuildingTemplateSyncReceipt {
+  bool requested = false;
+  bool accepted = false;
+  std::size_t buildingIndex = kInvalidCreativeWorldLayoutIndex;
+  CreativeWorldLayoutBuildingTemplateSyncState state =
+      CreativeWorldLayoutBuildingTemplateSyncState::Unlinked;
+  CreativeWorldLayoutBuildingTemplateInstanceProvenance provenance;
+  CreativeWorldLayoutBuildingTemplateFingerprint sourceFingerprint;
+  CreativeWorldLayoutBuildingTemplateFingerprint instanceFingerprint;
+  std::string reasonCode =
+      "creative_world_layout_building_template_sync_not_requested";
+};
+
+enum class CreativeWorldLayoutBuildingTemplateRefreshMode : std::uint8_t {
+  SelectedInstance,
+  SafeInstances,
+  ForceAll,
+  Count,
+};
+
+enum class CreativeWorldLayoutBuildingTemplateRefreshStatus : std::uint8_t {
+  NotRequested,
+  InvalidRequest,
+  InvalidOwnership,
+  NoMatchingInstances,
+  NoEligibleInstances,
+  CoordinateOverflow,
+  Ready,
+};
+
+struct CreativeWorldLayoutBuildingTemplateRefreshRequest {
+  const CreativeWorldLayoutBuildingTemplate* sourceTemplate = nullptr;
+  CreativeWorldLayoutBuildingTemplateRefreshMode mode =
+      CreativeWorldLayoutBuildingTemplateRefreshMode::SafeInstances;
+  std::size_t selectedBuildingIndex = kInvalidCreativeWorldLayoutIndex;
+  std::uint64_t nextStableOrdinal = 1U;
+};
+
+struct CreativeWorldLayoutBuildingTemplateRefreshResult {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  CreativeWorldLayoutBuildingTemplateRefreshStatus status =
+      CreativeWorldLayoutBuildingTemplateRefreshStatus::NotRequested;
+  CreativeWorldLayoutBuildingTemplateRefreshMode mode =
+      CreativeWorldLayoutBuildingTemplateRefreshMode::SafeInstances;
+  std::size_t matchedInstanceCount = 0U;
+  std::size_t currentInstanceCount = 0U;
+  std::size_t sourceChangedInstanceCount = 0U;
+  std::size_t locallyModifiedInstanceCount = 0U;
+  std::size_t conflictInstanceCount = 0U;
+  std::size_t refreshedInstanceCount = 0U;
+  std::uint64_t nextStableOrdinal = 1U;
+  CreativeWorldLayout edited;
+  std::string reasonCode =
+      "creative_world_layout_building_template_refresh_not_requested";
 };
 
 enum class CreativeWorldLayoutBuildingTransformOperation : std::uint8_t {
@@ -138,6 +243,14 @@ struct CreativeWorldLayoutBuildingTransformResult {
 [[nodiscard]] std::string_view toString(
     CreativeWorldLayoutBuildingTemplateStatus status) noexcept;
 [[nodiscard]] std::string_view toString(
+    CreativeWorldLayoutBuildingTemplateOrientation orientation) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeWorldLayoutBuildingTemplateSyncState state) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeWorldLayoutBuildingTemplateRefreshMode mode) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeWorldLayoutBuildingTemplateRefreshStatus status) noexcept;
+[[nodiscard]] std::string_view toString(
     CreativeWorldLayoutBuildingTransformOperation operation) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeWorldLayoutBuildingTransformStatus status) noexcept;
@@ -178,6 +291,27 @@ deleteCreativeWorldLayoutBuilding(
 
 [[nodiscard]] bool validCreativeWorldLayoutBuildingTemplate(
     const CreativeWorldLayoutBuildingTemplate& value) noexcept;
+[[nodiscard]] bool isCreativeWorldLayoutBuildingTemplateProvenanceTag(
+    std::string_view tag) noexcept;
+[[nodiscard]] CreativeWorldLayoutBuildingTemplateFingerprint
+fingerprintCreativeWorldLayoutBuilding(
+    const CreativeWorldLayout& layout,
+    std::size_t buildingIndex) noexcept;
+[[nodiscard]] CreativeWorldLayoutBuildingTemplateInstanceProvenance
+creativeWorldLayoutBuildingTemplateInstanceProvenance(
+    const CreativeWorldLayout& layout,
+    std::size_t buildingIndex);
+[[nodiscard]] bool setCreativeWorldLayoutBuildingTemplateInstanceProvenance(
+    CreativeWorldLayout& layout,
+    std::size_t buildingIndex,
+    const CreativeWorldLayoutBuildingTemplateInstanceProvenance& provenance);
+[[nodiscard]] CreativeWorldLayoutBuildingTemplateOrientation
+composeCreativeWorldLayoutBuildingTemplateOrientation(
+    CreativeWorldLayoutBuildingTemplateOrientation current,
+    CreativeWorldLayoutBuildingTransformOperation operation) noexcept;
+[[nodiscard]] CreativeWorldLayoutBuildingTemplateOrientation
+inverseCreativeWorldLayoutBuildingTemplateOrientation(
+    CreativeWorldLayoutBuildingTemplateOrientation orientation) noexcept;
 [[nodiscard]] CreativeWorldLayoutBuildingTemplateResult
 captureCreativeWorldLayoutBuildingTemplate(
     const CreativeWorldLayout& source,
@@ -188,11 +322,24 @@ loadCreativeWorldLayoutBuildingTemplate(CreativeWorldLayout normalizedLayout);
 transformCreativeWorldLayoutBuildingTemplate(
     const CreativeWorldLayoutBuildingTemplate& source,
     CreativeWorldLayoutBuildingTransformOperation operation);
+[[nodiscard]] CreativeWorldLayoutBuildingTemplateResult
+orientCreativeWorldLayoutBuildingTemplate(
+    const CreativeWorldLayoutBuildingTemplate& source,
+    CreativeWorldLayoutBuildingTemplateOrientation orientation);
 [[nodiscard]] CreativeWorldLayoutBuildingEditResult
 stampCreativeWorldLayoutBuildingTemplate(
     const CreativeWorldLayout& destination,
     const CreativeWorldLayoutBuildingTemplate& source,
     const CreativeWorldLayoutBuildingTemplateStampRequest& request);
+[[nodiscard]] CreativeWorldLayoutBuildingTemplateSyncReceipt
+inspectCreativeWorldLayoutBuildingTemplateSync(
+    const CreativeWorldLayout& layout,
+    std::size_t buildingIndex,
+    const CreativeWorldLayoutBuildingTemplate* sourceTemplate);
+[[nodiscard]] CreativeWorldLayoutBuildingTemplateRefreshResult
+refreshCreativeWorldLayoutBuildingTemplateInstances(
+    const CreativeWorldLayout& source,
+    const CreativeWorldLayoutBuildingTemplateRefreshRequest& request);
 
 // O(buildings + rooms + boxes + walls + openings), with one full layout copy.
 // Stable keys, source order, heights, and terrain remain unchanged. Quarter
