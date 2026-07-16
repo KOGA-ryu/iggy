@@ -99,13 +99,36 @@ cr::CreativeWorldLayout adjacentRooms() {
   cr::CreativeWorldLayoutOpening door;
   door.hostKind = cr::CreativeWorldLayoutOpeningHostKind::RoomEdge;
   door.roomIndex = 1U;
-  door.roomEdge = cr::CreativeWorldLayoutRoomEdge::MinimumX;
+  door.roomEdge = cr::CreativeWorldLayoutRoomEdge::West;
   door.kind = cr::CreativeBuildingOpeningKind::Door;
   door.stableKey = "shared_door";
   door.name = "Shared Door";
   door.centerOffsetCells = 2.0;
   layout.openings.push_back(door);
   return layout;
+}
+
+bool roomEdgesHaveStableCardinalIdentity() {
+  return expect(static_cast<std::uint8_t>(
+                    cr::CreativeWorldLayoutRoomEdge::North) == 0U &&
+                    static_cast<std::uint8_t>(
+                        cr::CreativeWorldLayoutRoomEdge::East) == 1U &&
+                    static_cast<std::uint8_t>(
+                        cr::CreativeWorldLayoutRoomEdge::South) == 2U &&
+                    static_cast<std::uint8_t>(
+                        cr::CreativeWorldLayoutRoomEdge::West) == 3U,
+                "cardinal room edge values remain serialization-stable") &&
+         expect(cr::toString(cr::CreativeWorldLayoutRoomEdge::North) ==
+                        "North" &&
+                    cr::creativeWorldLayoutRoomEdgeKey(
+                        cr::CreativeWorldLayoutRoomEdge::North) == "north" &&
+                    cr::creativeWorldLayoutRoomEdgeKey(
+                        cr::CreativeWorldLayoutRoomEdge::East) == "east" &&
+                    cr::creativeWorldLayoutRoomEdgeKey(
+                        cr::CreativeWorldLayoutRoomEdge::South) == "south" &&
+                    cr::creativeWorldLayoutRoomEdgeKey(
+                        cr::CreativeWorldLayoutRoomEdge::West) == "west",
+                "room edge labels provide stable authored side identities");
 }
 
 bool adjacentRoomsShareOneCanonicalWall() {
@@ -154,6 +177,11 @@ bool invalidTopologyFailsClosed() {
   const auto straddledResult =
       cr::expandCreativeWorldLayoutRooms(straddledOpening);
 
+  cr::CreativeWorldLayout thickWalls = adjacentRooms();
+  thickWalls.rooms[0].wallThicknessCells = 2.0;
+  const auto thickWallResult =
+      cr::expandCreativeWorldLayoutRooms(thickWalls);
+
   return expect(
              !overlapResult.accepted &&
                  overlapResult.status ==
@@ -168,7 +196,11 @@ bool invalidTopologyFailsClosed() {
                     straddledResult.status ==
                         cr::CreativeWorldLayoutRoomCompileStatus::
                             InvalidOpeningHost,
-                "opening width cannot straddle beyond its semantic edge");
+                "opening width cannot straddle beyond its semantic edge") &&
+         expect(!thickWallResult.accepted &&
+                    thickWallResult.status ==
+                        cr::CreativeWorldLayoutRoomCompileStatus::InvalidRoom,
+                "room shell walls cannot consume the complete interior");
 }
 
 bool roomTopologyCompilesThroughExistingBuildingRecipe() {
@@ -312,7 +344,8 @@ bool horizontalStructuralLayersUseDescriptorThickness() {
 }  // namespace
 
 int main() {
-  const bool ok = adjacentRoomsShareOneCanonicalWall() &&
+  const bool ok = roomEdgesHaveStableCardinalIdentity() &&
+                  adjacentRoomsShareOneCanonicalWall() &&
                   invalidTopologyFailsClosed() &&
                   roomTopologyCompilesThroughExistingBuildingRecipe() &&
                   horizontalStructuralLayersUseDescriptorThickness();

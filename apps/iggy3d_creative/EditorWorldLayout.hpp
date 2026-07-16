@@ -40,6 +40,16 @@ struct CreativeEditorWorldLayoutPoint {
   double z = 0.0;
 };
 
+struct CreativeEditorWorldLayoutRoomSettings {
+  cr::CreativeWorldLayoutRect footprint;
+  std::int32_t baseLayer = 0;
+  std::uint16_t wallHeightCells =
+      cr::kDefaultCreativeWorldLayoutWallHeightCells;
+  double wallThicknessCells =
+      cr::kDefaultCreativeWorldLayoutWallThicknessCells;
+  std::uint16_t floorThicknessCells = 1U;
+};
+
 enum class CreativeEditorWorldLayoutGesturePhase : std::uint8_t {
   Begin,
   Commit,
@@ -122,9 +132,9 @@ applyCreativeEditorWorldLayoutGesture(
     CreativeEditorWorldLayoutGesturePhase phase,
     CreativeEditorWorldLayoutPoint point = {});
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
-resizeCreativeEditorWorldLayoutRoom(
+setCreativeEditorWorldLayoutRoomSettings(
     CreativeEditorWorldLayoutState& state, std::size_t roomIndex,
-    cr::CreativeWorldLayoutRect footprint);
+    CreativeEditorWorldLayoutRoomSettings settings);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 deleteCreativeEditorWorldLayoutSelection(CreativeEditorWorldLayoutState& state);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt

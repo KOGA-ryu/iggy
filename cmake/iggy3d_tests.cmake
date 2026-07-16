@@ -101,11 +101,6 @@ iggy3d_add_unit_test(creative_document_path_tests
 set_tests_properties(creative_document_path_tests PROPERTIES
   LABELS "unit;app;creative;document;path;iggy3d")
 
-iggy3d_add_unit_test(creative_room_shell_tests
-  tests/unit/creative_room_shell_tests.cpp)
-set_tests_properties(creative_room_shell_tests PROPERTIES
-  LABELS "unit;app;creative;room_shell;iggy3d")
-
 iggy3d_add_unit_test(creative_recipe_tests
   tests/unit/creative_recipe_tests.cpp)
 set_tests_properties(creative_recipe_tests PROPERTIES

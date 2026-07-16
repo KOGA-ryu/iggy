@@ -125,19 +125,19 @@ std::optional<ImVec2> openingPosition(
     const cr::CreativeWorldLayoutRect rect =
         state.source.rooms[opening.roomIndex].footprint;
     switch (opening.roomEdge) {
-      case cr::CreativeWorldLayoutRoomEdge::MinimumZ:
+      case cr::CreativeWorldLayoutRoomEdge::North:
         start = {rect.minimum.x, rect.minimum.z};
         end = {rect.maximum.x, rect.minimum.z};
         break;
-      case cr::CreativeWorldLayoutRoomEdge::MaximumX:
+      case cr::CreativeWorldLayoutRoomEdge::East:
         start = {rect.maximum.x, rect.minimum.z};
         end = {rect.maximum.x, rect.maximum.z};
         break;
-      case cr::CreativeWorldLayoutRoomEdge::MaximumZ:
+      case cr::CreativeWorldLayoutRoomEdge::South:
         start = {rect.minimum.x, rect.maximum.z};
         end = {rect.maximum.x, rect.maximum.z};
         break;
-      case cr::CreativeWorldLayoutRoomEdge::MinimumX:
+      case cr::CreativeWorldLayoutRoomEdge::West:
         start = {rect.minimum.x, rect.minimum.z};
         end = {rect.minimum.x, rect.maximum.z};
         break;
@@ -252,6 +252,91 @@ void toolButton(CreativeDesktopCommandFrame& commands,
   if (active) {
     ImGui::PopStyleColor();
   }
+}
+
+void drawSelectedRoomSettings(CreativeEditorWorldLayoutState& state,
+                              CreativeDesktopCommandFrame& commands) {
+  if (state.selection.kind != CreativeEditorWorldLayoutSelectionKind::Room ||
+      state.selection.index >= state.source.rooms.size()) {
+    return;
+  }
+
+  const cr::CreativeWorldLayoutRoom& room =
+      state.source.rooms[state.selection.index];
+  const std::int64_t widthCells =
+      static_cast<std::int64_t>(room.footprint.maximum.x) -
+      room.footprint.minimum.x;
+  const std::int64_t depthCells =
+      static_cast<std::int64_t>(room.footprint.maximum.z) -
+      room.footprint.minimum.z;
+  int width = static_cast<int>(std::min<std::int64_t>(
+      widthCells, std::numeric_limits<int>::max()));
+  int depth = static_cast<int>(std::min<std::int64_t>(
+      depthCells, std::numeric_limits<int>::max()));
+  int baseLayer = room.baseLayer;
+  int wallHeight = room.wallHeightCells;
+  double wallThickness = room.wallThicknessCells;
+  int floorLayers = room.floorThicknessCells;
+
+  ImGui::SetNextItemWidth(88.0F);
+  bool changed = ImGui::InputInt("Width##room_shell", &width, 1, 4);
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(88.0F);
+  changed = ImGui::InputInt("Depth##room_shell", &depth, 1, 4) || changed;
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(88.0F);
+  changed = ImGui::InputInt("Base##room_shell", &baseLayer, 1, 4) || changed;
+
+  ImGui::SetNextItemWidth(88.0F);
+  changed =
+      ImGui::InputInt("Wall height##room_shell", &wallHeight, 1, 4) || changed;
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(88.0F);
+  changed = ImGui::InputDouble("Wall thickness##room_shell", &wallThickness,
+                               0.05, 0.25, "%.3f") ||
+            changed;
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(88.0F);
+  changed =
+      ImGui::InputInt("Floor layers##room_shell", &floorLayers, 1, 2) ||
+      changed;
+
+  if (!changed) {
+    return;
+  }
+
+  const std::int64_t maximumX =
+      static_cast<std::int64_t>(room.footprint.minimum.x) + width;
+  const std::int64_t maximumZ =
+      static_cast<std::int64_t>(room.footprint.minimum.z) + depth;
+  const int maximumLayerCount = std::numeric_limits<std::uint16_t>::max();
+  const bool valid =
+      width > 0 && depth > 0 &&
+      maximumX <= std::numeric_limits<std::int32_t>::max() &&
+      maximumZ <= std::numeric_limits<std::int32_t>::max() &&
+      wallHeight > 0 && wallHeight <= maximumLayerCount &&
+      floorLayers > 0 && floorLayers <= maximumLayerCount &&
+      std::isfinite(wallThickness) && wallThickness > 0.0 &&
+      static_cast<double>(width) > wallThickness * 2.0 &&
+      static_cast<double>(depth) > wallThickness * 2.0;
+  if (!valid) {
+    ImGui::TextColored(ImVec4{0.94F, 0.45F, 0.32F, 1.0F},
+                       "room shell settings are outside valid bounds");
+    return;
+  }
+
+  CreativeEditorWorldLayoutRoomSettings settings;
+  settings.footprint = room.footprint;
+  settings.footprint.maximum.x = static_cast<std::int32_t>(maximumX);
+  settings.footprint.maximum.z = static_cast<std::int32_t>(maximumZ);
+  settings.baseLayer = static_cast<std::int32_t>(baseLayer);
+  settings.wallHeightCells = static_cast<std::uint16_t>(wallHeight);
+  settings.wallThicknessCells = wallThickness;
+  settings.floorThicknessCells = static_cast<std::uint16_t>(floorLayers);
+  commands.push(
+      CreativeDesktopCommandId::WorldLayoutSetRoomSettings,
+      CreativeDesktopWorldLayoutRoomSettingsPayload{state.selection.index,
+                                                    settings});
 }
 
 void drawLayoutCanvas(CreativeEditorState& editor,
@@ -393,44 +478,9 @@ void buildCreativeEditorWorldLayoutPanel(
   ImGui::EndDisabled();
   ImGui::EndDisabled();
 
-  if (state.selection.kind == CreativeEditorWorldLayoutSelectionKind::Room &&
-      state.selection.index < state.source.rooms.size()) {
-    const cr::CreativeWorldLayoutRoom& room =
-        state.source.rooms[state.selection.index];
-    const std::int64_t widthCells =
-        static_cast<std::int64_t>(room.footprint.maximum.x) -
-        room.footprint.minimum.x;
-    const std::int64_t depthCells =
-        static_cast<std::int64_t>(room.footprint.maximum.z) -
-        room.footprint.minimum.z;
-    int width = static_cast<int>(std::min<std::int64_t>(
-        widthCells, std::numeric_limits<int>::max()));
-    int depth = static_cast<int>(std::min<std::int64_t>(
-        depthCells, std::numeric_limits<int>::max()));
-    ImGui::SetNextItemWidth(90.0F);
-    const bool widthChanged = ImGui::InputInt("Width", &width, 1, 4);
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(90.0F);
-    const bool depthChanged = ImGui::InputInt("Depth", &depth, 1, 4);
-    if ((widthChanged || depthChanged) && width > 0 && depth > 0) {
-      const std::int64_t maximumX =
-          static_cast<std::int64_t>(room.footprint.minimum.x) + width;
-      const std::int64_t maximumZ =
-          static_cast<std::int64_t>(room.footprint.minimum.z) + depth;
-      if (maximumX > std::numeric_limits<std::int32_t>::max() ||
-          maximumZ > std::numeric_limits<std::int32_t>::max()) {
-        ImGui::TextDisabled("room dimensions exceed the layout range");
-      } else {
-        cr::CreativeWorldLayoutRect footprint = room.footprint;
-        footprint.maximum.x = static_cast<std::int32_t>(maximumX);
-        footprint.maximum.z = static_cast<std::int32_t>(maximumZ);
-        commands.push(
-            CreativeDesktopCommandId::WorldLayoutResizeRoom,
-            CreativeDesktopWorldLayoutRoomRectPayload{state.selection.index,
-                                                      footprint});
-      }
-    }
-  }
+  ImGui::BeginDisabled(playModeActive || editor.assetEdit.active);
+  drawSelectedRoomSettings(state, commands);
+  ImGui::EndDisabled();
 
   ImGui::TextDisabled(
       "rooms %llu  floors %llu  partitions %llu  openings %llu  rev %llu%s",

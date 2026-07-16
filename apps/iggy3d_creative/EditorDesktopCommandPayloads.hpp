@@ -134,9 +134,9 @@ struct CreativeDesktopWorldLayoutGesturePayload {
   CreativeEditorWorldLayoutPoint point;
 };
 
-struct CreativeDesktopWorldLayoutRoomRectPayload {
+struct CreativeDesktopWorldLayoutRoomSettingsPayload {
   std::size_t roomIndex = iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
-  iggy3d::creative::CreativeWorldLayoutRect footprint;
+  CreativeEditorWorldLayoutRoomSettings settings;
 };
 
 // The discriminated payload carried by every command (monostate = no payload).
@@ -157,6 +157,6 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutToolPayload,
     CreativeDesktopWorldLayoutPointPayload,
     CreativeDesktopWorldLayoutGesturePayload,
-    CreativeDesktopWorldLayoutRoomRectPayload>;
+    CreativeDesktopWorldLayoutRoomSettingsPayload>;
 
 }  // namespace iggy3d_creative_app

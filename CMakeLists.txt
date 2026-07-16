@@ -127,7 +127,6 @@ target_sources(iggy3d
     src/app/iggy3d/creative/world/WorldLayoutRooms.cpp
     src/app/iggy3d/creative/world/WorldLayoutApply.cpp
     src/app/iggy3d/creative/world/WorldLayoutCodec.cpp
-    src/app/iggy3d/creative/tools/RoomShell.cpp
     src/app/iggy3d/creative/ui/UiTheme.cpp
     src/app/iggy3d/creative/ui/UiWidgets.cpp
     src/app/iggy3d/creative/Facade.cpp

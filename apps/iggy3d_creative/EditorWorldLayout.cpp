@@ -115,7 +115,7 @@ struct OpeningHostProjection {
   std::size_t wallIndex = cr::kInvalidCreativeWorldLayoutIndex;
   std::size_t roomIndex = cr::kInvalidCreativeWorldLayoutIndex;
   cr::CreativeWorldLayoutRoomEdge roomEdge =
-      cr::CreativeWorldLayoutRoomEdge::MinimumZ;
+      cr::CreativeWorldLayoutRoomEdge::North;
   double centerOffsetCells = 0.0;
   double lengthCells = 0.0;
   double distanceCells = std::numeric_limits<double>::infinity();
@@ -125,16 +125,16 @@ std::pair<cr::CreativeTerrainCoord2, cr::CreativeTerrainCoord2> roomEdgeSegment(
     const cr::CreativeWorldLayoutRoom& room,
     cr::CreativeWorldLayoutRoomEdge edge) {
   switch (edge) {
-    case cr::CreativeWorldLayoutRoomEdge::MinimumZ:
+    case cr::CreativeWorldLayoutRoomEdge::North:
       return {{room.footprint.minimum.x, room.footprint.minimum.z},
               {room.footprint.maximum.x, room.footprint.minimum.z}};
-    case cr::CreativeWorldLayoutRoomEdge::MaximumX:
+    case cr::CreativeWorldLayoutRoomEdge::East:
       return {{room.footprint.maximum.x, room.footprint.minimum.z},
               {room.footprint.maximum.x, room.footprint.maximum.z}};
-    case cr::CreativeWorldLayoutRoomEdge::MaximumZ:
+    case cr::CreativeWorldLayoutRoomEdge::South:
       return {{room.footprint.minimum.x, room.footprint.maximum.z},
               {room.footprint.maximum.x, room.footprint.maximum.z}};
-    case cr::CreativeWorldLayoutRoomEdge::MinimumX:
+    case cr::CreativeWorldLayoutRoomEdge::West:
       return {{room.footprint.minimum.x, room.footprint.minimum.z},
               {room.footprint.minimum.x, room.footprint.maximum.z}};
     case cr::CreativeWorldLayoutRoomEdge::Count:
@@ -190,7 +190,7 @@ OpeningHostProjection nearestOpeningHost(
     const cr::CreativeWorldLayoutWall& wall = layout.walls[index];
     considerSegment(best, point, wall.start, wall.end, tolerance,
                     cr::CreativeWorldLayoutOpeningHostKind::Wall, index,
-                    cr::CreativeWorldLayoutRoomEdge::MinimumZ);
+                    cr::CreativeWorldLayoutRoomEdge::North);
   }
   for (std::size_t roomIndex = 0U; roomIndex < layout.rooms.size();
        ++roomIndex) {
@@ -620,19 +620,28 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutGesture(
   return applyCreativeEditorWorldLayoutPoint(state, point);
 }
 
-CreativeEditorWorldLayoutEditReceipt resizeCreativeEditorWorldLayoutRoom(
+CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutRoomSettings(
     CreativeEditorWorldLayoutState& state, std::size_t roomIndex,
-    cr::CreativeWorldLayoutRect footprint) {
-  if (roomIndex >= state.source.rooms.size() ||
-      footprint.minimum.x >= footprint.maximum.x ||
-      footprint.minimum.z >= footprint.maximum.z) {
-    return {false, false, "creative_editor_world_layout_room_resize_invalid"};
+    CreativeEditorWorldLayoutRoomSettings settings) {
+  const double width = static_cast<double>(settings.footprint.maximum.x) -
+                       settings.footprint.minimum.x;
+  const double depth = static_cast<double>(settings.footprint.maximum.z) -
+                       settings.footprint.minimum.z;
+  if (roomIndex >= state.source.rooms.size() || width <= 0.0 || depth <= 0.0 ||
+      settings.wallHeightCells == 0U || settings.floorThicknessCells == 0U ||
+      !std::isfinite(settings.wallThicknessCells) ||
+      settings.wallThicknessCells <= 0.0 ||
+      width <= settings.wallThicknessCells * 2.0 ||
+      depth <= settings.wallThicknessCells * 2.0) {
+    state.statusMessage = "room shell settings are invalid";
+    return {false, false,
+            "creative_editor_world_layout_room_settings_invalid"};
   }
   const cr::CreativeWorldLayoutRoom& existingRoom =
       state.source.rooms[roomIndex];
-  if (roomFootprintOverlaps(state.source, footprint,
+  if (roomFootprintOverlaps(state.source, settings.footprint,
                             existingRoom.buildingIndex,
-                            existingRoom.baseLayer, roomIndex)) {
+                            settings.baseLayer, roomIndex)) {
     state.statusMessage = "rooms may touch but cannot overlap";
     return {false, false, "creative_editor_world_layout_room_overlap"};
   }
@@ -642,11 +651,11 @@ CreativeEditorWorldLayoutEditReceipt resizeCreativeEditorWorldLayoutRoom(
       continue;
     }
     const bool horizontal =
-        opening.roomEdge == cr::CreativeWorldLayoutRoomEdge::MinimumZ ||
-        opening.roomEdge == cr::CreativeWorldLayoutRoomEdge::MaximumZ;
+        opening.roomEdge == cr::CreativeWorldLayoutRoomEdge::North ||
+        opening.roomEdge == cr::CreativeWorldLayoutRoomEdge::South;
     const double edgeLength = horizontal
-                                  ? footprint.maximum.x - footprint.minimum.x
-                                  : footprint.maximum.z - footprint.minimum.z;
+                                  ? width
+                                  : depth;
     const double halfWidth = opening.widthCells * 0.5;
     if (opening.centerOffsetCells - halfWidth < 0.0 ||
         opening.centerOffsetCells + halfWidth > edgeLength) {
@@ -656,14 +665,23 @@ CreativeEditorWorldLayoutEditReceipt resizeCreativeEditorWorldLayoutRoom(
     }
   }
   cr::CreativeWorldLayoutRoom& room = state.source.rooms[roomIndex];
-  if (room.footprint.minimum == footprint.minimum &&
-      room.footprint.maximum == footprint.maximum) {
-    return {true, false, "creative_editor_world_layout_room_resize_no_change"};
+  if (room.footprint.minimum == settings.footprint.minimum &&
+      room.footprint.maximum == settings.footprint.maximum &&
+      room.baseLayer == settings.baseLayer &&
+      room.wallHeightCells == settings.wallHeightCells &&
+      room.wallThicknessCells == settings.wallThicknessCells &&
+      room.floorThicknessCells == settings.floorThicknessCells) {
+    return {true, false,
+            "creative_editor_world_layout_room_settings_no_change"};
   }
-  room.footprint = footprint;
+  room.footprint = settings.footprint;
+  room.baseLayer = settings.baseLayer;
+  room.wallHeightCells = settings.wallHeightCells;
+  room.wallThicknessCells = settings.wallThicknessCells;
+  room.floorThicknessCells = settings.floorThicknessCells;
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Room, roomIndex};
-  noteSourceChange(state, "room resized");
-  return {true, true, "creative_editor_world_layout_room_resized"};
+  noteSourceChange(state, "room shell settings updated");
+  return {true, true, "creative_editor_world_layout_room_settings_updated"};
 }
 
 CreativeEditorWorldLayoutEditReceipt deleteCreativeEditorWorldLayoutSelection(

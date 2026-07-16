@@ -65,7 +65,7 @@ enum class CreativeDesktopCommandId : std::uint8_t {
   WorldLayoutSetTool,
   WorldLayoutCanvasPoint,
   WorldLayoutCanvasGesture,
-  WorldLayoutResizeRoom,
+  WorldLayoutSetRoomSettings,
   WorldLayoutDeleteSelection,
   WorldLayoutPreview,
   WorldLayoutConfirm,

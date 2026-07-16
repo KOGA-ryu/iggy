@@ -77,7 +77,7 @@ cr::CreativeWorldLayout richLayout() {
   cr::CreativeWorldLayoutOpening roomDoor;
   roomDoor.hostKind = cr::CreativeWorldLayoutOpeningHostKind::RoomEdge;
   roomDoor.roomIndex = 0U;
-  roomDoor.roomEdge = cr::CreativeWorldLayoutRoomEdge::MaximumZ;
+  roomDoor.roomEdge = cr::CreativeWorldLayoutRoomEdge::South;
   roomDoor.kind = cr::CreativeBuildingOpeningKind::Door;
   roomDoor.stableKey = "door.study";
   roomDoor.name = "Study Door";

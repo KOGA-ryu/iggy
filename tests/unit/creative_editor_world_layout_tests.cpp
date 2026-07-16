@@ -1,8 +1,12 @@
 #include "EditorWorldLayout.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <string>
 
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
 
 namespace app = iggy3d_creative_app;
@@ -15,6 +19,10 @@ bool expect(bool condition, const char* message) {
     std::cerr << "FAIL: " << message << '\n';
   }
   return condition;
+}
+
+bool near(double lhs, double rhs) {
+  return std::abs(lhs - rhs) <= 1.0e-9;
 }
 
 cr::CreativeAppState appState() {
@@ -124,8 +132,8 @@ bool roomGestureHostsOpeningsAndSupportsResize() {
       state, app::CreativeEditorWorldLayoutTool::Door));
   const auto door =
       app::applyCreativeEditorWorldLayoutPoint(state, {3.0, 0.1});
-  const auto resized = app::resizeCreativeEditorWorldLayoutRoom(
-      state, 0U, {{0, 0}, {8, 5}});
+  const auto updated = app::setCreativeEditorWorldLayoutRoomSettings(
+      state, 0U, {{{0, 0}, {8, 5}}, 2, 5U, 0.5, 2U});
 
   return expect(begin.accepted && !begin.changed && commit.accepted &&
                     commit.changed,
@@ -137,12 +145,37 @@ bool roomGestureHostsOpeningsAndSupportsResize() {
                     state.source.openings[0].hostKind ==
                         cr::CreativeWorldLayoutOpeningHostKind::RoomEdge &&
                     state.source.openings[0].roomEdge ==
-                        cr::CreativeWorldLayoutRoomEdge::MinimumZ,
+                        cr::CreativeWorldLayoutRoomEdge::North,
                 "door slots into a semantic room edge") &&
-         expect(resized.accepted && resized.changed &&
+         expect(updated.accepted && updated.changed &&
                     state.source.rooms[0].footprint.maximum ==
-                        cr::CreativeTerrainCoord2{8, 5},
-                "selected room dimensions can be changed exactly");
+                        cr::CreativeTerrainCoord2{8, 5} &&
+                    state.source.rooms[0].baseLayer == 2 &&
+                    state.source.rooms[0].wallHeightCells == 5U &&
+                    state.source.rooms[0].wallThicknessCells == 0.5 &&
+                    state.source.rooms[0].floorThicknessCells == 2U,
+                "selected room shell settings change as one source edit");
+}
+
+bool invalidRoomShellSettingsFailWithoutMutation() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state);
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Room));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {0, 0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {4, 4}));
+  const std::uint64_t revisionBefore = state.revision;
+  const auto rejected = app::setCreativeEditorWorldLayoutRoomSettings(
+      state, 0U, {{{0, 0}, {4, 4}}, 0, 3U, 2.0, 1U});
+
+  return expect(!rejected.accepted && !rejected.changed,
+                "room shell rejects walls that consume the interior") &&
+         expect(state.revision == revisionBefore &&
+                    state.source.rooms[0].wallThicknessCells ==
+                        cr::kDefaultCreativeWorldLayoutWallThicknessCells,
+                "invalid room shell settings do not mutate source truth");
 }
 
 bool roomDeletionCascadesHostedOpeningsAndCancelIsEmpty() {
@@ -186,16 +219,13 @@ bool exactPreviewAndConfirmUseOneHistoryEntry() {
   app::CreativeEditorWorldLayoutState state;
   app::resetCreativeEditorWorldLayout(state);
   static_cast<void>(app::setCreativeEditorWorldLayoutTool(
-      state, app::CreativeEditorWorldLayoutTool::Floor));
-  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(state, {0, 0}));
-  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(state, {6, 5}));
-  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
-      state, app::CreativeEditorWorldLayoutTool::Wall));
-  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(state, {0, 0}));
-  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(state, {6, 0}));
-  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
-      state, app::CreativeEditorWorldLayoutTool::Door));
-  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(state, {3, 0}));
+      state, app::CreativeEditorWorldLayoutTool::Room));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {0, 0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {6, 5}));
+  const auto settings = app::setCreativeEditorWorldLayoutRoomSettings(
+      state, 0U, {{{0, 0}, {8, 6}}, 1, 4U, 0.5, 2U});
 
   const std::uint64_t liveCountBefore = live.facade.document().objectCount();
   const auto preview =
@@ -204,17 +234,54 @@ bool exactPreviewAndConfirmUseOneHistoryEntry() {
       app::creativeEditorWorldLayoutRenderDocument(state,
                                                    live.facade.document());
   const std::uint64_t previewObjectCount = rendered.objectCount();
+  std::uint64_t floorCount = 0U;
+  std::uint64_t wallCount = 0U;
+  bool linkedByLayout = true;
+  const cr::CreativeObject* floor = nullptr;
+  const cr::CreativeObject* wall = nullptr;
+  const std::string layoutTag = cr::creativeWorldLayoutTag("world_layout");
+  for (const cr::CreativeObject& object : rendered.objects()) {
+    floorCount += object.kind == cr::CreativeObjectKind::Floor ? 1U : 0U;
+    wallCount += object.kind == cr::CreativeObjectKind::Wall ? 1U : 0U;
+    if (floor == nullptr && object.kind == cr::CreativeObjectKind::Floor) {
+      floor = &object;
+    }
+    if (wall == nullptr && object.kind == cr::CreativeObjectKind::Wall) {
+      wall = &object;
+    }
+    linkedByLayout =
+        linkedByLayout &&
+        std::find(object.tags.begin(), object.tags.end(), layoutTag) !=
+            object.tags.end();
+  }
+  const cr::CreativeTransformedBounds floorGeometry =
+      floor == nullptr ? cr::CreativeTransformedBounds{}
+                       : cr::resolveCreativeObjectBounds(*floor);
+  const cr::CreativeTransformedBounds wallGeometry =
+      wall == nullptr ? cr::CreativeTransformedBounds{}
+                      : cr::resolveCreativeObjectBounds(*wall);
   const bool previewDidNotPublish =
       live.facade.document().objectCount() == liveCountBefore;
   const auto applied = app::confirmCreativeEditorWorldLayout(state, live);
 
-  return expect(preview.accepted &&
+  return expect(settings.accepted && settings.changed,
+                "room shell settings are accepted before generation") &&
+         expect(preview.accepted &&
                     app::creativeEditorWorldLayoutPreviewActive(state) == false,
                 "confirm closes an accepted exact preview") &&
-         expect(previewObjectCount > liveCountBefore && previewDidNotPublish,
-                "preview renders generated output without publishing") &&
+         expect(previewObjectCount == 5U && floorCount == 1U &&
+                    wallCount == 4U && linkedByLayout &&
+                    previewDidNotPublish,
+                "preview renders one linked floor and four walls without publishing") &&
+         expect(floorGeometry.valid && wallGeometry.valid &&
+                    near(floorGeometry.size.y, 0.1) &&
+                    near(wallGeometry.worldBounds.min.y, 2.0) &&
+                    near(wallGeometry.worldBounds.max.y, 6.0) &&
+                    near(std::min(wallGeometry.size.x, wallGeometry.size.z),
+                         0.5),
+                "preview geometry matches floor, elevation, height, and thickness settings") &&
          expect(applied.accepted && applied.changed &&
-                    live.facade.document().objectCount() > liveCountBefore,
+                    live.facade.document().objectCount() == 5U,
                 "confirm publishes generated output") &&
          expect(cr::creativeUndoDepth(live.history) == 1U,
                 "one layout confirm records exactly one undo entry");
@@ -227,6 +294,7 @@ int main() {
                   openingsSnapInsideWallsAndRejectOverlap() &&
                   deletingWallCascadesItsOpenings() &&
                   roomGestureHostsOpeningsAndSupportsResize() &&
+                  invalidRoomShellSettingsFailWithoutMutation() &&
                   roomDeletionCascadesHostedOpeningsAndCancelIsEmpty() &&
                   exactPreviewAndConfirmUseOneHistoryEntry();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

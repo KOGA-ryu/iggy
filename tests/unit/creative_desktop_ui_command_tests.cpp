@@ -1270,8 +1270,9 @@ bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
       app::CreativeDesktopWorldLayoutGesturePayload{
           app::CreativeEditorWorldLayoutGesturePhase::Commit, {6.0, 5.0}});
   const app::CreativeDesktopCommandResult resized = dispatchPayload(
-      app::CreativeDesktopCommandId::WorldLayoutResizeRoom, context,
-      app::CreativeDesktopWorldLayoutRoomRectPayload{0U, {{0, 0}, {8, 6}}});
+      app::CreativeDesktopCommandId::WorldLayoutSetRoomSettings, context,
+      app::CreativeDesktopWorldLayoutRoomSettingsPayload{
+          0U, {{{0, 0}, {8, 6}}, 1, 4U, 0.5, 1U}});
 
   const std::uint64_t liveCountBefore =
       appState.facade.document().objectCount();
@@ -1296,8 +1297,12 @@ bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
                     room.accepted && room.worldLayoutChanged &&
                     resized.accepted && resized.worldLayoutChanged &&
                     editor.worldLayout.source.rooms[0].footprint.maximum ==
-                        cr::CreativeTerrainCoord2{8, 6},
-                "room drag and resize route through typed payloads") &&
+                        cr::CreativeTerrainCoord2{8, 6} &&
+                    editor.worldLayout.source.rooms[0].baseLayer == 1 &&
+                    editor.worldLayout.source.rooms[0].wallHeightCells == 4U &&
+                    editor.worldLayout.source.rooms[0].wallThicknessCells ==
+                        0.5,
+                "room drag and complete settings route through typed payloads") &&
          expect(preview.accepted && preview.sceneChanged &&
                     exactPreviewVisible && !editor.desktopUi.showWorldLayout,
                 "layout preview is exact, transient, and closes the canvas") &&

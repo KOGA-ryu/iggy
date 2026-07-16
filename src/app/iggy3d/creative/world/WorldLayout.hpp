@@ -66,11 +66,18 @@ struct CreativeWorldLayoutRoom {
 };
 
 enum class CreativeWorldLayoutRoomEdge : std::uint8_t {
-  MinimumZ,
-  MaximumX,
-  MaximumZ,
-  MinimumX,
+  North,
+  East,
+  South,
+  West,
   Count,
+
+  // Serialized aliases retained for source compatibility. Cardinal names are
+  // the authored identity; their numeric values remain schema-stable.
+  MinimumZ = North,
+  MaximumX = East,
+  MaximumZ = South,
+  MinimumX = West,
 };
 
 enum class CreativeWorldLayoutOpeningHostKind : std::uint8_t {
@@ -96,7 +103,7 @@ struct CreativeWorldLayoutOpening {
   std::size_t wallIndex = kInvalidCreativeWorldLayoutIndex;
   std::size_t roomIndex = kInvalidCreativeWorldLayoutIndex;
   CreativeWorldLayoutRoomEdge roomEdge =
-      CreativeWorldLayoutRoomEdge::MinimumZ;
+      CreativeWorldLayoutRoomEdge::North;
   CreativeBuildingOpeningKind kind = CreativeBuildingOpeningKind::Door;
   CreativeBuildingOpeningPose pose = CreativeBuildingOpeningPose::Closed;
   std::string stableKey;
@@ -257,6 +264,10 @@ struct CreativeWorldLayoutApplyReceipt {
     CreativeWorldLayoutTable table) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeWorldLayoutStatus status) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeWorldLayoutRoomEdge edge) noexcept;
+[[nodiscard]] std::string_view creativeWorldLayoutRoomEdgeKey(
+    CreativeWorldLayoutRoomEdge edge) noexcept;
 [[nodiscard]] std::string creativeWorldLayoutTag(std::string_view layoutKey);
 
 [[nodiscard]] CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(

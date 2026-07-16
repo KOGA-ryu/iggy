@@ -18,7 +18,7 @@ enum class EdgeOrientation : std::uint8_t { Horizontal, Vertical };
 struct EdgeRecord {
   std::size_t buildingIndex = kInvalidCreativeWorldLayoutIndex;
   std::size_t roomIndex = kInvalidCreativeWorldLayoutIndex;
-  CreativeWorldLayoutRoomEdge roomEdge = CreativeWorldLayoutRoomEdge::MinimumZ;
+  CreativeWorldLayoutRoomEdge roomEdge = CreativeWorldLayoutRoomEdge::North;
   EdgeOrientation orientation = EdgeOrientation::Horizontal;
   std::int32_t line = 0;
   std::int32_t begin = 0;
@@ -92,13 +92,13 @@ std::array<EdgeRecord, kRoomEdgeCount> roomEdges(
                       room.wallThicknessCells};
   };
   return {
-      make(CreativeWorldLayoutRoomEdge::MinimumZ, EdgeOrientation::Horizontal,
+      make(CreativeWorldLayoutRoomEdge::North, EdgeOrientation::Horizontal,
            rect.minimum.z, rect.minimum.x, rect.maximum.x),
-      make(CreativeWorldLayoutRoomEdge::MaximumX, EdgeOrientation::Vertical,
+      make(CreativeWorldLayoutRoomEdge::East, EdgeOrientation::Vertical,
            rect.maximum.x, rect.minimum.z, rect.maximum.z),
-      make(CreativeWorldLayoutRoomEdge::MaximumZ, EdgeOrientation::Horizontal,
+      make(CreativeWorldLayoutRoomEdge::South, EdgeOrientation::Horizontal,
            rect.maximum.z, rect.minimum.x, rect.maximum.x),
-      make(CreativeWorldLayoutRoomEdge::MinimumX, EdgeOrientation::Vertical,
+      make(CreativeWorldLayoutRoomEdge::West, EdgeOrientation::Vertical,
            rect.minimum.x, rect.minimum.z, rect.maximum.z),
   };
 }
@@ -136,7 +136,13 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
         !validRect(room.footprint) || room.wallHeightCells == 0U ||
         room.floorThicknessCells == 0U ||
         !std::isfinite(room.wallThicknessCells) ||
-        room.wallThicknessCells <= 0.0) {
+        room.wallThicknessCells <= 0.0 ||
+        (static_cast<double>(room.footprint.maximum.x) -
+         static_cast<double>(room.footprint.minimum.x)) <=
+            room.wallThicknessCells * 2.0 ||
+        (static_cast<double>(room.footprint.maximum.z) -
+         static_cast<double>(room.footprint.minimum.z)) <=
+            room.wallThicknessCells * 2.0) {
       setFailure(result, CreativeWorldLayoutRoomCompileStatus::InvalidRoom,
                  roomIndex, "creative_world_layout_room_invalid");
       return result;

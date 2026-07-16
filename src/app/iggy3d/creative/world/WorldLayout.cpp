@@ -310,6 +310,29 @@ std::string_view toString(CreativeWorldLayoutStatus status) noexcept {
   return "Unknown";
 }
 
+std::string_view toString(CreativeWorldLayoutRoomEdge edge) noexcept {
+  switch (edge) {
+    case CreativeWorldLayoutRoomEdge::North: return "North";
+    case CreativeWorldLayoutRoomEdge::East: return "East";
+    case CreativeWorldLayoutRoomEdge::South: return "South";
+    case CreativeWorldLayoutRoomEdge::West: return "West";
+    case CreativeWorldLayoutRoomEdge::Count: break;
+  }
+  return "Unknown";
+}
+
+std::string_view creativeWorldLayoutRoomEdgeKey(
+    CreativeWorldLayoutRoomEdge edge) noexcept {
+  switch (edge) {
+    case CreativeWorldLayoutRoomEdge::North: return "north";
+    case CreativeWorldLayoutRoomEdge::East: return "east";
+    case CreativeWorldLayoutRoomEdge::South: return "south";
+    case CreativeWorldLayoutRoomEdge::West: return "west";
+    case CreativeWorldLayoutRoomEdge::Count: break;
+  }
+  return "unknown";
+}
+
 std::string creativeWorldLayoutTag(std::string_view layoutKey) {
   return "creative_world_layout:" + std::string(layoutKey);
 }
