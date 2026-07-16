@@ -151,6 +151,26 @@ struct CreativeDesktopWorldLayoutBuildingTransformPayload {
           RotateRight90;
 };
 
+struct CreativeDesktopWorldLayoutBuildingTemplateCapturePayload {
+  std::size_t buildingIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::string label;
+};
+
+struct CreativeDesktopWorldLayoutBuildingTemplateSelectionPayload {
+  std::size_t templateIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+};
+
+struct CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload {
+  CreativeEditorWorldLayoutBuildingTemplatePlacementPhase phase =
+      CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Begin;
+  CreativeEditorWorldLayoutPoint point;
+  iggy3d::creative::CreativeWorldLayoutBuildingTransformOperation operation =
+      iggy3d::creative::CreativeWorldLayoutBuildingTransformOperation::
+          RotateRight90;
+};
+
 struct CreativeDesktopWorldLayoutPointPayload {
   CreativeEditorWorldLayoutPoint point;
 };
@@ -230,6 +250,9 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutBuildingManipulationPayload,
     CreativeDesktopWorldLayoutBuildingDuplicatePayload,
     CreativeDesktopWorldLayoutBuildingTransformPayload,
+    CreativeDesktopWorldLayoutBuildingTemplateCapturePayload,
+    CreativeDesktopWorldLayoutBuildingTemplateSelectionPayload,
+    CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload,
     CreativeDesktopWorldLayoutPointPayload,
     CreativeDesktopWorldLayoutGesturePayload,
     CreativeDesktopWorldLayoutRoomSettingsPayload,

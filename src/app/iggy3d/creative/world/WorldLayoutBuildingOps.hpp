@@ -55,6 +55,45 @@ struct CreativeWorldLayoutBuildingDeleteRequest {
   std::size_t buildingIndex = kInvalidCreativeWorldLayoutIndex;
 };
 
+enum class CreativeWorldLayoutBuildingTemplateStatus : std::uint8_t {
+  NotRequested,
+  InvalidRequest,
+  InvalidOwnership,
+  EmptyBuilding,
+  InvalidTemplate,
+  CoordinateOverflow,
+  Ready,
+};
+
+struct CreativeWorldLayoutBuildingTemplate {
+  std::string templateId;
+  std::string label;
+  CreativeWorldLayout normalizedLayout;
+  CreativeWorldLayoutBuildingBounds bounds;
+};
+
+struct CreativeWorldLayoutBuildingTemplateCaptureRequest {
+  std::size_t buildingIndex = kInvalidCreativeWorldLayoutIndex;
+  std::string templateId;
+  std::string label;
+};
+
+struct CreativeWorldLayoutBuildingTemplateResult {
+  bool requested = false;
+  bool accepted = false;
+  CreativeWorldLayoutBuildingTemplateStatus status =
+      CreativeWorldLayoutBuildingTemplateStatus::NotRequested;
+  CreativeWorldLayoutBuildingTemplate value;
+  std::string reasonCode =
+      "creative_world_layout_building_template_not_requested";
+};
+
+struct CreativeWorldLayoutBuildingTemplateStampRequest {
+  CreativeTerrainCoord2 anchor;
+  std::uint64_t nextStableOrdinal = 1U;
+  bool appendCopySuffix = false;
+};
+
 enum class CreativeWorldLayoutBuildingTransformOperation : std::uint8_t {
   RotateLeft90,
   RotateRight90,
@@ -97,6 +136,8 @@ struct CreativeWorldLayoutBuildingTransformResult {
 [[nodiscard]] std::string_view toString(
     CreativeWorldLayoutBuildingEditStatus status) noexcept;
 [[nodiscard]] std::string_view toString(
+    CreativeWorldLayoutBuildingTemplateStatus status) noexcept;
+[[nodiscard]] std::string_view toString(
     CreativeWorldLayoutBuildingTransformOperation operation) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeWorldLayoutBuildingTransformStatus status) noexcept;
@@ -134,6 +175,24 @@ duplicateCreativeWorldLayoutBuilding(
 deleteCreativeWorldLayoutBuilding(
     const CreativeWorldLayout& source,
     const CreativeWorldLayoutBuildingDeleteRequest& request);
+
+[[nodiscard]] bool validCreativeWorldLayoutBuildingTemplate(
+    const CreativeWorldLayoutBuildingTemplate& value) noexcept;
+[[nodiscard]] CreativeWorldLayoutBuildingTemplateResult
+captureCreativeWorldLayoutBuildingTemplate(
+    const CreativeWorldLayout& source,
+    const CreativeWorldLayoutBuildingTemplateCaptureRequest& request);
+[[nodiscard]] CreativeWorldLayoutBuildingTemplateResult
+loadCreativeWorldLayoutBuildingTemplate(CreativeWorldLayout normalizedLayout);
+[[nodiscard]] CreativeWorldLayoutBuildingTemplateResult
+transformCreativeWorldLayoutBuildingTemplate(
+    const CreativeWorldLayoutBuildingTemplate& source,
+    CreativeWorldLayoutBuildingTransformOperation operation);
+[[nodiscard]] CreativeWorldLayoutBuildingEditResult
+stampCreativeWorldLayoutBuildingTemplate(
+    const CreativeWorldLayout& destination,
+    const CreativeWorldLayoutBuildingTemplate& source,
+    const CreativeWorldLayoutBuildingTemplateStampRequest& request);
 
 // O(buildings + rooms + boxes + walls + openings), with one full layout copy.
 // Stable keys, source order, heights, and terrain remain unchanged. Quarter

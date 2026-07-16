@@ -123,10 +123,6 @@ bool offsetBuilding(CreativeWorldLayout& layout,
   return true;
 }
 
-std::string copyName(std::string_view name) {
-  return std::string(name) + " Copy";
-}
-
 }  // namespace
 
 std::string_view toString(
@@ -347,113 +343,28 @@ CreativeWorldLayoutBuildingEditResult duplicateCreativeWorldLayoutBuilding(
     return result;
   }
 
-  CreativeWorldLayout edited = source;
-  std::uint64_t nextOrdinal = request.nextStableOrdinal;
-  CreativeWorldLayoutBuilding building =
-      source.buildings[request.buildingIndex];
-  building.stableKey =
-      mintCreativeWorldLayoutStableKey(edited, nextOrdinal, "building");
-  building.name = copyName(building.name);
-  if (building.rootMode != CreativeBuildingRootMode::None &&
-      !offsetRect(building.rootFootprint, request.deltaXCells,
-                  request.deltaZCells)) {
-    setFailure(result,
-               CreativeWorldLayoutBuildingEditStatus::CoordinateOverflow,
-               "creative_world_layout_building_duplicate_coordinate_overflow");
+  CreativeWorldLayoutBuildingTemplateResult captured =
+      captureCreativeWorldLayoutBuildingTemplate(
+          source, {request.buildingIndex, "duplicate_source",
+                   source.buildings[request.buildingIndex].name});
+  if (!captured.accepted) {
+    setFailure(result, CreativeWorldLayoutBuildingEditStatus::InvalidRequest,
+               "creative_world_layout_building_duplicate_source_invalid");
     return result;
   }
-  const std::size_t duplicateBuildingIndex = edited.buildings.size();
-  edited.buildings.push_back(std::move(building));
-
-  std::vector<std::size_t> roomMap(source.rooms.size(),
-                                   kInvalidCreativeWorldLayoutIndex);
-  for (std::size_t index = 0U; index < source.rooms.size(); ++index) {
-    if (source.rooms[index].buildingIndex != request.buildingIndex) {
-      continue;
-    }
-    CreativeWorldLayoutRoom room = source.rooms[index];
-    room.buildingIndex = duplicateBuildingIndex;
-    room.stableKey =
-        mintCreativeWorldLayoutStableKey(edited, nextOrdinal, "room");
-    room.name = copyName(room.name);
-    if (!offsetRect(room.footprint, request.deltaXCells, request.deltaZCells)) {
-      setFailure(
-          result, CreativeWorldLayoutBuildingEditStatus::CoordinateOverflow,
-          "creative_world_layout_building_duplicate_coordinate_overflow");
-      return result;
-    }
-    roomMap[index] = edited.rooms.size();
-    edited.rooms.push_back(std::move(room));
+  const std::int64_t anchorX =
+      static_cast<std::int64_t>(bounds.minimum.x) + request.deltaXCells;
+  const std::int64_t anchorZ =
+      static_cast<std::int64_t>(bounds.minimum.z) + request.deltaZCells;
+  result = stampCreativeWorldLayoutBuildingTemplate(
+      source, captured.value,
+      {{static_cast<std::int32_t>(anchorX), static_cast<std::int32_t>(anchorZ)},
+       request.nextStableOrdinal,
+       true});
+  result.sourceBuildingIndex = request.buildingIndex;
+  if (result.accepted) {
+    result.reasonCode = "creative_world_layout_building_duplicate_ready";
   }
-
-  for (const CreativeWorldLayoutBox& sourceBox : source.boxes) {
-    if (sourceBox.buildingIndex != request.buildingIndex) {
-      continue;
-    }
-    CreativeWorldLayoutBox box = sourceBox;
-    box.buildingIndex = duplicateBuildingIndex;
-    box.stableKey =
-        mintCreativeWorldLayoutStableKey(edited, nextOrdinal, "floor");
-    box.name = copyName(box.name);
-    if (!offsetRect(box.footprint, request.deltaXCells, request.deltaZCells)) {
-      setFailure(
-          result, CreativeWorldLayoutBuildingEditStatus::CoordinateOverflow,
-          "creative_world_layout_building_duplicate_coordinate_overflow");
-      return result;
-    }
-    edited.boxes.push_back(std::move(box));
-  }
-
-  std::vector<std::size_t> wallMap(source.walls.size(),
-                                   kInvalidCreativeWorldLayoutIndex);
-  for (std::size_t index = 0U; index < source.walls.size(); ++index) {
-    if (source.walls[index].buildingIndex != request.buildingIndex) {
-      continue;
-    }
-    CreativeWorldLayoutWall wall = source.walls[index];
-    wall.buildingIndex = duplicateBuildingIndex;
-    wall.stableKey =
-        mintCreativeWorldLayoutStableKey(edited, nextOrdinal, "wall");
-    wall.name = copyName(wall.name);
-    if (!offsetPoint(wall.start, request.deltaXCells, request.deltaZCells) ||
-        !offsetPoint(wall.end, request.deltaXCells, request.deltaZCells)) {
-      setFailure(
-          result, CreativeWorldLayoutBuildingEditStatus::CoordinateOverflow,
-          "creative_world_layout_building_duplicate_coordinate_overflow");
-      return result;
-    }
-    wallMap[index] = edited.walls.size();
-    edited.walls.push_back(std::move(wall));
-  }
-
-  for (const CreativeWorldLayoutOpening& sourceOpening : source.openings) {
-    CreativeWorldLayoutOpening opening = sourceOpening;
-    bool owned = false;
-    if (opening.hostKind == CreativeWorldLayoutOpeningHostKind::RoomEdge) {
-      owned = roomMap[opening.roomIndex] != kInvalidCreativeWorldLayoutIndex;
-      if (owned) {
-        opening.roomIndex = roomMap[opening.roomIndex];
-      }
-    } else {
-      owned = wallMap[opening.wallIndex] != kInvalidCreativeWorldLayoutIndex;
-      if (owned) {
-        opening.wallIndex = wallMap[opening.wallIndex];
-      }
-    }
-    if (!owned) {
-      continue;
-    }
-    opening.stableKey = mintCreativeWorldLayoutStableKey(
-        edited, nextOrdinal,
-        opening.kind == CreativeBuildingOpeningKind::Door ? "door" : "window");
-    opening.name = copyName(opening.name);
-    edited.openings.push_back(std::move(opening));
-  }
-
-  result.resultBuildingIndex = duplicateBuildingIndex;
-  result.nextStableOrdinal = nextOrdinal;
-  setReady(result, true, std::move(edited),
-           "creative_world_layout_building_duplicate_ready");
   return result;
 }
 

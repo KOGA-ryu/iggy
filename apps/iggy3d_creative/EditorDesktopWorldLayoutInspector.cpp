@@ -137,6 +137,121 @@ void drawBuildingActions(CreativeEditorWorldLayoutState& state,
   ImGui::Separator();
 }
 
+void drawBuildingTemplateActions(CreativeEditorWorldLayoutState& state,
+                                 CreativeDesktopCommandFrame& commands) {
+  CreativeEditorWorldLayoutBuildingTemplateLibrary& library =
+      state.buildingTemplates;
+  ImGui::TextUnformatted("Building templates");
+  const std::size_t selectedBuilding =
+      creativeEditorWorldLayoutSelectedBuilding(state);
+  const bool buildingAvailable =
+      selectedBuilding < state.source.buildings.size();
+  ImGui::BeginDisabled(!buildingAvailable || state.buildingTransform.active ||
+                       state.buildingManipulation.active ||
+                       state.buildingTemplatePlacement.active ||
+                       library.root.empty());
+  if (ImGui::Button("Save selected building")) {
+    commands.push(
+        CreativeDesktopCommandId::WorldLayoutCaptureBuildingTemplate,
+        CreativeDesktopWorldLayoutBuildingTemplateCapturePayload{
+            selectedBuilding, {}});
+  }
+  ImGui::EndDisabled();
+
+  if (library.templates.empty()) {
+    ImGui::TextDisabled("No saved building templates");
+    ImGui::TextDisabled("%s", library.statusMessage.c_str());
+    ImGui::Separator();
+    return;
+  }
+
+  const std::size_t selectedTemplateIndex =
+      library.selectedIndex < library.templates.size()
+          ? library.selectedIndex
+          : 0U;
+  const char* previewLabel =
+      library.templates[selectedTemplateIndex].label.c_str();
+  ImGui::SetNextItemWidth(220.0F);
+  if (ImGui::BeginCombo("Template", previewLabel)) {
+    for (std::size_t index = 0U; index < library.templates.size(); ++index) {
+      const bool isSelected = index == selectedTemplateIndex;
+      ImGui::PushID(static_cast<int>(index));
+      if (ImGui::Selectable(library.templates[index].label.c_str(),
+                            isSelected)) {
+        commands.push(
+            CreativeDesktopCommandId::WorldLayoutSelectBuildingTemplate,
+            CreativeDesktopWorldLayoutBuildingTemplateSelectionPayload{
+                index});
+      }
+      if (isSelected) {
+        ImGui::SetItemDefaultFocus();
+      }
+      ImGui::PopID();
+    }
+    ImGui::EndCombo();
+  }
+
+  if (!state.buildingTemplatePlacement.active) {
+    ImGui::BeginDisabled(
+        state.buildingTransform.active || state.buildingManipulation.active ||
+        library.selectedIndex >= library.templates.size());
+    if (ImGui::Button("Place template")) {
+      if (state.tool != CreativeEditorWorldLayoutTool::Select) {
+        commands.push(CreativeDesktopCommandId::WorldLayoutSetTool,
+                      CreativeDesktopWorldLayoutToolPayload{
+                          CreativeEditorWorldLayoutTool::Select});
+      }
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate,
+          CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload{
+              CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Begin,
+              {0.0, 0.0},
+              cr::CreativeWorldLayoutBuildingTransformOperation::
+                  RotateRight90});
+    }
+    ImGui::EndDisabled();
+  } else {
+    const auto transform =
+        [&](cr::CreativeWorldLayoutBuildingTransformOperation operation) {
+          commands.push(
+              CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate,
+              CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload{
+                  CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::
+                      Transform,
+                  {}, operation});
+        };
+    ImGui::TextColored(ImVec4{0.20F, 0.78F, 0.38F, 1.0F},
+                       "Move over the canvas, then click to place");
+    if (ImGui::Button("Rotate left##template")) {
+      transform(cr::CreativeWorldLayoutBuildingTransformOperation::RotateLeft90);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Rotate right##template")) {
+      transform(
+          cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Mirror X##template")) {
+      transform(cr::CreativeWorldLayoutBuildingTransformOperation::MirrorX);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Mirror Z##template")) {
+      transform(cr::CreativeWorldLayoutBuildingTransformOperation::MirrorZ);
+    }
+    if (ImGui::Button("Cancel placement")) {
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate,
+          CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload{
+              CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Cancel,
+              {},
+              cr::CreativeWorldLayoutBuildingTransformOperation::
+                  RotateRight90});
+    }
+  }
+  ImGui::TextDisabled("%s", library.statusMessage.c_str());
+  ImGui::Separator();
+}
+
 void drawBoxSettings(CreativeEditorWorldLayoutState& state,
                      CreativeDesktopCommandFrame& commands) {
   if (state.selection.kind != CreativeEditorWorldLayoutSelectionKind::Box ||
@@ -333,6 +448,7 @@ void drawCreativeEditorWorldLayoutStructureInspector(
     CreativeEditorWorldLayoutState& state,
     CreativeDesktopCommandFrame& commands) {
   drawBuildingActions(state, commands);
+  drawBuildingTemplateActions(state, commands);
   drawBoxSettings(state, commands);
   drawWallSettings(state, commands);
 }

@@ -2,7 +2,9 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <string>
+#include <vector>
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
@@ -230,6 +232,51 @@ struct CreativeEditorWorldLayoutBuildingTransformState {
       "creative_editor_world_layout_building_transform_inactive";
 };
 
+inline constexpr std::size_t
+    kCreativeEditorWorldLayoutBuildingTemplateCapacity = 256U;
+
+struct CreativeEditorWorldLayoutBuildingTemplateLibrary {
+  std::filesystem::path root;
+  std::vector<cr::CreativeWorldLayoutBuildingTemplate> templates;
+  std::uint64_t nextTemplateOrdinal = 1U;
+  std::size_t selectedIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::string statusMessage = "building template library not loaded";
+};
+
+struct CreativeEditorWorldLayoutBuildingTemplateLoadReceipt {
+  bool requested = false;
+  bool accepted = false;
+  std::size_t loadedCount = 0U;
+  std::size_t rejectedCount = 0U;
+  std::string reasonCode =
+      "creative_editor_world_layout_building_template_load_not_requested";
+};
+
+enum class CreativeEditorWorldLayoutBuildingTemplatePlacementPhase
+    : std::uint8_t {
+  Begin,
+  Update,
+  Transform,
+  Commit,
+  Cancel,
+  Count,
+};
+
+struct CreativeEditorWorldLayoutBuildingTemplatePlacementState {
+  bool active = false;
+  std::uint64_t sourceRevision = 0U;
+  std::size_t templateIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  cr::CreativeWorldLayoutBuildingTemplate orientedTemplate;
+  cr::CreativeTerrainCoord2 anchor;
+  cr::CreativeWorldLayoutBuildingBounds previewBounds;
+  cr::CreativeWorldLayout candidate;
+  std::size_t resultBuildingIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::uint64_t nextStableOrdinal = 1U;
+  bool previewValid = false;
+  std::string reasonCode =
+      "creative_editor_world_layout_building_template_placement_inactive";
+};
+
 struct CreativeEditorWorldLayoutOpeningSettings {
   double centerOffsetCells = 0.0;
   double widthCells = 1.0;
@@ -314,6 +361,9 @@ struct CreativeEditorWorldLayoutState {
   CreativeEditorWorldLayoutWallManipulationState wallManipulation;
   CreativeEditorWorldLayoutBuildingManipulationState buildingManipulation;
   CreativeEditorWorldLayoutBuildingTransformState buildingTransform;
+  CreativeEditorWorldLayoutBuildingTemplateLibrary buildingTemplates;
+  CreativeEditorWorldLayoutBuildingTemplatePlacementState
+      buildingTemplatePlacement;
   CreativeEditorWorldLayoutOpeningManipulationState openingManipulation;
   CreativeEditorWorldLayoutBoxSettingsDraft boxSettingsDraft;
   CreativeEditorWorldLayoutWallSettingsDraft wallSettingsDraft;
@@ -465,6 +515,26 @@ duplicateCreativeEditorWorldLayoutBuilding(
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 deleteCreativeEditorWorldLayoutBuilding(CreativeEditorWorldLayoutState& state,
                                         std::size_t buildingIndex);
+[[nodiscard]] CreativeEditorWorldLayoutBuildingTemplateLoadReceipt
+loadCreativeEditorWorldLayoutBuildingTemplateLibrary(
+    CreativeEditorWorldLayoutBuildingTemplateLibrary& library,
+    const std::filesystem::path& creativeSaveRoot);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+captureCreativeEditorWorldLayoutBuildingTemplate(
+    CreativeEditorWorldLayoutState& state,
+    std::size_t buildingIndex,
+    std::string label = {});
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+selectCreativeEditorWorldLayoutBuildingTemplate(
+    CreativeEditorWorldLayoutState& state,
+    std::size_t templateIndex);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutBuildingTemplatePlacementPhase phase,
+    CreativeEditorWorldLayoutPoint point = {},
+    cr::CreativeWorldLayoutBuildingTransformOperation operation =
+        cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90);
 [[nodiscard]] bool readCreativeEditorWorldLayoutOpeningSettings(
     const CreativeEditorWorldLayoutState& state, std::size_t openingIndex,
     CreativeEditorWorldLayoutOpeningSettings& output) noexcept;

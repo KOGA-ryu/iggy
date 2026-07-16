@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
 
 #include <algorithm>
 #include <array>
@@ -504,6 +505,90 @@ bool buildingEditKernelsAreAtomicAndRemapOwnership() {
                 "building edits reject malformed ownership before copying");
 }
 
+bool buildingTemplatesNormalizeTransformPersistAndStamp() {
+  const cr::CreativeWorldLayout source = transformableBuildingLayout();
+  const cr::CreativeWorldLayoutBuildingTemplateResult captured =
+      cr::captureCreativeWorldLayoutBuildingTemplate(
+          source, {0U, "guard_house", "Guard House"});
+  if (!captured.accepted) {
+    return expect(false, "building template capture accepted");
+  }
+  const cr::CreativeWorldLayoutBuildingTemplate& value = captured.value;
+  const bool normalized =
+      cr::validCreativeWorldLayoutBuildingTemplate(value) &&
+      value.bounds.minimum == cr::CreativeTerrainCoord2{} &&
+      value.bounds.maximum == cr::CreativeTerrainCoord2{8, 6} &&
+      value.normalizedLayout.buildings[0].rootFootprint.minimum ==
+          cr::CreativeTerrainCoord2{} &&
+      value.normalizedLayout.rooms[0].footprint.minimum ==
+          cr::CreativeTerrainCoord2{1, 1} &&
+      value.normalizedLayout.walls[0].start ==
+          cr::CreativeTerrainCoord2{0, 3} &&
+      value.normalizedLayout.openings[0].roomIndex == 0U &&
+      value.normalizedLayout.openings[4].wallIndex == 0U &&
+      value.normalizedLayout.terrainProfiles.empty();
+
+  const cr::CreativeWorldLayoutBuildingTemplateResult rotated =
+      cr::transformCreativeWorldLayoutBuildingTemplate(
+          value,
+          cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90);
+  const bool orientationExact =
+      rotated.accepted && rotated.value.bounds.minimum ==
+                              cr::CreativeTerrainCoord2{} &&
+      rotated.value.bounds.maximum == cr::CreativeTerrainCoord2{6, 8} &&
+      rotated.value.normalizedLayout.openings[0].roomEdge ==
+          cr::CreativeWorldLayoutRoomEdge::East;
+
+  const cr::CreativeWorldLayoutEncodeResult encoded =
+      cr::encodeCreativeWorldLayout(value.normalizedLayout);
+  const cr::CreativeWorldLayoutDecodeResult decoded =
+      encoded.accepted
+          ? cr::decodeCreativeWorldLayout(encoded.encodedText)
+          : cr::CreativeWorldLayoutDecodeResult{};
+  cr::CreativeWorldLayoutBuildingTemplateResult reloaded;
+  if (decoded.accepted) {
+    reloaded = cr::loadCreativeWorldLayoutBuildingTemplate(decoded.layout);
+  }
+  const bool codecRoundTrip =
+      reloaded.accepted && reloaded.value.templateId == "guard_house" &&
+      reloaded.value.label == "Guard House" &&
+      reloaded.value.bounds.maximum == cr::CreativeTerrainCoord2{8, 6};
+
+  cr::CreativeWorldLayout destination;
+  destination.stableKey = "destination";
+  const cr::CreativeWorldLayoutBuildingEditResult stamped =
+      cr::stampCreativeWorldLayoutBuildingTemplate(
+          destination, rotated.value, {{-4, 7}, 100U, false});
+  const bool stampExact =
+      stamped.accepted && stamped.changed &&
+      stamped.resultBuildingIndex == 0U &&
+      stamped.nextStableOrdinal == 111U &&
+      stamped.edited.buildings[0].stableKey == "building_100" &&
+      stamped.edited.buildings[0].name == "Guard House" &&
+      stamped.edited.buildings[0].rootFootprint.minimum ==
+          cr::CreativeTerrainCoord2{-4, 7} &&
+      stamped.edited.rooms[0].buildingIndex == 0U &&
+      stamped.edited.walls[0].buildingIndex == 0U &&
+      stamped.edited.openings[0].roomIndex == 0U &&
+      stamped.edited.openings[4].wallIndex == 0U &&
+      stamped.edited.terrainProfiles.empty();
+
+  cr::CreativeWorldLayoutBuildingTemplate invalid = value;
+  invalid.normalizedLayout.terrainProfiles.push_back(
+      source.terrainProfiles[0]);
+
+  return expect(normalized,
+                "building template capture normalizes semantic geometry") &&
+         expect(orientationExact,
+                "building template orientation keeps an origin anchor") &&
+         expect(codecRoundTrip,
+                "building template survives the versioned layout codec") &&
+         expect(stampExact,
+                "building template stamp allocates fresh owners and hosts") &&
+         expect(!cr::validCreativeWorldLayoutBuildingTemplate(invalid),
+                "building template cannot absorb unowned terrain");
+}
+
 bool twoDimensionalBuildingCompilesToExactThreeDimensionalOutput() {
   const cr::CreativeDocument document = makeDocument(201U);
   const cr::CreativeWorldLayout layout = smallHouseLayout();
@@ -722,6 +807,7 @@ int main() {
       buildingTransformPreservesHostedOpeningSemantics() &&
       buildingTransformsRoundTripAndRejectOverflow() &&
       buildingEditKernelsAreAtomicAndRemapOwnership() &&
+      buildingTemplatesNormalizeTransformPersistAndStamp() &&
       invalidAndStaleSourcesFailClosed();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

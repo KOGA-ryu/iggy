@@ -793,6 +793,69 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutCaptureBuildingTemplate: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutBuildingTemplateCapturePayload>(
+              command);
+      if (payload == nullptr) {
+        result.message = "layout template capture: payload mismatch";
+        break;
+      }
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          captureCreativeEditorWorldLayoutBuildingTemplate(
+              editor.worldLayout, payload->buildingIndex, payload->label);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutSelectBuildingTemplate: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutBuildingTemplateSelectionPayload>(
+              command);
+      if (payload == nullptr) {
+        result.message = "layout template selection: payload mismatch";
+        break;
+      }
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          selectCreativeEditorWorldLayoutBuildingTemplate(
+              editor.worldLayout, payload->templateIndex);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload>(
+              command);
+      if (payload == nullptr) {
+        result.message = "layout template placement: payload mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
+              editor.worldLayout, payload->phase, payload->point,
+              payload->operation);
+      const bool sourceChanged =
+          payload->phase ==
+              CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Commit &&
+          receipt.changed;
+      const bool exactPreviewClosed =
+          previewWasActive &&
+          payload->phase ==
+              CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Begin &&
+          receipt.accepted;
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = sourceChanged;
+      result.sceneChanged =
+          exactPreviewClosed || (previewWasActive && sourceChanged);
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutCanvasPoint: {
       const auto* payload =
           payloadAs<CreativeDesktopWorldLayoutPointPayload>(command);

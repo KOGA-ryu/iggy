@@ -269,6 +269,8 @@ struct CreativeWorldLayoutApplyReceipt {
 [[nodiscard]] std::string_view creativeWorldLayoutRoomEdgeKey(
     CreativeWorldLayoutRoomEdge edge) noexcept;
 [[nodiscard]] std::string creativeWorldLayoutTag(std::string_view layoutKey);
+[[nodiscard]] bool validCreativeWorldLayoutStableKey(
+    std::string_view key) noexcept;
 [[nodiscard]] bool creativeWorldLayoutStableKeyExists(
     const CreativeWorldLayout& layout,
     std::string_view key) noexcept;

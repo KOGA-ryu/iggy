@@ -289,7 +289,8 @@ void drawWall(ImDrawList& drawList, const CanvasTransform& transform,
 void drawBuildingSelection(ImDrawList& drawList,
                            const CanvasTransform& transform,
                            const CreativeEditorWorldLayoutState& state) {
-  if (state.selection.kind !=
+  if (state.buildingTemplatePlacement.active ||
+      state.selection.kind !=
           CreativeEditorWorldLayoutSelectionKind::Building ||
       state.selection.index >= state.source.buildings.size()) {
     return;
@@ -336,6 +337,33 @@ void drawBuildingSelection(ImDrawList& drawList,
       state.source.buildings[state.selection.index].name;
   drawList.AddText({minimum.x + 8.0F, minimum.y + 7.0F}, color(tint),
                    name.c_str());
+}
+
+void drawBuildingTemplatePlacement(
+    ImDrawList& drawList, const CanvasTransform& transform,
+    const CreativeEditorWorldLayoutState& state) {
+  const auto& placement = state.buildingTemplatePlacement;
+  if (!placement.active || !placement.previewBounds.valid) {
+    return;
+  }
+  const ImVec2 minimum =
+      toScreen(transform, placement.previewBounds.minimum.x,
+               placement.previewBounds.minimum.z);
+  const ImVec2 maximum =
+      toScreen(transform, placement.previewBounds.maximum.x,
+               placement.previewBounds.maximum.z);
+  const ImVec4 tint = placement.previewValid
+                          ? ImVec4{0.20F, 0.78F, 0.38F, 1.0F}
+                          : ImVec4{0.92F, 0.29F, 0.24F, 1.0F};
+  ImVec4 fill = tint;
+  fill.w = 0.10F;
+  drawList.AddRectFilled(minimum, maximum, color(fill));
+  drawList.AddRect(minimum, maximum, color(tint), 0.0F, 0, 4.0F);
+  drawList.AddRectFilled({minimum.x - 5.0F, minimum.y - 5.0F},
+                         {minimum.x + 5.0F, minimum.y + 5.0F}, color(tint));
+  const std::string& label = placement.orientedTemplate.label;
+  drawList.AddText({minimum.x + 8.0F, minimum.y + 7.0F}, color(tint),
+                   label.c_str());
 }
 
 CreativeEditorWorldLayoutPoint openingPoint(
@@ -524,6 +552,18 @@ void queueOpeningManipulation(
           phase, point, toleranceCells});
 }
 
+void queueBuildingTemplatePlacement(
+    CreativeDesktopCommandFrame& commands,
+    CreativeEditorWorldLayoutBuildingTemplatePlacementPhase phase,
+    CreativeEditorWorldLayoutPoint point = {},
+    cr::CreativeWorldLayoutBuildingTransformOperation operation =
+        cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90) {
+  commands.push(
+      CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate,
+      CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload{
+          phase, point, operation});
+}
+
 void queueLayoutManipulationCancel(
     const CreativeEditorWorldLayoutState& state,
     CreativeDesktopCommandFrame& commands) {
@@ -532,6 +572,10 @@ void queueLayoutManipulationCancel(
                   CreativeDesktopWorldLayoutBuildingTransformPayload{
                       CreativeEditorWorldLayoutBuildingTransformPhase::Cancel,
                       state.buildingTransform.operation});
+  } else if (state.buildingTemplatePlacement.active) {
+    queueBuildingTemplatePlacement(
+        commands,
+        CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Cancel);
   } else if (state.openingManipulation.active) {
     queueOpeningManipulation(
         commands, CreativeEditorWorldLayoutOpeningManipulationPhase::Cancel, {},
@@ -853,6 +897,7 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   }
   drawOpenings(*drawList, transform, state);
   drawBuildingSelection(*drawList, transform, state);
+  drawBuildingTemplatePlacement(*drawList, transform, state);
   drawRoomManipulation(*drawList, transform, state);
   drawBoxManipulation(*drawList, transform, state);
   const CreativeEditorWorldLayoutPoint pointerPoint =
@@ -864,12 +909,39 @@ void drawLayoutCanvas(CreativeEditorState& editor,
       toWorld(transform, boundedPointer);
   const double handleTolerance = std::clamp(
       8.0 / static_cast<double>(transform.pixelsPerCell), 0.10, 0.45);
-  if (hovered) {
+  if (hovered && !state.buildingTemplatePlacement.active) {
     drawAnchorPreview(*drawList, transform, state, hoveredPoint);
   }
   drawList->PopClipRect();
 
   if (!interactionEnabled) {
+    return;
+  }
+
+  if (state.buildingTemplatePlacement.active) {
+    ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+    const bool cancelPlacement =
+        io.AppFocusLost ||
+        (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
+        ImGui::IsKeyPressed(ImGuiKey_Escape);
+    if (cancelPlacement) {
+      queueBuildingTemplatePlacement(
+          commands,
+          CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Cancel);
+      return;
+    }
+    if (hovered) {
+      queueBuildingTemplatePlacement(
+          commands,
+          CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Update,
+          hoveredPoint);
+      if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        queueBuildingTemplatePlacement(
+            commands,
+            CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Commit,
+            hoveredPoint);
+      }
+    }
     return;
   }
 
@@ -1117,7 +1189,8 @@ void buildCreativeEditorWorldLayoutPanel(
     queueLayoutManipulationCancel(state, commands);
   }
   ImGui::BeginDisabled(playModeActive || editor.assetEdit.active);
-  ImGui::BeginDisabled(state.buildingTransform.active);
+  ImGui::BeginDisabled(state.buildingTransform.active ||
+                       state.buildingTemplatePlacement.active);
   toolButton(commands, state.tool, CreativeEditorWorldLayoutTool::Select);
   ImGui::SameLine();
   toolButton(commands, state.tool, CreativeEditorWorldLayoutTool::Room);

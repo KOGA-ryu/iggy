@@ -1234,6 +1234,18 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutTransformBuilding, context,
           app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutTemplateCapture =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutCaptureBuildingTemplate,
+          context, app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutTemplateSelection =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutSelectBuildingTemplate,
+          context, app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutTemplatePlacement =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate,
+          context, app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult badWorldLayoutBoxSettings =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSetBoxSettings, context,
@@ -1303,6 +1315,18 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badWorldLayoutBuildingTransform.message ==
                         "layout building transform: payload mismatch",
                 "building transform rejects a mismatched payload") &&
+         expect(!badWorldLayoutTemplateCapture.accepted &&
+                    badWorldLayoutTemplateCapture.message ==
+                        "layout template capture: payload mismatch",
+                "building template capture rejects a mismatched payload") &&
+         expect(!badWorldLayoutTemplateSelection.accepted &&
+                    badWorldLayoutTemplateSelection.message ==
+                        "layout template selection: payload mismatch",
+                "building template selection rejects a mismatched payload") &&
+         expect(!badWorldLayoutTemplatePlacement.accepted &&
+                    badWorldLayoutTemplatePlacement.message ==
+                        "layout template placement: payload mismatch",
+                "building template placement rejects a mismatched payload") &&
          expect(!badWorldLayoutBoxSettings.accepted &&
                     badWorldLayoutBoxSettings.message ==
                         "layout floor settings: payload mismatch",
@@ -1588,6 +1612,103 @@ bool worldLayoutStructuralCommandsRouteThroughDispatcher() {
                 "building group commands preview, commit, duplicate, and clear semantically");
 }
 
+bool worldLayoutBuildingTemplateCommandsRouteThroughDispatcher() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Building Templates");
+  static_cast<void>(document.assignId(424U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout, "template_commands");
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      editor.worldLayout, app::CreativeEditorWorldLayoutTool::Room));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      editor.worldLayout, app::CreativeEditorWorldLayoutGesturePhase::Begin,
+      {0.0, 0.0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      editor.worldLayout, app::CreativeEditorWorldLayoutGesturePhase::Commit,
+      {6.0, 4.0}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      editor.worldLayout, app::CreativeEditorWorldLayoutTool::Select));
+  static_cast<void>(app::selectCreativeEditorWorldLayoutBuilding(
+      editor.worldLayout, 0U));
+
+  const std::filesystem::path root =
+      std::filesystem::temp_directory_path() /
+      "iggy3d_desktop_building_template_command_tests";
+  std::error_code error;
+  std::filesystem::remove_all(root, error);
+  const auto libraryLoaded =
+      app::loadCreativeEditorWorldLayoutBuildingTemplateLibrary(
+          editor.worldLayout.buildingTemplates, root);
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor, root,
+                                                    &saveId};
+
+  const std::uint64_t revisionBefore = editor.worldLayout.revision;
+  const auto captured = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutCaptureBuildingTemplate,
+      context, app::CreativeDesktopWorldLayoutBuildingTemplateCapturePayload{
+                   0U, "Command House"});
+  const auto selected = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSelectBuildingTemplate,
+      context,
+      app::CreativeDesktopWorldLayoutBuildingTemplateSelectionPayload{0U});
+  const auto began = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate, context,
+      app::CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload{
+          app::CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Begin,
+          {8.0, 2.0},
+          cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90});
+  const auto moved = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate, context,
+      app::CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload{
+          app::CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Update,
+          {12.2, 6.2},
+          cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90});
+  const auto rotated = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate, context,
+      app::CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload{
+          app::CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::
+              Transform,
+          {},
+          cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90});
+  const bool previewOnly =
+      editor.worldLayout.revision == revisionBefore &&
+      editor.worldLayout.source.buildings.size() == 1U &&
+      app::creativeEditorWorldLayoutDisplaySource(editor.worldLayout)
+              .buildings.size() == 2U;
+  const auto committed = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate, context,
+      app::CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload{
+          app::CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Commit,
+          {},
+          cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90});
+
+  const bool ok =
+      expect(libraryLoaded.accepted && captured.accepted && captured.changed &&
+                 !captured.worldLayoutChanged &&
+                 editor.worldLayout.buildingTemplates.templates.size() == 1U,
+             "template capture dispatches without changing layout source") &&
+      expect(selected.accepted && began.accepted && began.changed &&
+                 !began.worldLayoutChanged && moved.accepted && moved.changed &&
+                 !moved.worldLayoutChanged && rotated.accepted &&
+                 rotated.changed && !rotated.worldLayoutChanged && previewOnly,
+             "template selection and placement preview remain transient") &&
+      expect(committed.accepted && committed.changed &&
+                 committed.worldLayoutChanged &&
+                 editor.worldLayout.revision == revisionBefore + 1U &&
+                 editor.worldLayout.source.buildings.size() == 2U &&
+                 editor.worldLayout.source.rooms[1].footprint.minimum ==
+                     cr::CreativeTerrainCoord2{12, 6} &&
+                 editor.worldLayout.source.rooms[1].footprint.maximum ==
+                     cr::CreativeTerrainCoord2{16, 12},
+             "template commit dispatches one semantic source change");
+  std::filesystem::remove_all(root, error);
+  return ok;
+}
+
 bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document =
@@ -1787,6 +1908,7 @@ int main() {
   ok = assetAndInstanceCommandsCompleteSuccessPaths() && ok;
   ok = mismatchedPayloadsAreNoOpFailures() && ok;
   ok = worldLayoutStructuralCommandsRouteThroughDispatcher() && ok;
+  ok = worldLayoutBuildingTemplateCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutCommandsPreviewAndGenerateThroughDispatcher() && ok;
   return ok ? 0 : 1;
 }

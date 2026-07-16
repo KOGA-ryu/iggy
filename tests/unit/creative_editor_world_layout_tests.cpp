@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <filesystem>
 #include <iostream>
 #include <limits>
 #include <string>
@@ -895,6 +896,140 @@ bool buildingTransformPreviewsAndCommitsOneRevision() {
                 "invalid building transform cannot consume a revision");
 }
 
+bool buildingTemplatesPersistPreviewAndStampOneRevision() {
+  cr::CreativeAppState live = appState();
+  const std::filesystem::path saveRoot =
+      std::filesystem::temp_directory_path() /
+      "iggy3d_world_layout_building_template_tests";
+  std::error_code error;
+  std::filesystem::remove_all(saveRoot, error);
+
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "template_source");
+  const auto loaded =
+      app::loadCreativeEditorWorldLayoutBuildingTemplateLibrary(
+          state.buildingTemplates, saveRoot);
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Room));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {2, 3}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {8, 7}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Door));
+  static_cast<void>(
+      app::applyCreativeEditorWorldLayoutPoint(state, {5.0, 3.0}));
+  static_cast<void>(app::selectCreativeEditorWorldLayoutBuilding(state, 0U));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Select));
+
+  const std::uint64_t revisionBeforeCapture = state.revision;
+  const auto captured = app::captureCreativeEditorWorldLayoutBuildingTemplate(
+      state, 0U, "Reusable House");
+  const std::filesystem::path templatePath =
+      state.buildingTemplates.root / "building_template_0001.iwlt";
+  const bool capturedWithoutSourceMutation =
+      loaded.accepted && captured.accepted && captured.changed &&
+      state.revision == revisionBeforeCapture &&
+      state.source.buildings.size() == 1U &&
+      state.buildingTemplates.templates.size() == 1U &&
+      std::filesystem::is_regular_file(templatePath) &&
+      state.buildingTemplates.templates[0].bounds.minimum ==
+          cr::CreativeTerrainCoord2{0, 0};
+
+  const auto begin =
+      app::applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
+          state,
+          app::CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Begin,
+          {12.2, -2.6});
+  const auto update =
+      app::applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
+          state,
+          app::CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Update,
+          {18.4, 5.6});
+  const auto transformed =
+      app::applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
+          state,
+          app::CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::
+              Transform,
+          {}, cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90);
+  const cr::CreativeWorldLayout& candidate =
+      app::creativeEditorWorldLayoutDisplaySource(state);
+  const bool previewOnly =
+      begin.accepted && update.accepted && transformed.accepted &&
+      state.buildingTemplatePlacement.active &&
+      state.buildingTemplatePlacement.anchor ==
+          cr::CreativeTerrainCoord2{18, 6} &&
+      state.revision == revisionBeforeCapture &&
+      state.source.buildings.size() == 1U && candidate.buildings.size() == 2U &&
+      candidate.rooms[1].footprint.minimum ==
+          cr::CreativeTerrainCoord2{18, 6} &&
+      candidate.rooms[1].footprint.maximum ==
+          cr::CreativeTerrainCoord2{22, 12} &&
+      candidate.openings[1].roomEdge ==
+          cr::CreativeWorldLayoutRoomEdge::East;
+  const auto cancelled =
+      app::applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
+          state,
+          app::CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Cancel);
+  const bool cancelRestoredSource =
+      cancelled.accepted && cancelled.changed &&
+      !state.buildingTemplatePlacement.active &&
+      state.revision == revisionBeforeCapture &&
+      &app::creativeEditorWorldLayoutDisplaySource(state) == &state.source;
+
+  static_cast<void>(
+      app::applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
+          state,
+          app::CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Begin,
+          {20.0, 10.0}));
+  const auto committed =
+      app::applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
+          state,
+          app::CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Commit);
+  const auto exactPreview =
+      app::previewCreativeEditorWorldLayout(state, live.facade.document());
+  const bool stampedOnce =
+      committed.accepted && committed.changed &&
+      state.revision == revisionBeforeCapture + 1U &&
+      state.source.buildings.size() == 2U && state.source.rooms.size() == 2U &&
+      state.source.openings.size() == 2U &&
+      state.source.rooms[1].buildingIndex == 1U &&
+      state.source.openings[1].roomIndex == 1U &&
+      state.source.rooms[1].footprint.minimum ==
+          cr::CreativeTerrainCoord2{20, 10} &&
+      state.selection.kind ==
+          app::CreativeEditorWorldLayoutSelectionKind::Building &&
+      state.selection.index == 1U && stableKeysUnique(state.source) &&
+      exactPreview.accepted;
+
+  app::resetCreativeEditorWorldLayout(state, "after_reset");
+  const bool resetPreservedLibrary =
+      state.source.buildings.empty() &&
+      state.buildingTemplates.templates.size() == 1U &&
+      state.buildingTemplates.selectedIndex == 0U;
+  app::CreativeEditorWorldLayoutBuildingTemplateLibrary reloadedLibrary;
+  const auto reloaded =
+      app::loadCreativeEditorWorldLayoutBuildingTemplateLibrary(reloadedLibrary,
+                                                                 saveRoot);
+  const bool durableReload =
+      reloaded.accepted && reloaded.loadedCount == 1U &&
+      reloaded.rejectedCount == 0U && reloadedLibrary.templates.size() == 1U &&
+      reloadedLibrary.templates[0].label == "Reusable House";
+
+  std::filesystem::remove_all(saveRoot, error);
+  return expect(capturedWithoutSourceMutation,
+                "building template capture is durable and revision-neutral") &&
+         expect(previewOnly,
+                "building template movement and rotation remain candidate-only") &&
+         expect(cancelRestoredSource,
+                "building template cancel restores the exact source") &&
+         expect(stampedOnce,
+                "building template stamp remaps ownership in one revision") &&
+         expect(resetPreservedLibrary && durableReload,
+                "building template library survives reset and disk reload");
+}
+
 bool openingSettingsApplyOnceAndMatchExactPreview() {
   cr::CreativeAppState live = appState();
   app::CreativeEditorWorldLayoutState state;
@@ -1282,6 +1417,7 @@ int main() {
                   partitionManipulationPreservesHostedOpeningWorldPositions() &&
                   buildingGroupMoveDuplicateAndDeleteAreAtomic() &&
                   buildingTransformPreviewsAndCommitsOneRevision() &&
+                  buildingTemplatesPersistPreviewAndStampOneRevision() &&
                   openingSettingsApplyOnceAndMatchExactPreview() &&
                   openingDragAndWidthHandlesAreQuarterCellTransactional() &&
                   openingDragPreservesSharedRoomWallOwnership() &&

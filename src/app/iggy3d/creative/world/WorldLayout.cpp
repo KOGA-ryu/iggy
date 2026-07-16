@@ -337,6 +337,10 @@ std::string creativeWorldLayoutTag(std::string_view layoutKey) {
   return "creative_world_layout:" + std::string(layoutKey);
 }
 
+bool validCreativeWorldLayoutStableKey(std::string_view key) noexcept {
+  return validStableKey(key);
+}
+
 bool creativeWorldLayoutStableKeyExists(const CreativeWorldLayout& layout,
                                         std::string_view key) noexcept {
   const auto matches = [&](const auto& value) {

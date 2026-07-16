@@ -902,7 +902,10 @@ const char* creativeEditorWorldLayoutToolLabel(
 
 void resetCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
                                     std::string layoutKey) {
+  CreativeEditorWorldLayoutBuildingTemplateLibrary buildingTemplates =
+      std::move(state.buildingTemplates);
   state = {};
+  state.buildingTemplates = std::move(buildingTemplates);
   state.source.stableKey =
       layoutKey.empty() ? "world_layout" : std::move(layoutKey);
   state.statusMessage = "blank layout";
@@ -910,7 +913,10 @@ void resetCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
 
 void installCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
                                       cr::CreativeWorldLayout layout) {
+  CreativeEditorWorldLayoutBuildingTemplateLibrary buildingTemplates =
+      std::move(state.buildingTemplates);
   state = {};
+  state.buildingTemplates = std::move(buildingTemplates);
   state.source = std::move(layout);
   state.nextStableOrdinal =
       1U + state.source.buildings.size() + state.source.rooms.size() +
@@ -946,6 +952,13 @@ const cr::CreativeDocument& creativeEditorWorldLayoutRenderDocument(
 
 const cr::CreativeWorldLayout& creativeEditorWorldLayoutDisplaySource(
     const CreativeEditorWorldLayoutState& state) noexcept {
+  if (state.buildingTemplatePlacement.active &&
+      state.buildingTemplatePlacement.previewValid &&
+      state.buildingTemplatePlacement.sourceRevision == state.revision &&
+      state.buildingTemplatePlacement.resultBuildingIndex <
+          state.buildingTemplatePlacement.candidate.buildings.size()) {
+    return state.buildingTemplatePlacement.candidate;
+  }
   return state.buildingTransform.active &&
                  state.buildingTransform.sourceRevision == state.revision &&
                  state.buildingTransform.buildingIndex <
@@ -965,6 +978,7 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutTool(
                        state.wallManipulation.active ||
                        state.buildingManipulation.active ||
                        state.buildingTransform.active ||
+                       state.buildingTemplatePlacement.active ||
                        state.openingManipulation.active ||
                        state.boxSettingsDraft.active ||
                        state.wallSettingsDraft.active ||

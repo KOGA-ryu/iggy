@@ -173,6 +173,9 @@ void initializeCreativeEditorBootstrapData(
   const CreativeEditorAuthoredAssetLoadReceipt authoredAssets =
       loadCreativeEditorAuthoredAssetLibrary(output.editor.authoredAssets,
                                              output.saveRoot);
+  const CreativeEditorWorldLayoutBuildingTemplateLoadReceipt buildingTemplates =
+      loadCreativeEditorWorldLayoutBuildingTemplateLibrary(
+          output.editor.worldLayout.buildingTemplates, output.saveRoot);
   std::vector<iggy3d::creative::CreativeCatalogAsset> authoredCatalogAssets =
       creativeEditorAuthoredAssetCatalogEntries(output.editor.authoredAssets);
   catalogAssets.assets.insert(
@@ -189,6 +192,13 @@ void initializeCreativeEditorBootstrapData(
           static_cast<unsigned long long>(authoredAssets.loadedCount),
           static_cast<unsigned long long>(authoredAssets.rejectedCount),
           authoredAssets.reasonCode.c_str());
+  SDL_Log("iggy3d_creative: building templates root='%s' ready=%llu "
+          "rejected=%llu status='%s'",
+          output.editor.worldLayout.buildingTemplates.root.generic_string()
+              .c_str(),
+          static_cast<unsigned long long>(buildingTemplates.loadedCount),
+          static_cast<unsigned long long>(buildingTemplates.rejectedCount),
+          buildingTemplates.reasonCode.c_str());
   for (const iggy3d::creative::CreativeCatalogAssetFailure& failure :
        catalogAssets.failures) {
     SDL_Log("iggy3d_creative: asset catalog rejected path='%s' reason='%s'",

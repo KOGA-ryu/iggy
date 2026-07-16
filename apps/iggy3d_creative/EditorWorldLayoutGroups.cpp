@@ -83,7 +83,8 @@ CreativeEditorWorldLayoutEditReceipt selectCreativeEditorWorldLayoutBuilding(
   }
   const bool changed =
       state.selection.kind != CreativeEditorWorldLayoutSelectionKind::Building ||
-      state.selection.index != buildingIndex;
+      state.selection.index != buildingIndex ||
+      state.buildingTemplatePlacement.active;
   detail::clearWorldLayoutInteraction(state);
   state.anchorActive = false;
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Building,
@@ -97,7 +98,8 @@ CreativeEditorWorldLayoutEditReceipt clearCreativeEditorWorldLayoutSelection(
   const bool changed =
       state.selection.kind != CreativeEditorWorldLayoutSelectionKind::None ||
       state.anchorActive || state.buildingManipulation.active ||
-      state.buildingTransform.active;
+      state.buildingTransform.active ||
+      state.buildingTemplatePlacement.active;
   detail::clearWorldLayoutInteraction(state);
   state.anchorActive = false;
   state.selection = {};
