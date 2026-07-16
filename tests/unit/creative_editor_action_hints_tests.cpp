@@ -794,6 +794,33 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                   beginTransform->label.view() == "Transform",
               "Move tool advertises Square transform entry") &&
        ok;
+  editor.interaction.movingPlatformPathEdit.available = true;
+  editor.interaction.movingPlatformPathEdit.pointCount = 3U;
+  const cr::CreativeActionHintFrame routeMoveTool =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* removeRoutePoint =
+      findHint(routeMoveTool, cr::CreativeInputActionId::QuickEditDecrease);
+  const cr::CreativeActionHint* appendRoutePoint =
+      findHint(routeMoveTool, cr::CreativeInputActionId::QuickEditIncrease);
+  const cr::CreativeActionHint* routeTransform =
+      findHint(routeMoveTool, cr::CreativeInputActionId::QuickEditNext);
+  ok = expect(removeRoutePoint != nullptr &&
+                  removeRoutePoint == appendRoutePoint &&
+                  removeRoutePoint->actionCount == 2U &&
+                  removeRoutePoint->triggers[0] ==
+                      cr::CreativeInputKey::GamepadDpadLeft &&
+                  removeRoutePoint->triggers[1] ==
+                      cr::CreativeInputKey::GamepadDpadRight &&
+                  removeRoutePoint->chord.view() == "D-pad L/R" &&
+                  removeRoutePoint->label.view() == "Route point" &&
+                  routeTransform != nullptr &&
+                  routeTransform->chord.view() == "Square",
+              "selected moving platform exposes route edits without stealing "
+              "Transform") &&
+       ok;
+  editor.interaction.movingPlatformPathEdit = {};
 
   setHeld(editor, cr::CreativeHeldItemKind::ObjectGroup);
   const cr::CreativeActionHintFrame group = resolveCreativeEditorActionHints(

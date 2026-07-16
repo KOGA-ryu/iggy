@@ -10,6 +10,7 @@
 #include "EditorConnectedFill.hpp"
 #include "EditorEdits.hpp"
 #include "EditorInteraction.hpp"
+#include "EditorPathEditing.hpp"
 #include "EditorPersistence.hpp"
 #include "EditorSurfaceExtrude.hpp"
 #include "EditorTerrain.hpp"
@@ -34,6 +35,7 @@ void resetCreativeEditorForDocumentReplacement(
       editor.interaction.surfaceExtrude);
   resetCreativeMaterialBrushPivot(editor.interaction.materialBrushPivot,
                                   documentId);
+  editor.interaction.movingPlatformPathEdit = {};
 }
 
 namespace {
@@ -191,10 +193,30 @@ void applyCreativeEditorCommandInput(
       }
       case creative::CreativeInputActionId::QuickEditPrevious:
       case creative::CreativeInputActionId::QuickEditDecrease:
-      case creative::CreativeInputActionId::QuickEditIncrease:
+      case creative::CreativeInputActionId::QuickEditIncrease: {
+        const creative::CreativeHeldItemKind held =
+            creative::selectedCreativeHotbarEntry(
+                editor.interaction.hotbar).kind;
+        if (held == creative::CreativeHeldItemKind::ObjectMove &&
+            (event.action ==
+                 creative::CreativeInputActionId::QuickEditDecrease ||
+             event.action ==
+                 creative::CreativeInputActionId::QuickEditIncrease)) {
+          const CreativeMovingPlatformPathEditCommand command =
+              event.action ==
+                      creative::CreativeInputActionId::QuickEditIncrease
+                  ? CreativeMovingPlatformPathEditCommand::AppendAtTarget
+                  : CreativeMovingPlatformPathEditCommand::RemoveLast;
+          if (queueCreativeMovingPlatformPathEdit(
+                  appState, editor.interaction.movingPlatformPathEdit,
+                  command)) {
+            break;
+          }
+        }
         static_cast<void>(
             processCreativeEditorQuickEditAction(editor, event.action));
         break;
+      }
       case creative::CreativeInputActionId::ConfirmActiveTool:
         static_cast<void>(confirmCreativeEditorHeldItem(
             appState, editor, "keyboard_confirm"));

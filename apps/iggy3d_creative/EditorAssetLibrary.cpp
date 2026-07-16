@@ -188,6 +188,7 @@ takeDocumentTransientState(CreativeEditorState& editor) {
   editor.interaction.authoredAssetStroke = {};
   editor.interaction.connectedFill = {};
   editor.interaction.surfaceExtrude = {};
+  editor.interaction.movingPlatformPathEdit = {};
   editor.interaction.moveTargetId = cr::kInvalidObjectId;
   editor.groupFocus = {};
   editor.pattern = {};

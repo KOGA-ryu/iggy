@@ -463,6 +463,13 @@ std::string creativeEditorHeldItemStatusLabel(
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   std::string output(cr::toString(held.kind));
+  if (held.kind == cr::CreativeHeldItemKind::ObjectMove &&
+      editor.interaction.movingPlatformPathEdit.available) {
+    output.append(" | ROUTE ");
+    output.append(std::to_string(
+        editor.interaction.movingPlatformPathEdit.pointCount));
+    output.append(" POINTS");
+  }
   switch (cr::describeCreativeHeldItem(held.kind).statusMode) {
     case cr::CreativeHeldItemStatusMode::MaterialBrush:
       appendMaterialBrushStatus(output, editor, held);

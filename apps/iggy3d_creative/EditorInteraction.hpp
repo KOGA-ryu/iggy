@@ -12,6 +12,7 @@
 #include "EditorAuthoredAssets.hpp"
 #include "EditorEdits.hpp"
 #include "EditorPicking.hpp"
+#include "EditorPathEditing.hpp"
 #include "EditorSurfaceExtrude.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
@@ -245,6 +246,7 @@ struct CreativeEditorInteractionState {
   CreativeAuthoredAssetStrokeState authoredAssetStroke{};
   CreativeEditorConnectedFillCache connectedFill{};
   CreativeEditorSurfaceExtrudeCache surfaceExtrude{};
+  CreativeMovingPlatformPathEditState movingPlatformPathEdit{};
   iggy3d::creative::CreativeObjectId moveTargetId =
       iggy3d::creative::kInvalidObjectId;
 };

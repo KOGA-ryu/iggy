@@ -195,6 +195,7 @@ void syncCreativeEditorHeldItem(cr::CreativeAppState& appState,
   }
   if (definition.frameMode != cr::CreativeHeldItemFrameMode::ObjectMove) {
     editor.interaction.moveTargetId = cr::kInvalidObjectId;
+    editor.interaction.movingPlatformPathEdit = {};
   }
   if (held.kind == cr::CreativeHeldItemKind::LogicLink) {
     syncCreativeEditorLogicLinkState(editor.logicLinks,
@@ -256,6 +257,12 @@ void processCreativeEditorWorldInteractionFrame(
       targetCellSize);
   const cr::CreativeHotbarEntry& aimedHeld =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  if (aimedHeld.kind == cr::CreativeHeldItemKind::ObjectMove) {
+    syncCreativeMovingPlatformPathEditState(
+        request.appState, editor.interaction.movingPlatformPathEdit);
+  } else {
+    editor.interaction.movingPlatformPathEdit = {};
+  }
   const bool hierarchySelectionTool =
       cr::describeCreativeHeldItem(aimedHeld.kind).hierarchySelectionTool;
   if (hierarchySelectionTool && editor.interaction.target.objectHit) {
@@ -297,6 +304,8 @@ void processCreativeEditorWorldInteractionFrame(
     editor.volume.cursorCell = editor.interaction.target.grid.targetCell;
   }
   if (request.captureMode) {
+    editor.interaction.movingPlatformPathEdit.pending =
+        CreativeMovingPlatformPathEditCommand::None;
     finalizeCreativeEditorContinuousGestures(
         request.appState, editor, "creative_continuous_gesture_capture");
     return;
@@ -325,6 +334,23 @@ void processCreativeEditorWorldInteractionFrame(
         editor.interaction.target.grid.placementAnchor, secondaryPressed,
         "selection_transform_commit",
         cr::creativeSnapIncrementMeters(editor.toolSettings.snapIncrement)));
+    return;
+  }
+
+  if (editor.interaction.movingPlatformPathEdit.pending !=
+      CreativeMovingPlatformPathEditCommand::None) {
+    const CreativeMovingPlatformPathEditReceipt receipt =
+        consumeCreativeMovingPlatformPathEdit(
+            request.appState, editor.interaction.movingPlatformPathEdit,
+            editor.interaction.target.grid.valid,
+            editor.interaction.target.grid.placementAnchor,
+            "creative_platform_path_quick_edit");
+    setCreativeEditorPlacementFeedback(
+        editor.interaction,
+        receipt.accepted ? CreativeEditorPlacementFeedbackStatus::Placed
+                         : CreativeEditorPlacementFeedbackStatus::Rejected,
+        editor.frameIndex, cr::CreativeObjectKind::MovingPlatform,
+        receipt.objectId);
     return;
   }
 

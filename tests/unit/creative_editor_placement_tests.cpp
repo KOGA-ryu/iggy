@@ -4,6 +4,7 @@
 #include "EditorFrame.hpp"
 #include "EditorGizmo.hpp"
 #include "EditorInteraction.hpp"
+#include "EditorPathEditing.hpp"
 #include "EditorPlacement.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorShapePreview.hpp"
@@ -13,6 +14,7 @@
 #include "render/vulkan/BufferImageResources.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -3694,6 +3696,165 @@ bool doorwaySocketPreviewPlacementAndUndoStayInParity() {
                 "modal tool options hide attachment socket markers");
 }
 
+bool movingPlatformRouteQuickEditIsBoundedAndUndoable() {
+  const std::vector<cr::CreativePathPoint> basePath{
+      {{0.5, 0.375, 0.5}}, {{0.5, 3.375, 0.5}}};
+  const CreativeMovingPlatformPathEditPlan appendedPlan =
+      planCreativeMovingPlatformPathEdit(
+          basePath, CreativeMovingPlatformPathEditCommand::AppendAtTarget,
+          {4.5, 2.0, 0.5});
+  const CreativeMovingPlatformPathEditPlan duplicatePlan =
+      planCreativeMovingPlatformPathEdit(
+          basePath, CreativeMovingPlatformPathEditCommand::AppendAtTarget,
+          basePath.back().position);
+  const CreativeMovingPlatformPathEditPlan minimumPlan =
+      planCreativeMovingPlatformPathEdit(
+          basePath, CreativeMovingPlatformPathEditCommand::RemoveLast);
+  const CreativeMovingPlatformPathEditPlan nonFinitePlan =
+      planCreativeMovingPlatformPathEdit(
+          basePath, CreativeMovingPlatformPathEditCommand::AppendAtTarget,
+          {std::numeric_limits<double>::quiet_NaN(), 0.0, 0.0});
+
+  std::vector<cr::CreativePathPoint> fullPath;
+  fullPath.reserve(cr::kCreativeMovingPlatformPathPointCapacity);
+  for (std::size_t index = 0U;
+       index < cr::kCreativeMovingPlatformPathPointCapacity; ++index) {
+    fullPath.push_back({{static_cast<double>(index), 0.0, 0.0}});
+  }
+  const CreativeMovingPlatformPathEditPlan capacityPlan =
+      planCreativeMovingPlatformPathEdit(
+          fullPath, CreativeMovingPlatformPathEditCommand::AppendAtTarget,
+          {33.0, 0.0, 0.0});
+
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 141U);
+  const cr::CreativeDocumentCreateReceipt created =
+      appState.facade.createDocumentObject(buildBrushCreateRequest(
+          cr::CreativeObjectKind::MovingPlatform, {0.5F, 0.375F, 0.5F}, 1U));
+  const std::array selectedIds{created.objectId};
+  const cr::CreativeSelectionReceipt selected =
+      appState.facade.selectTargets(selectedIds, created.objectId);
+
+  CreativeEditorState editor;
+  editor.interaction.hotbar.selectedSlot = 0U;
+  editor.interaction.hotbar.entries[0] = {
+      cr::CreativeHeldItemKind::ObjectMove,
+      cr::CreativeObjectKind::Unknown};
+  syncCreativeEditorHeldItem(appState, editor);
+  syncCreativeMovingPlatformPathEditState(
+      appState, editor.interaction.movingPlatformPathEdit);
+
+  cr::CreativeInputRouteResult appendInput;
+  appendInput.context = cr::CreativeInputContext::EditorViewport;
+  appendInput.actions[0] = {cr::CreativeInputActionId::QuickEditIncrease,
+                            cr::CreativeInputKey::GamepadDpadRight};
+  appendInput.actionCount = 1U;
+  applyCreativeEditorCommandInput(appendInput, appState, editor, {}, "route");
+  const bool routeAvailableBeforeAppend =
+      editor.interaction.movingPlatformPathEdit.available;
+  const bool appendQueued =
+      editor.interaction.movingPlatformPathEdit.pending ==
+      CreativeMovingPlatformPathEditCommand::AppendAtTarget;
+  const CreativeMovingPlatformPathEditReceipt appended =
+      consumeCreativeMovingPlatformPathEdit(
+          appState, editor.interaction.movingPlatformPathEdit, true,
+          {4.5, 2.0, 0.5}, "route_append_test");
+  const cr::CreativeObject* afterAppend =
+      appState.facade.findObject(created.objectId);
+  const std::size_t pointCountAfterAppend =
+      afterAppend != nullptr ? afterAppend->pathPoints.size() : 0U;
+  const cr::CreativeVec3 appendedPoint =
+      afterAppend != nullptr && afterAppend->pathPoints.size() == 3U
+          ? afterAppend->pathPoints.back().position
+          : cr::CreativeVec3{};
+  const cr::CreativeTransformedBounds appendedBounds =
+      afterAppend != nullptr ? cr::resolveCreativeObjectBounds(*afterAppend)
+                             : cr::CreativeTransformedBounds{};
+  const cr::CreativeVec3 expectedAppendedPoint{
+      4.5,
+      2.0 + appendedBounds.center.y - appendedBounds.worldBounds.min.y,
+      0.5};
+  const bool undoAccepted = undoLastEdit(appState, "route_append_undo_test");
+  const cr::CreativeObject* afterUndo =
+      appState.facade.findObject(created.objectId);
+  const std::size_t pointCountAfterUndo =
+      afterUndo != nullptr ? afterUndo->pathPoints.size() : 0U;
+  const bool redoAccepted = redoLastEdit(appState, "route_append_redo_test");
+  const cr::CreativeSelectionReceipt reselected =
+      appState.facade.selectTargets(selectedIds, created.objectId);
+
+  cr::CreativeInputRouteResult removeInput;
+  removeInput.context = cr::CreativeInputContext::EditorViewport;
+  removeInput.actions[0] = {cr::CreativeInputActionId::QuickEditDecrease,
+                            cr::CreativeInputKey::GamepadDpadLeft};
+  removeInput.actionCount = 1U;
+  applyCreativeEditorCommandInput(removeInput, appState, editor, {}, "route");
+  const CreativeMovingPlatformPathEditReceipt removed =
+      consumeCreativeMovingPlatformPathEdit(
+          appState, editor.interaction.movingPlatformPathEdit, false, {},
+          "route_remove_test");
+  const std::uint64_t undoDepthBeforeMinimum =
+      cr::creativeUndoDepth(appState.history);
+  applyCreativeEditorCommandInput(removeInput, appState, editor, {}, "route");
+  const CreativeMovingPlatformPathEditReceipt minimum =
+      consumeCreativeMovingPlatformPathEdit(
+          appState, editor.interaction.movingPlatformPathEdit, false, {},
+          "route_minimum_test");
+  const cr::CreativeObject* finalObject =
+      appState.facade.findObject(created.objectId);
+
+  return expect(appendedPlan.accepted && appendedPlan.changed &&
+                    appendedPlan.pathPoints.size() == 3U &&
+                    sameVec3(appendedPlan.pathPoints.back().position,
+                             {4.5, 2.0, 0.5}),
+                "moving platform route plan appends the aimed point") &&
+         expect(!duplicatePlan.accepted &&
+                    duplicatePlan.status ==
+                        CreativeMovingPlatformPathEditStatus::DuplicateTarget,
+                "moving platform route rejects a duplicate endpoint") &&
+         expect(!minimumPlan.accepted &&
+                    minimumPlan.status ==
+                        CreativeMovingPlatformPathEditStatus::MinimumPointCount,
+                "moving platform route preserves its two-point minimum") &&
+         expect(!nonFinitePlan.accepted &&
+                    nonFinitePlan.status ==
+                        CreativeMovingPlatformPathEditStatus::InvalidTarget,
+                "moving platform route rejects a non-finite target") &&
+         expect(!capacityPlan.accepted &&
+                    capacityPlan.status ==
+                        CreativeMovingPlatformPathEditStatus::CapacityReached,
+                "moving platform route enforces its fixed capacity") &&
+         expect(created.accepted && selected.accepted &&
+                    routeAvailableBeforeAppend && appendQueued,
+                "Object Move D-pad right queues route append semantically") &&
+         expect(appended.accepted && appended.changed &&
+                    appended.status ==
+                        CreativeMovingPlatformPathEditStatus::Applied &&
+                    pointCountAfterAppend == 3U &&
+                    appendedBounds.valid &&
+                    sameVec3(appendedPoint, expectedAppendedPoint) &&
+                    cr::creativeUndoDepth(appState.history) >= 1U,
+                "queued route append centers the platform above the snapped "
+                "anchor and records history") &&
+         expect(undoAccepted && pointCountAfterUndo == 2U && redoAccepted &&
+                    reselected.accepted,
+                "route append participates in undo and redo") &&
+         expect(removed.accepted && removed.changed &&
+                    removed.pointCountBefore == 3U &&
+                    removed.pointCountAfter == 2U && finalObject != nullptr &&
+                    finalObject->pathPoints.size() == 2U,
+                "Object Move D-pad left removes the last route point") &&
+         expect(minimum.requested && !minimum.accepted && !minimum.changed &&
+                    minimum.status ==
+                        CreativeMovingPlatformPathEditStatus::MinimumPointCount &&
+                    cr::creativeUndoDepth(appState.history) ==
+                        undoDepthBeforeMinimum,
+                "minimum-point rejection does not create history") &&
+         expect(creativeEditorHeldItemStatusLabel(editor).find(
+                    "ROUTE 2 POINTS") != std::string::npos,
+                "Object Move status exposes the selected route point count");
+}
+
 }  // namespace
 
 int main() {
@@ -3742,5 +3903,6 @@ int main() {
   ok = radialSelectionRearmsOnlyRightStickLook() && ok;
   ok = importedAssetPlacementPreviewAndDocumentStayInParity() && ok;
   ok = doorwaySocketPreviewPlacementAndUndoStayInParity() && ok;
+  ok = movingPlatformRouteQuickEditIsBoundedAndUndoable() && ok;
   return ok ? 0 : 1;
 }

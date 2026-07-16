@@ -103,6 +103,13 @@ void appendQuickEdit(HintSpecBuffer& buffer,
                      const CreativeEditorState& editor) noexcept {
   const cr::CreativeHeldItemKind held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar).kind;
+  if (held == cr::CreativeHeldItemKind::ObjectMove &&
+      editor.interaction.movingPlatformPathEdit.available) {
+    appendHintPair(buffer, cr::CreativeInputActionId::QuickEditDecrease,
+                   cr::CreativeInputActionId::QuickEditIncrease,
+                   "Route point");
+    return;
+  }
   switch (describeCreativeEditorToolCapability(held).quickEditProfile) {
     case CreativeEditorQuickEditProfile::LogicLink:
       appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
