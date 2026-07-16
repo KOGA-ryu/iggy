@@ -279,7 +279,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         "Floor",
         "walkable horizontal structural surface",
         structuralCreationDirtyFlags(),
-        boxDefaults(4.0, 0.25, 4.0),
+        boxDefaults(4.0, 0.05, 4.0),
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
         CreativePlacementOrientationPolicy::DescriptorDefault,
@@ -2014,6 +2014,13 @@ const CreativeObjectDescriptor& describeObject(CreativeObjectKind kind) noexcept
     }
 
     return kDescriptors.front();
+}
+
+CreativeVec3 defaultCreativeObjectSize(CreativeObjectKind kind) noexcept {
+    const CreativeBounds bounds = describeObject(kind).defaults.bounds;
+    return {bounds.max.x - bounds.min.x,
+            bounds.max.y - bounds.min.y,
+            bounds.max.z - bounds.min.z};
 }
 
 std::span<const CreativeObjectDescriptor> allObjectDescriptors() noexcept {

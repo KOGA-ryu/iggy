@@ -1,8 +1,14 @@
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
-#include <cstdlib>
+#include "app/iggy3d/creative/adapters/RoomBake.hpp"
+#include "runtime/collision/SpatialSurfaceSet.hpp"
+#include "runtime/physics/PhysicsSpatialSurfaceColliderBake.hpp"
+
+#include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <iostream>
+#include <iterator>
 
 namespace cr = iggy3d::creative;
 
@@ -17,6 +23,10 @@ bool expect(bool condition, const char* message) {
 
 bool near(double lhs, double rhs) {
   return std::abs(lhs - rhs) <= 1.0e-9;
+}
+
+bool nearFloat(float lhs, float rhs) {
+  return std::abs(lhs - rhs) <= 1.0e-5F;
 }
 
 cr::CreativeWorldLayout adjacentRooms() {
@@ -132,6 +142,28 @@ bool roomTopologyCompilesThroughExistingBuildingRecipe() {
       wall = &object;
     }
   }
+  cr::CreativeRoomBakeRequest bakeRequest;
+  bakeRequest.document = &preview.document;
+  bakeRequest.validateReachability = false;
+  const cr::CreativeRoomBakeResult baked =
+      cr::buildRoomAssetFromCreativeDocument(bakeRequest);
+  const auto bakedFloor = std::find_if(
+      baked.room.spatialSurfaces.begin(), baked.room.spatialSurfaces.end(),
+      [](const iggy3d::RoomSpatialSurface& surface) {
+        return surface.role == iggy3d::RoomSpatialSurfaceRole::Walkable;
+      });
+  const iggy3d::SpatialSurfaceSet surfaces =
+      iggy3d::buildSpatialSurfaceSet(baked.room);
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult physics =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces({&surfaces, {}});
+  std::size_t floorCollider = physics.sourceSurfaceIds.size();
+  if (bakedFloor != baked.room.spatialSurfaces.end()) {
+    const auto source =
+        std::find(physics.sourceSurfaceIds.begin(),
+                  physics.sourceSurfaceIds.end(), bakedFloor->id);
+    floorCollider = static_cast<std::size_t>(
+        std::distance(physics.sourceSurfaceIds.begin(), source));
+  }
   return expect(compiled.receipt.accepted &&
                     compiled.receipt.objectRecipeCount == 1U,
                 "semantic rooms compile through one building recipe") &&
@@ -141,7 +173,17 @@ bool roomTopologyCompilesThroughExistingBuildingRecipe() {
          expect(floor != nullptr && near(floor->transform.scale.y, 0.05),
                 "materialized room floor uses the thin vertical scale") &&
          expect(wall != nullptr && near(wall->transform.position.y, 2.0),
-                "three-cell room wall is centered at y=2.0");
+                "three-cell room wall is centered at y=2.0") &&
+         expect(baked.receipt.accepted &&
+                    bakedFloor != baked.room.spatialSurfaces.end() &&
+                    near(bakedFloor->collisionThicknessMeters, 0.05),
+                "room bake preserves resolved floor thickness") &&
+         expect(physics.ok && floorCollider < physics.colliders.size() &&
+                    nearFloat(
+                        physics.colliders[floorCollider].bounds.max.y -
+                            physics.colliders[floorCollider].bounds.min.y,
+                        0.05F),
+                "physics collider consumes room-bake floor thickness");
 }
 
 }  // namespace

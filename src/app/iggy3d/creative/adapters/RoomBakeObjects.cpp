@@ -374,6 +374,7 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
   surface.collisionMask = {"actor"};
   surface.blocksActor = false;
   surface.blocksProjectile = false;
+  surface.collisionThicknessMeters = bounds.size.y;
   return surface;
 }
 
@@ -389,6 +390,7 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
   surface.normal = {0.0F, 1.0F, 0.0F};
   surface.traversalTags = {std::string(traversalTagId(TraversalTag::Walkable))};
   surface.collisionMask = {"actor"};
+  surface.collisionThicknessMeters = bounds.size.y;
   return surface;
 }
 

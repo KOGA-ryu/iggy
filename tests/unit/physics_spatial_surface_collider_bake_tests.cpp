@@ -406,6 +406,23 @@ bool floorPlaneThicknessPolicyIsExact() {
                 "floor half y");
 }
 
+bool authoredFloorThicknessOverridesFallbackPolicy() {
+  iggy3d::PhysicsSpatialSurfaceColliderBakeConfig config;
+  config.planeThicknessMeters = 0.20F;
+  iggy3d::RoomSpatialSurface floor = floorSurface();
+  floor.collisionThicknessMeters = 0.05F;
+  const iggy3d::SpatialSurfaceSet set = surfaceSet({floor});
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult result =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces({&set, config});
+
+  return expect(result.ok && result.colliderCount == 1U,
+                "authored floor thickness bakes") &&
+         expect(nearlyEqual(result.colliders[0].bounds.max.y, 0.0F),
+                "authored floor preserves top face") &&
+         expect(nearlyEqual(result.colliders[0].bounds.min.y, -0.05F),
+                "authored floor thickness overrides fallback");
+}
+
 bool bakedFloorWorksWithGroundCheck() {
   const iggy3d::SpatialSurfaceSet set = surfaceSet({floorSurface()});
   const iggy3d::PhysicsSpatialSurfaceColliderBakeResult bake =
@@ -473,6 +490,7 @@ int main() {
       blockerRoleProjectileMaskIsNotActorBlockerByDefault() &&
       malformedAuthoredSurfaceIsFilteredBeforeBake() &&
       floorPlaneThicknessPolicyIsExact() &&
+      authoredFloorThicknessOverridesFallbackPolicy() &&
       bakedFloorWorksWithGroundCheck() &&
       bakedWallWorksWithKinematicMotor();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

@@ -21,6 +21,8 @@ enum class PhysicsSpatialSurfaceColliderBakeStatus : std::uint8_t {
 };
 
 struct PhysicsSpatialSurfaceColliderBakeConfig {
+  // Fallback extrusion for plane surfaces that carry no authored collision
+  // thickness. Bounds-backed Creative floors provide their resolved thickness.
   float planeThicknessMeters = 0.10F;
   float minHalfExtentMeters = 0.001F;
   PhysicsBodyId firstGeneratedBodyId{1U};

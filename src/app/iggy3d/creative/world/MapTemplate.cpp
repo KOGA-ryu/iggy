@@ -17,7 +17,11 @@ namespace iggy3d::creative {
 namespace {
 
 constexpr double kTerrainTopMeters = 3.0;
-constexpr double kFloorTopMeters = 3.25;
+// The ditch-house intentionally uses a heavier slab than the descriptor
+// default because it bridges the authored terrain shell.
+constexpr double kDitchHouseFloorThicknessMeters = 0.25;
+constexpr double kFloorTopMeters =
+    kTerrainTopMeters + kDitchHouseFloorThicknessMeters;
 constexpr double kWallTopMeters = 6.25;
 constexpr double kWallHalfThickness = 0.125;
 constexpr double kInteriorWallHalfThickness = 0.1;

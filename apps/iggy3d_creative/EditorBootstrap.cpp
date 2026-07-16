@@ -74,13 +74,17 @@ void initializeCreativeEditorBootstrapData(
   }
 
   if (seedStarterScene) {
-    // FLOOR 1: a 4 x 0.25 x 4 walkable tile whose top sits at Y=0.25.
+    const double floorHeight = iggy3d::creative::defaultCreativeObjectSize(
+                                   iggy3d::creative::CreativeObjectKind::Floor)
+                                   .y;
+    // FLOOR 1: a descriptor-sized walkable tile whose bottom sits at Y=0.
     iggy3d::creative::CreativeDocumentCreateRequest floorRequest;
     floorRequest.kind = iggy3d::creative::CreativeObjectKind::Floor;
     floorRequest.name = "Floor 1";
-    floorRequest.transform.position = {0.0, 0.125, 0.0};
+    floorRequest.transform.position = {0.0, floorHeight * 0.5, 0.0};
     floorRequest.hasTransformOverride = true;
-    floorRequest.bounds = {{-2.0, 0.0, -2.0}, {2.0, 0.25, 2.0}};
+    floorRequest.bounds = {{-2.0, 0.0, -2.0},
+                           {2.0, floorHeight, 2.0}};
     floorRequest.hasBoundsOverride = true;
     floorRequest.visible = true;
     floorRequest.hasVisibleOverride = true;
@@ -99,9 +103,10 @@ void initializeCreativeEditorBootstrapData(
     iggy3d::creative::CreativeDocumentCreateRequest crateRequest;
     crateRequest.kind = iggy3d::creative::CreativeObjectKind::Crate;
     crateRequest.name = "Crate 1";
-    crateRequest.transform.position = {0.0, 0.375, 0.0};
+    crateRequest.transform.position = {0.0, floorHeight + 0.5, 0.0};
     crateRequest.hasTransformOverride = true;
-    crateRequest.bounds = {{-0.5, 0.25, -0.5}, {0.5, 1.25, 0.5}};
+    crateRequest.bounds = {{-0.5, floorHeight, -0.5},
+                           {0.5, floorHeight + 1.0, 0.5}};
     crateRequest.hasBoundsOverride = true;
     crateRequest.visible = true;
     crateRequest.hasVisibleOverride = true;

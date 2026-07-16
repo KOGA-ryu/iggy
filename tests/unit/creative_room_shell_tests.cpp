@@ -127,7 +127,7 @@ bool defaultRoomBuildsFiveShellRequests() {
          expect(result.createRequests[0].name == "Room Shell Floor",
                 "floor name") &&
          expectBounds(result.createRequests[0].bounds,
-                      {{0.0, 0.0, 0.0}, {10.0, 0.25, 10.0}},
+                      {{0.0, 0.0, 0.0}, {10.0, 0.05, 10.0}},
                       "floor bounds") &&
          expect(result.createRequests[1].kind == cr::CreativeObjectKind::Wall,
                 "north kind") &&

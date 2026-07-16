@@ -283,6 +283,8 @@ struct CreativeObjectDescriptor {
 [[nodiscard]] CreativeObjectProfile profileOf(CreativeObjectKind kind) noexcept;
 [[nodiscard]] CreativeObjectShapeKind shapeKindForObject(CreativeObjectKind kind) noexcept;
 [[nodiscard]] const CreativeObjectDescriptor& describeObject(CreativeObjectKind kind) noexcept;
+[[nodiscard]] CreativeVec3 defaultCreativeObjectSize(
+    CreativeObjectKind kind) noexcept;
 [[nodiscard]] std::span<const CreativeObjectDescriptor> allObjectDescriptors() noexcept;
 
 [[nodiscard]] CreativeObjectDirtyFlags dirtyFlagsForCreation(CreativeObjectKind kind) noexcept;

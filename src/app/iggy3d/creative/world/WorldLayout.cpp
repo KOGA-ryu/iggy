@@ -1,6 +1,8 @@
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
+#include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -15,8 +17,6 @@
 
 namespace iggy3d::creative {
 namespace {
-
-constexpr double kWorldLayoutFloorVerticalScale = 0.05;
 
 void setStatus(CreativeWorldLayoutReceipt& receipt,
                CreativeWorldLayoutStatus status,
@@ -444,7 +444,11 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     }
     CreativeBuildingBoxSpec box{symbol.kind, key, symbol.name, bounds};
     if (symbol.kind == CreativeObjectKind::Floor) {
-      box.scale.y = kWorldLayoutFloorVerticalScale;
+      const double authoredHeight = bounds.max.y - bounds.min.y;
+      const double targetHeight =
+          defaultCreativeObjectSize(CreativeObjectKind::Floor).y *
+          symbol.heightCells;
+      box.scale.y = targetHeight / authoredHeight;
     }
     buildings[symbol.buildingIndex].boxes.push_back(std::move(box));
   }

@@ -110,6 +110,8 @@ SpatialSurfaceSet buildSpatialSurfaceSet(const RoomAsset& room, Vec3 worldOffset
         surface.shape == RoomSpatialSurfaceShape::HeightPatch;
     if (surface.id.empty() || surface.pointsMeters.empty() ||
         (heightPatch && surface.pointsMeters.size() != 5U) ||
+        !std::isfinite(surface.collisionThicknessMeters) ||
+        surface.collisionThicknessMeters < 0.0F ||
         !buildBounds(surface.pointsMeters, worldOffsetMeters, bounds) ||
         !normalized(surface.normal, normal)) {
       continue;
@@ -133,6 +135,7 @@ SpatialSurfaceSet buildSpatialSurfaceSet(const RoomAsset& room, Vec3 worldOffset
     view.hasActorMask = contains(surface.collisionMask, "actor");
     view.hasProjectileMask = contains(surface.collisionMask, "projectile");
     view.opening = surface.role == RoomSpatialSurfaceRole::Opening;
+    view.collisionThicknessMeters = surface.collisionThicknessMeters;
     view.runtimeOwnerStableName = surface.runtimeOwnerStableName;
     view.traversalTags = surface.traversalTags;
     set.surfaces_.push_back(view);

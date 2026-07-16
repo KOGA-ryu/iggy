@@ -528,6 +528,13 @@ bool representativeDescriptorsPinShapeFacts() {
                                "enemy spawn shape descriptor");
 }
 
+bool descriptorOwnsCanonicalFloorThickness() {
+  const cr::CreativeVec3 floorSize =
+      cr::defaultCreativeObjectSize(cr::CreativeObjectKind::Floor);
+  return expect(sameVec3(floorSize, {4.0, 0.05, 4.0}),
+                "floor descriptor owns canonical dimensions");
+}
+
 bool representativeDescriptorsPinRuntimeAnchorSemantics() {
   return expect(cr::describeObject(cr::CreativeObjectKind::SpawnPoint)
                     .runtimeAnchorSemantic ==
@@ -1161,6 +1168,7 @@ int main() {
                   roomDescriptorPinsShapeBearingProjectionContract() &&
                   unknownDescriptorRemainsInvalidAndNonProjectable() &&
                   representativeDescriptorsPinShapeFacts() &&
+                  descriptorOwnsCanonicalFloorThickness() &&
                   representativeDescriptorsPinRuntimeAnchorSemantics() &&
                   representativeDescriptorsPinCapabilityFacts() &&
                   representativeDescriptorsPinAuthoringBrushPaletteVisibility() &&

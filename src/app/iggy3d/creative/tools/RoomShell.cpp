@@ -52,12 +52,6 @@ void setStatus(CreativeRoomShellRemoveReceipt& receipt,
   receipt.message = std::string(reasonCode);
 }
 
-[[nodiscard]] double defaultFloorHeight() noexcept {
-  const CreativeObjectDescriptor& descriptor =
-      describeObject(CreativeObjectKind::Floor);
-  return measureCreativeBounds(descriptor.defaults.bounds).size.y;
-}
-
 [[nodiscard]] bool shellAlreadyExists(const CreativeDocument& document,
                                       CreativeObjectId roomObjectId) {
   return !collectCreativeRoomShellChildIds(document, roomObjectId).empty();
@@ -189,7 +183,8 @@ CreativeRoomShellBuildResult buildCreativeRoomShellCreateRequests(
 
   const CreativeBounds& bounds = room->bounds;
   const double wallThickness = request.wallThickness;
-  const double floorHeight = defaultFloorHeight();
+  const double floorHeight =
+      defaultCreativeObjectSize(CreativeObjectKind::Floor).y;
   const std::vector<std::string> tags = {
       std::string(generatedRoomShellTag()),
       sourceRoomShellTag(request.roomObjectId),

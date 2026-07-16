@@ -130,15 +130,18 @@ Aabb3 planeBoundsForSurface(
 
   // Up-facing walkable planes preserve the authored plane as the slab top face.
   // Down-facing planes preserve it as the bottom face for deterministic symmetry.
+  const float thickness = surface.collisionThicknessMeters > 0.0F
+                              ? surface.collisionThicknessMeters
+                              : config.planeThicknessMeters;
   // branch-gate: BG-1099
   if (surface.normal.y >= 0.0F) {
     const float topY = surface.bounds.max.y;
     bounds.max.y = topY;
-    bounds.min.y = topY - config.planeThicknessMeters;
+    bounds.min.y = topY - thickness;
   } else {
     const float bottomY = surface.bounds.min.y;
     bounds.min.y = bottomY;
-    bounds.max.y = bottomY + config.planeThicknessMeters;
+    bounds.max.y = bottomY + thickness;
   }
   return bounds;
 }
@@ -243,7 +246,9 @@ bakePhysicsAabbCollidersFromSpatialSurfaces(
       continue;
     }
     // branch-gate: BG-1099
-    if (!isValid(surface.bounds) || !isFinite(surface.normal)) {
+    if (!isValid(surface.bounds) || !isFinite(surface.normal) ||
+        !std::isfinite(surface.collisionThicknessMeters) ||
+        surface.collisionThicknessMeters < 0.0F) {
       return invalidSurfaceResult(
           PhysicsSpatialSurfaceColliderBakeStatus::InvalidSurfaceBounds,
           surfaceIndex, result);

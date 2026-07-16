@@ -64,6 +64,9 @@ struct RoomSpatialSurface {
   std::vector<std::string> collisionMask;
   bool blocksActor = false;
   bool blocksProjectile = false;
+  // Optional authored extrusion for Plane collision. Zero delegates thickness
+  // to the runtime fallback policy used by legacy or genuinely planar assets.
+  float collisionThicknessMeters = 0.0F;
   std::string openingId;
   std::string runtimeOwnerStableName;
 };

@@ -55,6 +55,7 @@ struct CollisionSurfaceView {
   bool hasActorMask = false;
   bool hasProjectileMask = false;
   bool opening = false;
+  float collisionThicknessMeters = 0.0F;
   std::string runtimeOwnerStableName;
   std::vector<std::string> traversalTags;
 };
