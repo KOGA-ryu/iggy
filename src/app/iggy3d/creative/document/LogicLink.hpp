@@ -17,6 +17,7 @@ enum class CreativeLogicLinkAction : std::uint8_t {
   Close,
   Enable,
   Disable,
+  Reverse,
   Count,
 };
 

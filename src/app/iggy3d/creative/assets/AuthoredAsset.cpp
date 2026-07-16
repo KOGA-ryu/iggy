@@ -165,6 +165,11 @@ void appendDefinitionObject(FingerprintBuilder& builder,
   for (const CreativePathPoint& point : object.pathPoints) {
     builder.appendVec3(point.position);
   }
+  if (object.kind == CreativeObjectKind::MovingPlatform) {
+    builder.appendDouble(object.movingPlatform.speedMetersPerSecond);
+    builder.appendString(toString(object.movingPlatform.traversalMode));
+    builder.appendBool(object.movingPlatform.startsActive);
+  }
 }
 
 [[nodiscard]] bool nonBlank(std::string_view value) noexcept {

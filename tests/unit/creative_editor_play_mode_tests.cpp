@@ -883,6 +883,74 @@ bool authoredDoorAndPickupCompleteTheRuntimeInteractionLoop() {
                 "pickup feedback is authored-name aware and sandbox isolated");
 }
 
+bool movingPlatformAdvancesThroughEditorPlayTick() {
+  iggy3d::StaticMeshAssetCatalog catalog;
+  cr::CreativeDocument document = playableDocument(false, 922U);
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::MovingPlatform;
+  request.name = "Play Lift";
+  request.transform.position = {3.0, 0.375, 0.0};
+  request.hasTransformOverride = true;
+  request.bounds = {{2.0, 0.25, -1.0}, {4.0, 0.5, 1.0}};
+  request.hasBoundsOverride = true;
+  request.pathPoints = {{{3.0, 0.375, 0.0}}, {{3.0, 1.375, 0.0}}};
+  request.hasPathOverride = true;
+  request.movingPlatform.speedMetersPerSecond = 1.0;
+  request.hasMovingPlatformSettingsOverride = true;
+  const cr::CreativeDocumentCreateReceipt created =
+      document.createObject(request);
+  const std::uint64_t authoredRevision = document.revision();
+
+  app::CreativeEditorPlayMode mode;
+  if (!created.accepted || !start(mode, document, catalog).accepted ||
+      !mode.sandbox.has_value()) {
+    return expect(false, "moving platform Play fixture starts");
+  }
+  const auto platform = std::find_if(
+      mode.sandbox->interactables.begin(), mode.sandbox->interactables.end(),
+      [&created](const cr::CreativeRuntimeInteractableState& state) {
+        return state.definition.objectId == created.objectId;
+      });
+  if (platform == mode.sandbox->interactables.end()) {
+    return expect(false, "moving platform Play state exists");
+  }
+  const float initialY = platform->movingPlatform.positionMeters.y;
+  const std::string meshId = platform->definition.roomMeshId;
+
+  const app::CreativeEditorPlayTickReceipt primed =
+      tickAt(mode, document, 1U);
+  const app::CreativeEditorPlayTickReceipt advanced =
+      tickAt(mode, document, 50'000'001U);
+  const app::CreativeEditorPlayScene scene =
+      app::buildCreativeEditorPlayScene(mode);
+  const auto movedMesh = std::find_if(
+      mode.sandbox->room.staticMeshes.begin(),
+      mode.sandbox->room.staticMeshes.end(),
+      [&meshId](const iggy3d::RoomStaticMeshAsset& mesh) {
+        return mesh.id == meshId;
+      });
+  const cr::CreativeObject* authored = document.findObject(created.objectId);
+
+  return expect(primed.status ==
+                    app::CreativeEditorPlayTickStatus::ClockPrimed,
+                "moving platform Play clock primes") &&
+         expect(advanced.status ==
+                        app::CreativeEditorPlayTickStatus::Advanced &&
+                    advanced.movingPlatformsAdvanced == 1U &&
+                    advanced.movingPlatformsBlocked == 0U &&
+                    advanced.runtimeGeometryRevision == 1U,
+                "editor Play tick advances one moving platform") &&
+         expect(platform->movingPlatform.positionMeters.y > initialY &&
+                    movedMesh != mode.sandbox->room.staticMeshes.end() &&
+                    movedMesh->positionMeters.y > initialY,
+                "Play publishes the moved runtime marker and room mesh") &&
+         expect(scene.available && mode.targetingGeometryRevision == 1U,
+                "moved platform projects and refreshes targeting") &&
+         expect(document.revision() == authoredRevision &&
+                    authored != nullptr && authored->pathPoints.size() == 2U,
+                "runtime movement leaves authored platform unchanged");
+}
+
 bool occupiedPlatformRestoreIsHandledInsidePlay() {
   iggy3d::StaticMeshAssetCatalog catalog;
   cr::CreativeDocument document = playableDocument(false, 921U);
@@ -968,6 +1036,7 @@ int main() {
                   desktopPlayTogglesAndBlocksEditing() &&
                   invalidMapAndTuningFailClosed() &&
                   authoredDoorAndPickupCompleteTheRuntimeInteractionLoop() &&
+                  movingPlatformAdvancesThroughEditorPlayTick() &&
                   occupiedPlatformRestoreIsHandledInsidePlay();
   if (!ok) {
     return 1;

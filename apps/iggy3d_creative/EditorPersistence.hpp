@@ -23,6 +23,7 @@ struct ObjectSnapshotEntry {
   cr::CreativeVec3 boundsMin{};
   cr::CreativeVec3 boundsMax{};
   std::vector<cr::CreativePathPoint> pathPoints;
+  cr::CreativeMovingPlatformSettings movingPlatform;
 };
 
 [[nodiscard]] std::vector<ObjectSnapshotEntry> snapshotDocument(

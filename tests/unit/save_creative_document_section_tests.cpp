@@ -270,11 +270,13 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
               "object path points decoded exactly");
 
   std::string version6Text = encoded.encodedText;
+  const std::string currentVersionLine =
+      "creativeDocument.version=" +
+      std::to_string(iggy3d::kSaveCreativeDocumentSectionVersion) + "\n";
   if (const std::size_t versionPosition =
-          version6Text.find("creativeDocument.version=7\n");
+          version6Text.find(currentVersionLine);
       versionPosition != std::string::npos) {
-    version6Text.replace(versionPosition,
-                         std::string("creativeDocument.version=7\n").size(),
+    version6Text.replace(versionPosition, currentVersionLine.size(),
                          "creativeDocument.version=6\n");
   }
   const std::string linkBlock =
@@ -323,6 +325,63 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
               "version 5 object without asset id remains readable") &&
        ok;
   return ok;
+}
+
+bool version7MovingPlatformDefaultsRemainReadable() {
+  iggy3d::SaveEnvelope envelope = minimalEnvelope();
+  iggy3d::SaveCreativeDocumentSection& section = envelope.creativeDocument;
+  section.present = true;
+  section.documentId = 91U;
+  section.name = "Legacy Moving Platform";
+  section.gridWidth = 8U;
+  section.gridHeight = 8U;
+  section.gridDepth = 8U;
+  section.worldBounds.max = {8.0, 8.0, 8.0};
+  section.nextObjectId = 2U;
+
+  iggy3d::SaveCreativeDocumentObjectRecord object;
+  object.id = 1U;
+  object.kind = "MovingPlatform";
+  object.name = "Legacy Lift";
+  object.bounds.max = {2.0, 0.25, 2.0};
+  object.pathPoints = {{1.0, 0.125, 1.0}, {1.0, 3.125, 1.0}};
+  object.movingPlatformSpeedMetersPerSecond = 4.0;
+  object.movingPlatformTraversalMode = "Loop";
+  object.movingPlatformStartsActive = false;
+  section.objects.push_back(object);
+
+  const iggy3d::SaveEncodeResult encoded =
+      iggy3d::encodeSaveEnvelope(envelope);
+  std::string version7Text = replaceValueForKey(
+      encoded.encodedText, "creativeDocument.version", "7");
+  version7Text = eraseLineForKey(
+      version7Text,
+      "creativeDocument.object.0.movingPlatform.speedMetersPerSecond");
+  version7Text = eraseLineForKey(
+      version7Text,
+      "creativeDocument.object.0.movingPlatform.traversalMode");
+  version7Text = eraseLineForKey(
+      version7Text,
+      "creativeDocument.object.0.movingPlatform.startsActive");
+
+  const iggy3d::SaveDecodeResult decoded =
+      iggy3d::decodeSaveEnvelope(version7Text);
+  const iggy3d::SaveCreativeDocumentObjectRecord* decodedObject =
+      decoded.envelope.creativeDocument.objects.empty()
+          ? nullptr
+          : &decoded.envelope.creativeDocument.objects.front();
+
+  return expect(encoded.status == iggy3d::SaveCodecStatus::Ok,
+                "legacy moving platform setup encode ok") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                "version 7 moving platform decode ok") &&
+         expect(decoded.envelope.creativeDocument.version == 7U,
+                "version 7 moving platform version retained") &&
+         expect(decodedObject != nullptr &&
+                    decodedObject->movingPlatformSpeedMetersPerSecond == 1.5 &&
+                    decodedObject->movingPlatformTraversalMode == "PingPong" &&
+                    decodedObject->movingPlatformStartsActive,
+                "version 7 moving platform receives safe defaults");
 }
 
 bool malformedCreativeDocumentPathPointKeysReject() {
@@ -421,6 +480,7 @@ int main() {
   bool ok = true;
   ok = defaultEnvelopeOmitsCreativeDocumentSection() && ok;
   ok = creativeDocumentSectionRoundTripsThroughSaveCodec() && ok;
+  ok = version7MovingPlatformDefaultsRemainReadable() && ok;
   ok = malformedCreativeDocumentPathPointKeysReject() && ok;
   ok = schemaCompatibilityAcceptsV1V2AndRejectsTooNew() && ok;
   return ok ? 0 : 1;

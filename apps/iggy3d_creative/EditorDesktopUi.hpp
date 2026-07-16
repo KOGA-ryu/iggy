@@ -45,6 +45,7 @@ struct CreativeDesktopInspectorDraft {
   std::array<double, 3> position{0.0, 0.0, 0.0};
   std::array<double, 3> rotationDegrees{0.0, 0.0, 0.0};
   std::array<double, 3> scale{1.0, 1.0, 1.0};
+  iggy3d::creative::CreativeMovingPlatformSettings movingPlatform;
   // A draft field is being edited this frame, so a revision bump must not
   // overwrite it.
   bool editing = false;

@@ -56,6 +56,9 @@ CreativeMutationApplyReceipt applyLinkMutation(CreativeObject& object, CreativeM
 CreativeMutationApplyReceipt applySocketMutation(CreativeObject& object, CreativeMutationKind mutationKind, const SetSocketMutation& mutation);
 CreativeMutationApplyReceipt applyTextMutation(CreativeObject& object, CreativeMutationKind mutationKind, const TextMutation& mutation);
 CreativeMutationApplyReceipt applyPathPointsMutation(CreativeObject& object, CreativeMutationKind mutationKind, const PathPointsMutation& mutation);
+CreativeMutationApplyReceipt applyMovingPlatformSettingsMutation(
+    CreativeObject& object,
+    const MovingPlatformSettingsMutation& mutation);
 CreativeMutationApplyReceipt applyReferenceSourceMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ReferenceSourceMutation& mutation);
 CreativeMutationApplyReceipt applyColorMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ColorMutation& mutation);
 CreativeMutationApplyReceipt applyAudioSourceMutation(CreativeObject& object, CreativeMutationKind mutationKind, const AudioSourceMutation& mutation);
@@ -176,6 +179,17 @@ CreativeMutationApplyReceipt applyObjectKindMutation(CreativeObject& object, Cre
             bounds.max.z + delta.z,
         },
     };
+}
+
+void translateStoredPath(CreativeObject& object, CreativeVec3 delta) noexcept {
+    if (!objectStoresPathPoints(object.kind)) {
+        return;
+    }
+    for (CreativePathPoint& point : object.pathPoints) {
+        point.position.x += delta.x;
+        point.position.y += delta.y;
+        point.position.z += delta.z;
+    }
 }
 
 [[nodiscard]] bool hasTag(const CreativeObject& object, const std::string& tag) {
@@ -346,6 +360,10 @@ CreativeMutationApplyReceipt applyObjectKindMutation(CreativeObject& object, Cre
 
         return applyStringIdMutation(object, mutationKind, std::get<StringIdMutation>(value));
 
+    case CreativeMutationKind::SetMovingPlatformSettings:
+        return applyMovingPlatformSettingsMutation(
+            object, std::get<MovingPlatformSettingsMutation>(value));
+
     case CreativeMutationKind::SetReferenceSource:
         return applyReferenceSourceMutation(object, mutationKind, std::get<ReferenceSourceMutation>(value));
     case CreativeMutationKind::SetLightColor:
@@ -498,6 +516,7 @@ CreativeMutationApplyReceipt applyMoveMutation(CreativeObject& object, const Mov
     if (objectHasBounds(object.kind)) {
         object.bounds = translateBounds(object.bounds, delta);
     }
+    translateStoredPath(object, delta);
     return makeAppliedReceipt(object, CreativeMutationKind::Move, "object moved");
 }
 
@@ -519,7 +538,13 @@ CreativeMutationApplyReceipt applySetTransformMutation(CreativeObject& object, c
         return makeNoChangeReceipt(object, CreativeMutationKind::SetTransform, "object transform already matches requested value");
     }
 
+    const CreativeVec3 delta{
+        mutation.transform.position.x - object.transform.position.x,
+        mutation.transform.position.y - object.transform.position.y,
+        mutation.transform.position.z - object.transform.position.z,
+    };
     object.transform = mutation.transform;
+    translateStoredPath(object, delta);
     return makeAppliedReceipt(object, CreativeMutationKind::SetTransform, "object transform changed");
 }
 
@@ -688,7 +713,7 @@ CreativeMutationApplyReceipt applyTextMutation(CreativeObject& object, CreativeM
 
 CreativeMutationApplyReceipt applyPathPointsMutation(CreativeObject& object, CreativeMutationKind mutationKind, const PathPointsMutation& mutation) {
     const CreativeObjectDescriptor& descriptor = describeObject(object.kind);
-    const bool storesPath = descriptor.shapeKind == CreativeObjectShapeKind::Path;
+    const bool storesPath = objectStoresPathPoints(object.kind);
     const bool storesLineEndpoints = objectStoresLineEndpoints(descriptor);
     if (!storesPath && !storesLineEndpoints) {
         return rejectMutation(object, mutationKind, CreativeMutationApplyStatus::UnsupportedMutation, "object kind does not store path points");
@@ -698,7 +723,18 @@ CreativeMutationApplyReceipt applyPathPointsMutation(CreativeObject& object, Cre
         return rejectMutation(object, mutationKind, CreativeMutationApplyStatus::Rejected, "line endpoints are invalid");
     }
 
-    if (storesPath && !validPathPoints(mutation.pathPoints)) {
+    if (object.kind == CreativeObjectKind::MovingPlatform &&
+        mutation.pathPoints.size() >
+            kCreativeMovingPlatformPathPointCapacity) {
+        return rejectMutation(
+            object, mutationKind, CreativeMutationApplyStatus::Rejected,
+            "moving platform path exceeds capacity");
+    }
+    const bool validStoredPath =
+        object.kind == CreativeObjectKind::MovingPlatform
+            ? isValidCreativeMovingPlatformPath(mutation.pathPoints)
+            : validPathPoints(mutation.pathPoints);
+    if (storesPath && !validStoredPath) {
         return rejectMutation(object, mutationKind, CreativeMutationApplyStatus::Rejected, "path points are invalid");
     }
 
@@ -715,6 +751,27 @@ CreativeMutationApplyReceipt applyPathPointsMutation(CreativeObject& object, Cre
         object,
         mutationKind,
         storesLineEndpoints ? "object line endpoints changed" : "object path points changed");
+}
+
+CreativeMutationApplyReceipt applyMovingPlatformSettingsMutation(
+    CreativeObject& object,
+    const MovingPlatformSettingsMutation& mutation) {
+    if (object.kind != CreativeObjectKind::MovingPlatform ||
+        !isValidCreativeMovingPlatformSettings(mutation.settings)) {
+        return rejectMutation(
+            object, CreativeMutationKind::SetMovingPlatformSettings,
+            CreativeMutationApplyStatus::Rejected,
+            "moving platform settings are invalid");
+    }
+    if (object.movingPlatform == mutation.settings) {
+        return makeNoChangeReceipt(
+            object, CreativeMutationKind::SetMovingPlatformSettings,
+            "moving platform settings already match requested value");
+    }
+    object.movingPlatform = mutation.settings;
+    return makeAppliedReceipt(
+        object, CreativeMutationKind::SetMovingPlatformSettings,
+        "moving platform settings changed");
 }
 
 CreativeMutationApplyReceipt applyReferenceSourceMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ReferenceSourceMutation& mutation) {

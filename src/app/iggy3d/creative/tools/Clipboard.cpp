@@ -168,6 +168,10 @@ void includePlacementPoint(CreativeObjectWorldExtent& extent,
   }
   create.pathPoints = object.pathPoints;
   create.hasPathOverride = !object.pathPoints.empty();
+  if (object.kind == CreativeObjectKind::MovingPlatform) {
+    create.movingPlatform = object.movingPlatform;
+    create.hasMovingPlatformSettingsOverride = true;
+  }
   return create;
 }
 

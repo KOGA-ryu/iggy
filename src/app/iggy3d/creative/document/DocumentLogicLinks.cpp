@@ -92,6 +92,8 @@ std::string_view toString(CreativeLogicLinkAction action) noexcept {
       return "Enable";
     case CreativeLogicLinkAction::Disable:
       return "Disable";
+    case CreativeLogicLinkAction::Reverse:
+      return "Reverse";
     case CreativeLogicLinkAction::Count:
       break;
   }
@@ -215,7 +217,8 @@ bool creativeObjectCanSourceLogicLink(CreativeObjectKind kind) noexcept {
 
 bool creativeObjectCanTargetLogicLink(CreativeObjectKind kind) noexcept {
   return kind == CreativeObjectKind::Door ||
-         kind == CreativeObjectKind::Platform;
+         kind == CreativeObjectKind::Platform ||
+         kind == CreativeObjectKind::MovingPlatform;
 }
 
 bool creativeLogicLinkActionSupported(CreativeObjectKind targetKind,
@@ -229,6 +232,11 @@ bool creativeLogicLinkActionSupported(CreativeObjectKind targetKind,
       return action == CreativeLogicLinkAction::Toggle ||
              action == CreativeLogicLinkAction::Enable ||
              action == CreativeLogicLinkAction::Disable;
+    case CreativeObjectKind::MovingPlatform:
+      return action == CreativeLogicLinkAction::Toggle ||
+             action == CreativeLogicLinkAction::Enable ||
+             action == CreativeLogicLinkAction::Disable ||
+             action == CreativeLogicLinkAction::Reverse;
     default:
       return false;
   }

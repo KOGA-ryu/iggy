@@ -231,6 +231,14 @@ void Reader::readCreativeDocumentObject(const std::string& prefix,
                                  prefix + "pathPoint.",
                                  ".position",
                                  object.pathPoints);
+  if (nextKeyIs(prefix + "movingPlatform.speedMetersPerSecond")) {
+    readDouble(prefix + "movingPlatform.speedMetersPerSecond",
+               object.movingPlatformSpeedMetersPerSecond);
+    readString(prefix + "movingPlatform.traversalMode",
+               object.movingPlatformTraversalMode);
+    readBool(prefix + "movingPlatform.startsActive",
+             object.movingPlatformStartsActive);
+  }
 }
 
 void Reader::readCreativeDocument() {

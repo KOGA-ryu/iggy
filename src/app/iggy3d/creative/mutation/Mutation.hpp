@@ -113,6 +113,7 @@ enum class CreativeMutationKind {
     SetCheckpointId,
     SetNavCost,
     SetPatrolRoute,
+    SetMovingPlatformSettings,
     SetJumpArc,
     SetClimbRule,
     SetWallRunRule,
@@ -254,6 +255,10 @@ struct PathPointsMutation {
     std::vector<CreativePathPoint> pathPoints{};
 };
 
+struct MovingPlatformSettingsMutation {
+    CreativeMovingPlatformSettings settings{};
+};
+
 struct ObjectKindMutation {
     CreativeObjectKind kind{CreativeObjectKind::Unknown};
 };
@@ -285,6 +290,7 @@ struct CreativeMutationPayload {
         AudioSourceMutation,
         StringIdMutation,
         PathPointsMutation,
+        MovingPlatformSettingsMutation,
         ObjectKindMutation>;
 
     Value value{};
@@ -370,5 +376,7 @@ struct CreativeMutationDescriptor {
 [[nodiscard]] CreativeMutationPayload makeTextPayload(std::string text);
 [[nodiscard]] CreativeMutationPayload makeStringIdPayload(std::string id);
 [[nodiscard]] CreativeMutationPayload makePathPointsPayload(std::vector<CreativePathPoint> pathPoints);
+[[nodiscard]] CreativeMutationPayload makeMovingPlatformSettingsPayload(
+    CreativeMovingPlatformSettings settings);
 
 } // namespace iggy3d::creative

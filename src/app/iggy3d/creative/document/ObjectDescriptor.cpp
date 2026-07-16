@@ -2105,6 +2105,12 @@ bool objectIsEditorOnly(CreativeObjectKind kind) noexcept {
     return describeObject(kind).isEditorOnly;
 }
 
+bool objectStoresPathPoints(CreativeObjectKind kind) noexcept {
+    const CreativeObjectDescriptor& descriptor = describeObject(kind);
+    return descriptor.shapeKind == CreativeObjectShapeKind::Path ||
+           kind == CreativeObjectKind::MovingPlatform;
+}
+
 bool descriptorShowsInAuthoringBrushPalette(
     const CreativeObjectDescriptor& descriptor) noexcept {
     return descriptor.authoringPaletteVisibility ==

@@ -97,6 +97,7 @@ bool interactableDefinitionIsValid(
   switch (definition.kind) {
     case CreativeRuntimeInteractableKind::Door:
     case CreativeRuntimeInteractableKind::Platform:
+    case CreativeRuntimeInteractableKind::MovingPlatform:
       return definition.logicSourceMode ==
                  CreativeRuntimeLogicSourceMode::None &&
              !definition.roomMeshId.empty() && definition.itemId.empty();
@@ -271,6 +272,7 @@ ScenarioEntitySeed makeInteractableEntity(
       entity.interaction.repeatable = true;
       break;
     case CreativeRuntimeInteractableKind::Platform:
+    case CreativeRuntimeInteractableKind::MovingPlatform:
       entity.kind = ScenarioEntityKind::Marker;
       entity.active = false;
       break;
@@ -418,6 +420,7 @@ CreativeRuntimeScenarioSeedResult buildCreativeRuntimeScenarioSeed(
         ++result.summary.doorEntityCount;
         break;
       case CreativeRuntimeInteractableKind::Platform:
+      case CreativeRuntimeInteractableKind::MovingPlatform:
         ++result.summary.platformEntityCount;
         break;
       case CreativeRuntimeInteractableKind::Control:

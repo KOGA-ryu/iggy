@@ -48,6 +48,19 @@ cr::CreativeObjectId createCrate(cr::Facade& facade, double x) {
   return facade.createDocumentObject(request).objectId;
 }
 
+cr::CreativeObjectId createMovingPlatform(cr::Facade& facade) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::MovingPlatform;
+  request.name = "Command Lift";
+  request.transform.position = {1.0, 0.5, 2.0};
+  request.hasTransformOverride = true;
+  request.bounds = {{0.0, 0.25, 1.0}, {2.0, 0.75, 3.0}};
+  request.hasBoundsOverride = true;
+  request.pathPoints = {{{1.0, 0.5, 2.0}}, {{1.0, 3.5, 2.0}}};
+  request.hasPathOverride = true;
+  return facade.createDocumentObject(request).objectId;
+}
+
 struct AttachedPair {
   cr::CreativeObjectId parentId = cr::kInvalidObjectId;
   cr::CreativeObjectId childId = cr::kInvalidObjectId;
@@ -766,6 +779,70 @@ bool transformCommandIsAtomicAndAttachmentAware() {
                 "invalid masked transforms do not partially apply");
 }
 
+bool movingPlatformSettingsUseTypedCommandAndOneUndoStep() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Moving Platform");
+  static_cast<void>(document.assignId(426U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId platformId =
+      createMovingPlatform(appState.facade);
+  appState.history = {};
+
+  app::CreativeEditorState editor;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  cr::CreativeMovingPlatformSettings settings;
+  settings.speedMetersPerSecond = 3.25;
+  settings.traversalMode = cr::CreativeMovingPlatformTraversalMode::Loop;
+  settings.startsActive = false;
+  const app::CreativeDesktopCommandResult changed = dispatchPayload(
+      app::CreativeDesktopCommandId::SetMovingPlatformSettings, context,
+      app::CreativeDesktopMovingPlatformPayload{platformId, settings});
+  const cr::CreativeObject* afterChange =
+      appState.facade.findObject(platformId);
+  const bool settingsApplied =
+      afterChange != nullptr && afterChange->movingPlatform == settings;
+  const std::size_t depthAfterChange =
+      cr::creativeUndoDepth(appState.history);
+  const app::CreativeDesktopCommandResult unchanged = dispatchPayload(
+      app::CreativeDesktopCommandId::SetMovingPlatformSettings, context,
+      app::CreativeDesktopMovingPlatformPayload{platformId, settings});
+
+  cr::CreativeMovingPlatformSettings invalid = settings;
+  invalid.speedMetersPerSecond = 0.0;
+  const app::CreativeDesktopCommandResult rejected = dispatchPayload(
+      app::CreativeDesktopCommandId::SetMovingPlatformSettings, context,
+      app::CreativeDesktopMovingPlatformPayload{platformId, invalid});
+  const app::CreativeDesktopCommandResult undo =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const cr::CreativeObject* afterUndo = appState.facade.findObject(platformId);
+  const bool restoredDefaults =
+      afterUndo != nullptr &&
+      afterUndo->movingPlatform == cr::CreativeMovingPlatformSettings{};
+  const app::CreativeDesktopCommandResult redo =
+      dispatchOne(app::CreativeDesktopCommandId::Redo, context);
+  const cr::CreativeObject* afterRedo = appState.facade.findObject(platformId);
+
+  return expect(changed.accepted && changed.changed &&
+                    changed.affectedObjectCount == 1U &&
+                    settingsApplied,
+                "moving platform settings command applies typed values") &&
+         expect(depthAfterChange == 1U && unchanged.accepted &&
+                    !unchanged.changed &&
+                    cr::creativeUndoDepth(appState.history) == 1U,
+                "unchanged moving platform settings add no undo entry") &&
+         expect(!rejected.accepted && !rejected.changed,
+                "invalid moving platform settings are rejected") &&
+         expect(undo.accepted && undo.changed && restoredDefaults,
+                "moving platform settings undo restores defaults") &&
+         expect(redo.accepted && redo.changed && afterRedo != nullptr &&
+                    afterRedo->movingPlatform == settings,
+                "moving platform settings redo restores edited values");
+}
+
 bool assetAndInstanceCommandsRouteAndRejectCleanly() {
   // Verifies the asset/instance families route to the right kernels and honor
   // payload typing. The success paths reuse existing kernels covered by
@@ -998,6 +1075,9 @@ bool mismatchedPayloadsAreNoOpFailures() {
   const app::CreativeDesktopCommandResult badLogic = dispatchPayload(
       app::CreativeDesktopCommandId::SetLogicLink, context,
       app::CreativeDesktopSelectPayload{{a}, a});
+  const app::CreativeDesktopCommandResult badMovingPlatform = dispatchPayload(
+      app::CreativeDesktopCommandId::SetMovingPlatformSettings, context,
+      app::CreativeDesktopDeletePayload{{a}});
 
   return expect(!badDelete.accepted &&
                     badDelete.message == "delete objects: payload mismatch",
@@ -1011,6 +1091,10 @@ bool mismatchedPayloadsAreNoOpFailures() {
          expect(!badLogic.accepted &&
                     badLogic.message == "set logic link: payload mismatch",
                 "SetLogicLink with the wrong payload is a no-op failure") &&
+         expect(!badMovingPlatform.accepted &&
+                    badMovingPlatform.message ==
+                        "moving platform settings: payload mismatch",
+                "SetMovingPlatformSettings rejects a mismatched payload") &&
          expect(appState.facade.document().objectCount() == before &&
                     cr::creativeUndoDepth(appState.history) == 0U,
                 "mismatched payloads mutate nothing and record no history");
@@ -1036,6 +1120,7 @@ int main() {
   ok = visibilityAndLockBatchesRollBackOnFailure() && ok;
   ok = transformCommandSetsAbsoluteWithMask() && ok;
   ok = transformCommandIsAtomicAndAttachmentAware() && ok;
+  ok = movingPlatformSettingsUseTypedCommandAndOneUndoStep() && ok;
   ok = assetAndInstanceCommandsRouteAndRejectCleanly() && ok;
   ok = assetAndInstanceCommandsCompleteSuccessPaths() && ok;
   ok = mismatchedPayloadsAreNoOpFailures() && ok;

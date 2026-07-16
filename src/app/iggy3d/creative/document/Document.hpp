@@ -86,6 +86,8 @@ struct CreativeDocumentCreateRequest {
   std::string attachmentSocket;
   bool hasPathOverride = false;
   std::vector<CreativePathPoint> pathPoints;
+  bool hasMovingPlatformSettingsOverride = false;
+  CreativeMovingPlatformSettings movingPlatform;
 };
 
 struct CreativeDocumentCreateReceipt {

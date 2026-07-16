@@ -143,6 +143,7 @@ bool placementPlanMatchesEveryCreateRequest() {
   bool sawPoint = false;
   bool sawLine = false;
   bool sawPath = false;
+  bool sawMovingPlatform = false;
   bool ok = true;
   std::size_t supportedCount = 0U;
   for (const cr::CreativeObjectDescriptor& descriptor :
@@ -187,6 +188,18 @@ bool placementPlanMatchesEveryCreateRequest() {
                plan.shapeKind == cr::CreativeObjectShapeKind::Point;
     sawLine = sawLine || plan.shapeKind == cr::CreativeObjectShapeKind::Line;
     sawPath = sawPath || plan.shapeKind == cr::CreativeObjectShapeKind::Path;
+    if (descriptor.kind == cr::CreativeObjectKind::MovingPlatform) {
+      const cr::CreativeBoundsMetrics movingBounds =
+          cr::measureCreativeBounds(plan.authoredBounds);
+      sawMovingPlatform =
+          movingBounds.valid && plan.pathPointCount == 2U &&
+          request.hasPathOverride &&
+          sameVec3(plan.pathPoints[0].position, movingBounds.center) &&
+          plan.pathPoints[1].position.x == plan.pathPoints[0].position.x &&
+          plan.pathPoints[1].position.y ==
+              plan.pathPoints[0].position.y + 3.0 &&
+          plan.pathPoints[1].position.z == plan.pathPoints[0].position.z;
+    }
   }
 
   const float nan = std::numeric_limits<float>::quiet_NaN();
@@ -201,6 +214,8 @@ bool placementPlanMatchesEveryCreateRequest() {
       buildBrushCreateRequest(cr::CreativeObjectKind::Unknown, {}, 1U);
   return expect(supportedCount > 0U && sawPoint && sawLine && sawPath,
                 "descriptor sweep covers point line and path brushes") &&
+         expect(sawMovingPlatform,
+                "moving platform placement owns a vertical two-point route") &&
          expect(!nonFinite.valid &&
                     nonFinite.status ==
                         CreativeBrushPlacementPlanStatus::InvalidAnchor,

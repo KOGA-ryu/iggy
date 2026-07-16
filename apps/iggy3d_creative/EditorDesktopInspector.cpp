@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -26,6 +27,7 @@ constexpr std::array kInspectorLogicActions{
     cr::CreativeLogicLinkAction::Close,
     cr::CreativeLogicLinkAction::Enable,
     cr::CreativeLogicLinkAction::Disable,
+    cr::CreativeLogicLinkAction::Reverse,
 };
 
 // ---- shared small helpers -------------------------------------------------
@@ -231,6 +233,12 @@ void appendRuntimeLogicMonitor(const CreativeEditorPlayMode* playMode,
         case cr::CreativeRuntimeInteractableKind::Platform:
           targetState = target->targetActive ? "ENABLED" : "DISABLED";
           break;
+        case cr::CreativeRuntimeInteractableKind::MovingPlatform:
+          targetState = target->targetActive
+                            ? (target->movingPlatform.blocked ? "BLOCKED"
+                                                              : "MOVING")
+                            : "PAUSED";
+          break;
         case cr::CreativeRuntimeInteractableKind::Control:
         case cr::CreativeRuntimeInteractableKind::Pickup:
           break;
@@ -408,8 +416,65 @@ void refreshInspectorDraft(CreativeDesktopInspectorDraft& draft,
   draft.rotationDegrees = {degrees.x, degrees.y, degrees.z};
   draft.scale = {object.transform.scale.x, object.transform.scale.y,
                  object.transform.scale.z};
+  draft.movingPlatform = object.movingPlatform;
   draft.validation.clear();
   draft.valid = true;
+}
+
+void appendMovingPlatformFields(CreativeDesktopInspectorDraft& draft,
+                                const cr::CreativeObject& object,
+                                bool fieldsDisabled,
+                                CreativeDesktopCommandFrame& commands) {
+  if (object.kind != cr::CreativeObjectKind::MovingPlatform) {
+    return;
+  }
+  const auto commit = [&]() {
+    if (!cr::isValidCreativeMovingPlatformSettings(draft.movingPlatform)) {
+      draft.validation = "Speed must be finite and between 0 and 100 m/s";
+      return;
+    }
+    draft.validation.clear();
+    commands.push(
+        CreativeDesktopCommandId::SetMovingPlatformSettings,
+        CreativeDesktopMovingPlatformPayload{object.id,
+                                             draft.movingPlatform});
+  };
+
+  ImGui::SeparatorText("Motion");
+  ImGui::BeginDisabled(fieldsDisabled);
+  ImGui::InputDouble("Speed (m/s)",
+                     &draft.movingPlatform.speedMetersPerSecond, 0.1, 1.0,
+                     "%.2f");
+  draft.editing = draft.editing || ImGui::IsItemActive();
+  if (ImGui::IsItemDeactivatedAfterEdit()) {
+    commit();
+  }
+
+  const std::string traversalLabel =
+      std::string(cr::toString(draft.movingPlatform.traversalMode));
+  if (ImGui::BeginCombo("Traversal", traversalLabel.c_str())) {
+    constexpr std::array modes{
+        cr::CreativeMovingPlatformTraversalMode::PingPong,
+        cr::CreativeMovingPlatformTraversalMode::Loop,
+    };
+    for (const cr::CreativeMovingPlatformTraversalMode mode : modes) {
+      const bool selected = mode == draft.movingPlatform.traversalMode;
+      if (ImGui::Selectable(std::string(cr::toString(mode)).c_str(), selected) &&
+          !selected) {
+        draft.movingPlatform.traversalMode = mode;
+        commit();
+      }
+    }
+    ImGui::EndCombo();
+  }
+  if (ImGui::Checkbox("Starts moving",
+                      &draft.movingPlatform.startsActive)) {
+    commit();
+  }
+  ImGui::EndDisabled();
+  ImGui::TextDisabled("Waypoints: %llu",
+                      static_cast<unsigned long long>(
+                          object.pathPoints.size()));
 }
 
 void appendTransformFields(CreativeDesktopInspectorDraft& draft,
@@ -504,6 +569,7 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
   ImGui::EndDisabled();
 
   appendTransformFields(draft, object.id, fieldsDisabled, commands);
+  appendMovingPlatformFields(draft, object, fieldsDisabled, commands);
 
   // Read-only metadata.
   if (!object.assetId.empty()) {

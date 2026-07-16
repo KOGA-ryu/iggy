@@ -86,6 +86,19 @@ cr::CreativeDocumentCreateRequest lineEndpointCreateRequest(
   return request;
 }
 
+cr::CreativeDocumentCreateRequest movingPlatformCreateRequest() {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::MovingPlatform;
+  request.name = "Route-bound Lift";
+  request.transform.position = {1.0, 0.5, 2.0};
+  request.hasTransformOverride = true;
+  request.bounds = {{0.0, 0.25, 1.0}, {2.0, 0.75, 3.0}};
+  request.hasBoundsOverride = true;
+  request.pathPoints = {{{1.0, 0.5, 2.0}}, {{1.0, 3.5, 2.0}}};
+  request.hasPathOverride = true;
+  return request;
+}
+
 cr::CreativeObject restoredPatrolRouteObject() {
   cr::CreativeObject object;
   object.id = 7;
@@ -821,6 +834,65 @@ bool documentCopyPreservesPathPayload() {
          expect(copy.revision() == document.revision(), "copy revision");
 }
 
+bool movingPlatformMoveKeepsRouteAttachedAndEnforcesCapacity() {
+  cr::CreativeDocument document;
+  const cr::CreativeDocumentCreateReceipt created =
+      document.createObject(movingPlatformCreateRequest());
+  const cr::CreativeDocumentMutationReceipt moved =
+      cr::applyDocumentMutation(
+          document, created.objectId, cr::CreativeMutationKind::Move,
+          cr::makeMovePayload({4.0, 1.5, 6.0}));
+  const std::vector<cr::CreativePathPoint> expected{
+      {{4.0, 1.5, 6.0}}, {{4.0, 4.5, 6.0}}};
+
+  cr::CreativeDocumentCreateRequest oversized = movingPlatformCreateRequest();
+  oversized.pathPoints.assign(
+      cr::kCreativeMovingPlatformPathPointCapacity + 1U,
+      cr::CreativePathPoint{{1.0, 0.5, 2.0}});
+  oversized.pathPoints.back().position.y = 3.5;
+  const cr::CreativeDocumentCreateReceipt rejected =
+      document.createObject(oversized);
+  cr::CreativeDocumentCreateRequest degenerate =
+      movingPlatformCreateRequest();
+  degenerate.pathPoints[1] = degenerate.pathPoints[0];
+  const cr::CreativeDocumentCreateReceipt degenerateRejected =
+      document.createObject(degenerate);
+  cr::CreativeDocumentCreateRequest ignoredSettings =
+      movingPlatformCreateRequest();
+  ignoredSettings.movingPlatform.speedMetersPerSecond = 0.0;
+  const cr::CreativeDocumentCreateReceipt defaulted =
+      document.createObject(ignoredSettings);
+  ignoredSettings.hasMovingPlatformSettingsOverride = true;
+  const cr::CreativeDocumentCreateReceipt invalidOverride =
+      document.createObject(ignoredSettings);
+  const cr::CreativeObject* platform = document.findObject(created.objectId);
+  const cr::CreativeObject* defaultedPlatform =
+      document.findObject(defaulted.objectId);
+
+  return expect(created.accepted, "moving platform path create accepted") &&
+         expect(moved.status == cr::CreativeDocumentMutationStatus::Applied &&
+                    moved.changed,
+                "moving platform move mutation applied") &&
+         expect(platform != nullptr &&
+                    sameVec3(platform->transform.position, {4.0, 1.5, 6.0}) &&
+                    samePathPoints(platform->pathPoints, expected),
+                "moving platform move translates its route exactly once") &&
+         expect(!rejected.accepted &&
+                    rejected.reasonCode == "moving_platform_path_too_long",
+                "moving platform create rejects routes over capacity") &&
+         expect(!degenerateRejected.accepted &&
+                    degenerateRejected.reasonCode == "invalid_path_points",
+                "moving platform create rejects zero-length routes") &&
+         expect(defaulted.accepted && defaultedPlatform != nullptr &&
+                    defaultedPlatform->movingPlatform ==
+                        cr::CreativeMovingPlatformSettings{},
+                "unset moving platform override ignores payload storage") &&
+         expect(!invalidOverride.accepted &&
+                    invalidOverride.reasonCode ==
+                        "moving_platform_settings_invalid",
+                "explicit invalid moving platform settings are rejected");
+}
+
 }  // namespace
 
 int main() {
@@ -845,6 +917,7 @@ int main() {
                   traversalLinkEndpointMutationAppliesStoredPoints() &&
                   traversalLinkEndpointMutationRejectsInvalidCount() &&
                   legacyPatrolRoutePayloadsRemainFutureStorageNoChange() &&
-                  documentCopyPreservesPathPayload();
+                  documentCopyPreservesPathPayload() &&
+                  movingPlatformMoveKeepsRouteAttachedAndEnforcesCapacity();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -442,6 +442,27 @@ void dispatchOne(const CreativeDesktopCommand& command,
                            : receipt.message;
       break;
     }
+    case CreativeDesktopCommandId::SetMovingPlatformSettings: {
+      const auto* payload =
+          payloadAs<CreativeDesktopMovingPlatformPayload>(command);
+      if (payload == nullptr) {
+        result.message = "moving platform settings: payload mismatch";
+        break;
+      }
+      const creative::CreativeDocumentMutationReceipt receipt =
+          setMovingPlatformSettingsWithUndo(
+              activeAppState, activeAppState.history, payload->objectId,
+              payload->settings, "desktop_set_moving_platform_settings");
+      result.accepted =
+          creative::documentMutationSucceeded(receipt.status);
+      result.changed = receipt.changed;
+      result.affectedObjectCount = result.changed ? 1U : 0U;
+      result.message = result.accepted
+                           ? (result.changed ? "platform settings updated"
+                                             : "platform settings unchanged")
+                           : receipt.message;
+      break;
+    }
     case CreativeDesktopCommandId::EquipAsset: {
       const auto* payload = payloadAs<CreativeDesktopAssetOpPayload>(command);
       if (payload == nullptr) {

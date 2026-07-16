@@ -213,6 +213,13 @@ namespace {
   for (const creative::CreativePathPoint& point : object.pathPoints) {
     record.pathPoints.push_back(toSavePathPoint(point));
   }
+  if (object.kind == creative::CreativeObjectKind::MovingPlatform) {
+    record.movingPlatformSpeedMetersPerSecond =
+        object.movingPlatform.speedMetersPerSecond;
+    record.movingPlatformTraversalMode =
+        std::string{creative::toString(object.movingPlatform.traversalMode)};
+    record.movingPlatformStartsActive = object.movingPlatform.startsActive;
+  }
   return record;
 }
 
@@ -240,6 +247,20 @@ namespace {
   out.pathPoints.reserve(record.pathPoints.size());
   for (const SaveCreativeDocumentVec3Record& point : record.pathPoints) {
     out.pathPoints.push_back(toCreativePathPoint(point));
+  }
+  if (kind == creative::CreativeObjectKind::MovingPlatform) {
+    if (!creative::parseCreativeMovingPlatformTraversalMode(
+            record.movingPlatformTraversalMode,
+            out.movingPlatform.traversalMode)) {
+      return false;
+    }
+    out.movingPlatform.speedMetersPerSecond =
+        record.movingPlatformSpeedMetersPerSecond;
+    out.movingPlatform.startsActive = record.movingPlatformStartsActive;
+    if (!creative::isValidCreativeMovingPlatformSettings(
+            out.movingPlatform)) {
+      return false;
+    }
   }
   return true;
 }

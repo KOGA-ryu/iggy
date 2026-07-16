@@ -258,6 +258,70 @@ std::string_view toString(CreativeObjectKind kind) noexcept {
     return describeObject(kind).name;
 }
 
+std::string_view toString(
+    CreativeMovingPlatformTraversalMode mode) noexcept {
+  switch (mode) {
+    case CreativeMovingPlatformTraversalMode::PingPong:
+      return "PingPong";
+    case CreativeMovingPlatformTraversalMode::Loop:
+      return "Loop";
+    case CreativeMovingPlatformTraversalMode::Count:
+      break;
+  }
+  return "Unknown";
+}
+
+bool parseCreativeMovingPlatformTraversalMode(
+    std::string_view value,
+    CreativeMovingPlatformTraversalMode& output) noexcept {
+  for (std::uint8_t index = 0U;
+       index < static_cast<std::uint8_t>(
+                   CreativeMovingPlatformTraversalMode::Count);
+       ++index) {
+    const auto mode =
+        static_cast<CreativeMovingPlatformTraversalMode>(index);
+    if (toString(mode) == value) {
+      output = mode;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool isValidCreativeMovingPlatformSettings(
+    const CreativeMovingPlatformSettings& settings) noexcept {
+  return std::isfinite(settings.speedMetersPerSecond) &&
+         settings.speedMetersPerSecond > 0.0 &&
+         settings.speedMetersPerSecond <= 100.0 &&
+         static_cast<std::uint8_t>(settings.traversalMode) <
+             static_cast<std::uint8_t>(
+                 CreativeMovingPlatformTraversalMode::Count);
+}
+
+bool isValidCreativeMovingPlatformPath(
+    std::span<const CreativePathPoint> pathPoints) noexcept {
+  if (pathPoints.size() < 2U ||
+      pathPoints.size() > kCreativeMovingPlatformPathPointCapacity) {
+    return false;
+  }
+  double totalLengthMeters = 0.0;
+  for (std::size_t index = 0U; index < pathPoints.size(); ++index) {
+    const CreativeVec3 point = pathPoints[index].position;
+    if (!std::isfinite(point.x) || !std::isfinite(point.y) ||
+        !std::isfinite(point.z)) {
+      return false;
+    }
+    if (index == 0U) {
+      continue;
+    }
+    const CreativeVec3 previous = pathPoints[index - 1U].position;
+    totalLengthMeters += std::hypot(point.x - previous.x,
+                                    point.y - previous.y,
+                                    point.z - previous.z);
+  }
+  return std::isfinite(totalLengthMeters) && totalLengthMeters > 1.0e-5;
+}
+
 std::string_view serializedObjectKindId(CreativeObjectKind kind) noexcept {
     const auto index = static_cast<std::size_t>(kind);
     if (index >= kSerializedCreativeObjectKindIds.size()) {

@@ -19,6 +19,7 @@ enum class CreativeLogicLinkOverlayRole : std::uint8_t {
   Close,
   Enable,
   Disable,
+  Reverse,
   Invalid,
 };
 
@@ -88,6 +89,8 @@ struct CreativeLogicLinkOverlayPlan {
       return "ENABLE";
     case CreativeLogicLinkOverlayRole::Disable:
       return "DISABLE";
+    case CreativeLogicLinkOverlayRole::Reverse:
+      return "REVERSE";
     case CreativeLogicLinkOverlayRole::Invalid:
       return "INVALID";
   }
@@ -107,6 +110,8 @@ creativeLogicLinkOverlayColor(CreativeLogicLinkOverlayRole role) noexcept {
       return {0.52F, 0.88F, 1.0F, 1.0F};
     case CreativeLogicLinkOverlayRole::Disable:
       return {0.58F, 0.64F, 0.70F, 1.0F};
+    case CreativeLogicLinkOverlayRole::Reverse:
+      return {0.80F, 0.45F, 1.0F, 1.0F};
     case CreativeLogicLinkOverlayRole::Invalid:
       return {1.0F, 0.20F, 0.20F, 1.0F};
   }
@@ -172,6 +177,8 @@ inline constexpr float kAxisEpsilon = 1.0e-5F;
       return CreativeLogicLinkOverlayRole::Enable;
     case iggy3d::creative::CreativeLogicLinkAction::Disable:
       return CreativeLogicLinkOverlayRole::Disable;
+    case iggy3d::creative::CreativeLogicLinkAction::Reverse:
+      return CreativeLogicLinkOverlayRole::Reverse;
     case iggy3d::creative::CreativeLogicLinkAction::Count:
       return CreativeLogicLinkOverlayRole::Invalid;
   }

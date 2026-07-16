@@ -713,4 +713,25 @@ CreativeStandaloneBatchEditReceipt setObjectTransformWithUndo(
   return outcome;
 }
 
+creative::CreativeDocumentMutationReceipt setMovingPlatformSettingsWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    creative::CreativeObjectId objectId,
+    creative::CreativeMovingPlatformSettings settings,
+    std::string_view source) {
+  StandaloneEditTransaction transaction =
+      beginEditTransaction(appState.facade, source);
+  creative::CreativeDocumentMutationReceipt receipt =
+      creative::applyDocumentMutation(
+          appState.facade.documentForPersistence(), objectId,
+          creative::CreativeMutationKind::SetMovingPlatformSettings,
+          creative::makeMovingPlatformSettingsPayload(settings));
+  static_cast<void>(completeEditTransaction(
+      history, std::move(transaction), appState.facade,
+      receipt.status == creative::CreativeDocumentMutationStatus::Applied &&
+          receipt.changed,
+      receipt.message));
+  return receipt;
+}
+
 }  // namespace iggy3d_creative_app

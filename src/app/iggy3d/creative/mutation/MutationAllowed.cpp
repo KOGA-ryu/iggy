@@ -271,6 +271,10 @@ std::vector<CreativeMutationKind> allowedMutations(CreativeObjectKind objectKind
 
     auto mutations = commonIdentityMutations();
     appendDescriptorProfileMutations(descriptor, mutations);
+    if (objectKind == CreativeObjectKind::MovingPlatform) {
+        mutations.push_back(CreativeMutationKind::SetPatrolRoute);
+        mutations.push_back(CreativeMutationKind::SetMovingPlatformSettings);
+    }
     if (supportsImportedAssetReplacement(objectKind)) {
         mutations.push_back(CreativeMutationKind::SetAsset);
     }

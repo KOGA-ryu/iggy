@@ -7,7 +7,7 @@
 namespace iggy3d::creative::document_internal {
 
 bool isPathDescriptor(const CreativeObjectDescriptor& descriptor) noexcept {
-  return descriptor.shapeKind == CreativeObjectShapeKind::Path;
+  return objectStoresPathPoints(descriptor.kind);
 }
 
 bool isEndpointLineDescriptor(
@@ -46,10 +46,16 @@ std::string_view validateCreatePathPayload(
     if (!request.hasPathOverride) {
       return "path_override_required";
     }
-    if (!pathPointsAreValid(request.pathPoints)) {
-      return "invalid_path_points";
+    if (descriptor.kind == CreativeObjectKind::MovingPlatform &&
+        request.pathPoints.size() >
+            kCreativeMovingPlatformPathPointCapacity) {
+      return "moving_platform_path_too_long";
     }
-    return {};
+    return (descriptor.kind == CreativeObjectKind::MovingPlatform
+                ? isValidCreativeMovingPlatformPath(request.pathPoints)
+                : pathPointsAreValid(request.pathPoints))
+               ? std::string_view{}
+               : std::string_view{"invalid_path_points"};
   }
 
   if (isEndpointLineDescriptor(descriptor)) {
@@ -72,8 +78,16 @@ std::string_view validateRestoredPathPayload(
     const CreativeObjectDescriptor& descriptor,
     const CreativeObject& object) noexcept {
   if (isPathDescriptor(descriptor)) {
-    return pathPointsAreValid(object.pathPoints) ? std::string_view{}
-                                                : "invalid_path_points";
+    if (descriptor.kind == CreativeObjectKind::MovingPlatform &&
+        object.pathPoints.size() >
+            kCreativeMovingPlatformPathPointCapacity) {
+      return "moving_platform_path_too_long";
+    }
+    return (descriptor.kind == CreativeObjectKind::MovingPlatform
+                ? isValidCreativeMovingPlatformPath(object.pathPoints)
+                : pathPointsAreValid(object.pathPoints))
+               ? std::string_view{}
+               : std::string_view{"invalid_path_points"};
   }
 
   if (isEndpointLineDescriptor(descriptor)) {
@@ -172,7 +186,9 @@ bool isValidRestoreObject(const CreativeObject& object) noexcept {
          isFiniteCreativeVec3(object.transform.position) &&
          isFiniteCreativeVec3(object.transform.rotationEulerRadians) &&
          isFiniteCreativeVec3(object.transform.scale) &&
-         isValidWorldBounds(object.bounds);
+         isValidWorldBounds(object.bounds) &&
+         (object.kind != CreativeObjectKind::MovingPlatform ||
+          isValidCreativeMovingPlatformSettings(object.movingPlatform));
 }
 
 }  // namespace iggy3d::creative::document_internal

@@ -235,7 +235,9 @@ void appendLogicTargetCollisionDiagnostics(
   diagnosedTargets.reserve(document.logicLinks().size());
   for (const CreativeLogicLink& link : document.logicLinks()) {
     const CreativeObject* target = document.findObject(link.targetObjectId);
-    if (target == nullptr || target->kind != CreativeObjectKind::Platform ||
+    if (target == nullptr ||
+        (target->kind != CreativeObjectKind::Platform &&
+         target->kind != CreativeObjectKind::MovingPlatform) ||
         !includedObject(*target, includeHidden) ||
         surfaceObjectIds.contains(target->id) ||
         !diagnosedTargets.insert(target->id).second) {

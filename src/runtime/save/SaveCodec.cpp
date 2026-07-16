@@ -331,6 +331,15 @@ private:
     }
     writeCreativeDocumentObjectTags(prefix, object);
     writeCreativeDocumentObjectPathPoints(prefix, object);
+    if (object.kind == "MovingPlatform") {
+      line(prefix + "movingPlatform.speedMetersPerSecond",
+           formatDoubleLossless(
+               object.movingPlatformSpeedMetersPerSecond));
+      lineString(prefix + "movingPlatform.traversalMode",
+                 object.movingPlatformTraversalMode);
+      lineBool(prefix + "movingPlatform.startsActive",
+               object.movingPlatformStartsActive);
+    }
   }
 
   void writeCreativeDocument() {

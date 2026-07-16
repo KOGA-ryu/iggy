@@ -16,6 +16,9 @@ constexpr std::array kEditableActions{
     cr::CreativeLogicLinkAction::Toggle,
     cr::CreativeLogicLinkAction::Open,
     cr::CreativeLogicLinkAction::Close,
+    cr::CreativeLogicLinkAction::Enable,
+    cr::CreativeLogicLinkAction::Disable,
+    cr::CreativeLogicLinkAction::Reverse,
 };
 
 void applySelectedSource(cr::CreativeAppState& appState,

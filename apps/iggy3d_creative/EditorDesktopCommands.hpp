@@ -49,6 +49,7 @@ enum class CreativeDesktopCommandId : std::uint8_t {
   SetObjectsVisible,
   SetObjectsLocked,
   SetObjectTransform,
+  SetMovingPlatformSettings,
   EquipAsset,
   EditAssetSource,
   RenameAsset,

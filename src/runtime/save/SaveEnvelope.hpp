@@ -26,7 +26,7 @@ namespace iggy3d {
 inline constexpr std::uint32_t kSaveSchemaVersion = 3;
 inline constexpr std::uint32_t kMinimumReadableSaveSchemaVersion = 1;
 inline constexpr std::uint32_t kRuntimeSaveVersion = 1;
-inline constexpr std::uint32_t kSaveCreativeDocumentSectionVersion = 7;
+inline constexpr std::uint32_t kSaveCreativeDocumentSectionVersion = 8;
 
 struct SaveEnvelopeMetadata {
   std::uint32_t schemaVersion = kSaveSchemaVersion;
@@ -193,6 +193,9 @@ struct SaveCreativeDocumentObjectRecord {
   std::string attachmentSocket;
   std::vector<std::string> tags;
   std::vector<SaveCreativeDocumentVec3Record> pathPoints;
+  double movingPlatformSpeedMetersPerSecond = 1.5;
+  std::string movingPlatformTraversalMode = "PingPong";
+  bool movingPlatformStartsActive = true;
 };
 
 struct SaveCreativeDocumentLogicLinkRecord {

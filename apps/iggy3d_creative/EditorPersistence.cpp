@@ -42,6 +42,7 @@ std::vector<ObjectSnapshotEntry> snapshotDocument(
     e.boundsMin = obj.bounds.min;
     e.boundsMax = obj.bounds.max;
     e.pathPoints = obj.pathPoints;
+    e.movingPlatform = obj.movingPlatform;
     out.push_back(e);
   }
   return out;
@@ -80,7 +81,8 @@ bool snapshotsMatch(const std::vector<ObjectSnapshotEntry>& before,
         !vecEq(before[i].position, after[i].position) ||
         !vecEq(before[i].boundsMin, after[i].boundsMin) ||
         !vecEq(before[i].boundsMax, after[i].boundsMax) ||
-        !samePathPoints(before[i].pathPoints, after[i].pathPoints)) {
+        !samePathPoints(before[i].pathPoints, after[i].pathPoints) ||
+        before[i].movingPlatform != after[i].movingPlatform) {
       return false;
     }
   }

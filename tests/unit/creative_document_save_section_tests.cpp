@@ -183,6 +183,24 @@ cr::CreativeObject restoredNavLinkObject() {
   return object;
 }
 
+cr::CreativeObject restoredMovingPlatformObject() {
+  cr::CreativeObject object;
+  object.id = 14;
+  object.kind = cr::CreativeObjectKind::MovingPlatform;
+  object.name = "Freight Lift";
+  object.bounds = {{2.0, 0.25, 3.0}, {5.0, 0.5, 6.0}};
+  object.layerId = 8;
+  object.visible = true;
+  object.locked = false;
+  object.tags = {"platform", "freight"};
+  object.pathPoints = authoredPathPoints();
+  object.movingPlatform.speedMetersPerSecond = 2.75;
+  object.movingPlatform.traversalMode =
+      cr::CreativeMovingPlatformTraversalMode::Loop;
+  object.movingPlatform.startsActive = false;
+  return object;
+}
+
 cr::CreativeDocumentRestoreRequest authoredRestoreRequest() {
   cr::CreativeDocumentRestoreRequest request;
   request.documentId = 9001;
@@ -209,6 +227,19 @@ cr::CreativeDocumentRestoreRequest authoredPathRestoreRequest() {
   return request;
 }
 
+cr::CreativeDocumentRestoreRequest authoredMovingPlatformRestoreRequest() {
+  cr::CreativeDocumentRestoreRequest request;
+  request.documentId = 9003;
+  request.name = "Moving Platform Creative";
+  request.units = cr::CreativeUnits::Meters;
+  request.gridSettings = authoredGridSettings();
+  request.snapSettings = authoredSnapSettings();
+  request.worldBounds = authoredWorldBounds();
+  request.nextObjectId = 30;
+  request.objects = {restoredMovingPlatformObject()};
+  return request;
+}
+
 cr::CreativeDocument authoredDocument() {
   cr::CreativeDocument document = cr::CreativeDocument::create("Before");
   const cr::CreativeDocumentRestoreReceipt restored =
@@ -225,6 +256,17 @@ cr::CreativeDocument authoredPathDocument() {
       document.restoreForLoad(authoredPathRestoreRequest());
   if (!restored.accepted) {
     std::cerr << "FAIL: authored path document restore setup\n";
+  }
+  return document;
+}
+
+cr::CreativeDocument authoredMovingPlatformDocument() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Before Moving Platform");
+  const cr::CreativeDocumentRestoreReceipt restored =
+      document.restoreForLoad(authoredMovingPlatformRestoreRequest());
+  if (!restored.accepted) {
+    std::cerr << "FAIL: authored moving platform document restore setup\n";
   }
   return document;
 }
@@ -262,7 +304,12 @@ bool sectionObjectMatches(const iggy3d::SaveCreativeDocumentObjectRecord& save,
          save.parentId == object.parentId.value_or(cr::kInvalidObjectId) &&
          save.attachmentSocket == object.attachmentSocket &&
          save.tags == object.tags &&
-         savePathPointsMatch(save.pathPoints, object.pathPoints);
+         savePathPointsMatch(save.pathPoints, object.pathPoints) &&
+         save.movingPlatformSpeedMetersPerSecond ==
+             object.movingPlatform.speedMetersPerSecond &&
+         save.movingPlatformTraversalMode ==
+             std::string{cr::toString(object.movingPlatform.traversalMode)} &&
+         save.movingPlatformStartsActive == object.movingPlatform.startsActive;
 }
 
 bool documentObjectMatches(const cr::CreativeObject& lhs,
@@ -275,7 +322,8 @@ bool documentObjectMatches(const cr::CreativeObject& lhs,
          lhs.parentId == rhs.parentId &&
          lhs.attachmentSocket == rhs.attachmentSocket &&
          lhs.tags == rhs.tags &&
-         samePathPoints(lhs.pathPoints, rhs.pathPoints);
+         samePathPoints(lhs.pathPoints, rhs.pathPoints) &&
+         lhs.movingPlatform == rhs.movingPlatform;
 }
 
 bool buildSectionCopiesDocumentExactly() {
@@ -533,6 +581,95 @@ bool encodeDecodeAndRestoreRoundTripsPathAndLineEndpointPayloads() {
                     samePathPoints(link->pathPoints,
                                    authoredLineEndpoints()),
                 "path line endpoint codec link endpoints");
+}
+
+bool movingPlatformSettingsEncodeDecodeAndRestore() {
+  const cr::CreativeDocument document = authoredMovingPlatformDocument();
+  const cr::CreativeObject original = restoredMovingPlatformObject();
+  const iggy3d::ProductCreativeDocumentSectionBuildResult built =
+      iggy3d::buildSaveCreativeDocumentSection(document);
+  iggy3d::SaveEnvelope envelope = minimalEnvelope();
+  envelope.creativeDocument = built.section;
+
+  const iggy3d::SaveEncodeResult encoded =
+      iggy3d::encodeSaveEnvelope(envelope);
+  const iggy3d::SaveDecodeResult decoded =
+      iggy3d::decodeSaveEnvelope(encoded.encodedText);
+  const iggy3d::SaveCreativeDocumentObjectRecord* decodedObject =
+      decoded.envelope.creativeDocument.objects.empty()
+          ? nullptr
+          : &decoded.envelope.creativeDocument.objects.front();
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult restored =
+      iggy3d::restoreCreativeDocumentFromSaveSection(
+          decoded.envelope.creativeDocument);
+  const cr::CreativeObject* restoredObject =
+      restored.document.findObject(original.id);
+
+  return expect(built.receipt.accepted,
+                "moving platform codec build accepted") &&
+         expect(built.section.objects.size() == 1U,
+                "moving platform codec object count") &&
+         expect(sectionObjectMatches(built.section.objects.front(), original),
+                "moving platform save record exact") &&
+         expect(encoded.status == iggy3d::SaveCodecStatus::Ok,
+                "moving platform codec encode ok") &&
+         expect(encoded.encodedText.find(
+                    "creativeDocument.object.0.movingPlatform."
+                    "speedMetersPerSecond=2.75\n") != std::string::npos,
+                "moving platform speed encoded") &&
+         expect(encoded.encodedText.find(
+                    "creativeDocument.object.0.movingPlatform."
+                    "traversalMode=Loop\n") != std::string::npos,
+                "moving platform traversal encoded") &&
+         expect(encoded.encodedText.find(
+                    "creativeDocument.object.0.movingPlatform."
+                    "startsActive=false\n") != std::string::npos,
+                "moving platform start state encoded") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                "moving platform codec decode ok") &&
+         expect(decodedObject != nullptr &&
+                    sectionObjectMatches(*decodedObject, original),
+                "moving platform decoded record exact") &&
+         expect(restored.receipt.accepted,
+                "moving platform restore accepted") &&
+         expect(restoredObject != nullptr &&
+                    documentObjectMatches(*restoredObject, original),
+                "moving platform restored object exact");
+}
+
+bool legacyMovingPlatformReceivesDefaultRouteAndSettings() {
+  iggy3d::SaveCreativeDocumentSection legacy =
+      iggy3d::buildSaveCreativeDocumentSection(
+          authoredMovingPlatformDocument()).section;
+  legacy.version = 7U;
+  legacy.objects.front().pathPoints.clear();
+  legacy.objects.front().movingPlatformSpeedMetersPerSecond = 1.5;
+  legacy.objects.front().movingPlatformTraversalMode = "PingPong";
+  legacy.objects.front().movingPlatformStartsActive = true;
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult migrated =
+      iggy3d::restoreCreativeDocumentFromSaveSection(legacy);
+  const cr::CreativeObject* platform = migrated.document.findObject(14U);
+
+  iggy3d::SaveCreativeDocumentSection malformedCurrent = legacy;
+  malformedCurrent.version = iggy3d::kSaveCreativeDocumentSectionVersion;
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult rejected =
+      iggy3d::restoreCreativeDocumentFromSaveSection(malformedCurrent);
+
+  return expect(migrated.receipt.accepted,
+                "legacy moving platform restore accepted") &&
+         expect(platform != nullptr && platform->pathPoints.size() == 2U &&
+                    sameVec3(platform->pathPoints[0].position,
+                             {3.5, 0.375, 4.5}) &&
+                    sameVec3(platform->pathPoints[1].position,
+                             {3.5, 3.375, 4.5}),
+                "legacy moving platform receives vertical default route") &&
+         expect(platform != nullptr &&
+                    platform->movingPlatform ==
+                        cr::CreativeMovingPlatformSettings{},
+                "legacy moving platform receives safe motion defaults") &&
+         expect(!rejected.receipt.accepted &&
+                    rejected.receipt.reasonCode == "invalid_path_points",
+                "current moving platform save still requires authored route");
 }
 
 bool restoreRejectsInvalidPathPayloads() {
@@ -1060,6 +1197,8 @@ int main() {
   ok = buildSectionCopiesPathPoints() && ok;
   ok = restoreSectionRestoresPathPoints() && ok;
   ok = encodeDecodeAndRestoreRoundTripsPathAndLineEndpointPayloads() && ok;
+  ok = movingPlatformSettingsEncodeDecodeAndRestore() && ok;
+  ok = legacyMovingPlatformReceivesDefaultRouteAndSettings() && ok;
   ok = restoreRejectsInvalidPathPayloads() && ok;
   ok = restoreRejectsInvalidLineEndpointPayloads() && ok;
   ok = restoreRejectsNonPathObjectCarryingPathPoints() && ok;

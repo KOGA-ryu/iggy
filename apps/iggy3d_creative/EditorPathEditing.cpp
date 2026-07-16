@@ -60,7 +60,7 @@ cr::CreativeDocumentMutationReceipt movePathObjectWithUndo(
   }
   const cr::CreativeObjectDescriptor& descriptor =
       cr::describeObject(beforeObject->kind);
-  if (descriptor.shapeKind != cr::CreativeObjectShapeKind::Path) {
+  if (!cr::objectStoresPathPoints(beforeObject->kind)) {
     SDL_Log("iggy3d_creative: PATH move skipped source='%s' objectId=%llu "
             "kind='%s' shape='%s'",
             std::string(source).c_str(),
@@ -137,7 +137,7 @@ cr::CreativeDocumentMutationReceipt movePathPointWithUndo(
 
   const cr::CreativeObjectDescriptor& descriptor =
       cr::describeObject(beforeObject->kind);
-  if (descriptor.shapeKind != cr::CreativeObjectShapeKind::Path) {
+  if (!cr::objectStoresPathPoints(beforeObject->kind)) {
     SDL_Log("iggy3d_creative: PATH_HANDLE move skipped source='%s' objectId=%llu "
             "kind='%s' shape='%s'",
             std::string(source).c_str(),

@@ -294,6 +294,9 @@ struct CreativeObjectDescriptor {
 [[nodiscard]] bool objectCanOwnChildren(CreativeObjectKind kind) noexcept;
 [[nodiscard]] bool objectIsRuntimeMeaningful(CreativeObjectKind kind) noexcept;
 [[nodiscard]] bool objectIsEditorOnly(CreativeObjectKind kind) noexcept;
+// Path storage is an authored capability, not a render shape. MovingPlatform
+// remains a box/surface while sharing the path mutation and handle kernels.
+[[nodiscard]] bool objectStoresPathPoints(CreativeObjectKind kind) noexcept;
 [[nodiscard]] bool descriptorShowsInAuthoringBrushPalette(const CreativeObjectDescriptor& descriptor) noexcept;
 [[nodiscard]] bool objectShowsInAuthoringBrushPalette(CreativeObjectKind kind) noexcept;
 [[nodiscard]] CreativePlacementFace creativePlacementFaceFromNormal(

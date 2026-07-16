@@ -36,6 +36,8 @@ interactableKindFor(CreativeObjectKind kind) noexcept {
       return CreativeRuntimeInteractableKind::Door;
     case CreativeObjectKind::Platform:
       return CreativeRuntimeInteractableKind::Platform;
+    case CreativeObjectKind::MovingPlatform:
+      return CreativeRuntimeInteractableKind::MovingPlatform;
     case CreativeObjectKind::Switch:
     case CreativeObjectKind::Lever:
     case CreativeObjectKind::PressurePlate:
@@ -87,6 +89,8 @@ interactableKindFor(CreativeObjectKind kind) noexcept {
       return CreativeObjectKind::Door;
     case CreativeRuntimeInteractableKind::Platform:
       return CreativeObjectKind::Platform;
+    case CreativeRuntimeInteractableKind::MovingPlatform:
+      return CreativeObjectKind::MovingPlatform;
     case CreativeRuntimeInteractableKind::Control:
     case CreativeRuntimeInteractableKind::Pickup:
       return std::nullopt;
@@ -102,6 +106,8 @@ interactableKindFor(CreativeObjectKind kind) noexcept {
       return !active;
     case CreativeRuntimeInteractableKind::Platform:
       return active;
+    case CreativeRuntimeInteractableKind::MovingPlatform:
+      return true;
     case CreativeRuntimeInteractableKind::Control:
     case CreativeRuntimeInteractableKind::Pickup:
       return false;
@@ -408,6 +414,7 @@ void restoreActivationOrder(RoomAsset& room,
 struct LogicTargetStateChange {
   CreativeRuntimeInteractableState* target = nullptr;
   bool active = false;
+  bool reverse = false;
 };
 
 struct LogicTargetPublishResult {
@@ -428,18 +435,22 @@ struct LogicTargetPublishResult {
 
   std::vector<CreativeRuntimeInteractableState*> removing;
   std::vector<CreativeRuntimeInteractableState*> restoring;
+  bool stateChanged = false;
   removing.reserve(changes.size());
   restoring.reserve(changes.size());
   for (const LogicTargetStateChange& change : changes) {
     if (change.target == nullptr ||
         !creativeRuntimeInteractableIsLogicTarget(
-            change.target->definition.kind)) {
+            change.target->definition.kind) ||
+        (change.reverse && change.target->definition.kind !=
+                               CreativeRuntimeInteractableKind::MovingPlatform)) {
       result.reasonCode = "creative_runtime_target_change_invalid";
       return result;
     }
-    if (change.target->targetActive == change.active) {
+    if (change.target->targetActive == change.active && !change.reverse) {
       continue;
     }
+    stateChanged = true;
     const bool geometryWasPresent = targetGeometryPresent(
         change.target->definition.kind, change.target->targetActive);
     const bool geometryWillBePresent =
@@ -455,36 +466,46 @@ struct LogicTargetPublishResult {
       restoring.push_back(change.target);
     }
   }
-  if (removing.empty() && restoring.empty()) {
+  if (!stateChanged) {
     result.ok = true;
     result.reasonCode = "creative_runtime_target_states_unchanged";
     return result;
   }
-  if (sandbox.geometryRevision ==
+  const bool geometryChanged = !removing.empty() || !restoring.empty();
+  if (geometryChanged && sandbox.geometryRevision ==
       std::numeric_limits<std::uint64_t>::max()) {
     result.reasonCode = "creative_runtime_geometry_revision_saturated";
     return result;
   }
 
-  RoomAsset candidate = sandbox.room;
-  removeTargetGeometry(candidate, removing);
-  restoreTargetGeometry(candidate, restoring);
-  restoreActivationOrder(candidate, sandbox);
-  SpatialSurfaceSet collision = buildSpatialSurfaceSet(candidate);
-  if (collision.size() != candidate.spatialSurfaces.size()) {
-    result.reasonCode = "creative_runtime_target_collision_rebuild_failed";
-    return result;
-  }
-  ReasoningGraph reasoning = buildReasoningGraph(candidate, {});
+  if (geometryChanged) {
+    RoomAsset candidate = sandbox.room;
+    removeTargetGeometry(candidate, removing);
+    restoreTargetGeometry(candidate, restoring);
+    restoreActivationOrder(candidate, sandbox);
+    SpatialSurfaceSet collision = buildSpatialSurfaceSet(candidate);
+    if (collision.size() != candidate.spatialSurfaces.size()) {
+      result.reasonCode = "creative_runtime_target_collision_rebuild_failed";
+      return result;
+    }
+    ReasoningGraph reasoning = buildReasoningGraph(candidate, {});
 
-  sandbox.room = std::move(candidate);
-  sandbox.collisionSurfaces = std::move(collision);
-  sandbox.reasoningGraph = summarizeReasoningGraph(reasoning);
-  sandbox.session.setReasoningGraph(std::move(reasoning));
+    sandbox.room = std::move(candidate);
+    sandbox.collisionSurfaces = std::move(collision);
+    sandbox.reasoningGraph = summarizeReasoningGraph(reasoning);
+    sandbox.session.setReasoningGraph(std::move(reasoning));
+  }
   for (const LogicTargetStateChange& change : changes) {
     change.target->targetActive = change.active;
+    if (change.reverse) {
+      change.target->movingPlatform.travelSign =
+          static_cast<std::int8_t>(
+              -change.target->movingPlatform.travelSign);
+    }
   }
-  ++sandbox.geometryRevision;
+  if (geometryChanged) {
+    ++sandbox.geometryRevision;
+  }
   result.ok = true;
   result.changed = true;
   result.reasonCode = "creative_runtime_target_states_published";
@@ -496,7 +517,8 @@ struct LogicTargetPublishResult {
 bool creativeRuntimeInteractableIsLogicTarget(
     CreativeRuntimeInteractableKind kind) noexcept {
   return kind == CreativeRuntimeInteractableKind::Door ||
-         kind == CreativeRuntimeInteractableKind::Platform;
+         kind == CreativeRuntimeInteractableKind::Platform ||
+         kind == CreativeRuntimeInteractableKind::MovingPlatform;
 }
 
 bool creativeRuntimeLogicActionSupported(
@@ -642,6 +664,7 @@ CreativeRuntimeLogicActivationPlan planCreativeRuntimeLogicActivation(
     }
 
     bool active = compatibilityActive;
+    bool reverse = false;
     if (!compatibilityFallback) {
       if (!creativeRuntimeLogicActionSupported(target->kind, link->action)) {
         result.commands.clear();
@@ -660,6 +683,10 @@ CreativeRuntimeLogicActivationPlan planCreativeRuntimeLogicActivation(
         case CreativeLogicLinkAction::Disable:
           active = signal == CreativeRuntimeLogicSignal::Deactivate;
           break;
+        case CreativeLogicLinkAction::Reverse:
+          active = target->active;
+          reverse = signal != CreativeRuntimeLogicSignal::Deactivate;
+          break;
         case CreativeLogicLinkAction::Count:
           result.commands.clear();
           result.reasonCode = "creative_runtime_logic_plan_action_invalid";
@@ -667,7 +694,7 @@ CreativeRuntimeLogicActivationPlan planCreativeRuntimeLogicActivation(
       }
     }
     result.commands.push_back(
-        {link->targetObjectId, target->kind, active});
+        {link->targetObjectId, target->kind, active, reverse});
   }
 
   result.ok = true;
@@ -743,8 +770,11 @@ CreativeRuntimeInteractionEffectReceipt applyLogicSourceSignal(
     result.affectedDoorCount +=
         command.kind == CreativeRuntimeInteractableKind::Door ? 1U : 0U;
     result.affectedPlatformCount +=
-        command.kind == CreativeRuntimeInteractableKind::Platform ? 1U : 0U;
-    changes.push_back({&*target, command.active});
+        command.kind == CreativeRuntimeInteractableKind::Platform ||
+                command.kind == CreativeRuntimeInteractableKind::MovingPlatform
+            ? 1U
+            : 0U;
+    changes.push_back({&*target, command.active, command.reverse});
   }
 
   const LogicTargetPublishResult published =
@@ -796,7 +826,7 @@ CreativeRuntimeInteractableCatalog buildCreativeRuntimeInteractableCatalog(
     if (!kind.has_value() || !object.visible) {
       continue;
     }
-    if (*kind == CreativeRuntimeInteractableKind::Platform &&
+    if (object.kind == CreativeObjectKind::Platform &&
         std::none_of(document.logicLinks().begin(), document.logicLinks().end(),
                      [&object](const CreativeLogicLink& link) {
                        return link.targetObjectId == object.id;
@@ -837,6 +867,18 @@ CreativeRuntimeInteractableCatalog buildCreativeRuntimeInteractableCatalog(
       geometryValid = buildPointTransformAndBounds(
           object, *kind, definition.transform, definition.localBounds);
     }
+    if (geometryValid &&
+        *kind == CreativeRuntimeInteractableKind::MovingPlatform) {
+      const CreativeRuntimeMovingPlatformBuildResult movingPlatform =
+          buildCreativeRuntimeMovingPlatformDefinition(
+              object.pathPoints, object.movingPlatform,
+              definition.transform.position);
+      if (!movingPlatform.ok) {
+        result.reasonCode = movingPlatform.reasonCode;
+        return result;
+      }
+      definition.movingPlatform = movingPlatform.definition;
+    }
     const bool roomSourceExists =
         !definition.roomMeshId.empty()
             ? hasRoomMesh(room, definition.roomMeshId)
@@ -863,6 +905,7 @@ CreativeRuntimeInteractableCatalog buildCreativeRuntimeInteractableCatalog(
         ++result.doorCount;
         break;
       case CreativeRuntimeInteractableKind::Platform:
+      case CreativeRuntimeInteractableKind::MovingPlatform:
         ++result.platformCount;
         break;
       case CreativeRuntimeInteractableKind::Control:
@@ -940,7 +983,15 @@ buildCreativeRuntimeInteractableStates(
     state.definition = std::move(definition);
     if (creativeRuntimeInteractableIsLogicTarget(state.definition.kind)) {
       state.targetActive =
-          state.definition.kind == CreativeRuntimeInteractableKind::Platform;
+          state.definition.kind == CreativeRuntimeInteractableKind::Platform ||
+          (state.definition.kind ==
+               CreativeRuntimeInteractableKind::MovingPlatform &&
+           state.definition.movingPlatform.startsActive);
+      if (state.definition.kind ==
+          CreativeRuntimeInteractableKind::MovingPlatform) {
+        state.movingPlatform.positionMeters =
+            state.definition.transform.position;
+      }
       for (std::size_t index = 0U; index < room.staticMeshes.size(); ++index) {
         if (room.staticMeshes[index].id == state.definition.roomMeshId) {
           state.targetMeshes.push_back({index, room.staticMeshes[index]});
@@ -1171,6 +1222,7 @@ CreativeRuntimeAutomaticLogicReceipt initializeCreativeRuntimeHoldLogic(
       }
 
       bool active = target->targetActive;
+      bool reverse = false;
       switch (link.action) {
         case CreativeLogicLinkAction::Toggle:
           active = occupied ? !active : active;
@@ -1183,6 +1235,9 @@ CreativeRuntimeAutomaticLogicReceipt initializeCreativeRuntimeHoldLogic(
         case CreativeLogicLinkAction::Disable:
           active = !occupied;
           break;
+        case CreativeLogicLinkAction::Reverse:
+          reverse = occupied;
+          break;
         case CreativeLogicLinkAction::Count:
           result.status = CreativeRuntimeAutomaticLogicStatus::EffectRejected;
           result.reasonCode = "creative_runtime_hold_initial_action_invalid";
@@ -1194,21 +1249,23 @@ CreativeRuntimeAutomaticLogicReceipt initializeCreativeRuntimeHoldLogic(
             return change.target == &*target;
           });
       if (existing != changes.end()) {
-        if (existing->active != active) {
+        if (existing->active != active || existing->reverse != reverse) {
           result.status = CreativeRuntimeAutomaticLogicStatus::EffectRejected;
           result.reasonCode = "creative_runtime_hold_initial_state_conflict";
           return result;
         }
         continue;
       }
-      changes.push_back({&*target, active});
+      changes.push_back({&*target, active, reverse});
       ++result.affectedTargetCount;
       result.affectedDoorCount +=
           target->definition.kind == CreativeRuntimeInteractableKind::Door
               ? 1U
               : 0U;
       result.affectedPlatformCount +=
-          target->definition.kind == CreativeRuntimeInteractableKind::Platform
+          target->definition.kind == CreativeRuntimeInteractableKind::Platform ||
+                  target->definition.kind ==
+                      CreativeRuntimeInteractableKind::MovingPlatform
               ? 1U
               : 0U;
     }

@@ -91,9 +91,9 @@ bool actionCycleAndDocumentSyncAreBounded() {
   state.sourceObjectId = 22U;
   app::syncCreativeEditorLogicLinkState(state, document);
   return expect(previous &&
-                    afterPrevious == cr::CreativeLogicLinkAction::Close &&
+                    afterPrevious == cr::CreativeLogicLinkAction::Reverse &&
                     next && afterNext == cr::CreativeLogicLinkAction::Toggle,
-                "three-action cycle wraps in both directions") &&
+                "six-action cycle wraps in both directions") &&
          expect(next && state.documentId == document.id() &&
                     state.sourceObjectId == cr::kInvalidObjectId,
                 "document change clears stale source identity");

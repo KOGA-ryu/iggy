@@ -135,8 +135,7 @@ CreativeEditorGizmoFrame buildCreativeEditorGizmoFrame(
       static_cast<iggy3d::creative::CreativeObjectId>(selection.selectedId);
   frame.selectedIsPathForHandles =
       selection.hasSelection && selection.selectionCount == 1U &&
-      iggy3d::creative::describeObject(selection.selected->kind).shapeKind ==
-          iggy3d::creative::CreativeObjectShapeKind::Path &&
+      iggy3d::creative::objectStoresPathPoints(selection.selected->kind) &&
       validPathPoints(selection.selected->pathPoints);
   if (frame.selectedIsPathForHandles) {
     frame.pathPointHandleHits = buildPathPointHandleHits(

@@ -198,6 +198,23 @@ CreativeDocumentCreateReceipt CreativeDocument::createObject(
                     pathValidation);
     return receipt;
   }
+  if (request.hasMovingPlatformSettingsOverride &&
+      request.kind != CreativeObjectKind::MovingPlatform) {
+    setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
+                    "moving_platform_settings_unsupported");
+    return receipt;
+  }
+  const CreativeMovingPlatformSettings movingPlatform =
+      request.kind == CreativeObjectKind::MovingPlatform &&
+              request.hasMovingPlatformSettingsOverride
+          ? request.movingPlatform
+          : CreativeMovingPlatformSettings{};
+  if (request.kind == CreativeObjectKind::MovingPlatform &&
+      !isValidCreativeMovingPlatformSettings(movingPlatform)) {
+    setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
+                    "moving_platform_settings_invalid");
+    return receipt;
+  }
 
   CreativeObject object;
   object.kind = request.kind;
@@ -219,6 +236,7 @@ CreativeDocumentCreateReceipt CreativeDocument::createObject(
   object.parentId = request.parentId;
   object.attachmentSocket = request.attachmentSocket;
   object.pathPoints = request.pathPoints;
+  object.movingPlatform = movingPlatform;
 
   const CreativeObjectId id = appendObject(std::move(object));
   if (id == kInvalidObjectId) {

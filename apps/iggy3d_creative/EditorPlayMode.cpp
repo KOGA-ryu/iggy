@@ -169,6 +169,7 @@ CreativeEditorPlayTarget resolveModeTarget(
         result.actionPrompt = interactable->targetActive ? "CLOSE" : "OPEN";
         break;
       case iggy3d::creative::CreativeRuntimeInteractableKind::Platform:
+      case iggy3d::creative::CreativeRuntimeInteractableKind::MovingPlatform:
         break;
       case iggy3d::creative::CreativeRuntimeInteractableKind::Control:
         result.actionPrompt = "ACTIVATE";
@@ -353,6 +354,7 @@ CreativeEditorPlayStartReceipt startCreativeEditorPlayMode(
   mode.target = {};
   mode.lastInteractionEffect = {};
   mode.lastAutomaticLogic = {};
+  mode.lastMovingPlatforms = {};
   mode.processedRuntimeEventCount = 0U;
   mode.cameraYawDegrees = 0.0F;
   mode.cameraPitchDegrees = 0.0F;
@@ -373,6 +375,7 @@ iggy3d::creative::CreativeRuntimeSandboxStopReceipt stopCreativeEditorPlayMode(
   mode.target = {};
   mode.lastInteractionEffect = {};
   mode.lastAutomaticLogic = {};
+  mode.lastMovingPlatforms = {};
   mode.processedRuntimeEventCount = 0U;
   resetPlayClock(mode);
   return receipt;
@@ -512,6 +515,23 @@ CreativeEditorPlayTickReceipt tickCreativeEditorPlayMode(
       request.input, mode.cameraYawDegrees, mode.tuning, tickRateHz);
   while (mode.accumulatedTimeNanoseconds >= tickNanoseconds &&
          receipt.ticksAdvanced < mode.tuning.maximumCatchUpTicks) {
+    const iggy3d::creative::CreativeRuntimeMovingPlatformUpdateReceipt moving =
+        iggy3d::creative::updateCreativeRuntimeMovingPlatforms(sandbox,
+                                                                tickRateHz);
+    mode.lastMovingPlatforms = moving;
+    receipt.movingPlatforms = moving.status;
+    receipt.movingPlatformsAdvanced +=
+        static_cast<std::uint32_t>(moving.movedPlatformCount);
+    receipt.movingPlatformsBlocked +=
+        static_cast<std::uint32_t>(moving.blockedPlatformCount);
+    receipt.platformRidersCarried +=
+        static_cast<std::uint32_t>(moving.carriedActorCount);
+    if (!moving.accepted) {
+      failAndStop(mode, receipt,
+                  CreativeEditorPlayTickStatus::RuntimeTickFailed,
+                  std::string(moving.reasonCode));
+      return receipt;
+    }
     iggy3d::CommandRecord command =
         makeLocalPlayerCommand(sandbox, movementStep);
     const bool movement = command.kind == iggy3d::CommandKind::Move;

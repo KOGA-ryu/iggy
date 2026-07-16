@@ -1,6 +1,8 @@
 #include "app/iggy3d/creative/world/DocumentSection.hpp"
 #include "app/iggy3d/creative/world/DocumentSectionInternal.hpp"
 
+#include "app/iggy3d/creative/Geometry.hpp"
+
 #include <span>
 #include <string>
 #include <string_view>
@@ -28,6 +30,8 @@ using document_section_internal::toSaveUnits;
 using document_section_internal::toSaveVoxelChunks;
 
 namespace {
+
+constexpr std::uint32_t kMovingPlatformPathSectionVersion = 8U;
 
 void setStatus(ProductCreativeDocumentSectionReceipt& receipt,
                ProductCreativeDocumentSectionStatus status,
@@ -153,6 +157,26 @@ void mirrorRestoreFailure(ProductCreativeDocumentSectionReceipt& receipt,
   setStatus(receipt,
             ProductCreativeDocumentSectionStatus::InvalidDocument,
             reason);
+}
+
+[[nodiscard]] bool migrateLegacyMovingPlatformPath(
+    std::uint32_t sectionVersion,
+    creative::CreativeObject& object) {
+  if (sectionVersion >= kMovingPlatformPathSectionVersion ||
+      object.kind != creative::CreativeObjectKind::MovingPlatform ||
+      !object.pathPoints.empty()) {
+    return true;
+  }
+  const creative::CreativeBoundsMetrics bounds =
+      creative::measureCreativeBounds(object.bounds);
+  if (!bounds.valid) {
+    return false;
+  }
+  object.pathPoints = {
+      {bounds.center},
+      {{bounds.center.x, bounds.center.y + 3.0, bounds.center.z}},
+  };
+  return true;
 }
 
 }  // namespace
@@ -364,6 +388,12 @@ ProductCreativeDocumentSectionRestoreResult restoreCreativeDocumentFromSaveSecti
       setStatus(receipt,
                 ProductCreativeDocumentSectionStatus::InvalidObjectKind,
                 "invalid_object_kind");
+      return result;
+    }
+    if (!migrateLegacyMovingPlatformPath(section.version, object)) {
+      setStatus(receipt,
+                ProductCreativeDocumentSectionStatus::InvalidObject,
+                "invalid_moving_platform_legacy_bounds");
       return result;
     }
     request.objects.push_back(std::move(object));

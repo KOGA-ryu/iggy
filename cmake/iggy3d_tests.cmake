@@ -460,6 +460,11 @@ iggy3d_add_unit_test(creative_runtime_sandbox_tests
 set_tests_properties(creative_runtime_sandbox_tests PROPERTIES
   LABELS "unit;app;creative;play;runtime;session;iggy3d")
 
+iggy3d_add_unit_test(creative_runtime_moving_platform_tests
+  tests/unit/creative_runtime_moving_platform_tests.cpp)
+set_tests_properties(creative_runtime_moving_platform_tests PROPERTIES
+  LABELS "unit;app;creative;play;runtime;physics;iggy3d")
+
 iggy3d_add_unit_test(product_save_catalog_tests tests/unit/product_save_catalog_tests.cpp)
 set_tests_properties(product_save_catalog_tests PROPERTIES
   LABELS "unit;app;product;save;catalog;iggy3d")

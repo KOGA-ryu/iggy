@@ -545,6 +545,26 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
     }
   }
   if (selectedIsPathForHandles) {
+    for (std::size_t index = 1U; index < selected->pathPoints.size(); ++index) {
+      const creative::CreativeCoreVec3Conversion from =
+          creative::creativeVec3ToCoreChecked(
+              selected->pathPoints[index - 1U].position);
+      const creative::CreativeCoreVec3Conversion to =
+          creative::creativeVec3ToCoreChecked(
+              selected->pathPoints[index].position);
+      if (!from.converted || !to.converted) {
+        continue;
+      }
+      RenderCreativeWireframeDebugLine routeLine;
+      routeLine.start = from.value;
+      routeLine.end = to.value;
+      routeLine.color = {0.20F, 0.88F, 1.0F, 1.0F};
+      routeLine.objectId =
+          static_cast<creative::CreativeObjectId>(selectedId);
+      routeLine.thickness = 0.045F;
+      combinedWireLines.push_back(routeLine);
+      ++pathPointHandleEdgeCount;
+    }
     for (const creative::CreativePathPoint& point : selected->pathPoints) {
       const VisualBounds handleBounds = pathPointHandleBounds(point.position);
       const std::size_t before = combinedWireLines.size();

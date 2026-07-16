@@ -73,6 +73,12 @@ struct CreativeDesktopTransformPayload {
   bool setScale = false;
 };
 
+struct CreativeDesktopMovingPlatformPayload {
+  iggy3d::creative::CreativeObjectId objectId =
+      iggy3d::creative::kInvalidObjectId;
+  iggy3d::creative::CreativeMovingPlatformSettings settings;
+};
+
 // EditAssetSource lifecycle phase (unused by the other asset ops).
 enum class CreativeDesktopAssetEditPhase : std::uint8_t {
   None,
@@ -108,6 +114,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopRenamePayload,
     CreativeDesktopObjectFlagPayload,
     CreativeDesktopTransformPayload,
+    CreativeDesktopMovingPlatformPayload,
     CreativeDesktopAssetOpPayload,
     CreativeDesktopInstanceRefreshPayload>;
 

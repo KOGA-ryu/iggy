@@ -33,7 +33,8 @@ enum class CreativeMutationPayloadKind {
     ReferenceSource,
     Color,
     AudioSource,
-    PathPointsOrLegacyText
+    PathPointsOrLegacyText,
+    MovingPlatformSettings
 };
 
 struct CreativeMutationMetadataRow {
@@ -203,6 +204,10 @@ constexpr std::array kCreativeMutationMetadataRows{
     mutationMetadata(CreativeMutationKind::SetPatrolRoute, "SetPatrolRoute", CreativeMutationCategory::Navigation,
                      CreativeMutationPayloadKind::PathPointsOrLegacyText, false, false,
                      CreativeMutationStoragePolicy::PayloadDependent),
+    mutationMetadata(CreativeMutationKind::SetMovingPlatformSettings,
+                     "SetMovingPlatformSettings",
+                     CreativeMutationCategory::Navigation,
+                     CreativeMutationPayloadKind::MovingPlatformSettings),
     mutationMetadata(CreativeMutationKind::SetJumpArc, "SetJumpArc", CreativeMutationCategory::Navigation,
                      CreativeMutationPayloadKind::TextOrStringId, false, false,
                      CreativeMutationStoragePolicy::FutureStoragePlaceholder),
@@ -351,6 +356,8 @@ constexpr std::array kCreativeMutationMetadataRows{
     case CreativeMutationPayloadKind::PathPointsOrLegacyText:
         return std::holds_alternative<PathPointsMutation>(value) || std::holds_alternative<TextMutation>(value) ||
                std::holds_alternative<StringIdMutation>(value);
+    case CreativeMutationPayloadKind::MovingPlatformSettings:
+        return std::holds_alternative<MovingPlatformSettingsMutation>(value);
     }
 
     return false;
@@ -588,6 +595,11 @@ CreativeMutationPayload makeStringIdPayload(std::string id) {
 
 CreativeMutationPayload makePathPointsPayload(std::vector<CreativePathPoint> pathPoints) {
     return CreativeMutationPayload{PathPointsMutation{std::move(pathPoints)}};
+}
+
+CreativeMutationPayload makeMovingPlatformSettingsPayload(
+    CreativeMovingPlatformSettings settings) {
+    return CreativeMutationPayload{MovingPlatformSettingsMutation{settings}};
 }
 
 } // namespace iggy3d::creative

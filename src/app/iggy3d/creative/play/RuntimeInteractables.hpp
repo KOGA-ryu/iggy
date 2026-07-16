@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "app/iggy3d/creative/document/Document.hpp"
+#include "app/iggy3d/creative/play/RuntimeMovingPlatforms.hpp"
 #include "content/assets/RoomAsset.hpp"
 #include "core/ids/EntityId.hpp"
 #include "core/math/Aabb3.hpp"
@@ -18,6 +19,7 @@ namespace iggy3d::creative {
 enum class CreativeRuntimeInteractableKind : std::uint8_t {
   Door,
   Platform,
+  MovingPlatform,
   Control,
   Pickup,
 };
@@ -62,6 +64,7 @@ struct CreativeRuntimeInteractableDefinition {
   std::string itemId;
   Transform3 transform;
   Aabb3 localBounds;
+  CreativeRuntimeMovingPlatformDefinition movingPlatform;
 };
 
 struct CreativeRuntimeLogicLink {
@@ -108,6 +111,7 @@ struct CreativeRuntimeInteractableState {
   EntityId entity;
   // Door: open when active. Platform: enabled/present when active.
   bool targetActive = false;
+  CreativeRuntimeMovingPlatformState movingPlatform;
   bool pickupConsumed = false;
   std::size_t occupantCount = 0U;
   CreativeRuntimeOccupancyTransition lastOccupancyTransition =
@@ -136,6 +140,7 @@ struct CreativeRuntimeLogicTargetStateCommand {
   CreativeRuntimeInteractableKind kind =
       CreativeRuntimeInteractableKind::Door;
   bool active = false;
+  bool reverse = false;
 };
 
 struct CreativeRuntimeLogicActivationPlan {

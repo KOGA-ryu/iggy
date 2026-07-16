@@ -413,6 +413,20 @@ CreativeBrushPlacementPlan planBrushPlacement(
     plan.hasBoundsOverride = true;
   }
 
+  if (brush == iggy3d::creative::CreativeObjectKind::MovingPlatform) {
+    const iggy3d::creative::CreativeBoundsMetrics platform =
+        iggy3d::creative::measureCreativeBounds(plan.authoredBounds);
+    if (!platform.valid) {
+      plan.status = CreativeBrushPlacementPlanStatus::InvalidGeometry;
+      return plan;
+    }
+    plan.pathPoints[0] = {platform.center};
+    plan.pathPoints[1] = {{platform.center.x, platform.center.y + 3.0,
+                           platform.center.z}};
+    plan.pathPointCount = 2U;
+    plan.hasPathOverride = true;
+  }
+
   if (!positiveBounds(plan.previewBounds) ||
       (plan.hasBoundsOverride &&
        !positiveBounds(plan.authoredBounds))) {

@@ -40,6 +40,23 @@ struct CreativePathPoint {
   CreativeVec3 position{};
 };
 
+inline constexpr std::size_t kCreativeMovingPlatformPathPointCapacity = 32U;
+
+enum class CreativeMovingPlatformTraversalMode : std::uint8_t {
+  PingPong,
+  Loop,
+  Count,
+};
+
+struct CreativeMovingPlatformSettings {
+  double speedMetersPerSecond{1.5};
+  CreativeMovingPlatformTraversalMode traversalMode{
+      CreativeMovingPlatformTraversalMode::PingPong};
+  bool startsActive{true};
+
+  bool operator==(const CreativeMovingPlatformSettings&) const = default;
+};
+
 enum class CreativeObjectKind {
   Unknown,
 
@@ -191,6 +208,7 @@ struct CreativeObject {
   // Name of the receiver on parentId. Empty means an ordinary hierarchy edge.
   std::string attachmentSocket{};
   std::vector<CreativePathPoint> pathPoints{};
+  CreativeMovingPlatformSettings movingPlatform{};
 };
 
 struct CreativeTransformedBounds {
@@ -222,6 +240,15 @@ struct CreativeTransformedBounds {
     std::optional<CreativeObjectId> parentId = std::nullopt);
 
 [[nodiscard]] std::string_view toString(CreativeObjectKind kind) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeMovingPlatformTraversalMode mode) noexcept;
+[[nodiscard]] bool parseCreativeMovingPlatformTraversalMode(
+    std::string_view value,
+    CreativeMovingPlatformTraversalMode& output) noexcept;
+[[nodiscard]] bool isValidCreativeMovingPlatformSettings(
+    const CreativeMovingPlatformSettings& settings) noexcept;
+[[nodiscard]] bool isValidCreativeMovingPlatformPath(
+    std::span<const CreativePathPoint> pathPoints) noexcept;
 [[nodiscard]] std::string_view serializedObjectKindId(
     CreativeObjectKind kind) noexcept;
 [[nodiscard]] bool parseSerializedObjectKindId(
