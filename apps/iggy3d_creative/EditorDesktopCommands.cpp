@@ -774,6 +774,50 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutSetOpeningSettings: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutOpeningSettingsPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout opening settings: payload mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          setCreativeEditorWorldLayoutOpeningSettings(
+              editor.worldLayout, payload->openingIndex, payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutManipulateOpening: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutOpeningManipulationPayload>(
+              command);
+      if (payload == nullptr) {
+        result.message = "layout opening manipulation: payload mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          applyCreativeEditorWorldLayoutOpeningManipulation(
+              editor.worldLayout, payload->phase, payload->point,
+              payload->toleranceCells);
+      const bool sourceChanged =
+          payload->phase ==
+              CreativeEditorWorldLayoutOpeningManipulationPhase::Commit &&
+          receipt.changed;
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = sourceChanged;
+      result.sceneChanged = previewWasActive && sourceChanged;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutDeleteSelection: {
       const bool previewWasActive =
           creativeEditorWorldLayoutPreviewActive(editor.worldLayout);

@@ -1218,6 +1218,14 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutManipulateRoom, context,
           app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutOpeningSettings =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutSetOpeningSettings, context,
+          app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutOpeningManipulation =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutManipulateOpening, context,
+          app::CreativeDesktopDeletePayload{{a}});
 
   return expect(!badDelete.accepted &&
                     badDelete.message == "delete objects: payload mismatch",
@@ -1247,6 +1255,14 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badWorldLayoutManipulation.message ==
                         "layout room manipulation: payload mismatch",
                 "room manipulation rejects a mismatched payload") &&
+         expect(!badWorldLayoutOpeningSettings.accepted &&
+                    badWorldLayoutOpeningSettings.message ==
+                        "layout opening settings: payload mismatch",
+                "opening settings reject a mismatched payload") &&
+         expect(!badWorldLayoutOpeningManipulation.accepted &&
+                    badWorldLayoutOpeningManipulation.message ==
+                        "layout opening manipulation: payload mismatch",
+                "opening manipulation rejects a mismatched payload") &&
          expect(appState.facade.document().objectCount() == before &&
                     cr::creativeUndoDepth(appState.history) == 0U,
                 "mismatched payloads mutate nothing and record no history");
@@ -1311,6 +1327,50 @@ bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
       app::CreativeDesktopWorldLayoutRoomManipulationPayload{
           app::CreativeEditorWorldLayoutRoomManipulationPhase::Commit,
           {5.0, 4.0}, 0.3});
+  const bool roomMoveCommittedOnce =
+      editor.worldLayout.revision == revisionBeforeMove + 1U;
+  const app::CreativeDesktopCommandResult doorTool = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSetTool, context,
+      app::CreativeDesktopWorldLayoutToolPayload{
+          app::CreativeEditorWorldLayoutTool::Door});
+  const app::CreativeDesktopCommandResult door = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutCanvasPoint, context,
+      app::CreativeDesktopWorldLayoutPointPayload{{5.0, 1.0}});
+  const std::uint64_t revisionBeforeOpeningSettings =
+      editor.worldLayout.revision;
+  const app::CreativeDesktopCommandResult openingSettings = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSetOpeningSettings, context,
+      app::CreativeDesktopWorldLayoutOpeningSettingsPayload{
+          0U,
+          {3.0, 1.5, 0.0, 2.5,
+           cr::CreativeBuildingOpeningPose::OpenFromStartPositiveNormal,
+           true}});
+  const bool openingSettingsCommittedOnce =
+      editor.worldLayout.revision == revisionBeforeOpeningSettings + 1U;
+  const app::CreativeDesktopCommandResult selectOpeningTool = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSetTool, context,
+      app::CreativeDesktopWorldLayoutToolPayload{
+          app::CreativeEditorWorldLayoutTool::Select});
+  const std::uint64_t revisionBeforeOpeningMove = editor.worldLayout.revision;
+  const app::CreativeDesktopCommandResult openingMoveBegin = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateOpening, context,
+      app::CreativeDesktopWorldLayoutOpeningManipulationPayload{
+          app::CreativeEditorWorldLayoutOpeningManipulationPhase::Begin,
+          {5.0, 1.0}, 0.2});
+  const app::CreativeDesktopCommandResult openingMoveUpdate = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateOpening, context,
+      app::CreativeDesktopWorldLayoutOpeningManipulationPayload{
+          app::CreativeEditorWorldLayoutOpeningManipulationPhase::Update,
+          {6.12, 1.0}, 0.2});
+  const bool openingMoveWasPreviewOnly =
+      editor.worldLayout.revision == revisionBeforeOpeningMove &&
+      editor.worldLayout.source.openings[0].centerOffsetCells == 3.0 &&
+      editor.worldLayout.openingManipulation.previewCenterOffsetCells == 4.0;
+  const app::CreativeDesktopCommandResult openingMoved = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateOpening, context,
+      app::CreativeDesktopWorldLayoutOpeningManipulationPayload{
+          app::CreativeEditorWorldLayoutOpeningManipulationPhase::Commit,
+          {6.12, 1.0}, 0.2});
 
   const std::uint64_t liveCountBefore =
       appState.facade.document().objectCount();
@@ -1339,8 +1399,7 @@ bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
                     moveUpdate.accepted && moveUpdate.changed &&
                     !moveUpdate.worldLayoutChanged && moveWasPreviewOnly &&
                     moved.accepted && moved.changed &&
-                    moved.worldLayoutChanged &&
-                    editor.worldLayout.revision == revisionBeforeMove + 1U &&
+                    moved.worldLayoutChanged && roomMoveCommittedOnce &&
                     editor.worldLayout.source.rooms[0].footprint.minimum ==
                         cr::CreativeTerrainCoord2{2, 1} &&
                     editor.worldLayout.source.rooms[0].footprint.maximum ==
@@ -1350,6 +1409,23 @@ bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
                     editor.worldLayout.source.rooms[0].wallThicknessCells ==
                         0.5,
                 "room settings and preview-only manipulation route through typed payloads") &&
+         expect(doorTool.accepted && door.accepted && door.worldLayoutChanged &&
+                    openingSettings.accepted && openingSettings.changed &&
+                    openingSettings.worldLayoutChanged &&
+                    openingSettingsCommittedOnce &&
+                    selectOpeningTool.accepted && openingMoveBegin.accepted &&
+                    openingMoveBegin.changed &&
+                    !openingMoveBegin.worldLayoutChanged &&
+                    openingMoveUpdate.accepted && openingMoveUpdate.changed &&
+                    !openingMoveUpdate.worldLayoutChanged &&
+                    openingMoveWasPreviewOnly && openingMoved.accepted &&
+                    openingMoved.changed && openingMoved.worldLayoutChanged &&
+                    editor.worldLayout.revision ==
+                        revisionBeforeOpeningMove + 1U &&
+                    editor.worldLayout.source.openings[0].centerOffsetCells ==
+                        4.0 &&
+                    editor.worldLayout.source.openings[0].widthCells == 1.5,
+                "opening settings and preview-only movement route through typed payloads") &&
          expect(preview.accepted && preview.sceneChanged &&
                     exactPreviewVisible && !editor.desktopUi.showWorldLayout,
                 "layout preview is exact, transient, and closes the canvas") &&

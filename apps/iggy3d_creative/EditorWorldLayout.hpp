@@ -90,6 +90,67 @@ struct CreativeEditorWorldLayoutRoomManipulationState {
       "creative_editor_world_layout_room_manipulation_inactive";
 };
 
+struct CreativeEditorWorldLayoutOpeningSettings {
+  double centerOffsetCells = 0.0;
+  double widthCells = 1.0;
+  double sillHeightCells = 0.0;
+  double heightCells = 2.1;
+  cr::CreativeBuildingOpeningPose pose =
+      cr::CreativeBuildingOpeningPose::Closed;
+  bool includeInsert = true;
+};
+
+struct CreativeEditorWorldLayoutOpeningSettingsDraft {
+  bool active = false;
+  std::size_t openingIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::uint64_t sourceRevision = 0U;
+  CreativeEditorWorldLayoutOpeningSettings settings;
+};
+
+struct CreativeEditorWorldLayoutOpeningHost {
+  bool valid = false;
+  CreativeEditorWorldLayoutPoint start;
+  CreativeEditorWorldLayoutPoint end;
+  double lengthCells = 0.0;
+  double wallHeightCells = 0.0;
+};
+
+enum class CreativeEditorWorldLayoutOpeningHandle : std::uint8_t {
+  None,
+  Move,
+  Start,
+  End,
+  Count,
+};
+
+struct CreativeEditorWorldLayoutOpeningTarget {
+  std::size_t openingIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  CreativeEditorWorldLayoutOpeningHandle handle =
+      CreativeEditorWorldLayoutOpeningHandle::None;
+};
+
+enum class CreativeEditorWorldLayoutOpeningManipulationPhase : std::uint8_t {
+  Begin,
+  Update,
+  Commit,
+  Cancel,
+  Count,
+};
+
+struct CreativeEditorWorldLayoutOpeningManipulationState {
+  bool active = false;
+  std::uint64_t sourceRevision = 0U;
+  CreativeEditorWorldLayoutOpeningTarget target;
+  double startPointerOffsetCells = 0.0;
+  double originalCenterOffsetCells = 0.0;
+  double originalWidthCells = 0.0;
+  double previewCenterOffsetCells = 0.0;
+  double previewWidthCells = 0.0;
+  bool previewValid = false;
+  std::string reasonCode =
+      "creative_editor_world_layout_opening_manipulation_inactive";
+};
+
 enum class CreativeEditorWorldLayoutGesturePhase : std::uint8_t {
   Begin,
   Commit,
@@ -109,6 +170,8 @@ struct CreativeEditorWorldLayoutState {
   bool anchorActive = false;
   cr::CreativeTerrainCoord2 anchor{};
   CreativeEditorWorldLayoutRoomManipulationState roomManipulation;
+  CreativeEditorWorldLayoutOpeningManipulationState openingManipulation;
+  CreativeEditorWorldLayoutOpeningSettingsDraft openingSettingsDraft;
 
   bool previewVisible = false;
   std::uint64_t previewLayoutRevision = 0U;
@@ -184,6 +247,27 @@ findCreativeEditorWorldLayoutRoomTarget(
 applyCreativeEditorWorldLayoutRoomManipulation(
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutRoomManipulationPhase phase,
+    CreativeEditorWorldLayoutPoint point = {},
+    double toleranceCells = 0.25);
+[[nodiscard]] bool readCreativeEditorWorldLayoutOpeningSettings(
+    const CreativeEditorWorldLayoutState& state, std::size_t openingIndex,
+    CreativeEditorWorldLayoutOpeningSettings& output) noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutOpeningHost
+resolveCreativeEditorWorldLayoutOpeningHost(
+    const CreativeEditorWorldLayoutState& state,
+    std::size_t openingIndex) noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutOpeningTarget
+findCreativeEditorWorldLayoutOpeningTarget(
+    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint point, double toleranceCells) noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+setCreativeEditorWorldLayoutOpeningSettings(
+    CreativeEditorWorldLayoutState& state, std::size_t openingIndex,
+    CreativeEditorWorldLayoutOpeningSettings settings);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+applyCreativeEditorWorldLayoutOpeningManipulation(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutOpeningManipulationPhase phase,
     CreativeEditorWorldLayoutPoint point = {},
     double toleranceCells = 0.25);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
