@@ -730,7 +730,8 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
            reader.readHex(wall.stableKey) && reader.readHex(wall.name) &&
            reader.readI32(wall.start.x) && reader.readI32(wall.start.z) &&
            reader.readI32(wall.end.x) && reader.readI32(wall.end.z) &&
-           reader.readI32(wall.baseLayer) &&
+           reader.readDouble(wall.baseLayer) &&
+           std::isfinite(wall.baseLayer) &&
            reader.readUnsigned(wall.heightCells) &&
            reader.readDouble(wall.thicknessCells) &&
            std::isfinite(wall.thicknessCells);

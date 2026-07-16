@@ -36,7 +36,8 @@ struct CreativeEditorBootstrapData {
 
 void initializeCreativeEditorBootstrapData(
     CreativeEditorBootstrapData& output,
-    bool captureMode);
+    bool captureMode,
+    bool seedStarterScene);
 
 [[nodiscard]] iggy3d::RendererConfig makeCreativeVulkanRendererConfig();
 [[nodiscard]] std::unique_ptr<iggy3d::VulkanBackend> createCreativeRenderer(

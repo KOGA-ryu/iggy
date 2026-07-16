@@ -268,7 +268,9 @@ int main(int argc, char** argv) {
   }
 
   CreativeEditorBootstrapData bootstrapData;
-  initializeCreativeEditorBootstrapData(bootstrapData, captureMode);
+  initializeCreativeEditorBootstrapData(
+      bootstrapData, captureMode,
+      /*seedStarterScene=*/!desktopShellEnabled || captureMode);
   CreativeEditorState& editor = bootstrapData.editor;
   editor.desktopUi.shellEnabled = desktopShellEnabled;
   const ProductMapMakerGridSnapshot& gridSnapshot =

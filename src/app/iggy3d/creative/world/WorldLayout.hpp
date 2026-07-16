@@ -51,6 +51,8 @@ struct CreativeWorldLayoutRoom {
   std::string stableKey;
   std::string name;
   CreativeWorldLayoutRect footprint;
+  // Floor-cell elevation. The generated slab is thin and centered in this
+  // cell; room walls start at that center plane to avoid a visible seam.
   std::int32_t baseLayer = 0;
   std::uint16_t wallHeightCells = 3U;
   double wallThicknessCells = 0.25;
@@ -77,7 +79,7 @@ struct CreativeWorldLayoutWall {
   std::string name;
   CreativeTerrainCoord2 start{};
   CreativeTerrainCoord2 end{};
-  std::int32_t baseLayer = 0;
+  double baseLayer = 0.0;
   std::uint16_t heightCells = 3U;
   double thicknessCells = 0.25;
 };

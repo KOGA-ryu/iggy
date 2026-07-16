@@ -30,7 +30,8 @@ namespace iggy3d_creative_app {
 
 void initializeCreativeEditorBootstrapData(
     CreativeEditorBootstrapData& output,
-    bool captureMode) {
+    bool captureMode,
+    bool seedStarterScene) {
   // Fly camera state. Start pulled back and up, looking at the origin.
   output.editor.flyConfig.enabled = true;
   output.editor.flyConfig.speedMetersPerSecond = 8.0F;
@@ -63,7 +64,8 @@ void initializeCreativeEditorBootstrapData(
   // new kernel work because CreativeObjectKind::Floor already ships a descriptor.
   {
     iggy3d::creative::CreativeDocument doc =
-        iggy3d::creative::CreativeDocument::create("FloorAndCrateWorld");
+        iggy3d::creative::CreativeDocument::create(
+            seedStarterScene ? "FloorAndCrateWorld" : "Untitled");
     (void)doc.assignId(1);
     const iggy3d::creative::CreativeFacadeDocumentInstallReceipt installReceipt =
         output.appState.facade.installDocument(std::move(doc));
@@ -71,51 +73,50 @@ void initializeCreativeEditorBootstrapData(
             installReceipt.accepted ? 1 : 0);
   }
 
-  // FLOOR 1: a 4 x 0.25 x 4 walkable tile whose top sits at Y=0.25 with its slab
-  // straddling Y=0. Same authoring request struct as the crate — only kind and
-  // extents differ; no per-kind create path.
-  iggy3d::creative::CreativeDocumentCreateRequest floorRequest;
-  floorRequest.kind = iggy3d::creative::CreativeObjectKind::Floor;
-  floorRequest.name = "Floor 1";
-  floorRequest.transform.position = {0.0, 0.125, 0.0};
-  floorRequest.hasTransformOverride = true;
-  floorRequest.bounds = {{-2.0, 0.0, -2.0}, {2.0, 0.25, 2.0}};
-  floorRequest.hasBoundsOverride = true;
-  floorRequest.visible = true;
-  floorRequest.hasVisibleOverride = true;
-  floorRequest.locked = false;
-  floorRequest.hasLockedOverride = true;
-  const iggy3d::creative::CreativeDocumentCreateReceipt floorReceipt =
-      output.appState.facade.createDocumentObject(floorRequest);
-  output.floorObjectId = floorReceipt.objectId;
-  SDL_Log("iggy3d_creative: floor create accepted=%d objectId=%llu kind='%s'",
-          floorReceipt.accepted ? 1 : 0,
-          static_cast<unsigned long long>(output.floorObjectId),
-          std::string(iggy3d::creative::toString(floorReceipt.objectKind))
-              .c_str());
+  if (seedStarterScene) {
+    // FLOOR 1: a 4 x 0.25 x 4 walkable tile whose top sits at Y=0.25.
+    iggy3d::creative::CreativeDocumentCreateRequest floorRequest;
+    floorRequest.kind = iggy3d::creative::CreativeObjectKind::Floor;
+    floorRequest.name = "Floor 1";
+    floorRequest.transform.position = {0.0, 0.125, 0.0};
+    floorRequest.hasTransformOverride = true;
+    floorRequest.bounds = {{-2.0, 0.0, -2.0}, {2.0, 0.25, 2.0}};
+    floorRequest.hasBoundsOverride = true;
+    floorRequest.visible = true;
+    floorRequest.hasVisibleOverride = true;
+    floorRequest.locked = false;
+    floorRequest.hasLockedOverride = true;
+    const iggy3d::creative::CreativeDocumentCreateReceipt floorReceipt =
+        output.appState.facade.createDocumentObject(floorRequest);
+    output.floorObjectId = floorReceipt.objectId;
+    SDL_Log("iggy3d_creative: floor create accepted=%d objectId=%llu kind='%s'",
+            floorReceipt.accepted ? 1 : 0,
+            static_cast<unsigned long long>(output.floorObjectId),
+            std::string(iggy3d::creative::toString(floorReceipt.objectKind))
+                .c_str());
 
-  // CRATE 1: a 1 m cube resting ON the floor (bottom at Y=0.25, top at Y=1.25),
-  // offset in Z so it does not eclipse the floor tile's center from the camera.
-  iggy3d::creative::CreativeDocumentCreateRequest crateRequest;
-  crateRequest.kind = iggy3d::creative::CreativeObjectKind::Crate;
-  crateRequest.name = "Crate 1";
-  crateRequest.transform.position = {0.0, 0.375, 0.0};
-  crateRequest.hasTransformOverride = true;
-  crateRequest.bounds = {{-0.5, 0.25, -0.5}, {0.5, 1.25, 0.5}};
-  crateRequest.hasBoundsOverride = true;
-  crateRequest.visible = true;
-  crateRequest.hasVisibleOverride = true;
-  crateRequest.locked = false;
-  crateRequest.hasLockedOverride = true;
-  const iggy3d::creative::CreativeDocumentCreateReceipt crateReceipt =
-      output.appState.facade.createDocumentObject(crateRequest);
-  const iggy3d::creative::CreativeObjectId crateObjectId = crateReceipt.objectId;
-  SDL_Log("iggy3d_creative: crate create accepted=%d objectId=%llu kind='%s'",
-          crateReceipt.accepted ? 1 : 0,
-          static_cast<unsigned long long>(crateObjectId),
-          std::string(iggy3d::creative::toString(crateReceipt.objectKind))
-              .c_str());
-  (void)crateObjectId;  // Retained for the log; tooling keys off the SELECTION.
+    // CRATE 1: a 1 m cube resting on the starter floor.
+    iggy3d::creative::CreativeDocumentCreateRequest crateRequest;
+    crateRequest.kind = iggy3d::creative::CreativeObjectKind::Crate;
+    crateRequest.name = "Crate 1";
+    crateRequest.transform.position = {0.0, 0.375, 0.0};
+    crateRequest.hasTransformOverride = true;
+    crateRequest.bounds = {{-0.5, 0.25, -0.5}, {0.5, 1.25, 0.5}};
+    crateRequest.hasBoundsOverride = true;
+    crateRequest.visible = true;
+    crateRequest.hasVisibleOverride = true;
+    crateRequest.locked = false;
+    crateRequest.hasLockedOverride = true;
+    const iggy3d::creative::CreativeDocumentCreateReceipt crateReceipt =
+        output.appState.facade.createDocumentObject(crateRequest);
+    const iggy3d::creative::CreativeObjectId crateObjectId =
+        crateReceipt.objectId;
+    SDL_Log("iggy3d_creative: crate create accepted=%d objectId=%llu kind='%s'",
+            crateReceipt.accepted ? 1 : 0,
+            static_cast<unsigned long long>(crateObjectId),
+            std::string(iggy3d::creative::toString(crateReceipt.objectKind))
+                .c_str());
+  }
 
   // ---- SAVE LOCATION ------------------------------------------------------
   // A single fixed save slot for the standalone app: <HOME>/.iggy3d/

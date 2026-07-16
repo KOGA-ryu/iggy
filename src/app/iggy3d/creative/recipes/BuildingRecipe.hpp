@@ -48,6 +48,7 @@ struct CreativeBuildingBoxSpec {
   std::string stableKey;
   std::string name;
   CreativeBounds bounds;
+  CreativeVec3 scale{1.0, 1.0, 1.0};
 };
 
 struct CreativeBuildingOpeningSpec {

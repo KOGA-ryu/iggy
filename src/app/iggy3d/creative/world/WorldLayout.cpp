@@ -16,6 +16,8 @@
 namespace iggy3d::creative {
 namespace {
 
+constexpr double kWorldLayoutFloorVerticalScale = 0.05;
+
 void setStatus(CreativeWorldLayoutReceipt& receipt,
                CreativeWorldLayoutStatus status,
                std::string_view reasonCode,
@@ -61,11 +63,10 @@ void setStatus(CreativeWorldLayoutReceipt& receipt,
 
 [[nodiscard]] bool worldCoordinate(double origin,
                                    double cellSize,
-                                   std::int64_t coordinate,
+                                   long double coordinate,
                                    double& output) noexcept {
   const long double value = static_cast<long double>(origin) +
-                            static_cast<long double>(cellSize) *
-                                static_cast<long double>(coordinate);
+                            static_cast<long double>(cellSize) * coordinate;
   if (!std::isfinite(value) ||
       value < -std::numeric_limits<double>::max() ||
       value > std::numeric_limits<double>::max()) {
@@ -95,13 +96,13 @@ void setStatus(CreativeWorldLayoutReceipt& receipt,
          worldCoordinate(grid.origin.z, grid.cellSizeMeters, rect.maximum.z,
                          output.max.z) &&
          worldCoordinate(grid.origin.y, grid.cellSizeMeters,
-                         static_cast<std::int64_t>(baseLayer) + heightCells,
+                         static_cast<long double>(baseLayer) + heightCells,
                          output.max.y);
 }
 
 [[nodiscard]] bool layoutPoint(const CreativeGridSettings& grid,
                                CreativeTerrainCoord2 coord,
-                               std::int32_t layer,
+                               double layer,
                                CreativeVec3& output) noexcept {
   return worldCoordinate(grid.origin.x, grid.cellSizeMeters, coord.x,
                          output.x) &&
@@ -441,8 +442,11 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
                 "creative_world_layout_box_bounds_invalid");
       return result;
     }
-    buildings[symbol.buildingIndex].boxes.push_back(
-        {symbol.kind, key, symbol.name, bounds});
+    CreativeBuildingBoxSpec box{symbol.kind, key, symbol.name, bounds};
+    if (symbol.kind == CreativeObjectKind::Floor) {
+      box.scale.y = kWorldLayoutFloorVerticalScale;
+    }
+    buildings[symbol.buildingIndex].boxes.push_back(std::move(box));
   }
 
   std::vector<std::size_t> localWallIndices(
@@ -450,6 +454,7 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
   for (std::size_t index = 0U; index < expanded.walls.size(); ++index) {
     const CreativeWorldLayoutWall& symbol = expanded.walls[index];
     if (symbol.buildingIndex >= buildings.size() || symbol.name.empty() ||
+        !std::isfinite(symbol.baseLayer) ||
         symbol.heightCells == 0U || !std::isfinite(symbol.thicknessCells) ||
         symbol.thicknessCells <= 0.0) {
       result.receipt.failedTable = CreativeWorldLayoutTable::Wall;

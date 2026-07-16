@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
 #include <cstdlib>
+#include <cmath>
 #include <iostream>
 
 namespace cr = iggy3d::creative;
@@ -12,6 +13,10 @@ bool expect(bool condition, const char* message) {
     std::cerr << "FAIL: " << message << '\n';
   }
   return condition;
+}
+
+bool near(double lhs, double rhs) {
+  return std::abs(lhs - rhs) <= 1.0e-9;
 }
 
 cr::CreativeWorldLayout adjacentRooms() {
@@ -61,6 +66,9 @@ bool adjacentRoomsShareOneCanonicalWall() {
       first.expanded.walls[opening.wallIndex];
   return expect(first.expanded.boxes.size() == 2U,
                 "each room derives one floor") &&
+         expect(first.expanded.boxes[0].baseLayer == 0 &&
+                    near(first.expanded.walls[0].baseLayer, 0.5),
+                "room walls begin at the floor cell center plane") &&
          expect(first.expanded.walls.size() == 5U,
                 "shared boundary is emitted exactly once") &&
          expect(
@@ -114,12 +122,26 @@ bool roomTopologyCompilesThroughExistingBuildingRecipe() {
       cr::buildCreativeWorldLayoutPlan(document, adjacentRooms());
   const cr::CreativeWorldLayoutPreviewResult preview =
       cr::previewCreativeWorldLayoutPlan(document, compiled.plan);
+  const cr::CreativeObject* floor = nullptr;
+  const cr::CreativeObject* wall = nullptr;
+  for (const cr::CreativeObject& object : preview.document.objects()) {
+    if (floor == nullptr && object.kind == cr::CreativeObjectKind::Floor) {
+      floor = &object;
+    }
+    if (wall == nullptr && object.kind == cr::CreativeObjectKind::Wall) {
+      wall = &object;
+    }
+  }
   return expect(compiled.receipt.accepted &&
                     compiled.receipt.objectRecipeCount == 1U,
                 "semantic rooms compile through one building recipe") &&
          expect(preview.accepted && preview.document.objectCount() ==
                                         compiled.receipt.objectCount,
-                "exact preview materializes the compiled room shell");
+                "exact preview materializes the compiled room shell") &&
+         expect(floor != nullptr && near(floor->transform.scale.y, 0.05),
+                "materialized room floor uses the thin vertical scale") &&
+         expect(wall != nullptr && near(wall->transform.position.y, 2.0),
+                "three-cell room wall is centered at y=2.0");
 }
 
 }  // namespace

@@ -202,7 +202,8 @@ void setStatus(CreativeBuildingRecipeReceipt& receipt,
     std::string name,
     CreativeBounds bounds,
     bool visible,
-    const std::vector<std::string>& tags) {
+    const std::vector<std::string>& tags,
+    CreativeVec3 scale = {1.0, 1.0, 1.0}) {
   CreativeDocumentCreateRequest request;
   request.kind = kind;
   request.name = std::move(name);
@@ -211,6 +212,7 @@ void setStatus(CreativeBuildingRecipeReceipt& receipt,
   const CreativeObjectDescriptor& descriptor = describeObject(kind);
   if (descriptor.hasTransform) {
     request.transform.position = measureCreativeBounds(bounds).center;
+    request.transform.scale = scale;
     request.hasTransformOverride = true;
   }
   request.visible = visible;
@@ -235,10 +237,11 @@ void appendGeneratedObject(CreativeBuildingRecipeResult& result,
                            std::string stableKey,
                            std::string name,
                            CreativeBounds bounds,
-                           bool hasCreatedRoot) {
+                           bool hasCreatedRoot,
+                           CreativeVec3 scale = {1.0, 1.0, 1.0}) {
   CreativeRecipeObjectPlan object;
   object.createRequest = makeBoxRequest(kind, std::move(name), bounds,
-                                        request.visible, request.tags);
+                                        request.visible, request.tags, scale);
   object.role = CreativeRecipeObjectRole::Generated;
   object.stableKey = std::move(stableKey);
   setRecipeParent(object, request, hasCreatedRoot);
@@ -577,15 +580,15 @@ CreativeBuildingRecipeResult buildCreativeBuildingRecipe(
     result.receipt.failedBoxIndex = index;
     const CreativeBuildingBoxSpec& box = request.boxes[index];
     if (!allowedBoxKind(box.kind) || box.stableKey.empty() ||
-        box.name.empty() ||
-        !validBounds(box.bounds)) {
+        box.name.empty() || !validBounds(box.bounds) ||
+        !isPositiveCreativeVec3(box.scale)) {
       setStatus(result.receipt, CreativeBuildingRecipeStatus::InvalidBox,
                 "creative_building_box_invalid");
       result.plan.objects.clear();
       return result;
     }
     appendGeneratedObject(result, request, box.kind, box.stableKey, box.name,
-                          box.bounds, createsRoot);
+                          box.bounds, createsRoot, box.scale);
   }
 
   for (std::size_t index = 0; index < request.walls.size(); ++index) {

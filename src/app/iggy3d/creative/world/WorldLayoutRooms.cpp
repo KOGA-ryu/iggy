@@ -23,7 +23,7 @@ struct EdgeRecord {
   std::int32_t line = 0;
   std::int32_t begin = 0;
   std::int32_t end = 0;
-  std::int32_t baseLayer = 0;
+  double baseLayer = 0.0;
   std::uint16_t heightCells = 0U;
   double thicknessCells = 0.0;
 };
@@ -74,7 +74,8 @@ auto edgeSortKey(const EdgeRecord& edge) noexcept {
 }
 
 std::array<EdgeRecord, kRoomEdgeCount> roomEdges(
-    const CreativeWorldLayoutRoom& room, std::size_t roomIndex) {
+    const CreativeWorldLayoutRoom& room, std::size_t roomIndex,
+    double wallBaseLayer) {
   const CreativeWorldLayoutRect rect = room.footprint;
   const auto make = [&](CreativeWorldLayoutRoomEdge edge,
                         EdgeOrientation orientation, std::int32_t line,
@@ -86,7 +87,7 @@ std::array<EdgeRecord, kRoomEdgeCount> roomEdges(
                       line,
                       begin,
                       end,
-                      room.baseLayer,
+                      wallBaseLayer,
                       room.wallHeightCells,
                       room.wallThicknessCells};
   };
@@ -140,6 +141,9 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
                  roomIndex, "creative_world_layout_room_invalid");
       return result;
     }
+    const double wallBaseLayer =
+        static_cast<double>(room.baseLayer) +
+        static_cast<double>(room.floorThicknessCells) * 0.5;
     for (std::size_t prior = 0U; prior < roomIndex; ++prior) {
       if (roomsOverlap(layout.rooms[prior], room)) {
         setFailure(result,
@@ -159,7 +163,7 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
     floor.heightCells = room.floorThicknessCells;
     result.expanded.boxes.push_back(std::move(floor));
 
-    const auto generated = roomEdges(room, roomIndex);
+    const auto generated = roomEdges(room, roomIndex, wallBaseLayer);
     edges.insert(edges.end(), generated.begin(), generated.end());
   }
 
