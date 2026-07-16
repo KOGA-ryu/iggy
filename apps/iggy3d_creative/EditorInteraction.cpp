@@ -2,6 +2,7 @@
 #include "EditorInteractionInternal.hpp"
 
 #include <algorithm>
+#include <array>
 
 #include "EditorGroup.hpp"
 #include "EditorState.hpp"
@@ -14,6 +15,39 @@
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
+namespace {
+
+using ContinuousGestureFinalizer = void (*)(
+    cr::CreativeAppState&, CreativeEditorState&, std::string_view);
+
+struct ContinuousGestureFinalizerRow {
+  CreativeEditorContinuousGestureOwner owner =
+      CreativeEditorContinuousGestureOwner::None;
+  ContinuousGestureFinalizer finalize = nullptr;
+};
+
+constexpr std::array kContinuousGestureFinalizers{
+    ContinuousGestureFinalizerRow{
+        CreativeEditorContinuousGestureOwner::Material,
+        finalizeCreativeMaterialStroke},
+    ContinuousGestureFinalizerRow{
+        CreativeEditorContinuousGestureOwner::AuthoredAsset,
+        finalizeCreativeAuthoredAssetStroke},
+    ContinuousGestureFinalizerRow{
+        CreativeEditorContinuousGestureOwner::AssetScatter,
+        finalizeCreativeAssetScatterStroke},
+    ContinuousGestureFinalizerRow{
+        CreativeEditorContinuousGestureOwner::TerrainControl,
+        finalizeCreativeTerrainStroke},
+    ContinuousGestureFinalizerRow{
+        CreativeEditorContinuousGestureOwner::TerrainPaint,
+        finalizeCreativeEditorTerrainPaintStroke},
+    ContinuousGestureFinalizerRow{
+        CreativeEditorContinuousGestureOwner::TerrainSculpt,
+        finalizeCreativeTerrainSculptStroke},
+};
+
+}  // namespace
 
 void clearCreativeEditorPlacementFeedback(
     CreativeEditorInteractionState& interaction) noexcept {
@@ -177,6 +211,14 @@ void syncCreativeEditorHeldItem(cr::CreativeAppState& appState,
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   const cr::CreativeHeldItemDefinition& definition =
       cr::describeCreativeHeldItem(held.kind);
+  const cr::CreativeHeldItemKind previousKind =
+      editor.interaction.synchronizedHeldItemKind;
+  const cr::CreativeHeldItemDefinition& previousDefinition =
+      cr::describeCreativeHeldItem(previousKind);
+  const bool interactionChanged =
+      previousKind == cr::CreativeHeldItemKind::Count ||
+      previousDefinition.interactionMode != definition.interactionMode;
+  clearCreativeEditorPlacementFeedback(editor.interaction);
   editor.placeMode = definition.placeMode;
   if (held.objectKind != cr::CreativeObjectKind::Unknown &&
       cr::creativeHeldItemUsesMaterial(held.kind)) {
@@ -193,24 +235,25 @@ void syncCreativeEditorHeldItem(cr::CreativeAppState& appState,
   } else {
     deactivateCreativeEditorVolumeMode(editor.volume);
   }
-  if (definition.frameMode != cr::CreativeHeldItemFrameMode::ObjectMove) {
+  if (interactionChanged &&
+      definition.interactionMode !=
+          cr::CreativeHeldItemInteractionMode::ObjectMove) {
     editor.interaction.moveTargetId = cr::kInvalidObjectId;
     editor.interaction.movingPlatformPathEdit = {};
   }
-  if (held.kind == cr::CreativeHeldItemKind::LogicLink) {
+  if (definition.interactionMode ==
+      cr::CreativeHeldItemInteractionMode::LogicLink) {
     syncCreativeEditorLogicLinkState(editor.logicLinks,
                                      appState.facade.document());
-  } else {
+  } else if (interactionChanged) {
     static_cast<void>(clearCreativeEditorLogicLinkSource(editor.logicLinks));
     editor.logicLinks.documentId = appState.facade.document().id();
   }
-  if (definition.frameMode !=
-      cr::CreativeHeldItemFrameMode::TerrainControlStroke) {
+  if (interactionChanged) {
     clearCreativeEditorTerrainInteraction(editor.terrain,
                                           appState.facade.document().id());
-  } else {
-    static_cast<void>(cancelCreativeEditorTerrainGrade(editor));
   }
+  editor.interaction.synchronizedHeldItemKind = held.kind;
   syncCreativeEditorQuickEdit(editor);
   static_cast<void>(appState.facade.setActiveTool(definition.facadeTool));
 }
@@ -235,6 +278,11 @@ bool selectCreativeEditorHotbarSlot(cr::CreativeAppState& appState,
 void processCreativeEditorWorldInteractionFrame(
     const CreativeEditorWorldInteractionFrameRequest& request) {
   CreativeEditorState& editor = request.editor;
+  const cr::CreativeHeldItemKind heldKind =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar).kind;
+  if (editor.interaction.synchronizedHeldItemKind != heldKind) {
+    syncCreativeEditorHeldItem(request.appState, editor);
+  }
   const cr::CreativeDocument& document = request.appState.facade.document();
   syncCreativeEditorLogicLinkState(editor.logicLinks, document);
   static_cast<void>(syncCreativeEditorGroupFocus(editor.groupFocus, document));
@@ -385,12 +433,49 @@ void finalizeCreativeEditorContinuousGestures(
     cr::CreativeAppState& appState,
     CreativeEditorState& editor,
     std::string_view reasonCode) {
-  finalizeCreativeMaterialStroke(appState, editor, reasonCode);
-  finalizeCreativeAssetScatterStroke(appState, editor, reasonCode);
-  finalizeCreativeAuthoredAssetStroke(appState, editor, reasonCode);
-  finalizeCreativeTerrainStroke(appState, editor, reasonCode);
-  finalizeCreativeTerrainSculptStroke(appState, editor, reasonCode);
-  finalizeCreativeEditorTerrainPaintStroke(appState, editor, reasonCode);
+  finalizeCreativeEditorContinuousGesturesExcept(
+      appState, editor, CreativeEditorContinuousGestureOwner::None,
+      reasonCode);
+}
+
+CreativeEditorContinuousGestureOwner creativeEditorContinuousGestureOwner(
+    const CreativeEditorState& editor) noexcept {
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  switch (cr::describeCreativeHeldItem(held.kind).frameMode) {
+    case cr::CreativeHeldItemFrameMode::MaterialStroke:
+      if (creativeEditorUsesAuthoredAsset(held, editor.authoredAssets)) {
+        return CreativeEditorContinuousGestureOwner::AuthoredAsset;
+      }
+      if (creativeEditorUsesAssetScatter(held, editor.toolSettings)) {
+        return CreativeEditorContinuousGestureOwner::AssetScatter;
+      }
+      return CreativeEditorContinuousGestureOwner::Material;
+    case cr::CreativeHeldItemFrameMode::TerrainControlStroke:
+      return CreativeEditorContinuousGestureOwner::TerrainControl;
+    case cr::CreativeHeldItemFrameMode::TerrainPaint:
+      return CreativeEditorContinuousGestureOwner::TerrainPaint;
+    case cr::CreativeHeldItemFrameMode::TerrainSculpt:
+      return CreativeEditorContinuousGestureOwner::TerrainSculpt;
+    case cr::CreativeHeldItemFrameMode::Standard:
+    case cr::CreativeHeldItemFrameMode::ObjectMove:
+    case cr::CreativeHeldItemFrameMode::Count:
+      return CreativeEditorContinuousGestureOwner::None;
+  }
+  return CreativeEditorContinuousGestureOwner::None;
+}
+
+void finalizeCreativeEditorContinuousGesturesExcept(
+    cr::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    CreativeEditorContinuousGestureOwner owner,
+    std::string_view reasonCode) {
+  for (const ContinuousGestureFinalizerRow& row :
+       kContinuousGestureFinalizers) {
+    if (row.owner != owner) {
+      row.finalize(appState, editor, reasonCode);
+    }
+  }
 }
 
 }  // namespace iggy3d_creative_app

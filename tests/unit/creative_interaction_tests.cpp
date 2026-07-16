@@ -427,6 +427,8 @@ bool heldItemRegistryOwnsEveryKind() {
             cr::CreativeHeldItemCommandOperation::Count &&
         definition.frameMode < cr::CreativeHeldItemFrameMode::Count &&
         definition.previewMode < cr::CreativeHeldItemPreviewMode::Count &&
+        definition.interactionMode <
+            cr::CreativeHeldItemInteractionMode::Count &&
         definition.targetCellPolicy <
             cr::CreativeHeldItemTargetCellPolicy::Count &&
         definition.hotbarLabelMode <
@@ -460,6 +462,16 @@ bool heldItemRegistryOwnsEveryKind() {
       cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::Material);
   const cr::CreativeHeldItemDefinition& move =
       cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::ObjectMove);
+  const cr::CreativeHeldItemDefinition& volumeSelect =
+      cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::VolumeSelect);
+  const cr::CreativeHeldItemDefinition& volumeFill =
+      cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::VolumeFill);
+  const cr::CreativeHeldItemDefinition& volumeHollow =
+      cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::VolumeHollow);
+  const cr::CreativeHeldItemDefinition& terrainPath =
+      cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::TerrainPath);
+  const cr::CreativeHeldItemDefinition& logicLink =
+      cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::LogicLink);
   const cr::CreativeHeldItemDefinition& invalid =
       cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::Count);
   return expect(material.placeMode && material.usesMaterial &&
@@ -471,15 +483,31 @@ bool heldItemRegistryOwnsEveryKind() {
          expect(move.facadeTool == cr::Tool::Move &&
                     move.hierarchySelectionTool &&
                     move.frameMode ==
-                        cr::CreativeHeldItemFrameMode::ObjectMove,
+                        cr::CreativeHeldItemFrameMode::ObjectMove &&
+                    move.interactionMode ==
+                        cr::CreativeHeldItemInteractionMode::ObjectMove,
                 "move row owns facade and hierarchy policy") &&
+         expect(volumeSelect.interactionMode ==
+                        cr::CreativeHeldItemInteractionMode::Volume &&
+                    volumeFill.interactionMode ==
+                        cr::CreativeHeldItemInteractionMode::Volume &&
+                    volumeHollow.interactionMode ==
+                        cr::CreativeHeldItemInteractionMode::Volume,
+                "volume tools share one compatible selection lifecycle") &&
+         expect(terrainPath.interactionMode ==
+                        cr::CreativeHeldItemInteractionMode::TerrainPath &&
+                    logicLink.interactionMode ==
+                        cr::CreativeHeldItemInteractionMode::LogicLink,
+                "draft tools declare distinct lifecycle ownership") &&
          expect(primaryWinsCount == 9U,
                 "simultaneous-action precedence is registry-pinned") &&
          expect(confirmCommandCount == 13U,
                 "confirm command ownership is registry-pinned") &&
          expect(invalid.kind == cr::CreativeHeldItemKind::Count &&
                     !invalid.placeMode && !invalid.volumeMode &&
-                    !invalid.terrainTool,
+                    !invalid.terrainTool &&
+                    invalid.interactionMode ==
+                        cr::CreativeHeldItemInteractionMode::None,
                 "invalid held kind resolves to inert definition") &&
          ok;
 }

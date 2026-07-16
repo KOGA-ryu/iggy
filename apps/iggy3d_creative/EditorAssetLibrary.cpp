@@ -162,6 +162,8 @@ void advanceDocumentIds(CreativeEditorAuthoredAssetLibrary& library) noexcept {
 [[nodiscard]] CreativeEditorDocumentTransientState
 takeDocumentTransientState(CreativeEditorState& editor) {
   CreativeEditorDocumentTransientState state;
+  state.synchronizedHeldItemKind =
+      editor.interaction.synchronizedHeldItemKind;
   state.target = std::move(editor.interaction.target);
   state.placementFeedback = std::move(editor.interaction.placementFeedback);
   state.materialBrushPivot = std::move(editor.interaction.materialBrushPivot);
@@ -181,6 +183,8 @@ takeDocumentTransientState(CreativeEditorState& editor) {
   state.logicLinks = std::move(editor.logicLinks);
   state.movingPlatformPreview = std::move(editor.movingPlatformPreview);
 
+  editor.interaction.synchronizedHeldItemKind =
+      cr::CreativeHeldItemKind::Count;
   editor.interaction.target = {};
   editor.interaction.placementFeedback = {};
   editor.interaction.materialBrushPivot = {};
@@ -205,6 +209,8 @@ takeDocumentTransientState(CreativeEditorState& editor) {
 
 void restoreDocumentTransientState(CreativeEditorState& editor,
                                    CreativeEditorDocumentTransientState state) {
+  editor.interaction.synchronizedHeldItemKind =
+      state.synchronizedHeldItemKind;
   editor.interaction.target = std::move(state.target);
   editor.interaction.placementFeedback = std::move(state.placementFeedback);
   editor.interaction.materialBrushPivot = std::move(state.materialBrushPivot);

@@ -29,6 +29,8 @@
 namespace iggy3d_creative_app {
 
 struct CreativeEditorDocumentTransientState {
+  iggy3d::creative::CreativeHeldItemKind synchronizedHeldItemKind =
+      iggy3d::creative::CreativeHeldItemKind::Count;
   CreativeEditorWorldTarget target;
   CreativeEditorPlacementFeedback placementFeedback;
   CreativeMaterialBrushPivotState materialBrushPivot;

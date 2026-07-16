@@ -968,6 +968,152 @@ bool materialBrushPresetsFollowHotbarSlots() {
          ok;
 }
 
+bool heldItemLifecyclePreservesCompatibleDraftsAndCancelsOthers() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 150U);
+  CreativeEditorState editor;
+  editor.interaction.hotbar.entries[0] = {
+      cr::CreativeHeldItemKind::TerrainPath,
+      cr::CreativeObjectKind::Unknown};
+  editor.interaction.hotbar.entries[1] = {
+      cr::CreativeHeldItemKind::TerrainProfile,
+      cr::CreativeObjectKind::Unknown};
+  editor.interaction.hotbar.entries[2] = {
+      cr::CreativeHeldItemKind::VolumeFill,
+      cr::CreativeObjectKind::Floor};
+  editor.interaction.hotbar.entries[3] = {
+      cr::CreativeHeldItemKind::VolumeHollow,
+      cr::CreativeObjectKind::Floor};
+
+  const bool initialSelectionChanged =
+      selectCreativeEditorHotbarSlot(appState, editor, 0U);
+  editor.terrain.path.pointCount = 2U;
+  editor.terrain.path.points[0].coord = {2, 3};
+  editor.terrain.path.points[1].coord = {5, 7};
+  const bool repeatedSelectionChanged =
+      selectCreativeEditorHotbarSlot(appState, editor, 0U);
+  bool ok = expect(!initialSelectionChanged && !repeatedSelectionChanged &&
+                       editor.terrain.path.pointCount == 2U &&
+                       editor.terrain.path.points[0].coord.x == 2 &&
+                       editor.terrain.path.points[1].coord.z == 7 &&
+                       editor.interaction.synchronizedHeldItemKind ==
+                           cr::CreativeHeldItemKind::TerrainPath,
+                   "reselecting one draft tool preserves its active draft");
+
+  const bool profileSelected =
+      selectCreativeEditorHotbarSlot(appState, editor, 1U);
+  ok = expect(profileSelected && editor.terrain.path.pointCount == 0U &&
+                  editor.interaction.synchronizedHeldItemKind ==
+                      cr::CreativeHeldItemKind::TerrainProfile,
+              "switching draft ownership cancels the incompatible draft") &&
+       ok;
+
+  const bool fillSelected =
+      selectCreativeEditorHotbarSlot(appState, editor, 2U);
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      editor.volume.selection, cr::CreativeVolumeCorner::First, {1, 2, 3}));
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      editor.volume.selection, cr::CreativeVolumeCorner::Second, {4, 5, 6}));
+  const bool hollowSelected =
+      selectCreativeEditorHotbarSlot(appState, editor, 3U);
+  return expect(fillSelected && hollowSelected && editor.volume.active &&
+                    cr::creativeVolumeSelectionComplete(
+                        editor.volume.selection) &&
+                    sameCell(editor.volume.selection.firstCell, {1, 2, 3}) &&
+                    sameCell(editor.volume.selection.secondCell, {4, 5, 6}) &&
+                    editor.volume.operation ==
+                        cr::CreativeVolumeOperationKind::Hollow,
+                "compatible volume tools share one selection lifecycle") &&
+         ok;
+}
+
+bool continuousGestureOwnerIsExclusive() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 151U);
+  CreativeEditorState editor;
+  cr::CreativeHotbarEntry& held =
+      editor.interaction.hotbar.entries[editor.interaction.hotbar.selectedSlot];
+
+  held = {cr::CreativeHeldItemKind::Material, cr::CreativeObjectKind::Wall};
+  bool ok = expect(creativeEditorContinuousGestureOwner(editor) ==
+                       CreativeEditorContinuousGestureOwner::Material,
+                   "ordinary material owns the material stroke");
+
+  cr::CreativeAuthoredAssetDefinition authored;
+  authored.assetId = "authored/lifecycle";
+  authored.sourceBounds = {{-0.5, 0.0, -0.5}, {0.5, 1.0, 0.5}};
+  editor.authoredAssets.definitions.push_back(authored);
+  held = {cr::CreativeHeldItemKind::Material,
+          cr::CreativeObjectKind::PrefabInstance};
+  const bool authoredEquipped = cr::setCreativeHotbarAsset(
+      held, authored.assetId, authored.sourceBounds);
+  ok = expect(authoredEquipped &&
+                  creativeEditorContinuousGestureOwner(editor) ==
+                      CreativeEditorContinuousGestureOwner::AuthoredAsset,
+              "authored assets own their dedicated stroke") &&
+       ok;
+
+  held = {cr::CreativeHeldItemKind::Material, cr::CreativeObjectKind::Wall};
+  const bool scatterEquipped = cr::setCreativeHotbarAsset(
+      held, "mesh/lifecycle", authored.sourceBounds);
+  editor.toolSettings.assetPlacementMode =
+      cr::CreativeAssetPlacementMode::Scatter;
+  ok = expect(scatterEquipped &&
+                  creativeEditorContinuousGestureOwner(editor) ==
+                      CreativeEditorContinuousGestureOwner::AssetScatter,
+              "scatter assets own their dedicated stroke") &&
+       ok;
+
+  const auto expectTerrainOwner = [&](cr::CreativeHeldItemKind kind,
+                                      CreativeEditorContinuousGestureOwner owner,
+                                      std::string_view message) {
+    held = {kind, cr::CreativeObjectKind::Unknown};
+    return expect(creativeEditorContinuousGestureOwner(editor) == owner,
+                  message);
+  };
+  ok = expectTerrainOwner(
+           cr::CreativeHeldItemKind::TerrainControl,
+           CreativeEditorContinuousGestureOwner::TerrainControl,
+           "terrain control owns one continuous gesture") &&
+       expectTerrainOwner(cr::CreativeHeldItemKind::TerrainPaint,
+                          CreativeEditorContinuousGestureOwner::TerrainPaint,
+                          "terrain paint owns one continuous gesture") &&
+       expectTerrainOwner(cr::CreativeHeldItemKind::TerrainSculpt,
+                          CreativeEditorContinuousGestureOwner::TerrainSculpt,
+                          "terrain sculpt owns one continuous gesture") &&
+       ok;
+  held = {cr::CreativeHeldItemKind::ObjectSelect,
+          cr::CreativeObjectKind::Unknown};
+  ok = expect(creativeEditorContinuousGestureOwner(editor) ==
+                  CreativeEditorContinuousGestureOwner::None,
+              "discrete tools do not claim a continuous gesture") &&
+       ok;
+
+  editor.interaction.materialStroke.repeat.active = true;
+  editor.interaction.authoredAssetStroke.repeat.active = true;
+  editor.interaction.assetScatter.repeat.active = true;
+  editor.terrain.stroke.repeat.active = true;
+  editor.terrainPaint.repeat.active = true;
+  editor.terrain.sculpt.stroke.repeat.active = true;
+  finalizeCreativeEditorContinuousGesturesExcept(
+      appState, editor, CreativeEditorContinuousGestureOwner::TerrainSculpt,
+      "test_continuous_gesture_owner");
+  ok = expect(!editor.interaction.materialStroke.repeat.active &&
+                  !editor.interaction.authoredAssetStroke.repeat.active &&
+                  !editor.interaction.assetScatter.repeat.active &&
+                  !editor.terrain.stroke.repeat.active &&
+                  !editor.terrainPaint.repeat.active &&
+                  editor.terrain.sculpt.stroke.repeat.active,
+              "the active gesture survives while every non-owner finalizes") &&
+       ok;
+
+  finalizeCreativeEditorContinuousGestures(
+      appState, editor, "test_continuous_gesture_finalize_all");
+  return expect(!editor.terrain.sculpt.stroke.repeat.active,
+                "an interruption finalizes the remaining gesture") &&
+         ok;
+}
+
 bool previewFrameUsesWorldTargetAndViewHeldTransforms() {
   CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
   setPlaceTarget(editor, 2, 1, -3);
@@ -1499,6 +1645,8 @@ bool activeVolumeSelectionRebindsToLoadedDocumentGrid() {
   static_cast<void>(replacement.setGridSettings(grid));
   const cr::CreativeFacadeDocumentInstallReceipt install =
       appState.facade.installDocument(std::move(replacement));
+  editor.interaction.synchronizedHeldItemKind =
+      cr::CreativeHeldItemKind::Count;
 
   cr::CreativeWorldActionFrame actions;
   iggy3d::RenderCameraFrame camera;
@@ -1508,6 +1656,9 @@ bool activeVolumeSelectionRebindsToLoadedDocumentGrid() {
        pickFrame, iggy3d::RenderContentViewport{0, 0, 800U, 600U}, 0U, false});
   return expect(install.accepted && install.changed,
                 "replacement document installs") &&
+         expect(editor.interaction.synchronizedHeldItemKind ==
+                    cr::CreativeHeldItemKind::VolumeFill,
+                "first replacement frame reconciles the held-item lifecycle") &&
          expect(editor.volume.selection.cellSize == 2.0 &&
                     sameVec3(editor.volume.selection.origin, grid.origin),
                 "active volume selection adopts loaded document grid") &&
@@ -4483,6 +4634,8 @@ int main() {
   ok = toolOptionsFollowTheRequestedMaterialEntry() && ok;
   ok = toolOptionsActivateSymmetryPivotCommands() && ok;
   ok = materialBrushPresetsFollowHotbarSlots() && ok;
+  ok = heldItemLifecyclePreservesCompatibleDraftsAndCancelsOthers() && ok;
+  ok = continuousGestureOwnerIsExclusive() && ok;
   ok = previewFrameUsesWorldTargetAndViewHeldTransforms() && ok;
   ok = previewHidesForEveryBlockingSurface() && ok;
   ok = quickEditHudHighlightsTheActiveSetting() && ok;

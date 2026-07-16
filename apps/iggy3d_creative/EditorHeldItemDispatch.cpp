@@ -23,50 +23,16 @@ void refreshHeldItemPreview(
   CreativeEditorState& editor = request.editor;
   const cr::CreativeHeldItemDefinition& definition =
       cr::describeCreativeHeldItem(held.kind);
-  const bool authoredAsset =
-      creativeEditorUsesAuthoredAsset(held, editor.authoredAssets);
-  const bool assetScatter =
-      creativeEditorUsesAssetScatter(held, editor.toolSettings);
-  if (!authoredAsset) {
-    finalizeCreativeAuthoredAssetStroke(
-        request.appState, editor,
-        "creative_authored_asset_non_authored_tool");
-  }
-  if (!assetScatter) {
-    finalizeCreativeAssetScatterStroke(
-        request.appState, editor,
-        "creative_asset_scatter_non_scatter_tool");
-  }
-  if (definition.frameMode != cr::CreativeHeldItemFrameMode::TerrainPaint) {
-    finalizeCreativeEditorTerrainPaintStroke(
-        request.appState, editor, "creative_terrain_paint_non_paint_tool");
-  }
-  switch (definition.frameMode) {
-    case cr::CreativeHeldItemFrameMode::MaterialStroke: {
-      finalizeCreativeTerrainStroke(request.appState, editor,
-                                    "creative_terrain_stroke_material_tool");
-      if (authoredAsset) {
-        finalizeCreativeMaterialStroke(
-            request.appState, editor,
-            "creative_material_stroke_authored_asset");
-        finalizeCreativeAssetScatterStroke(
-            request.appState, editor,
-            "creative_asset_scatter_authored_asset");
-        processCreativeAuthoredAssetFrame(
-            request.appState, editor, request.actions,
-            request.monotonicTimeNanoseconds);
-      } else if (assetScatter) {
-        finalizeCreativeMaterialStroke(
-            request.appState, editor,
-            "creative_material_stroke_asset_scatter");
-        processCreativeAssetScatterFrame(
-            request.appState, editor, request.actions,
-            request.monotonicTimeNanoseconds);
-      } else {
-        processCreativeMaterialStrokeFrame(
-            request.appState, editor, request.actions,
-            request.monotonicTimeNanoseconds, request.assetCatalog);
-      }
+  const CreativeEditorContinuousGestureOwner gestureOwner =
+      creativeEditorContinuousGestureOwner(editor);
+  finalizeCreativeEditorContinuousGesturesExcept(
+      request.appState, editor, gestureOwner,
+      "creative_continuous_gesture_owner_changed");
+  switch (gestureOwner) {
+    case CreativeEditorContinuousGestureOwner::Material:
+      processCreativeMaterialStrokeFrame(
+          request.appState, editor, request.actions,
+          request.monotonicTimeNanoseconds, request.assetCatalog);
       if (cr::creativeWorldActionPressed(request.actions,
                                          cr::CreativeWorldActionId::Pick)) {
         dispatchCreativeEditorHeldItemWorldOperation(
@@ -74,13 +40,29 @@ void refreshHeldItemPreview(
             request, held);
       }
       return true;
-    }
-    case cr::CreativeHeldItemFrameMode::TerrainControlStroke: {
-      finalizeCreativeMaterialStroke(
-          request.appState, editor,
-          "creative_material_stroke_non_material_tool");
-      finalizeCreativeTerrainSculptStroke(
-          request.appState, editor, "creative_terrain_sculpt_non_sculpt_tool");
+    case CreativeEditorContinuousGestureOwner::AuthoredAsset:
+      processCreativeAuthoredAssetFrame(
+          request.appState, editor, request.actions,
+          request.monotonicTimeNanoseconds);
+      if (cr::creativeWorldActionPressed(request.actions,
+                                         cr::CreativeWorldActionId::Pick)) {
+        dispatchCreativeEditorHeldItemWorldOperation(
+            cr::CreativeHeldItemWorldOperation::SampleTargetMaterial,
+            request, held);
+      }
+      return true;
+    case CreativeEditorContinuousGestureOwner::AssetScatter:
+      processCreativeAssetScatterFrame(
+          request.appState, editor, request.actions,
+          request.monotonicTimeNanoseconds);
+      if (cr::creativeWorldActionPressed(request.actions,
+                                         cr::CreativeWorldActionId::Pick)) {
+        dispatchCreativeEditorHeldItemWorldOperation(
+            cr::CreativeHeldItemWorldOperation::SampleTargetMaterial,
+            request, held);
+      }
+      return true;
+    case CreativeEditorContinuousGestureOwner::TerrainControl:
       processCreativeTerrainStrokeFrame(
           request.appState, editor, request.actions,
           request.monotonicTimeNanoseconds);
@@ -92,17 +74,7 @@ void refreshHeldItemPreview(
             request, held);
       }
       return true;
-    }
-    case cr::CreativeHeldItemFrameMode::TerrainPaint:
-      finalizeCreativeMaterialStroke(
-          request.appState, editor,
-          "creative_material_stroke_terrain_paint_tool");
-      finalizeCreativeTerrainStroke(
-          request.appState, editor,
-          "creative_terrain_stroke_terrain_paint_tool");
-      finalizeCreativeTerrainSculptStroke(
-          request.appState, editor,
-          "creative_terrain_sculpt_terrain_paint_tool");
+    case CreativeEditorContinuousGestureOwner::TerrainPaint:
       processCreativeEditorTerrainPaintFrame(
           request.appState, editor, request.actions,
           request.monotonicTimeNanoseconds);
@@ -113,13 +85,7 @@ void refreshHeldItemPreview(
             request.appState.facade.document(), editor));
       }
       return true;
-    case cr::CreativeHeldItemFrameMode::TerrainSculpt:
-      finalizeCreativeMaterialStroke(
-          request.appState, editor,
-          "creative_material_stroke_non_material_tool");
-      finalizeCreativeTerrainStroke(
-          request.appState, editor,
-          "creative_terrain_stroke_non_terrain_tool");
+    case CreativeEditorContinuousGestureOwner::TerrainSculpt:
       processCreativeTerrainSculptStrokeFrame(
           request.appState, editor, request.actions,
           request.monotonicTimeNanoseconds);
@@ -134,37 +100,32 @@ void refreshHeldItemPreview(
       static_cast<void>(refreshCreativeEditorTerrainSculptPreview(
           editor.terrain, request.appState.facade.document(), editor));
       return true;
-    case cr::CreativeHeldItemFrameMode::ObjectMove: {
-      finalizeCreativeMaterialStroke(
-          request.appState, editor,
-          "creative_material_stroke_non_material_tool");
-      finalizeCreativeTerrainStroke(
-          request.appState, editor,
-          "creative_terrain_stroke_non_terrain_tool");
-      finalizeCreativeTerrainSculptStroke(
-          request.appState, editor,
-          "creative_terrain_sculpt_non_sculpt_tool");
+    case CreativeEditorContinuousGestureOwner::None:
+    case CreativeEditorContinuousGestureOwner::Count:
+      break;
+  }
+
+  switch (definition.frameMode) {
+    case cr::CreativeHeldItemFrameMode::ObjectMove:
       processCreativeEditorMoveInteraction(request);
       if (cr::creativeWorldActionPressed(request.actions,
                                          cr::CreativeWorldActionId::Pick)) {
-          dispatchCreativeEditorHeldItemWorldOperation(
+        dispatchCreativeEditorHeldItemWorldOperation(
             cr::CreativeHeldItemWorldOperation::SampleTargetMaterial,
             request, held);
       }
       return true;
-    }
     case cr::CreativeHeldItemFrameMode::Standard:
+      refreshHeldItemPreview(request, held.kind);
+      return false;
+    case cr::CreativeHeldItemFrameMode::MaterialStroke:
+    case cr::CreativeHeldItemFrameMode::TerrainControlStroke:
+    case cr::CreativeHeldItemFrameMode::TerrainPaint:
+    case cr::CreativeHeldItemFrameMode::TerrainSculpt:
     case cr::CreativeHeldItemFrameMode::Count:
-      break;
+      return true;
   }
-  finalizeCreativeMaterialStroke(
-      request.appState, editor, "creative_material_stroke_non_material_tool");
-  finalizeCreativeTerrainStroke(
-      request.appState, editor, "creative_terrain_stroke_non_terrain_tool");
-  finalizeCreativeTerrainSculptStroke(
-      request.appState, editor, "creative_terrain_sculpt_non_sculpt_tool");
-  refreshHeldItemPreview(request, held.kind);
-  return false;
+  return true;
 }
 
 void refreshHeldItemPreview(

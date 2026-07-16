@@ -225,6 +225,17 @@ struct CreativeMaterialStrokeState {
   CreativeMaterialBrushGestureConfig brushConfig{};
 };
 
+enum class CreativeEditorContinuousGestureOwner : std::uint8_t {
+  None,
+  Material,
+  AuthoredAsset,
+  AssetScatter,
+  TerrainControl,
+  TerrainPaint,
+  TerrainSculpt,
+  Count,
+};
+
 [[nodiscard]] constexpr bool creativeEditorPlacementFeedbackVisible(
     const CreativeEditorPlacementFeedback& feedback,
     std::uint64_t frameIndex) noexcept {
@@ -237,6 +248,8 @@ struct CreativeMaterialStrokeState {
 struct CreativeEditorInteractionState {
   iggy3d::creative::CreativeHotbarState hotbar{};
   iggy3d::creative::CreativeWorldActionRouterState actionRouter{};
+  iggy3d::creative::CreativeHeldItemKind synchronizedHeldItemKind =
+      iggy3d::creative::CreativeHeldItemKind::Count;
   CreativeEditorWorldTarget target{};
   CreativeEditorPlacementFeedback placementFeedback{};
   CreativeMaterialBrushPivotState materialBrushPivot{};
@@ -327,6 +340,13 @@ void finalizeCreativeMaterialStroke(
 void finalizeCreativeEditorContinuousGestures(
     iggy3d::creative::CreativeAppState& appState,
     CreativeEditorState& editor,
+    std::string_view reasonCode);
+[[nodiscard]] CreativeEditorContinuousGestureOwner
+creativeEditorContinuousGestureOwner(const CreativeEditorState& editor) noexcept;
+void finalizeCreativeEditorContinuousGesturesExcept(
+    iggy3d::creative::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    CreativeEditorContinuousGestureOwner owner,
     std::string_view reasonCode);
 
 void appendCreativeEditorInteractionOverlay(

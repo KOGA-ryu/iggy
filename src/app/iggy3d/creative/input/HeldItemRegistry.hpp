@@ -93,6 +93,23 @@ enum class CreativeHeldItemPreviewMode : std::uint8_t {
   Count,
 };
 
+// Interaction modes name the document-bound draft a held item may keep alive.
+// Tools in the same mode can share a draft; changing modes cancels stale state.
+enum class CreativeHeldItemInteractionMode : std::uint8_t {
+  None,
+  Volume,
+  ObjectMove,
+  TerrainControl,
+  TerrainPaint,
+  TerrainGrade,
+  TerrainSculpt,
+  TerrainProfile,
+  TerrainPath,
+  TerrainRegion,
+  LogicLink,
+  Count,
+};
+
 enum class CreativeHeldItemTargetCellPolicy : std::uint8_t {
   PlaceCell,
   DocumentGrid,
@@ -145,6 +162,8 @@ struct CreativeHeldItemDefinition {
   CreativeHeldItemFrameMode frameMode = CreativeHeldItemFrameMode::Standard;
   CreativeHeldItemPreviewMode previewMode =
       CreativeHeldItemPreviewMode::None;
+  CreativeHeldItemInteractionMode interactionMode =
+      CreativeHeldItemInteractionMode::None;
   CreativeHeldItemTargetCellPolicy targetCellPolicy =
       CreativeHeldItemTargetCellPolicy::PlaceCell;
   CreativeHeldItemHotbarLabelMode hotbarLabelMode =

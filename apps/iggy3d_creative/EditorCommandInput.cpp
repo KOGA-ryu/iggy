@@ -25,6 +25,8 @@ namespace creative = iggy3d::creative;
 void resetCreativeEditorForDocumentReplacement(
     CreativeEditorState& editor,
     creative::CreativeDocumentId documentId) noexcept {
+  editor.interaction.synchronizedHeldItemKind =
+      creative::CreativeHeldItemKind::Count;
   creative::clearCreativeVolumeSelection(editor.volume.selection);
   editor.terrain.region.stamp.active = false;
   editor.terrain.region.stamp.preview.valid = false;
