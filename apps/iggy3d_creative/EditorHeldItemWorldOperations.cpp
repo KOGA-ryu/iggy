@@ -12,6 +12,7 @@
 #include "EditorPathEditing.hpp"
 #include "EditorPattern.hpp"
 #include "EditorState.hpp"
+#include "EditorStructuralPlacement.hpp"
 #include "EditorSurfaceExtrude.hpp"
 #include "EditorTerrain.hpp"
 #include "EditorTransform.hpp"
@@ -530,6 +531,16 @@ void dispatchHeldItemWorldOperation(
 void processMoveInteraction(
     const CreativeEditorWorldInteractionFrameRequest& request) {
   CreativeEditorState& editor = request.editor;
+  const float targetX = static_cast<float>(request.contentRegion.x) +
+                        static_cast<float>(request.contentRegion.width) * 0.5F;
+  const float targetY = static_cast<float>(request.contentRegion.y) +
+                        static_cast<float>(request.contentRegion.height) * 0.5F;
+  if (processCreativeEditorStructuralSpanEditInput(
+          request.appState, editor, request.actions,
+          request.pickFrame.structuralSpanEndpointHandles.items(), targetX,
+          targetY)) {
+    return;
+  }
   CreativeMovingPlatformPathEditState& pathEdit =
       editor.interaction.movingPlatformPathEdit;
   const bool rejectPressed = cr::creativeWorldActionPressed(
@@ -562,10 +573,6 @@ void processMoveInteraction(
   }
 
   if (pressed && pathEdit.available) {
-    const float targetX = static_cast<float>(request.contentRegion.x) +
-                          static_cast<float>(request.contentRegion.width) * 0.5F;
-    const float targetY = static_cast<float>(request.contentRegion.y) +
-                          static_cast<float>(request.contentRegion.height) * 0.5F;
     const PathPointHandlePickResult handle = pickPathPointHandleAtPixel(
         request.pickFrame.pathPointHandleHits, targetX, targetY);
     if (handle.hit && handle.objectId == pathEdit.objectId &&

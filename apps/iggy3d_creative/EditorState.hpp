@@ -37,6 +37,7 @@ struct CreativeEditorDocumentTransientState {
   CreativeMaterialBrushPivotState materialBrushPivot;
   CreativeMaterialStrokeState materialStroke;
   CreativeEditorStructuralSpanState structuralSpan;
+  CreativeEditorStructuralSpanEditState structuralSpanEdit;
   CreativeAssetScatterStrokeState assetScatter;
   CreativeAuthoredAssetStrokeState authoredAssetStroke;
   CreativeEditorConnectedFillCache connectedFill;

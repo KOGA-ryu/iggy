@@ -211,6 +211,37 @@ void attachCreativeEditorPlacementPreviews(
                          editor.transform.active;
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  if (captureMode || modalOpen) {
+    return;
+  }
+  const CreativeEditorStructuralSpanEditState& structuralEdit =
+      editor.interaction.structuralSpanEdit;
+  if (held.kind == cr::CreativeHeldItemKind::ObjectMove &&
+      structuralEdit.active) {
+    const CreativeBrushPlacementPlan editPlan =
+        creativeEditorStructuralSpanEditPreviewPlan(structuralEdit);
+    Vec3 center{};
+    Vec3 size{};
+    Vec3 rotation{};
+    if (editPlan.valid &&
+        previewPlanTransform(editPlan, editPlan.previewBounds, 1.0F,
+                             center, size, rotation)) {
+      const CreativePreviewGeometrySelection geometry =
+          previewGeometryFor(editPlan.brush, size, false);
+      if (geometry.valid) {
+        appendCreativePreview(
+            frame.creativePreview,
+            structuralEdit.preview.accepted &&
+                    structuralEdit.preview.changed
+                ? RenderCreativePreviewRole::PlacementValid
+                : RenderCreativePreviewRole::PlacementInvalid,
+            frame.camera.clipFromWorld *
+                modelMatrix(center, rotation, size),
+            false, {}, geometry.profile, geometry.proceduralSegmentCount);
+      }
+    }
+    return;
+  }
   const bool materialPlacement =
       held.kind == cr::CreativeHeldItemKind::Material;
   const bool materialBrush =
@@ -222,8 +253,7 @@ void attachCreativeEditorPlacementPreviews(
   const std::string_view previewAssetId =
       authoredAsset ? std::string_view{}
                     : cr::creativeHotbarAssetId(held);
-  if (captureMode || modalOpen ||
-      (!materialPlacement && !materialBrush) ||
+  if ((!materialPlacement && !materialBrush) ||
       held.objectKind == cr::CreativeObjectKind::Unknown) {
     return;
   }

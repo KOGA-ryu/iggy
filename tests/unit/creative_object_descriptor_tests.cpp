@@ -767,6 +767,81 @@ bool structuralSpanPlacementIsDescriptorDrivenAndBounded() {
   const cr::CreativeStructuralSpanPlan unsupported =
       cr::planCreativeStructuralSpan(
           {cr::CreativeObjectKind::Column, {}, {5.0, 0.0, 0.0}});
+  cr::CreativeTransform scaledBeamTransform = beam.transform;
+  scaledBeamTransform.scale = {2.0, 1.5, 0.5};
+  const cr::CreativeStructuralSpanInstance scaledBeam =
+      cr::resolveCreativeStructuralSpan(
+          cr::CreativeObjectKind::Beam, scaledBeamTransform,
+          beam.authoredBounds);
+  const cr::CreativeVec3 movedBeamTarget{
+      scaledBeam.endpoints[1].x + 2.0, scaledBeam.endpoints[1].y + 99.0,
+      scaledBeam.endpoints[1].z + 3.0};
+  const cr::CreativeStructuralSpanEditPlan scaledBeamEdit =
+      cr::planCreativeStructuralSpanEdit(
+          {cr::CreativeObjectKind::Beam, scaledBeamTransform,
+           beam.authoredBounds,
+           cr::CreativeStructuralSpanEndpoint::Second, movedBeamTarget});
+  const cr::CreativeBoundsMetrics sourceBeamBounds =
+      cr::measureCreativeBounds(beam.authoredBounds);
+  const cr::CreativeBoundsMetrics editedBeamBounds =
+      cr::measureCreativeBounds(scaledBeamEdit.authoredBounds);
+  const cr::CreativeStructuralSpanInstance editedBeam =
+      cr::resolveCreativeStructuralSpan(
+          cr::CreativeObjectKind::Beam, scaledBeamEdit.transform,
+          scaledBeamEdit.authoredBounds);
+  ok = expect(scaledBeam.accepted && scaledBeamEdit.accepted &&
+                  scaledBeamEdit.changed && editedBeam.accepted &&
+                  sameVec3(scaledBeamEdit.transform.scale,
+                           scaledBeamTransform.scale) &&
+                  near(editedBeamBounds.size.y, sourceBeamBounds.size.y) &&
+                  near(editedBeamBounds.size.z, sourceBeamBounds.size.z) &&
+                  nearVec3(editedBeam.endpoints[0],
+                           scaledBeam.endpoints[0]) &&
+                  near(editedBeam.endpoints[1].x, movedBeamTarget.x) &&
+                  near(editedBeam.endpoints[1].z, movedBeamTarget.z) &&
+                  near(editedBeam.endpoints[1].y,
+                       scaledBeam.endpoints[1].y),
+              "endpoint editing preserves scale cross-section fixed end and "
+              "bottom elevation") &&
+       ok;
+
+  const cr::CreativeStructuralSpanInstance bridgeInstance =
+      cr::resolveCreativeStructuralSpan(
+          cr::CreativeObjectKind::Bridge, bridge.transform,
+          bridge.authoredBounds);
+  const cr::CreativeStructuralSpanEditPlan bridgeEdit =
+      cr::planCreativeStructuralSpanEdit(
+          {cr::CreativeObjectKind::Bridge, bridge.transform,
+           bridge.authoredBounds,
+           cr::CreativeStructuralSpanEndpoint::First,
+           {bridgeInstance.endpoints[0].x - 1.0, -50.0,
+            bridgeInstance.endpoints[0].z + 2.0}});
+  cr::CreativeTransform tilted = beam.transform;
+  tilted.rotationEulerRadians.x = 0.25;
+  const cr::CreativeStructuralSpanInstance tiltedInstance =
+      cr::resolveCreativeStructuralSpan(
+          cr::CreativeObjectKind::Beam, tilted, beam.authoredBounds);
+  const cr::CreativeStructuralSpanEditPlan invalidEndpoint =
+      cr::planCreativeStructuralSpanEdit(
+          {cr::CreativeObjectKind::Beam, beam.transform,
+           beam.authoredBounds,
+           static_cast<cr::CreativeStructuralSpanEndpoint>(255U),
+           {8.0, 0.0, 0.0}});
+  ok = expect(bridgeInstance.accepted && bridgeEdit.accepted &&
+                  bridgeEdit.changed &&
+                  bridgeEdit.spanAxis ==
+                      cr::CreativeStructuralSpanAxis::LocalZ,
+              "bridge endpoint editing retains its descriptor-owned local Z "
+              "span axis") &&
+       expect(!tiltedInstance.accepted &&
+                  tiltedInstance.status ==
+                      cr::CreativeStructuralSpanStatus::UnsupportedTransform,
+              "non-planar structural transforms fail closed") &&
+       expect(!invalidEndpoint.accepted &&
+                  invalidEndpoint.status ==
+                      cr::CreativeStructuralSpanStatus::InvalidEndpoint,
+              "invalid endpoint ids fail closed") &&
+       ok;
   return expect(!degenerate.accepted &&
                     degenerate.status ==
                         cr::CreativeStructuralSpanStatus::DegenerateSpan,

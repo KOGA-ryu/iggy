@@ -702,6 +702,7 @@ int main(int argc, char** argv) {
         extent.width,
         extent.height,
         editor.interaction.movingPlatformPathEdit.objectId,
+        editor.interaction.structuralSpanEdit.objectId,
         editor.assetEdit.active ? creative::kInvalidObjectId : floorObjectId,
         editor.captureScript,
         !capturePath.empty());

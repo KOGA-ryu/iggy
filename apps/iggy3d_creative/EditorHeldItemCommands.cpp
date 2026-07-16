@@ -6,6 +6,7 @@
 #include "EditorGroup.hpp"
 #include "EditorPattern.hpp"
 #include "EditorState.hpp"
+#include "EditorStructuralPlacement.hpp"
 #include "EditorSurfaceExtrude.hpp"
 #include "EditorTerrain.hpp"
 #include "EditorVolume.hpp"
@@ -256,6 +257,10 @@ bool confirmCreativeEditorHeldItem(cr::CreativeAppState& appState,
 
 bool cancelCreativeEditorHeldItem(cr::CreativeAppState& appState,
                                   CreativeEditorState& editor) {
+  if (cancelCreativeEditorStructuralSpanEdit(
+          editor.interaction.structuralSpanEdit)) {
+    return true;
+  }
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   const cr::CreativeHeldItemDefinition& definition =

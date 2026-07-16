@@ -18,6 +18,7 @@
 #include "EditorPathEditing.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "EditorState.hpp"
+#include "EditorStructuralPlacement.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/DocumentWireframe.hpp"
 #include "app/iggy3d/creative/render/CreativeOverlayFrame.hpp"
@@ -42,6 +43,7 @@ void resetCreativeEditorOverlayFrame(CreativeEditorOverlayFrame& output) {
   output.lineMarkerEdgeCount = 0;
   output.pathPointHandleEdgeCount = 0;
   output.movingPlatformPathPreviewEdgeCount = 0;
+  output.structuralSpanEditEdgeCount = 0;
   output.ghostEdgeCount = 0;
   output.materialBrushPivotEdgeCount = 0;
   output.materialBrushGuideLineCount = 0;
@@ -759,6 +761,18 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
     }
   }
   appendCreativeEditorMovingPlatformPathPreview(request, selected, output);
+  const bool structuralEditVisible =
+      !request.captureMode &&
+      request.inputContext == creative::CreativeInputContext::EditorViewport &&
+      !editor.catalog.model.open && !editor.catalog.toolWheel.open &&
+      !editor.toolOptions.open && !editor.assetReplacement.active &&
+      !editor.transform.active;
+  if (structuralEditVisible) {
+    output.structuralSpanEditEdgeCount =
+        appendCreativeEditorStructuralSpanEditWireframe(
+            appState, editor.interaction.structuralSpanEdit,
+            std::max(0.035F, gizmoThickness), combinedWireLines);
+  }
   appendCreativeEditorAttachmentSocketMarkers(request, output);
   appendCreativeEditorPlacementFeedbackWireframe(request, output);
   appendCreativeEditorLogicLinks(request, output);

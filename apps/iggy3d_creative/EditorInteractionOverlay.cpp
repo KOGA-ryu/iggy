@@ -465,6 +465,17 @@ std::string creativeEditorHeldItemStatusLabel(
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   std::string output(cr::toString(held.kind));
   if (held.kind == cr::CreativeHeldItemKind::ObjectMove &&
+      editor.interaction.structuralSpanEdit.available) {
+    output.append(" | SPAN ENDS");
+    if (editor.interaction.structuralSpanEdit.active) {
+      output.append(
+          editor.interaction.structuralSpanEdit.selectedEndpoint ==
+                  cr::CreativeStructuralSpanEndpoint::First
+              ? " | EDIT START"
+              : " | EDIT END");
+    }
+  }
+  if (held.kind == cr::CreativeHeldItemKind::ObjectMove &&
       editor.interaction.movingPlatformPathEdit.available) {
     output.append(" | ROUTE ");
     output.append(std::to_string(

@@ -249,6 +249,8 @@ void syncCreativeEditorHeldItem(cr::CreativeAppState& appState,
           cr::CreativeHeldItemInteractionMode::ObjectMove) {
     editor.interaction.moveTargetId = cr::kInvalidObjectId;
     editor.interaction.movingPlatformPathEdit = {};
+    resetCreativeEditorStructuralSpanEdit(
+        editor.interaction.structuralSpanEdit);
   }
   if (definition.interactionMode ==
       cr::CreativeHeldItemInteractionMode::LogicLink) {
@@ -319,6 +321,8 @@ void processCreativeEditorWorldInteractionFrame(
         request.appState, editor.interaction.movingPlatformPathEdit);
   } else {
     editor.interaction.movingPlatformPathEdit = {};
+    resetCreativeEditorStructuralSpanEdit(
+        editor.interaction.structuralSpanEdit);
   }
   const bool hierarchySelectionTool =
       cr::describeCreativeHeldItem(aimedHeld.kind).hierarchySelectionTool;
@@ -378,6 +382,8 @@ void processCreativeEditorWorldInteractionFrame(
     return;
   }
   if (editor.transform.active) {
+    static_cast<void>(cancelCreativeEditorStructuralSpanEdit(
+        editor.interaction.structuralSpanEdit));
     finalizeCreativeEditorContinuousGestures(
         request.appState, editor, "creative_continuous_gesture_transform");
     const bool secondaryPressed =
@@ -445,6 +451,8 @@ void finalizeCreativeEditorContinuousGestures(
   finalizeCreativeEditorContinuousGesturesExcept(
       appState, editor, CreativeEditorContinuousGestureOwner::None,
       reasonCode);
+  static_cast<void>(cancelCreativeEditorStructuralSpanEdit(
+      editor.interaction.structuralSpanEdit));
 }
 
 CreativeEditorContinuousGestureOwner creativeEditorContinuousGestureOwner(

@@ -2005,6 +2005,178 @@ bool structuralSpanPreviewPlacementCancelAndUndoStayInParity() {
          ok;
 }
 
+bool structuralSpanEndpointEditPreviewsCommitsAndCancelsAtomically() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 125U);
+  const cr::CreativeStructuralSpanPlan sourcePlan =
+      cr::planCreativeStructuralSpan(
+          {cr::CreativeObjectKind::Beam, {0.5, 0.0, 0.5},
+           {4.5, 0.0, 0.5}});
+  cr::CreativeDocumentCreateRequest create;
+  create.kind = cr::CreativeObjectKind::Beam;
+  create.name = "Editable Beam";
+  create.transform = sourcePlan.transform;
+  create.hasTransformOverride = true;
+  create.bounds = sourcePlan.authoredBounds;
+  create.hasBoundsOverride = true;
+  const cr::CreativeDocumentCreateReceipt created =
+      appState.facade.createDocumentObject(create);
+  const std::array selectedIds{created.objectId};
+  const cr::CreativeSelectionReceipt selected =
+      appState.facade.selectTargets(selectedIds, created.objectId);
+
+  CreativeEditorState editor;
+  editor.interaction.hotbar.selectedSlot = 0U;
+  editor.interaction.hotbar.entries[0] = {
+      cr::CreativeHeldItemKind::ObjectMove,
+      cr::CreativeObjectKind::Unknown};
+  editor.frameIndex = 20U;
+  syncCreativeEditorHeldItem(appState, editor);
+  syncCreativeEditorStructuralSpanEditState(
+      appState, editor.interaction.structuralSpanEdit);
+  setPlaceTarget(editor, 7, 0, 2);
+
+  CreativeEditorPickFrame pickFrame;
+  PathPointHandleHit endpointHandle;
+  endpointHandle.objectId = created.objectId;
+  endpointHandle.pointIndex = 1U;
+  endpointHandle.aabb.minX = 396.0F;
+  endpointHandle.aabb.minY = 296.0F;
+  endpointHandle.aabb.maxX = 404.0F;
+  endpointHandle.aabb.maxY = 304.0F;
+  endpointHandle.aabb.valid = true;
+  pickFrame.structuralSpanEndpointHandles.handles[0] = endpointHandle;
+  pickFrame.structuralSpanEndpointHandles.count = 1U;
+  iggy3d::RenderCameraFrame camera;
+  const iggy3d::RenderContentViewport viewport{0, 0, 800U, 600U};
+  const cr::CreativeWorldActionFrame accept =
+      actionFrame(cr::CreativeWorldActionId::Accept, true, true, false);
+  const std::uint64_t revisionBefore =
+      appState.facade.document().revision();
+  processCreativeEditorMoveInteraction(
+      {appState, editor, accept, cr::kCreativeInputModifierNone, camera,
+       pickFrame, viewport});
+
+  const cr::CreativeObject* source =
+      appState.facade.findObject(created.objectId);
+  const cr::CreativeStructuralSpanEditPlan expected =
+      source != nullptr
+          ? cr::planCreativeStructuralSpanEdit(
+                {source->kind, source->transform, source->bounds,
+                 cr::CreativeStructuralSpanEndpoint::Second,
+                 editor.interaction.target.grid.placementAnchor})
+          : cr::CreativeStructuralSpanEditPlan{};
+  iggy3d::FrameInput previewFrame;
+  attachCreativeEditorPlacementPreviews(
+      editor, false, previewFrame, &appState.facade.document());
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> endpointLines;
+  const std::size_t endpointEdgeCount =
+      appendCreativeEditorStructuralSpanEditWireframe(
+          appState, editor.interaction.structuralSpanEdit, 0.04F,
+          endpointLines);
+  bool ok = expect(sourcePlan.accepted && created.accepted && selected.accepted,
+                   "structural endpoint fixture creates and selects one beam");
+  ok = expect(editor.interaction.structuralSpanEdit.active &&
+                  editor.interaction.structuralSpanEdit.selectedEndpoint ==
+                      cr::CreativeStructuralSpanEndpoint::Second &&
+                  expected.accepted && expected.changed &&
+                  appState.facade.document().revision() == revisionBefore &&
+                  cr::creativeUndoDepth(appState.history) == 0U,
+              "first X selects one endpoint without mutating history") &&
+       expect(previewFrame.creativePreview.itemCount == 1U &&
+                  previewFrame.creativePreview.items[0].role ==
+                      iggy3d::RenderCreativePreviewRole::PlacementValid &&
+                  endpointEdgeCount == 36U,
+              "endpoint edit renders one exact solid ghost and bounded "
+              "endpoint wireframes") &&
+       ok;
+
+  processCreativeEditorMoveInteraction(
+      {appState, editor, accept, cr::kCreativeInputModifierNone, camera,
+       pickFrame, viewport});
+  const cr::CreativeObject* edited =
+      appState.facade.findObject(created.objectId);
+  ok = expect(edited != nullptr &&
+                  sameTransform(edited->transform, expected.transform) &&
+                  sameBounds(edited->bounds, expected.authoredBounds) &&
+                  appState.facade.document().revision() == revisionBefore + 1U &&
+                  cr::creativeUndoDepth(appState.history) == 1U &&
+                  !editor.interaction.structuralSpanEdit.active &&
+                  editor.interaction.structuralSpanEdit.available,
+              "second X atomically commits transform and bounds as one undo") &&
+       expect(creativeEditorHeldItemStatusLabel(editor).find("SPAN ENDS") !=
+                  std::string::npos,
+              "Object Move status exposes structural endpoint editing") &&
+       ok;
+
+  const bool undoAccepted =
+      undoLastEdit(appState, "structural_endpoint_edit_undo");
+  const cr::CreativeObject* restored =
+      appState.facade.findObject(created.objectId);
+  static_cast<void>(appState.facade.selectTargets(selectedIds,
+                                                   created.objectId));
+  syncCreativeEditorStructuralSpanEditState(
+      appState, editor.interaction.structuralSpanEdit);
+  const std::uint64_t revisionBeforeCancel =
+      appState.facade.document().revision();
+  processCreativeEditorMoveInteraction(
+      {appState, editor, accept, cr::kCreativeInputModifierNone, camera,
+       pickFrame, viewport});
+  const cr::CreativeWorldActionFrame reject =
+      actionFrame(cr::CreativeWorldActionId::Reject, true, true, false);
+  processCreativeEditorMoveInteraction(
+      {appState, editor, reject, cr::kCreativeInputModifierNone, camera,
+       pickFrame, viewport});
+  ok = expect(undoAccepted && restored != nullptr &&
+                  sameTransform(restored->transform, sourcePlan.transform) &&
+                  sameBounds(restored->bounds, sourcePlan.authoredBounds),
+              "one undo restores both structural fields exactly") &&
+       expect(!editor.interaction.structuralSpanEdit.active &&
+                  appState.facade.document().revision() ==
+                      revisionBeforeCancel &&
+                  cr::creativeUndoDepth(appState.history) == 0U,
+              "Circle cancels endpoint editing without mutation or history") &&
+       ok;
+
+  processCreativeEditorMoveInteraction(
+      {appState, editor, accept, cr::kCreativeInputModifierNone, camera,
+       pickFrame, viewport});
+  finalizeCreativeEditorContinuousGestures(
+      appState, editor, "structural_endpoint_interrupted");
+  ok = expect(!editor.interaction.structuralSpanEdit.active &&
+                  appState.facade.document().revision() ==
+                      revisionBeforeCancel &&
+                  cr::creativeUndoDepth(appState.history) == 0U,
+              "focus and modal lifecycle finalization cancels an empty "
+              "endpoint edit") &&
+       ok;
+
+  processCreativeEditorMoveInteraction(
+      {appState, editor, accept, cr::kCreativeInputModifierNone, camera,
+       pickFrame, viewport});
+  const cr::CreativeDocumentCreateReceipt unrelated =
+      appState.facade.createDocumentObject(cr::CreativeObjectKind::Crate);
+  const std::uint64_t staleRevision = appState.facade.document().revision();
+  processCreativeEditorMoveInteraction(
+      {appState, editor, accept, cr::kCreativeInputModifierNone, camera,
+       pickFrame, viewport});
+  const cr::CreativeObject* afterStaleAttempt =
+      appState.facade.findObject(created.objectId);
+  return expect(unrelated.accepted && afterStaleAttempt != nullptr &&
+                    sameTransform(afterStaleAttempt->transform,
+                                  sourcePlan.transform) &&
+                    sameBounds(afterStaleAttempt->bounds,
+                               sourcePlan.authoredBounds) &&
+                    appState.facade.document().revision() == staleRevision &&
+                    !editor.interaction.structuralSpanEdit.active &&
+                    editor.interaction.placementFeedback.status ==
+                        CreativeEditorPlacementFeedbackStatus::Rejected &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "stale revisions reject the endpoint edit without falling "
+                "through to ordinary move") &&
+         ok;
+}
+
 bool materialBrushPaintsErasesPreviewsAndGroupsHistory() {
   cr::CreativeAppState appState;
   installHistoryDocument(appState, 110U);
@@ -4854,6 +5026,7 @@ int main() {
   ok = removalStrokeDeletesVoxelAndGroupsHistory() && ok;
   ok = gamepadAcceptPlacesAndRejectRemoves() && ok;
   ok = structuralSpanPreviewPlacementCancelAndUndoStayInParity() && ok;
+  ok = structuralSpanEndpointEditPreviewsCommitsAndCancelsAtomically() && ok;
   ok = materialBrushPaintsErasesPreviewsAndGroupsHistory() && ok;
   ok = materialBrushShellPreviewMatchesMutationAndUndo() && ok;
   ok = materialBrushCylinderAxisDrivesPreviewAndMutation() && ok;

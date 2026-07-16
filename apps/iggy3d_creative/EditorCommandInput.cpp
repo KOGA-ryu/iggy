@@ -39,6 +39,7 @@ void resetCreativeEditorForDocumentReplacement(
   resetCreativeMaterialBrushPivot(editor.interaction.materialBrushPivot,
                                   documentId);
   editor.interaction.movingPlatformPathEdit = {};
+  editor.interaction.structuralSpanEdit = {};
   editor.movingPlatformPreview = {};
   resetCreativeEditorWorldLayout(editor.worldLayout);
 }

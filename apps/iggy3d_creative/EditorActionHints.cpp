@@ -352,13 +352,21 @@ void appendViewportHints(HintSpecBuffer& buffer,
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
       break;
     case CreativeEditorActionHintProfile::ObjectMove:
-      if (editor.interaction.movingPlatformPathEdit.pointSelected) {
+      if (editor.interaction.structuralSpanEdit.active) {
+        appendHint(buffer, gamepad ? positiveAction : negativeAction,
+                   "Confirm endpoint");
+        appendHint(buffer, cr::CreativeInputActionId::RejectAction,
+                   "Cancel endpoint");
+      } else if (editor.interaction.movingPlatformPathEdit.pointSelected) {
         appendHint(buffer, gamepad ? positiveAction : negativeAction,
                    "Move point");
         appendHint(buffer, gamepad ? negativeAction : positiveAction,
                    "Cancel point");
       } else {
-        appendHint(buffer, gamepad ? positiveAction : negativeAction, "Move");
+        appendHint(buffer, gamepad ? positiveAction : negativeAction,
+                   editor.interaction.structuralSpanEdit.available
+                       ? "Move / endpoint"
+                       : "Move");
         appendHint(buffer, gamepad ? negativeAction : positiveAction,
                    gamepad ? "Cancel" : "Transform");
       }

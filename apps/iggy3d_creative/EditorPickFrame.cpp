@@ -11,6 +11,7 @@
 #include "EditorPlacement.hpp"
 #include "EditorPicking.hpp"
 #include "EditorPreviewProxies.hpp"
+#include "EditorStructuralPlacement.hpp"
 
 namespace iggy3d_creative_app {
 
@@ -22,6 +23,7 @@ CreativeEditorPickFrame buildCreativeEditorPickFrame(
     std::uint32_t drawableWidth,
     std::uint32_t drawableHeight,
     iggy3d::creative::CreativeObjectId pathHandleObjectId,
+    iggy3d::creative::CreativeObjectId structuralSpanHandleObjectId,
     iggy3d::creative::CreativeObjectId floorObjectId,
     StandaloneCaptureScript& captureScript,
     bool captureMode) {
@@ -39,6 +41,11 @@ CreativeEditorPickFrame buildCreativeEditorPickFrame(
         obj.kind == creative::CreativeObjectKind::MovingPlatform) {
       frame.pathPointHandleHits = buildPathPointHandleHits(
           obj, camera.clipFromWorld, drawableWidth, drawableHeight);
+    }
+    if (obj.id == structuralSpanHandleObjectId) {
+      frame.structuralSpanEndpointHandles =
+          buildCreativeEditorStructuralSpanEndpointHandles(
+              obj, camera.clipFromWorld, drawableWidth, drawableHeight);
     }
     if (obj.id == floorObjectId) {
       frame.haveFloorBounds = true;

@@ -830,6 +830,37 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                   beginTransform->label.view() == "Transform",
               "Move tool advertises Square transform entry") &&
        ok;
+  editor.interaction.structuralSpanEdit.available = true;
+  const cr::CreativeActionHintFrame structuralMoveTool =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* selectEndpoint =
+      findHint(structuralMoveTool, cr::CreativeInputActionId::AcceptAction);
+  ok = expect(selectEndpoint != nullptr &&
+                  selectEndpoint->label.view() == "Move / endpoint",
+              "selected structural spans expose endpoint selection on X") &&
+       ok;
+  editor.interaction.structuralSpanEdit.active = true;
+  editor.interaction.structuralSpanEdit.selectedEndpoint =
+      cr::CreativeStructuralSpanEndpoint::First;
+  const cr::CreativeActionHintFrame activeStructuralEdit =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* confirmEndpoint =
+      findHint(activeStructuralEdit,
+               cr::CreativeInputActionId::AcceptAction);
+  const cr::CreativeActionHint* cancelEndpoint =
+      findHint(activeStructuralEdit,
+               cr::CreativeInputActionId::RejectAction);
+  ok = expect(confirmEndpoint != nullptr &&
+                  confirmEndpoint->label.view() == "Confirm endpoint" &&
+                  cancelEndpoint != nullptr &&
+                  cancelEndpoint->label.view() == "Cancel endpoint",
+              "active endpoint edit names X confirm and Circle cancel") &&
+       ok;
+  editor.interaction.structuralSpanEdit = {};
   editor.interaction.movingPlatformPathEdit.available = true;
   editor.interaction.movingPlatformPathEdit.pointCount = 3U;
   const cr::CreativeActionHintFrame routeMoveTool =

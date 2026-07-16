@@ -257,6 +257,7 @@ struct CreativeEditorInteractionState {
   CreativeMaterialBrushPresetBank materialBrushPresets{};
   CreativeMaterialStrokeState materialStroke{};
   CreativeEditorStructuralSpanState structuralSpan{};
+  CreativeEditorStructuralSpanEditState structuralSpanEdit{};
   CreativeAssetScatterStrokeState assetScatter{};
   CreativeAuthoredAssetStrokeState authoredAssetStroke{};
   CreativeEditorConnectedFillCache connectedFill{};

@@ -102,6 +102,8 @@ resolveCreativeEditorGroundPoint(const iggy3d::RenderCameraFrame& camera);
 struct CreativeEditorPickFrame {
   std::vector<ObjectVisualPickBounds> objectPickCandidates;
   std::vector<PathPointHandleHit> pathPointHandleHits;
+  CreativeEditorStructuralSpanEndpointHandleFrame
+      structuralSpanEndpointHandles;
   bool haveFloorBounds = false;
   iggy3d::Vec3 floorBoxMin{};
   iggy3d::Vec3 floorBoxMax{};
@@ -140,6 +142,7 @@ struct CreativeEditorSubmitFrameRequest {
     std::uint32_t drawableWidth,
     std::uint32_t drawableHeight,
     iggy3d::creative::CreativeObjectId pathHandleObjectId,
+    iggy3d::creative::CreativeObjectId structuralSpanHandleObjectId,
     iggy3d::creative::CreativeObjectId floorObjectId,
     StandaloneCaptureScript& captureScript,
     bool captureMode);
