@@ -16,6 +16,8 @@ namespace iggy3d::creative {
 inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 2U;
 inline constexpr std::size_t kInvalidCreativeWorldLayoutIndex =
     std::numeric_limits<std::size_t>::max();
+inline constexpr std::uint16_t kDefaultCreativeWorldLayoutWallHeightCells = 3U;
+inline constexpr double kDefaultCreativeWorldLayoutWallThicknessCells = 0.25;
 
 // Layout coordinates are grid-line coordinates. Rect maximums are exclusive,
 // so {0, 0}->{10, 8} describes a ten-by-eight-cell floor without half-cell
@@ -43,6 +45,8 @@ struct CreativeWorldLayoutBox {
   std::string name;
   CreativeWorldLayoutRect footprint;
   std::int32_t baseLayer = 0;
+  // Horizontal structural surfaces treat this as a count of descriptor-sized
+  // vertical layers. Other box kinds retain literal grid-cell height.
   std::uint16_t heightCells = 1U;
 };
 
@@ -54,8 +58,10 @@ struct CreativeWorldLayoutRoom {
   // Floor-cell elevation. The generated slab is thin and centered in this
   // cell; room walls start at that center plane to avoid a visible seam.
   std::int32_t baseLayer = 0;
-  std::uint16_t wallHeightCells = 3U;
-  double wallThicknessCells = 0.25;
+  std::uint16_t wallHeightCells =
+      kDefaultCreativeWorldLayoutWallHeightCells;
+  double wallThicknessCells =
+      kDefaultCreativeWorldLayoutWallThicknessCells;
   std::uint16_t floorThicknessCells = 1U;
 };
 
@@ -80,8 +86,8 @@ struct CreativeWorldLayoutWall {
   CreativeTerrainCoord2 start{};
   CreativeTerrainCoord2 end{};
   double baseLayer = 0.0;
-  std::uint16_t heightCells = 3U;
-  double thicknessCells = 0.25;
+  std::uint16_t heightCells = kDefaultCreativeWorldLayoutWallHeightCells;
+  double thicknessCells = kDefaultCreativeWorldLayoutWallThicknessCells;
 };
 
 struct CreativeWorldLayoutOpening {

@@ -217,6 +217,10 @@ bool placementPlanMatchesEveryCreateRequest() {
   const CreativeBrushPlacementPlan overflow = planBrushPlacement(
       cr::CreativeObjectKind::Wall,
       {std::numeric_limits<float>::max(), 0.0F, 0.0F});
+  const CreativeBrushPlacementPlan wall =
+      planBrushPlacement(cr::CreativeObjectKind::Wall, {});
+  const cr::CreativeBoundsMetrics wallBounds =
+      cr::measureCreativeBounds(wall.authoredBounds);
   const cr::CreativeDocumentCreateRequest invalidRequest =
       buildBrushCreateRequest(cr::CreativeObjectKind::Unknown, {}, 1U);
   return expect(supportedCount > 0U && sawPoint && sawLine && sawPath,
@@ -235,6 +239,11 @@ bool placementPlanMatchesEveryCreateRequest() {
                     overflow.status ==
                         CreativeBrushPlacementPlanStatus::InvalidGeometry,
                 "precision-overflow placement geometry is rejected") &&
+         expect(wall.valid && wallBounds.valid &&
+                    sameVec3(wallBounds.size,
+                             cr::defaultCreativeObjectSize(
+                                 cr::CreativeObjectKind::Wall)),
+                "wall placement consumes descriptor geometry without rewrite") &&
          expect(!invalidRequest.hasTransformOverride &&
                     !invalidRequest.hasBoundsOverride &&
                     !invalidRequest.hasPathOverride,

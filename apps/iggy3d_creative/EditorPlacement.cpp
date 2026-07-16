@@ -226,10 +226,6 @@ bool validBrushFootprint(BrushFootprint footprint) {
          positiveFinite(footprint.sizeZ);
 }
 
-bool isStandingSurfaceFootprint(BrushFootprint footprint) {
-  return footprint.height > std::min(footprint.sizeX, footprint.sizeZ);
-}
-
 bool descriptorSupportsBoxPlacement(
     const iggy3d::creative::CreativeObjectDescriptor& descriptor) {
   if (descriptor.kind == iggy3d::creative::CreativeObjectKind::Unknown ||
@@ -337,17 +333,6 @@ BrushFootprint brushFootprintForDescriptor(
   if (!validBrushFootprint(footprint)) {
     return {};
   }
-
-  if (descriptor.shapeKind == iggy3d::creative::CreativeObjectShapeKind::Surface &&
-      descriptor.occupancyKind ==
-          iggy3d::creative::CreativeSpatialOccupancyKind::Structural &&
-      isStandingSurfaceFootprint(footprint)) {
-    // Preserve the current wall brush proof while deriving the decision from
-    // descriptor shape/occupancy. A future descriptor placement-footprint column
-    // can delete these standalone editing constants.
-    return {std::max(footprint.sizeX, footprint.sizeZ), 2.5F, 0.25F};
-  }
-
   return footprint;
 }
 

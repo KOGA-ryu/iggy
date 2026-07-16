@@ -23,6 +23,11 @@ constexpr double kDitchHouseFloorThicknessMeters = 0.25;
 constexpr double kFloorTopMeters =
     kTerrainTopMeters + kDitchHouseFloorThicknessMeters;
 constexpr double kWallTopMeters = 6.25;
+// This authored lightweight cap intentionally overrides the one-meter default
+// roof layer used by the general layout compiler.
+constexpr double kDitchHouseRoofThicknessMeters = 0.30;
+constexpr double kRoofTopMeters =
+    kWallTopMeters + kDitchHouseRoofThicknessMeters;
 constexpr double kWallHalfThickness = 0.125;
 constexpr double kInteriorWallHalfThickness = 0.1;
 
@@ -203,19 +208,19 @@ std::vector<CreativeDocumentCreateRequest> ditchHouseObjects() {
       {CreativeObjectKind::Roof,
        "roof.living",
        "Living Roof",
-       {{6.0, kWallTopMeters, 0.0}, {16.0, 6.55, 10.0}}},
+       {{6.0, kWallTopMeters, 0.0}, {16.0, kRoofTopMeters, 10.0}}},
       {CreativeObjectKind::Roof,
        "roof.kitchen",
        "Kitchen Roof",
-       {{16.0, kWallTopMeters, 0.0}, {26.0, 6.55, 10.0}}},
+       {{16.0, kWallTopMeters, 0.0}, {26.0, kRoofTopMeters, 10.0}}},
       {CreativeObjectKind::Roof,
        "roof.workshop",
        "Workshop Roof",
-       {{6.0, kWallTopMeters, -10.0}, {16.0, 6.55, 0.0}}},
+       {{6.0, kWallTopMeters, -10.0}, {16.0, kRoofTopMeters, 0.0}}},
       {CreativeObjectKind::Roof,
        "roof.bedroom",
        "Bedroom Roof",
-       {{16.0, kWallTopMeters, -10.0}, {26.0, 6.55, 0.0}}},
+       {{16.0, kWallTopMeters, -10.0}, {26.0, kRoofTopMeters, 0.0}}},
   };
 
   const double exteriorThickness = kWallHalfThickness * 2.0;

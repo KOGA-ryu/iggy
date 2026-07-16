@@ -108,6 +108,9 @@ bool defaultRoomBuildsFiveShellRequests() {
   }
 
   return expect(result.receipt.accepted, "shell accepted") &&
+         expect(near(request.wallThickness,
+                     cr::defaultCreativeWallGeometry().thicknessMeters),
+                "room shell defaults inherit descriptor wall thickness") &&
          expect(result.receipt.status ==
                     cr::CreativeRoomShellStatus::Generated,
                 "shell status") &&

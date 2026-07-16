@@ -123,7 +123,6 @@ struct CreativeBrushPlacementAdmission {
 [[nodiscard]] BrushFootprint descriptorBoundsFootprint(
     const iggy3d::creative::CreativeObjectDescriptor& descriptor);
 [[nodiscard]] bool validBrushFootprint(BrushFootprint footprint);
-[[nodiscard]] bool isStandingSurfaceFootprint(BrushFootprint footprint);
 
 [[nodiscard]] bool descriptorSupportsBoxPlacement(
     const iggy3d::creative::CreativeObjectDescriptor& descriptor);

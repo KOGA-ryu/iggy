@@ -528,11 +528,37 @@ bool representativeDescriptorsPinShapeFacts() {
                                "enemy spawn shape descriptor");
 }
 
-bool descriptorOwnsCanonicalFloorThickness() {
+bool descriptorOwnsCanonicalStructuralDimensions() {
+  const cr::CreativeVec3 wallSize =
+      cr::defaultCreativeObjectSize(cr::CreativeObjectKind::Wall);
   const cr::CreativeVec3 floorSize =
       cr::defaultCreativeObjectSize(cr::CreativeObjectKind::Floor);
-  return expect(sameVec3(floorSize, {4.0, 0.05, 4.0}),
-                "floor descriptor owns canonical dimensions");
+  const cr::CreativeVec3 ceilingSize =
+      cr::defaultCreativeObjectSize(cr::CreativeObjectKind::Ceiling);
+  const cr::CreativeVec3 roofSize =
+      cr::defaultCreativeObjectSize(cr::CreativeObjectKind::Roof);
+  const cr::CreativeWallGeometryDefaults wall =
+      cr::defaultCreativeWallGeometry();
+  return expect(sameVec3(wallSize, {4.0, 3.0, 0.25}),
+                "wall descriptor owns canonical dimensions") &&
+         expect(sameVec3(floorSize, {4.0, 0.05, 4.0}),
+                "floor descriptor owns canonical dimensions") &&
+         expect(sameVec3(ceilingSize, {4.0, 0.25, 4.0}),
+                "ceiling descriptor owns canonical dimensions") &&
+         expect(sameVec3(roofSize, {5.0, 1.0, 5.0}),
+                "roof descriptor owns canonical dimensions") &&
+         expect(wall.lengthMeters == 4.0 && wall.heightMeters == 3.0 &&
+                    wall.thicknessMeters == 0.25,
+                "wall semantic dimensions derive from descriptor axes") &&
+         expect(cr::defaultCreativeStructuralLayerThicknessMeters(
+                    cr::CreativeObjectKind::Floor) == 0.05 &&
+                    cr::defaultCreativeStructuralLayerThicknessMeters(
+                        cr::CreativeObjectKind::Ceiling) == 0.25 &&
+                    cr::defaultCreativeStructuralLayerThicknessMeters(
+                        cr::CreativeObjectKind::Roof) == 1.0 &&
+                    cr::defaultCreativeStructuralLayerThicknessMeters(
+                        cr::CreativeObjectKind::Wall) == 0.0,
+                "horizontal layer thickness is descriptor-owned");
 }
 
 bool representativeDescriptorsPinRuntimeAnchorSemantics() {
@@ -1168,7 +1194,7 @@ int main() {
                   roomDescriptorPinsShapeBearingProjectionContract() &&
                   unknownDescriptorRemainsInvalidAndNonProjectable() &&
                   representativeDescriptorsPinShapeFacts() &&
-                  descriptorOwnsCanonicalFloorThickness() &&
+                  descriptorOwnsCanonicalStructuralDimensions() &&
                   representativeDescriptorsPinRuntimeAnchorSemantics() &&
                   representativeDescriptorsPinCapabilityFacts() &&
                   representativeDescriptorsPinAuthoringBrushPaletteVisibility() &&

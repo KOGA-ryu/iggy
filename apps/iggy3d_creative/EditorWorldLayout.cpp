@@ -384,8 +384,6 @@ CreativeEditorWorldLayoutEditReceipt addWallPoint(
   wall.start = state.anchor;
   wall.end = point;
   wall.baseLayer = 0;
-  wall.heightCells = 3U;
-  wall.thicknessCells = 0.25;
   state.source.walls.push_back(std::move(wall));
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Wall,
                      state.source.walls.size() - 1U};

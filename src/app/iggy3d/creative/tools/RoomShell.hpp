@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/iggy3d/creative/document/Document.hpp"
+#include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 
 #include <cstdint>
 #include <string>
@@ -27,7 +28,7 @@ enum class CreativeRoomShellStatus : std::uint8_t {
 struct CreativeRoomShellBuildRequest {
   const CreativeDocument* document = nullptr;
   CreativeObjectId roomObjectId = kInvalidObjectId;
-  double wallThickness = 0.25;
+  double wallThickness = defaultCreativeWallGeometry().thicknessMeters;
 };
 
 struct CreativeRoomShellBuildReceipt {

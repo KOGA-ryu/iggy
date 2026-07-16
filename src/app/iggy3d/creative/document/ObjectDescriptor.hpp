@@ -239,6 +239,12 @@ struct CreativeObjectDefaults {
     bool locked{false};
 };
 
+struct CreativeWallGeometryDefaults {
+    double lengthMeters{0.0};
+    double heightMeters{0.0};
+    double thicknessMeters{0.0};
+};
+
 struct CreativeObjectDescriptor {
     CreativeObjectKind kind{CreativeObjectKind::Unknown};
     CreativeObjectCategory category{CreativeObjectCategory::Unknown};
@@ -284,6 +290,9 @@ struct CreativeObjectDescriptor {
 [[nodiscard]] CreativeObjectShapeKind shapeKindForObject(CreativeObjectKind kind) noexcept;
 [[nodiscard]] const CreativeObjectDescriptor& describeObject(CreativeObjectKind kind) noexcept;
 [[nodiscard]] CreativeVec3 defaultCreativeObjectSize(
+    CreativeObjectKind kind) noexcept;
+[[nodiscard]] CreativeWallGeometryDefaults defaultCreativeWallGeometry() noexcept;
+[[nodiscard]] double defaultCreativeStructuralLayerThicknessMeters(
     CreativeObjectKind kind) noexcept;
 [[nodiscard]] std::span<const CreativeObjectDescriptor> allObjectDescriptors() noexcept;
 

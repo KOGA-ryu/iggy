@@ -9,6 +9,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <iterator>
+#include <string>
+#include <string_view>
 
 namespace cr = iggy3d::creative;
 
@@ -27,6 +29,50 @@ bool near(double lhs, double rhs) {
 
 bool nearFloat(float lhs, float rhs) {
   return std::abs(lhs - rhs) <= 1.0e-5F;
+}
+
+const cr::CreativeObject* findKind(const cr::CreativeDocument& document,
+                                   cr::CreativeObjectKind kind) {
+  const auto found = std::find_if(
+      document.objects().begin(), document.objects().end(),
+      [kind](const cr::CreativeObject& object) { return object.kind == kind; });
+  return found == document.objects().end() ? nullptr : &*found;
+}
+
+std::string stableObjectId(cr::CreativeObjectId objectId) {
+  return "creative_object_" + std::to_string(objectId);
+}
+
+const iggy3d::RoomStaticMeshAsset* findMesh(
+    const iggy3d::RoomAsset& room, cr::CreativeObjectId objectId) {
+  const std::string id = stableObjectId(objectId);
+  const auto found = std::find_if(
+      room.staticMeshes.begin(), room.staticMeshes.end(),
+      [&id](const iggy3d::RoomStaticMeshAsset& mesh) { return mesh.id == id; });
+  return found == room.staticMeshes.end() ? nullptr : &*found;
+}
+
+const iggy3d::PhysicsAabbCollider* findCollider(
+    const iggy3d::PhysicsSpatialSurfaceColliderBakeResult& physics,
+    std::string_view surfaceId) {
+  const auto found = std::find(physics.sourceSurfaceIds.begin(),
+                               physics.sourceSurfaceIds.end(), surfaceId);
+  if (found == physics.sourceSurfaceIds.end()) {
+    return nullptr;
+  }
+  const std::size_t index = static_cast<std::size_t>(
+      std::distance(physics.sourceSurfaceIds.begin(), found));
+  return index < physics.colliders.size() ? &physics.colliders[index] : nullptr;
+}
+
+bool colliderMatchesBounds(const iggy3d::PhysicsAabbCollider& collider,
+                           cr::CreativeBounds bounds) {
+  return nearFloat(collider.bounds.min.x, static_cast<float>(bounds.min.x)) &&
+         nearFloat(collider.bounds.min.y, static_cast<float>(bounds.min.y)) &&
+         nearFloat(collider.bounds.min.z, static_cast<float>(bounds.min.z)) &&
+         nearFloat(collider.bounds.max.x, static_cast<float>(bounds.max.x)) &&
+         nearFloat(collider.bounds.max.y, static_cast<float>(bounds.max.y)) &&
+         nearFloat(collider.bounds.max.z, static_cast<float>(bounds.max.z));
 }
 
 cr::CreativeWorldLayout adjacentRooms() {
@@ -132,16 +178,10 @@ bool roomTopologyCompilesThroughExistingBuildingRecipe() {
       cr::buildCreativeWorldLayoutPlan(document, adjacentRooms());
   const cr::CreativeWorldLayoutPreviewResult preview =
       cr::previewCreativeWorldLayoutPlan(document, compiled.plan);
-  const cr::CreativeObject* floor = nullptr;
-  const cr::CreativeObject* wall = nullptr;
-  for (const cr::CreativeObject& object : preview.document.objects()) {
-    if (floor == nullptr && object.kind == cr::CreativeObjectKind::Floor) {
-      floor = &object;
-    }
-    if (wall == nullptr && object.kind == cr::CreativeObjectKind::Wall) {
-      wall = &object;
-    }
-  }
+  const cr::CreativeObject* floor =
+      findKind(preview.document, cr::CreativeObjectKind::Floor);
+  const cr::CreativeObject* wall =
+      findKind(preview.document, cr::CreativeObjectKind::Wall);
   cr::CreativeRoomBakeRequest bakeRequest;
   bakeRequest.document = &preview.document;
   bakeRequest.validateReachability = false;
@@ -156,6 +196,13 @@ bool roomTopologyCompilesThroughExistingBuildingRecipe() {
       iggy3d::buildSpatialSurfaceSet(baked.room);
   const iggy3d::PhysicsSpatialSurfaceColliderBakeResult physics =
       iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces({&surfaces, {}});
+  const cr::CreativeTransformedBounds wallGeometry =
+      wall == nullptr ? cr::CreativeTransformedBounds{}
+                      : cr::resolveCreativeObjectBounds(*wall);
+  const iggy3d::PhysicsAabbCollider* wallCollider =
+      wall == nullptr
+          ? nullptr
+          : findCollider(physics, stableObjectId(wall->id) + "_actor_blocker");
   std::size_t floorCollider = physics.sourceSurfaceIds.size();
   if (bakedFloor != baked.room.spatialSurfaces.end()) {
     const auto source =
@@ -174,6 +221,12 @@ bool roomTopologyCompilesThroughExistingBuildingRecipe() {
                 "materialized room floor uses the thin vertical scale") &&
          expect(wall != nullptr && near(wall->transform.position.y, 2.0),
                 "three-cell room wall is centered at y=2.0") &&
+         expect(wallGeometry.valid &&
+                    near(wallGeometry.size.y,
+                         cr::kDefaultCreativeWorldLayoutWallHeightCells) &&
+                    near(std::min(wallGeometry.size.x, wallGeometry.size.z),
+                         cr::kDefaultCreativeWorldLayoutWallThicknessCells),
+                "room wall resolves from the cell-space wall policy") &&
          expect(baked.receipt.accepted &&
                     bakedFloor != baked.room.spatialSurfaces.end() &&
                     near(bakedFloor->collisionThicknessMeters, 0.05),
@@ -183,7 +236,77 @@ bool roomTopologyCompilesThroughExistingBuildingRecipe() {
                         physics.colliders[floorCollider].bounds.max.y -
                             physics.colliders[floorCollider].bounds.min.y,
                         0.05F),
-                "physics collider consumes room-bake floor thickness");
+                "physics collider consumes room-bake floor thickness") &&
+         expect(wallCollider != nullptr &&
+                    colliderMatchesBounds(*wallCollider,
+                                          wallGeometry.worldBounds),
+                "wall render and collision consume identical resolved bounds");
+}
+
+bool horizontalStructuralLayersUseDescriptorThickness() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Layer Layout");
+  static_cast<void>(document.assignId(9202U));
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "structural_layers";
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "layers";
+  building.name = "Structural Layers";
+  layout.buildings.push_back(building);
+  layout.boxes = {
+      {0U, cr::CreativeObjectKind::Floor, "floor", "Floor",
+       {{0, 0}, {2, 2}}, 0, 1U},
+      {0U, cr::CreativeObjectKind::Ceiling, "ceiling", "Ceiling",
+       {{3, 0}, {5, 2}}, 3, 1U},
+      {0U, cr::CreativeObjectKind::Roof, "roof", "Roof",
+       {{6, 0}, {8, 2}}, 4, 1U},
+  };
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, layout);
+  const cr::CreativeWorldLayoutPreviewResult preview =
+      cr::previewCreativeWorldLayoutPlan(document, compiled.plan);
+  const cr::CreativeObject* floor =
+      findKind(preview.document, cr::CreativeObjectKind::Floor);
+  const cr::CreativeObject* ceiling =
+      findKind(preview.document, cr::CreativeObjectKind::Ceiling);
+  const cr::CreativeObject* roof =
+      findKind(preview.document, cr::CreativeObjectKind::Roof);
+
+  cr::CreativeRoomBakeRequest request;
+  request.document = &preview.document;
+  request.validateReachability = false;
+  const cr::CreativeRoomBakeResult baked =
+      cr::buildRoomAssetFromCreativeDocument(request);
+  const iggy3d::SpatialSurfaceSet surfaces =
+      iggy3d::buildSpatialSurfaceSet(baked.room);
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult physics =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces({&surfaces, {}});
+
+  bool parity = compiled.receipt.accepted && preview.accepted &&
+                baked.receipt.accepted && physics.ok;
+  for (const cr::CreativeObject* object : {floor, ceiling, roof}) {
+    if (object == nullptr) {
+      parity = false;
+      continue;
+    }
+    const cr::CreativeTransformedBounds geometry =
+        cr::resolveCreativeObjectBounds(*object);
+    const iggy3d::RoomStaticMeshAsset* mesh = findMesh(baked.room, object->id);
+    const iggy3d::PhysicsAabbCollider* collider = findCollider(
+        physics, stableObjectId(object->id) + "_walkable");
+    parity = parity && geometry.valid && mesh != nullptr && collider != nullptr &&
+             near(geometry.size.y,
+                  cr::defaultCreativeStructuralLayerThicknessMeters(
+                      object->kind)) &&
+             nearFloat(mesh->sizeMeters.x,
+                       static_cast<float>(geometry.size.x)) &&
+             nearFloat(mesh->sizeMeters.y,
+                       static_cast<float>(geometry.size.y)) &&
+             nearFloat(mesh->sizeMeters.z,
+                       static_cast<float>(geometry.size.z)) &&
+             colliderMatchesBounds(*collider, geometry.worldBounds);
+  }
+  return expect(parity,
+                "floor ceiling and roof share descriptor-to-render-to-collision geometry");
 }
 
 }  // namespace
@@ -191,6 +314,7 @@ bool roomTopologyCompilesThroughExistingBuildingRecipe() {
 int main() {
   const bool ok = adjacentRoomsShareOneCanonicalWall() &&
                   invalidTopologyFailsClosed() &&
-                  roomTopologyCompilesThroughExistingBuildingRecipe();
+                  roomTopologyCompilesThroughExistingBuildingRecipe() &&
+                  horizontalStructuralLayersUseDescriptorThickness();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

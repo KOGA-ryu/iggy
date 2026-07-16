@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/recipes/CreativeRecipe.hpp"
 
 #include <cstdint>
@@ -80,8 +81,8 @@ struct CreativeBuildingWallSpec {
   std::string name;
   CreativeVec3 start;
   CreativeVec3 end;
-  double heightMeters = 3.0;
-  double thicknessMeters = 0.25;
+  double heightMeters = defaultCreativeWallGeometry().heightMeters;
+  double thicknessMeters = defaultCreativeWallGeometry().thicknessMeters;
   std::vector<CreativeBuildingOpeningSpec> openings;
 
   // Optional product-facing names for each full-height span, in start-to-end

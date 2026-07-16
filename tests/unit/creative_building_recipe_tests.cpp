@@ -67,8 +67,9 @@ cr::CreativeBuildingRecipeRequest representativeRoom() {
 }
 
 bool roomRecipeProducesDeterministicRealOpenings() {
+  const cr::CreativeBuildingRecipeRequest request = representativeRoom();
   const cr::CreativeBuildingRecipeResult result =
-      cr::buildCreativeBuildingRecipe(representativeRoom());
+      cr::buildCreativeBuildingRecipe(request);
   const cr::CreativeRecipeMaterializeResult materialized =
       cr::materializeCreativeRecipe(result.plan, 100U);
   const cr::CreativeRecipeObjectPlan* door =
@@ -86,7 +87,13 @@ bool roomRecipeProducesDeterministicRealOpenings() {
     allChildrenUseRoot &= materialized.createRequests[index].parentId == 100U;
   }
 
-  return expect(result.receipt.accepted, "building recipe accepted") &&
+  const cr::CreativeWallGeometryDefaults wallDefaults =
+      cr::defaultCreativeWallGeometry();
+  return expect(request.walls[0].heightMeters == wallDefaults.heightMeters &&
+                    request.walls[0].thicknessMeters ==
+                        wallDefaults.thicknessMeters,
+                "building wall defaults inherit descriptor geometry") &&
+         expect(result.receipt.accepted, "building recipe accepted") &&
          expect(result.receipt.status == cr::CreativeBuildingRecipeStatus::Ready,
                 "building recipe ready") &&
          expect(result.receipt.rootObjectCount == 1U &&

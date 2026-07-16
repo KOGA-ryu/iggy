@@ -443,11 +443,11 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
       return result;
     }
     CreativeBuildingBoxSpec box{symbol.kind, key, symbol.name, bounds};
-    if (symbol.kind == CreativeObjectKind::Floor) {
+    const double layerThickness =
+        defaultCreativeStructuralLayerThicknessMeters(symbol.kind);
+    if (layerThickness > 0.0) {
       const double authoredHeight = bounds.max.y - bounds.min.y;
-      const double targetHeight =
-          defaultCreativeObjectSize(CreativeObjectKind::Floor).y *
-          symbol.heightCells;
+      const double targetHeight = layerThickness * symbol.heightCells;
       box.scale.y = targetHeight / authoredHeight;
     }
     buildings[symbol.buildingIndex].boxes.push_back(std::move(box));

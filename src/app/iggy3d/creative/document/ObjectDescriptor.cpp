@@ -261,7 +261,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         "Wall",
         "vertical structural surface",
         structuralCreationDirtyFlags(),
-        boxDefaults(1.0, 3.0, 4.0),
+        boxDefaults(4.0, 3.0, 0.25),
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
         CreativePlacementOrientationPolicy::DescriptorDefault,
@@ -2021,6 +2021,23 @@ CreativeVec3 defaultCreativeObjectSize(CreativeObjectKind kind) noexcept {
     return {bounds.max.x - bounds.min.x,
             bounds.max.y - bounds.min.y,
             bounds.max.z - bounds.min.z};
+}
+
+CreativeWallGeometryDefaults defaultCreativeWallGeometry() noexcept {
+    const CreativeVec3 size = defaultCreativeObjectSize(CreativeObjectKind::Wall);
+    return {std::max(size.x, size.z), size.y, std::min(size.x, size.z)};
+}
+
+double defaultCreativeStructuralLayerThicknessMeters(
+    CreativeObjectKind kind) noexcept {
+    switch (kind) {
+        case CreativeObjectKind::Floor:
+        case CreativeObjectKind::Ceiling:
+        case CreativeObjectKind::Roof:
+            return defaultCreativeObjectSize(kind).y;
+        default:
+            return 0.0;
+    }
 }
 
 std::span<const CreativeObjectDescriptor> allObjectDescriptors() noexcept {
