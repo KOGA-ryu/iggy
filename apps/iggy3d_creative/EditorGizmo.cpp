@@ -110,6 +110,7 @@ cr::CreativeFacadeToolDispatchReceipt dispatchMoveReleaseWithUndo(
 
 CreativeEditorGizmoFrame buildCreativeEditorGizmoFrame(
     const CreativeEditorSelectionFrame& selection,
+    const CreativeMovingPlatformPathEditState& pathEdit,
     const iggy3d::RenderCameraFrame& camera,
     std::uint32_t drawableWidth,
     std::uint32_t drawableHeight,
@@ -118,6 +119,14 @@ CreativeEditorGizmoFrame buildCreativeEditorGizmoFrame(
   frame.center = {(selection.boxMin.x + selection.boxMax.x) * 0.5F,
                   (selection.boxMin.y + selection.boxMax.y) * 0.5F,
                   (selection.boxMin.z + selection.boxMax.z) * 0.5F};
+  if (pathEdit.pointSelected && selection.selected != nullptr &&
+      pathEdit.objectId == selection.selected->id &&
+      pathEdit.selectedPointIndex < selection.selected->pathPoints.size()) {
+    const creative::CreativeVec3 point =
+        selection.selected->pathPoints[pathEdit.selectedPointIndex].position;
+    frame.center = {static_cast<float>(point.x), static_cast<float>(point.y),
+                    static_cast<float>(point.z)};
+  }
   frame.shafts[0] = {GizmoAxis::X,
                      {frame.center.x + axisLengthMeters, frame.center.y,
                       frame.center.z},

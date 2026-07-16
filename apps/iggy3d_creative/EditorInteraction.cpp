@@ -344,7 +344,8 @@ void processCreativeEditorWorldInteractionFrame(
             request.appState, editor.interaction.movingPlatformPathEdit,
             editor.interaction.target.grid.valid,
             editor.interaction.target.grid.placementAnchor,
-            "creative_platform_path_quick_edit");
+            "creative_platform_path_quick_edit",
+            editor.toolSettings.moveConstraint);
     setCreativeEditorPlacementFeedback(
         editor.interaction,
         receipt.accepted ? CreativeEditorPlacementFeedbackStatus::Placed

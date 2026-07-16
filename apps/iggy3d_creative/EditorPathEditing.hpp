@@ -3,11 +3,13 @@
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
+#include "app/iggy3d/creative/tools/Tools.hpp"
 
 #include "EditorEdits.hpp"
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <span>
 #include <string_view>
 #include <vector>
@@ -19,6 +21,8 @@ enum class CreativeMovingPlatformPathEditCommand : std::uint8_t {
   None,
   AppendAtTarget,
   RemoveLast,
+  RemoveSelected,
+  MoveSelectedToTarget,
   Count,
 };
 
@@ -29,6 +33,7 @@ enum class CreativeMovingPlatformPathEditStatus : std::uint8_t {
   InvalidSelection,
   InvalidPath,
   InvalidTarget,
+  InvalidPointIndex,
   DuplicateTarget,
   MinimumPointCount,
   CapacityReached,
@@ -69,7 +74,9 @@ struct CreativeMovingPlatformPathEditState {
       CreativeMovingPlatformPathEditStatus::Idle;
   std::string_view reasonCode = "creative_platform_path_edit_idle";
   std::uint8_t pointCount = 0U;
+  std::uint8_t selectedPointIndex = 0U;
   bool available = false;
+  bool pointSelected = false;
 };
 
 struct CreativeMovingPlatformPathTargetPlan {
@@ -85,6 +92,23 @@ struct CreativeMovingPlatformPathTargetPlan {
   cr::CreativeVec3 targetPoint{};
 };
 
+struct CreativeMovingPlatformPathPointTargetPlan {
+  bool visible = false;
+  bool moveAllowed = false;
+  bool segmentVisible = false;
+  CreativeMovingPlatformPathEditStatus status =
+      CreativeMovingPlatformPathEditStatus::InvalidTarget;
+  std::string_view reasonCode =
+      "creative_platform_path_point_target_unavailable";
+  cr::CreativeObjectId objectId = cr::kInvalidObjectId;
+  std::size_t pointIndex = 0U;
+  cr::CreativeVec3 fromPoint{};
+  cr::CreativeVec3 targetPoint{};
+};
+
+inline constexpr std::size_t kInvalidCreativeMovingPlatformPathPointIndex =
+    std::numeric_limits<std::size_t>::max();
+
 // Per-frame admission is allocation-free and O(path points), bounded by the
 // moving-platform path capacity.
 [[nodiscard]] CreativeMovingPlatformPathTargetPlan
@@ -93,14 +117,36 @@ planCreativeMovingPlatformPathTarget(
     bool targetAvailable,
     cr::CreativeVec3 placementAnchor) noexcept;
 
+// Per-frame point relocation admission is allocation-free and O(path points),
+// bounded by the moving-platform path capacity.
+[[nodiscard]] CreativeMovingPlatformPathPointTargetPlan
+planCreativeMovingPlatformPathPointTarget(
+    const cr::CreativeObject* object,
+    std::size_t pointIndex,
+    bool targetAvailable,
+    cr::CreativeVec3 placementAnchor,
+    cr::CreativeMoveConstraint constraint) noexcept;
+
 [[nodiscard]] CreativeMovingPlatformPathEditPlan
 planCreativeMovingPlatformPathEdit(
     std::span<const cr::CreativePathPoint> currentPath,
     CreativeMovingPlatformPathEditCommand command,
-    cr::CreativeVec3 targetPoint = {});
+    cr::CreativeVec3 targetPoint = {},
+    std::size_t pointIndex = kInvalidCreativeMovingPlatformPathPointIndex);
 
 void syncCreativeMovingPlatformPathEditState(
     const cr::CreativeAppState& appState,
+    CreativeMovingPlatformPathEditState& state) noexcept;
+
+[[nodiscard]] bool selectCreativeMovingPlatformPathPoint(
+    CreativeMovingPlatformPathEditState& state,
+    std::size_t pointIndex) noexcept;
+
+[[nodiscard]] bool cycleCreativeMovingPlatformPathPoint(
+    CreativeMovingPlatformPathEditState& state,
+    int direction) noexcept;
+
+[[nodiscard]] bool clearCreativeMovingPlatformPathPointSelection(
     CreativeMovingPlatformPathEditState& state) noexcept;
 
 [[nodiscard]] bool queueCreativeMovingPlatformPathEdit(
@@ -114,7 +160,8 @@ consumeCreativeMovingPlatformPathEdit(
     CreativeMovingPlatformPathEditState& state,
     bool targetAvailable,
     cr::CreativeVec3 targetAnchor,
-    std::string_view source);
+    std::string_view source,
+    cr::CreativeMoveConstraint constraint = cr::CreativeMoveConstraint::Free);
 
 [[nodiscard]] cr::CreativeDocumentMutationReceipt movePathObjectWithUndo(
     cr::CreativeAppState& appState,

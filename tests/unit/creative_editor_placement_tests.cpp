@@ -4,6 +4,7 @@
 #include "EditorFrame.hpp"
 #include "EditorGizmo.hpp"
 #include "EditorInteraction.hpp"
+#include "EditorInteractionInternal.hpp"
 #include "EditorPathEditing.hpp"
 #include "EditorPlacement.hpp"
 #include "EditorPreviewFrame.hpp"
@@ -11,6 +12,7 @@
 #include "EditorState.hpp"
 #include "EditorSurfaceExtrude.hpp"
 #include "EditorToolOptions.hpp"
+#include "EditorTransform.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
 
 #include <algorithm>
@@ -3877,6 +3879,214 @@ bool movingPlatformRouteQuickEditIsBoundedAndUndoable() {
   const cr::CreativeSelectionReceipt reselected =
       appState.facade.selectTargets(selectedIds, created.objectId);
 
+  syncCreativeMovingPlatformPathEditState(
+      appState, editor.interaction.movingPlatformPathEdit);
+  const bool cycleSelectedFirst = cycleCreativeMovingPlatformPathPoint(
+      editor.interaction.movingPlatformPathEdit, 1);
+  const bool cycleWrappedLast = cycleCreativeMovingPlatformPathPoint(
+      editor.interaction.movingPlatformPathEdit, -1);
+  const std::size_t wrappedPointIndex =
+      editor.interaction.movingPlatformPathEdit.selectedPointIndex;
+  cr::CreativeInputRouteResult squareTransformInput;
+  squareTransformInput.context = cr::CreativeInputContext::EditorViewport;
+  squareTransformInput.actions[0] = {
+      cr::CreativeInputActionId::QuickEditNext,
+      cr::CreativeInputKey::GamepadWest};
+  squareTransformInput.actionCount = 1U;
+  applyCreativeEditorCommandInput(squareTransformInput, appState, editor, {},
+                                  "route");
+  const bool squareKeptTransformDistinct =
+      editor.transform.active &&
+      !editor.interaction.movingPlatformPathEdit.pointSelected;
+  static_cast<void>(cancelCreativeEditorSelectionTransformPreview(
+      editor.transform, "route_point_transform_distinction_test"));
+
+  CreativeEditorPickFrame pointPickFrame;
+  PathPointHandleHit broadHandle;
+  broadHandle.objectId = created.objectId;
+  broadHandle.pointIndex = 0U;
+  broadHandle.aabb.minX = 370.0F;
+  broadHandle.aabb.minY = 285.0F;
+  broadHandle.aabb.maxX = 410.0F;
+  broadHandle.aabb.maxY = 315.0F;
+  broadHandle.aabb.valid = true;
+  PathPointHandleHit centeredHandle;
+  centeredHandle.objectId = created.objectId;
+  centeredHandle.pointIndex = 1U;
+  centeredHandle.aabb.minX = 396.0F;
+  centeredHandle.aabb.minY = 296.0F;
+  centeredHandle.aabb.maxX = 404.0F;
+  centeredHandle.aabb.maxY = 304.0F;
+  centeredHandle.aabb.valid = true;
+  pointPickFrame.pathPointHandleHits = {broadHandle, centeredHandle};
+  const PathPointHandlePickResult nearestHandle =
+      pickPathPointHandleAtPixel(pointPickFrame.pathPointHandleHits,
+                                 400.0F, 300.0F);
+  const PathPointHandlePickResult invalidHandlePick =
+      pickPathPointHandleAtPixel(
+          pointPickFrame.pathPointHandleHits,
+          std::numeric_limits<float>::quiet_NaN(), 300.0F);
+  iggy3d::RenderCameraFrame routeCamera;
+  const iggy3d::RenderContentViewport routeViewport{0, 0, 800U, 600U};
+  const cr::CreativeWorldActionFrame selectPointActions =
+      actionFrame(cr::CreativeWorldActionId::Accept, true, true, false);
+  const std::uint64_t revisionBeforePointSelection =
+      appState.facade.document().revision();
+  processCreativeEditorMoveInteraction(
+      {appState, editor, selectPointActions,
+       cr::kCreativeInputModifierNone, routeCamera, pointPickFrame,
+       routeViewport});
+  const bool reticleSelectedPoint =
+      editor.interaction.movingPlatformPathEdit.pointSelected &&
+      editor.interaction.movingPlatformPathEdit.selectedPointIndex == 1U &&
+      appState.facade.document().revision() == revisionBeforePointSelection;
+
+  pointPickFrame.pathPointHandleHits.clear();
+  setPlaceTarget(editor, 6, 1, 2);
+  editor.toolSettings.moveConstraint = cr::CreativeMoveConstraint::X;
+  const cr::CreativeObject* beforePointMove =
+      appState.facade.findObject(created.objectId);
+  const CreativeMovingPlatformPathPointTargetPlan constrainedPointTarget =
+      planCreativeMovingPlatformPathPointTarget(
+          beforePointMove, 1U, true,
+          editor.interaction.target.grid.placementAnchor,
+          editor.toolSettings.moveConstraint);
+  const CreativeMovingPlatformPathPointTargetPlan invalidPointTarget =
+      planCreativeMovingPlatformPathPointTarget(
+          beforePointMove, cr::kCreativeMovingPlatformPathPointCapacity,
+          true, editor.interaction.target.grid.placementAnchor,
+          cr::CreativeMoveConstraint::Free);
+  const std::uint64_t undoDepthBeforePointMove =
+      cr::creativeUndoDepth(appState.history);
+  processCreativeEditorMoveInteraction(
+      {appState, editor, selectPointActions,
+       cr::kCreativeInputModifierNone, routeCamera, pointPickFrame,
+       routeViewport});
+  const cr::CreativeObject* afterPointMove =
+      appState.facade.findObject(created.objectId);
+  const bool pointMoveApplied =
+      constrainedPointTarget.moveAllowed && afterPointMove != nullptr &&
+      afterPointMove->pathPoints.size() == 3U &&
+      sameVec3(afterPointMove->pathPoints[1].position,
+               constrainedPointTarget.targetPoint) &&
+      sameVec3({0.0, 0.0, afterPointMove->pathPoints[1].position.z},
+               {0.0, 0.0,
+                constrainedPointTarget.fromPoint.z}) &&
+      cr::creativeUndoDepth(appState.history) ==
+          undoDepthBeforePointMove + 1U &&
+      editor.interaction.movingPlatformPathEdit.pointSelected &&
+      editor.interaction.movingPlatformPathEdit.selectedPointIndex == 1U;
+  const std::vector<cr::CreativePathPoint> movedPathPoints =
+      afterPointMove != nullptr ? afterPointMove->pathPoints
+                                : std::vector<cr::CreativePathPoint>{};
+
+  routeSelection.selected = afterPointMove;
+  const CreativeEditorGizmoFrame pointGizmo =
+      buildCreativeEditorGizmoFrame(
+          routeSelection, editor.interaction.movingPlatformPathEdit,
+          routeCamera, 800U, 600U, 1.0F);
+  setPlaceTarget(editor, 7, 2, 3);
+  const CreativeMovingPlatformPathPointTargetPlan nextPointTarget =
+      planCreativeMovingPlatformPathPointTarget(
+          afterPointMove, 1U, true,
+          editor.interaction.target.grid.placementAnchor,
+          editor.toolSettings.moveConstraint);
+  iggy3d::FrameInput selectedPointPreviewFrame;
+  CreativeEditorOverlayFrame selectedPointPreviewOverlay;
+  const std::uint64_t revisionBeforePointPreview =
+      appState.facade.document().revision();
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, routeSelection, pointGizmo,
+       selectedPointPreviewFrame, routeProjection, 800U, 600U, 0.03F,
+       false},
+      selectedPointPreviewOverlay);
+  const bool selectedPointPreviewKeptRevision =
+      appState.facade.document().revision() == revisionBeforePointPreview;
+  const bool selectedHandleIsYellow = std::any_of(
+      selectedPointPreviewOverlay.combinedWireLines.begin(),
+      selectedPointPreviewOverlay.combinedWireLines.end(),
+      [objectId = created.objectId](
+          const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return line.objectId == objectId && near(line.color.r, 1.0F) &&
+               near(line.color.g, 0.92F) && near(line.color.b, 0.20F) &&
+               near(line.thickness, 0.06F);
+      });
+  const bool selectedTargetIsGreen = std::any_of(
+      selectedPointPreviewOverlay.combinedWireLines.begin(),
+      selectedPointPreviewOverlay.combinedWireLines.end(),
+      [&nextPointTarget, objectId = created.objectId](
+          const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return line.objectId == objectId && near(line.color.r, 0.20F) &&
+               near(line.color.g, 1.0F) &&
+               near(line.start.x,
+                    static_cast<float>(nextPointTarget.fromPoint.x)) &&
+               near(line.start.y,
+                    static_cast<float>(nextPointTarget.fromPoint.y)) &&
+               near(line.start.z,
+                    static_cast<float>(nextPointTarget.fromPoint.z)) &&
+               near(line.end.x,
+                    static_cast<float>(nextPointTarget.targetPoint.x)) &&
+               near(line.end.y,
+                    static_cast<float>(nextPointTarget.targetPoint.y)) &&
+               near(line.end.z,
+                    static_cast<float>(nextPointTarget.targetPoint.z));
+      });
+  const std::string selectedPointStatus =
+      creativeEditorHeldItemStatusLabel(editor);
+
+  const cr::CreativeWorldActionFrame cancelPointActions =
+      actionFrame(cr::CreativeWorldActionId::Reject, true, true, false);
+  const std::uint64_t revisionBeforePointCancel =
+      appState.facade.document().revision();
+  processCreativeEditorMoveInteraction(
+      {appState, editor, cancelPointActions,
+       cr::kCreativeInputModifierNone, routeCamera, pointPickFrame,
+       routeViewport});
+  const bool pointCancelWasNonMutating =
+      !editor.interaction.movingPlatformPathEdit.pointSelected &&
+      appState.facade.document().revision() == revisionBeforePointCancel;
+
+  static_cast<void>(selectCreativeMovingPlatformPathPoint(
+      editor.interaction.movingPlatformPathEdit, 1U));
+  cr::CreativeInputRouteResult removeSelectedInput;
+  removeSelectedInput.context = cr::CreativeInputContext::EditorViewport;
+  removeSelectedInput.actions[0] = {
+      cr::CreativeInputActionId::QuickEditDecrease,
+      cr::CreativeInputKey::GamepadDpadLeft};
+  removeSelectedInput.actionCount = 1U;
+  applyCreativeEditorCommandInput(removeSelectedInput, appState, editor, {},
+                                  "route");
+  const bool removeSelectedQueued =
+      editor.interaction.movingPlatformPathEdit.pending ==
+      CreativeMovingPlatformPathEditCommand::RemoveSelected;
+  const CreativeMovingPlatformPathEditReceipt removedSelected =
+      consumeCreativeMovingPlatformPathEdit(
+          appState, editor.interaction.movingPlatformPathEdit, false, {},
+          "route_remove_selected_test");
+  const cr::CreativeObject* afterSelectedRemoval =
+      appState.facade.findObject(created.objectId);
+  const bool selectedRemovalKeptNeighbors =
+      movedPathPoints.size() == 3U && afterSelectedRemoval != nullptr &&
+      afterSelectedRemoval->pathPoints.size() == 2U &&
+      sameVec3(afterSelectedRemoval->pathPoints.front().position,
+               movedPathPoints.front().position) &&
+      sameVec3(afterSelectedRemoval->pathPoints.back().position,
+               movedPathPoints.back().position);
+  const bool selectedRemovalUndoAccepted =
+      undoLastEdit(appState, "route_remove_selected_undo_test");
+  const cr::CreativeSelectionReceipt reselectedAfterPointUndo =
+      appState.facade.selectTargets(selectedIds, created.objectId);
+  syncCreativeMovingPlatformPathEditState(
+      appState, editor.interaction.movingPlatformPathEdit);
+  const cr::CreativeObject* afterSelectedRemovalUndo =
+      appState.facade.findObject(created.objectId);
+  const bool selectedRemovalUndoRestored =
+      afterSelectedRemovalUndo != nullptr &&
+      afterSelectedRemovalUndo->pathPoints.size() == 3U &&
+      editor.interaction.movingPlatformPathEdit.pointCount == 3U;
+  static_cast<void>(clearCreativeMovingPlatformPathPointSelection(
+      editor.interaction.movingPlatformPathEdit));
+
   cr::CreativeInputRouteResult removeInput;
   removeInput.context = cr::CreativeInputContext::EditorViewport;
   removeInput.actions[0] = {cr::CreativeInputActionId::QuickEditDecrease,
@@ -3959,6 +4169,52 @@ bool movingPlatformRouteQuickEditIsBoundedAndUndoable() {
          expect(undoAccepted && pointCountAfterUndo == 2U && redoAccepted &&
                     reselected.accepted,
                 "route append participates in undo and redo") &&
+         expect(cycleSelectedFirst && cycleWrappedLast &&
+                    wrappedPointIndex == 2U &&
+                    squareKeptTransformDistinct,
+                "D-pad point cycling wraps the route while Square remains "
+                "the distinct Transform command") &&
+         expect(nearestHandle.hit &&
+                    nearestHandle.objectId == created.objectId &&
+                    nearestHandle.pointIndex == 1U &&
+                    !invalidHandlePick.hit && reticleSelectedPoint,
+                "center-reticle picking selects the nearest route handle "
+                "without mutating the document") &&
+         expect(pointMoveApplied &&
+                    invalidPointTarget.status ==
+                        CreativeMovingPlatformPathEditStatus::InvalidPointIndex,
+                "X moves one selected point through the constrained route "
+                "planner and records one undo entry") &&
+         expect(near(pointGizmo.center.x,
+                     static_cast<float>(constrainedPointTarget.targetPoint.x)) &&
+                    near(pointGizmo.center.y,
+                         static_cast<float>(
+                             constrainedPointTarget.targetPoint.y)) &&
+                    near(pointGizmo.center.z,
+                         static_cast<float>(
+                             constrainedPointTarget.targetPoint.z)) &&
+                    nextPointTarget.moveAllowed &&
+                    selectedHandleIsYellow && selectedTargetIsGreen &&
+                    selectedPointPreviewOverlay
+                            .movingPlatformPathPreviewEdgeCount == 13U &&
+                    selectedPointPreviewKeptRevision,
+                "selected route point owns the gizmo, yellow handle, and "
+                "non-mutating green target preview") &&
+         expect(selectedPointStatus.find("EDIT 2/3") !=
+                        std::string::npos &&
+                    pointCancelWasNonMutating,
+                "route status identifies the point and Circle cancels only "
+                "the point edit") &&
+         expect(removeSelectedQueued && removedSelected.accepted &&
+                    removedSelected.changed &&
+                    removedSelected.pointCountBefore == 3U &&
+                    removedSelected.pointCountAfter == 2U &&
+                    selectedRemovalKeptNeighbors &&
+                    selectedRemovalUndoAccepted &&
+                    reselectedAfterPointUndo.accepted &&
+                    selectedRemovalUndoRestored,
+                "D-pad left deletes the selected route point and undo "
+                "restores the route") &&
          expect(removed.accepted && removed.changed &&
                     removed.pointCountBefore == 3U &&
                     removed.pointCountAfter == 2U && finalObject != nullptr &&

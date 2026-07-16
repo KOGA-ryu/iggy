@@ -34,7 +34,51 @@ constexpr double kPathPointEpsilonMeters = 1.0e-5;
 [[nodiscard]] bool validPathEditCommand(
     CreativeMovingPlatformPathEditCommand command) noexcept {
   return command == CreativeMovingPlatformPathEditCommand::AppendAtTarget ||
-         command == CreativeMovingPlatformPathEditCommand::RemoveLast;
+         command == CreativeMovingPlatformPathEditCommand::RemoveLast ||
+         command == CreativeMovingPlatformPathEditCommand::RemoveSelected ||
+         command ==
+             CreativeMovingPlatformPathEditCommand::MoveSelectedToTarget;
+}
+
+[[nodiscard]] bool commandUsesSelectedPoint(
+    CreativeMovingPlatformPathEditCommand command) noexcept {
+  return command == CreativeMovingPlatformPathEditCommand::RemoveSelected ||
+         command ==
+             CreativeMovingPlatformPathEditCommand::MoveSelectedToTarget;
+}
+
+void applyMoveConstraint(cr::CreativeVec3& target,
+                         cr::CreativeVec3 source,
+                         cr::CreativeMoveConstraint constraint) noexcept {
+  switch (constraint) {
+    case cr::CreativeMoveConstraint::Free:
+      break;
+    case cr::CreativeMoveConstraint::X:
+      target.z = source.z;
+      break;
+    case cr::CreativeMoveConstraint::Z:
+      target.x = source.x;
+      break;
+    case cr::CreativeMoveConstraint::Count:
+      break;
+  }
+}
+
+[[nodiscard]] bool targetKeepsPathValid(
+    std::span<const cr::CreativePathPoint> points,
+    std::size_t pointIndex,
+    cr::CreativeVec3 target) noexcept {
+  double totalLengthMeters = 0.0;
+  for (std::size_t index = 1U; index < points.size(); ++index) {
+    const cr::CreativeVec3 from =
+        index - 1U == pointIndex ? target : points[index - 1U].position;
+    const cr::CreativeVec3 to =
+        index == pointIndex ? target : points[index].position;
+    totalLengthMeters +=
+        std::hypot(to.x - from.x, to.y - from.y, to.z - from.z);
+  }
+  return std::isfinite(totalLengthMeters) &&
+         totalLengthMeters > kPathPointEpsilonMeters;
 }
 
 [[nodiscard]] cr::CreativeObjectId selectedMovingPlatformId(
@@ -80,6 +124,7 @@ movingPlatformPathPointAtPlacementAnchor(
     cr::CreativeObjectId objectId,
     CreativeMovingPlatformPathEditCommand command,
     cr::CreativeVec3 targetPoint,
+    std::size_t pointIndex,
     std::string_view source) {
   CreativeMovingPlatformPathEditReceipt result;
   result.requested = true;
@@ -95,7 +140,7 @@ movingPlatformPathPointAtPlacementAnchor(
   result.pointCountBefore = object->pathPoints.size();
   CreativeMovingPlatformPathEditPlan plan =
       planCreativeMovingPlatformPathEdit(object->pathPoints, command,
-                                         targetPoint);
+                                         targetPoint, pointIndex);
   result.status = plan.status;
   result.reasonCode = plan.reasonCode;
   result.pointCountAfter = result.pointCountBefore;
@@ -121,10 +166,21 @@ movingPlatformPathPointAtPlacementAnchor(
       after != nullptr ? after->pathPoints.size() : result.pointCountBefore;
   if (result.changed) {
     result.status = CreativeMovingPlatformPathEditStatus::Applied;
-    result.reasonCode =
-        command == CreativeMovingPlatformPathEditCommand::AppendAtTarget
-            ? "creative_platform_path_point_appended"
-            : "creative_platform_path_point_removed";
+    switch (command) {
+      case CreativeMovingPlatformPathEditCommand::AppendAtTarget:
+        result.reasonCode = "creative_platform_path_point_appended";
+        break;
+      case CreativeMovingPlatformPathEditCommand::RemoveLast:
+      case CreativeMovingPlatformPathEditCommand::RemoveSelected:
+        result.reasonCode = "creative_platform_path_point_removed";
+        break;
+      case CreativeMovingPlatformPathEditCommand::MoveSelectedToTarget:
+        result.reasonCode = "creative_platform_path_point_moved";
+        break;
+      case CreativeMovingPlatformPathEditCommand::None:
+      case CreativeMovingPlatformPathEditCommand::Count:
+        break;
+    }
   } else {
     result.status = CreativeMovingPlatformPathEditStatus::MutationRejected;
     result.reasonCode = "creative_platform_path_edit_mutation_rejected";
@@ -211,10 +267,82 @@ CreativeMovingPlatformPathTargetPlan planCreativeMovingPlatformPathTarget(
   return result;
 }
 
+CreativeMovingPlatformPathPointTargetPlan
+planCreativeMovingPlatformPathPointTarget(
+    const cr::CreativeObject* object,
+    std::size_t pointIndex,
+    bool targetAvailable,
+    cr::CreativeVec3 placementAnchor,
+    cr::CreativeMoveConstraint constraint) noexcept {
+  CreativeMovingPlatformPathPointTargetPlan result;
+  if (object == nullptr ||
+      object->kind != cr::CreativeObjectKind::MovingPlatform) {
+    result.status = CreativeMovingPlatformPathEditStatus::InvalidSelection;
+    result.reasonCode = "creative_platform_path_edit_invalid_selection";
+    return result;
+  }
+  result.objectId = object->id;
+  result.pointIndex = pointIndex;
+  if (!cr::isValidCreativeMovingPlatformPath(object->pathPoints)) {
+    result.status = CreativeMovingPlatformPathEditStatus::InvalidPath;
+    result.reasonCode = "creative_platform_path_edit_invalid_path";
+    return result;
+  }
+  if (pointIndex >= object->pathPoints.size()) {
+    result.status = CreativeMovingPlatformPathEditStatus::InvalidPointIndex;
+    result.reasonCode = "creative_platform_path_edit_invalid_point_index";
+    return result;
+  }
+  if (!targetAvailable) {
+    return result;
+  }
+  if (constraint == cr::CreativeMoveConstraint::Count) {
+    result.reasonCode = "creative_platform_path_edit_invalid_constraint";
+    return result;
+  }
+  const std::optional<cr::CreativeVec3> targetPoint =
+      movingPlatformPathPointAtPlacementAnchor(*object, placementAnchor);
+  if (!targetPoint.has_value()) {
+    result.reasonCode = "creative_platform_path_edit_invalid_target";
+    return result;
+  }
+
+  result.visible = true;
+  result.fromPoint = object->pathPoints[pointIndex].position;
+  result.targetPoint = *targetPoint;
+  applyMoveConstraint(result.targetPoint, result.fromPoint, constraint);
+  result.segmentVisible =
+      !samePathPoint(result.fromPoint, result.targetPoint);
+  const bool duplicatesPrevious =
+      pointIndex > 0U &&
+      samePathPoint(object->pathPoints[pointIndex - 1U].position,
+                    result.targetPoint);
+  const bool duplicatesNext =
+      pointIndex + 1U < object->pathPoints.size() &&
+      samePathPoint(object->pathPoints[pointIndex + 1U].position,
+                    result.targetPoint);
+  if (!result.segmentVisible || duplicatesPrevious || duplicatesNext) {
+    result.status = CreativeMovingPlatformPathEditStatus::DuplicateTarget;
+    result.reasonCode = "creative_platform_path_edit_duplicate_target";
+    return result;
+  }
+  if (!targetKeepsPathValid(object->pathPoints, pointIndex,
+                            result.targetPoint)) {
+    result.status = CreativeMovingPlatformPathEditStatus::InvalidPath;
+    result.reasonCode = "creative_platform_path_edit_result_invalid";
+    return result;
+  }
+  result.moveAllowed = true;
+  result.status = CreativeMovingPlatformPathEditStatus::Ready;
+  result.reasonCode = "creative_platform_path_point_move_planned";
+  return result;
+}
+
 CreativeMovingPlatformPathEditPlan planCreativeMovingPlatformPathEdit(
     std::span<const cr::CreativePathPoint> currentPath,
     CreativeMovingPlatformPathEditCommand command,
-    cr::CreativeVec3 targetPoint) {
+    cr::CreativeVec3 targetPoint,
+    std::size_t pointIndex) {
   CreativeMovingPlatformPathEditPlan result;
   if (!validPathEditCommand(command)) {
     return result;
@@ -225,18 +353,35 @@ CreativeMovingPlatformPathEditPlan planCreativeMovingPlatformPathEdit(
     return result;
   }
 
-  if (command == CreativeMovingPlatformPathEditCommand::AppendAtTarget) {
+  const bool movingSelected =
+      command ==
+      CreativeMovingPlatformPathEditCommand::MoveSelectedToTarget;
+  const bool removingSelected =
+      command == CreativeMovingPlatformPathEditCommand::RemoveSelected;
+  if ((movingSelected || removingSelected) &&
+      pointIndex >= currentPath.size()) {
+    result.status = CreativeMovingPlatformPathEditStatus::InvalidPointIndex;
+    result.reasonCode = "creative_platform_path_edit_invalid_point_index";
+    return result;
+  }
+
+  if (command == CreativeMovingPlatformPathEditCommand::AppendAtTarget ||
+      movingSelected) {
     if (!finitePoint(targetPoint)) {
       result.status = CreativeMovingPlatformPathEditStatus::InvalidTarget;
       result.reasonCode = "creative_platform_path_edit_invalid_target";
       return result;
     }
-    if (currentPath.size() >= cr::kCreativeMovingPlatformPathPointCapacity) {
+    if (command == CreativeMovingPlatformPathEditCommand::AppendAtTarget &&
+        currentPath.size() >= cr::kCreativeMovingPlatformPathPointCapacity) {
       result.status = CreativeMovingPlatformPathEditStatus::CapacityReached;
       result.reasonCode = "creative_platform_path_edit_capacity_reached";
       return result;
     }
-    if (samePathPoint(currentPath.back().position, targetPoint)) {
+    const cr::CreativeVec3 sourcePoint =
+        movingSelected ? currentPath[pointIndex].position
+                       : currentPath.back().position;
+    if (samePathPoint(sourcePoint, targetPoint)) {
       result.status = CreativeMovingPlatformPathEditStatus::DuplicateTarget;
       result.reasonCode = "creative_platform_path_edit_duplicate_target";
       return result;
@@ -250,10 +395,23 @@ CreativeMovingPlatformPathEditPlan planCreativeMovingPlatformPathEdit(
   }
 
   result.pathPoints.assign(currentPath.begin(), currentPath.end());
-  if (command == CreativeMovingPlatformPathEditCommand::AppendAtTarget) {
-    result.pathPoints.push_back({targetPoint});
-  } else {
-    result.pathPoints.pop_back();
+  switch (command) {
+    case CreativeMovingPlatformPathEditCommand::AppendAtTarget:
+      result.pathPoints.push_back({targetPoint});
+      break;
+    case CreativeMovingPlatformPathEditCommand::RemoveLast:
+      result.pathPoints.pop_back();
+      break;
+    case CreativeMovingPlatformPathEditCommand::RemoveSelected:
+      result.pathPoints.erase(result.pathPoints.begin() +
+                              static_cast<std::ptrdiff_t>(pointIndex));
+      break;
+    case CreativeMovingPlatformPathEditCommand::MoveSelectedToTarget:
+      result.pathPoints[pointIndex].position = targetPoint;
+      break;
+    case CreativeMovingPlatformPathEditCommand::None:
+    case CreativeMovingPlatformPathEditCommand::Count:
+      break;
   }
 
   if (!cr::isValidCreativeMovingPlatformPath(result.pathPoints)) {
@@ -286,15 +444,70 @@ void syncCreativeMovingPlatformPathEditState(
                                object->pathPoints.size(),
                                std::numeric_limits<std::uint8_t>::max()))
                          : 0U;
-  if (selectionChanged) {
+  if (selectionChanged || !state.available) {
     state.pending = CreativeMovingPlatformPathEditCommand::None;
+    state.selectedPointIndex = 0U;
+    state.pointSelected = false;
     state.status = state.available
                        ? CreativeMovingPlatformPathEditStatus::Ready
                        : CreativeMovingPlatformPathEditStatus::Idle;
     state.reasonCode = state.available
                            ? "creative_platform_path_edit_ready"
                            : "creative_platform_path_edit_idle";
+  } else if (state.pointSelected &&
+             state.selectedPointIndex >= state.pointCount) {
+    if (state.pointCount == 0U) {
+      state.selectedPointIndex = 0U;
+      state.pointSelected = false;
+    } else {
+      state.selectedPointIndex =
+          static_cast<std::uint8_t>(state.pointCount - 1U);
+    }
   }
+}
+
+bool selectCreativeMovingPlatformPathPoint(
+    CreativeMovingPlatformPathEditState& state,
+    std::size_t pointIndex) noexcept {
+  if (!state.available || pointIndex >= state.pointCount) {
+    return false;
+  }
+  state.selectedPointIndex = static_cast<std::uint8_t>(pointIndex);
+  state.pointSelected = true;
+  state.status = CreativeMovingPlatformPathEditStatus::Ready;
+  state.reasonCode = "creative_platform_path_point_selected";
+  return true;
+}
+
+bool cycleCreativeMovingPlatformPathPoint(
+    CreativeMovingPlatformPathEditState& state,
+    int direction) noexcept {
+  if (!state.available || state.pointCount == 0U || direction == 0) {
+    return false;
+  }
+  const int pointCount = static_cast<int>(state.pointCount);
+  int selected = state.pointSelected
+                     ? static_cast<int>(state.selectedPointIndex)
+                     : (direction > 0 ? -1 : 0);
+  selected = (selected + (direction > 0 ? 1 : -1) + pointCount) % pointCount;
+  return selectCreativeMovingPlatformPathPoint(
+      state, static_cast<std::size_t>(selected));
+}
+
+bool clearCreativeMovingPlatformPathPointSelection(
+    CreativeMovingPlatformPathEditState& state) noexcept {
+  if (!state.pointSelected) {
+    return false;
+  }
+  state.pointSelected = false;
+  state.selectedPointIndex = 0U;
+  state.pending = CreativeMovingPlatformPathEditCommand::None;
+  state.status = state.available
+                     ? CreativeMovingPlatformPathEditStatus::Ready
+                     : CreativeMovingPlatformPathEditStatus::Idle;
+  state.reasonCode = state.available ? "creative_platform_path_edit_ready"
+                                     : "creative_platform_path_edit_idle";
+  return true;
 }
 
 bool queueCreativeMovingPlatformPathEdit(
@@ -302,7 +515,8 @@ bool queueCreativeMovingPlatformPathEdit(
     CreativeMovingPlatformPathEditState& state,
     CreativeMovingPlatformPathEditCommand command) noexcept {
   syncCreativeMovingPlatformPathEditState(appState, state);
-  if (!state.available || !validPathEditCommand(command)) {
+  if (!state.available || !validPathEditCommand(command) ||
+      (commandUsesSelectedPoint(command) && !state.pointSelected)) {
     state.pending = CreativeMovingPlatformPathEditCommand::None;
     state.status = CreativeMovingPlatformPathEditStatus::InvalidSelection;
     state.reasonCode = "creative_platform_path_edit_invalid_selection";
@@ -319,7 +533,8 @@ CreativeMovingPlatformPathEditReceipt consumeCreativeMovingPlatformPathEdit(
     CreativeMovingPlatformPathEditState& state,
     bool targetAvailable,
     cr::CreativeVec3 targetAnchor,
-    std::string_view source) {
+    std::string_view source,
+    cr::CreativeMoveConstraint constraint) {
   const CreativeMovingPlatformPathEditCommand command = state.pending;
   state.pending = CreativeMovingPlatformPathEditCommand::None;
   CreativeMovingPlatformPathEditReceipt result;
@@ -341,11 +556,37 @@ CreativeMovingPlatformPathEditReceipt consumeCreativeMovingPlatformPathEdit(
       result.pointCountAfter = result.pointCountBefore;
     } else {
       result = applyPathEditWithUndo(appState, state.objectId, command,
-                                     target.targetPoint, source);
+                                     target.targetPoint,
+                                     kInvalidCreativeMovingPlatformPathPointIndex,
+                                     source);
+    }
+  } else if (command ==
+             CreativeMovingPlatformPathEditCommand::MoveSelectedToTarget) {
+    const cr::CreativeObject* object = appState.facade.findObject(state.objectId);
+    const CreativeMovingPlatformPathPointTargetPlan target =
+        planCreativeMovingPlatformPathPointTarget(
+            object, state.selectedPointIndex, targetAvailable, targetAnchor,
+            constraint);
+    if (!target.moveAllowed) {
+      result.requested = true;
+      result.objectId = target.objectId;
+      result.status = target.status;
+      result.reasonCode = target.reasonCode;
+      result.pointCountBefore =
+          object != nullptr ? object->pathPoints.size() : 0U;
+      result.pointCountAfter = result.pointCountBefore;
+    } else {
+      result = applyPathEditWithUndo(
+          appState, state.objectId, command, target.targetPoint,
+          state.selectedPointIndex, source);
     }
   } else {
+    const std::size_t pointIndex =
+        command == CreativeMovingPlatformPathEditCommand::RemoveSelected
+            ? state.selectedPointIndex
+            : kInvalidCreativeMovingPlatformPathPointIndex;
     result = applyPathEditWithUndo(appState, state.objectId, command,
-                                   targetAnchor, source);
+                                   targetAnchor, pointIndex, source);
   }
   syncCreativeMovingPlatformPathEditState(appState, state);
   state.status = result.status;

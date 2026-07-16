@@ -680,6 +680,7 @@ int main(int argc, char** argv) {
         frame.camera,
         extent.width,
         extent.height,
+        editor.interaction.movingPlatformPathEdit.objectId,
         editor.assetEdit.active ? creative::kInvalidObjectId : floorObjectId,
         editor.captureScript,
         !capturePath.empty());
@@ -745,7 +746,8 @@ int main(int argc, char** argv) {
     // (it silently skips any segment moving along more than one world axis). The
     // gizmo wireframe lines are appended to the yellow selection-box lines below.
     const CreativeEditorGizmoFrame gizmoFrame = buildCreativeEditorGizmoFrame(
-        selection, frame.camera, extent.width, extent.height, kGizmoAxisLength);
+        selection, editor.interaction.movingPlatformPathEdit, frame.camera,
+        extent.width, extent.height, kGizmoAxisLength);
 
     logCreativeEditorPathHandleCaptureFrame(
         editor.captureScript, !capturePath.empty(), gizmoFrame);

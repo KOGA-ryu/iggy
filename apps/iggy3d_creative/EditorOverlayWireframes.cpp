@@ -421,40 +421,69 @@ void appendCreativeEditorMovingPlatformPathPreview(
     return;
   }
 
-  const CreativeMovingPlatformPathTargetPlan preview =
-      planCreativeMovingPlatformPathTarget(
-          selected, editor.interaction.target.grid.valid,
-          editor.interaction.target.grid.placementAnchor);
-  if (!preview.visible) {
+  bool visible = false;
+  bool allowed = false;
+  bool segmentVisible = false;
+  cr::CreativeObjectId objectId = cr::kInvalidObjectId;
+  cr::CreativeVec3 fromPoint{};
+  cr::CreativeVec3 targetPoint{};
+  const CreativeMovingPlatformPathEditState& pathEdit =
+      editor.interaction.movingPlatformPathEdit;
+  if (pathEdit.pointSelected) {
+    const CreativeMovingPlatformPathPointTargetPlan preview =
+        planCreativeMovingPlatformPathPointTarget(
+            selected, pathEdit.selectedPointIndex,
+            editor.interaction.target.grid.valid,
+            editor.interaction.target.grid.placementAnchor,
+            editor.toolSettings.moveConstraint);
+    visible = preview.visible;
+    allowed = preview.moveAllowed;
+    segmentVisible = preview.segmentVisible;
+    objectId = preview.objectId;
+    fromPoint = preview.fromPoint;
+    targetPoint = preview.targetPoint;
+  } else {
+    const CreativeMovingPlatformPathTargetPlan preview =
+        planCreativeMovingPlatformPathTarget(
+            selected, editor.interaction.target.grid.valid,
+            editor.interaction.target.grid.placementAnchor);
+    visible = preview.visible;
+    allowed = preview.appendAllowed;
+    segmentVisible = preview.segmentVisible;
+    objectId = preview.objectId;
+    fromPoint = preview.fromPoint;
+    targetPoint = preview.targetPoint;
+  }
+  if (!visible) {
     return;
   }
   const RenderLineColor color =
-      preview.appendAllowed ? RenderLineColor{0.20F, 1.0F, 0.35F, 1.0F}
-                            : RenderLineColor{1.0F, 0.20F, 0.20F, 1.0F};
+      allowed ? RenderLineColor{0.20F, 1.0F, 0.35F, 1.0F}
+              : RenderLineColor{1.0F, 0.20F, 0.20F, 1.0F};
   const float thickness = std::max(0.05F, request.gizmoThickness);
   std::vector<RenderCreativeWireframeDebugLine>& lines =
       output.combinedWireLines;
   const std::size_t before = lines.size();
-  if (preview.segmentVisible) {
+  if (segmentVisible) {
     const cr::CreativeCoreVec3Conversion from =
-        cr::creativeVec3ToCoreChecked(preview.fromPoint);
+        cr::creativeVec3ToCoreChecked(fromPoint);
     const cr::CreativeCoreVec3Conversion to =
-        cr::creativeVec3ToCoreChecked(preview.targetPoint);
+        cr::creativeVec3ToCoreChecked(targetPoint);
     if (from.converted && to.converted) {
       RenderCreativeWireframeDebugLine segment;
       segment.start = from.value;
       segment.end = to.value;
       segment.color = color;
-      segment.objectId = preview.objectId;
+      segment.objectId = objectId;
       segment.thickness = thickness;
       lines.push_back(segment);
     }
   }
-  const VisualBounds marker = pathPointHandleBounds(preview.targetPoint);
+  const VisualBounds marker = pathPointHandleBounds(targetPoint);
   appendStandaloneWireframeBoxEdges(lines, marker.min, marker.max, color,
                                     thickness * 0.8F);
   for (std::size_t index = before; index < lines.size(); ++index) {
-    lines[index].objectId = preview.objectId;
+    lines[index].objectId = objectId;
   }
   output.movingPlatformPathPreviewEdgeCount = lines.size() - before;
 }
@@ -627,15 +656,21 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
       combinedWireLines.push_back(routeLine);
       ++pathPointHandleEdgeCount;
     }
-    for (const creative::CreativePathPoint& point : selected->pathPoints) {
+    for (std::size_t index = 0U; index < selected->pathPoints.size(); ++index) {
+      const creative::CreativePathPoint& point = selected->pathPoints[index];
+      const bool pointSelected =
+          editor.interaction.movingPlatformPathEdit.pointSelected &&
+          editor.interaction.movingPlatformPathEdit.objectId == selected->id &&
+          editor.interaction.movingPlatformPathEdit.selectedPointIndex == index;
       const VisualBounds handleBounds = pathPointHandleBounds(point.position);
       const std::size_t before = combinedWireLines.size();
       appendStandaloneWireframeBoxEdges(
           combinedWireLines,
           handleBounds.min,
           handleBounds.max,
-          RenderLineColor{0.20F, 0.88F, 1.0F, 1.0F},
-          0.035F);
+          pointSelected ? RenderLineColor{1.0F, 0.92F, 0.20F, 1.0F}
+                        : RenderLineColor{0.20F, 0.88F, 1.0F, 1.0F},
+          pointSelected ? 0.06F : 0.035F);
       for (std::size_t i = before; i < combinedWireLines.size(); ++i) {
         combinedWireLines[i].objectId =
             static_cast<creative::CreativeObjectId>(selectedId);

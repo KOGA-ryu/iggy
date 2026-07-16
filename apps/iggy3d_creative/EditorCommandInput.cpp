@@ -178,20 +178,46 @@ void applyCreativeEditorCommandInput(
             creative::selectedCreativeHotbarEntry(
                 editor.interaction.hotbar).kind;
         if (held == creative::CreativeHeldItemKind::ObjectMove &&
-            isControllerTransformShortcut(editor, event) &&
-            creative::selectedTargetCount(
-                appState.facade.selectionState()) > 0U &&
-            beginCreativeEditorSelectionTransformPreview(
+            isControllerTransformShortcut(editor, event)) {
+          static_cast<void>(clearCreativeMovingPlatformPathPointSelection(
+              editor.interaction.movingPlatformPathEdit));
+          if (creative::selectedTargetCount(
+                  appState.facade.selectionState()) > 0U) {
+            static_cast<void>(beginCreativeEditorSelectionTransformPreview(
                 appState, editor.transform,
                 "controller_selection_transform_begin",
-                CreativeEditorTransformAnchorPolicy::FixedSource)) {
+                CreativeEditorTransformAnchorPolicy::FixedSource));
+          }
           break;
+        }
+        if (held == creative::CreativeHeldItemKind::ObjectMove) {
+          syncCreativeMovingPlatformPathEditState(
+              appState, editor.interaction.movingPlatformPathEdit);
+          if (cycleCreativeMovingPlatformPathPoint(
+                  editor.interaction.movingPlatformPathEdit, 1)) {
+            break;
+          }
         }
         static_cast<void>(
             processCreativeEditorQuickEditAction(editor, event.action));
         break;
       }
-      case creative::CreativeInputActionId::QuickEditPrevious:
+      case creative::CreativeInputActionId::QuickEditPrevious: {
+        const creative::CreativeHeldItemKind held =
+            creative::selectedCreativeHotbarEntry(
+                editor.interaction.hotbar).kind;
+        if (held == creative::CreativeHeldItemKind::ObjectMove) {
+          syncCreativeMovingPlatformPathEditState(
+              appState, editor.interaction.movingPlatformPathEdit);
+          if (cycleCreativeMovingPlatformPathPoint(
+                  editor.interaction.movingPlatformPathEdit, -1)) {
+            break;
+          }
+        }
+        static_cast<void>(
+            processCreativeEditorQuickEditAction(editor, event.action));
+        break;
+      }
       case creative::CreativeInputActionId::QuickEditDecrease:
       case creative::CreativeInputActionId::QuickEditIncrease: {
         const creative::CreativeHeldItemKind held =
@@ -206,7 +232,9 @@ void applyCreativeEditorCommandInput(
               event.action ==
                       creative::CreativeInputActionId::QuickEditIncrease
                   ? CreativeMovingPlatformPathEditCommand::AppendAtTarget
-                  : CreativeMovingPlatformPathEditCommand::RemoveLast;
+                  : editor.interaction.movingPlatformPathEdit.pointSelected
+                        ? CreativeMovingPlatformPathEditCommand::RemoveSelected
+                        : CreativeMovingPlatformPathEditCommand::RemoveLast;
           if (queueCreativeMovingPlatformPathEdit(
                   appState, editor.interaction.movingPlatformPathEdit,
                   command)) {
@@ -218,10 +246,20 @@ void applyCreativeEditorCommandInput(
         break;
       }
       case creative::CreativeInputActionId::ConfirmActiveTool:
+        if (editor.interaction.movingPlatformPathEdit.pointSelected &&
+            queueCreativeMovingPlatformPathEdit(
+                appState, editor.interaction.movingPlatformPathEdit,
+                CreativeMovingPlatformPathEditCommand::MoveSelectedToTarget)) {
+          break;
+        }
         static_cast<void>(confirmCreativeEditorHeldItem(
             appState, editor, "keyboard_confirm"));
         break;
       case creative::CreativeInputActionId::CancelActiveTool:
+        if (clearCreativeMovingPlatformPathPointSelection(
+                editor.interaction.movingPlatformPathEdit)) {
+          break;
+        }
         static_cast<void>(cancelCreativeEditorHeldItem(appState, editor));
         break;
       case creative::CreativeInputActionId::DeleteSelection:
@@ -236,7 +274,10 @@ void applyCreativeEditorCommandInput(
               event.trigger == creative::CreativeInputKey::Backspace
                   ? "volume_backspace_erase"
                   : "volume_delete_erase"));
-        } else {
+        } else if (!(editor.interaction.movingPlatformPathEdit.pointSelected &&
+                     queueCreativeMovingPlatformPathEdit(
+                       appState, editor.interaction.movingPlatformPathEdit,
+                       CreativeMovingPlatformPathEditCommand::RemoveSelected))) {
           (void)deleteSelectedObject(
               appState,
               event.trigger == creative::CreativeInputKey::Backspace

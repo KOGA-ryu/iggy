@@ -9,6 +9,7 @@
 #include "EditorGizmo.hpp"
 #include "EditorGroup.hpp"
 #include "EditorLogicLinks.hpp"
+#include "EditorPathEditing.hpp"
 #include "EditorPattern.hpp"
 #include "EditorState.hpp"
 #include "EditorSurfaceExtrude.hpp"
@@ -529,9 +530,14 @@ void dispatchHeldItemWorldOperation(
 void processMoveInteraction(
     const CreativeEditorWorldInteractionFrameRequest& request) {
   CreativeEditorState& editor = request.editor;
+  CreativeMovingPlatformPathEditState& pathEdit =
+      editor.interaction.movingPlatformPathEdit;
   const bool rejectPressed = cr::creativeWorldActionPressed(
       request.actions, cr::CreativeWorldActionId::Reject);
   if (rejectPressed) {
+    if (clearCreativeMovingPlatformPathPointSelection(pathEdit)) {
+      return;
+    }
     static_cast<void>(cancelCreativeEditorHeldItem(request.appState, editor));
     return;
   }
@@ -549,6 +555,47 @@ void processMoveInteraction(
                                       cr::CreativeWorldActionId::Accept);
   const bool secondaryPressed = cr::creativeWorldActionPressed(
       request.actions, cr::CreativeWorldActionId::Secondary);
+
+  if (secondaryPressed && pathEdit.pointSelected) {
+    static_cast<void>(clearCreativeMovingPlatformPathPointSelection(pathEdit));
+    return;
+  }
+
+  if (pressed && pathEdit.available) {
+    const float targetX = static_cast<float>(request.contentRegion.x) +
+                          static_cast<float>(request.contentRegion.width) * 0.5F;
+    const float targetY = static_cast<float>(request.contentRegion.y) +
+                          static_cast<float>(request.contentRegion.height) * 0.5F;
+    const PathPointHandlePickResult handle = pickPathPointHandleAtPixel(
+        request.pickFrame.pathPointHandleHits, targetX, targetY);
+    if (handle.hit && handle.objectId == pathEdit.objectId &&
+        selectCreativeMovingPlatformPathPoint(pathEdit, handle.pointIndex)) {
+      return;
+    }
+    if (pathEdit.pointSelected &&
+        queueCreativeMovingPlatformPathEdit(
+            request.appState, pathEdit,
+            CreativeMovingPlatformPathEditCommand::MoveSelectedToTarget)) {
+      const CreativeMovingPlatformPathEditReceipt receipt =
+          consumeCreativeMovingPlatformPathEdit(
+              request.appState, pathEdit,
+              editor.interaction.target.grid.valid,
+              editor.interaction.target.grid.placementAnchor,
+              "creative_platform_path_point_move",
+              editor.toolSettings.moveConstraint);
+      setCreativeEditorPlacementFeedback(
+          editor.interaction,
+          receipt.accepted ? CreativeEditorPlacementFeedbackStatus::Placed
+                           : CreativeEditorPlacementFeedbackStatus::Rejected,
+          editor.frameIndex, cr::CreativeObjectKind::MovingPlatform,
+          receipt.objectId);
+      return;
+    }
+  }
+
+  if (pathEdit.pointSelected) {
+    return;
+  }
 
   if (secondaryPressed && !pressed &&
       beginCreativeEditorSelectionTransformPreview(

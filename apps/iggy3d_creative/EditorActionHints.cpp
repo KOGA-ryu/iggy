@@ -31,19 +31,29 @@ void appendHint(HintSpecBuffer& buffer,
     buffer.capacityExceeded = true;
     return;
   }
-  buffer.specs[buffer.count++] = {{{action, cr::CreativeInputActionId::Count}},
-                                  1U, label};
+  cr::CreativeActionHintSpec& spec = buffer.specs[buffer.count++];
+  spec.actions = {action, cr::CreativeInputActionId::Count};
+  spec.actionCount = 1U;
+  spec.label = label;
 }
 
 void appendHintPair(HintSpecBuffer& buffer,
                     cr::CreativeInputActionId first,
                     cr::CreativeInputActionId second,
-                    std::string_view label) noexcept {
+                    std::string_view label,
+                    std::uint16_t firstGroupOrdinal =
+                        cr::kCreativeActionHintAnyGroupOrdinal,
+                    std::uint16_t secondGroupOrdinal =
+                        cr::kCreativeActionHintAnyGroupOrdinal) noexcept {
   if (buffer.count >= buffer.specs.size()) {
     buffer.capacityExceeded = true;
     return;
   }
-  buffer.specs[buffer.count++] = {{{first, second}}, 2U, label};
+  cr::CreativeActionHintSpec& spec = buffer.specs[buffer.count++];
+  spec.actions = {first, second};
+  spec.preferredGroupOrdinals = {firstGroupOrdinal, secondGroupOrdinal};
+  spec.actionCount = 2U;
+  spec.label = label;
 }
 
 void appendToolAccess(HintSpecBuffer& buffer) noexcept {
@@ -105,9 +115,14 @@ void appendQuickEdit(HintSpecBuffer& buffer,
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar).kind;
   if (held == cr::CreativeHeldItemKind::ObjectMove &&
       editor.interaction.movingPlatformPathEdit.available) {
+    appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
+                   cr::CreativeInputActionId::QuickEditNext, "Select point",
+                   0U, 0U);
     appendHintPair(buffer, cr::CreativeInputActionId::QuickEditDecrease,
                    cr::CreativeInputActionId::QuickEditIncrease,
-                   "Route point");
+                   editor.interaction.movingPlatformPathEdit.pointSelected
+                       ? "Delete / add point"
+                       : "Remove / add point");
     return;
   }
   switch (describeCreativeEditorToolCapability(held).quickEditProfile) {
@@ -327,9 +342,16 @@ void appendViewportHints(HintSpecBuffer& buffer,
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
       break;
     case CreativeEditorActionHintProfile::ObjectMove:
-      appendHint(buffer, gamepad ? positiveAction : negativeAction, "Move");
-      appendHint(buffer, gamepad ? negativeAction : positiveAction,
-                 gamepad ? "Cancel" : "Transform");
+      if (editor.interaction.movingPlatformPathEdit.pointSelected) {
+        appendHint(buffer, gamepad ? positiveAction : negativeAction,
+                   "Move point");
+        appendHint(buffer, gamepad ? negativeAction : positiveAction,
+                   "Cancel point");
+      } else {
+        appendHint(buffer, gamepad ? positiveAction : negativeAction, "Move");
+        appendHint(buffer, gamepad ? negativeAction : positiveAction,
+                   gamepad ? "Cancel" : "Transform");
+      }
       if (gamepad) {
         appendHint(buffer, cr::CreativeInputActionId::QuickEditNext,
                    "Transform");

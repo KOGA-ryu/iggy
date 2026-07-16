@@ -21,6 +21,7 @@ namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 
 struct CreativeEditorSelectionFrame;
+struct CreativeMovingPlatformPathEditState;
 
 enum class GizmoAxis { None, X, Y, Z };
 
@@ -57,6 +58,7 @@ struct CreativeEditorGizmoFrame {
 
 [[nodiscard]] CreativeEditorGizmoFrame buildCreativeEditorGizmoFrame(
     const CreativeEditorSelectionFrame& selection,
+    const CreativeMovingPlatformPathEditState& pathEdit,
     const iggy3d::RenderCameraFrame& camera,
     std::uint32_t drawableWidth,
     std::uint32_t drawableHeight,

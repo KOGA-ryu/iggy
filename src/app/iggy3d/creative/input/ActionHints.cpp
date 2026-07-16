@@ -30,7 +30,8 @@ namespace {
     const CreativeControlProfile& profile,
     CreativeInputActionId action,
     CreativeInputContext context,
-    CreativeControlDevice device) noexcept {
+    CreativeControlDevice device,
+    std::uint16_t preferredGroupOrdinal) noexcept {
   const CreativeInputBinding* fallback = nullptr;
   for (std::size_t index = 0U; index < profile.bindingCount; ++index) {
     const CreativeInputBinding& binding = profile.bindings[index];
@@ -42,14 +43,22 @@ namespace {
     if ((device == CreativeControlDevice::Gamepad) == gamepad) {
       fallback = fallback == nullptr ? &binding : fallback;
       const std::uint16_t group = profile.bindingGroups[index];
-      if (action == CreativeInputActionId::QuickEditNext && gamepad &&
+      if (preferredGroupOrdinal != kCreativeActionHintAnyGroupOrdinal &&
+          group < profile.groupCount &&
+          profile.groupOrdinals[group] == preferredGroupOrdinal) {
+        return &binding;
+      }
+      if (preferredGroupOrdinal == kCreativeActionHintAnyGroupOrdinal &&
+          action == CreativeInputActionId::QuickEditNext && gamepad &&
           group < profile.groupCount &&
           profile.groupOrdinals[group] == 1U) {
         return &binding;
       }
     }
   }
-  return fallback;
+  return preferredGroupOrdinal == kCreativeActionHintAnyGroupOrdinal
+             ? fallback
+             : nullptr;
 }
 
 [[nodiscard]] bool appendModifierChord(
@@ -220,7 +229,8 @@ CreativeActionHintFrame resolveCreativeActionHints(
         return frame;
       }
       bindings[actionIndex] = findBinding(
-          profile, spec.actions[actionIndex], context, device);
+          profile, spec.actions[actionIndex], context, device,
+          spec.preferredGroupOrdinals[actionIndex]);
       resolved = resolved && bindings[actionIndex] != nullptr;
     }
     if (!resolved) {

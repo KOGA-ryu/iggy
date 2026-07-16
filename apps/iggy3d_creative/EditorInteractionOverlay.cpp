@@ -469,6 +469,16 @@ std::string creativeEditorHeldItemStatusLabel(
     output.append(std::to_string(
         editor.interaction.movingPlatformPathEdit.pointCount));
     output.append(" POINTS");
+    if (editor.interaction.movingPlatformPathEdit.pointSelected) {
+      output.append(" | EDIT ");
+      output.append(std::to_string(
+          static_cast<unsigned int>(
+              editor.interaction.movingPlatformPathEdit.selectedPointIndex) +
+          1U));
+      output.push_back('/');
+      output.append(std::to_string(
+          editor.interaction.movingPlatformPathEdit.pointCount));
+    }
   }
   switch (cr::describeCreativeHeldItem(held.kind).statusMode) {
     case cr::CreativeHeldItemStatusMode::MaterialBrush:

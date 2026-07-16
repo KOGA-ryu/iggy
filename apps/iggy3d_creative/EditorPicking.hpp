@@ -8,9 +8,11 @@
 #include "core/math/Vec3.hpp"
 #include "render/FrameInput.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <optional>
+#include <span>
 #include <vector>
 
 namespace iggy3d_creative_app {
@@ -43,6 +45,13 @@ struct PathPointHandleHit {
   cr::CreativeScreenBounds aabb{};
   cr::CreativeVec3 position{};
 };
+
+struct PathPointHandlePickResult {
+  bool hit = false;
+  cr::CreativeObjectId objectId = cr::kInvalidObjectId;
+  std::size_t pointIndex = 0U;
+  float centerDistanceSquared = std::numeric_limits<float>::max();
+};
 // pixelX/pixelY are drawable-pixel coordinates; region is the sub-rectangle
 // the 3D scene occupies (the ImGui central node). NDC is computed relative to
 // the region so the ray is correct when panels shrink the viewport. A region
@@ -70,5 +79,10 @@ struct PathPointHandleHit {
     const iggy3d::Mat4& clipFromWorld,
     std::uint32_t widthPx,
     std::uint32_t heightPx);
+[[nodiscard]] PathPointHandlePickResult pickPathPointHandleAtPixel(
+    std::span<const PathPointHandleHit> handles,
+    float pixelX,
+    float pixelY,
+    float paddingPixels = 6.0F) noexcept;
 
 }  // namespace iggy3d_creative_app

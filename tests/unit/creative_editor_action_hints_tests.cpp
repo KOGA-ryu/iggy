@@ -198,10 +198,14 @@ bool resolverUsesLiveBindingsAndBoundedPairs() {
       cr::CreativeActionHintSpec{
           {{cr::CreativeInputActionId::AcceptAction,
             cr::CreativeInputActionId::Count}},
+          {{cr::kCreativeActionHintAnyGroupOrdinal,
+            cr::kCreativeActionHintAnyGroupOrdinal}},
           1U, "Place"},
       cr::CreativeActionHintSpec{
           {{cr::CreativeInputActionId::QuickEditPrevious,
             cr::CreativeInputActionId::QuickEditNext}},
+          {{cr::kCreativeActionHintAnyGroupOrdinal,
+            cr::kCreativeActionHintAnyGroupOrdinal}},
           2U, "Setting"},
   };
   cr::CreativeActionHintFrame frame = cr::resolveCreativeActionHints(
@@ -251,6 +255,8 @@ bool resolverSkipsMissingBindingsAndFailsClosedAtCapacity() {
       cr::CreativeActionHintSpec{
           {{cr::CreativeInputActionId::CatalogConfirm,
             cr::CreativeInputActionId::Count}},
+          {{cr::kCreativeActionHintAnyGroupOrdinal,
+            cr::kCreativeActionHintAnyGroupOrdinal}},
           1U, "Not in viewport"},
   };
   const cr::CreativeActionHintFrame unresolved =
@@ -806,7 +812,12 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
       findHint(routeMoveTool, cr::CreativeInputActionId::QuickEditIncrease);
   const cr::CreativeActionHint* routeTransform =
       findHint(routeMoveTool, cr::CreativeInputActionId::QuickEditNext);
-  ok = expect(removeRoutePoint != nullptr &&
+  const cr::CreativeActionHint* selectRoutePoint =
+      findHint(routeMoveTool, cr::CreativeInputActionId::QuickEditPrevious);
+  ok = expect(selectRoutePoint != nullptr &&
+                  selectRoutePoint->chord.view() == "D-pad U/D" &&
+                  selectRoutePoint->label.view() == "Select point" &&
+                  removeRoutePoint != nullptr &&
                   removeRoutePoint == appendRoutePoint &&
                   removeRoutePoint->actionCount == 2U &&
                   removeRoutePoint->triggers[0] ==
@@ -814,11 +825,23 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                   removeRoutePoint->triggers[1] ==
                       cr::CreativeInputKey::GamepadDpadRight &&
                   removeRoutePoint->chord.view() == "D-pad L/R" &&
-                  removeRoutePoint->label.view() == "Route point" &&
+                  removeRoutePoint->label.view() == "Remove / add point" &&
                   routeTransform != nullptr &&
                   routeTransform->chord.view() == "Square",
               "selected moving platform exposes route edits without stealing "
               "Transform") &&
+       ok;
+  editor.interaction.movingPlatformPathEdit.pointSelected = true;
+  const cr::CreativeActionHintFrame selectedRoutePoint =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* selectedPointEdits =
+      findHint(selectedRoutePoint,
+               cr::CreativeInputActionId::QuickEditDecrease);
+  ok = expect(selectedPointEdits != nullptr &&
+                  selectedPointEdits->label.view() == "Delete / add point",
+              "selected route point names delete without changing bindings") &&
        ok;
   editor.interaction.movingPlatformPathEdit = {};
 

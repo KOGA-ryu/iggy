@@ -317,4 +317,45 @@ std::vector<PathPointHandleHit> buildPathPointHandleHits(
   return handles;
 }
 
+PathPointHandlePickResult pickPathPointHandleAtPixel(
+    std::span<const PathPointHandleHit> handles,
+    float pixelX,
+    float pixelY,
+    float paddingPixels) noexcept {
+  PathPointHandlePickResult result;
+  if (!std::isfinite(pixelX) || !std::isfinite(pixelY) ||
+      !std::isfinite(paddingPixels) || paddingPixels < 0.0F) {
+    return result;
+  }
+  for (const PathPointHandleHit& handle : handles) {
+    const cr::CreativeScreenBounds& bounds = handle.aabb;
+    const bool finiteBounds =
+        std::isfinite(bounds.minX) && std::isfinite(bounds.minY) &&
+        std::isfinite(bounds.maxX) && std::isfinite(bounds.maxY);
+    if (handle.objectId == cr::kInvalidObjectId || !bounds.valid ||
+        !finiteBounds || bounds.minX > bounds.maxX ||
+        bounds.minY > bounds.maxY ||
+        pixelX < bounds.minX - paddingPixels ||
+        pixelX > bounds.maxX + paddingPixels ||
+        pixelY < bounds.minY - paddingPixels ||
+        pixelY > bounds.maxY + paddingPixels) {
+      continue;
+    }
+    const float centerX = (bounds.minX + bounds.maxX) * 0.5F;
+    const float centerY = (bounds.minY + bounds.maxY) * 0.5F;
+    const float dx = pixelX - centerX;
+    const float dy = pixelY - centerY;
+    const float distanceSquared = dx * dx + dy * dy;
+    if (!std::isfinite(distanceSquared) ||
+        (result.hit && distanceSquared >= result.centerDistanceSquared)) {
+      continue;
+    }
+    result.hit = true;
+    result.objectId = handle.objectId;
+    result.pointIndex = handle.pointIndex;
+    result.centerDistanceSquared = distanceSquared;
+  }
+  return result;
+}
+
 }  // namespace iggy3d_creative_app
