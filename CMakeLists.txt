@@ -119,6 +119,11 @@ target_sources(iggy3d
     src/app/iggy3d/creative/play/RuntimeMovingPlatforms.cpp
     src/app/iggy3d/creative/play/RuntimeSandbox.cpp
     src/app/iggy3d/creative/spatial/Ghost.cpp
+    src/app/iggy3d/creative/recipes/CreativeRecipe.cpp
+    src/app/iggy3d/creative/recipes/BuildingRecipe.cpp
+    src/app/iggy3d/creative/recipes/TerrainRecipe.cpp
+    src/app/iggy3d/creative/world/WorldLayout.cpp
+    src/app/iggy3d/creative/world/WorldLayoutApply.cpp
     src/app/iggy3d/creative/tools/RoomShell.cpp
     src/app/iggy3d/creative/ui/UiTheme.cpp
     src/app/iggy3d/creative/ui/UiWidgets.cpp

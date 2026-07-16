@@ -2,8 +2,8 @@
 
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/recipes/BuildingRecipe.hpp"
 
-#include <array>
 #include <cmath>
 #include <string>
 #include <string_view>
@@ -56,27 +56,6 @@ void setStatus(CreativeRoomShellRemoveReceipt& receipt,
   const CreativeObjectDescriptor& descriptor =
       describeObject(CreativeObjectKind::Floor);
   return measureCreativeBounds(descriptor.defaults.bounds).size.y;
-}
-
-[[nodiscard]] CreativeDocumentCreateRequest makeShellCreateRequest(
-    CreativeObjectKind kind,
-    std::string name,
-    CreativeBounds bounds,
-    CreativeObjectId roomObjectId,
-    const std::vector<std::string>& tags,
-    bool visible) {
-  CreativeDocumentCreateRequest request;
-  request.kind = kind;
-  request.name = std::move(name);
-  request.hasBoundsOverride = true;
-  request.bounds = bounds;
-  request.hasTransformOverride = true;
-  request.transform.position = measureCreativeBounds(bounds).center;
-  request.hasVisibleOverride = true;
-  request.visible = visible;
-  request.parentId = roomObjectId;
-  request.tags = tags;
-  return request;
 }
 
 [[nodiscard]] bool shellAlreadyExists(const CreativeDocument& document,
@@ -216,48 +195,76 @@ CreativeRoomShellBuildResult buildCreativeRoomShellCreateRequests(
       sourceRoomShellTag(request.roomObjectId),
   };
 
-  struct GeneratedRoomShellPiece {
-    CreativeObjectKind kind = CreativeObjectKind::Unknown;
-    const char* name = "";
-    CreativeBounds bounds{};
-  };
-  const std::array<GeneratedRoomShellPiece, 5> pieces{{
+  CreativeBuildingRecipeRequest building;
+  building.stableKey = sourceRoomShellTag(request.roomObjectId);
+  building.name = room->name;
+  building.rootMode = CreativeBuildingRootMode::ExistingRoom;
+  building.existingRoomObjectId = request.roomObjectId;
+  building.visible = room->visible;
+  building.tags = tags;
+  building.boxes.push_back(
       {CreativeObjectKind::Floor,
+       "room_shell.floor",
        "Room Shell Floor",
        {{bounds.min.x, bounds.min.y, bounds.min.z},
-        {bounds.max.x, bounds.min.y + floorHeight, bounds.max.z}}},
-      {CreativeObjectKind::Wall,
+        {bounds.max.x, bounds.min.y + floorHeight, bounds.max.z}}});
+  const double wallHeight = bounds.max.y - bounds.min.y;
+  building.walls = {
+      {"room_shell.wall.north",
        "Room Shell Wall North",
-       {{bounds.min.x, bounds.min.y, bounds.min.z},
-        {bounds.max.x, bounds.max.y, bounds.min.z + wallThickness}}},
-      {CreativeObjectKind::Wall,
+       {bounds.min.x, bounds.min.y, bounds.min.z + wallThickness * 0.5},
+       {bounds.max.x, bounds.min.y, bounds.min.z + wallThickness * 0.5},
+       wallHeight,
+       wallThickness,
+       {},
+       {}},
+      {"room_shell.wall.south",
        "Room Shell Wall South",
-       {{bounds.min.x, bounds.min.y, bounds.max.z - wallThickness},
-        {bounds.max.x, bounds.max.y, bounds.max.z}}},
-      {CreativeObjectKind::Wall,
+       {bounds.min.x, bounds.min.y, bounds.max.z - wallThickness * 0.5},
+       {bounds.max.x, bounds.min.y, bounds.max.z - wallThickness * 0.5},
+       wallHeight,
+       wallThickness,
+       {},
+       {}},
+      {"room_shell.wall.west",
        "Room Shell Wall West",
-       {{bounds.min.x, bounds.min.y, bounds.min.z},
-        {bounds.min.x + wallThickness, bounds.max.y, bounds.max.z}}},
-      {CreativeObjectKind::Wall,
+       {bounds.min.x + wallThickness * 0.5, bounds.min.y, bounds.min.z},
+       {bounds.min.x + wallThickness * 0.5, bounds.min.y, bounds.max.z},
+       wallHeight,
+       wallThickness,
+       {},
+       {}},
+      {"room_shell.wall.east",
        "Room Shell Wall East",
-       {{bounds.max.x - wallThickness, bounds.min.y, bounds.min.z},
-        {bounds.max.x, bounds.max.y, bounds.max.z}}},
-  }};
-
-  result.createRequests.reserve(pieces.size());
-  for (const GeneratedRoomShellPiece& piece : pieces) {
-    result.createRequests.push_back(makeShellCreateRequest(piece.kind,
-                                                           piece.name,
-                                                           piece.bounds,
-                                                           request.roomObjectId,
-                                                           tags,
-                                                           room->visible));
+       {bounds.max.x - wallThickness * 0.5, bounds.min.y, bounds.min.z},
+       {bounds.max.x - wallThickness * 0.5, bounds.min.y, bounds.max.z},
+       wallHeight,
+       wallThickness,
+       {},
+       {}},
+  };
+  const CreativeBuildingRecipeResult recipe =
+      buildCreativeBuildingRecipe(building);
+  if (!recipe.receipt.accepted) {
+    setStatus(result.receipt,
+              CreativeRoomShellStatus::InvalidBounds,
+              recipe.receipt.reasonCode);
+    return result;
   }
+  CreativeRecipeMaterializeResult materialized = materializeCreativeRecipe(
+      recipe.plan, request.document->nextObjectId());
+  if (!materialized.receipt.accepted) {
+    setStatus(result.receipt,
+              CreativeRoomShellStatus::CreateRejected,
+              materialized.receipt.reasonCode);
+    return result;
+  }
+  result.createRequests = std::move(materialized.createRequests);
 
   result.receipt.accepted = true;
   result.receipt.generatedRequestCount = result.createRequests.size();
-  result.receipt.floorRequestCount = 1;
-  result.receipt.wallRequestCount = 4;
+  result.receipt.floorRequestCount = recipe.receipt.boxObjectCount;
+  result.receipt.wallRequestCount = recipe.receipt.wallObjectCount;
   setStatus(result.receipt,
             CreativeRoomShellStatus::Generated,
             "creative_room_shell_generated");

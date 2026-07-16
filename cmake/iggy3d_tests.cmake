@@ -106,6 +106,26 @@ iggy3d_add_unit_test(creative_room_shell_tests
 set_tests_properties(creative_room_shell_tests PROPERTIES
   LABELS "unit;app;creative;room_shell;iggy3d")
 
+iggy3d_add_unit_test(creative_recipe_tests
+  tests/unit/creative_recipe_tests.cpp)
+set_tests_properties(creative_recipe_tests PROPERTIES
+  LABELS "unit;app;creative;recipe;document;history;iggy3d")
+
+iggy3d_add_unit_test(creative_building_recipe_tests
+  tests/unit/creative_building_recipe_tests.cpp)
+set_tests_properties(creative_building_recipe_tests PROPERTIES
+  LABELS "unit;app;creative;recipe;building;iggy3d")
+
+iggy3d_add_unit_test(creative_terrain_recipe_tests
+  tests/unit/creative_terrain_recipe_tests.cpp)
+set_tests_properties(creative_terrain_recipe_tests PROPERTIES
+  LABELS "unit;app;creative;recipe;terrain;history;iggy3d")
+
+iggy3d_add_unit_test(creative_world_layout_tests
+  tests/unit/creative_world_layout_tests.cpp)
+set_tests_properties(creative_world_layout_tests PROPERTIES
+  LABELS "unit;app;creative;world;layout;recipe;history;iggy3d")
+
 iggy3d_add_unit_test(creative_document_save_section_tests
   tests/unit/creative_document_save_section_tests.cpp)
 set_tests_properties(creative_document_save_section_tests PROPERTIES
