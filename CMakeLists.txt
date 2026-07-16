@@ -321,6 +321,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorPathEditing.cpp
   apps/iggy3d_creative/EditorPersistence.cpp
   apps/iggy3d_creative/EditorPlayMode.cpp
+  apps/iggy3d_creative/EditorPlayLogicOverlay.cpp
   apps/iggy3d_creative/EditorPlayInteraction.cpp
   apps/iggy3d_creative/EditorPickFrame.cpp
   apps/iggy3d_creative/EditorPicking.cpp

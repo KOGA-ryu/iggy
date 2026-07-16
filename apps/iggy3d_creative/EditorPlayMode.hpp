@@ -6,8 +6,8 @@
 #include <span>
 #include <string>
 #include <string_view>
-#include <vector>
 
+#include "EditorPlayLogicOverlay.hpp"
 #include "app/iggy3d/creative/play/RuntimeSandbox.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "projection/scene/SceneProjection.hpp"
@@ -228,8 +228,7 @@ struct CreativeEditorPlayScene {
   bool available = false;
   iggy3d::Vec3 cameraAnchorMeters;
   iggy3d::SceneProjectionResult scene;
-  std::vector<iggy3d::RenderCreativeWireframeDebugLine>
-      automaticLogicSourceLines;
+  CreativeEditorPlayLogicOverlay logicOverlay;
 };
 
 [[nodiscard]] CreativeEditorPlayScene buildCreativeEditorPlayScene(

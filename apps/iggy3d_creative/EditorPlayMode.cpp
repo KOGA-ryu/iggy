@@ -16,12 +16,6 @@ constexpr iggy3d::PlayerSlotId kLocalPlayerSlot = 0U;
 constexpr float kInputEpsilon = 0.0001F;
 constexpr float kPi = 3.14159265358979323846F;
 constexpr std::uint32_t kMaximumCatchUpTickLimit = 16U;
-constexpr auto kBoxEdgeIndices = std::to_array<std::array<std::size_t, 2U>>({
-    {0U, 1U}, {2U, 3U}, {4U, 5U}, {6U, 7U},
-    {0U, 2U}, {1U, 3U}, {4U, 6U}, {5U, 7U},
-    {0U, 4U}, {1U, 5U}, {2U, 6U}, {3U, 7U},
-});
-
 bool validTuning(const CreativeEditorPlayTuning& tuning,
                  const iggy3d::RuntimeConfig& runtimeConfig) noexcept {
   if (!std::isfinite(tuning.walkSpeedMetersPerSecond) ||
@@ -575,79 +569,8 @@ CreativeEditorPlayScene buildCreativeEditorPlayScene(
   const iggy3d::creative::CreativeRuntimeSandbox& sandbox = *mode.sandbox;
   result.scene =
       iggy3d::buildSceneProjection(sandbox.session.state(), &sandbox.room);
-  for (const iggy3d::creative::CreativeRuntimeInteractableState& source :
-       sandbox.interactables) {
-    if (source.definition.kind !=
-            iggy3d::creative::CreativeRuntimeInteractableKind::Control ||
-        (source.definition.logicSourceMode !=
-             iggy3d::creative::CreativeRuntimeLogicSourceMode::PulseOnEnter &&
-         source.definition.logicSourceMode !=
-             iggy3d::creative::CreativeRuntimeLogicSourceMode::
-                 HoldWhileOccupied)) {
-      continue;
-    }
-    const std::array<iggy3d::Vec3, 8U> corners =
-        iggy3d::orientedBoxCorners(iggy3d::makeOrientedBox(
-            source.definition.transform, source.definition.localBounds));
-    const bool active = source.occupantCount > 0U;
-    const iggy3d::RenderLineColor color = active
-        ? iggy3d::RenderLineColor{0.15F, 1.0F, 0.25F, 1.0F}
-        : iggy3d::RenderLineColor{0.45F, 0.55F, 0.60F, 1.0F};
-    for (const auto& edge : kBoxEdgeIndices) {
-      iggy3d::RenderCreativeWireframeDebugLine line;
-      line.start = corners[edge[0]];
-      line.end = corners[edge[1]];
-      line.color = color;
-      line.objectId = source.definition.objectId;
-      line.style = active ? 1U : 0U;
-      line.thickness = active ? 3.0F : 1.5F;
-      result.automaticLogicSourceLines.push_back(line);
-    }
-  }
-  const iggy3d::creative::CreativeRuntimeInteractableState*
-      highlightedSource =
-          iggy3d::creative::findCreativeRuntimeInteractableByObjectId(
-              sandbox, highlightedLogicSourceObjectId);
-  const bool highlightedAutomaticSource =
-      highlightedSource != nullptr &&
-      highlightedSource->definition.kind ==
-          iggy3d::creative::CreativeRuntimeInteractableKind::Control &&
-      (highlightedSource->definition.logicSourceMode ==
-           iggy3d::creative::CreativeRuntimeLogicSourceMode::PulseOnEnter ||
-       highlightedSource->definition.logicSourceMode ==
-           iggy3d::creative::CreativeRuntimeLogicSourceMode::
-               HoldWhileOccupied);
-  if (highlightedAutomaticSource) {
-    const bool active = highlightedSource->occupantCount > 0U;
-    for (const iggy3d::creative::CreativeRuntimeLogicLink& link :
-         sandbox.logicLinks) {
-      if (link.sourceObjectId != highlightedLogicSourceObjectId) {
-        continue;
-      }
-      const iggy3d::creative::CreativeRuntimeInteractableState* target =
-          iggy3d::creative::findCreativeRuntimeInteractableByObjectId(
-              sandbox, link.targetObjectId);
-      const bool validTarget =
-          target != nullptr &&
-          target->definition.kind ==
-              iggy3d::creative::CreativeRuntimeInteractableKind::Door;
-      iggy3d::RenderCreativeWireframeDebugLine line;
-      line.start = highlightedSource->definition.transform.position;
-      line.end = validTarget ? target->definition.transform.position
-                             : line.start + iggy3d::Vec3{0.0F, 1.0F, 0.0F};
-      line.color = !validTarget
-                       ? iggy3d::RenderLineColor{1.0F, 0.20F, 0.20F, 1.0F}
-                       : active
-                             ? iggy3d::RenderLineColor{0.15F, 1.0F, 0.25F,
-                                                      1.0F}
-                             : iggy3d::RenderLineColor{0.45F, 0.55F, 0.60F,
-                                                      1.0F};
-      line.objectId = highlightedLogicSourceObjectId;
-      line.style = active ? 1U : 0U;
-      line.thickness = active ? 3.0F : 1.5F;
-      result.automaticLogicSourceLines.push_back(line);
-    }
-  }
+  result.logicOverlay = buildCreativeEditorPlayLogicOverlay(
+      sandbox, highlightedLogicSourceObjectId);
   const iggy3d::EntityState* player =
       sandbox.session.state().world.findById(kLocalPlayerEntity);
   if (player == nullptr) {

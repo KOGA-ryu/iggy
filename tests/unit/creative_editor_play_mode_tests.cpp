@@ -401,8 +401,8 @@ bool automaticLogicRunsInPlayAndProjectsOccupancy() {
         return state.definition.objectId == door.objectId;
       });
   if (doorState == mode.sandbox->interactables.end() ||
-      inactiveScene.automaticLogicSourceLines.empty() ||
-      activeScene.automaticLogicSourceLines.empty()) {
+      inactiveScene.logicOverlay.lines.empty() ||
+      activeScene.logicOverlay.lines.empty()) {
     return expect(false, "play automatic logic states project");
   }
 
@@ -412,23 +412,26 @@ bool automaticLogicRunsInPlayAndProjectsOccupancy() {
       mode.cameraPitchDegrees, true, activeScene.cameraAnchorMeters);
   frame.creativeWireframeDebug.available = true;
   frame.creativeWireframeDebug.visible = true;
-  frame.creativeWireframeDebug.lines =
-      activeScene.automaticLogicSourceLines.data();
+  frame.creativeWireframeDebug.lines = activeScene.logicOverlay.lines.data();
   frame.creativeWireframeDebug.lineCount =
-      activeScene.automaticLogicSourceLines.size();
+      activeScene.logicOverlay.lines.size();
 
-  return expect(inactiveScene.automaticLogicSourceLines.size() == 12U &&
-                    inactiveScene.automaticLogicSourceLines.front().style ==
-                        0U &&
-                    inactiveScene.automaticLogicSourceLines.front().color.g <
-                        0.7F,
+  return expect(inactiveScene.logicOverlay.lines.size() == 12U &&
+                    inactiveScene.logicOverlay.sourceEdgeCount == 12U &&
+                    inactiveScene.logicOverlay.lines.front().style == 0U &&
+                    inactiveScene.logicOverlay.lines.front().color.g < 0.7F &&
+                    inactiveScene.logicOverlay.lines.front().thickness < 0.1F,
                 "empty trigger projects a restrained inactive box") &&
-         expect(selectedInactiveScene.automaticLogicSourceLines.size() == 13U &&
-                    selectedInactiveScene.automaticLogicSourceLines.back()
-                            .objectId == trigger.objectId &&
-                    selectedInactiveScene.automaticLogicSourceLines.back()
-                            .color.g < 0.7F,
-                "selected idle circuit adds one grey source-to-door edge") &&
+         expect(selectedInactiveScene.logicOverlay.lines.size() == 27U &&
+                    selectedInactiveScene.logicOverlay.linkShaftCount == 1U &&
+                    selectedInactiveScene.logicOverlay.linkArrowEdgeCount ==
+                        2U &&
+                    selectedInactiveScene.logicOverlay.targetEdgeCount == 12U &&
+                    selectedInactiveScene.logicOverlay.lines[12].objectId ==
+                        trigger.objectId &&
+                    selectedInactiveScene.logicOverlay.lines[12].color.b >
+                        0.9F,
+                "selected idle circuit adds a cyan arrow and target box") &&
          expect(entered.status == app::CreativeEditorPlayTickStatus::Advanced &&
                     entered.automaticSourceTransitions == 1U &&
                     entered.automaticEffectsApplied == 1U &&
@@ -436,22 +439,75 @@ bool automaticLogicRunsInPlayAndProjectsOccupancy() {
                         cr::CreativeRuntimeAutomaticLogicStatus::Applied &&
                     doorState->doorOpen,
                 "play tick applies first-entry trigger effect") &&
-         expect(activeScene.automaticLogicSourceLines.size() == 12U &&
-                    activeScene.automaticLogicSourceLines.front().style == 1U &&
-                    activeScene.automaticLogicSourceLines.front().color.g >
-                        0.9F &&
-                    activeScene.automaticLogicSourceLines.front().objectId ==
+         expect(activeScene.logicOverlay.lines.size() == 12U &&
+                    activeScene.logicOverlay.lines.front().style == 1U &&
+                    activeScene.logicOverlay.lines.front().color.g > 0.9F &&
+                    activeScene.logicOverlay.lines.front().objectId ==
                         trigger.objectId,
                 "occupied trigger projects a green active box") &&
-         expect(selectedActiveScene.automaticLogicSourceLines.size() == 13U &&
-                    selectedActiveScene.automaticLogicSourceLines.back()
-                            .style == 1U &&
-                    selectedActiveScene.automaticLogicSourceLines.back()
-                            .color.g > 0.9F,
-                "selected active circuit edge turns green") &&
+         expect(selectedActiveScene.logicOverlay.lines.size() == 27U &&
+                    selectedActiveScene.logicOverlay.linkShaftCount == 1U &&
+                    selectedActiveScene.logicOverlay.lines[12].color.g > 0.9F &&
+                    selectedActiveScene.logicOverlay.lines[15].objectId ==
+                        door.objectId &&
+                    selectedActiveScene.logicOverlay.lines[15].color.g > 0.9F,
+                "selected active circuit and opened target turn green") &&
          expect(iggy3d::validateFrameInput(frame) ==
                     iggy3d::FrameInputStatus::Valid,
                 "automatic source overlay is valid bounded frame data");
+}
+
+bool manualAndInvalidLogicLinksRemainInspectableInPlay() {
+  cr::CreativeDocument document = playableDocument(false, 920U);
+  const cr::CreativeDocumentCreateReceipt source = createObject(
+      document, cr::CreativeObjectKind::Switch, "Manual Switch",
+      {-2.0F, 0.25F, -1.0F});
+  const cr::CreativeDocumentCreateReceipt door = createObject(
+      document, cr::CreativeObjectKind::Door, "Manual Door",
+      {2.0F, 0.25F, -0.25F},
+      cr::CreativeBounds{{2.0F, 0.25F, -0.25F},
+                         {3.0F, 2.5F, 0.25F}});
+  if (!source.accepted || !door.accepted ||
+      !document
+           .setLogicLink({source.objectId, door.objectId,
+                          cr::CreativeLogicLinkAction::Open})
+           .accepted) {
+    return expect(false, "manual logic overlay setup creates link");
+  }
+
+  iggy3d::StaticMeshAssetCatalog catalog;
+  app::CreativeEditorPlayMode mode;
+  if (!start(mode, document, catalog).accepted || !mode.sandbox.has_value()) {
+    return expect(false, "manual logic overlay setup starts");
+  }
+  const app::CreativeEditorPlayScene valid =
+      app::buildCreativeEditorPlayScene(mode, source.objectId);
+  if (mode.sandbox->logicLinks.empty()) {
+    return expect(false, "manual logic overlay has runtime link");
+  }
+  mode.sandbox->logicLinks.front().targetObjectId = cr::kInvalidObjectId;
+  const app::CreativeEditorPlayScene invalid =
+      app::buildCreativeEditorPlayScene(mode, source.objectId);
+
+  return expect(valid.logicOverlay.lines.size() == 27U &&
+                    valid.logicOverlay.sourceEdgeCount == 12U &&
+                    valid.logicOverlay.linkShaftCount == 1U &&
+                    valid.logicOverlay.linkArrowEdgeCount == 2U &&
+                    valid.logicOverlay.targetEdgeCount == 12U &&
+                    valid.logicOverlay.invalidLinkCount == 0U &&
+                    valid.logicOverlay.lines[12].color.g > 0.9F &&
+                    valid.logicOverlay.lines[15].color.r > 0.9F &&
+                    valid.logicOverlay.lines[15].color.g > 0.5F,
+                "manual source projects its Open arrow and closed door state") &&
+         expect(invalid.logicOverlay.lines.size() == 15U &&
+                    invalid.logicOverlay.sourceEdgeCount == 12U &&
+                    invalid.logicOverlay.linkShaftCount == 1U &&
+                    invalid.logicOverlay.linkArrowEdgeCount == 2U &&
+                    invalid.logicOverlay.targetEdgeCount == 0U &&
+                    invalid.logicOverlay.invalidLinkCount == 1U &&
+                    invalid.logicOverlay.lines[12].color.r > 0.9F &&
+                    invalid.logicOverlay.lines[12].color.g < 0.3F,
+                "missing runtime target remains visible as a red arrow stub");
 }
 
 bool startStopAndProjectionPreserveAuthoredDocument() {
@@ -760,6 +816,7 @@ int main() {
                   attackAndInteractSubmitOncePerPress() &&
                   playHudIsBoundedAndUsesTargetState() &&
                   automaticLogicRunsInPlayAndProjectsOccupancy() &&
+                  manualAndInvalidLogicLinksRemainInspectableInPlay() &&
                   startStopAndProjectionPreserveAuthoredDocument() &&
                   fixedTickMovementAndCatchUpAreBounded() &&
                   idleTicksAdvanceAndStaleDocumentsStop() &&

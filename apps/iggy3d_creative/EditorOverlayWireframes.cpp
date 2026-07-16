@@ -63,21 +63,9 @@ void resetCreativeEditorOverlayFrame(CreativeEditorOverlayFrame& output) {
 
 [[nodiscard]] RenderLineColor logicLinkOverlayColor(
     CreativeLogicLinkOverlayRole role) noexcept {
-  switch (role) {
-    case CreativeLogicLinkOverlayRole::Toggle:
-      return {0.20F, 0.82F, 1.0F, 1.0F};
-    case CreativeLogicLinkOverlayRole::Open:
-      return {0.20F, 1.0F, 0.35F, 1.0F};
-    case CreativeLogicLinkOverlayRole::Close:
-      return {1.0F, 0.64F, 0.18F, 1.0F};
-    case CreativeLogicLinkOverlayRole::Enable:
-      return {0.52F, 0.88F, 1.0F, 1.0F};
-    case CreativeLogicLinkOverlayRole::Disable:
-      return {0.58F, 0.64F, 0.70F, 1.0F};
-    case CreativeLogicLinkOverlayRole::Invalid:
-      return {1.0F, 0.20F, 0.20F, 1.0F};
-  }
-  return {1.0F, 0.20F, 0.20F, 1.0F};
+  const CreativeLogicLinkOverlayColor color =
+      creativeLogicLinkOverlayColor(role);
+  return {color.r, color.g, color.b, color.a};
 }
 
 void appendCreativeEditorLogicLinkLabel(
