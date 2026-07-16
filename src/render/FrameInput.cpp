@@ -45,6 +45,8 @@ bool isValidCreativePreviewGeometry(
       return item.proceduralSegmentCount == 0U;
     case RenderCreativePreviewGeometryProfile::RampWedge:
       return !hasAsset && item.proceduralSegmentCount == 0U;
+    case RenderCreativePreviewGeometryProfile::OpenFrame:
+      return !hasAsset && item.proceduralSegmentCount == 0U;
     case RenderCreativePreviewGeometryProfile::StairSteps:
       return !hasAsset && item.proceduralSegmentCount > 0U &&
              item.proceduralSegmentCount <=

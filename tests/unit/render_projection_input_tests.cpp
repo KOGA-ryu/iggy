@@ -157,6 +157,11 @@ bool creativePreviewChannelIsFixedAndValidated() {
   iggy3d::FrameInput invalidGeometryProfile = valid;
   invalidGeometryProfile.creativePreview.items[0].geometryProfile =
       iggy3d::RenderCreativePreviewGeometryProfile::Count;
+  iggy3d::FrameInput openFrame = valid;
+  openFrame.creativePreview.items[0].geometryProfile =
+      iggy3d::RenderCreativePreviewGeometryProfile::OpenFrame;
+  iggy3d::FrameInput invalidOpenFrameSegments = openFrame;
+  invalidOpenFrameSegments.creativePreview.items[0].proceduralSegmentCount = 1U;
   iggy3d::FrameInput missingStairSegments = valid;
   missingStairSegments.creativePreview.items[2].proceduralSegmentCount = 0U;
   iggy3d::FrameInput excessiveStairSegments = valid;
@@ -173,6 +178,9 @@ bool creativePreviewChannelIsFixedAndValidated() {
          expect(iggy3d::validateFrameInput(valid) ==
                     iggy3d::FrameInputStatus::Valid,
                 "three creative previews are valid") &&
+         expect(iggy3d::validateFrameInput(openFrame) ==
+                    iggy3d::FrameInputStatus::Valid,
+                "open frame preview is valid without procedural segments") &&
          expect(iggy3d::validateFrameInput(tooMany) ==
                     iggy3d::FrameInputStatus::InvalidCreativePreviewItems,
                 "creative preview capacity is enforced") &&
@@ -190,6 +198,8 @@ bool creativePreviewChannelIsFixedAndValidated() {
                     iggy3d::validateFrameInput(missingStairSegments) ==
                         iggy3d::FrameInputStatus::InvalidCreativePreviewItems &&
                     iggy3d::validateFrameInput(excessiveStairSegments) ==
+                        iggy3d::FrameInputStatus::InvalidCreativePreviewItems &&
+                    iggy3d::validateFrameInput(invalidOpenFrameSegments) ==
                         iggy3d::FrameInputStatus::InvalidCreativePreviewItems,
                 "generated preview profiles and stair counts are bounded") &&
          expect(iggy3d::validateFrameInput(assetWithGeneratedProfile) ==

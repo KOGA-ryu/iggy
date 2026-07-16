@@ -1242,6 +1242,12 @@ bool generatedTraversalPreviewsUseRoomGeometryProfiles() {
       previewFor(cr::CreativeObjectKind::Stair);
   const iggy3d::RenderCreativePreviewFrame platform =
       previewFor(cr::CreativeObjectKind::Platform);
+  const iggy3d::RenderCreativePreviewFrame bridge =
+      previewFor(cr::CreativeObjectKind::Bridge);
+  const iggy3d::RenderCreativePreviewFrame column =
+      previewFor(cr::CreativeObjectKind::Column);
+  const iggy3d::RenderCreativePreviewFrame arch =
+      previewFor(cr::CreativeObjectKind::Arch);
 
   return expect(ramp.itemCount == 2U &&
                     ramp.items[0].geometryProfile ==
@@ -1264,7 +1270,26 @@ bool generatedTraversalPreviewsUseRoomGeometryProfiles() {
                         iggy3d::RenderCreativePreviewGeometryProfile::Box &&
                     platform.items[1].geometryProfile ==
                         iggy3d::RenderCreativePreviewGeometryProfile::Box,
-                "walkable slab preview remains an exact box");
+                "platform preview remains an exact box") &&
+         expect(bridge.itemCount == 2U &&
+                    bridge.items[0].geometryProfile ==
+                        iggy3d::RenderCreativePreviewGeometryProfile::Box &&
+                    bridge.items[1].geometryProfile ==
+                        iggy3d::RenderCreativePreviewGeometryProfile::Box &&
+                    column.itemCount == 2U &&
+                    column.items[0].geometryProfile ==
+                        iggy3d::RenderCreativePreviewGeometryProfile::Box &&
+                    column.items[1].geometryProfile ==
+                        iggy3d::RenderCreativePreviewGeometryProfile::Box,
+                "slabs and solid prisms share exact box previews") &&
+         expect(arch.itemCount == 2U &&
+                    arch.items[0].geometryProfile ==
+                        iggy3d::RenderCreativePreviewGeometryProfile::OpenFrame &&
+                    arch.items[1].geometryProfile ==
+                        iggy3d::RenderCreativePreviewGeometryProfile::OpenFrame &&
+                    arch.items[0].proceduralSegmentCount == 0U &&
+                    arch.items[1].proceduralSegmentCount == 0U,
+                "arch target and held previews preserve the open frame");
 }
 
 bool previewHidesForEveryBlockingSurface() {

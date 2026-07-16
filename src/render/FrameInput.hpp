@@ -120,6 +120,7 @@ enum class RenderCreativePreviewRole : std::uint8_t {
 enum class RenderCreativePreviewGeometryProfile : std::uint8_t {
   Box,
   RampWedge,
+  OpenFrame,
   StairSteps,
   Count,
 };

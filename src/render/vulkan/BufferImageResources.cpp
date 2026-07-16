@@ -1,5 +1,6 @@
 #include "render/vulkan/BufferImageResources.hpp"
 
+#include "content/assets/GeneratedGeometry.hpp"
 #include "core/math/EulerRotation.hpp"
 #include "render/mesh/BeanMesh.hpp"
 
@@ -541,6 +542,36 @@ bool appendRampWedgeIfFits(std::vector<FirstRoomVertex>& vertices,
 }
 
 template <typename Index>
+bool appendOpenFrameIfFits(std::vector<FirstRoomVertex>& vertices,
+                           std::vector<Index>& indices,
+                           std::vector<IndexedDrawRange>& draws,
+                           Vec3 center,
+                           Vec3 size,
+                           Vec3 color,
+                           Vec3 rotationEulerRadians) {
+  constexpr std::size_t kPartVertexCount = 8U;
+  const std::size_t maximumVertexCount =
+      static_cast<std::size_t>(std::numeric_limits<Index>::max());
+  if (vertices.size() > maximumVertexCount ||
+      kGeneratedOpenFramePartCount >
+          (maximumVertexCount - vertices.size()) / kPartVertexCount ||
+      !finiteVec3(center) || !finiteVec3(rotationEulerRadians)) {
+    return false;
+  }
+  const GeneratedOpenFrameLayout layout = generatedOpenFrameLayout(size);
+  if (!layout.valid) {
+    return false;
+  }
+
+  for (const GeneratedOpenFramePart& part : layout.parts) {
+    appendBox(vertices, indices, draws,
+              center + rotateEulerXyz(part.center, rotationEulerRadians),
+              part.size, color, rotationEulerRadians);
+  }
+  return true;
+}
+
+template <typename Index>
 bool appendStairStepsIfFits(std::vector<FirstRoomVertex>& vertices,
                             std::vector<Index>& indices,
                             std::vector<IndexedDrawRange>& draws,
@@ -638,6 +669,9 @@ bool appendCreativeGeneratedPreviewShape(
       return true;
     case RenderCreativePreviewGeometryProfile::RampWedge:
       return appendRampWedgeIfFits(vertices, indices, componentDraws, {}, size,
+                                   color, {});
+    case RenderCreativePreviewGeometryProfile::OpenFrame:
+      return appendOpenFrameIfFits(vertices, indices, componentDraws, {}, size,
                                    color, {});
     case RenderCreativePreviewGeometryProfile::StairSteps:
       return appendStairStepsIfFits(vertices, indices, componentDraws, {}, size,
@@ -1809,6 +1843,18 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometryImpl(
       }
       continue;
     }
+    if (mesh.meshId == "creative_open_frame") {
+      if (!appendOpenFrameIfFits(
+              result.vertices, result.indices, result.indexedDraws,
+              mesh.position, mesh.size, colorForRoomRole(mesh.role),
+              mesh.rotationEulerRadians)) {
+        result.vertices.clear();
+        result.indices.clear();
+        result.indexedDraws.clear();
+        return result;
+      }
+      continue;
+    }
     if (mesh.meshId == "creative_stair_steps") {
       if (!appendStairStepsIfFits(
               result.vertices, result.indices, result.indexedDraws,
@@ -1979,10 +2025,12 @@ CreativePreviewCpuGeometry buildCreativePreviewCpuGeometry(
     std::uint16_t proceduralSegmentCount = 0U;
     if (profileSlot == 1U) {
       profile = RenderCreativePreviewGeometryProfile::RampWedge;
-    } else if (profileSlot >= 2U) {
+    } else if (profileSlot == 2U) {
+      profile = RenderCreativePreviewGeometryProfile::OpenFrame;
+    } else if (profileSlot >= 3U) {
       profile = RenderCreativePreviewGeometryProfile::StairSteps;
       proceduralSegmentCount =
-          static_cast<std::uint16_t>(profileSlot - 1U);
+          static_cast<std::uint16_t>(profileSlot - 2U);
     }
 
     for (std::size_t roleIndex = 0; roleIndex < roles.size(); ++roleIndex) {

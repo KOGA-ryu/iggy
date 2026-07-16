@@ -136,9 +136,11 @@ enum class CreativeSpatialOccupancyKind {
 // kinds independently.
 enum class CreativeGeneratedGeometryProfile : std::uint8_t {
     DescriptorDefault,
+    SolidPrism,
     WalkableSlab,
     RampWedge,
     StairSteps,
+    OpenFrame,
 };
 
 struct CreativeGeneratedGeometrySettings {

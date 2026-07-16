@@ -356,7 +356,7 @@ bool generatedTraversalGeometryStaysInRenderCollisionParity() {
                     baked.receipt.accepted,
                 "generated traversal objects bake") &&
          expect(platformMesh != nullptr &&
-                    platformMesh->meshId == "creative_platform_slab" &&
+                    platformMesh->meshId == "creative_walkable_slab" &&
                     platformMesh->proceduralSegmentCount == 0U &&
                     rampMesh != nullptr &&
                     rampMesh->meshId == "creative_ramp_wedge" &&
@@ -386,6 +386,73 @@ bool generatedTraversalGeometryStaysInRenderCollisionParity() {
                 "generated ramp exposes exact sloped height and normal") &&
          expect(physics.ok && physics.colliderCount == 9U,
                 "physics consumes slab and stair boxes but skips height patch");
+}
+
+bool generatedStructuralGeometryStaysInRenderCollisionParity() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("generated structures");
+  const cr::CreativeDocumentCreateReceipt column =
+      addGenerated(document, cr::CreativeObjectKind::Column, -12.0);
+  const cr::CreativeDocumentCreateReceipt beam =
+      addGenerated(document, cr::CreativeObjectKind::Beam, -6.0);
+  const cr::CreativeDocumentCreateReceipt bridge =
+      addGenerated(document, cr::CreativeObjectKind::Bridge, 0.0);
+  const cr::CreativeDocumentCreateReceipt arch =
+      addGenerated(document, cr::CreativeObjectKind::Arch, 8.0);
+  const cr::CreativeRoomBakeResult baked = bake(document, nullptr);
+  const iggy3d::RoomStaticMeshAsset* columnMesh =
+      findMesh(baked.room, column.objectId);
+  const iggy3d::RoomStaticMeshAsset* beamMesh =
+      findMesh(baked.room, beam.objectId);
+  const iggy3d::RoomStaticMeshAsset* bridgeMesh =
+      findMesh(baked.room, bridge.objectId);
+  const iggy3d::RoomStaticMeshAsset* archMesh =
+      findMesh(baked.room, arch.objectId);
+  const iggy3d::SpatialSurfaceSet surfaces =
+      iggy3d::buildSpatialSurfaceSet(baked.room);
+  const iggy3d::CollisionQueryResult bridgeTop =
+      iggy3d::sampleSurfaceHeight(surfaces, {0.0F, 0.0F, 0.0F});
+  const iggy3d::CollisionQueryResult archOpening = iggy3d::queryPointOverlap(
+      surfaces, {8.0F, 1.0F, 0.0F}, iggy3d::CollisionQueryKind::Actor);
+  const iggy3d::CollisionQueryResult archPier = iggy3d::queryPointOverlap(
+      surfaces, {6.8F, 1.0F, 0.0F}, iggy3d::CollisionQueryKind::Actor);
+  const iggy3d::CollisionQueryResult archLintel = iggy3d::queryPointOverlap(
+      surfaces, {8.0F, 2.75F, 0.0F}, iggy3d::CollisionQueryKind::Actor);
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult physics =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces({&surfaces, {}});
+
+  return expect(column.accepted && beam.accepted && bridge.accepted &&
+                    arch.accepted && baked.receipt.accepted,
+                "generated structural objects bake") &&
+         expect(columnMesh != nullptr &&
+                    columnMesh->meshId == "creative_solid_prism" &&
+                    beamMesh != nullptr &&
+                    beamMesh->meshId == "creative_solid_prism" &&
+                    bridgeMesh != nullptr &&
+                    bridgeMesh->meshId == "creative_walkable_slab" &&
+                    archMesh != nullptr &&
+                    archMesh->meshId == "creative_open_frame" &&
+                    archMesh->proceduralSegmentCount == 0U,
+                "room meshes carry descriptor-owned structural profiles") &&
+         expect(baked.room.spatialSurfaces.size() == 11U &&
+                    countRole(baked.room,
+                              iggy3d::RoomSpatialSurfaceRole::Walkable) == 1U &&
+                    countRole(baked.room,
+                              iggy3d::RoomSpatialSurfaceRole::Blocker) == 5U &&
+                    countRole(
+                        baked.room,
+                        iggy3d::RoomSpatialSurfaceRole::ProjectileBlocker) == 5U,
+                "solid prisms bridge and open frame emit exact surface facts") &&
+         expect(bridgeTop.status == iggy3d::CollisionQueryStatus::Hit &&
+                    std::fabs(bridgeTop.heightMeters - 0.35F) <= 0.001F &&
+                    bridgeTop.role == iggy3d::CollisionSurfaceRole::Walkable,
+                "generated bridge exposes a walkable top") &&
+         expect(archOpening.status == iggy3d::CollisionQueryStatus::NoHit &&
+                    archPier.status == iggy3d::CollisionQueryStatus::Hit &&
+                    archLintel.status == iggy3d::CollisionQueryStatus::Hit,
+                "generated arch keeps its opening clear and frame solid") &&
+         expect(physics.ok && physics.colliderCount == 6U,
+                "physics consumes solid prisms bridge and three arch parts");
 }
 
 bool generatedTraversalTransformsFailClosedAndStayBounded() {
@@ -658,6 +725,7 @@ int main() {
                   compoundFixtureAssetsReachRuntimePhysics() &&
                   importedStairSupportsFullBoundedRuntimeTraversal() &&
                   generatedTraversalGeometryStaysInRenderCollisionParity() &&
+                  generatedStructuralGeometryStaysInRenderCollisionParity() &&
                   generatedTraversalTransformsFailClosedAndStayBounded() &&
                   renderOnlyAndUnsafeMetadataStayVisibleWithoutPhysics() &&
                   defaultMetadataUsesBoundsButNeverInventsWalkability() &&

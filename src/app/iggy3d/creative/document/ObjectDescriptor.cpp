@@ -424,7 +424,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         kPlatformDefaults,
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
     ), CreativeGeneratedGeometryProfile::WalkableSlab),
-    descriptor(
+    withGeneratedGeometry(descriptor(
         CreativeObjectKind::Column,
         CreativeObjectCategory::Structural,
         CreativeObjectProfile::BoxStructural,
@@ -437,8 +437,8 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         structuralCreationDirtyFlags(),
         boxDefaults(0.75, 3.0, 0.75),
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
-    ),
-    descriptor(
+    ), CreativeGeneratedGeometryProfile::SolidPrism),
+    withGeneratedGeometry(descriptor(
         CreativeObjectKind::Pillar,
         CreativeObjectCategory::Structural,
         CreativeObjectProfile::BoxStructural,
@@ -451,8 +451,8 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         structuralCreationDirtyFlags(),
         boxDefaults(1.0, 3.0, 1.0),
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
-    ),
-    descriptor(
+    ), CreativeGeneratedGeometryProfile::SolidPrism),
+    withGeneratedGeometry(descriptor(
         CreativeObjectKind::Beam,
         CreativeObjectCategory::Structural,
         CreativeObjectProfile::BoxStructural,
@@ -465,8 +465,8 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         structuralCreationDirtyFlags(),
         boxDefaults(4.0, 0.35, 0.35),
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
-    ),
-    descriptor(
+    ), CreativeGeneratedGeometryProfile::SolidPrism),
+    withGeneratedGeometry(descriptor(
         CreativeObjectKind::Arch,
         CreativeObjectCategory::Structural,
         CreativeObjectProfile::BoxStructural,
@@ -481,8 +481,8 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
         CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
-    ),
-    descriptor(
+    ), CreativeGeneratedGeometryProfile::OpenFrame),
+    withGeneratedGeometry(descriptor(
         CreativeObjectKind::Fence,
         CreativeObjectCategory::Structural,
         CreativeObjectProfile::BoxStructural,
@@ -497,8 +497,8 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
         CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
-    ),
-    descriptor(
+    ), CreativeGeneratedGeometryProfile::SolidPrism),
+    withGeneratedGeometry(descriptor(
         CreativeObjectKind::Railing,
         CreativeObjectCategory::Structural,
         CreativeObjectProfile::BoxStructural,
@@ -513,8 +513,8 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
         CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
-    ),
-    descriptor(
+    ), CreativeGeneratedGeometryProfile::SolidPrism),
+    withGeneratedGeometry(descriptor(
         CreativeObjectKind::Bridge,
         CreativeObjectCategory::Structural,
         CreativeObjectProfile::BoxStructural,
@@ -527,7 +527,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         structuralCreationDirtyFlags() | flagValue(CreativeObjectDirtyFlag::Navigation),
         boxDefaults(3.0, 0.35, 8.0),
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
-    ),
+    ), CreativeGeneratedGeometryProfile::WalkableSlab),
     descriptor(
         CreativeObjectKind::Ladder,
         CreativeObjectCategory::Structural,

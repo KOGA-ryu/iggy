@@ -37,10 +37,13 @@ struct CreativePreviewGeometrySelection {
   const cr::CreativeObjectDescriptor& descriptor = cr::describeObject(kind);
   switch (descriptor.generatedGeometry.profile) {
     case cr::CreativeGeneratedGeometryProfile::DescriptorDefault:
+    case cr::CreativeGeneratedGeometryProfile::SolidPrism:
     case cr::CreativeGeneratedGeometryProfile::WalkableSlab:
       return {};
     case cr::CreativeGeneratedGeometryProfile::RampWedge:
       return {RenderCreativePreviewGeometryProfile::RampWedge, 0U, true};
+    case cr::CreativeGeneratedGeometryProfile::OpenFrame:
+      return {RenderCreativePreviewGeometryProfile::OpenFrame, 0U, true};
     case cr::CreativeGeneratedGeometryProfile::StairSteps: {
       const std::uint16_t count = cr::creativeGeneratedGeometrySegmentCount(
           descriptor, {resolvedSize.x, resolvedSize.y, resolvedSize.z});

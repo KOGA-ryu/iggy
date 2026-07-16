@@ -32,7 +32,7 @@ namespace iggy3d::vulkan {
 
 inline constexpr std::size_t kCreativePreviewGeometryDrawsPerProfileSlot = 6U;
 inline constexpr std::size_t kCreativePreviewGeometryProfileSlotCount =
-    2U + kRenderCreativePreviewMaximumStairSegmentCount;
+    3U + kRenderCreativePreviewMaximumStairSegmentCount;
 inline constexpr std::size_t kCreativePreviewGeometryDrawRangeCount =
     kCreativePreviewGeometryDrawsPerProfileSlot *
     kCreativePreviewGeometryProfileSlotCount;
@@ -78,6 +78,13 @@ inline constexpr std::size_t kCreativePreviewGeometryDrawRangeCount =
       }
       profileSlot = 1U;
       break;
+    case RenderCreativePreviewGeometryProfile::OpenFrame:
+      if (proceduralSegmentCount != 0U) {
+        return static_cast<std::uint32_t>(
+            kCreativePreviewGeometryDrawRangeCount);
+      }
+      profileSlot = 2U;
+      break;
     case RenderCreativePreviewGeometryProfile::StairSteps:
       if (proceduralSegmentCount == 0U ||
           proceduralSegmentCount >
@@ -85,7 +92,7 @@ inline constexpr std::size_t kCreativePreviewGeometryDrawRangeCount =
         return static_cast<std::uint32_t>(
             kCreativePreviewGeometryDrawRangeCount);
       }
-      profileSlot = 2U + proceduralSegmentCount - 1U;
+      profileSlot = 3U + proceduralSegmentCount - 1U;
       break;
     case RenderCreativePreviewGeometryProfile::Count:
       return static_cast<std::uint32_t>(

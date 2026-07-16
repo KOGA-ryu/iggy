@@ -35,9 +35,9 @@ int main() {
       iggy3d::kRenderCreativePreviewMaximumStairSegmentCount *
       (iggy3d::kRenderCreativePreviewMaximumStairSegmentCount + 1U) / 2U;
   constexpr std::size_t generatedShapeVertexCount =
-      8U + 6U + 8U * stairSegmentSum;
+      8U + 6U + 24U + 8U * stairSegmentSum;
   constexpr std::size_t generatedShapeIndexCount =
-      72U + 48U + 72U * stairSegmentSum;
+      72U + 48U + 216U + 72U * stairSegmentSum;
   constexpr std::size_t decoratedRoleCount =
       iggy3d::kRenderCreativePreviewRoleCount - 1U;
   constexpr std::size_t expectedPreviewVertexCount =

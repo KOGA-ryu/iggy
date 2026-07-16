@@ -2,6 +2,7 @@
 #include "app/iggy3d/creative/adapters/RoomBakeAssetSurfaces.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/adapters/RoomBakeGreedyFloors.hpp"
+#include "content/assets/GeneratedGeometry.hpp"
 #include "content/assets/TraversalTag.hpp"
 
 #include <algorithm>
@@ -249,12 +250,16 @@ struct BakeStaticMeshEntry {
     const CreativeObjectDescriptor& descriptor,
     BakedRoomRole role) noexcept {
   switch (descriptor.generatedGeometry.profile) {
+    case CreativeGeneratedGeometryProfile::SolidPrism:
+      return "creative_solid_prism";
     case CreativeGeneratedGeometryProfile::WalkableSlab:
-      return "creative_platform_slab";
+      return "creative_walkable_slab";
     case CreativeGeneratedGeometryProfile::RampWedge:
       return "creative_ramp_wedge";
     case CreativeGeneratedGeometryProfile::StairSteps:
       return "creative_stair_steps";
+    case CreativeGeneratedGeometryProfile::OpenFrame:
+      return "creative_open_frame";
     case CreativeGeneratedGeometryProfile::DescriptorDefault:
       return meshIdForRole(role);
   }
@@ -640,6 +645,72 @@ void appendSolidBoundsSurfaces(
   return true;
 }
 
+[[nodiscard]] bool resolveGeneratedOpenFramePartBounds(
+    const CreativeObject& object,
+    std::array<BakeBounds, kGeneratedOpenFramePartCount>& output) noexcept {
+  const CreativeBoundsMetrics authored = measureCreativeBounds(object.bounds);
+  if (!authored.valid) {
+    return false;
+  }
+  const CreativeCoreVec3Conversion authoredSize =
+      creativeVec3ToCoreChecked(authored.size);
+  if (!authoredSize.converted) {
+    return false;
+  }
+  const GeneratedOpenFrameLayout layout =
+      generatedOpenFrameLayout(authoredSize.value);
+  if (!layout.valid) {
+    return false;
+  }
+
+  for (std::size_t index = 0U; index < layout.parts.size(); ++index) {
+    const GeneratedOpenFramePart& generated = layout.parts[index];
+    const CreativeVec3 half{generated.size.x * 0.5,
+                            generated.size.y * 0.5,
+                            generated.size.z * 0.5};
+    const CreativeVec3 center{authored.center.x + generated.center.x,
+                              authored.center.y + generated.center.y,
+                              authored.center.z + generated.center.z};
+    const CreativeBounds part{{center.x - half.x, center.y - half.y,
+                               center.z - half.z},
+                              {center.x + half.x, center.y + half.y,
+                               center.z + half.z}};
+    const CreativeTransformedBounds transformed =
+        resolveCreativeTransformedBounds(part, object.transform);
+    if (!transformed.valid ||
+        !validBakeBounds(transformed.worldBounds, output[index])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+[[nodiscard]] bool appendGeneratedOpenFrameSurfaces(
+    RoomAsset& room,
+    std::vector<CreativeRoomBakeSpatialSurfaceSource>& sources,
+    const CreativeObject& object) {
+  std::array<BakeBounds, kGeneratedOpenFramePartCount> parts{};
+  if (!resolveGeneratedOpenFramePartBounds(object, parts)) {
+    return false;
+  }
+
+  for (std::size_t index = 0U; index < parts.size(); ++index) {
+    const std::string stableId =
+        stableObjectId(object, "frame_part_" + std::to_string(index));
+    const Vec3 normal = blockerNormalForRole(parts[index], BakedRoomRole::Prop);
+    RoomSpatialSurface actor =
+        blockerSurfaceForStableId(stableId, parts[index], normal, false);
+    appendSpatialSurfaceSource(sources, object.id, actor);
+    room.spatialSurfaces.push_back(std::move(actor));
+
+    RoomSpatialSurface projectile =
+        blockerSurfaceForStableId(stableId, parts[index], normal, true);
+    appendSpatialSurfaceSource(sources, object.id, projectile);
+    room.spatialSurfaces.push_back(std::move(projectile));
+  }
+  return true;
+}
+
 void appendSpatialSurfaces(RoomAsset& room,
                            std::vector<CreativeRoomBakeSpatialSurfaceSource>& sources,
                            CreativeRoomBakeReceipt& receipt,
@@ -655,6 +726,9 @@ void appendSpatialSurfaces(RoomAsset& room,
   }
 
   switch (descriptor.generatedGeometry.profile) {
+    case CreativeGeneratedGeometryProfile::SolidPrism:
+      appendSolidBoundsSurfaces(room, sources, object, classification);
+      return;
     case CreativeGeneratedGeometryProfile::WalkableSlab:
       if (uprightRotation(object.transform.rotationEulerRadians)) {
         RoomSpatialSurface surface = walkableSurfaceForObject(
@@ -678,6 +752,11 @@ void appendSpatialSurfaces(RoomAsset& room,
     case CreativeGeneratedGeometryProfile::StairSteps:
       if (!appendProceduralStairSurfaces(room, sources, object,
                                          classification)) {
+        appendSolidBoundsSurfaces(room, sources, object, classification);
+      }
+      return;
+    case CreativeGeneratedGeometryProfile::OpenFrame:
+      if (!appendGeneratedOpenFrameSurfaces(room, sources, object)) {
         appendSolidBoundsSurfaces(room, sources, object, classification);
       }
       return;

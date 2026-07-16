@@ -570,6 +570,22 @@ bool descriptorOwnsGeneratedTraversalGeometry() {
       cr::describeObject(cr::CreativeObjectKind::Platform);
   const cr::CreativeObjectDescriptor& movingPlatform =
       cr::describeObject(cr::CreativeObjectKind::MovingPlatform);
+  const cr::CreativeObjectDescriptor& column =
+      cr::describeObject(cr::CreativeObjectKind::Column);
+  const cr::CreativeObjectDescriptor& pillar =
+      cr::describeObject(cr::CreativeObjectKind::Pillar);
+  const cr::CreativeObjectDescriptor& beam =
+      cr::describeObject(cr::CreativeObjectKind::Beam);
+  const cr::CreativeObjectDescriptor& fence =
+      cr::describeObject(cr::CreativeObjectKind::Fence);
+  const cr::CreativeObjectDescriptor& railing =
+      cr::describeObject(cr::CreativeObjectKind::Railing);
+  const cr::CreativeObjectDescriptor& bridge =
+      cr::describeObject(cr::CreativeObjectKind::Bridge);
+  const cr::CreativeObjectDescriptor& arch =
+      cr::describeObject(cr::CreativeObjectKind::Arch);
+  const cr::CreativeObjectDescriptor& ladder =
+      cr::describeObject(cr::CreativeObjectKind::Ladder);
   const double nan = std::numeric_limits<double>::quiet_NaN();
 
   return expect(sameVec3(cr::defaultCreativeObjectSize(stair.kind),
@@ -593,6 +609,23 @@ bool descriptorOwnsGeneratedTraversalGeometry() {
                     movingPlatform.generatedGeometry.profile ==
                         cr::CreativeGeneratedGeometryProfile::WalkableSlab,
                 "descriptor rows own generated traversal profiles") &&
+         expect(column.generatedGeometry.profile ==
+                        cr::CreativeGeneratedGeometryProfile::SolidPrism &&
+                    pillar.generatedGeometry.profile ==
+                        cr::CreativeGeneratedGeometryProfile::SolidPrism &&
+                    beam.generatedGeometry.profile ==
+                        cr::CreativeGeneratedGeometryProfile::SolidPrism &&
+                    fence.generatedGeometry.profile ==
+                        cr::CreativeGeneratedGeometryProfile::SolidPrism &&
+                    railing.generatedGeometry.profile ==
+                        cr::CreativeGeneratedGeometryProfile::SolidPrism &&
+                    bridge.generatedGeometry.profile ==
+                        cr::CreativeGeneratedGeometryProfile::WalkableSlab &&
+                    arch.generatedGeometry.profile ==
+                        cr::CreativeGeneratedGeometryProfile::OpenFrame &&
+                    ladder.generatedGeometry.profile ==
+                        cr::CreativeGeneratedGeometryProfile::DescriptorDefault,
+                "descriptor rows own generated structural profiles") &&
          expect(cr::creativeGeneratedGeometrySegmentCount(
                     stair, cr::defaultCreativeObjectSize(stair.kind)) == 4U &&
                     cr::creativeGeneratedGeometrySegmentCount(
