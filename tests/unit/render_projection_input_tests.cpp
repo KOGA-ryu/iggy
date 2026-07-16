@@ -128,11 +128,13 @@ bool creativeWireframeDebugChannelValidationWorks() {
 bool creativePreviewChannelIsFixedAndValidated() {
   iggy3d::SceneProjectionResult scene;
   iggy3d::FrameInput valid = validFrame(scene);
-  valid.creativePreview.itemCount = 2U;
+  valid.creativePreview.itemCount = 3U;
   valid.creativePreview.items[0].role =
       iggy3d::RenderCreativePreviewRole::PlacementValid;
   valid.creativePreview.items[1].role =
       iggy3d::RenderCreativePreviewRole::Held;
+  valid.creativePreview.items[2].role =
+      iggy3d::RenderCreativePreviewRole::MovingPlatformRoute;
   const bool assetSet = iggy3d::setRenderCreativePreviewAssetId(
       valid.creativePreview.items[1], "boulder_01");
 
@@ -154,7 +156,7 @@ bool creativePreviewChannelIsFixedAndValidated() {
                 "bounded creative preview asset id accepted") &&
          expect(iggy3d::validateFrameInput(valid) ==
                     iggy3d::FrameInputStatus::Valid,
-                "two creative previews are valid") &&
+                "three creative previews are valid") &&
          expect(iggy3d::validateFrameInput(tooMany) ==
                     iggy3d::FrameInputStatus::InvalidCreativePreviewItems,
                 "creative preview capacity is enforced") &&

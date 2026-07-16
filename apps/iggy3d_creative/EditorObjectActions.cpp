@@ -61,6 +61,8 @@ bool creativeEditorCommandIsObjectAction(
     case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
+    case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
+    case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::Count:
       return false;
   }
@@ -269,6 +271,8 @@ bool creativeEditorObjectActionEnabled(
     case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
+    case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
+    case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::Count:
       return false;
   }
@@ -309,6 +313,8 @@ std::string_view creativeEditorObjectActionLabel(
     case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
+    case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
+    case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::Count:
       return "INVALID ACTION";
   }
@@ -390,6 +396,8 @@ std::string creativeEditorObjectActionValueLabel(
     case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
+    case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
+    case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::Count:
       return "INVALID";
   }
@@ -559,6 +567,8 @@ bool activateCreativeEditorObjectAction(
     case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
+    case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
+    case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::Count:
       break;
   }

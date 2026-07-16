@@ -113,12 +113,13 @@ enum class RenderCreativePreviewRole : std::uint8_t {
   Held,
   PlacementValid,
   PlacementInvalid,
+  MovingPlatformRoute,
   Count,
 };
 
 inline constexpr std::size_t kRenderCreativePreviewRoleCount =
     static_cast<std::size_t>(RenderCreativePreviewRole::Count);
-inline constexpr std::size_t kRenderCreativePreviewCapacity = 2U;
+inline constexpr std::size_t kRenderCreativePreviewCapacity = 3U;
 inline constexpr std::size_t kRenderCreativePreviewAssetIdCapacity = 128U;
 
 struct RenderCreativePreviewItem {

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -178,6 +179,62 @@ bool routeKernelRejectsDegeneratePathAndLoops() {
                 "loop route follows authored open segments before closure");
 }
 
+bool routeSamplerMatchesTheStepKernel() {
+  const std::vector<cr::CreativePathPoint> path{
+      {{0.0, 0.0, 0.0}}, {{1.0, 0.0, 0.0}}};
+  cr::CreativeMovingPlatformSettings settings;
+  settings.speedMetersPerSecond = 1.0;
+  const cr::CreativeRuntimeMovingPlatformBuildResult built =
+      cr::buildCreativeRuntimeMovingPlatformDefinition(path, settings,
+                                                       {5.0F, 2.0F, 0.0F});
+  if (!built.ok) {
+    return expect(false, "sample route definition builds");
+  }
+  const auto start = cr::sampleCreativeRuntimeMovingPlatformProgress(
+      built.definition, 0.0);
+  const auto quarter = cr::sampleCreativeRuntimeMovingPlatformProgress(
+      built.definition, 0.25);
+  const auto midpoint = cr::sampleCreativeRuntimeMovingPlatformProgress(
+      built.definition, 0.5);
+  const auto threeQuarter = cr::sampleCreativeRuntimeMovingPlatformProgress(
+      built.definition, 0.75);
+  const auto endpoint = cr::sampleCreativeRuntimeMovingPlatformProgress(
+      built.definition, 1.0);
+
+  cr::CreativeRuntimeMovingPlatformState stepped;
+  stepped.positionMeters = built.definition.originPositionMeters;
+  for (int tick = 0; tick < 3; ++tick) {
+    const auto result = cr::planCreativeRuntimeMovingPlatformStep(
+        {&built.definition, &stepped, 4U, true});
+    if (!result.ok) {
+      return expect(false, "sample parity step is accepted");
+    }
+    stepped = result.nextState;
+  }
+  const auto parity = cr::sampleCreativeRuntimeMovingPlatformProgress(
+      built.definition, stepped.positionMeters.x - 5.0F);
+  const auto nonFinite = cr::sampleCreativeRuntimeMovingPlatformProgress(
+      built.definition, std::numeric_limits<double>::quiet_NaN());
+  const auto outside = cr::sampleCreativeRuntimeMovingPlatformProgress(
+      built.definition, 1.01);
+
+  return expect(start.ok && quarter.ok && midpoint.ok && threeQuarter.ok &&
+                    endpoint.ok,
+                "complete normalized route is sampleable") &&
+         expect(near(start.state.positionMeters.x, 5.0F) &&
+                    near(quarter.state.positionMeters.x, 5.25F) &&
+                    near(midpoint.state.positionMeters.x, 5.5F) &&
+                    near(threeQuarter.state.positionMeters.x, 5.75F) &&
+                    near(endpoint.state.positionMeters.x, 6.0F),
+                "ping-pong normalized progress spans authored endpoints") &&
+         expect(parity.ok &&
+                    near(parity.state.positionMeters.x,
+                         stepped.positionMeters.x),
+                "route sampler and fixed-tick planner share geometry") &&
+         expect(!nonFinite.ok && !outside.ok,
+                "invalid normalized progress is rejected");
+}
+
 bool runtimePublishesGeometryAndCarriesRider() {
   cr::CreativeDocument document = baseDocument(true);
   const cr::CreativeDocumentCreateReceipt created =
@@ -328,6 +385,7 @@ bool runtimeHonorsStartsActiveAndReverseLogic() {
 int main() {
   const bool ok = routeKernelIsDeterministicAndRelative() &&
                   routeKernelRejectsDegeneratePathAndLoops() &&
+                  routeSamplerMatchesTheStepKernel() &&
                   runtimePublishesGeometryAndCarriesRider() &&
                   runtimeBlocksMotionWithoutAdvancingPhase() &&
                   runtimeHonorsStartsActiveAndReverseLogic();

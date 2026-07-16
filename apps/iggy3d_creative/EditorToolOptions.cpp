@@ -99,7 +99,8 @@ cr::CreativeToolOptionList creativeEditorToolOptionsForEntry(
 
 CreativeEditorToolOptionsCommandList
 creativeEditorToolOptionCommandsForEntry(
-    cr::CreativeHotbarEntry entry) noexcept {
+    cr::CreativeHotbarEntry entry,
+    cr::CreativeObjectKind contextPrimaryObjectKind) noexcept {
   CreativeEditorToolOptionsCommandList commands;
   switch (describeCreativeEditorToolCapability(entry.kind).commandProfile) {
     case CreativeEditorToolCommandProfile::None:
@@ -157,6 +158,12 @@ creativeEditorToolOptionCommandsForEntry(
           CreativeEditorToolOptionsCommandId::RefreshSafeSavedAssetInstances;
       commands.ids[commands.count++] =
           CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances;
+      if (contextPrimaryObjectKind == cr::CreativeObjectKind::MovingPlatform) {
+        commands.ids[commands.count++] =
+            CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview;
+        commands.ids[commands.count++] =
+            CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview;
+      }
       break;
     case CreativeEditorToolCommandProfile::Count:
       break;

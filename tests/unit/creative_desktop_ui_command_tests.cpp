@@ -843,6 +843,56 @@ bool movingPlatformSettingsUseTypedCommandAndOneUndoStep() {
                 "moving platform settings redo restores edited values");
 }
 
+bool movingPlatformPreviewCommandsStayTransient() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Moving Platform Preview");
+  static_cast<void>(document.assignId(427U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId platformId =
+      createMovingPlatform(appState.facade);
+  const cr::CreativeObject* platform = appState.facade.findObject(platformId);
+  appState.history = {};
+
+  app::CreativeEditorState editor;
+  if (platform == nullptr ||
+      !app::syncCreativeMovingPlatformPreview(
+           editor.movingPlatformPreview, appState.facade.document().id(),
+           platform)
+           .accepted) {
+    return expect(false, "desktop preview state synchronizes");
+  }
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const std::uint64_t revisionBefore = appState.facade.document().revision();
+  const app::CreativeDesktopCommandResult play = dispatchPayload(
+      app::CreativeDesktopCommandId::ToggleMovingPlatformPreview, context,
+      app::CreativeDesktopMovingPlatformPreviewPayload{platformId, 0.0});
+  const app::CreativeDesktopCommandResult seek = dispatchPayload(
+      app::CreativeDesktopCommandId::SeekMovingPlatformPreview, context,
+      app::CreativeDesktopMovingPlatformPreviewPayload{platformId, 0.5});
+  const bool soughtToMidpoint =
+      editor.movingPlatformPreview.normalizedProgress == 0.5 &&
+      editor.movingPlatformPreview.runtimeState.positionMeters.y == 2.0F &&
+      !editor.movingPlatformPreview.playing;
+  const app::CreativeDesktopCommandResult restart = dispatchPayload(
+      app::CreativeDesktopCommandId::RestartMovingPlatformPreview, context,
+      app::CreativeDesktopMovingPlatformPreviewPayload{platformId, 0.0});
+
+  return expect(play.accepted && play.changed,
+                "desktop command starts route preview") &&
+         expect(seek.accepted && seek.changed && soughtToMidpoint,
+                "desktop command scrubs and pauses route preview") &&
+         expect(restart.accepted && restart.changed &&
+                    editor.movingPlatformPreview.normalizedProgress == 0.0,
+                "desktop command restarts route preview") &&
+         expect(appState.facade.document().revision() == revisionBefore &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "preview commands write no document or history state");
+}
+
 bool assetAndInstanceCommandsRouteAndRejectCleanly() {
   // Verifies the asset/instance families route to the right kernels and honor
   // payload typing. The success paths reuse existing kernels covered by
@@ -1078,6 +1128,10 @@ bool mismatchedPayloadsAreNoOpFailures() {
   const app::CreativeDesktopCommandResult badMovingPlatform = dispatchPayload(
       app::CreativeDesktopCommandId::SetMovingPlatformSettings, context,
       app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badMovingPlatformPreview =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::SeekMovingPlatformPreview, context,
+          app::CreativeDesktopDeletePayload{{a}});
 
   return expect(!badDelete.accepted &&
                     badDelete.message == "delete objects: payload mismatch",
@@ -1095,6 +1149,10 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badMovingPlatform.message ==
                         "moving platform settings: payload mismatch",
                 "SetMovingPlatformSettings rejects a mismatched payload") &&
+         expect(!badMovingPlatformPreview.accepted &&
+                    badMovingPlatformPreview.message ==
+                        "moving platform preview: payload mismatch",
+                "moving platform preview rejects a mismatched payload") &&
          expect(appState.facade.document().objectCount() == before &&
                     cr::creativeUndoDepth(appState.history) == 0U,
                 "mismatched payloads mutate nothing and record no history");
@@ -1121,6 +1179,7 @@ int main() {
   ok = transformCommandSetsAbsoluteWithMask() && ok;
   ok = transformCommandIsAtomicAndAttachmentAware() && ok;
   ok = movingPlatformSettingsUseTypedCommandAndOneUndoStep() && ok;
+  ok = movingPlatformPreviewCommandsStayTransient() && ok;
   ok = assetAndInstanceCommandsRouteAndRejectCleanly() && ok;
   ok = assetAndInstanceCommandsCompleteSuccessPaths() && ok;
   ok = mismatchedPayloadsAreNoOpFailures() && ok;

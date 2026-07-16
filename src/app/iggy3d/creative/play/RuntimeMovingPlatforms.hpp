@@ -77,6 +77,30 @@ struct CreativeRuntimeMovingPlatformStepResult {
   CreativeRuntimeMovingPlatformState nextState;
 };
 
+enum class CreativeRuntimeMovingPlatformSampleStatus : std::uint8_t {
+  InvalidRequest,
+  Sampled,
+};
+
+struct CreativeRuntimeMovingPlatformSampleResult {
+  bool ok = false;
+  CreativeRuntimeMovingPlatformSampleStatus status =
+      CreativeRuntimeMovingPlatformSampleStatus::InvalidRequest;
+  std::string_view reasonCode =
+      "creative_runtime_moving_platform_sample_invalid";
+  double normalizedProgress = 0.0;
+  CreativeRuntimeMovingPlatformState state;
+};
+
+// Pure route sampler for editor previews and deterministic tooling. Progress
+// is position along the authored route: PingPong 0/1 are the first/last
+// waypoint, while Loop 1 closes back to the first. It never touches runtime
+// world state.
+[[nodiscard]] CreativeRuntimeMovingPlatformSampleResult
+sampleCreativeRuntimeMovingPlatformProgress(
+    const CreativeRuntimeMovingPlatformDefinition& definition,
+    double normalizedProgress) noexcept;
+
 // Pure deterministic route kernel. The runtime world owner may reject the
 // planned displacement without committing nextState.
 [[nodiscard]] CreativeRuntimeMovingPlatformStepResult

@@ -6,6 +6,7 @@
 
 #include "EditorGroup.hpp"
 #include "EditorInteraction.hpp"
+#include "EditorMovingPlatformPreview.hpp"
 #include "EditorObjectActions.hpp"
 #include "EditorState.hpp"
 #include "EditorToolCapabilities.hpp"
@@ -198,6 +199,14 @@ void adjustSelection(CreativeEditorState& editor,
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
       return state.contextGroupId != cr::kInvalidObjectId &&
              editor.groupFocus.depth < editor.groupFocus.groupIds.size();
+    case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
+    case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
+      return state.contextSelectionCount == 1U &&
+             state.contextPrimaryObjectKind ==
+                 cr::CreativeObjectKind::MovingPlatform &&
+             editor.movingPlatformPreview.available &&
+             editor.movingPlatformPreview.objectId ==
+                 state.contextPrimaryObjectId;
     case CreativeEditorToolOptionsCommandId::TransformSelection:
     case CreativeEditorToolOptionsCommandId::ResetSelectionTransform:
     case CreativeEditorToolOptionsCommandId::DuplicateSelection:
@@ -252,6 +261,11 @@ void adjustSelection(CreativeEditorState& editor,
                      cr::CreativeObjectKind::PrefabInstance
                  ? "EDIT CONTENTS"
                  : "EDIT GROUP CONTENTS";
+    case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
+      return editor.movingPlatformPreview.playing ? "PAUSE ROUTE PREVIEW"
+                                                  : "PLAY ROUTE PREVIEW";
+    case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
+      return "RESTART ROUTE PREVIEW";
     case CreativeEditorToolOptionsCommandId::TransformSelection:
     case CreativeEditorToolOptionsCommandId::ResetSelectionTransform:
     case CreativeEditorToolOptionsCommandId::DuplicateSelection:
@@ -292,6 +306,11 @@ void adjustSelection(CreativeEditorState& editor,
       return editor.toolOptions.contextGroupId != cr::kInvalidObjectId
                  ? "ENTER"
                  : "SELECT GROUP";
+    case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
+      return std::string(creativeMovingPlatformPreviewStatusLabel(
+          editor.movingPlatformPreview));
+    case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
+      return "START OF ROUTE";
     case CreativeEditorToolOptionsCommandId::TransformSelection:
     case CreativeEditorToolOptionsCommandId::ResetSelectionTransform:
     case CreativeEditorToolOptionsCommandId::DuplicateSelection:
@@ -430,6 +449,8 @@ bool activateCreativeEditorToolOptionsSelection(
     case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance:
     case CreativeEditorToolOptionsCommandId::RefreshSafeSavedAssetInstances:
     case CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances:
+    case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
+    case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
       break;
     case CreativeEditorToolOptionsCommandId::Count:
       break;
@@ -469,6 +490,19 @@ bool activateCreativeEditorToolOptionsSelection(
                      appState, editor.groupFocus, state.contextGroupId)
                      .accepted;
       break;
+    case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
+    case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview: {
+      const CreativeMovingPlatformPreviewReceipt receipt =
+          applyCreativeMovingPlatformPreviewCommand(
+              editor.movingPlatformPreview,
+              command == CreativeEditorToolOptionsCommandId::
+                             ToggleMovingPlatformPreview
+                  ? CreativeMovingPlatformPreviewCommand::TogglePlayback
+                  : CreativeMovingPlatformPreviewCommand::Restart,
+              state.contextPrimaryObjectId);
+      accepted = receipt.accepted;
+      break;
+    }
     case CreativeEditorToolOptionsCommandId::TransformSelection:
     case CreativeEditorToolOptionsCommandId::ResetSelectionTransform:
     case CreativeEditorToolOptionsCommandId::DuplicateSelection:
@@ -518,6 +552,11 @@ CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
        state.contextSelectionCount != liveSelectionCount)) {
     refreshCreativeEditorObjectActionContext(
         request.appState, request.editor.authoredAssets, state);
+    state.commands = creativeEditorToolOptionCommandsForEntry(
+        state.targetEntry, state.contextPrimaryObjectKind);
+    if (state.selectedIndex >= creativeEditorToolOptionsRowCount(state)) {
+      state.selectedIndex = 0U;
+    }
   }
 
   if (request.openRequested && !state.open) {
@@ -536,6 +575,8 @@ CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
       state.selectedIndex = 0U;
       refreshCreativeEditorObjectActionContext(
           request.appState, request.editor.authoredAssets, state);
+      state.commands = creativeEditorToolOptionCommandsForEntry(
+          state.targetEntry, state.contextPrimaryObjectKind);
     }
   }
 

@@ -30,7 +30,7 @@ struct VkExtent2D {
 
 namespace iggy3d::vulkan {
 
-inline constexpr std::size_t kCreativePreviewGeometryDrawRangeCount = 5U;
+inline constexpr std::size_t kCreativePreviewGeometryDrawRangeCount = 6U;
 
 [[nodiscard]] constexpr std::uint32_t creativePreviewGeometryDrawIndex(
     RenderCreativePreviewRole role,
@@ -42,6 +42,8 @@ inline constexpr std::size_t kCreativePreviewGeometryDrawRangeCount = 5U;
       return includePathWireframe ? 3U : 1U;
     case RenderCreativePreviewRole::PlacementInvalid:
       return includePathWireframe ? 4U : 2U;
+    case RenderCreativePreviewRole::MovingPlatformRoute:
+      return 5U;
     case RenderCreativePreviewRole::Count:
       return static_cast<std::uint32_t>(
           kCreativePreviewGeometryDrawRangeCount);

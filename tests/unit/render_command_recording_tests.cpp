@@ -43,7 +43,7 @@ bool creativePreviewCommandsAreBoundedAndValidateGeometry() {
       iggy3d::vulkan::buildCreativePreviewCommandPlan(nullptr, 2U, 3U);
   const iggy3d::vulkan::CreativePreviewCommandPlan overCapacity =
       iggy3d::vulkan::buildCreativePreviewCommandPlan(
-          draws.data(), draws.size() + 1U, 3U);
+          draws.data(), iggy3d::kRenderCreativePreviewCapacity + 1U, 3U);
   return expect(filtered.stepCount == 1U &&
                     filtered.steps[0].sourceDrawIndex == 1U &&
                     filtered.steps[0].depthDisabled,

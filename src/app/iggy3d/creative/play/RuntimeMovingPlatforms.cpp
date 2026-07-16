@@ -93,6 +93,35 @@ constexpr float kRiderHorizontalEpsilonMeters = 0.001F;
   return last + (definition.pathPoints.front() - last) * alpha;
 }
 
+[[nodiscard]] double routeCycleLengthMeters(
+    const CreativeRuntimeMovingPlatformDefinition& definition) noexcept {
+  return definition.traversalMode ==
+                 CreativeMovingPlatformTraversalMode::Loop
+             ? static_cast<double>(definition.loopLengthMeters)
+             : static_cast<double>(definition.openLengthMeters) * 2.0;
+}
+
+[[nodiscard]] Vec3 sampleRoutePosition(
+    const CreativeRuntimeMovingPlatformDefinition& definition,
+    double phaseMeters) noexcept {
+  const double cycleLength = routeCycleLengthMeters(definition);
+  const double boundedPhase = std::clamp(phaseMeters, 0.0, cycleLength);
+  const float sampleDistance =
+      definition.traversalMode == CreativeMovingPlatformTraversalMode::Loop
+          ? static_cast<float>(boundedPhase >= cycleLength ? 0.0
+                                                           : boundedPhase)
+          : static_cast<float>(
+                boundedPhase <= definition.openLengthMeters
+                    ? boundedPhase
+                    : cycleLength - boundedPhase);
+  const Vec3 sampled =
+      definition.traversalMode == CreativeMovingPlatformTraversalMode::Loop
+          ? sampleLoopRoute(definition, sampleDistance)
+          : sampleOpenRoute(definition, sampleDistance);
+  return definition.originPositionMeters +
+         (sampled - definition.pathPoints.front());
+}
+
 [[nodiscard]] bool sameSurfaceId(
     std::string_view id,
     const CreativeRuntimeInteractableState& platform) noexcept {
@@ -455,10 +484,7 @@ CreativeRuntimeMovingPlatformStepResult planCreativeRuntimeMovingPlatformStep(
 
   const CreativeRuntimeMovingPlatformDefinition& definition =
       *request.definition;
-  const double routeLength =
-      definition.traversalMode == CreativeMovingPlatformTraversalMode::Loop
-          ? definition.loopLengthMeters
-          : definition.openLengthMeters * 2.0;
+  const double routeLength = routeCycleLengthMeters(definition);
   const double tickDistance =
       static_cast<double>(definition.speedMetersPerSecond) /
       static_cast<double>(request.fixedTickRateHz);
@@ -466,20 +492,8 @@ CreativeRuntimeMovingPlatformStepResult planCreativeRuntimeMovingPlatformStep(
       request.state->phaseMeters +
           tickDistance * static_cast<double>(request.state->travelSign),
       routeLength);
-  const float sampleDistance =
-      definition.traversalMode == CreativeMovingPlatformTraversalMode::Loop
-          ? static_cast<float>(result.nextState.phaseMeters)
-          : static_cast<float>(
-                result.nextState.phaseMeters <= definition.openLengthMeters
-                    ? result.nextState.phaseMeters
-                    : routeLength - result.nextState.phaseMeters);
-  const Vec3 sampled =
-      definition.traversalMode == CreativeMovingPlatformTraversalMode::Loop
-          ? sampleLoopRoute(definition, sampleDistance)
-          : sampleOpenRoute(definition, sampleDistance);
   result.nextState.positionMeters =
-      definition.originPositionMeters +
-      (sampled - definition.pathPoints.front());
+      sampleRoutePosition(definition, result.nextState.phaseMeters);
   result.displacementMeters =
       result.nextState.positionMeters - request.state->positionMeters;
   result.nextState.movementTickCount = request.state->movementTickCount + 1U;
@@ -492,6 +506,34 @@ CreativeRuntimeMovingPlatformStepResult planCreativeRuntimeMovingPlatformStep(
   result.reasonCode = result.moved
                           ? "creative_runtime_moving_platform_step_advanced"
                           : "creative_runtime_moving_platform_step_stationary";
+  return result;
+}
+
+CreativeRuntimeMovingPlatformSampleResult
+sampleCreativeRuntimeMovingPlatformProgress(
+    const CreativeRuntimeMovingPlatformDefinition& definition,
+    double normalizedProgress) noexcept {
+  CreativeRuntimeMovingPlatformSampleResult result;
+  if (!validDefinition(definition) || !std::isfinite(normalizedProgress) ||
+      normalizedProgress < 0.0 || normalizedProgress > 1.0) {
+    return result;
+  }
+
+  result.normalizedProgress = normalizedProgress;
+  result.state.phaseMeters =
+      (definition.traversalMode ==
+               CreativeMovingPlatformTraversalMode::Loop
+           ? static_cast<double>(definition.loopLengthMeters)
+           : static_cast<double>(definition.openLengthMeters)) *
+      normalizedProgress;
+  result.state.positionMeters =
+      sampleRoutePosition(definition, result.state.phaseMeters);
+  result.ok = isFinite(result.state.positionMeters);
+  if (!result.ok) {
+    return result;
+  }
+  result.status = CreativeRuntimeMovingPlatformSampleStatus::Sampled;
+  result.reasonCode = "creative_runtime_moving_platform_sampled";
   return result;
 }
 

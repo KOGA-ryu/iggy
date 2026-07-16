@@ -102,6 +102,44 @@ void appendCreativePreview(RenderCreativePreviewFrame& previews,
   static_cast<void>(setRenderCreativePreviewAssetId(item, assetId));
 }
 
+void appendMovingPlatformRoutePreview(
+    const CreativeEditorState& editor,
+    bool captureMode,
+    FrameInput& frame,
+    const cr::CreativeDocument* document) {
+  const CreativeMovingPlatformPreviewState& preview =
+      editor.movingPlatformPreview;
+  if (captureMode || document == nullptr || !preview.available ||
+      !preview.visible || preview.documentId != document->id()) {
+    return;
+  }
+  const cr::CreativeObject* object = document->findObject(preview.objectId);
+  if (object == nullptr || !object->visible ||
+      object->kind != cr::CreativeObjectKind::MovingPlatform) {
+    return;
+  }
+  const cr::CreativeTransformedBounds resolved =
+      cr::resolveCreativeObjectBounds(*object);
+  const cr::CreativeCoreVec3Conversion center =
+      cr::creativeVec3ToCoreChecked(resolved.center);
+  const cr::CreativeCoreVec3Conversion size =
+      cr::creativeVec3ToCoreChecked(resolved.size);
+  const cr::CreativeCoreVec3Conversion rotation =
+      cr::creativeVec3ToCoreChecked(resolved.rotationEulerRadians);
+  if (!resolved.valid || !center.converted || !size.converted ||
+      !rotation.converted || !isFinite(preview.runtimeState.positionMeters)) {
+    return;
+  }
+  const Vec3 routeOffset = preview.runtimeState.positionMeters -
+                           preview.definition.originPositionMeters;
+  appendCreativePreview(
+      frame.creativePreview,
+      RenderCreativePreviewRole::MovingPlatformRoute,
+      frame.camera.clipFromWorld *
+          modelMatrix(center.value + routeOffset, rotation.value, size.value),
+      false, object->assetId);
+}
+
 }  // namespace
 
 bool creativePreviewBoundsTransform(
@@ -119,6 +157,7 @@ void attachCreativeEditorPlacementPreviews(
     const cr::CreativeDocument* document,
     const iggy3d::StaticMeshAssetCatalog* assetCatalog) {
   frame.creativePreview = {};
+  appendMovingPlatformRoutePreview(editor, captureMode, frame, document);
   const bool modalOpen = editor.catalog.model.open ||
                          editor.catalog.toolWheel.open ||
                          editor.toolOptions.open ||

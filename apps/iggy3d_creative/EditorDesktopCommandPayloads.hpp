@@ -79,6 +79,12 @@ struct CreativeDesktopMovingPlatformPayload {
   iggy3d::creative::CreativeMovingPlatformSettings settings;
 };
 
+struct CreativeDesktopMovingPlatformPreviewPayload {
+  iggy3d::creative::CreativeObjectId objectId =
+      iggy3d::creative::kInvalidObjectId;
+  double normalizedProgress = 0.0;
+};
+
 // EditAssetSource lifecycle phase (unused by the other asset ops).
 enum class CreativeDesktopAssetEditPhase : std::uint8_t {
   None,
@@ -115,6 +121,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopObjectFlagPayload,
     CreativeDesktopTransformPayload,
     CreativeDesktopMovingPlatformPayload,
+    CreativeDesktopMovingPlatformPreviewPayload,
     CreativeDesktopAssetOpPayload,
     CreativeDesktopInstanceRefreshPayload>;
 

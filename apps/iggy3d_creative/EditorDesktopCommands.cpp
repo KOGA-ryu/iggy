@@ -12,6 +12,7 @@
 #include "EditorEdits.hpp"
 #include "EditorFrame.hpp"
 #include "EditorLogicLinks.hpp"
+#include "EditorMovingPlatformPreview.hpp"
 #include "EditorObjectActions.hpp"
 #include "EditorPersistence.hpp"
 #include "EditorPlayMode.hpp"
@@ -461,6 +462,36 @@ void dispatchOne(const CreativeDesktopCommand& command,
                            ? (result.changed ? "platform settings updated"
                                              : "platform settings unchanged")
                            : receipt.message;
+      break;
+    }
+    case CreativeDesktopCommandId::ToggleMovingPlatformPreview:
+    case CreativeDesktopCommandId::RestartMovingPlatformPreview:
+    case CreativeDesktopCommandId::SeekMovingPlatformPreview: {
+      const auto* payload =
+          payloadAs<CreativeDesktopMovingPlatformPreviewPayload>(command);
+      if (payload == nullptr) {
+        result.message = "moving platform preview: payload mismatch";
+        break;
+      }
+      CreativeMovingPlatformPreviewCommand previewCommand =
+          CreativeMovingPlatformPreviewCommand::TogglePlayback;
+      if (command.id ==
+          CreativeDesktopCommandId::RestartMovingPlatformPreview) {
+        previewCommand = CreativeMovingPlatformPreviewCommand::Restart;
+      } else if (command.id ==
+                 CreativeDesktopCommandId::SeekMovingPlatformPreview) {
+        previewCommand = CreativeMovingPlatformPreviewCommand::Seek;
+      }
+      const CreativeMovingPlatformPreviewReceipt receipt =
+          applyCreativeMovingPlatformPreviewCommand(
+              editor.movingPlatformPreview, previewCommand,
+              payload->objectId, payload->normalizedProgress);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.affectedObjectCount = receipt.accepted ? 1U : 0U;
+      result.message = receipt.accepted
+                           ? std::string(editor.movingPlatformPreview.reasonCode)
+                           : std::string(receipt.reasonCode);
       break;
     }
     case CreativeDesktopCommandId::EquipAsset: {

@@ -18,6 +18,7 @@
 #include "EditorGroup.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorLogicLinks.hpp"
+#include "EditorMovingPlatformPreview.hpp"
 #include "EditorPattern.hpp"
 #include "EditorTerrain.hpp"
 #include "EditorTerrainPaint.hpp"
@@ -46,6 +47,7 @@ struct CreativeEditorDocumentTransientState {
   CreativeEditorTerrainPaintState terrainPaint;
   CreativeEditorVolumeState volume;
   CreativeEditorLogicLinkState logicLinks;
+  CreativeMovingPlatformPreviewState movingPlatformPreview;
 };
 
 struct CreativeEditorAuthoredAssetEditSession {
@@ -98,6 +100,7 @@ struct CreativeEditorState {
   CreativeEditorTerrainState terrain;
   CreativeEditorTerrainPaintState terrainPaint;
   CreativeEditorLogicLinkState logicLinks;
+  CreativeMovingPlatformPreviewState movingPlatformPreview;
 
   bool placeMode = false;
   std::vector<iggy3d::creative::CreativeObjectKind> brushPalette;

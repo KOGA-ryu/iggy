@@ -29,6 +29,7 @@ bool isValidCreativePreviewRole(RenderCreativePreviewRole role) {
     case RenderCreativePreviewRole::Held:
     case RenderCreativePreviewRole::PlacementValid:
     case RenderCreativePreviewRole::PlacementInvalid:
+    case RenderCreativePreviewRole::MovingPlatformRoute:
       return true;
     case RenderCreativePreviewRole::Count:
       return false;

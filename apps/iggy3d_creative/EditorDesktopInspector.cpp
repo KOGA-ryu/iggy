@@ -423,6 +423,7 @@ void refreshInspectorDraft(CreativeDesktopInspectorDraft& draft,
 
 void appendMovingPlatformFields(CreativeDesktopInspectorDraft& draft,
                                 const cr::CreativeObject& object,
+                                const CreativeMovingPlatformPreviewState& preview,
                                 bool fieldsDisabled,
                                 CreativeDesktopCommandFrame& commands) {
   if (object.kind != cr::CreativeObjectKind::MovingPlatform) {
@@ -475,6 +476,37 @@ void appendMovingPlatformFields(CreativeDesktopInspectorDraft& draft,
   ImGui::TextDisabled("Waypoints: %llu",
                       static_cast<unsigned long long>(
                           object.pathPoints.size()));
+
+  ImGui::SeparatorText("Route Preview");
+  ImGui::Text("%s  |  %.0f%%",
+              std::string(creativeMovingPlatformPreviewStatusLabel(preview))
+                  .c_str(),
+              preview.normalizedProgress * 100.0);
+  const bool previewDisabled =
+      fieldsDisabled || !preview.available || preview.objectId != object.id;
+  ImGui::BeginDisabled(previewDisabled);
+  if (ImGui::Button(preview.playing ? "Pause" : "Play")) {
+    commands.push(
+        CreativeDesktopCommandId::ToggleMovingPlatformPreview,
+        CreativeDesktopMovingPlatformPreviewPayload{object.id,
+                                                    preview.normalizedProgress});
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Restart")) {
+    commands.push(
+        CreativeDesktopCommandId::RestartMovingPlatformPreview,
+        CreativeDesktopMovingPlatformPreviewPayload{object.id, 0.0});
+  }
+  float progressPercent =
+      static_cast<float>(preview.normalizedProgress * 100.0);
+  if (ImGui::SliderFloat("Progress", &progressPercent, 0.0F, 100.0F,
+                         "%.0f%%")) {
+    commands.push(
+        CreativeDesktopCommandId::SeekMovingPlatformPreview,
+        CreativeDesktopMovingPlatformPreviewPayload{
+            object.id, static_cast<double>(progressPercent) / 100.0});
+  }
+  ImGui::EndDisabled();
 }
 
 void appendTransformFields(CreativeDesktopInspectorDraft& draft,
@@ -531,6 +563,7 @@ void appendTransformFields(CreativeDesktopInspectorDraft& draft,
 void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
                            const cr::CreativeDocument& document,
                            const cr::CreativeObject& object,
+                           const CreativeMovingPlatformPreviewState& preview,
                            bool playModeActive,
                            CreativeDesktopCommandFrame& commands) {
   CreativeDesktopInspectorDraft& draft = desktopUi.inspectorDraft;
@@ -569,7 +602,7 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
   ImGui::EndDisabled();
 
   appendTransformFields(draft, object.id, fieldsDisabled, commands);
-  appendMovingPlatformFields(draft, object, fieldsDisabled, commands);
+  appendMovingPlatformFields(draft, object, preview, fieldsDisabled, commands);
 
   // Read-only metadata.
   if (!object.assetId.empty()) {
@@ -655,7 +688,9 @@ void buildCreativeEditorDesktopInspectorPanel(
     ImGui::TextUnformatted("No object selected");
     return;
   }
-  appendSingleInspector(desktopUi, document, *object, playModeActive, commands);
+  appendSingleInspector(desktopUi, document, *object,
+                        editor.movingPlatformPreview, playModeActive,
+                        commands);
   appendLogicSection(desktopUi, editor, document, *object, playMode,
                      playModeActive, commands);
 }

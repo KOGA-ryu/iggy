@@ -179,6 +179,7 @@ takeDocumentTransientState(CreativeEditorState& editor) {
   state.terrainPaint = std::move(editor.terrainPaint);
   state.volume = std::move(editor.volume);
   state.logicLinks = std::move(editor.logicLinks);
+  state.movingPlatformPreview = std::move(editor.movingPlatformPreview);
 
   editor.interaction.target = {};
   editor.interaction.placementFeedback = {};
@@ -198,6 +199,7 @@ takeDocumentTransientState(CreativeEditorState& editor) {
   editor.terrainPaint = {};
   editor.volume = {};
   editor.logicLinks = {};
+  editor.movingPlatformPreview = {};
   return state;
 }
 
@@ -220,6 +222,7 @@ void restoreDocumentTransientState(CreativeEditorState& editor,
   editor.terrainPaint = std::move(state.terrainPaint);
   editor.volume = std::move(state.volume);
   editor.logicLinks = std::move(state.logicLinks);
+  editor.movingPlatformPreview = std::move(state.movingPlatformPreview);
 }
 
 void restoreMapCamera(CreativeEditorState& editor) noexcept {

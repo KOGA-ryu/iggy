@@ -46,10 +46,12 @@ enum class CreativeEditorToolOptionsCommandId : std::uint8_t {
   RefreshSavedAssetInstance,
   RefreshSafeSavedAssetInstances,
   ForceRefreshSavedAssetInstances,
+  ToggleMovingPlatformPreview,
+  RestartMovingPlatformPreview,
   Count,
 };
 
-inline constexpr std::size_t kCreativeEditorToolOptionsCommandCapacity = 15U;
+inline constexpr std::size_t kCreativeEditorToolOptionsCommandCapacity = 17U;
 
 struct CreativeEditorToolOptionsCommandList {
   std::array<CreativeEditorToolOptionsCommandId,
@@ -132,7 +134,9 @@ creativeEditorToolOptionsForEntry(
     const iggy3d::creative::CreativeToolSettings& settings) noexcept;
 [[nodiscard]] CreativeEditorToolOptionsCommandList
 creativeEditorToolOptionCommandsForEntry(
-    iggy3d::creative::CreativeHotbarEntry entry) noexcept;
+    iggy3d::creative::CreativeHotbarEntry entry,
+    iggy3d::creative::CreativeObjectKind contextPrimaryObjectKind =
+        iggy3d::creative::CreativeObjectKind::Unknown) noexcept;
 [[nodiscard]] std::size_t creativeEditorToolOptionsRowCount(
     const CreativeEditorToolOptionsState& state) noexcept;
 [[nodiscard]] bool activateCreativeEditorToolOptionsSelection(

@@ -168,6 +168,9 @@ Vec3 colorForRoomRole(const std::string& role) {
   if (role == "editor_ghost_select") {
     return {0.95F, 0.86F, 0.28F};
   }
+  if (role == "editor_ghost_route") {
+    return {0.18F, 0.78F, 0.95F};
+  }
   if (role == "floor") {
     return {0.30F, 0.32F, 0.34F};
   }
@@ -1845,6 +1848,7 @@ CreativePreviewCpuGeometry buildCreativePreviewCpuGeometry(
           "editor_ghost_select",
           "editor_ghost_valid",
           "editor_ghost_invalid",
+          "editor_ghost_route",
       };
   for (std::size_t roleIndex = 0; roleIndex < roles.size(); ++roleIndex) {
     const RenderCreativePreviewRole role =

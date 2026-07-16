@@ -53,6 +53,7 @@
 #include "EditorGroup.hpp"
 #include "EditorBootstrap.hpp"
 #include "EditorInteraction.hpp"
+#include "EditorMovingPlatformPreview.hpp"
 #include "EditorState.hpp"
 #include "EditorToolOptions.hpp"
 #include "EditorToolWheelPreferences.hpp"
@@ -738,6 +739,13 @@ int main(int argc, char** argv) {
     // nothing is selected we draw no gizmo/box and skip Move.
     const CreativeEditorSelectionFrame selection =
         resolveCreativeEditorSelectionFrame(activeAppState.facade);
+    static_cast<void>(iggy3d_creative_app::syncCreativeMovingPlatformPreview(
+        editor.movingPlatformPreview,
+        activeAppState.facade.document().id(), selection.selected));
+    static_cast<void>(
+        iggy3d_creative_app::advanceCreativeMovingPlatformPreview(
+            editor.movingPlatformPreview,
+            frame.clock.presentationDeltaSeconds));
 
     // ---- GIZMO GEOMETRY -----------------------------------------------------
     // Build the 3 axis shafts at the selected object's center C = (min+max)/2.

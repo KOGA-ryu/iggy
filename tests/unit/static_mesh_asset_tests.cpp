@@ -859,7 +859,7 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
                         iggy3d::vulkan::kCreativePreviewGeometryDrawRangeCount +
                             catalog.entries.size() *
                                 iggy3d::kRenderCreativePreviewRoleCount,
-                "startup atlas contains three colored roles per asset") &&
+                "startup atlas contains four colored roles per asset") &&
          expect(preview.vertices.size() >
                         std::numeric_limits<std::uint16_t>::max() &&
                     maximumPreviewIndex != preview.indices.end() &&
