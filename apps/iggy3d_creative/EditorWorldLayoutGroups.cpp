@@ -2,148 +2,14 @@
 
 #include "EditorWorldLayoutInternal.hpp"
 
-#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <string>
-#include <string_view>
 #include <utility>
-#include <vector>
 
 namespace iggy3d_creative_app {
 namespace {
-
-bool offsetPoint(cr::CreativeTerrainCoord2& point, std::int64_t deltaXCells,
-                 std::int64_t deltaZCells) noexcept {
-  cr::CreativeTerrainCoord2 moved;
-  if (!detail::offsetWorldLayoutCoordinate(point.x, deltaXCells, moved.x) ||
-      !detail::offsetWorldLayoutCoordinate(point.z, deltaZCells, moved.z)) {
-    return false;
-  }
-  point = moved;
-  return true;
-}
-
-bool offsetRect(cr::CreativeWorldLayoutRect& rect, std::int64_t deltaXCells,
-                std::int64_t deltaZCells) noexcept {
-  cr::CreativeWorldLayoutRect moved = rect;
-  if (!offsetPoint(moved.minimum, deltaXCells, deltaZCells) ||
-      !offsetPoint(moved.maximum, deltaXCells, deltaZCells)) {
-    return false;
-  }
-  rect = moved;
-  return true;
-}
-
-bool canOffsetPoint(cr::CreativeTerrainCoord2 point,
-                    std::int64_t deltaXCells,
-                    std::int64_t deltaZCells) noexcept {
-  return offsetPoint(point, deltaXCells, deltaZCells);
-}
-
-bool canOffsetRect(cr::CreativeWorldLayoutRect rect,
-                   std::int64_t deltaXCells,
-                   std::int64_t deltaZCells) noexcept {
-  return offsetRect(rect, deltaXCells, deltaZCells);
-}
-
-bool buildingOwnershipValid(const cr::CreativeWorldLayout& layout) noexcept {
-  const auto validOwner = [&](const auto& symbol) {
-    return symbol.buildingIndex < layout.buildings.size();
-  };
-  return std::all_of(layout.rooms.begin(), layout.rooms.end(), validOwner) &&
-         std::all_of(layout.boxes.begin(), layout.boxes.end(), validOwner) &&
-         std::all_of(layout.walls.begin(), layout.walls.end(), validOwner);
-}
-
-bool openingHostsValid(const cr::CreativeWorldLayout& layout) noexcept {
-  for (const cr::CreativeWorldLayoutOpening& opening : layout.openings) {
-    if (opening.hostKind ==
-        cr::CreativeWorldLayoutOpeningHostKind::RoomEdge) {
-      if (opening.roomIndex >= layout.rooms.size()) {
-        return false;
-      }
-    } else if (opening.hostKind ==
-               cr::CreativeWorldLayoutOpeningHostKind::Wall) {
-      if (opening.wallIndex >= layout.walls.size()) {
-        return false;
-      }
-    } else {
-      return false;
-    }
-  }
-  return true;
-}
-
-bool offsetBuilding(cr::CreativeWorldLayout& layout,
-                    std::size_t buildingIndex, std::int64_t deltaXCells,
-                    std::int64_t deltaZCells) noexcept {
-  if (buildingIndex >= layout.buildings.size()) {
-    return false;
-  }
-  cr::CreativeWorldLayoutBuilding& building = layout.buildings[buildingIndex];
-  if (building.rootMode != cr::CreativeBuildingRootMode::None &&
-      !offsetRect(building.rootFootprint, deltaXCells, deltaZCells)) {
-    return false;
-  }
-  for (cr::CreativeWorldLayoutRoom& room : layout.rooms) {
-    if (room.buildingIndex == buildingIndex &&
-        !offsetRect(room.footprint, deltaXCells, deltaZCells)) {
-      return false;
-    }
-  }
-  for (cr::CreativeWorldLayoutBox& box : layout.boxes) {
-    if (box.buildingIndex == buildingIndex &&
-        !offsetRect(box.footprint, deltaXCells, deltaZCells)) {
-      return false;
-    }
-  }
-  for (cr::CreativeWorldLayoutWall& wall : layout.walls) {
-    if (wall.buildingIndex == buildingIndex &&
-        (!offsetPoint(wall.start, deltaXCells, deltaZCells) ||
-         !offsetPoint(wall.end, deltaXCells, deltaZCells))) {
-      return false;
-    }
-  }
-  return true;
-}
-
-bool canOffsetBuilding(const cr::CreativeWorldLayout& layout,
-                       std::size_t buildingIndex,
-                       std::int64_t deltaXCells,
-                       std::int64_t deltaZCells) noexcept {
-  if (buildingIndex >= layout.buildings.size()) {
-    return false;
-  }
-  const cr::CreativeWorldLayoutBuilding& building =
-      layout.buildings[buildingIndex];
-  if (building.rootMode != cr::CreativeBuildingRootMode::None &&
-      !canOffsetRect(building.rootFootprint, deltaXCells, deltaZCells)) {
-    return false;
-  }
-  for (const cr::CreativeWorldLayoutRoom& room : layout.rooms) {
-    if (room.buildingIndex == buildingIndex &&
-        !canOffsetRect(room.footprint, deltaXCells, deltaZCells)) {
-      return false;
-    }
-  }
-  for (const cr::CreativeWorldLayoutBox& box : layout.boxes) {
-    if (box.buildingIndex == buildingIndex &&
-        !canOffsetRect(box.footprint, deltaXCells, deltaZCells)) {
-      return false;
-    }
-  }
-  for (const cr::CreativeWorldLayoutWall& wall : layout.walls) {
-    if (wall.buildingIndex == buildingIndex &&
-        (!canOffsetPoint(wall.start, deltaXCells, deltaZCells) ||
-         !canOffsetPoint(wall.end, deltaXCells, deltaZCells))) {
-      return false;
-    }
-  }
-  return true;
-}
 
 bool containsPoint(CreativeEditorWorldLayoutBuildingBounds bounds,
                    CreativeEditorWorldLayoutPoint point,
@@ -154,10 +20,6 @@ bool containsPoint(CreativeEditorWorldLayoutBuildingBounds bounds,
          point.x <= bounds.maximum.x + toleranceCells &&
          point.z >= bounds.minimum.z - toleranceCells &&
          point.z <= bounds.maximum.z + toleranceCells;
-}
-
-std::string copyName(std::string_view name) {
-  return std::string(name) + " Copy";
 }
 
 }  // namespace
@@ -329,9 +191,10 @@ applyCreativeEditorWorldLayoutBuildingManipulation(
     }
     const bool previewValid =
         deltaValid &&
-        canOffsetBuilding(state.source,
-                          state.buildingManipulation.buildingIndex,
-                          deltaXCells, deltaZCells);
+        cr::canMoveCreativeWorldLayoutBuilding(
+            state.source,
+            {state.buildingManipulation.buildingIndex, deltaXCells,
+             deltaZCells});
     state.buildingManipulation.previewDeltaXCells = deltaXCells;
     state.buildingManipulation.previewDeltaZCells = deltaZCells;
     state.buildingManipulation.previewValid = previewValid;
@@ -370,13 +233,15 @@ applyCreativeEditorWorldLayoutBuildingManipulation(
     return {true, false,
             "creative_editor_world_layout_building_manipulation_no_change"};
   }
-  cr::CreativeWorldLayout candidate = state.source;
-  if (!offsetBuilding(candidate, buildingIndex, deltaXCells, deltaZCells)) {
+  cr::CreativeWorldLayoutBuildingEditResult moved =
+      cr::moveCreativeWorldLayoutBuilding(
+          state.source, {buildingIndex, deltaXCells, deltaZCells});
+  if (!moved.accepted || !moved.changed) {
     state.statusMessage = "building move exceeds the layout coordinate range";
     return {false, false,
             "creative_editor_world_layout_building_manipulation_out_of_range"};
   }
-  state.source = std::move(candidate);
+  state.source = std::move(moved.edited);
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Building,
                      buildingIndex};
   detail::noteWorldLayoutSourceChange(state, "building moved");
@@ -462,141 +327,31 @@ applyCreativeEditorWorldLayoutBuildingTransform(
 bool defaultCreativeEditorWorldLayoutBuildingDuplicateOffset(
     const CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
     std::int64_t& deltaXCells, std::int64_t& deltaZCells) noexcept {
-  if (state.buildingTransform.active) {
-    return false;
-  }
-  CreativeEditorWorldLayoutBuildingBounds bounds;
-  if (!readCreativeEditorWorldLayoutBuildingBounds(state, buildingIndex,
-                                                   bounds)) {
-    return false;
-  }
-  const std::int64_t width =
-      static_cast<std::int64_t>(bounds.maximum.x) - bounds.minimum.x;
-  deltaXCells = std::max<std::int64_t>(width, 1) + 2;
-  deltaZCells = 0;
-  return canOffsetBuilding(state.source, buildingIndex, deltaXCells,
-                           deltaZCells);
+  return !state.buildingTransform.active &&
+         cr::defaultCreativeWorldLayoutBuildingDuplicateOffset(
+             state.source, buildingIndex, deltaXCells, deltaZCells);
 }
 
 CreativeEditorWorldLayoutEditReceipt duplicateCreativeEditorWorldLayoutBuilding(
     CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
     std::int64_t deltaXCells, std::int64_t deltaZCells) {
-  CreativeEditorWorldLayoutBuildingBounds bounds;
-  if (buildingIndex >= state.source.buildings.size() ||
-      state.buildingTransform.active ||
-      !readCreativeEditorWorldLayoutBuildingBounds(state, buildingIndex,
-                                                   bounds) ||
-      (deltaXCells == 0 && deltaZCells == 0) ||
-      !buildingOwnershipValid(state.source) ||
-      !openingHostsValid(state.source) ||
-      !canOffsetBuilding(state.source, buildingIndex, deltaXCells,
-                         deltaZCells)) {
+  if (state.buildingTransform.active) {
     state.statusMessage = "building cannot be duplicated at that offset";
     return {false, false,
             "creative_editor_world_layout_building_duplicate_invalid"};
   }
-
-  cr::CreativeWorldLayout candidate = state.source;
-  std::uint64_t nextOrdinal = state.nextStableOrdinal;
-  cr::CreativeWorldLayoutBuilding building =
-      state.source.buildings[buildingIndex];
-  building.stableKey =
-      detail::mintWorldLayoutStableKey(candidate, nextOrdinal, "building");
-  building.name = copyName(building.name);
-  if (building.rootMode != cr::CreativeBuildingRootMode::None &&
-      !offsetRect(building.rootFootprint, deltaXCells, deltaZCells)) {
+  cr::CreativeWorldLayoutBuildingEditResult duplicated =
+      cr::duplicateCreativeWorldLayoutBuilding(
+          state.source,
+          {buildingIndex, deltaXCells, deltaZCells, state.nextStableOrdinal});
+  if (!duplicated.accepted || !duplicated.changed) {
+    state.statusMessage = "building cannot be duplicated at that offset";
     return {false, false,
-            "creative_editor_world_layout_building_duplicate_out_of_range"};
+            "creative_editor_world_layout_building_duplicate_invalid"};
   }
-  const std::size_t duplicateBuildingIndex = candidate.buildings.size();
-  candidate.buildings.push_back(std::move(building));
-
-  std::vector<std::size_t> roomMap(
-      state.source.rooms.size(), cr::kInvalidCreativeWorldLayoutIndex);
-  for (std::size_t index = 0U; index < state.source.rooms.size(); ++index) {
-    if (state.source.rooms[index].buildingIndex != buildingIndex) {
-      continue;
-    }
-    cr::CreativeWorldLayoutRoom room = state.source.rooms[index];
-    room.buildingIndex = duplicateBuildingIndex;
-    room.stableKey =
-        detail::mintWorldLayoutStableKey(candidate, nextOrdinal, "room");
-    room.name = copyName(room.name);
-    if (!offsetRect(room.footprint, deltaXCells, deltaZCells)) {
-      return {false, false,
-              "creative_editor_world_layout_building_duplicate_out_of_range"};
-    }
-    roomMap[index] = candidate.rooms.size();
-    candidate.rooms.push_back(std::move(room));
-  }
-
-  for (const cr::CreativeWorldLayoutBox& sourceBox : state.source.boxes) {
-    if (sourceBox.buildingIndex != buildingIndex) {
-      continue;
-    }
-    cr::CreativeWorldLayoutBox box = sourceBox;
-    box.buildingIndex = duplicateBuildingIndex;
-    box.stableKey =
-        detail::mintWorldLayoutStableKey(candidate, nextOrdinal, "floor");
-    box.name = copyName(box.name);
-    if (!offsetRect(box.footprint, deltaXCells, deltaZCells)) {
-      return {false, false,
-              "creative_editor_world_layout_building_duplicate_out_of_range"};
-    }
-    candidate.boxes.push_back(std::move(box));
-  }
-
-  std::vector<std::size_t> wallMap(
-      state.source.walls.size(), cr::kInvalidCreativeWorldLayoutIndex);
-  for (std::size_t index = 0U; index < state.source.walls.size(); ++index) {
-    if (state.source.walls[index].buildingIndex != buildingIndex) {
-      continue;
-    }
-    cr::CreativeWorldLayoutWall wall = state.source.walls[index];
-    wall.buildingIndex = duplicateBuildingIndex;
-    wall.stableKey =
-        detail::mintWorldLayoutStableKey(candidate, nextOrdinal, "wall");
-    wall.name = copyName(wall.name);
-    if (!offsetPoint(wall.start, deltaXCells, deltaZCells) ||
-        !offsetPoint(wall.end, deltaXCells, deltaZCells)) {
-      return {false, false,
-              "creative_editor_world_layout_building_duplicate_out_of_range"};
-    }
-    wallMap[index] = candidate.walls.size();
-    candidate.walls.push_back(std::move(wall));
-  }
-
-  for (const cr::CreativeWorldLayoutOpening& sourceOpening :
-       state.source.openings) {
-    cr::CreativeWorldLayoutOpening opening = sourceOpening;
-    bool owned = false;
-    if (opening.hostKind ==
-        cr::CreativeWorldLayoutOpeningHostKind::RoomEdge) {
-      owned = roomMap[opening.roomIndex] !=
-              cr::kInvalidCreativeWorldLayoutIndex;
-      if (owned) {
-        opening.roomIndex = roomMap[opening.roomIndex];
-      }
-    } else {
-      owned = wallMap[opening.wallIndex] !=
-              cr::kInvalidCreativeWorldLayoutIndex;
-      if (owned) {
-        opening.wallIndex = wallMap[opening.wallIndex];
-      }
-    }
-    if (!owned) {
-      continue;
-    }
-    opening.stableKey = detail::mintWorldLayoutStableKey(
-        candidate, nextOrdinal,
-        opening.kind == cr::CreativeBuildingOpeningKind::Door ? "door"
-                                                              : "window");
-    opening.name = copyName(opening.name);
-    candidate.openings.push_back(std::move(opening));
-  }
-
-  state.source = std::move(candidate);
-  state.nextStableOrdinal = nextOrdinal;
+  const std::size_t duplicateBuildingIndex = duplicated.resultBuildingIndex;
+  state.source = std::move(duplicated.edited);
+  state.nextStableOrdinal = duplicated.nextStableOrdinal;
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Building,
                      duplicateBuildingIndex};
   detail::noteWorldLayoutSourceChange(state, "building duplicated");
@@ -606,83 +361,19 @@ CreativeEditorWorldLayoutEditReceipt duplicateCreativeEditorWorldLayoutBuilding(
 
 CreativeEditorWorldLayoutEditReceipt deleteCreativeEditorWorldLayoutBuilding(
     CreativeEditorWorldLayoutState& state, std::size_t buildingIndex) {
-  if (buildingIndex >= state.source.buildings.size() ||
-      state.buildingTransform.active || !buildingOwnershipValid(state.source) ||
-      !openingHostsValid(state.source)) {
+  if (state.buildingTransform.active) {
     state.statusMessage = "building cannot be deleted";
     return {false, false,
             "creative_editor_world_layout_building_delete_invalid"};
   }
-
-  cr::CreativeWorldLayout candidate = state.source;
-  candidate.buildings.erase(
-      candidate.buildings.begin() + static_cast<std::ptrdiff_t>(buildingIndex));
-
-  std::vector<std::size_t> roomMap(
-      state.source.rooms.size(), cr::kInvalidCreativeWorldLayoutIndex);
-  candidate.rooms.clear();
-  candidate.rooms.reserve(state.source.rooms.size());
-  for (std::size_t index = 0U; index < state.source.rooms.size(); ++index) {
-    cr::CreativeWorldLayoutRoom room = state.source.rooms[index];
-    if (room.buildingIndex == buildingIndex) {
-      continue;
-    }
-    if (room.buildingIndex > buildingIndex) {
-      --room.buildingIndex;
-    }
-    roomMap[index] = candidate.rooms.size();
-    candidate.rooms.push_back(std::move(room));
+  cr::CreativeWorldLayoutBuildingEditResult removed =
+      cr::deleteCreativeWorldLayoutBuilding(state.source, {buildingIndex});
+  if (!removed.accepted || !removed.changed) {
+    state.statusMessage = "building cannot be deleted";
+    return {false, false,
+            "creative_editor_world_layout_building_delete_invalid"};
   }
-
-  candidate.boxes.clear();
-  candidate.boxes.reserve(state.source.boxes.size());
-  for (cr::CreativeWorldLayoutBox box : state.source.boxes) {
-    if (box.buildingIndex == buildingIndex) {
-      continue;
-    }
-    if (box.buildingIndex > buildingIndex) {
-      --box.buildingIndex;
-    }
-    candidate.boxes.push_back(std::move(box));
-  }
-
-  std::vector<std::size_t> wallMap(
-      state.source.walls.size(), cr::kInvalidCreativeWorldLayoutIndex);
-  candidate.walls.clear();
-  candidate.walls.reserve(state.source.walls.size());
-  for (std::size_t index = 0U; index < state.source.walls.size(); ++index) {
-    cr::CreativeWorldLayoutWall wall = state.source.walls[index];
-    if (wall.buildingIndex == buildingIndex) {
-      continue;
-    }
-    if (wall.buildingIndex > buildingIndex) {
-      --wall.buildingIndex;
-    }
-    wallMap[index] = candidate.walls.size();
-    candidate.walls.push_back(std::move(wall));
-  }
-
-  candidate.openings.clear();
-  candidate.openings.reserve(state.source.openings.size());
-  for (cr::CreativeWorldLayoutOpening opening : state.source.openings) {
-    if (opening.hostKind ==
-        cr::CreativeWorldLayoutOpeningHostKind::RoomEdge) {
-      const std::size_t mappedRoom = roomMap[opening.roomIndex];
-      if (mappedRoom == cr::kInvalidCreativeWorldLayoutIndex) {
-        continue;
-      }
-      opening.roomIndex = mappedRoom;
-    } else {
-      const std::size_t mappedWall = wallMap[opening.wallIndex];
-      if (mappedWall == cr::kInvalidCreativeWorldLayoutIndex) {
-        continue;
-      }
-      opening.wallIndex = mappedWall;
-    }
-    candidate.openings.push_back(std::move(opening));
-  }
-
-  state.source = std::move(candidate);
+  state.source = std::move(removed.edited);
   state.selection = {};
   detail::noteWorldLayoutSourceChange(state, "building deleted");
   return {true, true, "creative_editor_world_layout_building_deleted"};

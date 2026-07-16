@@ -337,6 +337,36 @@ std::string creativeWorldLayoutTag(std::string_view layoutKey) {
   return "creative_world_layout:" + std::string(layoutKey);
 }
 
+bool creativeWorldLayoutStableKeyExists(const CreativeWorldLayout& layout,
+                                        std::string_view key) noexcept {
+  const auto matches = [&](const auto& value) {
+    return value.stableKey == key;
+  };
+  return std::any_of(layout.buildings.begin(), layout.buildings.end(),
+                     matches) ||
+         std::any_of(layout.rooms.begin(), layout.rooms.end(), matches) ||
+         std::any_of(layout.boxes.begin(), layout.boxes.end(), matches) ||
+         std::any_of(layout.walls.begin(), layout.walls.end(), matches) ||
+         std::any_of(layout.openings.begin(), layout.openings.end(), matches) ||
+         std::any_of(layout.terrainProfiles.begin(),
+                     layout.terrainProfiles.end(), matches) ||
+         std::any_of(layout.terrainPaths.begin(), layout.terrainPaths.end(),
+                     matches);
+}
+
+std::string mintCreativeWorldLayoutStableKey(
+    const CreativeWorldLayout& layout,
+    std::uint64_t& nextOrdinal,
+    std::string_view prefix) {
+  for (;;) {
+    const std::string candidate =
+        std::string(prefix) + "_" + std::to_string(nextOrdinal++);
+    if (!creativeWorldLayoutStableKeyExists(layout, candidate)) {
+      return candidate;
+    }
+  }
+}
+
 CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     const CreativeDocument& document,
     const CreativeWorldLayout& layout) {

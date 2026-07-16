@@ -6,7 +6,7 @@
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
-#include "app/iggy3d/creative/world/WorldLayoutTransform.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
 
 namespace iggy3d_creative_app {
 

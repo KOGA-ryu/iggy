@@ -1,4 +1,4 @@
-#include "app/iggy3d/creative/world/WorldLayoutTransform.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
 
 #include <algorithm>
 #include <array>
@@ -44,12 +44,6 @@ void includePoint(CreativeWorldLayoutBuildingBounds& bounds,
   bounds.maximum.z = std::max(bounds.maximum.z, point.z);
 }
 
-void includeRect(CreativeWorldLayoutBuildingBounds& bounds,
-                 CreativeWorldLayoutRect rect) noexcept {
-  includePoint(bounds, rect.minimum);
-  includePoint(bounds, rect.maximum);
-}
-
 bool validOperation(
     CreativeWorldLayoutBuildingTransformOperation operation) noexcept {
   return operation < CreativeWorldLayoutBuildingTransformOperation::Count;
@@ -69,28 +63,6 @@ bool validOpeningPose(CreativeBuildingOpeningPose pose) noexcept {
       return true;
   }
   return false;
-}
-
-bool validOwnership(const CreativeWorldLayout& layout) noexcept {
-  const auto validOwner = [&](const auto& symbol) {
-    return symbol.buildingIndex < layout.buildings.size();
-  };
-  if (!std::all_of(layout.rooms.begin(), layout.rooms.end(), validOwner) ||
-      !std::all_of(layout.boxes.begin(), layout.boxes.end(), validOwner) ||
-      !std::all_of(layout.walls.begin(), layout.walls.end(), validOwner)) {
-    return false;
-  }
-  return std::all_of(
-      layout.openings.begin(), layout.openings.end(),
-      [&](const CreativeWorldLayoutOpening& opening) {
-        if (opening.hostKind == CreativeWorldLayoutOpeningHostKind::Wall) {
-          return opening.wallIndex < layout.walls.size();
-        }
-        return opening.hostKind ==
-                   CreativeWorldLayoutOpeningHostKind::RoomEdge &&
-               opening.roomIndex < layout.rooms.size() &&
-               opening.roomEdge < CreativeWorldLayoutRoomEdge::Count;
-      });
 }
 
 bool checkedCoord(std::int64_t x,
@@ -481,37 +453,6 @@ std::string_view toString(
   return "Invalid";
 }
 
-bool measureCreativeWorldLayoutBuildingBounds(
-    const CreativeWorldLayout& layout,
-    std::size_t buildingIndex,
-    CreativeWorldLayoutBuildingBounds& output) noexcept {
-  output = {};
-  if (buildingIndex >= layout.buildings.size()) {
-    return false;
-  }
-  const CreativeWorldLayoutBuilding& building = layout.buildings[buildingIndex];
-  if (building.rootMode != CreativeBuildingRootMode::None) {
-    includeRect(output, building.rootFootprint);
-  }
-  for (const CreativeWorldLayoutRoom& room : layout.rooms) {
-    if (room.buildingIndex == buildingIndex) {
-      includeRect(output, room.footprint);
-    }
-  }
-  for (const CreativeWorldLayoutBox& box : layout.boxes) {
-    if (box.buildingIndex == buildingIndex) {
-      includeRect(output, box.footprint);
-    }
-  }
-  for (const CreativeWorldLayoutWall& wall : layout.walls) {
-    if (wall.buildingIndex == buildingIndex) {
-      includePoint(output, wall.start);
-      includePoint(output, wall.end);
-    }
-  }
-  return output.valid;
-}
-
 CreativeWorldLayoutBuildingTransformResult transformCreativeWorldLayoutBuilding(
     const CreativeWorldLayout& source,
     const CreativeWorldLayoutBuildingTransformRequest& request) {
@@ -526,7 +467,7 @@ CreativeWorldLayoutBuildingTransformResult transformCreativeWorldLayoutBuilding(
                "creative_world_layout_building_transform_request_invalid");
     return result;
   }
-  if (!validOwnership(source)) {
+  if (!validCreativeWorldLayoutBuildingOwnership(source)) {
     setFailure(result,
                CreativeWorldLayoutBuildingTransformStatus::InvalidOwnership,
                "creative_world_layout_building_transform_ownership_invalid");

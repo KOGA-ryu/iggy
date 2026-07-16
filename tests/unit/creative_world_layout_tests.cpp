@@ -1,5 +1,5 @@
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
-#include "app/iggy3d/creative/world/WorldLayoutTransform.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
 
 #include <algorithm>
 #include <array>
@@ -402,6 +402,108 @@ bool buildingTransformsRoundTripAndRejectOverflow() {
                 "malformed geometry is distinct from coordinate overflow");
 }
 
+bool buildingEditKernelsAreAtomicAndRemapOwnership() {
+  const cr::CreativeWorldLayout source = transformableBuildingLayout();
+
+  std::int64_t defaultDeltaX = 0;
+  std::int64_t defaultDeltaZ = 0;
+  const bool defaultOffset =
+      cr::defaultCreativeWorldLayoutBuildingDuplicateOffset(
+          source, 0U, defaultDeltaX, defaultDeltaZ);
+
+  const cr::CreativeWorldLayoutBuildingEditResult moved =
+      cr::moveCreativeWorldLayoutBuilding(source, {0U, 3, -2});
+  const bool moveExact =
+      moved.accepted && moved.changed &&
+      moved.status == cr::CreativeWorldLayoutBuildingEditStatus::Ready &&
+      source.buildings[0].rootFootprint.minimum ==
+          cr::CreativeTerrainCoord2{10, 20} &&
+      moved.edited.buildings[0].rootFootprint.minimum ==
+          cr::CreativeTerrainCoord2{13, 18} &&
+      moved.edited.rooms[0].footprint.minimum ==
+          cr::CreativeTerrainCoord2{14, 19} &&
+      moved.edited.boxes[0].footprint.maximum ==
+          cr::CreativeTerrainCoord2{21, 24} &&
+      moved.edited.walls[0].start == cr::CreativeTerrainCoord2{13, 21} &&
+      moved.edited.openings[0].centerOffsetCells ==
+          source.openings[0].centerOffsetCells &&
+      moved.edited.terrainProfiles[0].center ==
+          source.terrainProfiles[0].center;
+
+  const cr::CreativeWorldLayoutBuildingEditResult overflow =
+      cr::moveCreativeWorldLayoutBuilding(
+          source, {0U, std::numeric_limits<std::int64_t>::max(), 0});
+  const bool overflowAtomic =
+      !overflow.accepted && !overflow.changed &&
+      overflow.status ==
+          cr::CreativeWorldLayoutBuildingEditStatus::CoordinateOverflow &&
+      overflow.edited.buildings.empty() &&
+      source.walls[0].start == cr::CreativeTerrainCoord2{10, 23};
+
+  const cr::CreativeWorldLayoutBuildingEditResult duplicated =
+      cr::duplicateCreativeWorldLayoutBuilding(source, {0U, 20, 0, 40U});
+  const bool duplicateExact =
+      duplicated.accepted && duplicated.changed &&
+      duplicated.resultBuildingIndex == 1U &&
+      duplicated.nextStableOrdinal == 51U &&
+      duplicated.edited.buildings.size() == 2U &&
+      duplicated.edited.rooms.size() == 2U &&
+      duplicated.edited.boxes.size() == 2U &&
+      duplicated.edited.walls.size() == 4U &&
+      duplicated.edited.openings.size() == 12U &&
+      duplicated.edited.buildings[1].stableKey == "building_40" &&
+      duplicated.edited.buildings[1].rootFootprint.minimum ==
+          cr::CreativeTerrainCoord2{30, 20} &&
+      duplicated.edited.rooms[1].buildingIndex == 1U &&
+      duplicated.edited.walls[2].buildingIndex == 1U &&
+      duplicated.edited.openings[6].roomIndex == 1U &&
+      duplicated.edited.openings[10].wallIndex == 2U &&
+      duplicated.edited.terrainProfiles.size() == 1U;
+
+  const cr::CreativeWorldLayoutBuildingEditResult removed =
+      cr::deleteCreativeWorldLayoutBuilding(duplicated.edited, {0U});
+  const bool deleteExact =
+      removed.accepted && removed.changed &&
+      removed.edited.buildings.size() == 1U &&
+      removed.edited.rooms.size() == 1U &&
+      removed.edited.boxes.size() == 1U &&
+      removed.edited.walls.size() == 2U &&
+      removed.edited.openings.size() == 6U &&
+      removed.edited.rooms[0].buildingIndex == 0U &&
+      removed.edited.walls[0].buildingIndex == 0U &&
+      removed.edited.openings[0].roomIndex == 0U &&
+      removed.edited.openings[4].wallIndex == 0U &&
+      removed.edited.buildings[0].rootFootprint.minimum ==
+          cr::CreativeTerrainCoord2{30, 20} &&
+      removed.edited.terrainProfiles.size() == 1U;
+
+  cr::CreativeWorldLayout invalid = source;
+  invalid.openings[0].roomEdge = cr::CreativeWorldLayoutRoomEdge::Count;
+  const cr::CreativeWorldLayoutBuildingEditResult invalidDuplicate =
+      cr::duplicateCreativeWorldLayoutBuilding(invalid, {0U, 20, 0, 1U});
+  const cr::CreativeWorldLayoutBuildingEditResult invalidDelete =
+      cr::deleteCreativeWorldLayoutBuilding(invalid, {0U});
+
+  return expect(defaultOffset && defaultDeltaX == 10 && defaultDeltaZ == 0,
+                "building duplicate offset comes from aggregate bounds") &&
+         expect(moveExact,
+                "building move edits all owned geometry but not terrain") &&
+         expect(overflowAtomic,
+                "building move overflow publishes no partial candidate") &&
+         expect(duplicateExact,
+                "building duplicate remaps owners, hosts, and stable keys") &&
+         expect(deleteExact,
+                "building delete compacts owners and opening hosts") &&
+         expect(!invalidDuplicate.accepted && !invalidDelete.accepted &&
+                    invalidDuplicate.status ==
+                        cr::CreativeWorldLayoutBuildingEditStatus::
+                            InvalidOwnership &&
+                    invalidDelete.status ==
+                        cr::CreativeWorldLayoutBuildingEditStatus::
+                            InvalidOwnership,
+                "building edits reject malformed ownership before copying");
+}
+
 bool twoDimensionalBuildingCompilesToExactThreeDimensionalOutput() {
   const cr::CreativeDocument document = makeDocument(201U);
   const cr::CreativeWorldLayout layout = smallHouseLayout();
@@ -619,6 +721,7 @@ int main() {
       authoritativeTerrainAndMaterialApplyAsOneHistoryStep() &&
       buildingTransformPreservesHostedOpeningSemantics() &&
       buildingTransformsRoundTripAndRejectOverflow() &&
+      buildingEditKernelsAreAtomicAndRemapOwnership() &&
       invalidAndStaleSourcesFailClosed();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

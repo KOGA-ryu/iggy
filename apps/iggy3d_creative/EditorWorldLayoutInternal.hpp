@@ -1,6 +1,5 @@
 #pragma once
 
-#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <limits>
@@ -12,39 +11,10 @@
 
 namespace iggy3d_creative_app::detail {
 
-inline bool worldLayoutStableKeyExists(const cr::CreativeWorldLayout& layout,
-                                       std::string_view key) {
-  const auto matches = [&](const auto& value) {
-    return value.stableKey == key;
-  };
-  return std::any_of(layout.buildings.begin(), layout.buildings.end(),
-                     matches) ||
-         std::any_of(layout.rooms.begin(), layout.rooms.end(), matches) ||
-         std::any_of(layout.boxes.begin(), layout.boxes.end(), matches) ||
-         std::any_of(layout.walls.begin(), layout.walls.end(), matches) ||
-         std::any_of(layout.openings.begin(), layout.openings.end(), matches) ||
-         std::any_of(layout.terrainProfiles.begin(),
-                     layout.terrainProfiles.end(), matches) ||
-         std::any_of(layout.terrainPaths.begin(), layout.terrainPaths.end(),
-                     matches);
-}
-
-inline std::string mintWorldLayoutStableKey(cr::CreativeWorldLayout& layout,
-                                            std::uint64_t& nextOrdinal,
-                                            std::string_view prefix) {
-  for (;;) {
-    const std::string candidate =
-        std::string(prefix) + "_" + std::to_string(nextOrdinal++);
-    if (!worldLayoutStableKeyExists(layout, candidate)) {
-      return candidate;
-    }
-  }
-}
-
 inline std::string mintWorldLayoutStableKey(
     CreativeEditorWorldLayoutState& state, std::string_view prefix) {
-  return mintWorldLayoutStableKey(state.source, state.nextStableOrdinal,
-                                  prefix);
+  return cr::mintCreativeWorldLayoutStableKey(
+      state.source, state.nextStableOrdinal, prefix);
 }
 
 inline bool finiteWorldLayoutPoint(

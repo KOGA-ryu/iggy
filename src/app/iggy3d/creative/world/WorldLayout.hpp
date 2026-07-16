@@ -269,6 +269,13 @@ struct CreativeWorldLayoutApplyReceipt {
 [[nodiscard]] std::string_view creativeWorldLayoutRoomEdgeKey(
     CreativeWorldLayoutRoomEdge edge) noexcept;
 [[nodiscard]] std::string creativeWorldLayoutTag(std::string_view layoutKey);
+[[nodiscard]] bool creativeWorldLayoutStableKeyExists(
+    const CreativeWorldLayout& layout,
+    std::string_view key) noexcept;
+[[nodiscard]] std::string mintCreativeWorldLayoutStableKey(
+    const CreativeWorldLayout& layout,
+    std::uint64_t& nextOrdinal,
+    std::string_view prefix);
 
 [[nodiscard]] CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     const CreativeDocument& document,
