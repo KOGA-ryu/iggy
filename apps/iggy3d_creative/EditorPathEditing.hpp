@@ -72,6 +72,27 @@ struct CreativeMovingPlatformPathEditState {
   bool available = false;
 };
 
+struct CreativeMovingPlatformPathTargetPlan {
+  bool visible = false;
+  bool appendAllowed = false;
+  bool segmentVisible = false;
+  CreativeMovingPlatformPathEditStatus status =
+      CreativeMovingPlatformPathEditStatus::InvalidTarget;
+  std::string_view reasonCode =
+      "creative_platform_path_target_unavailable";
+  cr::CreativeObjectId objectId = cr::kInvalidObjectId;
+  cr::CreativeVec3 fromPoint{};
+  cr::CreativeVec3 targetPoint{};
+};
+
+// Per-frame admission is allocation-free and O(path points), bounded by the
+// moving-platform path capacity.
+[[nodiscard]] CreativeMovingPlatformPathTargetPlan
+planCreativeMovingPlatformPathTarget(
+    const cr::CreativeObject* object,
+    bool targetAvailable,
+    cr::CreativeVec3 placementAnchor) noexcept;
+
 [[nodiscard]] CreativeMovingPlatformPathEditPlan
 planCreativeMovingPlatformPathEdit(
     std::span<const cr::CreativePathPoint> currentPath,

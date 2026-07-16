@@ -14,6 +14,7 @@
 #include "EditorGroup.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorLogicLinkOverlay.hpp"
+#include "EditorPathEditing.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
@@ -39,6 +40,7 @@ void resetCreativeEditorOverlayFrame(CreativeEditorOverlayFrame& output) {
   output.pointMarkerEdgeCount = 0;
   output.lineMarkerEdgeCount = 0;
   output.pathPointHandleEdgeCount = 0;
+  output.movingPlatformPathPreviewEdgeCount = 0;
   output.ghostEdgeCount = 0;
   output.materialBrushPivotEdgeCount = 0;
   output.materialBrushGuideLineCount = 0;
@@ -398,6 +400,65 @@ void appendCreativeEditorPlacementFeedbackWireframe(
   output.placementFeedbackEdgeCount = lines.size() - before;
 }
 
+void appendCreativeEditorMovingPlatformPathPreview(
+    const CreativeEditorOverlayFrameRequest& request,
+    const creative::CreativeObject* selected,
+    CreativeEditorOverlayFrame& output) {
+  const CreativeEditorState& editor = request.editor;
+  const bool modalOpen = editor.catalog.model.open ||
+                         editor.catalog.toolWheel.open ||
+                         editor.toolOptions.open ||
+                         editor.assetReplacement.active ||
+                         editor.transform.active;
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  if (request.captureMode || modalOpen ||
+      request.inputContext != cr::CreativeInputContext::EditorViewport ||
+      held.kind != cr::CreativeHeldItemKind::ObjectMove ||
+      !editor.interaction.movingPlatformPathEdit.available ||
+      selected == nullptr ||
+      selected->id != editor.interaction.movingPlatformPathEdit.objectId) {
+    return;
+  }
+
+  const CreativeMovingPlatformPathTargetPlan preview =
+      planCreativeMovingPlatformPathTarget(
+          selected, editor.interaction.target.grid.valid,
+          editor.interaction.target.grid.placementAnchor);
+  if (!preview.visible) {
+    return;
+  }
+  const RenderLineColor color =
+      preview.appendAllowed ? RenderLineColor{0.20F, 1.0F, 0.35F, 1.0F}
+                            : RenderLineColor{1.0F, 0.20F, 0.20F, 1.0F};
+  const float thickness = std::max(0.05F, request.gizmoThickness);
+  std::vector<RenderCreativeWireframeDebugLine>& lines =
+      output.combinedWireLines;
+  const std::size_t before = lines.size();
+  if (preview.segmentVisible) {
+    const cr::CreativeCoreVec3Conversion from =
+        cr::creativeVec3ToCoreChecked(preview.fromPoint);
+    const cr::CreativeCoreVec3Conversion to =
+        cr::creativeVec3ToCoreChecked(preview.targetPoint);
+    if (from.converted && to.converted) {
+      RenderCreativeWireframeDebugLine segment;
+      segment.start = from.value;
+      segment.end = to.value;
+      segment.color = color;
+      segment.objectId = preview.objectId;
+      segment.thickness = thickness;
+      lines.push_back(segment);
+    }
+  }
+  const VisualBounds marker = pathPointHandleBounds(preview.targetPoint);
+  appendStandaloneWireframeBoxEdges(lines, marker.min, marker.max, color,
+                                    thickness * 0.8F);
+  for (std::size_t index = before; index < lines.size(); ++index) {
+    lines[index].objectId = preview.objectId;
+  }
+  output.movingPlatformPathPreviewEdgeCount = lines.size() - before;
+}
+
 }  // namespace
 
 CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
@@ -459,6 +520,7 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
   combinedWireLines.reserve(
       dbg.lines.size() +
       appState.facade.document().logicLinks().size() * 15U + 72U +
+      13U +
       kMaxStaticMeshAttachmentSocketCount * 3U +
       editor.interaction.assetScatter.preview.candidateCount * 12U);
   std::size_t& documentWireLineCount = output.documentWireLineCount;
@@ -593,6 +655,7 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
       combinedWireLines.push_back(gizmoLine);
     }
   }
+  appendCreativeEditorMovingPlatformPathPreview(request, selected, output);
   appendCreativeEditorAttachmentSocketMarkers(request, output);
   appendCreativeEditorPlacementFeedbackWireframe(request, output);
   appendCreativeEditorLogicLinks(request, output);

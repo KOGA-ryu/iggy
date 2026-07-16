@@ -162,6 +162,55 @@ std::vector<cr::CreativePathPoint> movePathPoint(
 
 }  // namespace
 
+CreativeMovingPlatformPathTargetPlan planCreativeMovingPlatformPathTarget(
+    const cr::CreativeObject* object,
+    bool targetAvailable,
+    cr::CreativeVec3 placementAnchor) noexcept {
+  CreativeMovingPlatformPathTargetPlan result;
+  if (object == nullptr ||
+      object->kind != cr::CreativeObjectKind::MovingPlatform) {
+    result.status = CreativeMovingPlatformPathEditStatus::InvalidSelection;
+    result.reasonCode = "creative_platform_path_edit_invalid_selection";
+    return result;
+  }
+  result.objectId = object->id;
+  if (!cr::isValidCreativeMovingPlatformPath(object->pathPoints)) {
+    result.status = CreativeMovingPlatformPathEditStatus::InvalidPath;
+    result.reasonCode = "creative_platform_path_edit_invalid_path";
+    return result;
+  }
+  if (!targetAvailable) {
+    return result;
+  }
+  const std::optional<cr::CreativeVec3> targetPoint =
+      movingPlatformPathPointAtPlacementAnchor(*object, placementAnchor);
+  if (!targetPoint.has_value()) {
+    result.reasonCode = "creative_platform_path_edit_invalid_target";
+    return result;
+  }
+
+  result.visible = true;
+  result.fromPoint = object->pathPoints.back().position;
+  result.targetPoint = *targetPoint;
+  result.segmentVisible =
+      !samePathPoint(result.fromPoint, result.targetPoint);
+  if (object->pathPoints.size() >=
+      cr::kCreativeMovingPlatformPathPointCapacity) {
+    result.status = CreativeMovingPlatformPathEditStatus::CapacityReached;
+    result.reasonCode = "creative_platform_path_edit_capacity_reached";
+    return result;
+  }
+  if (!result.segmentVisible) {
+    result.status = CreativeMovingPlatformPathEditStatus::DuplicateTarget;
+    result.reasonCode = "creative_platform_path_edit_duplicate_target";
+    return result;
+  }
+  result.appendAllowed = true;
+  result.status = CreativeMovingPlatformPathEditStatus::Ready;
+  result.reasonCode = "creative_platform_path_edit_planned";
+  return result;
+}
+
 CreativeMovingPlatformPathEditPlan planCreativeMovingPlatformPathEdit(
     std::span<const cr::CreativePathPoint> currentPath,
     CreativeMovingPlatformPathEditCommand command,
@@ -278,24 +327,25 @@ CreativeMovingPlatformPathEditReceipt consumeCreativeMovingPlatformPathEdit(
     return result;
   }
   syncCreativeMovingPlatformPathEditState(appState, state);
-  std::optional<cr::CreativeVec3> targetPoint;
-  if (command == CreativeMovingPlatformPathEditCommand::AppendAtTarget &&
-      targetAvailable) {
+  if (command == CreativeMovingPlatformPathEditCommand::AppendAtTarget) {
     const cr::CreativeObject* object = appState.facade.findObject(state.objectId);
-    if (object != nullptr) {
-      targetPoint =
-          movingPlatformPathPointAtPlacementAnchor(*object, targetAnchor);
+    const CreativeMovingPlatformPathTargetPlan target =
+        planCreativeMovingPlatformPathTarget(object, targetAvailable,
+                                             targetAnchor);
+    if (!target.appendAllowed) {
+      result.requested = true;
+      result.objectId = target.objectId;
+      result.status = target.status;
+      result.reasonCode = target.reasonCode;
+      result.pointCountBefore = object != nullptr ? object->pathPoints.size() : 0U;
+      result.pointCountAfter = result.pointCountBefore;
+    } else {
+      result = applyPathEditWithUndo(appState, state.objectId, command,
+                                     target.targetPoint, source);
     }
-  }
-  if (command == CreativeMovingPlatformPathEditCommand::AppendAtTarget &&
-      !targetPoint.has_value()) {
-    result.requested = true;
-    result.objectId = state.objectId;
-    result.status = CreativeMovingPlatformPathEditStatus::InvalidTarget;
-    result.reasonCode = "creative_platform_path_edit_target_unavailable";
   } else {
     result = applyPathEditWithUndo(appState, state.objectId, command,
-                                   targetPoint.value_or(targetAnchor), source);
+                                   targetAnchor, source);
   }
   syncCreativeMovingPlatformPathEditState(appState, state);
   state.status = result.status;

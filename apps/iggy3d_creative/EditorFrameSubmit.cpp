@@ -40,6 +40,7 @@ namespace creative = iggy3d::creative;
             "frustumCulledMeshes=%zu frustumConservativeMeshes=%zu "
             "selectedTarget=%u hasSelection=%d selBoxLines=%zu "
             "pointMarkerLines=%zu lineMarkerLines=%zu pathHandleLines=%zu "
+            "pathPreviewLines=%zu "
             "gizmoLines=%zu combinedWireLines=%zu uiRects=%zu glyphs=%zu",
             static_cast<unsigned long long>(editor.frameIndex),
             static_cast<int>(submit.outcome),
@@ -54,11 +55,13 @@ namespace creative = iggy3d::creative;
             overlayFrame.pointMarkerEdgeCount,
             overlayFrame.lineMarkerEdgeCount,
             overlayFrame.pathPointHandleEdgeCount,
+            overlayFrame.movingPlatformPathPreviewEdgeCount,
             overlayFrame.combinedWireLines.size() -
                 overlayFrame.documentWireLineCount -
                 overlayFrame.pointMarkerEdgeCount -
                 overlayFrame.lineMarkerEdgeCount -
-                overlayFrame.pathPointHandleEdgeCount,
+                overlayFrame.pathPointHandleEdgeCount -
+                overlayFrame.movingPlatformPathPreviewEdgeCount,
             overlayFrame.combinedWireLines.size(),
             overlayFrame.uiRects.size(), overlayFrame.glyphs.size());
   }
@@ -74,6 +77,7 @@ namespace creative = iggy3d::creative;
     SDL_Log("iggy3d_creative: FINAL frame %llu submit outcome=%d reason='%s' "
             "selectedTarget=%u selectedKind='%s' hasSelection=%d selBoxLines=%zu "
             "pointMarkerLines=%zu lineMarkerLines=%zu pathHandleLines=%zu "
+            "pathPreviewLines=%zu "
             "gizmoLines=%zu combinedWireLines=%zu placeMode=%d brush='%s' "
             "ghostEdges=%zu placed=%llu objectCount=%llu "
             "frustumInputMeshes=%zu frustumKeptMeshes=%zu "
@@ -85,11 +89,13 @@ namespace creative = iggy3d::creative;
             overlayFrame.pointMarkerEdgeCount,
             overlayFrame.lineMarkerEdgeCount,
             overlayFrame.pathPointHandleEdgeCount,
+            overlayFrame.movingPlatformPathPreviewEdgeCount,
             overlayFrame.combinedWireLines.size() -
                 overlayFrame.documentWireLineCount -
                 overlayFrame.pointMarkerEdgeCount -
                 overlayFrame.lineMarkerEdgeCount -
-                overlayFrame.pathPointHandleEdgeCount,
+                overlayFrame.pathPointHandleEdgeCount -
+                overlayFrame.movingPlatformPathPreviewEdgeCount,
             overlayFrame.combinedWireLines.size(), editor.placeMode ? 1 : 0,
             std::string(creative::toString(editor.placeBrush)).c_str(),
             overlayFrame.ghostEdgeCount,

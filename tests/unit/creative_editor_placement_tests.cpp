@@ -3743,6 +3743,76 @@ bool movingPlatformRouteQuickEditIsBoundedAndUndoable() {
   syncCreativeEditorHeldItem(appState, editor);
   syncCreativeMovingPlatformPathEditState(
       appState, editor.interaction.movingPlatformPathEdit);
+  setPlaceTarget(editor, 4, 2, 0);
+
+  const cr::CreativeObject* beforeAppend =
+      appState.facade.findObject(created.objectId);
+  const CreativeMovingPlatformPathTargetPlan targetPreview =
+      planCreativeMovingPlatformPathTarget(
+          beforeAppend, editor.interaction.target.grid.valid,
+          editor.interaction.target.grid.placementAnchor);
+  cr::CreativeObject capacityPreviewObject =
+      beforeAppend != nullptr ? *beforeAppend : cr::CreativeObject{};
+  capacityPreviewObject.pathPoints = fullPath;
+  const CreativeMovingPlatformPathTargetPlan capacityTargetPreview =
+      planCreativeMovingPlatformPathTarget(
+          &capacityPreviewObject, true,
+          editor.interaction.target.grid.placementAnchor);
+  CreativeEditorSelectionFrame routeSelection;
+  routeSelection.selectedId = static_cast<cr::Id>(created.objectId);
+  routeSelection.selected = beforeAppend;
+  routeSelection.selectedObjectIds = {created.objectId};
+  routeSelection.selectionCount = 1U;
+  routeSelection.hasSelection = true;
+  CreativeEditorGizmoFrame routeGizmo;
+  routeGizmo.selectedIsPathForHandles = true;
+  routeGizmo.selectedPathHandleObjectId = created.objectId;
+  cr::CreativeSpatialProjectionRequest routeProjection;
+  iggy3d::FrameInput routePreviewFrame;
+  CreativeEditorOverlayFrame routePreviewOverlay;
+  const std::uint64_t revisionBeforeRoutePreview =
+      appState.facade.document().revision();
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, routeSelection, routeGizmo, routePreviewFrame,
+       routeProjection, 1280U, 720U, 0.03F, false},
+      routePreviewOverlay);
+  const bool routePreviewKeptRevision =
+      appState.facade.document().revision() == revisionBeforeRoutePreview;
+  const auto greenCandidate = std::find_if(
+      routePreviewOverlay.combinedWireLines.begin(),
+      routePreviewOverlay.combinedWireLines.end(),
+      [&targetPreview, objectId = created.objectId](
+          const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return line.objectId == objectId && near(line.color.r, 0.20F) &&
+               near(line.color.g, 1.0F) &&
+               near(line.start.x,
+                    static_cast<float>(targetPreview.fromPoint.x)) &&
+               near(line.start.y,
+                    static_cast<float>(targetPreview.fromPoint.y)) &&
+               near(line.start.z,
+                    static_cast<float>(targetPreview.fromPoint.z)) &&
+               near(line.end.x,
+                    static_cast<float>(targetPreview.targetPoint.x)) &&
+               near(line.end.y,
+                    static_cast<float>(targetPreview.targetPoint.y)) &&
+               near(line.end.z,
+                    static_cast<float>(targetPreview.targetPoint.z));
+      });
+  editor.toolOptions.open = true;
+  iggy3d::FrameInput hiddenRoutePreviewFrame;
+  CreativeEditorOverlayFrame hiddenRoutePreviewOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, routeSelection, routeGizmo, hiddenRoutePreviewFrame,
+       routeProjection, 1280U, 720U, 0.03F, false},
+      hiddenRoutePreviewOverlay);
+  editor.toolOptions.open = false;
+  iggy3d::FrameInput desktopRoutePreviewFrame;
+  CreativeEditorOverlayFrame desktopRoutePreviewOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, routeSelection, routeGizmo,
+       desktopRoutePreviewFrame, routeProjection, 1280U, 720U, 0.03F, false,
+       cr::CreativeInputContext::DesktopUi},
+      desktopRoutePreviewOverlay);
 
   cr::CreativeInputRouteResult appendInput;
   appendInput.context = cr::CreativeInputContext::EditorViewport;
@@ -3774,6 +3844,30 @@ bool movingPlatformRouteQuickEditIsBoundedAndUndoable() {
       4.5,
       2.0 + appendedBounds.center.y - appendedBounds.worldBounds.min.y,
       0.5};
+  routeSelection.selected = afterAppend;
+  const CreativeMovingPlatformPathTargetPlan duplicatePreview =
+      planCreativeMovingPlatformPathTarget(
+          afterAppend, editor.interaction.target.grid.valid,
+          editor.interaction.target.grid.placementAnchor);
+  iggy3d::FrameInput duplicateRoutePreviewFrame;
+  CreativeEditorOverlayFrame duplicateRoutePreviewOverlay;
+  const std::uint64_t revisionBeforeDuplicatePreview =
+      appState.facade.document().revision();
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, routeSelection, routeGizmo,
+       duplicateRoutePreviewFrame, routeProjection, 1280U, 720U, 0.03F,
+       false},
+      duplicateRoutePreviewOverlay);
+  const bool duplicatePreviewKeptRevision =
+      appState.facade.document().revision() == revisionBeforeDuplicatePreview;
+  const bool duplicateMarkerIsRed = std::any_of(
+      duplicateRoutePreviewOverlay.combinedWireLines.begin(),
+      duplicateRoutePreviewOverlay.combinedWireLines.end(),
+      [objectId = created.objectId](
+          const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return line.objectId == objectId && near(line.color.r, 1.0F) &&
+               near(line.color.g, 0.20F);
+      });
   const bool undoAccepted = undoLastEdit(appState, "route_append_undo_test");
   const cr::CreativeObject* afterUndo =
       appState.facade.findObject(created.objectId);
@@ -3827,6 +3921,23 @@ bool movingPlatformRouteQuickEditIsBoundedAndUndoable() {
          expect(created.accepted && selected.accepted &&
                     routeAvailableBeforeAppend && appendQueued,
                 "Object Move D-pad right queues route append semantically") &&
+         expect(targetPreview.visible && targetPreview.appendAllowed &&
+                    targetPreview.segmentVisible &&
+                    capacityTargetPreview.visible &&
+                    !capacityTargetPreview.appendAllowed &&
+                    capacityTargetPreview.status ==
+                        CreativeMovingPlatformPathEditStatus::CapacityReached &&
+                    routePreviewOverlay.movingPlatformPathPreviewEdgeCount ==
+                        13U &&
+                    greenCandidate !=
+                        routePreviewOverlay.combinedWireLines.end() &&
+                    routePreviewKeptRevision,
+                "aiming shows a green route segment and endpoint marker") &&
+         expect(hiddenRoutePreviewOverlay
+                            .movingPlatformPathPreviewEdgeCount == 0U &&
+                    desktopRoutePreviewOverlay
+                            .movingPlatformPathPreviewEdgeCount == 0U,
+                "modal and desktop UI ownership hide the route target preview") &&
          expect(appended.accepted && appended.changed &&
                     appended.status ==
                         CreativeMovingPlatformPathEditStatus::Applied &&
@@ -3836,6 +3947,15 @@ bool movingPlatformRouteQuickEditIsBoundedAndUndoable() {
                     cr::creativeUndoDepth(appState.history) >= 1U,
                 "queued route append centers the platform above the snapped "
                 "anchor and records history") &&
+         expect(duplicatePreview.visible && !duplicatePreview.appendAllowed &&
+                    !duplicatePreview.segmentVisible &&
+                    duplicatePreview.status ==
+                        CreativeMovingPlatformPathEditStatus::DuplicateTarget &&
+                    duplicateRoutePreviewOverlay
+                            .movingPlatformPathPreviewEdgeCount == 12U &&
+                    duplicateMarkerIsRed && duplicatePreviewKeptRevision,
+                "duplicate aim shows only a red endpoint marker without "
+                "mutating the document") &&
          expect(undoAccepted && pointCountAfterUndo == 2U && redoAccepted &&
                     reselected.accepted,
                 "route append participates in undo and redo") &&
