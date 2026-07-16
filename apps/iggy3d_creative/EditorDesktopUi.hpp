@@ -1,17 +1,55 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "render/FrameInput.hpp"
+
+#include "EditorDesktopModel.hpp"
 
 namespace iggy3d {
 class VulkanBackend;
 }
 
 namespace iggy3d_creative_app {
+
+// UI-4A transient Project-panel state: the revision-owned hierarchy model, the
+// search box and its applied query, the filtered row indices, and the
+// shift-range anchor. Caches only — never document truth, never persisted.
+struct CreativeDesktopOutlinerState {
+  CreativeDesktopOutlinerModel model;
+  bool modelValid = false;
+  // Indices into model.rows, in visible order.
+  std::vector<std::size_t> filteredRows;
+  std::string appliedQuery;
+  bool filteredRowsValid = false;
+  std::array<char, 128> searchBuffer{};
+  iggy3d::creative::CreativeObjectId selectionAnchor =
+      iggy3d::creative::kInvalidObjectId;
+};
+
+// UI-4A transient Inspector draft, keyed by document id + object id. Rotation is
+// held in DEGREES; the document stays radians. Never persisted.
+struct CreativeDesktopInspectorDraft {
+  iggy3d::creative::CreativeDocumentId documentId =
+      iggy3d::creative::kInvalidDocumentId;
+  iggy3d::creative::CreativeObjectId objectId =
+      iggy3d::creative::kInvalidObjectId;
+  std::uint64_t sourceRevision = 0U;
+  bool valid = false;
+  std::string name;
+  std::array<double, 3> position{0.0, 0.0, 0.0};
+  std::array<double, 3> rotationDegrees{0.0, 0.0, 0.0};
+  std::array<double, 3> scale{1.0, 1.0, 1.0};
+  // A draft field is being edited this frame, so a revision bump must not
+  // overwrite it.
+  bool editing = false;
+  std::string validation;  // concise inline error; empty when the draft is ok.
+};
 
 // Desktop shell state — app-window UI state, NOT document truth (it lives in
 // CreativeEditorState next to the other panel sub-states, never inside
@@ -62,6 +100,10 @@ struct CreativeEditorDesktopUiState {
   std::uint64_t logicDiagnosticRevision = 0U;
   iggy3d::creative::CreativeLogicDiagnosticReport logicDiagnostics;
   bool logicDiagnosticsCached = false;
+
+  // UI-4A Project/Inspector transient state (caches + drafts only).
+  CreativeDesktopOutlinerState outliner;
+  CreativeDesktopInspectorDraft inspectorDraft;
 };
 
 // Result of the free-pointer capture policy: the new capture state and whether

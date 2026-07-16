@@ -368,6 +368,17 @@ set_tests_properties(creative_desktop_ui_command_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;editor;desktop;command;iggy3d")
 
+add_executable(creative_desktop_model_tests
+  tests/unit/creative_desktop_model_tests.cpp)
+target_link_libraries(creative_desktop_model_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_desktop_model_tests)
+add_test(NAME creative_desktop_model_tests
+  COMMAND "$<TARGET_FILE:creative_desktop_model_tests>")
+set_tests_properties(creative_desktop_model_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;editor;desktop;model;iggy3d")
+
 add_executable(creative_editor_play_mode_tests
   tests/unit/creative_editor_play_mode_tests.cpp)
 target_link_libraries(creative_editor_play_mode_tests PRIVATE

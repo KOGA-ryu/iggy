@@ -334,6 +334,9 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorPreviewFrame.cpp
   apps/iggy3d_creative/EditorDesktopUi.cpp
   apps/iggy3d_creative/EditorDesktopCommands.cpp
+  apps/iggy3d_creative/EditorDesktopModel.cpp
+  apps/iggy3d_creative/EditorDesktopOutliner.cpp
+  apps/iggy3d_creative/EditorDesktopInspector.cpp
   apps/iggy3d_creative/EditorDesktopPanels.cpp)
 
 add_library(iggy3d_creative_app STATIC ${IGGY3D_CREATIVE_APP_SOURCES})
