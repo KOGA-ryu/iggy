@@ -31,12 +31,29 @@ int main() {
 
   const iggy3d::vulkan::CreativePreviewCpuGeometry preview =
       iggy3d::vulkan::buildCreativePreviewCpuGeometry();
+  constexpr std::size_t stairSegmentSum =
+      iggy3d::kRenderCreativePreviewMaximumStairSegmentCount *
+      (iggy3d::kRenderCreativePreviewMaximumStairSegmentCount + 1U) / 2U;
+  constexpr std::size_t generatedShapeVertexCount =
+      8U + 6U + 8U * stairSegmentSum;
+  constexpr std::size_t generatedShapeIndexCount =
+      72U + 48U + 72U * stairSegmentSum;
+  constexpr std::size_t decoratedRoleCount =
+      iggy3d::kRenderCreativePreviewRoleCount - 1U;
+  constexpr std::size_t expectedPreviewVertexCount =
+      iggy3d::kRenderCreativePreviewRoleCount * generatedShapeVertexCount +
+      iggy3d::vulkan::kCreativePreviewGeometryProfileSlotCount *
+          decoratedRoleCount * 112U;
+  constexpr std::size_t expectedPreviewIndexCount =
+      iggy3d::kRenderCreativePreviewRoleCount * generatedShapeIndexCount +
+      iggy3d::vulkan::kCreativePreviewGeometryProfileSlotCount *
+          decoratedRoleCount * 1008U;
   ok = expect(preview.ready, "creative preview geometry ready") && ok;
-  ok = expect(preview.vertices.size() == 248U,
-              "canonical cubes and path overlays have fixed vertices") &&
+  ok = expect(preview.vertices.size() == expectedPreviewVertexCount,
+              "bounded generated profiles have fixed preview vertices") &&
        ok;
-  ok = expect(preview.indices.size() == 2232U,
-              "canonical cubes and path overlays have fixed indices") &&
+  ok = expect(preview.indices.size() == expectedPreviewIndexCount,
+              "bounded generated profiles have fixed preview indices") &&
        ok;
   ok = expect(preview.indexedDraws[0].firstIndex == 0U &&
                   preview.indexedDraws[0].indexCount == 72U,

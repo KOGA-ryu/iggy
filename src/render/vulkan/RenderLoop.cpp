@@ -466,7 +466,9 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
                   createInfo_.firstRoomResources->creativePreviewGeometry(),
                   item)
             : creativePreviewGeometryDrawIndex(item.role,
-                                               item.includePathWireframe);
+                                               item.includePathWireframe,
+                                               item.geometryProfile,
+                                               item.proceduralSegmentCount);
     creativePreviewDraws[index].depthDisabled =
         item.role == RenderCreativePreviewRole::Held;
     creativePreviewDraws[index].pushConstants =

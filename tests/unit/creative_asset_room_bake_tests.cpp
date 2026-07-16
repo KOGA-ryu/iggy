@@ -13,6 +13,7 @@
 #include <utility>
 
 #include "runtime/collision/SpatialSurfaceSet.hpp"
+#include "runtime/collision/CollisionQuery.hpp"
 #include "runtime/physics/PhysicsSpatialSurfaceColliderBake.hpp"
 
 namespace {
@@ -90,14 +91,35 @@ cr::CreativeDocumentCreateReceipt addAssetWithTransform(
 cr::CreativeDocumentCreateReceipt addCatalogAsset(
     cr::CreativeDocument& document,
     const iggy3d::StaticMeshAssetCatalogEntry& entry,
-    double x) {
+    double x,
+    cr::CreativeObjectKind kind = cr::CreativeObjectKind::Bridge) {
   const cr::CreativeVec3 pivot{x, 0.0, 0.0};
   return addAssetWithTransform(
-      document, cr::CreativeObjectKind::Bridge, entry.assetId, pivot,
+      document, kind, entry.assetId, pivot,
       {{pivot.x + entry.boundsMin.x, pivot.y + entry.boundsMin.y,
         pivot.z + entry.boundsMin.z},
        {pivot.x + entry.boundsMax.x, pivot.y + entry.boundsMax.y,
         pivot.z + entry.boundsMax.z}});
+}
+
+cr::CreativeDocumentCreateReceipt addGenerated(
+    cr::CreativeDocument& document,
+    cr::CreativeObjectKind kind,
+    double x,
+    cr::CreativeVec3 scale = {1.0, 1.0, 1.0},
+    cr::CreativeVec3 rotation = {}) {
+  const cr::CreativeVec3 size = cr::defaultCreativeObjectSize(kind);
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = kind;
+  request.name = std::string(cr::toString(kind));
+  request.transform.position = {x, 0.0, 0.0};
+  request.transform.rotationEulerRadians = rotation;
+  request.transform.scale = scale;
+  request.hasTransformOverride = true;
+  request.bounds = {{x - size.x * 0.5, 0.0, -size.z * 0.5},
+                    {x + size.x * 0.5, size.y, size.z * 0.5}};
+  request.hasBoundsOverride = true;
+  return document.createObject(request);
 }
 
 cr::CreativeRoomBakeResult bake(
@@ -127,6 +149,18 @@ const iggy3d::RoomSpatialSurface* findSurface(const iggy3d::RoomAsset& room,
                      return surface.id == id;
                    });
   return found == room.spatialSurfaces.end() ? nullptr : &*found;
+}
+
+const iggy3d::RoomStaticMeshAsset* findMesh(
+    const iggy3d::RoomAsset& room,
+    cr::CreativeObjectId objectId) {
+  const std::string id = "creative_object_" + std::to_string(objectId);
+  const auto found = std::find_if(
+      room.staticMeshes.begin(), room.staticMeshes.end(),
+      [&id](const iggy3d::RoomStaticMeshAsset& mesh) {
+        return mesh.id == id;
+      });
+  return found == room.staticMeshes.end() ? nullptr : &*found;
 }
 
 iggy3d::RoomSpatialSurface traversalFloorSurface() {
@@ -235,9 +269,11 @@ bool importedStairSupportsFullBoundedRuntimeTraversal() {
   }
 
   cr::CreativeDocument document = cr::CreativeDocument::create("stair traversal");
-  const cr::CreativeDocumentCreateReceipt created =
-      addCatalogAsset(document, *stairs, 0.0);
+  const cr::CreativeDocumentCreateReceipt created = addCatalogAsset(
+      document, *stairs, 0.0, cr::CreativeObjectKind::Stair);
   const cr::CreativeRoomBakeResult baked = bake(document, &catalog);
+  const iggy3d::RoomStaticMeshAsset* bakedMesh =
+      findMesh(baked.room, created.objectId);
   iggy3d::RoomAsset traversalRoom = baked.room;
   traversalRoom.spatialSurfaces.push_back(traversalFloorSurface());
   const iggy3d::SpatialSurfaceSet surfaces =
@@ -275,7 +311,11 @@ bool importedStairSupportsFullBoundedRuntimeTraversal() {
     center = planned.finalCenterMeters;
   }
 
-  return expect(created.accepted && baked.receipt.accepted,
+  return expect(created.accepted && baked.receipt.accepted &&
+                    bakedMesh != nullptr &&
+                    bakedMesh->meshId ==
+                        "asset:homestead/modular/stair_straight_2x3x1p5" &&
+                    bakedMesh->proceduralSegmentCount == 0U,
                 "runtime stair room bake accepted") &&
          expect(everyStepAccepted,
                 "runtime stair accepts all six bounded steps") &&
@@ -283,6 +323,99 @@ bool importedStairSupportsFullBoundedRuntimeTraversal() {
                 "runtime stair reports each imported collision part") &&
          expect(iggy3d::nearlyEqual(center, {0.0F, 2.40F, -1.0F}),
                 "runtime stair reaches the sixth authored tread");
+}
+
+bool generatedTraversalGeometryStaysInRenderCollisionParity() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("generated traversal");
+  const cr::CreativeDocumentCreateReceipt platform = addGenerated(
+      document, cr::CreativeObjectKind::Platform, -6.0);
+  const cr::CreativeDocumentCreateReceipt ramp =
+      addGenerated(document, cr::CreativeObjectKind::Ramp, 0.0);
+  const cr::CreativeDocumentCreateReceipt stair =
+      addGenerated(document, cr::CreativeObjectKind::Stair, 6.0);
+  const cr::CreativeRoomBakeResult baked = bake(document, nullptr);
+  const iggy3d::RoomStaticMeshAsset* platformMesh =
+      findMesh(baked.room, platform.objectId);
+  const iggy3d::RoomStaticMeshAsset* rampMesh =
+      findMesh(baked.room, ramp.objectId);
+  const iggy3d::RoomStaticMeshAsset* stairMesh =
+      findMesh(baked.room, stair.objectId);
+  const iggy3d::SpatialSurfaceSet surfaces =
+      iggy3d::buildSpatialSurfaceSet(baked.room);
+  const iggy3d::CollisionQueryResult rampLow =
+      iggy3d::sampleSurfaceHeight(surfaces, {0.0F, 0.0F, -1.0F});
+  const iggy3d::CollisionQueryResult rampMiddle =
+      iggy3d::sampleSurfaceHeight(surfaces, {0.0F, 0.0F, 0.0F});
+  const iggy3d::CollisionQueryResult rampHigh =
+      iggy3d::sampleSurfaceHeight(surfaces, {0.0F, 0.0F, 1.0F});
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult physics =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces({&surfaces, {}});
+
+  return expect(platform.accepted && ramp.accepted && stair.accepted &&
+                    baked.receipt.accepted,
+                "generated traversal objects bake") &&
+         expect(platformMesh != nullptr &&
+                    platformMesh->meshId == "creative_platform_slab" &&
+                    platformMesh->proceduralSegmentCount == 0U &&
+                    rampMesh != nullptr &&
+                    rampMesh->meshId == "creative_ramp_wedge" &&
+                    rampMesh->proceduralSegmentCount == 0U &&
+                    stairMesh != nullptr &&
+                    stairMesh->meshId == "creative_stair_steps" &&
+                    stairMesh->proceduralSegmentCount == 4U,
+                "room meshes carry descriptor-owned generated profiles") &&
+         expect(baked.room.spatialSurfaces.size() == 14U &&
+                    countRole(baked.room,
+                              iggy3d::RoomSpatialSurfaceRole::Walkable) == 6U &&
+                    countRole(baked.room,
+                              iggy3d::RoomSpatialSurfaceRole::Blocker) == 4U &&
+                    countRole(
+                        baked.room,
+                        iggy3d::RoomSpatialSurfaceRole::ProjectileBlocker) == 4U,
+                "platform ramp and four stairs emit matching surface facts") &&
+         expect(rampLow.status == iggy3d::CollisionQueryStatus::Hit &&
+                    rampMiddle.status == iggy3d::CollisionQueryStatus::Hit &&
+                    rampHigh.status == iggy3d::CollisionQueryStatus::Hit &&
+                    std::fabs(rampLow.heightMeters - 0.25F) <= 0.001F &&
+                    std::fabs(rampMiddle.heightMeters - 0.5F) <= 0.001F &&
+                    std::fabs(rampHigh.heightMeters - 0.75F) <= 0.001F &&
+                    rampMiddle.shape ==
+                        iggy3d::CollisionSurfaceShape::HeightPatch &&
+                    rampMiddle.normal.y > 0.0F && rampMiddle.normal.z < 0.0F,
+                "generated ramp exposes exact sloped height and normal") &&
+         expect(physics.ok && physics.colliderCount == 9U,
+                "physics consumes slab and stair boxes but skips height patch");
+}
+
+bool generatedTraversalTransformsFailClosedAndStayBounded() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("generated traversal transforms");
+  const cr::CreativeDocumentCreateReceipt stair = addGenerated(
+      document, cr::CreativeObjectKind::Stair, 0.0, {1.0, 2.0, 1.0});
+  const cr::CreativeDocumentCreateReceipt ramp = addGenerated(
+      document, cr::CreativeObjectKind::Ramp, 6.0, {1.0, 1.0, 1.0},
+      {0.2, 0.0, 0.0});
+  const cr::CreativeDocumentCreateReceipt platform = addGenerated(
+      document, cr::CreativeObjectKind::Platform, -6.0, {1.0, 1.0, 1.0},
+      {0.2, 0.0, 0.0});
+  const cr::CreativeRoomBakeResult baked = bake(document, nullptr);
+  const iggy3d::RoomStaticMeshAsset* stairMesh =
+      findMesh(baked.room, stair.objectId);
+
+  return expect(stair.accepted && ramp.accepted && platform.accepted &&
+                    baked.receipt.accepted && stairMesh != nullptr &&
+                    stairMesh->proceduralSegmentCount == 8U,
+                "scaled generated stair resolves eight bounded steps") &&
+         expect(baked.room.spatialSurfaces.size() == 28U &&
+                    countRole(baked.room,
+                              iggy3d::RoomSpatialSurfaceRole::Walkable) == 8U &&
+                    countRole(baked.room,
+                              iggy3d::RoomSpatialSurfaceRole::Blocker) == 10U &&
+                    countRole(
+                        baked.room,
+                        iggy3d::RoomSpatialSurfaceRole::ProjectileBlocker) == 10U,
+                "tilted slab and ramp retain conservative blockers only");
 }
 
 bool renderOnlyAndUnsafeMetadataStayVisibleWithoutPhysics() {
@@ -524,6 +657,8 @@ int main() {
   const bool ok = fixtureMetadataProducesHonestPhysicsSurfaces() &&
                   compoundFixtureAssetsReachRuntimePhysics() &&
                   importedStairSupportsFullBoundedRuntimeTraversal() &&
+                  generatedTraversalGeometryStaysInRenderCollisionParity() &&
+                  generatedTraversalTransformsFailClosedAndStayBounded() &&
                   renderOnlyAndUnsafeMetadataStayVisibleWithoutPhysics() &&
                   defaultMetadataUsesBoundsButNeverInventsWalkability() &&
                   tiltedWalkableAssetDoesNotFabricateAHorizontalTop() &&

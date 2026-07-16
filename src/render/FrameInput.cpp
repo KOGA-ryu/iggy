@@ -37,6 +37,24 @@ bool isValidCreativePreviewRole(RenderCreativePreviewRole role) {
   return false;
 }
 
+bool isValidCreativePreviewGeometry(
+    const RenderCreativePreviewItem& item) noexcept {
+  const bool hasAsset = !renderCreativePreviewAssetId(item).empty();
+  switch (item.geometryProfile) {
+    case RenderCreativePreviewGeometryProfile::Box:
+      return item.proceduralSegmentCount == 0U;
+    case RenderCreativePreviewGeometryProfile::RampWedge:
+      return !hasAsset && item.proceduralSegmentCount == 0U;
+    case RenderCreativePreviewGeometryProfile::StairSteps:
+      return !hasAsset && item.proceduralSegmentCount > 0U &&
+             item.proceduralSegmentCount <=
+                 kRenderCreativePreviewMaximumStairSegmentCount;
+    case RenderCreativePreviewGeometryProfile::Count:
+      return false;
+  }
+  return false;
+}
+
 bool isValidCreativePreviewAssetId(
     const RenderCreativePreviewItem& item) noexcept {
   const std::string_view assetId = renderCreativePreviewAssetId(item);
@@ -212,7 +230,8 @@ FrameInputStatus validateFrameInput(const FrameInput& frame) {
         frame.creativePreview.items[index];
     if (!isValidCreativePreviewRole(item.role) ||
         !isFinite(item.clipFromModel) ||
-        !isValidCreativePreviewAssetId(item)) {
+        !isValidCreativePreviewAssetId(item) ||
+        !isValidCreativePreviewGeometry(item)) {
       return FrameInputStatus::InvalidCreativePreviewItems;
     }
   }

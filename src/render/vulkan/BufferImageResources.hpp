@@ -30,25 +30,71 @@ struct VkExtent2D {
 
 namespace iggy3d::vulkan {
 
-inline constexpr std::size_t kCreativePreviewGeometryDrawRangeCount = 6U;
+inline constexpr std::size_t kCreativePreviewGeometryDrawsPerProfileSlot = 6U;
+inline constexpr std::size_t kCreativePreviewGeometryProfileSlotCount =
+    2U + kRenderCreativePreviewMaximumStairSegmentCount;
+inline constexpr std::size_t kCreativePreviewGeometryDrawRangeCount =
+    kCreativePreviewGeometryDrawsPerProfileSlot *
+    kCreativePreviewGeometryProfileSlotCount;
 
 [[nodiscard]] constexpr std::uint32_t creativePreviewGeometryDrawIndex(
     RenderCreativePreviewRole role,
-    bool includePathWireframe) noexcept {
+    bool includePathWireframe,
+    RenderCreativePreviewGeometryProfile profile =
+        RenderCreativePreviewGeometryProfile::Box,
+    std::uint16_t proceduralSegmentCount = 0U) noexcept {
+  std::uint32_t localIndex = 0U;
   switch (role) {
     case RenderCreativePreviewRole::Held:
-      return 0U;
+      localIndex = 0U;
+      break;
     case RenderCreativePreviewRole::PlacementValid:
-      return includePathWireframe ? 3U : 1U;
+      localIndex = includePathWireframe ? 3U : 1U;
+      break;
     case RenderCreativePreviewRole::PlacementInvalid:
-      return includePathWireframe ? 4U : 2U;
+      localIndex = includePathWireframe ? 4U : 2U;
+      break;
     case RenderCreativePreviewRole::MovingPlatformRoute:
-      return 5U;
+      localIndex = 5U;
+      break;
     case RenderCreativePreviewRole::Count:
       return static_cast<std::uint32_t>(
           kCreativePreviewGeometryDrawRangeCount);
   }
-  return static_cast<std::uint32_t>(kCreativePreviewGeometryDrawRangeCount);
+
+  std::uint32_t profileSlot = 0U;
+  switch (profile) {
+    case RenderCreativePreviewGeometryProfile::Box:
+      if (proceduralSegmentCount != 0U) {
+        return static_cast<std::uint32_t>(
+            kCreativePreviewGeometryDrawRangeCount);
+      }
+      profileSlot = 0U;
+      break;
+    case RenderCreativePreviewGeometryProfile::RampWedge:
+      if (proceduralSegmentCount != 0U) {
+        return static_cast<std::uint32_t>(
+            kCreativePreviewGeometryDrawRangeCount);
+      }
+      profileSlot = 1U;
+      break;
+    case RenderCreativePreviewGeometryProfile::StairSteps:
+      if (proceduralSegmentCount == 0U ||
+          proceduralSegmentCount >
+              kRenderCreativePreviewMaximumStairSegmentCount) {
+        return static_cast<std::uint32_t>(
+            kCreativePreviewGeometryDrawRangeCount);
+      }
+      profileSlot = 2U + proceduralSegmentCount - 1U;
+      break;
+    case RenderCreativePreviewGeometryProfile::Count:
+      return static_cast<std::uint32_t>(
+          kCreativePreviewGeometryDrawRangeCount);
+  }
+  return profileSlot *
+             static_cast<std::uint32_t>(
+                 kCreativePreviewGeometryDrawsPerProfileSlot) +
+         localIndex;
 }
 
 struct GpuBufferRecord {

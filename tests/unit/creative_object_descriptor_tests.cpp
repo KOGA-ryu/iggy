@@ -561,6 +561,56 @@ bool descriptorOwnsCanonicalStructuralDimensions() {
                 "horizontal layer thickness is descriptor-owned");
 }
 
+bool descriptorOwnsGeneratedTraversalGeometry() {
+  const cr::CreativeObjectDescriptor& stair =
+      cr::describeObject(cr::CreativeObjectKind::Stair);
+  const cr::CreativeObjectDescriptor& ramp =
+      cr::describeObject(cr::CreativeObjectKind::Ramp);
+  const cr::CreativeObjectDescriptor& platform =
+      cr::describeObject(cr::CreativeObjectKind::Platform);
+  const cr::CreativeObjectDescriptor& movingPlatform =
+      cr::describeObject(cr::CreativeObjectKind::MovingPlatform);
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+
+  return expect(sameVec3(cr::defaultCreativeObjectSize(stair.kind),
+                         {2.0, 1.0, 3.0}),
+                "stair descriptor owns canonical dimensions") &&
+         expect(sameVec3(cr::defaultCreativeObjectSize(ramp.kind),
+                         {2.0, 1.0, 4.0}),
+                "ramp descriptor owns canonical dimensions") &&
+         expect(sameVec3(cr::defaultCreativeObjectSize(platform.kind),
+                         {3.0, 0.35, 3.0}) &&
+                    sameVec3(cr::defaultCreativeObjectSize(movingPlatform.kind),
+                             {3.0, 0.35, 3.0}),
+                "static and moving platform share canonical dimensions") &&
+         expect(stair.generatedGeometry.profile ==
+                        cr::CreativeGeneratedGeometryProfile::StairSteps &&
+                    stair.generatedGeometry.maximumStepRiseMeters == 0.25 &&
+                    ramp.generatedGeometry.profile ==
+                        cr::CreativeGeneratedGeometryProfile::RampWedge &&
+                    platform.generatedGeometry.profile ==
+                        cr::CreativeGeneratedGeometryProfile::WalkableSlab &&
+                    movingPlatform.generatedGeometry.profile ==
+                        cr::CreativeGeneratedGeometryProfile::WalkableSlab,
+                "descriptor rows own generated traversal profiles") &&
+         expect(cr::creativeGeneratedGeometrySegmentCount(
+                    stair, cr::defaultCreativeObjectSize(stair.kind)) == 4U &&
+                    cr::creativeGeneratedGeometrySegmentCount(
+                        stair, {2.0, 2.0, 3.0}) == 8U,
+                "stair segment count follows resolved rise") &&
+         expect(cr::creativeGeneratedGeometrySegmentCount(
+                    stair, {2.0, 100.0, 3.0}) ==
+                    cr::kMaximumCreativeGeneratedGeometrySegmentCount,
+                "stair segment count is bounded") &&
+         expect(cr::creativeGeneratedGeometrySegmentCount(
+                    ramp, {2.0, 1.0, 4.0}) == 0U &&
+                    cr::creativeGeneratedGeometrySegmentCount(
+                        stair, {2.0, nan, 3.0}) == 0U &&
+                    cr::creativeGeneratedGeometrySegmentCount(
+                        stair, {2.0, 0.0, 3.0}) == 0U,
+                "wrong-profile and invalid segment requests fail closed");
+}
+
 bool representativeDescriptorsPinRuntimeAnchorSemantics() {
   return expect(cr::describeObject(cr::CreativeObjectKind::SpawnPoint)
                     .runtimeAnchorSemantic ==
@@ -1195,6 +1245,7 @@ int main() {
                   unknownDescriptorRemainsInvalidAndNonProjectable() &&
                   representativeDescriptorsPinShapeFacts() &&
                   descriptorOwnsCanonicalStructuralDimensions() &&
+                  descriptorOwnsGeneratedTraversalGeometry() &&
                   representativeDescriptorsPinRuntimeAnchorSemantics() &&
                   representativeDescriptorsPinCapabilityFacts() &&
                   representativeDescriptorsPinAuthoringBrushPaletteVisibility() &&

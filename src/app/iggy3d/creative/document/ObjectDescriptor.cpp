@@ -68,6 +68,18 @@ constexpr CreativeObjectDefaults boxDefaults(double width, double height, double
     };
 }
 
+constexpr CreativeObjectDefaults kStairDefaults = boxDefaults(2.0, 1.0, 3.0);
+constexpr CreativeObjectDefaults kRampDefaults = boxDefaults(2.0, 1.0, 4.0);
+constexpr CreativeObjectDefaults kPlatformDefaults = boxDefaults(3.0, 0.35, 3.0);
+
+constexpr CreativeObjectDescriptor withGeneratedGeometry(
+    CreativeObjectDescriptor value,
+    CreativeGeneratedGeometryProfile profile,
+    double maximumStepRiseMeters = 0.0) noexcept {
+    value.generatedGeometry = {profile, maximumStepRiseMeters};
+    return value;
+}
+
 using DescriptorCapabilityFlags = std::uint32_t;
 
 constexpr DescriptorCapabilityFlags kNoCapabilities = 0;
@@ -354,7 +366,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         CreativeRuntimeAnchorSemantic::None,
         CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
     ),
-    descriptor(
+    withGeneratedGeometry(descriptor(
         CreativeObjectKind::Stair,
         CreativeObjectCategory::Structural,
         CreativeObjectProfile::BoxStructural,
@@ -365,10 +377,10 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         "Stair",
         "stepped traversal structure",
         structuralCreationDirtyFlags() | flagValue(CreativeObjectDirtyFlag::Navigation),
-        boxDefaults(2.0, 1.0, 3.0),
+        kStairDefaults,
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
-    ),
-    descriptor(
+    ), CreativeGeneratedGeometryProfile::StairSteps, 0.25),
+    withGeneratedGeometry(descriptor(
         CreativeObjectKind::Ramp,
         CreativeObjectCategory::Structural,
         CreativeObjectProfile::BoxStructural,
@@ -379,10 +391,10 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         "Ramp",
         "sloped traversal structure",
         structuralCreationDirtyFlags() | flagValue(CreativeObjectDirtyFlag::Navigation),
-        boxDefaults(2.0, 1.0, 4.0),
+        kRampDefaults,
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
-    ),
-    descriptor(
+    ), CreativeGeneratedGeometryProfile::RampWedge),
+    withGeneratedGeometry(descriptor(
         CreativeObjectKind::Platform,
         CreativeObjectCategory::Structural,
         CreativeObjectProfile::BoxStructural,
@@ -395,10 +407,10 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         structuralCreationDirtyFlags() |
             flagValue(CreativeObjectDirtyFlag::Logic) |
             flagValue(CreativeObjectDirtyFlag::Navigation),
-        boxDefaults(3.0, 0.35, 3.0),
+        kPlatformDefaults,
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
-    ),
-    descriptor(
+    ), CreativeGeneratedGeometryProfile::WalkableSlab),
+    withGeneratedGeometry(descriptor(
         CreativeObjectKind::MovingPlatform,
         CreativeObjectCategory::Structural,
         CreativeObjectProfile::BoxStructural,
@@ -409,9 +421,9 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         "Moving Platform",
         "animated traversal platform",
         structuralCreationDirtyFlags() | flagValue(CreativeObjectDirtyFlag::Logic) | flagValue(CreativeObjectDirtyFlag::Navigation),
-        boxDefaults(3.0, 0.35, 3.0),
+        kPlatformDefaults,
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
-    ),
+    ), CreativeGeneratedGeometryProfile::WalkableSlab),
     descriptor(
         CreativeObjectKind::Column,
         CreativeObjectCategory::Structural,
@@ -2021,6 +2033,30 @@ CreativeVec3 defaultCreativeObjectSize(CreativeObjectKind kind) noexcept {
     return {bounds.max.x - bounds.min.x,
             bounds.max.y - bounds.min.y,
             bounds.max.z - bounds.min.z};
+}
+
+std::uint16_t creativeGeneratedGeometrySegmentCount(
+    const CreativeObjectDescriptor& descriptor,
+    CreativeVec3 resolvedSize) noexcept {
+    const CreativeGeneratedGeometrySettings geometry =
+        descriptor.generatedGeometry;
+    if (geometry.profile != CreativeGeneratedGeometryProfile::StairSteps ||
+        !std::isfinite(geometry.maximumStepRiseMeters) ||
+        geometry.maximumStepRiseMeters <= 0.0 ||
+        !std::isfinite(resolvedSize.x) || !std::isfinite(resolvedSize.y) ||
+        !std::isfinite(resolvedSize.z) || resolvedSize.x <= 0.0 ||
+        resolvedSize.y <= 0.0 || resolvedSize.z <= 0.0) {
+        return 0U;
+    }
+
+    const double required =
+        std::ceil(resolvedSize.y / geometry.maximumStepRiseMeters);
+    if (!std::isfinite(required) || required <= 0.0) {
+        return 0U;
+    }
+    return static_cast<std::uint16_t>(std::clamp(
+        required, 1.0,
+        static_cast<double>(kMaximumCreativeGeneratedGeometrySegmentCount)));
 }
 
 CreativeWallGeometryDefaults defaultCreativeWallGeometry() noexcept {

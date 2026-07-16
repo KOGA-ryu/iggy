@@ -17,6 +17,40 @@ namespace creative = iggy3d::creative;
 using namespace iggy3d;
 namespace {
 
+static_assert(cr::kMaximumCreativeGeneratedGeometrySegmentCount ==
+              kRenderCreativePreviewMaximumStairSegmentCount);
+
+struct CreativePreviewGeometrySelection {
+  RenderCreativePreviewGeometryProfile profile =
+      RenderCreativePreviewGeometryProfile::Box;
+  std::uint16_t proceduralSegmentCount = 0U;
+  bool valid = true;
+};
+
+[[nodiscard]] CreativePreviewGeometrySelection previewGeometryFor(
+    cr::CreativeObjectKind kind,
+    Vec3 resolvedSize,
+    bool assetBacked) noexcept {
+  if (assetBacked) {
+    return {};
+  }
+  const cr::CreativeObjectDescriptor& descriptor = cr::describeObject(kind);
+  switch (descriptor.generatedGeometry.profile) {
+    case cr::CreativeGeneratedGeometryProfile::DescriptorDefault:
+    case cr::CreativeGeneratedGeometryProfile::WalkableSlab:
+      return {};
+    case cr::CreativeGeneratedGeometryProfile::RampWedge:
+      return {RenderCreativePreviewGeometryProfile::RampWedge, 0U, true};
+    case cr::CreativeGeneratedGeometryProfile::StairSteps: {
+      const std::uint16_t count = cr::creativeGeneratedGeometrySegmentCount(
+          descriptor, {resolvedSize.x, resolvedSize.y, resolvedSize.z});
+      return {RenderCreativePreviewGeometryProfile::StairSteps, count,
+              count > 0U};
+    }
+  }
+  return {RenderCreativePreviewGeometryProfile::Count, 0U, false};
+}
+
 [[nodiscard]] Mat4 modelMatrix(Vec3 position,
                                Vec3 rotationRadians,
                                Vec3 scale) {
@@ -93,12 +127,20 @@ void appendCreativePreview(RenderCreativePreviewFrame& previews,
                            RenderCreativePreviewRole role,
                            const Mat4& clipFromModel,
                            bool includePathWireframe = false,
-                           std::string_view assetId = {}) {
+                           std::string_view assetId = {},
+                           RenderCreativePreviewGeometryProfile geometryProfile =
+                               RenderCreativePreviewGeometryProfile::Box,
+                           std::uint16_t proceduralSegmentCount = 0U) {
   if (previews.itemCount >= previews.items.size()) {
     return;
   }
   RenderCreativePreviewItem& item = previews.items[previews.itemCount++];
-  item = {role, clipFromModel, includePathWireframe};
+  item = {};
+  item.role = role;
+  item.clipFromModel = clipFromModel;
+  item.includePathWireframe = includePathWireframe;
+  item.geometryProfile = geometryProfile;
+  item.proceduralSegmentCount = proceduralSegmentCount;
   static_cast<void>(setRenderCreativePreviewAssetId(item, assetId));
 }
 
@@ -199,6 +241,13 @@ void attachCreativeEditorPlacementPreviews(
                               heldSize)) {
     return;
   }
+  const bool assetBacked = authoredAsset ||
+                           !cr::creativeHotbarAssetId(held).empty();
+  const CreativePreviewGeometrySelection heldGeometry =
+      previewGeometryFor(heldPlan.brush, heldSize, assetBacked);
+  if (!heldGeometry.valid) {
+    return;
+  }
 
   const CreativeEditorPlacementFeedback& feedback =
       editor.interaction.placementFeedback;
@@ -229,6 +278,11 @@ void attachCreativeEditorPlacementPreviews(
     if (previewPlanTransform(targetPlan, targetBounds,
                              authoredAsset ? 0.96F : 1.0F, targetCenter,
                              targetSize, targetRotation)) {
+      const CreativePreviewGeometrySelection targetGeometry =
+          previewGeometryFor(targetPlan.brush, targetSize, assetBacked);
+      if (!targetGeometry.valid) {
+        return;
+      }
       const bool rejectedThisFrame =
           feedback.frameIndex == editor.frameIndex &&
           feedback.status == CreativeEditorPlacementFeedbackStatus::Rejected;
@@ -249,7 +303,8 @@ void attachCreativeEditorPlacementPreviews(
               modelMatrix(targetCenter, targetRotation, targetSize),
           targetPlan.valid &&
               targetPlan.shapeKind == cr::CreativeObjectShapeKind::Path,
-          previewAssetId);
+          previewAssetId, targetGeometry.profile,
+          targetGeometry.proceduralSegmentCount);
     }
   }
 
@@ -271,7 +326,8 @@ void attachCreativeEditorPlacementPreviews(
       frame.creativePreview, RenderCreativePreviewRole::Held,
       frame.camera.clipFromView *
           modelMatrix({0.42F, -0.32F, -0.82F}, heldRotation, heldSize),
-      false, previewAssetId);
+      false, previewAssetId, heldGeometry.profile,
+      heldGeometry.proceduralSegmentCount);
 }
 
 }  // namespace iggy3d_creative_app

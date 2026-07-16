@@ -313,6 +313,89 @@ bool externalFloorAndWallBypassGeneratedBatching() {
                 "external structural geometry not duplicated by batching");
 }
 
+bool generatedTraversalProfilesEmitBoundedGeometry() {
+  iggy3d::SceneRoomProjection room;
+  room.loaded = true;
+  room.assetId = "generated_traversal_room";
+  iggy3d::SceneRoomMeshItem ramp;
+  ramp.id = "ramp";
+  ramp.meshId = "creative_ramp_wedge";
+  ramp.role = "prop";
+  ramp.materialId = "creative_prop";
+  ramp.position = {-2.0F, 0.5F, 0.0F};
+  ramp.size = {2.0F, 1.0F, 4.0F};
+  room.meshes.push_back(ramp);
+  iggy3d::SceneRoomMeshItem stair;
+  stair.id = "stair";
+  stair.meshId = "creative_stair_steps";
+  stair.role = "prop";
+  stair.materialId = "creative_prop";
+  stair.position = {2.0F, 0.5F, 0.0F};
+  stair.size = {2.0F, 1.0F, 3.0F};
+  stair.proceduralSegmentCount = 4U;
+  room.meshes.push_back(stair);
+
+  const iggy3d::vulkan::RoomMeshCpuGeometry fourSteps =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(room);
+  room.meshes.back().proceduralSegmentCount = 5U;
+  const iggy3d::vulkan::RoomMeshCpuGeometry fiveSteps =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(room);
+
+  const iggy3d::vulkan::CreativePreviewCpuGeometry preview =
+      iggy3d::vulkan::buildCreativePreviewCpuGeometry();
+  iggy3d::vulkan::CreativePreviewGeometryResources resources;
+  resources.indexedDraws = preview.indexedDraws;
+  iggy3d::RenderCreativePreviewItem box;
+  box.role = iggy3d::RenderCreativePreviewRole::Held;
+  iggy3d::RenderCreativePreviewItem rampPreview = box;
+  rampPreview.geometryProfile =
+      iggy3d::RenderCreativePreviewGeometryProfile::RampWedge;
+  iggy3d::RenderCreativePreviewItem stairPreview = box;
+  stairPreview.geometryProfile =
+      iggy3d::RenderCreativePreviewGeometryProfile::StairSteps;
+  stairPreview.proceduralSegmentCount = 4U;
+  iggy3d::RenderCreativePreviewItem stairTarget = stairPreview;
+  stairTarget.role = iggy3d::RenderCreativePreviewRole::PlacementValid;
+  const std::uint32_t boxDraw =
+      iggy3d::vulkan::resolveCreativePreviewGeometryDrawIndex(resources, box);
+  const std::uint32_t rampDraw =
+      iggy3d::vulkan::resolveCreativePreviewGeometryDrawIndex(resources,
+                                                               rampPreview);
+  const std::uint32_t stairDraw =
+      iggy3d::vulkan::resolveCreativePreviewGeometryDrawIndex(resources,
+                                                               stairPreview);
+  const std::uint32_t stairTargetDraw =
+      iggy3d::vulkan::resolveCreativePreviewGeometryDrawIndex(resources,
+                                                               stairTarget);
+
+  return expect(fourSteps.ready && fourSteps.vertices.size() == 38U &&
+                    fourSteps.indices.size() == 336U &&
+                    fourSteps.indexedDraws.size() == 5U,
+                "ramp wedge and four stair boxes emit bounded geometry") &&
+         expect(near(fourSteps.vertices[0].position[1], 0.0F) &&
+                    near(fourSteps.vertices[4].position[1], 1.0F) &&
+                    near(fourSteps.vertices[6].position[1], 0.0F) &&
+                    near(fourSteps.vertices.back().position[1], 1.0F),
+                "generated vertices preserve ramp and stair vertical extents") &&
+         expect(fiveSteps.ready && fiveSteps.vertices.size() == 46U &&
+                    fiveSteps.indices.size() == 408U &&
+                    fiveSteps.sourceRoomGeometrySignature !=
+                        fourSteps.sourceRoomGeometrySignature,
+                "segment-count changes invalidate room geometry signature") &&
+         expect(preview.ready && preview.indexedDraws.size() ==
+                                       iggy3d::vulkan::
+                                           kCreativePreviewGeometryDrawRangeCount &&
+                    boxDraw != rampDraw && rampDraw != stairDraw &&
+                    stairDraw != stairTargetDraw &&
+                    stairTargetDraw < preview.indexedDraws.size() &&
+                    preview.indexedDraws[boxDraw].indexCount == 72U &&
+                    preview.indexedDraws[rampDraw].indexCount == 48U &&
+                    preview.indexedDraws[stairDraw].indexCount == 288U &&
+                    preview.indexedDraws[stairTargetDraw].indexCount >
+                        preview.indexedDraws[stairDraw].indexCount,
+                "preview atlas owns exact box ramp and stair draw ranges");
+}
+
 bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
   struct ModularAssetExpectation {
     std::string_view assetId;
@@ -1187,6 +1270,7 @@ int main() {
                   instanceTransformRejectsInvalidGeometry() &&
                   missingAssetIsVisibleAndMemoized() &&
                   externalFloorAndWallBypassGeneratedBatching() &&
+                  generatedTraversalProfilesEmitBoundedGeometry() &&
                   discoveryAndPreviewAtlasCoverEveryValidFixture() &&
                   texturedFixtureBuildsOneCachedMaterialBinding() &&
                   importsBase64DataUriTexture() &&

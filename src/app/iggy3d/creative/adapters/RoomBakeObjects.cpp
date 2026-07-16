@@ -5,8 +5,10 @@
 #include "content/assets/TraversalTag.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <numbers>
 #include <string>
 #include <utility>
@@ -30,6 +32,8 @@ struct RoomBakeObjectClassification {
   bool countedAsConsidered{true};
   BakeBounds bounds{};
   Vec3 orientedSize{};
+  CreativeTransformedBounds transformedBounds{};
+  std::uint16_t proceduralSegmentCount{0};
   BakedRoomRole role{BakedRoomRole::Unsupported};
   std::string_view anchorKind{};
   RoomBakeAssetSurfaceClassification assetSurfaces;
@@ -83,6 +87,11 @@ struct BakeStaticMeshEntry {
 
 [[nodiscard]] bool nearZero(double value) noexcept {
   return std::fabs(value) <= 1.0e-9;
+}
+
+[[nodiscard]] bool uprightRotation(CreativeVec3 rotation) noexcept {
+  return isFiniteCreativeVec3(rotation) && nearZero(rotation.x) &&
+         nearZero(rotation.z);
 }
 
 [[nodiscard]] bool axisAlignedYaw(CreativeVec3 rotation) noexcept {
@@ -236,6 +245,22 @@ struct BakeStaticMeshEntry {
   return "creative_unsupported";
 }
 
+[[nodiscard]] std::string_view generatedMeshIdForDescriptor(
+    const CreativeObjectDescriptor& descriptor,
+    BakedRoomRole role) noexcept {
+  switch (descriptor.generatedGeometry.profile) {
+    case CreativeGeneratedGeometryProfile::WalkableSlab:
+      return "creative_platform_slab";
+    case CreativeGeneratedGeometryProfile::RampWedge:
+      return "creative_ramp_wedge";
+    case CreativeGeneratedGeometryProfile::StairSteps:
+      return "creative_stair_steps";
+    case CreativeGeneratedGeometryProfile::DescriptorDefault:
+      return meshIdForRole(role);
+  }
+  return meshIdForRole(role);
+}
+
 [[nodiscard]] std::string_view materialIdForRole(BakedRoomRole role) noexcept {
   switch (role) {
     case BakedRoomRole::Floor:
@@ -317,12 +342,14 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
 
 [[nodiscard]] RoomStaticMeshAsset staticMeshForObject(
     const CreativeObject& object,
-    BakeBounds bounds,
-    BakedRoomRole role) {
+    const CreativeObjectDescriptor& descriptor,
+    const RoomBakeObjectClassification& classification) {
+  const BakeBounds bounds = classification.bounds;
+  const BakedRoomRole role = classification.role;
   RoomStaticMeshAsset mesh;
   mesh.id = stableObjectId(object);
   mesh.meshId = object.assetId.empty()
-                    ? std::string(meshIdForRole(role))
+                    ? std::string(generatedMeshIdForDescriptor(descriptor, role))
                     : "asset:" + object.assetId;
   mesh.materialId = std::string(materialIdForRole(role));
   mesh.role = std::string(roleName(role));
@@ -338,6 +365,8 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
       resolved.valid
           ? creativeVec3ToCoreChecked(resolved.rotationEulerRadians).value
           : Vec3{};
+  mesh.proceduralSegmentCount =
+      object.assetId.empty() ? classification.proceduralSegmentCount : 0U;
   if (role == BakedRoomRole::Wall &&
       axisAlignedYaw(object.transform.rotationEulerRadians)) {
     setWallSegmentFields(mesh, bounds);
@@ -468,6 +497,149 @@ void appendSpatialSurfaceSource(
   sources.push_back({objectId, surface.id, surface.sourceStaticMeshId});
 }
 
+[[nodiscard]] bool resolvedOffsetPoint(
+    const CreativeTransformedBounds& resolved,
+    CreativeVec3 offset,
+    Vec3& output) noexcept {
+  const CreativeVec3 rotated =
+      rotateCreativeVectorEulerXyz(offset, resolved.rotationEulerRadians);
+  const CreativeCoreVec3Conversion converted = creativeVec3ToCoreChecked(
+      {resolved.center.x + rotated.x, resolved.center.y + rotated.y,
+       resolved.center.z + rotated.z});
+  if (!converted.converted) {
+    return false;
+  }
+  output = converted.value;
+  return true;
+}
+
+[[nodiscard]] bool rampHeightPatchSurfaceForObject(
+    const CreativeObject& object,
+    const RoomBakeObjectClassification& classification,
+    RoomSpatialSurface& output) {
+  const CreativeTransformedBounds& resolved = classification.transformedBounds;
+  if (!resolved.valid || !uprightRotation(resolved.rotationEulerRadians)) {
+    return false;
+  }
+
+  const CreativeVec3 half{resolved.size.x * 0.5, resolved.size.y * 0.5,
+                          resolved.size.z * 0.5};
+  std::array<Vec3, 4U> corners{};
+  if (!resolvedOffsetPoint(resolved, {-half.x, -half.y, -half.z}, corners[0]) ||
+      !resolvedOffsetPoint(resolved, {half.x, -half.y, -half.z}, corners[1]) ||
+      !resolvedOffsetPoint(resolved, {half.x, half.y, half.z}, corners[2]) ||
+      !resolvedOffsetPoint(resolved, {-half.x, half.y, half.z}, corners[3])) {
+    return false;
+  }
+  Vec3 normal;
+  if (!tryNormalize(cross(corners[1] - corners[0],
+                          corners[3] - corners[0]),
+                    normal)) {
+    return false;
+  }
+  if (normal.y < 0.0F) {
+    normal = normal * -1.0F;
+  }
+  const CreativeCoreVec3Conversion center =
+      creativeVec3ToCoreChecked(resolved.center);
+  if (!center.converted || !isFinite(normal) || normal.y <= 0.0F) {
+    return false;
+  }
+
+  output.id = stableObjectId(object, "ramp_walkable");
+  output.sourceStaticMeshId = stableObjectId(object);
+  output.shape = RoomSpatialSurfaceShape::HeightPatch;
+  output.role = RoomSpatialSurfaceRole::Walkable;
+  output.pointsMeters = {center.value, corners[0], corners[1], corners[2],
+                         corners[3]};
+  output.normal = normal;
+  output.traversalTags = {
+      std::string(traversalTagId(TraversalTag::Walkable))};
+  output.collisionMask = {"actor", "projectile"};
+  return true;
+}
+
+[[nodiscard]] bool resolveProceduralStairPartBounds(
+    const CreativeObject& object,
+    std::uint16_t segmentCount,
+    std::uint16_t segmentIndex,
+    BakeBounds& output) noexcept {
+  const CreativeBoundsMetrics authored = measureCreativeBounds(object.bounds);
+  if (!authored.valid || segmentCount == 0U || segmentIndex >= segmentCount) {
+    return false;
+  }
+  const double inverseCount = 1.0 / static_cast<double>(segmentCount);
+  const double first = static_cast<double>(segmentIndex) * inverseCount;
+  const double next = static_cast<double>(segmentIndex + 1U) * inverseCount;
+  CreativeBounds part = object.bounds;
+  part.max.y = object.bounds.min.y + authored.size.y * next;
+  part.min.z = object.bounds.min.z + authored.size.z * first;
+  part.max.z = object.bounds.min.z + authored.size.z * next;
+  const CreativeTransformedBounds transformed =
+      resolveCreativeTransformedBounds(part, object.transform);
+  return transformed.valid && validBakeBounds(transformed.worldBounds, output);
+}
+
+void appendSolidBoundsSurfaces(
+    RoomAsset& room,
+    std::vector<CreativeRoomBakeSpatialSurfaceSource>& sources,
+    const CreativeObject& object,
+    const RoomBakeObjectClassification& classification) {
+  const Vec3 normal =
+      blockerNormalForRole(classification.bounds, classification.role);
+  RoomSpatialSurface actor =
+      actorBlockerSurfaceForObject(object, classification.bounds, normal);
+  appendSpatialSurfaceSource(sources, object.id, actor);
+  room.spatialSurfaces.push_back(std::move(actor));
+
+  RoomSpatialSurface projectile =
+      projectileBlockerSurfaceForObject(object, classification.bounds, normal);
+  appendSpatialSurfaceSource(sources, object.id, projectile);
+  room.spatialSurfaces.push_back(std::move(projectile));
+}
+
+[[nodiscard]] bool appendProceduralStairSurfaces(
+    RoomAsset& room,
+    std::vector<CreativeRoomBakeSpatialSurfaceSource>& sources,
+    const CreativeObject& object,
+    const RoomBakeObjectClassification& classification) {
+  const std::uint16_t count = classification.proceduralSegmentCount;
+  if (count == 0U ||
+      count > kMaximumCreativeGeneratedGeometrySegmentCount) {
+    return false;
+  }
+  std::array<BakeBounds, kMaximumCreativeGeneratedGeometrySegmentCount> parts{};
+  for (std::uint16_t index = 0U; index < count; ++index) {
+    if (!resolveProceduralStairPartBounds(object, count, index, parts[index])) {
+      return false;
+    }
+  }
+
+  const bool walkable = uprightRotation(object.transform.rotationEulerRadians);
+  for (std::uint16_t index = 0U; index < count; ++index) {
+    const std::string stableId =
+        stableObjectId(object, "step_" + std::to_string(index));
+    const Vec3 normal = blockerNormalForRole(parts[index], BakedRoomRole::Prop);
+    RoomSpatialSurface actor =
+        blockerSurfaceForStableId(stableId, parts[index], normal, false);
+    appendSpatialSurfaceSource(sources, object.id, actor);
+    room.spatialSurfaces.push_back(std::move(actor));
+
+    RoomSpatialSurface projectile =
+        blockerSurfaceForStableId(stableId, parts[index], normal, true);
+    appendSpatialSurfaceSource(sources, object.id, projectile);
+    room.spatialSurfaces.push_back(std::move(projectile));
+
+    if (walkable) {
+      RoomSpatialSurface top =
+          walkableSurfaceForStableId(stableId, parts[index]);
+      appendSpatialSurfaceSource(sources, object.id, top);
+      room.spatialSurfaces.push_back(std::move(top));
+    }
+  }
+  return true;
+}
+
 void appendSpatialSurfaces(RoomAsset& room,
                            std::vector<CreativeRoomBakeSpatialSurfaceSource>& sources,
                            CreativeRoomBakeReceipt& receipt,
@@ -482,10 +654,38 @@ void appendSpatialSurfaces(RoomAsset& room,
     return;
   }
 
-  if (role == BakedRoomRole::Floor ||
-      ((object.kind == CreativeObjectKind::Platform ||
-        object.kind == CreativeObjectKind::MovingPlatform) &&
-       horizontalSurface(classification.orientedSize))) {
+  switch (descriptor.generatedGeometry.profile) {
+    case CreativeGeneratedGeometryProfile::WalkableSlab:
+      if (uprightRotation(object.transform.rotationEulerRadians)) {
+        RoomSpatialSurface surface = walkableSurfaceForObject(
+            object, bounds, stableObjectId(object));
+        appendSpatialSurfaceSource(sources, object.id, surface);
+        room.spatialSurfaces.push_back(std::move(surface));
+      } else {
+        appendSolidBoundsSurfaces(room, sources, object, classification);
+      }
+      return;
+    case CreativeGeneratedGeometryProfile::RampWedge: {
+      RoomSpatialSurface surface;
+      if (rampHeightPatchSurfaceForObject(object, classification, surface)) {
+        appendSpatialSurfaceSource(sources, object.id, surface);
+        room.spatialSurfaces.push_back(std::move(surface));
+      } else {
+        appendSolidBoundsSurfaces(room, sources, object, classification);
+      }
+      return;
+    }
+    case CreativeGeneratedGeometryProfile::StairSteps:
+      if (!appendProceduralStairSurfaces(room, sources, object,
+                                         classification)) {
+        appendSolidBoundsSurfaces(room, sources, object, classification);
+      }
+      return;
+    case CreativeGeneratedGeometryProfile::DescriptorDefault:
+      break;
+  }
+
+  if (role == BakedRoomRole::Floor) {
     RoomSpatialSurface surface =
         walkableSurfaceForObject(object, bounds, stableObjectId(object));
     appendSpatialSurfaceSource(sources, object.id, surface);
@@ -495,16 +695,7 @@ void appendSpatialSurfaces(RoomAsset& room,
 
   if (descriptor.occupancyKind == CreativeSpatialOccupancyKind::Structural ||
       descriptor.occupancyKind == CreativeSpatialOccupancyKind::Collision) {
-    const Vec3 normal = blockerNormalForRole(bounds, role);
-    RoomSpatialSurface actorSurface =
-        actorBlockerSurfaceForObject(object, bounds, normal);
-    appendSpatialSurfaceSource(sources, object.id, actorSurface);
-    room.spatialSurfaces.push_back(std::move(actorSurface));
-
-    RoomSpatialSurface projectileSurface =
-        projectileBlockerSurfaceForObject(object, bounds, normal);
-    appendSpatialSurfaceSource(sources, object.id, projectileSurface);
-    room.spatialSurfaces.push_back(std::move(projectileSurface));
+    appendSolidBoundsSurfaces(room, sources, object, classification);
   }
 }
 
@@ -581,6 +772,11 @@ void appendSpatialSurfaces(RoomAsset& room,
   }
 
   classification.orientedSize = orientedSize.value;
+  classification.transformedBounds = resolved;
+  classification.proceduralSegmentCount =
+      object.assetId.empty()
+          ? creativeGeneratedGeometrySegmentCount(descriptor, resolved.size)
+          : 0U;
   classification.role = roleForObject(descriptor, classification.orientedSize);
   if (classification.role == BakedRoomRole::Unsupported) {
     classification.decision = RoomBakeObjectDecision::SkipUnsupportedShape;
@@ -744,7 +940,7 @@ void appendRoomBakeObjects(CreativeRoomBakeResult& result,
     }
 
     RoomStaticMeshAsset mesh = staticMeshForObject(
-        *entry.object, entry.classification.bounds, entry.classification.role);
+        *entry.object, *entry.descriptor, entry.classification);
     result.staticMeshSources.push_back({entry.object->id, mesh.id});
     result.room.staticMeshes.push_back(std::move(mesh));
     appendSpatialSurfaces(result.room,

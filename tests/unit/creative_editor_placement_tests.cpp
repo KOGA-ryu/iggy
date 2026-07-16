@@ -1227,6 +1227,46 @@ bool previewFrameUsesWorldTargetAndViewHeldTransforms() {
          ok;
 }
 
+bool generatedTraversalPreviewsUseRoomGeometryProfiles() {
+  const auto previewFor = [](cr::CreativeObjectKind kind) {
+    CreativeEditorState editor = materialEditor(kind);
+    setPlaceTarget(editor, 1, 0, 1);
+    iggy3d::FrameInput frame;
+    attachCreativeEditorPlacementPreviews(editor, false, frame);
+    return frame.creativePreview;
+  };
+
+  const iggy3d::RenderCreativePreviewFrame ramp =
+      previewFor(cr::CreativeObjectKind::Ramp);
+  const iggy3d::RenderCreativePreviewFrame stair =
+      previewFor(cr::CreativeObjectKind::Stair);
+  const iggy3d::RenderCreativePreviewFrame platform =
+      previewFor(cr::CreativeObjectKind::Platform);
+
+  return expect(ramp.itemCount == 2U &&
+                    ramp.items[0].geometryProfile ==
+                        iggy3d::RenderCreativePreviewGeometryProfile::RampWedge &&
+                    ramp.items[1].geometryProfile ==
+                        iggy3d::RenderCreativePreviewGeometryProfile::RampWedge &&
+                    ramp.items[0].proceduralSegmentCount == 0U &&
+                    ramp.items[1].proceduralSegmentCount == 0U,
+                "ramp target and held previews use wedge geometry") &&
+         expect(stair.itemCount == 2U &&
+                    stair.items[0].geometryProfile ==
+                        iggy3d::RenderCreativePreviewGeometryProfile::StairSteps &&
+                    stair.items[1].geometryProfile ==
+                        iggy3d::RenderCreativePreviewGeometryProfile::StairSteps &&
+                    stair.items[0].proceduralSegmentCount == 4U &&
+                    stair.items[1].proceduralSegmentCount == 4U,
+                "stair target and held previews share bounded step count") &&
+         expect(platform.itemCount == 2U &&
+                    platform.items[0].geometryProfile ==
+                        iggy3d::RenderCreativePreviewGeometryProfile::Box &&
+                    platform.items[1].geometryProfile ==
+                        iggy3d::RenderCreativePreviewGeometryProfile::Box,
+                "walkable slab preview remains an exact box");
+}
+
 bool previewHidesForEveryBlockingSurface() {
   CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
   setPlaceTarget(editor, 0);
@@ -4646,6 +4686,7 @@ int main() {
   ok = heldItemLifecyclePreservesCompatibleDraftsAndCancelsOthers() && ok;
   ok = continuousGestureOwnerIsExclusive() && ok;
   ok = previewFrameUsesWorldTargetAndViewHeldTransforms() && ok;
+  ok = generatedTraversalPreviewsUseRoomGeometryProfiles() && ok;
   ok = previewHidesForEveryBlockingSurface() && ok;
   ok = quickEditHudHighlightsTheActiveSetting() && ok;
   ok = previewsDoNotAffectRoomGeometrySignature() && ok;

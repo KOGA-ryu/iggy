@@ -130,6 +130,28 @@ enum class CreativeSpatialOccupancyKind {
     Authoring,
 };
 
+// Generated geometry is the descriptor-owned fallback used only when an
+// authored static-mesh asset is absent. Room bake compiles this profile into
+// matching render and collision facts; lower layers must not rediscover object
+// kinds independently.
+enum class CreativeGeneratedGeometryProfile : std::uint8_t {
+    DescriptorDefault,
+    WalkableSlab,
+    RampWedge,
+    StairSteps,
+};
+
+struct CreativeGeneratedGeometrySettings {
+    CreativeGeneratedGeometryProfile profile{
+        CreativeGeneratedGeometryProfile::DescriptorDefault};
+    // StairSteps chooses enough bounded segments to keep each rise at or below
+    // this value. Other profiles require zero.
+    double maximumStepRiseMeters{0.0};
+};
+
+inline constexpr std::uint16_t
+    kMaximumCreativeGeneratedGeometrySegmentCount = 32U;
+
 enum class CreativeRuntimeAnchorSemantic {
     None,
     Spawn,
@@ -273,6 +295,7 @@ struct CreativeObjectDescriptor {
     bool canOwnChildren{false};
     bool isRuntimeMeaningful{false};
     bool isEditorOnly{false};
+    CreativeGeneratedGeometrySettings generatedGeometry{};
 };
 
 [[nodiscard]] CreativeObjectDirtyFlags operator|(CreativeObjectDirtyFlag lhs, CreativeObjectDirtyFlag rhs) noexcept;
@@ -291,6 +314,9 @@ struct CreativeObjectDescriptor {
 [[nodiscard]] const CreativeObjectDescriptor& describeObject(CreativeObjectKind kind) noexcept;
 [[nodiscard]] CreativeVec3 defaultCreativeObjectSize(
     CreativeObjectKind kind) noexcept;
+[[nodiscard]] std::uint16_t creativeGeneratedGeometrySegmentCount(
+    const CreativeObjectDescriptor& descriptor,
+    CreativeVec3 resolvedSize) noexcept;
 [[nodiscard]] CreativeWallGeometryDefaults defaultCreativeWallGeometry() noexcept;
 [[nodiscard]] double defaultCreativeStructuralLayerThicknessMeters(
     CreativeObjectKind kind) noexcept;

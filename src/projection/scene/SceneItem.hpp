@@ -52,6 +52,7 @@ struct SceneRoomMeshItem {
   Vec3 position;
   Vec3 size;
   Vec3 rotationEulerRadians;
+  std::uint16_t proceduralSegmentCount = 0;
   bool hasWallSegment = false;
   Vec3 wallStartMeters;
   Vec3 wallEndMeters;

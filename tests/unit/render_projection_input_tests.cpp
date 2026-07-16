@@ -131,10 +131,15 @@ bool creativePreviewChannelIsFixedAndValidated() {
   valid.creativePreview.itemCount = 3U;
   valid.creativePreview.items[0].role =
       iggy3d::RenderCreativePreviewRole::PlacementValid;
+  valid.creativePreview.items[0].geometryProfile =
+      iggy3d::RenderCreativePreviewGeometryProfile::RampWedge;
   valid.creativePreview.items[1].role =
       iggy3d::RenderCreativePreviewRole::Held;
   valid.creativePreview.items[2].role =
       iggy3d::RenderCreativePreviewRole::MovingPlatformRoute;
+  valid.creativePreview.items[2].geometryProfile =
+      iggy3d::RenderCreativePreviewGeometryProfile::StairSteps;
+  valid.creativePreview.items[2].proceduralSegmentCount = 4U;
   const bool assetSet = iggy3d::setRenderCreativePreviewAssetId(
       valid.creativePreview.items[1], "boulder_01");
 
@@ -149,6 +154,17 @@ bool creativePreviewChannelIsFixedAndValidated() {
       std::numeric_limits<float>::quiet_NaN();
   iggy3d::FrameInput invalidAsset = valid;
   invalidAsset.creativePreview.items[1].assetId[0] = '/';
+  iggy3d::FrameInput invalidGeometryProfile = valid;
+  invalidGeometryProfile.creativePreview.items[0].geometryProfile =
+      iggy3d::RenderCreativePreviewGeometryProfile::Count;
+  iggy3d::FrameInput missingStairSegments = valid;
+  missingStairSegments.creativePreview.items[2].proceduralSegmentCount = 0U;
+  iggy3d::FrameInput excessiveStairSegments = valid;
+  excessiveStairSegments.creativePreview.items[2].proceduralSegmentCount =
+      iggy3d::kRenderCreativePreviewMaximumStairSegmentCount + 1U;
+  iggy3d::FrameInput assetWithGeneratedProfile = valid;
+  assetWithGeneratedProfile.creativePreview.items[1].geometryProfile =
+      iggy3d::RenderCreativePreviewGeometryProfile::RampWedge;
 
   return expect(assetSet &&
                     iggy3d::renderCreativePreviewAssetId(
@@ -169,6 +185,16 @@ bool creativePreviewChannelIsFixedAndValidated() {
          expect(iggy3d::validateFrameInput(invalidAsset) ==
                     iggy3d::FrameInputStatus::InvalidCreativePreviewItems,
                 "creative preview asset id must be safe") &&
+         expect(iggy3d::validateFrameInput(invalidGeometryProfile) ==
+                        iggy3d::FrameInputStatus::InvalidCreativePreviewItems &&
+                    iggy3d::validateFrameInput(missingStairSegments) ==
+                        iggy3d::FrameInputStatus::InvalidCreativePreviewItems &&
+                    iggy3d::validateFrameInput(excessiveStairSegments) ==
+                        iggy3d::FrameInputStatus::InvalidCreativePreviewItems,
+                "generated preview profiles and stair counts are bounded") &&
+         expect(iggy3d::validateFrameInput(assetWithGeneratedProfile) ==
+                    iggy3d::FrameInputStatus::InvalidCreativePreviewItems,
+                "asset and generated preview ownership cannot overlap") &&
          expect(iggy3d::frameInputReasonCode(
                     iggy3d::FrameInputStatus::InvalidCreativePreviewItems) ==
                     "frame_creative_preview_items_invalid",

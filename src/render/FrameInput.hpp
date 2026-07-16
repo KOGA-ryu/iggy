@@ -117,15 +117,27 @@ enum class RenderCreativePreviewRole : std::uint8_t {
   Count,
 };
 
+enum class RenderCreativePreviewGeometryProfile : std::uint8_t {
+  Box,
+  RampWedge,
+  StairSteps,
+  Count,
+};
+
 inline constexpr std::size_t kRenderCreativePreviewRoleCount =
     static_cast<std::size_t>(RenderCreativePreviewRole::Count);
 inline constexpr std::size_t kRenderCreativePreviewCapacity = 3U;
 inline constexpr std::size_t kRenderCreativePreviewAssetIdCapacity = 128U;
+inline constexpr std::uint16_t
+    kRenderCreativePreviewMaximumStairSegmentCount = 32U;
 
 struct RenderCreativePreviewItem {
   RenderCreativePreviewRole role = RenderCreativePreviewRole::Held;
   Mat4 clipFromModel = identityMat4();
   bool includePathWireframe = false;
+  RenderCreativePreviewGeometryProfile geometryProfile =
+      RenderCreativePreviewGeometryProfile::Box;
+  std::uint16_t proceduralSegmentCount = 0U;
   std::array<char, kRenderCreativePreviewAssetIdCapacity + 1U> assetId{};
 };
 

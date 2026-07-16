@@ -279,6 +279,11 @@ void hashFloat(std::uint64_t& hash, float value) {
   }
 }
 
+void hashUint16(std::uint64_t& hash, std::uint16_t value) {
+  hashByte(hash, static_cast<std::uint8_t>(value & 0xFFU));
+  hashByte(hash, static_cast<std::uint8_t>((value >> 8U) & 0xFFU));
+}
+
 void hashBool(std::uint64_t& hash, bool value) {
   hashByte(hash, value ? 1U : 0U);
 }
@@ -304,6 +309,7 @@ std::uint64_t roomGeometrySignature(const SceneRoomProjection& room) {
     hashFloat(hash, mesh.size.y);
     hashFloat(hash, mesh.size.z);
     hashVec3(hash, mesh.rotationEulerRadians);
+    hashUint16(hash, mesh.proceduralSegmentCount);
     hashBool(hash, mesh.hasWallSegment);
     if (mesh.hasWallSegment) {
       hashVec3(hash, mesh.wallStartMeters);
@@ -491,23 +497,90 @@ void appendBox(std::vector<FirstRoomVertex>& vertices,
 }
 
 template <typename Index>
+bool appendRampWedgeIfFits(std::vector<FirstRoomVertex>& vertices,
+                           std::vector<Index>& indices,
+                           std::vector<IndexedDrawRange>& draws,
+                           Vec3 center,
+                           Vec3 size,
+                           Vec3 color,
+                           Vec3 rotationEulerRadians) {
+  const std::size_t maximumVertexCount =
+      static_cast<std::size_t>(std::numeric_limits<Index>::max());
+  if (vertices.size() > maximumVertexCount - 6U ||
+      !finiteVec3(center) || !finiteVec3(rotationEulerRadians) ||
+      !finitePositive(size.x) || !finitePositive(size.y) ||
+      !finitePositive(size.z)) {
+    return false;
+  }
+  const float hx = size.x * 0.5F;
+  const float hy = size.y * 0.5F;
+  const float hz = size.z * 0.5F;
+  const Vec3 local[6] = {
+      {-hx, -hy, -hz}, {hx, -hy, -hz}, {-hx, -hy, hz},
+      {hx, -hy, hz},   {-hx, hy, hz},   {hx, hy, hz},
+  };
+  const std::uint32_t base = static_cast<std::uint32_t>(vertices.size());
+  for (const Vec3 point : local) {
+    const Vec3 position = center + rotateEulerXyz(point, rotationEulerRadians);
+    vertices.push_back({{position.x, position.y, position.z},
+                        {color.x, color.y, color.z}});
+  }
+  IndexedDrawRange range;
+  range.firstIndex = static_cast<std::uint32_t>(indices.size());
+  appendTriangle(indices, base + 0U, base + 1U, base + 3U);
+  appendTriangle(indices, base + 0U, base + 3U, base + 2U);
+  appendTriangle(indices, base + 2U, base + 3U, base + 5U);
+  appendTriangle(indices, base + 2U, base + 5U, base + 4U);
+  appendTriangle(indices, base + 0U, base + 4U, base + 5U);
+  appendTriangle(indices, base + 0U, base + 5U, base + 1U);
+  appendTriangle(indices, base + 0U, base + 2U, base + 4U);
+  appendTriangle(indices, base + 1U, base + 5U, base + 3U);
+  range.indexCount = static_cast<std::uint32_t>(indices.size()) - range.firstIndex;
+  draws.push_back(range);
+  return true;
+}
+
+template <typename Index>
+bool appendStairStepsIfFits(std::vector<FirstRoomVertex>& vertices,
+                            std::vector<Index>& indices,
+                            std::vector<IndexedDrawRange>& draws,
+                            Vec3 center,
+                            Vec3 size,
+                            Vec3 color,
+                            Vec3 rotationEulerRadians,
+                            std::uint16_t segmentCount) {
+  constexpr std::size_t kBoxVertexCount = 8U;
+  const std::size_t maximumVertexCount =
+      static_cast<std::size_t>(std::numeric_limits<Index>::max());
+  if (segmentCount == 0U || vertices.size() > maximumVertexCount ||
+      static_cast<std::size_t>(segmentCount) >
+          (maximumVertexCount - vertices.size()) / kBoxVertexCount ||
+      !finiteVec3(center) || !finiteVec3(rotationEulerRadians) ||
+      !finitePositive(size.x) || !finitePositive(size.y) ||
+      !finitePositive(size.z)) {
+    return false;
+  }
+  const float inverseCount = 1.0F / static_cast<float>(segmentCount);
+  const float segmentDepth = size.z * inverseCount;
+  const float segmentRise = size.y * inverseCount;
+  for (std::uint16_t index = 0U; index < segmentCount; ++index) {
+    const float height = segmentRise * static_cast<float>(index + 1U);
+    const Vec3 localCenter{
+        0.0F, -size.y * 0.5F + height * 0.5F,
+        -size.z * 0.5F + segmentDepth * (static_cast<float>(index) + 0.5F)};
+    appendBox(vertices, indices, draws,
+              center + rotateEulerXyz(localCenter, rotationEulerRadians),
+              {size.x, height, segmentDepth}, color, rotationEulerRadians);
+  }
+  return true;
+}
+
+template <typename Index>
 void appendCreativeTargetWireframe(
     std::vector<FirstRoomVertex>& vertices,
     std::vector<Index>& indices,
     std::vector<IndexedDrawRange>& componentDraws,
     Vec3 color);
-
-template <typename Index>
-void appendCreativeTargetPreview(
-    std::vector<FirstRoomVertex>& vertices,
-    std::vector<Index>& indices,
-    std::vector<IndexedDrawRange>& componentDraws,
-    Vec3 color) {
-  constexpr float kSolidInset = 0.96F;
-  appendBox(vertices, indices, componentDraws, {},
-            {kSolidInset, kSolidInset, kSolidInset}, color);
-  appendCreativeTargetWireframe(vertices, indices, componentDraws, color);
-}
 
 template <typename Index>
 void appendCreativeTargetWireframe(
@@ -549,6 +622,30 @@ void appendCreativePathWireframe(
             {kHorizontalThickness, kVerticalThickness,
              kEndpoint * 2.0F},
             color);
+}
+
+bool appendCreativeGeneratedPreviewShape(
+    std::vector<FirstRoomVertex>& vertices,
+    std::vector<std::uint32_t>& indices,
+    std::vector<IndexedDrawRange>& componentDraws,
+    RenderCreativePreviewGeometryProfile profile,
+    std::uint16_t proceduralSegmentCount,
+    Vec3 size,
+    Vec3 color) {
+  switch (profile) {
+    case RenderCreativePreviewGeometryProfile::Box:
+      appendBox(vertices, indices, componentDraws, {}, size, color);
+      return true;
+    case RenderCreativePreviewGeometryProfile::RampWedge:
+      return appendRampWedgeIfFits(vertices, indices, componentDraws, {}, size,
+                                   color, {});
+    case RenderCreativePreviewGeometryProfile::StairSteps:
+      return appendStairStepsIfFits(vertices, indices, componentDraws, {}, size,
+                                    color, {}, proceduralSegmentCount);
+    case RenderCreativePreviewGeometryProfile::Count:
+      return false;
+  }
+  return false;
 }
 
 bool canAppendBox(const std::vector<FirstRoomVertex>& vertices) {
@@ -1700,6 +1797,31 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometryImpl(
       continue;
     }
 
+    if (mesh.meshId == "creative_ramp_wedge") {
+      if (!appendRampWedgeIfFits(result.vertices, result.indices,
+                                 result.indexedDraws, mesh.position, mesh.size,
+                                 colorForRoomRole(mesh.role),
+                                 mesh.rotationEulerRadians)) {
+        result.vertices.clear();
+        result.indices.clear();
+        result.indexedDraws.clear();
+        return result;
+      }
+      continue;
+    }
+    if (mesh.meshId == "creative_stair_steps") {
+      if (!appendStairStepsIfFits(
+              result.vertices, result.indices, result.indexedDraws,
+              mesh.position, mesh.size, colorForRoomRole(mesh.role),
+              mesh.rotationEulerRadians, mesh.proceduralSegmentCount)) {
+        result.vertices.clear();
+        result.indices.clear();
+        result.indexedDraws.clear();
+        return result;
+      }
+      continue;
+    }
+
     SceneModelKind beanKind = SceneModelKind::PlayerBean;
     if (parseSceneModelId(mesh.role, beanKind)) {
       if (!appendBean(result.vertices, result.indices, result.indexedDraws,
@@ -1850,28 +1972,53 @@ CreativePreviewCpuGeometry buildCreativePreviewCpuGeometry(
           "editor_ghost_invalid",
           "editor_ghost_route",
       };
-  for (std::size_t roleIndex = 0; roleIndex < roles.size(); ++roleIndex) {
-    const RenderCreativePreviewRole role =
-        static_cast<RenderCreativePreviewRole>(roleIndex);
-    const std::uint32_t firstIndex =
-        static_cast<std::uint32_t>(result.indices.size());
-    std::vector<IndexedDrawRange> componentDraws;
-    const Vec3 color = colorForRoomRole(std::string(roles[roleIndex]));
-    if (role == RenderCreativePreviewRole::Held) {
-      appendBox(result.vertices, result.indices, componentDraws, {},
-                {1.0F, 1.0F, 1.0F}, color);
-      result.indexedDraws[creativePreviewGeometryDrawIndex(role, false)] = {
-          firstIndex,
-          static_cast<std::uint32_t>(result.indices.size()) - firstIndex};
-    } else {
-      appendCreativeTargetPreview(result.vertices, result.indices,
-                                  componentDraws, color);
-      result.indexedDraws[creativePreviewGeometryDrawIndex(role, false)] = {
+  for (std::size_t profileSlot = 0;
+       profileSlot < kCreativePreviewGeometryProfileSlotCount; ++profileSlot) {
+    RenderCreativePreviewGeometryProfile profile =
+        RenderCreativePreviewGeometryProfile::Box;
+    std::uint16_t proceduralSegmentCount = 0U;
+    if (profileSlot == 1U) {
+      profile = RenderCreativePreviewGeometryProfile::RampWedge;
+    } else if (profileSlot >= 2U) {
+      profile = RenderCreativePreviewGeometryProfile::StairSteps;
+      proceduralSegmentCount =
+          static_cast<std::uint16_t>(profileSlot - 1U);
+    }
+
+    for (std::size_t roleIndex = 0; roleIndex < roles.size(); ++roleIndex) {
+      const RenderCreativePreviewRole role =
+          static_cast<RenderCreativePreviewRole>(roleIndex);
+      const std::uint32_t firstIndex =
+          static_cast<std::uint32_t>(result.indices.size());
+      std::vector<IndexedDrawRange> componentDraws;
+      const Vec3 color = colorForRoomRole(std::string(roles[roleIndex]));
+      const Vec3 solidSize =
+          role == RenderCreativePreviewRole::Held
+              ? Vec3{1.0F, 1.0F, 1.0F}
+              : Vec3{0.96F, 0.96F, 0.96F};
+      if (!appendCreativeGeneratedPreviewShape(
+              result.vertices, result.indices, componentDraws, profile,
+              proceduralSegmentCount, solidSize, color)) {
+        return result;
+      }
+      if (role == RenderCreativePreviewRole::Held) {
+        result.indexedDraws[creativePreviewGeometryDrawIndex(
+            role, false, profile, proceduralSegmentCount)] = {
+            firstIndex,
+            static_cast<std::uint32_t>(result.indices.size()) - firstIndex};
+        continue;
+      }
+
+      appendCreativeTargetWireframe(result.vertices, result.indices,
+                                    componentDraws, color);
+      result.indexedDraws[creativePreviewGeometryDrawIndex(
+          role, false, profile, proceduralSegmentCount)] = {
           firstIndex,
           static_cast<std::uint32_t>(result.indices.size()) - firstIndex};
       appendCreativePathWireframe(result.vertices, result.indices,
                                   componentDraws, color);
-      result.indexedDraws[creativePreviewGeometryDrawIndex(role, true)] = {
+      result.indexedDraws[creativePreviewGeometryDrawIndex(
+          role, true, profile, proceduralSegmentCount)] = {
           firstIndex,
           static_cast<std::uint32_t>(result.indices.size()) - firstIndex};
     }
@@ -1943,7 +2090,9 @@ std::uint32_t resolveCreativePreviewGeometryDrawIndex(
     }
   }
   return creativePreviewGeometryDrawIndex(item.role,
-                                          item.includePathWireframe);
+                                          item.includePathWireframe,
+                                          item.geometryProfile,
+                                          item.proceduralSegmentCount);
 }
 
 BufferImageResources::~BufferImageResources() {

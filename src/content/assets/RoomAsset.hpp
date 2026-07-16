@@ -16,6 +16,9 @@ struct RoomStaticMeshAsset {
   Vec3 positionMeters;
   Vec3 sizeMeters;
   Vec3 rotationEulerRadians;
+  // Resolved once by the room compiler so procedural render geometry and its
+  // collision decomposition cannot choose different segment counts.
+  std::uint16_t proceduralSegmentCount = 0;
   bool hasWallSegment = false;
   Vec3 wallStartMeters;
   Vec3 wallEndMeters;

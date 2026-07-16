@@ -153,6 +153,7 @@ void attachRoomProjection(const RoomAsset* room, SceneProjectionResult& result) 
     item.position = mesh.positionMeters;
     item.size = mesh.sizeMeters;
     item.rotationEulerRadians = mesh.rotationEulerRadians;
+    item.proceduralSegmentCount = mesh.proceduralSegmentCount;
     item.hasWallSegment = mesh.hasWallSegment;
     item.wallStartMeters = mesh.wallStartMeters;
     item.wallEndMeters = mesh.wallEndMeters;
