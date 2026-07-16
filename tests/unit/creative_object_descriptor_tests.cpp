@@ -1,7 +1,10 @@
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
+#include "app/iggy3d/creative/tools/StructuralPlacement.hpp"
 
 #include <array>
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -19,6 +22,18 @@ bool expect(bool condition, std::string_view message) {
 
 bool sameVec3(cr::CreativeVec3 lhs, cr::CreativeVec3 rhs) {
   return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
+}
+
+bool near(double actual, double expected, double epsilon = 1.0e-9) {
+  return std::fabs(actual - expected) <= epsilon;
+}
+
+bool nearVec3(cr::CreativeVec3 actual,
+              cr::CreativeVec3 expected,
+              double epsilon = 1.0e-9) {
+  return near(actual.x, expected.x, epsilon) &&
+         near(actual.y, expected.y, epsilon) &&
+         near(actual.z, expected.z, epsilon);
 }
 
 bool expectSpatialDescriptor(cr::CreativeObjectKind kind,
@@ -642,6 +657,133 @@ bool descriptorOwnsGeneratedTraversalGeometry() {
                     cr::creativeGeneratedGeometrySegmentCount(
                         stair, {2.0, 0.0, 3.0}) == 0U,
                 "wrong-profile and invalid segment requests fail closed");
+}
+
+bool structuralSpanPlacementIsDescriptorDrivenAndBounded() {
+  constexpr std::array spanKinds{
+      cr::CreativeObjectKind::Beam,
+      cr::CreativeObjectKind::Fence,
+      cr::CreativeObjectKind::Railing,
+      cr::CreativeObjectKind::Bridge,
+  };
+  constexpr std::array immediateKinds{
+      cr::CreativeObjectKind::Column,
+      cr::CreativeObjectKind::Pillar,
+      cr::CreativeObjectKind::Arch,
+      cr::CreativeObjectKind::Ladder,
+  };
+  bool ok = true;
+  std::size_t spanPolicyCount = 0U;
+  for (const cr::CreativeObjectDescriptor& descriptor :
+       cr::allObjectDescriptors()) {
+    const bool spanPolicy =
+        descriptor.placementPolicy.gesturePolicy ==
+        cr::CreativePlacementGesturePolicy::HorizontalSpan;
+    spanPolicyCount += spanPolicy ? 1U : 0U;
+    if (spanPolicy) {
+      ok = expect(cr::descriptorSupportsCreativeStructuralSpan(descriptor),
+                  "span policy rows satisfy the structural planner contract") &&
+           ok;
+    }
+  }
+  for (cr::CreativeObjectKind kind : spanKinds) {
+    ok = expect(cr::describeObject(kind).placementPolicy.gesturePolicy ==
+                    cr::CreativePlacementGesturePolicy::HorizontalSpan,
+                "beam-like descriptors opt into two-anchor spans") &&
+         ok;
+  }
+  for (cr::CreativeObjectKind kind : immediateKinds) {
+    ok = expect(cr::describeObject(kind).placementPolicy.gesturePolicy ==
+                    cr::CreativePlacementGesturePolicy::Immediate,
+                "column arch and ladder descriptors remain immediate") &&
+         ok;
+  }
+
+  const cr::CreativeStructuralSpanPlan beam =
+      cr::planCreativeStructuralSpan(
+          {cr::CreativeObjectKind::Beam, {0.0, 2.0, 0.0},
+           {5.0, 2.0, 0.0}});
+  const cr::CreativeStructuralSpanPlan reversed =
+      cr::planCreativeStructuralSpan(
+          {cr::CreativeObjectKind::Beam, {5.0, 2.0, 0.0},
+           {0.0, 2.0, 0.0}});
+  const cr::CreativeTransformedBounds beamWorld =
+      cr::resolveCreativeTransformedBounds(beam.authoredBounds,
+                                           beam.transform);
+  ok = expect(spanPolicyCount == spanKinds.size(),
+              "only the four beam-like descriptors own span gestures") &&
+       expect(beam.accepted &&
+                  beam.status == cr::CreativeStructuralSpanStatus::Ready &&
+                  beam.spanAxis == cr::CreativeStructuralSpanAxis::LocalX &&
+                  near(beam.spanLengthMeters, 5.0) &&
+                  nearVec3(beam.transform.position, {2.5, 2.175, 0.0}) &&
+                  nearVec3(beamWorld.size, {5.0, 0.35, 0.35}),
+              "beam span preserves thickness and bottom-anchors at support") &&
+       expect(reversed.accepted &&
+                  sameVec3(reversed.transform.position,
+                           beam.transform.position) &&
+                  sameVec3(reversed.transform.rotationEulerRadians,
+                           beam.transform.rotationEulerRadians) &&
+                  cr::creativeBoundsExactlyEqual(reversed.authoredBounds,
+                                                 beam.authoredBounds),
+              "reversing equal-height endpoints produces identical geometry") &&
+       ok;
+
+  const cr::CreativeStructuralSpanPlan diagonal =
+      cr::planCreativeStructuralSpan(
+          {cr::CreativeObjectKind::Beam, {0.0, 0.0, 0.0},
+           {3.0, 0.0, 4.0}});
+  const cr::CreativeStructuralSpanPlan bridge =
+      cr::planCreativeStructuralSpan(
+          {cr::CreativeObjectKind::Bridge, {0.0, 1.0, 0.0},
+           {5.0, 1.0, 0.0}});
+  const cr::CreativeTransformedBounds bridgeWorld =
+      cr::resolveCreativeTransformedBounds(bridge.authoredBounds,
+                                           bridge.transform);
+  const cr::CreativeBoundsMetrics bridgeWorldMetrics =
+      cr::measureCreativeBounds(bridgeWorld.worldBounds);
+  ok = expect(diagonal.accepted && near(diagonal.spanLengthMeters, 5.0) &&
+                  near(diagonal.transform.rotationEulerRadians.y,
+                       std::atan2(-4.0, 3.0)),
+              "diagonal span uses finite horizontal length and yaw") &&
+       expect(bridge.accepted &&
+                  bridge.spanAxis == cr::CreativeStructuralSpanAxis::LocalZ &&
+                  bridgeWorldMetrics.valid &&
+                  nearVec3(bridgeWorld.size, {3.0, 0.35, 5.0}) &&
+                  nearVec3(bridgeWorldMetrics.size, {5.0, 0.35, 3.0}),
+              "bridge extends its descriptor-owned long axis") &&
+       ok;
+
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  const cr::CreativeStructuralSpanPlan degenerate =
+      cr::planCreativeStructuralSpan(
+          {cr::CreativeObjectKind::Beam, {}, {0.001, 0.0, 0.0}});
+  const cr::CreativeStructuralSpanPlan nonFinite =
+      cr::planCreativeStructuralSpan(
+          {cr::CreativeObjectKind::Beam, {}, {nan, 0.0, 0.0}});
+  const cr::CreativeStructuralSpanPlan tooLong =
+      cr::planCreativeStructuralSpan(
+          {cr::CreativeObjectKind::Beam, {}, {5000.0, 0.0, 0.0}});
+  const cr::CreativeStructuralSpanPlan unsupported =
+      cr::planCreativeStructuralSpan(
+          {cr::CreativeObjectKind::Column, {}, {5.0, 0.0, 0.0}});
+  return expect(!degenerate.accepted &&
+                    degenerate.status ==
+                        cr::CreativeStructuralSpanStatus::DegenerateSpan,
+                "sub-centimeter spans fail closed") &&
+         expect(!nonFinite.accepted &&
+                    nonFinite.status ==
+                        cr::CreativeStructuralSpanStatus::InvalidAnchor,
+                "non-finite endpoints fail closed") &&
+         expect(!tooLong.accepted &&
+                    tooLong.status ==
+                        cr::CreativeStructuralSpanStatus::SpanTooLong,
+                "structural spans enforce a finite world bound") &&
+         expect(!unsupported.accepted &&
+                    unsupported.status ==
+                        cr::CreativeStructuralSpanStatus::UnsupportedDescriptor,
+                "immediate descriptors cannot enter the span planner") &&
+         ok;
 }
 
 bool representativeDescriptorsPinRuntimeAnchorSemantics() {
@@ -1279,6 +1421,7 @@ int main() {
                   representativeDescriptorsPinShapeFacts() &&
                   descriptorOwnsCanonicalStructuralDimensions() &&
                   descriptorOwnsGeneratedTraversalGeometry() &&
+                  structuralSpanPlacementIsDescriptorDrivenAndBounded() &&
                   representativeDescriptorsPinRuntimeAnchorSemantics() &&
                   representativeDescriptorsPinCapabilityFacts() &&
                   representativeDescriptorsPinAuthoringBrushPaletteVisibility() &&

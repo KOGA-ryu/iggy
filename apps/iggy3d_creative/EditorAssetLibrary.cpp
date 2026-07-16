@@ -168,6 +168,7 @@ takeDocumentTransientState(CreativeEditorState& editor) {
   state.placementFeedback = std::move(editor.interaction.placementFeedback);
   state.materialBrushPivot = std::move(editor.interaction.materialBrushPivot);
   state.materialStroke = std::move(editor.interaction.materialStroke);
+  state.structuralSpan = std::move(editor.interaction.structuralSpan);
   state.assetScatter = std::move(editor.interaction.assetScatter);
   state.authoredAssetStroke = std::move(editor.interaction.authoredAssetStroke);
   state.connectedFill = std::move(editor.interaction.connectedFill);
@@ -189,6 +190,7 @@ takeDocumentTransientState(CreativeEditorState& editor) {
   editor.interaction.placementFeedback = {};
   editor.interaction.materialBrushPivot = {};
   editor.interaction.materialStroke = {};
+  editor.interaction.structuralSpan = {};
   editor.interaction.assetScatter = {};
   editor.interaction.authoredAssetStroke = {};
   editor.interaction.connectedFill = {};
@@ -215,6 +217,7 @@ void restoreDocumentTransientState(CreativeEditorState& editor,
   editor.interaction.placementFeedback = std::move(state.placementFeedback);
   editor.interaction.materialBrushPivot = std::move(state.materialBrushPivot);
   editor.interaction.materialStroke = std::move(state.materialStroke);
+  editor.interaction.structuralSpan = std::move(state.structuralSpan);
   editor.interaction.assetScatter = std::move(state.assetScatter);
   editor.interaction.authoredAssetStroke = std::move(state.authoredAssetStroke);
   editor.interaction.connectedFill = std::move(state.connectedFill);

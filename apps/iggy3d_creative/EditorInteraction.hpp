@@ -14,6 +14,7 @@
 #include "EditorPicking.hpp"
 #include "EditorPathEditing.hpp"
 #include "EditorSurfaceExtrude.hpp"
+#include "EditorStructuralPlacement.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
 #include "app/iggy3d/creative/tools/ShapeBrush.hpp"
@@ -255,6 +256,7 @@ struct CreativeEditorInteractionState {
   CreativeMaterialBrushPivotState materialBrushPivot{};
   CreativeMaterialBrushPresetBank materialBrushPresets{};
   CreativeMaterialStrokeState materialStroke{};
+  CreativeEditorStructuralSpanState structuralSpan{};
   CreativeAssetScatterStrokeState assetScatter{};
   CreativeAuthoredAssetStrokeState authoredAssetStroke{};
   CreativeEditorConnectedFillCache connectedFill{};

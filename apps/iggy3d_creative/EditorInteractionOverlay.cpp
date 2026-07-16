@@ -9,6 +9,7 @@
 #include "EditorPattern.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "EditorState.hpp"
+#include "EditorStructuralPlacement.hpp"
 #include "EditorSurfaceExtrude.hpp"
 #include "EditorTerrain.hpp"
 #include "EditorTerrainPaint.hpp"
@@ -560,7 +561,13 @@ std::string creativeEditorHeldItemStatusLabel(
     case cr::CreativeHeldItemStatusMode::Material:
       output.append(" | ");
       output.append(cr::toString(held.objectKind));
-      appendHeldQuickEditStatus(output, editor);
+      if (creativeEditorUsesStructuralSpan(held)) {
+        output.append(editor.interaction.structuralSpan.active
+                          ? " | SET END"
+                          : " | SET START");
+      } else {
+        appendHeldQuickEditStatus(output, editor);
+      }
       break;
     case cr::CreativeHeldItemStatusMode::QuickEdit:
     case cr::CreativeHeldItemStatusMode::Count:

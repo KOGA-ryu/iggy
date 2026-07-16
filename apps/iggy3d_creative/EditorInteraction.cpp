@@ -6,6 +6,7 @@
 
 #include "EditorGroup.hpp"
 #include "EditorState.hpp"
+#include "EditorStructuralPlacement.hpp"
 #include "EditorTerrain.hpp"
 #include "EditorTerrainPaint.hpp"
 #include "EditorTransform.hpp"
@@ -26,10 +27,18 @@ struct ContinuousGestureFinalizerRow {
   ContinuousGestureFinalizer finalize = nullptr;
 };
 
+void finalizeCreativeMaterialInteraction(
+    cr::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    std::string_view reasonCode) {
+  finalizeCreativeMaterialStroke(appState, editor, reasonCode);
+  cancelCreativeEditorStructuralSpan(editor);
+}
+
 constexpr std::array kContinuousGestureFinalizers{
     ContinuousGestureFinalizerRow{
         CreativeEditorContinuousGestureOwner::Material,
-        finalizeCreativeMaterialStroke},
+        finalizeCreativeMaterialInteraction},
     ContinuousGestureFinalizerRow{
         CreativeEditorContinuousGestureOwner::AuthoredAsset,
         finalizeCreativeAuthoredAssetStroke},

@@ -359,6 +359,36 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                    "keyboard and mouse receive compact device-native hints") &&
             assetActionToggle;
 
+  setHeld(editor, cr::CreativeHeldItemKind::Material,
+          cr::CreativeObjectKind::Beam);
+  const cr::CreativeActionHintFrame spanStart =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* setStart =
+      findHint(spanStart, cr::CreativeInputActionId::AcceptAction);
+  const cr::CreativeActionHint* removeSpan =
+      findHint(spanStart, cr::CreativeInputActionId::RejectAction);
+  editor.interaction.structuralSpan.active = true;
+  const cr::CreativeActionHintFrame spanEnd =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* confirmSpan =
+      findHint(spanEnd, cr::CreativeInputActionId::AcceptAction);
+  const cr::CreativeActionHint* cancelSpan =
+      findHint(spanEnd, cr::CreativeInputActionId::RejectAction);
+  ok = expect(setStart != nullptr && setStart->label.view() == "Set start" &&
+                  removeSpan != nullptr &&
+                  removeSpan->label.view() == "Remove" &&
+                  confirmSpan != nullptr &&
+                  confirmSpan->label.view() == "Confirm span" &&
+                  cancelSpan != nullptr &&
+                  cancelSpan->label.view() == "Cancel",
+              "structural hints expose the two-anchor phase and preserve remove") &&
+       ok;
+  editor.interaction.structuralSpan = {};
+
   setHeld(editor, cr::CreativeHeldItemKind::MaterialBrush,
           cr::CreativeObjectKind::Wall);
   const cr::CreativeActionHintFrame brush = resolveCreativeEditorActionHints(

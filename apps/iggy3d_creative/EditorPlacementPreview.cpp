@@ -8,6 +8,7 @@
 #include "EditorAttachmentPlacement.hpp"
 #include "EditorPlacement.hpp"
 #include "EditorState.hpp"
+#include "EditorStructuralPlacement.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "core/math/EulerRotation.hpp"
 
@@ -261,7 +262,13 @@ void attachCreativeEditorPlacementPreviews(
       editor.interaction.target.grid.valid &&
       !mutationAcceptedThisFrame) {
     CreativeEditorPlacementResolution placement;
-    if (document != nullptr) {
+    if (editor.interaction.structuralSpan.active) {
+      if (document != nullptr) {
+        placement.admission = resolveCreativeEditorStructuralSpanPlacement(
+            editor.interaction.structuralSpan, document->id(), held,
+            editor.interaction.target.grid);
+      }
+    } else if (document != nullptr) {
       placement = resolveCreativeEditorPlacement(
           held, editor.interaction.target,
           editor.toolSettings.placementYaw, *document, assetCatalog);

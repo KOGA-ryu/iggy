@@ -11,6 +11,7 @@
 #include "EditorGroup.hpp"
 #include "EditorPlacement.hpp"
 #include "EditorState.hpp"
+#include "EditorStructuralPlacement.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/tools/ShapeBrush.hpp"
 #include "app/iggy3d/creative/tools/Volume.hpp"
@@ -462,6 +463,11 @@ void processCreativeMaterialStrokeFrame(
       held.kind != cr::CreativeHeldItemKind::MaterialBrush) {
     finalizeCreativeMaterialStroke(appState, editor,
                                    "creative_material_stroke_non_material_tool");
+    return;
+  }
+  if (held.kind == cr::CreativeHeldItemKind::Material &&
+      creativeEditorUsesStructuralSpan(held) &&
+      processCreativeEditorStructuralSpanInput(appState, editor, actions)) {
     return;
   }
   processMaterialStroke(appState, editor, held, actions,

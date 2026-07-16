@@ -5,6 +5,7 @@
 #include <span>
 
 #include "EditorState.hpp"
+#include "EditorStructuralPlacement.hpp"
 #include "EditorToolCapabilities.hpp"
 #include "app/iggy3d/creative/render/CreativeOverlayFrame.hpp"
 
@@ -217,7 +218,7 @@ void appendQuickEdit(HintSpecBuffer& buffer,
 
 void appendViewportHints(HintSpecBuffer& buffer,
                          const CreativeEditorState& editor,
-                         cr::CreativeHeldItemKind held,
+                         const cr::CreativeHotbarEntry& held,
                          cr::CreativeControlDevice device) noexcept {
   const bool gamepad = device == cr::CreativeControlDevice::Gamepad;
   const cr::CreativeInputActionId positiveAction =
@@ -227,12 +228,21 @@ void appendViewportHints(HintSpecBuffer& buffer,
       gamepad ? cr::CreativeInputActionId::RejectAction
               : cr::CreativeInputActionId::PrimaryAction;
   const CreativeEditorToolCapability& capability =
-      describeCreativeEditorToolCapability(held);
+      describeCreativeEditorToolCapability(held.kind);
   const bool keyboardQuickEdit = capability.keyboardQuickEditHints;
+  const bool structuralSpan = creativeEditorUsesStructuralSpan(held);
   switch (capability.actionHintProfile) {
     case CreativeEditorActionHintProfile::Material:
-      appendHint(buffer, positiveAction, "Place");
-      appendHint(buffer, negativeAction, "Remove");
+      appendHint(buffer, positiveAction,
+                 structuralSpan
+                     ? (editor.interaction.structuralSpan.active
+                            ? "Confirm span"
+                            : "Set start")
+                     : "Place");
+      appendHint(buffer, negativeAction,
+                 structuralSpan && editor.interaction.structuralSpan.active
+                     ? "Cancel"
+                     : "Remove");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
       break;
     case CreativeEditorActionHintProfile::MaterialBrush:
@@ -409,7 +419,7 @@ void appendViewportHints(HintSpecBuffer& buffer,
     case CreativeEditorActionHintProfile::Count:
       return;
   }
-  if (gamepad || keyboardQuickEdit) {
+  if (!structuralSpan && (gamepad || keyboardQuickEdit)) {
     appendQuickEdit(buffer, editor);
   }
   appendToolAccess(buffer);
@@ -600,8 +610,8 @@ cr::CreativeActionHintFrame resolveCreativeEditorActionHints(
   }
   HintSpecBuffer specs;
   if (inputContext == cr::CreativeInputContext::EditorViewport) {
-    const cr::CreativeHeldItemKind held =
-        cr::selectedCreativeHotbarEntry(editor.interaction.hotbar).kind;
+    const cr::CreativeHotbarEntry& held =
+        cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
     appendViewportHints(specs, editor, held, activeDevice);
   } else {
     appendContextHints(

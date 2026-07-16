@@ -11,6 +11,7 @@
 #include "EditorShapePreview.hpp"
 #include "EditorState.hpp"
 #include "EditorSurfaceExtrude.hpp"
+#include "EditorStructuralPlacement.hpp"
 #include "EditorToolOptions.hpp"
 #include "EditorTransform.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
@@ -1874,6 +1875,133 @@ bool gamepadAcceptPlacesAndRejectRemoves() {
                         .occupiedCellCount() == 0U &&
                     cr::creativeUndoDepth(appState.history) == 2U,
                 "gamepad Circle reject removes and commits one gesture") &&
+         ok;
+}
+
+bool structuralSpanPreviewPlacementCancelAndUndoStayInParity() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 124U);
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Beam);
+  setPlaceTarget(editor, 0, 0, 0);
+
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, true, false), 0U);
+  const bool firstAnchorReady =
+      editor.interaction.structuralSpan.active &&
+      sameVec3(editor.interaction.structuralSpan.firstAnchor,
+               {0.5, 0.0, 0.5}) &&
+      appState.facade.document().objectCount() == 0U &&
+      cr::creativeUndoDepth(appState.history) == 0U &&
+      creativeEditorHeldItemStatusLabel(editor).find("SET END") !=
+          std::string::npos;
+
+  setPlaceTarget(editor, 4, 0, 3);
+  const cr::CreativeStructuralSpanPlan expected =
+      cr::planCreativeStructuralSpan(
+          {cr::CreativeObjectKind::Beam, {0.5, 0.0, 0.5},
+           {4.5, 0.0, 3.5}});
+  iggy3d::FrameInput preview;
+  attachCreativeEditorPlacementPreviews(
+      editor, false, preview, &appState.facade.document());
+  const iggy3d::Mat4& targetPreview =
+      preview.creativePreview.items[0].clipFromModel;
+  const auto previewAxisLength = [&](std::uint32_t column) {
+    const float x = iggy3d::at(targetPreview, 0U, column);
+    const float y = iggy3d::at(targetPreview, 1U, column);
+    const float z = iggy3d::at(targetPreview, 2U, column);
+    return std::sqrt(x * x + y * y + z * z);
+  };
+  bool ok = expect(firstAnchorReady,
+                   "first X press records only the structural start anchor");
+  ok = expect(expected.accepted &&
+                       preview.creativePreview.itemCount == 2U &&
+                       preview.creativePreview.items[0].role ==
+                           iggy3d::RenderCreativePreviewRole::PlacementValid &&
+                       preview.creativePreview.items[1].role ==
+                           iggy3d::RenderCreativePreviewRole::Held &&
+                       near(iggy3d::at(targetPreview, 0U, 3U), 2.5F) &&
+                       near(iggy3d::at(targetPreview, 1U, 3U), 0.175F) &&
+                       near(iggy3d::at(targetPreview, 2U, 3U), 2.0F) &&
+                       near(previewAxisLength(0U), 5.0F) &&
+                       near(previewAxisLength(1U), 0.35F) &&
+                       near(previewAxisLength(2U), 0.35F),
+              "draft preview is the exact diagonal span plan") &&
+       ok;
+
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, true, false), 1U);
+  const cr::CreativeObject* placed =
+      appState.facade.document().objects().empty()
+          ? nullptr
+          : &appState.facade.document().objects().front();
+  ok = expect(placed != nullptr &&
+                  placed->kind == cr::CreativeObjectKind::Beam &&
+                  sameTransform(placed->transform, expected.transform) &&
+                  sameBounds(placed->bounds, expected.authoredBounds) &&
+                  !editor.interaction.structuralSpan.active &&
+                  appState.facade.document().objectCount() == 1U &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "second X press creates one exact span and one undo record") &&
+       ok;
+
+  setPlaceTarget(editor, 4, 0, 3);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Secondary, true, true, false),
+      2U);
+  setPlaceTarget(editor, 0, 0, 0);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Secondary, true, true, false),
+      3U);
+  ok = expect(editor.interaction.structuralSpan.active &&
+                  editor.interaction.placementFeedback.status ==
+                      CreativeEditorPlacementFeedbackStatus::Rejected &&
+                  appState.facade.document().objectCount() == 1U &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "reversed duplicate span is rejected without history") &&
+       ok;
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Primary, true, true, false), 4U);
+  ok = expect(!editor.interaction.structuralSpan.active &&
+                  appState.facade.document().objectCount() == 1U &&
+                  cr::creativeUndoDepth(appState.history) == 1U,
+              "left click cancels a live span without mutating the document") &&
+       ok;
+
+  editor.interaction.target.objectHit = true;
+  editor.interaction.target.objectId = placed->id;
+  editor.interaction.target.objectKind = placed->kind;
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Reject, true, true, false), 5U);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Reject, false, false, true), 6U);
+  ok = expect(appState.facade.document().objectCount() == 0U &&
+                  cr::creativeUndoDepth(appState.history) == 2U,
+              "Circle retains ordinary remove behavior outside a draft") &&
+       ok;
+
+  const cr::CreativeHistoryApplyReceipt undoRemove = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+  const cr::CreativeHistoryApplyReceipt undoPlace = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+  setPlaceTarget(editor, 1, 0, 1);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, true, false), 7U);
+  finalizeCreativeEditorContinuousGestures(
+      appState, editor, "test_structural_span_interrupted");
+  return expect(undoRemove.accepted && undoPlace.accepted &&
+                    appState.facade.document().objectCount() == 0U,
+                "remove and structural placement undo as separate gestures") &&
+         expect(!editor.interaction.structuralSpan.active &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "lifecycle interruption cancels an empty structural draft") &&
          ok;
 }
 
@@ -4725,6 +4853,7 @@ int main() {
   ok = worldTargetPicksDerivedTerrainAndPreservesVoxelTiePriority() && ok;
   ok = removalStrokeDeletesVoxelAndGroupsHistory() && ok;
   ok = gamepadAcceptPlacesAndRejectRemoves() && ok;
+  ok = structuralSpanPreviewPlacementCancelAndUndoStayInParity() && ok;
   ok = materialBrushPaintsErasesPreviewsAndGroupsHistory() && ok;
   ok = materialBrushShellPreviewMatchesMutationAndUndo() && ok;
   ok = materialBrushCylinderAxisDrivesPreviewAndMutation() && ok;

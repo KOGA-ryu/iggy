@@ -80,6 +80,13 @@ constexpr CreativeObjectDescriptor withGeneratedGeometry(
     return value;
 }
 
+constexpr CreativeObjectDescriptor withPlacementGesture(
+    CreativeObjectDescriptor value,
+    CreativePlacementGesturePolicy gesturePolicy) noexcept {
+    value.placementPolicy.gesturePolicy = gesturePolicy;
+    return value;
+}
+
 using DescriptorCapabilityFlags = std::uint32_t;
 
 constexpr DescriptorCapabilityFlags kNoCapabilities = 0;
@@ -153,6 +160,7 @@ constexpr CreativeObjectPlacementPolicy placementPolicyForDescriptor(
             ? CreativePlacementOccupancyPolicy::RejectOccupied
             : CreativePlacementOccupancyPolicy::AllowOverlap,
         storagePolicy,
+        CreativePlacementGesturePolicy::Immediate,
         true,
     };
 }
@@ -452,7 +460,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         boxDefaults(1.0, 3.0, 1.0),
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
     ), CreativeGeneratedGeometryProfile::SolidPrism),
-    withGeneratedGeometry(descriptor(
+    withPlacementGesture(withGeneratedGeometry(descriptor(
         CreativeObjectKind::Beam,
         CreativeObjectCategory::Structural,
         CreativeObjectProfile::BoxStructural,
@@ -466,6 +474,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         boxDefaults(4.0, 0.35, 0.35),
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
     ), CreativeGeneratedGeometryProfile::SolidPrism),
+        CreativePlacementGesturePolicy::HorizontalSpan),
     withGeneratedGeometry(descriptor(
         CreativeObjectKind::Arch,
         CreativeObjectCategory::Structural,
@@ -482,7 +491,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         CreativeRuntimeAnchorSemantic::None,
         CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
     ), CreativeGeneratedGeometryProfile::OpenFrame),
-    withGeneratedGeometry(descriptor(
+    withPlacementGesture(withGeneratedGeometry(descriptor(
         CreativeObjectKind::Fence,
         CreativeObjectCategory::Structural,
         CreativeObjectProfile::BoxStructural,
@@ -498,7 +507,8 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         CreativeRuntimeAnchorSemantic::None,
         CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
     ), CreativeGeneratedGeometryProfile::SolidPrism),
-    withGeneratedGeometry(descriptor(
+        CreativePlacementGesturePolicy::HorizontalSpan),
+    withPlacementGesture(withGeneratedGeometry(descriptor(
         CreativeObjectKind::Railing,
         CreativeObjectCategory::Structural,
         CreativeObjectProfile::BoxStructural,
@@ -514,7 +524,8 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         CreativeRuntimeAnchorSemantic::None,
         CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
     ), CreativeGeneratedGeometryProfile::SolidPrism),
-    withGeneratedGeometry(descriptor(
+        CreativePlacementGesturePolicy::HorizontalSpan),
+    withPlacementGesture(withGeneratedGeometry(descriptor(
         CreativeObjectKind::Bridge,
         CreativeObjectCategory::Structural,
         CreativeObjectProfile::BoxStructural,
@@ -528,6 +539,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         boxDefaults(3.0, 0.35, 8.0),
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
     ), CreativeGeneratedGeometryProfile::WalkableSlab),
+        CreativePlacementGesturePolicy::HorizontalSpan),
     descriptor(
         CreativeObjectKind::Ladder,
         CreativeObjectCategory::Structural,

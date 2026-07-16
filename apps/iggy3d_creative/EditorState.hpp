@@ -36,6 +36,7 @@ struct CreativeEditorDocumentTransientState {
   CreativeEditorPlacementFeedback placementFeedback;
   CreativeMaterialBrushPivotState materialBrushPivot;
   CreativeMaterialStrokeState materialStroke;
+  CreativeEditorStructuralSpanState structuralSpan;
   CreativeAssetScatterStrokeState assetScatter;
   CreativeAuthoredAssetStrokeState authoredAssetStroke;
   CreativeEditorConnectedFillCache connectedFill;

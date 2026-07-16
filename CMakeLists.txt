@@ -93,6 +93,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/tools/Clipboard.cpp
     src/app/iggy3d/creative/tools/Group.cpp
     src/app/iggy3d/creative/tools/SelectionPlacement.cpp
+    src/app/iggy3d/creative/tools/StructuralPlacement.cpp
     src/app/iggy3d/creative/tools/SelectionTransformCommands.cpp
     src/app/iggy3d/creative/tools/Pattern.cpp
     src/app/iggy3d/creative/tools/MaterialBrush.cpp
@@ -318,6 +319,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorTerrainSculpt.cpp
   apps/iggy3d_creative/EditorTerrainStamp.cpp
   apps/iggy3d_creative/EditorMaterialStroke.cpp
+  apps/iggy3d_creative/EditorStructuralPlacement.cpp
   apps/iggy3d_creative/EditorPattern.cpp
   apps/iggy3d_creative/EditorBootstrap.cpp
   apps/iggy3d_creative/EditorPlacement.cpp

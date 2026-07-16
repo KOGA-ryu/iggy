@@ -221,6 +221,11 @@ enum class CreativePlacementStoragePolicy : std::uint8_t {
     VoxelCell,
 };
 
+enum class CreativePlacementGesturePolicy : std::uint8_t {
+    Immediate,
+    HorizontalSpan,
+};
+
 struct CreativeObjectPlacementPolicy {
     CreativePlacementFaceMask allowedFaces{0};
     CreativePlacementTargetPolicy targetPolicy{
@@ -232,6 +237,8 @@ struct CreativeObjectPlacementPolicy {
         CreativePlacementOccupancyPolicy::AllowOverlap};
     CreativePlacementStoragePolicy storagePolicy{
         CreativePlacementStoragePolicy::AuthoredObject};
+    CreativePlacementGesturePolicy gesturePolicy{
+        CreativePlacementGesturePolicy::Immediate};
     bool enabled{false};
 };
 
