@@ -191,6 +191,25 @@ interactableKindFor(CreativeObjectKind kind) noexcept {
          (entity.kind == EntityKind::Player || entity.kind == EntityKind::Npc);
 }
 
+[[nodiscard]] std::size_t automaticSourceOccupantCount(
+    const CreativeRuntimeInteractableState& source,
+    std::span<const EntityState> entities) noexcept {
+  const Vec3 occupancyMargin{kAutomaticSourceOccupancyMarginMeters,
+                             kAutomaticSourceOccupancyMarginMeters,
+                             kAutomaticSourceOccupancyMarginMeters};
+  const Aabb3 occupancyBounds = makeAabb3(
+      source.definition.localBounds.min - occupancyMargin,
+      source.definition.localBounds.max + occupancyMargin);
+  const OrientedBox volume =
+      makeOrientedBox(source.definition.transform, occupancyBounds);
+  return static_cast<std::size_t>(
+      std::count_if(entities.begin(), entities.end(),
+                    [&volume](const EntityState& entity) {
+                      return isOccupancyActor(entity) &&
+                             contains(volume, entity.transform.position);
+                    }));
+}
+
 [[nodiscard]] bool strictlyIntersects(Aabb3 lhs, Aabb3 rhs) noexcept {
   if (!isValid(lhs) || !isValid(rhs)) {
     return false;
@@ -261,17 +280,22 @@ interactableKindFor(CreativeObjectKind kind) noexcept {
                      });
 }
 
-[[nodiscard]] bool surfaceBelongsToTarget(
+[[nodiscard]] bool surfaceBelongsToRoomMesh(
     const RoomSpatialSurface& surface,
-    const CreativeRuntimeInteractableState& target) noexcept {
+    std::string_view targetMesh) noexcept {
   const std::string_view owner = surface.sourceStaticMeshId;
-  const std::string_view targetMesh = target.definition.roomMeshId;
   if (owner == targetMesh) {
     return true;
   }
   constexpr std::string_view kCollisionPartSuffix = "_collision_part_";
   return owner.starts_with(targetMesh) &&
          owner.substr(targetMesh.size()).starts_with(kCollisionPartSuffix);
+}
+
+[[nodiscard]] bool surfaceBelongsToTarget(
+    const RoomSpatialSurface& surface,
+    const CreativeRuntimeInteractableState& target) noexcept {
+  return surfaceBelongsToRoomMesh(surface, target.definition.roomMeshId);
 }
 
 void removeTargetGeometry(
@@ -388,6 +412,7 @@ struct LogicTargetStateChange {
 
 struct LogicTargetPublishResult {
   bool ok = false;
+  bool blocked = false;
   bool changed = false;
   std::string_view reasonCode = "creative_runtime_target_geometry_rejected";
 };
@@ -423,6 +448,7 @@ struct LogicTargetPublishResult {
       removing.push_back(change.target);
     } else if (!geometryWasPresent && geometryWillBePresent) {
       if (platformRestoreIsOccupied(sandbox, *change.target)) {
+        result.blocked = true;
         result.reasonCode = "creative_runtime_platform_enable_occupied";
         return result;
       }
@@ -723,15 +749,18 @@ CreativeRuntimeInteractionEffectReceipt applyLogicSourceSignal(
 
   const LogicTargetPublishResult published =
       publishLogicTargetStates(sandbox, changes);
+  result.affectedTargetCount = changes.size();
   if (!published.ok) {
-    result.status = CreativeRuntimeInteractionEffectStatus::GeometryRejected;
+    result.accepted = published.blocked;
+    result.status = published.blocked
+                        ? CreativeRuntimeInteractionEffectStatus::TargetOccupied
+                        : CreativeRuntimeInteractionEffectStatus::GeometryRejected;
     result.reasonCode = published.reasonCode;
     return result;
   }
 
   result.accepted = true;
   result.changed = published.changed;
-  result.affectedTargetCount = changes.size();
   result.geometryRevision = sandbox.geometryRevision;
   if (plan.compatibilityFallback && (allOpen || allClosed)) {
     result.status = allOpen
@@ -812,9 +841,20 @@ CreativeRuntimeInteractableCatalog buildCreativeRuntimeInteractableCatalog(
         !definition.roomMeshId.empty()
             ? hasRoomMesh(room, definition.roomMeshId)
             : hasRoomAnchor(room, definition.stableName);
+    const bool targetSurfaceExists =
+        !creativeRuntimeInteractableIsLogicTarget(*kind) ||
+        std::any_of(room.spatialSurfaces.begin(), room.spatialSurfaces.end(),
+                    [&definition](const RoomSpatialSurface& surface) {
+                      return surfaceBelongsToRoomMesh(surface,
+                                                      definition.roomMeshId);
+                    });
     if (!geometryValid || !roomSourceExists ||
         !definitionIsUnique(result.definitions, definition)) {
       result.reasonCode = "creative_runtime_interactable_definition_invalid";
+      return result;
+    }
+    if (!targetSurfaceExists) {
+      result.reasonCode = "creative_runtime_target_surface_missing";
       return result;
     }
 
@@ -938,6 +978,8 @@ std::string_view toString(
       return "no_transition";
     case CreativeRuntimeAutomaticLogicStatus::Applied:
       return "applied";
+    case CreativeRuntimeAutomaticLogicStatus::EffectBlocked:
+      return "effect_blocked";
     case CreativeRuntimeAutomaticLogicStatus::EffectRejected:
       return "effect_rejected";
   }
@@ -955,6 +997,8 @@ std::string_view toString(
       return "unsupported_target";
     case CreativeRuntimeInteractionEffectStatus::NoLinkedTarget:
       return "no_linked_target";
+    case CreativeRuntimeInteractionEffectStatus::TargetOccupied:
+      return "target_occupied";
     case CreativeRuntimeInteractionEffectStatus::GeometryRejected:
       return "geometry_rejected";
     case CreativeRuntimeInteractionEffectStatus::DoorOpened:
@@ -1082,6 +1126,128 @@ CreativeRuntimeInteractionEffectReceipt applyCreativeRuntimeInteractionEffect(
   return result;
 }
 
+CreativeRuntimeAutomaticLogicReceipt initializeCreativeRuntimeHoldLogic(
+    CreativeRuntimeSandbox& sandbox) {
+  CreativeRuntimeAutomaticLogicReceipt result;
+  result.requested = true;
+  result.geometryRevision = sandbox.geometryRevision;
+
+  const std::vector<EntityState>& entities =
+      sandbox.session.state().world.entities();
+  std::vector<LogicTargetStateChange> changes;
+  for (CreativeRuntimeInteractableState& source : sandbox.interactables) {
+    if (source.definition.kind != CreativeRuntimeInteractableKind::Control ||
+        source.definition.logicSourceMode !=
+            CreativeRuntimeLogicSourceMode::HoldWhileOccupied) {
+      continue;
+    }
+
+    ++result.evaluatedSourceCount;
+    const std::size_t occupantCount =
+        automaticSourceOccupantCount(source, entities);
+    source.occupantCount = occupantCount;
+    source.lastOccupancyTransition = CreativeRuntimeOccupancyTransition::None;
+    source.lastOccupancyTransitionTick = 0U;
+    const bool occupied = occupantCount > 0U;
+    result.occupiedSourceCount += occupied ? 1U : 0U;
+
+    bool sourceHasLink = false;
+    for (const CreativeRuntimeLogicLink& link : sandbox.logicLinks) {
+      if (link.sourceObjectId != source.definition.objectId) {
+        continue;
+      }
+      sourceHasLink = true;
+      const auto target = std::find_if(
+          sandbox.interactables.begin(), sandbox.interactables.end(),
+          [&link](const CreativeRuntimeInteractableState& candidate) {
+            return candidate.definition.objectId == link.targetObjectId;
+          });
+      if (target == sandbox.interactables.end() ||
+          !creativeRuntimeLogicActionSupported(target->definition.kind,
+                                               link.action)) {
+        result.status = CreativeRuntimeAutomaticLogicStatus::EffectRejected;
+        result.reasonCode = "creative_runtime_hold_initial_target_invalid";
+        return result;
+      }
+
+      bool active = target->targetActive;
+      switch (link.action) {
+        case CreativeLogicLinkAction::Toggle:
+          active = occupied ? !active : active;
+          break;
+        case CreativeLogicLinkAction::Open:
+        case CreativeLogicLinkAction::Enable:
+          active = occupied;
+          break;
+        case CreativeLogicLinkAction::Close:
+        case CreativeLogicLinkAction::Disable:
+          active = !occupied;
+          break;
+        case CreativeLogicLinkAction::Count:
+          result.status = CreativeRuntimeAutomaticLogicStatus::EffectRejected;
+          result.reasonCode = "creative_runtime_hold_initial_action_invalid";
+          return result;
+      }
+
+      const auto existing = std::find_if(
+          changes.begin(), changes.end(), [&target](const auto& change) {
+            return change.target == &*target;
+          });
+      if (existing != changes.end()) {
+        if (existing->active != active) {
+          result.status = CreativeRuntimeAutomaticLogicStatus::EffectRejected;
+          result.reasonCode = "creative_runtime_hold_initial_state_conflict";
+          return result;
+        }
+        continue;
+      }
+      changes.push_back({&*target, active});
+      ++result.affectedTargetCount;
+      result.affectedDoorCount +=
+          target->definition.kind == CreativeRuntimeInteractableKind::Door
+              ? 1U
+              : 0U;
+      result.affectedPlatformCount +=
+          target->definition.kind == CreativeRuntimeInteractableKind::Platform
+              ? 1U
+              : 0U;
+    }
+    result.activationEffectCount += sourceHasLink ? 1U : 0U;
+  }
+
+  if (changes.empty()) {
+    result.accepted = true;
+    result.status = CreativeRuntimeAutomaticLogicStatus::NoTransition;
+    result.reasonCode = "creative_runtime_hold_logic_not_present";
+    return result;
+  }
+
+  const LogicTargetPublishResult published =
+      publishLogicTargetStates(sandbox, changes);
+  result.geometryRevision = sandbox.geometryRevision;
+  if (!published.ok) {
+    result.accepted = published.blocked;
+    result.status = published.blocked
+                        ? CreativeRuntimeAutomaticLogicStatus::EffectBlocked
+                        : CreativeRuntimeAutomaticLogicStatus::EffectRejected;
+    result.lastEffect =
+        published.blocked
+            ? CreativeRuntimeInteractionEffectStatus::TargetOccupied
+            : CreativeRuntimeInteractionEffectStatus::GeometryRejected;
+    result.reasonCode = published.reasonCode;
+    return result;
+  }
+
+  result.accepted = true;
+  result.changed = published.changed;
+  result.status = CreativeRuntimeAutomaticLogicStatus::Applied;
+  result.lastEffect =
+      published.changed ? CreativeRuntimeInteractionEffectStatus::LinksApplied
+                        : CreativeRuntimeInteractionEffectStatus::LinksNoChange;
+  result.reasonCode = "creative_runtime_hold_logic_initialized";
+  return result;
+}
+
 CreativeRuntimeAutomaticLogicReceipt updateCreativeRuntimeAutomaticLogic(
     CreativeRuntimeSandbox& sandbox) {
   CreativeRuntimeAutomaticLogicReceipt result;
@@ -1090,6 +1256,8 @@ CreativeRuntimeAutomaticLogicReceipt updateCreativeRuntimeAutomaticLogic(
 
   const std::vector<EntityState>& entities =
       sandbox.session.state().world.entities();
+  bool effectBlocked = false;
+  std::string_view blockedReason;
   for (CreativeRuntimeInteractableState& source : sandbox.interactables) {
     if (source.definition.kind != CreativeRuntimeInteractableKind::Control ||
         !isAutomaticSourceMode(source.definition.logicSourceMode)) {
@@ -1097,21 +1265,8 @@ CreativeRuntimeAutomaticLogicReceipt updateCreativeRuntimeAutomaticLogic(
     }
     ++result.evaluatedSourceCount;
 
-    const Vec3 occupancyMargin{kAutomaticSourceOccupancyMarginMeters,
-                               kAutomaticSourceOccupancyMarginMeters,
-                               kAutomaticSourceOccupancyMarginMeters};
-    const Aabb3 occupancyBounds = makeAabb3(
-        source.definition.localBounds.min - occupancyMargin,
-        source.definition.localBounds.max + occupancyMargin);
-    const OrientedBox volume =
-        makeOrientedBox(source.definition.transform, occupancyBounds);
-    std::size_t occupantCount = 0U;
-    for (const EntityState& entity : entities) {
-      if (isOccupancyActor(entity) &&
-          contains(volume, entity.transform.position)) {
-        ++occupantCount;
-      }
-    }
+    const std::size_t occupantCount =
+        automaticSourceOccupantCount(source, entities);
     result.occupiedSourceCount += occupantCount > 0U ? 1U : 0U;
 
     const bool entered = source.occupantCount == 0U && occupantCount > 0U;
@@ -1146,6 +1301,16 @@ CreativeRuntimeAutomaticLogicReceipt updateCreativeRuntimeAutomaticLogic(
       result.affectedTargetCount += effect.affectedTargetCount;
       result.affectedDoorCount += effect.affectedDoorCount;
       result.affectedPlatformCount += effect.affectedPlatformCount;
+      if (effect.status ==
+          CreativeRuntimeInteractionEffectStatus::TargetOccupied) {
+        effectBlocked = true;
+        blockedReason = effect.reasonCode;
+        if (source.definition.logicSourceMode ==
+            CreativeRuntimeLogicSourceMode::PulseOnEnter) {
+          source.occupantCount = occupantCount;
+        }
+        continue;
+      }
       if (!effect.accepted ||
           effect.status ==
               CreativeRuntimeInteractionEffectStatus::GeometryRejected) {
@@ -1161,7 +1326,10 @@ CreativeRuntimeAutomaticLogicReceipt updateCreativeRuntimeAutomaticLogic(
 
   result.accepted = true;
   result.geometryRevision = sandbox.geometryRevision;
-  if (result.occupancyTransitionCount == 0U) {
+  if (effectBlocked) {
+    result.status = CreativeRuntimeAutomaticLogicStatus::EffectBlocked;
+    result.reasonCode = blockedReason;
+  } else if (result.occupancyTransitionCount == 0U) {
     result.status = CreativeRuntimeAutomaticLogicStatus::NoTransition;
     result.reasonCode = "creative_runtime_automatic_logic_no_transition";
   } else {

@@ -816,6 +816,182 @@ bool automaticSourcesCountOccupantsAndRearm() {
                 "final plate exit reverses its Open action");
 }
 
+bool holdSourceInitializesBeforeFirstRuntimeTick() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Initialized Hold Source");
+  static_cast<void>(document.assignId(49U));
+  const bool floor = addObject(
+      document, cr::CreativeObjectKind::Floor, "Floor", {0.0, 0.0, 0.0},
+      cr::CreativeBounds{{-8.0, 0.0, -8.0}, {8.0, 0.25, 8.0}});
+  const bool spawn = addObject(document, cr::CreativeObjectKind::SpawnPoint,
+                               "Player Spawn", {-4.0, 0.25, 0.0});
+  const cr::CreativeDocumentCreateReceipt plate = createObject(
+      document, cr::CreativeObjectKind::PressurePlate, "Platform Plate",
+      {0.0, 0.25, 0.0}, std::nullopt,
+      cr::CreativeBounds{{-1.0, 0.25, -1.0}, {1.0, 0.35, 1.0}});
+  const cr::CreativeDocumentCreateReceipt platform = createObject(
+      document, cr::CreativeObjectKind::Platform, "Lift Platform",
+      {4.0, 0.25, 0.0}, std::nullopt,
+      cr::CreativeBounds{{3.0, 0.25, -1.0}, {5.0, 0.6, 1.0}});
+  if (!floor || !spawn || !plate.accepted || !platform.accepted ||
+      !document
+           .setLogicLink({plate.objectId, platform.objectId,
+                          cr::CreativeLogicLinkAction::Enable})
+           .accepted) {
+    return expect(false, "hold initialization fixture is authored");
+  }
+
+  cr::CreativePlayPreparationResult prepared = prepare(document);
+  if (!prepared.payload.has_value()) {
+    return expect(false, "hold initialization fixture prepares");
+  }
+  cr::CreativeRuntimeSandboxActivationRequest request;
+  request.sourceDocument = &document;
+  request.payload = std::move(*prepared.payload);
+  cr::CreativeRuntimeSandboxActivationResult activated =
+      cr::activateCreativeRuntimeSandbox(std::move(request));
+  if (!activated.sandbox.has_value()) {
+    return expect(false, "hold initialization fixture activates");
+  }
+
+  cr::CreativeRuntimeSandbox& sandbox = *activated.sandbox;
+  cr::CreativeRuntimeInteractableState* plateState =
+      findInteractable(sandbox, plate.objectId);
+  cr::CreativeRuntimeInteractableState* platformState =
+      findInteractable(sandbox, platform.objectId);
+  if (plateState == nullptr || platformState == nullptr) {
+    return expect(false, "initialized hold states are addressable");
+  }
+  const bool initiallyRetracted =
+      !platformState->targetActive && plateState->occupantCount == 0U &&
+      sandbox.geometryRevision == 1U &&
+      std::none_of(sandbox.room.staticMeshes.begin(),
+                   sandbox.room.staticMeshes.end(),
+                   [&platformState](const iggy3d::RoomStaticMeshAsset& mesh) {
+                     return mesh.id == platformState->definition.roomMeshId;
+                   });
+
+  if (!moveEntity(sandbox, {1U}, {0.0F, 0.25F, 0.0F})) {
+    return expect(false, "player moves onto initialized pressure plate");
+  }
+  const cr::CreativeRuntimeAutomaticLogicReceipt entered =
+      cr::updateCreativeRuntimeAutomaticLogic(sandbox);
+  const bool enabled = platformState->targetActive &&
+                       plateState->occupantCount == 1U &&
+                       sandbox.geometryRevision == 2U;
+  if (!moveEntity(sandbox, {1U}, {-4.0F, 0.25F, 0.0F})) {
+    return expect(false, "player leaves initialized pressure plate");
+  }
+  const cr::CreativeRuntimeAutomaticLogicReceipt exited =
+      cr::updateCreativeRuntimeAutomaticLogic(sandbox);
+
+  return expect(initiallyRetracted,
+                "empty pressure plate retracts Enable target at activation") &&
+         expect(entered.accepted && entered.changed &&
+                    entered.status ==
+                        cr::CreativeRuntimeAutomaticLogicStatus::Applied &&
+                    enabled,
+                "first occupied transition enables initialized platform") &&
+         expect(exited.accepted && exited.changed &&
+                    !platformState->targetActive &&
+                    plateState->occupantCount == 0U &&
+                    sandbox.geometryRevision == 3U,
+                "final exit returns initialized platform to inactive state");
+}
+
+bool holdSourceRetriesOccupiedPlatformRestore() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Blocked Hold Restore");
+  static_cast<void>(document.assignId(50U));
+  const bool floor = addObject(
+      document, cr::CreativeObjectKind::Floor, "Floor", {0.0, 0.0, 0.0},
+      cr::CreativeBounds{{-8.0, 0.0, -8.0}, {8.0, 0.25, 8.0}});
+  const bool spawn = addObject(document, cr::CreativeObjectKind::SpawnPoint,
+                               "Player Spawn", {-4.0, 0.25, 0.0});
+  const cr::CreativeDocumentCreateReceipt plate = createObject(
+      document, cr::CreativeObjectKind::PressurePlate, "Retract Plate",
+      {0.0, 0.25, 0.0}, std::nullopt,
+      cr::CreativeBounds{{-0.5, 0.25, -0.5}, {0.5, 0.35, 0.5}});
+  const cr::CreativeDocumentCreateReceipt platform = createObject(
+      document, cr::CreativeObjectKind::Platform, "Wide Platform",
+      {0.0, 0.25, 0.0}, std::nullopt,
+      cr::CreativeBounds{{-2.0, 0.25, -2.0}, {2.0, 0.6, 2.0}});
+  if (!floor || !spawn || !plate.accepted || !platform.accepted ||
+      !document
+           .setLogicLink({plate.objectId, platform.objectId,
+                          cr::CreativeLogicLinkAction::Disable})
+           .accepted) {
+    return expect(false, "blocked hold restore fixture is authored");
+  }
+
+  cr::CreativePlayPreparationResult prepared = prepare(document);
+  if (!prepared.payload.has_value()) {
+    return expect(false, "blocked hold restore fixture prepares");
+  }
+  cr::CreativeRuntimeSandboxActivationRequest request;
+  request.sourceDocument = &document;
+  request.payload = std::move(*prepared.payload);
+  cr::CreativeRuntimeSandboxActivationResult activated =
+      cr::activateCreativeRuntimeSandbox(std::move(request));
+  if (!activated.sandbox.has_value()) {
+    return expect(false, "blocked hold restore fixture activates");
+  }
+
+  cr::CreativeRuntimeSandbox& sandbox = *activated.sandbox;
+  cr::CreativeRuntimeInteractableState* plateState =
+      findInteractable(sandbox, plate.objectId);
+  cr::CreativeRuntimeInteractableState* platformState =
+      findInteractable(sandbox, platform.objectId);
+  if (plateState == nullptr || platformState == nullptr ||
+      !platformState->targetActive || sandbox.geometryRevision != 0U) {
+    return expect(false, "Disable target starts enabled while plate is empty");
+  }
+
+  if (!moveEntity(sandbox, {1U}, {0.0F, 0.25F, 0.0F})) {
+    return expect(false, "player enters retract plate");
+  }
+  const cr::CreativeRuntimeAutomaticLogicReceipt retracted =
+      cr::updateCreativeRuntimeAutomaticLogic(sandbox);
+  const bool retractedState =
+      !platformState->targetActive && plateState->occupantCount == 1U &&
+      sandbox.geometryRevision == 1U;
+  if (!moveEntity(sandbox, {1U}, {1.5F, 0.25F, 0.0F})) {
+    return expect(false, "player leaves plate inside retracted platform");
+  }
+  const cr::CreativeRuntimeAutomaticLogicReceipt blocked =
+      cr::updateCreativeRuntimeAutomaticLogic(sandbox);
+  const bool blockedStatePreserved =
+      !platformState->targetActive && plateState->occupantCount == 1U &&
+      sandbox.geometryRevision == 1U;
+  if (!moveEntity(sandbox, {1U}, {-4.0F, 0.25F, 0.0F})) {
+    return expect(false, "player clears retracted platform");
+  }
+  const cr::CreativeRuntimeAutomaticLogicReceipt restored =
+      cr::updateCreativeRuntimeAutomaticLogic(sandbox);
+
+  return expect(retracted.accepted && retracted.changed && retractedState,
+                "plate entry retracts Disable target") &&
+         expect(blocked.accepted && !blocked.changed &&
+                    blocked.status ==
+                        cr::CreativeRuntimeAutomaticLogicStatus::EffectBlocked &&
+                    blocked.lastEffect ==
+                        cr::CreativeRuntimeInteractionEffectStatus::
+                            TargetOccupied &&
+                    blocked.reasonCode ==
+                        "creative_runtime_platform_enable_occupied" &&
+                    cr::toString(blocked.status) == "effect_blocked" &&
+                    cr::toString(blocked.lastEffect) == "target_occupied" &&
+                    blockedStatePreserved,
+                "occupied automatic restore is nonfatal and remains armed") &&
+         expect(restored.accepted && restored.changed &&
+                    restored.status ==
+                        cr::CreativeRuntimeAutomaticLogicStatus::Applied &&
+                    platformState->targetActive &&
+                    plateState->occupantCount == 0U &&
+                    sandbox.geometryRevision == 2U,
+                "armed hold source restores after platform clears");
+}
+
 bool authoredInteractablesOwnExplicitCircuitsAndDynamicGeometry() {
   cr::CreativeDocument document = playableDocument(false, 47U);
   const cr::CreativeDocumentCreateReceipt circuit = createObject(
@@ -1188,12 +1364,13 @@ bool retractablePlatformPublishesAtomicallyAndRejectsOccupiedRestore() {
                             doorState->targetSurfaces.size() ==
                         enabledColliderCount,
                 "one source transitions platform and door in one revision") &&
-         expect(!occupied.accepted && !occupied.changed &&
+         expect(occupied.accepted && !occupied.changed &&
                     occupied.status ==
                         cr::CreativeRuntimeInteractionEffectStatus::
-                            GeometryRejected &&
+                            TargetOccupied &&
                     occupied.reasonCode ==
                         "creative_runtime_platform_enable_occupied" &&
+                    cr::toString(occupied.status) == "target_occupied" &&
                     occupied.geometryRevision == 1U &&
                     revisionAfterOccupiedReject == 1U &&
                     occupiedStateStayedDisabled && occupiedDoorStayedOpen &&
@@ -1231,6 +1408,8 @@ int main() {
                   sandboxFreshnessAndStopAreExplicit() &&
                   runningSnapshotDoesNotTrackLaterDocumentEdits() &&
                   automaticSourcesCountOccupantsAndRearm() &&
+                  holdSourceInitializesBeforeFirstRuntimeTick() &&
+                  holdSourceRetriesOccupiedPlatformRestore() &&
                   authoredInteractablesOwnExplicitCircuitsAndDynamicGeometry() &&
                   retractablePlatformPublishesAtomicallyAndRejectsOccupiedRestore();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

@@ -219,6 +219,37 @@ void appendLogicDiagnostics(const CreativeDocument& document,
   }
 }
 
+void appendLogicTargetCollisionDiagnostics(
+    const CreativeDocument& document,
+    const CreativeRoomBakeResult& baked,
+    bool includeHidden,
+    DiagnosticCollector& diagnostics) {
+  std::unordered_set<CreativeObjectId> surfaceObjectIds;
+  surfaceObjectIds.reserve(baked.spatialSurfaceSources.size());
+  for (const CreativeRoomBakeSpatialSurfaceSource& source :
+       baked.spatialSurfaceSources) {
+    surfaceObjectIds.insert(source.objectId);
+  }
+
+  std::unordered_set<CreativeObjectId> diagnosedTargets;
+  diagnosedTargets.reserve(document.logicLinks().size());
+  for (const CreativeLogicLink& link : document.logicLinks()) {
+    const CreativeObject* target = document.findObject(link.targetObjectId);
+    if (target == nullptr || target->kind != CreativeObjectKind::Platform ||
+        !includedObject(*target, includeHidden) ||
+        surfaceObjectIds.contains(target->id) ||
+        !diagnosedTargets.insert(target->id).second) {
+      continue;
+    }
+    diagnostics.add(
+        CreativeMapDiagnosticSeverity::Error,
+        CreativeMapDiagnosticCode::LogicTargetCollisionMissing,
+        target->id,
+        target->name,
+        "creative_map_logic_target_collision_missing");
+  }
+}
+
 }  // namespace
 
 std::string_view toString(CreativeMapValidationStatus status) noexcept {
@@ -293,6 +324,8 @@ std::string_view toString(CreativeMapDiagnosticCode code) noexcept {
       return "logic_source_unlinked";
     case CreativeMapDiagnosticCode::LogicTargetMissing:
       return "logic_target_missing";
+    case CreativeMapDiagnosticCode::LogicTargetCollisionMissing:
+      return "logic_target_collision_missing";
     case CreativeMapDiagnosticCode::LogicLinkInvalid:
       return "logic_link_invalid";
     case CreativeMapDiagnosticCode::ConflictingPressurePlates:
@@ -431,6 +464,9 @@ CreativeMapEvaluationResult evaluateCreativeMap(
                     kInvalidObjectId,
                     {},
                     baked.receipt.reasonCode);
+  } else {
+    appendLogicTargetCollisionDiagnostics(
+        document, baked, request.includeHidden, diagnostics);
   }
 
   std::unordered_set<CreativeObjectId> bakedObjectIds;

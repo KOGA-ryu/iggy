@@ -134,6 +134,24 @@ app::CreativeEditorPlayTickReceipt tickAt(
   return app::tickCreativeEditorPlayMode(mode, tick);
 }
 
+bool moveRuntimeEntity(app::CreativeEditorPlayMode& mode,
+                       iggy3d::EntityId entityId,
+                       iggy3d::Vec3 position) {
+  if (!mode.sandbox.has_value()) {
+    return false;
+  }
+  const iggy3d::EntityState* entity =
+      mode.sandbox->session.state().world.findById(entityId);
+  if (entity == nullptr) {
+    return false;
+  }
+  iggy3d::Transform3 transform = entity->transform;
+  transform.position = position;
+  return mode.sandbox->session.mutableStateForOwnedSystems()
+             .world.updateTransform(entityId, transform)
+             .status == iggy3d::WorldStatus::Ok;
+}
+
 bool runtimeBindingsAndActionEdgesAreDeterministic() {
   const cr::CreativeControlProfile profile =
       cr::makeDefaultCreativeControlProfile();
@@ -865,6 +883,75 @@ bool authoredDoorAndPickupCompleteTheRuntimeInteractionLoop() {
                 "pickup feedback is authored-name aware and sandbox isolated");
 }
 
+bool occupiedPlatformRestoreIsHandledInsidePlay() {
+  iggy3d::StaticMeshAssetCatalog catalog;
+  cr::CreativeDocument document = playableDocument(false, 921U);
+  const cr::CreativeDocumentCreateReceipt button = createObject(
+      document, cr::CreativeObjectKind::Button, "Lift Button",
+      {0.0, 1.7, -0.3});
+  const cr::CreativeDocumentCreateReceipt platform = createObject(
+      document, cr::CreativeObjectKind::Platform, "Spawn Platform",
+      {0.0, 0.25, 0.0},
+      cr::CreativeBounds{{-1.0, 0.25, -1.0}, {1.0, 0.6, 1.0}});
+  if (!button.accepted || !platform.accepted ||
+      !document
+           .setLogicLink({button.objectId, platform.objectId,
+                          cr::CreativeLogicLinkAction::Toggle})
+           .accepted) {
+    return expect(false, "occupied platform Play fixture is authored");
+  }
+
+  app::CreativeEditorPlayMode mode;
+  if (!start(mode, document, catalog).accepted || !mode.sandbox.has_value()) {
+    return expect(false, "occupied platform Play fixture starts");
+  }
+  const auto platformState = std::find_if(
+      mode.sandbox->interactables.begin(), mode.sandbox->interactables.end(),
+      [&platform](const cr::CreativeRuntimeInteractableState& state) {
+        return state.definition.objectId == platform.objectId;
+      });
+  if (platformState == mode.sandbox->interactables.end()) {
+    return expect(false, "occupied platform state exists");
+  }
+
+  const app::CreativeEditorPlayTickReceipt firstPress =
+      tickAt(mode, document, 1U, {false, true});
+  const app::CreativeEditorPlayTickReceipt retracted =
+      tickAt(mode, document, 50'000'001U, {false, true});
+  if (!moveRuntimeEntity(mode, {1U}, {0.0F, 0.25F, 0.0F})) {
+    return expect(false, "player moves into retracted platform volume");
+  }
+  static_cast<void>(tickAt(mode, document, 100'000'001U, {}));
+  const app::CreativeEditorPlayTickReceipt blocked =
+      tickAt(mode, document, 150'000'001U, {false, true});
+  const bool stayedRetracted =
+      !platformState->targetActive && mode.sandbox->geometryRevision == 1U;
+  const app::CreativeEditorPlayTickReceipt continued =
+      tickAt(mode, document, 200'000'001U, {});
+
+  return expect(firstPress.actionSubmitted &&
+                    retracted.status ==
+                        app::CreativeEditorPlayTickStatus::Advanced &&
+                    retracted.interactionEffect ==
+                        cr::CreativeRuntimeInteractionEffectStatus::LinksApplied,
+                "first button gesture retracts the platform") &&
+         expect(blocked.status ==
+                        app::CreativeEditorPlayTickStatus::Advanced &&
+                    blocked.active && blocked.interactionEffectsApplied == 1U &&
+                    blocked.interactionEffect ==
+                        cr::CreativeRuntimeInteractionEffectStatus::
+                            TargetOccupied &&
+                    mode.lastInteractionEffect.reasonCode ==
+                        "creative_runtime_platform_enable_occupied" &&
+                    stayedRetracted,
+                "occupied restore is consumed without stopping Play") &&
+         expect(continued.status ==
+                        app::CreativeEditorPlayTickStatus::Advanced &&
+                    continued.active &&
+                    app::creativeEditorPlayModeActive(mode),
+                "Play continues after an occupied restore refusal");
+}
+
 }  // namespace
 
 int main() {
@@ -880,7 +967,8 @@ int main() {
                   idleTicksAdvanceAndStaleDocumentsStop() &&
                   desktopPlayTogglesAndBlocksEditing() &&
                   invalidMapAndTuningFailClosed() &&
-                  authoredDoorAndPickupCompleteTheRuntimeInteractionLoop();
+                  authoredDoorAndPickupCompleteTheRuntimeInteractionLoop() &&
+                  occupiedPlatformRestoreIsHandledInsidePlay();
   if (!ok) {
     return 1;
   }

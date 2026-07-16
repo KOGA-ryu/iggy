@@ -172,6 +172,7 @@ enum class CreativeRuntimeInteractionEffectStatus : std::uint8_t {
   TargetMissing,
   UnsupportedTarget,
   NoLinkedTarget,
+  TargetOccupied,
   GeometryRejected,
   DoorOpened,
   DoorClosed,
@@ -206,6 +207,7 @@ enum class CreativeRuntimeAutomaticLogicStatus : std::uint8_t {
   NotRequested,
   NoTransition,
   Applied,
+  EffectBlocked,
   EffectRejected,
 };
 
@@ -243,6 +245,11 @@ findCreativeRuntimeInteractableByObjectId(
 [[nodiscard]] CreativeRuntimeInteractionEffectReceipt
 applyCreativeRuntimeInteractionEffect(CreativeRuntimeSandbox& sandbox,
                                      EntityId target);
+// Establishes HoldWhileOccupied source and target state from the entities
+// created for this sandbox. PulseOnEnter sources remain armed for their first
+// runtime transition.
+[[nodiscard]] CreativeRuntimeAutomaticLogicReceipt
+initializeCreativeRuntimeHoldLogic(CreativeRuntimeSandbox& sandbox);
 [[nodiscard]] CreativeRuntimeAutomaticLogicReceipt
 updateCreativeRuntimeAutomaticLogic(CreativeRuntimeSandbox& sandbox);
 

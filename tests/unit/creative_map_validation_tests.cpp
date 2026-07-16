@@ -329,6 +329,71 @@ bool skippedRuntimeObjectFailsValidation() {
                 "unbridged runtime object is named and rejected");
 }
 
+bool linkedPlatformWithoutCollisionFailsValidation() {
+  iggy3d::StaticMeshAssetCatalog catalog;
+  cr::CreativeDocument document = playableDocument("Invalid Logic Platform");
+
+  cr::CreativeDocumentCreateRequest sourceRequest;
+  sourceRequest.kind = cr::CreativeObjectKind::Switch;
+  sourceRequest.name = "Platform Switch";
+  sourceRequest.transform.position = {-1.0, 0.5, 0.0};
+  sourceRequest.hasTransformOverride = true;
+  const cr::CreativeDocumentCreateReceipt source =
+      document.createObject(sourceRequest);
+
+  cr::CreativeDocumentCreateRequest platformRequest;
+  platformRequest.kind = cr::CreativeObjectKind::Platform;
+  platformRequest.name = "Vertical Platform";
+  platformRequest.transform.position = {0.0, 1.5, 1.0};
+  platformRequest.hasTransformOverride = true;
+  platformRequest.bounds = {{-1.5, 0.0, 0.825}, {1.5, 3.0, 1.175}};
+  platformRequest.hasBoundsOverride = true;
+  const cr::CreativeDocumentCreateReceipt platform =
+      document.createObject(platformRequest);
+  const bool linked =
+      source.accepted && platform.accepted &&
+      document
+          .setLogicLink({source.objectId, platform.objectId,
+                         cr::CreativeLogicLinkAction::Enable})
+          .accepted;
+
+  const cr::CreativeMapEvaluationResult evaluation = cr::evaluateCreativeMap(
+      {&document, &catalog});
+  const cr::CreativeMapValidationResult& result = evaluation.validation;
+  const cr::CreativeMapDiagnostic* diagnostic = findDiagnostic(
+      result,
+      cr::CreativeMapDiagnosticCode::LogicTargetCollisionMissing);
+  const bool meshBaked = std::any_of(
+      evaluation.roomBake.staticMeshSources.begin(),
+      evaluation.roomBake.staticMeshSources.end(),
+      [&platform](const cr::CreativeRoomBakeStaticMeshSource& sourceFact) {
+        return sourceFact.objectId == platform.objectId;
+      });
+  const bool collisionMissing = std::none_of(
+      evaluation.roomBake.spatialSurfaceSources.begin(),
+      evaluation.roomBake.spatialSurfaceSources.end(),
+      [&platform](const cr::CreativeRoomBakeSpatialSurfaceSource& sourceFact) {
+        return sourceFact.objectId == platform.objectId;
+      });
+
+  return expect(linked && result.accepted && !result.passed && meshBaked &&
+                    collisionMissing,
+                "renderable linked platform without collision cannot pass") &&
+         expect(diagnostic != nullptr &&
+                    diagnosticCount(
+                        result,
+                        cr::CreativeMapDiagnosticCode::
+                            LogicTargetCollisionMissing) == 1U &&
+                    diagnostic->objectId == platform.objectId &&
+                    diagnostic->subject == "Vertical Platform" &&
+                    diagnostic->detail ==
+                        "creative_map_logic_target_collision_missing",
+                "missing target collision names the authored platform once") &&
+         expect(cr::toString(diagnostic->code) ==
+                    "logic_target_collision_missing",
+                "missing target collision code is stable");
+}
+
 bool disconnectedWalkableIslandFailsValidation() {
   iggy3d::StaticMeshAssetCatalog catalog;
   cr::CreativeDocument document = playableDocument("Island");
@@ -451,6 +516,7 @@ int main() {
                   importedAssetFailuresAreActionable() &&
                   lostAssetWalkabilityIsWarningOnly() &&
                   skippedRuntimeObjectFailsValidation() &&
+                  linkedPlatformWithoutCollisionFailsValidation() &&
                   disconnectedWalkableIslandFailsValidation() &&
                   invalidReachabilityConfigurationFailsClosed() &&
                   competingPressurePlatesFailValidation() &&

@@ -212,6 +212,10 @@ void appendText(CreativeEditorPlayHudFrame& hud,
       std::snprintf(result.chars.data(), result.chars.size(),
                     "NO LINKED TARGET");
       break;
+    case Status::TargetOccupied:
+      std::snprintf(result.chars.data(), result.chars.size(),
+                    "PLATFORM BLOCKED: OCCUPIED");
+      break;
     case Status::NotRequested:
     case Status::TargetMissing:
     case Status::UnsupportedTarget:
@@ -469,9 +473,11 @@ CreativeEditorPlayHudFrame buildCreativeEditorPlayHud(
   const FixedHudText effectText =
       interactionEffectHudText(mode.lastInteractionEffect);
   if (!effectText.view().empty()) {
-    const bool warning =
-        mode.lastInteractionEffect.status ==
-        iggy3d::creative::CreativeRuntimeInteractionEffectStatus::NoLinkedTarget;
+    using EffectStatus =
+        iggy3d::creative::CreativeRuntimeInteractionEffectStatus;
+    const auto effectStatus = mode.lastInteractionEffect.status;
+    const bool warning = effectStatus == EffectStatus::NoLinkedTarget ||
+                         effectStatus == EffectStatus::TargetOccupied;
     appendText(hud, effectText.view(), panelX + 10, panelY + 49,
                frame.viewport.width, frame.viewport.height,
                warning ? HudColor{0.98F, 0.84F, 0.24F, 1.0F}

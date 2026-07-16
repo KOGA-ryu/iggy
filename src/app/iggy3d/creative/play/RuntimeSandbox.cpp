@@ -555,8 +555,6 @@ CreativeRuntimeSandboxActivationResult activateCreativeRuntimeSandbox(
     }
     state.entity = entity->id;
   }
-  receipt.initialStateHash = created.value.stateHash();
-
   CreativeRuntimeSandbox sandbox;
   sandbox.sourceDocumentId = request.payload.documentId;
   sandbox.sourceDocumentRevision = request.payload.documentRevision;
@@ -577,6 +575,18 @@ CreativeRuntimeSandboxActivationResult activateCreativeRuntimeSandbox(
   sandbox.interactables = std::move(interactableStates.states);
   sandbox.logicLinks = std::move(request.payload.logicLinks);
   sandbox.session = std::move(created.value);
+  const CreativeRuntimeAutomaticLogicReceipt initializedHoldLogic =
+      initializeCreativeRuntimeHoldLogic(sandbox);
+  if (!initializedHoldLogic.accepted) {
+    setActivationStatus(
+        receipt,
+        CreativeRuntimeSandboxActivationStatus::InvalidInteractables,
+        std::string(initializedHoldLogic.reasonCode));
+    return result;
+  }
+  receipt.collisionSurfaceCount = sandbox.collisionSurfaces.size();
+  receipt.reasoningGraph = sandbox.reasoningGraph;
+  receipt.initialStateHash = sandbox.session.stateHash();
   result.sandbox.emplace(std::move(sandbox));
   setActivationStatus(receipt,
                       CreativeRuntimeSandboxActivationStatus::Activated,

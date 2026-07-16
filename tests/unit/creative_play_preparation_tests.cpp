@@ -136,6 +136,52 @@ bool validationFailureReturnsDiagnosticsWithoutPayload() {
                 "validation failure cannot leak activation payload");
 }
 
+bool linkedPlatformWithoutCollisionCannotPrepare() {
+  iggy3d::StaticMeshAssetCatalog catalog;
+  cr::CreativeDocument document = playableDocument(22U);
+
+  cr::CreativeDocumentCreateRequest sourceRequest;
+  sourceRequest.kind = cr::CreativeObjectKind::Button;
+  sourceRequest.name = "Platform Button";
+  sourceRequest.transform.position = {-1.0, 0.5, 0.0};
+  sourceRequest.hasTransformOverride = true;
+  const cr::CreativeDocumentCreateReceipt source =
+      document.createObject(sourceRequest);
+
+  cr::CreativeDocumentCreateRequest platformRequest;
+  platformRequest.kind = cr::CreativeObjectKind::Platform;
+  platformRequest.name = "Unphysical Platform";
+  platformRequest.transform.position = {0.0, 1.5, 1.0};
+  platformRequest.hasTransformOverride = true;
+  platformRequest.bounds = {{-1.5, 0.0, 0.825}, {1.5, 3.0, 1.175}};
+  platformRequest.hasBoundsOverride = true;
+  const cr::CreativeDocumentCreateReceipt platform =
+      document.createObject(platformRequest);
+  const bool linked =
+      source.accepted && platform.accepted &&
+      document
+          .setLogicLink({source.objectId, platform.objectId,
+                         cr::CreativeLogicLinkAction::Enable})
+          .accepted;
+
+  const cr::CreativePlayPreparationResult result =
+      cr::prepareCreativePlay({&document, &catalog});
+  const cr::CreativeMapDiagnostic* diagnostic = findDiagnostic(
+      result.validation,
+      cr::CreativeMapDiagnosticCode::LogicTargetCollisionMissing);
+
+  return expect(linked && !result.accepted &&
+                    result.status ==
+                        cr::CreativePlayPreparationStatus::ValidationFailed,
+                "linked platform without collision fails preparation") &&
+         expect(diagnostic != nullptr &&
+                    diagnostic->objectId == platform.objectId &&
+                    diagnostic->subject == "Unphysical Platform",
+                "preparation returns object-specific collision diagnostic") &&
+         expect(!result.payload.has_value(),
+                "invalid linked platform cannot leak activation payload");
+}
+
 bool missingDocumentAndIdentityFailClosed() {
   const cr::CreativePlayPreparationResult missing =
       cr::prepareCreativePlay({});
@@ -209,6 +255,7 @@ bool payloadFreshnessRejectsRevisionAndIdentityDrift() {
 int main() {
   const bool ok = validMapProducesActivationSnapshot() &&
                   validationFailureReturnsDiagnosticsWithoutPayload() &&
+                  linkedPlatformWithoutCollisionCannotPrepare() &&
                   missingDocumentAndIdentityFailClosed() &&
                   unresolvedAssetPreventsPreparation() &&
                   payloadFreshnessRejectsRevisionAndIdentityDrift();

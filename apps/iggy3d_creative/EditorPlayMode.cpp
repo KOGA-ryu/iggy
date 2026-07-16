@@ -230,10 +230,7 @@ bool applyRuntimeInteractionEvents(
     mode.lastInteractionEffect = effect;
     receipt.interactionEffect = effect.status;
     ++receipt.interactionEffectsApplied;
-    if (!effect.accepted ||
-        effect.status == iggy3d::creative::
-                             CreativeRuntimeInteractionEffectStatus::
-                                 GeometryRejected) {
+    if (!effect.accepted) {
       return false;
     }
   }
