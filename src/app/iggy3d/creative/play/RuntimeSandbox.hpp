@@ -39,6 +39,7 @@ struct CreativeRuntimeScenarioSummary {
   std::size_t npcEntityCount = 0;
   std::size_t monsterEntityCount = 0;
   std::size_t doorEntityCount = 0;
+  std::size_t platformEntityCount = 0;
   std::size_t controlEntityCount = 0;
   std::size_t automaticControlEntityCount = 0;
   std::size_t pickupEntityCount = 0;

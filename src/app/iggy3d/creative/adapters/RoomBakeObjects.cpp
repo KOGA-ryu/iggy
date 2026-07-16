@@ -480,7 +480,9 @@ void appendSpatialSurfaces(RoomAsset& room,
     return;
   }
 
-  if (role == BakedRoomRole::Floor) {
+  if (role == BakedRoomRole::Floor ||
+      (object.kind == CreativeObjectKind::Platform &&
+       horizontalSurface(classification.orientedSize))) {
     RoomSpatialSurface surface =
         walkableSurfaceForObject(object, bounds, stableObjectId(object));
     appendSpatialSurfaceSource(sources, object.id, surface);

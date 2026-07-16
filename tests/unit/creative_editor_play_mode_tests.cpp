@@ -437,7 +437,7 @@ bool automaticLogicRunsInPlayAndProjectsOccupancy() {
                     entered.automaticEffectsApplied == 1U &&
                     entered.automaticLogic ==
                         cr::CreativeRuntimeAutomaticLogicStatus::Applied &&
-                    doorState->doorOpen,
+                    doorState->targetActive,
                 "play tick applies first-entry trigger effect") &&
          expect(activeScene.logicOverlay.lines.size() == 12U &&
                     activeScene.logicOverlay.lines.front().style == 1U &&
@@ -508,6 +508,63 @@ bool manualAndInvalidLogicLinksRemainInspectableInPlay() {
                     invalid.logicOverlay.lines[12].color.r > 0.9F &&
                     invalid.logicOverlay.lines[12].color.g < 0.3F,
                 "missing runtime target remains visible as a red arrow stub");
+}
+
+bool platformLogicTargetProjectsEnabledAndRetractedState() {
+  cr::CreativeDocument document = playableDocument(false, 921U);
+  const cr::CreativeDocumentCreateReceipt source = createObject(
+      document, cr::CreativeObjectKind::Switch, "Platform Switch",
+      {-2.0F, 1.0F, 0.0F});
+  const cr::CreativeDocumentCreateReceipt platform = createObject(
+      document, cr::CreativeObjectKind::Platform, "Retractable Platform",
+      {3.0F, 1.0F, 0.0F},
+      cr::CreativeBounds{{2.0F, 1.0F, -1.0F}, {4.0F, 1.35F, 1.0F}});
+  if (!source.accepted || !platform.accepted ||
+      !document
+           .setLogicLink({source.objectId, platform.objectId,
+                          cr::CreativeLogicLinkAction::Toggle})
+           .accepted) {
+    return expect(false, "platform overlay setup creates logic target");
+  }
+
+  iggy3d::StaticMeshAssetCatalog catalog;
+  app::CreativeEditorPlayMode mode;
+  if (!start(mode, document, catalog).accepted || !mode.sandbox.has_value()) {
+    return expect(false, "platform overlay setup starts");
+  }
+  const cr::CreativeRuntimeInteractableState* runtimeSource =
+      cr::findCreativeRuntimeInteractableByObjectId(*mode.sandbox,
+                                                    source.objectId);
+  if (runtimeSource == nullptr) {
+    return expect(false, "platform overlay source exists at runtime");
+  }
+  const app::CreativeEditorPlayScene enabled =
+      app::buildCreativeEditorPlayScene(mode, source.objectId);
+  const cr::CreativeRuntimeInteractionEffectReceipt retracted =
+      cr::applyCreativeRuntimeInteractionEffect(*mode.sandbox,
+                                                runtimeSource->entity);
+  const app::CreativeEditorPlayScene disabled =
+      app::buildCreativeEditorPlayScene(mode, source.objectId);
+
+  return expect(enabled.logicOverlay.lines.size() == 27U &&
+                    enabled.logicOverlay.targetEdgeCount == 12U &&
+                    enabled.logicOverlay.invalidLinkCount == 0U &&
+                    enabled.logicOverlay.lines[15].objectId ==
+                        platform.objectId &&
+                    enabled.logicOverlay.lines[15].color.g > 0.9F,
+                "enabled platform projects as a valid green logic target") &&
+         expect(retracted.accepted && retracted.changed &&
+                    retracted.affectedTargetCount == 1U &&
+                    retracted.affectedPlatformCount == 1U &&
+                    retracted.affectedDoorCount == 0U &&
+                    retracted.geometryRevision == 1U,
+                "platform switch publishes one generic target transition") &&
+         expect(disabled.logicOverlay.lines.size() == 27U &&
+                    disabled.logicOverlay.targetEdgeCount == 12U &&
+                    disabled.logicOverlay.lines[15].color.r > 0.9F &&
+                    disabled.logicOverlay.lines[15].color.g > 0.5F &&
+                    disabled.logicOverlay.lines[15].color.g < 0.8F,
+                "retracted platform remains inspectable as an amber target");
 }
 
 bool startStopAndProjectionPreserveAuthoredDocument() {
@@ -817,6 +874,7 @@ int main() {
                   playHudIsBoundedAndUsesTargetState() &&
                   automaticLogicRunsInPlayAndProjectsOccupancy() &&
                   manualAndInvalidLogicLinksRemainInspectableInPlay() &&
+                  platformLogicTargetProjectsEnabledAndRetractedState() &&
                   startStopAndProjectionPreserveAuthoredDocument() &&
                   fixedTickMovementAndCatchUpAreBounded() &&
                   idleTicksAdvanceAndStaleDocumentsStop() &&

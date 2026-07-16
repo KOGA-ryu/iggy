@@ -17,9 +17,16 @@ namespace iggy3d::creative {
 
 enum class CreativeRuntimeInteractableKind : std::uint8_t {
   Door,
+  Platform,
   Control,
   Pickup,
 };
+
+[[nodiscard]] bool creativeRuntimeInteractableIsLogicTarget(
+    CreativeRuntimeInteractableKind kind) noexcept;
+[[nodiscard]] bool creativeRuntimeLogicActionSupported(
+    CreativeRuntimeInteractableKind targetKind,
+    CreativeLogicLinkAction action) noexcept;
 
 enum class CreativeRuntimeLogicSourceMode : std::uint8_t {
   None,
@@ -69,6 +76,7 @@ struct CreativeRuntimeInteractableCatalog {
   std::string_view reasonCode =
       "creative_runtime_interactable_catalog_invalid";
   std::size_t doorCount = 0U;
+  std::size_t platformCount = 0U;
   std::size_t controlCount = 0U;
   std::size_t automaticControlCount = 0U;
   std::size_t pickupCount = 0U;
@@ -98,14 +106,15 @@ struct CreativeRuntimeRoomSurfaceSnapshot {
 struct CreativeRuntimeInteractableState {
   CreativeRuntimeInteractableDefinition definition;
   EntityId entity;
-  bool doorOpen = false;
+  // Door: open when active. Platform: enabled/present when active.
+  bool targetActive = false;
   bool pickupConsumed = false;
   std::size_t occupantCount = 0U;
   CreativeRuntimeOccupancyTransition lastOccupancyTransition =
       CreativeRuntimeOccupancyTransition::None;
   std::uint64_t lastOccupancyTransitionTick = 0U;
-  std::vector<CreativeRuntimeRoomMeshSnapshot> closedDoorMeshes;
-  std::vector<CreativeRuntimeRoomSurfaceSnapshot> closedDoorSurfaces;
+  std::vector<CreativeRuntimeRoomMeshSnapshot> targetMeshes;
+  std::vector<CreativeRuntimeRoomSurfaceSnapshot> targetSurfaces;
 };
 
 enum class CreativeRuntimeLogicSignal : std::uint8_t {
@@ -115,29 +124,34 @@ enum class CreativeRuntimeLogicSignal : std::uint8_t {
   Count,
 };
 
-struct CreativeRuntimeDoorStateFact {
+struct CreativeRuntimeLogicTargetStateFact {
   CreativeObjectId objectId = kInvalidObjectId;
-  bool open = false;
+  CreativeRuntimeInteractableKind kind =
+      CreativeRuntimeInteractableKind::Door;
+  bool active = false;
 };
 
-struct CreativeRuntimeDoorStateCommand {
+struct CreativeRuntimeLogicTargetStateCommand {
   CreativeObjectId objectId = kInvalidObjectId;
-  bool open = false;
+  CreativeRuntimeInteractableKind kind =
+      CreativeRuntimeInteractableKind::Door;
+  bool active = false;
 };
 
 struct CreativeRuntimeLogicActivationPlan {
   bool ok = false;
   bool compatibilityFallback = false;
   std::string_view reasonCode = "creative_runtime_logic_plan_invalid";
-  std::vector<CreativeRuntimeDoorStateCommand> commands;
+  std::vector<CreativeRuntimeLogicTargetStateCommand> commands;
 };
 
-// Pure source-to-door planner. Pulse preserves manual toggle behavior;
-// Activate/Deactivate provide paired pressure-plate semantics.
+// Pure source-to-target planner. `active` means open for doors and enabled for
+// platforms. Pulse preserves manual toggle behavior; Activate/Deactivate
+// provide paired pressure-plate semantics.
 [[nodiscard]] CreativeRuntimeLogicActivationPlan
 planCreativeRuntimeLogicActivation(
     std::span<const CreativeRuntimeLogicLink> links,
-    std::span<const CreativeRuntimeDoorStateFact> doors,
+    std::span<const CreativeRuntimeLogicTargetStateFact> targets,
     CreativeObjectId sourceObjectId,
     CreativeRuntimeLogicSignal signal);
 
@@ -157,7 +171,7 @@ enum class CreativeRuntimeInteractionEffectStatus : std::uint8_t {
   NotRequested,
   TargetMissing,
   UnsupportedTarget,
-  NoLinkedDoor,
+  NoLinkedTarget,
   GeometryRejected,
   DoorOpened,
   DoorClosed,
@@ -180,7 +194,9 @@ struct CreativeRuntimeInteractionEffectReceipt {
   CreativeObjectId objectId = kInvalidObjectId;
   std::string displayName;
   std::string itemId;
+  std::size_t affectedTargetCount = 0U;
   std::size_t affectedDoorCount = 0U;
+  std::size_t affectedPlatformCount = 0U;
   std::uint64_t geometryRevision = 0U;
 };
 
@@ -205,7 +221,9 @@ struct CreativeRuntimeAutomaticLogicReceipt {
   std::size_t occupiedSourceCount = 0U;
   std::size_t occupancyTransitionCount = 0U;
   std::size_t activationEffectCount = 0U;
+  std::size_t affectedTargetCount = 0U;
   std::size_t affectedDoorCount = 0U;
+  std::size_t affectedPlatformCount = 0U;
   CreativeRuntimeInteractionEffectStatus lastEffect =
       CreativeRuntimeInteractionEffectStatus::NotRequested;
   std::uint64_t geometryRevision = 0U;

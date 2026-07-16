@@ -166,7 +166,9 @@ CreativeEditorPlayTarget resolveModeTarget(
     result.displayName = interactable->definition.displayName;
     switch (interactable->definition.kind) {
       case iggy3d::creative::CreativeRuntimeInteractableKind::Door:
-        result.actionPrompt = interactable->doorOpen ? "CLOSE" : "OPEN";
+        result.actionPrompt = interactable->targetActive ? "CLOSE" : "OPEN";
+        break;
+      case iggy3d::creative::CreativeRuntimeInteractableKind::Platform:
         break;
       case iggy3d::creative::CreativeRuntimeInteractableKind::Control:
         result.actionPrompt = "ACTIVATE";

@@ -155,12 +155,12 @@ bool moveEntity(cr::CreativeRuntimeSandbox& sandbox,
              .status == iggy3d::WorldStatus::Ok;
 }
 
-const cr::CreativeRuntimeDoorStateCommand* findCommand(
+const cr::CreativeRuntimeLogicTargetStateCommand* findCommand(
     const cr::CreativeRuntimeLogicActivationPlan& plan,
     cr::CreativeObjectId objectId) {
   const auto found = std::find_if(
       plan.commands.begin(), plan.commands.end(),
-      [objectId](const cr::CreativeRuntimeDoorStateCommand& command) {
+      [objectId](const cr::CreativeRuntimeLogicTargetStateCommand& command) {
         return command.objectId == objectId;
       });
   return found == plan.commands.end() ? nullptr : &*found;
@@ -172,70 +172,104 @@ bool pureLogicPlannerPairsAutomaticSignals() {
       {kSource, 21U, cr::CreativeLogicLinkAction::Toggle, false},
       {kSource, 22U, cr::CreativeLogicLinkAction::Open, false},
       {kSource, 23U, cr::CreativeLogicLinkAction::Close, false},
+      {kSource, 24U, cr::CreativeLogicLinkAction::Enable, false},
+      {kSource, 25U, cr::CreativeLogicLinkAction::Disable, false},
   };
-  const std::vector<cr::CreativeRuntimeDoorStateFact> doors{
-      {21U, false}, {22U, true}, {23U, true}};
+  using Kind = cr::CreativeRuntimeInteractableKind;
+  const std::vector<cr::CreativeRuntimeLogicTargetStateFact> targets{
+      {21U, Kind::Door, false},     {22U, Kind::Door, true},
+      {23U, Kind::Door, true},      {24U, Kind::Platform, false},
+      {25U, Kind::Platform, true},
+  };
   const cr::CreativeRuntimeLogicActivationPlan pulse =
       cr::planCreativeRuntimeLogicActivation(
-          links, doors, kSource, cr::CreativeRuntimeLogicSignal::Pulse);
+          links, targets, kSource, cr::CreativeRuntimeLogicSignal::Pulse);
   const cr::CreativeRuntimeLogicActivationPlan activate =
       cr::planCreativeRuntimeLogicActivation(
-          links, doors, kSource, cr::CreativeRuntimeLogicSignal::Activate);
-  const std::vector<cr::CreativeRuntimeDoorStateFact> activatedDoors{
-      {21U, true}, {22U, true}, {23U, false}};
+          links, targets, kSource, cr::CreativeRuntimeLogicSignal::Activate);
+  const std::vector<cr::CreativeRuntimeLogicTargetStateFact> activatedTargets{
+      {21U, Kind::Door, true},      {22U, Kind::Door, true},
+      {23U, Kind::Door, false},     {24U, Kind::Platform, true},
+      {25U, Kind::Platform, false},
+  };
   const cr::CreativeRuntimeLogicActivationPlan deactivate =
       cr::planCreativeRuntimeLogicActivation(
-          links, activatedDoors, kSource,
+          links, activatedTargets, kSource,
           cr::CreativeRuntimeLogicSignal::Deactivate);
-  const std::vector<cr::CreativeRuntimeLogicLink> missingDoorLinks{
+  const std::vector<cr::CreativeRuntimeLogicLink> missingTargetLinks{
       {kSource, 99U, cr::CreativeLogicLinkAction::Toggle, false}};
-  const cr::CreativeRuntimeLogicActivationPlan missingDoor =
+  const cr::CreativeRuntimeLogicActivationPlan missingTarget =
       cr::planCreativeRuntimeLogicActivation(
-          missingDoorLinks, doors, kSource,
+          missingTargetLinks, targets, kSource,
+          cr::CreativeRuntimeLogicSignal::Pulse);
+  const std::vector<cr::CreativeRuntimeLogicLink> invalidPlatformLinks{
+      {kSource, 24U, cr::CreativeLogicLinkAction::Open, false}};
+  const cr::CreativeRuntimeLogicActivationPlan invalidPlatformAction =
+      cr::planCreativeRuntimeLogicActivation(
+          invalidPlatformLinks, targets, kSource,
+          cr::CreativeRuntimeLogicSignal::Pulse);
+  const std::vector<cr::CreativeRuntimeLogicLink> invalidCompatibilityLinks{
+      {kSource, 21U, cr::CreativeLogicLinkAction::Open, true}};
+  const cr::CreativeRuntimeLogicActivationPlan invalidCompatibilityAction =
+      cr::planCreativeRuntimeLogicActivation(
+          invalidCompatibilityLinks, targets, kSource,
           cr::CreativeRuntimeLogicSignal::Pulse);
   const cr::CreativeRuntimeLogicActivationPlan invalidSignal =
       cr::planCreativeRuntimeLogicActivation(
-          links, doors, kSource,
+          links, targets, kSource,
           static_cast<cr::CreativeRuntimeLogicSignal>(255U));
-  const std::vector<cr::CreativeRuntimeDoorStateFact> duplicateDoors{
-      {21U, false}, {21U, true}};
-  const cr::CreativeRuntimeLogicActivationPlan duplicateDoorFacts =
+  const std::vector<cr::CreativeRuntimeLogicTargetStateFact> duplicateTargets{
+      {21U, Kind::Door, false}, {21U, Kind::Door, true}};
+  const cr::CreativeRuntimeLogicActivationPlan duplicateTargetFacts =
       cr::planCreativeRuntimeLogicActivation(
-          links, duplicateDoors, kSource,
+          links, duplicateTargets, kSource,
           cr::CreativeRuntimeLogicSignal::Pulse);
 
-  const cr::CreativeRuntimeDoorStateCommand* pulseToggle =
+  const cr::CreativeRuntimeLogicTargetStateCommand* pulseToggle =
       findCommand(pulse, 21U);
-  const cr::CreativeRuntimeDoorStateCommand* pulseOpen =
+  const cr::CreativeRuntimeLogicTargetStateCommand* pulseOpen =
       findCommand(pulse, 22U);
-  const cr::CreativeRuntimeDoorStateCommand* pulseClose =
+  const cr::CreativeRuntimeLogicTargetStateCommand* pulseClose =
       findCommand(pulse, 23U);
-  const cr::CreativeRuntimeDoorStateCommand* activeToggle =
+  const cr::CreativeRuntimeLogicTargetStateCommand* pulseEnable =
+      findCommand(pulse, 24U);
+  const cr::CreativeRuntimeLogicTargetStateCommand* pulseDisable =
+      findCommand(pulse, 25U);
+  const cr::CreativeRuntimeLogicTargetStateCommand* activeToggle =
       findCommand(activate, 21U);
-  const cr::CreativeRuntimeDoorStateCommand* inactiveToggle =
+  const cr::CreativeRuntimeLogicTargetStateCommand* inactiveToggle =
       findCommand(deactivate, 21U);
-  const cr::CreativeRuntimeDoorStateCommand* inactiveOpen =
+  const cr::CreativeRuntimeLogicTargetStateCommand* inactiveOpen =
       findCommand(deactivate, 22U);
-  const cr::CreativeRuntimeDoorStateCommand* inactiveClose =
+  const cr::CreativeRuntimeLogicTargetStateCommand* inactiveClose =
       findCommand(deactivate, 23U);
+  const cr::CreativeRuntimeLogicTargetStateCommand* inactiveEnable =
+      findCommand(deactivate, 24U);
+  const cr::CreativeRuntimeLogicTargetStateCommand* inactiveDisable =
+      findCommand(deactivate, 25U);
 
-  return expect(pulse.ok && pulse.commands.size() == 3U &&
-                    pulseToggle != nullptr && pulseToggle->open &&
-                    pulseOpen != nullptr && pulseOpen->open &&
-                    pulseClose != nullptr && !pulseClose->open,
-                "pulse applies authored Toggle Open and Close actions") &&
+  return expect(pulse.ok && pulse.commands.size() == 5U &&
+                    pulseToggle != nullptr && pulseToggle->active &&
+                    pulseOpen != nullptr && pulseOpen->active &&
+                    pulseClose != nullptr && !pulseClose->active &&
+                    pulseEnable != nullptr && pulseEnable->active &&
+                    pulseDisable != nullptr && !pulseDisable->active,
+                "pulse applies target-specific door and platform actions") &&
          expect(activate.ok && activeToggle != nullptr &&
-                    activeToggle->open,
+                    activeToggle->active,
                 "activation applies Toggle against the entry state") &&
          expect(deactivate.ok && inactiveToggle != nullptr &&
-                    !inactiveToggle->open && inactiveOpen != nullptr &&
-                    !inactiveOpen->open && inactiveClose != nullptr &&
-                    inactiveClose->open,
+                    !inactiveToggle->active && inactiveOpen != nullptr &&
+                    !inactiveOpen->active && inactiveClose != nullptr &&
+                    inactiveClose->active && inactiveEnable != nullptr &&
+                    !inactiveEnable->active && inactiveDisable != nullptr &&
+                    inactiveDisable->active,
                 "deactivation reverses paired pressure-plate actions") &&
-         expect(!missingDoor.ok && missingDoor.commands.empty(),
-                "planner fails closed when a linked door fact is absent") &&
-         expect(!invalidSignal.ok && !duplicateDoorFacts.ok,
-                "planner rejects invalid enums and duplicate door facts");
+         expect(!missingTarget.ok && missingTarget.commands.empty(),
+                "planner fails closed when a linked target fact is absent") &&
+         expect(!invalidPlatformAction.ok && !invalidCompatibilityAction.ok &&
+                    !invalidSignal.ok && !duplicateTargetFacts.ok,
+                "planner rejects incompatible actions and invalid facts");
 }
 
 bool pureSeedMapsPlayerAndActorPolicies() {
@@ -663,7 +697,7 @@ bool automaticSourcesCountOccupantsAndRearm() {
   }
   const cr::CreativeRuntimeAutomaticLogicReceipt triggerEntered =
       cr::updateCreativeRuntimeAutomaticLogic(sandbox);
-  const bool triggerOpened = triggerDoorState->doorOpen;
+  const bool triggerOpened = triggerDoorState->targetActive;
   const std::size_t triggerCountAfterEnter = triggerState->occupantCount;
   if (!moveEntity(sandbox, npcEntityId, {0.5F, 0.25F, 0.0F})) {
     return expect(false, "npc moves into occupied trigger");
@@ -688,7 +722,7 @@ bool automaticSourcesCountOccupantsAndRearm() {
   }
   const cr::CreativeRuntimeAutomaticLogicReceipt triggerReentered =
       cr::updateCreativeRuntimeAutomaticLogic(sandbox);
-  const bool triggerClosed = !triggerDoorState->doorOpen;
+  const bool triggerClosed = !triggerDoorState->targetActive;
   const cr::CreativeRuntimeOccupancyTransition triggerReentryTransition =
       triggerState->lastOccupancyTransition;
 
@@ -697,7 +731,7 @@ bool automaticSourcesCountOccupantsAndRearm() {
   }
   const cr::CreativeRuntimeAutomaticLogicReceipt plateEntered =
       cr::updateCreativeRuntimeAutomaticLogic(sandbox);
-  const bool plateOpened = plateDoorState->doorOpen;
+  const bool plateOpened = plateDoorState->targetActive;
   const std::size_t plateCountAfterEnter = plateState->occupantCount;
   if (!moveEntity(sandbox, npcEntityId, {2.75F, 0.25F, 0.0F})) {
     return expect(false, "npc moves onto occupied plate");
@@ -770,7 +804,7 @@ bool automaticSourcesCountOccupantsAndRearm() {
                     onePlateOccupantCount == 1U,
                 "plate stays active until every occupant leaves") &&
          expect(plateExited.activationEffectCount == 1U &&
-                    !plateDoorState->doorOpen &&
+                    !plateDoorState->targetActive &&
                     exitedPlateCount == 0U &&
                     plateExited.status ==
                         cr::CreativeRuntimeAutomaticLogicStatus::Applied &&
@@ -987,11 +1021,204 @@ bool authoredInteractablesOwnExplicitCircuitsAndDynamicGeometry() {
                 "shared parent circuit toggles linked doors and restores order") &&
          expect(noLink.accepted && !noLink.changed &&
                     noLink.status ==
-                        cr::CreativeRuntimeInteractionEffectStatus::NoLinkedDoor,
+                        cr::CreativeRuntimeInteractionEffectStatus::NoLinkedTarget,
                 "ungrouped control reports no link instead of guessing") &&
          expect(document.revision() == authoredRevision &&
                     document.objectCount() == authoredObjectCount,
                 "runtime interactable effects leave authored content untouched");
+}
+
+bool retractablePlatformPublishesAtomicallyAndRejectsOccupiedRestore() {
+  cr::CreativeDocument document = playableDocument(false, 48U);
+  const cr::CreativeDocumentCreateReceipt platform = createObject(
+      document, cr::CreativeObjectKind::Platform, "Retractable Platform",
+      {3.0, 1.0, 0.0}, std::nullopt,
+      cr::CreativeBounds{{2.0, 1.0, -1.0}, {4.0, 1.35, 1.0}});
+  const cr::CreativeDocumentCreateReceipt button = createObject(
+      document, cr::CreativeObjectKind::Button, "Platform Button",
+      {-2.0, 1.0, 0.0});
+  const cr::CreativeDocumentCreateReceipt door = createObject(
+      document, cr::CreativeObjectKind::Door, "Coupled Door",
+      {0.0, 1.0, 4.0});
+  const cr::CreativeDocumentCreateReceipt staticPlatform = createObject(
+      document, cr::CreativeObjectKind::Platform, "Static Platform",
+      {-3.0, 1.0, 3.0}, std::nullopt,
+      cr::CreativeBounds{{-4.0, 1.0, 2.0}, {-2.0, 1.35, 4.0}});
+  if (!platform.accepted || !button.accepted || !door.accepted ||
+      !staticPlatform.accepted ||
+      !document
+           .setLogicLink({button.objectId, platform.objectId,
+                          cr::CreativeLogicLinkAction::Toggle})
+           .accepted ||
+      !document
+           .setLogicLink({button.objectId, door.objectId,
+                          cr::CreativeLogicLinkAction::Toggle})
+           .accepted) {
+    return expect(false, "retractable platform setup creates authored circuit");
+  }
+  const std::uint64_t authoredRevision = document.revision();
+
+  cr::CreativePlayPreparationResult prepared = prepare(document);
+  if (!prepared.payload.has_value()) {
+    return expect(false, "retractable platform prepares play payload");
+  }
+  cr::CreativeRuntimeSandboxActivationRequest request;
+  request.sourceDocument = &document;
+  request.payload = std::move(*prepared.payload);
+  cr::CreativeRuntimeSandboxActivationResult activated =
+      cr::activateCreativeRuntimeSandbox(std::move(request));
+  if (!activated.sandbox.has_value()) {
+    return expect(false, activated.receipt.reasonCode);
+  }
+  cr::CreativeRuntimeSandbox& sandbox = *activated.sandbox;
+  cr::CreativeRuntimeInteractableState* platformState =
+      findInteractable(sandbox, platform.objectId);
+  cr::CreativeRuntimeInteractableState* buttonState =
+      findInteractable(sandbox, button.objectId);
+  cr::CreativeRuntimeInteractableState* doorState =
+      findInteractable(sandbox, door.objectId);
+  const cr::CreativeRuntimeInteractableState* staticPlatformState =
+      findInteractable(sandbox, staticPlatform.objectId);
+  if (platformState == nullptr || buttonState == nullptr ||
+      doorState == nullptr || staticPlatformState != nullptr) {
+    return expect(false, "retractable platform runtime states exist");
+  }
+  const iggy3d::EntityState* platformEntity =
+      sandbox.session.state().world.findById(platformState->entity);
+  if (platformEntity == nullptr) {
+    return expect(false, "retractable platform runtime marker exists");
+  }
+
+  const std::size_t enabledMeshCount = sandbox.room.staticMeshes.size();
+  const std::size_t enabledSurfaceCount = sandbox.room.spatialSurfaces.size();
+  const std::size_t enabledColliderCount = sandbox.collisionSurfaces.size();
+  const iggy3d::ReasoningGraphSummary enabledReasoning =
+      sandbox.reasoningGraph;
+  const std::vector<std::string> enabledMeshOrder =
+      sandbox.roomStaticMeshOrder;
+  const std::vector<std::string> enabledSurfaceOrder =
+      sandbox.roomSpatialSurfaceOrder;
+  const std::string staticPlatformMeshId =
+      "creative_object_" + std::to_string(staticPlatform.objectId);
+  const bool staticPlatformRemainsPhysical =
+      std::any_of(sandbox.room.staticMeshes.begin(),
+                  sandbox.room.staticMeshes.end(),
+                  [&staticPlatformMeshId](
+                      const iggy3d::RoomStaticMeshAsset& mesh) {
+                    return mesh.id == staticPlatformMeshId;
+                  }) &&
+      std::any_of(
+          sandbox.room.spatialSurfaces.begin(),
+          sandbox.room.spatialSurfaces.end(),
+          [&staticPlatformMeshId](const iggy3d::RoomSpatialSurface& surface) {
+            return surface.sourceStaticMeshId == staticPlatformMeshId;
+          });
+
+  const cr::CreativeRuntimeInteractionEffectReceipt disabled =
+      cr::applyCreativeRuntimeInteractionEffect(sandbox, buttonState->entity);
+  const bool disabledState = !platformState->targetActive;
+  const bool coupledDoorOpened = doorState->targetActive;
+  const bool platformMeshRemoved = std::none_of(
+      sandbox.room.staticMeshes.begin(), sandbox.room.staticMeshes.end(),
+      [&platformState](const iggy3d::RoomStaticMeshAsset& mesh) {
+        return mesh.id == platformState->definition.roomMeshId;
+      });
+  if (!moveEntity(sandbox, {1U}, {3.0F, 1.1F, 0.0F})) {
+    return expect(false, "player moves into retracted platform volume");
+  }
+  const std::size_t retractedMeshCount = sandbox.room.staticMeshes.size();
+  const std::size_t retractedSurfaceCount = sandbox.room.spatialSurfaces.size();
+  const std::size_t retractedColliderCount = sandbox.collisionSurfaces.size();
+  const cr::CreativeRuntimeInteractionEffectReceipt occupied =
+      cr::applyCreativeRuntimeInteractionEffect(sandbox, buttonState->entity);
+  const bool occupiedStateStayedDisabled = !platformState->targetActive;
+  const bool occupiedDoorStayedOpen = doorState->targetActive;
+  const std::uint64_t revisionAfterOccupiedReject = sandbox.geometryRevision;
+  const std::size_t meshCountAfterOccupiedReject =
+      sandbox.room.staticMeshes.size();
+  const std::size_t surfaceCountAfterOccupiedReject =
+      sandbox.room.spatialSurfaces.size();
+  const std::size_t colliderCountAfterOccupiedReject =
+      sandbox.collisionSurfaces.size();
+  if (!moveEntity(sandbox, {1U}, {-4.0F, 0.25F, 0.0F})) {
+    return expect(false, "player leaves retracted platform volume");
+  }
+  const cr::CreativeRuntimeInteractionEffectReceipt enabled =
+      cr::applyCreativeRuntimeInteractionEffect(sandbox, buttonState->entity);
+
+  const bool meshOrderRestored =
+      sandbox.room.staticMeshes.size() == enabledMeshOrder.size() &&
+      std::equal(sandbox.room.staticMeshes.begin(),
+                 sandbox.room.staticMeshes.end(), enabledMeshOrder.begin(),
+                 [](const iggy3d::RoomStaticMeshAsset& mesh,
+                    const std::string& id) { return mesh.id == id; });
+  const bool surfaceOrderRestored =
+      sandbox.room.spatialSurfaces.size() == enabledSurfaceOrder.size() &&
+      std::equal(sandbox.room.spatialSurfaces.begin(),
+                 sandbox.room.spatialSurfaces.end(),
+                 enabledSurfaceOrder.begin(),
+                 [](const iggy3d::RoomSpatialSurface& surface,
+                    const std::string& id) { return surface.id == id; });
+
+  return expect(activated.receipt.scenario.platformEntityCount == 1U &&
+                    platformEntity->kind == iggy3d::EntityKind::Marker &&
+                    !platformEntity->active &&
+                    !platformEntity->targeting.targetable &&
+                    platformState->targetMeshes.size() == 1U &&
+                    platformState->targetSurfaces.size() == 1U &&
+                    staticPlatformRemainsPhysical,
+                "only linked platform seeds while static platforms stay physical") &&
+         expect(disabled.accepted && disabled.changed &&
+                    disabled.status ==
+                        cr::CreativeRuntimeInteractionEffectStatus::LinksApplied &&
+                    disabled.affectedTargetCount == 2U &&
+                    disabled.affectedDoorCount == 1U &&
+                    disabled.affectedPlatformCount == 1U &&
+                    disabled.geometryRevision == 1U && platformMeshRemoved &&
+                    disabledState && coupledDoorOpened &&
+                    retractedMeshCount + platformState->targetMeshes.size() +
+                            doorState->targetMeshes.size() ==
+                        enabledMeshCount &&
+                    retractedSurfaceCount +
+                            platformState->targetSurfaces.size() +
+                            doorState->targetSurfaces.size() ==
+                        enabledSurfaceCount &&
+                    retractedColliderCount +
+                            platformState->targetSurfaces.size() +
+                            doorState->targetSurfaces.size() ==
+                        enabledColliderCount,
+                "one source transitions platform and door in one revision") &&
+         expect(!occupied.accepted && !occupied.changed &&
+                    occupied.status ==
+                        cr::CreativeRuntimeInteractionEffectStatus::
+                            GeometryRejected &&
+                    occupied.reasonCode ==
+                        "creative_runtime_platform_enable_occupied" &&
+                    occupied.geometryRevision == 1U &&
+                    revisionAfterOccupiedReject == 1U &&
+                    occupiedStateStayedDisabled && occupiedDoorStayedOpen &&
+                    meshCountAfterOccupiedReject == retractedMeshCount &&
+                    surfaceCountAfterOccupiedReject == retractedSurfaceCount &&
+                    colliderCountAfterOccupiedReject == retractedColliderCount,
+                "occupied restore rejects without publishing partial state") &&
+         expect(enabled.accepted && enabled.changed &&
+                    enabled.affectedTargetCount == 2U &&
+                    enabled.affectedDoorCount == 1U &&
+                    enabled.affectedPlatformCount == 1U &&
+                    enabled.geometryRevision == 2U &&
+                    platformState->targetActive && !doorState->targetActive &&
+                    meshOrderRestored &&
+                    surfaceOrderRestored &&
+                    sandbox.room.staticMeshes.size() == enabledMeshCount &&
+                    sandbox.room.spatialSurfaces.size() == enabledSurfaceCount &&
+                    sandbox.collisionSurfaces.size() == enabledColliderCount &&
+                    sandbox.reasoningGraph.nodeCount ==
+                        enabledReasoning.nodeCount &&
+                    sandbox.reasoningGraph.edgeCount ==
+                        enabledReasoning.edgeCount,
+                "clear restore republishes exact geometry collision and reasoning") &&
+         expect(document.revision() == authoredRevision,
+                "runtime platform transitions leave authored content untouched");
 }
 
 }  // namespace
@@ -1004,6 +1231,7 @@ int main() {
                   sandboxFreshnessAndStopAreExplicit() &&
                   runningSnapshotDoesNotTrackLaterDocumentEdits() &&
                   automaticSourcesCountOccupantsAndRearm() &&
-                  authoredInteractablesOwnExplicitCircuitsAndDynamicGeometry();
+                  authoredInteractablesOwnExplicitCircuitsAndDynamicGeometry() &&
+                  retractablePlatformPublishesAtomicallyAndRejectsOccupiedRestore();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -392,7 +392,9 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         "Platform",
         "Platform",
         "static traversal platform",
-        structuralCreationDirtyFlags() | flagValue(CreativeObjectDirtyFlag::Navigation),
+        structuralCreationDirtyFlags() |
+            flagValue(CreativeObjectDirtyFlag::Logic) |
+            flagValue(CreativeObjectDirtyFlag::Navigation),
         boxDefaults(3.0, 0.35, 3.0),
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
     ),

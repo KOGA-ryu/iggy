@@ -196,20 +196,21 @@ void appendText(CreativeEditorPlayHudFrame& hud,
       break;
     case Status::LinksApplied:
       std::snprintf(result.chars.data(), result.chars.size(),
-                    "ACTIVATED %zu LINKED DOOR%s", effect.affectedDoorCount,
-                    effect.affectedDoorCount == 1U ? "" : "S");
+                    "ACTIVATED %zu LINKED TARGET%s",
+                    effect.affectedTargetCount,
+                    effect.affectedTargetCount == 1U ? "" : "S");
       break;
     case Status::LinksNoChange:
       std::snprintf(result.chars.data(), result.chars.size(),
-                    "LINKED DOORS ALREADY SET");
+                    "LINKED TARGETS ALREADY SET");
       break;
     case Status::PickupAcquired:
       std::snprintf(result.chars.data(), result.chars.size(), "PICKED UP %.78s",
                     effect.displayName.c_str());
       break;
-    case Status::NoLinkedDoor:
+    case Status::NoLinkedTarget:
       std::snprintf(result.chars.data(), result.chars.size(),
-                    "NO LINKED DOOR");
+                    "NO LINKED TARGET");
       break;
     case Status::NotRequested:
     case Status::TargetMissing:
@@ -470,7 +471,7 @@ CreativeEditorPlayHudFrame buildCreativeEditorPlayHud(
   if (!effectText.view().empty()) {
     const bool warning =
         mode.lastInteractionEffect.status ==
-        iggy3d::creative::CreativeRuntimeInteractionEffectStatus::NoLinkedDoor;
+        iggy3d::creative::CreativeRuntimeInteractionEffectStatus::NoLinkedTarget;
     appendText(hud, effectText.view(), panelX + 10, panelY + 49,
                frame.viewport.width, frame.viewport.height,
                warning ? HudColor{0.98F, 0.84F, 0.24F, 1.0F}

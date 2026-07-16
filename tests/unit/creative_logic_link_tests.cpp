@@ -206,22 +206,46 @@ bool automaticSourcesUseTheSameAuthoredLinkContract() {
   const auto plate =
       create(document, cr::CreativeObjectKind::PressurePlate, "Plate");
   const auto door = create(document, cr::CreativeObjectKind::Door, "Door");
+  const auto platform =
+      create(document, cr::CreativeObjectKind::Platform, "Platform");
   const cr::CreativeLogicLinkMutationReceipt triggerLink =
       document.setLogicLink({trigger.objectId, door.objectId,
                              cr::CreativeLogicLinkAction::Toggle});
   const cr::CreativeLogicLinkMutationReceipt plateLink =
       document.setLogicLink(
           {plate.objectId, door.objectId, cr::CreativeLogicLinkAction::Open});
+  const cr::CreativeLogicLinkMutationReceipt platformLink =
+      document.setLogicLink({trigger.objectId, platform.objectId,
+                             cr::CreativeLogicLinkAction::Enable});
+  const cr::CreativeLogicLinkMutationReceipt invalidPlatformAction =
+      document.setLogicLink({plate.objectId, platform.objectId,
+                             cr::CreativeLogicLinkAction::Open});
 
   return expect(cr::creativeObjectCanSourceLogicLink(
                     cr::CreativeObjectKind::TriggerZone) &&
                     cr::creativeObjectCanSourceLogicLink(
                         cr::CreativeObjectKind::PressurePlate),
                 "automatic controls are authored link sources") &&
+         expect(cr::creativeObjectCanTargetLogicLink(
+                    cr::CreativeObjectKind::Platform) &&
+                    cr::creativeLogicLinkActionSupported(
+                        cr::CreativeObjectKind::Platform,
+                        cr::CreativeLogicLinkAction::Toggle) &&
+                    cr::creativeLogicLinkActionSupported(
+                        cr::CreativeObjectKind::Platform,
+                        cr::CreativeLogicLinkAction::Enable) &&
+                    !cr::creativeLogicLinkActionSupported(
+                        cr::CreativeObjectKind::Platform,
+                        cr::CreativeLogicLinkAction::Open),
+                "platform target capability is explicit") &&
          expect(triggerLink.accepted && triggerLink.changed &&
                     plateLink.accepted && plateLink.changed &&
-                    document.logicLinks().size() == 2U,
-                "automatic controls use canonical source-target links");
+                    platformLink.accepted && platformLink.changed &&
+                    !invalidPlatformAction.accepted &&
+                    invalidPlatformAction.status ==
+                        cr::CreativeLogicLinkMutationStatus::UnsupportedTarget &&
+                    document.logicLinks().size() == 3U,
+                "automatic controls use target-specific canonical links");
 }
 
 bool diagnosticsExposeUnlinkedMissingAndCompetingSources() {

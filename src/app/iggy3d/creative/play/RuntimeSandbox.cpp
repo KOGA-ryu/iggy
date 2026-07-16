@@ -96,6 +96,7 @@ bool interactableDefinitionIsValid(
   }
   switch (definition.kind) {
     case CreativeRuntimeInteractableKind::Door:
+    case CreativeRuntimeInteractableKind::Platform:
       return definition.logicSourceMode ==
                  CreativeRuntimeLogicSourceMode::None &&
              !definition.roomMeshId.empty() && definition.itemId.empty();
@@ -157,11 +158,11 @@ bool logicLinksAreValid(
         });
     if (source == definitions.end() || target == definitions.end() ||
         source->kind != CreativeRuntimeInteractableKind::Control ||
-        target->kind != CreativeRuntimeInteractableKind::Door ||
-        !creativeLogicLinkActionSupported(CreativeObjectKind::Door,
-                                          link.action) ||
+        !creativeRuntimeInteractableIsLogicTarget(target->kind) ||
+        !creativeRuntimeLogicActionSupported(target->kind, link.action) ||
         (link.compatibilityFallback &&
          (link.action != CreativeLogicLinkAction::Toggle ||
+          target->kind != CreativeRuntimeInteractableKind::Door ||
           source->circuitId == kInvalidObjectId ||
           target->circuitId != source->circuitId))) {
       return false;
@@ -268,6 +269,10 @@ ScenarioEntitySeed makeInteractableEntity(
       entity.interaction.primaryEffect =
           ScenarioInteractionEffectKind::EmitEventOnly;
       entity.interaction.repeatable = true;
+      break;
+    case CreativeRuntimeInteractableKind::Platform:
+      entity.kind = ScenarioEntityKind::Marker;
+      entity.active = false;
       break;
     case CreativeRuntimeInteractableKind::Control:
       entity.kind = ScenarioEntityKind::Marker;
@@ -411,6 +416,9 @@ CreativeRuntimeScenarioSeedResult buildCreativeRuntimeScenarioSeed(
     switch (definition.kind) {
       case CreativeRuntimeInteractableKind::Door:
         ++result.summary.doorEntityCount;
+        break;
+      case CreativeRuntimeInteractableKind::Platform:
+        ++result.summary.platformEntityCount;
         break;
       case CreativeRuntimeInteractableKind::Control:
         ++result.summary.controlEntityCount;

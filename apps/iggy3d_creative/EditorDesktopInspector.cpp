@@ -24,6 +24,8 @@ constexpr std::array kInspectorLogicActions{
     cr::CreativeLogicLinkAction::Toggle,
     cr::CreativeLogicLinkAction::Open,
     cr::CreativeLogicLinkAction::Close,
+    cr::CreativeLogicLinkAction::Enable,
+    cr::CreativeLogicLinkAction::Disable,
 };
 
 // ---- shared small helpers -------------------------------------------------
@@ -110,10 +112,16 @@ void appendLogicLinkRow(const cr::CreativeDocument& document,
     queueCreativeDesktopObjectNavigation(commands, otherId, playModeActive);
   }
   if (!playModeActive) {
+    const cr::CreativeObject* target =
+        document.findObject(link.targetObjectId);
     ImGui::SetNextItemWidth(132.0F);
     if (ImGui::BeginCombo("##logic_action",
                           std::string(cr::toString(link.action)).c_str())) {
       for (const cr::CreativeLogicLinkAction action : kInspectorLogicActions) {
+        if (target == nullptr ||
+            !cr::creativeLogicLinkActionSupported(target->kind, action)) {
+          continue;
+        }
         const bool selected = action == link.action;
         if (ImGui::Selectable(std::string(cr::toString(action)).c_str(),
                               selected) &&
@@ -156,6 +164,9 @@ void appendNewLogicLinkControl(const cr::CreativeDocument& document,
   ImGui::SetNextItemWidth(160.0F);
   if (ImGui::BeginCombo("##new_logic_action", "Add link...")) {
     for (const cr::CreativeLogicLinkAction action : kInspectorLogicActions) {
+      if (!cr::creativeLogicLinkActionSupported(target.kind, action)) {
+        continue;
+      }
       if (ImGui::Selectable(std::string(cr::toString(action)).c_str())) {
         queueSetLogicLink(commands, source->id, target.id, action);
       }
@@ -211,14 +222,23 @@ void appendRuntimeLogicMonitor(const CreativeEditorPlayMode* playMode,
         document.findObject(runtimeLink.targetObjectId);
     const std::string targetName =
         authoredTarget != nullptr ? authoredTarget->name : "<missing>";
-    const char* doorState =
-        target != nullptr && target->definition.kind ==
-                                 cr::CreativeRuntimeInteractableKind::Door
-            ? (target->doorOpen ? "OPEN" : "CLOSED")
-            : "INVALID";
+    const char* targetState = "INVALID";
+    if (target != nullptr) {
+      switch (target->definition.kind) {
+        case cr::CreativeRuntimeInteractableKind::Door:
+          targetState = target->targetActive ? "OPEN" : "CLOSED";
+          break;
+        case cr::CreativeRuntimeInteractableKind::Platform:
+          targetState = target->targetActive ? "ENABLED" : "DISABLED";
+          break;
+        case cr::CreativeRuntimeInteractableKind::Control:
+        case cr::CreativeRuntimeInteractableKind::Pickup:
+          break;
+      }
+    }
     const std::string label = targetName + "  [" +
                               std::string(cr::toString(runtimeLink.action)) +
-                              "]  " + doorState;
+                              "]  " + targetState;
     ImGui::PushID(static_cast<int>(runtimeLink.targetObjectId));
     if (ImGui::Selectable(label.c_str())) {
       queueCreativeDesktopObjectNavigation(commands, runtimeLink.targetObjectId,

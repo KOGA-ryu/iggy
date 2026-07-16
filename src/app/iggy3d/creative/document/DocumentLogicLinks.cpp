@@ -214,17 +214,24 @@ bool creativeObjectCanSourceLogicLink(CreativeObjectKind kind) noexcept {
 }
 
 bool creativeObjectCanTargetLogicLink(CreativeObjectKind kind) noexcept {
-  return kind == CreativeObjectKind::Door;
+  return kind == CreativeObjectKind::Door ||
+         kind == CreativeObjectKind::Platform;
 }
 
 bool creativeLogicLinkActionSupported(CreativeObjectKind targetKind,
                                       CreativeLogicLinkAction action) noexcept {
-  if (targetKind != CreativeObjectKind::Door) {
-    return false;
+  switch (targetKind) {
+    case CreativeObjectKind::Door:
+      return action == CreativeLogicLinkAction::Toggle ||
+             action == CreativeLogicLinkAction::Open ||
+             action == CreativeLogicLinkAction::Close;
+    case CreativeObjectKind::Platform:
+      return action == CreativeLogicLinkAction::Toggle ||
+             action == CreativeLogicLinkAction::Enable ||
+             action == CreativeLogicLinkAction::Disable;
+    default:
+      return false;
   }
-  return action == CreativeLogicLinkAction::Toggle ||
-         action == CreativeLogicLinkAction::Open ||
-         action == CreativeLogicLinkAction::Close;
 }
 
 CreativeLogicLinkValidationReceipt validateCreativeLogicLinks(

@@ -166,9 +166,10 @@ CreativeEditorPlayLogicOverlay buildCreativeEditorPlayLogicOverlay(
     }
     const bool validTarget =
         target != nullptr && targetBounds.available &&
-        target->definition.kind == InteractableKind::Door &&
-        iggy3d::creative::creativeLogicLinkActionSupported(
-            iggy3d::creative::CreativeObjectKind::Door, link.action);
+        iggy3d::creative::creativeRuntimeInteractableIsLogicTarget(
+            target->definition.kind) &&
+        iggy3d::creative::creativeRuntimeLogicActionSupported(
+            target->definition.kind, link.action);
 
     CreativeLogicLinkOverlayRequest planRequest;
     planRequest.source = sourceBounds;
@@ -205,11 +206,11 @@ CreativeEditorPlayLogicOverlay buildCreativeEditorPlayLogicOverlay(
     }
     if (validTarget) {
       const iggy3d::RenderLineColor targetColor =
-          target->doorOpen
+          target->targetActive
               ? iggy3d::RenderLineColor{0.15F, 1.0F, 0.25F, 1.0F}
               : iggy3d::RenderLineColor{1.0F, 0.64F, 0.18F, 1.0F};
       overlay.targetEdgeCount += appendRuntimeLogicBox(
-          target->definition, targetColor, target->doorOpen ? 1U : 0U,
+          target->definition, targetColor, target->targetActive ? 1U : 0U,
           0.045F, overlay.lines);
     }
   }
