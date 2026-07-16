@@ -1579,14 +1579,14 @@ bool selectionPlacementScalePlanMatchesAtomicCommit() {
                   routePlan.objects[0].pathPoints[1].position.z == 2.0,
               "path points use the same three-axis pivot scale") &&
        ok;
-  cr::CreativeSelectionPlacementRequest unsupportedCopy = request;
-  unsupportedCopy.mode = cr::CreativeSelectionPlacementMode::Copy;
+  cr::CreativeSelectionPlacementRequest scaledCopy = request;
+  scaledCopy.mode = cr::CreativeSelectionPlacementMode::Copy;
   const cr::CreativeSelectionPlacementPlan copyScale =
-      cr::planCreativeSelectionPlacement(routeSource, unsupportedCopy);
-  ok = expect(!copyScale.accepted &&
-                  copyScale.status ==
-                      cr::CreativeSelectionPlacementStatus::InvalidRequest,
-              "scaled Copy preview fails until scaled paste has commit parity") &&
+      cr::planCreativeSelectionPlacement(routeSource, scaledCopy);
+  ok = expect(copyScale.accepted && copyScale.objects.size() == 1U &&
+                  copyScale.objects[0].pathPoints[0].position.x == -0.5 &&
+                  copyScale.objects[0].pathPoints[1].position.z == 2.0,
+              "scaled Copy uses the same placement transform as Move") &&
        ok;
 
   cr::CreativeDocument invalidDocument = document;

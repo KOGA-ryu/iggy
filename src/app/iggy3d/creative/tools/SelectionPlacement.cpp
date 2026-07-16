@@ -534,8 +534,6 @@ CreativeSelectionPlacementPlan planCreativeSelectionPlacement(
       !isFiniteCreativeVec3(request.sourceAnchor) ||
       !isFiniteCreativeVec3(request.targetAnchor) ||
       !isPositiveCreativeVec3(request.scaleFactor) ||
-      (request.mode == CreativeSelectionPlacementMode::Copy &&
-       !creativeVec3ExactlyEqual(request.scaleFactor, {1.0, 1.0, 1.0})) ||
       !isValidCreativeAxis3(request.rotationAxis) ||
       !std::isfinite(request.rotationRadians) ||
       (request.hasAxisAngleRotation && request.quarterTurns != 0U)) {

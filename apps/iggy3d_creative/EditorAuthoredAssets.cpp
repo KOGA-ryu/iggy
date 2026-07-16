@@ -182,8 +182,7 @@ void applyPlacement(cr::CreativeAppState& appState,
   ensureTransaction(appState, stroke);
   cr::CreativeAuthoredAssetPlacementRequest request;
   request.definition = definition;
-  request.targetAnchor = admission.plan.transform.position;
-  request.yawRadians = admission.plan.transform.rotationEulerRadians.y;
+  request.instanceTransform = admission.plan.transform;
   const cr::CreativeObjectId activeParent =
       activeCreativeEditorGroupFocusId(editor.groupFocus);
   if (activeParent != cr::kInvalidObjectId) {

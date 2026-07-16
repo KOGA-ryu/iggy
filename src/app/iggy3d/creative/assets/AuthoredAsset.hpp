@@ -117,8 +117,7 @@ struct CreativeAuthoredAssetLoadResult {
 
 struct CreativeAuthoredAssetPlacementRequest {
   const CreativeAuthoredAssetDefinition* definition = nullptr;
-  CreativeVec3 targetAnchor{};
-  double yawRadians = 0.0;
+  CreativeTransform instanceTransform{};
   std::optional<CreativeObjectId> parentId;
   std::string attachmentSocket;
 };

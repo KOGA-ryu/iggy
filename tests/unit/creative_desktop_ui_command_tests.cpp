@@ -12,6 +12,7 @@
 
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
@@ -38,6 +39,12 @@ bool expect(bool condition, std::string_view message) {
     std::cerr << "FAIL: " << message << '\n';
   }
   return condition;
+}
+
+bool vecNear(cr::CreativeVec3 lhs, cr::CreativeVec3 rhs) {
+  return std::fabs(lhs.x - rhs.x) < 1.0e-8 &&
+         std::fabs(lhs.y - rhs.y) < 1.0e-8 &&
+         std::fabs(lhs.z - rhs.z) < 1.0e-8;
 }
 
 cr::CreativeObjectId createCrate(cr::Facade& facade, double x) {
@@ -737,21 +744,30 @@ bool transformCommandIsAtomicAndAttachmentAware() {
       cr::creativeVec3ExactlyEqual(childUndone->transform.position,
                                    childBefore.position);
 
-  cr::CreativeTransform unsupported = parentBefore;
-  unsupported.rotationEulerRadians.x = 0.25;
-  const app::CreativeDesktopCommandResult pitch = dispatchPayload(
+  cr::CreativeTransform fullRotation = parentBefore;
+  fullRotation.rotationEulerRadians = {0.25, -0.35, 0.2};
+  const app::CreativeDesktopCommandResult rotated = dispatchPayload(
       app::CreativeDesktopCommandId::SetObjectTransform, context,
-      app::CreativeDesktopTransformPayload{pair.parentId, unsupported, false,
+      app::CreativeDesktopTransformPayload{pair.parentId, fullRotation, false,
                                            true, false});
-  const bool pitchRejected =
-      !pitch.accepted && !pitch.changed &&
-      cr::creativeVec3ExactlyEqual(
-          appState.facade.findObject(pair.parentId)->transform.position,
-          parentBefore.position) &&
-      cr::creativeVec3ExactlyEqual(
-          appState.facade.findObject(pair.childId)->transform.position,
-          childBefore.position) &&
-      cr::creativeUndoDepth(appState.history) == 0U;
+  const cr::CreativeObject* fullyRotatedParent =
+      appState.facade.findObject(pair.parentId);
+  const cr::CreativeObject* fullyRotatedChild =
+      appState.facade.findObject(pair.childId);
+  const bool fullRotationApplied =
+      rotated.accepted && rotated.changed &&
+      rotated.affectedObjectCount == 2U && fullyRotatedParent != nullptr &&
+      fullyRotatedChild != nullptr &&
+      vecNear(fullyRotatedParent->transform.rotationEulerRadians,
+              fullRotation.rotationEulerRadians) &&
+      !vecNear(fullyRotatedChild->transform.position, childBefore.position) &&
+      cr::creativeUndoDepth(appState.history) == 1U;
+  const bool fullRotationUndone =
+      app::undoLastEdit(appState, "desktop_full_rotation_undo") &&
+      vecNear(appState.facade.findObject(pair.parentId)->transform.position,
+              parentBefore.position) &&
+      vecNear(appState.facade.findObject(pair.childId)->transform.position,
+              childBefore.position);
 
   const cr::CreativeObjectId lone = createCrate(appState.facade, 9.0);
   appState.history = {};
@@ -773,8 +789,8 @@ bool transformCommandIsAtomicAndAttachmentAware() {
 
   return expect(hierarchyChanged && hierarchyUndone,
                 "absolute parent transform carries attachments in one edit") &&
-         expect(pitchRejected,
-                "unsupported hierarchy pitch fails closed") &&
+         expect(fullRotationApplied && fullRotationUndone,
+                "absolute pitch, yaw, and roll propagate as one undoable edit") &&
          expect(invalidRolledBack,
                 "invalid masked transforms do not partially apply");
 }
@@ -1113,7 +1129,7 @@ bool assetAndInstanceCommandsCompleteSuccessPaths() {
       editor.authoredAssets, saved.assetId);
   cr::CreativeAuthoredAssetPlacementRequest firstPlacement;
   firstPlacement.definition = renamedDefinition;
-  firstPlacement.targetAnchor = {10.0, 0.0, 10.0};
+  firstPlacement.instanceTransform.position = {10.0, 0.0, 10.0};
   const cr::CreativeAuthoredAssetInstanceReceipt first =
       cr::instantiateCreativeAuthoredAssetAtomically(
           appState.facade.documentForPersistence(), firstPlacement);
@@ -1121,7 +1137,7 @@ bool assetAndInstanceCommandsCompleteSuccessPaths() {
       editor.authoredAssets, saved.assetId);
   cr::CreativeAuthoredAssetPlacementRequest secondPlacement;
   secondPlacement.definition = renamedDefinition;
-  secondPlacement.targetAnchor = {20.0, 0.0, 20.0};
+  secondPlacement.instanceTransform.position = {20.0, 0.0, 20.0};
   const cr::CreativeAuthoredAssetInstanceReceipt second =
       cr::instantiateCreativeAuthoredAssetAtomically(
           appState.facade.documentForPersistence(), secondPlacement);

@@ -418,6 +418,12 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
       receipt.reasonCode = "creative_clipboard_offset_invalid";
       return receipt;
     }
+    if (!isPositiveCreativeVec3(request.scaleFactor)) {
+      receipt.failedPasteIndex = requestIndex;
+      receipt.status = CreativeClipboardStatus::InvalidRequest;
+      receipt.reasonCode = "creative_clipboard_scale_invalid";
+      return receipt;
+    }
     if (request.quarterTurns > 3U) {
       receipt.failedPasteIndex = requestIndex;
       receipt.status = CreativeClipboardStatus::InvalidRequest;
@@ -476,6 +482,7 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
                                               : CreativeVec3{};
     placementRequest.targetAnchor =
         add(placementRequest.sourceAnchor, request.offset);
+    placementRequest.scaleFactor = request.scaleFactor;
     placementRequest.quarterTurns = request.quarterTurns;
     placementRequest.mirrorX = request.mirrorX;
     placementRequest.mirrorZ = request.mirrorZ;

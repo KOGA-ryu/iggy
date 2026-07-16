@@ -24,6 +24,7 @@
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
 #include "app/iggy3d/creative/tools/Group.hpp"
+#include "app/iggy3d/creative/tools/SelectionPlacement.hpp"
 #include "core/math/Mat4.hpp"
 
 namespace {
@@ -154,8 +155,8 @@ bool captureInstantiateSelectAndUnpack() {
   static_cast<void>(target.assignId(703U));
   cr::CreativeAuthoredAssetPlacementRequest placement;
   placement.definition = &captured.definition;
-  placement.targetAnchor = {5.0, 1.0, -3.0};
-  placement.yawRadians = 1.5707963267948966;
+  placement.instanceTransform.position = {5.0, 1.0, -3.0};
+  placement.instanceTransform.rotationEulerRadians.y = 1.5707963267948966;
   const cr::CreativeAuthoredAssetInstanceReceipt placed =
       cr::instantiateCreativeAuthoredAssetAtomically(target, placement);
   const cr::CreativeObject* root =
@@ -182,9 +183,9 @@ bool captureInstantiateSelectAndUnpack() {
                                     ? root->transform.rotationEulerRadians
                                     : cr::CreativeVec3{});
   const cr::CreativeVec3 expectedRootCenter{
-      placement.targetAnchor.x + rotatedSourceCenter.x,
-      placement.targetAnchor.y + rotatedSourceCenter.y,
-      placement.targetAnchor.z + rotatedSourceCenter.z};
+      placement.instanceTransform.position.x + rotatedSourceCenter.x,
+      placement.instanceTransform.position.y + rotatedSourceCenter.y,
+      placement.instanceTransform.position.z + rotatedSourceCenter.z};
   const cr::CreativeVec3 actualRootCenter =
       cr::measureCreativeBounds({rootExtent.min, rootExtent.max}).center;
   const bool childFacts =
@@ -226,7 +227,7 @@ bool invalidDefinitionCannotPartiallyMutate() {
   const std::uint64_t revisionBefore = target.revision();
   cr::CreativeAuthoredAssetPlacementRequest placement;
   placement.definition = &captured.definition;
-  placement.targetAnchor = {1.0, 0.0, 1.0};
+  placement.instanceTransform.position = {1.0, 0.0, 1.0};
   const cr::CreativeAuthoredAssetInstanceReceipt rejected =
       cr::instantiateCreativeAuthoredAssetAtomically(target, placement);
   return expect(!rejected.accepted && !rejected.changed &&
@@ -261,15 +262,17 @@ bool refreshAllInstancesIsAtomic() {
   const cr::CreativeObjectId parentId = target.createObject(groupRequest).objectId;
   cr::CreativeAuthoredAssetPlacementRequest firstPlacement;
   firstPlacement.definition = &original.definition;
-  firstPlacement.targetAnchor = {5.0, 1.0, -3.0};
-  firstPlacement.yawRadians = 1.5707963267948966;
+  firstPlacement.instanceTransform.position = {5.0, 1.0, -3.0};
+  firstPlacement.instanceTransform.rotationEulerRadians.y =
+      1.5707963267948966;
   firstPlacement.parentId = parentId;
   const cr::CreativeAuthoredAssetInstanceReceipt first =
       cr::instantiateCreativeAuthoredAssetAtomically(target, firstPlacement);
   cr::CreativeAuthoredAssetPlacementRequest secondPlacement;
   secondPlacement.definition = &original.definition;
-  secondPlacement.targetAnchor = {-7.0, 3.0, 9.0};
-  secondPlacement.yawRadians = -0.5;
+  secondPlacement.instanceTransform.position = {-7.0, 3.0, 9.0};
+  secondPlacement.instanceTransform.rotationEulerRadians = {0.2, -0.5, 0.35};
+  secondPlacement.instanceTransform.scale = {1.5, 0.75, 2.0};
   const cr::CreativeAuthoredAssetInstanceReceipt second =
       cr::instantiateCreativeAuthoredAssetAtomically(target, secondPlacement);
   if (!expect(original.accepted && updated.accepted && first.accepted &&
@@ -324,6 +327,10 @@ bool refreshAllInstancesIsAtomic() {
               secondRootBefore.transform.position) &&
       vecNear(secondRootAfter->transform.rotationEulerRadians,
               secondRootBefore.transform.rotationEulerRadians) &&
+      vecNear(firstRootAfter->transform.scale,
+              firstRootBefore.transform.scale) &&
+      vecNear(secondRootAfter->transform.scale,
+              secondRootBefore.transform.scale) &&
       expectedFirst.accepted &&
       cr::creativeBoundsExactlyEqual(firstRootAfter->bounds,
                                      expectedFirst.rootRequest.bounds);
@@ -353,17 +360,22 @@ bool refreshAllInstancesIsAtomic() {
   const cr::CreativeDocumentMutationReceipt scaled = cr::applyDocumentMutation(
       target, second.instanceRootObjectId, cr::CreativeMutationKind::Scale,
       cr::CreativeMutationPayload{cr::ScaleMutation{{2.0, 1.0, 1.0}}});
-  const std::uint64_t scaledRevision = target.revision();
-  const std::size_t scaledObjectCount = target.objectCount();
-  const cr::CreativeAuthoredAssetRefreshReceipt scaleRejected =
+  const cr::CreativeAuthoredAssetRefreshReceipt scaleRefreshed =
       cr::refreshCreativeAuthoredAssetInstancesAtomically(target,
                                                           updated.definition);
-  const bool scaleWasAtomic =
-      cr::documentMutationChanged(scaled.status) && !scaleRejected.accepted &&
-      scaleRejected.status ==
-          cr::CreativeAuthoredAssetRefreshStatus::UnsupportedInstance &&
-      target.revision() == scaledRevision &&
-      target.objectCount() == scaledObjectCount;
+  const cr::CreativeObject* scaledRootAfter =
+      target.findObject(second.instanceRootObjectId);
+  const cr::CreativeHierarchySelection scaledHierarchy =
+      cr::resolveCreativeObjectHierarchy(
+          target, std::span{&second.instanceRootObjectId, 1U});
+  const bool scaleWasPreserved =
+      cr::documentMutationChanged(scaled.status) && scaleRefreshed.accepted &&
+      scaleRefreshed.refreshedInstanceCount == 2U &&
+      scaledRootAfter != nullptr &&
+      vecNear(scaledRootAfter->transform.scale, {2.0, 1.0, 1.0}) &&
+      vecNear(scaledRootAfter->transform.rotationEulerRadians,
+              secondRootBefore.transform.rotationEulerRadians) &&
+      scaledHierarchy.accepted && scaledHierarchy.objectIds.size() == 4U;
 
   cr::CreativeAuthoredAssetDefinition recursive = updated.definition;
   recursive.content.objects.front().kind =
@@ -393,8 +405,8 @@ bool refreshAllInstancesIsAtomic() {
                 "refresh preserves roots and replaces only descendants") &&
          expect(lockWasAtomic,
                 "locked descendants reject the complete refresh") &&
-         expect(scaleWasAtomic,
-                "unsupported instance transforms reject the complete refresh") &&
+         expect(scaleWasPreserved,
+                "scaled and three-axis-rotated instances refresh in place") &&
          expect(!recursionRejected.accepted &&
                     recursionRejected.status ==
                         cr::CreativeAuthoredAssetRefreshStatus::InvalidDefinition &&
@@ -432,8 +444,8 @@ bool syncStatesProtectLocalInstanceEdits() {
                                double yaw) {
     cr::CreativeAuthoredAssetPlacementRequest request;
     request.definition = &source;
-    request.targetAnchor = position;
-    request.yawRadians = yaw;
+    request.instanceTransform.position = position;
+    request.instanceTransform.rotationEulerRadians.y = yaw;
     return cr::instantiateCreativeAuthoredAssetAtomically(target, request);
   };
   const cr::CreativeAuthoredAssetInstanceReceipt first =
@@ -581,7 +593,8 @@ bool definitionsAreBoundedAndFailClosed() {
           valid, "authored_valid", "Valid");
   cr::CreativeAuthoredAssetPlacementRequest request;
   request.definition = &loaded.definition;
-  request.targetAnchor.x = std::numeric_limits<double>::quiet_NaN();
+  request.instanceTransform.position.x =
+      std::numeric_limits<double>::quiet_NaN();
   const cr::CreativeAuthoredAssetPlacementPlan placement =
       cr::planCreativeAuthoredAssetPlacement(request);
 
@@ -599,19 +612,41 @@ bool definitionsAreBoundedAndFailClosed() {
                 "non-finite placement fails before mutation");
 }
 
-bool transformedInstanceUpdateFailsClosed() {
+bool transformedInstanceRoundTripsThroughUpdate() {
   const cr::CreativeAuthoredAssetCaptureResult captured =
       makeTwoCrateDefinition();
-  cr::CreativeDocument target = cr::CreativeDocument::create("Scaled");
+  cr::CreativeDocument target = cr::CreativeDocument::create("Transformed");
   static_cast<void>(target.assignId(714U));
   cr::CreativeAuthoredAssetPlacementRequest placement;
   placement.definition = &captured.definition;
   const cr::CreativeAuthoredAssetInstanceReceipt placed =
       cr::instantiateCreativeAuthoredAssetAtomically(target, placement);
-  const cr::CreativeDocumentMutationReceipt scaled = cr::applyDocumentMutation(
-      target, placed.instanceRootObjectId, cr::CreativeMutationKind::Scale,
-      cr::CreativeMutationPayload{
-          cr::ScaleMutation{{2.0, 1.0, 1.0}}});
+  const cr::CreativeHierarchySelection hierarchy =
+      cr::resolveCreativeObjectHierarchy(
+          target, std::span{&placed.instanceRootObjectId, 1U});
+  cr::CreativeSelectionPlacementRequest transformed;
+  transformed.mode = cr::CreativeSelectionPlacementMode::Move;
+  transformed.sourceAnchor = {};
+  transformed.targetAnchor = {4.0, 2.0, -3.0};
+  transformed.scaleFactor = {2.0, 0.5, 1.5};
+  transformed.hasAxisAngleRotation = true;
+  transformed.rotationAxis = cr::CreativeAxis3::X;
+  transformed.rotationRadians = 0.25;
+  const cr::CreativeSelectionPlacementReceipt rotatedX =
+      cr::placeDocumentObjectsAtomically(target, hierarchy.objectIds,
+                                         transformed);
+  transformed.sourceAnchor = transformed.targetAnchor;
+  transformed.scaleFactor = {1.0, 1.0, 1.0};
+  transformed.rotationAxis = cr::CreativeAxis3::Y;
+  transformed.rotationRadians = -0.4;
+  const cr::CreativeSelectionPlacementReceipt rotatedY =
+      cr::placeDocumentObjectsAtomically(target, hierarchy.objectIds,
+                                         transformed);
+  transformed.rotationAxis = cr::CreativeAxis3::Z;
+  transformed.rotationRadians = 0.15;
+  const cr::CreativeSelectionPlacementReceipt rotatedZ =
+      cr::placeDocumentObjectsAtomically(target, hierarchy.objectIds,
+                                         transformed);
   const cr::CreativeObject* root =
       target.findObject(placed.instanceRootObjectId);
   cr::CreativeAuthoredAssetInstanceCaptureRequest update;
@@ -619,17 +654,26 @@ bool transformedInstanceUpdateFailsClosed() {
   update.existingDefinition = &captured.definition;
   update.instanceRootObjectId = placed.instanceRootObjectId;
   update.definitionDocumentId = 715U;
-  const cr::CreativeAuthoredAssetCaptureResult rejected =
+  const cr::CreativeAuthoredAssetCaptureResult updated =
       cr::captureCreativeAuthoredAssetInstance(update);
-  return expect(placed.accepted &&
-                    cr::documentMutationChanged(scaled.status) &&
-                    root != nullptr &&
-                    !cr::creativeAuthoredAssetInstanceTransformSupported(
-                        *root) &&
-                    !rejected.accepted &&
-                    rejected.status ==
-                        cr::CreativeAuthoredAssetStatus::InvalidGeometry,
-                "scaled wrappers reject source update without partial output");
+  const cr::CreativeAuthoredAssetFingerprint originalFingerprint =
+      cr::fingerprintCreativeAuthoredAssetDefinition(captured.definition);
+  const cr::CreativeAuthoredAssetFingerprint updatedFingerprint =
+      cr::fingerprintCreativeAuthoredAssetDefinition(updated.definition);
+  return expect(placed.accepted && hierarchy.accepted && rotatedX.accepted &&
+                    rotatedY.accepted && rotatedZ.accepted && root != nullptr &&
+                    cr::creativeAuthoredAssetInstanceTransformSupported(*root),
+                "generic transform accepts a complete prefab hierarchy") &&
+         expect(vecNear(root->transform.position, {4.0, 2.0, -3.0}) &&
+                    vecNear(root->transform.scale, {2.0, 0.5, 1.5}) &&
+                    std::fabs(root->transform.rotationEulerRadians.x) > 0.1 &&
+                    std::fabs(root->transform.rotationEulerRadians.y) > 0.1 &&
+                    std::fabs(root->transform.rotationEulerRadians.z) > 0.1,
+                "prefab root retains translation, scale, pitch, yaw, and roll") &&
+         expect(updated.accepted && originalFingerprint.valid &&
+                    updatedFingerprint.valid &&
+                    updatedFingerprint.value == originalFingerprint.value,
+                "instance update removes its full root transform before capture");
 }
 
 bool durableLibraryRoundTripsSelection() {
@@ -754,14 +798,15 @@ bool updateCommandRoundTripsEditedInstance() {
   static_cast<void>(instances.assignId(712U));
   cr::CreativeAuthoredAssetPlacementRequest firstPlacement;
   firstPlacement.definition = savedDefinition;
-  firstPlacement.targetAnchor = {10.0, 0.0, 10.0};
-  firstPlacement.yawRadians = 1.5707963267948966;
+  firstPlacement.instanceTransform.position = {10.0, 0.0, 10.0};
+  firstPlacement.instanceTransform.rotationEulerRadians.y =
+      1.5707963267948966;
   const cr::CreativeAuthoredAssetInstanceReceipt first =
       cr::instantiateCreativeAuthoredAssetAtomically(instances,
                                                      firstPlacement);
   cr::CreativeAuthoredAssetPlacementRequest secondPlacement;
   secondPlacement.definition = savedDefinition;
-  secondPlacement.targetAnchor = {20.0, 0.0, 20.0};
+  secondPlacement.instanceTransform.position = {20.0, 0.0, 20.0};
   const cr::CreativeAuthoredAssetInstanceReceipt second =
       cr::instantiateCreativeAuthoredAssetAtomically(instances,
                                                      secondPlacement);
@@ -838,9 +883,7 @@ bool updateCommandRoundTripsEditedInstance() {
   cr::CreativeAuthoredAssetPlacementRequest acknowledgedPlacement;
   acknowledgedPlacement.definition = updatedDefinition;
   if (acknowledgedRoot != nullptr) {
-    acknowledgedPlacement.targetAnchor = acknowledgedRoot->transform.position;
-    acknowledgedPlacement.yawRadians =
-        acknowledgedRoot->transform.rotationEulerRadians.y;
+    acknowledgedPlacement.instanceTransform = acknowledgedRoot->transform;
     acknowledgedPlacement.parentId = acknowledgedRoot->parentId;
   }
   const cr::CreativeAuthoredAssetPlacementPlan acknowledgedPlan =
@@ -1058,7 +1101,7 @@ bool editorSyncCommandsExposeStatusAndOneUndo() {
   placement.definition = &original.definition;
   const cr::CreativeAuthoredAssetInstanceReceipt first =
       cr::instantiateCreativeAuthoredAssetAtomically(instances, placement);
-  placement.targetAnchor = {8.0, 0.0, 0.0};
+  placement.instanceTransform.position = {8.0, 0.0, 0.0};
   const cr::CreativeAuthoredAssetInstanceReceipt second =
       cr::instantiateCreativeAuthoredAssetAtomically(instances, placement);
   const cr::CreativeObjectId localObjectId =
@@ -1291,7 +1334,7 @@ bool isolatedAssetEditPreservesMapAndRequiresExplicitRefresh() {
   static_cast<void>(map.assignId(751U));
   cr::CreativeAuthoredAssetPlacementRequest placement;
   placement.definition = original;
-  placement.targetAnchor = {20.0, 0.0, 20.0};
+  placement.instanceTransform.position = {20.0, 0.0, 20.0};
   const cr::CreativeAuthoredAssetInstanceReceipt instance =
       cr::instantiateCreativeAuthoredAssetAtomically(map, placement);
   cr::CreativeAppState mapState;
@@ -1589,7 +1632,7 @@ int main() {
                  refreshAllInstancesIsAtomic() &&
                  syncStatesProtectLocalInstanceEdits() &&
                  definitionsAreBoundedAndFailClosed() &&
-                 transformedInstanceUpdateFailsClosed() &&
+                 transformedInstanceRoundTripsThroughUpdate() &&
                  durableLibraryRoundTripsSelection() &&
                  updateCommandRoundTripsEditedInstance() &&
                  editorSyncCommandsExposeStatusAndOneUndo() &&

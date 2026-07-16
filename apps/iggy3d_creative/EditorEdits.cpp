@@ -6,7 +6,6 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <numbers>
 #include <span>
 #include <string>
 #include <utility>
@@ -588,14 +587,6 @@ CreativeStandaloneBatchEditReceipt setObjectTransformWithUndo(
     return outcome;
   }
   const bool hasDescendants = hierarchy.objectIds.size() > 1U;
-  if (hasDescendants && setRotation &&
-      (transform.rotationEulerRadians.x !=
-           object->transform.rotationEulerRadians.x ||
-       transform.rotationEulerRadians.z !=
-           object->transform.rotationEulerRadians.z)) {
-    outcome.message = "hierarchy_rotation_requires_yaw";
-    return outcome;
-  }
 
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
@@ -635,15 +626,13 @@ CreativeStandaloneBatchEditReceipt setObjectTransformWithUndo(
     bool changed = false;
     std::uint64_t affectedObjectCount = 0U;
     std::string failure;
-    const auto applyHierarchyTransform =
-        [&](const creative::CreativeTransformCommandRequest& request) {
-          const creative::CreativeTransformCommandReceipt receipt =
-              creative::transformDocumentObjectsAtomically(
-                  staged,
-                  std::span<const creative::CreativeObjectId>{&objectId, 1U},
-                  request);
+    const auto applyHierarchyPlacement =
+        [&](const creative::CreativeSelectionPlacementRequest& request) {
+          const creative::CreativeSelectionPlacementReceipt receipt =
+              creative::placeDocumentObjectsAtomically(
+                  staged, hierarchy.objectIds, request);
           if (!receipt.accepted) {
-            failure = receipt.message;
+            failure = receipt.reasonCode;
             return false;
           }
           changed = changed || receipt.changed;
@@ -656,37 +645,60 @@ CreativeStandaloneBatchEditReceipt setObjectTransformWithUndo(
 
     if (setScale) {
       const creative::CreativeObject* current = staged.findObject(objectId);
-      creative::CreativeTransformCommandRequest request;
-      request.kind = creative::CreativeTransformCommandKind::Scale;
+      creative::CreativeSelectionPlacementRequest request;
+      request.mode = creative::CreativeSelectionPlacementMode::Move;
+      request.sourceAnchor = current->transform.position;
+      request.targetAnchor = request.sourceAnchor;
       request.scaleFactor = {
           transform.scale.x / current->transform.scale.x,
           transform.scale.y / current->transform.scale.y,
           transform.scale.z / current->transform.scale.z};
-      if (!applyHierarchyTransform(request)) {
+      if (!applyHierarchyPlacement(request)) {
         outcome.message = failure;
       }
     }
     if (outcome.message.empty() && setRotation) {
       const creative::CreativeObject* current = staged.findObject(objectId);
-      creative::CreativeTransformCommandRequest request;
-      request.kind = creative::CreativeTransformCommandKind::RotateYaw;
-      request.yawDegrees =
-          (transform.rotationEulerRadians.y -
-           current->transform.rotationEulerRadians.y) *
-          180.0 / std::numbers::pi;
-      if (!applyHierarchyTransform(request)) {
-        outcome.message = failure;
+      const creative::CreativeVec3 pivot = current->transform.position;
+      const auto rotateAroundPivot =
+          [&](creative::CreativeAxis3 axis, double radians) {
+            if (radians == 0.0) {
+              return true;
+            }
+            creative::CreativeSelectionPlacementRequest request;
+            request.mode = creative::CreativeSelectionPlacementMode::Move;
+            request.sourceAnchor = pivot;
+            request.targetAnchor = pivot;
+            request.hasAxisAngleRotation = true;
+            request.rotationAxis = axis;
+            request.rotationRadians = radians;
+            return applyHierarchyPlacement(request);
+          };
+      const creative::CreativeVec3 currentRotation =
+          current->transform.rotationEulerRadians;
+      if (!rotateAroundPivot(creative::CreativeAxis3::Z,
+                             -currentRotation.z) ||
+          !rotateAroundPivot(creative::CreativeAxis3::Y,
+                             -currentRotation.y) ||
+          !rotateAroundPivot(creative::CreativeAxis3::X,
+                             -currentRotation.x) ||
+          !rotateAroundPivot(creative::CreativeAxis3::X,
+                             transform.rotationEulerRadians.x) ||
+          !rotateAroundPivot(creative::CreativeAxis3::Y,
+                             transform.rotationEulerRadians.y) ||
+          !rotateAroundPivot(creative::CreativeAxis3::Z,
+                             transform.rotationEulerRadians.z)) {
+        outcome.message = failure.empty() ? "hierarchy_rotation_rejected"
+                                          : failure;
       }
     }
     if (outcome.message.empty() && setPosition) {
       const creative::CreativeObject* current = staged.findObject(objectId);
-      creative::CreativeTransformCommandRequest request;
-      request.kind = creative::CreativeTransformCommandKind::Translate;
-      request.translation = {
-          transform.position.x - current->transform.position.x,
-          transform.position.y - current->transform.position.y,
-          transform.position.z - current->transform.position.z};
-      if (!applyHierarchyTransform(request)) {
+      creative::CreativeSelectionPlacementRequest request;
+      request.mode = creative::CreativeSelectionPlacementMode::Move;
+      request.sourceAnchor = current->transform.position;
+      request.targetAnchor = transform.position;
+      if (!applyHierarchyPlacement(request)) {
         outcome.message = failure;
       }
     }

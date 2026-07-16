@@ -141,8 +141,8 @@ struct CreativeStandaloneBatchEditReceipt {
 
 // K-7: absolute transform of a single object. The component flags select which
 // of position/rotation/scale to write. Hierarchy roots propagate translation,
-// yaw, and scale through descendants; unsupported hierarchy pitch/roll edits
-// fail closed. Every accepted command is one history transaction.
+// three-axis rotation, and scale through descendants. Every accepted command
+// is one history transaction.
 [[nodiscard]] CreativeStandaloneBatchEditReceipt setObjectTransformWithUndo(
     cr::CreativeAppState& appState,
     StandaloneEditHistory& history,

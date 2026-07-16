@@ -11,6 +11,7 @@
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/mutation/Mutation.hpp"
 #include "app/iggy3d/creative/tools/Group.hpp"
+#include "app/iggy3d/creative/tools/SelectionPlacement.hpp"
 
 namespace iggy3d::creative {
 namespace {
@@ -362,10 +363,75 @@ void reject(CreativeAuthoredAssetRefreshReceipt& receipt,
 }
 
 struct CaptureNormalization {
-  bool inverseInstanceYaw = false;
-  CreativeVec3 instanceAnchor{};
-  double instanceYawRadians = 0.0;
+  bool inverseInstanceTransform = false;
+  CreativeTransform instanceTransform{};
 };
+
+[[nodiscard]] bool applyClipboardTransformStage(
+    CreativeClipboard& clipboard,
+    CreativeVec3 anchor,
+    CreativeVec3 scaleFactor,
+    CreativeAxis3 rotationAxis,
+    double rotationRadians) {
+  if (creativeVec3ExactlyEqual(scaleFactor, {1.0, 1.0, 1.0}) &&
+      rotationRadians == 0.0) {
+    return true;
+  }
+  CreativeSelectionPlacementRequest request;
+  request.mode = CreativeSelectionPlacementMode::Copy;
+  request.sourceAnchor = anchor;
+  request.targetAnchor = anchor;
+  request.scaleFactor = scaleFactor;
+  request.hasAxisAngleRotation = rotationRadians != 0.0;
+  request.rotationAxis = rotationAxis;
+  request.rotationRadians = rotationRadians;
+  CreativeSelectionPlacementPlan plan =
+      planCreativeSelectionPlacement(clipboard.objects, request);
+  if (!plan.accepted) {
+    return false;
+  }
+  clipboard.objects = std::move(plan.objects);
+  return true;
+}
+
+[[nodiscard]] bool transformAuthoredAssetContent(
+    CreativeClipboard& clipboard,
+    CreativeVec3 anchor,
+    CreativeTransform transform,
+    bool inverse) {
+  if (!isFiniteCreativeVec3(anchor) ||
+      !isFiniteCreativeVec3(transform.rotationEulerRadians) ||
+      !isPositiveCreativeVec3(transform.scale)) {
+    return false;
+  }
+  const CreativeVec3 unitScale{1.0, 1.0, 1.0};
+  if (!inverse) {
+    return applyClipboardTransformStage(
+               clipboard, anchor, transform.scale, CreativeAxis3::X,
+               transform.rotationEulerRadians.x) &&
+           applyClipboardTransformStage(
+               clipboard, anchor, unitScale, CreativeAxis3::Y,
+               transform.rotationEulerRadians.y) &&
+           applyClipboardTransformStage(
+               clipboard, anchor, unitScale, CreativeAxis3::Z,
+               transform.rotationEulerRadians.z);
+  }
+
+  const CreativeVec3 inverseScale{1.0 / transform.scale.x,
+                                  1.0 / transform.scale.y,
+                                  1.0 / transform.scale.z};
+  return applyClipboardTransformStage(
+             clipboard, anchor, unitScale, CreativeAxis3::Z,
+             -transform.rotationEulerRadians.z) &&
+         applyClipboardTransformStage(
+             clipboard, anchor, unitScale, CreativeAxis3::Y,
+             -transform.rotationEulerRadians.y) &&
+         applyClipboardTransformStage(
+             clipboard, anchor, unitScale, CreativeAxis3::X,
+             -transform.rotationEulerRadians.x) &&
+         applyClipboardTransformStage(clipboard, anchor, inverseScale,
+                                      CreativeAxis3::X, 0.0);
+}
 
 [[nodiscard]] CreativeAuthoredAssetCaptureResult captureResolvedHierarchy(
     const CreativeDocument& sourceDocument,
@@ -397,16 +463,19 @@ struct CaptureNormalization {
            "creative_authored_asset_document_id_invalid");
     return result;
   }
+  CreativeClipboard normalizedSource = source;
   CreativeClipboardPasteRequest paste;
-  if (normalization.inverseInstanceYaw) {
-    paste.offset = {-normalization.instanceAnchor.x,
-                    -normalization.instanceAnchor.y,
-                    -normalization.instanceAnchor.z};
-    paste.hasTransformAnchor = true;
-    paste.transformAnchor = normalization.instanceAnchor;
-    paste.hasAxisAngleRotation = true;
-    paste.rotationAxis = CreativeAxis3::Y;
-    paste.rotationRadians = -normalization.instanceYawRadians;
+  if (normalization.inverseInstanceTransform) {
+    if (!transformAuthoredAssetContent(
+            normalizedSource, normalization.instanceTransform.position,
+            normalization.instanceTransform, true)) {
+      reject(result, CreativeAuthoredAssetStatus::InvalidGeometry,
+             "creative_authored_asset_normalize_transform_invalid");
+      return result;
+    }
+    paste.offset = {-normalization.instanceTransform.position.x,
+                    -normalization.instanceTransform.position.y,
+                    -normalization.instanceTransform.position.z};
   } else {
     paste.offset = {-source.placementAnchor.x, -source.placementAnchor.y,
                     -source.placementAnchor.z};
@@ -415,7 +484,7 @@ struct CaptureNormalization {
   paste.externalParentPolicy =
       CreativeClipboardExternalParentPolicy::Detach;
   const CreativeClipboardPasteReceipt pasted =
-      pasteCreativeClipboardAtomically(storage, source, paste);
+      pasteCreativeClipboardAtomically(storage, normalizedSource, paste);
   if (!pasted.accepted) {
     reject(result, CreativeAuthoredAssetStatus::CreateRejected,
            "creative_authored_asset_normalize_rejected",
@@ -765,10 +834,7 @@ bool creativeAuthoredAssetInstanceTransformSupported(
   return instanceRoot.kind == CreativeObjectKind::PrefabInstance &&
          isFiniteCreativeVec3(instanceRoot.transform.position) &&
          isFiniteCreativeVec3(instanceRoot.transform.rotationEulerRadians) &&
-         creativeVec3ExactlyEqual(instanceRoot.transform.scale,
-                                  {1.0, 1.0, 1.0}) &&
-         instanceRoot.transform.rotationEulerRadians.x == 0.0 &&
-         instanceRoot.transform.rotationEulerRadians.z == 0.0;
+         isPositiveCreativeVec3(instanceRoot.transform.scale);
 }
 
 CreativeAuthoredAssetCaptureResult captureCreativeAuthoredAssetInstance(
@@ -828,10 +894,8 @@ CreativeAuthoredAssetCaptureResult captureCreativeAuthoredAssetInstance(
   }
 
   CaptureNormalization normalization;
-  normalization.inverseInstanceYaw = true;
-  normalization.instanceAnchor = instance->transform.position;
-  normalization.instanceYawRadians =
-      instance->transform.rotationEulerRadians.y;
+  normalization.inverseInstanceTransform = true;
+  normalization.instanceTransform = instance->transform;
   return captureResolvedHierarchy(
       *request.sourceDocument, hierarchy,
       request.existingDefinition->assetId,
@@ -974,8 +1038,7 @@ acknowledgeCreativeAuthoredAssetInstanceSource(
   }
   CreativeAuthoredAssetPlacementRequest placementRequest;
   placementRequest.definition = &definition;
-  placementRequest.targetAnchor = root->transform.position;
-  placementRequest.yawRadians = root->transform.rotationEulerRadians.y;
+  placementRequest.instanceTransform = root->transform;
   placementRequest.parentId = root->parentId;
   placementRequest.attachmentSocket = root->attachmentSocket;
   const CreativeAuthoredAssetPlacementPlan placementPlan =
@@ -1040,8 +1103,9 @@ CreativeAuthoredAssetPlacementPlan planCreativeAuthoredAssetPlacement(
     plan.reasonCode = "creative_authored_asset_definition_fingerprint_invalid";
     return plan;
   }
-  if (!isFiniteCreativeVec3(request.targetAnchor) ||
-      !std::isfinite(request.yawRadians)) {
+  if (!isFiniteCreativeVec3(request.instanceTransform.position) ||
+      !isFiniteCreativeVec3(request.instanceTransform.rotationEulerRadians) ||
+      !isPositiveCreativeVec3(request.instanceTransform.scale)) {
     plan.status = CreativeAuthoredAssetStatus::InvalidGeometry;
     plan.reasonCode = "creative_authored_asset_placement_invalid";
     return plan;
@@ -1050,11 +1114,11 @@ CreativeAuthoredAssetPlacementPlan planCreativeAuthoredAssetPlacement(
   plan.rootRequest.kind = CreativeObjectKind::PrefabInstance;
   plan.rootRequest.name = request.definition->label;
   plan.rootRequest.assetId = request.definition->assetId;
-  plan.rootRequest.transform.position = request.targetAnchor;
-  plan.rootRequest.transform.rotationEulerRadians.y = request.yawRadians;
+  plan.rootRequest.transform = request.instanceTransform;
   plan.rootRequest.hasTransformOverride = true;
   plan.rootRequest.bounds =
-      translatedBounds(request.definition->sourceBounds, request.targetAnchor);
+      translatedBounds(request.definition->sourceBounds,
+                       request.instanceTransform.position);
   plan.rootRequest.hasBoundsOverride = true;
   plan.rootRequest.visible = false;
   plan.rootRequest.hasVisibleOverride = true;
@@ -1070,15 +1134,10 @@ CreativeAuthoredAssetPlacementPlan planCreativeAuthoredAssetPlacement(
           ? request.definition->content.placementAnchor
           : CreativeVec3{};
   plan.contentPasteRequest.offset = {
-      request.targetAnchor.x - sourceAnchor.x,
-      request.targetAnchor.y - sourceAnchor.y,
-      request.targetAnchor.z - sourceAnchor.z,
+      request.instanceTransform.position.x - sourceAnchor.x,
+      request.instanceTransform.position.y - sourceAnchor.y,
+      request.instanceTransform.position.z - sourceAnchor.z,
   };
-  plan.contentPasteRequest.hasTransformAnchor = true;
-  plan.contentPasteRequest.transformAnchor = sourceAnchor;
-  plan.contentPasteRequest.hasAxisAngleRotation = true;
-  plan.contentPasteRequest.rotationAxis = CreativeAxis3::Y;
-  plan.contentPasteRequest.rotationRadians = request.yawRadians;
   plan.contentPasteRequest.appendCopySuffix = false;
   plan.contentPasteRequest.externalParentPolicy =
       CreativeClipboardExternalParentPolicy::Detach;
@@ -1121,8 +1180,18 @@ CreativeAuthoredAssetInstanceReceipt instantiateCreativeAuthoredAssetAtomically(
     return receipt;
   }
   receipt.instanceRootObjectId = receipt.rootCreateReceipt.objectId;
+  CreativeClipboard transformedContent = request.definition->content;
+  const CreativeVec3 sourceAnchor = transformedContent.hasPlacementAnchor
+                                        ? transformedContent.placementAnchor
+                                        : CreativeVec3{};
+  if (!transformAuthoredAssetContent(transformedContent, sourceAnchor,
+                                     request.instanceTransform, false)) {
+    reject(receipt, CreativeAuthoredAssetStatus::InvalidGeometry,
+           "creative_authored_asset_content_transform_invalid");
+    return receipt;
+  }
   receipt.contentPasteReceipt = pasteCreativeClipboardAtomically(
-      staged, request.definition->content, plan.contentPasteRequest);
+      staged, transformedContent, plan.contentPasteRequest);
   if (!receipt.contentPasteReceipt.accepted) {
     reject(receipt, CreativeAuthoredAssetStatus::CreateRejected,
            receipt.contentPasteReceipt.reasonCode);
@@ -1369,8 +1438,7 @@ refreshCreativeAuthoredAssetInstancesAtomically(
              rootObjectId, rootObjectId);
       return receipt;
     }
-    const CreativeVec3 rootPosition = root->transform.position;
-    const double rootYaw = root->transform.rotationEulerRadians.y;
+    const CreativeTransform rootTransform = root->transform;
     const std::optional<CreativeObjectId> rootParentId = root->parentId;
     const std::string rootAttachmentSocket = root->attachmentSocket;
     std::vector<std::string> previousSourceFingerprintTags;
@@ -1410,8 +1478,7 @@ refreshCreativeAuthoredAssetInstancesAtomically(
 
     CreativeAuthoredAssetPlacementRequest placementRequest;
     placementRequest.definition = &definition;
-    placementRequest.targetAnchor = rootPosition;
-    placementRequest.yawRadians = rootYaw;
+    placementRequest.instanceTransform = rootTransform;
     placementRequest.parentId = rootParentId;
     placementRequest.attachmentSocket = rootAttachmentSocket;
     const CreativeAuthoredAssetPlacementPlan plan =
@@ -1422,8 +1489,19 @@ refreshCreativeAuthoredAssetInstancesAtomically(
       return receipt;
     }
 
+    CreativeClipboard transformedContent = definition.content;
+    const CreativeVec3 sourceAnchor = transformedContent.hasPlacementAnchor
+                                          ? transformedContent.placementAnchor
+                                          : CreativeVec3{};
+    if (!transformAuthoredAssetContent(transformedContent, sourceAnchor,
+                                       rootTransform, false)) {
+      reject(receipt, CreativeAuthoredAssetRefreshStatus::InvalidDefinition,
+             "creative_authored_asset_refresh_transform_invalid",
+             rootObjectId);
+      return receipt;
+    }
     const CreativeClipboardPasteReceipt pasted =
-        pasteCreativeClipboardAtomically(staged, definition.content,
+        pasteCreativeClipboardAtomically(staged, transformedContent,
                                          plan.contentPasteRequest);
     if (!pasted.accepted) {
       reject(receipt, CreativeAuthoredAssetRefreshStatus::MutationRejected,

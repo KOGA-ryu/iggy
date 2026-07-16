@@ -426,6 +426,7 @@ bool transformedPasteMatchesTheSharedPlacementPlan() {
 
   cr::CreativeClipboardPasteRequest request;
   request.offset = {5.0, 0.0, 7.0};
+  request.scaleFactor = {2.0, 0.5, 1.5};
   request.quarterTurns = 1U;
   request.mirrorX = true;
   cr::CreativeSelectionPlacementRequest planRequest;
@@ -434,6 +435,7 @@ bool transformedPasteMatchesTheSharedPlacementPlan() {
   planRequest.targetAnchor = {clipboard.placementAnchor.x + request.offset.x,
                               clipboard.placementAnchor.y + request.offset.y,
                               clipboard.placementAnchor.z + request.offset.z};
+  planRequest.scaleFactor = request.scaleFactor;
   planRequest.quarterTurns = request.quarterTurns;
   planRequest.mirrorX = request.mirrorX;
   const cr::CreativeSelectionPlacementPlan plan =
@@ -444,6 +446,11 @@ bool transformedPasteMatchesTheSharedPlacementPlan() {
                                          ? nullptr
                                          : document.findObject(
                                                receipt.pastedObjectIds.front());
+  cr::CreativeClipboardPasteRequest invalidScale = request;
+  invalidScale.scaleFactor.x = 0.0;
+  const std::uint64_t revisionBeforeRejectedScale = document.revision();
+  const cr::CreativeClipboardPasteReceipt rejectedScale =
+      cr::pasteCreativeClipboardAtomically(document, clipboard, invalidScale);
 
   return expect(plan.accepted && receipt.accepted && pasted != nullptr,
                 "transformed paste accepted") &&
@@ -454,7 +461,12 @@ bool transformedPasteMatchesTheSharedPlacementPlan() {
                     pasted->bounds.max.z == plan.objects[0].bounds.max.z,
                 "paste commit consumes exact planned bounds") &&
          expect(pasted != nullptr && pasted->name == "Source Copy",
-                "transformed paste retains clipboard naming contract");
+                "transformed paste retains clipboard naming contract") &&
+         expect(!rejectedScale.accepted && !rejectedScale.changed &&
+                    rejectedScale.reasonCode ==
+                        "creative_clipboard_scale_invalid" &&
+                    document.revision() == revisionBeforeRejectedScale,
+                "non-positive clipboard scale fails before mutation");
 }
 
 bool lateBatchFailureRollsBackEarlierStagedCopy() {
