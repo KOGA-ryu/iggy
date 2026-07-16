@@ -139,6 +139,13 @@ struct CreativeDesktopWorldLayoutRoomSettingsPayload {
   CreativeEditorWorldLayoutRoomSettings settings;
 };
 
+struct CreativeDesktopWorldLayoutRoomManipulationPayload {
+  CreativeEditorWorldLayoutRoomManipulationPhase phase =
+      CreativeEditorWorldLayoutRoomManipulationPhase::Begin;
+  CreativeEditorWorldLayoutPoint point;
+  double toleranceCells = 0.25;
+};
+
 // The discriminated payload carried by every command (monostate = no payload).
 using CreativeDesktopCommandPayload = std::variant<
     std::monostate,
@@ -157,6 +164,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutToolPayload,
     CreativeDesktopWorldLayoutPointPayload,
     CreativeDesktopWorldLayoutGesturePayload,
-    CreativeDesktopWorldLayoutRoomSettingsPayload>;
+    CreativeDesktopWorldLayoutRoomSettingsPayload,
+    CreativeDesktopWorldLayoutRoomManipulationPayload>;
 
 }  // namespace iggy3d_creative_app

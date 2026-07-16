@@ -750,6 +750,30 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutManipulateRoom: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutRoomManipulationPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout room manipulation: payload mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          applyCreativeEditorWorldLayoutRoomManipulation(
+              editor.worldLayout, payload->phase, payload->point,
+              payload->toleranceCells);
+      const bool sourceChanged =
+          payload->phase ==
+              CreativeEditorWorldLayoutRoomManipulationPhase::Commit &&
+          receipt.changed;
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = sourceChanged;
+      result.sceneChanged = previewWasActive && sourceChanged;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutDeleteSelection: {
       const bool previewWasActive =
           creativeEditorWorldLayoutPreviewActive(editor.worldLayout);

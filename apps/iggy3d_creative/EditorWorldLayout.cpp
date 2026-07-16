@@ -47,6 +47,7 @@ void noteSourceChange(CreativeEditorWorldLayoutState& state,
   if (state.revision != std::numeric_limits<std::uint64_t>::max()) {
     ++state.revision;
   }
+  state.roomManipulation = {};
   invalidatePreview(state);
   state.statusMessage = std::move(reason);
 }
@@ -272,6 +273,7 @@ CreativeEditorWorldLayoutEditReceipt selectAt(
                        selected.index != state.selection.index;
   state.selection = selected;
   state.anchorActive = false;
+  state.roomManipulation = {};
   state.statusMessage =
       selected.kind == CreativeEditorWorldLayoutSelectionKind::None
           ? "selection cleared"
@@ -302,6 +304,237 @@ bool roomFootprintOverlaps(const cr::CreativeWorldLayout& layout,
     }
   }
   return false;
+}
+
+struct RoomSettingsValidation {
+  bool accepted = false;
+  std::string reasonCode =
+      "creative_editor_world_layout_room_settings_invalid";
+  std::string message = "room shell settings are invalid";
+};
+
+CreativeEditorWorldLayoutRoomSettings roomSettings(
+    const cr::CreativeWorldLayoutRoom& room,
+    cr::CreativeWorldLayoutRect footprint) noexcept {
+  return {footprint, room.baseLayer, room.wallHeightCells,
+          room.wallThicknessCells, room.floorThicknessCells};
+}
+
+RoomSettingsValidation validateRoomSettings(
+    const CreativeEditorWorldLayoutState& state, std::size_t roomIndex,
+    const CreativeEditorWorldLayoutRoomSettings& settings) {
+  const double width = static_cast<double>(settings.footprint.maximum.x) -
+                       settings.footprint.minimum.x;
+  const double depth = static_cast<double>(settings.footprint.maximum.z) -
+                       settings.footprint.minimum.z;
+  if (roomIndex >= state.source.rooms.size() || width <= 0.0 || depth <= 0.0 ||
+      settings.wallHeightCells == 0U || settings.floorThicknessCells == 0U ||
+      !std::isfinite(settings.wallThicknessCells) ||
+      settings.wallThicknessCells <= 0.0 ||
+      width <= settings.wallThicknessCells * 2.0 ||
+      depth <= settings.wallThicknessCells * 2.0) {
+    return {};
+  }
+
+  const cr::CreativeWorldLayoutRoom& existingRoom =
+      state.source.rooms[roomIndex];
+  if (roomFootprintOverlaps(state.source, settings.footprint,
+                            existingRoom.buildingIndex, settings.baseLayer,
+                            roomIndex)) {
+    return {false, "creative_editor_world_layout_room_overlap",
+            "rooms may touch but cannot overlap"};
+  }
+
+  for (const cr::CreativeWorldLayoutOpening& opening : state.source.openings) {
+    if (opening.hostKind != cr::CreativeWorldLayoutOpeningHostKind::RoomEdge ||
+        opening.roomIndex != roomIndex) {
+      continue;
+    }
+    const bool horizontal =
+        opening.roomEdge == cr::CreativeWorldLayoutRoomEdge::North ||
+        opening.roomEdge == cr::CreativeWorldLayoutRoomEdge::South;
+    const double edgeLength = horizontal ? width : depth;
+    const double halfWidth = opening.widthCells * 0.5;
+    if (opening.centerOffsetCells - halfWidth < 0.0 ||
+        opening.centerOffsetCells + halfWidth > edgeLength) {
+      return {
+          false,
+          "creative_editor_world_layout_room_resize_opening_invalid",
+          "resize would move an opening outside its wall",
+      };
+    }
+  }
+
+  cr::CreativeWorldLayout candidate = state.source;
+  cr::CreativeWorldLayoutRoom& candidateRoom = candidate.rooms[roomIndex];
+  candidateRoom.footprint = settings.footprint;
+  candidateRoom.baseLayer = settings.baseLayer;
+  candidateRoom.wallHeightCells = settings.wallHeightCells;
+  candidateRoom.wallThicknessCells = settings.wallThicknessCells;
+  candidateRoom.floorThicknessCells = settings.floorThicknessCells;
+  const cr::CreativeWorldLayoutRoomCompileResult expanded =
+      cr::expandCreativeWorldLayoutRooms(candidate);
+  if (!expanded.accepted) {
+    return {false, expanded.reasonCode, expanded.reasonCode};
+  }
+  for (std::size_t index = 0U; index < expanded.expanded.openings.size();
+       ++index) {
+    const cr::CreativeWorldLayoutOpening& opening =
+        expanded.expanded.openings[index];
+    for (std::size_t prior = 0U; prior < index; ++prior) {
+      const cr::CreativeWorldLayoutOpening& existing =
+          expanded.expanded.openings[prior];
+      if (opening.wallIndex == existing.wallIndex &&
+          std::fabs(opening.centerOffsetCells -
+                    existing.centerOffsetCells) <=
+              (opening.widthCells + existing.widthCells) * 0.5 + 1.0e-9) {
+        return {false, "creative_editor_world_layout_opening_overlap",
+                "resize would overlap openings on a shared wall"};
+      }
+    }
+  }
+  return {true, "creative_editor_world_layout_room_settings_ready",
+          "room shell settings ready"};
+}
+
+CreativeEditorWorldLayoutRoomHandle roomHandleAt(
+    cr::CreativeWorldLayoutRect footprint,
+    CreativeEditorWorldLayoutPoint point, double toleranceCells) noexcept {
+  if (!finitePoint(point) || !std::isfinite(toleranceCells) ||
+      toleranceCells <= 0.0 ||
+      point.x < footprint.minimum.x - toleranceCells ||
+      point.x > footprint.maximum.x + toleranceCells ||
+      point.z < footprint.minimum.z - toleranceCells ||
+      point.z > footprint.maximum.z + toleranceCells) {
+    return CreativeEditorWorldLayoutRoomHandle::None;
+  }
+  const bool north =
+      std::fabs(point.z - footprint.minimum.z) <= toleranceCells;
+  const bool east =
+      std::fabs(point.x - footprint.maximum.x) <= toleranceCells;
+  const bool south =
+      std::fabs(point.z - footprint.maximum.z) <= toleranceCells;
+  const bool west =
+      std::fabs(point.x - footprint.minimum.x) <= toleranceCells;
+  if (north && west) {
+    return CreativeEditorWorldLayoutRoomHandle::NorthWest;
+  }
+  if (north && east) {
+    return CreativeEditorWorldLayoutRoomHandle::NorthEast;
+  }
+  if (south && east) {
+    return CreativeEditorWorldLayoutRoomHandle::SouthEast;
+  }
+  if (south && west) {
+    return CreativeEditorWorldLayoutRoomHandle::SouthWest;
+  }
+  if (north) {
+    return CreativeEditorWorldLayoutRoomHandle::North;
+  }
+  if (east) {
+    return CreativeEditorWorldLayoutRoomHandle::East;
+  }
+  if (south) {
+    return CreativeEditorWorldLayoutRoomHandle::South;
+  }
+  if (west) {
+    return CreativeEditorWorldLayoutRoomHandle::West;
+  }
+  if (point.x >= footprint.minimum.x && point.x <= footprint.maximum.x &&
+      point.z >= footprint.minimum.z && point.z <= footprint.maximum.z) {
+    return CreativeEditorWorldLayoutRoomHandle::Move;
+  }
+  return CreativeEditorWorldLayoutRoomHandle::None;
+}
+
+bool offsetCoordinate(std::int32_t value, std::int64_t delta,
+                      std::int32_t& output) noexcept {
+  const std::int64_t candidate = static_cast<std::int64_t>(value) + delta;
+  if (candidate < std::numeric_limits<std::int32_t>::min() ||
+      candidate > std::numeric_limits<std::int32_t>::max()) {
+    return false;
+  }
+  output = static_cast<std::int32_t>(candidate);
+  return true;
+}
+
+bool snappedPointerDelta(double current, double start,
+                         std::int64_t& output) noexcept {
+  constexpr double kMaximumUsefulDelta = 4294967295.0;
+  const double delta = std::round(current - start);
+  if (!std::isfinite(delta) || delta < -kMaximumUsefulDelta ||
+      delta > kMaximumUsefulDelta) {
+    return false;
+  }
+  output = static_cast<std::int64_t>(delta);
+  return true;
+}
+
+bool moveNorth(CreativeEditorWorldLayoutRoomHandle handle) noexcept {
+  return handle == CreativeEditorWorldLayoutRoomHandle::North ||
+         handle == CreativeEditorWorldLayoutRoomHandle::NorthWest ||
+         handle == CreativeEditorWorldLayoutRoomHandle::NorthEast;
+}
+
+bool moveEast(CreativeEditorWorldLayoutRoomHandle handle) noexcept {
+  return handle == CreativeEditorWorldLayoutRoomHandle::East ||
+         handle == CreativeEditorWorldLayoutRoomHandle::NorthEast ||
+         handle == CreativeEditorWorldLayoutRoomHandle::SouthEast;
+}
+
+bool moveSouth(CreativeEditorWorldLayoutRoomHandle handle) noexcept {
+  return handle == CreativeEditorWorldLayoutRoomHandle::South ||
+         handle == CreativeEditorWorldLayoutRoomHandle::SouthEast ||
+         handle == CreativeEditorWorldLayoutRoomHandle::SouthWest;
+}
+
+bool moveWest(CreativeEditorWorldLayoutRoomHandle handle) noexcept {
+  return handle == CreativeEditorWorldLayoutRoomHandle::West ||
+         handle == CreativeEditorWorldLayoutRoomHandle::NorthWest ||
+         handle == CreativeEditorWorldLayoutRoomHandle::SouthWest;
+}
+
+bool roomManipulationFootprint(
+    const CreativeEditorWorldLayoutRoomManipulationState& manipulation,
+    CreativeEditorWorldLayoutPoint point,
+    cr::CreativeWorldLayoutRect& output) noexcept {
+  output = manipulation.originalFootprint;
+  std::int64_t deltaX = 0;
+  std::int64_t deltaZ = 0;
+  if (!snappedPointerDelta(point.x, manipulation.startPoint.x, deltaX) ||
+      !snappedPointerDelta(point.z, manipulation.startPoint.z, deltaZ)) {
+    return false;
+  }
+  const CreativeEditorWorldLayoutRoomHandle handle =
+      manipulation.target.handle;
+  if (handle == CreativeEditorWorldLayoutRoomHandle::Move) {
+    return offsetCoordinate(manipulation.originalFootprint.minimum.x, deltaX,
+                            output.minimum.x) &&
+           offsetCoordinate(manipulation.originalFootprint.maximum.x, deltaX,
+                            output.maximum.x) &&
+           offsetCoordinate(manipulation.originalFootprint.minimum.z, deltaZ,
+                            output.minimum.z) &&
+           offsetCoordinate(manipulation.originalFootprint.maximum.z, deltaZ,
+                            output.maximum.z);
+  }
+  if (moveWest(handle) &&
+      !offsetCoordinate(manipulation.originalFootprint.minimum.x, deltaX,
+                        output.minimum.x)) {
+    return false;
+  }
+  if (moveEast(handle) &&
+      !offsetCoordinate(manipulation.originalFootprint.maximum.x, deltaX,
+                        output.maximum.x)) {
+    return false;
+  }
+  if (moveNorth(handle) &&
+      !offsetCoordinate(manipulation.originalFootprint.minimum.z, deltaZ,
+                        output.minimum.z)) {
+    return false;
+  }
+  return !moveSouth(handle) ||
+         offsetCoordinate(manipulation.originalFootprint.maximum.z, deltaZ,
+                          output.maximum.z);
 }
 
 CreativeEditorWorldLayoutEditReceipt addRoomPoint(
@@ -541,9 +774,11 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutTool(
   if (tool >= CreativeEditorWorldLayoutTool::Count) {
     return {false, false, "creative_editor_world_layout_tool_invalid"};
   }
-  const bool changed = state.tool != tool || state.anchorActive;
+  const bool changed = state.tool != tool || state.anchorActive ||
+                       state.roomManipulation.active;
   state.tool = tool;
   state.anchorActive = false;
+  state.roomManipulation = {};
   state.statusMessage =
       std::string(creativeEditorWorldLayoutToolLabel(tool)) + " tool";
   return {true, changed, "creative_editor_world_layout_tool_set"};
@@ -605,6 +840,7 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutGesture(
     }
     state.anchorActive = true;
     state.anchor = gridPoint;
+    state.roomManipulation = {};
     state.statusMessage =
         state.tool == CreativeEditorWorldLayoutTool::Room
             ? "drag room to its opposite corner"
@@ -623,46 +859,11 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutGesture(
 CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutRoomSettings(
     CreativeEditorWorldLayoutState& state, std::size_t roomIndex,
     CreativeEditorWorldLayoutRoomSettings settings) {
-  const double width = static_cast<double>(settings.footprint.maximum.x) -
-                       settings.footprint.minimum.x;
-  const double depth = static_cast<double>(settings.footprint.maximum.z) -
-                       settings.footprint.minimum.z;
-  if (roomIndex >= state.source.rooms.size() || width <= 0.0 || depth <= 0.0 ||
-      settings.wallHeightCells == 0U || settings.floorThicknessCells == 0U ||
-      !std::isfinite(settings.wallThicknessCells) ||
-      settings.wallThicknessCells <= 0.0 ||
-      width <= settings.wallThicknessCells * 2.0 ||
-      depth <= settings.wallThicknessCells * 2.0) {
-    state.statusMessage = "room shell settings are invalid";
-    return {false, false,
-            "creative_editor_world_layout_room_settings_invalid"};
-  }
-  const cr::CreativeWorldLayoutRoom& existingRoom =
-      state.source.rooms[roomIndex];
-  if (roomFootprintOverlaps(state.source, settings.footprint,
-                            existingRoom.buildingIndex,
-                            settings.baseLayer, roomIndex)) {
-    state.statusMessage = "rooms may touch but cannot overlap";
-    return {false, false, "creative_editor_world_layout_room_overlap"};
-  }
-  for (const cr::CreativeWorldLayoutOpening& opening : state.source.openings) {
-    if (opening.hostKind != cr::CreativeWorldLayoutOpeningHostKind::RoomEdge ||
-        opening.roomIndex != roomIndex) {
-      continue;
-    }
-    const bool horizontal =
-        opening.roomEdge == cr::CreativeWorldLayoutRoomEdge::North ||
-        opening.roomEdge == cr::CreativeWorldLayoutRoomEdge::South;
-    const double edgeLength = horizontal
-                                  ? width
-                                  : depth;
-    const double halfWidth = opening.widthCells * 0.5;
-    if (opening.centerOffsetCells - halfWidth < 0.0 ||
-        opening.centerOffsetCells + halfWidth > edgeLength) {
-      state.statusMessage = "resize would move an opening outside its wall";
-      return {false, false,
-              "creative_editor_world_layout_room_resize_opening_invalid"};
-    }
+  const RoomSettingsValidation validation =
+      validateRoomSettings(state, roomIndex, settings);
+  if (!validation.accepted) {
+    state.statusMessage = validation.message;
+    return {false, false, validation.reasonCode};
   }
   cr::CreativeWorldLayoutRoom& room = state.source.rooms[roomIndex];
   if (room.footprint.minimum == settings.footprint.minimum &&
@@ -682,6 +883,148 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutRoomSettings(
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Room, roomIndex};
   noteSourceChange(state, "room shell settings updated");
   return {true, true, "creative_editor_world_layout_room_settings_updated"};
+}
+
+CreativeEditorWorldLayoutRoomTarget findCreativeEditorWorldLayoutRoomTarget(
+    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint point, double toleranceCells) noexcept {
+  if (!finitePoint(point) || !std::isfinite(toleranceCells) ||
+      toleranceCells <= 0.0) {
+    return {};
+  }
+  const CreativeEditorWorldLayoutSelection hit = hitTest(state.source, point);
+  if (hit.kind == CreativeEditorWorldLayoutSelectionKind::Room &&
+      hit.index < state.source.rooms.size()) {
+    const CreativeEditorWorldLayoutRoomHandle handle = roomHandleAt(
+        state.source.rooms[hit.index].footprint, point, toleranceCells);
+    if (handle != CreativeEditorWorldLayoutRoomHandle::None) {
+      return {hit.index, handle};
+    }
+  }
+  if (hit.kind != CreativeEditorWorldLayoutSelectionKind::None) {
+    return {};
+  }
+  if (state.selection.kind == CreativeEditorWorldLayoutSelectionKind::Room &&
+      state.selection.index < state.source.rooms.size()) {
+    const CreativeEditorWorldLayoutRoomHandle handle = roomHandleAt(
+        state.source.rooms[state.selection.index].footprint, point,
+        toleranceCells);
+    if (handle != CreativeEditorWorldLayoutRoomHandle::None) {
+      return {state.selection.index, handle};
+    }
+  }
+  return {};
+}
+
+CreativeEditorWorldLayoutEditReceipt
+applyCreativeEditorWorldLayoutRoomManipulation(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutRoomManipulationPhase phase,
+    CreativeEditorWorldLayoutPoint point, double toleranceCells) {
+  if (phase >= CreativeEditorWorldLayoutRoomManipulationPhase::Count) {
+    return {false, false,
+            "creative_editor_world_layout_room_manipulation_phase_invalid"};
+  }
+  if (phase == CreativeEditorWorldLayoutRoomManipulationPhase::Cancel) {
+    const bool changed = state.roomManipulation.active;
+    state.roomManipulation = {};
+    state.statusMessage = "room manipulation cancelled";
+    return {true, changed,
+            "creative_editor_world_layout_room_manipulation_cancelled"};
+  }
+  if (state.tool != CreativeEditorWorldLayoutTool::Select) {
+    return {false, false,
+            "creative_editor_world_layout_room_manipulation_tool_invalid"};
+  }
+  if (phase == CreativeEditorWorldLayoutRoomManipulationPhase::Begin) {
+    const CreativeEditorWorldLayoutRoomTarget target =
+        findCreativeEditorWorldLayoutRoomTarget(state, point, toleranceCells);
+    if (target.handle == CreativeEditorWorldLayoutRoomHandle::None ||
+        target.roomIndex >= state.source.rooms.size()) {
+      return selectAt(state, point);
+    }
+    const cr::CreativeWorldLayoutRect footprint =
+        state.source.rooms[target.roomIndex].footprint;
+    state.selection = {CreativeEditorWorldLayoutSelectionKind::Room,
+                       target.roomIndex};
+    state.anchorActive = false;
+    state.roomManipulation = {
+        true,
+        state.revision,
+        target,
+        point,
+        footprint,
+        footprint,
+        true,
+        "creative_editor_world_layout_room_manipulation_ready",
+    };
+    state.statusMessage =
+        target.handle == CreativeEditorWorldLayoutRoomHandle::Move
+            ? "drag to move room"
+            : "drag to resize room";
+    return {true, true,
+            "creative_editor_world_layout_room_manipulation_started"};
+  }
+  if (!state.roomManipulation.active ||
+      state.roomManipulation.target.roomIndex >= state.source.rooms.size()) {
+    return {false, false,
+            "creative_editor_world_layout_room_manipulation_not_active"};
+  }
+  const std::size_t roomIndex = state.roomManipulation.target.roomIndex;
+  const cr::CreativeWorldLayoutRoom& room = state.source.rooms[roomIndex];
+  if (state.revision != state.roomManipulation.sourceRevision ||
+      !(room.footprint.minimum ==
+            state.roomManipulation.originalFootprint.minimum &&
+        room.footprint.maximum ==
+            state.roomManipulation.originalFootprint.maximum)) {
+    state.roomManipulation = {};
+    state.statusMessage = "room changed while drag was active";
+    return {false, false,
+            "creative_editor_world_layout_room_manipulation_stale"};
+  }
+  if (phase == CreativeEditorWorldLayoutRoomManipulationPhase::Update) {
+    cr::CreativeWorldLayoutRect footprint;
+    const bool coordinateValid = roomManipulationFootprint(
+        state.roomManipulation, point, footprint);
+    if (coordinateValid &&
+        footprint.minimum == state.roomManipulation.previewFootprint.minimum &&
+        footprint.maximum == state.roomManipulation.previewFootprint.maximum) {
+      return {true, false, state.roomManipulation.reasonCode};
+    }
+    RoomSettingsValidation validation;
+    if (coordinateValid) {
+      validation = validateRoomSettings(
+          state, roomIndex, roomSettings(room, footprint));
+    } else {
+      validation.reasonCode =
+          "creative_editor_world_layout_room_manipulation_out_of_range";
+      validation.message = "room drag exceeds the layout coordinate range";
+    }
+    state.roomManipulation.previewFootprint = footprint;
+    state.roomManipulation.previewValid = validation.accepted;
+    state.roomManipulation.reasonCode = validation.reasonCode;
+    state.statusMessage = validation.accepted ? "room drag preview"
+                                              : validation.message;
+    return {true, true, validation.reasonCode};
+  }
+
+  const CreativeEditorWorldLayoutEditReceipt updated =
+      applyCreativeEditorWorldLayoutRoomManipulation(
+          state, CreativeEditorWorldLayoutRoomManipulationPhase::Update, point,
+          toleranceCells);
+  if (!updated.accepted) {
+    return updated;
+  }
+  if (!state.roomManipulation.previewValid) {
+    const std::string reasonCode = state.roomManipulation.reasonCode;
+    state.roomManipulation = {};
+    return {false, false, reasonCode};
+  }
+  const cr::CreativeWorldLayoutRect footprint =
+      state.roomManipulation.previewFootprint;
+  state.roomManipulation = {};
+  return setCreativeEditorWorldLayoutRoomSettings(
+      state, roomIndex, roomSettings(room, footprint));
 }
 
 CreativeEditorWorldLayoutEditReceipt deleteCreativeEditorWorldLayoutSelection(
@@ -754,6 +1097,7 @@ CreativeEditorWorldLayoutPreviewReceipt previewCreativeEditorWorldLayout(
     const cr::CreativeDocument& document) {
   CreativeEditorWorldLayoutPreviewReceipt receipt;
   state.anchorActive = false;
+  state.roomManipulation = {};
   const cr::CreativeWorldLayoutCompileResult compiled =
       cr::buildCreativeWorldLayoutPlan(document, state.source);
   receipt.status = compiled.receipt.status;
@@ -785,6 +1129,7 @@ CreativeEditorWorldLayoutApplyReceipt confirmCreativeEditorWorldLayout(
     CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState) {
   CreativeEditorWorldLayoutApplyReceipt result;
   state.anchorActive = false;
+  state.roomManipulation = {};
   const cr::CreativeWorldLayoutCompileResult compiled =
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(),
                                        state.source);

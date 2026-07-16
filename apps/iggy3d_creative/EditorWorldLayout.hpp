@@ -50,6 +50,46 @@ struct CreativeEditorWorldLayoutRoomSettings {
   std::uint16_t floorThicknessCells = 1U;
 };
 
+enum class CreativeEditorWorldLayoutRoomHandle : std::uint8_t {
+  None,
+  Move,
+  North,
+  East,
+  South,
+  West,
+  NorthWest,
+  NorthEast,
+  SouthEast,
+  SouthWest,
+  Count,
+};
+
+struct CreativeEditorWorldLayoutRoomTarget {
+  std::size_t roomIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  CreativeEditorWorldLayoutRoomHandle handle =
+      CreativeEditorWorldLayoutRoomHandle::None;
+};
+
+enum class CreativeEditorWorldLayoutRoomManipulationPhase : std::uint8_t {
+  Begin,
+  Update,
+  Commit,
+  Cancel,
+  Count,
+};
+
+struct CreativeEditorWorldLayoutRoomManipulationState {
+  bool active = false;
+  std::uint64_t sourceRevision = 0U;
+  CreativeEditorWorldLayoutRoomTarget target;
+  CreativeEditorWorldLayoutPoint startPoint;
+  cr::CreativeWorldLayoutRect originalFootprint;
+  cr::CreativeWorldLayoutRect previewFootprint;
+  bool previewValid = false;
+  std::string reasonCode =
+      "creative_editor_world_layout_room_manipulation_inactive";
+};
+
 enum class CreativeEditorWorldLayoutGesturePhase : std::uint8_t {
   Begin,
   Commit,
@@ -68,6 +108,7 @@ struct CreativeEditorWorldLayoutState {
   CreativeEditorWorldLayoutSelection selection;
   bool anchorActive = false;
   cr::CreativeTerrainCoord2 anchor{};
+  CreativeEditorWorldLayoutRoomManipulationState roomManipulation;
 
   bool previewVisible = false;
   std::uint64_t previewLayoutRevision = 0U;
@@ -135,6 +176,16 @@ applyCreativeEditorWorldLayoutGesture(
 setCreativeEditorWorldLayoutRoomSettings(
     CreativeEditorWorldLayoutState& state, std::size_t roomIndex,
     CreativeEditorWorldLayoutRoomSettings settings);
+[[nodiscard]] CreativeEditorWorldLayoutRoomTarget
+findCreativeEditorWorldLayoutRoomTarget(
+    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint point, double toleranceCells) noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+applyCreativeEditorWorldLayoutRoomManipulation(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutRoomManipulationPhase phase,
+    CreativeEditorWorldLayoutPoint point = {},
+    double toleranceCells = 0.25);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 deleteCreativeEditorWorldLayoutSelection(CreativeEditorWorldLayoutState& state);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt

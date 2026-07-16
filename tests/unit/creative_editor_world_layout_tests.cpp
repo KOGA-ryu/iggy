@@ -178,6 +178,220 @@ bool invalidRoomShellSettingsFailWithoutMutation() {
                 "invalid room shell settings do not mutate source truth");
 }
 
+bool roomMovePreviewCommitsOnceAndKeepsOpeningHosted() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state);
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Room));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {0, 0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {6, 4}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Door));
+  static_cast<void>(
+      app::applyCreativeEditorWorldLayoutPoint(state, {3.0, 0.1}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Select));
+
+  const auto centerTarget = app::findCreativeEditorWorldLayoutRoomTarget(
+      state, {2.0, 2.0}, 0.3);
+  const auto cornerTarget = app::findCreativeEditorWorldLayoutRoomTarget(
+      state, {0.0, 0.0}, 0.3);
+  const auto openingTarget = app::findCreativeEditorWorldLayoutRoomTarget(
+      state, {3.0, 0.1}, 0.3);
+  const std::uint64_t revisionBefore = state.revision;
+  const auto begin = app::applyCreativeEditorWorldLayoutRoomManipulation(
+      state, app::CreativeEditorWorldLayoutRoomManipulationPhase::Begin,
+      {2.49, 2.49}, 0.3);
+  const auto smallUpdate = app::applyCreativeEditorWorldLayoutRoomManipulation(
+      state, app::CreativeEditorWorldLayoutRoomManipulationPhase::Update,
+      {2.51, 2.51}, 0.3);
+  const auto update = app::applyCreativeEditorWorldLayoutRoomManipulation(
+      state, app::CreativeEditorWorldLayoutRoomManipulationPhase::Update,
+      {5.49, 4.49}, 0.3);
+  const bool previewOnly =
+      state.source.rooms[0].footprint.minimum ==
+          cr::CreativeTerrainCoord2{0, 0} &&
+      state.source.rooms[0].footprint.maximum ==
+          cr::CreativeTerrainCoord2{6, 4} &&
+      state.roomManipulation.previewFootprint.minimum ==
+          cr::CreativeTerrainCoord2{3, 2} &&
+      state.roomManipulation.previewFootprint.maximum ==
+          cr::CreativeTerrainCoord2{9, 6} &&
+      state.roomManipulation.previewValid && state.revision == revisionBefore;
+  const auto commit = app::applyCreativeEditorWorldLayoutRoomManipulation(
+      state, app::CreativeEditorWorldLayoutRoomManipulationPhase::Commit,
+      {5.49, 4.49}, 0.3);
+
+  return expect(centerTarget.handle ==
+                        app::CreativeEditorWorldLayoutRoomHandle::Move &&
+                    cornerTarget.handle ==
+                        app::CreativeEditorWorldLayoutRoomHandle::NorthWest &&
+                    openingTarget.handle ==
+                        app::CreativeEditorWorldLayoutRoomHandle::None,
+                "room handles do not steal a hosted opening") &&
+         expect(begin.accepted && begin.changed && smallUpdate.accepted &&
+                    !smallUpdate.changed && update.accepted && update.changed &&
+                    previewOnly,
+                "room move snaps press-relative deltas into preview only") &&
+         expect(commit.accepted && commit.changed &&
+                    state.revision == revisionBefore + 1U &&
+                    !state.roomManipulation.active &&
+                    state.source.rooms[0].footprint.minimum ==
+                        cr::CreativeTerrainCoord2{3, 2} &&
+                    state.source.rooms[0].footprint.maximum ==
+                        cr::CreativeTerrainCoord2{9, 6},
+                "room move commits one source revision") &&
+         expect(state.source.openings.size() == 1U &&
+                    state.source.openings[0].hostKind ==
+                        cr::CreativeWorldLayoutOpeningHostKind::RoomEdge &&
+                    state.source.openings[0].roomIndex == 0U &&
+                    state.source.openings[0].roomEdge ==
+                        cr::CreativeWorldLayoutRoomEdge::North &&
+                    near(state.source.openings[0].centerOffsetCells, 3.0),
+                "room move preserves the opening's semantic attachment");
+}
+
+bool roomEdgesAndCornersResizeFromTheirOwnedSides() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state);
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Room));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {0, 0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {6, 4}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Select));
+
+  const std::uint64_t revisionBeforeEdge = state.revision;
+  const auto edgeBegin = app::applyCreativeEditorWorldLayoutRoomManipulation(
+      state, app::CreativeEditorWorldLayoutRoomManipulationPhase::Begin,
+      {6.0, 2.0}, 0.3);
+  const auto edgeCommit = app::applyCreativeEditorWorldLayoutRoomManipulation(
+      state, app::CreativeEditorWorldLayoutRoomManipulationPhase::Commit,
+      {8.0, 2.0}, 0.3);
+  const std::uint64_t revisionBeforeCorner = state.revision;
+  const auto cornerBegin = app::applyCreativeEditorWorldLayoutRoomManipulation(
+      state, app::CreativeEditorWorldLayoutRoomManipulationPhase::Begin,
+      {0.0, 0.0}, 0.3);
+  const auto cornerCommit = app::applyCreativeEditorWorldLayoutRoomManipulation(
+      state, app::CreativeEditorWorldLayoutRoomManipulationPhase::Commit,
+      {-2.0, -1.0}, 0.3);
+  const std::uint64_t revisionBeforeCancel = state.revision;
+  static_cast<void>(app::applyCreativeEditorWorldLayoutRoomManipulation(
+      state, app::CreativeEditorWorldLayoutRoomManipulationPhase::Begin,
+      {2.0, 2.0}, 0.3));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutRoomManipulation(
+      state, app::CreativeEditorWorldLayoutRoomManipulationPhase::Update,
+      {3.0, 3.0}, 0.3));
+  const auto cancelled = app::applyCreativeEditorWorldLayoutRoomManipulation(
+      state, app::CreativeEditorWorldLayoutRoomManipulationPhase::Cancel);
+
+  return expect(edgeBegin.accepted && edgeCommit.accepted &&
+                    edgeCommit.changed &&
+                    state.source.rooms[0].footprint.maximum ==
+                        cr::CreativeTerrainCoord2{8, 4} &&
+                    revisionBeforeCorner == revisionBeforeEdge + 1U,
+                "east handle changes only the east side once") &&
+         expect(cornerBegin.accepted && cornerCommit.accepted &&
+                    cornerCommit.changed &&
+                    state.source.rooms[0].footprint.minimum ==
+                        cr::CreativeTerrainCoord2{-2, -1} &&
+                    state.source.rooms[0].footprint.maximum ==
+                        cr::CreativeTerrainCoord2{8, 4} &&
+                    state.revision == revisionBeforeCorner + 1U,
+                "north-west handle changes exactly two owned sides once") &&
+         expect(cancelled.accepted && cancelled.changed &&
+                    !state.roomManipulation.active &&
+                    state.revision == revisionBeforeCancel &&
+                    state.source.rooms[0].footprint.minimum ==
+                        cr::CreativeTerrainCoord2{-2, -1} &&
+                    state.source.rooms[0].footprint.maximum ==
+                        cr::CreativeTerrainCoord2{8, 4},
+                "cancel discards a room preview without a source edit");
+}
+
+bool invalidRoomManipulationsRejectWithoutMutation() {
+  app::CreativeEditorWorldLayoutState overlapState;
+  app::resetCreativeEditorWorldLayout(overlapState);
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      overlapState, app::CreativeEditorWorldLayoutTool::Room));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      overlapState, app::CreativeEditorWorldLayoutGesturePhase::Begin,
+      {0, 0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      overlapState, app::CreativeEditorWorldLayoutGesturePhase::Commit,
+      {4, 4}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      overlapState, app::CreativeEditorWorldLayoutGesturePhase::Begin,
+      {4, 0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      overlapState, app::CreativeEditorWorldLayoutGesturePhase::Commit,
+      {8, 4}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      overlapState, app::CreativeEditorWorldLayoutTool::Select));
+  const std::uint64_t overlapRevision = overlapState.revision;
+  static_cast<void>(app::applyCreativeEditorWorldLayoutRoomManipulation(
+      overlapState,
+      app::CreativeEditorWorldLayoutRoomManipulationPhase::Begin, {2, 2},
+      0.3));
+  const auto overlapPreview =
+      app::applyCreativeEditorWorldLayoutRoomManipulation(
+          overlapState,
+          app::CreativeEditorWorldLayoutRoomManipulationPhase::Update, {4, 2},
+          0.3);
+  const bool overlapShownInvalid =
+      overlapPreview.accepted && !overlapState.roomManipulation.previewValid;
+  const auto overlapCommit =
+      app::applyCreativeEditorWorldLayoutRoomManipulation(
+          overlapState,
+          app::CreativeEditorWorldLayoutRoomManipulationPhase::Commit, {4, 2},
+          0.3);
+
+  app::CreativeEditorWorldLayoutState openingState;
+  app::resetCreativeEditorWorldLayout(openingState);
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      openingState, app::CreativeEditorWorldLayoutTool::Room));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      openingState, app::CreativeEditorWorldLayoutGesturePhase::Begin,
+      {0, 0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      openingState, app::CreativeEditorWorldLayoutGesturePhase::Commit,
+      {6, 4}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      openingState, app::CreativeEditorWorldLayoutTool::Door));
+  static_cast<void>(
+      app::applyCreativeEditorWorldLayoutPoint(openingState, {5.5, 0.1}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      openingState, app::CreativeEditorWorldLayoutTool::Select));
+  const std::uint64_t openingRevision = openingState.revision;
+  static_cast<void>(app::applyCreativeEditorWorldLayoutRoomManipulation(
+      openingState,
+      app::CreativeEditorWorldLayoutRoomManipulationPhase::Begin, {6, 2},
+      0.3));
+  const auto openingPreview =
+      app::applyCreativeEditorWorldLayoutRoomManipulation(
+          openingState,
+          app::CreativeEditorWorldLayoutRoomManipulationPhase::Update, {4, 2},
+          0.3);
+
+  return expect(overlapShownInvalid && !overlapCommit.accepted &&
+                    overlapState.revision == overlapRevision &&
+                    overlapState.source.rooms[0].footprint.minimum ==
+                        cr::CreativeTerrainCoord2{0, 0} &&
+                    overlapState.source.rooms[0].footprint.maximum ==
+                        cr::CreativeTerrainCoord2{4, 4},
+                "overlapping room drag rejects before source mutation") &&
+         expect(openingPreview.accepted &&
+                    !openingState.roomManipulation.previewValid &&
+                    openingState.revision == openingRevision &&
+                    openingState.source.rooms[0].footprint.maximum ==
+                        cr::CreativeTerrainCoord2{6, 4},
+                "room shrink rejects before clipping a hosted opening");
+}
+
 bool roomDeletionCascadesHostedOpeningsAndCancelIsEmpty() {
   app::CreativeEditorWorldLayoutState state;
   app::resetCreativeEditorWorldLayout(state);
@@ -295,6 +509,9 @@ int main() {
                   deletingWallCascadesItsOpenings() &&
                   roomGestureHostsOpeningsAndSupportsResize() &&
                   invalidRoomShellSettingsFailWithoutMutation() &&
+                  roomMovePreviewCommitsOnceAndKeepsOpeningHosted() &&
+                  roomEdgesAndCornersResizeFromTheirOwnedSides() &&
+                  invalidRoomManipulationsRejectWithoutMutation() &&
                   roomDeletionCascadesHostedOpeningsAndCancelIsEmpty() &&
                   exactPreviewAndConfirmUseOneHistoryEntry();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

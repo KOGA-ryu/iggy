@@ -1214,6 +1214,10 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::SetMovingPlatformWaypointDwell,
           context, app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutManipulation =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutManipulateRoom, context,
+          app::CreativeDesktopDeletePayload{{a}});
 
   return expect(!badDelete.accepted &&
                     badDelete.message == "delete objects: payload mismatch",
@@ -1239,6 +1243,10 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badMovingPlatformWaypoint.message ==
                         "moving platform waypoint: payload mismatch",
                 "moving platform waypoint rejects a mismatched payload") &&
+         expect(!badWorldLayoutManipulation.accepted &&
+                    badWorldLayoutManipulation.message ==
+                        "layout room manipulation: payload mismatch",
+                "room manipulation rejects a mismatched payload") &&
          expect(appState.facade.document().objectCount() == before &&
                     cr::creativeUndoDepth(appState.history) == 0U,
                 "mismatched payloads mutate nothing and record no history");
@@ -1273,6 +1281,36 @@ bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
       app::CreativeDesktopCommandId::WorldLayoutSetRoomSettings, context,
       app::CreativeDesktopWorldLayoutRoomSettingsPayload{
           0U, {{{0, 0}, {8, 6}}, 1, 4U, 0.5, 1U}});
+  const app::CreativeDesktopCommandResult selectTool = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSetTool, context,
+      app::CreativeDesktopWorldLayoutToolPayload{
+          app::CreativeEditorWorldLayoutTool::Select});
+  const std::uint64_t revisionBeforeMove = editor.worldLayout.revision;
+  const app::CreativeDesktopCommandResult moveBegin = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateRoom, context,
+      app::CreativeDesktopWorldLayoutRoomManipulationPayload{
+          app::CreativeEditorWorldLayoutRoomManipulationPhase::Begin,
+          {3.0, 3.0}, 0.3});
+  const app::CreativeDesktopCommandResult moveUpdate = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateRoom, context,
+      app::CreativeDesktopWorldLayoutRoomManipulationPayload{
+          app::CreativeEditorWorldLayoutRoomManipulationPhase::Update,
+          {5.0, 4.0}, 0.3});
+  const bool moveWasPreviewOnly =
+      editor.worldLayout.revision == revisionBeforeMove &&
+      editor.worldLayout.source.rooms[0].footprint.minimum ==
+          cr::CreativeTerrainCoord2{0, 0} &&
+      editor.worldLayout.source.rooms[0].footprint.maximum ==
+          cr::CreativeTerrainCoord2{8, 6} &&
+      editor.worldLayout.roomManipulation.previewFootprint.minimum ==
+          cr::CreativeTerrainCoord2{2, 1} &&
+      editor.worldLayout.roomManipulation.previewFootprint.maximum ==
+          cr::CreativeTerrainCoord2{10, 7};
+  const app::CreativeDesktopCommandResult moved = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateRoom, context,
+      app::CreativeDesktopWorldLayoutRoomManipulationPayload{
+          app::CreativeEditorWorldLayoutRoomManipulationPhase::Commit,
+          {5.0, 4.0}, 0.3});
 
   const std::uint64_t liveCountBefore =
       appState.facade.document().objectCount();
@@ -1296,13 +1334,22 @@ bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
   return expect(tool.accepted && anchor.accepted && !anchor.changed &&
                     room.accepted && room.worldLayoutChanged &&
                     resized.accepted && resized.worldLayoutChanged &&
+                    selectTool.accepted && moveBegin.accepted &&
+                    moveBegin.changed && !moveBegin.worldLayoutChanged &&
+                    moveUpdate.accepted && moveUpdate.changed &&
+                    !moveUpdate.worldLayoutChanged && moveWasPreviewOnly &&
+                    moved.accepted && moved.changed &&
+                    moved.worldLayoutChanged &&
+                    editor.worldLayout.revision == revisionBeforeMove + 1U &&
+                    editor.worldLayout.source.rooms[0].footprint.minimum ==
+                        cr::CreativeTerrainCoord2{2, 1} &&
                     editor.worldLayout.source.rooms[0].footprint.maximum ==
-                        cr::CreativeTerrainCoord2{8, 6} &&
+                        cr::CreativeTerrainCoord2{10, 7} &&
                     editor.worldLayout.source.rooms[0].baseLayer == 1 &&
                     editor.worldLayout.source.rooms[0].wallHeightCells == 4U &&
                     editor.worldLayout.source.rooms[0].wallThicknessCells ==
                         0.5,
-                "room drag and complete settings route through typed payloads") &&
+                "room settings and preview-only manipulation route through typed payloads") &&
          expect(preview.accepted && preview.sceneChanged &&
                     exactPreviewVisible && !editor.desktopUi.showWorldLayout,
                 "layout preview is exact, transient, and closes the canvas") &&

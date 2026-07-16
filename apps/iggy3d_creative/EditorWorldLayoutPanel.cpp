@@ -1,12 +1,14 @@
 #include "EditorWorldLayoutPanel.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include "imgui.h"
 
@@ -94,6 +96,91 @@ void drawRoom(ImDrawList& drawList, const CanvasTransform& transform,
                    isSelected ? color({0.96F, 0.82F, 0.22F, 1.0F})
                               : color({0.70F, 0.78F, 0.86F, 1.0F}),
                    0.0F, 0, isSelected ? 4.0F : 3.0F);
+}
+
+std::pair<ImVec2, ImVec2> screenRect(
+    const CanvasTransform& transform, cr::CreativeWorldLayoutRect rect) {
+  const ImVec2 first =
+      toScreen(transform, rect.minimum.x, rect.minimum.z);
+  const ImVec2 second =
+      toScreen(transform, rect.maximum.x, rect.maximum.z);
+  return {{std::min(first.x, second.x), std::min(first.y, second.y)},
+          {std::max(first.x, second.x), std::max(first.y, second.y)}};
+}
+
+void drawRoomManipulation(ImDrawList& drawList,
+                          const CanvasTransform& transform,
+                          const CreativeEditorWorldLayoutState& state) {
+  if (state.selection.kind != CreativeEditorWorldLayoutSelectionKind::Room ||
+      state.selection.index >= state.source.rooms.size()) {
+    return;
+  }
+  const bool active = state.roomManipulation.active &&
+                      state.roomManipulation.target.roomIndex ==
+                          state.selection.index;
+  const cr::CreativeWorldLayoutRect footprint =
+      active ? state.roomManipulation.previewFootprint
+             : state.source.rooms[state.selection.index].footprint;
+  const auto [minimum, maximum] = screenRect(transform, footprint);
+  if (active) {
+    const ImVec4 tint = state.roomManipulation.previewValid
+                            ? ImVec4{0.20F, 0.78F, 0.38F, 1.0F}
+                            : ImVec4{0.92F, 0.29F, 0.24F, 1.0F};
+    ImVec4 fill = tint;
+    fill.w = 0.24F;
+    drawList.AddRectFilled(minimum, maximum, color(fill));
+    drawList.AddRect(minimum, maximum, color(tint), 0.0F, 0, 3.0F);
+    const std::int64_t width =
+        static_cast<std::int64_t>(footprint.maximum.x) - footprint.minimum.x;
+    const std::int64_t depth =
+        static_cast<std::int64_t>(footprint.maximum.z) - footprint.minimum.z;
+    const std::string dimensions =
+        std::to_string(width) + " x " + std::to_string(depth);
+    drawList.AddText({minimum.x + 7.0F, minimum.y + 7.0F}, color(tint),
+                     dimensions.c_str());
+  }
+
+  const float centerX = (minimum.x + maximum.x) * 0.5F;
+  const float centerY = (minimum.y + maximum.y) * 0.5F;
+  const std::array<ImVec2, 8U> handles = {
+      ImVec2{minimum.x, minimum.y}, ImVec2{centerX, minimum.y},
+      ImVec2{maximum.x, minimum.y}, ImVec2{maximum.x, centerY},
+      ImVec2{maximum.x, maximum.y}, ImVec2{centerX, maximum.y},
+      ImVec2{minimum.x, maximum.y}, ImVec2{minimum.x, centerY},
+  };
+  const ImU32 handleColor =
+      active ? (state.roomManipulation.previewValid
+                    ? color({0.20F, 0.78F, 0.38F, 1.0F})
+                    : color({0.92F, 0.29F, 0.24F, 1.0F}))
+             : color({0.96F, 0.82F, 0.22F, 1.0F});
+  for (const ImVec2 handle : handles) {
+    drawList.AddRectFilled({handle.x - 4.0F, handle.y - 4.0F},
+                           {handle.x + 4.0F, handle.y + 4.0F}, handleColor);
+  }
+}
+
+ImGuiMouseCursor roomHandleCursor(
+    CreativeEditorWorldLayoutRoomHandle handle) noexcept {
+  switch (handle) {
+    case CreativeEditorWorldLayoutRoomHandle::Move:
+      return ImGuiMouseCursor_ResizeAll;
+    case CreativeEditorWorldLayoutRoomHandle::North:
+    case CreativeEditorWorldLayoutRoomHandle::South:
+      return ImGuiMouseCursor_ResizeNS;
+    case CreativeEditorWorldLayoutRoomHandle::East:
+    case CreativeEditorWorldLayoutRoomHandle::West:
+      return ImGuiMouseCursor_ResizeEW;
+    case CreativeEditorWorldLayoutRoomHandle::NorthWest:
+    case CreativeEditorWorldLayoutRoomHandle::SouthEast:
+      return ImGuiMouseCursor_ResizeNWSE;
+    case CreativeEditorWorldLayoutRoomHandle::NorthEast:
+    case CreativeEditorWorldLayoutRoomHandle::SouthWest:
+      return ImGuiMouseCursor_ResizeNESW;
+    case CreativeEditorWorldLayoutRoomHandle::None:
+    case CreativeEditorWorldLayoutRoomHandle::Count:
+      break;
+  }
+  return ImGuiMouseCursor_Arrow;
 }
 
 void drawWall(ImDrawList& drawList, const CanvasTransform& transform,
@@ -233,6 +320,16 @@ void queueGesture(CreativeDesktopCommandFrame& commands,
                 CreativeDesktopWorldLayoutGesturePayload{phase, point});
 }
 
+void queueRoomManipulation(
+    CreativeDesktopCommandFrame& commands,
+    CreativeEditorWorldLayoutRoomManipulationPhase phase,
+    CreativeEditorWorldLayoutPoint point, double toleranceCells) {
+  commands.push(
+      CreativeDesktopCommandId::WorldLayoutManipulateRoom,
+      CreativeDesktopWorldLayoutRoomManipulationPayload{phase, point,
+                                                        toleranceCells});
+}
+
 bool dragTool(CreativeEditorWorldLayoutTool tool) noexcept {
   return tool == CreativeEditorWorldLayoutTool::Room ||
          tool == CreativeEditorWorldLayoutTool::Floor ||
@@ -340,7 +437,8 @@ void drawSelectedRoomSettings(CreativeEditorWorldLayoutState& state,
 }
 
 void drawLayoutCanvas(CreativeEditorState& editor,
-                      CreativeDesktopCommandFrame& commands) {
+                      CreativeDesktopCommandFrame& commands,
+                      bool interactionEnabled) {
   CreativeEditorWorldLayoutState& state = editor.worldLayout;
   const ImVec2 available = ImGui::GetContentRegionAvail();
   const ImVec2 canvasSize{std::max(available.x, 160.0F),
@@ -400,18 +498,43 @@ void drawLayoutCanvas(CreativeEditorState& editor,
         selected(state, CreativeEditorWorldLayoutSelectionKind::Wall, index));
   }
   drawOpenings(*drawList, transform, state);
+  drawRoomManipulation(*drawList, transform, state);
+  const CreativeEditorWorldLayoutPoint pointerPoint =
+      toWorld(transform, io.MousePos);
   const ImVec2 boundedPointer{
       std::clamp(io.MousePos.x, minimum.x, maximum.x),
       std::clamp(io.MousePos.y, minimum.y, maximum.y)};
   const CreativeEditorWorldLayoutPoint hoveredPoint =
       toWorld(transform, boundedPointer);
+  const double roomHandleTolerance = std::clamp(
+      8.0 / static_cast<double>(transform.pixelsPerCell), 0.10, 0.45);
   if (hovered) {
     drawAnchorPreview(*drawList, transform, state, hoveredPoint);
   }
   drawList->PopClipRect();
 
+  if (!interactionEnabled) {
+    return;
+  }
+
+  if (state.roomManipulation.active) {
+    ImGui::SetMouseCursor(
+        roomHandleCursor(state.roomManipulation.target.handle));
+  } else if (hovered && state.tool == CreativeEditorWorldLayoutTool::Select) {
+    const CreativeEditorWorldLayoutRoomTarget target =
+        findCreativeEditorWorldLayoutRoomTarget(
+            state, hoveredPoint, roomHandleTolerance);
+    if (target.handle != CreativeEditorWorldLayoutRoomHandle::None) {
+      ImGui::SetMouseCursor(roomHandleCursor(target.handle));
+    }
+  }
+
   if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-    if (dragTool(state.tool)) {
+    if (state.tool == CreativeEditorWorldLayoutTool::Select) {
+      queueRoomManipulation(
+          commands, CreativeEditorWorldLayoutRoomManipulationPhase::Begin,
+          hoveredPoint, roomHandleTolerance);
+    } else if (dragTool(state.tool)) {
       queueGesture(commands, CreativeEditorWorldLayoutGesturePhase::Begin,
                    hoveredPoint);
     } else {
@@ -419,8 +542,30 @@ void drawLayoutCanvas(CreativeEditorState& editor,
                     CreativeDesktopWorldLayoutPointPayload{hoveredPoint});
     }
   }
+
+  const bool cancelRoomManipulation =
+      state.roomManipulation.active &&
+      (io.AppFocusLost ||
+       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
+       ImGui::IsKeyPressed(ImGuiKey_Escape));
+  if (cancelRoomManipulation) {
+    queueRoomManipulation(
+        commands, CreativeEditorWorldLayoutRoomManipulationPhase::Cancel,
+        pointerPoint, roomHandleTolerance);
+  } else if (state.roomManipulation.active &&
+             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+    queueRoomManipulation(
+        commands, CreativeEditorWorldLayoutRoomManipulationPhase::Commit,
+        pointerPoint, roomHandleTolerance);
+  } else if (state.roomManipulation.active &&
+             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+    queueRoomManipulation(
+        commands, CreativeEditorWorldLayoutRoomManipulationPhase::Update,
+        pointerPoint, roomHandleTolerance);
+  }
+
   const bool cancelGesture =
-      state.anchorActive &&
+      !state.roomManipulation.active && state.anchorActive &&
       ((hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
        ImGui::IsKeyPressed(ImGuiKey_Escape));
   if (cancelGesture) {
@@ -438,16 +583,32 @@ void drawLayoutCanvas(CreativeEditorState& editor,
 void buildCreativeEditorWorldLayoutPanel(
     CreativeEditorDesktopUiState& desktopUi, CreativeEditorState& editor,
     bool playModeActive, CreativeDesktopCommandFrame& commands) {
+  CreativeEditorWorldLayoutState& state = editor.worldLayout;
   if (!desktopUi.showWorldLayout) {
+    if (state.roomManipulation.active) {
+      queueRoomManipulation(
+          commands, CreativeEditorWorldLayoutRoomManipulationPhase::Cancel, {},
+          0.25);
+    }
     return;
   }
   if (!ImGui::Begin("World Layout", &desktopUi.showWorldLayout,
                     ImGuiWindowFlags_NoCollapse)) {
+    if (state.roomManipulation.active) {
+      queueRoomManipulation(
+          commands, CreativeEditorWorldLayoutRoomManipulationPhase::Cancel, {},
+          0.25);
+    }
     ImGui::End();
     return;
   }
 
-  CreativeEditorWorldLayoutState& state = editor.worldLayout;
+  if (state.roomManipulation.active &&
+      (playModeActive || editor.assetEdit.active)) {
+    queueRoomManipulation(
+        commands, CreativeEditorWorldLayoutRoomManipulationPhase::Cancel, {},
+        0.25);
+  }
   ImGui::BeginDisabled(playModeActive || editor.assetEdit.active);
   toolButton(commands, state.tool, CreativeEditorWorldLayoutTool::Select);
   ImGui::SameLine();
@@ -496,7 +657,8 @@ void buildCreativeEditorWorldLayoutPanel(
   ImGui::Separator();
 
   ImGui::BeginDisabled(playModeActive || editor.assetEdit.active);
-  drawLayoutCanvas(editor, commands);
+  drawLayoutCanvas(editor, commands,
+                   !playModeActive && !editor.assetEdit.active);
   ImGui::EndDisabled();
   ImGui::End();
 }
