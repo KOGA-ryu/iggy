@@ -113,7 +113,8 @@ CreativeMutationApplyReceipt applyObjectKindMutation(CreativeObject& object, Cre
 
     for (std::size_t index = 0; index < lhs.size(); ++index) {
         if (!creativeVec3ExactlyEqual(lhs[index].position,
-                                      rhs[index].position)) {
+                                      rhs[index].position) ||
+            lhs[index].dwellSeconds != rhs[index].dwellSeconds) {
             return false;
         }
     }
@@ -127,14 +128,14 @@ CreativeMutationApplyReceipt applyObjectKindMutation(CreativeObject& object, Cre
     }
 
     return std::all_of(pathPoints.begin(), pathPoints.end(), [](const CreativePathPoint& point) {
-        return isFiniteCreativeVec3(point.position);
+        return isValidCreativePathPoint(point);
     });
 }
 
 [[nodiscard]] bool validLineEndpoints(const std::vector<CreativePathPoint>& pathPoints) noexcept {
     return pathPoints.size() == 2U &&
            std::all_of(pathPoints.begin(), pathPoints.end(), [](const CreativePathPoint& point) {
-               return isFiniteCreativeVec3(point.position);
+               return isValidCreativePathPoint(point);
            });
 }
 

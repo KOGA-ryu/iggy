@@ -1,6 +1,7 @@
 #include "EditorToolOptions.hpp"
 
 #include <algorithm>
+#include <cstdio>
 #include <string>
 #include <string_view>
 
@@ -8,6 +9,7 @@
 #include "EditorInteraction.hpp"
 #include "EditorMovingPlatformPreview.hpp"
 #include "EditorObjectActions.hpp"
+#include "EditorPathEditing.hpp"
 #include "EditorState.hpp"
 #include "EditorToolCapabilities.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
@@ -129,10 +131,47 @@ void moveSelection(CreativeEditorToolOptionsState& state,
   }
 }
 
+void refreshMovingPlatformWaypointContext(
+    const cr::CreativeAppState& appState,
+    const CreativeEditorState& editor,
+    CreativeEditorToolOptionsState& state) noexcept {
+  state.contextMovingPlatformPointSelected = false;
+  state.contextMovingPlatformPointIndex = 0U;
+  state.movingPlatformWaypointDwellDraft = 0.0;
+  const CreativeMovingPlatformPathEditState& pathEdit =
+      editor.interaction.movingPlatformPathEdit;
+  if (state.contextPrimaryObjectKind != cr::CreativeObjectKind::MovingPlatform ||
+      !pathEdit.available || !pathEdit.pointSelected ||
+      pathEdit.objectId != state.contextPrimaryObjectId) {
+    return;
+  }
+  const cr::CreativeObject* object =
+      appState.facade.findObject(pathEdit.objectId);
+  if (object == nullptr ||
+      pathEdit.selectedPointIndex >= object->pathPoints.size()) {
+    return;
+  }
+  state.contextMovingPlatformPointSelected = true;
+  state.contextMovingPlatformPointIndex = pathEdit.selectedPointIndex;
+  state.movingPlatformWaypointDwellDraft =
+      object->pathPoints[pathEdit.selectedPointIndex].dwellSeconds;
+}
+
 void adjustSelection(CreativeEditorState& editor,
                      std::int32_t direction) {
   CreativeEditorToolOptionsState& state = editor.toolOptions;
   if (state.selectedIndex >= state.options.count) {
+    const std::size_t commandIndex =
+        state.selectedIndex - state.options.count;
+    if (direction != 0 && commandIndex < state.commands.count &&
+        state.commands.ids[commandIndex] == CreativeEditorToolOptionsCommandId::
+                                                SetMovingPlatformWaypointDwell &&
+        state.contextMovingPlatformPointSelected) {
+      state.movingPlatformWaypointDwellDraft = std::clamp(
+          state.movingPlatformWaypointDwellDraft +
+              static_cast<double>(direction) * 0.25,
+          0.0, cr::kCreativePathPointMaximumDwellSeconds);
+    }
     return;
   }
   const cr::CreativeToolOptionId option =
@@ -199,6 +238,11 @@ void adjustSelection(CreativeEditorState& editor,
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
       return state.contextGroupId != cr::kInvalidObjectId &&
              editor.groupFocus.depth < editor.groupFocus.groupIds.size();
+    case CreativeEditorToolOptionsCommandId::SetMovingPlatformWaypointDwell:
+      return state.contextSelectionCount == 1U &&
+             state.contextPrimaryObjectKind ==
+                 cr::CreativeObjectKind::MovingPlatform &&
+             state.contextMovingPlatformPointSelected;
     case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
       return state.contextSelectionCount == 1U &&
@@ -261,6 +305,8 @@ void adjustSelection(CreativeEditorState& editor,
                      cr::CreativeObjectKind::PrefabInstance
                  ? "EDIT CONTENTS"
                  : "EDIT GROUP CONTENTS";
+    case CreativeEditorToolOptionsCommandId::SetMovingPlatformWaypointDwell:
+      return "WAYPOINT WAIT";
     case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
       return editor.movingPlatformPreview.playing ? "PAUSE ROUTE PREVIEW"
                                                   : "PLAY ROUTE PREVIEW";
@@ -306,6 +352,14 @@ void adjustSelection(CreativeEditorState& editor,
       return editor.toolOptions.contextGroupId != cr::kInvalidObjectId
                  ? "ENTER"
                  : "SELECT GROUP";
+    case CreativeEditorToolOptionsCommandId::SetMovingPlatformWaypointDwell: {
+      char label[64];
+      std::snprintf(
+          label, sizeof(label), "POINT %u | %.2f S",
+          static_cast<unsigned>(state.contextMovingPlatformPointIndex) + 1U,
+          state.movingPlatformWaypointDwellDraft);
+      return label;
+    }
     case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
       return std::string(creativeMovingPlatformPreviewStatusLabel(
           editor.movingPlatformPreview));
@@ -449,6 +503,7 @@ bool activateCreativeEditorToolOptionsSelection(
     case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance:
     case CreativeEditorToolOptionsCommandId::RefreshSafeSavedAssetInstances:
     case CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances:
+    case CreativeEditorToolOptionsCommandId::SetMovingPlatformWaypointDwell:
     case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
       break;
@@ -490,6 +545,16 @@ bool activateCreativeEditorToolOptionsSelection(
                      appState, editor.groupFocus, state.contextGroupId)
                      .accepted;
       break;
+    case CreativeEditorToolOptionsCommandId::SetMovingPlatformWaypointDwell: {
+      const CreativeMovingPlatformPathEditReceipt receipt =
+          setCreativeMovingPlatformWaypointDwellWithUndo(
+              appState, state.contextPrimaryObjectId,
+              state.contextMovingPlatformPointIndex,
+              state.movingPlatformWaypointDwellDraft,
+              "tool_options_waypoint_dwell");
+      accepted = receipt.accepted;
+      break;
+    }
     case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview: {
       const CreativeMovingPlatformPreviewReceipt receipt =
@@ -552,6 +617,8 @@ CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
        state.contextSelectionCount != liveSelectionCount)) {
     refreshCreativeEditorObjectActionContext(
         request.appState, request.editor.authoredAssets, state);
+    refreshMovingPlatformWaypointContext(request.appState, request.editor,
+                                         state);
     state.commands = creativeEditorToolOptionCommandsForEntry(
         state.targetEntry, state.contextPrimaryObjectKind);
     if (state.selectedIndex >= creativeEditorToolOptionsRowCount(state)) {
@@ -575,6 +642,8 @@ CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
       state.selectedIndex = 0U;
       refreshCreativeEditorObjectActionContext(
           request.appState, request.editor.authoredAssets, state);
+      refreshMovingPlatformWaypointContext(request.appState, request.editor,
+                                           state);
       state.commands = creativeEditorToolOptionCommandsForEntry(
           state.targetEntry, state.contextPrimaryObjectKind);
     }

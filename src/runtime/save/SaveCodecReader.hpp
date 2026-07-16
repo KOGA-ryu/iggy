@@ -92,11 +92,10 @@ private:
   void readStringVector(const std::string& countKey,
                         const std::string& itemPrefix,
                         std::vector<std::string>& out);
-  void readOptionalCreativeVec3Vector(
+  void readOptionalCreativePathPointVector(
       const std::string& countKey,
       const std::string& itemPrefix,
-      const std::string& itemSuffix,
-      std::vector<SaveCreativeDocumentVec3Record>& out);
+      std::vector<SaveCreativeDocumentPathPointRecord>& out);
   void readAuthoredRoomSemantics(const std::string& prefix,
                                  SaveAuthoredRoomSemanticsRecord& semantics);
   void readAuthoredRoom();

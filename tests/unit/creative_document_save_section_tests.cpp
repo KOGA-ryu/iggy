@@ -63,7 +63,8 @@ bool samePathPoints(std::span<const cr::CreativePathPoint> lhs,
     return false;
   }
   for (std::size_t index = 0; index < lhs.size(); ++index) {
-    if (!sameVec3(lhs[index].position, rhs[index].position)) {
+    if (!sameVec3(lhs[index].position, rhs[index].position) ||
+        lhs[index].dwellSeconds != rhs[index].dwellSeconds) {
       return false;
     }
   }
@@ -71,7 +72,7 @@ bool samePathPoints(std::span<const cr::CreativePathPoint> lhs,
 }
 
 bool savePathPointsMatch(
-    std::span<const iggy3d::SaveCreativeDocumentVec3Record> lhs,
+    std::span<const iggy3d::SaveCreativeDocumentPathPointRecord> lhs,
     std::span<const cr::CreativePathPoint> rhs) {
   if (lhs.size() != rhs.size()) {
     return false;
@@ -79,7 +80,8 @@ bool savePathPointsMatch(
   for (std::size_t index = 0; index < lhs.size(); ++index) {
     if (lhs[index].x != rhs[index].position.x ||
         lhs[index].y != rhs[index].position.y ||
-        lhs[index].z != rhs[index].position.z) {
+        lhs[index].z != rhs[index].position.z ||
+        lhs[index].dwellSeconds != rhs[index].dwellSeconds) {
       return false;
     }
   }
@@ -99,6 +101,13 @@ std::vector<cr::CreativePathPoint> authoredLineEndpoints() {
       cr::CreativePathPoint{{kPrecise, 0.0, kOneThird}},
       cr::CreativePathPoint{{4.0, 0.0, 6.0}},
   };
+}
+
+std::vector<cr::CreativePathPoint> authoredMovingPlatformPathPoints() {
+  std::vector<cr::CreativePathPoint> points = authoredPathPoints();
+  points[1].dwellSeconds = 1.25;
+  points[2].dwellSeconds = 0.5;
+  return points;
 }
 
 cr::CreativeGridSettings authoredGridSettings() {
@@ -193,7 +202,7 @@ cr::CreativeObject restoredMovingPlatformObject() {
   object.visible = true;
   object.locked = false;
   object.tags = {"platform", "freight"};
-  object.pathPoints = authoredPathPoints();
+  object.pathPoints = authoredMovingPlatformPathPoints();
   object.movingPlatform.speedMetersPerSecond = 2.75;
   object.movingPlatform.traversalMode =
       cr::CreativeMovingPlatformTraversalMode::Loop;
@@ -625,6 +634,10 @@ bool movingPlatformSettingsEncodeDecodeAndRestore() {
                     "creativeDocument.object.0.movingPlatform."
                     "startsActive=false\n") != std::string::npos,
                 "moving platform start state encoded") &&
+         expect(encoded.encodedText.find(
+                    "creativeDocument.object.0.pathPoint.1."
+                    "dwellSeconds=1.25\n") != std::string::npos,
+                "moving platform waypoint dwell encoded") &&
          expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
                 "moving platform codec decode ok") &&
          expect(decodedObject != nullptr &&

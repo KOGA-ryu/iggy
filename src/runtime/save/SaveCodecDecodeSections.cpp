@@ -86,11 +86,10 @@ void Reader::readStringVector(const std::string& countKey,
   }
 }
 
-void Reader::readOptionalCreativeVec3Vector(
+void Reader::readOptionalCreativePathPointVector(
     const std::string& countKey,
     const std::string& itemPrefix,
-    const std::string& itemSuffix,
-    std::vector<SaveCreativeDocumentVec3Record>& out) {
+    std::vector<SaveCreativeDocumentPathPointRecord>& out) {
   if (!nextKeyIs(countKey)) {
     out.clear();
     return;
@@ -99,8 +98,19 @@ void Reader::readOptionalCreativeVec3Vector(
   readUnsigned(countKey, count);
   out.resize(static_cast<std::size_t>(count));
   for (std::size_t index = 0; index < out.size(); ++index) {
-    readCreativeVec3(itemPrefix + std::to_string(index) + itemSuffix,
-                     out[index]);
+    SaveCreativeDocumentVec3Record position;
+    readCreativeVec3(itemPrefix + std::to_string(index) + ".position",
+                     position);
+    out[index].x = position.x;
+    out[index].y = position.y;
+    out[index].z = position.z;
+    const std::string dwellKey =
+        itemPrefix + std::to_string(index) + ".dwellSeconds";
+    if (envelope_.creativeDocument.version >=
+            kSaveCreativeDocumentWaypointDwellVersion ||
+        nextKeyIs(dwellKey)) {
+      readDouble(dwellKey, out[index].dwellSeconds);
+    }
   }
 }
 
@@ -227,10 +237,9 @@ void Reader::readCreativeDocumentObject(const std::string& prefix,
     readString(prefix + "attachmentSocket", object.attachmentSocket);
   }
   readStringVector(prefix + "tag.count", prefix + "tag.", object.tags);
-  readOptionalCreativeVec3Vector(prefix + "pathPoint.count",
-                                 prefix + "pathPoint.",
-                                 ".position",
-                                 object.pathPoints);
+  readOptionalCreativePathPointVector(prefix + "pathPoint.count",
+                                      prefix + "pathPoint.",
+                                      object.pathPoints);
   if (nextKeyIs(prefix + "movingPlatform.speedMetersPerSecond")) {
     readDouble(prefix + "movingPlatform.speedMetersPerSecond",
                object.movingPlatformSpeedMetersPerSecond);

@@ -298,6 +298,14 @@ bool isValidCreativeMovingPlatformSettings(
                  CreativeMovingPlatformTraversalMode::Count);
 }
 
+bool isValidCreativePathPoint(const CreativePathPoint& point) noexcept {
+  return std::isfinite(point.position.x) &&
+         std::isfinite(point.position.y) &&
+         std::isfinite(point.position.z) &&
+         std::isfinite(point.dwellSeconds) && point.dwellSeconds >= 0.0 &&
+         point.dwellSeconds <= kCreativePathPointMaximumDwellSeconds;
+}
+
 bool isValidCreativeMovingPlatformPath(
     std::span<const CreativePathPoint> pathPoints) noexcept {
   if (pathPoints.size() < 2U ||
@@ -306,11 +314,10 @@ bool isValidCreativeMovingPlatformPath(
   }
   double totalLengthMeters = 0.0;
   for (std::size_t index = 0U; index < pathPoints.size(); ++index) {
-    const CreativeVec3 point = pathPoints[index].position;
-    if (!std::isfinite(point.x) || !std::isfinite(point.y) ||
-        !std::isfinite(point.z)) {
+    if (!isValidCreativePathPoint(pathPoints[index])) {
       return false;
     }
+    const CreativeVec3 point = pathPoints[index].position;
     if (index == 0U) {
       continue;
     }

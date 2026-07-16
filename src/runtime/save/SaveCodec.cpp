@@ -302,8 +302,12 @@ private:
     }
     line(prefix + "pathPoint.count", unsignedText(object.pathPoints.size()));
     for (std::size_t point = 0; point < object.pathPoints.size(); ++point) {
+      const SaveCreativeDocumentPathPointRecord& pathPoint =
+          object.pathPoints[point];
       lineCreativeVec3(prefix + "pathPoint." + std::to_string(point) + ".position",
-                       object.pathPoints[point]);
+                       {pathPoint.x, pathPoint.y, pathPoint.z});
+      line(prefix + "pathPoint." + std::to_string(point) + ".dwellSeconds",
+           formatDoubleLossless(pathPoint.dwellSeconds));
     }
   }
 

@@ -14,6 +14,7 @@
 #include "EditorLogicLinks.hpp"
 #include "EditorMovingPlatformPreview.hpp"
 #include "EditorObjectActions.hpp"
+#include "EditorPathEditing.hpp"
 #include "EditorPersistence.hpp"
 #include "EditorPlayMode.hpp"
 #include "EditorState.hpp"
@@ -492,6 +493,41 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = receipt.accepted
                            ? std::string(editor.movingPlatformPreview.reasonCode)
                            : std::string(receipt.reasonCode);
+      break;
+    }
+    case CreativeDesktopCommandId::SelectMovingPlatformWaypoint:
+    case CreativeDesktopCommandId::SetMovingPlatformWaypointDwell: {
+      const auto* payload =
+          payloadAs<CreativeDesktopMovingPlatformWaypointPayload>(command);
+      if (payload == nullptr) {
+        result.message = "moving platform waypoint: payload mismatch";
+        break;
+      }
+      syncCreativeMovingPlatformPathEditState(
+          activeAppState, editor.interaction.movingPlatformPathEdit);
+      if (editor.interaction.movingPlatformPathEdit.objectId !=
+          payload->objectId) {
+        result.message = "moving platform waypoint: target mismatch";
+        break;
+      }
+      if (command.id ==
+          CreativeDesktopCommandId::SelectMovingPlatformWaypoint) {
+        result.accepted = selectCreativeMovingPlatformPathPoint(
+            editor.interaction.movingPlatformPathEdit, payload->pointIndex);
+        result.changed = result.accepted;
+        result.message = result.accepted
+                             ? "moving platform waypoint selected"
+                             : "moving platform waypoint selection rejected";
+        break;
+      }
+      const CreativeMovingPlatformPathEditReceipt receipt =
+          setCreativeMovingPlatformWaypointDwellWithUndo(
+              activeAppState, payload->objectId, payload->pointIndex,
+              payload->dwellSeconds, "desktop_inspector_waypoint_dwell");
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.affectedObjectCount = receipt.changed ? 1U : 0U;
+      result.message = std::string(receipt.reasonCode);
       break;
     }
     case CreativeDesktopCommandId::EquipAsset: {

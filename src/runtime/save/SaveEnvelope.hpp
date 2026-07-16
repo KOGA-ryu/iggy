@@ -26,7 +26,9 @@ namespace iggy3d {
 inline constexpr std::uint32_t kSaveSchemaVersion = 3;
 inline constexpr std::uint32_t kMinimumReadableSaveSchemaVersion = 1;
 inline constexpr std::uint32_t kRuntimeSaveVersion = 1;
-inline constexpr std::uint32_t kSaveCreativeDocumentSectionVersion = 8;
+inline constexpr std::uint32_t kSaveCreativeDocumentWaypointDwellVersion = 9;
+inline constexpr std::uint32_t kSaveCreativeDocumentSectionVersion =
+    kSaveCreativeDocumentWaypointDwellVersion;
 
 struct SaveEnvelopeMetadata {
   std::uint32_t schemaVersion = kSaveSchemaVersion;
@@ -166,6 +168,13 @@ struct SaveCreativeDocumentVec3Record {
   double z = 0.0;
 };
 
+struct SaveCreativeDocumentPathPointRecord {
+  double x = 0.0;
+  double y = 0.0;
+  double z = 0.0;
+  double dwellSeconds = 0.0;
+};
+
 struct SaveCreativeDocumentTransformRecord {
   SaveCreativeDocumentVec3Record position;
   // Intrinsic X-then-Y-then-Z Euler radians; key remains transform.rotation.
@@ -192,7 +201,7 @@ struct SaveCreativeDocumentObjectRecord {
   std::uint64_t parentId = 0;
   std::string attachmentSocket;
   std::vector<std::string> tags;
-  std::vector<SaveCreativeDocumentVec3Record> pathPoints;
+  std::vector<SaveCreativeDocumentPathPointRecord> pathPoints;
   double movingPlatformSpeedMetersPerSecond = 1.5;
   std::string movingPlatformTraversalMode = "PingPong";
   bool movingPlatformStartsActive = true;

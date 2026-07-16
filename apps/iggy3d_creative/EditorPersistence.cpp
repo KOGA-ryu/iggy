@@ -21,7 +21,8 @@ bool samePathPoints(const std::vector<cr::CreativePathPoint>& lhs,
     const cr::CreativeVec3& a = lhs[index].position;
     const cr::CreativeVec3& b = rhs[index].position;
     if (std::fabs(a.x - b.x) >= kEps || std::fabs(a.y - b.y) >= kEps ||
-        std::fabs(a.z - b.z) >= kEps) {
+        std::fabs(a.z - b.z) >= kEps ||
+        lhs[index].dwellSeconds != rhs[index].dwellSeconds) {
       return false;
     }
   }

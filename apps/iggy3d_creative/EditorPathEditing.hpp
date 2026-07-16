@@ -34,10 +34,12 @@ enum class CreativeMovingPlatformPathEditStatus : std::uint8_t {
   InvalidPath,
   InvalidTarget,
   InvalidPointIndex,
+  InvalidDwell,
   DuplicateTarget,
   MinimumPointCount,
   CapacityReached,
   Applied,
+  Unchanged,
   MutationRejected,
   Count,
 };
@@ -162,6 +164,14 @@ consumeCreativeMovingPlatformPathEdit(
     cr::CreativeVec3 targetAnchor,
     std::string_view source,
     cr::CreativeMoveConstraint constraint = cr::CreativeMoveConstraint::Free);
+
+[[nodiscard]] CreativeMovingPlatformPathEditReceipt
+setCreativeMovingPlatformWaypointDwellWithUndo(
+    cr::CreativeAppState& appState,
+    cr::CreativeObjectId objectId,
+    std::size_t pointIndex,
+    double dwellSeconds,
+    std::string_view source);
 
 [[nodiscard]] cr::CreativeDocumentMutationReceipt movePathObjectWithUndo(
     cr::CreativeAppState& appState,

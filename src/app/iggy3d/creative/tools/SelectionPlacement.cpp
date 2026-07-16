@@ -35,7 +35,8 @@ namespace {
                     [](const CreativePathPoint& left,
                        const CreativePathPoint& right) {
                       return creativeVec3ExactlyEqual(left.position,
-                                                      right.position);
+                                                      right.position) &&
+                             left.dwellSeconds == right.dwellSeconds;
                     });
 }
 
@@ -245,7 +246,7 @@ void addNudgeStep(CreativeVec3& offset,
          isFiniteCreativeVec3(object.bounds.max) &&
          std::all_of(object.pathPoints.begin(), object.pathPoints.end(),
                      [](const CreativePathPoint& point) {
-                       return isFiniteCreativeVec3(point.position);
+                       return isValidCreativePathPoint(point);
                      });
 }
 

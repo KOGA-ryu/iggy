@@ -60,7 +60,8 @@ bool samePathPoints(std::span<const cr::CreativePathPoint> lhs,
     return false;
   }
   for (std::size_t index = 0; index < lhs.size(); ++index) {
-    if (!sameVec3(lhs[index].position, rhs[index].position)) {
+    if (!sameVec3(lhs[index].position, rhs[index].position) ||
+        lhs[index].dwellSeconds != rhs[index].dwellSeconds) {
       return false;
     }
   }

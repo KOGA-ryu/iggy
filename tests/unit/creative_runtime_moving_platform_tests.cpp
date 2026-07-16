@@ -179,6 +179,88 @@ bool routeKernelRejectsDegeneratePathAndLoops() {
                 "loop route follows authored open segments before closure");
 }
 
+bool waypointDwellLandsExactlyAndFreezesDeterministically() {
+  const std::vector<cr::CreativePathPoint> path{
+      {{0.0, 0.0, 0.0}, 0.1}, {{1.0, 0.0, 0.0}, 0.2}};
+  cr::CreativeMovingPlatformSettings settings;
+  settings.speedMetersPerSecond = 100.0;
+  const cr::CreativeRuntimeMovingPlatformBuildResult built =
+      cr::buildCreativeRuntimeMovingPlatformDefinition(path, settings, {});
+  if (!built.ok) {
+    return expect(false, "dwell route definition builds");
+  }
+
+  cr::CreativeRuntimeMovingPlatformState state;
+  const auto arrival = cr::planCreativeRuntimeMovingPlatformStep(
+      {&built.definition, &state, 60U, true});
+  const auto inactive = cr::planCreativeRuntimeMovingPlatformStep(
+      {&built.definition, &arrival.nextState, 60U, false});
+  cr::CreativeRuntimeMovingPlatformState reversed = arrival.nextState;
+  reversed.travelSign = -1;
+  bool heldExactly = true;
+  for (std::uint32_t tick = 0U; tick < 12U; ++tick) {
+    const auto dwell = cr::planCreativeRuntimeMovingPlatformStep(
+        {&built.definition, &reversed, 60U, true});
+    heldExactly = heldExactly && dwell.ok && !dwell.moved &&
+                  dwell.status ==
+                      cr::CreativeRuntimeMovingPlatformStepStatus::Dwelling &&
+                  near(dwell.nextState.positionMeters.x, 1.0F);
+    reversed = dwell.nextState;
+  }
+  const auto departure = cr::planCreativeRuntimeMovingPlatformStep(
+      {&built.definition, &reversed, 60U, true});
+
+  std::vector<cr::CreativePathPoint> invalid = path;
+  invalid[0].dwellSeconds =
+      std::numeric_limits<double>::quiet_NaN();
+  const auto nonFinite = cr::buildCreativeRuntimeMovingPlatformDefinition(
+      invalid, settings, {});
+  invalid[0].dwellSeconds =
+      cr::kCreativePathPointMaximumDwellSeconds + 0.25;
+  const auto overMaximum =
+      cr::buildCreativeRuntimeMovingPlatformDefinition(invalid, settings, {});
+
+  return expect(arrival.ok && arrival.moved && arrival.arrivedAtWaypoint &&
+                    arrival.waypointIndex == 1U &&
+                    near(arrival.nextState.positionMeters.x, 1.0F),
+                "oversized step lands exactly on the waypoint") &&
+         expect(arrival.nextState.dwellTicksRemaining == 12U,
+                "fractional seconds convert to exact fixed dwell ticks") &&
+         expect(inactive.ok && !inactive.moved &&
+                    inactive.nextState.dwellTicksRemaining == 12U,
+                "inactive platform freezes its dwell countdown") &&
+         expect(heldExactly && reversed.dwellTicksRemaining == 0U,
+                "every dwell tick holds the exact waypoint position") &&
+         expect(departure.ok && departure.moved &&
+                    departure.arrivedAtWaypoint &&
+                    departure.waypointIndex == 0U &&
+                    near(departure.nextState.positionMeters.x, 0.0F) &&
+                    departure.nextState.dwellTicksRemaining == 6U,
+                "reverse during dwell controls the next departure") &&
+         expect(!nonFinite.ok && !overMaximum.ok,
+                "invalid waypoint dwell values reject the route");
+}
+
+bool zeroDwellWaypointsDoNotReduceRouteSpeed() {
+  const std::vector<cr::CreativePathPoint> path{
+      {{0.0, 0.0, 0.0}},
+      {{0.25, 0.0, 0.0}},
+      {{0.5, 0.0, 0.0}},
+      {{2.0, 0.0, 0.0}},
+  };
+  cr::CreativeMovingPlatformSettings settings;
+  settings.speedMetersPerSecond = 1.0;
+  const cr::CreativeRuntimeMovingPlatformBuildResult built =
+      cr::buildCreativeRuntimeMovingPlatformDefinition(path, settings, {});
+  cr::CreativeRuntimeMovingPlatformState state;
+  const auto step = cr::planCreativeRuntimeMovingPlatformStep(
+      {&built.definition, &state, 1U, true});
+  return expect(built.ok && step.ok && step.moved &&
+                    !step.arrivedAtWaypoint &&
+                    near(step.nextState.positionMeters.x, 1.0F),
+                "zero-dwell waypoints are crossed without implicit pauses");
+}
+
 bool routeSamplerMatchesTheStepKernel() {
   const std::vector<cr::CreativePathPoint> path{
       {{0.0, 0.0, 0.0}}, {{1.0, 0.0, 0.0}}};
@@ -385,6 +467,8 @@ bool runtimeHonorsStartsActiveAndReverseLogic() {
 int main() {
   const bool ok = routeKernelIsDeterministicAndRelative() &&
                   routeKernelRejectsDegeneratePathAndLoops() &&
+                  waypointDwellLandsExactlyAndFreezesDeterministically() &&
+                  zeroDwellWaypointsDoNotReduceRouteSpeed() &&
                   routeSamplerMatchesTheStepKernel() &&
                   runtimePublishesGeometryAndCarriesRider() &&
                   runtimeBlocksMotionWithoutAdvancingPhase() &&

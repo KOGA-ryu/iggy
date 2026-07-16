@@ -51,14 +51,15 @@ namespace {
 
 namespace {
 
-[[nodiscard]] SaveCreativeDocumentVec3Record toSavePathPoint(
+[[nodiscard]] SaveCreativeDocumentPathPointRecord toSavePathPoint(
     creative::CreativePathPoint point) noexcept {
-  return toSaveVec3(point.position);
+  return {point.position.x, point.position.y, point.position.z,
+          point.dwellSeconds};
 }
 
 [[nodiscard]] creative::CreativePathPoint toCreativePathPoint(
-    SaveCreativeDocumentVec3Record record) noexcept {
-  return {toCreativeVec3(record)};
+    SaveCreativeDocumentPathPointRecord record) noexcept {
+  return {{record.x, record.y, record.z}, record.dwellSeconds};
 }
 
 }  // namespace
@@ -245,7 +246,7 @@ namespace {
   out.attachmentSocket = record.attachmentSocket;
   out.tags = record.tags;
   out.pathPoints.reserve(record.pathPoints.size());
-  for (const SaveCreativeDocumentVec3Record& point : record.pathPoints) {
+  for (const SaveCreativeDocumentPathPointRecord& point : record.pathPoints) {
     out.pathPoints.push_back(toCreativePathPoint(point));
   }
   if (kind == creative::CreativeObjectKind::MovingPlatform) {

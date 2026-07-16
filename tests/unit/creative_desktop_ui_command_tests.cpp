@@ -843,6 +843,68 @@ bool movingPlatformSettingsUseTypedCommandAndOneUndoStep() {
                 "moving platform settings redo restores edited values");
 }
 
+bool movingPlatformWaypointCommandsSelectEditAndUndo() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Moving Platform Waypoint");
+  static_cast<void>(document.assignId(428U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId platformId =
+      createMovingPlatform(appState.facade);
+  selectPrimary(appState.facade, platformId);
+  appState.history = {};
+
+  app::CreativeEditorState editor;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const std::uint64_t revisionBeforeSelection =
+      appState.facade.document().revision();
+  const app::CreativeDesktopCommandResult selected = dispatchPayload(
+      app::CreativeDesktopCommandId::SelectMovingPlatformWaypoint, context,
+      app::CreativeDesktopMovingPlatformWaypointPayload{platformId, 1U, 0.0});
+  const bool pointSelected =
+      editor.interaction.movingPlatformPathEdit.pointSelected &&
+      editor.interaction.movingPlatformPathEdit.selectedPointIndex == 1U &&
+      appState.facade.document().revision() == revisionBeforeSelection;
+  const app::CreativeDesktopCommandResult changed = dispatchPayload(
+      app::CreativeDesktopCommandId::SetMovingPlatformWaypointDwell, context,
+      app::CreativeDesktopMovingPlatformWaypointPayload{platformId, 1U, 1.25});
+  const cr::CreativeObject* edited = appState.facade.findObject(platformId);
+  const bool valueStored = edited != nullptr &&
+                           edited->pathPoints[1].dwellSeconds == 1.25;
+  const app::CreativeDesktopCommandResult unchanged = dispatchPayload(
+      app::CreativeDesktopCommandId::SetMovingPlatformWaypointDwell, context,
+      app::CreativeDesktopMovingPlatformWaypointPayload{platformId, 1U, 1.25});
+  const app::CreativeDesktopCommandResult invalid = dispatchPayload(
+      app::CreativeDesktopCommandId::SetMovingPlatformWaypointDwell, context,
+      app::CreativeDesktopMovingPlatformWaypointPayload{platformId, 1U, 60.25});
+  const app::CreativeDesktopCommandResult undo =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const cr::CreativeObject* undone = appState.facade.findObject(platformId);
+  const bool restoredZero = undone != nullptr &&
+                            undone->pathPoints[1].dwellSeconds == 0.0;
+  const app::CreativeDesktopCommandResult redo =
+      dispatchOne(app::CreativeDesktopCommandId::Redo, context);
+  const cr::CreativeObject* redone = appState.facade.findObject(platformId);
+
+  return expect(selected.accepted && selected.changed && pointSelected,
+                "waypoint selection is transient and targets one point") &&
+         expect(changed.accepted && changed.changed &&
+                    changed.affectedObjectCount == 1U && valueStored,
+                "waypoint dwell command applies the typed value") &&
+         expect(unchanged.accepted && !unchanged.changed &&
+                    cr::creativeUndoDepth(appState.history) == 1U,
+                "unchanged waypoint dwell records no extra history") &&
+         expect(!invalid.accepted && !invalid.changed,
+                "out-of-range waypoint dwell is rejected") &&
+         expect(undo.accepted && undo.changed && restoredZero &&
+                    redo.accepted && redo.changed && redone != nullptr &&
+                    redone->pathPoints[1].dwellSeconds == 1.25,
+                "waypoint dwell is one undoable desktop edit");
+}
+
 bool movingPlatformPreviewCommandsStayTransient() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document =
@@ -1132,6 +1194,10 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::SeekMovingPlatformPreview, context,
           app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badMovingPlatformWaypoint =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::SetMovingPlatformWaypointDwell,
+          context, app::CreativeDesktopDeletePayload{{a}});
 
   return expect(!badDelete.accepted &&
                     badDelete.message == "delete objects: payload mismatch",
@@ -1153,6 +1219,10 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badMovingPlatformPreview.message ==
                         "moving platform preview: payload mismatch",
                 "moving platform preview rejects a mismatched payload") &&
+         expect(!badMovingPlatformWaypoint.accepted &&
+                    badMovingPlatformWaypoint.message ==
+                        "moving platform waypoint: payload mismatch",
+                "moving platform waypoint rejects a mismatched payload") &&
          expect(appState.facade.document().objectCount() == before &&
                     cr::creativeUndoDepth(appState.history) == 0U,
                 "mismatched payloads mutate nothing and record no history");
@@ -1179,6 +1249,7 @@ int main() {
   ok = transformCommandSetsAbsoluteWithMask() && ok;
   ok = transformCommandIsAtomicAndAttachmentAware() && ok;
   ok = movingPlatformSettingsUseTypedCommandAndOneUndoStep() && ok;
+  ok = movingPlatformWaypointCommandsSelectEditAndUndo() && ok;
   ok = movingPlatformPreviewCommandsStayTransient() && ok;
   ok = assetAndInstanceCommandsRouteAndRejectCleanly() && ok;
   ok = assetAndInstanceCommandsCompleteSuccessPaths() && ok;

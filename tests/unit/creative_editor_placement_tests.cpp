@@ -184,7 +184,8 @@ bool placementPlanMatchesEveryCreateRequest() {
                                plan.pathPoints.begin(),
                                [](const cr::CreativePathPoint& lhs,
                                   const cr::CreativePathPoint& rhs) {
-                                 return sameVec3(lhs.position, rhs.position);
+                                 return sameVec3(lhs.position, rhs.position) &&
+                                        lhs.dwellSeconds == rhs.dwellSeconds;
                                }),
                 "create request copies fixed plan path") &&
          ok;
@@ -3698,6 +3699,110 @@ bool doorwaySocketPreviewPlacementAndUndoStayInParity() {
                 "modal tool options hide attachment socket markers");
 }
 
+bool movingPlatformWaypointDwellIsBoundedAndUndoable() {
+  const std::vector<cr::CreativePathPoint> metadataPath{
+      {{0.0, 0.0, 0.0}, 0.5}, {{1.0, 0.0, 0.0}, 1.0}};
+  const CreativeMovingPlatformPathEditPlan appended =
+      planCreativeMovingPlatformPathEdit(
+          metadataPath, CreativeMovingPlatformPathEditCommand::AppendAtTarget,
+          {2.0, 0.0, 0.0});
+  const CreativeMovingPlatformPathEditPlan moved =
+      planCreativeMovingPlatformPathEdit(
+          metadataPath,
+          CreativeMovingPlatformPathEditCommand::MoveSelectedToTarget,
+          {1.0, 1.0, 0.0}, 1U);
+  const CreativeMovingPlatformPathEditPlan removed =
+      planCreativeMovingPlatformPathEdit(
+          appended.pathPoints,
+          CreativeMovingPlatformPathEditCommand::RemoveSelected, {}, 0U);
+
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 140U);
+  const cr::CreativeDocumentCreateReceipt created =
+      appState.facade.createDocumentObject(buildBrushCreateRequest(
+          cr::CreativeObjectKind::MovingPlatform, {0.5F, 0.375F, 0.5F}, 1U));
+  appState.history = {};
+  const CreativeMovingPlatformPathEditReceipt changed =
+      setCreativeMovingPlatformWaypointDwellWithUndo(
+          appState, created.objectId, 1U, 1.25, "dwell_test");
+  const CreativeMovingPlatformPathEditReceipt unchanged =
+      setCreativeMovingPlatformWaypointDwellWithUndo(
+          appState, created.objectId, 1U, 1.25, "dwell_test_noop");
+  const CreativeMovingPlatformPathEditReceipt invalid =
+      setCreativeMovingPlatformWaypointDwellWithUndo(
+          appState, created.objectId, 1U, -0.25, "dwell_test_invalid");
+  const CreativeMovingPlatformPathEditReceipt outOfRange =
+      setCreativeMovingPlatformWaypointDwellWithUndo(
+          appState, created.objectId,
+          cr::kCreativeMovingPlatformPathPointCapacity, 0.5,
+          "dwell_test_index");
+  const cr::CreativeObject* edited =
+      appState.facade.findObject(created.objectId);
+  const bool editStored = edited != nullptr &&
+                          edited->pathPoints[1].dwellSeconds == 1.25;
+  const bool undoAccepted = undoLastEdit(appState, "dwell_test_undo");
+  const cr::CreativeObject* undone =
+      appState.facade.findObject(created.objectId);
+  const bool restoredZero = undone != nullptr &&
+                            undone->pathPoints[1].dwellSeconds == 0.0;
+  const bool redoAccepted = redoLastEdit(appState, "dwell_test_redo");
+  const cr::CreativeObject* redone =
+      appState.facade.findObject(created.objectId);
+  bool stopMarkerRendered = false;
+  if (redone != nullptr) {
+    CreativeEditorState editor;
+    CreativeEditorSelectionFrame selection;
+    selection.selectedId = static_cast<cr::Id>(redone->id);
+    selection.selected = redone;
+    selection.selectedObjectIds = {redone->id};
+    selection.selectionCount = 1U;
+    selection.hasSelection = true;
+    CreativeEditorGizmoFrame gizmo;
+    gizmo.selectedIsPathForHandles = true;
+    iggy3d::FrameInput frame;
+    cr::CreativeSpatialProjectionRequest projection;
+    CreativeEditorOverlayFrame overlay;
+    buildAndAttachCreativeEditorOverlayFrame(
+        {appState, editor, selection, gizmo, frame, projection}, overlay);
+    stopMarkerRendered = std::any_of(
+        overlay.combinedWireLines.begin(), overlay.combinedWireLines.end(),
+        [objectId = redone->id](
+            const iggy3d::RenderCreativeWireframeDebugLine& line) {
+          return line.objectId == objectId && near(line.color.r, 1.0F) &&
+                 near(line.color.g, 0.62F) && near(line.color.b, 0.12F) &&
+                 near(line.end.y - line.start.y, 0.4F) &&
+                 near(line.thickness, 0.06F);
+        });
+  }
+
+  return expect(appended.accepted && moved.accepted && removed.accepted &&
+                    appended.pathPoints[0].dwellSeconds == 0.5 &&
+                    appended.pathPoints[1].dwellSeconds == 1.0 &&
+                    appended.pathPoints[2].dwellSeconds == 0.0 &&
+                    moved.pathPoints[1].dwellSeconds == 1.0 &&
+                    removed.pathPoints[0].dwellSeconds == 1.0,
+                "route edits preserve existing dwell metadata") &&
+         expect(changed.accepted && changed.changed && editStored,
+                "dwell edit applies its bounded waypoint value") &&
+         expect(unchanged.accepted && !unchanged.changed &&
+                    unchanged.status ==
+                        CreativeMovingPlatformPathEditStatus::Unchanged &&
+                    cr::creativeUndoDepth(appState.history) == 1U,
+                "unchanged dwell adds no history entry") &&
+         expect(!invalid.accepted && !invalid.changed &&
+                    invalid.status ==
+                        CreativeMovingPlatformPathEditStatus::InvalidDwell &&
+                    !outOfRange.accepted &&
+                    cr::creativeUndoDepth(appState.history) == 1U,
+                "invalid dwell and point index mutate nothing") &&
+         expect(undoAccepted && restoredZero && redoAccepted &&
+                    redone != nullptr &&
+                    redone->pathPoints[1].dwellSeconds == 1.25,
+                "one dwell history entry round-trips through undo and redo") &&
+         expect(stopMarkerRendered,
+                "nonzero waypoint dwell renders an authored stop marker");
+}
+
 bool movingPlatformRouteQuickEditIsBoundedAndUndoable() {
   const std::vector<cr::CreativePathPoint> basePath{
       {{0.5, 0.375, 0.5}}, {{0.5, 3.375, 0.5}}};
@@ -4279,6 +4384,7 @@ int main() {
   ok = radialSelectionRearmsOnlyRightStickLook() && ok;
   ok = importedAssetPlacementPreviewAndDocumentStayInParity() && ok;
   ok = doorwaySocketPreviewPlacementAndUndoStayInParity() && ok;
+  ok = movingPlatformWaypointDwellIsBoundedAndUndoable() && ok;
   ok = movingPlatformRouteQuickEditIsBoundedAndUndoable() && ok;
   return ok ? 0 : 1;
 }

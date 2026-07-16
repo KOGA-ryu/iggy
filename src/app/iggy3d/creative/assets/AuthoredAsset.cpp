@@ -164,6 +164,7 @@ void appendDefinitionObject(FingerprintBuilder& builder,
   builder.appendUnsigned(object.pathPoints.size());
   for (const CreativePathPoint& point : object.pathPoints) {
     builder.appendVec3(point.position);
+    builder.appendDouble(point.dwellSeconds);
   }
   if (object.kind == CreativeObjectKind::MovingPlatform) {
     builder.appendDouble(object.movingPlatform.speedMetersPerSecond);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <variant>
@@ -85,6 +86,13 @@ struct CreativeDesktopMovingPlatformPreviewPayload {
   double normalizedProgress = 0.0;
 };
 
+struct CreativeDesktopMovingPlatformWaypointPayload {
+  iggy3d::creative::CreativeObjectId objectId =
+      iggy3d::creative::kInvalidObjectId;
+  std::size_t pointIndex = 0U;
+  double dwellSeconds = 0.0;
+};
+
 // EditAssetSource lifecycle phase (unused by the other asset ops).
 enum class CreativeDesktopAssetEditPhase : std::uint8_t {
   None,
@@ -122,6 +130,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopTransformPayload,
     CreativeDesktopMovingPlatformPayload,
     CreativeDesktopMovingPlatformPreviewPayload,
+    CreativeDesktopMovingPlatformWaypointPayload,
     CreativeDesktopAssetOpPayload,
     CreativeDesktopInstanceRefreshPayload>;
 

@@ -197,7 +197,8 @@ std::vector<cr::CreativePathPoint> translatePathPoints(
     translated.push_back(cr::CreativePathPoint{
         {point.position.x + delta.x,
          point.position.y + delta.y,
-         point.position.z + delta.z}});
+         point.position.z + delta.z},
+        point.dwellSeconds});
   }
   return translated;
 }
@@ -591,6 +592,67 @@ CreativeMovingPlatformPathEditReceipt consumeCreativeMovingPlatformPathEdit(
   syncCreativeMovingPlatformPathEditState(appState, state);
   state.status = result.status;
   state.reasonCode = result.reasonCode;
+  return result;
+}
+
+CreativeMovingPlatformPathEditReceipt
+setCreativeMovingPlatformWaypointDwellWithUndo(
+    cr::CreativeAppState& appState,
+    cr::CreativeObjectId objectId,
+    std::size_t pointIndex,
+    double dwellSeconds,
+    std::string_view source) {
+  CreativeMovingPlatformPathEditReceipt result;
+  result.requested = true;
+  result.objectId = objectId;
+  const cr::CreativeObject* object = appState.facade.findObject(objectId);
+  if (object == nullptr ||
+      object->kind != cr::CreativeObjectKind::MovingPlatform) {
+    result.status = CreativeMovingPlatformPathEditStatus::InvalidSelection;
+    result.reasonCode = "creative_platform_waypoint_dwell_invalid_selection";
+    return result;
+  }
+  result.pointCountBefore = object->pathPoints.size();
+  result.pointCountAfter = result.pointCountBefore;
+  if (pointIndex >= object->pathPoints.size()) {
+    result.status = CreativeMovingPlatformPathEditStatus::InvalidPointIndex;
+    result.reasonCode = "creative_platform_waypoint_dwell_index_invalid";
+    return result;
+  }
+
+  std::vector<cr::CreativePathPoint> pathPoints = object->pathPoints;
+  pathPoints[pointIndex].dwellSeconds = dwellSeconds;
+  if (!cr::isValidCreativePathPoint(pathPoints[pointIndex])) {
+    result.status = CreativeMovingPlatformPathEditStatus::InvalidDwell;
+    result.reasonCode = "creative_platform_waypoint_dwell_invalid";
+    return result;
+  }
+
+  StandaloneEditTransaction transaction =
+      beginEditTransaction(appState.facade, source);
+  result.mutation = cr::applyDocumentMutation(
+      appState.facade.documentForPersistence(), objectId,
+      cr::CreativeMutationKind::SetPatrolRoute,
+      cr::makePathPointsPayload(std::move(pathPoints)));
+  result.changed = result.mutation.status ==
+                       cr::CreativeDocumentMutationStatus::Applied &&
+                   result.mutation.changed;
+  result.accepted = result.changed ||
+                    result.mutation.status ==
+                        cr::CreativeDocumentMutationStatus::NoChange;
+  result.history = completeEditTransaction(
+      appState.history, std::move(transaction), appState.facade, result.changed,
+      result.mutation.message);
+  if (result.changed) {
+    result.status = CreativeMovingPlatformPathEditStatus::Applied;
+    result.reasonCode = "creative_platform_waypoint_dwell_changed";
+  } else if (result.accepted) {
+    result.status = CreativeMovingPlatformPathEditStatus::Unchanged;
+    result.reasonCode = "creative_platform_waypoint_dwell_unchanged";
+  } else {
+    result.status = CreativeMovingPlatformPathEditStatus::MutationRejected;
+    result.reasonCode = "creative_platform_waypoint_dwell_mutation_rejected";
+  }
   return result;
 }
 

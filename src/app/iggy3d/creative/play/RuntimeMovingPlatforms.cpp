@@ -21,6 +21,8 @@ namespace {
 
 constexpr float kRouteEpsilonMeters = 1.0e-5F;
 constexpr float kMotionEpsilonMeters = 1.0e-6F;
+constexpr double kRoutePhaseEpsilonMeters = 1.0e-9;
+constexpr double kDwellTickRoundingEpsilon = 1.0e-9;
 constexpr float kColliderInsetMeters = 0.01F;
 constexpr float kRiderVerticalToleranceMeters = 0.12F;
 constexpr float kRiderHorizontalEpsilonMeters = 0.001F;
@@ -31,9 +33,19 @@ constexpr float kRiderHorizontalEpsilonMeters = 0.001F;
 
 [[nodiscard]] bool validDefinition(
     const CreativeRuntimeMovingPlatformDefinition& definition) noexcept {
-  return definition.pathPointCount >= 2U &&
-         definition.pathPointCount <= definition.pathPoints.size() &&
-         definition.openLengthMeters > kRouteEpsilonMeters &&
+  if (definition.pathPointCount < 2U ||
+      definition.pathPointCount > definition.pathPoints.size()) {
+    return false;
+  }
+  for (std::size_t index = 0U; index < definition.pathPointCount; ++index) {
+    if (!std::isfinite(definition.waypointDwellSeconds[index]) ||
+        definition.waypointDwellSeconds[index] < 0.0 ||
+        definition.waypointDwellSeconds[index] >
+            kCreativePathPointMaximumDwellSeconds) {
+      return false;
+    }
+  }
+  return definition.openLengthMeters > kRouteEpsilonMeters &&
          std::isfinite(definition.openLengthMeters) &&
          std::isfinite(definition.loopLengthMeters) &&
          definition.loopLengthMeters >= definition.openLengthMeters &&
@@ -120,6 +132,107 @@ constexpr float kRiderHorizontalEpsilonMeters = 0.001F;
           : sampleOpenRoute(definition, sampleDistance);
   return definition.originPositionMeters +
          (sampled - definition.pathPoints.front());
+}
+
+struct NextRouteWaypoint {
+  bool found = false;
+  double distanceMeters = std::numeric_limits<double>::infinity();
+  double phaseMeters = 0.0;
+  std::size_t index = 0U;
+};
+
+[[nodiscard]] NextRouteWaypoint nextRouteWaypoint(
+    const CreativeRuntimeMovingPlatformDefinition& definition,
+    double phaseMeters,
+    std::int8_t travelSign) noexcept {
+  NextRouteWaypoint result;
+  const double cycleLength = routeCycleLengthMeters(definition);
+  const double currentPhase = wrapPhase(phaseMeters, cycleLength);
+  const auto consider = [&](std::size_t index, double candidatePhase) {
+    double distance = travelSign > 0 ? candidatePhase - currentPhase
+                                     : currentPhase - candidatePhase;
+    distance = wrapPhase(distance, cycleLength);
+    if (distance <= kRoutePhaseEpsilonMeters) {
+      distance = cycleLength;
+    }
+    if (distance < result.distanceMeters) {
+      result.found = true;
+      result.distanceMeters = distance;
+      result.phaseMeters = wrapPhase(candidatePhase, cycleLength);
+      result.index = index;
+    }
+  };
+
+  for (std::size_t index = 0U; index < definition.pathPointCount; ++index) {
+    consider(index,
+             static_cast<double>(definition.cumulativeOpenMeters[index]));
+  }
+  if (definition.traversalMode ==
+      CreativeMovingPlatformTraversalMode::PingPong) {
+    for (std::size_t index = 1U; index + 1U < definition.pathPointCount;
+         ++index) {
+      consider(index, cycleLength - static_cast<double>(
+                                          definition.cumulativeOpenMeters[index]));
+    }
+  }
+  return result;
+}
+
+[[nodiscard]] std::uint64_t waypointDwellTickCount(
+    const CreativeRuntimeMovingPlatformDefinition& definition,
+    std::size_t waypointIndex,
+    std::uint32_t fixedTickRateHz) noexcept {
+  const double scaled = definition.waypointDwellSeconds[waypointIndex] *
+                        static_cast<double>(fixedTickRateHz);
+  const double wholeTicks = std::floor(scaled);
+  const double rounded =
+      scaled - wholeTicks <= kDwellTickRoundingEpsilon ? wholeTicks
+                                                       : wholeTicks + 1.0;
+  return static_cast<std::uint64_t>(rounded);
+}
+
+struct RouteDwellArrival {
+  bool found = false;
+  double distanceMeters = 0.0;
+  double phaseMeters = 0.0;
+  std::size_t index = 0U;
+  std::uint64_t dwellTicks = 0U;
+};
+
+[[nodiscard]] RouteDwellArrival firstRouteDwellWithinDistance(
+    const CreativeRuntimeMovingPlatformDefinition& definition,
+    double phaseMeters,
+    std::int8_t travelSign,
+    double maximumDistanceMeters,
+    std::uint32_t fixedTickRateHz) noexcept {
+  RouteDwellArrival result;
+  double cursorPhase = phaseMeters;
+  double accumulatedDistance = 0.0;
+  // Search one complete route cycle so zero-dwell points do not split motion.
+  const std::size_t maximumOccurrences = definition.pathPointCount * 2U;
+  for (std::size_t occurrence = 0U; occurrence < maximumOccurrences;
+       ++occurrence) {
+    const NextRouteWaypoint next =
+        nextRouteWaypoint(definition, cursorPhase, travelSign);
+    if (!next.found || !std::isfinite(next.distanceMeters) ||
+        accumulatedDistance + next.distanceMeters >
+            maximumDistanceMeters + kRoutePhaseEpsilonMeters) {
+      return result;
+    }
+    accumulatedDistance += next.distanceMeters;
+    const std::uint64_t dwellTicks = waypointDwellTickCount(
+        definition, next.index, fixedTickRateHz);
+    if (dwellTicks > 0U) {
+      result.found = true;
+      result.distanceMeters = accumulatedDistance;
+      result.phaseMeters = next.phaseMeters;
+      result.index = next.index;
+      result.dwellTicks = dwellTicks;
+      return result;
+    }
+    cursorPhase = next.phaseMeters;
+  }
+  return result;
 }
 
 [[nodiscard]] bool sameSurfaceId(
@@ -436,6 +549,7 @@ buildCreativeRuntimeMovingPlatformDefinition(
       return result;
     }
     definition.pathPoints[index] = converted.value;
+    definition.waypointDwellSeconds[index] = pathPoints[index].dwellSeconds;
     if (index > 0U) {
       const float lengthMeters = segmentLength(
           definition.pathPoints[index - 1U], definition.pathPoints[index]);
@@ -470,7 +584,10 @@ CreativeRuntimeMovingPlatformStepResult planCreativeRuntimeMovingPlatformStep(
       !validDefinition(*request.definition) ||
       !std::isfinite(request.state->phaseMeters) ||
       (request.state->travelSign != -1 && request.state->travelSign != 1) ||
-      !isFinite(request.state->positionMeters)) {
+      !isFinite(request.state->positionMeters) ||
+      (request.state->dwellTicksRemaining > 0U &&
+       request.state->dwellingWaypointIndex >=
+           request.definition->pathPointCount)) {
     return result;
   }
   result.nextState = *request.state;
@@ -482,16 +599,43 @@ CreativeRuntimeMovingPlatformStepResult planCreativeRuntimeMovingPlatformStep(
     return result;
   }
 
+  if (result.nextState.dwellTicksRemaining > 0U) {
+    --result.nextState.dwellTicksRemaining;
+    result.nextState.movementTickCount =
+        request.state->movementTickCount + 1U;
+    result.waypointIndex = result.nextState.dwellingWaypointIndex;
+    result.ok = true;
+    result.status = CreativeRuntimeMovingPlatformStepStatus::Dwelling;
+    result.reasonCode = "creative_runtime_moving_platform_step_dwelling";
+    return result;
+  }
+
   const CreativeRuntimeMovingPlatformDefinition& definition =
       *request.definition;
   const double routeLength = routeCycleLengthMeters(definition);
   const double tickDistance =
       static_cast<double>(definition.speedMetersPerSecond) /
       static_cast<double>(request.fixedTickRateHz);
-  result.nextState.phaseMeters = wrapPhase(
-      request.state->phaseMeters +
-          tickDistance * static_cast<double>(request.state->travelSign),
-      routeLength);
+  const RouteDwellArrival dwellArrival = firstRouteDwellWithinDistance(
+      definition, request.state->phaseMeters, request.state->travelSign,
+      tickDistance, request.fixedTickRateHz);
+  const double travelDistance =
+      dwellArrival.found ? dwellArrival.distanceMeters : tickDistance;
+  result.arrivedAtWaypoint = dwellArrival.found;
+  result.nextState.phaseMeters =
+      result.arrivedAtWaypoint
+          ? dwellArrival.phaseMeters
+          : wrapPhase(request.state->phaseMeters +
+                          travelDistance *
+                              static_cast<double>(request.state->travelSign),
+                      routeLength);
+  result.nextState.dwellingWaypointIndex =
+      std::numeric_limits<std::uint8_t>::max();
+  if (result.arrivedAtWaypoint) {
+    result.waypointIndex = static_cast<std::uint8_t>(dwellArrival.index);
+    result.nextState.dwellTicksRemaining = dwellArrival.dwellTicks;
+    result.nextState.dwellingWaypointIndex = result.waypointIndex;
+  }
   result.nextState.positionMeters =
       sampleRoutePosition(definition, result.nextState.phaseMeters);
   result.displacementMeters =

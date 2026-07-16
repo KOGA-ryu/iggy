@@ -39,7 +39,9 @@ constexpr double kPreviewMaximumDeltaSeconds = 0.25;
   }
   for (std::size_t index = 0U; index < lhs.pathPointCount; ++index) {
     if (!sameVec3(lhs.pathPoints[index], rhs.pathPoints[index]) ||
-        lhs.cumulativeOpenMeters[index] != rhs.cumulativeOpenMeters[index]) {
+        lhs.cumulativeOpenMeters[index] != rhs.cumulativeOpenMeters[index] ||
+        lhs.waypointDwellSeconds[index] !=
+            rhs.waypointDwellSeconds[index]) {
       return false;
     }
   }
@@ -292,7 +294,8 @@ std::string_view creativeMovingPlatformPreviewStatusLabel(
     case CreativeMovingPlatformPreviewStatus::Paused:
       return "Paused";
     case CreativeMovingPlatformPreviewStatus::Playing:
-      return "Playing";
+      return state.runtimeState.dwellTicksRemaining > 0U ? "Waiting"
+                                                         : "Playing";
     case CreativeMovingPlatformPreviewStatus::Invalid:
       return "Invalid";
   }

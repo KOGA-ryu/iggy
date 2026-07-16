@@ -50,6 +50,8 @@ enum class CreativeDesktopCommandId : std::uint8_t {
   SetObjectsLocked,
   SetObjectTransform,
   SetMovingPlatformSettings,
+  SelectMovingPlatformWaypoint,
+  SetMovingPlatformWaypointDwell,
   ToggleMovingPlatformPreview,
   RestartMovingPlatformPreview,
   SeekMovingPlatformPreview,

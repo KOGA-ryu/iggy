@@ -20,7 +20,7 @@ bool isEndpointLineDescriptor(
 
 bool pathPointsAreFinite(std::span<const CreativePathPoint> pathPoints) noexcept {
   for (const CreativePathPoint& point : pathPoints) {
-    if (!isFiniteCreativeVec3(point.position)) {
+    if (!isValidCreativePathPoint(point)) {
       return false;
     }
   }

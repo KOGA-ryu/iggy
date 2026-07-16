@@ -38,9 +38,11 @@ struct CreativeBounds {
 
 struct CreativePathPoint {
   CreativeVec3 position{};
+  double dwellSeconds{0.0};
 };
 
 inline constexpr std::size_t kCreativeMovingPlatformPathPointCapacity = 32U;
+inline constexpr double kCreativePathPointMaximumDwellSeconds = 60.0;
 
 enum class CreativeMovingPlatformTraversalMode : std::uint8_t {
   PingPong,
@@ -247,6 +249,8 @@ struct CreativeTransformedBounds {
     CreativeMovingPlatformTraversalMode& output) noexcept;
 [[nodiscard]] bool isValidCreativeMovingPlatformSettings(
     const CreativeMovingPlatformSettings& settings) noexcept;
+[[nodiscard]] bool isValidCreativePathPoint(
+    const CreativePathPoint& point) noexcept;
 [[nodiscard]] bool isValidCreativeMovingPlatformPath(
     std::span<const CreativePathPoint> pathPoints) noexcept;
 [[nodiscard]] std::string_view serializedObjectKindId(

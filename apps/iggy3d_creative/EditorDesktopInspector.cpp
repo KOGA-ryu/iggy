@@ -417,6 +417,9 @@ void refreshInspectorDraft(CreativeDesktopInspectorDraft& draft,
   draft.scale = {object.transform.scale.x, object.transform.scale.y,
                  object.transform.scale.z};
   draft.movingPlatform = object.movingPlatform;
+  draft.movingPlatformWaypointIndex = 0U;
+  draft.movingPlatformWaypointDwellSeconds =
+      object.pathPoints.empty() ? 0.0 : object.pathPoints.front().dwellSeconds;
   draft.validation.clear();
   draft.valid = true;
 }
@@ -424,6 +427,7 @@ void refreshInspectorDraft(CreativeDesktopInspectorDraft& draft,
 void appendMovingPlatformFields(CreativeDesktopInspectorDraft& draft,
                                 const cr::CreativeObject& object,
                                 const CreativeMovingPlatformPreviewState& preview,
+                                const CreativeMovingPlatformPathEditState& pathEdit,
                                 bool fieldsDisabled,
                                 CreativeDesktopCommandFrame& commands) {
   if (object.kind != cr::CreativeObjectKind::MovingPlatform) {
@@ -476,6 +480,61 @@ void appendMovingPlatformFields(CreativeDesktopInspectorDraft& draft,
   ImGui::TextDisabled("Waypoints: %llu",
                       static_cast<unsigned long long>(
                           object.pathPoints.size()));
+
+  if (object.pathPoints.empty()) {
+    return;
+  }
+
+  std::size_t waypointIndex = 0U;
+  if (pathEdit.available && pathEdit.pointSelected &&
+      pathEdit.objectId == object.id &&
+      pathEdit.selectedPointIndex < object.pathPoints.size()) {
+    waypointIndex = pathEdit.selectedPointIndex;
+  }
+  if (!draft.editing &&
+      draft.movingPlatformWaypointIndex != waypointIndex) {
+    draft.movingPlatformWaypointIndex = waypointIndex;
+    draft.movingPlatformWaypointDwellSeconds =
+        object.pathPoints[waypointIndex].dwellSeconds;
+  }
+
+  const std::string waypointLabel =
+      "Point " + std::to_string(waypointIndex + 1U);
+  ImGui::BeginDisabled(fieldsDisabled);
+  if (ImGui::BeginCombo("Waypoint", waypointLabel.c_str())) {
+    for (std::size_t index = 0U; index < object.pathPoints.size(); ++index) {
+      const std::string label = "Point " + std::to_string(index + 1U);
+      const bool selected = index == waypointIndex;
+      if (ImGui::Selectable(label.c_str(), selected) && !selected) {
+        draft.movingPlatformWaypointIndex = index;
+        draft.movingPlatformWaypointDwellSeconds =
+            object.pathPoints[index].dwellSeconds;
+        commands.push(
+            CreativeDesktopCommandId::SelectMovingPlatformWaypoint,
+            CreativeDesktopMovingPlatformWaypointPayload{object.id, index,
+                                                         0.0});
+      }
+    }
+    ImGui::EndCombo();
+  }
+  ImGui::InputDouble("Wait (s)",
+                     &draft.movingPlatformWaypointDwellSeconds, 0.25, 1.0,
+                     "%.2f");
+  draft.editing = draft.editing || ImGui::IsItemActive();
+  if (ImGui::IsItemDeactivatedAfterEdit()) {
+    const double dwell = draft.movingPlatformWaypointDwellSeconds;
+    if (!std::isfinite(dwell) || dwell < 0.0 ||
+        dwell > cr::kCreativePathPointMaximumDwellSeconds) {
+      draft.validation = "Wait must be between 0 and 60 seconds";
+    } else {
+      draft.validation.clear();
+      commands.push(
+          CreativeDesktopCommandId::SetMovingPlatformWaypointDwell,
+          CreativeDesktopMovingPlatformWaypointPayload{
+              object.id, draft.movingPlatformWaypointIndex, dwell});
+    }
+  }
+  ImGui::EndDisabled();
 
   ImGui::SeparatorText("Route Preview");
   ImGui::Text("%s  |  %.0f%%",
@@ -564,6 +623,7 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
                            const cr::CreativeDocument& document,
                            const cr::CreativeObject& object,
                            const CreativeMovingPlatformPreviewState& preview,
+                           const CreativeMovingPlatformPathEditState& pathEdit,
                            bool playModeActive,
                            CreativeDesktopCommandFrame& commands) {
   CreativeDesktopInspectorDraft& draft = desktopUi.inspectorDraft;
@@ -602,7 +662,8 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
   ImGui::EndDisabled();
 
   appendTransformFields(draft, object.id, fieldsDisabled, commands);
-  appendMovingPlatformFields(draft, object, preview, fieldsDisabled, commands);
+  appendMovingPlatformFields(draft, object, preview, pathEdit, fieldsDisabled,
+                             commands);
 
   // Read-only metadata.
   if (!object.assetId.empty()) {
@@ -689,7 +750,9 @@ void buildCreativeEditorDesktopInspectorPanel(
     return;
   }
   appendSingleInspector(desktopUi, document, *object,
-                        editor.movingPlatformPreview, playModeActive,
+                        editor.movingPlatformPreview,
+                        editor.interaction.movingPlatformPathEdit,
+                        playModeActive,
                         commands);
   appendLogicSection(desktopUi, editor, document, *object, playMode,
                      playModeActive, commands);

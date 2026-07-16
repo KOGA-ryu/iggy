@@ -2,6 +2,7 @@
 #include "EditorPreviewFrame.hpp"
 #include "EditorState.hpp"
 #include "EditorToolOptions.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 
 #include <cmath>
 #include <iostream>
@@ -126,12 +127,22 @@ bool routeEditsResetAndSelectionLossClears() {
       transformReset.accepted && transformReset.reset && state.playing &&
       state.normalizedProgress == 0.0 &&
       near(state.runtimeState.positionMeters.x, 0.0F);
+  static_cast<void>(app::advanceCreativeMovingPlatformPreview(state, 0.1));
+  edited.pathPoints[1].dwellSeconds = 0.5;
+  const app::CreativeMovingPlatformPreviewReceipt dwellReset =
+      app::syncCreativeMovingPlatformPreview(state, document.id(), &edited);
+  const bool dwellResetAtOrigin =
+      dwellReset.accepted && dwellReset.reset && state.playing &&
+      state.normalizedProgress == 0.0 &&
+      near(state.runtimeState.positionMeters.x, 0.0F);
   const app::CreativeMovingPlatformPreviewReceipt cleared =
       app::syncCreativeMovingPlatformPreview(state, document.id(), nullptr);
   return expect(resumedAtOrigin,
                 "same-object route edits reset and preserve play intent") &&
          expect(transformResetAtOrigin,
                 "rotation and scale edits reset route playback") &&
+         expect(dwellResetAtOrigin,
+                "waypoint dwell edits reset route playback") &&
          expect(cleared.accepted && cleared.changed && !state.available &&
                     !state.visible && !state.playing,
                 "leaving moving-platform selection clears preview state");
@@ -179,15 +190,85 @@ bool controllerToolOptionsExposeContextualPlaybackCommands() {
   const app::CreativeEditorToolOptionsCommandList movingPlatform =
       app::creativeEditorToolOptionCommandsForEntry(
           move, cr::CreativeObjectKind::MovingPlatform);
-  return expect(ordinary.count + 2U == movingPlatform.count,
+  return expect(ordinary.count + 3U == movingPlatform.count,
                 "route controls are contextual rather than global") &&
-         expect(movingPlatform.ids[movingPlatform.count - 2U] ==
+         expect(movingPlatform.ids[movingPlatform.count - 3U] ==
+                    app::CreativeEditorToolOptionsCommandId::
+                        SetMovingPlatformWaypointDwell &&
+                    movingPlatform.ids[movingPlatform.count - 2U] ==
                     app::CreativeEditorToolOptionsCommandId::
                         ToggleMovingPlatformPreview &&
                     movingPlatform.ids[movingPlatform.count - 1U] ==
                         app::CreativeEditorToolOptionsCommandId::
                             RestartMovingPlatformPreview,
-                "tool options expose play-pause then restart");
+                "tool options expose dwell then play-pause and restart");
+}
+
+bool controllerToolOptionsCommitWaypointDwellOnce() {
+  cr::CreativeObjectId platformId = cr::kInvalidObjectId;
+  cr::CreativeAppState appState;
+  static_cast<void>(
+      appState.facade.installDocument(makeDocument(platformId)));
+  app::CreativeEditorState editor;
+  app::CreativeEditorToolOptionsState& options = editor.toolOptions;
+  options.open = true;
+  options.targetEntry = {cr::CreativeHeldItemKind::ObjectMove,
+                         cr::CreativeObjectKind::Unknown};
+  options.commands = app::creativeEditorToolOptionCommandsForEntry(
+      options.targetEntry, cr::CreativeObjectKind::MovingPlatform);
+  options.contextPrimaryObjectId = platformId;
+  options.contextPrimaryObjectKind =
+      cr::CreativeObjectKind::MovingPlatform;
+  options.contextSelectionCount = 1U;
+  options.contextMovingPlatformPointSelected = true;
+  options.contextMovingPlatformPointIndex = 1U;
+  options.movingPlatformWaypointDwellDraft = 0.75;
+  std::size_t commandIndex = options.commands.count;
+  for (std::size_t index = 0U; index < options.commands.count; ++index) {
+    if (options.commands.ids[index] == app::CreativeEditorToolOptionsCommandId::
+                                           SetMovingPlatformWaypointDwell) {
+      commandIndex = index;
+      break;
+    }
+  }
+  if (commandIndex == options.commands.count) {
+    return expect(false, "controller dwell command exists");
+  }
+  options.selectedIndex = options.options.count + commandIndex;
+
+  const bool accepted =
+      app::activateCreativeEditorToolOptionsSelection(appState, editor);
+  const cr::CreativeObject* platform =
+      appState.facade.findObject(platformId);
+  return expect(accepted && !options.open && platform != nullptr &&
+                    platform->pathPoints[1].dwellSeconds == 0.75,
+                "controller confirm authors the selected waypoint wait") &&
+         expect(cr::creativeUndoDepth(appState.history) == 1U,
+                "controller waypoint wait records one undo entry");
+}
+
+bool previewReportsWaitingAtAuthoredDwell() {
+  cr::CreativeObjectId platformId = cr::kInvalidObjectId;
+  cr::CreativeDocument document = makeDocument(platformId);
+  cr::CreativeObject edited = *document.findObject(platformId);
+  edited.movingPlatform.speedMetersPerSecond = 60.0;
+  edited.pathPoints[1].dwellSeconds = 0.25;
+  app::CreativeMovingPlatformPreviewState state;
+  const auto sync = app::syncCreativeMovingPlatformPreview(
+      state, document.id(), &edited);
+  static_cast<void>(app::applyCreativeMovingPlatformPreviewCommand(
+      state, app::CreativeMovingPlatformPreviewCommand::TogglePlayback,
+      platformId));
+  static_cast<void>(app::advanceCreativeMovingPlatformPreview(
+      state, 2.0 / 60.0));
+
+  return expect(sync.accepted && state.runtimeState.dwellTicksRemaining == 15U,
+                "preview uses runtime dwell tick conversion") &&
+         expect(app::creativeMovingPlatformPreviewStatusLabel(state) ==
+                    "Waiting",
+                "preview reports waiting while held at waypoint") &&
+         expect(document.revision() == 1U,
+                "dwell preview remains document-inert");
 }
 
 }  // namespace
@@ -196,6 +277,8 @@ int main() {
   const bool ok = playbackIsTransientDeterministicAndBounded() &&
                   routeEditsResetAndSelectionLossClears() &&
                   previewRendersThroughItsOwnBoundedRole() &&
-                  controllerToolOptionsExposeContextualPlaybackCommands();
+                  controllerToolOptionsExposeContextualPlaybackCommands() &&
+                  controllerToolOptionsCommitWaypointDwellOnce() &&
+                  previewReportsWaitingAtAuthoredDwell();
   return ok ? 0 : 1;
 }

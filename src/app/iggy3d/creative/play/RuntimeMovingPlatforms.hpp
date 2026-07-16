@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <span>
 #include <string_view>
 
@@ -13,6 +14,8 @@ namespace iggy3d::creative {
 
 struct CreativeRuntimeMovingPlatformDefinition {
   std::array<Vec3, kCreativeMovingPlatformPathPointCapacity> pathPoints{};
+  std::array<double, kCreativeMovingPlatformPathPointCapacity>
+      waypointDwellSeconds{};
   std::array<float, kCreativeMovingPlatformPathPointCapacity>
       cumulativeOpenMeters{};
   std::size_t pathPointCount = 0U;
@@ -29,6 +32,9 @@ struct CreativeRuntimeMovingPlatformState {
   double phaseMeters = 0.0;
   std::int8_t travelSign = 1;
   Vec3 positionMeters;
+  std::uint64_t dwellTicksRemaining = 0U;
+  std::uint8_t dwellingWaypointIndex =
+      std::numeric_limits<std::uint8_t>::max();
   bool blocked = false;
   std::uint64_t movementTickCount = 0U;
 };
@@ -56,6 +62,7 @@ buildCreativeRuntimeMovingPlatformDefinition(
 enum class CreativeRuntimeMovingPlatformStepStatus : std::uint8_t {
   InvalidRequest,
   Inactive,
+  Dwelling,
   Stationary,
   Advanced,
 };
@@ -70,6 +77,8 @@ struct CreativeRuntimeMovingPlatformStepRequest {
 struct CreativeRuntimeMovingPlatformStepResult {
   bool ok = false;
   bool moved = false;
+  bool arrivedAtWaypoint = false;
+  std::uint8_t waypointIndex = std::numeric_limits<std::uint8_t>::max();
   CreativeRuntimeMovingPlatformStepStatus status =
       CreativeRuntimeMovingPlatformStepStatus::InvalidRequest;
   std::string_view reasonCode = "creative_runtime_moving_platform_step_invalid";

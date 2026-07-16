@@ -676,6 +676,21 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
             static_cast<creative::CreativeObjectId>(selectedId);
       }
       pathPointHandleEdgeCount += combinedWireLines.size() - before;
+      if (point.dwellSeconds > 0.0) {
+        const creative::CreativeCoreVec3Conversion markerBase =
+            creative::creativeVec3ToCoreChecked(point.position);
+        if (markerBase.converted) {
+          RenderCreativeWireframeDebugLine dwellMarker;
+          dwellMarker.start = markerBase.value;
+          dwellMarker.end = markerBase.value + Vec3{0.0F, 0.4F, 0.0F};
+          dwellMarker.color = {1.0F, 0.62F, 0.12F, 1.0F};
+          dwellMarker.objectId =
+              static_cast<creative::CreativeObjectId>(selectedId);
+          dwellMarker.thickness = 0.06F;
+          combinedWireLines.push_back(dwellMarker);
+          ++pathPointHandleEdgeCount;
+        }
+      }
     }
   }
   if (hasSelection) {

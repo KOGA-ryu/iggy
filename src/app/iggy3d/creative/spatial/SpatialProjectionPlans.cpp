@@ -82,7 +82,7 @@ void setPlanStatus(CreativeSpatialProjectionPlan& plan,
   return std::all_of(pathPoints.begin(),
                      pathPoints.end(),
                      [](const CreativePathPoint& point) {
-                       return isFiniteCreativeVec3(point.position);
+                       return isValidCreativePathPoint(point);
                      });
 }
 
@@ -92,7 +92,7 @@ void setPlanStatus(CreativeSpatialProjectionPlan& plan,
          std::all_of(pathPoints.begin(),
                      pathPoints.end(),
                      [](const CreativePathPoint& point) {
-                       return isFiniteCreativeVec3(point.position);
+                       return isValidCreativePathPoint(point);
                      });
 }
 

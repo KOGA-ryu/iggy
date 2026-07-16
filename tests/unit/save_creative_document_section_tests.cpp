@@ -127,9 +127,9 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
   object.attachmentSocket = "door_frame";
   object.tags = {"boss=room", "line\nbreak"};
   object.pathPoints = {
-      {kOneThird, 0.0, kPrecise},
-      {kPrecise, kOneThird, 4.75},
-      {-7.25, 2.5, kOneThird},
+      {kOneThird, 0.0, kPrecise, 0.0},
+      {kPrecise, kOneThird, 4.75, 1.25},
+      {-7.25, 2.5, kOneThird, 0.5},
   };
   section.objects.push_back(object);
   section.logicLinks.push_back({7U, 42U, "Open"});
@@ -186,6 +186,10 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
                        "creativeDocument.object.0.pathPoint.1.position=") !=
                        std::string::npos,
                    "object path point position encoded") &&
+            expect(encoded.encodedText.find(
+                       "creativeDocument.object.0.pathPoint.1.dwellSeconds=1.25\n") !=
+                       std::string::npos,
+                   "object path point dwell encoded") &&
             expect(encoded.encodedText.find(
                        "creativeDocument.logicLink.0.action=Open\n") !=
                        std::string::npos,
@@ -265,8 +269,10 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
                   decodedObject->pathPoints[0].z == kPrecise &&
                   decodedObject->pathPoints[1].x == kPrecise &&
                   decodedObject->pathPoints[1].y == kOneThird &&
+                  decodedObject->pathPoints[1].dwellSeconds == 1.25 &&
                   decodedObject->pathPoints[2].x == -7.25 &&
-                  decodedObject->pathPoints[2].z == kOneThird,
+                  decodedObject->pathPoints[2].z == kOneThird &&
+                  decodedObject->pathPoints[2].dwellSeconds == 0.5,
               "object path points decoded exactly");
 
   std::string version6Text = encoded.encodedText;
@@ -384,6 +390,55 @@ bool version7MovingPlatformDefaultsRemainReadable() {
                 "version 7 moving platform receives safe defaults");
 }
 
+bool version8WaypointDwellDefaultsRemainReadable() {
+  iggy3d::SaveEnvelope envelope = minimalEnvelope();
+  iggy3d::SaveCreativeDocumentSection& section = envelope.creativeDocument;
+  section.present = true;
+  section.documentId = 92U;
+  section.name = "Legacy Waypoint Dwell";
+  section.gridWidth = 8U;
+  section.gridHeight = 8U;
+  section.gridDepth = 8U;
+  section.worldBounds.max = {8.0, 8.0, 8.0};
+  section.nextObjectId = 2U;
+
+  iggy3d::SaveCreativeDocumentObjectRecord object;
+  object.id = 1U;
+  object.kind = "MovingPlatform";
+  object.name = "Legacy Lift";
+  object.bounds.max = {2.0, 0.25, 2.0};
+  object.pathPoints = {{1.0, 0.125, 1.0, 0.0},
+                       {1.0, 3.125, 1.0, 0.0}};
+  section.objects.push_back(object);
+
+  const iggy3d::SaveEncodeResult encoded =
+      iggy3d::encodeSaveEnvelope(envelope);
+  std::string version8Text = replaceValueForKey(
+      encoded.encodedText, "creativeDocument.version", "8");
+  version8Text = eraseLineForKey(
+      version8Text,
+      "creativeDocument.object.0.pathPoint.0.dwellSeconds");
+  version8Text = eraseLineForKey(
+      version8Text,
+      "creativeDocument.object.0.pathPoint.1.dwellSeconds");
+
+  const iggy3d::SaveDecodeResult decoded =
+      iggy3d::decodeSaveEnvelope(version8Text);
+  const iggy3d::SaveCreativeDocumentObjectRecord* decodedObject =
+      decoded.envelope.creativeDocument.objects.empty()
+          ? nullptr
+          : &decoded.envelope.creativeDocument.objects.front();
+  return expect(encoded.status == iggy3d::SaveCodecStatus::Ok,
+                "version 8 dwell setup encode ok") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                "version 8 without dwell remains readable") &&
+         expect(decodedObject != nullptr &&
+                    decodedObject->pathPoints.size() == 2U &&
+                    decodedObject->pathPoints[0].dwellSeconds == 0.0 &&
+                    decodedObject->pathPoints[1].dwellSeconds == 0.0,
+                "version 8 waypoints receive zero dwell defaults");
+}
+
 bool malformedCreativeDocumentPathPointKeysReject() {
   iggy3d::SaveEnvelope envelope = minimalEnvelope();
   iggy3d::SaveCreativeDocumentSection& section = envelope.creativeDocument;
@@ -418,6 +473,14 @@ bool malformedCreativeDocumentPathPointKeysReject() {
       iggy3d::decodeSaveEnvelope(eraseLineForKey(
           encoded.encodedText,
           "creativeDocument.object.0.pathPoint.1.position"));
+  const iggy3d::SaveDecodeResult invalidDwell =
+      iggy3d::decodeSaveEnvelope(replaceValueForKey(
+          encoded.encodedText,
+          "creativeDocument.object.0.pathPoint.1.dwellSeconds", "nan"));
+  const iggy3d::SaveDecodeResult missingDwell =
+      iggy3d::decodeSaveEnvelope(eraseLineForKey(
+          encoded.encodedText,
+          "creativeDocument.object.0.pathPoint.1.dwellSeconds"));
 
   return expect(encoded.status == iggy3d::SaveCodecStatus::Ok,
                 "path malformed setup encode ok") &&
@@ -433,7 +496,13 @@ bool malformedCreativeDocumentPathPointKeysReject() {
                     "creativeDocument.object.0.pathPoint.1.position",
                 "invalid path point position key") &&
          expect(missingIndexedPosition.status != iggy3d::SaveCodecStatus::Ok,
-                "missing indexed path point rejected");
+                "missing indexed path point rejected") &&
+         expect(invalidDwell.status == iggy3d::SaveCodecStatus::InvalidNumber &&
+                    invalidDwell.diagnosticKey ==
+                        "creativeDocument.object.0.pathPoint.1.dwellSeconds",
+                "invalid waypoint dwell rejected at exact key") &&
+         expect(missingDwell.status != iggy3d::SaveCodecStatus::Ok,
+                "current save requires every waypoint dwell key");
 }
 
 bool schemaCompatibilityAcceptsV1V2AndRejectsTooNew() {
@@ -481,6 +550,7 @@ int main() {
   ok = defaultEnvelopeOmitsCreativeDocumentSection() && ok;
   ok = creativeDocumentSectionRoundTripsThroughSaveCodec() && ok;
   ok = version7MovingPlatformDefaultsRemainReadable() && ok;
+  ok = version8WaypointDwellDefaultsRemainReadable() && ok;
   ok = malformedCreativeDocumentPathPointKeysReject() && ok;
   ok = schemaCompatibilityAcceptsV1V2AndRejectsTooNew() && ok;
   return ok ? 0 : 1;

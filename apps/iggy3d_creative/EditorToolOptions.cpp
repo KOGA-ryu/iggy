@@ -159,6 +159,8 @@ creativeEditorToolOptionCommandsForEntry(
       commands.ids[commands.count++] =
           CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances;
       if (contextPrimaryObjectKind == cr::CreativeObjectKind::MovingPlatform) {
+        commands.ids[commands.count++] = CreativeEditorToolOptionsCommandId::
+            SetMovingPlatformWaypointDwell;
         commands.ids[commands.count++] =
             CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview;
         commands.ids[commands.count++] =

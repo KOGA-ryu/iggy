@@ -80,7 +80,7 @@ void includePlacementPoint(CreativeObjectWorldExtent& extent,
   }
   return std::all_of(object.pathPoints.begin(), object.pathPoints.end(),
                      [](const CreativePathPoint& point) {
-                       return isFiniteCreativeVec3(point.position);
+                       return isValidCreativePathPoint(point);
                      });
 }
 
@@ -190,7 +190,7 @@ void includePlacementPoint(CreativeObjectWorldExtent& extent,
   }
   return std::all_of(request.pathPoints.begin(), request.pathPoints.end(),
                      [](const CreativePathPoint& point) {
-                       return isFiniteCreativeVec3(point.position);
+                       return isValidCreativePathPoint(point);
                      });
 }
 
