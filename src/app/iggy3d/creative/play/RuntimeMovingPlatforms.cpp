@@ -22,6 +22,7 @@ namespace {
 constexpr float kRouteEpsilonMeters = 1.0e-5F;
 constexpr float kMotionEpsilonMeters = 1.0e-6F;
 constexpr double kRoutePhaseEpsilonMeters = 1.0e-9;
+constexpr double kRouteTimeEpsilonSeconds = 1.0e-12;
 constexpr double kDwellTickRoundingEpsilon = 1.0e-9;
 constexpr float kColliderInsetMeters = 0.01F;
 constexpr float kRiderVerticalToleranceMeters = 0.12F;
@@ -41,9 +42,48 @@ constexpr float kRiderHorizontalEpsilonMeters = 0.001F;
     if (!std::isfinite(definition.waypointDwellSeconds[index]) ||
         definition.waypointDwellSeconds[index] < 0.0 ||
         definition.waypointDwellSeconds[index] >
-            kCreativePathPointMaximumDwellSeconds) {
+            kCreativePathPointMaximumDwellSeconds ||
+        !std::isfinite(definition.outgoingSpeedMultipliers[index]) ||
+        definition.outgoingSpeedMultipliers[index] <
+            kCreativePathPointMinimumOutgoingSpeedMultiplier ||
+        definition.outgoingSpeedMultipliers[index] >
+            kCreativePathPointMaximumOutgoingSpeedMultiplier) {
       return false;
     }
+  }
+  if (definition.routeArcCount == 0U ||
+      definition.routeArcCount > definition.routeArcStartPhaseMeters.size() ||
+      static_cast<std::uint8_t>(definition.traversalMode) >=
+          static_cast<std::uint8_t>(
+              CreativeMovingPlatformTraversalMode::Count)) {
+    return false;
+  }
+  const double routeLength =
+      definition.traversalMode == CreativeMovingPlatformTraversalMode::Loop
+          ? static_cast<double>(definition.loopLengthMeters)
+          : static_cast<double>(definition.openLengthMeters) * 2.0;
+  double expectedStartPhase = 0.0;
+  for (std::size_t index = 0U; index < definition.routeArcCount; ++index) {
+    if (!std::isfinite(definition.routeArcStartPhaseMeters[index]) ||
+        !std::isfinite(definition.routeArcEndPhaseMeters[index]) ||
+        definition.routeArcEndPhaseMeters[index] <=
+            definition.routeArcStartPhaseMeters[index] ||
+        !std::isfinite(definition.routeArcSpeedMultipliers[index]) ||
+        definition.routeArcSpeedMultipliers[index] <
+            kCreativePathPointMinimumOutgoingSpeedMultiplier ||
+        definition.routeArcSpeedMultipliers[index] >
+            kCreativePathPointMaximumOutgoingSpeedMultiplier ||
+        definition.routeArcStartWaypointIndices[index] >=
+            definition.pathPointCount ||
+        definition.routeArcEndWaypointIndices[index] >=
+            definition.pathPointCount ||
+        std::fabs(definition.routeArcStartPhaseMeters[index] -
+                  expectedStartPhase) > kRoutePhaseEpsilonMeters ||
+        definition.routeArcEndPhaseMeters[index] >
+            routeLength + kRoutePhaseEpsilonMeters) {
+      return false;
+    }
+    expectedStartPhase = definition.routeArcEndPhaseMeters[index];
   }
   return definition.openLengthMeters > kRouteEpsilonMeters &&
          std::isfinite(definition.openLengthMeters) &&
@@ -51,10 +91,12 @@ constexpr float kRiderHorizontalEpsilonMeters = 0.001F;
          definition.loopLengthMeters >= definition.openLengthMeters &&
          definition.speedMetersPerSecond > 0.0F &&
          std::isfinite(definition.speedMetersPerSecond) &&
+         definition.cycleTravelTimeSeconds > 0.0 &&
+         std::isfinite(definition.cycleTravelTimeSeconds) &&
+         std::fabs(expectedStartPhase - routeLength) <=
+             kRoutePhaseEpsilonMeters &&
          isFinite(definition.originPositionMeters) &&
-         static_cast<std::uint8_t>(definition.traversalMode) <
-             static_cast<std::uint8_t>(
-                 CreativeMovingPlatformTraversalMode::Count);
+         routeLength > kRoutePhaseEpsilonMeters;
 }
 
 [[nodiscard]] double wrapPhase(double phase, double period) noexcept {
@@ -134,47 +176,66 @@ constexpr float kRiderHorizontalEpsilonMeters = 0.001F;
          (sampled - definition.pathPoints.front());
 }
 
-struct NextRouteWaypoint {
+struct ActiveRouteArc {
   bool found = false;
   double distanceMeters = std::numeric_limits<double>::infinity();
-  double phaseMeters = 0.0;
-  std::size_t index = 0U;
+  double arrivalPhaseMeters = 0.0;
+  float speedMultiplier = 1.0F;
+  std::size_t arrivalWaypointIndex = 0U;
 };
 
-[[nodiscard]] NextRouteWaypoint nextRouteWaypoint(
+[[nodiscard]] ActiveRouteArc activeRouteArc(
     const CreativeRuntimeMovingPlatformDefinition& definition,
     double phaseMeters,
     std::int8_t travelSign) noexcept {
-  NextRouteWaypoint result;
+  ActiveRouteArc result;
   const double cycleLength = routeCycleLengthMeters(definition);
   const double currentPhase = wrapPhase(phaseMeters, cycleLength);
-  const auto consider = [&](std::size_t index, double candidatePhase) {
-    double distance = travelSign > 0 ? candidatePhase - currentPhase
-                                     : currentPhase - candidatePhase;
-    distance = wrapPhase(distance, cycleLength);
-    if (distance <= kRoutePhaseEpsilonMeters) {
-      distance = cycleLength;
+  std::size_t arcIndex = definition.routeArcCount;
+  bool wraps = false;
+  if (travelSign > 0) {
+    for (std::size_t index = 0U; index < definition.routeArcCount; ++index) {
+      if (currentPhase + kRoutePhaseEpsilonMeters <
+          definition.routeArcEndPhaseMeters[index]) {
+        arcIndex = index;
+        break;
+      }
     }
-    if (distance < result.distanceMeters) {
-      result.found = true;
-      result.distanceMeters = distance;
-      result.phaseMeters = wrapPhase(candidatePhase, cycleLength);
-      result.index = index;
+    if (arcIndex == definition.routeArcCount) {
+      arcIndex = 0U;
+      wraps = true;
     }
-  };
-
-  for (std::size_t index = 0U; index < definition.pathPointCount; ++index) {
-    consider(index,
-             static_cast<double>(definition.cumulativeOpenMeters[index]));
+    const double boundary = definition.routeArcEndPhaseMeters[arcIndex];
+    result.distanceMeters = wraps ? cycleLength - currentPhase + boundary
+                                  : boundary - currentPhase;
+    result.arrivalWaypointIndex =
+        definition.routeArcEndWaypointIndices[arcIndex];
+    result.arrivalPhaseMeters = wrapPhase(boundary, cycleLength);
+  } else {
+    for (std::size_t reverse = definition.routeArcCount; reverse > 0U;
+         --reverse) {
+      const std::size_t index = reverse - 1U;
+      if (currentPhase >
+          definition.routeArcStartPhaseMeters[index] +
+              kRoutePhaseEpsilonMeters) {
+        arcIndex = index;
+        break;
+      }
+    }
+    if (arcIndex == definition.routeArcCount) {
+      arcIndex = definition.routeArcCount - 1U;
+      wraps = true;
+    }
+    const double boundary = definition.routeArcStartPhaseMeters[arcIndex];
+    result.distanceMeters = wraps ? currentPhase + cycleLength - boundary
+                                  : currentPhase - boundary;
+    result.arrivalWaypointIndex =
+        definition.routeArcStartWaypointIndices[arcIndex];
+    result.arrivalPhaseMeters = wrapPhase(boundary, cycleLength);
   }
-  if (definition.traversalMode ==
-      CreativeMovingPlatformTraversalMode::PingPong) {
-    for (std::size_t index = 1U; index + 1U < definition.pathPointCount;
-         ++index) {
-      consider(index, cycleLength - static_cast<double>(
-                                          definition.cumulativeOpenMeters[index]));
-    }
-  }
+  result.found = std::isfinite(result.distanceMeters) &&
+                 result.distanceMeters > kRoutePhaseEpsilonMeters;
+  result.speedMultiplier = definition.routeArcSpeedMultipliers[arcIndex];
   return result;
 }
 
@@ -191,48 +252,15 @@ struct NextRouteWaypoint {
   return static_cast<std::uint64_t>(rounded);
 }
 
-struct RouteDwellArrival {
-  bool found = false;
-  double distanceMeters = 0.0;
-  double phaseMeters = 0.0;
-  std::size_t index = 0U;
-  std::uint64_t dwellTicks = 0U;
-};
-
-[[nodiscard]] RouteDwellArrival firstRouteDwellWithinDistance(
+[[nodiscard]] bool routeHasDwellTicks(
     const CreativeRuntimeMovingPlatformDefinition& definition,
-    double phaseMeters,
-    std::int8_t travelSign,
-    double maximumDistanceMeters,
     std::uint32_t fixedTickRateHz) noexcept {
-  RouteDwellArrival result;
-  double cursorPhase = phaseMeters;
-  double accumulatedDistance = 0.0;
-  // Search one complete route cycle so zero-dwell points do not split motion.
-  const std::size_t maximumOccurrences = definition.pathPointCount * 2U;
-  for (std::size_t occurrence = 0U; occurrence < maximumOccurrences;
-       ++occurrence) {
-    const NextRouteWaypoint next =
-        nextRouteWaypoint(definition, cursorPhase, travelSign);
-    if (!next.found || !std::isfinite(next.distanceMeters) ||
-        accumulatedDistance + next.distanceMeters >
-            maximumDistanceMeters + kRoutePhaseEpsilonMeters) {
-      return result;
+  for (std::size_t index = 0U; index < definition.pathPointCount; ++index) {
+    if (waypointDwellTickCount(definition, index, fixedTickRateHz) > 0U) {
+      return true;
     }
-    accumulatedDistance += next.distanceMeters;
-    const std::uint64_t dwellTicks = waypointDwellTickCount(
-        definition, next.index, fixedTickRateHz);
-    if (dwellTicks > 0U) {
-      result.found = true;
-      result.distanceMeters = accumulatedDistance;
-      result.phaseMeters = next.phaseMeters;
-      result.index = next.index;
-      result.dwellTicks = dwellTicks;
-      return result;
-    }
-    cursorPhase = next.phaseMeters;
   }
-  return result;
+  return false;
 }
 
 [[nodiscard]] bool sameSurfaceId(
@@ -550,6 +578,8 @@ buildCreativeRuntimeMovingPlatformDefinition(
     }
     definition.pathPoints[index] = converted.value;
     definition.waypointDwellSeconds[index] = pathPoints[index].dwellSeconds;
+    definition.outgoingSpeedMultipliers[index] =
+        static_cast<float>(pathPoints[index].outgoingSpeedMultiplier);
     if (index > 0U) {
       const float lengthMeters = segmentLength(
           definition.pathPoints[index - 1U], definition.pathPoints[index]);
@@ -566,6 +596,69 @@ buildCreativeRuntimeMovingPlatformDefinition(
       definition.openLengthMeters +
       segmentLength(definition.pathPoints[pathPoints.size() - 1U],
                     definition.pathPoints.front());
+
+  const auto appendRouteArc =
+      [&definition](double startPhaseMeters,
+                    double endPhaseMeters,
+                    std::size_t startWaypointIndex,
+                    std::size_t endWaypointIndex,
+                    float speedMultiplier) {
+        if (endPhaseMeters - startPhaseMeters <= kRoutePhaseEpsilonMeters) {
+          return true;
+        }
+        if (definition.routeArcCount >=
+            definition.routeArcStartPhaseMeters.size()) {
+          return false;
+        }
+        const std::size_t arcIndex = definition.routeArcCount++;
+        definition.routeArcStartPhaseMeters[arcIndex] = startPhaseMeters;
+        definition.routeArcEndPhaseMeters[arcIndex] = endPhaseMeters;
+        definition.routeArcStartWaypointIndices[arcIndex] =
+            static_cast<std::uint8_t>(startWaypointIndex);
+        definition.routeArcEndWaypointIndices[arcIndex] =
+            static_cast<std::uint8_t>(endWaypointIndex);
+        definition.routeArcSpeedMultipliers[arcIndex] = speedMultiplier;
+        definition.cycleTravelTimeSeconds +=
+            (endPhaseMeters - startPhaseMeters) /
+            (static_cast<double>(definition.speedMetersPerSecond) *
+             static_cast<double>(speedMultiplier));
+        return std::isfinite(definition.cycleTravelTimeSeconds);
+      };
+
+  for (std::size_t index = 0U; index + 1U < pathPoints.size(); ++index) {
+    if (!appendRouteArc(
+            static_cast<double>(definition.cumulativeOpenMeters[index]),
+            static_cast<double>(definition.cumulativeOpenMeters[index + 1U]),
+            index, index + 1U, definition.outgoingSpeedMultipliers[index])) {
+      return result;
+    }
+  }
+  if (definition.traversalMode ==
+      CreativeMovingPlatformTraversalMode::Loop) {
+    if (!appendRouteArc(
+            static_cast<double>(definition.openLengthMeters),
+            static_cast<double>(definition.loopLengthMeters),
+            pathPoints.size() - 1U, 0U,
+            definition.outgoingSpeedMultipliers[pathPoints.size() - 1U])) {
+      return result;
+    }
+  } else {
+    const double cycleLength =
+        static_cast<double>(definition.openLengthMeters) * 2.0;
+    for (std::size_t reverse = pathPoints.size() - 1U; reverse > 0U;
+         --reverse) {
+      const double startPhase =
+          cycleLength - static_cast<double>(
+                            definition.cumulativeOpenMeters[reverse]);
+      const double endPhase =
+          cycleLength - static_cast<double>(
+                            definition.cumulativeOpenMeters[reverse - 1U]);
+      if (!appendRouteArc(startPhase, endPhase, reverse, reverse - 1U,
+                          definition.outgoingSpeedMultipliers[reverse - 1U])) {
+        return result;
+      }
+    }
+  }
   if (!validDefinition(definition)) {
     return result;
   }
@@ -613,29 +706,65 @@ CreativeRuntimeMovingPlatformStepResult planCreativeRuntimeMovingPlatformStep(
   const CreativeRuntimeMovingPlatformDefinition& definition =
       *request.definition;
   const double routeLength = routeCycleLengthMeters(definition);
-  const double tickDistance =
-      static_cast<double>(definition.speedMetersPerSecond) /
-      static_cast<double>(request.fixedTickRateHz);
-  const RouteDwellArrival dwellArrival = firstRouteDwellWithinDistance(
-      definition, request.state->phaseMeters, request.state->travelSign,
-      tickDistance, request.fixedTickRateHz);
-  const double travelDistance =
-      dwellArrival.found ? dwellArrival.distanceMeters : tickDistance;
-  result.arrivedAtWaypoint = dwellArrival.found;
-  result.nextState.phaseMeters =
-      result.arrivedAtWaypoint
-          ? dwellArrival.phaseMeters
-          : wrapPhase(request.state->phaseMeters +
-                          travelDistance *
-                              static_cast<double>(request.state->travelSign),
-                      routeLength);
+  double phaseMeters = wrapPhase(request.state->phaseMeters, routeLength);
+  double remainingSeconds =
+      1.0 / static_cast<double>(request.fixedTickRateHz);
+  if (!routeHasDwellTicks(definition, request.fixedTickRateHz) &&
+      remainingSeconds >= definition.cycleTravelTimeSeconds) {
+    remainingSeconds =
+        std::fmod(remainingSeconds, definition.cycleTravelTimeSeconds);
+  }
+
+  bool consumedTime = remainingSeconds <= kRouteTimeEpsilonSeconds;
   result.nextState.dwellingWaypointIndex =
       std::numeric_limits<std::uint8_t>::max();
-  if (result.arrivedAtWaypoint) {
-    result.waypointIndex = static_cast<std::uint8_t>(dwellArrival.index);
-    result.nextState.dwellTicksRemaining = dwellArrival.dwellTicks;
-    result.nextState.dwellingWaypointIndex = result.waypointIndex;
+  for (std::size_t transition = 0U;
+       !consumedTime && transition <= definition.routeArcCount;
+       ++transition) {
+    const ActiveRouteArc arc = activeRouteArc(
+        definition, phaseMeters, request.state->travelSign);
+    if (!arc.found || !std::isfinite(arc.speedMultiplier)) {
+      return {};
+    }
+    const double speedMetersPerSecond =
+        static_cast<double>(definition.speedMetersPerSecond) *
+        static_cast<double>(arc.speedMultiplier);
+    const double secondsToWaypoint =
+        arc.distanceMeters / speedMetersPerSecond;
+    if (!std::isfinite(secondsToWaypoint) ||
+        secondsToWaypoint <= kRouteTimeEpsilonSeconds) {
+      return {};
+    }
+    if (remainingSeconds + kRouteTimeEpsilonSeconds < secondsToWaypoint) {
+      phaseMeters = wrapPhase(
+          phaseMeters +
+              static_cast<double>(request.state->travelSign) *
+                  speedMetersPerSecond * remainingSeconds,
+          routeLength);
+      remainingSeconds = 0.0;
+      consumedTime = true;
+      break;
+    }
+
+    phaseMeters = arc.arrivalPhaseMeters;
+    remainingSeconds = std::max(0.0, remainingSeconds - secondsToWaypoint);
+    const std::uint64_t dwellTicks = waypointDwellTickCount(
+        definition, arc.arrivalWaypointIndex, request.fixedTickRateHz);
+    if (dwellTicks > 0U) {
+      result.arrivedAtWaypoint = true;
+      result.waypointIndex =
+          static_cast<std::uint8_t>(arc.arrivalWaypointIndex);
+      result.nextState.dwellTicksRemaining = dwellTicks;
+      result.nextState.dwellingWaypointIndex = result.waypointIndex;
+      consumedTime = true;
+      break;
+    }
+    consumedTime = remainingSeconds <= kRouteTimeEpsilonSeconds;
   }
+  if (!consumedTime) {
+    return {};
+  }
+  result.nextState.phaseMeters = phaseMeters;
   result.nextState.positionMeters =
       sampleRoutePosition(definition, result.nextState.phaseMeters);
   result.displacementMeters =

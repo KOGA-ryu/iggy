@@ -29,9 +29,11 @@ constexpr double kPreviewMaximumDeltaSeconds = 0.25;
     const cr::CreativeRuntimeMovingPlatformDefinition& lhs,
     const cr::CreativeRuntimeMovingPlatformDefinition& rhs) noexcept {
   if (lhs.pathPointCount != rhs.pathPointCount ||
+      lhs.routeArcCount != rhs.routeArcCount ||
       lhs.openLengthMeters != rhs.openLengthMeters ||
       lhs.loopLengthMeters != rhs.loopLengthMeters ||
       lhs.speedMetersPerSecond != rhs.speedMetersPerSecond ||
+      lhs.cycleTravelTimeSeconds != rhs.cycleTravelTimeSeconds ||
       lhs.traversalMode != rhs.traversalMode ||
       lhs.startsActive != rhs.startsActive ||
       !sameVec3(lhs.originPositionMeters, rhs.originPositionMeters)) {
@@ -41,7 +43,9 @@ constexpr double kPreviewMaximumDeltaSeconds = 0.25;
     if (!sameVec3(lhs.pathPoints[index], rhs.pathPoints[index]) ||
         lhs.cumulativeOpenMeters[index] != rhs.cumulativeOpenMeters[index] ||
         lhs.waypointDwellSeconds[index] !=
-            rhs.waypointDwellSeconds[index]) {
+            rhs.waypointDwellSeconds[index] ||
+        lhs.outgoingSpeedMultipliers[index] !=
+            rhs.outgoingSpeedMultipliers[index]) {
       return false;
     }
   }

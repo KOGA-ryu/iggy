@@ -62,6 +62,7 @@ bool creativeEditorCommandIsObjectAction(
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
     case CreativeEditorToolOptionsCommandId::SetMovingPlatformWaypointDwell:
+    case CreativeEditorToolOptionsCommandId::SetMovingPlatformSegmentSpeed:
     case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::Count:
@@ -273,6 +274,7 @@ bool creativeEditorObjectActionEnabled(
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
     case CreativeEditorToolOptionsCommandId::SetMovingPlatformWaypointDwell:
+    case CreativeEditorToolOptionsCommandId::SetMovingPlatformSegmentSpeed:
     case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::Count:
@@ -316,6 +318,7 @@ std::string_view creativeEditorObjectActionLabel(
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
     case CreativeEditorToolOptionsCommandId::SetMovingPlatformWaypointDwell:
+    case CreativeEditorToolOptionsCommandId::SetMovingPlatformSegmentSpeed:
     case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::Count:
@@ -400,6 +403,7 @@ std::string creativeEditorObjectActionValueLabel(
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
     case CreativeEditorToolOptionsCommandId::SetMovingPlatformWaypointDwell:
+    case CreativeEditorToolOptionsCommandId::SetMovingPlatformSegmentSpeed:
     case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::Count:
@@ -572,6 +576,7 @@ bool activateCreativeEditorObjectAction(
     case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
     case CreativeEditorToolOptionsCommandId::EditGroupContents:
     case CreativeEditorToolOptionsCommandId::SetMovingPlatformWaypointDwell:
+    case CreativeEditorToolOptionsCommandId::SetMovingPlatformSegmentSpeed:
     case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::Count:

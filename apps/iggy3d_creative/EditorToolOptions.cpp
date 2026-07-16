@@ -161,6 +161,8 @@ creativeEditorToolOptionCommandsForEntry(
       if (contextPrimaryObjectKind == cr::CreativeObjectKind::MovingPlatform) {
         commands.ids[commands.count++] = CreativeEditorToolOptionsCommandId::
             SetMovingPlatformWaypointDwell;
+        commands.ids[commands.count++] = CreativeEditorToolOptionsCommandId::
+            SetMovingPlatformSegmentSpeed;
         commands.ids[commands.count++] =
             CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview;
         commands.ids[commands.count++] =

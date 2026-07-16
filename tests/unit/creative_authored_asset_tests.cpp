@@ -91,6 +91,56 @@ cr::CreativeAuthoredAssetCaptureResult makeTwoCrateDefinition() {
       {&source, selected, "authored_0001", "Twin Crates", 702U});
 }
 
+bool segmentSpeedParticipatesInAuthoredAssetFingerprint() {
+  cr::CreativeDocument source =
+      cr::CreativeDocument::create("Moving Platform Source");
+  static_cast<void>(source.assignId(741U));
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::MovingPlatform;
+  request.name = "Lift";
+  request.hasPathOverride = true;
+  request.pathPoints = {
+      cr::CreativePathPoint{{0.0, 0.0, 0.0}},
+      cr::CreativePathPoint{{2.0, 0.0, 0.0}},
+  };
+  const cr::CreativeDocumentCreateReceipt created =
+      source.createObject(request);
+  const std::array selected{created.objectId};
+  const cr::CreativeAuthoredAssetCaptureResult captured =
+      cr::captureCreativeAuthoredAsset(
+          {&source, selected, "authored_lift", "Lift", 742U});
+  if (!expect(created.accepted && captured.accepted,
+              "moving platform definition captures for fingerprinting")) {
+    return false;
+  }
+
+  const cr::CreativeAuthoredAssetFingerprint defaultFingerprint =
+      cr::fingerprintCreativeAuthoredAssetDefinition(captured.definition);
+  cr::CreativeAuthoredAssetDefinition custom = captured.definition;
+  const auto platform = std::find_if(
+      custom.content.objects.begin(), custom.content.objects.end(),
+      [](const cr::CreativeObject& object) {
+        return object.kind == cr::CreativeObjectKind::MovingPlatform;
+      });
+  if (!expect(platform != custom.content.objects.end(),
+              "captured definition retains moving platform path")) {
+    return false;
+  }
+  platform->pathPoints[0].outgoingSpeedMultiplier = 2.0;
+  const cr::CreativeAuthoredAssetFingerprint customFingerprint =
+      cr::fingerprintCreativeAuthoredAssetDefinition(custom);
+  platform->pathPoints[0].outgoingSpeedMultiplier = 1.0;
+  const cr::CreativeAuthoredAssetFingerprint restoredFingerprint =
+      cr::fingerprintCreativeAuthoredAssetDefinition(custom);
+
+  return expect(defaultFingerprint.valid && customFingerprint.valid &&
+                    restoredFingerprint.valid &&
+                    customFingerprint.value != defaultFingerprint.value,
+                "custom segment speed participates in asset identity") &&
+         expect(restoredFingerprint.value == defaultFingerprint.value,
+                "default segment speed retains the legacy identity shape");
+}
+
 bool captureInstantiateSelectAndUnpack() {
   cr::CreativeAuthoredAssetCaptureResult captured =
       makeTwoCrateDefinition();
@@ -1533,7 +1583,8 @@ bool previewUsesCanonicalCompositeProxies() {
 }  // namespace
 
 int main() {
-  return captureInstantiateSelectAndUnpack() &&
+  return segmentSpeedParticipatesInAuthoredAssetFingerprint() &&
+                 captureInstantiateSelectAndUnpack() &&
                  invalidDefinitionCannotPartiallyMutate() &&
                  refreshAllInstancesIsAtomic() &&
                  syncStatesProtectLocalInstanceEdits() &&

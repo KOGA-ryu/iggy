@@ -111,6 +111,13 @@ void Reader::readOptionalCreativePathPointVector(
         nextKeyIs(dwellKey)) {
       readDouble(dwellKey, out[index].dwellSeconds);
     }
+    const std::string speedKey =
+        itemPrefix + std::to_string(index) + ".outgoingSpeedMultiplier";
+    if (envelope_.creativeDocument.version >=
+            kSaveCreativeDocumentSegmentSpeedVersion ||
+        nextKeyIs(speedKey)) {
+      readDouble(speedKey, out[index].outgoingSpeedMultiplier);
+    }
   }
 }
 

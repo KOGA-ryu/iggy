@@ -12,16 +12,36 @@
 
 namespace iggy3d::creative {
 
+inline constexpr std::size_t
+    kCreativeRuntimeMovingPlatformRouteArcCapacity =
+        (kCreativeMovingPlatformPathPointCapacity - 1U) * 2U;
+
 struct CreativeRuntimeMovingPlatformDefinition {
   std::array<Vec3, kCreativeMovingPlatformPathPointCapacity> pathPoints{};
   std::array<double, kCreativeMovingPlatformPathPointCapacity>
       waypointDwellSeconds{};
   std::array<float, kCreativeMovingPlatformPathPointCapacity>
+      outgoingSpeedMultipliers{};
+  std::array<float, kCreativeMovingPlatformPathPointCapacity>
       cumulativeOpenMeters{};
+  std::array<double, kCreativeRuntimeMovingPlatformRouteArcCapacity>
+      routeArcStartPhaseMeters{};
+  std::array<double, kCreativeRuntimeMovingPlatformRouteArcCapacity>
+      routeArcEndPhaseMeters{};
+  std::array<float, kCreativeRuntimeMovingPlatformRouteArcCapacity>
+      routeArcSpeedMultipliers{};
+  std::array<std::uint8_t,
+             kCreativeRuntimeMovingPlatformRouteArcCapacity>
+      routeArcStartWaypointIndices{};
+  std::array<std::uint8_t,
+             kCreativeRuntimeMovingPlatformRouteArcCapacity>
+      routeArcEndWaypointIndices{};
   std::size_t pathPointCount = 0U;
+  std::size_t routeArcCount = 0U;
   float openLengthMeters = 0.0F;
   float loopLengthMeters = 0.0F;
   float speedMetersPerSecond = 0.0F;
+  double cycleTravelTimeSeconds = 0.0;
   CreativeMovingPlatformTraversalMode traversalMode =
       CreativeMovingPlatformTraversalMode::PingPong;
   bool startsActive = true;

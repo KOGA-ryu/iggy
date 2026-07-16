@@ -303,7 +303,12 @@ bool isValidCreativePathPoint(const CreativePathPoint& point) noexcept {
          std::isfinite(point.position.y) &&
          std::isfinite(point.position.z) &&
          std::isfinite(point.dwellSeconds) && point.dwellSeconds >= 0.0 &&
-         point.dwellSeconds <= kCreativePathPointMaximumDwellSeconds;
+         point.dwellSeconds <= kCreativePathPointMaximumDwellSeconds &&
+         std::isfinite(point.outgoingSpeedMultiplier) &&
+         point.outgoingSpeedMultiplier >=
+             kCreativePathPointMinimumOutgoingSpeedMultiplier &&
+         point.outgoingSpeedMultiplier <=
+             kCreativePathPointMaximumOutgoingSpeedMultiplier;
 }
 
 bool isValidCreativeMovingPlatformPath(

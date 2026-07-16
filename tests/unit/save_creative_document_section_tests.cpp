@@ -127,9 +127,9 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
   object.attachmentSocket = "door_frame";
   object.tags = {"boss=room", "line\nbreak"};
   object.pathPoints = {
-      {kOneThird, 0.0, kPrecise, 0.0},
-      {kPrecise, kOneThird, 4.75, 1.25},
-      {-7.25, 2.5, kOneThird, 0.5},
+      {kOneThird, 0.0, kPrecise, 0.0, 0.75},
+      {kPrecise, kOneThird, 4.75, 1.25, 2.25},
+      {-7.25, 2.5, kOneThird, 0.5, 1.0},
   };
   section.objects.push_back(object);
   section.logicLinks.push_back({7U, 42U, "Open"});
@@ -190,6 +190,11 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
                        "creativeDocument.object.0.pathPoint.1.dwellSeconds=1.25\n") !=
                        std::string::npos,
                    "object path point dwell encoded") &&
+            expect(encoded.encodedText.find(
+                       "creativeDocument.object.0.pathPoint.1."
+                       "outgoingSpeedMultiplier=2.25\n") !=
+                       std::string::npos,
+                   "object path point segment speed encoded") &&
             expect(encoded.encodedText.find(
                        "creativeDocument.logicLink.0.action=Open\n") !=
                        std::string::npos,
@@ -270,9 +275,11 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
                   decodedObject->pathPoints[1].x == kPrecise &&
                   decodedObject->pathPoints[1].y == kOneThird &&
                   decodedObject->pathPoints[1].dwellSeconds == 1.25 &&
+                  decodedObject->pathPoints[1].outgoingSpeedMultiplier == 2.25 &&
                   decodedObject->pathPoints[2].x == -7.25 &&
                   decodedObject->pathPoints[2].z == kOneThird &&
-                  decodedObject->pathPoints[2].dwellSeconds == 0.5,
+                  decodedObject->pathPoints[2].dwellSeconds == 0.5 &&
+                  decodedObject->pathPoints[2].outgoingSpeedMultiplier == 1.0,
               "object path points decoded exactly");
 
   std::string version6Text = encoded.encodedText;
@@ -439,6 +446,55 @@ bool version8WaypointDwellDefaultsRemainReadable() {
                 "version 8 waypoints receive zero dwell defaults");
 }
 
+bool version9SegmentSpeedDefaultsRemainReadable() {
+  iggy3d::SaveEnvelope envelope = minimalEnvelope();
+  iggy3d::SaveCreativeDocumentSection& section = envelope.creativeDocument;
+  section.present = true;
+  section.documentId = 93U;
+  section.name = "Legacy Segment Speed";
+  section.gridWidth = 8U;
+  section.gridHeight = 8U;
+  section.gridDepth = 8U;
+  section.worldBounds.max = {8.0, 8.0, 8.0};
+  section.nextObjectId = 2U;
+
+  iggy3d::SaveCreativeDocumentObjectRecord object;
+  object.id = 1U;
+  object.kind = "MovingPlatform";
+  object.name = "Legacy Lift";
+  object.bounds.max = {2.0, 0.25, 2.0};
+  object.pathPoints = {{1.0, 0.125, 1.0, 0.0, 1.0},
+                       {1.0, 3.125, 1.0, 0.5, 1.0}};
+  section.objects.push_back(object);
+
+  const iggy3d::SaveEncodeResult encoded =
+      iggy3d::encodeSaveEnvelope(envelope);
+  std::string version9Text = replaceValueForKey(
+      encoded.encodedText, "creativeDocument.version", "9");
+  version9Text = eraseLineForKey(
+      version9Text,
+      "creativeDocument.object.0.pathPoint.0.outgoingSpeedMultiplier");
+  version9Text = eraseLineForKey(
+      version9Text,
+      "creativeDocument.object.0.pathPoint.1.outgoingSpeedMultiplier");
+
+  const iggy3d::SaveDecodeResult decoded =
+      iggy3d::decodeSaveEnvelope(version9Text);
+  const iggy3d::SaveCreativeDocumentObjectRecord* decodedObject =
+      decoded.envelope.creativeDocument.objects.empty()
+          ? nullptr
+          : &decoded.envelope.creativeDocument.objects.front();
+  return expect(encoded.status == iggy3d::SaveCodecStatus::Ok,
+                "version 9 segment speed setup encode ok") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                "version 9 without segment speed remains readable") &&
+         expect(decodedObject != nullptr &&
+                    decodedObject->pathPoints.size() == 2U &&
+                    decodedObject->pathPoints[0].outgoingSpeedMultiplier == 1.0 &&
+                    decodedObject->pathPoints[1].outgoingSpeedMultiplier == 1.0,
+                "version 9 route segments receive 1x speed defaults");
+}
+
 bool malformedCreativeDocumentPathPointKeysReject() {
   iggy3d::SaveEnvelope envelope = minimalEnvelope();
   iggy3d::SaveCreativeDocumentSection& section = envelope.creativeDocument;
@@ -481,6 +537,15 @@ bool malformedCreativeDocumentPathPointKeysReject() {
       iggy3d::decodeSaveEnvelope(eraseLineForKey(
           encoded.encodedText,
           "creativeDocument.object.0.pathPoint.1.dwellSeconds"));
+  const iggy3d::SaveDecodeResult invalidSpeed =
+      iggy3d::decodeSaveEnvelope(replaceValueForKey(
+          encoded.encodedText,
+          "creativeDocument.object.0.pathPoint.1.outgoingSpeedMultiplier",
+          "nan"));
+  const iggy3d::SaveDecodeResult missingSpeed =
+      iggy3d::decodeSaveEnvelope(eraseLineForKey(
+          encoded.encodedText,
+          "creativeDocument.object.0.pathPoint.1.outgoingSpeedMultiplier"));
 
   return expect(encoded.status == iggy3d::SaveCodecStatus::Ok,
                 "path malformed setup encode ok") &&
@@ -502,7 +567,15 @@ bool malformedCreativeDocumentPathPointKeysReject() {
                         "creativeDocument.object.0.pathPoint.1.dwellSeconds",
                 "invalid waypoint dwell rejected at exact key") &&
          expect(missingDwell.status != iggy3d::SaveCodecStatus::Ok,
-                "current save requires every waypoint dwell key");
+                "current save requires every waypoint dwell key") &&
+         expect(invalidSpeed.status ==
+                    iggy3d::SaveCodecStatus::InvalidNumber &&
+                    invalidSpeed.diagnosticKey ==
+                        "creativeDocument.object.0.pathPoint.1."
+                        "outgoingSpeedMultiplier",
+                "invalid segment speed rejected at exact key") &&
+         expect(missingSpeed.status != iggy3d::SaveCodecStatus::Ok,
+                "current save requires every segment speed key");
 }
 
 bool schemaCompatibilityAcceptsV1V2AndRejectsTooNew() {
@@ -551,6 +624,7 @@ int main() {
   ok = creativeDocumentSectionRoundTripsThroughSaveCodec() && ok;
   ok = version7MovingPlatformDefaultsRemainReadable() && ok;
   ok = version8WaypointDwellDefaultsRemainReadable() && ok;
+  ok = version9SegmentSpeedDefaultsRemainReadable() && ok;
   ok = malformedCreativeDocumentPathPointKeysReject() && ok;
   ok = schemaCompatibilityAcceptsV1V2AndRejectsTooNew() && ok;
   return ok ? 0 : 1;

@@ -308,6 +308,9 @@ private:
                        {pathPoint.x, pathPoint.y, pathPoint.z});
       line(prefix + "pathPoint." + std::to_string(point) + ".dwellSeconds",
            formatDoubleLossless(pathPoint.dwellSeconds));
+      line(prefix + "pathPoint." + std::to_string(point) +
+               ".outgoingSpeedMultiplier",
+           formatDoubleLossless(pathPoint.outgoingSpeedMultiplier));
     }
   }
 

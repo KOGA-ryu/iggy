@@ -39,10 +39,17 @@ struct CreativeBounds {
 struct CreativePathPoint {
   CreativeVec3 position{};
   double dwellSeconds{0.0};
+  // Speed for the segment leaving this point in authored path order. The
+  // physical segment keeps this multiplier when traversed in reverse.
+  double outgoingSpeedMultiplier{1.0};
 };
 
 inline constexpr std::size_t kCreativeMovingPlatformPathPointCapacity = 32U;
 inline constexpr double kCreativePathPointMaximumDwellSeconds = 60.0;
+inline constexpr double kCreativePathPointMinimumOutgoingSpeedMultiplier =
+    0.25;
+inline constexpr double kCreativePathPointMaximumOutgoingSpeedMultiplier =
+    4.0;
 
 enum class CreativeMovingPlatformTraversalMode : std::uint8_t {
   PingPong,

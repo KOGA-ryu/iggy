@@ -47,12 +47,13 @@ enum class CreativeEditorToolOptionsCommandId : std::uint8_t {
   RefreshSafeSavedAssetInstances,
   ForceRefreshSavedAssetInstances,
   SetMovingPlatformWaypointDwell,
+  SetMovingPlatformSegmentSpeed,
   ToggleMovingPlatformPreview,
   RestartMovingPlatformPreview,
   Count,
 };
 
-inline constexpr std::size_t kCreativeEditorToolOptionsCommandCapacity = 18U;
+inline constexpr std::size_t kCreativeEditorToolOptionsCommandCapacity = 19U;
 
 struct CreativeEditorToolOptionsCommandList {
   std::array<CreativeEditorToolOptionsCommandId,
@@ -92,8 +93,10 @@ struct CreativeEditorToolOptionsState {
   bool contextPrefabUpdateTransformSupported = false;
   bool contextPrefabSyncInspected = false;
   bool contextMovingPlatformPointSelected = false;
+  bool contextMovingPlatformPointHasOutgoingSegment = false;
   std::uint8_t contextMovingPlatformPointIndex = 0U;
   double movingPlatformWaypointDwellDraft = 0.0;
+  double movingPlatformSegmentSpeedDraft = 1.0;
   iggy3d::creative::CreativeAuthoredAssetSyncState contextPrefabSyncState =
       iggy3d::creative::CreativeAuthoredAssetSyncState::Conflict;
   std::size_t contextPrefabMatchedInstanceCount = 0U;

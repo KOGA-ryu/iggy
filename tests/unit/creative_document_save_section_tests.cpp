@@ -64,7 +64,9 @@ bool samePathPoints(std::span<const cr::CreativePathPoint> lhs,
   }
   for (std::size_t index = 0; index < lhs.size(); ++index) {
     if (!sameVec3(lhs[index].position, rhs[index].position) ||
-        lhs[index].dwellSeconds != rhs[index].dwellSeconds) {
+        lhs[index].dwellSeconds != rhs[index].dwellSeconds ||
+        lhs[index].outgoingSpeedMultiplier !=
+            rhs[index].outgoingSpeedMultiplier) {
       return false;
     }
   }
@@ -81,7 +83,9 @@ bool savePathPointsMatch(
     if (lhs[index].x != rhs[index].position.x ||
         lhs[index].y != rhs[index].position.y ||
         lhs[index].z != rhs[index].position.z ||
-        lhs[index].dwellSeconds != rhs[index].dwellSeconds) {
+        lhs[index].dwellSeconds != rhs[index].dwellSeconds ||
+        lhs[index].outgoingSpeedMultiplier !=
+            rhs[index].outgoingSpeedMultiplier) {
       return false;
     }
   }
@@ -106,7 +110,9 @@ std::vector<cr::CreativePathPoint> authoredLineEndpoints() {
 std::vector<cr::CreativePathPoint> authoredMovingPlatformPathPoints() {
   std::vector<cr::CreativePathPoint> points = authoredPathPoints();
   points[1].dwellSeconds = 1.25;
+  points[1].outgoingSpeedMultiplier = 2.25;
   points[2].dwellSeconds = 0.5;
+  points[2].outgoingSpeedMultiplier = 0.75;
   return points;
 }
 
@@ -638,6 +644,11 @@ bool movingPlatformSettingsEncodeDecodeAndRestore() {
                     "creativeDocument.object.0.pathPoint.1."
                     "dwellSeconds=1.25\n") != std::string::npos,
                 "moving platform waypoint dwell encoded") &&
+         expect(encoded.encodedText.find(
+                    "creativeDocument.object.0.pathPoint.1."
+                    "outgoingSpeedMultiplier=2.25\n") !=
+                    std::string::npos,
+                "moving platform segment speed encoded") &&
          expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
                 "moving platform codec decode ok") &&
          expect(decodedObject != nullptr &&
@@ -705,6 +716,13 @@ bool restoreRejectsInvalidPathPayloads() {
   const iggy3d::ProductCreativeDocumentSectionRestoreResult nonFiniteResult =
       iggy3d::restoreCreativeDocumentFromSaveSection(nonFinite);
 
+  iggy3d::SaveCreativeDocumentSection invalidSegmentSpeed = valid;
+  invalidSegmentSpeed.objects[0].pathPoints[0].outgoingSpeedMultiplier = 0.0;
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult
+      invalidSegmentSpeedResult =
+          iggy3d::restoreCreativeDocumentFromSaveSection(
+              invalidSegmentSpeed);
+
   return expect(!missingResult.receipt.accepted,
                 "missing path points rejected") &&
          expect(missingResult.receipt.status ==
@@ -727,7 +745,11 @@ bool restoreRejectsInvalidPathPayloads() {
                     iggy3d::ProductCreativeDocumentSectionStatus::InvalidObject,
                 "nonfinite path point status") &&
          expect(nonFiniteResult.receipt.reasonCode == "invalid_path_points",
-                "nonfinite path point reason");
+                "nonfinite path point reason") &&
+         expect(!invalidSegmentSpeedResult.receipt.accepted &&
+                    invalidSegmentSpeedResult.receipt.reasonCode ==
+                        "invalid_path_points",
+                "out-of-range segment speed rejects restored path");
 }
 
 bool restoreRejectsInvalidLineEndpointPayloads() {

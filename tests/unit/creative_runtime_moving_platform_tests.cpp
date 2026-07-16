@@ -261,6 +261,95 @@ bool zeroDwellWaypointsDoNotReduceRouteSpeed() {
                 "zero-dwell waypoints are crossed without implicit pauses");
 }
 
+bool segmentSpeedsConsumeTimeAcrossBoundariesInBothDirections() {
+  const std::vector<cr::CreativePathPoint> path{
+      {{0.0, 0.0, 0.0}, 0.0, 1.0},
+      {{1.0, 0.0, 0.0}, 0.0, 2.0},
+      {{4.0, 0.0, 0.0}, 0.0, 1.0},
+  };
+  cr::CreativeMovingPlatformSettings settings;
+  settings.speedMetersPerSecond = 2.0;
+  const cr::CreativeRuntimeMovingPlatformBuildResult built =
+      cr::buildCreativeRuntimeMovingPlatformDefinition(path, settings, {});
+  if (!built.ok) {
+    return expect(false, "variable-speed route definition builds");
+  }
+
+  cr::CreativeRuntimeMovingPlatformState forward;
+  const auto forwardStep = cr::planCreativeRuntimeMovingPlatformStep(
+      {&built.definition, &forward, 1U, true});
+  cr::CreativeRuntimeMovingPlatformState reverse;
+  reverse.phaseMeters = 4.0;
+  reverse.positionMeters = {4.0F, 0.0F, 0.0F};
+  reverse.travelSign = -1;
+  const auto reverseStep = cr::planCreativeRuntimeMovingPlatformStep(
+      {&built.definition, &reverse, 1U, true});
+
+  const std::vector<cr::CreativePathPoint> loopPath{
+      {{0.0, 0.0, 0.0}, 0.0, 1.0},
+      {{1.0, 0.0, 0.0}, 0.0, 0.5},
+  };
+  cr::CreativeMovingPlatformSettings loopSettings;
+  loopSettings.speedMetersPerSecond = 1.0;
+  loopSettings.traversalMode =
+      cr::CreativeMovingPlatformTraversalMode::Loop;
+  const auto loopBuilt = cr::buildCreativeRuntimeMovingPlatformDefinition(
+      loopPath, loopSettings, {});
+  cr::CreativeRuntimeMovingPlatformState closingForward;
+  closingForward.phaseMeters = 1.0;
+  closingForward.positionMeters = {1.0F, 0.0F, 0.0F};
+  const auto closingForwardStep = cr::planCreativeRuntimeMovingPlatformStep(
+      {&loopBuilt.definition, &closingForward, 2U, true});
+  cr::CreativeRuntimeMovingPlatformState closingReverse;
+  closingReverse.travelSign = -1;
+  const auto closingReverseStep = cr::planCreativeRuntimeMovingPlatformStep(
+      {&loopBuilt.definition, &closingReverse, 2U, true});
+
+  cr::CreativeMovingPlatformSettings fastSettings;
+  fastSettings.speedMetersPerSecond = 2.0;
+  const std::vector<cr::CreativePathPoint> shortPath{
+      {{0.0, 0.0, 0.0}}, {{1.0, 0.0, 0.0}}};
+  const auto fastBuilt = cr::buildCreativeRuntimeMovingPlatformDefinition(
+      shortPath, fastSettings, {});
+  cr::CreativeRuntimeMovingPlatformState fastState;
+  const auto fullCycle = cr::planCreativeRuntimeMovingPlatformStep(
+      {&fastBuilt.definition, &fastState, 1U, true});
+
+  std::vector<cr::CreativePathPoint> invalid = path;
+  invalid[0].outgoingSpeedMultiplier =
+      std::numeric_limits<double>::quiet_NaN();
+  const auto nonFinite = cr::buildCreativeRuntimeMovingPlatformDefinition(
+      invalid, settings, {});
+  invalid[0].outgoingSpeedMultiplier =
+      cr::kCreativePathPointMinimumOutgoingSpeedMultiplier - 0.01;
+  const auto belowMinimum =
+      cr::buildCreativeRuntimeMovingPlatformDefinition(invalid, settings, {});
+  invalid[0].outgoingSpeedMultiplier =
+      cr::kCreativePathPointMaximumOutgoingSpeedMultiplier + 0.01;
+  const auto aboveMaximum =
+      cr::buildCreativeRuntimeMovingPlatformDefinition(invalid, settings, {});
+
+  return expect(forwardStep.ok && forwardStep.moved &&
+                    near(forwardStep.nextState.positionMeters.x, 3.0F),
+                "one tick consumes time at each crossed segment speed") &&
+         expect(reverseStep.ok && reverseStep.moved &&
+                    near(reverseStep.nextState.positionMeters.x, 0.5F),
+                "reverse traversal keeps each physical segment speed") &&
+         expect(loopBuilt.ok && closingForwardStep.ok &&
+                    closingReverseStep.ok &&
+                    near(closingForwardStep.nextState.positionMeters.x,
+                         0.75F) &&
+                    near(closingReverseStep.nextState.positionMeters.x,
+                         0.25F),
+                "loop closure uses the last point speed in both directions") &&
+         expect(fastBuilt.ok && fullCycle.ok && !fullCycle.moved &&
+                    fullCycle.nextState.movementTickCount == 1U &&
+                    near(fullCycle.nextState.positionMeters.x, 0.0F),
+                "whole no-dwell cycles skip without unbounded arc walking") &&
+         expect(!nonFinite.ok && !belowMinimum.ok && !aboveMaximum.ok,
+                "invalid segment speed multipliers reject the route");
+}
+
 bool routeSamplerMatchesTheStepKernel() {
   const std::vector<cr::CreativePathPoint> path{
       {{0.0, 0.0, 0.0}}, {{1.0, 0.0, 0.0}}};
@@ -469,6 +558,7 @@ int main() {
                   routeKernelRejectsDegeneratePathAndLoops() &&
                   waypointDwellLandsExactlyAndFreezesDeterministically() &&
                   zeroDwellWaypointsDoNotReduceRouteSpeed() &&
+                  segmentSpeedsConsumeTimeAcrossBoundariesInBothDirections() &&
                   routeSamplerMatchesTheStepKernel() &&
                   runtimePublishesGeometryAndCarriesRider() &&
                   runtimeBlocksMotionWithoutAdvancingPhase() &&

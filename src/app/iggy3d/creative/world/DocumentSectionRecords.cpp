@@ -54,12 +54,13 @@ namespace {
 [[nodiscard]] SaveCreativeDocumentPathPointRecord toSavePathPoint(
     creative::CreativePathPoint point) noexcept {
   return {point.position.x, point.position.y, point.position.z,
-          point.dwellSeconds};
+          point.dwellSeconds, point.outgoingSpeedMultiplier};
 }
 
 [[nodiscard]] creative::CreativePathPoint toCreativePathPoint(
     SaveCreativeDocumentPathPointRecord record) noexcept {
-  return {{record.x, record.y, record.z}, record.dwellSeconds};
+  return {{record.x, record.y, record.z}, record.dwellSeconds,
+          record.outgoingSpeedMultiplier};
 }
 
 }  // namespace

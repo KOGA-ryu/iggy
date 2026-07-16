@@ -36,7 +36,9 @@ namespace {
                        const CreativePathPoint& right) {
                       return creativeVec3ExactlyEqual(left.position,
                                                       right.position) &&
-                             left.dwellSeconds == right.dwellSeconds;
+                             left.dwellSeconds == right.dwellSeconds &&
+                             left.outgoingSpeedMultiplier ==
+                                 right.outgoingSpeedMultiplier;
                     });
 }
 

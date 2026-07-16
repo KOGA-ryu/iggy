@@ -27,8 +27,9 @@ inline constexpr std::uint32_t kSaveSchemaVersion = 3;
 inline constexpr std::uint32_t kMinimumReadableSaveSchemaVersion = 1;
 inline constexpr std::uint32_t kRuntimeSaveVersion = 1;
 inline constexpr std::uint32_t kSaveCreativeDocumentWaypointDwellVersion = 9;
+inline constexpr std::uint32_t kSaveCreativeDocumentSegmentSpeedVersion = 10;
 inline constexpr std::uint32_t kSaveCreativeDocumentSectionVersion =
-    kSaveCreativeDocumentWaypointDwellVersion;
+    kSaveCreativeDocumentSegmentSpeedVersion;
 
 struct SaveEnvelopeMetadata {
   std::uint32_t schemaVersion = kSaveSchemaVersion;
@@ -173,6 +174,7 @@ struct SaveCreativeDocumentPathPointRecord {
   double y = 0.0;
   double z = 0.0;
   double dwellSeconds = 0.0;
+  double outgoingSpeedMultiplier = 1.0;
 };
 
 struct SaveCreativeDocumentTransformRecord {

@@ -22,7 +22,9 @@ bool samePathPoints(const std::vector<cr::CreativePathPoint>& lhs,
     const cr::CreativeVec3& b = rhs[index].position;
     if (std::fabs(a.x - b.x) >= kEps || std::fabs(a.y - b.y) >= kEps ||
         std::fabs(a.z - b.z) >= kEps ||
-        lhs[index].dwellSeconds != rhs[index].dwellSeconds) {
+        lhs[index].dwellSeconds != rhs[index].dwellSeconds ||
+        lhs[index].outgoingSpeedMultiplier !=
+            rhs[index].outgoingSpeedMultiplier) {
       return false;
     }
   }

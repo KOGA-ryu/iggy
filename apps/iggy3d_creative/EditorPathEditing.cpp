@@ -20,6 +20,11 @@ namespace {
 
 constexpr double kPathPointEpsilonMeters = 1.0e-5;
 
+enum class PathPointScalarProperty : std::uint8_t {
+  DwellSeconds,
+  OutgoingSpeedMultiplier,
+};
+
 [[nodiscard]] bool finitePoint(cr::CreativeVec3 point) noexcept {
   return std::isfinite(point.x) && std::isfinite(point.y) &&
          std::isfinite(point.z);
@@ -30,6 +35,15 @@ constexpr double kPathPointEpsilonMeters = 1.0e-5;
   return std::hypot(lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z) <=
          kPathPointEpsilonMeters;
 }
+
+[[nodiscard]] CreativeMovingPlatformPathEditReceipt
+setMovingPlatformPathPointScalarWithUndo(
+    cr::CreativeAppState& appState,
+    cr::CreativeObjectId objectId,
+    std::size_t pointIndex,
+    double value,
+    std::string_view source,
+    PathPointScalarProperty property);
 
 [[nodiscard]] bool validPathEditCommand(
     CreativeMovingPlatformPathEditCommand command) noexcept {
@@ -198,7 +212,8 @@ std::vector<cr::CreativePathPoint> translatePathPoints(
         {point.position.x + delta.x,
          point.position.y + delta.y,
          point.position.z + delta.z},
-        point.dwellSeconds});
+        point.dwellSeconds,
+        point.outgoingSpeedMultiplier});
   }
   return translated;
 }
@@ -602,6 +617,53 @@ setCreativeMovingPlatformWaypointDwellWithUndo(
     std::size_t pointIndex,
     double dwellSeconds,
     std::string_view source) {
+  return setMovingPlatformPathPointScalarWithUndo(
+      appState, objectId, pointIndex, dwellSeconds, source,
+      PathPointScalarProperty::DwellSeconds);
+}
+
+bool creativeMovingPlatformPointHasOutgoingSegment(
+    const cr::CreativeObject& object,
+    std::size_t pointIndex) noexcept {
+  if (object.kind != cr::CreativeObjectKind::MovingPlatform ||
+      pointIndex >= object.pathPoints.size() ||
+      object.pathPoints.size() < 2U) {
+    return false;
+  }
+  std::size_t destinationIndex = pointIndex + 1U;
+  if (destinationIndex >= object.pathPoints.size()) {
+    if (object.movingPlatform.traversalMode !=
+        cr::CreativeMovingPlatformTraversalMode::Loop) {
+      return false;
+    }
+    destinationIndex = 0U;
+  }
+  return !samePathPoint(object.pathPoints[pointIndex].position,
+                        object.pathPoints[destinationIndex].position);
+}
+
+CreativeMovingPlatformPathEditReceipt
+setCreativeMovingPlatformSegmentSpeedWithUndo(
+    cr::CreativeAppState& appState,
+    cr::CreativeObjectId objectId,
+    std::size_t pointIndex,
+    double outgoingSpeedMultiplier,
+    std::string_view source) {
+  return setMovingPlatformPathPointScalarWithUndo(
+      appState, objectId, pointIndex, outgoingSpeedMultiplier, source,
+      PathPointScalarProperty::OutgoingSpeedMultiplier);
+}
+
+namespace {
+
+CreativeMovingPlatformPathEditReceipt
+setMovingPlatformPathPointScalarWithUndo(
+    cr::CreativeAppState& appState,
+    cr::CreativeObjectId objectId,
+    std::size_t pointIndex,
+    double value,
+    std::string_view source,
+    PathPointScalarProperty property) {
   CreativeMovingPlatformPathEditReceipt result;
   result.requested = true;
   result.objectId = objectId;
@@ -609,22 +671,40 @@ setCreativeMovingPlatformWaypointDwellWithUndo(
   if (object == nullptr ||
       object->kind != cr::CreativeObjectKind::MovingPlatform) {
     result.status = CreativeMovingPlatformPathEditStatus::InvalidSelection;
-    result.reasonCode = "creative_platform_waypoint_dwell_invalid_selection";
+    result.reasonCode = property == PathPointScalarProperty::DwellSeconds
+                            ? "creative_platform_waypoint_dwell_invalid_selection"
+                            : "creative_platform_segment_speed_invalid_selection";
     return result;
   }
   result.pointCountBefore = object->pathPoints.size();
   result.pointCountAfter = result.pointCountBefore;
   if (pointIndex >= object->pathPoints.size()) {
     result.status = CreativeMovingPlatformPathEditStatus::InvalidPointIndex;
-    result.reasonCode = "creative_platform_waypoint_dwell_index_invalid";
+    result.reasonCode = property == PathPointScalarProperty::DwellSeconds
+                            ? "creative_platform_waypoint_dwell_index_invalid"
+                            : "creative_platform_segment_speed_index_invalid";
+    return result;
+  }
+  if (property == PathPointScalarProperty::OutgoingSpeedMultiplier &&
+      !creativeMovingPlatformPointHasOutgoingSegment(*object, pointIndex)) {
+    result.status = CreativeMovingPlatformPathEditStatus::NoOutgoingSegment;
+    result.reasonCode = "creative_platform_segment_speed_no_outgoing_segment";
     return result;
   }
 
   std::vector<cr::CreativePathPoint> pathPoints = object->pathPoints;
-  pathPoints[pointIndex].dwellSeconds = dwellSeconds;
+  if (property == PathPointScalarProperty::DwellSeconds) {
+    pathPoints[pointIndex].dwellSeconds = value;
+  } else {
+    pathPoints[pointIndex].outgoingSpeedMultiplier = value;
+  }
   if (!cr::isValidCreativePathPoint(pathPoints[pointIndex])) {
-    result.status = CreativeMovingPlatformPathEditStatus::InvalidDwell;
-    result.reasonCode = "creative_platform_waypoint_dwell_invalid";
+    result.status = property == PathPointScalarProperty::DwellSeconds
+                        ? CreativeMovingPlatformPathEditStatus::InvalidDwell
+                        : CreativeMovingPlatformPathEditStatus::InvalidSegmentSpeed;
+    result.reasonCode = property == PathPointScalarProperty::DwellSeconds
+                            ? "creative_platform_waypoint_dwell_invalid"
+                            : "creative_platform_segment_speed_invalid";
     return result;
   }
 
@@ -645,16 +725,24 @@ setCreativeMovingPlatformWaypointDwellWithUndo(
       result.mutation.message);
   if (result.changed) {
     result.status = CreativeMovingPlatformPathEditStatus::Applied;
-    result.reasonCode = "creative_platform_waypoint_dwell_changed";
+    result.reasonCode = property == PathPointScalarProperty::DwellSeconds
+                            ? "creative_platform_waypoint_dwell_changed"
+                            : "creative_platform_segment_speed_changed";
   } else if (result.accepted) {
     result.status = CreativeMovingPlatformPathEditStatus::Unchanged;
-    result.reasonCode = "creative_platform_waypoint_dwell_unchanged";
+    result.reasonCode = property == PathPointScalarProperty::DwellSeconds
+                            ? "creative_platform_waypoint_dwell_unchanged"
+                            : "creative_platform_segment_speed_unchanged";
   } else {
     result.status = CreativeMovingPlatformPathEditStatus::MutationRejected;
-    result.reasonCode = "creative_platform_waypoint_dwell_mutation_rejected";
+    result.reasonCode = property == PathPointScalarProperty::DwellSeconds
+                            ? "creative_platform_waypoint_dwell_mutation_rejected"
+                            : "creative_platform_segment_speed_mutation_rejected";
   }
   return result;
 }
+
+}  // namespace
 
 cr::CreativeDocumentMutationReceipt movePathObjectWithUndo(
     cr::CreativeAppState& appState,

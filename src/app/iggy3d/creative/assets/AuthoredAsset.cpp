@@ -171,6 +171,19 @@ void appendDefinitionObject(FingerprintBuilder& builder,
     builder.appendString(toString(object.movingPlatform.traversalMode));
     builder.appendBool(object.movingPlatform.startsActive);
   }
+  const bool hasCustomSegmentSpeed = std::any_of(
+      object.pathPoints.begin(), object.pathPoints.end(),
+      [](const CreativePathPoint& point) {
+        return point.outgoingSpeedMultiplier != 1.0;
+      });
+  if (hasCustomSegmentSpeed) {
+    // Preserve legacy fingerprints for default-speed paths while giving the
+    // extension an unambiguous boundary when authored values are present.
+    builder.appendString("path_segment_speeds_v1");
+    for (const CreativePathPoint& point : object.pathPoints) {
+      builder.appendDouble(point.outgoingSpeedMultiplier);
+    }
+  }
 }
 
 [[nodiscard]] bool nonBlank(std::string_view value) noexcept {

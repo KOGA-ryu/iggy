@@ -135,6 +135,14 @@ bool routeEditsResetAndSelectionLossClears() {
       dwellReset.accepted && dwellReset.reset && state.playing &&
       state.normalizedProgress == 0.0 &&
       near(state.runtimeState.positionMeters.x, 0.0F);
+  static_cast<void>(app::advanceCreativeMovingPlatformPreview(state, 0.1));
+  edited.pathPoints[0].outgoingSpeedMultiplier = 2.0;
+  const app::CreativeMovingPlatformPreviewReceipt speedReset =
+      app::syncCreativeMovingPlatformPreview(state, document.id(), &edited);
+  const bool speedResetAtOrigin =
+      speedReset.accepted && speedReset.reset && state.playing &&
+      state.normalizedProgress == 0.0 &&
+      near(state.runtimeState.positionMeters.x, 0.0F);
   const app::CreativeMovingPlatformPreviewReceipt cleared =
       app::syncCreativeMovingPlatformPreview(state, document.id(), nullptr);
   return expect(resumedAtOrigin,
@@ -143,6 +151,8 @@ bool routeEditsResetAndSelectionLossClears() {
                 "rotation and scale edits reset route playback") &&
          expect(dwellResetAtOrigin,
                 "waypoint dwell edits reset route playback") &&
+         expect(speedResetAtOrigin,
+                "segment speed edits reset route playback") &&
          expect(cleared.accepted && cleared.changed && !state.available &&
                     !state.visible && !state.playing,
                 "leaving moving-platform selection clears preview state");
@@ -190,18 +200,21 @@ bool controllerToolOptionsExposeContextualPlaybackCommands() {
   const app::CreativeEditorToolOptionsCommandList movingPlatform =
       app::creativeEditorToolOptionCommandsForEntry(
           move, cr::CreativeObjectKind::MovingPlatform);
-  return expect(ordinary.count + 3U == movingPlatform.count,
+  return expect(ordinary.count + 4U == movingPlatform.count,
                 "route controls are contextual rather than global") &&
-         expect(movingPlatform.ids[movingPlatform.count - 3U] ==
+         expect(movingPlatform.ids[movingPlatform.count - 4U] ==
                     app::CreativeEditorToolOptionsCommandId::
                         SetMovingPlatformWaypointDwell &&
+                    movingPlatform.ids[movingPlatform.count - 3U] ==
+                        app::CreativeEditorToolOptionsCommandId::
+                            SetMovingPlatformSegmentSpeed &&
                     movingPlatform.ids[movingPlatform.count - 2U] ==
                     app::CreativeEditorToolOptionsCommandId::
                         ToggleMovingPlatformPreview &&
                     movingPlatform.ids[movingPlatform.count - 1U] ==
                         app::CreativeEditorToolOptionsCommandId::
                             RestartMovingPlatformPreview,
-                "tool options expose dwell then play-pause and restart");
+                "tool options expose dwell, segment speed, playback, and restart");
 }
 
 bool controllerToolOptionsCommitWaypointDwellOnce() {
@@ -271,6 +284,58 @@ bool previewReportsWaitingAtAuthoredDwell() {
                 "dwell preview remains document-inert");
 }
 
+bool controllerToolOptionsCommitSegmentSpeedOnce() {
+  cr::CreativeObjectId platformId = cr::kInvalidObjectId;
+  cr::CreativeAppState appState;
+  static_cast<void>(
+      appState.facade.installDocument(makeDocument(platformId)));
+  app::CreativeEditorState editor;
+  app::CreativeEditorToolOptionsState& options = editor.toolOptions;
+  options.open = true;
+  options.targetEntry = {cr::CreativeHeldItemKind::ObjectMove,
+                         cr::CreativeObjectKind::Unknown};
+  options.commands = app::creativeEditorToolOptionCommandsForEntry(
+      options.targetEntry, cr::CreativeObjectKind::MovingPlatform);
+  options.contextPrimaryObjectId = platformId;
+  options.contextPrimaryObjectKind =
+      cr::CreativeObjectKind::MovingPlatform;
+  options.contextSelectionCount = 1U;
+  options.contextMovingPlatformPointSelected = true;
+  options.contextMovingPlatformPointHasOutgoingSegment = true;
+  options.contextMovingPlatformPointIndex = 0U;
+  options.movingPlatformSegmentSpeedDraft = 2.25;
+  std::size_t commandIndex = options.commands.count;
+  for (std::size_t index = 0U; index < options.commands.count; ++index) {
+    if (options.commands.ids[index] ==
+        app::CreativeEditorToolOptionsCommandId::
+            SetMovingPlatformSegmentSpeed) {
+      commandIndex = index;
+      break;
+    }
+  }
+  if (commandIndex == options.commands.count) {
+    return expect(false, "controller segment speed command exists");
+  }
+  options.selectedIndex = options.options.count + commandIndex;
+
+  const bool accepted =
+      app::activateCreativeEditorToolOptionsSelection(appState, editor);
+  const cr::CreativeObject* platform = appState.facade.findObject(platformId);
+  const bool speedStored =
+      platform != nullptr &&
+      platform->pathPoints[0].outgoingSpeedMultiplier == 2.25;
+  const cr::CreativeHistoryApplyReceipt undo = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+  const cr::CreativeObject* undone = appState.facade.findObject(platformId);
+  return expect(accepted && !options.open && speedStored,
+                "controller confirm authors the selected route segment speed") &&
+         expect(cr::creativeUndoDepth(appState.history) == 0U &&
+                    undo.status == cr::CreativeHistoryStatus::Applied &&
+                    undone != nullptr &&
+                    undone->pathPoints[0].outgoingSpeedMultiplier == 1.0,
+                "segment speed authors one reversible history entry");
+}
+
 }  // namespace
 
 int main() {
@@ -279,6 +344,7 @@ int main() {
                   previewRendersThroughItsOwnBoundedRole() &&
                   controllerToolOptionsExposeContextualPlaybackCommands() &&
                   controllerToolOptionsCommitWaypointDwellOnce() &&
+                  controllerToolOptionsCommitSegmentSpeedOnce() &&
                   previewReportsWaitingAtAuthoredDwell();
   return ok ? 0 : 1;
 }

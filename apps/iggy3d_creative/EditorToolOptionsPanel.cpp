@@ -136,8 +136,10 @@ void refreshMovingPlatformWaypointContext(
     const CreativeEditorState& editor,
     CreativeEditorToolOptionsState& state) noexcept {
   state.contextMovingPlatformPointSelected = false;
+  state.contextMovingPlatformPointHasOutgoingSegment = false;
   state.contextMovingPlatformPointIndex = 0U;
   state.movingPlatformWaypointDwellDraft = 0.0;
+  state.movingPlatformSegmentSpeedDraft = 1.0;
   const CreativeMovingPlatformPathEditState& pathEdit =
       editor.interaction.movingPlatformPathEdit;
   if (state.contextPrimaryObjectKind != cr::CreativeObjectKind::MovingPlatform ||
@@ -155,6 +157,12 @@ void refreshMovingPlatformWaypointContext(
   state.contextMovingPlatformPointIndex = pathEdit.selectedPointIndex;
   state.movingPlatformWaypointDwellDraft =
       object->pathPoints[pathEdit.selectedPointIndex].dwellSeconds;
+  state.contextMovingPlatformPointHasOutgoingSegment =
+      creativeMovingPlatformPointHasOutgoingSegment(
+          *object, pathEdit.selectedPointIndex);
+  state.movingPlatformSegmentSpeedDraft =
+      object->pathPoints[pathEdit.selectedPointIndex]
+          .outgoingSpeedMultiplier;
 }
 
 void adjustSelection(CreativeEditorState& editor,
@@ -164,13 +172,24 @@ void adjustSelection(CreativeEditorState& editor,
     const std::size_t commandIndex =
         state.selectedIndex - state.options.count;
     if (direction != 0 && commandIndex < state.commands.count &&
-        state.commands.ids[commandIndex] == CreativeEditorToolOptionsCommandId::
-                                                SetMovingPlatformWaypointDwell &&
         state.contextMovingPlatformPointSelected) {
-      state.movingPlatformWaypointDwellDraft = std::clamp(
-          state.movingPlatformWaypointDwellDraft +
-              static_cast<double>(direction) * 0.25,
-          0.0, cr::kCreativePathPointMaximumDwellSeconds);
+      const CreativeEditorToolOptionsCommandId command =
+          state.commands.ids[commandIndex];
+      if (command == CreativeEditorToolOptionsCommandId::
+                         SetMovingPlatformWaypointDwell) {
+        state.movingPlatformWaypointDwellDraft = std::clamp(
+            state.movingPlatformWaypointDwellDraft +
+                static_cast<double>(direction) * 0.25,
+            0.0, cr::kCreativePathPointMaximumDwellSeconds);
+      } else if (command == CreativeEditorToolOptionsCommandId::
+                                SetMovingPlatformSegmentSpeed &&
+                 state.contextMovingPlatformPointHasOutgoingSegment) {
+        state.movingPlatformSegmentSpeedDraft = std::clamp(
+            state.movingPlatformSegmentSpeedDraft +
+                static_cast<double>(direction) * 0.25,
+            cr::kCreativePathPointMinimumOutgoingSpeedMultiplier,
+            cr::kCreativePathPointMaximumOutgoingSpeedMultiplier);
+      }
     }
     return;
   }
@@ -243,6 +262,12 @@ void adjustSelection(CreativeEditorState& editor,
              state.contextPrimaryObjectKind ==
                  cr::CreativeObjectKind::MovingPlatform &&
              state.contextMovingPlatformPointSelected;
+    case CreativeEditorToolOptionsCommandId::SetMovingPlatformSegmentSpeed:
+      return state.contextSelectionCount == 1U &&
+             state.contextPrimaryObjectKind ==
+                 cr::CreativeObjectKind::MovingPlatform &&
+             state.contextMovingPlatformPointSelected &&
+             state.contextMovingPlatformPointHasOutgoingSegment;
     case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
       return state.contextSelectionCount == 1U &&
@@ -307,6 +332,8 @@ void adjustSelection(CreativeEditorState& editor,
                  : "EDIT GROUP CONTENTS";
     case CreativeEditorToolOptionsCommandId::SetMovingPlatformWaypointDwell:
       return "WAYPOINT WAIT";
+    case CreativeEditorToolOptionsCommandId::SetMovingPlatformSegmentSpeed:
+      return "SEGMENT SPEED";
     case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
       return editor.movingPlatformPreview.playing ? "PAUSE ROUTE PREVIEW"
                                                   : "PLAY ROUTE PREVIEW";
@@ -358,6 +385,17 @@ void adjustSelection(CreativeEditorState& editor,
           label, sizeof(label), "POINT %u | %.2f S",
           static_cast<unsigned>(state.contextMovingPlatformPointIndex) + 1U,
           state.movingPlatformWaypointDwellDraft);
+      return label;
+    }
+    case CreativeEditorToolOptionsCommandId::SetMovingPlatformSegmentSpeed: {
+      if (!state.contextMovingPlatformPointHasOutgoingSegment) {
+        return "NO OUTGOING SEGMENT";
+      }
+      char label[64];
+      std::snprintf(
+          label, sizeof(label), "POINT %u | %.2fX",
+          static_cast<unsigned>(state.contextMovingPlatformPointIndex) + 1U,
+          state.movingPlatformSegmentSpeedDraft);
       return label;
     }
     case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
@@ -504,6 +542,7 @@ bool activateCreativeEditorToolOptionsSelection(
     case CreativeEditorToolOptionsCommandId::RefreshSafeSavedAssetInstances:
     case CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances:
     case CreativeEditorToolOptionsCommandId::SetMovingPlatformWaypointDwell:
+    case CreativeEditorToolOptionsCommandId::SetMovingPlatformSegmentSpeed:
     case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
       break;
@@ -552,6 +591,16 @@ bool activateCreativeEditorToolOptionsSelection(
               state.contextMovingPlatformPointIndex,
               state.movingPlatformWaypointDwellDraft,
               "tool_options_waypoint_dwell");
+      accepted = receipt.accepted;
+      break;
+    }
+    case CreativeEditorToolOptionsCommandId::SetMovingPlatformSegmentSpeed: {
+      const CreativeMovingPlatformPathEditReceipt receipt =
+          setCreativeMovingPlatformSegmentSpeedWithUndo(
+              appState, state.contextPrimaryObjectId,
+              state.contextMovingPlatformPointIndex,
+              state.movingPlatformSegmentSpeedDraft,
+              "tool_options_segment_speed");
       accepted = receipt.accepted;
       break;
     }

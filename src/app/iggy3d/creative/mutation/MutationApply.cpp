@@ -114,7 +114,9 @@ CreativeMutationApplyReceipt applyObjectKindMutation(CreativeObject& object, Cre
     for (std::size_t index = 0; index < lhs.size(); ++index) {
         if (!creativeVec3ExactlyEqual(lhs[index].position,
                                       rhs[index].position) ||
-            lhs[index].dwellSeconds != rhs[index].dwellSeconds) {
+            lhs[index].dwellSeconds != rhs[index].dwellSeconds ||
+            lhs[index].outgoingSpeedMultiplier !=
+                rhs[index].outgoingSpeedMultiplier) {
             return false;
         }
     }

@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <vector>
 
@@ -636,6 +637,27 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
     }
   }
   if (selectedIsPathForHandles) {
+    const auto appendSegmentSpeedMarker =
+        [&](Vec3 from, Vec3 to, double speedMultiplier) {
+          if (std::fabs(speedMultiplier - 1.0) <= 1.0e-9) {
+            return;
+          }
+          RenderCreativeWireframeDebugLine speedMarker;
+          speedMarker.start = (from + to) * 0.5F;
+          speedMarker.end =
+              speedMarker.start +
+              Vec3{0.0F,
+                   0.20F +
+                       0.10F * static_cast<float>(
+                                   std::fabs(speedMultiplier - 1.0)),
+                   0.0F};
+          speedMarker.color = {0.92F, 0.32F, 1.0F, 1.0F};
+          speedMarker.objectId =
+              static_cast<creative::CreativeObjectId>(selectedId);
+          speedMarker.thickness = 0.06F;
+          combinedWireLines.push_back(speedMarker);
+          ++pathPointHandleEdgeCount;
+        };
     for (std::size_t index = 1U; index < selected->pathPoints.size(); ++index) {
       const creative::CreativeCoreVec3Conversion from =
           creative::creativeVec3ToCoreChecked(
@@ -655,6 +677,37 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
       routeLine.thickness = 0.045F;
       combinedWireLines.push_back(routeLine);
       ++pathPointHandleEdgeCount;
+      if (selected->kind == creative::CreativeObjectKind::MovingPlatform) {
+        appendSegmentSpeedMarker(
+            from.value, to.value,
+            selected->pathPoints[index - 1U].outgoingSpeedMultiplier);
+      }
+    }
+    if (selected->kind == creative::CreativeObjectKind::MovingPlatform &&
+        selected->movingPlatform.traversalMode ==
+            creative::CreativeMovingPlatformTraversalMode::Loop &&
+        selected->pathPoints.size() > 1U) {
+      const creative::CreativeCoreVec3Conversion from =
+          creative::creativeVec3ToCoreChecked(
+              selected->pathPoints.back().position);
+      const creative::CreativeCoreVec3Conversion to =
+          creative::creativeVec3ToCoreChecked(
+              selected->pathPoints.front().position);
+      if (from.converted && to.converted &&
+          lengthSquared(to.value - from.value) > 1.0e-10F) {
+        RenderCreativeWireframeDebugLine closureLine;
+        closureLine.start = from.value;
+        closureLine.end = to.value;
+        closureLine.color = {0.20F, 0.88F, 1.0F, 1.0F};
+        closureLine.objectId =
+            static_cast<creative::CreativeObjectId>(selectedId);
+        closureLine.thickness = 0.045F;
+        combinedWireLines.push_back(closureLine);
+        ++pathPointHandleEdgeCount;
+        appendSegmentSpeedMarker(
+            from.value, to.value,
+            selected->pathPoints.back().outgoingSpeedMultiplier);
+      }
     }
     for (std::size_t index = 0U; index < selected->pathPoints.size(); ++index) {
       const creative::CreativePathPoint& point = selected->pathPoints[index];

@@ -35,6 +35,8 @@ enum class CreativeMovingPlatformPathEditStatus : std::uint8_t {
   InvalidTarget,
   InvalidPointIndex,
   InvalidDwell,
+  InvalidSegmentSpeed,
+  NoOutgoingSegment,
   DuplicateTarget,
   MinimumPointCount,
   CapacityReached,
@@ -171,6 +173,18 @@ setCreativeMovingPlatformWaypointDwellWithUndo(
     cr::CreativeObjectId objectId,
     std::size_t pointIndex,
     double dwellSeconds,
+    std::string_view source);
+
+[[nodiscard]] bool creativeMovingPlatformPointHasOutgoingSegment(
+    const cr::CreativeObject& object,
+    std::size_t pointIndex) noexcept;
+
+[[nodiscard]] CreativeMovingPlatformPathEditReceipt
+setCreativeMovingPlatformSegmentSpeedWithUndo(
+    cr::CreativeAppState& appState,
+    cr::CreativeObjectId objectId,
+    std::size_t pointIndex,
+    double outgoingSpeedMultiplier,
     std::string_view source);
 
 [[nodiscard]] cr::CreativeDocumentMutationReceipt movePathObjectWithUndo(
