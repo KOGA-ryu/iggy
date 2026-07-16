@@ -143,6 +143,14 @@ struct CreativeDesktopWorldLayoutBuildingDuplicatePayload {
   std::int64_t deltaZCells = 0;
 };
 
+struct CreativeDesktopWorldLayoutBuildingTransformPayload {
+  CreativeEditorWorldLayoutBuildingTransformPhase phase =
+      CreativeEditorWorldLayoutBuildingTransformPhase::Preview;
+  iggy3d::creative::CreativeWorldLayoutBuildingTransformOperation operation =
+      iggy3d::creative::CreativeWorldLayoutBuildingTransformOperation::
+          RotateRight90;
+};
+
 struct CreativeDesktopWorldLayoutPointPayload {
   CreativeEditorWorldLayoutPoint point;
 };
@@ -221,6 +229,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutBuildingSelectionPayload,
     CreativeDesktopWorldLayoutBuildingManipulationPayload,
     CreativeDesktopWorldLayoutBuildingDuplicatePayload,
+    CreativeDesktopWorldLayoutBuildingTransformPayload,
     CreativeDesktopWorldLayoutPointPayload,
     CreativeDesktopWorldLayoutGesturePayload,
     CreativeDesktopWorldLayoutRoomSettingsPayload,

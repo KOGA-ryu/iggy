@@ -1,10 +1,14 @@
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutTransform.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
+#include <string>
 #include <string_view>
+#include <utility>
 
 namespace {
 namespace cr = iggy3d::creative;
@@ -80,6 +84,322 @@ cr::CreativeWorldLayout smallHouseLayout() {
   window.cutoutHeightCells = 1.0;
   layout.openings.push_back(window);
   return layout;
+}
+
+cr::CreativeWorldLayout transformableBuildingLayout() {
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "transform_layout";
+  layout.buildings.push_back({"building",
+                              "Transform Building",
+                              cr::CreativeBuildingRootMode::CreateRoom,
+                              {{10, 20}, {18, 26}},
+                              0,
+                              4U,
+                              true,
+                              {}});
+  layout.rooms.push_back(
+      {0U, "room", "Transform Room", {{11, 21}, {17, 25}}, 0, 3U, 0.25, 1U});
+  layout.boxes.push_back({0U,
+                          cr::CreativeObjectKind::Floor,
+                          "floor",
+                          "Transform Floor",
+                          {{10, 20}, {18, 26}},
+                          0,
+                          1U});
+  layout.walls = {
+      {0U, "wall_h", "Horizontal Wall", {10, 23}, {18, 23}, 0.5, 3U, 0.25},
+      {0U, "wall_v", "Vertical Wall", {14, 20}, {14, 26}, 0.5, 3U, 0.25},
+  };
+
+  const auto addRoomDoor =
+      [&](std::string key, cr::CreativeWorldLayoutRoomEdge edge, double offset,
+          cr::CreativeBuildingOpeningPose pose) {
+        cr::CreativeWorldLayoutOpening opening;
+        opening.hostKind = cr::CreativeWorldLayoutOpeningHostKind::RoomEdge;
+        opening.roomIndex = 0U;
+        opening.roomEdge = edge;
+        opening.kind = cr::CreativeBuildingOpeningKind::Door;
+        opening.pose = pose;
+        opening.stableKey = std::move(key);
+        opening.name = opening.stableKey;
+        opening.centerOffsetCells = offset;
+        opening.widthCells = 1.0;
+        opening.cutoutHeightCells = 2.0;
+        layout.openings.push_back(std::move(opening));
+      };
+  addRoomDoor("door_n", cr::CreativeWorldLayoutRoomEdge::North, 1.0,
+              cr::CreativeBuildingOpeningPose::OpenFromStartPositiveNormal);
+  addRoomDoor("door_e", cr::CreativeWorldLayoutRoomEdge::East, 1.0,
+              cr::CreativeBuildingOpeningPose::OpenFromStartPositiveNormal);
+  addRoomDoor("door_s", cr::CreativeWorldLayoutRoomEdge::South, 2.0,
+              cr::CreativeBuildingOpeningPose::OpenFromEndNegativeNormal);
+  addRoomDoor("door_w", cr::CreativeWorldLayoutRoomEdge::West, 3.0,
+              cr::CreativeBuildingOpeningPose::OpenFromEndPositiveNormal);
+
+  const auto addWallDoor = [&](std::string key, std::size_t wallIndex,
+                               double offset,
+                               cr::CreativeBuildingOpeningPose pose) {
+    cr::CreativeWorldLayoutOpening opening;
+    opening.hostKind = cr::CreativeWorldLayoutOpeningHostKind::Wall;
+    opening.wallIndex = wallIndex;
+    opening.kind = cr::CreativeBuildingOpeningKind::Door;
+    opening.pose = pose;
+    opening.stableKey = std::move(key);
+    opening.name = opening.stableKey;
+    opening.centerOffsetCells = offset;
+    opening.widthCells = 1.0;
+    opening.cutoutHeightCells = 2.0;
+    layout.openings.push_back(std::move(opening));
+  };
+  addWallDoor("door_wall_h", 0U, 2.0,
+              cr::CreativeBuildingOpeningPose::OpenFromStartPositiveNormal);
+  addWallDoor("door_wall_v", 1U, 4.0,
+              cr::CreativeBuildingOpeningPose::OpenFromEndNegativeNormal);
+
+  cr::CreativeWorldLayoutTerrainProfile terrain;
+  terrain.stableKey = "unowned_terrain";
+  terrain.center = {12, 22};
+  layout.terrainProfiles.push_back(terrain);
+  return layout;
+}
+
+bool sameBuildingTransformGeometry(const cr::CreativeWorldLayout &lhs,
+                                   const cr::CreativeWorldLayout &rhs) {
+  if (lhs.buildings.size() != rhs.buildings.size() ||
+      lhs.rooms.size() != rhs.rooms.size() ||
+      lhs.boxes.size() != rhs.boxes.size() ||
+      lhs.walls.size() != rhs.walls.size() ||
+      lhs.openings.size() != rhs.openings.size()) {
+    return false;
+  }
+  for (std::size_t index = 0U; index < lhs.buildings.size(); ++index) {
+    if (lhs.buildings[index].stableKey != rhs.buildings[index].stableKey ||
+        lhs.buildings[index].rootFootprint.minimum !=
+            rhs.buildings[index].rootFootprint.minimum ||
+        lhs.buildings[index].rootFootprint.maximum !=
+            rhs.buildings[index].rootFootprint.maximum) {
+      return false;
+    }
+  }
+  for (std::size_t index = 0U; index < lhs.rooms.size(); ++index) {
+    if (lhs.rooms[index].stableKey != rhs.rooms[index].stableKey ||
+        lhs.rooms[index].footprint.minimum !=
+            rhs.rooms[index].footprint.minimum ||
+        lhs.rooms[index].footprint.maximum !=
+            rhs.rooms[index].footprint.maximum) {
+      return false;
+    }
+  }
+  for (std::size_t index = 0U; index < lhs.boxes.size(); ++index) {
+    if (lhs.boxes[index].stableKey != rhs.boxes[index].stableKey ||
+        lhs.boxes[index].footprint.minimum !=
+            rhs.boxes[index].footprint.minimum ||
+        lhs.boxes[index].footprint.maximum !=
+            rhs.boxes[index].footprint.maximum) {
+      return false;
+    }
+  }
+  for (std::size_t index = 0U; index < lhs.walls.size(); ++index) {
+    if (lhs.walls[index].stableKey != rhs.walls[index].stableKey ||
+        lhs.walls[index].start != rhs.walls[index].start ||
+        lhs.walls[index].end != rhs.walls[index].end) {
+      return false;
+    }
+  }
+  for (std::size_t index = 0U; index < lhs.openings.size(); ++index) {
+    const cr::CreativeWorldLayoutOpening &left = lhs.openings[index];
+    const cr::CreativeWorldLayoutOpening &right = rhs.openings[index];
+    if (left.stableKey != right.stableKey || left.hostKind != right.hostKind ||
+        left.wallIndex != right.wallIndex ||
+        left.roomIndex != right.roomIndex || left.roomEdge != right.roomEdge ||
+        left.centerOffsetCells != right.centerOffsetCells ||
+        left.pose != right.pose) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool buildingTransformPreservesHostedOpeningSemantics() {
+  const cr::CreativeWorldLayout source = transformableBuildingLayout();
+  const cr::CreativeWorldLayoutBuildingTransformResult right =
+      cr::transformCreativeWorldLayoutBuilding(
+          source,
+          {0U,
+           cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90});
+  if (!right.accepted) {
+    return expect(false, "right building transform accepted");
+  }
+  const cr::CreativeWorldLayout &layout = right.transformed;
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(makeDocument(205U), layout);
+  const auto mirrorX = cr::transformCreativeWorldLayoutBuilding(
+      source, {0U, cr::CreativeWorldLayoutBuildingTransformOperation::MirrorX});
+  const auto mirrorZ = cr::transformCreativeWorldLayoutBuilding(
+      source, {0U, cr::CreativeWorldLayoutBuildingTransformOperation::MirrorZ});
+
+  return expect(right.sourceBounds.minimum ==
+                        cr::CreativeTerrainCoord2{10, 20} &&
+                    right.sourceBounds.maximum ==
+                        cr::CreativeTerrainCoord2{18, 26} &&
+                    right.transformedBounds.minimum ==
+                        cr::CreativeTerrainCoord2{10, 20} &&
+                    right.transformedBounds.maximum ==
+                        cr::CreativeTerrainCoord2{16, 28},
+                "quarter turn keeps the minimum grid line and swaps spans") &&
+         expect(
+             layout.rooms[0].footprint.minimum ==
+                     cr::CreativeTerrainCoord2{11, 21} &&
+                 layout.rooms[0].footprint.maximum ==
+                     cr::CreativeTerrainCoord2{15, 27} &&
+                 layout.walls[0].start == cr::CreativeTerrainCoord2{13, 20} &&
+                 layout.walls[0].end == cr::CreativeTerrainCoord2{13, 28} &&
+                 layout.walls[1].start == cr::CreativeTerrainCoord2{16, 24} &&
+                 layout.walls[1].end == cr::CreativeTerrainCoord2{10, 24},
+             "rooms, boxes, and ordered wall endpoints share one transform") &&
+         expect(
+             layout.openings[0].roomEdge ==
+                     cr::CreativeWorldLayoutRoomEdge::East &&
+                 layout.openings[0].centerOffsetCells == 1.0 &&
+                 layout.openings[0].pose == cr::CreativeBuildingOpeningPose::
+                                                OpenFromStartNegativeNormal &&
+                 layout.openings[1].roomEdge ==
+                     cr::CreativeWorldLayoutRoomEdge::South &&
+                 layout.openings[1].centerOffsetCells == 3.0 &&
+                 layout.openings[1].pose == cr::CreativeBuildingOpeningPose::
+                                                OpenFromEndPositiveNormal &&
+                 layout.openings[2].roomEdge ==
+                     cr::CreativeWorldLayoutRoomEdge::West &&
+                 layout.openings[2].centerOffsetCells == 2.0 &&
+                 layout.openings[2].pose == cr::CreativeBuildingOpeningPose::
+                                                OpenFromEndPositiveNormal &&
+                 layout.openings[3].roomEdge ==
+                     cr::CreativeWorldLayoutRoomEdge::North &&
+                 layout.openings[3].centerOffsetCells == 1.0 &&
+                 layout.openings[3].pose == cr::CreativeBuildingOpeningPose::
+                                                OpenFromStartPositiveNormal,
+             "room-edge direction, offset, hinge, and normal remap together") &&
+         expect(
+             layout.openings[4].centerOffsetCells == 2.0 &&
+                 layout.openings[4].pose == cr::CreativeBuildingOpeningPose::
+                                                OpenFromStartNegativeNormal &&
+                 layout.openings[5].centerOffsetCells == 4.0 &&
+                 layout.openings[5].pose ==
+                     cr::CreativeBuildingOpeningPose::OpenFromEndNegativeNormal,
+             "standalone-wall offsets retain start-to-end parameterization") &&
+         expect(
+             mirrorX.accepted && mirrorZ.accepted &&
+                 mirrorX.transformed.openings[0].roomEdge ==
+                     cr::CreativeWorldLayoutRoomEdge::North &&
+                 mirrorX.transformed.openings[0].centerOffsetCells == 5.0 &&
+                 mirrorX.transformed.openings[0].pose ==
+                     cr::CreativeBuildingOpeningPose::
+                         OpenFromEndPositiveNormal &&
+                 mirrorX.transformed.openings[1].roomEdge ==
+                     cr::CreativeWorldLayoutRoomEdge::West &&
+                 mirrorX.transformed.openings[1].pose ==
+                     cr::CreativeBuildingOpeningPose::
+                         OpenFromStartNegativeNormal &&
+                 mirrorX.transformed.openings[5].pose ==
+                     cr::CreativeBuildingOpeningPose::OpenFromEndPositiveNormal,
+             "mirror X reverses canonical edges and vertical normals") &&
+         expect(mirrorZ.transformed.openings[0].roomEdge ==
+                        cr::CreativeWorldLayoutRoomEdge::South &&
+                    mirrorZ.transformed.openings[0].pose ==
+                        cr::CreativeBuildingOpeningPose::
+                            OpenFromStartNegativeNormal &&
+                    mirrorZ.transformed.openings[1].roomEdge ==
+                        cr::CreativeWorldLayoutRoomEdge::East &&
+                    mirrorZ.transformed.openings[1].centerOffsetCells == 3.0 &&
+                    mirrorZ.transformed.openings[1].pose ==
+                        cr::CreativeBuildingOpeningPose::
+                            OpenFromEndPositiveNormal &&
+                    mirrorZ.transformed.openings[4].pose ==
+                        cr::CreativeBuildingOpeningPose::
+                            OpenFromStartNegativeNormal,
+                "mirror Z reverses canonical edges and horizontal normals") &&
+         expect(layout.terrainProfiles[0].center ==
+                    source.terrainProfiles[0].center,
+                "unowned terrain remains outside a building transform") &&
+         expect(compiled.receipt.accepted,
+                "transformed hosted openings remain exact 3D compilable");
+}
+
+bool buildingTransformsRoundTripAndRejectOverflow() {
+  const cr::CreativeWorldLayout source = transformableBuildingLayout();
+  cr::CreativeWorldLayout turned = source;
+  for (std::size_t turn = 0U; turn < 4U; ++turn) {
+    const cr::CreativeWorldLayoutBuildingTransformResult result =
+        cr::transformCreativeWorldLayoutBuilding(
+            turned,
+            {0U,
+             cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90});
+    if (!result.accepted) {
+      return expect(false, "each round-trip quarter turn accepted");
+    }
+    turned = result.transformed;
+  }
+  const auto mirrorTwice =
+      [&](cr::CreativeWorldLayoutBuildingTransformOperation operation) {
+        const auto first =
+            cr::transformCreativeWorldLayoutBuilding(source, {0U, operation});
+        const auto second = cr::transformCreativeWorldLayoutBuilding(
+            first.transformed, {0U, operation});
+        return first.accepted && second.accepted &&
+               sameBuildingTransformGeometry(source, second.transformed);
+      };
+  const auto right = cr::transformCreativeWorldLayoutBuilding(
+      source,
+      {0U, cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90});
+  const auto rightThenLeft = cr::transformCreativeWorldLayoutBuilding(
+      right.transformed,
+      {0U, cr::CreativeWorldLayoutBuildingTransformOperation::RotateLeft90});
+
+  cr::CreativeWorldLayout overflow = source;
+  overflow.buildings[0].rootFootprint = {
+      {std::numeric_limits<std::int32_t>::max() - 1,
+       std::numeric_limits<std::int32_t>::min()},
+      {std::numeric_limits<std::int32_t>::max(),
+       std::numeric_limits<std::int32_t>::max()}};
+  overflow.rooms.clear();
+  overflow.boxes.clear();
+  overflow.walls.clear();
+  overflow.openings.clear();
+  const auto rejected = cr::transformCreativeWorldLayoutBuilding(
+      overflow,
+      {0U, cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90});
+
+  cr::CreativeWorldLayout malformed = source;
+  malformed.rooms[0].footprint.maximum.x =
+      malformed.rooms[0].footprint.minimum.x;
+  const auto invalidGeometry = cr::transformCreativeWorldLayoutBuilding(
+      malformed,
+      {0U, cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90});
+
+  return expect(sameBuildingTransformGeometry(source, turned),
+                "four quarter turns restore exact authored geometry") &&
+         expect(right.accepted && rightThenLeft.accepted &&
+                    sameBuildingTransformGeometry(source,
+                                                  rightThenLeft.transformed),
+                "left and right quarter turns are exact inverses") &&
+         expect(
+             mirrorTwice(
+                 cr::CreativeWorldLayoutBuildingTransformOperation::MirrorX) &&
+                 mirrorTwice(cr::CreativeWorldLayoutBuildingTransformOperation::
+                                 MirrorZ),
+             "each building mirror is an exact involution") &&
+         expect(!rejected.accepted &&
+                    rejected.status ==
+                        cr::CreativeWorldLayoutBuildingTransformStatus::
+                            CoordinateOverflow &&
+                    rejected.transformed.buildings.empty(),
+                "coordinate overflow rejects without a partial candidate") &&
+         expect(!invalidGeometry.accepted &&
+                    invalidGeometry.status ==
+                        cr::CreativeWorldLayoutBuildingTransformStatus::
+                            InvalidGeometry &&
+                    invalidGeometry.transformed.buildings.empty(),
+                "malformed geometry is distinct from coordinate overflow");
 }
 
 bool twoDimensionalBuildingCompilesToExactThreeDimensionalOutput() {
@@ -297,6 +617,8 @@ int main() {
       twoDimensionalBuildingCompilesToExactThreeDimensionalOutput() &&
       rebuildingAndDeletingLayoutNeverDuplicatesOutput() &&
       authoritativeTerrainAndMaterialApplyAsOneHistoryStep() &&
+      buildingTransformPreservesHostedOpeningSemantics() &&
+      buildingTransformsRoundTripAndRejectOverflow() &&
       invalidAndStaleSourcesFailClosed();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

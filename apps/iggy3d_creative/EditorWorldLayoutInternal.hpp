@@ -217,6 +217,7 @@ inline void clearWorldLayoutInteraction(
   state.boxManipulation = {};
   state.wallManipulation = {};
   state.buildingManipulation = {};
+  state.buildingTransform = {};
   state.openingManipulation = {};
   state.boxSettingsDraft = {};
   state.wallSettingsDraft = {};

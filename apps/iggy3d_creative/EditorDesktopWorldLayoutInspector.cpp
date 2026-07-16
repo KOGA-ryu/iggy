@@ -65,12 +65,61 @@ void drawBuildingActions(CreativeEditorWorldLayoutState& state,
                       static_cast<unsigned long long>(boxCount),
                       static_cast<unsigned long long>(wallCount));
 
+  const auto previewTransform =
+      [&](cr::CreativeWorldLayoutBuildingTransformOperation operation) {
+        commands.push(
+            CreativeDesktopCommandId::WorldLayoutTransformBuilding,
+            CreativeDesktopWorldLayoutBuildingTransformPayload{
+                CreativeEditorWorldLayoutBuildingTransformPhase::Preview,
+                operation});
+      };
+  ImGui::BeginDisabled(state.buildingManipulation.active);
+  if (ImGui::Button("Rotate left")) {
+    previewTransform(
+        cr::CreativeWorldLayoutBuildingTransformOperation::RotateLeft90);
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Rotate right")) {
+    previewTransform(
+        cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90);
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Mirror X")) {
+    previewTransform(
+        cr::CreativeWorldLayoutBuildingTransformOperation::MirrorX);
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Mirror Z")) {
+    previewTransform(
+        cr::CreativeWorldLayoutBuildingTransformOperation::MirrorZ);
+  }
+  ImGui::EndDisabled();
+
+  if (state.buildingTransform.active) {
+    ImGui::TextColored(ImVec4{0.20F, 0.78F, 0.38F, 1.0F}, "Preview: %s",
+                       cr::toString(state.buildingTransform.operation).data());
+    if (ImGui::Button("Apply transform")) {
+      commands.push(CreativeDesktopCommandId::WorldLayoutTransformBuilding,
+                    CreativeDesktopWorldLayoutBuildingTransformPayload{
+                        CreativeEditorWorldLayoutBuildingTransformPhase::Commit,
+                        state.buildingTransform.operation});
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel transform")) {
+      commands.push(CreativeDesktopCommandId::WorldLayoutTransformBuilding,
+                    CreativeDesktopWorldLayoutBuildingTransformPayload{
+                        CreativeEditorWorldLayoutBuildingTransformPhase::Cancel,
+                        state.buildingTransform.operation});
+    }
+  }
+
   std::int64_t deltaXCells = 0;
   std::int64_t deltaZCells = 0;
   const bool canDuplicate =
       defaultCreativeEditorWorldLayoutBuildingDuplicateOffset(
           state, buildingIndex, deltaXCells, deltaZCells);
-  ImGui::BeginDisabled(!canDuplicate || state.buildingManipulation.active);
+  ImGui::BeginDisabled(!canDuplicate || state.buildingManipulation.active ||
+                       state.buildingTransform.active);
   if (ImGui::Button("Duplicate building")) {
     commands.push(
         CreativeDesktopCommandId::WorldLayoutDuplicateBuilding,
@@ -79,7 +128,8 @@ void drawBuildingActions(CreativeEditorWorldLayoutState& state,
   }
   ImGui::EndDisabled();
   ImGui::SameLine();
-  ImGui::BeginDisabled(state.buildingManipulation.active);
+  ImGui::BeginDisabled(state.buildingManipulation.active ||
+                       state.buildingTransform.active);
   if (ImGui::Button("Edit contents")) {
     commands.push(CreativeDesktopCommandId::WorldLayoutClearSelection);
   }

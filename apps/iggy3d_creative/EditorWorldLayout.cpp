@@ -944,6 +944,16 @@ const cr::CreativeDocument& creativeEditorWorldLayoutRenderDocument(
                                                        : liveDocument;
 }
 
+const cr::CreativeWorldLayout& creativeEditorWorldLayoutDisplaySource(
+    const CreativeEditorWorldLayoutState& state) noexcept {
+  return state.buildingTransform.active &&
+                 state.buildingTransform.sourceRevision == state.revision &&
+                 state.buildingTransform.buildingIndex <
+                     state.buildingTransform.candidate.buildings.size()
+             ? state.buildingTransform.candidate
+             : state.source;
+}
+
 CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutTool(
     CreativeEditorWorldLayoutState& state, CreativeEditorWorldLayoutTool tool) {
   if (tool >= CreativeEditorWorldLayoutTool::Count) {
@@ -954,6 +964,7 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutTool(
                        state.boxManipulation.active ||
                        state.wallManipulation.active ||
                        state.buildingManipulation.active ||
+                       state.buildingTransform.active ||
                        state.openingManipulation.active ||
                        state.boxSettingsDraft.active ||
                        state.wallSettingsDraft.active ||
@@ -1224,13 +1235,13 @@ CreativeEditorWorldLayoutOpeningHost
 resolveCreativeEditorWorldLayoutOpeningHost(
     const CreativeEditorWorldLayoutState& state,
     std::size_t openingIndex) noexcept {
-  if (openingIndex >= state.source.openings.size()) {
+  const cr::CreativeWorldLayout &source =
+      creativeEditorWorldLayoutDisplaySource(state);
+  if (openingIndex >= source.openings.size()) {
     return {};
   }
-  const cr::CreativeWorldLayoutOpening& opening =
-      state.source.openings[openingIndex];
-  CreativeEditorWorldLayoutOpeningHost host =
-      openingHost(state.source, opening);
+  const cr::CreativeWorldLayoutOpening& opening = source.openings[openingIndex];
+  CreativeEditorWorldLayoutOpeningHost host = openingHost(source, opening);
   if (state.wallManipulation.active &&
       opening.hostKind == cr::CreativeWorldLayoutOpeningHostKind::Wall &&
       opening.wallIndex == state.wallManipulation.target.wallIndex) {
@@ -1245,14 +1256,12 @@ resolveCreativeEditorWorldLayoutOpeningHost(
   }
   std::size_t hostBuildingIndex = cr::kInvalidCreativeWorldLayoutIndex;
   if (opening.hostKind == cr::CreativeWorldLayoutOpeningHostKind::Wall &&
-      opening.wallIndex < state.source.walls.size()) {
-    hostBuildingIndex =
-        state.source.walls[opening.wallIndex].buildingIndex;
+      opening.wallIndex < source.walls.size()) {
+    hostBuildingIndex = source.walls[opening.wallIndex].buildingIndex;
   } else if (opening.hostKind ==
                  cr::CreativeWorldLayoutOpeningHostKind::RoomEdge &&
-             opening.roomIndex < state.source.rooms.size()) {
-    hostBuildingIndex =
-        state.source.rooms[opening.roomIndex].buildingIndex;
+             opening.roomIndex < source.rooms.size()) {
+    hostBuildingIndex = source.rooms[opening.roomIndex].buildingIndex;
   }
   if (state.buildingManipulation.active &&
       hostBuildingIndex == state.buildingManipulation.buildingIndex) {

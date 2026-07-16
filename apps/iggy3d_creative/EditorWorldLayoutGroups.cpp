@@ -15,24 +15,6 @@
 namespace iggy3d_creative_app {
 namespace {
 
-void includePoint(CreativeEditorWorldLayoutBuildingBounds& bounds,
-                  cr::CreativeTerrainCoord2 point) noexcept {
-  if (!bounds.valid) {
-    bounds = {true, point, point};
-    return;
-  }
-  bounds.minimum.x = std::min(bounds.minimum.x, point.x);
-  bounds.minimum.z = std::min(bounds.minimum.z, point.z);
-  bounds.maximum.x = std::max(bounds.maximum.x, point.x);
-  bounds.maximum.z = std::max(bounds.maximum.z, point.z);
-}
-
-void includeRect(CreativeEditorWorldLayoutBuildingBounds& bounds,
-                 cr::CreativeWorldLayoutRect rect) noexcept {
-  includePoint(bounds, rect.minimum);
-  includePoint(bounds, rect.maximum);
-}
-
 bool offsetPoint(cr::CreativeTerrainCoord2& point, std::int64_t deltaXCells,
                  std::int64_t deltaZCells) noexcept {
   cr::CreativeTerrainCoord2 moved;
@@ -223,32 +205,8 @@ std::size_t creativeEditorWorldLayoutSelectedBuilding(
 bool readCreativeEditorWorldLayoutBuildingBounds(
     const CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
     CreativeEditorWorldLayoutBuildingBounds& output) noexcept {
-  output = {};
-  if (buildingIndex >= state.source.buildings.size()) {
-    return false;
-  }
-  const cr::CreativeWorldLayoutBuilding& building =
-      state.source.buildings[buildingIndex];
-  if (building.rootMode != cr::CreativeBuildingRootMode::None) {
-    includeRect(output, building.rootFootprint);
-  }
-  for (const cr::CreativeWorldLayoutRoom& room : state.source.rooms) {
-    if (room.buildingIndex == buildingIndex) {
-      includeRect(output, room.footprint);
-    }
-  }
-  for (const cr::CreativeWorldLayoutBox& box : state.source.boxes) {
-    if (box.buildingIndex == buildingIndex) {
-      includeRect(output, box.footprint);
-    }
-  }
-  for (const cr::CreativeWorldLayoutWall& wall : state.source.walls) {
-    if (wall.buildingIndex == buildingIndex) {
-      includePoint(output, wall.start);
-      includePoint(output, wall.end);
-    }
-  }
-  return output.valid;
+  return cr::measureCreativeWorldLayoutBuildingBounds(
+      creativeEditorWorldLayoutDisplaySource(state), buildingIndex, output);
 }
 
 CreativeEditorWorldLayoutEditReceipt selectCreativeEditorWorldLayoutBuilding(
@@ -276,7 +234,8 @@ CreativeEditorWorldLayoutEditReceipt clearCreativeEditorWorldLayoutSelection(
     CreativeEditorWorldLayoutState& state) {
   const bool changed =
       state.selection.kind != CreativeEditorWorldLayoutSelectionKind::None ||
-      state.anchorActive || state.buildingManipulation.active;
+      state.anchorActive || state.buildingManipulation.active ||
+      state.buildingTransform.active;
   detail::clearWorldLayoutInteraction(state);
   state.anchorActive = false;
   state.selection = {};
@@ -304,6 +263,10 @@ applyCreativeEditorWorldLayoutBuildingManipulation(
   if (state.tool != CreativeEditorWorldLayoutTool::Select) {
     return {false, false,
             "creative_editor_world_layout_building_manipulation_tool_invalid"};
+  }
+  if (state.buildingTransform.active) {
+    return {false, false,
+            "creative_editor_world_layout_building_transform_active"};
   }
   if (phase == CreativeEditorWorldLayoutBuildingManipulationPhase::Begin) {
     const std::size_t buildingIndex =
@@ -421,9 +384,87 @@ applyCreativeEditorWorldLayoutBuildingManipulation(
           "creative_editor_world_layout_building_manipulation_committed"};
 }
 
+CreativeEditorWorldLayoutEditReceipt
+applyCreativeEditorWorldLayoutBuildingTransform(
+    CreativeEditorWorldLayoutState &state,
+    CreativeEditorWorldLayoutBuildingTransformPhase phase,
+    cr::CreativeWorldLayoutBuildingTransformOperation operation) {
+  if (phase >= CreativeEditorWorldLayoutBuildingTransformPhase::Count) {
+    return {false, false,
+            "creative_editor_world_layout_building_transform_phase_invalid"};
+  }
+  if (phase == CreativeEditorWorldLayoutBuildingTransformPhase::Cancel) {
+    const bool changed = state.buildingTransform.active;
+    state.buildingTransform = {};
+    state.statusMessage = changed ? "building transform cancelled"
+                                  : "no building transform to cancel";
+    return {true, changed,
+            "creative_editor_world_layout_building_transform_cancelled"};
+  }
+  if (phase == CreativeEditorWorldLayoutBuildingTransformPhase::Commit) {
+    if (!state.buildingTransform.active) {
+      return {false, false,
+              "creative_editor_world_layout_building_transform_not_active"};
+    }
+    if (state.buildingTransform.sourceRevision != state.revision ||
+        state.buildingTransform.buildingIndex >=
+            state.source.buildings.size()) {
+      state.buildingTransform = {};
+      state.statusMessage = "building changed while transform was previewed";
+      return {false, false,
+              "creative_editor_world_layout_building_transform_stale"};
+    }
+    const std::size_t buildingIndex = state.buildingTransform.buildingIndex;
+    cr::CreativeWorldLayout candidate =
+        std::move(state.buildingTransform.candidate);
+    state.buildingTransform = {};
+    state.source = std::move(candidate);
+    state.selection = {CreativeEditorWorldLayoutSelectionKind::Building,
+                       buildingIndex};
+    detail::noteWorldLayoutSourceChange(state, "building transformed");
+    return {true, true,
+            "creative_editor_world_layout_building_transform_committed"};
+  }
+
+  if (state.tool != CreativeEditorWorldLayoutTool::Select ||
+      state.selection.kind !=
+          CreativeEditorWorldLayoutSelectionKind::Building ||
+      state.selection.index >= state.source.buildings.size()) {
+    state.statusMessage = "select a building before transforming it";
+    return {
+        false, false,
+        "creative_editor_world_layout_building_transform_selection_missing"};
+  }
+  cr::CreativeWorldLayoutBuildingTransformResult transformed =
+      cr::transformCreativeWorldLayoutBuilding(
+          state.source, {state.selection.index, operation});
+  if (!transformed.accepted) {
+    state.statusMessage = transformed.reasonCode;
+    return {false, false, transformed.reasonCode};
+  }
+  const bool samePreview = state.buildingTransform.active &&
+                           state.buildingTransform.operation == operation;
+  detail::clearWorldLayoutInteraction(state);
+  detail::invalidateWorldLayoutPreview(state);
+  state.buildingTransform.active = true;
+  state.buildingTransform.sourceRevision = state.revision;
+  state.buildingTransform.buildingIndex = transformed.buildingIndex;
+  state.buildingTransform.operation = transformed.operation;
+  state.buildingTransform.sourceBounds = transformed.sourceBounds;
+  state.buildingTransform.previewBounds = transformed.transformedBounds;
+  state.buildingTransform.candidate = std::move(transformed.transformed);
+  state.buildingTransform.reasonCode = transformed.reasonCode;
+  state.statusMessage = std::string(cr::toString(operation)) + " preview";
+  return {true, !samePreview,
+          "creative_editor_world_layout_building_transform_previewed"};
+}
+
 bool defaultCreativeEditorWorldLayoutBuildingDuplicateOffset(
     const CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
     std::int64_t& deltaXCells, std::int64_t& deltaZCells) noexcept {
+  if (state.buildingTransform.active) {
+    return false;
+  }
   CreativeEditorWorldLayoutBuildingBounds bounds;
   if (!readCreativeEditorWorldLayoutBuildingBounds(state, buildingIndex,
                                                    bounds)) {
@@ -442,6 +483,7 @@ CreativeEditorWorldLayoutEditReceipt duplicateCreativeEditorWorldLayoutBuilding(
     std::int64_t deltaXCells, std::int64_t deltaZCells) {
   CreativeEditorWorldLayoutBuildingBounds bounds;
   if (buildingIndex >= state.source.buildings.size() ||
+      state.buildingTransform.active ||
       !readCreativeEditorWorldLayoutBuildingBounds(state, buildingIndex,
                                                    bounds) ||
       (deltaXCells == 0 && deltaZCells == 0) ||
@@ -565,7 +607,7 @@ CreativeEditorWorldLayoutEditReceipt duplicateCreativeEditorWorldLayoutBuilding(
 CreativeEditorWorldLayoutEditReceipt deleteCreativeEditorWorldLayoutBuilding(
     CreativeEditorWorldLayoutState& state, std::size_t buildingIndex) {
   if (buildingIndex >= state.source.buildings.size() ||
-      !buildingOwnershipValid(state.source) ||
+      state.buildingTransform.active || !buildingOwnershipValid(state.source) ||
       !openingHostsValid(state.source)) {
     state.statusMessage = "building cannot be deleted";
     return {false, false,

@@ -1230,6 +1230,10 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutDuplicateBuilding,
           context, app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutBuildingTransform =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutTransformBuilding, context,
+          app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult badWorldLayoutBoxSettings =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSetBoxSettings, context,
@@ -1295,6 +1299,10 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badWorldLayoutBuildingDuplicate.message ==
                         "layout building duplicate: payload mismatch",
                 "building duplication rejects a mismatched payload") &&
+         expect(!badWorldLayoutBuildingTransform.accepted &&
+                    badWorldLayoutBuildingTransform.message ==
+                        "layout building transform: payload mismatch",
+                "building transform rejects a mismatched payload") &&
          expect(!badWorldLayoutBoxSettings.accepted &&
                     badWorldLayoutBoxSettings.message ==
                         "layout floor settings: payload mismatch",
@@ -1477,6 +1485,33 @@ bool worldLayoutStructuralCommandsRouteThroughDispatcher() {
           0U, duplicateDeltaX, duplicateDeltaZ});
   const bool buildingDuplicatedOnce =
       editor.worldLayout.revision == revisionBeforeBuildingDuplicate + 1U;
+  const std::uint64_t revisionBeforeBuildingTransform =
+      editor.worldLayout.revision;
+  const auto buildingTransformPreview = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutTransformBuilding, context,
+      app::CreativeDesktopWorldLayoutBuildingTransformPayload{
+          app::CreativeEditorWorldLayoutBuildingTransformPhase::Preview,
+          cr::CreativeWorldLayoutBuildingTransformOperation::MirrorZ});
+  const bool buildingTransformPreviewOnly =
+      buildingTransformPreview.accepted && buildingTransformPreview.changed &&
+      !buildingTransformPreview.worldLayoutChanged &&
+      editor.worldLayout.revision == revisionBeforeBuildingTransform &&
+      editor.worldLayout.source.walls[1].start ==
+          cr::CreativeTerrainCoord2{13, 3} &&
+      app::creativeEditorWorldLayoutDisplaySource(editor.worldLayout)
+              .walls[1]
+              .start == cr::CreativeTerrainCoord2{13, 4};
+  const auto buildingTransformCommit = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutTransformBuilding, context,
+      app::CreativeDesktopWorldLayoutBuildingTransformPayload{
+          app::CreativeEditorWorldLayoutBuildingTransformPhase::Commit,
+          cr::CreativeWorldLayoutBuildingTransformOperation::MirrorZ});
+  const bool buildingTransformCommittedOnce =
+      buildingTransformCommit.accepted && buildingTransformCommit.changed &&
+      buildingTransformCommit.worldLayoutChanged &&
+      editor.worldLayout.revision == revisionBeforeBuildingTransform + 1U &&
+      editor.worldLayout.source.walls[1].start ==
+          cr::CreativeTerrainCoord2{13, 4};
   const auto groupModeCleared = dispatchOne(
       app::CreativeDesktopCommandId::WorldLayoutClearSelection, context);
 
@@ -1544,7 +1579,9 @@ bool worldLayoutStructuralCommandsRouteThroughDispatcher() {
                     editor.worldLayout.source.walls[0].start ==
                         cr::CreativeTerrainCoord2{3, 3} &&
                     editor.worldLayout.source.walls[1].start ==
-                        cr::CreativeTerrainCoord2{13, 3} &&
+                        cr::CreativeTerrainCoord2{13, 4} &&
+                    buildingTransformPreviewOnly &&
+                    buildingTransformCommittedOnce &&
                     groupModeCleared.accepted && groupModeCleared.changed &&
                     editor.worldLayout.selection.kind ==
                         app::CreativeEditorWorldLayoutSelectionKind::None,

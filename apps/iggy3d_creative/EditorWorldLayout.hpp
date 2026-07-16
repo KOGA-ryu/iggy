@@ -6,6 +6,7 @@
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutTransform.hpp"
 
 namespace iggy3d_creative_app {
 
@@ -185,11 +186,8 @@ struct CreativeEditorWorldLayoutWallManipulationState {
       "creative_editor_world_layout_wall_manipulation_inactive";
 };
 
-struct CreativeEditorWorldLayoutBuildingBounds {
-  bool valid = false;
-  cr::CreativeTerrainCoord2 minimum;
-  cr::CreativeTerrainCoord2 maximum;
-};
+using CreativeEditorWorldLayoutBuildingBounds =
+    cr::CreativeWorldLayoutBuildingBounds;
 
 enum class CreativeEditorWorldLayoutBuildingManipulationPhase : std::uint8_t {
   Begin,
@@ -210,6 +208,26 @@ struct CreativeEditorWorldLayoutBuildingManipulationState {
   bool previewValid = false;
   std::string reasonCode =
       "creative_editor_world_layout_building_manipulation_inactive";
+};
+
+enum class CreativeEditorWorldLayoutBuildingTransformPhase : std::uint8_t {
+  Preview,
+  Commit,
+  Cancel,
+  Count,
+};
+
+struct CreativeEditorWorldLayoutBuildingTransformState {
+  bool active = false;
+  std::uint64_t sourceRevision = 0U;
+  std::size_t buildingIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  cr::CreativeWorldLayoutBuildingTransformOperation operation =
+      cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90;
+  CreativeEditorWorldLayoutBuildingBounds sourceBounds;
+  CreativeEditorWorldLayoutBuildingBounds previewBounds;
+  cr::CreativeWorldLayout candidate;
+  std::string reasonCode =
+      "creative_editor_world_layout_building_transform_inactive";
 };
 
 struct CreativeEditorWorldLayoutOpeningSettings {
@@ -295,6 +313,7 @@ struct CreativeEditorWorldLayoutState {
   CreativeEditorWorldLayoutBoxManipulationState boxManipulation;
   CreativeEditorWorldLayoutWallManipulationState wallManipulation;
   CreativeEditorWorldLayoutBuildingManipulationState buildingManipulation;
+  CreativeEditorWorldLayoutBuildingTransformState buildingTransform;
   CreativeEditorWorldLayoutOpeningManipulationState openingManipulation;
   CreativeEditorWorldLayoutBoxSettingsDraft boxSettingsDraft;
   CreativeEditorWorldLayoutWallSettingsDraft wallSettingsDraft;
@@ -350,6 +369,9 @@ void markCreativeEditorWorldLayoutSaved(
 creativeEditorWorldLayoutRenderDocument(
     const CreativeEditorWorldLayoutState& state,
     const cr::CreativeDocument& liveDocument) noexcept;
+[[nodiscard]] const cr::CreativeWorldLayout&
+creativeEditorWorldLayoutDisplaySource(
+    const CreativeEditorWorldLayoutState& state) noexcept;
 
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 setCreativeEditorWorldLayoutTool(CreativeEditorWorldLayoutState& state,
@@ -427,6 +449,12 @@ applyCreativeEditorWorldLayoutBuildingManipulation(
     CreativeEditorWorldLayoutBuildingManipulationPhase phase,
     CreativeEditorWorldLayoutPoint point = {},
     double toleranceCells = 0.25);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+applyCreativeEditorWorldLayoutBuildingTransform(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutBuildingTransformPhase phase,
+    cr::CreativeWorldLayoutBuildingTransformOperation operation =
+        cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90);
 [[nodiscard]] bool defaultCreativeEditorWorldLayoutBuildingDuplicateOffset(
     const CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
     std::int64_t& deltaXCells, std::int64_t& deltaZCells) noexcept;
