@@ -59,7 +59,7 @@ struct CreativeDesktopInspectorDraft {
 // creative::CreativeAppState). No ImGui types here (plan DL-2); RenderContentViewport
 // is a plain render struct, not an ImGui type.
 struct CreativeEditorDesktopUiState {
-  bool shellEnabled = false;  // false under --capture (plan DL-1)
+  bool shellEnabled = false;  // true only for explicit desktop UI launches
   bool frameActive = false;   // NewFrame issued this frame, Render still owed
   // The drawable-pixel sub-rectangle the 3D scene occupies (the ImGui central
   // dock node). The all-zero sentinel means full-frame; it stays full-frame
@@ -115,6 +115,12 @@ struct CreativeDesktopPointerDecision {
   bool captured = false;
   bool changed = false;
 };
+
+// The full IDE shell is opt-in. Scripted capture remains UI-free even when a
+// caller accidentally supplies both launch modes.
+[[nodiscard]] bool creativeDesktopShellEnabledForLaunch(
+    bool desktopUiRequested,
+    bool captureMode) noexcept;
 
 // Pure DD-9 policy. Free cursor is the resting state in desktop mode; a primary
 // click that landed on the viewport (not an ImGui panel) with no modal open

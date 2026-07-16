@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/input/Catalog.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
+#include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 
 #include <algorithm>
 #include <array>
@@ -24,6 +25,33 @@ cr::CreativeCatalogState catalog() {
   constexpr std::array palette{cr::CreativeObjectKind::Wall,
                                cr::CreativeObjectKind::Crate};
   return cr::makeCreativeCatalog(palette);
+}
+
+cr::CreativeCatalogPage expectedCatalogPage(
+    cr::CreativeObjectCategory category) {
+  switch (category) {
+    case cr::CreativeObjectCategory::Structural:
+      return cr::CreativeCatalogPage::Structure;
+    case cr::CreativeObjectCategory::TerrainOrVolume:
+      return cr::CreativeCatalogPage::Terrain;
+    case cr::CreativeObjectCategory::NavigationOrMovement:
+      return cr::CreativeCatalogPage::Movement;
+    case cr::CreativeObjectCategory::Logic:
+      return cr::CreativeCatalogPage::Logic;
+    case cr::CreativeObjectCategory::VisualDressing:
+      return cr::CreativeCatalogPage::Dressing;
+    case cr::CreativeObjectCategory::LightSoundOrCamera:
+      return cr::CreativeCatalogPage::Media;
+    case cr::CreativeObjectCategory::Gameplay:
+      return cr::CreativeCatalogPage::Gameplay;
+    case cr::CreativeObjectCategory::Testing:
+      return cr::CreativeCatalogPage::Testing;
+    case cr::CreativeObjectCategory::AuthoringMeta:
+      return cr::CreativeCatalogPage::Helpers;
+    case cr::CreativeObjectCategory::Unknown:
+      return cr::CreativeCatalogPage::Count;
+  }
+  return cr::CreativeCatalogPage::Count;
 }
 
 bool actionPageIsFixedNavigableAndConfirmationSafe() {
@@ -55,17 +83,17 @@ bool actionPageIsFixedNavigableAndConfirmationSafe() {
                        actions[7].confirmationRequired &&
                        actions[8].confirmationRequired,
                    "only new and load require confirmation") &&
-            expect(state.page == cr::CreativeCatalogPage::Build &&
-                       cr::toString(state.page) == "Build" &&
+            expect(state.page == cr::CreativeCatalogPage::Structure &&
+                       cr::toString(state.page) == "Structure" &&
                        cr::toString(cr::CreativeCatalogPage::Actions) ==
                            "Actions",
-                   "catalog defaults to named build page");
+                   "catalog defaults to named structure category");
 
   ok = expect(cr::moveCreativeCatalogPage(state, -1) &&
                   state.page == cr::CreativeCatalogPage::Actions &&
                   cr::moveCreativeCatalogPage(state, 1) &&
-                  state.page == cr::CreativeCatalogPage::Build,
-              "catalog pages wrap in both directions") &&
+                  state.page == cr::CreativeCatalogPage::Structure,
+              "catalog categories wrap in both directions") &&
        expect(!cr::setCreativeCatalogPage(state,
                                           cr::CreativeCatalogPage::Count),
               "catalog rejects sentinel page") &&
@@ -187,8 +215,8 @@ bool catalogBuildsMaterialsAndCreatorTools() {
       });
   bool ok = expect(state.entries.size() == 24U,
                    "materials and tools retain one asset reload command") &&
-            expect(state.filteredEntryIndices.size() == 23U,
-                   "build page exposes only materials and tools") &&
+            expect(state.filteredEntryIndices.size() == 1U,
+                   "structure category exposes only structural materials") &&
             expect(state.entries[0].category ==
                        cr::CreativeCatalogEntryCategory::Material &&
                        state.entries[0].hotbarEntry.kind ==
@@ -222,8 +250,84 @@ bool catalogBuildsMaterialsAndCreatorTools() {
   return ok;
 }
 
+bool catalogPartitionsDescriptorPaletteAndSearchesCreatorCategories() {
+  std::vector<cr::CreativeObjectKind> palette;
+  for (const cr::CreativeObjectDescriptor& descriptor :
+       cr::allObjectDescriptors()) {
+    if (cr::descriptorShowsInAuthoringBrushPalette(descriptor)) {
+      palette.push_back(descriptor.kind);
+    }
+  }
+
+  cr::CreativeCatalogState state = cr::makeCreativeCatalog(palette);
+  constexpr std::array creatorPages{
+      cr::CreativeCatalogPage::Structure,
+      cr::CreativeCatalogPage::Terrain,
+      cr::CreativeCatalogPage::Movement,
+      cr::CreativeCatalogPage::Logic,
+      cr::CreativeCatalogPage::Dressing,
+      cr::CreativeCatalogPage::Media,
+      cr::CreativeCatalogPage::Gameplay,
+      cr::CreativeCatalogPage::Testing,
+      cr::CreativeCatalogPage::Helpers,
+  };
+  bool ok = true;
+  std::size_t categorizedMaterialCount = 0U;
+  for (cr::CreativeCatalogPage page : creatorPages) {
+    static_cast<void>(cr::setCreativeCatalogPage(state, page));
+    ok = expect(!state.filteredEntryIndices.empty(),
+                "every descriptor category has visible catalog entries") &&
+         ok;
+    for (std::size_t entryIndex : state.filteredEntryIndices) {
+      const cr::CreativeCatalogEntry& entry = state.entries[entryIndex];
+      ok = expect(entry.category ==
+                          cr::CreativeCatalogEntryCategory::Material &&
+                      entry.page == page &&
+                      entry.page == expectedCatalogPage(
+                                        cr::describeObject(
+                                            entry.hotbarEntry.objectKind)
+                                            .category),
+                  "material page follows descriptor category") &&
+           ok;
+      ++categorizedMaterialCount;
+    }
+  }
+
+  static_cast<void>(
+      cr::setCreativeCatalogPage(state, cr::CreativeCatalogPage::Tools));
+  ok = expect(!state.filteredEntryIndices.empty() &&
+                  std::all_of(
+                      state.filteredEntryIndices.begin(),
+                      state.filteredEntryIndices.end(),
+                      [&state](std::size_t index) {
+                        return state.entries[index].page ==
+                                   cr::CreativeCatalogPage::Tools &&
+                               state.entries[index].category ==
+                                   cr::CreativeCatalogEntryCategory::Tool;
+                      }),
+              "creator tools occupy one dedicated category") &&
+       expect(categorizedMaterialCount == palette.size(),
+              "category pages partition the visible descriptor palette") &&
+       ok;
+
+  static_cast<void>(
+      cr::setCreativeCatalogPage(state, cr::CreativeCatalogPage::Structure));
+  const bool searched = cr::setCreativeCatalogQuery(state, "crate");
+  const cr::CreativeCatalogEntry* crate =
+      cr::selectedCreativeCatalogEntry(state);
+  return expect(searched && state.filteredEntryIndices.size() == 1U &&
+                    crate != nullptr &&
+                    crate->hotbarEntry.objectKind ==
+                        cr::CreativeObjectKind::Crate &&
+                    crate->page == cr::CreativeCatalogPage::Dressing,
+                "typing searches all creator categories from the active tab") &&
+         ok;
+}
+
 bool catalogOmitsToolsWithoutRequiredMaterial() {
-  const cr::CreativeCatalogState state = cr::makeCreativeCatalog({});
+  cr::CreativeCatalogState state = cr::makeCreativeCatalog({});
+  static_cast<void>(
+      cr::setCreativeCatalogPage(state, cr::CreativeCatalogPage::Tools));
   const bool materialDependentToolPresent = std::any_of(
       state.entries.begin(), state.entries.end(),
       [](const cr::CreativeCatalogEntry& entry) {
@@ -589,6 +693,8 @@ bool selectionWrapsAndAssignmentsAreExplicit() {
   cr::CreativeCatalogState state = catalog();
   constexpr std::array palette{cr::CreativeObjectKind::Wall};
   cr::CreativeHotbarState hotbar = cr::makeDefaultCreativeHotbar(palette);
+  static_cast<void>(
+      cr::setCreativeCatalogPage(state, cr::CreativeCatalogPage::Tools));
 
   bool ok = expect(cr::moveCreativeCatalogSelection(state, -1) &&
                        state.selectedFilteredIndex + 1U ==
@@ -1186,7 +1292,7 @@ bool assetPagePreservesBuildIndicesAndEquipsDurableIdentity() {
   assets[1].authoringMetadata.walkableSpecified = true;
   cr::CreativeCatalogState state =
       cr::makeCreativeCatalog(palette, assets, 1U);
-  const std::size_t buildCount = state.filteredEntryIndices.size();
+  const std::size_t structureCount = state.filteredEntryIndices.size();
   const bool pageChanged = cr::setCreativeCatalogPage(
       state, cr::CreativeCatalogPage::Assets);
   const cr::CreativeCatalogEntry* first =
@@ -1223,8 +1329,8 @@ bool assetPagePreservesBuildIndicesAndEquipsDurableIdentity() {
   static_cast<void>(cr::setCreativeCatalogPage(
       state, cr::CreativeCatalogPage::Actions));
 
-  return expect(buildCount == 23U,
-                "assets do not shift the build lane including Logic Link") &&
+  return expect(structureCount == 1U,
+                "assets do not shift the selected creator category") &&
          expect(assetPageReady, "asset page is reachable before actions") &&
          expect(first != nullptr &&
                     first->category == cr::CreativeCatalogEntryCategory::Asset &&
@@ -1310,6 +1416,7 @@ int main() {
   ok = actionPageIsFixedNavigableAndConfirmationSafe() && ok;
   ok = actionAvailabilityUsesExplicitFacts() && ok;
   ok = catalogBuildsMaterialsAndCreatorTools() && ok;
+  ok = catalogPartitionsDescriptorPaletteAndSearchesCreatorCategories() && ok;
   ok = catalogOmitsToolsWithoutRequiredMaterial() && ok;
   ok = catalogAssignmentDistinguishesMaterialsFromTools() && ok;
   ok = shapeSelectionIsVisibleBoundedAndDeterministic() && ok;

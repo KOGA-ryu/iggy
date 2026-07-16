@@ -225,6 +225,16 @@ bool desktopUiContextDisablesFlyNavigation() {
                 "fly navigation is off while the desktop UI owns input");
 }
 
+bool desktopShellRequiresExplicitLaunchRequest() {
+  using iggy3d_creative_app::creativeDesktopShellEnabledForLaunch;
+  return expect(!creativeDesktopShellEnabledForLaunch(false, false),
+                "plain launch keeps the full-viewport editor") &&
+         expect(creativeDesktopShellEnabledForLaunch(true, false),
+                "desktop flag explicitly enables the IDE shell") &&
+         expect(!creativeDesktopShellEnabledForLaunch(true, true),
+                "capture mode remains UI-free");
+}
+
 }  // namespace
 
 int main() {
@@ -241,5 +251,6 @@ int main() {
   ok = wantInputHelperIgnoresImGuiWhileCaptured() && ok;
   ok = routeRemoveDropsActionForEscRelease() && ok;
   ok = desktopUiContextDisablesFlyNavigation() && ok;
+  ok = desktopShellRequiresExplicitLaunchRequest() && ok;
   return ok ? 0 : 1;
 }

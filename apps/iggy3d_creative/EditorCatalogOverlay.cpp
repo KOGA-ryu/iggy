@@ -47,6 +47,40 @@ namespace {
   return output;
 }
 
+[[nodiscard]] std::string_view catalogTabLabel(
+    cr::CreativeCatalogPage page,
+    bool compact) noexcept {
+  switch (page) {
+    case cr::CreativeCatalogPage::Structure:
+      return compact ? "BLD" : "STRUCT";
+    case cr::CreativeCatalogPage::Terrain:
+      return compact ? "TER" : "TERR";
+    case cr::CreativeCatalogPage::Movement:
+      return compact ? "MOV" : "MOVE";
+    case cr::CreativeCatalogPage::Logic:
+      return compact ? "LOG" : "LOGIC";
+    case cr::CreativeCatalogPage::Dressing:
+      return compact ? "DEC" : "DRESS";
+    case cr::CreativeCatalogPage::Media:
+      return compact ? "MED" : "MEDIA";
+    case cr::CreativeCatalogPage::Gameplay:
+      return compact ? "GME" : "GAME";
+    case cr::CreativeCatalogPage::Testing:
+      return compact ? "TST" : "TEST";
+    case cr::CreativeCatalogPage::Helpers:
+      return compact ? "HLP" : "HELP";
+    case cr::CreativeCatalogPage::Tools:
+      return compact ? "TLS" : "TOOLS";
+    case cr::CreativeCatalogPage::Assets:
+      return compact ? "AST" : "ASSET";
+    case cr::CreativeCatalogPage::Actions:
+      return compact ? "ACT" : "ACTION";
+    case cr::CreativeCatalogPage::Count:
+      return "";
+  }
+  return "";
+}
+
 void appendText(std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
                 std::string_view text,
                 std::int32_t x,
@@ -371,11 +405,12 @@ void appendCreativeEditorCatalogOverlay(
                layout.panelX + 18, layout.panelY + 16, drawableWidth,
                drawableHeight, 0.90F, 0.94F, 0.96F);
   }
-  constexpr std::array pages{cr::CreativeCatalogPage::Build,
-                             cr::CreativeCatalogPage::Assets,
-                             cr::CreativeCatalogPage::Actions};
-  for (std::size_t index = 0; index < pages.size(); ++index) {
-    const bool selected = catalog.model.page == pages[index];
+  for (std::size_t index = 0;
+       index < static_cast<std::size_t>(cr::CreativeCatalogPage::Count);
+       ++index) {
+    const cr::CreativeCatalogPage page =
+        static_cast<cr::CreativeCatalogPage>(index);
+    const bool selected = catalog.model.page == page;
     const std::int32_t x =
         layout.tabsX + static_cast<std::int32_t>(index * layout.tabWidth);
     uiRects.push_back({x, layout.tabsY, layout.tabWidth, layout.tabHeight,
@@ -383,15 +418,10 @@ void appendCreativeEditorCatalogOverlay(
                        selected ? 0.76F : 0.085F,
                        selected ? 0.28F : 0.095F,
                        selected ? 0.98F : 0.92F});
-    const bool compactTab = layout.tabWidth < 70U;
-    const std::string_view tabLabel =
-        pages[index] == cr::CreativeCatalogPage::Build
-            ? (compactTab ? "BLD" : "BUILD")
-            : pages[index] == cr::CreativeCatalogPage::Assets
-                  ? (compactTab ? "AST" : "ASSETS")
-                  : (compactTab ? "ACT" : "ACTIONS");
+    const bool compactTab = layout.tabWidth < 50U;
+    const std::string_view tabLabel = catalogTabLabel(page, compactTab);
     appendText(glyphs, tabLabel,
-               x + (compactTab ? 6 : 10),
+               x + (compactTab ? 4 : 7),
                layout.tabsY + 7, drawableWidth, drawableHeight,
                selected ? 0.06F : 0.82F, selected ? 0.065F : 0.86F,
                selected ? 0.07F : 0.90F);
@@ -455,7 +485,7 @@ void appendCreativeEditorCatalogOverlay(
       appendText(glyphs,
                  catalog.model.page == cr::CreativeCatalogPage::Assets
                      ? "No matching assets"
-                     : "No matching materials or tools",
+                     : "No matching entries",
                  layout.panelX + 24,
                  layout.rowsY + 8, drawableWidth, drawableHeight, 0.82F, 0.54F,
                  0.48F);
@@ -532,8 +562,13 @@ void appendCreativeEditorCatalogOverlay(
                         editor.interaction.hotbar.selectedSlot) +
                         1U);
     } else {
-      std::snprintf(footer, sizeof(footer), "%zu results | slot %u",
-                    resultCount,
+      const std::string_view categoryLabel =
+          catalog.model.query.empty()
+              ? cr::toString(catalog.model.page)
+              : std::string_view{"Search all"};
+      std::snprintf(footer, sizeof(footer), "%.*s | %zu results | slot %u",
+                    static_cast<int>(categoryLabel.size()),
+                    categoryLabel.data(), resultCount,
                     static_cast<unsigned>(
                         editor.interaction.hotbar.selectedSlot) +
                         1U);

@@ -22,7 +22,16 @@ inline constexpr std::size_t kCreativeCatalogActionCapacity = 9;
 inline constexpr std::size_t kCreativeCatalogShapePresetCount = 6;
 
 enum class CreativeCatalogPage : std::uint8_t {
-  Build,
+  Structure,
+  Terrain,
+  Movement,
+  Logic,
+  Dressing,
+  Media,
+  Gameplay,
+  Testing,
+  Helpers,
+  Tools,
   Assets,
   Actions,
   Count,
@@ -57,6 +66,7 @@ struct CreativeCatalogAssetFailure {
 };
 
 struct CreativeCatalogEntry {
+  CreativeCatalogPage page = CreativeCatalogPage::Count;
   CreativeCatalogEntryCategory category =
       CreativeCatalogEntryCategory::Material;
   CreativeHotbarEntry hotbarEntry{};
@@ -102,7 +112,7 @@ struct CreativeCatalogActionAvailability {
 
 struct CreativeCatalogState {
   bool open = false;
-  CreativeCatalogPage page = CreativeCatalogPage::Build;
+  CreativeCatalogPage page = CreativeCatalogPage::Structure;
   std::string query;
   std::vector<CreativeCatalogEntry> entries;
   std::vector<std::size_t> filteredEntryIndices;
@@ -123,6 +133,8 @@ struct CreativeToolWheelState {
 [[nodiscard]] std::string_view toString(
     CreativeCatalogEntryCategory category) noexcept;
 [[nodiscard]] std::string_view toString(CreativeCatalogPage page) noexcept;
+[[nodiscard]] bool creativeCatalogPageIsCreatorCategory(
+    CreativeCatalogPage page) noexcept;
 [[nodiscard]] std::string_view creativeCatalogAssetPhysicsLabel(
     const StaticMeshAuthoringMetadata& metadata) noexcept;
 [[nodiscard]] CreativeCatalogState makeCreativeCatalog(

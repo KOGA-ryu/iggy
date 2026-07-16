@@ -242,6 +242,33 @@ bool placementPlanMatchesEveryCreateRequest() {
          ok;
 }
 
+bool standaloneBrushPalettePopulatesEveryCatalogCategory() {
+  const std::vector<cr::CreativeObjectKind> palette =
+      buildBrushPaletteFromDescriptors();
+  cr::CreativeCatalogState catalog = cr::makeCreativeCatalog(palette);
+  constexpr std::array pages{
+      cr::CreativeCatalogPage::Structure,
+      cr::CreativeCatalogPage::Terrain,
+      cr::CreativeCatalogPage::Movement,
+      cr::CreativeCatalogPage::Logic,
+      cr::CreativeCatalogPage::Dressing,
+      cr::CreativeCatalogPage::Media,
+      cr::CreativeCatalogPage::Gameplay,
+      cr::CreativeCatalogPage::Testing,
+      cr::CreativeCatalogPage::Helpers,
+      cr::CreativeCatalogPage::Tools,
+  };
+  bool ok = expect(!palette.empty(),
+                   "standalone descriptor palette remains populated");
+  for (cr::CreativeCatalogPage page : pages) {
+    static_cast<void>(cr::setCreativeCatalogPage(catalog, page));
+    ok = expect(!catalog.filteredEntryIndices.empty(),
+                "standalone catalog category has at least one entry") &&
+         ok;
+  }
+  return ok;
+}
+
 bool placementAdmissionOwnsPreviewAndExecutionTruth() {
   cr::CreativeGridTarget target = cr::resolveCreativeGridTargetFromHit(
       {2.25, 1.0, -3.25}, {0.0, 1.0, 0.0}, 1.0);
@@ -4449,6 +4476,7 @@ bool movingPlatformRouteQuickEditIsBoundedAndUndoable() {
 int main() {
   bool ok = true;
   ok = placementPlanMatchesEveryCreateRequest() && ok;
+  ok = standaloneBrushPalettePopulatesEveryCatalogCategory() && ok;
   ok = placementAdmissionOwnsPreviewAndExecutionTruth() && ok;
   ok = verticalSurfacePlacementFollowsTheAimedFace() && ok;
   ok = quickEditOrientationFeedsPreviewAndCreatePlan() && ok;

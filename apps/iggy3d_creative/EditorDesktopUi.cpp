@@ -44,6 +44,11 @@ iggy3d::RenderContentViewport resolveCentralNodeContentViewport(
 
 }  // namespace
 
+bool creativeDesktopShellEnabledForLaunch(bool desktopUiRequested,
+                                          bool captureMode) noexcept {
+  return desktopUiRequested && !captureMode;
+}
+
 bool beginCreativeEditorDesktopUiFrame(CreativeEditorDesktopUiState& desktopUi,
                                        iggy3d::VulkanBackend& backend) {
   desktopUi.frameActive = false;

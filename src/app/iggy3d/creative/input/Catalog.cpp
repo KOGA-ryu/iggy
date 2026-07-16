@@ -166,36 +166,59 @@ static_assert(kActionEntries.size() == kCreativeCatalogActionCapacity);
 
 [[nodiscard]] bool entryVisibleOnPage(
     const CreativeCatalogEntry& entry,
-    CreativeCatalogPage page) noexcept {
-  switch (page) {
-    case CreativeCatalogPage::Build:
-      return entry.category == CreativeCatalogEntryCategory::Material ||
-             entry.category == CreativeCatalogEntryCategory::Tool;
-    case CreativeCatalogPage::Assets:
-      return entry.category == CreativeCatalogEntryCategory::Asset ||
-             entry.category == CreativeCatalogEntryCategory::AssetFailure ||
-             entry.category == CreativeCatalogEntryCategory::Command;
-    case CreativeCatalogPage::Actions:
-    case CreativeCatalogPage::Count:
-      return false;
+    CreativeCatalogPage page,
+    bool globalCreatorSearch) noexcept {
+  return globalCreatorSearch
+             ? creativeCatalogPageIsCreatorCategory(entry.page)
+             : entry.page == page;
+}
+
+[[nodiscard]] CreativeCatalogPage catalogPageForObjectCategory(
+    CreativeObjectCategory category) noexcept {
+  switch (category) {
+    case CreativeObjectCategory::Structural:
+      return CreativeCatalogPage::Structure;
+    case CreativeObjectCategory::TerrainOrVolume:
+      return CreativeCatalogPage::Terrain;
+    case CreativeObjectCategory::NavigationOrMovement:
+      return CreativeCatalogPage::Movement;
+    case CreativeObjectCategory::Logic:
+      return CreativeCatalogPage::Logic;
+    case CreativeObjectCategory::VisualDressing:
+      return CreativeCatalogPage::Dressing;
+    case CreativeObjectCategory::LightSoundOrCamera:
+      return CreativeCatalogPage::Media;
+    case CreativeObjectCategory::Gameplay:
+      return CreativeCatalogPage::Gameplay;
+    case CreativeObjectCategory::Testing:
+      return CreativeCatalogPage::Testing;
+    case CreativeObjectCategory::AuthoringMeta:
+      return CreativeCatalogPage::Helpers;
+    case CreativeObjectCategory::Unknown:
+      return CreativeCatalogPage::Count;
   }
-  return false;
+  return CreativeCatalogPage::Count;
 }
 
 void refreshFilter(CreativeCatalogState& catalog) {
   const std::optional<std::size_t> previous = selectedEntryIndex(catalog);
   const std::string query = lowerAscii(catalog.query);
+  const bool globalCreatorSearch =
+      !query.empty() && creativeCatalogPageIsCreatorCategory(catalog.page);
   const bool exactWordMode =
       !query.empty() &&
       std::any_of(catalog.entries.begin(), catalog.entries.end(),
-                  [&catalog, &query](const CreativeCatalogEntry& entry) {
-                    return entryVisibleOnPage(entry, catalog.page) &&
+                  [&catalog, &query, globalCreatorSearch](
+                      const CreativeCatalogEntry& entry) {
+                    return entryVisibleOnPage(entry, catalog.page,
+                                              globalCreatorSearch) &&
                            containsSearchWord(entry.searchText, query);
                   });
   catalog.filteredEntryIndices.clear();
   catalog.filteredEntryIndices.reserve(catalog.entries.size());
   for (std::size_t index = 0; index < catalog.entries.size(); ++index) {
-    if (!entryVisibleOnPage(catalog.entries[index], catalog.page)) {
+    if (!entryVisibleOnPage(catalog.entries[index], catalog.page,
+                            globalCreatorSearch)) {
       continue;
     }
     const bool matches =
@@ -256,6 +279,7 @@ void refreshFilter(CreativeCatalogState& catalog) {
     return false;
   }
   entry = {};
+  entry.page = CreativeCatalogPage::Assets;
   entry.category = CreativeCatalogEntryCategory::Asset;
   entry.hotbarEntry = {CreativeHeldItemKind::Material, asset.objectKind};
   if (!setCreativeHotbarAsset(entry.hotbarEntry, asset.assetId,
@@ -321,12 +345,27 @@ std::string_view toString(CreativeCatalogEntryCategory category) noexcept {
 
 std::string_view toString(CreativeCatalogPage page) noexcept {
   switch (page) {
-    case CreativeCatalogPage::Build: return "Build";
+    case CreativeCatalogPage::Structure: return "Structure";
+    case CreativeCatalogPage::Terrain: return "Terrain";
+    case CreativeCatalogPage::Movement: return "Movement";
+    case CreativeCatalogPage::Logic: return "Logic";
+    case CreativeCatalogPage::Dressing: return "Dressing";
+    case CreativeCatalogPage::Media: return "Media";
+    case CreativeCatalogPage::Gameplay: return "Gameplay";
+    case CreativeCatalogPage::Testing: return "Testing";
+    case CreativeCatalogPage::Helpers: return "Helpers";
+    case CreativeCatalogPage::Tools: return "Tools";
     case CreativeCatalogPage::Assets: return "Assets";
     case CreativeCatalogPage::Actions: return "Actions";
     case CreativeCatalogPage::Count: break;
   }
   return "Unknown";
+}
+
+bool creativeCatalogPageIsCreatorCategory(
+    CreativeCatalogPage page) noexcept {
+  return page >= CreativeCatalogPage::Structure &&
+         page <= CreativeCatalogPage::Tools;
 }
 
 std::string_view creativeCatalogAssetPhysicsLabel(
@@ -382,6 +421,10 @@ CreativeCatalogState makeCreativeCatalog(
       defaultMaterial = kind;
     }
     CreativeCatalogEntry entry;
+    entry.page = catalogPageForObjectCategory(descriptor.category);
+    if (entry.page == CreativeCatalogPage::Count) {
+      continue;
+    }
     entry.category = CreativeCatalogEntryCategory::Material;
     entry.hotbarEntry = {CreativeHeldItemKind::Material, kind};
     entry.label = descriptorLabel(descriptor);
@@ -395,6 +438,7 @@ CreativeCatalogState makeCreativeCatalog(
       continue;
     }
     CreativeCatalogEntry entry;
+    entry.page = CreativeCatalogPage::Tools;
     entry.category = CreativeCatalogEntryCategory::Tool;
     entry.hotbarEntry.kind = spec.kind;
     entry.toolWheelEligible = spec.toolWheelEligible;
@@ -416,6 +460,7 @@ CreativeCatalogState makeCreativeCatalog(
   }
   for (const CreativeCatalogAssetFailure& failure : assetFailures) {
     CreativeCatalogEntry entry;
+    entry.page = CreativeCatalogPage::Assets;
     entry.category = CreativeCatalogEntryCategory::AssetFailure;
     entry.label = failure.label.empty() ? failure.sourcePath : failure.label;
     entry.detail = failure.reasonCode;
@@ -429,6 +474,7 @@ CreativeCatalogState makeCreativeCatalog(
     catalog.entries.push_back(std::move(entry));
   }
   CreativeCatalogEntry reload;
+  reload.page = CreativeCatalogPage::Assets;
   reload.category = CreativeCatalogEntryCategory::Command;
   reload.command = CreativeCatalogCommand::ReloadAssets;
   reload.label = "Reload Assets";

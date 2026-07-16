@@ -72,6 +72,7 @@ using iggy3d_creative_app::buildCreativeEditorPickFrame;
 using iggy3d_creative_app::buildStandaloneRoomBakePreviewScene;
 using iggy3d_creative_app::captureFrameToPng;
 using iggy3d_creative_app::createCreativeRenderer;
+using iggy3d_creative_app::creativeDesktopShellEnabledForLaunch;
 using iggy3d_creative_app::CreativeEditorBootstrapData;
 using iggy3d_creative_app::CreativeEditorGamepad;
 using iggy3d_creative_app::CreativeEditorState;
@@ -175,11 +176,13 @@ int main(int argc, char** argv) {
   //   --map <template>  generate if absent, then open a built-in map
   //   --load <save-id>  open an existing Creative save slot
   //   --generate-map <template>  write a map save headlessly, then exit
+  //   --desktop-ui      opt into the docked IDE shell
   std::uint64_t maxFrames = 0;  // 0 = run until window close.
   std::string capturePath;
   std::string mapTemplateId;
   std::string loadSaveId;
   std::string generateMapTemplateId;
+  bool desktopUiRequested = false;
   for (int i = 1; i < argc; ++i) {
     const std::string arg = argv[i];
     if (arg == "--frames" && i + 1 < argc) {
@@ -192,6 +195,8 @@ int main(int argc, char** argv) {
       loadSaveId = argv[++i];
     } else if (arg == "--generate-map" && i + 1 < argc) {
       generateMapTemplateId = argv[++i];
+    } else if (arg == "--desktop-ui") {
+      desktopUiRequested = true;
     }
   }
   if (!generateMapTemplateId.empty()) {
@@ -210,6 +215,9 @@ int main(int argc, char** argv) {
   if (!capturePath.empty() && maxFrames == 0U) {
     maxFrames = 8U;
   }
+  const bool captureMode = !capturePath.empty();
+  const bool desktopShellEnabled = creativeDesktopShellEnabledForLaunch(
+      desktopUiRequested, captureMode);
 
   // Window (Vulkan). The SdlWindow ctor initializes the SDL video subsystem.
   SdlWindowCreateInfo createInfo;
@@ -226,7 +234,7 @@ int main(int argc, char** argv) {
   }
 
   std::unique_ptr<VulkanBackend> backend =
-      createCreativeRenderer(window, capturePath.empty());
+      createCreativeRenderer(window, desktopShellEnabled);
   if (backend == nullptr ||
       backend->lifecycleState() != RendererLifecycleState::Ready) {
     SDL_Log("iggy3d_creative: renderer not ready (lifecycle=%d)",
@@ -235,9 +243,10 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  // Desktop shell event feed (interactive only; --capture never constructs
-  // the shell, so the hook stays uninstalled and pollEvents runs untapped).
-  if (capturePath.empty()) {
+  // The external UI event feed and free-pointer policy exist only for an
+  // explicit --desktop-ui launch. Plain i3dc keeps the original full-viewport
+  // relative-mouse editor behavior.
+  if (desktopShellEnabled) {
     SdlWindowEventHook desktopUiEventHook;
     desktopUiEventHook.onEvent = [](void* context, const SDL_Event& event) {
       static_cast<VulkanBackend*>(context)->forwardExternalUiEvent(event);
@@ -253,14 +262,14 @@ int main(int argc, char** argv) {
   // Relative mouse mode for a free-look fly camera (interactive only — don't
   // grab the mouse during a scripted --capture run). In desktop mode this is
   // suppressed by the free-pointer gate above; click-to-capture enters fly-look.
-  if (capturePath.empty()) {
+  if (!captureMode) {
     window.setRelativeMouseMode(true);
   }
 
   CreativeEditorBootstrapData bootstrapData;
-  initializeCreativeEditorBootstrapData(bootstrapData, !capturePath.empty());
+  initializeCreativeEditorBootstrapData(bootstrapData, captureMode);
   CreativeEditorState& editor = bootstrapData.editor;
-  editor.desktopUi.shellEnabled = capturePath.empty();
+  editor.desktopUi.shellEnabled = desktopShellEnabled;
   const ProductMapMakerGridSnapshot& gridSnapshot =
       bootstrapData.gridSnapshot;
   creative::CreativeAppState& appState = bootstrapData.appState;

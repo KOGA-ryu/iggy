@@ -430,7 +430,7 @@ void appendContextHints(HintSpecBuffer& buffer,
                      cr::CreativeInputActionId::CatalogPreviousVariant,
                      cr::CreativeInputActionId::CatalogNextVariant, "Variant");
       appendHintPair(buffer, cr::CreativeInputActionId::CatalogPreviousPage,
-                     cr::CreativeInputActionId::CatalogNextPage, "Page");
+                     cr::CreativeInputActionId::CatalogNextPage, "Category");
       appendHint(
           buffer, cr::CreativeInputActionId::CatalogConfirm,
           editor.catalog.assetAction ==

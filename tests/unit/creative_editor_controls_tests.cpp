@@ -1,7 +1,9 @@
 #include "EditorControls.hpp"
 #include "EditorCatalog.hpp"
+#include "EditorCatalogLayout.hpp"
 #include "EditorState.hpp"
 #include "EditorToolWheelPreferences.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 
 #include <algorithm>
 #include <array>
@@ -310,6 +312,45 @@ bool controlsOverlayUsesTheStandardWidgetFrame() {
                 "standard scrim covers the drawable with bounded opacity");
 }
 
+bool catalogOverlayFitsAndEmitsEveryCategoryTab() {
+  constexpr std::array palette{cr::CreativeObjectKind::Wall,
+                               cr::CreativeObjectKind::Crate};
+  cr::CreativeAppState appState;
+  app::CreativeEditorState editor;
+  editor.catalog.model = cr::makeCreativeCatalog(palette);
+  editor.catalog.model.open = true;
+
+  bool ok = true;
+  for (const std::array<std::uint32_t, 2> drawable :
+       {std::array<std::uint32_t, 2>{1280U, 720U},
+        std::array<std::uint32_t, 2>{480U, 640U}}) {
+    const app::CatalogLayout layout =
+        app::catalogLayout(drawable[0], drawable[1]);
+    std::vector<iggy3d::RenderUiRect> rects;
+    std::vector<iggy3d::DebugHudGlyphQuad> glyphs;
+    app::appendCreativeEditorCatalogOverlay(
+        appState, editor, drawable[0], drawable[1], rects, glyphs);
+    const std::size_t emittedTabs = static_cast<std::size_t>(std::count_if(
+        rects.begin(), rects.end(), [&layout](const iggy3d::RenderUiRect& rect) {
+          return rect.y == layout.tabsY && rect.width == layout.tabWidth &&
+                 rect.height == layout.tabHeight;
+        }));
+    const std::uint32_t tabCount =
+        static_cast<std::uint32_t>(cr::CreativeCatalogPage::Count);
+    ok = expect(emittedTabs == tabCount,
+                "catalog overlay emits every category tab") &&
+         expect(layout.tabWidth * tabCount <= layout.panelWidth &&
+                    layout.tabsX >= layout.panelX &&
+                    layout.tabsX + static_cast<std::int32_t>(
+                                       layout.tabWidth * tabCount) <=
+                        layout.panelX +
+                            static_cast<std::int32_t>(layout.panelWidth),
+                "category tabs remain inside desktop and compact panels") &&
+         ok;
+  }
+  return ok;
+}
+
 bool deviceTabsPartitionBindingsAndResetOnlyViewState() {
   app::CreativeEditorState editor;
   const cr::CreativeControlBindingList all =
@@ -367,6 +408,7 @@ int main() {
   ok = legacySquarePickMigratesWithoutDiscardingProfileTuning() && ok;
   ok = toolWheelPreferenceRoundTripIsAtomic() && ok;
   ok = controlsOverlayUsesTheStandardWidgetFrame() && ok;
+  ok = catalogOverlayFitsAndEmitsEveryCategoryTab() && ok;
   ok = deviceTabsPartitionBindingsAndResetOnlyViewState() && ok;
   return ok ? 0 : 1;
 }

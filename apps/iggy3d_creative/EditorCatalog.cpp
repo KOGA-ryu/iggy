@@ -491,7 +491,7 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
         break;
       }
       case cr::CreativeInputActionId::CatalogAssignToolWheel:
-        if (catalog.model.page == cr::CreativeCatalogPage::Build) {
+        if (catalog.model.page == cr::CreativeCatalogPage::Tools) {
           static_cast<void>(beginToolWheelAssignment(catalog));
         }
         break;

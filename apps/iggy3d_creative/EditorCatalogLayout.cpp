@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "app/iggy3d/creative/input/Catalog.hpp"
+
 namespace iggy3d_creative_app {
 
 [[nodiscard]] CatalogLayout catalogLayout(std::uint32_t drawableWidth,
@@ -26,9 +28,9 @@ namespace iggy3d_creative_app {
                    static_cast<std::int32_t>(layout.panelHeight) - 38;
   const std::uint32_t tabAreaWidth =
       layout.panelWidth > 16U ? layout.panelWidth - 16U : layout.panelWidth;
-  constexpr std::uint32_t kCatalogTabCount = 3U;
-  layout.tabWidth =
-      std::min(92U, std::max(1U, tabAreaWidth / kCatalogTabCount));
+  constexpr std::uint32_t kCatalogTabCount = static_cast<std::uint32_t>(
+      iggy3d::creative::CreativeCatalogPage::Count);
+  layout.tabWidth = std::max(1U, tabAreaWidth / kCatalogTabCount);
   const std::int32_t tabsWidth =
       static_cast<std::int32_t>(layout.tabWidth * kCatalogTabCount);
   layout.tabsX =
