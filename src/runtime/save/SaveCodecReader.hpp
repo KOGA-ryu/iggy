@@ -102,6 +102,7 @@ private:
   void readCreativeDocumentObject(const std::string& prefix,
                                   SaveCreativeDocumentObjectRecord& object);
   void readCreativeDocument();
+  void readCreativeWorldLayout();
   void readPlayers();
   void readClock();
   void readCamera();

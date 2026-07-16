@@ -126,6 +126,16 @@ iggy3d_add_unit_test(creative_world_layout_tests
 set_tests_properties(creative_world_layout_tests PROPERTIES
   LABELS "unit;app;creative;world;layout;recipe;history;iggy3d")
 
+iggy3d_add_unit_test(creative_world_layout_codec_tests
+  tests/unit/creative_world_layout_codec_tests.cpp)
+set_tests_properties(creative_world_layout_codec_tests PROPERTIES
+  LABELS "unit;app;creative;world;layout;codec;iggy3d")
+
+iggy3d_add_unit_test(creative_world_layout_persistence_tests
+  tests/unit/creative_world_layout_persistence_tests.cpp)
+set_tests_properties(creative_world_layout_persistence_tests PROPERTIES
+  LABELS "unit;app;creative;world;layout;save;iggy3d")
+
 iggy3d_add_unit_test(creative_document_save_section_tests
   tests/unit/creative_document_save_section_tests.cpp)
 set_tests_properties(creative_document_save_section_tests PROPERTIES
@@ -409,6 +419,17 @@ add_test(NAME creative_desktop_model_tests
 set_tests_properties(creative_desktop_model_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;editor;desktop;model;iggy3d")
+
+add_executable(creative_editor_world_layout_tests
+  tests/unit/creative_editor_world_layout_tests.cpp)
+target_link_libraries(creative_editor_world_layout_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_world_layout_tests)
+add_test(NAME creative_editor_world_layout_tests
+  COMMAND "$<TARGET_FILE:creative_editor_world_layout_tests>")
+set_tests_properties(creative_editor_world_layout_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;editor;world;layout;iggy3d")
 
 add_executable(creative_editor_play_mode_tests
   tests/unit/creative_editor_play_mode_tests.cpp)

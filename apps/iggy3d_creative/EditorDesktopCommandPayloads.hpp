@@ -8,6 +8,7 @@
 
 #include "app/iggy3d/creative/assets/AuthoredAsset.hpp"
 #include "app/iggy3d/creative/document/LogicLink.hpp"
+#include "EditorWorldLayout.hpp"
 
 namespace iggy3d_creative_app {
 
@@ -118,6 +119,15 @@ struct CreativeDesktopInstanceRefreshPayload {
       iggy3d::creative::CreativeAuthoredAssetRefreshMode::ForceAll;
 };
 
+struct CreativeDesktopWorldLayoutToolPayload {
+  CreativeEditorWorldLayoutTool tool =
+      CreativeEditorWorldLayoutTool::Select;
+};
+
+struct CreativeDesktopWorldLayoutPointPayload {
+  CreativeEditorWorldLayoutPoint point;
+};
+
 // The discriminated payload carried by every command (monostate = no payload).
 using CreativeDesktopCommandPayload = std::variant<
     std::monostate,
@@ -132,6 +142,8 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopMovingPlatformPreviewPayload,
     CreativeDesktopMovingPlatformWaypointPayload,
     CreativeDesktopAssetOpPayload,
-    CreativeDesktopInstanceRefreshPayload>;
+    CreativeDesktopInstanceRefreshPayload,
+    CreativeDesktopWorldLayoutToolPayload,
+    CreativeDesktopWorldLayoutPointPayload>;
 
 }  // namespace iggy3d_creative_app

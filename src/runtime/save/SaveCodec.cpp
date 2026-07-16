@@ -98,6 +98,7 @@ public:
     writeWorld();
     writeAuthoredRoom();
     writeCreativeDocument();
+    writeCreativeWorldLayout();
     writePlayers();
     writeClock();
     writeCamera();
@@ -438,6 +439,17 @@ private:
       line(p + "z", std::to_string(material.z));
       lineString(p + "material", material.material);
     }
+  }
+
+  void writeCreativeWorldLayout() {
+    if (!envelope_.creativeWorldLayout.present) {
+      return;
+    }
+    const SaveCreativeWorldLayoutSection& section =
+        envelope_.creativeWorldLayout;
+    lineBool("creativeWorldLayout.present", true);
+    line("creativeWorldLayout.version", unsignedText(section.version));
+    lineString("creativeWorldLayout.encodedText", section.encodedText);
   }
 
   void writePlayers() {

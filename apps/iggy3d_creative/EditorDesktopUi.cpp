@@ -97,6 +97,7 @@ void buildDefaultDesktopLayout(ImGuiID dockspaceId, ImVec2 workspaceSize) {
   ImGui::DockBuilderDockWindow("Inspector", rightId);
   ImGui::DockBuilderDockWindow("Diagnostics##bottom", bottomId);
   ImGui::DockBuilderDockWindow("Toolbar##desktop", toolbarId);
+  ImGui::DockBuilderDockWindow("World Layout", centerId);
   ImGui::DockBuilderFinish(dockspaceId);
 }
 

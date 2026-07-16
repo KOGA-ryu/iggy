@@ -62,6 +62,12 @@ enum class CreativeDesktopCommandId : std::uint8_t {
   DeleteAsset,
   RefreshInstances,
   UpdateAssetFromInstance,
+  WorldLayoutSetTool,
+  WorldLayoutCanvasPoint,
+  WorldLayoutDeleteSelection,
+  WorldLayoutPreview,
+  WorldLayoutConfirm,
+  WorldLayoutCancelPreview,
   Count,
 };
 
@@ -97,6 +103,8 @@ struct CreativeDesktopCommandResult {
   bool accepted = false;
   bool changed = false;
   bool documentReplaced = false;
+  bool sceneChanged = false;
+  bool worldLayoutChanged = false;
   std::uint64_t affectedObjectCount = 0U;  // objects a batch command touched.
   std::string message;
 };

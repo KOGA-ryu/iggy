@@ -5,6 +5,7 @@
 #include <string>
 
 #include "app/iggy3d/creative/document/Document.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 
 namespace iggy3d {
@@ -17,6 +18,7 @@ struct CreativeWorldCreateRequest {
   std::string attemptToken = "attempt_001";
   std::string packageId = "iggy3d.creative";
   std::string scenarioId = "creative.document";
+  const creative::CreativeWorldLayout* worldLayout = nullptr;
 };
 
 struct CreativeWorldCreateResult {
@@ -42,6 +44,9 @@ struct CreativeWorldCreateResult {
       "creative_document_id_scan_not_requested";
   ProductCreativeSaveWriteResult saveWrite;
   creative::CreativeDocument document;
+  bool worldLayoutPresent = false;
+  creative::CreativeWorldLayoutCodecStatus worldLayoutCodecStatus =
+      creative::CreativeWorldLayoutCodecStatus::NotRequested;
 };
 
 struct CreativeWorldOpenRequest {
@@ -62,6 +67,7 @@ struct CreativeWorldSaveRequest {
   std::string saveType;
   std::string createdAtUtc;
   std::string savedAtUtc;
+  const creative::CreativeWorldLayout* worldLayout = nullptr;
 };
 
 struct CreativeWorldOpenResult {
@@ -83,6 +89,10 @@ struct CreativeWorldOpenResult {
   std::string saveType;
   std::string createdAtUtc;
   std::string savedAtUtc;
+  bool worldLayoutPresent = false;
+  creative::CreativeWorldLayoutCodecStatus worldLayoutCodecStatus =
+      creative::CreativeWorldLayoutCodecStatus::NotRequested;
+  creative::CreativeWorldLayout worldLayout;
 };
 
 struct CreativeWorldSaveResult {
@@ -107,6 +117,9 @@ struct CreativeWorldSaveResult {
   std::string saveType;
   std::string createdAtUtc;
   std::string savedAtUtc;
+  bool worldLayoutPresent = false;
+  creative::CreativeWorldLayoutCodecStatus worldLayoutCodecStatus =
+      creative::CreativeWorldLayoutCodecStatus::NotRequested;
 };
 
 [[nodiscard]] CreativeWorldCreateResult createCreativeWorld(

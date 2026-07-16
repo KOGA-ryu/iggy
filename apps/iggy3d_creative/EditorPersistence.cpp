@@ -95,12 +95,14 @@ bool snapshotsMatch(const std::vector<ObjectSnapshotEntry>& before,
 iggy3d::CreativeWorldSaveResult saveStandaloneScene(
     const cr::Facade& facade,
     const std::filesystem::path& saveRoot,
-    const std::string& saveId) {
+    const std::string& saveId,
+    const cr::CreativeWorldLayout* worldLayout) {
   cr::CreativeDocument docCopy = facade.document();  // Copy: save drains.
   iggy3d::CreativeWorldSaveRequest request;
   request.saveRoot = saveRoot;
   request.saveId = saveId;
   request.document = &docCopy;  // Mutable pointer at the local copy.
+  request.worldLayout = worldLayout;
   request.worldTitle = "standalone";
   request.saveTitle = "scene";
   const iggy3d::CreativeWorldSaveResult result =
@@ -115,7 +117,8 @@ iggy3d::CreativeWorldSaveResult saveStandaloneScene(
 
 bool loadStandaloneScene(cr::CreativeAppState& appState,
                          const std::filesystem::path& saveRoot,
-                         const std::string& saveId) {
+                         const std::string& saveId,
+                         cr::CreativeWorldLayout* worldLayout) {
   iggy3d::CreativeWorldOpenRequest request;
   request.saveRoot = saveRoot;
   request.saveId = saveId;
@@ -126,6 +129,11 @@ bool loadStandaloneScene(cr::CreativeAppState& appState,
           result.reasonCode.c_str());
   if (!result.accepted) {
     return false;
+  }
+  if (worldLayout != nullptr) {
+    *worldLayout = result.worldLayoutPresent
+                       ? std::move(result.worldLayout)
+                       : cr::CreativeWorldLayout{};
   }
   const cr::CreativeFacadeDocumentInstallReceipt installReceipt =
       appState.facade.installDocument(std::move(result.document));

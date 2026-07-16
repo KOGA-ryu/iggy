@@ -25,6 +25,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <utility>
 
 #include <SDL3/SDL.h>
 
@@ -278,11 +279,14 @@ int main(int argc, char** argv) {
   std::string saveId = bootstrapData.saveId;
   if (!loadSaveId.empty()) {
     saveId = loadSaveId;
-    if (!loadStandaloneScene(appState, saveRoot, saveId)) {
+    creative::CreativeWorldLayout loadedLayout;
+    if (!loadStandaloneScene(appState, saveRoot, saveId, &loadedLayout)) {
       SDL_Log("iggy3d_creative: startup load failed saveId='%s'",
               saveId.c_str());
       return 1;
     }
+    installCreativeEditorWorldLayout(editor.worldLayout,
+                                     std::move(loadedLayout));
     floorObjectId = firstFloorObjectId(appState.facade.document());
     if (mapTemplateId == creative::kDitchHouseMapTemplateId) {
       editor.flyPos = {4.0F, 16.0F, 34.0F};
@@ -449,7 +453,7 @@ int main(int argc, char** argv) {
           editor.desktopUi.lastSavedRevision =
               activeAppState.facade.document().revision();
         }
-        if (desktopResult.documentReplaced) {
+        if (desktopResult.documentReplaced || desktopResult.sceneChanged) {
           invalidateCreativeEditorSceneCache(sceneCache);
         }
         if (!playWasActive && desktopResult.accepted &&
@@ -628,12 +632,14 @@ int main(int argc, char** argv) {
              catalogFrame.toolOptionsEntry,
              extent.width,
              extent.height});
+    const bool layoutPreviewActive =
+        creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
     const bool modalBlocksWorldActions =
         assetLibraryFrame.blockWorldActions ||
         controlsFrame.blockWorldActions || transformFrame.blockWorldActions ||
         catalogFrame.blockWorldActions ||
         assetReplacementFrame.blockWorldActions ||
-        toolOptionsFrame.blockWorldActions;
+        toolOptionsFrame.blockWorldActions || layoutPreviewActive;
     if (modalBlocksWorldActions || !frameInput.windowFocused) {
       finalizeCreativeEditorContinuousGestures(
           activeAppState, editor,
@@ -663,9 +669,12 @@ int main(int argc, char** argv) {
     // eventually consume, then project that RoomAsset through the runtime scene
     // path. Standalone-only editor proxies remain only for objects that RoomBake
     // did not emit as static geometry, such as Point anchors and Path routes.
+    const creative::CreativeDocument& layoutRenderDocument =
+        creativeEditorWorldLayoutRenderDocument(
+            editor.worldLayout, activeAppState.facade.document());
     const creative::CreativeDocument& renderDocument =
         iggy3d_creative_app::creativeEditorAssetReplacementRenderDocument(
-            editor.assetReplacement, activeAppState.facade.document());
+            editor.assetReplacement, layoutRenderDocument);
     static_cast<void>(refreshCreativeEditorSceneCache(
         sceneCache, renderDocument, gridSnapshot,
         &bootstrapData.staticMeshAssetCatalog));

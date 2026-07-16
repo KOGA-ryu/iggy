@@ -405,6 +405,25 @@ void Reader::readCreativeDocument() {
   }
 }
 
+void Reader::readCreativeWorldLayout() {
+  if (!nextKeyIs("creativeWorldLayout.present")) {
+    return;
+  }
+  SaveCreativeWorldLayoutSection& section = envelope_.creativeWorldLayout;
+  readBool("creativeWorldLayout.present", section.present);
+  if (!section.present) {
+    return;
+  }
+  readUnsigned("creativeWorldLayout.version", section.version);
+  readString("creativeWorldLayout.encodedText", section.encodedText);
+  constexpr std::size_t kMaxEncodedWorldLayoutBytes = 8U * 1024U * 1024U;
+  if (section.encodedText.size() > kMaxEncodedWorldLayoutBytes) {
+    result_ = fail(SaveCodecStatus::InvalidNumber,
+                   "creativeWorldLayout.encodedText", index_,
+                   "world layout source exceeds limit");
+  }
+}
+
 void Reader::readPlayers() {
   std::uint64_t count = 0;
   readUnsigned("players.slot.count", count);

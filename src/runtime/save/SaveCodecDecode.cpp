@@ -158,6 +158,7 @@ SaveDecodeResult Reader::decode() {
   readWorld();
   readAuthoredRoom();
   readCreativeDocument();
+  readCreativeWorldLayout();
   readPlayers();
   readClock();
   readCamera();

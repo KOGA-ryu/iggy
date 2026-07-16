@@ -656,6 +656,32 @@ ProductCreativeSaveWriteResult writeCreativeDocumentSaveDurably(
   envelope.metadata.savedStateHash = 0;
   envelope.metadata.savedStateHashHex = "0000000000000000";
   envelope.creativeDocument = section.section;
+  if (request.creativeWorldLayoutEncoded != nullptr) {
+    if (request.creativeWorldLayoutEncoded->empty()) {
+      result.status = "creative_world_layout_encoded_empty";
+      result.reasonCode = result.status;
+      result.durableReason = result.status;
+      return result;
+    }
+    constexpr std::size_t kMaxCreativeWorldLayoutEncodedBytes =
+        8U * 1024U * 1024U;
+    if (request.creativeWorldLayoutEncoded->size() >
+        kMaxCreativeWorldLayoutEncodedBytes) {
+      result.status = "creative_world_layout_encoded_size_exceeded";
+      result.reasonCode = result.status;
+      result.durableReason = result.status;
+      return result;
+    }
+    envelope.creativeWorldLayout.present = true;
+    envelope.creativeWorldLayout.version =
+        request.creativeWorldLayoutVersion;
+    envelope.creativeWorldLayout.encodedText =
+        *request.creativeWorldLayoutEncoded;
+    result.creativeWorldLayoutPresent = true;
+    result.creativeWorldLayoutVersion = request.creativeWorldLayoutVersion;
+    result.creativeWorldLayoutEncodedBytes =
+        request.creativeWorldLayoutEncoded->size();
+  }
 
   SaveFileEnvelopeDurableWriteRequest durableRequest;
   durableRequest.root = request.saveRoot;
@@ -720,6 +746,12 @@ ProductCreativeSaveLoadResult loadCreativeDocumentSave(
 
   result.decoded = true;
   mirrorCreativeMetadata(result, decoded.envelope);
+  result.creativeWorldLayoutPresent =
+      decoded.envelope.creativeWorldLayout.present;
+  result.creativeWorldLayoutVersion =
+      decoded.envelope.creativeWorldLayout.version;
+  result.creativeWorldLayoutEncoded =
+      decoded.envelope.creativeWorldLayout.encodedText;
 
   const ProductCreativeDocumentSectionRestoreResult restored =
       restoreCreativeDocumentFromSaveSection(decoded.envelope.creativeDocument);

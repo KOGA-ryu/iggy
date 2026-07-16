@@ -79,6 +79,7 @@ struct CreativeEditorDesktopUiState {
   bool showToolSettings = true;
   bool showAssetLibrary = true;
   bool showHistory = true;
+  bool showWorldLayout = true;
 
   // Docked workspace layout. Built once via DockBuilder, rebuilt on Reset
   // Layout. The default arrangement follows the target proportions: Project

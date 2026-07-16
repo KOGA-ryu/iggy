@@ -5,6 +5,7 @@
 #include <string_view>
 #include <utility>
 
+#include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
 #include "runtime/save/SaveFileStore.hpp"
 
 namespace iggy3d {
@@ -94,6 +95,7 @@ void mirrorOpenLoad(CreativeWorldOpenResult& result,
   result.documentId = load.documentId;
   result.objectCount = load.creativeObjectCount;
   result.nextObjectId = load.creativeNextObjectId;
+  result.worldLayoutPresent = load.creativeWorldLayoutPresent;
 }
 
 void mirrorSaveDocumentState(CreativeWorldSaveResult& result,
@@ -122,6 +124,27 @@ void mirrorSaveWrite(CreativeWorldSaveResult& result,
   result.documentId = saveWrite.documentId;
   result.objectCount = saveWrite.creativeObjectCount;
   result.nextObjectId = saveWrite.creativeNextObjectId;
+  result.worldLayoutPresent = saveWrite.creativeWorldLayoutPresent;
+}
+
+bool encodeWorldLayoutForSave(
+    const creative::CreativeWorldLayout* layout,
+    std::string& encoded,
+    creative::CreativeWorldLayoutCodecStatus& status,
+    std::string& reasonCode) {
+  if (layout == nullptr) {
+    status = creative::CreativeWorldLayoutCodecStatus::NotRequested;
+    return true;
+  }
+  const creative::CreativeWorldLayoutEncodeResult result =
+      creative::encodeCreativeWorldLayout(*layout);
+  status = result.status;
+  if (!result.accepted) {
+    reasonCode = result.reasonCode;
+    return false;
+  }
+  encoded = result.encodedText;
+  return true;
 }
 
 }  // namespace
@@ -180,6 +203,19 @@ CreativeWorldCreateResult createCreativeWorld(
   saveRequest.saveRoot = request.saveRoot;
   saveRequest.attemptToken = request.attemptToken;
   saveRequest.document = &result.document;
+  std::string encodedWorldLayout;
+  if (!encodeWorldLayoutForSave(
+          request.worldLayout, encodedWorldLayout,
+          result.worldLayoutCodecStatus, result.reasonCode)) {
+    result.status = result.reasonCode;
+    return result;
+  }
+  if (request.worldLayout != nullptr) {
+    saveRequest.creativeWorldLayoutEncoded = &encodedWorldLayout;
+    saveRequest.creativeWorldLayoutVersion =
+        creative::kCreativeWorldLayoutCodecVersion;
+    result.worldLayoutPresent = true;
+  }
   saveRequest.packageId = request.packageId;
   saveRequest.scenarioId = request.scenarioId;
   saveRequest.worldId = result.worldId;
@@ -231,6 +267,26 @@ CreativeWorldOpenResult openCreativeWorld(
     return result;
   }
 
+  if (load.creativeWorldLayoutPresent) {
+    if (load.creativeWorldLayoutVersion !=
+        creative::kCreativeWorldLayoutCodecVersion) {
+      result.worldLayoutCodecStatus =
+          creative::CreativeWorldLayoutCodecStatus::UnsupportedVersion;
+      setResultStatus(result, "creative_world_layout_section_unsupported");
+      return result;
+    }
+    creative::CreativeWorldLayoutDecodeResult decodedLayout =
+        creative::decodeCreativeWorldLayout(
+            load.creativeWorldLayoutEncoded);
+    result.worldLayoutCodecStatus = decodedLayout.status;
+    if (!decodedLayout.accepted) {
+      setResultStatus(result, decodedLayout.reasonCode);
+      return result;
+    }
+    result.worldLayout = std::move(decodedLayout.layout);
+    result.worldLayoutPresent = true;
+  }
+
   result.document = load.document;
   result.accepted = true;
   setResultStatus(result, "creative_world_opened");
@@ -271,6 +327,19 @@ CreativeWorldSaveResult saveCreativeWorld(
   saveRequest.saveIdHint = request.saveId;
   saveRequest.attemptToken = request.attemptToken;
   saveRequest.document = request.document;
+  std::string encodedWorldLayout;
+  if (!encodeWorldLayoutForSave(
+          request.worldLayout, encodedWorldLayout,
+          result.worldLayoutCodecStatus, result.reasonCode)) {
+    result.status = result.reasonCode;
+    return result;
+  }
+  if (request.worldLayout != nullptr) {
+    saveRequest.creativeWorldLayoutEncoded = &encodedWorldLayout;
+    saveRequest.creativeWorldLayoutVersion =
+        creative::kCreativeWorldLayoutCodecVersion;
+    result.worldLayoutPresent = true;
+  }
   saveRequest.packageId = request.packageId;
   saveRequest.scenarioId = request.scenarioId;
   saveRequest.worldId = request.worldId;

@@ -30,6 +30,7 @@ inline constexpr std::uint32_t kSaveCreativeDocumentWaypointDwellVersion = 9;
 inline constexpr std::uint32_t kSaveCreativeDocumentSegmentSpeedVersion = 10;
 inline constexpr std::uint32_t kSaveCreativeDocumentSectionVersion =
     kSaveCreativeDocumentSegmentSpeedVersion;
+inline constexpr std::uint32_t kSaveCreativeWorldLayoutSectionVersion = 1U;
 
 struct SaveEnvelopeMetadata {
   std::uint32_t schemaVersion = kSaveSchemaVersion;
@@ -268,6 +269,16 @@ struct SaveCreativeDocumentSection {
   std::vector<SaveCreativeDocumentTerrainMaterialRecord> terrainMaterials;
 };
 
+// The 2D semantic authoring source is encoded by the Creative world-layout
+// codec. Keeping it inside the same envelope makes document + source one
+// atomic durable write without coupling the runtime save layer to Creative
+// layout record types.
+struct SaveCreativeWorldLayoutSection {
+  bool present = false;
+  std::uint32_t version = kSaveCreativeWorldLayoutSectionVersion;
+  std::string encodedText;
+};
+
 struct SavePlayerSlotRecord {
   PlayerSlotId slotId = kInvalidPlayerSlotId;
   PlayerSlotKind kind = PlayerSlotKind::Unknown;
@@ -422,6 +433,7 @@ struct SaveEnvelope {
   SaveWorldSection world;
   SaveAuthoredRoomSection authoredRoom;
   SaveCreativeDocumentSection creativeDocument;
+  SaveCreativeWorldLayoutSection creativeWorldLayout;
   SavePlayerSection players;
   SaveClockSection clock;
   SaveCameraSection camera;

@@ -105,6 +105,11 @@ struct ProductCreativeSaveWriteRequest {
   std::string saveIdHint;
   std::string attemptToken;
   const creative::CreativeDocument* document = nullptr;
+  // Optional versioned 2D authoring source. The Creative world-layout codec
+  // owns the bytes; SaveBridge only transports them inside the same envelope
+  // as the generated document.
+  const std::string* creativeWorldLayoutEncoded = nullptr;
+  std::uint32_t creativeWorldLayoutVersion = 1U;
   std::string packageId;
   std::string scenarioId;
   std::string worldId;
@@ -143,6 +148,9 @@ struct ProductCreativeSaveWriteResult {
   std::uint64_t creativeObjectCount = 0;
   creative::CreativeObjectId creativeNextObjectId =
       creative::kInvalidObjectId;
+  bool creativeWorldLayoutPresent = false;
+  std::uint32_t creativeWorldLayoutVersion = 0U;
+  std::uint64_t creativeWorldLayoutEncodedBytes = 0U;
 };
 
 struct ProductCreativeSaveLoadRequest {
@@ -172,6 +180,9 @@ struct ProductCreativeSaveLoadResult {
   std::uint64_t creativeObjectCount = 0;
   creative::CreativeObjectId creativeNextObjectId =
       creative::kInvalidObjectId;
+  bool creativeWorldLayoutPresent = false;
+  std::uint32_t creativeWorldLayoutVersion = 0U;
+  std::string creativeWorldLayoutEncoded;
 };
 
 struct ProductSaveSoftDeleteRequest {

@@ -9,6 +9,7 @@
 #include "EditorDesktopModel.hpp"
 #include "EditorDesktopWidgets.hpp"
 #include "EditorPlayMode.hpp"
+#include "EditorWorldLayoutPanel.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
 #include "app/iggy3d/creative/tools/Select.hpp"
 
@@ -169,6 +170,7 @@ void buildCreativeEditorDesktopMenuBar(
       ImGui::MenuItem("Project", nullptr, &desktopUi.showOutliner);
       ImGui::MenuItem("Inspector", nullptr, &desktopUi.showInspector);
       ImGui::MenuItem("Diagnostics", nullptr, &desktopUi.showDiagnostics);
+      ImGui::MenuItem("World Layout", nullptr, &desktopUi.showWorldLayout);
       ImGui::Separator();
       if (ImGui::MenuItem("Reset Layout")) {
         desktopUi.resetLayoutRequested = true;
@@ -209,7 +211,7 @@ void buildCreativeEditorDesktopMenuBar(
 
 void buildCreativeEditorDesktopPanels(
     CreativeEditorDesktopUiState& desktopUi,
-    const CreativeEditorState& editor,
+    CreativeEditorState& editor,
     const cr::CreativeAppState& appState,
     const CreativeEditorPlayMode* playMode,
     CreativeDesktopCommandFrame& commands) {
@@ -234,6 +236,18 @@ void buildCreativeEditorDesktopPanels(
       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
   if (ImGui::Begin("Toolbar##desktop", nullptr, toolbarFlags)) {
     appendToolbarHeader(appState, editor, playModeActive);
+    ImGui::SameLine();
+    ImGui::TextDisabled("|");
+    ImGui::SameLine();
+    if (ImGui::Button("World Layout")) {
+      desktopUi.showWorldLayout = true;
+    }
+    if (creativeEditorWorldLayoutPreviewActive(editor.worldLayout)) {
+      ImGui::SameLine();
+      if (ImGui::Button("Close Preview")) {
+        commands.push(CreativeDesktopCommandId::WorldLayoutCancelPreview);
+      }
+    }
   }
   ImGui::End();
 
@@ -274,6 +288,9 @@ void buildCreativeEditorDesktopPanels(
     }
     ImGui::End();
   }
+
+  buildCreativeEditorWorldLayoutPanel(desktopUi, editor, playModeActive,
+                                      commands);
 }
 
 void buildCreativeEditorDesktopStatusBar(
@@ -294,7 +311,8 @@ void buildCreativeEditorDesktopStatusBar(
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0F);
   if (ImGui::Begin("##creative_desktop_status", nullptr, flags)) {
     const cr::CreativeDocument& document = appState.facade.document();
-    const bool dirty = document.revision() != desktopUi.lastSavedRevision;
+    const bool dirty = document.revision() != desktopUi.lastSavedRevision ||
+                       creativeEditorWorldLayoutDirty(editor.worldLayout);
     const std::uint64_t selectionCount =
         cr::selectedTargetCount(appState.facade.selectionState());
     const std::string_view name = document.name();

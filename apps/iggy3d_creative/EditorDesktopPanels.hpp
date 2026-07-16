@@ -24,7 +24,7 @@ void buildCreativeEditorDesktopMenuBar(
 // Must run inside the ImGui frame, after the dockspace is laid out.
 void buildCreativeEditorDesktopPanels(
     CreativeEditorDesktopUiState& desktopUi,
-    const CreativeEditorState& editor,
+    CreativeEditorState& editor,
     const iggy3d::creative::CreativeAppState& appState,
     const CreativeEditorPlayMode* playMode,
     CreativeDesktopCommandFrame& commands);

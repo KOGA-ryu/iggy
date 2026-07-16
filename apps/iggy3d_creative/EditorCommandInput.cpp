@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <utility>
 
 #include "app/iggy3d/creative/tools/Tools.hpp"
 
@@ -39,6 +40,7 @@ void resetCreativeEditorForDocumentReplacement(
                                   documentId);
   editor.interaction.movingPlatformPathEdit = {};
   editor.movingPlatformPreview = {};
+  resetCreativeEditorWorldLayout(editor.worldLayout);
 }
 
 namespace {
@@ -365,9 +367,11 @@ void applyCreativeEditorCommandInput(
       }
       case creative::CreativeInputActionId::Save: {
         const iggy3d::CreativeWorldSaveResult saveResult =
-            saveStandaloneScene(appState.facade, saveRoot, saveId);
+            saveStandaloneScene(appState.facade, saveRoot, saveId,
+                                &editor.worldLayout.source);
         if (saveResult.accepted && saveResult.saved) {
           clearEditHistory(appState.history, "save_success");
+          markCreativeEditorWorldLayoutSaved(editor.worldLayout);
         }
         break;
       }
@@ -378,11 +382,15 @@ void applyCreativeEditorCommandInput(
             editor, appState.facade.document().id());
         break;
       case creative::CreativeInputActionId::Load: {
-        const bool loaded = loadStandaloneScene(appState, saveRoot, saveId);
+        creative::CreativeWorldLayout loadedLayout;
+        const bool loaded = loadStandaloneScene(appState, saveRoot, saveId,
+                                                &loadedLayout);
         if (loaded) {
           clearEditHistory(appState.history, "load_success");
           resetCreativeEditorForDocumentReplacement(
               editor, appState.facade.document().id());
+          installCreativeEditorWorldLayout(editor.worldLayout,
+                                           std::move(loadedLayout));
         }
         break;
       }

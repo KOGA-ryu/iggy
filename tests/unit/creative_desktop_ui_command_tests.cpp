@@ -1244,6 +1244,66 @@ bool mismatchedPayloadsAreNoOpFailures() {
                 "mismatched payloads mutate nothing and record no history");
 }
 
+bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd World Layout");
+  static_cast<void>(document.assignId(422U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+
+  const app::CreativeDesktopCommandResult tool = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSetTool, context,
+      app::CreativeDesktopWorldLayoutToolPayload{
+          app::CreativeEditorWorldLayoutTool::Floor});
+  const app::CreativeDesktopCommandResult anchor = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutCanvasPoint, context,
+      app::CreativeDesktopWorldLayoutPointPayload{{0.0, 0.0}});
+  const app::CreativeDesktopCommandResult floor = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutCanvasPoint, context,
+      app::CreativeDesktopWorldLayoutPointPayload{{6.0, 5.0}});
+
+  const std::uint64_t liveCountBefore =
+      appState.facade.document().objectCount();
+  const app::CreativeDesktopCommandResult preview = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutPreview, context);
+  const bool exactPreviewVisible =
+      app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      app::creativeEditorWorldLayoutRenderDocument(
+          editor.worldLayout, appState.facade.document())
+              .objectCount() > liveCountBefore;
+  const app::CreativeDesktopCommandResult cancelled = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutCancelPreview, context);
+  const bool canvasRestoredAfterCancel =
+      editor.desktopUi.showWorldLayout &&
+      !app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+  const app::CreativeDesktopCommandResult previewAgain = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutPreview, context);
+  const app::CreativeDesktopCommandResult generated = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+
+  return expect(tool.accepted && anchor.accepted && !anchor.changed &&
+                    floor.accepted && floor.worldLayoutChanged,
+                "layout tools and canvas points route through typed payloads") &&
+         expect(preview.accepted && preview.sceneChanged &&
+                    exactPreviewVisible && !editor.desktopUi.showWorldLayout,
+                "layout preview is exact, transient, and closes the canvas") &&
+         expect(cancelled.accepted && cancelled.sceneChanged &&
+                    canvasRestoredAfterCancel,
+                "layout preview cancel restores the canvas") &&
+         expect(previewAgain.accepted && generated.accepted &&
+                    generated.changed && generated.sceneChanged,
+                "layout confirm publishes through the semantic dispatcher") &&
+         expect(appState.facade.document().objectCount() > liveCountBefore &&
+                    cr::creativeUndoDepth(appState.history) == 1U,
+                "layout generation installs objects with one undo entry");
+}
+
 }  // namespace
 
 int main() {
@@ -1270,5 +1330,6 @@ int main() {
   ok = assetAndInstanceCommandsRouteAndRejectCleanly() && ok;
   ok = assetAndInstanceCommandsCompleteSuccessPaths() && ok;
   ok = mismatchedPayloadsAreNoOpFailures() && ok;
+  ok = worldLayoutCommandsPreviewAndGenerateThroughDispatcher() && ok;
   return ok ? 0 : 1;
 }

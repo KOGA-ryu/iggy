@@ -128,6 +128,8 @@ void dispatchOne(const CreativeDesktopCommand& command,
   result.accepted = false;
   result.changed = false;
   result.documentReplaced = false;
+  result.sceneChanged = false;
+  result.worldLayoutChanged = false;
   result.affectedObjectCount = 0U;
   result.message.clear();
 
@@ -152,11 +154,15 @@ void dispatchOne(const CreativeDesktopCommand& command,
     case CreativeDesktopCommandId::OpenDocument: {
       const std::string saveId =
           context.activeSaveId != nullptr ? *context.activeSaveId : std::string{};
-      const bool loaded = loadStandaloneScene(appState, context.saveRoot, saveId);
+      creative::CreativeWorldLayout loadedLayout;
+      const bool loaded = loadStandaloneScene(
+          appState, context.saveRoot, saveId, &loadedLayout);
       if (loaded) {
         clearEditHistory(appState.history, "desktop_open");
         resetCreativeEditorForDocumentReplacement(
             editor, appState.facade.document().id());
+        installCreativeEditorWorldLayout(editor.worldLayout,
+                                         std::move(loadedLayout));
       }
       result.accepted = loaded;
       result.changed = loaded;
@@ -168,10 +174,12 @@ void dispatchOne(const CreativeDesktopCommand& command,
       const std::string saveId =
           context.activeSaveId != nullptr ? *context.activeSaveId : std::string{};
       const iggy3d::CreativeWorldSaveResult saveResult =
-          saveStandaloneScene(appState.facade, context.saveRoot, saveId);
+          saveStandaloneScene(appState.facade, context.saveRoot, saveId,
+                              &editor.worldLayout.source);
       const bool ok = saveResult.accepted && saveResult.saved;
       if (ok) {
         clearEditHistory(appState.history, "desktop_save");
+        markCreativeEditorWorldLayoutSaved(editor.worldLayout);
       }
       result.accepted = ok;
       result.changed = ok;
@@ -186,13 +194,15 @@ void dispatchOne(const CreativeDesktopCommand& command,
         break;
       }
       const iggy3d::CreativeWorldSaveResult saveResult =
-          saveStandaloneScene(appState.facade, context.saveRoot, saveId);
+          saveStandaloneScene(appState.facade, context.saveRoot, saveId,
+                              &editor.worldLayout.source);
       const bool ok = saveResult.accepted && saveResult.saved;
       if (ok) {
         if (context.activeSaveId != nullptr) {
           *context.activeSaveId = saveId;
         }
         clearEditHistory(appState.history, "desktop_save_as");
+        markCreativeEditorWorldLayoutSaved(editor.worldLayout);
       }
       result.accepted = ok;
       result.changed = ok;
@@ -667,6 +677,89 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.changed = receipt.accepted;
       result.message = receipt.accepted ? "asset updated from instance"
                                         : "update failed: " + receipt.reasonCode;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutSetTool: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutToolPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout tool: payload mismatch";
+        break;
+      }
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          setCreativeEditorWorldLayoutTool(editor.worldLayout, payload->tool);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutCanvasPoint: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutPointPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout point: payload mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          applyCreativeEditorWorldLayoutPoint(editor.worldLayout,
+                                              payload->point);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutDeleteSelection: {
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          deleteCreativeEditorWorldLayoutSelection(editor.worldLayout);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutPreview: {
+      const CreativeEditorWorldLayoutPreviewReceipt receipt =
+          previewCreativeEditorWorldLayout(editor.worldLayout,
+                                           appState.facade.document());
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.sceneChanged = receipt.accepted;
+      result.message = editor.worldLayout.statusMessage;
+      if (receipt.accepted) {
+        editor.desktopUi.showWorldLayout = false;
+      }
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutConfirm: {
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutApplyReceipt receipt =
+          confirmCreativeEditorWorldLayout(editor.worldLayout, appState);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.sceneChanged = previewWasActive || receipt.changed;
+      result.affectedObjectCount = receipt.apply.installReceipt.nextObjectCount;
+      result.message = editor.worldLayout.statusMessage;
+      if (receipt.accepted) {
+        editor.desktopUi.showWorldLayout = false;
+      }
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutCancelPreview: {
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          cancelCreativeEditorWorldLayoutPreview(editor.worldLayout);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.sceneChanged = receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      editor.desktopUi.showWorldLayout = true;
       break;
     }
     case CreativeDesktopCommandId::Play:

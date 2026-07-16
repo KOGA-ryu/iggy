@@ -124,6 +124,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/recipes/TerrainRecipe.cpp
     src/app/iggy3d/creative/world/WorldLayout.cpp
     src/app/iggy3d/creative/world/WorldLayoutApply.cpp
+    src/app/iggy3d/creative/world/WorldLayoutCodec.cpp
     src/app/iggy3d/creative/tools/RoomShell.cpp
     src/app/iggy3d/creative/ui/UiTheme.cpp
     src/app/iggy3d/creative/ui/UiWidgets.cpp
@@ -303,6 +304,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorInteraction.cpp
   apps/iggy3d_creative/EditorInteractionOverlay.cpp
   apps/iggy3d_creative/EditorWorldTargeting.cpp
+  apps/iggy3d_creative/EditorWorldLayout.cpp
   apps/iggy3d_creative/EditorConnectedFill.cpp
   apps/iggy3d_creative/EditorSurfaceExtrude.cpp
   apps/iggy3d_creative/EditorTerrain.cpp
@@ -345,7 +347,8 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorDesktopModel.cpp
   apps/iggy3d_creative/EditorDesktopOutliner.cpp
   apps/iggy3d_creative/EditorDesktopInspector.cpp
-  apps/iggy3d_creative/EditorDesktopPanels.cpp)
+  apps/iggy3d_creative/EditorDesktopPanels.cpp
+  apps/iggy3d_creative/EditorWorldLayoutPanel.cpp)
 
 add_library(iggy3d_creative_app STATIC ${IGGY3D_CREATIVE_APP_SOURCES})
 target_link_libraries(iggy3d_creative_app PUBLIC iggy3d)

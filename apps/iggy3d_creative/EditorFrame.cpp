@@ -254,6 +254,9 @@ void setSdlKey(creative::CreativeInputFrame& frame,
       // first so scripted --capture runs remain input-inert.
       Candidate{desktopUiWantsInput,
                 creative::CreativeInputContext::DesktopUi},
+      Candidate{editorInteractionEnabled &&
+                    creativeEditorWorldLayoutPreviewActive(editor.worldLayout),
+                creative::CreativeInputContext::DesktopUi},
       Candidate{editorInteractionEnabled && editor.assetLibrary.open,
                 creative::CreativeInputContext::AssetLibrary},
       Candidate{editorInteractionEnabled && editor.assetEdit.active &&

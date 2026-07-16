@@ -39,11 +39,14 @@ void logDocumentSnapshot(const char* phase,
 [[nodiscard]] iggy3d::CreativeWorldSaveResult saveStandaloneScene(
     const cr::Facade& facade,
     const std::filesystem::path& saveRoot,
-    const std::string& saveId);
+    const std::string& saveId,
+    const cr::CreativeWorldLayout* worldLayout = nullptr);
 
 [[nodiscard]] bool loadStandaloneScene(cr::CreativeAppState& appState,
                                        const std::filesystem::path& saveRoot,
-                                       const std::string& saveId);
+                                       const std::string& saveId,
+                                       cr::CreativeWorldLayout* worldLayout =
+                                           nullptr);
 
 void clearToBlankScene(cr::CreativeAppState& appState);
 

@@ -25,6 +25,7 @@
 #include "EditorToolOptions.hpp"
 #include "EditorTransform.hpp"
 #include "EditorVolume.hpp"
+#include "EditorWorldLayout.hpp"
 
 namespace iggy3d_creative_app {
 
@@ -103,6 +104,7 @@ struct CreativeEditorState {
   CreativeEditorTerrainPaintState terrainPaint;
   CreativeEditorLogicLinkState logicLinks;
   CreativeMovingPlatformPreviewState movingPlatformPreview;
+  CreativeEditorWorldLayoutState worldLayout;
 
   bool placeMode = false;
   std::vector<iggy3d::creative::CreativeObjectKind> brushPalette;
