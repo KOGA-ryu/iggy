@@ -27,6 +27,7 @@ enum class CreativeEditorWorldLayoutSelectionKind : std::uint8_t {
   Box,
   Wall,
   Opening,
+  Building,
 };
 
 struct CreativeEditorWorldLayoutSelection {
@@ -184,6 +185,33 @@ struct CreativeEditorWorldLayoutWallManipulationState {
       "creative_editor_world_layout_wall_manipulation_inactive";
 };
 
+struct CreativeEditorWorldLayoutBuildingBounds {
+  bool valid = false;
+  cr::CreativeTerrainCoord2 minimum;
+  cr::CreativeTerrainCoord2 maximum;
+};
+
+enum class CreativeEditorWorldLayoutBuildingManipulationPhase : std::uint8_t {
+  Begin,
+  Update,
+  Commit,
+  Cancel,
+  Count,
+};
+
+struct CreativeEditorWorldLayoutBuildingManipulationState {
+  bool active = false;
+  std::uint64_t sourceRevision = 0U;
+  std::size_t buildingIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  CreativeEditorWorldLayoutPoint startPoint;
+  CreativeEditorWorldLayoutBuildingBounds originalBounds;
+  std::int64_t previewDeltaXCells = 0;
+  std::int64_t previewDeltaZCells = 0;
+  bool previewValid = false;
+  std::string reasonCode =
+      "creative_editor_world_layout_building_manipulation_inactive";
+};
+
 struct CreativeEditorWorldLayoutOpeningSettings {
   double centerOffsetCells = 0.0;
   double widthCells = 1.0;
@@ -266,6 +294,7 @@ struct CreativeEditorWorldLayoutState {
   CreativeEditorWorldLayoutRoomManipulationState roomManipulation;
   CreativeEditorWorldLayoutBoxManipulationState boxManipulation;
   CreativeEditorWorldLayoutWallManipulationState wallManipulation;
+  CreativeEditorWorldLayoutBuildingManipulationState buildingManipulation;
   CreativeEditorWorldLayoutOpeningManipulationState openingManipulation;
   CreativeEditorWorldLayoutBoxSettingsDraft boxSettingsDraft;
   CreativeEditorWorldLayoutWallSettingsDraft wallSettingsDraft;
@@ -381,6 +410,33 @@ applyCreativeEditorWorldLayoutWallManipulation(
     CreativeEditorWorldLayoutWallManipulationPhase phase,
     CreativeEditorWorldLayoutPoint point = {},
     double toleranceCells = 0.25);
+[[nodiscard]] std::size_t creativeEditorWorldLayoutSelectedBuilding(
+    const CreativeEditorWorldLayoutState& state) noexcept;
+[[nodiscard]] bool readCreativeEditorWorldLayoutBuildingBounds(
+    const CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
+    CreativeEditorWorldLayoutBuildingBounds& output) noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+selectCreativeEditorWorldLayoutBuilding(CreativeEditorWorldLayoutState& state,
+                                        std::size_t buildingIndex);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+clearCreativeEditorWorldLayoutSelection(
+    CreativeEditorWorldLayoutState& state);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+applyCreativeEditorWorldLayoutBuildingManipulation(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutBuildingManipulationPhase phase,
+    CreativeEditorWorldLayoutPoint point = {},
+    double toleranceCells = 0.25);
+[[nodiscard]] bool defaultCreativeEditorWorldLayoutBuildingDuplicateOffset(
+    const CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
+    std::int64_t& deltaXCells, std::int64_t& deltaZCells) noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+duplicateCreativeEditorWorldLayoutBuilding(
+    CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
+    std::int64_t deltaXCells, std::int64_t deltaZCells);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+deleteCreativeEditorWorldLayoutBuilding(CreativeEditorWorldLayoutState& state,
+                                        std::size_t buildingIndex);
 [[nodiscard]] bool readCreativeEditorWorldLayoutOpeningSettings(
     const CreativeEditorWorldLayoutState& state, std::size_t openingIndex,
     CreativeEditorWorldLayoutOpeningSettings& output) noexcept;

@@ -693,6 +693,76 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutSelectBuilding: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutBuildingSelectionPayload>(
+              command);
+      if (payload == nullptr) {
+        result.message = "layout building selection: payload mismatch";
+        break;
+      }
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          selectCreativeEditorWorldLayoutBuilding(
+              editor.worldLayout, payload->buildingIndex);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutClearSelection: {
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          clearCreativeEditorWorldLayoutSelection(editor.worldLayout);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutManipulateBuilding: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutBuildingManipulationPayload>(
+              command);
+      if (payload == nullptr) {
+        result.message = "layout building manipulation: payload mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          applyCreativeEditorWorldLayoutBuildingManipulation(
+              editor.worldLayout, payload->phase, payload->point,
+              payload->toleranceCells);
+      const bool sourceChanged =
+          payload->phase ==
+              CreativeEditorWorldLayoutBuildingManipulationPhase::Commit &&
+          receipt.changed;
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = sourceChanged;
+      result.sceneChanged = previewWasActive && sourceChanged;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutDuplicateBuilding: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutBuildingDuplicatePayload>(
+              command);
+      if (payload == nullptr) {
+        result.message = "layout building duplicate: payload mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          duplicateCreativeEditorWorldLayoutBuilding(
+              editor.worldLayout, payload->buildingIndex,
+              payload->deltaXCells, payload->deltaZCells);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutCanvasPoint: {
       const auto* payload =
           payloadAs<CreativeDesktopWorldLayoutPointPayload>(command);

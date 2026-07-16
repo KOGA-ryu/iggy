@@ -26,6 +26,67 @@ bool sameWallSettings(
          lhs.thicknessCells == rhs.thicknessCells;
 }
 
+void drawBuildingActions(CreativeEditorWorldLayoutState& state,
+                         CreativeDesktopCommandFrame& commands) {
+  const std::size_t buildingIndex =
+      creativeEditorWorldLayoutSelectedBuilding(state);
+  if (buildingIndex >= state.source.buildings.size()) {
+    return;
+  }
+  const cr::CreativeWorldLayoutBuilding& building =
+      state.source.buildings[buildingIndex];
+  ImGui::Text("Building: %s", building.name.c_str());
+  ImGui::SameLine();
+  if (state.selection.kind !=
+      CreativeEditorWorldLayoutSelectionKind::Building) {
+    if (ImGui::Button("Select building")) {
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutSelectBuilding,
+          CreativeDesktopWorldLayoutBuildingSelectionPayload{buildingIndex});
+    }
+    ImGui::Separator();
+    return;
+  }
+
+  std::uint64_t roomCount = 0U;
+  std::uint64_t boxCount = 0U;
+  std::uint64_t wallCount = 0U;
+  for (const cr::CreativeWorldLayoutRoom& room : state.source.rooms) {
+    roomCount += room.buildingIndex == buildingIndex ? 1U : 0U;
+  }
+  for (const cr::CreativeWorldLayoutBox& box : state.source.boxes) {
+    boxCount += box.buildingIndex == buildingIndex ? 1U : 0U;
+  }
+  for (const cr::CreativeWorldLayoutWall& wall : state.source.walls) {
+    wallCount += wall.buildingIndex == buildingIndex ? 1U : 0U;
+  }
+  ImGui::TextDisabled("rooms %llu  floors %llu  partitions %llu",
+                      static_cast<unsigned long long>(roomCount),
+                      static_cast<unsigned long long>(boxCount),
+                      static_cast<unsigned long long>(wallCount));
+
+  std::int64_t deltaXCells = 0;
+  std::int64_t deltaZCells = 0;
+  const bool canDuplicate =
+      defaultCreativeEditorWorldLayoutBuildingDuplicateOffset(
+          state, buildingIndex, deltaXCells, deltaZCells);
+  ImGui::BeginDisabled(!canDuplicate || state.buildingManipulation.active);
+  if (ImGui::Button("Duplicate building")) {
+    commands.push(
+        CreativeDesktopCommandId::WorldLayoutDuplicateBuilding,
+        CreativeDesktopWorldLayoutBuildingDuplicatePayload{
+            buildingIndex, deltaXCells, deltaZCells});
+  }
+  ImGui::EndDisabled();
+  ImGui::SameLine();
+  ImGui::BeginDisabled(state.buildingManipulation.active);
+  if (ImGui::Button("Edit contents")) {
+    commands.push(CreativeDesktopCommandId::WorldLayoutClearSelection);
+  }
+  ImGui::EndDisabled();
+  ImGui::Separator();
+}
+
 void drawBoxSettings(CreativeEditorWorldLayoutState& state,
                      CreativeDesktopCommandFrame& commands) {
   if (state.selection.kind != CreativeEditorWorldLayoutSelectionKind::Box ||
@@ -221,6 +282,7 @@ void drawWallSettings(CreativeEditorWorldLayoutState& state,
 void drawCreativeEditorWorldLayoutStructureInspector(
     CreativeEditorWorldLayoutState& state,
     CreativeDesktopCommandFrame& commands) {
+  drawBuildingActions(state, commands);
   drawBoxSettings(state, commands);
   drawWallSettings(state, commands);
 }

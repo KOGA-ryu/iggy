@@ -40,6 +40,19 @@ bool selected(const CreativeEditorWorldLayoutState& state,
   return state.selection.kind == kind && state.selection.index == index;
 }
 
+std::pair<double, double> buildingPreviewOffset(
+    const CreativeEditorWorldLayoutState& state,
+    std::size_t buildingIndex) noexcept {
+  if (!state.buildingManipulation.active ||
+      state.buildingManipulation.buildingIndex != buildingIndex) {
+    return {0.0, 0.0};
+  }
+  return {
+      static_cast<double>(state.buildingManipulation.previewDeltaXCells),
+      static_cast<double>(state.buildingManipulation.previewDeltaZCells),
+  };
+}
+
 void drawGrid(ImDrawList& drawList, ImVec2 minimum, ImVec2 maximum,
               const CanvasTransform& transform) {
   const CreativeEditorWorldLayoutPoint worldMinimum =
@@ -74,11 +87,19 @@ void drawGrid(ImDrawList& drawList, ImVec2 minimum, ImVec2 maximum,
 }
 
 void drawFloor(ImDrawList& drawList, const CanvasTransform& transform,
-               const cr::CreativeWorldLayoutBox& box, bool isSelected) {
+               const CreativeEditorWorldLayoutState& state,
+               std::size_t boxIndex) {
+  const cr::CreativeWorldLayoutBox& box = state.source.boxes[boxIndex];
+  const auto [deltaX, deltaZ] =
+      buildingPreviewOffset(state, box.buildingIndex);
   const ImVec2 minimum =
-      toScreen(transform, box.footprint.minimum.x, box.footprint.minimum.z);
+      toScreen(transform, box.footprint.minimum.x + deltaX,
+               box.footprint.minimum.z + deltaZ);
   const ImVec2 maximum =
-      toScreen(transform, box.footprint.maximum.x, box.footprint.maximum.z);
+      toScreen(transform, box.footprint.maximum.x + deltaX,
+               box.footprint.maximum.z + deltaZ);
+  const bool isSelected = selected(
+      state, CreativeEditorWorldLayoutSelectionKind::Box, boxIndex);
   drawList.AddRectFilled(minimum, maximum, color({0.32F, 0.42F, 0.37F, 0.72F}));
   drawList.AddRect(minimum, maximum,
                    isSelected ? color({0.96F, 0.82F, 0.22F, 1.0F})
@@ -87,11 +108,19 @@ void drawFloor(ImDrawList& drawList, const CanvasTransform& transform,
 }
 
 void drawRoom(ImDrawList& drawList, const CanvasTransform& transform,
-              const cr::CreativeWorldLayoutRoom& room, bool isSelected) {
+              const CreativeEditorWorldLayoutState& state,
+              std::size_t roomIndex) {
+  const cr::CreativeWorldLayoutRoom& room = state.source.rooms[roomIndex];
+  const auto [deltaX, deltaZ] =
+      buildingPreviewOffset(state, room.buildingIndex);
   const ImVec2 minimum =
-      toScreen(transform, room.footprint.minimum.x, room.footprint.minimum.z);
+      toScreen(transform, room.footprint.minimum.x + deltaX,
+               room.footprint.minimum.z + deltaZ);
   const ImVec2 maximum =
-      toScreen(transform, room.footprint.maximum.x, room.footprint.maximum.z);
+      toScreen(transform, room.footprint.maximum.x + deltaX,
+               room.footprint.maximum.z + deltaZ);
+  const bool isSelected = selected(
+      state, CreativeEditorWorldLayoutSelectionKind::Room, roomIndex);
   drawList.AddRectFilled(minimum, maximum,
                          color({0.22F, 0.34F, 0.42F, 0.38F}));
   drawList.AddRect(minimum, maximum,
@@ -218,12 +247,18 @@ void drawWall(ImDrawList& drawList, const CanvasTransform& transform,
       selected(state, CreativeEditorWorldLayoutSelectionKind::Wall, wallIndex);
   const bool active = state.wallManipulation.active &&
                       state.wallManipulation.target.wallIndex == wallIndex;
-  const cr::CreativeTerrainCoord2 startPoint =
-      active ? state.wallManipulation.previewStart : wall.start;
-  const cr::CreativeTerrainCoord2 endPoint =
-      active ? state.wallManipulation.previewEnd : wall.end;
-  const ImVec2 start = toScreen(transform, startPoint.x, startPoint.z);
-  const ImVec2 end = toScreen(transform, endPoint.x, endPoint.z);
+  const auto [deltaX, deltaZ] =
+      buildingPreviewOffset(state, wall.buildingIndex);
+  const double startX =
+      (active ? state.wallManipulation.previewStart.x : wall.start.x) + deltaX;
+  const double startZ =
+      (active ? state.wallManipulation.previewStart.z : wall.start.z) + deltaZ;
+  const double endX =
+      (active ? state.wallManipulation.previewEnd.x : wall.end.x) + deltaX;
+  const double endZ =
+      (active ? state.wallManipulation.previewEnd.z : wall.end.z) + deltaZ;
+  const ImVec2 start = toScreen(transform, startX, startZ);
+  const ImVec2 end = toScreen(transform, endX, endZ);
   const ImU32 wallColor =
       active ? (state.wallManipulation.previewValid
                     ? color({0.20F, 0.78F, 0.38F, 1.0F})
@@ -240,14 +275,60 @@ void drawWall(ImDrawList& drawList, const CanvasTransform& transform,
   }
   if (active) {
     char dimensions[48]{};
-    const double length =
-        std::hypot(static_cast<double>(endPoint.x) - startPoint.x,
-                   static_cast<double>(endPoint.z) - startPoint.z);
+    const double length = std::hypot(endX - startX, endZ - startZ);
     std::snprintf(dimensions, sizeof(dimensions), "%.0f long", length);
     drawList.AddText({(start.x + end.x) * 0.5F + 7.0F,
                       (start.y + end.y) * 0.5F + 7.0F},
                      wallColor, dimensions);
   }
+}
+
+void drawBuildingSelection(ImDrawList& drawList,
+                           const CanvasTransform& transform,
+                           const CreativeEditorWorldLayoutState& state) {
+  if (state.selection.kind !=
+          CreativeEditorWorldLayoutSelectionKind::Building ||
+      state.selection.index >= state.source.buildings.size()) {
+    return;
+  }
+  CreativeEditorWorldLayoutBuildingBounds bounds;
+  if (!readCreativeEditorWorldLayoutBuildingBounds(
+          state, state.selection.index, bounds)) {
+    return;
+  }
+  const bool active = state.buildingManipulation.active &&
+                      state.buildingManipulation.buildingIndex ==
+                          state.selection.index;
+  const double deltaX = active ? static_cast<double>(
+                                     state.buildingManipulation
+                                         .previewDeltaXCells)
+                               : 0.0;
+  const double deltaZ = active ? static_cast<double>(
+                                     state.buildingManipulation
+                                         .previewDeltaZCells)
+                               : 0.0;
+  const ImVec2 minimum =
+      toScreen(transform, bounds.minimum.x + deltaX,
+               bounds.minimum.z + deltaZ);
+  const ImVec2 maximum =
+      toScreen(transform, bounds.maximum.x + deltaX,
+               bounds.maximum.z + deltaZ);
+  const ImVec4 tint =
+      active ? (state.buildingManipulation.previewValid
+                    ? ImVec4{0.20F, 0.78F, 0.38F, 1.0F}
+                    : ImVec4{0.92F, 0.29F, 0.24F, 1.0F})
+             : ImVec4{0.96F, 0.82F, 0.22F, 1.0F};
+  ImVec4 fill = tint;
+  fill.w = active ? 0.12F : 0.05F;
+  drawList.AddRectFilled(minimum, maximum, color(fill));
+  drawList.AddRect(minimum, maximum, color(tint), 0.0F, 0,
+                   active ? 4.0F : 3.0F);
+  drawList.AddRectFilled({minimum.x - 5.0F, minimum.y - 5.0F},
+                         {minimum.x + 5.0F, minimum.y + 5.0F}, color(tint));
+  const std::string& name =
+      state.source.buildings[state.selection.index].name;
+  drawList.AddText({minimum.x + 8.0F, minimum.y + 7.0F}, color(tint),
+                   name.c_str());
 }
 
 CreativeEditorWorldLayoutPoint openingPoint(
@@ -394,6 +475,16 @@ void queueRoomManipulation(
                                                         toleranceCells});
 }
 
+void queueBuildingManipulation(
+    CreativeDesktopCommandFrame& commands,
+    CreativeEditorWorldLayoutBuildingManipulationPhase phase,
+    CreativeEditorWorldLayoutPoint point, double toleranceCells) {
+  commands.push(
+      CreativeDesktopCommandId::WorldLayoutManipulateBuilding,
+      CreativeDesktopWorldLayoutBuildingManipulationPayload{
+          phase, point, toleranceCells});
+}
+
 void queueBoxManipulation(
     CreativeDesktopCommandFrame& commands,
     CreativeEditorWorldLayoutBoxManipulationPhase phase,
@@ -431,6 +522,10 @@ void queueLayoutManipulationCancel(
     queueOpeningManipulation(
         commands, CreativeEditorWorldLayoutOpeningManipulationPhase::Cancel, {},
         0.25);
+  } else if (state.buildingManipulation.active) {
+    queueBuildingManipulation(
+        commands,
+        CreativeEditorWorldLayoutBuildingManipulationPhase::Cancel, {}, 0.25);
   } else if (state.wallManipulation.active) {
     queueWallManipulation(
         commands, CreativeEditorWorldLayoutWallManipulationPhase::Cancel, {},
@@ -472,6 +567,25 @@ ImGuiMouseCursor wallHandleCursor(
   const cr::CreativeWorldLayoutWall& wall = state.source.walls[target.wallIndex];
   return wall.start.z == wall.end.z ? ImGuiMouseCursor_ResizeEW
                                    : ImGuiMouseCursor_ResizeNS;
+}
+
+bool selectedBuildingContains(
+    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint point, double toleranceCells) noexcept {
+  if (state.selection.kind !=
+      CreativeEditorWorldLayoutSelectionKind::Building) {
+    return false;
+  }
+  CreativeEditorWorldLayoutBuildingBounds bounds;
+  if (!readCreativeEditorWorldLayoutBuildingBounds(
+          state, state.selection.index, bounds) ||
+      !std::isfinite(point.x) || !std::isfinite(point.z)) {
+    return false;
+  }
+  return point.x >= bounds.minimum.x - toleranceCells &&
+         point.x <= bounds.maximum.x + toleranceCells &&
+         point.z >= bounds.minimum.z - toleranceCells &&
+         point.z <= bounds.maximum.z + toleranceCells;
 }
 
 bool dragTool(CreativeEditorWorldLayoutTool tool) noexcept {
@@ -713,19 +827,16 @@ void drawLayoutCanvas(CreativeEditorState& editor,
                           color({0.105F, 0.12F, 0.135F, 1.0F}));
   drawGrid(*drawList, minimum, maximum, transform);
   for (std::size_t index = 0U; index < state.source.rooms.size(); ++index) {
-    drawRoom(
-        *drawList, transform, state.source.rooms[index],
-        selected(state, CreativeEditorWorldLayoutSelectionKind::Room, index));
+    drawRoom(*drawList, transform, state, index);
   }
   for (std::size_t index = 0U; index < state.source.boxes.size(); ++index) {
-    drawFloor(
-        *drawList, transform, state.source.boxes[index],
-        selected(state, CreativeEditorWorldLayoutSelectionKind::Box, index));
+    drawFloor(*drawList, transform, state, index);
   }
   for (std::size_t index = 0U; index < state.source.walls.size(); ++index) {
     drawWall(*drawList, transform, state, index);
   }
   drawOpenings(*drawList, transform, state);
+  drawBuildingSelection(*drawList, transform, state);
   drawRoomManipulation(*drawList, transform, state);
   drawBoxManipulation(*drawList, transform, state);
   const CreativeEditorWorldLayoutPoint pointerPoint =
@@ -766,7 +877,12 @@ void drawLayoutCanvas(CreativeEditorState& editor,
           ? findCreativeEditorWorldLayoutBoxTarget(state, hoveredPoint,
                                                    handleTolerance)
           : CreativeEditorWorldLayoutBoxTarget{};
-  if (state.openingManipulation.active) {
+  const bool hoveredBuilding =
+      hovered && state.tool == CreativeEditorWorldLayoutTool::Select &&
+      selectedBuildingContains(state, hoveredPoint, handleTolerance);
+  if (state.buildingManipulation.active) {
+    ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
+  } else if (state.openingManipulation.active) {
     ImGui::SetMouseCursor(openingHandleCursor(
         state, state.openingManipulation.target));
   } else if (state.wallManipulation.active) {
@@ -779,7 +895,9 @@ void drawLayoutCanvas(CreativeEditorState& editor,
     ImGui::SetMouseCursor(
         rectHandleCursor(state.boxManipulation.target.handle));
   } else if (hovered && state.tool == CreativeEditorWorldLayoutTool::Select) {
-    if (hoveredOpeningTarget.handle !=
+    if (hoveredBuilding) {
+      ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
+    } else if (hoveredOpeningTarget.handle !=
         CreativeEditorWorldLayoutOpeningHandle::None) {
       ImGui::SetMouseCursor(
           openingHandleCursor(state, hoveredOpeningTarget));
@@ -797,7 +915,12 @@ void drawLayoutCanvas(CreativeEditorState& editor,
 
   if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
     if (state.tool == CreativeEditorWorldLayoutTool::Select) {
-      if (hoveredOpeningTarget.handle !=
+      if (hoveredBuilding) {
+        queueBuildingManipulation(
+            commands,
+            CreativeEditorWorldLayoutBuildingManipulationPhase::Begin,
+            hoveredPoint, handleTolerance);
+      } else if (hoveredOpeningTarget.handle !=
           CreativeEditorWorldLayoutOpeningHandle::None) {
         queueOpeningManipulation(
             commands,
@@ -830,6 +953,30 @@ void drawLayoutCanvas(CreativeEditorState& editor,
       commands.push(CreativeDesktopCommandId::WorldLayoutCanvasPoint,
                     CreativeDesktopWorldLayoutPointPayload{hoveredPoint});
     }
+  }
+
+  const bool cancelBuildingManipulation =
+      state.buildingManipulation.active &&
+      (io.AppFocusLost ||
+       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
+       ImGui::IsKeyPressed(ImGuiKey_Escape));
+  if (cancelBuildingManipulation) {
+    queueBuildingManipulation(
+        commands,
+        CreativeEditorWorldLayoutBuildingManipulationPhase::Cancel,
+        pointerPoint, handleTolerance);
+  } else if (state.buildingManipulation.active &&
+             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+    queueBuildingManipulation(
+        commands,
+        CreativeEditorWorldLayoutBuildingManipulationPhase::Commit,
+        pointerPoint, handleTolerance);
+  } else if (state.buildingManipulation.active &&
+             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+    queueBuildingManipulation(
+        commands,
+        CreativeEditorWorldLayoutBuildingManipulationPhase::Update,
+        pointerPoint, handleTolerance);
   }
 
   const bool cancelOpeningManipulation =
@@ -917,6 +1064,7 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   }
 
   const bool cancelGesture =
+      !state.buildingManipulation.active &&
       !state.openingManipulation.active && !state.wallManipulation.active &&
       !state.roomManipulation.active && !state.boxManipulation.active &&
       state.anchorActive &&
@@ -976,20 +1124,45 @@ void buildCreativeEditorWorldLayoutPanel(
   const bool hasSelection =
       state.selection.kind != CreativeEditorWorldLayoutSelectionKind::None;
   ImGui::BeginDisabled(!hasSelection);
-  if (ImGui::Button("Delete")) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutDeleteSelection);
+  const bool buildingSelected =
+      state.selection.kind == CreativeEditorWorldLayoutSelectionKind::Building;
+  if (ImGui::Button(buildingSelected ? "Delete building" : "Delete")) {
+    if (buildingSelected) {
+      ImGui::OpenPopup("Delete building group");
+    } else {
+      commands.push(CreativeDesktopCommandId::WorldLayoutDeleteSelection);
+    }
   }
   ImGui::EndDisabled();
   ImGui::EndDisabled();
 
+  if (ImGui::BeginPopupModal("Delete building group", nullptr,
+                             ImGuiWindowFlags_AlwaysAutoResize)) {
+    const char* buildingName =
+        buildingSelected && state.selection.index < state.source.buildings.size()
+            ? state.source.buildings[state.selection.index].name.c_str()
+            : "selected building";
+    ImGui::Text("Delete %s and all owned layout symbols?", buildingName);
+    if (ImGui::Button("Delete building")) {
+      commands.push(CreativeDesktopCommandId::WorldLayoutDeleteSelection);
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel")) {
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
+  }
+
   ImGui::BeginDisabled(playModeActive || editor.assetEdit.active);
-  drawSelectedRoomSettings(state, commands);
   drawCreativeEditorWorldLayoutStructureInspector(state, commands);
+  drawSelectedRoomSettings(state, commands);
   drawSelectedOpeningSettings(state, commands);
   ImGui::EndDisabled();
 
   ImGui::TextDisabled(
-      "rooms %llu  floors %llu  partitions %llu  openings %llu  rev %llu%s",
+      "buildings %llu  rooms %llu  floors %llu  partitions %llu  openings %llu  rev %llu%s",
+      static_cast<unsigned long long>(state.source.buildings.size()),
       static_cast<unsigned long long>(state.source.rooms.size()),
       static_cast<unsigned long long>(state.source.boxes.size()),
       static_cast<unsigned long long>(state.source.walls.size()),

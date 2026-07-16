@@ -4,7 +4,9 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <string>
+#include <vector>
 
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
@@ -24,6 +26,24 @@ bool expect(bool condition, const char* message) {
 
 bool near(double lhs, double rhs) {
   return std::abs(lhs - rhs) <= 1.0e-9;
+}
+
+bool stableKeysUnique(const cr::CreativeWorldLayout& layout) {
+  std::vector<std::string> keys;
+  const auto append = [&](const auto& values) {
+    for (const auto& value : values) {
+      keys.push_back(value.stableKey);
+    }
+  };
+  append(layout.buildings);
+  append(layout.rooms);
+  append(layout.boxes);
+  append(layout.walls);
+  append(layout.openings);
+  append(layout.terrainProfiles);
+  append(layout.terrainPaths);
+  std::sort(keys.begin(), keys.end());
+  return std::adjacent_find(keys.begin(), keys.end()) == keys.end();
 }
 
 cr::CreativeAppState appState() {
@@ -612,6 +632,184 @@ bool partitionManipulationPreservesHostedOpeningWorldPositions() {
                 "edited partition and openings remain exact 3D-previewable");
 }
 
+bool buildingGroupMoveDuplicateAndDeleteAreAtomic() {
+  cr::CreativeAppState live = appState();
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state);
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Room));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {0, 0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {6, 4}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Floor));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {-1, -1}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {7, 5}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Window));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(state, {3, 0}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Wall));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {0, 5}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {6, 5}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Door));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(state, {3, 5}));
+  const std::size_t ownerFromOpening =
+      app::creativeEditorWorldLayoutSelectedBuilding(state);
+  const auto selected =
+      app::selectCreativeEditorWorldLayoutBuilding(state, ownerFromOpening);
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Select));
+
+  app::CreativeEditorWorldLayoutBuildingBounds bounds;
+  const bool readBounds = app::readCreativeEditorWorldLayoutBuildingBounds(
+      state, 0U, bounds);
+  const std::uint64_t revisionBeforeCancel = state.revision;
+  static_cast<void>(app::applyCreativeEditorWorldLayoutBuildingManipulation(
+      state,
+      app::CreativeEditorWorldLayoutBuildingManipulationPhase::Begin,
+      {2.0, 2.0}, 0.25));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutBuildingManipulation(
+      state,
+      app::CreativeEditorWorldLayoutBuildingManipulationPhase::Update,
+      {3.0, 3.0}, 0.25));
+  const auto cancelled =
+      app::applyCreativeEditorWorldLayoutBuildingManipulation(
+          state,
+          app::CreativeEditorWorldLayoutBuildingManipulationPhase::Cancel);
+  const bool cancelDiscardedPreview =
+      cancelled.accepted && cancelled.changed &&
+      !state.buildingManipulation.active &&
+      state.revision == revisionBeforeCancel &&
+      state.source.rooms[0].footprint.minimum ==
+          cr::CreativeTerrainCoord2{0, 0};
+  const std::uint64_t revisionBeforeMove = state.revision;
+  const auto moveBegin =
+      app::applyCreativeEditorWorldLayoutBuildingManipulation(
+          state,
+          app::CreativeEditorWorldLayoutBuildingManipulationPhase::Begin,
+          {2.0, 2.0}, 0.25);
+  const auto moveUpdate =
+      app::applyCreativeEditorWorldLayoutBuildingManipulation(
+          state,
+          app::CreativeEditorWorldLayoutBuildingManipulationPhase::Update,
+          {5.2, 4.1}, 0.25);
+  const app::CreativeEditorWorldLayoutOpeningHost movedOpeningPreview =
+      app::resolveCreativeEditorWorldLayoutOpeningHost(state, 1U);
+  const bool movePreviewOnly =
+      state.revision == revisionBeforeMove &&
+      state.source.rooms[0].footprint.minimum ==
+          cr::CreativeTerrainCoord2{0, 0} &&
+      state.source.boxes[0].footprint.minimum ==
+          cr::CreativeTerrainCoord2{-1, -1} &&
+      state.source.walls[0].start == cr::CreativeTerrainCoord2{0, 5} &&
+      state.buildingManipulation.previewDeltaXCells == 3 &&
+      state.buildingManipulation.previewDeltaZCells == 2 &&
+      movedOpeningPreview.start.x == 3.0 &&
+      movedOpeningPreview.start.z == 7.0;
+  const auto moveCommit =
+      app::applyCreativeEditorWorldLayoutBuildingManipulation(
+          state,
+          app::CreativeEditorWorldLayoutBuildingManipulationPhase::Commit,
+          {5.2, 4.1}, 0.25);
+  const std::uint64_t revisionAfterMove = state.revision;
+  const auto movedPreview =
+      app::previewCreativeEditorWorldLayout(state, live.facade.document());
+  const bool movedGeometry =
+      state.source.rooms[0].footprint.minimum ==
+          cr::CreativeTerrainCoord2{3, 2} &&
+      state.source.boxes[0].footprint.minimum ==
+          cr::CreativeTerrainCoord2{2, 1} &&
+      state.source.walls[0].start == cr::CreativeTerrainCoord2{3, 7} &&
+      near(state.source.openings[0].centerOffsetCells, 3.0) &&
+      near(state.source.openings[1].centerOffsetCells, 3.0);
+
+  std::int64_t duplicateDeltaX = 0;
+  std::int64_t duplicateDeltaZ = 0;
+  const bool hasDefaultOffset =
+      app::defaultCreativeEditorWorldLayoutBuildingDuplicateOffset(
+          state, 0U, duplicateDeltaX, duplicateDeltaZ);
+  const std::uint64_t revisionBeforeDuplicate = state.revision;
+  const std::uint64_t ordinalBeforeDuplicate = state.nextStableOrdinal;
+  const auto rejectedDuplicate =
+      app::duplicateCreativeEditorWorldLayoutBuilding(
+          state, 0U, std::numeric_limits<std::int64_t>::max(), 0);
+  const bool rejectedWithoutMutation =
+      !rejectedDuplicate.accepted &&
+      state.revision == revisionBeforeDuplicate &&
+      state.nextStableOrdinal == ordinalBeforeDuplicate &&
+      state.source.buildings.size() == 1U;
+  const auto duplicated = app::duplicateCreativeEditorWorldLayoutBuilding(
+      state, 0U, duplicateDeltaX, duplicateDeltaZ);
+  const std::uint64_t revisionAfterDuplicate = state.revision;
+  const auto duplicatedPreview =
+      app::previewCreativeEditorWorldLayout(state, live.facade.document());
+  const bool duplicateRemapped =
+      state.source.buildings.size() == 2U &&
+      state.source.rooms.size() == 2U && state.source.boxes.size() == 2U &&
+      state.source.walls.size() == 2U &&
+      state.source.openings.size() == 4U &&
+      state.source.rooms[1].buildingIndex == 1U &&
+      state.source.boxes[1].buildingIndex == 1U &&
+      state.source.walls[1].buildingIndex == 1U &&
+      state.source.openings[2].roomIndex == 1U &&
+      state.source.openings[3].wallIndex == 1U &&
+      state.source.walls[1].start ==
+          cr::CreativeTerrainCoord2{13, 7} &&
+      state.source.walls[1].end == cr::CreativeTerrainCoord2{19, 7} &&
+      near(state.source.openings[2].centerOffsetCells, 3.0) &&
+      near(state.source.openings[3].centerOffsetCells, 3.0) &&
+      stableKeysUnique(state.source);
+
+  const auto originalSelectedForDelete =
+      app::selectCreativeEditorWorldLayoutBuilding(state, 0U);
+  const std::uint64_t revisionBeforeDelete = state.revision;
+  const auto removed = app::deleteCreativeEditorWorldLayoutSelection(state);
+
+  return expect(ownerFromOpening == 0U && selected.accepted &&
+                    selected.changed && readBounds && bounds.valid &&
+                    bounds.minimum == cr::CreativeTerrainCoord2{-1, -1} &&
+                    bounds.maximum == cr::CreativeTerrainCoord2{7, 5},
+                "a child selection resolves to one explicit building owner") &&
+         expect(moveBegin.accepted && moveUpdate.accepted &&
+                    cancelDiscardedPreview && movePreviewOnly &&
+                    moveCommit.accepted &&
+                    moveCommit.changed &&
+                    revisionAfterMove == revisionBeforeMove + 1U &&
+                    movedGeometry && movedPreview.accepted,
+                "building movement previews all children and commits once") &&
+         expect(hasDefaultOffset && duplicateDeltaX == 10 &&
+                    duplicateDeltaZ == 0 && rejectedWithoutMutation &&
+                    duplicated.accepted && duplicated.changed &&
+                    revisionAfterDuplicate == revisionBeforeDuplicate + 1U &&
+                    duplicateRemapped && duplicatedPreview.accepted,
+                "building duplication remaps ownership, hosts, and stable keys") &&
+         expect(originalSelectedForDelete.accepted &&
+                    originalSelectedForDelete.changed && removed.accepted &&
+                    removed.changed &&
+                    state.revision == revisionBeforeDelete + 1U &&
+                    state.source.buildings.size() == 1U &&
+                    state.source.rooms.size() == 1U &&
+                    state.source.boxes.size() == 1U &&
+                    state.source.walls.size() == 1U &&
+                    state.source.openings.size() == 2U &&
+                    state.source.rooms[0].buildingIndex == 0U &&
+                    state.source.walls[0].buildingIndex == 0U &&
+                    state.source.openings[0].roomIndex == 0U &&
+                    state.source.openings[1].wallIndex == 0U &&
+                    state.source.walls[0].start ==
+                        cr::CreativeTerrainCoord2{13, 7} &&
+                    state.selection.kind ==
+                        app::CreativeEditorWorldLayoutSelectionKind::None,
+                "building deletion removes one owner and remaps survivors");
+}
+
 bool openingSettingsApplyOnceAndMatchExactPreview() {
   cr::CreativeAppState live = appState();
   app::CreativeEditorWorldLayoutState state;
@@ -997,6 +1195,7 @@ int main() {
                   invalidRoomManipulationsRejectWithoutMutation() &&
                   floorSettingsMoveAndResizeCommitOnce() &&
                   partitionManipulationPreservesHostedOpeningWorldPositions() &&
+                  buildingGroupMoveDuplicateAndDeleteAreAtomic() &&
                   openingSettingsApplyOnceAndMatchExactPreview() &&
                   openingDragAndWidthHandlesAreQuarterCellTransactional() &&
                   openingDragPreservesSharedRoomWallOwnership() &&

@@ -124,6 +124,25 @@ struct CreativeDesktopWorldLayoutToolPayload {
       CreativeEditorWorldLayoutTool::Select;
 };
 
+struct CreativeDesktopWorldLayoutBuildingSelectionPayload {
+  std::size_t buildingIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+};
+
+struct CreativeDesktopWorldLayoutBuildingManipulationPayload {
+  CreativeEditorWorldLayoutBuildingManipulationPhase phase =
+      CreativeEditorWorldLayoutBuildingManipulationPhase::Begin;
+  CreativeEditorWorldLayoutPoint point;
+  double toleranceCells = 0.25;
+};
+
+struct CreativeDesktopWorldLayoutBuildingDuplicatePayload {
+  std::size_t buildingIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::int64_t deltaXCells = 0;
+  std::int64_t deltaZCells = 0;
+};
+
 struct CreativeDesktopWorldLayoutPointPayload {
   CreativeEditorWorldLayoutPoint point;
 };
@@ -199,6 +218,9 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopAssetOpPayload,
     CreativeDesktopInstanceRefreshPayload,
     CreativeDesktopWorldLayoutToolPayload,
+    CreativeDesktopWorldLayoutBuildingSelectionPayload,
+    CreativeDesktopWorldLayoutBuildingManipulationPayload,
+    CreativeDesktopWorldLayoutBuildingDuplicatePayload,
     CreativeDesktopWorldLayoutPointPayload,
     CreativeDesktopWorldLayoutGesturePayload,
     CreativeDesktopWorldLayoutRoomSettingsPayload,

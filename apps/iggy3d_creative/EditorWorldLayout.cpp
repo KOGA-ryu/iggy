@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
-#include <string_view>
 #include <tuple>
 #include <utility>
 
@@ -23,6 +22,7 @@ constexpr double kOpeningGeometryEpsilon = 1.0e-9;
 
 using detail::clearWorldLayoutInteraction;
 using detail::invalidateWorldLayoutPreview;
+using detail::mintWorldLayoutStableKey;
 using detail::noteWorldLayoutSourceChange;
 using detail::worldLayoutManipulatedRect;
 using detail::worldLayoutRectHandleAt;
@@ -49,39 +49,12 @@ bool toGridCoord(CreativeEditorWorldLayoutPoint point,
   return true;
 }
 
-bool keyExists(const cr::CreativeWorldLayout& layout, std::string_view key) {
-  const auto matches = [&](const auto& value) {
-    return value.stableKey == key;
-  };
-  return std::any_of(layout.buildings.begin(), layout.buildings.end(),
-                     matches) ||
-         std::any_of(layout.rooms.begin(), layout.rooms.end(), matches) ||
-         std::any_of(layout.boxes.begin(), layout.boxes.end(), matches) ||
-         std::any_of(layout.walls.begin(), layout.walls.end(), matches) ||
-         std::any_of(layout.openings.begin(), layout.openings.end(), matches) ||
-         std::any_of(layout.terrainProfiles.begin(),
-                     layout.terrainProfiles.end(), matches) ||
-         std::any_of(layout.terrainPaths.begin(), layout.terrainPaths.end(),
-                     matches);
-}
-
-std::string mintKey(CreativeEditorWorldLayoutState& state,
-                    std::string_view prefix) {
-  for (;;) {
-    const std::string candidate =
-        std::string(prefix) + "_" + std::to_string(state.nextStableOrdinal++);
-    if (!keyExists(state.source, candidate)) {
-      return candidate;
-    }
-  }
-}
-
 std::size_t ensurePrimaryBuilding(CreativeEditorWorldLayoutState& state) {
   if (!state.source.buildings.empty()) {
     return 0U;
   }
   cr::CreativeWorldLayoutBuilding building;
-  building.stableKey = mintKey(state, "building");
+  building.stableKey = mintWorldLayoutStableKey(state, "building");
   building.name = "Building 1";
   building.rootMode = cr::CreativeBuildingRootMode::None;
   state.source.buildings.push_back(std::move(building));
@@ -755,7 +728,7 @@ CreativeEditorWorldLayoutEditReceipt addRoomPoint(
   }
   cr::CreativeWorldLayoutRoom room;
   room.buildingIndex = ensurePrimaryBuilding(state);
-  room.stableKey = mintKey(state, "room");
+  room.stableKey = mintWorldLayoutStableKey(state, "room");
   room.name = "Room " + std::to_string(state.source.rooms.size() + 1U);
   room.footprint = rect;
   state.source.rooms.push_back(std::move(room));
@@ -782,7 +755,7 @@ CreativeEditorWorldLayoutEditReceipt addFloorPoint(
   cr::CreativeWorldLayoutBox box;
   box.buildingIndex = ensurePrimaryBuilding(state);
   box.kind = cr::CreativeObjectKind::Floor;
-  box.stableKey = mintKey(state, "floor");
+  box.stableKey = mintWorldLayoutStableKey(state, "floor");
   box.name = "Floor " + std::to_string(state.source.boxes.size() + 1U);
   box.footprint = rect;
   box.baseLayer = 0;
@@ -810,7 +783,7 @@ CreativeEditorWorldLayoutEditReceipt addWallPoint(
   }
   cr::CreativeWorldLayoutWall wall;
   wall.buildingIndex = ensurePrimaryBuilding(state);
-  wall.stableKey = mintKey(state, "wall");
+  wall.stableKey = mintWorldLayoutStableKey(state, "wall");
   wall.name = "Wall " + std::to_string(state.source.walls.size() + 1U);
   wall.start = state.anchor;
   wall.end = point;
@@ -890,7 +863,7 @@ CreativeEditorWorldLayoutEditReceipt addOpening(
       return {false, false, "creative_editor_world_layout_opening_overlap"};
     }
   }
-  opening.stableKey = mintKey(
+  opening.stableKey = mintWorldLayoutStableKey(
       state, kind == cr::CreativeBuildingOpeningKind::Door ? "door" : "window");
   opening.name =
       (kind == cr::CreativeBuildingOpeningKind::Door ? "Door " : "Window ") +
@@ -980,6 +953,7 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutTool(
                        state.roomManipulation.active ||
                        state.boxManipulation.active ||
                        state.wallManipulation.active ||
+                       state.buildingManipulation.active ||
                        state.openingManipulation.active ||
                        state.boxSettingsDraft.active ||
                        state.wallSettingsDraft.active ||
@@ -1257,19 +1231,40 @@ resolveCreativeEditorWorldLayoutOpeningHost(
       state.source.openings[openingIndex];
   CreativeEditorWorldLayoutOpeningHost host =
       openingHost(state.source, opening);
-  if (!state.wallManipulation.active ||
-      opening.hostKind != cr::CreativeWorldLayoutOpeningHostKind::Wall ||
-      opening.wallIndex != state.wallManipulation.target.wallIndex) {
-    return host;
+  if (state.wallManipulation.active &&
+      opening.hostKind == cr::CreativeWorldLayoutOpeningHostKind::Wall &&
+      opening.wallIndex == state.wallManipulation.target.wallIndex) {
+    host.start = {
+        static_cast<double>(state.wallManipulation.previewStart.x),
+        static_cast<double>(state.wallManipulation.previewStart.z),
+    };
+    host.end = {
+        static_cast<double>(state.wallManipulation.previewEnd.x),
+        static_cast<double>(state.wallManipulation.previewEnd.z),
+    };
   }
-  host.start = {
-      static_cast<double>(state.wallManipulation.previewStart.x),
-      static_cast<double>(state.wallManipulation.previewStart.z),
-  };
-  host.end = {
-      static_cast<double>(state.wallManipulation.previewEnd.x),
-      static_cast<double>(state.wallManipulation.previewEnd.z),
-  };
+  std::size_t hostBuildingIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  if (opening.hostKind == cr::CreativeWorldLayoutOpeningHostKind::Wall &&
+      opening.wallIndex < state.source.walls.size()) {
+    hostBuildingIndex =
+        state.source.walls[opening.wallIndex].buildingIndex;
+  } else if (opening.hostKind ==
+                 cr::CreativeWorldLayoutOpeningHostKind::RoomEdge &&
+             opening.roomIndex < state.source.rooms.size()) {
+    hostBuildingIndex =
+        state.source.rooms[opening.roomIndex].buildingIndex;
+  }
+  if (state.buildingManipulation.active &&
+      hostBuildingIndex == state.buildingManipulation.buildingIndex) {
+    const double deltaX = static_cast<double>(
+        state.buildingManipulation.previewDeltaXCells);
+    const double deltaZ = static_cast<double>(
+        state.buildingManipulation.previewDeltaZCells);
+    host.start.x += deltaX;
+    host.start.z += deltaZ;
+    host.end.x += deltaX;
+    host.end.z += deltaZ;
+  }
   host.lengthCells =
       std::hypot(host.end.x - host.start.x, host.end.z - host.start.z);
   host.valid = std::isfinite(host.lengthCells) && host.lengthCells > 0.0;
@@ -1491,6 +1486,9 @@ applyCreativeEditorWorldLayoutOpeningManipulation(
 CreativeEditorWorldLayoutEditReceipt deleteCreativeEditorWorldLayoutSelection(
     CreativeEditorWorldLayoutState& state) {
   const CreativeEditorWorldLayoutSelection selected = state.selection;
+  if (selected.kind == CreativeEditorWorldLayoutSelectionKind::Building) {
+    return deleteCreativeEditorWorldLayoutBuilding(state, selected.index);
+  }
   if (selected.kind == CreativeEditorWorldLayoutSelectionKind::Room &&
       selected.index < state.source.rooms.size()) {
     const std::size_t removedRoom = selected.index;

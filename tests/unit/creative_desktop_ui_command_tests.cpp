@@ -1218,6 +1218,18 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutManipulateRoom, context,
           app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutBuildingSelection =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutSelectBuilding, context,
+          app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutBuildingManipulation =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutManipulateBuilding,
+          context, app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutBuildingDuplicate =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutDuplicateBuilding,
+          context, app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult badWorldLayoutBoxSettings =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSetBoxSettings, context,
@@ -1271,6 +1283,18 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badWorldLayoutManipulation.message ==
                         "layout room manipulation: payload mismatch",
                 "room manipulation rejects a mismatched payload") &&
+         expect(!badWorldLayoutBuildingSelection.accepted &&
+                    badWorldLayoutBuildingSelection.message ==
+                        "layout building selection: payload mismatch",
+                "building selection rejects a mismatched payload") &&
+         expect(!badWorldLayoutBuildingManipulation.accepted &&
+                    badWorldLayoutBuildingManipulation.message ==
+                        "layout building manipulation: payload mismatch",
+                "building manipulation rejects a mismatched payload") &&
+         expect(!badWorldLayoutBuildingDuplicate.accepted &&
+                    badWorldLayoutBuildingDuplicate.message ==
+                        "layout building duplicate: payload mismatch",
+                "building duplication rejects a mismatched payload") &&
          expect(!badWorldLayoutBoxSettings.accepted &&
                     badWorldLayoutBoxSettings.message ==
                         "layout floor settings: payload mismatch",
@@ -1406,6 +1430,55 @@ bool worldLayoutStructuralCommandsRouteThroughDispatcher() {
       app::CreativeDesktopWorldLayoutWallManipulationPayload{
           app::CreativeEditorWorldLayoutWallManipulationPhase::Commit,
           {5.2, 2.1}, 0.2});
+  const cr::CreativeWorldLayoutRect floorAfterMove =
+      editor.worldLayout.source.boxes[0].footprint;
+  const cr::CreativeWorldLayoutWall wallAfterMove =
+      editor.worldLayout.source.walls[0];
+  const std::uint64_t revisionAfterWallMove = editor.worldLayout.revision;
+
+  const auto buildingSelected = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSelectBuilding, context,
+      app::CreativeDesktopWorldLayoutBuildingSelectionPayload{0U});
+  const std::uint64_t revisionBeforeBuildingMove =
+      editor.worldLayout.revision;
+  const auto buildingMoveBegin = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateBuilding, context,
+      app::CreativeDesktopWorldLayoutBuildingManipulationPayload{
+          app::CreativeEditorWorldLayoutBuildingManipulationPhase::Begin,
+          {4.0, 2.0}, 0.2});
+  const auto buildingMoveUpdate = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateBuilding, context,
+      app::CreativeDesktopWorldLayoutBuildingManipulationPayload{
+          app::CreativeEditorWorldLayoutBuildingManipulationPhase::Update,
+          {6.2, 3.1}, 0.2});
+  const bool buildingMovePreviewOnly =
+      editor.worldLayout.revision == revisionBeforeBuildingMove &&
+      editor.worldLayout.source.walls[0].start ==
+          cr::CreativeTerrainCoord2{1, 2} &&
+      editor.worldLayout.buildingManipulation.previewDeltaXCells == 2 &&
+      editor.worldLayout.buildingManipulation.previewDeltaZCells == 1;
+  const auto buildingMoveCommit = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateBuilding, context,
+      app::CreativeDesktopWorldLayoutBuildingManipulationPayload{
+          app::CreativeEditorWorldLayoutBuildingManipulationPhase::Commit,
+          {6.2, 3.1}, 0.2});
+  const bool buildingMoveCommittedOnce =
+      editor.worldLayout.revision == revisionBeforeBuildingMove + 1U;
+  std::int64_t duplicateDeltaX = 0;
+  std::int64_t duplicateDeltaZ = 0;
+  const bool hasDuplicateOffset =
+      app::defaultCreativeEditorWorldLayoutBuildingDuplicateOffset(
+          editor.worldLayout, 0U, duplicateDeltaX, duplicateDeltaZ);
+  const std::uint64_t revisionBeforeBuildingDuplicate =
+      editor.worldLayout.revision;
+  const auto buildingDuplicated = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutDuplicateBuilding, context,
+      app::CreativeDesktopWorldLayoutBuildingDuplicatePayload{
+          0U, duplicateDeltaX, duplicateDeltaZ});
+  const bool buildingDuplicatedOnce =
+      editor.worldLayout.revision == revisionBeforeBuildingDuplicate + 1U;
+  const auto groupModeCleared = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutClearSelection, context);
 
   return expect(setFloorTool.accepted && floorBegin.accepted &&
                     floorCreate.accepted && floorCreate.worldLayoutChanged &&
@@ -1420,7 +1493,7 @@ bool worldLayoutStructuralCommandsRouteThroughDispatcher() {
                     floorMoveCommit.changed &&
                     floorMoveCommit.worldLayoutChanged &&
                     floorMoveCommittedOnce &&
-                    editor.worldLayout.source.boxes[0].footprint.minimum ==
+                    floorAfterMove.minimum ==
                         cr::CreativeTerrainCoord2{2, 1} &&
                     editor.worldLayout.source.boxes[0].baseLayer == 1 &&
                     editor.worldLayout.source.boxes[0].heightCells == 2U,
@@ -1437,16 +1510,45 @@ bool worldLayoutStructuralCommandsRouteThroughDispatcher() {
                     wallMovePreviewOnly && wallMoveCommit.accepted &&
                     wallMoveCommit.changed &&
                     wallMoveCommit.worldLayoutChanged &&
-                    editor.worldLayout.revision ==
-                        revisionBeforeWallMove + 1U &&
-                    editor.worldLayout.source.walls[0].start ==
+                    revisionAfterWallMove == revisionBeforeWallMove + 1U &&
+                    wallAfterMove.start ==
                         cr::CreativeTerrainCoord2{1, 2} &&
-                    editor.worldLayout.source.walls[0].end ==
+                    wallAfterMove.end ==
                         cr::CreativeTerrainCoord2{9, 2} &&
-                    editor.worldLayout.source.walls[0].baseLayer == 0.5 &&
-                    editor.worldLayout.source.walls[0].heightCells == 4U &&
-                    editor.worldLayout.source.walls[0].thicknessCells == 0.5,
-                "partition settings and manipulation use typed dispatcher commands");
+                    wallAfterMove.baseLayer == 0.5 &&
+                    wallAfterMove.heightCells == 4U &&
+                    wallAfterMove.thicknessCells == 0.5,
+                "partition settings and manipulation use typed dispatcher commands") &&
+         expect(buildingSelected.accepted && buildingSelected.changed &&
+                    buildingMoveBegin.accepted && buildingMoveBegin.changed &&
+                    !buildingMoveBegin.worldLayoutChanged &&
+                    buildingMoveUpdate.accepted &&
+                    buildingMoveUpdate.changed &&
+                    !buildingMoveUpdate.worldLayoutChanged &&
+                    buildingMovePreviewOnly && buildingMoveCommit.accepted &&
+                    buildingMoveCommit.changed &&
+                    buildingMoveCommit.worldLayoutChanged &&
+                    buildingMoveCommittedOnce && hasDuplicateOffset &&
+                    duplicateDeltaX == 10 && duplicateDeltaZ == 0 &&
+                    buildingDuplicated.accepted &&
+                    buildingDuplicated.changed &&
+                    buildingDuplicated.worldLayoutChanged &&
+                    buildingDuplicatedOnce &&
+                    editor.worldLayout.source.buildings.size() == 2U &&
+                    editor.worldLayout.source.boxes.size() == 2U &&
+                    editor.worldLayout.source.walls.size() == 2U &&
+                    editor.worldLayout.source.boxes[0].footprint.minimum ==
+                        cr::CreativeTerrainCoord2{4, 2} &&
+                    editor.worldLayout.source.boxes[1].footprint.minimum ==
+                        cr::CreativeTerrainCoord2{14, 2} &&
+                    editor.worldLayout.source.walls[0].start ==
+                        cr::CreativeTerrainCoord2{3, 3} &&
+                    editor.worldLayout.source.walls[1].start ==
+                        cr::CreativeTerrainCoord2{13, 3} &&
+                    groupModeCleared.accepted && groupModeCleared.changed &&
+                    editor.worldLayout.selection.kind ==
+                        app::CreativeEditorWorldLayoutSelectionKind::None,
+                "building group commands preview, commit, duplicate, and clear semantically");
 }
 
 bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {

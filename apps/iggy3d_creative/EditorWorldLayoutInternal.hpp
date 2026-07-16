@@ -1,14 +1,51 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <limits>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include "EditorWorldLayout.hpp"
 
 namespace iggy3d_creative_app::detail {
+
+inline bool worldLayoutStableKeyExists(const cr::CreativeWorldLayout& layout,
+                                       std::string_view key) {
+  const auto matches = [&](const auto& value) {
+    return value.stableKey == key;
+  };
+  return std::any_of(layout.buildings.begin(), layout.buildings.end(),
+                     matches) ||
+         std::any_of(layout.rooms.begin(), layout.rooms.end(), matches) ||
+         std::any_of(layout.boxes.begin(), layout.boxes.end(), matches) ||
+         std::any_of(layout.walls.begin(), layout.walls.end(), matches) ||
+         std::any_of(layout.openings.begin(), layout.openings.end(), matches) ||
+         std::any_of(layout.terrainProfiles.begin(),
+                     layout.terrainProfiles.end(), matches) ||
+         std::any_of(layout.terrainPaths.begin(), layout.terrainPaths.end(),
+                     matches);
+}
+
+inline std::string mintWorldLayoutStableKey(cr::CreativeWorldLayout& layout,
+                                            std::uint64_t& nextOrdinal,
+                                            std::string_view prefix) {
+  for (;;) {
+    const std::string candidate =
+        std::string(prefix) + "_" + std::to_string(nextOrdinal++);
+    if (!worldLayoutStableKeyExists(layout, candidate)) {
+      return candidate;
+    }
+  }
+}
+
+inline std::string mintWorldLayoutStableKey(
+    CreativeEditorWorldLayoutState& state, std::string_view prefix) {
+  return mintWorldLayoutStableKey(state.source, state.nextStableOrdinal,
+                                  prefix);
+}
 
 inline bool finiteWorldLayoutPoint(
     CreativeEditorWorldLayoutPoint point) noexcept {
@@ -68,12 +105,17 @@ inline CreativeEditorWorldLayoutRectHandle worldLayoutRectHandleAt(
 inline bool offsetWorldLayoutCoordinate(std::int32_t value,
                                         std::int64_t delta,
                                         std::int32_t& output) noexcept {
-  const std::int64_t candidate = static_cast<std::int64_t>(value) + delta;
-  if (candidate < std::numeric_limits<std::int32_t>::min() ||
-      candidate > std::numeric_limits<std::int32_t>::max()) {
+  const std::int64_t minimumDelta =
+      static_cast<std::int64_t>(std::numeric_limits<std::int32_t>::min()) -
+      value;
+  const std::int64_t maximumDelta =
+      static_cast<std::int64_t>(std::numeric_limits<std::int32_t>::max()) -
+      value;
+  if (delta < minimumDelta || delta > maximumDelta) {
     return false;
   }
-  output = static_cast<std::int32_t>(candidate);
+  output = static_cast<std::int32_t>(
+      static_cast<std::int64_t>(value) + delta);
   return true;
 }
 
@@ -174,6 +216,7 @@ inline void clearWorldLayoutInteraction(
   state.roomManipulation = {};
   state.boxManipulation = {};
   state.wallManipulation = {};
+  state.buildingManipulation = {};
   state.openingManipulation = {};
   state.boxSettingsDraft = {};
   state.wallSettingsDraft = {};
