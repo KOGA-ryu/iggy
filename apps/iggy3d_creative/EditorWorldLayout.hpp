@@ -130,6 +130,8 @@ using CreativeEditorWorldLayoutRoomManipulationPhase =
     CreativeEditorWorldLayoutRectManipulationPhase;
 using CreativeEditorWorldLayoutBoxManipulationPhase =
     CreativeEditorWorldLayoutRectManipulationPhase;
+using CreativeEditorWorldLayoutVerticalConnectorManipulationPhase =
+    CreativeEditorWorldLayoutRectManipulationPhase;
 
 struct CreativeEditorWorldLayoutRoomManipulationState {
   bool active = false;
@@ -141,6 +143,52 @@ struct CreativeEditorWorldLayoutRoomManipulationState {
   bool previewValid = false;
   std::string reasonCode =
       "creative_editor_world_layout_room_manipulation_inactive";
+};
+
+inline constexpr double
+    kCreativeEditorWorldLayoutVerticalConnectorDirectionHandleOffsetCells =
+        0.65;
+
+struct CreativeEditorWorldLayoutVerticalConnectorSettings {
+  cr::CreativeWorldLayoutRect footprint;
+  cr::CreativeWorldLayoutVerticalConnectorKind kind =
+      cr::CreativeWorldLayoutVerticalConnectorKind::Stair;
+  cr::CreativeWorldLayoutVerticalDirection direction =
+      cr::CreativeWorldLayoutVerticalDirection::PositiveZ;
+};
+
+struct CreativeEditorWorldLayoutVerticalConnectorSettingsDraft {
+  bool active = false;
+  std::size_t connectorIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::uint64_t sourceRevision = 0U;
+  CreativeEditorWorldLayoutVerticalConnectorSettings settings;
+};
+
+struct CreativeEditorWorldLayoutVerticalConnectorTarget {
+  std::size_t connectorIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  CreativeEditorWorldLayoutRectHandle handle =
+      CreativeEditorWorldLayoutRectHandle::None;
+  bool directionHandle = false;
+};
+
+struct CreativeEditorWorldLayoutVerticalConnectorManipulationState {
+  bool active = false;
+  std::uint64_t sourceRevision = 0U;
+  CreativeEditorWorldLayoutVerticalConnectorTarget target;
+  CreativeEditorWorldLayoutPoint startPoint;
+  cr::CreativeWorldLayoutRect originalFootprint;
+  cr::CreativeWorldLayoutVerticalConnectorKind originalKind =
+      cr::CreativeWorldLayoutVerticalConnectorKind::Stair;
+  cr::CreativeWorldLayoutVerticalDirection originalDirection =
+      cr::CreativeWorldLayoutVerticalDirection::PositiveZ;
+  cr::CreativeWorldLayoutRect previewFootprint;
+  cr::CreativeWorldLayoutVerticalConnectorKind previewKind =
+      cr::CreativeWorldLayoutVerticalConnectorKind::Stair;
+  cr::CreativeWorldLayoutVerticalDirection previewDirection =
+      cr::CreativeWorldLayoutVerticalDirection::PositiveZ;
+  bool previewValid = false;
+  std::string reasonCode =
+      "creative_editor_world_layout_vertical_connector_manipulation_inactive";
 };
 
 struct CreativeEditorWorldLayoutBoxSettings {
@@ -426,6 +474,8 @@ struct CreativeEditorWorldLayoutState {
   bool anchorActive = false;
   cr::CreativeTerrainCoord2 anchor{};
   CreativeEditorWorldLayoutRoomManipulationState roomManipulation;
+  CreativeEditorWorldLayoutVerticalConnectorManipulationState
+      verticalConnectorManipulation;
   CreativeEditorWorldLayoutBoxManipulationState boxManipulation;
   CreativeEditorWorldLayoutWallManipulationState wallManipulation;
   CreativeEditorWorldLayoutBuildingManipulationState buildingManipulation;
@@ -434,6 +484,8 @@ struct CreativeEditorWorldLayoutState {
   CreativeEditorWorldLayoutBuildingTemplatePlacementState
       buildingTemplatePlacement;
   CreativeEditorWorldLayoutOpeningManipulationState openingManipulation;
+  CreativeEditorWorldLayoutVerticalConnectorSettingsDraft
+      verticalConnectorSettingsDraft;
   CreativeEditorWorldLayoutBoxSettingsDraft boxSettingsDraft;
   CreativeEditorWorldLayoutWallSettingsDraft wallSettingsDraft;
   CreativeEditorWorldLayoutOpeningSettingsDraft openingSettingsDraft;
@@ -540,6 +592,37 @@ findCreativeEditorWorldLayoutRoomTarget(
 applyCreativeEditorWorldLayoutRoomManipulation(
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutRoomManipulationPhase phase,
+    CreativeEditorWorldLayoutPoint point = {},
+    double toleranceCells = 0.25);
+[[nodiscard]] bool creativeEditorWorldLayoutVerticalConnectorOnActiveLevel(
+    const CreativeEditorWorldLayoutState& state,
+    const cr::CreativeWorldLayout& source,
+    std::size_t connectorIndex) noexcept;
+[[nodiscard]] bool resolveCreativeEditorWorldLayoutVerticalConnectorAxis(
+    cr::CreativeWorldLayoutRect footprint,
+    cr::CreativeWorldLayoutVerticalDirection direction,
+    CreativeEditorWorldLayoutPoint& low,
+    CreativeEditorWorldLayoutPoint& high) noexcept;
+[[nodiscard]] bool
+resolveCreativeEditorWorldLayoutVerticalConnectorDirectionHandle(
+    cr::CreativeWorldLayoutRect footprint,
+    cr::CreativeWorldLayoutVerticalDirection direction,
+    CreativeEditorWorldLayoutPoint& output) noexcept;
+[[nodiscard]] bool readCreativeEditorWorldLayoutVerticalConnectorSettings(
+    const CreativeEditorWorldLayoutState& state, std::size_t connectorIndex,
+    CreativeEditorWorldLayoutVerticalConnectorSettings& output) noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+setCreativeEditorWorldLayoutVerticalConnectorSettings(
+    CreativeEditorWorldLayoutState& state, std::size_t connectorIndex,
+    CreativeEditorWorldLayoutVerticalConnectorSettings settings);
+[[nodiscard]] CreativeEditorWorldLayoutVerticalConnectorTarget
+findCreativeEditorWorldLayoutVerticalConnectorTarget(
+    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint point, double toleranceCells) noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutVerticalConnectorManipulationPhase phase,
     CreativeEditorWorldLayoutPoint point = {},
     double toleranceCells = 0.25);
 [[nodiscard]] bool readCreativeEditorWorldLayoutBoxSettings(

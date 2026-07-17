@@ -2336,6 +2336,310 @@ bool rampGestureUsesTheSharedVerticalConnectorLifecycle() {
                 "ramp preview compiles through the shared layout recipe");
 }
 
+bool verticalConnectorSettingsConvertAndRejectAtomically() {
+  app::CreativeEditorWorldLayoutState state;
+  const bool setupAccepted =
+      prepareTwoStoreyEditorLayout(state, "connector_settings_layout");
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Stair));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {1, 1}));
+  const auto created = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {5, 5});
+  if (!setupAccepted || !created.accepted ||
+      state.source.verticalConnectors.size() != 1U) {
+    return expect(false, "vertical connector settings test setup");
+  }
+  const cr::CreativeWorldLayoutVerticalConnector original =
+      state.source.verticalConnectors[0];
+  app::CreativeEditorWorldLayoutVerticalConnectorSettings settings;
+  const bool read =
+      app::readCreativeEditorWorldLayoutVerticalConnectorSettings(
+          state, 0U, settings);
+  settings.kind = cr::CreativeWorldLayoutVerticalConnectorKind::Ramp;
+  settings.direction =
+      cr::CreativeWorldLayoutVerticalDirection::NegativeZ;
+  const std::uint64_t revisionBeforeConvert = state.revision;
+  const auto converted =
+      app::setCreativeEditorWorldLayoutVerticalConnectorSettings(
+          state, 0U, settings);
+  const bool convertedOnce =
+      read && converted.accepted && converted.changed &&
+      state.revision == revisionBeforeConvert + 1U &&
+      state.source.verticalConnectors[0].kind ==
+          cr::CreativeWorldLayoutVerticalConnectorKind::Ramp &&
+      state.source.verticalConnectors[0].direction ==
+          cr::CreativeWorldLayoutVerticalDirection::NegativeZ &&
+      state.source.verticalConnectors[0].stableKey == original.stableKey &&
+      state.source.verticalConnectors[0].name == original.name &&
+      state.source.verticalConnectors[0].buildingIndex ==
+          original.buildingIndex &&
+      state.source.verticalConnectors[0].lowerRoomIndex ==
+          original.lowerRoomIndex &&
+      state.source.verticalConnectors[0].upperRoomIndex ==
+          original.upperRoomIndex;
+
+  const cr::CreativeWorldLayoutVerticalConnector convertedSource =
+      state.source.verticalConnectors[0];
+  const std::uint64_t revisionBeforeRejected = state.revision;
+  settings.footprint = {{1, 1}, {2, 5}};
+  settings.direction =
+      cr::CreativeWorldLayoutVerticalDirection::PositiveX;
+  const auto rejectedSlope =
+      app::setCreativeEditorWorldLayoutVerticalConnectorSettings(
+          state, 0U, settings);
+  settings = {convertedSource.footprint,
+              cr::CreativeWorldLayoutVerticalConnectorKind::Count,
+              convertedSource.direction};
+  const auto rejectedKind =
+      app::setCreativeEditorWorldLayoutVerticalConnectorSettings(
+          state, 0U, settings);
+  const bool rejectedAtomically =
+      !rejectedSlope.accepted && !rejectedSlope.changed &&
+      rejectedSlope.reasonCode ==
+          "creative_world_layout_vertical_connector_slope_invalid" &&
+      !rejectedKind.accepted && !rejectedKind.changed &&
+      state.revision == revisionBeforeRejected &&
+      state.source.verticalConnectors[0].footprint.minimum ==
+          convertedSource.footprint.minimum &&
+      state.source.verticalConnectors[0].footprint.maximum ==
+          convertedSource.footprint.maximum &&
+      state.source.verticalConnectors[0].kind == convertedSource.kind &&
+      state.source.verticalConnectors[0].direction ==
+          convertedSource.direction;
+
+  return expect(convertedOnce,
+                "connector conversion preserves identity and commits once") &&
+         expect(rejectedAtomically,
+                "invalid connector edits reject without partial mutation");
+}
+
+bool verticalConnectorManipulationIsTransactional() {
+  app::CreativeEditorWorldLayoutState state;
+  const bool setupAccepted =
+      prepareTwoStoreyEditorLayout(state, "connector_manipulation_layout");
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Stair));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {1, 1}));
+  const auto created = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {5, 5});
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Select));
+  if (!setupAccepted || !created.accepted) {
+    return expect(false, "vertical connector manipulation test setup");
+  }
+
+  const std::string stableKey =
+      state.source.verticalConnectors[0].stableKey;
+  const std::uint64_t revisionBeforeMove = state.revision;
+  const auto moveBegin =
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
+          state,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Begin,
+          {3.0, 3.0}, 0.2);
+  const auto moveUpdate =
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
+          state,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Update,
+          {4.0, 3.0}, 0.2);
+  const bool movePreviewOnly =
+      moveBegin.accepted && moveUpdate.accepted &&
+      state.verticalConnectorManipulation.previewValid &&
+      state.verticalConnectorManipulation.previewFootprint.minimum ==
+          cr::CreativeTerrainCoord2{2, 1} &&
+      state.source.verticalConnectors[0].footprint.minimum ==
+          cr::CreativeTerrainCoord2{1, 1} &&
+      state.revision == revisionBeforeMove;
+  const auto moveCommit =
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
+          state,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Commit,
+          {4.0, 3.0}, 0.2);
+  const bool moveCommittedOnce =
+      moveCommit.accepted && moveCommit.changed &&
+      state.revision == revisionBeforeMove + 1U &&
+      state.source.verticalConnectors[0].footprint.minimum ==
+          cr::CreativeTerrainCoord2{2, 1} &&
+      state.source.verticalConnectors[0].footprint.maximum ==
+          cr::CreativeTerrainCoord2{6, 5} &&
+      state.source.verticalConnectors[0].stableKey == stableKey;
+
+  const cr::CreativeWorldLayoutRect movedFootprint =
+      state.source.verticalConnectors[0].footprint;
+  const std::uint64_t revisionBeforeInvalid = state.revision;
+  const auto resizeBegin =
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
+          state,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Begin,
+          {6.0, 3.0}, 0.2);
+  const auto resizeUpdate =
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
+          state,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Update,
+          {3.0, 3.0}, 0.2);
+  const bool invalidPreviewVisible =
+      resizeBegin.accepted && resizeUpdate.accepted &&
+      !state.verticalConnectorManipulation.previewValid &&
+      state.verticalConnectorManipulation.reasonCode ==
+          "creative_world_layout_vertical_connector_slope_invalid";
+  const auto resizeCommit =
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
+          state,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Commit,
+          {3.0, 3.0}, 0.2);
+  const bool invalidCommitRolledBack =
+      !resizeCommit.accepted && !resizeCommit.changed &&
+      state.revision == revisionBeforeInvalid &&
+      state.source.verticalConnectors[0].footprint.minimum ==
+          movedFootprint.minimum &&
+      state.source.verticalConnectors[0].footprint.maximum ==
+          movedFootprint.maximum;
+
+  const auto cancelBegin =
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
+          state,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Begin,
+          {4.0, 3.0}, 0.2);
+  static_cast<void>(
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
+          state,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Update,
+          {3.0, 3.0}, 0.2));
+  const auto cancelled =
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
+          state,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Cancel);
+  const bool cancelIsEmpty =
+      cancelBegin.accepted && cancelled.accepted && cancelled.changed &&
+      state.revision == revisionBeforeInvalid &&
+      state.source.verticalConnectors[0].footprint.minimum ==
+          movedFootprint.minimum;
+
+  static_cast<void>(
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
+          state,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Begin,
+          {4.0, 3.0}, 0.2));
+  const auto interrupted = app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Ramp);
+  const bool toolChangeFinalizesInteraction =
+      interrupted.accepted && interrupted.changed &&
+      !state.verticalConnectorManipulation.active &&
+      state.revision == revisionBeforeInvalid &&
+      state.source.verticalConnectors[0].footprint.minimum ==
+          movedFootprint.minimum;
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Select));
+
+  static_cast<void>(
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
+          state,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Begin,
+          {4.0, 3.0}, 0.2));
+  ++state.revision;
+  const auto stale =
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
+          state,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Update,
+          {5.0, 3.0}, 0.2);
+  const bool staleFailsClosed =
+      !stale.accepted && !stale.changed &&
+      stale.reasonCode ==
+          "creative_editor_world_layout_vertical_connector_manipulation_stale" &&
+      !state.verticalConnectorManipulation.active &&
+      state.source.verticalConnectors[0].footprint.minimum ==
+          movedFootprint.minimum;
+
+  return expect(movePreviewOnly && moveCommittedOnce,
+                "connector move previews source-free and commits once") &&
+         expect(invalidPreviewVisible && invalidCommitRolledBack,
+                "invalid connector resize stays visible then rolls back") &&
+         expect(cancelIsEmpty && toolChangeFinalizesInteraction &&
+                    staleFailsClosed,
+                "connector cancel, interruption, and stale revision mutate no source");
+}
+
+bool verticalConnectorDirectionHandleOwnsCardinalRise() {
+  app::CreativeEditorWorldLayoutState state;
+  const bool setupAccepted =
+      prepareTwoStoreyEditorLayout(state, "connector_direction_layout");
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Stair));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {1, 1}));
+  const auto created = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {5, 5});
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Select));
+  if (!setupAccepted || !created.accepted) {
+    return expect(false, "vertical connector direction test setup");
+  }
+
+  app::CreativeEditorWorldLayoutPoint low;
+  app::CreativeEditorWorldLayoutPoint high;
+  app::CreativeEditorWorldLayoutPoint handlePoint;
+  const bool axisResolved =
+      app::resolveCreativeEditorWorldLayoutVerticalConnectorAxis(
+          state.source.verticalConnectors[0].footprint,
+          state.source.verticalConnectors[0].direction, low, high) &&
+      app::resolveCreativeEditorWorldLayoutVerticalConnectorDirectionHandle(
+          state.source.verticalConnectors[0].footprint,
+          state.source.verticalConnectors[0].direction, handlePoint);
+  const auto target =
+      app::findCreativeEditorWorldLayoutVerticalConnectorTarget(
+          state, handlePoint, 0.2);
+  const std::uint64_t revisionBefore = state.revision;
+  const auto began =
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
+          state,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Begin,
+          handlePoint, 0.2);
+  const auto updated =
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
+          state,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Update,
+          {3.0, 0.0}, 0.2);
+  const bool directionPreviewOnly =
+      axisResolved && low.x == 1.0 && low.z == 3.0 && high.x == 5.0 &&
+      high.z == 3.0 &&
+      std::fabs(handlePoint.x - 5.65) < 1.0e-9 && handlePoint.z == 3.0 &&
+      target.directionHandle && target.connectorIndex == 0U &&
+      began.accepted && updated.accepted &&
+      state.verticalConnectorManipulation.previewValid &&
+      state.verticalConnectorManipulation.previewDirection ==
+          cr::CreativeWorldLayoutVerticalDirection::NegativeZ &&
+      state.source.verticalConnectors[0].direction ==
+          cr::CreativeWorldLayoutVerticalDirection::PositiveX &&
+      state.revision == revisionBefore;
+  const auto committed =
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
+          state,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Commit,
+          {3.0, 0.0}, 0.2);
+  return expect(directionPreviewOnly && committed.accepted &&
+                    committed.changed &&
+                    state.revision == revisionBefore + 1U &&
+                    state.source.verticalConnectors[0].direction ==
+                        cr::CreativeWorldLayoutVerticalDirection::NegativeZ,
+                "external direction handle previews and commits cardinal rise");
+}
+
 bool unsynchronizedLayoutCannotBeSaved() {
   cr::CreativeAppState live = appState();
   cr::CreativeWorldLayout layout;
@@ -2410,6 +2714,9 @@ int main() {
       buildingLevelLifecycleIsAtomicAndRemapsHostedSymbols() &&
       stairGestureOwnsConnectorLifecycleAcrossLevels() &&
       rampGestureUsesTheSharedVerticalConnectorLifecycle() &&
+      verticalConnectorSettingsConvertAndRejectAtomically() &&
+      verticalConnectorManipulationIsTransactional() &&
+      verticalConnectorDirectionHandleOwnsCardinalRise() &&
       unsynchronizedLayoutCannotBeSaved() &&
       unsynchronizedDraftCannotBeLostAcrossLayoutHistory();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

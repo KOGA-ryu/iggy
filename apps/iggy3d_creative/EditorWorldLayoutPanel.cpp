@@ -51,25 +51,6 @@ bool roomOnActiveLevel(const CreativeEditorWorldLayoutState& state,
           source.rooms[roomIndex].levelIndex == state.activeLevelIndex);
 }
 
-bool verticalConnectorOnActiveLevel(const CreativeEditorWorldLayoutState& state,
-                                    const cr::CreativeWorldLayout& source,
-                                    std::size_t connectorIndex) noexcept {
-  if (connectorIndex >= source.verticalConnectors.size()) {
-    return false;
-  }
-  if (state.activeLevelIndex >= source.levels.size()) {
-    return true;
-  }
-  const cr::CreativeWorldLayoutVerticalConnector& connector =
-      source.verticalConnectors[connectorIndex];
-  return (connector.lowerRoomIndex < source.rooms.size() &&
-          source.rooms[connector.lowerRoomIndex].levelIndex ==
-              state.activeLevelIndex) ||
-         (connector.upperRoomIndex < source.rooms.size() &&
-          source.rooms[connector.upperRoomIndex].levelIndex ==
-              state.activeLevelIndex);
-}
-
 bool openingOnActiveLevel(const CreativeEditorWorldLayoutState& state,
                           const cr::CreativeWorldLayout& source,
                           std::size_t openingIndex) noexcept {
@@ -312,20 +293,34 @@ std::pair<ImVec2, ImVec2> screenRect(
           {std::max(first.x, second.x), std::max(first.y, second.y)}};
 }
 
+void drawRectManipulation(ImDrawList& drawList,
+                          const CanvasTransform& transform,
+                          cr::CreativeWorldLayoutRect footprint, bool active,
+                          bool previewValid);
+
 void drawVerticalConnector(ImDrawList& drawList,
                            const CanvasTransform& transform,
                            const CreativeEditorWorldLayoutState& state,
                            std::size_t connectorIndex) {
   const cr::CreativeWorldLayout& source =
       creativeEditorWorldLayoutDisplaySource(state);
-  if (!verticalConnectorOnActiveLevel(state, source, connectorIndex)) {
+  if (!creativeEditorWorldLayoutVerticalConnectorOnActiveLevel(
+          state, source, connectorIndex)) {
     return;
   }
   const cr::CreativeWorldLayoutVerticalConnector& connector =
       source.verticalConnectors[connectorIndex];
+  const bool active = state.verticalConnectorManipulation.active &&
+                      state.verticalConnectorManipulation.target
+                              .connectorIndex == connectorIndex;
   const auto [deltaX, deltaZ] =
       buildingPreviewOffset(state, connector.buildingIndex);
-  const cr::CreativeWorldLayoutRect footprint = connector.footprint;
+  const cr::CreativeWorldLayoutRect footprint =
+      active ? state.verticalConnectorManipulation.previewFootprint
+             : connector.footprint;
+  const cr::CreativeWorldLayoutVerticalDirection direction =
+      active ? state.verticalConnectorManipulation.previewDirection
+             : connector.direction;
   const ImVec2 first = toScreen(transform, footprint.minimum.x + deltaX,
                                 footprint.minimum.z + deltaZ);
   const ImVec2 second = toScreen(transform, footprint.maximum.x + deltaX,
@@ -337,9 +332,14 @@ void drawVerticalConnector(ImDrawList& drawList,
   const bool isSelected =
       selected(state, CreativeEditorWorldLayoutSelectionKind::VerticalConnector,
                connectorIndex);
+  const cr::CreativeWorldLayoutVerticalConnectorKind kind =
+      active ? state.verticalConnectorManipulation.previewKind
+             : connector.kind;
   const bool isRamp =
-      connector.kind == cr::CreativeWorldLayoutVerticalConnectorKind::Ramp;
-  const ImU32 outline = isSelected ? color({0.96F, 0.82F, 0.22F, 1.0F})
+      kind == cr::CreativeWorldLayoutVerticalConnectorKind::Ramp;
+  const ImU32 outline = active && !state.verticalConnectorManipulation.previewValid
+                            ? color({0.92F, 0.29F, 0.24F, 1.0F})
+                        : isSelected ? color({0.96F, 0.82F, 0.22F, 1.0F})
                         : isRamp   ? color({0.92F, 0.58F, 0.20F, 1.0F})
                                    : color({0.24F, 0.72F, 0.88F, 1.0F});
   drawList.AddRectFilled(minimum, maximum,
@@ -348,34 +348,16 @@ void drawVerticalConnector(ImDrawList& drawList,
   drawList.AddRect(minimum, maximum, outline, 0.0F, 0,
                    isSelected ? 3.0F : 2.0F);
 
-  const double centerX =
-      (static_cast<double>(footprint.minimum.x) + footprint.maximum.x) * 0.5 +
-      deltaX;
-  const double centerZ =
-      (static_cast<double>(footprint.minimum.z) + footprint.maximum.z) * 0.5 +
-      deltaZ;
-  CreativeEditorWorldLayoutPoint low{centerX, centerZ};
-  CreativeEditorWorldLayoutPoint high{centerX, centerZ};
-  switch (connector.direction) {
-  case cr::CreativeWorldLayoutVerticalDirection::PositiveX:
-    low.x = footprint.minimum.x + deltaX;
-    high.x = footprint.maximum.x + deltaX;
-    break;
-  case cr::CreativeWorldLayoutVerticalDirection::NegativeX:
-    low.x = footprint.maximum.x + deltaX;
-    high.x = footprint.minimum.x + deltaX;
-    break;
-  case cr::CreativeWorldLayoutVerticalDirection::PositiveZ:
-    low.z = footprint.minimum.z + deltaZ;
-    high.z = footprint.maximum.z + deltaZ;
-    break;
-  case cr::CreativeWorldLayoutVerticalDirection::NegativeZ:
-    low.z = footprint.maximum.z + deltaZ;
-    high.z = footprint.minimum.z + deltaZ;
-    break;
-  case cr::CreativeWorldLayoutVerticalDirection::Count:
+  CreativeEditorWorldLayoutPoint low;
+  CreativeEditorWorldLayoutPoint high;
+  if (!resolveCreativeEditorWorldLayoutVerticalConnectorAxis(
+          footprint, direction, low, high)) {
     return;
   }
+  low.x += deltaX;
+  low.z += deltaZ;
+  high.x += deltaX;
+  high.z += deltaZ;
   const ImVec2 lowScreen = toScreen(transform, low.x, low.z);
   const ImVec2 highScreen = toScreen(transform, high.x, high.z);
   drawList.AddLine(lowScreen, highScreen, outline, 2.5F);
@@ -402,6 +384,22 @@ void drawVerticalConnector(ImDrawList& drawList,
         drawList.AddLine({minimum.x + 3.0F, y}, {maximum.x - 3.0F, y}, outline,
                          1.0F);
       }
+    }
+  }
+  if (isSelected) {
+    drawRectManipulation(drawList, transform, footprint, active,
+                         !active ||
+                             state.verticalConnectorManipulation.previewValid);
+    CreativeEditorWorldLayoutPoint directionHandle;
+    if (resolveCreativeEditorWorldLayoutVerticalConnectorDirectionHandle(
+            footprint, direction, directionHandle)) {
+      directionHandle.x += deltaX;
+      directionHandle.z += deltaZ;
+      const ImVec2 handleScreen =
+          toScreen(transform, directionHandle.x, directionHandle.z);
+      drawList.AddLine(highScreen, handleScreen, outline, 2.0F);
+      drawList.AddCircleFilled(handleScreen, 5.0F, outline);
+      drawList.AddCircle(handleScreen, 8.0F, outline, 0, 1.5F);
     }
   }
 }
@@ -814,6 +812,16 @@ void queueRoomManipulation(
                                                         toleranceCells});
 }
 
+void queueVerticalConnectorManipulation(
+    CreativeDesktopCommandFrame& commands,
+    CreativeEditorWorldLayoutVerticalConnectorManipulationPhase phase,
+    CreativeEditorWorldLayoutPoint point, double toleranceCells) {
+  commands.push(
+      CreativeDesktopCommandId::WorldLayoutManipulateVerticalConnector,
+      CreativeDesktopWorldLayoutVerticalConnectorManipulationPayload{
+          phase, point, toleranceCells});
+}
+
 void queueBuildingManipulation(
     CreativeDesktopCommandFrame& commands,
     CreativeEditorWorldLayoutBuildingManipulationPhase phase,
@@ -882,6 +890,11 @@ void queueLayoutManipulationCancel(
     queueOpeningManipulation(
         commands, CreativeEditorWorldLayoutOpeningManipulationPhase::Cancel, {},
         0.25);
+  } else if (state.verticalConnectorManipulation.active) {
+    queueVerticalConnectorManipulation(
+        commands,
+        CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Cancel,
+        {}, 0.25);
   } else if (state.buildingManipulation.active) {
     queueBuildingManipulation(
         commands,
@@ -1535,6 +1548,12 @@ void drawLayoutCanvas(CreativeEditorState& editor,
           ? findCreativeEditorWorldLayoutWallTarget(state, hoveredPoint,
                                                     handleTolerance)
           : CreativeEditorWorldLayoutWallTarget{};
+  const CreativeEditorWorldLayoutVerticalConnectorTarget
+      hoveredVerticalConnectorTarget =
+          hovered && state.tool == CreativeEditorWorldLayoutTool::Select
+              ? findCreativeEditorWorldLayoutVerticalConnectorTarget(
+                    state, hoveredPoint, handleTolerance)
+              : CreativeEditorWorldLayoutVerticalConnectorTarget{};
   const CreativeEditorWorldLayoutRoomTarget hoveredRoomTarget =
       hovered && state.tool == CreativeEditorWorldLayoutTool::Select
           ? findCreativeEditorWorldLayoutRoomTarget(state, hoveredPoint,
@@ -1556,6 +1575,12 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   } else if (state.wallManipulation.active) {
     ImGui::SetMouseCursor(
         wallHandleCursor(state, state.wallManipulation.target));
+  } else if (state.verticalConnectorManipulation.active) {
+    ImGui::SetMouseCursor(
+        state.verticalConnectorManipulation.target.directionHandle
+            ? ImGuiMouseCursor_Hand
+            : rectHandleCursor(
+                  state.verticalConnectorManipulation.target.handle));
   } else if (state.roomManipulation.active) {
     ImGui::SetMouseCursor(
         rectHandleCursor(state.roomManipulation.target.handle));
@@ -1572,6 +1597,12 @@ void drawLayoutCanvas(CreativeEditorState& editor,
     } else if (hoveredWallTarget.handle !=
                CreativeEditorWorldLayoutWallHandle::None) {
       ImGui::SetMouseCursor(wallHandleCursor(state, hoveredWallTarget));
+    } else if (hoveredVerticalConnectorTarget.directionHandle) {
+      ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+    } else if (hoveredVerticalConnectorTarget.handle !=
+               CreativeEditorWorldLayoutRectHandle::None) {
+      ImGui::SetMouseCursor(
+          rectHandleCursor(hoveredVerticalConnectorTarget.handle));
     } else if (hoveredRoomTarget.handle !=
                CreativeEditorWorldLayoutRoomHandle::None) {
       ImGui::SetMouseCursor(rectHandleCursor(hoveredRoomTarget.handle));
@@ -1598,6 +1629,13 @@ void drawLayoutCanvas(CreativeEditorState& editor,
                  CreativeEditorWorldLayoutWallHandle::None) {
         queueWallManipulation(
             commands, CreativeEditorWorldLayoutWallManipulationPhase::Begin,
+            hoveredPoint, handleTolerance);
+      } else if (hoveredVerticalConnectorTarget.directionHandle ||
+                 hoveredVerticalConnectorTarget.handle !=
+                     CreativeEditorWorldLayoutRectHandle::None) {
+        queueVerticalConnectorManipulation(
+            commands,
+            CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Begin,
             hoveredPoint, handleTolerance);
       } else if (hoveredRoomTarget.handle !=
                  CreativeEditorWorldLayoutRoomHandle::None) {
@@ -1710,6 +1748,30 @@ void drawLayoutCanvas(CreativeEditorState& editor,
         pointerPoint, handleTolerance);
   }
 
+  const bool cancelVerticalConnectorManipulation =
+      state.verticalConnectorManipulation.active &&
+      (io.AppFocusLost ||
+       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
+       ImGui::IsKeyPressed(ImGuiKey_Escape));
+  if (cancelVerticalConnectorManipulation) {
+    queueVerticalConnectorManipulation(
+        commands,
+        CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Cancel,
+        pointerPoint, handleTolerance);
+  } else if (state.verticalConnectorManipulation.active &&
+             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+    queueVerticalConnectorManipulation(
+        commands,
+        CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Commit,
+        pointerPoint, handleTolerance);
+  } else if (state.verticalConnectorManipulation.active &&
+             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+    queueVerticalConnectorManipulation(
+        commands,
+        CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Update,
+        pointerPoint, handleTolerance);
+  }
+
   const bool cancelBoxManipulation =
       state.boxManipulation.active &&
       (io.AppFocusLost ||
@@ -1734,6 +1796,7 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   const bool cancelGesture =
       !state.buildingManipulation.active &&
       !state.openingManipulation.active && !state.wallManipulation.active &&
+      !state.verticalConnectorManipulation.active &&
       !state.roomManipulation.active && !state.boxManipulation.active &&
       state.anchorActive &&
       ((hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||

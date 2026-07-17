@@ -179,6 +179,34 @@ bool invalidStoriesFootprintsAndLandingsFailClosed() {
              "run shorter than rise rejects");
 }
 
+bool stagedConnectorPlanningDoesNotMutateTheLayout() {
+  const cr::CreativeGridSettings grid{{}, 1.0, {32, 16, 32}};
+  const cr::CreativeWorldLayout layout = twoStoreyLayout();
+  cr::CreativeWorldLayoutVerticalConnector candidate =
+      layout.verticalConnectors.front();
+  candidate.kind = cr::CreativeWorldLayoutVerticalConnectorKind::Ramp;
+  candidate.footprint = {{2, 2}, {6, 4}};
+  const auto staged = cr::planCreativeWorldLayoutVerticalConnector(
+      grid, layout, 0U, candidate);
+  candidate.direction = cr::CreativeWorldLayoutVerticalDirection::Count;
+  const auto rejected = cr::planCreativeWorldLayoutVerticalConnector(
+      grid, layout, 0U, candidate);
+  return expect(staged.accepted &&
+                    staged.objectKind == cr::CreativeObjectKind::Ramp &&
+                    staged.openingFootprint.minimum ==
+                        cr::CreativeTerrainCoord2{2, 2},
+                "staged connector validates through the canonical planner") &&
+         expect(rejected.status ==
+                    cr::CreativeWorldLayoutVerticalConnectorStatus::
+                        InvalidConnector,
+                "invalid staged connector rejects through the same planner") &&
+         expect(layout.verticalConnectors[0].kind ==
+                        cr::CreativeWorldLayoutVerticalConnectorKind::Stair &&
+                    layout.verticalConnectors[0].footprint.minimum ==
+                        cr::CreativeTerrainCoord2{1, 2},
+                "staged planning never mutates the live layout");
+}
+
 bool oneConnectorOwnsEachAffectedSlab() {
   const cr::CreativeGridSettings grid{{}, 1.0, {32, 16, 32}};
   cr::CreativeWorldLayout layout = twoStoreyLayout();
@@ -440,6 +468,7 @@ int main() {
   return stairPlanOwnsRiseDirectionAndStepParity() &&
                  rampPlanUsesTheSharedSlopeAndCompilerPath() &&
                  invalidStoriesFootprintsAndLandingsFailClosed() &&
+                 stagedConnectorPlanningDoesNotMutateTheLayout() &&
                  oneConnectorOwnsEachAffectedSlab() &&
                  compilerCutsBothSlabsAndEmitsOneStair() &&
                  worldLayoutConnectorsRenderAsStairsAndRamps()

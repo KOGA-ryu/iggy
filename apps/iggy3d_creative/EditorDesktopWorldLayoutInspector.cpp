@@ -553,6 +553,7 @@ void drawCreativeEditorWorldLayoutStructureInspector(
     CreativeDesktopCommandFrame& commands) {
   drawBuildingActions(state, commands);
   drawBuildingTemplateActions(state, commands);
+  drawCreativeEditorWorldLayoutVerticalConnectorInspector(state, commands);
   drawBoxSettings(state, commands);
   drawWallSettings(state, commands);
 }

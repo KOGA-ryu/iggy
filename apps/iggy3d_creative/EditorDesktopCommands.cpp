@@ -1015,6 +1015,54 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutSetVerticalConnectorSettings: {
+      const auto* payload = payloadAs<
+          CreativeDesktopWorldLayoutVerticalConnectorSettingsPayload>(
+          command);
+      if (payload == nullptr) {
+        result.message = "layout vertical connector settings: payload mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          setCreativeEditorWorldLayoutVerticalConnectorSettings(
+              editor.worldLayout, payload->connectorIndex,
+              payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutManipulateVerticalConnector: {
+      const auto* payload = payloadAs<
+          CreativeDesktopWorldLayoutVerticalConnectorManipulationPayload>(
+          command);
+      if (payload == nullptr) {
+        result.message =
+            "layout vertical connector manipulation: payload mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
+              editor.worldLayout, payload->phase, payload->point,
+              payload->toleranceCells);
+      const bool sourceChanged =
+          payload->phase ==
+              CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+                  Commit &&
+          receipt.changed;
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = sourceChanged;
+      result.sceneChanged = previewWasActive && sourceChanged;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutSetBoxSettings: {
       const auto* payload =
           payloadAs<CreativeDesktopWorldLayoutBoxSettingsPayload>(command);

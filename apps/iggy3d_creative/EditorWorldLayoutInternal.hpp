@@ -184,12 +184,14 @@ inline void invalidateWorldLayoutPreview(
 inline void clearWorldLayoutInteraction(
     CreativeEditorWorldLayoutState& state) {
   state.roomManipulation = {};
+  state.verticalConnectorManipulation = {};
   state.boxManipulation = {};
   state.wallManipulation = {};
   state.buildingManipulation = {};
   state.buildingTransform = {};
   state.buildingTemplatePlacement = {};
   state.openingManipulation = {};
+  state.verticalConnectorSettingsDraft = {};
   state.boxSettingsDraft = {};
   state.wallSettingsDraft = {};
   state.openingSettingsDraft = {};

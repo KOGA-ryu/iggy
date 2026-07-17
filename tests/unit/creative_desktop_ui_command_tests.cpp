@@ -1267,6 +1267,16 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutManipulateBox, context,
           app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult
+      badWorldLayoutVerticalConnectorSettings = dispatchPayload(
+          app::CreativeDesktopCommandId::
+              WorldLayoutSetVerticalConnectorSettings,
+          context, app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult
+      badWorldLayoutVerticalConnectorManipulation = dispatchPayload(
+          app::CreativeDesktopCommandId::
+              WorldLayoutManipulateVerticalConnector,
+          context, app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult badWorldLayoutWallSettings =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSetWallSettings, context,
@@ -1360,6 +1370,14 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badWorldLayoutBoxManipulation.message ==
                         "layout floor manipulation: payload mismatch",
                 "floor manipulation rejects a mismatched payload") &&
+         expect(!badWorldLayoutVerticalConnectorSettings.accepted &&
+                    badWorldLayoutVerticalConnectorSettings.message ==
+                        "layout vertical connector settings: payload mismatch",
+                "vertical connector settings reject a mismatched payload") &&
+         expect(!badWorldLayoutVerticalConnectorManipulation.accepted &&
+                    badWorldLayoutVerticalConnectorManipulation.message ==
+                        "layout vertical connector manipulation: payload mismatch",
+                "vertical connector manipulation rejects a mismatched payload") &&
          expect(!badWorldLayoutWallSettings.accepted &&
                     badWorldLayoutWallSettings.message ==
                         "layout partition settings: payload mismatch",
@@ -1675,6 +1693,120 @@ bool worldLayoutStructuralCommandsRouteThroughDispatcher() {
                     editor.worldLayout.selection.kind ==
                         app::CreativeEditorWorldLayoutSelectionKind::None,
                 "building group commands preview, commit, duplicate, and clear semantically");
+}
+
+bool worldLayoutVerticalConnectorCommandsRouteThroughDispatcher() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Vertical Connector Layout");
+  static_cast<void>(document.assignId(426U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "connector_commands");
+  const auto shell = app::createCreativeEditorWorldLayoutBuildingShell(
+      editor.worldLayout, {{{0, 0}, {8, 6}}, 0.0, 4U, 0.25, 1U});
+  const auto upperLevel = app::applyCreativeEditorWorldLayoutLevelOperation(
+      editor.worldLayout,
+      app::CreativeEditorWorldLayoutLevelOperation::Add, 0U);
+  if (!shell.accepted || !upperLevel.accepted ||
+      editor.worldLayout.source.rooms.empty()) {
+    return expect(false, "vertical connector command test setup");
+  }
+  cr::CreativeWorldLayoutRoom upperRoom =
+      editor.worldLayout.source.rooms.front();
+  upperRoom.levelIndex = 1U;
+  upperRoom.stableKey = "command_upper_room";
+  upperRoom.name = "Command Upper Room";
+  editor.worldLayout.source.rooms.push_back(std::move(upperRoom));
+  editor.worldLayout.activeLevelIndex = 0U;
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      editor.worldLayout, app::CreativeEditorWorldLayoutTool::Stair));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      editor.worldLayout,
+      app::CreativeEditorWorldLayoutGesturePhase::Begin, {1.0, 1.0}));
+  const auto connector = app::applyCreativeEditorWorldLayoutGesture(
+      editor.worldLayout,
+      app::CreativeEditorWorldLayoutGesturePhase::Commit, {5.0, 5.0});
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      editor.worldLayout, app::CreativeEditorWorldLayoutTool::Select));
+  const auto preview = app::previewCreativeEditorWorldLayout(
+      editor.worldLayout, appState.facade.document());
+
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  app::CreativeEditorWorldLayoutVerticalConnectorSettings settings;
+  const bool settingsRead =
+      app::readCreativeEditorWorldLayoutVerticalConnectorSettings(
+          editor.worldLayout, 0U, settings);
+  settings.kind = cr::CreativeWorldLayoutVerticalConnectorKind::Ramp;
+  const std::uint64_t revisionBeforeSettings =
+      editor.worldLayout.revision;
+  const auto settingsApplied = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSetVerticalConnectorSettings,
+      context,
+      app::CreativeDesktopWorldLayoutVerticalConnectorSettingsPayload{
+          0U, settings});
+  const bool settingsCommittedOnce =
+      connector.accepted && preview.accepted && settingsRead &&
+      settingsApplied.accepted && settingsApplied.changed &&
+      settingsApplied.worldLayoutChanged && settingsApplied.sceneChanged &&
+      editor.worldLayout.revision == revisionBeforeSettings + 1U &&
+      editor.worldLayout.source.verticalConnectors[0].kind ==
+          cr::CreativeWorldLayoutVerticalConnectorKind::Ramp;
+
+  app::CreativeEditorWorldLayoutPoint directionHandle;
+  const bool handleResolved =
+      app::resolveCreativeEditorWorldLayoutVerticalConnectorDirectionHandle(
+          editor.worldLayout.source.verticalConnectors[0].footprint,
+          editor.worldLayout.source.verticalConnectors[0].direction,
+          directionHandle);
+  const std::uint64_t revisionBeforeDirection =
+      editor.worldLayout.revision;
+  const auto directionBegin = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateVerticalConnector,
+      context,
+      app::CreativeDesktopWorldLayoutVerticalConnectorManipulationPayload{
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Begin,
+          directionHandle, 0.2});
+  const auto directionUpdate = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateVerticalConnector,
+      context,
+      app::CreativeDesktopWorldLayoutVerticalConnectorManipulationPayload{
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Update,
+          {3.0, 0.0}, 0.2});
+  const bool directionPreviewOnly =
+      handleResolved && directionBegin.accepted && directionBegin.changed &&
+      !directionBegin.worldLayoutChanged && directionUpdate.accepted &&
+      directionUpdate.changed && !directionUpdate.worldLayoutChanged &&
+      editor.worldLayout.revision == revisionBeforeDirection &&
+      editor.worldLayout.source.verticalConnectors[0].direction ==
+          cr::CreativeWorldLayoutVerticalDirection::PositiveX &&
+      editor.worldLayout.verticalConnectorManipulation.previewDirection ==
+          cr::CreativeWorldLayoutVerticalDirection::NegativeZ;
+  const auto directionCommit = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateVerticalConnector,
+      context,
+      app::CreativeDesktopWorldLayoutVerticalConnectorManipulationPayload{
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Commit,
+          {3.0, 0.0}, 0.2});
+  const bool directionCommittedOnce =
+      directionCommit.accepted && directionCommit.changed &&
+      directionCommit.worldLayoutChanged && !directionCommit.sceneChanged &&
+      editor.worldLayout.revision == revisionBeforeDirection + 1U &&
+      editor.worldLayout.source.verticalConnectors[0].direction ==
+          cr::CreativeWorldLayoutVerticalDirection::NegativeZ;
+
+  return expect(settingsCommittedOnce,
+                "connector settings route through one typed source command") &&
+         expect(directionPreviewOnly && directionCommittedOnce,
+                "connector direction handle previews then commits through dispatcher");
 }
 
 bool worldLayoutBuildingTemplateCommandsRouteThroughDispatcher() {
@@ -2097,6 +2229,7 @@ int main() {
   ok = mismatchedPayloadsAreNoOpFailures() && ok;
   ok = worldLayoutLevelCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutStructuralCommandsRouteThroughDispatcher() && ok;
+  ok = worldLayoutVerticalConnectorCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutBuildingTemplateCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutCommandsPreviewAndGenerateThroughDispatcher() && ok;

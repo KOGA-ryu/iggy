@@ -104,8 +104,21 @@ planCreativeWorldLayoutVerticalConnector(const CreativeGridSettings& grid,
            "creative_world_layout_vertical_connector_index_invalid");
     return plan;
   }
-  const CreativeWorldLayoutVerticalConnector& connector =
-      layout.verticalConnectors[connectorIndex];
+  return planCreativeWorldLayoutVerticalConnector(
+      grid, layout, connectorIndex, layout.verticalConnectors[connectorIndex]);
+}
+
+CreativeWorldLayoutVerticalConnectorPlan
+planCreativeWorldLayoutVerticalConnector(
+    const CreativeGridSettings& grid, const CreativeWorldLayout& layout,
+    std::size_t connectorIndex,
+    const CreativeWorldLayoutVerticalConnector& connector) noexcept {
+  CreativeWorldLayoutVerticalConnectorPlan plan;
+  if (connectorIndex >= layout.verticalConnectors.size()) {
+    reject(plan, CreativeWorldLayoutVerticalConnectorStatus::InvalidConnector,
+           "creative_world_layout_vertical_connector_index_invalid");
+    return plan;
+  }
   plan.buildingIndex = connector.buildingIndex;
   plan.lowerRoomIndex = connector.lowerRoomIndex;
   plan.upperRoomIndex = connector.upperRoomIndex;

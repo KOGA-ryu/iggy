@@ -45,4 +45,12 @@ planCreativeWorldLayoutVerticalConnector(const CreativeGridSettings& grid,
                                          const CreativeWorldLayout& layout,
                                          std::size_t connectorIndex) noexcept;
 
+// Evaluates an edited connector against the live layout without copying the
+// complete layout. The candidate replaces connectorIndex for this plan only.
+[[nodiscard]] CreativeWorldLayoutVerticalConnectorPlan
+planCreativeWorldLayoutVerticalConnector(
+    const CreativeGridSettings& grid, const CreativeWorldLayout& layout,
+    std::size_t connectorIndex,
+    const CreativeWorldLayoutVerticalConnector& candidate) noexcept;
+
 } // namespace iggy3d::creative

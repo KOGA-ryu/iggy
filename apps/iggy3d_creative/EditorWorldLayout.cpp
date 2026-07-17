@@ -1740,12 +1740,14 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutTool(
   }
   const bool changed = state.tool != tool || state.anchorActive ||
                        state.roomManipulation.active ||
+                       state.verticalConnectorManipulation.active ||
                        state.boxManipulation.active ||
                        state.wallManipulation.active ||
                        state.buildingManipulation.active ||
                        state.buildingTransform.active ||
                        state.buildingTemplatePlacement.active ||
                        state.openingManipulation.active ||
+                       state.verticalConnectorSettingsDraft.active ||
                        state.boxSettingsDraft.active ||
                        state.wallSettingsDraft.active ||
                        state.openingSettingsDraft.active;

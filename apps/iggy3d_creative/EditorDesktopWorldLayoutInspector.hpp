@@ -5,6 +5,10 @@
 
 namespace iggy3d_creative_app {
 
+void drawCreativeEditorWorldLayoutVerticalConnectorInspector(
+    CreativeEditorWorldLayoutState& state,
+    CreativeDesktopCommandFrame& commands);
+
 void drawCreativeEditorWorldLayoutStructureInspector(
     CreativeEditorWorldLayoutState& state,
     CreativeDesktopCommandFrame& commands);
