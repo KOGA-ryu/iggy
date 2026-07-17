@@ -303,8 +303,6 @@ int main(int argc, char** argv) {
       /*seedStarterScene=*/!desktopShellEnabled || captureMode);
   CreativeEditorState& editor = bootstrapData.editor;
   editor.desktopUi.shellEnabled = desktopShellEnabled;
-  const ProductMapMakerGridSnapshot& gridSnapshot =
-      bootstrapData.gridSnapshot;
   creative::CreativeAppState& appState = bootstrapData.appState;
   creative::CreativeObjectId floorObjectId = bootstrapData.floorObjectId;
   const std::filesystem::path& saveRoot = bootstrapData.saveRoot;
@@ -712,7 +710,7 @@ int main(int argc, char** argv) {
         iggy3d_creative_app::creativeEditorAssetReplacementRenderDocument(
             editor.assetReplacement, layoutRenderDocument);
     static_cast<void>(refreshCreativeEditorSceneCache(
-        sceneCache, renderDocument, gridSnapshot,
+        sceneCache, renderDocument,
         &bootstrapData.staticMeshAssetCatalog));
     StandaloneRoomBakePreviewScene& roomBakePreview = sceneCache.preview;
     SceneProjectionResult& scene = roomBakePreview.scene;
@@ -781,7 +779,7 @@ int main(int argc, char** argv) {
     // bake. Refresh only changed frames so an accepted placement is submitted
     // immediately rather than leaving the renderer on the pre-click snapshot.
     if (refreshCreativeEditorSceneCache(
-            sceneCache, renderDocument, gridSnapshot,
+            sceneCache, renderDocument,
             &bootstrapData.staticMeshAssetCatalog)) {
       frame.projections.scene = &roomBakePreview.scene;
       frame.clock.sourceTick = roomBakePreview.scene.sourceTick;

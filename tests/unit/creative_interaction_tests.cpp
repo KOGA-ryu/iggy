@@ -738,6 +738,112 @@ bool gridTargetResolvesHitFaceAndPlacementCell() {
          ok;
 }
 
+bool placementGridOwnsBoundsOriginsAndOverlayPlanes() {
+  cr::CreativePlacementGridFrameRequest request;
+  request.documentGrid = {{-2.0, 1.0, -3.0}, 1.0, {4, 4, 4}};
+  request.documentSnap.originX = -2.0;
+  request.documentSnap.originY = 1.0;
+  request.documentSnap.originZ = -3.0;
+  request.documentWorldBounds = {{-2.0, 1.0, -3.0}, {2.0, 5.0, 1.0}};
+  request.stepOverrideMeters = 0.25;
+  request.activePlaneY = 3.0;
+  request.useStepOverride = true;
+  request.useActivePlaneOverride = true;
+  const cr::CreativePlacementGridFrame frame =
+      cr::makeCreativePlacementGridFrame(request);
+  const cr::CreativeGridTarget target = cr::resolveCreativeGridTargetFromHit(
+      {-1.25, 2.0, -2.25}, {0.0, 1.0, 0.0}, frame);
+
+  bool ok = expect(frame.valid && !frame.storageAligned &&
+                       near(frame.storageCellSizeMeters, 1.0) &&
+                       near(frame.stepMeters.x, 0.25) &&
+                       frame.boundedAxes ==
+                           (cr::kCreativePlacementGridAxisX |
+                            cr::kCreativePlacementGridAxisY |
+                            cr::kCreativePlacementGridAxisZ),
+                   "authored placement lattice is distinct from storage") &&
+            expect(target.valid && target.resolved &&
+                       target.targetInBounds && target.adjacentInBounds &&
+                       target.targetCell == cr::CreativeGridCoord3{3, 3, 3} &&
+                       target.adjacentCell == cr::CreativeGridCoord3{3, 4, 3} &&
+                       near(target.placementAnchor.x, -1.125) &&
+                       near(target.placementAnchor.y, 2.0) &&
+                       near(target.placementAnchor.z, -2.125),
+                   "nonzero negative origin resolves quarter-meter cells");
+
+  cr::CreativePlacementGridFrameRequest edgeRequest;
+  edgeRequest.documentGrid = {{0.0, 0.0, 0.0}, 1.0, {2, 2, 2}};
+  edgeRequest.documentWorldBounds = {{0.0, 0.0, 0.0}, {2.0, 2.0, 2.0}};
+  edgeRequest.storageAligned = true;
+  const cr::CreativePlacementGridFrame edgeFrame =
+      cr::makeCreativePlacementGridFrame(edgeRequest);
+  const cr::CreativeGridTarget edge = cr::resolveCreativeGridTargetFromHit(
+      {2.0, 0.5, 0.5}, {1.0, 0.0, 0.0}, edgeFrame);
+  const cr::CreativeGridTarget outside = cr::resolveCreativeGridTargetFromHit(
+      {-0.25, 0.0, 0.5}, {0.0, 1.0, 0.0}, edgeFrame);
+  ok = expect(edge.valid && edge.targetInBounds && !edge.adjacentInBounds &&
+                  edge.status ==
+                      cr::CreativeGridTargetStatus::AdjacentOutOfBounds,
+              "edge cell remains selectable while outward placement rejects") &&
+       expect(!outside.valid && outside.resolved &&
+                  !outside.targetInBounds &&
+                  outside.status ==
+                      cr::CreativeGridTargetStatus::TargetOutOfBounds,
+              "half-open document bounds reject outside targets") &&
+       ok;
+
+  cr::CreativePlacementGridFrameRequest estateRequest;
+  estateRequest.documentGrid = {{-40.0, 0.0, -40.0}, 1.0, {80, 16, 80}};
+  estateRequest.documentSnap.originX = -40.0;
+  estateRequest.documentSnap.originY = 0.0;
+  estateRequest.documentSnap.originZ = -40.0;
+  estateRequest.documentWorldBounds = {{-40.0, 0.0, -40.0},
+                                       {40.0, 16.0, 40.0}};
+  estateRequest.stepOverrideMeters = 0.25;
+  estateRequest.activePlaneY = 6.0;
+  estateRequest.useStepOverride = true;
+  estateRequest.useActivePlaneOverride = true;
+  const cr::CreativePlacementGridOverlayPlan estate =
+      cr::buildCreativePlacementGridOverlayPlan(
+          {cr::makeCreativePlacementGridFrame(estateRequest), {0.0, 6.0, 0.0}});
+  ok = expect(estate.valid && estate.lineCount == 642U &&
+                  !estate.clippedX && !estate.clippedZ &&
+                  near(estate.visibleBounds.min.x, -40.0) &&
+                  near(estate.visibleBounds.max.z, 40.0) &&
+                  std::all_of(
+                      estate.lines.begin(),
+                      estate.lines.begin() + estate.lineCount,
+                      [](const cr::CreativePlacementGridLine& line) {
+                        return near(line.start.y, 6.0) &&
+                               near(line.end.y, 6.0);
+                      }),
+              "bounded quarter-meter overlay follows the upper floor") &&
+       ok;
+
+  estateRequest.documentGrid.origin = {10.0, -2.0, 20.0};
+  estateRequest.documentGrid.size = {8, 4, 6};
+  estateRequest.documentWorldBounds = {{10.0, -2.0, 20.0},
+                                       {18.0, 2.0, 26.0}};
+  estateRequest.documentSnap.originX = 10.0;
+  estateRequest.documentSnap.originY = -2.0;
+  estateRequest.documentSnap.originZ = 20.0;
+  estateRequest.stepOverrideMeters = 0.5;
+  estateRequest.activePlaneY = -1.0;
+  const cr::CreativePlacementGridOverlayPlan loaded =
+      cr::buildCreativePlacementGridOverlayPlan(
+          {cr::makeCreativePlacementGridFrame(estateRequest),
+           {14.0, -1.0, 23.0}});
+  return expect(loaded.valid && loaded.lineCount == 30U &&
+                    near(loaded.visibleBounds.min.x, 10.0) &&
+                    near(loaded.visibleBounds.max.x, 18.0) &&
+                    near(loaded.visibleBounds.min.z, 20.0) &&
+                    near(loaded.visibleBounds.max.z, 26.0) &&
+                    !near(estate.visibleBounds.min.x,
+                          loaded.visibleBounds.min.x),
+                "loaded document origin bounds and snap rebuild the overlay") &&
+         ok;
+}
+
 bool placementFeedbackHasABoundedVisibleLifetime() {
   using iggy3d_creative_app::CreativeEditorPlacementFeedback;
   using iggy3d_creative_app::CreativeEditorPlacementFeedbackStatus;
@@ -960,6 +1066,7 @@ int main() {
   ok = heldItemRegistryOwnsEveryKind() && ok;
   ok = heldVolumeItemsMapWithoutBranchesAtCallers() && ok;
   ok = gridTargetResolvesHitFaceAndPlacementCell() && ok;
+  ok = placementGridOwnsBoundsOriginsAndOverlayPlanes() && ok;
   ok = placementFeedbackHasABoundedVisibleLifetime() && ok;
   ok = materialRepeatCadenceAndPrecedenceAreDeterministic() && ok;
   ok = worldStrokeRepeatRequestUnifiesMouseAndControllerActions() && ok;

@@ -107,12 +107,42 @@ double creativeEditorTargetCellSize(
   return editor.placeCellSize;
 }
 
+cr::CreativePlacementGridFrame creativeEditorPlacementGridFrame(
+    const cr::CreativeDocument& document,
+    const CreativeEditorState& editor,
+    double activePlaneY,
+    bool useActivePlaneOverride) noexcept {
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const cr::CreativeHeldItemDefinition& heldDefinition =
+      cr::describeCreativeHeldItem(held.kind);
+  bool storageAligned =
+      heldDefinition.targetCellPolicy ==
+      cr::CreativeHeldItemTargetCellPolicy::DocumentGrid;
+  if (heldDefinition.targetCellPolicy ==
+      cr::CreativeHeldItemTargetCellPolicy::MaterialStorage) {
+    storageAligned =
+        cr::describeObject(held.objectKind).placementPolicy.storagePolicy ==
+        cr::CreativePlacementStoragePolicy::VoxelCell;
+  }
+  cr::CreativePlacementGridFrameRequest request;
+  request.documentGrid = document.gridSettings();
+  request.documentSnap = document.documentSnapSettings();
+  request.documentWorldBounds = document.worldBounds();
+  request.stepOverrideMeters = editor.placeCellSize;
+  request.activePlaneY = activePlaneY;
+  request.useStepOverride = !storageAligned;
+  request.useActivePlaneOverride = useActivePlaneOverride;
+  request.storageAligned = storageAligned;
+  return cr::makeCreativePlacementGridFrame(request);
+}
+
 CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
     const cr::CreativeDocument& document,
     const iggy3d::RenderCameraFrame& camera,
     const CreativeEditorPickFrame& pickFrame,
     const iggy3d::RenderContentViewport& region,
-    double cellSize) {
+    const cr::CreativePlacementGridFrame& placementGrid) {
   CreativeEditorWorldTarget target;
   // Crosshair pick from the center of the content region (the 3D viewport
   // sub-rectangle), so aiming matches what the user sees when panels frame it.
@@ -128,11 +158,14 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
   const ObjectVisualPickResult pick = pickNearestVisualBoundsObject(
       pickFrame.objectPickCandidates, target.ray);
   const cr::CreativeGridSettings gridSettings = document.gridSettings();
+  if (!placementGrid.valid) {
+    return target;
+  }
   cr::CreativeVoxelRaycastRequest voxelRequest;
   voxelRequest.rayOrigin = cr::creativeVec3FromCore(target.ray.origin);
   voxelRequest.rayDirection = cr::creativeVec3FromCore(target.ray.direction);
   voxelRequest.gridOrigin = gridSettings.origin;
-  voxelRequest.cellSize = cellSize;
+  voxelRequest.cellSize = gridSettings.cellSizeMeters;
   voxelRequest.maxDistance = kCreativeEditorReachMeters;
   const cr::CreativeVoxelRaycastReceipt voxelPick =
       cr::raycastCreativeVoxelField(document.voxelField(), voxelRequest);
@@ -157,8 +190,8 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
 
   if (voxelIsNearest) {
     target.grid = cr::resolveCreativeGridTargetFromHit(
-        voxelPick.hitPoint, voxelPick.faceNormal, cellSize,
-        gridSettings.origin, cr::creativeVec3FromCore(target.ray.direction));
+        voxelPick.hitPoint, voxelPick.faceNormal, placementGrid,
+        cr::creativeVec3FromCore(target.ray.direction));
     target.valid = target.grid.valid;
     target.voxelHit = true;
     target.voxelCell = voxelPick.cell;
@@ -181,7 +214,7 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
                                                      point);
     target.grid = cr::resolveCreativeGridTargetFromHit(
         cr::creativeVec3FromCore(point), cr::creativeVec3FromCore(normal),
-        cellSize, gridSettings.origin,
+        placementGrid,
         cr::creativeVec3FromCore(target.ray.direction));
     target.valid = target.grid.valid;
     target.objectHit = true;
@@ -196,8 +229,8 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
 
   if (terrainInReach) {
     target.grid = cr::resolveCreativeGridTargetFromHit(
-        terrainPick.hitPoint, terrainPick.faceNormal, cellSize,
-        gridSettings.origin, cr::creativeVec3FromCore(target.ray.direction));
+        terrainPick.hitPoint, terrainPick.faceNormal, placementGrid,
+        cr::creativeVec3FromCore(target.ray.direction));
     target.valid = target.grid.valid;
     target.terrainHit = true;
     target.terrainCell = terrainPick.cell;
@@ -213,13 +246,8 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
   if (std::fabs(target.ray.direction.y) <= 1.0e-5F) {
     return target;
   }
-  const cr::CreativeCoreVec3Conversion coreGridOrigin =
-      cr::creativeVec3ToCoreChecked(gridSettings.origin);
-  if (!coreGridOrigin.converted) {
-    return target;
-  }
   const float distance =
-      (coreGridOrigin.value.y - target.ray.origin.y) /
+      (static_cast<float>(placementGrid.activePlaneY) - target.ray.origin.y) /
       target.ray.direction.y;
   if (!std::isfinite(distance) || distance < 0.0F ||
       distance > kCreativeEditorReachMeters) {
@@ -228,12 +256,28 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
   const iggy3d::Vec3 point =
       target.ray.origin + target.ray.direction * distance;
   target.grid = cr::resolveCreativeGridTargetFromHit(
-      cr::creativeVec3FromCore(point), {0.0, 1.0, 0.0}, cellSize,
-      gridSettings.origin,
+      cr::creativeVec3FromCore(point), {0.0, 1.0, 0.0}, placementGrid,
       cr::creativeVec3FromCore(target.ray.direction));
   target.valid = target.grid.valid;
   target.distanceMeters = distance;
   return target;
+}
+
+CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
+    const cr::CreativeDocument& document,
+    const iggy3d::RenderCameraFrame& camera,
+    const CreativeEditorPickFrame& pickFrame,
+    const iggy3d::RenderContentViewport& region,
+    double cellSize) {
+  cr::CreativePlacementGridFrameRequest request;
+  request.documentGrid = document.gridSettings();
+  request.documentSnap = document.documentSnapSettings();
+  request.documentWorldBounds = document.worldBounds();
+  request.stepOverrideMeters = cellSize;
+  request.useStepOverride = true;
+  return resolveCreativeEditorWorldTarget(
+      document, camera, pickFrame, region,
+      cr::makeCreativePlacementGridFrame(request));
 }
 
 }  // namespace iggy3d_creative_app

@@ -20,7 +20,6 @@
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
 #include "app/iggy3d/creative/world/MapTemplate.hpp"
-#include "app/iggy3d/map_maker/Grid.hpp"
 #include "app/platform/SdlVulkanSurface.hpp"
 #include "render/RendererApi.hpp"
 #include "render/vulkan/FrameCapture.hpp"
@@ -39,26 +38,6 @@ void initializeCreativeEditorBootstrapData(
   output.editor.flyConfig.speedMetersPerSecond = 8.0F;
   output.editor.flyConfig.sprintMultiplier = 3.0F;
   output.editor.flyConfig.inputStepSeconds = 1.0F / 60.0F;
-
-  // Build the ground grid ONCE: a single layer at Y=0 (extentYMeters=0 so it
-  // does not stack ~9 layers), anchored at the origin.
-  iggy3d::ProductMapMakerGridConfig gridConfig;
-  gridConfig.enabled = true;
-  gridConfig.pitchMeters = 1.0F;
-  gridConfig.majorStepMeters = 5.0F;
-  gridConfig.extentXMeters = 40.0F;
-  gridConfig.extentYMeters = 1.0F;  // Must be > 0 (config validity); the
-                                    // ground layer is filtered in
-                                    // standalone preview scene build.
-  gridConfig.extentZMeters = 40.0F;
-  gridConfig.planeY = 0.0F;
-  gridConfig.anchorWorld = iggy3d::Vec3{0.0F, 0.0F, 0.0F};
-  output.gridSnapshot =
-      iggy3d::buildProductMapMakerGridSnapshot(gridConfig);
-  SDL_Log("iggy3d_creative: grid visible=%d layers=%llu dots=%llu",
-          output.gridSnapshot.visible ? 1 : 0,
-          static_cast<unsigned long long>(output.gridSnapshot.layerCount),
-          static_cast<unsigned long long>(output.gridSnapshot.dotCount));
 
   // ---- Seed initial CreativeDocument objects -----------------------------
   // A Floor tile sitting on Y=0 and a Crate resting on top of it. Both are
@@ -240,7 +219,7 @@ void initializeCreativeEditorBootstrapData(
           static_cast<unsigned long long>(output.editor.brushPalette.size()),
           std::string(iggy3d::creative::toString(output.editor.placeBrush))
               .c_str());
-  output.editor.placeCellSize = static_cast<double>(gridConfig.pitchMeters);
+  output.editor.placeCellSize = 1.0;
   syncCreativeEditorQuickEdit(output.editor);
   // --capture uses the same initial material slot so its authored placement
   // schedule remains aligned with the interactive application.

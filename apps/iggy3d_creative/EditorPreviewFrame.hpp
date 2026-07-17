@@ -9,7 +9,6 @@
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/input/ControlProfile.hpp"
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
-#include "app/iggy3d/map_maker/Grid.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/FrameInput.hpp"
 
@@ -42,6 +41,8 @@ struct CreativeEditorOverlayFrame {
   std::vector<iggy3d::RenderUiRect> uiRects;
   std::vector<iggy3d::DebugHudGlyphQuad> glyphs;
   std::vector<iggy3d::RenderCreativeWireframeDebugLine> combinedWireLines;
+  std::size_t placementGridLineCount = 0;
+  bool placementGridClipped = false;
   std::size_t documentWireLineCount = 0;
   std::size_t pointMarkerEdgeCount = 0;
   std::size_t lineMarkerEdgeCount = 0;
@@ -116,13 +117,11 @@ struct CreativeEditorSceneCache {
 
 [[nodiscard]] StandaloneRoomBakePreviewScene buildStandaloneRoomBakePreviewScene(
     const iggy3d::creative::CreativeDocument& document,
-    const iggy3d::ProductMapMakerGridSnapshot& gridSnapshot,
     const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr);
 
 [[nodiscard]] bool refreshCreativeEditorSceneCache(
     CreativeEditorSceneCache& cache,
     const iggy3d::creative::CreativeDocument& document,
-    const iggy3d::ProductMapMakerGridSnapshot& gridSnapshot,
     const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr);
 void invalidateCreativeEditorSceneCache(
     CreativeEditorSceneCache& cache) noexcept;

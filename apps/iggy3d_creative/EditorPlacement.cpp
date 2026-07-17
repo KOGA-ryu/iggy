@@ -457,7 +457,7 @@ CreativeBrushPlacementAdmission admitBrushPlacement(
         CreativeBrushPlacementAdmissionStatus::InvalidGeometry;
     return admission;
   }
-  if (!target.valid) {
+  if (!target.valid || (target.resolved && !target.adjacentInBounds)) {
     return admission;
   }
 

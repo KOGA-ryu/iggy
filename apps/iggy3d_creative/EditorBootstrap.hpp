@@ -7,7 +7,6 @@
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
-#include "app/iggy3d/map_maker/Grid.hpp"
 #include "app/platform/SdlWindow.hpp"
 #include "content/assets/StaticMeshAsset.hpp"
 #include "render/RendererConfig.hpp"
@@ -19,7 +18,6 @@ namespace iggy3d_creative_app {
 
 struct CreativeEditorBootstrapData {
   CreativeEditorState editor;
-  iggy3d::ProductMapMakerGridSnapshot gridSnapshot;
   iggy3d::creative::CreativeAppState appState;
   // Replaced only by the explicit Assets-catalog reload transaction. That
   // transaction invalidates the document-revision scene cache after the swap.

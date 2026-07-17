@@ -305,7 +305,19 @@ struct CreativeEditorWorldInteractionFrameRequest {
     const iggy3d::RenderCameraFrame& camera,
     const CreativeEditorPickFrame& pickFrame,
     const iggy3d::RenderContentViewport& region,
+    const iggy3d::creative::CreativePlacementGridFrame& placementGrid);
+[[nodiscard]] CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
+    const iggy3d::creative::CreativeDocument& document,
+    const iggy3d::RenderCameraFrame& camera,
+    const CreativeEditorPickFrame& pickFrame,
+    const iggy3d::RenderContentViewport& region,
     double cellSize);
+[[nodiscard]] iggy3d::creative::CreativePlacementGridFrame
+creativeEditorPlacementGridFrame(
+    const iggy3d::creative::CreativeDocument& document,
+    const CreativeEditorState& editor,
+    double activePlaneY = 0.0,
+    bool useActivePlaneOverride = false) noexcept;
 [[nodiscard]] double creativeEditorTargetCellSize(
     const iggy3d::creative::CreativeDocument& document,
     const CreativeEditorState& editor) noexcept;

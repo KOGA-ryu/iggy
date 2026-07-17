@@ -20,42 +20,6 @@ namespace creative = iggy3d::creative;
 using namespace iggy3d;
 namespace {
 
-iggy3d::Vec3 gridDotSizeFor(const iggy3d::ProductMapMakerGridDot& dot,
-                            float pitchMeters) {
-  const float minorSize = std::clamp(pitchMeters * 0.08F, 0.04F, 0.10F);
-  const float majorSize = std::clamp(pitchMeters * 0.14F, 0.07F, 0.16F);
-  const float size = dot.major ? majorSize : minorSize;
-  return {size, size, size};
-}
-
-void appendGridDotsToScene(const iggy3d::ProductMapMakerGridSnapshot& grid,
-                           iggy3d::SceneProjectionResult& scene) {
-  if (!grid.visible || grid.dots.empty()) {
-    return;
-  }
-  scene.room.meshes.reserve(scene.room.meshes.size() + grid.dots.size());
-  std::uint64_t index = 0;
-  for (const iggy3d::ProductMapMakerGridDot& dot : grid.dots) {
-    // Keep only the ground layer: a small Y-extent still emits a few Y layers
-    // (the snap rounds the half-extent out to y=-1,0,1), so filter to planeY.
-    if (std::fabs(dot.worldPosition.y - grid.planeY) > grid.pitchMeters * 0.5F) {
-      continue;
-    }
-    iggy3d::SceneRoomMeshItem mesh;
-    mesh.id = dot.major ? "creative.grid_major_dot_" : "creative.grid_dot_";
-    mesh.id += std::to_string(index);
-    mesh.role = "grid";
-    mesh.materialId =
-        dot.major ? "map_maker_grid_major_dot" : "map_maker_grid_dot";
-    mesh.position = dot.worldPosition;
-    mesh.size = gridDotSizeFor(dot, grid.pitchMeters);
-    scene.room.meshes.push_back(std::move(mesh));
-    ++index;
-  }
-  scene.room.staticMeshCount = scene.room.meshes.size();
-  scene.room.loaded = true;
-}
-
 [[nodiscard]] bool voxelChunkCoordLess(
     cr::CreativeVoxelChunkCoord lhs,
     cr::CreativeVoxelChunkCoord rhs) noexcept {
@@ -196,7 +160,6 @@ void refreshTerrainSurfacePlan(CreativeEditorSceneCache& cache,
 [[nodiscard]] StandaloneRoomBakePreviewScene
 buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
     const iggy3d::creative::CreativeDocument& document,
-    const iggy3d::ProductMapMakerGridSnapshot& gridSnapshot,
     std::span<const cr::CreativeVoxelCuboid> voxelCuboids,
     std::span<const cr::CreativeTerrainSurfacePatch> terrainCollisionPatches,
     std::span<const iggy3d::SceneRoomSurfacePatchItem> terrainSurfacePatches,
@@ -223,7 +186,6 @@ buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
                                                &preview.roomBake.room);
   preview.scene.room.surfacePatches.assign(terrainSurfacePatches.begin(),
                                            terrainSurfacePatches.end());
-  appendGridDotsToScene(gridSnapshot, preview.scene);
   preview.standalonePreviewMeshCount = appendStandalonePreviewProxiesToScene(
       document, preview.roomBake.staticMeshSources, preview.scene);
   if (!preview.scene.room.meshes.empty() ||
@@ -238,7 +200,6 @@ buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
 
 StandaloneRoomBakePreviewScene buildStandaloneRoomBakePreviewScene(
     const iggy3d::creative::CreativeDocument& document,
-    const iggy3d::ProductMapMakerGridSnapshot& gridSnapshot,
     const iggy3d::StaticMeshAssetCatalog* assetCatalog) {
   std::vector<cr::CreativeVoxelCuboid> cuboids =
       cr::buildCreativeVoxelCuboids(document.voxelField());
@@ -259,14 +220,13 @@ StandaloneRoomBakePreviewScene buildStandaloneRoomBakePreviewScene(
     }
   }
   return buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
-      document, gridSnapshot, cuboids, terrainCollisionPatches,
+      document, cuboids, terrainCollisionPatches,
       terrainSurfacePatches, true, assetCatalog);
 }
 
 bool refreshCreativeEditorSceneCache(
     CreativeEditorSceneCache& cache,
     const iggy3d::creative::CreativeDocument& document,
-    const iggy3d::ProductMapMakerGridSnapshot& gridSnapshot,
     const iggy3d::StaticMeshAssetCatalog* assetCatalog) {
   if (cache.valid && cache.documentId == document.id() &&
       cache.documentRevision == document.revision()) {
@@ -288,7 +248,7 @@ bool refreshCreativeEditorSceneCache(
   voxelCuboids.insert(voxelCuboids.end(), cache.terrainCuboids.begin(),
                       cache.terrainCuboids.end());
   cache.preview = buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
-      document, gridSnapshot, voxelCuboids, cache.terrainCollisionPatches,
+      document, voxelCuboids, cache.terrainCollisionPatches,
       cache.terrainSurfacePatches, true, assetCatalog);
   cache.documentId = document.id();
   cache.documentRevision = document.revision();

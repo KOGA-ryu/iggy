@@ -275,10 +275,9 @@ bool derivedSurfaceAndGuidesUseRevisionCaching() {
   cr::CreativeAppState appState;
   installDocument(appState, 402U);
   CreativeEditorState editor = terrainEditor(0, 0);
-  iggy3d::ProductMapMakerGridSnapshot grid;
   CreativeEditorSceneCache cache;
   bool ok = expect(refreshCreativeEditorSceneCache(
-                       cache, appState.facade.document(), grid) &&
+                       cache, appState.facade.document()) &&
                        cache.terrainSurfaceBuildCount == 1U,
                    "initial access builds empty terrain plan");
   for (std::int32_t x = 0; x < 8; ++x) {
@@ -288,7 +287,7 @@ bool derivedSurfaceAndGuidesUseRevisionCaching() {
                                        0.04F, guides);
     ok = expect(!guides.empty() &&
                     !refreshCreativeEditorSceneCache(
-                        cache, appState.facade.document(), grid) &&
+                        cache, appState.facade.document()) &&
                     cache.terrainSurfaceBuildCount == 1U,
                 "aim guides do not rebuild terrain") &&
          ok;
@@ -300,7 +299,7 @@ bool derivedSurfaceAndGuidesUseRevisionCaching() {
           appState, editor, CreativeEditorTerrainEditKind::Upsert,
           "test_terrain_cache");
   const bool refreshed = refreshCreativeEditorSceneCache(
-      cache, appState.facade.document(), grid);
+      cache, appState.facade.document());
   std::vector<iggy3d::RenderCreativeWireframeDebugLine> guides;
   appendCreativeEditorTerrainOverlay(appState.facade.document(), editor, 0.04F,
                                      guides);
@@ -337,7 +336,7 @@ bool derivedSurfaceAndGuidesUseRevisionCaching() {
          expect(guides.size() >= 48U,
                 "active tool shows stored rod and influence plus preview") &&
          expect(!refreshCreativeEditorSceneCache(
-                    cache, appState.facade.document(), grid) &&
+                    cache, appState.facade.document()) &&
                     cache.terrainSurfaceBuildCount == 2U,
                 "idle frame reuses rebuilt terrain") &&
          ok;
@@ -431,10 +430,9 @@ bool terrainSurfacePaintRoutesGesturesHistorySamplingAndRendering() {
          pickFrame, iggy3d::RenderContentViewport{0, 0, 800U, 600U}, now,
          false});
   };
-  iggy3d::ProductMapMakerGridSnapshot grid;
   CreativeEditorSceneCache cache;
   static_cast<void>(refreshCreativeEditorSceneCache(
-      cache, appState.facade.document(), grid));
+      cache, appState.facade.document()));
 
   process(strokeAction(cr::CreativeWorldActionId::Accept, true, true), 0U);
   process(strokeAction(cr::CreativeWorldActionId::Accept, true),
@@ -457,7 +455,7 @@ bool terrainSurfacePaintRoutesGesturesHistorySamplingAndRendering() {
        ok;
 
   const bool materialRefreshed = refreshCreativeEditorSceneCache(
-      cache, appState.facade.document(), grid);
+      cache, appState.facade.document());
   const bool hasStone = std::any_of(
       cache.preview.scene.room.surfacePatches.begin(),
       cache.preview.scene.room.surfacePatches.end(),
@@ -600,10 +598,9 @@ bool terrainPaintStrokeRepeatsDeduplicatesCachesAndGroupsUndo() {
   CreativeEditorState editor = terrainEditor(0, 0);
   editor.terrain.heightCells = 6U;
   editor.terrain.radiusCells = 3U;
-  iggy3d::ProductMapMakerGridSnapshot grid;
   CreativeEditorSceneCache cache;
   bool ok = expect(refreshCreativeEditorSceneCache(
-                       cache, appState.facade.document(), grid) &&
+                       cache, appState.facade.document()) &&
                        cache.terrainSurfaceBuildCount == 1U,
                    "stroke test begins from one empty terrain bake");
 
@@ -611,7 +608,7 @@ bool terrainPaintStrokeRepeatsDeduplicatesCachesAndGroupsUndo() {
       appState, editor,
       strokeAction(cr::CreativeWorldActionId::Accept, true, true), 0U);
   const bool firstRefresh = refreshCreativeEditorSceneCache(
-      cache, appState.facade.document(), grid);
+      cache, appState.facade.document());
   const cr::CreativeTerrainControlPoint* first =
       appState.facade.document().terrainField().controlAt({0, 0});
   ok = expect(first != nullptr && first->heightCells == 6U &&
@@ -631,7 +628,7 @@ bool terrainPaintStrokeRepeatsDeduplicatesCachesAndGroupsUndo() {
   ok = expect(appState.facade.document().terrainField().controlAt({1, 0}) ==
                   nullptr &&
                   !refreshCreativeEditorSceneCache(
-                      cache, appState.facade.document(), grid),
+                      cache, appState.facade.document()),
               "held X does not repeat before 200 ms") &&
        ok;
 
@@ -640,7 +637,7 @@ bool terrainPaintStrokeRepeatsDeduplicatesCachesAndGroupsUndo() {
       strokeAction(cr::CreativeWorldActionId::Accept, true),
       cr::kCreativeMaterialStrokeRepeatNanoseconds);
   const bool secondRefresh = refreshCreativeEditorSceneCache(
-      cache, appState.facade.document(), grid);
+      cache, appState.facade.document());
   const std::uint64_t revisionAfterSecond =
       appState.facade.document().revision();
   ok = expect(appState.facade.document().terrainField().controlAt({1, 0}) !=
@@ -659,7 +656,7 @@ bool terrainPaintStrokeRepeatsDeduplicatesCachesAndGroupsUndo() {
       2U * cr::kCreativeMaterialStrokeRepeatNanoseconds);
   ok = expect(appState.facade.document().revision() == revisionAfterSecond &&
                   !refreshCreativeEditorSceneCache(
-                      cache, appState.facade.document(), grid),
+                      cache, appState.facade.document()),
               "revisiting a stroke coordinate does not mutate or rebake") &&
        ok;
 
@@ -943,17 +940,16 @@ bool terrainGradeAnchorsPreviewsAppliesAndUndoesOneBatch() {
   static_cast<void>(processCreativeEditorTerrainGradeQuickEdit(
       editor.terrain.grade, cr::CreativeInputActionId::QuickEditIncrease));
   setTerrainStrokeTarget(editor, 4, 2);
-  iggy3d::ProductMapMakerGridSnapshot grid;
   CreativeEditorSceneCache cache;
   static_cast<void>(refreshCreativeEditorSceneCache(
-      cache, appState.facade.document(), grid));
+      cache, appState.facade.document()));
   const std::uint64_t buildsBeforePreview = cache.terrainSurfaceBuildCount;
   std::vector<iggy3d::RenderCreativeWireframeDebugLine> preview;
   appendCreativeEditorTerrainOverlay(appState.facade.document(), editor, 0.04F,
                                      preview);
   ok = expect(!preview.empty() &&
                   !refreshCreativeEditorSceneCache(
-                      cache, appState.facade.document(), grid) &&
+                      cache, appState.facade.document()) &&
                   cache.terrainSurfaceBuildCount == buildsBeforePreview,
               "grade preview is visible without mutating or rebuilding terrain") &&
        expect(creativeEditorTerrainGradeQuickEditLabel(editor.terrain.grade) ==
@@ -970,7 +966,7 @@ bool terrainGradeAnchorsPreviewsAppliesAndUndoesOneBatch() {
   const cr::CreativeTerrainControlPoint* end =
       appState.facade.document().terrainField().controlAt({4, 2});
   const bool refreshed = refreshCreativeEditorSceneCache(
-      cache, appState.facade.document(), grid);
+      cache, appState.facade.document());
   ok = expect(applied.accepted && applied.changed &&
                   applied.plan.items().size() == 5U &&
                   !editor.terrain.grade.anchorValid &&
@@ -1302,10 +1298,9 @@ bool terrainProfilePreviewApplyBaseLockAndUndoStayInParity() {
   cr::CreativeAppState appState;
   installDocument(appState, 417U);
   CreativeEditorState editor = terrainProfileEditor(0, 0);
-  iggy3d::ProductMapMakerGridSnapshot grid;
   CreativeEditorSceneCache sceneCache;
   const bool sceneBuilt = refreshCreativeEditorSceneCache(
-      sceneCache, appState.facade.document(), grid);
+      sceneCache, appState.facade.document());
   const std::uint64_t documentRevisionBefore =
       appState.facade.document().revision();
   const bool previewBuilt = refreshCreativeEditorTerrainProfilePreview(
@@ -1340,9 +1335,9 @@ bool terrainProfilePreviewApplyBaseLockAndUndoStayInParity() {
                    return lhs.kind == rhs.kind && lhs.control == rhs.control;
                  });
   const bool sceneRefreshed = refreshCreativeEditorSceneCache(
-      sceneCache, appState.facade.document(), grid);
+      sceneCache, appState.facade.document());
   const bool sceneReused = refreshCreativeEditorSceneCache(
-      sceneCache, appState.facade.document(), grid);
+      sceneCache, appState.facade.document());
   ok = expect(applied.accepted && applied.changed && planParity &&
                   appState.facade.document().terrainField().controlCount() ==
                       49U &&
@@ -2252,10 +2247,9 @@ bool bentSurfacePatchesReachRendererAndRefreshWithHeight() {
                                      {{2, 0}, 8U, 2U}},
   };
   static_cast<void>(appState.facade.applyTerrainControlEdits(edits));
-  iggy3d::ProductMapMakerGridSnapshot grid;
   CreativeEditorSceneCache cache;
   const bool refreshed = refreshCreativeEditorSceneCache(
-      cache, appState.facade.document(), grid);
+      cache, appState.facade.document());
   const iggy3d::vulkan::RoomMeshCpuGeometry first =
       iggy3d::vulkan::buildRoomMeshCpuGeometry(cache.preview.scene.room);
   const bool hasBentPatch = std::any_of(
@@ -2284,7 +2278,7 @@ bool bentSurfacePatchesReachRendererAndRefreshWithHeight() {
   static_cast<void>(appState.facade.applyTerrainControlEdits(
       std::span{&raised, 1U}));
   const bool refreshedAfterRaise = refreshCreativeEditorSceneCache(
-      cache, appState.facade.document(), grid);
+      cache, appState.facade.document());
   const iggy3d::vulkan::RoomMeshCpuGeometry second =
       iggy3d::vulkan::buildRoomMeshCpuGeometry(cache.preview.scene.room);
   return expect(refreshedAfterRaise && cache.terrainSurfaceBuildCount == 2U &&
@@ -2304,10 +2298,9 @@ bool smoothTerrainCollisionMatchesRenderedTriangle() {
                                      {{2, 0}, 8U, 2U}},
   };
   static_cast<void>(appState.facade.applyTerrainControlEdits(edits));
-  iggy3d::ProductMapMakerGridSnapshot grid;
   CreativeEditorSceneCache cache;
   if (!expect(refreshCreativeEditorSceneCache(
-                  cache, appState.facade.document(), grid),
+                  cache, appState.facade.document()),
               "smooth collision scene refreshes")) {
     return false;
   }
@@ -2405,10 +2398,9 @@ bool gridChangeRebuildsWorldSpaceTerrainPatches() {
   static_cast<void>(document.applyTerrainControlEdits(
       std::span{&edit, 1U}));
   const std::uint64_t terrainRevision = document.terrainField().revision();
-  iggy3d::ProductMapMakerGridSnapshot gridSnapshot;
   CreativeEditorSceneCache cache;
   const bool initialRefresh = refreshCreativeEditorSceneCache(
-      cache, document, gridSnapshot);
+      cache, document);
   if (!expect(initialRefresh && !cache.terrainSurfacePatches.empty() &&
                   cache.terrainSurfaceBuildCount == 1U,
               "initial grid builds world-space terrain patches")) {
@@ -2421,7 +2413,7 @@ bool gridChangeRebuildsWorldSpaceTerrainPatches() {
   grid.cellSizeMeters = 2.0;
   const bool gridChanged = document.setGridSettings(grid);
   const bool refreshed = refreshCreativeEditorSceneCache(
-      cache, document, gridSnapshot);
+      cache, document);
   const cr::CreativeTerrainRenderPlan expected =
       cr::buildCreativeTerrainRenderPlan(document.terrainField(), grid.origin,
                                          grid.cellSizeMeters);
@@ -2456,10 +2448,9 @@ bool oversizedBentSurfaceFallsBackToTerrainPlanes() {
                       cr::kCreativeTerrainMaximumRadiusCells}});
   }
   static_cast<void>(appState.facade.applyTerrainControlEdits(edits));
-  iggy3d::ProductMapMakerGridSnapshot grid;
   CreativeEditorSceneCache cache;
   const bool refreshed = refreshCreativeEditorSceneCache(
-      cache, appState.facade.document(), grid);
+      cache, appState.facade.document());
   const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
       iggy3d::vulkan::buildRoomMeshCpuGeometry(cache.preview.scene.room);
   const bool hasHeightPatch = std::any_of(

@@ -322,12 +322,11 @@ bool replacementPreviewCommitAndUndoAreAtomic() {
   const cr::CreativeBounds expectedSecond = app::creativeAssetBoundsAtPivot(
       catalog.entries[1], secondBefore.transform.position);
   app::CreativeEditorSceneCache sceneCache;
-  const iggy3d::ProductMapMakerGridSnapshot grid;
   const cr::CreativeDocument& renderDocument =
       app::creativeEditorAssetReplacementRenderDocument(
           state, appState.facade.document());
   const bool previewSceneBuilt = app::refreshCreativeEditorSceneCache(
-      sceneCache, renderDocument, grid, &catalog);
+      sceneCache, renderDocument, &catalog);
   const std::size_t replacementMeshCount =
       static_cast<std::size_t>(std::count_if(
           sceneCache.preview.roomBake.room.staticMeshes.begin(),
@@ -375,7 +374,7 @@ bool replacementPreviewCommitAndUndoAreAtomic() {
   const std::span<const cr::TargetRef> selectionAfter =
       cr::selectedTargetList(appState.facade.selectionState());
   const bool liveSceneRebuilt = app::refreshCreativeEditorSceneCache(
-      sceneCache, appState.facade.document(), grid, &catalog);
+      sceneCache, appState.facade.document(), &catalog);
   ok = expect(frame.blockWorldActions && frame.finished &&
                   frame.commitReceipt.accepted &&
                   frame.commitReceipt.changed &&

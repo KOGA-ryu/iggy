@@ -62,6 +62,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/spatial/SpatialProjectionGrid.cpp
     src/app/iggy3d/creative/spatial/SpatialProjectionPlans.cpp
     src/app/iggy3d/creative/spatial/SurfacePose.cpp
+    src/app/iggy3d/creative/spatial/PlacementGrid.cpp
     src/app/iggy3d/creative/document/DocumentWireframe.cpp
     src/app/iggy3d/creative/input/ControllerInput.cpp
     src/app/iggy3d/creative/input/ActionHints.cpp
@@ -335,6 +336,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorAttachmentPlacement.cpp
   apps/iggy3d_creative/EditorPlacementMutation.cpp
   apps/iggy3d_creative/EditorPlacementPreview.cpp
+  apps/iggy3d_creative/EditorPlacementGridOverlay.cpp
   apps/iggy3d_creative/EditorEdits.cpp
   apps/iggy3d_creative/EditorVolume.cpp
   apps/iggy3d_creative/EditorFrustumCull.cpp

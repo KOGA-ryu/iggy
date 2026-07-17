@@ -8,6 +8,7 @@
 #include <type_traits>
 
 #include "app/iggy3d/creative/document/Object.hpp"
+#include "app/iggy3d/creative/spatial/PlacementGrid.hpp"
 #include "app/iggy3d/creative/tools/Volume.hpp"
 
 namespace iggy3d::creative {
@@ -223,24 +224,5 @@ void clearCreativeHotbarAsset(CreativeHotbarEntry& entry) noexcept;
     CreativeObjectKind objectKind) noexcept;
 [[nodiscard]] CreativeVolumeOperationKind creativeVolumeOperationForHeldItem(
     CreativeHeldItemKind kind) noexcept;
-
-struct CreativeGridTarget {
-  bool valid = false;
-  CreativeVec3 hitPoint{};
-  CreativeVec3 faceNormal{};
-  CreativeVec3 placerForward{0.0, 0.0, -1.0};
-  CreativeGridCoord3 targetCell{};
-  CreativeGridCoord3 adjacentCell{};
-  CreativeBounds targetCellBounds{};
-  CreativeBounds adjacentCellBounds{};
-  CreativeVec3 placementAnchor{};
-};
-
-[[nodiscard]] CreativeGridTarget resolveCreativeGridTargetFromHit(
-    CreativeVec3 hitPoint,
-    CreativeVec3 faceNormal,
-    double cellSize,
-    CreativeVec3 origin = {},
-    CreativeVec3 placerForward = {0.0, 0.0, -1.0}) noexcept;
 
 }  // namespace iggy3d::creative

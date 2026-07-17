@@ -311,9 +311,11 @@ void processCreativeEditorWorldInteractionFrame(
     activateCreativeEditorVolumeMode(editor.volume, targetCellSize,
                                      documentGrid.origin);
   }
+  const cr::CreativePlacementGridFrame placementGrid =
+      creativeEditorPlacementGridFrame(document, editor);
   editor.interaction.target = resolveCreativeEditorWorldTarget(
       document, request.camera, request.pickFrame, request.contentRegion,
-      targetCellSize);
+      placementGrid);
   const cr::CreativeHotbarEntry& aimedHeld =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   if (aimedHeld.kind == cr::CreativeHeldItemKind::ObjectMove) {
@@ -352,9 +354,14 @@ void processCreativeEditorWorldInteractionFrame(
   cr::CreativeGridTarget brushPivotAim;
   if (editor.interaction.target.grid.valid) {
     const cr::CreativeGridTarget& targetGrid = editor.interaction.target.grid;
+    cr::CreativePlacementGridFrameRequest brushGridRequest;
+    brushGridRequest.documentGrid = documentGrid;
+    brushGridRequest.documentSnap = document.documentSnapSettings();
+    brushGridRequest.documentWorldBounds = document.worldBounds();
+    brushGridRequest.storageAligned = true;
     brushPivotAim = cr::resolveCreativeGridTargetFromHit(
         targetGrid.hitPoint, targetGrid.faceNormal,
-        documentGrid.cellSizeMeters, documentGrid.origin,
+        cr::makeCreativePlacementGridFrame(brushGridRequest),
         targetGrid.placerForward);
   }
   updateCreativeMaterialBrushPivotAim(

@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <limits>
 
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
@@ -20,60 +19,6 @@ namespace {
     const CreativeHotbarState& hotbar) noexcept {
   return std::min<std::size_t>(hotbar.selectedSlot,
                                kCreativeHotbarSlotCount - 1U);
-}
-
-[[nodiscard]] CreativeVec3 dominantAxisNormal(CreativeVec3 normal) noexcept {
-  const double ax = std::fabs(normal.x);
-  const double ay = std::fabs(normal.y);
-  const double az = std::fabs(normal.z);
-  if (!std::isfinite(ax) || !std::isfinite(ay) || !std::isfinite(az) ||
-      std::max({ax, ay, az}) <= 1.0e-12) {
-    return {};
-  }
-  if (ax >= ay && ax >= az) {
-    return {std::copysign(1.0, normal.x), 0.0, 0.0};
-  }
-  if (ay >= az) {
-    return {0.0, std::copysign(1.0, normal.y), 0.0};
-  }
-  return {0.0, 0.0, std::copysign(1.0, normal.z)};
-}
-
-[[nodiscard]] CreativeVec3 dominantHorizontalNormal(
-    CreativeVec3 direction) noexcept {
-  if (!isFiniteCreativeVec3(direction)) {
-    return {};
-  }
-  const double ax = std::fabs(direction.x);
-  const double az = std::fabs(direction.z);
-  if (std::max(ax, az) <= 1.0e-12) {
-    return {};
-  }
-  return ax >= az ? CreativeVec3{std::copysign(1.0, direction.x), 0.0, 0.0}
-                  : CreativeVec3{0.0, 0.0,
-                                 std::copysign(1.0, direction.z)};
-}
-
-[[nodiscard]] bool tryAdjacentCell(CreativeGridCoord3 cell,
-                                   CreativeVec3 faceNormal,
-                                   CreativeGridCoord3& adjacent) noexcept {
-  const std::int64_t x = static_cast<std::int64_t>(cell.x) +
-                         static_cast<std::int64_t>(faceNormal.x);
-  const std::int64_t y = static_cast<std::int64_t>(cell.y) +
-                         static_cast<std::int64_t>(faceNormal.y);
-  const std::int64_t z = static_cast<std::int64_t>(cell.z) +
-                         static_cast<std::int64_t>(faceNormal.z);
-  constexpr std::int64_t minCoord =
-      std::numeric_limits<std::int32_t>::min();
-  constexpr std::int64_t maxCoord =
-      std::numeric_limits<std::int32_t>::max();
-  if (x < minCoord || x > maxCoord || y < minCoord || y > maxCoord ||
-      z < minCoord || z > maxCoord) {
-    return false;
-  }
-  adjacent = {static_cast<std::int32_t>(x), static_cast<std::int32_t>(y),
-              static_cast<std::int32_t>(z)};
-  return true;
 }
 
 }  // namespace
@@ -348,53 +293,6 @@ CreativeVolumeOperationKind creativeVolumeOperationForHeldItem(
   return definition.volumeOperationItem
              ? definition.volumeOperation
              : CreativeVolumeOperationKind::Fill;
-}
-
-CreativeGridTarget resolveCreativeGridTargetFromHit(
-    CreativeVec3 hitPoint,
-    CreativeVec3 faceNormal,
-    double cellSize,
-    CreativeVec3 origin,
-    CreativeVec3 placerForward) noexcept {
-  CreativeGridTarget target;
-  if (!isFiniteCreativeVec3(hitPoint) ||
-      !isFiniteCreativeVec3(faceNormal) ||
-      !isFiniteCreativeVec3(origin) ||
-      !isFiniteCreativeVec3(placerForward) ||
-      !std::isfinite(cellSize) || cellSize <= 0.0) {
-    return target;
-  }
-
-  const CreativeVec3 snappedNormal = dominantAxisNormal(faceNormal);
-  if (snappedNormal.x == 0.0 && snappedNormal.y == 0.0 &&
-      snappedNormal.z == 0.0) {
-    return target;
-  }
-  const double epsilon = std::max(cellSize * 1.0e-4, 1.0e-7);
-  const CreativeVec3 inside{hitPoint.x - snappedNormal.x * epsilon,
-                            hitPoint.y - snappedNormal.y * epsilon,
-                            hitPoint.z - snappedNormal.z * epsilon};
-  if (!tryCreativeVolumeCellFromWorld(inside, cellSize, origin,
-                                      target.targetCell) ||
-      !tryAdjacentCell(target.targetCell, snappedNormal,
-                       target.adjacentCell)) {
-    return target;
-  }
-
-  target.hitPoint = hitPoint;
-  target.faceNormal = snappedNormal;
-  target.placerForward = dominantHorizontalNormal(placerForward);
-  target.targetCellBounds =
-      creativeVolumeCellBounds(target.targetCell, cellSize, origin);
-  target.adjacentCellBounds =
-      creativeVolumeCellBounds(target.adjacentCell, cellSize, origin);
-  const CreativeVec3 adjacentCenter =
-      measureCreativeBounds(target.adjacentCellBounds).center;
-  target.placementAnchor = {adjacentCenter.x,
-                            target.adjacentCellBounds.min.y,
-                            adjacentCenter.z};
-  target.valid = true;
-  return target;
 }
 
 CreativeMaterialRepeatRequest makeCreativeWorldStrokeRepeatRequest(

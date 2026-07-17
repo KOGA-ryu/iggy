@@ -16,6 +16,7 @@
 #include "EditorInteraction.hpp"
 #include "EditorLogicLinkOverlay.hpp"
 #include "EditorPathEditing.hpp"
+#include "EditorPlacementGridOverlay.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "EditorState.hpp"
 #include "EditorStructuralPlacement.hpp"
@@ -38,6 +39,8 @@ void resetCreativeEditorOverlayFrame(CreativeEditorOverlayFrame& output) {
   output.uiRects.clear();
   output.glyphs.clear();
   output.combinedWireLines.clear();
+  output.placementGridLineCount = 0;
+  output.placementGridClipped = false;
   output.documentWireLineCount = 0;
   output.pointMarkerEdgeCount = 0;
   output.lineMarkerEdgeCount = 0;
@@ -554,7 +557,8 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
       appState.facade.document().logicLinks().size() * 15U + 72U +
       13U +
       kMaxStaticMeshAttachmentSocketCount * 3U +
-      editor.interaction.assetScatter.preview.candidateCount * 12U);
+      editor.interaction.assetScatter.preview.candidateCount * 12U +
+      creative::kCreativePlacementGridMaximumLineCount);
   std::size_t& documentWireLineCount = output.documentWireLineCount;
   std::size_t& pointMarkerEdgeCount = output.pointMarkerEdgeCount;
   std::size_t& lineMarkerEdgeCount = output.lineMarkerEdgeCount;
@@ -572,6 +576,7 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
     combinedWireLines.push_back(line);
   }
   documentWireLineCount = combinedWireLines.size();
+  appendCreativeEditorPlacementGridOverlay(request, output);
   const creative::CreativeObjectId focusedGroupId =
       activeCreativeEditorGroupFocusId(editor.groupFocus);
   if (focusedGroupId != creative::kInvalidObjectId) {

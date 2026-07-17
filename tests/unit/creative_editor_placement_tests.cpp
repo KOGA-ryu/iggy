@@ -591,8 +591,7 @@ bool verticalSurfacePlacementFollowsTheAimedFace() {
                  {1.0F, 0.0F, 0.0F}})
           : ObjectVisualPickResult{};
   const StandaloneRoomBakePreviewScene baked =
-      buildStandaloneRoomBakePreviewScene(
-          appState.facade.document(), iggy3d::ProductMapMakerGridSnapshot{});
+      buildStandaloneRoomBakePreviewScene(appState.facade.document());
   const bool bakeAligned = !baked.roomBake.room.staticMeshes.empty() &&
                            near(baked.roomBake.room.staticMeshes.front()
                                     .sizeMeters.x,
@@ -607,14 +606,19 @@ bool verticalSurfacePlacementFollowsTheAimedFace() {
                            near(baked.scene.room.meshes.front()
                                     .rotationEulerRadians.y,
                                 static_cast<float>(kHalfPi));
+  const bool noGridMeshes = std::none_of(
+      baked.scene.room.meshes.begin(), baked.scene.room.meshes.end(),
+      [](const iggy3d::SceneRoomMeshItem& mesh) {
+        return mesh.role == "grid";
+      });
   return expect(receipt.accepted && receipt.objectCreated && placed != nullptr &&
                     sameBounds(placed->bounds, doorX.plan.authoredBounds) &&
                     near(static_cast<float>(
                              placed->transform.rotationEulerRadians.y),
                          static_cast<float>(kHalfPi)),
                 "committed attachment keeps authored bounds and admitted yaw") &&
-         expect(bakeAligned,
-                "room bake carries the authored attachment yaw") &&
+         expect(bakeAligned && noGridMeshes,
+                "room bake carries yaw without legacy grid meshes") &&
          expect(pickBounds.orientedBounds.has_value() &&
                     picked.objectId == receipt.objectId,
                 "placed cardinal object is picked through its oriented bounds") &&
@@ -1622,14 +1626,13 @@ bool editorVolumeBudgetRejectsBeforeMutation() {
 
 bool sceneCacheRefreshesOnlyOnDocumentRevision() {
   cr::CreativeDocument document;
-  iggy3d::ProductMapMakerGridSnapshot grid;
   CreativeEditorSceneCache cache;
-  bool ok = expect(refreshCreativeEditorSceneCache(cache, document, grid),
+  bool ok = expect(refreshCreativeEditorSceneCache(cache, document),
                    "first scene cache access builds") &&
             expect(cache.refreshCount == 1U,
                    "first scene cache build counted once");
   for (std::size_t frame = 0; frame < 300U; ++frame) {
-    ok = expect(!refreshCreativeEditorSceneCache(cache, document, grid),
+    ok = expect(!refreshCreativeEditorSceneCache(cache, document),
                 "idle frame reuses scene cache") &&
          ok;
   }
@@ -1639,7 +1642,7 @@ bool sceneCacheRefreshesOnlyOnDocumentRevision() {
   for (std::int32_t aim = 0; aim < 8; ++aim) {
     setPlaceTarget(editor, aim);
     attachCreativeEditorPlacementPreviews(editor, false, previewFrame);
-    ok = expect(!refreshCreativeEditorSceneCache(cache, document, grid),
+    ok = expect(!refreshCreativeEditorSceneCache(cache, document),
                 "aim movement does not refresh scene cache") &&
          ok;
   }
@@ -1648,17 +1651,17 @@ bool sceneCacheRefreshesOnlyOnDocumentRevision() {
   create.kind = cr::CreativeObjectKind::Crate;
   const cr::CreativeDocumentCreateReceipt first = document.createObject(create);
   ok = expect(first.accepted && first.changed &&
-                  refreshCreativeEditorSceneCache(cache, document, grid) &&
+                  refreshCreativeEditorSceneCache(cache, document) &&
                   cache.refreshCount == 2U,
               "accepted mutation refreshes cache once") &&
        ok;
-  ok = expect(!refreshCreativeEditorSceneCache(cache, document, grid) &&
+  ok = expect(!refreshCreativeEditorSceneCache(cache, document) &&
                   cache.refreshCount == 2U,
               "post-mutation idle frame reuses refreshed cache") &&
        ok;
   const cr::CreativeDocumentCreateReceipt second = document.createObject(create);
   ok = expect(second.accepted && second.changed &&
-                  refreshCreativeEditorSceneCache(cache, document, grid) &&
+                  refreshCreativeEditorSceneCache(cache, document) &&
                   cache.refreshCount == 3U,
               "each later accepted mutation refreshes exactly once") &&
        ok;
@@ -1676,7 +1679,7 @@ bool sceneCacheRefreshesOnlyOnDocumentRevision() {
   const cr::CreativeVoxelMutationReceipt voxelReceipt =
       document.applyVoxelEdits(voxelEdits);
   ok = expect(voxelReceipt.accepted && voxelReceipt.changed &&
-                  refreshCreativeEditorSceneCache(cache, document, grid) &&
+                  refreshCreativeEditorSceneCache(cache, document) &&
                   cache.refreshCount == 4U &&
                   cache.voxelChunkMeshBuildCount == 1U,
               "voxel batch refreshes scene cache once") &&
@@ -1684,7 +1687,7 @@ bool sceneCacheRefreshesOnlyOnDocumentRevision() {
                   cache.preview.roomBake.receipt.voxelChunkCount == 1U &&
                   cache.preview.roomBake.receipt.bakedVoxelCuboidCount == 1U,
               "scene cache greedily bakes one voxel cuboid") &&
-       expect(!refreshCreativeEditorSceneCache(cache, document, grid) &&
+       expect(!refreshCreativeEditorSceneCache(cache, document) &&
                   cache.refreshCount == 4U &&
                   cache.voxelChunkMeshBuildCount == 1U,
               "post-voxel idle frame reuses scene cache") &&
@@ -1695,7 +1698,7 @@ bool sceneCacheRefreshesOnlyOnDocumentRevision() {
   const cr::CreativeVoxelMutationReceipt secondChunkReceipt =
       document.applyVoxelEdits(std::span{&secondChunkEdit, 1U});
   return expect(secondChunkReceipt.changed &&
-                    refreshCreativeEditorSceneCache(cache, document, grid) &&
+                    refreshCreativeEditorSceneCache(cache, document) &&
                     cache.voxelChunkMeshBuildCount == 2U &&
                     cache.preview.roomBake.receipt.voxelChunkCount == 2U,
                 "new chunk rebuilds only its greedy plan") &&
@@ -1765,6 +1768,58 @@ bool worldTargetPicksVoxelBeforeGround() {
          expect(target.grid.targetCell.x == 2 &&
                     target.grid.adjacentCell.x == 1,
                 "world target derives aimed and adjacent cells from face");
+}
+
+bool worldTargetSeparatesVoxelStorageFromAuthoredSnap() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("mixed grid");
+  static_cast<void>(document.assignId(109U));
+  static_cast<void>(document.setGridSettings(
+      {{0.0, 0.0, 0.0}, 1.0, {8, 4, 8}}));
+  static_cast<void>(document.setWorldBounds(
+      {{0.0, 0.0, 0.0}, {8.0, 4.0, 8.0}}));
+  const cr::CreativeVoxelEdit edit{{2, 0, 0}, cr::CreativeObjectKind::Crate};
+  static_cast<void>(document.applyVoxelEdits(std::span{&edit, 1U}));
+
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Door);
+  editor.placeCellSize = 0.25;
+  const cr::CreativePlacementGridFrame placementGrid =
+      creativeEditorPlacementGridFrame(document, editor);
+  iggy3d::RenderCameraFrame camera;
+  camera.worldEye = {-2.0F, 0.5F, 0.5F};
+  camera.worldForward = {1.0F, 0.0F, 0.0F};
+  camera.worldUp = {0.0F, 1.0F, 0.0F};
+  const CreativeEditorWorldTarget target = resolveCreativeEditorWorldTarget(
+      document, camera, CreativeEditorPickFrame{},
+      iggy3d::RenderContentViewport{0, 0, 800U, 600U}, placementGrid);
+
+  bool ok = expect(placementGrid.valid && !placementGrid.storageAligned &&
+                       placementGrid.storageCellSizeMeters == 1.0 &&
+                       placementGrid.stepMeters.x == 0.25,
+                   "authored snap keeps the document storage pitch") &&
+            expect(target.valid && target.voxelHit &&
+                       target.voxelCell == edit.cell &&
+                       near(target.distanceMeters, 4.0F) &&
+                       target.grid.targetCell.x == 8 &&
+                       target.grid.adjacentCell.x == 7,
+                   "voxel pick uses one meter storage before quarter snap");
+
+  const cr::CreativeGridTarget edge = cr::resolveCreativeGridTargetFromHit(
+      {8.0, 0.5, 0.5}, {1.0, 0.0, 0.0}, placementGrid);
+  const CreativeBrushPlacementAdmission edgeAdmission =
+      admitBrushPlacement(cr::CreativeObjectKind::Door, edge);
+  editor.interaction.target = {};
+  editor.interaction.target.valid = edge.valid;
+  editor.interaction.target.grid = edge;
+  iggy3d::FrameInput previewFrame;
+  attachCreativeEditorPlacementPreviews(editor, false, previewFrame,
+                                        &document);
+  return expect(edge.valid && !edge.adjacentInBounds &&
+                    !edgeAdmission.allowed &&
+                    previewFrame.creativePreview.itemCount == 2U &&
+                    previewFrame.creativePreview.items[0].role ==
+                        iggy3d::RenderCreativePreviewRole::PlacementInvalid,
+                "outward edge placement shows red and cannot mutate") &&
+         ok;
 }
 
 bool worldTargetPicksDerivedTerrainAndPreservesVoxelTiePriority() {
@@ -2199,14 +2254,25 @@ bool materialBrushPaintsErasesPreviewsAndGroupsHistory() {
       previewOverlay);
 
   constexpr std::size_t kWireEdgesPerVoxel = 12U;
+  const bool previewBrushRangeValid =
+      previewOverlay.materialBrushEdgeCount <=
+      previewOverlay.combinedWireLines.size();
+  const std::size_t previewBrushStart =
+      previewBrushRangeValid
+          ? previewOverlay.combinedWireLines.size() -
+                previewOverlay.materialBrushEdgeCount
+          : 0U;
   bool ok = expect(previewOverlay.materialBrushEdgeCount ==
                            7U * kWireEdgesPerVoxel &&
                        previewOverlay.combinedWireLines.size() ==
-                           previewOverlay.materialBrushEdgeCount &&
-                       !previewOverlay.combinedWireLines.empty() &&
-                       near(previewOverlay.combinedWireLines.front().color.r,
+                           previewOverlay.placementGridLineCount +
+                               previewOverlay.materialBrushEdgeCount &&
+                       previewBrushRangeValid &&
+                       near(previewOverlay.combinedWireLines[previewBrushStart]
+                                .color.r,
                             0.22F) &&
-                       near(previewOverlay.combinedWireLines.front().color.g,
+                       near(previewOverlay.combinedWireLines[previewBrushStart]
+                                .color.g,
                             1.0F) &&
                        previewFrame.creativePreview.itemCount == 1U &&
                        previewFrame.creativePreview.items[0].role ==
@@ -2359,12 +2425,22 @@ bool materialBrushPaintsErasesPreviewsAndGroupsHistory() {
       {appState, editor, selection, gizmo, erasePreviewFrame,
        projectionRequest, 1280U, 720U, 0.03F, false},
       erasePreviewOverlay);
+  const bool eraseBrushRangeValid =
+      erasePreviewOverlay.materialBrushEdgeCount <=
+      erasePreviewOverlay.combinedWireLines.size();
+  const std::size_t eraseBrushStart =
+      eraseBrushRangeValid
+          ? erasePreviewOverlay.combinedWireLines.size() -
+                erasePreviewOverlay.materialBrushEdgeCount
+          : 0U;
   ok = expect(erasePreviewOverlay.materialBrushEdgeCount ==
                       7U * kWireEdgesPerVoxel &&
-                  !erasePreviewOverlay.combinedWireLines.empty() &&
-                  near(erasePreviewOverlay.combinedWireLines.front().color.r,
+                  eraseBrushRangeValid &&
+                  near(erasePreviewOverlay.combinedWireLines[eraseBrushStart]
+                           .color.r,
                        1.0F) &&
-                  near(erasePreviewOverlay.combinedWireLines.front().color.g,
+                  near(erasePreviewOverlay.combinedWireLines[eraseBrushStart]
+                           .color.g,
                        0.2F),
               "erase preview shows the same seven voxel cells in red") &&
        ok;
@@ -5022,6 +5098,7 @@ int main() {
   ok = sceneCacheRefreshesOnlyOnDocumentRevision() && ok;
   ok = activeVolumeSelectionRebindsToLoadedDocumentGrid() && ok;
   ok = worldTargetPicksVoxelBeforeGround() && ok;
+  ok = worldTargetSeparatesVoxelStorageFromAuthoredSnap() && ok;
   ok = worldTargetPicksDerivedTerrainAndPreservesVoxelTiePriority() && ok;
   ok = removalStrokeDeletesVoxelAndGroupsHistory() && ok;
   ok = gamepadAcceptPlacesAndRejectRemoves() && ok;
