@@ -14,7 +14,12 @@ CreativeEditorPlacementResolution resolveCreativeEditorPlacement(
   CreativeEditorPlacementResolution result;
   result.admission = admitBrushPlacement(held, target.grid, placementYaw);
   const std::string_view sourceAssetId = cr::creativeHotbarAssetId(held);
-  if (!result.admission.allowed || sourceAssetId.empty() ||
+  const bool compatibilityOnlyRejection =
+      result.admission.status ==
+          CreativeBrushPlacementAdmissionStatus::TargetIncompatible &&
+      result.admission.plan.valid;
+  if ((!result.admission.allowed && !compatibilityOnlyRejection) ||
+      sourceAssetId.empty() ||
       !held.hasAssetBounds || !target.objectHit || !target.grid.valid ||
       assetCatalog == nullptr) {
     return result;
@@ -51,9 +56,13 @@ CreativeEditorPlacementResolution resolveCreativeEditorPlacement(
   }
 
   result.admission.plan.hasAttachment = true;
+  result.admission.plan.attachmentSatisfiesCompatibility =
+      compatibilityOnlyRejection;
   result.admission.plan.attachmentTargetId =
       result.attachment.targetObjectId;
   result.admission.plan.attachmentSocket = result.attachment.targetSocket;
+  result.admission.status = CreativeBrushPlacementAdmissionStatus::Ready;
+  result.admission.allowed = true;
   return result;
 }
 

@@ -62,6 +62,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/spatial/SpatialProjectionGrid.cpp
     src/app/iggy3d/creative/spatial/SpatialProjectionPlans.cpp
     src/app/iggy3d/creative/spatial/SurfacePose.cpp
+    src/app/iggy3d/creative/spatial/PlacementCompatibility.cpp
     src/app/iggy3d/creative/spatial/PlacementGrid.cpp
     src/app/iggy3d/creative/spatial/PlacementContact.cpp
     src/app/iggy3d/creative/spatial/PlacementOrientation.cpp

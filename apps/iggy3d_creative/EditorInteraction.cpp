@@ -338,9 +338,14 @@ void processCreativeEditorWorldInteractionFrame(
       editor.interaction.target.objectHit = false;
       editor.interaction.target.objectId = cr::kInvalidObjectId;
       editor.interaction.target.objectKind = cr::CreativeObjectKind::Unknown;
+      editor.interaction.target.grid.targetFacts = {};
     } else {
       editor.interaction.target.objectId = resolvedObject->id;
       editor.interaction.target.objectKind = resolvedObject->kind;
+      editor.interaction.target.grid.targetFacts =
+          cr::makeCreativePlacementTargetFacts(
+              cr::CreativePlacementTargetSource::AuthoredObject,
+              resolvedObject->kind, resolvedObject->id);
     }
   }
   if (cr::creativeHeldItemIsTerrainTool(aimedHeld.kind)) {

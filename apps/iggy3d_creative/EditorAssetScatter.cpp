@@ -61,6 +61,13 @@ namespace {
        position.z - half},
       {position.x + half, position.y, position.z + half},
   };
+  target.targetFacts = cr::makeCreativePlacementTargetFacts(
+      editor.interaction.target.terrainHit
+          ? cr::CreativePlacementTargetSource::Terrain
+          : cr::CreativePlacementTargetSource::EmptyPlane,
+      editor.interaction.target.terrainHit
+          ? cr::CreativeObjectKind::TerrainPatch
+          : cr::CreativeObjectKind::Unknown);
   target.valid = true;
   return target;
 }

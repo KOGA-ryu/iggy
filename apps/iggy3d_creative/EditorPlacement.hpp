@@ -60,6 +60,7 @@ struct CreativeBrushPlacementPlan {
       iggy3d::creative::CreativePlacementStoragePolicy::AuthoredObject;
   iggy3d::creative::CreativePlacementContactPlan contact{};
   iggy3d::creative::CreativePlacementSurfaceFramePlan surfaceFrame{};
+  iggy3d::creative::CreativePlacementCompatibilityResult compatibility{};
   iggy3d::creative::CreativeGridCoord3 voxelCell{};
   iggy3d::creative::CreativeObjectId attachmentTargetId =
       iggy3d::creative::kInvalidObjectId;
@@ -70,6 +71,7 @@ struct CreativeBrushPlacementPlan {
   bool hasVoxelCell = false;
   bool orientationResolved = false;
   bool hasAttachment = false;
+  bool attachmentSatisfiesCompatibility = false;
   bool valid = false;
 };
 
@@ -114,6 +116,7 @@ enum class CreativeBrushPlacementAdmissionStatus : std::uint8_t {
   InvalidGeometry,
   UnsupportedPolicy,
   FaceDisallowed,
+  TargetIncompatible,
   AttachmentOccupied,
 };
 

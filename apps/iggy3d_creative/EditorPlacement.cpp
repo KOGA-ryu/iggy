@@ -143,21 +143,6 @@ iggy3d::creative::CreativeBounds pathPreviewBounds(
   return std::atan2(forward.x, forward.z);
 }
 
-[[nodiscard]] iggy3d::creative::CreativeVec3 placementOrientationNormal(
-    const iggy3d::creative::CreativeGridTarget& target) noexcept {
-  if (target.anchorSnapped &&
-      iggy3d::creative::isFiniteCreativeVec3(target.placementNormal)) {
-    const double lengthSquared =
-        target.placementNormal.x * target.placementNormal.x +
-        target.placementNormal.y * target.placementNormal.y +
-        target.placementNormal.z * target.placementNormal.z;
-    if (std::isfinite(lengthSquared) && lengthSquared > 1.0e-24) {
-      return target.placementNormal;
-    }
-  }
-  return target.faceNormal;
-}
-
 [[nodiscard]] bool orientUprightPlan(
     CreativeBrushPlacementPlan& plan,
     iggy3d::creative::CreativeVec3 surfaceNormal,
@@ -205,7 +190,8 @@ iggy3d::creative::CreativeBounds pathPreviewBounds(
       placementFaceVector(localForward);
   plan.surfaceFrame =
       iggy3d::creative::resolveCreativePlacementSurfaceFrame(
-          {placementOrientationNormal(target), target.placerForward,
+          {iggy3d::creative::creativeGridTargetSurfaceNormal(target),
+           target.placerForward,
            localForwardVector,
            iggy3d::creative::creativePlacementYawRadians(placementYaw)});
   if (!plan.surfaceFrame.valid) {
@@ -498,6 +484,8 @@ std::string_view toString(
       return "creative_placement_policy_unsupported";
     case CreativeBrushPlacementAdmissionStatus::FaceDisallowed:
       return "creative_placement_face_disallowed";
+    case CreativeBrushPlacementAdmissionStatus::TargetIncompatible:
+      return "creative_placement_target_incompatible";
     case CreativeBrushPlacementAdmissionStatus::AttachmentOccupied:
       return "creative_placement_attachment_occupied";
   }
@@ -552,6 +540,8 @@ CreativeBrushPlacementAdmission admitBrushPlacement(
 
   const iggy3d::creative::CreativeObjectPlacementPolicy& policy =
       iggy3d::creative::describeObject(brush).placementPolicy;
+  const iggy3d::creative::CreativeVec3 surfaceNormal =
+      iggy3d::creative::creativeGridTargetSurfaceNormal(target);
   if (!policy.enabled ||
       policy.targetPolicy !=
           iggy3d::creative::CreativePlacementTargetPolicy::AdjacentCell) {
@@ -560,13 +550,22 @@ CreativeBrushPlacementAdmission admitBrushPlacement(
     return admission;
   }
   if (!iggy3d::creative::creativePlacementPolicyAllowsFace(
-          policy, target.faceNormal)) {
+          policy, surfaceNormal)) {
     admission.status = CreativeBrushPlacementAdmissionStatus::FaceDisallowed;
     return admission;
   }
 
+  admission.plan.compatibility =
+      iggy3d::creative::resolveCreativePlacementCompatibility(
+          {policy.hostPolicy, target.targetFacts, surfaceNormal});
+  if (!admission.plan.compatibility.allowed) {
+    admission.status =
+        CreativeBrushPlacementAdmissionStatus::TargetIncompatible;
+    return admission;
+  }
+
   admission.plan.resolvedFace =
-      iggy3d::creative::creativePlacementFaceFromNormal(target.faceNormal);
+      iggy3d::creative::creativePlacementFaceFromNormal(surfaceNormal);
   admission.plan.storagePolicy = policy.storagePolicy;
   if (policy.storagePolicy ==
       iggy3d::creative::CreativePlacementStoragePolicy::VoxelCell) {
@@ -616,7 +615,7 @@ CreativeBrushPlacementAdmission admitBrushPlacement(
     case iggy3d::creative::CreativePlacementOrientationPolicy::
         UprightSurfaceOrPlacerFacing:
       if (!orientUprightPlan(admission.plan,
-                             placementOrientationNormal(target),
+                             surfaceNormal,
                              target.placerForward,
                              policy.localForwardFace)) {
         admission.status =
@@ -779,9 +778,19 @@ CreativeBrushPlacementAdmission admitBrushPlacement(
   if (assetId.empty()) {
     return admission;
   }
-  if (!admission.allowed || !held.hasAssetBounds ||
+  const bool compatibilityOnlyRejection =
+      admission.status ==
+          CreativeBrushPlacementAdmissionStatus::TargetIncompatible &&
+      admission.plan.valid;
+  if ((!admission.allowed && !compatibilityOnlyRejection) ||
+      !held.hasAssetBounds ||
       !applyCreativeAssetPlacementBounds(admission.plan,
-                                         held.assetSourceBounds) ||
+                                         held.assetSourceBounds)) {
+    admission.status = CreativeBrushPlacementAdmissionStatus::InvalidGeometry;
+    admission.allowed = false;
+    return admission;
+  }
+  if (admission.allowed &&
       !applyCreativeBrushPlacementContact(admission.plan, target)) {
     admission.status = CreativeBrushPlacementAdmissionStatus::InvalidGeometry;
     admission.allowed = false;

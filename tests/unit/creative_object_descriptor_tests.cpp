@@ -1374,6 +1374,9 @@ bool placementPoliciesAreDescriptorOwnedAndFailClosed() {
   bool ok = true;
   std::size_t enabledCount = 0U;
   std::size_t voxelBackedCount = 0U;
+  std::array<std::size_t,
+             static_cast<std::size_t>(cr::CreativePlacementHostPolicy::Count)>
+      hostPolicyCounts{};
   for (const cr::CreativeObjectDescriptor& descriptor :
        cr::allObjectDescriptors()) {
     const cr::CreativeObjectPlacementPolicy& policy =
@@ -1382,6 +1385,14 @@ bool placementPoliciesAreDescriptorOwnedAndFailClosed() {
       continue;
     }
     ++enabledCount;
+    const std::size_t hostPolicyIndex =
+        static_cast<std::size_t>(policy.hostPolicy);
+    ok = expect(hostPolicyIndex < hostPolicyCounts.size(),
+                "placement host policy stays inside the declared enum") &&
+         ok;
+    if (hostPolicyIndex < hostPolicyCounts.size()) {
+      ++hostPolicyCounts[hostPolicyIndex];
+    }
     const bool voxelBacked =
         policy.storagePolicy ==
         cr::CreativePlacementStoragePolicy::VoxelCell;
@@ -1433,6 +1444,41 @@ bool placementPoliciesAreDescriptorOwnedAndFailClosed() {
   }
   const double nan = std::numeric_limits<double>::quiet_NaN();
   return expect(enabledCount > 0U, "descriptor table owns placeable rows") &&
+         expect(hostPolicyCounts[static_cast<std::size_t>(
+                    cr::CreativePlacementHostPolicy::AnyKnownTarget)] == 4U &&
+                    hostPolicyCounts[static_cast<std::size_t>(
+                        cr::CreativePlacementHostPolicy::
+                            StructuralVerticalSurface)] == 2U &&
+                    hostPolicyCounts[static_cast<std::size_t>(
+                        cr::CreativePlacementHostPolicy::
+                            SolidVerticalSurface)] == 2U &&
+                    hostPolicyCounts[static_cast<std::size_t>(
+                        cr::CreativePlacementHostPolicy::SolidSurface)] == 3U &&
+                    hostPolicyCounts[static_cast<std::size_t>(
+                        cr::CreativePlacementHostPolicy::SupportingSurface)] ==
+                        enabledCount - 11U,
+                "every placeable descriptor has one explicit host policy") &&
+         expect(cr::describeObject(cr::CreativeObjectKind::Door)
+                            .placementPolicy.hostPolicy ==
+                        cr::CreativePlacementHostPolicy::
+                            StructuralVerticalSurface &&
+                    cr::describeObject(cr::CreativeObjectKind::Window)
+                            .placementPolicy.hostPolicy ==
+                        cr::CreativePlacementHostPolicy::
+                            StructuralVerticalSurface &&
+                    cr::describeObject(cr::CreativeObjectKind::Ladder)
+                            .placementPolicy.hostPolicy ==
+                        cr::CreativePlacementHostPolicy::SolidVerticalSurface &&
+                    cr::describeObject(cr::CreativeObjectKind::WallRunSurface)
+                            .placementPolicy.hostPolicy ==
+                        cr::CreativePlacementHostPolicy::SolidVerticalSurface &&
+                    cr::describeObject(cr::CreativeObjectKind::Decal)
+                            .placementPolicy.hostPolicy ==
+                        cr::CreativePlacementHostPolicy::SolidSurface &&
+                    cr::describeObject(cr::CreativeObjectKind::Crate)
+                            .placementPolicy.hostPolicy ==
+                        cr::CreativePlacementHostPolicy::SupportingSurface,
+                "attachments dressing and props own their semantic host rules") &&
          expect(voxelBackedCount == 4U,
                 "exactly four structural materials use voxel storage") &&
          expect(cr::describeObject(cr::CreativeObjectKind::Wall)

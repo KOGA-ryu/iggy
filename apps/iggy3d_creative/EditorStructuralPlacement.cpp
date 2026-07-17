@@ -22,9 +22,14 @@ namespace {
       !cr::isFiniteCreativeVec3(target.placementAnchor)) {
     return false;
   }
-  return cr::creativePlacementPolicyAllowsFace(
-      cr::describeObject(held.objectKind).placementPolicy,
-      target.faceNormal);
+  const cr::CreativeObjectPlacementPolicy& policy =
+      cr::describeObject(held.objectKind).placementPolicy;
+  const cr::CreativeVec3 surfaceNormal =
+      cr::creativeGridTargetSurfaceNormal(target);
+  return cr::creativePlacementPolicyAllowsFace(policy, surfaceNormal) &&
+         cr::resolveCreativePlacementCompatibility(
+             {policy.hostPolicy, target.targetFacts, surfaceNormal})
+             .allowed;
 }
 
 [[nodiscard]] CreativeBrushPlacementAdmissionStatus admissionStatusFor(
@@ -185,8 +190,12 @@ resolveCreativeEditorStructuralSpanPlacement(
   plan.authoredBounds = structural.authoredBounds;
   plan.previewBounds = structural.authoredBounds;
   plan.resolvedFace =
-      cr::creativePlacementFaceFromNormal(target.faceNormal);
+      cr::creativePlacementFaceFromNormal(
+          cr::creativeGridTargetSurfaceNormal(target));
   plan.storagePolicy = descriptor.placementPolicy.storagePolicy;
+  plan.compatibility = cr::resolveCreativePlacementCompatibility(
+      {descriptor.placementPolicy.hostPolicy, target.targetFacts,
+       cr::creativeGridTargetSurfaceNormal(target)});
   plan.hasTransformOverride = true;
   plan.hasBoundsOverride = true;
   plan.orientationResolved = true;

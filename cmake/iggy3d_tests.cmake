@@ -61,6 +61,11 @@ iggy3d_add_unit_test(creative_object_descriptor_tests
 set_tests_properties(creative_object_descriptor_tests PROPERTIES
   LABELS "unit;app;creative;object_descriptor;iggy3d")
 
+iggy3d_add_unit_test(creative_placement_compatibility_tests
+  tests/unit/creative_placement_compatibility_tests.cpp)
+set_tests_properties(creative_placement_compatibility_tests PROPERTIES
+  LABELS "unit;app;creative;placement;compatibility;iggy3d")
+
 iggy3d_add_unit_test(creative_document_mutation_tests
   tests/unit/creative_document_mutation_tests.cpp)
 set_tests_properties(creative_document_mutation_tests PROPERTIES

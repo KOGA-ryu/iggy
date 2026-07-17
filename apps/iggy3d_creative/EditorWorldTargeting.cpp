@@ -376,6 +376,8 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
     target.voxelHit = true;
     target.voxelCell = voxelPick.cell;
     target.objectKind = voxelPick.material;
+    target.grid.targetFacts = cr::makeCreativePlacementTargetFacts(
+        cr::CreativePlacementTargetSource::Voxel, target.objectKind);
     target.distanceMeters = static_cast<float>(voxelPick.distance);
     return target;
   }
@@ -405,6 +407,9 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
     if (const cr::CreativeObject* object = document.findObject(pick.objectId);
         object != nullptr) {
       target.objectKind = object->kind;
+      target.grid.targetFacts = cr::makeCreativePlacementTargetFacts(
+          cr::CreativePlacementTargetSource::AuthoredObject,
+          target.objectKind, target.objectId);
     }
     return target;
   }
@@ -417,6 +422,8 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
     target.terrainHit = true;
     target.terrainCell = terrainPick.cell;
     target.objectKind = cr::CreativeObjectKind::TerrainPatch;
+    target.grid.targetFacts = cr::makeCreativePlacementTargetFacts(
+        cr::CreativePlacementTargetSource::Terrain, target.objectKind);
     target.distanceMeters = static_cast<float>(terrainPick.distance);
     return target;
   }
@@ -440,6 +447,8 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
   target.grid = cr::resolveCreativeGridTargetFromHit(
       cr::creativeVec3FromCore(point), {0.0, 1.0, 0.0}, placementGrid,
       cr::creativeVec3FromCore(target.ray.direction));
+  target.grid.targetFacts = cr::makeCreativePlacementTargetFacts(
+      cr::CreativePlacementTargetSource::EmptyPlane);
   target.valid = target.grid.valid;
   target.distanceMeters = distance;
   return target;

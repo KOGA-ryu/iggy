@@ -5,6 +5,7 @@
 #include <cstdint>
 
 #include "app/iggy3d/creative/document/Document.hpp"
+#include "app/iggy3d/creative/spatial/PlacementCompatibility.hpp"
 
 namespace iggy3d::creative {
 
@@ -109,6 +110,7 @@ struct CreativePlacementGridFrame {
 
 struct CreativeGridTarget {
   CreativeGridTargetStatus status = CreativeGridTargetStatus::InvalidInput;
+  CreativePlacementTargetFacts targetFacts{};
   bool valid = false;
   bool resolved = false;
   bool targetInBounds = false;
@@ -214,6 +216,8 @@ selectCreativePlacementAnchor(
     double cellSize,
     CreativeVec3 origin = {},
     CreativeVec3 placerForward = {0.0, 0.0, -1.0}) noexcept;
+[[nodiscard]] CreativeVec3 creativeGridTargetSurfaceNormal(
+    const CreativeGridTarget& target) noexcept;
 [[nodiscard]] CreativePlacementGridOverlayPlan
 buildCreativePlacementGridOverlayPlan(
     const CreativePlacementGridOverlayRequest& request) noexcept;

@@ -206,6 +206,15 @@ enum class CreativePlacementTargetPolicy : std::uint8_t {
     AdjacentCell,
 };
 
+enum class CreativePlacementHostPolicy : std::uint8_t {
+    AnyKnownTarget,
+    SupportingSurface,
+    StructuralVerticalSurface,
+    SolidVerticalSurface,
+    SolidSurface,
+    Count,
+};
+
 enum class CreativePlacementOrientationPolicy : std::uint8_t {
     DescriptorDefault,
     UprightSurfaceOrPlacerFacing,
@@ -231,6 +240,8 @@ struct CreativeObjectPlacementPolicy {
     CreativePlacementFaceMask allowedFaces{0};
     CreativePlacementTargetPolicy targetPolicy{
         CreativePlacementTargetPolicy::None};
+    CreativePlacementHostPolicy hostPolicy{
+        CreativePlacementHostPolicy::AnyKnownTarget};
     CreativePlacementOrientationPolicy orientationPolicy{
         CreativePlacementOrientationPolicy::DescriptorDefault};
     CreativePlacementFace localForwardFace{CreativePlacementFace::PositiveZ};

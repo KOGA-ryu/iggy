@@ -87,6 +87,13 @@ constexpr CreativeObjectDescriptor withPlacementGesture(
     return value;
 }
 
+constexpr CreativeObjectDescriptor withPlacementHost(
+    CreativeObjectDescriptor value,
+    CreativePlacementHostPolicy hostPolicy) noexcept {
+    value.placementPolicy.hostPolicy = hostPolicy;
+    return value;
+}
+
 using DescriptorCapabilityFlags = std::uint32_t;
 
 constexpr DescriptorCapabilityFlags kNoCapabilities = 0;
@@ -154,6 +161,9 @@ constexpr CreativeObjectPlacementPolicy placementPolicyForDescriptor(
     return CreativeObjectPlacementPolicy{
         kCreativePlacementAllFaces,
         CreativePlacementTargetPolicy::AdjacentCell,
+        storagePolicy == CreativePlacementStoragePolicy::VoxelCell
+            ? CreativePlacementHostPolicy::AnyKnownTarget
+            : CreativePlacementHostPolicy::SupportingSurface,
         orientationPolicy,
         localForwardFace,
         storagePolicy == CreativePlacementStoragePolicy::VoxelCell
@@ -342,7 +352,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         CreativePlacementFace::PositiveZ,
         CreativePlacementStoragePolicy::VoxelCell
     ),
-    descriptor(
+    withPlacementHost(descriptor(
         CreativeObjectKind::Door,
         CreativeObjectCategory::Structural,
         CreativeObjectProfile::Attachment,
@@ -357,8 +367,8 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
         CreativePlacementOrientationPolicy::UprightSurfaceOrPlacerFacing
-    ),
-    descriptor(
+    ), CreativePlacementHostPolicy::StructuralVerticalSurface),
+    withPlacementHost(descriptor(
         CreativeObjectKind::Window,
         CreativeObjectCategory::Structural,
         CreativeObjectProfile::Attachment,
@@ -373,7 +383,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
         CreativePlacementOrientationPolicy::SurfaceFrame
-    ),
+    ), CreativePlacementHostPolicy::StructuralVerticalSurface),
     withGeneratedGeometry(descriptor(
         CreativeObjectKind::Stair,
         CreativeObjectCategory::Structural,
@@ -540,7 +550,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
     ), CreativeGeneratedGeometryProfile::WalkableSlab),
         CreativePlacementGesturePolicy::HorizontalSpan),
-    descriptor(
+    withPlacementHost(descriptor(
         CreativeObjectKind::Ladder,
         CreativeObjectCategory::Structural,
         CreativeObjectProfile::BoxStructural,
@@ -555,7 +565,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
         CreativePlacementOrientationPolicy::UprightSurfaceOrPlacerFacing
-    )
+    ), CreativePlacementHostPolicy::SolidVerticalSurface)
 });
 
 constexpr auto kTerrainOrVolumeDescriptors = std::to_array<CreativeObjectDescriptor>({
@@ -802,7 +812,7 @@ constexpr auto kNavigationOrMovementDescriptors = std::to_array<CreativeObjectDe
         markerDefaults(),
         kRuntimeMeaningful | kAuthoringBrushPalette
     ),
-    descriptor(
+    withPlacementHost(descriptor(
         CreativeObjectKind::WallRunSurface,
         CreativeObjectCategory::NavigationOrMovement,
         CreativeObjectProfile::MovementTest,
@@ -818,7 +828,7 @@ constexpr auto kNavigationOrMovementDescriptors = std::to_array<CreativeObjectDe
         CreativeRuntimeAnchorSemantic::None,
         CreativePlacementOrientationPolicy::SurfaceFrame,
         CreativePlacementFace::PositiveX
-    ),
+    ), CreativePlacementHostPolicy::SolidVerticalSurface),
     descriptor(
         CreativeObjectKind::SlideSurface,
         CreativeObjectCategory::NavigationOrMovement,
@@ -1180,7 +1190,7 @@ constexpr auto kVisualDressingDescriptors = std::to_array<CreativeObjectDescript
         boxDefaults(1.0, 1.0, 1.0),
         kHasTransform | kHasBounds | kCanHaveParent | kCanOwnChildren | kAuthoringBrushPalette
     ),
-    descriptor(
+    withPlacementHost(descriptor(
         CreativeObjectKind::Decal,
         CreativeObjectCategory::VisualDressing,
         CreativeObjectProfile::Dressing,
@@ -1196,8 +1206,8 @@ constexpr auto kVisualDressingDescriptors = std::to_array<CreativeObjectDescript
         CreativeRuntimeAnchorSemantic::None,
         CreativePlacementOrientationPolicy::SurfaceFrame,
         CreativePlacementFace::PositiveY
-    ),
-    descriptor(
+    ), CreativePlacementHostPolicy::SolidSurface),
+    withPlacementHost(descriptor(
         CreativeObjectKind::Sign,
         CreativeObjectCategory::VisualDressing,
         CreativeObjectProfile::Dressing,
@@ -1212,8 +1222,8 @@ constexpr auto kVisualDressingDescriptors = std::to_array<CreativeObjectDescript
         kHasTransform | kHasBounds | kCanHaveParent | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
         CreativePlacementOrientationPolicy::SurfaceFrame
-    ),
-    descriptor(
+    ), CreativePlacementHostPolicy::SolidSurface),
+    withPlacementHost(descriptor(
         CreativeObjectKind::Banner,
         CreativeObjectCategory::VisualDressing,
         CreativeObjectProfile::Dressing,
@@ -1228,7 +1238,7 @@ constexpr auto kVisualDressingDescriptors = std::to_array<CreativeObjectDescript
         kHasTransform | kHasBounds | kCanHaveParent | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
         CreativePlacementOrientationPolicy::SurfaceFrame
-    ),
+    ), CreativePlacementHostPolicy::SolidSurface),
     descriptor(
         CreativeObjectKind::FoliagePatch,
         CreativeObjectCategory::VisualDressing,

@@ -129,6 +129,8 @@ void setPlaceTarget(CreativeEditorState& editor,
       {static_cast<double>(x), static_cast<double>(y), static_cast<double>(z)},
       {static_cast<double>(x + 1), static_cast<double>(y + 1),
        static_cast<double>(z + 1)}};
+  target.grid.targetFacts = cr::makeCreativePlacementTargetFacts(
+      cr::CreativePlacementTargetSource::EmptyPlane);
   editor.interaction.target = target;
 }
 
@@ -149,7 +151,19 @@ void setVoxelTarget(CreativeEditorState& editor,
       cell, 1.0, {});
   target.grid.adjacentCellBounds = cr::creativeVolumeCellBounds(
       target.grid.adjacentCell, 1.0, {});
+  target.grid.targetFacts = cr::makeCreativePlacementTargetFacts(
+      cr::CreativePlacementTargetSource::Voxel, material);
   editor.interaction.target = target;
+}
+
+cr::CreativeGridTarget targetWithFacts(
+    cr::CreativeGridTarget target,
+    cr::CreativePlacementTargetSource source,
+    cr::CreativeObjectKind hostKind = cr::CreativeObjectKind::Unknown,
+    cr::CreativeObjectId hostObjectId = cr::kInvalidObjectId) {
+  target.targetFacts =
+      cr::makeCreativePlacementTargetFacts(source, hostKind, hostObjectId);
+  return target;
 }
 
 bool placementPlanMatchesEveryCreateRequest() {
@@ -289,8 +303,10 @@ bool standaloneBrushPalettePopulatesEveryCatalogCategory() {
 }
 
 bool placementAdmissionOwnsPreviewAndExecutionTruth() {
-  cr::CreativeGridTarget target = cr::resolveCreativeGridTargetFromHit(
-      {2.25, 1.0, -3.25}, {0.0, 1.0, 0.0}, 1.0);
+  cr::CreativeGridTarget target = targetWithFacts(
+      cr::resolveCreativeGridTargetFromHit(
+          {2.25, 1.0, -3.25}, {0.0, 1.0, 0.0}, 1.0),
+      cr::CreativePlacementTargetSource::EmptyPlane);
   const CreativeBrushPlacementAdmission voxelReady =
       admitBrushPlacement(cr::CreativeObjectKind::Wall, target);
 
@@ -356,6 +372,7 @@ bool placementAdmissionOwnsPreviewAndExecutionTruth() {
   const CreativeBrushPlacementMutationReceipt occupiedReceipt =
       applyBrushPlacement(appState.facade, voxelReady.plan, 2U);
 
+  target.faceNormal = {0.0, 1.0, 0.0};
   const CreativeBrushPlacementAdmission objectReady =
       admitBrushPlacement(cr::CreativeObjectKind::Crate, target);
   const CreativeBrushPlacementMutationReceipt objectReceipt =
@@ -369,9 +386,10 @@ bool placementAdmissionOwnsPreviewAndExecutionTruth() {
       {std::numeric_limits<float>::max(), 0.0F, 0.0F});
   const CreativeBrushPlacementMutationReceipt rejected =
       applyBrushPlacement(appState.facade, invalidPlan, 4U);
-  const cr::CreativeGridTarget halfMeterTarget =
+  const cr::CreativeGridTarget halfMeterTarget = targetWithFacts(
       cr::resolveCreativeGridTargetFromHit(
-          {2.25, 1.0, -3.25}, {0.0, 1.0, 0.0}, 0.5);
+          {2.25, 1.0, -3.25}, {0.0, 1.0, 0.0}, 0.5),
+      cr::CreativePlacementTargetSource::EmptyPlane);
   const CreativeBrushPlacementAdmission halfMeterAdmission =
       admitBrushPlacement(cr::CreativeObjectKind::Wall, halfMeterTarget);
   const CreativeBrushPlacementMutationReceipt gridMismatch =
@@ -444,9 +462,93 @@ bool placementAdmissionOwnsPreviewAndExecutionTruth() {
          ok;
 }
 
+bool semanticCompatibilityOwnsPreviewMutationAndHistory() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 101U);
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Door);
+  setPlaceTarget(editor, 2, 0, 1);
+
+  const CreativeBrushPlacementAdmission rejected = admitBrushPlacement(
+      cr::CreativeObjectKind::Door, editor.interaction.target.grid);
+  iggy3d::FrameInput rejectedPreview;
+  attachCreativeEditorPlacementPreviews(
+      editor, false, rejectedPreview, &appState.facade.document());
+  const std::uint64_t revisionBefore = appState.facade.document().revision();
+  const std::size_t undoBefore = cr::creativeUndoDepth(appState.history);
+  const cr::CreativeDocumentCreateReceipt guardedObjectMutation =
+      placeBrushObject(appState.facade, rejected.plan, 1U);
+  const CreativeBrushPlacementMutationReceipt guardedMutation =
+      applyBrushPlacement(appState.facade, rejected.plan, 1U);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, true, false), 0U);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, false, false, true), 1U);
+
+  editor.interaction.target.grid.faceNormal = {0.0, 0.0, 1.0};
+  editor.interaction.target.grid.targetFacts =
+      cr::makeCreativePlacementTargetFacts(
+          cr::CreativePlacementTargetSource::Voxel,
+          cr::CreativeObjectKind::Wall);
+  clearCreativeEditorPlacementFeedback(editor.interaction);
+  const CreativeBrushPlacementAdmission accepted = admitBrushPlacement(
+      cr::CreativeObjectKind::Door, editor.interaction.target.grid);
+  cr::CreativeGridTarget snappedFace = editor.interaction.target.grid;
+  snappedFace.faceNormal = {0.0, 1.0, 0.0};
+  snappedFace.placementNormal = {1.0, 0.0, 0.0};
+  snappedFace.anchorSnapped = true;
+  const CreativeBrushPlacementAdmission snapped = admitBrushPlacement(
+      cr::CreativeObjectKind::Door, snappedFace);
+  iggy3d::FrameInput acceptedPreview;
+  attachCreativeEditorPlacementPreviews(
+      editor, false, acceptedPreview, &appState.facade.document());
+
+  return expect(!rejected.allowed && rejected.plan.valid &&
+                    rejected.status ==
+                        CreativeBrushPlacementAdmissionStatus::
+                            TargetIncompatible &&
+                    rejected.plan.compatibility.status ==
+                        cr::CreativePlacementCompatibilityStatus::
+                            SourceDisallowed,
+                "door rejects an empty construction plane") &&
+         expect(rejectedPreview.creativePreview.itemCount == 2U &&
+                    rejectedPreview.creativePreview.items[0].role ==
+                        iggy3d::RenderCreativePreviewRole::PlacementInvalid,
+                "incompatible placement uses the red target preview") &&
+         expect(guardedObjectMutation.requested &&
+                    !guardedObjectMutation.accepted &&
+                    guardedObjectMutation.status ==
+                        cr::CreativeDocumentCreateStatus::Rejected &&
+                    guardedObjectMutation.reasonCode ==
+                        "creative_placement_target_source_disallowed" &&
+                    guardedMutation.requested && !guardedMutation.accepted &&
+                    !guardedMutation.changed &&
+                    guardedMutation.status ==
+                        CreativeBrushPlacementMutationStatus::InvalidPlan &&
+                    guardedMutation.reasonCode ==
+                        "creative_placement_target_source_disallowed" &&
+                    appState.facade.document().revision() == revisionBefore &&
+                    appState.facade.document().objectCount() == 0U &&
+                    cr::creativeUndoDepth(appState.history) == undoBefore,
+                "rejected compatibility cannot mutate or create history") &&
+         expect(accepted.allowed && accepted.plan.compatibility.allowed &&
+                    acceptedPreview.creativePreview.itemCount == 2U &&
+                    acceptedPreview.creativePreview.items[0].role ==
+                        iggy3d::RenderCreativePreviewRole::PlacementValid,
+                "the same door turns green on a structural wall face") &&
+         expect(snapped.allowed &&
+                    snapped.plan.resolvedFace ==
+                        cr::CreativePlacementFace::PositiveX,
+                "snapped object face owns admission orientation and preview");
+}
+
 bool verticalSurfacePlacementFollowsTheAimedFace() {
-  cr::CreativeGridTarget target = cr::resolveCreativeGridTargetFromHit(
-      {2.0, 1.0, 2.0}, {1.0, 0.0, 0.0}, 1.0);
+  cr::CreativeGridTarget target = targetWithFacts(
+      cr::resolveCreativeGridTargetFromHit(
+          {2.0, 1.0, 2.0}, {1.0, 0.0, 0.0}, 1.0),
+      cr::CreativePlacementTargetSource::AuthoredObject,
+      cr::CreativeObjectKind::Wall, 9001U);
   const CreativeBrushPlacementAdmission wallX =
       admitBrushPlacement(cr::CreativeObjectKind::Wall, target);
   target.faceNormal = {0.0, 0.0, 1.0};
@@ -469,7 +571,9 @@ bool verticalSurfacePlacementFollowsTheAimedFace() {
   target.faceNormal = {0.0, 0.0, 1.0};
   const CreativeBrushPlacementAdmission wallRunZ =
       admitBrushPlacement(cr::CreativeObjectKind::WallRunSurface, target);
-  target.faceNormal = {1.0, 0.0, 0.0};
+  target.faceNormal = {0.0, 1.0, 0.0};
+  target.targetFacts = cr::makeCreativePlacementTargetFacts(
+      cr::CreativePlacementTargetSource::EmptyPlane);
   const CreativeBrushPlacementAdmission bridge =
       admitBrushPlacement(cr::CreativeObjectKind::Bridge, target);
 
@@ -479,9 +583,6 @@ bool verticalSurfacePlacementFollowsTheAimedFace() {
   const cr::CreativeTransformedBounds doorZGeometry =
       cr::resolveCreativeTransformedBounds(doorZ.plan.authoredBounds,
                                            doorZ.plan.transform);
-  const cr::CreativeTransformedBounds doorTopGeometry =
-      cr::resolveCreativeTransformedBounds(doorTop.plan.authoredBounds,
-                                           doorTop.plan.transform);
   const cr::CreativeTransformedBounds wallRunXGeometry =
       cr::resolveCreativeTransformedBounds(wallRunX.plan.authoredBounds,
                                            wallRunX.plan.transform);
@@ -536,20 +637,14 @@ bool verticalSurfacePlacementFollowsTheAimedFace() {
                                 doorZGeometry.worldBounds)),
                             0.2F),
                    "authored attachment aimed at Z keeps local forward on +Z") &&
-            expect(doorTop.allowed && doorTop.plan.orientationResolved &&
-                       doorTop.plan.resolvedForward ==
-                           cr::CreativePlacementFace::NegativeX &&
-                       near(static_cast<float>(
-                                doorTop.plan.transform.rotationEulerRadians.y),
-                            static_cast<float>(-kHalfPi)) &&
-                       doorTopGeometry.valid &&
-                       near(static_cast<float>(extentX(
-                                doorTopGeometry.worldBounds)),
-                            0.2F) &&
-                       near(static_cast<float>(extentZ(
-                                doorTopGeometry.worldBounds)),
-                            1.0F),
-                   "top-face authored placement faces the placer") &&
+            expect(!doorTop.allowed &&
+                       doorTop.status ==
+                           CreativeBrushPlacementAdmissionStatus::
+                               TargetIncompatible &&
+                       doorTop.plan.compatibility.status ==
+                           cr::CreativePlacementCompatibilityStatus::
+                               SurfaceDirectionDisallowed,
+                   "door placement rejects a structural top face") &&
             expect(wallRunX.allowed && wallRunX.plan.orientationResolved &&
                        wallRunXGeometry.valid &&
                        near(static_cast<float>(extentX(
@@ -646,43 +741,44 @@ bool surfaceFramePlacementFollowsExactNormalsAndKeepsUprightPropsUpright() {
   diagonal.placementAnchor = {3.0, 2.0, 4.0};
   diagonal.placementNormal = diagonal.faceNormal;
   diagonal.anchorSnapped = true;
+  diagonal.targetFacts = cr::makeCreativePlacementTargetFacts(
+      cr::CreativePlacementTargetSource::AuthoredObject,
+      cr::CreativeObjectKind::Wall, 9002U);
   const CreativeBrushPlacementAdmission door = admitBrushPlacement(
       cr::CreativeObjectKind::Door, diagonal);
 
   cr::CreativeGridTarget slope = diagonal;
   slope.faceNormal = {0.6, 0.8, 0.0};
   slope.placementNormal = slope.faceNormal;
-  const CreativeBrushPlacementAdmission window = admitBrushPlacement(
+  const CreativeBrushPlacementAdmission rejectedWindow = admitBrushPlacement(
       cr::CreativeObjectKind::Window, slope);
-  const CreativeBrushPlacementAdmission windowRolled = admitBrushPlacement(
-      cr::CreativeObjectKind::Window, slope,
+  const CreativeBrushPlacementAdmission surface = admitBrushPlacement(
+      cr::CreativeObjectKind::Sign, slope);
+  const CreativeBrushPlacementAdmission surfaceRolled = admitBrushPlacement(
+      cr::CreativeObjectKind::Sign, slope,
       cr::CreativePlacementYaw::Degrees90);
   const CreativeBrushPlacementAdmission crate = admitBrushPlacement(
       cr::CreativeObjectKind::Crate, slope);
-  const cr::CreativeDocumentCreateRequest windowRequest =
-      buildBrushCreateRequest(window.plan, 91U);
+  const cr::CreativeDocumentCreateRequest surfaceRequest =
+      buildBrushCreateRequest(surface.plan, 91U);
 
   const auto rotated = [](cr::CreativeVec3 axis,
                           const CreativeBrushPlacementAdmission& admission) {
     return cr::rotateCreativeVectorEulerXyz(
         axis, admission.plan.transform.rotationEulerRadians);
   };
-  CreativeBrushPlacementPlan explicitTransformPlan = window.plan;
+  CreativeBrushPlacementPlan explicitTransformPlan = surface.plan;
   cr::CreativeTransform explicitTransform;
   explicitTransform.position = {8.0, 2.0, -1.0};
   explicitTransform.rotationEulerRadians = {0.0, kHalfPi, 0.0};
   const bool explicitTransformApplied = applyCreativeAssetPlacementTransform(
-      explicitTransformPlan, window.plan.authoredBounds, explicitTransform);
+      explicitTransformPlan, surface.plan.authoredBounds, explicitTransform);
   cr::CreativeAppState appState;
   installHistoryDocument(appState, 109U);
-  const CreativeBrushPlacementMutationReceipt placedWindow =
-      applyBrushPlacement(appState.facade, window.plan, 1U);
-  const StandaloneRoomBakePreviewScene bakedWindow =
-      buildStandaloneRoomBakePreviewScene(appState.facade.document());
-  const iggy3d::RoomStaticMeshAsset* bakedWindowMesh =
-      bakedWindow.roomBake.room.staticMeshes.empty()
-          ? nullptr
-          : &bakedWindow.roomBake.room.staticMeshes.front();
+  const CreativeBrushPlacementMutationReceipt placedSurface =
+      applyBrushPlacement(appState.facade, surface.plan, 1U);
+  const cr::CreativeObject* placedSurfaceObject =
+      appState.facade.findObject(placedSurface.objectId);
 
   return expect(door.allowed && door.plan.orientationResolved &&
                     !door.plan.surfaceFrame.valid &&
@@ -700,48 +796,52 @@ bool surfaceFramePlacementFollowsExactNormalsAndKeepsUprightPropsUpright() {
                     door.plan.contact.valid &&
                     door.plan.contact.sourceFeatureVertexCount == 4U,
                 "upright attachments follow exact wall yaw without tilting") &&
-         expect(window.allowed && window.plan.orientationResolved &&
-                    window.plan.surfaceFrame.valid &&
-                    nearVec3(rotated({0.0, 0.0, 1.0}, window),
-                             window.plan.surfaceFrame.surfaceNormal) &&
-                    nearVec3(rotated({0.0, 1.0, 0.0}, window),
-                             window.plan.surfaceFrame.surfaceUp) &&
-                    window.plan.contact.valid &&
-                    window.plan.contact.sourceFeatureVertexCount == 4U &&
-                    window.plan.contact.minimumSignedDistanceMeters >=
+         expect(!rejectedWindow.allowed &&
+                    rejectedWindow.status ==
+                        CreativeBrushPlacementAdmissionStatus::
+                            TargetIncompatible &&
+                    rejectedWindow.plan.compatibility.status ==
+                        cr::CreativePlacementCompatibilityStatus::
+                            SurfaceDirectionDisallowed,
+                "window placement rejects a sloped structural face") &&
+         expect(surface.allowed && surface.plan.orientationResolved &&
+                    surface.plan.surfaceFrame.valid &&
+                    nearVec3(rotated({0.0, 0.0, 1.0}, surface),
+                             surface.plan.surfaceFrame.surfaceNormal) &&
+                    nearVec3(rotated({0.0, 1.0, 0.0}, surface),
+                             surface.plan.surfaceFrame.surfaceUp) &&
+                    surface.plan.contact.valid &&
+                    surface.plan.contact.sourceFeatureVertexCount == 4U &&
+                    surface.plan.contact.minimumSignedDistanceMeters >=
                         -1.0e-9,
-                "surface-bound attachments align a full face to a slope") &&
-         expect(windowRolled.allowed &&
-                    windowRolled.plan.surfaceFrame.valid &&
-                    nearVec3(rotated({0.0, 0.0, 1.0}, windowRolled),
-                             window.plan.surfaceFrame.surfaceNormal) &&
-                    std::fabs(windowRolled.plan.surfaceFrame.surfaceUp.x *
-                                  window.plan.surfaceFrame.surfaceUp.x +
-                              windowRolled.plan.surfaceFrame.surfaceUp.y *
-                                  window.plan.surfaceFrame.surfaceUp.y +
-                              windowRolled.plan.surfaceFrame.surfaceUp.z *
-                                  window.plan.surfaceFrame.surfaceUp.z) <=
+                "surface-bound dressing aligns a full face to a slope") &&
+         expect(surfaceRolled.allowed &&
+                    surfaceRolled.plan.surfaceFrame.valid &&
+                    nearVec3(rotated({0.0, 0.0, 1.0}, surfaceRolled),
+                             surface.plan.surfaceFrame.surfaceNormal) &&
+                    std::fabs(surfaceRolled.plan.surfaceFrame.surfaceUp.x *
+                                  surface.plan.surfaceFrame.surfaceUp.x +
+                              surfaceRolled.plan.surfaceFrame.surfaceUp.y *
+                                  surface.plan.surfaceFrame.surfaceUp.y +
+                              surfaceRolled.plan.surfaceFrame.surfaceUp.z *
+                                  surface.plan.surfaceFrame.surfaceUp.z) <=
                         1.0e-9,
                 "placement orientation rotates a flush object around its surface normal") &&
          expect(crate.allowed && !crate.plan.orientationResolved &&
                     !crate.plan.surfaceFrame.valid &&
                     sameVec3(crate.plan.transform.rotationEulerRadians, {}),
                 "ordinary props keep descriptor-default upright orientation") &&
-         expect(sameTransform(windowRequest.transform, window.plan.transform) &&
-                    sameBounds(windowRequest.bounds,
-                               window.plan.authoredBounds),
+         expect(sameTransform(surfaceRequest.transform,
+                              surface.plan.transform) &&
+                    sameBounds(surfaceRequest.bounds,
+                               surface.plan.authoredBounds),
                 "surface-frame preview and create request share one transform") &&
-         expect(placedWindow.accepted && bakedWindowMesh != nullptr &&
-                    near(bakedWindowMesh->rotationEulerRadians.x,
-                         static_cast<float>(
-                             window.plan.transform.rotationEulerRadians.x)) &&
-                    near(bakedWindowMesh->rotationEulerRadians.y,
-                         static_cast<float>(
-                             window.plan.transform.rotationEulerRadians.y)) &&
-                    near(bakedWindowMesh->rotationEulerRadians.z,
-                         static_cast<float>(
-                             window.plan.transform.rotationEulerRadians.z)),
-                "room bake preserves the admitted full surface rotation") &&
+         expect(placedSurface.accepted && placedSurfaceObject != nullptr &&
+                    sameTransform(placedSurfaceObject->transform,
+                                  surface.plan.transform) &&
+                    sameBounds(placedSurfaceObject->bounds,
+                               surface.plan.authoredBounds),
+                "document mutation preserves the admitted full surface transform") &&
          expect(explicitTransformApplied &&
                     !explicitTransformPlan.surfaceFrame.valid &&
                     !explicitTransformPlan.contact.valid &&
@@ -753,6 +853,11 @@ bool surfaceFramePlacementFollowsExactNormalsAndKeepsUprightPropsUpright() {
 bool quickEditOrientationFeedsPreviewAndCreatePlan() {
   CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Door);
   setPlaceTarget(editor, 2, 0, -1);
+  editor.interaction.target.grid.faceNormal = {0.0, 0.0, 1.0};
+  editor.interaction.target.grid.targetFacts =
+      cr::makeCreativePlacementTargetFacts(
+          cr::CreativePlacementTargetSource::AuthoredObject,
+          cr::CreativeObjectKind::Wall, 9003U);
   syncCreativeEditorQuickEdit(editor);
   const CreativeBrushPlacementAdmission initial = admitBrushPlacement(
       cr::CreativeObjectKind::Door, editor.interaction.target.grid,
@@ -776,6 +881,10 @@ bool quickEditOrientationFeedsPreviewAndCreatePlan() {
   const CreativeBrushPlacementAdmission voxel = admitBrushPlacement(
       cr::CreativeObjectKind::Wall, voxelEditor.interaction.target.grid,
       voxelEditor.toolSettings.placementYaw);
+  cr::CreativeGridTarget pathTarget = editor.interaction.target.grid;
+  pathTarget.faceNormal = {0.0, 1.0, 0.0};
+  pathTarget.targetFacts = cr::makeCreativePlacementTargetFacts(
+      cr::CreativePlacementTargetSource::EmptyPlane);
   bool sawPath = false;
   bool pathYawIgnored = true;
   for (const cr::CreativeObjectDescriptor& descriptor :
@@ -785,10 +894,10 @@ bool quickEditOrientationFeedsPreviewAndCreatePlan() {
       continue;
     }
     const CreativeBrushPlacementAdmission pathDefault = admitBrushPlacement(
-        descriptor.kind, editor.interaction.target.grid,
+        descriptor.kind, pathTarget,
         cr::CreativePlacementYaw::Degrees0);
     const CreativeBrushPlacementAdmission pathRotated = admitBrushPlacement(
-        descriptor.kind, editor.interaction.target.grid,
+        descriptor.kind, pathTarget,
         cr::CreativePlacementYaw::Degrees90);
     if (pathDefault.allowed) {
       sawPath = true;
@@ -1723,10 +1832,12 @@ bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
   const cr::CreativeDocument& installed = appState.facade.document();
   const cr::CreativePlacementGridFrame placementGrid =
       creativeEditorPlacementGridFrame(installed, editor);
-  const cr::CreativeGridTarget gridTarget =
+  const cr::CreativeGridTarget gridTarget = targetWithFacts(
       cr::resolveCreativeGridTargetFromHit(
           {4.0, 2.5, 5.5}, {1.0, 0.0, 0.0}, placementGrid,
-          {1.0, 0.0, 0.0});
+          {1.0, 0.0, 0.0}),
+      cr::CreativePlacementTargetSource::AuthoredObject,
+      cr::CreativeObjectKind::Wall, 9004U);
   editor.interaction.target.valid = gridTarget.valid;
   editor.interaction.target.grid = gridTarget;
 
@@ -1908,9 +2019,11 @@ bool lockedPlacementPlaneFeedsPreviewAdmissionAndMutation() {
   editor.toolSettings.placementDepth = cr::CreativePlacementDepth::TwoCells;
   const cr::CreativePlacementGridFrame placementGrid =
       creativeEditorPlacementGridFrame(appState.facade.document(), editor);
-  const cr::CreativeGridTarget target = cr::resolveCreativeGridTargetFromHit(
-      {4.0, 2.5, 5.5}, {1.0, 0.0, 0.0}, placementGrid,
-      {1.0, 0.0, -0.1});
+  const cr::CreativeGridTarget target = targetWithFacts(
+      cr::resolveCreativeGridTargetFromHit(
+          {4.0, 2.5, 5.5}, {1.0, 0.0, 0.0}, placementGrid,
+          {1.0, 0.0, -0.1}),
+      cr::CreativePlacementTargetSource::EmptyPlane);
   editor.interaction.target.valid = target.valid;
   editor.interaction.target.grid = target;
   const cr::CreativeHotbarEntry& held =
@@ -1970,9 +2083,12 @@ bool authoredAnchorFeedsPreviewAdmissionAndMutation() {
   editor.toolSettings.placementAnchor = cr::CreativePlacementAnchor::Corner;
   const cr::CreativePlacementGridFrame placementGrid =
       creativeEditorPlacementGridFrame(appState.facade.document(), editor);
-  const cr::CreativeGridTarget target = cr::resolveCreativeGridTargetFromHit(
-      {4.0, 2.9, 5.9}, {1.0, 0.0, 0.0}, placementGrid,
-      {1.0, 0.0, 0.0});
+  const cr::CreativeGridTarget target = targetWithFacts(
+      cr::resolveCreativeGridTargetFromHit(
+          {4.0, 2.9, 5.9}, {1.0, 0.0, 0.0}, placementGrid,
+          {1.0, 0.0, 0.0}),
+      cr::CreativePlacementTargetSource::AuthoredObject,
+      cr::CreativeObjectKind::Wall, 9005U);
   editor.interaction.target.valid = target.valid;
   editor.interaction.target.grid = target;
   const cr::CreativeHotbarEntry& held =
@@ -2353,6 +2469,12 @@ bool objectBoundPlacementAnchorsFollowRotatedPickGeometry() {
 
   return expect(worldBounds.valid && target.valid && target.objectHit &&
                     target.objectId == created.objectId &&
+                    target.grid.targetFacts.valid &&
+                    target.grid.targetFacts.source ==
+                        cr::CreativePlacementTargetSource::AuthoredObject &&
+                    target.grid.targetFacts.hostKind ==
+                        cr::CreativeObjectKind::Door &&
+                    target.grid.targetFacts.hostObjectId == created.objectId &&
                     target.grid.anchorFromObjectBounds &&
                     target.grid.anchorCandidates.valid &&
                     target.grid.anchorCandidates.count == 6U &&
@@ -2430,9 +2552,41 @@ bool worldTargetPicksVoxelBeforeGround() {
                 "world target preserves hit cell") &&
          expect(target.objectKind == cr::CreativeObjectKind::Crate,
                 "world target exposes voxel material") &&
+         expect(target.grid.targetFacts.valid &&
+                    target.grid.targetFacts.source ==
+                        cr::CreativePlacementTargetSource::Voxel &&
+                    target.grid.targetFacts.hostKind ==
+                        cr::CreativeObjectKind::Crate &&
+                    target.grid.targetFacts.hostObjectId == 0U,
+                "voxel target carries semantic host provenance") &&
          expect(target.grid.targetCell.x == 2 &&
                     target.grid.adjacentCell.x == 1,
                 "world target derives aimed and adjacent cells from face");
+}
+
+bool worldTargetMarksEmptyPlaneProvenance() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("pick empty plane");
+  static_cast<void>(document.assignId(124U));
+
+  iggy3d::RenderCameraFrame camera;
+  camera.worldEye = {0.5F, 10.0F, 0.5F};
+  camera.worldForward = {0.0F, -1.0F, 0.0F};
+  camera.worldUp = {0.0F, 0.0F, -1.0F};
+  const CreativeEditorWorldTarget target = resolveCreativeEditorWorldTarget(
+      document, camera, CreativeEditorPickFrame{},
+      iggy3d::RenderContentViewport{0, 0, 800U, 600U}, 1.0);
+
+  return expect(target.valid && !target.voxelHit && !target.objectHit &&
+                    !target.terrainHit,
+                "empty scene resolves the active placement plane") &&
+         expect(target.grid.targetFacts.valid &&
+                    target.grid.targetFacts.source ==
+                        cr::CreativePlacementTargetSource::EmptyPlane &&
+                    target.grid.targetFacts.hostKind ==
+                        cr::CreativeObjectKind::Unknown &&
+                    target.grid.targetFacts.hostObjectId == 0U,
+                "empty placement plane is explicit target provenance");
 }
 
 bool worldTargetSeparatesVoxelStorageFromAuthoredSnap() {
@@ -2503,7 +2657,11 @@ bool worldTargetPicksDerivedTerrainAndPreservesVoxelTiePriority() {
       document, camera, CreativeEditorPickFrame{},
       iggy3d::RenderContentViewport{0, 0, 800U, 600U}, 1.0);
   bool ok = expect(terrain.valid && terrain.terrainHit && !terrain.voxelHit &&
-                       !terrain.objectHit,
+                       !terrain.objectHit && terrain.grid.targetFacts.valid &&
+                       terrain.grid.targetFacts.source ==
+                           cr::CreativePlacementTargetSource::Terrain &&
+                       terrain.grid.targetFacts.hostKind ==
+                           cr::CreativeObjectKind::TerrainPatch,
                    "world target reports derived terrain hit") &&
             expect(terrain.terrainCell == cr::CreativeTerrainCoord2{0, 0} &&
                        terrain.objectKind == cr::CreativeObjectKind::TerrainPatch,
@@ -2520,6 +2678,10 @@ bool worldTargetPicksDerivedTerrainAndPreservesVoxelTiePriority() {
       document, camera, CreativeEditorPickFrame{},
       iggy3d::RenderContentViewport{0, 0, 800U, 600U}, 1.0);
   return expect(tied.voxelHit && !tied.terrainHit &&
+                    tied.grid.targetFacts.valid &&
+                    tied.grid.targetFacts.source ==
+                        cr::CreativePlacementTargetSource::Voxel &&
+                    tied.grid.targetFacts.hostKind == voxelEdit.material &&
                     tied.voxelCell.x == voxelEdit.cell.x &&
                     tied.voxelCell.y == voxelEdit.cell.y &&
                     tied.voxelCell.z == voxelEdit.cell.z,
@@ -4887,6 +5049,10 @@ bool doorwaySocketPreviewPlacementAndUndoStayInParity() {
   editor.interaction.target.objectHit = true;
   editor.interaction.target.objectId = frameCreated.objectId;
   editor.interaction.target.objectKind = cr::CreativeObjectKind::Prop;
+  editor.interaction.target.grid.targetFacts =
+      cr::makeCreativePlacementTargetFacts(
+          cr::CreativePlacementTargetSource::AuthoredObject,
+          cr::CreativeObjectKind::Prop, frameCreated.objectId);
   editor.interaction.target.grid.faceNormal = {0.0, 0.0, 1.0};
   editor.interaction.target.grid.hitPoint = {
       2.0 + receiver->position.x, receiver->position.y,
@@ -4954,6 +5120,7 @@ bool doorwaySocketPreviewPlacementAndUndoStayInParity() {
                 "doorway placement setup accepted") &&
          expect(ready.socketTargeted && ready.admission.allowed &&
                     ready.admission.plan.hasAttachment &&
+                    ready.admission.plan.attachmentSatisfiesCompatibility &&
                     ready.admission.plan.attachmentTargetId ==
                         frameCreated.objectId &&
                     ready.admission.plan.attachmentSocket == "door_frame",
@@ -5744,6 +5911,7 @@ int main() {
   ok = placementPlanMatchesEveryCreateRequest() && ok;
   ok = standaloneBrushPalettePopulatesEveryCatalogCategory() && ok;
   ok = placementAdmissionOwnsPreviewAndExecutionTruth() && ok;
+  ok = semanticCompatibilityOwnsPreviewMutationAndHistory() && ok;
   ok = verticalSurfacePlacementFollowsTheAimedFace() && ok;
   ok = surfaceFramePlacementFollowsExactNormalsAndKeepsUprightPropsUpright() &&
        ok;
@@ -5769,6 +5937,7 @@ int main() {
   ok = activeVolumeSelectionRebindsToLoadedDocumentGrid() && ok;
   ok = objectBoundPlacementAnchorsFollowRotatedPickGeometry() && ok;
   ok = worldTargetPicksVoxelBeforeGround() && ok;
+  ok = worldTargetMarksEmptyPlaneProvenance() && ok;
   ok = worldTargetSeparatesVoxelStorageFromAuthoredSnap() && ok;
   ok = worldTargetPicksDerivedTerrainAndPreservesVoxelTiePriority() && ok;
   ok = removalStrokeDeletesVoxelAndGroupsHistory() && ok;

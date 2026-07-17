@@ -823,6 +823,20 @@ CreativeGridTarget resolveCreativeGridTargetFromHit(
                                           placerForward);
 }
 
+CreativeVec3 creativeGridTargetSurfaceNormal(
+    const CreativeGridTarget& target) noexcept {
+  if (target.anchorSnapped && isFiniteCreativeVec3(target.placementNormal)) {
+    const double lengthSquared =
+        target.placementNormal.x * target.placementNormal.x +
+        target.placementNormal.y * target.placementNormal.y +
+        target.placementNormal.z * target.placementNormal.z;
+    if (std::isfinite(lengthSquared) && lengthSquared > 1.0e-24) {
+      return target.placementNormal;
+    }
+  }
+  return target.faceNormal;
+}
+
 CreativePlacementGridOverlayPlan buildCreativePlacementGridOverlayPlan(
     const CreativePlacementGridOverlayRequest& request) noexcept {
   CreativePlacementGridOverlayPlan plan;

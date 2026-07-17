@@ -85,6 +85,14 @@ namespace {
   return "creative_placement_plan_invalid";
 }
 
+[[nodiscard]] bool placementPlanCompatibilityAllowsMutation(
+    const CreativeBrushPlacementPlan& plan) noexcept {
+  if (!plan.compatibility.evaluated || plan.compatibility.allowed) {
+    return true;
+  }
+  return plan.attachmentSatisfiesCompatibility && plan.hasAttachment;
+}
+
 }  // namespace
 
 bool creativeBrushPlacementAlreadyExists(
@@ -162,7 +170,11 @@ iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
     std::uint64_t ordinal,
     iggy3d::creative::CreativeObjectId parentObjectId,
     std::string_view assetId) {
-  if (!plan.valid || plan.status != CreativeBrushPlacementPlanStatus::Ready) {
+  const bool incompatibleTarget =
+      !placementPlanCompatibilityAllowsMutation(plan);
+  if (!plan.valid || plan.status != CreativeBrushPlacementPlanStatus::Ready ||
+      incompatibleTarget ||
+      (plan.attachmentSatisfiesCompatibility && !plan.hasAttachment)) {
     iggy3d::creative::CreativeDocumentCreateReceipt rejected;
     rejected.requested = true;
     rejected.status =
@@ -170,7 +182,10 @@ iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
     rejected.objectKind = plan.brush;
     rejected.revisionBefore = facade.document().revision();
     rejected.revisionAfter = rejected.revisionBefore;
-    rejected.message = placementPlanRejectionReason(plan.status);
+    rejected.message = incompatibleTarget
+                           ? iggy3d::creative::toString(
+                                 plan.compatibility.status)
+                           : placementPlanRejectionReason(plan.status);
     rejected.reasonCode = rejected.message;
     return rejected;
   }
@@ -233,18 +248,25 @@ CreativeBrushPlacementMutationReceipt applyBrushPlacement(
 
   const iggy3d::creative::CreativeObjectPlacementPolicy& policy =
       iggy3d::creative::describeObject(plan.brush).placementPolicy;
+  const bool incompatibleTarget =
+      !placementPlanCompatibilityAllowsMutation(plan);
   if (!plan.valid || plan.status != CreativeBrushPlacementPlanStatus::Ready ||
-      !policy.enabled || policy.storagePolicy != plan.storagePolicy ||
+      incompatibleTarget || !policy.enabled ||
+      policy.storagePolicy != plan.storagePolicy ||
       (plan.hasAttachment &&
        (plan.attachmentTargetId ==
             iggy3d::creative::kInvalidObjectId ||
         !iggy3d::creative::validCreativeAttachmentSocketName(
             plan.attachmentSocket))) ||
+      (plan.attachmentSatisfiesCompatibility && !plan.hasAttachment) ||
       (!assetId.empty() &&
        plan.storagePolicy !=
            iggy3d::creative::CreativePlacementStoragePolicy::AuthoredObject)) {
     receipt.status = CreativeBrushPlacementMutationStatus::InvalidPlan;
-    receipt.reasonCode = placementPlanRejectionReason(plan.status);
+    receipt.reasonCode = incompatibleTarget
+                             ? iggy3d::creative::toString(
+                                   plan.compatibility.status)
+                             : placementPlanRejectionReason(plan.status);
     return receipt;
   }
   switch (plan.storagePolicy) {
