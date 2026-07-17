@@ -1,9 +1,14 @@
 #include "app/iggy3d/creative/world/WorldLayoutVerticalConnectors.hpp"
+#include "app/iggy3d/creative/adapters/RoomBake.hpp"
+#include "projection/scene/SceneProjection.hpp"
+#include "render/vulkan/BufferImageResources.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <numbers>
 #include <string_view>
 
@@ -15,6 +20,33 @@ bool expect(bool condition, std::string_view message) {
     std::cerr << "FAIL: " << message << '\n';
   }
   return condition;
+}
+
+bool near(double lhs, double rhs, double tolerance = 1.0e-5) {
+  return std::abs(lhs - rhs) <= tolerance;
+}
+
+struct CpuGeometryBounds {
+  std::array<float, 3U> minimum{};
+  std::array<float, 3U> maximum{};
+  bool valid = false;
+};
+
+CpuGeometryBounds
+measureCpuGeometry(const iggy3d::vulkan::RoomMeshCpuGeometry& geometry) {
+  CpuGeometryBounds result;
+  result.minimum.fill(std::numeric_limits<float>::infinity());
+  result.maximum.fill(-std::numeric_limits<float>::infinity());
+  for (const iggy3d::vulkan::FirstRoomVertex& vertex : geometry.vertices) {
+    for (std::size_t axis = 0U; axis < result.minimum.size(); ++axis) {
+      result.minimum[axis] =
+          std::min(result.minimum[axis], vertex.position[axis]);
+      result.maximum[axis] =
+          std::max(result.maximum[axis], vertex.position[axis]);
+    }
+  }
+  result.valid = !geometry.vertices.empty();
+  return result;
 }
 
 cr::CreativeWorldLayout twoStoreyLayout() {
@@ -209,6 +241,199 @@ bool compilerCutsBothSlabsAndEmitsOneStair() {
                 "uncut full slabs are not emitted beneath cutout pieces");
 }
 
+bool connectorProducesSpecificRenderedGeometryAndCollision(
+    cr::CreativeWorldLayoutVerticalConnectorKind connectorKind,
+    cr::CreativeObjectKind objectKind, std::string_view expectedMeshId,
+    std::size_t expectedVertexCount, std::size_t expectedIndexCount,
+    std::size_t expectedDrawCount, std::size_t expectedSurfaceCount) {
+  const cr::CreativeGridSettings grid{{}, 1.0, {32, 16, 32}};
+  cr::CreativeWorldLayout layout = twoStoreyLayout();
+  cr::CreativeWorldLayoutVerticalConnector& connector =
+      layout.verticalConnectors.front();
+  connector.kind = connectorKind;
+  connector.direction = cr::CreativeWorldLayoutVerticalDirection::PositiveX;
+  connector.stableKey = objectKind == cr::CreativeObjectKind::Stair
+                            ? "rendered_stair"
+                            : "rendered_ramp";
+  connector.name = objectKind == cr::CreativeObjectKind::Stair
+                       ? "Rendered Stair"
+                       : "Rendered Ramp";
+
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Connector Render Contract");
+  static_cast<void>(document.assignId(
+      objectKind == cr::CreativeObjectKind::Stair ? 73U : 74U));
+  static_cast<void>(document.setGridSettings(grid));
+  const cr::CreativeWorldLayoutVerticalConnectorPlan connectorPlan =
+      cr::planCreativeWorldLayoutVerticalConnector(grid, layout, 0U);
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, layout);
+  const cr::CreativeWorldLayoutPreviewResult preview =
+      compiled.receipt.accepted
+          ? cr::previewCreativeWorldLayoutPlan(document, compiled.plan)
+          : cr::CreativeWorldLayoutPreviewResult{};
+
+  const cr::CreativeObject* object = nullptr;
+  if (preview.accepted) {
+    const auto found = std::find_if(
+        preview.document.objects().begin(), preview.document.objects().end(),
+        [objectKind](const cr::CreativeObject& candidate) {
+          return candidate.kind == objectKind;
+        });
+    if (found != preview.document.objects().end()) {
+      object = &*found;
+    }
+  }
+
+  cr::CreativeRoomBakeRequest bakeRequest;
+  bakeRequest.document = preview.accepted ? &preview.document : nullptr;
+  bakeRequest.roomId = "connector_render_contract";
+  bakeRequest.validateReachability = false;
+  const cr::CreativeRoomBakeResult baked =
+      cr::buildRoomAssetFromCreativeDocument(bakeRequest);
+
+  const iggy3d::RoomStaticMeshAsset* bakedMesh = nullptr;
+  const iggy3d::SceneRoomMeshItem* projectedMesh = nullptr;
+  iggy3d::SceneProjectionResult projected;
+  if (object != nullptr && baked.receipt.accepted) {
+    const auto source = std::find_if(
+        baked.staticMeshSources.begin(), baked.staticMeshSources.end(),
+        [object](const cr::CreativeRoomBakeStaticMeshSource& candidate) {
+          return candidate.objectId == object->id;
+        });
+    if (source != baked.staticMeshSources.end()) {
+      const auto mesh = std::find_if(
+          baked.room.staticMeshes.begin(), baked.room.staticMeshes.end(),
+          [&source](const iggy3d::RoomStaticMeshAsset& candidate) {
+            return candidate.id == source->staticMeshId;
+          });
+      if (mesh != baked.room.staticMeshes.end()) {
+        bakedMesh = &*mesh;
+      }
+    }
+
+    projected = iggy3d::buildSceneProjection({}, &baked.room);
+    if (bakedMesh != nullptr) {
+      const auto mesh = std::find_if(
+          projected.room.meshes.begin(), projected.room.meshes.end(),
+          [bakedMesh](const iggy3d::SceneRoomMeshItem& candidate) {
+            return candidate.id == bakedMesh->id;
+          });
+      if (mesh != projected.room.meshes.end()) {
+        projectedMesh = &*mesh;
+      }
+    }
+  }
+
+  iggy3d::SceneRoomProjection isolated;
+  isolated.loaded = projectedMesh != nullptr;
+  isolated.assetId = "isolated_connector";
+  if (projectedMesh != nullptr) {
+    isolated.meshes.push_back(*projectedMesh);
+  }
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(isolated);
+  const CpuGeometryBounds geometryBounds = measureCpuGeometry(geometry);
+  const cr::CreativeTransformedBounds objectBounds =
+      object == nullptr ? cr::CreativeTransformedBounds{}
+                        : cr::resolveCreativeObjectBounds(*object);
+  const std::size_t surfaceCount =
+      object == nullptr
+          ? 0U
+          : static_cast<std::size_t>(std::count_if(
+                baked.spatialSurfaceSources.begin(),
+                baked.spatialSurfaceSources.end(),
+                [object](
+                    const cr::CreativeRoomBakeSpatialSurfaceSource& source) {
+                  return source.objectId == object->id;
+                }));
+  const iggy3d::RoomSpatialSurface* connectorSurface = nullptr;
+  if (surfaceCount > 0U && object != nullptr) {
+    const auto source = std::find_if(
+        baked.spatialSurfaceSources.begin(), baked.spatialSurfaceSources.end(),
+        [object](const cr::CreativeRoomBakeSpatialSurfaceSource& candidate) {
+          return candidate.objectId == object->id;
+        });
+    if (source != baked.spatialSurfaceSources.end()) {
+      const auto surface = std::find_if(
+          baked.room.spatialSurfaces.begin(), baked.room.spatialSurfaces.end(),
+          [&source](const iggy3d::RoomSpatialSurface& candidate) {
+            return candidate.id == source->surfaceId;
+          });
+      if (surface != baked.room.spatialSurfaces.end()) {
+        connectorSurface = &*surface;
+      }
+    }
+  }
+
+  const bool rampSurfaceCorrect =
+      objectKind != cr::CreativeObjectKind::Ramp ||
+      (connectorSurface != nullptr &&
+       connectorSurface->shape ==
+           iggy3d::RoomSpatialSurfaceShape::HeightPatch &&
+       connectorSurface->role == iggy3d::RoomSpatialSurfaceRole::Walkable &&
+       connectorSurface->normal.x < 0.0F && connectorSurface->normal.y > 0.0F);
+  const bool stairSurfaceCorrect =
+      objectKind != cr::CreativeObjectKind::Stair ||
+      (connectorSurface != nullptr &&
+       connectorSurface->shape == iggy3d::RoomSpatialSurfaceShape::Box &&
+       connectorSurface->role == iggy3d::RoomSpatialSurfaceRole::Blocker);
+  const bool geometryShapeCorrect =
+      geometry.ready && geometry.vertices.size() == expectedVertexCount &&
+      geometry.indices.size() == expectedIndexCount &&
+      geometry.indexedDraws.size() == expectedDrawCount;
+  if (!geometryShapeCorrect) {
+    std::cerr << "connector geometry: ready=" << geometry.ready
+              << " vertices=" << geometry.vertices.size()
+              << " indices=" << geometry.indices.size()
+              << " draws=" << geometry.indexedDraws.size() << '\n';
+  }
+
+  return expect(connectorPlan.accepted && compiled.receipt.accepted &&
+                    preview.accepted && object != nullptr,
+                "connector recipe reaches a preview document") &&
+         expect(baked.receipt.accepted && bakedMesh != nullptr &&
+                    bakedMesh->meshId == expectedMeshId &&
+                    bakedMesh->proceduralSegmentCount ==
+                        connectorPlan.stepCount,
+                "room bake retains connector-specific generated geometry") &&
+         expect(projected.room.loaded && projectedMesh != nullptr &&
+                    projectedMesh->meshId == expectedMeshId &&
+                    projectedMesh->proceduralSegmentCount ==
+                        connectorPlan.stepCount,
+                "scene projection retains connector mesh identity") &&
+         expect(geometryShapeCorrect,
+                "renderer emits connector-specific CPU geometry") &&
+         expect(objectBounds.valid && geometryBounds.valid &&
+                    near(geometryBounds.minimum[0],
+                         objectBounds.worldBounds.min.x) &&
+                    near(geometryBounds.minimum[1],
+                         objectBounds.worldBounds.min.y) &&
+                    near(geometryBounds.minimum[2],
+                         objectBounds.worldBounds.min.z) &&
+                    near(geometryBounds.maximum[0],
+                         objectBounds.worldBounds.max.x) &&
+                    near(geometryBounds.maximum[1],
+                         objectBounds.worldBounds.max.y) &&
+                    near(geometryBounds.maximum[2],
+                         objectBounds.worldBounds.max.z),
+                "rotated render geometry matches authored connector bounds") &&
+         expect(surfaceCount == expectedSurfaceCount && rampSurfaceCorrect &&
+                    stairSurfaceCorrect,
+                "connector render and collision profiles stay in parity");
+}
+
+bool worldLayoutConnectorsRenderAsStairsAndRamps() {
+  return connectorProducesSpecificRenderedGeometryAndCollision(
+             cr::CreativeWorldLayoutVerticalConnectorKind::Stair,
+             cr::CreativeObjectKind::Stair, "creative_stair_steps", 96U, 864U,
+             12U, 36U) &&
+         connectorProducesSpecificRenderedGeometryAndCollision(
+             cr::CreativeWorldLayoutVerticalConnectorKind::Ramp,
+             cr::CreativeObjectKind::Ramp, "creative_ramp_wedge", 6U, 48U, 1U,
+             1U);
+}
+
 } // namespace
 
 int main() {
@@ -216,7 +441,8 @@ int main() {
                  rampPlanUsesTheSharedSlopeAndCompilerPath() &&
                  invalidStoriesFootprintsAndLandingsFailClosed() &&
                  oneConnectorOwnsEachAffectedSlab() &&
-                 compilerCutsBothSlabsAndEmitsOneStair()
+                 compilerCutsBothSlabsAndEmitsOneStair() &&
+                 worldLayoutConnectorsRenderAsStairsAndRamps()
              ? EXIT_SUCCESS
              : EXIT_FAILURE;
 }
