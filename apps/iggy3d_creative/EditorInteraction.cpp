@@ -315,7 +315,7 @@ void processCreativeEditorWorldInteractionFrame(
       creativeEditorPlacementGridFrame(document, editor);
   editor.interaction.target = resolveCreativeEditorWorldTarget(
       document, request.camera, request.pickFrame, request.contentRegion,
-      placementGrid);
+      placementGrid, &editor.interaction.target);
   const cr::CreativeHotbarEntry& aimedHeld =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   if (aimedHeld.kind == cr::CreativeHeldItemKind::ObjectMove) {

@@ -1,6 +1,7 @@
 #include "EditorPlacementGridOverlay.hpp"
 
 #include <algorithm>
+#include <array>
 
 #include "EditorInteraction.hpp"
 #include "EditorState.hpp"
@@ -218,6 +219,54 @@ void appendCreativeEditorPlacementGridOverlay(
       output.combinedWireLines.push_back(anchorGuide);
       output.placementGridAnchorGuideLineCount = 1U;
     }
+  }
+
+  if (target.anchorSnapped && target.anchorCandidates.valid &&
+      target.anchorCandidates.count <=
+          target.anchorCandidates.positions.size()) {
+    constexpr std::array axes{
+        cr::CreativeVec3{1.0, 0.0, 0.0},
+        cr::CreativeVec3{0.0, 1.0, 0.0},
+        cr::CreativeVec3{0.0, 0.0, 1.0},
+    };
+    const double candidateHalfLength =
+        std::clamp(minorStep * 0.055, 0.025, 0.07);
+    const std::size_t candidateStart = output.combinedWireLines.size();
+    for (std::uint8_t index = 0U;
+         index < target.anchorCandidates.count; ++index) {
+      if (index == target.anchorIndex) {
+        continue;
+      }
+      const cr::CreativeVec3 center =
+          target.anchorCandidates.positions[index];
+      for (const cr::CreativeVec3 axis : axes) {
+        const cr::CreativeVec3 start{
+            center.x - axis.x * candidateHalfLength,
+            center.y - axis.y * candidateHalfLength,
+            center.z - axis.z * candidateHalfLength};
+        const cr::CreativeVec3 end{
+            center.x + axis.x * candidateHalfLength,
+            center.y + axis.y * candidateHalfLength,
+            center.z + axis.z * candidateHalfLength};
+        const cr::CreativeCoreVec3Conversion convertedStart =
+            cr::creativeVec3ToCoreChecked(start);
+        const cr::CreativeCoreVec3Conversion convertedEnd =
+            cr::creativeVec3ToCoreChecked(end);
+        if (!convertedStart.converted || !convertedEnd.converted) {
+          continue;
+        }
+        iggy3d::RenderCreativeWireframeDebugLine candidateLine;
+        candidateLine.start = convertedStart.value;
+        candidateLine.end = convertedEnd.value;
+        candidateLine.color = {0.20F, 0.78F, 0.94F, 0.74F};
+        candidateLine.segmentKind = 9U;
+        candidateLine.thickness = std::clamp(
+            static_cast<float>(minorStep) * 0.032F, 0.018F, 0.045F);
+        output.combinedWireLines.push_back(candidateLine);
+      }
+    }
+    output.placementGridAnchorCandidateLineCount =
+        output.combinedWireLines.size() - candidateStart;
   }
 
   if (editor.toolSettings.placementGridDots ==

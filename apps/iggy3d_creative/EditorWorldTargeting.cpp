@@ -52,6 +52,94 @@ namespace {
   return cr::CreativePlacementAnchorKind::Count;
 }
 
+[[nodiscard]] cr::CreativeBounds creativeBounds(VisualBounds bounds) noexcept {
+  return {{static_cast<double>(bounds.min.x),
+           static_cast<double>(bounds.min.y),
+           static_cast<double>(bounds.min.z)},
+          {static_cast<double>(bounds.max.x),
+           static_cast<double>(bounds.max.y),
+           static_cast<double>(bounds.max.z)}};
+}
+
+[[nodiscard]] cr::CreativeBounds creativeBounds(
+    const iggy3d::Aabb3& bounds) noexcept {
+  return {{static_cast<double>(bounds.min.x),
+           static_cast<double>(bounds.min.y),
+           static_cast<double>(bounds.min.z)},
+          {static_cast<double>(bounds.max.x),
+           static_cast<double>(bounds.max.y),
+           static_cast<double>(bounds.max.z)}};
+}
+
+[[nodiscard]] cr::CreativePlacementAnchorCandidatePlan
+objectPlacementAnchorCandidates(
+    const ObjectVisualPickBounds& candidate,
+    cr::CreativePlacementAnchorKind kind) noexcept {
+  if (!candidate.orientedBounds.has_value()) {
+    return cr::buildCreativePlacementAnchorCandidatePlan(
+        kind, creativeBounds(candidate.bounds));
+  }
+
+  const iggy3d::OrientedBox& box = *candidate.orientedBounds;
+  cr::CreativePlacementAnchorCandidatePlan plan =
+      cr::buildCreativePlacementAnchorCandidatePlan(
+          kind, creativeBounds(box.localBounds));
+  if (!plan.valid) {
+    return plan;
+  }
+  for (std::uint8_t index = 0U; index < plan.count; ++index) {
+    const cr::CreativeCoreVec3Conversion local =
+        cr::creativeVec3ToCoreChecked(plan.positions[index]);
+    if (!local.converted) {
+      return {};
+    }
+    const iggy3d::Vec3 world =
+        iggy3d::transformPointTrs(box.transform, local.value);
+    if (!iggy3d::isFinite(world)) {
+      return {};
+    }
+    plan.positions[index] = cr::creativeVec3FromCore(world);
+  }
+  return plan;
+}
+
+void resolveObjectPlacementAnchor(
+    const ObjectVisualPickBounds& candidate,
+    const cr::CreativePlacementGridFrame& placementGrid,
+    const CreativeEditorWorldTarget* previousTarget,
+    CreativeEditorWorldTarget& target) noexcept {
+  cr::CreativeGridTarget& grid = target.grid;
+  if (!grid.resolved ||
+      grid.anchorKind == cr::CreativePlacementAnchorKind::BaseCenter) {
+    return;
+  }
+  const cr::CreativePlacementAnchorCandidatePlan candidates =
+      objectPlacementAnchorCandidates(candidate, grid.anchorKind);
+  cr::CreativePlacementAnchorSelectionRequest request;
+  request.hitPoint = grid.hitPoint;
+  request.retainDistanceMeters =
+      std::min({placementGrid.stepMeters.x, placementGrid.stepMeters.y,
+                placementGrid.stepMeters.z}) *
+      cr::kCreativePlacementAnchorRetainStepFraction;
+  if (previousTarget != nullptr && previousTarget->objectHit &&
+      previousTarget->objectId == target.objectId &&
+      previousTarget->grid.anchorFromObjectBounds &&
+      previousTarget->grid.anchorKind == grid.anchorKind) {
+    request.previousIndex = previousTarget->grid.anchorIndex;
+    request.hasPrevious = true;
+  }
+  const cr::CreativePlacementAnchorSelection selection =
+      cr::selectCreativePlacementAnchor(candidates, request);
+  if (!selection.valid) {
+    return;
+  }
+  grid.anchorCandidates = candidates;
+  grid.placementAnchor = selection.position;
+  grid.anchorIndex = selection.index;
+  grid.anchorSnapped = true;
+  grid.anchorFromObjectBounds = true;
+}
+
 [[nodiscard]] iggy3d::Vec3 aabbFaceNormal(VisualBounds bounds,
                                           iggy3d::Vec3 point) noexcept {
   const std::array distances{
@@ -184,7 +272,8 @@ cr::CreativePlacementGridFrame creativeEditorPlacementGridFrame(
     if (editor.interaction.target.grid.resolved) {
       request.previousDepthAxis =
           editor.interaction.target.grid.viewDepthAxis;
-      if (editor.interaction.target.grid.anchorKind == request.anchorKind) {
+      if (!editor.interaction.target.grid.anchorFromObjectBounds &&
+          editor.interaction.target.grid.anchorKind == request.anchorKind) {
         request.previousAnchorCell =
             editor.interaction.target.grid.adjacentCell;
         request.previousAnchorIndex =
@@ -201,7 +290,8 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
     const iggy3d::RenderCameraFrame& camera,
     const CreativeEditorPickFrame& pickFrame,
     const iggy3d::RenderContentViewport& region,
-    const cr::CreativePlacementGridFrame& placementGrid) {
+    const cr::CreativePlacementGridFrame& placementGrid,
+    const CreativeEditorWorldTarget* previousTarget) {
   CreativeEditorWorldTarget target;
   // Crosshair pick from the center of the content region (the 3D viewport
   // sub-rectangle), so aiming matches what the user sees when panels frame it.
@@ -279,6 +369,8 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
     target.objectHit = true;
     target.objectId = pick.objectId;
     target.distanceMeters = pick.entryDistance;
+    resolveObjectPlacementAnchor(*objectCandidate, placementGrid,
+                                 previousTarget, target);
     if (const cr::CreativeObject* object = document.findObject(pick.objectId);
         object != nullptr) {
       target.objectKind = object->kind;

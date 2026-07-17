@@ -1026,6 +1026,8 @@ bool placementAnchorsAreDeterministicAndStable() {
   return expect(face.valid && face.anchorSnapped &&
                     face.anchorKind ==
                         cr::CreativePlacementAnchorKind::FaceCenter &&
+                    face.anchorCandidates.valid &&
+                    face.anchorCandidates.count == 6U &&
                     face.anchorIndex == 0U &&
                     near(face.basePlacementAnchor.x, 2.5) &&
                     near(face.basePlacementAnchor.y, 2.0) &&
@@ -1035,12 +1037,14 @@ bool placementAnchorsAreDeterministicAndStable() {
                 "face mode selects the nearest face center") &&
          expect(faceTie.valid && faceTie.anchorIndex == 0U,
                 "equal-distance anchor ties retain stable index order") &&
-         expect(edge.valid && edge.anchorIndex == 9U &&
+         expect(edge.valid && edge.anchorCandidates.count == 12U &&
+                    edge.anchorIndex == 9U &&
                     near(edge.placementAnchor.x, 2.0) &&
                     near(edge.placementAnchor.y, 3.0) &&
                     near(edge.placementAnchor.z, 3.5),
                 "edge mode selects the nearest AABB edge midpoint") &&
-         expect(corner.valid && corner.anchorIndex == 3U &&
+         expect(corner.valid && corner.anchorCandidates.count == 8U &&
+                    corner.anchorIndex == 3U &&
                     near(corner.placementAnchor.x, 2.0) &&
                     near(corner.placementAnchor.y, 3.0) &&
                     near(corner.placementAnchor.z, 4.0),

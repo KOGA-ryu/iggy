@@ -1621,6 +1621,12 @@ bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
       [](const iggy3d::RenderCreativeWireframeDebugLine& line) {
         return line.segmentKind == 5U;
       }));
+  const std::size_t renderedAnchorCandidates =
+      static_cast<std::size_t>(std::count_if(
+          visible.combinedWireLines.begin(), visible.combinedWireLines.end(),
+          [](const iggy3d::RenderCreativeWireframeDebugLine& line) {
+            return line.segmentKind == 9U;
+          }));
   const auto guide = std::find_if(
       visible.combinedWireLines.begin(), visible.combinedWireLines.end(),
       [](const iggy3d::RenderCreativeWireframeDebugLine& line) {
@@ -1662,8 +1668,11 @@ bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
                        visible.placementGridDotCount == 144U &&
                        visible.placementGridGuideLineCount == 1U &&
                        visible.placementGridAnchorGuideLineCount == 1U &&
+                       visible.placementGridAnchorCandidateLineCount == 15U &&
                        visible.placementGridTargetMarkerCount == 1U &&
                        renderedDots == visible.placementGridDotCount &&
+                       renderedAnchorCandidates ==
+                           visible.placementGridAnchorCandidateLineCount &&
                        guide != visible.combinedWireLines.end() &&
                        near(guide->start.x, 4.5F) &&
                        near(guide->end.x, 6.5F) &&
@@ -1695,6 +1704,7 @@ bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
                   hiddenByToggle.placementGridDotCount == 0U &&
                   hiddenByToggle.placementGridGuideLineCount == 1U &&
                   hiddenByToggle.placementGridAnchorGuideLineCount == 1U &&
+                  hiddenByToggle.placementGridAnchorCandidateLineCount == 15U &&
                   hiddenByToggle.placementGridTargetMarkerCount == 1U,
               "dot toggle hides dots but retains target anchor cues") &&
        ok;
@@ -1711,6 +1721,7 @@ bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
                   hiddenByModal.placementGridDotCount == 0U &&
                   hiddenByModal.placementGridGuideLineCount == 0U &&
                   hiddenByModal.placementGridAnchorGuideLineCount == 0U &&
+                  hiddenByModal.placementGridAnchorCandidateLineCount == 0U &&
                   hiddenByModal.placementGridTargetMarkerCount == 0U,
               "modal surfaces hide every placement lattice cue") &&
        ok;
@@ -2101,6 +2112,115 @@ bool activeVolumeSelectionRebindsToLoadedDocumentGrid() {
          expect(editor.volume.selection.phase ==
                     cr::CreativeVolumeSelectionPhase::Empty,
                 "grid replacement clears incompatible volume corners");
+}
+
+bool objectBoundPlacementAnchorsFollowRotatedPickGeometry() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("object anchor target");
+  static_cast<void>(document.assignId(122U));
+  static_cast<void>(document.setGridSettings(
+      {{0.0, 0.0, 0.0}, 1.0, {8, 8, 8}}));
+  static_cast<void>(document.setWorldBounds(
+      {{0.0, 0.0, 0.0}, {8.0, 8.0, 8.0}}));
+
+  CreativeBrushPlacementPlan receiver =
+      planBrushPlacement(cr::CreativeObjectKind::Door,
+                         {3.25F, 0.0F, 2.75F});
+  constexpr double kHalfPi = 1.57079632679489662;
+  receiver.transform.rotationEulerRadians.y = kHalfPi;
+  receiver.orientationResolved = true;
+  const cr::CreativeDocumentCreateReceipt created = document.createObject(
+      buildBrushCreateRequest(receiver, 1U));
+  const cr::CreativeObject* object = document.findObject(created.objectId);
+  if (!expect(receiver.valid && created.accepted && object != nullptr,
+              "rotated object anchor fixture is valid")) {
+    return false;
+  }
+
+  CreativeEditorPickFrame pickFrame;
+  pickFrame.objectPickCandidates.push_back(buildObjectVisualPickBounds(
+      *object, iggy3d::identityMat4(), 800U, 600U));
+  const ObjectVisualPickBounds& candidate =
+      pickFrame.objectPickCandidates.front();
+  if (!expect(candidate.orientedBounds.has_value(),
+              "rotated object exposes exact oriented pick bounds")) {
+    return false;
+  }
+
+  const cr::CreativeTransformedBounds worldBounds =
+      cr::resolveCreativeObjectBounds(*object);
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Door);
+  editor.placeCellSize = 0.25;
+  editor.toolSettings.placementAnchor = cr::CreativePlacementAnchor::Face;
+  const cr::CreativePlacementGridFrame placementGrid =
+      creativeEditorPlacementGridFrame(document, editor);
+  iggy3d::RenderCameraFrame camera;
+  camera.worldEye = {0.0F, static_cast<float>(worldBounds.center.y),
+                     static_cast<float>(worldBounds.center.z)};
+  camera.worldForward = {1.0F, 0.0F, 0.0F};
+  camera.worldUp = {0.0F, 1.0F, 0.0F};
+  const CreativeEditorWorldTarget target = resolveCreativeEditorWorldTarget(
+      document, camera, pickFrame,
+      iggy3d::RenderContentViewport{0, 0, 800U, 600U}, placementGrid);
+  const CreativeBrushPlacementAdmission admission = admitBrushPlacement(
+      cr::CreativeObjectKind::Door, target.grid);
+
+  camera.worldEye.z = static_cast<float>(worldBounds.center.z + 0.26);
+  const CreativeEditorWorldTarget retainedTarget =
+      resolveCreativeEditorWorldTarget(
+          document, camera, pickFrame,
+          iggy3d::RenderContentViewport{0, 0, 800U, 600U}, placementGrid,
+          &target);
+  camera.worldEye.z = static_cast<float>(worldBounds.center.z + 0.37);
+  const CreativeEditorWorldTarget switchedTarget =
+      resolveCreativeEditorWorldTarget(
+          document, camera, pickFrame,
+          iggy3d::RenderContentViewport{0, 0, 800U, 600U}, placementGrid,
+          &target);
+
+  editor.toolSettings.placementAnchor = cr::CreativePlacementAnchor::Center;
+  const cr::CreativePlacementGridFrame centerGrid =
+      creativeEditorPlacementGridFrame(document, editor);
+  const CreativeEditorWorldTarget centerTarget =
+      resolveCreativeEditorWorldTarget(
+          document, camera, pickFrame,
+          iggy3d::RenderContentViewport{0, 0, 800U, 600U}, centerGrid);
+
+  return expect(worldBounds.valid && target.valid && target.objectHit &&
+                    target.objectId == created.objectId &&
+                    target.grid.anchorFromObjectBounds &&
+                    target.grid.anchorCandidates.valid &&
+                    target.grid.anchorCandidates.count == 6U &&
+                    target.grid.anchorIndex == 4U &&
+                    near(static_cast<float>(target.grid.placementAnchor.x),
+                         3.15F) &&
+                    near(static_cast<float>(target.grid.placementAnchor.y),
+                         static_cast<float>(worldBounds.center.y)) &&
+                    near(static_cast<float>(target.grid.placementAnchor.z),
+                         static_cast<float>(worldBounds.center.z)) &&
+                    !sameVec3(target.grid.placementAnchor,
+                              target.grid.basePlacementAnchor),
+                "face mode snaps to the rotated object's exact hit face") &&
+         expect(admission.allowed &&
+                    admission.plan.transform.position.x ==
+                        target.grid.placementAnchor.x &&
+                    admission.plan.authoredBounds.min.y ==
+                        target.grid.placementAnchor.y &&
+                    admission.plan.transform.position.z ==
+                        target.grid.placementAnchor.z,
+                "object-bound anchor remains the admission and preview source") &&
+         expect(retainedTarget.valid &&
+                    retainedTarget.grid.anchorFromObjectBounds &&
+                    retainedTarget.grid.anchorIndex == 4U &&
+                    switchedTarget.valid &&
+                    switchedTarget.grid.anchorIndex == 0U,
+                "object-anchor hysteresis retains near an edge and releases after the margin") &&
+         expect(centerTarget.valid && centerTarget.objectHit &&
+                    !centerTarget.grid.anchorFromObjectBounds &&
+                    centerTarget.grid.anchorCandidates.count == 1U &&
+                    sameVec3(centerTarget.grid.placementAnchor,
+                             centerTarget.grid.basePlacementAnchor),
+                "center mode preserves historical grid-cell placement");
 }
 
 bool worldTargetPicksVoxelBeforeGround() {
@@ -5458,6 +5578,7 @@ int main() {
   ok = editorVolumeBudgetRejectsBeforeMutation() && ok;
   ok = sceneCacheRefreshesOnlyOnDocumentRevision() && ok;
   ok = activeVolumeSelectionRebindsToLoadedDocumentGrid() && ok;
+  ok = objectBoundPlacementAnchorsFollowRotatedPickGeometry() && ok;
   ok = worldTargetPicksVoxelBeforeGround() && ok;
   ok = worldTargetSeparatesVoxelStorageFromAuthoredSnap() && ok;
   ok = worldTargetPicksDerivedTerrainAndPreservesVoxelTiePriority() && ok;

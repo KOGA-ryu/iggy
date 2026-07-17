@@ -305,7 +305,8 @@ struct CreativeEditorWorldInteractionFrameRequest {
     const iggy3d::RenderCameraFrame& camera,
     const CreativeEditorPickFrame& pickFrame,
     const iggy3d::RenderContentViewport& region,
-    const iggy3d::creative::CreativePlacementGridFrame& placementGrid);
+    const iggy3d::creative::CreativePlacementGridFrame& placementGrid,
+    const CreativeEditorWorldTarget* previousTarget = nullptr);
 [[nodiscard]] CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
     const iggy3d::creative::CreativeDocument& document,
     const iggy3d::RenderCameraFrame& camera,

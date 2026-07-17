@@ -28,6 +28,29 @@ enum class CreativePlacementAnchorKind : std::uint8_t {
   Count,
 };
 
+inline constexpr std::size_t kCreativePlacementAnchorCandidateCapacity = 12U;
+inline constexpr double kCreativePlacementAnchorRetainStepFraction = 0.08;
+
+struct CreativePlacementAnchorCandidatePlan {
+  std::array<CreativeVec3, kCreativePlacementAnchorCandidateCapacity>
+      positions{};
+  std::uint8_t count = 0U;
+  bool valid = false;
+};
+
+struct CreativePlacementAnchorSelectionRequest {
+  CreativeVec3 hitPoint{};
+  double retainDistanceMeters = 0.0;
+  std::uint8_t previousIndex = 0U;
+  bool hasPrevious = false;
+};
+
+struct CreativePlacementAnchorSelection {
+  CreativeVec3 position{};
+  std::uint8_t index = 0U;
+  bool valid = false;
+};
+
 using CreativePlacementGridAxisMask = std::uint8_t;
 
 inline constexpr CreativePlacementGridAxisMask kCreativePlacementGridAxisX =
@@ -100,10 +123,12 @@ struct CreativeGridTarget {
   CreativeVec3 surfacePlacementAnchor{};
   CreativeVec3 basePlacementAnchor{};
   CreativeVec3 placementAnchor{};
+  CreativePlacementAnchorCandidatePlan anchorCandidates{};
   CreativePlacementAnchorKind anchorKind =
       CreativePlacementAnchorKind::BaseCenter;
   std::uint8_t anchorIndex = 0U;
   bool anchorSnapped = false;
+  bool anchorFromObjectBounds = false;
 };
 
 enum class CreativePlacementGridLineRole : std::uint8_t {
@@ -166,6 +191,14 @@ struct CreativePlacementGridDotLayerPlan {
 
 [[nodiscard]] CreativePlacementGridFrame makeCreativePlacementGridFrame(
     const CreativePlacementGridFrameRequest& request) noexcept;
+[[nodiscard]] CreativePlacementAnchorCandidatePlan
+buildCreativePlacementAnchorCandidatePlan(
+    CreativePlacementAnchorKind kind,
+    CreativeBounds bounds) noexcept;
+[[nodiscard]] CreativePlacementAnchorSelection
+selectCreativePlacementAnchor(
+    const CreativePlacementAnchorCandidatePlan& candidates,
+    const CreativePlacementAnchorSelectionRequest& request) noexcept;
 [[nodiscard]] CreativeGridTarget resolveCreativeGridTargetFromHit(
     CreativeVec3 hitPoint,
     CreativeVec3 faceNormal,

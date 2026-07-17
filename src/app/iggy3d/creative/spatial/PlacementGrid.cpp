@@ -26,18 +26,6 @@ struct OverlayAxisRange {
   bool valid = false;
 };
 
-struct PlacementAnchorCandidates {
-  std::array<CreativeVec3, 12U> positions{};
-  std::uint8_t count = 0U;
-  bool valid = false;
-};
-
-struct PlacementAnchorSelection {
-  CreativeVec3 position{};
-  std::uint8_t index = 0U;
-  bool valid = false;
-};
-
 [[nodiscard]] bool finitePositive(double value) noexcept {
   return std::isfinite(value) && value > 0.0;
 }
@@ -244,10 +232,10 @@ struct PlacementAnchorSelection {
   return {center.x, bounds.min.y, center.z};
 }
 
-[[nodiscard]] PlacementAnchorCandidates placementAnchorCandidates(
+[[nodiscard]] CreativePlacementAnchorCandidatePlan placementAnchorCandidates(
     CreativePlacementAnchorKind kind,
     CreativeBounds bounds) noexcept {
-  PlacementAnchorCandidates result;
+  CreativePlacementAnchorCandidatePlan result;
   const CreativeBoundsMetrics metrics = measureCreativeBounds(bounds);
   result.count = placementAnchorCandidateCount(kind);
   if (!metrics.valid || !isPositiveCreativeVec3(metrics.size) ||
@@ -330,49 +318,19 @@ struct PlacementAnchorSelection {
   return x * x + y * y + z * z;
 }
 
-[[nodiscard]] PlacementAnchorSelection selectPlacementAnchor(
+[[nodiscard]] CreativePlacementAnchorSelection selectPlacementAnchor(
+    const CreativePlacementAnchorCandidatePlan& candidates,
     CreativeVec3 hitPoint,
     CreativeGridCoord3 cell,
-    CreativeBounds bounds,
     const CreativePlacementGridFrame& frame) noexcept {
-  PlacementAnchorSelection result;
-  const PlacementAnchorCandidates candidates =
-      placementAnchorCandidates(frame.anchorKind, bounds);
-  if (!candidates.valid || !isFiniteCreativeVec3(hitPoint)) {
-    return result;
-  }
-
-  std::uint8_t bestIndex = 0U;
-  double bestDistanceSquared =
-      squaredDistance(hitPoint, candidates.positions[0]);
-  for (std::uint8_t index = 1U; index < candidates.count; ++index) {
-    const double distanceSquared =
-        squaredDistance(hitPoint, candidates.positions[index]);
-    if (distanceSquared < bestDistanceSquared) {
-      bestDistanceSquared = distanceSquared;
-      bestIndex = index;
-    }
-  }
-
-  if (frame.hasPreviousAnchor && frame.previousAnchorCell == cell &&
-      frame.previousAnchorIndex < candidates.count) {
-    constexpr double kAnchorRetainStepFraction = 0.08;
-    const double retainDistance =
-        std::min({frame.stepMeters.x, frame.stepMeters.y,
-                  frame.stepMeters.z}) *
-        kAnchorRetainStepFraction;
-    const double previousDistance = std::sqrt(squaredDistance(
-        hitPoint, candidates.positions[frame.previousAnchorIndex]));
-    const double bestDistance = std::sqrt(bestDistanceSquared);
-    if (previousDistance <= bestDistance + retainDistance) {
-      bestIndex = frame.previousAnchorIndex;
-    }
-  }
-
-  result.position = candidates.positions[bestIndex];
-  result.index = bestIndex;
-  result.valid = true;
-  return result;
+  return selectCreativePlacementAnchor(
+      candidates,
+      {hitPoint,
+       std::min({frame.stepMeters.x, frame.stepMeters.y,
+                 frame.stepMeters.z}) *
+           kCreativePlacementAnchorRetainStepFraction,
+       frame.previousAnchorIndex,
+       frame.hasPreviousAnchor && frame.previousAnchorCell == cell});
 }
 
 [[nodiscard]] bool cellInsideDocumentBounds(
@@ -579,6 +537,54 @@ struct PlacementAnchorSelection {
 
 }  // namespace
 
+CreativePlacementAnchorCandidatePlan
+buildCreativePlacementAnchorCandidatePlan(
+    CreativePlacementAnchorKind kind,
+    CreativeBounds bounds) noexcept {
+  return placementAnchorCandidates(kind, bounds);
+}
+
+CreativePlacementAnchorSelection selectCreativePlacementAnchor(
+    const CreativePlacementAnchorCandidatePlan& candidates,
+    const CreativePlacementAnchorSelectionRequest& request) noexcept {
+  CreativePlacementAnchorSelection result;
+  if (!candidates.valid || candidates.count == 0U ||
+      candidates.count > candidates.positions.size() ||
+      !isFiniteCreativeVec3(request.hitPoint) ||
+      !std::isfinite(request.retainDistanceMeters) ||
+      request.retainDistanceMeters < 0.0 ||
+      (request.hasPrevious && request.previousIndex >= candidates.count)) {
+    return result;
+  }
+
+  std::uint8_t bestIndex = 0U;
+  double bestDistanceSquared =
+      squaredDistance(request.hitPoint, candidates.positions[0]);
+  for (std::uint8_t index = 1U; index < candidates.count; ++index) {
+    const double distanceSquared =
+        squaredDistance(request.hitPoint, candidates.positions[index]);
+    if (distanceSquared < bestDistanceSquared) {
+      bestDistanceSquared = distanceSquared;
+      bestIndex = index;
+    }
+  }
+
+  if (request.hasPrevious) {
+    const double previousDistance = std::sqrt(squaredDistance(
+        request.hitPoint, candidates.positions[request.previousIndex]));
+    const double bestDistance = std::sqrt(bestDistanceSquared);
+    if (previousDistance <=
+        bestDistance + request.retainDistanceMeters) {
+      bestIndex = request.previousIndex;
+    }
+  }
+
+  result.position = candidates.positions[bestIndex];
+  result.index = bestIndex;
+  result.valid = true;
+  return result;
+}
+
 CreativePlacementGridFrame makeCreativePlacementGridFrame(
     const CreativePlacementGridFrameRequest& request) noexcept {
   CreativePlacementGridFrame frame;
@@ -736,8 +742,10 @@ CreativeGridTarget resolveCreativeGridTargetFromHit(
       cellPlacementAnchor(target.surfaceAdjacentCell, frame);
   target.basePlacementAnchor =
       cellPlacementAnchor(target.adjacentCell, frame);
-  const PlacementAnchorSelection anchor = selectPlacementAnchor(
-      hitPoint, target.adjacentCell, target.adjacentCellBounds, frame);
+  target.anchorCandidates = placementAnchorCandidates(
+      frame.anchorKind, target.adjacentCellBounds);
+  const CreativePlacementAnchorSelection anchor = selectPlacementAnchor(
+      target.anchorCandidates, hitPoint, target.adjacentCell, frame);
   if (!anchor.valid) {
     return {};
   }
