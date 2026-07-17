@@ -181,6 +181,13 @@ inline void invalidateWorldLayoutPreview(
   state.preview = {};
 }
 
+inline std::uint64_t nextWorldLayoutSourceEpoch(
+    std::uint64_t current) noexcept {
+  return current == std::numeric_limits<std::uint64_t>::max()
+             ? 1U
+             : current + 1U;
+}
+
 inline void clearWorldLayoutInteraction(
     CreativeEditorWorldLayoutState& state) {
   state.roomManipulation = {};

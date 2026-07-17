@@ -491,6 +491,9 @@ struct CreativeEditorWorldLayoutSnapshot {
 
 struct CreativeEditorWorldLayoutState {
   cr::CreativeWorldLayout source;
+  // Transient identity for the installed source. A replacement may reuse the
+  // same numeric revision, so revision-owned UI caches key on both values.
+  std::uint64_t sourceEpoch = 1U;
   std::uint64_t revision = 1U;
   std::uint64_t savedRevision = 1U;
   std::uint64_t generatedRevision = 1U;
@@ -579,7 +582,31 @@ void markCreativeEditorWorldLayoutSaved(
     CreativeEditorWorldLayoutState& state) noexcept;
 
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
-focusCreativeEditorWorldLayoutDiagnostic(
+focusCreativeEditorWorldLayoutSource(
+    CreativeEditorWorldLayoutState& state,
+    cr::CreativeWorldLayoutTable table, std::size_t index);
+
+[[nodiscard]] bool creativeEditorWorldLayoutSourceCanRename(
+    cr::CreativeWorldLayoutTable table) noexcept;
+[[nodiscard]] bool creativeEditorWorldLayoutSourceCanDuplicate(
+    cr::CreativeWorldLayoutTable table) noexcept;
+[[nodiscard]] bool creativeEditorWorldLayoutSourceCanDelete(
+    cr::CreativeWorldLayoutTable table) noexcept;
+[[nodiscard]] bool creativeEditorWorldLayoutSourceStableKeyMatches(
+    const CreativeEditorWorldLayoutState& state,
+    cr::CreativeWorldLayoutTable table, std::size_t index,
+    std::string_view stableKey) noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+renameCreativeEditorWorldLayoutSource(
+    CreativeEditorWorldLayoutState& state,
+    cr::CreativeWorldLayoutTable table, std::size_t index,
+    std::string name);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+duplicateCreativeEditorWorldLayoutSource(
+    CreativeEditorWorldLayoutState& state,
+    cr::CreativeWorldLayoutTable table, std::size_t index);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+deleteCreativeEditorWorldLayoutSource(
     CreativeEditorWorldLayoutState& state,
     cr::CreativeWorldLayoutTable table, std::size_t index);
 

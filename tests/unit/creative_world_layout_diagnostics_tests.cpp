@@ -96,7 +96,7 @@ bool diagnosticFocusSelectsFramesAndPreservesSource() {
   const std::uint64_t sourceRevision = state.revision;
 
   const app::CreativeEditorWorldLayoutEditReceipt room =
-      app::focusCreativeEditorWorldLayoutDiagnostic(
+      app::focusCreativeEditorWorldLayoutSource(
           state, cr::CreativeWorldLayoutTable::Room, 0U);
   const bool roomFocused =
       room.accepted &&
@@ -107,7 +107,7 @@ bool diagnosticFocusSelectsFramesAndPreservesSource() {
       near(state.elevationPanHorizontal, -168.0F);
 
   const app::CreativeEditorWorldLayoutEditReceipt level =
-      app::focusCreativeEditorWorldLayoutDiagnostic(
+      app::focusCreativeEditorWorldLayoutSource(
           state, cr::CreativeWorldLayoutTable::Level, 0U);
   const bool levelFocused =
       level.accepted &&
@@ -116,7 +116,7 @@ bool diagnosticFocusSelectsFramesAndPreservesSource() {
       state.selection.index == 0U && state.activeLevelIndex == 0U;
 
   const app::CreativeEditorWorldLayoutEditReceipt invalid =
-      app::focusCreativeEditorWorldLayoutDiagnostic(
+      app::focusCreativeEditorWorldLayoutSource(
           state, cr::CreativeWorldLayoutTable::Room, 99U);
   return expect(roomFocused,
                 "room issue selects its source and centers both views") &&
@@ -138,9 +138,9 @@ bool diagnosticFocusRoutesThroughTypedDispatcher() {
   const app::CreativeDesktopCommandContext context{
       live, editor, std::filesystem::path{}, &saveId};
   app::CreativeDesktopCommandFrame frame;
-  frame.push(app::CreativeDesktopCommandId::WorldLayoutFocusDiagnostic,
-             app::CreativeDesktopWorldLayoutDiagnosticPayload{
-                 cr::CreativeWorldLayoutTable::Room, 0U});
+  frame.push(app::CreativeDesktopCommandId::WorldLayoutFocusSource,
+             app::CreativeDesktopWorldLayoutSourcePayload{
+                 cr::CreativeWorldLayoutTable::Room, 0U, {}});
   const app::CreativeDesktopCommandResult result =
       app::dispatchCreativeDesktopCommands(frame, context);
 

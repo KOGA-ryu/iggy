@@ -1556,7 +1556,10 @@ void resetCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
                                     std::string layoutKey) {
   CreativeEditorWorldLayoutBuildingTemplateLibrary buildingTemplates =
       std::move(state.buildingTemplates);
+  const std::uint64_t sourceEpoch =
+      detail::nextWorldLayoutSourceEpoch(state.sourceEpoch);
   state = {};
+  state.sourceEpoch = sourceEpoch;
   state.buildingTemplates = std::move(buildingTemplates);
   state.source.stableKey =
       layoutKey.empty() ? "world_layout" : std::move(layoutKey);
@@ -1570,7 +1573,10 @@ void installCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
                                       cr::CreativeWorldLayout layout) {
   CreativeEditorWorldLayoutBuildingTemplateLibrary buildingTemplates =
       std::move(state.buildingTemplates);
+  const std::uint64_t sourceEpoch =
+      detail::nextWorldLayoutSourceEpoch(state.sourceEpoch);
   state = {};
+  state.sourceEpoch = sourceEpoch;
   state.buildingTemplates = std::move(buildingTemplates);
   state.source = std::move(layout);
   state.nextStableOrdinal =

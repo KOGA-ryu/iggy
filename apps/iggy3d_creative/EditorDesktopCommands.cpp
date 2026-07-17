@@ -71,7 +71,8 @@ template <typename Payload>
   return id == CreativeDesktopCommandId::None ||
          id == CreativeDesktopCommandId::Play ||
          id == CreativeDesktopCommandId::SelectObjects ||
-         id == CreativeDesktopCommandId::ClearSelection;
+         id == CreativeDesktopCommandId::ClearSelection ||
+         id == CreativeDesktopCommandId::WorldLayoutFocusSource;
 }
 
 [[nodiscard]] bool focusEditorCameraOnObject(
@@ -719,18 +720,104 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = editor.worldLayout.statusMessage;
       break;
     }
-    case CreativeDesktopCommandId::WorldLayoutFocusDiagnostic: {
+    case CreativeDesktopCommandId::WorldLayoutFocusSource: {
       const auto* payload =
-          payloadAs<CreativeDesktopWorldLayoutDiagnosticPayload>(command);
+          payloadAs<CreativeDesktopWorldLayoutSourcePayload>(command);
       if (payload == nullptr) {
-        result.message = "layout diagnostic focus: payload mismatch";
+        result.message = "layout source focus: payload mismatch";
+        break;
+      }
+      if (!payload->stableKey.empty() &&
+          !creativeEditorWorldLayoutSourceStableKeyMatches(
+              editor.worldLayout, payload->table, payload->index,
+              payload->stableKey)) {
+        result.message = "layout source focus: stale target";
         break;
       }
       const CreativeEditorWorldLayoutEditReceipt receipt =
-          focusCreativeEditorWorldLayoutDiagnostic(
+          focusCreativeEditorWorldLayoutSource(
               editor.worldLayout, payload->table, payload->index);
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutRenameSource: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutSourceRenamePayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout source rename: payload mismatch";
+        break;
+      }
+      if (!payload->stableKey.empty() &&
+          !creativeEditorWorldLayoutSourceStableKeyMatches(
+              editor.worldLayout, payload->table, payload->index,
+              payload->stableKey)) {
+        result.message = "layout source rename: stale target";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          renameCreativeEditorWorldLayoutSource(
+              editor.worldLayout, payload->table, payload->index,
+              payload->name);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutDuplicateSource: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutSourcePayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout source duplicate: payload mismatch";
+        break;
+      }
+      if (!payload->stableKey.empty() &&
+          !creativeEditorWorldLayoutSourceStableKeyMatches(
+              editor.worldLayout, payload->table, payload->index,
+              payload->stableKey)) {
+        result.message = "layout source duplicate: stale target";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          duplicateCreativeEditorWorldLayoutSource(
+              editor.worldLayout, payload->table, payload->index);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutDeleteSource: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutSourcePayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout source delete: payload mismatch";
+        break;
+      }
+      if (!payload->stableKey.empty() &&
+          !creativeEditorWorldLayoutSourceStableKeyMatches(
+              editor.worldLayout, payload->table, payload->index,
+              payload->stableKey)) {
+        result.message = "layout source delete: stale target";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          deleteCreativeEditorWorldLayoutSource(
+              editor.worldLayout, payload->table, payload->index);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
       result.message = editor.worldLayout.statusMessage;
       break;
     }

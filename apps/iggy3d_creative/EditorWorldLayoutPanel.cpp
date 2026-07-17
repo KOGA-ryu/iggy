@@ -2,6 +2,7 @@
 
 #include "EditorDesktopWorldLayoutInspector.hpp"
 #include "EditorWorldLayoutElevationPanel.hpp"
+#include "EditorWorldLayoutHierarchyPanel.hpp"
 
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRoofs.hpp"
@@ -1938,6 +1939,7 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   }
 }
 
+
 }  // namespace
 
 void buildCreativeEditorWorldLayoutPanel(
@@ -1970,14 +1972,25 @@ void buildCreativeEditorWorldLayoutPanel(
   // crowded center canvas.
   if (ImGui::Begin("World Layout Tools###Project", nullptr,
                    ImGuiWindowFlags_NoCollapse)) {
-    ImGui::BeginDisabled(editingDisabled || state.buildingTransform.active ||
-                         state.buildingTemplatePlacement.active);
-    ImGui::SeparatorText("Palette");
-    drawWorldLayoutPalette(state, commands);
-    ImGui::Spacing();
-    drawWorldLayoutLevels(desktopUi, state, commands);
-    ImGui::EndDisabled();
-    drawWorldLayoutLevelDeleteModal(desktopUi, state, commands);
+    if (ImGui::BeginTabBar("##world_layout_left_tabs")) {
+      if (ImGui::BeginTabItem("Source")) {
+        drawCreativeEditorWorldLayoutHierarchy(desktopUi, state, commands,
+                                               editingDisabled);
+        ImGui::EndTabItem();
+      }
+      if (ImGui::BeginTabItem("Create")) {
+        ImGui::BeginDisabled(
+            editingDisabled || state.buildingTransform.active ||
+            state.buildingTemplatePlacement.active);
+        drawWorldLayoutPalette(state, commands);
+        ImGui::Spacing();
+        drawWorldLayoutLevels(desktopUi, state, commands);
+        ImGui::EndDisabled();
+        drawWorldLayoutLevelDeleteModal(desktopUi, state, commands);
+        ImGui::EndTabItem();
+      }
+      ImGui::EndTabBar();
+    }
   }
   ImGui::End();
 
@@ -2064,9 +2077,9 @@ void buildCreativeEditorWorldLayoutPanel(
                               ImGuiSelectableFlags_None,
                               ImVec2(0.0F, ImGui::GetFrameHeight()))) {
           commands.push(
-              CreativeDesktopCommandId::WorldLayoutFocusDiagnostic,
-              CreativeDesktopWorldLayoutDiagnosticPayload{issue.table,
-                                                           issue.index});
+              CreativeDesktopCommandId::WorldLayoutFocusSource,
+              CreativeDesktopWorldLayoutSourcePayload{issue.table,
+                                                       issue.index, {}});
         }
       } else {
         ImGui::TextUnformatted(issue.message.c_str());

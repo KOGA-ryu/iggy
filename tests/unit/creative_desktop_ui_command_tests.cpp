@@ -1226,9 +1226,21 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSelectBuilding, context,
           app::CreativeDesktopDeletePayload{{a}});
-  const app::CreativeDesktopCommandResult badWorldLayoutDiagnosticFocus =
+  const app::CreativeDesktopCommandResult badWorldLayoutSourceFocus =
       dispatchPayload(
-          app::CreativeDesktopCommandId::WorldLayoutFocusDiagnostic, context,
+          app::CreativeDesktopCommandId::WorldLayoutFocusSource, context,
+          app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutSourceRename =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutRenameSource, context,
+          app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutSourceDuplicate =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutDuplicateSource, context,
+          app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutSourceDelete =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutDeleteSource, context,
           app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult badWorldLayoutBuildingManipulation =
       dispatchPayload(
@@ -1334,10 +1346,22 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badWorldLayoutBuildingSelection.message ==
                         "layout building selection: payload mismatch",
                 "building selection rejects a mismatched payload") &&
-         expect(!badWorldLayoutDiagnosticFocus.accepted &&
-                    badWorldLayoutDiagnosticFocus.message ==
-                        "layout diagnostic focus: payload mismatch",
-                "diagnostic focus rejects a mismatched payload") &&
+         expect(!badWorldLayoutSourceFocus.accepted &&
+                    badWorldLayoutSourceFocus.message ==
+                        "layout source focus: payload mismatch",
+                "source focus rejects a mismatched payload") &&
+         expect(!badWorldLayoutSourceRename.accepted &&
+                    badWorldLayoutSourceRename.message ==
+                        "layout source rename: payload mismatch",
+                "source rename rejects a mismatched payload") &&
+         expect(!badWorldLayoutSourceDuplicate.accepted &&
+                    badWorldLayoutSourceDuplicate.message ==
+                        "layout source duplicate: payload mismatch",
+                "source duplicate rejects a mismatched payload") &&
+         expect(!badWorldLayoutSourceDelete.accepted &&
+                    badWorldLayoutSourceDelete.message ==
+                        "layout source delete: payload mismatch",
+                "source delete rejects a mismatched payload") &&
          expect(!badWorldLayoutBuildingManipulation.accepted &&
                     badWorldLayoutBuildingManipulation.message ==
                         "layout building manipulation: payload mismatch",

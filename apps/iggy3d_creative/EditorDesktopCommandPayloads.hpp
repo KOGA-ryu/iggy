@@ -129,11 +129,23 @@ struct CreativeDesktopWorldLayoutBuildingSelectionPayload {
       iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
 };
 
-struct CreativeDesktopWorldLayoutDiagnosticPayload {
+struct CreativeDesktopWorldLayoutSourcePayload {
   iggy3d::creative::CreativeWorldLayoutTable table =
       iggy3d::creative::CreativeWorldLayoutTable::None;
   std::size_t index =
       iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  // Optional for immediate commands; delayed dialogs provide it so an index
+  // shift cannot redirect the action to another source symbol.
+  std::string stableKey;
+};
+
+struct CreativeDesktopWorldLayoutSourceRenamePayload {
+  iggy3d::creative::CreativeWorldLayoutTable table =
+      iggy3d::creative::CreativeWorldLayoutTable::None;
+  std::size_t index =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::string stableKey;
+  std::string name;
 };
 
 struct CreativeDesktopWorldLayoutLevelOperationPayload {
@@ -284,7 +296,8 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopInstanceRefreshPayload,
     CreativeDesktopWorldLayoutToolPayload,
     CreativeDesktopWorldLayoutBuildingSelectionPayload,
-    CreativeDesktopWorldLayoutDiagnosticPayload,
+    CreativeDesktopWorldLayoutSourcePayload,
+    CreativeDesktopWorldLayoutSourceRenamePayload,
     CreativeDesktopWorldLayoutLevelOperationPayload,
     CreativeDesktopWorldLayoutBuildingManipulationPayload,
     CreativeDesktopWorldLayoutBuildingDuplicatePayload,

@@ -11,6 +11,7 @@
 #include "render/FrameInput.hpp"
 
 #include "EditorDesktopModel.hpp"
+#include "EditorWorldLayoutHierarchy.hpp"
 
 namespace iggy3d {
 class VulkanBackend;
@@ -31,6 +32,23 @@ struct CreativeDesktopOutlinerState {
   std::array<char, 128> searchBuffer{};
   iggy3d::creative::CreativeObjectId selectionAnchor =
       iggy3d::creative::kInvalidObjectId;
+};
+
+// World Layout's source tree is a transient revision-owned projection. Search
+// filtering never rebuilds source ownership and none of this state persists.
+struct CreativeDesktopWorldLayoutHierarchyState {
+  CreativeEditorWorldLayoutHierarchyCache cache;
+  std::vector<std::size_t> filteredRows;
+  std::string appliedQuery;
+  bool filteredRowsValid = false;
+  std::array<char, 128> searchBuffer{};
+  iggy3d::creative::CreativeWorldLayoutTable pendingTable =
+      iggy3d::creative::CreativeWorldLayoutTable::None;
+  std::size_t pendingIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::string pendingStableKey;
+  std::string pendingLabel;
+  std::array<char, 128> renameBuffer{};
 };
 
 // UI-4A transient Inspector draft, keyed by document id + object id. Rotation is
@@ -110,6 +128,7 @@ struct CreativeEditorDesktopUiState {
 
   // UI-4A Project/Inspector transient state (caches + drafts only).
   CreativeDesktopOutlinerState outliner;
+  CreativeDesktopWorldLayoutHierarchyState worldLayoutHierarchy;
   CreativeDesktopInspectorDraft inspectorDraft;
 };
 

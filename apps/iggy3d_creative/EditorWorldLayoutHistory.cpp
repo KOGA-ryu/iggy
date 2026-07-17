@@ -1,5 +1,7 @@
 #include "EditorWorldLayoutHistory.hpp"
 
+#include "EditorWorldLayoutInternal.hpp"
+
 #include <sstream>
 #include <string>
 #include <utility>
@@ -92,7 +94,10 @@ void installCreativeEditorWorldLayoutSnapshot(
   const float elevationPixelsPerCell = state.elevationPixelsPerCell;
   const float elevationPanHorizontal = state.elevationPanHorizontal;
   const float elevationPanY = state.elevationPanY;
+  const std::uint64_t sourceEpoch =
+      detail::nextWorldLayoutSourceEpoch(state.sourceEpoch);
   state = {};
+  state.sourceEpoch = sourceEpoch;
   state.buildingTemplates = std::move(buildingTemplates);
   state.canvasPixelsPerCell = canvasPixelsPerCell;
   state.canvasPanX = canvasPanX;
