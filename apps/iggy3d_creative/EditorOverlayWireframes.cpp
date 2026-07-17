@@ -41,6 +41,8 @@ void resetCreativeEditorOverlayFrame(CreativeEditorOverlayFrame& output) {
   output.combinedWireLines.clear();
   output.placementGridLineCount = 0;
   output.placementGridDotCount = 0;
+  output.placementGridGuideLineCount = 0;
+  output.placementGridTargetMarkerCount = 0;
   output.placementGridClipped = false;
   output.documentWireLineCount = 0;
   output.pointMarkerEdgeCount = 0;
@@ -560,7 +562,7 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
       kMaxStaticMeshAttachmentSocketCount * 3U +
       editor.interaction.assetScatter.preview.candidateCount * 12U +
       creative::kCreativePlacementGridMaximumLineCount +
-      creative::kCreativePlacementGridMaximumDotCount);
+      creative::kCreativePlacementGridMaximumDotCount + 2U);
   std::size_t& documentWireLineCount = output.documentWireLineCount;
   std::size_t& pointMarkerEdgeCount = output.pointMarkerEdgeCount;
   std::size_t& lineMarkerEdgeCount = output.lineMarkerEdgeCount;

@@ -17,6 +17,23 @@ namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 namespace {
 
+[[nodiscard]] cr::CreativePlacementGridAxisMask placementDepthAxisLock(
+    cr::CreativePlacementPlane plane) noexcept {
+  switch (plane) {
+    case cr::CreativePlacementPlane::Auto:
+      return 0U;
+    case cr::CreativePlacementPlane::X:
+      return cr::kCreativePlacementGridAxisX;
+    case cr::CreativePlacementPlane::Y:
+      return cr::kCreativePlacementGridAxisY;
+    case cr::CreativePlacementPlane::Z:
+      return cr::kCreativePlacementGridAxisZ;
+    case cr::CreativePlacementPlane::Count:
+      return 0U;
+  }
+  return 0U;
+}
+
 [[nodiscard]] iggy3d::Vec3 aabbFaceNormal(VisualBounds bounds,
                                           iggy3d::Vec3 point) noexcept {
   const std::array distances{
@@ -137,6 +154,12 @@ cr::CreativePlacementGridFrame creativeEditorPlacementGridFrame(
   if (held.kind == cr::CreativeHeldItemKind::Material) {
     request.depthOffsetSteps =
         cr::creativePlacementDepthSteps(editor.toolSettings.placementDepth);
+    request.depthAxisLock =
+        placementDepthAxisLock(editor.toolSettings.placementPlane);
+    if (editor.interaction.target.grid.resolved) {
+      request.previousDepthAxis =
+          editor.interaction.target.grid.viewDepthAxis;
+    }
   }
   return cr::makeCreativePlacementGridFrame(request);
 }

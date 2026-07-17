@@ -102,6 +102,14 @@ enum class CreativePlacementGridDots : std::uint8_t {
   Count,
 };
 
+enum class CreativePlacementPlane : std::uint8_t {
+  Auto,
+  X,
+  Y,
+  Z,
+  Count,
+};
+
 enum class CreativePlacementDepth : std::uint8_t {
   ZeroCells,
   OneCell,
@@ -191,6 +199,7 @@ enum class CreativeToolOptionId : std::uint8_t {
   PlacementYaw,
   SnapIncrement,
   PlacementGridDots,
+  PlacementPlane,
   PlacementDepth,
   AssetPlacementMode,
   AssetScatterRadius,
@@ -287,6 +296,7 @@ struct CreativeToolSettings {
   CreativeSnapIncrement snapIncrement = CreativeSnapIncrement::OneMeter;
   CreativePlacementGridDots placementGridDots =
       CreativePlacementGridDots::Off;
+  CreativePlacementPlane placementPlane = CreativePlacementPlane::Auto;
   CreativePlacementDepth placementDepth = CreativePlacementDepth::ZeroCells;
   CreativeAssetPlacementMode assetPlacementMode =
       CreativeAssetPlacementMode::Single;
@@ -525,6 +535,8 @@ creativeToolOptionDescriptors() noexcept;
     CreativeSnapIncrement increment) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativePlacementGridDots dots) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativePlacementPlane plane) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativePlacementDepth depth) noexcept;
 [[nodiscard]] std::string_view toString(

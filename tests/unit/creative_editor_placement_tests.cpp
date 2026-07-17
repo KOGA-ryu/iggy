@@ -734,6 +734,18 @@ bool quickEditOrientationFeedsPreviewAndCreatePlan() {
        ok;
   ok = expect(processCreativeEditorQuickEditAction(
                   editor, cr::CreativeInputActionId::QuickEditNext) &&
+                  creativeEditorQuickEditStatusLabel(editor) ==
+                      "PLACEMENT PLANE AUTO" &&
+                  processCreativeEditorQuickEditAction(
+                      editor, cr::CreativeInputActionId::QuickEditIncrease) &&
+                  editor.toolSettings.placementPlane ==
+                      cr::CreativePlacementPlane::X &&
+                  creativeEditorQuickEditStatusLabel(editor) ==
+                      "PLACEMENT PLANE X",
+              "square and dpad expose a reusable placement plane lock") &&
+       ok;
+  ok = expect(processCreativeEditorQuickEditAction(
+                  editor, cr::CreativeInputActionId::QuickEditNext) &&
                   processCreativeEditorQuickEditAction(
                       editor, cr::CreativeInputActionId::QuickEditIncrease) &&
                   editor.toolSettings.placementDepth ==
@@ -782,13 +794,15 @@ bool toolOptionsFollowTheRequestedMaterialEntry() {
       creativeEditorQuickEditStatusLabel(editor).empty();
   syncCreativeEditorQuickEdit(editor);
 
-  return expect(wallOptions.count == 2U &&
+  return expect(wallOptions.count == 3U &&
                     wallOptions.ids[0] ==
                         cr::CreativeToolOptionId::PlacementGridDots &&
                     wallOptions.ids[1] ==
+                        cr::CreativeToolOptionId::PlacementPlane &&
+                    wallOptions.ids[2] ==
                         cr::CreativeToolOptionId::PlacementDepth,
                 "fixed-grid material exposes only lattice-wide placement options") &&
-         expect(doorOptions.count == 4U &&
+         expect(doorOptions.count == 5U &&
                     doorOptions.ids[0] ==
                         cr::CreativeToolOptionId::PlacementYaw &&
                     doorOptions.ids[1] ==
@@ -796,8 +810,10 @@ bool toolOptionsFollowTheRequestedMaterialEntry() {
                     doorOptions.ids[2] ==
                         cr::CreativeToolOptionId::PlacementGridDots &&
                     doorOptions.ids[3] ==
+                        cr::CreativeToolOptionId::PlacementPlane &&
+                    doorOptions.ids[4] ==
                         cr::CreativeToolOptionId::PlacementDepth,
-                "authored material owns orientation grid dots and depth") &&
+                "authored material owns orientation grid dots plane and depth") &&
          expect(invalidOptions.count == 0U,
                 "invalid material option targets fail closed") &&
          expect(brushCommands.count == 2U &&
@@ -812,7 +828,7 @@ bool toolOptionsFollowTheRequestedMaterialEntry() {
          expect(doorQuickEditReady && staleDoorStatusHidden &&
                     editor.quickEdit.targetEntry.objectKind ==
                         cr::CreativeObjectKind::Wall &&
-                    editor.quickEdit.options.count == 2U &&
+                    editor.quickEdit.options.count == 3U &&
                     creativeEditorQuickEditStatusLabel(editor) ==
                         "GRID DOTS OFF",
                 "quick edit tracks the complete material entry without stale labels");
@@ -1562,6 +1578,7 @@ bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
   CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Door);
   editor.toolSettings.placementGridDots =
       cr::CreativePlacementGridDots::NearestLayer;
+  editor.toolSettings.placementPlane = cr::CreativePlacementPlane::X;
   editor.toolSettings.placementDepth = cr::CreativePlacementDepth::TwoCells;
   const cr::CreativeDocument& installed = appState.facade.document();
   const cr::CreativePlacementGridFrame placementGrid =
@@ -1589,6 +1606,16 @@ bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
       [](const iggy3d::RenderCreativeWireframeDebugLine& line) {
         return line.segmentKind == 5U;
       }));
+  const auto guide = std::find_if(
+      visible.combinedWireLines.begin(), visible.combinedWireLines.end(),
+      [](const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return line.segmentKind == 6U;
+      });
+  const auto targetMarker = std::find_if(
+      visible.combinedWireLines.begin(), visible.combinedWireLines.end(),
+      [](const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return line.segmentKind == 7U;
+      });
   const bool oneDepthLayer = std::all_of(
       visible.combinedWireLines.begin(), visible.combinedWireLines.end(),
       [&gridTarget](const iggy3d::RenderCreativeWireframeDebugLine& line) {
@@ -1597,12 +1624,23 @@ bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
                     static_cast<float>(gridTarget.placementAnchor.x));
       });
 
-  bool ok = expect(placementGrid.depthOffsetSteps == 2U && gridTarget.valid &&
+  bool ok = expect(placementGrid.depthOffsetSteps == 2U &&
+                       placementGrid.depthAxisLock ==
+                           cr::kCreativePlacementGridAxisX &&
+                       gridTarget.valid &&
                        gridTarget.adjacentCell ==
                            cr::CreativeGridCoord3{6, 2, 5} &&
                        visible.placementGridLineCount > 0U &&
                        visible.placementGridDotCount == 144U &&
+                       visible.placementGridGuideLineCount == 1U &&
+                       visible.placementGridTargetMarkerCount == 1U &&
                        renderedDots == visible.placementGridDotCount &&
+                       guide != visible.combinedWireLines.end() &&
+                       near(guide->start.x, 4.5F) &&
+                       near(guide->end.x, 6.5F) &&
+                       targetMarker != visible.combinedWireLines.end() &&
+                       near(targetMarker->color.g, 1.0F) &&
+                       near(targetMarker->color.r, 0.18F) &&
                        oneDepthLayer &&
                        appState.facade.document().revision() == revisionBefore,
                    "nearest dots render one shifted layer without mutation");
@@ -1614,8 +1652,10 @@ bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
        1280U, 720U, 0.03F, false},
       hiddenByToggle);
   ok = expect(hiddenByToggle.placementGridLineCount > 0U &&
-                  hiddenByToggle.placementGridDotCount == 0U,
-              "dot toggle leaves the ordinary placement grid intact") &&
+                  hiddenByToggle.placementGridDotCount == 0U &&
+                  hiddenByToggle.placementGridGuideLineCount == 1U &&
+                  hiddenByToggle.placementGridTargetMarkerCount == 0U,
+              "dot toggle hides dots but retains the depth guide") &&
        ok;
 
   editor.toolSettings.placementGridDots =
@@ -1626,10 +1666,100 @@ bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
       {appState, editor, selection, gizmo, frame, projectionRequest,
        1280U, 720U, 0.03F, false},
       hiddenByModal);
-  return expect(hiddenByModal.placementGridLineCount == 0U &&
-                    hiddenByModal.placementGridDotCount == 0U,
-                "modal surfaces hide the placement lattice") &&
+  ok = expect(hiddenByModal.placementGridLineCount == 0U &&
+                  hiddenByModal.placementGridDotCount == 0U &&
+                  hiddenByModal.placementGridGuideLineCount == 0U &&
+                  hiddenByModal.placementGridTargetMarkerCount == 0U,
+              "modal surfaces hide every placement lattice cue") &&
+       ok;
+
+  editor.toolOptions.open = false;
+  const cr::CreativeGridTarget edgeTarget =
+      cr::resolveCreativeGridTargetFromHit(
+          {12.0, 2.5, 5.5}, {1.0, 0.0, 0.0}, placementGrid,
+          {1.0, 0.0, 0.0});
+  editor.interaction.target.valid = edgeTarget.valid;
+  editor.interaction.target.grid = edgeTarget;
+  CreativeEditorOverlayFrame rejected;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      rejected);
+  const auto rejectedMarker = std::find_if(
+      rejected.combinedWireLines.begin(), rejected.combinedWireLines.end(),
+      [](const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return line.segmentKind == 7U;
+      });
+  return expect(edgeTarget.valid && !edgeTarget.adjacentInBounds &&
+                    rejected.placementGridDotCount == 0U &&
+                    rejected.placementGridTargetMarkerCount == 1U &&
+                    rejectedMarker != rejected.combinedWireLines.end() &&
+                    near(rejectedMarker->color.r, 1.0F) &&
+                    near(rejectedMarker->color.g, 0.18F),
+                "out-of-bounds placement keeps a red active target marker") &&
          ok;
+}
+
+bool lockedPlacementPlaneFeedsPreviewAdmissionAndMutation() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("locked plane");
+  static_cast<void>(document.assignId(120U));
+  static_cast<void>(document.setGridSettings(
+      {{0.0, 0.0, 0.0}, 1.0, {8, 8, 8}}));
+  static_cast<void>(document.setWorldBounds(
+      {{0.0, 0.0, 0.0}, {8.0, 8.0, 8.0}}));
+  cr::CreativeAppState appState;
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
+  const cr::CreativePlacementGridFrame initialAutoGrid =
+      creativeEditorPlacementGridFrame(appState.facade.document(), editor);
+  editor.toolSettings.placementPlane = cr::CreativePlacementPlane::Z;
+  editor.toolSettings.placementDepth = cr::CreativePlacementDepth::TwoCells;
+  const cr::CreativePlacementGridFrame placementGrid =
+      creativeEditorPlacementGridFrame(appState.facade.document(), editor);
+  const cr::CreativeGridTarget target = cr::resolveCreativeGridTargetFromHit(
+      {4.0, 2.5, 5.5}, {1.0, 0.0, 0.0}, placementGrid,
+      {1.0, 0.0, -0.1});
+  editor.interaction.target.valid = target.valid;
+  editor.interaction.target.grid = target;
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const CreativeBrushPlacementAdmission admission = admitBrushPlacement(
+      held, target, editor.toolSettings.placementYaw);
+
+  iggy3d::FrameInput preview;
+  attachCreativeEditorPlacementPreviews(
+      editor, false, preview, &appState.facade.document());
+  const CreativeBrushPlacementMutationReceipt mutation = applyBrushPlacement(
+      appState.facade, admission.plan, 1U);
+
+  return expect(sameVec3(initialAutoGrid.previousDepthAxis, {}),
+                "unresolved targets do not bias the first automatic plane") &&
+         expect(placementGrid.depthAxisLock ==
+                    cr::kCreativePlacementGridAxisZ &&
+                    sameVec3(target.viewDepthAxis, {0.0, 0.0, -1.0}) &&
+                    target.surfaceAdjacentCell ==
+                        cr::CreativeGridCoord3{4, 2, 5} &&
+                    target.adjacentCell == cr::CreativeGridCoord3{4, 2, 3},
+                "tool setting resolves one locked placement plane") &&
+         expect(admission.allowed && admission.plan.hasVoxelCell &&
+                    admission.plan.voxelCell == target.adjacentCell &&
+                    sameBounds(admission.plan.previewBounds,
+                               target.adjacentCellBounds),
+                "admission consumes the locked target without recomputing it") &&
+         expect(preview.creativePreview.itemCount == 2U &&
+                    preview.creativePreview.items[0].role ==
+                        iggy3d::RenderCreativePreviewRole::PlacementValid &&
+                    near(preview.creativePreview.items[0].clipFromModel.m[3],
+                         4.5F) &&
+                    near(preview.creativePreview.items[0].clipFromModel.m[11],
+                         3.5F),
+                "preview renders the same locked target cell") &&
+         expect(mutation.accepted && mutation.voxelCreated &&
+                    mutation.voxelCell == target.adjacentCell &&
+                    appState.facade.document().voxelField().materialAt(
+                        target.adjacentCell) == cr::CreativeObjectKind::Wall,
+                "mutation writes the exact locked preview cell");
 }
 
 bool shapeVolumePreviewsStayBoundedAndFailClosed() {
@@ -5214,6 +5344,7 @@ int main() {
   ok = roomGeometryRendersStoredEulerRadians() && ok;
   ok = materialAimMovementDoesNotChangeUploadSignature() && ok;
   ok = placementGridDotsRenderOnlyTheActiveDepthLayer() && ok;
+  ok = lockedPlacementPlaneFeedsPreviewAdmissionAndMutation() && ok;
   ok = shapeVolumePreviewsStayBoundedAndFailClosed() && ok;
   ok = editorVolumeBudgetRejectsBeforeMutation() && ok;
   ok = sceneCacheRefreshesOnlyOnDocumentRevision() && ok;

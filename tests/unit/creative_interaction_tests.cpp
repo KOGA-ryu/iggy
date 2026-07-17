@@ -859,12 +859,15 @@ bool placementDepthAndNearestDotLayerShareOneLattice() {
 
   bool ok = expect(away.valid && away.adjacentInBounds &&
                        away.targetCell == cr::CreativeGridCoord3{3, 2, 5} &&
+                       away.surfaceAdjacentCell ==
+                           cr::CreativeGridCoord3{4, 2, 5} &&
                        away.adjacentCell == cr::CreativeGridCoord3{6, 2, 5} &&
                        away.viewDepthAxis.x == 1.0 &&
                        away.viewDepthAxis.y == 0.0 &&
                        away.viewDepthAxis.z == 0.0 &&
+                       near(away.surfacePlacementAnchor.x, 4.5) &&
                        near(away.placementAnchor.x, 6.5),
-                   "depth moves placement away along the dominant view axis") &&
+                   "depth preserves the surface layer and moves the final layer away") &&
             expect(dots.valid && dots.dotCount == 64U &&
                        std::all_of(
                            dots.dots.begin(), dots.dots.begin() + dots.dotCount,
@@ -882,6 +885,47 @@ bool placementDepthAndNearestDotLayerShareOneLattice() {
                       cr::CreativeGridCoord3{3, 2, 4} &&
                   near(negativeDepth.placementAnchor.z, 4.5),
               "negative view direction moves away with the correct sign") &&
+       ok;
+
+  cr::CreativePlacementGridFrameRequest stableAutoRequest = request;
+  stableAutoRequest.previousDepthAxis = {1.0, 0.0, 0.0};
+  const cr::CreativePlacementGridFrame stableAutoFrame =
+      cr::makeCreativePlacementGridFrame(stableAutoRequest);
+  const cr::CreativeGridTarget retainedAuto =
+      cr::resolveCreativeGridTargetFromHit(
+          {4.0, 2.5, 3.5}, {1.0, 0.0, 0.0}, stableAutoFrame,
+          {0.70, 0.0, 0.71});
+  const cr::CreativeGridTarget switchedAuto =
+      cr::resolveCreativeGridTargetFromHit(
+          {4.0, 2.5, 3.5}, {1.0, 0.0, 0.0}, stableAutoFrame,
+          {0.40, 0.0, 0.90});
+  ok = expect(retainedAuto.valid && retainedAuto.viewDepthAxis.x == 1.0 &&
+                  retainedAuto.adjacentCell ==
+                      cr::CreativeGridCoord3{6, 2, 3},
+              "auto plane hysteresis retains X across a diagonal tie") &&
+       expect(switchedAuto.valid && switchedAuto.viewDepthAxis.z == 1.0 &&
+                  switchedAuto.adjacentCell ==
+                      cr::CreativeGridCoord3{4, 2, 5},
+              "auto plane switches when Z clearly exceeds the retained axis") &&
+       ok;
+
+  cr::CreativePlacementGridFrameRequest lockedRequest = request;
+  lockedRequest.depthAxisLock = cr::kCreativePlacementGridAxisZ;
+  const cr::CreativePlacementGridFrame lockedFrame =
+      cr::makeCreativePlacementGridFrame(lockedRequest);
+  const cr::CreativeGridTarget locked = cr::resolveCreativeGridTargetFromHit(
+      {4.0, 2.5, 5.5}, {1.0, 0.0, 0.0}, lockedFrame,
+      {1.0, 0.0, -0.1});
+  ok = expect(locked.valid && locked.viewDepthAxis.z == -1.0 &&
+                  locked.adjacentCell == cr::CreativeGridCoord3{4, 2, 3},
+              "explicit Z plane ignores the dominant camera axis but keeps away sign") &&
+       ok;
+
+  cr::CreativePlacementGridFrameRequest invalidLockRequest = request;
+  invalidLockRequest.depthAxisLock = cr::kCreativePlacementGridAxisX |
+                                     cr::kCreativePlacementGridAxisZ;
+  ok = expect(!cr::makeCreativePlacementGridFrame(invalidLockRequest).valid,
+              "multi-axis plane locks fail closed") &&
        ok;
 
   cr::CreativePlacementGridFrameRequest rejectedRequest = request;

@@ -62,6 +62,83 @@ struct OverlayAxisRange {
                                  std::copysign(1.0, direction.z)};
 }
 
+[[nodiscard]] bool validDepthAxisLock(
+    CreativePlacementGridAxisMask axis) noexcept {
+  return axis == 0U || axis == kCreativePlacementGridAxisX ||
+         axis == kCreativePlacementGridAxisY ||
+         axis == kCreativePlacementGridAxisZ;
+}
+
+[[nodiscard]] CreativePlacementGridAxisMask axisMask(
+    CreativeVec3 axis) noexcept {
+  const CreativeVec3 canonical = dominantAxisNormal(axis);
+  if (canonical.x != 0.0) {
+    return kCreativePlacementGridAxisX;
+  }
+  if (canonical.y != 0.0) {
+    return kCreativePlacementGridAxisY;
+  }
+  return canonical.z != 0.0 ? kCreativePlacementGridAxisZ : 0U;
+}
+
+[[nodiscard]] double axisComponent(
+    CreativeVec3 value,
+    CreativePlacementGridAxisMask axis) noexcept {
+  if (axis == kCreativePlacementGridAxisX) {
+    return value.x;
+  }
+  if (axis == kCreativePlacementGridAxisY) {
+    return value.y;
+  }
+  return axis == kCreativePlacementGridAxisZ ? value.z : 0.0;
+}
+
+[[nodiscard]] CreativeVec3 signedAxis(
+    CreativePlacementGridAxisMask axis,
+    CreativeVec3 direction,
+    CreativeVec3 previous) noexcept {
+  double component = axisComponent(direction, axis);
+  if (std::fabs(component) <= 1.0e-12 && axisMask(previous) == axis) {
+    component = axisComponent(previous, axis);
+  }
+  const double sign = component < 0.0 ? -1.0 : 1.0;
+  if (axis == kCreativePlacementGridAxisX) {
+    return {sign, 0.0, 0.0};
+  }
+  if (axis == kCreativePlacementGridAxisY) {
+    return {0.0, sign, 0.0};
+  }
+  return axis == kCreativePlacementGridAxisZ
+             ? CreativeVec3{0.0, 0.0, sign}
+             : CreativeVec3{};
+}
+
+[[nodiscard]] CreativeVec3 resolveDepthAxis(
+    CreativeVec3 direction,
+    const CreativePlacementGridFrame& frame) noexcept {
+  if (frame.depthAxisLock != 0U) {
+    return signedAxis(frame.depthAxisLock, direction,
+                      frame.previousDepthAxis);
+  }
+  const CreativeVec3 candidate = dominantAxisNormal(direction);
+  const CreativePlacementGridAxisMask candidateMask = axisMask(candidate);
+  const CreativePlacementGridAxisMask previousMask =
+      axisMask(frame.previousDepthAxis);
+  if (candidateMask == 0U || previousMask == 0U) {
+    return candidate;
+  }
+
+  constexpr double kAutoAxisRetainRatio = 0.85;
+  const double candidateMagnitude =
+      std::max({std::fabs(direction.x), std::fabs(direction.y),
+                std::fabs(direction.z)});
+  const double previousMagnitude =
+      std::fabs(axisComponent(direction, previousMask));
+  return previousMagnitude >= candidateMagnitude * kAutoAxisRetainRatio
+             ? signedAxis(previousMask, direction, frame.previousDepthAxis)
+             : candidate;
+}
+
 [[nodiscard]] bool tryCellCoordinate(double value,
                                      double origin,
                                      double step,
@@ -355,7 +432,9 @@ CreativePlacementGridFrame makeCreativePlacementGridFrame(
       (request.useStepOverride &&
        !finitePositive(request.stepOverrideMeters)) ||
       (request.useActivePlaneOverride &&
-       !std::isfinite(request.activePlaneY))) {
+       !std::isfinite(request.activePlaneY)) ||
+      !validDepthAxisLock(request.depthAxisLock) ||
+      !isFiniteCreativeVec3(request.previousDepthAxis)) {
     return frame;
   }
 
@@ -364,6 +443,9 @@ CreativePlacementGridFrame makeCreativePlacementGridFrame(
   frame.storageSize = grid.size;
   frame.storageAligned = request.storageAligned;
   frame.depthOffsetSteps = request.depthOffsetSteps;
+  frame.depthAxisLock = request.depthAxisLock;
+  frame.previousDepthAxis =
+      dominantAxisNormal(request.previousDepthAxis);
   frame.activePlaneY = request.useActivePlaneOverride
                            ? request.activePlaneY
                            : grid.origin.y;
@@ -463,14 +545,14 @@ CreativeGridTarget resolveCreativeGridTargetFromHit(
   const CreativeVec3 inside{hitPoint.x - snappedNormal.x * epsilon,
                             hitPoint.y - snappedNormal.y * epsilon,
                             hitPoint.z - snappedNormal.z * epsilon};
-  CreativeGridCoord3 surfaceAdjacent;
-  const CreativeVec3 viewDepthAxis = dominantAxisNormal(placerForward);
+  const CreativeVec3 viewDepthAxis = resolveDepthAxis(placerForward, frame);
   if (!tryCellFromWorld(inside, frame, target.targetCell) ||
-      !tryAdjacentCell(target.targetCell, snappedNormal, surfaceAdjacent) ||
+      !tryAdjacentCell(target.targetCell, snappedNormal,
+                       target.surfaceAdjacentCell) ||
       (frame.depthOffsetSteps > 0U && viewDepthAxis.x == 0.0 &&
        viewDepthAxis.y == 0.0 && viewDepthAxis.z == 0.0) ||
-      !tryOffsetCell(surfaceAdjacent, viewDepthAxis, frame.depthOffsetSteps,
-                     target.adjacentCell)) {
+      !tryOffsetCell(target.surfaceAdjacentCell, viewDepthAxis,
+                     frame.depthOffsetSteps, target.adjacentCell)) {
     return target;
   }
 
@@ -479,7 +561,11 @@ CreativeGridTarget resolveCreativeGridTargetFromHit(
   target.placerForward = dominantHorizontalNormal(placerForward);
   target.viewDepthAxis = viewDepthAxis;
   target.targetCellBounds = cellBounds(target.targetCell, frame);
+  target.surfaceAdjacentCellBounds =
+      cellBounds(target.surfaceAdjacentCell, frame);
   target.adjacentCellBounds = cellBounds(target.adjacentCell, frame);
+  target.surfacePlacementAnchor =
+      cellPlacementAnchor(target.surfaceAdjacentCell, frame);
   target.placementAnchor = cellPlacementAnchor(target.adjacentCell, frame);
   target.resolved = true;
   target.targetInBounds = cellInsideDocumentBounds(target.targetCellBounds,

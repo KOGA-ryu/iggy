@@ -63,6 +63,48 @@ namespace {
                                                             : base;
 }
 
+enum class PlacementTargetMarker : std::uint8_t {
+  None,
+  Valid,
+  Invalid,
+};
+
+[[nodiscard]] PlacementTargetMarker placementTargetMarker(
+    const CreativeEditorState& editor,
+    const iggy3d::FrameInput& frame,
+    const cr::CreativeGridTarget& target) noexcept {
+  const CreativeEditorPlacementFeedback& feedback =
+      editor.interaction.placementFeedback;
+  if (feedback.frameIndex == editor.frameIndex &&
+      feedback.status == CreativeEditorPlacementFeedbackStatus::Placed) {
+    return PlacementTargetMarker::None;
+  }
+  const std::size_t previewCount =
+      std::min(static_cast<std::size_t>(frame.creativePreview.itemCount),
+               frame.creativePreview.items.size());
+  for (std::size_t index = 0U; index < previewCount; ++index) {
+    switch (frame.creativePreview.items[index].role) {
+      case iggy3d::RenderCreativePreviewRole::PlacementValid:
+        return PlacementTargetMarker::Valid;
+      case iggy3d::RenderCreativePreviewRole::PlacementInvalid:
+        return PlacementTargetMarker::Invalid;
+      default:
+        break;
+    }
+  }
+  if (target.resolved && (!target.targetInBounds || !target.adjacentInBounds)) {
+    return PlacementTargetMarker::Invalid;
+  }
+  return PlacementTargetMarker::None;
+}
+
+[[nodiscard]] iggy3d::RenderLineColor placementTargetMarkerColor(
+    PlacementTargetMarker marker) noexcept {
+  return marker == PlacementTargetMarker::Valid
+             ? iggy3d::RenderLineColor{0.18F, 1.0F, 0.28F, 1.0F}
+             : iggy3d::RenderLineColor{1.0F, 0.18F, 0.14F, 1.0F};
+}
+
 }  // namespace
 
 void appendCreativeEditorPlacementGridOverlay(
@@ -131,48 +173,107 @@ void appendCreativeEditorPlacementGridOverlay(
 
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  if (held.kind != cr::CreativeHeldItemKind::Material ||
-      editor.toolSettings.placementGridDots !=
-          cr::CreativePlacementGridDots::NearestLayer) {
-    return;
-  }
-  const cr::CreativePlacementGridDotLayerPlan dots =
-      cr::buildCreativePlacementGridDotLayerPlan({frame, target});
-  if (!dots.valid) {
+  if (held.kind != cr::CreativeHeldItemKind::Material) {
     return;
   }
   const double minorStep =
       std::min({frame.stepMeters.x, frame.stepMeters.y, frame.stepMeters.z});
+
+  if (frame.depthOffsetSteps > 0U && target.resolved) {
+    const cr::CreativeCoreVec3Conversion guideStart =
+        cr::creativeVec3ToCoreChecked(target.surfacePlacementAnchor);
+    const cr::CreativeCoreVec3Conversion guideEnd =
+        cr::creativeVec3ToCoreChecked(target.placementAnchor);
+    if (guideStart.converted && guideEnd.converted) {
+      iggy3d::RenderCreativeWireframeDebugLine guide;
+      guide.start = guideStart.value;
+      guide.end = guideEnd.value;
+      guide.color = {1.0F, 0.82F, 0.18F, 0.95F};
+      guide.segmentKind = 6U;
+      guide.thickness = std::clamp(static_cast<float>(minorStep) * 0.045F,
+                                   0.025F, 0.065F);
+      output.combinedWireLines.push_back(guide);
+      output.placementGridGuideLineCount = 1U;
+    }
+  }
+
+  if (editor.toolSettings.placementGridDots !=
+      cr::CreativePlacementGridDots::NearestLayer) {
+    return;
+  }
+
+  const cr::CreativePlacementGridDotLayerPlan dots =
+      cr::buildCreativePlacementGridDotLayerPlan({frame, target});
   const double halfLength = std::clamp(minorStep * 0.035, 0.008, 0.035);
   const std::size_t dotStart = output.combinedWireLines.size();
-  for (std::size_t index = 0U; index < dots.dotCount; ++index) {
-    const cr::CreativePlacementGridDot& source = dots.dots[index];
-    const cr::CreativeVec3 start{
-        source.position.x - target.viewDepthAxis.x * halfLength,
-        source.position.y - target.viewDepthAxis.y * halfLength,
-        source.position.z - target.viewDepthAxis.z * halfLength};
-    const cr::CreativeVec3 end{
-        source.position.x + target.viewDepthAxis.x * halfLength,
-        source.position.y + target.viewDepthAxis.y * halfLength,
-        source.position.z + target.viewDepthAxis.z * halfLength};
-    const cr::CreativeCoreVec3Conversion convertedStart =
-        cr::creativeVec3ToCoreChecked(start);
-    const cr::CreativeCoreVec3Conversion convertedEnd =
-        cr::creativeVec3ToCoreChecked(end);
-    if (!convertedStart.converted || !convertedEnd.converted) {
-      continue;
+  if (dots.valid) {
+    for (std::size_t index = 0U; index < dots.dotCount; ++index) {
+      const cr::CreativePlacementGridDot& source = dots.dots[index];
+      const cr::CreativeVec3 start{
+          source.position.x - target.viewDepthAxis.x * halfLength,
+          source.position.y - target.viewDepthAxis.y * halfLength,
+          source.position.z - target.viewDepthAxis.z * halfLength};
+      const cr::CreativeVec3 end{
+          source.position.x + target.viewDepthAxis.x * halfLength,
+          source.position.y + target.viewDepthAxis.y * halfLength,
+          source.position.z + target.viewDepthAxis.z * halfLength};
+      const cr::CreativeCoreVec3Conversion convertedStart =
+          cr::creativeVec3ToCoreChecked(start);
+      const cr::CreativeCoreVec3Conversion convertedEnd =
+          cr::creativeVec3ToCoreChecked(end);
+      if (!convertedStart.converted || !convertedEnd.converted) {
+        continue;
+      }
+      iggy3d::RenderCreativeWireframeDebugLine dot;
+      dot.start = convertedStart.value;
+      dot.end = convertedEnd.value;
+      dot.color = placementGridDotColor(source.role);
+      dot.style = static_cast<std::uint32_t>(source.role);
+      dot.segmentKind = 5U;
+      dot.thickness = placementGridDotThickness(source.role, minorStep);
+      output.combinedWireLines.push_back(dot);
     }
-    iggy3d::RenderCreativeWireframeDebugLine dot;
-    dot.start = convertedStart.value;
-    dot.end = convertedEnd.value;
-    dot.color = placementGridDotColor(source.role);
-    dot.style = static_cast<std::uint32_t>(source.role);
-    dot.segmentKind = 5U;
-    dot.thickness = placementGridDotThickness(source.role, minorStep);
-    output.combinedWireLines.push_back(dot);
   }
   output.placementGridDotCount =
       output.combinedWireLines.size() - dotStart;
+
+  const PlacementTargetMarker marker =
+      placementTargetMarker(editor, request.frame, target);
+  const cr::CreativeVec3 markerAxis =
+      target.viewDepthAxis.x != 0.0 || target.viewDepthAxis.y != 0.0 ||
+              target.viewDepthAxis.z != 0.0
+          ? target.viewDepthAxis
+          : target.faceNormal;
+  if (marker == PlacementTargetMarker::None || !target.resolved ||
+      (markerAxis.x == 0.0 && markerAxis.y == 0.0 && markerAxis.z == 0.0)) {
+    return;
+  }
+  const double markerHalfLength =
+      std::clamp(minorStep * 0.11, 0.055, 0.14);
+  const cr::CreativeVec3 markerStart{
+      target.placementAnchor.x - markerAxis.x * markerHalfLength,
+      target.placementAnchor.y - markerAxis.y * markerHalfLength,
+      target.placementAnchor.z - markerAxis.z * markerHalfLength};
+  const cr::CreativeVec3 markerEnd{
+      target.placementAnchor.x + markerAxis.x * markerHalfLength,
+      target.placementAnchor.y + markerAxis.y * markerHalfLength,
+      target.placementAnchor.z + markerAxis.z * markerHalfLength};
+  const cr::CreativeCoreVec3Conversion convertedMarkerStart =
+      cr::creativeVec3ToCoreChecked(markerStart);
+  const cr::CreativeCoreVec3Conversion convertedMarkerEnd =
+      cr::creativeVec3ToCoreChecked(markerEnd);
+  if (!convertedMarkerStart.converted || !convertedMarkerEnd.converted) {
+    return;
+  }
+  iggy3d::RenderCreativeWireframeDebugLine targetMarker;
+  targetMarker.start = convertedMarkerStart.value;
+  targetMarker.end = convertedMarkerEnd.value;
+  targetMarker.color = placementTargetMarkerColor(marker);
+  targetMarker.segmentKind = 7U;
+  targetMarker.thickness =
+      std::clamp(static_cast<float>(minorStep) * 0.12F, 0.08F, 0.16F);
+  output.combinedWireLines.push_back(targetMarker);
+  output.placementGridTargetMarkerCount = 1U;
 }
 
 }  // namespace iggy3d_creative_app

@@ -53,6 +53,17 @@ std::string_view toString(CreativePlacementGridDots dots) noexcept {
   return "INVALID";
 }
 
+std::string_view toString(CreativePlacementPlane plane) noexcept {
+  switch (plane) {
+    case CreativePlacementPlane::Auto: return "AUTO";
+    case CreativePlacementPlane::X: return "X";
+    case CreativePlacementPlane::Y: return "Y";
+    case CreativePlacementPlane::Z: return "Z";
+    case CreativePlacementPlane::Count: break;
+  }
+  return "INVALID";
+}
+
 std::string_view toString(CreativePlacementDepth depth) noexcept {
   switch (depth) {
     case CreativePlacementDepth::ZeroCells: return "0 CELLS";
@@ -197,6 +208,8 @@ std::string_view creativeToolOptionValueLabel(
       return toString(settings.snapIncrement);
     case CreativeToolOptionId::PlacementGridDots:
       return toString(settings.placementGridDots);
+    case CreativeToolOptionId::PlacementPlane:
+      return toString(settings.placementPlane);
     case CreativeToolOptionId::PlacementDepth:
       return toString(settings.placementDepth);
     case CreativeToolOptionId::AssetPlacementMode:

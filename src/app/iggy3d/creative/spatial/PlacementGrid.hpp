@@ -40,6 +40,9 @@ struct CreativePlacementGridFrameRequest {
   bool useActivePlaneOverride = false;
   bool storageAligned = false;
   std::uint8_t depthOffsetSteps = 0U;
+  // Zero selects automatic hysteresis; otherwise exactly one axis bit.
+  CreativePlacementGridAxisMask depthAxisLock = 0U;
+  CreativeVec3 previousDepthAxis{};
 };
 
 struct CreativePlacementGridFrame {
@@ -54,6 +57,8 @@ struct CreativePlacementGridFrame {
   double activePlaneY = 0.0;
   std::uint32_t majorEvery = 5U;
   std::uint8_t depthOffsetSteps = 0U;
+  CreativePlacementGridAxisMask depthAxisLock = 0U;
+  CreativeVec3 previousDepthAxis{};
   bool storageAligned = false;
   bool valid = false;
 };
@@ -69,9 +74,12 @@ struct CreativeGridTarget {
   CreativeVec3 placerForward{0.0, 0.0, -1.0};
   CreativeVec3 viewDepthAxis{0.0, 0.0, -1.0};
   CreativeGridCoord3 targetCell{};
+  CreativeGridCoord3 surfaceAdjacentCell{};
   CreativeGridCoord3 adjacentCell{};
   CreativeBounds targetCellBounds{};
+  CreativeBounds surfaceAdjacentCellBounds{};
   CreativeBounds adjacentCellBounds{};
+  CreativeVec3 surfacePlacementAnchor{};
   CreativeVec3 placementAnchor{};
 };
 

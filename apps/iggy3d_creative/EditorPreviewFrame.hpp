@@ -43,6 +43,8 @@ struct CreativeEditorOverlayFrame {
   std::vector<iggy3d::RenderCreativeWireframeDebugLine> combinedWireLines;
   std::size_t placementGridLineCount = 0;
   std::size_t placementGridDotCount = 0;
+  std::size_t placementGridGuideLineCount = 0;
+  std::size_t placementGridTargetMarkerCount = 0;
   bool placementGridClipped = false;
   std::size_t documentWireLineCount = 0;
   std::size_t pointMarkerEdgeCount = 0;
