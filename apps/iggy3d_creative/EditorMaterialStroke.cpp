@@ -56,10 +56,11 @@ static_assert(cr::kCreativeMaterialBrushStampCapacity <=
 }
 
 void rejectMaterialStroke(CreativeEditorState& editor,
-                          cr::CreativeObjectKind objectKind) {
-  setCreativeEditorPlacementFeedback(
-      editor.interaction, CreativeEditorPlacementFeedbackStatus::Rejected,
-      editor.frameIndex, objectKind);
+                          cr::CreativeObjectKind objectKind,
+                          const cr::CreativePlacementClearanceResult&
+                              clearance = {}) {
+  setCreativeEditorPlacementRejectionFeedback(
+      editor.interaction, editor.frameIndex, objectKind, clearance);
 }
 
 [[nodiscard]] std::string_view strokeTransactionSource(
@@ -153,9 +154,13 @@ void applySingleMaterialMutation(cr::CreativeAppState& appState,
           appState.facade.document(), assetCatalog);
   const CreativeBrushPlacementAdmission& admission = placement.admission;
   const std::string_view assetId = cr::creativeHotbarAssetId(held);
-  if (!admission.allowed || creativeBrushPlacementAlreadyExists(
-                                appState.facade.document(), admission.plan,
-                                assetId)) {
+  if (!admission.allowed) {
+    rejectMaterialStroke(editor, held.objectKind,
+                         admission.plan.clearance);
+    return;
+  }
+  if (creativeBrushPlacementAlreadyExists(
+          appState.facade.document(), admission.plan, assetId)) {
     rejectMaterialStroke(editor, held.objectKind);
     return;
   }
@@ -190,7 +195,7 @@ void applySingleMaterialMutation(cr::CreativeAppState& appState,
           editor.frameIndex, receipt.objectKind, receipt.objectId);
     }
   } else {
-    rejectMaterialStroke(editor, held.objectKind);
+    rejectMaterialStroke(editor, held.objectKind, receipt.clearance);
   }
 }
 

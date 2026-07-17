@@ -76,6 +76,17 @@ void setCreativeEditorPlacementFeedback(
   interaction.placementFeedback.frameIndex = frameIndex;
 }
 
+void setCreativeEditorPlacementRejectionFeedback(
+    CreativeEditorInteractionState& interaction,
+    std::uint64_t frameIndex,
+    cr::CreativeObjectKind objectKind,
+    const cr::CreativePlacementClearanceResult& clearance) noexcept {
+  setCreativeEditorPlacementFeedback(
+      interaction, CreativeEditorPlacementFeedbackStatus::Rejected,
+      frameIndex, objectKind);
+  interaction.placementFeedback.clearance = clearance;
+}
+
 void setCreativeEditorVoxelPlacementFeedback(
     CreativeEditorInteractionState& interaction,
     std::uint64_t frameIndex,

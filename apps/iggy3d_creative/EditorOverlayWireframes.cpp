@@ -16,6 +16,7 @@
 #include "EditorInteraction.hpp"
 #include "EditorLogicLinkOverlay.hpp"
 #include "EditorPathEditing.hpp"
+#include "EditorPlacementFeedback.hpp"
 #include "EditorPlacementGridOverlay.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "EditorState.hpp"
@@ -46,6 +47,8 @@ void resetCreativeEditorOverlayFrame(CreativeEditorOverlayFrame& output) {
   output.placementGridAnchorCandidateLineCount = 0;
   output.placementGridContactGuideLineCount = 0;
   output.placementGridTargetMarkerCount = 0;
+  output.placementInvalidTargetEdgeCount = 0;
+  output.placementBlockerEdgeCount = 0;
   output.placementGridClipped = false;
   output.documentWireLineCount = 0;
   output.pointMarkerEdgeCount = 0;
@@ -73,6 +76,7 @@ void resetCreativeEditorOverlayFrame(CreativeEditorOverlayFrame& output) {
   output.logicLinkEndpointEdgeCount = 0;
   output.logicLinkLabelGlyphCount = 0;
   output.invalidLogicLinkCount = 0;
+  output.placementPreview = {};
 }
 
 [[nodiscard]] RenderLineColor logicLinkOverlayColor(
@@ -504,7 +508,8 @@ void appendCreativeEditorMovingPlatformPathPreview(
 
 CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
     const CreativeEditorOverlayFrameRequest& request,
-    CreativeEditorOverlayFrame& output) {
+    CreativeEditorOverlayFrame& output,
+    const CreativeEditorPlacementPreviewFacts* placementPreview) {
   cr::CreativeAppState& appState = request.appState;
   CreativeEditorState& editor = request.editor;
   const cr::CreativeSpatialProjectionRequest& wireProjReq =
@@ -526,6 +531,9 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
       request.gizmoFrame.selectedIsPathForHandles;
 
   resetCreativeEditorOverlayFrame(output);
+  if (placementPreview != nullptr) {
+    output.placementPreview = *placementPreview;
+  }
 
   // ---- BOUNDS BOX (wireframe) --------------------------------------------
   const creative::CreativeDocumentWireframeSegmentBuildResult segs =
@@ -788,6 +796,7 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
   }
   appendCreativeEditorAttachmentSocketMarkers(request, output);
   appendCreativeEditorPlacementFeedbackWireframe(request, output);
+  appendCreativeEditorPlacementClearanceWireframes(request, output);
   appendCreativeEditorLogicLinks(request, output);
   output.assetReplacementEdgeCount =
       appendCreativeEditorAssetReplacementWireframes(

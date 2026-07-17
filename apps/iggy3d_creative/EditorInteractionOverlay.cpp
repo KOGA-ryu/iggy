@@ -7,6 +7,7 @@
 #include "EditorConnectedFill.hpp"
 #include "EditorGroup.hpp"
 #include "EditorPattern.hpp"
+#include "EditorPlacementFeedback.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "EditorState.hpp"
 #include "EditorStructuralPlacement.hpp"
@@ -101,6 +102,24 @@ void appendHeldItemStatusText(
     quad.r = quickEditActive ? 0.24F : 0.88F;
     quad.g = quickEditActive ? 1.0F : 0.90F;
     quad.b = quickEditActive ? 0.34F : 0.94F;
+    quad.a = 1.0F;
+  }
+  glyphs.insert(glyphs.end(), layout.quads.begin(), layout.quads.end());
+}
+
+void appendPlacementRejectionStatusText(
+    std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
+    std::string_view text,
+    std::int32_t x,
+    std::int32_t y,
+    std::uint32_t width,
+    std::uint32_t height) {
+  iggy3d::DebugHudLayoutResult layout =
+      iggy3d::layoutDebugHudTextAt(text, x, y, width, height);
+  for (iggy3d::DebugHudGlyphQuad& quad : layout.quads) {
+    quad.r = 1.0F;
+    quad.g = 0.28F;
+    quad.b = 0.16F;
     quad.a = 1.0F;
   }
   glyphs.insert(glyphs.end(), layout.quads.begin(), layout.quads.end());
@@ -647,7 +666,8 @@ void appendCreativeEditorInteractionOverlay(
     float wireThickness,
     std::vector<iggy3d::RenderUiRect>& uiRects,
     std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
-    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines) {
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines,
+    const cr::CreativeDocument* document) {
   if (drawableWidth == 0U || drawableHeight == 0U) {
     return;
   }
@@ -699,6 +719,21 @@ void appendCreativeEditorInteractionOverlay(
                static_cast<std::int32_t>(heldLabel.size() * 6U));
     appendHeldItemStatusText(glyphs, heldLabel, heldLabelX, hotbarY - 22,
                              drawableWidth, drawableHeight);
+    const CreativeEditorPlacementFeedback& feedback =
+        editor.interaction.placementFeedback;
+    if (document != nullptr &&
+        creativeEditorPlacementFeedbackVisible(feedback,
+                                                editor.frameIndex) &&
+        feedback.status == CreativeEditorPlacementFeedbackStatus::Rejected) {
+      const std::string rejection =
+          creativeEditorPlacementFeedbackLabel(feedback, *document);
+      const std::int32_t rejectionX = std::max(
+          4, static_cast<std::int32_t>(drawableWidth / 2U) -
+                 static_cast<std::int32_t>(rejection.size() * 4U));
+      appendPlacementRejectionStatusText(
+          glyphs, rejection, rejectionX, std::max(4, hotbarY - 40),
+          drawableWidth, drawableHeight);
+    }
   }
 
   const cr::CreativeHotbarEntry& held =

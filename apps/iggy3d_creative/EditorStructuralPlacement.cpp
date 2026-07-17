@@ -53,10 +53,11 @@ namespace {
 }
 
 void rejectStructuralSpan(CreativeEditorState& editor,
-                          cr::CreativeObjectKind objectKind) noexcept {
-  setCreativeEditorPlacementFeedback(
-      editor.interaction, CreativeEditorPlacementFeedbackStatus::Rejected,
-      editor.frameIndex, objectKind);
+                          cr::CreativeObjectKind objectKind,
+                          const cr::CreativePlacementClearanceResult&
+                              clearance = {}) noexcept {
+  setCreativeEditorPlacementRejectionFeedback(
+      editor.interaction, editor.frameIndex, objectKind, clearance);
 }
 
 [[nodiscard]] bool sameTransform(const cr::CreativeTransform& lhs,
@@ -287,7 +288,7 @@ bool processCreativeEditorStructuralSpanInput(
       appState.history, std::move(transaction), appState.facade, changed,
       receipt.reasonCode));
   if (!changed) {
-    rejectStructuralSpan(editor, held.objectKind);
+    rejectStructuralSpan(editor, held.objectKind, receipt.clearance);
     return true;
   }
 

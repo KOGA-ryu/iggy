@@ -8,6 +8,8 @@
 
 #include "EditorDesktopModel.hpp"
 #include "EditorDesktopWidgets.hpp"
+#include "EditorInteraction.hpp"
+#include "EditorPlacementFeedback.hpp"
 #include "EditorPlayMode.hpp"
 #include "EditorWorldLayoutPanel.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
@@ -341,6 +343,19 @@ void buildCreativeEditorDesktopStatusBar(
       ImGui::TextDisabled("|");
       ImGui::SameLine();
       ImGui::TextUnformatted(desktopUi.statusMessage.c_str());
+    }
+    const CreativeEditorPlacementFeedback& feedback =
+        editor.interaction.placementFeedback;
+    if (creativeEditorPlacementFeedbackVisible(feedback,
+                                                editor.frameIndex) &&
+        feedback.status == CreativeEditorPlacementFeedbackStatus::Rejected) {
+      const std::string placementMessage =
+          creativeEditorPlacementFeedbackLabel(feedback, document);
+      ImGui::SameLine();
+      ImGui::TextDisabled("|");
+      ImGui::SameLine();
+      ImGui::TextColored(ImVec4(1.0F, 0.34F, 0.20F, 1.0F), "%s",
+                         placementMessage.c_str());
     }
   }
   ImGui::End();

@@ -339,6 +339,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorPlacement.cpp
   apps/iggy3d_creative/EditorAttachmentPlacement.cpp
   apps/iggy3d_creative/EditorPlacementClearance.cpp
+  apps/iggy3d_creative/EditorPlacementFeedback.cpp
   apps/iggy3d_creative/EditorPlacementMutation.cpp
   apps/iggy3d_creative/EditorPlacementPreview.cpp
   apps/iggy3d_creative/EditorPlacementGridOverlay.cpp

@@ -288,6 +288,14 @@ bool overlayShowsLinksOnlyInConnectMode() {
   app::CreativeEditorOverlayFrame hidden;
   request.captureMode = true;
   static_cast<void>(app::buildCreativeEditorWorldWireframes(request, hidden));
+  bool selectedToggleShaftVisible = false;
+  for (const iggy3d::RenderCreativeWireframeDebugLine& line :
+       inspected.combinedWireLines) {
+    selectedToggleShaftVisible =
+        selectedToggleShaftVisible ||
+        (line.objectId == source && line.segmentKind == 0U &&
+         line.color.b == 1.0F);
+  }
   return expect(visible.logicLinkEdgeCount == 27U &&
                     visible.logicLinkShaftCount == 1U &&
                     visible.logicLinkArrowEdgeCount == 2U &&
@@ -301,9 +309,7 @@ bool overlayShowsLinksOnlyInConnectMode() {
                     inspected.logicLinkEndpointEdgeCount == 24U &&
                     inspected.logicLinkLabelGlyphCount == 6U &&
                     inspected.invalidLogicLinkCount == 0U &&
-                    inspected.combinedWireLines[
-                        inspected.documentWireLineCount]
-                            .color.b == 1.0F,
+                    selectedToggleShaftVisible,
                 "selected circuit stays visible with directional Toggle styling") &&
          expect(hidden.logicLinkEdgeCount == 0U &&
                     hidden.logicLinkLabelGlyphCount == 0U,

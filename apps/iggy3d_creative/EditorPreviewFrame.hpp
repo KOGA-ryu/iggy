@@ -39,6 +39,11 @@ struct CreativeEditorOverlayFrameRequest {
   const CreativePlacementClearanceCache* placementClearanceCache = nullptr;
 };
 
+struct CreativeEditorPlacementPreviewFacts {
+  CreativeBrushPlacementPlan targetPlan{};
+  bool hasTargetPlan = false;
+};
+
 struct CreativeEditorOverlayFrame {
   std::vector<iggy3d::RenderUiRect> uiRects;
   std::vector<iggy3d::DebugHudGlyphQuad> glyphs;
@@ -50,6 +55,8 @@ struct CreativeEditorOverlayFrame {
   std::size_t placementGridAnchorCandidateLineCount = 0;
   std::size_t placementGridContactGuideLineCount = 0;
   std::size_t placementGridTargetMarkerCount = 0;
+  std::size_t placementInvalidTargetEdgeCount = 0;
+  std::size_t placementBlockerEdgeCount = 0;
   bool placementGridClipped = false;
   std::size_t documentWireLineCount = 0;
   std::size_t pointMarkerEdgeCount = 0;
@@ -77,13 +84,14 @@ struct CreativeEditorOverlayFrame {
   std::size_t logicLinkEndpointEdgeCount = 0;
   std::size_t logicLinkLabelGlyphCount = 0;
   std::size_t invalidLogicLinkCount = 0;
+  CreativeEditorPlacementPreviewFacts placementPreview{};
 };
 
 void buildAndAttachCreativeEditorOverlayFrame(
     const CreativeEditorOverlayFrameRequest& request,
     CreativeEditorOverlayFrame& output);
 
-void attachCreativeEditorPlacementPreviews(
+CreativeEditorPlacementPreviewFacts attachCreativeEditorPlacementPreviews(
     const CreativeEditorState& editor,
     bool captureMode,
     iggy3d::FrameInput& frame,

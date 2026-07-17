@@ -1,7 +1,12 @@
 #include "EditorAttachmentPlacement.hpp"
+#include "EditorFrame.hpp"
+#include "EditorGizmo.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorPlacement.hpp"
 #include "EditorPlacementClearance.hpp"
+#include "EditorPlacementFeedback.hpp"
+#include "EditorPreviewFrame.hpp"
+#include "EditorState.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/spatial/SurfacePose.hpp"
 
@@ -9,6 +14,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <span>
+#include <string>
 #include <string_view>
 
 namespace {
@@ -67,6 +73,21 @@ cr::CreativeDocumentCreateReceipt addObject(
     const app::CreativeBrushPlacementPlan& plan,
     std::uint64_t ordinal) {
   return document.createObject(app::buildBrushCreateRequest(plan, ordinal));
+}
+
+app::CreativeEditorOverlayFrame buildOverlay(
+    cr::CreativeAppState& appState,
+    app::CreativeEditorState& editor) {
+  app::CreativeEditorSelectionFrame selection;
+  app::CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projection;
+  iggy3d::FrameInput frame;
+  app::CreativeEditorOverlayFrame overlay;
+  app::buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projection,
+       1280U, 720U, 0.03F, false},
+      overlay);
+  return overlay;
 }
 
 bool authoredContactAndPenetrationAreDistinct() {
@@ -346,6 +367,170 @@ bool resolvedAdmissionCarriesClearanceVerdict() {
                 "resolved admission carries the stable clearance verdict");
 }
 
+bool blockerFeedbackNamesAndOutlinesTheObstruction() {
+  cr::CreativeDocument document = makeDocument(707U);
+  cr::CreativeGridTarget target = cr::resolveCreativeGridTargetFromHit(
+      {4.25, 0.0, 4.25}, {0.0, 1.0, 0.0}, 1.0);
+  target.targetFacts = cr::makeCreativePlacementTargetFacts(
+      cr::CreativePlacementTargetSource::EmptyPlane);
+  const app::CreativeBrushPlacementAdmission admitted =
+      app::admitBrushPlacement(cr::CreativeObjectKind::Crate, target);
+  const cr::CreativeDocumentCreateReceipt blocker =
+      addObject(document, admitted.plan, 1U);
+
+  cr::CreativeAppState appState;
+  const cr::CreativeFacadeDocumentInstallReceipt installed =
+      appState.facade.installDocument(std::move(document));
+  app::CreativeEditorState editor;
+  editor.frameIndex = 20U;
+  editor.interaction.hotbar.selectedSlot = 0U;
+  editor.interaction.hotbar.entries[0] =
+      {cr::CreativeHeldItemKind::Material, cr::CreativeObjectKind::Crate};
+  editor.interaction.target.valid = true;
+  editor.interaction.target.grid = target;
+
+  app::CreativeEditorSelectionFrame selection;
+  app::CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projection;
+  iggy3d::FrameInput frame;
+  app::CreativeEditorOverlayFrame overlay;
+  app::buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projection,
+       1280U, 720U, 0.03F, false},
+      overlay);
+  std::size_t taggedBlockerEdges = 0U;
+  for (const iggy3d::RenderCreativeWireframeDebugLine& line :
+       overlay.combinedWireLines) {
+    if (line.segmentKind == 9U && line.objectId == blocker.objectId) {
+      ++taggedBlockerEdges;
+    }
+  }
+
+  cr::CreativeWorldActionFrame actions;
+  const std::size_t secondary =
+      static_cast<std::size_t>(cr::CreativeWorldActionId::Secondary);
+  actions.down[secondary] = true;
+  actions.pressed[secondary] = true;
+  app::processCreativeMaterialStrokeFrame(appState, editor, actions, 0U);
+  const app::CreativeEditorPlacementFeedback& feedback =
+      editor.interaction.placementFeedback;
+  const std::string feedbackLabel =
+      app::creativeEditorPlacementFeedbackLabel(
+          feedback, appState.facade.document());
+
+  editor.interaction.target = {};
+  iggy3d::FrameInput retainedFrame;
+  app::CreativeEditorOverlayFrame retainedOverlay;
+  app::buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, retainedFrame, projection,
+       1280U, 720U, 0.03F, false},
+      retainedOverlay);
+  editor.frameIndex += app::kCreativeEditorPlacementFeedbackFrames;
+  iggy3d::FrameInput expiredFrame;
+  app::CreativeEditorOverlayFrame expiredOverlay;
+  app::buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, expiredFrame, projection,
+       1280U, 720U, 0.03F, false},
+      expiredOverlay);
+
+  return expect(admitted.allowed && blocker.accepted && installed.accepted,
+                "blocker-feedback fixture created") &&
+         expect(overlay.placementPreview.hasTargetPlan &&
+                    overlay.placementInvalidTargetEdgeCount == 12U &&
+                    overlay.placementBlockerEdgeCount == 12U &&
+                    taggedBlockerEdges == 12U,
+                "live rejection outlines exact target and named blocker") &&
+         expect(feedback.status ==
+                        app::CreativeEditorPlacementFeedbackStatus::Rejected &&
+                    feedback.clearance.status ==
+                        cr::CreativePlacementClearanceStatus::
+                            AuthoredObjectBlocked &&
+                    feedback.clearance.blockingObjectId == blocker.objectId &&
+                    feedbackLabel == "Blocked: Crate",
+                "click feedback preserves and labels the clearance receipt") &&
+         expect(retainedOverlay.placementInvalidTargetEdgeCount == 0U &&
+                    retainedOverlay.placementBlockerEdgeCount == 12U,
+                "post-click feedback retains only the blocker outline") &&
+         expect(expiredOverlay.placementBlockerEdgeCount == 0U,
+                "blocker outline expires with placement feedback");
+}
+
+bool voxelTerrainAndWorldBlockersProjectSpecificFeedback() {
+  cr::CreativeDocument document = makeDocument(708U, 16.0);
+  const cr::CreativeVoxelEdit voxel{{3, 0, 3},
+                                     cr::CreativeObjectKind::Wall};
+  const cr::CreativeVoxelMutationReceipt voxelReceipt =
+      document.applyVoxelEdits(std::span{&voxel, 1U});
+  const cr::CreativeTerrainControlEdit terrain{
+      cr::CreativeTerrainEditKind::Upsert, {{8, 8}, 2U, 4U}};
+  const cr::CreativeTerrainMutationReceipt terrainReceipt =
+      document.applyTerrainControlEdits(std::span{&terrain, 1U});
+  cr::CreativeAppState appState;
+  const cr::CreativeFacadeDocumentInstallReceipt installed =
+      appState.facade.installDocument(std::move(document));
+  app::CreativeEditorState editor;
+  editor.frameIndex = 30U;
+  editor.activeControlDevice = cr::CreativeControlDevice::Gamepad;
+
+  cr::CreativePlacementClearanceResult clearance;
+  clearance.evaluated = true;
+  clearance.status = cr::CreativePlacementClearanceStatus::VoxelBlocked;
+  clearance.blockingVoxelCell = voxel.cell;
+  app::setCreativeEditorPlacementRejectionFeedback(
+      editor.interaction, editor.frameIndex,
+      cr::CreativeObjectKind::Crate, clearance);
+  const app::CreativeEditorOverlayFrame voxelOverlay =
+      buildOverlay(appState, editor);
+  std::size_t rejectionGlyphCount = 0U;
+  for (const iggy3d::DebugHudGlyphQuad& glyph : voxelOverlay.glyphs) {
+    if (std::fabs(glyph.r - 1.0F) < 0.0001F &&
+        std::fabs(glyph.g - 0.28F) < 0.0001F &&
+        std::fabs(glyph.b - 0.16F) < 0.0001F) {
+      ++rejectionGlyphCount;
+    }
+  }
+  const std::string voxelLabel = app::creativeEditorPlacementFeedbackLabel(
+      editor.interaction.placementFeedback, appState.facade.document());
+
+  clearance = {};
+  clearance.evaluated = true;
+  clearance.status = cr::CreativePlacementClearanceStatus::TerrainBlocked;
+  clearance.blockingTerrainCell = terrain.control.coord;
+  app::setCreativeEditorPlacementRejectionFeedback(
+      editor.interaction, editor.frameIndex,
+      cr::CreativeObjectKind::Crate, clearance);
+  const app::CreativeEditorOverlayFrame terrainOverlay =
+      buildOverlay(appState, editor);
+  const std::string terrainLabel = app::creativeEditorPlacementFeedbackLabel(
+      editor.interaction.placementFeedback, appState.facade.document());
+
+  clearance = {};
+  clearance.evaluated = true;
+  clearance.status =
+      cr::CreativePlacementClearanceStatus::OutsideWorldBounds;
+  app::setCreativeEditorPlacementRejectionFeedback(
+      editor.interaction, editor.frameIndex,
+      cr::CreativeObjectKind::Crate, clearance);
+  const app::CreativeEditorOverlayFrame worldOverlay =
+      buildOverlay(appState, editor);
+  const std::string worldLabel = app::creativeEditorPlacementFeedbackLabel(
+      editor.interaction.placementFeedback, appState.facade.document());
+
+  return expect(voxelReceipt.accepted && terrainReceipt.accepted &&
+                    installed.accepted,
+                "non-authored blocker fixtures created") &&
+         expect(voxelOverlay.placementBlockerEdgeCount == 12U &&
+                    voxelLabel == "Blocked: Wall" &&
+                    rejectionGlyphCount > 0U,
+                "voxel blocker has outline, label, and gamepad HUD text") &&
+         expect(terrainOverlay.placementBlockerEdgeCount == 12U &&
+                    terrainLabel == "Blocked: terrain",
+                "terrain blocker has cell outline and semantic label") &&
+         expect(worldOverlay.placementBlockerEdgeCount == 12U &&
+                    worldLabel == "Outside build bounds",
+                "world blocker outlines the configured build bounds");
+}
+
 }  // namespace
 
 int main() {
@@ -355,6 +540,8 @@ int main() {
                   attachmentExemptsOnlyItsSocketHost() &&
                   roomMetadataAndNonSolidCandidatesDoNotBecomeBlockers() &&
                   cacheIsRevisionKeyedAndMutationRevalidates() &&
-                  resolvedAdmissionCarriesClearanceVerdict();
+                  resolvedAdmissionCarriesClearanceVerdict() &&
+                  blockerFeedbackNamesAndOutlinesTheObstruction() &&
+                  voxelTerrainAndWorldBlockersProjectSpecificFeedback();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

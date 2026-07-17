@@ -167,7 +167,7 @@ void appendCreativeEditorHudOverlays(
   appendCreativeEditorInteractionOverlay(
       editor, request.drawableWidth, request.drawableHeight,
       request.gizmoThickness, output.uiRects, output.glyphs,
-      output.combinedWireLines);
+      output.combinedWireLines, &request.appState.facade.document());
   appendCreativeEditorTransformOverlay(
       editor.transform, request.drawableWidth, request.drawableHeight,
       output.uiRects, output.glyphs);

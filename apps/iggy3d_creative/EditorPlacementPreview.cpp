@@ -196,13 +196,14 @@ bool creativePreviewBoundsTransform(
   return previewBoundsTransform(bounds, insetScale, center, size);
 }
 
-void attachCreativeEditorPlacementPreviews(
+CreativeEditorPlacementPreviewFacts attachCreativeEditorPlacementPreviews(
     const CreativeEditorState& editor,
     bool captureMode,
     FrameInput& frame,
     const cr::CreativeDocument* document,
     const iggy3d::StaticMeshAssetCatalog* assetCatalog,
     const CreativePlacementClearanceCache* clearanceCache) {
+  CreativeEditorPlacementPreviewFacts facts;
   frame.creativePreview = {};
   appendMovingPlatformRoutePreview(editor, captureMode, frame, document);
   const bool modalOpen = editor.catalog.model.open ||
@@ -213,7 +214,7 @@ void attachCreativeEditorPlacementPreviews(
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   if (captureMode || modalOpen) {
-    return;
+    return facts;
   }
   const CreativeEditorStructuralSpanEditState& structuralEdit =
       editor.interaction.structuralSpanEdit;
@@ -241,7 +242,7 @@ void attachCreativeEditorPlacementPreviews(
             false, {}, geometry.profile, geometry.proceduralSegmentCount);
       }
     }
-    return;
+    return facts;
   }
   const bool materialPlacement =
       held.kind == cr::CreativeHeldItemKind::Material;
@@ -256,7 +257,7 @@ void attachCreativeEditorPlacementPreviews(
                     : cr::creativeHotbarAssetId(held);
   if ((!materialPlacement && !materialBrush) ||
       held.objectKind == cr::CreativeObjectKind::Unknown) {
-    return;
+    return facts;
   }
 
   CreativeBrushPlacementPlan heldPlan =
@@ -265,7 +266,7 @@ void attachCreativeEditorPlacementPreviews(
       (!held.hasAssetBounds ||
        !applyCreativeAssetPlacementBounds(heldPlan,
                                           held.assetSourceBounds))) {
-    return;
+    return facts;
   }
   Vec3 heldCenter{};
   Vec3 heldSize{};
@@ -274,14 +275,14 @@ void attachCreativeEditorPlacementPreviews(
   if (!heldPlan.valid ||
       !previewBoundsTransform(heldBounds, 1.0F, heldCenter,
                               heldSize)) {
-    return;
+    return facts;
   }
   const bool assetBacked = authoredAsset ||
                            !cr::creativeHotbarAssetId(held).empty();
   const CreativePreviewGeometrySelection heldGeometry =
       previewGeometryFor(heldPlan.brush, heldSize, assetBacked);
   if (!heldGeometry.valid) {
-    return;
+    return facts;
   }
 
   const CreativeEditorPlacementFeedback& feedback =
@@ -321,6 +322,8 @@ void attachCreativeEditorPlacementPreviews(
     }
     const CreativeBrushPlacementAdmission& admission = placement.admission;
     const CreativeBrushPlacementPlan& targetPlan = admission.plan;
+    facts.targetPlan = targetPlan;
+    facts.hasTargetPlan = targetPlan.valid;
     const cr::CreativeBounds& targetBounds =
         targetPlan.valid ? targetPlan.previewBounds
                          : editor.interaction.target.grid.adjacentCellBounds;
@@ -333,7 +336,7 @@ void attachCreativeEditorPlacementPreviews(
       const CreativePreviewGeometrySelection targetGeometry =
           previewGeometryFor(targetPlan.brush, targetSize, assetBacked);
       if (!targetGeometry.valid) {
-        return;
+        return facts;
       }
       const bool rejectedThisFrame =
           feedback.frameIndex == editor.frameIndex &&
@@ -364,7 +367,7 @@ void attachCreativeEditorPlacementPreviews(
   constexpr float kHeldMinimumAxis = 0.06F;
   const float longest = std::max({heldSize.x, heldSize.y, heldSize.z});
   if (!std::isfinite(longest) || longest <= 0.0F) {
-    return;
+    return facts;
   }
   const float heldScale = kHeldLongestDimension / longest;
   heldSize = {std::max(kHeldMinimumAxis, heldSize.x * heldScale),
@@ -380,6 +383,7 @@ void attachCreativeEditorPlacementPreviews(
           modelMatrix({0.42F, -0.32F, -0.82F}, heldRotation, heldSize),
       false, previewAssetId, heldGeometry.profile,
       heldGeometry.proceduralSegmentCount);
+  return facts;
 }
 
 }  // namespace iggy3d_creative_app

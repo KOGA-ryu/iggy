@@ -17,6 +17,7 @@
 #include "EditorStructuralPlacement.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
+#include "app/iggy3d/creative/spatial/PlacementClearance.hpp"
 #include "app/iggy3d/creative/tools/ShapeBrush.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
 #include "render/FrameInput.hpp"
@@ -74,6 +75,7 @@ struct CreativeEditorPlacementFeedback {
   bool voxelPlaced = false;
   iggy3d::creative::CreativeGridCoord3 voxelCell{};
   iggy3d::creative::CreativeBounds voxelBounds{};
+  iggy3d::creative::CreativePlacementClearanceResult clearance{};
 };
 
 inline constexpr std::size_t kCreativeMaterialStrokeVisitedCapacity = 256U;
@@ -277,6 +279,12 @@ void setCreativeEditorPlacementFeedback(
         iggy3d::creative::CreativeObjectKind::Unknown,
     iggy3d::creative::CreativeObjectId objectId =
         iggy3d::creative::kInvalidObjectId) noexcept;
+void setCreativeEditorPlacementRejectionFeedback(
+    CreativeEditorInteractionState& interaction,
+    std::uint64_t frameIndex,
+    iggy3d::creative::CreativeObjectKind objectKind,
+    const iggy3d::creative::CreativePlacementClearanceResult& clearance =
+        {}) noexcept;
 void setCreativeEditorVoxelPlacementFeedback(
     CreativeEditorInteractionState& interaction,
     std::uint64_t frameIndex,
@@ -372,7 +380,8 @@ void appendCreativeEditorInteractionOverlay(
     float wireThickness,
     std::vector<iggy3d::RenderUiRect>& uiRects,
     std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
-    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines);
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines,
+    const iggy3d::creative::CreativeDocument* document = nullptr);
 
 // The center aim reticle, split out of the interaction overlay so it can be
 // drawn even when the legacy HUD is suppressed on keyboard/mouse (plan DD-15).
