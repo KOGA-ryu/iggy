@@ -11,6 +11,7 @@
 namespace iggy3d::creative {
 
 inline constexpr std::string_view kDitchHouseMapTemplateId = "ditch_house";
+inline constexpr std::string_view kMapDemoTemplateId = "map_demo";
 inline constexpr std::string_view kBuilderEstateMapTemplateId =
     "builder_estate";
 inline constexpr std::string_view kBuilderEstateHouseTemplateId =
@@ -58,6 +59,11 @@ struct CreativeMapTemplateResult {
 [[nodiscard]] CreativeMapTemplateResult buildCreativeMapTemplate(
     std::string_view templateId,
     CreativeDocumentId documentId = 1U);
+
+// THE MAP DEMO (MapDemoTemplate.cpp): seeded 80x80m stealth map composing
+// the stealth_blockout kit with patrol guards and clamber-only bypasses.
+[[nodiscard]] CreativeMapTemplateResult buildMapDemoMapTemplate(
+    CreativeDocumentId documentId);
 
 [[nodiscard]] std::span<const std::string_view>
 creativeBuiltInBuildingTemplateIds() noexcept;

@@ -383,9 +383,31 @@ CreativeRuntimeScenarioSeedResult buildCreativeRuntimeScenarioSeed(
   seed.objectives.push_back(makeSandboxObjective());
   result.summary.playerEntityCount = 1U;
 
+  // PATROL WIRING (activation seam): patrol_post anchors are adopted by the
+  // most recent npc/monster anchor BEFORE them in bake order (bake order ==
+  // document order), i.e. an author lays down a guard and then its route.
+  // The adopted positions become that guard's ScenarioAiActorSeed
+  // patrolWaypoints (Loop mode) -- the s6 patrol runtime and the reasoning
+  // graph (which already derives patrolPost nodes from these same anchors)
+  // consume them from there. A post with no preceding guard stays inert.
+  std::size_t currentAiActorIndex = seed.aiActors.size();
+  bool hasCurrentAiActor = false;
   for (const RoomAnchorAsset& anchor : payload.room.anchors) {
     const RuntimeAnchorActorPolicy* policy = actorPolicyFor(anchor.kind);
     if (policy == nullptr) {
+      if (anchor.kind == "patrol_post") {
+        if (hasCurrentAiActor) {
+          ScenarioAiActorSeed& actor = seed.aiActors[currentAiActorIndex];
+          if (actor.patrolWaypoints.empty()) {
+            ++result.summary.patrolRouteCount;
+          }
+          actor.patrolWaypoints.push_back(anchor.positionMeters);
+          ++result.summary.patrolWaypointCount;
+        } else {
+          ++result.summary.ignoredAnchorCount;
+        }
+        continue;
+      }
       if (anchor.kind != "spawn" &&
           !anchorBacksInteractable(anchor, payload.interactables)) {
         ++result.summary.ignoredAnchorCount;
@@ -404,6 +426,8 @@ CreativeRuntimeScenarioSeedResult buildCreativeRuntimeScenarioSeed(
         monster ? config.monsterHitPoints : config.npcHitPoints;
     seed.entities.push_back(makeCombatantEntity(
         anchor, ScenarioEntityKind::Npc, kNpcBounds, factionId, hitPoints));
+    currentAiActorIndex = seed.aiActors.size();
+    hasCurrentAiActor = true;
     seed.aiActors.push_back({anchor.runtimeStableName, profileId});
     if (monster) {
       ++result.summary.monsterEntityCount;

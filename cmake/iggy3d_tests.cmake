@@ -553,6 +553,10 @@ iggy3d_add_unit_test(creative_play_preparation_tests
 set_tests_properties(creative_play_preparation_tests PROPERTIES
   LABELS "unit;app;creative;play;validation;iggy3d")
 
+iggy3d_add_unit_test(map_demo_tests tests/unit/map_demo_tests.cpp)
+set_tests_properties(map_demo_tests PROPERTIES
+  LABELS "unit;app;creative;play;runtime;movement;iggy3d")
+
 iggy3d_add_unit_test(creative_runtime_sandbox_tests
   tests/unit/creative_runtime_sandbox_tests.cpp)
 set_tests_properties(creative_runtime_sandbox_tests PROPERTIES

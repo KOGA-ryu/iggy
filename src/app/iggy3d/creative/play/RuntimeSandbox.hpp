@@ -44,6 +44,11 @@ struct CreativeRuntimeScenarioSummary {
   std::size_t automaticControlEntityCount = 0;
   std::size_t pickupEntityCount = 0;
   std::size_t ignoredAnchorCount = 0;
+  // Patrol wiring (map demo): patrol_post anchors adopted by guards via
+  // document-order chaining (a post belongs to the most recent npc/monster
+  // anchor before it in bake order).
+  std::size_t patrolWaypointCount = 0;
+  std::size_t patrolRouteCount = 0;
 };
 
 struct CreativeRuntimeScenarioSeedResult {
