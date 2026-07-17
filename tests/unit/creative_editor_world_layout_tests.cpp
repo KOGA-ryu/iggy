@@ -132,7 +132,7 @@ bool categorizedPaletteOwnsEveryBindableSemanticAction() {
                        BuildingTemplate &&
                entry.buildingTemplateId == cr::kBuilderEstateHouseTemplateId;
       });
-  return expect(entries.size() == 14U && unique,
+  return expect(entries.size() == 15U && unique,
                 "world layout palette is fixed and duplicate free") &&
          expect(std::all_of(categoryCounts.begin(), categoryCounts.end(),
                             [](std::size_t count) { return count > 0U; }),
@@ -140,6 +140,8 @@ bool categorizedPaletteOwnsEveryBindableSemanticAction() {
          expect(estate != entries.end() && seenTools[static_cast<std::size_t>(
                                              app::CreativeEditorWorldLayoutTool::
                                                  Select)] &&
+                    seenTools[static_cast<std::size_t>(
+                        app::CreativeEditorWorldLayoutTool::BuildingShell)] &&
                     seenTools[static_cast<std::size_t>(
                         app::CreativeEditorWorldLayoutTool::Plateau)] &&
                     seenTools[static_cast<std::size_t>(
@@ -314,6 +316,119 @@ bool roomGestureHostsOpeningsAndSupportsResize() {
                     state.source.rooms[0].wallThicknessCells == 0.5 &&
                     state.source.rooms[0].floorThicknessLayers == 2U,
                 "selected room shell settings change as one source edit");
+}
+
+bool buildingShellCreatesOwnedRoomAndGeneratesAsOneEdit() {
+  cr::CreativeAppState live = appState();
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state);
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::BuildingShell));
+  const std::uint64_t revisionBefore = state.revision;
+  const std::uint64_t ordinalBefore = state.nextStableOrdinal;
+  const auto begin = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {7, 5});
+  const auto commit = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {1, 1});
+
+  const bool ownedShell =
+      begin.accepted && !begin.changed && commit.accepted && commit.changed &&
+      state.revision == revisionBefore + 1U &&
+      state.nextStableOrdinal == ordinalBefore + 2U &&
+      state.source.buildings.size() == 1U && state.source.rooms.size() == 1U &&
+      state.source.rooms[0].buildingIndex == 0U &&
+      state.source.rooms[0].footprint.minimum ==
+          cr::CreativeTerrainCoord2{1, 1} &&
+      state.source.rooms[0].footprint.maximum ==
+          cr::CreativeTerrainCoord2{7, 5} &&
+      state.source.buildings[0].stableKey != state.source.rooms[0].stableKey;
+
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Door));
+  const auto door =
+      app::applyCreativeEditorWorldLayoutPoint(state, {4.0, 1.1});
+  const bool hostedDoor =
+      door.accepted && door.changed && state.source.openings.size() == 1U &&
+      state.source.openings[0].hostKind ==
+          cr::CreativeWorldLayoutOpeningHostKind::RoomEdge &&
+      state.source.openings[0].roomIndex == 0U;
+
+  const std::uint64_t liveCountBefore = live.facade.document().objectCount();
+  const auto preview =
+      app::previewCreativeEditorWorldLayout(state, live.facade.document());
+  std::uint64_t floorCount = 0U;
+  std::uint64_t doorCount = 0U;
+  for (const cr::CreativeObject& object : state.preview.document.objects()) {
+    floorCount += object.kind == cr::CreativeObjectKind::Floor ? 1U : 0U;
+    doorCount += object.kind == cr::CreativeObjectKind::Door ? 1U : 0U;
+  }
+  const bool exactPreview =
+      preview.accepted && floorCount == 1U && doorCount == 1U &&
+      live.facade.document().objectCount() == liveCountBefore;
+  const std::uint64_t previewObjectCount =
+      state.preview.document.objectCount();
+
+  const auto generated = app::confirmCreativeEditorWorldLayout(state, live);
+  const bool generatedOnce =
+      generated.accepted && generated.changed &&
+      cr::creativeUndoDepth(live.history) == 1U &&
+      live.facade.document().objectCount() == previewObjectCount;
+  const bool undone = app::undoLastEdit(live, "building-shell-undo", &state);
+  const bool restored = undone && state.source.buildings.empty() &&
+                        state.source.rooms.empty() &&
+                        state.source.openings.empty() &&
+                        live.facade.document().objectCount() == liveCountBefore;
+
+  return expect(ownedShell,
+                "building shell publishes one owned room in one revision") &&
+         expect(hostedDoor,
+                "door symbol remains hosted by the building shell room") &&
+         expect(exactPreview,
+                "building shell exact preview does not publish live objects") &&
+         expect(generatedOnce,
+                "building shell generation records exactly one undo edit") &&
+         expect(restored,
+                "building shell undo restores semantic and 3D state together");
+}
+
+bool rejectedBuildingShellIsTransactionallyEmpty() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state);
+  const std::uint64_t revisionBefore = state.revision;
+  const std::uint64_t ordinalBefore = state.nextStableOrdinal;
+  const auto degenerate = app::createCreativeEditorWorldLayoutBuildingShell(
+      state, {{{2, 2}, {2, 8}}, 0.0, 3U, 0.25, 1U});
+  const auto consumed = app::createCreativeEditorWorldLayoutBuildingShell(
+      state, {{{0, 0}, {2, 2}}, 0.0, 3U, 1.0, 1U});
+  return expect(!degenerate.accepted && !degenerate.changed &&
+                    !consumed.accepted && !consumed.changed,
+                "invalid building shell candidates are rejected") &&
+         expect(state.source.buildings.empty() && state.source.rooms.empty() &&
+                    state.revision == revisionBefore &&
+                    state.nextStableOrdinal == ordinalBefore,
+                "rejected shells consume no source revision or stable key");
+}
+
+bool buildingShellsKeepIndependentBuildingOwnership() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state);
+  const auto first = app::createCreativeEditorWorldLayoutBuildingShell(
+      state, {{{0, 0}, {6, 4}}, 0.0, 3U, 0.25, 1U});
+  const auto second = app::createCreativeEditorWorldLayoutBuildingShell(
+      state, {{{10, 2}, {15, 7}}, 1.0, 4U, 0.5, 2U});
+  return expect(first.accepted && first.changed && second.accepted &&
+                    second.changed,
+                "independent building shells are accepted") &&
+         expect(state.source.buildings.size() == 2U &&
+                    state.source.rooms.size() == 2U &&
+                    state.source.rooms[0].buildingIndex == 0U &&
+                    state.source.rooms[1].buildingIndex == 1U &&
+                    state.source.rooms[1].floorTopLayer == 1.0 &&
+                    state.source.rooms[1].wallHeightCells == 4U &&
+                    state.source.rooms[1].wallThicknessCells == 0.5 &&
+                    state.source.rooms[1].floorThicknessLayers == 2U &&
+                    stableKeysUnique(state.source),
+                "each shell owns its room and authored dimensions");
 }
 
 bool invalidRoomShellSettingsFailWithoutMutation() {
@@ -1818,6 +1933,9 @@ int main() {
                   openingsSnapInsideWallsAndRejectOverlap() &&
                   deletingWallCascadesItsOpenings() &&
                   roomGestureHostsOpeningsAndSupportsResize() &&
+                  buildingShellCreatesOwnedRoomAndGeneratesAsOneEdit() &&
+                  rejectedBuildingShellIsTransactionallyEmpty() &&
+                  buildingShellsKeepIndependentBuildingOwnership() &&
                   invalidRoomShellSettingsFailWithoutMutation() &&
                   roomMovePreviewCommitsOnceAndKeepsOpeningHosted() &&
                   roomEdgesAndCornersResizeFromTheirOwnedSides() &&

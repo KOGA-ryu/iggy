@@ -24,7 +24,7 @@ constexpr double kOpeningEndClearanceCells = 0.25;
 constexpr double kOpeningMinimumWidthCells = 0.25;
 constexpr double kOpeningGeometryEpsilon = 1.0e-9;
 
-constexpr std::array<CreativeEditorWorldLayoutPaletteEntry, 14U>
+constexpr std::array<CreativeEditorWorldLayoutPaletteEntry, 15U>
     kWorldLayoutPaletteEntries = {{
         {CreativeEditorWorldLayoutPaletteCategory::Structure, "Select",
          CreativeEditorWorldLayoutPaletteActivation::Tool,
@@ -33,7 +33,10 @@ constexpr std::array<CreativeEditorWorldLayoutPaletteEntry, 14U>
          CreativeEditorWorldLayoutPaletteActivation::BuildingTemplate,
          CreativeEditorWorldLayoutTool::Select,
          cr::kBuilderEstateHouseTemplateId},
-        {CreativeEditorWorldLayoutPaletteCategory::Structure, "Room",
+        {CreativeEditorWorldLayoutPaletteCategory::Structure, "Building Shell",
+         CreativeEditorWorldLayoutPaletteActivation::Tool,
+         CreativeEditorWorldLayoutTool::BuildingShell, {}},
+        {CreativeEditorWorldLayoutPaletteCategory::Structure, "Add Room",
          CreativeEditorWorldLayoutPaletteActivation::Tool,
          CreativeEditorWorldLayoutTool::Room, {}},
         {CreativeEditorWorldLayoutPaletteCategory::Structure, "Floor",
@@ -851,6 +854,22 @@ CreativeEditorWorldLayoutEditReceipt addRoomPoint(
   return {true, true, "creative_editor_world_layout_room_added"};
 }
 
+CreativeEditorWorldLayoutEditReceipt addBuildingShellPoint(
+    CreativeEditorWorldLayoutState& state, cr::CreativeTerrainCoord2 point) {
+  if (!state.anchorActive) {
+    state.anchorActive = true;
+    state.anchor = point;
+    state.statusMessage = "drag building shell to its opposite corner";
+    return {true, false, "creative_editor_world_layout_anchor_set"};
+  }
+  const cr::CreativeWorldLayoutRect rect = normalizedRect(state.anchor, point);
+  state.anchorActive = false;
+  return createCreativeEditorWorldLayoutBuildingShell(
+      state,
+      {rect, 0.0, cr::kDefaultCreativeWorldLayoutWallHeightCells,
+       cr::kDefaultCreativeWorldLayoutWallThicknessCells, 1U});
+}
+
 CreativeEditorWorldLayoutEditReceipt addFloorPoint(
     CreativeEditorWorldLayoutState& state, cr::CreativeTerrainCoord2 point) {
   if (!state.anchorActive) {
@@ -1139,6 +1158,8 @@ const char* creativeEditorWorldLayoutToolLabel(
   switch (tool) {
     case CreativeEditorWorldLayoutTool::Select:
       return "Select";
+    case CreativeEditorWorldLayoutTool::BuildingShell:
+      return "Building Shell";
     case CreativeEditorWorldLayoutTool::Room:
       return "Room";
     case CreativeEditorWorldLayoutTool::Floor:
@@ -1392,6 +1413,9 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutPoint(
   if (!toGridCoord(point, gridPoint)) {
     return {false, false, "creative_editor_world_layout_point_out_of_range"};
   }
+  if (state.tool == CreativeEditorWorldLayoutTool::BuildingShell) {
+    return addBuildingShellPoint(state, gridPoint);
+  }
   if (state.tool == CreativeEditorWorldLayoutTool::Room) {
     return addRoomPoint(state, gridPoint);
   }
@@ -1435,12 +1459,14 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutGesture(
     state.statusMessage = "layout gesture cancelled";
     return {true, false, "creative_editor_world_layout_gesture_cancelled"};
   }
-  const bool dragTool = state.tool == CreativeEditorWorldLayoutTool::Room ||
-                        state.tool == CreativeEditorWorldLayoutTool::Floor ||
-                        state.tool == CreativeEditorWorldLayoutTool::Wall ||
-                        state.tool == CreativeEditorWorldLayoutTool::Road ||
-                        state.tool == CreativeEditorWorldLayoutTool::Ditch ||
-                        state.tool == CreativeEditorWorldLayoutTool::Bridge;
+  const bool dragTool =
+      state.tool == CreativeEditorWorldLayoutTool::BuildingShell ||
+      state.tool == CreativeEditorWorldLayoutTool::Room ||
+      state.tool == CreativeEditorWorldLayoutTool::Floor ||
+      state.tool == CreativeEditorWorldLayoutTool::Wall ||
+      state.tool == CreativeEditorWorldLayoutTool::Road ||
+      state.tool == CreativeEditorWorldLayoutTool::Ditch ||
+      state.tool == CreativeEditorWorldLayoutTool::Bridge;
   if (!dragTool) {
     return {false, false, "creative_editor_world_layout_gesture_tool_invalid"};
   }
@@ -1452,7 +1478,9 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutGesture(
     state.anchorActive = true;
     state.anchor = gridPoint;
     clearWorldLayoutInteraction(state);
-    if (state.tool == CreativeEditorWorldLayoutTool::Room) {
+    if (state.tool == CreativeEditorWorldLayoutTool::BuildingShell) {
+      state.statusMessage = "drag building shell to its opposite corner";
+    } else if (state.tool == CreativeEditorWorldLayoutTool::Room) {
       state.statusMessage = "drag room to its opposite corner";
     } else if (state.tool == CreativeEditorWorldLayoutTool::Floor) {
       state.statusMessage = "drag floor to its opposite corner";

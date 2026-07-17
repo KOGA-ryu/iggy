@@ -30,6 +30,7 @@ enum class CreativeEditorWorldLayoutTool : std::uint8_t {
   Boulder,
   PlayerSpawn,
   NpcSpawn,
+  BuildingShell,
   Count,
 };
 
@@ -503,6 +504,10 @@ applyCreativeEditorWorldLayoutGesture(
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutGesturePhase phase,
     CreativeEditorWorldLayoutPoint point = {});
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+createCreativeEditorWorldLayoutBuildingShell(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutRoomSettings settings);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 setCreativeEditorWorldLayoutRoomSettings(
     CreativeEditorWorldLayoutState& state, std::size_t roomIndex,

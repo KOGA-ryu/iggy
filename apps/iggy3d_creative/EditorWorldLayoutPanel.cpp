@@ -568,11 +568,13 @@ void drawAnchorPreview(ImDrawList& drawList, const CanvasTransform& transform,
   const double snappedZ = std::round(hovered.z);
   const ImU32 previewColor = color({0.96F, 0.82F, 0.22F, 0.95F});
   const ImVec2 start = toScreen(transform, state.anchor.x, state.anchor.z);
-  if (state.tool == CreativeEditorWorldLayoutTool::Room ||
+  if (state.tool == CreativeEditorWorldLayoutTool::BuildingShell ||
+      state.tool == CreativeEditorWorldLayoutTool::Room ||
       state.tool == CreativeEditorWorldLayoutTool::Floor ||
       state.tool == CreativeEditorWorldLayoutTool::Bridge) {
     const ImVec2 end = toScreen(transform, snappedX, snappedZ);
-    if (state.tool == CreativeEditorWorldLayoutTool::Room ||
+    if (state.tool == CreativeEditorWorldLayoutTool::BuildingShell ||
+        state.tool == CreativeEditorWorldLayoutTool::Room ||
         state.tool == CreativeEditorWorldLayoutTool::Bridge) {
       drawList.AddRectFilled(
           {std::min(start.x, end.x), std::min(start.y, end.y)},
@@ -769,7 +771,8 @@ bool selectedBuildingContains(
 }
 
 bool dragTool(CreativeEditorWorldLayoutTool tool) noexcept {
-  return tool == CreativeEditorWorldLayoutTool::Room ||
+  return tool == CreativeEditorWorldLayoutTool::BuildingShell ||
+         tool == CreativeEditorWorldLayoutTool::Room ||
          tool == CreativeEditorWorldLayoutTool::Floor ||
          tool == CreativeEditorWorldLayoutTool::Wall ||
          tool == CreativeEditorWorldLayoutTool::Road ||
@@ -1404,11 +1407,15 @@ void buildCreativeEditorWorldLayoutPanel(
                        state.buildingTemplatePlacement.active);
   drawWorldLayoutPalette(state, commands);
 
-  if (ImGui::Button("Preview 3D")) {
+  const bool exactPreviewActive =
+      creativeEditorWorldLayoutPreviewActive(state);
+  if (ImGui::Button(exactPreviewActive ? "Refresh 3D Preview"
+                                       : "Preview 3D")) {
     commands.push(CreativeDesktopCommandId::WorldLayoutPreview);
   }
   ImGui::SameLine();
-  if (ImGui::Button("Generate")) {
+  if (ImGui::Button(exactPreviewActive ? "Confirm Preview"
+                                       : "Confirm & Generate")) {
     commands.push(CreativeDesktopCommandId::WorldLayoutConfirm);
   }
   ImGui::SameLine();

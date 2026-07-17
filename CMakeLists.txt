@@ -322,6 +322,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorWorldTargeting.cpp
   apps/iggy3d_creative/EditorWorldLayout.cpp
   apps/iggy3d_creative/EditorWorldLayoutHistory.cpp
+  apps/iggy3d_creative/EditorWorldLayoutShells.cpp
   apps/iggy3d_creative/EditorWorldLayoutStructures.cpp
   apps/iggy3d_creative/EditorWorldLayoutGroups.cpp
   apps/iggy3d_creative/EditorWorldLayoutTemplates.cpp
