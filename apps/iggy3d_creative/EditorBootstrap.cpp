@@ -4,6 +4,7 @@
 #include <iterator>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -18,6 +19,7 @@
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
+#include "app/iggy3d/creative/world/MapTemplate.hpp"
 #include "app/iggy3d/map_maker/Grid.hpp"
 #include "app/platform/SdlVulkanSurface.hpp"
 #include "render/RendererApi.hpp"
@@ -176,6 +178,29 @@ void initializeCreativeEditorBootstrapData(
   const CreativeEditorWorldLayoutBuildingTemplateLoadReceipt buildingTemplates =
       loadCreativeEditorWorldLayoutBuildingTemplateLibrary(
           output.editor.worldLayout.buildingTemplates, output.saveRoot);
+  if (buildingTemplates.accepted) {
+    for (const std::string_view templateId :
+         iggy3d::creative::creativeBuiltInBuildingTemplateIds()) {
+      const iggy3d::creative::CreativeWorldLayoutBuildingTemplateResult source =
+          iggy3d::creative::buildCreativeBuiltInBuildingTemplate(templateId);
+      if (!source.accepted) {
+        SDL_Log("iggy3d_creative: built-in building template rejected id='%.*s' "
+                "reason='%s'",
+                static_cast<int>(templateId.size()), templateId.data(),
+                source.reasonCode.c_str());
+        continue;
+      }
+      const CreativeEditorWorldLayoutBuildingTemplateInstallReceipt installed =
+          installCreativeEditorWorldLayoutBuildingTemplate(
+              output.editor.worldLayout.buildingTemplates, source.value);
+      if (!installed.accepted) {
+        SDL_Log("iggy3d_creative: built-in building template install failed "
+                "id='%.*s' reason='%s'",
+                static_cast<int>(templateId.size()), templateId.data(),
+                installed.reasonCode.c_str());
+      }
+    }
+  }
   std::vector<iggy3d::creative::CreativeCatalogAsset> authoredCatalogAssets =
       creativeEditorAuthoredAssetCatalogEntries(output.editor.authoredAssets);
   catalogAssets.assets.insert(

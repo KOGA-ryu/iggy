@@ -1,16 +1,20 @@
 #include "EditorWorldLayout.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
 #include <limits>
+#include <span>
 #include <string>
 #include <vector>
 
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
+#include "app/iggy3d/creative/world/MapTemplate.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
 namespace app = iggy3d_creative_app;
@@ -41,6 +45,7 @@ bool stableKeysUnique(const cr::CreativeWorldLayout& layout) {
   append(layout.boxes);
   append(layout.walls);
   append(layout.openings);
+  append(layout.objects);
   append(layout.terrainProfiles);
   append(layout.terrainPaths);
   std::sort(keys.begin(), keys.end());
@@ -89,6 +94,136 @@ bool floorAndWallGesturesProduceNormalizedSymbols() {
              state.source.walls[0].start == cr::CreativeTerrainCoord2{0, 0} &&
                  state.source.walls[0].end == cr::CreativeTerrainCoord2{6, 0},
              "diagonal pointer input resolves to a cardinal wall");
+}
+
+bool categorizedPaletteOwnsEveryBindableSemanticAction() {
+  const std::span<const app::CreativeEditorWorldLayoutPaletteEntry> entries =
+      app::creativeEditorWorldLayoutPaletteEntries();
+  std::array<std::size_t, static_cast<std::size_t>(
+                              app::CreativeEditorWorldLayoutPaletteCategory::Count)>
+      categoryCounts{};
+  std::array<bool, static_cast<std::size_t>(
+                       app::CreativeEditorWorldLayoutTool::Count)>
+      seenTools{};
+  bool unique = true;
+  for (const app::CreativeEditorWorldLayoutPaletteEntry& entry : entries) {
+    const std::size_t category = static_cast<std::size_t>(entry.category);
+    if (category >= categoryCounts.size() || entry.label.empty()) {
+      unique = false;
+      continue;
+    }
+    ++categoryCounts[category];
+    if (entry.activation ==
+        app::CreativeEditorWorldLayoutPaletteActivation::Tool) {
+      const std::size_t tool = static_cast<std::size_t>(entry.tool);
+      if (tool >= seenTools.size() || seenTools[tool]) {
+        unique = false;
+      } else {
+        seenTools[tool] = true;
+      }
+    }
+  }
+  const auto estate = std::find_if(
+      entries.begin(), entries.end(), [](const auto& entry) {
+        return entry.activation ==
+                   app::CreativeEditorWorldLayoutPaletteActivation::
+                       BuildingTemplate &&
+               entry.buildingTemplateId == cr::kBuilderEstateHouseTemplateId;
+      });
+  return expect(entries.size() == 14U && unique,
+                "world layout palette is fixed and duplicate free") &&
+         expect(std::all_of(categoryCounts.begin(), categoryCounts.end(),
+                            [](std::size_t count) { return count > 0U; }),
+                "every palette category owns an action") &&
+         expect(estate != entries.end() && seenTools[static_cast<std::size_t>(
+                                             app::CreativeEditorWorldLayoutTool::
+                                                 Select)] &&
+                    seenTools[static_cast<std::size_t>(
+                        app::CreativeEditorWorldLayoutTool::Plateau)] &&
+                    seenTools[static_cast<std::size_t>(
+                        app::CreativeEditorWorldLayoutTool::Boulder)] &&
+                    seenTools[static_cast<std::size_t>(
+                        app::CreativeEditorWorldLayoutTool::NpcSpawn)],
+                "palette binds structures terrain objects and gameplay");
+}
+
+bool terrainAndObjectPaletteToolsCreateCompilableSymbols() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "palette_layout");
+
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Plateau));
+  const auto plateau =
+      app::applyCreativeEditorWorldLayoutPoint(state, {12.0, 10.0});
+
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Road));
+  const auto roadBegin = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {4.0, 4.0});
+  const auto roadCommit = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {16.0, 4.0});
+
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Ditch));
+  const auto ditchBegin = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {4.0, 20.0});
+  const auto ditchCommit = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {16.0, 20.0});
+
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Bridge));
+  const auto bridgeBegin = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {8.0, 18.0});
+  const auto bridgeCommit = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {12.0, 22.0});
+
+  const auto addPoint = [&](app::CreativeEditorWorldLayoutTool tool,
+                            app::CreativeEditorWorldLayoutPoint point) {
+    static_cast<void>(app::setCreativeEditorWorldLayoutTool(state, tool));
+    return app::applyCreativeEditorWorldLayoutPoint(state, point);
+  };
+  const auto boulder =
+      addPoint(app::CreativeEditorWorldLayoutTool::Boulder, {2.0, 12.0});
+  const auto player =
+      addPoint(app::CreativeEditorWorldLayoutTool::PlayerSpawn, {6.0, 8.0});
+  const auto npc =
+      addPoint(app::CreativeEditorWorldLayoutTool::NpcSpawn, {8.0, 8.0});
+
+  cr::CreativeAppState app = appState();
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(app.facade.document(), state.source);
+  const cr::CreativeWorldLayoutEncodeResult encoded =
+      cr::encodeCreativeWorldLayout(state.source);
+  const cr::CreativeWorldLayoutDecodeResult decoded =
+      cr::decodeCreativeWorldLayout(encoded.encodedText);
+
+  return expect(plateau.accepted && plateau.changed && roadBegin.accepted &&
+                    roadCommit.accepted && roadCommit.changed &&
+                    ditchBegin.accepted && ditchCommit.accepted &&
+                    ditchCommit.changed && bridgeBegin.accepted &&
+                    bridgeCommit.accepted && bridgeCommit.changed &&
+                    boulder.accepted && player.accepted && npc.accepted,
+                "palette actions author semantic symbols") &&
+         expect(state.source.terrainProfiles.size() == 1U &&
+                    state.source.terrainPaths.size() == 2U &&
+                    state.source.terrainPathPoints.size() == 4U &&
+                    state.source.objects.size() == 4U,
+                "palette actions retain compact flat source tables") &&
+         expect(state.source.objects[0].kind == cr::CreativeObjectKind::Bridge &&
+                    state.source.objects[1].assetId == "boulder_01" &&
+                    state.source.objects[2].kind ==
+                        cr::CreativeObjectKind::SpawnPoint &&
+                    state.source.objects[3].kind ==
+                        cr::CreativeObjectKind::NpcSpawn,
+                "object palette entries preserve semantic identity") &&
+         expect(compiled.receipt.accepted &&
+                    compiled.receipt.objectRecipeCount == 1U &&
+                    compiled.receipt.objectCount == 4U,
+                "palette source compiles through one object recipe") &&
+         expect(encoded.accepted && decoded.accepted &&
+                    decoded.layout.objects.size() == 4U &&
+                    decoded.layout.terrainPaths.size() == 2U,
+                "palette source survives durable layout round trip");
 }
 
 bool openingsSnapInsideWallsAndRejectOverlap() {
@@ -1030,6 +1165,72 @@ bool buildingTemplatesPersistPreviewAndStampOneRevision() {
                 "building template library survives reset and disk reload");
 }
 
+bool builtInBuildingTemplateInstallIsDurableAndIdempotent() {
+  const std::filesystem::path saveRoot =
+      std::filesystem::temp_directory_path() /
+      "iggy3d_builtin_building_template_install_tests";
+  std::error_code error;
+  std::filesystem::remove_all(saveRoot, error);
+
+  app::CreativeEditorWorldLayoutBuildingTemplateLibrary library;
+  const auto loaded =
+      app::loadCreativeEditorWorldLayoutBuildingTemplateLibrary(library,
+                                                                 saveRoot);
+  const cr::CreativeWorldLayoutBuildingTemplateResult source =
+      cr::buildCreativeBuiltInBuildingTemplate(
+          cr::kBuilderEstateHouseTemplateId);
+  if (!loaded.accepted || !source.accepted) {
+    std::filesystem::remove_all(saveRoot, error);
+    return expect(false, "built-in template install setup accepted");
+  }
+  const auto installed =
+      app::installCreativeEditorWorldLayoutBuildingTemplate(library,
+                                                             source.value);
+  const auto repeated =
+      app::installCreativeEditorWorldLayoutBuildingTemplate(library,
+                                                             source.value);
+
+  cr::CreativeWorldLayout changedLayout = source.value.normalizedLayout;
+  changedLayout.rooms[0].wallHeightCells += 1U;
+  const cr::CreativeWorldLayoutBuildingTemplateResult changedSource =
+      cr::loadCreativeWorldLayoutBuildingTemplate(std::move(changedLayout));
+  const auto conflict = changedSource.accepted
+                            ? app::installCreativeEditorWorldLayoutBuildingTemplate(
+                                  library, changedSource.value)
+                            : app::CreativeEditorWorldLayoutBuildingTemplateInstallReceipt{};
+
+  app::CreativeEditorWorldLayoutBuildingTemplateLibrary reloadedLibrary;
+  const auto reloaded =
+      app::loadCreativeEditorWorldLayoutBuildingTemplateLibrary(
+          reloadedLibrary, saveRoot);
+  const bool filePresent = std::filesystem::is_regular_file(
+      saveRoot / "world_layout_templates" / "builder_estate.house.iwlt",
+      error);
+
+  const bool ok =
+      expect(loaded.accepted && source.accepted,
+             "built-in template install setup accepted") &&
+      expect(installed.accepted && installed.changed &&
+                 installed.templateIndex == 0U &&
+                 library.templates.size() == 1U,
+             "built-in template installs once") &&
+      expect(repeated.accepted && !repeated.changed &&
+                 repeated.templateIndex == 0U &&
+                 library.templates.size() == 1U,
+             "matching built-in template install is idempotent") &&
+      expect(changedSource.accepted && !conflict.accepted &&
+                 conflict.reasonCode ==
+                     "creative_editor_world_layout_building_template_install_conflict",
+             "conflicting built-in template id fails closed") &&
+      expect(filePresent && reloaded.accepted && reloaded.loadedCount == 1U &&
+                 reloadedLibrary.templates.size() == 1U &&
+                 reloadedLibrary.templates[0].sourceFingerprint ==
+                     source.value.sourceFingerprint,
+             "built-in template survives disk reload");
+  std::filesystem::remove_all(saveRoot, error);
+  return ok;
+}
+
 bool buildingTemplateUpdateAndRefreshLifecycleIsExplicit() {
   const std::filesystem::path saveRoot =
       std::filesystem::temp_directory_path() /
@@ -1556,6 +1757,8 @@ bool exactPreviewAndConfirmUseOneHistoryEntry() {
 
 int main() {
   const bool ok = floorAndWallGesturesProduceNormalizedSymbols() &&
+                  categorizedPaletteOwnsEveryBindableSemanticAction() &&
+                  terrainAndObjectPaletteToolsCreateCompilableSymbols() &&
                   openingsSnapInsideWallsAndRejectOverlap() &&
                   deletingWallCascadesItsOpenings() &&
                   roomGestureHostsOpeningsAndSupportsResize() &&
@@ -1568,6 +1771,7 @@ int main() {
                   buildingGroupMoveDuplicateAndDeleteAreAtomic() &&
                   buildingTransformPreviewsAndCommitsOneRevision() &&
                   buildingTemplatesPersistPreviewAndStampOneRevision() &&
+                  builtInBuildingTemplateInstallIsDurableAndIdempotent() &&
                   buildingTemplateUpdateAndRefreshLifecycleIsExplicit() &&
                   openingSettingsApplyOnceAndMatchExactPreview() &&
                   openingDragAndWidthHandlesAreQuarterCellTransactional() &&

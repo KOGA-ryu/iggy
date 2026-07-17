@@ -9,7 +9,7 @@
 
 namespace iggy3d::creative {
 
-inline constexpr std::uint32_t kCreativeWorldLayoutCodecVersion = 2U;
+inline constexpr std::uint32_t kCreativeWorldLayoutCodecVersion = 3U;
 inline constexpr std::size_t kCreativeWorldLayoutCodecMaxEncodedBytes =
     8U * 1024U * 1024U;
 inline constexpr std::size_t kCreativeWorldLayoutCodecMaxRecords = 65535U;

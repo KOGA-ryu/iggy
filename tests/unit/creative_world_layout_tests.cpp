@@ -577,6 +577,15 @@ bool buildingTemplatesNormalizeTransformPersistAndStamp() {
   invalid.normalizedLayout.terrainProfiles.push_back(
       source.terrainProfiles[0]);
 
+  cr::CreativeWorldLayoutBuildingTemplate invalidObject = value;
+  cr::CreativeWorldLayoutObject object;
+  object.stableKey = "unowned_boulder";
+  object.name = "Unowned Boulder";
+  object.kind = cr::CreativeObjectKind::Rock;
+  object.mode = cr::CreativeObjectLibraryPlacementMode::Point;
+  object.assetId = "boulder_01";
+  invalidObject.normalizedLayout.objects.push_back(std::move(object));
+
   return expect(normalized,
                 "building template capture normalizes semantic geometry") &&
          expect(orientationExact,
@@ -586,7 +595,9 @@ bool buildingTemplatesNormalizeTransformPersistAndStamp() {
          expect(stampExact,
                 "building template stamp allocates fresh owners and hosts") &&
          expect(!cr::validCreativeWorldLayoutBuildingTemplate(invalid),
-                "building template cannot absorb unowned terrain");
+                "building template cannot absorb unowned terrain") &&
+         expect(!cr::validCreativeWorldLayoutBuildingTemplate(invalidObject),
+                "building template cannot absorb unowned objects");
 }
 
 bool buildingTemplateSyncIsSafeAtomicAndPersistent() {

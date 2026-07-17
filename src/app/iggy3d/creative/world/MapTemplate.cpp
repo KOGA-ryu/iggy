@@ -6,6 +6,7 @@
 #include "app/iggy3d/creative/recipes/BuildingRecipe.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <iterator>
@@ -14,6 +15,10 @@
 #include <vector>
 
 namespace iggy3d::creative {
+
+CreativeMapTemplateResult buildBuilderEstateMapTemplate(
+    CreativeDocumentId documentId);
+
 namespace {
 
 constexpr double kTerrainTopMeters = 3.0;
@@ -34,7 +39,7 @@ constexpr double kInteriorWallHalfThickness = 0.1;
 void setStatus(CreativeMapTemplateResult& result,
                CreativeMapTemplateStatus status,
                std::string_view reasonCode,
-               bool accepted = false) noexcept {
+               bool accepted = false) {
   result.status = status;
   result.reasonCode = reasonCode;
   result.accepted = accepted;
@@ -433,10 +438,33 @@ CreativeMapTemplateResult buildDitchHouseMap(CreativeDocumentId documentId) {
   return result;
 }
 
+using CreativeMapTemplateBuilder =
+    CreativeMapTemplateResult (*)(CreativeDocumentId);
+
+struct CreativeMapTemplateEntry {
+  std::string_view templateId;
+  CreativeMapTemplateBuilder build = nullptr;
+};
+
+constexpr std::array<CreativeMapTemplateEntry, 2U> kMapTemplateRegistry{{
+    {kDitchHouseMapTemplateId, buildDitchHouseMap},
+    {kBuilderEstateMapTemplateId, buildBuilderEstateMapTemplate},
+}};
+
+const CreativeMapTemplateEntry* findMapTemplate(
+    std::string_view templateId) noexcept {
+  const auto found = std::find_if(
+      kMapTemplateRegistry.begin(), kMapTemplateRegistry.end(),
+      [templateId](const CreativeMapTemplateEntry& entry) {
+        return entry.templateId == templateId;
+      });
+  return found == kMapTemplateRegistry.end() ? nullptr : &*found;
+}
+
 }  // namespace
 
 bool isCreativeMapTemplateId(std::string_view templateId) noexcept {
-  return templateId == kDitchHouseMapTemplateId;
+  return findMapTemplate(templateId) != nullptr;
 }
 
 std::string_view toString(CreativeMapTemplateStatus status) noexcept {
@@ -455,6 +483,12 @@ std::string_view toString(CreativeMapTemplateStatus status) noexcept {
       return "TerrainMaterialFailed";
     case CreativeMapTemplateStatus::ObjectBatchFailed:
       return "ObjectBatchFailed";
+    case CreativeMapTemplateStatus::BuildingTemplateFailed:
+      return "BuildingTemplateFailed";
+    case CreativeMapTemplateStatus::WorldLayoutFailed:
+      return "WorldLayoutFailed";
+    case CreativeMapTemplateStatus::ObjectRecipeFailed:
+      return "ObjectRecipeFailed";
     case CreativeMapTemplateStatus::Ready:
       return "Ready";
   }
@@ -464,8 +498,9 @@ std::string_view toString(CreativeMapTemplateStatus status) noexcept {
 CreativeMapTemplateResult buildCreativeMapTemplate(
     std::string_view templateId,
     CreativeDocumentId documentId) {
-  if (templateId == kDitchHouseMapTemplateId) {
-    return buildDitchHouseMap(documentId);
+  const CreativeMapTemplateEntry* entry = findMapTemplate(templateId);
+  if (entry != nullptr) {
+    return entry->build(documentId);
   }
 
   CreativeMapTemplateResult result;

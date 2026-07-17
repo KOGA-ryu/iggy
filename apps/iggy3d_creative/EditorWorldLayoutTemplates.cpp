@@ -269,6 +269,79 @@ loadCreativeEditorWorldLayoutBuildingTemplateLibrary(
   return receipt;
 }
 
+CreativeEditorWorldLayoutBuildingTemplateInstallReceipt
+installCreativeEditorWorldLayoutBuildingTemplate(
+    CreativeEditorWorldLayoutBuildingTemplateLibrary& library,
+    const cr::CreativeWorldLayoutBuildingTemplate& sourceTemplate) {
+  CreativeEditorWorldLayoutBuildingTemplateInstallReceipt receipt;
+  receipt.requested = true;
+  if (library.root.empty() ||
+      !cr::validCreativeWorldLayoutBuildingTemplate(sourceTemplate) ||
+      sourceTemplate.orientation !=
+          cr::CreativeWorldLayoutBuildingTemplateOrientation::Identity) {
+    receipt.reasonCode =
+        "creative_editor_world_layout_building_template_install_invalid";
+    return receipt;
+  }
+
+  cr::CreativeWorldLayoutBuildingTemplateResult canonical =
+      cr::loadCreativeWorldLayoutBuildingTemplate(
+          sourceTemplate.normalizedLayout);
+  if (!canonical.accepted ||
+      canonical.value.templateId != sourceTemplate.templateId ||
+      canonical.value.sourceFingerprint != sourceTemplate.sourceFingerprint) {
+    receipt.reasonCode =
+        "creative_editor_world_layout_building_template_install_invalid";
+    return receipt;
+  }
+
+  const std::size_t existingIndex =
+      templateIndexForId(library, sourceTemplate.templateId);
+  if (existingIndex < library.templates.size()) {
+    receipt.templateIndex = existingIndex;
+    if (library.templates[existingIndex].sourceFingerprint !=
+        sourceTemplate.sourceFingerprint) {
+      receipt.reasonCode =
+          "creative_editor_world_layout_building_template_install_conflict";
+      return receipt;
+    }
+    receipt.accepted = true;
+    receipt.reasonCode =
+        "creative_editor_world_layout_building_template_install_no_change";
+    return receipt;
+  }
+  if (library.templates.size() >=
+      kCreativeEditorWorldLayoutBuildingTemplateCapacity) {
+    receipt.reasonCode =
+        "creative_editor_world_layout_building_template_install_capacity_reached";
+    return receipt;
+  }
+
+  const cr::CreativeWorldLayoutEncodeResult encoded =
+      cr::encodeCreativeWorldLayout(canonical.value.normalizedLayout);
+  const std::filesystem::path path =
+      library.root /
+      (canonical.value.templateId + std::string(kBuildingTemplateExtension));
+  if (!encoded.accepted ||
+      !writeTemplateFileAtomically(path, encoded.encodedText)) {
+    receipt.reasonCode =
+        "creative_editor_world_layout_building_template_install_write_failed";
+    return receipt;
+  }
+
+  receipt.templateIndex = library.templates.size();
+  library.templates.push_back(std::move(canonical.value));
+  if (library.selectedIndex >= library.templates.size()) {
+    library.selectedIndex = receipt.templateIndex;
+  }
+  library.statusMessage = "building template installed";
+  receipt.accepted = true;
+  receipt.changed = true;
+  receipt.reasonCode =
+      "creative_editor_world_layout_building_template_installed";
+  return receipt;
+}
+
 CreativeEditorWorldLayoutEditReceipt
 captureCreativeEditorWorldLayoutBuildingTemplate(
     CreativeEditorWorldLayoutState& state,

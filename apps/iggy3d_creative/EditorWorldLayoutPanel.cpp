@@ -86,6 +86,114 @@ void drawGrid(ImDrawList& drawList, ImVec2 minimum, ImVec2 maximum,
                    color({0.86F, 0.42F, 0.36F, 1.0F}), 1.8F);
 }
 
+void drawTerrainSymbols(ImDrawList& drawList,
+                        const CanvasTransform& transform,
+                        const CreativeEditorWorldLayoutState& state) {
+  const cr::CreativeWorldLayout& source =
+      creativeEditorWorldLayoutDisplaySource(state);
+  for (std::size_t index = 0U; index < source.terrainProfiles.size(); ++index) {
+    const cr::CreativeWorldLayoutTerrainProfile& profile =
+        source.terrainProfiles[index];
+    const ImVec2 center =
+        toScreen(transform, profile.center.x, profile.center.z);
+    const float radius = std::max(
+        5.0F, static_cast<float>(profile.radiusCells) * transform.pixelsPerCell);
+    const bool isSelected = selected(
+        state, CreativeEditorWorldLayoutSelectionKind::TerrainProfile, index);
+    drawList.AddCircleFilled(center, radius,
+                             color({0.25F, 0.46F, 0.28F, 0.12F}), 48);
+    drawList.AddCircle(center, radius,
+                       isSelected ? color({0.96F, 0.82F, 0.22F, 1.0F})
+                                  : color({0.38F, 0.68F, 0.42F, 0.78F}),
+                       48, isSelected ? 3.0F : 1.5F);
+    drawList.AddCircleFilled(center, isSelected ? 6.0F : 4.0F,
+                             isSelected
+                                 ? color({0.96F, 0.82F, 0.22F, 1.0F})
+                                 : color({0.38F, 0.68F, 0.42F, 1.0F}));
+  }
+  for (std::size_t index = 0U; index < source.terrainPaths.size(); ++index) {
+    const cr::CreativeWorldLayoutTerrainPath& path = source.terrainPaths[index];
+    if (path.pointCount < 2U ||
+        path.firstPointIndex > source.terrainPathPoints.size() ||
+        path.pointCount >
+            source.terrainPathPoints.size() - path.firstPointIndex) {
+      continue;
+    }
+    const bool isSelected = selected(
+        state, CreativeEditorWorldLayoutSelectionKind::TerrainPath, index);
+    const ImVec4 tint = path.kind == cr::CreativeTerrainRecipeKind::Ditch
+                            ? ImVec4{0.25F, 0.47F, 0.68F, 1.0F}
+                            : ImVec4{0.72F, 0.56F, 0.28F, 1.0F};
+    ImVec4 fill = tint;
+    fill.w = 0.24F;
+    const float width = std::max(
+        3.0F, static_cast<float>(path.halfWidthCells * 2U + 1U) *
+                  transform.pixelsPerCell);
+    for (std::size_t pointIndex = path.firstPointIndex + 1U;
+         pointIndex < path.firstPointIndex + path.pointCount; ++pointIndex) {
+      const cr::CreativeTerrainCoord2 startCoord =
+          source.terrainPathPoints[pointIndex - 1U].coord;
+      const cr::CreativeTerrainCoord2 endCoord =
+          source.terrainPathPoints[pointIndex].coord;
+      const ImVec2 start = toScreen(transform, startCoord.x, startCoord.z);
+      const ImVec2 end = toScreen(transform, endCoord.x, endCoord.z);
+      drawList.AddLine(start, end, color(fill), width);
+      drawList.AddLine(start, end,
+                       isSelected ? color({0.96F, 0.82F, 0.22F, 1.0F})
+                                  : color(tint),
+                       isSelected ? 4.0F : 2.0F);
+    }
+  }
+}
+
+void drawObjectSymbols(ImDrawList& drawList,
+                       const CanvasTransform& transform,
+                       const CreativeEditorWorldLayoutState& state) {
+  const cr::CreativeWorldLayout& source =
+      creativeEditorWorldLayoutDisplaySource(state);
+  for (std::size_t index = 0U; index < source.objects.size(); ++index) {
+    const cr::CreativeWorldLayoutObject& object = source.objects[index];
+    const bool isSelected = selected(
+        state, CreativeEditorWorldLayoutSelectionKind::Object, index);
+    const ImU32 outline =
+        isSelected ? color({0.96F, 0.82F, 0.22F, 1.0F})
+        : object.kind == cr::CreativeObjectKind::Rock
+            ? color({0.66F, 0.69F, 0.72F, 1.0F})
+        : object.kind == cr::CreativeObjectKind::SpawnPoint
+            ? color({0.24F, 0.86F, 0.43F, 1.0F})
+        : object.kind == cr::CreativeObjectKind::NpcSpawn
+            ? color({0.72F, 0.42F, 0.88F, 1.0F})
+            : color({0.90F, 0.58F, 0.25F, 1.0F});
+    ImVec2 labelAnchor;
+    if (object.mode == cr::CreativeObjectLibraryPlacementMode::Bounds) {
+      const ImVec2 first = toScreen(transform, object.boundsCells.min.x,
+                                    object.boundsCells.min.z);
+      const ImVec2 second = toScreen(transform, object.boundsCells.max.x,
+                                     object.boundsCells.max.z);
+      const ImVec2 minimum{std::min(first.x, second.x),
+                           std::min(first.y, second.y)};
+      const ImVec2 maximum{std::max(first.x, second.x),
+                           std::max(first.y, second.y)};
+      drawList.AddRectFilled(minimum, maximum,
+                             color({0.54F, 0.48F, 0.40F, 0.28F}));
+      drawList.AddRect(minimum, maximum, outline, 0.0F, 0,
+                       isSelected ? 3.0F : 1.8F);
+      labelAnchor = minimum;
+    } else {
+      const ImVec2 center = toScreen(transform, object.pointCells.x,
+                                     object.pointCells.z);
+      drawList.AddCircleFilled(center, isSelected ? 7.0F : 5.0F, outline);
+      drawList.AddCircle(center, isSelected ? 11.0F : 8.0F, outline, 16,
+                         isSelected ? 3.0F : 1.5F);
+      labelAnchor = center;
+    }
+    if (isSelected) {
+      drawList.AddText({labelAnchor.x + 7.0F, labelAnchor.y + 7.0F}, outline,
+                       object.name.c_str());
+    }
+  }
+}
+
 void drawFloor(ImDrawList& drawList, const CanvasTransform& transform,
                const CreativeEditorWorldLayoutState& state,
                std::size_t boxIndex) {
@@ -461,9 +569,11 @@ void drawAnchorPreview(ImDrawList& drawList, const CanvasTransform& transform,
   const ImU32 previewColor = color({0.96F, 0.82F, 0.22F, 0.95F});
   const ImVec2 start = toScreen(transform, state.anchor.x, state.anchor.z);
   if (state.tool == CreativeEditorWorldLayoutTool::Room ||
-      state.tool == CreativeEditorWorldLayoutTool::Floor) {
+      state.tool == CreativeEditorWorldLayoutTool::Floor ||
+      state.tool == CreativeEditorWorldLayoutTool::Bridge) {
     const ImVec2 end = toScreen(transform, snappedX, snappedZ);
-    if (state.tool == CreativeEditorWorldLayoutTool::Room) {
+    if (state.tool == CreativeEditorWorldLayoutTool::Room ||
+        state.tool == CreativeEditorWorldLayoutTool::Bridge) {
       drawList.AddRectFilled(
           {std::min(start.x, end.x), std::min(start.y, end.y)},
           {std::max(start.x, end.x), std::max(start.y, end.y)},
@@ -486,6 +596,18 @@ void drawAnchorPreview(ImDrawList& drawList, const CanvasTransform& transform,
                            ? toScreen(transform, snappedX, state.anchor.z)
                            : toScreen(transform, state.anchor.x, snappedZ);
     drawList.AddLine(start, end, previewColor, 4.0F);
+  } else if (state.tool == CreativeEditorWorldLayoutTool::Road ||
+             state.tool == CreativeEditorWorldLayoutTool::Ditch) {
+    const ImVec2 end = toScreen(transform, snappedX, snappedZ);
+    const float width = state.tool == CreativeEditorWorldLayoutTool::Ditch
+                            ? transform.pixelsPerCell * 3.0F
+                            : transform.pixelsPerCell * 3.0F;
+    drawList.AddLine(start, end,
+                     state.tool == CreativeEditorWorldLayoutTool::Ditch
+                         ? color({0.25F, 0.47F, 0.68F, 0.32F})
+                         : color({0.72F, 0.56F, 0.28F, 0.32F}),
+                     width);
+    drawList.AddLine(start, end, previewColor, 2.0F);
   }
 }
 
@@ -649,22 +771,106 @@ bool selectedBuildingContains(
 bool dragTool(CreativeEditorWorldLayoutTool tool) noexcept {
   return tool == CreativeEditorWorldLayoutTool::Room ||
          tool == CreativeEditorWorldLayoutTool::Floor ||
-         tool == CreativeEditorWorldLayoutTool::Wall;
+         tool == CreativeEditorWorldLayoutTool::Wall ||
+         tool == CreativeEditorWorldLayoutTool::Road ||
+         tool == CreativeEditorWorldLayoutTool::Ditch ||
+         tool == CreativeEditorWorldLayoutTool::Bridge;
 }
 
-void toolButton(CreativeDesktopCommandFrame& commands,
-                CreativeEditorWorldLayoutTool current,
-                CreativeEditorWorldLayoutTool tool) {
-  const bool active = current == tool;
-  if (active) {
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{0.16F, 0.47F, 0.25F, 1.0F});
+std::size_t findBuildingTemplate(
+    const CreativeEditorWorldLayoutBuildingTemplateLibrary& library,
+    std::string_view templateId) noexcept {
+  const auto found = std::find_if(
+      library.templates.begin(), library.templates.end(),
+      [templateId](const cr::CreativeWorldLayoutBuildingTemplate& value) {
+        return value.templateId == templateId;
+      });
+  return found == library.templates.end()
+             ? cr::kInvalidCreativeWorldLayoutIndex
+             : static_cast<std::size_t>(found - library.templates.begin());
+}
+
+void drawWorldLayoutPalette(CreativeEditorWorldLayoutState& state,
+                            CreativeDesktopCommandFrame& commands) {
+  if (!ImGui::BeginTabBar("##world_layout_palette")) {
+    return;
   }
-  if (ImGui::Button(creativeEditorWorldLayoutToolLabel(tool))) {
-    queueTool(commands, tool);
+  for (std::uint8_t categoryValue = 0U;
+       categoryValue < static_cast<std::uint8_t>(
+                           CreativeEditorWorldLayoutPaletteCategory::Count);
+       ++categoryValue) {
+    const auto category =
+        static_cast<CreativeEditorWorldLayoutPaletteCategory>(categoryValue);
+    if (!ImGui::BeginTabItem(
+            creativeEditorWorldLayoutPaletteCategoryLabel(category))) {
+      continue;
+    }
+    bool first = true;
+    for (const CreativeEditorWorldLayoutPaletteEntry& entry :
+         creativeEditorWorldLayoutPaletteEntries()) {
+      if (entry.category != category) {
+        continue;
+      }
+      if (!first) {
+        const ImGuiStyle& style = ImGui::GetStyle();
+        const float buttonWidth = ImGui::CalcTextSize(entry.label.data()).x +
+                                  (2.0F * style.FramePadding.x);
+        const float nextButtonRight = ImGui::GetItemRectMax().x +
+                                      style.ItemSpacing.x + buttonWidth;
+        const float contentRight = ImGui::GetWindowPos().x +
+                                   ImGui::GetWindowContentRegionMax().x;
+        if (nextButtonRight <= contentRight) {
+          ImGui::SameLine();
+        }
+      }
+      first = false;
+      const bool toolActive =
+          entry.activation == CreativeEditorWorldLayoutPaletteActivation::Tool &&
+          state.tool == entry.tool && !state.buildingTemplatePlacement.active;
+      if (toolActive) {
+        ImGui::PushStyleColor(ImGuiCol_Button,
+                              ImVec4{0.16F, 0.47F, 0.25F, 1.0F});
+      }
+      const std::size_t templateIndex =
+          entry.activation ==
+                  CreativeEditorWorldLayoutPaletteActivation::BuildingTemplate
+              ? findBuildingTemplate(state.buildingTemplates,
+                                     entry.buildingTemplateId)
+              : cr::kInvalidCreativeWorldLayoutIndex;
+      const bool unavailable =
+          entry.activation ==
+              CreativeEditorWorldLayoutPaletteActivation::BuildingTemplate &&
+          templateIndex == cr::kInvalidCreativeWorldLayoutIndex;
+      ImGui::BeginDisabled(unavailable);
+      if (ImGui::Button(entry.label.data())) {
+        if (entry.activation ==
+            CreativeEditorWorldLayoutPaletteActivation::Tool) {
+          queueTool(commands, entry.tool);
+        } else {
+          if (state.tool != CreativeEditorWorldLayoutTool::Select) {
+            queueTool(commands, CreativeEditorWorldLayoutTool::Select);
+          }
+          commands.push(
+              CreativeDesktopCommandId::WorldLayoutSelectBuildingTemplate,
+              CreativeDesktopWorldLayoutBuildingTemplateSelectionPayload{
+                  templateIndex});
+          commands.push(
+              CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate,
+              CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload{
+                  CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Begin,
+                  {0.0, 0.0},
+                  cr::CreativeWorldLayoutBuildingTransformOperation::
+                      RotateRight90});
+        }
+      }
+      ImGui::EndDisabled();
+      if (toolActive) {
+        ImGui::PopStyleColor();
+      }
+    }
+    ImGui::EndTabItem();
   }
-  if (active) {
-    ImGui::PopStyleColor();
-  }
+  ImGui::EndTabBar();
 }
 
 void drawSelectedRoomSettings(CreativeEditorWorldLayoutState& state,
@@ -886,6 +1092,7 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   drawGrid(*drawList, minimum, maximum, transform);
   const cr::CreativeWorldLayout &displaySource =
       creativeEditorWorldLayoutDisplaySource(state);
+  drawTerrainSymbols(*drawList, transform, state);
   for (std::size_t index = 0U; index < displaySource.rooms.size(); ++index) {
     drawRoom(*drawList, transform, state, index);
   }
@@ -896,6 +1103,7 @@ void drawLayoutCanvas(CreativeEditorState& editor,
     drawWall(*drawList, transform, state, index);
   }
   drawOpenings(*drawList, transform, state);
+  drawObjectSymbols(*drawList, transform, state);
   drawBuildingSelection(*drawList, transform, state);
   drawBuildingTemplatePlacement(*drawList, transform, state);
   drawRoomManipulation(*drawList, transform, state);
@@ -1191,17 +1399,7 @@ void buildCreativeEditorWorldLayoutPanel(
   ImGui::BeginDisabled(playModeActive || editor.assetEdit.active);
   ImGui::BeginDisabled(state.buildingTransform.active ||
                        state.buildingTemplatePlacement.active);
-  toolButton(commands, state.tool, CreativeEditorWorldLayoutTool::Select);
-  ImGui::SameLine();
-  toolButton(commands, state.tool, CreativeEditorWorldLayoutTool::Room);
-  ImGui::SameLine();
-  toolButton(commands, state.tool, CreativeEditorWorldLayoutTool::Floor);
-  ImGui::SameLine();
-  toolButton(commands, state.tool, CreativeEditorWorldLayoutTool::Wall);
-  ImGui::SameLine();
-  toolButton(commands, state.tool, CreativeEditorWorldLayoutTool::Door);
-  ImGui::SameLine();
-  toolButton(commands, state.tool, CreativeEditorWorldLayoutTool::Window);
+  drawWorldLayoutPalette(state, commands);
 
   if (ImGui::Button("Preview 3D")) {
     commands.push(CreativeDesktopCommandId::WorldLayoutPreview);
@@ -1259,12 +1457,15 @@ void buildCreativeEditorWorldLayoutPanel(
   }
 
   ImGui::TextDisabled(
-      "buildings %llu  rooms %llu  floors %llu  partitions %llu  openings %llu  rev %llu%s",
+      "buildings %llu  rooms %llu  floors %llu  partitions %llu  openings %llu  terrain %llu  objects %llu  rev %llu%s",
       static_cast<unsigned long long>(state.source.buildings.size()),
       static_cast<unsigned long long>(state.source.rooms.size()),
       static_cast<unsigned long long>(state.source.boxes.size()),
       static_cast<unsigned long long>(state.source.walls.size()),
       static_cast<unsigned long long>(state.source.openings.size()),
+      static_cast<unsigned long long>(state.source.terrainProfiles.size() +
+                                      state.source.terrainPaths.size()),
+      static_cast<unsigned long long>(state.source.objects.size()),
       static_cast<unsigned long long>(state.revision),
       creativeEditorWorldLayoutDirty(state) ? " *" : "");
   ImGui::SameLine();

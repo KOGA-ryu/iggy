@@ -57,7 +57,8 @@ void appendTagOnce(std::vector<std::string>& tags, std::string tag) {
 }
 
 [[nodiscard]] bool validRecipeKind(CreativeRecipeKind kind) noexcept {
-  return kind == CreativeRecipeKind::Building;
+  return kind == CreativeRecipeKind::Building ||
+         kind == CreativeRecipeKind::ObjectLibrary;
 }
 
 }  // namespace
@@ -68,6 +69,8 @@ std::string_view toString(CreativeRecipeKind kind) noexcept {
       return "Unknown";
     case CreativeRecipeKind::Building:
       return "Building";
+    case CreativeRecipeKind::ObjectLibrary:
+      return "ObjectLibrary";
   }
   return "Unknown";
 }
@@ -116,6 +119,8 @@ std::string creativeRecipeKindTag(CreativeRecipeKind kind) {
   switch (kind) {
     case CreativeRecipeKind::Building:
       return "creative_recipe:building";
+    case CreativeRecipeKind::ObjectLibrary:
+      return "creative_recipe:object_library";
     case CreativeRecipeKind::Unknown:
       return "creative_recipe:unknown";
   }

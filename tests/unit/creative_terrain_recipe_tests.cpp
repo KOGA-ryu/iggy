@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/recipes/TerrainRecipe.hpp"
+#include "app/iggy3d/creative/tools/TerrainSeed.hpp"
 
 #include <algorithm>
 #include <array>
@@ -110,6 +111,59 @@ bool profileRecipeIsExactKernelOutput() {
                     recipe.plan.sourceTerrainRevision ==
                         document.terrainField().revision(),
                 "profile recipe pins source identity and revision");
+}
+
+bool plateauRecipeUsesCanonicalLatticeAndAbsoluteHeight() {
+  cr::CreativeDocument document = makeDocument(107U);
+  const cr::CreativeTerrainControlEdit existing{
+      cr::CreativeTerrainEditKind::Upsert, {{8, 8}, 11U, 2U}};
+  static_cast<void>(document.applyTerrainControlEdits(
+      std::span{&existing, 1U}));
+
+  cr::CreativeTerrainProfileRecipeRequest request;
+  request.document = &document;
+  request.kind = cr::CreativeTerrainRecipeKind::Plateau;
+  request.center = {8, 8};
+  request.baseHeightCells = 6U;
+  request.radiusCells = 8U;
+  request.spacingCells = 4U;
+  const cr::CreativeTerrainRecipeResult recipe =
+      cr::buildCreativeTerrainProfileRecipe(request);
+
+  const cr::CreativeTerrainField emptyField;
+  const cr::CreativeTerrainSeedPlan lattice =
+      cr::buildCreativeTerrainSeedPlan(
+          {&emptyField, request.center,
+           cr::CreativeTerrainSeedOperation::SeedMissing,
+           request.radiusCells, request.spacingCells,
+           request.baseHeightCells, 4U});
+  bool exactLattice = recipe.plan.controlEdits.size() == lattice.items().size();
+  for (std::size_t index = 0U;
+       exactLattice && index < recipe.plan.controlEdits.size(); ++index) {
+    exactLattice =
+        sameEdit(recipe.plan.controlEdits[index], lattice.items()[index]);
+  }
+  const cr::CreativeTerrainControlPoint* center =
+      controlAt(recipe.plan, request.center);
+  const cr::CreativeTerrainRecipePreviewResult preview =
+      cr::previewCreativeTerrainRecipe(document, recipe.plan);
+
+  return expect(recipe.receipt.accepted && lattice.accepted,
+                "plateau recipe and lattice kernel accepted") &&
+         expect(recipe.plan.kind == cr::CreativeTerrainRecipeKind::Plateau &&
+                    recipe.plan.controlEdits.size() == 13U && exactLattice,
+                "plateau recipe owns canonical sparse lattice") &&
+         expect(center != nullptr && center->heightCells == 6U &&
+                    center->radiusCells == 4U,
+                "plateau replaces existing center with absolute flat height") &&
+         expect(recipe.plan.minimumCoord == cr::CreativeTerrainCoord2{0, 0} &&
+                    recipe.plan.maximumCoord ==
+                        cr::CreativeTerrainCoord2{16, 16},
+                "plateau reports complete semantic bounds") &&
+         expect(preview.accepted && preview.renderPlan.accepted,
+                "plateau exact edit plan previews") &&
+         expect(document.terrainField().controlAt({8, 8})->heightCells == 11U,
+                "plateau planning leaves source terrain unchanged");
 }
 
 bool pathRecipeAddsSemanticMaterialAndExactPreview() {
@@ -290,6 +344,7 @@ bool invalidFamiliesAndEnumsFailClosed() {
 
 int main() {
   const bool ok = profileRecipeIsExactKernelOutput() &&
+                  plateauRecipeUsesCanonicalLatticeAndAbsoluteHeight() &&
                   pathRecipeAddsSemanticMaterialAndExactPreview() &&
                   heightAndMaterialCommitAsOneUndoStep() &&
                   staleAndRejectedPlansNeverPartiallyMutate() &&

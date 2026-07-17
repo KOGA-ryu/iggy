@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/recipes/CreativeRecipe.hpp"
+#include "app/iggy3d/creative/recipes/ObjectLibraryRecipe.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -179,6 +180,103 @@ bool rejectedAtomicApplyPreservesDocumentAndHistory() {
                 "rejected recipe records no history");
 }
 
+bool objectLibraryRecipeOwnsBoundedAndPointPlacementParity() {
+  cr::CreativeObjectLibraryRecipeRequest request;
+  request.stableKey = "estate_props";
+  request.name = "Estate Props";
+
+  cr::CreativeObjectLibraryPlacementSpec bridge;
+  bridge.kind = cr::CreativeObjectKind::Bridge;
+  bridge.stableKey = "bridge.ditch";
+  bridge.name = "Ditch Bridge";
+  bridge.bounds = {{1.0, 2.0, 3.0}, {5.0, 2.5, 7.0}};
+  bridge.tags = {"map_template:test"};
+  request.placements.push_back(bridge);
+
+  cr::CreativeObjectLibraryPlacementSpec spawn;
+  spawn.kind = cr::CreativeObjectKind::SpawnPoint;
+  spawn.mode = cr::CreativeObjectLibraryPlacementMode::Point;
+  spawn.stableKey = "anchor.player";
+  spawn.name = "Player Arrival";
+  spawn.point = {8.0, 3.0, -2.0};
+  request.placements.push_back(spawn);
+
+  const cr::CreativeObjectLibraryRecipeResult recipe =
+      cr::buildCreativeObjectLibraryRecipe(request);
+  const cr::CreativeRecipeMaterializeResult materialized =
+      cr::materializeCreativeRecipe(recipe.plan, 20U);
+  const bool placementParity =
+      materialized.createRequests.size() == 2U &&
+      materialized.createRequests[0].kind == cr::CreativeObjectKind::Bridge &&
+      materialized.createRequests[0].hasBoundsOverride &&
+      materialized.createRequests[0].bounds.min.x == 1.0 &&
+      materialized.createRequests[0].bounds.max.z == 7.0 &&
+      materialized.createRequests[1].kind ==
+          cr::CreativeObjectKind::SpawnPoint &&
+      materialized.createRequests[1].hasTransformOverride &&
+      materialized.createRequests[1].transform.position.x == 8.0 &&
+      materialized.createRequests[1].transform.position.y == 3.0 &&
+      materialized.createRequests[1].transform.position.z == -2.0;
+
+  return expect(recipe.receipt.accepted &&
+                    recipe.receipt.status ==
+                        cr::CreativeObjectLibraryRecipeStatus::Ready,
+                "object library recipe accepted") &&
+         expect(recipe.plan.kind == cr::CreativeRecipeKind::ObjectLibrary &&
+                    recipe.receipt.boundedPlacementCount == 1U &&
+                    recipe.receipt.pointPlacementCount == 1U,
+                "object library recipe owns placement modes") &&
+         expect(materialized.receipt.accepted && placementParity,
+                "object library materialization preserves exact placement") &&
+         expect(cr::creativeRecipeRequestHasInstanceProvenance(
+                    materialized.createRequests[0],
+                    cr::CreativeRecipeKind::ObjectLibrary, "estate_props",
+                    cr::CreativeRecipeObjectRole::Source, "bridge.ditch") &&
+                    cr::creativeRecipeRequestHasInstanceProvenance(
+                        materialized.createRequests[1],
+                        cr::CreativeRecipeKind::ObjectLibrary,
+                        "estate_props", cr::CreativeRecipeObjectRole::Source,
+                        "anchor.player"),
+                "object library emits shared recipe provenance");
+}
+
+bool invalidObjectLibraryPlacementsFailWithoutPartialPlan() {
+  cr::CreativeObjectLibraryRecipeRequest invalidBounds;
+  invalidBounds.stableKey = "invalid_bounds";
+  invalidBounds.name = "Invalid Bounds";
+  cr::CreativeObjectLibraryPlacementSpec bridge;
+  bridge.kind = cr::CreativeObjectKind::Bridge;
+  bridge.stableKey = "bridge";
+  bridge.name = "Bridge";
+  bridge.bounds = {{0.0, 0.0, 0.0},
+                   {std::numeric_limits<double>::quiet_NaN(), 1.0, 1.0}};
+  invalidBounds.placements.push_back(bridge);
+  const cr::CreativeObjectLibraryRecipeResult bounded =
+      cr::buildCreativeObjectLibraryRecipe(invalidBounds);
+
+  cr::CreativeObjectLibraryRecipeRequest invalidPoint;
+  invalidPoint.stableKey = "invalid_point";
+  invalidPoint.name = "Invalid Point";
+  cr::CreativeObjectLibraryPlacementSpec spawn;
+  spawn.kind = cr::CreativeObjectKind::SpawnPoint;
+  spawn.mode = cr::CreativeObjectLibraryPlacementMode::Point;
+  spawn.stableKey = "spawn";
+  spawn.name = "Spawn";
+  spawn.point = {0.0, std::numeric_limits<double>::infinity(), 0.0};
+  invalidPoint.placements.push_back(spawn);
+  const cr::CreativeObjectLibraryRecipeResult point =
+      cr::buildCreativeObjectLibraryRecipe(invalidPoint);
+
+  return expect(!bounded.receipt.accepted && bounded.plan.objects.empty() &&
+                    bounded.receipt.status ==
+                        cr::CreativeObjectLibraryRecipeStatus::InvalidPlacement,
+                "non-finite object library bounds reject atomically") &&
+         expect(!point.receipt.accepted && point.plan.objects.empty() &&
+                    point.receipt.status ==
+                        cr::CreativeObjectLibraryRecipeStatus::InvalidPlacement,
+                "non-finite object library point rejects atomically");
+}
+
 }  // namespace
 
 int main() {
@@ -186,6 +284,8 @@ int main() {
       symbolicParentAndProvenanceMaterializeDeterministically() &&
       invalidKeysParentsAndAllocatorOverflowFailClosed() &&
       historyApplyIsAtomicAndCreatesOneUndoStep() &&
-      rejectedAtomicApplyPreservesDocumentAndHistory();
+      rejectedAtomicApplyPreservesDocumentAndHistory() &&
+      objectLibraryRecipeOwnsBoundedAndPointPlacementParity() &&
+      invalidObjectLibraryPlacementsFailWithoutPartialPlan();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

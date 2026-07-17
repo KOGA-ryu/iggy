@@ -112,6 +112,24 @@ void setStatus(CreativeWorldLayoutReceipt& receipt,
                          output.z);
 }
 
+[[nodiscard]] bool layoutPoint(const CreativeGridSettings& grid,
+                               CreativeVec3 cells,
+                               CreativeVec3& output) noexcept {
+  return worldCoordinate(grid.origin.x, grid.cellSizeMeters, cells.x,
+                         output.x) &&
+         worldCoordinate(grid.origin.y, grid.cellSizeMeters, cells.y,
+                         output.y) &&
+         worldCoordinate(grid.origin.z, grid.cellSizeMeters, cells.z,
+                         output.z);
+}
+
+[[nodiscard]] bool layoutBounds(const CreativeGridSettings& grid,
+                                CreativeBounds cells,
+                                CreativeBounds& output) noexcept {
+  return layoutPoint(grid, cells.min, output.min) &&
+         layoutPoint(grid, cells.max, output.max);
+}
+
 [[nodiscard]] std::string childKey(std::string_view buildingKey,
                                    std::string_view localKey) {
   return std::string(buildingKey) + "." + std::string(localKey);
@@ -280,6 +298,7 @@ std::string_view toString(CreativeWorldLayoutTable table) noexcept {
     case CreativeWorldLayoutTable::Box: return "Box";
     case CreativeWorldLayoutTable::Wall: return "Wall";
     case CreativeWorldLayoutTable::Opening: return "Opening";
+    case CreativeWorldLayoutTable::Object: return "Object";
     case CreativeWorldLayoutTable::TerrainProfile: return "TerrainProfile";
     case CreativeWorldLayoutTable::TerrainPath: return "TerrainPath";
     case CreativeWorldLayoutTable::TerrainPathPoint: return "TerrainPathPoint";
@@ -352,6 +371,7 @@ bool creativeWorldLayoutStableKeyExists(const CreativeWorldLayout& layout,
          std::any_of(layout.boxes.begin(), layout.boxes.end(), matches) ||
          std::any_of(layout.walls.begin(), layout.walls.end(), matches) ||
          std::any_of(layout.openings.begin(), layout.openings.end(), matches) ||
+         std::any_of(layout.objects.begin(), layout.objects.end(), matches) ||
          std::any_of(layout.terrainProfiles.begin(),
                      layout.terrainProfiles.end(), matches) ||
          std::any_of(layout.terrainPaths.begin(), layout.terrainPaths.end(),
@@ -621,6 +641,75 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     result.plan.objectRecipes.push_back(built.plan);
   }
 
+  if (!layout.objects.empty()) {
+    CreativeObjectLibraryRecipeRequest objectRequest;
+    objectRequest.stableKey = layout.stableKey + ".objects";
+    objectRequest.name = "World Layout Objects";
+    objectRequest.placements.reserve(layout.objects.size());
+    for (std::size_t index = 0U; index < layout.objects.size(); ++index) {
+      const CreativeWorldLayoutObject& symbol = layout.objects[index];
+      if (!registerKey(stableKeys, symbol.stableKey,
+                       CreativeWorldLayoutTable::Object, index,
+                       result.receipt)) {
+        return result;
+      }
+      if (symbol.name.empty() ||
+          symbol.mode >= CreativeObjectLibraryPlacementMode::Count) {
+        result.receipt.failedTable = CreativeWorldLayoutTable::Object;
+        result.receipt.failedIndex = index;
+        setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidSymbol,
+                  "creative_world_layout_object_invalid");
+        return result;
+      }
+      CreativeObjectLibraryPlacementSpec placement;
+      placement.kind = symbol.kind;
+      placement.mode = symbol.mode;
+      placement.stableKey = symbol.stableKey;
+      placement.name = symbol.name;
+      placement.assetId = symbol.assetId;
+      placement.visible = symbol.visible;
+      placement.tags = symbol.tags;
+      if (!hasTag(placement.tags, layoutTag)) {
+        placement.tags.push_back(layoutTag);
+      }
+      const bool positionReady =
+          symbol.mode == CreativeObjectLibraryPlacementMode::Bounds
+              ? layoutBounds(grid, symbol.boundsCells, placement.bounds)
+              : layoutPoint(grid, symbol.pointCells, placement.point);
+      if (!positionReady) {
+        result.receipt.failedTable = CreativeWorldLayoutTable::Object;
+        result.receipt.failedIndex = index;
+        setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidSymbol,
+                  "creative_world_layout_object_coordinate_invalid");
+        return result;
+      }
+      objectRequest.placements.push_back(std::move(placement));
+    }
+    const CreativeObjectLibraryRecipeResult objects =
+        buildCreativeObjectLibraryRecipe(objectRequest);
+    if (!objects.receipt.accepted) {
+      result.receipt.failedTable = CreativeWorldLayoutTable::Object;
+      result.receipt.failedIndex = objects.receipt.failedPlacementIndex;
+      result.receipt.kernelReasonCode = objects.receipt.reasonCode;
+      setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
+                "creative_world_layout_object_recipe_rejected");
+      return result;
+    }
+    const CreativeRecipeMaterializeResult validated =
+        materializeCreativeRecipe(objects.plan, nextObjectId);
+    if (!validated.receipt.accepted) {
+      result.receipt.failedTable = CreativeWorldLayoutTable::Object;
+      result.receipt.kernelReasonCode = validated.receipt.reasonCode;
+      setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
+                "creative_world_layout_object_materialize_rejected");
+      return result;
+    }
+    nextObjectId +=
+        static_cast<CreativeObjectId>(validated.createRequests.size());
+    result.receipt.objectCount += validated.createRequests.size();
+    result.plan.objectRecipes.push_back(objects.plan);
+  }
+
   CreativeDocument terrainStaged = document;
   if (layout.terrainOwnership ==
           CreativeWorldLayoutTerrainOwnership::ReplaceAll &&
@@ -775,6 +864,7 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
   const bool hasSourceSymbols =
       !layout.buildings.empty() || !layout.boxes.empty() ||
       !layout.walls.empty() || !layout.openings.empty() ||
+      !layout.objects.empty() ||
       !layout.terrainProfiles.empty() || !layout.terrainPaths.empty();
   const bool hasOperations = !result.plan.objectRemoveIds.empty() ||
                              !result.plan.objectRecipes.empty() ||

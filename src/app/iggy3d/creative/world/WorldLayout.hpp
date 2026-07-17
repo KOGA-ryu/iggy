@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/recipes/BuildingRecipe.hpp"
+#include "app/iggy3d/creative/recipes/ObjectLibraryRecipe.hpp"
 #include "app/iggy3d/creative/recipes/TerrainRecipe.hpp"
 
 #include <cstddef>
@@ -13,7 +14,7 @@
 
 namespace iggy3d::creative {
 
-inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 2U;
+inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 3U;
 inline constexpr std::size_t kInvalidCreativeWorldLayoutIndex =
     std::numeric_limits<std::size_t>::max();
 inline constexpr std::uint16_t kDefaultCreativeWorldLayoutWallHeightCells = 3U;
@@ -119,6 +120,22 @@ struct CreativeWorldLayoutOpening {
   double insertThicknessCells = 0.0;
 };
 
+// Reusable props and gameplay anchors remain semantic layout symbols instead
+// of being applied as an unrelated post-layout batch. Coordinates are in grid
+// cells; the compiler converts them through the document's grid settings.
+struct CreativeWorldLayoutObject {
+  CreativeObjectKind kind = CreativeObjectKind::Unknown;
+  CreativeObjectLibraryPlacementMode mode =
+      CreativeObjectLibraryPlacementMode::Bounds;
+  std::string stableKey;
+  std::string name;
+  std::string assetId;
+  CreativeBounds boundsCells;
+  CreativeVec3 pointCells;
+  bool visible = true;
+  std::vector<std::string> tags;
+};
+
 struct CreativeWorldLayoutTerrainProfile {
   std::string stableKey;
   CreativeTerrainRecipeKind kind = CreativeTerrainRecipeKind::Hill;
@@ -165,6 +182,7 @@ struct CreativeWorldLayout {
   std::vector<CreativeWorldLayoutBox> boxes;
   std::vector<CreativeWorldLayoutWall> walls;
   std::vector<CreativeWorldLayoutOpening> openings;
+  std::vector<CreativeWorldLayoutObject> objects;
   std::vector<CreativeWorldLayoutTerrainProfile> terrainProfiles;
   std::vector<CreativeWorldLayoutTerrainPath> terrainPaths;
   std::vector<CreativeTerrainPathPoint> terrainPathPoints;
@@ -177,6 +195,7 @@ enum class CreativeWorldLayoutTable : std::uint8_t {
   Box,
   Wall,
   Opening,
+  Object,
   TerrainProfile,
   TerrainPath,
   TerrainPathPoint,

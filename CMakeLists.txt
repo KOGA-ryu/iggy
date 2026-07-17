@@ -122,6 +122,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/spatial/Ghost.cpp
     src/app/iggy3d/creative/recipes/CreativeRecipe.cpp
     src/app/iggy3d/creative/recipes/BuildingRecipe.cpp
+    src/app/iggy3d/creative/recipes/ObjectLibraryRecipe.cpp
     src/app/iggy3d/creative/recipes/TerrainRecipe.cpp
     src/app/iggy3d/creative/world/WorldLayout.cpp
     src/app/iggy3d/creative/world/WorldLayoutRooms.cpp
@@ -148,6 +149,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/world/DocumentSectionRecords.cpp
     src/app/iggy3d/creative/world/DocumentSectionFields.cpp
     src/app/iggy3d/creative/world/MapTemplate.cpp
+    src/app/iggy3d/creative/world/BuilderEstateTemplate.cpp
     src/app/iggy3d/save/Catalog.cpp
     src/app/iggy3d/save/CatalogProjector.cpp
     src/app/iggy3d/creative/world/WorldService.cpp

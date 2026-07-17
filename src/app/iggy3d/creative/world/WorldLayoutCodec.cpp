@@ -212,6 +212,7 @@ bool boundedRecordCount(const CreativeWorldLayout& layout,
       layout.boxes.size(),
       layout.walls.size(),
       layout.openings.size(),
+      layout.objects.size(),
       layout.terrainProfiles.size(),
       layout.terrainPaths.size(),
       layout.terrainPathPoints.size(),
@@ -322,6 +323,36 @@ bool validateForEncoding(const CreativeWorldLayout& layout,
       failure = {finite ? CreativeWorldLayoutCodecStatus::InvalidRecord
                         : CreativeWorldLayoutCodecStatus::NonFiniteValue,
                  "creative_world_layout_encode_invalid_opening"};
+      return false;
+    }
+  }
+  for (const CreativeWorldLayoutObject& object : layout.objects) {
+    const bool finite = std::isfinite(object.boundsCells.min.x) &&
+                        std::isfinite(object.boundsCells.min.y) &&
+                        std::isfinite(object.boundsCells.min.z) &&
+                        std::isfinite(object.boundsCells.max.x) &&
+                        std::isfinite(object.boundsCells.max.y) &&
+                        std::isfinite(object.boundsCells.max.z) &&
+                        std::isfinite(object.pointCells.x) &&
+                        std::isfinite(object.pointCells.y) &&
+                        std::isfinite(object.pointCells.z);
+    if (object.tags.size() >
+        kCreativeWorldLayoutCodecMaxRecords - totalTagCount) {
+      failure = {CreativeWorldLayoutCodecStatus::CapacityExceeded,
+                 "creative_world_layout_encode_tag_capacity_exceeded"};
+      return false;
+    }
+    totalTagCount += object.tags.size();
+    if (!validKeyName(object.stableKey, object.name) ||
+        !validString(object.assetId) || !finite ||
+        enumValue(object.kind) == enumValue(CreativeObjectKind::Unknown) ||
+        enumValue(object.kind) >= enumValue(CreativeObjectKind::Count) ||
+        enumValue(object.mode) >=
+            enumValue(CreativeObjectLibraryPlacementMode::Count) ||
+        !std::all_of(object.tags.begin(), object.tags.end(), validString)) {
+      failure = {finite ? CreativeWorldLayoutCodecStatus::InvalidRecord
+                        : CreativeWorldLayoutCodecStatus::NonFiniteValue,
+                 "creative_world_layout_encode_invalid_object"};
       return false;
     }
   }
@@ -475,6 +506,7 @@ CreativeWorldLayoutEncodeResult encodeCreativeWorldLayout(
          << ' ' << layout.buildings.size() << ' ' << layout.rooms.size() << ' '
          << layout.boxes.size() << ' ' << layout.walls.size() << ' '
          << layout.openings.size() << ' '
+         << layout.objects.size() << ' '
          << layout.terrainProfiles.size() << ' ' << layout.terrainPaths.size()
          << ' ' << layout.terrainPathPoints.size() << '\n';
   for (const CreativeWorldLayoutBuilding& building : layout.buildings) {
@@ -525,6 +557,22 @@ CreativeWorldLayoutEncodeResult encodeCreativeWorldLayout(
            << opening.insertBottomCells << ' ' << opening.insertHeightCells
            << ' ' << opening.insertWidthCells << ' '
            << opening.insertThicknessCells << '\n';
+  }
+  for (const CreativeWorldLayoutObject& object : layout.objects) {
+    output << "Y " << static_cast<unsigned>(enumValue(object.kind)) << ' '
+           << static_cast<unsigned>(enumValue(object.mode)) << ' '
+           << hexString(object.stableKey) << ' ' << hexString(object.name)
+           << ' ' << hexString(object.assetId) << ' '
+           << (object.visible ? 1 : 0) << ' ' << object.boundsCells.min.x << ' '
+           << object.boundsCells.min.y << ' ' << object.boundsCells.min.z << ' '
+           << object.boundsCells.max.x << ' ' << object.boundsCells.max.y << ' '
+           << object.boundsCells.max.z << ' ' << object.pointCells.x << ' '
+           << object.pointCells.y << ' ' << object.pointCells.z << ' '
+           << object.tags.size();
+    for (const std::string& tag : object.tags) {
+      output << ' ' << hexString(tag);
+    }
+    output << '\n';
   }
   for (const CreativeWorldLayoutTerrainProfile& profile :
        layout.terrainProfiles) {
@@ -609,6 +657,7 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
   std::size_t boxCount = 0U;
   std::size_t wallCount = 0U;
   std::size_t openingCount = 0U;
+  std::size_t objectCount = 0U;
   std::size_t profileCount = 0U;
   std::size_t pathCount = 0U;
   std::size_t pointCount = 0U;
@@ -620,9 +669,13 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
       !layoutRecord.readSize(buildingCount);
   const bool roomCountInvalid =
       codecVersion >= 2U && !layoutRecord.readSize(roomCount);
-  if (layoutPrefix || roomCountInvalid ||
+  const bool structuralCountInvalid =
       !layoutRecord.readSize(boxCount) || !layoutRecord.readSize(wallCount) ||
-      !layoutRecord.readSize(openingCount) ||
+      !layoutRecord.readSize(openingCount);
+  const bool objectCountInvalid =
+      codecVersion >= 3U && !layoutRecord.readSize(objectCount);
+  if (layoutPrefix || roomCountInvalid || structuralCountInvalid ||
+      objectCountInvalid ||
       !layoutRecord.readSize(profileCount) ||
       !layoutRecord.readSize(pathCount) || !layoutRecord.readSize(pointCount) ||
       !layoutRecord.finished()) {
@@ -632,7 +685,8 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
     return result;
   }
   const std::uint32_t expectedSchemaVersion =
-      codecVersion == 1U ? 1U : kCreativeWorldLayoutSchemaVersion;
+      codecVersion == 1U ? 1U : codecVersion == 2U ? 2U
+                                                   : kCreativeWorldLayoutSchemaVersion;
   if (result.layout.schemaVersion != expectedSchemaVersion) {
     result.status = CreativeWorldLayoutCodecStatus::InvalidRecord;
     result.failedLine = 2U;
@@ -642,7 +696,7 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
   std::size_t declaredRecords = 3U;
   const std::size_t declaredCounts[] = {
       buildingCount, roomCount, boxCount, wallCount, openingCount,
-      profileCount, pathCount, pointCount,
+      objectCount, profileCount, pathCount, pointCount,
   };
   for (const std::size_t count : declaredCounts) {
     if (count > kCreativeWorldLayoutCodecMaxRecords - declaredRecords) {
@@ -792,6 +846,57 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
   };
   if (!readTable(lines, lineIndex, openingCount, result.layout.openings,
                  readOpening, result)) {
+    return result;
+  }
+  const auto readObject = [&](RecordReader& reader,
+                              CreativeWorldLayoutObject& object) {
+    std::uint16_t kind = 0U;
+    std::uint8_t mode = 0U;
+    std::size_t tagCount = 0U;
+    const bool parsed =
+        reader.readLiteral("Y") && reader.readUnsigned(kind) &&
+        kind > enumValue(CreativeObjectKind::Unknown) &&
+        kind < enumValue(CreativeObjectKind::Count) &&
+        reader.readUnsigned(mode) &&
+        mode < enumValue(CreativeObjectLibraryPlacementMode::Count) &&
+        reader.readHex(object.stableKey) && reader.readHex(object.name) &&
+        reader.readHex(object.assetId) && reader.readBool(object.visible) &&
+        reader.readDouble(object.boundsCells.min.x) &&
+        reader.readDouble(object.boundsCells.min.y) &&
+        reader.readDouble(object.boundsCells.min.z) &&
+        reader.readDouble(object.boundsCells.max.x) &&
+        reader.readDouble(object.boundsCells.max.y) &&
+        reader.readDouble(object.boundsCells.max.z) &&
+        reader.readDouble(object.pointCells.x) &&
+        reader.readDouble(object.pointCells.y) &&
+        reader.readDouble(object.pointCells.z) &&
+        reader.readSize(tagCount) &&
+        tagCount <= kCreativeWorldLayoutCodecMaxRecords - totalTagCount;
+    const bool finite = std::isfinite(object.boundsCells.min.x) &&
+                        std::isfinite(object.boundsCells.min.y) &&
+                        std::isfinite(object.boundsCells.min.z) &&
+                        std::isfinite(object.boundsCells.max.x) &&
+                        std::isfinite(object.boundsCells.max.y) &&
+                        std::isfinite(object.boundsCells.max.z) &&
+                        std::isfinite(object.pointCells.x) &&
+                        std::isfinite(object.pointCells.y) &&
+                        std::isfinite(object.pointCells.z);
+    if (!parsed || !finite) {
+      return false;
+    }
+    object.kind = static_cast<CreativeObjectKind>(kind);
+    object.mode = static_cast<CreativeObjectLibraryPlacementMode>(mode);
+    totalTagCount += tagCount;
+    object.tags.resize(tagCount);
+    for (std::string& tag : object.tags) {
+      if (!reader.readHex(tag)) {
+        return false;
+      }
+    }
+    return true;
+  };
+  if (!readTable(lines, lineIndex, objectCount, result.layout.objects,
+                 readObject, result)) {
     return result;
   }
   const auto readProfile = [](RecordReader& reader,

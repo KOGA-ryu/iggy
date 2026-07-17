@@ -3,7 +3,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
@@ -21,7 +23,38 @@ enum class CreativeEditorWorldLayoutTool : std::uint8_t {
   Wall,
   Door,
   Window,
+  Plateau,
+  Road,
+  Ditch,
+  Bridge,
+  Boulder,
+  PlayerSpawn,
+  NpcSpawn,
   Count,
+};
+
+enum class CreativeEditorWorldLayoutPaletteCategory : std::uint8_t {
+  Structure,
+  Terrain,
+  Object,
+  Gameplay,
+  Count,
+};
+
+enum class CreativeEditorWorldLayoutPaletteActivation : std::uint8_t {
+  Tool,
+  BuildingTemplate,
+  Count,
+};
+
+struct CreativeEditorWorldLayoutPaletteEntry {
+  CreativeEditorWorldLayoutPaletteCategory category =
+      CreativeEditorWorldLayoutPaletteCategory::Structure;
+  std::string_view label;
+  CreativeEditorWorldLayoutPaletteActivation activation =
+      CreativeEditorWorldLayoutPaletteActivation::Tool;
+  CreativeEditorWorldLayoutTool tool = CreativeEditorWorldLayoutTool::Select;
+  std::string_view buildingTemplateId;
 };
 
 enum class CreativeEditorWorldLayoutSelectionKind : std::uint8_t {
@@ -31,6 +64,9 @@ enum class CreativeEditorWorldLayoutSelectionKind : std::uint8_t {
   Wall,
   Opening,
   Building,
+  TerrainProfile,
+  TerrainPath,
+  Object,
 };
 
 struct CreativeEditorWorldLayoutSelection {
@@ -252,6 +288,15 @@ struct CreativeEditorWorldLayoutBuildingTemplateLoadReceipt {
       "creative_editor_world_layout_building_template_load_not_requested";
 };
 
+struct CreativeEditorWorldLayoutBuildingTemplateInstallReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  std::size_t templateIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::string reasonCode =
+      "creative_editor_world_layout_building_template_install_not_requested";
+};
+
 enum class CreativeEditorWorldLayoutBuildingTemplatePlacementPhase
     : std::uint8_t {
   Begin,
@@ -403,6 +448,10 @@ struct CreativeEditorWorldLayoutApplyReceipt {
 
 [[nodiscard]] const char* creativeEditorWorldLayoutToolLabel(
     CreativeEditorWorldLayoutTool tool) noexcept;
+[[nodiscard]] const char* creativeEditorWorldLayoutPaletteCategoryLabel(
+    CreativeEditorWorldLayoutPaletteCategory category) noexcept;
+[[nodiscard]] std::span<const CreativeEditorWorldLayoutPaletteEntry>
+creativeEditorWorldLayoutPaletteEntries() noexcept;
 
 void resetCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
                                     std::string layoutKey = "world_layout");
@@ -519,6 +568,10 @@ deleteCreativeEditorWorldLayoutBuilding(CreativeEditorWorldLayoutState& state,
 loadCreativeEditorWorldLayoutBuildingTemplateLibrary(
     CreativeEditorWorldLayoutBuildingTemplateLibrary& library,
     const std::filesystem::path& creativeSaveRoot);
+[[nodiscard]] CreativeEditorWorldLayoutBuildingTemplateInstallReceipt
+installCreativeEditorWorldLayoutBuildingTemplate(
+    CreativeEditorWorldLayoutBuildingTemplateLibrary& library,
+    const cr::CreativeWorldLayoutBuildingTemplate& sourceTemplate);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 captureCreativeEditorWorldLayoutBuildingTemplate(
     CreativeEditorWorldLayoutState& state,

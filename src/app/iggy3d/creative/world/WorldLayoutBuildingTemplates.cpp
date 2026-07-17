@@ -177,6 +177,7 @@ bool validCreativeWorldLayoutBuildingTemplate(
           kCreativeWorldLayoutSchemaVersion ||
       value.normalizedLayout.stableKey != value.templateId ||
       value.normalizedLayout.buildings.size() != 1U ||
+      !value.normalizedLayout.objects.empty() ||
       !value.normalizedLayout.terrainProfiles.empty() ||
       !value.normalizedLayout.terrainPaths.empty() ||
       !value.normalizedLayout.terrainPathPoints.empty() ||

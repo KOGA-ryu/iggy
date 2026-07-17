@@ -2,9 +2,11 @@
 
 #include "EditorWorldLayoutInternal.hpp"
 
+#include "app/iggy3d/creative/world/MapTemplate.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <limits>
 #include <tuple>
@@ -19,6 +21,53 @@ constexpr double kOpeningSnapCells = 0.25;
 constexpr double kOpeningEndClearanceCells = 0.25;
 constexpr double kOpeningMinimumWidthCells = 0.25;
 constexpr double kOpeningGeometryEpsilon = 1.0e-9;
+
+constexpr std::array<CreativeEditorWorldLayoutPaletteEntry, 14U>
+    kWorldLayoutPaletteEntries = {{
+        {CreativeEditorWorldLayoutPaletteCategory::Structure, "Select",
+         CreativeEditorWorldLayoutPaletteActivation::Tool,
+         CreativeEditorWorldLayoutTool::Select, {}},
+        {CreativeEditorWorldLayoutPaletteCategory::Structure, "Estate House",
+         CreativeEditorWorldLayoutPaletteActivation::BuildingTemplate,
+         CreativeEditorWorldLayoutTool::Select,
+         cr::kBuilderEstateHouseTemplateId},
+        {CreativeEditorWorldLayoutPaletteCategory::Structure, "Room",
+         CreativeEditorWorldLayoutPaletteActivation::Tool,
+         CreativeEditorWorldLayoutTool::Room, {}},
+        {CreativeEditorWorldLayoutPaletteCategory::Structure, "Floor",
+         CreativeEditorWorldLayoutPaletteActivation::Tool,
+         CreativeEditorWorldLayoutTool::Floor, {}},
+        {CreativeEditorWorldLayoutPaletteCategory::Structure, "Partition",
+         CreativeEditorWorldLayoutPaletteActivation::Tool,
+         CreativeEditorWorldLayoutTool::Wall, {}},
+        {CreativeEditorWorldLayoutPaletteCategory::Structure, "Door",
+         CreativeEditorWorldLayoutPaletteActivation::Tool,
+         CreativeEditorWorldLayoutTool::Door, {}},
+        {CreativeEditorWorldLayoutPaletteCategory::Structure, "Window",
+         CreativeEditorWorldLayoutPaletteActivation::Tool,
+         CreativeEditorWorldLayoutTool::Window, {}},
+        {CreativeEditorWorldLayoutPaletteCategory::Terrain, "Plateau",
+         CreativeEditorWorldLayoutPaletteActivation::Tool,
+         CreativeEditorWorldLayoutTool::Plateau, {}},
+        {CreativeEditorWorldLayoutPaletteCategory::Terrain, "Road",
+         CreativeEditorWorldLayoutPaletteActivation::Tool,
+         CreativeEditorWorldLayoutTool::Road, {}},
+        {CreativeEditorWorldLayoutPaletteCategory::Terrain, "Ditch",
+         CreativeEditorWorldLayoutPaletteActivation::Tool,
+         CreativeEditorWorldLayoutTool::Ditch, {}},
+        {CreativeEditorWorldLayoutPaletteCategory::Object, "Bridge",
+         CreativeEditorWorldLayoutPaletteActivation::Tool,
+         CreativeEditorWorldLayoutTool::Bridge, {}},
+        {CreativeEditorWorldLayoutPaletteCategory::Object, "Boulder",
+         CreativeEditorWorldLayoutPaletteActivation::Tool,
+         CreativeEditorWorldLayoutTool::Boulder, {}},
+        {CreativeEditorWorldLayoutPaletteCategory::Gameplay, "Player Spawn",
+         CreativeEditorWorldLayoutPaletteActivation::Tool,
+         CreativeEditorWorldLayoutTool::PlayerSpawn, {}},
+        {CreativeEditorWorldLayoutPaletteCategory::Gameplay, "NPC Spawn",
+         CreativeEditorWorldLayoutPaletteActivation::Tool,
+         CreativeEditorWorldLayoutTool::NpcSpawn, {}},
+    }};
 
 using detail::clearWorldLayoutInteraction;
 using detail::invalidateWorldLayoutPreview;
@@ -258,6 +307,23 @@ bool sameHost(const cr::CreativeWorldLayoutOpening& opening,
                    opening.roomEdge == projection.roomEdge;
 }
 
+double distanceToSegment(CreativeEditorWorldLayoutPoint point,
+                         cr::CreativeTerrainCoord2 start,
+                         cr::CreativeTerrainCoord2 end) noexcept {
+  const double dx = static_cast<double>(end.x) - start.x;
+  const double dz = static_cast<double>(end.z) - start.z;
+  const double lengthSquared = dx * dx + dz * dz;
+  if (lengthSquared <= 0.0) {
+    return std::hypot(point.x - start.x, point.z - start.z);
+  }
+  const double t = std::clamp(
+      ((point.x - start.x) * dx + (point.z - start.z) * dz) /
+          lengthSquared,
+      0.0, 1.0);
+  return std::hypot(point.x - (start.x + t * dx),
+                    point.z - (start.z + t * dz));
+}
+
 CreativeEditorWorldLayoutSelection hitTest(
     const cr::CreativeWorldLayout& layout,
     CreativeEditorWorldLayoutPoint point) {
@@ -282,6 +348,20 @@ CreativeEditorWorldLayoutSelection hitTest(
     }
     return {CreativeEditorWorldLayoutSelectionKind::Room, host.roomIndex};
   }
+  for (std::size_t index = layout.objects.size(); index > 0U; --index) {
+    const cr::CreativeWorldLayoutObject& object = layout.objects[index - 1U];
+    const bool hit =
+        object.mode == cr::CreativeObjectLibraryPlacementMode::Bounds
+            ? point.x >= object.boundsCells.min.x &&
+                  point.x <= object.boundsCells.max.x &&
+                  point.z >= object.boundsCells.min.z &&
+                  point.z <= object.boundsCells.max.z
+            : std::hypot(point.x - object.pointCells.x,
+                         point.z - object.pointCells.z) <= 0.6;
+    if (hit) {
+      return {CreativeEditorWorldLayoutSelectionKind::Object, index - 1U};
+    }
+  }
   for (std::size_t index = layout.rooms.size(); index > 0U; --index) {
     const cr::CreativeWorldLayoutRect& rect =
         layout.rooms[index - 1U].footprint;
@@ -296,6 +376,35 @@ CreativeEditorWorldLayoutSelection hitTest(
     if (point.x >= rect.minimum.x && point.x <= rect.maximum.x &&
         point.z >= rect.minimum.z && point.z <= rect.maximum.z) {
       return {CreativeEditorWorldLayoutSelectionKind::Box, index - 1U};
+    }
+  }
+  for (std::size_t index = layout.terrainProfiles.size(); index > 0U; --index) {
+    const cr::CreativeWorldLayoutTerrainProfile& profile =
+        layout.terrainProfiles[index - 1U];
+    if (std::hypot(point.x - profile.center.x, point.z - profile.center.z) <=
+        0.65) {
+      return {CreativeEditorWorldLayoutSelectionKind::TerrainProfile,
+              index - 1U};
+    }
+  }
+  for (std::size_t index = layout.terrainPaths.size(); index > 0U; --index) {
+    const cr::CreativeWorldLayoutTerrainPath& path =
+        layout.terrainPaths[index - 1U];
+    if (path.pointCount < 2U ||
+        path.firstPointIndex > layout.terrainPathPoints.size() ||
+        path.pointCount >
+            layout.terrainPathPoints.size() - path.firstPointIndex) {
+      continue;
+    }
+    for (std::size_t pointIndex = path.firstPointIndex + 1U;
+         pointIndex < path.firstPointIndex + path.pointCount; ++pointIndex) {
+      if (distanceToSegment(
+              point, layout.terrainPathPoints[pointIndex - 1U].coord,
+              layout.terrainPathPoints[pointIndex].coord) <=
+          std::max(0.65, static_cast<double>(path.halfWidthCells))) {
+        return {CreativeEditorWorldLayoutSelectionKind::TerrainPath,
+                index - 1U};
+      }
     }
   }
   return {};
@@ -877,6 +986,148 @@ CreativeEditorWorldLayoutEditReceipt addOpening(
   return {true, true, "creative_editor_world_layout_opening_added"};
 }
 
+CreativeEditorWorldLayoutEditReceipt addPlateau(
+    CreativeEditorWorldLayoutState& state, cr::CreativeTerrainCoord2 point) {
+  cr::CreativeWorldLayoutTerrainProfile profile;
+  profile.stableKey = mintWorldLayoutStableKey(state, "plateau");
+  profile.kind = cr::CreativeTerrainRecipeKind::Plateau;
+  profile.center = point;
+  profile.baseHeightCells = 4U;
+  profile.radiusCells = 8U;
+  profile.amplitudeCells = 1U;
+  profile.spacingCells = 4U;
+  profile.blend = cr::CreativeTerrainProfileBlend::Set;
+  profile.rodPolicy = cr::CreativeTerrainProfileRodPolicy::Fill;
+  state.source.terrainProfiles.push_back(std::move(profile));
+  state.selection = {CreativeEditorWorldLayoutSelectionKind::TerrainProfile,
+                     state.source.terrainProfiles.size() - 1U};
+  noteWorldLayoutSourceChange(state, "plateau added");
+  return {true, true, "creative_editor_world_layout_plateau_added"};
+}
+
+CreativeEditorWorldLayoutEditReceipt addTerrainPathPoint(
+    CreativeEditorWorldLayoutState& state, cr::CreativeTerrainCoord2 point,
+    cr::CreativeTerrainRecipeKind kind) {
+  if (!state.anchorActive) {
+    state.anchorActive = true;
+    state.anchor = point;
+    state.statusMessage = kind == cr::CreativeTerrainRecipeKind::Road
+                              ? "road start set; choose end"
+                              : "ditch start set; choose end";
+    return {true, false, "creative_editor_world_layout_anchor_set"};
+  }
+  const cr::CreativeTerrainCoord2 start = state.anchor;
+  state.anchorActive = false;
+  if (start == point) {
+    state.statusMessage = "terrain path needs length";
+    return {false, false, "creative_editor_world_layout_path_degenerate"};
+  }
+  const std::uint16_t height =
+      kind == cr::CreativeTerrainRecipeKind::Ditch ? 2U : 1U;
+  cr::CreativeWorldLayoutTerrainPath path;
+  path.stableKey = mintWorldLayoutStableKey(
+      state, kind == cr::CreativeTerrainRecipeKind::Road ? "road" : "ditch");
+  path.kind = kind;
+  path.firstPointIndex = state.source.terrainPathPoints.size();
+  path.pointCount = 2U;
+  path.elevation = cr::CreativeTerrainPathElevation::Level;
+  path.halfWidthCells = 1U;
+  path.amplitudeCells = 1U;
+  path.paintSurface = true;
+  path.material = cr::CreativeTerrainMaterial::Count;
+  state.source.terrainPathPoints.push_back({start, height});
+  state.source.terrainPathPoints.push_back({point, height});
+  state.source.terrainPaths.push_back(std::move(path));
+  state.selection = {CreativeEditorWorldLayoutSelectionKind::TerrainPath,
+                     state.source.terrainPaths.size() - 1U};
+  noteWorldLayoutSourceChange(
+      state, kind == cr::CreativeTerrainRecipeKind::Road ? "road added"
+                                                         : "ditch added");
+  return {true, true, "creative_editor_world_layout_path_added"};
+}
+
+CreativeEditorWorldLayoutEditReceipt addBridgePoint(
+    CreativeEditorWorldLayoutState& state, cr::CreativeTerrainCoord2 point) {
+  if (!state.anchorActive) {
+    state.anchorActive = true;
+    state.anchor = point;
+    state.statusMessage = "bridge start set; choose opposite corner";
+    return {true, false, "creative_editor_world_layout_anchor_set"};
+  }
+  const cr::CreativeWorldLayoutRect footprint =
+      normalizedRect(state.anchor, point);
+  state.anchorActive = false;
+  if (footprint.minimum == footprint.maximum ||
+      footprint.minimum.x == footprint.maximum.x ||
+      footprint.minimum.z == footprint.maximum.z) {
+    state.statusMessage = "bridge needs width and length";
+    return {false, false, "creative_editor_world_layout_bridge_degenerate"};
+  }
+  cr::CreativeWorldLayoutObject object;
+  object.kind = cr::CreativeObjectKind::Bridge;
+  object.mode = cr::CreativeObjectLibraryPlacementMode::Bounds;
+  object.stableKey = mintWorldLayoutStableKey(state, "bridge");
+  object.name = "Bridge " + std::to_string(state.source.objects.size() + 1U);
+  object.boundsCells = {
+      {static_cast<double>(footprint.minimum.x), 0.0,
+       static_cast<double>(footprint.minimum.z)},
+      {static_cast<double>(footprint.maximum.x), 0.35,
+       static_cast<double>(footprint.maximum.z)},
+  };
+  object.tags = {"world_layout:object"};
+  state.source.objects.push_back(std::move(object));
+  state.selection = {CreativeEditorWorldLayoutSelectionKind::Object,
+                     state.source.objects.size() - 1U};
+  noteWorldLayoutSourceChange(state, "bridge added");
+  return {true, true, "creative_editor_world_layout_bridge_added"};
+}
+
+CreativeEditorWorldLayoutEditReceipt addPointObject(
+    CreativeEditorWorldLayoutState& state, cr::CreativeTerrainCoord2 point,
+    CreativeEditorWorldLayoutTool tool) {
+  cr::CreativeWorldLayoutObject object;
+  object.stableKey = mintWorldLayoutStableKey(
+      state, tool == CreativeEditorWorldLayoutTool::Boulder
+                 ? "boulder"
+                 : tool == CreativeEditorWorldLayoutTool::PlayerSpawn
+                       ? "player_spawn"
+                       : "npc_spawn");
+  object.tags = {"world_layout:object"};
+  if (tool == CreativeEditorWorldLayoutTool::Boulder) {
+    object.kind = cr::CreativeObjectKind::Rock;
+    object.mode = cr::CreativeObjectLibraryPlacementMode::Bounds;
+    object.name = "Boulder " +
+                  std::to_string(state.source.objects.size() + 1U);
+    object.assetId = "boulder_01";
+    object.boundsCells = {
+        {static_cast<double>(point.x) - 1.25, 0.0,
+         static_cast<double>(point.z) - 1.25},
+        {static_cast<double>(point.x) + 1.25, 2.0,
+         static_cast<double>(point.z) + 1.25},
+    };
+  } else {
+    object.kind = tool == CreativeEditorWorldLayoutTool::PlayerSpawn
+                      ? cr::CreativeObjectKind::SpawnPoint
+                      : cr::CreativeObjectKind::NpcSpawn;
+    object.mode = cr::CreativeObjectLibraryPlacementMode::Point;
+    object.name = tool == CreativeEditorWorldLayoutTool::PlayerSpawn
+                      ? "Player Spawn"
+                      : "NPC Spawn";
+    object.pointCells = {static_cast<double>(point.x), 0.0,
+                         static_cast<double>(point.z)};
+  }
+  state.source.objects.push_back(std::move(object));
+  state.selection = {CreativeEditorWorldLayoutSelectionKind::Object,
+                     state.source.objects.size() - 1U};
+  noteWorldLayoutSourceChange(
+      state, tool == CreativeEditorWorldLayoutTool::Boulder
+                 ? "boulder added"
+                 : tool == CreativeEditorWorldLayoutTool::PlayerSpawn
+                       ? "player spawn added"
+                       : "NPC spawn added");
+  return {true, true, "creative_editor_world_layout_object_added"};
+}
+
 }  // namespace
 
 const char* creativeEditorWorldLayoutToolLabel(
@@ -894,10 +1145,46 @@ const char* creativeEditorWorldLayoutToolLabel(
       return "Door";
     case CreativeEditorWorldLayoutTool::Window:
       return "Window";
+    case CreativeEditorWorldLayoutTool::Plateau:
+      return "Plateau";
+    case CreativeEditorWorldLayoutTool::Road:
+      return "Road";
+    case CreativeEditorWorldLayoutTool::Ditch:
+      return "Ditch";
+    case CreativeEditorWorldLayoutTool::Bridge:
+      return "Bridge";
+    case CreativeEditorWorldLayoutTool::Boulder:
+      return "Boulder";
+    case CreativeEditorWorldLayoutTool::PlayerSpawn:
+      return "Player Spawn";
+    case CreativeEditorWorldLayoutTool::NpcSpawn:
+      return "NPC Spawn";
     case CreativeEditorWorldLayoutTool::Count:
       break;
   }
   return "Unknown";
+}
+
+const char* creativeEditorWorldLayoutPaletteCategoryLabel(
+    CreativeEditorWorldLayoutPaletteCategory category) noexcept {
+  switch (category) {
+    case CreativeEditorWorldLayoutPaletteCategory::Structure:
+      return "Structures";
+    case CreativeEditorWorldLayoutPaletteCategory::Terrain:
+      return "Terrain";
+    case CreativeEditorWorldLayoutPaletteCategory::Object:
+      return "Objects";
+    case CreativeEditorWorldLayoutPaletteCategory::Gameplay:
+      return "Gameplay";
+    case CreativeEditorWorldLayoutPaletteCategory::Count:
+      break;
+  }
+  return "Unknown";
+}
+
+std::span<const CreativeEditorWorldLayoutPaletteEntry>
+creativeEditorWorldLayoutPaletteEntries() noexcept {
+  return kWorldLayoutPaletteEntries;
 }
 
 void resetCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
@@ -921,7 +1208,8 @@ void installCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
   state.nextStableOrdinal =
       1U + state.source.buildings.size() + state.source.rooms.size() +
       state.source.boxes.size() + state.source.walls.size() +
-      state.source.openings.size() + state.source.terrainProfiles.size() +
+      state.source.openings.size() + state.source.objects.size() +
+      state.source.terrainProfiles.size() +
       state.source.terrainPaths.size();
   state.statusMessage = "layout loaded";
 }
@@ -1019,6 +1307,25 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutPoint(
   if (state.tool == CreativeEditorWorldLayoutTool::Wall) {
     return addWallPoint(state, gridPoint);
   }
+  if (state.tool == CreativeEditorWorldLayoutTool::Plateau) {
+    return addPlateau(state, gridPoint);
+  }
+  if (state.tool == CreativeEditorWorldLayoutTool::Road) {
+    return addTerrainPathPoint(state, gridPoint,
+                               cr::CreativeTerrainRecipeKind::Road);
+  }
+  if (state.tool == CreativeEditorWorldLayoutTool::Ditch) {
+    return addTerrainPathPoint(state, gridPoint,
+                               cr::CreativeTerrainRecipeKind::Ditch);
+  }
+  if (state.tool == CreativeEditorWorldLayoutTool::Bridge) {
+    return addBridgePoint(state, gridPoint);
+  }
+  if (state.tool == CreativeEditorWorldLayoutTool::Boulder ||
+      state.tool == CreativeEditorWorldLayoutTool::PlayerSpawn ||
+      state.tool == CreativeEditorWorldLayoutTool::NpcSpawn) {
+    return addPointObject(state, gridPoint, state.tool);
+  }
   return {false, false, "creative_editor_world_layout_tool_invalid"};
 }
 
@@ -1036,7 +1343,10 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutGesture(
   }
   const bool dragTool = state.tool == CreativeEditorWorldLayoutTool::Room ||
                         state.tool == CreativeEditorWorldLayoutTool::Floor ||
-                        state.tool == CreativeEditorWorldLayoutTool::Wall;
+                        state.tool == CreativeEditorWorldLayoutTool::Wall ||
+                        state.tool == CreativeEditorWorldLayoutTool::Road ||
+                        state.tool == CreativeEditorWorldLayoutTool::Ditch ||
+                        state.tool == CreativeEditorWorldLayoutTool::Bridge;
   if (!dragTool) {
     return {false, false, "creative_editor_world_layout_gesture_tool_invalid"};
   }
@@ -1048,12 +1358,19 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutGesture(
     state.anchorActive = true;
     state.anchor = gridPoint;
     clearWorldLayoutInteraction(state);
-    state.statusMessage =
-        state.tool == CreativeEditorWorldLayoutTool::Room
-            ? "drag room to its opposite corner"
-            : state.tool == CreativeEditorWorldLayoutTool::Floor
-                  ? "drag floor to its opposite corner"
-                  : "drag partition to its end";
+    if (state.tool == CreativeEditorWorldLayoutTool::Room) {
+      state.statusMessage = "drag room to its opposite corner";
+    } else if (state.tool == CreativeEditorWorldLayoutTool::Floor) {
+      state.statusMessage = "drag floor to its opposite corner";
+    } else if (state.tool == CreativeEditorWorldLayoutTool::Wall) {
+      state.statusMessage = "drag partition to its end";
+    } else if (state.tool == CreativeEditorWorldLayoutTool::Road) {
+      state.statusMessage = "drag road to its end";
+    } else if (state.tool == CreativeEditorWorldLayoutTool::Ditch) {
+      state.statusMessage = "drag ditch to its end";
+    } else {
+      state.statusMessage = "drag bridge to its opposite corner";
+    }
     return {true, false, "creative_editor_world_layout_gesture_started"};
   }
   if (!state.anchorActive) {
@@ -1558,6 +1875,42 @@ CreativeEditorWorldLayoutEditReceipt deleteCreativeEditorWorldLayoutSelection(
                     }
                     return false;
                   });
+  } else if (selected.kind == CreativeEditorWorldLayoutSelectionKind::Object &&
+             selected.index < state.source.objects.size()) {
+    state.source.objects.erase(state.source.objects.begin() +
+                               static_cast<std::ptrdiff_t>(selected.index));
+  } else if (selected.kind ==
+                 CreativeEditorWorldLayoutSelectionKind::TerrainProfile &&
+             selected.index < state.source.terrainProfiles.size()) {
+    state.source.terrainProfiles.erase(
+        state.source.terrainProfiles.begin() +
+        static_cast<std::ptrdiff_t>(selected.index));
+  } else if (selected.kind ==
+                 CreativeEditorWorldLayoutSelectionKind::TerrainPath &&
+             selected.index < state.source.terrainPaths.size()) {
+    const cr::CreativeWorldLayoutTerrainPath removed =
+        state.source.terrainPaths[selected.index];
+    if (removed.firstPointIndex > state.source.terrainPathPoints.size() ||
+        removed.pointCount >
+            state.source.terrainPathPoints.size() - removed.firstPointIndex) {
+      return {false, false,
+              "creative_editor_world_layout_path_ownership_invalid"};
+    }
+    state.source.terrainPathPoints.erase(
+        state.source.terrainPathPoints.begin() +
+            static_cast<std::ptrdiff_t>(removed.firstPointIndex),
+        state.source.terrainPathPoints.begin() +
+            static_cast<std::ptrdiff_t>(removed.firstPointIndex +
+                                        removed.pointCount));
+    state.source.terrainPaths.erase(
+        state.source.terrainPaths.begin() +
+        static_cast<std::ptrdiff_t>(selected.index));
+    for (cr::CreativeWorldLayoutTerrainPath& path :
+         state.source.terrainPaths) {
+      if (path.firstPointIndex > removed.firstPointIndex) {
+        path.firstPointIndex -= removed.pointCount;
+      }
+    }
   } else {
     return {false, false, "creative_editor_world_layout_selection_missing"};
   }

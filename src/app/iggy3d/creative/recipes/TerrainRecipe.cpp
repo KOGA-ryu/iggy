@@ -1,5 +1,7 @@
 #include "app/iggy3d/creative/recipes/TerrainRecipe.hpp"
 
+#include "app/iggy3d/creative/tools/TerrainSeed.hpp"
+
 #include <algorithm>
 #include <cstdint>
 #include <limits>
@@ -216,6 +218,8 @@ void initializePlanSource(CreativeTerrainRecipePlan& plan,
 
 std::string_view toString(CreativeTerrainRecipeKind kind) noexcept {
   switch (kind) {
+    case CreativeTerrainRecipeKind::Plateau:
+      return "Plateau";
     case CreativeTerrainRecipeKind::Hill:
       return "Hill";
     case CreativeTerrainRecipeKind::Valley:
@@ -274,6 +278,49 @@ CreativeTerrainRecipeResult buildCreativeTerrainProfileRecipe(
   if (!validDocument(request.document)) {
     setStatus(result.receipt, CreativeTerrainRecipeStatus::InvalidDocument,
               "creative_terrain_recipe_document_invalid");
+    return result;
+  }
+
+  if (request.kind == CreativeTerrainRecipeKind::Plateau) {
+    const CreativeTerrainField emptyField;
+    const CreativeTerrainSeedPlan seed = buildCreativeTerrainSeedPlan(
+        {&emptyField, request.center,
+         CreativeTerrainSeedOperation::SeedMissing, request.radiusCells,
+         request.spacingCells, request.baseHeightCells, 4U});
+    result.receipt.kernelReasonCode = std::string(seed.reasonCode);
+    if (!seed.accepted) {
+      setStatus(result.receipt, CreativeTerrainRecipeStatus::KernelRejected,
+                seed.reasonCode);
+      return result;
+    }
+    initializePlanSource(result.plan, *request.document, request.kind);
+    if (!profileBounds(request.center, request.radiusCells,
+                       result.plan.minimumCoord, result.plan.maximumCoord)) {
+      setStatus(result.receipt, CreativeTerrainRecipeStatus::KernelRejected,
+                "creative_terrain_profile_coordinate_overflow");
+      result.plan = {};
+      return result;
+    }
+    result.plan.controlEdits.assign(seed.items().begin(), seed.items().end());
+    CreativeTerrainField staged = request.document->terrainField();
+    const CreativeTerrainMutationReceipt stagedReceipt =
+        staged.apply(result.plan.controlEdits);
+    if (!stagedReceipt.accepted) {
+      result.receipt.kernelReasonCode =
+          std::string(stagedReceipt.reasonCode);
+      setStatus(result.receipt, CreativeTerrainRecipeStatus::KernelRejected,
+                stagedReceipt.reasonCode);
+      result.plan = {};
+      return result;
+    }
+    result.receipt.controlEditCount = result.plan.controlEdits.size();
+    if (result.plan.controlEdits.empty()) {
+      setStatus(result.receipt, CreativeTerrainRecipeStatus::NoChange,
+                "creative_terrain_recipe_no_change", true);
+      return result;
+    }
+    setStatus(result.receipt, CreativeTerrainRecipeStatus::Ready,
+              "creative_terrain_recipe_ready", true);
     return result;
   }
 

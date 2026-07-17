@@ -84,6 +84,16 @@ cr::CreativeWorldLayout richLayout() {
   roomDoor.centerOffsetCells = 2.0;
   layout.openings.push_back(roomDoor);
 
+  cr::CreativeWorldLayoutObject object;
+  object.kind = cr::CreativeObjectKind::Rock;
+  object.mode = cr::CreativeObjectLibraryPlacementMode::Bounds;
+  object.stableKey = "rock.imported";
+  object.name = "Imported Boulder";
+  object.assetId = "boulder_01";
+  object.boundsCells = {{2.25, 1.0, -4.5}, {4.75, 3.0, -2.0}};
+  object.tags = {"prop", "source=blender"};
+  layout.objects.push_back(object);
+
   cr::CreativeWorldLayoutTerrainProfile profile;
   profile.stableKey = "hill.west";
   profile.kind = cr::CreativeTerrainRecipeKind::Hill;
@@ -144,7 +154,12 @@ bool deterministicRoundTripPreservesEveryTable() {
                         cr::CreativeWorldLayoutOpeningHostKind::RoomEdge,
                 "building, room, and opening host tables round trip") &&
          expect(
-             decoded.layout.terrainProfiles.size() == 1U &&
+             decoded.layout.objects.size() == 1U &&
+                 decoded.layout.objects[0].assetId == "boulder_01" &&
+                 decoded.layout.objects[0].tags == source.objects[0].tags &&
+                 decoded.layout.objects[0].boundsCells.min.x == 2.25,
+             "object-library symbols round trip") &&
+         expect(decoded.layout.terrainProfiles.size() == 1U &&
                  decoded.layout.terrainPaths.size() == 1U &&
                  decoded.layout.terrainPathPoints == source.terrainPathPoints,
              "terrain symbol tables round trip");
@@ -160,6 +175,11 @@ bool malformedAndNonFiniteInputsFailClosed() {
   layout.walls[0].thicknessCells = std::numeric_limits<double>::quiet_NaN();
   const cr::CreativeWorldLayoutEncodeResult nonFinite =
       cr::encodeCreativeWorldLayout(layout);
+  cr::CreativeWorldLayout badObject = richLayout();
+  badObject.objects[0].pointCells.y =
+      std::numeric_limits<double>::infinity();
+  const cr::CreativeWorldLayoutEncodeResult nonFiniteObject =
+      cr::encodeCreativeWorldLayout(badObject);
 
   const cr::CreativeWorldLayoutEncodeResult valid =
       cr::encodeCreativeWorldLayout(richLayout());
@@ -196,6 +216,10 @@ bool malformedAndNonFiniteInputsFailClosed() {
                     nonFinite.status ==
                         cr::CreativeWorldLayoutCodecStatus::NonFiniteValue,
                 "non-finite source is not encoded") &&
+         expect(!nonFiniteObject.accepted &&
+                    nonFiniteObject.status ==
+                        cr::CreativeWorldLayoutCodecStatus::NonFiniteValue,
+                "non-finite object symbol is not encoded") &&
          expect(!truncated.accepted, "truncated source is rejected") &&
          expect(!wrongVersion.accepted &&
                     wrongVersion.status ==
@@ -226,8 +250,27 @@ bool versionOneSourceMigratesToCurrentSchema() {
                     decoded.layout.rooms.empty(),
                 "version-one source migrates without fabricated rooms") &&
          expect(encoded.accepted &&
-                    encoded.encodedText.starts_with("IGGY3D_WORLD_LAYOUT 2\n"),
+                    encoded.encodedText.starts_with("IGGY3D_WORLD_LAYOUT 3\n"),
                 "migrated source writes the current codec version");
+}
+
+bool versionTwoSourceMigratesWithoutFabricatedObjects() {
+  const std::string versionTwo =
+      "IGGY3D_WORLD_LAYOUT 2\n"
+      "L 2 6c65676163795f6c61796f7574 0 0 0 0 0 0 0 0 0\n"
+      "END\n";
+  const cr::CreativeWorldLayoutDecodeResult decoded =
+      cr::decodeCreativeWorldLayout(versionTwo);
+  const cr::CreativeWorldLayoutEncodeResult encoded =
+      cr::encodeCreativeWorldLayout(decoded.layout);
+  return expect(decoded.accepted &&
+                    decoded.layout.schemaVersion ==
+                        cr::kCreativeWorldLayoutSchemaVersion &&
+                    decoded.layout.objects.empty(),
+                "version-two source migrates without fabricated objects") &&
+         expect(encoded.accepted &&
+                    encoded.encodedText.starts_with("IGGY3D_WORLD_LAYOUT 3\n"),
+                "version-two migration writes the current codec version");
 }
 
 }  // namespace
@@ -235,6 +278,7 @@ bool versionOneSourceMigratesToCurrentSchema() {
 int main() {
   const bool ok = deterministicRoundTripPreservesEveryTable() &&
                   malformedAndNonFiniteInputsFailClosed() &&
-                  versionOneSourceMigratesToCurrentSchema();
+                  versionOneSourceMigratesToCurrentSchema() &&
+                  versionTwoSourceMigratesWithoutFabricatedObjects();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

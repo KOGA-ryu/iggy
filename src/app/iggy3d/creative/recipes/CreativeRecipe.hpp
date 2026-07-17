@@ -19,6 +19,7 @@ inline constexpr std::uint32_t kCreativeRecipeSchemaVersion = 1U;
 enum class CreativeRecipeKind : std::uint8_t {
   Unknown,
   Building,
+  ObjectLibrary,
 };
 
 enum class CreativeRecipeObjectRole : std::uint8_t {

@@ -14,15 +14,16 @@
 namespace iggy3d::creative {
 
 enum class CreativeTerrainRecipeKind : std::uint8_t {
-  Hill,
-  Valley,
-  Crater,
-  Ridge,
-  Road,
-  River,
-  Ditch,
-  RidgeLine,
-  Count,
+  Hill = 0U,
+  Valley = 1U,
+  Crater = 2U,
+  Ridge = 3U,
+  Road = 4U,
+  River = 5U,
+  Ditch = 6U,
+  RidgeLine = 7U,
+  Plateau = 8U,
+  Count = 9U,
 };
 
 enum class CreativeTerrainRecipeStatus : std::uint8_t {

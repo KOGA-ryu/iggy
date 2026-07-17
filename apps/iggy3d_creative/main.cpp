@@ -63,6 +63,7 @@
 #include "EditorPlayMode.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorTransform.hpp"
+#include "EditorWorldLayout.hpp"
 
 namespace {
 
@@ -133,13 +134,42 @@ bool generateCreativeMapSave(std::string_view templateId) {
     return false;
   }
 
+  if (!map.buildingTemplates.empty()) {
+    iggy3d_creative_app::CreativeEditorWorldLayoutBuildingTemplateLibrary
+        library;
+    const auto loaded =
+        iggy3d_creative_app::loadCreativeEditorWorldLayoutBuildingTemplateLibrary(
+            library, creativeStandaloneSaveRoot());
+    if (!loaded.accepted) {
+      std::fprintf(stderr,
+                   "iggy3d_creative: building template library failed "
+                   "reason='%s'\n",
+                   loaded.reasonCode.c_str());
+      return false;
+    }
+    for (const creative::CreativeWorldLayoutBuildingTemplate& source :
+         map.buildingTemplates) {
+      const auto installed =
+          iggy3d_creative_app::installCreativeEditorWorldLayoutBuildingTemplate(
+              library, source);
+      if (!installed.accepted) {
+        std::fprintf(stderr,
+                     "iggy3d_creative: building template install failed "
+                     "reason='%s'\n",
+                     installed.reasonCode.c_str());
+        return false;
+      }
+    }
+  }
+
   CreativeWorldSaveRequest request;
   request.saveRoot = creativeStandaloneSaveRoot();
   request.saveId = std::string{templateId};
   request.document = &map.document;
-  request.worldTitle = "Ditch House";
-  request.saveTitle = "Ditch House";
+  request.worldTitle = std::string(map.document.name());
+  request.saveTitle = request.worldTitle;
   request.saveType = "creative";
+  request.worldLayout = map.worldLayoutPresent ? &map.worldLayout : nullptr;
   const CreativeWorldSaveResult saved = saveCreativeWorld(request);
   if (!saved.accepted) {
     std::fprintf(stderr,
@@ -294,6 +324,10 @@ int main(int argc, char** argv) {
       editor.flyPos = {4.0F, 16.0F, 34.0F};
       editor.yawDegrees = 18.0F;
       editor.pitchDegrees = -22.0F;
+    } else if (mapTemplateId == creative::kBuilderEstateMapTemplateId) {
+      editor.flyPos = {0.0F, 24.0F, 36.0F};
+      editor.yawDegrees = 0.0F;
+      editor.pitchDegrees = -28.0F;
     }
   }
   const std::filesystem::path controlsPath =
