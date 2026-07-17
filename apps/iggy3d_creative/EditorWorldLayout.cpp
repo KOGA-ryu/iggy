@@ -1886,6 +1886,18 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutGesture(
   return applyCreativeEditorWorldLayoutPoint(state, point);
 }
 
+bool readCreativeEditorWorldLayoutRoomSettings(
+    const CreativeEditorWorldLayoutState& state, std::size_t roomIndex,
+    CreativeEditorWorldLayoutRoomSettings& output) noexcept {
+  if (roomIndex >= state.source.rooms.size()) {
+    return false;
+  }
+  output = roomSettings(state.source, roomIndex,
+                        state.source.rooms[roomIndex].footprint);
+  return cr::creativeWorldLayoutLevelForRoom(state.source, roomIndex) !=
+         nullptr;
+}
+
 CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutRoomSettings(
     CreativeEditorWorldLayoutState& state, std::size_t roomIndex,
     CreativeEditorWorldLayoutRoomSettings settings) {

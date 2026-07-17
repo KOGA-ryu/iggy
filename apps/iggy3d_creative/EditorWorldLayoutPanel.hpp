@@ -10,6 +10,7 @@ namespace iggy3d_creative_app {
 // but every semantic source edit is emitted through the desktop dispatcher.
 void buildCreativeEditorWorldLayoutPanel(
     CreativeEditorDesktopUiState& desktopUi, CreativeEditorState& editor,
+    const iggy3d::creative::CreativeGridSettings& grid,
     bool playModeActive, CreativeDesktopCommandFrame& commands);
 
 }  // namespace iggy3d_creative_app

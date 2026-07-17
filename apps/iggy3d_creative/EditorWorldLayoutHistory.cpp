@@ -86,11 +86,22 @@ void installCreativeEditorWorldLayoutSnapshot(
   const float canvasPixelsPerCell = state.canvasPixelsPerCell;
   const float canvasPanX = state.canvasPanX;
   const float canvasPanZ = state.canvasPanZ;
+  const CreativeEditorWorldLayoutViewMode viewMode = state.viewMode;
+  const CreativeEditorWorldLayoutElevationAxis elevationAxis =
+      state.elevationAxis;
+  const float elevationPixelsPerCell = state.elevationPixelsPerCell;
+  const float elevationPanHorizontal = state.elevationPanHorizontal;
+  const float elevationPanY = state.elevationPanY;
   state = {};
   state.buildingTemplates = std::move(buildingTemplates);
   state.canvasPixelsPerCell = canvasPixelsPerCell;
   state.canvasPanX = canvasPanX;
   state.canvasPanZ = canvasPanZ;
+  state.viewMode = viewMode;
+  state.elevationAxis = elevationAxis;
+  state.elevationPixelsPerCell = elevationPixelsPerCell;
+  state.elevationPanHorizontal = elevationPanHorizontal;
+  state.elevationPanY = elevationPanY;
   state.source = std::move(snapshot.source);
   state.revision = snapshot.revision;
   state.savedRevision = snapshot.savedRevision;

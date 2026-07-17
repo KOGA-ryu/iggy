@@ -291,7 +291,8 @@ void buildCreativeEditorDesktopPanels(
     ImGui::End();
   }
 
-  buildCreativeEditorWorldLayoutPanel(desktopUi, editor, playModeActive,
+  buildCreativeEditorWorldLayoutPanel(desktopUi, editor,
+                                      document.gridSettings(), playModeActive,
                                       commands);
 }
 

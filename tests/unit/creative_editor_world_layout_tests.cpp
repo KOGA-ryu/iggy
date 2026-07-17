@@ -2,6 +2,7 @@
 #include "EditorEdits.hpp"
 #include "EditorPersistence.hpp"
 #include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutElevation.hpp"
 
 #include <algorithm>
 #include <array>
@@ -2659,6 +2660,268 @@ bool verticalConnectorDirectionHandleOwnsCardinalRise() {
                 "external direction handle previews and commits cardinal rise");
 }
 
+cr::CreativeWorldLayout elevationFixture() {
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "elevation_fixture";
+  layout.buildings.push_back({"elevation_house",
+                              "Elevation House",
+                              cr::CreativeBuildingRootMode::None,
+                              {},
+                              0,
+                              3U,
+                              true,
+                              {}});
+  layout.levels.push_back(
+      {0U, "elevation_ground", "Ground", 0.0, 4U, 1U, 1U, 1U});
+  layout.levels.push_back(
+      {0U, "elevation_upper", "Upper", 4.0, 4U, 1U, 1U, 1U,
+       cr::CreativeStructuralRoofStyle::Gable,
+       cr::CreativeStructuralRoofRidgeAxis::X, 45.0, 0.0});
+  layout.rooms.push_back({0U, 0U, "elevation_ground_room", "Ground Room",
+                          {{0, 0}, {8, 6}}, 0.25});
+  layout.rooms.push_back({0U, 1U, "elevation_upper_room", "Upper Room",
+                          {{0, 0}, {8, 6}}, 0.25});
+  layout.boxes.push_back({0U, cr::CreativeObjectKind::Floor,
+                          "elevation_terrace", "Terrace",
+                          {{10, 0}, {12, 2}}, 0.0, 1U});
+  layout.walls.push_back({0U, "elevation_partition", "Partition",
+                          {10, 0}, {10, 4}, 0.0, 3U, 0.25});
+  layout.verticalConnectors.push_back(
+      {0U,
+       0U,
+       1U,
+       cr::CreativeWorldLayoutVerticalConnectorKind::Stair,
+       cr::CreativeWorldLayoutVerticalDirection::PositiveX,
+       "elevation_stair",
+       "Main Stair",
+       {{1, 2}, {5, 4}}});
+  layout.openings.push_back(
+      {cr::CreativeWorldLayoutOpeningHostKind::RoomEdge,
+       cr::kInvalidCreativeWorldLayoutIndex,
+       0U,
+       cr::CreativeWorldLayoutRoomEdge::North,
+       cr::CreativeBuildingOpeningKind::Door,
+       cr::CreativeBuildingOpeningPose::Closed,
+       "elevation_door",
+       "Front Door",
+       3.0,
+       1.0,
+       0.0,
+       2.0,
+       true});
+  layout.openings.push_back(
+      {cr::CreativeWorldLayoutOpeningHostKind::RoomEdge,
+       cr::kInvalidCreativeWorldLayoutIndex,
+       0U,
+       cr::CreativeWorldLayoutRoomEdge::East,
+       cr::CreativeBuildingOpeningKind::Window,
+       cr::CreativeBuildingOpeningPose::Closed,
+       "elevation_window",
+       "East Window",
+       3.0,
+       1.0,
+       1.0,
+       1.5,
+       true});
+  return layout;
+}
+
+bool elevationProjectionUsesExactRecipeGeometry() {
+  const cr::CreativeGridSettings grid{{10.0, 2.0, -5.0}, 2.0, {32, 16, 32}};
+  const cr::CreativeWorldLayout layout = elevationFixture();
+  const app::CreativeEditorWorldLayoutElevationProjection projection =
+      app::planCreativeEditorWorldLayoutElevation(
+          {&layout, grid, 0U,
+           app::CreativeEditorWorldLayoutElevationAxis::Z});
+  const auto item = [&](app::CreativeEditorWorldLayoutElevationItemKind kind,
+                        std::size_t sourceIndex) {
+    return std::find_if(
+        projection.items.begin(), projection.items.end(),
+        [&](const app::CreativeEditorWorldLayoutElevationItem& candidate) {
+          return candidate.kind == kind &&
+                 candidate.sourceIndex == sourceIndex;
+        });
+  };
+  const auto lowerFloor = item(
+      app::CreativeEditorWorldLayoutElevationItemKind::FloorSlab, 0U);
+  const auto window = item(
+      app::CreativeEditorWorldLayoutElevationItemKind::Window, 1U);
+  const auto stair = item(
+      app::CreativeEditorWorldLayoutElevationItemKind::Stair, 0U);
+  const auto roofBase = item(
+      app::CreativeEditorWorldLayoutElevationItemKind::RoofBase, 1U);
+  const auto explicitFloor = std::find_if(
+      projection.items.begin(), projection.items.end(), [](const auto& value) {
+        return value.kind ==
+                   app::CreativeEditorWorldLayoutElevationItemKind::FloorSlab &&
+               value.sourceKind ==
+                   app::CreativeEditorWorldLayoutElevationSourceKind::Box;
+      });
+  const auto explicitWall = std::find_if(
+      projection.items.begin(), projection.items.end(), [](const auto& value) {
+        return value.kind == app::CreativeEditorWorldLayoutElevationItemKind::
+                                 WallEnvelope &&
+               value.sourceKind ==
+                   app::CreativeEditorWorldLayoutElevationSourceKind::Wall;
+      });
+  const std::size_t roofSlopeCount = static_cast<std::size_t>(std::count_if(
+      projection.lines.begin(), projection.lines.end(), [](const auto& line) {
+        return line.kind ==
+               app::CreativeEditorWorldLayoutElevationLineKind::RoofSlope;
+      }));
+  const auto ridgeHandle = std::find_if(
+      projection.handles.begin(), projection.handles.end(),
+      [](const auto& handle) {
+        return handle.kind ==
+               app::CreativeEditorWorldLayoutElevationHandleKind::RoofRidge;
+      });
+  const double floorThicknessCells =
+      cr::defaultCreativeStructuralLayerThicknessMeters(
+          cr::CreativeObjectKind::Floor) /
+      grid.cellSizeMeters;
+  const double roofThicknessCells =
+      cr::defaultCreativeStructuralLayerThicknessMeters(
+          cr::CreativeObjectKind::Roof) /
+      grid.cellSizeMeters;
+
+  return expect(projection.accepted && projection.bounds.valid,
+                "elevation projection accepts one owned building") &&
+         expect(lowerFloor != projection.items.end() &&
+                    near(lowerFloor->minimumVertical, -floorThicknessCells) &&
+                    near(lowerFloor->maximumVertical, 0.0),
+                "elevation floor uses descriptor-sized structural thickness") &&
+         expect(roofBase != projection.items.end() &&
+                    near(roofBase->minimumVertical, 8.0) &&
+                    near(roofBase->maximumVertical,
+                         8.0 + roofThicknessCells) &&
+                    roofSlopeCount == 2U &&
+                    ridgeHandle != projection.handles.end() &&
+                    near(ridgeHandle->position.horizontal, 3.0) &&
+                    near(ridgeHandle->position.vertical,
+                         11.0 + roofThicknessCells),
+                "gable elevation uses exact base thickness span and ridge") &&
+         expect(window != projection.items.end() &&
+                    near(window->minimumHorizontal, 2.5) &&
+                    near(window->maximumHorizontal, 3.5) &&
+                    near(window->minimumVertical, 1.0) &&
+                    near(window->maximumVertical, 2.5),
+                "opening elevation projects its host offset and cutout") &&
+         expect(stair != projection.items.end() &&
+                    near(stair->minimumVertical, 0.0) &&
+                    near(stair->maximumVertical, 4.0),
+                "elevation reuses exact vertical connector authored bounds") &&
+         expect(explicitFloor != projection.items.end() &&
+                    explicitWall != projection.items.end(),
+                "elevation includes explicit floor and partition symbols");
+}
+
+bool elevationHitTestingAndEditMathAreTransactionalInputs() {
+  const cr::CreativeGridSettings grid{{0.0, 0.0, 0.0}, 1.0, {32, 16, 32}};
+  const cr::CreativeWorldLayout layout = elevationFixture();
+  const app::CreativeEditorWorldLayoutElevationProjection projection =
+      app::planCreativeEditorWorldLayoutElevation(
+          {&layout, grid, 0U,
+           app::CreativeEditorWorldLayoutElevationAxis::Z});
+  const auto handle = [&](app::CreativeEditorWorldLayoutElevationHandleKind kind,
+                          std::size_t sourceIndex) {
+    return std::find_if(
+        projection.handles.begin(), projection.handles.end(),
+        [&](const app::CreativeEditorWorldLayoutElevationHandle& candidate) {
+          return candidate.kind == kind &&
+                 candidate.sourceIndex == sourceIndex;
+        });
+  };
+  const auto groundFloor = handle(
+      app::CreativeEditorWorldLayoutElevationHandleKind::LevelFloor, 0U);
+  const auto groundWall = handle(
+      app::CreativeEditorWorldLayoutElevationHandleKind::WallTop, 0U);
+  const auto ridge = handle(
+      app::CreativeEditorWorldLayoutElevationHandleKind::RoofRidge, 1U);
+  const auto windowBottom = handle(
+      app::CreativeEditorWorldLayoutElevationHandleKind::OpeningBottom, 1U);
+  const auto windowTop = handle(
+      app::CreativeEditorWorldLayoutElevationHandleKind::OpeningTop, 1U);
+  const auto explicitFloor = std::find_if(
+      projection.handles.begin(), projection.handles.end(),
+      [](const auto& candidate) {
+        return candidate.kind == app::CreativeEditorWorldLayoutElevationHandleKind::
+                                     LevelFloor &&
+               candidate.sourceKind ==
+                   app::CreativeEditorWorldLayoutElevationSourceKind::Box;
+      });
+  const auto explicitWall = std::find_if(
+      projection.handles.begin(), projection.handles.end(),
+      [](const auto& candidate) {
+        return candidate.kind == app::CreativeEditorWorldLayoutElevationHandleKind::
+                                     WallTop &&
+               candidate.sourceKind ==
+                   app::CreativeEditorWorldLayoutElevationSourceKind::Wall;
+      });
+  if (groundFloor == projection.handles.end() ||
+      groundWall == projection.handles.end() ||
+      ridge == projection.handles.end() ||
+      windowBottom == projection.handles.end() ||
+      windowTop == projection.handles.end() ||
+      explicitFloor == projection.handles.end() ||
+      explicitWall == projection.handles.end()) {
+    return expect(false, "elevation edit fixture exposes expected handles");
+  }
+
+  const auto crossedFloor = app::planCreativeEditorWorldLayoutElevationEdit(
+      layout, projection, *groundFloor, 0.5);
+  const auto shorterWall = app::planCreativeEditorWorldLayoutElevationEdit(
+      layout, projection, *groundWall, 2.2);
+  const auto roofSlope = std::find_if(
+      projection.lines.begin(), projection.lines.end(), [](const auto& line) {
+        return line.kind ==
+               app::CreativeEditorWorldLayoutElevationLineKind::RoofSlope;
+      });
+  const auto roof45 = app::planCreativeEditorWorldLayoutElevationEdit(
+      layout, projection, *ridge,
+      roofSlope->start.vertical +
+          std::abs(roofSlope->end.horizontal - roofSlope->start.horizontal));
+  const auto raisedSill = app::planCreativeEditorWorldLayoutElevationEdit(
+      layout, projection, *windowBottom, 1.5);
+  const auto raisedTop = app::planCreativeEditorWorldLayoutElevationEdit(
+      layout, projection, *windowTop, 3.0);
+  const auto movedExplicitFloor =
+      app::planCreativeEditorWorldLayoutElevationEdit(
+          layout, projection, *explicitFloor, 1.25);
+  const auto raisedExplicitWall =
+      app::planCreativeEditorWorldLayoutElevationEdit(
+          layout, projection, *explicitWall, 5.2);
+  const auto hit = app::findCreativeEditorWorldLayoutElevationHandle(
+      projection, windowTop->position, 0.1);
+  const auto* windowItem = app::findCreativeEditorWorldLayoutElevationItem(
+      projection, {3.0, 2.0}, 0.01);
+
+  return expect(!crossedFloor.accepted &&
+                    crossedFloor.reasonCode ==
+                        "creative_editor_world_layout_elevation_floor_crosses_level",
+                "floor edit cannot cross the next occupied storey") &&
+         expect(shorterWall.accepted && shorterWall.wallHeightCells == 2U,
+                "wall top snaps to whole-cell height") &&
+         expect(roof45.accepted && near(roof45.roofPitchDegrees, 45.0),
+                "roof ridge drag resolves pitch from exact rise and run") &&
+         expect(raisedSill.accepted &&
+                    near(raisedSill.openingSillCells, 1.5) &&
+                    near(raisedSill.openingHeightCells, 1.0) &&
+                    raisedTop.accepted &&
+                    near(raisedTop.openingHeightCells, 2.0),
+                "window sill preserves top while top handle preserves sill") &&
+         expect(hit.kind ==
+                    app::CreativeEditorWorldLayoutElevationHandleKind::OpeningTop &&
+                    windowItem != nullptr &&
+                    windowItem->kind ==
+                        app::CreativeEditorWorldLayoutElevationItemKind::Window,
+                "elevation hit testing prioritizes exact handles and openings") &&
+         expect(movedExplicitFloor.accepted &&
+                    near(movedExplicitFloor.floorTopLayer, 1.25) &&
+                    raisedExplicitWall.accepted &&
+                    raisedExplicitWall.wallHeightCells == 5U,
+                "explicit floor and wall handles share snapped elevation math");
+}
+
 bool unsynchronizedLayoutCannotBeSaved() {
   cr::CreativeAppState live = appState();
   cr::CreativeWorldLayout layout;
@@ -2736,6 +2999,8 @@ int main() {
       verticalConnectorSettingsConvertAndRejectAtomically() &&
       verticalConnectorManipulationIsTransactional() &&
       verticalConnectorDirectionHandleOwnsCardinalRise() &&
+      elevationProjectionUsesExactRecipeGeometry() &&
+      elevationHitTestingAndEditMathAreTransactionalInputs() &&
       unsynchronizedLayoutCannotBeSaved() &&
       unsynchronizedDraftCannotBeLostAcrossLayoutHistory();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

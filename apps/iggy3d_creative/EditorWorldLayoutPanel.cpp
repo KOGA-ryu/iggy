@@ -1,6 +1,7 @@
 #include "EditorWorldLayoutPanel.hpp"
 
 #include "EditorDesktopWorldLayoutInspector.hpp"
+#include "EditorWorldLayoutElevationPanel.hpp"
 
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRoofs.hpp"
@@ -933,9 +934,11 @@ void queueBuildingTemplatePlacement(
 }
 
 void queueLayoutManipulationCancel(
-    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutState& state,
     CreativeDesktopCommandFrame& commands) {
-  if (state.buildingTransform.active) {
+  if (state.elevationManipulation.active) {
+    state.elevationManipulation = {};
+  } else if (state.buildingTransform.active) {
     commands.push(CreativeDesktopCommandId::WorldLayoutTransformBuilding,
                   CreativeDesktopWorldLayoutBuildingTransformPayload{
                       CreativeEditorWorldLayoutBuildingTransformPhase::Cancel,
@@ -1529,6 +1532,41 @@ void drawSelectedOpeningSettings(CreativeEditorWorldLayoutState& state,
   ImGui::EndDisabled();
 }
 
+void drawWorldLayoutViewControls(CreativeEditorWorldLayoutState& state,
+                                 CreativeDesktopCommandFrame& commands) {
+  const bool plan = state.viewMode == CreativeEditorWorldLayoutViewMode::Plan;
+  if (ImGui::RadioButton("Plan", plan) && !plan) {
+    queueLayoutManipulationCancel(state, commands);
+    state.viewMode = CreativeEditorWorldLayoutViewMode::Plan;
+  }
+  ImGui::SameLine();
+  const bool elevation =
+      state.viewMode == CreativeEditorWorldLayoutViewMode::Elevation;
+  if (ImGui::RadioButton("Elevation", elevation) && !elevation) {
+    queueLayoutManipulationCancel(state, commands);
+    state.viewMode = CreativeEditorWorldLayoutViewMode::Elevation;
+  }
+  if (state.viewMode != CreativeEditorWorldLayoutViewMode::Elevation) {
+    return;
+  }
+  ImGui::SameLine();
+  ImGui::TextDisabled("Axis");
+  ImGui::SameLine();
+  const bool axisX =
+      state.elevationAxis == CreativeEditorWorldLayoutElevationAxis::X;
+  if (ImGui::RadioButton("X", axisX) && !axisX) {
+    state.elevationAxis = CreativeEditorWorldLayoutElevationAxis::X;
+    state.elevationManipulation = {};
+  }
+  ImGui::SameLine();
+  const bool axisZ =
+      state.elevationAxis == CreativeEditorWorldLayoutElevationAxis::Z;
+  if (ImGui::RadioButton("Z", axisZ) && !axisZ) {
+    state.elevationAxis = CreativeEditorWorldLayoutElevationAxis::Z;
+    state.elevationManipulation = {};
+  }
+}
+
 void drawLayoutCanvas(CreativeEditorState& editor,
                       CreativeDesktopCommandFrame& commands,
                       bool interactionEnabled) {
@@ -1923,7 +1961,8 @@ void drawLayoutCanvas(CreativeEditorState& editor,
 
 void buildCreativeEditorWorldLayoutPanel(
     CreativeEditorDesktopUiState& desktopUi, CreativeEditorState& editor,
-    bool playModeActive, CreativeDesktopCommandFrame& commands) {
+    const cr::CreativeGridSettings& grid, bool playModeActive,
+    CreativeDesktopCommandFrame& commands) {
   CreativeEditorWorldLayoutState& state = editor.worldLayout;
   if (!desktopUi.showWorldLayout) {
     queueLayoutManipulationCancel(state, commands);
@@ -2006,6 +2045,8 @@ void buildCreativeEditorWorldLayoutPanel(
                       state.buildingTransform.operation});
   }
 
+  drawWorldLayoutViewControls(state, commands);
+
   ImGui::TextDisabled(
       "buildings %llu  levels %llu  rooms %llu  floors %llu  partitions %llu  "
       "openings %llu  terrain %llu  objects %llu  rev %llu%s",
@@ -2026,9 +2067,15 @@ void buildCreativeEditorWorldLayoutPanel(
   ImGui::Separator();
 
   ImGui::BeginDisabled(playModeActive || editor.assetEdit.active);
-  drawLayoutCanvas(editor, commands,
-                   !playModeActive && !editor.assetEdit.active &&
-                       !state.buildingTransform.active);
+  const bool canvasInteractionEnabled =
+      !playModeActive && !editor.assetEdit.active &&
+      !state.buildingTransform.active;
+  if (state.viewMode == CreativeEditorWorldLayoutViewMode::Elevation) {
+    drawCreativeEditorWorldLayoutElevationCanvas(
+        editor, grid, commands, canvasInteractionEnabled);
+  } else {
+    drawLayoutCanvas(editor, commands, canvasInteractionEnabled);
+  }
   ImGui::EndDisabled();
   ImGui::End();
 }

@@ -12,6 +12,8 @@
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
 
+#include "EditorWorldLayoutElevation.hpp"
+
 namespace iggy3d_creative_app {
 
 namespace cr = iggy3d::creative;
@@ -443,6 +445,24 @@ struct CreativeEditorWorldLayoutOpeningManipulationState {
       "creative_editor_world_layout_opening_manipulation_inactive";
 };
 
+struct CreativeEditorWorldLayoutElevationCache {
+  bool valid = false;
+  std::uint64_t sourceRevision = 0U;
+  std::size_t buildingIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  CreativeEditorWorldLayoutElevationAxis axis =
+      CreativeEditorWorldLayoutElevationAxis::X;
+  cr::CreativeVec3 gridOrigin;
+  double gridCellSizeMeters = 0.0;
+  CreativeEditorWorldLayoutElevationProjection projection;
+};
+
+struct CreativeEditorWorldLayoutElevationManipulationState {
+  bool active = false;
+  std::uint64_t sourceRevision = 0U;
+  CreativeEditorWorldLayoutElevationHandle handle;
+  CreativeEditorWorldLayoutElevationEditResult preview;
+};
+
 enum class CreativeEditorWorldLayoutGesturePhase : std::uint8_t {
   Begin,
   Commit,
@@ -498,6 +518,13 @@ struct CreativeEditorWorldLayoutState {
   CreativeEditorWorldLayoutWallSettingsDraft wallSettingsDraft;
   CreativeEditorWorldLayoutOpeningSettingsDraft openingSettingsDraft;
 
+  CreativeEditorWorldLayoutViewMode viewMode =
+      CreativeEditorWorldLayoutViewMode::Plan;
+  CreativeEditorWorldLayoutElevationAxis elevationAxis =
+      CreativeEditorWorldLayoutElevationAxis::X;
+  CreativeEditorWorldLayoutElevationCache elevationCache;
+  CreativeEditorWorldLayoutElevationManipulationState elevationManipulation;
+
   bool previewVisible = false;
   std::uint64_t previewLayoutRevision = 0U;
   cr::CreativeWorldLayoutPreviewResult preview;
@@ -507,6 +534,9 @@ struct CreativeEditorWorldLayoutState {
   float canvasPixelsPerCell = 28.0F;
   float canvasPanX = 0.0F;
   float canvasPanZ = 0.0F;
+  float elevationPixelsPerCell = 28.0F;
+  float elevationPanHorizontal = 0.0F;
+  float elevationPanY = 0.0F;
 };
 
 struct CreativeEditorWorldLayoutEditReceipt {
@@ -588,6 +618,9 @@ createCreativeEditorWorldLayoutBuildingShell(
 createCreativeEditorWorldLayoutRoom(
     CreativeEditorWorldLayoutState& state, std::size_t levelIndex,
     CreativeEditorWorldLayoutRoomSettings settings);
+[[nodiscard]] bool readCreativeEditorWorldLayoutRoomSettings(
+    const CreativeEditorWorldLayoutState& state, std::size_t roomIndex,
+    CreativeEditorWorldLayoutRoomSettings& output) noexcept;
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 setCreativeEditorWorldLayoutRoomSettings(
     CreativeEditorWorldLayoutState& state, std::size_t roomIndex,
