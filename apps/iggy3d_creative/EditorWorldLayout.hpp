@@ -24,6 +24,7 @@ enum class CreativeEditorWorldLayoutTool : std::uint8_t {
   Door,
   Window,
   Stair,
+  Ramp,
   Plateau,
   Road,
   Ditch,
@@ -470,6 +471,8 @@ struct CreativeEditorWorldLayoutApplyReceipt {
 };
 
 [[nodiscard]] const char* creativeEditorWorldLayoutToolLabel(
+    CreativeEditorWorldLayoutTool tool) noexcept;
+[[nodiscard]] bool creativeEditorWorldLayoutToolIsVerticalConnector(
     CreativeEditorWorldLayoutTool tool) noexcept;
 [[nodiscard]] const char* creativeEditorWorldLayoutPaletteCategoryLabel(
     CreativeEditorWorldLayoutPaletteCategory category) noexcept;

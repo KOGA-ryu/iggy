@@ -26,7 +26,7 @@ constexpr double kOpeningEndClearanceCells = 0.25;
 constexpr double kOpeningMinimumWidthCells = 0.25;
 constexpr double kOpeningGeometryEpsilon = 1.0e-9;
 
-constexpr std::array<CreativeEditorWorldLayoutPaletteEntry, 16U>
+constexpr std::array<CreativeEditorWorldLayoutPaletteEntry, 17U>
     kWorldLayoutPaletteEntries = {{
         {CreativeEditorWorldLayoutPaletteCategory::Structure, "Select",
          CreativeEditorWorldLayoutPaletteActivation::Tool,
@@ -56,6 +56,9 @@ constexpr std::array<CreativeEditorWorldLayoutPaletteEntry, 16U>
         {CreativeEditorWorldLayoutPaletteCategory::Structure, "Stair",
          CreativeEditorWorldLayoutPaletteActivation::Tool,
          CreativeEditorWorldLayoutTool::Stair, {}},
+        {CreativeEditorWorldLayoutPaletteCategory::Structure, "Ramp",
+         CreativeEditorWorldLayoutPaletteActivation::Tool,
+         CreativeEditorWorldLayoutTool::Ramp, {}},
         {CreativeEditorWorldLayoutPaletteCategory::Terrain, "Plateau",
          CreativeEditorWorldLayoutPaletteActivation::Tool,
          CreativeEditorWorldLayoutTool::Plateau, {}},
@@ -78,6 +81,43 @@ constexpr std::array<CreativeEditorWorldLayoutPaletteEntry, 16U>
          CreativeEditorWorldLayoutPaletteActivation::Tool,
          CreativeEditorWorldLayoutTool::NpcSpawn, {}},
     }};
+
+struct VerticalConnectorToolSpec {
+  CreativeEditorWorldLayoutTool tool = CreativeEditorWorldLayoutTool::Count;
+  cr::CreativeWorldLayoutVerticalConnectorKind kind =
+      cr::CreativeWorldLayoutVerticalConnectorKind::Count;
+  const char* label = "Unknown";
+  const char* keyPrefix = "vertical_connector";
+};
+
+constexpr std::array<VerticalConnectorToolSpec, 2U> kVerticalConnectorToolSpecs{
+    {
+        {CreativeEditorWorldLayoutTool::Stair,
+         cr::CreativeWorldLayoutVerticalConnectorKind::Stair, "Stair", "stair"},
+        {CreativeEditorWorldLayoutTool::Ramp,
+         cr::CreativeWorldLayoutVerticalConnectorKind::Ramp, "Ramp", "ramp"},
+    }};
+
+const VerticalConnectorToolSpec*
+verticalConnectorToolSpec(CreativeEditorWorldLayoutTool tool) noexcept {
+  const auto found = std::find_if(
+      kVerticalConnectorToolSpecs.begin(), kVerticalConnectorToolSpecs.end(),
+      [tool](const VerticalConnectorToolSpec& candidate) {
+        return candidate.tool == tool;
+      });
+  return found == kVerticalConnectorToolSpecs.end() ? nullptr : &*found;
+}
+
+std::string verticalConnectorReasonCode(const VerticalConnectorToolSpec& spec,
+                                        std::string_view suffix) {
+  return "creative_editor_world_layout_" + std::string(spec.keyPrefix) +
+         std::string(suffix);
+}
+
+std::string verticalConnectorMessage(const VerticalConnectorToolSpec& spec,
+                                     std::string_view suffix) {
+  return std::string(spec.keyPrefix) + std::string(suffix);
+}
 
 using detail::clearWorldLayoutInteraction;
 using detail::invalidateWorldLayoutPreview;
@@ -1202,12 +1242,14 @@ verticalDirection(cr::CreativeTerrainCoord2 start,
 }
 
 CreativeEditorWorldLayoutEditReceipt
-addStairPoint(CreativeEditorWorldLayoutState& state,
-              cr::CreativeTerrainCoord2 point) {
+addVerticalConnectorPoint(CreativeEditorWorldLayoutState& state,
+                          cr::CreativeTerrainCoord2 point,
+                          const VerticalConnectorToolSpec& spec) {
   if (!state.anchorActive) {
     state.anchorActive = true;
     state.anchor = point;
-    state.statusMessage = "stair low end set; choose high end";
+    state.statusMessage =
+        verticalConnectorMessage(spec, " low end set; choose high end");
     return {true, false, "creative_editor_world_layout_anchor_set"};
   }
 
@@ -1216,52 +1258,59 @@ addStairPoint(CreativeEditorWorldLayoutState& state,
   state.anchorActive = false;
   if (footprint.minimum.x >= footprint.maximum.x ||
       footprint.minimum.z >= footprint.maximum.z) {
-    state.statusMessage = "stair needs both run and width";
-    return {false, false, "creative_editor_world_layout_stair_degenerate"};
+    state.statusMessage =
+        verticalConnectorMessage(spec, " needs both run and width");
+    return {false, false, verticalConnectorReasonCode(spec, "_degenerate")};
   }
   if (state.activeLevelIndex >= state.source.levels.size()) {
-    state.statusMessage = "select the stair's lower building level";
+    state.statusMessage = verticalConnectorMessage(
+        spec, " needs a selected lower building level");
     return {false, false,
-            "creative_editor_world_layout_stair_lower_level_missing"};
+            verticalConnectorReasonCode(spec, "_lower_level_missing")};
   }
 
   const ContainingRoomResult lower =
       findContainingRoom(state.source, state.activeLevelIndex, footprint);
   if (lower.ambiguous || lower.index == cr::kInvalidCreativeWorldLayoutIndex) {
-    state.statusMessage = lower.ambiguous
-                              ? "stair footprint crosses room ownership"
-                              : "stair must fit inside one lower room";
+    state.statusMessage =
+        lower.ambiguous
+            ? verticalConnectorMessage(spec,
+                                       " footprint crosses room ownership")
+            : verticalConnectorMessage(spec, " must fit inside one lower room");
     return {false, false,
-            "creative_editor_world_layout_stair_lower_room_invalid"};
+            verticalConnectorReasonCode(spec, "_lower_room_invalid")};
   }
   const std::size_t buildingIndex =
       state.source.rooms[lower.index].buildingIndex;
   const std::size_t upperLevelIndex =
       nextHigherLevel(state.source, state.activeLevelIndex, buildingIndex);
   if (upperLevelIndex == cr::kInvalidCreativeWorldLayoutIndex) {
-    state.statusMessage = "stair needs an adjacent upper building level";
+    state.statusMessage = verticalConnectorMessage(
+        spec, " needs an adjacent upper building level");
     return {false, false,
-            "creative_editor_world_layout_stair_upper_level_missing"};
+            verticalConnectorReasonCode(spec, "_upper_level_missing")};
   }
   const ContainingRoomResult upper = findContainingRoom(
       state.source, upperLevelIndex, footprint, buildingIndex);
   if (upper.ambiguous || upper.index == cr::kInvalidCreativeWorldLayoutIndex) {
-    state.statusMessage = upper.ambiguous
-                              ? "stair footprint crosses upper room ownership"
-                              : "stair must fit inside one upper room";
+    state.statusMessage =
+        upper.ambiguous
+            ? verticalConnectorMessage(
+                  spec, " footprint crosses upper room ownership")
+            : verticalConnectorMessage(spec, " must fit inside one upper room");
     return {false, false,
-            "creative_editor_world_layout_stair_upper_room_invalid"};
+            verticalConnectorReasonCode(spec, "_upper_room_invalid")};
   }
 
   cr::CreativeWorldLayoutVerticalConnector connector;
   connector.buildingIndex = buildingIndex;
   connector.lowerRoomIndex = lower.index;
   connector.upperRoomIndex = upper.index;
-  connector.kind = cr::CreativeWorldLayoutVerticalConnectorKind::Stair;
+  connector.kind = spec.kind;
   connector.direction = verticalDirection(start, point);
-  connector.stableKey = "pending_stair";
-  connector.name =
-      "Stair " + std::to_string(state.source.verticalConnectors.size() + 1U);
+  connector.stableKey = "pending_" + std::string(spec.keyPrefix);
+  connector.name = std::string(spec.label) + " " +
+                   std::to_string(state.source.verticalConnectors.size() + 1U);
   connector.footprint = footprint;
   state.source.verticalConnectors.push_back(std::move(connector));
   const std::size_t connectorIndex =
@@ -1275,11 +1324,11 @@ addStairPoint(CreativeEditorWorldLayoutState& state,
     return {false, false, std::string(plan.reasonCode)};
   }
   state.source.verticalConnectors.back().stableKey =
-      mintWorldLayoutStableKey(state, "stair");
+      mintWorldLayoutStableKey(state, spec.keyPrefix);
   state.selection = {CreativeEditorWorldLayoutSelectionKind::VerticalConnector,
                      connectorIndex};
-  noteWorldLayoutSourceChange(state, "stair added");
-  return {true, true, "creative_editor_world_layout_stair_added"};
+  noteWorldLayoutSourceChange(state, verticalConnectorMessage(spec, " added"));
+  return {true, true, verticalConnectorReasonCode(spec, "_added")};
 }
 
 CreativeEditorWorldLayoutEditReceipt addPlateau(
@@ -1445,6 +1494,8 @@ const char* creativeEditorWorldLayoutToolLabel(
       return "Window";
     case CreativeEditorWorldLayoutTool::Stair:
       return "Stair";
+    case CreativeEditorWorldLayoutTool::Ramp:
+      return "Ramp";
     case CreativeEditorWorldLayoutTool::Plateau:
       return "Plateau";
     case CreativeEditorWorldLayoutTool::Road:
@@ -1463,6 +1514,11 @@ const char* creativeEditorWorldLayoutToolLabel(
       break;
   }
   return "Unknown";
+}
+
+bool creativeEditorWorldLayoutToolIsVerticalConnector(
+    CreativeEditorWorldLayoutTool tool) noexcept {
+  return verticalConnectorToolSpec(tool) != nullptr;
 }
 
 const char* creativeEditorWorldLayoutPaletteCategoryLabel(
@@ -1732,8 +1788,9 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutPoint(
   if (state.tool == CreativeEditorWorldLayoutTool::Wall) {
     return addWallPoint(state, gridPoint);
   }
-  if (state.tool == CreativeEditorWorldLayoutTool::Stair) {
-    return addStairPoint(state, gridPoint);
+  if (const VerticalConnectorToolSpec* connector =
+          verticalConnectorToolSpec(state.tool)) {
+    return addVerticalConnectorPoint(state, gridPoint, *connector);
   }
   if (state.tool == CreativeEditorWorldLayoutTool::Plateau) {
     return addPlateau(state, gridPoint);
@@ -1774,7 +1831,7 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutGesture(
       state.tool == CreativeEditorWorldLayoutTool::Room ||
       state.tool == CreativeEditorWorldLayoutTool::Floor ||
       state.tool == CreativeEditorWorldLayoutTool::Wall ||
-      state.tool == CreativeEditorWorldLayoutTool::Stair ||
+      creativeEditorWorldLayoutToolIsVerticalConnector(state.tool) ||
       state.tool == CreativeEditorWorldLayoutTool::Road ||
       state.tool == CreativeEditorWorldLayoutTool::Ditch ||
       state.tool == CreativeEditorWorldLayoutTool::Bridge;
@@ -1797,8 +1854,11 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutGesture(
       state.statusMessage = "drag floor to its opposite corner";
     } else if (state.tool == CreativeEditorWorldLayoutTool::Wall) {
       state.statusMessage = "drag partition to its end";
-    } else if (state.tool == CreativeEditorWorldLayoutTool::Stair) {
-      state.statusMessage = "drag stair from its low end to its high end";
+    } else if (const VerticalConnectorToolSpec* connector =
+                   verticalConnectorToolSpec(state.tool)) {
+      state.statusMessage = verticalConnectorMessage(
+          *connector,
+          " drag starts at the low end and finishes at the high end");
     } else if (state.tool == CreativeEditorWorldLayoutTool::Road) {
       state.statusMessage = "drag road to its end";
     } else if (state.tool == CreativeEditorWorldLayoutTool::Ditch) {

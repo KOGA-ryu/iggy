@@ -135,7 +135,7 @@ bool categorizedPaletteOwnsEveryBindableSemanticAction() {
                        BuildingTemplate &&
                entry.buildingTemplateId == cr::kBuilderEstateHouseTemplateId;
       });
-  return expect(entries.size() == 16U && unique,
+  return expect(entries.size() == 17U && unique,
                 "world layout palette is fixed and duplicate free") &&
          expect(std::all_of(categoryCounts.begin(), categoryCounts.end(),
                             [](std::size_t count) { return count > 0U; }),
@@ -148,12 +148,21 @@ bool categorizedPaletteOwnsEveryBindableSemanticAction() {
                     seenTools[static_cast<std::size_t>(
                         app::CreativeEditorWorldLayoutTool::Stair)] &&
                     seenTools[static_cast<std::size_t>(
+                        app::CreativeEditorWorldLayoutTool::Ramp)] &&
+                    seenTools[static_cast<std::size_t>(
                         app::CreativeEditorWorldLayoutTool::Plateau)] &&
                     seenTools[static_cast<std::size_t>(
                         app::CreativeEditorWorldLayoutTool::Boulder)] &&
                     seenTools[static_cast<std::size_t>(
                         app::CreativeEditorWorldLayoutTool::NpcSpawn)],
-                "palette binds structures terrain objects and gameplay");
+                "palette binds structures terrain objects and gameplay") &&
+         expect(app::creativeEditorWorldLayoutToolIsVerticalConnector(
+                    app::CreativeEditorWorldLayoutTool::Stair) &&
+                    app::creativeEditorWorldLayoutToolIsVerticalConnector(
+                        app::CreativeEditorWorldLayoutTool::Ramp) &&
+                    !app::creativeEditorWorldLayoutToolIsVerticalConnector(
+                        app::CreativeEditorWorldLayoutTool::Floor),
+                "vertical connector tool classification is centralized");
 }
 
 bool terrainAndObjectPaletteToolsCreateCompilableSymbols() {
@@ -2167,19 +2176,29 @@ bool buildingLevelLifecycleIsAtomicAndRemapsHostedSymbols() {
                 "a level-less legacy building can acquire its first level");
 }
 
-bool stairGestureOwnsConnectorLifecycleAcrossLevels() {
-  app::CreativeEditorWorldLayoutState state;
-  app::resetCreativeEditorWorldLayout(state, "stair_layout");
+bool prepareTwoStoreyEditorLayout(app::CreativeEditorWorldLayoutState& state,
+                                  std::string layoutKey) {
+  app::resetCreativeEditorWorldLayout(state, std::move(layoutKey));
   const auto shell = app::createCreativeEditorWorldLayoutBuildingShell(
       state, {{{0, 0}, {8, 6}}, 0.0, 4U, 0.25, 1U});
   const auto upperLevel = app::applyCreativeEditorWorldLayoutLevelOperation(
       state, app::CreativeEditorWorldLayoutLevelOperation::Add, 0U);
-  cr::CreativeWorldLayoutRoom upperRoom = state.source.rooms[0];
+  if (!shell.accepted || !upperLevel.accepted || state.source.rooms.empty()) {
+    return false;
+  }
+  cr::CreativeWorldLayoutRoom upperRoom = state.source.rooms.front();
   upperRoom.levelIndex = 1U;
   upperRoom.stableKey = "room_upper";
   upperRoom.name = "Upper Room";
   state.source.rooms.push_back(std::move(upperRoom));
   state.activeLevelIndex = 0U;
+  return true;
+}
+
+bool stairGestureOwnsConnectorLifecycleAcrossLevels() {
+  app::CreativeEditorWorldLayoutState state;
+  const bool setupAccepted =
+      prepareTwoStoreyEditorLayout(state, "stair_layout");
   static_cast<void>(app::setCreativeEditorWorldLayoutTool(
       state, app::CreativeEditorWorldLayoutTool::Stair));
   const std::uint64_t revisionBeforeStair = state.revision;
@@ -2188,9 +2207,8 @@ bool stairGestureOwnsConnectorLifecycleAcrossLevels() {
   const auto commit = app::applyCreativeEditorWorldLayoutGesture(
       state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {5, 4});
   const bool stairAuthoredOnce =
-      shell.accepted && upperLevel.accepted && begin.accepted &&
-      !begin.changed && commit.accepted && commit.changed &&
-      state.revision == revisionBeforeStair + 1U &&
+      setupAccepted && begin.accepted && !begin.changed && commit.accepted &&
+      commit.changed && state.revision == revisionBeforeStair + 1U &&
       state.source.verticalConnectors.size() == 1U &&
       state.source.verticalConnectors[0].buildingIndex == 0U &&
       state.source.verticalConnectors[0].lowerRoomIndex == 0U &&
@@ -2277,6 +2295,47 @@ bool stairGestureOwnsConnectorLifecycleAcrossLevels() {
              "stair authoring rejects a missing upper level transactionally");
 }
 
+bool rampGestureUsesTheSharedVerticalConnectorLifecycle() {
+  app::CreativeEditorWorldLayoutState state;
+  const bool setupAccepted = prepareTwoStoreyEditorLayout(state, "ramp_layout");
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Ramp));
+  const std::uint64_t revisionBeforeRamp = state.revision;
+  const auto begin = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {2, 5});
+  const auto commit = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {4, 1});
+
+  cr::CreativeAppState live = appState();
+  const auto preview =
+      app::previewCreativeEditorWorldLayout(state, live.facade.document());
+  const bool rampGenerated =
+      preview.accepted &&
+      std::any_of(state.preview.document.objects().begin(),
+                  state.preview.document.objects().end(),
+                  [](const cr::CreativeObject& object) {
+                    return object.kind == cr::CreativeObjectKind::Ramp;
+                  });
+
+  return expect(setupAccepted && begin.accepted && !begin.changed &&
+                    commit.accepted && commit.changed &&
+                    commit.reasonCode ==
+                        "creative_editor_world_layout_ramp_added" &&
+                    state.revision == revisionBeforeRamp + 1U &&
+                    state.source.verticalConnectors.size() == 1U,
+                "one ramp drag authors one connector revision") &&
+         expect(state.source.verticalConnectors[0].kind ==
+                        cr::CreativeWorldLayoutVerticalConnectorKind::Ramp &&
+                    state.source.verticalConnectors[0].direction ==
+                        cr::CreativeWorldLayoutVerticalDirection::NegativeZ &&
+                    state.source.verticalConnectors[0].stableKey.starts_with(
+                        "ramp_") &&
+                    state.source.verticalConnectors[0].name == "Ramp 1",
+                "ramp tool owns kind direction identity and label") &&
+         expect(rampGenerated,
+                "ramp preview compiles through the shared layout recipe");
+}
+
 bool unsynchronizedLayoutCannotBeSaved() {
   cr::CreativeAppState live = appState();
   cr::CreativeWorldLayout layout;
@@ -2350,6 +2409,7 @@ int main() {
       exactPreviewAndConfirmUseOneHistoryEntry() &&
       buildingLevelLifecycleIsAtomicAndRemapsHostedSymbols() &&
       stairGestureOwnsConnectorLifecycleAcrossLevels() &&
+      rampGestureUsesTheSharedVerticalConnectorLifecycle() &&
       unsynchronizedLayoutCannotBeSaved() &&
       unsynchronizedDraftCannotBeLostAcrossLayoutHistory();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

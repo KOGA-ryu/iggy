@@ -66,6 +66,54 @@ bool stairPlanOwnsRiseDirectionAndStepParity() {
                 "authored local bounds preserve world center and swapped axes");
 }
 
+bool rampPlanUsesTheSharedSlopeAndCompilerPath() {
+  const cr::CreativeGridSettings grid{{}, 1.0, {32, 16, 32}};
+  cr::CreativeWorldLayout layout = twoStoreyLayout();
+  cr::CreativeWorldLayoutVerticalConnector& connector =
+      layout.verticalConnectors.front();
+  connector.kind = cr::CreativeWorldLayoutVerticalConnectorKind::Ramp;
+  connector.direction = cr::CreativeWorldLayoutVerticalDirection::NegativeZ;
+  connector.stableKey = "main_ramp";
+  connector.name = "Main Ramp";
+  connector.footprint = {{2, 1}, {4, 5}};
+
+  const auto plan =
+      cr::planCreativeWorldLayoutVerticalConnector(grid, layout, 0U);
+  cr::CreativeDocument document = cr::CreativeDocument::create("Ramp Compile");
+  static_cast<void>(document.assignId(72U));
+  static_cast<void>(document.setGridSettings(grid));
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, layout);
+  const cr::CreativeRecipeObjectPlan* ramp = nullptr;
+  if (compiled.receipt.accepted && !compiled.plan.objectRecipes.empty()) {
+    const auto& objects = compiled.plan.objectRecipes.front().objects;
+    const auto found = std::find_if(
+        objects.begin(), objects.end(),
+        [](const cr::CreativeRecipeObjectPlan& object) {
+          return object.createRequest.kind == cr::CreativeObjectKind::Ramp;
+        });
+    if (found != objects.end()) {
+      ramp = &*found;
+    }
+  }
+
+  return expect(plan.accepted &&
+                    plan.objectKind == cr::CreativeObjectKind::Ramp,
+                "ramp uses the vertical connector planner") &&
+         expect(plan.riseMeters == 3.0 && plan.runMeters == 4.0 &&
+                    plan.widthMeters == 2.0 && plan.stepCount == 0U,
+                "ramp shares slope dimensions without publishing treads") &&
+         expect(
+             std::abs(plan.rotationEulerRadians.y - std::numbers::pi) < 1.0e-12,
+             "negative Z ramp points from its low end toward its high end") &&
+         expect(
+             ramp != nullptr && ramp->stableKey == "house.main_ramp" &&
+                 ramp->createRequest.hasTransformOverride &&
+                 std::abs(ramp->createRequest.transform.rotationEulerRadians.y -
+                          std::numbers::pi) < 1.0e-12,
+             "compiler emits one directionally authored ramp");
+}
+
 bool invalidStoriesFootprintsAndLandingsFailClosed() {
   const cr::CreativeGridSettings grid{{}, 1.0, {32, 16, 32}};
   cr::CreativeWorldLayout wrongRise = twoStoreyLayout();
@@ -165,6 +213,7 @@ bool compilerCutsBothSlabsAndEmitsOneStair() {
 
 int main() {
   return stairPlanOwnsRiseDirectionAndStepParity() &&
+                 rampPlanUsesTheSharedSlopeAndCompilerPath() &&
                  invalidStoriesFootprintsAndLandingsFailClosed() &&
                  oneConnectorOwnsEachAffectedSlab() &&
                  compilerCutsBothSlabsAndEmitsOneStair()

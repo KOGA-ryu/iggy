@@ -337,9 +337,14 @@ void drawVerticalConnector(ImDrawList& drawList,
   const bool isSelected =
       selected(state, CreativeEditorWorldLayoutSelectionKind::VerticalConnector,
                connectorIndex);
+  const bool isRamp =
+      connector.kind == cr::CreativeWorldLayoutVerticalConnectorKind::Ramp;
   const ImU32 outline = isSelected ? color({0.96F, 0.82F, 0.22F, 1.0F})
+                        : isRamp   ? color({0.92F, 0.58F, 0.20F, 1.0F})
                                    : color({0.24F, 0.72F, 0.88F, 1.0F});
-  drawList.AddRectFilled(minimum, maximum, color({0.18F, 0.55F, 0.72F, 0.24F}));
+  drawList.AddRectFilled(minimum, maximum,
+                         isRamp ? color({0.72F, 0.38F, 0.12F, 0.24F})
+                                : color({0.18F, 0.55F, 0.72F, 0.24F}));
   drawList.AddRect(minimum, maximum, outline, 0.0F, 0,
                    isSelected ? 3.0F : 2.0F);
 
@@ -385,16 +390,18 @@ void drawVerticalConnector(ImDrawList& drawList,
         highScreen, {base.x - uy * 5.5F, base.y + ux * 5.5F},
         {base.x + uy * 5.5F, base.y - ux * 5.5F}, outline);
   }
-  for (int tread = 1; tread < 6; ++tread) {
-    const float t = static_cast<float>(tread) / 6.0F;
-    if (std::fabs(dx) >= std::fabs(dy)) {
-      const float x = lowScreen.x + dx * t;
-      drawList.AddLine({x, minimum.y + 3.0F}, {x, maximum.y - 3.0F}, outline,
-                       1.0F);
-    } else {
-      const float y = lowScreen.y + dy * t;
-      drawList.AddLine({minimum.x + 3.0F, y}, {maximum.x - 3.0F, y}, outline,
-                       1.0F);
+  if (!isRamp) {
+    for (int tread = 1; tread < 6; ++tread) {
+      const float t = static_cast<float>(tread) / 6.0F;
+      if (std::fabs(dx) >= std::fabs(dy)) {
+        const float x = lowScreen.x + dx * t;
+        drawList.AddLine({x, minimum.y + 3.0F}, {x, maximum.y - 3.0F}, outline,
+                         1.0F);
+      } else {
+        const float y = lowScreen.y + dy * t;
+        drawList.AddLine({minimum.x + 3.0F, y}, {maximum.x - 3.0F, y}, outline,
+                         1.0F);
+      }
     }
   }
 }
@@ -724,19 +731,21 @@ void drawAnchorPreview(ImDrawList& drawList, const CanvasTransform& transform,
   if (state.tool == CreativeEditorWorldLayoutTool::BuildingShell ||
       state.tool == CreativeEditorWorldLayoutTool::Room ||
       state.tool == CreativeEditorWorldLayoutTool::Floor ||
-      state.tool == CreativeEditorWorldLayoutTool::Stair ||
+      creativeEditorWorldLayoutToolIsVerticalConnector(state.tool) ||
       state.tool == CreativeEditorWorldLayoutTool::Bridge) {
     const ImVec2 end = toScreen(transform, snappedX, snappedZ);
     if (state.tool == CreativeEditorWorldLayoutTool::BuildingShell ||
         state.tool == CreativeEditorWorldLayoutTool::Room ||
-        state.tool == CreativeEditorWorldLayoutTool::Stair ||
+        creativeEditorWorldLayoutToolIsVerticalConnector(state.tool) ||
         state.tool == CreativeEditorWorldLayoutTool::Bridge) {
       drawList.AddRectFilled(
           {std::min(start.x, end.x), std::min(start.y, end.y)},
           {std::max(start.x, end.x), std::max(start.y, end.y)},
-          state.tool == CreativeEditorWorldLayoutTool::Stair
-              ? color({0.18F, 0.55F, 0.72F, 0.28F})
-              : color({0.22F, 0.58F, 0.38F, 0.22F}));
+          state.tool == CreativeEditorWorldLayoutTool::Ramp
+              ? color({0.72F, 0.38F, 0.12F, 0.28F})
+              : creativeEditorWorldLayoutToolIsVerticalConnector(state.tool)
+                    ? color({0.18F, 0.55F, 0.72F, 0.28F})
+                    : color({0.22F, 0.58F, 0.38F, 0.22F}));
     }
     drawList.AddRect({std::min(start.x, end.x), std::min(start.y, end.y)},
                      {std::max(start.x, end.x), std::max(start.y, end.y)},
@@ -944,7 +953,7 @@ bool dragTool(CreativeEditorWorldLayoutTool tool) noexcept {
          tool == CreativeEditorWorldLayoutTool::Room ||
          tool == CreativeEditorWorldLayoutTool::Floor ||
          tool == CreativeEditorWorldLayoutTool::Wall ||
-         tool == CreativeEditorWorldLayoutTool::Stair ||
+         creativeEditorWorldLayoutToolIsVerticalConnector(tool) ||
          tool == CreativeEditorWorldLayoutTool::Road ||
          tool == CreativeEditorWorldLayoutTool::Ditch ||
          tool == CreativeEditorWorldLayoutTool::Bridge;
@@ -1152,7 +1161,10 @@ void drawWorldLayoutLevelDeleteModal(
     const std::size_t levelIndex = desktopUi.worldLayoutDeleteLevelIndex;
     std::size_t roomCount = 0U;
     std::size_t openingCount = 0U;
-    std::size_t connectorCount = 0U;
+    std::array<std::size_t,
+               static_cast<std::size_t>(
+                   cr::CreativeWorldLayoutVerticalConnectorKind::Count)>
+        connectorCounts{};
     std::size_t buildingIndex = cr::kInvalidCreativeWorldLayoutIndex;
     if (levelIndex < state.source.levels.size()) {
       buildingIndex = state.source.levels[levelIndex].buildingIndex;
@@ -1170,24 +1182,31 @@ void drawWorldLayoutLevelDeleteModal(
                    state.source.rooms[opening.roomIndex].levelIndex ==
                        levelIndex;
           }));
-      connectorCount = static_cast<std::size_t>(std::count_if(
-          state.source.verticalConnectors.begin(),
-          state.source.verticalConnectors.end(),
-          [&state, levelIndex](
-              const cr::CreativeWorldLayoutVerticalConnector& connector) {
-            return (connector.lowerRoomIndex < state.source.rooms.size() &&
-                    state.source.rooms[connector.lowerRoomIndex].levelIndex ==
-                        levelIndex) ||
-                   (connector.upperRoomIndex < state.source.rooms.size() &&
-                    state.source.rooms[connector.upperRoomIndex].levelIndex ==
-                        levelIndex);
-          }));
+      for (const cr::CreativeWorldLayoutVerticalConnector& connector :
+           state.source.verticalConnectors) {
+        const bool touchesLevel =
+            (connector.lowerRoomIndex < state.source.rooms.size() &&
+             state.source.rooms[connector.lowerRoomIndex].levelIndex ==
+                 levelIndex) ||
+            (connector.upperRoomIndex < state.source.rooms.size() &&
+             state.source.rooms[connector.upperRoomIndex].levelIndex ==
+                 levelIndex);
+        const std::size_t kind = static_cast<std::size_t>(connector.kind);
+        if (touchesLevel && kind < connectorCounts.size()) {
+          ++connectorCounts[kind];
+        }
+      }
     }
-    ImGui::Text("Delete this level, %llu room(s), %llu opening(s), and %llu "
-                "stair(s)?",
+    ImGui::Text("Delete this level, %llu room(s), %llu opening(s), %llu "
+                "stair(s), and %llu ramp(s)?",
                 static_cast<unsigned long long>(roomCount),
                 static_cast<unsigned long long>(openingCount),
-                static_cast<unsigned long long>(connectorCount));
+                static_cast<unsigned long long>(
+                    connectorCounts[static_cast<std::size_t>(
+                        cr::CreativeWorldLayoutVerticalConnectorKind::Stair)]),
+                static_cast<unsigned long long>(
+                    connectorCounts[static_cast<std::size_t>(
+                        cr::CreativeWorldLayoutVerticalConnectorKind::Ramp)]));
     ImGui::BeginDisabled(levelIndex >= state.source.levels.size());
     if (ImGui::Button("Delete level")) {
       queueLevelOperation(commands,
