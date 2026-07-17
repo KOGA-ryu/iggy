@@ -64,6 +64,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/spatial/SurfacePose.cpp
     src/app/iggy3d/creative/spatial/PlacementGrid.cpp
     src/app/iggy3d/creative/spatial/PlacementContact.cpp
+    src/app/iggy3d/creative/spatial/PlacementOrientation.cpp
     src/app/iggy3d/creative/document/DocumentWireframe.cpp
     src/app/iggy3d/creative/input/ControllerInput.cpp
     src/app/iggy3d/creative/input/ActionHints.cpp

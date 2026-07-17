@@ -208,7 +208,8 @@ enum class CreativePlacementTargetPolicy : std::uint8_t {
 
 enum class CreativePlacementOrientationPolicy : std::uint8_t {
     DescriptorDefault,
-    CardinalFaceOrPlacerFacing,
+    UprightSurfaceOrPlacerFacing,
+    SurfaceFrame,
 };
 
 enum class CreativePlacementOccupancyPolicy : std::uint8_t {

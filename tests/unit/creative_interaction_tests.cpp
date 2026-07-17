@@ -2,7 +2,9 @@
 #include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
 #include "app/iggy3d/creative/camera/Fly.hpp"
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/spatial/PlacementContact.hpp"
+#include "app/iggy3d/creative/spatial/PlacementOrientation.hpp"
 #include "EditorInteraction.hpp"
 
 #include <algorithm>
@@ -1133,6 +1135,87 @@ bool placementContactAlignsExtremeFeaturesWithoutPenetration() {
                 "contact kernel fails closed for invalid source or normal");
 }
 
+bool placementSurfaceFramesAreDeterministicAndFailClosed() {
+  constexpr double kHalfPi = 1.57079632679489661923;
+  const cr::CreativePlacementSurfaceFramePlan vertical =
+      cr::resolveCreativePlacementSurfaceFrame(
+          {{1.0, 0.0, 0.0}, {0.0, 0.0, -1.0}, {0.0, 0.0, 1.0}, 0.0});
+  const cr::CreativePlacementSurfaceFramePlan slope =
+      cr::resolveCreativePlacementSurfaceFrame(
+          {{0.6, 0.8, 0.0}, {0.0, 0.0, -1.0}, {0.0, 0.0, 1.0}, 0.0});
+  const cr::CreativePlacementSurfaceFramePlan rolled =
+      cr::resolveCreativePlacementSurfaceFrame(
+          {{1.0, 0.0, 0.0}, {0.0, 0.0, -1.0}, {0.0, 0.0, 1.0},
+           kHalfPi});
+  const cr::CreativePlacementSurfaceFramePlan top =
+      cr::resolveCreativePlacementSurfaceFrame(
+          {{0.0, 1.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, 0.0});
+  const cr::CreativePlacementSurfaceFramePlan localY =
+      cr::resolveCreativePlacementSurfaceFrame(
+          {{0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, 0.0});
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  const cr::CreativePlacementSurfaceFramePlan invalidNormal =
+      cr::resolveCreativePlacementSurfaceFrame(
+          {{}, {0.0, 0.0, -1.0}, {0.0, 0.0, 1.0}, 0.0});
+  const cr::CreativePlacementSurfaceFramePlan invalidReference =
+      cr::resolveCreativePlacementSurfaceFrame(
+          {{0.0, 1.0, 0.0}, {nan, 0.0, 0.0}, {0.0, 0.0, 1.0}, 0.0});
+  const cr::CreativePlacementSurfaceFramePlan invalidRotation =
+      cr::resolveCreativePlacementSurfaceFrame(
+          {{0.0, 1.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, nan});
+
+  const auto rotated = [](cr::CreativeVec3 axis,
+                          const cr::CreativePlacementSurfaceFramePlan& plan) {
+    return cr::rotateCreativeVectorEulerXyz(axis,
+                                             plan.rotationEulerRadians);
+  };
+  return expect(vertical.valid &&
+                    vertical.status ==
+                        cr::CreativePlacementSurfaceFrameStatus::Ready &&
+                    sameVec3(rotated({0.0, 0.0, 1.0}, vertical),
+                             {1.0, 0.0, 0.0}) &&
+                    sameVec3(rotated({0.0, 1.0, 0.0}, vertical),
+                             {0.0, 1.0, 0.0}),
+                "surface frame maps local forward to a vertical wall and preserves up") &&
+         expect(slope.valid &&
+                    sameVec3(rotated({0.0, 0.0, 1.0}, slope),
+                             slope.surfaceNormal) &&
+                    sameVec3(rotated({0.0, 1.0, 0.0}, slope),
+                             slope.surfaceUp) &&
+                    near(slope.surfaceNormal.x, 0.6) &&
+                    near(slope.surfaceNormal.y, 0.8),
+                "surface frame follows an arbitrary normalized slope") &&
+         expect(rolled.valid &&
+                    sameVec3(rotated({0.0, 0.0, 1.0}, rolled),
+                             rolled.surfaceNormal) &&
+                    sameVec3(rotated({0.0, 1.0, 0.0}, rolled),
+                             rolled.surfaceUp) &&
+                    sameVec3(rolled.surfaceUp, {0.0, 0.0, 1.0}),
+                "quarter-turn orientation rotates around the surface normal") &&
+         expect(top.valid && top.usedPlacerFallback &&
+                    sameVec3(rotated({0.0, 0.0, 1.0}, top),
+                             {0.0, 1.0, 0.0}) &&
+                    sameVec3(rotated({0.0, 1.0, 0.0}, top),
+                             {-1.0, 0.0, 0.0}),
+                "horizontal surfaces use placer-facing to resolve frame roll") &&
+         expect(localY.valid &&
+                    sameVec3(rotated({0.0, 1.0, 0.0}, localY),
+                             localY.surfaceNormal) &&
+                    sameVec3(rotated({0.0, 0.0, 1.0}, localY),
+                             localY.surfaceUp),
+                "surface frame supports a Y-normal local mounting face") &&
+         expect(!invalidNormal.valid &&
+                    invalidNormal.status ==
+                        cr::CreativePlacementSurfaceFrameStatus::InvalidNormal &&
+                    !invalidReference.valid &&
+                    invalidReference.status ==
+                        cr::CreativePlacementSurfaceFrameStatus::InvalidReference &&
+                    !invalidRotation.valid &&
+                    invalidRotation.status ==
+                        cr::CreativePlacementSurfaceFrameStatus::InvalidRotation,
+                "surface frame rejects invalid geometric inputs");
+}
+
 bool placementFeedbackHasABoundedVisibleLifetime() {
   using iggy3d_creative_app::CreativeEditorPlacementFeedback;
   using iggy3d_creative_app::CreativeEditorPlacementFeedbackStatus;
@@ -1359,6 +1442,7 @@ int main() {
   ok = placementDepthAndNearestDotLayerShareOneLattice() && ok;
   ok = placementAnchorsAreDeterministicAndStable() && ok;
   ok = placementContactAlignsExtremeFeaturesWithoutPenetration() && ok;
+  ok = placementSurfaceFramesAreDeterministicAndFailClosed() && ok;
   ok = placementFeedbackHasABoundedVisibleLifetime() && ok;
   ok = materialRepeatCadenceAndPrecedenceAreDeterministic() && ok;
   ok = worldStrokeRepeatRequestUnifiesMouseAndControllerActions() && ok;

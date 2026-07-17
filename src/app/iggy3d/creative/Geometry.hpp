@@ -54,6 +54,12 @@ struct CreativeObjectWorldExtent {
 [[nodiscard]] CreativeVec3 rotateCreativeVectorEulerXyz(
     CreativeVec3 vector,
     CreativeVec3 radians) noexcept;
+// Converts orthonormal world-space basis columns to intrinsic XYZ Euler
+// radians. Invalid basis values return a non-finite vector.
+[[nodiscard]] CreativeVec3 creativeEulerXyzFromBasis(
+    CreativeVec3 basisX,
+    CreativeVec3 basisY,
+    CreativeVec3 basisZ) noexcept;
 [[nodiscard]] CreativeVec3 composeCreativeWorldAxisRotation(
     CreativeVec3 eulerRadians,
     CreativeAxis3 axis,

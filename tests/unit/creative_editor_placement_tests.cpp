@@ -14,6 +14,7 @@
 #include "EditorStructuralPlacement.hpp"
 #include "EditorToolOptions.hpp"
 #include "EditorTransform.hpp"
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
 
 #include <algorithm>
@@ -631,6 +632,122 @@ bool verticalSurfacePlacementFollowsTheAimedFace() {
                     picked.objectId == receipt.objectId,
                 "placed cardinal object is picked through its oriented bounds") &&
          ok;
+}
+
+bool surfaceFramePlacementFollowsExactNormalsAndKeepsUprightPropsUpright() {
+  constexpr double kHalfPi = 1.57079632679489661923;
+  constexpr double kQuarterPi = 0.78539816339744830962;
+  constexpr double kSqrtHalf = 0.70710678118654752440;
+
+  cr::CreativeGridTarget diagonal;
+  diagonal.valid = true;
+  diagonal.faceNormal = {kSqrtHalf, 0.0, kSqrtHalf};
+  diagonal.placerForward = {0.0, 0.0, -1.0};
+  diagonal.placementAnchor = {3.0, 2.0, 4.0};
+  diagonal.placementNormal = diagonal.faceNormal;
+  diagonal.anchorSnapped = true;
+  const CreativeBrushPlacementAdmission door = admitBrushPlacement(
+      cr::CreativeObjectKind::Door, diagonal);
+
+  cr::CreativeGridTarget slope = diagonal;
+  slope.faceNormal = {0.6, 0.8, 0.0};
+  slope.placementNormal = slope.faceNormal;
+  const CreativeBrushPlacementAdmission window = admitBrushPlacement(
+      cr::CreativeObjectKind::Window, slope);
+  const CreativeBrushPlacementAdmission windowRolled = admitBrushPlacement(
+      cr::CreativeObjectKind::Window, slope,
+      cr::CreativePlacementYaw::Degrees90);
+  const CreativeBrushPlacementAdmission crate = admitBrushPlacement(
+      cr::CreativeObjectKind::Crate, slope);
+  const cr::CreativeDocumentCreateRequest windowRequest =
+      buildBrushCreateRequest(window.plan, 91U);
+
+  const auto rotated = [](cr::CreativeVec3 axis,
+                          const CreativeBrushPlacementAdmission& admission) {
+    return cr::rotateCreativeVectorEulerXyz(
+        axis, admission.plan.transform.rotationEulerRadians);
+  };
+  CreativeBrushPlacementPlan explicitTransformPlan = window.plan;
+  cr::CreativeTransform explicitTransform;
+  explicitTransform.position = {8.0, 2.0, -1.0};
+  explicitTransform.rotationEulerRadians = {0.0, kHalfPi, 0.0};
+  const bool explicitTransformApplied = applyCreativeAssetPlacementTransform(
+      explicitTransformPlan, window.plan.authoredBounds, explicitTransform);
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 109U);
+  const CreativeBrushPlacementMutationReceipt placedWindow =
+      applyBrushPlacement(appState.facade, window.plan, 1U);
+  const StandaloneRoomBakePreviewScene bakedWindow =
+      buildStandaloneRoomBakePreviewScene(appState.facade.document());
+  const iggy3d::RoomStaticMeshAsset* bakedWindowMesh =
+      bakedWindow.roomBake.room.staticMeshes.empty()
+          ? nullptr
+          : &bakedWindow.roomBake.room.staticMeshes.front();
+
+  return expect(door.allowed && door.plan.orientationResolved &&
+                    !door.plan.surfaceFrame.valid &&
+                    near(static_cast<float>(
+                             door.plan.transform.rotationEulerRadians.x),
+                         0.0F) &&
+                    near(static_cast<float>(
+                             door.plan.transform.rotationEulerRadians.y),
+                         static_cast<float>(kQuarterPi)) &&
+                    near(static_cast<float>(
+                             door.plan.transform.rotationEulerRadians.z),
+                         0.0F) &&
+                    nearVec3(rotated({0.0, 0.0, 1.0}, door),
+                             diagonal.faceNormal) &&
+                    door.plan.contact.valid &&
+                    door.plan.contact.sourceFeatureVertexCount == 4U,
+                "upright attachments follow exact wall yaw without tilting") &&
+         expect(window.allowed && window.plan.orientationResolved &&
+                    window.plan.surfaceFrame.valid &&
+                    nearVec3(rotated({0.0, 0.0, 1.0}, window),
+                             window.plan.surfaceFrame.surfaceNormal) &&
+                    nearVec3(rotated({0.0, 1.0, 0.0}, window),
+                             window.plan.surfaceFrame.surfaceUp) &&
+                    window.plan.contact.valid &&
+                    window.plan.contact.sourceFeatureVertexCount == 4U &&
+                    window.plan.contact.minimumSignedDistanceMeters >=
+                        -1.0e-9,
+                "surface-bound attachments align a full face to a slope") &&
+         expect(windowRolled.allowed &&
+                    windowRolled.plan.surfaceFrame.valid &&
+                    nearVec3(rotated({0.0, 0.0, 1.0}, windowRolled),
+                             window.plan.surfaceFrame.surfaceNormal) &&
+                    std::fabs(windowRolled.plan.surfaceFrame.surfaceUp.x *
+                                  window.plan.surfaceFrame.surfaceUp.x +
+                              windowRolled.plan.surfaceFrame.surfaceUp.y *
+                                  window.plan.surfaceFrame.surfaceUp.y +
+                              windowRolled.plan.surfaceFrame.surfaceUp.z *
+                                  window.plan.surfaceFrame.surfaceUp.z) <=
+                        1.0e-9,
+                "placement orientation rotates a flush object around its surface normal") &&
+         expect(crate.allowed && !crate.plan.orientationResolved &&
+                    !crate.plan.surfaceFrame.valid &&
+                    sameVec3(crate.plan.transform.rotationEulerRadians, {}),
+                "ordinary props keep descriptor-default upright orientation") &&
+         expect(sameTransform(windowRequest.transform, window.plan.transform) &&
+                    sameBounds(windowRequest.bounds,
+                               window.plan.authoredBounds),
+                "surface-frame preview and create request share one transform") &&
+         expect(placedWindow.accepted && bakedWindowMesh != nullptr &&
+                    near(bakedWindowMesh->rotationEulerRadians.x,
+                         static_cast<float>(
+                             window.plan.transform.rotationEulerRadians.x)) &&
+                    near(bakedWindowMesh->rotationEulerRadians.y,
+                         static_cast<float>(
+                             window.plan.transform.rotationEulerRadians.y)) &&
+                    near(bakedWindowMesh->rotationEulerRadians.z,
+                         static_cast<float>(
+                             window.plan.transform.rotationEulerRadians.z)),
+                "room bake preserves the admitted full surface rotation") &&
+         expect(explicitTransformApplied &&
+                    !explicitTransformPlan.surfaceFrame.valid &&
+                    !explicitTransformPlan.contact.valid &&
+                    sameTransform(explicitTransformPlan.transform,
+                                  explicitTransform),
+                "explicit socket-style transforms supersede derived surface frames");
 }
 
 bool quickEditOrientationFeedsPreviewAndCreatePlan() {
@@ -5628,6 +5745,8 @@ int main() {
   ok = standaloneBrushPalettePopulatesEveryCatalogCategory() && ok;
   ok = placementAdmissionOwnsPreviewAndExecutionTruth() && ok;
   ok = verticalSurfacePlacementFollowsTheAimedFace() && ok;
+  ok = surfaceFramePlacementFollowsExactNormalsAndKeepsUprightPropsUpright() &&
+       ok;
   ok = quickEditOrientationFeedsPreviewAndCreatePlan() && ok;
   ok = toolOptionsFollowTheRequestedMaterialEntry() && ok;
   ok = toolOptionsActivateSymmetryPivotCommands() && ok;

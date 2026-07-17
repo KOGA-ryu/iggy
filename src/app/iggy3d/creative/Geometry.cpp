@@ -23,6 +23,32 @@ CreativeVec3 rotateCreativeVectorEulerXyz(CreativeVec3 vector,
   return {x2 * cz - y1 * sz, x2 * sz + y1 * cz, z2};
 }
 
+CreativeVec3 creativeEulerXyzFromBasis(CreativeVec3 basisX,
+                                       CreativeVec3 basisY,
+                                       CreativeVec3 basisZ) noexcept {
+  if (!isFiniteCreativeVec3(basisX) || !isFiniteCreativeVec3(basisY) ||
+      !isFiniteCreativeVec3(basisZ)) {
+    const double invalid = std::numeric_limits<double>::quiet_NaN();
+    return {invalid, invalid, invalid};
+  }
+  const double sinY = std::clamp(-basisX.z, -1.0, 1.0);
+  CreativeVec3 result;
+  result.y = std::asin(sinY);
+  const double cosY = std::cos(result.y);
+  if (std::fabs(cosY) > 1.0e-10) {
+    result.x = std::atan2(basisY.z, basisZ.z);
+    result.z = std::atan2(basisX.y, basisX.x);
+  } else {
+    result.x = sinY > 0.0 ? std::atan2(basisY.x, basisY.y)
+                          : std::atan2(-basisY.x, basisY.y);
+    result.z = 0.0;
+  }
+  result.x = std::remainder(result.x, std::numbers::pi * 2.0);
+  result.y = std::remainder(result.y, std::numbers::pi * 2.0);
+  result.z = std::remainder(result.z, std::numbers::pi * 2.0);
+  return result;
+}
+
 bool isValidCreativeAxis3(CreativeAxis3 axis) noexcept {
   return static_cast<std::uint8_t>(axis) <
          static_cast<std::uint8_t>(CreativeAxis3::Count);
@@ -74,23 +100,7 @@ CreativeVec3 composeCreativeWorldAxisRotation(CreativeVec3 eulerRadians,
   const CreativeVec3 basisZ = rotateCreativeVectorAxisAngle(
       rotateCreativeVectorEulerXyz({0.0, 0.0, 1.0}, eulerRadians), axis,
       radians);
-
-  const double sinY = std::clamp(-basisX.z, -1.0, 1.0);
-  CreativeVec3 result;
-  result.y = std::asin(sinY);
-  const double cosY = std::cos(result.y);
-  if (std::fabs(cosY) > 1.0e-10) {
-    result.x = std::atan2(basisY.z, basisZ.z);
-    result.z = std::atan2(basisX.y, basisX.x);
-  } else {
-    result.x = sinY > 0.0 ? std::atan2(basisY.x, basisY.y)
-                          : std::atan2(-basisY.x, basisY.y);
-    result.z = 0.0;
-  }
-  result.x = std::remainder(result.x, std::numbers::pi * 2.0);
-  result.y = std::remainder(result.y, std::numbers::pi * 2.0);
-  result.z = std::remainder(result.z, std::numbers::pi * 2.0);
-  return result;
+  return creativeEulerXyzFromBasis(basisX, basisY, basisZ);
 }
 
 double creativeSquaredDistanceFromAxis(CreativeVec3 point,

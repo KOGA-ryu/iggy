@@ -356,7 +356,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         boxDefaults(1.0, 2.25, 0.2),
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
-        CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
+        CreativePlacementOrientationPolicy::UprightSurfaceOrPlacerFacing
     ),
     descriptor(
         CreativeObjectKind::Window,
@@ -372,7 +372,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         boxDefaults(1.5, 1.0, 0.2),
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
-        CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
+        CreativePlacementOrientationPolicy::SurfaceFrame
     ),
     withGeneratedGeometry(descriptor(
         CreativeObjectKind::Stair,
@@ -489,7 +489,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         boxDefaults(3.0, 3.0, 0.5),
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
-        CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
+        CreativePlacementOrientationPolicy::UprightSurfaceOrPlacerFacing
     ), CreativeGeneratedGeometryProfile::OpenFrame),
     withPlacementGesture(withGeneratedGeometry(descriptor(
         CreativeObjectKind::Fence,
@@ -505,7 +505,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         boxDefaults(4.0, 1.25, 0.2),
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
-        CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
+        CreativePlacementOrientationPolicy::UprightSurfaceOrPlacerFacing
     ), CreativeGeneratedGeometryProfile::SolidPrism),
         CreativePlacementGesturePolicy::HorizontalSpan),
     withPlacementGesture(withGeneratedGeometry(descriptor(
@@ -522,7 +522,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         boxDefaults(4.0, 1.0, 0.2),
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
-        CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
+        CreativePlacementOrientationPolicy::UprightSurfaceOrPlacerFacing
     ), CreativeGeneratedGeometryProfile::SolidPrism),
         CreativePlacementGesturePolicy::HorizontalSpan),
     withPlacementGesture(withGeneratedGeometry(descriptor(
@@ -554,7 +554,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         boxDefaults(0.75, 4.0, 0.2),
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
-        CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
+        CreativePlacementOrientationPolicy::UprightSurfaceOrPlacerFacing
     )
 });
 
@@ -816,7 +816,7 @@ constexpr auto kNavigationOrMovementDescriptors = std::to_array<CreativeObjectDe
         boxDefaults(0.25, 3.0, 6.0),
         kHasTransform | kHasBounds | kRuntimeMeaningful | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
-        CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing,
+        CreativePlacementOrientationPolicy::SurfaceFrame,
         CreativePlacementFace::PositiveX
     ),
     descriptor(
@@ -1192,7 +1192,10 @@ constexpr auto kVisualDressingDescriptors = std::to_array<CreativeObjectDescript
         "surface visual decal",
         commonAuthoredDirtyFlags() | flagValue(CreativeObjectDirtyFlag::Transform),
         boxDefaults(1.0, 0.01, 1.0),
-        kHasTransform | kHasBounds | kCanHaveParent | kAuthoringBrushPalette
+        kHasTransform | kHasBounds | kCanHaveParent | kAuthoringBrushPalette,
+        CreativeRuntimeAnchorSemantic::None,
+        CreativePlacementOrientationPolicy::SurfaceFrame,
+        CreativePlacementFace::PositiveY
     ),
     descriptor(
         CreativeObjectKind::Sign,
@@ -1208,7 +1211,7 @@ constexpr auto kVisualDressingDescriptors = std::to_array<CreativeObjectDescript
         boxDefaults(1.5, 1.0, 0.1),
         kHasTransform | kHasBounds | kCanHaveParent | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
-        CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
+        CreativePlacementOrientationPolicy::SurfaceFrame
     ),
     descriptor(
         CreativeObjectKind::Banner,
@@ -1224,7 +1227,7 @@ constexpr auto kVisualDressingDescriptors = std::to_array<CreativeObjectDescript
         boxDefaults(1.5, 2.0, 0.05),
         kHasTransform | kHasBounds | kCanHaveParent | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
-        CreativePlacementOrientationPolicy::CardinalFaceOrPlacerFacing
+        CreativePlacementOrientationPolicy::SurfaceFrame
     ),
     descriptor(
         CreativeObjectKind::FoliagePatch,

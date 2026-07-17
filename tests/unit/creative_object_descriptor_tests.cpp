@@ -1404,22 +1404,31 @@ bool placementPoliciesAreDescriptorOwnedAndFailClosed() {
   topOnly.enabled = true;
   topOnly.allowedFaces =
       cr::creativePlacementFaceBit(cr::CreativePlacementFace::PositiveY);
-  constexpr std::array cardinalOrientationKinds{
+  constexpr std::array uprightOrientationKinds{
       cr::CreativeObjectKind::Door,
-      cr::CreativeObjectKind::Window,
       cr::CreativeObjectKind::Arch,
       cr::CreativeObjectKind::Fence,
       cr::CreativeObjectKind::Railing,
       cr::CreativeObjectKind::Ladder,
+  };
+  constexpr std::array surfaceFrameKinds{
+      cr::CreativeObjectKind::Window,
       cr::CreativeObjectKind::WallRunSurface,
+      cr::CreativeObjectKind::Decal,
       cr::CreativeObjectKind::Sign,
       cr::CreativeObjectKind::Banner,
   };
-  for (const cr::CreativeObjectKind kind : cardinalOrientationKinds) {
+  for (const cr::CreativeObjectKind kind : uprightOrientationKinds) {
     ok = expect(cr::describeObject(kind).placementPolicy.orientationPolicy ==
                     cr::CreativePlacementOrientationPolicy::
-                        CardinalFaceOrPlacerFacing,
-                "wall-like descriptor opts into cardinal orientation") &&
+                        UprightSurfaceOrPlacerFacing,
+                "upright descriptor follows a surface without tilting") &&
+         ok;
+  }
+  for (const cr::CreativeObjectKind kind : surfaceFrameKinds) {
+    ok = expect(cr::describeObject(kind).placementPolicy.orientationPolicy ==
+                    cr::CreativePlacementOrientationPolicy::SurfaceFrame,
+                "surface-bound descriptor opts into flush orientation") &&
          ok;
   }
   const double nan = std::numeric_limits<double>::quiet_NaN();
@@ -1476,7 +1485,10 @@ bool placementPoliciesAreDescriptorOwnedAndFailClosed() {
                     cr::CreativePlacementFace::PositiveZ &&
                     cr::describeObject(cr::CreativeObjectKind::WallRunSurface)
                             .placementPolicy.localForwardFace ==
-                        cr::CreativePlacementFace::PositiveX,
+                        cr::CreativePlacementFace::PositiveX &&
+                    cr::describeObject(cr::CreativeObjectKind::Decal)
+                            .placementPolicy.localForwardFace ==
+                        cr::CreativePlacementFace::PositiveY,
                 "descriptor data owns each oriented brush local forward axis") &&
          ok;
 }

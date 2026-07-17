@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <iterator>
-#include <numbers>
 #include <string>
 
 #include <SDL3/SDL.h>
@@ -101,86 +100,124 @@ iggy3d::creative::CreativeBounds pathPreviewBounds(
          face == Face::NegativeZ || face == Face::PositiveZ;
 }
 
-[[nodiscard]] iggy3d::creative::CreativePlacementFace horizontalFaceFrom(
-    iggy3d::creative::CreativeVec3 direction) noexcept {
-  using Face = iggy3d::creative::CreativePlacementFace;
-  if (!std::isfinite(direction.x) || !std::isfinite(direction.z)) {
-    return Face::Count;
-  }
-  const double ax = std::fabs(direction.x);
-  const double az = std::fabs(direction.z);
-  if (std::max(ax, az) <= 1.0e-12) {
-    return Face::Count;
-  }
-  if (ax >= az) {
-    return direction.x < 0.0 ? Face::NegativeX : Face::PositiveX;
-  }
-  return direction.z < 0.0 ? Face::NegativeZ : Face::PositiveZ;
-}
-
-[[nodiscard]] iggy3d::creative::CreativePlacementFace oppositeHorizontalFace(
+[[nodiscard]] iggy3d::creative::CreativeVec3 placementFaceVector(
     iggy3d::creative::CreativePlacementFace face) noexcept {
   using Face = iggy3d::creative::CreativePlacementFace;
   switch (face) {
     case Face::NegativeX:
-      return Face::PositiveX;
+      return {-1.0, 0.0, 0.0};
     case Face::PositiveX:
-      return Face::NegativeX;
-    case Face::NegativeZ:
-      return Face::PositiveZ;
-    case Face::PositiveZ:
-      return Face::NegativeZ;
+      return {1.0, 0.0, 0.0};
     case Face::NegativeY:
+      return {0.0, -1.0, 0.0};
     case Face::PositiveY:
+      return {0.0, 1.0, 0.0};
+    case Face::NegativeZ:
+      return {0.0, 0.0, -1.0};
+    case Face::PositiveZ:
+      return {0.0, 0.0, 1.0};
     case Face::Count:
-      return Face::Count;
+      return {};
   }
-  return Face::Count;
+  return {};
+}
+
+[[nodiscard]] bool normalizedHorizontalDirection(
+    iggy3d::creative::CreativeVec3 value,
+    bool reverse,
+    iggy3d::creative::CreativeVec3& output) noexcept {
+  if (!iggy3d::creative::isFiniteCreativeVec3(value)) {
+    return false;
+  }
+  const double lengthSquared = value.x * value.x + value.z * value.z;
+  if (!std::isfinite(lengthSquared) || lengthSquared <= 1.0e-24) {
+    return false;
+  }
+  const double scale = (reverse ? -1.0 : 1.0) / std::sqrt(lengthSquared);
+  output = {value.x * scale, 0.0, value.z * scale};
+  return iggy3d::creative::isFiniteCreativeVec3(output);
 }
 
 [[nodiscard]] double yawRadiansForForward(
-    iggy3d::creative::CreativePlacementFace face) noexcept {
-  using Face = iggy3d::creative::CreativePlacementFace;
-  switch (face) {
-    case Face::PositiveZ:
-      return 0.0;
-    case Face::PositiveX:
-      return std::numbers::pi * 0.5;
-    case Face::NegativeZ:
-      return std::numbers::pi;
-    case Face::NegativeX:
-      return -std::numbers::pi * 0.5;
-    case Face::NegativeY:
-    case Face::PositiveY:
-    case Face::Count:
-      return 0.0;
-  }
-  return 0.0;
+    iggy3d::creative::CreativeVec3 forward) noexcept {
+  return std::atan2(forward.x, forward.z);
 }
 
-[[nodiscard]] bool orientCardinalPlan(
+[[nodiscard]] iggy3d::creative::CreativeVec3 placementOrientationNormal(
+    const iggy3d::creative::CreativeGridTarget& target) noexcept {
+  if (target.anchorSnapped &&
+      iggy3d::creative::isFiniteCreativeVec3(target.placementNormal)) {
+    const double lengthSquared =
+        target.placementNormal.x * target.placementNormal.x +
+        target.placementNormal.y * target.placementNormal.y +
+        target.placementNormal.z * target.placementNormal.z;
+    if (std::isfinite(lengthSquared) && lengthSquared > 1.0e-24) {
+      return target.placementNormal;
+    }
+  }
+  return target.faceNormal;
+}
+
+[[nodiscard]] bool orientUprightPlan(
     CreativeBrushPlacementPlan& plan,
-    iggy3d::creative::CreativePlacementFace hitFace,
+    iggy3d::creative::CreativeVec3 surfaceNormal,
     iggy3d::creative::CreativeVec3 placerForward,
     iggy3d::creative::CreativePlacementFace localForward) noexcept {
-  using Face = iggy3d::creative::CreativePlacementFace;
   if (!plan.hasTransformOverride ||
+      !iggy3d::creative::isFiniteCreativeVec3(surfaceNormal) ||
       !iggy3d::creative::isFiniteCreativeVec3(placerForward)) {
     return false;
   }
-  Face forward = hitFace;
-  if (!isHorizontalPlacementFace(hitFace)) {
-    forward = oppositeHorizontalFace(horizontalFaceFrom(placerForward));
-  }
-  if (!isHorizontalPlacementFace(forward) ||
-      !isHorizontalPlacementFace(localForward)) {
+  const iggy3d::creative::CreativeVec3 localForwardVector =
+      placementFaceVector(localForward);
+  if (!isHorizontalPlacementFace(localForward)) {
     return false;
   }
-  plan.resolvedForward = forward;
-  plan.transform.rotationEulerRadians.y =
-      yawRadiansForForward(forward) - yawRadiansForForward(localForward);
+
+  iggy3d::creative::CreativeVec3 worldForward;
+  if (!normalizedHorizontalDirection(surfaceNormal, false, worldForward) &&
+      !normalizedHorizontalDirection(placerForward, true, worldForward)) {
+    return false;
+  }
+  plan.resolvedForward =
+      iggy3d::creative::creativePlacementFaceFromNormal(worldForward);
+  plan.transform.rotationEulerRadians = {
+      0.0,
+      yawRadiansForForward(worldForward) -
+          yawRadiansForForward(localForwardVector),
+      0.0};
   plan.orientationResolved = true;
   return std::isfinite(plan.transform.rotationEulerRadians.y);
+}
+
+[[nodiscard]] bool orientSurfaceFramePlan(
+    CreativeBrushPlacementPlan& plan,
+    const iggy3d::creative::CreativeGridTarget& target,
+    iggy3d::creative::CreativePlacementFace localForward,
+    iggy3d::creative::CreativePlacementYaw placementYaw) noexcept {
+  if (!plan.hasTransformOverride ||
+      static_cast<std::size_t>(placementYaw) >=
+          static_cast<std::size_t>(
+              iggy3d::creative::CreativePlacementYaw::Count)) {
+    return false;
+  }
+  const iggy3d::creative::CreativeVec3 localForwardVector =
+      placementFaceVector(localForward);
+  plan.surfaceFrame =
+      iggy3d::creative::resolveCreativePlacementSurfaceFrame(
+          {placementOrientationNormal(target), target.placerForward,
+           localForwardVector,
+           iggy3d::creative::creativePlacementYawRadians(placementYaw)});
+  if (!plan.surfaceFrame.valid) {
+    return false;
+  }
+  plan.transform.rotationEulerRadians =
+      plan.surfaceFrame.rotationEulerRadians;
+  plan.resolvedForward =
+      iggy3d::creative::creativePlacementFaceFromNormal(
+          plan.surfaceFrame.surfaceNormal);
+  plan.orientationResolved = true;
+  return true;
 }
 
 [[nodiscard]] bool applyPlacementYaw(
@@ -571,26 +608,38 @@ CreativeBrushPlacementAdmission admitBrushPlacement(
         CreativeBrushPlacementAdmissionStatus::UnsupportedPolicy;
     return admission;
   }
+  bool placementYawConsumed = false;
   switch (policy.orientationPolicy) {
     case iggy3d::creative::CreativePlacementOrientationPolicy::
         DescriptorDefault:
       break;
     case iggy3d::creative::CreativePlacementOrientationPolicy::
-        CardinalFaceOrPlacerFacing:
-      if (!orientCardinalPlan(admission.plan, admission.plan.resolvedFace,
-                              target.placerForward,
-                              policy.localForwardFace)) {
+        UprightSurfaceOrPlacerFacing:
+      if (!orientUprightPlan(admission.plan,
+                             placementOrientationNormal(target),
+                             target.placerForward,
+                             policy.localForwardFace)) {
         admission.status =
             CreativeBrushPlacementAdmissionStatus::InvalidGeometry;
         return admission;
       }
+      break;
+    case iggy3d::creative::CreativePlacementOrientationPolicy::SurfaceFrame:
+      if (!orientSurfaceFramePlan(admission.plan, target,
+                                  policy.localForwardFace, placementYaw)) {
+        admission.status =
+            CreativeBrushPlacementAdmissionStatus::InvalidGeometry;
+        return admission;
+      }
+      placementYawConsumed = true;
       break;
     default:
       admission.status =
           CreativeBrushPlacementAdmissionStatus::UnsupportedPolicy;
       return admission;
   }
-  if (!applyPlacementYaw(admission.plan, placementYaw)) {
+  if (!placementYawConsumed &&
+      !applyPlacementYaw(admission.plan, placementYaw)) {
     admission.status =
         CreativeBrushPlacementAdmissionStatus::InvalidGeometry;
     return admission;
@@ -712,6 +761,7 @@ bool applyCreativeAssetPlacementTransform(
   plan.hasBoundsOverride = true;
   plan.orientationResolved = true;
   plan.contact = {};
+  plan.surfaceFrame = {};
   return positiveBounds(plan.authoredBounds) &&
          iggy3d::creative::resolveCreativeTransformedBounds(
              plan.authoredBounds, plan.transform)
