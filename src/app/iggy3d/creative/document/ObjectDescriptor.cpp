@@ -80,6 +80,13 @@ constexpr CreativeObjectDescriptor withGeneratedGeometry(
     return value;
 }
 
+constexpr CreativeObjectDescriptor withStructuralSurfaceAnchor(
+    CreativeObjectDescriptor value,
+    CreativeStructuralSurfaceAnchor anchor) noexcept {
+    value.structuralSurfaceAnchor = anchor;
+    return value;
+}
+
 constexpr CreativeObjectDescriptor withPlacementGesture(
     CreativeObjectDescriptor value,
     CreativePlacementGesturePolicy gesturePolicy) noexcept {
@@ -298,7 +305,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         CreativePlacementFace::PositiveZ,
         CreativePlacementStoragePolicy::VoxelCell
     ),
-    descriptor(
+    withStructuralSurfaceAnchor(descriptor(
         CreativeObjectKind::Floor,
         CreativeObjectCategory::Structural,
         CreativeObjectProfile::BoxStructural,
@@ -315,8 +322,8 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         CreativePlacementOrientationPolicy::DescriptorDefault,
         CreativePlacementFace::PositiveZ,
         CreativePlacementStoragePolicy::VoxelCell
-    ),
-    descriptor(
+    ), CreativeStructuralSurfaceAnchor::TopPlane),
+    withStructuralSurfaceAnchor(descriptor(
         CreativeObjectKind::Ceiling,
         CreativeObjectCategory::Structural,
         CreativeObjectProfile::BoxStructural,
@@ -333,8 +340,8 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         CreativePlacementOrientationPolicy::DescriptorDefault,
         CreativePlacementFace::PositiveZ,
         CreativePlacementStoragePolicy::VoxelCell
-    ),
-    descriptor(
+    ), CreativeStructuralSurfaceAnchor::BottomPlane),
+    withStructuralSurfaceAnchor(descriptor(
         CreativeObjectKind::Roof,
         CreativeObjectCategory::Structural,
         CreativeObjectProfile::BoxStructural,
@@ -351,7 +358,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         CreativePlacementOrientationPolicy::DescriptorDefault,
         CreativePlacementFace::PositiveZ,
         CreativePlacementStoragePolicy::VoxelCell
-    ),
+    ), CreativeStructuralSurfaceAnchor::BottomPlane),
     withPlacementHost(descriptor(
         CreativeObjectKind::Door,
         CreativeObjectCategory::Structural,
@@ -2119,6 +2126,11 @@ double defaultCreativeStructuralLayerThicknessMeters(
         default:
             return 0.0;
     }
+}
+
+CreativeStructuralSurfaceAnchor creativeStructuralSurfaceAnchor(
+    CreativeObjectKind kind) noexcept {
+    return describeObject(kind).structuralSurfaceAnchor;
 }
 
 std::span<const CreativeObjectDescriptor> allObjectDescriptors() noexcept {

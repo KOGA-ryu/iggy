@@ -3,6 +3,7 @@
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/recipes/StructuralSurfaceRecipe.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -79,7 +80,7 @@ void setStatus(CreativeWorldLayoutReceipt& receipt,
 
 [[nodiscard]] bool layoutBounds(const CreativeGridSettings& grid,
                                 CreativeWorldLayoutRect rect,
-                                std::int32_t baseLayer,
+                                double baseLayer,
                                 std::uint16_t heightCells,
                                 CreativeBounds& output) noexcept {
   if (!validRect(rect) || heightCells == 0U ||
@@ -520,25 +521,55 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
       return result;
     }
     CreativeBounds bounds;
-    if (!layoutBounds(grid, symbol.footprint, symbol.baseLayer,
-                      symbol.heightCells, bounds)) {
-      result.receipt.failedTable = CreativeWorldLayoutTable::Box;
-      result.receipt.failedIndex = index;
-      setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidSymbol,
-                "creative_world_layout_box_bounds_invalid");
-      return result;
+    const CreativeStructuralSurfaceAnchor surfaceAnchor =
+        creativeStructuralSurfaceAnchor(symbol.kind);
+    if (surfaceAnchor == CreativeStructuralSurfaceAnchor::None) {
+      if (!layoutBounds(grid, symbol.footprint, symbol.anchorLayer,
+                        symbol.layerCount, bounds)) {
+        result.receipt.failedTable = CreativeWorldLayoutTable::Box;
+        result.receipt.failedIndex = index;
+        setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidSymbol,
+                  "creative_world_layout_box_bounds_invalid");
+        return result;
+      }
+    } else {
+      CreativeStructuralSurfaceRecipeRequest surface;
+      surface.kind = symbol.kind;
+      surface.layerCount = symbol.layerCount;
+      if (!validRect(symbol.footprint) ||
+          !std::isfinite(grid.cellSizeMeters) || grid.cellSizeMeters <= 0.0 ||
+          !worldCoordinate(grid.origin.x, grid.cellSizeMeters,
+                           symbol.footprint.minimum.x, surface.minimumX) ||
+          !worldCoordinate(grid.origin.x, grid.cellSizeMeters,
+                           symbol.footprint.maximum.x, surface.maximumX) ||
+          !worldCoordinate(grid.origin.z, grid.cellSizeMeters,
+                           symbol.footprint.minimum.z, surface.minimumZ) ||
+          !worldCoordinate(grid.origin.z, grid.cellSizeMeters,
+                           symbol.footprint.maximum.z, surface.maximumZ) ||
+          !worldCoordinate(grid.origin.y, grid.cellSizeMeters,
+                           symbol.anchorLayer, surface.anchorPlaneMeters)) {
+        result.receipt.failedTable = CreativeWorldLayoutTable::Box;
+        result.receipt.failedIndex = index;
+        setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidSymbol,
+                  "creative_world_layout_box_bounds_invalid");
+        return result;
+      }
+      const CreativeStructuralSurfaceRecipeResult planned =
+          planCreativeStructuralSurface(surface);
+      if (!planned.accepted) {
+        result.receipt.failedTable = CreativeWorldLayoutTable::Box;
+        result.receipt.failedIndex = index;
+        result.receipt.kernelReasonCode = planned.reasonCode;
+        setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
+                  "creative_world_layout_box_geometry_rejected");
+        return result;
+      }
+      bounds = planned.bounds;
     }
     CreativeBuildingBoxSpec box{symbol.kind, key, symbol.name, bounds};
     appendTagOnce(box.tags, creativeWorldLayoutProvenanceTag(
                                 layout, CreativeWorldLayoutTable::Box,
                                 index));
-    const double layerThickness =
-        defaultCreativeStructuralLayerThicknessMeters(symbol.kind);
-    if (layerThickness > 0.0) {
-      const double authoredHeight = bounds.max.y - bounds.min.y;
-      const double targetHeight = layerThickness * symbol.heightCells;
-      box.scale.y = targetHeight / authoredHeight;
-    }
     buildings[symbol.buildingIndex].boxes.push_back(std::move(box));
   }
 

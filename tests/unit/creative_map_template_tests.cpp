@@ -246,6 +246,8 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
       findNamed(map.document, "Ditch West Boulder");
   const cr::CreativeObject* floor =
       findFirstKind(map.document, cr::CreativeObjectKind::Floor);
+  const cr::CreativeObject* roof =
+      findFirstKind(map.document, cr::CreativeObjectKind::Roof);
   const cr::CreativeTerrainHeightSample houseGround =
       cr::sampleCreativeTerrainHeight(map.document.terrainField(), {20, 28});
 
@@ -341,6 +343,10 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
                               cr::defaultCreativeStructuralLayerThicknessMeters(
                                   cr::CreativeObjectKind::Floor)) <= 1.0e-9,
                 "builder estate floor top meets terrain with exact slab thickness") &&
+         expect(roof != nullptr && roof->bounds.min.y == 7.0 &&
+                    roof->bounds.max.y == 8.0 &&
+                    sameVec(roof->transform.scale, {1.0, 1.0, 1.0}),
+                "builder estate roof rises from its exact support plane") &&
          expect(encoded.accepted && repeatedEncoded.accepted &&
                     encoded.encodedText == repeatedEncoded.encodedText &&
                     repeated.objectCount == map.objectCount &&

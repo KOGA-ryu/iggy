@@ -14,7 +14,7 @@
 
 namespace iggy3d::creative {
 
-inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 4U;
+inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 5U;
 inline constexpr std::size_t kInvalidCreativeWorldLayoutIndex =
     std::numeric_limits<std::size_t>::max();
 inline constexpr std::uint16_t kDefaultCreativeWorldLayoutWallHeightCells = 3U;
@@ -45,10 +45,12 @@ struct CreativeWorldLayoutBox {
   std::string stableKey;
   std::string name;
   CreativeWorldLayoutRect footprint;
-  std::int32_t baseLayer = 0;
-  // Horizontal structural surfaces treat this as a count of descriptor-sized
-  // vertical layers. Other box kinds retain literal grid-cell height.
-  std::uint16_t heightCells = 1U;
+  // Floor: finished top plane. Ceiling/roof: support plane. Other box kinds:
+  // lower volume plane. Values are expressed in document grid layers.
+  double anchorLayer = 0.0;
+  // Horizontal structural surfaces use descriptor-sized layers. Other box
+  // kinds use document grid-cell layers.
+  std::uint16_t layerCount = 1U;
 };
 
 struct CreativeWorldLayoutRoom {

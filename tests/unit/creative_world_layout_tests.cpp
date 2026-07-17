@@ -21,6 +21,14 @@ bool expect(bool condition, std::string_view message) {
   return condition;
 }
 
+bool near(double lhs, double rhs, double epsilon = 1.0e-12) {
+  return std::abs(lhs - rhs) <= epsilon;
+}
+
+bool sameVec3(cr::CreativeVec3 lhs, cr::CreativeVec3 rhs) {
+  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
+}
+
 cr::CreativeDocument makeDocument(cr::CreativeDocumentId id) {
   cr::CreativeDocument document = cr::CreativeDocument::create("Layout Test");
   static_cast<void>(document.assignId(id));
@@ -751,6 +759,62 @@ bool buildingTemplateSyncIsSafeAtomicAndPersistent() {
                 "instance provenance survives the existing layout codec");
 }
 
+bool structuralSurfacesCompileFromExplicitPlanesOnNonUnitGrid() {
+  cr::CreativeDocument document = makeDocument(206U);
+  static_cast<void>(document.setGridSettings(
+      {{10.0, 2.0, -10.0}, 0.5, {64, 32, 64}}));
+
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "structural_planes";
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "building";
+  building.name = "Structural Planes";
+  building.rootMode = cr::CreativeBuildingRootMode::None;
+  layout.buildings.push_back(std::move(building));
+  layout.boxes = {
+      {0U, cr::CreativeObjectKind::Floor, "floor", "Plane Floor",
+       {{2, 4}, {6, 8}}, 3.0, 2U},
+      {0U, cr::CreativeObjectKind::Ceiling, "ceiling", "Plane Ceiling",
+       {{2, 4}, {6, 8}}, 5.5, 2U},
+      {0U, cr::CreativeObjectKind::Roof, "roof", "Plane Roof",
+       {{2, 4}, {6, 8}}, 7.0, 1U},
+      {0U, cr::CreativeObjectKind::Room, "volume", "Grid Volume",
+       {{2, 4}, {6, 8}}, 1.5, 2U},
+  };
+
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, layout);
+  const cr::CreativeWorldLayoutPreviewResult preview =
+      cr::previewCreativeWorldLayoutPlan(document, compiled.plan);
+  const cr::CreativeObject* floor = findNamed(preview.document, "Plane Floor");
+  const cr::CreativeObject* ceiling =
+      findNamed(preview.document, "Plane Ceiling");
+  const cr::CreativeObject* roof = findNamed(preview.document, "Plane Roof");
+  const cr::CreativeObject* volume = findNamed(preview.document, "Grid Volume");
+
+  return expect(compiled.receipt.accepted && preview.accepted,
+                "explicit structural planes compile and preview") &&
+         expect(floor != nullptr && floor->bounds.min.x == 11.0 &&
+                    floor->bounds.max.x == 13.0 &&
+                    floor->bounds.min.z == -8.0 &&
+                    floor->bounds.max.z == -6.0 &&
+                    near(floor->bounds.min.y, 3.4) &&
+                    near(floor->bounds.max.y, 3.5) &&
+                    sameVec3(floor->transform.scale, {1.0, 1.0, 1.0}),
+                "floor extends down from exact finished top without scale fixup") &&
+         expect(ceiling != nullptr && near(ceiling->bounds.min.y, 4.75) &&
+                    near(ceiling->bounds.max.y, 5.25) &&
+                    sameVec3(ceiling->transform.scale, {1.0, 1.0, 1.0}),
+                "ceiling extends up from exact support plane") &&
+         expect(roof != nullptr && near(roof->bounds.min.y, 5.5) &&
+                    near(roof->bounds.max.y, 6.5) &&
+                    sameVec3(roof->transform.scale, {1.0, 1.0, 1.0}),
+                "roof uses descriptor thickness above support plane") &&
+         expect(volume != nullptr && near(volume->bounds.min.y, 2.75) &&
+                    near(volume->bounds.max.y, 3.75),
+                "ordinary box retains grid-cell layer semantics");
+}
+
 bool twoDimensionalBuildingCompilesToExactThreeDimensionalOutput() {
   const cr::CreativeDocument document = makeDocument(201U);
   const cr::CreativeWorldLayout layout = smallHouseLayout();
@@ -963,6 +1027,7 @@ bool invalidAndStaleSourcesFailClosed() {
 
 int main() {
   const bool ok =
+      structuralSurfacesCompileFromExplicitPlanesOnNonUnitGrid() &&
       twoDimensionalBuildingCompilesToExactThreeDimensionalOutput() &&
       rebuildingAndDeletingLayoutNeverDuplicatesOutput() &&
       authoritativeTerrainAndMaterialApplyAsOneHistoryStep() &&

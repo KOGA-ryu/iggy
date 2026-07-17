@@ -33,16 +33,16 @@ bool sameRect(cr::CreativeWorldLayoutRect lhs,
 
 CreativeEditorWorldLayoutBoxSettings boxSettings(
     const cr::CreativeWorldLayoutBox& box) noexcept {
-  return {box.footprint, box.baseLayer, box.heightCells};
+  return {box.footprint, box.anchorLayer, box.layerCount};
 }
 
 StructuralValidation validateBoxSettings(
     const CreativeEditorWorldLayoutState& state, std::size_t boxIndex,
     const CreativeEditorWorldLayoutBoxSettings& settings) {
   if (boxIndex >= state.source.boxes.size() || !validRect(settings.footprint) ||
-      settings.heightCells == 0U) {
+      !std::isfinite(settings.anchorLayer) || settings.layerCount == 0U) {
     return {false, "creative_editor_world_layout_box_settings_invalid",
-            "floor needs positive width, depth, and thickness"};
+            "surface needs finite elevation and positive dimensions"};
   }
   const cr::CreativeWorldLayoutBox& box = state.source.boxes[boxIndex];
   if (box.buildingIndex >= state.source.buildings.size()) {
@@ -65,14 +65,14 @@ CreativeEditorWorldLayoutEditReceipt commitBoxSettings(
   }
   cr::CreativeWorldLayoutBox& box = state.source.boxes[boxIndex];
   if (sameRect(box.footprint, settings.footprint) &&
-      box.baseLayer == settings.baseLayer &&
-      box.heightCells == settings.heightCells) {
+      box.anchorLayer == settings.anchorLayer &&
+      box.layerCount == settings.layerCount) {
     return {true, false,
             "creative_editor_world_layout_box_settings_no_change"};
   }
   box.footprint = settings.footprint;
-  box.baseLayer = settings.baseLayer;
-  box.heightCells = settings.heightCells;
+  box.anchorLayer = settings.anchorLayer;
+  box.layerCount = settings.layerCount;
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Box, boxIndex};
   detail::noteWorldLayoutSourceChange(state, std::move(statusMessage));
   return {true, true, "creative_editor_world_layout_box_settings_updated"};

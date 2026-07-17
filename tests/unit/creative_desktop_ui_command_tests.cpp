@@ -1571,8 +1571,8 @@ bool worldLayoutStructuralCommandsRouteThroughDispatcher() {
                     floorMoveCommittedOnce &&
                     floorAfterMove.minimum ==
                         cr::CreativeTerrainCoord2{2, 1} &&
-                    editor.worldLayout.source.boxes[0].baseLayer == 1 &&
-                    editor.worldLayout.source.boxes[0].heightCells == 2U,
+                    editor.worldLayout.source.boxes[0].anchorLayer == 1.0 &&
+                    editor.worldLayout.source.boxes[0].layerCount == 2U,
                 "floor settings and manipulation use typed dispatcher commands") &&
          expect(setWallTool.accepted && wallBegin.accepted &&
                     wallCreate.accepted && wallCreate.worldLayoutChanged &&

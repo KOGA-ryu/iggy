@@ -573,7 +573,20 @@ bool descriptorOwnsCanonicalStructuralDimensions() {
                         cr::CreativeObjectKind::Roof) == 1.0 &&
                     cr::defaultCreativeStructuralLayerThicknessMeters(
                         cr::CreativeObjectKind::Wall) == 0.0,
-                "horizontal layer thickness is descriptor-owned");
+                "horizontal layer thickness is descriptor-owned") &&
+         expect(cr::creativeStructuralSurfaceAnchor(
+                    cr::CreativeObjectKind::Floor) ==
+                    cr::CreativeStructuralSurfaceAnchor::TopPlane &&
+                    cr::creativeStructuralSurfaceAnchor(
+                        cr::CreativeObjectKind::Ceiling) ==
+                        cr::CreativeStructuralSurfaceAnchor::BottomPlane &&
+                    cr::creativeStructuralSurfaceAnchor(
+                        cr::CreativeObjectKind::Roof) ==
+                        cr::CreativeStructuralSurfaceAnchor::BottomPlane &&
+                    cr::creativeStructuralSurfaceAnchor(
+                        cr::CreativeObjectKind::Wall) ==
+                        cr::CreativeStructuralSurfaceAnchor::None,
+                "horizontal surface direction is descriptor-owned");
 }
 
 bool descriptorOwnsGeneratedTraversalGeometry() {

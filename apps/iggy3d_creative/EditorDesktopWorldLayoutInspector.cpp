@@ -14,7 +14,7 @@ bool sameBoxSettings(const CreativeEditorWorldLayoutBoxSettings& lhs,
                      const CreativeEditorWorldLayoutBoxSettings& rhs) noexcept {
   return lhs.footprint.minimum == rhs.footprint.minimum &&
          lhs.footprint.maximum == rhs.footprint.maximum &&
-         lhs.baseLayer == rhs.baseLayer && lhs.heightCells == rhs.heightCells;
+         lhs.anchorLayer == rhs.anchorLayer && lhs.layerCount == rhs.layerCount;
 }
 
 bool sameWallSettings(
@@ -24,6 +24,33 @@ bool sameWallSettings(
          lhs.baseLayer == rhs.baseLayer &&
          lhs.heightCells == rhs.heightCells &&
          lhs.thicknessCells == rhs.thicknessCells;
+}
+
+const char* boxSettingsTitle(cr::CreativeObjectKind kind) noexcept {
+  switch (kind) {
+    case cr::CreativeObjectKind::Floor: return "Floor settings";
+    case cr::CreativeObjectKind::Ceiling: return "Ceiling settings";
+    case cr::CreativeObjectKind::Roof: return "Roof settings";
+    default: return "Volume settings";
+  }
+}
+
+const char* boxAnchorLabel(cr::CreativeObjectKind kind) noexcept {
+  switch (kind) {
+    case cr::CreativeObjectKind::Floor: return "Top##layout_box";
+    case cr::CreativeObjectKind::Ceiling:
+    case cr::CreativeObjectKind::Roof: return "Support##layout_box";
+    default: return "Base##layout_box";
+  }
+}
+
+const char* boxApplyLabel(cr::CreativeObjectKind kind) noexcept {
+  switch (kind) {
+    case cr::CreativeObjectKind::Floor: return "Apply floor";
+    case cr::CreativeObjectKind::Ceiling: return "Apply ceiling";
+    case cr::CreativeObjectKind::Roof: return "Apply roof";
+    default: return "Apply volume";
+  }
 }
 
 void drawBuildingActions(CreativeEditorWorldLayoutState& state,
@@ -364,12 +391,10 @@ void drawBoxSettings(CreativeEditorWorldLayoutState& state,
   int depth = static_cast<int>(std::clamp<std::int64_t>(
       depth64, std::numeric_limits<int>::min(),
       std::numeric_limits<int>::max()));
-  int baseLayer = settings.baseLayer;
-  int height = settings.heightCells;
-  ImGui::TextUnformatted(state.source.boxes[boxIndex].kind ==
-                                 cr::CreativeObjectKind::Floor
-                             ? "Floor settings"
-                             : "Surface settings");
+  double anchorLayer = settings.anchorLayer;
+  int layerCount = settings.layerCount;
+  const cr::CreativeObjectKind kind = state.source.boxes[boxIndex].kind;
+  ImGui::TextUnformatted(boxSettingsTitle(kind));
   ImGui::SetNextItemWidth(84.0F);
   bool edited = ImGui::InputInt("X##layout_box", &originX, 1, 4);
   ImGui::SameLine();
@@ -382,11 +407,13 @@ void drawBoxSettings(CreativeEditorWorldLayoutState& state,
   ImGui::SetNextItemWidth(84.0F);
   edited = ImGui::InputInt("Depth##layout_box", &depth, 1, 4) || edited;
 
-  ImGui::SetNextItemWidth(84.0F);
-  edited = ImGui::InputInt("Base##layout_box", &baseLayer, 1, 4) || edited;
+  ImGui::SetNextItemWidth(92.0F);
+  edited = ImGui::InputDouble(boxAnchorLabel(kind), &anchorLayer, 0.25, 1.0,
+                              "%.2f") ||
+           edited;
   ImGui::SameLine();
   ImGui::SetNextItemWidth(84.0F);
-  edited = ImGui::InputInt("Layers##layout_box", &height, 1, 2) || edited;
+  edited = ImGui::InputInt("Layers##layout_box", &layerCount, 1, 2) || edited;
 
   const std::int64_t maximumX =
       static_cast<std::int64_t>(originX) + width;
@@ -397,25 +424,25 @@ void drawBoxSettings(CreativeEditorWorldLayoutState& state,
       maximumX <= std::numeric_limits<std::int32_t>::max() &&
       maximumZ >= std::numeric_limits<std::int32_t>::min() &&
       maximumZ <= std::numeric_limits<std::int32_t>::max() && width > 0 &&
-      depth > 0 && height > 0 &&
-      height <= std::numeric_limits<std::uint16_t>::max();
+      depth > 0 && std::isfinite(anchorLayer) && layerCount > 0 &&
+      layerCount <= std::numeric_limits<std::uint16_t>::max();
   if (edited && valuesRepresentable) {
     settings.footprint.minimum = {static_cast<std::int32_t>(originX),
                                   static_cast<std::int32_t>(originZ)};
     settings.footprint.maximum = {static_cast<std::int32_t>(maximumX),
                                   static_cast<std::int32_t>(maximumZ)};
-    settings.baseLayer = static_cast<std::int32_t>(baseLayer);
-    settings.heightCells = static_cast<std::uint16_t>(height);
+    settings.anchorLayer = anchorLayer;
+    settings.layerCount = static_cast<std::uint16_t>(layerCount);
   }
   if (!valuesRepresentable) {
     ImGui::TextColored(ImVec4{0.94F, 0.45F, 0.32F, 1.0F},
-                       "floor dimensions must be positive and in range");
+                       "surface dimensions must be finite and positive");
   }
 
   const bool dirty = !sameBoxSettings(current, settings);
   ImGui::BeginDisabled(!dirty || !valuesRepresentable ||
                        state.boxManipulation.active);
-  if (ImGui::Button("Apply floor")) {
+  if (ImGui::Button(boxApplyLabel(kind))) {
     commands.push(CreativeDesktopCommandId::WorldLayoutSetBoxSettings,
                   CreativeDesktopWorldLayoutBoxSettingsPayload{boxIndex,
                                                                settings});

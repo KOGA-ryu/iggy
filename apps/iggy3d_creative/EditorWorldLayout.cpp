@@ -871,8 +871,8 @@ CreativeEditorWorldLayoutEditReceipt addFloorPoint(
   box.stableKey = mintWorldLayoutStableKey(state, "floor");
   box.name = "Floor " + std::to_string(state.source.boxes.size() + 1U);
   box.footprint = rect;
-  box.baseLayer = 0;
-  box.heightCells = 1U;
+  box.anchorLayer = 0.0;
+  box.layerCount = 1U;
   state.source.boxes.push_back(std::move(box));
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Box,
                      state.source.boxes.size() - 1U};

@@ -151,6 +151,15 @@ struct CreativeGeneratedGeometrySettings {
     double maximumStepRiseMeters{0.0};
 };
 
+enum class CreativeStructuralSurfaceAnchor : std::uint8_t {
+    None,
+    // The authored plane is the finished walking surface. Material extends
+    // downward from it.
+    TopPlane,
+    // The authored plane supports the surface. Material extends upward from it.
+    BottomPlane,
+};
+
 inline constexpr std::uint16_t
     kMaximumCreativeGeneratedGeometrySegmentCount = 32U;
 
@@ -317,6 +326,8 @@ struct CreativeObjectDescriptor {
     bool isRuntimeMeaningful{false};
     bool isEditorOnly{false};
     CreativeGeneratedGeometrySettings generatedGeometry{};
+    CreativeStructuralSurfaceAnchor structuralSurfaceAnchor{
+        CreativeStructuralSurfaceAnchor::None};
 };
 
 [[nodiscard]] CreativeObjectDirtyFlags operator|(CreativeObjectDirtyFlag lhs, CreativeObjectDirtyFlag rhs) noexcept;
@@ -342,6 +353,8 @@ struct CreativeObjectDescriptor {
     CreativeVec3 resolvedSize) noexcept;
 [[nodiscard]] CreativeWallGeometryDefaults defaultCreativeWallGeometry() noexcept;
 [[nodiscard]] double defaultCreativeStructuralLayerThicknessMeters(
+    CreativeObjectKind kind) noexcept;
+[[nodiscard]] CreativeStructuralSurfaceAnchor creativeStructuralSurfaceAnchor(
     CreativeObjectKind kind) noexcept;
 [[nodiscard]] std::span<const CreativeObjectDescriptor> allObjectDescriptors() noexcept;
 

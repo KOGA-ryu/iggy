@@ -565,8 +565,8 @@ bool floorSettingsMoveAndResizeCommitOnce() {
   app::CreativeEditorWorldLayoutBoxSettings settings;
   const bool read = app::readCreativeEditorWorldLayoutBoxSettings(
       state, 0U, settings);
-  settings.baseLayer = 1;
-  settings.heightCells = 2U;
+  settings.anchorLayer = 1.0;
+  settings.layerCount = 2U;
   const std::uint64_t revisionBeforeSettings = state.revision;
   const auto configured = app::setCreativeEditorWorldLayoutBoxSettings(
       state, 0U, settings);
@@ -626,8 +626,8 @@ bool floorSettingsMoveAndResizeCommitOnce() {
 
   return expect(read && configured.accepted && configured.changed &&
                     revisionAfterSettings == revisionBeforeSettings + 1U &&
-                    state.source.boxes[0].baseLayer == 1 &&
-                    state.source.boxes[0].heightCells == 2U,
+                    state.source.boxes[0].anchorLayer == 1.0 &&
+                    state.source.boxes[0].layerCount == 2U,
                 "floor settings commit as one source edit") &&
          expect(moveTarget.handle ==
                         app::CreativeEditorWorldLayoutBoxHandle::Move &&

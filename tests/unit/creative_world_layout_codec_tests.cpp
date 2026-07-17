@@ -49,6 +49,8 @@ cr::CreativeWorldLayout richLayout() {
   floor.stableKey = "floor.main";
   floor.name = "Ground Floor";
   floor.footprint = {{-4, -3}, {8, 7}};
+  floor.anchorLayer = 1.75;
+  floor.layerCount = 2U;
   layout.boxes.push_back(floor);
 
   cr::CreativeWorldLayoutWall wall;
@@ -151,6 +153,8 @@ bool deterministicRoundTripPreservesEveryTable() {
                         source.rooms[0].footprint.maximum &&
                     decoded.layout.rooms[0].floorTopLayer == 1.25 &&
                     decoded.layout.boxes.size() == 1U &&
+                    decoded.layout.boxes[0].anchorLayer == 1.75 &&
+                    decoded.layout.boxes[0].layerCount == 2U &&
                     decoded.layout.walls.size() == 1U &&
                     decoded.layout.openings.size() == 2U &&
                     decoded.layout.openings[1].hostKind ==
@@ -183,6 +187,11 @@ bool malformedAndNonFiniteInputsFailClosed() {
       std::numeric_limits<double>::infinity();
   const cr::CreativeWorldLayoutEncodeResult nonFiniteObject =
       cr::encodeCreativeWorldLayout(badObject);
+  cr::CreativeWorldLayout badBox = richLayout();
+  badBox.boxes[0].anchorLayer =
+      std::numeric_limits<double>::quiet_NaN();
+  const cr::CreativeWorldLayoutEncodeResult nonFiniteBox =
+      cr::encodeCreativeWorldLayout(badBox);
 
   const cr::CreativeWorldLayoutEncodeResult valid =
       cr::encodeCreativeWorldLayout(richLayout());
@@ -223,6 +232,10 @@ bool malformedAndNonFiniteInputsFailClosed() {
                     nonFiniteObject.status ==
                         cr::CreativeWorldLayoutCodecStatus::NonFiniteValue,
                 "non-finite object symbol is not encoded") &&
+         expect(!nonFiniteBox.accepted &&
+                    nonFiniteBox.status ==
+                        cr::CreativeWorldLayoutCodecStatus::NonFiniteValue,
+                "non-finite box anchor is not encoded") &&
          expect(!truncated.accepted, "truncated source is rejected") &&
          expect(!wrongVersion.accepted &&
                     wrongVersion.status ==
@@ -303,6 +316,38 @@ bool versionThreeRoomPreservesWallPlaneDuringMigration() {
                 "version-three migration preserves the generated wall plane");
 }
 
+bool versionFourBoxesMigrateToExplicitAnchorPlanes() {
+  const std::string versionFour =
+      "IGGY3D_WORLD_LAYOUT 4\n"
+      "L 4 6c65676163795f7375726661636573 0 1 0 2 0 0 0 0 0 0\n"
+      "B 686f757365 486f757365 0 0 0 4 4 0 3 1 0\n"
+      "X 0 " +
+      std::to_string(static_cast<unsigned>(cr::CreativeObjectKind::Floor)) +
+      " 666c6f6f72 466c6f6f72 0 0 4 4 2 2\n"
+      "X 0 " +
+      std::to_string(static_cast<unsigned>(cr::CreativeObjectKind::Roof)) +
+      " 726f6f66 526f6f66 0 0 4 4 7 1\n"
+      "END\n";
+  const cr::CreativeWorldLayoutDecodeResult decoded =
+      cr::decodeCreativeWorldLayout(versionFour);
+  const cr::CreativeWorldLayoutEncodeResult encoded =
+      decoded.accepted ? cr::encodeCreativeWorldLayout(decoded.layout)
+                       : cr::CreativeWorldLayoutEncodeResult{};
+
+  return expect(decoded.accepted && decoded.layout.boxes.size() == 2U &&
+                    decoded.layout.boxes[0].anchorLayer == 2.0 &&
+                    decoded.layout.boxes[0].layerCount == 2U &&
+                    decoded.layout.boxes[1].anchorLayer == 7.0 &&
+                    decoded.layout.boxes[1].layerCount == 1U,
+                "version-four box layers migrate to explicit anchor planes") &&
+         expect(encoded.accepted &&
+                    encoded.encodedText.starts_with(
+                        "IGGY3D_WORLD_LAYOUT " +
+                        std::to_string(cr::kCreativeWorldLayoutCodecVersion) +
+                        "\n"),
+                "migrated box source writes current schema");
+}
+
 }  // namespace
 
 int main() {
@@ -310,6 +355,7 @@ int main() {
                   malformedAndNonFiniteInputsFailClosed() &&
                   versionOneSourceMigratesToCurrentSchema() &&
                   versionTwoSourceMigratesWithoutFabricatedObjects() &&
-                  versionThreeRoomPreservesWallPlaneDuringMigration();
+                  versionThreeRoomPreservesWallPlaneDuringMigration() &&
+                  versionFourBoxesMigrateToExplicitAnchorPlanes();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

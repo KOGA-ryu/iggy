@@ -43,6 +43,8 @@ cr::CreativeWorldLayout layout() {
   floor.stableKey = "floor_1";
   floor.name = "Floor";
   floor.footprint = {{0, 0}, {8, 6}};
+  floor.anchorLayer = 1.25;
+  floor.layerCount = 2U;
   result.boxes.push_back(floor);
   static_cast<void>(
       cr::setCreativeWorldLayoutBuildingTemplateInstanceProvenance(
@@ -96,6 +98,10 @@ bool layoutTravelsInsideTheAtomicSaveEnvelope() {
       expect(sourceBytes.accepted && openedBytes.accepted &&
                  sourceBytes.encodedText == openedBytes.encodedText,
              "restored layout source is byte-equivalent") &&
+      expect(opened.worldLayout.boxes.size() == 1U &&
+                 opened.worldLayout.boxes[0].anchorLayer == 1.25 &&
+                 opened.worldLayout.boxes[0].layerCount == 2U,
+             "fractional structural anchor and layer count survive world save") &&
       expect(provenance.valid && provenance.templateId == "house_template" &&
                  provenance.sourceFingerprint == 0x1234U &&
                  provenance.instanceBaselineFingerprint == 0x5678U &&

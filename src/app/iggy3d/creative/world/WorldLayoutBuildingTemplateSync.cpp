@@ -411,8 +411,8 @@ fingerprintCreativeWorldLayoutBuilding(const CreativeWorldLayout& layout,
     builder.appendUnsigned(static_cast<std::uint16_t>(box.kind));
     builder.appendString(box.name);
     appendRelativeRect(builder, box.footprint, bounds.minimum);
-    builder.appendSigned(box.baseLayer);
-    builder.appendUnsigned(box.heightCells);
+    builder.appendDouble(box.anchorLayer);
+    builder.appendUnsigned(box.layerCount);
   }
 
   builder.appendUnsigned(countIf(layout.walls, [buildingIndex](const auto& wall) {

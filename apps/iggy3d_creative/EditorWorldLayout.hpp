@@ -141,8 +141,8 @@ struct CreativeEditorWorldLayoutRoomManipulationState {
 
 struct CreativeEditorWorldLayoutBoxSettings {
   cr::CreativeWorldLayoutRect footprint;
-  std::int32_t baseLayer = 0;
-  std::uint16_t heightCells = 1U;
+  double anchorLayer = 0.0;
+  std::uint16_t layerCount = 1U;
 };
 
 struct CreativeEditorWorldLayoutBoxSettingsDraft {

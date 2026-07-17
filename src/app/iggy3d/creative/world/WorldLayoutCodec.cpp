@@ -288,8 +288,11 @@ bool validateForEncoding(const CreativeWorldLayout& layout,
   }
   for (const CreativeWorldLayoutBox& box : layout.boxes) {
     if (!validKeyName(box.stableKey, box.name) || !validRect(box.footprint) ||
+        !std::isfinite(box.anchorLayer) || box.layerCount == 0U ||
         enumValue(box.kind) >= enumValue(CreativeObjectKind::Count)) {
-      failure = {CreativeWorldLayoutCodecStatus::InvalidRecord,
+      failure = {std::isfinite(box.anchorLayer)
+                     ? CreativeWorldLayoutCodecStatus::InvalidRecord
+                     : CreativeWorldLayoutCodecStatus::NonFiniteValue,
                  "creative_world_layout_encode_invalid_box"};
       return false;
     }
@@ -536,7 +539,7 @@ CreativeWorldLayoutEncodeResult encodeCreativeWorldLayout(
            << static_cast<unsigned>(enumValue(box.kind)) << ' '
            << hexString(box.stableKey) << ' ' << hexString(box.name);
     writeRect(output, box.footprint);
-    output << ' ' << box.baseLayer << ' ' << box.heightCells << '\n';
+    output << ' ' << box.anchorLayer << ' ' << box.layerCount << '\n';
   }
   for (const CreativeWorldLayoutWall& wall : layout.walls) {
     output << "W " << wall.buildingIndex << ' ' << hexString(wall.stableKey)
@@ -776,14 +779,26 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
                  result)) {
     return result;
   }
-  const auto readBox = [](RecordReader& reader, CreativeWorldLayoutBox& box) {
+  const auto readBox = [codecVersion](RecordReader& reader,
+                                      CreativeWorldLayoutBox& box) {
     std::uint16_t kind = 0U;
-    if (!reader.readLiteral("X") || !reader.readSize(box.buildingIndex) ||
-        !reader.readUnsigned(kind) ||
-        kind >= enumValue(CreativeObjectKind::Count) ||
-        !reader.readHex(box.stableKey) || !reader.readHex(box.name) ||
-        !readRect(reader, box.footprint) || !reader.readI32(box.baseLayer) ||
-        !reader.readUnsigned(box.heightCells)) {
+    std::int32_t legacyBaseLayer = 0;
+    const bool prefix =
+        reader.readLiteral("X") && reader.readSize(box.buildingIndex) &&
+        reader.readUnsigned(kind) &&
+        kind < enumValue(CreativeObjectKind::Count) &&
+        reader.readHex(box.stableKey) && reader.readHex(box.name) &&
+        readRect(reader, box.footprint);
+    const bool anchor = codecVersion >= 5U
+                            ? reader.readDouble(box.anchorLayer)
+                            : reader.readI32(legacyBaseLayer);
+    if (!prefix || !anchor || !reader.readUnsigned(box.layerCount)) {
+      return false;
+    }
+    if (codecVersion < 5U) {
+      box.anchorLayer = static_cast<double>(legacyBaseLayer);
+    }
+    if (!std::isfinite(box.anchorLayer) || box.layerCount == 0U) {
       return false;
     }
     box.kind = static_cast<CreativeObjectKind>(kind);

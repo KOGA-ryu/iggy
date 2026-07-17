@@ -79,8 +79,8 @@ void appendHouseRoom(CreativeWorldLayout& layout,
   metadata.stableKey = stableKey + ".volume";
   metadata.name = name;
   metadata.footprint = footprint;
-  metadata.baseLayer = kHouseFloorLayer;
-  metadata.heightCells = kHouseWallHeightCells;
+  metadata.anchorLayer = kHouseFloorLayer;
+  metadata.layerCount = kHouseWallHeightCells;
   layout.boxes.push_back(std::move(metadata));
 
   CreativeWorldLayoutBox roof;
@@ -89,8 +89,8 @@ void appendHouseRoom(CreativeWorldLayout& layout,
   roof.stableKey = stableKey + ".roof";
   roof.name = name + " Roof";
   roof.footprint = footprint;
-  roof.baseLayer = kHouseRoofLayer;
-  roof.heightCells = 1U;
+  roof.anchorLayer = kHouseRoofLayer;
+  roof.layerCount = 1U;
   layout.boxes.push_back(std::move(roof));
 }
 
