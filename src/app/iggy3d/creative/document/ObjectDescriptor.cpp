@@ -359,6 +359,20 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         CreativePlacementFace::PositiveZ,
         CreativePlacementStoragePolicy::VoxelCell
     ), CreativeStructuralSurfaceAnchor::BottomPlane),
+    withGeneratedGeometry(descriptor(
+        CreativeObjectKind::GableRoof,
+        CreativeObjectCategory::Structural,
+        CreativeObjectProfile::BoxStructural,
+        CreativeObjectShapeKind::Surface,
+        CreativeSpatialProjectionProfile::BoxProjection,
+        CreativeSpatialOccupancyKind::Structural,
+        "GableRoof",
+        "Gable Roof Slope",
+        "generated sloped half of an authored gable roof",
+        structuralCreationDirtyFlags(),
+        boxDefaults(4.0, 1.0, 2.0),
+        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful
+    ), CreativeGeneratedGeometryProfile::RampWedge),
     withPlacementHost(descriptor(
         CreativeObjectKind::Door,
         CreativeObjectCategory::Structural,

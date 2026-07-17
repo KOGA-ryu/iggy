@@ -3,6 +3,7 @@
 #include "EditorDesktopWorldLayoutInspector.hpp"
 
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutRoofs.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
 #include <algorithm>
@@ -260,6 +261,63 @@ void drawRoom(ImDrawList& drawList, const CanvasTransform& transform,
                    isSelected ? color({0.96F, 0.82F, 0.22F, 1.0F})
                               : color({0.70F, 0.78F, 0.86F, 1.0F}),
                    0.0F, 0, isSelected ? 4.0F : 3.0F);
+}
+
+void drawActiveLevelRoof(ImDrawList& drawList,
+                         const CanvasTransform& transform,
+                         const CreativeEditorWorldLayoutState& state) {
+  const cr::CreativeWorldLayout& source =
+      creativeEditorWorldLayoutDisplaySource(state);
+  if (state.activeLevelIndex >= source.levels.size()) {
+    return;
+  }
+  const cr::CreativeWorldLayoutLevel& level =
+      source.levels[state.activeLevelIndex];
+  const bool drawsAuthoredFootprint =
+      level.roofStyle == cr::CreativeStructuralRoofStyle::Gable ||
+      level.roofOverhangCells > 0.0;
+  if (!drawsAuthoredFootprint ||
+      !cr::creativeWorldLayoutLevelIsTopmostOccupied(
+          source, state.activeLevelIndex)) {
+    return;
+  }
+  cr::CreativeWorldLayoutRect footprint;
+  if (!cr::creativeWorldLayoutLevelRoofFootprint(
+          source, state.activeLevelIndex, footprint)) {
+    return;
+  }
+  const auto [deltaX, deltaZ] =
+      buildingPreviewOffset(state, level.buildingIndex);
+  const double minimumX = footprint.minimum.x - level.roofOverhangCells +
+                          deltaX;
+  const double maximumX = footprint.maximum.x + level.roofOverhangCells +
+                          deltaX;
+  const double minimumZ = footprint.minimum.z - level.roofOverhangCells +
+                          deltaZ;
+  const double maximumZ = footprint.maximum.z + level.roofOverhangCells +
+                          deltaZ;
+  const ImVec2 first = toScreen(transform, minimumX, minimumZ);
+  const ImVec2 second = toScreen(transform, maximumX, maximumZ);
+  const ImVec2 minimum{std::min(first.x, second.x),
+                       std::min(first.y, second.y)};
+  const ImVec2 maximum{std::max(first.x, second.x),
+                       std::max(first.y, second.y)};
+  const ImU32 outline = color({0.34F, 0.86F, 0.56F, 0.92F});
+  drawList.AddRectFilled(minimum, maximum,
+                         color({0.20F, 0.54F, 0.34F, 0.10F}));
+  drawList.AddRect(minimum, maximum, outline, 0.0F, 0, 2.0F);
+  if (level.roofStyle != cr::CreativeStructuralRoofStyle::Gable) {
+    return;
+  }
+  if (level.roofRidgeAxis == cr::CreativeStructuralRoofRidgeAxis::X) {
+    const double centerZ = (minimumZ + maximumZ) * 0.5;
+    drawList.AddLine(toScreen(transform, minimumX, centerZ),
+                     toScreen(transform, maximumX, centerZ), outline, 3.0F);
+  } else {
+    const double centerX = (minimumX + maximumX) * 0.5;
+    drawList.AddLine(toScreen(transform, centerX, minimumZ),
+                     toScreen(transform, centerX, maximumZ), outline, 3.0F);
+  }
 }
 
 void drawSharedRoomEdges(ImDrawList& drawList,
@@ -1270,6 +1328,11 @@ void drawSelectedRoomSettings(CreativeEditorWorldLayoutState& state,
   int wallHeight = level->wallHeightCells;
   double wallThickness = room.wallThicknessCells;
   int floorLayers = level->floorThicknessLayers;
+  int roofLayers = level->roofThicknessLayers;
+  int roofStyle = static_cast<int>(level->roofStyle);
+  int roofRidgeAxis = static_cast<int>(level->roofRidgeAxis);
+  double roofPitch = level->roofPitchDegrees;
+  double roofOverhang = level->roofOverhangCells;
 
   ImGui::SetNextItemWidth(88.0F);
   bool changed = ImGui::InputInt("Width##room_shell", &width, 1, 4);
@@ -1297,6 +1360,32 @@ void drawSelectedRoomSettings(CreativeEditorWorldLayoutState& state,
                             2) ||
             changed;
 
+  ImGui::SeparatorText("Level roof");
+  ImGui::SetNextItemWidth(110.0F);
+  changed = ImGui::Combo("Style##room_roof", &roofStyle,
+                         "Flat\0Gable\0") ||
+            changed;
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(88.0F);
+  changed = ImGui::InputInt("Layers##room_roof", &roofLayers, 1, 2) ||
+            changed;
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(88.0F);
+  changed = ImGui::InputDouble("Overhang##room_roof", &roofOverhang, 0.25,
+                               1.0, "%.2f") ||
+            changed;
+  if (roofStyle == static_cast<int>(cr::CreativeStructuralRoofStyle::Gable)) {
+    ImGui::SetNextItemWidth(110.0F);
+    changed = ImGui::Combo("Ridge##room_roof", &roofRidgeAxis,
+                           "X axis\0Z axis\0") ||
+              changed;
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(88.0F);
+    changed = ImGui::InputDouble("Pitch##room_roof", &roofPitch, 1.0, 5.0,
+                                 "%.1f deg") ||
+              changed;
+  }
+
   if (!changed) {
     return;
   }
@@ -1312,7 +1401,18 @@ void drawSelectedRoomSettings(CreativeEditorWorldLayoutState& state,
       maximumZ <= std::numeric_limits<std::int32_t>::max() &&
       wallHeight > 0 && wallHeight <= maximumLayerCount &&
       floorLayers > 0 && floorLayers <= maximumLayerCount &&
+      roofLayers > 0 && roofLayers <= maximumLayerCount &&
       std::isfinite(floorTopLayer) && std::isfinite(wallThickness) &&
+      roofStyle >= 0 &&
+      roofStyle < static_cast<int>(cr::CreativeStructuralRoofStyle::Count) &&
+      roofRidgeAxis >= 0 &&
+      roofRidgeAxis <
+          static_cast<int>(cr::CreativeStructuralRoofRidgeAxis::Count) &&
+      cr::validCreativeStructuralRoofSettings(
+          static_cast<cr::CreativeStructuralRoofStyle>(roofStyle),
+          static_cast<cr::CreativeStructuralRoofRidgeAxis>(roofRidgeAxis),
+          roofPitch, roofOverhang) &&
+      roofOverhang <= cr::kMaximumCreativeWorldLayoutRoofOverhangCells &&
       wallThickness > 0.0 &&
       static_cast<double>(width) > wallThickness * 2.0 &&
       static_cast<double>(depth) > wallThickness * 2.0;
@@ -1330,6 +1430,13 @@ void drawSelectedRoomSettings(CreativeEditorWorldLayoutState& state,
   settings.wallHeightCells = static_cast<std::uint16_t>(wallHeight);
   settings.wallThicknessCells = wallThickness;
   settings.floorThicknessLayers = static_cast<std::uint16_t>(floorLayers);
+  settings.roofThicknessLayers = static_cast<std::uint16_t>(roofLayers);
+  settings.roofStyle =
+      static_cast<cr::CreativeStructuralRoofStyle>(roofStyle);
+  settings.roofRidgeAxis =
+      static_cast<cr::CreativeStructuralRoofRidgeAxis>(roofRidgeAxis);
+  settings.roofPitchDegrees = roofPitch;
+  settings.roofOverhangCells = roofOverhang;
   commands.push(
       CreativeDesktopCommandId::WorldLayoutSetRoomSettings,
       CreativeDesktopWorldLayoutRoomSettingsPayload{state.selection.index,
@@ -1476,6 +1583,7 @@ void drawLayoutCanvas(CreativeEditorState& editor,
       drawRoom(*drawList, transform, state, index);
     }
   }
+  drawActiveLevelRoof(*drawList, transform, state);
   for (std::size_t index = 0U; index < displaySource.boxes.size(); ++index) {
     drawFloor(*drawList, transform, state, index);
   }

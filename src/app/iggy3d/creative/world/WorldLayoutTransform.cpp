@@ -345,6 +345,28 @@ bool transformOwnedGeometry(
     return false;
   }
 
+  const bool swapsAxes =
+      operation == CreativeWorldLayoutBuildingTransformOperation::RotateLeft90 ||
+      operation == CreativeWorldLayoutBuildingTransformOperation::RotateRight90;
+  if (swapsAxes) {
+    for (std::size_t index = 0U; index < source.levels.size(); ++index) {
+      if (source.levels[index].buildingIndex != buildingIndex) {
+        continue;
+      }
+      CreativeStructuralRoofRidgeAxis& axis =
+          candidate.levels[index].roofRidgeAxis;
+      if (axis == CreativeStructuralRoofRidgeAxis::X) {
+        axis = CreativeStructuralRoofRidgeAxis::Z;
+      } else if (axis == CreativeStructuralRoofRidgeAxis::Z) {
+        axis = CreativeStructuralRoofRidgeAxis::X;
+      } else {
+        failureStatus =
+            CreativeWorldLayoutBuildingTransformStatus::InvalidGeometry;
+        return false;
+      }
+    }
+  }
+
   for (std::size_t index = 0U; index < source.rooms.size(); ++index) {
     if (source.rooms[index].buildingIndex != buildingIndex) {
       continue;

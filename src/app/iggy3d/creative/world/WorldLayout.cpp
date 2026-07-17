@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutRoofs.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
 #include "app/iggy3d/creative/world/WorldLayoutVerticalConnectors.hpp"
@@ -779,6 +780,62 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
       return result;
     }
     const bool roof = resolved.upperSurfaceKind == CreativeObjectKind::Roof;
+    const CreativeWorldLayoutLevel& level =
+        layout.levels[resolved.levelIndex];
+    const bool usesAuthoredLevelRoof =
+        level.roofStyle == CreativeStructuralRoofStyle::Gable ||
+        level.roofOverhangCells > 0.0;
+    if (roof && usesAuthoredLevelRoof) {
+      const bool firstRoomForLevel = std::none_of(
+          layout.rooms.begin(), layout.rooms.begin() +
+                                    static_cast<std::ptrdiff_t>(index),
+          [&](const CreativeWorldLayoutRoom& room) {
+            return room.levelIndex == resolved.levelIndex;
+          });
+      if (!firstRoomForLevel) {
+        continue;
+      }
+      const CreativeWorldLayoutRoofPlan roofPlan =
+          planCreativeWorldLayoutRoof(grid, layout, resolved.levelIndex);
+      if (!roofPlan.accepted) {
+        result.receipt.failedTable = CreativeWorldLayoutTable::Level;
+        result.receipt.failedIndex = resolved.levelIndex;
+        result.receipt.kernelReasonCode = roofPlan.reasonCode;
+        setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
+                  "creative_world_layout_roof_rejected");
+        return result;
+      }
+      constexpr std::array<std::string_view,
+                           kCreativeStructuralRoofPartCapacity>
+          kPartSuffixes{".roof.base", ".roof.slope.first",
+                        ".roof.slope.second"};
+      constexpr std::array<std::string_view,
+                           kCreativeStructuralRoofPartCapacity>
+          kPartLabels{" Roof Base", " Roof Slope 1", " Roof Slope 2"};
+      for (std::size_t partIndex = 0U;
+           partIndex < roofPlan.geometry.partCount; ++partIndex) {
+        const CreativeStructuralRoofPart& part =
+            roofPlan.geometry.parts[partIndex];
+        const std::string key = childKey(
+            layout.buildings[level.buildingIndex].stableKey,
+            level.stableKey + std::string(kPartSuffixes[partIndex]));
+        if (!registerKey(stableKeys, key, CreativeWorldLayoutTable::Level,
+                         resolved.levelIndex, result.receipt)) {
+          return result;
+        }
+        CreativeBuildingBoxSpec box{
+            part.kind, key, level.name + std::string(kPartLabels[partIndex]),
+            part.bounds, {1.0, 1.0, 1.0}, {},
+            part.rotationEulerRadians};
+        appendTagOnce(
+            box.tags,
+            creativeWorldLayoutProvenanceTag(
+                layout, CreativeWorldLayoutTable::Level,
+                resolved.levelIndex));
+        buildings[level.buildingIndex].boxes.push_back(std::move(box));
+      }
+      continue;
+    }
     if (!appendSurface(resolved.upperSurfaceKind,
                        resolved.floorTopLayer + resolved.wallHeightCells,
                        resolved.upperSurfaceThicknessLayers,

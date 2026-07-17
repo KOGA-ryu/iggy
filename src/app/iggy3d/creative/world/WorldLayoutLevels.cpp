@@ -13,7 +13,12 @@ bool validLevel(const CreativeWorldLayout& layout,
          validCreativeWorldLayoutStableKey(level.stableKey) &&
          !level.name.empty() && std::isfinite(level.floorTopLayer) &&
          level.wallHeightCells > 0U && level.floorThicknessLayers > 0U &&
-         level.ceilingThicknessLayers > 0U && level.roofThicknessLayers > 0U;
+         level.ceilingThicknessLayers > 0U && level.roofThicknessLayers > 0U &&
+         validCreativeStructuralRoofSettings(
+             level.roofStyle, level.roofRidgeAxis, level.roofPitchDegrees,
+             level.roofOverhangCells) &&
+         level.roofOverhangCells <=
+             kMaximumCreativeWorldLayoutRoofOverhangCells;
 }
 
 }  // namespace

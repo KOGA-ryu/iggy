@@ -1,7 +1,10 @@
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutRoofs.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
 
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
+#include "runtime/collision/CollisionQuery.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/physics/PhysicsSpatialSurfaceColliderBake.hpp"
 
@@ -12,6 +15,7 @@
 #include <iterator>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace cr = iggy3d::creative;
 
@@ -595,6 +599,131 @@ bool occupiedLevelsGenerateCeilingsAndOneTopRoof() {
                 "roof begins at the upper wall support plane");
 }
 
+bool authoredGableRoofCompilesThroughSharedRenderCollisionGeometry() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Gable Roof");
+  static_cast<void>(document.assignId(9205U));
+  cr::CreativeWorldLayout layout = adjacentRooms();
+  layout.openings.clear();
+  cr::CreativeWorldLayoutLevel& level = layout.levels[0];
+  level.roofStyle = cr::CreativeStructuralRoofStyle::Gable;
+  level.roofRidgeAxis = cr::CreativeStructuralRoofRidgeAxis::X;
+  level.roofPitchDegrees = 45.0;
+  level.roofOverhangCells = 1.0;
+
+  const cr::CreativeWorldLayoutRoofPlan roofPlan =
+      cr::planCreativeWorldLayoutRoof(document.gridSettings(), layout, 0U);
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, layout);
+  const cr::CreativeWorldLayoutPreviewResult preview =
+      cr::previewCreativeWorldLayoutPlan(document, compiled.plan);
+  std::vector<const cr::CreativeObject*> slopes;
+  const cr::CreativeObject* base = nullptr;
+  for (const cr::CreativeObject& object : preview.document.objects()) {
+    if (object.kind == cr::CreativeObjectKind::GableRoof) {
+      slopes.push_back(&object);
+    } else if (object.kind == cr::CreativeObjectKind::Roof) {
+      base = &object;
+    }
+  }
+
+  cr::CreativeRoomBakeRequest bakeRequest;
+  bakeRequest.document = &preview.document;
+  bakeRequest.validateReachability = false;
+  const cr::CreativeRoomBakeResult baked =
+      cr::buildRoomAssetFromCreativeDocument(bakeRequest);
+  const iggy3d::SpatialSurfaceSet surfaces =
+      iggy3d::buildSpatialSurfaceSet(baked.room);
+  const iggy3d::CollisionQueryResult north =
+      iggy3d::sampleSurfaceHeight(surfaces, {2.0F, 0.0F, 0.5F});
+  const iggy3d::CollisionQueryResult ridge =
+      iggy3d::sampleSurfaceHeight(surfaces, {2.0F, 0.0F, 2.0F});
+  const iggy3d::CollisionQueryResult south =
+      iggy3d::sampleSurfaceHeight(surfaces, {2.0F, 0.0F, 3.5F});
+  const iggy3d::RoomStaticMeshAsset* firstMesh =
+      slopes.size() > 0U ? findMesh(baked.room, slopes[0]->id) : nullptr;
+  const iggy3d::RoomStaticMeshAsset* secondMesh =
+      slopes.size() > 1U ? findMesh(baked.room, slopes[1]->id) : nullptr;
+
+  const cr::CreativeWorldLayoutBuildingTransformResult rotated =
+      cr::transformCreativeWorldLayoutBuilding(
+          layout,
+          {0U, cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90});
+
+  cr::CreativeWorldLayout irregular = layout;
+  irregular.rooms[1].footprint.maximum.z = 2;
+  const cr::CreativeWorldLayoutCompileResult rejected =
+      cr::buildCreativeWorldLayoutPlan(document, irregular);
+
+  return expect(roofPlan.accepted && roofPlan.geometry.partCount == 3U &&
+                    roofPlan.footprint.minimum ==
+                        cr::CreativeTerrainCoord2{0, 0} &&
+                    roofPlan.footprint.maximum ==
+                        cr::CreativeTerrainCoord2{8, 4} &&
+                    near(roofPlan.geometry.riseMeters, 3.0),
+                "adjacent rooms resolve one pitched roof footprint") &&
+         expect(compiled.receipt.accepted && preview.accepted &&
+                    base != nullptr && slopes.size() == 2U,
+                "gable layout emits one base and two semantic slope objects") &&
+         expect(baked.receipt.accepted && firstMesh != nullptr &&
+                    secondMesh != nullptr &&
+                    firstMesh->meshId == "creative_ramp_wedge" &&
+                    secondMesh->meshId == "creative_ramp_wedge",
+                "gable slopes reuse the proven generated wedge mesh") &&
+         expect(north.status == iggy3d::CollisionQueryStatus::Hit &&
+                    ridge.status == iggy3d::CollisionQueryStatus::Hit &&
+                    south.status == iggy3d::CollisionQueryStatus::Hit &&
+                    nearFloat(north.heightMeters, 5.5F) &&
+                    nearFloat(ridge.heightMeters, 7.0F) &&
+                    nearFloat(south.heightMeters, 5.5F),
+                "rendered gable slopes expose matching pitched collision") &&
+         expect(rotated.accepted &&
+                    rotated.transformed.levels[0].roofRidgeAxis ==
+                        cr::CreativeStructuralRoofRidgeAxis::Z,
+                "building rotation swaps the authored roof ridge axis") &&
+         expect(!rejected.receipt.accepted &&
+                    rejected.receipt.failedTable ==
+                        cr::CreativeWorldLayoutTable::Level &&
+                    rejected.receipt.failedIndex == 0U,
+                "non-rectangular gable footprint fails closed at its level");
+}
+
+bool flatRoofOverhangUsesTheSharedLevelFootprint() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Flat Overhang");
+  static_cast<void>(document.assignId(9206U));
+  cr::CreativeWorldLayout layout = adjacentRooms();
+  layout.openings.clear();
+  layout.levels[0].roofOverhangCells = 1.0;
+
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, layout);
+  const cr::CreativeWorldLayoutPreviewResult preview =
+      cr::previewCreativeWorldLayoutPlan(document, compiled.plan);
+  const cr::CreativeObject* roof = nullptr;
+  std::size_t roofCount = 0U;
+  std::size_t slopeCount = 0U;
+  for (const cr::CreativeObject& object : preview.document.objects()) {
+    if (object.kind == cr::CreativeObjectKind::Roof) {
+      roof = &object;
+      ++roofCount;
+    } else if (object.kind == cr::CreativeObjectKind::GableRoof) {
+      ++slopeCount;
+    }
+  }
+  const cr::CreativeTransformedBounds bounds =
+      roof == nullptr ? cr::CreativeTransformedBounds{}
+                      : cr::resolveCreativeObjectBounds(*roof);
+
+  return expect(compiled.receipt.accepted && preview.accepted,
+                "flat roof overhang compiles") &&
+         expect(roofCount == 1U && slopeCount == 0U && bounds.valid,
+                "flat overhang emits one shared level slab") &&
+         expect(near(bounds.worldBounds.min.x, -1.0) &&
+                    near(bounds.worldBounds.max.x, 9.0) &&
+                    near(bounds.worldBounds.min.z, -1.0) &&
+                    near(bounds.worldBounds.max.z, 5.0),
+                "flat shared roof applies exact authored overhang");
+}
+
 }  // namespace
 
 int main() {
@@ -605,6 +734,8 @@ int main() {
                   roomTopologyCompilesThroughExistingBuildingRecipe() &&
                   generatedRoomObjectsResolveToSemanticSources() &&
                   horizontalStructuralLayersUseDescriptorThickness() &&
-                  occupiedLevelsGenerateCeilingsAndOneTopRoof();
+                  occupiedLevelsGenerateCeilingsAndOneTopRoof() &&
+                  authoredGableRoofCompilesThroughSharedRenderCollisionGeometry() &&
+                  flatRoofOverhangUsesTheSharedLevelFootprint();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

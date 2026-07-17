@@ -410,6 +410,10 @@ fingerprintCreativeWorldLayoutBuilding(const CreativeWorldLayout& layout,
     builder.appendUnsigned(level.floorThicknessLayers);
     builder.appendUnsigned(level.ceilingThicknessLayers);
     builder.appendUnsigned(level.roofThicknessLayers);
+    builder.appendUnsigned(static_cast<std::uint8_t>(level.roofStyle));
+    builder.appendUnsigned(static_cast<std::uint8_t>(level.roofRidgeAxis));
+    builder.appendDouble(level.roofPitchDegrees);
+    builder.appendDouble(level.roofOverhangCells);
   }
 
   builder.appendUnsigned(countIf(layout.rooms, [buildingIndex](const auto& room) {

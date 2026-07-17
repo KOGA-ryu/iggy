@@ -42,6 +42,10 @@ cr::CreativeWorldLayout richLayout() {
   level.floorThicknessLayers = 2U;
   level.ceilingThicknessLayers = 2U;
   level.roofThicknessLayers = 3U;
+  level.roofStyle = cr::CreativeStructuralRoofStyle::Gable;
+  level.roofRidgeAxis = cr::CreativeStructuralRoofRidgeAxis::Z;
+  level.roofPitchDegrees = 37.5;
+  level.roofOverhangCells = 0.75;
   layout.levels.push_back(level);
 
   cr::CreativeWorldLayoutLevel upperLevel = level;
@@ -185,6 +189,12 @@ bool deterministicRoundTripPreservesEveryTable() {
                     decoded.layout.levels[0].floorTopLayer == 1.25 &&
                     decoded.layout.levels[0].ceilingThicknessLayers == 2U &&
                     decoded.layout.levels[0].roofThicknessLayers == 3U &&
+                    decoded.layout.levels[0].roofStyle ==
+                        cr::CreativeStructuralRoofStyle::Gable &&
+                    decoded.layout.levels[0].roofRidgeAxis ==
+                        cr::CreativeStructuralRoofRidgeAxis::Z &&
+                    decoded.layout.levels[0].roofPitchDegrees == 37.5 &&
+                    decoded.layout.levels[0].roofOverhangCells == 0.75 &&
                     decoded.layout.rooms.size() == 2U &&
                     decoded.layout.rooms[0].footprint.maximum ==
                         source.rooms[0].footprint.maximum &&
@@ -236,6 +246,16 @@ bool malformedAndNonFiniteInputsFailClosed() {
       std::numeric_limits<double>::quiet_NaN();
   const cr::CreativeWorldLayoutEncodeResult nonFiniteBox =
       cr::encodeCreativeWorldLayout(badBox);
+  cr::CreativeWorldLayout badRoofStyle = richLayout();
+  badRoofStyle.levels[0].roofStyle =
+      cr::CreativeStructuralRoofStyle::Count;
+  const cr::CreativeWorldLayoutEncodeResult invalidRoofStyle =
+      cr::encodeCreativeWorldLayout(badRoofStyle);
+  cr::CreativeWorldLayout badRoofPitch = richLayout();
+  badRoofPitch.levels[0].roofPitchDegrees =
+      std::numeric_limits<double>::infinity();
+  const cr::CreativeWorldLayoutEncodeResult nonFiniteRoofPitch =
+      cr::encodeCreativeWorldLayout(badRoofPitch);
 
   const cr::CreativeWorldLayoutEncodeResult valid =
       cr::encodeCreativeWorldLayout(richLayout());
@@ -263,6 +283,19 @@ bool malformedAndNonFiniteInputsFailClosed() {
       "END\n";
   const cr::CreativeWorldLayoutDecodeResult overflow =
       cr::decodeCreativeWorldLayout(overflowingCount);
+  std::string invalidRoofEnumText = valid.encodedText;
+  const std::size_t levelLine = invalidRoofEnumText.find("\nV ");
+  const std::string validRoofFields = " 1 1 37.5 0.75\n";
+  const std::size_t roofFields =
+      invalidRoofEnumText.find(validRoofFields, levelLine);
+  const bool locatedRoofFields =
+      levelLine != std::string::npos && roofFields != std::string::npos;
+  if (locatedRoofFields) {
+    invalidRoofEnumText.replace(roofFields, validRoofFields.size(),
+                                " 9 1 37.5 0.75\n");
+  }
+  const cr::CreativeWorldLayoutDecodeResult invalidRoofEnum =
+      cr::decodeCreativeWorldLayout(invalidRoofEnumText);
 
   return expect(!invalidSchema.accepted &&
                     invalidSchema.status ==
@@ -280,6 +313,14 @@ bool malformedAndNonFiniteInputsFailClosed() {
                     nonFiniteBox.status ==
                         cr::CreativeWorldLayoutCodecStatus::NonFiniteValue,
                 "non-finite box anchor is not encoded") &&
+         expect(!invalidRoofStyle.accepted &&
+                    invalidRoofStyle.status ==
+                        cr::CreativeWorldLayoutCodecStatus::InvalidRecord,
+                "invalid roof style is not encoded") &&
+         expect(!nonFiniteRoofPitch.accepted &&
+                    nonFiniteRoofPitch.status ==
+                        cr::CreativeWorldLayoutCodecStatus::NonFiniteValue,
+                "non-finite roof pitch is not encoded") &&
          expect(!truncated.accepted, "truncated source is rejected") &&
          expect(!wrongVersion.accepted &&
                     wrongVersion.status ==
@@ -292,7 +333,9 @@ bool malformedAndNonFiniteInputsFailClosed() {
          expect(!overflow.accepted &&
                     overflow.status ==
                         cr::CreativeWorldLayoutCodecStatus::CapacityExceeded,
-                "overflowing declared record counts fail before allocation");
+                "overflowing declared record counts fail before allocation") &&
+         expect(locatedRoofFields && !invalidRoofEnum.accepted,
+                "invalid serialized roof enum fails closed");
 }
 
 bool versionOneSourceMigratesToCurrentSchema() {
@@ -449,6 +492,33 @@ bool versionSixSourceMigratesWithoutFabricatedVerticalConnectors() {
                 "version-six migration writes the current codec version");
 }
 
+bool versionSevenLevelsMigrateToFlatRoofDefaults() {
+  const std::string versionSeven =
+      "IGGY3D_WORLD_LAYOUT 7\n"
+      "L 7 6c65676163795f726f6f66 0 1 1 1 0 0 0 0 0 0 0 0\n"
+      "B 686f757365 486f757365 0 0 0 4 4 0 3 1 0\n"
+      "V 0 6c6576656c 4c6576656c 0 3 1 1 1\n"
+      "R 0 0 726f6f6d 526f6f6d 0 0 4 4 0.25\n"
+      "END\n";
+  const cr::CreativeWorldLayoutDecodeResult decoded =
+      cr::decodeCreativeWorldLayout(versionSeven);
+  const cr::CreativeWorldLayoutEncodeResult encoded =
+      decoded.accepted ? cr::encodeCreativeWorldLayout(decoded.layout)
+                       : cr::CreativeWorldLayoutEncodeResult{};
+  return expect(decoded.accepted && decoded.layout.levels.size() == 1U &&
+                    decoded.layout.levels[0].roofStyle ==
+                        cr::CreativeStructuralRoofStyle::Flat &&
+                    decoded.layout.levels[0].roofRidgeAxis ==
+                        cr::CreativeStructuralRoofRidgeAxis::X &&
+                    decoded.layout.levels[0].roofPitchDegrees ==
+                        cr::kDefaultCreativeStructuralRoofPitchDegrees &&
+                    decoded.layout.levels[0].roofOverhangCells == 0.0,
+                "version-seven level migrates to stable flat roof defaults") &&
+         expect(encoded.accepted && encoded.encodedText.starts_with(
+                                        "IGGY3D_WORLD_LAYOUT 8\n"),
+                "version-seven roof migration writes current schema");
+}
+
 }  // namespace
 
 int main() {
@@ -459,6 +529,7 @@ int main() {
                   versionThreeRoomPreservesWallPlaneDuringMigration() &&
                   versionFourBoxesMigrateToExplicitAnchorPlanes() &&
                   versionFiveRoomsMigrateToSharedLevels() &&
-                  versionSixSourceMigratesWithoutFabricatedVerticalConnectors();
+                  versionSixSourceMigratesWithoutFabricatedVerticalConnectors() &&
+                  versionSevenLevelsMigrateToFlatRoofDefaults();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

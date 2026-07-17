@@ -594,6 +594,8 @@ bool descriptorOwnsGeneratedTraversalGeometry() {
       cr::describeObject(cr::CreativeObjectKind::Stair);
   const cr::CreativeObjectDescriptor& ramp =
       cr::describeObject(cr::CreativeObjectKind::Ramp);
+  const cr::CreativeObjectDescriptor& gableRoof =
+      cr::describeObject(cr::CreativeObjectKind::GableRoof);
   const cr::CreativeObjectDescriptor& platform =
       cr::describeObject(cr::CreativeObjectKind::Platform);
   const cr::CreativeObjectDescriptor& movingPlatform =
@@ -632,11 +634,15 @@ bool descriptorOwnsGeneratedTraversalGeometry() {
                     stair.generatedGeometry.maximumStepRiseMeters == 0.25 &&
                     ramp.generatedGeometry.profile ==
                         cr::CreativeGeneratedGeometryProfile::RampWedge &&
+                    gableRoof.generatedGeometry.profile ==
+                        cr::CreativeGeneratedGeometryProfile::RampWedge &&
+                    gableRoof.occupancyKind ==
+                        cr::CreativeSpatialOccupancyKind::Structural &&
                     platform.generatedGeometry.profile ==
                         cr::CreativeGeneratedGeometryProfile::WalkableSlab &&
                     movingPlatform.generatedGeometry.profile ==
                         cr::CreativeGeneratedGeometryProfile::WalkableSlab,
-                "descriptor rows own generated traversal profiles") &&
+                "descriptor rows own shared traversal and roof wedge profiles") &&
          expect(column.generatedGeometry.profile ==
                         cr::CreativeGeneratedGeometryProfile::SolidPrism &&
                     pillar.generatedGeometry.profile ==
@@ -1021,6 +1027,8 @@ bool representativeDescriptorsPinAuthoringBrushPaletteVisibility() {
       cr::describeObject(cr::CreativeObjectKind::Wall);
   const cr::CreativeObjectDescriptor& beam =
       cr::describeObject(cr::CreativeObjectKind::Beam);
+  const cr::CreativeObjectDescriptor& gableRoof =
+      cr::describeObject(cr::CreativeObjectKind::GableRoof);
   const cr::CreativeObjectDescriptor& pointLight =
       cr::describeObject(cr::CreativeObjectKind::PointLight);
   const cr::CreativeObjectDescriptor& patrolRoute =
@@ -1070,6 +1078,8 @@ bool representativeDescriptorsPinAuthoringBrushPaletteVisibility() {
                 "wall visible in brush palette") &&
          expect(cr::descriptorShowsInAuthoringBrushPalette(beam),
                 "beam visible in brush palette") &&
+         expect(!cr::descriptorShowsInAuthoringBrushPalette(gableRoof),
+                "generated roof slope stays out of the generic brush palette") &&
          expect(cr::descriptorShowsInAuthoringBrushPalette(pointLight),
                 "point light visible in brush palette") &&
          expect(cr::descriptorShowsInAuthoringBrushPalette(patrolRoute),

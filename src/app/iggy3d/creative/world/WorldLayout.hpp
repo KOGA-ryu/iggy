@@ -3,6 +3,7 @@
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/recipes/BuildingRecipe.hpp"
 #include "app/iggy3d/creative/recipes/ObjectLibraryRecipe.hpp"
+#include "app/iggy3d/creative/recipes/StructuralRoofRecipe.hpp"
 #include "app/iggy3d/creative/recipes/TerrainRecipe.hpp"
 
 #include <cstddef>
@@ -14,11 +15,12 @@
 
 namespace iggy3d::creative {
 
-inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 7U;
+inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 8U;
 inline constexpr std::size_t kInvalidCreativeWorldLayoutIndex =
     std::numeric_limits<std::size_t>::max();
 inline constexpr std::uint16_t kDefaultCreativeWorldLayoutWallHeightCells = 3U;
 inline constexpr double kDefaultCreativeWorldLayoutWallThicknessCells = 0.25;
+inline constexpr double kMaximumCreativeWorldLayoutRoofOverhangCells = 16.0;
 
 // Layout coordinates are grid-line coordinates. Rect maximums are exclusive,
 // so {0, 0}->{10, 8} describes a ten-by-eight-cell floor without half-cell
@@ -66,6 +68,11 @@ struct CreativeWorldLayoutLevel {
   std::uint16_t floorThicknessLayers = 1U;
   std::uint16_t ceilingThicknessLayers = 1U;
   std::uint16_t roofThicknessLayers = 1U;
+  CreativeStructuralRoofStyle roofStyle = CreativeStructuralRoofStyle::Flat;
+  CreativeStructuralRoofRidgeAxis roofRidgeAxis =
+      CreativeStructuralRoofRidgeAxis::X;
+  double roofPitchDegrees = kDefaultCreativeStructuralRoofPitchDegrees;
+  double roofOverhangCells = 0.0;
 };
 
 struct CreativeWorldLayoutRoom {

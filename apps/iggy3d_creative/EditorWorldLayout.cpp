@@ -808,7 +808,10 @@ CreativeEditorWorldLayoutRoomSettings roomSettings(
              ? CreativeEditorWorldLayoutRoomSettings{}
              : CreativeEditorWorldLayoutRoomSettings{
                    footprint, level->floorTopLayer, level->wallHeightCells,
-                   room.wallThicknessCells, level->floorThicknessLayers};
+                   room.wallThicknessCells, level->floorThicknessLayers,
+                   level->roofThicknessLayers, level->roofStyle,
+                   level->roofRidgeAxis, level->roofPitchDegrees,
+                   level->roofOverhangCells};
 }
 
 RoomSettingsValidation validateRoomSettings(
@@ -821,8 +824,14 @@ RoomSettingsValidation validateRoomSettings(
   if (roomIndex >= state.source.rooms.size() || width <= 0.0 || depth <= 0.0 ||
       !std::isfinite(settings.floorTopLayer) ||
       settings.wallHeightCells == 0U || settings.floorThicknessLayers == 0U ||
+      settings.roofThicknessLayers == 0U ||
       !std::isfinite(settings.wallThicknessCells) ||
       settings.wallThicknessCells <= 0.0 ||
+      !cr::validCreativeStructuralRoofSettings(
+          settings.roofStyle, settings.roofRidgeAxis,
+          settings.roofPitchDegrees, settings.roofOverhangCells) ||
+      settings.roofOverhangCells >
+          cr::kMaximumCreativeWorldLayoutRoofOverhangCells ||
       width <= settings.wallThicknessCells * 2.0 ||
       depth <= settings.wallThicknessCells * 2.0) {
     return {};
@@ -1893,7 +1902,12 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutRoomSettings(
       level.floorTopLayer == settings.floorTopLayer &&
       level.wallHeightCells == settings.wallHeightCells &&
       room.wallThicknessCells == settings.wallThicknessCells &&
-      level.floorThicknessLayers == settings.floorThicknessLayers) {
+      level.floorThicknessLayers == settings.floorThicknessLayers &&
+      level.roofThicknessLayers == settings.roofThicknessLayers &&
+      level.roofStyle == settings.roofStyle &&
+      level.roofRidgeAxis == settings.roofRidgeAxis &&
+      level.roofPitchDegrees == settings.roofPitchDegrees &&
+      level.roofOverhangCells == settings.roofOverhangCells) {
     return {true, false,
             "creative_editor_world_layout_room_settings_no_change"};
   }
@@ -1902,6 +1916,11 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutRoomSettings(
   level.floorTopLayer = settings.floorTopLayer;
   level.wallHeightCells = settings.wallHeightCells;
   level.floorThicknessLayers = settings.floorThicknessLayers;
+  level.roofThicknessLayers = settings.roofThicknessLayers;
+  level.roofStyle = settings.roofStyle;
+  level.roofRidgeAxis = settings.roofRidgeAxis;
+  level.roofPitchDegrees = settings.roofPitchDegrees;
+  level.roofOverhangCells = settings.roofOverhangCells;
   state.activeLevelIndex = room.levelIndex;
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Room, roomIndex};
   noteWorldLayoutSourceChange(state, "room shell settings updated");

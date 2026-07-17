@@ -276,12 +276,19 @@ bool validateForEncoding(const CreativeWorldLayout& layout,
     }
   }
   for (const CreativeWorldLayoutLevel& level : layout.levels) {
-    const bool finite = std::isfinite(level.floorTopLayer);
+    const bool finite = std::isfinite(level.floorTopLayer) &&
+                        std::isfinite(level.roofPitchDegrees) &&
+                        std::isfinite(level.roofOverhangCells);
     if (!validKeyName(level.stableKey, level.name) || !finite ||
         level.buildingIndex >= layout.buildings.size() ||
         level.wallHeightCells == 0U || level.floorThicknessLayers == 0U ||
         level.ceilingThicknessLayers == 0U ||
-        level.roofThicknessLayers == 0U) {
+        level.roofThicknessLayers == 0U ||
+        !validCreativeStructuralRoofSettings(
+            level.roofStyle, level.roofRidgeAxis,
+            level.roofPitchDegrees, level.roofOverhangCells) ||
+        level.roofOverhangCells >
+            kMaximumCreativeWorldLayoutRoofOverhangCells) {
       failure = {finite ? CreativeWorldLayoutCodecStatus::InvalidRecord
                         : CreativeWorldLayoutCodecStatus::NonFiniteValue,
                  "creative_world_layout_encode_invalid_level"};
@@ -570,7 +577,11 @@ CreativeWorldLayoutEncodeResult encodeCreativeWorldLayout(
            << level.floorTopLayer << ' ' << level.wallHeightCells << ' '
            << level.floorThicknessLayers << ' '
            << level.ceilingThicknessLayers << ' '
-           << level.roofThicknessLayers << '\n';
+           << level.roofThicknessLayers << ' '
+           << static_cast<unsigned>(enumValue(level.roofStyle)) << ' '
+           << static_cast<unsigned>(enumValue(level.roofRidgeAxis)) << ' '
+           << level.roofPitchDegrees << ' ' << level.roofOverhangCells
+           << '\n';
   }
   for (const CreativeWorldLayoutRoom& room : layout.rooms) {
     output << "R " << room.buildingIndex << ' ' << room.levelIndex << ' '
@@ -811,19 +822,39 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
                  readBuilding, result)) {
     return result;
   }
-  const auto readLevel = [](RecordReader& reader,
-                            CreativeWorldLayoutLevel& level) {
-    return reader.readLiteral("V") && reader.readSize(level.buildingIndex) &&
-           reader.readHex(level.stableKey) && reader.readHex(level.name) &&
-           reader.readDouble(level.floorTopLayer) &&
-           std::isfinite(level.floorTopLayer) &&
-           reader.readUnsigned(level.wallHeightCells) &&
-           reader.readUnsigned(level.floorThicknessLayers) &&
-           reader.readUnsigned(level.ceilingThicknessLayers) &&
-           reader.readUnsigned(level.roofThicknessLayers) &&
-           level.wallHeightCells > 0U && level.floorThicknessLayers > 0U &&
-           level.ceilingThicknessLayers > 0U &&
-           level.roofThicknessLayers > 0U;
+  const auto readLevel = [codecVersion](RecordReader& reader,
+                                        CreativeWorldLayoutLevel& level) {
+    const bool base =
+        reader.readLiteral("V") && reader.readSize(level.buildingIndex) &&
+        reader.readHex(level.stableKey) && reader.readHex(level.name) &&
+        reader.readDouble(level.floorTopLayer) &&
+        std::isfinite(level.floorTopLayer) &&
+        reader.readUnsigned(level.wallHeightCells) &&
+        reader.readUnsigned(level.floorThicknessLayers) &&
+        reader.readUnsigned(level.ceilingThicknessLayers) &&
+        reader.readUnsigned(level.roofThicknessLayers) &&
+        level.wallHeightCells > 0U && level.floorThicknessLayers > 0U &&
+        level.ceilingThicknessLayers > 0U &&
+        level.roofThicknessLayers > 0U;
+    if (!base || codecVersion < 8U) {
+      return base;
+    }
+    std::uint8_t roofStyle = 0U;
+    std::uint8_t roofRidgeAxis = 0U;
+    if (!reader.readUnsigned(roofStyle) ||
+        !reader.readUnsigned(roofRidgeAxis) ||
+        !reader.readDouble(level.roofPitchDegrees) ||
+        !reader.readDouble(level.roofOverhangCells)) {
+      return false;
+    }
+    level.roofStyle = static_cast<CreativeStructuralRoofStyle>(roofStyle);
+    level.roofRidgeAxis =
+        static_cast<CreativeStructuralRoofRidgeAxis>(roofRidgeAxis);
+    return validCreativeStructuralRoofSettings(
+               level.roofStyle, level.roofRidgeAxis,
+               level.roofPitchDegrees, level.roofOverhangCells) &&
+           level.roofOverhangCells <=
+               kMaximumCreativeWorldLayoutRoofOverhangCells;
   };
   if (!readTable(lines, lineIndex, levelCount, result.layout.levels, readLevel,
                  result)) {

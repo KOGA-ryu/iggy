@@ -25,7 +25,13 @@ bool validShellSettings(
          settings.wallThicknessCells > 0.0 &&
          static_cast<double>(width) > settings.wallThicknessCells * 2.0 &&
          static_cast<double>(depth) > settings.wallThicknessCells * 2.0 &&
-         settings.floorThicknessLayers > 0U;
+         settings.floorThicknessLayers > 0U &&
+         settings.roofThicknessLayers > 0U &&
+         cr::validCreativeStructuralRoofSettings(
+             settings.roofStyle, settings.roofRidgeAxis,
+             settings.roofPitchDegrees, settings.roofOverhangCells) &&
+         settings.roofOverhangCells <=
+             cr::kMaximumCreativeWorldLayoutRoofOverhangCells;
 }
 
 cr::CreativeWorldLayoutRoom makeRoom(
@@ -107,6 +113,11 @@ createCreativeEditorWorldLayoutBuildingShell(
   level.floorTopLayer = settings.floorTopLayer;
   level.wallHeightCells = settings.wallHeightCells;
   level.floorThicknessLayers = settings.floorThicknessLayers;
+  level.roofThicknessLayers = settings.roofThicknessLayers;
+  level.roofStyle = settings.roofStyle;
+  level.roofRidgeAxis = settings.roofRidgeAxis;
+  level.roofPitchDegrees = settings.roofPitchDegrees;
+  level.roofOverhangCells = settings.roofOverhangCells;
   candidate.levels.push_back(std::move(level));
 
   candidate.rooms.push_back(makeRoom(

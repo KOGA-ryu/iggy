@@ -194,6 +194,9 @@ enum class CreativeObjectKind {
   QuestMarker,
   DialogueMarker,
 
+  // Appended to preserve every existing serialized object-kind value.
+  GableRoof,
+
   Count
 };
 

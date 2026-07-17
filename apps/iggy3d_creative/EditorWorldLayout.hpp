@@ -92,6 +92,14 @@ struct CreativeEditorWorldLayoutRoomSettings {
   double wallThicknessCells =
       cr::kDefaultCreativeWorldLayoutWallThicknessCells;
   std::uint16_t floorThicknessLayers = 1U;
+  std::uint16_t roofThicknessLayers = 1U;
+  cr::CreativeStructuralRoofStyle roofStyle =
+      cr::CreativeStructuralRoofStyle::Flat;
+  cr::CreativeStructuralRoofRidgeAxis roofRidgeAxis =
+      cr::CreativeStructuralRoofRidgeAxis::X;
+  double roofPitchDegrees =
+      cr::kDefaultCreativeStructuralRoofPitchDegrees;
+  double roofOverhangCells = 0.0;
 };
 
 enum class CreativeEditorWorldLayoutRectHandle : std::uint8_t {

@@ -307,8 +307,15 @@ bool roomGestureHostsOpeningsAndSupportsResize() {
       state, app::CreativeEditorWorldLayoutTool::Door));
   const auto door =
       app::applyCreativeEditorWorldLayoutPoint(state, {3.0, 0.1});
+  app::CreativeEditorWorldLayoutRoomSettings settings{
+      {{0, 0}, {8, 5}}, 2.0, 5U, 0.5, 2U};
+  settings.roofThicknessLayers = 2U;
+  settings.roofStyle = cr::CreativeStructuralRoofStyle::Gable;
+  settings.roofRidgeAxis = cr::CreativeStructuralRoofRidgeAxis::Z;
+  settings.roofPitchDegrees = 35.0;
+  settings.roofOverhangCells = 0.5;
   const auto updated = app::setCreativeEditorWorldLayoutRoomSettings(
-      state, 0U, {{{0, 0}, {8, 5}}, 2.0, 5U, 0.5, 2U});
+      state, 0U, settings);
 
   return expect(begin.accepted && !begin.changed && commit.accepted &&
                     commit.changed,
@@ -331,8 +338,20 @@ bool roomGestureHostsOpeningsAndSupportsResize() {
                             .wallHeightCells == 5U &&
                     state.source.rooms[0].wallThicknessCells == 0.5 &&
                     state.source.levels[state.source.rooms[0].levelIndex]
-                            .floorThicknessLayers == 2U,
-                "selected room shell settings change as one source edit");
+                            .floorThicknessLayers == 2U &&
+                    state.source.levels[state.source.rooms[0].levelIndex]
+                            .roofThicknessLayers == 2U &&
+                    state.source.levels[state.source.rooms[0].levelIndex]
+                            .roofStyle ==
+                        cr::CreativeStructuralRoofStyle::Gable &&
+                    state.source.levels[state.source.rooms[0].levelIndex]
+                            .roofRidgeAxis ==
+                        cr::CreativeStructuralRoofRidgeAxis::Z &&
+                    state.source.levels[state.source.rooms[0].levelIndex]
+                            .roofPitchDegrees == 35.0 &&
+                    state.source.levels[state.source.rooms[0].levelIndex]
+                            .roofOverhangCells == 0.5,
+                "selected room and shared roof settings change as one source edit");
 }
 
 bool buildingShellCreatesOwnedRoomAndGeneratesAsOneEdit() {

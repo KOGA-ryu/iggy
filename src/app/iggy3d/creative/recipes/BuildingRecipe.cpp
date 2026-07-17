@@ -48,6 +48,7 @@ void setGeometryStatus(CreativeRectangularRoomGeometryPlan& plan,
          kind == CreativeObjectKind::Floor ||
          kind == CreativeObjectKind::Ceiling ||
          kind == CreativeObjectKind::Roof ||
+         kind == CreativeObjectKind::GableRoof ||
          kind == CreativeObjectKind::Stair || kind == CreativeObjectKind::Ramp;
 }
 

@@ -137,6 +137,7 @@ constexpr auto kSerializedCreativeObjectKindIds =
         "LootPoint",
         "QuestMarker",
         "DialogueMarker",
+        "GableRoof",
     });
 
 static_assert(kSerializedCreativeObjectKindIds.size() ==

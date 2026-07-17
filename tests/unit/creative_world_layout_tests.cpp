@@ -760,6 +760,20 @@ bool buildingTemplateSyncIsSafeAtomicAndPersistent() {
       movedProvenance.orientation ==
           cr::CreativeWorldLayoutBuildingTemplateOrientation::MirrorDiagonal;
 
+  cr::CreativeWorldLayout roofEdited = edited;
+  const auto roofLevel = std::find_if(
+      roofEdited.levels.begin(), roofEdited.levels.end(),
+      [](const cr::CreativeWorldLayoutLevel& level) {
+        return level.buildingIndex == 1U;
+      });
+  if (roofLevel == roofEdited.levels.end()) {
+    return expect(false, "linked roof level exists");
+  }
+  roofLevel->roofStyle = cr::CreativeStructuralRoofStyle::Gable;
+  const auto roofConflict =
+      cr::inspectCreativeWorldLayoutBuildingTemplateSync(
+          roofEdited, 1U, &captured.value);
+
   const auto firstLevel = std::find_if(
       edited.levels.begin(), edited.levels.end(),
       [](const cr::CreativeWorldLayoutLevel& level) {
@@ -833,6 +847,10 @@ bool buildingTemplateSyncIsSafeAtomicAndPersistent() {
 
   return expect(rigidPlacementRemainsCurrent,
                 "instance move and orientation remain placement provenance") &&
+         expect(roofConflict.state ==
+                    cr::CreativeWorldLayoutBuildingTemplateSyncState::
+                        LocallyModified,
+                "authored roof settings participate in instance sync") &&
          expect(conflict.state ==
                         cr::CreativeWorldLayoutBuildingTemplateSyncState::
                             Conflict &&
