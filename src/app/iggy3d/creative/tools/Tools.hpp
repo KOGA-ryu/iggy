@@ -110,6 +110,14 @@ enum class CreativePlacementPlane : std::uint8_t {
   Count,
 };
 
+enum class CreativePlacementAnchor : std::uint8_t {
+  Center,
+  Face,
+  Edge,
+  Corner,
+  Count,
+};
+
 enum class CreativePlacementDepth : std::uint8_t {
   ZeroCells,
   OneCell,
@@ -200,6 +208,7 @@ enum class CreativeToolOptionId : std::uint8_t {
   SnapIncrement,
   PlacementGridDots,
   PlacementPlane,
+  PlacementAnchor,
   PlacementDepth,
   AssetPlacementMode,
   AssetScatterRadius,
@@ -297,6 +306,8 @@ struct CreativeToolSettings {
   CreativePlacementGridDots placementGridDots =
       CreativePlacementGridDots::Off;
   CreativePlacementPlane placementPlane = CreativePlacementPlane::Auto;
+  CreativePlacementAnchor placementAnchor =
+      CreativePlacementAnchor::Center;
   CreativePlacementDepth placementDepth = CreativePlacementDepth::ZeroCells;
   CreativeAssetPlacementMode assetPlacementMode =
       CreativeAssetPlacementMode::Single;

@@ -167,6 +167,8 @@ bool isValidCreativeToolSettings(
          validEnum(settings.placementGridDots,
                    CreativePlacementGridDots::Count) &&
          validEnum(settings.placementPlane, CreativePlacementPlane::Count) &&
+         validEnum(settings.placementAnchor,
+                   CreativePlacementAnchor::Count) &&
          validEnum(settings.placementDepth, CreativePlacementDepth::Count) &&
          validEnum(settings.assetPlacementMode,
                    CreativeAssetPlacementMode::Count) &&
@@ -323,6 +325,11 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
     case CreativeToolOptionId::PlacementPlane:
       adjusted.placementPlane = cycleEnum(
           adjusted.placementPlane, CreativePlacementPlane::Count, direction);
+      break;
+    case CreativeToolOptionId::PlacementAnchor:
+      adjusted.placementAnchor = cycleEnum(
+          adjusted.placementAnchor, CreativePlacementAnchor::Count,
+          direction);
       break;
     case CreativeToolOptionId::PlacementDepth:
       adjusted.placementDepth = stepEnumClamped(

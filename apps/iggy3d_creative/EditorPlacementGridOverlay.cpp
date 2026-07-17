@@ -183,7 +183,7 @@ void appendCreativeEditorPlacementGridOverlay(
     const cr::CreativeCoreVec3Conversion guideStart =
         cr::creativeVec3ToCoreChecked(target.surfacePlacementAnchor);
     const cr::CreativeCoreVec3Conversion guideEnd =
-        cr::creativeVec3ToCoreChecked(target.placementAnchor);
+        cr::creativeVec3ToCoreChecked(target.basePlacementAnchor);
     if (guideStart.converted && guideEnd.converted) {
       iggy3d::RenderCreativeWireframeDebugLine guide;
       guide.start = guideStart.value;
@@ -197,45 +197,66 @@ void appendCreativeEditorPlacementGridOverlay(
     }
   }
 
-  if (editor.toolSettings.placementGridDots !=
-      cr::CreativePlacementGridDots::NearestLayer) {
-    return;
-  }
-
-  const cr::CreativePlacementGridDotLayerPlan dots =
-      cr::buildCreativePlacementGridDotLayerPlan({frame, target});
-  const double halfLength = std::clamp(minorStep * 0.035, 0.008, 0.035);
-  const std::size_t dotStart = output.combinedWireLines.size();
-  if (dots.valid) {
-    for (std::size_t index = 0U; index < dots.dotCount; ++index) {
-      const cr::CreativePlacementGridDot& source = dots.dots[index];
-      const cr::CreativeVec3 start{
-          source.position.x - target.viewDepthAxis.x * halfLength,
-          source.position.y - target.viewDepthAxis.y * halfLength,
-          source.position.z - target.viewDepthAxis.z * halfLength};
-      const cr::CreativeVec3 end{
-          source.position.x + target.viewDepthAxis.x * halfLength,
-          source.position.y + target.viewDepthAxis.y * halfLength,
-          source.position.z + target.viewDepthAxis.z * halfLength};
-      const cr::CreativeCoreVec3Conversion convertedStart =
-          cr::creativeVec3ToCoreChecked(start);
-      const cr::CreativeCoreVec3Conversion convertedEnd =
-          cr::creativeVec3ToCoreChecked(end);
-      if (!convertedStart.converted || !convertedEnd.converted) {
-        continue;
-      }
-      iggy3d::RenderCreativeWireframeDebugLine dot;
-      dot.start = convertedStart.value;
-      dot.end = convertedEnd.value;
-      dot.color = placementGridDotColor(source.role);
-      dot.style = static_cast<std::uint32_t>(source.role);
-      dot.segmentKind = 5U;
-      dot.thickness = placementGridDotThickness(source.role, minorStep);
-      output.combinedWireLines.push_back(dot);
+  if (target.anchorSnapped && target.resolved) {
+    const cr::CreativeCoreVec3Conversion anchorStart =
+        cr::creativeVec3ToCoreChecked(target.basePlacementAnchor);
+    const cr::CreativeCoreVec3Conversion anchorEnd =
+        cr::creativeVec3ToCoreChecked(target.placementAnchor);
+    const cr::CreativeVec3 delta{
+        target.placementAnchor.x - target.basePlacementAnchor.x,
+        target.placementAnchor.y - target.basePlacementAnchor.y,
+        target.placementAnchor.z - target.basePlacementAnchor.z};
+    if (anchorStart.converted && anchorEnd.converted &&
+        (delta.x != 0.0 || delta.y != 0.0 || delta.z != 0.0)) {
+      iggy3d::RenderCreativeWireframeDebugLine anchorGuide;
+      anchorGuide.start = anchorStart.value;
+      anchorGuide.end = anchorEnd.value;
+      anchorGuide.color = {0.20F, 0.92F, 1.0F, 0.98F};
+      anchorGuide.segmentKind = 8U;
+      anchorGuide.thickness =
+          std::clamp(static_cast<float>(minorStep) * 0.05F, 0.03F, 0.075F);
+      output.combinedWireLines.push_back(anchorGuide);
+      output.placementGridAnchorGuideLineCount = 1U;
     }
   }
-  output.placementGridDotCount =
-      output.combinedWireLines.size() - dotStart;
+
+  if (editor.toolSettings.placementGridDots ==
+      cr::CreativePlacementGridDots::NearestLayer) {
+    const cr::CreativePlacementGridDotLayerPlan dots =
+        cr::buildCreativePlacementGridDotLayerPlan({frame, target});
+    const double halfLength = std::clamp(minorStep * 0.035, 0.008, 0.035);
+    const std::size_t dotStart = output.combinedWireLines.size();
+    if (dots.valid) {
+      for (std::size_t index = 0U; index < dots.dotCount; ++index) {
+        const cr::CreativePlacementGridDot& source = dots.dots[index];
+        const cr::CreativeVec3 start{
+            source.position.x - target.viewDepthAxis.x * halfLength,
+            source.position.y - target.viewDepthAxis.y * halfLength,
+            source.position.z - target.viewDepthAxis.z * halfLength};
+        const cr::CreativeVec3 end{
+            source.position.x + target.viewDepthAxis.x * halfLength,
+            source.position.y + target.viewDepthAxis.y * halfLength,
+            source.position.z + target.viewDepthAxis.z * halfLength};
+        const cr::CreativeCoreVec3Conversion convertedStart =
+            cr::creativeVec3ToCoreChecked(start);
+        const cr::CreativeCoreVec3Conversion convertedEnd =
+            cr::creativeVec3ToCoreChecked(end);
+        if (!convertedStart.converted || !convertedEnd.converted) {
+          continue;
+        }
+        iggy3d::RenderCreativeWireframeDebugLine dot;
+        dot.start = convertedStart.value;
+        dot.end = convertedEnd.value;
+        dot.color = placementGridDotColor(source.role);
+        dot.style = static_cast<std::uint32_t>(source.role);
+        dot.segmentKind = 5U;
+        dot.thickness = placementGridDotThickness(source.role, minorStep);
+        output.combinedWireLines.push_back(dot);
+      }
+    }
+    output.placementGridDotCount =
+        output.combinedWireLines.size() - dotStart;
+  }
 
   const PlacementTargetMarker marker =
       placementTargetMarker(editor, request.frame, target);

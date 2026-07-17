@@ -5,6 +5,7 @@
 #include <array>
 #include <cmath>
 
+#include "EditorAssetScatter.hpp"
 #include "EditorFrame.hpp"
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
@@ -32,6 +33,23 @@ namespace {
       return 0U;
   }
   return 0U;
+}
+
+[[nodiscard]] cr::CreativePlacementAnchorKind placementAnchorKind(
+    cr::CreativePlacementAnchor anchor) noexcept {
+  switch (anchor) {
+    case cr::CreativePlacementAnchor::Center:
+      return cr::CreativePlacementAnchorKind::BaseCenter;
+    case cr::CreativePlacementAnchor::Face:
+      return cr::CreativePlacementAnchorKind::FaceCenter;
+    case cr::CreativePlacementAnchor::Edge:
+      return cr::CreativePlacementAnchorKind::EdgeMidpoint;
+    case cr::CreativePlacementAnchor::Corner:
+      return cr::CreativePlacementAnchorKind::Corner;
+    case cr::CreativePlacementAnchor::Count:
+      return cr::CreativePlacementAnchorKind::Count;
+  }
+  return cr::CreativePlacementAnchorKind::Count;
 }
 
 [[nodiscard]] iggy3d::Vec3 aabbFaceNormal(VisualBounds bounds,
@@ -156,9 +174,23 @@ cr::CreativePlacementGridFrame creativeEditorPlacementGridFrame(
         cr::creativePlacementDepthSteps(editor.toolSettings.placementDepth);
     request.depthAxisLock =
         placementDepthAxisLock(editor.toolSettings.placementPlane);
+    const cr::CreativePlacementStoragePolicy storagePolicy =
+        cr::describeObject(held.objectKind).placementPolicy.storagePolicy;
+    if (storagePolicy == cr::CreativePlacementStoragePolicy::AuthoredObject &&
+        !creativeEditorUsesAssetScatter(held, editor.toolSettings)) {
+      request.anchorKind =
+          placementAnchorKind(editor.toolSettings.placementAnchor);
+    }
     if (editor.interaction.target.grid.resolved) {
       request.previousDepthAxis =
           editor.interaction.target.grid.viewDepthAxis;
+      if (editor.interaction.target.grid.anchorKind == request.anchorKind) {
+        request.previousAnchorCell =
+            editor.interaction.target.grid.adjacentCell;
+        request.previousAnchorIndex =
+            editor.interaction.target.grid.anchorIndex;
+        request.hasPreviousAnchor = true;
+      }
     }
   }
   return cr::makeCreativePlacementGridFrame(request);

@@ -746,6 +746,18 @@ bool quickEditOrientationFeedsPreviewAndCreatePlan() {
        ok;
   ok = expect(processCreativeEditorQuickEditAction(
                   editor, cr::CreativeInputActionId::QuickEditNext) &&
+                  creativeEditorQuickEditStatusLabel(editor) ==
+                      "PLACEMENT ANCHOR CENTER" &&
+                  processCreativeEditorQuickEditAction(
+                      editor, cr::CreativeInputActionId::QuickEditIncrease) &&
+                  editor.toolSettings.placementAnchor ==
+                      cr::CreativePlacementAnchor::Face &&
+                  creativeEditorQuickEditStatusLabel(editor) ==
+                      "PLACEMENT ANCHOR FACE",
+              "square and dpad expose authored placement anchors") &&
+       ok;
+  ok = expect(processCreativeEditorQuickEditAction(
+                  editor, cr::CreativeInputActionId::QuickEditNext) &&
                   processCreativeEditorQuickEditAction(
                       editor, cr::CreativeInputActionId::QuickEditIncrease) &&
                   editor.toolSettings.placementDepth ==
@@ -802,7 +814,7 @@ bool toolOptionsFollowTheRequestedMaterialEntry() {
                     wallOptions.ids[2] ==
                         cr::CreativeToolOptionId::PlacementDepth,
                 "fixed-grid material exposes only lattice-wide placement options") &&
-         expect(doorOptions.count == 5U &&
+         expect(doorOptions.count == 6U &&
                     doorOptions.ids[0] ==
                         cr::CreativeToolOptionId::PlacementYaw &&
                     doorOptions.ids[1] ==
@@ -812,8 +824,10 @@ bool toolOptionsFollowTheRequestedMaterialEntry() {
                     doorOptions.ids[3] ==
                         cr::CreativeToolOptionId::PlacementPlane &&
                     doorOptions.ids[4] ==
+                        cr::CreativeToolOptionId::PlacementAnchor &&
+                    doorOptions.ids[5] ==
                         cr::CreativeToolOptionId::PlacementDepth,
-                "authored material owns orientation grid dots plane and depth") &&
+                "authored material owns orientation grid dots plane anchor and depth") &&
          expect(invalidOptions.count == 0U,
                 "invalid material option targets fail closed") &&
          expect(brushCommands.count == 2U &&
@@ -1579,6 +1593,7 @@ bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
   editor.toolSettings.placementGridDots =
       cr::CreativePlacementGridDots::NearestLayer;
   editor.toolSettings.placementPlane = cr::CreativePlacementPlane::X;
+  editor.toolSettings.placementAnchor = cr::CreativePlacementAnchor::Face;
   editor.toolSettings.placementDepth = cr::CreativePlacementDepth::TwoCells;
   const cr::CreativeDocument& installed = appState.facade.document();
   const cr::CreativePlacementGridFrame placementGrid =
@@ -1616,12 +1631,17 @@ bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
       [](const iggy3d::RenderCreativeWireframeDebugLine& line) {
         return line.segmentKind == 7U;
       });
+  const auto anchorGuide = std::find_if(
+      visible.combinedWireLines.begin(), visible.combinedWireLines.end(),
+      [](const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return line.segmentKind == 8U;
+      });
   const bool oneDepthLayer = std::all_of(
       visible.combinedWireLines.begin(), visible.combinedWireLines.end(),
       [&gridTarget](const iggy3d::RenderCreativeWireframeDebugLine& line) {
         return line.segmentKind != 5U ||
                near((line.start.x + line.end.x) * 0.5F,
-                    static_cast<float>(gridTarget.placementAnchor.x));
+                    static_cast<float>(gridTarget.basePlacementAnchor.x));
       });
 
   bool ok = expect(placementGrid.depthOffsetSteps == 2U &&
@@ -1630,15 +1650,35 @@ bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
                        gridTarget.valid &&
                        gridTarget.adjacentCell ==
                            cr::CreativeGridCoord3{6, 2, 5} &&
+                       gridTarget.anchorKind ==
+                           cr::CreativePlacementAnchorKind::FaceCenter &&
+                       gridTarget.anchorIndex == 0U &&
+                       gridTarget.anchorSnapped &&
+                       sameVec3(gridTarget.basePlacementAnchor,
+                                {6.5, 2.0, 5.5}) &&
+                       sameVec3(gridTarget.placementAnchor,
+                                {6.0, 2.5, 5.5}) &&
                        visible.placementGridLineCount > 0U &&
                        visible.placementGridDotCount == 144U &&
                        visible.placementGridGuideLineCount == 1U &&
+                       visible.placementGridAnchorGuideLineCount == 1U &&
                        visible.placementGridTargetMarkerCount == 1U &&
                        renderedDots == visible.placementGridDotCount &&
                        guide != visible.combinedWireLines.end() &&
                        near(guide->start.x, 4.5F) &&
                        near(guide->end.x, 6.5F) &&
+                       anchorGuide != visible.combinedWireLines.end() &&
+                       near(anchorGuide->start.x, 6.5F) &&
+                       near(anchorGuide->start.y, 2.0F) &&
+                       near(anchorGuide->end.x, 6.0F) &&
+                       near(anchorGuide->end.y, 2.5F) &&
                        targetMarker != visible.combinedWireLines.end() &&
+                       near((targetMarker->start.x + targetMarker->end.x) *
+                                0.5F,
+                            6.0F) &&
+                       near((targetMarker->start.y + targetMarker->end.y) *
+                                0.5F,
+                            2.5F) &&
                        near(targetMarker->color.g, 1.0F) &&
                        near(targetMarker->color.r, 0.18F) &&
                        oneDepthLayer &&
@@ -1654,8 +1694,9 @@ bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
   ok = expect(hiddenByToggle.placementGridLineCount > 0U &&
                   hiddenByToggle.placementGridDotCount == 0U &&
                   hiddenByToggle.placementGridGuideLineCount == 1U &&
-                  hiddenByToggle.placementGridTargetMarkerCount == 0U,
-              "dot toggle hides dots but retains the depth guide") &&
+                  hiddenByToggle.placementGridAnchorGuideLineCount == 1U &&
+                  hiddenByToggle.placementGridTargetMarkerCount == 1U,
+              "dot toggle hides dots but retains target anchor cues") &&
        ok;
 
   editor.toolSettings.placementGridDots =
@@ -1669,6 +1710,7 @@ bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
   ok = expect(hiddenByModal.placementGridLineCount == 0U &&
                   hiddenByModal.placementGridDotCount == 0U &&
                   hiddenByModal.placementGridGuideLineCount == 0U &&
+                  hiddenByModal.placementGridAnchorGuideLineCount == 0U &&
                   hiddenByModal.placementGridTargetMarkerCount == 0U,
               "modal surfaces hide every placement lattice cue") &&
        ok;
@@ -1714,6 +1756,7 @@ bool lockedPlacementPlaneFeedsPreviewAdmissionAndMutation() {
   const cr::CreativePlacementGridFrame initialAutoGrid =
       creativeEditorPlacementGridFrame(appState.facade.document(), editor);
   editor.toolSettings.placementPlane = cr::CreativePlacementPlane::Z;
+  editor.toolSettings.placementAnchor = cr::CreativePlacementAnchor::Corner;
   editor.toolSettings.placementDepth = cr::CreativePlacementDepth::TwoCells;
   const cr::CreativePlacementGridFrame placementGrid =
       creativeEditorPlacementGridFrame(appState.facade.document(), editor);
@@ -1737,7 +1780,10 @@ bool lockedPlacementPlaneFeedsPreviewAdmissionAndMutation() {
                 "unresolved targets do not bias the first automatic plane") &&
          expect(placementGrid.depthAxisLock ==
                     cr::kCreativePlacementGridAxisZ &&
+                    placementGrid.anchorKind ==
+                        cr::CreativePlacementAnchorKind::BaseCenter &&
                     sameVec3(target.viewDepthAxis, {0.0, 0.0, -1.0}) &&
+                    !target.anchorSnapped &&
                     target.surfaceAdjacentCell ==
                         cr::CreativeGridCoord3{4, 2, 5} &&
                     target.adjacentCell == cr::CreativeGridCoord3{4, 2, 3},
@@ -1760,6 +1806,68 @@ bool lockedPlacementPlaneFeedsPreviewAdmissionAndMutation() {
                     appState.facade.document().voxelField().materialAt(
                         target.adjacentCell) == cr::CreativeObjectKind::Wall,
                 "mutation writes the exact locked preview cell");
+}
+
+bool authoredAnchorFeedsPreviewAdmissionAndMutation() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("anchor parity");
+  static_cast<void>(document.assignId(121U));
+  static_cast<void>(document.setGridSettings(
+      {{0.0, 0.0, 0.0}, 1.0, {8, 8, 8}}));
+  static_cast<void>(document.setWorldBounds(
+      {{0.0, 0.0, 0.0}, {8.0, 8.0, 8.0}}));
+  cr::CreativeAppState appState;
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Door);
+  editor.toolSettings.placementAnchor = cr::CreativePlacementAnchor::Corner;
+  const cr::CreativePlacementGridFrame placementGrid =
+      creativeEditorPlacementGridFrame(appState.facade.document(), editor);
+  const cr::CreativeGridTarget target = cr::resolveCreativeGridTargetFromHit(
+      {4.0, 2.9, 5.9}, {1.0, 0.0, 0.0}, placementGrid,
+      {1.0, 0.0, 0.0});
+  editor.interaction.target.valid = target.valid;
+  editor.interaction.target.grid = target;
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const CreativeBrushPlacementAdmission admission = admitBrushPlacement(
+      held, target, editor.toolSettings.placementYaw);
+
+  iggy3d::FrameInput preview;
+  attachCreativeEditorPlacementPreviews(
+      editor, false, preview, &appState.facade.document());
+  const CreativeBrushPlacementMutationReceipt mutation = applyBrushPlacement(
+      appState.facade, admission.plan, 1U);
+  const cr::CreativeObject* object =
+      appState.facade.findObject(mutation.objectId);
+
+  return expect(placementGrid.anchorKind ==
+                    cr::CreativePlacementAnchorKind::Corner &&
+                    target.valid && target.anchorSnapped &&
+                    target.anchorIndex == 3U &&
+                    sameVec3(target.basePlacementAnchor, {4.5, 2.0, 5.5}) &&
+                    sameVec3(target.placementAnchor, {4.0, 3.0, 6.0}),
+                "corner mode resolves one stable authored target anchor") &&
+         expect(admission.allowed &&
+                    admission.plan.transform.position.x == 4.0 &&
+                    admission.plan.authoredBounds.min.y == 3.0 &&
+                    admission.plan.transform.position.z == 6.0,
+                "admission uses the resolved anchor as its canonical bottom center") &&
+         expect(preview.creativePreview.itemCount == 2U &&
+                    preview.creativePreview.items[0].role ==
+                        iggy3d::RenderCreativePreviewRole::PlacementValid &&
+                    near(preview.creativePreview.items[0].clipFromModel.m[3],
+                         static_cast<float>(admission.plan.transform.position.x)) &&
+                    near(preview.creativePreview.items[0].clipFromModel.m[7],
+                         static_cast<float>(admission.plan.transform.position.y)) &&
+                    near(preview.creativePreview.items[0].clipFromModel.m[11],
+                         static_cast<float>(admission.plan.transform.position.z)),
+                "preview renders the admitted anchored transform") &&
+         expect(mutation.accepted && mutation.objectCreated &&
+                    object != nullptr &&
+                    sameVec3(object->transform.position,
+                             admission.plan.transform.position) &&
+                    sameBounds(object->bounds, admission.plan.authoredBounds),
+                "mutation commits the exact anchored preview plan");
 }
 
 bool shapeVolumePreviewsStayBoundedAndFailClosed() {
@@ -5345,6 +5453,7 @@ int main() {
   ok = materialAimMovementDoesNotChangeUploadSignature() && ok;
   ok = placementGridDotsRenderOnlyTheActiveDepthLayer() && ok;
   ok = lockedPlacementPlaneFeedsPreviewAdmissionAndMutation() && ok;
+  ok = authoredAnchorFeedsPreviewAdmissionAndMutation() && ok;
   ok = shapeVolumePreviewsStayBoundedAndFailClosed() && ok;
   ok = editorVolumeBudgetRejectsBeforeMutation() && ok;
   ok = sceneCacheRefreshesOnlyOnDocumentRevision() && ok;

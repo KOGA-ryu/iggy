@@ -20,6 +20,14 @@ enum class CreativeGridTargetStatus : std::uint8_t {
   Ready,
 };
 
+enum class CreativePlacementAnchorKind : std::uint8_t {
+  BaseCenter,
+  FaceCenter,
+  EdgeMidpoint,
+  Corner,
+  Count,
+};
+
 using CreativePlacementGridAxisMask = std::uint8_t;
 
 inline constexpr CreativePlacementGridAxisMask kCreativePlacementGridAxisX =
@@ -43,6 +51,11 @@ struct CreativePlacementGridFrameRequest {
   // Zero selects automatic hysteresis; otherwise exactly one axis bit.
   CreativePlacementGridAxisMask depthAxisLock = 0U;
   CreativeVec3 previousDepthAxis{};
+  CreativePlacementAnchorKind anchorKind =
+      CreativePlacementAnchorKind::BaseCenter;
+  CreativeGridCoord3 previousAnchorCell{};
+  std::uint8_t previousAnchorIndex = 0U;
+  bool hasPreviousAnchor = false;
 };
 
 struct CreativePlacementGridFrame {
@@ -59,6 +72,11 @@ struct CreativePlacementGridFrame {
   std::uint8_t depthOffsetSteps = 0U;
   CreativePlacementGridAxisMask depthAxisLock = 0U;
   CreativeVec3 previousDepthAxis{};
+  CreativePlacementAnchorKind anchorKind =
+      CreativePlacementAnchorKind::BaseCenter;
+  CreativeGridCoord3 previousAnchorCell{};
+  std::uint8_t previousAnchorIndex = 0U;
+  bool hasPreviousAnchor = false;
   bool storageAligned = false;
   bool valid = false;
 };
@@ -80,7 +98,12 @@ struct CreativeGridTarget {
   CreativeBounds surfaceAdjacentCellBounds{};
   CreativeBounds adjacentCellBounds{};
   CreativeVec3 surfacePlacementAnchor{};
+  CreativeVec3 basePlacementAnchor{};
   CreativeVec3 placementAnchor{};
+  CreativePlacementAnchorKind anchorKind =
+      CreativePlacementAnchorKind::BaseCenter;
+  std::uint8_t anchorIndex = 0U;
+  bool anchorSnapped = false;
 };
 
 enum class CreativePlacementGridLineRole : std::uint8_t {

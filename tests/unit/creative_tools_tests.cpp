@@ -413,7 +413,7 @@ bool optionDescriptorsAreContextualAndBounded() {
 
   return expect(descriptors.size() == cr::kCreativeToolOptionDescriptorCount,
                 "global descriptor table has one row per option id") &&
-         expect(material.count == 5U &&
+         expect(material.count == 6U &&
                     material.ids[0] ==
                         cr::CreativeToolOptionId::PlacementYaw &&
                     material.ids[1] == cr::CreativeToolOptionId::SnapIncrement &&
@@ -422,8 +422,10 @@ bool optionDescriptorsAreContextualAndBounded() {
                     material.ids[3] ==
                         cr::CreativeToolOptionId::PlacementPlane &&
                     material.ids[4] ==
+                        cr::CreativeToolOptionId::PlacementAnchor &&
+                    material.ids[5] ==
                         cr::CreativeToolOptionId::PlacementDepth,
-                "material exposes orientation grid dots plane and depth") &&
+                "material exposes orientation grid dots plane anchor and depth") &&
          expect(materialBrush.count == 6U &&
                     materialBrush.ids[0] ==
                         cr::CreativeToolOptionId::MaterialBrushShape &&
@@ -634,6 +636,9 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
   invalidGridDots.placementGridDots = cr::CreativePlacementGridDots::Count;
   cr::CreativeToolSettings invalidPlacementPlane = settings;
   invalidPlacementPlane.placementPlane = cr::CreativePlacementPlane::Count;
+  cr::CreativeToolSettings invalidPlacementAnchor = settings;
+  invalidPlacementAnchor.placementAnchor =
+      cr::CreativePlacementAnchor::Count;
   cr::CreativeToolSettings invalidPlacementDepth = settings;
   invalidPlacementDepth.placementDepth = cr::CreativePlacementDepth::Count;
   cr::CreativeToolSettings invalidBrushAxis = settings;
@@ -690,6 +695,7 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                    "invalid material brush mask fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidGridDots) &&
                        !cr::isValidCreativeToolSettings(invalidPlacementPlane) &&
+                       !cr::isValidCreativeToolSettings(invalidPlacementAnchor) &&
                        !cr::isValidCreativeToolSettings(invalidPlacementDepth),
                    "invalid placement grid settings fail validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidBrushAxis),
@@ -744,6 +750,10 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                            settings,
                            cr::CreativeToolOptionId::PlacementPlane) ==
                            "AUTO" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::PlacementAnchor) ==
+                           "CENTER" &&
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::PlacementDepth) ==
@@ -934,6 +944,10 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
        expect(adjust(cr::CreativeToolOptionId::PlacementPlane, 1).changed &&
                   settings.placementPlane == cr::CreativePlacementPlane::X,
               "placement plane cycles from automatic to X") &&
+       expect(adjust(cr::CreativeToolOptionId::PlacementAnchor, 1).changed &&
+                  settings.placementAnchor ==
+                      cr::CreativePlacementAnchor::Face,
+              "placement anchor cycles from center to face") &&
        expect(adjust(cr::CreativeToolOptionId::PlacementDepth, 1).changed &&
                   settings.placementDepth ==
                       cr::CreativePlacementDepth::OneCell &&

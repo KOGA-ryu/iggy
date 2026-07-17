@@ -64,6 +64,17 @@ std::string_view toString(CreativePlacementPlane plane) noexcept {
   return "INVALID";
 }
 
+std::string_view toString(CreativePlacementAnchor anchor) noexcept {
+  switch (anchor) {
+    case CreativePlacementAnchor::Center: return "CENTER";
+    case CreativePlacementAnchor::Face: return "FACE";
+    case CreativePlacementAnchor::Edge: return "EDGE";
+    case CreativePlacementAnchor::Corner: return "CORNER";
+    case CreativePlacementAnchor::Count: break;
+  }
+  return "INVALID";
+}
+
 std::string_view toString(CreativePlacementDepth depth) noexcept {
   switch (depth) {
     case CreativePlacementDepth::ZeroCells: return "0 CELLS";
@@ -210,6 +221,8 @@ std::string_view creativeToolOptionValueLabel(
       return toString(settings.placementGridDots);
     case CreativeToolOptionId::PlacementPlane:
       return toString(settings.placementPlane);
+    case CreativeToolOptionId::PlacementAnchor:
+      return toString(settings.placementAnchor);
     case CreativeToolOptionId::PlacementDepth:
       return toString(settings.placementDepth);
     case CreativeToolOptionId::AssetPlacementMode:

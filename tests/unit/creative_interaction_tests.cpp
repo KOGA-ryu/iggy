@@ -967,6 +967,92 @@ bool placementDepthAndNearestDotLayerShareOneLattice() {
          ok;
 }
 
+bool placementAnchorsAreDeterministicAndStable() {
+  cr::CreativePlacementGridFrameRequest request;
+  request.documentGrid = {{0.0, 0.0, 0.0}, 1.0, {8, 8, 8}};
+  request.documentWorldBounds = {{0.0, 0.0, 0.0}, {8.0, 8.0, 8.0}};
+  request.storageAligned = true;
+
+  request.anchorKind = cr::CreativePlacementAnchorKind::FaceCenter;
+  const cr::CreativePlacementGridFrame faceFrame =
+      cr::makeCreativePlacementGridFrame(request);
+  const cr::CreativeGridTarget face = cr::resolveCreativeGridTargetFromHit(
+      {2.0, 2.5, 3.5}, {1.0, 0.0, 0.0}, faceFrame,
+      {1.0, 0.0, 0.0});
+  const cr::CreativeGridTarget faceTie =
+      cr::resolveCreativeGridTargetFromHit(
+          {2.0, 2.0, 3.5}, {0.0, 1.0, 0.0}, faceFrame,
+          {0.0, 0.0, -1.0});
+
+  request.anchorKind = cr::CreativePlacementAnchorKind::EdgeMidpoint;
+  const cr::CreativePlacementGridFrame edgeFrame =
+      cr::makeCreativePlacementGridFrame(request);
+  const cr::CreativeGridTarget edge = cr::resolveCreativeGridTargetFromHit(
+      {2.0, 2.85, 3.5}, {1.0, 0.0, 0.0}, edgeFrame,
+      {1.0, 0.0, 0.0});
+
+  request.anchorKind = cr::CreativePlacementAnchorKind::Corner;
+  const cr::CreativePlacementGridFrame cornerFrame =
+      cr::makeCreativePlacementGridFrame(request);
+  const cr::CreativeGridTarget corner = cr::resolveCreativeGridTargetFromHit(
+      {2.0, 2.9, 3.9}, {1.0, 0.0, 0.0}, cornerFrame,
+      {1.0, 0.0, 0.0});
+
+  cr::CreativePlacementGridFrameRequest retainedRequest;
+  retainedRequest.documentGrid = request.documentGrid;
+  retainedRequest.documentWorldBounds = request.documentWorldBounds;
+  retainedRequest.storageAligned = true;
+  retainedRequest.anchorKind =
+      cr::CreativePlacementAnchorKind::FaceCenter;
+  retainedRequest.previousAnchorCell = {2, 2, 3};
+  retainedRequest.previousAnchorIndex = 0U;
+  retainedRequest.hasPreviousAnchor = true;
+  const cr::CreativePlacementGridFrame retainedFrame =
+      cr::makeCreativePlacementGridFrame(retainedRequest);
+  const cr::CreativeGridTarget retained =
+      cr::resolveCreativeGridTargetFromHit(
+          {2.01, 2.0, 3.5}, {0.0, 1.0, 0.0}, retainedFrame,
+          {0.0, 0.0, -1.0});
+  const cr::CreativeGridTarget switched =
+      cr::resolveCreativeGridTargetFromHit(
+          {2.2, 2.0, 3.5}, {0.0, 1.0, 0.0}, retainedFrame,
+          {0.0, 0.0, -1.0});
+
+  cr::CreativePlacementGridFrameRequest invalidKind = request;
+  invalidKind.anchorKind = cr::CreativePlacementAnchorKind::Count;
+  cr::CreativePlacementGridFrameRequest invalidPrevious = retainedRequest;
+  invalidPrevious.previousAnchorIndex = 6U;
+
+  return expect(face.valid && face.anchorSnapped &&
+                    face.anchorKind ==
+                        cr::CreativePlacementAnchorKind::FaceCenter &&
+                    face.anchorIndex == 0U &&
+                    near(face.basePlacementAnchor.x, 2.5) &&
+                    near(face.basePlacementAnchor.y, 2.0) &&
+                    near(face.placementAnchor.x, 2.0) &&
+                    near(face.placementAnchor.y, 2.5) &&
+                    near(face.placementAnchor.z, 3.5),
+                "face mode selects the nearest face center") &&
+         expect(faceTie.valid && faceTie.anchorIndex == 0U,
+                "equal-distance anchor ties retain stable index order") &&
+         expect(edge.valid && edge.anchorIndex == 9U &&
+                    near(edge.placementAnchor.x, 2.0) &&
+                    near(edge.placementAnchor.y, 3.0) &&
+                    near(edge.placementAnchor.z, 3.5),
+                "edge mode selects the nearest AABB edge midpoint") &&
+         expect(corner.valid && corner.anchorIndex == 3U &&
+                    near(corner.placementAnchor.x, 2.0) &&
+                    near(corner.placementAnchor.y, 3.0) &&
+                    near(corner.placementAnchor.z, 4.0),
+                "corner mode selects the nearest AABB corner") &&
+         expect(retained.valid && retained.anchorIndex == 0U &&
+                    switched.valid && switched.anchorIndex == 2U,
+                "anchor hysteresis holds near a boundary and releases past its margin") &&
+         expect(!cr::makeCreativePlacementGridFrame(invalidKind).valid &&
+                    !cr::makeCreativePlacementGridFrame(invalidPrevious).valid,
+                "invalid anchor modes and prior indices fail closed");
+}
+
 bool placementFeedbackHasABoundedVisibleLifetime() {
   using iggy3d_creative_app::CreativeEditorPlacementFeedback;
   using iggy3d_creative_app::CreativeEditorPlacementFeedbackStatus;
@@ -1191,6 +1277,7 @@ int main() {
   ok = gridTargetResolvesHitFaceAndPlacementCell() && ok;
   ok = placementGridOwnsBoundsOriginsAndOverlayPlanes() && ok;
   ok = placementDepthAndNearestDotLayerShareOneLattice() && ok;
+  ok = placementAnchorsAreDeterministicAndStable() && ok;
   ok = placementFeedbackHasABoundedVisibleLifetime() && ok;
   ok = materialRepeatCadenceAndPrecedenceAreDeterministic() && ok;
   ok = worldStrokeRepeatRequestUnifiesMouseAndControllerActions() && ok;

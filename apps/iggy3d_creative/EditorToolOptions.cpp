@@ -89,7 +89,8 @@ cr::CreativeToolOptionList creativeEditorToolOptionsForEntry(
     if (assetPlacementOption(option) ||
         (!supportsYaw && option == cr::CreativeToolOptionId::PlacementYaw) ||
         (usesFixedVoxelGrid &&
-         option == cr::CreativeToolOptionId::SnapIncrement)) {
+         (option == cr::CreativeToolOptionId::SnapIncrement ||
+          option == cr::CreativeToolOptionId::PlacementAnchor))) {
       continue;
     }
     appendOption(option);

@@ -26,8 +26,37 @@ struct OverlayAxisRange {
   bool valid = false;
 };
 
+struct PlacementAnchorCandidates {
+  std::array<CreativeVec3, 12U> positions{};
+  std::uint8_t count = 0U;
+  bool valid = false;
+};
+
+struct PlacementAnchorSelection {
+  CreativeVec3 position{};
+  std::uint8_t index = 0U;
+  bool valid = false;
+};
+
 [[nodiscard]] bool finitePositive(double value) noexcept {
   return std::isfinite(value) && value > 0.0;
+}
+
+[[nodiscard]] constexpr std::uint8_t placementAnchorCandidateCount(
+    CreativePlacementAnchorKind kind) noexcept {
+  switch (kind) {
+    case CreativePlacementAnchorKind::BaseCenter:
+      return 1U;
+    case CreativePlacementAnchorKind::FaceCenter:
+      return 6U;
+    case CreativePlacementAnchorKind::EdgeMidpoint:
+      return 12U;
+    case CreativePlacementAnchorKind::Corner:
+      return 8U;
+    case CreativePlacementAnchorKind::Count:
+      return 0U;
+  }
+  return 0U;
 }
 
 [[nodiscard]] CreativeVec3 dominantAxisNormal(CreativeVec3 normal) noexcept {
@@ -213,6 +242,137 @@ struct OverlayAxisRange {
   const CreativeBounds bounds = cellBounds(cell, frame);
   const CreativeVec3 center = measureCreativeBounds(bounds).center;
   return {center.x, bounds.min.y, center.z};
+}
+
+[[nodiscard]] PlacementAnchorCandidates placementAnchorCandidates(
+    CreativePlacementAnchorKind kind,
+    CreativeBounds bounds) noexcept {
+  PlacementAnchorCandidates result;
+  const CreativeBoundsMetrics metrics = measureCreativeBounds(bounds);
+  result.count = placementAnchorCandidateCount(kind);
+  if (!metrics.valid || !isPositiveCreativeVec3(metrics.size) ||
+      result.count == 0U) {
+    return result;
+  }
+
+  switch (kind) {
+    case CreativePlacementAnchorKind::BaseCenter:
+      result.positions[0] = {metrics.center.x, bounds.min.y,
+                             metrics.center.z};
+      break;
+    case CreativePlacementAnchorKind::FaceCenter:
+      result.positions[0] = {bounds.min.x, metrics.center.y,
+                             metrics.center.z};
+      result.positions[1] = {bounds.max.x, metrics.center.y,
+                             metrics.center.z};
+      result.positions[2] = {metrics.center.x, bounds.min.y,
+                             metrics.center.z};
+      result.positions[3] = {metrics.center.x, bounds.max.y,
+                             metrics.center.z};
+      result.positions[4] = {metrics.center.x, metrics.center.y,
+                             bounds.min.z};
+      result.positions[5] = {metrics.center.x, metrics.center.y,
+                             bounds.max.z};
+      break;
+    case CreativePlacementAnchorKind::EdgeMidpoint: {
+      std::size_t index = 0U;
+      for (std::size_t y = 0U; y < 2U; ++y) {
+        for (std::size_t z = 0U; z < 2U; ++z) {
+          result.positions[index++] = {
+              metrics.center.x, y == 0U ? bounds.min.y : bounds.max.y,
+              z == 0U ? bounds.min.z : bounds.max.z};
+        }
+      }
+      for (std::size_t x = 0U; x < 2U; ++x) {
+        for (std::size_t z = 0U; z < 2U; ++z) {
+          result.positions[index++] = {
+              x == 0U ? bounds.min.x : bounds.max.x, metrics.center.y,
+              z == 0U ? bounds.min.z : bounds.max.z};
+        }
+      }
+      for (std::size_t x = 0U; x < 2U; ++x) {
+        for (std::size_t y = 0U; y < 2U; ++y) {
+          result.positions[index++] = {
+              x == 0U ? bounds.min.x : bounds.max.x,
+              y == 0U ? bounds.min.y : bounds.max.y, metrics.center.z};
+        }
+      }
+      break;
+    }
+    case CreativePlacementAnchorKind::Corner: {
+      std::size_t index = 0U;
+      for (std::size_t x = 0U; x < 2U; ++x) {
+        for (std::size_t y = 0U; y < 2U; ++y) {
+          for (std::size_t z = 0U; z < 2U; ++z) {
+            result.positions[index++] = {
+                x == 0U ? bounds.min.x : bounds.max.x,
+                y == 0U ? bounds.min.y : bounds.max.y,
+                z == 0U ? bounds.min.z : bounds.max.z};
+          }
+        }
+      }
+      break;
+    }
+    case CreativePlacementAnchorKind::Count:
+      return {};
+  }
+  result.valid = std::all_of(
+      result.positions.begin(), result.positions.begin() + result.count,
+      isFiniteCreativeVec3);
+  return result;
+}
+
+[[nodiscard]] double squaredDistance(CreativeVec3 a,
+                                     CreativeVec3 b) noexcept {
+  const double x = a.x - b.x;
+  const double y = a.y - b.y;
+  const double z = a.z - b.z;
+  return x * x + y * y + z * z;
+}
+
+[[nodiscard]] PlacementAnchorSelection selectPlacementAnchor(
+    CreativeVec3 hitPoint,
+    CreativeGridCoord3 cell,
+    CreativeBounds bounds,
+    const CreativePlacementGridFrame& frame) noexcept {
+  PlacementAnchorSelection result;
+  const PlacementAnchorCandidates candidates =
+      placementAnchorCandidates(frame.anchorKind, bounds);
+  if (!candidates.valid || !isFiniteCreativeVec3(hitPoint)) {
+    return result;
+  }
+
+  std::uint8_t bestIndex = 0U;
+  double bestDistanceSquared =
+      squaredDistance(hitPoint, candidates.positions[0]);
+  for (std::uint8_t index = 1U; index < candidates.count; ++index) {
+    const double distanceSquared =
+        squaredDistance(hitPoint, candidates.positions[index]);
+    if (distanceSquared < bestDistanceSquared) {
+      bestDistanceSquared = distanceSquared;
+      bestIndex = index;
+    }
+  }
+
+  if (frame.hasPreviousAnchor && frame.previousAnchorCell == cell &&
+      frame.previousAnchorIndex < candidates.count) {
+    constexpr double kAnchorRetainStepFraction = 0.08;
+    const double retainDistance =
+        std::min({frame.stepMeters.x, frame.stepMeters.y,
+                  frame.stepMeters.z}) *
+        kAnchorRetainStepFraction;
+    const double previousDistance = std::sqrt(squaredDistance(
+        hitPoint, candidates.positions[frame.previousAnchorIndex]));
+    const double bestDistance = std::sqrt(bestDistanceSquared);
+    if (previousDistance <= bestDistance + retainDistance) {
+      bestIndex = frame.previousAnchorIndex;
+    }
+  }
+
+  result.position = candidates.positions[bestIndex];
+  result.index = bestIndex;
+  result.valid = true;
+  return result;
 }
 
 [[nodiscard]] bool cellInsideDocumentBounds(
@@ -434,7 +594,11 @@ CreativePlacementGridFrame makeCreativePlacementGridFrame(
       (request.useActivePlaneOverride &&
        !std::isfinite(request.activePlaneY)) ||
       !validDepthAxisLock(request.depthAxisLock) ||
-      !isFiniteCreativeVec3(request.previousDepthAxis)) {
+      !isFiniteCreativeVec3(request.previousDepthAxis) ||
+      placementAnchorCandidateCount(request.anchorKind) == 0U ||
+      (request.hasPreviousAnchor &&
+       request.previousAnchorIndex >=
+           placementAnchorCandidateCount(request.anchorKind))) {
     return frame;
   }
 
@@ -446,6 +610,10 @@ CreativePlacementGridFrame makeCreativePlacementGridFrame(
   frame.depthAxisLock = request.depthAxisLock;
   frame.previousDepthAxis =
       dominantAxisNormal(request.previousDepthAxis);
+  frame.anchorKind = request.anchorKind;
+  frame.previousAnchorCell = request.previousAnchorCell;
+  frame.previousAnchorIndex = request.previousAnchorIndex;
+  frame.hasPreviousAnchor = request.hasPreviousAnchor;
   frame.activePlaneY = request.useActivePlaneOverride
                            ? request.activePlaneY
                            : grid.origin.y;
@@ -566,7 +734,18 @@ CreativeGridTarget resolveCreativeGridTargetFromHit(
   target.adjacentCellBounds = cellBounds(target.adjacentCell, frame);
   target.surfacePlacementAnchor =
       cellPlacementAnchor(target.surfaceAdjacentCell, frame);
-  target.placementAnchor = cellPlacementAnchor(target.adjacentCell, frame);
+  target.basePlacementAnchor =
+      cellPlacementAnchor(target.adjacentCell, frame);
+  const PlacementAnchorSelection anchor = selectPlacementAnchor(
+      hitPoint, target.adjacentCell, target.adjacentCellBounds, frame);
+  if (!anchor.valid) {
+    return {};
+  }
+  target.placementAnchor = anchor.position;
+  target.anchorKind = frame.anchorKind;
+  target.anchorIndex = anchor.index;
+  target.anchorSnapped =
+      frame.anchorKind != CreativePlacementAnchorKind::BaseCenter;
   target.resolved = true;
   target.targetInBounds = cellInsideDocumentBounds(target.targetCellBounds,
                                                    frame);

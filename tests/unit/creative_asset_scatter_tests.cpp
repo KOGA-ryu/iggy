@@ -1,4 +1,5 @@
 #include "EditorAssetScatter.hpp"
+#include "EditorInteraction.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorState.hpp"
 #include "EditorToolOptions.hpp"
@@ -207,8 +208,16 @@ bool assetOnlyToolOptionsAreContextual() {
   const cr::CreativeToolOptionList singleOptions =
       app::creativeEditorToolOptionsForEntry(asset, settings);
   settings.assetPlacementMode = cr::CreativeAssetPlacementMode::Scatter;
+  settings.placementAnchor = cr::CreativePlacementAnchor::Corner;
   const cr::CreativeToolOptionList scatterOptions =
       app::creativeEditorToolOptionsForEntry(asset, settings);
+  cr::CreativeAppState appState;
+  app::CreativeEditorState scatterState = scatterEditor();
+  scatterState.toolSettings.placementAnchor =
+      cr::CreativePlacementAnchor::Corner;
+  const cr::CreativePlacementGridFrame scatterGrid =
+      app::creativeEditorPlacementGridFrame(appState.facade.document(),
+                                            scatterState);
   app::CreativeEditorState editor;
   editor.interaction.hotbar.entries[0] = ordinary;
   app::syncCreativeEditorQuickEdit(editor);
@@ -224,6 +233,8 @@ bool assetOnlyToolOptionsAreContextual() {
                                cr::CreativeToolOptionId::AssetPlacementMode) &&
                     optionsContain(singleOptions,
                                    cr::CreativeToolOptionId::PlacementYaw) &&
+                    optionsContain(singleOptions,
+                                   cr::CreativeToolOptionId::PlacementAnchor) &&
                     !optionsContain(singleOptions,
                                     cr::CreativeToolOptionId::AssetScatterRadius),
                 "single asset mode keeps normal placement controls") &&
@@ -232,8 +243,14 @@ bool assetOnlyToolOptionsAreContextual() {
                                    cr::CreativeToolOptionId::AssetScatterSlope) &&
                     !optionsContain(scatterOptions,
                                     cr::CreativeToolOptionId::PlacementYaw) &&
+                    !optionsContain(scatterOptions,
+                                    cr::CreativeToolOptionId::PlacementAnchor) &&
                     !scatterOptions.capacityExceeded,
                 "scatter mode exposes seven bounded quick-edit settings") &&
+         expect(scatterGrid.valid &&
+                    scatterGrid.anchorKind ==
+                        cr::CreativePlacementAnchorKind::BaseCenter,
+                "scatter remains center-based when single placement retains another anchor mode") &&
          expect(editor.quickEdit.selectedIndex == 0U &&
                     editor.quickEdit.options.ids[0] ==
                         cr::CreativeToolOptionId::AssetPlacementMode,
