@@ -128,6 +128,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/recipes/CreativeRecipe.cpp
     src/app/iggy3d/creative/recipes/BuildingRecipe.cpp
     src/app/iggy3d/creative/recipes/StructuralSurfaceRecipe.cpp
+    src/app/iggy3d/creative/recipes/StructuralWallRecipe.cpp
     src/app/iggy3d/creative/recipes/ObjectLibraryRecipe.cpp
     src/app/iggy3d/creative/recipes/TerrainRecipe.cpp
     src/app/iggy3d/creative/world/WorldLayout.cpp

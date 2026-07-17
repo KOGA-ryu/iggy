@@ -121,6 +121,11 @@ iggy3d_add_unit_test(creative_structural_surface_recipe_tests
 set_tests_properties(creative_structural_surface_recipe_tests PROPERTIES
   LABELS "unit;app;creative;recipe;structural;surface;iggy3d")
 
+iggy3d_add_unit_test(creative_structural_wall_recipe_tests
+  tests/unit/creative_structural_wall_recipe_tests.cpp)
+set_tests_properties(creative_structural_wall_recipe_tests PROPERTIES
+  LABELS "unit;app;creative;recipe;structural;wall;opening;iggy3d")
+
 iggy3d_add_unit_test(creative_terrain_recipe_tests
   tests/unit/creative_terrain_recipe_tests.cpp)
 set_tests_properties(creative_terrain_recipe_tests PROPERTIES

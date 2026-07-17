@@ -16,29 +16,6 @@ namespace {
 
 constexpr double kGeometryEpsilon = 1.0e-9;
 
-enum class WallAxis : std::uint8_t {
-  X,
-  Z,
-};
-
-struct WallFrame {
-  WallAxis axis = WallAxis::X;
-  double startScalar = 0.0;
-  double direction = 1.0;
-  double constant = 0.0;
-  double baseY = 0.0;
-  double length = 0.0;
-  double height = 0.0;
-  double thickness = 0.0;
-};
-
-struct OrderedOpening {
-  const CreativeBuildingOpeningSpec* opening = nullptr;
-  std::size_t sourceIndex = 0U;
-  double minimum = 0.0;
-  double maximum = 0.0;
-};
-
 void setStatus(CreativeBuildingRecipeReceipt& receipt,
                CreativeBuildingRecipeStatus status,
                std::string_view reasonCode) {
@@ -54,10 +31,6 @@ void setStatus(CreativeBuildingRecipeReceipt& receipt,
   return std::isfinite(value) && value > kGeometryEpsilon;
 }
 
-[[nodiscard]] bool nonNegativeFinite(double value) noexcept {
-  return std::isfinite(value) && value >= 0.0;
-}
-
 [[nodiscard]] bool validBounds(const CreativeBounds& bounds) noexcept {
   const CreativeBoundsMetrics metrics = measureCreativeBounds(bounds);
   return metrics.valid && isPositiveCreativeVec3(metrics.size);
@@ -68,22 +41,6 @@ void setGeometryStatus(CreativeRectangularRoomGeometryPlan& plan,
                        std::string_view reasonCode) noexcept {
   plan.status = status;
   plan.reasonCode = reasonCode;
-}
-
-[[nodiscard]] CreativeBounds horizontalWallBounds(
-    CreativeVec3 start,
-    CreativeVec3 end,
-    double height,
-    double thickness) noexcept {
-  if (near(start.z, end.z)) {
-    return {{std::min(start.x, end.x), start.y, start.z - thickness * 0.5},
-            {std::max(start.x, end.x), start.y + height,
-             start.z + thickness * 0.5}};
-  }
-  return {{start.x - thickness * 0.5, start.y,
-           std::min(start.z, end.z)},
-          {start.x + thickness * 0.5, start.y + height,
-           std::max(start.z, end.z)}};
 }
 
 [[nodiscard]] bool allowedBoxKind(CreativeObjectKind kind) noexcept {
@@ -104,120 +61,10 @@ void setGeometryStatus(CreativeRectangularRoomGeometryPlan& plan,
          kind == CreativeBuildingOpeningKind::Window;
 }
 
-[[nodiscard]] bool validOpeningPose(
-    CreativeBuildingOpeningPose pose) noexcept {
-  switch (pose) {
-    case CreativeBuildingOpeningPose::Closed:
-    case CreativeBuildingOpeningPose::OpenFromStartNegativeNormal:
-    case CreativeBuildingOpeningPose::OpenFromStartPositiveNormal:
-    case CreativeBuildingOpeningPose::OpenFromEndNegativeNormal:
-    case CreativeBuildingOpeningPose::OpenFromEndPositiveNormal:
-      return true;
-  }
-  return false;
-}
-
 [[nodiscard]] bool validRootMode(CreativeBuildingRootMode mode) noexcept {
   return mode == CreativeBuildingRootMode::None ||
          mode == CreativeBuildingRootMode::CreateRoom ||
          mode == CreativeBuildingRootMode::ExistingRoom;
-}
-
-[[nodiscard]] bool openingPoseUsesStart(
-    CreativeBuildingOpeningPose pose) noexcept {
-  return pose == CreativeBuildingOpeningPose::OpenFromStartNegativeNormal ||
-         pose == CreativeBuildingOpeningPose::OpenFromStartPositiveNormal;
-}
-
-[[nodiscard]] double openingPoseNormalSign(
-    CreativeBuildingOpeningPose pose) noexcept {
-  return pose == CreativeBuildingOpeningPose::OpenFromStartNegativeNormal ||
-                 pose == CreativeBuildingOpeningPose::OpenFromEndNegativeNormal
-             ? -1.0
-             : 1.0;
-}
-
-[[nodiscard]] std::optional<WallFrame> wallFrame(
-    const CreativeBuildingWallSpec& wall) noexcept {
-  if (!isFiniteCreativeVec3(wall.start) || !isFiniteCreativeVec3(wall.end) ||
-      !near(wall.start.y, wall.end.y) ||
-      !positiveFinite(wall.heightMeters) ||
-      !positiveFinite(wall.thicknessMeters)) {
-    return std::nullopt;
-  }
-
-  WallFrame frame;
-  frame.baseY = wall.start.y;
-  frame.height = wall.heightMeters;
-  frame.thickness = wall.thicknessMeters;
-  if (near(wall.start.z, wall.end.z) && !near(wall.start.x, wall.end.x)) {
-    frame.axis = WallAxis::X;
-    frame.startScalar = wall.start.x;
-    frame.direction = wall.end.x > wall.start.x ? 1.0 : -1.0;
-    frame.constant = wall.start.z;
-    frame.length = std::abs(wall.end.x - wall.start.x);
-    return frame;
-  }
-  if (near(wall.start.x, wall.end.x) && !near(wall.start.z, wall.end.z)) {
-    frame.axis = WallAxis::Z;
-    frame.startScalar = wall.start.z;
-    frame.direction = wall.end.z > wall.start.z ? 1.0 : -1.0;
-    frame.constant = wall.start.x;
-    frame.length = std::abs(wall.end.z - wall.start.z);
-    return frame;
-  }
-  return std::nullopt;
-}
-
-[[nodiscard]] CreativeBounds spanBounds(const WallFrame& frame,
-                                         double minimumOffset,
-                                         double maximumOffset,
-                                         double bottom,
-                                         double top,
-                                         double thickness) noexcept {
-  const double first = frame.startScalar + frame.direction * minimumOffset;
-  const double second = frame.startScalar + frame.direction * maximumOffset;
-  if (frame.axis == WallAxis::X) {
-    return {{std::min(first, second), frame.baseY + bottom,
-             frame.constant - thickness * 0.5},
-            {std::max(first, second), frame.baseY + top,
-             frame.constant + thickness * 0.5}};
-  }
-  return {{frame.constant - thickness * 0.5, frame.baseY + bottom,
-           std::min(first, second)},
-          {frame.constant + thickness * 0.5, frame.baseY + top,
-           std::max(first, second)}};
-}
-
-[[nodiscard]] CreativeBounds openDoorBounds(
-    const WallFrame& frame,
-    const OrderedOpening& ordered,
-    double insertBottom,
-    double insertHeight,
-    double insertWidth,
-    double insertThickness,
-    CreativeBuildingOpeningPose pose) noexcept {
-  const double hingeOffset = openingPoseUsesStart(pose)
-                                 ? ordered.minimum + insertThickness * 0.5
-                                 : ordered.maximum - insertThickness * 0.5;
-  const double hinge =
-      frame.startScalar + frame.direction * hingeOffset;
-  const double normalEnd =
-      frame.constant + openingPoseNormalSign(pose) * insertWidth;
-  if (frame.axis == WallAxis::X) {
-    return {{hinge - insertThickness * 0.5,
-             frame.baseY + insertBottom,
-             std::min(frame.constant, normalEnd)},
-            {hinge + insertThickness * 0.5,
-             frame.baseY + insertBottom + insertHeight,
-             std::max(frame.constant, normalEnd)}};
-  }
-  return {{std::min(frame.constant, normalEnd),
-           frame.baseY + insertBottom,
-           hinge - insertThickness * 0.5},
-          {std::max(frame.constant, normalEnd),
-           frame.baseY + insertBottom + insertHeight,
-           hinge + insertThickness * 0.5}};
 }
 
 [[nodiscard]] CreativeDocumentCreateRequest makeBoxRequest(
@@ -308,168 +155,114 @@ void appendGeneratedObject(CreativeBuildingRecipeResult& result,
   return wall.name + " Segment " + std::to_string(segmentIndex + 1U);
 }
 
-[[nodiscard]] std::vector<OrderedOpening> orderedOpenings(
-    const CreativeBuildingWallSpec& wall) {
-  std::vector<OrderedOpening> ordered;
-  ordered.reserve(wall.openings.size());
-  for (std::size_t index = 0; index < wall.openings.size(); ++index) {
-    const CreativeBuildingOpeningSpec& opening = wall.openings[index];
-    ordered.push_back({&opening,
-                       index,
-                       opening.centerOffsetMeters - opening.widthMeters * 0.5,
-                       opening.centerOffsetMeters + opening.widthMeters * 0.5});
+void setWallKernelFailure(CreativeBuildingRecipeReceipt& receipt,
+                          const CreativeStructuralWallRecipeResult& geometry) {
+  receipt.failedOpeningIndex = geometry.failedOpeningIndex;
+  switch (geometry.status) {
+    case CreativeStructuralWallRecipeStatus::UnsupportedOrientation:
+      setStatus(receipt,
+                CreativeBuildingRecipeStatus::UnsupportedWallOrientation,
+                "creative_building_wall_orientation_unsupported");
+      return;
+    case CreativeStructuralWallRecipeStatus::InvalidOpening:
+      setStatus(receipt, CreativeBuildingRecipeStatus::InvalidOpening,
+                "creative_building_opening_invalid");
+      return;
+    case CreativeStructuralWallRecipeStatus::OverlappingOpenings:
+      setStatus(receipt, CreativeBuildingRecipeStatus::OverlappingOpenings,
+                "creative_building_openings_overlap");
+      return;
+    case CreativeStructuralWallRecipeStatus::NotRequested:
+    case CreativeStructuralWallRecipeStatus::InvalidWall:
+    case CreativeStructuralWallRecipeStatus::UnrepresentableGeometry:
+    case CreativeStructuralWallRecipeStatus::Ready:
+      setStatus(receipt, CreativeBuildingRecipeStatus::InvalidWall,
+                "creative_building_wall_invalid");
+      return;
   }
-  std::sort(ordered.begin(), ordered.end(), [](const OrderedOpening& lhs,
-                                                const OrderedOpening& rhs) {
-    if (!near(lhs.minimum, rhs.minimum)) {
-      return lhs.minimum < rhs.minimum;
-    }
-    return lhs.opening->stableKey < rhs.opening->stableKey;
-  });
-  return ordered;
-}
-
-[[nodiscard]] bool validateOpening(const OrderedOpening& ordered,
-                                   const WallFrame& frame) noexcept {
-  const CreativeBuildingOpeningSpec& opening = *ordered.opening;
-  if (!validOpeningKind(opening.kind) || !validOpeningPose(opening.pose) ||
-      opening.stableKey.empty() || opening.name.empty() ||
-      !positiveFinite(opening.widthMeters) ||
-      !nonNegativeFinite(opening.centerOffsetMeters) ||
-      !nonNegativeFinite(opening.cutoutBottomMeters) ||
-      !positiveFinite(opening.cutoutHeightMeters) ||
-      ordered.minimum <= kGeometryEpsilon ||
-      ordered.maximum >= frame.length - kGeometryEpsilon ||
-      opening.cutoutBottomMeters + opening.cutoutHeightMeters >
-          frame.height + kGeometryEpsilon) {
-    return false;
-  }
-  if (opening.kind == CreativeBuildingOpeningKind::Window &&
-      openingPoseIsOpen(opening.pose)) {
-    return false;
-  }
-  if (!opening.includeInsert) {
-    return true;
-  }
-
-  const double insertHeight = opening.insertHeightMeters > 0.0
-                                  ? opening.insertHeightMeters
-                                  : opening.cutoutHeightMeters;
-  const double insertWidth = opening.insertWidthMeters > 0.0
-                                 ? opening.insertWidthMeters
-                                 : opening.widthMeters;
-  const double insertThickness = opening.insertThicknessMeters > 0.0
-                                     ? opening.insertThicknessMeters
-                                     : frame.thickness;
-  return nonNegativeFinite(opening.insertBottomMeters) &&
-         positiveFinite(insertHeight) && positiveFinite(insertWidth) &&
-         positiveFinite(insertThickness) &&
-         insertWidth <= opening.widthMeters + kGeometryEpsilon &&
-         opening.insertBottomMeters + insertHeight <=
-             opening.cutoutBottomMeters + opening.cutoutHeightMeters +
-                 kGeometryEpsilon &&
-         opening.insertBottomMeters + kGeometryEpsilon >=
-             opening.cutoutBottomMeters;
 }
 
 [[nodiscard]] bool appendWall(CreativeBuildingRecipeResult& result,
                               const CreativeBuildingRecipeRequest& request,
                               const CreativeBuildingWallSpec& wall,
-                              const WallFrame& frame,
                               bool hasCreatedRoot) {
-  std::vector<OrderedOpening> openings = orderedOpenings(wall);
   if (!wall.segmentNames.empty() &&
-      wall.segmentNames.size() != openings.size() + 1U) {
+      wall.segmentNames.size() != wall.openings.size() + 1U) {
     setStatus(result.receipt, CreativeBuildingRecipeStatus::InvalidWall,
               "creative_building_wall_segment_names_invalid");
     return false;
   }
-  for (std::size_t index = 0; index < openings.size(); ++index) {
-    result.receipt.failedOpeningIndex = openings[index].sourceIndex;
-    if (!validateOpening(openings[index], frame)) {
+
+  std::vector<CreativeStructuralWallOpeningRequest> openingRequests;
+  openingRequests.reserve(wall.openings.size());
+  for (std::size_t index = 0U; index < wall.openings.size(); ++index) {
+    result.receipt.failedOpeningIndex = index;
+    const CreativeBuildingOpeningSpec& opening = wall.openings[index];
+    if (!validOpeningKind(opening.kind) ||
+        !isCreativeStructuralWallOpeningPoseValid(opening.pose) ||
+        opening.stableKey.empty() || opening.name.empty() ||
+        (opening.kind == CreativeBuildingOpeningKind::Window &&
+         openingPoseIsOpen(opening.pose))) {
       setStatus(result.receipt, CreativeBuildingRecipeStatus::InvalidOpening,
                 "creative_building_opening_invalid");
       return false;
     }
-    if (index > 0U && openings[index].minimum <=
-                          openings[index - 1U].maximum + kGeometryEpsilon) {
-      setStatus(result.receipt,
-                CreativeBuildingRecipeStatus::OverlappingOpenings,
-                "creative_building_openings_overlap");
-      return false;
-    }
+    openingRequests.push_back(
+        {opening.stableKey, opening.centerOffsetMeters, opening.widthMeters,
+         opening.cutoutBottomMeters, opening.cutoutHeightMeters,
+         opening.includeInsert, opening.insertBottomMeters,
+         opening.insertHeightMeters, opening.insertWidthMeters,
+         opening.insertThicknessMeters, opening.pose});
+  }
+  const CreativeStructuralWallRecipeResult geometry =
+      planCreativeStructuralWall({wall.start, wall.end, wall.heightMeters,
+                                  wall.thicknessMeters, 0.0, 0.0,
+                                  openingRequests});
+  if (!geometry.accepted) {
+    setWallKernelFailure(result.receipt, geometry);
+    return false;
   }
 
-  double cursor = 0.0;
   std::size_t segmentIndex = 0U;
-  for (const OrderedOpening& ordered : openings) {
-    const CreativeBuildingOpeningSpec& opening = *ordered.opening;
+  for (const CreativeStructuralWallOpeningPlan& openingPlan :
+       geometry.openings) {
+    const CreativeBuildingOpeningSpec& opening =
+        wall.openings[openingPlan.sourceIndex];
     appendGeneratedObject(
         result, request, CreativeObjectKind::Wall,
         wall.stableKey + ".segment." + std::to_string(segmentIndex + 1U),
-        segmentName(wall, segmentIndex),
-        spanBounds(frame, cursor, ordered.minimum, 0.0, frame.height,
-                   frame.thickness),
+        segmentName(wall, segmentIndex), geometry.fullHeightSpans[segmentIndex],
         hasCreatedRoot, wall.tags);
     ++segmentIndex;
 
-    if (opening.cutoutBottomMeters > kGeometryEpsilon) {
-      appendGeneratedObject(
-          result, request, CreativeObjectKind::Wall,
-          opening.stableKey + ".sill", opening.name + " Sill",
-          spanBounds(frame, ordered.minimum, ordered.maximum, 0.0,
-                     opening.cutoutBottomMeters, frame.thickness),
-          hasCreatedRoot, opening.tags);
+    if (openingPlan.hasSill) {
+      appendGeneratedObject(result, request, CreativeObjectKind::Wall,
+                            opening.stableKey + ".sill", opening.name + " Sill",
+                            openingPlan.sillBounds, hasCreatedRoot,
+                            opening.tags);
     }
-    const double cutoutTop =
-        opening.cutoutBottomMeters + opening.cutoutHeightMeters;
-    if (cutoutTop < frame.height - kGeometryEpsilon) {
-      appendGeneratedObject(
-          result, request, CreativeObjectKind::Wall,
-          opening.stableKey + ".lintel", opening.name + " Lintel",
-          spanBounds(frame, ordered.minimum, ordered.maximum, cutoutTop,
-                     frame.height, frame.thickness),
-          hasCreatedRoot, opening.tags);
+    if (openingPlan.hasLintel) {
+      appendGeneratedObject(result, request, CreativeObjectKind::Wall,
+                            opening.stableKey + ".lintel",
+                            opening.name + " Lintel", openingPlan.lintelBounds,
+                            hasCreatedRoot, opening.tags);
     }
 
-    if (opening.includeInsert) {
-      const double insertHeight = opening.insertHeightMeters > 0.0
-                                      ? opening.insertHeightMeters
-                                      : opening.cutoutHeightMeters;
-      const double insertWidth = opening.insertWidthMeters > 0.0
-                                     ? opening.insertWidthMeters
-                                     : opening.widthMeters;
-      const double insertThickness = opening.insertThicknessMeters > 0.0
-                                         ? opening.insertThicknessMeters
-                                         : frame.thickness;
-      CreativeBounds insertBounds = spanBounds(
-          frame, opening.centerOffsetMeters - insertWidth * 0.5,
-          opening.centerOffsetMeters + insertWidth * 0.5,
-          opening.insertBottomMeters,
-          opening.insertBottomMeters + insertHeight, insertThickness);
-      if (openingPoseIsOpen(opening.pose)) {
-        insertBounds = openDoorBounds(frame, ordered,
-                                      opening.insertBottomMeters,
-                                      insertHeight, insertWidth,
-                                      insertThickness, opening.pose);
-      }
+    if (openingPlan.hasInsert) {
       const CreativeObjectKind kind =
           opening.kind == CreativeBuildingOpeningKind::Door
               ? CreativeObjectKind::Door
               : CreativeObjectKind::Window;
-      appendGeneratedObject(result, request, kind,
-                            opening.stableKey + ".insert", opening.name,
-                            insertBounds, hasCreatedRoot, opening.tags);
+      appendGeneratedObject(
+          result, request, kind, opening.stableKey + ".insert", opening.name,
+          openingPlan.insertBounds, hasCreatedRoot, opening.tags);
     }
-    cursor = ordered.maximum;
   }
 
   appendGeneratedObject(
       result, request, CreativeObjectKind::Wall,
       wall.stableKey + ".segment." + std::to_string(segmentIndex + 1U),
-      segmentName(wall, segmentIndex),
-      spanBounds(frame, cursor, frame.length, 0.0, frame.height,
-                 frame.thickness),
+      segmentName(wall, segmentIndex), geometry.fullHeightSpans.back(),
       hasCreatedRoot, wall.tags);
   return true;
 }
@@ -631,9 +424,21 @@ CreativeRectangularRoomGeometryPlan planCreativeRectangularRoomGeometry(
                     {minimumX, floorTop, maximumZ},
                     {minimumX, floorTop, minimumZ}}};
   for (std::size_t index = 0U; index < plan.wallBounds.size(); ++index) {
-    plan.wallBounds[index] = horizontalWallBounds(
-        plan.wallStarts[index], plan.wallEnds[index],
-        request.wallHeightMeters, request.wallThicknessMeters);
+    const CreativeStructuralWallRecipeResult wall =
+        planCreativeStructuralWall({plan.wallStarts[index],
+                                    plan.wallEnds[index],
+                                    request.wallHeightMeters,
+                                    request.wallThicknessMeters,
+                                    0.0,
+                                    0.0,
+                                    {}});
+    if (!wall.accepted) {
+      setGeometryStatus(
+          plan, CreativeRectangularRoomGeometryStatus::InvalidDimension,
+          "creative_rectangular_room_wall_geometry_unrepresentable");
+      return plan;
+    }
+    plan.wallBounds[index] = wall.frame.bounds;
   }
   plan.accepted = true;
   setGeometryStatus(plan, CreativeRectangularRoomGeometryStatus::Ready,
@@ -740,22 +545,7 @@ CreativeBuildingRecipeResult buildCreativeBuildingRecipe(
       result.plan.objects.clear();
       return result;
     }
-    const std::optional<WallFrame> frame = wallFrame(wall);
-    if (!frame.has_value()) {
-      const bool finite = isFiniteCreativeVec3(wall.start) &&
-                          isFiniteCreativeVec3(wall.end) &&
-                          positiveFinite(wall.heightMeters) &&
-                          positiveFinite(wall.thicknessMeters);
-      setStatus(result.receipt,
-                finite
-                    ? CreativeBuildingRecipeStatus::UnsupportedWallOrientation
-                    : CreativeBuildingRecipeStatus::InvalidWall,
-                finite ? "creative_building_wall_orientation_unsupported"
-                       : "creative_building_wall_invalid");
-      result.plan.objects.clear();
-      return result;
-    }
-    if (!appendWall(result, request, wall, *frame, createsRoot)) {
+    if (!appendWall(result, request, wall, createsRoot)) {
       result.plan.objects.clear();
       return result;
     }

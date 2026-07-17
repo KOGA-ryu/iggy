@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/recipes/CreativeRecipe.hpp"
+#include "app/iggy3d/creative/recipes/StructuralWallRecipe.hpp"
 
 #include <array>
 #include <cstdint>
@@ -24,13 +25,7 @@ enum class CreativeBuildingOpeningKind : std::uint8_t {
   Window,
 };
 
-enum class CreativeBuildingOpeningPose : std::uint8_t {
-  Closed,
-  OpenFromStartNegativeNormal,
-  OpenFromStartPositiveNormal,
-  OpenFromEndNegativeNormal,
-  OpenFromEndPositiveNormal,
-};
+using CreativeBuildingOpeningPose = CreativeStructuralWallOpeningPose;
 
 enum class CreativeBuildingRecipeStatus : std::uint8_t {
   NotRequested,

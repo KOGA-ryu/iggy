@@ -265,6 +265,11 @@ bool invalidGeometryFailsWithSpecificStatuses() {
   const cr::CreativeBuildingRecipeResult nonFiniteResult =
       cr::buildCreativeBuildingRecipe(nonFinite);
 
+  cr::CreativeBuildingRecipeRequest negativeInsert = representativeRoom();
+  negativeInsert.walls[0].openings[0].insertWidthMeters = -1.0;
+  const cr::CreativeBuildingRecipeResult negativeInsertResult =
+      cr::buildCreativeBuildingRecipe(negativeInsert);
+
   return expect(!diagonalResult.receipt.accepted &&
                     diagonalResult.receipt.status ==
                         cr::CreativeBuildingRecipeStatus::
@@ -277,7 +282,11 @@ bool invalidGeometryFailsWithSpecificStatuses() {
          expect(!nonFiniteResult.receipt.accepted &&
                     nonFiniteResult.receipt.status ==
                         cr::CreativeBuildingRecipeStatus::InvalidOpening,
-                "non-finite opening rejected");
+                "non-finite opening rejected") &&
+         expect(!negativeInsertResult.receipt.accepted &&
+                    negativeInsertResult.receipt.status ==
+                        cr::CreativeBuildingRecipeStatus::InvalidOpening,
+                "negative insert dimensions reject instead of inheriting");
 }
 
 bool rectangularRoomGeometryKeepsFloorAndWallsOnOneSeam() {
