@@ -50,6 +50,11 @@ bool templateKeysValid(const CreativeWorldLayout& layout) {
     return validCreativeWorldLayoutStableKey(symbol.stableKey) &&
            keys.insert(symbol.stableKey).second;
   };
+  for (const CreativeWorldLayoutLevel& value : layout.levels) {
+    if (!registerKey(value)) {
+      return false;
+    }
+  }
   for (const CreativeWorldLayoutRoom& value : layout.rooms) {
     if (!registerKey(value)) {
       return false;
@@ -98,6 +103,18 @@ CreativeWorldLayout isolateBuilding(const CreativeWorldLayout& source,
   });
   isolated.buildings.push_back(std::move(building));
 
+  std::vector<std::size_t> levelMap(source.levels.size(),
+                                    kInvalidCreativeWorldLayoutIndex);
+  for (std::size_t index = 0U; index < source.levels.size(); ++index) {
+    if (source.levels[index].buildingIndex != buildingIndex) {
+      continue;
+    }
+    CreativeWorldLayoutLevel level = source.levels[index];
+    level.buildingIndex = 0U;
+    levelMap[index] = isolated.levels.size();
+    isolated.levels.push_back(std::move(level));
+  }
+
   std::vector<std::size_t> roomMap(source.rooms.size(),
                                    kInvalidCreativeWorldLayoutIndex);
   for (std::size_t index = 0U; index < source.rooms.size(); ++index) {
@@ -106,6 +123,7 @@ CreativeWorldLayout isolateBuilding(const CreativeWorldLayout& source,
     }
     CreativeWorldLayoutRoom room = source.rooms[index];
     room.buildingIndex = 0U;
+    room.levelIndex = levelMap[room.levelIndex];
     roomMap[index] = isolated.rooms.size();
     isolated.rooms.push_back(std::move(room));
   }
@@ -401,11 +419,24 @@ CreativeWorldLayoutBuildingEditResult stampCreativeWorldLayoutBuildingTemplate(
   building.name = copiedName(source.label, request.appendCopySuffix);
   edited.buildings.push_back(std::move(building));
 
+  std::vector<std::size_t> levelMap(positioned.levels.size(),
+                                    kInvalidCreativeWorldLayoutIndex);
+  for (std::size_t index = 0U; index < positioned.levels.size(); ++index) {
+    CreativeWorldLayoutLevel level = positioned.levels[index];
+    level.buildingIndex = newBuildingIndex;
+    level.stableKey =
+        mintCreativeWorldLayoutStableKey(edited, nextOrdinal, "level");
+    level.name = copiedName(level.name, request.appendCopySuffix);
+    levelMap[index] = edited.levels.size();
+    edited.levels.push_back(std::move(level));
+  }
+
   std::vector<std::size_t> roomMap(positioned.rooms.size(),
                                    kInvalidCreativeWorldLayoutIndex);
   for (std::size_t index = 0U; index < positioned.rooms.size(); ++index) {
     CreativeWorldLayoutRoom room = positioned.rooms[index];
     room.buildingIndex = newBuildingIndex;
+    room.levelIndex = levelMap[room.levelIndex];
     room.stableKey =
         mintCreativeWorldLayoutStableKey(edited, nextOrdinal, "room");
     room.name = copiedName(room.name, request.appendCopySuffix);

@@ -311,10 +311,13 @@ bool roomGestureHostsOpeningsAndSupportsResize() {
          expect(updated.accepted && updated.changed &&
                     state.source.rooms[0].footprint.maximum ==
                         cr::CreativeTerrainCoord2{8, 5} &&
-                    state.source.rooms[0].floorTopLayer == 2.0 &&
-                    state.source.rooms[0].wallHeightCells == 5U &&
+                    state.source.levels[state.source.rooms[0].levelIndex]
+                            .floorTopLayer == 2.0 &&
+                    state.source.levels[state.source.rooms[0].levelIndex]
+                            .wallHeightCells == 5U &&
                     state.source.rooms[0].wallThicknessCells == 0.5 &&
-                    state.source.rooms[0].floorThicknessLayers == 2U,
+                    state.source.levels[state.source.rooms[0].levelIndex]
+                            .floorThicknessLayers == 2U,
                 "selected room shell settings change as one source edit");
 }
 
@@ -334,14 +337,18 @@ bool buildingShellCreatesOwnedRoomAndGeneratesAsOneEdit() {
   const bool ownedShell =
       begin.accepted && !begin.changed && commit.accepted && commit.changed &&
       state.revision == revisionBefore + 1U &&
-      state.nextStableOrdinal == ordinalBefore + 2U &&
-      state.source.buildings.size() == 1U && state.source.rooms.size() == 1U &&
+      state.nextStableOrdinal == ordinalBefore + 3U &&
+      state.source.buildings.size() == 1U && state.source.levels.size() == 1U &&
+      state.source.rooms.size() == 1U &&
+      state.source.levels[0].buildingIndex == 0U &&
       state.source.rooms[0].buildingIndex == 0U &&
+      state.source.rooms[0].levelIndex == 0U &&
       state.source.rooms[0].footprint.minimum ==
           cr::CreativeTerrainCoord2{1, 1} &&
       state.source.rooms[0].footprint.maximum ==
           cr::CreativeTerrainCoord2{7, 5} &&
-      state.source.buildings[0].stableKey != state.source.rooms[0].stableKey;
+      state.source.buildings[0].stableKey != state.source.levels[0].stableKey &&
+      state.source.levels[0].stableKey != state.source.rooms[0].stableKey;
 
   static_cast<void>(app::setCreativeEditorWorldLayoutTool(
       state, app::CreativeEditorWorldLayoutTool::Door));
@@ -423,10 +430,13 @@ bool buildingShellsKeepIndependentBuildingOwnership() {
                     state.source.rooms.size() == 2U &&
                     state.source.rooms[0].buildingIndex == 0U &&
                     state.source.rooms[1].buildingIndex == 1U &&
-                    state.source.rooms[1].floorTopLayer == 1.0 &&
-                    state.source.rooms[1].wallHeightCells == 4U &&
+                    state.source.levels[state.source.rooms[1].levelIndex]
+                            .floorTopLayer == 1.0 &&
+                    state.source.levels[state.source.rooms[1].levelIndex]
+                            .wallHeightCells == 4U &&
                     state.source.rooms[1].wallThicknessCells == 0.5 &&
-                    state.source.rooms[1].floorThicknessLayers == 2U &&
+                    state.source.levels[state.source.rooms[1].levelIndex]
+                            .floorThicknessLayers == 2U &&
                     stableKeysUnique(state.source),
                 "each shell owns its room and authored dimensions");
 }
@@ -1471,7 +1481,7 @@ bool builtInBuildingTemplateInstallIsDurableAndIdempotent() {
                                                              source.value);
 
   cr::CreativeWorldLayout changedLayout = source.value.normalizedLayout;
-  changedLayout.rooms[0].wallHeightCells += 1U;
+  changedLayout.levels[0].wallHeightCells += 1U;
   const cr::CreativeWorldLayoutBuildingTemplateResult changedSource =
       cr::loadCreativeWorldLayoutBuildingTemplate(std::move(changedLayout));
   const auto conflict = changedSource.accepted
@@ -1567,10 +1577,12 @@ bool buildingTemplateUpdateAndRefreshLifecycleIsExplicit() {
   const std::size_t firstRoomIndex = roomIndexForBuilding(1U);
   const cr::CreativeWorldLayoutRoom& firstRoom =
       state.source.rooms[firstRoomIndex];
+  const cr::CreativeWorldLayoutLevel& firstLevel =
+      state.source.levels[firstRoom.levelIndex];
   app::CreativeEditorWorldLayoutRoomSettings firstSettings{
-      firstRoom.footprint, firstRoom.floorTopLayer,
-      firstRoom.wallHeightCells, firstRoom.wallThicknessCells,
-      firstRoom.floorThicknessLayers};
+      firstRoom.footprint, firstLevel.floorTopLayer,
+      firstLevel.wallHeightCells, firstRoom.wallThicknessCells,
+      firstLevel.floorThicknessLayers};
   firstSettings.wallHeightCells += 2U;
   static_cast<void>(app::setCreativeEditorWorldLayoutRoomSettings(
       state, firstRoomIndex, firstSettings));
@@ -1599,10 +1611,12 @@ bool buildingTemplateUpdateAndRefreshLifecycleIsExplicit() {
   const std::size_t secondRoomIndex = roomIndexForBuilding(2U);
   const cr::CreativeWorldLayoutRoom& secondRoom =
       state.source.rooms[secondRoomIndex];
+  const cr::CreativeWorldLayoutLevel& secondLevel =
+      state.source.levels[secondRoom.levelIndex];
   app::CreativeEditorWorldLayoutRoomSettings secondSettings{
-      secondRoom.footprint, secondRoom.floorTopLayer,
-      secondRoom.wallHeightCells, secondRoom.wallThicknessCells,
-      secondRoom.floorThicknessLayers};
+      secondRoom.footprint, secondLevel.floorTopLayer,
+      secondLevel.wallHeightCells, secondRoom.wallThicknessCells,
+      secondLevel.floorThicknessLayers};
   secondSettings.wallHeightCells += 3U;
   static_cast<void>(app::setCreativeEditorWorldLayoutRoomSettings(
       state, secondRoomIndex, secondSettings));
@@ -1983,6 +1997,7 @@ bool exactPreviewAndConfirmUseOneHistoryEntry() {
                                                    live.facade.document());
   const std::uint64_t previewObjectCount = rendered.objectCount();
   std::uint64_t floorCount = 0U;
+  std::uint64_t roofCount = 0U;
   std::uint64_t wallCount = 0U;
   bool linkedByLayout = true;
   const cr::CreativeObject* floor = nullptr;
@@ -1990,6 +2005,7 @@ bool exactPreviewAndConfirmUseOneHistoryEntry() {
   const std::string layoutTag = cr::creativeWorldLayoutTag("world_layout");
   for (const cr::CreativeObject& object : rendered.objects()) {
     floorCount += object.kind == cr::CreativeObjectKind::Floor ? 1U : 0U;
+    roofCount += object.kind == cr::CreativeObjectKind::Roof ? 1U : 0U;
     wallCount += object.kind == cr::CreativeObjectKind::Wall ? 1U : 0U;
     if (floor == nullptr && object.kind == cr::CreativeObjectKind::Floor) {
       floor = &object;
@@ -2013,7 +2029,7 @@ bool exactPreviewAndConfirmUseOneHistoryEntry() {
   const auto applied = app::confirmCreativeEditorWorldLayout(state, live);
   const bool appliedOnce =
       applied.accepted && applied.changed &&
-      live.facade.document().objectCount() == 5U &&
+      live.facade.document().objectCount() == 6U &&
       cr::creativeUndoDepth(live.history) == 1U;
   const bool undone = app::undoLastEdit(live, "layout-undo", &state);
   const bool undoRestoredBoth =
@@ -2021,7 +2037,7 @@ bool exactPreviewAndConfirmUseOneHistoryEntry() {
       state.source.rooms.empty() && state.generatedRevision == state.revision;
   const bool redone = app::redoLastEdit(live, "layout-redo", &state);
   const bool redoRestoredBoth =
-      redone && live.facade.document().objectCount() == 5U &&
+      redone && live.facade.document().objectCount() == 6U &&
       state.source.rooms.size() == 1U &&
       state.generatedRevision == state.revision;
 
@@ -2030,10 +2046,10 @@ bool exactPreviewAndConfirmUseOneHistoryEntry() {
          expect(preview.accepted &&
                     app::creativeEditorWorldLayoutPreviewActive(state) == false,
                 "confirm closes an accepted exact preview") &&
-         expect(previewObjectCount == 5U && floorCount == 1U &&
-                    wallCount == 4U && linkedByLayout &&
+         expect(previewObjectCount == 6U && floorCount == 1U &&
+                    roofCount == 1U && wallCount == 4U && linkedByLayout &&
                     previewDidNotPublish,
-                "preview renders one linked floor and four walls without publishing") &&
+                "preview renders one floor, one roof, and four walls without publishing") &&
          expect(floorGeometry.valid && wallGeometry.valid &&
                     near(floorGeometry.size.y, 0.1) &&
                     near(wallGeometry.worldBounds.min.y, 1.0) &&
@@ -2047,6 +2063,99 @@ bool exactPreviewAndConfirmUseOneHistoryEntry() {
                 "layout undo restores semantic source and generated document") &&
          expect(redoRestoredBoth,
                 "layout redo restores semantic source and generated document");
+}
+
+bool buildingLevelLifecycleIsAtomicAndRemapsHostedSymbols() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state);
+  const auto shell = app::createCreativeEditorWorldLayoutBuildingShell(
+      state, {{{0, 0}, {6, 4}}, 0.0, 3U, 0.25, 1U});
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Door));
+  const auto door =
+      app::applyCreativeEditorWorldLayoutPoint(state, {3.0, 0.1});
+  const std::uint64_t revisionBeforeLevels = state.revision;
+
+  const auto selected = app::applyCreativeEditorWorldLayoutLevelOperation(
+      state, app::CreativeEditorWorldLayoutLevelOperation::Select, 0U, 0U);
+  const bool selectionIsViewOnly =
+      selected.accepted && state.revision == revisionBeforeLevels &&
+      state.activeLevelIndex == 0U;
+  const auto added = app::applyCreativeEditorWorldLayoutLevelOperation(
+      state, app::CreativeEditorWorldLayoutLevelOperation::Add, 0U);
+  const bool emptyLevelAdded =
+      added.accepted && added.changed && state.source.levels.size() == 2U &&
+      state.source.rooms.size() == 1U && state.activeLevelIndex == 1U &&
+      state.source.levels[1].floorTopLayer == 3.0;
+
+  const auto duplicated = app::applyCreativeEditorWorldLayoutLevelOperation(
+      state, app::CreativeEditorWorldLayoutLevelOperation::Duplicate, 0U, 0U);
+  const bool duplicateRemapped =
+      duplicated.accepted && duplicated.changed &&
+      state.source.levels.size() == 3U && state.source.rooms.size() == 2U &&
+      state.source.openings.size() == 2U && state.activeLevelIndex == 2U &&
+      state.source.levels[2].floorTopLayer == 6.0 &&
+      state.source.rooms[1].levelIndex == 2U &&
+      state.source.openings[1].roomIndex == 1U && stableKeysUnique(state.source);
+
+  const auto reordered = app::applyCreativeEditorWorldLayoutLevelOperation(
+      state, app::CreativeEditorWorldLayoutLevelOperation::MoveEarlier, 0U,
+      2U);
+  const bool reorderRemapped =
+      reordered.accepted && reordered.changed && state.activeLevelIndex == 1U &&
+      state.source.rooms[1].levelIndex == 1U &&
+      state.source.levels[1].floorTopLayer == 6.0 &&
+      state.source.levels[2].floorTopLayer == 3.0;
+
+  const auto deletedCopy = app::applyCreativeEditorWorldLayoutLevelOperation(
+      state, app::CreativeEditorWorldLayoutLevelOperation::Delete, 0U, 1U);
+  const bool copyDeletedAtomically =
+      deletedCopy.accepted && deletedCopy.changed &&
+      state.source.levels.size() == 2U && state.source.rooms.size() == 1U &&
+      state.source.openings.size() == 1U && state.activeLevelIndex == 0U;
+  const auto deletedEmpty = app::applyCreativeEditorWorldLayoutLevelOperation(
+      state, app::CreativeEditorWorldLayoutLevelOperation::Delete, 0U, 1U);
+  const std::uint64_t revisionBeforeLastDelete = state.revision;
+  const auto rejectedLast = app::applyCreativeEditorWorldLayoutLevelOperation(
+      state, app::CreativeEditorWorldLayoutLevelOperation::Delete, 0U, 0U);
+  const bool lastLevelProtected =
+      deletedEmpty.accepted && deletedEmpty.changed &&
+      !rejectedLast.accepted && !rejectedLast.changed &&
+      state.source.levels.size() == 1U && state.source.rooms.size() == 1U &&
+      state.revision == revisionBeforeLastDelete;
+
+  app::CreativeEditorWorldLayoutState legacyState;
+  app::resetCreativeEditorWorldLayout(legacyState, "legacy_building");
+  cr::CreativeWorldLayoutBuilding legacyBuilding;
+  legacyBuilding.stableKey = "legacy_building";
+  legacyBuilding.name = "Legacy Building";
+  legacyBuilding.rootBaseLayer = 2;
+  legacyBuilding.rootHeightCells = 4U;
+  legacyState.source.buildings.push_back(std::move(legacyBuilding));
+  const auto firstLevel = app::applyCreativeEditorWorldLayoutLevelOperation(
+      legacyState, app::CreativeEditorWorldLayoutLevelOperation::Add, 0U);
+  const bool firstLevelCreated =
+      firstLevel.accepted && firstLevel.changed &&
+      legacyState.source.levels.size() == 1U &&
+      legacyState.source.levels[0].buildingIndex == 0U &&
+      legacyState.source.levels[0].floorTopLayer == 2.0 &&
+      legacyState.source.levels[0].wallHeightCells == 4U &&
+      legacyState.activeLevelIndex == 0U;
+
+  return expect(shell.accepted && door.accepted && selectionIsViewOnly,
+                "level selection changes the editor view without editing source") &&
+         expect(emptyLevelAdded,
+                "add level derives the next story plane without fabricating rooms") &&
+         expect(duplicateRemapped,
+                "duplicate level copies rooms and hosted openings with fresh keys") &&
+         expect(reorderRemapped,
+                "level reordering remaps room ownership atomically") &&
+         expect(copyDeletedAtomically,
+                "deleting a level removes its rooms and hosted openings") &&
+         expect(lastLevelProtected,
+                "a building cannot lose its final level recipe") &&
+         expect(firstLevelCreated,
+                "a level-less legacy building can acquire its first level");
 }
 
 bool unsynchronizedLayoutCannotBeSaved() {
@@ -2119,6 +2228,7 @@ int main() {
                   minimumWidthOpeningRetainsMoveAndResizeTargets() &&
                   roomDeletionCascadesHostedOpeningsAndCancelIsEmpty() &&
                   exactPreviewAndConfirmUseOneHistoryEntry() &&
+                  buildingLevelLifecycleIsAtomicAndRemapsHostedSymbols() &&
                   unsynchronizedLayoutCannotBeSaved() &&
                   unsynchronizedDraftCannotBeLostAcrossLayoutHistory();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

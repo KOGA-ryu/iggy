@@ -208,6 +208,7 @@ bool boundedRecordCount(const CreativeWorldLayout& layout,
   output = 3U;  // Header, layout record, and END.
   const std::size_t counts[] = {
       layout.buildings.size(),
+      layout.levels.size(),
       layout.rooms.size(),
       layout.boxes.size(),
       layout.walls.size(),
@@ -273,13 +274,27 @@ bool validateForEncoding(const CreativeWorldLayout& layout,
       return false;
     }
   }
+  for (const CreativeWorldLayoutLevel& level : layout.levels) {
+    const bool finite = std::isfinite(level.floorTopLayer);
+    if (!validKeyName(level.stableKey, level.name) || !finite ||
+        level.buildingIndex >= layout.buildings.size() ||
+        level.wallHeightCells == 0U || level.floorThicknessLayers == 0U ||
+        level.ceilingThicknessLayers == 0U ||
+        level.roofThicknessLayers == 0U) {
+      failure = {finite ? CreativeWorldLayoutCodecStatus::InvalidRecord
+                        : CreativeWorldLayoutCodecStatus::NonFiniteValue,
+                 "creative_world_layout_encode_invalid_level"};
+      return false;
+    }
+  }
   for (const CreativeWorldLayoutRoom& room : layout.rooms) {
     if (!validKeyName(room.stableKey, room.name) ||
         !validRect(room.footprint) ||
-        !std::isfinite(room.floorTopLayer) ||
+        room.buildingIndex >= layout.buildings.size() ||
+        room.levelIndex >= layout.levels.size() ||
+        layout.levels[room.levelIndex].buildingIndex != room.buildingIndex ||
         !std::isfinite(room.wallThicknessCells)) {
-      failure = {std::isfinite(room.floorTopLayer) &&
-                         std::isfinite(room.wallThicknessCells)
+      failure = {std::isfinite(room.wallThicknessCells)
                      ? CreativeWorldLayoutCodecStatus::InvalidRecord
                      : CreativeWorldLayoutCodecStatus::NonFiniteValue,
                  "creative_world_layout_encode_invalid_room"};
@@ -508,8 +523,9 @@ CreativeWorldLayoutEncodeResult encodeCreativeWorldLayout(
   output << kHeader << ' ' << kCreativeWorldLayoutCodecVersion << '\n';
   output << "L " << layout.schemaVersion << ' ' << hexString(layout.stableKey)
          << ' ' << static_cast<unsigned>(enumValue(layout.terrainOwnership))
-         << ' ' << layout.buildings.size() << ' ' << layout.rooms.size() << ' '
-         << layout.boxes.size() << ' ' << layout.walls.size() << ' '
+         << ' ' << layout.buildings.size() << ' ' << layout.levels.size()
+         << ' ' << layout.rooms.size() << ' ' << layout.boxes.size() << ' '
+         << layout.walls.size() << ' '
          << layout.openings.size() << ' '
          << layout.objects.size() << ' '
          << layout.terrainProfiles.size() << ' ' << layout.terrainPaths.size()
@@ -526,13 +542,19 @@ CreativeWorldLayoutEncodeResult encodeCreativeWorldLayout(
     }
     output << '\n';
   }
+  for (const CreativeWorldLayoutLevel& level : layout.levels) {
+    output << "V " << level.buildingIndex << ' '
+           << hexString(level.stableKey) << ' ' << hexString(level.name) << ' '
+           << level.floorTopLayer << ' ' << level.wallHeightCells << ' '
+           << level.floorThicknessLayers << ' '
+           << level.ceilingThicknessLayers << ' '
+           << level.roofThicknessLayers << '\n';
+  }
   for (const CreativeWorldLayoutRoom& room : layout.rooms) {
-    output << "R " << room.buildingIndex << ' '
+    output << "R " << room.buildingIndex << ' ' << room.levelIndex << ' '
            << hexString(room.stableKey) << ' ' << hexString(room.name);
     writeRect(output, room.footprint);
-    output << ' ' << room.floorTopLayer << ' ' << room.wallHeightCells << ' '
-           << room.wallThicknessCells << ' ' << room.floorThicknessLayers
-           << '\n';
+    output << ' ' << room.wallThicknessCells << '\n';
   }
   for (const CreativeWorldLayoutBox& box : layout.boxes) {
     output << "X " << box.buildingIndex << ' '
@@ -658,6 +680,7 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
   RecordReader layoutRecord(lines[1]);
   std::uint8_t ownership = 0U;
   std::size_t buildingCount = 0U;
+  std::size_t levelCount = 0U;
   std::size_t roomCount = 0U;
   std::size_t boxCount = 0U;
   std::size_t wallCount = 0U;
@@ -672,6 +695,8 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
       !layoutRecord.readHex(result.layout.stableKey) ||
       !layoutRecord.readUnsigned(ownership) || ownership > 1U ||
       !layoutRecord.readSize(buildingCount);
+  const bool levelCountInvalid =
+      codecVersion >= 6U && !layoutRecord.readSize(levelCount);
   const bool roomCountInvalid =
       codecVersion >= 2U && !layoutRecord.readSize(roomCount);
   const bool structuralCountInvalid =
@@ -679,7 +704,8 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
       !layoutRecord.readSize(openingCount);
   const bool objectCountInvalid =
       codecVersion >= 3U && !layoutRecord.readSize(objectCount);
-  if (layoutPrefix || roomCountInvalid || structuralCountInvalid ||
+  if (layoutPrefix || levelCountInvalid || roomCountInvalid ||
+      structuralCountInvalid ||
       objectCountInvalid ||
       !layoutRecord.readSize(profileCount) ||
       !layoutRecord.readSize(pathCount) || !layoutRecord.readSize(pointCount) ||
@@ -698,7 +724,7 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
   }
   std::size_t declaredRecords = 3U;
   const std::size_t declaredCounts[] = {
-      buildingCount, roomCount, boxCount, wallCount, openingCount,
+      buildingCount, levelCount, roomCount, boxCount, wallCount, openingCount,
       objectCount, profileCount, pathCount, pointCount,
   };
   for (const std::size_t count : declaredCounts) {
@@ -749,35 +775,89 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
                  readBuilding, result)) {
     return result;
   }
-  const auto readRoom = [codecVersion](RecordReader& reader,
-                                       CreativeWorldLayoutRoom& room) {
-    std::int32_t legacyBaseLayer = 0;
-    const bool prefix =
-        reader.readLiteral("R") && reader.readSize(room.buildingIndex) &&
-        reader.readHex(room.stableKey) && reader.readHex(room.name) &&
-        readRect(reader, room.footprint);
-    const bool elevation =
-        codecVersion >= 4U ? reader.readDouble(room.floorTopLayer)
-                           : reader.readI32(legacyBaseLayer);
-    const bool suffix =
-        reader.readUnsigned(room.wallHeightCells) &&
-        reader.readDouble(room.wallThicknessCells) &&
-        std::isfinite(room.wallThicknessCells) &&
-        reader.readUnsigned(room.floorThicknessLayers);
-    if (!prefix || !elevation || !suffix ||
-        !std::isfinite(room.floorTopLayer)) {
-      return false;
-    }
-    if (codecVersion < 4U) {
-      room.floorTopLayer =
-          static_cast<double>(legacyBaseLayer) +
-          static_cast<double>(room.floorThicknessLayers) * 0.5;
-    }
-    return true;
+  const auto readLevel = [](RecordReader& reader,
+                            CreativeWorldLayoutLevel& level) {
+    return reader.readLiteral("V") && reader.readSize(level.buildingIndex) &&
+           reader.readHex(level.stableKey) && reader.readHex(level.name) &&
+           reader.readDouble(level.floorTopLayer) &&
+           std::isfinite(level.floorTopLayer) &&
+           reader.readUnsigned(level.wallHeightCells) &&
+           reader.readUnsigned(level.floorThicknessLayers) &&
+           reader.readUnsigned(level.ceilingThicknessLayers) &&
+           reader.readUnsigned(level.roofThicknessLayers) &&
+           level.wallHeightCells > 0U && level.floorThicknessLayers > 0U &&
+           level.ceilingThicknessLayers > 0U &&
+           level.roofThicknessLayers > 0U;
   };
-  if (!readTable(lines, lineIndex, roomCount, result.layout.rooms, readRoom,
+  if (!readTable(lines, lineIndex, levelCount, result.layout.levels, readLevel,
                  result)) {
     return result;
+  }
+
+  struct LegacyRoomGeometry {
+    double floorTopLayer = 0.0;
+    std::uint16_t wallHeightCells = 0U;
+    std::uint16_t floorThicknessLayers = 0U;
+  };
+  struct LegacyRoomRecord {
+    CreativeWorldLayoutRoom room;
+    LegacyRoomGeometry geometry;
+  };
+  std::vector<LegacyRoomGeometry> legacyRoomGeometry;
+  if (codecVersion >= 6U) {
+    const auto readRoom = [](RecordReader& reader,
+                             CreativeWorldLayoutRoom& room) {
+      return reader.readLiteral("R") && reader.readSize(room.buildingIndex) &&
+             reader.readSize(room.levelIndex) &&
+             reader.readHex(room.stableKey) && reader.readHex(room.name) &&
+             readRect(reader, room.footprint) &&
+             reader.readDouble(room.wallThicknessCells) &&
+             std::isfinite(room.wallThicknessCells);
+    };
+    if (!readTable(lines, lineIndex, roomCount, result.layout.rooms, readRoom,
+                   result)) {
+      return result;
+    }
+  } else {
+    const auto readLegacyRoom = [codecVersion](RecordReader& reader,
+                                                LegacyRoomRecord& record) {
+      std::int32_t legacyBaseLayer = 0;
+      const bool prefix = reader.readLiteral("R") &&
+                          reader.readSize(record.room.buildingIndex) &&
+                          reader.readHex(record.room.stableKey) &&
+                          reader.readHex(record.room.name) &&
+                          readRect(reader, record.room.footprint);
+      const bool elevation =
+          codecVersion >= 4U
+              ? reader.readDouble(record.geometry.floorTopLayer)
+              : reader.readI32(legacyBaseLayer);
+      const bool suffix =
+          reader.readUnsigned(record.geometry.wallHeightCells) &&
+          reader.readDouble(record.room.wallThicknessCells) &&
+          std::isfinite(record.room.wallThicknessCells) &&
+          reader.readUnsigned(record.geometry.floorThicknessLayers);
+      if (!prefix || !elevation || !suffix ||
+          !std::isfinite(record.geometry.floorTopLayer)) {
+        return false;
+      }
+      if (codecVersion < 4U) {
+        record.geometry.floorTopLayer =
+            static_cast<double>(legacyBaseLayer) +
+            static_cast<double>(record.geometry.floorThicknessLayers) * 0.5;
+      }
+      return true;
+    };
+    std::vector<LegacyRoomRecord> legacyRooms;
+    if (!readTable(lines, lineIndex, roomCount, legacyRooms, readLegacyRoom,
+                   result)) {
+      return result;
+    }
+    result.layout.rooms.reserve(legacyRooms.size());
+    legacyRoomGeometry.reserve(legacyRooms.size());
+    for (LegacyRoomRecord& record : legacyRooms) {
+      result.layout.rooms.push_back(std::move(record.room));
+      legacyRoomGeometry.push_back(record.geometry);
+    }
   }
   const auto readBox = [codecVersion](RecordReader& reader,
                                       CreativeWorldLayoutBox& box) {
@@ -1014,8 +1094,50 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
     return result;
   }
 
+  // Versions 1-5 stored vertical geometry on every room. Normalize equal
+  // building/elevation tuples into one level before callers observe the data.
+  if (codecVersion < 6U) {
+    std::uint64_t nextLevelOrdinal = 1U;
+    for (std::size_t roomIndex = 0U;
+         roomIndex < result.layout.rooms.size(); ++roomIndex) {
+      CreativeWorldLayoutRoom& room = result.layout.rooms[roomIndex];
+      const LegacyRoomGeometry geometry = legacyRoomGeometry[roomIndex];
+      std::size_t levelIndex = kInvalidCreativeWorldLayoutIndex;
+      for (std::size_t index = 0U; index < result.layout.levels.size();
+           ++index) {
+        const CreativeWorldLayoutLevel& level = result.layout.levels[index];
+        if (level.buildingIndex == room.buildingIndex &&
+            std::fabs(level.floorTopLayer - geometry.floorTopLayer) <=
+                1.0e-9 &&
+            level.wallHeightCells == geometry.wallHeightCells &&
+            level.floorThicknessLayers == geometry.floorThicknessLayers) {
+          levelIndex = index;
+          break;
+        }
+      }
+      if (levelIndex == kInvalidCreativeWorldLayoutIndex) {
+        CreativeWorldLayoutLevel level;
+        level.buildingIndex = room.buildingIndex;
+        level.stableKey = mintCreativeWorldLayoutStableKey(
+            result.layout, nextLevelOrdinal, "level_migrated");
+        std::size_t buildingLevelOrdinal = 1U;
+        for (const CreativeWorldLayoutLevel& existing : result.layout.levels) {
+          buildingLevelOrdinal +=
+              existing.buildingIndex == room.buildingIndex ? 1U : 0U;
+        }
+        level.name = "Level " + std::to_string(buildingLevelOrdinal);
+        level.floorTopLayer = geometry.floorTopLayer;
+        level.wallHeightCells = geometry.wallHeightCells;
+        level.floorThicknessLayers = geometry.floorThicknessLayers;
+        levelIndex = result.layout.levels.size();
+        result.layout.levels.push_back(std::move(level));
+      }
+      room.levelIndex = levelIndex;
+    }
+  }
+
   // Version 1 had no room table and every opening referenced an explicit wall.
-  // Decoding migrates it to current in-memory truth before callers compile it.
+  // Every older source now leaves the codec as current in-memory truth.
   result.layout.schemaVersion = kCreativeWorldLayoutSchemaVersion;
 
   result.accepted = true;

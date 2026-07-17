@@ -129,6 +129,15 @@ struct CreativeDesktopWorldLayoutBuildingSelectionPayload {
       iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
 };
 
+struct CreativeDesktopWorldLayoutLevelOperationPayload {
+  CreativeEditorWorldLayoutLevelOperation operation =
+      CreativeEditorWorldLayoutLevelOperation::Select;
+  std::size_t buildingIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::size_t levelIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+};
+
 struct CreativeDesktopWorldLayoutBuildingManipulationPayload {
   CreativeEditorWorldLayoutBuildingManipulationPhase phase =
       CreativeEditorWorldLayoutBuildingManipulationPhase::Begin;
@@ -255,6 +264,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopInstanceRefreshPayload,
     CreativeDesktopWorldLayoutToolPayload,
     CreativeDesktopWorldLayoutBuildingSelectionPayload,
+    CreativeDesktopWorldLayoutLevelOperationPayload,
     CreativeDesktopWorldLayoutBuildingManipulationPayload,
     CreativeDesktopWorldLayoutBuildingDuplicatePayload,
     CreativeDesktopWorldLayoutBuildingTransformPayload,

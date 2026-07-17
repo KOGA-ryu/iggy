@@ -2,6 +2,7 @@
 
 #include "EditorDesktopWorldLayoutInspector.hpp"
 
+#include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
 #include <algorithm>
@@ -40,6 +41,26 @@ ImU32 color(ImVec4 value) { return ImGui::ColorConvertFloat4ToU32(value); }
 bool selected(const CreativeEditorWorldLayoutState& state,
               CreativeEditorWorldLayoutSelectionKind kind, std::size_t index) {
   return state.selection.kind == kind && state.selection.index == index;
+}
+
+bool roomOnActiveLevel(const CreativeEditorWorldLayoutState& state,
+                       const cr::CreativeWorldLayout& source,
+                       std::size_t roomIndex) noexcept {
+  return roomIndex < source.rooms.size() &&
+         (state.activeLevelIndex >= source.levels.size() ||
+          source.rooms[roomIndex].levelIndex == state.activeLevelIndex);
+}
+
+bool openingOnActiveLevel(const CreativeEditorWorldLayoutState& state,
+                          const cr::CreativeWorldLayout& source,
+                          std::size_t openingIndex) noexcept {
+  if (openingIndex >= source.openings.size()) {
+    return false;
+  }
+  const cr::CreativeWorldLayoutOpening& opening = source.openings[openingIndex];
+  return opening.hostKind !=
+             cr::CreativeWorldLayoutOpeningHostKind::RoomEdge ||
+         roomOnActiveLevel(state, source, opening.roomIndex);
 }
 
 std::pair<double, double> buildingPreviewOffset(
@@ -249,7 +270,7 @@ void drawSharedRoomEdges(ImDrawList& drawList,
   const auto spans = cr::inspectCreativeWorldLayoutSharedRoomEdges(source);
   const ImU32 sharedColor = color({0.26F, 0.84F, 0.58F, 1.0F});
   for (const cr::CreativeWorldLayoutSharedRoomEdgeSpan& span : spans) {
-    if (span.firstRoomIndex >= source.rooms.size()) {
+    if (!roomOnActiveLevel(state, source, span.firstRoomIndex)) {
       continue;
     }
     const auto [deltaX, deltaZ] =
@@ -318,7 +339,7 @@ void drawRoomManipulation(ImDrawList& drawList,
                           const CanvasTransform& transform,
                           const CreativeEditorWorldLayoutState& state) {
   if (state.selection.kind != CreativeEditorWorldLayoutSelectionKind::Room ||
-      state.selection.index >= state.source.rooms.size()) {
+      !roomOnActiveLevel(state, state.source, state.selection.index)) {
     return;
   }
   const bool active = state.roomManipulation.active &&
@@ -509,6 +530,9 @@ void drawOpenings(ImDrawList& drawList, const CanvasTransform& transform,
   const cr::CreativeWorldLayout& source =
       creativeEditorWorldLayoutDisplaySource(state);
   for (std::size_t index = 0U; index < source.openings.size(); ++index) {
+    if (!openingOnActiveLevel(state, source, index)) {
+      continue;
+    }
     const cr::CreativeWorldLayoutOpening& opening =
         source.openings[index];
     const CreativeEditorWorldLayoutOpeningHost host =
@@ -640,6 +664,18 @@ void queueTool(CreativeDesktopCommandFrame& commands,
                CreativeEditorWorldLayoutTool tool) {
   commands.push(CreativeDesktopCommandId::WorldLayoutSetTool,
                 CreativeDesktopWorldLayoutToolPayload{tool});
+}
+
+void queueLevelOperation(
+    CreativeDesktopCommandFrame& commands,
+    CreativeEditorWorldLayoutLevelOperation operation,
+    std::size_t buildingIndex = cr::kInvalidCreativeWorldLayoutIndex,
+    std::size_t levelIndex = cr::kInvalidCreativeWorldLayoutIndex) {
+  commands.push(
+      CreativeDesktopCommandId::WorldLayoutLevelOperation,
+      CreativeDesktopWorldLayoutLevelOperationPayload{operation,
+                                                      buildingIndex,
+                                                      levelIndex});
 }
 
 void queueGesture(CreativeDesktopCommandFrame& commands,
@@ -899,6 +935,153 @@ void drawWorldLayoutPalette(CreativeEditorWorldLayoutState& state,
   ImGui::EndTabBar();
 }
 
+void drawWorldLayoutLevels(CreativeEditorDesktopUiState& desktopUi,
+                           CreativeEditorWorldLayoutState& state,
+                           CreativeDesktopCommandFrame& commands) {
+  std::size_t buildingIndex = creativeEditorWorldLayoutSelectedBuilding(state);
+  if (buildingIndex == cr::kInvalidCreativeWorldLayoutIndex &&
+      state.activeLevelIndex < state.source.levels.size()) {
+    buildingIndex = state.source.levels[state.activeLevelIndex].buildingIndex;
+  }
+  if (buildingIndex == cr::kInvalidCreativeWorldLayoutIndex &&
+      state.source.buildings.size() == 1U) {
+    buildingIndex = 0U;
+  }
+
+  ImGui::AlignTextToFramePadding();
+  ImGui::TextUnformatted("Levels");
+  bool anyLevel = false;
+  for (std::size_t index = 0U; index < state.source.levels.size(); ++index) {
+    const cr::CreativeWorldLayoutLevel& level = state.source.levels[index];
+    if (level.buildingIndex != buildingIndex) {
+      continue;
+    }
+    anyLevel = true;
+    ImGui::SameLine();
+    const bool active = index == state.activeLevelIndex;
+    if (active) {
+      ImGui::PushStyleColor(ImGuiCol_Button,
+                            ImVec4{0.16F, 0.47F, 0.25F, 1.0F});
+    }
+    const std::string label = level.name + "##layout_level_" +
+                              std::to_string(index);
+    if (ImGui::Button(label.c_str())) {
+      queueLevelOperation(commands,
+                          CreativeEditorWorldLayoutLevelOperation::Select,
+                          buildingIndex, index);
+    }
+    if (ImGui::IsItemHovered()) {
+      ImGui::SetTooltip("Floor top %.3f", level.floorTopLayer);
+    }
+    if (active) {
+      ImGui::PopStyleColor();
+    }
+  }
+  if (!anyLevel && buildingIndex != cr::kInvalidCreativeWorldLayoutIndex) {
+    ImGui::SameLine();
+    ImGui::TextDisabled("No levels");
+  }
+
+  const bool hasBuilding = buildingIndex < state.source.buildings.size();
+  const bool hasLevel = state.activeLevelIndex < state.source.levels.size() &&
+                        state.source.levels[state.activeLevelIndex]
+                                .buildingIndex == buildingIndex;
+  ImGui::BeginDisabled(!hasBuilding);
+  if (ImGui::SmallButton("+##layout_level_add")) {
+    queueLevelOperation(commands,
+                        CreativeEditorWorldLayoutLevelOperation::Add,
+                        buildingIndex);
+  }
+  if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+    ImGui::SetTooltip("Add level above this building");
+  }
+  ImGui::EndDisabled();
+  ImGui::SameLine();
+  ImGui::BeginDisabled(!hasLevel);
+  if (ImGui::SmallButton("Copy##layout_level_copy")) {
+    queueLevelOperation(commands,
+                        CreativeEditorWorldLayoutLevelOperation::Duplicate,
+                        buildingIndex, state.activeLevelIndex);
+  }
+  if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+    ImGui::SetTooltip("Duplicate this level and its rooms above the building");
+  }
+  ImGui::SameLine();
+  if (ImGui::SmallButton("Up##layout_level_earlier")) {
+    queueLevelOperation(commands,
+                        CreativeEditorWorldLayoutLevelOperation::MoveEarlier,
+                        buildingIndex, state.activeLevelIndex);
+  }
+  if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+    ImGui::SetTooltip("Move level earlier in the tab order");
+  }
+  ImGui::SameLine();
+  if (ImGui::SmallButton("Down##layout_level_later")) {
+    queueLevelOperation(commands,
+                        CreativeEditorWorldLayoutLevelOperation::MoveLater,
+                        buildingIndex, state.activeLevelIndex);
+  }
+  if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+    ImGui::SetTooltip("Move level later in the tab order");
+  }
+  ImGui::SameLine();
+  if (ImGui::SmallButton("Delete##layout_level_delete")) {
+    desktopUi.worldLayoutDeleteLevelIndex = state.activeLevelIndex;
+    ImGui::OpenPopup("Delete building level");
+  }
+  ImGui::EndDisabled();
+}
+
+void drawWorldLayoutLevelDeleteModal(
+    CreativeEditorDesktopUiState& desktopUi,
+    CreativeEditorWorldLayoutState& state,
+    CreativeDesktopCommandFrame& commands) {
+  if (ImGui::BeginPopupModal("Delete building level", nullptr,
+                             ImGuiWindowFlags_AlwaysAutoResize)) {
+    const std::size_t levelIndex = desktopUi.worldLayoutDeleteLevelIndex;
+    std::size_t roomCount = 0U;
+    std::size_t openingCount = 0U;
+    std::size_t buildingIndex = cr::kInvalidCreativeWorldLayoutIndex;
+    if (levelIndex < state.source.levels.size()) {
+      buildingIndex = state.source.levels[levelIndex].buildingIndex;
+      roomCount = static_cast<std::size_t>(std::count_if(
+          state.source.rooms.begin(), state.source.rooms.end(),
+          [levelIndex](const cr::CreativeWorldLayoutRoom& room) {
+            return room.levelIndex == levelIndex;
+          }));
+      openingCount = static_cast<std::size_t>(std::count_if(
+          state.source.openings.begin(), state.source.openings.end(),
+          [&state, levelIndex](const cr::CreativeWorldLayoutOpening& opening) {
+            return opening.hostKind ==
+                       cr::CreativeWorldLayoutOpeningHostKind::RoomEdge &&
+                   opening.roomIndex < state.source.rooms.size() &&
+                   state.source.rooms[opening.roomIndex].levelIndex ==
+                       levelIndex;
+          }));
+    }
+    ImGui::Text("Delete this level, %llu room(s), and %llu opening(s)?",
+                static_cast<unsigned long long>(roomCount),
+                static_cast<unsigned long long>(openingCount));
+    ImGui::BeginDisabled(levelIndex >= state.source.levels.size());
+    if (ImGui::Button("Delete level")) {
+      queueLevelOperation(commands,
+                          CreativeEditorWorldLayoutLevelOperation::Delete,
+                          buildingIndex, levelIndex);
+      desktopUi.worldLayoutDeleteLevelIndex =
+          std::numeric_limits<std::size_t>::max();
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel")) {
+      desktopUi.worldLayoutDeleteLevelIndex =
+          std::numeric_limits<std::size_t>::max();
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
+  }
+}
+
 void drawSelectedRoomSettings(CreativeEditorWorldLayoutState& state,
                               CreativeDesktopCommandFrame& commands) {
   if (state.selection.kind != CreativeEditorWorldLayoutSelectionKind::Room ||
@@ -908,6 +1091,13 @@ void drawSelectedRoomSettings(CreativeEditorWorldLayoutState& state,
 
   const cr::CreativeWorldLayoutRoom& room =
       state.source.rooms[state.selection.index];
+  const cr::CreativeWorldLayoutLevel* level =
+      cr::creativeWorldLayoutLevelForRoom(state.source,
+                                          state.selection.index);
+  if (level == nullptr) {
+    ImGui::TextDisabled("Room level is unavailable");
+    return;
+  }
   const std::int64_t widthCells =
       static_cast<std::int64_t>(room.footprint.maximum.x) -
       room.footprint.minimum.x;
@@ -918,10 +1108,10 @@ void drawSelectedRoomSettings(CreativeEditorWorldLayoutState& state,
       widthCells, std::numeric_limits<int>::max()));
   int depth = static_cast<int>(std::min<std::int64_t>(
       depthCells, std::numeric_limits<int>::max()));
-  double floorTopLayer = room.floorTopLayer;
-  int wallHeight = room.wallHeightCells;
+  double floorTopLayer = level->floorTopLayer;
+  int wallHeight = level->wallHeightCells;
   double wallThickness = room.wallThicknessCells;
-  int floorLayers = room.floorThicknessLayers;
+  int floorLayers = level->floorThicknessLayers;
 
   ImGui::SetNextItemWidth(88.0F);
   bool changed = ImGui::InputInt("Width##room_shell", &width, 1, 4);
@@ -930,23 +1120,24 @@ void drawSelectedRoomSettings(CreativeEditorWorldLayoutState& state,
   changed = ImGui::InputInt("Depth##room_shell", &depth, 1, 4) || changed;
   ImGui::SameLine();
   ImGui::SetNextItemWidth(88.0F);
-  changed = ImGui::InputDouble("Floor top##room_shell", &floorTopLayer, 0.5,
+  changed = ImGui::InputDouble("Level floor##room_shell", &floorTopLayer, 0.5,
                                1.0, "%.3f") ||
             changed;
 
   ImGui::SetNextItemWidth(88.0F);
-  changed =
-      ImGui::InputInt("Wall height##room_shell", &wallHeight, 1, 4) || changed;
+  changed = ImGui::InputInt("Level wall height##room_shell", &wallHeight, 1,
+                            4) ||
+            changed;
   ImGui::SameLine();
   ImGui::SetNextItemWidth(88.0F);
-  changed = ImGui::InputDouble("Wall thickness##room_shell", &wallThickness,
+  changed = ImGui::InputDouble("Room wall##room_shell", &wallThickness,
                                0.05, 0.25, "%.3f") ||
             changed;
   ImGui::SameLine();
   ImGui::SetNextItemWidth(88.0F);
-  changed =
-      ImGui::InputInt("Floor layers##room_shell", &floorLayers, 1, 2) ||
-      changed;
+  changed = ImGui::InputInt("Level floor layers##room_shell", &floorLayers, 1,
+                            2) ||
+            changed;
 
   if (!changed) {
     return;
@@ -1123,7 +1314,9 @@ void drawLayoutCanvas(CreativeEditorState& editor,
       creativeEditorWorldLayoutDisplaySource(state);
   drawTerrainSymbols(*drawList, transform, state);
   for (std::size_t index = 0U; index < displaySource.rooms.size(); ++index) {
-    drawRoom(*drawList, transform, state, index);
+    if (roomOnActiveLevel(state, displaySource, index)) {
+      drawRoom(*drawList, transform, state, index);
+    }
   }
   for (std::size_t index = 0U; index < displaySource.boxes.size(); ++index) {
     drawFloor(*drawList, transform, state, index);
@@ -1430,6 +1623,7 @@ void buildCreativeEditorWorldLayoutPanel(
   ImGui::BeginDisabled(state.buildingTransform.active ||
                        state.buildingTemplatePlacement.active);
   drawWorldLayoutPalette(state, commands);
+  drawWorldLayoutLevels(desktopUi, state, commands);
 
   const bool exactPreviewActive =
       creativeEditorWorldLayoutPreviewActive(state);
@@ -1458,6 +1652,8 @@ void buildCreativeEditorWorldLayoutPanel(
   ImGui::EndDisabled();
   ImGui::EndDisabled();
   ImGui::EndDisabled();
+
+  drawWorldLayoutLevelDeleteModal(desktopUi, state, commands);
 
   if (ImGui::BeginPopupModal("Delete building group", nullptr,
                              ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -1491,8 +1687,9 @@ void buildCreativeEditorWorldLayoutPanel(
   }
 
   ImGui::TextDisabled(
-      "buildings %llu  rooms %llu  floors %llu  partitions %llu  openings %llu  terrain %llu  objects %llu  rev %llu%s",
+      "buildings %llu  levels %llu  rooms %llu  floors %llu  partitions %llu  openings %llu  terrain %llu  objects %llu  rev %llu%s",
       static_cast<unsigned long long>(state.source.buildings.size()),
+      static_cast<unsigned long long>(state.source.levels.size()),
       static_cast<unsigned long long>(state.source.rooms.size()),
       static_cast<unsigned long long>(state.source.boxes.size()),
       static_cast<unsigned long long>(state.source.walls.size()),

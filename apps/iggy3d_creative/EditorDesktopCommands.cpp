@@ -719,6 +719,30 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutLevelOperation: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutLevelOperationPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout level operation: payload mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          applyCreativeEditorWorldLayoutLevelOperation(
+              editor.worldLayout, payload->operation, payload->buildingIndex,
+              payload->levelIndex);
+      const bool sourceChanged =
+          payload->operation !=
+              CreativeEditorWorldLayoutLevelOperation::Select &&
+          receipt.changed;
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = sourceChanged;
+      result.sceneChanged = previewWasActive && sourceChanged;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutClearSelection: {
       const CreativeEditorWorldLayoutEditReceipt receipt =
           clearCreativeEditorWorldLayoutSelection(editor.worldLayout);

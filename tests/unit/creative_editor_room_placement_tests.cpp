@@ -3,6 +3,7 @@
 #include "EditorRoomPlacement.hpp"
 #include "EditorState.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
@@ -97,7 +98,16 @@ bool twoCornersApplyOneUndoableShell() {
   const app::CreativeEditorRoomPlacementReceipt applied =
       app::advanceCreativeEditorRoomPlacement(appState, editor, "room-apply");
   const cr::CreativeObject* floor = appState.facade.document().findObject(1U);
-  const cr::CreativeObject* north = appState.facade.document().findObject(2U);
+  const auto northFound = std::find_if(
+      appState.facade.document().objects().begin(),
+      appState.facade.document().objects().end(),
+      [](const cr::CreativeObject& object) {
+        return object.kind == cr::CreativeObjectKind::Wall;
+      });
+  const cr::CreativeObject* north =
+      northFound == appState.facade.document().objects().end()
+          ? nullptr
+          : &*northFound;
   const bool linkedFloorSelection =
       floor != nullptr && app::selectCreativeEditorWorldLayoutObjectSource(
                               editor.worldLayout, *floor);
@@ -107,10 +117,10 @@ bool twoCornersApplyOneUndoableShell() {
   ok = expect(applied.accepted && applied.changed &&
                   applied.status ==
                       app::CreativeEditorRoomPlacementStatus::Applied &&
-                  applied.generatedObjectCount == 5U,
+                  applied.generatedObjectCount == 6U,
               "second room corner applies the complete shell") &&
        expect(!editor.interaction.roomPlacement.active &&
-                  appState.facade.document().objectCount() == 5U &&
+                  appState.facade.document().objectCount() == 6U &&
                   cr::creativeUndoDepth(appState.history) == 1U &&
                   editor.worldLayout.source.rooms.size() == 1U &&
                   editor.worldLayout.generatedRevision ==
@@ -140,7 +150,7 @@ bool twoCornersApplyOneUndoableShell() {
       app::redoLastEdit(appState, "room-redo", &editor.worldLayout);
   return expect(undoRestored,
                 "one undo removes semantic source and generated shell") &&
-         expect(redo && appState.facade.document().objectCount() == 5U &&
+         expect(redo && appState.facade.document().objectCount() == 6U &&
                     editor.worldLayout.source.rooms.size() == 1U,
                 "one redo restores semantic source and generated shell") &&
          ok;

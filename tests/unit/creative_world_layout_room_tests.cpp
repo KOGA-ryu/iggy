@@ -84,8 +84,15 @@ cr::CreativeWorldLayout adjacentRooms() {
   building.name = "House";
   layout.buildings.push_back(building);
 
+  cr::CreativeWorldLayoutLevel level;
+  level.buildingIndex = 0U;
+  level.stableKey = "level_ground";
+  level.name = "Ground Level";
+  layout.levels.push_back(level);
+
   cr::CreativeWorldLayoutRoom left;
   left.buildingIndex = 0U;
+  left.levelIndex = 0U;
   left.stableKey = "room_left";
   left.name = "Left Room";
   left.footprint = {{0, 0}, {4, 4}};
@@ -182,7 +189,13 @@ bool sharedEdgeInspectionMatchesCanonicalTopology() {
 
   cr::CreativeWorldLayout differentHeight = adjacent;
   differentHeight.openings.clear();
-  differentHeight.rooms[1].wallHeightCells += 1U;
+  cr::CreativeWorldLayoutLevel upper = differentHeight.levels[0];
+  upper.stableKey = "level_upper";
+  upper.name = "Upper Level";
+  upper.floorTopLayer = 3.0;
+  upper.wallHeightCells += 1U;
+  differentHeight.levels.push_back(upper);
+  differentHeight.rooms[1].levelIndex = 1U;
   const auto differentHeightSpans =
       cr::inspectCreativeWorldLayoutSharedRoomEdges(differentHeight);
 
@@ -215,17 +228,32 @@ bool invalidTopologyFailsClosed() {
   const auto overlapResult = cr::expandCreativeWorldLayoutRooms(overlap);
 
   cr::CreativeWorldLayout noisyElevation = overlap;
-  noisyElevation.rooms[1].floorTopLayer = 5.0e-10;
+  cr::CreativeWorldLayoutLevel noisyLevel = noisyElevation.levels[0];
+  noisyLevel.stableKey = "level_noise";
+  noisyLevel.name = "Noisy Level";
+  noisyLevel.floorTopLayer = 5.0e-10;
+  noisyElevation.levels.push_back(noisyLevel);
+  noisyElevation.rooms[1].levelIndex = 1U;
   const auto noisyElevationResult =
       cr::expandCreativeWorldLayoutRooms(noisyElevation);
 
   cr::CreativeWorldLayout noisyAdjacent = adjacentRooms();
-  noisyAdjacent.rooms[1].floorTopLayer = 5.0e-10;
+  noisyLevel = noisyAdjacent.levels[0];
+  noisyLevel.stableKey = "level_noise";
+  noisyLevel.name = "Noisy Level";
+  noisyLevel.floorTopLayer = 5.0e-10;
+  noisyAdjacent.levels.push_back(noisyLevel);
+  noisyAdjacent.rooms[1].levelIndex = 1U;
   const auto noisyAdjacentResult =
       cr::expandCreativeWorldLayoutRooms(noisyAdjacent);
 
   cr::CreativeWorldLayout stacked = overlap;
-  stacked.rooms[1].floorTopLayer = 1.0;
+  cr::CreativeWorldLayoutLevel stackedLevel = stacked.levels[0];
+  stackedLevel.stableKey = "level_upper";
+  stackedLevel.name = "Upper Level";
+  stackedLevel.floorTopLayer = 3.0;
+  stacked.levels.push_back(stackedLevel);
+  stacked.rooms[1].levelIndex = 1U;
   const auto stackedResult = cr::expandCreativeWorldLayoutRooms(stacked);
 
   cr::CreativeWorldLayout badOpening = adjacentRooms();
@@ -248,10 +276,9 @@ bool invalidTopologyFailsClosed() {
                      cr::CreativeWorldLayoutRoomCompileStatus::OverlappingRooms,
              "interior-overlapping rooms are rejected") &&
          expect(!noisyElevationResult.accepted && stackedResult.accepted,
-                "floor noise cannot bypass overlap while stacked rooms remain valid") &&
-         expect(noisyAdjacentResult.accepted &&
-                    noisyAdjacentResult.expanded.walls.size() == 5U,
-                "floor noise still condenses adjacent walls on one semantic level") &&
+                "near-duplicate levels fail closed while distinct stacked rooms remain valid") &&
+         expect(!noisyAdjacentResult.accepted,
+                "near-duplicate story elevations cannot create ambiguous topology") &&
          expect(!openingResult.accepted &&
                     openingResult.status ==
                         cr::CreativeWorldLayoutRoomCompileStatus::
@@ -484,6 +511,90 @@ bool horizontalStructuralLayersUseDescriptorThickness() {
                 "floor ceiling and roof share descriptor-to-render-to-collision geometry");
 }
 
+bool occupiedLevelsGenerateCeilingsAndOneTopRoof() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Level Shell");
+  static_cast<void>(document.assignId(9204U));
+  cr::CreativeWorldLayout layout = adjacentRooms();
+  layout.openings.clear();
+  layout.rooms.resize(1U);
+  layout.levels[0].ceilingThicknessLayers = 2U;
+
+  cr::CreativeWorldLayoutLevel upperLevel = layout.levels[0];
+  upperLevel.stableKey = "level_upper";
+  upperLevel.name = "Upper Level";
+  upperLevel.floorTopLayer = 3.0;
+  layout.levels.push_back(upperLevel);
+  const cr::CreativeWorldLayoutCompileResult emptyUpperCompiled =
+      cr::buildCreativeWorldLayoutPlan(document, layout);
+  const cr::CreativeWorldLayoutPreviewResult emptyUpperPreview =
+      cr::previewCreativeWorldLayoutPlan(document, emptyUpperCompiled.plan);
+  const auto emptyUpperCount =
+      [&emptyUpperPreview](cr::CreativeObjectKind kind) {
+    return static_cast<std::size_t>(std::count_if(
+        emptyUpperPreview.document.objects().begin(),
+        emptyUpperPreview.document.objects().end(),
+        [kind](const cr::CreativeObject& object) {
+          return object.kind == kind;
+        }));
+  };
+  cr::CreativeWorldLayoutRoom upperRoom = layout.rooms[0];
+  upperRoom.levelIndex = 1U;
+  upperRoom.stableKey = "room_upper";
+  upperRoom.name = "Upper Room";
+  layout.rooms.push_back(upperRoom);
+
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, layout);
+  const cr::CreativeWorldLayoutPreviewResult preview =
+      cr::previewCreativeWorldLayoutPlan(document, compiled.plan);
+  const auto countKind = [&preview](cr::CreativeObjectKind kind) {
+    return static_cast<std::size_t>(std::count_if(
+        preview.document.objects().begin(), preview.document.objects().end(),
+        [kind](const cr::CreativeObject& object) {
+          return object.kind == kind;
+        }));
+  };
+  const auto findName = [&preview](std::string_view name) {
+    const auto found = std::find_if(
+        preview.document.objects().begin(), preview.document.objects().end(),
+        [name](const cr::CreativeObject& object) {
+          return object.name == name;
+        });
+    return found == preview.document.objects().end() ? nullptr : &*found;
+  };
+  const cr::CreativeObject* lowerCeiling = findName("Left Room Ceiling");
+  const cr::CreativeObject* upperFloor = findName("Upper Room Floor");
+  const cr::CreativeObject* upperRoof = findName("Upper Room Roof");
+  const cr::CreativeTransformedBounds lowerCeilingBounds =
+      lowerCeiling == nullptr ? cr::CreativeTransformedBounds{}
+                              : cr::resolveCreativeObjectBounds(*lowerCeiling);
+  const cr::CreativeTransformedBounds upperFloorBounds =
+      upperFloor == nullptr ? cr::CreativeTransformedBounds{}
+                            : cr::resolveCreativeObjectBounds(*upperFloor);
+  const cr::CreativeTransformedBounds upperRoofBounds =
+      upperRoof == nullptr ? cr::CreativeTransformedBounds{}
+                           : cr::resolveCreativeObjectBounds(*upperRoof);
+
+  return expect(compiled.receipt.accepted && preview.accepted,
+                "two-level room shell compiles") &&
+         expect(emptyUpperCompiled.receipt.accepted &&
+                    emptyUpperPreview.accepted &&
+                    emptyUpperCount(cr::CreativeObjectKind::Roof) == 1U &&
+                    emptyUpperCount(cr::CreativeObjectKind::Ceiling) == 0U,
+                "an empty upper level does not replace the occupied roof") &&
+         expect(countKind(cr::CreativeObjectKind::Floor) == 2U &&
+                    countKind(cr::CreativeObjectKind::Ceiling) == 1U &&
+                    countKind(cr::CreativeObjectKind::Roof) == 1U,
+                "lower occupied level gets a ceiling and top level gets one roof") &&
+         expect(lowerCeilingBounds.valid && upperFloorBounds.valid &&
+                    near(lowerCeilingBounds.worldBounds.min.y, 3.0) &&
+                    near(upperFloorBounds.worldBounds.max.y, 3.0),
+                "lower ceiling and upper floor share the story boundary") &&
+         expect(upperRoofBounds.valid &&
+                    near(upperRoofBounds.worldBounds.min.y, 6.0),
+                "roof begins at the upper wall support plane");
+}
+
 }  // namespace
 
 int main() {
@@ -493,6 +604,7 @@ int main() {
                   invalidTopologyFailsClosed() &&
                   roomTopologyCompilesThroughExistingBuildingRecipe() &&
                   generatedRoomObjectsResolveToSemanticSources() &&
-                  horizontalStructuralLayersUseDescriptorThickness();
+                  horizontalStructuralLayersUseDescriptorThickness() &&
+                  occupiedLevelsGenerateCeilingsAndOneTopRoof();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

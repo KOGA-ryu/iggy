@@ -208,6 +208,16 @@ std::size_t ownedRoomOrdinal(const CreativeWorldLayout& layout,
   return ordinal;
 }
 
+std::size_t ownedLevelOrdinal(const CreativeWorldLayout& layout,
+                              std::size_t buildingIndex,
+                              std::size_t levelIndex) noexcept {
+  std::size_t ordinal = 0U;
+  for (std::size_t index = 0U; index < levelIndex; ++index) {
+    ordinal += layout.levels[index].buildingIndex == buildingIndex ? 1U : 0U;
+  }
+  return ordinal;
+}
+
 std::size_t ownedWallOrdinal(const CreativeWorldLayout& layout,
                              std::size_t buildingIndex,
                              std::size_t wallIndex) noexcept {
@@ -386,6 +396,22 @@ fingerprintCreativeWorldLayoutBuilding(const CreativeWorldLayout& layout,
     }
   }
 
+  builder.appendUnsigned(
+      countIf(layout.levels, [buildingIndex](const auto& level) {
+        return level.buildingIndex == buildingIndex;
+      }));
+  for (const CreativeWorldLayoutLevel& level : layout.levels) {
+    if (level.buildingIndex != buildingIndex) {
+      continue;
+    }
+    builder.appendString(level.name);
+    builder.appendDouble(level.floorTopLayer);
+    builder.appendUnsigned(level.wallHeightCells);
+    builder.appendUnsigned(level.floorThicknessLayers);
+    builder.appendUnsigned(level.ceilingThicknessLayers);
+    builder.appendUnsigned(level.roofThicknessLayers);
+  }
+
   builder.appendUnsigned(countIf(layout.rooms, [buildingIndex](const auto& room) {
     return room.buildingIndex == buildingIndex;
   }));
@@ -394,11 +420,10 @@ fingerprintCreativeWorldLayoutBuilding(const CreativeWorldLayout& layout,
       continue;
     }
     builder.appendString(room.name);
+    builder.appendUnsigned(
+        ownedLevelOrdinal(layout, buildingIndex, room.levelIndex));
     appendRelativeRect(builder, room.footprint, bounds.minimum);
-    builder.appendDouble(room.floorTopLayer);
-    builder.appendUnsigned(room.wallHeightCells);
     builder.appendDouble(room.wallThicknessCells);
-    builder.appendUnsigned(room.floorThicknessLayers);
   }
 
   builder.appendUnsigned(countIf(layout.boxes, [buildingIndex](const auto& box) {

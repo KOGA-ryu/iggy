@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -151,7 +152,8 @@ bool validCreativeWorldLayoutBuildingOwnership(
   const auto validOwner = [&](const auto& symbol) {
     return symbol.buildingIndex < layout.buildings.size();
   };
-  if (!std::all_of(layout.rooms.begin(), layout.rooms.end(), validOwner) ||
+  if (!validCreativeWorldLayoutLevelOwnership(layout) ||
+      !std::all_of(layout.rooms.begin(), layout.rooms.end(), validOwner) ||
       !std::all_of(layout.boxes.begin(), layout.boxes.end(), validOwner) ||
       !std::all_of(layout.walls.begin(), layout.walls.end(), validOwner)) {
     return false;
@@ -423,6 +425,22 @@ CreativeWorldLayoutBuildingEditResult deleteCreativeWorldLayoutBuilding(
   edited.buildings.erase(edited.buildings.begin() +
                          static_cast<std::ptrdiff_t>(request.buildingIndex));
 
+  std::vector<std::size_t> levelMap(source.levels.size(),
+                                    kInvalidCreativeWorldLayoutIndex);
+  edited.levels.clear();
+  edited.levels.reserve(source.levels.size());
+  for (std::size_t index = 0U; index < source.levels.size(); ++index) {
+    CreativeWorldLayoutLevel level = source.levels[index];
+    if (level.buildingIndex == request.buildingIndex) {
+      continue;
+    }
+    if (level.buildingIndex > request.buildingIndex) {
+      --level.buildingIndex;
+    }
+    levelMap[index] = edited.levels.size();
+    edited.levels.push_back(std::move(level));
+  }
+
   std::vector<std::size_t> roomMap(source.rooms.size(),
                                    kInvalidCreativeWorldLayoutIndex);
   edited.rooms.clear();
@@ -435,6 +453,7 @@ CreativeWorldLayoutBuildingEditResult deleteCreativeWorldLayoutBuilding(
     if (room.buildingIndex > request.buildingIndex) {
       --room.buildingIndex;
     }
+    room.levelIndex = levelMap[room.levelIndex];
     roomMap[index] = edited.rooms.size();
     edited.rooms.push_back(std::move(room));
   }

@@ -30,17 +30,15 @@ bool validShellSettings(
 
 cr::CreativeWorldLayoutRoom makeRoom(
     const CreativeEditorWorldLayoutRoomSettings& settings,
-    std::size_t buildingIndex, std::size_t roomIndex,
+    std::size_t buildingIndex, std::size_t levelIndex, std::size_t roomIndex,
     std::string stableKey) {
   cr::CreativeWorldLayoutRoom room;
   room.buildingIndex = buildingIndex;
+  room.levelIndex = levelIndex;
   room.stableKey = std::move(stableKey);
   room.name = "Room " + std::to_string(roomIndex + 1U);
   room.footprint = settings.footprint;
-  room.floorTopLayer = settings.floorTopLayer;
-  room.wallHeightCells = settings.wallHeightCells;
   room.wallThicknessCells = settings.wallThicknessCells;
-  room.floorThicknessLayers = settings.floorThicknessLayers;
   return room;
 }
 
@@ -68,6 +66,7 @@ CreativeEditorWorldLayoutEditReceipt commitRoomCandidate(
 
   state.source = std::move(candidate);
   state.nextStableOrdinal = nextStableOrdinal;
+  state.activeLevelIndex = state.source.rooms[roomIndex].levelIndex;
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Room, roomIndex};
   detail::noteWorldLayoutSourceChange(state, std::move(statusMessage));
   return {true, true, std::move(reasonCode)};
@@ -88,6 +87,7 @@ createCreativeEditorWorldLayoutBuildingShell(
   cr::CreativeWorldLayout candidate = state.source;
   std::uint64_t nextStableOrdinal = state.nextStableOrdinal;
   const std::size_t buildingIndex = candidate.buildings.size();
+  const std::size_t levelIndex = candidate.levels.size();
   const std::size_t roomIndex = candidate.rooms.size();
 
   cr::CreativeWorldLayoutBuilding building;
@@ -99,8 +99,18 @@ createCreativeEditorWorldLayoutBuildingShell(
   building.rootHeightCells = settings.wallHeightCells;
   candidate.buildings.push_back(std::move(building));
 
+  cr::CreativeWorldLayoutLevel level;
+  level.buildingIndex = buildingIndex;
+  level.stableKey = cr::mintCreativeWorldLayoutStableKey(
+      candidate, nextStableOrdinal, "level");
+  level.name = "Level 0";
+  level.floorTopLayer = settings.floorTopLayer;
+  level.wallHeightCells = settings.wallHeightCells;
+  level.floorThicknessLayers = settings.floorThicknessLayers;
+  candidate.levels.push_back(std::move(level));
+
   candidate.rooms.push_back(makeRoom(
-      settings, buildingIndex, roomIndex,
+      settings, buildingIndex, levelIndex, roomIndex,
       cr::mintCreativeWorldLayoutStableKey(candidate, nextStableOrdinal,
                                             "room")));
 
@@ -111,13 +121,26 @@ createCreativeEditorWorldLayoutBuildingShell(
 }
 
 CreativeEditorWorldLayoutEditReceipt createCreativeEditorWorldLayoutRoom(
-    CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
+    CreativeEditorWorldLayoutState& state, std::size_t levelIndex,
     CreativeEditorWorldLayoutRoomSettings settings) {
-  if (buildingIndex >= state.source.buildings.size() ||
-      !validShellSettings(settings)) {
+  const bool levelValid =
+      levelIndex < state.source.levels.size() &&
+      state.source.levels[levelIndex].buildingIndex <
+          state.source.buildings.size();
+  const double width = static_cast<double>(settings.footprint.maximum.x) -
+                       settings.footprint.minimum.x;
+  const double depth = static_cast<double>(settings.footprint.maximum.z) -
+                       settings.footprint.minimum.z;
+  const bool geometryValid =
+      width > 0.0 && depth > 0.0 &&
+      std::isfinite(settings.wallThicknessCells) &&
+      settings.wallThicknessCells > 0.0 &&
+      width > settings.wallThicknessCells * 2.0 &&
+      depth > settings.wallThicknessCells * 2.0;
+  if (!levelValid || !geometryValid) {
     state.statusMessage =
-        buildingIndex >= state.source.buildings.size()
-            ? "select the building that should own this room"
+        !levelValid
+            ? "select the building level that should own this room"
             : "room needs valid floor and wall dimensions";
     return {false, false,
             "creative_editor_world_layout_room_creation_invalid"};
@@ -126,8 +149,9 @@ CreativeEditorWorldLayoutEditReceipt createCreativeEditorWorldLayoutRoom(
   cr::CreativeWorldLayout candidate = state.source;
   std::uint64_t nextStableOrdinal = state.nextStableOrdinal;
   const std::size_t roomIndex = candidate.rooms.size();
+  const std::size_t buildingIndex = candidate.levels[levelIndex].buildingIndex;
   candidate.rooms.push_back(makeRoom(
-      settings, buildingIndex, roomIndex,
+      settings, buildingIndex, levelIndex, roomIndex,
       cr::mintCreativeWorldLayoutStableKey(candidate, nextStableOrdinal,
                                             "room")));
   return commitRoomCandidate(

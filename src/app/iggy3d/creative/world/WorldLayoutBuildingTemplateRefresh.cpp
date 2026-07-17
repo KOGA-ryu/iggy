@@ -29,6 +29,17 @@ std::vector<std::string> ownedRoomKeys(const CreativeWorldLayout& layout,
   return result;
 }
 
+std::vector<std::string> ownedLevelKeys(const CreativeWorldLayout& layout,
+                                        std::size_t buildingIndex) {
+  std::vector<std::string> result;
+  for (const CreativeWorldLayoutLevel& level : layout.levels) {
+    if (level.buildingIndex == buildingIndex) {
+      result.push_back(level.stableKey);
+    }
+  }
+  return result;
+}
+
 std::vector<std::string> ownedBoxKeys(const CreativeWorldLayout& layout,
                                       std::size_t buildingIndex) {
   std::vector<std::string> result;
@@ -96,6 +107,8 @@ bool replaceBuildingFromTemplate(
     positioned = std::move(moved.edited);
   }
 
+  const std::vector<std::string> oldLevelKeys =
+      ownedLevelKeys(layout, buildingIndex);
   const std::vector<std::string> oldRoomKeys =
       ownedRoomKeys(layout, buildingIndex);
   const std::vector<std::string> oldBoxKeys =
@@ -112,6 +125,28 @@ bool replaceBuildingFromTemplate(
   replacement.name = sourceTemplate.label;
   layout.buildings[buildingIndex] = std::move(replacement);
 
+  std::vector<std::size_t> oldLevelMap(layout.levels.size(),
+                                       kInvalidCreativeWorldLayoutIndex);
+  std::vector<CreativeWorldLayoutLevel> levels;
+  levels.reserve(layout.levels.size() + positioned.levels.size());
+  for (std::size_t index = 0U; index < layout.levels.size(); ++index) {
+    if (layout.levels[index].buildingIndex == buildingIndex) {
+      continue;
+    }
+    oldLevelMap[index] = levels.size();
+    levels.push_back(layout.levels[index]);
+  }
+  std::vector<std::size_t> newLevelMap(positioned.levels.size(),
+                                       kInvalidCreativeWorldLayoutIndex);
+  for (std::size_t index = 0U; index < positioned.levels.size(); ++index) {
+    CreativeWorldLayoutLevel level = positioned.levels[index];
+    level.buildingIndex = buildingIndex;
+    level.stableKey = reusedOrMintedKey(
+        layout, nextStableOrdinal, oldLevelKeys, index, "level");
+    newLevelMap[index] = levels.size();
+    levels.push_back(std::move(level));
+  }
+
   std::vector<std::size_t> oldRoomMap(layout.rooms.size(),
                                       kInvalidCreativeWorldLayoutIndex);
   std::vector<CreativeWorldLayoutRoom> rooms;
@@ -121,13 +156,16 @@ bool replaceBuildingFromTemplate(
       continue;
     }
     oldRoomMap[index] = rooms.size();
-    rooms.push_back(layout.rooms[index]);
+    CreativeWorldLayoutRoom room = layout.rooms[index];
+    room.levelIndex = oldLevelMap[room.levelIndex];
+    rooms.push_back(std::move(room));
   }
   std::vector<std::size_t> newRoomMap(positioned.rooms.size(),
                                       kInvalidCreativeWorldLayoutIndex);
   for (std::size_t index = 0U; index < positioned.rooms.size(); ++index) {
     CreativeWorldLayoutRoom room = positioned.rooms[index];
     room.buildingIndex = buildingIndex;
+    room.levelIndex = newLevelMap[room.levelIndex];
     room.stableKey = reusedOrMintedKey(layout, nextStableOrdinal, oldRoomKeys,
                                        index, "room");
     newRoomMap[index] = rooms.size();
@@ -198,6 +236,7 @@ bool replaceBuildingFromTemplate(
     openings.push_back(std::move(opening));
   }
 
+  layout.levels = std::move(levels);
   layout.rooms = std::move(rooms);
   layout.boxes = std::move(boxes);
   layout.walls = std::move(walls);

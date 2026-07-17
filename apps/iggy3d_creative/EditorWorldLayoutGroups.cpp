@@ -89,6 +89,7 @@ CreativeEditorWorldLayoutEditReceipt selectCreativeEditorWorldLayoutBuilding(
   state.anchorActive = false;
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Building,
                      buildingIndex};
+  repairCreativeEditorWorldLayoutActiveLevel(state, buildingIndex);
   state.statusMessage = "building selected";
   return {true, changed, "creative_editor_world_layout_building_selected"};
 }
@@ -356,6 +357,8 @@ CreativeEditorWorldLayoutEditReceipt duplicateCreativeEditorWorldLayoutBuilding(
   state.nextStableOrdinal = duplicated.nextStableOrdinal;
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Building,
                      duplicateBuildingIndex};
+  state.activeLevelIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  repairCreativeEditorWorldLayoutActiveLevel(state, duplicateBuildingIndex);
   detail::noteWorldLayoutSourceChange(state, "building duplicated");
   return {true, true,
           "creative_editor_world_layout_building_duplicated"};
@@ -377,6 +380,8 @@ CreativeEditorWorldLayoutEditReceipt deleteCreativeEditorWorldLayoutBuilding(
   }
   state.source = std::move(removed.edited);
   state.selection = {};
+  state.activeLevelIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  repairCreativeEditorWorldLayoutActiveLevel(state);
   detail::noteWorldLayoutSourceChange(state, "building deleted");
   return {true, true, "creative_editor_world_layout_building_deleted"};
 }

@@ -96,6 +96,7 @@ void installCreativeEditorWorldLayoutSnapshot(
   state.savedRevision = snapshot.savedRevision;
   state.generatedRevision = snapshot.generatedRevision;
   state.nextStableOrdinal = snapshot.nextStableOrdinal;
+  repairCreativeEditorWorldLayoutActiveLevel(state);
   state.generatedBaseline = captureCreativeEditorWorldLayoutSnapshot(state);
   state.statusMessage = "layout restored from history";
 }

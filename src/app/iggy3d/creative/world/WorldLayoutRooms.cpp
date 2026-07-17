@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 
 #include <algorithm>
 #include <array>
@@ -19,6 +20,7 @@ enum class EdgeOrientation : std::uint8_t { Horizontal, Vertical };
 
 struct EdgeRecord {
   std::size_t buildingIndex = kInvalidCreativeWorldLayoutIndex;
+  std::size_t levelIndex = kInvalidCreativeWorldLayoutIndex;
   std::size_t roomIndex = kInvalidCreativeWorldLayoutIndex;
   CreativeWorldLayoutRoomEdge roomEdge = CreativeWorldLayoutRoomEdge::North;
   EdgeOrientation orientation = EdgeOrientation::Horizontal;
@@ -57,7 +59,7 @@ bool sameFloorTop(double lhs, double rhs) noexcept {
 bool roomsOverlap(const CreativeWorldLayoutRoom& lhs,
                   const CreativeWorldLayoutRoom& rhs) noexcept {
   if (lhs.buildingIndex != rhs.buildingIndex ||
-      !sameFloorTop(lhs.floorTopLayer, rhs.floorTopLayer)) {
+      lhs.levelIndex != rhs.levelIndex) {
     return false;
   }
   return std::max(lhs.footprint.minimum.x, rhs.footprint.minimum.x) <
@@ -68,6 +70,7 @@ bool roomsOverlap(const CreativeWorldLayoutRoom& lhs,
 
 bool sameMergeLane(const EdgeRecord& lhs, const EdgeRecord& rhs) noexcept {
   return lhs.buildingIndex == rhs.buildingIndex &&
+         lhs.levelIndex == rhs.levelIndex &&
          lhs.orientation == rhs.orientation && lhs.line == rhs.line &&
          lhs.baseLayer == rhs.baseLayer && lhs.heightCells == rhs.heightCells &&
          lhs.thicknessCells == rhs.thicknessCells;
@@ -88,6 +91,7 @@ bool oppositeEdges(CreativeWorldLayoutRoomEdge lhs,
 bool sharedMergeLane(const EdgeRecord& lhs,
                      const EdgeRecord& rhs) noexcept {
   return lhs.buildingIndex == rhs.buildingIndex &&
+         lhs.levelIndex == rhs.levelIndex &&
          lhs.orientation == rhs.orientation && lhs.line == rhs.line &&
          sameFloorTop(lhs.baseLayer, rhs.baseLayer) &&
          lhs.heightCells == rhs.heightCells &&
@@ -107,28 +111,29 @@ std::pair<double, double> spanOffsets(
 }
 
 auto edgeSortKey(const EdgeRecord& edge) noexcept {
-  return std::tuple{edge.buildingIndex,  edge.baseLayer,   edge.heightCells,
-                    edge.thicknessCells, edge.orientation, edge.line,
-                    edge.begin,          edge.end,         edge.roomIndex,
+  return std::tuple{edge.buildingIndex, edge.levelIndex, edge.baseLayer,
+                    edge.heightCells, edge.thicknessCells, edge.orientation,
+                    edge.line, edge.begin, edge.end, edge.roomIndex,
                     edge.roomEdge};
 }
 
 std::array<EdgeRecord, kRoomEdgeCount> roomEdges(
     const CreativeWorldLayoutRoom& room, std::size_t roomIndex,
-    double wallBaseLayer) {
+    const CreativeWorldLayoutResolvedRoomGeometry& geometry) {
   const CreativeWorldLayoutRect rect = room.footprint;
   const auto make = [&](CreativeWorldLayoutRoomEdge edge,
                         EdgeOrientation orientation, std::int32_t line,
                         std::int32_t begin, std::int32_t end) {
     return EdgeRecord{room.buildingIndex,
+                      room.levelIndex,
                       roomIndex,
                       edge,
                       orientation,
                       line,
                       begin,
                       end,
-                      wallBaseLayer,
-                      room.wallHeightCells,
+                      geometry.floorTopLayer,
+                      geometry.wallHeightCells,
                       room.wallThicknessCells};
   };
   return {
@@ -160,6 +165,15 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
   result.expanded.rooms.clear();
   result.wallProvenance.resize(layout.walls.size());
 
+  const std::size_t invalidLevelIndex =
+      firstInvalidCreativeWorldLayoutLevelIndex(layout);
+  if (invalidLevelIndex != kInvalidCreativeWorldLayoutIndex) {
+    setFailure(result, CreativeWorldLayoutRoomCompileStatus::InvalidLevel,
+               invalidLevelIndex,
+               "creative_world_layout_level_ownership_invalid");
+    return result;
+  }
+
   if (layout.rooms.size() >
       (std::numeric_limits<std::size_t>::max() / kRoomEdgeCount)) {
     setFailure(result, CreativeWorldLayoutRoomCompileStatus::CapacityExceeded,
@@ -170,14 +184,20 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
 
   std::vector<EdgeRecord> edges;
   edges.reserve(layout.rooms.size() * kRoomEdgeCount);
-  std::vector<double> canonicalFloorTops(layout.rooms.size(), 0.0);
   for (std::size_t roomIndex = 0U; roomIndex < layout.rooms.size();
        ++roomIndex) {
     const CreativeWorldLayoutRoom& room = layout.rooms[roomIndex];
+    if (room.levelIndex >= layout.levels.size() ||
+        layout.levels[room.levelIndex].buildingIndex != room.buildingIndex) {
+      setFailure(result, CreativeWorldLayoutRoomCompileStatus::InvalidRoom,
+                 roomIndex,
+                 "creative_world_layout_room_level_ownership_invalid");
+      return result;
+    }
+    const CreativeWorldLayoutResolvedRoomGeometry geometry =
+        resolveCreativeWorldLayoutRoomGeometry(layout, roomIndex);
     if (room.buildingIndex >= layout.buildings.size() || room.name.empty() ||
-        !validRect(room.footprint) || room.wallHeightCells == 0U ||
-        room.floorThicknessLayers == 0U ||
-        !std::isfinite(room.floorTopLayer) ||
+        !geometry.valid || !validRect(room.footprint) ||
         !std::isfinite(room.wallThicknessCells) ||
         room.wallThicknessCells <= 0.0 ||
         (static_cast<double>(room.footprint.maximum.x) -
@@ -190,8 +210,6 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
                  roomIndex, "creative_world_layout_room_invalid");
       return result;
     }
-    double canonicalFloorTop = room.floorTopLayer;
-    bool floorTopCanonicalized = false;
     for (std::size_t prior = 0U; prior < roomIndex; ++prior) {
       if (roomsOverlap(layout.rooms[prior], room)) {
         setFailure(result,
@@ -199,17 +217,9 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
                    roomIndex, "creative_world_layout_rooms_overlap");
         return result;
       }
-      if (!floorTopCanonicalized &&
-          layout.rooms[prior].buildingIndex == room.buildingIndex &&
-          sameFloorTop(layout.rooms[prior].floorTopLayer,
-                       room.floorTopLayer)) {
-        canonicalFloorTop = canonicalFloorTops[prior];
-        floorTopCanonicalized = true;
-      }
     }
-    canonicalFloorTops[roomIndex] = canonicalFloorTop;
 
-    const auto generated = roomEdges(room, roomIndex, canonicalFloorTop);
+    const auto generated = roomEdges(room, roomIndex, geometry);
     edges.insert(edges.end(), generated.begin(), generated.end());
   }
 
@@ -317,12 +327,12 @@ inspectCreativeWorldLayoutSharedRoomEdges(
        firstRoomIndex < layout.rooms.size(); ++firstRoomIndex) {
     const auto firstEdges = roomEdges(
         layout.rooms[firstRoomIndex], firstRoomIndex,
-        layout.rooms[firstRoomIndex].floorTopLayer);
+        resolveCreativeWorldLayoutRoomGeometry(layout, firstRoomIndex));
     for (std::size_t secondRoomIndex = firstRoomIndex + 1U;
          secondRoomIndex < layout.rooms.size(); ++secondRoomIndex) {
       const auto secondEdges = roomEdges(
           layout.rooms[secondRoomIndex], secondRoomIndex,
-          layout.rooms[secondRoomIndex].floorTopLayer);
+          resolveCreativeWorldLayoutRoomGeometry(layout, secondRoomIndex));
       for (const EdgeRecord& first : firstEdges) {
         for (const EdgeRecord& second : secondEdges) {
           if (!sharedMergeLane(first, second)) {
@@ -402,16 +412,25 @@ bool creativeWorldLayoutHasInteriorRoomWindow(
 }
 
 CreativeRectangularRoomGeometryPlan planCreativeWorldLayoutRoomGeometry(
-    const CreativeGridSettings& grid,
-    const CreativeWorldLayoutRoom& room) noexcept {
+    const CreativeGridSettings& grid, const CreativeWorldLayout& layout,
+    std::size_t roomIndex) noexcept {
   CreativeRectangularRoomGeometryRequest request;
+  if (roomIndex >= layout.rooms.size()) {
+    return planCreativeRectangularRoomGeometry(request);
+  }
+  const CreativeWorldLayoutRoom& room = layout.rooms[roomIndex];
+  const CreativeWorldLayoutResolvedRoomGeometry geometry =
+      resolveCreativeWorldLayoutRoomGeometry(layout, roomIndex);
+  if (!geometry.valid) {
+    return planCreativeRectangularRoomGeometry(request);
+  }
   const auto coordinate = [](double origin, double cellSize,
                              double value) noexcept {
     return origin + cellSize * value;
   };
   request.firstFloorCorner = {
       coordinate(grid.origin.x, grid.cellSizeMeters, room.footprint.minimum.x),
-      coordinate(grid.origin.y, grid.cellSizeMeters, room.floorTopLayer),
+      coordinate(grid.origin.y, grid.cellSizeMeters, geometry.floorTopLayer),
       coordinate(grid.origin.z, grid.cellSizeMeters, room.footprint.minimum.z),
   };
   request.oppositeFloorCorner = {
@@ -419,10 +438,10 @@ CreativeRectangularRoomGeometryPlan planCreativeWorldLayoutRoomGeometry(
       request.firstFloorCorner.y,
       coordinate(grid.origin.z, grid.cellSizeMeters, room.footprint.maximum.z),
   };
-  request.wallHeightMeters = room.wallHeightCells * grid.cellSizeMeters;
+  request.wallHeightMeters = geometry.wallHeightCells * grid.cellSizeMeters;
   request.wallThicknessMeters = room.wallThicknessCells * grid.cellSizeMeters;
   request.floorThicknessMeters =
-      room.floorThicknessLayers *
+      geometry.floorThicknessLayers *
       defaultCreativeStructuralLayerThicknessMeters(CreativeObjectKind::Floor);
   return planCreativeRectangularRoomGeometry(request);
 }

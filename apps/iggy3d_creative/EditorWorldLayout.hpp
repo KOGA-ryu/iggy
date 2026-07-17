@@ -391,6 +391,16 @@ enum class CreativeEditorWorldLayoutGesturePhase : std::uint8_t {
   Count,
 };
 
+enum class CreativeEditorWorldLayoutLevelOperation : std::uint8_t {
+  Select,
+  Add,
+  Duplicate,
+  MoveEarlier,
+  MoveLater,
+  Delete,
+  Count,
+};
+
 struct CreativeEditorWorldLayoutSnapshot {
   cr::CreativeWorldLayout source;
   std::uint64_t revision = 1U;
@@ -408,6 +418,7 @@ struct CreativeEditorWorldLayoutState {
   CreativeEditorWorldLayoutSnapshot generatedBaseline;
 
   CreativeEditorWorldLayoutTool tool = CreativeEditorWorldLayoutTool::Select;
+  std::size_t activeLevelIndex = cr::kInvalidCreativeWorldLayoutIndex;
   CreativeEditorWorldLayoutSelection selection;
   bool anchorActive = false;
   cr::CreativeTerrainCoord2 anchor{};
@@ -510,7 +521,7 @@ createCreativeEditorWorldLayoutBuildingShell(
     CreativeEditorWorldLayoutRoomSettings settings);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 createCreativeEditorWorldLayoutRoom(
-    CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
+    CreativeEditorWorldLayoutState& state, std::size_t levelIndex,
     CreativeEditorWorldLayoutRoomSettings settings);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 setCreativeEditorWorldLayoutRoomSettings(
@@ -568,6 +579,16 @@ applyCreativeEditorWorldLayoutWallManipulation(
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 selectCreativeEditorWorldLayoutBuilding(CreativeEditorWorldLayoutState& state,
                                         std::size_t buildingIndex);
+void repairCreativeEditorWorldLayoutActiveLevel(
+    CreativeEditorWorldLayoutState& state,
+    std::size_t preferredBuildingIndex =
+        cr::kInvalidCreativeWorldLayoutIndex) noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+applyCreativeEditorWorldLayoutLevelOperation(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutLevelOperation operation,
+    std::size_t buildingIndex = cr::kInvalidCreativeWorldLayoutIndex,
+    std::size_t levelIndex = cr::kInvalidCreativeWorldLayoutIndex);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 clearCreativeEditorWorldLayoutSelection(
     CreativeEditorWorldLayoutState& state);

@@ -1218,6 +1218,10 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutManipulateRoom, context,
           app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutLevelOperation =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutLevelOperation, context,
+          app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult badWorldLayoutBuildingSelection =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSelectBuilding, context,
@@ -1308,6 +1312,10 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badWorldLayoutManipulation.message ==
                         "layout room manipulation: payload mismatch",
                 "room manipulation rejects a mismatched payload") &&
+         expect(!badWorldLayoutLevelOperation.accepted &&
+                    badWorldLayoutLevelOperation.message ==
+                        "layout level operation: payload mismatch",
+                "level operation rejects a mismatched payload") &&
          expect(!badWorldLayoutBuildingSelection.accepted &&
                     badWorldLayoutBuildingSelection.message ==
                         "layout building selection: payload mismatch",
@@ -1371,6 +1379,46 @@ bool mismatchedPayloadsAreNoOpFailures() {
          expect(appState.facade.document().objectCount() == before &&
                     cr::creativeUndoDepth(appState.history) == 0U,
                 "mismatched payloads mutate nothing and record no history");
+}
+
+bool worldLayoutLevelCommandsRouteThroughDispatcher() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Building Levels");
+  static_cast<void>(document.assignId(425U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  const auto shell = app::createCreativeEditorWorldLayoutBuildingShell(
+      editor.worldLayout, {{{0, 0}, {6, 4}}, 0.0, 3U, 0.25, 1U});
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const std::uint64_t revisionBeforeAdd = editor.worldLayout.revision;
+  const auto added = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutLevelOperation, context,
+      app::CreativeDesktopWorldLayoutLevelOperationPayload{
+          app::CreativeEditorWorldLayoutLevelOperation::Add, 0U, 0U});
+  const std::uint64_t revisionAfterAdd = editor.worldLayout.revision;
+  const auto selected = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutLevelOperation, context,
+      app::CreativeDesktopWorldLayoutLevelOperationPayload{
+          app::CreativeEditorWorldLayoutLevelOperation::Select, 0U, 0U});
+
+  return expect(shell.accepted && shell.changed,
+                "level command test creates a building shell") &&
+         expect(added.accepted && added.changed &&
+                    added.worldLayoutChanged && !added.sceneChanged &&
+                    editor.worldLayout.source.levels.size() == 2U &&
+                    editor.worldLayout.source.rooms.size() == 1U &&
+                    revisionAfterAdd == revisionBeforeAdd + 1U,
+                "add level routes as one semantic source mutation") &&
+         expect(selected.accepted && selected.changed &&
+                    !selected.worldLayoutChanged && !selected.sceneChanged &&
+                    editor.worldLayout.activeLevelIndex == 0U &&
+                    editor.worldLayout.revision == revisionAfterAdd,
+                "select level changes only the active editor view");
 }
 
 bool worldLayoutStructuralCommandsRouteThroughDispatcher() {
@@ -1796,10 +1844,12 @@ bool worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() {
       });
   const std::size_t roomIndex = static_cast<std::size_t>(
       std::distance(editor.worldLayout.source.rooms.begin(), room));
+  const cr::CreativeWorldLayoutLevel& level =
+      editor.worldLayout.source.levels[room->levelIndex];
   app::CreativeEditorWorldLayoutRoomSettings settings{
-      room->footprint, room->floorTopLayer,
-      static_cast<std::uint16_t>(room->wallHeightCells + 1U),
-      room->wallThicknessCells, room->floorThicknessLayers};
+      room->footprint, level.floorTopLayer,
+      static_cast<std::uint16_t>(level.wallHeightCells + 1U),
+      room->wallThicknessCells, level.floorThicknessLayers};
   static_cast<void>(app::setCreativeEditorWorldLayoutRoomSettings(
       editor.worldLayout, roomIndex, settings));
 
@@ -1979,8 +2029,12 @@ bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
                         cr::CreativeTerrainCoord2{2, 1} &&
                     editor.worldLayout.source.rooms[0].footprint.maximum ==
                         cr::CreativeTerrainCoord2{10, 7} &&
-                    editor.worldLayout.source.rooms[0].floorTopLayer == 1.0 &&
-                    editor.worldLayout.source.rooms[0].wallHeightCells == 4U &&
+                    editor.worldLayout.source.levels
+                            [editor.worldLayout.source.rooms[0].levelIndex]
+                                .floorTopLayer == 1.0 &&
+                    editor.worldLayout.source.levels
+                            [editor.worldLayout.source.rooms[0].levelIndex]
+                                .wallHeightCells == 4U &&
                     editor.worldLayout.source.rooms[0].wallThicknessCells ==
                         0.5,
                 "room settings and preview-only manipulation route through typed payloads") &&
@@ -2041,6 +2095,7 @@ int main() {
   ok = assetAndInstanceCommandsRouteAndRejectCleanly() && ok;
   ok = assetAndInstanceCommandsCompleteSuccessPaths() && ok;
   ok = mismatchedPayloadsAreNoOpFailures() && ok;
+  ok = worldLayoutLevelCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutStructuralCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutBuildingTemplateCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() && ok;

@@ -11,6 +11,7 @@ namespace iggy3d::creative {
 enum class CreativeWorldLayoutRoomCompileStatus : std::uint8_t {
   NotRequested,
   Ready,
+  InvalidLevel,
   InvalidRoom,
   OverlappingRooms,
   InvalidOpeningHost,
@@ -66,7 +67,7 @@ inspectCreativeWorldLayoutSharedRoomEdges(
 
 [[nodiscard]] CreativeRectangularRoomGeometryPlan
 planCreativeWorldLayoutRoomGeometry(
-    const CreativeGridSettings& grid,
-    const CreativeWorldLayoutRoom& room) noexcept;
+    const CreativeGridSettings& grid, const CreativeWorldLayout& layout,
+    std::size_t roomIndex) noexcept;
 
 }  // namespace iggy3d::creative

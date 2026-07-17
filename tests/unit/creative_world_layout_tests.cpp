@@ -106,8 +106,10 @@ cr::CreativeWorldLayout transformableBuildingLayout() {
                               4U,
                               true,
                               {}});
+  layout.levels.push_back(
+      {0U, "level", "Ground Level", 0.0, 3U, 1U, 1U, 1U});
   layout.rooms.push_back(
-      {0U, "room", "Transform Room", {{11, 21}, {17, 25}}, 0, 3U, 0.25, 1U});
+      {0U, 0U, "room", "Transform Room", {{11, 21}, {17, 25}}, 0.25});
   layout.boxes.push_back({0U,
                           cr::CreativeObjectKind::Floor,
                           "floor",
@@ -454,8 +456,9 @@ bool buildingEditKernelsAreAtomicAndRemapOwnership() {
   const bool duplicateExact =
       duplicated.accepted && duplicated.changed &&
       duplicated.resultBuildingIndex == 1U &&
-      duplicated.nextStableOrdinal == 51U &&
+      duplicated.nextStableOrdinal == 52U &&
       duplicated.edited.buildings.size() == 2U &&
+      duplicated.edited.levels.size() == 2U &&
       duplicated.edited.rooms.size() == 2U &&
       duplicated.edited.boxes.size() == 2U &&
       duplicated.edited.walls.size() == 4U &&
@@ -464,6 +467,8 @@ bool buildingEditKernelsAreAtomicAndRemapOwnership() {
       duplicated.edited.buildings[1].rootFootprint.minimum ==
           cr::CreativeTerrainCoord2{30, 20} &&
       duplicated.edited.rooms[1].buildingIndex == 1U &&
+      duplicated.edited.rooms[1].levelIndex == 1U &&
+      duplicated.edited.levels[1].buildingIndex == 1U &&
       duplicated.edited.walls[2].buildingIndex == 1U &&
       duplicated.edited.openings[6].roomIndex == 1U &&
       duplicated.edited.openings[10].wallIndex == 2U &&
@@ -474,11 +479,13 @@ bool buildingEditKernelsAreAtomicAndRemapOwnership() {
   const bool deleteExact =
       removed.accepted && removed.changed &&
       removed.edited.buildings.size() == 1U &&
+      removed.edited.levels.size() == 1U &&
       removed.edited.rooms.size() == 1U &&
       removed.edited.boxes.size() == 1U &&
       removed.edited.walls.size() == 2U &&
       removed.edited.openings.size() == 6U &&
       removed.edited.rooms[0].buildingIndex == 0U &&
+      removed.edited.rooms[0].levelIndex == 0U &&
       removed.edited.walls[0].buildingIndex == 0U &&
       removed.edited.openings[0].roomIndex == 0U &&
       removed.edited.openings[4].wallIndex == 0U &&
@@ -570,12 +577,15 @@ bool buildingTemplatesNormalizeTransformPersistAndStamp() {
   const bool stampExact =
       stamped.accepted && stamped.changed &&
       stamped.resultBuildingIndex == 0U &&
-      stamped.nextStableOrdinal == 111U &&
+      stamped.nextStableOrdinal == 112U &&
       stamped.edited.buildings[0].stableKey == "building_100" &&
+      stamped.edited.levels.size() == 1U &&
+      stamped.edited.levels[0].buildingIndex == 0U &&
       stamped.edited.buildings[0].name == "Guard House" &&
       stamped.edited.buildings[0].rootFootprint.minimum ==
           cr::CreativeTerrainCoord2{-4, 7} &&
       stamped.edited.rooms[0].buildingIndex == 0U &&
+      stamped.edited.rooms[0].levelIndex == 0U &&
       stamped.edited.walls[0].buildingIndex == 0U &&
       stamped.edited.openings[0].roomIndex == 0U &&
       stamped.edited.openings[4].wallIndex == 0U &&
@@ -653,15 +663,15 @@ bool buildingTemplateSyncIsSafeAtomicAndPersistent() {
       movedProvenance.orientation ==
           cr::CreativeWorldLayoutBuildingTemplateOrientation::MirrorDiagonal;
 
-  const auto firstRoom = std::find_if(
-      edited.rooms.begin(), edited.rooms.end(),
-      [](const cr::CreativeWorldLayoutRoom& room) {
-        return room.buildingIndex == 0U;
+  const auto firstLevel = std::find_if(
+      edited.levels.begin(), edited.levels.end(),
+      [](const cr::CreativeWorldLayoutLevel& level) {
+        return level.buildingIndex == 0U;
       });
-  firstRoom->wallHeightCells = 9U;
+  firstLevel->wallHeightCells = 9U;
 
   cr::CreativeWorldLayout updatedSource = captured.value.normalizedLayout;
-  updatedSource.rooms[0].wallHeightCells += 2U;
+  updatedSource.levels[0].wallHeightCells += 2U;
   const cr::CreativeWorldLayoutBuildingTemplateResult updated =
       cr::loadCreativeWorldLayoutBuildingTemplate(std::move(updatedSource));
   if (!updated.accepted) {
@@ -983,6 +993,14 @@ bool invalidAndStaleSourcesFailClosed() {
   const cr::CreativeWorldLayoutCompileResult duplicateResult =
       cr::buildCreativeWorldLayoutPlan(document, duplicate);
 
+  cr::CreativeWorldLayout duplicateLevel = transformableBuildingLayout();
+  cr::CreativeWorldLayoutLevel conflictingLevel = duplicateLevel.levels[0];
+  conflictingLevel.stableKey = "conflicting_level";
+  conflictingLevel.name = "Conflicting Level";
+  duplicateLevel.levels.push_back(std::move(conflictingLevel));
+  const cr::CreativeWorldLayoutCompileResult duplicateLevelResult =
+      cr::buildCreativeWorldLayoutPlan(document, duplicateLevel);
+
   cr::CreativeWorldLayout relativeTerrain;
   relativeTerrain.stableKey = "relative_terrain";
   cr::CreativeWorldLayoutTerrainProfile relativeHill;
@@ -1012,6 +1030,13 @@ bool invalidAndStaleSourcesFailClosed() {
                     duplicateResult.receipt.failedTable ==
                         cr::CreativeWorldLayoutTable::Box,
                 "duplicate source identity rejects at exact symbol table") &&
+         expect(!duplicateLevelResult.receipt.accepted &&
+                    duplicateLevelResult.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::InvalidSymbol &&
+                    duplicateLevelResult.receipt.failedTable ==
+                        cr::CreativeWorldLayoutTable::Level &&
+                    duplicateLevelResult.receipt.failedIndex == 1U,
+                "duplicate story elevations reject at the exact level") &&
          expect(!relativeResult.receipt.accepted &&
                     relativeResult.receipt.status ==
                         cr::CreativeWorldLayoutStatus::InvalidSymbol,

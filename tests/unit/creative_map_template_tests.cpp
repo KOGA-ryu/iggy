@@ -276,8 +276,9 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
          expect(map.worldLayoutPresent &&
                     map.worldLayout.stableKey == "builder_estate_layout" &&
                     map.worldLayout.buildings.size() == 2U &&
+                    map.worldLayout.levels.size() == 2U &&
                     map.worldLayout.rooms.size() == 8U &&
-                    map.worldLayout.boxes.size() == 16U &&
+                    map.worldLayout.boxes.size() == 8U &&
                     map.worldLayout.openings.size() == 20U,
                 "builder estate owns two four-room building symbols") &&
          expect(countKind(map.document, cr::CreativeObjectKind::Door) == 10U &&

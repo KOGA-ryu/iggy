@@ -33,13 +33,23 @@ cr::CreativeWorldLayout richLayout() {
   building.tags = {"interior", "author=map maker"};
   layout.buildings.push_back(building);
 
+  cr::CreativeWorldLayoutLevel level;
+  level.buildingIndex = 0U;
+  level.stableKey = "level.ground";
+  level.name = "Ground Level";
+  level.floorTopLayer = 1.25;
+  level.wallHeightCells = 4U;
+  level.floorThicknessLayers = 2U;
+  level.ceilingThicknessLayers = 2U;
+  level.roofThicknessLayers = 3U;
+  layout.levels.push_back(level);
+
   cr::CreativeWorldLayoutRoom room;
   room.buildingIndex = 0U;
+  room.levelIndex = 0U;
   room.stableKey = "room.study";
   room.name = "Study";
   room.footprint = {{0, 0}, {4, 3}};
-  room.floorTopLayer = 1.25;
-  room.wallHeightCells = 4U;
   room.wallThicknessCells = 0.375;
   layout.rooms.push_back(room);
 
@@ -148,10 +158,14 @@ bool deterministicRoundTripPreservesEveryTable() {
                  decoded.layout.buildings[0].name == source.buildings[0].name &&
                  decoded.layout.buildings[0].tags == source.buildings[0].tags,
              "building strings and tags round trip") &&
-         expect(decoded.layout.rooms.size() == 1U &&
+         expect(decoded.layout.levels.size() == 1U &&
+                    decoded.layout.levels[0].floorTopLayer == 1.25 &&
+                    decoded.layout.levels[0].ceilingThicknessLayers == 2U &&
+                    decoded.layout.levels[0].roofThicknessLayers == 3U &&
+                    decoded.layout.rooms.size() == 1U &&
                     decoded.layout.rooms[0].footprint.maximum ==
                         source.rooms[0].footprint.maximum &&
-                    decoded.layout.rooms[0].floorTopLayer == 1.25 &&
+                    decoded.layout.rooms[0].levelIndex == 0U &&
                     decoded.layout.boxes.size() == 1U &&
                     decoded.layout.boxes[0].anchorLayer == 1.75 &&
                     decoded.layout.boxes[0].layerCount == 2U &&
@@ -308,8 +322,10 @@ bool versionThreeRoomPreservesWallPlaneDuringMigration() {
       decoded.accepted ? cr::expandCreativeWorldLayoutRooms(decoded.layout)
                        : cr::CreativeWorldLayoutRoomCompileResult{};
   return expect(decoded.accepted && decoded.layout.rooms.size() == 1U &&
-                    decoded.layout.rooms[0].floorTopLayer == 3.0 &&
-                    decoded.layout.rooms[0].floorThicknessLayers == 2U,
+                    decoded.layout.levels.size() == 1U &&
+                    decoded.layout.rooms[0].levelIndex == 0U &&
+                    decoded.layout.levels[0].floorTopLayer == 3.0 &&
+                    decoded.layout.levels[0].floorThicknessLayers == 2U,
                 "version-three room migrates base plus half thickness") &&
          expect(expanded.accepted && !expanded.expanded.walls.empty() &&
                     expanded.expanded.walls[0].baseLayer == 3.0,
@@ -348,6 +364,37 @@ bool versionFourBoxesMigrateToExplicitAnchorPlanes() {
                 "migrated box source writes current schema");
 }
 
+bool versionFiveRoomsMigrateToSharedLevels() {
+  const std::string versionFive =
+      "IGGY3D_WORLD_LAYOUT 5\n"
+      "L 5 6c65676163795f6c61796f7574 0 1 1 0 0 0 0 0 0 0\n"
+      "B 686f757365 486f757365 0 0 0 4 4 0 3 1 0\n"
+      "R 0 726f6f6d 526f6f6d 0 0 4 4 2.5 4 0.25 2\n"
+      "END\n";
+  const cr::CreativeWorldLayoutDecodeResult decoded =
+      cr::decodeCreativeWorldLayout(versionFive);
+  const cr::CreativeWorldLayoutEncodeResult encoded =
+      decoded.accepted ? cr::encodeCreativeWorldLayout(decoded.layout)
+                       : cr::CreativeWorldLayoutEncodeResult{};
+
+  return expect(decoded.accepted && decoded.layout.rooms.size() == 1U &&
+                    decoded.layout.levels.size() == 1U &&
+                    decoded.layout.rooms[0].levelIndex == 0U &&
+                    decoded.layout.levels[0].buildingIndex == 0U &&
+                    decoded.layout.levels[0].floorTopLayer == 2.5 &&
+                    decoded.layout.levels[0].wallHeightCells == 4U &&
+                    decoded.layout.levels[0].floorThicknessLayers == 2U &&
+                    decoded.layout.levels[0].ceilingThicknessLayers == 1U &&
+                    decoded.layout.levels[0].roofThicknessLayers == 1U,
+                "version-five room geometry migrates into one shared level") &&
+         expect(encoded.accepted &&
+                    encoded.encodedText.starts_with(
+                        "IGGY3D_WORLD_LAYOUT " +
+                        std::to_string(cr::kCreativeWorldLayoutCodecVersion) +
+                        "\n"),
+                "version-five migration writes the current codec version");
+}
+
 }  // namespace
 
 int main() {
@@ -356,6 +403,7 @@ int main() {
                   versionOneSourceMigratesToCurrentSchema() &&
                   versionTwoSourceMigratesWithoutFabricatedObjects() &&
                   versionThreeRoomPreservesWallPlaneDuringMigration() &&
-                  versionFourBoxesMigrateToExplicitAnchorPlanes();
+                  versionFourBoxesMigrateToExplicitAnchorPlanes() &&
+                  versionFiveRoomsMigrateToSharedLevels();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

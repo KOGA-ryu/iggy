@@ -16,7 +16,6 @@ namespace {
 
 constexpr CreativeVec3 kEstateGridOrigin{-40.0, 0.0, -40.0};
 constexpr std::int32_t kHouseFloorLayer = 4;
-constexpr std::int32_t kHouseRoofLayer = 7;
 constexpr std::uint16_t kHouseWallHeightCells = 3U;
 constexpr std::array<std::string_view, 1U> kBuiltInBuildingTemplateIds{
     kBuilderEstateHouseTemplateId};
@@ -64,13 +63,11 @@ void appendHouseRoom(CreativeWorldLayout& layout,
                      CreativeWorldLayoutRect footprint) {
   CreativeWorldLayoutRoom room;
   room.buildingIndex = 0U;
+  room.levelIndex = 0U;
   room.stableKey = stableKey;
   room.name = name;
   room.footprint = footprint;
-  room.floorTopLayer = kHouseFloorLayer;
-  room.wallHeightCells = kHouseWallHeightCells;
   room.wallThicknessCells = 0.25;
-  room.floorThicknessLayers = 1U;
   layout.rooms.push_back(std::move(room));
 
   CreativeWorldLayoutBox metadata;
@@ -82,16 +79,6 @@ void appendHouseRoom(CreativeWorldLayout& layout,
   metadata.anchorLayer = kHouseFloorLayer;
   metadata.layerCount = kHouseWallHeightCells;
   layout.boxes.push_back(std::move(metadata));
-
-  CreativeWorldLayoutBox roof;
-  roof.buildingIndex = 0U;
-  roof.kind = CreativeObjectKind::Roof;
-  roof.stableKey = stableKey + ".roof";
-  roof.name = name + " Roof";
-  roof.footprint = footprint;
-  roof.anchorLayer = kHouseRoofLayer;
-  roof.layerCount = 1U;
-  layout.boxes.push_back(std::move(roof));
 }
 
 CreativeWorldLayout builderEstateHouseLayout() {
@@ -104,6 +91,14 @@ CreativeWorldLayout builderEstateHouseLayout() {
   building.tags = {"map_template:builder_estate",
                    "building_role:estate_house"};
   layout.buildings.push_back(std::move(building));
+
+  CreativeWorldLayoutLevel level;
+  level.buildingIndex = 0U;
+  level.stableKey = "ground_level";
+  level.name = "Ground Floor";
+  level.floorTopLayer = kHouseFloorLayer;
+  level.wallHeightCells = kHouseWallHeightCells;
+  layout.levels.push_back(std::move(level));
 
   appendHouseRoom(layout, "study", "Study", {{0, 0}, {6, 6}});
   appendHouseRoom(layout, "kitchen", "Kitchen", {{6, 0}, {12, 6}});

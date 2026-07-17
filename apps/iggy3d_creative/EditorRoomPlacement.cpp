@@ -23,6 +23,11 @@ namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 namespace {
 
+struct RoomSymbolDraft {
+  cr::CreativeWorldLayoutRoom room;
+  cr::CreativeWorldLayoutLevel level;
+};
+
 [[nodiscard]] bool validCellBounds(cr::CreativeBounds bounds) noexcept {
   const cr::CreativeBoundsMetrics metrics = cr::measureCreativeBounds(bounds);
   return metrics.valid && cr::isPositiveCreativeVec3(metrics.size);
@@ -78,7 +83,7 @@ namespace {
     cr::CreativeBounds currentCellBounds,
     const cr::CreativeGridSettings& grid,
     const cr::CreativeToolSettings& settings,
-    cr::CreativeWorldLayoutRoom& output) noexcept {
+    RoomSymbolDraft& output) noexcept {
   if (!std::isfinite(grid.cellSizeMeters) || grid.cellSizeMeters <= 0.0 ||
       !std::isfinite(state.floorTopY) ||
       std::abs(currentCellBounds.min.y - state.floorTopY) > 1.0e-9) {
@@ -103,20 +108,40 @@ namespace {
       cr::defaultCreativeStructuralLayerThicknessMeters(
           cr::CreativeObjectKind::Floor);
   if (!exactLayerCount(wallHeightMeters, grid.cellSizeMeters,
-                       output.wallHeightCells) ||
+                       output.level.wallHeightCells) ||
       !exactLayerCount(floorThicknessMeters, floorLayerMeters,
-                       output.floorThicknessLayers)) {
+                       output.level.floorThicknessLayers)) {
     return false;
   }
-  output.footprint = {{minimumX, minimumZ}, {maximumX, maximumZ}};
-  output.floorTopLayer =
+  output.room.footprint = {{minimumX, minimumZ}, {maximumX, maximumZ}};
+  output.level.floorTopLayer =
       (state.floorTopY - grid.origin.y) / grid.cellSizeMeters;
-  output.wallThicknessCells =
+  output.room.wallThicknessCells =
       cr::creativeRoomWallThicknessMeters(settings.roomWallThickness) /
       grid.cellSizeMeters;
-  return std::isfinite(output.floorTopLayer) &&
-         std::isfinite(output.wallThicknessCells) &&
-         output.wallThicknessCells > 0.0;
+  return std::isfinite(output.level.floorTopLayer) &&
+         std::isfinite(output.room.wallThicknessCells) &&
+         output.room.wallThicknessCells > 0.0;
+}
+
+[[nodiscard]] cr::CreativeRectangularRoomGeometryPlan roomGeometryPlan(
+    const cr::CreativeGridSettings& grid,
+    RoomSymbolDraft draft) noexcept {
+  cr::CreativeWorldLayout layout;
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "preview_building";
+  building.name = "Preview Building";
+  layout.buildings.push_back(std::move(building));
+  draft.level.buildingIndex = 0U;
+  draft.level.stableKey = "preview_level";
+  draft.level.name = "Preview Level";
+  layout.levels.push_back(std::move(draft.level));
+  draft.room.buildingIndex = 0U;
+  draft.room.levelIndex = 0U;
+  draft.room.stableKey = "preview_room";
+  draft.room.name = "Preview Room";
+  layout.rooms.push_back(std::move(draft.room));
+  return cr::planCreativeWorldLayoutRoomGeometry(grid, layout, 0U);
 }
 
 void rejectRoom(CreativeEditorState& editor) noexcept {
@@ -155,14 +180,14 @@ cr::CreativeRectangularRoomGeometryPlan creativeEditorRoomPlacementPreview(
   if (!currentRoomTargetBounds(appState, editor, currentCell)) {
     return {};
   }
-  cr::CreativeWorldLayoutRoom room;
+  RoomSymbolDraft draft;
   if (!roomSymbol(state, editor.interaction.target.grid.adjacentCell,
                   currentCell, appState.facade.document().gridSettings(),
-                  editor.toolSettings, room)) {
+                  editor.toolSettings, draft)) {
     return {};
   }
-  return cr::planCreativeWorldLayoutRoomGeometry(
-      appState.facade.document().gridSettings(), room);
+  return roomGeometryPlan(appState.facade.document().gridSettings(),
+                          std::move(draft));
 }
 
 CreativeEditorRoomPlacementReceipt advanceCreativeEditorRoomPlacement(
@@ -203,17 +228,17 @@ CreativeEditorRoomPlacementReceipt advanceCreativeEditorRoomPlacement(
     return receipt;
   }
 
-  cr::CreativeWorldLayoutRoom room;
+  RoomSymbolDraft draft;
   if (!roomSymbol(state, editor.interaction.target.grid.adjacentCell,
                   currentCell, document.gridSettings(), editor.toolSettings,
-                  room)) {
+                  draft)) {
     receipt.status = CreativeEditorRoomPlacementStatus::InvalidGeometry;
     receipt.reasonCode = "creative_editor_room_layout_conversion_invalid";
     rejectRoom(editor);
     return receipt;
   }
   const cr::CreativeRectangularRoomGeometryPlan geometryPlan =
-      cr::planCreativeWorldLayoutRoomGeometry(document.gridSettings(), room);
+      roomGeometryPlan(document.gridSettings(), draft);
   if (!geometryPlan.accepted) {
     receipt.status = CreativeEditorRoomPlacementStatus::InvalidGeometry;
     receipt.reasonCode = geometryPlan.reasonCode;
@@ -239,7 +264,28 @@ CreativeEditorRoomPlacementReceipt advanceCreativeEditorRoomPlacement(
     building.rootMode = cr::CreativeBuildingRootMode::None;
     candidate.buildings.push_back(std::move(building));
   }
+  std::size_t levelIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  for (std::size_t index = 0U; index < candidate.levels.size(); ++index) {
+    const cr::CreativeWorldLayoutLevel& level = candidate.levels[index];
+    if (level.buildingIndex == 0U &&
+        std::fabs(level.floorTopLayer - draft.level.floorTopLayer) <= 1.0e-9 &&
+        level.wallHeightCells == draft.level.wallHeightCells &&
+        level.floorThicknessLayers == draft.level.floorThicknessLayers) {
+      levelIndex = index;
+      break;
+    }
+  }
+  if (levelIndex == cr::kInvalidCreativeWorldLayoutIndex) {
+    draft.level.buildingIndex = 0U;
+    draft.level.stableKey = cr::mintCreativeWorldLayoutStableKey(
+        candidate, nextOrdinal, "level");
+    draft.level.name = "Level " + std::to_string(candidate.levels.size());
+    levelIndex = candidate.levels.size();
+    candidate.levels.push_back(std::move(draft.level));
+  }
+  cr::CreativeWorldLayoutRoom& room = draft.room;
   room.buildingIndex = 0U;
+  room.levelIndex = levelIndex;
   room.stableKey =
       cr::mintCreativeWorldLayoutStableKey(candidate, nextOrdinal, "room");
   room.name = "Room " + std::to_string(candidate.rooms.size() + 1U);

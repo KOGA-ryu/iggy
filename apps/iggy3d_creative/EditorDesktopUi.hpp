@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -80,6 +81,8 @@ struct CreativeEditorDesktopUiState {
   bool showAssetLibrary = true;
   bool showHistory = true;
   bool showWorldLayout = true;
+  std::size_t worldLayoutDeleteLevelIndex =
+      std::numeric_limits<std::size_t>::max();
 
   // Docked workspace layout. Built once via DockBuilder, rebuilt on Reset
   // Layout. The default arrangement follows the target proportions: Project

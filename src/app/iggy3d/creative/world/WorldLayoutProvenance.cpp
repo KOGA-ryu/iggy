@@ -29,6 +29,7 @@ constexpr std::string_view kRoomEdgePrefix =
 [[nodiscard]] std::string tableKey(CreativeWorldLayoutTable table) {
   switch (table) {
     case CreativeWorldLayoutTable::Building: return "building";
+    case CreativeWorldLayoutTable::Level: return "level";
     case CreativeWorldLayoutTable::Room: return "room";
     case CreativeWorldLayoutTable::Box: return "box";
     case CreativeWorldLayoutTable::Wall: return "wall";
@@ -67,6 +68,12 @@ constexpr std::string_view kRoomEdgePrefix =
       return index < layout.buildings.size()
                  ? layout.buildings[index].stableKey
                  : std::string{};
+    case CreativeWorldLayoutTable::Level:
+      if (index < layout.levels.size()) {
+        buildingIndex = layout.levels[index].buildingIndex;
+        local = layout.levels[index].stableKey;
+      }
+      break;
     case CreativeWorldLayoutTable::Room:
       if (index < layout.rooms.size()) {
         buildingIndex = layout.rooms[index].buildingIndex;

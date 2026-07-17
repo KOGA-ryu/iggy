@@ -14,7 +14,7 @@
 
 namespace iggy3d::creative {
 
-inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 5U;
+inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 6U;
 inline constexpr std::size_t kInvalidCreativeWorldLayoutIndex =
     std::numeric_limits<std::size_t>::max();
 inline constexpr std::uint16_t kDefaultCreativeWorldLayoutWallHeightCells = 3U;
@@ -53,20 +53,29 @@ struct CreativeWorldLayoutBox {
   std::uint16_t layerCount = 1U;
 };
 
-struct CreativeWorldLayoutRoom {
+// Vertical building truth is normalized here instead of repeated on every
+// room. Levels remain a flat table so building/template operations can remap
+// them deterministically alongside rooms, walls, and openings.
+struct CreativeWorldLayoutLevel {
   std::size_t buildingIndex = kInvalidCreativeWorldLayoutIndex;
   std::string stableKey;
   std::string name;
-  CreativeWorldLayoutRect footprint;
-  // Finished floor-top elevation in grid layers. The generated slab extends
-  // downward from this plane and room walls begin on it exactly.
   double floorTopLayer = 0.0;
   std::uint16_t wallHeightCells =
       kDefaultCreativeWorldLayoutWallHeightCells;
+  std::uint16_t floorThicknessLayers = 1U;
+  std::uint16_t ceilingThicknessLayers = 1U;
+  std::uint16_t roofThicknessLayers = 1U;
+};
+
+struct CreativeWorldLayoutRoom {
+  std::size_t buildingIndex = kInvalidCreativeWorldLayoutIndex;
+  std::size_t levelIndex = kInvalidCreativeWorldLayoutIndex;
+  std::string stableKey;
+  std::string name;
+  CreativeWorldLayoutRect footprint;
   double wallThicknessCells =
       kDefaultCreativeWorldLayoutWallThicknessCells;
-  // Count of descriptor-defined structural floor layers, not grid cells.
-  std::uint16_t floorThicknessLayers = 1U;
 };
 
 enum class CreativeWorldLayoutRoomEdge : std::uint8_t {
@@ -181,6 +190,7 @@ struct CreativeWorldLayout {
   CreativeWorldLayoutTerrainOwnership terrainOwnership =
       CreativeWorldLayoutTerrainOwnership::PreserveExisting;
   std::vector<CreativeWorldLayoutBuilding> buildings;
+  std::vector<CreativeWorldLayoutLevel> levels;
   std::vector<CreativeWorldLayoutRoom> rooms;
   std::vector<CreativeWorldLayoutBox> boxes;
   std::vector<CreativeWorldLayoutWall> walls;
@@ -194,6 +204,7 @@ struct CreativeWorldLayout {
 enum class CreativeWorldLayoutTable : std::uint8_t {
   None,
   Building,
+  Level,
   Room,
   Box,
   Wall,

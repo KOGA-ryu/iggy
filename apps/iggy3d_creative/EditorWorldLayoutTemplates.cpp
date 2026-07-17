@@ -563,6 +563,7 @@ refreshCreativeEditorWorldLayoutBuildingTemplateInstances(
   state.nextStableOrdinal = refreshed.nextStableOrdinal;
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Building,
                      buildingIndex};
+  repairCreativeEditorWorldLayoutActiveLevel(state, buildingIndex);
   state.buildingTemplates.selectedIndex = templateIndex;
   state.buildingTemplates.statusMessage =
       std::to_string(refreshed.refreshedInstanceCount) +
@@ -689,6 +690,8 @@ applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
   state.nextStableOrdinal = nextStableOrdinal;
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Building,
                      resultBuildingIndex};
+  state.activeLevelIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  repairCreativeEditorWorldLayoutActiveLevel(state, resultBuildingIndex);
   detail::noteWorldLayoutSourceChange(state, "building template placed");
   return {true, true,
           "creative_editor_world_layout_building_template_committed"};
