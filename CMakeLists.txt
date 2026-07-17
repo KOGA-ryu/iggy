@@ -200,6 +200,7 @@ target_sources(iggy3d
     src/runtime/session/Session.cpp
     src/runtime/session/SessionAi.cpp
     src/runtime/session/SessionStateTransitions.cpp
+    src/runtime/movement/ClamberMotor.cpp
     src/runtime/movement/MovementKinematics.cpp
     src/runtime/movement/MovementPolicy.cpp
     src/runtime/movement/MovementSystem.cpp

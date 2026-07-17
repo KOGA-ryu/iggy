@@ -43,6 +43,10 @@ struct MovementRequest {
   MovementMode mode = MovementMode::Walk;
   float maxDistanceMeters = 0.0F;
   CommandId sourceCommandId = kInvalidCommandId;
+  // Clamber (flow feat v1): only the local player's Move intent may engage;
+  // NPC movement keeps its own machinery. Set by the session tick, never by
+  // the app layer.
+  bool allowClamber = false;
 };
 
 struct MovementResult {
@@ -82,6 +86,16 @@ struct MovementResult {
   std::string movementPolicyBand;
   std::string hitSurfaceId;
   std::string reasonCode = "movement_ok";
+  // Clamber engagement facts (flow feat v1). Populated only when the request
+  // allowed clamber and the planner fully stopped against a blocking face.
+  // The movement itself stays blocked; the session tick reads these facts to
+  // start the timed phase and emit the engage sound.
+  bool clamberEvaluated = false;
+  bool clamberEngaged = false;
+  Vec3 clamberTargetMeters;
+  std::uint32_t clamberDurationTicks = 0U;
+  std::string clamberSurfaceId;
+  std::string clamberReasonCode;
 };
 
 struct KinematicMovementRequest {

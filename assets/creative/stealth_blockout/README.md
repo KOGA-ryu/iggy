@@ -33,13 +33,14 @@ blender --background --python render_previews.py   # previews -> ~/stealth_block
 | Guard chase stop distance | 1.25 m | `src/runtime/ai/NpcBehaviorProfile.hpp:20` |
 | Snap increments | 0.25 / 0.5 / 1 / 2 m | `src/app/iggy3d/creative/tools/Tools.hpp:91-96`, values in `ToolSettingLabels.cpp:36-44` |
 | Grid cell / place pitch | 1.0 m | `src/app/iggy3d/map_maker/Grid.hpp:20`, `apps/iggy3d_creative/EditorBootstrap.cpp:144` |
-| Crouch height | **not in code** — only `bool crouched` (`src/runtime/player/PlayerMotor.hpp:73`); sneak eye 0.9 m is the working proxy | — |
-| Clamber/vault band | **not in code** — tags only (`Clamber`/`ClamberCandidate`/`Vault`, `src/content/assets/TraversalTag.hpp:15-17`); no numeric height/range constants anywhere in the tree | — |
+| Crouch height | **not in code** — only `bool crouched` (`src/runtime/player/PlayerMotor.hpp:73`); sneak eye 0.9 m (`clamber` motor untouched by crouch v1) is the working proxy | — |
+| Clamber band | (0.35, 1.80] m — bottom exclusive (`clamberBandBottomMeters`), top inclusive (`clamberBandTopMeters`); reach ≤ 0.55 m (`clamberMaxReachMeters`), 8-tick phase, 30 dB engage noise | `src/runtime/movement/MovementParams.hpp` clamber block |
 
-**Clamber assumption:** the believed 0.45–1.80 m band / ≤1.25 m range could
-not be verified — the mechanic is tag-driven with no numbers app- or
-engine-side. The test ladder assumes band top = player height (1.80 m) and
-the fail block sits at 2.00 m. Re-check when the clamber motor lands.
+**Clamber is now code truth:** the clamber motor (flow feat v1) reads the
+band from `MovementParams` — band top = player height (1.80 m), so the
+ladder's 1.8 block engages and the 2.00 m fail block refuses with
+`clamber_top_above_band`. The ladder heights are pinned by
+`tests/unit/clamber_motor_tests.cpp`.
 
 ## The kit (26 pieces, base at y=0, XZ centered, one flat color per family)
 
