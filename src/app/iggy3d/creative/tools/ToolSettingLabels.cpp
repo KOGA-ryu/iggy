@@ -44,6 +44,31 @@ std::string_view toString(CreativeSnapIncrement increment) noexcept {
   return "INVALID";
 }
 
+std::string_view toString(CreativePlacementGridDots dots) noexcept {
+  switch (dots) {
+    case CreativePlacementGridDots::Off: return "OFF";
+    case CreativePlacementGridDots::NearestLayer: return "NEAREST";
+    case CreativePlacementGridDots::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativePlacementDepth depth) noexcept {
+  switch (depth) {
+    case CreativePlacementDepth::ZeroCells: return "0 CELLS";
+    case CreativePlacementDepth::OneCell: return "1 CELL";
+    case CreativePlacementDepth::TwoCells: return "2 CELLS";
+    case CreativePlacementDepth::ThreeCells: return "3 CELLS";
+    case CreativePlacementDepth::FourCells: return "4 CELLS";
+    case CreativePlacementDepth::FiveCells: return "5 CELLS";
+    case CreativePlacementDepth::SixCells: return "6 CELLS";
+    case CreativePlacementDepth::SevenCells: return "7 CELLS";
+    case CreativePlacementDepth::EightCells: return "8 CELLS";
+    case CreativePlacementDepth::Count: break;
+  }
+  return "INVALID";
+}
+
 std::string_view toString(CreativeAssetPlacementMode mode) noexcept {
   switch (mode) {
     case CreativeAssetPlacementMode::Single: return "SINGLE";
@@ -170,6 +195,10 @@ std::string_view creativeToolOptionValueLabel(
       return toString(settings.placementYaw);
     case CreativeToolOptionId::SnapIncrement:
       return toString(settings.snapIncrement);
+    case CreativeToolOptionId::PlacementGridDots:
+      return toString(settings.placementGridDots);
+    case CreativeToolOptionId::PlacementDepth:
+      return toString(settings.placementDepth);
     case CreativeToolOptionId::AssetPlacementMode:
       return toString(settings.assetPlacementMode);
     case CreativeToolOptionId::AssetScatterRadius:

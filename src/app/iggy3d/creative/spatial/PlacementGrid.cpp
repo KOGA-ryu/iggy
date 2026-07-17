@@ -91,24 +91,31 @@ struct OverlayAxisRange {
                            frame.stepMeters.z, output.z);
 }
 
-[[nodiscard]] bool tryAdjacentCell(CreativeGridCoord3 cell,
-                                   CreativeVec3 faceNormal,
-                                   CreativeGridCoord3& adjacent) noexcept {
+[[nodiscard]] bool tryOffsetCell(CreativeGridCoord3 cell,
+                                 CreativeVec3 direction,
+                                 std::uint8_t steps,
+                                 CreativeGridCoord3& output) noexcept {
   const std::int64_t x = static_cast<std::int64_t>(cell.x) +
-                         static_cast<std::int64_t>(faceNormal.x);
+                         static_cast<std::int64_t>(direction.x) * steps;
   const std::int64_t y = static_cast<std::int64_t>(cell.y) +
-                         static_cast<std::int64_t>(faceNormal.y);
+                         static_cast<std::int64_t>(direction.y) * steps;
   const std::int64_t z = static_cast<std::int64_t>(cell.z) +
-                         static_cast<std::int64_t>(faceNormal.z);
+                         static_cast<std::int64_t>(direction.z) * steps;
   constexpr std::int64_t kMin = std::numeric_limits<std::int32_t>::min();
   constexpr std::int64_t kMax = std::numeric_limits<std::int32_t>::max();
   if (x < kMin || x > kMax || y < kMin || y > kMax || z < kMin ||
       z > kMax) {
     return false;
   }
-  adjacent = {static_cast<std::int32_t>(x), static_cast<std::int32_t>(y),
-              static_cast<std::int32_t>(z)};
+  output = {static_cast<std::int32_t>(x), static_cast<std::int32_t>(y),
+            static_cast<std::int32_t>(z)};
   return true;
+}
+
+[[nodiscard]] bool tryAdjacentCell(CreativeGridCoord3 cell,
+                                   CreativeVec3 faceNormal,
+                                   CreativeGridCoord3& adjacent) noexcept {
+  return tryOffsetCell(cell, faceNormal, 1U, adjacent);
 }
 
 [[nodiscard]] CreativeBounds cellBounds(
@@ -121,6 +128,14 @@ struct OverlayAxisRange {
   return {min,
           {min.x + frame.stepMeters.x, min.y + frame.stepMeters.y,
            min.z + frame.stepMeters.z}};
+}
+
+[[nodiscard]] CreativeVec3 cellPlacementAnchor(
+    CreativeGridCoord3 cell,
+    const CreativePlacementGridFrame& frame) noexcept {
+  const CreativeBounds bounds = cellBounds(cell, frame);
+  const CreativeVec3 center = measureCreativeBounds(bounds).center;
+  return {center.x, bounds.min.y, center.z};
 }
 
 [[nodiscard]] bool cellInsideDocumentBounds(
@@ -248,6 +263,83 @@ struct OverlayAxisRange {
   return CreativePlacementGridLineRole::Minor;
 }
 
+[[nodiscard]] bool tryOffsetCoordinate(std::int32_t value,
+                                       std::int32_t offset,
+                                       std::int32_t& output) noexcept {
+  const std::int64_t candidate = static_cast<std::int64_t>(value) + offset;
+  if (candidate < std::numeric_limits<std::int32_t>::min() ||
+      candidate > std::numeric_limits<std::int32_t>::max()) {
+    return false;
+  }
+  output = static_cast<std::int32_t>(candidate);
+  return true;
+}
+
+[[nodiscard]] bool cellTouchesAxisBoundary(
+    const CreativeBounds& bounds,
+    const CreativePlacementGridFrame& frame,
+    CreativePlacementGridAxisMask axis) noexcept {
+  if ((frame.boundedAxes & axis) == 0U) {
+    return false;
+  }
+  double cellMin = 0.0;
+  double cellMax = 0.0;
+  double documentMin = 0.0;
+  double documentMax = 0.0;
+  double step = 1.0;
+  if (axis == kCreativePlacementGridAxisX) {
+    cellMin = bounds.min.x;
+    cellMax = bounds.max.x;
+    documentMin = frame.documentBounds.min.x;
+    documentMax = frame.documentBounds.max.x;
+    step = frame.stepMeters.x;
+  } else if (axis == kCreativePlacementGridAxisY) {
+    cellMin = bounds.min.y;
+    cellMax = bounds.max.y;
+    documentMin = frame.documentBounds.min.y;
+    documentMax = frame.documentBounds.max.y;
+    step = frame.stepMeters.y;
+  } else {
+    cellMin = bounds.min.z;
+    cellMax = bounds.max.z;
+    documentMin = frame.documentBounds.min.z;
+    documentMax = frame.documentBounds.max.z;
+    step = frame.stepMeters.z;
+  }
+  const double epsilon = step * 1.0e-6;
+  return std::fabs(cellMin - documentMin) <= epsilon ||
+         std::fabs(cellMax - documentMax) <= epsilon;
+}
+
+[[nodiscard]] CreativePlacementGridLineRole dotRole(
+    CreativeGridCoord3 cell,
+    const CreativeBounds& bounds,
+    const CreativePlacementGridFrame& frame,
+    CreativePlacementGridAxisMask firstAxis,
+    CreativePlacementGridAxisMask secondAxis) noexcept {
+  if (cellTouchesAxisBoundary(bounds, frame, firstAxis) ||
+      cellTouchesAxisBoundary(bounds, frame, secondAxis)) {
+    return CreativePlacementGridLineRole::Boundary;
+  }
+  const auto major = [majorEvery = frame.majorEvery](std::int32_t value) {
+    return majorEvery > 0U &&
+           value % static_cast<std::int32_t>(majorEvery) == 0;
+  };
+  const std::int32_t first = firstAxis == kCreativePlacementGridAxisX
+                                 ? cell.x
+                             : firstAxis == kCreativePlacementGridAxisY
+                                 ? cell.y
+                                 : cell.z;
+  const std::int32_t second = secondAxis == kCreativePlacementGridAxisX
+                                  ? cell.x
+                              : secondAxis == kCreativePlacementGridAxisY
+                                  ? cell.y
+                                  : cell.z;
+  return major(first) || major(second)
+             ? CreativePlacementGridLineRole::Major
+             : CreativePlacementGridLineRole::Minor;
+}
+
 }  // namespace
 
 CreativePlacementGridFrame makeCreativePlacementGridFrame(
@@ -271,6 +363,7 @@ CreativePlacementGridFrame makeCreativePlacementGridFrame(
   frame.storageCellSizeMeters = grid.cellSizeMeters;
   frame.storageSize = grid.size;
   frame.storageAligned = request.storageAligned;
+  frame.depthOffsetSteps = request.depthOffsetSteps;
   frame.activePlaneY = request.useActivePlaneOverride
                            ? request.activePlaneY
                            : grid.origin.y;
@@ -370,22 +463,24 @@ CreativeGridTarget resolveCreativeGridTargetFromHit(
   const CreativeVec3 inside{hitPoint.x - snappedNormal.x * epsilon,
                             hitPoint.y - snappedNormal.y * epsilon,
                             hitPoint.z - snappedNormal.z * epsilon};
+  CreativeGridCoord3 surfaceAdjacent;
+  const CreativeVec3 viewDepthAxis = dominantAxisNormal(placerForward);
   if (!tryCellFromWorld(inside, frame, target.targetCell) ||
-      !tryAdjacentCell(target.targetCell, snappedNormal,
-                       target.adjacentCell)) {
+      !tryAdjacentCell(target.targetCell, snappedNormal, surfaceAdjacent) ||
+      (frame.depthOffsetSteps > 0U && viewDepthAxis.x == 0.0 &&
+       viewDepthAxis.y == 0.0 && viewDepthAxis.z == 0.0) ||
+      !tryOffsetCell(surfaceAdjacent, viewDepthAxis, frame.depthOffsetSteps,
+                     target.adjacentCell)) {
     return target;
   }
 
   target.hitPoint = hitPoint;
   target.faceNormal = snappedNormal;
   target.placerForward = dominantHorizontalNormal(placerForward);
+  target.viewDepthAxis = viewDepthAxis;
   target.targetCellBounds = cellBounds(target.targetCell, frame);
   target.adjacentCellBounds = cellBounds(target.adjacentCell, frame);
-  const CreativeVec3 adjacentCenter =
-      measureCreativeBounds(target.adjacentCellBounds).center;
-  target.placementAnchor = {adjacentCenter.x,
-                            target.adjacentCellBounds.min.y,
-                            adjacentCenter.z};
+  target.placementAnchor = cellPlacementAnchor(target.adjacentCell, frame);
   target.resolved = true;
   target.targetInBounds = cellInsideDocumentBounds(target.targetCellBounds,
                                                    frame);
@@ -479,6 +574,69 @@ CreativePlacementGridOverlayPlan buildCreativePlacementGridOverlayPlan(
                  frame.stepMeters.z)};
   }
   plan.valid = plan.lineCount > 0U;
+  return plan;
+}
+
+CreativePlacementGridDotLayerPlan buildCreativePlacementGridDotLayerPlan(
+    const CreativePlacementGridDotLayerRequest& request) noexcept {
+  CreativePlacementGridDotLayerPlan plan;
+  const CreativePlacementGridFrame& frame = request.frame;
+  const CreativeGridTarget& target = request.target;
+  if (!frame.valid || frame.status != CreativePlacementGridStatus::Ready ||
+      !target.valid || !target.resolved || !target.adjacentInBounds ||
+      target.status != CreativeGridTargetStatus::Ready) {
+    return plan;
+  }
+
+  const CreativeVec3 fixedAxis = dominantAxisNormal(target.viewDepthAxis);
+  CreativePlacementGridAxisMask firstAxis = kCreativePlacementGridAxisX;
+  CreativePlacementGridAxisMask secondAxis = kCreativePlacementGridAxisY;
+  if (fixedAxis.x != 0.0) {
+    firstAxis = kCreativePlacementGridAxisY;
+    secondAxis = kCreativePlacementGridAxisZ;
+  } else if (fixedAxis.y != 0.0) {
+    firstAxis = kCreativePlacementGridAxisX;
+    secondAxis = kCreativePlacementGridAxisZ;
+  } else if (fixedAxis.z == 0.0) {
+    return plan;
+  }
+
+  constexpr std::int32_t kHalf =
+      static_cast<std::int32_t>(kCreativePlacementGridDotsPerAxis / 2U);
+  for (std::int32_t firstOffset = -kHalf; firstOffset <= kHalf;
+       ++firstOffset) {
+    for (std::int32_t secondOffset = -kHalf; secondOffset <= kHalf;
+         ++secondOffset) {
+      CreativeGridCoord3 cell = target.adjacentCell;
+      std::int32_t* firstCoordinate =
+          firstAxis == kCreativePlacementGridAxisX
+              ? &cell.x
+          : firstAxis == kCreativePlacementGridAxisY ? &cell.y
+                                                     : &cell.z;
+      std::int32_t* secondCoordinate =
+          secondAxis == kCreativePlacementGridAxisX
+              ? &cell.x
+          : secondAxis == kCreativePlacementGridAxisY ? &cell.y
+                                                       : &cell.z;
+      if (!tryOffsetCoordinate(*firstCoordinate, firstOffset,
+                               *firstCoordinate) ||
+          !tryOffsetCoordinate(*secondCoordinate, secondOffset,
+                               *secondCoordinate)) {
+        continue;
+      }
+      const CreativeBounds bounds = cellBounds(cell, frame);
+      if (!cellInsideDocumentBounds(bounds, frame)) {
+        continue;
+      }
+      if (plan.dotCount >= plan.dots.size()) {
+        return plan;
+      }
+      plan.dots[plan.dotCount++] = {
+          cellPlacementAnchor(cell, frame),
+          dotRole(cell, bounds, frame, firstAxis, secondAxis)};
+    }
+  }
+  plan.valid = plan.dotCount > 0U;
   return plan;
 }
 

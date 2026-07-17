@@ -96,6 +96,25 @@ enum class CreativeSnapIncrement : std::uint8_t {
   Count,
 };
 
+enum class CreativePlacementGridDots : std::uint8_t {
+  Off,
+  NearestLayer,
+  Count,
+};
+
+enum class CreativePlacementDepth : std::uint8_t {
+  ZeroCells,
+  OneCell,
+  TwoCells,
+  ThreeCells,
+  FourCells,
+  FiveCells,
+  SixCells,
+  SevenCells,
+  EightCells,
+  Count,
+};
+
 enum class CreativeAssetPlacementMode : std::uint8_t {
   Single,
   Scatter,
@@ -171,6 +190,8 @@ enum class CreativeToolOptionId : std::uint8_t {
   RotationStep,
   PlacementYaw,
   SnapIncrement,
+  PlacementGridDots,
+  PlacementDepth,
   AssetPlacementMode,
   AssetScatterRadius,
   AssetScatterDensity,
@@ -264,6 +285,9 @@ struct CreativeToolSettings {
   CreativeRotationStep rotationStep = CreativeRotationStep::Degrees15;
   CreativePlacementYaw placementYaw = CreativePlacementYaw::Degrees0;
   CreativeSnapIncrement snapIncrement = CreativeSnapIncrement::OneMeter;
+  CreativePlacementGridDots placementGridDots =
+      CreativePlacementGridDots::Off;
+  CreativePlacementDepth placementDepth = CreativePlacementDepth::ZeroCells;
   CreativeAssetPlacementMode assetPlacementMode =
       CreativeAssetPlacementMode::Single;
   CreativeAssetScatterRadius assetScatterRadius =
@@ -500,6 +524,10 @@ creativeToolOptionDescriptors() noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeSnapIncrement increment) noexcept;
 [[nodiscard]] std::string_view toString(
+    CreativePlacementGridDots dots) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativePlacementDepth depth) noexcept;
+[[nodiscard]] std::string_view toString(
     CreativeAssetPlacementMode mode) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeAssetScatterRadius radius) noexcept;
@@ -538,6 +566,8 @@ creativeToolOptionDescriptors() noexcept;
     CreativePlacementYaw yaw) noexcept;
 [[nodiscard]] double creativeSnapIncrementMeters(
     CreativeSnapIncrement increment) noexcept;
+[[nodiscard]] std::uint8_t creativePlacementDepthSteps(
+    CreativePlacementDepth depth) noexcept;
 [[nodiscard]] std::uint32_t creativeAssetScatterRadiusCells(
     CreativeAssetScatterRadius radius) noexcept;
 [[nodiscard]] double creativeAssetScatterDensityFraction(

@@ -413,11 +413,15 @@ bool optionDescriptorsAreContextualAndBounded() {
 
   return expect(descriptors.size() == cr::kCreativeToolOptionDescriptorCount,
                 "global descriptor table has one row per option id") &&
-         expect(material.count == 2U &&
+         expect(material.count == 4U &&
                     material.ids[0] ==
                         cr::CreativeToolOptionId::PlacementYaw &&
-                    material.ids[1] == cr::CreativeToolOptionId::SnapIncrement,
-                "material exposes orientation and grid size") &&
+                    material.ids[1] == cr::CreativeToolOptionId::SnapIncrement &&
+                    material.ids[2] ==
+                        cr::CreativeToolOptionId::PlacementGridDots &&
+                    material.ids[3] ==
+                        cr::CreativeToolOptionId::PlacementDepth,
+                "material exposes orientation grid dots and depth") &&
          expect(materialBrush.count == 6U &&
                     materialBrush.ids[0] ==
                         cr::CreativeToolOptionId::MaterialBrushShape &&
@@ -624,6 +628,10 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
   cr::CreativeToolSettings settings = cr::makeDefaultCreativeToolSettings();
   cr::CreativeToolSettings invalidMask = settings;
   invalidMask.materialBrushMask = cr::CreativeMaterialBrushMask::Count;
+  cr::CreativeToolSettings invalidGridDots = settings;
+  invalidGridDots.placementGridDots = cr::CreativePlacementGridDots::Count;
+  cr::CreativeToolSettings invalidPlacementDepth = settings;
+  invalidPlacementDepth.placementDepth = cr::CreativePlacementDepth::Count;
   cr::CreativeToolSettings invalidBrushAxis = settings;
   invalidBrushAxis.materialBrushAxis = cr::CreativeAxis3::Count;
   cr::CreativeToolSettings invalidBrushFill = settings;
@@ -676,6 +684,9 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                    "default settings valid") &&
             expect(!cr::isValidCreativeToolSettings(invalidMask),
                    "invalid material brush mask fails settings validation") &&
+            expect(!cr::isValidCreativeToolSettings(invalidGridDots) &&
+                       !cr::isValidCreativeToolSettings(invalidPlacementDepth),
+                   "invalid placement grid settings fail validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidBrushAxis),
                    "invalid material brush axis fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidBrushFill),
@@ -720,6 +731,16 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                            cr::CreativeToolOptionId::PlacementYaw) == "0 DEG" &&
                        cr::creativeSnapIncrementMeters(settings.snapIncrement) ==
                            1.0 &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::PlacementGridDots) ==
+                           "OFF" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::PlacementDepth) ==
+                           "0 CELLS" &&
+                       cr::creativePlacementDepthSteps(
+                           settings.placementDepth) == 0U &&
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::ShapeBrushKind) == "BOX" &&
@@ -868,6 +889,15 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                                   std::int32_t direction) {
     return cr::adjustCreativeToolOption(settings, option, direction);
   };
+  const cr::CreativeToolOptionAdjustReceipt surfaceClamp =
+      adjust(cr::CreativeToolOptionId::PlacementDepth, -1);
+  ok = expect(surfaceClamp.accepted && !surfaceClamp.changed &&
+                  surfaceClamp.status ==
+                      cr::CreativeToolOptionAdjustStatus::NoChange &&
+                  settings.placementDepth ==
+                      cr::CreativePlacementDepth::ZeroCells,
+              "placement depth clamps at the hit surface") &&
+       ok;
   ok = expect(adjust(cr::CreativeToolOptionId::MoveConstraint, 1).changed &&
                   settings.moveConstraint == cr::CreativeMoveConstraint::X,
               "move constraint cycles to X") &&
@@ -888,6 +918,15 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
        expect(adjust(cr::CreativeToolOptionId::SnapIncrement, 1).changed &&
                   settings.snapIncrement == cr::CreativeSnapIncrement::TwoMeters,
               "grid increment cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::PlacementGridDots, 1).changed &&
+                  settings.placementGridDots ==
+                      cr::CreativePlacementGridDots::NearestLayer,
+              "grid dots toggle to the nearest interaction layer") &&
+       expect(adjust(cr::CreativeToolOptionId::PlacementDepth, 1).changed &&
+                  settings.placementDepth ==
+                      cr::CreativePlacementDepth::OneCell &&
+                  cr::creativePlacementDepthSteps(settings.placementDepth) == 1U,
+              "placement depth advances one cell away") &&
        expect(adjust(cr::CreativeToolOptionId::MaterialBrushShape, 1).changed &&
                   settings.materialBrushShape ==
                       cr::CreativeMaterialBrushShape::Cylinder,
@@ -1075,6 +1114,20 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                   settings.radialArraySweep ==
                       cr::CreativeRadialArraySweep::Degrees90,
               "radial sweep wraps") &&
+       ok;
+
+  settings.placementDepth = cr::CreativePlacementDepth::EightCells;
+  const cr::CreativeToolOptionAdjustReceipt depthMaximum =
+      adjust(cr::CreativeToolOptionId::PlacementDepth, 1);
+  const cr::CreativeToolOptionAdjustReceipt depthBack =
+      adjust(cr::CreativeToolOptionId::PlacementDepth, -1);
+  ok = expect(depthMaximum.accepted && !depthMaximum.changed &&
+                  depthMaximum.status ==
+                      cr::CreativeToolOptionAdjustStatus::NoChange &&
+                  depthBack.changed &&
+                  settings.placementDepth ==
+                      cr::CreativePlacementDepth::SevenCells,
+              "placement depth clamps far away and can move back") &&
        ok;
 
   const cr::CreativeToolSettings beforeZero = settings;

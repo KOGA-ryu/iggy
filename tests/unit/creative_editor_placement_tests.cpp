@@ -701,8 +701,9 @@ bool quickEditOrientationFeedsPreviewAndCreatePlan() {
                        !voxel.plan.orientationResolved &&
                        sameVec3(voxel.plan.transform.rotationEulerRadians,
                                 {}) &&
-                       creativeEditorQuickEditStatusLabel(voxelEditor).empty(),
-                   "voxel brushes omit inapplicable quick-edit channels") &&
+                       creativeEditorQuickEditStatusLabel(voxelEditor) ==
+                           "GRID DOTS OFF",
+                   "voxel placement keeps only lattice-wide quick edits") &&
             expect(sawPath && pathYawIgnored,
                    "path brushes ignore global yaw without becoming invalid");
 
@@ -718,6 +719,32 @@ bool quickEditOrientationFeedsPreviewAndCreatePlan() {
                       cr::CreativeSnapIncrement::HalfMeter &&
                   editor.placeCellSize == 0.5,
               "dpad left adjusts the selected channel immediately") &&
+       ok;
+  ok = expect(processCreativeEditorQuickEditAction(
+                  editor, cr::CreativeInputActionId::QuickEditNext) &&
+                  creativeEditorQuickEditStatusLabel(editor) ==
+                      "GRID DOTS OFF" &&
+                  processCreativeEditorQuickEditAction(
+                      editor, cr::CreativeInputActionId::QuickEditIncrease) &&
+                  editor.toolSettings.placementGridDots ==
+                      cr::CreativePlacementGridDots::NearestLayer &&
+                  creativeEditorQuickEditStatusLabel(editor) ==
+                      "GRID DOTS NEAREST",
+              "square and dpad expose the nearest-layer dot toggle") &&
+       ok;
+  ok = expect(processCreativeEditorQuickEditAction(
+                  editor, cr::CreativeInputActionId::QuickEditNext) &&
+                  processCreativeEditorQuickEditAction(
+                      editor, cr::CreativeInputActionId::QuickEditIncrease) &&
+                  editor.toolSettings.placementDepth ==
+                      cr::CreativePlacementDepth::OneCell &&
+                  creativeEditorQuickEditStatusLabel(editor) ==
+                      "PLACEMENT DEPTH 1 CELL" &&
+                  processCreativeEditorQuickEditAction(
+                      editor, cr::CreativeInputActionId::QuickEditDecrease) &&
+                  editor.toolSettings.placementDepth ==
+                      cr::CreativePlacementDepth::ZeroCells,
+              "dpad right moves placement away and left brings it back") &&
        ok;
   return ok;
 }
@@ -755,14 +782,22 @@ bool toolOptionsFollowTheRequestedMaterialEntry() {
       creativeEditorQuickEditStatusLabel(editor).empty();
   syncCreativeEditorQuickEdit(editor);
 
-  return expect(wallOptions.count == 0U,
-                "fixed-grid material does not advertise authored placement options") &&
-         expect(doorOptions.count == 2U &&
+  return expect(wallOptions.count == 2U &&
+                    wallOptions.ids[0] ==
+                        cr::CreativeToolOptionId::PlacementGridDots &&
+                    wallOptions.ids[1] ==
+                        cr::CreativeToolOptionId::PlacementDepth,
+                "fixed-grid material exposes only lattice-wide placement options") &&
+         expect(doorOptions.count == 4U &&
                     doorOptions.ids[0] ==
                         cr::CreativeToolOptionId::PlacementYaw &&
                     doorOptions.ids[1] ==
-                        cr::CreativeToolOptionId::SnapIncrement,
-                "requested authored material owns its orientation and grid options") &&
+                        cr::CreativeToolOptionId::SnapIncrement &&
+                    doorOptions.ids[2] ==
+                        cr::CreativeToolOptionId::PlacementGridDots &&
+                    doorOptions.ids[3] ==
+                        cr::CreativeToolOptionId::PlacementDepth,
+                "authored material owns orientation grid dots and depth") &&
          expect(invalidOptions.count == 0U,
                 "invalid material option targets fail closed") &&
          expect(brushCommands.count == 2U &&
@@ -777,7 +812,9 @@ bool toolOptionsFollowTheRequestedMaterialEntry() {
          expect(doorQuickEditReady && staleDoorStatusHidden &&
                     editor.quickEdit.targetEntry.objectKind ==
                         cr::CreativeObjectKind::Wall &&
-                    editor.quickEdit.options.count == 0U,
+                    editor.quickEdit.options.count == 2U &&
+                    creativeEditorQuickEditStatusLabel(editor) ==
+                        "GRID DOTS OFF",
                 "quick edit tracks the complete material entry without stale labels");
 }
 
@@ -1509,6 +1546,89 @@ bool materialAimMovementDoesNotChangeUploadSignature() {
          expect(firstPathGeometry.geometrySignature ==
                     secondPathGeometry.geometrySignature,
                 "path aim movement is upload-stable") &&
+         ok;
+}
+
+bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("dot layer");
+  static_cast<void>(document.assignId(119U));
+  static_cast<void>(document.setGridSettings(
+      {{0.0, 0.0, 0.0}, 1.0, {12, 12, 12}}));
+  static_cast<void>(document.setWorldBounds(
+      {{0.0, 0.0, 0.0}, {12.0, 12.0, 12.0}}));
+  cr::CreativeAppState appState;
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Door);
+  editor.toolSettings.placementGridDots =
+      cr::CreativePlacementGridDots::NearestLayer;
+  editor.toolSettings.placementDepth = cr::CreativePlacementDepth::TwoCells;
+  const cr::CreativeDocument& installed = appState.facade.document();
+  const cr::CreativePlacementGridFrame placementGrid =
+      creativeEditorPlacementGridFrame(installed, editor);
+  const cr::CreativeGridTarget gridTarget =
+      cr::resolveCreativeGridTargetFromHit(
+          {4.0, 2.5, 5.5}, {1.0, 0.0, 0.0}, placementGrid,
+          {1.0, 0.0, 0.0});
+  editor.interaction.target.valid = gridTarget.valid;
+  editor.interaction.target.grid = gridTarget;
+
+  CreativeEditorSelectionFrame selection;
+  CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  iggy3d::FrameInput frame;
+  frame.camera.worldEye = {0.5F, 2.5F, 5.5F};
+  CreativeEditorOverlayFrame visible;
+  const std::uint64_t revisionBefore = installed.revision();
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      visible);
+  const std::size_t renderedDots = static_cast<std::size_t>(std::count_if(
+      visible.combinedWireLines.begin(), visible.combinedWireLines.end(),
+      [](const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return line.segmentKind == 5U;
+      }));
+  const bool oneDepthLayer = std::all_of(
+      visible.combinedWireLines.begin(), visible.combinedWireLines.end(),
+      [&gridTarget](const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return line.segmentKind != 5U ||
+               near((line.start.x + line.end.x) * 0.5F,
+                    static_cast<float>(gridTarget.placementAnchor.x));
+      });
+
+  bool ok = expect(placementGrid.depthOffsetSteps == 2U && gridTarget.valid &&
+                       gridTarget.adjacentCell ==
+                           cr::CreativeGridCoord3{6, 2, 5} &&
+                       visible.placementGridLineCount > 0U &&
+                       visible.placementGridDotCount == 144U &&
+                       renderedDots == visible.placementGridDotCount &&
+                       oneDepthLayer &&
+                       appState.facade.document().revision() == revisionBefore,
+                   "nearest dots render one shifted layer without mutation");
+
+  editor.toolSettings.placementGridDots = cr::CreativePlacementGridDots::Off;
+  CreativeEditorOverlayFrame hiddenByToggle;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      hiddenByToggle);
+  ok = expect(hiddenByToggle.placementGridLineCount > 0U &&
+                  hiddenByToggle.placementGridDotCount == 0U,
+              "dot toggle leaves the ordinary placement grid intact") &&
+       ok;
+
+  editor.toolSettings.placementGridDots =
+      cr::CreativePlacementGridDots::NearestLayer;
+  editor.toolOptions.open = true;
+  CreativeEditorOverlayFrame hiddenByModal;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      hiddenByModal);
+  return expect(hiddenByModal.placementGridLineCount == 0U &&
+                    hiddenByModal.placementGridDotCount == 0U,
+                "modal surfaces hide the placement lattice") &&
          ok;
 }
 
@@ -5093,6 +5213,7 @@ int main() {
   ok = previewsDoNotAffectRoomGeometrySignature() && ok;
   ok = roomGeometryRendersStoredEulerRadians() && ok;
   ok = materialAimMovementDoesNotChangeUploadSignature() && ok;
+  ok = placementGridDotsRenderOnlyTheActiveDepthLayer() && ok;
   ok = shapeVolumePreviewsStayBoundedAndFailClosed() && ok;
   ok = editorVolumeBudgetRejectsBeforeMutation() && ok;
   ok = sceneCacheRefreshesOnlyOnDocumentRevision() && ok;

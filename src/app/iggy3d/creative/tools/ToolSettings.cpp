@@ -31,6 +31,17 @@ template <typename Enum>
   return static_cast<Enum>(next);
 }
 
+template <typename Enum>
+[[nodiscard]] Enum stepEnumClamped(Enum value, Enum count,
+                                   std::int32_t direction) noexcept {
+  const std::size_t size = static_cast<std::size_t>(count);
+  const std::size_t current = static_cast<std::size_t>(value);
+  if (direction > 0) {
+    return static_cast<Enum>(current + 1U < size ? current + 1U : current);
+  }
+  return static_cast<Enum>(current > 0U ? current - 1U : current);
+}
+
 [[nodiscard]] bool sameSettings(const CreativeToolSettings& lhs,
                                 const CreativeToolSettings& rhs) noexcept {
   return lhs == rhs;
@@ -153,6 +164,9 @@ bool isValidCreativeToolSettings(
          validEnum(settings.rotationStep, CreativeRotationStep::Count) &&
          validEnum(settings.placementYaw, CreativePlacementYaw::Count) &&
          validEnum(settings.snapIncrement, CreativeSnapIncrement::Count) &&
+         validEnum(settings.placementGridDots,
+                   CreativePlacementGridDots::Count) &&
+         validEnum(settings.placementDepth, CreativePlacementDepth::Count) &&
          validEnum(settings.assetPlacementMode,
                    CreativeAssetPlacementMode::Count) &&
          validEnum(settings.assetScatterRadius,
@@ -299,6 +313,15 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
     case CreativeToolOptionId::SnapIncrement:
       adjusted.snapIncrement = cycleEnum(
           adjusted.snapIncrement, CreativeSnapIncrement::Count, direction);
+      break;
+    case CreativeToolOptionId::PlacementGridDots:
+      adjusted.placementGridDots = cycleEnum(
+          adjusted.placementGridDots, CreativePlacementGridDots::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::PlacementDepth:
+      adjusted.placementDepth = stepEnumClamped(
+          adjusted.placementDepth, CreativePlacementDepth::Count, direction);
       break;
     case CreativeToolOptionId::AssetPlacementMode:
       adjusted.assetPlacementMode = cycleEnum(
@@ -633,6 +656,14 @@ double creativeSnapIncrementMeters(CreativeSnapIncrement increment) noexcept {
   constexpr std::array values{0.25, 0.5, 1.0, 2.0};
   const std::size_t index = static_cast<std::size_t>(increment);
   return index < values.size() ? values[index] : 0.0;
+}
+
+std::uint8_t creativePlacementDepthSteps(
+    CreativePlacementDepth depth) noexcept {
+  const std::size_t index = static_cast<std::size_t>(depth);
+  return index < static_cast<std::size_t>(CreativePlacementDepth::Count)
+             ? static_cast<std::uint8_t>(index)
+             : 0U;
 }
 
 std::uint32_t creativeAssetScatterRadiusCells(

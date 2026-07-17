@@ -39,6 +39,7 @@ struct CreativePlacementGridFrameRequest {
   bool useStepOverride = false;
   bool useActivePlaneOverride = false;
   bool storageAligned = false;
+  std::uint8_t depthOffsetSteps = 0U;
 };
 
 struct CreativePlacementGridFrame {
@@ -52,6 +53,7 @@ struct CreativePlacementGridFrame {
   CreativePlacementGridAxisMask boundedAxes = 0U;
   double activePlaneY = 0.0;
   std::uint32_t majorEvery = 5U;
+  std::uint8_t depthOffsetSteps = 0U;
   bool storageAligned = false;
   bool valid = false;
 };
@@ -65,6 +67,7 @@ struct CreativeGridTarget {
   CreativeVec3 hitPoint{};
   CreativeVec3 faceNormal{};
   CreativeVec3 placerForward{0.0, 0.0, -1.0};
+  CreativeVec3 viewDepthAxis{0.0, 0.0, -1.0};
   CreativeGridCoord3 targetCell{};
   CreativeGridCoord3 adjacentCell{};
   CreativeBounds targetCellBounds{};
@@ -107,6 +110,29 @@ struct CreativePlacementGridOverlayPlan {
   bool valid = false;
 };
 
+struct CreativePlacementGridDot {
+  CreativeVec3 position{};
+  CreativePlacementGridLineRole role =
+      CreativePlacementGridLineRole::Minor;
+};
+
+inline constexpr std::size_t kCreativePlacementGridDotsPerAxis = 33U;
+inline constexpr std::size_t kCreativePlacementGridMaximumDotCount =
+    kCreativePlacementGridDotsPerAxis * kCreativePlacementGridDotsPerAxis;
+
+struct CreativePlacementGridDotLayerRequest {
+  CreativePlacementGridFrame frame{};
+  CreativeGridTarget target{};
+};
+
+struct CreativePlacementGridDotLayerPlan {
+  std::array<CreativePlacementGridDot,
+             kCreativePlacementGridMaximumDotCount>
+      dots{};
+  std::size_t dotCount = 0U;
+  bool valid = false;
+};
+
 [[nodiscard]] CreativePlacementGridFrame makeCreativePlacementGridFrame(
     const CreativePlacementGridFrameRequest& request) noexcept;
 [[nodiscard]] CreativeGridTarget resolveCreativeGridTargetFromHit(
@@ -123,5 +149,8 @@ struct CreativePlacementGridOverlayPlan {
 [[nodiscard]] CreativePlacementGridOverlayPlan
 buildCreativePlacementGridOverlayPlan(
     const CreativePlacementGridOverlayRequest& request) noexcept;
+[[nodiscard]] CreativePlacementGridDotLayerPlan
+buildCreativePlacementGridDotLayerPlan(
+    const CreativePlacementGridDotLayerRequest& request) noexcept;
 
 }  // namespace iggy3d::creative

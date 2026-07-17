@@ -134,6 +134,10 @@ cr::CreativePlacementGridFrame creativeEditorPlacementGridFrame(
   request.useStepOverride = !storageAligned;
   request.useActivePlaneOverride = useActivePlaneOverride;
   request.storageAligned = storageAligned;
+  if (held.kind == cr::CreativeHeldItemKind::Material) {
+    request.depthOffsetSteps =
+        cr::creativePlacementDepthSteps(editor.toolSettings.placementDepth);
+  }
   return cr::makeCreativePlacementGridFrame(request);
 }
 

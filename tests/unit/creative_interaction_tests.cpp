@@ -844,6 +844,85 @@ bool placementGridOwnsBoundsOriginsAndOverlayPlanes() {
          ok;
 }
 
+bool placementDepthAndNearestDotLayerShareOneLattice() {
+  cr::CreativePlacementGridFrameRequest request;
+  request.documentGrid = {{0.0, 0.0, 0.0}, 1.0, {8, 8, 8}};
+  request.documentWorldBounds = {{0.0, 0.0, 0.0}, {8.0, 8.0, 8.0}};
+  request.storageAligned = true;
+  request.depthOffsetSteps = 2U;
+  const cr::CreativePlacementGridFrame frame =
+      cr::makeCreativePlacementGridFrame(request);
+  const cr::CreativeGridTarget away = cr::resolveCreativeGridTargetFromHit(
+      {4.0, 2.5, 5.5}, {1.0, 0.0, 0.0}, frame, {1.0, 0.1, 0.0});
+  const cr::CreativePlacementGridDotLayerPlan dots =
+      cr::buildCreativePlacementGridDotLayerPlan({frame, away});
+
+  bool ok = expect(away.valid && away.adjacentInBounds &&
+                       away.targetCell == cr::CreativeGridCoord3{3, 2, 5} &&
+                       away.adjacentCell == cr::CreativeGridCoord3{6, 2, 5} &&
+                       away.viewDepthAxis.x == 1.0 &&
+                       away.viewDepthAxis.y == 0.0 &&
+                       away.viewDepthAxis.z == 0.0 &&
+                       near(away.placementAnchor.x, 6.5),
+                   "depth moves placement away along the dominant view axis") &&
+            expect(dots.valid && dots.dotCount == 64U &&
+                       std::all_of(
+                           dots.dots.begin(), dots.dots.begin() + dots.dotCount,
+                           [](const cr::CreativePlacementGridDot& dot) {
+                             return near(dot.position.x, 6.5);
+                           }),
+                   "nearest dots occupy only the interacting YZ layer");
+
+  const cr::CreativeGridTarget negativeDepth =
+      cr::resolveCreativeGridTargetFromHit(
+          {3.5, 2.0, 6.5}, {0.0, 1.0, 0.0}, frame, {0.1, 0.0, -1.0});
+  ok = expect(negativeDepth.valid && negativeDepth.adjacentInBounds &&
+                  negativeDepth.targetCell == cr::CreativeGridCoord3{3, 1, 6} &&
+                  negativeDepth.adjacentCell ==
+                      cr::CreativeGridCoord3{3, 2, 4} &&
+                  near(negativeDepth.placementAnchor.z, 4.5),
+              "negative view direction moves away with the correct sign") &&
+       ok;
+
+  cr::CreativePlacementGridFrameRequest rejectedRequest = request;
+  rejectedRequest.depthOffsetSteps = 3U;
+  const cr::CreativePlacementGridFrame rejectedFrame =
+      cr::makeCreativePlacementGridFrame(rejectedRequest);
+  const cr::CreativeGridTarget rejected = cr::resolveCreativeGridTargetFromHit(
+      {6.0, 2.5, 5.5}, {1.0, 0.0, 0.0}, rejectedFrame, {1.0, 0.0, 0.0});
+  ok = expect(rejected.valid && !rejected.adjacentInBounds &&
+                  rejected.status ==
+                      cr::CreativeGridTargetStatus::AdjacentOutOfBounds &&
+                  !cr::buildCreativePlacementGridDotLayerPlan(
+                       {rejectedFrame, rejected})
+                       .valid,
+              "depth fails closed beyond document bounds") &&
+       ok;
+
+  cr::CreativePlacementGridFrameRequest unboundedRequest;
+  unboundedRequest.storageAligned = true;
+  const cr::CreativePlacementGridFrame unboundedFrame =
+      cr::makeCreativePlacementGridFrame(unboundedRequest);
+  const cr::CreativeGridTarget unboundedTarget =
+      cr::resolveCreativeGridTargetFromHit(
+          {0.5, 1.0, 0.5}, {0.0, 1.0, 0.0}, unboundedFrame,
+          {0.0, 0.0, -1.0});
+  const cr::CreativePlacementGridDotLayerPlan boundedBudget =
+      cr::buildCreativePlacementGridDotLayerPlan(
+          {unboundedFrame, unboundedTarget});
+  return expect(boundedBudget.valid &&
+                    boundedBudget.dotCount ==
+                        cr::kCreativePlacementGridMaximumDotCount &&
+                    std::all_of(
+                        boundedBudget.dots.begin(),
+                        boundedBudget.dots.begin() + boundedBudget.dotCount,
+                        [](const cr::CreativePlacementGridDot& dot) {
+                          return near(dot.position.z, 0.5);
+                        }),
+                "unbounded documents still emit one fixed-budget XY layer") &&
+         ok;
+}
+
 bool placementFeedbackHasABoundedVisibleLifetime() {
   using iggy3d_creative_app::CreativeEditorPlacementFeedback;
   using iggy3d_creative_app::CreativeEditorPlacementFeedbackStatus;
@@ -1067,6 +1146,7 @@ int main() {
   ok = heldVolumeItemsMapWithoutBranchesAtCallers() && ok;
   ok = gridTargetResolvesHitFaceAndPlacementCell() && ok;
   ok = placementGridOwnsBoundsOriginsAndOverlayPlanes() && ok;
+  ok = placementDepthAndNearestDotLayerShareOneLattice() && ok;
   ok = placementFeedbackHasABoundedVisibleLifetime() && ok;
   ok = materialRepeatCadenceAndPrecedenceAreDeterministic() && ok;
   ok = worldStrokeRepeatRequestUnifiesMouseAndControllerActions() && ok;
