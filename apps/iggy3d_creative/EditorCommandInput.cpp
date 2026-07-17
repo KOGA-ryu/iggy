@@ -293,10 +293,14 @@ void applyCreativeEditorCommandInput(
         }
         break;
       case creative::CreativeInputActionId::Undo:
-        (void)undoLastEdit(appState, "keyboard_undo");
+        (void)undoLastEdit(appState, "keyboard_undo",
+                           editor.assetEdit.active ? nullptr
+                                                   : &editor.worldLayout);
         break;
       case creative::CreativeInputActionId::Redo:
-        (void)redoLastEdit(appState, "keyboard_redo");
+        (void)redoLastEdit(appState, "keyboard_redo",
+                           editor.assetEdit.active ? nullptr
+                                                   : &editor.worldLayout);
         break;
       case creative::CreativeInputActionId::CopySelection:
         if (terrainRegionHeld()) {
@@ -369,7 +373,9 @@ void applyCreativeEditorCommandInput(
       case creative::CreativeInputActionId::Save: {
         const iggy3d::CreativeWorldSaveResult saveResult =
             saveStandaloneScene(appState.facade, saveRoot, saveId,
-                                &editor.worldLayout.source);
+                                &editor.worldLayout.source,
+                                editor.worldLayout.generatedRevision ==
+                                    editor.worldLayout.revision);
         if (saveResult.accepted && saveResult.saved) {
           clearEditHistory(appState.history, "save_success");
           markCreativeEditorWorldLayoutSaved(editor.worldLayout);

@@ -14,7 +14,7 @@
 
 namespace iggy3d::creative {
 
-inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 3U;
+inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 4U;
 inline constexpr std::size_t kInvalidCreativeWorldLayoutIndex =
     std::numeric_limits<std::size_t>::max();
 inline constexpr std::uint16_t kDefaultCreativeWorldLayoutWallHeightCells = 3U;
@@ -56,14 +56,15 @@ struct CreativeWorldLayoutRoom {
   std::string stableKey;
   std::string name;
   CreativeWorldLayoutRect footprint;
-  // Floor-cell elevation. The generated slab is thin and centered in this
-  // cell; room walls start at that center plane to avoid a visible seam.
-  std::int32_t baseLayer = 0;
+  // Finished floor-top elevation in grid layers. The generated slab extends
+  // downward from this plane and room walls begin on it exactly.
+  double floorTopLayer = 0.0;
   std::uint16_t wallHeightCells =
       kDefaultCreativeWorldLayoutWallHeightCells;
   double wallThicknessCells =
       kDefaultCreativeWorldLayoutWallThicknessCells;
-  std::uint16_t floorThicknessCells = 1U;
+  // Count of descriptor-defined structural floor layers, not grid cells.
+  std::uint16_t floorThicknessLayers = 1U;
 };
 
 enum class CreativeWorldLayoutRoomEdge : std::uint8_t {

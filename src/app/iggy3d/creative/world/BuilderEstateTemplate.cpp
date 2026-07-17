@@ -67,10 +67,10 @@ void appendHouseRoom(CreativeWorldLayout& layout,
   room.stableKey = stableKey;
   room.name = name;
   room.footprint = footprint;
-  room.baseLayer = kHouseFloorLayer;
+  room.floorTopLayer = kHouseFloorLayer;
   room.wallHeightCells = kHouseWallHeightCells;
   room.wallThicknessCells = 0.25;
-  room.floorThicknessCells = 1U;
+  room.floorThicknessLayers = 1U;
   layout.rooms.push_back(std::move(room));
 
   CreativeWorldLayoutBox metadata;

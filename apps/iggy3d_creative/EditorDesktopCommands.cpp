@@ -175,7 +175,9 @@ void dispatchOne(const CreativeDesktopCommand& command,
           context.activeSaveId != nullptr ? *context.activeSaveId : std::string{};
       const iggy3d::CreativeWorldSaveResult saveResult =
           saveStandaloneScene(appState.facade, context.saveRoot, saveId,
-                              &editor.worldLayout.source);
+                              &editor.worldLayout.source,
+                              editor.worldLayout.generatedRevision ==
+                                  editor.worldLayout.revision);
       const bool ok = saveResult.accepted && saveResult.saved;
       if (ok) {
         clearEditHistory(appState.history, "desktop_save");
@@ -195,7 +197,9 @@ void dispatchOne(const CreativeDesktopCommand& command,
       }
       const iggy3d::CreativeWorldSaveResult saveResult =
           saveStandaloneScene(appState.facade, context.saveRoot, saveId,
-                              &editor.worldLayout.source);
+                              &editor.worldLayout.source,
+                              editor.worldLayout.generatedRevision ==
+                                  editor.worldLayout.revision);
       const bool ok = saveResult.accepted && saveResult.saved;
       if (ok) {
         if (context.activeSaveId != nullptr) {
@@ -211,14 +215,20 @@ void dispatchOne(const CreativeDesktopCommand& command,
       break;
     }
     case CreativeDesktopCommandId::Undo: {
-      const bool ok = undoLastEdit(activeAppState, "desktop_undo");
+      CreativeEditorWorldLayoutState* worldLayout =
+          &activeAppState == &appState ? &editor.worldLayout : nullptr;
+      const bool ok =
+          undoLastEdit(activeAppState, "desktop_undo", worldLayout);
       result.accepted = ok;
       result.changed = ok;
       result.message = ok ? "undo" : "nothing to undo";
       break;
     }
     case CreativeDesktopCommandId::Redo: {
-      const bool ok = redoLastEdit(activeAppState, "desktop_redo");
+      CreativeEditorWorldLayoutState* worldLayout =
+          &activeAppState == &appState ? &editor.worldLayout : nullptr;
+      const bool ok =
+          redoLastEdit(activeAppState, "desktop_redo", worldLayout);
       result.accepted = ok;
       result.changed = ok;
       result.message = ok ? "redo" : "nothing to redo";

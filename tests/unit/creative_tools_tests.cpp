@@ -781,13 +781,13 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::RoomFloorThickness) ==
-                           "0.25 M" &&
+                           "0.05 M" &&
                        cr::creativeRoomWallHeightMeters(
                            settings.roomWallHeight) == 3.0 &&
                        cr::creativeRoomWallThicknessMeters(
                            settings.roomWallThickness) == 0.25 &&
                        cr::creativeRoomFloorThicknessMeters(
-                           settings.roomFloorThickness) == 0.25 &&
+                           settings.roomFloorThickness) == 0.05 &&
                        cr::creativePlacementDepthSteps(
                            settings.placementDepth) == 0U &&
                        cr::creativeToolOptionValueLabel(

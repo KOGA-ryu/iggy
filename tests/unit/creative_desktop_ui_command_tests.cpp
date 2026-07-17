@@ -1797,9 +1797,9 @@ bool worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() {
   const std::size_t roomIndex = static_cast<std::size_t>(
       std::distance(editor.worldLayout.source.rooms.begin(), room));
   app::CreativeEditorWorldLayoutRoomSettings settings{
-      room->footprint, room->baseLayer,
+      room->footprint, room->floorTopLayer,
       static_cast<std::uint16_t>(room->wallHeightCells + 1U),
-      room->wallThicknessCells, room->floorThicknessCells};
+      room->wallThicknessCells, room->floorThicknessLayers};
   static_cast<void>(app::setCreativeEditorWorldLayoutRoomSettings(
       editor.worldLayout, roomIndex, settings));
 
@@ -1979,7 +1979,7 @@ bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
                         cr::CreativeTerrainCoord2{2, 1} &&
                     editor.worldLayout.source.rooms[0].footprint.maximum ==
                         cr::CreativeTerrainCoord2{10, 7} &&
-                    editor.worldLayout.source.rooms[0].baseLayer == 1 &&
+                    editor.worldLayout.source.rooms[0].floorTopLayer == 1.0 &&
                     editor.worldLayout.source.rooms[0].wallHeightCells == 4U &&
                     editor.worldLayout.source.rooms[0].wallThicknessCells ==
                         0.5,

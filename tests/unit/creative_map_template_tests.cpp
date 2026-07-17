@@ -336,8 +336,11 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
                 "builder estate exposes primary floor") &&
          expect(floor != nullptr && houseGround.present &&
                     houseGround.heightCells == 4U &&
-                    floor->bounds.min.y == 4.0 && floor->bounds.max.y == 5.0,
-                "builder estate floors sit exactly on authored terrain") &&
+                    floor->bounds.max.y == 4.0 &&
+                    std::fabs((floor->bounds.max.y - floor->bounds.min.y) -
+                              cr::defaultCreativeStructuralLayerThicknessMeters(
+                                  cr::CreativeObjectKind::Floor)) <= 1.0e-9,
+                "builder estate floor top meets terrain with exact slab thickness") &&
          expect(encoded.accepted && repeatedEncoded.accepted &&
                     encoded.encodedText == repeatedEncoded.encodedText &&
                     repeated.objectCount == map.objectCount &&

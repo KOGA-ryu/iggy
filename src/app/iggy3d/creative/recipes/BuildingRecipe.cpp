@@ -244,6 +244,19 @@ void setGeometryStatus(CreativeRectangularRoomGeometryPlan& plan,
   return request;
 }
 
+[[nodiscard]] std::vector<std::string> mergedTags(
+    const std::vector<std::string>& common,
+    const std::vector<std::string>& specific) {
+  std::vector<std::string> output = common;
+  output.reserve(common.size() + specific.size());
+  for (const std::string& tag : specific) {
+    if (std::find(output.begin(), output.end(), tag) == output.end()) {
+      output.push_back(tag);
+    }
+  }
+  return output;
+}
+
 void setRecipeParent(CreativeRecipeObjectPlan& object,
                      const CreativeBuildingRecipeRequest& request,
                      bool hasCreatedRoot) {
@@ -261,10 +274,13 @@ void appendGeneratedObject(CreativeBuildingRecipeResult& result,
                            std::string name,
                            CreativeBounds bounds,
                            bool hasCreatedRoot,
+                           const std::vector<std::string>& specificTags = {},
                            CreativeVec3 scale = {1.0, 1.0, 1.0}) {
   CreativeRecipeObjectPlan object;
+  const std::vector<std::string> tags =
+      mergedTags(request.tags, specificTags);
   object.createRequest = makeBoxRequest(kind, std::move(name), bounds,
-                                        request.visible, request.tags, scale);
+                                        request.visible, tags, scale);
   object.role = CreativeRecipeObjectRole::Generated;
   object.stableKey = std::move(stableKey);
   setRecipeParent(object, request, hasCreatedRoot);
@@ -394,7 +410,7 @@ void appendGeneratedObject(CreativeBuildingRecipeResult& result,
         segmentName(wall, segmentIndex),
         spanBounds(frame, cursor, ordered.minimum, 0.0, frame.height,
                    frame.thickness),
-        hasCreatedRoot);
+        hasCreatedRoot, wall.tags);
     ++segmentIndex;
 
     if (opening.cutoutBottomMeters > kGeometryEpsilon) {
@@ -403,7 +419,7 @@ void appendGeneratedObject(CreativeBuildingRecipeResult& result,
           opening.stableKey + ".sill", opening.name + " Sill",
           spanBounds(frame, ordered.minimum, ordered.maximum, 0.0,
                      opening.cutoutBottomMeters, frame.thickness),
-          hasCreatedRoot);
+          hasCreatedRoot, opening.tags);
     }
     const double cutoutTop =
         opening.cutoutBottomMeters + opening.cutoutHeightMeters;
@@ -413,7 +429,7 @@ void appendGeneratedObject(CreativeBuildingRecipeResult& result,
           opening.stableKey + ".lintel", opening.name + " Lintel",
           spanBounds(frame, ordered.minimum, ordered.maximum, cutoutTop,
                      frame.height, frame.thickness),
-          hasCreatedRoot);
+          hasCreatedRoot, opening.tags);
     }
 
     if (opening.includeInsert) {
@@ -443,7 +459,7 @@ void appendGeneratedObject(CreativeBuildingRecipeResult& result,
               : CreativeObjectKind::Window;
       appendGeneratedObject(result, request, kind,
                             opening.stableKey + ".insert", opening.name,
-                            insertBounds, hasCreatedRoot);
+                            insertBounds, hasCreatedRoot, opening.tags);
     }
     cursor = ordered.maximum;
   }
@@ -454,7 +470,7 @@ void appendGeneratedObject(CreativeBuildingRecipeResult& result,
       segmentName(wall, segmentIndex),
       spanBounds(frame, cursor, frame.length, 0.0, frame.height,
                  frame.thickness),
-      hasCreatedRoot);
+      hasCreatedRoot, wall.tags);
   return true;
 }
 
@@ -712,7 +728,7 @@ CreativeBuildingRecipeResult buildCreativeBuildingRecipe(
       return result;
     }
     appendGeneratedObject(result, request, box.kind, box.stableKey, box.name,
-                          box.bounds, createsRoot, box.scale);
+                          box.bounds, createsRoot, box.tags, box.scale);
   }
 
   for (std::size_t index = 0; index < request.walls.size(); ++index) {

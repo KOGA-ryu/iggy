@@ -8,6 +8,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace iggy3d::creative {
@@ -98,6 +99,21 @@ struct CreativeBuildingBoxSpec {
   std::string name;
   CreativeBounds bounds;
   CreativeVec3 scale{1.0, 1.0, 1.0};
+  std::vector<std::string> tags;
+
+  CreativeBuildingBoxSpec() = default;
+  CreativeBuildingBoxSpec(CreativeObjectKind objectKind,
+                          std::string objectStableKey,
+                          std::string objectName,
+                          CreativeBounds objectBounds,
+                          CreativeVec3 objectScale = {1.0, 1.0, 1.0},
+                          std::vector<std::string> objectTags = {})
+      : kind(objectKind),
+        stableKey(std::move(objectStableKey)),
+        name(std::move(objectName)),
+        bounds(objectBounds),
+        scale(objectScale),
+        tags(std::move(objectTags)) {}
 };
 
 struct CreativeBuildingOpeningSpec {
@@ -122,6 +138,7 @@ struct CreativeBuildingOpeningSpec {
   double insertHeightMeters = 0.0;
   double insertWidthMeters = 0.0;
   double insertThicknessMeters = 0.0;
+  std::vector<std::string> tags;
 };
 
 struct CreativeBuildingWallSpec {
@@ -136,6 +153,29 @@ struct CreativeBuildingWallSpec {
   // Optional product-facing names for each full-height span, in start-to-end
   // order. When present there must be openings.size() + 1 names.
   std::vector<std::string> segmentNames;
+  std::vector<std::string> tags;
+
+  CreativeBuildingWallSpec() = default;
+  CreativeBuildingWallSpec(
+      std::string wallStableKey,
+      std::string wallName,
+      CreativeVec3 wallStart,
+      CreativeVec3 wallEnd,
+      double wallHeightMeters = defaultCreativeWallGeometry().heightMeters,
+      double wallThicknessMeters =
+          defaultCreativeWallGeometry().thicknessMeters,
+      std::vector<CreativeBuildingOpeningSpec> wallOpenings = {},
+      std::vector<std::string> wallSegmentNames = {},
+      std::vector<std::string> wallTags = {})
+      : stableKey(std::move(wallStableKey)),
+        name(std::move(wallName)),
+        start(wallStart),
+        end(wallEnd),
+        heightMeters(wallHeightMeters),
+        thicknessMeters(wallThicknessMeters),
+        openings(std::move(wallOpenings)),
+        segmentNames(std::move(wallSegmentNames)),
+        tags(std::move(wallTags)) {}
 };
 
 struct CreativeBuildingRecipeRequest {

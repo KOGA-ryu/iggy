@@ -1,4 +1,6 @@
 #include "EditorWorldLayout.hpp"
+#include "EditorEdits.hpp"
+#include "EditorPersistence.hpp"
 
 #include <algorithm>
 #include <array>
@@ -290,7 +292,7 @@ bool roomGestureHostsOpeningsAndSupportsResize() {
   const auto door =
       app::applyCreativeEditorWorldLayoutPoint(state, {3.0, 0.1});
   const auto updated = app::setCreativeEditorWorldLayoutRoomSettings(
-      state, 0U, {{{0, 0}, {8, 5}}, 2, 5U, 0.5, 2U});
+      state, 0U, {{{0, 0}, {8, 5}}, 2.0, 5U, 0.5, 2U});
 
   return expect(begin.accepted && !begin.changed && commit.accepted &&
                     commit.changed,
@@ -307,10 +309,10 @@ bool roomGestureHostsOpeningsAndSupportsResize() {
          expect(updated.accepted && updated.changed &&
                     state.source.rooms[0].footprint.maximum ==
                         cr::CreativeTerrainCoord2{8, 5} &&
-                    state.source.rooms[0].baseLayer == 2 &&
+                    state.source.rooms[0].floorTopLayer == 2.0 &&
                     state.source.rooms[0].wallHeightCells == 5U &&
                     state.source.rooms[0].wallThicknessCells == 0.5 &&
-                    state.source.rooms[0].floorThicknessCells == 2U,
+                    state.source.rooms[0].floorThicknessLayers == 2U,
                 "selected room shell settings change as one source edit");
 }
 
@@ -1288,8 +1290,9 @@ bool buildingTemplateUpdateAndRefreshLifecycleIsExplicit() {
   const cr::CreativeWorldLayoutRoom& firstRoom =
       state.source.rooms[firstRoomIndex];
   app::CreativeEditorWorldLayoutRoomSettings firstSettings{
-      firstRoom.footprint, firstRoom.baseLayer, firstRoom.wallHeightCells,
-      firstRoom.wallThicknessCells, firstRoom.floorThicknessCells};
+      firstRoom.footprint, firstRoom.floorTopLayer,
+      firstRoom.wallHeightCells, firstRoom.wallThicknessCells,
+      firstRoom.floorThicknessLayers};
   firstSettings.wallHeightCells += 2U;
   static_cast<void>(app::setCreativeEditorWorldLayoutRoomSettings(
       state, firstRoomIndex, firstSettings));
@@ -1319,8 +1322,9 @@ bool buildingTemplateUpdateAndRefreshLifecycleIsExplicit() {
   const cr::CreativeWorldLayoutRoom& secondRoom =
       state.source.rooms[secondRoomIndex];
   app::CreativeEditorWorldLayoutRoomSettings secondSettings{
-      secondRoom.footprint, secondRoom.baseLayer, secondRoom.wallHeightCells,
-      secondRoom.wallThicknessCells, secondRoom.floorThicknessCells};
+      secondRoom.footprint, secondRoom.floorTopLayer,
+      secondRoom.wallHeightCells, secondRoom.wallThicknessCells,
+      secondRoom.floorThicknessLayers};
   secondSettings.wallHeightCells += 3U;
   static_cast<void>(app::setCreativeEditorWorldLayoutRoomSettings(
       state, secondRoomIndex, secondSettings));
@@ -1691,7 +1695,7 @@ bool exactPreviewAndConfirmUseOneHistoryEntry() {
   static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
       state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {6, 5}));
   const auto settings = app::setCreativeEditorWorldLayoutRoomSettings(
-      state, 0U, {{{0, 0}, {8, 6}}, 1, 4U, 0.5, 2U});
+      state, 0U, {{{0, 0}, {8, 6}}, 1.0, 4U, 0.5, 2U});
 
   const std::uint64_t liveCountBefore = live.facade.document().objectCount();
   const auto preview =
@@ -1729,6 +1733,19 @@ bool exactPreviewAndConfirmUseOneHistoryEntry() {
   const bool previewDidNotPublish =
       live.facade.document().objectCount() == liveCountBefore;
   const auto applied = app::confirmCreativeEditorWorldLayout(state, live);
+  const bool appliedOnce =
+      applied.accepted && applied.changed &&
+      live.facade.document().objectCount() == 5U &&
+      cr::creativeUndoDepth(live.history) == 1U;
+  const bool undone = app::undoLastEdit(live, "layout-undo", &state);
+  const bool undoRestoredBoth =
+      undone && live.facade.document().objectCount() == liveCountBefore &&
+      state.source.rooms.empty() && state.generatedRevision == state.revision;
+  const bool redone = app::redoLastEdit(live, "layout-redo", &state);
+  const bool redoRestoredBoth =
+      redone && live.facade.document().objectCount() == 5U &&
+      state.source.rooms.size() == 1U &&
+      state.generatedRevision == state.revision;
 
   return expect(settings.accepted && settings.changed,
                 "room shell settings are accepted before generation") &&
@@ -1741,16 +1758,55 @@ bool exactPreviewAndConfirmUseOneHistoryEntry() {
                 "preview renders one linked floor and four walls without publishing") &&
          expect(floorGeometry.valid && wallGeometry.valid &&
                     near(floorGeometry.size.y, 0.1) &&
-                    near(wallGeometry.worldBounds.min.y, 2.0) &&
-                    near(wallGeometry.worldBounds.max.y, 6.0) &&
+                    near(wallGeometry.worldBounds.min.y, 1.0) &&
+                    near(wallGeometry.worldBounds.max.y, 5.0) &&
                     near(std::min(wallGeometry.size.x, wallGeometry.size.z),
                          0.5),
                 "preview geometry matches floor, elevation, height, and thickness settings") &&
-         expect(applied.accepted && applied.changed &&
-                    live.facade.document().objectCount() == 5U,
+         expect(appliedOnce,
                 "confirm publishes generated output") &&
-         expect(cr::creativeUndoDepth(live.history) == 1U,
-                "one layout confirm records exactly one undo entry");
+         expect(undoRestoredBoth,
+                "layout undo restores semantic source and generated document") &&
+         expect(redoRestoredBoth,
+                "layout redo restores semantic source and generated document");
+}
+
+bool unsynchronizedLayoutCannotBeSaved() {
+  cr::CreativeAppState live = appState();
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "unsynchronized_layout";
+  const iggy3d::CreativeWorldSaveResult saved = app::saveStandaloneScene(
+      live.facade, std::filesystem::temp_directory_path(),
+      "iggy3d_unsynchronized_layout_test", &layout, false);
+  return expect(!saved.accepted && !saved.saved && saved.path.empty() &&
+                    saved.reasonCode ==
+                        "creative_world_layout_not_generated",
+                "save rejects semantic source newer than generated document");
+}
+
+bool unsynchronizedDraftCannotBeLostAcrossLayoutHistory() {
+  cr::CreativeAppState live = appState();
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state);
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Room));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {0, 0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {4, 4}));
+  const auto generated = app::confirmCreativeEditorWorldLayout(state, live);
+  const auto draft = app::setCreativeEditorWorldLayoutRoomSettings(
+      state, 0U, {{{0, 0}, {6, 4}}, 0.0, 3U, 0.25, 1U});
+  const std::uint64_t documentCount = live.facade.document().objectCount();
+  const bool undone = app::undoLastEdit(live, "layout-draft-undo", &state);
+  return expect(generated.accepted && generated.changed && draft.accepted &&
+                    draft.changed && state.revision != state.generatedRevision,
+                "layout history draft guard prerequisites") &&
+         expect(!undone && state.source.rooms.size() == 1U &&
+                    state.source.rooms[0].footprint.maximum.x == 6 &&
+                    live.facade.document().objectCount() == documentCount &&
+                    cr::creativeUndoDepth(live.history) == 1U,
+                "undo cannot discard an ungenerated semantic draft");
 }
 
 }  // namespace
@@ -1778,6 +1834,8 @@ int main() {
                   openingDragPreservesSharedRoomWallOwnership() &&
                   minimumWidthOpeningRetainsMoveAndResizeTargets() &&
                   roomDeletionCascadesHostedOpeningsAndCancelIsEmpty() &&
-                  exactPreviewAndConfirmUseOneHistoryEntry();
+                  exactPreviewAndConfirmUseOneHistoryEntry() &&
+                  unsynchronizedLayoutCannotBeSaved() &&
+                  unsynchronizedDraftCannotBeLostAcrossLayoutHistory();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

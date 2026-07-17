@@ -40,7 +40,8 @@ void logDocumentSnapshot(const char* phase,
     const cr::Facade& facade,
     const std::filesystem::path& saveRoot,
     const std::string& saveId,
-    const cr::CreativeWorldLayout* worldLayout = nullptr);
+    const cr::CreativeWorldLayout* worldLayout = nullptr,
+    bool worldLayoutSynchronized = true);
 
 [[nodiscard]] bool loadStandaloneScene(cr::CreativeAppState& appState,
                                        const std::filesystem::path& saveRoot,

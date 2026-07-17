@@ -341,7 +341,7 @@ struct CreativeToolSettings {
   CreativeRoomWallThickness roomWallThickness =
       CreativeRoomWallThickness::QuarterMeter;
   CreativeRoomFloorThickness roomFloorThickness =
-      CreativeRoomFloorThickness::QuarterMeter;
+      CreativeRoomFloorThickness::FiveCentimeters;
   CreativeAssetPlacementMode assetPlacementMode =
       CreativeAssetPlacementMode::Single;
   CreativeAssetScatterRadius assetScatterRadius =

@@ -892,10 +892,10 @@ void drawSelectedRoomSettings(CreativeEditorWorldLayoutState& state,
       widthCells, std::numeric_limits<int>::max()));
   int depth = static_cast<int>(std::min<std::int64_t>(
       depthCells, std::numeric_limits<int>::max()));
-  int baseLayer = room.baseLayer;
+  double floorTopLayer = room.floorTopLayer;
   int wallHeight = room.wallHeightCells;
   double wallThickness = room.wallThicknessCells;
-  int floorLayers = room.floorThicknessCells;
+  int floorLayers = room.floorThicknessLayers;
 
   ImGui::SetNextItemWidth(88.0F);
   bool changed = ImGui::InputInt("Width##room_shell", &width, 1, 4);
@@ -904,7 +904,9 @@ void drawSelectedRoomSettings(CreativeEditorWorldLayoutState& state,
   changed = ImGui::InputInt("Depth##room_shell", &depth, 1, 4) || changed;
   ImGui::SameLine();
   ImGui::SetNextItemWidth(88.0F);
-  changed = ImGui::InputInt("Base##room_shell", &baseLayer, 1, 4) || changed;
+  changed = ImGui::InputDouble("Floor top##room_shell", &floorTopLayer, 0.5,
+                               1.0, "%.3f") ||
+            changed;
 
   ImGui::SetNextItemWidth(88.0F);
   changed =
@@ -935,7 +937,8 @@ void drawSelectedRoomSettings(CreativeEditorWorldLayoutState& state,
       maximumZ <= std::numeric_limits<std::int32_t>::max() &&
       wallHeight > 0 && wallHeight <= maximumLayerCount &&
       floorLayers > 0 && floorLayers <= maximumLayerCount &&
-      std::isfinite(wallThickness) && wallThickness > 0.0 &&
+      std::isfinite(floorTopLayer) && std::isfinite(wallThickness) &&
+      wallThickness > 0.0 &&
       static_cast<double>(width) > wallThickness * 2.0 &&
       static_cast<double>(depth) > wallThickness * 2.0;
   if (!valid) {
@@ -948,10 +951,10 @@ void drawSelectedRoomSettings(CreativeEditorWorldLayoutState& state,
   settings.footprint = room.footprint;
   settings.footprint.maximum.x = static_cast<std::int32_t>(maximumX);
   settings.footprint.maximum.z = static_cast<std::int32_t>(maximumZ);
-  settings.baseLayer = static_cast<std::int32_t>(baseLayer);
+  settings.floorTopLayer = floorTopLayer;
   settings.wallHeightCells = static_cast<std::uint16_t>(wallHeight);
   settings.wallThicknessCells = wallThickness;
-  settings.floorThicknessCells = static_cast<std::uint16_t>(floorLayers);
+  settings.floorThicknessLayers = static_cast<std::uint16_t>(floorLayers);
   commands.push(
       CreativeDesktopCommandId::WorldLayoutSetRoomSettings,
       CreativeDesktopWorldLayoutRoomSettingsPayload{state.selection.index,

@@ -40,6 +40,14 @@ const cr::CreativeRecipeObjectPlan* findPlanObject(
   return found == plan.objects.end() ? nullptr : &*found;
 }
 
+bool hasTag(const cr::CreativeRecipeObjectPlan* object,
+            std::string_view tag) {
+  return object != nullptr &&
+         std::find(object->createRequest.tags.begin(),
+                   object->createRequest.tags.end(), tag) !=
+             object->createRequest.tags.end();
+}
+
 cr::CreativeBuildingRecipeRequest representativeRoom() {
   cr::CreativeBuildingRecipeRequest request;
   request.name = "Opening Room";
@@ -162,6 +170,49 @@ bool inputOpeningOrderDoesNotChangeOutput() {
     }
   }
   return true;
+}
+
+bool concernTagsReachOnlyTheirGeneratedObjects() {
+  cr::CreativeBuildingRecipeRequest request = representativeRoom();
+  request.tags = {"building-common"};
+  request.boxes[0].tags = {"floor-source"};
+  request.walls[0].tags = {"wall-source"};
+  const auto door = std::find_if(
+      request.walls[0].openings.begin(), request.walls[0].openings.end(),
+      [](const cr::CreativeBuildingOpeningSpec& opening) {
+        return opening.stableKey == "door.main";
+      });
+  if (door == request.walls[0].openings.end()) {
+    return expect(false, "tag test door prerequisite");
+  }
+  door->tags = {"opening-source"};
+
+  const cr::CreativeBuildingRecipeResult result =
+      cr::buildCreativeBuildingRecipe(request);
+  const cr::CreativeRecipeObjectPlan* floor =
+      findPlanObject(result.plan, "floor.main");
+  const cr::CreativeRecipeObjectPlan* wall =
+      findPlanObject(result.plan, "wall.north.segment.1");
+  const cr::CreativeRecipeObjectPlan* insert =
+      findPlanObject(result.plan, "door.main.insert");
+  const cr::CreativeRecipeObjectPlan* lintel =
+      findPlanObject(result.plan, "door.main.lintel");
+  return expect(result.receipt.accepted,
+                "per-concern tag recipe accepted") &&
+         expect(hasTag(floor, "building-common") &&
+                    hasTag(floor, "floor-source") &&
+                    !hasTag(floor, "wall-source") &&
+                    !hasTag(floor, "opening-source"),
+                "box tags remain on box output") &&
+         expect(hasTag(wall, "building-common") &&
+                    hasTag(wall, "wall-source") &&
+                    !hasTag(wall, "opening-source"),
+                "wall tags remain on wall spans") &&
+         expect(hasTag(insert, "building-common") &&
+                    hasTag(insert, "opening-source") &&
+                    !hasTag(insert, "wall-source") &&
+                    hasTag(lintel, "opening-source"),
+                "opening tags cover insert and cutout wall pieces");
 }
 
 bool openDoorPoseMatchesReferenceGeometry() {
@@ -331,6 +382,7 @@ bool rectangularRoomRejectsAmbiguousGeometry() {
 int main() {
   const bool ok = roomRecipeProducesDeterministicRealOpenings() &&
                   inputOpeningOrderDoesNotChangeOutput() &&
+                  concernTagsReachOnlyTheirGeneratedObjects() &&
                   openDoorPoseMatchesReferenceGeometry() &&
                   invalidGeometryFailsWithSpecificStatuses() &&
                   rectangularRoomGeometryKeepsFloorAndWallsOnOneSeam() &&

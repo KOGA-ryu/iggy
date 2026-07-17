@@ -276,8 +276,10 @@ bool validateForEncoding(const CreativeWorldLayout& layout,
   for (const CreativeWorldLayoutRoom& room : layout.rooms) {
     if (!validKeyName(room.stableKey, room.name) ||
         !validRect(room.footprint) ||
+        !std::isfinite(room.floorTopLayer) ||
         !std::isfinite(room.wallThicknessCells)) {
-      failure = {std::isfinite(room.wallThicknessCells)
+      failure = {std::isfinite(room.floorTopLayer) &&
+                         std::isfinite(room.wallThicknessCells)
                      ? CreativeWorldLayoutCodecStatus::InvalidRecord
                      : CreativeWorldLayoutCodecStatus::NonFiniteValue,
                  "creative_world_layout_encode_invalid_room"};
@@ -525,8 +527,8 @@ CreativeWorldLayoutEncodeResult encodeCreativeWorldLayout(
     output << "R " << room.buildingIndex << ' '
            << hexString(room.stableKey) << ' ' << hexString(room.name);
     writeRect(output, room.footprint);
-    output << ' ' << room.baseLayer << ' ' << room.wallHeightCells << ' '
-           << room.wallThicknessCells << ' ' << room.floorThicknessCells
+    output << ' ' << room.floorTopLayer << ' ' << room.wallHeightCells << ' '
+           << room.wallThicknessCells << ' ' << room.floorThicknessLayers
            << '\n';
   }
   for (const CreativeWorldLayoutBox& box : layout.boxes) {
@@ -684,9 +686,7 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
     result.reasonCode = "creative_world_layout_decode_invalid_layout_record";
     return result;
   }
-  const std::uint32_t expectedSchemaVersion =
-      codecVersion == 1U ? 1U : codecVersion == 2U ? 2U
-                                                   : kCreativeWorldLayoutSchemaVersion;
+  const std::uint32_t expectedSchemaVersion = codecVersion;
   if (result.layout.schemaVersion != expectedSchemaVersion) {
     result.status = CreativeWorldLayoutCodecStatus::InvalidRecord;
     result.failedLine = 2U;
@@ -746,16 +746,31 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
                  readBuilding, result)) {
     return result;
   }
-  const auto readRoom = [](RecordReader& reader,
-                           CreativeWorldLayoutRoom& room) {
-    return reader.readLiteral("R") && reader.readSize(room.buildingIndex) &&
-           reader.readHex(room.stableKey) && reader.readHex(room.name) &&
-           readRect(reader, room.footprint) &&
-           reader.readI32(room.baseLayer) &&
-           reader.readUnsigned(room.wallHeightCells) &&
-           reader.readDouble(room.wallThicknessCells) &&
-           std::isfinite(room.wallThicknessCells) &&
-           reader.readUnsigned(room.floorThicknessCells);
+  const auto readRoom = [codecVersion](RecordReader& reader,
+                                       CreativeWorldLayoutRoom& room) {
+    std::int32_t legacyBaseLayer = 0;
+    const bool prefix =
+        reader.readLiteral("R") && reader.readSize(room.buildingIndex) &&
+        reader.readHex(room.stableKey) && reader.readHex(room.name) &&
+        readRect(reader, room.footprint);
+    const bool elevation =
+        codecVersion >= 4U ? reader.readDouble(room.floorTopLayer)
+                           : reader.readI32(legacyBaseLayer);
+    const bool suffix =
+        reader.readUnsigned(room.wallHeightCells) &&
+        reader.readDouble(room.wallThicknessCells) &&
+        std::isfinite(room.wallThicknessCells) &&
+        reader.readUnsigned(room.floorThicknessLayers);
+    if (!prefix || !elevation || !suffix ||
+        !std::isfinite(room.floorTopLayer)) {
+      return false;
+    }
+    if (codecVersion < 4U) {
+      room.floorTopLayer =
+          static_cast<double>(legacyBaseLayer) +
+          static_cast<double>(room.floorThicknessLayers) * 0.5;
+    }
+    return true;
   };
   if (!readTable(lines, lineIndex, roomCount, result.layout.rooms, readRoom,
                  result)) {

@@ -96,7 +96,16 @@ iggy3d::CreativeWorldSaveResult saveStandaloneScene(
     const cr::Facade& facade,
     const std::filesystem::path& saveRoot,
     const std::string& saveId,
-    const cr::CreativeWorldLayout* worldLayout) {
+    const cr::CreativeWorldLayout* worldLayout,
+    bool worldLayoutSynchronized) {
+  if (worldLayout != nullptr && !worldLayoutSynchronized) {
+    iggy3d::CreativeWorldSaveResult rejected;
+    rejected.status = "creative_world_save_layout_not_generated";
+    rejected.reasonCode = "creative_world_layout_not_generated";
+    rejected.saveId = saveId;
+    SDL_Log("iggy3d_creative: SAVE rejected unsynchronized world layout");
+    return rejected;
+  }
   cr::CreativeDocument docCopy = facade.document();  // Copy: save drains.
   iggy3d::CreativeWorldSaveRequest request;
   request.saveRoot = saveRoot;

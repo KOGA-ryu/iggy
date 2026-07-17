@@ -1,5 +1,7 @@
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
+#include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -47,10 +49,15 @@ bool validRect(CreativeWorldLayoutRect rect) noexcept {
   return rect.minimum.x < rect.maximum.x && rect.minimum.z < rect.maximum.z;
 }
 
+bool sameFloorTop(double lhs, double rhs) noexcept {
+  constexpr double kFloorTopEpsilonLayers = 1.0e-9;
+  return std::abs(lhs - rhs) <= kFloorTopEpsilonLayers;
+}
+
 bool roomsOverlap(const CreativeWorldLayoutRoom& lhs,
                   const CreativeWorldLayoutRoom& rhs) noexcept {
   if (lhs.buildingIndex != rhs.buildingIndex ||
-      lhs.baseLayer != rhs.baseLayer) {
+      !sameFloorTop(lhs.floorTopLayer, rhs.floorTopLayer)) {
     return false;
   }
   return std::max(lhs.footprint.minimum.x, rhs.footprint.minimum.x) <
@@ -118,6 +125,7 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
   CreativeWorldLayoutRoomCompileResult result;
   result.expanded = layout;
   result.expanded.rooms.clear();
+  result.wallProvenance.resize(layout.walls.size());
 
   if (layout.rooms.size() >
       (std::numeric_limits<std::size_t>::max() / kRoomEdgeCount)) {
@@ -129,12 +137,14 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
 
   std::vector<EdgeRecord> edges;
   edges.reserve(layout.rooms.size() * kRoomEdgeCount);
+  std::vector<double> canonicalFloorTops(layout.rooms.size(), 0.0);
   for (std::size_t roomIndex = 0U; roomIndex < layout.rooms.size();
        ++roomIndex) {
     const CreativeWorldLayoutRoom& room = layout.rooms[roomIndex];
     if (room.buildingIndex >= layout.buildings.size() || room.name.empty() ||
         !validRect(room.footprint) || room.wallHeightCells == 0U ||
-        room.floorThicknessCells == 0U ||
+        room.floorThicknessLayers == 0U ||
+        !std::isfinite(room.floorTopLayer) ||
         !std::isfinite(room.wallThicknessCells) ||
         room.wallThicknessCells <= 0.0 ||
         (static_cast<double>(room.footprint.maximum.x) -
@@ -147,9 +157,8 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
                  roomIndex, "creative_world_layout_room_invalid");
       return result;
     }
-    const double wallBaseLayer =
-        static_cast<double>(room.baseLayer) +
-        static_cast<double>(room.floorThicknessCells) * 0.5;
+    double canonicalFloorTop = room.floorTopLayer;
+    bool floorTopCanonicalized = false;
     for (std::size_t prior = 0U; prior < roomIndex; ++prior) {
       if (roomsOverlap(layout.rooms[prior], room)) {
         setFailure(result,
@@ -157,19 +166,17 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
                    roomIndex, "creative_world_layout_rooms_overlap");
         return result;
       }
+      if (!floorTopCanonicalized &&
+          layout.rooms[prior].buildingIndex == room.buildingIndex &&
+          sameFloorTop(layout.rooms[prior].floorTopLayer,
+                       room.floorTopLayer)) {
+        canonicalFloorTop = canonicalFloorTops[prior];
+        floorTopCanonicalized = true;
+      }
     }
+    canonicalFloorTops[roomIndex] = canonicalFloorTop;
 
-    CreativeWorldLayoutBox floor;
-    floor.buildingIndex = room.buildingIndex;
-    floor.kind = CreativeObjectKind::Floor;
-    floor.stableKey = room.stableKey + ".floor";
-    floor.name = room.name + " Floor";
-    floor.footprint = room.footprint;
-    floor.baseLayer = room.baseLayer;
-    floor.heightCells = room.floorThicknessCells;
-    result.expanded.boxes.push_back(std::move(floor));
-
-    const auto generated = roomEdges(room, roomIndex, wallBaseLayer);
+    const auto generated = roomEdges(room, roomIndex, canonicalFloorTop);
     edges.insert(edges.end(), generated.begin(), generated.end());
   }
 
@@ -209,12 +216,16 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
     wall.thicknessCells = lane.thicknessCells;
     const std::size_t wallIndex = result.expanded.walls.size();
     result.expanded.walls.push_back(std::move(wall));
+    CreativeWorldLayoutRoomCompileResult::WallProvenance provenance;
+    provenance.contributors.reserve(cursor - laneBegin);
 
     for (std::size_t edgeIndex = laneBegin; edgeIndex < cursor; ++edgeIndex) {
       const EdgeRecord& edge = edges[edgeIndex];
+      provenance.contributors.push_back({edge.roomIndex, edge.roomEdge});
       bindings[bindingIndex(edge.roomIndex, edge.roomEdge)] = {
           wallIndex, edge.begin, mergedBegin, edge.end - edge.begin};
     }
+    result.wallProvenance.push_back(std::move(provenance));
   }
 
   for (std::size_t openingIndex = 0U;
@@ -263,6 +274,32 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
   result.failedIndex = kInvalidCreativeWorldLayoutIndex;
   result.reasonCode = "creative_world_layout_rooms_expanded";
   return result;
+}
+
+CreativeRectangularRoomGeometryPlan planCreativeWorldLayoutRoomGeometry(
+    const CreativeGridSettings& grid,
+    const CreativeWorldLayoutRoom& room) noexcept {
+  CreativeRectangularRoomGeometryRequest request;
+  const auto coordinate = [](double origin, double cellSize,
+                             double value) noexcept {
+    return origin + cellSize * value;
+  };
+  request.firstFloorCorner = {
+      coordinate(grid.origin.x, grid.cellSizeMeters, room.footprint.minimum.x),
+      coordinate(grid.origin.y, grid.cellSizeMeters, room.floorTopLayer),
+      coordinate(grid.origin.z, grid.cellSizeMeters, room.footprint.minimum.z),
+  };
+  request.oppositeFloorCorner = {
+      coordinate(grid.origin.x, grid.cellSizeMeters, room.footprint.maximum.x),
+      request.firstFloorCorner.y,
+      coordinate(grid.origin.z, grid.cellSizeMeters, room.footprint.maximum.z),
+  };
+  request.wallHeightMeters = room.wallHeightCells * grid.cellSizeMeters;
+  request.wallThicknessMeters = room.wallThicknessCells * grid.cellSizeMeters;
+  request.floorThicknessMeters =
+      room.floorThicknessLayers *
+      defaultCreativeStructuralLayerThicknessMeters(CreativeObjectKind::Floor);
+  return planCreativeRectangularRoomGeometry(request);
 }
 
 }  // namespace iggy3d::creative

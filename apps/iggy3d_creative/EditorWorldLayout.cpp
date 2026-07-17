@@ -1,8 +1,10 @@
 #include "EditorWorldLayout.hpp"
 
 #include "EditorWorldLayoutInternal.hpp"
+#include "EditorWorldLayoutHistory.hpp"
 
 #include "app/iggy3d/creative/world/MapTemplate.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
 #include <algorithm>
@@ -430,7 +432,7 @@ CreativeEditorWorldLayoutEditReceipt selectAt(
 bool roomFootprintOverlaps(const cr::CreativeWorldLayout& layout,
                            cr::CreativeWorldLayoutRect footprint,
                            std::size_t buildingIndex,
-                           std::int32_t baseLayer,
+                           double floorTopLayer,
                            std::size_t ignoredRoom =
                                cr::kInvalidCreativeWorldLayoutIndex) {
   for (std::size_t index = 0U; index < layout.rooms.size(); ++index) {
@@ -438,7 +440,8 @@ bool roomFootprintOverlaps(const cr::CreativeWorldLayout& layout,
       continue;
     }
     if (layout.rooms[index].buildingIndex != buildingIndex ||
-        layout.rooms[index].baseLayer != baseLayer) {
+        std::abs(layout.rooms[index].floorTopLayer - floorTopLayer) >
+            kOpeningGeometryEpsilon) {
       continue;
     }
     const cr::CreativeWorldLayoutRect existing = layout.rooms[index].footprint;
@@ -668,8 +671,8 @@ CreativeEditorWorldLayoutEditReceipt commitOpeningCandidate(
 CreativeEditorWorldLayoutRoomSettings roomSettings(
     const cr::CreativeWorldLayoutRoom& room,
     cr::CreativeWorldLayoutRect footprint) noexcept {
-  return {footprint, room.baseLayer, room.wallHeightCells,
-          room.wallThicknessCells, room.floorThicknessCells};
+  return {footprint, room.floorTopLayer, room.wallHeightCells,
+          room.wallThicknessCells, room.floorThicknessLayers};
 }
 
 RoomSettingsValidation validateRoomSettings(
@@ -680,7 +683,8 @@ RoomSettingsValidation validateRoomSettings(
   const double depth = static_cast<double>(settings.footprint.maximum.z) -
                        settings.footprint.minimum.z;
   if (roomIndex >= state.source.rooms.size() || width <= 0.0 || depth <= 0.0 ||
-      settings.wallHeightCells == 0U || settings.floorThicknessCells == 0U ||
+      !std::isfinite(settings.floorTopLayer) ||
+      settings.wallHeightCells == 0U || settings.floorThicknessLayers == 0U ||
       !std::isfinite(settings.wallThicknessCells) ||
       settings.wallThicknessCells <= 0.0 ||
       width <= settings.wallThicknessCells * 2.0 ||
@@ -691,7 +695,7 @@ RoomSettingsValidation validateRoomSettings(
   const cr::CreativeWorldLayoutRoom& existingRoom =
       state.source.rooms[roomIndex];
   if (roomFootprintOverlaps(state.source, settings.footprint,
-                            existingRoom.buildingIndex, settings.baseLayer,
+                            existingRoom.buildingIndex, settings.floorTopLayer,
                             roomIndex)) {
     return {false, "creative_editor_world_layout_room_overlap",
             "rooms may touch but cannot overlap"};
@@ -723,10 +727,10 @@ RoomSettingsValidation validateRoomSettings(
   cr::CreativeWorldLayout candidate = state.source;
   cr::CreativeWorldLayoutRoom& candidateRoom = candidate.rooms[roomIndex];
   candidateRoom.footprint = settings.footprint;
-  candidateRoom.baseLayer = settings.baseLayer;
+  candidateRoom.floorTopLayer = settings.floorTopLayer;
   candidateRoom.wallHeightCells = settings.wallHeightCells;
   candidateRoom.wallThicknessCells = settings.wallThicknessCells;
-  candidateRoom.floorThicknessCells = settings.floorThicknessCells;
+  candidateRoom.floorThicknessLayers = settings.floorThicknessLayers;
   const cr::CreativeWorldLayoutRoomCompileResult expanded =
       cr::expandCreativeWorldLayoutRooms(candidate);
   if (!expanded.accepted) {
@@ -831,7 +835,7 @@ CreativeEditorWorldLayoutEditReceipt addRoomPoint(
     state.statusMessage = "room needs width and depth";
     return {false, false, "creative_editor_world_layout_room_degenerate"};
   }
-  if (roomFootprintOverlaps(state.source, rect, 0U, 0)) {
+  if (roomFootprintOverlaps(state.source, rect, 0U, 0.0)) {
     state.statusMessage = "rooms may touch but cannot overlap";
     return {false, false, "creative_editor_world_layout_room_overlap"};
   }
@@ -1195,6 +1199,9 @@ void resetCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
   state.buildingTemplates = std::move(buildingTemplates);
   state.source.stableKey =
       layoutKey.empty() ? "world_layout" : std::move(layoutKey);
+  state.generatedBaseline = {state.source, state.revision, state.savedRevision,
+                             state.generatedRevision,
+                             state.nextStableOrdinal};
   state.statusMessage = "blank layout";
 }
 
@@ -1211,12 +1218,99 @@ void installCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
       state.source.openings.size() + state.source.objects.size() +
       state.source.terrainProfiles.size() +
       state.source.terrainPaths.size();
+  state.generatedRevision = state.revision;
+  state.generatedBaseline = {state.source, state.revision, state.savedRevision,
+                             state.generatedRevision,
+                             state.nextStableOrdinal};
   state.statusMessage = "layout loaded";
 }
 
 void markCreativeEditorWorldLayoutSaved(
     CreativeEditorWorldLayoutState& state) noexcept {
   state.savedRevision = state.revision;
+  if (state.generatedRevision == state.revision) {
+    state.generatedBaseline.savedRevision = state.savedRevision;
+  }
+}
+
+namespace {
+
+[[nodiscard]] bool applyWorldLayoutSourceSelection(
+    CreativeEditorWorldLayoutState& state,
+    cr::CreativeWorldLayoutObjectProvenance provenance) {
+  CreativeEditorWorldLayoutSelectionKind kind =
+      CreativeEditorWorldLayoutSelectionKind::None;
+  switch (provenance.table) {
+    case cr::CreativeWorldLayoutTable::Building:
+      kind = CreativeEditorWorldLayoutSelectionKind::Building;
+      break;
+    case cr::CreativeWorldLayoutTable::Room:
+      kind = CreativeEditorWorldLayoutSelectionKind::Room;
+      break;
+    case cr::CreativeWorldLayoutTable::Box:
+      kind = CreativeEditorWorldLayoutSelectionKind::Box;
+      break;
+    case cr::CreativeWorldLayoutTable::Wall:
+      kind = CreativeEditorWorldLayoutSelectionKind::Wall;
+      break;
+    case cr::CreativeWorldLayoutTable::Opening:
+      kind = CreativeEditorWorldLayoutSelectionKind::Opening;
+      break;
+    case cr::CreativeWorldLayoutTable::Object:
+      kind = CreativeEditorWorldLayoutSelectionKind::Object;
+      break;
+    case cr::CreativeWorldLayoutTable::None:
+    case cr::CreativeWorldLayoutTable::TerrainProfile:
+    case cr::CreativeWorldLayoutTable::TerrainPath:
+    case cr::CreativeWorldLayoutTable::TerrainPathPoint:
+      return false;
+  }
+  if (!provenance.owned ||
+      provenance.index == cr::kInvalidCreativeWorldLayoutIndex) {
+    return false;
+  }
+  state.selection = {kind, provenance.index};
+  state.statusMessage = provenance.contributorCount > 1U
+                            ? "condensed generated wall selected"
+                            : "generated layout source selected";
+  return true;
+}
+
+}  // namespace
+
+bool selectCreativeEditorWorldLayoutObjectSource(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeObject& object) {
+  if (state.generatedRevision != state.revision) {
+    return false;
+  }
+  const cr::CreativeWorldLayoutObjectProvenance provenance =
+      cr::resolveCreativeWorldLayoutObjectProvenance(state.source, object);
+  return applyWorldLayoutSourceSelection(state, provenance);
+}
+
+bool selectCreativeEditorWorldLayoutObjectSource(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeObject& object,
+    cr::CreativeGridSettings grid,
+    cr::CreativeVec3 worldPoint) {
+  if (state.generatedRevision != state.revision ||
+      !std::isfinite(grid.cellSizeMeters) || grid.cellSizeMeters <= 0.0 ||
+      !std::isfinite(grid.origin.x) || !std::isfinite(grid.origin.y) ||
+      !std::isfinite(grid.origin.z) ||
+      !std::isfinite(worldPoint.x) || !std::isfinite(worldPoint.y) ||
+      !std::isfinite(worldPoint.z)) {
+    return false;
+  }
+  const cr::CreativeVec3 sourcePointCells{
+      (worldPoint.x - grid.origin.x) / grid.cellSizeMeters,
+      (worldPoint.y - grid.origin.y) / grid.cellSizeMeters,
+      (worldPoint.z - grid.origin.z) / grid.cellSizeMeters,
+  };
+  const cr::CreativeWorldLayoutObjectProvenance provenance =
+      cr::resolveCreativeWorldLayoutObjectProvenance(
+          state.source, object, sourcePointCells);
+  return applyWorldLayoutSourceSelection(state, provenance);
 }
 
 bool creativeEditorWorldLayoutDirty(
@@ -1392,18 +1486,18 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutRoomSettings(
   cr::CreativeWorldLayoutRoom& room = state.source.rooms[roomIndex];
   if (room.footprint.minimum == settings.footprint.minimum &&
       room.footprint.maximum == settings.footprint.maximum &&
-      room.baseLayer == settings.baseLayer &&
+      room.floorTopLayer == settings.floorTopLayer &&
       room.wallHeightCells == settings.wallHeightCells &&
       room.wallThicknessCells == settings.wallThicknessCells &&
-      room.floorThicknessCells == settings.floorThicknessCells) {
+      room.floorThicknessLayers == settings.floorThicknessLayers) {
     return {true, false,
             "creative_editor_world_layout_room_settings_no_change"};
   }
   room.footprint = settings.footprint;
-  room.baseLayer = settings.baseLayer;
+  room.floorTopLayer = settings.floorTopLayer;
   room.wallHeightCells = settings.wallHeightCells;
   room.wallThicknessCells = settings.wallThicknessCells;
-  room.floorThicknessCells = settings.floorThicknessCells;
+  room.floorThicknessLayers = settings.floorThicknessLayers;
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Room, roomIndex};
   noteWorldLayoutSourceChange(state, "room shell settings updated");
   return {true, true, "creative_editor_world_layout_room_settings_updated"};
@@ -1973,13 +2067,14 @@ CreativeEditorWorldLayoutApplyReceipt confirmCreativeEditorWorldLayout(
     state.statusMessage = result.reasonCode;
     return result;
   }
-  result.apply = cr::applyCreativeWorldLayoutPlanWithHistory(
-      appState, compiled.plan, "desktop_world_layout_confirm");
+  result.apply = applyCreativeEditorWorldLayoutPlanWithHistory(
+      state, appState, compiled.plan,
+      captureCreativeEditorWorldLayoutSnapshot(state),
+      "desktop_world_layout_confirm");
   result.accepted = result.apply.accepted;
   result.changed = result.apply.changed;
   result.reasonCode = result.apply.reasonCode;
   if (result.accepted) {
-    state.generatedRevision = state.revision;
     invalidateWorldLayoutPreview(state);
     state.statusMessage =
         result.changed ? "layout generated in 3D" : "3D output already current";

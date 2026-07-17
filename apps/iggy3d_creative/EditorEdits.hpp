@@ -18,6 +18,8 @@ namespace cr = iggy3d::creative;
 using StandaloneEditHistory = cr::CreativeDocumentHistory;
 using StandaloneEditTransaction = cr::CreativeDocumentHistoryTransaction;
 
+struct CreativeEditorWorldLayoutState;
+
 void clearEditHistory(StandaloneEditHistory& history, std::string_view source);
 
 [[nodiscard]] StandaloneEditTransaction beginEditTransaction(
@@ -32,9 +34,13 @@ void clearEditHistory(StandaloneEditHistory& history, std::string_view source);
     std::string_view reasonCode);
 
 [[nodiscard]] bool undoLastEdit(cr::CreativeAppState& appState,
-                                std::string_view source);
+                                std::string_view source,
+                                CreativeEditorWorldLayoutState* worldLayout =
+                                    nullptr);
 [[nodiscard]] bool redoLastEdit(cr::CreativeAppState& appState,
-                                std::string_view source);
+                                std::string_view source,
+                                CreativeEditorWorldLayoutState* worldLayout =
+                                    nullptr);
 
 [[nodiscard]] iggy3d::creative::CreativeDocumentRemoveReceipt
 deleteSelectedObject(iggy3d::creative::CreativeAppState& appState,

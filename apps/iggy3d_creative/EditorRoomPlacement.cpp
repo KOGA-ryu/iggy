@@ -2,15 +2,22 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
+#include <cstdint>
+#include <limits>
 #include <string>
+#include <utility>
 
 #include "EditorInteraction.hpp"
 #include "EditorPlacementFeedback.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "EditorState.hpp"
+#include "EditorWorldLayoutHistory.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
@@ -39,26 +46,77 @@ namespace {
   return validCellBounds(bounds);
 }
 
-[[nodiscard]] cr::CreativeRectangularRoomGeometryRequest geometryRequest(
+[[nodiscard]] bool exactLayerCount(double meters,
+                                   double layerMeters,
+                                   std::uint16_t& output) noexcept {
+  if (!std::isfinite(meters) || !std::isfinite(layerMeters) || meters <= 0.0 ||
+      layerMeters <= 0.0) {
+    return false;
+  }
+  const double layers = meters / layerMeters;
+  const double rounded = std::round(layers);
+  if (std::abs(layers - rounded) > 1.0e-9 || rounded < 1.0 ||
+      rounded > std::numeric_limits<std::uint16_t>::max()) {
+    return false;
+  }
+  output = static_cast<std::uint16_t>(rounded);
+  return true;
+}
+
+[[nodiscard]] bool incrementedCoordinate(std::int32_t value,
+                                         std::int32_t& output) noexcept {
+  if (value == std::numeric_limits<std::int32_t>::max()) {
+    return false;
+  }
+  output = value + 1;
+  return true;
+}
+
+[[nodiscard]] bool roomSymbol(
     const CreativeEditorRoomPlacementState& state,
-    cr::CreativeBounds currentCell,
-    const cr::CreativeToolSettings& settings) noexcept {
-  cr::CreativeRectangularRoomGeometryRequest request;
-  request.firstFloorCorner = {
-      std::min(state.firstCellBounds.min.x, currentCell.min.x),
-      state.floorTopY,
-      std::min(state.firstCellBounds.min.z, currentCell.min.z)};
-  request.oppositeFloorCorner = {
-      std::max(state.firstCellBounds.max.x, currentCell.max.x),
-      currentCell.min.y,
-      std::max(state.firstCellBounds.max.z, currentCell.max.z)};
-  request.wallHeightMeters =
+    cr::CreativeGridCoord3 currentCell,
+    cr::CreativeBounds currentCellBounds,
+    const cr::CreativeGridSettings& grid,
+    const cr::CreativeToolSettings& settings,
+    cr::CreativeWorldLayoutRoom& output) noexcept {
+  if (!std::isfinite(grid.cellSizeMeters) || grid.cellSizeMeters <= 0.0 ||
+      !std::isfinite(state.floorTopY) ||
+      std::abs(currentCellBounds.min.y - state.floorTopY) > 1.0e-9) {
+    return false;
+  }
+  const std::int32_t minimumX = std::min(state.firstCell.x, currentCell.x);
+  const std::int32_t minimumZ = std::min(state.firstCell.z, currentCell.z);
+  std::int32_t maximumX = 0;
+  std::int32_t maximumZ = 0;
+  if (!incrementedCoordinate(std::max(state.firstCell.x, currentCell.x),
+                             maximumX) ||
+      !incrementedCoordinate(std::max(state.firstCell.z, currentCell.z),
+                             maximumZ)) {
+    return false;
+  }
+
+  const double wallHeightMeters =
       cr::creativeRoomWallHeightMeters(settings.roomWallHeight);
-  request.wallThicknessMeters =
-      cr::creativeRoomWallThicknessMeters(settings.roomWallThickness);
-  request.floorThicknessMeters =
+  const double floorThicknessMeters =
       cr::creativeRoomFloorThicknessMeters(settings.roomFloorThickness);
-  return request;
+  const double floorLayerMeters =
+      cr::defaultCreativeStructuralLayerThicknessMeters(
+          cr::CreativeObjectKind::Floor);
+  if (!exactLayerCount(wallHeightMeters, grid.cellSizeMeters,
+                       output.wallHeightCells) ||
+      !exactLayerCount(floorThicknessMeters, floorLayerMeters,
+                       output.floorThicknessLayers)) {
+    return false;
+  }
+  output.footprint = {{minimumX, minimumZ}, {maximumX, maximumZ}};
+  output.floorTopLayer =
+      (state.floorTopY - grid.origin.y) / grid.cellSizeMeters;
+  output.wallThicknessCells =
+      cr::creativeRoomWallThicknessMeters(settings.roomWallThickness) /
+      grid.cellSizeMeters;
+  return std::isfinite(output.floorTopLayer) &&
+         std::isfinite(output.wallThicknessCells) &&
+         output.wallThicknessCells > 0.0;
 }
 
 void rejectRoom(CreativeEditorState& editor) noexcept {
@@ -97,8 +155,14 @@ cr::CreativeRectangularRoomGeometryPlan creativeEditorRoomPlacementPreview(
   if (!currentRoomTargetBounds(appState, editor, currentCell)) {
     return {};
   }
-  return cr::planCreativeRectangularRoomGeometry(
-      geometryRequest(state, currentCell, editor.toolSettings));
+  cr::CreativeWorldLayoutRoom room;
+  if (!roomSymbol(state, editor.interaction.target.grid.adjacentCell,
+                  currentCell, appState.facade.document().gridSettings(),
+                  editor.toolSettings, room)) {
+    return {};
+  }
+  return cr::planCreativeWorldLayoutRoomGeometry(
+      appState.facade.document().gridSettings(), room);
 }
 
 CreativeEditorRoomPlacementReceipt advanceCreativeEditorRoomPlacement(
@@ -107,6 +171,12 @@ CreativeEditorRoomPlacementReceipt advanceCreativeEditorRoomPlacement(
     std::string_view source) {
   CreativeEditorRoomPlacementReceipt receipt;
   receipt.requested = true;
+  if (editor.assetEdit.active) {
+    receipt.status = CreativeEditorRoomPlacementStatus::InvalidTarget;
+    receipt.reasonCode = "creative_editor_room_asset_workspace_unsupported";
+    rejectRoom(editor);
+    return receipt;
+  }
   const cr::CreativeDocument& document = appState.facade.document();
   cr::CreativeBounds currentCell;
   if (!document.isValid() || document.id() == cr::kInvalidDocumentId ||
@@ -123,6 +193,7 @@ CreativeEditorRoomPlacementReceipt advanceCreativeEditorRoomPlacement(
     state = {};
     state.documentId = document.id();
     state.firstCellBounds = currentCell;
+    state.firstCell = editor.interaction.target.grid.adjacentCell;
     state.floorTopY = currentCell.min.y;
     state.active = true;
     receipt.accepted = true;
@@ -132,10 +203,17 @@ CreativeEditorRoomPlacementReceipt advanceCreativeEditorRoomPlacement(
     return receipt;
   }
 
-  const cr::CreativeRectangularRoomGeometryRequest geometry =
-      geometryRequest(state, currentCell, editor.toolSettings);
+  cr::CreativeWorldLayoutRoom room;
+  if (!roomSymbol(state, editor.interaction.target.grid.adjacentCell,
+                  currentCell, document.gridSettings(), editor.toolSettings,
+                  room)) {
+    receipt.status = CreativeEditorRoomPlacementStatus::InvalidGeometry;
+    receipt.reasonCode = "creative_editor_room_layout_conversion_invalid";
+    rejectRoom(editor);
+    return receipt;
+  }
   const cr::CreativeRectangularRoomGeometryPlan geometryPlan =
-      cr::planCreativeRectangularRoomGeometry(geometry);
+      cr::planCreativeWorldLayoutRoomGeometry(document.gridSettings(), room);
   if (!geometryPlan.accepted) {
     receipt.status = CreativeEditorRoomPlacementStatus::InvalidGeometry;
     receipt.reasonCode = geometryPlan.reasonCode;
@@ -143,24 +221,47 @@ CreativeEditorRoomPlacementReceipt advanceCreativeEditorRoomPlacement(
     return receipt;
   }
 
-  cr::CreativeRectangularRoomRecipeRequest request;
-  request.stableKey =
-      "viewport-room-" + std::to_string(document.nextObjectId());
-  request.name = "Room " + std::to_string(document.nextObjectId());
-  request.geometry = geometry;
-  const cr::CreativeBuildingRecipeResult recipe =
-      cr::buildCreativeRectangularRoomRecipe(request);
-  receipt.recipeStatus = recipe.receipt.status;
-  receipt.generatedObjectCount = recipe.receipt.generatedObjectCount;
-  if (!recipe.receipt.accepted) {
-    receipt.status = CreativeEditorRoomPlacementStatus::InvalidRecipe;
-    receipt.reasonCode = recipe.receipt.reasonCode;
+  CreativeEditorWorldLayoutSnapshot committed =
+      captureCreativeEditorWorldLayoutSnapshot(editor.worldLayout);
+  if (committed.revision == std::numeric_limits<std::uint64_t>::max()) {
+    receipt.status = CreativeEditorRoomPlacementStatus::InvalidLayout;
+    receipt.reasonCode = "creative_editor_room_layout_revision_exhausted";
+    rejectRoom(editor);
+    return receipt;
+  }
+  cr::CreativeWorldLayout& candidate = committed.source;
+  std::uint64_t& nextOrdinal = committed.nextStableOrdinal;
+  if (candidate.buildings.empty()) {
+    cr::CreativeWorldLayoutBuilding building;
+    building.stableKey = cr::mintCreativeWorldLayoutStableKey(
+        candidate, nextOrdinal, "building");
+    building.name = "Building 1";
+    building.rootMode = cr::CreativeBuildingRootMode::None;
+    candidate.buildings.push_back(std::move(building));
+  }
+  room.buildingIndex = 0U;
+  room.stableKey =
+      cr::mintCreativeWorldLayoutStableKey(candidate, nextOrdinal, "room");
+  room.name = "Room " + std::to_string(candidate.rooms.size() + 1U);
+  candidate.rooms.push_back(std::move(room));
+  ++committed.revision;
+
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, candidate);
+  receipt.layoutStatus = compiled.receipt.status;
+  receipt.generatedObjectCount = compiled.receipt.objectCount;
+  if (!compiled.receipt.accepted) {
+    receipt.status = CreativeEditorRoomPlacementStatus::InvalidLayout;
+    receipt.reasonCode = compiled.receipt.reasonCode;
     rejectRoom(editor);
     return receipt;
   }
 
-  const cr::CreativeRecipeApplyReceipt applied =
-      cr::applyCreativeRecipeWithHistory(appState, recipe.plan, source);
+  const cr::CreativeObjectId firstGeneratedObjectId = document.nextObjectId();
+  const cr::CreativeWorldLayoutApplyReceipt applied =
+      applyCreativeEditorWorldLayoutPlanWithHistory(
+          editor.worldLayout, appState, compiled.plan, std::move(committed),
+          source);
   receipt.applyStatus = applied.status;
   if (!applied.accepted || !applied.changed) {
     receipt.status = CreativeEditorRoomPlacementStatus::ApplyRejected;
@@ -176,7 +277,7 @@ CreativeEditorRoomPlacementReceipt advanceCreativeEditorRoomPlacement(
   setCreativeEditorPlacementFeedback(
       editor.interaction, CreativeEditorPlacementFeedbackStatus::Placed,
       editor.frameIndex, cr::CreativeObjectKind::Floor,
-      applied.materializeReceipt.firstObjectId);
+      firstGeneratedObjectId);
   state = {};
   return receipt;
 }

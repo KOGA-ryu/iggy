@@ -1,5 +1,7 @@
 #include "EditorEdits.hpp"
 
+#include "EditorWorldLayoutHistory.hpp"
+
 #include <SDL3/SDL_log.h>
 
 #include <algorithm>
@@ -24,10 +26,14 @@ namespace {
 
 bool applyHistoryDirection(creative::CreativeAppState& appState,
                            creative::CreativeHistoryDirection direction,
-                           std::string_view commandSource) {
+                           std::string_view commandSource,
+                           CreativeEditorWorldLayoutState* worldLayout) {
   const creative::CreativeHistoryApplyReceipt receipt =
-      creative::applyCreativeHistory(appState.facade, appState.history,
-                                     direction);
+      worldLayout != nullptr
+          ? applyCreativeEditorWorldLayoutHistory(*worldLayout, appState,
+                                                  direction)
+          : creative::applyCreativeHistory(appState.facade, appState.history,
+                                           direction);
   const creative::Id selectionAfter =
       appState.facade.selectionState().selectedTarget.value;
   SDL_Log("iggy3d_creative: HISTORY %s commandSource='%s' editSource='%s' "
@@ -162,15 +168,17 @@ creative::CreativeHistoryRecordReceipt completeEditTransaction(
 }
 
 bool undoLastEdit(creative::CreativeAppState& appState,
-                  std::string_view source) {
+                  std::string_view source,
+                  CreativeEditorWorldLayoutState* worldLayout) {
   return applyHistoryDirection(appState, creative::CreativeHistoryDirection::Undo,
-                               source);
+                               source, worldLayout);
 }
 
 bool redoLastEdit(creative::CreativeAppState& appState,
-                  std::string_view source) {
+                  std::string_view source,
+                  CreativeEditorWorldLayoutState* worldLayout) {
   return applyHistoryDirection(appState, creative::CreativeHistoryDirection::Redo,
-                               source);
+                               source, worldLayout);
 }
 
 creative::CreativeDocumentRemoveReceipt deleteSelectedObject(

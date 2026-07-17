@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
 #include <cmath>
 #include <cstdlib>
@@ -37,6 +38,7 @@ cr::CreativeWorldLayout richLayout() {
   room.stableKey = "room.study";
   room.name = "Study";
   room.footprint = {{0, 0}, {4, 3}};
+  room.floorTopLayer = 1.25;
   room.wallHeightCells = 4U;
   room.wallThicknessCells = 0.375;
   layout.rooms.push_back(room);
@@ -147,6 +149,7 @@ bool deterministicRoundTripPreservesEveryTable() {
          expect(decoded.layout.rooms.size() == 1U &&
                     decoded.layout.rooms[0].footprint.maximum ==
                         source.rooms[0].footprint.maximum &&
+                    decoded.layout.rooms[0].floorTopLayer == 1.25 &&
                     decoded.layout.boxes.size() == 1U &&
                     decoded.layout.walls.size() == 1U &&
                     decoded.layout.openings.size() == 2U &&
@@ -250,7 +253,10 @@ bool versionOneSourceMigratesToCurrentSchema() {
                     decoded.layout.rooms.empty(),
                 "version-one source migrates without fabricated rooms") &&
          expect(encoded.accepted &&
-                    encoded.encodedText.starts_with("IGGY3D_WORLD_LAYOUT 3\n"),
+                    encoded.encodedText.starts_with(
+                        "IGGY3D_WORLD_LAYOUT " +
+                        std::to_string(cr::kCreativeWorldLayoutCodecVersion) +
+                        "\n"),
                 "migrated source writes the current codec version");
 }
 
@@ -269,8 +275,32 @@ bool versionTwoSourceMigratesWithoutFabricatedObjects() {
                     decoded.layout.objects.empty(),
                 "version-two source migrates without fabricated objects") &&
          expect(encoded.accepted &&
-                    encoded.encodedText.starts_with("IGGY3D_WORLD_LAYOUT 3\n"),
+                    encoded.encodedText.starts_with(
+                        "IGGY3D_WORLD_LAYOUT " +
+                        std::to_string(cr::kCreativeWorldLayoutCodecVersion) +
+                        "\n"),
                 "version-two migration writes the current codec version");
+}
+
+bool versionThreeRoomPreservesWallPlaneDuringMigration() {
+  const std::string versionThree =
+      "IGGY3D_WORLD_LAYOUT 3\n"
+      "L 3 6c65676163795f726f6f6d 0 1 1 0 0 0 0 0 0 0\n"
+      "B 686f757365 486f757365 0 0 0 4 4 0 3 1 0\n"
+      "R 0 726f6f6d 526f6f6d 0 0 4 4 2 3 0.25 2\n"
+      "END\n";
+  const cr::CreativeWorldLayoutDecodeResult decoded =
+      cr::decodeCreativeWorldLayout(versionThree);
+  const cr::CreativeWorldLayoutRoomCompileResult expanded =
+      decoded.accepted ? cr::expandCreativeWorldLayoutRooms(decoded.layout)
+                       : cr::CreativeWorldLayoutRoomCompileResult{};
+  return expect(decoded.accepted && decoded.layout.rooms.size() == 1U &&
+                    decoded.layout.rooms[0].floorTopLayer == 3.0 &&
+                    decoded.layout.rooms[0].floorThicknessLayers == 2U,
+                "version-three room migrates base plus half thickness") &&
+         expect(expanded.accepted && !expanded.expanded.walls.empty() &&
+                    expanded.expanded.walls[0].baseLayer == 3.0,
+                "version-three migration preserves the generated wall plane");
 }
 
 }  // namespace
@@ -279,6 +309,7 @@ int main() {
   const bool ok = deterministicRoundTripPreservesEveryTable() &&
                   malformedAndNonFiniteInputsFailClosed() &&
                   versionOneSourceMigratesToCurrentSchema() &&
-                  versionTwoSourceMigratesWithoutFabricatedObjects();
+                  versionTwoSourceMigratesWithoutFabricatedObjects() &&
+                  versionThreeRoomPreservesWallPlaneDuringMigration();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

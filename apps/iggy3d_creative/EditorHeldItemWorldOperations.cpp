@@ -60,6 +60,23 @@ struct InteractionContext {
 };
 
 void selectObject(InteractionContext& context) {
+  const CreativeEditorWorldTarget& target =
+      context.request.editor.interaction.target;
+  if (target.objectHit) {
+    const cr::CreativeObject* object =
+        context.request.appState.facade.document().findObject(target.objectId);
+    if (object != nullptr) {
+      if (target.grid.resolved) {
+        static_cast<void>(selectCreativeEditorWorldLayoutObjectSource(
+            context.request.editor.worldLayout, *object,
+            context.request.appState.facade.document().gridSettings(),
+            target.grid.hitPoint));
+      } else {
+        static_cast<void>(selectCreativeEditorWorldLayoutObjectSource(
+            context.request.editor.worldLayout, *object));
+      }
+    }
+  }
   static_cast<void>(
       context.request.appState.facade.setActiveTool(cr::Tool::Select));
   static_cast<void>(context.request.appState.facade.dispatchToolInput(

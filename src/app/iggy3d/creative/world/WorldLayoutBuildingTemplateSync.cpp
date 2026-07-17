@@ -395,10 +395,10 @@ fingerprintCreativeWorldLayoutBuilding(const CreativeWorldLayout& layout,
     }
     builder.appendString(room.name);
     appendRelativeRect(builder, room.footprint, bounds.minimum);
-    builder.appendSigned(room.baseLayer);
+    builder.appendDouble(room.floorTopLayer);
     builder.appendUnsigned(room.wallHeightCells);
     builder.appendDouble(room.wallThicknessCells);
-    builder.appendUnsigned(room.floorThicknessCells);
+    builder.appendUnsigned(room.floorThicknessLayers);
   }
 
   builder.appendUnsigned(countIf(layout.boxes, [buildingIndex](const auto& box) {

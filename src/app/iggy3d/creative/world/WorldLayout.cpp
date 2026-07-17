@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
@@ -161,6 +162,12 @@ void setStatus(CreativeWorldLayoutReceipt& receipt,
                           std::string_view tag) noexcept {
   return std::any_of(tags.begin(), tags.end(),
                      [tag](const std::string& value) { return value == tag; });
+}
+
+void appendTagOnce(std::vector<std::string>& tags, std::string tag) {
+  if (!tag.empty() && !hasTag(tags, tag)) {
+    tags.push_back(std::move(tag));
+  }
 }
 
 [[nodiscard]] bool collectOwnedObjectRemovalOrder(
@@ -464,9 +471,11 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     building.rootMode = symbol.rootMode;
     building.visible = symbol.visible;
     building.tags = symbol.tags;
-    if (!hasTag(building.tags, layoutTag)) {
-      building.tags.push_back(layoutTag);
-    }
+    appendTagOnce(building.tags, layoutTag);
+    appendTagOnce(building.tags, creativeWorldLayoutProvenanceTag(
+                                     layout,
+                                     CreativeWorldLayoutTable::Building,
+                                     index));
     if (symbol.rootMode == CreativeBuildingRootMode::CreateRoom &&
         !layoutBounds(grid, symbol.rootFootprint, symbol.rootBaseLayer,
                       symbol.rootHeightCells, building.rootBounds)) {
@@ -520,6 +529,9 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
       return result;
     }
     CreativeBuildingBoxSpec box{symbol.kind, key, symbol.name, bounds};
+    appendTagOnce(box.tags, creativeWorldLayoutProvenanceTag(
+                                layout, CreativeWorldLayoutTable::Box,
+                                index));
     const double layerThickness =
         defaultCreativeStructuralLayerThicknessMeters(symbol.kind);
     if (layerThickness > 0.0) {
@@ -528,6 +540,34 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
       box.scale.y = targetHeight / authoredHeight;
     }
     buildings[symbol.buildingIndex].boxes.push_back(std::move(box));
+  }
+
+  for (std::size_t index = 0U; index < layout.rooms.size(); ++index) {
+    const CreativeWorldLayoutRoom& symbol = layout.rooms[index];
+    const CreativeRectangularRoomGeometryPlan geometry =
+        planCreativeWorldLayoutRoomGeometry(grid, symbol);
+    if (!geometry.accepted) {
+      result.receipt.failedTable = CreativeWorldLayoutTable::Room;
+      result.receipt.failedIndex = index;
+      result.receipt.kernelReasonCode = geometry.reasonCode;
+      setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
+                "creative_world_layout_room_geometry_rejected");
+      return result;
+    }
+    const std::string key = childKey(
+        layout.buildings[symbol.buildingIndex].stableKey,
+        symbol.stableKey + ".floor");
+    if (!registerKey(stableKeys, key, CreativeWorldLayoutTable::Room, index,
+                     result.receipt)) {
+      return result;
+    }
+    CreativeBuildingBoxSpec floor{CreativeObjectKind::Floor, key,
+                                  symbol.name + " Floor",
+                                  geometry.floorBounds};
+    appendTagOnce(floor.tags, creativeWorldLayoutProvenanceTag(
+                                  layout, CreativeWorldLayoutTable::Room,
+                                  index));
+    buildings[symbol.buildingIndex].boxes.push_back(std::move(floor));
   }
 
   std::vector<std::size_t> localWallIndices(
@@ -555,6 +595,18 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     wall.name = symbol.name;
     wall.heightMeters = symbol.heightCells * grid.cellSizeMeters;
     wall.thicknessMeters = symbol.thicknessCells * grid.cellSizeMeters;
+    if (index < layout.walls.size()) {
+      appendTagOnce(wall.tags, creativeWorldLayoutProvenanceTag(
+                                   layout, CreativeWorldLayoutTable::Wall,
+                                   index));
+    } else if (index < roomExpansion.wallProvenance.size()) {
+      for (const auto& contributor :
+           roomExpansion.wallProvenance[index].contributors) {
+        appendTagOnce(wall.tags, creativeWorldLayoutRoomEdgeProvenanceTag(
+                                     layout, contributor.roomIndex,
+                                     contributor.roomEdge));
+      }
+    }
     if (!layoutPoint(grid, symbol.start, symbol.baseLayer, wall.start) ||
         !layoutPoint(grid, symbol.end, symbol.baseLayer, wall.end)) {
       result.receipt.failedTable = CreativeWorldLayoutTable::Wall;
@@ -608,6 +660,26 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     opening.insertWidthMeters = symbol.insertWidthCells * grid.cellSizeMeters;
     opening.insertThicknessMeters =
         symbol.insertThicknessCells * grid.cellSizeMeters;
+    appendTagOnce(opening.tags, creativeWorldLayoutProvenanceTag(
+                                    layout,
+                                    CreativeWorldLayoutTable::Opening,
+                                    index));
+    const CreativeWorldLayoutOpening& sourceOpening = layout.openings[index];
+    if (sourceOpening.hostKind ==
+            CreativeWorldLayoutOpeningHostKind::RoomEdge &&
+        sourceOpening.roomIndex < layout.rooms.size()) {
+      appendTagOnce(opening.tags,
+                    creativeWorldLayoutRoomEdgeProvenanceTag(
+                        layout, sourceOpening.roomIndex,
+                        sourceOpening.roomEdge));
+    } else if (sourceOpening.hostKind ==
+                   CreativeWorldLayoutOpeningHostKind::Wall &&
+               sourceOpening.wallIndex < layout.walls.size()) {
+      appendTagOnce(opening.tags, creativeWorldLayoutProvenanceTag(
+                                      layout,
+                                      CreativeWorldLayoutTable::Wall,
+                                      sourceOpening.wallIndex));
+    }
     buildings[buildingIndex]
         .walls[localWallIndices[symbol.wallIndex]]
         .openings.push_back(std::move(opening));
@@ -669,9 +741,11 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
       placement.assetId = symbol.assetId;
       placement.visible = symbol.visible;
       placement.tags = symbol.tags;
-      if (!hasTag(placement.tags, layoutTag)) {
-        placement.tags.push_back(layoutTag);
-      }
+      appendTagOnce(placement.tags, layoutTag);
+      appendTagOnce(placement.tags, creativeWorldLayoutProvenanceTag(
+                                        layout,
+                                        CreativeWorldLayoutTable::Object,
+                                        index));
       const bool positionReady =
           symbol.mode == CreativeObjectLibraryPlacementMode::Bounds
               ? layoutBounds(grid, symbol.boundsCells, placement.bounds)

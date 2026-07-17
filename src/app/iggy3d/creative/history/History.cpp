@@ -87,6 +87,13 @@ void clearCreativeHistory(CreativeDocumentHistory& history) noexcept {
 CreativeDocumentHistoryTransaction beginCreativeHistoryTransaction(
     const Facade& facade,
     std::string_view source) {
+  return beginCreativeHistoryTransaction(facade, source, std::nullopt);
+}
+
+CreativeDocumentHistoryTransaction beginCreativeHistoryTransaction(
+    const Facade& facade,
+    std::string_view source,
+    std::optional<CreativeHistorySidecar> beforeSidecar) {
   CreativeDocumentHistoryTransaction transaction;
   const CreativeDocument& document = facade.document();
   if (!document.isValid() || document.id() == kInvalidDocumentId) {
@@ -95,6 +102,7 @@ CreativeDocumentHistoryTransaction beginCreativeHistoryTransaction(
   transaction.active = true;
   transaction.before = document;
   transaction.source = source;
+  transaction.beforeSidecar = std::move(beforeSidecar);
   return transaction;
 }
 
@@ -137,7 +145,8 @@ CreativeHistoryRecordReceipt commitCreativeHistoryTransaction(
   receipt.clearedRedoCount = creativeRedoDepth(history);
   history.redoSnapshots.clear();
   appendBounded(history.undoSnapshots,
-                {std::move(transaction.before), std::move(transaction.source)},
+                {std::move(transaction.before), std::move(transaction.source),
+                 std::move(transaction.beforeSidecar)},
                 history.maxDepth, &receipt.trimmedOldestUndo);
   receipt.accepted = true;
   receipt.recorded = true;
@@ -156,7 +165,8 @@ void cancelCreativeHistoryTransaction(
 CreativeHistoryApplyReceipt applyCreativeHistory(
     Facade& facade,
     CreativeDocumentHistory& history,
-    CreativeHistoryDirection direction) {
+    CreativeHistoryDirection direction,
+    std::optional<CreativeHistorySidecar> currentSidecar) {
   CreativeHistoryApplyReceipt receipt;
   receipt.requested = true;
   receipt.direction = direction;
@@ -190,6 +200,7 @@ CreativeHistoryApplyReceipt applyCreativeHistory(
   receipt.hadSnapshot = true;
   receipt.documentId = sourceSnapshots.back().document.id();
   receipt.source = sourceSnapshots.back().source;
+  receipt.targetSidecar = sourceSnapshots.back().sidecar;
 
   CreativeDocumentHistory staged = history;
   auto& stagedSource =
@@ -201,7 +212,7 @@ CreativeHistoryApplyReceipt applyCreativeHistory(
   stagedSource.pop_back();
   if (staged.maxDepth > 0U) {
     appendBounded(stagedDestination,
-                  {facade.document(), source},
+                  {facade.document(), source, std::move(currentSidecar)},
                   staged.maxDepth);
   }
 
@@ -222,6 +233,18 @@ CreativeHistoryApplyReceipt applyCreativeHistory(
   receipt.undoDepthAfter = creativeUndoDepth(history);
   receipt.redoDepthAfter = creativeRedoDepth(history);
   return receipt;
+}
+
+const CreativeHistorySidecar* creativeHistoryTargetSidecar(
+    const CreativeDocumentHistory& history,
+    CreativeHistoryDirection direction) noexcept {
+  const auto& snapshots = direction == CreativeHistoryDirection::Undo
+                              ? history.undoSnapshots
+                              : history.redoSnapshots;
+  if (snapshots.empty() || !snapshots.back().sidecar.has_value()) {
+    return nullptr;
+  }
+  return &*snapshots.back().sidecar;
 }
 
 }  // namespace iggy3d::creative

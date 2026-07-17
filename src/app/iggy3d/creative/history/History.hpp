@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -27,9 +28,19 @@ enum class CreativeHistoryStatus : std::uint8_t {
   Applied,
 };
 
+struct CreativeHistorySidecar {
+  std::string type;
+  std::uint32_t version = 0U;
+  std::string payload;
+
+  friend bool operator==(const CreativeHistorySidecar&,
+                         const CreativeHistorySidecar&) = default;
+};
+
 struct CreativeDocumentHistorySnapshot {
   CreativeDocument document;
   std::string source;
+  std::optional<CreativeHistorySidecar> sidecar;
 };
 
 struct CreativeDocumentHistory {
@@ -42,6 +53,7 @@ struct CreativeDocumentHistoryTransaction {
   bool active = false;
   CreativeDocument before;
   std::string source;
+  std::optional<CreativeHistorySidecar> beforeSidecar;
 };
 
 struct CreativeHistoryRecordReceipt {
@@ -77,6 +89,7 @@ struct CreativeHistoryApplyReceipt {
   std::string source;
   std::string reasonCode = "creative_history_not_requested";
   CreativeFacadeDocumentInstallReceipt installReceipt;
+  std::optional<CreativeHistorySidecar> targetSidecar;
 };
 
 [[nodiscard]] std::string_view toString(
@@ -95,6 +108,11 @@ void clearCreativeHistory(CreativeDocumentHistory& history) noexcept;
 
 [[nodiscard]] CreativeDocumentHistoryTransaction
 beginCreativeHistoryTransaction(const Facade& facade, std::string_view source);
+[[nodiscard]] CreativeDocumentHistoryTransaction
+beginCreativeHistoryTransaction(
+    const Facade& facade,
+    std::string_view source,
+    std::optional<CreativeHistorySidecar> beforeSidecar);
 [[nodiscard]] CreativeHistoryRecordReceipt commitCreativeHistoryTransaction(
     CreativeDocumentHistory& history,
     CreativeDocumentHistoryTransaction transaction,
@@ -105,6 +123,11 @@ void cancelCreativeHistoryTransaction(
 [[nodiscard]] CreativeHistoryApplyReceipt applyCreativeHistory(
     Facade& facade,
     CreativeDocumentHistory& history,
-    CreativeHistoryDirection direction);
+    CreativeHistoryDirection direction,
+    std::optional<CreativeHistorySidecar> currentSidecar = std::nullopt);
+
+[[nodiscard]] const CreativeHistorySidecar* creativeHistoryTargetSidecar(
+    const CreativeDocumentHistory& history,
+    CreativeHistoryDirection direction) noexcept;
 
 }  // namespace iggy3d::creative

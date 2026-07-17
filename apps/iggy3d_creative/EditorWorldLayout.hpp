@@ -82,12 +82,12 @@ struct CreativeEditorWorldLayoutPoint {
 
 struct CreativeEditorWorldLayoutRoomSettings {
   cr::CreativeWorldLayoutRect footprint;
-  std::int32_t baseLayer = 0;
+  double floorTopLayer = 0.0;
   std::uint16_t wallHeightCells =
       cr::kDefaultCreativeWorldLayoutWallHeightCells;
   double wallThicknessCells =
       cr::kDefaultCreativeWorldLayoutWallThicknessCells;
-  std::uint16_t floorThicknessCells = 1U;
+  std::uint16_t floorThicknessLayers = 1U;
 };
 
 enum class CreativeEditorWorldLayoutRectHandle : std::uint8_t {
@@ -390,12 +390,21 @@ enum class CreativeEditorWorldLayoutGesturePhase : std::uint8_t {
   Count,
 };
 
+struct CreativeEditorWorldLayoutSnapshot {
+  cr::CreativeWorldLayout source;
+  std::uint64_t revision = 1U;
+  std::uint64_t savedRevision = 1U;
+  std::uint64_t generatedRevision = 1U;
+  std::uint64_t nextStableOrdinal = 1U;
+};
+
 struct CreativeEditorWorldLayoutState {
   cr::CreativeWorldLayout source;
   std::uint64_t revision = 1U;
   std::uint64_t savedRevision = 1U;
-  std::uint64_t generatedRevision = 0U;
+  std::uint64_t generatedRevision = 1U;
   std::uint64_t nextStableOrdinal = 1U;
+  CreativeEditorWorldLayoutSnapshot generatedBaseline;
 
   CreativeEditorWorldLayoutTool tool = CreativeEditorWorldLayoutTool::Select;
   CreativeEditorWorldLayoutSelection selection;
@@ -459,6 +468,17 @@ void installCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
                                       cr::CreativeWorldLayout layout);
 void markCreativeEditorWorldLayoutSaved(
     CreativeEditorWorldLayoutState& state) noexcept;
+
+// Links a picked generated object back to the synchronized 2D source symbol.
+// The ordinary document selection remains available to 3D tools.
+[[nodiscard]] bool selectCreativeEditorWorldLayoutObjectSource(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeObject& object);
+[[nodiscard]] bool selectCreativeEditorWorldLayoutObjectSource(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeObject& object,
+    cr::CreativeGridSettings grid,
+    cr::CreativeVec3 worldPoint);
 
 [[nodiscard]] bool creativeEditorWorldLayoutDirty(
     const CreativeEditorWorldLayoutState& state) noexcept;

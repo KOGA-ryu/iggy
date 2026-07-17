@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
@@ -143,11 +144,10 @@ bool adjacentRoomsShareOneCanonicalWall() {
   const cr::CreativeWorldLayoutOpening& opening = first.expanded.openings[0];
   const cr::CreativeWorldLayoutWall& host =
       first.expanded.walls[opening.wallIndex];
-  return expect(first.expanded.boxes.size() == 2U,
-                "each room derives one floor") &&
-         expect(first.expanded.boxes[0].baseLayer == 0 &&
-                    near(first.expanded.walls[0].baseLayer, 0.5),
-                "room walls begin at the floor cell center plane") &&
+  return expect(first.expanded.boxes.empty(),
+                "room floors bypass generic layout boxes") &&
+         expect(near(first.expanded.walls[0].baseLayer, 0.0),
+                "room walls begin on the authored floor-top plane") &&
          expect(first.expanded.walls.size() == 5U,
                 "shared boundary is emitted exactly once") &&
          expect(
@@ -168,6 +168,20 @@ bool invalidTopologyFailsClosed() {
   overlap.rooms[1].footprint = {{3, 1}, {7, 5}};
   const auto overlapResult = cr::expandCreativeWorldLayoutRooms(overlap);
 
+  cr::CreativeWorldLayout noisyElevation = overlap;
+  noisyElevation.rooms[1].floorTopLayer = 5.0e-10;
+  const auto noisyElevationResult =
+      cr::expandCreativeWorldLayoutRooms(noisyElevation);
+
+  cr::CreativeWorldLayout noisyAdjacent = adjacentRooms();
+  noisyAdjacent.rooms[1].floorTopLayer = 5.0e-10;
+  const auto noisyAdjacentResult =
+      cr::expandCreativeWorldLayoutRooms(noisyAdjacent);
+
+  cr::CreativeWorldLayout stacked = overlap;
+  stacked.rooms[1].floorTopLayer = 1.0;
+  const auto stackedResult = cr::expandCreativeWorldLayoutRooms(stacked);
+
   cr::CreativeWorldLayout badOpening = adjacentRooms();
   badOpening.openings[0].centerOffsetCells = 5.0;
   const auto openingResult = cr::expandCreativeWorldLayoutRooms(badOpening);
@@ -187,6 +201,11 @@ bool invalidTopologyFailsClosed() {
                  overlapResult.status ==
                      cr::CreativeWorldLayoutRoomCompileStatus::OverlappingRooms,
              "interior-overlapping rooms are rejected") &&
+         expect(!noisyElevationResult.accepted && stackedResult.accepted,
+                "floor noise cannot bypass overlap while stacked rooms remain valid") &&
+         expect(noisyAdjacentResult.accepted &&
+                    noisyAdjacentResult.expanded.walls.size() == 5U,
+                "floor noise still condenses adjacent walls on one semantic level") &&
          expect(!openingResult.accepted &&
                     openingResult.status ==
                         cr::CreativeWorldLayoutRoomCompileStatus::
@@ -249,10 +268,11 @@ bool roomTopologyCompilesThroughExistingBuildingRecipe() {
          expect(preview.accepted && preview.document.objectCount() ==
                                         compiled.receipt.objectCount,
                 "exact preview materializes the compiled room shell") &&
-         expect(floor != nullptr && near(floor->transform.scale.y, 0.05),
-                "materialized room floor uses the thin vertical scale") &&
-         expect(wall != nullptr && near(wall->transform.position.y, 2.0),
-                "three-cell room wall is centered at y=2.0") &&
+         expect(floor != nullptr &&
+                    near(cr::resolveCreativeObjectBounds(*floor).size.y, 0.05),
+                "materialized room floor uses exact descriptor thickness") &&
+         expect(wall != nullptr && near(wall->transform.position.y, 1.5),
+                "three-cell room wall is centered above floor top") &&
          expect(wallGeometry.valid &&
                     near(wallGeometry.size.y,
                          cr::kDefaultCreativeWorldLayoutWallHeightCells) &&
@@ -273,6 +293,83 @@ bool roomTopologyCompilesThroughExistingBuildingRecipe() {
                     colliderMatchesBounds(*wallCollider,
                                           wallGeometry.worldBounds),
                 "wall render and collision consume identical resolved bounds");
+}
+
+bool generatedRoomObjectsResolveToSemanticSources() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Room Provenance");
+  static_cast<void>(document.assignId(9203U));
+  const cr::CreativeWorldLayout source = adjacentRooms();
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, source);
+  const cr::CreativeWorldLayoutPreviewResult preview =
+      cr::previewCreativeWorldLayoutPlan(document, compiled.plan);
+  const cr::CreativeObject* floor = nullptr;
+  const cr::CreativeObject* sharedWall = nullptr;
+  const cr::CreativeObject* contiguousWall = nullptr;
+  const cr::CreativeObject* door = nullptr;
+  cr::CreativeWorldLayoutObjectProvenance shared;
+  for (const cr::CreativeObject& object : preview.document.objects()) {
+    const cr::CreativeWorldLayoutObjectProvenance provenance =
+        cr::resolveCreativeWorldLayoutObjectProvenance(source, object);
+    if (floor == nullptr && object.kind == cr::CreativeObjectKind::Floor) {
+      floor = &object;
+    }
+    if (object.kind == cr::CreativeObjectKind::Wall &&
+        provenance.contributorCount == 2U) {
+      sharedWall = &object;
+      shared = provenance;
+      if (provenance.roomEdge == cr::CreativeWorldLayoutRoomEdge::North) {
+        contiguousWall = &object;
+      }
+    }
+    if (object.kind == cr::CreativeObjectKind::Door) {
+      door = &object;
+    }
+  }
+  const cr::CreativeWorldLayoutObjectProvenance floorSource =
+      floor == nullptr
+          ? cr::CreativeWorldLayoutObjectProvenance{}
+          : cr::resolveCreativeWorldLayoutObjectProvenance(source, *floor);
+  const cr::CreativeWorldLayoutObjectProvenance doorSource =
+      door == nullptr
+          ? cr::CreativeWorldLayoutObjectProvenance{}
+          : cr::resolveCreativeWorldLayoutObjectProvenance(source, *door);
+  const cr::CreativeWorldLayoutObjectProvenance leftNorthSource =
+      contiguousWall == nullptr
+          ? cr::CreativeWorldLayoutObjectProvenance{}
+          : cr::resolveCreativeWorldLayoutObjectProvenance(
+                source, *contiguousWall, {2.0, 0.0, 0.0});
+  const cr::CreativeWorldLayoutObjectProvenance rightNorthSource =
+      contiguousWall == nullptr
+          ? cr::CreativeWorldLayoutObjectProvenance{}
+          : cr::resolveCreativeWorldLayoutObjectProvenance(
+                source, *contiguousWall, {6.0, 0.0, 0.0});
+  return expect(compiled.receipt.accepted && preview.accepted,
+                "room provenance preview accepted") &&
+         expect(floor != nullptr && floorSource.owned &&
+                    floorSource.table == cr::CreativeWorldLayoutTable::Room &&
+                    floorSource.index == 0U &&
+                    floorSource.contributorCount == 1U,
+                "generated floor resolves to its authored room") &&
+         expect(sharedWall != nullptr && shared.owned &&
+                    shared.table == cr::CreativeWorldLayoutTable::Room &&
+                    shared.index == 0U &&
+                    shared.roomEdge == cr::CreativeWorldLayoutRoomEdge::East &&
+                    shared.contributorCount == 2U,
+                "shared wall retains both room-edge contributors") &&
+         expect(contiguousWall != nullptr && leftNorthSource.owned &&
+                    leftNorthSource.index == 0U &&
+                    rightNorthSource.owned && rightNorthSource.index == 1U &&
+                    rightNorthSource.roomEdge ==
+                        cr::CreativeWorldLayoutRoomEdge::North &&
+                    rightNorthSource.contributorCount == 2U,
+                "point-aware provenance distinguishes condensed adjacent edges") &&
+         expect(door != nullptr && doorSource.owned &&
+                    doorSource.table ==
+                        cr::CreativeWorldLayoutTable::Opening &&
+                    doorSource.index == 0U,
+                "generated door resolves to its authored opening");
 }
 
 bool horizontalStructuralLayersUseDescriptorThickness() {
@@ -348,6 +445,7 @@ int main() {
                   adjacentRoomsShareOneCanonicalWall() &&
                   invalidTopologyFailsClosed() &&
                   roomTopologyCompilesThroughExistingBuildingRecipe() &&
+                  generatedRoomObjectsResolveToSemanticSources() &&
                   horizontalStructuralLayersUseDescriptorThickness();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

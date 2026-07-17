@@ -1,4 +1,5 @@
 #include "EditorInteraction.hpp"
+#include "EditorEdits.hpp"
 #include "EditorRoomPlacement.hpp"
 #include "EditorState.hpp"
 
@@ -97,6 +98,12 @@ bool twoCornersApplyOneUndoableShell() {
       app::advanceCreativeEditorRoomPlacement(appState, editor, "room-apply");
   const cr::CreativeObject* floor = appState.facade.document().findObject(1U);
   const cr::CreativeObject* north = appState.facade.document().findObject(2U);
+  const bool linkedFloorSelection =
+      floor != nullptr && app::selectCreativeEditorWorldLayoutObjectSource(
+                              editor.worldLayout, *floor);
+  const bool linkedWallSelection =
+      north != nullptr && app::selectCreativeEditorWorldLayoutObjectSource(
+                              editor.worldLayout, *north);
   ok = expect(applied.accepted && applied.changed &&
                   applied.status ==
                       app::CreativeEditorRoomPlacementStatus::Applied &&
@@ -104,7 +111,10 @@ bool twoCornersApplyOneUndoableShell() {
               "second room corner applies the complete shell") &&
        expect(!editor.interaction.roomPlacement.active &&
                   appState.facade.document().objectCount() == 5U &&
-                  cr::creativeUndoDepth(appState.history) == 1U,
+                  cr::creativeUndoDepth(appState.history) == 1U &&
+                  editor.worldLayout.source.rooms.size() == 1U &&
+                  editor.worldLayout.generatedRevision ==
+                      editor.worldLayout.revision,
               "room shell is one completed history transaction") &&
        expect(floor != nullptr && floor->kind == cr::CreativeObjectKind::Floor &&
                   sameBounds(floor->bounds,
@@ -114,12 +124,25 @@ bool twoCornersApplyOneUndoableShell() {
                   sameBounds(north->bounds,
                              {{0.0, 0.0, -0.125}, {3.0, 3.0, 0.125}}),
               "room wall starts exactly on the chosen plane") &&
+       expect(linkedFloorSelection && linkedWallSelection &&
+                  editor.worldLayout.selection.kind ==
+                      app::CreativeEditorWorldLayoutSelectionKind::Room &&
+                  editor.worldLayout.selection.index == 0U,
+              "generated floor and wall select their semantic room") &&
        ok;
 
-  const cr::CreativeHistoryApplyReceipt undo = cr::applyCreativeHistory(
-      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
-  return expect(undo.accepted && undo.objectCountAfter == 0U,
-                "one undo removes the entire room shell") &&
+  const bool undo =
+      app::undoLastEdit(appState, "room-undo", &editor.worldLayout);
+  const bool undoRestored =
+      undo && appState.facade.document().objectCount() == 0U &&
+      editor.worldLayout.source.rooms.empty();
+  const bool redo =
+      app::redoLastEdit(appState, "room-redo", &editor.worldLayout);
+  return expect(undoRestored,
+                "one undo removes semantic source and generated shell") &&
+         expect(redo && appState.facade.document().objectCount() == 5U &&
+                    editor.worldLayout.source.rooms.size() == 1U,
+                "one redo restores semantic source and generated shell") &&
          ok;
 }
 
@@ -199,12 +222,35 @@ bool interruptionCancelsEmptyDraftWithoutHistory() {
                 "interrupted room draft creates no object or history entry");
 }
 
+bool authoredAssetWorkspaceCannotConsumeMapLayoutState() {
+  cr::CreativeAppState appState;
+  app::CreativeEditorState editor = roomEditor();
+  if (!expect(installDocument(appState, 305U),
+              "asset-workspace room document installed")) {
+    return false;
+  }
+  editor.assetEdit.active = true;
+  setRoomTarget(editor, 0, 0);
+  const app::CreativeEditorRoomPlacementReceipt rejected =
+      app::advanceCreativeEditorRoomPlacement(appState, editor,
+                                              "asset-room-rejected");
+  return expect(!rejected.accepted && !rejected.changed &&
+                    rejected.status ==
+                        app::CreativeEditorRoomPlacementStatus::InvalidTarget,
+                "room tool rejects the authored-asset workspace") &&
+         expect(editor.worldLayout.source.rooms.empty() &&
+                    appState.facade.document().objectCount() == 0U &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "asset workspace cannot mutate main-map semantic state");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = twoCornersApplyOneUndoableShell() &&
                   previewIsExactAndDoesNotMutate() &&
                   invalidSecondCornerPreservesDraftUntilCancel() &&
-                  interruptionCancelsEmptyDraftWithoutHistory();
+                  interruptionCancelsEmptyDraftWithoutHistory() &&
+                  authoredAssetWorkspaceCannotConsumeMapLayoutState();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
