@@ -845,6 +845,107 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutSetLevelSettings: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutLevelSettingsPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout level settings: payload mismatch";
+        break;
+      }
+      if (!creativeEditorWorldLayoutSourceStableKeyMatches(
+              editor.worldLayout, cr::CreativeWorldLayoutTable::Level,
+              payload->levelIndex, payload->stableKey)) {
+        result.message = "layout level settings: stale target";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          setCreativeEditorWorldLayoutLevelSettings(
+              editor.worldLayout, payload->levelIndex, payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutSetTerrainProfileSettings: {
+      const auto* payload = payloadAs<
+          CreativeDesktopWorldLayoutTerrainProfileSettingsPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout terrain profile settings: payload mismatch";
+        break;
+      }
+      if (!creativeEditorWorldLayoutSourceStableKeyMatches(
+              editor.worldLayout,
+              cr::CreativeWorldLayoutTable::TerrainProfile,
+              payload->profileIndex, payload->stableKey)) {
+        result.message = "layout terrain profile settings: stale target";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          setCreativeEditorWorldLayoutTerrainProfileSettings(
+              editor.worldLayout, payload->profileIndex, payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutSetTerrainPathSettings: {
+      const auto* payload = payloadAs<
+          CreativeDesktopWorldLayoutTerrainPathSettingsPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout terrain path settings: payload mismatch";
+        break;
+      }
+      if (!creativeEditorWorldLayoutSourceStableKeyMatches(
+              editor.worldLayout, cr::CreativeWorldLayoutTable::TerrainPath,
+              payload->pathIndex, payload->stableKey)) {
+        result.message = "layout terrain path settings: stale target";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          setCreativeEditorWorldLayoutTerrainPathSettings(
+              editor.worldLayout, payload->pathIndex, payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutSetObjectSettings: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutObjectSettingsPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout object settings: payload mismatch";
+        break;
+      }
+      if (!creativeEditorWorldLayoutSourceStableKeyMatches(
+              editor.worldLayout, cr::CreativeWorldLayoutTable::Object,
+              payload->objectIndex, payload->stableKey)) {
+        result.message = "layout object settings: stale target";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          setCreativeEditorWorldLayoutObjectSettings(
+              editor.worldLayout, payload->objectIndex, payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutClearSelection: {
       const CreativeEditorWorldLayoutEditReceipt receipt =
           clearCreativeEditorWorldLayoutSelection(editor.worldLayout);

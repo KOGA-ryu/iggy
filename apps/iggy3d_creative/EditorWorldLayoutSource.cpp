@@ -11,15 +11,6 @@
 namespace iggy3d_creative_app {
 namespace {
 
-[[nodiscard]] bool hasVisibleName(std::string_view name) noexcept {
-  for (const char value : name) {
-    if (value != ' ' && value != '\t' && value != '\r' && value != '\n') {
-      return true;
-    }
-  }
-  return false;
-}
-
 [[nodiscard]] std::string* sourceName(
     CreativeEditorWorldLayoutState& state,
     cr::CreativeWorldLayoutTable table, std::size_t index) noexcept {
@@ -161,8 +152,8 @@ SourceTarget resolveSourceTarget(
       target.activeLevelIndex = index;
       target.buildingIndex = source.levels[index].buildingIndex;
       if (target.buildingIndex >= source.buildings.size()) return target;
-      target.selection = {CreativeEditorWorldLayoutSelectionKind::Building,
-                          target.buildingIndex};
+      target.selection = {CreativeEditorWorldLayoutSelectionKind::Level,
+                          index};
       target.hasCenter =
           resolveBuildingCenter(state, target.buildingIndex, target.center);
       break;
@@ -359,7 +350,7 @@ CreativeEditorWorldLayoutEditReceipt renameCreativeEditorWorldLayoutSource(
     cr::CreativeWorldLayoutTable table, std::size_t index,
     std::string name) {
   std::string* current = sourceName(state, table, index);
-  if (current == nullptr || !hasVisibleName(name)) {
+  if (current == nullptr || !detail::hasVisibleWorldLayoutName(name)) {
     state.statusMessage = "source name is invalid";
     return {false, false,
             "creative_editor_world_layout_source_rename_invalid"};

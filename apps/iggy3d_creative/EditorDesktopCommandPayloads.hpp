@@ -157,6 +157,34 @@ struct CreativeDesktopWorldLayoutLevelOperationPayload {
       iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
 };
 
+struct CreativeDesktopWorldLayoutLevelSettingsPayload {
+  std::size_t levelIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::string stableKey;
+  CreativeEditorWorldLayoutLevelSettings settings;
+};
+
+struct CreativeDesktopWorldLayoutTerrainProfileSettingsPayload {
+  std::size_t profileIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::string stableKey;
+  CreativeEditorWorldLayoutTerrainProfileSettings settings;
+};
+
+struct CreativeDesktopWorldLayoutTerrainPathSettingsPayload {
+  std::size_t pathIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::string stableKey;
+  CreativeEditorWorldLayoutTerrainPathSettings settings;
+};
+
+struct CreativeDesktopWorldLayoutObjectSettingsPayload {
+  std::size_t objectIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::string stableKey;
+  CreativeEditorWorldLayoutObjectSettings settings;
+};
+
 struct CreativeDesktopWorldLayoutBuildingManipulationPayload {
   CreativeEditorWorldLayoutBuildingManipulationPhase phase =
       CreativeEditorWorldLayoutBuildingManipulationPhase::Begin;
@@ -299,6 +327,10 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutSourcePayload,
     CreativeDesktopWorldLayoutSourceRenamePayload,
     CreativeDesktopWorldLayoutLevelOperationPayload,
+    CreativeDesktopWorldLayoutLevelSettingsPayload,
+    CreativeDesktopWorldLayoutTerrainProfileSettingsPayload,
+    CreativeDesktopWorldLayoutTerrainPathSettingsPayload,
+    CreativeDesktopWorldLayoutObjectSettingsPayload,
     CreativeDesktopWorldLayoutBuildingManipulationPayload,
     CreativeDesktopWorldLayoutBuildingDuplicatePayload,
     CreativeDesktopWorldLayoutBuildingTransformPayload,

@@ -60,7 +60,8 @@ void refreshWorldLayoutHierarchyCaches(
       return selected(state, CreativeEditorWorldLayoutSelectionKind::Building,
                       row.sourceIndex);
     case cr::CreativeWorldLayoutTable::Level:
-      return state.activeLevelIndex == row.sourceIndex;
+      return selected(state, CreativeEditorWorldLayoutSelectionKind::Level,
+                      row.sourceIndex);
     case cr::CreativeWorldLayoutTable::Room:
       return selected(state, CreativeEditorWorldLayoutSelectionKind::Room,
                       row.sourceIndex);

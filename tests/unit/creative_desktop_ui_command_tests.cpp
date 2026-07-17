@@ -1309,6 +1309,22 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutManipulateOpening, context,
           app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutLevelSettings =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutSetLevelSettings, context,
+          app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutTerrainProfileSettings =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutSetTerrainProfileSettings,
+          context, app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutTerrainPathSettings =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutSetTerrainPathSettings,
+          context, app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutObjectSettings =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutSetObjectSettings, context,
+          app::CreativeDesktopDeletePayload{{a}});
 
   return expect(!badDelete.accepted &&
                     badDelete.message == "delete objects: payload mismatch",
@@ -1426,6 +1442,22 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badWorldLayoutOpeningManipulation.message ==
                         "layout opening manipulation: payload mismatch",
                 "opening manipulation rejects a mismatched payload") &&
+         expect(!badWorldLayoutLevelSettings.accepted &&
+                    badWorldLayoutLevelSettings.message ==
+                        "layout level settings: payload mismatch",
+                "level settings reject a mismatched payload") &&
+         expect(!badWorldLayoutTerrainProfileSettings.accepted &&
+                    badWorldLayoutTerrainProfileSettings.message ==
+                        "layout terrain profile settings: payload mismatch",
+                "terrain profile settings reject a mismatched payload") &&
+         expect(!badWorldLayoutTerrainPathSettings.accepted &&
+                    badWorldLayoutTerrainPathSettings.message ==
+                        "layout terrain path settings: payload mismatch",
+                "terrain path settings reject a mismatched payload") &&
+         expect(!badWorldLayoutObjectSettings.accepted &&
+                    badWorldLayoutObjectSettings.message ==
+                        "layout object settings: payload mismatch",
+                "object settings reject a mismatched payload") &&
          expect(appState.facade.document().objectCount() == before &&
                     cr::creativeUndoDepth(appState.history) == 0U,
                 "mismatched payloads mutate nothing and record no history");

@@ -1997,9 +1997,13 @@ void buildCreativeEditorWorldLayoutPanel(
   if (ImGui::Begin("World Layout Properties###Inspector", nullptr,
                    ImGuiWindowFlags_NoCollapse)) {
     ImGui::BeginDisabled(editingDisabled);
+    drawCreativeEditorWorldLayoutSourceInspector(state, commands);
     drawCreativeEditorWorldLayoutStructureInspector(state, commands);
     drawSelectedRoomSettings(state, commands);
     drawSelectedOpeningSettings(state, commands);
+    if (state.selection.kind == CreativeEditorWorldLayoutSelectionKind::None) {
+      ImGui::TextDisabled("Select a World Layout source to edit it.");
+    }
     ImGui::EndDisabled();
   }
   ImGui::End();

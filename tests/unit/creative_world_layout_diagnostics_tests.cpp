@@ -112,7 +112,7 @@ bool diagnosticFocusSelectsFramesAndPreservesSource() {
   const bool levelFocused =
       level.accepted &&
       state.selection.kind ==
-          app::CreativeEditorWorldLayoutSelectionKind::Building &&
+          app::CreativeEditorWorldLayoutSelectionKind::Level &&
       state.selection.index == 0U && state.activeLevelIndex == 0U;
 
   const app::CreativeEditorWorldLayoutEditReceipt invalid =
@@ -121,7 +121,7 @@ bool diagnosticFocusSelectsFramesAndPreservesSource() {
   return expect(roomFocused,
                 "room issue selects its source and centers both views") &&
          expect(levelFocused,
-                "level issue selects its owning building and level") &&
+                "level issue selects the editable level source") &&
          expect(!invalid.accepted,
                 "out-of-range diagnostic target is rejected") &&
          expect(state.revision == sourceRevision,

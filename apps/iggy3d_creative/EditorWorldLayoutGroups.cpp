@@ -32,6 +32,11 @@ std::size_t creativeEditorWorldLayoutSelectedBuilding(
                ? selection.index
                : cr::kInvalidCreativeWorldLayoutIndex;
   }
+  if (selection.kind == CreativeEditorWorldLayoutSelectionKind::Level) {
+    return selection.index < state.source.levels.size()
+               ? state.source.levels[selection.index].buildingIndex
+               : cr::kInvalidCreativeWorldLayoutIndex;
+  }
   if (selection.kind == CreativeEditorWorldLayoutSelectionKind::Room) {
     return selection.index < state.source.rooms.size()
                ? state.source.rooms[selection.index].buildingIndex

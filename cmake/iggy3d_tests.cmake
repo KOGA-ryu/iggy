@@ -499,6 +499,17 @@ set_tests_properties(creative_world_layout_hierarchy_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;editor;world;layout;hierarchy;iggy3d")
 
+add_executable(creative_world_layout_properties_tests
+  tests/unit/creative_world_layout_properties_tests.cpp)
+target_link_libraries(creative_world_layout_properties_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_world_layout_properties_tests)
+add_test(NAME creative_world_layout_properties_tests
+  COMMAND "$<TARGET_FILE:creative_world_layout_properties_tests>")
+set_tests_properties(creative_world_layout_properties_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;editor;world;layout;properties;iggy3d")
+
 add_executable(creative_editor_play_mode_tests
   tests/unit/creative_editor_play_mode_tests.cpp)
 target_link_libraries(creative_editor_play_mode_tests PRIVATE

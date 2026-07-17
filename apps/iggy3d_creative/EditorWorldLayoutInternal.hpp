@@ -11,6 +11,15 @@
 
 namespace iggy3d_creative_app::detail {
 
+inline bool hasVisibleWorldLayoutName(std::string_view name) noexcept {
+  for (const char value : name) {
+    if (value != ' ' && value != '\t' && value != '\r' && value != '\n') {
+      return true;
+    }
+  }
+  return false;
+}
+
 inline std::string mintWorldLayoutStableKey(
     CreativeEditorWorldLayoutState& state, std::string_view prefix) {
   return cr::mintCreativeWorldLayoutStableKey(

@@ -551,11 +551,30 @@ void drawWallSettings(CreativeEditorWorldLayoutState& state,
 void drawCreativeEditorWorldLayoutStructureInspector(
     CreativeEditorWorldLayoutState& state,
     CreativeDesktopCommandFrame& commands) {
-  drawBuildingActions(state, commands);
-  drawBuildingTemplateActions(state, commands);
-  drawCreativeEditorWorldLayoutVerticalConnectorInspector(state, commands);
-  drawBoxSettings(state, commands);
-  drawWallSettings(state, commands);
+  switch (state.selection.kind) {
+    case CreativeEditorWorldLayoutSelectionKind::Building:
+      drawBuildingActions(state, commands);
+      drawBuildingTemplateActions(state, commands);
+      break;
+    case CreativeEditorWorldLayoutSelectionKind::VerticalConnector:
+      drawCreativeEditorWorldLayoutVerticalConnectorInspector(state,
+                                                              commands);
+      break;
+    case CreativeEditorWorldLayoutSelectionKind::Box:
+      drawBoxSettings(state, commands);
+      break;
+    case CreativeEditorWorldLayoutSelectionKind::Wall:
+      drawWallSettings(state, commands);
+      break;
+    case CreativeEditorWorldLayoutSelectionKind::None:
+    case CreativeEditorWorldLayoutSelectionKind::Level:
+    case CreativeEditorWorldLayoutSelectionKind::Room:
+    case CreativeEditorWorldLayoutSelectionKind::Opening:
+    case CreativeEditorWorldLayoutSelectionKind::TerrainProfile:
+    case CreativeEditorWorldLayoutSelectionKind::TerrainPath:
+    case CreativeEditorWorldLayoutSelectionKind::Object:
+      break;
+  }
 }
 
 }  // namespace iggy3d_creative_app

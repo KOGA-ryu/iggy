@@ -65,6 +65,7 @@ struct CreativeEditorWorldLayoutPaletteEntry {
 
 enum class CreativeEditorWorldLayoutSelectionKind : std::uint8_t {
   None,
+  Level,
   Room,
   VerticalConnector,
   Box,
@@ -402,6 +403,113 @@ struct CreativeEditorWorldLayoutOpeningSettingsDraft {
   CreativeEditorWorldLayoutOpeningSettings settings;
 };
 
+struct CreativeEditorWorldLayoutLevelSettings {
+  std::string name;
+  double floorTopLayer = 0.0;
+  std::uint16_t wallHeightCells =
+      cr::kDefaultCreativeWorldLayoutWallHeightCells;
+  std::uint16_t floorThicknessLayers = 1U;
+  std::uint16_t ceilingThicknessLayers = 1U;
+  std::uint16_t roofThicknessLayers = 1U;
+  cr::CreativeStructuralRoofStyle roofStyle =
+      cr::CreativeStructuralRoofStyle::Flat;
+  cr::CreativeStructuralRoofRidgeAxis roofRidgeAxis =
+      cr::CreativeStructuralRoofRidgeAxis::X;
+  double roofPitchDegrees = cr::kDefaultCreativeStructuralRoofPitchDegrees;
+  double roofOverhangCells = 0.0;
+
+  [[nodiscard]] friend bool operator==(
+      const CreativeEditorWorldLayoutLevelSettings&,
+      const CreativeEditorWorldLayoutLevelSettings&) = default;
+};
+
+struct CreativeEditorWorldLayoutLevelSettingsDraft {
+  bool active = false;
+  std::size_t levelIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::uint64_t sourceRevision = 0U;
+  CreativeEditorWorldLayoutLevelSettings settings;
+};
+
+struct CreativeEditorWorldLayoutTerrainProfileSettings {
+  cr::CreativeTerrainRecipeKind kind = cr::CreativeTerrainRecipeKind::Hill;
+  cr::CreativeTerrainCoord2 center;
+  std::uint16_t baseHeightCells = 4U;
+  std::uint16_t radiusCells = 4U;
+  std::uint16_t amplitudeCells = 4U;
+  std::uint16_t spacingCells = 1U;
+  cr::CreativeTerrainProfileDirection direction =
+      cr::CreativeTerrainProfileDirection::PositiveX;
+  std::uint8_t frequency = 1U;
+
+  [[nodiscard]] friend bool operator==(
+      CreativeEditorWorldLayoutTerrainProfileSettings,
+      CreativeEditorWorldLayoutTerrainProfileSettings) noexcept = default;
+};
+
+struct CreativeEditorWorldLayoutTerrainProfileSettingsDraft {
+  bool active = false;
+  std::size_t profileIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::uint64_t sourceRevision = 0U;
+  CreativeEditorWorldLayoutTerrainProfileSettings settings;
+};
+
+struct CreativeEditorWorldLayoutTerrainPathSettings {
+  cr::CreativeTerrainRecipeKind kind = cr::CreativeTerrainRecipeKind::Road;
+  cr::CreativeTerrainPathElevation elevation =
+      cr::CreativeTerrainPathElevation::Level;
+  std::uint16_t halfWidthCells = 1U;
+  std::uint16_t amplitudeCells = 1U;
+  bool paintSurface = true;
+  cr::CreativeTerrainMaterial material = cr::CreativeTerrainMaterial::Count;
+  std::vector<cr::CreativeTerrainPathPoint> points;
+
+  [[nodiscard]] friend bool operator==(
+      const CreativeEditorWorldLayoutTerrainPathSettings&,
+      const CreativeEditorWorldLayoutTerrainPathSettings&) = default;
+};
+
+struct CreativeEditorWorldLayoutTerrainPathSettingsDraft {
+  bool active = false;
+  std::size_t pathIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::uint64_t sourceRevision = 0U;
+  CreativeEditorWorldLayoutTerrainPathSettings settings;
+};
+
+struct CreativeEditorWorldLayoutObjectSettings {
+  cr::CreativeObjectKind kind = cr::CreativeObjectKind::Unknown;
+  cr::CreativeObjectLibraryPlacementMode mode =
+      cr::CreativeObjectLibraryPlacementMode::Bounds;
+  std::string name;
+  std::string assetId;
+  cr::CreativeBounds boundsCells;
+  cr::CreativeVec3 pointCells;
+  bool visible = true;
+
+  [[nodiscard]] friend bool operator==(
+      const CreativeEditorWorldLayoutObjectSettings& lhs,
+      const CreativeEditorWorldLayoutObjectSettings& rhs) noexcept {
+    return lhs.kind == rhs.kind && lhs.mode == rhs.mode &&
+           lhs.name == rhs.name && lhs.assetId == rhs.assetId &&
+           lhs.boundsCells.min.x == rhs.boundsCells.min.x &&
+           lhs.boundsCells.min.y == rhs.boundsCells.min.y &&
+           lhs.boundsCells.min.z == rhs.boundsCells.min.z &&
+           lhs.boundsCells.max.x == rhs.boundsCells.max.x &&
+           lhs.boundsCells.max.y == rhs.boundsCells.max.y &&
+           lhs.boundsCells.max.z == rhs.boundsCells.max.z &&
+           lhs.pointCells.x == rhs.pointCells.x &&
+           lhs.pointCells.y == rhs.pointCells.y &&
+           lhs.pointCells.z == rhs.pointCells.z &&
+           lhs.visible == rhs.visible;
+  }
+};
+
+struct CreativeEditorWorldLayoutObjectSettingsDraft {
+  bool active = false;
+  std::size_t objectIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::uint64_t sourceRevision = 0U;
+  CreativeEditorWorldLayoutObjectSettings settings;
+};
+
 struct CreativeEditorWorldLayoutOpeningHost {
   bool valid = false;
   CreativeEditorWorldLayoutPoint start;
@@ -521,6 +629,11 @@ struct CreativeEditorWorldLayoutState {
   CreativeEditorWorldLayoutBoxSettingsDraft boxSettingsDraft;
   CreativeEditorWorldLayoutWallSettingsDraft wallSettingsDraft;
   CreativeEditorWorldLayoutOpeningSettingsDraft openingSettingsDraft;
+  CreativeEditorWorldLayoutLevelSettingsDraft levelSettingsDraft;
+  CreativeEditorWorldLayoutTerrainProfileSettingsDraft
+      terrainProfileSettingsDraft;
+  CreativeEditorWorldLayoutTerrainPathSettingsDraft terrainPathSettingsDraft;
+  CreativeEditorWorldLayoutObjectSettingsDraft objectSettingsDraft;
 
   CreativeEditorWorldLayoutViewMode viewMode =
       CreativeEditorWorldLayoutViewMode::Plan;
@@ -752,6 +865,34 @@ applyCreativeEditorWorldLayoutLevelOperation(
     CreativeEditorWorldLayoutLevelOperation operation,
     std::size_t buildingIndex = cr::kInvalidCreativeWorldLayoutIndex,
     std::size_t levelIndex = cr::kInvalidCreativeWorldLayoutIndex);
+[[nodiscard]] bool readCreativeEditorWorldLayoutLevelSettings(
+    const CreativeEditorWorldLayoutState& state, std::size_t levelIndex,
+    CreativeEditorWorldLayoutLevelSettings& output);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+setCreativeEditorWorldLayoutLevelSettings(
+    CreativeEditorWorldLayoutState& state, std::size_t levelIndex,
+    CreativeEditorWorldLayoutLevelSettings settings);
+[[nodiscard]] bool readCreativeEditorWorldLayoutTerrainProfileSettings(
+    const CreativeEditorWorldLayoutState& state, std::size_t profileIndex,
+    CreativeEditorWorldLayoutTerrainProfileSettings& output) noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+setCreativeEditorWorldLayoutTerrainProfileSettings(
+    CreativeEditorWorldLayoutState& state, std::size_t profileIndex,
+    CreativeEditorWorldLayoutTerrainProfileSettings settings);
+[[nodiscard]] bool readCreativeEditorWorldLayoutTerrainPathSettings(
+    const CreativeEditorWorldLayoutState& state, std::size_t pathIndex,
+    CreativeEditorWorldLayoutTerrainPathSettings& output);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+setCreativeEditorWorldLayoutTerrainPathSettings(
+    CreativeEditorWorldLayoutState& state, std::size_t pathIndex,
+    CreativeEditorWorldLayoutTerrainPathSettings settings);
+[[nodiscard]] bool readCreativeEditorWorldLayoutObjectSettings(
+    const CreativeEditorWorldLayoutState& state, std::size_t objectIndex,
+    CreativeEditorWorldLayoutObjectSettings& output);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+setCreativeEditorWorldLayoutObjectSettings(
+    CreativeEditorWorldLayoutState& state, std::size_t objectIndex,
+    CreativeEditorWorldLayoutObjectSettings settings);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 clearCreativeEditorWorldLayoutSelection(
     CreativeEditorWorldLayoutState& state);

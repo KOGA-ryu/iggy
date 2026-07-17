@@ -198,7 +198,9 @@ bool elevationHandleVisible(
       return (state.selection.kind ==
                   CreativeEditorWorldLayoutSelectionKind::None ||
               state.selection.kind ==
-                  CreativeEditorWorldLayoutSelectionKind::Building) &&
+                  CreativeEditorWorldLayoutSelectionKind::Building ||
+              state.selection.kind ==
+                  CreativeEditorWorldLayoutSelectionKind::Level) &&
              handle.levelIndex == state.activeLevelIndex;
     case CreativeEditorWorldLayoutElevationSourceKind::Box:
       return selected(state, CreativeEditorWorldLayoutSelectionKind::Box,

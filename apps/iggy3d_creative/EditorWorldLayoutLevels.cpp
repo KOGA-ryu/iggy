@@ -72,8 +72,6 @@ namespace {
 
 void selectLevelOwner(CreativeEditorWorldLayoutState& state,
                       std::size_t levelIndex) {
-  const std::size_t buildingIndex =
-      state.source.levels[levelIndex].buildingIndex;
   bool selectionVisible = false;
   if (state.selection.kind == CreativeEditorWorldLayoutSelectionKind::Room &&
       state.selection.index < state.source.rooms.size()) {
@@ -99,21 +97,10 @@ void selectLevelOwner(CreativeEditorWorldLayoutState& state,
              levelIndex) ||
         (connector.upperRoomIndex < state.source.rooms.size() &&
          state.source.rooms[connector.upperRoomIndex].levelIndex == levelIndex);
-  } else if (state.selection.kind ==
-                 CreativeEditorWorldLayoutSelectionKind::Building &&
-             state.selection.index == buildingIndex) {
-    selectionVisible = true;
-  } else if (state.selection.kind !=
-                 CreativeEditorWorldLayoutSelectionKind::Room &&
-             state.selection.kind !=
-                 CreativeEditorWorldLayoutSelectionKind::Opening &&
-             state.selection.kind !=
-                 CreativeEditorWorldLayoutSelectionKind::VerticalConnector) {
-    selectionVisible = true;
   }
   if (!selectionVisible) {
-    state.selection = {CreativeEditorWorldLayoutSelectionKind::Building,
-                       buildingIndex};
+    state.selection = {CreativeEditorWorldLayoutSelectionKind::Level,
+                       levelIndex};
   }
   state.activeLevelIndex = levelIndex;
 }
@@ -125,12 +112,16 @@ void selectLevelOwner(CreativeEditorWorldLayoutState& state,
     return {false, false,
             "creative_editor_world_layout_level_selection_invalid"};
   }
-  const bool changed = state.activeLevelIndex != levelIndex;
+  const std::size_t previousLevelIndex = state.activeLevelIndex;
+  const CreativeEditorWorldLayoutSelection previousSelection = state.selection;
   detail::clearWorldLayoutInteraction(state);
   state.anchorActive = false;
   selectLevelOwner(state, levelIndex);
+  const bool selectionChanged =
+      previousSelection.kind != state.selection.kind ||
+      previousSelection.index != state.selection.index;
   state.statusMessage = state.source.levels[levelIndex].name + " active";
-  return {true, changed,
+  return {true, previousLevelIndex != state.activeLevelIndex || selectionChanged,
           "creative_editor_world_layout_level_selected"};
 }
 
@@ -155,9 +146,9 @@ void selectLevelOwner(CreativeEditorWorldLayoutState& state,
             ? building.rootHeightCells
             : cr::kDefaultCreativeWorldLayoutWallHeightCells;
     state.source.levels.push_back(std::move(level));
-    state.selection = {CreativeEditorWorldLayoutSelectionKind::Building,
-                       buildingIndex};
     state.activeLevelIndex = state.source.levels.size() - 1U;
+    state.selection = {CreativeEditorWorldLayoutSelectionKind::Level,
+                       state.activeLevelIndex};
     detail::noteWorldLayoutSourceChange(state, "building level added");
     return {true, true, "creative_editor_world_layout_level_added"};
   }
@@ -182,9 +173,9 @@ void selectLevelOwner(CreativeEditorWorldLayoutState& state,
   level.floorTopLayer = floorTopLayer;
   const std::size_t levelIndex = state.source.levels.size();
   state.source.levels.push_back(std::move(level));
-  state.selection = {CreativeEditorWorldLayoutSelectionKind::Building,
-                     buildingIndex};
   state.activeLevelIndex = levelIndex;
+  state.selection = {CreativeEditorWorldLayoutSelectionKind::Level,
+                     levelIndex};
   detail::noteWorldLayoutSourceChange(state, "building level added");
   return {true, true, "creative_editor_world_layout_level_added"};
 }
@@ -242,9 +233,9 @@ void selectLevelOwner(CreativeEditorWorldLayoutState& state,
     state.source.openings.push_back(std::move(opening));
   }
 
-  state.selection = {CreativeEditorWorldLayoutSelectionKind::Building,
-                     buildingIndex};
   state.activeLevelIndex = duplicateLevelIndex;
+  state.selection = {CreativeEditorWorldLayoutSelectionKind::Level,
+                     duplicateLevelIndex};
   detail::noteWorldLayoutSourceChange(state, "building level duplicated");
   return {true, true, "creative_editor_world_layout_level_duplicated"};
 }
@@ -291,8 +282,8 @@ void selectLevelOwner(CreativeEditorWorldLayoutState& state,
     }
   }
   state.activeLevelIndex = otherIndex;
-  state.selection = {CreativeEditorWorldLayoutSelectionKind::Building,
-                     buildingIndex};
+  state.selection = {CreativeEditorWorldLayoutSelectionKind::Level,
+                     otherIndex};
   detail::noteWorldLayoutSourceChange(state, "building levels reordered");
   return {true, true, "creative_editor_world_layout_level_reordered"};
 }

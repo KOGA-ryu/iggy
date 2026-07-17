@@ -2364,6 +2364,11 @@ applyCreativeEditorWorldLayoutOpeningManipulation(
 CreativeEditorWorldLayoutEditReceipt deleteCreativeEditorWorldLayoutSelection(
     CreativeEditorWorldLayoutState& state) {
   const CreativeEditorWorldLayoutSelection selected = state.selection;
+  if (selected.kind == CreativeEditorWorldLayoutSelectionKind::Level) {
+    return applyCreativeEditorWorldLayoutLevelOperation(
+        state, CreativeEditorWorldLayoutLevelOperation::Delete,
+        cr::kInvalidCreativeWorldLayoutIndex, selected.index);
+  }
   if (selected.kind == CreativeEditorWorldLayoutSelectionKind::Building) {
     return deleteCreativeEditorWorldLayoutBuilding(state, selected.index);
   }
