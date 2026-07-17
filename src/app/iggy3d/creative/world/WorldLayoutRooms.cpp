@@ -73,6 +73,39 @@ bool sameMergeLane(const EdgeRecord& lhs, const EdgeRecord& rhs) noexcept {
          lhs.thicknessCells == rhs.thicknessCells;
 }
 
+bool oppositeEdges(CreativeWorldLayoutRoomEdge lhs,
+                   CreativeWorldLayoutRoomEdge rhs) noexcept {
+  return (lhs == CreativeWorldLayoutRoomEdge::North &&
+          rhs == CreativeWorldLayoutRoomEdge::South) ||
+         (lhs == CreativeWorldLayoutRoomEdge::East &&
+          rhs == CreativeWorldLayoutRoomEdge::West) ||
+         (lhs == CreativeWorldLayoutRoomEdge::South &&
+          rhs == CreativeWorldLayoutRoomEdge::North) ||
+         (lhs == CreativeWorldLayoutRoomEdge::West &&
+          rhs == CreativeWorldLayoutRoomEdge::East);
+}
+
+bool sharedMergeLane(const EdgeRecord& lhs,
+                     const EdgeRecord& rhs) noexcept {
+  return lhs.buildingIndex == rhs.buildingIndex &&
+         lhs.orientation == rhs.orientation && lhs.line == rhs.line &&
+         sameFloorTop(lhs.baseLayer, rhs.baseLayer) &&
+         lhs.heightCells == rhs.heightCells &&
+         lhs.thicknessCells == rhs.thicknessCells &&
+         oppositeEdges(lhs.roomEdge, rhs.roomEdge);
+}
+
+std::pair<double, double> spanOffsets(
+    const CreativeWorldLayoutRoom& room, CreativeWorldLayoutRoomEdge edge,
+    CreativeTerrainCoord2 start, CreativeTerrainCoord2 end) noexcept {
+  const bool horizontal = edge == CreativeWorldLayoutRoomEdge::North ||
+                          edge == CreativeWorldLayoutRoomEdge::South;
+  const double origin = horizontal ? room.footprint.minimum.x
+                                   : room.footprint.minimum.z;
+  return {static_cast<double>(horizontal ? start.x : start.z) - origin,
+          static_cast<double>(horizontal ? end.x : end.z) - origin};
+}
+
 auto edgeSortKey(const EdgeRecord& edge) noexcept {
   return std::tuple{edge.buildingIndex,  edge.baseLayer,   edge.heightCells,
                     edge.thicknessCells, edge.orientation, edge.line,
@@ -274,6 +307,98 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
   result.failedIndex = kInvalidCreativeWorldLayoutIndex;
   result.reasonCode = "creative_world_layout_rooms_expanded";
   return result;
+}
+
+std::vector<CreativeWorldLayoutSharedRoomEdgeSpan>
+inspectCreativeWorldLayoutSharedRoomEdges(
+    const CreativeWorldLayout& layout) {
+  std::vector<CreativeWorldLayoutSharedRoomEdgeSpan> spans;
+  for (std::size_t firstRoomIndex = 0U;
+       firstRoomIndex < layout.rooms.size(); ++firstRoomIndex) {
+    const auto firstEdges = roomEdges(
+        layout.rooms[firstRoomIndex], firstRoomIndex,
+        layout.rooms[firstRoomIndex].floorTopLayer);
+    for (std::size_t secondRoomIndex = firstRoomIndex + 1U;
+         secondRoomIndex < layout.rooms.size(); ++secondRoomIndex) {
+      const auto secondEdges = roomEdges(
+          layout.rooms[secondRoomIndex], secondRoomIndex,
+          layout.rooms[secondRoomIndex].floorTopLayer);
+      for (const EdgeRecord& first : firstEdges) {
+        for (const EdgeRecord& second : secondEdges) {
+          if (!sharedMergeLane(first, second)) {
+            continue;
+          }
+          const std::int32_t begin = std::max(first.begin, second.begin);
+          const std::int32_t end = std::min(first.end, second.end);
+          if (begin >= end) {
+            continue;
+          }
+          spans.push_back({
+              firstRoomIndex,
+              first.roomEdge,
+              secondRoomIndex,
+              second.roomEdge,
+              first.orientation == EdgeOrientation::Horizontal
+                  ? CreativeTerrainCoord2{begin, first.line}
+                  : CreativeTerrainCoord2{first.line, begin},
+              first.orientation == EdgeOrientation::Horizontal
+                  ? CreativeTerrainCoord2{end, first.line}
+                  : CreativeTerrainCoord2{first.line, end},
+          });
+        }
+      }
+    }
+  }
+  return spans;
+}
+
+bool creativeWorldLayoutRoomEdgeIntervalIsShared(
+    const CreativeWorldLayout& layout, std::size_t roomIndex,
+    CreativeWorldLayoutRoomEdge roomEdge, double centerOffsetCells,
+    double widthCells) {
+  if (roomIndex >= layout.rooms.size() ||
+      roomEdge >= CreativeWorldLayoutRoomEdge::Count ||
+      !std::isfinite(centerOffsetCells) || !std::isfinite(widthCells) ||
+      widthCells <= 0.0) {
+    return false;
+  }
+  const double intervalBegin = centerOffsetCells - widthCells * 0.5;
+  const double intervalEnd = centerOffsetCells + widthCells * 0.5;
+  for (const CreativeWorldLayoutSharedRoomEdgeSpan& span :
+       inspectCreativeWorldLayoutSharedRoomEdges(layout)) {
+    CreativeWorldLayoutRoomEdge matchedEdge =
+        CreativeWorldLayoutRoomEdge::Count;
+    if (span.firstRoomIndex == roomIndex && span.firstRoomEdge == roomEdge) {
+      matchedEdge = span.firstRoomEdge;
+    } else if (span.secondRoomIndex == roomIndex &&
+               span.secondRoomEdge == roomEdge) {
+      matchedEdge = span.secondRoomEdge;
+    }
+    if (matchedEdge == CreativeWorldLayoutRoomEdge::Count) {
+      continue;
+    }
+    const auto [sharedBegin, sharedEnd] = spanOffsets(
+        layout.rooms[roomIndex], matchedEdge, span.start, span.end);
+    if (std::max(intervalBegin, sharedBegin) <
+        std::min(intervalEnd, sharedEnd)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool creativeWorldLayoutHasInteriorRoomWindow(
+    const CreativeWorldLayout& layout) {
+  for (const CreativeWorldLayoutOpening& opening : layout.openings) {
+    if (opening.kind == CreativeBuildingOpeningKind::Window &&
+        opening.hostKind == CreativeWorldLayoutOpeningHostKind::RoomEdge &&
+        creativeWorldLayoutRoomEdgeIntervalIsShared(
+            layout, opening.roomIndex, opening.roomEdge,
+            opening.centerOffsetCells, opening.widthCells)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 CreativeRectangularRoomGeometryPlan planCreativeWorldLayoutRoomGeometry(

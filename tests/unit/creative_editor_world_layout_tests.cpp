@@ -431,6 +431,169 @@ bool buildingShellsKeepIndependentBuildingOwnership() {
                 "each shell owns its room and authored dimensions");
 }
 
+bool addRoomTargetsSelectedBuildingAndRejectsAmbiguousOwnership() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state);
+  static_cast<void>(app::createCreativeEditorWorldLayoutBuildingShell(
+      state, {{{0, 0}, {4, 4}}, 0.0, 3U, 0.25, 1U}));
+  static_cast<void>(app::createCreativeEditorWorldLayoutBuildingShell(
+      state, {{{10, 0}, {14, 4}}, 0.0, 3U, 0.25, 1U}));
+  const auto selected =
+      app::selectCreativeEditorWorldLayoutBuilding(state, 1U);
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Room));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {14, 0}));
+  const auto added = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {18, 4});
+
+  static_cast<void>(app::clearCreativeEditorWorldLayoutSelection(state));
+  const std::uint64_t revisionBeforeReject = state.revision;
+  const std::uint64_t ordinalBeforeReject = state.nextStableOrdinal;
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {20, 0}));
+  const auto ambiguous = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {24, 4});
+
+  return expect(selected.accepted && added.accepted && added.changed &&
+                    state.source.rooms.size() == 3U &&
+                    state.source.rooms[2].buildingIndex == 1U,
+                "Add Room attaches to the explicitly selected building") &&
+         expect(!ambiguous.accepted && !ambiguous.changed &&
+                    state.revision == revisionBeforeReject &&
+                    state.nextStableOrdinal == ordinalBeforeReject,
+                "Add Room rejects ambiguous multi-building ownership");
+}
+
+bool roomAdditionCannotInternalizeExistingWindow() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state);
+  static_cast<void>(app::createCreativeEditorWorldLayoutBuildingShell(
+      state, {{{0, 0}, {4, 4}}, 0.0, 3U, 0.25, 1U}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Window));
+  const auto window =
+      app::applyCreativeEditorWorldLayoutPoint(state, {4, 2});
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Room));
+  const std::uint64_t revisionBefore = state.revision;
+  const std::uint64_t ordinalBefore = state.nextStableOrdinal;
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {4, 0}));
+  const auto room = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {8, 4});
+
+  return expect(window.accepted && window.changed,
+                "window begins on an exterior room edge") &&
+         expect(!room.accepted && !room.changed &&
+                    state.source.rooms.size() == 1U &&
+                    state.source.openings.size() == 1U &&
+                    state.revision == revisionBefore &&
+                    state.nextStableOrdinal == ordinalBefore,
+                "room addition cannot silently internalize a window");
+}
+
+bool fourRoomBuildingRoundTripsAsOneGeneratedEdit() {
+  cr::CreativeAppState live = appState();
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state);
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::BuildingShell));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {0, 0}));
+  const auto shell = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {4, 4});
+
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Room));
+  const auto addRoom = [&](app::CreativeEditorWorldLayoutPoint first,
+                           app::CreativeEditorWorldLayoutPoint second) {
+    const auto begin = app::applyCreativeEditorWorldLayoutGesture(
+        state, app::CreativeEditorWorldLayoutGesturePhase::Begin, first);
+    const auto commit = app::applyCreativeEditorWorldLayoutGesture(
+        state, app::CreativeEditorWorldLayoutGesturePhase::Commit, second);
+    return begin.accepted && !begin.changed && commit.accepted &&
+           commit.changed;
+  };
+  const bool roomsAdded = addRoom({4, 0}, {8, 4}) &&
+                          addRoom({0, 4}, {4, 8}) &&
+                          addRoom({4, 4}, {8, 8});
+
+  const auto sharedEdges =
+      cr::inspectCreativeWorldLayoutSharedRoomEdges(state.source);
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Door));
+  const auto interiorDoor =
+      app::applyCreativeEditorWorldLayoutPoint(state, {4, 2});
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Window));
+  const std::uint64_t revisionBeforeInteriorWindow = state.revision;
+  const auto interiorWindow =
+      app::applyCreativeEditorWorldLayoutPoint(state, {4, 6});
+  const auto exteriorWindow =
+      app::applyCreativeEditorWorldLayoutPoint(state, {2, 0});
+
+  const cr::CreativeWorldLayoutRoomCompileResult expanded =
+      cr::expandCreativeWorldLayoutRooms(state.source);
+  const cr::CreativeWorldLayoutEncodeResult encoded =
+      cr::encodeCreativeWorldLayout(state.source);
+  const cr::CreativeWorldLayoutDecodeResult decoded =
+      cr::decodeCreativeWorldLayout(encoded.encodedText);
+  const std::uint64_t liveCountBefore = live.facade.document().objectCount();
+  const auto preview =
+      app::previewCreativeEditorWorldLayout(state, live.facade.document());
+  std::uint64_t floorCount = 0U;
+  std::uint64_t doorCount = 0U;
+  std::uint64_t windowCount = 0U;
+  for (const cr::CreativeObject& object : state.preview.document.objects()) {
+    floorCount += object.kind == cr::CreativeObjectKind::Floor ? 1U : 0U;
+    doorCount += object.kind == cr::CreativeObjectKind::Door ? 1U : 0U;
+    windowCount += object.kind == cr::CreativeObjectKind::Window ? 1U : 0U;
+  }
+  const std::uint64_t previewObjectCount = state.preview.document.objectCount();
+  const auto generated = app::confirmCreativeEditorWorldLayout(state, live);
+  const bool undone = app::undoLastEdit(live, "four-room-undo", &state);
+  const bool undoRestored =
+      undone && state.source.buildings.empty() && state.source.rooms.empty() &&
+      live.facade.document().objectCount() == liveCountBefore;
+  const bool redone = app::redoLastEdit(live, "four-room-redo", &state);
+
+  return expect(shell.accepted && shell.changed && roomsAdded &&
+                    state.source.buildings.size() == 1U &&
+                    state.source.rooms.size() == 4U &&
+                    std::all_of(state.source.rooms.begin(),
+                                state.source.rooms.end(), [](const auto& room) {
+                                  return room.buildingIndex == 0U;
+                                }) &&
+                    sharedEdges.size() == 4U,
+                "four adjoining rooms remain one building with four shared spans") &&
+         expect(interiorDoor.accepted && interiorDoor.changed &&
+                    !interiorWindow.accepted && !interiorWindow.changed &&
+                    state.revision == revisionBeforeInteriorWindow + 1U &&
+                    exteriorWindow.accepted && exteriorWindow.changed &&
+                    state.source.openings.size() == 2U,
+                "doors connect rooms while windows default to exterior walls") &&
+         expect(expanded.accepted && expanded.expanded.walls.size() == 6U,
+                "four-room topology condenses to six canonical wall lanes") &&
+         expect(encoded.accepted && decoded.accepted &&
+                    decoded.layout.buildings.size() == 1U &&
+                    decoded.layout.rooms.size() == 4U &&
+                    decoded.layout.openings.size() == 2U,
+                "four-room semantic source survives codec round trip") &&
+         expect(preview.accepted && floorCount == 4U && doorCount == 1U &&
+                    windowCount == 1U &&
+                    liveCountBefore == 0U,
+                "exact preview contains four floors and authored openings") &&
+         expect(generated.accepted && generated.changed &&
+                    cr::creativeUndoDepth(live.history) == 1U &&
+                    live.facade.document().objectCount() == previewObjectCount,
+                "four-room building generates as one history edit") &&
+         expect(undoRestored && redone && state.source.rooms.size() == 4U &&
+                    state.source.openings.size() == 2U &&
+                    live.facade.document().objectCount() == previewObjectCount,
+                "undo and redo restore semantic and rendered building state");
+}
+
 bool invalidRoomShellSettingsFailWithoutMutation() {
   app::CreativeEditorWorldLayoutState state;
   app::resetCreativeEditorWorldLayout(state);
@@ -1936,6 +2099,9 @@ int main() {
                   buildingShellCreatesOwnedRoomAndGeneratesAsOneEdit() &&
                   rejectedBuildingShellIsTransactionallyEmpty() &&
                   buildingShellsKeepIndependentBuildingOwnership() &&
+                  addRoomTargetsSelectedBuildingAndRejectsAmbiguousOwnership() &&
+                  roomAdditionCannotInternalizeExistingWindow() &&
+                  fourRoomBuildingRoundTripsAsOneGeneratedEdit() &&
                   invalidRoomShellSettingsFailWithoutMutation() &&
                   roomMovePreviewCommitsOnceAndKeepsOpeningHosted() &&
                   roomEdgesAndCornersResizeFromTheirOwnedSides() &&

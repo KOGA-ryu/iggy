@@ -163,6 +163,52 @@ bool adjacentRoomsShareOneCanonicalWall() {
                 "room expansion ordering is deterministic");
 }
 
+bool sharedEdgeInspectionMatchesCanonicalTopology() {
+  const cr::CreativeWorldLayout adjacent = adjacentRooms();
+  const auto adjacentSpans =
+      cr::inspectCreativeWorldLayoutSharedRoomEdges(adjacent);
+
+  cr::CreativeWorldLayout partial = adjacent;
+  partial.openings.clear();
+  partial.rooms[1].footprint = {{4, 1}, {8, 3}};
+  const auto partialSpans =
+      cr::inspectCreativeWorldLayoutSharedRoomEdges(partial);
+  const bool interiorInterval =
+      cr::creativeWorldLayoutRoomEdgeIntervalIsShared(
+          partial, 0U, cr::CreativeWorldLayoutRoomEdge::East, 2.0, 1.0);
+  const bool exteriorInterval =
+      cr::creativeWorldLayoutRoomEdgeIntervalIsShared(
+          partial, 0U, cr::CreativeWorldLayoutRoomEdge::East, 0.25, 0.25);
+
+  cr::CreativeWorldLayout differentHeight = adjacent;
+  differentHeight.openings.clear();
+  differentHeight.rooms[1].wallHeightCells += 1U;
+  const auto differentHeightSpans =
+      cr::inspectCreativeWorldLayoutSharedRoomEdges(differentHeight);
+
+  return expect(adjacentSpans.size() == 1U &&
+                    adjacentSpans[0].firstRoomIndex == 0U &&
+                    adjacentSpans[0].firstRoomEdge ==
+                        cr::CreativeWorldLayoutRoomEdge::East &&
+                    adjacentSpans[0].secondRoomIndex == 1U &&
+                    adjacentSpans[0].secondRoomEdge ==
+                        cr::CreativeWorldLayoutRoomEdge::West &&
+                    adjacentSpans[0].start ==
+                        cr::CreativeTerrainCoord2{4, 0} &&
+                    adjacentSpans[0].end ==
+                        cr::CreativeTerrainCoord2{4, 4},
+                "shared edge inspection emits one stable contributor pair") &&
+         expect(partialSpans.size() == 1U &&
+                    partialSpans[0].start ==
+                        cr::CreativeTerrainCoord2{4, 1} &&
+                    partialSpans[0].end ==
+                        cr::CreativeTerrainCoord2{4, 3} &&
+                    interiorInterval && !exteriorInterval,
+                "partial shared edges classify only their interior interval") &&
+         expect(differentHeightSpans.empty(),
+                "edges with incompatible wall geometry remain exterior");
+}
+
 bool invalidTopologyFailsClosed() {
   cr::CreativeWorldLayout overlap = adjacentRooms();
   overlap.rooms[1].footprint = {{3, 1}, {7, 5}};
@@ -443,6 +489,7 @@ bool horizontalStructuralLayersUseDescriptorThickness() {
 int main() {
   const bool ok = roomEdgesHaveStableCardinalIdentity() &&
                   adjacentRoomsShareOneCanonicalWall() &&
+                  sharedEdgeInspectionMatchesCanonicalTopology() &&
                   invalidTopologyFailsClosed() &&
                   roomTopologyCompilesThroughExistingBuildingRecipe() &&
                   generatedRoomObjectsResolveToSemanticSources() &&

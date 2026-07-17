@@ -2,6 +2,8 @@
 
 #include "EditorDesktopWorldLayoutInspector.hpp"
 
+#include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -237,6 +239,27 @@ void drawRoom(ImDrawList& drawList, const CanvasTransform& transform,
                    isSelected ? color({0.96F, 0.82F, 0.22F, 1.0F})
                               : color({0.70F, 0.78F, 0.86F, 1.0F}),
                    0.0F, 0, isSelected ? 4.0F : 3.0F);
+}
+
+void drawSharedRoomEdges(ImDrawList& drawList,
+                         const CanvasTransform& transform,
+                         const CreativeEditorWorldLayoutState& state) {
+  const cr::CreativeWorldLayout& source =
+      creativeEditorWorldLayoutDisplaySource(state);
+  const auto spans = cr::inspectCreativeWorldLayoutSharedRoomEdges(source);
+  const ImU32 sharedColor = color({0.26F, 0.84F, 0.58F, 1.0F});
+  for (const cr::CreativeWorldLayoutSharedRoomEdgeSpan& span : spans) {
+    if (span.firstRoomIndex >= source.rooms.size()) {
+      continue;
+    }
+    const auto [deltaX, deltaZ] =
+        buildingPreviewOffset(state,
+                              source.rooms[span.firstRoomIndex].buildingIndex);
+    drawList.AddLine(
+        toScreen(transform, span.start.x + deltaX, span.start.z + deltaZ),
+        toScreen(transform, span.end.x + deltaX, span.end.z + deltaZ),
+        sharedColor, 4.0F);
+  }
 }
 
 std::pair<ImVec2, ImVec2> screenRect(
@@ -1108,6 +1131,7 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   for (std::size_t index = 0U; index < displaySource.walls.size(); ++index) {
     drawWall(*drawList, transform, state, index);
   }
+  drawSharedRoomEdges(*drawList, transform, state);
   drawOpenings(*drawList, transform, state);
   drawObjectSymbols(*drawList, transform, state);
   drawBuildingSelection(*drawList, transform, state);

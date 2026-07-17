@@ -622,6 +622,10 @@ OpeningValidation validateOpeningCandidate(
 
   cr::CreativeWorldLayout staged = state.source;
   staged.openings[openingIndex] = candidate;
+  if (cr::creativeWorldLayoutHasInteriorRoomWindow(staged)) {
+    return {false, "creative_editor_world_layout_window_requires_exterior",
+            "windows must remain on exterior room edges"};
+  }
   const cr::CreativeWorldLayoutRoomCompileResult expanded =
       cr::expandCreativeWorldLayoutRooms(staged);
   if (!expanded.accepted ||
@@ -739,6 +743,11 @@ RoomSettingsValidation validateRoomSettings(
   if (!expanded.accepted) {
     return {false, expanded.reasonCode, expanded.reasonCode};
   }
+  if (cr::creativeWorldLayoutHasInteriorRoomWindow(candidate)) {
+    return {false,
+            "creative_editor_world_layout_room_resize_interior_window",
+            "resize would turn a window into an interior opening"};
+  }
   for (std::size_t index = 0U; index < expanded.expanded.openings.size();
        ++index) {
     const cr::CreativeWorldLayoutOpening& opening =
@@ -834,24 +843,18 @@ CreativeEditorWorldLayoutEditReceipt addRoomPoint(
   }
   const cr::CreativeWorldLayoutRect rect = normalizedRect(state.anchor, point);
   state.anchorActive = false;
-  if (rect.minimum.x == rect.maximum.x || rect.minimum.z == rect.maximum.z) {
-    state.statusMessage = "room needs width and depth";
-    return {false, false, "creative_editor_world_layout_room_degenerate"};
+  const CreativeEditorWorldLayoutRoomSettings settings{
+      rect, 0.0, cr::kDefaultCreativeWorldLayoutWallHeightCells,
+      cr::kDefaultCreativeWorldLayoutWallThicknessCells, 1U};
+  if (state.source.buildings.empty()) {
+    return createCreativeEditorWorldLayoutBuildingShell(state, settings);
   }
-  if (roomFootprintOverlaps(state.source, rect, 0U, 0.0)) {
-    state.statusMessage = "rooms may touch but cannot overlap";
-    return {false, false, "creative_editor_world_layout_room_overlap"};
+  std::size_t buildingIndex = creativeEditorWorldLayoutSelectedBuilding(state);
+  if (buildingIndex == cr::kInvalidCreativeWorldLayoutIndex &&
+      state.source.buildings.size() == 1U) {
+    buildingIndex = 0U;
   }
-  cr::CreativeWorldLayoutRoom room;
-  room.buildingIndex = ensurePrimaryBuilding(state);
-  room.stableKey = mintWorldLayoutStableKey(state, "room");
-  room.name = "Room " + std::to_string(state.source.rooms.size() + 1U);
-  room.footprint = rect;
-  state.source.rooms.push_back(std::move(room));
-  state.selection = {CreativeEditorWorldLayoutSelectionKind::Room,
-                     state.source.rooms.size() - 1U};
-  noteWorldLayoutSourceChange(state, "room added");
-  return {true, true, "creative_editor_world_layout_room_added"};
+  return createCreativeEditorWorldLayoutRoom(state, buildingIndex, settings);
 }
 
 CreativeEditorWorldLayoutEditReceipt addBuildingShellPoint(
@@ -973,6 +976,16 @@ CreativeEditorWorldLayoutEditReceipt addOpening(
   opening.centerOffsetCells =
       std::clamp(std::round(projection.centerOffsetCells * 4.0) / 4.0,
                  minimumCenter, maximumCenter);
+  if (kind == cr::CreativeBuildingOpeningKind::Window &&
+      projection.hostKind ==
+          cr::CreativeWorldLayoutOpeningHostKind::RoomEdge &&
+      cr::creativeWorldLayoutRoomEdgeIntervalIsShared(
+          state.source, projection.roomIndex, projection.roomEdge,
+          opening.centerOffsetCells, opening.widthCells)) {
+    state.statusMessage = "place windows on an exterior room edge";
+    return {false, false,
+            "creative_editor_world_layout_window_requires_exterior"};
+  }
   cr::CreativeWorldLayout candidate = state.source;
   candidate.openings.push_back(opening);
   const cr::CreativeWorldLayoutRoomCompileResult expanded =

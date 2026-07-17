@@ -28,6 +28,51 @@ bool validShellSettings(
          settings.floorThicknessLayers > 0U;
 }
 
+cr::CreativeWorldLayoutRoom makeRoom(
+    const CreativeEditorWorldLayoutRoomSettings& settings,
+    std::size_t buildingIndex, std::size_t roomIndex,
+    std::string stableKey) {
+  cr::CreativeWorldLayoutRoom room;
+  room.buildingIndex = buildingIndex;
+  room.stableKey = std::move(stableKey);
+  room.name = "Room " + std::to_string(roomIndex + 1U);
+  room.footprint = settings.footprint;
+  room.floorTopLayer = settings.floorTopLayer;
+  room.wallHeightCells = settings.wallHeightCells;
+  room.wallThicknessCells = settings.wallThicknessCells;
+  room.floorThicknessLayers = settings.floorThicknessLayers;
+  return room;
+}
+
+CreativeEditorWorldLayoutEditReceipt commitRoomCandidate(
+    CreativeEditorWorldLayoutState& state,
+    cr::CreativeWorldLayout candidate, std::uint64_t nextStableOrdinal,
+    std::size_t roomIndex, std::string statusMessage,
+    std::string reasonCode) {
+  const cr::CreativeWorldLayoutRoomCompileResult expanded =
+      cr::expandCreativeWorldLayoutRooms(candidate);
+  if (!expanded.accepted) {
+    const bool overlaps =
+        expanded.status ==
+        cr::CreativeWorldLayoutRoomCompileStatus::OverlappingRooms;
+    state.statusMessage = overlaps ? "rooms may touch but cannot overlap"
+                                   : expanded.reasonCode;
+    return {false, false, expanded.reasonCode};
+  }
+  if (cr::creativeWorldLayoutHasInteriorRoomWindow(candidate)) {
+    state.statusMessage =
+        "room would turn an exterior window into an interior opening";
+    return {false, false,
+            "creative_editor_world_layout_room_interior_window"};
+  }
+
+  state.source = std::move(candidate);
+  state.nextStableOrdinal = nextStableOrdinal;
+  state.selection = {CreativeEditorWorldLayoutSelectionKind::Room, roomIndex};
+  detail::noteWorldLayoutSourceChange(state, std::move(statusMessage));
+  return {true, true, std::move(reasonCode)};
+}
+
 }  // namespace
 
 CreativeEditorWorldLayoutEditReceipt
@@ -54,32 +99,41 @@ createCreativeEditorWorldLayoutBuildingShell(
   building.rootHeightCells = settings.wallHeightCells;
   candidate.buildings.push_back(std::move(building));
 
-  cr::CreativeWorldLayoutRoom room;
-  room.buildingIndex = buildingIndex;
-  room.stableKey = cr::mintCreativeWorldLayoutStableKey(
-      candidate, nextStableOrdinal, "room");
-  room.name = "Room " + std::to_string(roomIndex + 1U);
-  room.footprint = settings.footprint;
-  room.floorTopLayer = settings.floorTopLayer;
-  room.wallHeightCells = settings.wallHeightCells;
-  room.wallThicknessCells = settings.wallThicknessCells;
-  room.floorThicknessLayers = settings.floorThicknessLayers;
-  candidate.rooms.push_back(std::move(room));
+  candidate.rooms.push_back(makeRoom(
+      settings, buildingIndex, roomIndex,
+      cr::mintCreativeWorldLayoutStableKey(candidate, nextStableOrdinal,
+                                            "room")));
 
-  const cr::CreativeWorldLayoutRoomCompileResult expanded =
-      cr::expandCreativeWorldLayoutRooms(candidate);
-  if (!expanded.accepted) {
-    state.statusMessage = expanded.reasonCode;
-    return {false, false, expanded.reasonCode};
+  return commitRoomCandidate(
+      state, std::move(candidate), nextStableOrdinal, roomIndex,
+      "building shell staged; preview or confirm in 3D",
+      "creative_editor_world_layout_building_shell_created");
+}
+
+CreativeEditorWorldLayoutEditReceipt createCreativeEditorWorldLayoutRoom(
+    CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
+    CreativeEditorWorldLayoutRoomSettings settings) {
+  if (buildingIndex >= state.source.buildings.size() ||
+      !validShellSettings(settings)) {
+    state.statusMessage =
+        buildingIndex >= state.source.buildings.size()
+            ? "select the building that should own this room"
+            : "room needs valid floor and wall dimensions";
+    return {false, false,
+            "creative_editor_world_layout_room_creation_invalid"};
   }
 
-  state.source = std::move(candidate);
-  state.nextStableOrdinal = nextStableOrdinal;
-  state.selection = {CreativeEditorWorldLayoutSelectionKind::Room, roomIndex};
-  detail::noteWorldLayoutSourceChange(
-      state, "building shell staged; preview or confirm in 3D");
-  return {true, true,
-          "creative_editor_world_layout_building_shell_created"};
+  cr::CreativeWorldLayout candidate = state.source;
+  std::uint64_t nextStableOrdinal = state.nextStableOrdinal;
+  const std::size_t roomIndex = candidate.rooms.size();
+  candidate.rooms.push_back(makeRoom(
+      settings, buildingIndex, roomIndex,
+      cr::mintCreativeWorldLayoutStableKey(candidate, nextStableOrdinal,
+                                            "room")));
+  return commitRoomCandidate(
+      state, std::move(candidate), nextStableOrdinal, roomIndex,
+      "room added to " + state.source.buildings[buildingIndex].name,
+      "creative_editor_world_layout_room_added");
 }
 
 }  // namespace iggy3d_creative_app

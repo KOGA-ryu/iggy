@@ -36,8 +36,33 @@ struct CreativeWorldLayoutRoomCompileResult {
   std::string reasonCode = "creative_world_layout_rooms_not_requested";
 };
 
+struct CreativeWorldLayoutSharedRoomEdgeSpan {
+  std::size_t firstRoomIndex = kInvalidCreativeWorldLayoutIndex;
+  CreativeWorldLayoutRoomEdge firstRoomEdge =
+      CreativeWorldLayoutRoomEdge::Count;
+  std::size_t secondRoomIndex = kInvalidCreativeWorldLayoutIndex;
+  CreativeWorldLayoutRoomEdge secondRoomEdge =
+      CreativeWorldLayoutRoomEdge::Count;
+  CreativeTerrainCoord2 start;
+  CreativeTerrainCoord2 end;
+};
+
 [[nodiscard]] CreativeWorldLayoutRoomCompileResult
 expandCreativeWorldLayoutRooms(const CreativeWorldLayout& layout);
+
+// O(room_count^2) control-path inspection. Spans are emitted once in stable
+// room-index order and only when the room compiler would merge both edges.
+[[nodiscard]] std::vector<CreativeWorldLayoutSharedRoomEdgeSpan>
+inspectCreativeWorldLayoutSharedRoomEdges(
+    const CreativeWorldLayout& layout);
+
+[[nodiscard]] bool creativeWorldLayoutRoomEdgeIntervalIsShared(
+    const CreativeWorldLayout& layout, std::size_t roomIndex,
+    CreativeWorldLayoutRoomEdge roomEdge, double centerOffsetCells,
+    double widthCells);
+
+[[nodiscard]] bool creativeWorldLayoutHasInteriorRoomWindow(
+    const CreativeWorldLayout& layout);
 
 [[nodiscard]] CreativeRectangularRoomGeometryPlan
 planCreativeWorldLayoutRoomGeometry(
