@@ -47,7 +47,8 @@ void setGeometryStatus(CreativeRectangularRoomGeometryPlan& plan,
   return kind == CreativeObjectKind::Room ||
          kind == CreativeObjectKind::Floor ||
          kind == CreativeObjectKind::Ceiling ||
-         kind == CreativeObjectKind::Roof;
+         kind == CreativeObjectKind::Roof ||
+         kind == CreativeObjectKind::Stair || kind == CreativeObjectKind::Ramp;
 }
 
 [[nodiscard]] bool openingPoseIsOpen(
@@ -67,13 +68,11 @@ void setGeometryStatus(CreativeRectangularRoomGeometryPlan& plan,
          mode == CreativeBuildingRootMode::ExistingRoom;
 }
 
-[[nodiscard]] CreativeDocumentCreateRequest makeBoxRequest(
-    CreativeObjectKind kind,
-    std::string name,
-    CreativeBounds bounds,
-    bool visible,
-    const std::vector<std::string>& tags,
-    CreativeVec3 scale = {1.0, 1.0, 1.0}) {
+[[nodiscard]] CreativeDocumentCreateRequest
+makeBoxRequest(CreativeObjectKind kind, std::string name, CreativeBounds bounds,
+               bool visible, const std::vector<std::string>& tags,
+               CreativeVec3 scale = {1.0, 1.0, 1.0},
+               CreativeVec3 rotationEulerRadians = {}) {
   CreativeDocumentCreateRequest request;
   request.kind = kind;
   request.name = std::move(name);
@@ -83,6 +82,7 @@ void setGeometryStatus(CreativeRectangularRoomGeometryPlan& plan,
   if (descriptor.hasTransform) {
     request.transform.position = measureCreativeBounds(bounds).center;
     request.transform.scale = scale;
+    request.transform.rotationEulerRadians = rotationEulerRadians;
     request.hasTransformOverride = true;
   }
   request.visible = visible;
@@ -116,18 +116,18 @@ void setRecipeParent(CreativeRecipeObjectPlan& object,
 
 void appendGeneratedObject(CreativeBuildingRecipeResult& result,
                            const CreativeBuildingRecipeRequest& request,
-                           CreativeObjectKind kind,
-                           std::string stableKey,
-                           std::string name,
-                           CreativeBounds bounds,
+                           CreativeObjectKind kind, std::string stableKey,
+                           std::string name, CreativeBounds bounds,
                            bool hasCreatedRoot,
                            const std::vector<std::string>& specificTags = {},
-                           CreativeVec3 scale = {1.0, 1.0, 1.0}) {
+                           CreativeVec3 scale = {1.0, 1.0, 1.0},
+                           CreativeVec3 rotationEulerRadians = {}) {
   CreativeRecipeObjectPlan object;
   const std::vector<std::string> tags =
       mergedTags(request.tags, specificTags);
-  object.createRequest = makeBoxRequest(kind, std::move(name), bounds,
-                                        request.visible, tags, scale);
+  object.createRequest =
+      makeBoxRequest(kind, std::move(name), bounds, request.visible, tags,
+                     scale, rotationEulerRadians);
   object.role = CreativeRecipeObjectRole::Generated;
   object.stableKey = std::move(stableKey);
   setRecipeParent(object, request, hasCreatedRoot);
@@ -526,14 +526,16 @@ CreativeBuildingRecipeResult buildCreativeBuildingRecipe(
     const CreativeBuildingBoxSpec& box = request.boxes[index];
     if (!allowedBoxKind(box.kind) || box.stableKey.empty() ||
         box.name.empty() || !validBounds(box.bounds) ||
-        !isPositiveCreativeVec3(box.scale)) {
+        !isPositiveCreativeVec3(box.scale) ||
+        !isFiniteCreativeVec3(box.rotationEulerRadians)) {
       setStatus(result.receipt, CreativeBuildingRecipeStatus::InvalidBox,
                 "creative_building_box_invalid");
       result.plan.objects.clear();
       return result;
     }
     appendGeneratedObject(result, request, box.kind, box.stableKey, box.name,
-                          box.bounds, createsRoot, box.tags, box.scale);
+                          box.bounds, createsRoot, box.tags, box.scale,
+                          box.rotationEulerRadians);
   }
 
   for (std::size_t index = 0; index < request.walls.size(); ++index) {

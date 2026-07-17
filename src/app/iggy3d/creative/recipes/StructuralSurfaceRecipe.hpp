@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 
+#include <array>
 #include <cstdint>
 #include <string_view>
 
@@ -42,5 +43,43 @@ struct CreativeStructuralSurfaceRecipeResult {
 [[nodiscard]] CreativeStructuralSurfaceRecipeResult
 planCreativeStructuralSurface(
     const CreativeStructuralSurfaceRecipeRequest& request) noexcept;
+
+enum class CreativeStructuralSurfaceCutoutStatus : std::uint8_t {
+  NotRequested,
+  InvalidSurface,
+  InvalidCutout,
+  CutoutOutsideSurface,
+  CutoutConsumesSurface,
+  Ready,
+};
+
+struct CreativeStructuralSurfaceCutoutRequest {
+  CreativeStructuralSurfaceRecipeRequest surface;
+  double cutoutMinimumX = 0.0;
+  double cutoutMaximumX = 0.0;
+  double cutoutMinimumZ = 0.0;
+  double cutoutMaximumZ = 0.0;
+};
+
+inline constexpr std::size_t kCreativeStructuralSurfaceCutoutPieceCapacity = 4U;
+
+struct CreativeStructuralSurfaceCutoutResult {
+  bool accepted = false;
+  CreativeStructuralSurfaceCutoutStatus status =
+      CreativeStructuralSurfaceCutoutStatus::NotRequested;
+  std::array<CreativeStructuralSurfaceRecipeResult,
+             kCreativeStructuralSurfaceCutoutPieceCapacity>
+      pieces{};
+  std::uint8_t pieceCount = 0U;
+  std::string_view reasonCode =
+      "creative_structural_surface_cutout_not_requested";
+};
+
+// Partitions one horizontal structural surface around one rectangular opening.
+// Output order is stable: west, east, north, south. Zero-area pieces are
+// omitted, allowing openings to touch an outer edge without overlap.
+[[nodiscard]] CreativeStructuralSurfaceCutoutResult
+planCreativeStructuralSurfaceCutout(
+    const CreativeStructuralSurfaceCutoutRequest& request) noexcept;
 
 }  // namespace iggy3d::creative

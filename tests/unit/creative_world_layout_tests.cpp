@@ -174,6 +174,37 @@ cr::CreativeWorldLayout transformableBuildingLayout() {
   return layout;
 }
 
+cr::CreativeWorldLayout verticalConnectorBuildingLayout() {
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "vertical_connector_layout";
+  layout.buildings.push_back({"vertical_building",
+                              "Vertical Building",
+                              cr::CreativeBuildingRootMode::CreateRoom,
+                              {{0, 0}, {8, 6}},
+                              0,
+                              4U,
+                              true,
+                              {}});
+  layout.levels = {
+      {0U, "vertical_level_0", "Ground", 0.0, 4U, 1U, 1U, 1U},
+      {0U, "vertical_level_1", "Upper", 4.0, 4U, 1U, 1U, 1U},
+  };
+  layout.rooms = {
+      {0U, 0U, "vertical_room_0", "Ground Room", {{0, 0}, {8, 6}}, 0.25},
+      {0U, 1U, "vertical_room_1", "Upper Room", {{0, 0}, {8, 6}}, 0.25},
+  };
+  layout.verticalConnectors.push_back(
+      {0U,
+       0U,
+       1U,
+       cr::CreativeWorldLayoutVerticalConnectorKind::Stair,
+       cr::CreativeWorldLayoutVerticalDirection::PositiveX,
+       "vertical_stair",
+       "Main Stair",
+       {{1, 2}, {5, 4}}});
+  return layout;
+}
+
 bool sameBuildingTransformGeometry(const cr::CreativeWorldLayout &lhs,
                                    const cr::CreativeWorldLayout &rhs) {
   if (lhs.buildings.size() != rhs.buildings.size() ||
@@ -520,6 +551,72 @@ bool buildingEditKernelsAreAtomicAndRemapOwnership() {
                 "building edits reject malformed ownership before copying");
 }
 
+bool verticalConnectorOwnershipFollowsBuildingKernels() {
+  const cr::CreativeWorldLayout source = verticalConnectorBuildingLayout();
+  const cr::CreativeWorldLayoutBuildingEditResult moved =
+      cr::moveCreativeWorldLayoutBuilding(source, {0U, 3, -2});
+  const cr::CreativeWorldLayoutBuildingTransformResult rotated =
+      cr::transformCreativeWorldLayoutBuilding(
+          source,
+          {0U,
+           cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90});
+  const cr::CreativeWorldLayoutBuildingEditResult duplicated =
+      cr::duplicateCreativeWorldLayoutBuilding(source, {0U, 20, 0, 10U});
+  const cr::CreativeWorldLayoutBuildingEditResult removed =
+      duplicated.accepted
+          ? cr::deleteCreativeWorldLayoutBuilding(duplicated.edited, {0U})
+          : cr::CreativeWorldLayoutBuildingEditResult{};
+  const cr::CreativeWorldLayoutBuildingTemplateResult captured =
+      cr::captureCreativeWorldLayoutBuildingTemplate(
+          source, {0U, "vertical_template", "Vertical Template"});
+  cr::CreativeWorldLayout destination;
+  destination.stableKey = "vertical_destination";
+  const cr::CreativeWorldLayoutBuildingEditResult stamped =
+      captured.accepted
+          ? cr::stampCreativeWorldLayoutBuildingTemplate(
+                destination, captured.value, {{10, 10}, 100U, false})
+          : cr::CreativeWorldLayoutBuildingEditResult{};
+
+  return expect(moved.accepted &&
+                    moved.edited.verticalConnectors.size() == 1U &&
+                    moved.edited.verticalConnectors[0].footprint.minimum ==
+                        cr::CreativeTerrainCoord2{4, 0} &&
+                    moved.edited.verticalConnectors[0].footprint.maximum ==
+                        cr::CreativeTerrainCoord2{8, 2},
+                "building move offsets its connector footprint") &&
+         expect(
+             rotated.accepted &&
+                 rotated.transformed.verticalConnectors.size() == 1U &&
+                 rotated.transformed.verticalConnectors[0].direction ==
+                     cr::CreativeWorldLayoutVerticalDirection::PositiveZ,
+             "building transform rotates connector geometry and direction") &&
+         expect(
+             duplicated.accepted &&
+                 duplicated.edited.verticalConnectors.size() == 2U &&
+                 duplicated.edited.verticalConnectors[1].buildingIndex == 1U &&
+                 duplicated.edited.verticalConnectors[1].lowerRoomIndex == 2U &&
+                 duplicated.edited.verticalConnectors[1].upperRoomIndex == 3U &&
+                 duplicated.edited.verticalConnectors[1].footprint.minimum ==
+                     cr::CreativeTerrainCoord2{21, 2},
+             "building duplicate remaps connector owner and room references") &&
+         expect(removed.accepted && removed.edited.buildings.size() == 1U &&
+                    removed.edited.verticalConnectors.size() == 1U &&
+                    removed.edited.verticalConnectors[0].buildingIndex == 0U &&
+                    removed.edited.verticalConnectors[0].lowerRoomIndex == 0U &&
+                    removed.edited.verticalConnectors[0].upperRoomIndex == 1U,
+                "building delete compacts surviving connector ownership") &&
+         expect(captured.accepted &&
+                    captured.value.normalizedLayout.verticalConnectors.size() ==
+                        1U &&
+                    stamped.accepted &&
+                    stamped.edited.verticalConnectors.size() == 1U &&
+                    stamped.edited.verticalConnectors[0].footprint.minimum ==
+                        cr::CreativeTerrainCoord2{11, 12} &&
+                    stamped.edited.verticalConnectors[0].lowerRoomIndex == 0U &&
+                    stamped.edited.verticalConnectors[0].upperRoomIndex == 1U,
+                "template capture and stamp preserve connector ownership");
+}
+
 bool buildingTemplatesNormalizeTransformPersistAndStamp() {
   const cr::CreativeWorldLayout source = transformableBuildingLayout();
   const cr::CreativeWorldLayoutBuildingTemplateResult captured =
@@ -811,7 +908,8 @@ bool structuralSurfacesCompileFromExplicitPlanesOnNonUnitGrid() {
                     near(floor->bounds.min.y, 3.4) &&
                     near(floor->bounds.max.y, 3.5) &&
                     sameVec3(floor->transform.scale, {1.0, 1.0, 1.0}),
-                "floor extends down from exact finished top without scale fixup") &&
+                "floor extends down from exact finished top without scale "
+                "fixup") &&
          expect(ceiling != nullptr && near(ceiling->bounds.min.y, 4.75) &&
                     near(ceiling->bounds.max.y, 5.25) &&
                     sameVec3(ceiling->transform.scale, {1.0, 1.0, 1.0}),
@@ -1001,6 +1099,13 @@ bool invalidAndStaleSourcesFailClosed() {
   const cr::CreativeWorldLayoutCompileResult duplicateLevelResult =
       cr::buildCreativeWorldLayoutPlan(document, duplicateLevel);
 
+  cr::CreativeWorldLayout duplicateConnector =
+      verticalConnectorBuildingLayout();
+  duplicateConnector.verticalConnectors[0].stableKey =
+      duplicateConnector.rooms[0].stableKey;
+  const cr::CreativeWorldLayoutCompileResult duplicateConnectorResult =
+      cr::buildCreativeWorldLayoutPlan(document, duplicateConnector);
+
   cr::CreativeWorldLayout relativeTerrain;
   relativeTerrain.stableKey = "relative_terrain";
   cr::CreativeWorldLayoutTerrainProfile relativeHill;
@@ -1037,6 +1142,12 @@ bool invalidAndStaleSourcesFailClosed() {
                         cr::CreativeWorldLayoutTable::Level &&
                     duplicateLevelResult.receipt.failedIndex == 1U,
                 "duplicate story elevations reject at the exact level") &&
+         expect(!duplicateConnectorResult.receipt.accepted &&
+                    duplicateConnectorResult.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::DuplicateStableKey &&
+                    duplicateConnectorResult.receipt.failedTable ==
+                        cr::CreativeWorldLayoutTable::VerticalConnector,
+                "connector keys share the global layout identity namespace") &&
          expect(!relativeResult.receipt.accepted &&
                     relativeResult.receipt.status ==
                         cr::CreativeWorldLayoutStatus::InvalidSymbol,
@@ -1059,6 +1170,7 @@ int main() {
       buildingTransformPreservesHostedOpeningSemantics() &&
       buildingTransformsRoundTripAndRejectOverflow() &&
       buildingEditKernelsAreAtomicAndRemapOwnership() &&
+      verticalConnectorOwnershipFollowsBuildingKernels() &&
       buildingTemplatesNormalizeTransformPersistAndStamp() &&
       buildingTemplateSyncIsSafeAtomicAndPersistent() &&
       invalidAndStaleSourcesFailClosed();

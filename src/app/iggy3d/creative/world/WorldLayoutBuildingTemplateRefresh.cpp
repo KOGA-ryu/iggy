@@ -29,6 +29,19 @@ std::vector<std::string> ownedRoomKeys(const CreativeWorldLayout& layout,
   return result;
 }
 
+std::vector<std::string>
+ownedVerticalConnectorKeys(const CreativeWorldLayout& layout,
+                           std::size_t buildingIndex) {
+  std::vector<std::string> result;
+  for (const CreativeWorldLayoutVerticalConnector& connector :
+       layout.verticalConnectors) {
+    if (connector.buildingIndex == buildingIndex) {
+      result.push_back(connector.stableKey);
+    }
+  }
+  return result;
+}
+
 std::vector<std::string> ownedLevelKeys(const CreativeWorldLayout& layout,
                                         std::size_t buildingIndex) {
   std::vector<std::string> result;
@@ -111,6 +124,8 @@ bool replaceBuildingFromTemplate(
       ownedLevelKeys(layout, buildingIndex);
   const std::vector<std::string> oldRoomKeys =
       ownedRoomKeys(layout, buildingIndex);
+  const std::vector<std::string> oldVerticalConnectorKeys =
+      ownedVerticalConnectorKeys(layout, buildingIndex);
   const std::vector<std::string> oldBoxKeys =
       ownedBoxKeys(layout, buildingIndex);
   const std::vector<std::string> oldWallKeys =
@@ -170,6 +185,31 @@ bool replaceBuildingFromTemplate(
                                        index, "room");
     newRoomMap[index] = rooms.size();
     rooms.push_back(std::move(room));
+  }
+
+  std::vector<CreativeWorldLayoutVerticalConnector> verticalConnectors;
+  verticalConnectors.reserve(layout.verticalConnectors.size() +
+                             positioned.verticalConnectors.size());
+  for (CreativeWorldLayoutVerticalConnector connector :
+       layout.verticalConnectors) {
+    if (connector.buildingIndex == buildingIndex) {
+      continue;
+    }
+    connector.lowerRoomIndex = oldRoomMap[connector.lowerRoomIndex];
+    connector.upperRoomIndex = oldRoomMap[connector.upperRoomIndex];
+    verticalConnectors.push_back(std::move(connector));
+  }
+  for (std::size_t index = 0U; index < positioned.verticalConnectors.size();
+       ++index) {
+    CreativeWorldLayoutVerticalConnector connector =
+        positioned.verticalConnectors[index];
+    connector.buildingIndex = buildingIndex;
+    connector.lowerRoomIndex = newRoomMap[connector.lowerRoomIndex];
+    connector.upperRoomIndex = newRoomMap[connector.upperRoomIndex];
+    connector.stableKey =
+        reusedOrMintedKey(layout, nextStableOrdinal, oldVerticalConnectorKeys,
+                          index, "vertical_connector");
+    verticalConnectors.push_back(std::move(connector));
   }
 
   std::vector<CreativeWorldLayoutBox> boxes;
@@ -238,6 +278,7 @@ bool replaceBuildingFromTemplate(
 
   layout.levels = std::move(levels);
   layout.rooms = std::move(rooms);
+  layout.verticalConnectors = std::move(verticalConnectors);
   layout.boxes = std::move(boxes);
   layout.walls = std::move(walls);
   layout.openings = std::move(openings);
@@ -356,7 +397,8 @@ refreshCreativeWorldLayoutBuildingTemplateInstances(
     setRefreshFailure(
         result,
         CreativeWorldLayoutBuildingTemplateRefreshStatus::NoEligibleInstances,
-        "creative_world_layout_building_template_refresh_no_eligible_instances");
+        "creative_world_layout_building_template_refresh_no_eligible_"
+        "instances");
     return result;
   }
 

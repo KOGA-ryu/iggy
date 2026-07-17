@@ -108,6 +108,13 @@ bool offsetBuilding(CreativeWorldLayout& layout,
       return false;
     }
   }
+  for (CreativeWorldLayoutVerticalConnector& connector :
+       layout.verticalConnectors) {
+    if (connector.buildingIndex == buildingIndex &&
+        !offsetRect(connector.footprint, deltaXCells, deltaZCells)) {
+      return false;
+    }
+  }
   for (CreativeWorldLayoutBox& box : layout.boxes) {
     if (box.buildingIndex == buildingIndex &&
         !offsetRect(box.footprint, deltaXCells, deltaZCells)) {
@@ -154,6 +161,18 @@ bool validCreativeWorldLayoutBuildingOwnership(
   };
   if (!validCreativeWorldLayoutLevelOwnership(layout) ||
       !std::all_of(layout.rooms.begin(), layout.rooms.end(), validOwner) ||
+      !std::all_of(
+          layout.verticalConnectors.begin(), layout.verticalConnectors.end(),
+          [&](const CreativeWorldLayoutVerticalConnector& connector) {
+            return validOwner(connector) &&
+                   connector.lowerRoomIndex < layout.rooms.size() &&
+                   connector.upperRoomIndex < layout.rooms.size() &&
+                   connector.lowerRoomIndex != connector.upperRoomIndex &&
+                   layout.rooms[connector.lowerRoomIndex].buildingIndex ==
+                       connector.buildingIndex &&
+                   layout.rooms[connector.upperRoomIndex].buildingIndex ==
+                       connector.buildingIndex;
+          }) ||
       !std::all_of(layout.boxes.begin(), layout.boxes.end(), validOwner) ||
       !std::all_of(layout.walls.begin(), layout.walls.end(), validOwner)) {
     return false;
@@ -188,6 +207,12 @@ bool measureCreativeWorldLayoutBuildingBounds(
       includeRect(output, room.footprint);
     }
   }
+  for (const CreativeWorldLayoutVerticalConnector& connector :
+       layout.verticalConnectors) {
+    if (connector.buildingIndex == buildingIndex) {
+      includeRect(output, connector.footprint);
+    }
+  }
   for (const CreativeWorldLayoutBox& box : layout.boxes) {
     if (box.buildingIndex == buildingIndex) {
       includeRect(output, box.footprint);
@@ -219,6 +244,15 @@ bool canMoveCreativeWorldLayoutBuilding(
   for (const CreativeWorldLayoutRoom& room : layout.rooms) {
     if (room.buildingIndex == request.buildingIndex) {
       CreativeWorldLayoutRect footprint = room.footprint;
+      if (!offsetRect(footprint, request.deltaXCells, request.deltaZCells)) {
+        return false;
+      }
+    }
+  }
+  for (const CreativeWorldLayoutVerticalConnector& connector :
+       layout.verticalConnectors) {
+    if (connector.buildingIndex == request.buildingIndex) {
+      CreativeWorldLayoutRect footprint = connector.footprint;
       if (!offsetRect(footprint, request.deltaXCells, request.deltaZCells)) {
         return false;
       }
@@ -456,6 +490,25 @@ CreativeWorldLayoutBuildingEditResult deleteCreativeWorldLayoutBuilding(
     room.levelIndex = levelMap[room.levelIndex];
     roomMap[index] = edited.rooms.size();
     edited.rooms.push_back(std::move(room));
+  }
+
+  edited.verticalConnectors.clear();
+  edited.verticalConnectors.reserve(source.verticalConnectors.size());
+  for (CreativeWorldLayoutVerticalConnector connector :
+       source.verticalConnectors) {
+    if (connector.buildingIndex == request.buildingIndex) {
+      continue;
+    }
+    if (connector.buildingIndex > request.buildingIndex) {
+      --connector.buildingIndex;
+    }
+    connector.lowerRoomIndex = roomMap[connector.lowerRoomIndex];
+    connector.upperRoomIndex = roomMap[connector.upperRoomIndex];
+    if (connector.lowerRoomIndex == kInvalidCreativeWorldLayoutIndex ||
+        connector.upperRoomIndex == kInvalidCreativeWorldLayoutIndex) {
+      continue;
+    }
+    edited.verticalConnectors.push_back(std::move(connector));
   }
 
   edited.boxes.clear();

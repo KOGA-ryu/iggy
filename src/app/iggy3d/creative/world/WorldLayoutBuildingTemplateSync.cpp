@@ -426,9 +426,29 @@ fingerprintCreativeWorldLayoutBuilding(const CreativeWorldLayout& layout,
     builder.appendDouble(room.wallThicknessCells);
   }
 
-  builder.appendUnsigned(countIf(layout.boxes, [buildingIndex](const auto& box) {
-    return box.buildingIndex == buildingIndex;
-  }));
+  builder.appendUnsigned(countIf(
+      layout.verticalConnectors, [buildingIndex](const auto& connector) {
+        return connector.buildingIndex == buildingIndex;
+      }));
+  for (const CreativeWorldLayoutVerticalConnector& connector :
+       layout.verticalConnectors) {
+    if (connector.buildingIndex != buildingIndex) {
+      continue;
+    }
+    builder.appendUnsigned(
+        ownedRoomOrdinal(layout, buildingIndex, connector.lowerRoomIndex));
+    builder.appendUnsigned(
+        ownedRoomOrdinal(layout, buildingIndex, connector.upperRoomIndex));
+    builder.appendUnsigned(static_cast<std::uint8_t>(connector.kind));
+    builder.appendUnsigned(static_cast<std::uint8_t>(connector.direction));
+    builder.appendString(connector.name);
+    appendRelativeRect(builder, connector.footprint, bounds.minimum);
+  }
+
+  builder.appendUnsigned(
+      countIf(layout.boxes, [buildingIndex](const auto& box) {
+        return box.buildingIndex == buildingIndex;
+      }));
   for (const CreativeWorldLayoutBox& box : layout.boxes) {
     if (box.buildingIndex != buildingIndex) {
       continue;

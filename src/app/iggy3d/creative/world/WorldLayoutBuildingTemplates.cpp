@@ -60,6 +60,12 @@ bool templateKeysValid(const CreativeWorldLayout& layout) {
       return false;
     }
   }
+  for (const CreativeWorldLayoutVerticalConnector& value :
+       layout.verticalConnectors) {
+    if (!registerKey(value)) {
+      return false;
+    }
+  }
   for (const CreativeWorldLayoutBox& value : layout.boxes) {
     if (!registerKey(value)) {
       return false;
@@ -126,6 +132,18 @@ CreativeWorldLayout isolateBuilding(const CreativeWorldLayout& source,
     room.levelIndex = levelMap[room.levelIndex];
     roomMap[index] = isolated.rooms.size();
     isolated.rooms.push_back(std::move(room));
+  }
+
+  for (const CreativeWorldLayoutVerticalConnector& sourceConnector :
+       source.verticalConnectors) {
+    if (sourceConnector.buildingIndex != buildingIndex) {
+      continue;
+    }
+    CreativeWorldLayoutVerticalConnector connector = sourceConnector;
+    connector.buildingIndex = 0U;
+    connector.lowerRoomIndex = roomMap[connector.lowerRoomIndex];
+    connector.upperRoomIndex = roomMap[connector.upperRoomIndex];
+    isolated.verticalConnectors.push_back(std::move(connector));
   }
 
   for (const CreativeWorldLayoutBox& sourceBox : source.boxes) {
@@ -442,6 +460,17 @@ CreativeWorldLayoutBuildingEditResult stampCreativeWorldLayoutBuildingTemplate(
     room.name = copiedName(room.name, request.appendCopySuffix);
     roomMap[index] = edited.rooms.size();
     edited.rooms.push_back(std::move(room));
+  }
+
+  for (CreativeWorldLayoutVerticalConnector connector :
+       positioned.verticalConnectors) {
+    connector.buildingIndex = newBuildingIndex;
+    connector.lowerRoomIndex = roomMap[connector.lowerRoomIndex];
+    connector.upperRoomIndex = roomMap[connector.upperRoomIndex];
+    connector.stableKey = mintCreativeWorldLayoutStableKey(
+        edited, nextOrdinal, "vertical_connector");
+    connector.name = copiedName(connector.name, request.appendCopySuffix);
+    edited.verticalConnectors.push_back(std::move(connector));
   }
 
   for (CreativeWorldLayoutBox box : positioned.boxes) {

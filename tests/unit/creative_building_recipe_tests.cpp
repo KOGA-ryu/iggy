@@ -172,6 +172,35 @@ bool inputOpeningOrderDoesNotChangeOutput() {
   return true;
 }
 
+bool stairBoxesPreserveAuthoredRotation() {
+  cr::CreativeBuildingRecipeRequest request;
+  request.stableKey = "vertical";
+  request.name = "Vertical circulation";
+  request.rootMode = cr::CreativeBuildingRootMode::None;
+  request.boxes.push_back({cr::CreativeObjectKind::Stair,
+                           "stair.main",
+                           "Main Stair",
+                           {{0.0, 0.0, 0.0}, {2.0, 3.0, 4.0}},
+                           {1.0, 1.0, 1.0},
+                           {"vertical_connector"},
+                           {0.0, 1.5707963267948966, 0.0}});
+
+  const cr::CreativeBuildingRecipeResult result =
+      cr::buildCreativeBuildingRecipe(request);
+  const cr::CreativeRecipeObjectPlan* stair =
+      findPlanObject(result.plan, "stair.main");
+  return expect(result.receipt.accepted && stair != nullptr,
+                "stair is an accepted building box") &&
+         expect(stair->createRequest.hasTransformOverride &&
+                    near(stair->createRequest.transform.rotationEulerRadians.y,
+                         1.5707963267948966),
+                "stair rotation reaches the document request") &&
+         expect(near(stair->createRequest.transform.position.x, 1.0) &&
+                    near(stair->createRequest.transform.position.y, 1.5) &&
+                    near(stair->createRequest.transform.position.z, 2.0),
+                "stair pivot remains the authored-bounds center");
+}
+
 bool concernTagsReachOnlyTheirGeneratedObjects() {
   cr::CreativeBuildingRecipeRequest request = representativeRoom();
   request.tags = {"building-common"};
@@ -391,6 +420,7 @@ bool rectangularRoomRejectsAmbiguousGeometry() {
 int main() {
   const bool ok = roomRecipeProducesDeterministicRealOpenings() &&
                   inputOpeningOrderDoesNotChangeOutput() &&
+                  stairBoxesPreserveAuthoredRotation() &&
                   concernTagsReachOnlyTheirGeneratedObjects() &&
                   openDoorPoseMatchesReferenceGeometry() &&
                   invalidGeometryFailsWithSpecificStatuses() &&

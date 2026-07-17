@@ -14,7 +14,7 @@
 
 namespace iggy3d::creative {
 
-inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 6U;
+inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 7U;
 inline constexpr std::size_t kInvalidCreativeWorldLayoutIndex =
     std::numeric_limits<std::size_t>::max();
 inline constexpr std::uint16_t kDefaultCreativeWorldLayoutWallHeightCells = 3U;
@@ -76,6 +76,35 @@ struct CreativeWorldLayoutRoom {
   CreativeWorldLayoutRect footprint;
   double wallThicknessCells =
       kDefaultCreativeWorldLayoutWallThicknessCells;
+};
+
+enum class CreativeWorldLayoutVerticalConnectorKind : std::uint8_t {
+  Stair,
+  Ramp,
+  Count,
+};
+
+// Direction points from the low end on the lower level to the high end on the
+// upper level. The authored footprint is also the opening cut from both slabs.
+enum class CreativeWorldLayoutVerticalDirection : std::uint8_t {
+  PositiveX,
+  NegativeX,
+  PositiveZ,
+  NegativeZ,
+  Count,
+};
+
+struct CreativeWorldLayoutVerticalConnector {
+  std::size_t buildingIndex = kInvalidCreativeWorldLayoutIndex;
+  std::size_t lowerRoomIndex = kInvalidCreativeWorldLayoutIndex;
+  std::size_t upperRoomIndex = kInvalidCreativeWorldLayoutIndex;
+  CreativeWorldLayoutVerticalConnectorKind kind =
+      CreativeWorldLayoutVerticalConnectorKind::Stair;
+  CreativeWorldLayoutVerticalDirection direction =
+      CreativeWorldLayoutVerticalDirection::PositiveZ;
+  std::string stableKey;
+  std::string name;
+  CreativeWorldLayoutRect footprint;
 };
 
 enum class CreativeWorldLayoutRoomEdge : std::uint8_t {
@@ -192,6 +221,7 @@ struct CreativeWorldLayout {
   std::vector<CreativeWorldLayoutBuilding> buildings;
   std::vector<CreativeWorldLayoutLevel> levels;
   std::vector<CreativeWorldLayoutRoom> rooms;
+  std::vector<CreativeWorldLayoutVerticalConnector> verticalConnectors;
   std::vector<CreativeWorldLayoutBox> boxes;
   std::vector<CreativeWorldLayoutWall> walls;
   std::vector<CreativeWorldLayoutOpening> openings;
@@ -206,6 +236,7 @@ enum class CreativeWorldLayoutTable : std::uint8_t {
   Building,
   Level,
   Room,
+  VerticalConnector,
   Box,
   Wall,
   Opening,

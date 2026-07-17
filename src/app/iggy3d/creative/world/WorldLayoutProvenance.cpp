@@ -31,6 +31,8 @@ constexpr std::string_view kRoomEdgePrefix =
     case CreativeWorldLayoutTable::Building: return "building";
     case CreativeWorldLayoutTable::Level: return "level";
     case CreativeWorldLayoutTable::Room: return "room";
+    case CreativeWorldLayoutTable::VerticalConnector:
+      return "vertical_connector";
     case CreativeWorldLayoutTable::Box: return "box";
     case CreativeWorldLayoutTable::Wall: return "wall";
     case CreativeWorldLayoutTable::Opening: return "opening";
@@ -78,6 +80,12 @@ constexpr std::string_view kRoomEdgePrefix =
       if (index < layout.rooms.size()) {
         buildingIndex = layout.rooms[index].buildingIndex;
         local = layout.rooms[index].stableKey;
+      }
+      break;
+    case CreativeWorldLayoutTable::VerticalConnector:
+      if (index < layout.verticalConnectors.size()) {
+        buildingIndex = layout.verticalConnectors[index].buildingIndex;
+        local = layout.verticalConnectors[index].stableKey;
       }
       break;
     case CreativeWorldLayoutTable::Box:
@@ -161,8 +169,9 @@ constexpr std::string_view kRoomEdgePrefix =
   };
 
   for (const auto [table, count] : {
-           std::pair{CreativeWorldLayoutTable::Opening,
-                     layout.openings.size()},
+           std::pair{CreativeWorldLayoutTable::Opening, layout.openings.size()},
+           std::pair{CreativeWorldLayoutTable::VerticalConnector,
+                     layout.verticalConnectors.size()},
            std::pair{CreativeWorldLayoutTable::Box, layout.boxes.size()},
            std::pair{CreativeWorldLayoutTable::Wall, layout.walls.size()},
        }) {

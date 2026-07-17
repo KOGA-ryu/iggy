@@ -88,4 +88,82 @@ CreativeStructuralSurfaceRecipeResult planCreativeStructuralSurface(
   return result;
 }
 
+CreativeStructuralSurfaceCutoutResult planCreativeStructuralSurfaceCutout(
+    const CreativeStructuralSurfaceCutoutRequest& request) noexcept {
+  CreativeStructuralSurfaceCutoutResult result;
+  const CreativeStructuralSurfaceRecipeResult full =
+      planCreativeStructuralSurface(request.surface);
+  if (!full.accepted) {
+    result.status = CreativeStructuralSurfaceCutoutStatus::InvalidSurface;
+    result.reasonCode = full.reasonCode;
+    return result;
+  }
+
+  if (!std::isfinite(request.cutoutMinimumX) ||
+      !std::isfinite(request.cutoutMaximumX) ||
+      !std::isfinite(request.cutoutMinimumZ) ||
+      !std::isfinite(request.cutoutMaximumZ) ||
+      request.cutoutMinimumX >= request.cutoutMaximumX ||
+      request.cutoutMinimumZ >= request.cutoutMaximumZ) {
+    result.status = CreativeStructuralSurfaceCutoutStatus::InvalidCutout;
+    result.reasonCode = "creative_structural_surface_cutout_invalid";
+    return result;
+  }
+  if (request.cutoutMinimumX < request.surface.minimumX ||
+      request.cutoutMaximumX > request.surface.maximumX ||
+      request.cutoutMinimumZ < request.surface.minimumZ ||
+      request.cutoutMaximumZ > request.surface.maximumZ) {
+    result.status = CreativeStructuralSurfaceCutoutStatus::CutoutOutsideSurface;
+    result.reasonCode = "creative_structural_surface_cutout_outside_surface";
+    return result;
+  }
+
+  const auto appendPiece = [&](double minimumX, double maximumX,
+                               double minimumZ, double maximumZ) {
+    if (minimumX >= maximumX || minimumZ >= maximumZ) {
+      return true;
+    }
+    CreativeStructuralSurfaceRecipeRequest piece = request.surface;
+    piece.minimumX = minimumX;
+    piece.maximumX = maximumX;
+    piece.minimumZ = minimumZ;
+    piece.maximumZ = maximumZ;
+    const CreativeStructuralSurfaceRecipeResult planned =
+        planCreativeStructuralSurface(piece);
+    if (!planned.accepted || result.pieceCount >= result.pieces.size()) {
+      return false;
+    }
+    result.pieces[result.pieceCount++] = planned;
+    return true;
+  };
+
+  const bool planned =
+      appendPiece(request.surface.minimumX, request.cutoutMinimumX,
+                  request.surface.minimumZ, request.surface.maximumZ) &&
+      appendPiece(request.cutoutMaximumX, request.surface.maximumX,
+                  request.surface.minimumZ, request.surface.maximumZ) &&
+      appendPiece(request.cutoutMinimumX, request.cutoutMaximumX,
+                  request.surface.minimumZ, request.cutoutMinimumZ) &&
+      appendPiece(request.cutoutMinimumX, request.cutoutMaximumX,
+                  request.cutoutMaximumZ, request.surface.maximumZ);
+  if (!planned) {
+    result.pieces = {};
+    result.pieceCount = 0U;
+    result.status = CreativeStructuralSurfaceCutoutStatus::InvalidSurface;
+    result.reasonCode = "creative_structural_surface_cutout_piece_rejected";
+    return result;
+  }
+  if (result.pieceCount == 0U) {
+    result.status =
+        CreativeStructuralSurfaceCutoutStatus::CutoutConsumesSurface;
+    result.reasonCode = "creative_structural_surface_cutout_consumes_surface";
+    return result;
+  }
+
+  result.accepted = true;
+  result.status = CreativeStructuralSurfaceCutoutStatus::Ready;
+  result.reasonCode = "creative_structural_surface_cutout_ready";
+  return result;
+}
+
 }  // namespace iggy3d::creative

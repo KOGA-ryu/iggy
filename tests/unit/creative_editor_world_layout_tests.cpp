@@ -1,6 +1,7 @@
-#include "EditorWorldLayout.hpp"
+
 #include "EditorEdits.hpp"
 #include "EditorPersistence.hpp"
+#include "EditorWorldLayout.hpp"
 
 #include <algorithm>
 #include <array>
@@ -43,7 +44,9 @@ bool stableKeysUnique(const cr::CreativeWorldLayout& layout) {
     }
   };
   append(layout.buildings);
+  append(layout.levels);
   append(layout.rooms);
+  append(layout.verticalConnectors);
   append(layout.boxes);
   append(layout.walls);
   append(layout.openings);
@@ -132,16 +135,18 @@ bool categorizedPaletteOwnsEveryBindableSemanticAction() {
                        BuildingTemplate &&
                entry.buildingTemplateId == cr::kBuilderEstateHouseTemplateId;
       });
-  return expect(entries.size() == 15U && unique,
+  return expect(entries.size() == 16U && unique,
                 "world layout palette is fixed and duplicate free") &&
          expect(std::all_of(categoryCounts.begin(), categoryCounts.end(),
                             [](std::size_t count) { return count > 0U; }),
                 "every palette category owns an action") &&
-         expect(estate != entries.end() && seenTools[static_cast<std::size_t>(
-                                             app::CreativeEditorWorldLayoutTool::
-                                                 Select)] &&
+         expect(estate != entries.end() &&
+                    seenTools[static_cast<std::size_t>(
+                        app::CreativeEditorWorldLayoutTool::Select)] &&
                     seenTools[static_cast<std::size_t>(
                         app::CreativeEditorWorldLayoutTool::BuildingShell)] &&
+                    seenTools[static_cast<std::size_t>(
+                        app::CreativeEditorWorldLayoutTool::Stair)] &&
                     seenTools[static_cast<std::size_t>(
                         app::CreativeEditorWorldLayoutTool::Plateau)] &&
                     seenTools[static_cast<std::size_t>(
@@ -572,17 +577,20 @@ bool fourRoomBuildingRoundTripsAsOneGeneratedEdit() {
                     state.source.buildings.size() == 1U &&
                     state.source.rooms.size() == 4U &&
                     std::all_of(state.source.rooms.begin(),
-                                state.source.rooms.end(), [](const auto& room) {
+                                state.source.rooms.end(),
+                                [](const auto& room) {
                                   return room.buildingIndex == 0U;
                                 }) &&
                     sharedEdges.size() == 4U,
-                "four adjoining rooms remain one building with four shared spans") &&
-         expect(interiorDoor.accepted && interiorDoor.changed &&
-                    !interiorWindow.accepted && !interiorWindow.changed &&
-                    state.revision == revisionBeforeInteriorWindow + 1U &&
-                    exteriorWindow.accepted && exteriorWindow.changed &&
-                    state.source.openings.size() == 2U,
-                "doors connect rooms while windows default to exterior walls") &&
+                "four adjoining rooms remain one building with four shared "
+                "spans") &&
+         expect(
+             interiorDoor.accepted && interiorDoor.changed &&
+                 !interiorWindow.accepted && !interiorWindow.changed &&
+                 state.revision == revisionBeforeInteriorWindow + 1U &&
+                 exteriorWindow.accepted && exteriorWindow.changed &&
+                 state.source.openings.size() == 2U,
+             "doors connect rooms while windows default to exterior walls") &&
          expect(expanded.accepted && expanded.expanded.walls.size() == 6U,
                 "four-room topology condenses to six canonical wall lanes") &&
          expect(encoded.accepted && decoded.accepted &&
@@ -591,8 +599,7 @@ bool fourRoomBuildingRoundTripsAsOneGeneratedEdit() {
                     decoded.layout.openings.size() == 2U,
                 "four-room semantic source survives codec round trip") &&
          expect(preview.accepted && floorCount == 4U && doorCount == 1U &&
-                    windowCount == 1U &&
-                    liveCountBefore == 0U,
+                    windowCount == 1U && liveCountBefore == 0U,
                 "exact preview contains four floors and authored openings") &&
          expect(generated.accepted && generated.changed &&
                     cr::creativeUndoDepth(live.history) == 1U &&
@@ -1505,12 +1512,11 @@ bool builtInBuildingTemplateInstallIsDurableAndIdempotent() {
                  library.templates.size() == 1U,
              "built-in template installs once") &&
       expect(repeated.accepted && !repeated.changed &&
-                 repeated.templateIndex == 0U &&
-                 library.templates.size() == 1U,
+                 repeated.templateIndex == 0U && library.templates.size() == 1U,
              "matching built-in template install is idempotent") &&
       expect(changedSource.accepted && !conflict.accepted &&
-                 conflict.reasonCode ==
-                     "creative_editor_world_layout_building_template_install_conflict",
+                 conflict.reasonCode == "creative_editor_world_layout_building_"
+                                        "template_install_conflict",
              "conflicting built-in template id fails closed") &&
       expect(filePresent && reloaded.accepted && reloaded.loadedCount == 1U &&
                  reloadedLibrary.templates.size() == 1U &&
@@ -2049,18 +2055,20 @@ bool exactPreviewAndConfirmUseOneHistoryEntry() {
          expect(previewObjectCount == 6U && floorCount == 1U &&
                     roofCount == 1U && wallCount == 4U && linkedByLayout &&
                     previewDidNotPublish,
-                "preview renders one floor, one roof, and four walls without publishing") &&
-         expect(floorGeometry.valid && wallGeometry.valid &&
-                    near(floorGeometry.size.y, 0.1) &&
-                    near(wallGeometry.worldBounds.min.y, 1.0) &&
-                    near(wallGeometry.worldBounds.max.y, 5.0) &&
-                    near(std::min(wallGeometry.size.x, wallGeometry.size.z),
-                         0.5),
-                "preview geometry matches floor, elevation, height, and thickness settings") &&
-         expect(appliedOnce,
-                "confirm publishes generated output") &&
-         expect(undoRestoredBoth,
-                "layout undo restores semantic source and generated document") &&
+                "preview renders one floor, one roof, and four walls without "
+                "publishing") &&
+         expect(
+             floorGeometry.valid && wallGeometry.valid &&
+                 near(floorGeometry.size.y, 0.1) &&
+                 near(wallGeometry.worldBounds.min.y, 1.0) &&
+                 near(wallGeometry.worldBounds.max.y, 5.0) &&
+                 near(std::min(wallGeometry.size.x, wallGeometry.size.z), 0.5),
+             "preview geometry matches floor, elevation, height, and thickness "
+             "settings") &&
+         expect(appliedOnce, "confirm publishes generated output") &&
+         expect(
+             undoRestoredBoth,
+             "layout undo restores semantic source and generated document") &&
          expect(redoRestoredBoth,
                 "layout redo restores semantic source and generated document");
 }
@@ -2143,11 +2151,12 @@ bool buildingLevelLifecycleIsAtomicAndRemapsHostedSymbols() {
       legacyState.activeLevelIndex == 0U;
 
   return expect(shell.accepted && door.accepted && selectionIsViewOnly,
-                "level selection changes the editor view without editing source") &&
-         expect(emptyLevelAdded,
-                "add level derives the next story plane without fabricating rooms") &&
-         expect(duplicateRemapped,
-                "duplicate level copies rooms and hosted openings with fresh keys") &&
+                "level selection changes the editor view without editing "
+                "source") &&
+         expect(emptyLevelAdded, "add level derives the next story plane "
+                                 "without fabricating rooms") &&
+         expect(duplicateRemapped, "duplicate level copies rooms and hosted "
+                                   "openings with fresh keys") &&
          expect(reorderRemapped,
                 "level reordering remaps room ownership atomically") &&
          expect(copyDeletedAtomically,
@@ -2156,6 +2165,116 @@ bool buildingLevelLifecycleIsAtomicAndRemapsHostedSymbols() {
                 "a building cannot lose its final level recipe") &&
          expect(firstLevelCreated,
                 "a level-less legacy building can acquire its first level");
+}
+
+bool stairGestureOwnsConnectorLifecycleAcrossLevels() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "stair_layout");
+  const auto shell = app::createCreativeEditorWorldLayoutBuildingShell(
+      state, {{{0, 0}, {8, 6}}, 0.0, 4U, 0.25, 1U});
+  const auto upperLevel = app::applyCreativeEditorWorldLayoutLevelOperation(
+      state, app::CreativeEditorWorldLayoutLevelOperation::Add, 0U);
+  cr::CreativeWorldLayoutRoom upperRoom = state.source.rooms[0];
+  upperRoom.levelIndex = 1U;
+  upperRoom.stableKey = "room_upper";
+  upperRoom.name = "Upper Room";
+  state.source.rooms.push_back(std::move(upperRoom));
+  state.activeLevelIndex = 0U;
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Stair));
+  const std::uint64_t revisionBeforeStair = state.revision;
+  const auto begin = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {1, 2});
+  const auto commit = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {5, 4});
+  const bool stairAuthoredOnce =
+      shell.accepted && upperLevel.accepted && begin.accepted &&
+      !begin.changed && commit.accepted && commit.changed &&
+      state.revision == revisionBeforeStair + 1U &&
+      state.source.verticalConnectors.size() == 1U &&
+      state.source.verticalConnectors[0].buildingIndex == 0U &&
+      state.source.verticalConnectors[0].lowerRoomIndex == 0U &&
+      state.source.verticalConnectors[0].upperRoomIndex == 1U &&
+      state.source.verticalConnectors[0].direction ==
+          cr::CreativeWorldLayoutVerticalDirection::PositiveX &&
+      state.source.verticalConnectors[0].footprint.minimum ==
+          cr::CreativeTerrainCoord2{1, 2} &&
+      state.source.verticalConnectors[0].footprint.maximum ==
+          cr::CreativeTerrainCoord2{5, 4} &&
+      state.selection.kind ==
+          app::CreativeEditorWorldLayoutSelectionKind::VerticalConnector &&
+      stableKeysUnique(state.source);
+
+  cr::CreativeAppState live = appState();
+  const auto preview =
+      app::previewCreativeEditorWorldLayout(state, live.facade.document());
+  const auto upperSelected = app::applyCreativeEditorWorldLayoutLevelOperation(
+      state, app::CreativeEditorWorldLayoutLevelOperation::Select, 0U, 1U);
+  const bool visibleFromEitherLevel =
+      preview.accepted && state.preview.document.isValid() &&
+      upperSelected.accepted && upperSelected.changed &&
+      state.activeLevelIndex == 1U &&
+      state.selection.kind ==
+          app::CreativeEditorWorldLayoutSelectionKind::VerticalConnector;
+
+  app::CreativeEditorWorldLayoutState roomDeleteState = state;
+  roomDeleteState.selection = {
+      app::CreativeEditorWorldLayoutSelectionKind::Room, 0U};
+  const auto roomDeleted =
+      app::deleteCreativeEditorWorldLayoutSelection(roomDeleteState);
+  const bool roomCascade = roomDeleted.accepted && roomDeleted.changed &&
+                           roomDeleteState.source.rooms.size() == 1U &&
+                           roomDeleteState.source.verticalConnectors.empty();
+
+  state.selection = {
+      app::CreativeEditorWorldLayoutSelectionKind::VerticalConnector, 0U};
+  const auto connectorDeleted =
+      app::deleteCreativeEditorWorldLayoutSelection(state);
+  const bool connectorDelete = connectorDeleted.accepted &&
+                               connectorDeleted.changed &&
+                               state.source.verticalConnectors.empty();
+
+  state.activeLevelIndex = 0U;
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Stair));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {1, 2}));
+  const auto recreated = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {5, 4});
+  const auto levelDeleted = app::applyCreativeEditorWorldLayoutLevelOperation(
+      state, app::CreativeEditorWorldLayoutLevelOperation::Delete, 0U, 1U);
+  const bool levelCascade = recreated.accepted && recreated.changed &&
+                            levelDeleted.accepted && levelDeleted.changed &&
+                            state.source.levels.size() == 1U &&
+                            state.source.rooms.size() == 1U &&
+                            state.source.verticalConnectors.empty();
+
+  const std::uint64_t revisionBeforeRejected = state.revision;
+  state.activeLevelIndex = 0U;
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {1, 2}));
+  const auto noUpper = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {5, 4});
+  const bool missingUpperFailsClosed =
+      !noUpper.accepted && !noUpper.changed &&
+      state.source.verticalConnectors.empty() &&
+      state.revision == revisionBeforeRejected;
+
+  return expect(stairAuthoredOnce,
+                "one stair drag authors one directional connector revision") &&
+         expect(
+             visibleFromEitherLevel,
+             "stair compiles and remains selected from either owned level") &&
+         expect(roomCascade,
+                "deleting an owned room removes its vertical connector") &&
+         expect(connectorDelete,
+                "vertical connector selection deletes without other symbols") &&
+         expect(
+             levelCascade,
+             "deleting a level removes connectors that reference its rooms") &&
+         expect(
+             missingUpperFailsClosed,
+             "stair authoring rejects a missing upper level transactionally");
 }
 
 bool unsynchronizedLayoutCannotBeSaved() {
@@ -2199,37 +2318,39 @@ bool unsynchronizedDraftCannotBeLostAcrossLayoutHistory() {
 }  // namespace
 
 int main() {
-  const bool ok = floorAndWallGesturesProduceNormalizedSymbols() &&
-                  categorizedPaletteOwnsEveryBindableSemanticAction() &&
-                  terrainAndObjectPaletteToolsCreateCompilableSymbols() &&
-                  openingsSnapInsideWallsAndRejectOverlap() &&
-                  deletingWallCascadesItsOpenings() &&
-                  roomGestureHostsOpeningsAndSupportsResize() &&
-                  buildingShellCreatesOwnedRoomAndGeneratesAsOneEdit() &&
-                  rejectedBuildingShellIsTransactionallyEmpty() &&
-                  buildingShellsKeepIndependentBuildingOwnership() &&
-                  addRoomTargetsSelectedBuildingAndRejectsAmbiguousOwnership() &&
-                  roomAdditionCannotInternalizeExistingWindow() &&
-                  fourRoomBuildingRoundTripsAsOneGeneratedEdit() &&
-                  invalidRoomShellSettingsFailWithoutMutation() &&
-                  roomMovePreviewCommitsOnceAndKeepsOpeningHosted() &&
-                  roomEdgesAndCornersResizeFromTheirOwnedSides() &&
-                  invalidRoomManipulationsRejectWithoutMutation() &&
-                  floorSettingsMoveAndResizeCommitOnce() &&
-                  partitionManipulationPreservesHostedOpeningWorldPositions() &&
-                  buildingGroupMoveDuplicateAndDeleteAreAtomic() &&
-                  buildingTransformPreviewsAndCommitsOneRevision() &&
-                  buildingTemplatesPersistPreviewAndStampOneRevision() &&
-                  builtInBuildingTemplateInstallIsDurableAndIdempotent() &&
-                  buildingTemplateUpdateAndRefreshLifecycleIsExplicit() &&
-                  openingSettingsApplyOnceAndMatchExactPreview() &&
-                  openingDragAndWidthHandlesAreQuarterCellTransactional() &&
-                  openingDragPreservesSharedRoomWallOwnership() &&
-                  minimumWidthOpeningRetainsMoveAndResizeTargets() &&
-                  roomDeletionCascadesHostedOpeningsAndCancelIsEmpty() &&
-                  exactPreviewAndConfirmUseOneHistoryEntry() &&
-                  buildingLevelLifecycleIsAtomicAndRemapsHostedSymbols() &&
-                  unsynchronizedLayoutCannotBeSaved() &&
-                  unsynchronizedDraftCannotBeLostAcrossLayoutHistory();
+  const bool ok =
+      floorAndWallGesturesProduceNormalizedSymbols() &&
+      categorizedPaletteOwnsEveryBindableSemanticAction() &&
+      terrainAndObjectPaletteToolsCreateCompilableSymbols() &&
+      openingsSnapInsideWallsAndRejectOverlap() &&
+      deletingWallCascadesItsOpenings() &&
+      roomGestureHostsOpeningsAndSupportsResize() &&
+      buildingShellCreatesOwnedRoomAndGeneratesAsOneEdit() &&
+      rejectedBuildingShellIsTransactionallyEmpty() &&
+      buildingShellsKeepIndependentBuildingOwnership() &&
+      addRoomTargetsSelectedBuildingAndRejectsAmbiguousOwnership() &&
+      roomAdditionCannotInternalizeExistingWindow() &&
+      fourRoomBuildingRoundTripsAsOneGeneratedEdit() &&
+      invalidRoomShellSettingsFailWithoutMutation() &&
+      roomMovePreviewCommitsOnceAndKeepsOpeningHosted() &&
+      roomEdgesAndCornersResizeFromTheirOwnedSides() &&
+      invalidRoomManipulationsRejectWithoutMutation() &&
+      floorSettingsMoveAndResizeCommitOnce() &&
+      partitionManipulationPreservesHostedOpeningWorldPositions() &&
+      buildingGroupMoveDuplicateAndDeleteAreAtomic() &&
+      buildingTransformPreviewsAndCommitsOneRevision() &&
+      buildingTemplatesPersistPreviewAndStampOneRevision() &&
+      builtInBuildingTemplateInstallIsDurableAndIdempotent() &&
+      buildingTemplateUpdateAndRefreshLifecycleIsExplicit() &&
+      openingSettingsApplyOnceAndMatchExactPreview() &&
+      openingDragAndWidthHandlesAreQuarterCellTransactional() &&
+      openingDragPreservesSharedRoomWallOwnership() &&
+      minimumWidthOpeningRetainsMoveAndResizeTargets() &&
+      roomDeletionCascadesHostedOpeningsAndCancelIsEmpty() &&
+      exactPreviewAndConfirmUseOneHistoryEntry() &&
+      buildingLevelLifecycleIsAtomicAndRemapsHostedSymbols() &&
+      stairGestureOwnsConnectorLifecycleAcrossLevels() &&
+      unsynchronizedLayoutCannotBeSaved() &&
+      unsynchronizedDraftCannotBeLostAcrossLayoutHistory();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -99,10 +99,81 @@ bool invalidRequestsFailClosed() {
                 "overflowing bounds reject without publishing geometry");
 }
 
+bool cutoutPartitionsSurfaceWithoutOverlap() {
+  cr::CreativeStructuralSurfaceCutoutRequest cutout;
+  cutout.surface = request(cr::CreativeObjectKind::Floor, 4.0, 2U);
+  cutout.cutoutMinimumX = 0.0;
+  cutout.cutoutMaximumX = 2.0;
+  cutout.cutoutMinimumZ = 4.0;
+  cutout.cutoutMaximumZ = 6.0;
+  const auto result = cr::planCreativeStructuralSurfaceCutout(cutout);
+
+  return expect(result.accepted && result.pieceCount == 4U,
+                "interior cutout produces four pieces") &&
+         expect(result.pieces[0].bounds.min.x == -2.0 &&
+                    result.pieces[0].bounds.max.x == 0.0 &&
+                    result.pieces[0].bounds.min.z == 3.0 &&
+                    result.pieces[0].bounds.max.z == 8.0,
+                "west piece spans the full outer depth") &&
+         expect(result.pieces[1].bounds.min.x == 2.0 &&
+                    result.pieces[1].bounds.max.x == 6.0,
+                "east piece starts at the cutout edge") &&
+         expect(result.pieces[2].bounds.min.x == 0.0 &&
+                    result.pieces[2].bounds.max.x == 2.0 &&
+                    result.pieces[2].bounds.min.z == 3.0 &&
+                    result.pieces[2].bounds.max.z == 4.0,
+                "north piece only fills between side strips") &&
+         expect(result.pieces[3].bounds.min.z == 6.0 &&
+                    result.pieces[3].bounds.max.z == 8.0 &&
+                    result.pieces[3].bounds.min.y == 3.9 &&
+                    result.pieces[3].bounds.max.y == 4.0,
+                "south piece preserves the structural anchor and thickness");
+}
+
+bool edgeCutoutsOmitDegeneratePiecesAndRejectEscapes() {
+  cr::CreativeStructuralSurfaceCutoutRequest edge;
+  edge.surface = request(cr::CreativeObjectKind::Ceiling, 7.0);
+  edge.cutoutMinimumX = -2.0;
+  edge.cutoutMaximumX = 1.0;
+  edge.cutoutMinimumZ = 3.0;
+  edge.cutoutMaximumZ = 5.0;
+  const auto edgeResult = cr::planCreativeStructuralSurfaceCutout(edge);
+
+  edge.cutoutMaximumX = 7.0;
+  const auto escaped = cr::planCreativeStructuralSurfaceCutout(edge);
+  edge.cutoutMaximumX = edge.cutoutMinimumX;
+  const auto degenerate = cr::planCreativeStructuralSurfaceCutout(edge);
+  edge.cutoutMinimumX = edge.surface.minimumX;
+  edge.cutoutMaximumX = edge.surface.maximumX;
+  edge.cutoutMinimumZ = edge.surface.minimumZ;
+  edge.cutoutMaximumZ = edge.surface.maximumZ;
+  const auto consumed = cr::planCreativeStructuralSurfaceCutout(edge);
+
+  return expect(edgeResult.accepted && edgeResult.pieceCount == 2U,
+                "corner cutout omits two zero-area pieces") &&
+         expect(!escaped.accepted &&
+                    escaped.status ==
+                        cr::CreativeStructuralSurfaceCutoutStatus::
+                            CutoutOutsideSurface,
+                "cutout outside the structural footprint rejects") &&
+         expect(
+             !degenerate.accepted &&
+                 degenerate.status ==
+                     cr::CreativeStructuralSurfaceCutoutStatus::InvalidCutout,
+             "degenerate cutout rejects") &&
+         expect(!consumed.accepted && consumed.pieceCount == 0U &&
+                    consumed.status ==
+                        cr::CreativeStructuralSurfaceCutoutStatus::
+                            CutoutConsumesSurface,
+                "cutout cannot consume the entire structural surface");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = descriptorAnchorsProduceExactBounds() &&
-                  invalidRequestsFailClosed();
+                  invalidRequestsFailClosed() &&
+                  cutoutPartitionsSurfaceWithoutOverlap() &&
+                  edgeCutoutsOmitDegeneratePiecesAndRejectEscapes();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

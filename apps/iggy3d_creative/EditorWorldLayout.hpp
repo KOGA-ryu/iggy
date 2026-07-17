@@ -23,6 +23,7 @@ enum class CreativeEditorWorldLayoutTool : std::uint8_t {
   Wall,
   Door,
   Window,
+  Stair,
   Plateau,
   Road,
   Ditch,
@@ -61,6 +62,7 @@ struct CreativeEditorWorldLayoutPaletteEntry {
 enum class CreativeEditorWorldLayoutSelectionKind : std::uint8_t {
   None,
   Room,
+  VerticalConnector,
   Box,
   Wall,
   Opening,

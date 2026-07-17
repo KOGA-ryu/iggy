@@ -134,6 +134,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/world/WorldLayout.cpp
     src/app/iggy3d/creative/world/WorldLayoutLevels.cpp
     src/app/iggy3d/creative/world/WorldLayoutRooms.cpp
+    src/app/iggy3d/creative/world/WorldLayoutVerticalConnectors.cpp
     src/app/iggy3d/creative/world/WorldLayoutProvenance.cpp
     src/app/iggy3d/creative/world/WorldLayoutBuildingOps.cpp
     src/app/iggy3d/creative/world/WorldLayoutBuildingTemplates.cpp

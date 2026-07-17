@@ -210,6 +210,7 @@ bool boundedRecordCount(const CreativeWorldLayout& layout,
       layout.buildings.size(),
       layout.levels.size(),
       layout.rooms.size(),
+      layout.verticalConnectors.size(),
       layout.boxes.size(),
       layout.walls.size(),
       layout.openings.size(),
@@ -298,6 +299,28 @@ bool validateForEncoding(const CreativeWorldLayout& layout,
                      ? CreativeWorldLayoutCodecStatus::InvalidRecord
                      : CreativeWorldLayoutCodecStatus::NonFiniteValue,
                  "creative_world_layout_encode_invalid_room"};
+      return false;
+    }
+  }
+  for (const CreativeWorldLayoutVerticalConnector& connector :
+       layout.verticalConnectors) {
+    if (!validKeyName(connector.stableKey, connector.name) ||
+        connector.buildingIndex >= layout.buildings.size() ||
+        connector.lowerRoomIndex >= layout.rooms.size() ||
+        connector.upperRoomIndex >= layout.rooms.size() ||
+        connector.lowerRoomIndex == connector.upperRoomIndex ||
+        layout.rooms[connector.lowerRoomIndex].buildingIndex !=
+            connector.buildingIndex ||
+        layout.rooms[connector.upperRoomIndex].buildingIndex !=
+            connector.buildingIndex ||
+        connector.footprint.minimum.x >= connector.footprint.maximum.x ||
+        connector.footprint.minimum.z >= connector.footprint.maximum.z ||
+        enumValue(connector.kind) >=
+            enumValue(CreativeWorldLayoutVerticalConnectorKind::Count) ||
+        enumValue(connector.direction) >=
+            enumValue(CreativeWorldLayoutVerticalDirection::Count)) {
+      failure = {CreativeWorldLayoutCodecStatus::InvalidRecord,
+                 "creative_world_layout_encode_invalid_vertical_connector"};
       return false;
     }
   }
@@ -523,11 +546,10 @@ CreativeWorldLayoutEncodeResult encodeCreativeWorldLayout(
   output << kHeader << ' ' << kCreativeWorldLayoutCodecVersion << '\n';
   output << "L " << layout.schemaVersion << ' ' << hexString(layout.stableKey)
          << ' ' << static_cast<unsigned>(enumValue(layout.terrainOwnership))
-         << ' ' << layout.buildings.size() << ' ' << layout.levels.size()
-         << ' ' << layout.rooms.size() << ' ' << layout.boxes.size() << ' '
-         << layout.walls.size() << ' '
-         << layout.openings.size() << ' '
-         << layout.objects.size() << ' '
+         << ' ' << layout.buildings.size() << ' ' << layout.levels.size() << ' '
+         << layout.rooms.size() << ' ' << layout.verticalConnectors.size()
+         << ' ' << layout.boxes.size() << ' ' << layout.walls.size() << ' '
+         << layout.openings.size() << ' ' << layout.objects.size() << ' '
          << layout.terrainProfiles.size() << ' ' << layout.terrainPaths.size()
          << ' ' << layout.terrainPathPoints.size() << '\n';
   for (const CreativeWorldLayoutBuilding& building : layout.buildings) {
@@ -555,6 +577,17 @@ CreativeWorldLayoutEncodeResult encodeCreativeWorldLayout(
            << hexString(room.stableKey) << ' ' << hexString(room.name);
     writeRect(output, room.footprint);
     output << ' ' << room.wallThicknessCells << '\n';
+  }
+  for (const CreativeWorldLayoutVerticalConnector& connector :
+       layout.verticalConnectors) {
+    output << "C " << connector.buildingIndex << ' ' << connector.lowerRoomIndex
+           << ' ' << connector.upperRoomIndex << ' '
+           << static_cast<unsigned>(enumValue(connector.kind)) << ' '
+           << static_cast<unsigned>(enumValue(connector.direction)) << ' '
+           << hexString(connector.stableKey) << ' '
+           << hexString(connector.name);
+    writeRect(output, connector.footprint);
+    output << '\n';
   }
   for (const CreativeWorldLayoutBox& box : layout.boxes) {
     output << "X " << box.buildingIndex << ' '
@@ -682,6 +715,7 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
   std::size_t buildingCount = 0U;
   std::size_t levelCount = 0U;
   std::size_t roomCount = 0U;
+  std::size_t connectorCount = 0U;
   std::size_t boxCount = 0U;
   std::size_t wallCount = 0U;
   std::size_t openingCount = 0U;
@@ -699,14 +733,15 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
       codecVersion >= 6U && !layoutRecord.readSize(levelCount);
   const bool roomCountInvalid =
       codecVersion >= 2U && !layoutRecord.readSize(roomCount);
+  const bool connectorCountInvalid =
+      codecVersion >= 7U && !layoutRecord.readSize(connectorCount);
   const bool structuralCountInvalid =
       !layoutRecord.readSize(boxCount) || !layoutRecord.readSize(wallCount) ||
       !layoutRecord.readSize(openingCount);
   const bool objectCountInvalid =
       codecVersion >= 3U && !layoutRecord.readSize(objectCount);
   if (layoutPrefix || levelCountInvalid || roomCountInvalid ||
-      structuralCountInvalid ||
-      objectCountInvalid ||
+      connectorCountInvalid || structuralCountInvalid || objectCountInvalid ||
       !layoutRecord.readSize(profileCount) ||
       !layoutRecord.readSize(pathCount) || !layoutRecord.readSize(pointCount) ||
       !layoutRecord.finished()) {
@@ -724,8 +759,9 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
   }
   std::size_t declaredRecords = 3U;
   const std::size_t declaredCounts[] = {
-      buildingCount, levelCount, roomCount, boxCount, wallCount, openingCount,
-      objectCount, profileCount, pathCount, pointCount,
+      buildingCount, levelCount, roomCount,    connectorCount,
+      boxCount,      wallCount,  openingCount, objectCount,
+      profileCount,  pathCount,  pointCount,
   };
   for (const std::size_t count : declaredCounts) {
     if (count > kCreativeWorldLayoutCodecMaxRecords - declaredRecords) {
@@ -857,6 +893,34 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
     for (LegacyRoomRecord& record : legacyRooms) {
       result.layout.rooms.push_back(std::move(record.room));
       legacyRoomGeometry.push_back(record.geometry);
+    }
+  }
+  if (codecVersion >= 7U) {
+    const auto readConnector = [](RecordReader& reader,
+                                  CreativeWorldLayoutVerticalConnector& value) {
+      std::uint8_t kind = 0U;
+      std::uint8_t direction = 0U;
+      if (!reader.readLiteral("C") || !reader.readSize(value.buildingIndex) ||
+          !reader.readSize(value.lowerRoomIndex) ||
+          !reader.readSize(value.upperRoomIndex) ||
+          !reader.readUnsigned(kind) ||
+          kind >= enumValue(CreativeWorldLayoutVerticalConnectorKind::Count) ||
+          !reader.readUnsigned(direction) ||
+          direction >= enumValue(CreativeWorldLayoutVerticalDirection::Count) ||
+          !reader.readHex(value.stableKey) || !reader.readHex(value.name) ||
+          !readRect(reader, value.footprint) ||
+          value.footprint.minimum.x >= value.footprint.maximum.x ||
+          value.footprint.minimum.z >= value.footprint.maximum.z) {
+        return false;
+      }
+      value.kind = static_cast<CreativeWorldLayoutVerticalConnectorKind>(kind);
+      value.direction =
+          static_cast<CreativeWorldLayoutVerticalDirection>(direction);
+      return true;
+    };
+    if (!readTable(lines, lineIndex, connectorCount,
+                   result.layout.verticalConnectors, readConnector, result)) {
+      return result;
     }
   }
   const auto readBox = [codecVersion](RecordReader& reader,

@@ -89,13 +89,26 @@ void selectLevelOwner(CreativeEditorWorldLayoutState& state,
         (opening.roomIndex < state.source.rooms.size() &&
          state.source.rooms[opening.roomIndex].levelIndex == levelIndex);
   } else if (state.selection.kind ==
+                 CreativeEditorWorldLayoutSelectionKind::VerticalConnector &&
+             state.selection.index < state.source.verticalConnectors.size()) {
+    const cr::CreativeWorldLayoutVerticalConnector& connector =
+        state.source.verticalConnectors[state.selection.index];
+    selectionVisible =
+        (connector.lowerRoomIndex < state.source.rooms.size() &&
+         state.source.rooms[connector.lowerRoomIndex].levelIndex ==
+             levelIndex) ||
+        (connector.upperRoomIndex < state.source.rooms.size() &&
+         state.source.rooms[connector.upperRoomIndex].levelIndex == levelIndex);
+  } else if (state.selection.kind ==
                  CreativeEditorWorldLayoutSelectionKind::Building &&
              state.selection.index == buildingIndex) {
     selectionVisible = true;
   } else if (state.selection.kind !=
                  CreativeEditorWorldLayoutSelectionKind::Room &&
              state.selection.kind !=
-                 CreativeEditorWorldLayoutSelectionKind::Opening) {
+                 CreativeEditorWorldLayoutSelectionKind::Opening &&
+             state.selection.kind !=
+                 CreativeEditorWorldLayoutSelectionKind::VerticalConnector) {
     selectionVisible = true;
   }
   if (!selectionVisible) {
@@ -328,8 +341,25 @@ void selectLevelOwner(CreativeEditorWorldLayoutState& state,
     }
     openings.push_back(std::move(opening));
   }
+  std::vector<cr::CreativeWorldLayoutVerticalConnector> verticalConnectors;
+  verticalConnectors.reserve(state.source.verticalConnectors.size());
+  for (cr::CreativeWorldLayoutVerticalConnector connector :
+       state.source.verticalConnectors) {
+    if (connector.lowerRoomIndex >= roomMap.size() ||
+        connector.upperRoomIndex >= roomMap.size() ||
+        roomMap[connector.lowerRoomIndex] ==
+            cr::kInvalidCreativeWorldLayoutIndex ||
+        roomMap[connector.upperRoomIndex] ==
+            cr::kInvalidCreativeWorldLayoutIndex) {
+      continue;
+    }
+    connector.lowerRoomIndex = roomMap[connector.lowerRoomIndex];
+    connector.upperRoomIndex = roomMap[connector.upperRoomIndex];
+    verticalConnectors.push_back(std::move(connector));
+  }
   state.source.rooms = std::move(rooms);
   state.source.openings = std::move(openings);
+  state.source.verticalConnectors = std::move(verticalConnectors);
   state.source.levels.erase(
       state.source.levels.begin() + static_cast<std::ptrdiff_t>(levelIndex));
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Building,

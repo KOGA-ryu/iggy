@@ -95,20 +95,19 @@ struct CreativeBuildingBoxSpec {
   CreativeBounds bounds;
   CreativeVec3 scale{1.0, 1.0, 1.0};
   std::vector<std::string> tags;
+  CreativeVec3 rotationEulerRadians{};
 
   CreativeBuildingBoxSpec() = default;
   CreativeBuildingBoxSpec(CreativeObjectKind objectKind,
-                          std::string objectStableKey,
-                          std::string objectName,
+                          std::string objectStableKey, std::string objectName,
                           CreativeBounds objectBounds,
                           CreativeVec3 objectScale = {1.0, 1.0, 1.0},
-                          std::vector<std::string> objectTags = {})
-      : kind(objectKind),
-        stableKey(std::move(objectStableKey)),
-        name(std::move(objectName)),
-        bounds(objectBounds),
-        scale(objectScale),
-        tags(std::move(objectTags)) {}
+                          std::vector<std::string> objectTags = {},
+                          CreativeVec3 objectRotationEulerRadians = {})
+      : kind(objectKind), stableKey(std::move(objectStableKey)),
+        name(std::move(objectName)), bounds(objectBounds), scale(objectScale),
+        tags(std::move(objectTags)),
+        rotationEulerRadians(objectRotationEulerRadians) {}
 };
 
 struct CreativeBuildingOpeningSpec {

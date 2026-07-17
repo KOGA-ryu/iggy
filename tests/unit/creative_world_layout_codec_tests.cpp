@@ -44,14 +44,37 @@ cr::CreativeWorldLayout richLayout() {
   level.roofThicknessLayers = 3U;
   layout.levels.push_back(level);
 
+  cr::CreativeWorldLayoutLevel upperLevel = level;
+  upperLevel.stableKey = "level.upper";
+  upperLevel.name = "Upper Level";
+  upperLevel.floorTopLayer = 5.25;
+  layout.levels.push_back(upperLevel);
+
   cr::CreativeWorldLayoutRoom room;
   room.buildingIndex = 0U;
   room.levelIndex = 0U;
   room.stableKey = "room.study";
   room.name = "Study";
-  room.footprint = {{0, 0}, {4, 3}};
+  room.footprint = {{0, 0}, {8, 6}};
   room.wallThicknessCells = 0.375;
   layout.rooms.push_back(room);
+
+  cr::CreativeWorldLayoutRoom upperRoom = room;
+  upperRoom.levelIndex = 1U;
+  upperRoom.stableKey = "room.upper";
+  upperRoom.name = "Upper Hall";
+  layout.rooms.push_back(upperRoom);
+
+  cr::CreativeWorldLayoutVerticalConnector stair;
+  stair.buildingIndex = 0U;
+  stair.lowerRoomIndex = 0U;
+  stair.upperRoomIndex = 1U;
+  stair.kind = cr::CreativeWorldLayoutVerticalConnectorKind::Stair;
+  stair.direction = cr::CreativeWorldLayoutVerticalDirection::PositiveX;
+  stair.stableKey = "stair.main";
+  stair.name = "Main Stair";
+  stair.footprint = {{1, 2}, {5, 4}};
+  layout.verticalConnectors.push_back(stair);
 
   cr::CreativeWorldLayoutBox floor;
   floor.buildingIndex = 0U;
@@ -158,14 +181,21 @@ bool deterministicRoundTripPreservesEveryTable() {
                  decoded.layout.buildings[0].name == source.buildings[0].name &&
                  decoded.layout.buildings[0].tags == source.buildings[0].tags,
              "building strings and tags round trip") &&
-         expect(decoded.layout.levels.size() == 1U &&
+         expect(decoded.layout.levels.size() == 2U &&
                     decoded.layout.levels[0].floorTopLayer == 1.25 &&
                     decoded.layout.levels[0].ceilingThicknessLayers == 2U &&
                     decoded.layout.levels[0].roofThicknessLayers == 3U &&
-                    decoded.layout.rooms.size() == 1U &&
+                    decoded.layout.rooms.size() == 2U &&
                     decoded.layout.rooms[0].footprint.maximum ==
                         source.rooms[0].footprint.maximum &&
                     decoded.layout.rooms[0].levelIndex == 0U &&
+                    decoded.layout.verticalConnectors.size() == 1U &&
+                    decoded.layout.verticalConnectors[0].lowerRoomIndex == 0U &&
+                    decoded.layout.verticalConnectors[0].upperRoomIndex == 1U &&
+                    decoded.layout.verticalConnectors[0].direction ==
+                        cr::CreativeWorldLayoutVerticalDirection::PositiveX &&
+                    decoded.layout.verticalConnectors[0].footprint.minimum ==
+                        source.verticalConnectors[0].footprint.minimum &&
                     decoded.layout.boxes.size() == 1U &&
                     decoded.layout.boxes[0].anchorLayer == 1.75 &&
                     decoded.layout.boxes[0].layerCount == 2U &&
@@ -173,17 +203,17 @@ bool deterministicRoundTripPreservesEveryTable() {
                     decoded.layout.openings.size() == 2U &&
                     decoded.layout.openings[1].hostKind ==
                         cr::CreativeWorldLayoutOpeningHostKind::RoomEdge,
-                "building, room, and opening host tables round trip") &&
-         expect(
-             decoded.layout.objects.size() == 1U &&
-                 decoded.layout.objects[0].assetId == "boulder_01" &&
-                 decoded.layout.objects[0].tags == source.objects[0].tags &&
-                 decoded.layout.objects[0].boundsCells.min.x == 2.25,
-             "object-library symbols round trip") &&
+                "building, room, connector, and opening tables round trip") &&
+         expect(decoded.layout.objects.size() == 1U &&
+                    decoded.layout.objects[0].assetId == "boulder_01" &&
+                    decoded.layout.objects[0].tags == source.objects[0].tags &&
+                    decoded.layout.objects[0].boundsCells.min.x == 2.25,
+                "object-library symbols round trip") &&
          expect(decoded.layout.terrainProfiles.size() == 1U &&
-                 decoded.layout.terrainPaths.size() == 1U &&
-                 decoded.layout.terrainPathPoints == source.terrainPathPoints,
-             "terrain symbol tables round trip");
+                    decoded.layout.terrainPaths.size() == 1U &&
+                    decoded.layout.terrainPathPoints ==
+                        source.terrainPathPoints,
+                "terrain symbol tables round trip");
 }
 
 bool malformedAndNonFiniteInputsFailClosed() {
@@ -395,6 +425,30 @@ bool versionFiveRoomsMigrateToSharedLevels() {
                 "version-five migration writes the current codec version");
 }
 
+bool versionSixSourceMigratesWithoutFabricatedVerticalConnectors() {
+  const std::string versionSix =
+      "IGGY3D_WORLD_LAYOUT 6\n"
+      "L 6 6c65676163795f6c61796f7574 0 0 0 0 0 0 0 0 0 0 0\n"
+      "END\n";
+  const cr::CreativeWorldLayoutDecodeResult decoded =
+      cr::decodeCreativeWorldLayout(versionSix);
+  const cr::CreativeWorldLayoutEncodeResult encoded =
+      decoded.accepted ? cr::encodeCreativeWorldLayout(decoded.layout)
+                       : cr::CreativeWorldLayoutEncodeResult{};
+
+  return expect(decoded.accepted &&
+                    decoded.layout.schemaVersion ==
+                        cr::kCreativeWorldLayoutSchemaVersion &&
+                    decoded.layout.verticalConnectors.empty(),
+                "version-six source migrates with an empty connector table") &&
+         expect(encoded.accepted &&
+                    encoded.encodedText.starts_with(
+                        "IGGY3D_WORLD_LAYOUT " +
+                        std::to_string(cr::kCreativeWorldLayoutCodecVersion) +
+                        "\n"),
+                "version-six migration writes the current codec version");
+}
+
 }  // namespace
 
 int main() {
@@ -404,6 +458,7 @@ int main() {
                   versionTwoSourceMigratesWithoutFabricatedObjects() &&
                   versionThreeRoomPreservesWallPlaneDuringMigration() &&
                   versionFourBoxesMigrateToExplicitAnchorPlanes() &&
-                  versionFiveRoomsMigrateToSharedLevels();
+                  versionFiveRoomsMigrateToSharedLevels() &&
+                  versionSixSourceMigratesWithoutFabricatedVerticalConnectors();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -95,6 +95,40 @@ IntVector2 transformVector(
   return {};
 }
 
+IntVector2 verticalDirectionVector(
+    CreativeWorldLayoutVerticalDirection direction) noexcept {
+  switch (direction) {
+  case CreativeWorldLayoutVerticalDirection::PositiveX:
+    return {1, 0};
+  case CreativeWorldLayoutVerticalDirection::NegativeX:
+    return {-1, 0};
+  case CreativeWorldLayoutVerticalDirection::PositiveZ:
+    return {0, 1};
+  case CreativeWorldLayoutVerticalDirection::NegativeZ:
+    return {0, -1};
+  case CreativeWorldLayoutVerticalDirection::Count:
+    break;
+  }
+  return {};
+}
+
+CreativeWorldLayoutVerticalDirection
+verticalDirectionFromVector(IntVector2 direction) noexcept {
+  if (direction.x == 1 && direction.z == 0) {
+    return CreativeWorldLayoutVerticalDirection::PositiveX;
+  }
+  if (direction.x == -1 && direction.z == 0) {
+    return CreativeWorldLayoutVerticalDirection::NegativeX;
+  }
+  if (direction.x == 0 && direction.z == 1) {
+    return CreativeWorldLayoutVerticalDirection::PositiveZ;
+  }
+  if (direction.x == 0 && direction.z == -1) {
+    return CreativeWorldLayoutVerticalDirection::NegativeZ;
+  }
+  return CreativeWorldLayoutVerticalDirection::Count;
+}
+
 bool transformPoint(CreativeTerrainCoord2 point,
                     CreativeWorldLayoutBuildingBounds bounds,
                     CreativeWorldLayoutBuildingTransformOperation operation,
@@ -326,6 +360,36 @@ bool transformOwnedGeometry(
           CreativeWorldLayoutBuildingTransformStatus::CoordinateOverflow;
       return false;
     }
+  }
+  for (std::size_t index = 0U; index < source.verticalConnectors.size();
+       ++index) {
+    const CreativeWorldLayoutVerticalConnector& sourceConnector =
+        source.verticalConnectors[index];
+    if (sourceConnector.buildingIndex != buildingIndex) {
+      continue;
+    }
+    if (!validRect(sourceConnector.footprint) ||
+        sourceConnector.direction >=
+            CreativeWorldLayoutVerticalDirection::Count) {
+      failureStatus =
+          CreativeWorldLayoutBuildingTransformStatus::InvalidGeometry;
+      return false;
+    }
+    if (!transformRect(sourceConnector.footprint, bounds, operation,
+                       candidate.verticalConnectors[index].footprint)) {
+      failureStatus =
+          CreativeWorldLayoutBuildingTransformStatus::CoordinateOverflow;
+      return false;
+    }
+    const CreativeWorldLayoutVerticalDirection transformedDirection =
+        verticalDirectionFromVector(transformVector(
+            verticalDirectionVector(sourceConnector.direction), operation));
+    if (transformedDirection >= CreativeWorldLayoutVerticalDirection::Count) {
+      failureStatus =
+          CreativeWorldLayoutBuildingTransformStatus::InvalidGeometry;
+      return false;
+    }
+    candidate.verticalConnectors[index].direction = transformedDirection;
   }
   for (std::size_t index = 0U; index < source.boxes.size(); ++index) {
     if (source.boxes[index].buildingIndex != buildingIndex) {
