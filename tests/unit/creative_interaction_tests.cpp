@@ -2,6 +2,7 @@
 #include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
 #include "app/iggy3d/creative/camera/Fly.hpp"
+#include "app/iggy3d/creative/spatial/PlacementContact.hpp"
 #include "EditorInteraction.hpp"
 
 #include <algorithm>
@@ -28,6 +29,12 @@ bool near(double actual, double expected) {
 
 bool nearFloat(float actual, float expected) {
   return std::fabs(actual - expected) <= 1.0e-6F;
+}
+
+bool sameVec3(cr::CreativeVec3 actual,
+              cr::CreativeVec3 expected) {
+  return near(actual.x, expected.x) && near(actual.y, expected.y) &&
+         near(actual.z, expected.z);
 }
 
 bool controllerTransitionSanitizesAndOwnsEdges() {
@@ -1022,6 +1029,14 @@ bool placementAnchorsAreDeterministicAndStable() {
   invalidKind.anchorKind = cr::CreativePlacementAnchorKind::Count;
   cr::CreativePlacementGridFrameRequest invalidPrevious = retainedRequest;
   invalidPrevious.previousAnchorIndex = 6U;
+  cr::CreativePlacementAnchorCandidatePlan invalidCandidateNormal =
+      cr::buildCreativePlacementAnchorCandidatePlan(
+          cr::CreativePlacementAnchorKind::FaceCenter,
+          {{0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}});
+  invalidCandidateNormal.outwardNormals[0].x =
+      std::numeric_limits<double>::quiet_NaN();
+  const cr::CreativePlacementAnchorSelection invalidSelection =
+      cr::selectCreativePlacementAnchor(invalidCandidateNormal, {});
 
   return expect(face.valid && face.anchorSnapped &&
                     face.anchorKind ==
@@ -1029,6 +1044,9 @@ bool placementAnchorsAreDeterministicAndStable() {
                     face.anchorCandidates.valid &&
                     face.anchorCandidates.count == 6U &&
                     face.anchorIndex == 0U &&
+                    sameVec3(face.anchorCandidates.outwardNormals[0],
+                             {-1.0, 0.0, 0.0}) &&
+                    sameVec3(face.placementNormal, {1.0, 0.0, 0.0}) &&
                     near(face.basePlacementAnchor.x, 2.5) &&
                     near(face.basePlacementAnchor.y, 2.0) &&
                     near(face.placementAnchor.x, 2.0) &&
@@ -1039,6 +1057,10 @@ bool placementAnchorsAreDeterministicAndStable() {
                 "equal-distance anchor ties retain stable index order") &&
          expect(edge.valid && edge.anchorCandidates.count == 12U &&
                     edge.anchorIndex == 9U &&
+                    near(edge.anchorCandidates.outwardNormals[9].x,
+                         -0.70710678118654752440) &&
+                    near(edge.anchorCandidates.outwardNormals[9].y,
+                         0.70710678118654752440) &&
                     near(edge.placementAnchor.x, 2.0) &&
                     near(edge.placementAnchor.y, 3.0) &&
                     near(edge.placementAnchor.z, 3.5),
@@ -1053,8 +1075,62 @@ bool placementAnchorsAreDeterministicAndStable() {
                     switched.valid && switched.anchorIndex == 2U,
                 "anchor hysteresis holds near a boundary and releases past its margin") &&
          expect(!cr::makeCreativePlacementGridFrame(invalidKind).valid &&
-                    !cr::makeCreativePlacementGridFrame(invalidPrevious).valid,
+                    !cr::makeCreativePlacementGridFrame(invalidPrevious).valid &&
+                    !invalidSelection.valid,
                 "invalid anchor modes and prior indices fail closed");
+}
+
+bool placementContactAlignsExtremeFeaturesWithoutPenetration() {
+  const cr::CreativeBounds authored{{-1.0, -0.5, -2.0},
+                                    {1.0, 0.5, 2.0}};
+  const cr::CreativeTransformedBounds axisAligned =
+      cr::resolveCreativeTransformedBounds(authored, {});
+  const cr::CreativePlacementContactPlan face =
+      cr::resolveCreativePlacementContact(
+          {axisAligned, {10.0, 3.0, -4.0}, {2.0, 0.0, 0.0}});
+
+  cr::CreativeTransform rotatedTransform;
+  rotatedTransform.rotationEulerRadians.y =
+      0.78539816339744830962;
+  rotatedTransform.scale = {1.5, 0.75, 0.5};
+  const cr::CreativeTransformedBounds rotated =
+      cr::resolveCreativeTransformedBounds(authored, rotatedTransform);
+  const cr::CreativePlacementContactPlan rotatedContact =
+      cr::resolveCreativePlacementContact(
+          {rotated, {-3.0, 1.0, 6.0}, {1.0, 0.0, 0.0}});
+  const cr::CreativePlacementContactPlan invalidNormal =
+      cr::resolveCreativePlacementContact(
+          {axisAligned, {}, {0.0, 0.0, 0.0}});
+  const cr::CreativePlacementContactPlan invalidSource =
+      cr::resolveCreativePlacementContact(
+          {{}, {}, {0.0, 1.0, 0.0}});
+
+  return expect(face.valid &&
+                    face.status == cr::CreativePlacementContactStatus::Ready &&
+                    face.sourceFeatureVertexCount == 4U &&
+                    sameVec3(face.normal, {1.0, 0.0, 0.0}) &&
+                    sameVec3(face.sourcePointBeforeTranslation,
+                             {-1.0, 0.0, 0.0}) &&
+                    sameVec3(face.sourcePointAfterTranslation,
+                             face.targetPoint) &&
+                    sameVec3(face.translation, {11.0, 3.0, -4.0}) &&
+                    face.minimumSignedDistanceMeters >= -1.0e-9 &&
+                    near(face.maximumSignedDistanceMeters, 2.0),
+                "contact kernel aligns an opposing face without penetration") &&
+         expect(rotatedContact.valid &&
+                    rotatedContact.sourceFeatureVertexCount == 2U &&
+                    sameVec3(rotatedContact.sourcePointAfterTranslation,
+                             rotatedContact.targetPoint) &&
+                    rotatedContact.minimumSignedDistanceMeters >= -1.0e-9 &&
+                    rotatedContact.maximumSignedDistanceMeters > 0.0,
+                "contact kernel resolves the extreme edge of a rotated box") &&
+         expect(!invalidNormal.valid &&
+                    invalidNormal.status ==
+                        cr::CreativePlacementContactStatus::InvalidTarget &&
+                    !invalidSource.valid &&
+                    invalidSource.status ==
+                        cr::CreativePlacementContactStatus::InvalidSource,
+                "contact kernel fails closed for invalid source or normal");
 }
 
 bool placementFeedbackHasABoundedVisibleLifetime() {
@@ -1282,6 +1358,7 @@ int main() {
   ok = placementGridOwnsBoundsOriginsAndOverlayPlanes() && ok;
   ok = placementDepthAndNearestDotLayerShareOneLattice() && ok;
   ok = placementAnchorsAreDeterministicAndStable() && ok;
+  ok = placementContactAlignsExtremeFeaturesWithoutPenetration() && ok;
   ok = placementFeedbackHasABoundedVisibleLifetime() && ok;
   ok = materialRepeatCadenceAndPrecedenceAreDeterministic() && ok;
   ok = worldStrokeRepeatRequestUnifiesMouseAndControllerActions() && ok;

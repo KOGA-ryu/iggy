@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 
 #include "EditorInteraction.hpp"
 #include "EditorState.hpp"
@@ -267,6 +268,42 @@ void appendCreativeEditorPlacementGridOverlay(
     }
     output.placementGridAnchorCandidateLineCount =
         output.combinedWireLines.size() - candidateStart;
+  }
+
+  if (target.anchorSnapped && target.resolved &&
+      cr::isFiniteCreativeVec3(target.placementNormal)) {
+    const double normalLengthSquared =
+        target.placementNormal.x * target.placementNormal.x +
+        target.placementNormal.y * target.placementNormal.y +
+        target.placementNormal.z * target.placementNormal.z;
+    if (std::isfinite(normalLengthSquared) &&
+        normalLengthSquared > 1.0e-24) {
+      const double guideLength =
+          std::clamp(minorStep * 0.28, 0.14, 0.42);
+      const double inverseLength = 1.0 / std::sqrt(normalLengthSquared);
+      const cr::CreativeVec3 guideEnd{
+          target.placementAnchor.x +
+              target.placementNormal.x * inverseLength * guideLength,
+          target.placementAnchor.y +
+              target.placementNormal.y * inverseLength * guideLength,
+          target.placementAnchor.z +
+              target.placementNormal.z * inverseLength * guideLength};
+      const cr::CreativeCoreVec3Conversion convertedStart =
+          cr::creativeVec3ToCoreChecked(target.placementAnchor);
+      const cr::CreativeCoreVec3Conversion convertedEnd =
+          cr::creativeVec3ToCoreChecked(guideEnd);
+      if (convertedStart.converted && convertedEnd.converted) {
+        iggy3d::RenderCreativeWireframeDebugLine contactGuide;
+        contactGuide.start = convertedStart.value;
+        contactGuide.end = convertedEnd.value;
+        contactGuide.color = {1.0F, 0.78F, 0.16F, 1.0F};
+        contactGuide.segmentKind = 10U;
+        contactGuide.thickness = std::clamp(
+            static_cast<float>(minorStep) * 0.055F, 0.032F, 0.08F);
+        output.combinedWireLines.push_back(contactGuide);
+        output.placementGridContactGuideLineCount = 1U;
+      }
+    }
   }
 
   if (editor.toolSettings.placementGridDots ==

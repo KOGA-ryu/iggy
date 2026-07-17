@@ -235,6 +235,8 @@ struct OverlayAxisRange {
 [[nodiscard]] CreativePlacementAnchorCandidatePlan placementAnchorCandidates(
     CreativePlacementAnchorKind kind,
     CreativeBounds bounds) noexcept {
+  constexpr double kInverseSqrtTwo = 0.70710678118654752440;
+  constexpr double kInverseSqrtThree = 0.57735026918962576451;
   CreativePlacementAnchorCandidatePlan result;
   const CreativeBoundsMetrics metrics = measureCreativeBounds(bounds);
   result.count = placementAnchorCandidateCount(kind);
@@ -251,16 +253,22 @@ struct OverlayAxisRange {
     case CreativePlacementAnchorKind::FaceCenter:
       result.positions[0] = {bounds.min.x, metrics.center.y,
                              metrics.center.z};
+      result.outwardNormals[0] = {-1.0, 0.0, 0.0};
       result.positions[1] = {bounds.max.x, metrics.center.y,
                              metrics.center.z};
+      result.outwardNormals[1] = {1.0, 0.0, 0.0};
       result.positions[2] = {metrics.center.x, bounds.min.y,
                              metrics.center.z};
+      result.outwardNormals[2] = {0.0, -1.0, 0.0};
       result.positions[3] = {metrics.center.x, bounds.max.y,
                              metrics.center.z};
+      result.outwardNormals[3] = {0.0, 1.0, 0.0};
       result.positions[4] = {metrics.center.x, metrics.center.y,
                              bounds.min.z};
+      result.outwardNormals[4] = {0.0, 0.0, -1.0};
       result.positions[5] = {metrics.center.x, metrics.center.y,
                              bounds.max.z};
+      result.outwardNormals[5] = {0.0, 0.0, 1.0};
       break;
     case CreativePlacementAnchorKind::EdgeMidpoint: {
       std::size_t index = 0U;
@@ -269,6 +277,9 @@ struct OverlayAxisRange {
           result.positions[index++] = {
               metrics.center.x, y == 0U ? bounds.min.y : bounds.max.y,
               z == 0U ? bounds.min.z : bounds.max.z};
+          result.outwardNormals[index - 1U] = {
+              0.0, y == 0U ? -kInverseSqrtTwo : kInverseSqrtTwo,
+              z == 0U ? -kInverseSqrtTwo : kInverseSqrtTwo};
         }
       }
       for (std::size_t x = 0U; x < 2U; ++x) {
@@ -276,6 +287,9 @@ struct OverlayAxisRange {
           result.positions[index++] = {
               x == 0U ? bounds.min.x : bounds.max.x, metrics.center.y,
               z == 0U ? bounds.min.z : bounds.max.z};
+          result.outwardNormals[index - 1U] = {
+              x == 0U ? -kInverseSqrtTwo : kInverseSqrtTwo, 0.0,
+              z == 0U ? -kInverseSqrtTwo : kInverseSqrtTwo};
         }
       }
       for (std::size_t x = 0U; x < 2U; ++x) {
@@ -283,6 +297,9 @@ struct OverlayAxisRange {
           result.positions[index++] = {
               x == 0U ? bounds.min.x : bounds.max.x,
               y == 0U ? bounds.min.y : bounds.max.y, metrics.center.z};
+          result.outwardNormals[index - 1U] = {
+              x == 0U ? -kInverseSqrtTwo : kInverseSqrtTwo,
+              y == 0U ? -kInverseSqrtTwo : kInverseSqrtTwo, 0.0};
         }
       }
       break;
@@ -296,6 +313,10 @@ struct OverlayAxisRange {
                 x == 0U ? bounds.min.x : bounds.max.x,
                 y == 0U ? bounds.min.y : bounds.max.y,
                 z == 0U ? bounds.min.z : bounds.max.z};
+            result.outwardNormals[index - 1U] = {
+                x == 0U ? -kInverseSqrtThree : kInverseSqrtThree,
+                y == 0U ? -kInverseSqrtThree : kInverseSqrtThree,
+                z == 0U ? -kInverseSqrtThree : kInverseSqrtThree};
           }
         }
       }
@@ -304,9 +325,13 @@ struct OverlayAxisRange {
     case CreativePlacementAnchorKind::Count:
       return {};
   }
-  result.valid = std::all_of(
-      result.positions.begin(), result.positions.begin() + result.count,
-      isFiniteCreativeVec3);
+  result.valid =
+      std::all_of(result.positions.begin(),
+                  result.positions.begin() + result.count,
+                  isFiniteCreativeVec3) &&
+      std::all_of(result.outwardNormals.begin(),
+                  result.outwardNormals.begin() + result.count,
+                  isFiniteCreativeVec3);
   return result;
 }
 
@@ -556,6 +581,12 @@ CreativePlacementAnchorSelection selectCreativePlacementAnchor(
       (request.hasPrevious && request.previousIndex >= candidates.count)) {
     return result;
   }
+  for (std::uint8_t index = 0U; index < candidates.count; ++index) {
+    if (!isFiniteCreativeVec3(candidates.positions[index]) ||
+        !isFiniteCreativeVec3(candidates.outwardNormals[index])) {
+      return result;
+    }
+  }
 
   std::uint8_t bestIndex = 0U;
   double bestDistanceSquared =
@@ -580,6 +611,7 @@ CreativePlacementAnchorSelection selectCreativePlacementAnchor(
   }
 
   result.position = candidates.positions[bestIndex];
+  result.outwardNormal = candidates.outwardNormals[bestIndex];
   result.index = bestIndex;
   result.valid = true;
   return result;
@@ -750,6 +782,7 @@ CreativeGridTarget resolveCreativeGridTargetFromHit(
     return {};
   }
   target.placementAnchor = anchor.position;
+  target.placementNormal = snappedNormal;
   target.anchorKind = frame.anchorKind;
   target.anchorIndex = anchor.index;
   target.anchorSnapped =

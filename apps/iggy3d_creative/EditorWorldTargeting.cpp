@@ -71,6 +71,29 @@ namespace {
            static_cast<double>(bounds.max.z)}};
 }
 
+[[nodiscard]] cr::CreativeVec3 stablePlacementNormal(
+    cr::CreativeVec3 value) noexcept {
+  constexpr double kCardinalEpsilon = 1.0e-6;
+  const auto stabilize = [](double component) {
+    if (std::fabs(component) <= kCardinalEpsilon) {
+      return 0.0;
+    }
+    if (std::fabs(std::fabs(component) - 1.0) <= kCardinalEpsilon) {
+      return std::copysign(1.0, component);
+    }
+    return component;
+  };
+  value = {stabilize(value.x), stabilize(value.y), stabilize(value.z)};
+  const double lengthSquared =
+      value.x * value.x + value.y * value.y + value.z * value.z;
+  if (!std::isfinite(lengthSquared) || lengthSquared <= 1.0e-24) {
+    return {};
+  }
+  const double inverseLength = 1.0 / std::sqrt(lengthSquared);
+  return {value.x * inverseLength, value.y * inverseLength,
+          value.z * inverseLength};
+}
+
 [[nodiscard]] cr::CreativePlacementAnchorCandidatePlan
 objectPlacementAnchorCandidates(
     const ObjectVisualPickBounds& candidate,
@@ -81,6 +104,8 @@ objectPlacementAnchorCandidates(
   }
 
   const iggy3d::OrientedBox& box = *candidate.orientedBounds;
+  const cr::CreativeVec3 rotation =
+      cr::creativeVec3FromCore(box.transform.rotationEulerRadians);
   cr::CreativePlacementAnchorCandidatePlan plan =
       cr::buildCreativePlacementAnchorCandidatePlan(
           kind, creativeBounds(box.localBounds));
@@ -95,10 +120,15 @@ objectPlacementAnchorCandidates(
     }
     const iggy3d::Vec3 world =
         iggy3d::transformPointTrs(box.transform, local.value);
-    if (!iggy3d::isFinite(world)) {
+    const cr::CreativeVec3 worldNormal = stablePlacementNormal(
+        cr::rotateCreativeVectorEulerXyz(plan.outwardNormals[index],
+                                         rotation));
+    if (!iggy3d::isFinite(world) ||
+        !cr::isFiniteCreativeVec3(worldNormal)) {
       return {};
     }
     plan.positions[index] = cr::creativeVec3FromCore(world);
+    plan.outwardNormals[index] = worldNormal;
   }
   return plan;
 }
@@ -135,6 +165,7 @@ void resolveObjectPlacementAnchor(
   }
   grid.anchorCandidates = candidates;
   grid.placementAnchor = selection.position;
+  grid.placementNormal = selection.outwardNormal;
   grid.anchorIndex = selection.index;
   grid.anchorSnapped = true;
   grid.anchorFromObjectBounds = true;

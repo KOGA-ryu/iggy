@@ -46,6 +46,7 @@ struct CreativeEditorOverlayFrame {
   std::size_t placementGridGuideLineCount = 0;
   std::size_t placementGridAnchorGuideLineCount = 0;
   std::size_t placementGridAnchorCandidateLineCount = 0;
+  std::size_t placementGridContactGuideLineCount = 0;
   std::size_t placementGridTargetMarkerCount = 0;
   bool placementGridClipped = false;
   std::size_t documentWireLineCount = 0;

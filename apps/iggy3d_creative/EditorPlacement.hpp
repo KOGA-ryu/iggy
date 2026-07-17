@@ -12,6 +12,7 @@
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
+#include "app/iggy3d/creative/spatial/PlacementContact.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
 #include "core/math/Vec3.hpp"
 #include "EditorEdits.hpp"
@@ -56,6 +57,7 @@ struct CreativeBrushPlacementPlan {
       iggy3d::creative::CreativePlacementFace::Count;
   iggy3d::creative::CreativePlacementStoragePolicy storagePolicy =
       iggy3d::creative::CreativePlacementStoragePolicy::AuthoredObject;
+  iggy3d::creative::CreativePlacementContactPlan contact{};
   iggy3d::creative::CreativeGridCoord3 voxelCell{};
   iggy3d::creative::CreativeObjectId attachmentTargetId =
       iggy3d::creative::kInvalidObjectId;
@@ -167,6 +169,9 @@ initialPathPointsForAnchor(iggy3d::Vec3 cellCenter);
     const iggy3d::creative::CreativeGridTarget& target,
     iggy3d::creative::CreativePlacementYaw placementYaw =
         iggy3d::creative::CreativePlacementYaw::Degrees0) noexcept;
+[[nodiscard]] bool applyCreativeBrushPlacementContact(
+    CreativeBrushPlacementPlan& plan,
+    const iggy3d::creative::CreativeGridTarget& target) noexcept;
 // Aligns the oriented source bottom-center while retaining source origin as
 // the transform pivot.
 [[nodiscard]] bool applyCreativeAssetPlacementBounds(

@@ -204,6 +204,29 @@ iggy3d::creative::CreativeBounds pathPreviewBounds(
   return std::isfinite(plan.transform.rotationEulerRadians.y);
 }
 
+[[nodiscard]] iggy3d::creative::CreativeVec3 translated(
+    iggy3d::creative::CreativeVec3 value,
+    iggy3d::creative::CreativeVec3 delta) noexcept {
+  return {value.x + delta.x, value.y + delta.y, value.z + delta.z};
+}
+
+void translatePlacementPlan(
+    CreativeBrushPlacementPlan& plan,
+    iggy3d::creative::CreativeVec3 delta) noexcept {
+  plan.transform.position = translated(plan.transform.position, delta);
+  plan.authoredBounds.min = translated(plan.authoredBounds.min, delta);
+  plan.authoredBounds.max = translated(plan.authoredBounds.max, delta);
+  plan.previewBounds.min = translated(plan.previewBounds.min, delta);
+  plan.previewBounds.max = translated(plan.previewBounds.max, delta);
+  const std::size_t pathPointCount =
+      std::min(static_cast<std::size_t>(plan.pathPointCount),
+               plan.pathPoints.size());
+  for (std::size_t index = 0U; index < pathPointCount; ++index) {
+    plan.pathPoints[index].position =
+        translated(plan.pathPoints[index].position, delta);
+  }
+}
+
 }  // namespace
 
 std::vector<iggy3d::creative::CreativePathPoint> initialPathPointsForAnchor(
@@ -572,10 +595,45 @@ CreativeBrushPlacementAdmission admitBrushPlacement(
         CreativeBrushPlacementAdmissionStatus::InvalidGeometry;
     return admission;
   }
+  if (!applyCreativeBrushPlacementContact(admission.plan, target)) {
+    admission.status =
+        CreativeBrushPlacementAdmissionStatus::InvalidGeometry;
+    return admission;
+  }
 
   admission.status = CreativeBrushPlacementAdmissionStatus::Ready;
   admission.allowed = true;
   return admission;
+}
+
+bool applyCreativeBrushPlacementContact(
+    CreativeBrushPlacementPlan& plan,
+    const iggy3d::creative::CreativeGridTarget& target) noexcept {
+  plan.contact = {};
+  if (!target.anchorSnapped) {
+    return true;
+  }
+  if (!plan.valid ||
+      plan.storagePolicy !=
+          iggy3d::creative::CreativePlacementStoragePolicy::AuthoredObject) {
+    return false;
+  }
+  if (!plan.hasTransformOverride || !plan.hasBoundsOverride) {
+    return true;
+  }
+
+  const iggy3d::creative::CreativeTransformedBounds source =
+      iggy3d::creative::resolveCreativeTransformedBounds(
+          plan.authoredBounds, plan.transform);
+  const iggy3d::creative::CreativePlacementContactPlan contact =
+      iggy3d::creative::resolveCreativePlacementContact(
+          {source, target.placementAnchor, target.placementNormal});
+  if (!contact.valid) {
+    return false;
+  }
+  translatePlacementPlan(plan, contact.translation);
+  plan.contact = contact;
+  return true;
 }
 
 bool applyCreativeAssetPlacementBounds(
@@ -617,6 +675,7 @@ bool applyCreativeAssetPlacementBounds(
        pivot.z + sourceBounds.max.z}};
   plan.previewBounds = plan.authoredBounds;
   plan.transform.position = pivot;
+  plan.contact = {};
   return positiveBounds(plan.authoredBounds) &&
          iggy3d::creative::resolveCreativeTransformedBounds(
              plan.authoredBounds, plan.transform)
@@ -652,6 +711,7 @@ bool applyCreativeAssetPlacementTransform(
   plan.hasTransformOverride = true;
   plan.hasBoundsOverride = true;
   plan.orientationResolved = true;
+  plan.contact = {};
   return positiveBounds(plan.authoredBounds) &&
          iggy3d::creative::resolveCreativeTransformedBounds(
              plan.authoredBounds, plan.transform)
@@ -671,7 +731,8 @@ CreativeBrushPlacementAdmission admitBrushPlacement(
   }
   if (!admission.allowed || !held.hasAssetBounds ||
       !applyCreativeAssetPlacementBounds(admission.plan,
-                                         held.assetSourceBounds)) {
+                                         held.assetSourceBounds) ||
+      !applyCreativeBrushPlacementContact(admission.plan, target)) {
     admission.status = CreativeBrushPlacementAdmissionStatus::InvalidGeometry;
     admission.allowed = false;
   }

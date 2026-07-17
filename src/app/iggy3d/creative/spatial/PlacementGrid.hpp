@@ -34,6 +34,8 @@ inline constexpr double kCreativePlacementAnchorRetainStepFraction = 0.08;
 struct CreativePlacementAnchorCandidatePlan {
   std::array<CreativeVec3, kCreativePlacementAnchorCandidateCapacity>
       positions{};
+  std::array<CreativeVec3, kCreativePlacementAnchorCandidateCapacity>
+      outwardNormals{};
   std::uint8_t count = 0U;
   bool valid = false;
 };
@@ -47,6 +49,7 @@ struct CreativePlacementAnchorSelectionRequest {
 
 struct CreativePlacementAnchorSelection {
   CreativeVec3 position{};
+  CreativeVec3 outwardNormal{};
   std::uint8_t index = 0U;
   bool valid = false;
 };
@@ -123,6 +126,7 @@ struct CreativeGridTarget {
   CreativeVec3 surfacePlacementAnchor{};
   CreativeVec3 basePlacementAnchor{};
   CreativeVec3 placementAnchor{};
+  CreativeVec3 placementNormal{};
   CreativePlacementAnchorCandidatePlan anchorCandidates{};
   CreativePlacementAnchorKind anchorKind =
       CreativePlacementAnchorKind::BaseCenter;

@@ -69,6 +69,14 @@ bool near(float actual, float expected, float epsilon = 1.0e-4F) {
   return std::fabs(actual - expected) <= epsilon;
 }
 
+bool nearVec3(cr::CreativeVec3 actual,
+              cr::CreativeVec3 expected,
+              double epsilon = 1.0e-9) {
+  return std::fabs(actual.x - expected.x) <= epsilon &&
+         std::fabs(actual.y - expected.y) <= epsilon &&
+         std::fabs(actual.z - expected.z) <= epsilon;
+}
+
 std::size_t actionIndex(cr::CreativeWorldActionId action) {
   return static_cast<std::size_t>(action);
 }
@@ -1642,6 +1650,11 @@ bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
       [](const iggy3d::RenderCreativeWireframeDebugLine& line) {
         return line.segmentKind == 8U;
       });
+  const auto contactGuide = std::find_if(
+      visible.combinedWireLines.begin(), visible.combinedWireLines.end(),
+      [](const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return line.segmentKind == 10U;
+      });
   const bool oneDepthLayer = std::all_of(
       visible.combinedWireLines.begin(), visible.combinedWireLines.end(),
       [&gridTarget](const iggy3d::RenderCreativeWireframeDebugLine& line) {
@@ -1669,6 +1682,7 @@ bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
                        visible.placementGridGuideLineCount == 1U &&
                        visible.placementGridAnchorGuideLineCount == 1U &&
                        visible.placementGridAnchorCandidateLineCount == 15U &&
+                       visible.placementGridContactGuideLineCount == 1U &&
                        visible.placementGridTargetMarkerCount == 1U &&
                        renderedDots == visible.placementGridDotCount &&
                        renderedAnchorCandidates ==
@@ -1681,6 +1695,10 @@ bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
                        near(anchorGuide->start.y, 2.0F) &&
                        near(anchorGuide->end.x, 6.0F) &&
                        near(anchorGuide->end.y, 2.5F) &&
+                       contactGuide != visible.combinedWireLines.end() &&
+                       near(contactGuide->start.x, 6.0F) &&
+                       contactGuide->end.x > contactGuide->start.x &&
+                       near(contactGuide->end.y, contactGuide->start.y) &&
                        targetMarker != visible.combinedWireLines.end() &&
                        near((targetMarker->start.x + targetMarker->end.x) *
                                 0.5F,
@@ -1705,6 +1723,7 @@ bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
                   hiddenByToggle.placementGridGuideLineCount == 1U &&
                   hiddenByToggle.placementGridAnchorGuideLineCount == 1U &&
                   hiddenByToggle.placementGridAnchorCandidateLineCount == 15U &&
+                  hiddenByToggle.placementGridContactGuideLineCount == 1U &&
                   hiddenByToggle.placementGridTargetMarkerCount == 1U,
               "dot toggle hides dots but retains target anchor cues") &&
        ok;
@@ -1722,6 +1741,7 @@ bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
                   hiddenByModal.placementGridGuideLineCount == 0U &&
                   hiddenByModal.placementGridAnchorGuideLineCount == 0U &&
                   hiddenByModal.placementGridAnchorCandidateLineCount == 0U &&
+                  hiddenByModal.placementGridContactGuideLineCount == 0U &&
                   hiddenByModal.placementGridTargetMarkerCount == 0U,
               "modal surfaces hide every placement lattice cue") &&
        ok;
@@ -1859,10 +1879,15 @@ bool authoredAnchorFeedsPreviewAdmissionAndMutation() {
                     sameVec3(target.placementAnchor, {4.0, 3.0, 6.0}),
                 "corner mode resolves one stable authored target anchor") &&
          expect(admission.allowed &&
-                    admission.plan.transform.position.x == 4.0 &&
-                    admission.plan.authoredBounds.min.y == 3.0 &&
-                    admission.plan.transform.position.z == 6.0,
-                "admission uses the resolved anchor as its canonical bottom center") &&
+                    admission.plan.contact.valid &&
+                    sameVec3(admission.plan.contact.targetPoint,
+                             target.placementAnchor) &&
+                    nearVec3(
+                        admission.plan.contact.sourcePointAfterTranslation,
+                        target.placementAnchor) &&
+                    admission.plan.contact.minimumSignedDistanceMeters >=
+                        -1.0e-9,
+                "admission aligns its extreme source feature to the anchor") &&
          expect(preview.creativePreview.itemCount == 2U &&
                     preview.creativePreview.items[0].role ==
                         iggy3d::RenderCreativePreviewRole::PlacementValid &&
@@ -2164,6 +2189,9 @@ bool objectBoundPlacementAnchorsFollowRotatedPickGeometry() {
       iggy3d::RenderContentViewport{0, 0, 800U, 600U}, placementGrid);
   const CreativeBrushPlacementAdmission admission = admitBrushPlacement(
       cr::CreativeObjectKind::Door, target.grid);
+  const cr::CreativeTransformedBounds admittedBounds =
+      cr::resolveCreativeTransformedBounds(
+          admission.plan.authoredBounds, admission.plan.transform);
 
   camera.worldEye.z = static_cast<float>(worldBounds.center.z + 0.26);
   const CreativeEditorWorldTarget retainedTarget =
@@ -2185,6 +2213,26 @@ bool objectBoundPlacementAnchorsFollowRotatedPickGeometry() {
       resolveCreativeEditorWorldTarget(
           document, camera, pickFrame,
           iggy3d::RenderContentViewport{0, 0, 800U, 600U}, centerGrid);
+  const CreativeBrushPlacementAdmission centerAdmission =
+      admitBrushPlacement(cr::CreativeObjectKind::Door, centerTarget.grid);
+
+  cr::CreativeHotbarEntry assetHeld{cr::CreativeHeldItemKind::Material,
+                                    cr::CreativeObjectKind::Door};
+  const cr::CreativeBounds assetSourceBounds{{-1.5, -0.4, -0.3},
+                                             {0.5, 1.6, 0.3}};
+  const bool assetAssigned = cr::setCreativeHotbarAsset(
+      assetHeld, "fixture/contact-door", assetSourceBounds);
+  const CreativeBrushPlacementAdmission assetAdmission =
+      admitBrushPlacement(assetHeld, target.grid);
+  const cr::CreativeTransformedBounds assetBounds =
+      cr::resolveCreativeTransformedBounds(
+          assetAdmission.plan.authoredBounds,
+          assetAdmission.plan.transform);
+  CreativeBrushPlacementPlan socketOverridePlan = assetAdmission.plan;
+  cr::CreativeTransform socketTransform;
+  socketTransform.position = {7.0, 2.0, 1.0};
+  const bool socketOverrideApplied = applyCreativeAssetPlacementTransform(
+      socketOverridePlan, assetSourceBounds, socketTransform);
 
   return expect(worldBounds.valid && target.valid && target.objectHit &&
                     target.objectId == created.objectId &&
@@ -2192,6 +2240,12 @@ bool objectBoundPlacementAnchorsFollowRotatedPickGeometry() {
                     target.grid.anchorCandidates.valid &&
                     target.grid.anchorCandidates.count == 6U &&
                     target.grid.anchorIndex == 4U &&
+                    near(static_cast<float>(target.grid.placementNormal.x),
+                         -1.0F) &&
+                    near(static_cast<float>(target.grid.placementNormal.y),
+                         0.0F) &&
+                    near(static_cast<float>(target.grid.placementNormal.z),
+                         0.0F) &&
                     near(static_cast<float>(target.grid.placementAnchor.x),
                          3.15F) &&
                     near(static_cast<float>(target.grid.placementAnchor.y),
@@ -2202,13 +2256,18 @@ bool objectBoundPlacementAnchorsFollowRotatedPickGeometry() {
                               target.grid.basePlacementAnchor),
                 "face mode snaps to the rotated object's exact hit face") &&
          expect(admission.allowed &&
-                    admission.plan.transform.position.x ==
-                        target.grid.placementAnchor.x &&
-                    admission.plan.authoredBounds.min.y ==
-                        target.grid.placementAnchor.y &&
-                    admission.plan.transform.position.z ==
-                        target.grid.placementAnchor.z,
-                "object-bound anchor remains the admission and preview source") &&
+                    admission.plan.contact.valid && admittedBounds.valid &&
+                    sameVec3(admission.plan.contact.targetPoint,
+                             target.grid.placementAnchor) &&
+                    nearVec3(
+                        admission.plan.contact.sourcePointAfterTranslation,
+                        target.grid.placementAnchor) &&
+                    admission.plan.contact.sourceFeatureVertexCount == 4U &&
+                    admission.plan.contact.minimumSignedDistanceMeters >=
+                        -1.0e-9 &&
+                    near(static_cast<float>(admittedBounds.worldBounds.max.x),
+                         static_cast<float>(target.grid.placementAnchor.x)),
+                "object-bound contact places the source outside the receiver") &&
          expect(retainedTarget.valid &&
                     retainedTarget.grid.anchorFromObjectBounds &&
                     retainedTarget.grid.anchorIndex == 4U &&
@@ -2218,9 +2277,20 @@ bool objectBoundPlacementAnchorsFollowRotatedPickGeometry() {
          expect(centerTarget.valid && centerTarget.objectHit &&
                     !centerTarget.grid.anchorFromObjectBounds &&
                     centerTarget.grid.anchorCandidates.count == 1U &&
+                    centerAdmission.allowed &&
+                    !centerAdmission.plan.contact.valid &&
                     sameVec3(centerTarget.grid.placementAnchor,
                              centerTarget.grid.basePlacementAnchor),
-                "center mode preserves historical grid-cell placement");
+                "center mode preserves historical grid-cell placement") &&
+         expect(assetAssigned && assetAdmission.allowed &&
+                    assetAdmission.plan.contact.valid && assetBounds.valid &&
+                    near(static_cast<float>(assetBounds.worldBounds.max.x),
+                         static_cast<float>(target.grid.placementAnchor.x)),
+                "asset-backed contact uses the imported source bounds") &&
+         expect(socketOverrideApplied && !socketOverridePlan.contact.valid &&
+                    sameVec3(socketOverridePlan.transform.position,
+                             socketTransform.position),
+                "explicit socket transforms remain stronger than contact snapping");
 }
 
 bool worldTargetPicksVoxelBeforeGround() {
