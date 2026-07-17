@@ -1,0 +1,360 @@
+#include "EditorAttachmentPlacement.hpp"
+#include "EditorInteraction.hpp"
+#include "EditorPlacement.hpp"
+#include "EditorPlacementClearance.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
+#include "app/iggy3d/creative/spatial/SurfacePose.hpp"
+
+#include <cmath>
+#include <cstdlib>
+#include <iostream>
+#include <span>
+#include <string_view>
+
+namespace {
+namespace cr = iggy3d::creative;
+namespace app = iggy3d_creative_app;
+
+bool expect(bool condition, std::string_view message) {
+  if (!condition) {
+    std::cerr << "FAIL: " << message << '\n';
+  }
+  return condition;
+}
+
+cr::CreativeDocument makeDocument(cr::CreativeDocumentId id = 700U,
+                                  double extent = 64.0) {
+  cr::CreativeDocument document = cr::CreativeDocument::create("clearance");
+  static_cast<void>(document.assignId(id));
+  static_cast<void>(document.setGridSettings(
+      {{0.0, 0.0, 0.0}, 1.0, {128, 64, 128}}));
+  static_cast<void>(document.setWorldBounds(
+      {{0.0, 0.0, 0.0}, {extent, extent, extent}}));
+  return document;
+}
+
+app::CreativeBrushPlacementPlan boxPlan(
+    cr::CreativeObjectKind kind,
+    cr::CreativeVec3 center,
+    cr::CreativeVec3 size = {1.0, 1.0, 1.0},
+    cr::CreativeVec3 rotation = {}) {
+  app::CreativeBrushPlacementPlan plan = app::planBrushPlacement(
+      kind, {static_cast<float>(center.x), static_cast<float>(center.y),
+             static_cast<float>(center.z)});
+  const cr::CreativeVec3 half{size.x * 0.5, size.y * 0.5,
+                              size.z * 0.5};
+  plan.authoredBounds = {{center.x - half.x, center.y - half.y,
+                          center.z - half.z},
+                         {center.x + half.x, center.y + half.y,
+                          center.z + half.z}};
+  plan.previewBounds = plan.authoredBounds;
+  plan.transform.position = center;
+  plan.transform.rotationEulerRadians = rotation;
+  plan.transform.scale = {1.0, 1.0, 1.0};
+  plan.hasTransformOverride = true;
+  plan.hasBoundsOverride = true;
+  plan.hasPathOverride = false;
+  plan.pathPointCount = 0U;
+  plan.orientationResolved = rotation.x != 0.0 || rotation.y != 0.0 ||
+                             rotation.z != 0.0;
+  plan.status = app::CreativeBrushPlacementPlanStatus::Ready;
+  plan.valid = true;
+  return plan;
+}
+
+cr::CreativeDocumentCreateReceipt addObject(
+    cr::CreativeDocument& document,
+    const app::CreativeBrushPlacementPlan& plan,
+    std::uint64_t ordinal) {
+  return document.createObject(app::buildBrushCreateRequest(plan, ordinal));
+}
+
+bool authoredContactAndPenetrationAreDistinct() {
+  cr::CreativeDocument document = makeDocument();
+  const cr::CreativeDocumentCreateReceipt blocker =
+      addObject(document, boxPlan(cr::CreativeObjectKind::Crate,
+                                  {4.5, 0.5, 4.5}),
+                1U);
+  const cr::CreativePlacementClearanceResult touching =
+      app::evaluateCreativeBrushPlacementClearance(
+          document, boxPlan(cr::CreativeObjectKind::Crate,
+                            {5.5, 0.5, 4.5}));
+  const cr::CreativePlacementClearanceResult penetrating =
+      app::evaluateCreativeBrushPlacementClearance(
+          document, boxPlan(cr::CreativeObjectKind::Crate,
+                            {5.49, 0.5, 4.5}));
+  return expect(blocker.accepted, "authored blocker fixture created") &&
+         expect(touching.allowed &&
+                    touching.status ==
+                        cr::CreativePlacementClearanceStatus::Ready,
+                "face contact remains placeable") &&
+         expect(!penetrating.allowed &&
+                    penetrating.status ==
+                        cr::CreativePlacementClearanceStatus::
+                            AuthoredObjectBlocked &&
+                    penetrating.blockingObjectId == blocker.objectId,
+                "positive authored penetration is rejected");
+}
+
+bool rotatedNarrowPhaseAvoidsAabbFalseBlock() {
+  constexpr double kQuarterTurn = 0.78539816339744831;
+  cr::CreativeDocument document = makeDocument(701U);
+  const app::CreativeBrushPlacementPlan blockerPlan = boxPlan(
+      cr::CreativeObjectKind::Crate, {12.0, 2.0, 12.0}, {4.0, 1.0, 1.0},
+      {0.0, kQuarterTurn, 0.0});
+  const cr::CreativeDocumentCreateReceipt blocker =
+      addObject(document, blockerPlan, 1U);
+  const cr::CreativeVec3 perpendicular{0.8485281374, 0.0, 0.8485281374};
+  const app::CreativeBrushPlacementPlan separated = boxPlan(
+      cr::CreativeObjectKind::Crate,
+      {12.0 + perpendicular.x, 2.0, 12.0 + perpendicular.z},
+      {4.0, 1.0, 1.0}, {0.0, kQuarterTurn, 0.0});
+  const app::CreativeBrushPlacementPlan penetrating = boxPlan(
+      cr::CreativeObjectKind::Crate,
+      {12.0 + perpendicular.x * 0.75, 2.0,
+       12.0 + perpendicular.z * 0.75},
+      {4.0, 1.0, 1.0}, {0.0, kQuarterTurn, 0.0});
+  const cr::CreativePlacementClearanceResult separatedResult =
+      app::evaluateCreativeBrushPlacementClearance(document, separated);
+  const cr::CreativePlacementClearanceResult penetratingResult =
+      app::evaluateCreativeBrushPlacementClearance(document, penetrating);
+  return expect(blocker.accepted, "rotated blocker fixture created") &&
+         expect(separatedResult.allowed,
+                "rotated broadphase false positive passes exact OBB test") &&
+         expect(!penetratingResult.allowed &&
+                    penetratingResult.blockingObjectId == blocker.objectId,
+                "rotated positive-volume overlap is rejected");
+}
+
+bool worldVoxelAndTerrainClearanceArePinned() {
+  cr::CreativeDocument document = makeDocument(702U, 16.0);
+  const cr::CreativePlacementClearanceResult edgeTouch =
+      app::evaluateCreativeBrushPlacementClearance(
+          document, boxPlan(cr::CreativeObjectKind::Crate,
+                            {15.5, 0.5, 15.5}));
+  const cr::CreativePlacementClearanceResult outside =
+      app::evaluateCreativeBrushPlacementClearance(
+          document, boxPlan(cr::CreativeObjectKind::Crate,
+                            {15.6, 0.5, 15.5}));
+
+  const cr::CreativeVoxelEdit voxel{{3, 0, 3},
+                                     cr::CreativeObjectKind::Wall};
+  const cr::CreativeVoxelMutationReceipt voxelReceipt =
+      document.applyVoxelEdits(std::span{&voxel, 1U});
+  const cr::CreativePlacementClearanceResult voxelOverlap =
+      app::evaluateCreativeBrushPlacementClearance(
+          document, boxPlan(cr::CreativeObjectKind::Crate,
+                            {3.5, 0.5, 3.5}));
+  const cr::CreativePlacementClearanceResult voxelTouch =
+      app::evaluateCreativeBrushPlacementClearance(
+          document, boxPlan(cr::CreativeObjectKind::Crate,
+                            {3.5, 1.5, 3.5}));
+
+  const cr::CreativeTerrainControlEdit terrain{
+      cr::CreativeTerrainEditKind::Upsert, {{8, 8}, 2U, 4U}};
+  const cr::CreativeTerrainMutationReceipt terrainReceipt =
+      document.applyTerrainControlEdits(std::span{&terrain, 1U});
+  const cr::CreativeTerrainSurfacePose surface =
+      cr::sampleCreativeTerrainSurfacePose(
+          {&document.terrainField(), {8.5, 0.0, 8.5},
+           document.gridSettings().origin,
+           document.gridSettings().cellSizeMeters});
+  const cr::CreativePlacementClearanceResult terrainTouch =
+      app::evaluateCreativeBrushPlacementClearance(
+          document, boxPlan(cr::CreativeObjectKind::Crate,
+                            {8.5, surface.position.y + 0.5, 8.5}));
+  const cr::CreativePlacementClearanceResult terrainOverlap =
+      app::evaluateCreativeBrushPlacementClearance(
+          document, boxPlan(cr::CreativeObjectKind::Crate,
+                            {8.5, surface.position.y + 0.45, 8.5}));
+
+  return expect(edgeTouch.allowed, "world-edge contact remains valid") &&
+         expect(!outside.allowed &&
+                    outside.status ==
+                        cr::CreativePlacementClearanceStatus::
+                            OutsideWorldBounds,
+                "candidate beyond world edge is rejected") &&
+         expect(voxelReceipt.accepted && voxelReceipt.changed,
+                "voxel blocker fixture created") &&
+         expect(!voxelOverlap.allowed &&
+                    voxelOverlap.status ==
+                        cr::CreativePlacementClearanceStatus::VoxelBlocked &&
+                    voxelOverlap.blockingVoxelCell ==
+                        cr::CreativeGridCoord3{3, 0, 3},
+                "voxel penetration is rejected") &&
+         expect(voxelTouch.allowed,
+                "candidate may rest exactly on a voxel") &&
+         expect(terrainReceipt.accepted && terrainReceipt.changed &&
+                    surface.present,
+                "flat terrain fixture resolved") &&
+         expect(terrainTouch.allowed,
+                "candidate may rest exactly on terrain") &&
+         expect(!terrainOverlap.allowed &&
+                    terrainOverlap.status ==
+                        cr::CreativePlacementClearanceStatus::TerrainBlocked,
+                "terrain penetration is rejected");
+}
+
+bool attachmentExemptsOnlyItsSocketHost() {
+  cr::CreativeDocument document = makeDocument(703U);
+  const app::CreativeBrushPlacementPlan blockerPlan = boxPlan(
+      cr::CreativeObjectKind::Crate, {6.5, 1.5, 6.5});
+  const cr::CreativeDocumentCreateReceipt host =
+      addObject(document, blockerPlan, 1U);
+  app::CreativeBrushPlacementPlan attached = blockerPlan;
+  attached.hasAttachment = true;
+  attached.attachmentTargetId = host.objectId;
+  attached.attachmentSocket = "fixture_socket";
+  const cr::CreativePlacementClearanceResult hostOnly =
+      app::evaluateCreativeBrushPlacementClearance(document, attached);
+
+  const cr::CreativeDocumentCreateReceipt unrelated =
+      addObject(document, blockerPlan, 2U);
+  const cr::CreativePlacementClearanceResult withUnrelated =
+      app::evaluateCreativeBrushPlacementClearance(document, attached);
+  return expect(host.accepted && hostOnly.allowed,
+                "socket placement may overlap its explicit host") &&
+         expect(unrelated.accepted && !withUnrelated.allowed &&
+                    withUnrelated.blockingObjectId == unrelated.objectId,
+                "socket exemption does not hide unrelated blockers");
+}
+
+bool roomMetadataAndNonSolidCandidatesDoNotBecomeBlockers() {
+  cr::CreativeDocument document = makeDocument(704U);
+  cr::CreativeDocumentCreateRequest room;
+  room.kind = cr::CreativeObjectKind::Room;
+  room.name = "metadata room";
+  room.bounds = {{1.0, 0.0, 1.0}, {12.0, 6.0, 12.0}};
+  room.hasBoundsOverride = true;
+  const cr::CreativeDocumentCreateReceipt roomReceipt =
+      document.createObject(room);
+  const cr::CreativePlacementClearanceResult inside =
+      app::evaluateCreativeBrushPlacementClearance(
+          document, boxPlan(cr::CreativeObjectKind::Crate,
+                            {4.5, 0.5, 4.5}));
+  const cr::CreativeDocumentCreateReceipt solid =
+      addObject(document, boxPlan(cr::CreativeObjectKind::Crate,
+                                  {4.5, 0.5, 4.5}),
+                2U);
+  const app::CreativeBrushPlacementPlan marker = boxPlan(
+      cr::CreativeObjectKind::TestLane, {4.5, 0.5, 4.5});
+  const cr::CreativePlacementClearanceResult markerResult =
+      app::evaluateCreativeBrushPlacementClearance(document, marker);
+  return expect(roomReceipt.accepted && inside.allowed,
+                "room container metadata is not solid geometry") &&
+         expect(solid.accepted && markerResult.allowed,
+                "non-solid candidate may overlap authored geometry");
+}
+
+bool cacheIsRevisionKeyedAndMutationRevalidates() {
+  cr::CreativeDocument document = makeDocument(705U, 128.0);
+  for (std::uint64_t index = 0U; index < 24U; ++index) {
+    const double x = 1.5 + static_cast<double>(index) * 2.0;
+    if (!addObject(document,
+                   boxPlan(cr::CreativeObjectKind::Crate,
+                           {x, 0.5, 2.5}),
+                   index + 1U)
+             .accepted) {
+      return expect(false, "cache fixture object created");
+    }
+  }
+  app::CreativePlacementClearanceCache cache;
+  const bool firstRefresh =
+      app::refreshCreativePlacementClearanceCache(cache, document);
+  const bool idleRefresh =
+      app::refreshCreativePlacementClearanceCache(cache, document);
+  const app::CreativeBrushPlacementPlan cachedCandidate = boxPlan(
+      cr::CreativeObjectKind::Crate, {1.6, 0.5, 2.5});
+  const cr::CreativePlacementClearanceResult cached =
+      app::evaluateCreativeBrushPlacementClearance(document, cachedCandidate,
+                                                   &cache);
+
+  const app::CreativeBrushPlacementPlan lateBlocker = boxPlan(
+      cr::CreativeObjectKind::Crate, {80.5, 0.5, 2.5});
+  const cr::CreativeDocumentCreateReceipt late =
+      addObject(document, lateBlocker, 100U);
+  const cr::CreativePlacementClearanceResult staleCacheResult =
+      app::evaluateCreativeBrushPlacementClearance(document, lateBlocker,
+                                                   &cache);
+  const bool changedRefresh =
+      app::refreshCreativePlacementClearanceCache(cache, document);
+
+  cr::CreativeAppState appState;
+  const cr::CreativeFacadeDocumentInstallReceipt install =
+      appState.facade.installDocument(std::move(document));
+  const std::uint64_t revisionBefore = appState.facade.document().revision();
+  const app::CreativeBrushPlacementPlan mutationCandidate = boxPlan(
+      cr::CreativeObjectKind::Crate, {80.6, 0.5, 2.5});
+  const app::CreativeBrushPlacementMutationReceipt rejected =
+      app::applyBrushPlacement(appState.facade, mutationCandidate, 101U);
+
+  return expect(firstRefresh && !idleRefresh && cache.rebuildCount == 2U,
+                "clearance cache rebuilds once per observed revision") &&
+         expect(cached.status ==
+                    cr::CreativePlacementClearanceStatus::
+                        AuthoredObjectBlocked &&
+                    cached.testedAuthoredObjectCount < 24U,
+                "cached broadphase narrows authored candidates") &&
+         expect(late.accepted && !staleCacheResult.allowed && changedRefresh,
+                "stale cache falls back to live document truth") &&
+         expect(install.accepted && rejected.requested &&
+                    !rejected.accepted && !rejected.changed &&
+                    rejected.status ==
+                        app::CreativeBrushPlacementMutationStatus::
+                            ClearanceRejected &&
+                    rejected.clearance.status ==
+                        cr::CreativePlacementClearanceStatus::
+                            AuthoredObjectBlocked &&
+                    appState.facade.document().revision() == revisionBefore,
+                "mutation revalidation rejects without revision change");
+}
+
+bool resolvedAdmissionCarriesClearanceVerdict() {
+  cr::CreativeDocument document = makeDocument(706U);
+  cr::CreativeGridTarget target = cr::resolveCreativeGridTargetFromHit(
+      {4.25, 0.0, 4.25}, {0.0, 1.0, 0.0}, 1.0);
+  target.targetFacts = cr::makeCreativePlacementTargetFacts(
+      cr::CreativePlacementTargetSource::EmptyPlane);
+  const app::CreativeBrushPlacementAdmission admitted =
+      app::admitBrushPlacement(cr::CreativeObjectKind::Crate, target);
+  const cr::CreativeDocumentCreateReceipt blocker =
+      addObject(document, admitted.plan, 1U);
+
+  app::CreativeEditorWorldTarget worldTarget;
+  worldTarget.valid = true;
+  worldTarget.grid = target;
+  cr::CreativeHotbarEntry held;
+  held.kind = cr::CreativeHeldItemKind::Material;
+  held.objectKind = cr::CreativeObjectKind::Crate;
+  app::CreativePlacementClearanceCache cache;
+  static_cast<void>(
+      app::refreshCreativePlacementClearanceCache(cache, document));
+  const app::CreativeEditorPlacementResolution resolved =
+      app::resolveCreativeEditorPlacement(
+          held, worldTarget, cr::CreativePlacementYaw::Degrees0, document,
+          nullptr, &cache);
+  return expect(admitted.allowed && blocker.accepted,
+                "resolved-admission blocker fixture created") &&
+         expect(!resolved.admission.allowed &&
+                    resolved.admission.status ==
+                        app::CreativeBrushPlacementAdmissionStatus::
+                            ClearanceBlocked &&
+                    resolved.admission.plan.clearance.evaluated &&
+                    resolved.admission.plan.clearance.status ==
+                        cr::CreativePlacementClearanceStatus::
+                            AuthoredObjectBlocked,
+                "resolved admission carries the stable clearance verdict");
+}
+
+}  // namespace
+
+int main() {
+  const bool ok = authoredContactAndPenetrationAreDistinct() &&
+                  rotatedNarrowPhaseAvoidsAabbFalseBlock() &&
+                  worldVoxelAndTerrainClearanceArePinned() &&
+                  attachmentExemptsOnlyItsSocketHost() &&
+                  roomMetadataAndNonSolidCandidatesDoNotBecomeBlockers() &&
+                  cacheIsRevisionKeyedAndMutationRevalidates() &&
+                  resolvedAdmissionCarriesClearanceVerdict();
+  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
+}

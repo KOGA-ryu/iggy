@@ -21,6 +21,7 @@ using iggy3d::OrientedBox;
 using iggy3d::OrientedBoxRayHit;
 using iggy3d::orientedBoxCorners;
 using iggy3d::orientedBoxWorldAabb;
+using iggy3d::strictlyOverlaps;
 using iggy3d::Transform3;
 using iggy3d::Vec3;
 
@@ -151,6 +152,58 @@ bool degenerateDirectionRejected() {
                 "negative max distance yields no hit");
 }
 
+bool strictOverlapDistinguishesContactFromPenetration() {
+  const Aabb3 unit =
+      makeAabb3(Vec3{-0.5F, -0.5F, -0.5F}, Vec3{0.5F, 0.5F, 0.5F});
+  const OrientedBox origin =
+      makeOrientedBox(makeTransform(Vec3{}, Vec3{}), unit);
+  const OrientedBox touching = makeOrientedBox(
+      makeTransform(Vec3{1.0F, 0.0F, 0.0F}, Vec3{}), unit);
+  const OrientedBox penetrating = makeOrientedBox(
+      makeTransform(Vec3{0.99F, 0.0F, 0.0F}, Vec3{}), unit);
+  const OrientedBox epsilonOnly = makeOrientedBox(
+      makeTransform(Vec3{0.999995F, 0.0F, 0.0F}, Vec3{}), unit);
+  return expect(!strictlyOverlaps(origin, touching),
+                "face contact is not positive-volume overlap") &&
+         expect(strictlyOverlaps(origin, penetrating),
+                "positive-volume penetration overlaps") &&
+         expect(!strictlyOverlaps(origin, epsilonOnly),
+                "sub-epsilon penetration is treated as contact");
+}
+
+bool rotatedNarrowPhaseRejectsBroadphaseFalsePositive() {
+  constexpr float kQuarterTurn = 0.78539816339744831F;
+  const Vec3 perpendicular{0.84852815F, 0.0F, 0.84852815F};
+  const OrientedBox first = makeOrientedBox(
+      makeTransform(Vec3{}, Vec3{0.0F, kQuarterTurn, 0.0F}), longXBox());
+  const OrientedBox separated = makeOrientedBox(
+      makeTransform(perpendicular, Vec3{0.0F, kQuarterTurn, 0.0F}),
+      longXBox());
+  const OrientedBox penetrating = makeOrientedBox(
+      makeTransform(perpendicular * 0.75F,
+                    Vec3{0.0F, kQuarterTurn, 0.0F}),
+      longXBox());
+  return expect(intersects(orientedBoxWorldAabb(first),
+                           orientedBoxWorldAabb(separated)),
+                "rotated broadphase bounds overlap") &&
+         expect(!strictlyOverlaps(first, separated),
+                "exact rotated boxes remain separated") &&
+         expect(strictlyOverlaps(first, penetrating),
+                "rotated penetration is detected");
+}
+
+bool strictOverlapRejectsInvalidInputs() {
+  const OrientedBox valid =
+      makeOrientedBox(makeTransform(Vec3{}, Vec3{}), longXBox());
+  const OrientedBox flat = makeOrientedBox(
+      makeTransform(Vec3{}, Vec3{}),
+      makeAabb3(Vec3{-1.0F, 0.0F, -1.0F}, Vec3{1.0F, 0.0F, 1.0F}));
+  return expect(!strictlyOverlaps(valid, flat),
+                "zero-volume box cannot strictly overlap") &&
+         expect(!strictlyOverlaps(valid, valid, -1.0F),
+                "negative overlap epsilon is rejected");
+}
+
 }  // namespace
 
 int main() {
@@ -159,6 +212,9 @@ int main() {
       rotationChangesContainment() && worldAabbReflectsRotation() &&
       rayHitsRotatedBoxAtExpectedDistance() && rayMissesWhenOffAxis() &&
       rayStartingInsideReportsZeroDistance() && invalidInputsRejected() &&
-      degenerateDirectionRejected();
+      degenerateDirectionRejected() &&
+      strictOverlapDistinguishesContactFromPenetration() &&
+      rotatedNarrowPhaseRejectsBroadphaseFalsePositive() &&
+      strictOverlapRejectsInvalidInputs();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

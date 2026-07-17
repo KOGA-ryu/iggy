@@ -11,6 +11,7 @@
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/tools/Volume.hpp"
+#include "EditorPlacementClearance.hpp"
 
 namespace iggy3d_creative_app {
 namespace {
@@ -164,12 +165,15 @@ iggy3d::creative::CreativeDocumentCreateRequest buildBrushCreateRequest(
                                  ordinal);
 }
 
-iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
+namespace {
+
+iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObjectImpl(
     iggy3d::creative::Facade& facade,
     const CreativeBrushPlacementPlan& plan,
     std::uint64_t ordinal,
     iggy3d::creative::CreativeObjectId parentObjectId,
-    std::string_view assetId) {
+    std::string_view assetId,
+    bool clearanceAlreadyValidated) {
   const bool incompatibleTarget =
       !placementPlanCompatibilityAllowsMutation(plan);
   if (!plan.valid || plan.status != CreativeBrushPlacementPlanStatus::Ready ||
@@ -188,6 +192,22 @@ iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
                            : placementPlanRejectionReason(plan.status);
     rejected.reasonCode = rejected.message;
     return rejected;
+  }
+  if (!clearanceAlreadyValidated) {
+    const iggy3d::creative::CreativePlacementClearanceResult clearance =
+        evaluateCreativeBrushPlacementClearance(facade.document(), plan);
+    if (!clearance.allowed) {
+      iggy3d::creative::CreativeDocumentCreateReceipt rejected;
+      rejected.requested = true;
+      rejected.status =
+          iggy3d::creative::CreativeDocumentCreateStatus::Rejected;
+      rejected.objectKind = plan.brush;
+      rejected.revisionBefore = facade.document().revision();
+      rejected.revisionAfter = rejected.revisionBefore;
+      rejected.message = iggy3d::creative::toString(clearance.status);
+      rejected.reasonCode = rejected.message;
+      return rejected;
+    }
   }
   const iggy3d::creative::CreativeObjectDescriptor& descriptor =
       iggy3d::creative::describeObject(plan.brush);
@@ -218,6 +238,18 @@ iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
           pathPointsSummary(request.pathPoints).c_str(),
           receipt.accepted ? 1 : 0);
   return receipt;
+}
+
+}  // namespace
+
+iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
+    iggy3d::creative::Facade& facade,
+    const CreativeBrushPlacementPlan& plan,
+    std::uint64_t ordinal,
+    iggy3d::creative::CreativeObjectId parentObjectId,
+    std::string_view assetId) {
+  return placeBrushObjectImpl(facade, plan, ordinal, parentObjectId, assetId,
+                              false);
 }
 
 iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
@@ -284,8 +316,18 @@ CreativeBrushPlacementMutationReceipt applyBrushPlacement(
         receipt.reasonCode = "creative_placement_target_occupied";
         return receipt;
       }
+      receipt.clearance = evaluateCreativeBrushPlacementClearance(
+          facade.document(), plan);
+      if (!receipt.clearance.allowed) {
+        receipt.status =
+            CreativeBrushPlacementMutationStatus::ClearanceRejected;
+        receipt.reasonCode =
+            iggy3d::creative::toString(receipt.clearance.status);
+        return receipt;
+      }
       const iggy3d::creative::CreativeDocumentCreateReceipt objectReceipt =
-          placeBrushObject(facade, plan, ordinal, parentObjectId, assetId);
+          placeBrushObjectImpl(facade, plan, ordinal, parentObjectId, assetId,
+                               true);
       receipt.attached = plan.hasAttachment && objectReceipt.accepted &&
                          objectReceipt.objectCreated && objectReceipt.changed;
       receipt.accepted = objectReceipt.accepted;
@@ -316,6 +358,15 @@ CreativeBrushPlacementMutationReceipt applyBrushPlacement(
       if (creativeBrushPlacementTargetOccupied(facade.document(), plan)) {
         receipt.status = CreativeBrushPlacementMutationStatus::Occupied;
         receipt.reasonCode = "creative_placement_target_occupied";
+        return receipt;
+      }
+      receipt.clearance = evaluateCreativeBrushPlacementClearance(
+          facade.document(), plan);
+      if (!receipt.clearance.allowed) {
+        receipt.status =
+            CreativeBrushPlacementMutationStatus::ClearanceRejected;
+        receipt.reasonCode =
+            iggy3d::creative::toString(receipt.clearance.status);
         return receipt;
       }
       const iggy3d::creative::CreativeVoxelEdit edit{plan.voxelCell,

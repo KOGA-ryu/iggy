@@ -7,6 +7,7 @@
 namespace iggy3d_creative_app {
 
 struct CreativeEditorWorldTarget;
+struct CreativePlacementClearanceCache;
 
 struct CreativeEditorPlacementResolution {
   CreativeBrushPlacementAdmission admission;
@@ -20,6 +21,7 @@ resolveCreativeEditorPlacement(
     const CreativeEditorWorldTarget& target,
     iggy3d::creative::CreativePlacementYaw placementYaw,
     const iggy3d::creative::CreativeDocument& document,
-    const iggy3d::StaticMeshAssetCatalog* assetCatalog) noexcept;
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog,
+    const CreativePlacementClearanceCache* clearanceCache = nullptr) noexcept;
 
 }  // namespace iggy3d_creative_app

@@ -1,16 +1,37 @@
 #include "EditorAttachmentPlacement.hpp"
 
 #include "EditorInteraction.hpp"
+#include "EditorPlacementClearance.hpp"
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
+namespace {
+
+void applyPlacementClearance(
+    CreativeEditorPlacementResolution& result,
+    const cr::CreativeDocument& document,
+    const CreativePlacementClearanceCache* clearanceCache) noexcept {
+  if (!result.admission.allowed || !result.admission.plan.valid) {
+    return;
+  }
+  result.admission.plan.clearance = evaluateCreativeBrushPlacementClearance(
+      document, result.admission.plan, clearanceCache);
+  if (!result.admission.plan.clearance.allowed) {
+    result.admission.allowed = false;
+    result.admission.status =
+        CreativeBrushPlacementAdmissionStatus::ClearanceBlocked;
+  }
+}
+
+}  // namespace
 
 CreativeEditorPlacementResolution resolveCreativeEditorPlacement(
     const cr::CreativeHotbarEntry& held,
     const CreativeEditorWorldTarget& target,
     cr::CreativePlacementYaw placementYaw,
     const cr::CreativeDocument& document,
-    const iggy3d::StaticMeshAssetCatalog* assetCatalog) noexcept {
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog,
+    const CreativePlacementClearanceCache* clearanceCache) noexcept {
   CreativeEditorPlacementResolution result;
   result.admission = admitBrushPlacement(held, target.grid, placementYaw);
   const std::string_view sourceAssetId = cr::creativeHotbarAssetId(held);
@@ -22,6 +43,7 @@ CreativeEditorPlacementResolution resolveCreativeEditorPlacement(
       sourceAssetId.empty() ||
       !held.hasAssetBounds || !target.objectHit || !target.grid.valid ||
       assetCatalog == nullptr) {
+    applyPlacementClearance(result, document, clearanceCache);
     return result;
   }
 
@@ -37,6 +59,7 @@ CreativeEditorPlacementResolution resolveCreativeEditorPlacement(
       result.attachment.status == cr::CreativeAttachmentSnapStatus::Ready ||
       result.attachment.status == cr::CreativeAttachmentSnapStatus::Occupied;
   if (!result.socketTargeted || !result.attachment.positioned) {
+    applyPlacementClearance(result, document, clearanceCache);
     return result;
   }
 
@@ -63,6 +86,7 @@ CreativeEditorPlacementResolution resolveCreativeEditorPlacement(
   result.admission.plan.attachmentSocket = result.attachment.targetSocket;
   result.admission.status = CreativeBrushPlacementAdmissionStatus::Ready;
   result.admission.allowed = true;
+  applyPlacementClearance(result, document, clearanceCache);
   return result;
 }
 

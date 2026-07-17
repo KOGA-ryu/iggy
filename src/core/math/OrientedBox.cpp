@@ -42,6 +42,52 @@ bool buildFrame(const OrientedBox& box, BoxFrame& frame) {
   return true;
 }
 
+struct ProjectionFrame {
+  Vec3 center;
+  Vec3 axis[3];
+  float half[3];
+};
+
+bool buildProjectionFrame(const OrientedBox& box, ProjectionFrame& frame) {
+  BoxFrame source;
+  if (!buildFrame(box, source)) {
+    return false;
+  }
+  frame.center = source.center;
+  for (int index = 0; index < 3; ++index) {
+    const float axisLengthSquared = lengthSquared(source.axis[index]);
+    if (!(axisLengthSquared > 1.0e-12F)) {
+      return false;
+    }
+    const float axisLength = std::sqrt(axisLengthSquared);
+    frame.axis[index] = source.axis[index] / axisLength;
+    frame.half[index] = source.half[index] * axisLength;
+    if (!(frame.half[index] > 0.0F) ||
+        !std::isfinite(frame.half[index])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool overlapsOnAxis(const ProjectionFrame& a, const ProjectionFrame& b,
+                    Vec3 axis, float separationEpsilonMeters) {
+  const float axisLengthSquared = lengthSquared(axis);
+  if (!(axisLengthSquared > 1.0e-10F)) {
+    return true;
+  }
+  axis = axis / std::sqrt(axisLengthSquared);
+  float radiusA = 0.0F;
+  float radiusB = 0.0F;
+  for (int index = 0; index < 3; ++index) {
+    radiusA += a.half[index] * std::fabs(dot(a.axis[index], axis));
+    radiusB += b.half[index] * std::fabs(dot(b.axis[index], axis));
+  }
+  const float centerDistance = std::fabs(dot(b.center - a.center, axis));
+  const float penetration = radiusA + radiusB - centerDistance;
+  return penetration > separationEpsilonMeters;
+}
+
 }  // namespace
 
 OrientedBox makeOrientedBox(const Transform3& transform, const Aabb3& localBounds) {
@@ -88,6 +134,38 @@ bool contains(const OrientedBox& box, Vec3 worldPoint) {
     const float bound = frame.half[i] * dot(frame.axis[i], frame.axis[i]);
     if (std::fabs(dot(p0, frame.axis[i])) > bound) {
       return false;
+    }
+  }
+  return true;
+}
+
+bool strictlyOverlaps(const OrientedBox& a, const OrientedBox& b,
+                      float separationEpsilonMeters) {
+  if (!std::isfinite(separationEpsilonMeters) ||
+      separationEpsilonMeters < 0.0F) {
+    return false;
+  }
+  ProjectionFrame frameA;
+  ProjectionFrame frameB;
+  if (!buildProjectionFrame(a, frameA) ||
+      !buildProjectionFrame(b, frameB)) {
+    return false;
+  }
+  for (int index = 0; index < 3; ++index) {
+    if (!overlapsOnAxis(frameA, frameB, frameA.axis[index],
+                        separationEpsilonMeters) ||
+        !overlapsOnAxis(frameA, frameB, frameB.axis[index],
+                        separationEpsilonMeters)) {
+      return false;
+    }
+  }
+  for (int aIndex = 0; aIndex < 3; ++aIndex) {
+    for (int bIndex = 0; bIndex < 3; ++bIndex) {
+      if (!overlapsOnAxis(frameA, frameB,
+                          cross(frameA.axis[aIndex], frameB.axis[bIndex]),
+                          separationEpsilonMeters)) {
+        return false;
+      }
     }
   }
   return true;

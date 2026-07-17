@@ -322,6 +322,8 @@ struct CreativeObjectDescriptor {
 [[nodiscard]] CreativeObjectDirtyFlags operator|(CreativeObjectDirtyFlag lhs, CreativeObjectDirtyFlag rhs) noexcept;
 [[nodiscard]] CreativeObjectDirtyFlags operator|(CreativeObjectDirtyFlags lhs, CreativeObjectDirtyFlag rhs) noexcept;
 [[nodiscard]] bool hasDirtyFlag(CreativeObjectDirtyFlags flags, CreativeObjectDirtyFlag flag) noexcept;
+[[nodiscard]] bool isSolidCreativeSpatialOccupancy(
+    CreativeSpatialOccupancyKind kind) noexcept;
 
 [[nodiscard]] std::string_view toString(CreativeObjectCategory category) noexcept;
 [[nodiscard]] std::string_view toString(CreativeObjectProfile profile) noexcept;

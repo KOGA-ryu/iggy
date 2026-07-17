@@ -51,25 +51,8 @@ constexpr double kVerticalSurfaceMaximumAbsY = 0.25;
 }
 
 [[nodiscard]] bool solidHost(const CreativeObjectDescriptor& host) noexcept {
-  if (!host.hasBounds) {
-    return false;
-  }
-  switch (host.occupancyKind) {
-    case CreativeSpatialOccupancyKind::Structural:
-    case CreativeSpatialOccupancyKind::Collision:
-    case CreativeSpatialOccupancyKind::Navigation:
-      return true;
-    case CreativeSpatialOccupancyKind::Unknown:
-    case CreativeSpatialOccupancyKind::Trigger:
-    case CreativeSpatialOccupancyKind::Gameplay:
-    case CreativeSpatialOccupancyKind::Light:
-    case CreativeSpatialOccupancyKind::Audio:
-    case CreativeSpatialOccupancyKind::Camera:
-    case CreativeSpatialOccupancyKind::Testing:
-    case CreativeSpatialOccupancyKind::Authoring:
-      return false;
-  }
-  return false;
+  return host.hasBounds &&
+         isSolidCreativeSpatialOccupancy(host.occupancyKind);
 }
 
 [[nodiscard]] CreativePlacementCompatibilityResult reject(

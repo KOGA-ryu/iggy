@@ -1243,6 +1243,42 @@ bool representativeDescriptorsPinSpatialFacts() {
              "cutscene marker spatial descriptor");
 }
 
+bool solidSpatialOccupancyClassificationIsExhaustive() {
+  return expect(!cr::isSolidCreativeSpatialOccupancy(
+                    cr::CreativeSpatialOccupancyKind::Unknown),
+                "unknown occupancy is not solid") &&
+         expect(cr::isSolidCreativeSpatialOccupancy(
+                    cr::CreativeSpatialOccupancyKind::Structural),
+                "structural occupancy is solid") &&
+         expect(cr::isSolidCreativeSpatialOccupancy(
+                    cr::CreativeSpatialOccupancyKind::Collision),
+                "collision occupancy is solid") &&
+         expect(cr::isSolidCreativeSpatialOccupancy(
+                    cr::CreativeSpatialOccupancyKind::Navigation),
+                "navigation occupancy is solid") &&
+         expect(!cr::isSolidCreativeSpatialOccupancy(
+                    cr::CreativeSpatialOccupancyKind::Trigger),
+                "trigger occupancy is not solid") &&
+         expect(!cr::isSolidCreativeSpatialOccupancy(
+                    cr::CreativeSpatialOccupancyKind::Gameplay),
+                "gameplay occupancy is not solid") &&
+         expect(!cr::isSolidCreativeSpatialOccupancy(
+                    cr::CreativeSpatialOccupancyKind::Light),
+                "light occupancy is not solid") &&
+         expect(!cr::isSolidCreativeSpatialOccupancy(
+                    cr::CreativeSpatialOccupancyKind::Audio),
+                "audio occupancy is not solid") &&
+         expect(!cr::isSolidCreativeSpatialOccupancy(
+                    cr::CreativeSpatialOccupancyKind::Camera),
+                "camera occupancy is not solid") &&
+         expect(!cr::isSolidCreativeSpatialOccupancy(
+                    cr::CreativeSpatialOccupancyKind::Testing),
+                "testing occupancy is not solid") &&
+         expect(!cr::isSolidCreativeSpatialOccupancy(
+                    cr::CreativeSpatialOccupancyKind::Authoring),
+                "authoring occupancy is not solid");
+}
+
 bool mutationDirtyFlagsFollowDescriptorSpatialColumns() {
   const cr::CreativeObjectDirtyFlags noteRename =
       cr::dirtyFlagsForMutation(cr::CreativeObjectKind::Note,
@@ -1562,6 +1598,7 @@ int main() {
                   boxVolumeTestingDescriptorsAreNonRuntimeHelpers() &&
                   volumeProjectionDescriptorsAreSemanticVolumes() &&
                   representativeDescriptorsPinSpatialFacts() &&
+                  solidSpatialOccupancyClassificationIsExhaustive() &&
                   mutationDirtyFlagsFollowDescriptorSpatialColumns() &&
                   placementPoliciesAreDescriptorOwnedAndFailClosed();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

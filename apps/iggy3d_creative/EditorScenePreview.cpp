@@ -228,6 +228,8 @@ bool refreshCreativeEditorSceneCache(
     CreativeEditorSceneCache& cache,
     const iggy3d::creative::CreativeDocument& document,
     const iggy3d::StaticMeshAssetCatalog* assetCatalog) {
+  static_cast<void>(refreshCreativePlacementClearanceCache(
+      cache.placementClearance, document));
   if (cache.valid && cache.documentId == document.id() &&
       cache.documentRevision == document.revision()) {
     return false;
@@ -270,6 +272,7 @@ void invalidateCreativeEditorSceneCache(
   cache.terrainMaterialRevision = 0;
   cache.terrainGridOrigin = {};
   cache.terrainGridCellSizeMeters = 0.0;
+  invalidateCreativePlacementClearanceCache(cache.placementClearance);
 }
 
 void logStandaloneRoomBakeFinal(

@@ -488,6 +488,8 @@ std::string_view toString(
       return "creative_placement_target_incompatible";
     case CreativeBrushPlacementAdmissionStatus::AttachmentOccupied:
       return "creative_placement_attachment_occupied";
+    case CreativeBrushPlacementAdmissionStatus::ClearanceBlocked:
+      return "creative_placement_clearance_blocked";
   }
   return "creative_placement_status_invalid";
 }

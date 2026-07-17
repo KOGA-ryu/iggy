@@ -201,7 +201,8 @@ void attachCreativeEditorPlacementPreviews(
     bool captureMode,
     FrameInput& frame,
     const cr::CreativeDocument* document,
-    const iggy3d::StaticMeshAssetCatalog* assetCatalog) {
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog,
+    const CreativePlacementClearanceCache* clearanceCache) {
   frame.creativePreview = {};
   appendMovingPlatformRoutePreview(editor, captureMode, frame, document);
   const bool modalOpen = editor.catalog.model.open ||
@@ -297,11 +298,22 @@ void attachCreativeEditorPlacementPreviews(
         placement.admission = resolveCreativeEditorStructuralSpanPlacement(
             editor.interaction.structuralSpan, document->id(), held,
             editor.interaction.target.grid);
+        if (placement.admission.allowed) {
+          placement.admission.plan.clearance =
+              evaluateCreativeBrushPlacementClearance(
+                  *document, placement.admission.plan, clearanceCache);
+          if (!placement.admission.plan.clearance.allowed) {
+            placement.admission.allowed = false;
+            placement.admission.status =
+                CreativeBrushPlacementAdmissionStatus::ClearanceBlocked;
+          }
+        }
       }
     } else if (document != nullptr) {
       placement = resolveCreativeEditorPlacement(
           held, editor.interaction.target,
-          editor.toolSettings.placementYaw, *document, assetCatalog);
+          editor.toolSettings.placementYaw, *document, assetCatalog,
+          clearanceCache);
     } else {
       placement.admission = admitBrushPlacement(
           held, editor.interaction.target.grid,

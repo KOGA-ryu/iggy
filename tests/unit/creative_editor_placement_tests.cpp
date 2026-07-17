@@ -372,9 +372,12 @@ bool placementAdmissionOwnsPreviewAndExecutionTruth() {
   const CreativeBrushPlacementMutationReceipt occupiedReceipt =
       applyBrushPlacement(appState.facade, voxelReady.plan, 2U);
 
-  target.faceNormal = {0.0, 1.0, 0.0};
+  const cr::CreativeGridTarget objectTarget = targetWithFacts(
+      cr::resolveCreativeGridTargetFromHit(
+          {6.25, 1.0, -3.25}, {0.0, 1.0, 0.0}, 1.0),
+      cr::CreativePlacementTargetSource::EmptyPlane);
   const CreativeBrushPlacementAdmission objectReady =
-      admitBrushPlacement(cr::CreativeObjectKind::Crate, target);
+      admitBrushPlacement(cr::CreativeObjectKind::Crate, objectTarget);
   const CreativeBrushPlacementMutationReceipt objectReceipt =
       applyBrushPlacement(appState.facade, objectReady.plan, 3U);
   const cr::CreativeObject* placed =
@@ -2256,13 +2259,17 @@ bool sceneCacheRefreshesOnlyOnDocumentRevision() {
   CreativeEditorSceneCache cache;
   bool ok = expect(refreshCreativeEditorSceneCache(cache, document),
                    "first scene cache access builds") &&
-            expect(cache.refreshCount == 1U,
-                   "first scene cache build counted once");
+            expect(cache.refreshCount == 1U &&
+                       cache.placementClearance.rebuildCount == 1U,
+                   "scene and placement caches build once");
   for (std::size_t frame = 0; frame < 300U; ++frame) {
     ok = expect(!refreshCreativeEditorSceneCache(cache, document),
                 "idle frame reuses scene cache") &&
          ok;
   }
+  ok = expect(cache.placementClearance.rebuildCount == 1U,
+              "300 idle frames do not rebuild placement broadphase") &&
+       ok;
 
   CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Wall);
   iggy3d::FrameInput previewFrame;
@@ -2279,8 +2286,9 @@ bool sceneCacheRefreshesOnlyOnDocumentRevision() {
   const cr::CreativeDocumentCreateReceipt first = document.createObject(create);
   ok = expect(first.accepted && first.changed &&
                   refreshCreativeEditorSceneCache(cache, document) &&
-                  cache.refreshCount == 2U,
-              "accepted mutation refreshes cache once") &&
+                  cache.refreshCount == 2U &&
+                  cache.placementClearance.rebuildCount == 2U,
+              "accepted mutation refreshes both caches once") &&
        ok;
   ok = expect(!refreshCreativeEditorSceneCache(cache, document) &&
                   cache.refreshCount == 2U,
@@ -2289,7 +2297,8 @@ bool sceneCacheRefreshesOnlyOnDocumentRevision() {
   const cr::CreativeDocumentCreateReceipt second = document.createObject(create);
   ok = expect(second.accepted && second.changed &&
                   refreshCreativeEditorSceneCache(cache, document) &&
-                  cache.refreshCount == 3U,
+                  cache.refreshCount == 3U &&
+                  cache.placementClearance.rebuildCount == 3U,
               "each later accepted mutation refreshes exactly once") &&
        ok;
 

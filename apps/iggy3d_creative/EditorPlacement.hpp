@@ -13,6 +13,7 @@
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
 #include "app/iggy3d/creative/spatial/PlacementContact.hpp"
+#include "app/iggy3d/creative/spatial/PlacementClearance.hpp"
 #include "app/iggy3d/creative/spatial/PlacementOrientation.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
 #include "core/math/Vec3.hpp"
@@ -61,6 +62,7 @@ struct CreativeBrushPlacementPlan {
   iggy3d::creative::CreativePlacementContactPlan contact{};
   iggy3d::creative::CreativePlacementSurfaceFramePlan surfaceFrame{};
   iggy3d::creative::CreativePlacementCompatibilityResult compatibility{};
+  iggy3d::creative::CreativePlacementClearanceResult clearance{};
   iggy3d::creative::CreativeGridCoord3 voxelCell{};
   iggy3d::creative::CreativeObjectId attachmentTargetId =
       iggy3d::creative::kInvalidObjectId;
@@ -79,6 +81,7 @@ enum class CreativeBrushPlacementMutationStatus : std::uint8_t {
   NotRequested,
   InvalidPlan,
   Occupied,
+  ClearanceRejected,
   ObjectRejected,
   VoxelRejected,
   Applied,
@@ -104,6 +107,7 @@ struct CreativeBrushPlacementMutationReceipt {
   std::string_view attachmentSocket;
   iggy3d::creative::CreativeGridCoord3 voxelCell{};
   iggy3d::creative::CreativeBounds worldBounds{};
+  iggy3d::creative::CreativePlacementClearanceResult clearance{};
   std::uint64_t revisionBefore = 0;
   std::uint64_t revisionAfter = 0;
   std::string_view reasonCode = "creative_placement_not_requested";
@@ -118,6 +122,7 @@ enum class CreativeBrushPlacementAdmissionStatus : std::uint8_t {
   FaceDisallowed,
   TargetIncompatible,
   AttachmentOccupied,
+  ClearanceBlocked,
 };
 
 struct CreativeBrushPlacementAdmission {

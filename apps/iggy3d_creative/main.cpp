@@ -827,7 +827,8 @@ int main(int argc, char** argv) {
          !capturePath.empty(),
          frameInput.inputFrame.context,
          frameInput.activeControlDevice,
-         &bootstrapData.staticMeshAssetCatalog},
+         &bootstrapData.staticMeshAssetCatalog,
+         &sceneCache.placementClearance},
         overlayFrame);
 
     iggy3d_creative_app::endCreativeEditorDesktopFrame(editor.desktopUi);

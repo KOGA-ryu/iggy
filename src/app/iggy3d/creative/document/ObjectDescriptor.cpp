@@ -1948,6 +1948,26 @@ bool hasDirtyFlag(CreativeObjectDirtyFlags flags, CreativeObjectDirtyFlag flag) 
     return (flags & flagValue(flag)) != 0;
 }
 
+bool isSolidCreativeSpatialOccupancy(
+    CreativeSpatialOccupancyKind kind) noexcept {
+    switch (kind) {
+    case CreativeSpatialOccupancyKind::Structural:
+    case CreativeSpatialOccupancyKind::Collision:
+    case CreativeSpatialOccupancyKind::Navigation:
+        return true;
+    case CreativeSpatialOccupancyKind::Unknown:
+    case CreativeSpatialOccupancyKind::Trigger:
+    case CreativeSpatialOccupancyKind::Gameplay:
+    case CreativeSpatialOccupancyKind::Light:
+    case CreativeSpatialOccupancyKind::Audio:
+    case CreativeSpatialOccupancyKind::Camera:
+    case CreativeSpatialOccupancyKind::Testing:
+    case CreativeSpatialOccupancyKind::Authoring:
+        return false;
+    }
+    return false;
+}
+
 std::string_view toString(CreativeObjectCategory category) noexcept {
     switch (category) {
     case CreativeObjectCategory::Unknown: return "Unknown";

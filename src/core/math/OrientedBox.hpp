@@ -17,8 +17,8 @@ namespace iggy3d {
 //   - orientedBoxCorners()  -> the 8 world corners for wireframe render.
 //   - orientedBoxWorldAabb() -> the enclosing AABB, the BRIDGE that lets a rotated object be
 //     inserted into / queried against the AabbGridIndex broadphase (which keys AABBs).
-//   - contains() / intersectsRay() -> the exact rotated narrow phase, run only on the few
-//     candidates the broadphase gathers.
+//   - contains() / intersectsRay() / strictlyOverlaps() -> the exact rotated narrow phase,
+//     run only on the few candidates the broadphase gathers.
 // Rotation convention: uses rotateEulerXyz(), intrinsic X-then-Y-then-Z Euler
 // (R = Rz * Ry * Rx), Y-up, and places a local point as
 // world = position + R * (scale . local).
@@ -40,6 +40,15 @@ struct OrientedBox {
 
 // Exact point-in-box test in the box's oriented frame. False for invalid input.
 [[nodiscard]] bool contains(const OrientedBox& box, Vec3 worldPoint);
+
+// Exact positive-volume OBB overlap using the separating-axis theorem. Face,
+// edge, and corner contact are not overlap. `separationEpsilonMeters` is the
+// minimum penetration required on every usable separating axis; invalid boxes,
+// degenerate boxes, or invalid epsilon values return false.
+[[nodiscard]] bool strictlyOverlaps(
+    const OrientedBox& a,
+    const OrientedBox& b,
+    float separationEpsilonMeters = 1.0e-5F);
 
 struct OrientedBoxRayHit {
   bool hit = false;
