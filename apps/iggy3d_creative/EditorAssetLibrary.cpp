@@ -175,6 +175,7 @@ takeDocumentTransientState(CreativeEditorState& editor) {
   state.authoredAssetStroke = std::move(editor.interaction.authoredAssetStroke);
   state.connectedFill = std::move(editor.interaction.connectedFill);
   state.surfaceExtrude = std::move(editor.interaction.surfaceExtrude);
+  state.roomPlacement = std::move(editor.interaction.roomPlacement);
   state.moveTargetId = editor.interaction.moveTargetId;
   state.groupFocus = std::move(editor.groupFocus);
   state.pattern = std::move(editor.pattern);
@@ -198,6 +199,7 @@ takeDocumentTransientState(CreativeEditorState& editor) {
   editor.interaction.authoredAssetStroke = {};
   editor.interaction.connectedFill = {};
   editor.interaction.surfaceExtrude = {};
+  editor.interaction.roomPlacement = {};
   editor.interaction.movingPlatformPathEdit = {};
   editor.interaction.moveTargetId = cr::kInvalidObjectId;
   editor.groupFocus = {};
@@ -227,6 +229,7 @@ void restoreDocumentTransientState(CreativeEditorState& editor,
   editor.interaction.authoredAssetStroke = std::move(state.authoredAssetStroke);
   editor.interaction.connectedFill = std::move(state.connectedFill);
   editor.interaction.surfaceExtrude = std::move(state.surfaceExtrude);
+  editor.interaction.roomPlacement = std::move(state.roomPlacement);
   editor.interaction.moveTargetId = state.moveTargetId;
   editor.groupFocus = std::move(state.groupFocus);
   editor.pattern = std::move(state.pattern);

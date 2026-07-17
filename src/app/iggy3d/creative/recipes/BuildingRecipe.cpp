@@ -63,6 +63,29 @@ void setStatus(CreativeBuildingRecipeReceipt& receipt,
   return metrics.valid && isPositiveCreativeVec3(metrics.size);
 }
 
+void setGeometryStatus(CreativeRectangularRoomGeometryPlan& plan,
+                       CreativeRectangularRoomGeometryStatus status,
+                       std::string_view reasonCode) noexcept {
+  plan.status = status;
+  plan.reasonCode = reasonCode;
+}
+
+[[nodiscard]] CreativeBounds horizontalWallBounds(
+    CreativeVec3 start,
+    CreativeVec3 end,
+    double height,
+    double thickness) noexcept {
+  if (near(start.z, end.z)) {
+    return {{std::min(start.x, end.x), start.y, start.z - thickness * 0.5},
+            {std::max(start.x, end.x), start.y + height,
+             start.z + thickness * 0.5}};
+  }
+  return {{start.x - thickness * 0.5, start.y,
+           std::min(start.z, end.z)},
+          {start.x + thickness * 0.5, start.y + height,
+           std::max(start.z, end.z)}};
+}
+
 [[nodiscard]] bool allowedBoxKind(CreativeObjectKind kind) noexcept {
   return kind == CreativeObjectKind::Room ||
          kind == CreativeObjectKind::Floor ||
@@ -501,6 +524,107 @@ std::string_view toString(CreativeBuildingRecipeStatus status) noexcept {
   return "Unknown";
 }
 
+std::string_view toString(
+    CreativeRectangularRoomGeometryStatus status) noexcept {
+  switch (status) {
+    case CreativeRectangularRoomGeometryStatus::NotRequested:
+      return "NotRequested";
+    case CreativeRectangularRoomGeometryStatus::InvalidCorner:
+      return "InvalidCorner";
+    case CreativeRectangularRoomGeometryStatus::UnevenFloorPlane:
+      return "UnevenFloorPlane";
+    case CreativeRectangularRoomGeometryStatus::InvalidDimension:
+      return "InvalidDimension";
+    case CreativeRectangularRoomGeometryStatus::DegenerateFootprint:
+      return "DegenerateFootprint";
+    case CreativeRectangularRoomGeometryStatus::WallConsumesFootprint:
+      return "WallConsumesFootprint";
+    case CreativeRectangularRoomGeometryStatus::Ready:
+      return "Ready";
+  }
+  return "Unknown";
+}
+
+CreativeRectangularRoomGeometryPlan planCreativeRectangularRoomGeometry(
+    const CreativeRectangularRoomGeometryRequest& request) noexcept {
+  CreativeRectangularRoomGeometryPlan plan;
+  if (!isFiniteCreativeVec3(request.firstFloorCorner) ||
+      !isFiniteCreativeVec3(request.oppositeFloorCorner)) {
+    setGeometryStatus(plan,
+                      CreativeRectangularRoomGeometryStatus::InvalidCorner,
+                      "creative_rectangular_room_corner_invalid");
+    return plan;
+  }
+  if (!near(request.firstFloorCorner.y,
+            request.oppositeFloorCorner.y)) {
+    setGeometryStatus(
+        plan, CreativeRectangularRoomGeometryStatus::UnevenFloorPlane,
+        "creative_rectangular_room_floor_plane_uneven");
+    return plan;
+  }
+  if (!positiveFinite(request.wallHeightMeters) ||
+      !positiveFinite(request.wallThicknessMeters) ||
+      !positiveFinite(request.floorThicknessMeters)) {
+    setGeometryStatus(plan,
+                      CreativeRectangularRoomGeometryStatus::InvalidDimension,
+                      "creative_rectangular_room_dimension_invalid");
+    return plan;
+  }
+
+  const double minimumX =
+      std::min(request.firstFloorCorner.x, request.oppositeFloorCorner.x);
+  const double maximumX =
+      std::max(request.firstFloorCorner.x, request.oppositeFloorCorner.x);
+  const double minimumZ =
+      std::min(request.firstFloorCorner.z, request.oppositeFloorCorner.z);
+  const double maximumZ =
+      std::max(request.firstFloorCorner.z, request.oppositeFloorCorner.z);
+  const double width = maximumX - minimumX;
+  const double depth = maximumZ - minimumZ;
+  if (!positiveFinite(width) || !positiveFinite(depth)) {
+    setGeometryStatus(
+        plan, CreativeRectangularRoomGeometryStatus::DegenerateFootprint,
+        "creative_rectangular_room_footprint_degenerate");
+    return plan;
+  }
+  if (width <= request.wallThicknessMeters * 2.0 + kGeometryEpsilon ||
+      depth <= request.wallThicknessMeters * 2.0 + kGeometryEpsilon) {
+    setGeometryStatus(
+        plan, CreativeRectangularRoomGeometryStatus::WallConsumesFootprint,
+        "creative_rectangular_room_wall_consumes_footprint");
+    return plan;
+  }
+
+  const double floorTop = request.firstFloorCorner.y;
+  const double halfWall = request.wallThicknessMeters * 0.5;
+  plan.floorBounds = {{minimumX, floorTop - request.floorThicknessMeters,
+                       minimumZ},
+                      {maximumX, floorTop, maximumZ}};
+  plan.rootBounds = {{minimumX - halfWall,
+                      floorTop - request.floorThicknessMeters,
+                      minimumZ - halfWall},
+                     {maximumX + halfWall,
+                      floorTop + request.wallHeightMeters,
+                      maximumZ + halfWall}};
+  plan.wallStarts = {{{minimumX, floorTop, minimumZ},
+                      {maximumX, floorTop, minimumZ},
+                      {maximumX, floorTop, maximumZ},
+                      {minimumX, floorTop, maximumZ}}};
+  plan.wallEnds = {{{maximumX, floorTop, minimumZ},
+                    {maximumX, floorTop, maximumZ},
+                    {minimumX, floorTop, maximumZ},
+                    {minimumX, floorTop, minimumZ}}};
+  for (std::size_t index = 0U; index < plan.wallBounds.size(); ++index) {
+    plan.wallBounds[index] = horizontalWallBounds(
+        plan.wallStarts[index], plan.wallEnds[index],
+        request.wallHeightMeters, request.wallThicknessMeters);
+  }
+  plan.accepted = true;
+  setGeometryStatus(plan, CreativeRectangularRoomGeometryStatus::Ready,
+                    "creative_rectangular_room_geometry_ready");
+  return plan;
+}
+
 CreativeBuildingOpeningSpec makeCreativeBuildingDoorOpening(
     std::string stableKey,
     std::string name,
@@ -637,6 +761,55 @@ CreativeBuildingRecipeResult buildCreativeBuildingRecipe(
   setStatus(result.receipt, CreativeBuildingRecipeStatus::Ready,
             "creative_building_recipe_ready");
   return result;
+}
+
+CreativeBuildingRecipeResult buildCreativeRectangularRoomRecipe(
+    const CreativeRectangularRoomRecipeRequest& request) {
+  const CreativeRectangularRoomGeometryPlan geometry =
+      planCreativeRectangularRoomGeometry(request.geometry);
+  if (!geometry.accepted) {
+    CreativeBuildingRecipeResult result;
+    result.receipt.requested = true;
+    result.receipt.status =
+        geometry.status ==
+                CreativeRectangularRoomGeometryStatus::WallConsumesFootprint
+            ? CreativeBuildingRecipeStatus::InvalidWall
+            : CreativeBuildingRecipeStatus::InvalidRoot;
+    result.receipt.reasonCode = std::string(geometry.reasonCode);
+    result.plan.kind = CreativeRecipeKind::Building;
+    result.plan.instanceKey = request.stableKey;
+    result.plan.instanceName = request.name;
+    return result;
+  }
+
+  CreativeBuildingRecipeRequest building;
+  building.stableKey = request.stableKey;
+  building.name = request.name;
+  // The recipe instance and one history transaction own the shell as a unit.
+  // Avoid a visible Room box that would fill the usable interior.
+  building.rootMode = CreativeBuildingRootMode::None;
+  building.visible = request.visible;
+  building.tags = request.tags;
+  building.boxes.push_back({CreativeObjectKind::Floor,
+                            "floor",
+                            request.name + " Floor",
+                            geometry.floorBounds});
+  constexpr std::array<std::string_view, 4U> kWallKeys{
+      "wall.north", "wall.east", "wall.south", "wall.west"};
+  constexpr std::array<std::string_view, 4U> kWallNames{
+      " North Wall", " East Wall", " South Wall", " West Wall"};
+  building.walls.reserve(kWallKeys.size());
+  for (std::size_t index = 0U; index < kWallKeys.size(); ++index) {
+    CreativeBuildingWallSpec wall;
+    wall.stableKey = std::string(kWallKeys[index]);
+    wall.name = request.name + std::string(kWallNames[index]);
+    wall.start = geometry.wallStarts[index];
+    wall.end = geometry.wallEnds[index];
+    wall.heightMeters = request.geometry.wallHeightMeters;
+    wall.thicknessMeters = request.geometry.wallThicknessMeters;
+    building.walls.push_back(std::move(wall));
+  }
+  return buildCreativeBuildingRecipe(building);
 }
 
 }  // namespace iggy3d::creative

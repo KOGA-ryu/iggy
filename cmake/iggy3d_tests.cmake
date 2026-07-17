@@ -267,6 +267,17 @@ set_tests_properties(creative_editor_placement_tests PROPERTIES
 set_tests_properties(creative_editor_placement_tests PROPERTIES
   LABELS "unit;app;creative;editor;placement;preview;history;iggy3d")
 
+add_executable(creative_editor_room_placement_tests
+  tests/unit/creative_editor_room_placement_tests.cpp)
+target_link_libraries(creative_editor_room_placement_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_room_placement_tests)
+add_test(NAME creative_editor_room_placement_tests
+  COMMAND "$<TARGET_FILE:creative_editor_room_placement_tests>")
+set_tests_properties(creative_editor_room_placement_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;editor;room;recipe;preview;history;iggy3d")
+
 add_executable(creative_editor_placement_clearance_tests
   tests/unit/creative_editor_placement_clearance_tests.cpp)
 target_link_libraries(creative_editor_placement_clearance_tests PRIVATE

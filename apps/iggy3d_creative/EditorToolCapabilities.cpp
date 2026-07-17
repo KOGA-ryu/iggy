@@ -144,6 +144,11 @@ using DisplayProfile = CreativeEditorToolDisplayProfile;
     row.actionHintProfile = HintProfile::LogicLink;
     row.keyboardQuickEditHints = true;
   }
+  {
+    auto& row = rows[capabilityIndex(cr::CreativeHeldItemKind::BuildingRoom)];
+    row.actionHintProfile = HintProfile::BuildingRoom;
+    row.keyboardQuickEditHints = true;
+  }
   return rows;
 }
 

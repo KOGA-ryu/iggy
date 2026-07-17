@@ -385,6 +385,15 @@ void appendViewportHints(HintSpecBuffer& buffer,
       appendHint(buffer, gamepad ? negativeAction : positiveAction,
                  "Clear source");
       break;
+    case CreativeEditorActionHintProfile::BuildingRoom:
+      appendHint(buffer, positiveAction,
+                 editor.interaction.roomPlacement.active
+                     ? "Build room"
+                     : "Corner 1");
+      if (editor.interaction.roomPlacement.active) {
+        appendHint(buffer, negativeAction, "Cancel room");
+      }
+      break;
     case CreativeEditorActionHintProfile::VolumeSelect:
       appendHint(buffer, gamepad ? positiveAction : negativeAction,
                  gamepad ? "Next corner" : "Corner 1");

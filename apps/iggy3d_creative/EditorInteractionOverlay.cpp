@@ -589,6 +589,18 @@ std::string creativeEditorHeldItemStatusLabel(
       }
       break;
     }
+    case cr::CreativeHeldItemStatusMode::BuildingRoom:
+      output.append(editor.interaction.roomPlacement.active
+                        ? " | CORNER 2"
+                        : " | CORNER 1");
+      output.append(" | H ");
+      output.append(cr::toString(editor.toolSettings.roomWallHeight));
+      output.append(" | WALL ");
+      output.append(cr::toString(editor.toolSettings.roomWallThickness));
+      output.append(" | FLOOR ");
+      output.append(cr::toString(editor.toolSettings.roomFloorThickness));
+      appendHeldQuickEditStatus(output, editor);
+      break;
     case cr::CreativeHeldItemStatusMode::Material:
       output.append(" | ");
       output.append(cr::toString(held.objectKind));

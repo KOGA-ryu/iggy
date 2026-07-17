@@ -19,6 +19,7 @@
 #include "EditorPlacementFeedback.hpp"
 #include "EditorPlacementGridOverlay.hpp"
 #include "EditorPreviewProxies.hpp"
+#include "EditorRoomPlacement.hpp"
 #include "EditorState.hpp"
 #include "EditorStructuralPlacement.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
@@ -56,6 +57,7 @@ void resetCreativeEditorOverlayFrame(CreativeEditorOverlayFrame& output) {
   output.pathPointHandleEdgeCount = 0;
   output.movingPlatformPathPreviewEdgeCount = 0;
   output.structuralSpanEditEdgeCount = 0;
+  output.roomPlacementEdgeCount = 0;
   output.ghostEdgeCount = 0;
   output.materialBrushPivotEdgeCount = 0;
   output.materialBrushGuideLineCount = 0;
@@ -794,6 +796,10 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
         appendCreativeEditorStructuralSpanEditWireframe(
             appState, editor.interaction.structuralSpanEdit,
             std::max(0.035F, gizmoThickness), combinedWireLines);
+    output.roomPlacementEdgeCount =
+        appendCreativeEditorRoomPlacementWireframe(
+            appState, editor, std::max(0.035F, gizmoThickness),
+            combinedWireLines);
   }
   appendCreativeEditorAttachmentSocketMarkers(request, output);
   appendCreativeEditorPlacementFeedbackWireframe(request, output);

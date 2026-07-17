@@ -213,7 +213,13 @@ bool catalogBuildsMaterialsAndCreatorTools() {
         return entry.hotbarEntry.kind ==
                cr::CreativeHeldItemKind::LogicLink;
       });
-  bool ok = expect(state.entries.size() == 24U,
+  const auto buildingRoom = std::find_if(
+      state.entries.begin(), state.entries.end(),
+      [](const cr::CreativeCatalogEntry& entry) {
+        return entry.hotbarEntry.kind ==
+               cr::CreativeHeldItemKind::BuildingRoom;
+      });
+  bool ok = expect(state.entries.size() == 25U,
                    "materials and tools retain one asset reload command") &&
             expect(state.filteredEntryIndices.size() == 1U,
                    "structure category exposes only structural materials") &&
@@ -238,7 +244,13 @@ bool catalogBuildsMaterialsAndCreatorTools() {
             expect(logicLink != state.entries.end() &&
                        logicLink->label == "Logic Link" &&
                        !logicLink->toolWheelEligible,
-                   "Logic Link closes the catalog lane without shifting the wheel");
+                   "Logic Link remains outside the default wheel") &&
+            expect(buildingRoom != state.entries.end() &&
+                       buildingRoom->label == "Room" &&
+                       buildingRoom->category ==
+                           cr::CreativeCatalogEntryCategory::Tool &&
+                       !buildingRoom->toolWheelEligible,
+                   "room shell tool is discoverable without shifting the wheel");
   ok = expect(cr::toString(cr::CreativeCatalogEntryCategory::Material) ==
                   "Material" &&
                   cr::toString(cr::CreativeCatalogEntryCategory::Command) ==
@@ -343,8 +355,8 @@ bool catalogOmitsToolsWithoutRequiredMaterial() {
                entry.hotbarEntry.kind ==
                    cr::CreativeHeldItemKind::SurfaceExtrude;
       });
-  return expect(state.entries.size() == 16U &&
-                    state.filteredEntryIndices.size() == 15U,
+  return expect(state.entries.size() == 17U &&
+                    state.filteredEntryIndices.size() == 16U,
                 "empty palette retains tools plus the asset reload command") &&
          expect(!materialDependentToolPresent,
                 "material-dependent tools require a valid material");

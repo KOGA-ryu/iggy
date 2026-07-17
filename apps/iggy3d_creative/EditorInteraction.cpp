@@ -5,6 +5,7 @@
 #include <array>
 
 #include "EditorGroup.hpp"
+#include "EditorRoomPlacement.hpp"
 #include "EditorState.hpp"
 #include "EditorStructuralPlacement.hpp"
 #include "EditorTerrain.hpp"
@@ -229,6 +230,10 @@ void syncCreativeEditorHeldItem(cr::CreativeAppState& appState,
     editor.logicLinks.documentId = appState.facade.document().id();
   }
   if (interactionChanged) {
+    if (definition.interactionMode !=
+        cr::CreativeHeldItemInteractionMode::BuildingRoom) {
+      static_cast<void>(cancelCreativeEditorRoomPlacement(editor));
+    }
     clearCreativeEditorTerrainInteraction(editor.terrain,
                                           appState.facade.document().id());
   }
@@ -433,6 +438,7 @@ void finalizeCreativeEditorContinuousGestures(
       reasonCode);
   static_cast<void>(cancelCreativeEditorStructuralSpanEdit(
       editor.interaction.structuralSpanEdit));
+  static_cast<void>(cancelCreativeEditorRoomPlacement(editor));
 }
 
 CreativeEditorContinuousGestureOwner creativeEditorContinuousGestureOwner(

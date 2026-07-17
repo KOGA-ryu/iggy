@@ -481,6 +481,8 @@ bool heldItemRegistryOwnsEveryKind() {
       cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::TerrainPath);
   const cr::CreativeHeldItemDefinition& logicLink =
       cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::LogicLink);
+  const cr::CreativeHeldItemDefinition& buildingRoom =
+      cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::BuildingRoom);
   const cr::CreativeHeldItemDefinition& invalid =
       cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::Count);
   return expect(material.placeMode && material.usesMaterial &&
@@ -508,7 +510,17 @@ bool heldItemRegistryOwnsEveryKind() {
                     logicLink.interactionMode ==
                         cr::CreativeHeldItemInteractionMode::LogicLink,
                 "draft tools declare distinct lifecycle ownership") &&
-         expect(primaryWinsCount == 9U,
+         expect(buildingRoom.interactionMode ==
+                        cr::CreativeHeldItemInteractionMode::BuildingRoom &&
+                    buildingRoom.acceptOperation ==
+                        cr::CreativeHeldItemWorldOperation::
+                            AdvanceBuildingRoom &&
+                    buildingRoom.rejectOperation ==
+                        cr::CreativeHeldItemWorldOperation::CancelBuildingRoom &&
+                    buildingRoom.targetCellPolicy ==
+                        cr::CreativeHeldItemTargetCellPolicy::DocumentGrid,
+                "room row owns two-corner semantic routing") &&
+         expect(primaryWinsCount == 10U,
                 "simultaneous-action precedence is registry-pinned") &&
          expect(confirmCommandCount == 13U,
                 "confirm command ownership is registry-pinned") &&

@@ -5,6 +5,7 @@
 #include "EditorConnectedFill.hpp"
 #include "EditorGroup.hpp"
 #include "EditorPattern.hpp"
+#include "EditorRoomPlacement.hpp"
 #include "EditorState.hpp"
 #include "EditorStructuralPlacement.hpp"
 #include "EditorSurfaceExtrude.hpp"
@@ -257,6 +258,9 @@ bool confirmCreativeEditorHeldItem(cr::CreativeAppState& appState,
 
 bool cancelCreativeEditorHeldItem(cr::CreativeAppState& appState,
                                   CreativeEditorState& editor) {
+  if (cancelCreativeEditorRoomPlacement(editor)) {
+    return true;
+  }
   if (cancelCreativeEditorStructuralSpanEdit(
           editor.interaction.structuralSpanEdit)) {
     return true;

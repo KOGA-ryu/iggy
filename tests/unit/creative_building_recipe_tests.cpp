@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/recipes/BuildingRecipe.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
@@ -228,12 +229,112 @@ bool invalidGeometryFailsWithSpecificStatuses() {
                 "non-finite opening rejected");
 }
 
+bool rectangularRoomGeometryKeepsFloorAndWallsOnOneSeam() {
+  cr::CreativeRectangularRoomGeometryRequest request;
+  request.firstFloorCorner = {6.0, 2.0, 5.0};
+  request.oppositeFloorCorner = {1.0, 2.0, -3.0};
+  request.wallHeightMeters = 4.0;
+  request.wallThicknessMeters = 0.5;
+  request.floorThicknessMeters = 0.25;
+  const cr::CreativeRectangularRoomGeometryPlan plan =
+      cr::planCreativeRectangularRoomGeometry(request);
+
+  return expect(plan.accepted &&
+                    plan.status ==
+                        cr::CreativeRectangularRoomGeometryStatus::Ready,
+                "rectangular room geometry accepted") &&
+         expect(sameBounds(plan.floorBounds,
+                           {{1.0, 1.75, -3.0}, {6.0, 2.0, 5.0}}),
+                "rectangular floor extends below finished plane") &&
+         expect(sameBounds(plan.wallBounds[0],
+                           {{1.0, 2.0, -3.25}, {6.0, 6.0, -2.75}}) &&
+                    sameBounds(plan.wallBounds[1],
+                               {{5.75, 2.0, -3.0}, {6.25, 6.0, 5.0}}) &&
+                    sameBounds(plan.wallBounds[2],
+                               {{1.0, 2.0, 4.75}, {6.0, 6.0, 5.25}}) &&
+                    sameBounds(plan.wallBounds[3],
+                               {{0.75, 2.0, -3.0}, {1.25, 6.0, 5.0}}),
+                "rectangular walls begin on finished floor plane") &&
+         expect(sameBounds(plan.rootBounds,
+                           {{0.75, 1.75, -3.25}, {6.25, 6.0, 5.25}}),
+                "rectangular aggregate bounds include floor and wall shell");
+}
+
+bool rectangularRoomCompilesToStableShellRecipe() {
+  cr::CreativeRectangularRoomRecipeRequest request;
+  request.stableKey = "viewport-room-12";
+  request.name = "Room 12";
+  request.geometry.firstFloorCorner = {0.0, 0.0, 0.0};
+  request.geometry.oppositeFloorCorner = {4.0, 0.0, 3.0};
+  const cr::CreativeBuildingRecipeResult result =
+      cr::buildCreativeRectangularRoomRecipe(request);
+
+  constexpr std::array<std::string_view, 5U> kExpectedKeys{
+      "floor", "wall.north.segment.1", "wall.east.segment.1",
+      "wall.south.segment.1", "wall.west.segment.1"};
+  bool stableOrder = result.plan.objects.size() == kExpectedKeys.size();
+  for (std::size_t index = 0U;
+       stableOrder && index < kExpectedKeys.size(); ++index) {
+    stableOrder = result.plan.objects[index].stableKey == kExpectedKeys[index];
+  }
+  return expect(result.receipt.accepted &&
+                    result.receipt.rootObjectCount == 0U &&
+                    result.receipt.boxObjectCount == 1U &&
+                    result.receipt.wallObjectCount == 4U,
+                "rectangular room compiles to one floor and four walls") &&
+         expect(result.plan.instanceKey == "viewport-room-12" && stableOrder,
+                "rectangular room recipe order and identity are stable") &&
+         expect(result.plan.objects[0].createRequest.kind ==
+                        cr::CreativeObjectKind::Floor &&
+                    sameBounds(result.plan.objects[0].createRequest.bounds,
+                               {{0.0, -0.25, 0.0}, {4.0, 0.0, 3.0}}),
+                "rectangular room recipe preserves floor seam");
+}
+
+bool rectangularRoomRejectsAmbiguousGeometry() {
+  cr::CreativeRectangularRoomGeometryRequest uneven;
+  uneven.firstFloorCorner = {0.0, 0.0, 0.0};
+  uneven.oppositeFloorCorner = {4.0, 1.0, 4.0};
+  const cr::CreativeRectangularRoomGeometryPlan unevenPlan =
+      cr::planCreativeRectangularRoomGeometry(uneven);
+
+  cr::CreativeRectangularRoomGeometryRequest consumed;
+  consumed.firstFloorCorner = {0.0, 0.0, 0.0};
+  consumed.oppositeFloorCorner = {0.4, 0.0, 2.0};
+  consumed.wallThicknessMeters = 0.25;
+  const cr::CreativeRectangularRoomGeometryPlan consumedPlan =
+      cr::planCreativeRectangularRoomGeometry(consumed);
+
+  cr::CreativeRectangularRoomRecipeRequest invalidRecipe;
+  invalidRecipe.geometry = consumed;
+  const cr::CreativeBuildingRecipeResult result =
+      cr::buildCreativeRectangularRoomRecipe(invalidRecipe);
+  return expect(!unevenPlan.accepted &&
+                    unevenPlan.status ==
+                        cr::CreativeRectangularRoomGeometryStatus::
+                            UnevenFloorPlane,
+                "rectangular room rejects uneven floor corners") &&
+         expect(!consumedPlan.accepted &&
+                    consumedPlan.status ==
+                        cr::CreativeRectangularRoomGeometryStatus::
+                            WallConsumesFootprint,
+                "rectangular room rejects walls consuming the interior") &&
+         expect(!result.receipt.accepted &&
+                    result.receipt.status ==
+                        cr::CreativeBuildingRecipeStatus::InvalidWall &&
+                    result.plan.objects.empty(),
+                "invalid rectangular geometry cannot leak a partial recipe");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = roomRecipeProducesDeterministicRealOpenings() &&
                   inputOpeningOrderDoesNotChangeOutput() &&
                   openDoorPoseMatchesReferenceGeometry() &&
-                  invalidGeometryFailsWithSpecificStatuses();
+                  invalidGeometryFailsWithSpecificStatuses() &&
+                  rectangularRoomGeometryKeepsFloorAndWallsOnOneSeam() &&
+                  rectangularRoomCompilesToStableShellRecipe() &&
+                  rectangularRoomRejectsAmbiguousGeometry();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

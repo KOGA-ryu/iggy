@@ -56,6 +56,7 @@ enum class CreativeEditorActionHintProfile : std::uint8_t {
   VolumeOperation,
   LinearArray,
   LogicLink,
+  BuildingRoom,
   Count,
 };
 

@@ -23,6 +23,8 @@ constexpr CreativeHeldItemMask kRotationItems =
     heldItemMask(CreativeHeldItemKind::ObjectMove);
 constexpr CreativeHeldItemMask kPlacementItems =
     heldItemMask(CreativeHeldItemKind::Material);
+constexpr CreativeHeldItemMask kRoomItems =
+    heldItemMask(CreativeHeldItemKind::BuildingRoom);
 constexpr CreativeHeldItemMask kMaterialBrushItems =
     heldItemMask(CreativeHeldItemKind::MaterialBrush);
 constexpr CreativeHeldItemMask kConnectedFillItems =
@@ -49,7 +51,8 @@ constexpr CreativeHeldItemMask kSnapItems =
     heldItemMask(CreativeHeldItemKind::VolumeHollow) |
     heldItemMask(CreativeHeldItemKind::VolumeReplace) |
     heldItemMask(CreativeHeldItemKind::VolumeErase) |
-    heldItemMask(CreativeHeldItemKind::VolumeClone);
+    heldItemMask(CreativeHeldItemKind::VolumeClone) |
+    kRoomItems;
 constexpr CreativeHeldItemMask kReplaceItems =
     heldItemMask(CreativeHeldItemKind::VolumeReplace);
 constexpr CreativeHeldItemMask kShapeItems =
@@ -93,6 +96,18 @@ constexpr std::array kToolOptionDescriptors{
                                  "PLACEMENT DEPTH",
                                  CreativeToolOptionValueKind::Choice,
                                  kPlacementItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::RoomWallHeight,
+                                 "WALL HEIGHT",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kRoomItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::RoomWallThickness,
+                                 "WALL THICKNESS",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kRoomItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::RoomFloorThickness,
+                                 "FLOOR THICKNESS",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kRoomItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::AssetPlacementMode,
                                  "ASSET MODE",
                                  CreativeToolOptionValueKind::Choice,

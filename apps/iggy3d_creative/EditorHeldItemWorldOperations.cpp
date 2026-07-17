@@ -11,6 +11,7 @@
 #include "EditorLogicLinks.hpp"
 #include "EditorPathEditing.hpp"
 #include "EditorPattern.hpp"
+#include "EditorRoomPlacement.hpp"
 #include "EditorState.hpp"
 #include "EditorStructuralPlacement.hpp"
 #include "EditorSurfaceExtrude.hpp"
@@ -409,6 +410,17 @@ void clearLogicLinkSource(InteractionContext& context) {
       clearCreativeEditorLogicLinkSource(context.request.editor.logicLinks));
 }
 
+void advanceBuildingRoom(InteractionContext& context) {
+  static_cast<void>(advanceCreativeEditorRoomPlacement(
+      context.request.appState, context.request.editor,
+      "creative_viewport_room_apply"));
+}
+
+void cancelBuildingRoom(InteractionContext& context) {
+  static_cast<void>(
+      cancelCreativeEditorRoomPlacement(context.request.editor));
+}
+
 void dispatchHeldItemWorldOperation(
     cr::CreativeHeldItemWorldOperation operation,
     InteractionContext& context) {
@@ -522,6 +534,12 @@ void dispatchHeldItemWorldOperation(
       return;
     case cr::CreativeHeldItemWorldOperation::ClearLogicLinkSource:
       clearLogicLinkSource(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::AdvanceBuildingRoom:
+      advanceBuildingRoom(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::CancelBuildingRoom:
+      cancelBuildingRoom(context);
       return;
     case cr::CreativeHeldItemWorldOperation::Count:
       return;

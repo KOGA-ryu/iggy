@@ -179,8 +179,8 @@ bool toolCapabilitiesCoverBehaviorAndUiProfiles() {
       describeCreativeEditorToolCapability(cr::CreativeHeldItemKind::Count);
   return expect(specializedCommandProfiles == 3U,
                 "three tools own specialized command profiles") &&
-         expect(keyboardQuickEditProfiles == 8U,
-                "terrain tools and Logic Link expose keyboard quick-edit hints") &&
+         expect(keyboardQuickEditProfiles == 9U,
+                "terrain tools, Logic Link, and Room expose keyboard quick-edit hints") &&
          expect(materialFilters == 1U,
                 "only direct material placement filters descriptor options") &&
          expect(invalid.kind == cr::CreativeHeldItemKind::Count &&
@@ -1046,6 +1046,39 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
          ok;
 }
 
+bool buildingRoomHintsTrackCornerState() {
+  CreativeEditorState editor;
+  setHeld(editor, cr::CreativeHeldItemKind::BuildingRoom);
+
+  const cr::CreativeActionHintFrame firstCorner =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* begin =
+      findHint(firstCorner, cr::CreativeInputActionId::AcceptAction);
+  const cr::CreativeActionHint* prematureCancel =
+      findHint(firstCorner, cr::CreativeInputActionId::RejectAction);
+
+  editor.interaction.roomPlacement.active = true;
+  const cr::CreativeActionHintFrame secondCorner =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* build =
+      findHint(secondCorner, cr::CreativeInputActionId::AcceptAction);
+  const cr::CreativeActionHint* cancel =
+      findHint(secondCorner, cr::CreativeInputActionId::RejectAction);
+
+  return expect(begin != nullptr && begin->label.view() == "Corner 1",
+                "room first corner advertises the first placement step") &&
+         expect(prematureCancel == nullptr,
+                "room does not advertise cancel before a draft exists") &&
+         expect(build != nullptr && build->label.view() == "Build room",
+                "active room draft advertises shell creation") &&
+         expect(cancel != nullptr && cancel->label.view() == "Cancel room",
+                "active room draft advertises explicit cancellation");
+}
+
 bool everyInteractiveContextResolvesOnlyLiveBindings() {
   CreativeEditorState editor;
   setHeld(editor, cr::CreativeHeldItemKind::LinearArray);
@@ -1138,6 +1171,7 @@ int main() {
   ok = resolverSkipsMissingBindingsAndFailsClosedAtCapacity() && ok;
   ok = activeDeviceUsesUnambiguousPhysicalActivity() && ok;
   ok = editorHintsMatchToolsContextsAndPs5Language() && ok;
+  ok = buildingRoomHintsTrackCornerState() && ok;
   ok = everyInteractiveContextResolvesOnlyLiveBindings() && ok;
   ok = widgetProjectionIsResponsiveAndUsesTheStandardFrame() && ok;
   return ok ? 0 : 1;

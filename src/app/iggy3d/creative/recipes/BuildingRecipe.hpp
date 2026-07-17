@@ -3,9 +3,11 @@
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/recipes/CreativeRecipe.hpp"
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 namespace iggy3d::creative {
@@ -40,6 +42,52 @@ enum class CreativeBuildingRecipeStatus : std::uint8_t {
   OverlappingOpenings,
   InvalidPlan,
   Ready,
+};
+
+enum class CreativeRectangularRoomGeometryStatus : std::uint8_t {
+  NotRequested,
+  InvalidCorner,
+  UnevenFloorPlane,
+  InvalidDimension,
+  DegenerateFootprint,
+  WallConsumesFootprint,
+  Ready,
+};
+
+// Corners describe the outer floor boundary on its finished top plane. The
+// generated floor extends downward; generated walls begin on that exact plane.
+struct CreativeRectangularRoomGeometryRequest {
+  CreativeVec3 firstFloorCorner;
+  CreativeVec3 oppositeFloorCorner;
+  double wallHeightMeters = defaultCreativeWallGeometry().heightMeters;
+  double wallThicknessMeters = defaultCreativeWallGeometry().thicknessMeters;
+  double floorThicknessMeters = 0.25;
+};
+
+struct CreativeRectangularRoomGeometryPlan {
+  CreativeRectangularRoomGeometryStatus status =
+      CreativeRectangularRoomGeometryStatus::NotRequested;
+  CreativeBounds rootBounds;
+  CreativeBounds floorBounds;
+  std::array<CreativeVec3, 4U> wallStarts{};
+  std::array<CreativeVec3, 4U> wallEnds{};
+  std::array<CreativeBounds, 4U> wallBounds{};
+  bool accepted = false;
+  std::string_view reasonCode =
+      "creative_rectangular_room_geometry_not_requested";
+};
+
+static_assert(
+    std::is_trivially_copyable_v<CreativeRectangularRoomGeometryRequest>);
+static_assert(
+    std::is_trivially_copyable_v<CreativeRectangularRoomGeometryPlan>);
+
+struct CreativeRectangularRoomRecipeRequest {
+  std::string stableKey = "room";
+  std::string name = "Room";
+  CreativeRectangularRoomGeometryRequest geometry;
+  bool visible = true;
+  std::vector<std::string> tags;
 };
 
 // Ordered axis-aligned building boxes. Their order is preserved in the output,
@@ -132,6 +180,12 @@ struct CreativeBuildingRecipeResult {
     CreativeBuildingOpeningPose pose) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeBuildingRecipeStatus status) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeRectangularRoomGeometryStatus status) noexcept;
+
+[[nodiscard]] CreativeRectangularRoomGeometryPlan
+planCreativeRectangularRoomGeometry(
+    const CreativeRectangularRoomGeometryRequest& request) noexcept;
 
 [[nodiscard]] CreativeBuildingOpeningSpec makeCreativeBuildingDoorOpening(
     std::string stableKey,
@@ -149,5 +203,7 @@ struct CreativeBuildingRecipeResult {
 
 [[nodiscard]] CreativeBuildingRecipeResult buildCreativeBuildingRecipe(
     const CreativeBuildingRecipeRequest& request);
+[[nodiscard]] CreativeBuildingRecipeResult buildCreativeRectangularRoomRecipe(
+    const CreativeRectangularRoomRecipeRequest& request);
 
 }  // namespace iggy3d::creative

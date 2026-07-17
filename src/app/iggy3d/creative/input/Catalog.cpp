@@ -93,6 +93,9 @@ constexpr std::array kToolSpecs{
                     false},
     CatalogToolSpec{CreativeHeldItemKind::LogicLink, "Logic Link",
                     "connect wire switch lever button door logic", false},
+    CatalogToolSpec{CreativeHeldItemKind::BuildingRoom, "Room",
+                    "building floor walls shell footprint architecture",
+                    false},
 };
 
 constexpr std::array kActionEntries{

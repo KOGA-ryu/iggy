@@ -50,6 +50,8 @@ enum class CreativeHeldItemWorldOperation : std::uint8_t {
   ApplyObjectGroup,
   AdvanceLogicLink,
   ClearLogicLinkSource,
+  AdvanceBuildingRoom,
+  CancelBuildingRoom,
   Count,
 };
 
@@ -107,6 +109,7 @@ enum class CreativeHeldItemInteractionMode : std::uint8_t {
   TerrainPath,
   TerrainRegion,
   LogicLink,
+  BuildingRoom,
   Count,
 };
 
@@ -141,6 +144,7 @@ enum class CreativeHeldItemStatusMode : std::uint8_t {
   TerrainPath,
   TerrainRegion,
   LogicLink,
+  BuildingRoom,
   Count,
 };
 

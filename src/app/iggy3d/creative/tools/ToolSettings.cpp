@@ -170,6 +170,12 @@ bool isValidCreativeToolSettings(
          validEnum(settings.placementAnchor,
                    CreativePlacementAnchor::Count) &&
          validEnum(settings.placementDepth, CreativePlacementDepth::Count) &&
+         validEnum(settings.roomWallHeight,
+                   CreativeRoomWallHeight::Count) &&
+         validEnum(settings.roomWallThickness,
+                   CreativeRoomWallThickness::Count) &&
+         validEnum(settings.roomFloorThickness,
+                   CreativeRoomFloorThickness::Count) &&
          validEnum(settings.assetPlacementMode,
                    CreativeAssetPlacementMode::Count) &&
          validEnum(settings.assetScatterRadius,
@@ -334,6 +340,20 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
     case CreativeToolOptionId::PlacementDepth:
       adjusted.placementDepth = stepEnumClamped(
           adjusted.placementDepth, CreativePlacementDepth::Count, direction);
+      break;
+    case CreativeToolOptionId::RoomWallHeight:
+      adjusted.roomWallHeight = cycleEnum(
+          adjusted.roomWallHeight, CreativeRoomWallHeight::Count, direction);
+      break;
+    case CreativeToolOptionId::RoomWallThickness:
+      adjusted.roomWallThickness = cycleEnum(
+          adjusted.roomWallThickness, CreativeRoomWallThickness::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::RoomFloorThickness:
+      adjusted.roomFloorThickness = cycleEnum(
+          adjusted.roomFloorThickness, CreativeRoomFloorThickness::Count,
+          direction);
       break;
     case CreativeToolOptionId::AssetPlacementMode:
       adjusted.assetPlacementMode = cycleEnum(
@@ -676,6 +696,27 @@ std::uint8_t creativePlacementDepthSteps(
   return index < static_cast<std::size_t>(CreativePlacementDepth::Count)
              ? static_cast<std::uint8_t>(index)
              : 0U;
+}
+
+double creativeRoomWallHeightMeters(
+    CreativeRoomWallHeight height) noexcept {
+  constexpr std::array values{2.0, 3.0, 4.0, 6.0};
+  const std::size_t index = static_cast<std::size_t>(height);
+  return index < values.size() ? values[index] : 0.0;
+}
+
+double creativeRoomWallThicknessMeters(
+    CreativeRoomWallThickness thickness) noexcept {
+  constexpr std::array values{0.1, 0.25, 0.5, 1.0};
+  const std::size_t index = static_cast<std::size_t>(thickness);
+  return index < values.size() ? values[index] : 0.0;
+}
+
+double creativeRoomFloorThicknessMeters(
+    CreativeRoomFloorThickness thickness) noexcept {
+  constexpr std::array values{0.05, 0.1, 0.25, 0.5};
+  const std::size_t index = static_cast<std::size_t>(thickness);
+  return index < values.size() ? values[index] : 0.0;
 }
 
 std::uint32_t creativeAssetScatterRadiusCells(

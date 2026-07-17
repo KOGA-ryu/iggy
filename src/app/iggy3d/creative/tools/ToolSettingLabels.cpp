@@ -91,6 +91,39 @@ std::string_view toString(CreativePlacementDepth depth) noexcept {
   return "INVALID";
 }
 
+std::string_view toString(CreativeRoomWallHeight height) noexcept {
+  switch (height) {
+    case CreativeRoomWallHeight::TwoMeters: return "2 M";
+    case CreativeRoomWallHeight::ThreeMeters: return "3 M";
+    case CreativeRoomWallHeight::FourMeters: return "4 M";
+    case CreativeRoomWallHeight::SixMeters: return "6 M";
+    case CreativeRoomWallHeight::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeRoomWallThickness thickness) noexcept {
+  switch (thickness) {
+    case CreativeRoomWallThickness::TenthMeter: return "0.1 M";
+    case CreativeRoomWallThickness::QuarterMeter: return "0.25 M";
+    case CreativeRoomWallThickness::HalfMeter: return "0.5 M";
+    case CreativeRoomWallThickness::OneMeter: return "1 M";
+    case CreativeRoomWallThickness::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeRoomFloorThickness thickness) noexcept {
+  switch (thickness) {
+    case CreativeRoomFloorThickness::FiveCentimeters: return "0.05 M";
+    case CreativeRoomFloorThickness::TenthMeter: return "0.1 M";
+    case CreativeRoomFloorThickness::QuarterMeter: return "0.25 M";
+    case CreativeRoomFloorThickness::HalfMeter: return "0.5 M";
+    case CreativeRoomFloorThickness::Count: break;
+  }
+  return "INVALID";
+}
+
 std::string_view toString(CreativeAssetPlacementMode mode) noexcept {
   switch (mode) {
     case CreativeAssetPlacementMode::Single: return "SINGLE";
@@ -225,6 +258,12 @@ std::string_view creativeToolOptionValueLabel(
       return toString(settings.placementAnchor);
     case CreativeToolOptionId::PlacementDepth:
       return toString(settings.placementDepth);
+    case CreativeToolOptionId::RoomWallHeight:
+      return toString(settings.roomWallHeight);
+    case CreativeToolOptionId::RoomWallThickness:
+      return toString(settings.roomWallThickness);
+    case CreativeToolOptionId::RoomFloorThickness:
+      return toString(settings.roomFloorThickness);
     case CreativeToolOptionId::AssetPlacementMode:
       return toString(settings.assetPlacementMode);
     case CreativeToolOptionId::AssetScatterRadius:

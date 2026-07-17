@@ -160,6 +160,7 @@ enum class CreativeHeldItemKind : std::uint8_t {
   TerrainRegion,
   ObjectGroup,
   LogicLink,
+  BuildingRoom,
   Count,
 };
 

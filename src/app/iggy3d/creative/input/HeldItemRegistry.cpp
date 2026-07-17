@@ -302,6 +302,17 @@ using StatusMode = CreativeHeldItemStatusMode;
     row.interactionMode = InteractionMode::LogicLink;
     row.statusMode = StatusMode::LogicLink;
   }
+  {
+    auto& row = rows[heldIndex(CreativeHeldItemKind::BuildingRoom)];
+    row.worldOperations = {WorldOp::CancelBuildingRoom,
+                           WorldOp::AdvanceBuildingRoom, WorldOp::None};
+    row.acceptOperation = WorldOp::AdvanceBuildingRoom;
+    row.rejectOperation = WorldOp::CancelBuildingRoom;
+    row.interactionMode = InteractionMode::BuildingRoom;
+    row.targetCellPolicy = TargetPolicy::DocumentGrid;
+    row.statusMode = StatusMode::BuildingRoom;
+    row.primaryWinsSimultaneous = true;
+  }
   return rows;
 }
 

@@ -341,6 +341,9 @@ bool optionDescriptorsAreContextualAndBounded() {
           cr::CreativeHeldItemKind::MaterialBrush, replaceBrushSettings);
   const cr::CreativeToolOptionList move =
       cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::ObjectMove);
+  const cr::CreativeToolOptionList room =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::BuildingRoom);
   const cr::CreativeToolOptionList replace =
       cr::creativeToolOptionsForHeldItem(
           cr::CreativeHeldItemKind::VolumeReplace);
@@ -426,6 +429,15 @@ bool optionDescriptorsAreContextualAndBounded() {
                     material.ids[5] ==
                         cr::CreativeToolOptionId::PlacementDepth,
                 "material exposes orientation grid dots plane anchor and depth") &&
+         expect(room.count == 4U &&
+                    room.ids[0] == cr::CreativeToolOptionId::SnapIncrement &&
+                    room.ids[1] == cr::CreativeToolOptionId::RoomWallHeight &&
+                    room.ids[2] ==
+                        cr::CreativeToolOptionId::RoomWallThickness &&
+                    room.ids[3] ==
+                        cr::CreativeToolOptionId::RoomFloorThickness &&
+                    !room.capacityExceeded,
+                "room exposes grid height wall and floor dimensions") &&
          expect(materialBrush.count == 6U &&
                     materialBrush.ids[0] ==
                         cr::CreativeToolOptionId::MaterialBrushShape &&
@@ -758,6 +770,24 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                            settings,
                            cr::CreativeToolOptionId::PlacementDepth) ==
                            "0 CELLS" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::RoomWallHeight) ==
+                           "3 M" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::RoomWallThickness) ==
+                           "0.25 M" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::RoomFloorThickness) ==
+                           "0.25 M" &&
+                       cr::creativeRoomWallHeightMeters(
+                           settings.roomWallHeight) == 3.0 &&
+                       cr::creativeRoomWallThicknessMeters(
+                           settings.roomWallThickness) == 0.25 &&
+                       cr::creativeRoomFloorThicknessMeters(
+                           settings.roomFloorThickness) == 0.25 &&
                        cr::creativePlacementDepthSteps(
                            settings.placementDepth) == 0U &&
                        cr::creativeToolOptionValueLabel(

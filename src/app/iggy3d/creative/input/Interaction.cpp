@@ -102,6 +102,7 @@ std::string_view toString(CreativeHeldItemKind kind) noexcept {
     case CreativeHeldItemKind::TerrainRegion: return "TerrainRegion";
     case CreativeHeldItemKind::ObjectGroup: return "Group";
     case CreativeHeldItemKind::LogicLink: return "Link";
+    case CreativeHeldItemKind::BuildingRoom: return "Room";
     case CreativeHeldItemKind::Count: break;
   }
   return "Unknown";

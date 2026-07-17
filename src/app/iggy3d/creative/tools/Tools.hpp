@@ -131,6 +131,30 @@ enum class CreativePlacementDepth : std::uint8_t {
   Count,
 };
 
+enum class CreativeRoomWallHeight : std::uint8_t {
+  TwoMeters,
+  ThreeMeters,
+  FourMeters,
+  SixMeters,
+  Count,
+};
+
+enum class CreativeRoomWallThickness : std::uint8_t {
+  TenthMeter,
+  QuarterMeter,
+  HalfMeter,
+  OneMeter,
+  Count,
+};
+
+enum class CreativeRoomFloorThickness : std::uint8_t {
+  FiveCentimeters,
+  TenthMeter,
+  QuarterMeter,
+  HalfMeter,
+  Count,
+};
+
 enum class CreativeAssetPlacementMode : std::uint8_t {
   Single,
   Scatter,
@@ -210,6 +234,9 @@ enum class CreativeToolOptionId : std::uint8_t {
   PlacementPlane,
   PlacementAnchor,
   PlacementDepth,
+  RoomWallHeight,
+  RoomWallThickness,
+  RoomFloorThickness,
   AssetPlacementMode,
   AssetScatterRadius,
   AssetScatterDensity,
@@ -309,6 +336,12 @@ struct CreativeToolSettings {
   CreativePlacementAnchor placementAnchor =
       CreativePlacementAnchor::Center;
   CreativePlacementDepth placementDepth = CreativePlacementDepth::ZeroCells;
+  CreativeRoomWallHeight roomWallHeight =
+      CreativeRoomWallHeight::ThreeMeters;
+  CreativeRoomWallThickness roomWallThickness =
+      CreativeRoomWallThickness::QuarterMeter;
+  CreativeRoomFloorThickness roomFloorThickness =
+      CreativeRoomFloorThickness::QuarterMeter;
   CreativeAssetPlacementMode assetPlacementMode =
       CreativeAssetPlacementMode::Single;
   CreativeAssetScatterRadius assetScatterRadius =
@@ -551,6 +584,12 @@ creativeToolOptionDescriptors() noexcept;
 [[nodiscard]] std::string_view toString(
     CreativePlacementDepth depth) noexcept;
 [[nodiscard]] std::string_view toString(
+    CreativeRoomWallHeight height) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeRoomWallThickness thickness) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeRoomFloorThickness thickness) noexcept;
+[[nodiscard]] std::string_view toString(
     CreativeAssetPlacementMode mode) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeAssetScatterRadius radius) noexcept;
@@ -591,6 +630,12 @@ creativeToolOptionDescriptors() noexcept;
     CreativeSnapIncrement increment) noexcept;
 [[nodiscard]] std::uint8_t creativePlacementDepthSteps(
     CreativePlacementDepth depth) noexcept;
+[[nodiscard]] double creativeRoomWallHeightMeters(
+    CreativeRoomWallHeight height) noexcept;
+[[nodiscard]] double creativeRoomWallThicknessMeters(
+    CreativeRoomWallThickness thickness) noexcept;
+[[nodiscard]] double creativeRoomFloorThicknessMeters(
+    CreativeRoomFloorThickness thickness) noexcept;
 [[nodiscard]] std::uint32_t creativeAssetScatterRadiusCells(
     CreativeAssetScatterRadius radius) noexcept;
 [[nodiscard]] double creativeAssetScatterDensityFraction(

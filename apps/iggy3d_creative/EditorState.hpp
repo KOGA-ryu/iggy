@@ -42,6 +42,7 @@ struct CreativeEditorDocumentTransientState {
   CreativeAuthoredAssetStrokeState authoredAssetStroke;
   CreativeEditorConnectedFillCache connectedFill;
   CreativeEditorSurfaceExtrudeCache surfaceExtrude;
+  CreativeEditorRoomPlacementState roomPlacement;
   iggy3d::creative::CreativeObjectId moveTargetId =
       iggy3d::creative::kInvalidObjectId;
   CreativeEditorGroupFocusState groupFocus;
