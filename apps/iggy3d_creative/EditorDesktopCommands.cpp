@@ -719,6 +719,21 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutFocusDiagnostic: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutDiagnosticPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout diagnostic focus: payload mismatch";
+        break;
+      }
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          focusCreativeEditorWorldLayoutDiagnostic(
+              editor.worldLayout, payload->table, payload->index);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutLevelOperation: {
       const auto* payload =
           payloadAs<CreativeDesktopWorldLayoutLevelOperationPayload>(command);

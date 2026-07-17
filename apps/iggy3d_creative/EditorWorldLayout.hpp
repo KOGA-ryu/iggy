@@ -13,6 +13,7 @@
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
 
 #include "EditorWorldLayoutElevation.hpp"
+#include "EditorWorldLayoutDiagnostics.hpp"
 
 namespace iggy3d_creative_app {
 
@@ -524,6 +525,7 @@ struct CreativeEditorWorldLayoutState {
       CreativeEditorWorldLayoutElevationAxis::X;
   CreativeEditorWorldLayoutElevationCache elevationCache;
   CreativeEditorWorldLayoutElevationManipulationState elevationManipulation;
+  CreativeEditorWorldLayoutDiagnosticCache diagnosticCache;
 
   bool previewVisible = false;
   std::uint64_t previewLayoutRevision = 0U;
@@ -575,6 +577,11 @@ void installCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
                                       cr::CreativeWorldLayout layout);
 void markCreativeEditorWorldLayoutSaved(
     CreativeEditorWorldLayoutState& state) noexcept;
+
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+focusCreativeEditorWorldLayoutDiagnostic(
+    CreativeEditorWorldLayoutState& state,
+    cr::CreativeWorldLayoutTable table, std::size_t index);
 
 // Links a picked generated object back to the synchronized 2D source symbol.
 // The ordinary document selection remains available to 3D tools.

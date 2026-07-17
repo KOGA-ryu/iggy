@@ -1226,6 +1226,10 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSelectBuilding, context,
           app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutDiagnosticFocus =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutFocusDiagnostic, context,
+          app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult badWorldLayoutBuildingManipulation =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutManipulateBuilding,
@@ -1330,6 +1334,10 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badWorldLayoutBuildingSelection.message ==
                         "layout building selection: payload mismatch",
                 "building selection rejects a mismatched payload") &&
+         expect(!badWorldLayoutDiagnosticFocus.accepted &&
+                    badWorldLayoutDiagnosticFocus.message ==
+                        "layout diagnostic focus: payload mismatch",
+                "diagnostic focus rejects a mismatched payload") &&
          expect(!badWorldLayoutBuildingManipulation.accepted &&
                     badWorldLayoutBuildingManipulation.message ==
                         "layout building manipulation: payload mismatch",

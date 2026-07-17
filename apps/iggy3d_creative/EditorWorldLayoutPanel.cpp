@@ -1142,8 +1142,8 @@ void drawWorldLayoutLevels(CreativeEditorDesktopUiState& desktopUi,
     buildingIndex = 0U;
   }
 
-  ImGui::AlignTextToFramePadding();
   ImGui::TextUnformatted("Levels");
+  ImGui::Separator();
   bool anyLevel = false;
   for (std::size_t index = 0U; index < state.source.levels.size(); ++index) {
     const cr::CreativeWorldLayoutLevel& level = state.source.levels[index];
@@ -1151,15 +1151,10 @@ void drawWorldLayoutLevels(CreativeEditorDesktopUiState& desktopUi,
       continue;
     }
     anyLevel = true;
-    ImGui::SameLine();
     const bool active = index == state.activeLevelIndex;
-    if (active) {
-      ImGui::PushStyleColor(ImGuiCol_Button,
-                            ImVec4{0.16F, 0.47F, 0.25F, 1.0F});
-    }
     const std::string label = level.name + "##layout_level_" +
                               std::to_string(index);
-    if (ImGui::Button(label.c_str())) {
+    if (ImGui::Selectable(label.c_str(), active)) {
       queueLevelOperation(commands,
                           CreativeEditorWorldLayoutLevelOperation::Select,
                           buildingIndex, index);
@@ -1167,12 +1162,8 @@ void drawWorldLayoutLevels(CreativeEditorDesktopUiState& desktopUi,
     if (ImGui::IsItemHovered()) {
       ImGui::SetTooltip("Floor top %.3f", level.floorTopLayer);
     }
-    if (active) {
-      ImGui::PopStyleColor();
-    }
   }
   if (!anyLevel && buildingIndex != cr::kInvalidCreativeWorldLayoutIndex) {
-    ImGui::SameLine();
     ImGui::TextDisabled("No levels");
   }
 
@@ -1337,53 +1328,46 @@ void drawSelectedRoomSettings(CreativeEditorWorldLayoutState& state,
   double roofPitch = level->roofPitchDegrees;
   double roofOverhang = level->roofOverhangCells;
 
-  ImGui::SetNextItemWidth(88.0F);
+  ImGui::SetNextItemWidth(128.0F);
   bool changed = ImGui::InputInt("Width##room_shell", &width, 1, 4);
-  ImGui::SameLine();
-  ImGui::SetNextItemWidth(88.0F);
+  ImGui::SetNextItemWidth(128.0F);
   changed = ImGui::InputInt("Depth##room_shell", &depth, 1, 4) || changed;
-  ImGui::SameLine();
-  ImGui::SetNextItemWidth(88.0F);
+  ImGui::SetNextItemWidth(128.0F);
   changed = ImGui::InputDouble("Level floor##room_shell", &floorTopLayer, 0.5,
                                1.0, "%.3f") ||
             changed;
 
-  ImGui::SetNextItemWidth(88.0F);
+  ImGui::SetNextItemWidth(128.0F);
   changed = ImGui::InputInt("Level wall height##room_shell", &wallHeight, 1,
                             4) ||
             changed;
-  ImGui::SameLine();
-  ImGui::SetNextItemWidth(88.0F);
+  ImGui::SetNextItemWidth(128.0F);
   changed = ImGui::InputDouble("Room wall##room_shell", &wallThickness,
                                0.05, 0.25, "%.3f") ||
             changed;
-  ImGui::SameLine();
-  ImGui::SetNextItemWidth(88.0F);
+  ImGui::SetNextItemWidth(128.0F);
   changed = ImGui::InputInt("Level floor layers##room_shell", &floorLayers, 1,
                             2) ||
             changed;
 
   ImGui::SeparatorText("Level roof");
-  ImGui::SetNextItemWidth(110.0F);
+  ImGui::SetNextItemWidth(128.0F);
   changed = ImGui::Combo("Style##room_roof", &roofStyle,
                          "Flat\0Gable\0") ||
             changed;
-  ImGui::SameLine();
-  ImGui::SetNextItemWidth(88.0F);
+  ImGui::SetNextItemWidth(128.0F);
   changed = ImGui::InputInt("Layers##room_roof", &roofLayers, 1, 2) ||
             changed;
-  ImGui::SameLine();
-  ImGui::SetNextItemWidth(88.0F);
+  ImGui::SetNextItemWidth(128.0F);
   changed = ImGui::InputDouble("Overhang##room_roof", &roofOverhang, 0.25,
                                1.0, "%.2f") ||
             changed;
   if (roofStyle == static_cast<int>(cr::CreativeStructuralRoofStyle::Gable)) {
-    ImGui::SetNextItemWidth(110.0F);
+    ImGui::SetNextItemWidth(128.0F);
     changed = ImGui::Combo("Ridge##room_roof", &roofRidgeAxis,
                            "X axis\0Z axis\0") ||
               changed;
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(88.0F);
+    ImGui::SetNextItemWidth(128.0F);
     changed = ImGui::InputDouble("Pitch##room_roof", &roofPitch, 1.0, 5.0,
                                  "%.1f deg") ||
               changed;
@@ -1483,15 +1467,13 @@ void drawSelectedOpeningSettings(CreativeEditorWorldLayoutState& state,
       state.openingSettingsDraft.settings;
   const bool isDoor = opening.kind == cr::CreativeBuildingOpeningKind::Door;
   ImGui::TextUnformatted(isDoor ? "Door settings" : "Window settings");
-  ImGui::SetNextItemWidth(105.0F);
+  ImGui::SetNextItemWidth(128.0F);
   ImGui::InputDouble("Offset##opening", &settings.centerOffsetCells, 0.25, 1.0,
                      "%.2f");
-  ImGui::SameLine();
-  ImGui::SetNextItemWidth(105.0F);
+  ImGui::SetNextItemWidth(128.0F);
   ImGui::InputDouble("Width##opening", &settings.widthCells, 0.25, 1.0,
                      "%.2f");
-  ImGui::SameLine();
-  ImGui::SetNextItemWidth(105.0F);
+  ImGui::SetNextItemWidth(128.0F);
   ImGui::InputDouble("Height##opening", &settings.heightCells, 0.25, 1.0,
                      "%.2f");
 
@@ -1501,18 +1483,17 @@ void drawSelectedOpeningSettings(CreativeEditorWorldLayoutState& state,
         "Closed", "Start hinge / side A", "Start hinge / side B",
         "End hinge / side A", "End hinge / side B"};
     int pose = static_cast<int>(settings.pose);
-    ImGui::SetNextItemWidth(190.0F);
+    ImGui::SetNextItemWidth(188.0F);
     if (ImGui::Combo("Pose##opening", &pose, kPoseLabels.data(),
                      static_cast<int>(kPoseLabels.size()))) {
       settings.pose = static_cast<cr::CreativeBuildingOpeningPose>(pose);
     }
   } else {
     settings.pose = cr::CreativeBuildingOpeningPose::Closed;
-    ImGui::SetNextItemWidth(105.0F);
+    ImGui::SetNextItemWidth(128.0F);
     ImGui::InputDouble("Sill##opening", &settings.sillHeightCells, 0.25, 1.0,
                        "%.2f");
   }
-  ImGui::SameLine();
   ImGui::Checkbox("Insert##opening", &settings.includeInsert);
 
   const bool dirty = !sameOpeningSettings(current, settings);
@@ -1961,83 +1942,21 @@ void drawLayoutCanvas(CreativeEditorState& editor,
 
 void buildCreativeEditorWorldLayoutPanel(
     CreativeEditorDesktopUiState& desktopUi, CreativeEditorState& editor,
-    const cr::CreativeGridSettings& grid, bool playModeActive,
+    const cr::CreativeDocument& document, bool playModeActive,
     CreativeDesktopCommandFrame& commands) {
   CreativeEditorWorldLayoutState& state = editor.worldLayout;
   if (!desktopUi.showWorldLayout) {
     queueLayoutManipulationCancel(state, commands);
     return;
   }
-  if (!ImGui::Begin("World Layout", &desktopUi.showWorldLayout,
-                    ImGuiWindowFlags_NoCollapse)) {
-    queueLayoutManipulationCancel(state, commands);
-    ImGui::End();
-    return;
-  }
 
-  if (playModeActive || editor.assetEdit.active) {
+  const bool editingDisabled = playModeActive || editor.assetEdit.active;
+  const CreativeEditorWorldLayoutDiagnosticReport& diagnostics =
+      refreshCreativeEditorWorldLayoutDiagnostics(
+          state.diagnosticCache, document, state.source, state.revision);
+  if (editingDisabled) {
     queueLayoutManipulationCancel(state, commands);
   }
-  ImGui::BeginDisabled(playModeActive || editor.assetEdit.active);
-  ImGui::BeginDisabled(state.buildingTransform.active ||
-                       state.buildingTemplatePlacement.active);
-  drawWorldLayoutPalette(state, commands);
-  drawWorldLayoutLevels(desktopUi, state, commands);
-
-  const bool exactPreviewActive =
-      creativeEditorWorldLayoutPreviewActive(state);
-  if (ImGui::Button(exactPreviewActive ? "Refresh 3D Preview"
-                                       : "Preview 3D")) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutPreview);
-  }
-  ImGui::SameLine();
-  if (ImGui::Button(exactPreviewActive ? "Confirm Preview"
-                                       : "Confirm & Generate")) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutConfirm);
-  }
-  ImGui::SameLine();
-  const bool hasSelection =
-      state.selection.kind != CreativeEditorWorldLayoutSelectionKind::None;
-  ImGui::BeginDisabled(!hasSelection);
-  const bool buildingSelected =
-      state.selection.kind == CreativeEditorWorldLayoutSelectionKind::Building;
-  if (ImGui::Button(buildingSelected ? "Delete building" : "Delete")) {
-    if (buildingSelected) {
-      ImGui::OpenPopup("Delete building group");
-    } else {
-      commands.push(CreativeDesktopCommandId::WorldLayoutDeleteSelection);
-    }
-  }
-  ImGui::EndDisabled();
-  ImGui::EndDisabled();
-  ImGui::EndDisabled();
-
-  drawWorldLayoutLevelDeleteModal(desktopUi, state, commands);
-
-  if (ImGui::BeginPopupModal("Delete building group", nullptr,
-                             ImGuiWindowFlags_AlwaysAutoResize)) {
-    const char* buildingName =
-        buildingSelected && state.selection.index < state.source.buildings.size()
-            ? state.source.buildings[state.selection.index].name.c_str()
-            : "selected building";
-    ImGui::Text("Delete %s and all owned layout symbols?", buildingName);
-    if (ImGui::Button("Delete building")) {
-      commands.push(CreativeDesktopCommandId::WorldLayoutDeleteSelection);
-      ImGui::CloseCurrentPopup();
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Cancel")) {
-      ImGui::CloseCurrentPopup();
-    }
-    ImGui::EndPopup();
-  }
-
-  ImGui::BeginDisabled(playModeActive || editor.assetEdit.active);
-  drawCreativeEditorWorldLayoutStructureInspector(state, commands);
-  drawSelectedRoomSettings(state, commands);
-  drawSelectedOpeningSettings(state, commands);
-  ImGui::EndDisabled();
-
   if (state.buildingTransform.active && ImGui::IsKeyPressed(ImGuiKey_Escape)) {
     commands.push(CreativeDesktopCommandId::WorldLayoutTransformBuilding,
                   CreativeDesktopWorldLayoutBuildingTransformPayload{
@@ -2045,38 +1964,188 @@ void buildCreativeEditorWorldLayoutPanel(
                       state.buildingTransform.operation});
   }
 
-  drawWorldLayoutViewControls(state, commands);
-
-  ImGui::TextDisabled(
-      "buildings %llu  levels %llu  rooms %llu  floors %llu  partitions %llu  "
-      "openings %llu  terrain %llu  objects %llu  rev %llu%s",
-      static_cast<unsigned long long>(state.source.buildings.size()),
-      static_cast<unsigned long long>(state.source.levels.size()),
-      static_cast<unsigned long long>(state.source.rooms.size()),
-      static_cast<unsigned long long>(state.source.boxes.size()),
-      static_cast<unsigned long long>(state.source.walls.size()),
-      static_cast<unsigned long long>(state.source.openings.size()),
-      static_cast<unsigned long long>(state.source.terrainProfiles.size() +
-                                      state.source.terrainPaths.size()),
-      static_cast<unsigned long long>(state.source.objects.size()),
-      static_cast<unsigned long long>(state.revision),
-      creativeEditorWorldLayoutDirty(state) ? " *" : "");
-  ImGui::SameLine();
-  ImGui::TextColored(ImVec4{0.32F, 0.95F, 0.43F, 1.0F}, "%s",
-                     state.statusMessage.c_str());
-  ImGui::Separator();
-
-  ImGui::BeginDisabled(playModeActive || editor.assetEdit.active);
-  const bool canvasInteractionEnabled =
-      !playModeActive && !editor.assetEdit.active &&
-      !state.buildingTransform.active;
-  if (state.viewMode == CreativeEditorWorldLayoutViewMode::Elevation) {
-    drawCreativeEditorWorldLayoutElevationCanvas(
-        editor, grid, commands, canvasInteractionEnabled);
-  } else {
-    drawLayoutCanvas(editor, commands, canvasInteractionEnabled);
+  // The World Layout workspace reuses the shell's existing dock identities.
+  // The ### suffix keeps the persisted ImGui IDs stable while presenting
+  // task-specific titles instead of leaving unrelated panels beside a
+  // crowded center canvas.
+  if (ImGui::Begin("World Layout Tools###Project", nullptr,
+                   ImGuiWindowFlags_NoCollapse)) {
+    ImGui::BeginDisabled(editingDisabled || state.buildingTransform.active ||
+                         state.buildingTemplatePlacement.active);
+    ImGui::SeparatorText("Palette");
+    drawWorldLayoutPalette(state, commands);
+    ImGui::Spacing();
+    drawWorldLayoutLevels(desktopUi, state, commands);
+    ImGui::EndDisabled();
+    drawWorldLayoutLevelDeleteModal(desktopUi, state, commands);
   }
-  ImGui::EndDisabled();
+  ImGui::End();
+
+  if (ImGui::Begin("World Layout Properties###Inspector", nullptr,
+                   ImGuiWindowFlags_NoCollapse)) {
+    ImGui::BeginDisabled(editingDisabled);
+    drawCreativeEditorWorldLayoutStructureInspector(state, commands);
+    drawSelectedRoomSettings(state, commands);
+    drawSelectedOpeningSettings(state, commands);
+    ImGui::EndDisabled();
+  }
+  ImGui::End();
+
+  const bool exactPreviewActive =
+      creativeEditorWorldLayoutPreviewActive(state);
+  const bool hasSelection =
+      state.selection.kind != CreativeEditorWorldLayoutSelectionKind::None;
+  const bool buildingSelected =
+      state.selection.kind == CreativeEditorWorldLayoutSelectionKind::Building;
+  if (ImGui::Begin("World Layout Build###Diagnostics##bottom", nullptr,
+                   ImGuiWindowFlags_NoCollapse)) {
+    ImGui::BeginDisabled(editingDisabled || state.buildingTransform.active ||
+                         state.buildingTemplatePlacement.active);
+    ImGui::BeginDisabled(!diagnostics.ready);
+    if (ImGui::Button(exactPreviewActive ? "Refresh 3D Preview"
+                                         : "Preview 3D")) {
+      commands.push(CreativeDesktopCommandId::WorldLayoutPreview);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(exactPreviewActive ? "Confirm Preview"
+                                         : "Confirm & Generate")) {
+      commands.push(CreativeDesktopCommandId::WorldLayoutConfirm);
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!hasSelection);
+    if (ImGui::Button(buildingSelected ? "Delete building" : "Delete")) {
+      if (buildingSelected) {
+        ImGui::OpenPopup("Delete building group");
+      } else {
+        commands.push(CreativeDesktopCommandId::WorldLayoutDeleteSelection);
+      }
+    }
+    ImGui::EndDisabled();
+    ImGui::EndDisabled();
+
+    if (ImGui::BeginPopupModal("Delete building group", nullptr,
+                               ImGuiWindowFlags_AlwaysAutoResize)) {
+      const char* buildingName =
+          buildingSelected &&
+                  state.selection.index < state.source.buildings.size()
+              ? state.source.buildings[state.selection.index].name.c_str()
+              : "selected building";
+      ImGui::Text("Delete %s and all owned layout symbols?", buildingName);
+      if (ImGui::Button("Delete building")) {
+        commands.push(CreativeDesktopCommandId::WorldLayoutDeleteSelection);
+        ImGui::CloseCurrentPopup();
+      }
+      ImGui::SameLine();
+      if (ImGui::Button("Cancel")) {
+        ImGui::CloseCurrentPopup();
+      }
+      ImGui::EndPopup();
+    }
+
+    ImGui::Separator();
+    ImGui::TextColored(
+        diagnostics.ready ? ImVec4{0.20F, 1.0F, 0.35F, 1.0F}
+                          : ImVec4{1.0F, 0.34F, 0.30F, 1.0F},
+        "%s", diagnostics.ready ? "READY" : "BLOCKED");
+    ImGui::SameLine();
+    if (diagnostics.ready) {
+      ImGui::TextDisabled("%s", diagnostics.hasChanges
+                                    ? "Changes are ready to generate"
+                                    : "Generated output already matches");
+    } else if (diagnostics.issueCount > 0U) {
+      const CreativeEditorWorldLayoutDiagnostic& issue = diagnostics.issues[0];
+      const bool navigable =
+          issue.table != cr::CreativeWorldLayoutTable::None &&
+          issue.index != cr::kInvalidCreativeWorldLayoutIndex;
+      const std::string label = issue.message + "##world_layout_issue_0";
+      if (navigable) {
+        if (ImGui::Selectable(label.c_str(), false,
+                              ImGuiSelectableFlags_None,
+                              ImVec2(0.0F, ImGui::GetFrameHeight()))) {
+          commands.push(
+              CreativeDesktopCommandId::WorldLayoutFocusDiagnostic,
+              CreativeDesktopWorldLayoutDiagnosticPayload{issue.table,
+                                                           issue.index});
+        }
+      } else {
+        ImGui::TextUnformatted(issue.message.c_str());
+      }
+      if (ImGui::IsItemHovered()) {
+        if (!issue.kernelReasonCode.empty() &&
+            issue.kernelReasonCode !=
+                "creative_world_layout_kernel_not_requested") {
+          ImGui::SetTooltip("%s\n%s", issue.reasonCode.c_str(),
+                            issue.kernelReasonCode.c_str());
+        } else {
+          ImGui::SetTooltip("%s", issue.reasonCode.c_str());
+        }
+      }
+    }
+
+    ImGui::Separator();
+    if (ImGui::BeginTable("##world_layout_counts", 4,
+                          ImGuiTableFlags_SizingStretchSame |
+                              ImGuiTableFlags_BordersInnerV)) {
+      ImGui::TableNextColumn();
+      ImGui::Text("Buildings  %llu", static_cast<unsigned long long>(
+                                        state.source.buildings.size()));
+      ImGui::TableNextColumn();
+      ImGui::Text("Levels  %llu", static_cast<unsigned long long>(
+                                     state.source.levels.size()));
+      ImGui::TableNextColumn();
+      ImGui::Text("Rooms  %llu", static_cast<unsigned long long>(
+                                    state.source.rooms.size()));
+      ImGui::TableNextColumn();
+      ImGui::Text("Floors  %llu", static_cast<unsigned long long>(
+                                     state.source.boxes.size()));
+      ImGui::TableNextColumn();
+      ImGui::Text("Partitions  %llu", static_cast<unsigned long long>(
+                                         state.source.walls.size()));
+      ImGui::TableNextColumn();
+      ImGui::Text("Openings  %llu", static_cast<unsigned long long>(
+                                       state.source.openings.size()));
+      ImGui::TableNextColumn();
+      ImGui::Text(
+          "Terrain  %llu",
+          static_cast<unsigned long long>(
+              state.source.terrainProfiles.size() +
+              state.source.terrainPaths.size()));
+      ImGui::TableNextColumn();
+      ImGui::Text("Objects  %llu", static_cast<unsigned long long>(
+                                      state.source.objects.size()));
+      ImGui::EndTable();
+    }
+
+    ImGui::TextDisabled("Revision %llu%s",
+                        static_cast<unsigned long long>(state.revision),
+                        creativeEditorWorldLayoutDirty(state) ? " *" : "");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4{0.32F, 0.95F, 0.43F, 1.0F}, "%s",
+                       state.statusMessage.c_str());
+  }
+  ImGui::End();
+
+  if (ImGui::Begin("World Layout", &desktopUi.showWorldLayout,
+                   ImGuiWindowFlags_NoCollapse |
+                       ImGuiWindowFlags_NoScrollbar |
+                       ImGuiWindowFlags_NoScrollWithMouse)) {
+    drawWorldLayoutViewControls(state, commands);
+    ImGui::Separator();
+    ImGui::BeginDisabled(editingDisabled);
+    const bool canvasInteractionEnabled =
+        !editingDisabled && !state.buildingTransform.active;
+    if (state.viewMode == CreativeEditorWorldLayoutViewMode::Elevation) {
+      drawCreativeEditorWorldLayoutElevationCanvas(
+          editor, document.gridSettings(), commands,
+          canvasInteractionEnabled);
+    } else {
+      drawLayoutCanvas(editor, commands, canvasInteractionEnabled);
+    }
+    ImGui::EndDisabled();
+  } else {
+    queueLayoutManipulationCancel(state, commands);
+  }
   ImGui::End();
 }
 

@@ -241,8 +241,9 @@ void buildCreativeEditorDesktopPanels(
     ImGui::SameLine();
     ImGui::TextDisabled("|");
     ImGui::SameLine();
-    if (ImGui::Button("World Layout")) {
-      desktopUi.showWorldLayout = true;
+    if (ImGui::Button(desktopUi.showWorldLayout ? "Close World Layout"
+                                                : "World Layout")) {
+      desktopUi.showWorldLayout = !desktopUi.showWorldLayout;
     }
     if (creativeEditorWorldLayoutPreviewActive(editor.worldLayout)) {
       ImGui::SameLine();
@@ -253,47 +254,52 @@ void buildCreativeEditorDesktopPanels(
   }
   ImGui::End();
 
-  // Project / Outliner (left).
-  if (desktopUi.showOutliner) {
-    if (ImGui::Begin("Project", &desktopUi.showOutliner)) {
-      buildCreativeEditorDesktopOutlinerPanel(desktopUi, appState,
-                                              playModeActive, commands);
-    }
-    ImGui::End();
-  }
-
-  // Inspector (right).
-  if (desktopUi.showInspector) {
-    if (ImGui::Begin("Inspector", &desktopUi.showInspector)) {
-      buildCreativeEditorDesktopInspectorPanel(desktopUi, editor, appState,
-                                               playMode, commands);
-    }
-    ImGui::End();
-  }
-
-  // Diagnostics (bottom). Only the two tabs that project real products remain;
-  // Diffs / Stale Outputs / Proof Receipts do not exist yet.
-  if (desktopUi.showDiagnostics) {
-    if (ImGui::Begin("Diagnostics##bottom", &desktopUi.showDiagnostics)) {
-      if (ImGui::BeginTabBar("##desktop_bottom_tabs")) {
-        if (ImGui::BeginTabItem("Diagnostics")) {
-          appendDiagnosticsTab(document, logicDiagnostics, playModeActive,
-                               commands);
-          ImGui::EndTabItem();
-        }
-        if (ImGui::BeginTabItem("Pass Status")) {
-          appendPassStatusTab(logicDiagnostics);
-          ImGui::EndTabItem();
-        }
-        ImGui::EndTabBar();
+  // World Layout is a focused workspace: its tools, properties, and build
+  // status reuse the established left/right/bottom dock identities. Closing
+  // it restores the normal Project/Inspector/Diagnostics contents without
+  // rebuilding or disturbing the user's dock arrangement.
+  if (!desktopUi.showWorldLayout) {
+    // Project / Outliner (left).
+    if (desktopUi.showOutliner) {
+      if (ImGui::Begin("Project", &desktopUi.showOutliner)) {
+        buildCreativeEditorDesktopOutlinerPanel(desktopUi, appState,
+                                                playModeActive, commands);
       }
+      ImGui::End();
     }
-    ImGui::End();
+
+    // Inspector (right).
+    if (desktopUi.showInspector) {
+      if (ImGui::Begin("Inspector", &desktopUi.showInspector)) {
+        buildCreativeEditorDesktopInspectorPanel(desktopUi, editor, appState,
+                                                 playMode, commands);
+      }
+      ImGui::End();
+    }
+
+    // Diagnostics (bottom). Only the two tabs that project real products
+    // remain; Diffs / Stale Outputs / Proof Receipts do not exist yet.
+    if (desktopUi.showDiagnostics) {
+      if (ImGui::Begin("Diagnostics##bottom", &desktopUi.showDiagnostics)) {
+        if (ImGui::BeginTabBar("##desktop_bottom_tabs")) {
+          if (ImGui::BeginTabItem("Diagnostics")) {
+            appendDiagnosticsTab(document, logicDiagnostics, playModeActive,
+                                 commands);
+            ImGui::EndTabItem();
+          }
+          if (ImGui::BeginTabItem("Pass Status")) {
+            appendPassStatusTab(logicDiagnostics);
+            ImGui::EndTabItem();
+          }
+          ImGui::EndTabBar();
+        }
+      }
+      ImGui::End();
+    }
   }
 
-  buildCreativeEditorWorldLayoutPanel(desktopUi, editor,
-                                      document.gridSettings(), playModeActive,
-                                      commands);
+  buildCreativeEditorWorldLayoutPanel(desktopUi, editor, document,
+                                      playModeActive, commands);
 }
 
 void buildCreativeEditorDesktopStatusBar(
