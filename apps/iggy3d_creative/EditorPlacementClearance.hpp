@@ -30,4 +30,9 @@ evaluateCreativeBrushPlacementClearance(
     const CreativeBrushPlacementPlan& plan,
     const CreativePlacementClearanceCache* cache = nullptr) noexcept;
 
+void applyCreativeBrushPlacementClearance(
+    CreativeBrushPlacementAdmission& admission,
+    const iggy3d::creative::CreativeDocument& document,
+    const CreativePlacementClearanceCache* cache = nullptr) noexcept;
+
 }  // namespace iggy3d_creative_app

@@ -40,6 +40,12 @@ struct ClearanceBox {
          descriptorBlocksPlacement(cr::describeObject(object.kind));
 }
 
+[[nodiscard]] bool placementPlanBlocksPlacement(
+    const CreativeBrushPlacementPlan& plan) noexcept {
+  return plan.brush == cr::CreativeObjectKind::PrefabInstance ||
+         descriptorBlocksPlacement(cr::describeObject(plan.brush));
+}
+
 [[nodiscard]] ClearanceBox clearanceBox(
     cr::CreativeBounds bounds,
     cr::CreativeTransform transform) noexcept {
@@ -483,9 +489,7 @@ cr::CreativePlacementClearanceResult evaluateCreativeBrushPlacementClearance(
     return result;
   }
 
-  const cr::CreativeObjectDescriptor& candidateDescriptor =
-      cr::describeObject(plan.brush);
-  if (descriptorBlocksPlacement(candidateDescriptor)) {
+  if (placementPlanBlocksPlacement(plan)) {
     if (authoredObjectBlocks(document, plan, candidate, cache, result) ||
         voxelBlocks(document, candidate, result) ||
         terrainBlocks(document, candidate, result)) {
@@ -496,6 +500,22 @@ cr::CreativePlacementClearanceResult evaluateCreativeBrushPlacementClearance(
   result.status = cr::CreativePlacementClearanceStatus::Ready;
   result.allowed = true;
   return result;
+}
+
+void applyCreativeBrushPlacementClearance(
+    CreativeBrushPlacementAdmission& admission,
+    const cr::CreativeDocument& document,
+    const CreativePlacementClearanceCache* cache) noexcept {
+  if (!admission.allowed || !admission.plan.valid) {
+    return;
+  }
+  admission.plan.clearance = evaluateCreativeBrushPlacementClearance(
+      document, admission.plan, cache);
+  if (!admission.plan.clearance.allowed) {
+    admission.allowed = false;
+    admission.status =
+        CreativeBrushPlacementAdmissionStatus::ClearanceBlocked;
+  }
 }
 
 }  // namespace iggy3d_creative_app

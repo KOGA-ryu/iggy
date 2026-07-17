@@ -401,7 +401,9 @@ bool blockerFeedbackNamesAndOutlinesTheObstruction() {
   std::size_t taggedBlockerEdges = 0U;
   for (const iggy3d::RenderCreativeWireframeDebugLine& line :
        overlay.combinedWireLines) {
-    if (line.segmentKind == 9U && line.objectId == blocker.objectId) {
+    if (line.segmentKind ==
+            app::kCreativeEditorPlacementBlockerSegmentKind &&
+        line.objectId == blocker.objectId) {
       ++taggedBlockerEdges;
     }
   }
@@ -414,9 +416,9 @@ bool blockerFeedbackNamesAndOutlinesTheObstruction() {
   app::processCreativeMaterialStrokeFrame(appState, editor, actions, 0U);
   const app::CreativeEditorPlacementFeedback& feedback =
       editor.interaction.placementFeedback;
-  const std::string feedbackLabel =
-      app::creativeEditorPlacementFeedbackLabel(
-          feedback, appState.facade.document());
+  const app::CreativeEditorPlacementFeedbackViewModel feedbackView =
+      app::creativeEditorPlacementFeedbackViewModel(
+          feedback, editor.frameIndex, &appState.facade.document());
 
   editor.interaction.target = {};
   iggy3d::FrameInput retainedFrame;
@@ -435,7 +437,9 @@ bool blockerFeedbackNamesAndOutlinesTheObstruction() {
 
   return expect(admitted.allowed && blocker.accepted && installed.accepted,
                 "blocker-feedback fixture created") &&
-         expect(overlay.placementPreview.hasTargetPlan &&
+         expect(overlay.placementVisualization.targetAvailable &&
+                    overlay.placementVisualization.attemptedCornerCount ==
+                        8U &&
                     overlay.placementInvalidTargetEdgeCount == 12U &&
                     overlay.placementBlockerEdgeCount == 12U &&
                     taggedBlockerEdges == 12U,
@@ -446,7 +450,8 @@ bool blockerFeedbackNamesAndOutlinesTheObstruction() {
                         cr::CreativePlacementClearanceStatus::
                             AuthoredObjectBlocked &&
                     feedback.clearance.blockingObjectId == blocker.objectId &&
-                    feedbackLabel == "Blocked: Crate",
+                    feedbackView.visible &&
+                    feedbackView.label.view() == "Blocked: Crate",
                 "click feedback preserves and labels the clearance receipt") &&
          expect(retainedOverlay.placementInvalidTargetEdgeCount == 0U &&
                     retainedOverlay.placementBlockerEdgeCount == 12U,
@@ -489,8 +494,11 @@ bool voxelTerrainAndWorldBlockersProjectSpecificFeedback() {
       ++rejectionGlyphCount;
     }
   }
-  const std::string voxelLabel = app::creativeEditorPlacementFeedbackLabel(
-      editor.interaction.placementFeedback, appState.facade.document());
+  const std::string voxelLabel{
+      app::creativeEditorPlacementFeedbackViewModel(
+          editor.interaction.placementFeedback, editor.frameIndex,
+          &appState.facade.document())
+          .label.view()};
 
   clearance = {};
   clearance.evaluated = true;
@@ -501,8 +509,11 @@ bool voxelTerrainAndWorldBlockersProjectSpecificFeedback() {
       cr::CreativeObjectKind::Crate, clearance);
   const app::CreativeEditorOverlayFrame terrainOverlay =
       buildOverlay(appState, editor);
-  const std::string terrainLabel = app::creativeEditorPlacementFeedbackLabel(
-      editor.interaction.placementFeedback, appState.facade.document());
+  const std::string terrainLabel{
+      app::creativeEditorPlacementFeedbackViewModel(
+          editor.interaction.placementFeedback, editor.frameIndex,
+          &appState.facade.document())
+          .label.view()};
 
   clearance = {};
   clearance.evaluated = true;
@@ -513,8 +524,11 @@ bool voxelTerrainAndWorldBlockersProjectSpecificFeedback() {
       cr::CreativeObjectKind::Crate, clearance);
   const app::CreativeEditorOverlayFrame worldOverlay =
       buildOverlay(appState, editor);
-  const std::string worldLabel = app::creativeEditorPlacementFeedbackLabel(
-      editor.interaction.placementFeedback, appState.facade.document());
+  const std::string worldLabel{
+      app::creativeEditorPlacementFeedbackViewModel(
+          editor.interaction.placementFeedback, editor.frameIndex,
+          &appState.facade.document())
+          .label.view()};
 
   return expect(voxelReceipt.accepted && terrainReceipt.accepted &&
                     installed.accepted,
@@ -531,6 +545,34 @@ bool voxelTerrainAndWorldBlockersProjectSpecificFeedback() {
                 "world blocker outlines the configured build bounds");
 }
 
+bool genericRejectionUsesTheSharedFeedbackModel() {
+  app::CreativeEditorInteractionState interaction;
+  app::setCreativeEditorPlacementFeedback(
+      interaction, app::CreativeEditorPlacementFeedbackStatus::Rejected,
+      50U, cr::CreativeObjectKind::Crate);
+  const app::CreativeEditorPlacementFeedbackViewModel rejected =
+      app::creativeEditorPlacementFeedbackViewModel(
+          interaction.placementFeedback, 50U);
+  app::setCreativeEditorPlacementFeedback(
+      interaction, app::CreativeEditorPlacementFeedbackStatus::Placed,
+      51U, cr::CreativeObjectKind::Crate, 12U);
+  const app::CreativeEditorPlacementFeedbackViewModel placed =
+      app::creativeEditorPlacementFeedbackViewModel(
+          interaction.placementFeedback, 51U);
+
+  return expect(rejected.visible &&
+                    rejected.label.view() == "Action rejected" &&
+                    rejected.color.r == 1.0F &&
+                    rejected.color.g == 0.28F &&
+                    rejected.color.b == 0.16F,
+                "generic action rejection uses the shared red model") &&
+         expect(placed.visible && placed.label.empty() &&
+                    placed.color.r == 0.25F &&
+                    placed.color.g == 1.0F &&
+                    placed.color.b == 0.35F,
+                "placement success uses the shared green model");
+}
+
 }  // namespace
 
 int main() {
@@ -542,6 +584,7 @@ int main() {
                   cacheIsRevisionKeyedAndMutationRevalidates() &&
                   resolvedAdmissionCarriesClearanceVerdict() &&
                   blockerFeedbackNamesAndOutlinesTheObstruction() &&
-                  voxelTerrainAndWorldBlockersProjectSpecificFeedback();
+                  voxelTerrainAndWorldBlockersProjectSpecificFeedback() &&
+                  genericRejectionUsesTheSharedFeedbackModel();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

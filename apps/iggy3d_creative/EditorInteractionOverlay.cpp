@@ -110,6 +110,7 @@ void appendHeldItemStatusText(
 void appendPlacementRejectionStatusText(
     std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
     std::string_view text,
+    CreativeEditorPlacementFeedbackColor color,
     std::int32_t x,
     std::int32_t y,
     std::uint32_t width,
@@ -117,10 +118,10 @@ void appendPlacementRejectionStatusText(
   iggy3d::DebugHudLayoutResult layout =
       iggy3d::layoutDebugHudTextAt(text, x, y, width, height);
   for (iggy3d::DebugHudGlyphQuad& quad : layout.quads) {
-    quad.r = 1.0F;
-    quad.g = 0.28F;
-    quad.b = 0.16F;
-    quad.a = 1.0F;
+    quad.r = color.r;
+    quad.g = color.g;
+    quad.b = color.b;
+    quad.a = color.a;
   }
   glyphs.insert(glyphs.end(), layout.quads.begin(), layout.quads.end());
 }
@@ -632,22 +633,20 @@ void appendCreativeEditorCrosshairOverlay(
       region.y + static_cast<std::int32_t>(region.height / 2U);
   const CreativeEditorPlacementFeedback& feedback =
       editor.interaction.placementFeedback;
-  const bool feedbackVisible =
-      creativeEditorPlacementFeedbackVisible(feedback, editor.frameIndex);
-  const bool placed =
-      feedbackVisible &&
-      feedback.status == CreativeEditorPlacementFeedbackStatus::Placed;
-  const bool rejected =
-      feedbackVisible &&
-      feedback.status == CreativeEditorPlacementFeedbackStatus::Rejected;
-  const float crosshairR = rejected ? 1.0F : placed ? 0.25F : 0.95F;
-  const float crosshairG = rejected ? 0.18F : placed ? 1.0F : 0.95F;
-  const float crosshairB = rejected ? 0.14F : placed ? 0.35F : 0.95F;
+  const CreativeEditorPlacementFeedbackViewModel feedbackView =
+      creativeEditorPlacementFeedbackViewModel(
+          feedback, editor.frameIndex);
+  const float crosshairR =
+      feedbackView.visible ? feedbackView.color.r : 0.95F;
+  const float crosshairG =
+      feedbackView.visible ? feedbackView.color.g : 0.95F;
+  const float crosshairB =
+      feedbackView.visible ? feedbackView.color.b : 0.95F;
   uiRects.push_back({centerX - 8, centerY - 1, 17, 3, crosshairR, crosshairG,
                      crosshairB, 0.92F});
   uiRects.push_back({centerX - 1, centerY - 8, 3, 17, crosshairR, crosshairG,
                      crosshairB, 0.92F});
-  if (feedbackVisible) {
+  if (feedbackView.visible) {
     uiRects.push_back({centerX - 13, centerY - 13, 11, 3, crosshairR,
                        crosshairG, crosshairB, 0.94F});
     uiRects.push_back({centerX + 3, centerY - 13, 11, 3, crosshairR, crosshairG,
@@ -721,18 +720,20 @@ void appendCreativeEditorInteractionOverlay(
                              drawableWidth, drawableHeight);
     const CreativeEditorPlacementFeedback& feedback =
         editor.interaction.placementFeedback;
-    if (document != nullptr &&
-        creativeEditorPlacementFeedbackVisible(feedback,
-                                                editor.frameIndex) &&
-        feedback.status == CreativeEditorPlacementFeedbackStatus::Rejected) {
-      const std::string rejection =
-          creativeEditorPlacementFeedbackLabel(feedback, *document);
+    const CreativeEditorPlacementFeedbackViewModel feedbackView =
+        creativeEditorPlacementFeedbackViewModel(
+            feedback, editor.frameIndex, document);
+    if (feedbackView.visible &&
+        feedbackView.status ==
+            CreativeEditorPlacementFeedbackStatus::Rejected &&
+        !feedbackView.label.empty()) {
+      const std::string_view feedbackLabel = feedbackView.label.view();
       const std::int32_t rejectionX = std::max(
           4, static_cast<std::int32_t>(drawableWidth / 2U) -
-                 static_cast<std::int32_t>(rejection.size() * 4U));
+                 static_cast<std::int32_t>(feedbackLabel.size() * 4U));
       appendPlacementRejectionStatusText(
-          glyphs, rejection, rejectionX, std::max(4, hotbarY - 40),
-          drawableWidth, drawableHeight);
+          glyphs, feedbackLabel, feedbackView.color, rejectionX,
+          std::max(4, hotbarY - 40), drawableWidth, drawableHeight);
     }
   }
 

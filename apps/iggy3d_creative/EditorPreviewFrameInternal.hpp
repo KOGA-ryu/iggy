@@ -30,7 +30,8 @@ struct CreativeEditorWorldOverlayFacts {
 buildCreativeEditorWorldWireframes(
     const CreativeEditorOverlayFrameRequest& request,
     CreativeEditorOverlayFrame& output,
-    const CreativeEditorPlacementPreviewFacts* placementPreview = nullptr);
+    const CreativeEditorPlacementVisualizationReceipt*
+        placementVisualization = nullptr);
 
 void appendCreativeEditorHudOverlays(
     const CreativeEditorOverlayFrameRequest& request,

@@ -20,6 +20,7 @@ struct CreativeAppState;
 namespace iggy3d_creative_app {
 
 struct CreativeEditorState;
+struct CreativePlacementClearanceCache;
 
 struct CreativeEditorStructuralSpanState {
   iggy3d::creative::CreativeDocumentId documentId =
@@ -74,7 +75,8 @@ resolveCreativeEditorStructuralSpanPlacement(
 [[nodiscard]] bool processCreativeEditorStructuralSpanInput(
     iggy3d::creative::CreativeAppState& appState,
     CreativeEditorState& editor,
-    const iggy3d::creative::CreativeWorldActionFrame& actions);
+    const iggy3d::creative::CreativeWorldActionFrame& actions,
+    const CreativePlacementClearanceCache* clearanceCache = nullptr);
 
 void cancelCreativeEditorStructuralSpan(
     CreativeEditorState& editor) noexcept;

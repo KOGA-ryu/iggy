@@ -11,6 +11,7 @@
 
 #include "EditorGroup.hpp"
 #include "EditorInteraction.hpp"
+#include "EditorPlacementClearance.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
@@ -110,7 +111,8 @@ namespace {
     const cr::CreativeHotbarEntry& held,
     const cr::CreativeAssetScatterCandidate& kernelCandidate,
     double spacingMeters,
-    double maximumSlopeRadians) noexcept {
+    double maximumSlopeRadians,
+    const CreativePlacementClearanceCache* clearanceCache) noexcept {
   CreativeEditorAssetScatterCandidate candidate;
   candidate.surfacePosition = kernelCandidate.position;
   bool surfaceAllowed = true;
@@ -161,6 +163,16 @@ namespace {
   if (!surfaceAllowed) {
     return candidate;
   }
+  applyCreativeBrushPlacementClearance(admission, document, clearanceCache);
+  candidate.placement = admission.plan;
+  if (!admission.allowed) {
+    candidate.status =
+        admission.status ==
+                CreativeBrushPlacementAdmissionStatus::ClearanceBlocked
+            ? CreativeEditorAssetScatterCandidateStatus::Obstructed
+            : CreativeEditorAssetScatterCandidateStatus::InvalidPlacement;
+    return candidate;
+  }
   const std::string_view assetId = cr::creativeHotbarAssetId(held);
   if (creativeBrushPlacementTargetOccupied(document, candidate.placement,
                                             assetId) ||
@@ -175,10 +187,10 @@ namespace {
 }
 
 void rejectScatter(CreativeEditorState& editor,
-                   cr::CreativeObjectKind objectKind) {
-  setCreativeEditorPlacementFeedback(
-      editor.interaction, CreativeEditorPlacementFeedbackStatus::Rejected,
-      editor.frameIndex, objectKind);
+                   cr::CreativeObjectKind objectKind,
+                   const cr::CreativePlacementClearanceResult& clearance = {}) {
+  setCreativeEditorPlacementRejectionFeedback(
+      editor.interaction, editor.frameIndex, objectKind, clearance);
 }
 
 [[nodiscard]] bool ensureScatterTransaction(
@@ -290,6 +302,15 @@ void applyScatterPlacement(cr::CreativeAppState& appState,
     visitedKeys.push_back(candidate.visitedKey);
   }
   if (requests.empty()) {
+    for (const CreativeEditorAssetScatterCandidate& candidate :
+         stroke.preview.items()) {
+      if (candidate.status ==
+          CreativeEditorAssetScatterCandidateStatus::Obstructed) {
+        rejectScatter(editor, held.objectKind,
+                      candidate.placement.clearance);
+        return;
+      }
+    }
     rejectScatter(editor, held.objectKind);
     return;
   }
@@ -335,7 +356,8 @@ bool creativeEditorUsesAssetScatter(
 CreativeEditorAssetScatterPlan buildCreativeEditorAssetScatterPlan(
     const cr::CreativeDocument& document,
     const CreativeEditorState& editor,
-    const cr::CreativeHotbarEntry& held) noexcept {
+    const cr::CreativeHotbarEntry& held,
+    const CreativePlacementClearanceCache* clearanceCache) noexcept {
   CreativeEditorAssetScatterPlan plan;
   if (!creativeEditorUsesAssetScatter(held, editor.toolSettings) ||
       !editor.interaction.target.grid.valid ||
@@ -373,7 +395,8 @@ CreativeEditorAssetScatterPlan buildCreativeEditorAssetScatterPlan(
   for (const cr::CreativeAssetScatterCandidate& kernelCandidate :
        kernel.items()) {
     CreativeEditorAssetScatterCandidate candidate = buildEditorCandidate(
-        document, editor, held, kernelCandidate, spacingMeters, maximumSlope);
+        document, editor, held, kernelCandidate, spacingMeters, maximumSlope,
+        clearanceCache);
     if (candidate.placeable) {
       ++plan.placeableCount;
     }
@@ -387,7 +410,8 @@ void processCreativeAssetScatterFrame(
     cr::CreativeAppState& appState,
     CreativeEditorState& editor,
     const cr::CreativeWorldActionFrame& actions,
-    std::uint64_t monotonicTimeNanoseconds) {
+    std::uint64_t monotonicTimeNanoseconds,
+    const CreativePlacementClearanceCache* clearanceCache) {
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   if (!creativeEditorUsesAssetScatter(held, editor.toolSettings)) {
@@ -397,7 +421,7 @@ void processCreativeAssetScatterFrame(
   }
   CreativeAssetScatterStrokeState& stroke = editor.interaction.assetScatter;
   stroke.preview = buildCreativeEditorAssetScatterPlan(
-      appState.facade.document(), editor, held);
+      appState.facade.document(), editor, held, clearanceCache);
   const cr::CreativeWorldGestureRepeatRequest repeatRequest =
       cr::makeCreativeWorldStrokeRepeatRequest(actions,
                                                monotonicTimeNanoseconds);
@@ -409,7 +433,7 @@ void processCreativeAssetScatterFrame(
         appState, editor, "creative_asset_scatter_released");
     editor.interaction.assetScatter.preview =
         buildCreativeEditorAssetScatterPlan(appState.facade.document(),
-                                            editor, held);
+                                            editor, held, clearanceCache);
     return;
   }
   if (!repeat.mutationDue) {
@@ -421,7 +445,7 @@ void processCreativeAssetScatterFrame(
     applyScatterPlacement(appState, editor, held);
   }
   stroke.preview = buildCreativeEditorAssetScatterPlan(
-      appState.facade.document(), editor, held);
+      appState.facade.document(), editor, held, clearanceCache);
 }
 
 void finalizeCreativeAssetScatterStroke(cr::CreativeAppState& appState,

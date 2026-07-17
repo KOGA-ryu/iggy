@@ -21,6 +21,8 @@
 
 namespace iggy3d_creative_app {
 
+struct CreativePlacementClearanceCache;
+
 inline constexpr float kCreativeBrushPointPreviewSizeMeters = 0.35F;
 inline constexpr float kCreativeBrushLinePreviewThicknessMeters = 0.16F;
 inline constexpr float kCreativeBrushPathPreviewThicknessMeters = 0.16F;
@@ -234,7 +236,8 @@ buildBrushCreateRequest(iggy3d::creative::CreativeObjectKind brush,
     std::uint64_t ordinal,
     iggy3d::creative::CreativeObjectId parentObjectId =
         iggy3d::creative::kInvalidObjectId,
-    std::string_view assetId = {});
+    std::string_view assetId = {},
+    const CreativePlacementClearanceCache* clearanceCache = nullptr);
 
 [[nodiscard]] iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
     iggy3d::creative::Facade& facade,

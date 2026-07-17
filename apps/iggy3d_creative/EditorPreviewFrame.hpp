@@ -11,6 +11,7 @@
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/FrameInput.hpp"
+#include "EditorPlacementFeedback.hpp"
 #include "EditorPlacementClearance.hpp"
 
 namespace iggy3d_creative_app {
@@ -37,11 +38,6 @@ struct CreativeEditorOverlayFrameRequest {
       iggy3d::creative::CreativeControlDevice::KeyboardMouse;
   const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr;
   const CreativePlacementClearanceCache* placementClearanceCache = nullptr;
-};
-
-struct CreativeEditorPlacementPreviewFacts {
-  CreativeBrushPlacementPlan targetPlan{};
-  bool hasTargetPlan = false;
 };
 
 struct CreativeEditorOverlayFrame {
@@ -84,14 +80,15 @@ struct CreativeEditorOverlayFrame {
   std::size_t logicLinkEndpointEdgeCount = 0;
   std::size_t logicLinkLabelGlyphCount = 0;
   std::size_t invalidLogicLinkCount = 0;
-  CreativeEditorPlacementPreviewFacts placementPreview{};
+  CreativeEditorPlacementVisualizationReceipt placementVisualization{};
 };
 
 void buildAndAttachCreativeEditorOverlayFrame(
     const CreativeEditorOverlayFrameRequest& request,
     CreativeEditorOverlayFrame& output);
 
-CreativeEditorPlacementPreviewFacts attachCreativeEditorPlacementPreviews(
+CreativeEditorPlacementVisualizationReceipt
+attachCreativeEditorPlacementPreviews(
     const CreativeEditorState& editor,
     bool captureMode,
     iggy3d::FrameInput& frame,

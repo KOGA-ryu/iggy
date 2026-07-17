@@ -13,11 +13,11 @@
 #include "EditorEdits.hpp"
 #include "EditorPicking.hpp"
 #include "EditorPathEditing.hpp"
+#include "EditorPlacementFeedback.hpp"
 #include "EditorSurfaceExtrude.hpp"
 #include "EditorStructuralPlacement.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
-#include "app/iggy3d/creative/spatial/PlacementClearance.hpp"
 #include "app/iggy3d/creative/tools/ShapeBrush.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
 #include "render/FrameInput.hpp"
@@ -39,6 +39,7 @@ namespace iggy3d_creative_app {
 
 struct CreativeEditorState;
 struct CreativeEditorPickFrame;
+struct CreativePlacementClearanceCache;
 
 struct CreativeEditorWorldTarget {
   bool valid = false;
@@ -54,28 +55,6 @@ struct CreativeEditorWorldTarget {
   float distanceMeters = 0.0F;
   WorldRay ray{};
   iggy3d::creative::CreativeGridTarget grid{};
-};
-
-enum class CreativeEditorPlacementFeedbackStatus : std::uint8_t {
-  None,
-  Placed,
-  Rejected,
-};
-
-inline constexpr std::uint64_t kCreativeEditorPlacementFeedbackFrames = 36U;
-
-struct CreativeEditorPlacementFeedback {
-  CreativeEditorPlacementFeedbackStatus status =
-      CreativeEditorPlacementFeedbackStatus::None;
-  iggy3d::creative::CreativeObjectId objectId =
-      iggy3d::creative::kInvalidObjectId;
-  iggy3d::creative::CreativeObjectKind objectKind =
-      iggy3d::creative::CreativeObjectKind::Unknown;
-  std::uint64_t frameIndex = 0;
-  bool voxelPlaced = false;
-  iggy3d::creative::CreativeGridCoord3 voxelCell{};
-  iggy3d::creative::CreativeBounds voxelBounds{};
-  iggy3d::creative::CreativePlacementClearanceResult clearance{};
 };
 
 inline constexpr std::size_t kCreativeMaterialStrokeVisitedCapacity = 256U;
@@ -239,15 +218,6 @@ enum class CreativeEditorContinuousGestureOwner : std::uint8_t {
   Count,
 };
 
-[[nodiscard]] constexpr bool creativeEditorPlacementFeedbackVisible(
-    const CreativeEditorPlacementFeedback& feedback,
-    std::uint64_t frameIndex) noexcept {
-  return feedback.status != CreativeEditorPlacementFeedbackStatus::None &&
-         frameIndex >= feedback.frameIndex &&
-         frameIndex - feedback.frameIndex <
-             kCreativeEditorPlacementFeedbackFrames;
-}
-
 struct CreativeEditorInteractionState {
   iggy3d::creative::CreativeHotbarState hotbar{};
   iggy3d::creative::CreativeWorldActionRouterState actionRouter{};
@@ -269,29 +239,6 @@ struct CreativeEditorInteractionState {
       iggy3d::creative::kInvalidObjectId;
 };
 
-void clearCreativeEditorPlacementFeedback(
-    CreativeEditorInteractionState& interaction) noexcept;
-void setCreativeEditorPlacementFeedback(
-    CreativeEditorInteractionState& interaction,
-    CreativeEditorPlacementFeedbackStatus status,
-    std::uint64_t frameIndex,
-    iggy3d::creative::CreativeObjectKind objectKind =
-        iggy3d::creative::CreativeObjectKind::Unknown,
-    iggy3d::creative::CreativeObjectId objectId =
-        iggy3d::creative::kInvalidObjectId) noexcept;
-void setCreativeEditorPlacementRejectionFeedback(
-    CreativeEditorInteractionState& interaction,
-    std::uint64_t frameIndex,
-    iggy3d::creative::CreativeObjectKind objectKind,
-    const iggy3d::creative::CreativePlacementClearanceResult& clearance =
-        {}) noexcept;
-void setCreativeEditorVoxelPlacementFeedback(
-    CreativeEditorInteractionState& interaction,
-    std::uint64_t frameIndex,
-    iggy3d::creative::CreativeObjectKind objectKind,
-    iggy3d::creative::CreativeGridCoord3 voxelCell,
-    iggy3d::creative::CreativeBounds voxelBounds) noexcept;
-
 struct CreativeEditorWorldInteractionFrameRequest {
   iggy3d::creative::CreativeAppState& appState;
   CreativeEditorState& editor;
@@ -306,6 +253,7 @@ struct CreativeEditorWorldInteractionFrameRequest {
   std::uint64_t monotonicTimeNanoseconds = 0;
   bool captureMode = false;
   const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr;
+  const CreativePlacementClearanceCache* placementClearanceCache = nullptr;
 };
 
 [[nodiscard]] CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
@@ -355,7 +303,8 @@ void processCreativeMaterialStrokeFrame(
     CreativeEditorState& editor,
     const iggy3d::creative::CreativeWorldActionFrame& actions,
     std::uint64_t monotonicTimeNanoseconds,
-    const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr);
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr,
+    const CreativePlacementClearanceCache* clearanceCache = nullptr);
 
 void finalizeCreativeMaterialStroke(
     iggy3d::creative::CreativeAppState& appState,

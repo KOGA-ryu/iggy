@@ -266,7 +266,8 @@ CreativeBrushPlacementMutationReceipt applyBrushPlacement(
     const CreativeBrushPlacementPlan& plan,
     std::uint64_t ordinal,
     iggy3d::creative::CreativeObjectId parentObjectId,
-    std::string_view assetId) {
+    std::string_view assetId,
+    const CreativePlacementClearanceCache* clearanceCache) {
   CreativeBrushPlacementMutationReceipt receipt;
   receipt.requested = true;
   receipt.storagePolicy = plan.storagePolicy;
@@ -317,7 +318,7 @@ CreativeBrushPlacementMutationReceipt applyBrushPlacement(
         return receipt;
       }
       receipt.clearance = evaluateCreativeBrushPlacementClearance(
-          facade.document(), plan);
+          facade.document(), plan, clearanceCache);
       if (!receipt.clearance.allowed) {
         receipt.status =
             CreativeBrushPlacementMutationStatus::ClearanceRejected;
@@ -361,7 +362,7 @@ CreativeBrushPlacementMutationReceipt applyBrushPlacement(
         return receipt;
       }
       receipt.clearance = evaluateCreativeBrushPlacementClearance(
-          facade.document(), plan);
+          facade.document(), plan, clearanceCache);
       if (!receipt.clearance.allowed) {
         receipt.status =
             CreativeBrushPlacementMutationStatus::ClearanceRejected;

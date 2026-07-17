@@ -29,8 +29,23 @@ constexpr std::array<std::array<std::size_t, 2U>, 12U> kBoxEdgeIndices{{
     {0U, 4U}, {1U, 5U}, {2U, 6U}, {3U, 7U},
 }};
 
-constexpr std::uint32_t kPlacementInvalidTargetSegmentKind = 8U;
-constexpr std::uint32_t kPlacementBlockerSegmentKind = 9U;
+void assignFeedbackText(
+    CreativeEditorPlacementFeedbackText& output,
+    std::string_view prefix,
+    std::string_view detail = {}) noexcept {
+  output = {};
+  const auto append = [&output](std::string_view text) {
+    const std::size_t available = output.bytes.size() - output.length;
+    const std::size_t count = std::min(available, text.size());
+    if (count > 0U) {
+      std::copy_n(text.data(), count,
+                  output.bytes.data() + output.length);
+    }
+    output.length = static_cast<std::uint8_t>(output.length + count);
+  };
+  append(prefix);
+  append(detail);
+}
 
 std::size_t appendBoxCornerEdges(
     std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,
@@ -79,18 +94,17 @@ std::size_t appendCreativeBoxCornerEdges(
 }
 
 std::size_t appendPlacementTargetBoundary(
-    const CreativeBrushPlacementPlan& plan,
+    const CreativeEditorPlacementVisualizationReceipt& visualization,
     float thickness,
     std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines) {
-  const cr::CreativeTransformedBounds transformed =
-      cr::resolveCreativeTransformedBounds(plan.authoredBounds,
-                                           plan.transform);
-  if (!transformed.valid) {
+  if (visualization.attemptedCornerCount !=
+      visualization.attemptedCorners.size()) {
     return 0U;
   }
   return appendCreativeBoxCornerEdges(
-      lines, transformed.corners, {1.0F, 0.12F, 0.10F, 1.0F}, thickness,
-      cr::kInvalidObjectId, kPlacementInvalidTargetSegmentKind);
+      lines, visualization.attemptedCorners,
+      {1.0F, 0.12F, 0.10F, 1.0F}, thickness, cr::kInvalidObjectId,
+      kCreativeEditorPlacementInvalidTargetSegmentKind);
 }
 
 std::size_t appendAabbBlocker(
@@ -111,7 +125,7 @@ std::size_t appendAabbBlocker(
       {1.0F, 0.28F, 0.12F, 1.0F}, thickness);
   for (std::size_t index = begin; index < lines.size(); ++index) {
     lines[index].objectId = objectId;
-    lines[index].segmentKind = kPlacementBlockerSegmentKind;
+    lines[index].segmentKind = kCreativeEditorPlacementBlockerSegmentKind;
   }
   return lines.size() - begin;
 }
@@ -130,7 +144,7 @@ std::size_t appendAuthoredPlacementBlocker(
     return appendBoxCornerEdges(
         lines, iggy3d::orientedBoxCorners(*box),
         {1.0F, 0.28F, 0.12F, 1.0F}, thickness, objectId,
-        kPlacementBlockerSegmentKind);
+        kCreativeEditorPlacementBlockerSegmentKind);
   }
   const VisualBounds visual = visualBoundsForObject(*object);
   return appendAabbBlocker(
@@ -207,46 +221,144 @@ std::size_t appendPlacementBlocker(
 
 }  // namespace
 
-std::string creativeEditorPlacementFeedbackLabel(
-    const CreativeEditorPlacementFeedback& feedback,
-    const cr::CreativeDocument& document) {
-  if (feedback.status != CreativeEditorPlacementFeedbackStatus::Rejected) {
-    return {};
+void clearCreativeEditorPlacementFeedback(
+    CreativeEditorInteractionState& interaction) noexcept {
+  interaction.placementFeedback = {};
+}
+
+void setCreativeEditorPlacementFeedback(
+    CreativeEditorInteractionState& interaction,
+    CreativeEditorPlacementFeedbackStatus status,
+    std::uint64_t frameIndex,
+    cr::CreativeObjectKind objectKind,
+    cr::CreativeObjectId objectId) noexcept {
+  interaction.placementFeedback = {};
+  interaction.placementFeedback.status = status;
+  interaction.placementFeedback.objectId = objectId;
+  interaction.placementFeedback.objectKind = objectKind;
+  interaction.placementFeedback.frameIndex = frameIndex;
+}
+
+void setCreativeEditorPlacementRejectionFeedback(
+    CreativeEditorInteractionState& interaction,
+    std::uint64_t frameIndex,
+    cr::CreativeObjectKind objectKind,
+    const cr::CreativePlacementClearanceResult& clearance) noexcept {
+  setCreativeEditorPlacementFeedback(
+      interaction, CreativeEditorPlacementFeedbackStatus::Rejected,
+      frameIndex, objectKind);
+  interaction.placementFeedback.clearance = clearance;
+}
+
+void setCreativeEditorVoxelPlacementFeedback(
+    CreativeEditorInteractionState& interaction,
+    std::uint64_t frameIndex,
+    cr::CreativeObjectKind objectKind,
+    cr::CreativeGridCoord3 voxelCell,
+    cr::CreativeBounds voxelBounds) noexcept {
+  setCreativeEditorPlacementFeedback(
+      interaction, CreativeEditorPlacementFeedbackStatus::Placed, frameIndex,
+      objectKind);
+  interaction.placementFeedback.voxelPlaced = true;
+  interaction.placementFeedback.voxelCell = voxelCell;
+  interaction.placementFeedback.voxelBounds = voxelBounds;
+}
+
+void setCreativeEditorPlacementAdmissionRejectionFeedback(
+    CreativeEditorInteractionState& interaction,
+    std::uint64_t frameIndex,
+    const CreativeBrushPlacementAdmission& admission) noexcept {
+  setCreativeEditorPlacementRejectionFeedback(
+      interaction, frameIndex, admission.plan.brush,
+      admission.plan.clearance);
+}
+
+void setCreativeEditorPlacementMutationFeedback(
+    CreativeEditorInteractionState& interaction,
+    std::uint64_t frameIndex,
+    const CreativeBrushPlacementMutationReceipt& receipt) noexcept {
+  if (receipt.accepted && receipt.changed && receipt.voxelCreated) {
+    setCreativeEditorVoxelPlacementFeedback(
+        interaction, frameIndex, receipt.objectKind, receipt.voxelCell,
+        receipt.worldBounds);
+    return;
   }
+  if (receipt.accepted && receipt.changed && receipt.objectCreated) {
+    setCreativeEditorPlacementFeedback(
+        interaction, CreativeEditorPlacementFeedbackStatus::Placed,
+        frameIndex, receipt.objectKind, receipt.objectId);
+    return;
+  }
+  setCreativeEditorPlacementRejectionFeedback(
+      interaction, frameIndex, receipt.objectKind, receipt.clearance);
+}
+
+CreativeEditorPlacementFeedbackViewModel
+creativeEditorPlacementFeedbackViewModel(
+    const CreativeEditorPlacementFeedback& feedback,
+    std::uint64_t frameIndex,
+    const cr::CreativeDocument* document) {
+  CreativeEditorPlacementFeedbackViewModel model;
+  model.status = feedback.status;
+  model.visible = creativeEditorPlacementFeedbackVisible(feedback,
+                                                          frameIndex);
+  if (!model.visible) {
+    return model;
+  }
+  if (feedback.status == CreativeEditorPlacementFeedbackStatus::Placed) {
+    model.color = {0.25F, 1.0F, 0.35F, 1.0F};
+    return model;
+  }
+  if (feedback.status != CreativeEditorPlacementFeedbackStatus::Rejected) {
+    return model;
+  }
+  model.color = {1.0F, 0.28F, 0.16F, 1.0F};
   switch (feedback.clearance.status) {
     case cr::CreativePlacementClearanceStatus::OutsideWorldBounds:
-      return "Outside build bounds";
+      assignFeedbackText(model.label, "Outside build bounds");
+      break;
     case cr::CreativePlacementClearanceStatus::AuthoredObjectBlocked: {
-      const cr::CreativeObject* blocker =
-          document.findObject(feedback.clearance.blockingObjectId);
+      const cr::CreativeObject* blocker = document == nullptr
+                                              ? nullptr
+                                              : document->findObject(
+                                                    feedback.clearance
+                                                        .blockingObjectId);
       if (blocker == nullptr) {
-        return "Blocked: object";
+        assignFeedbackText(model.label, "Blocked: object");
+        break;
       }
-      std::string label = "Blocked: ";
-      label.append(cr::toString(blocker->kind));
-      return label;
+      assignFeedbackText(model.label, "Blocked: ",
+                         cr::toString(blocker->kind));
+      break;
     }
     case cr::CreativePlacementClearanceStatus::VoxelBlocked: {
-      const cr::CreativeObjectKind material = document.voxelField().materialAt(
-          feedback.clearance.blockingVoxelCell);
+      const cr::CreativeObjectKind material =
+          document == nullptr
+              ? cr::CreativeObjectKind::Unknown
+              : document->voxelField().materialAt(
+                    feedback.clearance.blockingVoxelCell);
       if (material == cr::CreativeObjectKind::Unknown) {
-        return "Blocked: voxel";
+        assignFeedbackText(model.label, "Blocked: voxel");
+        break;
       }
-      std::string label = "Blocked: ";
-      label.append(cr::toString(material));
-      return label;
+      assignFeedbackText(model.label, "Blocked: ", cr::toString(material));
+      break;
     }
     case cr::CreativePlacementClearanceStatus::TerrainBlocked:
-      return "Blocked: terrain";
+      assignFeedbackText(model.label, "Blocked: terrain");
+      break;
     case cr::CreativePlacementClearanceStatus::TraversalLimitExceeded:
-      return "Placement too large";
+      assignFeedbackText(model.label, "Placement too large");
+      break;
     case cr::CreativePlacementClearanceStatus::InvalidRequest:
-      return "Invalid placement";
+      assignFeedbackText(model.label, "Invalid placement");
+      break;
     case cr::CreativePlacementClearanceStatus::NotEvaluated:
     case cr::CreativePlacementClearanceStatus::Ready:
-      return "Placement rejected";
+      assignFeedbackText(model.label, "Action rejected");
+      break;
   }
-  return "Placement rejected";
+  return model;
 }
 
 void appendCreativeEditorPlacementClearanceWireframes(
@@ -255,24 +367,28 @@ void appendCreativeEditorPlacementClearanceWireframes(
   const cr::CreativeDocument& document = request.appState.facade.document();
   const float thickness =
       std::max(0.07F, request.gizmoThickness * 1.35F);
-  if (output.placementPreview.hasTargetPlan) {
-    const CreativeBrushPlacementPlan& plan =
-        output.placementPreview.targetPlan;
-    if (!plan.clearance.evaluated || plan.clearance.allowed) {
+  if (output.placementVisualization.targetAvailable) {
+    const CreativeEditorPlacementVisualizationReceipt& visualization =
+        output.placementVisualization;
+    if (!visualization.clearance.evaluated ||
+        visualization.clearance.allowed) {
       return;
     }
     output.placementInvalidTargetEdgeCount = appendPlacementTargetBoundary(
-        plan, thickness, output.combinedWireLines);
+        visualization, thickness, output.combinedWireLines);
     output.placementBlockerEdgeCount = appendPlacementBlocker(
-        document, plan.clearance, thickness, output.combinedWireLines);
+        document, visualization.clearance, thickness,
+        output.combinedWireLines);
     return;
   }
 
   const CreativeEditorPlacementFeedback& feedback =
       request.editor.interaction.placementFeedback;
-  if (feedback.status != CreativeEditorPlacementFeedbackStatus::Rejected ||
-      !creativeEditorPlacementFeedbackVisible(
-          feedback, request.editor.frameIndex) ||
+  const CreativeEditorPlacementFeedbackViewModel view =
+      creativeEditorPlacementFeedbackViewModel(
+          feedback, request.editor.frameIndex, &document);
+  if (!view.visible ||
+      view.status != CreativeEditorPlacementFeedbackStatus::Rejected ||
       !feedback.clearance.evaluated || feedback.clearance.allowed) {
     return;
   }

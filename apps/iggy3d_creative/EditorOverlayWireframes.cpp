@@ -76,7 +76,7 @@ void resetCreativeEditorOverlayFrame(CreativeEditorOverlayFrame& output) {
   output.logicLinkEndpointEdgeCount = 0;
   output.logicLinkLabelGlyphCount = 0;
   output.invalidLogicLinkCount = 0;
-  output.placementPreview = {};
+  output.placementVisualization = {};
 }
 
 [[nodiscard]] RenderLineColor logicLinkOverlayColor(
@@ -509,7 +509,8 @@ void appendCreativeEditorMovingPlatformPathPreview(
 CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
     const CreativeEditorOverlayFrameRequest& request,
     CreativeEditorOverlayFrame& output,
-    const CreativeEditorPlacementPreviewFacts* placementPreview) {
+    const CreativeEditorPlacementVisualizationReceipt*
+        placementVisualization) {
   cr::CreativeAppState& appState = request.appState;
   CreativeEditorState& editor = request.editor;
   const cr::CreativeSpatialProjectionRequest& wireProjReq =
@@ -531,8 +532,8 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
       request.gizmoFrame.selectedIsPathForHandles;
 
   resetCreativeEditorOverlayFrame(output);
-  if (placementPreview != nullptr) {
-    output.placementPreview = *placementPreview;
+  if (placementVisualization != nullptr) {
+    output.placementVisualization = *placementVisualization;
   }
 
   // ---- BOUNDS BOX (wireframe) --------------------------------------------
@@ -569,7 +570,7 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
   combinedWireLines.reserve(
       dbg.lines.size() +
       appState.facade.document().logicLinks().size() * 15U + 72U +
-      13U +
+      37U +
       kMaxStaticMeshAttachmentSocketCount * 3U +
       editor.interaction.assetScatter.preview.candidateCount * 12U +
       creative::kCreativePlacementGridMaximumLineCount +

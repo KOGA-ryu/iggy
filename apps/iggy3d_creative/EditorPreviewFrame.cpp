@@ -34,7 +34,7 @@ void buildAndAttachCreativeEditorOverlayFrame(
   CreativeEditorState& editor = request.editor;
   FrameInput& frame = request.frame;
 
-  const CreativeEditorPlacementPreviewFacts placementPreview =
+  const CreativeEditorPlacementVisualizationReceipt placementVisualization =
       attachCreativeEditorPlacementPreviews(
           editor, request.captureMode, frame,
           &request.appState.facade.document(), request.assetCatalog,
@@ -42,7 +42,7 @@ void buildAndAttachCreativeEditorOverlayFrame(
 
   const CreativeEditorWorldOverlayFacts worldFacts =
       buildCreativeEditorWorldWireframes(request, output,
-                                         &placementPreview);
+                                         &placementVisualization);
 
   // DD-15: with the desktop shell on, the legacy controller HUD (hotbar,
   // catalog, tool wheel, action hints, held-item labels) renders only for a

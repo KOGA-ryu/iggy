@@ -769,7 +769,8 @@ int main(int argc, char** argv) {
            effectiveContentViewport(frame),
            frameInput.monotonicTimeNanoseconds,
            !capturePath.empty(),
-           &bootstrapData.staticMeshAssetCatalog});
+           &bootstrapData.staticMeshAssetCatalog,
+           &sceneCache.placementClearance});
     }
 
     runCreativeEditorCaptureScenarioFrame(

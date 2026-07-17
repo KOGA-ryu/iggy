@@ -1,9 +1,11 @@
 #include "EditorAssetScatter.hpp"
 #include "EditorInteraction.hpp"
+#include "EditorPlacementClearance.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorState.hpp"
 #include "EditorToolOptions.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
@@ -402,6 +404,78 @@ bool gestureIsAtomicDeduplicatedAndOneUndoStep() {
                 "release records exactly one undo step for the gesture");
 }
 
+bool scatterPreservesObstructionFeedback() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Blocked");
+  static_cast<void>(document.assignId(9002U));
+  const cr::CreativeFacadeDocumentInstallReceipt installed =
+      appState.facade.installDocument(std::move(document));
+  app::CreativeEditorState editor = scatterEditor();
+  editor.frameIndex = 41U;
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const app::CreativeEditorAssetScatterPlan initial =
+      app::buildCreativeEditorAssetScatterPlan(
+          appState.facade.document(), editor, held);
+
+  std::vector<cr::CreativeDocumentCreateRequest> blockers;
+  blockers.reserve(initial.placeableCount);
+  for (const app::CreativeEditorAssetScatterCandidate& candidate :
+       initial.items()) {
+    if (!candidate.placeable) {
+      continue;
+    }
+    blockers.push_back(app::buildBrushCreateRequest(
+        candidate.placement, blockers.size() + 1U, "scatter_blocker"));
+  }
+  const cr::CreativeFacadeDocumentBatchCreateReceipt created =
+      appState.facade.createDocumentObjectsAtomically(blockers);
+  app::CreativePlacementClearanceCache cache;
+  const bool cacheReady = app::refreshCreativePlacementClearanceCache(
+      cache, appState.facade.document());
+  const app::CreativeEditorAssetScatterPlan blocked =
+      app::buildCreativeEditorAssetScatterPlan(
+          appState.facade.document(), editor, held, &cache);
+  const auto obstruction = std::find_if(
+      blocked.items().begin(), blocked.items().end(),
+      [](const app::CreativeEditorAssetScatterCandidate& candidate) {
+        return candidate.status ==
+               app::CreativeEditorAssetScatterCandidateStatus::Obstructed;
+      });
+
+  cr::CreativeWorldActionFrame press;
+  setSecondary(press, true, true, false);
+  const std::size_t objectCountBefore =
+      appState.facade.document().objectCount();
+  app::processCreativeAssetScatterFrame(appState, editor, press, 0U, &cache);
+  const app::CreativeEditorPlacementFeedback& feedback =
+      editor.interaction.placementFeedback;
+
+  return expect(installed.accepted && initial.placeableCount > 0U &&
+                    blockers.size() == initial.placeableCount &&
+                    created.accepted &&
+                    created.appliedCreateCount == blockers.size() &&
+                    cacheReady,
+                "scatter obstruction fixture and cache are valid") &&
+         expect(blocked.placeableCount == 0U &&
+                    obstruction != blocked.items().end() &&
+                    obstruction->placement.clearance.status ==
+                        cr::CreativePlacementClearanceStatus::
+                            AuthoredObjectBlocked &&
+                    obstruction->placement.clearance.blockingObjectId !=
+                        cr::kInvalidObjectId,
+                "scatter candidates retain exact obstruction provenance") &&
+         expect(appState.facade.document().objectCount() == objectCountBefore &&
+                    feedback.status ==
+                        app::CreativeEditorPlacementFeedbackStatus::Rejected &&
+                    feedback.clearance.status ==
+                        cr::CreativePlacementClearanceStatus::
+                            AuthoredObjectBlocked &&
+                    feedback.clearance.blockingObjectId !=
+                        cr::kInvalidObjectId,
+                "blocked scatter gesture reports its blocker without mutation");
+}
+
 bool sharedVisitedKernelIsBounded() {
   cr::CreativeWorldGestureVisitedKeys visited;
   bool inserted = true;
@@ -434,6 +508,7 @@ int main() {
                   terrainScatterRejectsSteepAndMissingSurface() &&
                   previewIsTransientAndSolidGhostIsSuppressed() &&
                   gestureIsAtomicDeduplicatedAndOneUndoStep() &&
+                  scatterPreservesObstructionFeedback() &&
                   sharedVisitedKernelIsBounded();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

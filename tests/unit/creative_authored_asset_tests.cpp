@@ -1,6 +1,7 @@
 #include "EditorAssetLibrary.hpp"
 #include "EditorAuthoredAssets.hpp"
 #include "EditorObjectActions.hpp"
+#include "EditorPlacement.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorState.hpp"
 #include "EditorToolOptions.hpp"
@@ -1457,6 +1458,9 @@ app::CreativeEditorState authoredEditor(
   editor.interaction.target.grid.valid = true;
   editor.interaction.target.grid.faceNormal = {0.0, 1.0, 0.0};
   editor.interaction.target.grid.placerForward = {0.0, 0.0, -1.0};
+  editor.interaction.target.grid.targetFacts =
+      cr::makeCreativePlacementTargetFacts(
+          cr::CreativePlacementTargetSource::EmptyPlane);
   editor.interaction.target.grid.placementAnchor = {0.5, 0.0, 0.5};
   editor.interaction.target.grid.adjacentCellBounds =
       {{0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}};
@@ -1536,6 +1540,48 @@ bool gestureDeduplicatesAndCommitsOneUndo() {
          expect(undoDepth == 1U && undo.accepted &&
                     undo.objectCountAfter == 0U,
                 "press-hold-release commits exactly one undo record");
+}
+
+bool authoredPlacementPreservesClearanceRejection() {
+  const cr::CreativeAuthoredAssetCaptureResult captured =
+      makeTwoCrateDefinition();
+  app::CreativeEditorState editor = authoredEditor(captured.definition);
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const app::CreativeBrushPlacementAdmission admission =
+      app::admitBrushPlacement(held, editor.interaction.target.grid,
+                               editor.toolSettings.placementYaw);
+
+  cr::CreativeDocument target = cr::CreativeDocument::create("Blocked");
+  static_cast<void>(target.assignId(745U));
+  cr::CreativeDocumentCreateRequest blockerRequest =
+      app::buildBrushCreateRequest(admission.plan, 1U);
+  blockerRequest.kind = cr::CreativeObjectKind::Crate;
+  blockerRequest.assetId.clear();
+  const cr::CreativeDocumentCreateReceipt blocker =
+      target.createObject(blockerRequest);
+  cr::CreativeAppState appState;
+  const cr::CreativeFacadeDocumentInstallReceipt installed =
+      appState.facade.installDocument(std::move(target));
+
+  cr::CreativeWorldActionFrame press;
+  setSecondary(press, true, true, false);
+  app::processCreativeAuthoredAssetFrame(appState, editor, press, 0U);
+  const app::CreativeEditorPlacementFeedback& feedback =
+      editor.interaction.placementFeedback;
+  return expect(captured.accepted && admission.allowed && blocker.accepted &&
+                    installed.accepted,
+                "authored clearance fixture created") &&
+         expect(appState.facade.document().objectCount() == 1U &&
+                    editor.placedCount == 0U,
+                "blocked authored asset does not mutate the document") &&
+         expect(feedback.status ==
+                        app::CreativeEditorPlacementFeedbackStatus::Rejected &&
+                    feedback.clearance.status ==
+                        cr::CreativePlacementClearanceStatus::
+                            AuthoredObjectBlocked &&
+                    feedback.clearance.blockingObjectId == blocker.objectId,
+                "authored placement preserves the shared blocker receipt");
 }
 
 bool interruptionFinalizesChangedGesture() {
@@ -1639,6 +1685,7 @@ int main() {
                  libraryManagementIsDurableAndReferenceSafe() &&
                  isolatedAssetEditPreservesMapAndRequiresExplicitRefresh() &&
                  gestureDeduplicatesAndCommitsOneUndo() &&
+                 authoredPlacementPreservesClearanceRejection() &&
                  interruptionFinalizesChangedGesture() &&
                  previewUsesCanonicalCompositeProxies()
              ? EXIT_SUCCESS

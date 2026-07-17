@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "EditorGroup.hpp"
+#include "EditorPlacementClearance.hpp"
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/tools/AssetScatter.hpp"
@@ -150,16 +151,28 @@ void ensureTransaction(cr::CreativeAppState& appState,
 
 void applyPlacement(cr::CreativeAppState& appState,
                     CreativeEditorState& editor,
-                    const cr::CreativeHotbarEntry& held) {
+                    const cr::CreativeHotbarEntry& held,
+                    const CreativePlacementClearanceCache* clearanceCache) {
   CreativeAuthoredAssetStrokeState& stroke =
       editor.interaction.authoredAssetStroke;
   const std::string_view assetId = cr::creativeHotbarAssetId(held);
   const cr::CreativeAuthoredAssetDefinition* definition =
       findCreativeEditorAuthoredAsset(editor.authoredAssets, assetId);
-  const CreativeBrushPlacementAdmission admission =
-      placementPreview(editor, held);
-  if (definition == nullptr || !admission.allowed ||
-      creativeBrushPlacementAlreadyExists(
+  CreativeBrushPlacementAdmission admission = placementPreview(editor, held);
+  applyCreativeBrushPlacementClearance(
+      admission, appState.facade.document(), clearanceCache);
+  if (definition == nullptr) {
+    setCreativeEditorPlacementFeedback(
+        editor.interaction, CreativeEditorPlacementFeedbackStatus::Rejected,
+        editor.frameIndex, cr::CreativeObjectKind::PrefabInstance);
+    return;
+  }
+  if (!admission.allowed) {
+    setCreativeEditorPlacementAdmissionRejectionFeedback(
+        editor.interaction, editor.frameIndex, admission);
+    return;
+  }
+  if (creativeBrushPlacementAlreadyExists(
           appState.facade.document(), admission.plan, assetId)) {
     setCreativeEditorPlacementFeedback(
         editor.interaction, CreativeEditorPlacementFeedbackStatus::Rejected,
@@ -574,7 +587,8 @@ void processCreativeAuthoredAssetFrame(
     cr::CreativeAppState& appState,
     CreativeEditorState& editor,
     const cr::CreativeWorldActionFrame& actions,
-    std::uint64_t monotonicTimeNanoseconds) {
+    std::uint64_t monotonicTimeNanoseconds,
+    const CreativePlacementClearanceCache* clearanceCache) {
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   CreativeAuthoredAssetStrokeState& stroke =
@@ -603,7 +617,7 @@ void processCreativeAuthoredAssetFrame(
   if (repeat.dueKind == cr::CreativeWorldGestureKind::Remove) {
     applyRemoval(appState, editor);
   } else if (repeat.dueKind == cr::CreativeWorldGestureKind::Place) {
-    applyPlacement(appState, editor, held);
+    applyPlacement(appState, editor, held, clearanceCache);
   }
   stroke.preview = placementPreview(editor, held);
 }

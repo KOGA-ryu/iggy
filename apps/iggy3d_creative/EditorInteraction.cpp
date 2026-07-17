@@ -58,49 +58,6 @@ constexpr std::array kContinuousGestureFinalizers{
 
 }  // namespace
 
-void clearCreativeEditorPlacementFeedback(
-    CreativeEditorInteractionState& interaction) noexcept {
-  interaction.placementFeedback = {};
-}
-
-void setCreativeEditorPlacementFeedback(
-    CreativeEditorInteractionState& interaction,
-    CreativeEditorPlacementFeedbackStatus status,
-    std::uint64_t frameIndex,
-    cr::CreativeObjectKind objectKind,
-    cr::CreativeObjectId objectId) noexcept {
-  interaction.placementFeedback = {};
-  interaction.placementFeedback.status = status;
-  interaction.placementFeedback.objectId = objectId;
-  interaction.placementFeedback.objectKind = objectKind;
-  interaction.placementFeedback.frameIndex = frameIndex;
-}
-
-void setCreativeEditorPlacementRejectionFeedback(
-    CreativeEditorInteractionState& interaction,
-    std::uint64_t frameIndex,
-    cr::CreativeObjectKind objectKind,
-    const cr::CreativePlacementClearanceResult& clearance) noexcept {
-  setCreativeEditorPlacementFeedback(
-      interaction, CreativeEditorPlacementFeedbackStatus::Rejected,
-      frameIndex, objectKind);
-  interaction.placementFeedback.clearance = clearance;
-}
-
-void setCreativeEditorVoxelPlacementFeedback(
-    CreativeEditorInteractionState& interaction,
-    std::uint64_t frameIndex,
-    cr::CreativeObjectKind objectKind,
-    cr::CreativeGridCoord3 voxelCell,
-    cr::CreativeBounds voxelBounds) noexcept {
-  setCreativeEditorPlacementFeedback(
-      interaction, CreativeEditorPlacementFeedbackStatus::Placed, frameIndex,
-      objectKind);
-  interaction.placementFeedback.voxelPlaced = true;
-  interaction.placementFeedback.voxelCell = voxelCell;
-  interaction.placementFeedback.voxelBounds = voxelBounds;
-}
-
 void resetCreativeMaterialBrushPivot(
     CreativeMaterialBrushPivotState& state,
     cr::CreativeDocumentId documentId) noexcept {

@@ -6,6 +6,7 @@
 #include "EditorEdits.hpp"
 #include "EditorGroup.hpp"
 #include "EditorInteraction.hpp"
+#include "EditorPlacementClearance.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
@@ -53,11 +54,9 @@ namespace {
 }
 
 void rejectStructuralSpan(CreativeEditorState& editor,
-                          cr::CreativeObjectKind objectKind,
-                          const cr::CreativePlacementClearanceResult&
-                              clearance = {}) noexcept {
+                          cr::CreativeObjectKind objectKind) noexcept {
   setCreativeEditorPlacementRejectionFeedback(
-      editor.interaction, editor.frameIndex, objectKind, clearance);
+      editor.interaction, editor.frameIndex, objectKind);
 }
 
 [[nodiscard]] bool sameTransform(const cr::CreativeTransform& lhs,
@@ -209,7 +208,8 @@ resolveCreativeEditorStructuralSpanPlacement(
 bool processCreativeEditorStructuralSpanInput(
     cr::CreativeAppState& appState,
     CreativeEditorState& editor,
-    const cr::CreativeWorldActionFrame& actions) {
+    const cr::CreativeWorldActionFrame& actions,
+    const CreativePlacementClearanceCache* clearanceCache) {
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   if (!creativeEditorUsesStructuralSpan(held)) {
@@ -262,12 +262,18 @@ bool processCreativeEditorStructuralSpanInput(
     return true;
   }
 
-  const CreativeBrushPlacementAdmission admission =
+  CreativeBrushPlacementAdmission admission =
       resolveCreativeEditorStructuralSpanPlacement(
           state, documentId, held, editor.interaction.target.grid);
-  if (!admission.allowed ||
-      creativeBrushPlacementAlreadyExists(appState.facade.document(),
-                                           admission.plan)) {
+  applyCreativeBrushPlacementClearance(
+      admission, appState.facade.document(), clearanceCache);
+  if (!admission.allowed) {
+    setCreativeEditorPlacementAdmissionRejectionFeedback(
+        editor.interaction, editor.frameIndex, admission);
+    return true;
+  }
+  if (creativeBrushPlacementAlreadyExists(appState.facade.document(),
+                                          admission.plan)) {
     rejectStructuralSpan(editor, held.objectKind);
     return true;
   }
@@ -281,21 +287,20 @@ bool processCreativeEditorStructuralSpanInput(
   const std::uint64_t ordinal = editor.placedCount + 1U;
   const CreativeBrushPlacementMutationReceipt receipt = applyBrushPlacement(
       appState.facade, admission.plan, ordinal,
-      activeCreativeEditorGroupFocusId(editor.groupFocus));
+      activeCreativeEditorGroupFocusId(editor.groupFocus), {},
+      clearanceCache);
   const bool changed = receipt.accepted && receipt.changed &&
                        receipt.objectCreated;
   static_cast<void>(completeEditTransaction(
       appState.history, std::move(transaction), appState.facade, changed,
       receipt.reasonCode));
+  setCreativeEditorPlacementMutationFeedback(
+      editor.interaction, editor.frameIndex, receipt);
   if (!changed) {
-    rejectStructuralSpan(editor, held.objectKind, receipt.clearance);
     return true;
   }
 
   editor.placedCount = ordinal;
-  setCreativeEditorPlacementFeedback(
-      editor.interaction, CreativeEditorPlacementFeedbackStatus::Placed,
-      editor.frameIndex, receipt.objectKind, receipt.objectId);
   state = {};
   return true;
 }

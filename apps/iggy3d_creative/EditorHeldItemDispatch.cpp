@@ -32,7 +32,8 @@ void refreshHeldItemPreview(
     case CreativeEditorContinuousGestureOwner::Material:
       processCreativeMaterialStrokeFrame(
           request.appState, editor, request.actions,
-          request.monotonicTimeNanoseconds, request.assetCatalog);
+          request.monotonicTimeNanoseconds, request.assetCatalog,
+          request.placementClearanceCache);
       if (cr::creativeWorldActionPressed(request.actions,
                                          cr::CreativeWorldActionId::Pick)) {
         dispatchCreativeEditorHeldItemWorldOperation(
@@ -43,7 +44,8 @@ void refreshHeldItemPreview(
     case CreativeEditorContinuousGestureOwner::AuthoredAsset:
       processCreativeAuthoredAssetFrame(
           request.appState, editor, request.actions,
-          request.monotonicTimeNanoseconds);
+          request.monotonicTimeNanoseconds,
+          request.placementClearanceCache);
       if (cr::creativeWorldActionPressed(request.actions,
                                          cr::CreativeWorldActionId::Pick)) {
         dispatchCreativeEditorHeldItemWorldOperation(
@@ -54,7 +56,8 @@ void refreshHeldItemPreview(
     case CreativeEditorContinuousGestureOwner::AssetScatter:
       processCreativeAssetScatterFrame(
           request.appState, editor, request.actions,
-          request.monotonicTimeNanoseconds);
+          request.monotonicTimeNanoseconds,
+          request.placementClearanceCache);
       if (cr::creativeWorldActionPressed(request.actions,
                                          cr::CreativeWorldActionId::Pick)) {
         dispatchCreativeEditorHeldItemWorldOperation(

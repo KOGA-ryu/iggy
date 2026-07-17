@@ -346,16 +346,21 @@ void buildCreativeEditorDesktopStatusBar(
     }
     const CreativeEditorPlacementFeedback& feedback =
         editor.interaction.placementFeedback;
-    if (creativeEditorPlacementFeedbackVisible(feedback,
-                                                editor.frameIndex) &&
-        feedback.status == CreativeEditorPlacementFeedbackStatus::Rejected) {
-      const std::string placementMessage =
-          creativeEditorPlacementFeedbackLabel(feedback, document);
+    const CreativeEditorPlacementFeedbackViewModel feedbackView =
+        creativeEditorPlacementFeedbackViewModel(
+            feedback, editor.frameIndex, &document);
+    if (feedbackView.visible &&
+        feedbackView.status ==
+            CreativeEditorPlacementFeedbackStatus::Rejected &&
+        !feedbackView.label.empty()) {
       ImGui::SameLine();
       ImGui::TextDisabled("|");
       ImGui::SameLine();
-      ImGui::TextColored(ImVec4(1.0F, 0.34F, 0.20F, 1.0F), "%s",
-                         placementMessage.c_str());
+      ImGui::TextColored(
+          ImVec4(feedbackView.color.r, feedbackView.color.g,
+                 feedbackView.color.b, feedbackView.color.a),
+          "%.*s", static_cast<int>(feedbackView.label.length),
+          feedbackView.label.bytes.data());
     }
   }
   ImGui::End();

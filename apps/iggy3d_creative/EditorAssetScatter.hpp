@@ -23,12 +23,14 @@ class CreativeDocument;
 namespace iggy3d_creative_app {
 
 struct CreativeEditorState;
+struct CreativePlacementClearanceCache;
 
 enum class CreativeEditorAssetScatterCandidateStatus : std::uint8_t {
   Ready,
   MissingSurface,
   SlopeRejected,
   InvalidPlacement,
+  Obstructed,
   Occupied,
 };
 
@@ -76,13 +78,15 @@ struct CreativeAssetScatterStrokeState {
 buildCreativeEditorAssetScatterPlan(
     const iggy3d::creative::CreativeDocument& document,
     const CreativeEditorState& editor,
-    const iggy3d::creative::CreativeHotbarEntry& held) noexcept;
+    const iggy3d::creative::CreativeHotbarEntry& held,
+    const CreativePlacementClearanceCache* clearanceCache = nullptr) noexcept;
 
 void processCreativeAssetScatterFrame(
     iggy3d::creative::CreativeAppState& appState,
     CreativeEditorState& editor,
     const iggy3d::creative::CreativeWorldActionFrame& actions,
-    std::uint64_t monotonicTimeNanoseconds);
+    std::uint64_t monotonicTimeNanoseconds,
+    const CreativePlacementClearanceCache* clearanceCache = nullptr);
 
 void finalizeCreativeAssetScatterStroke(
     iggy3d::creative::CreativeAppState& appState,

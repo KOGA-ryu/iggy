@@ -196,14 +196,15 @@ bool creativePreviewBoundsTransform(
   return previewBoundsTransform(bounds, insetScale, center, size);
 }
 
-CreativeEditorPlacementPreviewFacts attachCreativeEditorPlacementPreviews(
+CreativeEditorPlacementVisualizationReceipt
+attachCreativeEditorPlacementPreviews(
     const CreativeEditorState& editor,
     bool captureMode,
     FrameInput& frame,
     const cr::CreativeDocument* document,
     const iggy3d::StaticMeshAssetCatalog* assetCatalog,
     const CreativePlacementClearanceCache* clearanceCache) {
-  CreativeEditorPlacementPreviewFacts facts;
+  CreativeEditorPlacementVisualizationReceipt visualization;
   frame.creativePreview = {};
   appendMovingPlatformRoutePreview(editor, captureMode, frame, document);
   const bool modalOpen = editor.catalog.model.open ||
@@ -214,7 +215,7 @@ CreativeEditorPlacementPreviewFacts attachCreativeEditorPlacementPreviews(
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   if (captureMode || modalOpen) {
-    return facts;
+    return visualization;
   }
   const CreativeEditorStructuralSpanEditState& structuralEdit =
       editor.interaction.structuralSpanEdit;
@@ -242,7 +243,7 @@ CreativeEditorPlacementPreviewFacts attachCreativeEditorPlacementPreviews(
             false, {}, geometry.profile, geometry.proceduralSegmentCount);
       }
     }
-    return facts;
+    return visualization;
   }
   const bool materialPlacement =
       held.kind == cr::CreativeHeldItemKind::Material;
@@ -257,7 +258,7 @@ CreativeEditorPlacementPreviewFacts attachCreativeEditorPlacementPreviews(
                     : cr::creativeHotbarAssetId(held);
   if ((!materialPlacement && !materialBrush) ||
       held.objectKind == cr::CreativeObjectKind::Unknown) {
-    return facts;
+    return visualization;
   }
 
   CreativeBrushPlacementPlan heldPlan =
@@ -266,7 +267,7 @@ CreativeEditorPlacementPreviewFacts attachCreativeEditorPlacementPreviews(
       (!held.hasAssetBounds ||
        !applyCreativeAssetPlacementBounds(heldPlan,
                                           held.assetSourceBounds))) {
-    return facts;
+    return visualization;
   }
   Vec3 heldCenter{};
   Vec3 heldSize{};
@@ -275,14 +276,14 @@ CreativeEditorPlacementPreviewFacts attachCreativeEditorPlacementPreviews(
   if (!heldPlan.valid ||
       !previewBoundsTransform(heldBounds, 1.0F, heldCenter,
                               heldSize)) {
-    return facts;
+    return visualization;
   }
   const bool assetBacked = authoredAsset ||
                            !cr::creativeHotbarAssetId(held).empty();
   const CreativePreviewGeometrySelection heldGeometry =
       previewGeometryFor(heldPlan.brush, heldSize, assetBacked);
   if (!heldGeometry.valid) {
-    return facts;
+    return visualization;
   }
 
   const CreativeEditorPlacementFeedback& feedback =
@@ -299,16 +300,8 @@ CreativeEditorPlacementPreviewFacts attachCreativeEditorPlacementPreviews(
         placement.admission = resolveCreativeEditorStructuralSpanPlacement(
             editor.interaction.structuralSpan, document->id(), held,
             editor.interaction.target.grid);
-        if (placement.admission.allowed) {
-          placement.admission.plan.clearance =
-              evaluateCreativeBrushPlacementClearance(
-                  *document, placement.admission.plan, clearanceCache);
-          if (!placement.admission.plan.clearance.allowed) {
-            placement.admission.allowed = false;
-            placement.admission.status =
-                CreativeBrushPlacementAdmissionStatus::ClearanceBlocked;
-          }
-        }
+        applyCreativeBrushPlacementClearance(
+            placement.admission, *document, clearanceCache);
       }
     } else if (document != nullptr) {
       placement = resolveCreativeEditorPlacement(
@@ -322,8 +315,18 @@ CreativeEditorPlacementPreviewFacts attachCreativeEditorPlacementPreviews(
     }
     const CreativeBrushPlacementAdmission& admission = placement.admission;
     const CreativeBrushPlacementPlan& targetPlan = admission.plan;
-    facts.targetPlan = targetPlan;
-    facts.hasTargetPlan = targetPlan.valid;
+    visualization.targetAvailable = targetPlan.valid;
+    visualization.clearance = targetPlan.clearance;
+    if (targetPlan.valid) {
+      const cr::CreativeTransformedBounds transformed =
+          cr::resolveCreativeTransformedBounds(targetPlan.authoredBounds,
+                                               targetPlan.transform);
+      if (transformed.valid) {
+        visualization.attemptedCorners = transformed.corners;
+        visualization.attemptedCornerCount = static_cast<std::uint8_t>(
+            visualization.attemptedCorners.size());
+      }
+    }
     const cr::CreativeBounds& targetBounds =
         targetPlan.valid ? targetPlan.previewBounds
                          : editor.interaction.target.grid.adjacentCellBounds;
@@ -336,7 +339,7 @@ CreativeEditorPlacementPreviewFacts attachCreativeEditorPlacementPreviews(
       const CreativePreviewGeometrySelection targetGeometry =
           previewGeometryFor(targetPlan.brush, targetSize, assetBacked);
       if (!targetGeometry.valid) {
-        return facts;
+        return visualization;
       }
       const bool rejectedThisFrame =
           feedback.frameIndex == editor.frameIndex &&
@@ -367,7 +370,7 @@ CreativeEditorPlacementPreviewFacts attachCreativeEditorPlacementPreviews(
   constexpr float kHeldMinimumAxis = 0.06F;
   const float longest = std::max({heldSize.x, heldSize.y, heldSize.z});
   if (!std::isfinite(longest) || longest <= 0.0F) {
-    return facts;
+    return visualization;
   }
   const float heldScale = kHeldLongestDimension / longest;
   heldSize = {std::max(kHeldMinimumAxis, heldSize.x * heldScale),
@@ -383,7 +386,7 @@ CreativeEditorPlacementPreviewFacts attachCreativeEditorPlacementPreviews(
           modelMatrix({0.42F, -0.32F, -0.82F}, heldRotation, heldSize),
       false, previewAssetId, heldGeometry.profile,
       heldGeometry.proceduralSegmentCount);
-  return facts;
+  return visualization;
 }
 
 }  // namespace iggy3d_creative_app

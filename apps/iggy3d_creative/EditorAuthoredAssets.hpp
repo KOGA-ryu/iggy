@@ -23,6 +23,7 @@ struct CreativeAppState;
 namespace iggy3d_creative_app {
 
 struct CreativeEditorState;
+struct CreativePlacementClearanceCache;
 
 struct CreativeEditorAuthoredAssetLibrary {
   std::filesystem::path root;
@@ -151,7 +152,8 @@ void processCreativeAuthoredAssetFrame(
     iggy3d::creative::CreativeAppState& appState,
     CreativeEditorState& editor,
     const iggy3d::creative::CreativeWorldActionFrame& actions,
-    std::uint64_t monotonicTimeNanoseconds);
+    std::uint64_t monotonicTimeNanoseconds,
+    const CreativePlacementClearanceCache* clearanceCache = nullptr);
 
 void finalizeCreativeAuthoredAssetStroke(
     iggy3d::creative::CreativeAppState& appState,

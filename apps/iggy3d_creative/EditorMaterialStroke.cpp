@@ -56,11 +56,9 @@ static_assert(cr::kCreativeMaterialBrushStampCapacity <=
 }
 
 void rejectMaterialStroke(CreativeEditorState& editor,
-                          cr::CreativeObjectKind objectKind,
-                          const cr::CreativePlacementClearanceResult&
-                              clearance = {}) {
+                          cr::CreativeObjectKind objectKind) {
   setCreativeEditorPlacementRejectionFeedback(
-      editor.interaction, editor.frameIndex, objectKind, clearance);
+      editor.interaction, editor.frameIndex, objectKind);
 }
 
 [[nodiscard]] std::string_view strokeTransactionSource(
@@ -94,7 +92,9 @@ void applySingleMaterialMutation(cr::CreativeAppState& appState,
                                  const cr::CreativeHotbarEntry& held,
                                  CreativeMaterialStrokeKind kind,
                                  const iggy3d::StaticMeshAssetCatalog*
-                                     assetCatalog) {
+                                     assetCatalog,
+                                 const CreativePlacementClearanceCache*
+                                     clearanceCache) {
   CreativeMaterialStrokeState& stroke = editor.interaction.materialStroke;
   const CreativeEditorWorldTarget& target = editor.interaction.target;
   if (stroke.capacityReached) {
@@ -151,12 +151,12 @@ void applySingleMaterialMutation(cr::CreativeAppState& appState,
   const CreativeEditorPlacementResolution placement =
       resolveCreativeEditorPlacement(
           held, target, editor.toolSettings.placementYaw,
-          appState.facade.document(), assetCatalog);
+          appState.facade.document(), assetCatalog, clearanceCache);
   const CreativeBrushPlacementAdmission& admission = placement.admission;
   const std::string_view assetId = cr::creativeHotbarAssetId(held);
   if (!admission.allowed) {
-    rejectMaterialStroke(editor, held.objectKind,
-                         admission.plan.clearance);
+    setCreativeEditorPlacementAdmissionRejectionFeedback(
+        editor.interaction, editor.frameIndex, admission);
     return;
   }
   if (creativeBrushPlacementAlreadyExists(
@@ -180,22 +180,14 @@ void applySingleMaterialMutation(cr::CreativeAppState& appState,
   const std::uint64_t ordinal = editor.placedCount + 1U;
   const CreativeBrushPlacementMutationReceipt receipt = applyBrushPlacement(
       appState.facade, admission.plan, ordinal,
-      activeCreativeEditorGroupFocusId(editor.groupFocus), assetId);
+      activeCreativeEditorGroupFocusId(editor.groupFocus), assetId,
+      clearanceCache);
+  setCreativeEditorPlacementMutationFeedback(
+      editor.interaction, editor.frameIndex, receipt);
   if (receipt.accepted && receipt.changed &&
       (receipt.objectCreated || receipt.voxelCreated)) {
     editor.placedCount = ordinal;
     ++stroke.acceptedMutationCount;
-    if (receipt.voxelCreated) {
-      setCreativeEditorVoxelPlacementFeedback(
-          editor.interaction, editor.frameIndex, receipt.objectKind,
-          receipt.voxelCell, receipt.worldBounds);
-    } else {
-      setCreativeEditorPlacementFeedback(
-          editor.interaction, CreativeEditorPlacementFeedbackStatus::Placed,
-          editor.frameIndex, receipt.objectKind, receipt.objectId);
-    }
-  } else {
-    rejectMaterialStroke(editor, held.objectKind, receipt.clearance);
   }
 }
 
@@ -405,7 +397,9 @@ void processMaterialStroke(cr::CreativeAppState& appState,
                            const cr::CreativeWorldActionFrame& actions,
                            std::uint64_t monotonicTimeNanoseconds,
                            const iggy3d::StaticMeshAssetCatalog*
-                               assetCatalog) {
+                               assetCatalog,
+                           const CreativePlacementClearanceCache*
+                               clearanceCache) {
   CreativeMaterialStrokeState& stroke = editor.interaction.materialStroke;
   const CreativeMaterialRepeatRequest repeatRequest =
       cr::makeCreativeWorldStrokeRepeatRequest(actions,
@@ -432,7 +426,7 @@ void processMaterialStroke(cr::CreativeAppState& appState,
     applyMaterialBrushMutation(appState, editor, held, repeat.dueKind);
   } else {
     applySingleMaterialMutation(appState, editor, held, repeat.dueKind,
-                                assetCatalog);
+                                assetCatalog, clearanceCache);
   }
 }
 
@@ -461,7 +455,8 @@ void processCreativeMaterialStrokeFrame(
     CreativeEditorState& editor,
     const cr::CreativeWorldActionFrame& actions,
     std::uint64_t monotonicTimeNanoseconds,
-    const iggy3d::StaticMeshAssetCatalog* assetCatalog) {
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog,
+    const CreativePlacementClearanceCache* clearanceCache) {
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   if (held.kind != cr::CreativeHeldItemKind::Material &&
@@ -472,11 +467,13 @@ void processCreativeMaterialStrokeFrame(
   }
   if (held.kind == cr::CreativeHeldItemKind::Material &&
       creativeEditorUsesStructuralSpan(held) &&
-      processCreativeEditorStructuralSpanInput(appState, editor, actions)) {
+      processCreativeEditorStructuralSpanInput(
+          appState, editor, actions, clearanceCache)) {
     return;
   }
   processMaterialStroke(appState, editor, held, actions,
-                        monotonicTimeNanoseconds, assetCatalog);
+                        monotonicTimeNanoseconds, assetCatalog,
+                        clearanceCache);
 }
 
 }  // namespace iggy3d_creative_app
