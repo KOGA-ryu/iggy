@@ -258,9 +258,35 @@ SessionTickResult runSessionTick(const SessionTickInput& input) {
     result.status = SessionTickStatus::BlockedByPausedClock;
     return result;
   }
+  // CLAMBER PHASE ADVANCE (flow feat v1): the timed motor phase moves the
+  // body once per tick, before command work, along the deterministic
+  // piecewise path stored at engage. Fixed tick count, no wall clock. If the
+  // actor vanished mid-phase the phase is dropped, never dangled.
+  bool clamberAdvancedThisTick = false;
+  if (state.clamberPhase.active) {
+    clamberAdvancedThisTick = true;
+    const EntityState* climber =
+        state.world.findById(state.clamberPhase.actor);
+    if (climber == nullptr || !climber->active) {
+      state.clamberPhase = {};
+    } else {
+      ++state.clamberPhase.ticksElapsed;
+      Transform3 climberTransform = climber->transform;
+      climberTransform.position = clamberPositionAtTick(
+          state.clamberPhase, state.clamberPhase.ticksElapsed);
+      const WorldMutationResult moved = state.world.updateTransform(
+          state.clamberPhase.actor, climberTransform);
+      if (moved.status != WorldStatus::Ok ||
+          state.clamberPhase.ticksElapsed >= state.clamberPhase.ticksTotal) {
+        state.clamberPhase = {};
+      }
+    }
+  }
+
   if (input.acceptedCommands.empty() &&
       !abilityRuntimeHasActiveProjectile(state.transient.abilityRuntime) &&
-      !abilityStateHasPendingRecharge(state.abilities)) {
+      !abilityStateHasPendingRecharge(state.abilities) &&
+      !clamberAdvancedThisTick) {
     result.status = SessionTickStatus::NoWork;
     return result;
   }
@@ -278,13 +304,25 @@ SessionTickResult runSessionTick(const SessionTickInput& input) {
 
   for (const EffectiveCommandIntent& intent : intents) {
     if (intent.effectiveKind == CommandKind::Move) {
+      // CLAMBER (flow feat v1): the phase owns the climbing body -- its Move
+      // intents are inert until the feat completes (the tick is consumed,
+      // locomotion for everyone else is untouched).
+      if (state.clamberPhase.active &&
+          state.clamberPhase.actor == intent.command.actor) {
+        result.executedSequences.push_back(intent.command.sequence);
+        continue;
+      }
       MovementSystemContext movementContext{&state.world, &state.config,
                                             input.collisionSurfaces,
                                             input.usePhysicsMovePlanner,
                                             input.precomputedSurfaceBake};
       const MovementMode mode = movementModeForClock(state.clock.mode == ClockMode::Slow);
-      const MovementRequest request =
+      MovementRequest request =
           movementRequestFromAcceptedCommand(intent.command, mode, state.config);
+      // Only the local player's intent may engage clamber; NPC movement
+      // keeps its own machinery (MA4 climb edges) untouched.
+      request.allowClamber =
+          intent.command.source == CommandSource::LocalPlayer;
       const MovementResult movement = executeMovement(movementContext, request);
       state.transient.lastMovementResultAvailable = true;
       state.transient.lastMovementResult = movement;
@@ -306,6 +344,29 @@ SessionTickResult runSessionTick(const SessionTickInput& input) {
           footstep.alertMax = state.config.footstepAlertMaxUnits;
           state.transient.soundEvents.push_back(footstep);
         }
+      }
+      // CLAMBER ENGAGE (flow feat v1): the motor reported a lawful engage
+      // against the blocking face. Start the fixed-tick phase (it advances
+      // from the NEXT tick) and EMIT exactly one engage sound with the
+      // clamber loudness constant -- same bus, same guard hearing as
+      // footsteps. The blocked movement result itself stands unchanged.
+      if (movement.clamberEngaged) {
+        state.clamberPhase = {};
+        state.clamberPhase.active = true;
+        state.clamberPhase.actor = intent.command.actor;
+        state.clamberPhase.ticksTotal = movement.clamberDurationTicks;
+        state.clamberPhase.startFootMeters = movement.start;
+        state.clamberPhase.targetFootMeters = movement.clamberTargetMeters;
+        const MovementParams movementParams;
+        SoundEvent clamberNoise;
+        clamberNoise.source = intent.command.actor;
+        clamberNoise.originMeters = movement.start;
+        clamberNoise.loudnessDb = movementParams.clamberLoudnessDb;
+        clamberNoise.alertFactor = state.config.footstepAlertFactor;
+        clamberNoise.alertMax = state.config.footstepAlertMaxUnits;
+        state.transient.soundEvents.push_back(clamberNoise);
+        result.executedSequences.push_back(intent.command.sequence);
+        continue;
       }
       if (movement.blocked != MovementBlockedReason::None) {
         if (movementBlockConsumesTick(movement.blocked)) {

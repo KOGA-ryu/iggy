@@ -1,6 +1,7 @@
 #include "runtime/movement/MovementSystem.hpp"
 
 #include "runtime/collision/CollisionQuery.hpp"
+#include "runtime/movement/ClamberMotor.hpp"
 #include "runtime/movement/MovementKinematics.hpp"
 #include "runtime/player/PlayerPhysicsMovePlanner.hpp"
 
@@ -325,8 +326,44 @@ MovementResult executePhysicsPlannedMovement(MovementSystemContext& context,
 
   // branch-gate: BG-1102
   if (planned.blocked && movementDistanceMeters(start, finalPosition) <= kMovementEpsilon) {
-    return blockedPhysicsResult(
+    MovementResult blocked = blockedPhysicsResult(
         request, start, MovementBlockedReason::BlockedByCollision, distanceMeters, planned);
+    // Clamber (flow feat v1): a fully-stopped push into a blocking face is
+    // the engagement gesture. Detection is geometric over the baked
+    // colliders; refusals leave this result exactly as blocked.
+    if (request.allowClamber) {
+      PhysicsSpatialSurfaceColliderBakeResult localBake;
+      const PhysicsSpatialSurfaceColliderBakeResult* bake =
+          context.precomputedSurfaceBake;
+      if (bake == nullptr) {
+        localBake = bakePhysicsAabbCollidersFromSpatialSurfaces(
+            {context.collisionSurfaces, plannerConfig.surfaceBake});
+        bake = &localBake;
+      }
+      ClamberEngageRequest clamberRequest;
+      clamberRequest.bake = bake;
+      clamberRequest.surfaces = context.collisionSurfaces;
+      clamberRequest.startFootMeters = start;
+      clamberRequest.desiredDirection = request.destination - start;
+      clamberRequest.grounded = planned.grounded;
+      clamberRequest.blockingSurfaceId =
+          !planned.stepObstacleSourceSurfaceId.empty()
+              ? std::string_view(planned.stepObstacleSourceSurfaceId)
+              : std::string_view(planned.firstHitSourceSurfaceId);
+      clamberRequest.params = params;
+      const ClamberEngageResult clamber =
+          evaluateClamberEngage(clamberRequest);
+      blocked.clamberEvaluated = true;
+      blocked.clamberEngaged = clamber.engaged;
+      blocked.clamberReasonCode =
+          std::string(clamberRefusalReasonCode(clamber.refusal));
+      if (clamber.engaged) {
+        blocked.clamberTargetMeters = clamber.targetFootMeters;
+        blocked.clamberDurationTicks = params.clamberDurationTicks;
+        blocked.clamberSurfaceId = clamber.surfaceId;
+      }
+    }
+    return blocked;
   }
 
   Transform3 nextTransform = actor.transform;

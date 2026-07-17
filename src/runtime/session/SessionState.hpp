@@ -16,6 +16,7 @@
 #include "runtime/diagnostics/RuntimeEvent.hpp"
 #include "runtime/diagnostics/RuntimeMetrics.hpp"
 #include "runtime/inventory/InventoryState.hpp"
+#include "runtime/movement/ClamberMotor.hpp"
 #include "runtime/movement/MovementCommand.hpp"
 #include "runtime/objective/ObjectiveOutcome.hpp"
 #include "runtime/objective/ObjectiveState.hpp"
@@ -114,6 +115,15 @@ struct SessionState {
   // rebuilt at create and in replaceStateFromLoad from buildObjectiveOutcomeTable(). Defaults
   // reproduce the two formerly-hardcoded rules exactly, so this is output-preserving.
   ObjectiveOutcomeTable outcomeTable;
+
+  // Clamber motor phase (flow feat v1). TRANSIENT-IN-PERSISTENCE (the
+  // route-state precedent, same slot family as reasoningGraph/outcomeTable):
+  // survives ticks OUTSIDE `transient` (which is cleared every tick) but is
+  // deliberately absent from StateHash, SaveCodec and SaveEnvelope -- never
+  // hashed, never serialized. After replaceStateFromLoad the slot is
+  // default-inactive, which is the lawful outcome: a save taken mid-clamber
+  // loads standing at the engage position and the feat is simply re-earnable.
+  ClamberPhaseState clamberPhase;
 
   std::uint64_t currentStateHash = 0;
 };
