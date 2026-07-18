@@ -459,6 +459,7 @@ int main(int argc, char** argv) {
       iggy3d_creative_app::CreativeDesktopCommandFrame desktopCommands;
       iggy3d_creative_app::buildCreativeEditorDesktopMenuBar(
           editor.desktopUi, activeAppState,
+          &activeAppState == &appState ? &editor.worldLayout : nullptr,
           iggy3d_creative_app::creativeEditorPlayModeActive(playMode),
           desktopCommands);
       iggy3d_creative_app::buildCreativeEditorDesktopPanels(

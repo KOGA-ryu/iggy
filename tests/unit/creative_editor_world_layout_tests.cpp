@@ -3,6 +3,7 @@
 #include "EditorPersistence.hpp"
 #include "EditorWorldLayout.hpp"
 #include "EditorWorldLayoutElevation.hpp"
+#include "EditorWorldLayoutHistory.hpp"
 
 #include <algorithm>
 #include <array>
@@ -2935,7 +2936,7 @@ bool unsynchronizedLayoutCannotBeSaved() {
                 "save rejects semantic source newer than generated document");
 }
 
-bool unsynchronizedDraftCannotBeLostAcrossLayoutHistory() {
+bool unsynchronizedDraftUsesSourceHistoryBeforeDocumentHistory() {
   cr::CreativeAppState live = appState();
   app::CreativeEditorWorldLayoutState state;
   app::resetCreativeEditorWorldLayout(state);
@@ -2949,15 +2950,24 @@ bool unsynchronizedDraftCannotBeLostAcrossLayoutHistory() {
   const auto draft = app::setCreativeEditorWorldLayoutRoomSettings(
       state, 0U, {{{0, 0}, {6, 4}}, 0.0, 3U, 0.25, 1U});
   const std::uint64_t documentCount = live.facade.document().objectCount();
+  const std::uint64_t documentUndoDepth =
+      cr::creativeUndoDepth(live.history);
   const bool undone = app::undoLastEdit(live, "layout-draft-undo", &state);
+  const bool restoredGeneratedSource =
+      undone && state.source.rooms.size() == 1U &&
+      state.source.rooms[0].footprint.maximum.x == 4 &&
+      state.revision == state.generatedRevision &&
+      app::creativeEditorWorldLayoutSourceRedoAvailable(state);
+  const bool redone = app::redoLastEdit(live, "layout-draft-redo", &state);
   return expect(generated.accepted && generated.changed && draft.accepted &&
-                    draft.changed && state.revision != state.generatedRevision,
-                "layout history draft guard prerequisites") &&
-         expect(!undone && state.source.rooms.size() == 1U &&
+                    draft.changed && restoredGeneratedSource,
+                "source undo restores the generated semantic baseline") &&
+         expect(redone && state.source.rooms.size() == 1U &&
                     state.source.rooms[0].footprint.maximum.x == 6 &&
+                    state.revision != state.generatedRevision &&
                     live.facade.document().objectCount() == documentCount &&
-                    cr::creativeUndoDepth(live.history) == 1U,
-                "undo cannot discard an ungenerated semantic draft");
+                    cr::creativeUndoDepth(live.history) == documentUndoDepth,
+                "source redo reapplies the draft without consuming document history");
 }
 
 }  // namespace
@@ -3002,6 +3012,6 @@ int main() {
       elevationProjectionUsesExactRecipeGeometry() &&
       elevationHitTestingAndEditMathAreTransactionalInputs() &&
       unsynchronizedLayoutCannotBeSaved() &&
-      unsynchronizedDraftCannotBeLostAcrossLayoutHistory();
+      unsynchronizedDraftUsesSourceHistoryBeforeDocumentHistory();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

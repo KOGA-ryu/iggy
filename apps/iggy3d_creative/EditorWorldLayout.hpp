@@ -597,6 +597,25 @@ struct CreativeEditorWorldLayoutSnapshot {
   std::uint64_t nextStableOrdinal = 1U;
 };
 
+struct CreativeEditorWorldLayoutSourceHistoryEntry {
+  CreativeEditorWorldLayoutSnapshot snapshot;
+  CreativeEditorWorldLayoutSelection selection;
+  std::size_t activeLevelIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::string source;
+};
+
+struct CreativeEditorWorldLayoutSourceHistory {
+  std::vector<CreativeEditorWorldLayoutSourceHistoryEntry> undoEntries;
+  std::vector<CreativeEditorWorldLayoutSourceHistoryEntry> redoEntries;
+  CreativeEditorWorldLayoutSourceHistoryEntry current;
+  std::size_t maxDepth = 32U;
+};
+
+struct CreativeEditorWorldLayoutDeferredSourceHistory {
+  bool active = false;
+  CreativeEditorWorldLayoutSourceHistory history;
+};
+
 struct CreativeEditorWorldLayoutState {
   cr::CreativeWorldLayout source;
   // Transient identity for the installed source. A replacement may reuse the
@@ -607,6 +626,8 @@ struct CreativeEditorWorldLayoutState {
   std::uint64_t generatedRevision = 1U;
   std::uint64_t nextStableOrdinal = 1U;
   CreativeEditorWorldLayoutSnapshot generatedBaseline;
+  CreativeEditorWorldLayoutSourceHistory sourceHistory;
+  CreativeEditorWorldLayoutDeferredSourceHistory deferredSourceHistory;
 
   CreativeEditorWorldLayoutTool tool = CreativeEditorWorldLayoutTool::Select;
   std::size_t activeLevelIndex = cr::kInvalidCreativeWorldLayoutIndex;

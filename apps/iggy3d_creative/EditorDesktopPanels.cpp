@@ -11,6 +11,7 @@
 #include "EditorInteraction.hpp"
 #include "EditorPlacementFeedback.hpp"
 #include "EditorPlayMode.hpp"
+#include "EditorWorldLayoutHistory.hpp"
 #include "EditorWorldLayoutPanel.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
 #include "app/iggy3d/creative/tools/Select.hpp"
@@ -125,12 +126,22 @@ void appendToolbarHeader(const cr::CreativeAppState& appState,
 void buildCreativeEditorDesktopMenuBar(
     CreativeEditorDesktopUiState& desktopUi,
     const cr::CreativeAppState& appState,
+    const CreativeEditorWorldLayoutState* worldLayout,
     bool playModeActive,
     CreativeDesktopCommandFrame& commands) {
   const cr::CreativeSelectionState& selection = appState.facade.selectionState();
   const bool hasSelection = cr::selectedTargetCount(selection) > 0U;
-  const bool canUndo = cr::creativeUndoAvailable(appState.history);
-  const bool canRedo = cr::creativeRedoAvailable(appState.history);
+  const bool sourceSynchronized =
+      worldLayout == nullptr ||
+      worldLayout->revision == worldLayout->generatedRevision;
+  const bool canUndo =
+      (worldLayout != nullptr &&
+       creativeEditorWorldLayoutSourceUndoAvailable(*worldLayout)) ||
+      (sourceSynchronized && cr::creativeUndoAvailable(appState.history));
+  const bool canRedo =
+      (worldLayout != nullptr &&
+       creativeEditorWorldLayoutSourceRedoAvailable(*worldLayout)) ||
+      (sourceSynchronized && cr::creativeRedoAvailable(appState.history));
 
   if (ImGui::BeginMainMenuBar()) {
     if (ImGui::BeginMenu("File")) {

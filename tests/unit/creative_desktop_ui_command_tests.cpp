@@ -6,6 +6,7 @@
 #include "EditorFrame.hpp"
 #include "EditorPersistence.hpp"
 #include "EditorState.hpp"
+#include "EditorWorldLayoutHistory.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
 #include "app/iggy3d/creative/tools/Group.hpp"
@@ -206,6 +207,51 @@ bool undoRedoMoveTheHistoryRings() {
   return expect(recorded, "duplicate records one undo step") &&
          expect(undo.accepted && undone, "undo command pops the ring") &&
          expect(redo.accepted && redone, "redo command restores the ring");
+}
+
+bool worldLayoutSourceUndoRedoRoutesThroughDispatcher() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Layout Source History");
+  static_cast<void>(document.assignId(421U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "desktop_source_history");
+  const auto shell = app::createCreativeEditorWorldLayoutBuildingShell(
+      editor.worldLayout, {{{0, 0}, {5, 4}}, 0.0, 3U, 0.25, 1U});
+  const auto preview = app::previewCreativeEditorWorldLayout(
+      editor.worldLayout, appState.facade.document());
+  const std::uint64_t documentRevision =
+      appState.facade.document().revision();
+
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{
+      appState, editor, std::filesystem::path{}, &saveId};
+  const app::CreativeDesktopCommandResult undo =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const bool undone =
+      undo.accepted && undo.changed && undo.worldLayoutChanged &&
+      undo.sceneChanged && editor.worldLayout.source.buildings.empty() &&
+      !app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      app::creativeEditorWorldLayoutSourceRedoAvailable(editor.worldLayout) &&
+      appState.facade.document().revision() == documentRevision;
+
+  const app::CreativeDesktopCommandResult redo =
+      dispatchOne(app::CreativeDesktopCommandId::Redo, context);
+  const bool redone =
+      redo.accepted && redo.changed && redo.worldLayoutChanged &&
+      !redo.sceneChanged && editor.worldLayout.source.buildings.size() == 1U &&
+      app::creativeEditorWorldLayoutSourceUndoAvailable(editor.worldLayout) &&
+      appState.facade.document().revision() == documentRevision;
+
+  return expect(shell.accepted && shell.changed && preview.accepted,
+                "World Layout desktop history fixture is valid") &&
+         expect(undone,
+                "desktop Undo restores source and invalidates its preview") &&
+         expect(redone,
+                "desktop Redo restores source without touching the document");
 }
 
 bool saveAsRebindsTheActiveSlotAndClearsHistory() {
@@ -2272,6 +2318,7 @@ int main() {
   ok = newDocumentReplacesAndClearsHistory() && ok;
   ok = deleteAndDuplicateHitTheKernels() && ok;
   ok = undoRedoMoveTheHistoryRings() && ok;
+  ok = worldLayoutSourceUndoRedoRoutesThroughDispatcher() && ok;
   ok = saveAsRebindsTheActiveSlotAndClearsHistory() && ok;
   ok = playIsUnsupportedAndFrameIsBounded() && ok;
   // Step 3 — Desktop Command Expansion.

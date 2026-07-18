@@ -18,6 +18,129 @@ namespace {
          snapshot.nextStableOrdinal > 0U;
 }
 
+[[nodiscard]] bool validSelection(
+    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutSelection selection) noexcept {
+  switch (selection.kind) {
+    case CreativeEditorWorldLayoutSelectionKind::None:
+      return true;
+    case CreativeEditorWorldLayoutSelectionKind::Level:
+      return selection.index < state.source.levels.size();
+    case CreativeEditorWorldLayoutSelectionKind::Room:
+      return selection.index < state.source.rooms.size();
+    case CreativeEditorWorldLayoutSelectionKind::VerticalConnector:
+      return selection.index < state.source.verticalConnectors.size();
+    case CreativeEditorWorldLayoutSelectionKind::Box:
+      return selection.index < state.source.boxes.size();
+    case CreativeEditorWorldLayoutSelectionKind::Wall:
+      return selection.index < state.source.walls.size();
+    case CreativeEditorWorldLayoutSelectionKind::Opening:
+      return selection.index < state.source.openings.size();
+    case CreativeEditorWorldLayoutSelectionKind::Building:
+      return selection.index < state.source.buildings.size();
+    case CreativeEditorWorldLayoutSelectionKind::TerrainProfile:
+      return selection.index < state.source.terrainProfiles.size();
+    case CreativeEditorWorldLayoutSelectionKind::TerrainPath:
+      return selection.index < state.source.terrainPaths.size();
+    case CreativeEditorWorldLayoutSelectionKind::Object:
+      return selection.index < state.source.objects.size();
+  }
+  return false;
+}
+
+[[nodiscard]] bool equivalentSnapshot(
+    const CreativeEditorWorldLayoutSnapshot& lhs,
+    const CreativeEditorWorldLayoutSnapshot& rhs) {
+  cr::CreativeHistorySidecar lhsSidecar;
+  cr::CreativeHistorySidecar rhsSidecar;
+  return encodeCreativeEditorWorldLayoutHistorySidecar(lhs, lhsSidecar) &&
+         encodeCreativeEditorWorldLayoutHistorySidecar(rhs, rhsSidecar) &&
+         lhsSidecar == rhsSidecar;
+}
+
+void installSourceHistoryEntry(
+    CreativeEditorWorldLayoutState& state,
+    const CreativeEditorWorldLayoutSourceHistoryEntry& entry) {
+  state.sourceEpoch = detail::nextWorldLayoutSourceEpoch(state.sourceEpoch);
+  state.source = entry.snapshot.source;
+  state.revision = entry.snapshot.revision;
+  state.savedRevision = entry.snapshot.savedRevision;
+  state.generatedRevision = entry.snapshot.generatedRevision;
+  state.nextStableOrdinal = entry.snapshot.nextStableOrdinal;
+  if (state.revision == state.generatedRevision) {
+    state.generatedBaseline = entry.snapshot;
+  }
+  state.selection = validSelection(state, entry.selection)
+                        ? entry.selection
+                        : CreativeEditorWorldLayoutSelection{};
+  state.activeLevelIndex = entry.activeLevelIndex;
+  repairCreativeEditorWorldLayoutActiveLevel(state);
+  state.anchorActive = false;
+  detail::clearWorldLayoutInteraction(state);
+  detail::invalidateWorldLayoutPreview(state);
+  state.elevationCache = {};
+  state.diagnosticCache = {};
+}
+
+[[nodiscard]] cr::CreativeHistoryApplyReceipt applySourceHistory(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeAppState& appState,
+    cr::CreativeHistoryDirection direction) {
+  cr::CreativeHistoryApplyReceipt receipt;
+  receipt.requested = true;
+  receipt.direction = direction;
+  receipt.documentId = appState.facade.document().id();
+  receipt.revisionBefore = appState.facade.document().revision();
+  receipt.revisionAfter = receipt.revisionBefore;
+  receipt.objectCountBefore = appState.facade.document().objectCount();
+  receipt.objectCountAfter = receipt.objectCountBefore;
+  receipt.undoDepthBefore = state.sourceHistory.undoEntries.size();
+  receipt.redoDepthBefore = state.sourceHistory.redoEntries.size();
+
+  const bool undo = direction == cr::CreativeHistoryDirection::Undo;
+  auto& sourceEntries = undo ? state.sourceHistory.undoEntries
+                             : state.sourceHistory.redoEntries;
+  auto& destinationEntries = undo ? state.sourceHistory.redoEntries
+                                  : state.sourceHistory.undoEntries;
+  if (sourceEntries.empty()) {
+    receipt.status = cr::CreativeHistoryStatus::Empty;
+    receipt.reasonCode = undo
+                             ? "creative_world_layout_source_undo_empty"
+                             : "creative_world_layout_source_redo_empty";
+    receipt.undoDepthAfter = receipt.undoDepthBefore;
+    receipt.redoDepthAfter = receipt.redoDepthBefore;
+    return receipt;
+  }
+
+  CreativeEditorWorldLayoutSourceHistoryEntry target =
+      std::move(sourceEntries.back());
+  sourceEntries.pop_back();
+  CreativeEditorWorldLayoutSourceHistoryEntry current =
+      std::move(state.sourceHistory.current);
+  current.selection = state.selection;
+  current.activeLevelIndex = state.activeLevelIndex;
+  current.source = target.source;
+  detail::appendWorldLayoutSourceHistoryEntry(
+      destinationEntries, std::move(current), state.sourceHistory.maxDepth);
+
+  receipt.hadSnapshot = true;
+  receipt.source = target.source;
+  installSourceHistoryEntry(state, target);
+  state.sourceHistory.current = std::move(target);
+  state.sourceHistory.current.source.clear();
+  state.statusMessage = undo ? "layout edit undone: " + receipt.source
+                             : "layout edit redone: " + receipt.source;
+  receipt.accepted = true;
+  receipt.changed = true;
+  receipt.status = cr::CreativeHistoryStatus::Applied;
+  receipt.reasonCode = undo
+                           ? "creative_world_layout_source_undo_applied"
+                           : "creative_world_layout_source_redo_applied";
+  receipt.undoDepthAfter = state.sourceHistory.undoEntries.size();
+  receipt.redoDepthAfter = state.sourceHistory.redoEntries.size();
+  return receipt;
+}
+
 }  // namespace
 
 CreativeEditorWorldLayoutSnapshot captureCreativeEditorWorldLayoutSnapshot(
@@ -114,7 +237,30 @@ void installCreativeEditorWorldLayoutSnapshot(
   state.nextStableOrdinal = snapshot.nextStableOrdinal;
   repairCreativeEditorWorldLayoutActiveLevel(state);
   state.generatedBaseline = captureCreativeEditorWorldLayoutSnapshot(state);
+  detail::resetWorldLayoutSourceHistory(state);
   state.statusMessage = "layout restored from history";
+}
+
+bool creativeEditorWorldLayoutSourceUndoAvailable(
+    const CreativeEditorWorldLayoutState& state) noexcept {
+  return state.sourceHistory.maxDepth > 0U &&
+         !state.sourceHistory.undoEntries.empty();
+}
+
+bool creativeEditorWorldLayoutSourceRedoAvailable(
+    const CreativeEditorWorldLayoutState& state) noexcept {
+  return state.sourceHistory.maxDepth > 0U &&
+         !state.sourceHistory.redoEntries.empty();
+}
+
+std::uint64_t creativeEditorWorldLayoutSourceUndoDepth(
+    const CreativeEditorWorldLayoutState& state) noexcept {
+  return state.sourceHistory.undoEntries.size();
+}
+
+std::uint64_t creativeEditorWorldLayoutSourceRedoDepth(
+    const CreativeEditorWorldLayoutState& state) noexcept {
+  return state.sourceHistory.redoEntries.size();
 }
 
 cr::CreativeWorldLayoutApplyReceipt applyCreativeEditorWorldLayoutPlanWithHistory(
@@ -142,10 +288,15 @@ cr::CreativeWorldLayoutApplyReceipt applyCreativeEditorWorldLayoutPlanWithHistor
     return receipt;
   }
 
+  CreativeEditorWorldLayoutSourceHistory sourceHistory =
+      std::move(state.sourceHistory);
   committedSnapshot.generatedRevision = committedSnapshot.revision;
   installCreativeEditorWorldLayoutSnapshot(state, std::move(committedSnapshot));
   state.generatedBaseline = captureCreativeEditorWorldLayoutSnapshot(state);
   if (!receipt.changed) {
+    state.sourceHistory = std::move(sourceHistory);
+    state.sourceHistory.current =
+        detail::captureWorldLayoutSourceHistoryEntry(state);
     cr::cancelCreativeHistoryTransaction(transaction);
     return receipt;
   }
@@ -167,17 +318,25 @@ cr::CreativeHistoryApplyReceipt applyCreativeEditorWorldLayoutHistory(
   rejected.status = cr::CreativeHistoryStatus::InvalidDocument;
   rejected.reasonCode = "creative_world_layout_history_sidecar_invalid";
 
+  const bool sourceHistoryAvailable =
+      direction == cr::CreativeHistoryDirection::Undo
+          ? creativeEditorWorldLayoutSourceUndoAvailable(state)
+          : creativeEditorWorldLayoutSourceRedoAvailable(state);
+  if (sourceHistoryAvailable) {
+    return applySourceHistory(state, appState, direction);
+  }
+  if (state.generatedRevision != state.revision) {
+    rejected.reasonCode =
+        "creative_world_layout_history_unsynchronized_source";
+    return rejected;
+  }
+
   CreativeEditorWorldLayoutSnapshot targetSnapshot;
   const cr::CreativeHistorySidecar* targetSidecar =
       cr::creativeHistoryTargetSidecar(appState.history, direction);
   if (targetSidecar == nullptr) {
     return cr::applyCreativeHistory(appState.facade, appState.history,
                                     direction);
-  }
-  if (state.generatedRevision != state.revision) {
-    rejected.reasonCode =
-        "creative_world_layout_history_unsynchronized_source";
-    return rejected;
   }
   if (!decodeCreativeEditorWorldLayoutHistorySidecar(*targetSidecar,
                                                      targetSnapshot)) {
@@ -193,7 +352,23 @@ cr::CreativeHistoryApplyReceipt applyCreativeEditorWorldLayoutHistory(
   cr::CreativeHistoryApplyReceipt receipt = cr::applyCreativeHistory(
       appState.facade, appState.history, direction, std::move(currentSidecar));
   if (receipt.accepted) {
+    CreativeEditorWorldLayoutDeferredSourceHistory deferred =
+        std::move(state.deferredSourceHistory);
+    if (direction == cr::CreativeHistoryDirection::Undo &&
+        !deferred.active &&
+        creativeEditorWorldLayoutSourceRedoAvailable(state)) {
+      deferred.active = true;
+      deferred.history = std::move(state.sourceHistory);
+    }
     installCreativeEditorWorldLayoutSnapshot(state, std::move(targetSnapshot));
+    if (deferred.active &&
+        direction == cr::CreativeHistoryDirection::Redo &&
+        equivalentSnapshot(state.generatedBaseline,
+                           deferred.history.current.snapshot)) {
+      state.sourceHistory = std::move(deferred.history);
+    } else {
+      state.deferredSourceHistory = std::move(deferred);
+    }
   }
   return receipt;
 }

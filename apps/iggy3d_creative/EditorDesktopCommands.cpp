@@ -218,21 +218,53 @@ void dispatchOne(const CreativeDesktopCommand& command,
     case CreativeDesktopCommandId::Undo: {
       CreativeEditorWorldLayoutState* worldLayout =
           &activeAppState == &appState ? &editor.worldLayout : nullptr;
+      const std::uint64_t layoutRevisionBefore =
+          worldLayout != nullptr ? worldLayout->revision : 0U;
+      const std::uint64_t documentRevisionBefore =
+          activeAppState.facade.document().revision();
+      const bool previewWasActive =
+          worldLayout != nullptr &&
+          creativeEditorWorldLayoutPreviewActive(*worldLayout);
       const bool ok =
           undoLastEdit(activeAppState, "desktop_undo", worldLayout);
       result.accepted = ok;
       result.changed = ok;
-      result.message = ok ? "undo" : "nothing to undo";
+      result.worldLayoutChanged =
+          worldLayout != nullptr &&
+          worldLayout->revision != layoutRevisionBefore;
+      result.sceneChanged =
+          ok && (previewWasActive ||
+                 activeAppState.facade.document().revision() !=
+                     documentRevisionBefore);
+      result.message = result.worldLayoutChanged
+                           ? worldLayout->statusMessage
+                           : (ok ? "undo" : "nothing to undo");
       break;
     }
     case CreativeDesktopCommandId::Redo: {
       CreativeEditorWorldLayoutState* worldLayout =
           &activeAppState == &appState ? &editor.worldLayout : nullptr;
+      const std::uint64_t layoutRevisionBefore =
+          worldLayout != nullptr ? worldLayout->revision : 0U;
+      const std::uint64_t documentRevisionBefore =
+          activeAppState.facade.document().revision();
+      const bool previewWasActive =
+          worldLayout != nullptr &&
+          creativeEditorWorldLayoutPreviewActive(*worldLayout);
       const bool ok =
           redoLastEdit(activeAppState, "desktop_redo", worldLayout);
       result.accepted = ok;
       result.changed = ok;
-      result.message = ok ? "redo" : "nothing to redo";
+      result.worldLayoutChanged =
+          worldLayout != nullptr &&
+          worldLayout->revision != layoutRevisionBefore;
+      result.sceneChanged =
+          ok && (previewWasActive ||
+                 activeAppState.facade.document().revision() !=
+                     documentRevisionBefore);
+      result.message = result.worldLayoutChanged
+                           ? worldLayout->statusMessage
+                           : (ok ? "redo" : "nothing to redo");
       break;
     }
     case CreativeDesktopCommandId::DuplicateSelection: {

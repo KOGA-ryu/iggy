@@ -28,6 +28,15 @@ void installCreativeEditorWorldLayoutSnapshot(
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutSnapshot snapshot);
 
+[[nodiscard]] bool creativeEditorWorldLayoutSourceUndoAvailable(
+    const CreativeEditorWorldLayoutState& state) noexcept;
+[[nodiscard]] bool creativeEditorWorldLayoutSourceRedoAvailable(
+    const CreativeEditorWorldLayoutState& state) noexcept;
+[[nodiscard]] std::uint64_t creativeEditorWorldLayoutSourceUndoDepth(
+    const CreativeEditorWorldLayoutState& state) noexcept;
+[[nodiscard]] std::uint64_t creativeEditorWorldLayoutSourceRedoDepth(
+    const CreativeEditorWorldLayoutState& state) noexcept;
+
 [[nodiscard]] cr::CreativeWorldLayoutApplyReceipt
 applyCreativeEditorWorldLayoutPlanWithHistory(
     CreativeEditorWorldLayoutState& state,

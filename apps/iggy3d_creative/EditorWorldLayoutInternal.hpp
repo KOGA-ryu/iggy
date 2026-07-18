@@ -212,16 +212,64 @@ inline void clearWorldLayoutInteraction(
   state.boxSettingsDraft = {};
   state.wallSettingsDraft = {};
   state.openingSettingsDraft = {};
+  state.levelSettingsDraft = {};
+  state.terrainProfileSettingsDraft = {};
+  state.terrainPathSettingsDraft = {};
+  state.objectSettingsDraft = {};
+}
+
+inline CreativeEditorWorldLayoutSourceHistoryEntry
+captureWorldLayoutSourceHistoryEntry(
+    const CreativeEditorWorldLayoutState& state) {
+  return {{state.source, state.revision, state.savedRevision,
+           state.generatedRevision, state.nextStableOrdinal},
+          state.selection,
+          state.activeLevelIndex,
+          {}};
+}
+
+inline void resetWorldLayoutSourceHistory(
+    CreativeEditorWorldLayoutState& state) {
+  const std::size_t maxDepth = state.sourceHistory.maxDepth;
+  state.sourceHistory = {};
+  state.sourceHistory.maxDepth = maxDepth;
+  state.sourceHistory.current =
+      captureWorldLayoutSourceHistoryEntry(state);
+}
+
+inline void appendWorldLayoutSourceHistoryEntry(
+    std::vector<CreativeEditorWorldLayoutSourceHistoryEntry>& entries,
+    CreativeEditorWorldLayoutSourceHistoryEntry entry,
+    std::size_t maxDepth) {
+  if (maxDepth == 0U) {
+    return;
+  }
+  if (entries.size() >= maxDepth) {
+    entries.erase(entries.begin());
+  }
+  entries.push_back(std::move(entry));
 }
 
 inline void noteWorldLayoutSourceChange(CreativeEditorWorldLayoutState& state,
                                         std::string reason) {
+  state.deferredSourceHistory = {};
+  CreativeEditorWorldLayoutSourceHistoryEntry previous =
+      std::move(state.sourceHistory.current);
+  previous.selection = state.selection;
+  previous.activeLevelIndex = state.activeLevelIndex;
+  previous.source = reason;
+  appendWorldLayoutSourceHistoryEntry(
+      state.sourceHistory.undoEntries, std::move(previous),
+      state.sourceHistory.maxDepth);
+  state.sourceHistory.redoEntries.clear();
   if (state.revision != std::numeric_limits<std::uint64_t>::max()) {
     ++state.revision;
   }
   clearWorldLayoutInteraction(state);
   invalidateWorldLayoutPreview(state);
   state.statusMessage = std::move(reason);
+  state.sourceHistory.current =
+      captureWorldLayoutSourceHistoryEntry(state);
 }
 
 }  // namespace iggy3d_creative_app::detail

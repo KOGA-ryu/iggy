@@ -15,6 +15,7 @@ namespace iggy3d_creative_app {
 void buildCreativeEditorDesktopMenuBar(
     CreativeEditorDesktopUiState& desktopUi,
     const iggy3d::creative::CreativeAppState& appState,
+    const CreativeEditorWorldLayoutState* worldLayout,
     bool playModeActive,
     CreativeDesktopCommandFrame& commands);
 

@@ -1566,6 +1566,7 @@ void resetCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
   state.generatedBaseline = {state.source, state.revision, state.savedRevision,
                              state.generatedRevision,
                              state.nextStableOrdinal};
+  detail::resetWorldLayoutSourceHistory(state);
   state.statusMessage = "blank layout";
 }
 
@@ -1590,15 +1591,31 @@ void installCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
   state.generatedBaseline = {state.source, state.revision, state.savedRevision,
                              state.generatedRevision,
                              state.nextStableOrdinal};
+  detail::resetWorldLayoutSourceHistory(state);
   state.statusMessage = "layout loaded";
 }
 
 void markCreativeEditorWorldLayoutSaved(
     CreativeEditorWorldLayoutState& state) noexcept {
+  state.deferredSourceHistory = {};
   state.savedRevision = state.revision;
   if (state.generatedRevision == state.revision) {
     state.generatedBaseline.savedRevision = state.savedRevision;
   }
+  const auto markEntrySaved = [&state](
+                                  CreativeEditorWorldLayoutSourceHistoryEntry&
+                                      entry) {
+    entry.snapshot.savedRevision = state.savedRevision;
+  };
+  for (CreativeEditorWorldLayoutSourceHistoryEntry& entry :
+       state.sourceHistory.undoEntries) {
+    markEntrySaved(entry);
+  }
+  for (CreativeEditorWorldLayoutSourceHistoryEntry& entry :
+       state.sourceHistory.redoEntries) {
+    markEntrySaved(entry);
+  }
+  markEntrySaved(state.sourceHistory.current);
 }
 
 namespace {
