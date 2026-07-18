@@ -19,6 +19,9 @@
 namespace iggy3d_creative_app {
 
 inline constexpr std::string_view kPlaytestEventMagic = "IGGY3DP1";
+// The editor->child command channel magic (child stdin). Same grammar, same
+// wire-law, opposite direction: `IGGY3DC1 <verb> seq=<n> k=v...`.
+inline constexpr std::string_view kPlaytestCommandMagic = "IGGY3DC1";
 
 // v1 vocabulary. Appending is allowed; renaming or removing is not.
 inline constexpr std::string_view kPlaytestEventKindSessionStarted =
@@ -28,6 +31,12 @@ inline constexpr std::string_view kPlaytestEventKindRuntimeEvent =
     "runtime_event";
 inline constexpr std::string_view kPlaytestEventKindSessionEnded =
     "session_ended";
+// Appended (command-channel slice): the child acks EVERY stdin command.
+inline constexpr std::string_view kPlaytestEventKindCommandAck = "command_ack";
+
+// v1 command verbs (append-only).
+inline constexpr std::string_view kPlaytestCommandVerbPause = "pause";
+inline constexpr std::string_view kPlaytestCommandVerbResume = "resume";
 
 [[nodiscard]] bool isKnownPlaytestEventKind(std::string_view kind) noexcept;
 
@@ -42,6 +51,8 @@ struct PlaytestEvent {
 // Formats WITHOUT the trailing newline (the writer owns framing). Keys,
 // values, and the kind are sanitized: spaces/newlines/'=' become '_'.
 [[nodiscard]] std::string formatPlaytestEventLine(const PlaytestEvent& event);
+// Same grammar under the IGGY3DC1 magic (kind = the command verb).
+[[nodiscard]] std::string formatPlaytestCommandLine(const PlaytestEvent& command);
 
 enum class PlaytestEventParseStatus : std::uint8_t {
   Parsed,       // well-formed protocol line (kind may still be unknown)
@@ -56,12 +67,19 @@ struct PlaytestEventParseResult {
 
 [[nodiscard]] PlaytestEventParseResult parsePlaytestEventLine(
     std::string_view line);
+[[nodiscard]] PlaytestEventParseResult parsePlaytestCommandLine(
+    std::string_view line);
 
 // Streaming reassembler: feed arbitrary chunk boundaries; complete lines are
 // parsed, the trailing partial line is carried to the next feed. Counters
 // are cumulative and never fatal.
 class PlaytestEventStreamParser {
  public:
+  // Defaults to the event magic (IGGY3DP1); the child's stdin drain reuses
+  // the same reassembly discipline with the command magic (IGGY3DC1).
+  PlaytestEventStreamParser() = default;
+  explicit PlaytestEventStreamParser(std::string_view magic)
+      : magic_(magic) {}
   struct FeedStats {
     std::size_t parsedCount = 0;
     std::size_t malformedCount = 0;
@@ -79,6 +97,7 @@ class PlaytestEventStreamParser {
 
  private:
   FeedStats consumeLine(std::string_view line, std::vector<PlaytestEvent>& out);
+  std::string_view magic_ = kPlaytestEventMagic;
   std::string partial_;
   std::size_t totalParsed_ = 0;
   std::size_t totalMalformed_ = 0;

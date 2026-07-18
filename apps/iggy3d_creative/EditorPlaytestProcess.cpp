@@ -186,6 +186,12 @@ void PlaytestProcessOwner::applyEvent(PlaytestEvent event) {
   ++monitor_.totalEventCount;
   if (!isKnownPlaytestEventKind(event.kind)) {
     ++monitor_.unknownKindCount;
+  } else if (event.kind == kPlaytestEventKindCommandAck) {
+    const std::string seq{event.field("seq", "0")};
+    monitor_.lastAckSeq = SDL_strtoull(seq.c_str(), nullptr, 10);
+    monitor_.lastAckVerb = std::string(event.field("verb"));
+    monitor_.lastAckStatus = std::string(event.field("status"));
+    monitor_.lastAckReason = std::string(event.field("reason"));
   } else if (event.kind == kPlaytestEventKindHeartbeat) {
     const std::string tick{event.field("tick", "0")};
     monitor_.lastHeartbeatTick = SDL_strtoull(tick.c_str(), nullptr, 10);
@@ -295,6 +301,7 @@ void PlaytestProcessOwner::stopRunning() {
   process_ = nullptr;
   stdoutStream_ = nullptr;
   stderrStream_ = nullptr;
+  stdinStream_ = nullptr;
   monitor_.childRunning = false;
 }
 
@@ -329,6 +336,9 @@ bool PlaytestProcessOwner::launch(const PlaytestLaunchPlan& plan,
   SDL_SetPointerProperty(createProperties,
                          SDL_PROP_PROCESS_CREATE_ARGS_POINTER, argv.data());
   SDL_SetNumberProperty(createProperties,
+                        SDL_PROP_PROCESS_CREATE_STDIN_NUMBER,
+                        SDL_PROCESS_STDIO_APP);
+  SDL_SetNumberProperty(createProperties,
                         SDL_PROP_PROCESS_CREATE_STDOUT_NUMBER,
                         SDL_PROCESS_STDIO_APP);
   SDL_SetNumberProperty(createProperties,
@@ -341,6 +351,8 @@ bool PlaytestProcessOwner::launch(const PlaytestLaunchPlan& plan,
     return false;
   }
   stdoutStream_ = SDL_GetProcessOutput(process_);
+  stdinStream_ = SDL_GetProcessInput(process_);
+  nextCommandSeq_ = 1U;
   stderrStream_ = static_cast<SDL_IOStream*>(SDL_GetPointerProperty(
       SDL_GetProcessProperties(process_), SDL_PROP_PROCESS_STDERR_POINTER,
       nullptr));
@@ -389,6 +401,44 @@ PlaytestProcessOwner::PollResult PlaytestProcessOwner::poll() {
   result.stallAgeMs = monitor_.stallAgeMs;
   result.stallRecovered = wasStalled && !monitor_.stalled;
   return result;
+}
+
+bool PlaytestProcessOwner::sendPlaytestCommand(
+    std::string_view verb,
+    const std::vector<std::pair<std::string, std::string>>& fields,
+    std::string& reasonCode) {
+  if (process_ == nullptr || stdinStream_ == nullptr) {
+    reasonCode = "playtest_command_no_child";
+    return false;
+  }
+  if (monitor_.stalled) {
+    // The hang guard gates sends: a stalled child gets NOTHING queued.
+    reasonCode = "playtest_command_child_stalled";
+    return false;
+  }
+  PlaytestEvent command;
+  command.kind = std::string(verb);
+  command.fields = {{"seq", std::to_string(nextCommandSeq_)}};
+  for (const auto& field : fields) {
+    command.fields.push_back(field);
+  }
+  std::string line = formatPlaytestCommandLine(command);
+  line.push_back('\n');
+  // Non-blocking by construction (SDL sets O_NONBLOCK on the pipe) and
+  // SIGPIPE is ignored at pipe creation: a dead child or a full pipe comes
+  // back as a short/failed write here, never a stall or a signal.
+  const std::size_t written =
+      SDL_WriteIO(stdinStream_, line.data(), line.size());
+  if (written != line.size()) {
+    reasonCode = std::string("playtest_command_write_failed: ") +
+                 SDL_GetError();
+    return false;
+  }
+  static_cast<void>(SDL_FlushIO(stdinStream_));
+  monitor_.lastCommandSeqSent = nextCommandSeq_;
+  ++nextCommandSeq_;
+  reasonCode = "playtest_command_sent";
+  return true;
 }
 
 void PlaytestProcessOwner::setSnapshotEntityNames(
