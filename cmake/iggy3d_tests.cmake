@@ -987,3 +987,29 @@ if(IGGY3D_SHADER_COMPILER_AVAILABLE)
     ENVIRONMENT "SDL_VIDEODRIVER=offscreen"
     LABELS "smoke;app;creative;capture;iggy3d")
 endif()
+
+add_executable(playtest_lifecycle_tests
+  tests/unit/playtest_lifecycle_tests.cpp)
+target_link_libraries(playtest_lifecycle_tests PRIVATE iggy3d_creative_app)
+iggy3d_apply_warnings(playtest_lifecycle_tests)
+add_test(NAME playtest_lifecycle_tests
+  COMMAND "$<TARGET_FILE:playtest_lifecycle_tests>")
+set_tests_properties(playtest_lifecycle_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;play;lifecycle;iggy3d")
+
+# Headless-REAL child lifecycle: drives actual offscreen i3dp children
+# through the production owner (spawn -> natural exit reap; kill-and-replace;
+# shutdown reap). Depends on the i3dp target at test time.
+add_executable(playtest_process_owner_tests
+  tests/unit/playtest_process_owner_tests.cpp)
+target_link_libraries(playtest_process_owner_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(playtest_process_owner_tests)
+add_test(NAME playtest_process_owner_tests
+  COMMAND "$<TARGET_FILE:playtest_process_owner_tests>"
+          "$<TARGET_FILE:i3dp>"
+          "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/worlds")
+set_tests_properties(playtest_process_owner_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "integration;app;creative;play;lifecycle;smoke;iggy3d")

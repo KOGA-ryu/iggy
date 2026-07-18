@@ -1,5 +1,7 @@
 #include "EditorDesktopPanels.hpp"
 
+#include "EditorPlaytestProcess.hpp"
+
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -355,6 +357,13 @@ void buildCreativeEditorDesktopStatusBar(
     ImGui::TextDisabled("|");
     ImGui::SameLine();
     ImGui::Text("device %s", controlDeviceName(editor.activeControlDevice));
+    if (desktopUi.playtestRunning) {
+      ImGui::SameLine();
+      ImGui::TextDisabled("|");
+      ImGui::SameLine();
+      ImGui::TextColored(ImVec4{0.20F, 1.0F, 0.35F, 1.0F}, "%s",
+                         std::string(playtestRunningStatusMessage()).c_str());
+    }
     if (!desktopUi.statusMessage.empty()) {
       ImGui::SameLine();
       ImGui::TextDisabled("|");

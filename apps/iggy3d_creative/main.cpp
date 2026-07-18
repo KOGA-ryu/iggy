@@ -60,6 +60,7 @@
 #include "EditorToolWheelPreferences.hpp"
 #include "EditorPlacement.hpp"
 #include "EditorPersistence.hpp"
+#include "EditorPlaytestProcess.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorTransform.hpp"
 #include "EditorWorldLayout.hpp"
@@ -341,8 +342,19 @@ int main(int argc, char** argv) {
   const float kGizmoThickness = bootstrapData.gizmoThicknessMeters;
   CreativeEditorGamepad gamepad;
   iggy3d_creative_app::CreativeEditorSceneCache sceneCache;
+  // The one playtest child this editor may own (kill-reap-snapshot-spawn on
+  // Play, reaped on editor exit, polled non-blocking every frame).
+  iggy3d_creative_app::PlaytestProcessOwner playtestOwner;
 
   while (window.isOpen()) {
+    const iggy3d_creative_app::PlaytestProcessOwner::PollResult playtestPoll =
+        playtestOwner.poll();
+    editor.desktopUi.playtestRunning = playtestPoll.running;
+    if (playtestPoll.exitObserved) {
+      editor.desktopUi.statusMessage =
+          iggy3d_creative_app::playtestExitStatusMessage(
+              playtestPoll.exitCode);
+    }
     // Non-const: captured Esc release consumes the ToggleControls action from
     // the route this frame so Controls does not also open (plan DD-9 / FC-4).
     CreativeEditorFrameInputResult frameInput = beginCreativeEditorFrameInput(
@@ -457,7 +469,8 @@ int main(int argc, char** argv) {
                  editor,
                  saveRoot,
                  &saveId,
-                 &bootstrapData.staticMeshAssetCatalog});
+                 &bootstrapData.staticMeshAssetCatalog,
+                 &playtestOwner});
         if (!desktopResult.message.empty()) {
           editor.desktopUi.statusMessage = desktopResult.message;
         }
@@ -748,6 +761,9 @@ int main(int argc, char** argv) {
       editor, "creative_authored_asset_edit_shutdown"));
   static_cast<void>(iggy3d_creative_app::cancelCreativeEditorAssetReplacement(
       editor.assetReplacement, "creative_asset_replace_shutdown"));
+  // Editor exit reaps the child: no orphaned playtest windows.
+  playtestOwner.shutdown();
+
   bool captureOk = true;
   if (!capturePath.empty()) {
     captureOk = captureFrameToPng(*backend, capturePath);
