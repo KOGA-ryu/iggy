@@ -126,6 +126,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/play/PlayInteraction.cpp
     src/app/iggy3d/creative/play/PlayLogicOverlay.cpp
     src/app/iggy3d/creative/play/PlaySession.cpp
+    src/app/iggy3d/creative/play/PlaytestEventProtocol.cpp
     src/app/iggy3d/creative/play/RuntimeSandbox.cpp
     src/app/iggy3d/creative/spatial/Ghost.cpp
     src/app/iggy3d/creative/recipes/CreativeRecipe.cpp

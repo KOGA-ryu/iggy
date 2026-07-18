@@ -27,6 +27,7 @@
 #include "EditorWorldLayout.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/play/PlaySession.hpp"
+#include "app/iggy3d/creative/play/PlaytestEventProtocol.hpp"
 #include "app/iggy3d/creative/render/CreativeSceneFrame.hpp"
 #include "app/platform/SdlWindow.hpp"
 #include "render/FrameInput.hpp"
@@ -37,6 +38,41 @@ namespace {
 
 namespace creative = iggy3d::creative;
 namespace app = iggy3d_creative_app;
+
+// stdout is the IGGY3DP1 protocol channel; ALL human chatter goes to stderr
+// (SDL_Log already does). One flush per event keeps lines whole on the pipe.
+void writeProtocolEvent(const app::PlaytestEvent& event) {
+  const std::string line = app::formatPlaytestEventLine(event);
+  std::fwrite(line.data(), 1U, line.size(), stdout);
+  std::fputc('\n', stdout);
+  std::fflush(stdout);
+}
+
+// Mirror of RuntimeEventKind as wire strings (kind STRING only on the wire).
+[[nodiscard]] const char* runtimeEventKindName(iggy3d::RuntimeEventKind kind) {
+  switch (kind) {
+    case iggy3d::RuntimeEventKind::CommandAccepted: return "command_accepted";
+    case iggy3d::RuntimeEventKind::CommandRejected: return "command_rejected";
+    case iggy3d::RuntimeEventKind::Moved: return "moved";
+    case iggy3d::RuntimeEventKind::Interacted: return "interacted";
+    case iggy3d::RuntimeEventKind::CombatAttacked: return "combat_attacked";
+    case iggy3d::RuntimeEventKind::CombatantDefeated:
+      return "combatant_defeated";
+    case iggy3d::RuntimeEventKind::AbilityCast: return "ability_cast";
+    case iggy3d::RuntimeEventKind::AbilityImpacted: return "ability_impacted";
+    case iggy3d::RuntimeEventKind::ItemAcquired: return "item_acquired";
+    case iggy3d::RuntimeEventKind::ObjectiveCompleted:
+      return "objective_completed";
+    case iggy3d::RuntimeEventKind::ClockChanged: return "clock_changed";
+    case iggy3d::RuntimeEventKind::CameraChanged: return "camera_changed";
+    case iggy3d::RuntimeEventKind::SaveCreated: return "save_created";
+    case iggy3d::RuntimeEventKind::LoadCompleted: return "load_completed";
+    case iggy3d::RuntimeEventKind::ResetCompleted: return "reset_completed";
+    case iggy3d::RuntimeEventKind::ReplayCompleted: return "replay_completed";
+    case iggy3d::RuntimeEventKind::RuntimeFailed: return "runtime_failed";
+  }
+  return "unknown_runtime_event";
+}
 
 int usage() {
   std::fprintf(stderr,
@@ -160,6 +196,20 @@ int main(int argc, char** argv) {
   }
   SDL_Log("i3dp: playing save-root='%s' id='%s'",
           playRoot.generic_string().c_str(), loadSaveId.c_str());
+  {
+    app::PlaytestEvent started;
+    started.kind = std::string(app::kPlaytestEventKindSessionStarted);
+    started.fields = {
+        {"doc", std::to_string(appState.facade.document().id())},
+        {"rev", std::to_string(appState.facade.document().revision())},
+        {"room", "creative_editor_play"},
+    };
+    writeProtocolEvent(started);
+  }
+  std::uint64_t lastHeartbeatBucket = 0U;
+  // Runtime events accumulate in session transient state under a cursor
+  // (the play loop's own consumption pattern) -- mirror only the new tail.
+  std::size_t mirroredRuntimeEventCount = 0U;
 
   app::CreativeEditorGamepad gamepad;
   std::uint64_t frameIndex = 0U;
@@ -203,6 +253,32 @@ int main(int argc, char** argv) {
     playTick.monotonicTimeNanoseconds = frameInput.monotonicTimeNanoseconds;
     const app::CreativePlayTickReceipt tickReceipt =
         app::tickCreativePlaySession(playSession, playTick);
+    if (tickReceipt.ticksAdvanced > 0U && playSession.sandbox.has_value()) {
+      // Mirror the runtime events the play loop already consumed this tick
+      // (kind string only) and heartbeat every 60 session ticks.
+      const iggy3d::SessionState& sessionState =
+          playSession.sandbox->session.state();
+      const auto& runtimeEvents = sessionState.transient.events;
+      if (mirroredRuntimeEventCount > runtimeEvents.size()) {
+        mirroredRuntimeEventCount = 0U;  // transient log was reset
+      }
+      for (std::size_t index = mirroredRuntimeEventCount;
+           index < runtimeEvents.size(); ++index) {
+        app::PlaytestEvent mirror;
+        mirror.kind = std::string(app::kPlaytestEventKindRuntimeEvent);
+        mirror.fields = {{"kind", runtimeEventKindName(runtimeEvents[index].kind)}};
+        writeProtocolEvent(mirror);
+      }
+      mirroredRuntimeEventCount = runtimeEvents.size();
+      const std::uint64_t tickIndex = sessionState.clock.tickIndex;
+      if (tickIndex / 60U > lastHeartbeatBucket) {
+        lastHeartbeatBucket = tickIndex / 60U;
+        app::PlaytestEvent heartbeat;
+        heartbeat.kind = std::string(app::kPlaytestEventKindHeartbeat);
+        heartbeat.fields = {{"tick", std::to_string(tickIndex)}};
+        writeProtocolEvent(heartbeat);
+      }
+    }
     if (!app::creativePlaySessionActive(playSession)) {
       exitReason = tickReceipt.reasonCode.empty() ? "session_stopped"
                                                   : tickReceipt.reasonCode;
@@ -243,6 +319,13 @@ int main(int argc, char** argv) {
   }
 
   static_cast<void>(app::stopCreativePlaySession(playSession));
+  {
+    app::PlaytestEvent ended;
+    ended.kind = std::string(app::kPlaytestEventKindSessionEnded);
+    ended.fields = {{"reason", exitReason},
+                    {"frames", std::to_string(frameIndex)}};
+    writeProtocolEvent(ended);
+  }
   std::fprintf(stderr, "i3dp: exit reason='%s' frames=%llu\n",
                exitReason.c_str(),
                static_cast<unsigned long long>(frameIndex));

@@ -2,6 +2,8 @@
 
 #include "EditorPlaytestProcess.hpp"
 
+#include <SDL3/SDL.h>
+
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -223,10 +225,49 @@ void buildCreativeEditorDesktopMenuBar(
   }
 }
 
+// Read-only projection of the out-of-process playtest (the IGGY3DP1 feed).
+// Backfills the in-process runtime monitor the split removed.
+void appendPlayMonitorTab(const PlaytestMonitorState* monitor) {
+  if (monitor == nullptr || !monitor->everRan) {
+    ImGui::TextDisabled("no playtest this session -- press Play");
+    return;
+  }
+  if (monitor->childRunning) {
+    ImGui::TextColored(ImVec4{0.20F, 1.0F, 0.35F, 1.0F}, "%s",
+                       std::string(playtestRunningStatusMessage()).c_str());
+    if (monitor->lastHeartbeatAtMs != 0U) {
+      const float ageSeconds =
+          static_cast<float>(SDL_GetTicks() - monitor->lastHeartbeatAtMs) /
+          1000.0F;
+      ImGui::SameLine();
+      ImGui::TextDisabled("| heartbeat tick %llu (%.1fs ago)",
+                          static_cast<unsigned long long>(
+                              monitor->lastHeartbeatTick),
+                          ageSeconds);
+    }
+  } else {
+    ImGui::TextUnformatted(monitor->lastExitMessage.empty()
+                               ? "playtest not running"
+                               : monitor->lastExitMessage.c_str());
+  }
+  ImGui::TextDisabled(
+      "events %llu  unknown %llu  malformed %llu  foreign %llu",
+      static_cast<unsigned long long>(monitor->totalEventCount),
+      static_cast<unsigned long long>(monitor->unknownKindCount),
+      static_cast<unsigned long long>(monitor->malformedLineCount),
+      static_cast<unsigned long long>(monitor->nonProtocolLineCount));
+  ImGui::Separator();
+  for (auto it = monitor->events.rbegin(); it != monitor->events.rend();
+       ++it) {
+    ImGui::TextUnformatted(formatPlaytestEventLine(*it).c_str());
+  }
+}
+
 void buildCreativeEditorDesktopPanels(
     CreativeEditorDesktopUiState& desktopUi,
     CreativeEditorState& editor,
     const cr::CreativeAppState& appState,
+    const PlaytestMonitorState* playtestMonitor,
     CreativeDesktopCommandFrame& commands) {
   const cr::CreativeDocument& document = appState.facade.document();
   // Logic topology is document-revision owned, so idle UI frames reuse one
@@ -301,6 +342,10 @@ void buildCreativeEditorDesktopPanels(
           }
           if (ImGui::BeginTabItem("Pass Status")) {
             appendPassStatusTab(logicDiagnostics);
+            ImGui::EndTabItem();
+          }
+          if (ImGui::BeginTabItem("Play Monitor")) {
+            appendPlayMonitorTab(playtestMonitor);
             ImGui::EndTabItem();
           }
           ImGui::EndTabBar();

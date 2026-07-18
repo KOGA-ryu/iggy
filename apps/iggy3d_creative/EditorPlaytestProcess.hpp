@@ -13,12 +13,16 @@
 // bounded poll -> kill(force) -> Wait(block=true) -> Destroy.
 
 #include <cstdint>
+#include <deque>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "EditorPlaytestLaunch.hpp"
+#include "app/iggy3d/creative/play/PlaytestEventProtocol.hpp"
 
 struct SDL_Process;
+struct SDL_IOStream;
 
 namespace iggy3d_creative_app {
 
@@ -44,6 +48,30 @@ enum class PlaytestShutdownAction : std::uint8_t {
 [[nodiscard]] std::string playtestExitStatusMessage(int exitCode);
 
 [[nodiscard]] std::string_view playtestRunningStatusMessage() noexcept;
+
+// Exit message plus the captured stderr tail's last line (pure; the full
+// tail lives in the Play Monitor). Clean exits never carry a tail.
+[[nodiscard]] std::string composePlaytestExitStatusMessage(
+    int exitCode, const std::deque<std::string>& stderrTail);
+
+// ---- read-only monitor state (transient desktop state; never saved) ------
+
+inline constexpr std::size_t kPlaytestMonitorEventCapacity = 64U;
+inline constexpr std::size_t kPlaytestStderrTailCapacity = 6U;
+
+struct PlaytestMonitorState {
+  bool childRunning = false;
+  bool everRan = false;
+  std::string lastExitMessage;
+  std::deque<PlaytestEvent> events;  // newest at the back, bounded
+  std::size_t totalEventCount = 0U;
+  std::size_t unknownKindCount = 0U;
+  std::size_t malformedLineCount = 0U;
+  std::size_t nonProtocolLineCount = 0U;
+  std::uint64_t lastHeartbeatTick = 0U;
+  std::uint64_t lastHeartbeatAtMs = 0U;  // SDL_GetTicks() at receipt
+  std::deque<std::string> stderrTail;    // bounded
+};
 
 // ---- the narrow seam the dispatcher sees --------------------------------
 // Keeps dispatchCreativeDesktopCommands pure-decision and headless-testable:
@@ -93,8 +121,28 @@ class PlaytestProcessOwner final : public PlaytestProcessControl {
   // Observability for tests: the child's OS pid, 0 when none.
   [[nodiscard]] std::uint64_t childPid() const;
 
+  // Read-only monitor projection for the Diagnostics Play Monitor tab.
+  [[nodiscard]] const PlaytestMonitorState& monitor() const {
+    return monitor_;
+  }
+
  private:
+  // Non-blocking bounded drain of the child's piped stdout/stderr into the
+  // monitor (events parsed, tail collected). THE DRAIN-BEFORE-WAIT LAW:
+  // every path that waits on the child drains first, so a full pipe can
+  // never deadlock a reap.
+  void drainStreams(std::size_t stdoutBudgetBytes,
+                    std::size_t stderrBudgetBytes);
+  void finishStreams();  // post-exit: drain remainder + flush partial line
+  void applyEvent(PlaytestEvent event);
+  void applyStderrChunk(std::string_view chunk);
+
   SDL_Process* process_ = nullptr;
+  SDL_IOStream* stdoutStream_ = nullptr;
+  SDL_IOStream* stderrStream_ = nullptr;
+  PlaytestEventStreamParser parser_;
+  std::string stderrPartial_;
+  PlaytestMonitorState monitor_;
 };
 
 }  // namespace iggy3d_creative_app

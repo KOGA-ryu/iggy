@@ -1013,3 +1013,14 @@ add_test(NAME playtest_process_owner_tests
 set_tests_properties(playtest_process_owner_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "integration;app;creative;play;lifecycle;smoke;iggy3d")
+
+add_executable(playtest_event_protocol_tests
+  tests/unit/playtest_event_protocol_tests.cpp)
+target_link_libraries(playtest_event_protocol_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(playtest_event_protocol_tests)
+add_test(NAME playtest_event_protocol_tests
+  COMMAND "$<TARGET_FILE:playtest_event_protocol_tests>")
+set_tests_properties(playtest_event_protocol_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;play;events;iggy3d")
