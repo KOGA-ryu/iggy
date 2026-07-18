@@ -27,7 +27,7 @@ void buildCreativeEditorDesktopPanels(
     CreativeEditorDesktopUiState& desktopUi,
     CreativeEditorState& editor,
     const iggy3d::creative::CreativeAppState& appState,
-    const CreativeEditorPlayMode* playMode,
+    const CreativePlaySession* playMode,
     CreativeDesktopCommandFrame& commands);
 
 // Renders the bottom status bar — a read-only projection of document + editor

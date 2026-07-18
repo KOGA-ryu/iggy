@@ -16,7 +16,7 @@
 #include "EditorObjectActions.hpp"
 #include "EditorPathEditing.hpp"
 #include "EditorPersistence.hpp"
-#include "EditorPlayMode.hpp"
+#include "app/iggy3d/creative/play/PlaySession.hpp"
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
@@ -135,7 +135,7 @@ void dispatchOne(const CreativeDesktopCommand& command,
   result.message.clear();
 
   if (context.playMode != nullptr &&
-      creativeEditorPlayModeActive(*context.playMode) &&
+      creativePlaySessionActive(*context.playMode) &&
       !commandAllowedDuringPlay(command.id)) {
     result.message = "stop play before editing";
     return;
@@ -1483,9 +1483,9 @@ void dispatchOne(const CreativeDesktopCommand& command,
         result.message = "play owner is unavailable";
         break;
       }
-      if (creativeEditorPlayModeActive(*context.playMode)) {
+      if (creativePlaySessionActive(*context.playMode)) {
         const creative::CreativeRuntimeSandboxStopReceipt stopped =
-            stopCreativeEditorPlayMode(*context.playMode);
+            stopCreativePlaySession(*context.playMode);
         result.accepted = stopped.stopped;
         result.changed = stopped.stopped;
         result.message = stopped.stopped ? "play stopped"
@@ -1493,11 +1493,11 @@ void dispatchOne(const CreativeDesktopCommand& command,
         break;
       }
       {
-        CreativeEditorPlayStartRequest request;
+        CreativePlayStartRequest request;
         request.document = &appState.facade.document();
         request.staticMeshAssetCatalog = context.staticMeshAssetCatalog;
-        const CreativeEditorPlayStartReceipt started =
-            startCreativeEditorPlayMode(*context.playMode, std::move(request));
+        const CreativePlayStartReceipt started =
+            startCreativePlaySession(*context.playMode, std::move(request));
         result.accepted = started.accepted;
         result.changed = started.accepted;
         result.message = started.accepted

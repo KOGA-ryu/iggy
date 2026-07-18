@@ -10,7 +10,7 @@
 #include "EditorDesktopWidgets.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorPlacementFeedback.hpp"
-#include "EditorPlayMode.hpp"
+#include "app/iggy3d/creative/play/PlaySession.hpp"
 #include "EditorWorldLayoutHistory.hpp"
 #include "EditorWorldLayoutPanel.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
@@ -226,7 +226,7 @@ void buildCreativeEditorDesktopPanels(
     CreativeEditorDesktopUiState& desktopUi,
     CreativeEditorState& editor,
     const cr::CreativeAppState& appState,
-    const CreativeEditorPlayMode* playMode,
+    const CreativePlaySession* playMode,
     CreativeDesktopCommandFrame& commands) {
   const cr::CreativeDocument& document = appState.facade.document();
   // Logic topology is document-revision owned, so idle UI frames reuse one
@@ -243,7 +243,7 @@ void buildCreativeEditorDesktopPanels(
   const cr::CreativeLogicDiagnosticReport& logicDiagnostics =
       desktopUi.logicDiagnostics;
   const bool playModeActive =
-      playMode != nullptr && creativeEditorPlayModeActive(*playMode);
+      playMode != nullptr && creativePlaySessionActive(*playMode);
 
   const ImGuiWindowFlags toolbarFlags =
       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;

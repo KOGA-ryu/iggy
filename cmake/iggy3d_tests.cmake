@@ -521,14 +521,14 @@ set_tests_properties(creative_world_layout_source_history_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;editor;world;layout;history;iggy3d")
 
-add_executable(creative_editor_play_mode_tests
-  tests/unit/creative_editor_play_mode_tests.cpp)
-target_link_libraries(creative_editor_play_mode_tests PRIVATE
+add_executable(creative_play_session_tests
+  tests/unit/creative_play_session_tests.cpp)
+target_link_libraries(creative_play_session_tests PRIVATE
   iggy3d_creative_app)
-iggy3d_apply_warnings(creative_editor_play_mode_tests)
-add_test(NAME creative_editor_play_mode_tests
-  COMMAND "$<TARGET_FILE:creative_editor_play_mode_tests>")
-set_tests_properties(creative_editor_play_mode_tests PROPERTIES
+iggy3d_apply_warnings(creative_play_session_tests)
+add_test(NAME creative_play_session_tests
+  COMMAND "$<TARGET_FILE:creative_play_session_tests>")
+set_tests_properties(creative_play_session_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;editor;play;runtime;session;iggy3d")
 

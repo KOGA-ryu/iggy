@@ -123,6 +123,9 @@ target_sources(iggy3d
     src/app/iggy3d/creative/play/PlayPreparation.cpp
     src/app/iggy3d/creative/play/RuntimeInteractables.cpp
     src/app/iggy3d/creative/play/RuntimeMovingPlatforms.cpp
+    src/app/iggy3d/creative/play/PlayInteraction.cpp
+    src/app/iggy3d/creative/play/PlayLogicOverlay.cpp
+    src/app/iggy3d/creative/play/PlaySession.cpp
     src/app/iggy3d/creative/play/RuntimeSandbox.cpp
     src/app/iggy3d/creative/spatial/Ghost.cpp
     src/app/iggy3d/creative/recipes/CreativeRecipe.cpp
@@ -371,9 +374,6 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorPathEditing.cpp
   apps/iggy3d_creative/EditorMovingPlatformPreview.cpp
   apps/iggy3d_creative/EditorPersistence.cpp
-  apps/iggy3d_creative/EditorPlayMode.cpp
-  apps/iggy3d_creative/EditorPlayLogicOverlay.cpp
-  apps/iggy3d_creative/EditorPlayInteraction.cpp
   apps/iggy3d_creative/EditorPickFrame.cpp
   apps/iggy3d_creative/EditorPicking.cpp
   apps/iggy3d_creative/EditorOverlayHud.cpp

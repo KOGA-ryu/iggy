@@ -1,4 +1,4 @@
-#include "EditorPlayMode.hpp"
+#include "app/iggy3d/creative/play/PlaySession.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -37,7 +37,7 @@ constexpr float kDirectionEpsilon = 0.000001F;
 }
 
 [[nodiscard]] std::pair<std::int32_t, std::int32_t> playerHealth(
-    const CreativeEditorPlayMode& mode) noexcept {
+    const CreativePlaySession& mode) noexcept {
   if (!mode.sandbox.has_value()) {
     return {0, 0};
   }
@@ -66,26 +66,26 @@ struct FixedHudText {
 };
 
 [[nodiscard]] HudColor targetColor(
-    CreativeEditorPlayTargetStatus status) noexcept {
+    CreativePlayTargetStatus status) noexcept {
   switch (status) {
-    case CreativeEditorPlayTargetStatus::Valid:
+    case CreativePlayTargetStatus::Valid:
       return {0.28F, 0.95F, 0.43F, 1.0F};
-    case CreativeEditorPlayTargetStatus::Blocked:
-    case CreativeEditorPlayTargetStatus::Invalid:
+    case CreativePlayTargetStatus::Blocked:
+    case CreativePlayTargetStatus::Invalid:
       return {0.95F, 0.25F, 0.23F, 1.0F};
-    case CreativeEditorPlayTargetStatus::Friendly:
+    case CreativePlayTargetStatus::Friendly:
       return {0.98F, 0.84F, 0.24F, 1.0F};
-    case CreativeEditorPlayTargetStatus::OutOfRange:
+    case CreativePlayTargetStatus::OutOfRange:
       return {1.0F, 0.53F, 0.18F, 1.0F};
-    case CreativeEditorPlayTargetStatus::None:
-    case CreativeEditorPlayTargetStatus::Unsupported:
-    case CreativeEditorPlayTargetStatus::Defeated:
+    case CreativePlayTargetStatus::None:
+    case CreativePlayTargetStatus::Unsupported:
+    case CreativePlayTargetStatus::Defeated:
       return {0.72F, 0.76F, 0.79F, 1.0F};
   }
   return {0.72F, 0.76F, 0.79F, 1.0F};
 }
 
-void appendRect(CreativeEditorPlayHudFrame& hud,
+void appendRect(CreativePlayHudFrame& hud,
                 iggy3d::RenderUiRect rect) noexcept {
   if (rect.width == 0U || rect.height == 0U) {
     return;
@@ -97,7 +97,7 @@ void appendRect(CreativeEditorPlayHudFrame& hud,
   hud.rects[hud.rectCount++] = rect;
 }
 
-void appendText(CreativeEditorPlayHudFrame& hud,
+void appendText(CreativePlayHudFrame& hud,
                 std::string_view text,
                 std::int32_t x,
                 std::int32_t y,
@@ -126,10 +126,10 @@ void appendText(CreativeEditorPlayHudFrame& hud,
 }
 
 [[nodiscard]] FixedHudText targetHudText(
-    const CreativeEditorPlayTarget& target,
+    const CreativePlayTarget& target,
     std::size_t maximumCharacterCount) {
   FixedHudText result;
-  if (target.status == CreativeEditorPlayTargetStatus::None) {
+  if (target.status == CreativePlayTargetStatus::None) {
     std::snprintf(result.chars.data(), result.chars.size(), "NO TARGET");
     return result;
   }
@@ -140,8 +140,8 @@ void appendText(CreativeEditorPlayHudFrame& hud,
       std::min(label.size(), kMaximumNameLength));
   const std::string_view status = toString(target.status);
   const bool actionable =
-      (target.status == CreativeEditorPlayTargetStatus::Valid ||
-       target.status == CreativeEditorPlayTargetStatus::Friendly) &&
+      (target.status == CreativePlayTargetStatus::Valid ||
+       target.status == CreativePlayTargetStatus::Friendly) &&
       !target.actionPrompt.empty();
   if (std::isfinite(target.reachDistanceMeters) &&
       target.reachDistanceMeters > 0.0F) {
@@ -227,7 +227,7 @@ void appendText(CreativeEditorPlayHudFrame& hud,
 
 }  // namespace
 
-CreativeEditorPlayActionSample sampleCreativeEditorPlayActions(
+CreativePlayActionSample sampleCreativePlayActions(
     const iggy3d::creative::CreativeInputFrame& inputFrame,
     const iggy3d::creative::CreativeInputRouteResult& routedInput,
     std::span<const iggy3d::creative::CreativeInputBinding> bindings) noexcept {
@@ -245,54 +245,54 @@ CreativeEditorPlayActionSample sampleCreativeEditorPlayActions(
           enabled};
 }
 
-CreativeEditorPlayAction routeCreativeEditorPlayAction(
-    CreativeEditorPlayActionRouterState& state,
-    CreativeEditorPlayActionSample sample) noexcept {
+CreativePlayAction routeCreativePlayAction(
+    CreativePlayActionRouterState& state,
+    CreativePlayActionSample sample) noexcept {
   const bool attackPressed = sample.attackDown && !state.attackDown;
   const bool interactPressed = sample.interactDown && !state.interactDown;
   state.attackDown = sample.attackDown;
   state.interactDown = sample.interactDown;
   if (state.rearmRequired) {
     state.rearmRequired = sample.attackDown || sample.interactDown;
-    return CreativeEditorPlayAction::None;
+    return CreativePlayAction::None;
   }
   if (!sample.enabled) {
-    return CreativeEditorPlayAction::None;
+    return CreativePlayAction::None;
   }
   if (attackPressed) {
-    return CreativeEditorPlayAction::Attack;
+    return CreativePlayAction::Attack;
   }
   if (interactPressed) {
-    return CreativeEditorPlayAction::Interact;
+    return CreativePlayAction::Interact;
   }
-  return CreativeEditorPlayAction::None;
+  return CreativePlayAction::None;
 }
 
-std::string_view toString(CreativeEditorPlayTargetStatus status) noexcept {
+std::string_view toString(CreativePlayTargetStatus status) noexcept {
   switch (status) {
-    case CreativeEditorPlayTargetStatus::None:
+    case CreativePlayTargetStatus::None:
       return "none";
-    case CreativeEditorPlayTargetStatus::Valid:
+    case CreativePlayTargetStatus::Valid:
       return "valid";
-    case CreativeEditorPlayTargetStatus::Blocked:
+    case CreativePlayTargetStatus::Blocked:
       return "blocked";
-    case CreativeEditorPlayTargetStatus::Friendly:
+    case CreativePlayTargetStatus::Friendly:
       return "friendly";
-    case CreativeEditorPlayTargetStatus::OutOfRange:
+    case CreativePlayTargetStatus::OutOfRange:
       return "out_of_range";
-    case CreativeEditorPlayTargetStatus::Unsupported:
+    case CreativePlayTargetStatus::Unsupported:
       return "unsupported";
-    case CreativeEditorPlayTargetStatus::Defeated:
+    case CreativePlayTargetStatus::Defeated:
       return "defeated";
-    case CreativeEditorPlayTargetStatus::Invalid:
+    case CreativePlayTargetStatus::Invalid:
       return "invalid";
   }
   return "invalid";
 }
 
-CreativeEditorPlayTarget resolveCreativeEditorPlayTarget(
-    const CreativeEditorPlayTargetRequest& request) {
-  CreativeEditorPlayTarget result;
+CreativePlayTarget resolveCreativePlayTarget(
+    const CreativePlayTargetRequest& request) {
+  CreativePlayTarget result;
   const iggy3d::Vec3 forward = normalizedOrZero(request.forward);
   if (request.world == nullptr || !iggy3d::isValid(request.actor) ||
       !iggy3d::isFinite(request.eyeMeters) ||
@@ -302,7 +302,7 @@ CreativeEditorPlayTarget resolveCreativeEditorPlayTarget(
       !finitePositive(request.interactionRangeMeters) ||
       !finiteNonnegative(request.occlusionMarginMeters) ||
       request.attackDamage <= 0) {
-    result.status = CreativeEditorPlayTargetStatus::Invalid;
+    result.status = CreativePlayTargetStatus::Invalid;
     return result;
   }
 
@@ -320,7 +320,7 @@ CreativeEditorPlayTarget resolveCreativeEditorPlayTarget(
     return result;
   }
   if (hit.status != iggy3d::EntityHitStatus::Hit) {
-    result.status = CreativeEditorPlayTargetStatus::Invalid;
+    result.status = CreativePlayTargetStatus::Invalid;
     return result;
   }
 
@@ -330,7 +330,7 @@ CreativeEditorPlayTarget resolveCreativeEditorPlayTarget(
   result.hitDistanceMeters = hit.distanceMeters;
   const iggy3d::EntityState* entity = request.world->findById(hit.entity);
   if (entity == nullptr) {
-    result.status = CreativeEditorPlayTargetStatus::Invalid;
+    result.status = CreativePlayTargetStatus::Invalid;
     return result;
   }
   result.supportsAttack =
@@ -342,11 +342,11 @@ CreativeEditorPlayTarget resolveCreativeEditorPlayTarget(
       request.colliders, request.eyeMeters, hit.pointMeters,
       request.occlusionMarginMeters);
   if (occlusion == iggy3d::SegmentOcclusionVerdict::Unknown) {
-    result.status = CreativeEditorPlayTargetStatus::Invalid;
+    result.status = CreativePlayTargetStatus::Invalid;
     return result;
   }
   if (occlusion == iggy3d::SegmentOcclusionVerdict::Blocked) {
-    result.status = CreativeEditorPlayTargetStatus::Blocked;
+    result.status = CreativePlayTargetStatus::Blocked;
     return result;
   }
 
@@ -355,17 +355,17 @@ CreativeEditorPlayTarget resolveCreativeEditorPlayTarget(
        request.interactionRangeMeters, true});
   result.reachDistanceMeters = reach.distanceMeters;
   if (reach.status == iggy3d::ReachQueryStatus::OutOfRange) {
-    result.status = CreativeEditorPlayTargetStatus::OutOfRange;
+    result.status = CreativePlayTargetStatus::OutOfRange;
     return result;
   }
   if (reach.status != iggy3d::ReachQueryStatus::Reachable) {
-    result.status = CreativeEditorPlayTargetStatus::Invalid;
+    result.status = CreativePlayTargetStatus::Invalid;
     return result;
   }
 
   if (result.supportsAttack) {
     if (request.combat == nullptr) {
-      result.status = CreativeEditorPlayTargetStatus::Invalid;
+      result.status = CreativePlayTargetStatus::Invalid;
       return result;
     }
     const iggy3d::CombatAttackResult attack = iggy3d::previewAttack(
@@ -373,46 +373,46 @@ CreativeEditorPlayTarget resolveCreativeEditorPlayTarget(
         {request.actor, hit.entity, request.attackDamage});
     if (attack.status == iggy3d::CombatStatus::TargetDefeated) {
       result.defeated = true;
-      result.status = CreativeEditorPlayTargetStatus::Defeated;
+      result.status = CreativePlayTargetStatus::Defeated;
       return result;
     }
     if (attack.status == iggy3d::CombatStatus::FriendlyFireBlocked) {
       result.friendly = true;
-      result.status = CreativeEditorPlayTargetStatus::Friendly;
+      result.status = CreativePlayTargetStatus::Friendly;
       return result;
     }
     if (attack.status != iggy3d::CombatStatus::Succeeded) {
-      result.status = CreativeEditorPlayTargetStatus::Invalid;
+      result.status = CreativePlayTargetStatus::Invalid;
       return result;
     }
   }
 
   result.status = result.supportsAttack || result.supportsInteract
-                      ? CreativeEditorPlayTargetStatus::Valid
-                      : CreativeEditorPlayTargetStatus::Unsupported;
+                      ? CreativePlayTargetStatus::Valid
+                      : CreativePlayTargetStatus::Unsupported;
   return result;
 }
 
 bool creativeEditorPlayTargetAcceptsAction(
-    const CreativeEditorPlayTarget& target,
-    CreativeEditorPlayAction action) noexcept {
+    const CreativePlayTarget& target,
+    CreativePlayAction action) noexcept {
   switch (action) {
-    case CreativeEditorPlayAction::Attack:
-      return target.status == CreativeEditorPlayTargetStatus::Valid &&
+    case CreativePlayAction::Attack:
+      return target.status == CreativePlayTargetStatus::Valid &&
              target.supportsAttack;
-    case CreativeEditorPlayAction::Interact:
-      return (target.status == CreativeEditorPlayTargetStatus::Valid ||
-              target.status == CreativeEditorPlayTargetStatus::Friendly) &&
+    case CreativePlayAction::Interact:
+      return (target.status == CreativePlayTargetStatus::Valid ||
+              target.status == CreativePlayTargetStatus::Friendly) &&
              target.supportsInteract;
-    case CreativeEditorPlayAction::None:
+    case CreativePlayAction::None:
       return false;
   }
   return false;
 }
 
-CreativeEditorPlayView buildCreativeEditorPlayView(
-    const CreativeEditorPlayMode& mode) noexcept {
-  CreativeEditorPlayView result;
+CreativePlayView buildCreativePlayView(
+    const CreativePlaySession& mode) noexcept {
+  CreativePlayView result;
   if (!mode.sandbox.has_value()) {
     return result;
   }
@@ -433,10 +433,10 @@ CreativeEditorPlayView buildCreativeEditorPlayView(
   return result;
 }
 
-CreativeEditorPlayHudFrame buildCreativeEditorPlayHud(
-    const CreativeEditorPlayMode& mode,
+CreativePlayHudFrame buildCreativePlayHud(
+    const CreativePlaySession& mode,
     const iggy3d::FrameInput& frame) {
-  CreativeEditorPlayHudFrame hud;
+  CreativePlayHudFrame hud;
   if (!mode.sandbox.has_value() || frame.viewport.width == 0U ||
       frame.viewport.height == 0U) {
     return hud;
@@ -526,7 +526,7 @@ CreativeEditorPlayHudFrame buildCreativeEditorPlayHud(
   return hud;
 }
 
-void attachCreativeEditorPlayHud(const CreativeEditorPlayHudFrame& hud,
+void attachCreativePlayHud(const CreativePlayHudFrame& hud,
                                  iggy3d::FrameInput& frame) noexcept {
   frame.ui.visible = hud.rectCount > 0U || hud.glyphQuadCount > 0U;
   frame.ui.rects = hud.rects.data();

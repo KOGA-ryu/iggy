@@ -60,7 +60,7 @@
 #include "EditorToolWheelPreferences.hpp"
 #include "EditorPlacement.hpp"
 #include "EditorPersistence.hpp"
-#include "EditorPlayMode.hpp"
+#include "app/iggy3d/creative/play/PlaySession.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorTransform.hpp"
 #include "EditorWorldLayout.hpp"
@@ -342,25 +342,25 @@ int main(int argc, char** argv) {
   const float kGizmoThickness = bootstrapData.gizmoThicknessMeters;
   CreativeEditorGamepad gamepad;
   iggy3d_creative_app::CreativeEditorSceneCache sceneCache;
-  iggy3d_creative_app::CreativeEditorPlayMode playMode;
+  iggy3d_creative_app::CreativePlaySession playMode;
 
   while (window.isOpen()) {
     // Non-const: captured Esc release consumes the ToggleControls action from
     // the route this frame so Controls does not also open (plan DD-9 / FC-4).
     CreativeEditorFrameInputResult frameInput = beginCreativeEditorFrameInput(
         window, *backend, gamepad, editor, !capturePath.empty(),
-        !iggy3d_creative_app::creativeEditorPlayModeActive(playMode));
+        !iggy3d_creative_app::creativePlaySessionActive(playMode));
     if (!frameInput.keepRunning) {
       break;
     }
     if (frameInput.skipFrame) {
-      if (iggy3d_creative_app::creativeEditorPlayModeActive(playMode)) {
-        iggy3d_creative_app::CreativeEditorPlayTickRequest playTick;
+      if (iggy3d_creative_app::creativePlaySessionActive(playMode)) {
+        iggy3d_creative_app::CreativePlayTickRequest playTick;
         playTick.sourceDocument = &appState.facade.document();
         playTick.input.windowFocused = false;
         playTick.monotonicTimeNanoseconds =
             frameInput.monotonicTimeNanoseconds;
-        static_cast<void>(iggy3d_creative_app::tickCreativeEditorPlayMode(
+        static_cast<void>(iggy3d_creative_app::tickCreativePlaySession(
             playMode, playTick));
       }
       if (!frameInput.windowFocused) {
@@ -438,7 +438,7 @@ int main(int argc, char** argv) {
     iggy3d_creative_app::CreativeEditorAssetLibraryFrameResult
         assetLibraryFrame;
     assetLibraryFrame.remainingInput = frameInput.routedInput;
-    if (!iggy3d_creative_app::creativeEditorPlayModeActive(playMode)) {
+    if (!iggy3d_creative_app::creativePlaySessionActive(playMode)) {
       assetLibraryFrame = processCreativeEditorAssetLibraryFrame(
           {window, appState, editor, frameInput.routedInput});
     }
@@ -446,7 +446,7 @@ int main(int argc, char** argv) {
       invalidateCreativeEditorSceneCache(sceneCache);
     }
     creative::CreativeAppState& activeAppState =
-        iggy3d_creative_app::creativeEditorPlayModeActive(playMode)
+        iggy3d_creative_app::creativePlaySessionActive(playMode)
             ? appState
             : activeCreativeEditorAppState(editor, appState);
 
@@ -460,14 +460,14 @@ int main(int argc, char** argv) {
       iggy3d_creative_app::buildCreativeEditorDesktopMenuBar(
           editor.desktopUi, activeAppState,
           &activeAppState == &appState ? &editor.worldLayout : nullptr,
-          iggy3d_creative_app::creativeEditorPlayModeActive(playMode),
+          iggy3d_creative_app::creativePlaySessionActive(playMode),
           desktopCommands);
       iggy3d_creative_app::buildCreativeEditorDesktopPanels(
           editor.desktopUi, editor, activeAppState, &playMode,
           desktopCommands);
       if (desktopCommands.count > 0U) {
         const bool playWasActive =
-            iggy3d_creative_app::creativeEditorPlayModeActive(playMode);
+            iggy3d_creative_app::creativePlaySessionActive(playMode);
         const iggy3d_creative_app::CreativeDesktopCommandResult desktopResult =
             iggy3d_creative_app::dispatchCreativeDesktopCommands(
                 desktopCommands,
@@ -494,7 +494,7 @@ int main(int argc, char** argv) {
         if (!playWasActive && desktopResult.accepted &&
             desktopResult.lastCommand ==
                 iggy3d_creative_app::CreativeDesktopCommandId::Play &&
-            iggy3d_creative_app::creativeEditorPlayModeActive(playMode)) {
+            iggy3d_creative_app::creativePlaySessionActive(playMode)) {
           finalizeCreativeEditorContinuousGestures(
               activeAppState, editor, "creative_continuous_gesture_play_start");
         }
@@ -503,8 +503,8 @@ int main(int argc, char** argv) {
           editor.desktopUi, editor, activeAppState);
     }
 
-    if (iggy3d_creative_app::creativeEditorPlayModeActive(playMode)) {
-      iggy3d_creative_app::CreativeEditorPlayTickRequest playTick;
+    if (iggy3d_creative_app::creativePlaySessionActive(playMode)) {
+      iggy3d_creative_app::CreativePlayTickRequest playTick;
       playTick.sourceDocument = &appState.facade.document();
       playTick.input.moveRight = frameInput.navigationMoveRight;
       playTick.input.moveForward = frameInput.navigationMoveForward;
@@ -515,18 +515,18 @@ int main(int argc, char** argv) {
       playTick.input.sprinting = frameInput.navigationSprinting;
       playTick.input.windowFocused = frameInput.windowFocused;
       playTick.input.actions =
-          iggy3d_creative_app::sampleCreativeEditorPlayActions(
+          iggy3d_creative_app::sampleCreativePlayActions(
               frameInput.inputFrame, frameInput.routedInput,
               editor.controlProfile.bindingSpan());
       playTick.monotonicTimeNanoseconds =
           frameInput.monotonicTimeNanoseconds;
-      const iggy3d_creative_app::CreativeEditorPlayTickReceipt tickReceipt =
-          iggy3d_creative_app::tickCreativeEditorPlayMode(playMode, playTick);
+      const iggy3d_creative_app::CreativePlayTickReceipt tickReceipt =
+          iggy3d_creative_app::tickCreativePlaySession(playMode, playTick);
       if (!tickReceipt.active && !tickReceipt.reasonCode.empty()) {
         editor.desktopUi.statusMessage = tickReceipt.reasonCode;
       }
 
-      if (iggy3d_creative_app::creativeEditorPlayModeActive(playMode)) {
+      if (iggy3d_creative_app::creativePlaySessionActive(playMode)) {
         creative::CreativeObjectId highlightedLogicSourceId =
             creative::kInvalidObjectId;
         const creative::TargetRef selectedTarget =
@@ -545,12 +545,12 @@ int main(int argc, char** argv) {
         if (highlightedLogicSourceId == creative::kInvalidObjectId) {
           highlightedLogicSourceId = editor.logicLinks.sourceObjectId;
         }
-        iggy3d_creative_app::CreativeEditorPlayScene playScene =
-            iggy3d_creative_app::buildCreativeEditorPlayScene(
+        iggy3d_creative_app::CreativePlayScene playScene =
+            iggy3d_creative_app::buildCreativePlaySessionScene(
                 playMode, highlightedLogicSourceId);
         if (!playScene.available) {
           static_cast<void>(
-              iggy3d_creative_app::stopCreativeEditorPlayMode(playMode));
+              iggy3d_creative_app::stopCreativePlaySession(playMode));
           editor.desktopUi.statusMessage = "play scene unavailable";
         } else {
           DebugProjectionResult debug{};
@@ -560,9 +560,9 @@ int main(int argc, char** argv) {
               playMode.cameraPitchDegrees,
               /*cameraAnchorOverrideAvailable=*/true,
               playScene.cameraAnchorMeters, editor.desktopUi.contentViewport);
-          const iggy3d_creative_app::CreativeEditorPlayHudFrame playHud =
-              iggy3d_creative_app::buildCreativeEditorPlayHud(playMode, frame);
-          iggy3d_creative_app::attachCreativeEditorPlayHud(playHud, frame);
+          const iggy3d_creative_app::CreativePlayHudFrame playHud =
+              iggy3d_creative_app::buildCreativePlayHud(playMode, frame);
+          iggy3d_creative_app::attachCreativePlayHud(playHud, frame);
           frame.creativeWireframeDebug.available = true;
           frame.creativeWireframeDebug.visible =
               !playScene.logicOverlay.lines.empty();
@@ -857,7 +857,7 @@ int main(int argc, char** argv) {
   static_cast<void>(iggy3d_creative_app::cancelCreativeEditorAssetReplacement(
       editor.assetReplacement, "creative_asset_replace_shutdown"));
   static_cast<void>(
-      iggy3d_creative_app::stopCreativeEditorPlayMode(playMode));
+      iggy3d_creative_app::stopCreativePlaySession(playMode));
 
   bool captureOk = true;
   if (!capturePath.empty()) {

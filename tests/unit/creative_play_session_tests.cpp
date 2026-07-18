@@ -1,5 +1,5 @@
 #include "EditorDesktopCommands.hpp"
-#include "EditorPlayMode.hpp"
+#include "app/iggy3d/creative/play/PlaySession.hpp"
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/input/ControlProfile.hpp"
 #include "app/iggy3d/creative/render/CreativeSceneFrame.hpp"
@@ -80,18 +80,18 @@ cr::CreativeDocument playableDocument(bool includeActors = true,
   return document;
 }
 
-app::CreativeEditorPlayStartReceipt start(
-    app::CreativeEditorPlayMode& mode,
+app::CreativePlayStartReceipt start(
+    app::CreativePlaySession& mode,
     const cr::CreativeDocument& document,
     const iggy3d::StaticMeshAssetCatalog& catalog) {
-  app::CreativeEditorPlayStartRequest request;
+  app::CreativePlayStartRequest request;
   request.document = &document;
   request.staticMeshAssetCatalog = &catalog;
-  return app::startCreativeEditorPlayMode(mode, std::move(request));
+  return app::startCreativePlaySession(mode, std::move(request));
 }
 
 const iggy3d::CombatantState* findCombatant(
-    const app::CreativeEditorPlayMode& mode,
+    const app::CreativePlaySession& mode,
     std::uint32_t factionId) {
   if (!mode.sandbox.has_value()) {
     return nullptr;
@@ -122,19 +122,19 @@ cr::CreativeDocument aimedActorDocument(cr::CreativeObjectKind actorKind,
   return document;
 }
 
-app::CreativeEditorPlayTickReceipt tickAt(
-    app::CreativeEditorPlayMode& mode,
+app::CreativePlayTickReceipt tickAt(
+    app::CreativePlaySession& mode,
     const cr::CreativeDocument& document,
     std::uint64_t timeNanoseconds,
-    app::CreativeEditorPlayActionSample actions = {}) {
-  app::CreativeEditorPlayTickRequest tick;
+    app::CreativePlayActionSample actions = {}) {
+  app::CreativePlayTickRequest tick;
   tick.sourceDocument = &document;
   tick.input.actions = actions;
   tick.monotonicTimeNanoseconds = timeNanoseconds;
-  return app::tickCreativeEditorPlayMode(mode, tick);
+  return app::tickCreativePlaySession(mode, tick);
 }
 
-bool moveRuntimeEntity(app::CreativeEditorPlayMode& mode,
+bool moveRuntimeEntity(app::CreativePlaySession& mode,
                        iggy3d::EntityId entityId,
                        iggy3d::Vec3 position) {
   if (!mode.sandbox.has_value()) {
@@ -163,8 +163,8 @@ bool runtimeBindingsAndActionEdgesAreDeterministic() {
   cr::setCreativeInputKey(mouse, cr::CreativeInputKey::MousePrimary, true);
   cr::CreativeInputRouteResult mouseRoute;
   mouseRoute.context = mouse.context;
-  const app::CreativeEditorPlayActionSample mouseSample =
-      app::sampleCreativeEditorPlayActions(
+  const app::CreativePlayActionSample mouseSample =
+      app::sampleCreativePlayActions(
           mouse, mouseRoute, profile.bindingSpan());
 
   cr::CreativeInputFrame gamepad;
@@ -175,29 +175,29 @@ bool runtimeBindingsAndActionEdgesAreDeterministic() {
       gamepad, cr::CreativeInputKey::GamepadLeftTrigger, true);
   cr::CreativeInputRouteResult gamepadRoute;
   gamepadRoute.context = gamepad.context;
-  const app::CreativeEditorPlayActionSample gamepadSample =
-      app::sampleCreativeEditorPlayActions(
+  const app::CreativePlayActionSample gamepadSample =
+      app::sampleCreativePlayActions(
           gamepad, gamepadRoute, profile.bindingSpan());
 
-  app::CreativeEditorPlayActionRouterState router;
-  const app::CreativeEditorPlayAction first =
-      app::routeCreativeEditorPlayAction(router, gamepadSample);
-  const app::CreativeEditorPlayAction held =
-      app::routeCreativeEditorPlayAction(router, gamepadSample);
-  static_cast<void>(app::routeCreativeEditorPlayAction(router, {}));
-  const app::CreativeEditorPlayAction interact =
-      app::routeCreativeEditorPlayAction(router, {false, true});
-  app::CreativeEditorPlayActionRouterState contextRouter;
-  const app::CreativeEditorPlayAction hiddenPress =
-      app::routeCreativeEditorPlayAction(
+  app::CreativePlayActionRouterState router;
+  const app::CreativePlayAction first =
+      app::routeCreativePlayAction(router, gamepadSample);
+  const app::CreativePlayAction held =
+      app::routeCreativePlayAction(router, gamepadSample);
+  static_cast<void>(app::routeCreativePlayAction(router, {}));
+  const app::CreativePlayAction interact =
+      app::routeCreativePlayAction(router, {false, true});
+  app::CreativePlayActionRouterState contextRouter;
+  const app::CreativePlayAction hiddenPress =
+      app::routeCreativePlayAction(
           contextRouter, {true, false, false});
-  const app::CreativeEditorPlayAction heldOnReturn =
-      app::routeCreativeEditorPlayAction(
+  const app::CreativePlayAction heldOnReturn =
+      app::routeCreativePlayAction(
           contextRouter, {true, false, true});
-  static_cast<void>(app::routeCreativeEditorPlayAction(
+  static_cast<void>(app::routeCreativePlayAction(
       contextRouter, {false, false, true}));
-  const app::CreativeEditorPlayAction pressedAfterRelease =
-      app::routeCreativeEditorPlayAction(
+  const app::CreativePlayAction pressedAfterRelease =
+      app::routeCreativePlayAction(
           contextRouter, {true, false, true});
 
   return expect(profile.bindingCount <= cr::kCreativeInputBindingCapacity &&
@@ -207,14 +207,14 @@ bool runtimeBindingsAndActionEdgesAreDeterministic() {
                 "left mouse maps to runtime attack") &&
          expect(gamepadSample.attackDown && gamepadSample.interactDown,
                 "R2 and L2 map to attack and interact in Play") &&
-         expect(first == app::CreativeEditorPlayAction::Attack &&
-                    held == app::CreativeEditorPlayAction::None &&
-                    interact == app::CreativeEditorPlayAction::Interact,
+         expect(first == app::CreativePlayAction::Attack &&
+                    held == app::CreativePlayAction::None &&
+                    interact == app::CreativePlayAction::Interact,
                 "attack wins simultaneous press and held actions do not repeat") &&
-         expect(hiddenPress == app::CreativeEditorPlayAction::None &&
-                    heldOnReturn == app::CreativeEditorPlayAction::None &&
+         expect(hiddenPress == app::CreativePlayAction::None &&
+                    heldOnReturn == app::CreativePlayAction::None &&
                     pressedAfterRelease ==
-                        app::CreativeEditorPlayAction::Attack,
+                        app::CreativePlayAction::Attack,
                 "UI context changes cannot turn a held trigger into an edge") &&
          expect(cr::toString(cr::CreativeInputContext::RuntimePlay) ==
                         "RuntimePlay" &&
@@ -231,61 +231,61 @@ bool targetResolverClassifiesRuntimeTruth() {
 
   cr::CreativeDocument hostile = aimedActorDocument(
       cr::CreativeObjectKind::EnemySpawn, -1.0F, false, 910U);
-  app::CreativeEditorPlayMode hostileMode;
+  app::CreativePlaySession hostileMode;
   if (!start(hostileMode, hostile, catalog).accepted) {
     return expect(false, "hostile target setup starts");
   }
   static_cast<void>(tickAt(hostileMode, hostile, 1U));
-  const app::CreativeEditorPlayTarget hostileTarget = hostileMode.target;
+  const app::CreativePlayTarget hostileTarget = hostileMode.target;
 
   cr::CreativeDocument friendly = aimedActorDocument(
       cr::CreativeObjectKind::NpcSpawn, -1.0F, false, 911U);
-  app::CreativeEditorPlayMode friendlyMode;
+  app::CreativePlaySession friendlyMode;
   if (!start(friendlyMode, friendly, catalog).accepted) {
     return expect(false, "friendly target setup starts");
   }
   static_cast<void>(tickAt(friendlyMode, friendly, 1U));
-  const app::CreativeEditorPlayTarget friendlyTarget = friendlyMode.target;
+  const app::CreativePlayTarget friendlyTarget = friendlyMode.target;
 
   cr::CreativeDocument distant = aimedActorDocument(
       cr::CreativeObjectKind::EnemySpawn, -3.0F, false, 912U);
-  app::CreativeEditorPlayMode distantMode;
+  app::CreativePlaySession distantMode;
   if (!start(distantMode, distant, catalog).accepted) {
     return expect(false, "distant target setup starts");
   }
   static_cast<void>(tickAt(distantMode, distant, 1U));
-  const app::CreativeEditorPlayTarget distantTarget = distantMode.target;
+  const app::CreativePlayTarget distantTarget = distantMode.target;
 
   cr::CreativeDocument blocked = aimedActorDocument(
       cr::CreativeObjectKind::EnemySpawn, -1.2F, true, 913U);
-  app::CreativeEditorPlayMode blockedMode;
+  app::CreativePlaySession blockedMode;
   if (!start(blockedMode, blocked, catalog).accepted) {
     return expect(false, "blocked target setup starts");
   }
   static_cast<void>(tickAt(blockedMode, blocked, 1U));
-  const app::CreativeEditorPlayTarget blockedTarget = blockedMode.target;
+  const app::CreativePlayTarget blockedTarget = blockedMode.target;
 
   return expect(hostileTarget.status ==
-                        app::CreativeEditorPlayTargetStatus::Valid &&
+                        app::CreativePlayTargetStatus::Valid &&
                     hostileTarget.supportsAttack &&
                     hostileTarget.supportsInteract &&
                     app::creativeEditorPlayTargetAcceptsAction(
-                        hostileTarget, app::CreativeEditorPlayAction::Attack),
+                        hostileTarget, app::CreativePlayAction::Attack),
                 "clear hostile in reach is actionable") &&
          expect(friendlyTarget.status ==
-                        app::CreativeEditorPlayTargetStatus::Friendly &&
+                        app::CreativePlayTargetStatus::Friendly &&
                     friendlyTarget.friendly &&
                     !app::creativeEditorPlayTargetAcceptsAction(
-                        friendlyTarget, app::CreativeEditorPlayAction::Attack) &&
+                        friendlyTarget, app::CreativePlayAction::Attack) &&
                     app::creativeEditorPlayTargetAcceptsAction(
                         friendlyTarget,
-                        app::CreativeEditorPlayAction::Interact),
+                        app::CreativePlayAction::Interact),
                 "friendly target blocks attack but allows interaction") &&
          expect(distantTarget.status ==
-                    app::CreativeEditorPlayTargetStatus::OutOfRange,
+                    app::CreativePlayTargetStatus::OutOfRange,
                 "reach classification matches command admission") &&
          expect(blockedTarget.status ==
-                    app::CreativeEditorPlayTargetStatus::Blocked,
+                    app::CreativePlayTargetStatus::Blocked,
                 "room collider blocks center-ray target") &&
          expect(app::toString(blockedTarget.status) == "blocked",
                 "target status has stable HUD text");
@@ -295,7 +295,7 @@ bool attackAndInteractSubmitOncePerPress() {
   iggy3d::StaticMeshAssetCatalog catalog;
   cr::CreativeDocument hostile = aimedActorDocument(
       cr::CreativeObjectKind::EnemySpawn, -1.0F, false, 914U);
-  app::CreativeEditorPlayMode attackMode;
+  app::CreativePlaySession attackMode;
   if (!start(attackMode, hostile, catalog).accepted) {
     return expect(false, "attack setup starts");
   }
@@ -306,28 +306,28 @@ bool attackAndInteractSubmitOncePerPress() {
     return expect(false, "attack setup has monster combatant");
   }
   const std::int32_t initialHitPoints = initialMonster->hitPoints;
-  const app::CreativeEditorPlayTickReceipt attackPressed = tickAt(
+  const app::CreativePlayTickReceipt attackPressed = tickAt(
       attackMode, hostile, 1U, {true, false});
-  const app::CreativeEditorPlayTickReceipt attackHeld = tickAt(
+  const app::CreativePlayTickReceipt attackHeld = tickAt(
       attackMode, hostile, 50'000'001U, {true, false});
   const iggy3d::CombatantState* damagedMonster =
       findCombatant(attackMode, 2U);
 
   cr::CreativeDocument friendly = aimedActorDocument(
       cr::CreativeObjectKind::NpcSpawn, -1.0F, false, 915U);
-  app::CreativeEditorPlayMode interactMode;
+  app::CreativePlaySession interactMode;
   if (!start(interactMode, friendly, catalog).accepted) {
     return expect(false, "interaction setup starts");
   }
-  const app::CreativeEditorPlayTickReceipt interactPressed = tickAt(
+  const app::CreativePlayTickReceipt interactPressed = tickAt(
       interactMode, friendly, 1U, {false, true});
-  const app::CreativeEditorPlayTickReceipt interactExecuted = tickAt(
+  const app::CreativePlayTickReceipt interactExecuted = tickAt(
       interactMode, friendly, 50'000'001U, {false, true});
 
   return expect(attackPressed.actionSubmitted &&
                     attackPressed.attackCommandsSubmitted == 1U &&
                     attackPressed.status ==
-                        app::CreativeEditorPlayTickStatus::ClockPrimed,
+                        app::CreativePlayTickStatus::ClockPrimed,
                 "attack press queues one admitted runtime command") &&
          expect(!attackHeld.actionSubmitted &&
                     attackHeld.attackCommandsSubmitted == 0U &&
@@ -348,21 +348,21 @@ bool playHudIsBoundedAndUsesTargetState() {
   cr::CreativeDocument document = aimedActorDocument(
       cr::CreativeObjectKind::NpcSpawn, -1.0F, false, 916U);
   iggy3d::StaticMeshAssetCatalog catalog;
-  app::CreativeEditorPlayMode mode;
+  app::CreativePlaySession mode;
   if (!start(mode, document, catalog).accepted) {
     return expect(false, "HUD setup starts");
   }
   static_cast<void>(tickAt(mode, document, 1U));
-  const app::CreativeEditorPlayScene scene =
-      app::buildCreativeEditorPlayScene(mode);
+  const app::CreativePlayScene scene =
+      app::buildCreativePlaySessionScene(mode);
   const iggy3d::DebugProjectionResult debug;
   iggy3d::FrameInput frame = iggy3d::makeCreativeVulkanFrame(
       scene.scene, debug, 1U, 1280U, 720U, mode.cameraYawDegrees,
       mode.cameraPitchDegrees, true, scene.cameraAnchorMeters,
       {240, 60, 800U, 600U});
-  const app::CreativeEditorPlayHudFrame hud =
-      app::buildCreativeEditorPlayHud(mode, frame);
-  app::attachCreativeEditorPlayHud(hud, frame);
+  const app::CreativePlayHudFrame hud =
+      app::buildCreativePlayHud(mode, frame);
+  app::attachCreativePlayHud(hud, frame);
   const iggy3d::RenderUiRect& centerDot = hud.rects[hud.rectCount - 1U];
 
   return expect(!hud.capacityExceeded && hud.rectCount == 8U &&
@@ -397,21 +397,21 @@ bool automaticLogicRunsInPlayAndProjectsOccupancy() {
   }
 
   iggy3d::StaticMeshAssetCatalog catalog;
-  app::CreativeEditorPlayMode mode;
+  app::CreativePlaySession mode;
   if (!start(mode, document, catalog).accepted || !mode.sandbox.has_value()) {
     return expect(false, "play automatic logic setup starts");
   }
-  const app::CreativeEditorPlayScene inactiveScene =
-      app::buildCreativeEditorPlayScene(mode);
-  const app::CreativeEditorPlayScene selectedInactiveScene =
-      app::buildCreativeEditorPlayScene(mode, trigger.objectId);
+  const app::CreativePlayScene inactiveScene =
+      app::buildCreativePlaySessionScene(mode);
+  const app::CreativePlayScene selectedInactiveScene =
+      app::buildCreativePlaySessionScene(mode, trigger.objectId);
   static_cast<void>(tickAt(mode, document, 1U));
-  const app::CreativeEditorPlayTickReceipt entered =
+  const app::CreativePlayTickReceipt entered =
       tickAt(mode, document, 50'000'001U);
-  const app::CreativeEditorPlayScene activeScene =
-      app::buildCreativeEditorPlayScene(mode);
-  const app::CreativeEditorPlayScene selectedActiveScene =
-      app::buildCreativeEditorPlayScene(mode, trigger.objectId);
+  const app::CreativePlayScene activeScene =
+      app::buildCreativePlaySessionScene(mode);
+  const app::CreativePlayScene selectedActiveScene =
+      app::buildCreativePlaySessionScene(mode, trigger.objectId);
 
   const auto doorState = std::find_if(
       mode.sandbox->interactables.begin(), mode.sandbox->interactables.end(),
@@ -450,7 +450,7 @@ bool automaticLogicRunsInPlayAndProjectsOccupancy() {
                     selectedInactiveScene.logicOverlay.lines[12].color.b >
                         0.9F,
                 "selected idle circuit adds a cyan arrow and target box") &&
-         expect(entered.status == app::CreativeEditorPlayTickStatus::Advanced &&
+         expect(entered.status == app::CreativePlayTickStatus::Advanced &&
                     entered.automaticSourceTransitions == 1U &&
                     entered.automaticEffectsApplied == 1U &&
                     entered.automaticLogic ==
@@ -494,18 +494,18 @@ bool manualAndInvalidLogicLinksRemainInspectableInPlay() {
   }
 
   iggy3d::StaticMeshAssetCatalog catalog;
-  app::CreativeEditorPlayMode mode;
+  app::CreativePlaySession mode;
   if (!start(mode, document, catalog).accepted || !mode.sandbox.has_value()) {
     return expect(false, "manual logic overlay setup starts");
   }
-  const app::CreativeEditorPlayScene valid =
-      app::buildCreativeEditorPlayScene(mode, source.objectId);
+  const app::CreativePlayScene valid =
+      app::buildCreativePlaySessionScene(mode, source.objectId);
   if (mode.sandbox->logicLinks.empty()) {
     return expect(false, "manual logic overlay has runtime link");
   }
   mode.sandbox->logicLinks.front().targetObjectId = cr::kInvalidObjectId;
-  const app::CreativeEditorPlayScene invalid =
-      app::buildCreativeEditorPlayScene(mode, source.objectId);
+  const app::CreativePlayScene invalid =
+      app::buildCreativePlaySessionScene(mode, source.objectId);
 
   return expect(valid.logicOverlay.lines.size() == 27U &&
                     valid.logicOverlay.sourceEdgeCount == 12U &&
@@ -546,7 +546,7 @@ bool platformLogicTargetProjectsEnabledAndRetractedState() {
   }
 
   iggy3d::StaticMeshAssetCatalog catalog;
-  app::CreativeEditorPlayMode mode;
+  app::CreativePlaySession mode;
   if (!start(mode, document, catalog).accepted || !mode.sandbox.has_value()) {
     return expect(false, "platform overlay setup starts");
   }
@@ -556,13 +556,13 @@ bool platformLogicTargetProjectsEnabledAndRetractedState() {
   if (runtimeSource == nullptr) {
     return expect(false, "platform overlay source exists at runtime");
   }
-  const app::CreativeEditorPlayScene enabled =
-      app::buildCreativeEditorPlayScene(mode, source.objectId);
+  const app::CreativePlayScene enabled =
+      app::buildCreativePlaySessionScene(mode, source.objectId);
   const cr::CreativeRuntimeInteractionEffectReceipt retracted =
       cr::applyCreativeRuntimeInteractionEffect(*mode.sandbox,
                                                 runtimeSource->entity);
-  const app::CreativeEditorPlayScene disabled =
-      app::buildCreativeEditorPlayScene(mode, source.objectId);
+  const app::CreativePlayScene disabled =
+      app::buildCreativePlaySessionScene(mode, source.objectId);
 
   return expect(enabled.logicOverlay.lines.size() == 27U &&
                     enabled.logicOverlay.targetEdgeCount == 12U &&
@@ -588,14 +588,14 @@ bool platformLogicTargetProjectsEnabledAndRetractedState() {
 bool startStopAndProjectionPreserveAuthoredDocument() {
   cr::CreativeDocument document = playableDocument();
   iggy3d::StaticMeshAssetCatalog catalog;
-  app::CreativeEditorPlayMode mode;
+  app::CreativePlaySession mode;
   const std::uint64_t revision = document.revision();
   const std::size_t objectCount = document.objectCount();
 
-  const app::CreativeEditorPlayStartReceipt started =
+  const app::CreativePlayStartReceipt started =
       start(mode, document, catalog);
-  const app::CreativeEditorPlayScene projected =
-      app::buildCreativeEditorPlayScene(mode);
+  const app::CreativePlayScene projected =
+      app::buildCreativePlaySessionScene(mode);
   const std::size_t npcCount = static_cast<std::size_t>(std::count_if(
       projected.scene.items.begin(), projected.scene.items.end(),
       [](const iggy3d::SceneItem& item) {
@@ -606,10 +606,10 @@ bool startStopAndProjectionPreserveAuthoredDocument() {
       projected.scene, debug, 1U, 1280U, 720U, mode.cameraYawDegrees,
       mode.cameraPitchDegrees, true, projected.cameraAnchorMeters);
   const cr::CreativeRuntimeSandboxStopReceipt stopped =
-      app::stopCreativeEditorPlayMode(mode);
+      app::stopCreativePlaySession(mode);
 
   return expect(started.accepted &&
-                    started.status == app::CreativeEditorPlayStartStatus::Started &&
+                    started.status == app::CreativePlayStartStatus::Started &&
                     app::toString(started.status) == "started",
                 "valid authored map starts play") &&
          expect(projected.available && projected.scene.room.loaded &&
@@ -625,15 +625,15 @@ bool startStopAndProjectionPreserveAuthoredDocument() {
          expect(document.revision() == revision &&
                     document.objectCount() == objectCount,
                 "start and projection do not mutate authored content") &&
-         expect(stopped.stopped && !app::creativeEditorPlayModeActive(mode),
+         expect(stopped.stopped && !app::creativePlaySessionActive(mode),
                 "stop destroys only the runtime sandbox");
 }
 
 bool fixedTickMovementAndCatchUpAreBounded() {
   cr::CreativeDocument document = playableDocument(false, 902U);
   iggy3d::StaticMeshAssetCatalog catalog;
-  app::CreativeEditorPlayMode mode;
-  const app::CreativeEditorPlayStartReceipt started =
+  app::CreativePlaySession mode;
+  const app::CreativePlayStartReceipt started =
       start(mode, document, catalog);
   if (!started.accepted || !mode.sandbox.has_value()) {
     return expect(false, "movement setup starts play");
@@ -646,38 +646,38 @@ bool fixedTickMovementAndCatchUpAreBounded() {
   }
   const iggy3d::Vec3 startPosition = before->transform.position;
 
-  app::CreativeEditorPlayTickRequest tick;
+  app::CreativePlayTickRequest tick;
   tick.sourceDocument = &document;
   tick.input.moveForward = 1.0F;
   tick.monotonicTimeNanoseconds = 1U;
-  const app::CreativeEditorPlayTickReceipt primed =
-      app::tickCreativeEditorPlayMode(mode, tick);
+  const app::CreativePlayTickReceipt primed =
+      app::tickCreativePlaySession(mode, tick);
   tick.monotonicTimeNanoseconds = 50'000'000U;
-  const app::CreativeEditorPlayTickReceipt early =
-      app::tickCreativeEditorPlayMode(mode, tick);
+  const app::CreativePlayTickReceipt early =
+      app::tickCreativePlaySession(mode, tick);
   tick.monotonicTimeNanoseconds = 50'000'001U;
-  const app::CreativeEditorPlayTickReceipt first =
-      app::tickCreativeEditorPlayMode(mode, tick);
+  const app::CreativePlayTickReceipt first =
+      app::tickCreativePlaySession(mode, tick);
   const iggy3d::EntityState* afterFirst =
       mode.sandbox->session.state().world.findById({1U});
   const bool movedForward =
       afterFirst != nullptr && afterFirst->transform.position.z < startPosition.z;
 
   tick.monotonicTimeNanoseconds = 2'050'000'001U;
-  const app::CreativeEditorPlayTickReceipt catchUp =
-      app::tickCreativeEditorPlayMode(mode, tick);
+  const app::CreativePlayTickReceipt catchUp =
+      app::tickCreativePlaySession(mode, tick);
 
-  return expect(primed.status == app::CreativeEditorPlayTickStatus::ClockPrimed &&
+  return expect(primed.status == app::CreativePlayTickStatus::ClockPrimed &&
                     primed.ticksAdvanced == 0U,
                 "first play frame only primes the fixed-step clock") &&
-         expect(early.status == app::CreativeEditorPlayTickStatus::NoTickDue &&
+         expect(early.status == app::CreativePlayTickStatus::NoTickDue &&
                     early.ticksAdvanced == 0U,
                 "49,999,999 ns does not advance a 20 Hz tick") &&
-         expect(first.status == app::CreativeEditorPlayTickStatus::Advanced &&
+         expect(first.status == app::CreativePlayTickStatus::Advanced &&
                     first.ticksAdvanced == 1U &&
                     first.movementCommandsSubmitted == 1U && movedForward,
                 "50 ms submits one collision-backed move") &&
-         expect(catchUp.status == app::CreativeEditorPlayTickStatus::Advanced &&
+         expect(catchUp.status == app::CreativePlayTickStatus::Advanced &&
                     catchUp.ticksAdvanced == mode.tuning.maximumCatchUpTicks,
                 "long frame is capped by the catch-up bound") &&
          expect(document.revision() == revision,
@@ -687,33 +687,33 @@ bool fixedTickMovementAndCatchUpAreBounded() {
 bool idleTicksAdvanceAndStaleDocumentsStop() {
   cr::CreativeDocument document = playableDocument(false, 903U);
   iggy3d::StaticMeshAssetCatalog catalog;
-  app::CreativeEditorPlayMode mode;
+  app::CreativePlaySession mode;
   if (!start(mode, document, catalog).accepted) {
     return expect(false, "idle setup starts play");
   }
 
-  app::CreativeEditorPlayTickRequest tick;
+  app::CreativePlayTickRequest tick;
   tick.sourceDocument = &document;
   tick.monotonicTimeNanoseconds = 10U;
-  static_cast<void>(app::tickCreativeEditorPlayMode(mode, tick));
+  static_cast<void>(app::tickCreativePlaySession(mode, tick));
   tick.monotonicTimeNanoseconds = 50'000'010U;
-  const app::CreativeEditorPlayTickReceipt idle =
-      app::tickCreativeEditorPlayMode(mode, tick);
+  const app::CreativePlayTickReceipt idle =
+      app::tickCreativePlaySession(mode, tick);
 
   static_cast<void>(addObject(document, cr::CreativeObjectKind::Prop,
                               "Authored During Play", {1.0, 0.25, 1.0}));
   tick.monotonicTimeNanoseconds = 100'000'010U;
-  const app::CreativeEditorPlayTickReceipt stale =
-      app::tickCreativeEditorPlayMode(mode, tick);
+  const app::CreativePlayTickReceipt stale =
+      app::tickCreativePlaySession(mode, tick);
 
-  return expect(idle.status == app::CreativeEditorPlayTickStatus::Advanced &&
+  return expect(idle.status == app::CreativePlayTickStatus::Advanced &&
                     idle.commandsSubmitted == 1U &&
                     idle.movementCommandsSubmitted == 0U &&
                     idle.sourceTick > 0U,
                 "idle frame submits Wait so runtime systems advance") &&
          expect(stale.status ==
-                        app::CreativeEditorPlayTickStatus::SourceDocumentChanged &&
-                    !stale.active && !app::creativeEditorPlayModeActive(mode),
+                        app::CreativePlayTickStatus::SourceDocumentChanged &&
+                    !stale.active && !app::creativePlaySessionActive(mode),
                 "changed source document invalidates and stops sandbox");
 }
 
@@ -723,7 +723,7 @@ bool desktopPlayTogglesAndBlocksEditing() {
   static_cast<void>(appState.facade.installDocument(std::move(document)));
   const std::uint64_t revision = appState.facade.document().revision();
   app::CreativeEditorState editor;
-  app::CreativeEditorPlayMode mode;
+  app::CreativePlaySession mode;
   iggy3d::StaticMeshAssetCatalog catalog;
   std::string saveId = "unused";
   const app::CreativeDesktopCommandContext context{
@@ -733,7 +733,7 @@ bool desktopPlayTogglesAndBlocksEditing() {
   frame.push(app::CreativeDesktopCommandId::Play);
   const app::CreativeDesktopCommandResult started =
       app::dispatchCreativeDesktopCommands(frame, context);
-  const bool activeAfterStart = app::creativeEditorPlayModeActive(mode);
+  const bool activeAfterStart = app::creativePlaySessionActive(mode);
   frame.clear();
   frame.push(app::CreativeDesktopCommandId::NewDocument);
   const app::CreativeDesktopCommandResult blocked =
@@ -748,7 +748,7 @@ bool desktopPlayTogglesAndBlocksEditing() {
   frame.push(app::CreativeDesktopCommandId::Play);
   const app::CreativeDesktopCommandResult stopped =
       app::dispatchCreativeDesktopCommands(frame, context);
-  const bool inactiveAfterStop = !app::creativeEditorPlayModeActive(mode);
+  const bool inactiveAfterStop = !app::creativePlaySessionActive(mode);
 
   return expect(started.accepted && activeAfterStart,
                 "desktop Play starts the runtime owner") &&
@@ -767,27 +767,27 @@ bool invalidMapAndTuningFailClosed() {
   cr::CreativeDocument invalid = cr::CreativeDocument::create("Invalid Play");
   static_cast<void>(invalid.assignId(905U));
   iggy3d::StaticMeshAssetCatalog catalog;
-  app::CreativeEditorPlayMode mode;
-  const app::CreativeEditorPlayStartReceipt missingSpawn =
+  app::CreativePlaySession mode;
+  const app::CreativePlayStartReceipt missingSpawn =
       start(mode, invalid, catalog);
 
   cr::CreativeDocument valid = playableDocument(false, 906U);
-  app::CreativeEditorPlayStartRequest badTuning;
+  app::CreativePlayStartRequest badTuning;
   badTuning.document = &valid;
   badTuning.staticMeshAssetCatalog = &catalog;
   badTuning.tuning.maximumCatchUpTicks = 0U;
-  const app::CreativeEditorPlayStartReceipt invalidTuning =
-      app::startCreativeEditorPlayMode(mode, std::move(badTuning));
+  const app::CreativePlayStartReceipt invalidTuning =
+      app::startCreativePlaySession(mode, std::move(badTuning));
 
   return expect(!missingSpawn.accepted &&
                     missingSpawn.status ==
-                        app::CreativeEditorPlayStartStatus::PreparationRejected &&
-                    !app::creativeEditorPlayModeActive(mode),
+                        app::CreativePlayStartStatus::PreparationRejected &&
+                    !app::creativePlaySessionActive(mode),
                 "invalid map never creates a runtime sandbox") &&
          expect(!invalidTuning.accepted &&
                     invalidTuning.status ==
-                        app::CreativeEditorPlayStartStatus::InvalidTuning &&
-                    !app::creativeEditorPlayModeActive(mode),
+                        app::CreativePlayStartStatus::InvalidTuning &&
+                    !app::creativePlaySessionActive(mode),
                 "invalid fixed-step tuning fails before preparation");
 }
 
@@ -801,7 +801,7 @@ bool authoredDoorAndPickupCompleteTheRuntimeInteractionLoop() {
       cr::CreativeBounds{{-0.5, 0.25, -0.9}, {0.5, 2.5, -0.7}}));
   const std::uint64_t doorRevision = doorDocument.revision();
   const std::size_t doorObjectCount = doorDocument.objectCount();
-  app::CreativeEditorPlayMode doorMode;
+  app::CreativePlaySession doorMode;
   if (!start(doorMode, doorDocument, catalog).accepted ||
       !doorMode.sandbox.has_value()) {
     return expect(false, "door interaction setup starts");
@@ -810,10 +810,10 @@ bool authoredDoorAndPickupCompleteTheRuntimeInteractionLoop() {
       doorMode.sandbox->room.staticMeshes.size();
   const std::size_t closedColliderCount =
       doorMode.sandbox->collisionSurfaces.size();
-  const app::CreativeEditorPlayTickReceipt doorPressed = tickAt(
+  const app::CreativePlayTickReceipt doorPressed = tickAt(
       doorMode, doorDocument, 1U, {false, true});
   const std::string openPrompt = doorMode.target.actionPrompt;
-  const app::CreativeEditorPlayTickReceipt doorOpened = tickAt(
+  const app::CreativePlayTickReceipt doorOpened = tickAt(
       doorMode, doorDocument, 50'000'001U, {false, true});
   const bool openMeshRemoved =
       doorMode.sandbox->room.staticMeshes.size() + 1U == closedMeshCount;
@@ -821,24 +821,24 @@ bool authoredDoorAndPickupCompleteTheRuntimeInteractionLoop() {
       doorMode.sandbox->collisionSurfaces.size();
   static_cast<void>(tickAt(doorMode, doorDocument, 100'000'001U, {}));
   const std::string closePrompt = doorMode.target.actionPrompt;
-  const app::CreativeEditorPlayTickReceipt doorClosed = tickAt(
+  const app::CreativePlayTickReceipt doorClosed = tickAt(
       doorMode, doorDocument, 150'000'001U, {false, true});
 
   cr::CreativeDocument pickupDocument = playableDocument(false, 918U);
   static_cast<void>(addObject(pickupDocument, cr::CreativeObjectKind::LootPoint,
                               "Play Key", {0.0, 1.65, -0.4}));
   const std::uint64_t pickupRevision = pickupDocument.revision();
-  app::CreativeEditorPlayMode pickupMode;
+  app::CreativePlaySession pickupMode;
   if (!start(pickupMode, pickupDocument, catalog).accepted ||
       !pickupMode.sandbox.has_value()) {
     return expect(false, "pickup interaction setup starts");
   }
-  const app::CreativeEditorPlayTickReceipt pickupPressed = tickAt(
+  const app::CreativePlayTickReceipt pickupPressed = tickAt(
       pickupMode, pickupDocument, 1U, {false, true});
   const iggy3d::EntityId pickupEntityId = pickupMode.target.entity;
   const std::string pickupItemId =
       pickupMode.sandbox->interactables.front().definition.itemId;
-  const app::CreativeEditorPlayTickReceipt pickupExecuted = tickAt(
+  const app::CreativePlayTickReceipt pickupExecuted = tickAt(
       pickupMode, pickupDocument, 50'000'001U, {false, true});
   const iggy3d::EntityState* pickupEntity =
       pickupMode.sandbox->session.state().world.findById(pickupEntityId);
@@ -901,7 +901,7 @@ bool movingPlatformAdvancesThroughEditorPlayTick() {
       document.createObject(request);
   const std::uint64_t authoredRevision = document.revision();
 
-  app::CreativeEditorPlayMode mode;
+  app::CreativePlaySession mode;
   if (!created.accepted || !start(mode, document, catalog).accepted ||
       !mode.sandbox.has_value()) {
     return expect(false, "moving platform Play fixture starts");
@@ -917,12 +917,12 @@ bool movingPlatformAdvancesThroughEditorPlayTick() {
   const float initialY = platform->movingPlatform.positionMeters.y;
   const std::string meshId = platform->definition.roomMeshId;
 
-  const app::CreativeEditorPlayTickReceipt primed =
+  const app::CreativePlayTickReceipt primed =
       tickAt(mode, document, 1U);
-  const app::CreativeEditorPlayTickReceipt advanced =
+  const app::CreativePlayTickReceipt advanced =
       tickAt(mode, document, 50'000'001U);
-  const app::CreativeEditorPlayScene scene =
-      app::buildCreativeEditorPlayScene(mode);
+  const app::CreativePlayScene scene =
+      app::buildCreativePlaySessionScene(mode);
   const auto movedMesh = std::find_if(
       mode.sandbox->room.staticMeshes.begin(),
       mode.sandbox->room.staticMeshes.end(),
@@ -932,10 +932,10 @@ bool movingPlatformAdvancesThroughEditorPlayTick() {
   const cr::CreativeObject* authored = document.findObject(created.objectId);
 
   return expect(primed.status ==
-                    app::CreativeEditorPlayTickStatus::ClockPrimed,
+                    app::CreativePlayTickStatus::ClockPrimed,
                 "moving platform Play clock primes") &&
          expect(advanced.status ==
-                        app::CreativeEditorPlayTickStatus::Advanced &&
+                        app::CreativePlayTickStatus::Advanced &&
                     advanced.movingPlatformsAdvanced == 1U &&
                     advanced.movingPlatformsBlocked == 0U &&
                     advanced.runtimeGeometryRevision == 1U,
@@ -969,7 +969,7 @@ bool occupiedPlatformRestoreIsHandledInsidePlay() {
     return expect(false, "occupied platform Play fixture is authored");
   }
 
-  app::CreativeEditorPlayMode mode;
+  app::CreativePlaySession mode;
   if (!start(mode, document, catalog).accepted || !mode.sandbox.has_value()) {
     return expect(false, "occupied platform Play fixture starts");
   }
@@ -982,29 +982,29 @@ bool occupiedPlatformRestoreIsHandledInsidePlay() {
     return expect(false, "occupied platform state exists");
   }
 
-  const app::CreativeEditorPlayTickReceipt firstPress =
+  const app::CreativePlayTickReceipt firstPress =
       tickAt(mode, document, 1U, {false, true});
-  const app::CreativeEditorPlayTickReceipt retracted =
+  const app::CreativePlayTickReceipt retracted =
       tickAt(mode, document, 50'000'001U, {false, true});
   if (!moveRuntimeEntity(mode, {1U}, {0.0F, 0.25F, 0.0F})) {
     return expect(false, "player moves into retracted platform volume");
   }
   static_cast<void>(tickAt(mode, document, 100'000'001U, {}));
-  const app::CreativeEditorPlayTickReceipt blocked =
+  const app::CreativePlayTickReceipt blocked =
       tickAt(mode, document, 150'000'001U, {false, true});
   const bool stayedRetracted =
       !platformState->targetActive && mode.sandbox->geometryRevision == 1U;
-  const app::CreativeEditorPlayTickReceipt continued =
+  const app::CreativePlayTickReceipt continued =
       tickAt(mode, document, 200'000'001U, {});
 
   return expect(firstPress.actionSubmitted &&
                     retracted.status ==
-                        app::CreativeEditorPlayTickStatus::Advanced &&
+                        app::CreativePlayTickStatus::Advanced &&
                     retracted.interactionEffect ==
                         cr::CreativeRuntimeInteractionEffectStatus::LinksApplied,
                 "first button gesture retracts the platform") &&
          expect(blocked.status ==
-                        app::CreativeEditorPlayTickStatus::Advanced &&
+                        app::CreativePlayTickStatus::Advanced &&
                     blocked.active && blocked.interactionEffectsApplied == 1U &&
                     blocked.interactionEffect ==
                         cr::CreativeRuntimeInteractionEffectStatus::
@@ -1014,9 +1014,9 @@ bool occupiedPlatformRestoreIsHandledInsidePlay() {
                     stayedRetracted,
                 "occupied restore is consumed without stopping Play") &&
          expect(continued.status ==
-                        app::CreativeEditorPlayTickStatus::Advanced &&
+                        app::CreativePlayTickStatus::Advanced &&
                     continued.active &&
-                    app::creativeEditorPlayModeActive(mode),
+                    app::creativePlaySessionActive(mode),
                 "Play continues after an occupied restore refusal");
 }
 

@@ -7,7 +7,7 @@
 #include <string>
 #include <string_view>
 
-#include "EditorPlayLogicOverlay.hpp"
+#include "app/iggy3d/creative/play/PlayLogicOverlay.hpp"
 #include "app/iggy3d/creative/play/RuntimeSandbox.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "projection/scene/SceneProjection.hpp"
@@ -16,7 +16,7 @@
 
 namespace iggy3d_creative_app {
 
-struct CreativeEditorPlayTuning {
+struct CreativePlayTuning {
   float walkSpeedMetersPerSecond = 4.5F;
   float sprintMultiplier = 1.75F;
   float minimumPitchDegrees = -80.0F;
@@ -28,33 +28,33 @@ struct CreativeEditorPlayTuning {
   std::uint32_t maximumCatchUpTicks = 4U;
 };
 
-enum class CreativeEditorPlayAction : std::uint8_t {
+enum class CreativePlayAction : std::uint8_t {
   None,
   Attack,
   Interact,
 };
 
-struct CreativeEditorPlayActionSample {
+struct CreativePlayActionSample {
   bool attackDown = false;
   bool interactDown = false;
   bool enabled = true;
 };
 
-struct CreativeEditorPlayActionRouterState {
+struct CreativePlayActionRouterState {
   bool attackDown = false;
   bool interactDown = false;
   bool rearmRequired = false;
 };
 
-[[nodiscard]] CreativeEditorPlayActionSample sampleCreativeEditorPlayActions(
+[[nodiscard]] CreativePlayActionSample sampleCreativePlayActions(
     const iggy3d::creative::CreativeInputFrame& inputFrame,
     const iggy3d::creative::CreativeInputRouteResult& routedInput,
     std::span<const iggy3d::creative::CreativeInputBinding> bindings) noexcept;
-[[nodiscard]] CreativeEditorPlayAction routeCreativeEditorPlayAction(
-    CreativeEditorPlayActionRouterState& state,
-    CreativeEditorPlayActionSample sample) noexcept;
+[[nodiscard]] CreativePlayAction routeCreativePlayAction(
+    CreativePlayActionRouterState& state,
+    CreativePlayActionSample sample) noexcept;
 
-enum class CreativeEditorPlayTargetStatus : std::uint8_t {
+enum class CreativePlayTargetStatus : std::uint8_t {
   None,
   Valid,
   Blocked,
@@ -65,9 +65,9 @@ enum class CreativeEditorPlayTargetStatus : std::uint8_t {
   Invalid,
 };
 
-struct CreativeEditorPlayTarget {
-  CreativeEditorPlayTargetStatus status =
-      CreativeEditorPlayTargetStatus::None;
+struct CreativePlayTarget {
+  CreativePlayTargetStatus status =
+      CreativePlayTargetStatus::None;
   iggy3d::EntityId entity;
   std::string stableName = "none";
   iggy3d::Vec3 hitPointMeters;
@@ -81,7 +81,7 @@ struct CreativeEditorPlayTarget {
   bool defeated = false;
 };
 
-struct CreativeEditorPlayTargetRequest {
+struct CreativePlayTargetRequest {
   const iggy3d::WorldState* world = nullptr;
   const iggy3d::CombatState* combat = nullptr;
   std::span<const iggy3d::PhysicsAabbCollider> colliders;
@@ -96,19 +96,19 @@ struct CreativeEditorPlayTargetRequest {
 };
 
 [[nodiscard]] std::string_view toString(
-    CreativeEditorPlayTargetStatus status) noexcept;
-[[nodiscard]] CreativeEditorPlayTarget resolveCreativeEditorPlayTarget(
-    const CreativeEditorPlayTargetRequest& request);
+    CreativePlayTargetStatus status) noexcept;
+[[nodiscard]] CreativePlayTarget resolveCreativePlayTarget(
+    const CreativePlayTargetRequest& request);
 [[nodiscard]] bool creativeEditorPlayTargetAcceptsAction(
-    const CreativeEditorPlayTarget& target,
-    CreativeEditorPlayAction action) noexcept;
+    const CreativePlayTarget& target,
+    CreativePlayAction action) noexcept;
 
-struct CreativeEditorPlayMode {
+struct CreativePlaySession {
   std::optional<iggy3d::creative::CreativeRuntimeSandbox> sandbox;
   iggy3d::PhysicsSpatialSurfaceColliderBakeResult targetingBake;
-  CreativeEditorPlayTuning tuning;
-  CreativeEditorPlayActionRouterState actionRouter;
-  CreativeEditorPlayTarget target;
+  CreativePlayTuning tuning;
+  CreativePlayActionRouterState actionRouter;
+  CreativePlayTarget target;
   iggy3d::creative::CreativeRuntimeInteractionEffectReceipt
       lastInteractionEffect;
   iggy3d::creative::CreativeRuntimeAutomaticLogicReceipt lastAutomaticLogic;
@@ -123,7 +123,7 @@ struct CreativeEditorPlayMode {
   bool clockPrimed = false;
 };
 
-enum class CreativeEditorPlayStartStatus : std::uint8_t {
+enum class CreativePlayStartStatus : std::uint8_t {
   NotRequested,
   AlreadyActive,
   InvalidTuning,
@@ -133,19 +133,19 @@ enum class CreativeEditorPlayStartStatus : std::uint8_t {
   Started,
 };
 
-struct CreativeEditorPlayStartRequest {
+struct CreativePlayStartRequest {
   const iggy3d::creative::CreativeDocument* document = nullptr;
   const iggy3d::StaticMeshAssetCatalog* staticMeshAssetCatalog = nullptr;
   iggy3d::creative::CreativeRuntimeSandboxConfig sandboxConfig;
-  CreativeEditorPlayTuning tuning;
+  CreativePlayTuning tuning;
   std::string roomId = "creative_editor_play";
 };
 
-struct CreativeEditorPlayStartReceipt {
+struct CreativePlayStartReceipt {
   bool requested = false;
   bool accepted = false;
-  CreativeEditorPlayStartStatus status =
-      CreativeEditorPlayStartStatus::NotRequested;
+  CreativePlayStartStatus status =
+      CreativePlayStartStatus::NotRequested;
   std::string reasonCode = "creative_editor_play_not_requested";
   iggy3d::creative::CreativePlayPreparationStatus preparationStatus =
       iggy3d::creative::CreativePlayPreparationStatus::NotRequested;
@@ -153,28 +153,28 @@ struct CreativeEditorPlayStartReceipt {
 };
 
 [[nodiscard]] std::string_view toString(
-    CreativeEditorPlayStartStatus status) noexcept;
-[[nodiscard]] bool creativeEditorPlayModeActive(
-    const CreativeEditorPlayMode& mode) noexcept;
+    CreativePlayStartStatus status) noexcept;
+[[nodiscard]] bool creativePlaySessionActive(
+    const CreativePlaySession& mode) noexcept;
 
-[[nodiscard]] CreativeEditorPlayStartReceipt startCreativeEditorPlayMode(
-    CreativeEditorPlayMode& mode,
-    CreativeEditorPlayStartRequest request);
+[[nodiscard]] CreativePlayStartReceipt startCreativePlaySession(
+    CreativePlaySession& mode,
+    CreativePlayStartRequest request);
 
 [[nodiscard]] iggy3d::creative::CreativeRuntimeSandboxStopReceipt
-stopCreativeEditorPlayMode(CreativeEditorPlayMode& mode) noexcept;
+stopCreativePlaySession(CreativePlaySession& mode) noexcept;
 
-struct CreativeEditorPlayInput {
+struct CreativePlayInput {
   float moveRight = 0.0F;
   float moveForward = 0.0F;
   float yawDeltaDegrees = 0.0F;
   float pitchDeltaDegrees = 0.0F;
   bool sprinting = false;
   bool windowFocused = true;
-  CreativeEditorPlayActionSample actions;
+  CreativePlayActionSample actions;
 };
 
-enum class CreativeEditorPlayTickStatus : std::uint8_t {
+enum class CreativePlayTickStatus : std::uint8_t {
   NotRequested,
   Inactive,
   SourceDocumentChanged,
@@ -187,17 +187,17 @@ enum class CreativeEditorPlayTickStatus : std::uint8_t {
   Advanced,
 };
 
-struct CreativeEditorPlayTickRequest {
+struct CreativePlayTickRequest {
   const iggy3d::creative::CreativeDocument* sourceDocument = nullptr;
-  CreativeEditorPlayInput input;
+  CreativePlayInput input;
   std::uint64_t monotonicTimeNanoseconds = 0U;
 };
 
-struct CreativeEditorPlayTickReceipt {
+struct CreativePlayTickReceipt {
   bool requested = false;
   bool active = false;
-  CreativeEditorPlayTickStatus status =
-      CreativeEditorPlayTickStatus::NotRequested;
+  CreativePlayTickStatus status =
+      CreativePlayTickStatus::NotRequested;
   std::string reasonCode = "creative_editor_play_tick_not_requested";
   std::uint32_t ticksAdvanced = 0U;
   std::uint32_t commandsSubmitted = 0U;
@@ -210,7 +210,7 @@ struct CreativeEditorPlayTickReceipt {
   std::uint32_t movingPlatformsAdvanced = 0U;
   std::uint32_t movingPlatformsBlocked = 0U;
   std::uint32_t platformRidersCarried = 0U;
-  CreativeEditorPlayAction action = CreativeEditorPlayAction::None;
+  CreativePlayAction action = CreativePlayAction::None;
   bool actionAttempted = false;
   bool actionSubmitted = false;
   std::uint64_t sourceTick = 0U;
@@ -226,39 +226,39 @@ struct CreativeEditorPlayTickReceipt {
 };
 
 [[nodiscard]] std::string_view toString(
-    CreativeEditorPlayTickStatus status) noexcept;
-[[nodiscard]] CreativeEditorPlayTickReceipt tickCreativeEditorPlayMode(
-    CreativeEditorPlayMode& mode,
-    const CreativeEditorPlayTickRequest& request);
+    CreativePlayTickStatus status) noexcept;
+[[nodiscard]] CreativePlayTickReceipt tickCreativePlaySession(
+    CreativePlaySession& mode,
+    const CreativePlayTickRequest& request);
 
-struct CreativeEditorPlayScene {
+struct CreativePlayScene {
   bool available = false;
   iggy3d::Vec3 cameraAnchorMeters;
   iggy3d::SceneProjectionResult scene;
-  CreativeEditorPlayLogicOverlay logicOverlay;
+  CreativePlayLogicOverlay logicOverlay;
 };
 
-[[nodiscard]] CreativeEditorPlayScene buildCreativeEditorPlayScene(
-    const CreativeEditorPlayMode& mode,
+[[nodiscard]] CreativePlayScene buildCreativePlaySessionScene(
+    const CreativePlaySession& mode,
     iggy3d::creative::CreativeObjectId highlightedLogicSourceObjectId =
         iggy3d::creative::kInvalidObjectId);
 
-struct CreativeEditorPlayView {
+struct CreativePlayView {
   bool available = false;
   iggy3d::Vec3 eyeMeters;
   iggy3d::Vec3 forward;
 };
 
-[[nodiscard]] CreativeEditorPlayView buildCreativeEditorPlayView(
-    const CreativeEditorPlayMode& mode) noexcept;
+[[nodiscard]] CreativePlayView buildCreativePlayView(
+    const CreativePlaySession& mode) noexcept;
 
-inline constexpr std::size_t kCreativeEditorPlayHudRectCapacity = 10U;
-inline constexpr std::size_t kCreativeEditorPlayHudGlyphQuadCapacity = 1664U;
+inline constexpr std::size_t kCreativePlayHudRectCapacity = 10U;
+inline constexpr std::size_t kCreativePlayHudGlyphQuadCapacity = 1664U;
 
-struct CreativeEditorPlayHudFrame {
-  std::array<iggy3d::RenderUiRect, kCreativeEditorPlayHudRectCapacity> rects{};
+struct CreativePlayHudFrame {
+  std::array<iggy3d::RenderUiRect, kCreativePlayHudRectCapacity> rects{};
   std::array<iggy3d::DebugHudGlyphQuad,
-             kCreativeEditorPlayHudGlyphQuadCapacity>
+             kCreativePlayHudGlyphQuadCapacity>
       glyphQuads{};
   std::size_t rectCount = 0U;
   std::size_t glyphQuadCount = 0U;
@@ -266,10 +266,10 @@ struct CreativeEditorPlayHudFrame {
   bool capacityExceeded = false;
 };
 
-[[nodiscard]] CreativeEditorPlayHudFrame buildCreativeEditorPlayHud(
-    const CreativeEditorPlayMode& mode,
+[[nodiscard]] CreativePlayHudFrame buildCreativePlayHud(
+    const CreativePlaySession& mode,
     const iggy3d::FrameInput& frame);
-void attachCreativeEditorPlayHud(const CreativeEditorPlayHudFrame& hud,
+void attachCreativePlayHud(const CreativePlayHudFrame& hud,
                                  iggy3d::FrameInput& frame) noexcept;
 
 }  // namespace iggy3d_creative_app

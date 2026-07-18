@@ -1,4 +1,4 @@
-#include "EditorPlayMode.hpp"
+#include "app/iggy3d/creative/play/PlaySession.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -16,7 +16,7 @@ constexpr iggy3d::PlayerSlotId kLocalPlayerSlot = 0U;
 constexpr float kInputEpsilon = 0.0001F;
 constexpr float kPi = 3.14159265358979323846F;
 constexpr std::uint32_t kMaximumCatchUpTickLimit = 16U;
-bool validTuning(const CreativeEditorPlayTuning& tuning,
+bool validTuning(const CreativePlayTuning& tuning,
                  const iggy3d::RuntimeConfig& runtimeConfig) noexcept {
   if (!std::isfinite(tuning.walkSpeedMetersPerSecond) ||
       tuning.walkSpeedMetersPerSecond <= 0.0F ||
@@ -44,7 +44,7 @@ bool validTuning(const CreativeEditorPlayTuning& tuning,
          maximumStep <= runtimeConfig.movementDistanceMeters;
 }
 
-void resetPlayClock(CreativeEditorPlayMode& mode) noexcept {
+void resetPlayClock(CreativePlaySession& mode) noexcept {
   mode.lastFrameTimeNanoseconds = 0U;
   mode.accumulatedTimeNanoseconds = 0U;
   mode.clockPrimed = false;
@@ -55,16 +55,16 @@ std::uint64_t tickDurationNanoseconds(std::uint32_t tickRateHz) noexcept {
   return std::max<std::uint64_t>(1U, kNanosecondsPerSecond / tickRateHz);
 }
 
-bool finiteInput(const CreativeEditorPlayInput& input) noexcept {
+bool finiteInput(const CreativePlayInput& input) noexcept {
   return std::isfinite(input.moveRight) &&
          std::isfinite(input.moveForward) &&
          std::isfinite(input.yawDeltaDegrees) &&
          std::isfinite(input.pitchDeltaDegrees);
 }
 
-iggy3d::Vec3 horizontalStep(const CreativeEditorPlayInput& input,
+iggy3d::Vec3 horizontalStep(const CreativePlayInput& input,
                             float yawDegrees,
-                            const CreativeEditorPlayTuning& tuning,
+                            const CreativePlayTuning& tuning,
                             std::uint32_t tickRateHz) noexcept {
   const float moveRight = std::clamp(input.moveRight, -1.0F, 1.0F);
   const float moveForward = std::clamp(input.moveForward, -1.0F, 1.0F);
@@ -110,8 +110,8 @@ iggy3d::CommandRecord makeLocalPlayerCommand(
 }
 
 iggy3d::CommandRecord makeLocalPlayerActionCommand(
-    const CreativeEditorPlayMode& mode,
-    CreativeEditorPlayAction action) {
+    const CreativePlaySession& mode,
+    CreativePlayAction action) {
   iggy3d::CommandRecord command;
   command.playerSlot = kLocalPlayerSlot;
   command.actor = kLocalPlayerEntity;
@@ -119,34 +119,34 @@ iggy3d::CommandRecord makeLocalPlayerActionCommand(
   command.payload.target.hasEntity = true;
   command.payload.target.entity = mode.target.entity;
   switch (action) {
-    case CreativeEditorPlayAction::Attack:
+    case CreativePlayAction::Attack:
       command.kind = iggy3d::CommandKind::Attack;
       command.payload.attackDamage = mode.tuning.attackDamage;
       break;
-    case CreativeEditorPlayAction::Interact:
+    case CreativePlayAction::Interact:
       command.kind = iggy3d::CommandKind::Interact;
       break;
-    case CreativeEditorPlayAction::None:
+    case CreativePlayAction::None:
       break;
   }
   return command;
 }
 
-CreativeEditorPlayTarget resolveModeTarget(
-    const CreativeEditorPlayMode& mode) {
+CreativePlayTarget resolveModeTarget(
+    const CreativePlaySession& mode) {
   if (!mode.sandbox.has_value() || !mode.targetingBake.ok) {
-    CreativeEditorPlayTarget invalid;
-    invalid.status = CreativeEditorPlayTargetStatus::Invalid;
+    CreativePlayTarget invalid;
+    invalid.status = CreativePlayTargetStatus::Invalid;
     return invalid;
   }
-  const CreativeEditorPlayView view = buildCreativeEditorPlayView(mode);
+  const CreativePlayView view = buildCreativePlayView(mode);
   if (!view.available) {
-    CreativeEditorPlayTarget invalid;
-    invalid.status = CreativeEditorPlayTargetStatus::Invalid;
+    CreativePlayTarget invalid;
+    invalid.status = CreativePlayTargetStatus::Invalid;
     return invalid;
   }
   const iggy3d::SessionState& state = mode.sandbox->session.state();
-  CreativeEditorPlayTarget result = resolveCreativeEditorPlayTarget(
+  CreativePlayTarget result = resolveCreativePlayTarget(
       {&state.world,
        &state.combat,
        mode.targetingBake.colliders,
@@ -188,7 +188,7 @@ CreativeEditorPlayTarget resolveModeTarget(
   return result;
 }
 
-bool refreshTargetingBake(CreativeEditorPlayMode& mode) {
+bool refreshTargetingBake(CreativePlaySession& mode) {
   if (!mode.sandbox.has_value()) {
     return false;
   }
@@ -205,8 +205,8 @@ bool refreshTargetingBake(CreativeEditorPlayMode& mode) {
 }
 
 bool applyRuntimeInteractionEvents(
-    CreativeEditorPlayMode& mode,
-    CreativeEditorPlayTickReceipt& receipt) {
+    CreativePlaySession& mode,
+    CreativePlayTickReceipt& receipt) {
   if (!mode.sandbox.has_value()) {
     return false;
   }
@@ -256,11 +256,11 @@ bool applyRuntimeInteractionEvents(
   return true;
 }
 
-void failAndStop(CreativeEditorPlayMode& mode,
-                 CreativeEditorPlayTickReceipt& receipt,
-                 CreativeEditorPlayTickStatus status,
+void failAndStop(CreativePlaySession& mode,
+                 CreativePlayTickReceipt& receipt,
+                 CreativePlayTickStatus status,
                  std::string reasonCode) noexcept {
-  static_cast<void>(stopCreativeEditorPlayMode(mode));
+  static_cast<void>(stopCreativePlaySession(mode));
   receipt.active = false;
   receipt.status = status;
   receipt.reasonCode = std::move(reasonCode);
@@ -268,42 +268,42 @@ void failAndStop(CreativeEditorPlayMode& mode,
 
 }  // namespace
 
-std::string_view toString(CreativeEditorPlayStartStatus status) noexcept {
+std::string_view toString(CreativePlayStartStatus status) noexcept {
   switch (status) {
-    case CreativeEditorPlayStartStatus::NotRequested:
+    case CreativePlayStartStatus::NotRequested:
       return "not_requested";
-    case CreativeEditorPlayStartStatus::AlreadyActive:
+    case CreativePlayStartStatus::AlreadyActive:
       return "already_active";
-    case CreativeEditorPlayStartStatus::InvalidTuning:
+    case CreativePlayStartStatus::InvalidTuning:
       return "invalid_tuning";
-    case CreativeEditorPlayStartStatus::PreparationRejected:
+    case CreativePlayStartStatus::PreparationRejected:
       return "preparation_rejected";
-    case CreativeEditorPlayStartStatus::ActivationRejected:
+    case CreativePlayStartStatus::ActivationRejected:
       return "activation_rejected";
-    case CreativeEditorPlayStartStatus::TargetingBakeRejected:
+    case CreativePlayStartStatus::TargetingBakeRejected:
       return "targeting_bake_rejected";
-    case CreativeEditorPlayStartStatus::Started:
+    case CreativePlayStartStatus::Started:
       return "started";
   }
   return "not_requested";
 }
 
-bool creativeEditorPlayModeActive(const CreativeEditorPlayMode& mode) noexcept {
+bool creativePlaySessionActive(const CreativePlaySession& mode) noexcept {
   return mode.sandbox.has_value();
 }
 
-CreativeEditorPlayStartReceipt startCreativeEditorPlayMode(
-    CreativeEditorPlayMode& mode,
-    CreativeEditorPlayStartRequest request) {
-  CreativeEditorPlayStartReceipt receipt;
+CreativePlayStartReceipt startCreativePlaySession(
+    CreativePlaySession& mode,
+    CreativePlayStartRequest request) {
+  CreativePlayStartReceipt receipt;
   receipt.requested = true;
-  if (creativeEditorPlayModeActive(mode)) {
-    receipt.status = CreativeEditorPlayStartStatus::AlreadyActive;
+  if (creativePlaySessionActive(mode)) {
+    receipt.status = CreativePlayStartStatus::AlreadyActive;
     receipt.reasonCode = "creative_editor_play_already_active";
     return receipt;
   }
   if (!validTuning(request.tuning, request.sandboxConfig.runtimeConfig)) {
-    receipt.status = CreativeEditorPlayStartStatus::InvalidTuning;
+    receipt.status = CreativePlayStartStatus::InvalidTuning;
     receipt.reasonCode = "creative_editor_play_tuning_invalid";
     return receipt;
   }
@@ -316,7 +316,7 @@ CreativeEditorPlayStartReceipt startCreativeEditorPlayMode(
       iggy3d::creative::prepareCreativePlay(preparationRequest);
   receipt.preparationStatus = prepared.status;
   if (!prepared.accepted || !prepared.payload.has_value()) {
-    receipt.status = CreativeEditorPlayStartStatus::PreparationRejected;
+    receipt.status = CreativePlayStartStatus::PreparationRejected;
     receipt.reasonCode = std::string(prepared.reasonCode);
     return receipt;
   }
@@ -330,7 +330,7 @@ CreativeEditorPlayStartReceipt startCreativeEditorPlayMode(
           std::move(activationRequest));
   receipt.activation = activated.receipt;
   if (!activated.receipt.accepted || !activated.sandbox.has_value()) {
-    receipt.status = CreativeEditorPlayStartStatus::ActivationRejected;
+    receipt.status = CreativePlayStartStatus::ActivationRejected;
     receipt.reasonCode = activated.receipt.reasonCode;
     return receipt;
   }
@@ -344,7 +344,7 @@ CreativeEditorPlayStartReceipt startCreativeEditorPlayMode(
   if (!mode.targetingBake.ok) {
     static_cast<void>(
         iggy3d::creative::stopCreativeRuntimeSandbox(mode.sandbox));
-    receipt.status = CreativeEditorPlayStartStatus::TargetingBakeRejected;
+    receipt.status = CreativePlayStartStatus::TargetingBakeRejected;
     receipt.reasonCode = "creative_editor_play_targeting_bake_rejected";
     return receipt;
   }
@@ -360,13 +360,13 @@ CreativeEditorPlayStartReceipt startCreativeEditorPlayMode(
   mode.cameraPitchDegrees = 0.0F;
   resetPlayClock(mode);
   receipt.accepted = true;
-  receipt.status = CreativeEditorPlayStartStatus::Started;
+  receipt.status = CreativePlayStartStatus::Started;
   receipt.reasonCode = "creative_editor_play_started";
   return receipt;
 }
 
-iggy3d::creative::CreativeRuntimeSandboxStopReceipt stopCreativeEditorPlayMode(
-    CreativeEditorPlayMode& mode) noexcept {
+iggy3d::creative::CreativeRuntimeSandboxStopReceipt stopCreativePlaySession(
+    CreativePlaySession& mode) noexcept {
   iggy3d::creative::CreativeRuntimeSandboxStopReceipt receipt =
       iggy3d::creative::stopCreativeRuntimeSandbox(mode.sandbox);
   mode.targetingBake = {};
@@ -381,40 +381,40 @@ iggy3d::creative::CreativeRuntimeSandboxStopReceipt stopCreativeEditorPlayMode(
   return receipt;
 }
 
-std::string_view toString(CreativeEditorPlayTickStatus status) noexcept {
+std::string_view toString(CreativePlayTickStatus status) noexcept {
   switch (status) {
-    case CreativeEditorPlayTickStatus::NotRequested:
+    case CreativePlayTickStatus::NotRequested:
       return "not_requested";
-    case CreativeEditorPlayTickStatus::Inactive:
+    case CreativePlayTickStatus::Inactive:
       return "inactive";
-    case CreativeEditorPlayTickStatus::SourceDocumentChanged:
+    case CreativePlayTickStatus::SourceDocumentChanged:
       return "source_document_changed";
-    case CreativeEditorPlayTickStatus::InvalidInput:
+    case CreativePlayTickStatus::InvalidInput:
       return "invalid_input";
-    case CreativeEditorPlayTickStatus::Suspended:
+    case CreativePlayTickStatus::Suspended:
       return "suspended";
-    case CreativeEditorPlayTickStatus::ClockPrimed:
+    case CreativePlayTickStatus::ClockPrimed:
       return "clock_primed";
-    case CreativeEditorPlayTickStatus::NoTickDue:
+    case CreativePlayTickStatus::NoTickDue:
       return "no_tick_due";
-    case CreativeEditorPlayTickStatus::CommandRejected:
+    case CreativePlayTickStatus::CommandRejected:
       return "command_rejected";
-    case CreativeEditorPlayTickStatus::RuntimeTickFailed:
+    case CreativePlayTickStatus::RuntimeTickFailed:
       return "runtime_tick_failed";
-    case CreativeEditorPlayTickStatus::Advanced:
+    case CreativePlayTickStatus::Advanced:
       return "advanced";
   }
   return "not_requested";
 }
 
-CreativeEditorPlayTickReceipt tickCreativeEditorPlayMode(
-    CreativeEditorPlayMode& mode,
-    const CreativeEditorPlayTickRequest& request) {
-  CreativeEditorPlayTickReceipt receipt;
+CreativePlayTickReceipt tickCreativePlaySession(
+    CreativePlaySession& mode,
+    const CreativePlayTickRequest& request) {
+  CreativePlayTickReceipt receipt;
   receipt.requested = true;
-  receipt.active = creativeEditorPlayModeActive(mode);
+  receipt.active = creativePlaySessionActive(mode);
   if (!receipt.active) {
-    receipt.status = CreativeEditorPlayTickStatus::Inactive;
+    receipt.status = CreativePlayTickStatus::Inactive;
     receipt.reasonCode = "creative_editor_play_inactive";
     return receipt;
   }
@@ -425,7 +425,7 @@ CreativeEditorPlayTickReceipt tickCreativeEditorPlayMode(
       !iggy3d::creative::creativeRuntimeSandboxIsCurrent(
           sandbox, *request.sourceDocument)) {
     failAndStop(mode, receipt,
-                CreativeEditorPlayTickStatus::SourceDocumentChanged,
+                CreativePlayTickStatus::SourceDocumentChanged,
                 "creative_editor_play_source_document_changed");
     return receipt;
   }
@@ -434,8 +434,8 @@ CreativeEditorPlayTickReceipt tickCreativeEditorPlayMode(
     mode.actionRouter = {};
     mode.actionRouter.rearmRequired = true;
     mode.target = {};
-    mode.target.status = CreativeEditorPlayTargetStatus::Invalid;
-    receipt.status = CreativeEditorPlayTickStatus::InvalidInput;
+    mode.target.status = CreativePlayTargetStatus::Invalid;
+    receipt.status = CreativePlayTickStatus::InvalidInput;
     receipt.reasonCode = "creative_editor_play_input_invalid";
     return receipt;
   }
@@ -444,7 +444,7 @@ CreativeEditorPlayTickReceipt tickCreativeEditorPlayMode(
     mode.actionRouter = {};
     mode.actionRouter.rearmRequired = true;
     mode.target = {};
-    receipt.status = CreativeEditorPlayTickStatus::Suspended;
+    receipt.status = CreativePlayTickStatus::Suspended;
     receipt.reasonCode = "creative_editor_play_suspended";
     receipt.sourceTick = sandbox.session.state().clock.tickIndex;
     return receipt;
@@ -458,9 +458,9 @@ CreativeEditorPlayTickReceipt tickCreativeEditorPlayMode(
 
   mode.target = resolveModeTarget(mode);
   receipt.action =
-      routeCreativeEditorPlayAction(mode.actionRouter, request.input.actions);
+      routeCreativePlayAction(mode.actionRouter, request.input.actions);
   receipt.actionAttempted =
-      receipt.action != CreativeEditorPlayAction::None;
+      receipt.action != CreativePlayAction::None;
   if (creativeEditorPlayTargetAcceptsAction(mode.target, receipt.action)) {
     const iggy3d::CommandRecord actionCommand =
         makeLocalPlayerActionCommand(mode, receipt.action);
@@ -468,7 +468,7 @@ CreativeEditorPlayTickReceipt tickCreativeEditorPlayMode(
         sandbox.session.submitCommand(actionCommand);
     if (submitted.admission.command.admission !=
         iggy3d::CommandAdmissionStatus::Accepted) {
-      receipt.status = CreativeEditorPlayTickStatus::CommandRejected;
+      receipt.status = CreativePlayTickStatus::CommandRejected;
       receipt.reasonCode = "creative_editor_play_action_rejected";
       receipt.commandRejection = submitted.admission.firstFailure;
       receipt.sourceTick = sandbox.session.state().clock.tickIndex;
@@ -477,22 +477,22 @@ CreativeEditorPlayTickReceipt tickCreativeEditorPlayMode(
     receipt.actionSubmitted = true;
     ++receipt.commandsSubmitted;
     receipt.attackCommandsSubmitted +=
-        receipt.action == CreativeEditorPlayAction::Attack ? 1U : 0U;
+        receipt.action == CreativePlayAction::Attack ? 1U : 0U;
     receipt.interactionCommandsSubmitted +=
-        receipt.action == CreativeEditorPlayAction::Interact ? 1U : 0U;
+        receipt.action == CreativePlayAction::Interact ? 1U : 0U;
   }
 
   if (!mode.clockPrimed) {
     mode.lastFrameTimeNanoseconds = request.monotonicTimeNanoseconds;
     mode.clockPrimed = true;
-    receipt.status = CreativeEditorPlayTickStatus::ClockPrimed;
+    receipt.status = CreativePlayTickStatus::ClockPrimed;
     receipt.reasonCode = "creative_editor_play_clock_primed";
     receipt.sourceTick = sandbox.session.state().clock.tickIndex;
     return receipt;
   }
   if (request.monotonicTimeNanoseconds < mode.lastFrameTimeNanoseconds) {
     resetPlayClock(mode);
-    receipt.status = CreativeEditorPlayTickStatus::InvalidInput;
+    receipt.status = CreativePlayTickStatus::InvalidInput;
     receipt.reasonCode = "creative_editor_play_time_reversed";
     return receipt;
   }
@@ -528,7 +528,7 @@ CreativeEditorPlayTickReceipt tickCreativeEditorPlayMode(
         static_cast<std::uint32_t>(moving.carriedActorCount);
     if (!moving.accepted) {
       failAndStop(mode, receipt,
-                  CreativeEditorPlayTickStatus::RuntimeTickFailed,
+                  CreativePlayTickStatus::RuntimeTickFailed,
                   std::string(moving.reasonCode));
       return receipt;
     }
@@ -539,7 +539,7 @@ CreativeEditorPlayTickReceipt tickCreativeEditorPlayMode(
         sandbox.session.submitCommand(command);
     if (submitted.admission.command.admission !=
         iggy3d::CommandAdmissionStatus::Accepted) {
-      receipt.status = CreativeEditorPlayTickStatus::CommandRejected;
+      receipt.status = CreativePlayTickStatus::CommandRejected;
       receipt.reasonCode = "creative_editor_play_command_rejected";
       receipt.commandRejection = submitted.admission.firstFailure;
       receipt.sourceTick = sandbox.session.state().clock.tickIndex;
@@ -552,13 +552,13 @@ CreativeEditorPlayTickReceipt tickCreativeEditorPlayMode(
         {&sandbox.collisionSurfaces, true});
     if (tick.status != iggy3d::ResultStatus::Ok) {
       failAndStop(mode, receipt,
-                  CreativeEditorPlayTickStatus::RuntimeTickFailed,
+                  CreativePlayTickStatus::RuntimeTickFailed,
                   std::string(tick.error.code));
       return receipt;
     }
     if (!applyRuntimeInteractionEvents(mode, receipt)) {
       failAndStop(mode, receipt,
-                  CreativeEditorPlayTickStatus::RuntimeTickFailed,
+                  CreativePlayTickStatus::RuntimeTickFailed,
                   "creative_editor_play_interaction_effect_failed");
       return receipt;
     }
@@ -569,26 +569,26 @@ CreativeEditorPlayTickReceipt tickCreativeEditorPlayMode(
   receipt.active = true;
   receipt.sourceTick = sandbox.session.state().clock.tickIndex;
   if (receipt.ticksAdvanced == 0U) {
-    receipt.status = CreativeEditorPlayTickStatus::NoTickDue;
+    receipt.status = CreativePlayTickStatus::NoTickDue;
     receipt.reasonCode = "creative_editor_play_no_tick_due";
     return receipt;
   }
-  receipt.status = CreativeEditorPlayTickStatus::Advanced;
+  receipt.status = CreativePlayTickStatus::Advanced;
   receipt.reasonCode = "creative_editor_play_advanced";
   return receipt;
 }
 
-CreativeEditorPlayScene buildCreativeEditorPlayScene(
-    const CreativeEditorPlayMode& mode,
+CreativePlayScene buildCreativePlaySessionScene(
+    const CreativePlaySession& mode,
     iggy3d::creative::CreativeObjectId highlightedLogicSourceObjectId) {
-  CreativeEditorPlayScene result;
+  CreativePlayScene result;
   if (!mode.sandbox.has_value()) {
     return result;
   }
   const iggy3d::creative::CreativeRuntimeSandbox& sandbox = *mode.sandbox;
   result.scene =
       iggy3d::buildSceneProjection(sandbox.session.state(), &sandbox.room);
-  result.logicOverlay = buildCreativeEditorPlayLogicOverlay(
+  result.logicOverlay = buildCreativePlayLogicOverlay(
       sandbox, highlightedLogicSourceObjectId);
   const iggy3d::EntityState* player =
       sandbox.session.state().world.findById(kLocalPlayerEntity);

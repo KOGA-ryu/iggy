@@ -177,7 +177,7 @@ void appendNewLogicLinkControl(const cr::CreativeDocument& document,
   }
 }
 
-void appendRuntimeLogicMonitor(const CreativeEditorPlayMode* playMode,
+void appendRuntimeLogicMonitor(const CreativePlaySession* playMode,
                                cr::CreativeObjectId sourceObjectId,
                                const cr::CreativeDocument& document,
                                CreativeDesktopCommandFrame& commands) {
@@ -262,7 +262,7 @@ void appendLogicSection(CreativeEditorDesktopUiState& desktopUi,
                         const CreativeEditorState& editor,
                         const cr::CreativeDocument& document,
                         const cr::CreativeObject& inspected,
-                        const CreativeEditorPlayMode* playMode,
+                        const CreativePlaySession* playMode,
                         bool playModeActive,
                         CreativeDesktopCommandFrame& commands) {
   if (cr::creativeObjectCanSourceLogicLink(inspected.kind)) {
@@ -721,11 +721,11 @@ void buildCreativeEditorDesktopInspectorPanel(
     CreativeEditorDesktopUiState& desktopUi,
     const CreativeEditorState& editor,
     const cr::CreativeAppState& appState,
-    const CreativeEditorPlayMode* playMode,
+    const CreativePlaySession* playMode,
     CreativeDesktopCommandFrame& commands) {
   const cr::CreativeDocument& document = appState.facade.document();
   const bool playModeActive =
-      playMode != nullptr && creativeEditorPlayModeActive(*playMode);
+      playMode != nullptr && creativePlaySessionActive(*playMode);
 
   // Valid ids are resolved from document truth every frame; a cached id is
   // never trusted after a revision.
