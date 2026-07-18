@@ -597,6 +597,10 @@ iggy3d_add_unit_test(creative_play_preparation_tests
 set_tests_properties(creative_play_preparation_tests PROPERTIES
   LABELS "unit;app;creative;play;validation;iggy3d")
 
+iggy3d_add_unit_test(map_demo_tests tests/unit/map_demo_tests.cpp)
+set_tests_properties(map_demo_tests PROPERTIES
+  LABELS "unit;app;creative;play;runtime;movement;iggy3d")
+
 iggy3d_add_unit_test(creative_runtime_sandbox_tests
   tests/unit/creative_runtime_sandbox_tests.cpp)
 set_tests_properties(creative_runtime_sandbox_tests PROPERTIES
@@ -740,6 +744,9 @@ set_tests_properties(scenario_seed_conversion_tests PROPERTIES
 
 iggy3d_add_unit_test(movement_system_tests tests/unit/movement_system_tests.cpp)
 set_tests_properties(movement_system_tests PROPERTIES LABELS "unit;runtime;movement;iggy3d")
+
+iggy3d_add_unit_test(clamber_motor_tests tests/unit/clamber_motor_tests.cpp)
+set_tests_properties(clamber_motor_tests PROPERTIES LABELS "unit;runtime;movement;session;iggy3d")
 
 iggy3d_add_unit_test(ability_command_tests tests/unit/ability_command_tests.cpp)
 set_tests_properties(ability_command_tests PROPERTIES LABELS "unit;runtime;ability;command;iggy3d")

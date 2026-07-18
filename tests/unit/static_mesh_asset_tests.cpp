@@ -752,6 +752,86 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
           "cave/ledge_walkable_4x2", "terrain",
           iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 5U, 2U},
   };
+  constexpr std::array kStealthBlockoutAssets{
+      ModularAssetExpectation{
+          "stealth_blockout/cover_low_wall_2x1p1", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "stealth_blockout/cover_high_wall_2x2", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "stealth_blockout/cover_crate_1m", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "stealth_blockout/cover_crate_0p5", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "stealth_blockout/cover_barrel_0p6x1p1", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "stealth_blockout/cover_sandbag_run_2x0p9", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "stealth_blockout/clamber_block_0p6", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::Bounds, true},
+      ModularAssetExpectation{
+          "stealth_blockout/clamber_block_1p0", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::Bounds, true},
+      ModularAssetExpectation{
+          "stealth_blockout/clamber_block_1p4", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::Bounds, true},
+      ModularAssetExpectation{
+          "stealth_blockout/clamber_block_1p8", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::Bounds, true},
+      ModularAssetExpectation{
+          "stealth_blockout/clamber_fail_2p0", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::Bounds, true},
+      ModularAssetExpectation{
+          "stealth_blockout/vault_rail_2x1p0", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "stealth_blockout/platform_2x2x0p5", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::Bounds, true},
+      ModularAssetExpectation{
+          "stealth_blockout/stair_run_2x3x1p5", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 6U, 6U},
+      ModularAssetExpectation{
+          "stealth_blockout/ramp_2x2x1", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 8U, 8U},
+      ModularAssetExpectation{
+          "stealth_blockout/ledge_shelf_1x1p8", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 2U, 1U},
+      ModularAssetExpectation{
+          "stealth_blockout/wall_seg_2x2", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "stealth_blockout/wall_seg_4x2", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "stealth_blockout/wall_window_2x2", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 2U},
+      ModularAssetExpectation{
+          "stealth_blockout/doorway_2x1", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 3U},
+      ModularAssetExpectation{
+          "stealth_blockout/pillar_0p5x3", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "stealth_blockout/corner_l_2x2", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 2U},
+      ModularAssetExpectation{
+          "stealth_blockout/guard_post_1p8", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "stealth_blockout/player_gauge_1p8", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "stealth_blockout/giant_stair_4x6x3", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 6U, 6U},
+      ModularAssetExpectation{
+          "stealth_blockout/giant_shelf_2x3p6", "stealth_blockout",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 2U, 1U},
+  };
   const iggy3d::StaticMeshAssetCatalog catalog =
       iggy3d::discoverStaticMeshAssetCatalog("assets/creative");
   const iggy3d::StaticMeshAssetCatalog missing =
@@ -876,13 +956,16 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
   const bool rockCliffAssetsValid =
       validateAssetFamily(kRockCliffAssets, "rock and cliff");
   const bool caveAssetsValid = validateAssetFamily(kCaveAssets, "cave");
+  const bool stealthBlockoutAssetsValid =
+      validateAssetFamily(kStealthBlockoutAssets, "stealth blockout");
 
   return expect(catalog.failures.empty() &&
                     catalog.entries.size() ==
                         6U + kModularAssets.size() + kInteriorAssets.size() +
                             kYardAssets.size() + kWoodlandAssets.size() +
                             kInfrastructureAssets.size() +
-                            kRockCliffAssets.size() + kCaveAssets.size(),
+                            kRockCliffAssets.size() + kCaveAssets.size() +
+                            kStealthBlockoutAssets.size(),
                 "catalog discovers every valid GLB fixture") &&
          modularAssetsValid &&
          interiorAssetsValid &&
@@ -891,6 +974,7 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
          infrastructureAssetsValid &&
          rockCliffAssetsValid &&
          caveAssetsValid &&
+         stealthBlockoutAssetsValid &&
          expect(boulder != catalog.entries.end() &&
                     boulder->label == "Boulder 01" &&
                     boulder->authoringMetadata.collisionMode ==

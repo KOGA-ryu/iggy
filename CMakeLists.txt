@@ -160,6 +160,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/world/DocumentSection.cpp
     src/app/iggy3d/creative/world/DocumentSectionRecords.cpp
     src/app/iggy3d/creative/world/DocumentSectionFields.cpp
+    src/app/iggy3d/creative/world/MapDemoTemplate.cpp
     src/app/iggy3d/creative/world/MapTemplate.cpp
     src/app/iggy3d/creative/world/BuilderEstateTemplate.cpp
     src/app/iggy3d/save/Catalog.cpp
@@ -202,6 +203,7 @@ target_sources(iggy3d
     src/runtime/session/Session.cpp
     src/runtime/session/SessionAi.cpp
     src/runtime/session/SessionStateTransitions.cpp
+    src/runtime/movement/ClamberMotor.cpp
     src/runtime/movement/MovementKinematics.cpp
     src/runtime/movement/MovementPolicy.cpp
     src/runtime/movement/MovementSystem.cpp

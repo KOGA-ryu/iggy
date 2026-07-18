@@ -446,9 +446,10 @@ struct CreativeMapTemplateEntry {
   CreativeMapTemplateBuilder build = nullptr;
 };
 
-constexpr std::array<CreativeMapTemplateEntry, 2U> kMapTemplateRegistry{{
+constexpr std::array<CreativeMapTemplateEntry, 3U> kMapTemplateRegistry{{
     {kDitchHouseMapTemplateId, buildDitchHouseMap},
     {kBuilderEstateMapTemplateId, buildBuilderEstateMapTemplate},
+    {kMapDemoTemplateId, buildMapDemoMapTemplate},
 }};
 
 const CreativeMapTemplateEntry* findMapTemplate(
