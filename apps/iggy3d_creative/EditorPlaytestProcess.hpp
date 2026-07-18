@@ -65,6 +65,11 @@ inline constexpr std::uint64_t kPlaytestStallThresholdMs = 5000U;
 [[nodiscard]] std::string playtestStalledStatusMessage(
     std::uint64_t livenessAgeMs);
 
+// One Play Monitor row, readable: known kinds render as a story line with
+// their payload fields ("moved actor=2 tick=140"); unknown kinds fall back
+// to the raw wire line. Ids stay raw -- name resolution is a future slice.
+[[nodiscard]] std::string formatPlaytestMonitorRow(const PlaytestEvent& event);
+
 // Exit message plus the captured stderr tail's last line (pure; the full
 // tail lives in the Play Monitor). Clean exits never carry a tail.
 [[nodiscard]] std::string composePlaytestExitStatusMessage(

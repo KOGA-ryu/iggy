@@ -67,11 +67,39 @@ bool stallDecision() {
                 "stalled message names the age and the remedy");
 }
 
+bool monitorRowFormatting() {
+  app::PlaytestEvent runtime;
+  runtime.kind = std::string(app::kPlaytestEventKindRuntimeEvent);
+  runtime.fields = {{"kind", "interacted"}, {"tick", "140"},
+                    {"actor", "1"}, {"target", "12"}};
+  app::PlaytestEvent heartbeat;
+  heartbeat.kind = std::string(app::kPlaytestEventKindHeartbeat);
+  heartbeat.fields = {{"tick", "60"}, {"state", "suspended"}};
+  app::PlaytestEvent ended;
+  ended.kind = std::string(app::kPlaytestEventKindSessionEnded);
+  ended.fields = {{"reason", "frame_limit_reached"}, {"frames", "240"}};
+  app::PlaytestEvent unknown;
+  unknown.kind = "teleport_used";
+  unknown.fields = {{"from", "a"}};
+  return expect(app::formatPlaytestMonitorRow(runtime) ==
+                    "interacted tick=140 actor=1 target=12",
+                "runtime row reads as a story line with raw ids") &&
+         expect(app::formatPlaytestMonitorRow(heartbeat) ==
+                    "heartbeat tick=60 (suspended)",
+                "heartbeat row carries the sim state") &&
+         expect(app::formatPlaytestMonitorRow(ended) ==
+                    "session ended: frame_limit_reached (240 frames)",
+                "ended row names reason and frames") &&
+         expect(app::formatPlaytestMonitorRow(unknown) ==
+                    "IGGY3DP1 teleport_used from=a",
+                "unknown kind falls back to the raw wire line");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = launchDecision() && shutdownDecision() && exitMessages() &&
-                  stallDecision();
+                  stallDecision() && monitorRowFormatting();
   if (ok) {
     std::cout << "playtest_lifecycle_tests passed\n";
   }

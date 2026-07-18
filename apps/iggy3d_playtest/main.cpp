@@ -286,9 +286,43 @@ int main(int argc, char** argv) {
       }
       for (std::size_t index = mirroredRuntimeEventCount;
            index < runtimeEvents.size(); ++index) {
+        const iggy3d::RuntimeEvent& source = runtimeEvents[index];
         app::PlaytestEvent mirror;
         mirror.kind = std::string(app::kPlaytestEventKindRuntimeEvent);
-        mirror.fields = {{"kind", runtimeEventKindName(runtimeEvents[index].kind)}};
+        // APPEND-ONLY payload: the fields the event struct already carries,
+        // named after the struct fields, raw ids, sentinels omitted. No new
+        // session probing.
+        mirror.fields = {{"kind", runtimeEventKindName(source.kind)}};
+        if (source.tick != iggy3d::kInvalidCommandTick) {
+          mirror.fields.emplace_back("tick", std::to_string(source.tick));
+        }
+        if (source.commandId != iggy3d::kInvalidCommandId) {
+          mirror.fields.emplace_back("commandId",
+                                     std::to_string(source.commandId));
+        }
+        if (source.sequence != iggy3d::kInvalidCommandSequence) {
+          mirror.fields.emplace_back("sequence",
+                                     std::to_string(source.sequence));
+        }
+        if (source.playerSlot != iggy3d::kInvalidPlayerSlotId) {
+          mirror.fields.emplace_back("playerSlot",
+                                     std::to_string(source.playerSlot));
+        }
+        if (source.actor.value != 0U) {
+          mirror.fields.emplace_back("actor",
+                                     std::to_string(source.actor.value));
+        }
+        if (source.target.value != 0U) {
+          mirror.fields.emplace_back("target",
+                                     std::to_string(source.target.value));
+        }
+        if (source.rejection != iggy3d::CommandRejectionReason::None) {
+          mirror.fields.emplace_back(
+              "rejection", std::to_string(static_cast<int>(source.rejection)));
+        }
+        if (!source.stableId.empty()) {
+          mirror.fields.emplace_back("stableId", source.stableId);
+        }
         writeProtocolEvent(mirror);
       }
       mirroredRuntimeEventCount = runtimeEvents.size();
