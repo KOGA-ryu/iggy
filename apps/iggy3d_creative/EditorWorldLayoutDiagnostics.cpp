@@ -70,7 +70,8 @@ void appendAssetSourceDiagnostic(
     CreativeEditorWorldLayoutDiagnosticReport& report,
     const cr::CreativeCatalogState& catalog,
     cr::CreativeWorldLayoutTable table, std::size_t index,
-    std::string_view name, std::string_view assetId,
+    std::string_view stableKey, std::string_view name,
+    std::string_view assetId,
     bool hasSourceBounds, cr::CreativeBounds sourceBounds,
     bool active) {
   if (!active || assetId.empty() || !hasSourceBounds ||
@@ -94,7 +95,10 @@ void appendAssetSourceDiagnostic(
   issue.status = cr::CreativeWorldLayoutStatus::Ready;
   issue.table = table;
   issue.index = index;
+  issue.stableKey = stableKey;
+  issue.assetId = assetId;
   if (missing) {
+    issue.assetIssue = CreativeEditorWorldLayoutAssetIssue::Missing;
     issue.message = std::string(name) +
                     (table == cr::CreativeWorldLayoutTable::Opening
                          ? " asset is unavailable; using a procedural preview"
@@ -105,6 +109,7 @@ void appendAssetSourceDiagnostic(
             : "creative_world_layout_object_asset_missing";
     return;
   }
+  issue.assetIssue = CreativeEditorWorldLayoutAssetIssue::StaleBounds;
   issue.message =
       std::string(name) + " asset dimensions differ from the current catalog";
   issue.reasonCode =
@@ -193,7 +198,7 @@ buildCreativeEditorWorldLayoutDiagnosticReport(
     const cr::CreativeWorldLayoutOpening& opening = layout.openings[index];
     appendAssetSourceDiagnostic(
         report, *assetCatalog, cr::CreativeWorldLayoutTable::Opening,
-        index, opening.name, opening.insertAssetId,
+        index, opening.stableKey, opening.name, opening.insertAssetId,
         opening.hasInsertAssetSourceBounds,
         opening.insertAssetSourceBoundsMeters, opening.includeInsert);
   }
@@ -204,7 +209,8 @@ buildCreativeEditorWorldLayoutDiagnosticReport(
     const cr::CreativeWorldLayoutObject& object = layout.objects[index];
     appendAssetSourceDiagnostic(
         report, *assetCatalog, cr::CreativeWorldLayoutTable::Object,
-        index, object.name, object.assetId, object.hasAssetSourceBounds,
+        index, object.stableKey, object.name, object.assetId,
+        object.hasAssetSourceBounds,
         object.assetSourceBoundsMeters, true);
   }
   return report;

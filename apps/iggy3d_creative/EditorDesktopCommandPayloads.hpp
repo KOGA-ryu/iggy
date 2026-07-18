@@ -313,6 +313,25 @@ struct CreativeDesktopWorldLayoutOpeningInsertPayload {
   iggy3d::creative::CreativeVec3 assetScale{1.0, 1.0, 1.0};
 };
 
+enum class CreativeDesktopWorldLayoutAssetRepairOperation : std::uint8_t {
+  RefreshBounds,
+  ReplaceAsset,
+  UseProceduralInsert,
+  Count,
+};
+
+struct CreativeDesktopWorldLayoutAssetRepairPayload {
+  CreativeDesktopWorldLayoutAssetRepairOperation operation =
+      CreativeDesktopWorldLayoutAssetRepairOperation::RefreshBounds;
+  iggy3d::creative::CreativeWorldLayoutTable table =
+      iggy3d::creative::CreativeWorldLayoutTable::None;
+  std::size_t index =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::string stableKey;
+  std::string expectedAssetId;
+  std::string replacementAssetId;
+};
+
 struct CreativeDesktopWorldLayoutOpeningManipulationPayload {
   CreativeEditorWorldLayoutOpeningManipulationPhase phase =
       CreativeEditorWorldLayoutOpeningManipulationPhase::Begin;
@@ -364,6 +383,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutWallManipulationPayload,
     CreativeDesktopWorldLayoutOpeningSettingsPayload,
     CreativeDesktopWorldLayoutOpeningInsertPayload,
+    CreativeDesktopWorldLayoutAssetRepairPayload,
     CreativeDesktopWorldLayoutOpeningManipulationPayload>;
 
 }  // namespace iggy3d_creative_app

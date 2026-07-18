@@ -2423,6 +2423,139 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   }
 }
 
+[[nodiscard]] bool worldLayoutRepairAssetCompatible(
+    const CreativeEditorWorldLayoutDiagnostic& issue,
+    const CreativeEditorWorldLayoutState& state,
+    const cr::CreativeCatalogEntry& entry) noexcept {
+  const cr::CreativeBoundsMetrics bounds =
+      cr::measureCreativeBounds(entry.hotbarEntry.assetSourceBounds);
+  if (entry.category != cr::CreativeCatalogEntryCategory::Asset ||
+      !entry.hotbarEntry.hasAssetBounds || !bounds.valid ||
+      !cr::isPositiveCreativeVec3(bounds.size)) {
+    return false;
+  }
+  if (issue.table == cr::CreativeWorldLayoutTable::Opening) {
+    return issue.index < state.source.openings.size() &&
+           creativeEditorWorldLayoutCatalogAssetMatchesOpening(
+               entry.assetAuthoringMetadata.categoryId,
+               state.source.openings[issue.index].kind);
+  }
+  if (issue.table == cr::CreativeWorldLayoutTable::Object) {
+    return issue.index < state.source.objects.size() &&
+           !creativeEditorWorldLayoutCatalogAssetIsHostedOpening(
+               entry.assetAuthoringMetadata.categoryId) &&
+           entry.hotbarEntry.objectKind ==
+               state.source.objects[issue.index].kind;
+  }
+  return false;
+}
+
+void queueWorldLayoutAssetRepair(
+    CreativeDesktopCommandFrame& commands,
+    const CreativeEditorWorldLayoutDiagnostic& issue,
+    CreativeDesktopWorldLayoutAssetRepairOperation operation,
+    std::string replacementAssetId = {}) {
+  commands.push(
+      CreativeDesktopCommandId::WorldLayoutRepairAsset,
+      CreativeDesktopWorldLayoutAssetRepairPayload{
+          operation, issue.table, issue.index, issue.stableKey,
+          issue.assetId, std::move(replacementAssetId)});
+}
+
+void drawWorldLayoutAssetRepair(
+    const CreativeEditorWorldLayoutDiagnostic& issue,
+    const CreativeEditorWorldLayoutState& state,
+    const cr::CreativeCatalogState& catalog,
+    CreativeDesktopCommandFrame& commands, bool editingDisabled,
+    std::size_t issueIndex) {
+  if (issue.assetIssue == CreativeEditorWorldLayoutAssetIssue::None) {
+    return;
+  }
+
+  ImGui::PushID(static_cast<int>(issueIndex));
+  ImGui::Indent();
+  ImGui::BeginDisabled(editingDisabled);
+  if (ImGui::SmallButton("Repair...")) {
+    ImGui::OpenPopup("Asset repair");
+  }
+  ImGui::EndDisabled();
+  ImGui::Unindent();
+
+  if (ImGui::BeginPopup("Asset repair")) {
+    ImGui::TextDisabled("Current: %s", issue.assetId.c_str());
+    if (issue.assetIssue ==
+        CreativeEditorWorldLayoutAssetIssue::StaleBounds) {
+      if (ImGui::Button("Refresh Bounds")) {
+        queueWorldLayoutAssetRepair(
+            commands, issue,
+            CreativeDesktopWorldLayoutAssetRepairOperation::RefreshBounds);
+        ImGui::CloseCurrentPopup();
+      }
+      if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Adopt current catalog dimensions; preserve placement and fit");
+      }
+    }
+    if (issue.table == cr::CreativeWorldLayoutTable::Opening) {
+      if (issue.assetIssue ==
+          CreativeEditorWorldLayoutAssetIssue::StaleBounds) {
+        ImGui::SameLine();
+      }
+      if (ImGui::Button("Use Procedural")) {
+        queueWorldLayoutAssetRepair(
+            commands, issue,
+            CreativeDesktopWorldLayoutAssetRepairOperation::
+                UseProceduralInsert);
+        ImGui::CloseCurrentPopup();
+      }
+      if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Replace the catalog insert; preserve the opening");
+      }
+    }
+
+    std::size_t compatibleCount = 0U;
+    for (const cr::CreativeCatalogEntry& entry : catalog.entries) {
+      if (worldLayoutRepairAssetCompatible(issue, state, entry) &&
+          cr::creativeHotbarAssetId(entry.hotbarEntry) != issue.assetId) {
+        ++compatibleCount;
+      }
+    }
+    ImGui::BeginDisabled(compatibleCount == 0U);
+    if (ImGui::BeginCombo("Replace Asset", "Choose compatible asset")) {
+      for (const cr::CreativeCatalogEntry& entry : catalog.entries) {
+        const std::string_view assetId =
+            cr::creativeHotbarAssetId(entry.hotbarEntry);
+        if (!worldLayoutRepairAssetCompatible(issue, state, entry) ||
+            assetId == issue.assetId) {
+          continue;
+        }
+        ImGui::PushID(entry.hotbarEntry.assetId.data());
+        if (ImGui::Selectable(entry.label.c_str())) {
+          queueWorldLayoutAssetRepair(
+              commands, issue,
+              CreativeDesktopWorldLayoutAssetRepairOperation::ReplaceAsset,
+              std::string(assetId));
+          ImGui::CloseCurrentPopup();
+        }
+        if (ImGui::IsItemHovered()) {
+          const cr::CreativeBoundsMetrics bounds =
+              cr::measureCreativeBounds(entry.hotbarEntry.assetSourceBounds);
+          ImGui::SetTooltip("%s\n%.2f x %.2f x %.2f m", assetId.data(),
+                            bounds.size.x, bounds.size.y, bounds.size.z);
+        }
+        ImGui::PopID();
+      }
+      ImGui::EndCombo();
+    }
+    ImGui::EndDisabled();
+    if (compatibleCount == 0U) {
+      ImGui::TextDisabled("No compatible replacement assets");
+    }
+    ImGui::EndPopup();
+  }
+  ImGui::PopID();
+}
+
 
 }  // namespace
 
@@ -2598,6 +2731,8 @@ void buildCreativeEditorWorldLayoutPanel(
           ImGui::SetTooltip("%s", issue.reasonCode.c_str());
         }
       }
+      drawWorldLayoutAssetRepair(issue, state, editor.catalog.model, commands,
+                                 editingDisabled, issueIndex);
     }
 
     ImGui::Separator();

@@ -6,6 +6,7 @@
 #include "EditorFrame.hpp"
 #include "EditorPersistence.hpp"
 #include "EditorState.hpp"
+#include "EditorWorldLayoutDiagnostics.hpp"
 #include "EditorWorldLayoutHistory.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
@@ -2496,6 +2497,217 @@ bool worldLayoutOpeningInsertCommandsUseCatalogAndHistory() {
                 "procedural command clears catalog ownership explicitly");
 }
 
+bool worldLayoutAssetRepairCommandsPreservePlacementAndHistory() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Asset Repair");
+  static_cast<void>(document.assignId(430U));
+  cr::CreativeGridSettings grid;
+  grid.cellSizeMeters = 0.5;
+  static_cast<void>(document.setGridSettings(grid));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "asset_repair_commands");
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      editor.worldLayout, app::CreativeEditorWorldLayoutTool::Wall));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(
+      editor.worldLayout, {0.0, 0.0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(
+      editor.worldLayout, {8.0, 0.0}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      editor.worldLayout, app::CreativeEditorWorldLayoutTool::Door));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(
+      editor.worldLayout, {4.0, 0.1}));
+
+  cr::CreativeWorldLayoutObject object;
+  object.kind = cr::CreativeObjectKind::Prop;
+  object.mode = cr::CreativeObjectLibraryPlacementMode::Point;
+  object.stableKey = "prop.repair";
+  object.name = "Repair Prop";
+  object.assetId = "props/current";
+  object.pointCells = {3.0, 1.25, -2.0};
+  object.assetSourceBoundsMeters =
+      {{-0.5, 0.0, -0.25}, {0.5, 1.0, 0.25}};
+  object.hasAssetSourceBounds = true;
+  object.yawRadians = 0.75;
+  object.scale = {1.5, 0.8, 2.0};
+  object.tags = {"world_layout:catalog_asset"};
+  editor.worldLayout.source.objects.push_back(object);
+  cr::CreativeWorldLayoutOpening& opening =
+      editor.worldLayout.source.openings[0];
+  opening.insertAssetId = "doors/current";
+  opening.insertAssetSourceBoundsMeters =
+      {{-0.5, 0.0, -0.1}, {0.5, 2.0, 0.1}};
+  opening.hasInsertAssetSourceBounds = true;
+  const cr::CreativeWorldLayout seeded = editor.worldLayout.source;
+  app::installCreativeEditorWorldLayout(editor.worldLayout, seeded);
+
+  const auto appendAsset = [&](std::string assetId, std::string label,
+                               cr::CreativeObjectKind kind,
+                               std::string category,
+                               cr::CreativeBounds bounds) {
+    cr::CreativeCatalogEntry entry;
+    entry.category = cr::CreativeCatalogEntryCategory::Asset;
+    entry.label = std::move(label);
+    entry.assetAuthoringMetadata.categoryId = std::move(category);
+    entry.hotbarEntry.objectKind = kind;
+    static_cast<void>(cr::setCreativeHotbarAsset(
+        entry.hotbarEntry, assetId, bounds));
+    editor.catalog.model.entries.push_back(std::move(entry));
+  };
+  const cr::CreativeBounds currentPropBounds =
+      {{-0.75, -0.1, -0.4}, {0.75, 1.4, 0.4}};
+  const cr::CreativeBounds replacementPropBounds =
+      {{-1.0, 0.0, -0.5}, {1.0, 2.0, 0.5}};
+  const cr::CreativeBounds currentDoorBounds =
+      {{-0.6, 0.0, -0.15}, {0.6, 2.2, 0.15}};
+  const cr::CreativeBounds replacementDoorBounds =
+      {{-0.4, 0.0, -0.08}, {0.8, 2.4, 0.12}};
+  appendAsset("props/current", "Current Prop", cr::CreativeObjectKind::Prop,
+              "furniture", currentPropBounds);
+  appendAsset("props/replacement", "Replacement Prop",
+              cr::CreativeObjectKind::Prop, "furniture",
+              replacementPropBounds);
+  appendAsset("props/incompatible", "Incompatible Crate",
+              cr::CreativeObjectKind::Crate, "cover",
+              replacementPropBounds);
+  appendAsset("doors/current", "Current Door", cr::CreativeObjectKind::Door,
+              "door", currentDoorBounds);
+  appendAsset("doors/replacement", "Replacement Door",
+              cr::CreativeObjectKind::Door, "door",
+              replacementDoorBounds);
+
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const cr::CreativeWorldLayoutObject originalObject =
+      editor.worldLayout.source.objects[0];
+  const cr::CreativeWorldLayoutOpening originalOpening =
+      editor.worldLayout.source.openings[0];
+  const std::size_t undoBefore =
+      editor.worldLayout.sourceHistory.undoEntries.size();
+
+  const auto repair = [&](app::CreativeDesktopWorldLayoutAssetRepairOperation op,
+                          cr::CreativeWorldLayoutTable table,
+                          std::size_t index, std::string stableKey,
+                          std::string expectedAssetId,
+                          std::string replacementAssetId = {}) {
+    return dispatchPayload(
+        app::CreativeDesktopCommandId::WorldLayoutRepairAsset, context,
+        app::CreativeDesktopWorldLayoutAssetRepairPayload{
+            op, table, index, std::move(stableKey),
+            std::move(expectedAssetId), std::move(replacementAssetId)});
+  };
+
+  const auto refreshedObject = repair(
+      app::CreativeDesktopWorldLayoutAssetRepairOperation::RefreshBounds,
+      cr::CreativeWorldLayoutTable::Object, 0U, object.stableKey,
+      "props/current");
+  const cr::CreativeWorldLayoutObject afterObjectRefresh =
+      editor.worldLayout.source.objects[0];
+  const auto replacedObject = repair(
+      app::CreativeDesktopWorldLayoutAssetRepairOperation::ReplaceAsset,
+      cr::CreativeWorldLayoutTable::Object, 0U, object.stableKey,
+      "props/current", "props/replacement");
+  const cr::CreativeWorldLayoutObject afterObjectReplacement =
+      editor.worldLayout.source.objects[0];
+  const std::uint64_t revisionBeforeReject = editor.worldLayout.revision;
+  const auto incompatible = repair(
+      app::CreativeDesktopWorldLayoutAssetRepairOperation::ReplaceAsset,
+      cr::CreativeWorldLayoutTable::Object, 0U, object.stableKey,
+      "props/replacement", "props/incompatible");
+  const auto stale = repair(
+      app::CreativeDesktopWorldLayoutAssetRepairOperation::RefreshBounds,
+      cr::CreativeWorldLayoutTable::Object, 0U, "wrong.stable.key",
+      "props/replacement");
+
+  const auto refreshedOpening = repair(
+      app::CreativeDesktopWorldLayoutAssetRepairOperation::RefreshBounds,
+      cr::CreativeWorldLayoutTable::Opening, 0U, originalOpening.stableKey,
+      "doors/current");
+  const cr::CreativeWorldLayoutOpening afterOpeningRefresh =
+      editor.worldLayout.source.openings[0];
+  const auto replacedOpening = repair(
+      app::CreativeDesktopWorldLayoutAssetRepairOperation::ReplaceAsset,
+      cr::CreativeWorldLayoutTable::Opening, 0U, originalOpening.stableKey,
+      "doors/current", "doors/replacement");
+  const cr::CreativeWorldLayoutOpening afterOpeningReplacement =
+      editor.worldLayout.source.openings[0];
+  const auto procedural = repair(
+      app::CreativeDesktopWorldLayoutAssetRepairOperation::UseProceduralInsert,
+      cr::CreativeWorldLayoutTable::Opening, 0U, originalOpening.stableKey,
+      "doors/replacement");
+  const cr::CreativeWorldLayoutOpening finalOpening =
+      editor.worldLayout.source.openings[0];
+  const app::CreativeEditorWorldLayoutDiagnosticReport finalDiagnostics =
+      app::buildCreativeEditorWorldLayoutDiagnosticReport(
+          appState.facade.document(), editor.worldLayout.source,
+          &editor.catalog.model);
+
+  const bool objectPlacementPreserved =
+      vecNear(afterObjectRefresh.pointCells, originalObject.pointCells) &&
+      near(afterObjectRefresh.yawRadians, originalObject.yawRadians) &&
+      vecNear(afterObjectRefresh.scale, originalObject.scale) &&
+      vecNear(afterObjectReplacement.pointCells, originalObject.pointCells) &&
+      near(afterObjectReplacement.yawRadians, originalObject.yawRadians) &&
+      vecNear(afterObjectReplacement.scale, originalObject.scale);
+  const bool openingFitPreserved =
+      near(afterOpeningRefresh.centerOffsetCells,
+           originalOpening.centerOffsetCells) &&
+      near(afterOpeningRefresh.widthCells, originalOpening.widthCells) &&
+      near(afterOpeningRefresh.cutoutHeightCells,
+           originalOpening.cutoutHeightCells) &&
+      near(afterOpeningReplacement.centerOffsetCells,
+           originalOpening.centerOffsetCells) &&
+      near(afterOpeningReplacement.widthCells, originalOpening.widthCells) &&
+      near(afterOpeningReplacement.cutoutHeightCells,
+           originalOpening.cutoutHeightCells);
+
+  return expect(refreshedObject.accepted && refreshedObject.changed &&
+                    refreshedObject.worldLayoutChanged &&
+                    cr::creativeBoundsExactlyEqual(
+                        afterObjectRefresh.assetSourceBoundsMeters,
+                        currentPropBounds) &&
+                    objectPlacementPreserved,
+                "object bounds refresh preserves authored placement") &&
+         expect(replacedObject.accepted && replacedObject.changed &&
+                    afterObjectReplacement.assetId == "props/replacement" &&
+                    cr::creativeBoundsExactlyEqual(
+                        afterObjectReplacement.assetSourceBoundsMeters,
+                        replacementPropBounds),
+                "compatible object replacement preserves semantic kind") &&
+         expect(!incompatible.accepted && !incompatible.changed &&
+                    !stale.accepted && !stale.changed &&
+                    editor.worldLayout.revision == revisionBeforeReject + 3U,
+                "incompatible and stale repair targets mutate nothing") &&
+         expect(refreshedOpening.accepted && refreshedOpening.changed &&
+                    replacedOpening.accepted && replacedOpening.changed &&
+                    openingFitPreserved &&
+                    cr::creativeBoundsExactlyEqual(
+                        afterOpeningRefresh.insertAssetSourceBoundsMeters,
+                        currentDoorBounds) &&
+                    afterOpeningReplacement.insertAssetId ==
+                        "doors/replacement" &&
+                    cr::creativeBoundsExactlyEqual(
+                        afterOpeningReplacement.insertAssetSourceBoundsMeters,
+                        replacementDoorBounds),
+                "opening repair preserves cutout fit while replacing source") &&
+         expect(procedural.accepted && procedural.changed &&
+                    finalOpening.includeInsert &&
+                    finalOpening.insertAssetId.empty() &&
+                    !finalOpening.hasInsertAssetSourceBounds,
+                "opening repair can explicitly select procedural fallback") &&
+         expect(editor.worldLayout.sourceHistory.undoEntries.size() ==
+                    undoBefore + 5U,
+                "five accepted repairs create exactly five undo entries") &&
+         expect(finalDiagnostics.ready &&
+                    finalDiagnostics.issueCount == 0U,
+                "repaired sources compile without asset diagnostics");
+}
+
 }  // namespace
 
 int main() {
@@ -2531,5 +2743,6 @@ int main() {
   ok = worldLayoutCommandsPreviewAndGenerateThroughDispatcher() && ok;
   ok = worldLayoutCatalogSelectionAndPlacementUseTypedCommands() && ok;
   ok = worldLayoutOpeningInsertCommandsUseCatalogAndHistory() && ok;
+  ok = worldLayoutAssetRepairCommandsPreservePlacementAndHistory() && ok;
   return ok ? 0 : 1;
 }

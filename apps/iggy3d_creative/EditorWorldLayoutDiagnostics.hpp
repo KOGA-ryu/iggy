@@ -22,6 +22,13 @@ enum class CreativeEditorWorldLayoutDiagnosticSeverity : std::uint8_t {
   Count,
 };
 
+enum class CreativeEditorWorldLayoutAssetIssue : std::uint8_t {
+  None,
+  Missing,
+  StaleBounds,
+  Count,
+};
+
 struct CreativeEditorWorldLayoutDiagnostic {
   CreativeEditorWorldLayoutDiagnosticSeverity severity =
       CreativeEditorWorldLayoutDiagnosticSeverity::Error;
@@ -34,6 +41,10 @@ struct CreativeEditorWorldLayoutDiagnostic {
   std::string message;
   std::string reasonCode;
   std::string kernelReasonCode;
+  CreativeEditorWorldLayoutAssetIssue assetIssue =
+      CreativeEditorWorldLayoutAssetIssue::None;
+  std::string stableKey;
+  std::string assetId;
 };
 
 struct CreativeEditorWorldLayoutDiagnosticReport {

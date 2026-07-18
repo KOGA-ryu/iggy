@@ -114,6 +114,10 @@ bool missingOpeningAssetWarnsAndTracksCatalogMembership() {
           app::CreativeEditorWorldLayoutDiagnosticSeverity::Warning &&
       missing.issues[0].table == cr::CreativeWorldLayoutTable::Opening &&
       missing.issues[0].index == 0U &&
+      missing.issues[0].assetIssue ==
+          app::CreativeEditorWorldLayoutAssetIssue::Missing &&
+      missing.issues[0].stableKey == opening.stableKey &&
+      missing.issues[0].assetId == opening.insertAssetId &&
       missing.issues[0].reasonCode ==
           "creative_world_layout_opening_asset_missing";
   static_cast<void>(app::refreshCreativeEditorWorldLayoutDiagnostics(
@@ -144,6 +148,8 @@ bool missingOpeningAssetWarnsAndTracksCatalogMembership() {
       stale.ready && stale.issueCount == 1U &&
       stale.issues[0].table == cr::CreativeWorldLayoutTable::Opening &&
       stale.issues[0].index == 0U &&
+      stale.issues[0].assetIssue ==
+          app::CreativeEditorWorldLayoutAssetIssue::StaleBounds &&
       stale.issues[0].reasonCode ==
           "creative_world_layout_opening_asset_bounds_stale";
   const std::uint64_t afterBoundsChange = state.diagnosticCache.buildCount;
@@ -196,6 +202,11 @@ bool missingObjectAssetWarningIsNavigable() {
                     report.issues[0].table ==
                         cr::CreativeWorldLayoutTable::Object &&
                     report.issues[0].index == 0U &&
+                    report.issues[0].assetIssue ==
+                        app::CreativeEditorWorldLayoutAssetIssue::Missing &&
+                    report.issues[0].stableKey == "prop.missing" &&
+                    report.issues[0].assetId ==
+                        "homestead/interior/missing_prop" &&
                     report.issues[0].reasonCode ==
                         "creative_world_layout_object_asset_missing",
                 "missing object asset warning identifies its source row");

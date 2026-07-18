@@ -66,6 +66,147 @@ template <typename Payload>
   return std::get_if<Payload>(&command.payload);
 }
 
+[[nodiscard]] const creative::CreativeCatalogEntry* findCatalogAsset(
+    const creative::CreativeCatalogState& catalog,
+    std::string_view assetId) noexcept {
+  const auto found = std::find_if(
+      catalog.entries.begin(), catalog.entries.end(),
+      [assetId](const creative::CreativeCatalogEntry& entry) {
+        return entry.category ==
+                   creative::CreativeCatalogEntryCategory::Asset &&
+               creative::creativeHotbarAssetId(entry.hotbarEntry) == assetId;
+      });
+  return found == catalog.entries.end() ? nullptr : &*found;
+}
+
+[[nodiscard]] bool validCatalogAsset(
+    const creative::CreativeCatalogEntry& entry) noexcept {
+  const creative::CreativeBoundsMetrics bounds =
+      creative::measureCreativeBounds(entry.hotbarEntry.assetSourceBounds);
+  return entry.category == creative::CreativeCatalogEntryCategory::Asset &&
+         entry.hotbarEntry.objectKind > creative::CreativeObjectKind::Unknown &&
+         entry.hotbarEntry.objectKind < creative::CreativeObjectKind::Count &&
+         !creative::creativeHotbarAssetId(entry.hotbarEntry).empty() &&
+         entry.hotbarEntry.hasAssetBounds && bounds.valid &&
+         creative::isPositiveCreativeVec3(bounds.size);
+}
+
+CreativeEditorWorldLayoutEditReceipt rejectWorldLayoutAssetRepair(
+    CreativeEditorWorldLayoutState& state, std::string message,
+    std::string reasonCode) {
+  state.statusMessage = std::move(message);
+  return {false, false, std::move(reasonCode)};
+}
+
+CreativeEditorWorldLayoutEditReceipt repairWorldLayoutAsset(
+    CreativeEditorWorldLayoutState& state,
+    const creative::CreativeCatalogState& catalog,
+    double gridCellSizeMeters,
+    const CreativeDesktopWorldLayoutAssetRepairPayload& payload) {
+  if (payload.operation >=
+          CreativeDesktopWorldLayoutAssetRepairOperation::Count ||
+      (payload.table != creative::CreativeWorldLayoutTable::Opening &&
+       payload.table != creative::CreativeWorldLayoutTable::Object) ||
+      payload.stableKey.empty() || payload.expectedAssetId.empty() ||
+      !creativeEditorWorldLayoutSourceStableKeyMatches(
+          state, payload.table, payload.index, payload.stableKey)) {
+    return rejectWorldLayoutAssetRepair(
+        state, "asset repair target is stale",
+        "creative_editor_world_layout_asset_repair_target_invalid");
+  }
+
+  std::string_view currentAssetId;
+  if (payload.table == creative::CreativeWorldLayoutTable::Opening) {
+    if (payload.index >= state.source.openings.size()) {
+      return rejectWorldLayoutAssetRepair(
+          state, "asset repair target is stale",
+          "creative_editor_world_layout_asset_repair_target_invalid");
+    }
+    currentAssetId = state.source.openings[payload.index].insertAssetId;
+  } else {
+    if (payload.index >= state.source.objects.size()) {
+      return rejectWorldLayoutAssetRepair(
+          state, "asset repair target is stale",
+          "creative_editor_world_layout_asset_repair_target_invalid");
+    }
+    currentAssetId = state.source.objects[payload.index].assetId;
+  }
+  if (currentAssetId != payload.expectedAssetId) {
+    return rejectWorldLayoutAssetRepair(
+        state, "asset repair identity changed",
+        "creative_editor_world_layout_asset_repair_identity_mismatch");
+  }
+
+  if (payload.operation ==
+      CreativeDesktopWorldLayoutAssetRepairOperation::UseProceduralInsert) {
+    if (payload.table != creative::CreativeWorldLayoutTable::Opening) {
+      return rejectWorldLayoutAssetRepair(
+          state, "procedural fallback is only valid for openings",
+          "creative_editor_world_layout_asset_repair_operation_invalid");
+    }
+    CreativeEditorWorldLayoutOpeningInsertRequest request;
+    request.openingIndex = payload.index;
+    request.operation =
+        CreativeEditorWorldLayoutOpeningInsertOperation::UseProceduralInsert;
+    return applyCreativeEditorWorldLayoutOpeningInsert(state, request);
+  }
+
+  const std::string_view requestedAssetId =
+      payload.operation ==
+              CreativeDesktopWorldLayoutAssetRepairOperation::RefreshBounds
+          ? std::string_view(payload.expectedAssetId)
+          : std::string_view(payload.replacementAssetId);
+  const creative::CreativeCatalogEntry* entry =
+      findCatalogAsset(catalog, requestedAssetId);
+  if (entry == nullptr || !validCatalogAsset(*entry)) {
+    return rejectWorldLayoutAssetRepair(
+        state, "asset repair catalog entry is unavailable",
+        "creative_editor_world_layout_asset_repair_catalog_missing");
+  }
+
+  if (payload.table == creative::CreativeWorldLayoutTable::Opening) {
+    const creative::CreativeWorldLayoutOpening& opening =
+        state.source.openings[payload.index];
+    if (!creativeEditorWorldLayoutCatalogAssetMatchesOpening(
+            entry->assetAuthoringMetadata.categoryId, opening.kind)) {
+      return rejectWorldLayoutAssetRepair(
+          state, "choose a compatible door or window asset",
+          "creative_editor_world_layout_asset_repair_incompatible");
+    }
+    CreativeEditorWorldLayoutOpeningInsertRequest request;
+    request.openingIndex = payload.index;
+    request.operation =
+        CreativeEditorWorldLayoutOpeningInsertOperation::FitAssetToOpening;
+    request.assetKind = opening.kind;
+    request.assetId = creative::creativeHotbarAssetId(entry->hotbarEntry);
+    request.assetSourceBoundsMeters = entry->hotbarEntry.assetSourceBounds;
+    request.gridCellSizeMeters = gridCellSizeMeters;
+    return applyCreativeEditorWorldLayoutOpeningInsert(state, request);
+  }
+
+  const creative::CreativeWorldLayoutObject& object =
+      state.source.objects[payload.index];
+  if (creativeEditorWorldLayoutCatalogAssetIsHostedOpening(
+          entry->assetAuthoringMetadata.categoryId) ||
+      entry->hotbarEntry.objectKind != object.kind) {
+    return rejectWorldLayoutAssetRepair(
+        state, "choose a compatible object asset",
+        "creative_editor_world_layout_asset_repair_incompatible");
+  }
+  CreativeEditorWorldLayoutObjectSettings settings;
+  if (!readCreativeEditorWorldLayoutObjectSettings(state, payload.index,
+                                                   settings)) {
+    return rejectWorldLayoutAssetRepair(
+        state, "asset repair target is stale",
+        "creative_editor_world_layout_asset_repair_target_invalid");
+  }
+  settings.assetId = creative::creativeHotbarAssetId(entry->hotbarEntry);
+  settings.assetSourceBoundsMeters = entry->hotbarEntry.assetSourceBounds;
+  settings.hasAssetSourceBounds = true;
+  return setCreativeEditorWorldLayoutObjectSettings(state, payload.index,
+                                                    std::move(settings));
+}
+
 [[nodiscard]] bool commandAllowedDuringPlay(
     CreativeDesktopCommandId id) noexcept {
   return id == CreativeDesktopCommandId::None ||
@@ -743,16 +884,9 @@ void dispatchOne(const CreativeDesktopCommand& command,
         result.message = "layout asset: payload mismatch";
         break;
       }
-      const auto found = std::find_if(
-          editor.catalog.model.entries.begin(),
-          editor.catalog.model.entries.end(),
-          [payload](const creative::CreativeCatalogEntry& entry) {
-            return entry.category ==
-                       creative::CreativeCatalogEntryCategory::Asset &&
-                   creative::creativeHotbarAssetId(entry.hotbarEntry) ==
-                       payload->assetId;
-          });
-      if (found == editor.catalog.model.entries.end()) {
+      const creative::CreativeCatalogEntry* found =
+          findCatalogAsset(editor.catalog.model, payload->assetId);
+      if (found == nullptr) {
         result.message = "layout asset: catalog entry missing";
         break;
       }
@@ -1449,16 +1583,9 @@ void dispatchOne(const CreativeDesktopCommand& command,
       if (payload->operation !=
           CreativeEditorWorldLayoutOpeningInsertOperation::
               UseProceduralInsert) {
-        const auto found = std::find_if(
-            editor.catalog.model.entries.begin(),
-            editor.catalog.model.entries.end(),
-            [payload](const creative::CreativeCatalogEntry& entry) {
-              return entry.category ==
-                         creative::CreativeCatalogEntryCategory::Asset &&
-                     creative::creativeHotbarAssetId(entry.hotbarEntry) ==
-                         payload->assetId;
-            });
-        if (found == editor.catalog.model.entries.end() ||
+        const creative::CreativeCatalogEntry* found =
+            findCatalogAsset(editor.catalog.model, payload->assetId);
+        if (found == nullptr ||
             !creativeEditorWorldLayoutCatalogAssetIsHostedOpening(
                 found->assetAuthoringMetadata.categoryId)) {
           result.message = "layout opening insert: catalog entry missing";
@@ -1477,6 +1604,27 @@ void dispatchOne(const CreativeDesktopCommand& command,
       const CreativeEditorWorldLayoutEditReceipt receipt =
           applyCreativeEditorWorldLayoutOpeningInsert(editor.worldLayout,
                                                       request);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutRepairAsset: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutAssetRepairPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout asset repair: payload mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          repairWorldLayoutAsset(
+              editor.worldLayout, editor.catalog.model,
+              context.appState.facade.document().gridSettings().cellSizeMeters,
+              *payload);
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
       result.worldLayoutChanged = receipt.changed;
