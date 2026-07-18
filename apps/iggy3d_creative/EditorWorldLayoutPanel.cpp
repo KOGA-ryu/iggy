@@ -2690,6 +2690,16 @@ void buildCreativeEditorWorldLayoutPanel(
       ImGui::TextDisabled("%s", diagnostics.hasChanges
                                     ? "Changes are ready to generate"
                                     : "Generated output already matches");
+      const cr::CreativeWorldLayoutReceipt& generation =
+          diagnostics.compileReceipt;
+      ImGui::TextDisabled(
+          "Recipe groups: +%llu  replace %llu  keep %llu  |  remove %llu objects",
+          static_cast<unsigned long long>(
+              generation.objectRecipeCreateCount),
+          static_cast<unsigned long long>(
+              generation.objectRecipeReplaceCount),
+          static_cast<unsigned long long>(generation.objectRecipeKeepCount),
+          static_cast<unsigned long long>(generation.objectRemoveCount));
     }
     for (std::size_t issueIndex = 0U;
          issueIndex < diagnostics.issueCount; ++issueIndex) {

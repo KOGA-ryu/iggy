@@ -252,9 +252,10 @@ bool terrainAndObjectPaletteToolsCreateCompilableSymbols() {
                         cr::CreativeObjectKind::NpcSpawn,
                 "object palette entries preserve semantic identity") &&
          expect(compiled.receipt.accepted &&
-                    compiled.receipt.objectRecipeCount == 1U &&
+                    compiled.receipt.objectRecipeCount == 4U &&
+                    compiled.receipt.objectRecipeCreateCount == 4U &&
                     compiled.receipt.objectCount == 4U,
-                "palette source compiles through one object recipe") &&
+                "palette source compiles independently regenerable objects") &&
          expect(encoded.accepted && decoded.accepted &&
                     decoded.layout.objects.size() == 4U &&
                     decoded.layout.terrainPaths.size() == 2U,

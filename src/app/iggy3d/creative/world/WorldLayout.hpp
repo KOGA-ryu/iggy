@@ -304,7 +304,12 @@ struct CreativeWorldLayoutReceipt {
   CreativeWorldLayoutTable failedTable = CreativeWorldLayoutTable::None;
   std::size_t failedIndex = kInvalidCreativeWorldLayoutIndex;
   std::uint64_t buildingCount = 0U;
+  // Recipes and objects scheduled by this compile, not total source output.
   std::uint64_t objectRecipeCount = 0U;
+  std::uint64_t objectRecipeCreateCount = 0U;
+  std::uint64_t objectRecipeReplaceCount = 0U;
+  // Desired groups retained byte-for-byte in the destination document.
+  std::uint64_t objectRecipeKeepCount = 0U;
   std::uint64_t objectCount = 0U;
   std::uint64_t objectRemoveCount = 0U;
   std::uint64_t terrainControlEditCount = 0U;

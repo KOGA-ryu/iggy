@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
+#include "app/iggy3d/creative/document/DocumentMutation.hpp"
 
 #include <algorithm>
 #include <array>
@@ -1031,6 +1032,224 @@ bool rebuildingAndDeletingLayoutNeverDuplicatesOutput() {
                 "deleting final symbol removes generated 3D output");
 }
 
+bool selectiveRegenerationPreservesIdentityAndManualRefinement() {
+  cr::CreativeAppState appState = makeAppState(212U);
+  cr::CreativeWorldLayout layout = smallHouseLayout();
+
+  cr::CreativeWorldLayoutObject crateA;
+  crateA.kind = cr::CreativeObjectKind::Crate;
+  crateA.stableKey = "crate_a";
+  crateA.name = "Crate A";
+  crateA.boundsCells = {{8.0, 0.0, 1.0}, {9.0, 1.0, 2.0}};
+  layout.objects.push_back(crateA);
+
+  cr::CreativeWorldLayoutObject crateB = crateA;
+  crateB.stableKey = "crate_b";
+  crateB.name = "Crate B";
+  crateB.boundsCells = {{10.0, 0.0, 1.0}, {11.0, 1.0, 2.0}};
+  layout.objects.push_back(crateB);
+
+  const cr::CreativeWorldLayoutCompileResult first =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt firstApplied =
+      cr::applyCreativeWorldLayoutPlan(appState.facade, first.plan);
+  const cr::CreativeObject* firstBuilding =
+      findNamed(appState.facade.document(), "Small House");
+  const cr::CreativeObject* firstCrateA =
+      findNamed(appState.facade.document(), "Crate A");
+  const cr::CreativeObject* firstCrateB =
+      findNamed(appState.facade.document(), "Crate B");
+  if (firstBuilding == nullptr || firstCrateA == nullptr ||
+      firstCrateB == nullptr) {
+    return expect(false, "selective fixture generated all recipe groups");
+  }
+  const cr::CreativeObjectId buildingId = firstBuilding->id;
+  const cr::CreativeObjectId crateAId = firstCrateA->id;
+  const cr::CreativeObjectId crateBId = firstCrateB->id;
+
+  const cr::CreativeVec3 refinedPosition{77.0, 3.0, 88.0};
+  const cr::CreativeDocumentMutationReceipt refined =
+      cr::moveDocumentObject(appState.facade.documentForPersistence(),
+                             crateBId, refinedPosition);
+  const cr::CreativeWorldLayoutCompileResult unchanged =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt unchangedApplied =
+      cr::applyCreativeWorldLayoutPlan(appState.facade, unchanged.plan);
+  const cr::CreativeObject* retainedCrateB =
+      appState.facade.document().findObject(crateBId);
+  const bool unchangedPreservedRefinement =
+      retainedCrateB != nullptr &&
+      sameVec3(retainedCrateB->transform.position, refinedPosition);
+
+  layout.objects[0].name = "Crate A Revised";
+  const cr::CreativeWorldLayoutCompileResult replacement =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt replaced =
+      cr::applyCreativeWorldLayoutPlanWithHistory(
+          appState, replacement.plan, "selective_world_layout_test");
+  const cr::CreativeObject* replacedCrateA =
+      findNamed(appState.facade.document(), "Crate A Revised");
+  const cr::CreativeObject* preservedBuilding =
+      appState.facade.document().findObject(buildingId);
+  const cr::CreativeObject* preservedCrateB =
+      appState.facade.document().findObject(crateBId);
+  const bool replacementPreserved =
+      replacedCrateA != nullptr && replacedCrateA->id != crateAId &&
+      preservedBuilding != nullptr && preservedBuilding->id == buildingId &&
+      preservedCrateB != nullptr &&
+      sameVec3(preservedCrateB->transform.position, refinedPosition);
+  const cr::CreativeHistoryApplyReceipt undone = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+  const cr::CreativeObject* restoredCrateA =
+      appState.facade.document().findObject(crateAId);
+  const cr::CreativeObject* restoredCrateB =
+      appState.facade.document().findObject(crateBId);
+
+  return expect(first.receipt.accepted && firstApplied.accepted &&
+                    first.receipt.objectRecipeCreateCount == 3U &&
+                    first.receipt.objectRecipeReplaceCount == 0U &&
+                    first.receipt.objectRecipeKeepCount == 0U &&
+                    first.receipt.objectRecipeCount == 3U &&
+                    first.receipt.objectCount == 16U,
+                "initial generation reports three created recipe groups") &&
+         expect(refined.changed && unchanged.receipt.accepted &&
+                    unchanged.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::NoChange &&
+                    unchanged.receipt.objectRecipeCreateCount == 0U &&
+                    unchanged.receipt.objectRecipeReplaceCount == 0U &&
+                    unchanged.receipt.objectRecipeKeepCount == 3U &&
+                    unchanged.receipt.objectRecipeCount == 0U &&
+                    unchanged.receipt.objectRemoveCount == 0U &&
+                    unchanged.receipt.objectCount == 0U,
+                "unchanged source retains every generated recipe group") &&
+         expect(unchangedApplied.accepted && !unchangedApplied.changed &&
+                    unchangedPreservedRefinement,
+                "no-change apply preserves manual generated refinement") &&
+         expect(replacement.receipt.accepted &&
+                    replacement.receipt.objectRecipeCreateCount == 0U &&
+                    replacement.receipt.objectRecipeReplaceCount == 1U &&
+                    replacement.receipt.objectRecipeKeepCount == 2U &&
+                    replacement.receipt.objectRecipeCount == 1U &&
+                    replacement.receipt.objectRemoveCount == 1U &&
+                    replacement.receipt.objectCount == 1U,
+                "one source change schedules exactly one group replacement") &&
+         expect(replaced.accepted && replaced.changed &&
+                    replaced.historyReceipt.recorded &&
+                    replacementPreserved,
+                "selective replacement retains unrelated identity and edits") &&
+         expect(undone.accepted && undone.changed &&
+                    restoredCrateA != nullptr &&
+                    restoredCrateA->name == "Crate A" &&
+                    restoredCrateB != nullptr &&
+                    sameVec3(restoredCrateB->transform.position,
+                             refinedPosition),
+                "selective generation remains one undo transaction");
+}
+
+bool buildingRegenerationIsolatedToChangedOwnershipGroup() {
+  cr::CreativeAppState appState = makeAppState(214U);
+  const cr::CreativeWorldLayoutBuildingEditResult duplicated =
+      cr::duplicateCreativeWorldLayoutBuilding(
+          smallHouseLayout(), {0U, 12, 0, 100U});
+  if (!duplicated.accepted || duplicated.edited.buildings.size() != 2U) {
+    return expect(false, "two-building selective fixture is valid");
+  }
+  cr::CreativeWorldLayout layout = duplicated.edited;
+  const std::string firstName = layout.buildings[0].name;
+  const std::string secondName = layout.buildings[1].name;
+  const cr::CreativeWorldLayoutCompileResult first =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt firstApplied =
+      cr::applyCreativeWorldLayoutPlan(appState.facade, first.plan);
+  const cr::CreativeObject* firstRoot =
+      findNamed(appState.facade.document(), firstName);
+  const cr::CreativeObject* secondRoot =
+      findNamed(appState.facade.document(), secondName);
+  if (firstRoot == nullptr || secondRoot == nullptr) {
+    return expect(false, "two-building recipe roots materialize");
+  }
+  const cr::CreativeObjectId firstRootId = firstRoot->id;
+  const cr::CreativeObjectId secondRootId = secondRoot->id;
+
+  layout.walls[0].name = "North Wall Revised";
+  const cr::CreativeWorldLayoutCompileResult replacement =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt replaced =
+      cr::applyCreativeWorldLayoutPlan(appState.facade, replacement.plan);
+  const cr::CreativeObject* replacedFirstRoot =
+      findNamed(appState.facade.document(), firstName);
+  const cr::CreativeObject* retainedSecondRoot =
+      findNamed(appState.facade.document(), secondName);
+
+  return expect(first.receipt.accepted && firstApplied.accepted &&
+                    first.receipt.objectRecipeCreateCount == 2U,
+                "two buildings begin as two independent recipe groups") &&
+         expect(replacement.receipt.accepted &&
+                    replacement.receipt.objectRecipeReplaceCount == 1U &&
+                    replacement.receipt.objectRecipeKeepCount == 1U &&
+                    replacement.receipt.objectRecipeCount == 1U &&
+                    replacement.receipt.objectRemoveCount == 14U &&
+                    replacement.receipt.objectCount == 14U,
+                "wall edit schedules only its owning building recipe") &&
+         expect(replaced.accepted && replaced.changed &&
+                    replacedFirstRoot != nullptr &&
+                    replacedFirstRoot->id != firstRootId &&
+                    retainedSecondRoot != nullptr &&
+                    retainedSecondRoot->id == secondRootId,
+                "unrelated building preserves generated object identity");
+}
+
+bool unversionedGeneratedGroupsMigrateOnceThenRemainStable() {
+  cr::CreativeAppState appState = makeAppState(213U);
+  const cr::CreativeWorldLayout layout = smallHouseLayout();
+  cr::CreativeWorldLayoutCompileResult legacy =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const std::uint64_t legacyFingerprint =
+      legacy.plan.objectRecipes[0].definitionFingerprint;
+  for (cr::CreativeRecipePlan& recipe : legacy.plan.objectRecipes) {
+    recipe.definitionFingerprint = 0U;
+  }
+  const cr::CreativeWorldLayoutApplyReceipt legacyApplied =
+      cr::applyCreativeWorldLayoutPlan(appState.facade, legacy.plan);
+  const cr::CreativeObject* legacyRoot =
+      findNamed(appState.facade.document(), "Small House");
+  const cr::CreativeObjectId legacyRootId =
+      legacyRoot != nullptr ? legacyRoot->id : cr::kInvalidObjectId;
+  const bool legacyHasNoDefinition =
+      legacyRoot != nullptr &&
+      !cr::creativeRecipeObjectHasDefinitionFingerprint(*legacyRoot,
+                                                        legacyFingerprint);
+
+  const cr::CreativeWorldLayoutCompileResult migration =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt migrated =
+      cr::applyCreativeWorldLayoutPlan(appState.facade, migration.plan);
+  const cr::CreativeObject* migratedRoot =
+      findNamed(appState.facade.document(), "Small House");
+  const cr::CreativeWorldLayoutCompileResult stable =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+
+  return expect(legacyApplied.accepted && legacyHasNoDefinition,
+                "legacy fixture has no definition provenance") &&
+         expect(migration.receipt.accepted &&
+                    migration.receipt.objectRecipeReplaceCount == 1U &&
+                    migration.receipt.objectRecipeKeepCount == 0U &&
+                    migration.receipt.objectRemoveCount == 14U &&
+                    migration.receipt.objectCount == 14U,
+                "unversioned generated group schedules one migration") &&
+         expect(migrated.accepted && migrated.changed &&
+                    migratedRoot != nullptr &&
+                    migratedRoot->id != legacyRootId,
+                "legacy migration replaces unversioned output once") &&
+         expect(stable.receipt.accepted &&
+                    stable.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::NoChange &&
+                    stable.receipt.objectRecipeKeepCount == 1U &&
+                    stable.receipt.objectRecipeCount == 0U &&
+                    stable.receipt.objectRemoveCount == 0U,
+                "migrated generated group is stable on the next compile");
+}
+
 bool authoritativeTerrainAndMaterialApplyAsOneHistoryStep() {
   cr::CreativeAppState appState = makeAppState(203U);
   const cr::CreativeTerrainControlEdit oldControl{
@@ -1184,6 +1403,9 @@ int main() {
       structuralSurfacesCompileFromExplicitPlanesOnNonUnitGrid() &&
       twoDimensionalBuildingCompilesToExactThreeDimensionalOutput() &&
       rebuildingAndDeletingLayoutNeverDuplicatesOutput() &&
+      selectiveRegenerationPreservesIdentityAndManualRefinement() &&
+      buildingRegenerationIsolatedToChangedOwnershipGroup() &&
+      unversionedGeneratedGroupsMigrateOnceThenRemainStable() &&
       authoritativeTerrainAndMaterialApplyAsOneHistoryStep() &&
       buildingTransformPreservesHostedOpeningSemantics() &&
       buildingTransformsRoundTripAndRejectOverflow() &&

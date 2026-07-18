@@ -57,6 +57,10 @@ struct CreativeRecipePlan {
   std::uint32_t schemaVersion = kCreativeRecipeSchemaVersion;
   std::string instanceKey;
   std::string instanceName;
+  // Zero keeps ordinary one-shot recipes unversioned. Regenerating owners set
+  // this from fingerprintCreativeRecipePlan before materialization so existing
+  // output can be reconciled without comparing user-edited object geometry.
+  std::uint64_t definitionFingerprint = 0U;
   std::vector<CreativeRecipeObjectPlan> objects;
 };
 
@@ -102,6 +106,10 @@ struct CreativeRecipeApplyReceipt {
     std::string_view instanceKey);
 [[nodiscard]] std::string creativeRecipeStableKeyTag(
     std::string_view stableKey);
+[[nodiscard]] std::string creativeRecipeDefinitionFingerprintTag(
+    std::uint64_t fingerprint);
+[[nodiscard]] std::uint64_t fingerprintCreativeRecipePlan(
+    const CreativeRecipePlan& plan) noexcept;
 [[nodiscard]] bool creativeRecipeRequestHasProvenance(
     const CreativeDocumentCreateRequest& request,
     CreativeRecipeKind kind,
@@ -113,6 +121,9 @@ struct CreativeRecipeApplyReceipt {
     std::string_view instanceKey,
     CreativeRecipeObjectRole role,
     std::string_view stableKey);
+[[nodiscard]] bool creativeRecipeRequestHasDefinitionFingerprint(
+    const CreativeDocumentCreateRequest& request,
+    std::uint64_t fingerprint);
 [[nodiscard]] bool creativeRecipeObjectHasProvenance(
     const CreativeObject& object,
     CreativeRecipeKind kind,
@@ -124,6 +135,11 @@ struct CreativeRecipeApplyReceipt {
     std::string_view instanceKey,
     CreativeRecipeObjectRole role,
     std::string_view stableKey);
+[[nodiscard]] std::string_view creativeRecipeObjectInstanceKey(
+    const CreativeObject& object) noexcept;
+[[nodiscard]] bool creativeRecipeObjectHasDefinitionFingerprint(
+    const CreativeObject& object,
+    std::uint64_t fingerprint);
 
 [[nodiscard]] CreativeRecipeMaterializeResult materializeCreativeRecipe(
     const CreativeRecipePlan& plan,

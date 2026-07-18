@@ -122,6 +122,55 @@ bool invalidKeysParentsAndAllocatorOverflowFailClosed() {
                 "recipe allocator preserves invalid-id sentinel after create");
 }
 
+bool definitionFingerprintPinsSemanticOutputAndRejectsStalePlans() {
+  cr::CreativeRecipePlan plan = parentedRecipe();
+  plan.objects[0].createRequest.hasBoundsOverride = true;
+  plan.objects[0].createRequest.bounds = {
+      {0.0, 0.0, 0.0}, {4.0, 3.0, 5.0}};
+  const std::uint64_t fingerprint = cr::fingerprintCreativeRecipePlan(plan);
+  cr::CreativeRecipePlan identical = plan;
+  const std::uint64_t identicalFingerprint =
+      cr::fingerprintCreativeRecipePlan(identical);
+  identical.objects[1].createRequest.name = "Changed Floor";
+  const std::uint64_t changedFingerprint =
+      cr::fingerprintCreativeRecipePlan(identical);
+
+  plan.definitionFingerprint = fingerprint;
+  const cr::CreativeRecipeMaterializeResult materialized =
+      cr::materializeCreativeRecipe(plan, 20U);
+
+  cr::CreativeRecipePlan stale = plan;
+  stale.objects[0].createRequest.bounds.max.x = 8.0;
+  const cr::CreativeRecipeMaterializeResult staleResult =
+      cr::materializeCreativeRecipe(stale, 20U);
+
+  cr::CreativeRecipePlan invalid = parentedRecipe();
+  invalid.objects[0].createRequest.hasTransformOverride = true;
+  invalid.objects[0].createRequest.transform.position.x =
+      std::numeric_limits<double>::quiet_NaN();
+
+  return expect(fingerprint != 0U && fingerprint == identicalFingerprint,
+                "identical recipe semantics have one fingerprint") &&
+         expect(changedFingerprint != 0U &&
+                    changedFingerprint != fingerprint,
+                "materialized recipe changes alter the fingerprint") &&
+         expect(materialized.receipt.accepted &&
+                    materialized.createRequests.size() == 2U &&
+                    cr::creativeRecipeRequestHasDefinitionFingerprint(
+                        materialized.createRequests[0], fingerprint) &&
+                    cr::creativeRecipeRequestHasDefinitionFingerprint(
+                        materialized.createRequests[1], fingerprint),
+                "materialization stamps every member with its definition") &&
+         expect(!staleResult.receipt.accepted &&
+                    staleResult.receipt.status ==
+                        cr::CreativeRecipeStatus::InvalidRecipe &&
+                    staleResult.receipt.reasonCode ==
+                        "creative_recipe_definition_fingerprint_stale",
+                "stale declared recipe fingerprint fails closed") &&
+         expect(cr::fingerprintCreativeRecipePlan(invalid) == 0U,
+                "non-finite recipe semantics cannot be fingerprinted");
+}
+
 bool historyApplyIsAtomicAndCreatesOneUndoStep() {
   cr::CreativeAppState appState = appStateWithDocument(71U);
   const cr::CreativeRecipeApplyReceipt applied =
@@ -306,6 +355,7 @@ int main() {
   const bool ok =
       symbolicParentAndProvenanceMaterializeDeterministically() &&
       invalidKeysParentsAndAllocatorOverflowFailClosed() &&
+      definitionFingerprintPinsSemanticOutputAndRejectsStalePlans() &&
       historyApplyIsAtomicAndCreatesOneUndoStep() &&
       rejectedAtomicApplyPreservesDocumentAndHistory() &&
       objectLibraryRecipeOwnsBoundedAndPointPlacementParity() &&

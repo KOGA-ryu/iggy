@@ -1,7 +1,10 @@
 #include "app/iggy3d/creative/recipes/CreativeRecipe.hpp"
+#include "core/hash/StableHash.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <cctype>
+#include <cmath>
 #include <limits>
 #include <string>
 #include <string_view>
@@ -12,6 +15,100 @@ namespace iggy3d::creative {
 namespace {
 
 constexpr std::string_view kRecipeSchemaTag = "creative_recipe_schema:1";
+
+struct RecipeFingerprintBuilder {
+  StableHasher hasher;
+  bool valid = true;
+
+  void appendUnsigned(std::uint64_t input) noexcept {
+    hasher.addU64(input);
+  }
+
+  void appendBool(bool input) noexcept {
+    hasher.addBool(input);
+  }
+
+  void appendDouble(double input) noexcept {
+    if (!std::isfinite(input)) {
+      valid = false;
+      return;
+    }
+    const double canonical = input == 0.0 ? 0.0 : input;
+    hasher.addU64(std::bit_cast<std::uint64_t>(canonical));
+  }
+
+  void appendString(std::string_view input) noexcept {
+    hasher.addString(input);
+  }
+};
+
+void appendVec3(RecipeFingerprintBuilder& builder,
+                CreativeVec3 value) noexcept {
+  builder.appendDouble(value.x);
+  builder.appendDouble(value.y);
+  builder.appendDouble(value.z);
+}
+
+void appendBounds(RecipeFingerprintBuilder& builder,
+                  CreativeBounds value) noexcept {
+  appendVec3(builder, value.min);
+  appendVec3(builder, value.max);
+}
+
+void appendCreateRequest(RecipeFingerprintBuilder& builder,
+                         const CreativeDocumentCreateRequest& request) noexcept {
+  builder.appendUnsigned(static_cast<std::uint32_t>(request.kind));
+  builder.appendString(request.name);
+  builder.appendString(request.assetId);
+  builder.appendBool(request.hasTransformOverride);
+  if (request.hasTransformOverride) {
+    appendVec3(builder, request.transform.position);
+    appendVec3(builder, request.transform.rotationEulerRadians);
+    appendVec3(builder, request.transform.scale);
+  }
+  builder.appendBool(request.hasBoundsOverride);
+  if (request.hasBoundsOverride) {
+    appendBounds(builder, request.bounds);
+  }
+  builder.appendBool(request.hasLayerOverride);
+  if (request.hasLayerOverride) {
+    builder.appendUnsigned(request.layerId);
+  }
+  builder.appendBool(request.hasVisibleOverride);
+  if (request.hasVisibleOverride) {
+    builder.appendBool(request.visible);
+  }
+  builder.appendBool(request.hasLockedOverride);
+  if (request.hasLockedOverride) {
+    builder.appendBool(request.locked);
+  }
+  builder.appendUnsigned(static_cast<std::uint64_t>(request.tags.size()));
+  for (const std::string& tag : request.tags) {
+    builder.appendString(tag);
+  }
+  builder.appendBool(request.parentId.has_value());
+  if (request.parentId.has_value()) {
+    builder.appendUnsigned(*request.parentId);
+  }
+  builder.appendString(request.attachmentSocket);
+  builder.appendBool(request.hasPathOverride);
+  if (request.hasPathOverride) {
+    builder.appendUnsigned(
+        static_cast<std::uint64_t>(request.pathPoints.size()));
+    for (const CreativePathPoint& point : request.pathPoints) {
+      appendVec3(builder, point.position);
+      builder.appendDouble(point.dwellSeconds);
+      builder.appendDouble(point.outgoingSpeedMultiplier);
+    }
+  }
+  builder.appendBool(request.hasMovingPlatformSettingsOverride);
+  if (request.hasMovingPlatformSettingsOverride) {
+    builder.appendDouble(request.movingPlatform.speedMetersPerSecond);
+    builder.appendUnsigned(static_cast<std::uint8_t>(
+        request.movingPlatform.traversalMode));
+    builder.appendBool(request.movingPlatform.startsActive);
+  }
+}
 
 void setStatus(CreativeRecipeMaterializeReceipt& receipt,
                CreativeRecipeStatus status,
@@ -147,6 +244,43 @@ std::string creativeRecipeStableKeyTag(std::string_view stableKey) {
   return "creative_recipe_key:" + std::string(stableKey);
 }
 
+std::string creativeRecipeDefinitionFingerprintTag(
+    std::uint64_t fingerprint) {
+  constexpr char kHex[] = "0123456789abcdef";
+  std::string result = "creative_recipe_definition:";
+  result.resize(result.size() + 16U, '0');
+  for (std::size_t index = 0U; index < 16U; ++index) {
+    const std::size_t shift = (15U - index) * 4U;
+    result[result.size() - 16U + index] =
+        kHex[(fingerprint >> shift) & 0x0fU];
+  }
+  return result;
+}
+
+std::uint64_t fingerprintCreativeRecipePlan(
+    const CreativeRecipePlan& plan) noexcept {
+  RecipeFingerprintBuilder builder;
+  builder.appendUnsigned(static_cast<std::uint8_t>(plan.kind));
+  builder.appendUnsigned(plan.schemaVersion);
+  builder.appendString(plan.instanceKey);
+  builder.appendUnsigned(static_cast<std::uint64_t>(plan.objects.size()));
+  for (const CreativeRecipeObjectPlan& object : plan.objects) {
+    builder.appendUnsigned(static_cast<std::uint8_t>(object.role));
+    builder.appendString(object.stableKey);
+    builder.appendBool(object.parentObjectIndex.has_value());
+    if (object.parentObjectIndex.has_value()) {
+      builder.appendUnsigned(
+          static_cast<std::uint64_t>(*object.parentObjectIndex));
+    }
+    appendCreateRequest(builder, object.createRequest);
+  }
+  const std::uint64_t fingerprint = builder.hasher.value();
+  if (!builder.valid || fingerprint == 0U) {
+    return 0U;
+  }
+  return fingerprint;
+}
+
 bool creativeRecipeRequestHasProvenance(
     const CreativeDocumentCreateRequest& request,
     CreativeRecipeKind kind,
@@ -166,6 +300,14 @@ bool creativeRecipeRequestHasInstanceProvenance(
     std::string_view stableKey) {
   return creativeRecipeRequestHasProvenance(request, kind, role, stableKey) &&
          hasTag(request.tags, creativeRecipeInstanceKeyTag(instanceKey));
+}
+
+bool creativeRecipeRequestHasDefinitionFingerprint(
+    const CreativeDocumentCreateRequest& request,
+    std::uint64_t fingerprint) {
+  return fingerprint != 0U &&
+         hasTag(request.tags,
+                creativeRecipeDefinitionFingerprintTag(fingerprint));
 }
 
 bool creativeRecipeObjectHasProvenance(const CreativeObject& object,
@@ -188,6 +330,32 @@ bool creativeRecipeObjectHasInstanceProvenance(
          hasTag(object.tags, creativeRecipeInstanceKeyTag(instanceKey));
 }
 
+std::string_view creativeRecipeObjectInstanceKey(
+    const CreativeObject& object) noexcept {
+  constexpr std::string_view kPrefix = "creative_recipe_instance:";
+  std::string_view result;
+  for (const std::string& tag : object.tags) {
+    if (!tag.starts_with(kPrefix)) {
+      continue;
+    }
+    const std::string_view candidate = std::string_view(tag).substr(
+        kPrefix.size());
+    if (!result.empty() || !validStableKey(candidate)) {
+      return {};
+    }
+    result = candidate;
+  }
+  return result;
+}
+
+bool creativeRecipeObjectHasDefinitionFingerprint(
+    const CreativeObject& object,
+    std::uint64_t fingerprint) {
+  return fingerprint != 0U &&
+         hasTag(object.tags,
+                creativeRecipeDefinitionFingerprintTag(fingerprint));
+}
+
 CreativeRecipeMaterializeResult materializeCreativeRecipe(
     const CreativeRecipePlan& plan,
     CreativeObjectId firstObjectId) {
@@ -207,6 +375,12 @@ CreativeRecipeMaterializeResult materializeCreativeRecipe(
   if (plan.schemaVersion != kCreativeRecipeSchemaVersion) {
     setStatus(result.receipt, CreativeRecipeStatus::InvalidSchema,
               "creative_recipe_schema_unsupported");
+    return result;
+  }
+  if (plan.definitionFingerprint != 0U &&
+      plan.definitionFingerprint != fingerprintCreativeRecipePlan(plan)) {
+    setStatus(result.receipt, CreativeRecipeStatus::InvalidRecipe,
+              "creative_recipe_definition_fingerprint_stale");
     return result;
   }
   if (firstObjectId == kInvalidObjectId ||
@@ -255,6 +429,10 @@ CreativeRecipeMaterializeResult materializeCreativeRecipe(
     appendTagOnce(create.tags, creativeRecipeRoleTag(object.role));
     appendTagOnce(create.tags, creativeRecipeStableKeyTag(object.stableKey));
     appendTagOnce(create.tags, std::string(kRecipeSchemaTag));
+    if (plan.definitionFingerprint != 0U) {
+      appendTagOnce(create.tags, creativeRecipeDefinitionFingerprintTag(
+                                     plan.definitionFingerprint));
+    }
     result.createRequests.push_back(std::move(create));
 
     if (object.role == CreativeRecipeObjectRole::Source) {
