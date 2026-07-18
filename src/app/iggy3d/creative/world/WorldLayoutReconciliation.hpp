@@ -34,6 +34,12 @@ enum class CreativeWorldLayoutConflictResolution : std::uint8_t {
   Count,
 };
 
+struct CreativeWorldLayoutConflictDecision {
+  std::string instanceKey;
+  CreativeWorldLayoutConflictResolution resolution =
+      CreativeWorldLayoutConflictResolution::Block;
+};
+
 struct CreativeWorldLayoutRecipeChange {
   CreativeWorldLayoutRecipeChangeKind kind =
       CreativeWorldLayoutRecipeChangeKind::Keep;
@@ -51,8 +57,7 @@ struct CreativeWorldLayoutReconciliationRequest {
   const CreativeDocument* document = nullptr;
   std::string_view layoutTag;
   std::span<const CreativeRecipePlan> desiredRecipes;
-  CreativeWorldLayoutConflictResolution conflictResolution =
-      CreativeWorldLayoutConflictResolution::Block;
+  std::span<const CreativeWorldLayoutConflictDecision> conflictDecisions;
 };
 
 struct CreativeWorldLayoutReconciliationResult {
@@ -79,8 +84,10 @@ struct CreativeWorldLayoutReconciliationResult {
     CreativeWorldLayoutConflictResolution resolution) noexcept;
 
 // Computes a deterministic three-way decision from generated baseline tags,
-// the live document, and the newly desired recipes. Block is fail-closed;
-// Regenerate and Detach are explicit conflict resolutions supplied by the UI.
+// the live document, and the newly desired recipes. Decision keys must be
+// unique and identify actual conflicts; missing decisions block and stale
+// decisions reject the whole plan. Group lookup is ordered and deterministic;
+// member matching is quadratic only within one recipe ownership group.
 [[nodiscard]] CreativeWorldLayoutReconciliationResult
 reconcileCreativeWorldLayoutRecipes(
     const CreativeWorldLayoutReconciliationRequest& request);

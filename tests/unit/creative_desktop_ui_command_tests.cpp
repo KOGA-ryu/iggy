@@ -2375,7 +2375,8 @@ bool worldLayoutConflictResolutionUsesTypedConfirmPayload() {
   const app::CreativeDesktopCommandResult resolved = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutConfirm, context,
       app::CreativeDesktopWorldLayoutConfirmPayload{
-          cr::CreativeWorldLayoutConflictResolution::Regenerate});
+          {{"command_reconciliation.objects.crate",
+            cr::CreativeWorldLayoutConflictResolution::Regenerate}}});
   const cr::CreativeObject* replacement = nullptr;
   for (const cr::CreativeObject& candidate :
        appState.facade.document().objects()) {

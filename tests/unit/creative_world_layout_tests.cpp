@@ -1185,10 +1185,13 @@ bool refinedOutputBlocksSourceChangesUntilExplicitlyRegenerated() {
       appState.facade.document().revision();
   const cr::CreativeWorldLayoutCompileResult blocked =
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const std::array regenerateDecision{
+      cr::CreativeWorldLayoutConflictDecision{
+          "reconciliation_layout.objects.crate",
+          cr::CreativeWorldLayoutConflictResolution::Regenerate}};
   const cr::CreativeWorldLayoutCompileResult overwrite =
       cr::buildCreativeWorldLayoutPlan(
-          appState.facade.document(), layout,
-          {cr::CreativeWorldLayoutConflictResolution::Regenerate});
+          appState.facade.document(), layout, {regenerateDecision});
   const cr::CreativeWorldLayoutApplyReceipt overwritten =
       cr::applyCreativeWorldLayoutPlanWithHistory(
           appState, overwrite.plan, "world_layout_conflict_overwrite");
@@ -1250,10 +1253,13 @@ bool detachResolutionPreservesRefinementAndCreatesFreshManagedOutput() {
                              refinedId, refinedPosition);
   layout.objects[0].name = "Fresh Managed Crate";
 
+  const std::array detachDecision{
+      cr::CreativeWorldLayoutConflictDecision{
+          "reconciliation_layout.objects.crate",
+          cr::CreativeWorldLayoutConflictResolution::Detach}};
   const cr::CreativeWorldLayoutCompileResult detached =
       cr::buildCreativeWorldLayoutPlan(
-          appState.facade.document(), layout,
-          {cr::CreativeWorldLayoutConflictResolution::Detach});
+          appState.facade.document(), layout, {detachDecision});
   const cr::CreativeWorldLayoutApplyReceipt applied =
       cr::applyCreativeWorldLayoutPlanWithHistory(
           appState, detached.plan, "world_layout_conflict_detach");
@@ -1316,10 +1322,13 @@ bool removedSourceCannotSilentlyDeleteRefinedOutput() {
 
   const cr::CreativeWorldLayoutCompileResult blocked =
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const std::array detachDecision{
+      cr::CreativeWorldLayoutConflictDecision{
+          "reconciliation_layout.objects.crate",
+          cr::CreativeWorldLayoutConflictResolution::Detach}};
   const cr::CreativeWorldLayoutCompileResult detached =
       cr::buildCreativeWorldLayoutPlan(
-          appState.facade.document(), layout,
-          {cr::CreativeWorldLayoutConflictResolution::Detach});
+          appState.facade.document(), layout, {detachDecision});
   const cr::CreativeWorldLayoutApplyReceipt applied =
       cr::applyCreativeWorldLayoutPlanWithHistory(
           appState, detached.plan, "world_layout_removed_source_detach");
@@ -1347,6 +1356,128 @@ bool removedSourceCannotSilentlyDeleteRefinedOutput() {
                     cr::creativeRecipeObjectInstanceKey(*preserved).empty() &&
                     cr::creativeRecipeObjectOutputFingerprint(*preserved) == 0U,
                 "detached removed-source output remains as an authored object");
+}
+
+bool conflictDecisionsAreExactCompleteAndIndependentlyApplied() {
+  cr::CreativeAppState appState = makeAppState(218U);
+  cr::CreativeWorldLayout layout = singleCrateLayout("Managed Crate A");
+  cr::CreativeWorldLayoutObject second = layout.objects.front();
+  second.kind = cr::CreativeObjectKind::Barrel;
+  second.stableKey = "barrel";
+  second.name = "Managed Barrel B";
+  second.boundsCells = {{3.0, 0.0, 1.0}, {4.0, 1.0, 2.0}};
+  layout.objects.push_back(second);
+
+  const cr::CreativeWorldLayoutCompileResult initial =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt initialApply =
+      cr::applyCreativeWorldLayoutPlan(appState.facade, initial.plan);
+  const cr::CreativeObject* crate =
+      findNamed(appState.facade.document(), "Managed Crate A");
+  const cr::CreativeObject* barrel =
+      findNamed(appState.facade.document(), "Managed Barrel B");
+  if (crate == nullptr || barrel == nullptr) {
+    return expect(false, "mixed conflict fixture generated both groups");
+  }
+  const cr::CreativeObjectId crateId = crate->id;
+  const cr::CreativeObjectId barrelId = barrel->id;
+  const cr::CreativeVec3 crateRefinement{20.0, 2.0, 10.0};
+  const cr::CreativeVec3 barrelRefinement{24.0, 2.0, 10.0};
+  const cr::CreativeDocumentMutationReceipt crateMoved =
+      cr::moveDocumentObject(appState.facade.documentForPersistence(), crateId,
+                             crateRefinement);
+  const cr::CreativeDocumentMutationReceipt barrelMoved =
+      cr::moveDocumentObject(appState.facade.documentForPersistence(), barrelId,
+                             barrelRefinement);
+  layout.objects[0].name = "Rebuilt Crate A";
+  layout.objects[1].name = "Fresh Barrel B";
+
+  const std::array incompleteDecision{
+      cr::CreativeWorldLayoutConflictDecision{
+          "reconciliation_layout.objects.crate",
+          cr::CreativeWorldLayoutConflictResolution::Regenerate}};
+  const cr::CreativeWorldLayoutCompileResult incomplete =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout,
+                                       {incompleteDecision});
+  const std::array duplicateDecisions{
+      cr::CreativeWorldLayoutConflictDecision{
+          "reconciliation_layout.objects.crate",
+          cr::CreativeWorldLayoutConflictResolution::Regenerate},
+      cr::CreativeWorldLayoutConflictDecision{
+          "reconciliation_layout.objects.crate",
+          cr::CreativeWorldLayoutConflictResolution::Detach}};
+  const cr::CreativeWorldLayoutCompileResult duplicate =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout,
+                                       {duplicateDecisions});
+  const std::array staleDecision{
+      cr::CreativeWorldLayoutConflictDecision{
+          "reconciliation_layout.objects.missing",
+          cr::CreativeWorldLayoutConflictResolution::Detach}};
+  const cr::CreativeWorldLayoutCompileResult stale =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout,
+                                       {staleDecision});
+  const std::array decisions{
+      cr::CreativeWorldLayoutConflictDecision{
+          "reconciliation_layout.objects.barrel",
+          cr::CreativeWorldLayoutConflictResolution::Detach},
+      cr::CreativeWorldLayoutConflictDecision{
+          "reconciliation_layout.objects.crate",
+          cr::CreativeWorldLayoutConflictResolution::Regenerate}};
+  const cr::CreativeWorldLayoutCompileResult resolved =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout,
+                                       {decisions});
+  const cr::CreativeWorldLayoutApplyReceipt applied =
+      cr::applyCreativeWorldLayoutPlanWithHistory(
+          appState, resolved.plan, "world_layout_mixed_conflict_resolution");
+  const cr::CreativeObject* rebuiltCrate =
+      findNamed(appState.facade.document(), "Rebuilt Crate A");
+  const cr::CreativeObject* preservedBarrel =
+      appState.facade.document().findObject(barrelId);
+  const cr::CreativeObject* freshBarrel =
+      findNamed(appState.facade.document(), "Fresh Barrel B");
+
+  return expect(initial.receipt.accepted && initialApply.accepted &&
+                    crateMoved.changed && barrelMoved.changed,
+                "mixed conflict fixture refines both managed groups") &&
+         expect(!incomplete.receipt.accepted &&
+                    incomplete.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::RefinementConflict &&
+                    incomplete.plan.objectRemoveIds.empty() &&
+                    incomplete.plan.objectDetachIds.empty() &&
+                    incomplete.plan.objectRecipes.empty(),
+                "incomplete review remains blocked with no executable plan") &&
+         expect(!duplicate.receipt.accepted &&
+                    duplicate.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::InvalidDocument &&
+                    duplicate.receipt.reasonCode ==
+                        "creative_world_layout_conflict_decisions_invalid" &&
+                    duplicate.plan.objectRemoveIds.empty(),
+                "duplicate group decisions are rejected") &&
+         expect(!stale.receipt.accepted &&
+                    stale.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::InvalidDocument &&
+                    stale.receipt.reasonCode ==
+                        "creative_world_layout_conflict_decision_stale" &&
+                    stale.plan.objectRemoveIds.empty() &&
+                    stale.plan.objectDetachIds.empty(),
+                "stale group decisions are rejected") &&
+         expect(resolved.receipt.accepted &&
+                    resolved.receipt.objectRecipeConflictCount == 2U &&
+                    resolved.receipt.objectRecipeReplaceCount == 1U &&
+                    resolved.receipt.objectRecipeDetachCount == 1U &&
+                    resolved.plan.objectRemoveIds.size() == 1U &&
+                    resolved.plan.objectDetachIds.size() == 1U &&
+                    resolved.plan.objectRecipes.size() == 2U,
+                "opposite decisions compile independently by stable key") &&
+         expect(applied.accepted && applied.changed &&
+                    applied.historyReceipt.recorded && rebuiltCrate != nullptr &&
+                    rebuiltCrate->id != crateId && preservedBarrel != nullptr &&
+                    sameVec3(preservedBarrel->transform.position,
+                             barrelRefinement) &&
+                    cr::creativeRecipeObjectInstanceKey(*preservedBarrel)
+                        .empty() &&
+                    freshBarrel != nullptr && freshBarrel->id != barrelId,
+                "one transaction regenerates one group and detaches the other");
 }
 
 bool buildingRegenerationIsolatedToChangedOwnershipGroup() {
@@ -1610,6 +1741,7 @@ int main() {
       refinedOutputBlocksSourceChangesUntilExplicitlyRegenerated() &&
       detachResolutionPreservesRefinementAndCreatesFreshManagedOutput() &&
       removedSourceCannotSilentlyDeleteRefinedOutput() &&
+      conflictDecisionsAreExactCompleteAndIndependentlyApplied() &&
       buildingRegenerationIsolatedToChangedOwnershipGroup() &&
       unversionedGeneratedGroupsMigrateOnceThenRemainStable() &&
       authoritativeTerrainAndMaterialApplyAsOneHistoryStep() &&

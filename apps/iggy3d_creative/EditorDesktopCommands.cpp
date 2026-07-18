@@ -1690,15 +1690,18 @@ void dispatchOne(const CreativeDesktopCommand& command,
         result.message = "layout confirm: payload mismatch";
         break;
       }
-      const creative::CreativeWorldLayoutConflictResolution conflictResolution =
-          payload != nullptr
-              ? payload->conflictResolution
-              : creative::CreativeWorldLayoutConflictResolution::Block;
+      const std::span<const creative::CreativeWorldLayoutConflictDecision>
+          conflictDecisions =
+              payload != nullptr
+                  ? std::span<const creative::CreativeWorldLayoutConflictDecision>(
+                        payload->conflictDecisions)
+                  : std::span<const
+                        creative::CreativeWorldLayoutConflictDecision>{};
       const bool previewWasActive =
           creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
       const CreativeEditorWorldLayoutApplyReceipt receipt =
           confirmCreativeEditorWorldLayout(editor.worldLayout, appState,
-                                           conflictResolution);
+                                           conflictDecisions);
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
       result.sceneChanged = previewWasActive || receipt.changed;

@@ -822,6 +822,11 @@ struct CreativeEditorWorldLayoutDeferredSourceHistory {
   CreativeEditorWorldLayoutSourceHistory history;
 };
 
+struct CreativeEditorWorldLayoutConflictReviewState {
+  std::uint64_t diagnosticBuildCount = 0U;
+  std::vector<cr::CreativeWorldLayoutConflictDecision> decisions;
+};
+
 struct CreativeEditorWorldLayoutState {
   cr::CreativeWorldLayout source;
   // Transient identity for the installed source. A replacement may reuse the
@@ -874,6 +879,7 @@ struct CreativeEditorWorldLayoutState {
   CreativeEditorWorldLayoutElevationCache elevationCache;
   CreativeEditorWorldLayoutElevationManipulationState elevationManipulation;
   CreativeEditorWorldLayoutDiagnosticCache diagnosticCache;
+  CreativeEditorWorldLayoutConflictReviewState conflictReview;
 
   bool previewVisible = false;
   std::uint64_t previewLayoutRevision = 0U;
@@ -1302,8 +1308,8 @@ previewCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
 [[nodiscard]] CreativeEditorWorldLayoutApplyReceipt
 confirmCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
                                  cr::CreativeAppState& appState,
-                                 cr::CreativeWorldLayoutConflictResolution
-                                     conflictResolution =
-                                         cr::CreativeWorldLayoutConflictResolution::Block);
+                                 std::span<const
+                                     cr::CreativeWorldLayoutConflictDecision>
+                                     conflictDecisions = {});
 
 }  // namespace iggy3d_creative_app

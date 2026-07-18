@@ -25,6 +25,17 @@ struct ExistingGroupAnalysis {
   std::uint64_t missingBaselineCount = 0U;
 };
 
+struct ConflictDecisionEntry {
+  CreativeWorldLayoutConflictResolution resolution =
+      CreativeWorldLayoutConflictResolution::Block;
+  std::size_t requestIndex = 0U;
+};
+
+struct ConflictDecisionLookup {
+  std::map<std::string_view, ConflictDecisionEntry> entries;
+  std::vector<bool> consumed;
+};
+
 [[nodiscard]] bool hasTag(std::span<const std::string> tags,
                           std::string_view expected) noexcept {
   return std::any_of(tags.begin(), tags.end(),
@@ -140,6 +151,50 @@ void appendIds(std::vector<CreativeObjectId>& output,
   }
 }
 
+[[nodiscard]] bool buildConflictDecisionLookup(
+    std::span<const CreativeWorldLayoutConflictDecision> decisions,
+    ConflictDecisionLookup& output) {
+  output.consumed.assign(decisions.size(), false);
+  for (std::size_t index = 0U; index < decisions.size(); ++index) {
+    const CreativeWorldLayoutConflictDecision& decision = decisions[index];
+    if (decision.instanceKey.empty() ||
+        decision.resolution ==
+            CreativeWorldLayoutConflictResolution::Block ||
+        decision.resolution >= CreativeWorldLayoutConflictResolution::Count ||
+        !output.entries
+             .emplace(std::string_view(decision.instanceKey),
+                      ConflictDecisionEntry{decision.resolution, index})
+             .second) {
+      return false;
+    }
+  }
+  return true;
+}
+
+[[nodiscard]] CreativeWorldLayoutConflictResolution conflictResolutionFor(
+    ConflictDecisionLookup& decisions,
+    std::string_view instanceKey) noexcept {
+  const auto found = decisions.entries.find(instanceKey);
+  if (found == decisions.entries.end()) {
+    return CreativeWorldLayoutConflictResolution::Block;
+  }
+  decisions.consumed[found->second.requestIndex] = true;
+  return found->second.resolution;
+}
+
+[[nodiscard]] bool allConflictDecisionsConsumed(
+    const ConflictDecisionLookup& decisions) noexcept {
+  return std::all_of(decisions.consumed.begin(), decisions.consumed.end(),
+                     [](bool consumed) { return consumed; });
+}
+
+void clearExecutableOperations(
+    CreativeWorldLayoutReconciliationResult& result) {
+  result.removeObjectIds.clear();
+  result.detachObjectIds.clear();
+  result.applyRecipeIndices.clear();
+}
+
 CreativeWorldLayoutRecipeChange makeChange(
     CreativeWorldLayoutRecipeChangeKind kind,
     CreativeRecipeKind recipeKind,
@@ -245,10 +300,14 @@ CreativeWorldLayoutReconciliationResult reconcileCreativeWorldLayoutRecipes(
     const CreativeWorldLayoutReconciliationRequest& request) {
   CreativeWorldLayoutReconciliationResult result;
   if (request.document == nullptr || !request.document->isValid() ||
-      request.layoutTag.empty() ||
-      request.conflictResolution >=
-          CreativeWorldLayoutConflictResolution::Count) {
+      request.layoutTag.empty()) {
     result.reasonCode = "creative_world_layout_reconciliation_invalid";
+    return result;
+  }
+  ConflictDecisionLookup decisions;
+  if (!buildConflictDecisionLookup(request.conflictDecisions, decisions)) {
+    result.reasonCode =
+        "creative_world_layout_conflict_decisions_invalid";
     return result;
   }
 
@@ -317,7 +376,9 @@ CreativeWorldLayoutReconciliationResult reconcileCreativeWorldLayoutRecipes(
           desired.objects.size(), analysis));
     } else {
       appendConflictResolution(
-          result, request.conflictResolution, existing->second, &desired,
+          result,
+          conflictResolutionFor(decisions, desired.instanceKey),
+          existing->second, &desired,
           desiredIndex, analysis, desired.instanceKey);
     }
     existingGroups.erase(existing);
@@ -347,7 +408,8 @@ CreativeWorldLayoutReconciliationResult reconcileCreativeWorldLayoutRecipes(
           analysis));
     } else {
       appendConflictResolution(
-          result, request.conflictResolution, objects, nullptr,
+          result, conflictResolutionFor(decisions, instanceKey), objects,
+          nullptr,
           kInvalidCreativeWorldLayoutRecipeIndex, analysis, instanceKey);
     }
   }
@@ -357,12 +419,25 @@ CreativeWorldLayoutReconciliationResult reconcileCreativeWorldLayoutRecipes(
     analysis.refinedObjectCount = unidentified.size();
     analysis.missingBaselineCount = unidentified.size();
     appendConflictResolution(
-        result, request.conflictResolution, unidentified, nullptr,
+        result,
+        conflictResolutionFor(decisions, "unidentified_managed_output"),
+        unidentified, nullptr,
         kInvalidCreativeWorldLayoutRecipeIndex, analysis,
         "unidentified_managed_output");
   }
 
+  if (!allConflictDecisionsConsumed(decisions)) {
+    clearExecutableOperations(result);
+    result.blocked = false;
+    result.reasonCode =
+        "creative_world_layout_conflict_decision_stale";
+    return result;
+  }
+
   result.accepted = !result.blocked;
+  if (result.blocked) {
+    clearExecutableOperations(result);
+  }
   result.reasonCode = result.blocked
                           ? "creative_world_layout_refinement_conflict"
                           : "creative_world_layout_reconciliation_ready";

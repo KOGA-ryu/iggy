@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -287,8 +288,7 @@ enum class CreativeWorldLayoutStatus : std::uint8_t {
 };
 
 struct CreativeWorldLayoutCompileOptions {
-  CreativeWorldLayoutConflictResolution conflictResolution =
-      CreativeWorldLayoutConflictResolution::Block;
+  std::span<const CreativeWorldLayoutConflictDecision> conflictDecisions;
 };
 
 struct CreativeWorldLayoutPlan {

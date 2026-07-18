@@ -2616,10 +2616,30 @@ void drawRecipeChanges(
   ImGui::EndTable();
 }
 
+void synchronizeConflictReview(
+    CreativeEditorWorldLayoutState& state,
+    const CreativeEditorWorldLayoutDiagnosticReport& diagnostics) {
+  CreativeEditorWorldLayoutConflictReviewState& review =
+      state.conflictReview;
+  if (review.diagnosticBuildCount == state.diagnosticCache.buildCount) {
+    return;
+  }
+  review.diagnosticBuildCount = state.diagnosticCache.buildCount;
+  review.decisions.clear();
+  for (const cr::CreativeWorldLayoutRecipeChange& change :
+       diagnostics.recipeChanges) {
+    if (change.kind == cr::CreativeWorldLayoutRecipeChangeKind::Conflict) {
+      review.decisions.push_back(
+          {change.instanceKey,
+           cr::CreativeWorldLayoutConflictResolution::Block});
+    }
+  }
+}
+
 void drawRefinementConflictActions(
+    CreativeEditorWorldLayoutState& state,
     const CreativeEditorWorldLayoutDiagnosticReport& diagnostics,
-    CreativeDesktopCommandFrame& commands,
-    bool editingDisabled) {
+    CreativeDesktopCommandFrame& commands, bool editingDisabled) {
   if (diagnostics.compileReceipt.status !=
       cr::CreativeWorldLayoutStatus::RefinementConflict) {
     return;
@@ -2637,30 +2657,69 @@ void drawRefinementConflictActions(
               static_cast<unsigned long long>(
                   diagnostics.compileReceipt.objectRecipeConflictCount));
   ImGui::Separator();
-  if (ImGui::Button("Regenerate")) {
-    commands.push(
-        CreativeDesktopCommandId::WorldLayoutConfirm,
-        CreativeDesktopWorldLayoutConfirmPayload{
-            cr::CreativeWorldLayoutConflictResolution::Regenerate});
+  ImGui::BeginDisabled(editingDisabled);
+  if (ImGui::BeginTable("##world_layout_conflict_review", 3,
+                        ImGuiTableFlags_SizingStretchProp |
+                            ImGuiTableFlags_BordersInnerH |
+                            ImGuiTableFlags_RowBg)) {
+    ImGui::TableSetupColumn("Managed group",
+                            ImGuiTableColumnFlags_WidthStretch);
+    ImGui::TableSetupColumn("Replace", ImGuiTableColumnFlags_WidthFixed,
+                            88.0F);
+    ImGui::TableSetupColumn("Preserve", ImGuiTableColumnFlags_WidthFixed,
+                            88.0F);
+    ImGui::TableHeadersRow();
+    for (cr::CreativeWorldLayoutConflictDecision& decision :
+         state.conflictReview.decisions) {
+      ImGui::PushID(decision.instanceKey.c_str());
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+      ImGui::TextWrapped("%s", decision.instanceKey.c_str());
+      ImGui::TableNextColumn();
+      if (ImGui::RadioButton(
+              "Regenerate",
+              decision.resolution ==
+                  cr::CreativeWorldLayoutConflictResolution::Regenerate)) {
+        decision.resolution =
+            cr::CreativeWorldLayoutConflictResolution::Regenerate;
+      }
+      if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Replace or remove this refined output to match the layout");
+      }
+      ImGui::TableNextColumn();
+      if (ImGui::RadioButton(
+              "Detach",
+              decision.resolution ==
+                  cr::CreativeWorldLayoutConflictResolution::Detach)) {
+        decision.resolution =
+            cr::CreativeWorldLayoutConflictResolution::Detach;
+      }
+      if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Keep this refinement as authored output and release generator ownership");
+      }
+      ImGui::PopID();
+    }
+    ImGui::EndTable();
+  }
+  const bool allResolved =
+      !state.conflictReview.decisions.empty() &&
+      std::all_of(state.conflictReview.decisions.begin(),
+                  state.conflictReview.decisions.end(),
+                  [](const cr::CreativeWorldLayoutConflictDecision& decision) {
+                    return decision.resolution !=
+                           cr::CreativeWorldLayoutConflictResolution::Block;
+                  });
+  ImGui::BeginDisabled(!allResolved);
+  if (ImGui::Button("Apply Resolutions")) {
+    commands.push(CreativeDesktopCommandId::WorldLayoutConfirm,
+                  CreativeDesktopWorldLayoutConfirmPayload{
+                      state.conflictReview.decisions});
     ImGui::CloseCurrentPopup();
   }
-  if (ImGui::IsItemHovered()) {
-    ImGui::SetTooltip(
-        "Replace or remove refined managed output to match the layout");
-  }
-  ImGui::SameLine();
-  if (ImGui::Button("Detach Refined Output")) {
-    commands.push(
-        CreativeDesktopCommandId::WorldLayoutConfirm,
-        CreativeDesktopWorldLayoutConfirmPayload{
-            cr::CreativeWorldLayoutConflictResolution::Detach});
-    ImGui::CloseCurrentPopup();
-  }
-  if (ImGui::IsItemHovered()) {
-    ImGui::SetTooltip(
-        "Keep refined objects as authored objects; generate current layout "
-        "output where a source remains");
-  }
+  ImGui::EndDisabled();
+  ImGui::EndDisabled();
   ImGui::SameLine();
   if (ImGui::Button("Cancel")) {
     ImGui::CloseCurrentPopup();
@@ -2686,6 +2745,7 @@ void buildCreativeEditorWorldLayoutPanel(
       refreshCreativeEditorWorldLayoutDiagnostics(
           state.diagnosticCache, document, state.source, state.revision,
           &editor.catalog.model);
+  synchronizeConflictReview(state, diagnostics);
   if (editingDisabled) {
     queueLayoutManipulationCancel(state, commands);
   }
@@ -2859,7 +2919,8 @@ void buildCreativeEditorWorldLayoutPanel(
       drawWorldLayoutAssetRepair(issue, state, editor.catalog.model, commands,
                                  editingDisabled, issueIndex);
     }
-    drawRefinementConflictActions(diagnostics, commands, editingDisabled);
+    drawRefinementConflictActions(state, diagnostics, commands,
+                                  editingDisabled);
     drawRecipeChanges(diagnostics);
 
     ImGui::Separator();

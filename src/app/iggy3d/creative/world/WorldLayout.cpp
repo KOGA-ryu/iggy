@@ -1089,7 +1089,7 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
   CreativeWorldLayoutReconciliationResult reconciliation =
       reconcileCreativeWorldLayoutRecipes(
           {&document, layoutTag, desiredObjectRecipes,
-           options.conflictResolution});
+           options.conflictDecisions});
   result.recipeChanges = std::move(reconciliation.changes);
   result.receipt.objectRecipeCreateCount =
       reconciliation.createRecipeCount;
