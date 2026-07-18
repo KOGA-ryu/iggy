@@ -717,11 +717,15 @@ bool idleTicksAdvanceAndStaleDocumentsStop() {
                 "changed source document invalidates and stops sandbox");
 }
 
-bool desktopPlayTogglesAndBlocksEditing() {
+bool desktopPlayLaunchesWithoutOwningSession() {
+  // C3 contract: the Play command validates + snapshots + spawns i3dp; it
+  // NEVER starts the embedded session, and the editor stays editable. With
+  // an empty save root the snapshot step refuses, so no process is spawned
+  // in tests -- the accepted path (plan + snapshot) is pinned separately in
+  // creative_playtest_launch_tests via preparePlaytestLaunch.
   cr::CreativeAppState appState;
   cr::CreativeDocument document = playableDocument(false, 904U);
   static_cast<void>(appState.facade.installDocument(std::move(document)));
-  const std::uint64_t revision = appState.facade.document().revision();
   app::CreativeEditorState editor;
   app::CreativePlaySession mode;
   iggy3d::StaticMeshAssetCatalog catalog;
@@ -731,36 +735,21 @@ bool desktopPlayTogglesAndBlocksEditing() {
 
   app::CreativeDesktopCommandFrame frame;
   frame.push(app::CreativeDesktopCommandId::Play);
-  const app::CreativeDesktopCommandResult started =
+  const app::CreativeDesktopCommandResult played =
       app::dispatchCreativeDesktopCommands(frame, context);
-  const bool activeAfterStart = app::creativePlaySessionActive(mode);
+  const bool sessionStayedInactive = !app::creativePlaySessionActive(mode);
   frame.clear();
   frame.push(app::CreativeDesktopCommandId::NewDocument);
-  const app::CreativeDesktopCommandResult blocked =
+  const app::CreativeDesktopCommandResult newDocument =
       app::dispatchCreativeDesktopCommands(frame, context);
-  frame.clear();
-  frame.push(app::CreativeDesktopCommandId::SetLogicLink,
-             app::CreativeDesktopLogicLinkPayload{
-                 1U, 2U, cr::CreativeLogicLinkAction::Toggle});
-  const app::CreativeDesktopCommandResult logicBlocked =
-      app::dispatchCreativeDesktopCommands(frame, context);
-  frame.clear();
-  frame.push(app::CreativeDesktopCommandId::Play);
-  const app::CreativeDesktopCommandResult stopped =
-      app::dispatchCreativeDesktopCommands(frame, context);
-  const bool inactiveAfterStop = !app::creativePlaySessionActive(mode);
 
-  return expect(started.accepted && activeAfterStart,
-                "desktop Play starts the runtime owner") &&
-         expect(!blocked.accepted && !blocked.documentReplaced &&
-                    appState.facade.document().revision() == revision,
-                "desktop mutations are rejected while play owns the frame") &&
-         expect(!logicBlocked.accepted &&
-                    logicBlocked.message == "stop play before editing" &&
-                    appState.facade.document().revision() == revision,
-                "Inspector logic edits are read-only during Play") &&
-         expect(stopped.accepted && inactiveAfterStop,
-                "desktop Play toggles to Stop");
+  return expect(sessionStayedInactive,
+                "desktop Play never starts the embedded session") &&
+         expect(!played.accepted &&
+                    played.message.rfind("playtest refused:", 0) == 0,
+                "empty save root refuses the launch with a reason") &&
+         expect(newDocument.accepted && newDocument.documentReplaced,
+                "editing stays live after Play (no lockout engages)");
 }
 
 bool invalidMapAndTuningFailClosed() {
@@ -1033,7 +1022,7 @@ int main() {
                   startStopAndProjectionPreserveAuthoredDocument() &&
                   fixedTickMovementAndCatchUpAreBounded() &&
                   idleTicksAdvanceAndStaleDocumentsStop() &&
-                  desktopPlayTogglesAndBlocksEditing() &&
+                  desktopPlayLaunchesWithoutOwningSession() &&
                   invalidMapAndTuningFailClosed() &&
                   authoredDoorAndPickupCompleteTheRuntimeInteractionLoop() &&
                   movingPlatformAdvancesThroughEditorPlayTick() &&

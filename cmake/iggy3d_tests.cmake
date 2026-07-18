@@ -942,3 +942,14 @@ set_tests_properties(creative_capture_stability_smoke PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   SKIP_RETURN_CODE 77
   LABELS "smoke;vulkan;render;creative;iggy3d")
+
+add_executable(creative_playtest_launch_tests
+  tests/unit/creative_playtest_launch_tests.cpp)
+target_link_libraries(creative_playtest_launch_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_playtest_launch_tests)
+add_test(NAME creative_playtest_launch_tests
+  COMMAND "$<TARGET_FILE:creative_playtest_launch_tests>")
+set_tests_properties(creative_playtest_launch_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;play;launch;iggy3d")
