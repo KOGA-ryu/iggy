@@ -143,6 +143,11 @@ struct CreativeDesktopWorldLayoutSourcePayload {
   std::string stableKey;
 };
 
+struct CreativeDesktopWorldLayoutObjectSourcePayload {
+  iggy3d::creative::CreativeObjectId objectId =
+      iggy3d::creative::kInvalidObjectId;
+};
+
 struct CreativeDesktopWorldLayoutSourceRenamePayload {
   iggy3d::creative::CreativeWorldLayoutTable table =
       iggy3d::creative::CreativeWorldLayoutTable::None;
@@ -363,6 +368,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutCatalogAssetPayload,
     CreativeDesktopWorldLayoutBuildingSelectionPayload,
     CreativeDesktopWorldLayoutSourcePayload,
+    CreativeDesktopWorldLayoutObjectSourcePayload,
     CreativeDesktopWorldLayoutSourceRenamePayload,
     CreativeDesktopWorldLayoutLevelOperationPayload,
     CreativeDesktopWorldLayoutLevelSettingsPayload,

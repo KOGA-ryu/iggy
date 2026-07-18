@@ -11,6 +11,7 @@
 #include "EditorDesktopModel.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/play/RuntimeInteractables.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
 // UI-4A Inspector. General object properties (zero/single/multi) sit above the
 // existing logic-link authoring, diagnostics, and Play-mode runtime monitor,
@@ -622,6 +623,7 @@ void appendTransformFields(CreativeDesktopInspectorDraft& draft,
 void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
                            const cr::CreativeDocument& document,
                            const cr::CreativeObject& object,
+                           const CreativeEditorWorldLayoutState& worldLayout,
                            const CreativeMovingPlatformPreviewState& preview,
                            const CreativeMovingPlatformPathEditState& pathEdit,
                            bool playModeActive,
@@ -678,6 +680,38 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
   }
   for (const std::string& tag : object.tags) {
     ImGui::BulletText("%s", tag.c_str());
+  }
+
+  const cr::CreativeWorldLayoutObjectProvenance provenance =
+      cr::resolveCreativeWorldLayoutObjectProvenance(worldLayout.source,
+                                                     object);
+  if (provenance.owned) {
+    ImGui::SeparatorText("World Layout");
+    if (ImGui::Button("Focus in 2D")) {
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutFocusObjectSource,
+          CreativeDesktopWorldLayoutObjectSourcePayload{object.id});
+    }
+    const bool sourceSynchronized =
+        worldLayout.generatedRevision == worldLayout.revision;
+    const bool invertible = provenance.contributorCount == 1U &&
+                            (provenance.table ==
+                                 cr::CreativeWorldLayoutTable::Object ||
+                             provenance.table ==
+                                 cr::CreativeWorldLayoutTable::Box);
+    ImGui::SameLine();
+    ImGui::BeginDisabled(playModeActive || !sourceSynchronized || !invertible);
+    if (ImGui::Button("Adopt 3D Edit")) {
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutAdoptObjectSource,
+          CreativeDesktopWorldLayoutObjectSourcePayload{object.id});
+    }
+    ImGui::EndDisabled();
+    if (!sourceSynchronized) {
+      ImGui::TextDisabled("Generate pending 2D edits before adoption");
+    } else if (!invertible) {
+      ImGui::TextDisabled("Edit this generated fragment from its 2D source");
+    }
   }
 
   ImGui::BeginDisabled(playModeActive);
@@ -749,7 +783,7 @@ void buildCreativeEditorDesktopInspectorPanel(
     ImGui::TextUnformatted("No object selected");
     return;
   }
-  appendSingleInspector(desktopUi, document, *object,
+  appendSingleInspector(desktopUi, document, *object, editor.worldLayout,
                         editor.movingPlatformPreview,
                         editor.interaction.movingPlatformPathEdit,
                         playModeActive,

@@ -2,6 +2,7 @@
 #include "app/iggy3d/creative/world/MapTemplate.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
 #include "app/iggy3d/creative/world/WorldService.hpp"
+#include "content/assets/StaticMeshAsset.hpp"
 #include "projection/scene/SceneProjection.hpp"
 
 #include <algorithm>
@@ -156,10 +157,13 @@ bool ditchTerrainHasLowDryChannelAndRaisedHouseBank() {
 bool ditchHouseBakesToRuntimeGeometryAndAnchors() {
   const cr::CreativeMapTemplateResult map =
       cr::buildCreativeMapTemplate(cr::kDitchHouseMapTemplateId);
+  const iggy3d::StaticMeshAssetCatalog catalog =
+      iggy3d::discoverStaticMeshAssetCatalog("assets/creative");
   cr::CreativeRoomBakeRequest request;
   request.document = &map.document;
   request.roomId = "ditch_house";
   request.validateReachability = false;
+  request.staticMeshAssetCatalog = &catalog;
   const cr::CreativeRoomBakeResult bake =
       cr::buildRoomAssetFromCreativeDocument(request);
   const bool boulderMeshPresent = std::any_of(
@@ -316,7 +320,7 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
          expect(bridge != nullptr &&
                     cr::creativeRecipeObjectHasInstanceProvenance(
                         *bridge, cr::CreativeRecipeKind::ObjectLibrary,
-                        "builder_estate_layout.objects",
+                        "builder_estate_layout.objects.bridge.ditch",
                         cr::CreativeRecipeObjectRole::Source,
                         "bridge.ditch"),
                 "builder estate bridge uses layout-owned object recipe") &&

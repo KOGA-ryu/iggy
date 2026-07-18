@@ -916,6 +916,16 @@ struct CreativeEditorWorldLayoutApplyReceipt {
   std::string reasonCode = "creative_editor_world_layout_apply_not_requested";
 };
 
+struct CreativeEditorWorldLayoutAdoptionReceipt {
+  bool accepted = false;
+  bool changed = false;
+  cr::CreativeWorldLayoutTable table = cr::CreativeWorldLayoutTable::None;
+  std::size_t index = cr::kInvalidCreativeWorldLayoutIndex;
+  cr::CreativeWorldLayoutApplyReceipt apply;
+  std::string reasonCode =
+      "creative_editor_world_layout_adoption_not_requested";
+};
+
 [[nodiscard]] const char* creativeEditorWorldLayoutToolLabel(
     CreativeEditorWorldLayoutTool tool) noexcept;
 [[nodiscard]] bool creativeEditorWorldLayoutToolIsVerticalConnector(
@@ -1000,6 +1010,15 @@ deleteCreativeEditorWorldLayoutSource(
     const cr::CreativeObject& object,
     cr::CreativeGridSettings grid,
     cr::CreativeVec3 worldPoint);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+focusCreativeEditorWorldLayoutObjectSource(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeObject& object);
+[[nodiscard]] CreativeEditorWorldLayoutAdoptionReceipt
+adoptCreativeEditorWorldLayoutObjectSource(
+    CreativeEditorWorldLayoutState& state,
+    cr::CreativeAppState& appState,
+    cr::CreativeObjectId objectId);
 
 [[nodiscard]] bool creativeEditorWorldLayoutDirty(
     const CreativeEditorWorldLayoutState& state) noexcept;

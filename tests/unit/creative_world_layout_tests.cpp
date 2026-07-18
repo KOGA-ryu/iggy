@@ -1,6 +1,8 @@
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutAdoption.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
 
 #include <algorithm>
@@ -2405,6 +2407,148 @@ bool invalidAndStaleSourcesFailClosed() {
                 "stale world layout plan cannot publish partial output");
 }
 
+bool generatedOutputAdoptionIsBoundedToInvertibleSources() {
+  cr::CreativeWorldLayout objectLayout;
+  objectLayout.stableKey = "adoption_layout";
+  cr::CreativeWorldLayoutObject sourceObject;
+  sourceObject.kind = cr::CreativeObjectKind::Crate;
+  sourceObject.mode = cr::CreativeObjectLibraryPlacementMode::Point;
+  sourceObject.stableKey = "crate";
+  sourceObject.name = "Adoptable Crate";
+  sourceObject.pointCells = {2.0, 1.0, 3.0};
+  objectLayout.objects.push_back(sourceObject);
+
+  cr::Facade objectFacade;
+  static_cast<void>(objectFacade.installDocument(makeDocument(991U)));
+  const cr::CreativeWorldLayoutCompileResult objectCompiled =
+      cr::buildCreativeWorldLayoutPlan(objectFacade.document(), objectLayout);
+  const cr::CreativeWorldLayoutApplyReceipt objectApplied =
+      objectCompiled.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlan(objectFacade,
+                                             objectCompiled.plan)
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const cr::CreativeObject* generatedSource =
+      findManaged(objectFacade.document(),
+                  "adoption_layout.objects.crate", "crate");
+  if (!objectApplied.accepted || generatedSource == nullptr) {
+    return expect(false, "direct object adoption fixture generated");
+  }
+
+  cr::CreativeObject editedObject = *generatedSource;
+  const cr::CreativeVec3 delta{3.0, 2.0, 1.0};
+  editedObject.transform.position = {15.0, 4.0, -6.0};
+  editedObject.bounds.min.x += delta.x;
+  editedObject.bounds.min.y += delta.y;
+  editedObject.bounds.min.z += delta.z;
+  editedObject.bounds.max.x += delta.x;
+  editedObject.bounds.max.y += delta.y;
+  editedObject.bounds.max.z += delta.z;
+  editedObject.transform.rotationEulerRadians.y = 0.5;
+  editedObject.transform.scale = {1.25, 2.0, 0.75};
+  editedObject.name = "Adopted Crate";
+  const cr::CreativeWorldLayoutAdoptionResult pointAdoption =
+      cr::planCreativeWorldLayoutObjectAdoption(
+          objectLayout, editedObject,
+          objectFacade.document().gridSettings());
+
+  cr::CreativeObject tiltedObject = editedObject;
+  tiltedObject.transform.rotationEulerRadians.x = 0.25;
+  const cr::CreativeWorldLayoutAdoptionResult tiltedAdoption =
+      cr::planCreativeWorldLayoutObjectAdoption(
+          objectLayout, tiltedObject,
+          objectFacade.document().gridSettings());
+  cr::CreativeObject nonFiniteYawObject = editedObject;
+  nonFiniteYawObject.transform.rotationEulerRadians.y =
+      std::numeric_limits<double>::infinity();
+  const cr::CreativeWorldLayoutAdoptionResult nonFiniteYawAdoption =
+      cr::planCreativeWorldLayoutObjectAdoption(
+          objectLayout, nonFiniteYawObject,
+          objectFacade.document().gridSettings());
+
+  cr::CreativeWorldLayout houseLayout = smallHouseLayout();
+  houseLayout.buildings[0].tags.push_back("adoption:test");
+  cr::Facade houseFacade;
+  static_cast<void>(houseFacade.installDocument(makeDocument(992U)));
+  const cr::CreativeWorldLayoutCompileResult houseCompiled =
+      cr::buildCreativeWorldLayoutPlan(houseFacade.document(), houseLayout);
+  const cr::CreativeWorldLayoutApplyReceipt houseApplied =
+      houseCompiled.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlan(houseFacade, houseCompiled.plan)
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const cr::CreativeObject* floor = nullptr;
+  const cr::CreativeObject* wall = nullptr;
+  for (const cr::CreativeObject& object : houseFacade.document().objects()) {
+    const cr::CreativeWorldLayoutObjectProvenance provenance =
+        cr::resolveCreativeWorldLayoutObjectProvenance(houseLayout, object);
+    if (provenance.table == cr::CreativeWorldLayoutTable::Box &&
+        provenance.index == 0U) {
+      floor = &object;
+    } else if (provenance.table == cr::CreativeWorldLayoutTable::Wall) {
+      wall = &object;
+    }
+  }
+  if (!houseApplied.accepted || floor == nullptr || wall == nullptr) {
+    return expect(false, "box adoption fixture generated");
+  }
+  cr::CreativeObject scaledFloor = *floor;
+  scaledFloor.transform.scale.x = 2.0;
+  const cr::CreativeWorldLayoutAdoptionResult boxAdoption =
+      cr::planCreativeWorldLayoutObjectAdoption(
+          houseLayout, scaledFloor, houseFacade.document().gridSettings());
+  cr::CreativeObject wrongLayerFloor = scaledFloor;
+  ++wrongLayerFloor.layerId;
+  const cr::CreativeWorldLayoutAdoptionResult wrongLayerAdoption =
+      cr::planCreativeWorldLayoutObjectAdoption(
+          houseLayout, wrongLayerFloor,
+          houseFacade.document().gridSettings());
+  const cr::CreativeWorldLayoutAdoptionResult wallAdoption =
+      cr::planCreativeWorldLayoutObjectAdoption(
+          houseLayout, *wall, houseFacade.document().gridSettings());
+
+  return expect(pointAdoption.accepted && pointAdoption.changed &&
+                    pointAdoption.mode ==
+                        cr::CreativeWorldLayoutAdoptionMode::Exact &&
+                    pointAdoption.table ==
+                        cr::CreativeWorldLayoutTable::Object &&
+                    pointAdoption.candidate.objects[0].name ==
+                        "Adopted Crate" &&
+                    sameVec3(pointAdoption.candidate.objects[0].pointCells,
+                             {5.0, 3.0, 4.0}) &&
+                    pointAdoption.candidate.objects[0].yawRadians == 0.5 &&
+                    sameVec3(pointAdoption.candidate.objects[0].scale,
+                             {1.25, 2.0, 0.75}),
+                "point object transform maps exactly back to source cells") &&
+         expect(!tiltedAdoption.accepted &&
+                    tiltedAdoption.status ==
+                        cr::CreativeWorldLayoutAdoptionStatus::
+                            NonInvertibleTransform,
+                "point object pitch cannot masquerade as source yaw") &&
+         expect(!nonFiniteYawAdoption.accepted &&
+                    nonFiniteYawAdoption.status ==
+                        cr::CreativeWorldLayoutAdoptionStatus::
+                            NonInvertibleTransform,
+                "point object rejects non-finite source yaw") &&
+         expect(boxAdoption.accepted && boxAdoption.changed &&
+                    boxAdoption.mode ==
+                        cr::CreativeWorldLayoutAdoptionMode::Canonicalized &&
+                    boxAdoption.candidate.boxes[0].footprint.minimum ==
+                        cr::CreativeTerrainCoord2{-3, 0} &&
+                    boxAdoption.candidate.boxes[0].footprint.maximum ==
+                        cr::CreativeTerrainCoord2{9, 4} &&
+                    boxAdoption.candidate.boxes[0].anchorLayer == 0.0 &&
+                    boxAdoption.candidate.boxes[0].layerCount == 1U,
+                "axis-aligned floor scale folds into semantic dimensions") &&
+         expect(!wrongLayerAdoption.accepted &&
+                    wrongLayerAdoption.status ==
+                        cr::CreativeWorldLayoutAdoptionStatus::ObjectMismatch,
+                "box adoption refuses a layer the source cannot own") &&
+         expect(!wallAdoption.accepted &&
+                    wallAdoption.status ==
+                        cr::CreativeWorldLayoutAdoptionStatus::
+                            UnsupportedSource,
+                "generated wall fragment refuses an invented inverse edit");
+}
+
 }  // namespace
 
 int main() {
@@ -2431,6 +2575,7 @@ int main() {
       verticalConnectorOwnershipFollowsBuildingKernels() &&
       buildingTemplatesNormalizeTransformPersistAndStamp() &&
       buildingTemplateSyncIsSafeAtomicAndPersistent() &&
+      generatedOutputAdoptionIsBoundedToInvertibleSources() &&
       invalidAndStaleSourcesFailClosed();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -213,7 +213,8 @@ CreativeEditorWorldLayoutEditReceipt repairWorldLayoutAsset(
          id == CreativeDesktopCommandId::Play ||
          id == CreativeDesktopCommandId::SelectObjects ||
          id == CreativeDesktopCommandId::ClearSelection ||
-         id == CreativeDesktopCommandId::WorldLayoutFocusSource;
+         id == CreativeDesktopCommandId::WorldLayoutFocusSource ||
+         id == CreativeDesktopCommandId::WorldLayoutFocusObjectSource;
 }
 
 [[nodiscard]] bool focusEditorCameraOnObject(
@@ -934,6 +935,51 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
       result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutFocusObjectSource: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutObjectSourcePayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout object source focus: payload mismatch";
+        break;
+      }
+      const creative::CreativeObject* object =
+          appState.facade.findObject(payload->objectId);
+      if (object == nullptr) {
+        result.message = "layout object source focus: target missing";
+        break;
+      }
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          focusCreativeEditorWorldLayoutObjectSource(editor.worldLayout,
+                                                     *object);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      if (receipt.accepted) {
+        editor.desktopUi.showWorldLayout = true;
+      }
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutAdoptObjectSource: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutObjectSourcePayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout object adoption: payload mismatch";
+        break;
+      }
+      const CreativeEditorWorldLayoutAdoptionReceipt receipt =
+          adoptCreativeEditorWorldLayoutObjectSource(
+              editor.worldLayout, appState, payload->objectId);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = receipt.changed;
+      result.affectedObjectCount = receipt.changed ? 1U : 0U;
+      result.message = editor.worldLayout.statusMessage;
+      if (receipt.accepted) {
+        editor.desktopUi.showWorldLayout = true;
+      }
       break;
     }
     case CreativeDesktopCommandId::WorldLayoutRenameSource: {

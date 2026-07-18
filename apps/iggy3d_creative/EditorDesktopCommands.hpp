@@ -66,6 +66,8 @@ enum class CreativeDesktopCommandId : std::uint8_t {
   WorldLayoutSelectCatalogAsset,
   WorldLayoutSelectBuilding,
   WorldLayoutFocusSource,
+  WorldLayoutFocusObjectSource,
+  WorldLayoutAdoptObjectSource,
   WorldLayoutRenameSource,
   WorldLayoutDuplicateSource,
   WorldLayoutDeleteSource,

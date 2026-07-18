@@ -1290,6 +1290,14 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutFocusSource, context,
           app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutObjectSourceFocus =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutFocusObjectSource,
+          context, app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutObjectSourceAdoption =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutAdoptObjectSource,
+          context, app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult badWorldLayoutSourceRename =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutRenameSource, context,
@@ -1430,6 +1438,13 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badWorldLayoutSourceFocus.message ==
                         "layout source focus: payload mismatch",
                 "source focus rejects a mismatched payload") &&
+         expect(!badWorldLayoutObjectSourceFocus.accepted &&
+                    badWorldLayoutObjectSourceFocus.message ==
+                        "layout object source focus: payload mismatch" &&
+                    !badWorldLayoutObjectSourceAdoption.accepted &&
+                    badWorldLayoutObjectSourceAdoption.message ==
+                        "layout object adoption: payload mismatch",
+                "object source commands reject mismatched payloads") &&
          expect(!badWorldLayoutSourceRename.accepted &&
                     badWorldLayoutSourceRename.message ==
                         "layout source rename: payload mismatch",
@@ -2409,6 +2424,105 @@ bool worldLayoutConflictResolutionUsesTypedConfirmPayload() {
                 "typed exact-member payload resolves through the sole dispatcher");
 }
 
+bool worldLayoutObjectFocusAndAdoptionCloseTheSourceLoop() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd World Layout Adoption");
+  static_cast<void>(document.assignId(434U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "command_adoption");
+  cr::CreativeWorldLayoutObject object;
+  object.kind = cr::CreativeObjectKind::Crate;
+  object.mode = cr::CreativeObjectLibraryPlacementMode::Point;
+  object.stableKey = "crate";
+  object.name = "Adoption Crate";
+  object.pointCells = {1.0, 0.0, 1.0};
+  editor.worldLayout.source.objects.push_back(object);
+  ++editor.worldLayout.revision;
+
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const app::CreativeDesktopCommandResult generated = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  if (!generated.accepted || appState.facade.document().objects().empty()) {
+    return expect(false, "command adoption fixture generated");
+  }
+  const cr::CreativeObjectId objectId =
+      appState.facade.document().objects().front().id;
+
+  editor.desktopUi.showWorldLayout = false;
+  const app::CreativeDesktopCommandResult focused = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutFocusObjectSource, context,
+      app::CreativeDesktopWorldLayoutObjectSourcePayload{objectId});
+  const bool focusOpenedSource =
+      focused.accepted && editor.desktopUi.showWorldLayout &&
+      editor.worldLayout.selection.kind ==
+          app::CreativeEditorWorldLayoutSelectionKind::Object &&
+      editor.worldLayout.selection.index == 0U;
+
+  const cr::CreativeObject* live =
+      appState.facade.document().findObject(objectId);
+  if (live == nullptr) {
+    return expect(false, "command adoption object remains live");
+  }
+  cr::CreativeTransform movedTransform = live->transform;
+  movedTransform.position = {4.0, 2.0, 3.0};
+  const app::CreativeDesktopCommandResult moved = dispatchPayload(
+      app::CreativeDesktopCommandId::SetObjectTransform, context,
+      app::CreativeDesktopTransformPayload{objectId, movedTransform, true,
+                                           false, false});
+  const std::uint64_t historyBeforeAdoption =
+      cr::creativeUndoDepth(appState.history);
+  editor.desktopUi.showWorldLayout = false;
+  const app::CreativeDesktopCommandResult adopted = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutAdoptObjectSource, context,
+      app::CreativeDesktopWorldLayoutObjectSourcePayload{objectId});
+  const cr::CreativeObject* adoptedObject =
+      appState.facade.document().findObject(objectId);
+  const bool adoptedState =
+      adoptedObject != nullptr && adoptedObject->id == objectId &&
+      vecNear(adoptedObject->transform.position, movedTransform.position) &&
+      vecNear(editor.worldLayout.source.objects[0].pointCells,
+              {4.0, 2.0, 3.0}) &&
+      editor.worldLayout.source.objects[0].hasAssetSourceBounds &&
+      vecNear(editor.worldLayout.source.objects[0].assetSourceBoundsMeters.min,
+              {-1.0, 0.0, -1.0}) &&
+      vecNear(editor.worldLayout.source.objects[0].assetSourceBoundsMeters.max,
+              {0.0, 1.0, 0.0}) &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision;
+
+  const app::CreativeDesktopCommandResult undone =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const cr::CreativeObject* undoneObject =
+      appState.facade.document().findObject(objectId);
+  const bool undoRestoredSourceOnly =
+      undoneObject != nullptr &&
+      vecNear(undoneObject->transform.position, movedTransform.position) &&
+      vecNear(editor.worldLayout.source.objects[0].pointCells,
+              {1.0, 0.0, 1.0});
+  const app::CreativeDesktopCommandResult redone =
+      dispatchOne(app::CreativeDesktopCommandId::Redo, context);
+
+  return expect(focusOpenedSource,
+                "generated object focuses and opens its exact 2D source") &&
+         expect(moved.accepted && moved.changed && adopted.accepted &&
+                    adopted.changed && adopted.sceneChanged &&
+                    adopted.worldLayoutChanged && adoptedState &&
+                    cr::creativeUndoDepth(appState.history) ==
+                        historyBeforeAdoption + 1U,
+                "representable 3D edit adopts with identity and one history entry") &&
+         expect(undone.accepted && undoRestoredSourceOnly && redone.accepted &&
+                    vecNear(editor.worldLayout.source.objects[0].pointCells,
+                            {4.0, 2.0, 3.0}) &&
+                    appState.facade.document().findObject(objectId) != nullptr,
+                "adoption undo and redo keep live identity and source parity");
+}
+
 bool worldLayoutCatalogSelectionAndPlacementUseTypedCommands() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document =
@@ -2827,6 +2941,7 @@ int main() {
   ok = worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutCommandsPreviewAndGenerateThroughDispatcher() && ok;
   ok = worldLayoutConflictResolutionUsesTypedConfirmPayload() && ok;
+  ok = worldLayoutObjectFocusAndAdoptionCloseTheSourceLoop() && ok;
   ok = worldLayoutCatalogSelectionAndPlacementUseTypedCommands() && ok;
   ok = worldLayoutOpeningInsertCommandsUseCatalogAndHistory() && ok;
   ok = worldLayoutAssetRepairCommandsPreservePlacementAndHistory() && ok;
