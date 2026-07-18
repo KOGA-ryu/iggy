@@ -6,7 +6,6 @@
 
 #include "EditorDesktopCommands.hpp"
 #include "EditorDesktopUi.hpp"
-#include "app/iggy3d/creative/play/PlaySession.hpp"
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 
@@ -46,7 +45,6 @@ void buildCreativeEditorDesktopInspectorPanel(
     CreativeEditorDesktopUiState& desktopUi,
     const CreativeEditorState& editor,
     const iggy3d::creative::CreativeAppState& appState,
-    const CreativePlaySession* playMode,
     CreativeDesktopCommandFrame& commands);
 
 // Shared by the Inspector's logic rows and the bottom Diagnostics tab, so the

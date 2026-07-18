@@ -731,7 +731,7 @@ bool desktopPlayLaunchesWithoutOwningSession() {
   iggy3d::StaticMeshAssetCatalog catalog;
   std::string saveId = "unused";
   const app::CreativeDesktopCommandContext context{
-      appState, editor, std::filesystem::path{}, &saveId, &mode, &catalog};
+      appState, editor, std::filesystem::path{}, &saveId, &catalog};
 
   app::CreativeDesktopCommandFrame frame;
   frame.push(app::CreativeDesktopCommandId::Play);

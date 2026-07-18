@@ -71,14 +71,6 @@ template <typename Payload>
   return std::get_if<Payload>(&command.payload);
 }
 
-[[nodiscard]] bool commandAllowedDuringPlay(
-    CreativeDesktopCommandId id) noexcept {
-  return id == CreativeDesktopCommandId::None ||
-         id == CreativeDesktopCommandId::Play ||
-         id == CreativeDesktopCommandId::SelectObjects ||
-         id == CreativeDesktopCommandId::ClearSelection ||
-         id == CreativeDesktopCommandId::WorldLayoutFocusSource;
-}
 
 [[nodiscard]] bool focusEditorCameraOnObject(
     CreativeEditorState& editor,
@@ -139,12 +131,6 @@ void dispatchOne(const CreativeDesktopCommand& command,
   result.affectedObjectCount = 0U;
   result.message.clear();
 
-  if (context.playMode != nullptr &&
-      creativePlaySessionActive(*context.playMode) &&
-      !commandAllowedDuringPlay(command.id)) {
-    result.message = "stop play before editing";
-    return;
-  }
 
   switch (command.id) {
     case CreativeDesktopCommandId::NewDocument:
