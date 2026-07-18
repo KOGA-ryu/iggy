@@ -76,6 +76,20 @@ enum class CreativeEditorWorldLayoutOpeningInsertOperation : std::uint8_t {
   Count,
 };
 
+enum class CreativeEditorWorldLayoutAssetBoundsTarget : std::uint8_t {
+  Object,
+  OpeningInsert,
+  Count,
+};
+
+struct CreativeEditorWorldLayoutAssetBoundsUpdate {
+  CreativeEditorWorldLayoutAssetBoundsTarget target =
+      CreativeEditorWorldLayoutAssetBoundsTarget::Object;
+  std::size_t index = cr::kInvalidCreativeWorldLayoutIndex;
+  std::string assetId;
+  cr::CreativeBounds sourceBoundsMeters;
+};
+
 inline constexpr double
     kCreativeEditorWorldLayoutCatalogWallSnapToleranceCells = 1.25;
 
@@ -1266,6 +1280,10 @@ planCreativeEditorWorldLayoutOpeningAssetGeometry(
 applyCreativeEditorWorldLayoutOpeningInsert(
     CreativeEditorWorldLayoutState& state,
     const CreativeEditorWorldLayoutOpeningInsertRequest& request);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+applyCreativeEditorWorldLayoutAssetBoundsUpdates(
+    CreativeEditorWorldLayoutState& state,
+    std::span<const CreativeEditorWorldLayoutAssetBoundsUpdate> updates);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 applyCreativeEditorWorldLayoutOpeningManipulation(
     CreativeEditorWorldLayoutState& state,

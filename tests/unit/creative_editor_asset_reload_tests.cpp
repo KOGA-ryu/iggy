@@ -226,6 +226,153 @@ bool boundsRefreshUpdatesOnlyNaturalAssetBounds() {
                 "custom and missing asset bounds remain untouched");
 }
 
+bool worldLayoutBoundsRefreshIsAtomicAndPreservesCustomSources() {
+  iggy3d::StaticMeshAssetCatalog previous;
+  previous.entries.push_back(catalogEntry(
+      "deleted", {-0.5F, 0.0F, -0.5F}, {0.5F, 1.0F, 0.5F}));
+  previous.entries.push_back(catalogEntry(
+      "door", {-0.5F, 0.0F, -0.1F}, {0.5F, 2.0F, 0.1F}));
+  previous.entries.push_back(catalogEntry(
+      "prop", {-1.0F, 0.0F, -0.5F}, {1.0F, 2.0F, 0.5F}));
+  iggy3d::StaticMeshAssetCatalog next;
+  next.entries.push_back(catalogEntry(
+      "door", {-0.6F, 0.0F, -0.15F}, {0.6F, 2.2F, 0.15F}));
+  next.entries.push_back(catalogEntry(
+      "prop", {-2.0F, -0.25F, -1.0F}, {2.0F, 2.25F, 1.0F}));
+
+  const iggy3d::StaticMeshAssetCatalogEntry* previousDeleted =
+      previous.find("deleted");
+  const iggy3d::StaticMeshAssetCatalogEntry* previousDoorEntry =
+      previous.find("door");
+  const iggy3d::StaticMeshAssetCatalogEntry* previousPropEntry =
+      previous.find("prop");
+  const iggy3d::StaticMeshAssetCatalogEntry* nextDoorEntry = next.find("door");
+  const iggy3d::StaticMeshAssetCatalogEntry* nextPropEntry = next.find("prop");
+  if (!expect(previousDeleted != nullptr && previousDoorEntry != nullptr &&
+                  previousPropEntry != nullptr && nextDoorEntry != nullptr &&
+                  nextPropEntry != nullptr,
+              "layout refresh catalogs obey sorted lookup ownership")) {
+    return false;
+  }
+
+  const cr::CreativeBounds previousProp =
+      app::creativeAssetBoundsAtPivot(*previousPropEntry, {});
+  const cr::CreativeBounds previousDoor =
+      app::creativeAssetBoundsAtPivot(*previousDoorEntry, {});
+  const cr::CreativeBounds nextProp =
+      app::creativeAssetBoundsAtPivot(*nextPropEntry, {});
+  const cr::CreativeBounds nextDoor =
+      app::creativeAssetBoundsAtPivot(*nextDoorEntry, {});
+
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "asset_refresh_layout";
+  cr::CreativeWorldLayoutObject naturalObject;
+  naturalObject.kind = cr::CreativeObjectKind::Prop;
+  naturalObject.stableKey = "object_natural";
+  naturalObject.name = "Natural Prop";
+  naturalObject.assetId = "prop";
+  naturalObject.assetSourceBoundsMeters = previousProp;
+  naturalObject.hasAssetSourceBounds = true;
+  naturalObject.pointCells = {8.0, 1.0, 4.0};
+  layout.objects.push_back(naturalObject);
+  cr::CreativeWorldLayoutObject customObject = naturalObject;
+  customObject.stableKey = "object_custom";
+  customObject.name = "Custom Prop";
+  customObject.assetSourceBoundsMeters.max.x += 0.5;
+  layout.objects.push_back(customObject);
+  cr::CreativeWorldLayoutObject missingObject = naturalObject;
+  missingObject.stableKey = "object_missing";
+  missingObject.name = "Deleted Prop";
+  missingObject.assetId = "deleted";
+  missingObject.assetSourceBoundsMeters =
+      app::creativeAssetBoundsAtPivot(*previousDeleted, {});
+  layout.objects.push_back(missingObject);
+
+  cr::CreativeWorldLayoutOpening naturalOpening;
+  naturalOpening.stableKey = "opening_natural";
+  naturalOpening.name = "Dormant Door";
+  naturalOpening.includeInsert = false;
+  naturalOpening.insertAssetId = "door";
+  naturalOpening.insertAssetSourceBoundsMeters = previousDoor;
+  naturalOpening.hasInsertAssetSourceBounds = true;
+  layout.openings.push_back(naturalOpening);
+  cr::CreativeWorldLayoutOpening customOpening = naturalOpening;
+  customOpening.stableKey = "opening_custom";
+  customOpening.name = "Custom Door";
+  customOpening.insertAssetSourceBoundsMeters.max.y += 0.25;
+  layout.openings.push_back(customOpening);
+
+  const app::CreativeWorldLayoutAssetBoundsRefreshPlan plan =
+      app::planCreativeWorldLayoutAssetBoundsRefresh(layout, previous, next);
+  if (!expect(plan.updates.size() == 2U,
+              "layout refresh emits the two natural source updates")) {
+    return false;
+  }
+  app::CreativeEditorWorldLayoutState state;
+  app::installCreativeEditorWorldLayout(state, layout);
+  const std::uint64_t revisionBefore = state.revision;
+  const std::size_t undoBefore = state.sourceHistory.undoEntries.size();
+  const app::CreativeEditorWorldLayoutEditReceipt applied =
+      app::applyCreativeEditorWorldLayoutAssetBoundsUpdates(state,
+                                                             plan.updates);
+  const std::uint64_t revisionAfter = state.revision;
+  const std::size_t undoAfter = state.sourceHistory.undoEntries.size();
+  const app::CreativeEditorWorldLayoutEditReceipt repeated =
+      app::applyCreativeEditorWorldLayoutAssetBoundsUpdates(state,
+                                                             plan.updates);
+
+  std::vector<app::CreativeEditorWorldLayoutAssetBoundsUpdate> duplicate =
+      plan.updates;
+  duplicate.push_back(plan.updates[0]);
+  const cr::CreativeWorldLayout beforeDuplicate = state.source;
+  const app::CreativeEditorWorldLayoutEditReceipt rejected =
+      app::applyCreativeEditorWorldLayoutAssetBoundsUpdates(state, duplicate);
+
+  return expect(plan.inspectedSourceCount == 5U &&
+                    plan.customBoundsSkippedCount == 2U &&
+                    plan.missingAssetCount == 1U,
+                "layout refresh separates natural custom and deleted assets") &&
+         expect(plan.updates[0].target ==
+                        app::CreativeEditorWorldLayoutAssetBoundsTarget::Object &&
+                    plan.updates[0].index == 0U &&
+                    plan.updates[1].target ==
+                        app::CreativeEditorWorldLayoutAssetBoundsTarget::
+                            OpeningInsert &&
+                    plan.updates[1].index == 0U,
+                "layout refresh plan owns exact object and opening targets") &&
+         expect(applied.accepted && applied.changed &&
+                    revisionAfter == revisionBefore + 1U &&
+                    undoAfter == undoBefore + 1U &&
+                    cr::creativeBoundsExactlyEqual(
+                        state.source.objects[0].assetSourceBoundsMeters,
+                        nextProp) &&
+                    cr::creativeBoundsExactlyEqual(
+                        state.source.openings[0]
+                            .insertAssetSourceBoundsMeters,
+                        nextDoor) &&
+                    !state.source.openings[0].includeInsert,
+                "natural layout sources refresh together in one undo step") &&
+         expect(cr::creativeBoundsExactlyEqual(
+                    state.source.objects[1].assetSourceBoundsMeters,
+                    customObject.assetSourceBoundsMeters) &&
+                    cr::creativeBoundsExactlyEqual(
+                        state.source.openings[1]
+                            .insertAssetSourceBoundsMeters,
+                        customOpening.insertAssetSourceBoundsMeters),
+                "custom source envelopes remain authored truth") &&
+         expect(repeated.accepted && !repeated.changed &&
+                    state.revision == revisionAfter &&
+                    state.sourceHistory.undoEntries.size() == undoAfter,
+                "repeating a refresh is history-neutral") &&
+         expect(!rejected.accepted && !rejected.changed &&
+                    state.revision == revisionAfter &&
+                    state.source.stableKey == beforeDuplicate.stableKey &&
+                    cr::creativeBoundsExactlyEqual(
+                        state.source.objects[0].assetSourceBoundsMeters,
+                        beforeDuplicate.objects[0].assetSourceBoundsMeters),
+                "duplicate refresh targets reject without partial mutation");
+}
+
 bool catalogAndHotbarPreserveStableAssetIdentity() {
   constexpr std::array palette{cr::CreativeObjectKind::Crate};
   cr::CreativeCatalogAsset previousAsset;
@@ -564,6 +711,7 @@ int main() {
   ok = discoveryReportsValidBrokenAndFatalRoots() && ok;
   ok = deletedAssetsRemainExplicitFailures() && ok;
   ok = boundsRefreshUpdatesOnlyNaturalAssetBounds() && ok;
+  ok = worldLayoutBoundsRefreshIsAtomicAndPreservesCustomSources() && ok;
   ok = catalogAndHotbarPreserveStableAssetIdentity() && ok;
   ok = replacementPreviewCommitAndUndoAreAtomic() && ok;
   ok = replacementPlansFailClosedAndCancelCleanly() && ok;

@@ -136,6 +136,18 @@ bool missingOpeningAssetWarnsAndTracksCatalogMembership() {
   const bool catalogResolved = resolved.ready && resolved.issueCount == 0U;
   const std::uint64_t afterCatalog = state.diagnosticCache.buildCount;
 
+  catalog.entries[0].hotbarEntry.assetSourceBounds.max.x += 0.1;
+  const auto& stale = app::refreshCreativeEditorWorldLayoutDiagnostics(
+      state.diagnosticCache, live.facade.document(), state.source,
+      state.revision, &catalog);
+  const bool staleWarningProjected =
+      stale.ready && stale.issueCount == 1U &&
+      stale.issues[0].table == cr::CreativeWorldLayoutTable::Opening &&
+      stale.issues[0].index == 0U &&
+      stale.issues[0].reasonCode ==
+          "creative_world_layout_opening_asset_bounds_stale";
+  const std::uint64_t afterBoundsChange = state.diagnosticCache.buildCount;
+
   catalog.entries.clear();
   state.source.openings[0].includeInsert = false;
   ++state.revision;
@@ -149,9 +161,44 @@ bool missingOpeningAssetWarnsAndTracksCatalogMembership() {
                 "unchanged missing-asset diagnostics reuse the cache") &&
          expect(catalogResolved && afterCatalog == 2U,
                 "catalog membership invalidates and clears the warning") &&
+         expect(staleWarningProjected && afterBoundsChange == 3U,
+                "same-id catalog bounds invalidate and warn once") &&
          expect(dormant.ready && dormant.issueCount == 0U &&
-                    state.diagnosticCache.buildCount == 3U,
+                    state.diagnosticCache.buildCount == 4U,
                 "disabled inserts retain dormant identity without warning");
+}
+
+bool missingObjectAssetWarningIsNavigable() {
+  cr::CreativeAppState live = makeApp("Diagnostic Object Asset", 9205U);
+  app::CreativeEditorWorldLayoutState state = roomLayout();
+  cr::CreativeWorldLayoutObject object;
+  object.kind = cr::CreativeObjectKind::Prop;
+  object.mode = cr::CreativeObjectLibraryPlacementMode::Point;
+  object.stableKey = "prop.missing";
+  object.name = "Missing Prop";
+  object.assetId = "homestead/interior/missing_prop";
+  object.pointCells = {12.0, 0.0, 22.0};
+  object.assetSourceBoundsMeters =
+      {{-0.5, 0.0, -0.5}, {0.5, 1.0, 0.5}};
+  object.hasAssetSourceBounds = true;
+  object.tags = {"world_layout:catalog_asset"};
+  state.source.objects.push_back(std::move(object));
+  ++state.revision;
+
+  cr::CreativeCatalogState catalog;
+  const auto& report = app::refreshCreativeEditorWorldLayoutDiagnostics(
+      state.diagnosticCache, live.facade.document(), state.source,
+      state.revision, &catalog);
+  return expect(report.ready && report.issueCount == 1U,
+                "missing object asset remains compile-ready with warning") &&
+         expect(report.issues[0].severity ==
+                        app::CreativeEditorWorldLayoutDiagnosticSeverity::Warning &&
+                    report.issues[0].table ==
+                        cr::CreativeWorldLayoutTable::Object &&
+                    report.issues[0].index == 0U &&
+                    report.issues[0].reasonCode ==
+                        "creative_world_layout_object_asset_missing",
+                "missing object asset warning identifies its source row");
 }
 
 bool diagnosticFocusSelectsFramesAndPreservesSource() {
@@ -225,6 +272,7 @@ bool diagnosticFocusRoutesThroughTypedDispatcher() {
 int main() {
   const bool ok = preflightCacheTracksBothTruthRevisions() &&
                   missingOpeningAssetWarnsAndTracksCatalogMembership() &&
+                  missingObjectAssetWarningIsNavigable() &&
                   diagnosticFocusSelectsFramesAndPreservesSource() &&
                   diagnosticFocusRoutesThroughTypedDispatcher();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

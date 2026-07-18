@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/creative/input/Catalog.hpp"
 
+#include <bit>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -10,6 +11,28 @@ namespace iggy3d_creative_app {
 namespace {
 
 namespace cr = iggy3d::creative;
+
+void appendHashByte(std::uint64_t& hash, std::uint8_t byte) noexcept {
+  hash ^= byte;
+  hash *= 1099511628211ULL;
+}
+
+void appendHashWord(std::uint64_t& hash, std::uint64_t word) noexcept {
+  for (std::size_t index = 0U; index < sizeof(word); ++index) {
+    appendHashByte(hash, static_cast<std::uint8_t>(word & 0xFFU));
+    word >>= 8U;
+  }
+}
+
+void appendHashBounds(std::uint64_t& hash,
+                      cr::CreativeBounds bounds) noexcept {
+  appendHashWord(hash, std::bit_cast<std::uint64_t>(bounds.min.x));
+  appendHashWord(hash, std::bit_cast<std::uint64_t>(bounds.min.y));
+  appendHashWord(hash, std::bit_cast<std::uint64_t>(bounds.min.z));
+  appendHashWord(hash, std::bit_cast<std::uint64_t>(bounds.max.x));
+  appendHashWord(hash, std::bit_cast<std::uint64_t>(bounds.max.y));
+  appendHashWord(hash, std::bit_cast<std::uint64_t>(bounds.max.z));
+}
 
 std::uint64_t assetCatalogSignature(
     const cr::CreativeCatalogState* catalog) noexcept {
@@ -22,24 +45,72 @@ std::uint64_t assetCatalogSignature(
       continue;
     }
     for (const char byte : cr::creativeHotbarAssetId(entry.hotbarEntry)) {
-      hash ^= static_cast<unsigned char>(byte);
-      hash *= 1099511628211ULL;
+      appendHashByte(hash, static_cast<std::uint8_t>(byte));
     }
-    hash ^= 0xFFU;
-    hash *= 1099511628211ULL;
+    appendHashByte(hash, 0xFFU);
+    appendHashByte(hash, entry.hotbarEntry.hasAssetBounds ? 1U : 0U);
+    appendHashBounds(hash, entry.hotbarEntry.assetSourceBounds);
   }
   return hash;
 }
 
-bool catalogContainsAsset(const cr::CreativeCatalogState& catalog,
-                          std::string_view assetId) noexcept {
+const cr::CreativeCatalogEntry* findCatalogAsset(
+    const cr::CreativeCatalogState& catalog,
+    std::string_view assetId) noexcept {
   for (const cr::CreativeCatalogEntry& entry : catalog.entries) {
     if (entry.category == cr::CreativeCatalogEntryCategory::Asset &&
         cr::creativeHotbarAssetId(entry.hotbarEntry) == assetId) {
-      return true;
+      return &entry;
     }
   }
-  return false;
+  return nullptr;
+}
+
+void appendAssetSourceDiagnostic(
+    CreativeEditorWorldLayoutDiagnosticReport& report,
+    const cr::CreativeCatalogState& catalog,
+    cr::CreativeWorldLayoutTable table, std::size_t index,
+    std::string_view name, std::string_view assetId,
+    bool hasSourceBounds, cr::CreativeBounds sourceBounds,
+    bool active) {
+  if (!active || assetId.empty() || !hasSourceBounds ||
+      report.issueCount >= report.issues.size()) {
+    return;
+  }
+  const cr::CreativeCatalogEntry* entry = findCatalogAsset(catalog, assetId);
+  const bool missing = entry == nullptr;
+  const bool stale = !missing &&
+                     (!entry->hotbarEntry.hasAssetBounds ||
+                      !cr::creativeBoundsExactlyEqual(
+                          sourceBounds,
+                          entry->hotbarEntry.assetSourceBounds));
+  if (!missing && !stale) {
+    return;
+  }
+
+  CreativeEditorWorldLayoutDiagnostic& issue =
+      report.issues[report.issueCount++];
+  issue.severity = CreativeEditorWorldLayoutDiagnosticSeverity::Warning;
+  issue.status = cr::CreativeWorldLayoutStatus::Ready;
+  issue.table = table;
+  issue.index = index;
+  if (missing) {
+    issue.message = std::string(name) +
+                    (table == cr::CreativeWorldLayoutTable::Opening
+                         ? " asset is unavailable; using a procedural preview"
+                         : " asset is unavailable in the current catalog");
+    issue.reasonCode =
+        table == cr::CreativeWorldLayoutTable::Opening
+            ? "creative_world_layout_opening_asset_missing"
+            : "creative_world_layout_object_asset_missing";
+    return;
+  }
+  issue.message =
+      std::string(name) + " asset dimensions differ from the current catalog";
+  issue.reasonCode =
+      table == cr::CreativeWorldLayoutTable::Opening
+          ? "creative_world_layout_opening_asset_bounds_stale"
+          : "creative_world_layout_object_asset_bounds_stale";
 }
 
 std::string diagnosticSubject(const cr::CreativeWorldLayoutReceipt& receipt) {
@@ -120,20 +191,21 @@ buildCreativeEditorWorldLayoutDiagnosticReport(
        report.issueCount < report.issues.size();
        ++index) {
     const cr::CreativeWorldLayoutOpening& opening = layout.openings[index];
-    if (!opening.includeInsert || !opening.hasInsertAssetSourceBounds ||
-        opening.insertAssetId.empty() ||
-        catalogContainsAsset(*assetCatalog, opening.insertAssetId)) {
-      continue;
-    }
-    CreativeEditorWorldLayoutDiagnostic& issue =
-        report.issues[report.issueCount++];
-    issue.severity = CreativeEditorWorldLayoutDiagnosticSeverity::Warning;
-    issue.status = cr::CreativeWorldLayoutStatus::Ready;
-    issue.table = cr::CreativeWorldLayoutTable::Opening;
-    issue.index = index;
-    issue.message = opening.name +
-                    " asset is unavailable; using a procedural preview";
-    issue.reasonCode = "creative_world_layout_opening_asset_missing";
+    appendAssetSourceDiagnostic(
+        report, *assetCatalog, cr::CreativeWorldLayoutTable::Opening,
+        index, opening.name, opening.insertAssetId,
+        opening.hasInsertAssetSourceBounds,
+        opening.insertAssetSourceBoundsMeters, opening.includeInsert);
+  }
+  for (std::size_t index = 0U;
+       index < layout.objects.size() &&
+       report.issueCount < report.issues.size();
+       ++index) {
+    const cr::CreativeWorldLayoutObject& object = layout.objects[index];
+    appendAssetSourceDiagnostic(
+        report, *assetCatalog, cr::CreativeWorldLayoutTable::Object,
+        index, object.name, object.assetId, object.hasAssetSourceBounds,
+        object.assetSourceBoundsMeters, true);
   }
   return report;
 }

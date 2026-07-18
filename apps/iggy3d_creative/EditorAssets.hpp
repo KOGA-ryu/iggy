@@ -11,6 +11,8 @@
 #include "app/iggy3d/creative/mutation/Mutation.hpp"
 #include "content/assets/StaticMeshAsset.hpp"
 
+#include "EditorWorldLayout.hpp"
+
 namespace iggy3d {
 
 class VulkanBackend;
@@ -44,6 +46,13 @@ struct CreativeAssetBoundsRefreshPlan {
   std::size_t customBoundsSkippedCount = 0;
 };
 
+struct CreativeWorldLayoutAssetBoundsRefreshPlan {
+  std::vector<CreativeEditorWorldLayoutAssetBoundsUpdate> updates;
+  std::size_t inspectedSourceCount = 0;
+  std::size_t missingAssetCount = 0;
+  std::size_t customBoundsSkippedCount = 0;
+};
+
 struct CreativeEditorAssetReloadRequest {
   iggy3d::VulkanBackend& backend;
   iggy3d::creative::CreativeAppState& appState;
@@ -63,6 +72,9 @@ struct CreativeEditorAssetReloadReceipt {
   std::size_t refreshedHotbarSlotCount = 0;
   std::size_t refreshedObjectBoundsCount = 0;
   std::size_t customBoundsSkippedCount = 0;
+  std::size_t refreshedWorldLayoutAssetBoundsCount = 0;
+  std::size_t customWorldLayoutBoundsSkippedCount = 0;
+  std::size_t missingWorldLayoutAssetCount = 0;
   std::string reasonCode = "creative_asset_reload_not_requested";
 };
 
@@ -80,6 +92,12 @@ void appendDeletedCreativeAssetFailures(
 
 [[nodiscard]] CreativeAssetBoundsRefreshPlan planCreativeAssetBoundsRefresh(
     const iggy3d::creative::CreativeDocument& document,
+    const iggy3d::StaticMeshAssetCatalog& previousCatalog,
+    const iggy3d::StaticMeshAssetCatalog& nextCatalog);
+
+[[nodiscard]] CreativeWorldLayoutAssetBoundsRefreshPlan
+planCreativeWorldLayoutAssetBoundsRefresh(
+    const iggy3d::creative::CreativeWorldLayout& layout,
     const iggy3d::StaticMeshAssetCatalog& previousCatalog,
     const iggy3d::StaticMeshAssetCatalog& nextCatalog);
 

@@ -2526,6 +2526,91 @@ applyCreativeEditorWorldLayoutOpeningInsert(
 }
 
 CreativeEditorWorldLayoutEditReceipt
+applyCreativeEditorWorldLayoutAssetBoundsUpdates(
+    CreativeEditorWorldLayoutState& state,
+    std::span<const CreativeEditorWorldLayoutAssetBoundsUpdate> updates) {
+  if (updates.empty()) {
+    return {true, false,
+            "creative_editor_world_layout_asset_bounds_no_change"};
+  }
+
+  cr::CreativeWorldLayout candidate = state.source;
+  bool changed = false;
+  for (std::size_t updateIndex = 0U; updateIndex < updates.size();
+       ++updateIndex) {
+    const CreativeEditorWorldLayoutAssetBoundsUpdate& update =
+        updates[updateIndex];
+    const cr::CreativeBoundsMetrics bounds =
+        cr::measureCreativeBounds(update.sourceBoundsMeters);
+    if (update.target >= CreativeEditorWorldLayoutAssetBoundsTarget::Count ||
+        update.assetId.empty() || !bounds.valid ||
+        !cr::isPositiveCreativeVec3(bounds.size)) {
+      state.statusMessage = "asset bounds refresh request is invalid";
+      return {false, false,
+              "creative_editor_world_layout_asset_bounds_update_invalid"};
+    }
+    for (std::size_t prior = 0U; prior < updateIndex; ++prior) {
+      if (updates[prior].target == update.target &&
+          updates[prior].index == update.index) {
+        state.statusMessage = "asset bounds refresh target is duplicated";
+        return {
+            false, false,
+            "creative_editor_world_layout_asset_bounds_update_duplicate"};
+      }
+    }
+
+    cr::CreativeBounds* currentBounds = nullptr;
+    if (update.target ==
+        CreativeEditorWorldLayoutAssetBoundsTarget::Object) {
+      if (update.index >= candidate.objects.size()) {
+        state.statusMessage = "asset bounds refresh target is stale";
+        return {false, false,
+                "creative_editor_world_layout_asset_bounds_index_invalid"};
+      }
+      cr::CreativeWorldLayoutObject& object = candidate.objects[update.index];
+      if (object.assetId != update.assetId ||
+          !object.hasAssetSourceBounds) {
+        state.statusMessage = "asset bounds refresh identity changed";
+        return {
+            false, false,
+            "creative_editor_world_layout_asset_bounds_identity_mismatch"};
+      }
+      currentBounds = &object.assetSourceBoundsMeters;
+    } else {
+      if (update.index >= candidate.openings.size()) {
+        state.statusMessage = "asset bounds refresh target is stale";
+        return {false, false,
+                "creative_editor_world_layout_asset_bounds_index_invalid"};
+      }
+      cr::CreativeWorldLayoutOpening& opening =
+          candidate.openings[update.index];
+      if (opening.insertAssetId != update.assetId ||
+          !opening.hasInsertAssetSourceBounds) {
+        state.statusMessage = "asset bounds refresh identity changed";
+        return {
+            false, false,
+            "creative_editor_world_layout_asset_bounds_identity_mismatch"};
+      }
+      currentBounds = &opening.insertAssetSourceBoundsMeters;
+    }
+    if (!cr::creativeBoundsExactlyEqual(*currentBounds,
+                                        update.sourceBoundsMeters)) {
+      *currentBounds = update.sourceBoundsMeters;
+      changed = true;
+    }
+  }
+
+  if (!changed) {
+    return {true, false,
+            "creative_editor_world_layout_asset_bounds_no_change"};
+  }
+  state.source = std::move(candidate);
+  detail::noteWorldLayoutSourceChange(state, "asset source bounds refreshed");
+  return {true, true,
+          "creative_editor_world_layout_asset_bounds_refreshed"};
+}
+
+CreativeEditorWorldLayoutEditReceipt
 applyCreativeEditorWorldLayoutOpeningManipulation(
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutOpeningManipulationPhase phase,

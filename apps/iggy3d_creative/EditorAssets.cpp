@@ -234,6 +234,60 @@ CreativeAssetBoundsRefreshPlan planCreativeAssetBoundsRefresh(
   return plan;
 }
 
+CreativeWorldLayoutAssetBoundsRefreshPlan
+planCreativeWorldLayoutAssetBoundsRefresh(
+    const cr::CreativeWorldLayout& layout,
+    const iggy3d::StaticMeshAssetCatalog& previousCatalog,
+    const iggy3d::StaticMeshAssetCatalog& nextCatalog) {
+  CreativeWorldLayoutAssetBoundsRefreshPlan plan;
+  const auto consider = [&](CreativeEditorWorldLayoutAssetBoundsTarget target,
+                            std::size_t index, std::string_view assetId,
+                            bool hasSourceBounds,
+                            cr::CreativeBounds sourceBounds) {
+    if (assetId.empty()) {
+      return;
+    }
+    ++plan.inspectedSourceCount;
+    const iggy3d::StaticMeshAssetCatalogEntry* previous =
+        previousCatalog.find(assetId);
+    const iggy3d::StaticMeshAssetCatalogEntry* next =
+        nextCatalog.find(assetId);
+    if (previous == nullptr || next == nullptr) {
+      ++plan.missingAssetCount;
+      return;
+    }
+    const cr::CreativeBounds previousBounds =
+        creativeAssetBoundsAtPivot(*previous, {});
+    if (!hasSourceBounds ||
+        !cr::creativeBoundsExactlyEqual(sourceBounds, previousBounds)) {
+      ++plan.customBoundsSkippedCount;
+      return;
+    }
+    const cr::CreativeBounds nextBounds =
+        creativeAssetBoundsAtPivot(*next, {});
+    if (cr::creativeBoundsExactlyEqual(sourceBounds, nextBounds)) {
+      return;
+    }
+    plan.updates.push_back(
+        {target, index, std::string(assetId), nextBounds});
+  };
+
+  for (std::size_t index = 0U; index < layout.objects.size(); ++index) {
+    const cr::CreativeWorldLayoutObject& object = layout.objects[index];
+    consider(CreativeEditorWorldLayoutAssetBoundsTarget::Object, index,
+             object.assetId, object.hasAssetSourceBounds,
+             object.assetSourceBoundsMeters);
+  }
+  for (std::size_t index = 0U; index < layout.openings.size(); ++index) {
+    const cr::CreativeWorldLayoutOpening& opening = layout.openings[index];
+    consider(CreativeEditorWorldLayoutAssetBoundsTarget::OpeningInsert, index,
+             opening.insertAssetId,
+             opening.hasInsertAssetSourceBounds,
+             opening.insertAssetSourceBoundsMeters);
+  }
+  return plan;
+}
+
 std::size_t refreshCreativeHotbarAssetFacts(
     cr::CreativeHotbarState& hotbar,
     std::span<const cr::CreativeCatalogAsset> assets) {
@@ -298,6 +352,10 @@ CreativeEditorAssetReloadReceipt reloadCreativeEditorAssets(
   const CreativeAssetBoundsRefreshPlan boundsPlan =
       planCreativeAssetBoundsRefresh(request.appState.facade.document(),
                                      request.liveCatalog, discovery.catalog);
+  const CreativeWorldLayoutAssetBoundsRefreshPlan worldLayoutBoundsPlan =
+      planCreativeWorldLayoutAssetBoundsRefresh(
+          request.editor.worldLayout.source, request.liveCatalog,
+          discovery.catalog);
   const std::string selectedAssetId(
       cr::creativeHotbarAssetId(cr::selectedCreativeHotbarEntry(
           request.editor.interaction.hotbar)));
@@ -315,6 +373,24 @@ CreativeEditorAssetReloadReceipt reloadCreativeEditorAssets(
   }
   receipt.rendererReloaded = true;
 
+  const CreativeEditorWorldLayoutEditReceipt worldLayoutRefresh =
+      applyCreativeEditorWorldLayoutAssetBoundsUpdates(
+          request.editor.worldLayout, worldLayoutBoundsPlan.updates);
+  if (!worldLayoutRefresh.accepted) {
+    receipt.reasonCode = worldLayoutRefresh.reasonCode;
+    request.editor.catalog.statusLabel =
+        "ASSET RELOAD FAILED: " + receipt.reasonCode;
+    invalidateCreativeEditorSceneCache(request.sceneCache);
+    receipt.sceneInvalidated = true;
+    return receipt;
+  }
+  receipt.refreshedWorldLayoutAssetBoundsCount =
+      worldLayoutRefresh.changed ? worldLayoutBoundsPlan.updates.size() : 0U;
+  receipt.customWorldLayoutBoundsSkippedCount =
+      worldLayoutBoundsPlan.customBoundsSkippedCount;
+  receipt.missingWorldLayoutAssetCount =
+      worldLayoutBoundsPlan.missingAssetCount;
+
   receipt.refreshedObjectBoundsCount =
       applyAssetBoundsRefresh(request.appState, boundsPlan);
   receipt.customBoundsSkippedCount = boundsPlan.customBoundsSkippedCount;
@@ -328,19 +404,27 @@ CreativeEditorAssetReloadReceipt reloadCreativeEditorAssets(
   receipt.accepted = true;
   receipt.reasonCode = "creative_asset_reload_applied";
 
-  char status[160];
+  char status[192];
   std::snprintf(status, sizeof(status),
-                "ASSETS RELOADED: %zu READY | %zu ERRORS | %zu OBJECTS",
+                "ASSETS RELOADED: %zu READY | %zu ERRORS | %zu OBJECTS | %zu LAYOUT",
                 receipt.readyAssetCount, receipt.failedAssetCount,
-                receipt.refreshedObjectBoundsCount);
+                receipt.refreshedObjectBoundsCount,
+                receipt.refreshedWorldLayoutAssetBoundsCount);
   request.editor.catalog.statusLabel = status;
   SDL_Log("iggy3d_creative: asset reload ready=%llu failed=%llu hotbar=%llu "
-          "bounds=%llu customBoundsSkipped=%llu",
+          "bounds=%llu customBoundsSkipped=%llu layoutBounds=%llu "
+          "layoutCustomSkipped=%llu layoutMissing=%llu",
           static_cast<unsigned long long>(receipt.readyAssetCount),
           static_cast<unsigned long long>(receipt.failedAssetCount),
           static_cast<unsigned long long>(receipt.refreshedHotbarSlotCount),
           static_cast<unsigned long long>(receipt.refreshedObjectBoundsCount),
-          static_cast<unsigned long long>(receipt.customBoundsSkippedCount));
+          static_cast<unsigned long long>(receipt.customBoundsSkippedCount),
+          static_cast<unsigned long long>(
+              receipt.refreshedWorldLayoutAssetBoundsCount),
+          static_cast<unsigned long long>(
+              receipt.customWorldLayoutBoundsSkippedCount),
+          static_cast<unsigned long long>(
+              receipt.missingWorldLayoutAssetCount));
   return receipt;
 }
 
