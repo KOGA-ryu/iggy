@@ -94,6 +94,47 @@ std::string composePlaytestExitStatusMessage(
   return message;
 }
 
+std::string formatPlaytestMonitorRow(const PlaytestEvent& event) {
+  const auto appendFieldsExcept = [&event](std::string& row,
+                                           std::string_view skipKey) {
+    for (const auto& [key, value] : event.fields) {
+      if (key == skipKey) {
+        continue;
+      }
+      row.push_back(' ');
+      row += key;
+      row.push_back('=');
+      row += value;
+    }
+  };
+  if (event.kind == kPlaytestEventKindRuntimeEvent) {
+    std::string row{event.field("kind", "runtime_event")};
+    appendFieldsExcept(row, "kind");
+    return row;
+  }
+  if (event.kind == kPlaytestEventKindHeartbeat) {
+    std::string row = "heartbeat tick=" + std::string(event.field("tick", "?"));
+    row += " (";
+    row += event.field("state", "running");
+    row += ")";
+    return row;
+  }
+  if (event.kind == kPlaytestEventKindSessionStarted) {
+    std::string row = "session started";
+    appendFieldsExcept(row, "");
+    return row;
+  }
+  if (event.kind == kPlaytestEventKindSessionEnded) {
+    std::string row = "session ended: ";
+    row += event.field("reason", "unknown");
+    row += " (";
+    row += event.field("frames", "?");
+    row += " frames)";
+    return row;
+  }
+  return formatPlaytestEventLine(event);  // unknown kind: raw wire line
+}
+
 PlaytestProcessControl::~PlaytestProcessControl() = default;
 
 PlaytestProcessOwner::~PlaytestProcessOwner() {

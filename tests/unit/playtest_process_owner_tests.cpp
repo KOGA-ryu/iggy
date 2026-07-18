@@ -87,7 +87,12 @@ bool spawnPollAndReapCleanExit(const std::string& i3dpPath,
   bool sawStarted = false;
   bool sawHeartbeat = false;
   bool startedFirst = false;
+  bool sawEnrichedRuntimeEvent = false;
   for (const app::PlaytestEvent& event : monitor.events) {
+    if (event.kind == app::kPlaytestEventKindRuntimeEvent &&
+        !event.field("actor").empty() && !event.field("sequence").empty()) {
+      sawEnrichedRuntimeEvent = true;  // guard patrol 'moved' carries ids
+    }
     if (event.kind == app::kPlaytestEventKindSessionStarted) {
       sawStarted = true;
       startedFirst = &event == &monitor.events.front() ||
@@ -111,6 +116,8 @@ bool spawnPollAndReapCleanExit(const std::string& i3dpPath,
          expect(startedFirst || ringEvicted, "session_started arrived first") &&
          expect(sawHeartbeat, "heartbeat received") &&
          expect(heartbeatStateOk, "wall-clock heartbeat carries state=running") &&
+         expect(sawEnrichedRuntimeEvent,
+                "an enriched runtime_event arrived with raw ids intact") &&
          expect(!monitor.events.empty() &&
                     monitor.events.back().kind ==
                         app::kPlaytestEventKindSessionEnded &&

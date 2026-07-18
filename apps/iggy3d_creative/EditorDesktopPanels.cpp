@@ -269,7 +269,7 @@ void appendPlayMonitorTab(const PlaytestMonitorState* monitor) {
   ImGui::Separator();
   for (auto it = monitor->events.rbegin(); it != monitor->events.rend();
        ++it) {
-    ImGui::TextUnformatted(formatPlaytestEventLine(*it).c_str());
+    ImGui::TextUnformatted(formatPlaytestMonitorRow(*it).c_str());
   }
 }
 
