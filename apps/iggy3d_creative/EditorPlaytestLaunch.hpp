@@ -19,6 +19,31 @@ namespace iggy3d_creative_app {
 inline constexpr std::string_view kPlaytestSnapshotDirName = "playtest";
 inline constexpr std::string_view kPlaytestSnapshotSaveId = "snapshot";
 
+// Windowed-size bounds for --resolution (validated on both sides).
+inline constexpr std::uint32_t kPlaytestMinWindowWidth = 640U;
+inline constexpr std::uint32_t kPlaytestMinWindowHeight = 360U;
+inline constexpr std::uint32_t kPlaytestMaxWindowDimension = 16384U;
+
+struct PlaytestResolution {
+  bool valid = false;
+  std::uint32_t width = 0U;
+  std::uint32_t height = 0U;
+};
+
+// Pure "WxH" parser with bounds validation (640x360 .. 16384x16384).
+[[nodiscard]] PlaytestResolution parsePlaytestResolution(
+    std::string_view argument);
+
+// The optional [playtest] section of the control profile file. `present`
+// distinguishes "section existed" from defaults; absent -> no flags ->
+// behavior byte-identical to before this slice.
+struct PlaytestWindowPreferences {
+  bool present = false;
+  bool fullscreen = false;
+  std::uint32_t width = 0U;   // 0 = unset
+  std::uint32_t height = 0U;
+};
+
 struct PlaytestLaunchPlan {
   bool valid = false;
   std::string reasonCode = "playtest_launch_plan_not_built";
@@ -31,7 +56,8 @@ struct PlaytestLaunchPlan {
 [[nodiscard]] PlaytestLaunchPlan buildPlaytestLaunchPlan(
     const std::filesystem::path& basePath,
     const std::filesystem::path& saveRoot,
-    const std::string& saveId);
+    const std::string& saveId,
+    const PlaytestWindowPreferences* windowPreferences = nullptr);
 
 struct PlaytestSnapshotResult {
   bool ok = false;

@@ -77,13 +77,16 @@ void writeProtocolEvent(const app::PlaytestEvent& event) {
 int usage() {
   std::fprintf(stderr,
                "usage: i3dp --save-root <dir> --load <save-id> [--frames N] "
-               "[--offscreen]\n"
+               "[--offscreen] [--fullscreen] [--resolution WxH]\n"
                "  --save-root  directory holding <save-id>.iggy3d.save "
                "(REQUIRED)\n"
                "  --load       save id to play (REQUIRED)\n"
                "  --frames     auto-exit after N frames (headless smoke)\n"
                "  --offscreen  SDL offscreen video driver (true headless: no "
-               "display needed)\n");
+               "display needed)\n"
+               "  --fullscreen borderless desktop fullscreen (wins over "
+               "--resolution)\n"
+               "  --resolution WxH windowed size, 640x360..16384x16384\n");
   return 2;
 }
 
@@ -94,6 +97,8 @@ int main(int argc, char** argv) {
   std::string loadSaveId;
   std::uint64_t maxFrames = 0U;
   bool offscreen = false;
+  bool fullscreenRequested = false;
+  app::PlaytestResolution resolution;
   for (int i = 1; i < argc; ++i) {
     const std::string arg = argv[i];
     if (arg == "--save-root" && i + 1 < argc) {
@@ -104,6 +109,18 @@ int main(int argc, char** argv) {
       maxFrames = std::strtoull(argv[++i], nullptr, 10);
     } else if (arg == "--offscreen") {
       offscreen = true;
+    } else if (arg == "--fullscreen") {
+      fullscreenRequested = true;
+    } else if (arg == "--resolution" && i + 1 < argc) {
+      resolution = app::parsePlaytestResolution(argv[++i]);
+      if (!resolution.valid) {
+        std::fprintf(stderr, "i3dp: invalid --resolution (WxH, %ux%u..%ux%u)\n",
+                     app::kPlaytestMinWindowWidth,
+                     app::kPlaytestMinWindowHeight,
+                     app::kPlaytestMaxWindowDimension,
+                     app::kPlaytestMaxWindowDimension);
+        return usage();
+      }
     } else {
       std::fprintf(stderr, "i3dp: unknown argument '%s'\n", arg.c_str());
       return usage();
@@ -133,8 +150,12 @@ int main(int argc, char** argv) {
 
   iggy3d::SdlWindowCreateInfo createInfo;
   createInfo.title = "iggy3d playtest";
-  createInfo.width = 1280;
-  createInfo.height = 720;
+  // Decided precedence: fullscreen wins; a resolution then only sets the
+  // windowed size the fullscreen would restore to.
+  createInfo.width = resolution.valid ? static_cast<int>(resolution.width)
+                                      : 1280;
+  createInfo.height = resolution.valid ? static_cast<int>(resolution.height)
+                                       : 720;
   createInfo.resizable = true;
   createInfo.highDpi = true;
   createInfo.vulkan = true;
@@ -147,6 +168,12 @@ int main(int argc, char** argv) {
   // window is shown -- the editor deliberately holds nothing that fights
   // it. If the OS denies (Wayland focus-stealing prevention), the child
   // starts suspended and the heartbeat state already tells that story.
+  bool bootFullscreen = false;
+  if (fullscreenRequested) {
+    // Borderless desktop only; the offscreen driver ignores the request and
+    // this reports the ACTUAL resulting state.
+    bootFullscreen = window.applyBorderlessFullscreen();
+  }
   const bool bootFocused = window.requestRaiseAndFocus();
   window.setRelativeMouseMode(true);
 
@@ -209,6 +236,10 @@ int main(int argc, char** argv) {
         {"rev", std::to_string(appState.facade.document().revision())},
         {"room", "creative_editor_play"},
         {"focused", bootFocused ? "1" : "0"},
+        {"window",
+         std::to_string(window.drawableExtent().width) + "x" +
+             std::to_string(window.drawableExtent().height)},
+        {"fullscreen", bootFullscreen ? "1" : "0"},
     };
     writeProtocolEvent(started);
   }

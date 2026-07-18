@@ -333,7 +333,8 @@ int main(int argc, char** argv) {
   const std::filesystem::path toolWheelPath =
       saveRoot / "creative_tool_wheel_v1.cfg";
   static_cast<void>(iggy3d_creative_app::loadCreativeEditorControlProfile(
-      editor.controlProfile, controlsPath));
+      editor.controlProfile, controlsPath,
+      &editor.playtestWindowPreferences));
   static_cast<void>(iggy3d_creative_app::loadCreativeEditorToolWheel(
       editor.catalog.toolWheel, editor.catalog.model, toolWheelPath));
   const creative::CreativeSpatialProjectionRequest& wireProjReq =

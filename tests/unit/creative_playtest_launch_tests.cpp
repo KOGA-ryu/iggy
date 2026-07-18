@@ -1,6 +1,7 @@
 // Playtest launch proof (C3): the pure plan builder, the snapshot slot, and
 // the validate->snapshot->plan orchestration -- all headless, no spawn.
 
+#include "EditorControls.hpp"
 #include "EditorPlaytestLaunch.hpp"
 
 #include <cstdio>
@@ -189,6 +190,121 @@ bool validDocumentBuildsSnapshotAndPlan() {
                 "plan points i3dp at the snapshot");
 }
 
+// ---- fullscreen/resolution slice ----------------------------------------
+
+bool resolutionParsing() {
+  return expect(app::parsePlaytestResolution("1920x1080").valid &&
+                    app::parsePlaytestResolution("1920x1080").width == 1920U,
+                "well-formed WxH parses") &&
+         expect(app::parsePlaytestResolution("640x360").valid,
+                "lower bound accepted") &&
+         expect(app::parsePlaytestResolution("16384x16384").valid,
+                "upper bound accepted") &&
+         expect(!app::parsePlaytestResolution("639x360").valid,
+                "below minimum width refused") &&
+         expect(!app::parsePlaytestResolution("640x359").valid,
+                "below minimum height refused") &&
+         expect(!app::parsePlaytestResolution("16385x1080").valid,
+                "above maximum refused") &&
+         expect(!app::parsePlaytestResolution("banana").valid &&
+                    !app::parsePlaytestResolution("1920x").valid &&
+                    !app::parsePlaytestResolution("x1080").valid &&
+                    !app::parsePlaytestResolution("1920X1080").valid,
+                "malformed forms refused");
+}
+
+bool planWindowPassThrough() {
+  app::PlaytestWindowPreferences none;
+  const app::PlaytestLaunchPlan bare = app::buildPlaytestLaunchPlan(
+      "/bin", "/root/playtest", "snapshot", &none);
+  app::PlaytestWindowPreferences windowed;
+  windowed.present = true;
+  windowed.width = 1920U;
+  windowed.height = 1080U;
+  const app::PlaytestLaunchPlan sized = app::buildPlaytestLaunchPlan(
+      "/bin", "/root/playtest", "snapshot", &windowed);
+  app::PlaytestWindowPreferences both = windowed;
+  both.fullscreen = true;
+  const app::PlaytestLaunchPlan fullscreen = app::buildPlaytestLaunchPlan(
+      "/bin", "/root/playtest", "snapshot", &both);
+  return expect(bare.argv.size() == 5U,
+                "absent section: argv byte-identical to before") &&
+         expect(sized.argv.size() == 7U &&
+                    sized.argv[5] == "--resolution" &&
+                    sized.argv[6] == "1920x1080",
+                "width/height appends --resolution") &&
+         expect(fullscreen.argv.size() == 6U &&
+                    fullscreen.argv[5] == "--fullscreen",
+                "fullscreen wins when both are configured");
+}
+
+bool profileSectionAdditiveCompat() {
+  namespace cr = iggy3d::creative;
+  const std::filesystem::path root = scratchRoot();
+  const std::filesystem::path path = root / "creative_controls_v1.cfg";
+  const cr::CreativeControlProfile defaults =
+      cr::makeDefaultCreativeControlProfile();
+  // 1. Legacy save (no section) loads unchanged -- and reports no section.
+  if (!expect(app::saveCreativeEditorControlProfile(defaults, path).status ==
+                  app::CreativeEditorControlPersistenceStatus::Saved,
+              "legacy save writes")) {
+    return false;
+  }
+  cr::CreativeControlProfile loaded;
+  app::PlaytestWindowPreferences preferences;
+  if (!expect(app::loadCreativeEditorControlProfile(loaded, path,
+                                                    &preferences).status ==
+                      app::CreativeEditorControlPersistenceStatus::Loaded &&
+                  !preferences.present,
+              "existing profiles parse unchanged, section absent")) {
+    return false;
+  }
+  // 2. Ace's hand edit: append the section; both fields load.
+  {
+    std::ofstream append(path, std::ios::app);
+    append << "[playtest]\nfullscreen = true\nwidth = 1920\n"
+              "height = 1080\n";
+  }
+  app::PlaytestWindowPreferences edited;
+  if (!expect(app::loadCreativeEditorControlProfile(loaded, path, &edited)
+                      .status ==
+                      app::CreativeEditorControlPersistenceStatus::Loaded &&
+                  edited.present && edited.fullscreen &&
+                  edited.width == 1920U && edited.height == 1080U,
+              "hand-added [playtest] section loads")) {
+    return false;
+  }
+  // 3. A control save preserves the section (Ace's edit survives).
+  if (!expect(app::saveCreativeEditorControlProfile(defaults, path, &edited)
+                      .status ==
+                  app::CreativeEditorControlPersistenceStatus::Saved,
+              "save with preferences writes")) {
+    return false;
+  }
+  app::PlaytestWindowPreferences roundTripped;
+  const bool reload =
+      app::loadCreativeEditorControlProfile(loaded, path, &roundTripped)
+              .status ==
+          app::CreativeEditorControlPersistenceStatus::Loaded &&
+      roundTripped.present && roundTripped.fullscreen &&
+      roundTripped.width == 1920U && roundTripped.height == 1080U;
+  // 4. Partial section (fullscreen only) is valid.
+  {
+    std::ofstream rewrite(path, std::ios::trunc);
+    std::string text;
+    static_cast<void>(
+        app::serializeCreativeEditorControlProfile(defaults, text));
+    rewrite << text << "[playtest]\nfullscreen = false\n";
+  }
+  app::PlaytestWindowPreferences partial;
+  const bool partialOk =
+      app::loadCreativeEditorControlProfile(loaded, path, &partial).status ==
+          app::CreativeEditorControlPersistenceStatus::Loaded &&
+      partial.present && !partial.fullscreen && partial.width == 0U;
+  return expect(reload, "control save round-trips the section") &&
+         expect(partialOk, "partial section (fullscreen only) loads");
+}
+
 }  // namespace
 
 int main() {
@@ -197,7 +313,9 @@ int main() {
                   snapshotWritesOverwritesAndRoundTrips() &&
                   editorScansDoNotSeeSnapshot() &&
                   invalidDocumentIsRefusedWithoutSideEffects() &&
-                  validDocumentBuildsSnapshotAndPlan();
+                  validDocumentBuildsSnapshotAndPlan() &&
+                  resolutionParsing() && planWindowPassThrough() &&
+                  profileSectionAdditiveCompat();
   if (ok) {
     std::cout << "creative_playtest_launch_tests passed\n";
   }
