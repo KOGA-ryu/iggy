@@ -94,11 +94,31 @@ std::string composePlaytestExitStatusMessage(
   return message;
 }
 
-std::string formatPlaytestMonitorRow(const PlaytestEvent& event) {
+std::string formatPlaytestMonitorRow(const PlaytestEvent& event,
+                                     const PlaytestEntityNameMap* names) {
+  const auto resolveId = [names](std::string_view raw) -> std::string {
+    if (names != nullptr && !raw.empty()) {
+      char* end = nullptr;
+      const std::uint64_t id = SDL_strtoull(std::string(raw).c_str(), &end, 10);
+      const auto found = names->find(id);
+      if (found != names->end()) {
+        return found->second;
+      }
+    }
+    return {};
+  };
   const auto appendFieldsExcept = [&event](std::string& row,
-                                           std::string_view skipKey) {
+                                           std::initializer_list<std::string_view>
+                                               skipKeys) {
     for (const auto& [key, value] : event.fields) {
-      if (key == skipKey) {
+      bool skip = false;
+      for (const std::string_view skipKey : skipKeys) {
+        if (key == skipKey) {
+          skip = true;
+          break;
+        }
+      }
+      if (skip) {
         continue;
       }
       row.push_back(' ');
@@ -109,7 +129,18 @@ std::string formatPlaytestMonitorRow(const PlaytestEvent& event) {
   };
   if (event.kind == kPlaytestEventKindRuntimeEvent) {
     std::string row{event.field("kind", "runtime_event")};
-    appendFieldsExcept(row, "kind");
+    const std::string actorLabel = resolveId(event.field("actor"));
+    const std::string targetLabel = resolveId(event.field("target"));
+    if (!actorLabel.empty()) {
+      row += " " + actorLabel;
+    }
+    if (!targetLabel.empty()) {
+      row += " -> " + targetLabel;
+    }
+    // Resolved ids drop their raw k=v; unresolved ones stay raw.
+    appendFieldsExcept(
+        row, {"kind", actorLabel.empty() ? std::string_view{} : "actor",
+              targetLabel.empty() ? std::string_view{} : "target"});
     return row;
   }
   if (event.kind == kPlaytestEventKindHeartbeat) {
@@ -121,7 +152,7 @@ std::string formatPlaytestMonitorRow(const PlaytestEvent& event) {
   }
   if (event.kind == kPlaytestEventKindSessionStarted) {
     std::string row = "session started";
-    appendFieldsExcept(row, "");
+    appendFieldsExcept(row, {});
     return row;
   }
   if (event.kind == kPlaytestEventKindSessionEnded) {
@@ -358,6 +389,11 @@ PlaytestProcessOwner::PollResult PlaytestProcessOwner::poll() {
   result.stallAgeMs = monitor_.stallAgeMs;
   result.stallRecovered = wasStalled && !monitor_.stalled;
   return result;
+}
+
+void PlaytestProcessOwner::setSnapshotEntityNames(
+    PlaytestEntityNameMap names) {
+  monitor_.entityNames = std::move(names);
 }
 
 void PlaytestProcessOwner::shutdown() {

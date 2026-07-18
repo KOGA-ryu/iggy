@@ -15,6 +15,7 @@
 #include "EditorEdits.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorPlaytestLaunch.hpp"
+#include "EditorPlaytestNames.hpp"
 #include "EditorPlaytestProcess.hpp"
 #include "app/iggy3d/creative/play/PlayPreparation.hpp"
 #include "EditorFrame.hpp"
@@ -1510,6 +1511,13 @@ void dispatchOne(const CreativeDesktopCommand& command,
           context.playtestControl != nullptr
               ? context.playtestControl->launch(preparation.plan, spawnReason)
               : spawnPlaytestProcess(preparation.plan, spawnReason);
+      if (spawned && context.playtestControl != nullptr &&
+          validation.payload.has_value()) {
+        // SNAPSHOT-TIME capture: same document state the snapshot was just
+        // written from; replaced on every spawn, never re-resolved live.
+        context.playtestControl->setSnapshotEntityNames(buildPlaytestNameMap(
+            *validation.payload, appState.facade.document()));
+      }
       result.accepted = spawned;
       result.message = spawned ? "playtest launched"
                                : "playtest launch failed: " + spawnReason;
