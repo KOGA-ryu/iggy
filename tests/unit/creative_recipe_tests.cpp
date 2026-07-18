@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/recipes/CreativeRecipe.hpp"
 #include "app/iggy3d/creative/recipes/ObjectLibraryRecipe.hpp"
+#include "app/iggy3d/creative/document/DocumentMutation.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -169,6 +170,66 @@ bool definitionFingerprintPinsSemanticOutputAndRejectsStalePlans() {
                 "stale declared recipe fingerprint fails closed") &&
          expect(cr::fingerprintCreativeRecipePlan(invalid) == 0U,
                 "non-finite recipe semantics cannot be fingerprinted");
+}
+
+bool generatedOutputFingerprintDetectsLaterSemanticRefinement() {
+  cr::CreativeRecipePlan plan = parentedRecipe();
+  plan.objects[0].createRequest.hasBoundsOverride = true;
+  plan.objects[0].createRequest.bounds = {
+      {0.0, 0.0, 0.0}, {4.0, 3.0, 5.0}};
+  plan.objects[1].createRequest.hasBoundsOverride = true;
+  plan.objects[1].createRequest.bounds = {
+      {0.0, -0.1, 0.0}, {4.0, 0.0, 5.0}};
+  plan.definitionFingerprint = cr::fingerprintCreativeRecipePlan(plan);
+  const std::uint64_t rootPlanFingerprint =
+      cr::fingerprintCreativeRecipeObjectPlan(plan, 0U);
+  const std::uint64_t floorPlanFingerprint =
+      cr::fingerprintCreativeRecipeObjectPlan(plan, 1U);
+  const cr::CreativeRecipeMaterializeResult materialized =
+      cr::materializeCreativeRecipe(plan, 1U);
+
+  cr::CreativeDocument document = cr::CreativeDocument::create("Output Fingerprint");
+  static_cast<void>(document.assignId(73U));
+  for (const cr::CreativeDocumentCreateRequest& request :
+       materialized.createRequests) {
+    static_cast<void>(document.createObject(request));
+  }
+  const cr::CreativeObject* root = document.findObject(1U);
+  const cr::CreativeObject* floor = document.findObject(2U);
+  if (root == nullptr || floor == nullptr) {
+    return expect(false, "fingerprint fixture materialized both objects");
+  }
+  const std::uint64_t storedRoot =
+      cr::creativeRecipeObjectOutputFingerprint(*root);
+  const std::uint64_t storedFloor =
+      cr::creativeRecipeObjectOutputFingerprint(*floor);
+  const std::uint64_t currentRoot =
+      cr::fingerprintCreativeRecipeObjectState(*root, {});
+  const std::uint64_t currentFloor =
+      cr::fingerprintCreativeRecipeObjectState(
+          *floor, cr::creativeRecipeObjectStableKey(*root));
+
+  const cr::CreativeDocumentMutationReceipt moved = cr::moveDocumentObject(
+      document, floor->id, {3.0, 2.0, 1.0});
+  const cr::CreativeObject* refinedFloor = document.findObject(2U);
+  const std::uint64_t refinedFingerprint =
+      refinedFloor != nullptr
+          ? cr::fingerprintCreativeRecipeObjectState(
+                *refinedFloor, cr::creativeRecipeObjectStableKey(*root))
+          : 0U;
+
+  return expect(materialized.receipt.accepted &&
+                    rootPlanFingerprint != 0U && floorPlanFingerprint != 0U,
+                "semantic object plans produce nonzero fingerprints") &&
+         expect(storedRoot == rootPlanFingerprint &&
+                    storedFloor == floorPlanFingerprint &&
+                    currentRoot == storedRoot && currentFloor == storedFloor,
+                "fresh materialized state matches its immutable baseline") &&
+         expect(moved.changed && refinedFingerprint != 0U &&
+                    refinedFingerprint != storedFloor &&
+                    cr::creativeRecipeObjectOutputFingerprint(*refinedFloor) ==
+                        storedFloor,
+                "manual mutation changes live state without rewriting baseline");
 }
 
 bool historyApplyIsAtomicAndCreatesOneUndoStep() {
@@ -356,6 +417,7 @@ int main() {
       symbolicParentAndProvenanceMaterializeDeterministically() &&
       invalidKeysParentsAndAllocatorOverflowFailClosed() &&
       definitionFingerprintPinsSemanticOutputAndRejectsStalePlans() &&
+      generatedOutputFingerprintDetectsLaterSemanticRefinement() &&
       historyApplyIsAtomicAndCreatesOneUndoStep() &&
       rejectedAtomicApplyPreservesDocumentAndHistory() &&
       objectLibraryRecipeOwnsBoundedAndPointPlacementParity() &&

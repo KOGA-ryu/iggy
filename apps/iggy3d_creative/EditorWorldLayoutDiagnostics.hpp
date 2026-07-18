@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
 
@@ -55,6 +56,8 @@ struct CreativeEditorWorldLayoutDiagnosticReport {
       issues{};
   std::size_t issueCount = 0U;
   iggy3d::creative::CreativeWorldLayoutReceipt compileReceipt;
+  std::vector<iggy3d::creative::CreativeWorldLayoutRecipeChange>
+      recipeChanges;
 };
 
 // Transient preflight cache. The compiler can materialize a large exact plan,

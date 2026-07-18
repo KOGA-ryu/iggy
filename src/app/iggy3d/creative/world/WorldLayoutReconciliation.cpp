@@ -1,0 +1,383 @@
+#include "app/iggy3d/creative/world/WorldLayoutReconciliation.hpp"
+
+#include <algorithm>
+#include <map>
+#include <span>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
+namespace iggy3d::creative {
+namespace {
+
+constexpr std::string_view kWorldLayoutSourcePrefix =
+    "creative_world_layout_source:";
+constexpr std::string_view kWorldLayoutRoomEdgePrefix =
+    "creative_world_layout_room_edge:";
+
+struct ExistingGroupAnalysis {
+  bool exactMembership = false;
+  bool sameDefinition = false;
+  bool allMatchStoredBaseline = false;
+  bool allMatchDesiredState = false;
+  std::uint64_t refinedObjectCount = 0U;
+  std::uint64_t missingBaselineCount = 0U;
+};
+
+[[nodiscard]] bool hasTag(std::span<const std::string> tags,
+                          std::string_view expected) noexcept {
+  return std::any_of(tags.begin(), tags.end(),
+                     [expected](const std::string& tag) {
+                       return tag == expected;
+                     });
+}
+
+[[nodiscard]] std::string_view parentStableKey(
+    const CreativeDocument& document,
+    const CreativeObject& object) noexcept {
+  if (!object.parentId.has_value()) {
+    return {};
+  }
+  const CreativeObject* parent = document.findObject(*object.parentId);
+  return parent != nullptr ? creativeRecipeObjectStableKey(*parent)
+                           : std::string_view{};
+}
+
+[[nodiscard]] bool matchesStoredBaseline(
+    const CreativeDocument& document,
+    const CreativeObject& object) noexcept {
+  const std::uint64_t baseline =
+      creativeRecipeObjectOutputFingerprint(object);
+  return baseline != 0U &&
+         fingerprintCreativeRecipeObjectState(
+             object, parentStableKey(document, object)) == baseline;
+}
+
+[[nodiscard]] std::size_t desiredObjectIndex(
+    const CreativeObject& object,
+    const CreativeRecipePlan& recipe,
+    const std::vector<bool>& alreadyMatched) noexcept {
+  for (std::size_t index = 0U; index < recipe.objects.size(); ++index) {
+    const CreativeRecipeObjectPlan& candidate = recipe.objects[index];
+    if (!alreadyMatched[index] &&
+        creativeRecipeObjectHasInstanceProvenance(
+            object, recipe.kind, recipe.instanceKey, candidate.role,
+            candidate.stableKey)) {
+      return index;
+    }
+  }
+  return recipe.objects.size();
+}
+
+[[nodiscard]] ExistingGroupAnalysis analyzeExistingGroup(
+    const CreativeDocument& document,
+    std::span<const CreativeObject* const> existing,
+    const CreativeRecipePlan& desired) {
+  ExistingGroupAnalysis analysis;
+  analysis.sameDefinition = !existing.empty() &&
+                            desired.definitionFingerprint != 0U;
+  analysis.allMatchStoredBaseline = !existing.empty();
+  analysis.allMatchDesiredState =
+      existing.size() == desired.objects.size() && !existing.empty();
+
+  std::vector<bool> matchedDesired(desired.objects.size(), false);
+  for (const CreativeObject* objectPointer : existing) {
+    const CreativeObject& object = *objectPointer;
+    const std::uint64_t storedBaseline =
+        creativeRecipeObjectOutputFingerprint(object);
+    const bool matchesBaseline =
+        storedBaseline != 0U && matchesStoredBaseline(document, object);
+    if (storedBaseline == 0U) {
+      ++analysis.missingBaselineCount;
+    }
+    if (!matchesBaseline) {
+      analysis.allMatchStoredBaseline = false;
+      ++analysis.refinedObjectCount;
+    }
+    analysis.sameDefinition =
+        analysis.sameDefinition &&
+        creativeRecipeObjectHasDefinitionFingerprint(
+            object, desired.definitionFingerprint);
+
+    const std::size_t desiredIndex =
+        desiredObjectIndex(object, desired, matchedDesired);
+    if (desiredIndex == desired.objects.size()) {
+      analysis.allMatchDesiredState = false;
+      continue;
+    }
+    matchedDesired[desiredIndex] = true;
+    const std::uint64_t desiredFingerprint =
+        fingerprintCreativeRecipeObjectPlan(desired, desiredIndex);
+    const std::uint64_t currentFingerprint =
+        fingerprintCreativeRecipeObjectState(
+            object, parentStableKey(document, object));
+    if (desiredFingerprint == 0U ||
+        currentFingerprint != desiredFingerprint) {
+      analysis.allMatchDesiredState = false;
+    }
+  }
+
+  analysis.exactMembership =
+      existing.size() == desired.objects.size() &&
+      std::all_of(matchedDesired.begin(), matchedDesired.end(),
+                  [](bool matched) { return matched; });
+  if (!analysis.exactMembership) {
+    const std::uint64_t existingCount = existing.size();
+    const std::uint64_t desiredCount = desired.objects.size();
+    analysis.refinedObjectCount += existingCount > desiredCount
+                                       ? existingCount - desiredCount
+                                       : desiredCount - existingCount;
+  }
+  return analysis;
+}
+
+void appendIds(std::vector<CreativeObjectId>& output,
+               std::span<const CreativeObject* const> objects) {
+  output.reserve(output.size() + objects.size());
+  for (const CreativeObject* object : objects) {
+    output.push_back(object->id);
+  }
+}
+
+CreativeWorldLayoutRecipeChange makeChange(
+    CreativeWorldLayoutRecipeChangeKind kind,
+    CreativeRecipeKind recipeKind,
+    std::string instanceKey,
+    std::size_t desiredRecipeIndex,
+    std::size_t existingObjectCount,
+    std::size_t desiredObjectCount,
+    const ExistingGroupAnalysis& analysis = {}) {
+  return {kind,
+          recipeKind,
+          std::move(instanceKey),
+          desiredRecipeIndex,
+          existingObjectCount,
+          desiredObjectCount,
+          analysis.refinedObjectCount,
+          analysis.missingBaselineCount};
+}
+
+void appendConflictResolution(
+    CreativeWorldLayoutReconciliationResult& result,
+    CreativeWorldLayoutConflictResolution resolution,
+    std::span<const CreativeObject* const> existing,
+    const CreativeRecipePlan* desired,
+    std::size_t desiredIndex,
+    ExistingGroupAnalysis analysis,
+    std::string instanceKey) {
+  ++result.conflictRecipeCount;
+  if (resolution == CreativeWorldLayoutConflictResolution::Block) {
+    result.blocked = true;
+    result.changes.push_back(makeChange(
+        CreativeWorldLayoutRecipeChangeKind::Conflict,
+        desired != nullptr ? desired->kind : CreativeRecipeKind::Unknown,
+        std::move(instanceKey), desiredIndex, existing.size(),
+        desired != nullptr ? desired->objects.size() : 0U, analysis));
+    return;
+  }
+  if (resolution == CreativeWorldLayoutConflictResolution::Regenerate) {
+    appendIds(result.removeObjectIds, existing);
+    if (desired != nullptr) {
+      result.applyRecipeIndices.push_back(desiredIndex);
+      ++result.replaceRecipeCount;
+      result.changes.push_back(makeChange(
+          CreativeWorldLayoutRecipeChangeKind::Replace, desired->kind,
+          std::move(instanceKey), desiredIndex, existing.size(),
+          desired->objects.size(), analysis));
+    } else {
+      ++result.removeRecipeCount;
+      result.changes.push_back(makeChange(
+          CreativeWorldLayoutRecipeChangeKind::Remove,
+          CreativeRecipeKind::Unknown, std::move(instanceKey), desiredIndex,
+          existing.size(), 0U, analysis));
+    }
+    return;
+  }
+
+  appendIds(result.detachObjectIds, existing);
+  ++result.detachRecipeCount;
+  if (desired != nullptr) {
+    result.applyRecipeIndices.push_back(desiredIndex);
+    ++result.createRecipeCount;
+    result.changes.push_back(makeChange(
+        CreativeWorldLayoutRecipeChangeKind::DetachAndReplace, desired->kind,
+        std::move(instanceKey), desiredIndex, existing.size(),
+        desired->objects.size(), analysis));
+  } else {
+    result.changes.push_back(makeChange(
+        CreativeWorldLayoutRecipeChangeKind::Detach,
+        CreativeRecipeKind::Unknown, std::move(instanceKey), desiredIndex,
+        existing.size(), 0U, analysis));
+  }
+}
+
+}  // namespace
+
+std::string_view toString(CreativeWorldLayoutRecipeChangeKind kind) noexcept {
+  switch (kind) {
+    case CreativeWorldLayoutRecipeChangeKind::Add: return "Add";
+    case CreativeWorldLayoutRecipeChangeKind::Keep: return "Keep";
+    case CreativeWorldLayoutRecipeChangeKind::Refined: return "Refined";
+    case CreativeWorldLayoutRecipeChangeKind::Replace: return "Replace";
+    case CreativeWorldLayoutRecipeChangeKind::Remove: return "Remove";
+    case CreativeWorldLayoutRecipeChangeKind::Conflict: return "Conflict";
+    case CreativeWorldLayoutRecipeChangeKind::DetachAndReplace:
+      return "DetachAndReplace";
+    case CreativeWorldLayoutRecipeChangeKind::Detach: return "Detach";
+  }
+  return "Unknown";
+}
+
+std::string_view toString(
+    CreativeWorldLayoutConflictResolution resolution) noexcept {
+  switch (resolution) {
+    case CreativeWorldLayoutConflictResolution::Block: return "Block";
+    case CreativeWorldLayoutConflictResolution::Regenerate:
+      return "Regenerate";
+    case CreativeWorldLayoutConflictResolution::Detach: return "Detach";
+    case CreativeWorldLayoutConflictResolution::Count: break;
+  }
+  return "Unknown";
+}
+
+CreativeWorldLayoutReconciliationResult reconcileCreativeWorldLayoutRecipes(
+    const CreativeWorldLayoutReconciliationRequest& request) {
+  CreativeWorldLayoutReconciliationResult result;
+  if (request.document == nullptr || !request.document->isValid() ||
+      request.layoutTag.empty() ||
+      request.conflictResolution >=
+          CreativeWorldLayoutConflictResolution::Count) {
+    result.reasonCode = "creative_world_layout_reconciliation_invalid";
+    return result;
+  }
+
+  std::map<std::string, std::vector<const CreativeObject*>> existingGroups;
+  std::vector<const CreativeObject*> unidentified;
+  for (const CreativeObject& object : request.document->objects()) {
+    if (!hasTag(object.tags, request.layoutTag)) {
+      continue;
+    }
+    const std::string_view instanceKey =
+        creativeRecipeObjectInstanceKey(object);
+    if (instanceKey.empty()) {
+      unidentified.push_back(&object);
+    } else {
+      existingGroups[std::string(instanceKey)].push_back(&object);
+    }
+  }
+
+  for (std::size_t desiredIndex = 0U;
+       desiredIndex < request.desiredRecipes.size(); ++desiredIndex) {
+    const CreativeRecipePlan& desired = request.desiredRecipes[desiredIndex];
+    auto existing = existingGroups.find(desired.instanceKey);
+    if (existing == existingGroups.end()) {
+      result.applyRecipeIndices.push_back(desiredIndex);
+      ++result.createRecipeCount;
+      result.changes.push_back(makeChange(
+          CreativeWorldLayoutRecipeChangeKind::Add, desired.kind,
+          desired.instanceKey, desiredIndex, 0U, desired.objects.size()));
+      continue;
+    }
+
+    const ExistingGroupAnalysis analysis = analyzeExistingGroup(
+        *request.document, existing->second, desired);
+    if (analysis.sameDefinition) {
+      if (analysis.exactMembership && analysis.allMatchStoredBaseline) {
+        ++result.keepRecipeCount;
+        result.changes.push_back(makeChange(
+            CreativeWorldLayoutRecipeChangeKind::Keep, desired.kind,
+            desired.instanceKey, desiredIndex, existing->second.size(),
+            desired.objects.size(), analysis));
+      } else if (analysis.exactMembership &&
+                 analysis.allMatchDesiredState &&
+                 analysis.missingBaselineCount > 0U) {
+        appendIds(result.removeObjectIds, existing->second);
+        result.applyRecipeIndices.push_back(desiredIndex);
+        ++result.replaceRecipeCount;
+        result.changes.push_back(makeChange(
+            CreativeWorldLayoutRecipeChangeKind::Replace, desired.kind,
+            desired.instanceKey, desiredIndex, existing->second.size(),
+            desired.objects.size(), analysis));
+      } else {
+        ++result.refinedRecipeCount;
+        result.changes.push_back(makeChange(
+            CreativeWorldLayoutRecipeChangeKind::Refined, desired.kind,
+            desired.instanceKey, desiredIndex, existing->second.size(),
+            desired.objects.size(), analysis));
+      }
+    } else if (analysis.allMatchStoredBaseline ||
+               (analysis.exactMembership && analysis.allMatchDesiredState)) {
+      appendIds(result.removeObjectIds, existing->second);
+      result.applyRecipeIndices.push_back(desiredIndex);
+      ++result.replaceRecipeCount;
+      result.changes.push_back(makeChange(
+          CreativeWorldLayoutRecipeChangeKind::Replace, desired.kind,
+          desired.instanceKey, desiredIndex, existing->second.size(),
+          desired.objects.size(), analysis));
+    } else {
+      appendConflictResolution(
+          result, request.conflictResolution, existing->second, &desired,
+          desiredIndex, analysis, desired.instanceKey);
+    }
+    existingGroups.erase(existing);
+  }
+
+  for (const auto& [instanceKey, objects] : existingGroups) {
+    ExistingGroupAnalysis analysis;
+    analysis.allMatchStoredBaseline = !objects.empty();
+    for (const CreativeObject* object : objects) {
+      const std::uint64_t baseline =
+          creativeRecipeObjectOutputFingerprint(*object);
+      if (baseline == 0U) {
+        ++analysis.missingBaselineCount;
+      }
+      if (baseline == 0U || !matchesStoredBaseline(*request.document, *object)) {
+        analysis.allMatchStoredBaseline = false;
+        ++analysis.refinedObjectCount;
+      }
+    }
+    if (analysis.allMatchStoredBaseline) {
+      appendIds(result.removeObjectIds, objects);
+      ++result.removeRecipeCount;
+      result.changes.push_back(makeChange(
+          CreativeWorldLayoutRecipeChangeKind::Remove,
+          CreativeRecipeKind::Unknown, instanceKey,
+          kInvalidCreativeWorldLayoutRecipeIndex, objects.size(), 0U,
+          analysis));
+    } else {
+      appendConflictResolution(
+          result, request.conflictResolution, objects, nullptr,
+          kInvalidCreativeWorldLayoutRecipeIndex, analysis, instanceKey);
+    }
+  }
+
+  if (!unidentified.empty()) {
+    ExistingGroupAnalysis analysis;
+    analysis.refinedObjectCount = unidentified.size();
+    analysis.missingBaselineCount = unidentified.size();
+    appendConflictResolution(
+        result, request.conflictResolution, unidentified, nullptr,
+        kInvalidCreativeWorldLayoutRecipeIndex, analysis,
+        "unidentified_managed_output");
+  }
+
+  result.accepted = !result.blocked;
+  result.reasonCode = result.blocked
+                          ? "creative_world_layout_refinement_conflict"
+                          : "creative_world_layout_reconciliation_ready";
+  return result;
+}
+
+bool detachCreativeWorldLayoutObject(CreativeObject& object,
+                                     std::string_view layoutTag) {
+  const std::size_t before = object.tags.size();
+  std::erase_if(object.tags, [&](const std::string& tag) {
+    return tag == layoutTag || isCreativeRecipeManagementTag(tag) ||
+           tag.starts_with(kWorldLayoutSourcePrefix) ||
+           tag.starts_with(kWorldLayoutRoomEdgePrefix);
+  });
+  return object.tags.size() != before;
+}
+
+}  // namespace iggy3d::creative

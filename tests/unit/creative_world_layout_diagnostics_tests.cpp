@@ -1,6 +1,7 @@
 #include "EditorDesktopCommands.hpp"
 #include "EditorState.hpp"
 #include "EditorWorldLayoutDiagnostics.hpp"
+#include "app/iggy3d/creative/document/DocumentMutation.hpp"
 
 #include <cmath>
 #include <cstdlib>
@@ -278,6 +279,46 @@ bool diagnosticFocusRoutesThroughTypedDispatcher() {
                 "dispatcher focuses the requested source symbol");
 }
 
+bool refinementConflictProjectsExactManagedGroupAndSource() {
+  cr::CreativeAppState live = makeApp("Diagnostic Refinement", 9206U);
+  app::CreativeEditorWorldLayoutState state = roomLayout();
+  const cr::CreativeWorldLayoutCompileResult initial =
+      cr::buildCreativeWorldLayoutPlan(live.facade.document(), state.source);
+  const cr::CreativeWorldLayoutApplyReceipt applied =
+      cr::applyCreativeWorldLayoutPlan(live.facade, initial.plan);
+  if (!applied.accepted || live.facade.document().objects().empty()) {
+    return expect(false, "refinement diagnostic fixture generated");
+  }
+  const cr::CreativeObjectId refinedId =
+      live.facade.document().objects().front().id;
+  const cr::CreativeDocumentMutationReceipt refined = cr::moveDocumentObject(
+      live.facade.documentForPersistence(), refinedId, {4.0, 2.0, 3.0});
+  ++state.source.rooms[0].footprint.maximum.x;
+  ++state.revision;
+
+  const app::CreativeEditorWorldLayoutDiagnosticReport report =
+      app::buildCreativeEditorWorldLayoutDiagnosticReport(
+          live.facade.document(), state.source);
+  return expect(refined.changed && !report.ready && !report.hasChanges,
+                "refined output blocks ordinary generation preflight") &&
+         expect(report.compileReceipt.status ==
+                        cr::CreativeWorldLayoutStatus::RefinementConflict &&
+                    report.compileReceipt.objectRecipeConflictCount == 1U &&
+                    report.recipeChanges.size() == 1U &&
+                    report.recipeChanges[0].kind ==
+                        cr::CreativeWorldLayoutRecipeChangeKind::Conflict,
+                "diagnostic report retains the three-way change record") &&
+         expect(report.issueCount == 1U &&
+                    report.issues[0].severity ==
+                        app::CreativeEditorWorldLayoutDiagnosticSeverity::Error &&
+                    report.issues[0].table ==
+                        cr::CreativeWorldLayoutTable::Building &&
+                    report.issues[0].index == 0U &&
+                    report.issues[0].reasonCode ==
+                        "creative_world_layout_refinement_conflict",
+                "conflict points back to its building source row");
+}
+
 }  // namespace
 
 int main() {
@@ -285,6 +326,7 @@ int main() {
                   missingOpeningAssetWarnsAndTracksCatalogMembership() &&
                   missingObjectAssetWarningIsNavigable() &&
                   diagnosticFocusSelectsFramesAndPreservesSource() &&
-                  diagnosticFocusRoutesThroughTypedDispatcher();
+                  diagnosticFocusRoutesThroughTypedDispatcher() &&
+                  refinementConflictProjectsExactManagedGroupAndSource();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

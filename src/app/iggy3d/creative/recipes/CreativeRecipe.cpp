@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <bit>
 #include <cctype>
+#include <charconv>
 #include <cmath>
 #include <limits>
 #include <string>
@@ -15,6 +16,13 @@ namespace iggy3d::creative {
 namespace {
 
 constexpr std::string_view kRecipeSchemaTag = "creative_recipe_schema:1";
+constexpr std::string_view kRecipeDefinitionPrefix =
+    "creative_recipe_definition:";
+constexpr std::string_view kRecipeOutputPrefix = "creative_recipe_output:";
+constexpr std::string_view kRecipeInstancePrefix = "creative_recipe_instance:";
+constexpr std::string_view kRecipeStableKeyPrefix = "creative_recipe_key:";
+
+[[nodiscard]] bool validStableKey(std::string_view key) noexcept;
 
 struct RecipeFingerprintBuilder {
   StableHasher hasher;
@@ -108,6 +116,143 @@ void appendCreateRequest(RecipeFingerprintBuilder& builder,
         request.movingPlatform.traversalMode));
     builder.appendBool(request.movingPlatform.startsActive);
   }
+}
+
+[[nodiscard]] std::uint64_t finishFingerprint(
+    const RecipeFingerprintBuilder& builder) noexcept {
+  const std::uint64_t fingerprint = builder.hasher.value();
+  return builder.valid && fingerprint != 0U ? fingerprint : 0U;
+}
+
+[[nodiscard]] std::string fingerprintTag(std::string_view prefix,
+                                         std::uint64_t fingerprint) {
+  constexpr char kHex[] = "0123456789abcdef";
+  std::string result(prefix);
+  result.resize(result.size() + 16U, '0');
+  for (std::size_t index = 0U; index < 16U; ++index) {
+    const std::size_t shift = (15U - index) * 4U;
+    result[result.size() - 16U + index] =
+        kHex[(fingerprint >> shift) & 0x0fU];
+  }
+  return result;
+}
+
+[[nodiscard]] std::uint64_t parseFingerprintTag(
+    std::span<const std::string> tags,
+    std::string_view prefix) noexcept {
+  std::uint64_t result = 0U;
+  bool found = false;
+  for (const std::string& tag : tags) {
+    if (!tag.starts_with(prefix)) {
+      continue;
+    }
+    const std::string_view encoded = std::string_view(tag).substr(prefix.size());
+    std::uint64_t candidate = 0U;
+    const auto parsed = std::from_chars(encoded.data(),
+                                        encoded.data() + encoded.size(),
+                                        candidate, 16);
+    if (found || encoded.size() != 16U || parsed.ec != std::errc{} ||
+        parsed.ptr != encoded.data() + encoded.size() || candidate == 0U) {
+      return 0U;
+    }
+    result = candidate;
+    found = true;
+  }
+  return found ? result : 0U;
+}
+
+[[nodiscard]] std::string_view taggedStableValue(
+    std::span<const std::string> tags,
+    std::string_view prefix) noexcept {
+  std::string_view result;
+  for (const std::string& tag : tags) {
+    if (!tag.starts_with(prefix)) {
+      continue;
+    }
+    const std::string_view candidate = std::string_view(tag).substr(prefix.size());
+    if (!result.empty() || !validStableKey(candidate)) {
+      return {};
+    }
+    result = candidate;
+  }
+  return result;
+}
+
+void appendCanonicalTags(RecipeFingerprintBuilder& builder,
+                         std::span<const std::string> tags) noexcept {
+  std::uint64_t semanticTagCount = 0U;
+  for (const std::string& tag : tags) {
+    if (!isCreativeRecipeManagementTag(tag)) {
+      ++semanticTagCount;
+    }
+  }
+  builder.appendUnsigned(semanticTagCount);
+  for (const std::string& tag : tags) {
+    if (!isCreativeRecipeManagementTag(tag)) {
+      builder.appendString(tag);
+    }
+  }
+}
+
+void appendPathPoints(RecipeFingerprintBuilder& builder,
+                      std::span<const CreativePathPoint> points) noexcept {
+  builder.appendUnsigned(static_cast<std::uint64_t>(points.size()));
+  for (const CreativePathPoint& point : points) {
+    appendVec3(builder, point.position);
+    builder.appendDouble(point.dwellSeconds);
+    builder.appendDouble(point.outgoingSpeedMultiplier);
+  }
+}
+
+void appendMovingPlatformSettings(
+    RecipeFingerprintBuilder& builder,
+    const CreativeMovingPlatformSettings& settings) noexcept {
+  builder.appendDouble(settings.speedMetersPerSecond);
+  builder.appendUnsigned(static_cast<std::uint8_t>(settings.traversalMode));
+  builder.appendBool(settings.startsActive);
+}
+
+void appendObjectState(RecipeFingerprintBuilder& builder,
+                       CreativeObjectKind kind,
+                       std::string_view name,
+                       std::string_view assetId,
+                       CreativeTransform transform,
+                       CreativeBounds bounds,
+                       CreativeLayerId layerId,
+                       bool visible,
+                       bool locked,
+                       std::span<const std::string> tags,
+                       bool hasParent,
+                       bool parentUsesStableKey,
+                       std::string_view parentStableKey,
+                       CreativeObjectId parentId,
+                       std::string_view attachmentSocket,
+                       std::span<const CreativePathPoint> pathPoints,
+                       const CreativeMovingPlatformSettings& movingPlatform)
+    noexcept {
+  builder.appendUnsigned(static_cast<std::uint32_t>(kind));
+  builder.appendString(name);
+  builder.appendString(assetId);
+  appendVec3(builder, transform.position);
+  appendVec3(builder, transform.rotationEulerRadians);
+  appendVec3(builder, transform.scale);
+  appendBounds(builder, bounds);
+  builder.appendUnsigned(layerId);
+  builder.appendBool(visible);
+  builder.appendBool(locked);
+  appendCanonicalTags(builder, tags);
+  builder.appendBool(hasParent);
+  if (hasParent) {
+    builder.appendBool(parentUsesStableKey);
+    if (parentUsesStableKey) {
+      builder.appendString(parentStableKey);
+    } else {
+      builder.appendUnsigned(parentId);
+    }
+  }
+  builder.appendString(attachmentSocket);
+  appendPathPoints(builder, pathPoints);
+  appendMovingPlatformSettings(builder, movingPlatform);
 }
 
 void setStatus(CreativeRecipeMaterializeReceipt& receipt,
@@ -246,15 +391,12 @@ std::string creativeRecipeStableKeyTag(std::string_view stableKey) {
 
 std::string creativeRecipeDefinitionFingerprintTag(
     std::uint64_t fingerprint) {
-  constexpr char kHex[] = "0123456789abcdef";
-  std::string result = "creative_recipe_definition:";
-  result.resize(result.size() + 16U, '0');
-  for (std::size_t index = 0U; index < 16U; ++index) {
-    const std::size_t shift = (15U - index) * 4U;
-    result[result.size() - 16U + index] =
-        kHex[(fingerprint >> shift) & 0x0fU];
-  }
-  return result;
+  return fingerprintTag(kRecipeDefinitionPrefix, fingerprint);
+}
+
+std::string creativeRecipeOutputFingerprintTag(
+    std::uint64_t fingerprint) {
+  return fingerprintTag(kRecipeOutputPrefix, fingerprint);
 }
 
 std::uint64_t fingerprintCreativeRecipePlan(
@@ -274,11 +416,99 @@ std::uint64_t fingerprintCreativeRecipePlan(
     }
     appendCreateRequest(builder, object.createRequest);
   }
-  const std::uint64_t fingerprint = builder.hasher.value();
-  if (!builder.valid || fingerprint == 0U) {
+  return finishFingerprint(builder);
+}
+
+std::uint64_t fingerprintCreativeRecipeObjectPlan(
+    const CreativeRecipePlan& plan,
+    std::size_t objectIndex) noexcept {
+  if (objectIndex >= plan.objects.size()) {
     return 0U;
   }
-  return fingerprint;
+  const CreativeRecipeObjectPlan& object = plan.objects[objectIndex];
+  if (object.createRequest.kind == CreativeObjectKind::Unknown) {
+    return 0U;
+  }
+  const CreativeObjectDescriptor& descriptor =
+      describeObject(object.createRequest.kind);
+  if (descriptor.kind != object.createRequest.kind) {
+    return 0U;
+  }
+
+  bool hasParent = false;
+  bool parentUsesStableKey = false;
+  std::string_view parentStableKey;
+  CreativeObjectId parentId = kInvalidObjectId;
+  if (object.parentObjectIndex.has_value()) {
+    if (*object.parentObjectIndex >= objectIndex) {
+      return 0U;
+    }
+    const std::string_view stableKey =
+        plan.objects[*object.parentObjectIndex].stableKey;
+    if (!validStableKey(stableKey)) {
+      return 0U;
+    }
+    hasParent = true;
+    parentUsesStableKey = true;
+    parentStableKey = stableKey;
+  } else if (object.createRequest.parentId.has_value()) {
+    if (*object.createRequest.parentId == kInvalidObjectId) {
+      return 0U;
+    }
+    hasParent = true;
+    parentId = *object.createRequest.parentId;
+  }
+
+  const std::string_view name =
+      !object.createRequest.name.empty()
+          ? std::string_view(object.createRequest.name)
+          : (!descriptor.displayName.empty() ? descriptor.displayName
+                                             : descriptor.name);
+  const CreativeMovingPlatformSettings movingPlatform =
+      object.createRequest.kind == CreativeObjectKind::MovingPlatform &&
+              object.createRequest.hasMovingPlatformSettingsOverride
+          ? object.createRequest.movingPlatform
+          : CreativeMovingPlatformSettings{};
+
+  RecipeFingerprintBuilder builder;
+  appendObjectState(
+      builder, object.createRequest.kind, name, object.createRequest.assetId,
+      object.createRequest.hasTransformOverride
+          ? object.createRequest.transform
+          : descriptor.defaults.transform,
+      object.createRequest.hasBoundsOverride ? object.createRequest.bounds
+                                             : descriptor.defaults.bounds,
+      object.createRequest.hasLayerOverride ? object.createRequest.layerId
+                                            : descriptor.defaults.layerId,
+      object.createRequest.hasVisibleOverride ? object.createRequest.visible
+                                              : descriptor.defaults.visible,
+      object.createRequest.hasLockedOverride ? object.createRequest.locked
+                                             : descriptor.defaults.locked,
+      object.createRequest.tags, hasParent, parentUsesStableKey,
+      parentStableKey, parentId,
+      object.createRequest.attachmentSocket, object.createRequest.pathPoints,
+      movingPlatform);
+  return finishFingerprint(builder);
+}
+
+std::uint64_t fingerprintCreativeRecipeObjectState(
+    const CreativeObject& object,
+    std::string_view parentStableKey) noexcept {
+  bool hasParent = object.parentId.has_value();
+  RecipeFingerprintBuilder builder;
+  appendObjectState(builder, object.kind, object.name, object.assetId,
+                    object.transform, object.bounds, object.layerId,
+                    object.visible, object.locked, object.tags, hasParent,
+                    hasParent && !parentStableKey.empty(), parentStableKey,
+                    hasParent ? *object.parentId : kInvalidObjectId,
+                    object.attachmentSocket, object.pathPoints,
+                    object.movingPlatform);
+  return finishFingerprint(builder);
+}
+
+bool isCreativeRecipeManagementTag(std::string_view tag) noexcept {
+  return tag.starts_with("creative_recipe:") ||
+         tag.starts_with("creative_recipe_");
 }
 
 bool creativeRecipeRequestHasProvenance(
@@ -332,20 +562,17 @@ bool creativeRecipeObjectHasInstanceProvenance(
 
 std::string_view creativeRecipeObjectInstanceKey(
     const CreativeObject& object) noexcept {
-  constexpr std::string_view kPrefix = "creative_recipe_instance:";
-  std::string_view result;
-  for (const std::string& tag : object.tags) {
-    if (!tag.starts_with(kPrefix)) {
-      continue;
-    }
-    const std::string_view candidate = std::string_view(tag).substr(
-        kPrefix.size());
-    if (!result.empty() || !validStableKey(candidate)) {
-      return {};
-    }
-    result = candidate;
-  }
-  return result;
+  return taggedStableValue(object.tags, kRecipeInstancePrefix);
+}
+
+std::string_view creativeRecipeObjectStableKey(
+    const CreativeObject& object) noexcept {
+  return taggedStableValue(object.tags, kRecipeStableKeyPrefix);
+}
+
+std::uint64_t creativeRecipeObjectOutputFingerprint(
+    const CreativeObject& object) noexcept {
+  return parseFingerprintTag(object.tags, kRecipeOutputPrefix);
 }
 
 bool creativeRecipeObjectHasDefinitionFingerprint(
@@ -418,6 +645,14 @@ CreativeRecipeMaterializeResult materializeCreativeRecipe(
       result.createRequests.clear();
       return result;
     }
+    const std::uint64_t outputFingerprint =
+        fingerprintCreativeRecipeObjectPlan(plan, index);
+    if (outputFingerprint == 0U) {
+      setStatus(result.receipt, CreativeRecipeStatus::InvalidObjectPlan,
+                "creative_recipe_object_output_fingerprint_invalid");
+      result.createRequests.clear();
+      return result;
+    }
 
     CreativeDocumentCreateRequest create = object.createRequest;
     if (object.parentObjectIndex.has_value()) {
@@ -433,6 +668,8 @@ CreativeRecipeMaterializeResult materializeCreativeRecipe(
       appendTagOnce(create.tags, creativeRecipeDefinitionFingerprintTag(
                                      plan.definitionFingerprint));
     }
+    appendTagOnce(create.tags,
+                  creativeRecipeOutputFingerprintTag(outputFingerprint));
     result.createRequests.push_back(std::move(create));
 
     if (object.role == CreativeRecipeObjectRole::Source) {

@@ -9,6 +9,7 @@
 #include "EditorWorldLayoutDiagnostics.hpp"
 #include "EditorWorldLayoutHistory.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/creative/document/DocumentMutation.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
 #include "app/iggy3d/creative/tools/Group.hpp"
 
@@ -111,8 +112,16 @@ void selectPrimary(cr::Facade& facade, cr::CreativeObjectId objectId) {
 
 app::CreativeDesktopCommandResult dispatchOne(
     app::CreativeDesktopCommandId id,
+    const app::CreativeDesktopCommandContext& context) {
+  app::CreativeDesktopCommandFrame frame;
+  frame.push(id);
+  return app::dispatchCreativeDesktopCommands(frame, context);
+}
+
+app::CreativeDesktopCommandResult dispatchOne(
+    app::CreativeDesktopCommandId id,
     const app::CreativeDesktopCommandContext& context,
-    std::string arg = {}) {
+    std::string arg) {
   app::CreativeDesktopCommandFrame frame;
   frame.push(id, std::move(arg));
   return app::dispatchCreativeDesktopCommands(frame, context);
@@ -2324,6 +2333,69 @@ bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
                 "layout generation installs objects with one undo entry");
 }
 
+bool worldLayoutConflictResolutionUsesTypedConfirmPayload() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd World Layout Conflict");
+  static_cast<void>(document.assignId(433U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "command_reconciliation");
+  cr::CreativeWorldLayoutObject object;
+  object.kind = cr::CreativeObjectKind::Crate;
+  object.stableKey = "crate";
+  object.name = "Command Crate";
+  object.boundsCells = {{1.0, 0.0, 1.0}, {2.0, 1.0, 2.0}};
+  editor.worldLayout.source.objects.push_back(object);
+  ++editor.worldLayout.revision;
+
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const app::CreativeDesktopCommandResult generated = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  if (!generated.accepted || appState.facade.document().objects().empty()) {
+    return expect(false, "command conflict fixture generated");
+  }
+  const cr::CreativeObjectId originalId =
+      appState.facade.document().objects().front().id;
+  const cr::CreativeDocumentMutationReceipt refined = cr::moveDocumentObject(
+      appState.facade.documentForPersistence(), originalId,
+      {12.0, 2.0, 8.0});
+  editor.worldLayout.source.objects[0].name = "Command Crate Revised";
+  ++editor.worldLayout.revision;
+
+  const app::CreativeDesktopCommandResult blocked = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  const bool blockedPreserved =
+      appState.facade.document().findObject(originalId) != nullptr;
+  const app::CreativeDesktopCommandResult resolved = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context,
+      app::CreativeDesktopWorldLayoutConfirmPayload{
+          cr::CreativeWorldLayoutConflictResolution::Regenerate});
+  const cr::CreativeObject* replacement = nullptr;
+  for (const cr::CreativeObject& candidate :
+       appState.facade.document().objects()) {
+    if (candidate.name == "Command Crate Revised") {
+      replacement = &candidate;
+      break;
+    }
+  }
+
+  return expect(refined.changed && !blocked.accepted && !blocked.changed &&
+                    blocked.message ==
+                        "creative_world_layout_refinement_conflict" &&
+                    blockedPreserved,
+                "ordinary confirm blocks conflict before typed resolution") &&
+         expect(resolved.accepted && resolved.changed &&
+                    resolved.sceneChanged && replacement != nullptr &&
+                    replacement->id != originalId,
+                "typed regenerate payload resolves through the sole dispatcher");
+}
+
 bool worldLayoutCatalogSelectionAndPlacementUseTypedCommands() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document =
@@ -2741,6 +2813,7 @@ int main() {
   ok = worldLayoutBuildingTemplateCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutCommandsPreviewAndGenerateThroughDispatcher() && ok;
+  ok = worldLayoutConflictResolutionUsesTypedConfirmPayload() && ok;
   ok = worldLayoutCatalogSelectionAndPlacementUseTypedCommands() && ok;
   ok = worldLayoutOpeningInsertCommandsUseCatalogAndHistory() && ok;
   ok = worldLayoutAssetRepairCommandsPreservePlacementAndHistory() && ok;

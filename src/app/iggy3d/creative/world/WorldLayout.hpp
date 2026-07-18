@@ -5,6 +5,7 @@
 #include "app/iggy3d/creative/recipes/ObjectLibraryRecipe.hpp"
 #include "app/iggy3d/creative/recipes/StructuralRoofRecipe.hpp"
 #include "app/iggy3d/creative/recipes/TerrainRecipe.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutReconciliation.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -282,6 +283,12 @@ enum class CreativeWorldLayoutStatus : std::uint8_t {
   ObjectRejected,
   InstallRejected,
   Applied,
+  RefinementConflict,
+};
+
+struct CreativeWorldLayoutCompileOptions {
+  CreativeWorldLayoutConflictResolution conflictResolution =
+      CreativeWorldLayoutConflictResolution::Block;
 };
 
 struct CreativeWorldLayoutPlan {
@@ -291,6 +298,7 @@ struct CreativeWorldLayoutPlan {
   std::uint64_t sourceDocumentRevision = 0U;
   std::uint64_t sourceTerrainRevision = 0U;
   std::uint64_t sourceMaterialRevision = 0U;
+  std::vector<CreativeObjectId> objectDetachIds;
   std::vector<CreativeObjectId> objectRemoveIds;
   std::vector<CreativeRecipePlan> objectRecipes;
   std::vector<CreativeTerrainControlEdit> terrainEdits;
@@ -310,7 +318,12 @@ struct CreativeWorldLayoutReceipt {
   std::uint64_t objectRecipeReplaceCount = 0U;
   // Desired groups retained byte-for-byte in the destination document.
   std::uint64_t objectRecipeKeepCount = 0U;
+  // Desired groups whose source is unchanged but live 3D output was refined.
+  std::uint64_t objectRecipeRefinedCount = 0U;
+  std::uint64_t objectRecipeConflictCount = 0U;
+  std::uint64_t objectRecipeDetachCount = 0U;
   std::uint64_t objectCount = 0U;
+  std::uint64_t objectDetachCount = 0U;
   std::uint64_t objectRemoveCount = 0U;
   std::uint64_t terrainControlEditCount = 0U;
   std::uint64_t terrainMaterialEditCount = 0U;
@@ -321,6 +334,7 @@ struct CreativeWorldLayoutReceipt {
 struct CreativeWorldLayoutCompileResult {
   CreativeWorldLayoutPlan plan;
   CreativeWorldLayoutReceipt receipt;
+  std::vector<CreativeWorldLayoutRecipeChange> recipeChanges;
 };
 
 struct CreativeWorldLayoutPreviewResult {
@@ -370,7 +384,8 @@ struct CreativeWorldLayoutApplyReceipt {
 
 [[nodiscard]] CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     const CreativeDocument& document,
-    const CreativeWorldLayout& layout);
+    const CreativeWorldLayout& layout,
+    CreativeWorldLayoutCompileOptions options = {});
 [[nodiscard]] CreativeWorldLayoutPreviewResult previewCreativeWorldLayoutPlan(
     const CreativeDocument& document,
     const CreativeWorldLayoutPlan& plan);

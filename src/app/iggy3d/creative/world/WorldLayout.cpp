@@ -18,7 +18,6 @@
 #include <span>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -177,20 +176,22 @@ void appendTagOnce(std::vector<std::string>& tags, std::string tag) {
   }
 }
 
-[[nodiscard]] bool collectOwnedObjectRemovalOrder(
+[[nodiscard]] bool collectObjectRemovalOrder(
     const CreativeDocument& document,
-    std::string_view layoutTag,
-    const std::unordered_set<CreativeObjectId>& keepIds,
+    std::span<const CreativeObjectId> removeIds,
     std::vector<CreativeObjectId>& output) {
-  std::unordered_set<CreativeObjectId> remaining;
-  std::vector<CreativeObjectId> orderedIds;
-  for (const CreativeObject& object : document.objects()) {
-    if (hasTag(object.tags, layoutTag) && !keepIds.contains(object.id)) {
-      remaining.insert(object.id);
-      orderedIds.push_back(object.id);
-    }
+  std::unordered_set<CreativeObjectId> remaining(removeIds.begin(),
+                                                  removeIds.end());
+  if (remaining.size() != removeIds.size()) {
+    return false;
   }
-
+  std::vector<CreativeObjectId> orderedIds(removeIds.begin(), removeIds.end());
+  if (std::any_of(orderedIds.begin(), orderedIds.end(),
+                  [&](CreativeObjectId id) {
+                    return document.findObject(id) == nullptr;
+                  })) {
+    return false;
+  }
   output.reserve(remaining.size());
   while (!remaining.empty()) {
     const auto leaf = std::find_if(
@@ -213,92 +214,6 @@ void appendTagOnce(std::vector<std::string>& tags, std::string tag) {
     remaining.erase(*leaf);
   }
   return true;
-}
-
-[[nodiscard]] bool existingRecipeMatches(
-    const std::vector<const CreativeObject*>& existingObjects,
-    const CreativeRecipePlan& recipe,
-    std::vector<CreativeObjectId>& matchingIds) {
-  matchingIds.clear();
-  if (recipe.definitionFingerprint == 0U || recipe.objects.empty()) {
-    return false;
-  }
-
-  std::vector<bool> matchedPlans(recipe.objects.size(), false);
-  for (const CreativeObject* objectPointer : existingObjects) {
-    const CreativeObject& object = *objectPointer;
-    matchingIds.push_back(object.id);
-    if (!creativeRecipeObjectHasDefinitionFingerprint(
-            object, recipe.definitionFingerprint)) {
-      return false;
-    }
-
-    std::size_t matchedIndex = recipe.objects.size();
-    for (std::size_t index = 0U; index < recipe.objects.size(); ++index) {
-      const CreativeRecipeObjectPlan& candidate = recipe.objects[index];
-      if (!matchedPlans[index] &&
-          creativeRecipeObjectHasInstanceProvenance(
-              object, recipe.kind, recipe.instanceKey, candidate.role,
-              candidate.stableKey)) {
-        matchedIndex = index;
-        break;
-      }
-    }
-    if (matchedIndex == recipe.objects.size()) {
-      return false;
-    }
-    matchedPlans[matchedIndex] = true;
-  }
-
-  return matchingIds.size() == recipe.objects.size() &&
-         std::all_of(matchedPlans.begin(), matchedPlans.end(),
-                     [](bool matched) { return matched; });
-}
-
-[[nodiscard]] bool reconcileObjectRecipes(
-    const CreativeDocument& document,
-    std::string_view layoutTag,
-    std::vector<CreativeRecipePlan> desiredRecipes,
-    CreativeWorldLayoutPlan& plan,
-    CreativeWorldLayoutReceipt& receipt) {
-  std::unordered_map<std::string_view,
-                     std::vector<const CreativeObject*>>
-      existingGroups;
-  existingGroups.reserve(desiredRecipes.size());
-  for (const CreativeObject& object : document.objects()) {
-    if (!hasTag(object.tags, layoutTag)) {
-      continue;
-    }
-    const std::string_view instanceKey =
-        creativeRecipeObjectInstanceKey(object);
-    if (!instanceKey.empty()) {
-      existingGroups[instanceKey].push_back(&object);
-    }
-  }
-
-  std::unordered_set<CreativeObjectId> keepIds;
-  std::vector<CreativeObjectId> matchingIds;
-  for (CreativeRecipePlan& recipe : desiredRecipes) {
-    const auto existing = existingGroups.find(recipe.instanceKey);
-    const bool hasExistingRecipe =
-        existing != existingGroups.end() && !existing->second.empty();
-    if (hasExistingRecipe &&
-        existingRecipeMatches(existing->second, recipe, matchingIds)) {
-      keepIds.insert(matchingIds.begin(), matchingIds.end());
-      ++receipt.objectRecipeKeepCount;
-      continue;
-    }
-
-    if (hasExistingRecipe) {
-      ++receipt.objectRecipeReplaceCount;
-    } else {
-      ++receipt.objectRecipeCreateCount;
-    }
-    plan.objectRecipes.push_back(std::move(recipe));
-  }
-
-  return collectOwnedObjectRemovalOrder(document, layoutTag, keepIds,
-                                        plan.objectRemoveIds);
 }
 
 [[nodiscard]] bool clearTerrain(CreativeDocument& document) {
@@ -430,6 +345,8 @@ std::string_view toString(CreativeWorldLayoutStatus status) noexcept {
     case CreativeWorldLayoutStatus::ObjectRejected: return "ObjectRejected";
     case CreativeWorldLayoutStatus::InstallRejected: return "InstallRejected";
     case CreativeWorldLayoutStatus::Applied: return "Applied";
+    case CreativeWorldLayoutStatus::RefinementConflict:
+      return "RefinementConflict";
   }
   return "Unknown";
 }
@@ -501,7 +418,8 @@ std::string mintCreativeWorldLayoutStableKey(
 
 CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     const CreativeDocument& document,
-    const CreativeWorldLayout& layout) {
+    const CreativeWorldLayout& layout,
+    CreativeWorldLayoutCompileOptions options) {
   CreativeWorldLayoutCompileResult result;
   result.receipt.requested = true;
   if (!validDocument(document)) {
@@ -1168,12 +1086,50 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     desiredObjectRecipes.push_back(std::move(objects.plan));
   }
 
-  if (!reconcileObjectRecipes(document, layoutTag,
-                              std::move(desiredObjectRecipes), result.plan,
-                              result.receipt)) {
+  CreativeWorldLayoutReconciliationResult reconciliation =
+      reconcileCreativeWorldLayoutRecipes(
+          {&document, layoutTag, desiredObjectRecipes,
+           options.conflictResolution});
+  result.recipeChanges = std::move(reconciliation.changes);
+  result.receipt.objectRecipeCreateCount =
+      reconciliation.createRecipeCount;
+  result.receipt.objectRecipeKeepCount = reconciliation.keepRecipeCount;
+  result.receipt.objectRecipeRefinedCount =
+      reconciliation.refinedRecipeCount;
+  result.receipt.objectRecipeReplaceCount =
+      reconciliation.replaceRecipeCount;
+  result.receipt.objectRecipeConflictCount =
+      reconciliation.conflictRecipeCount;
+  result.receipt.objectRecipeDetachCount =
+      reconciliation.detachRecipeCount;
+  if (!reconciliation.accepted) {
+    setStatus(result.receipt,
+              reconciliation.blocked
+                  ? CreativeWorldLayoutStatus::RefinementConflict
+                  : CreativeWorldLayoutStatus::InvalidDocument,
+              reconciliation.reasonCode);
+    return result;
+  }
+
+  result.plan.objectDetachIds =
+      std::move(reconciliation.detachObjectIds);
+  if (!collectObjectRemovalOrder(document,
+                                 reconciliation.removeObjectIds,
+                                 result.plan.objectRemoveIds)) {
     setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidDocument,
               "creative_world_layout_owned_object_graph_invalid");
     return result;
+  }
+  result.plan.objectRecipes.reserve(
+      reconciliation.applyRecipeIndices.size());
+  for (const std::size_t recipeIndex : reconciliation.applyRecipeIndices) {
+    if (recipeIndex >= desiredObjectRecipes.size()) {
+      setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidDocument,
+                "creative_world_layout_reconciliation_index_invalid");
+      return result;
+    }
+    result.plan.objectRecipes.push_back(
+        std::move(desiredObjectRecipes[recipeIndex]));
   }
 
   CreativeObjectId nextObjectId = document.nextObjectId();
@@ -1352,7 +1308,8 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
       !layout.walls.empty() || !layout.openings.empty() ||
       !layout.objects.empty() ||
       !layout.terrainProfiles.empty() || !layout.terrainPaths.empty();
-  const bool hasOperations = !result.plan.objectRemoveIds.empty() ||
+  const bool hasOperations = !result.plan.objectDetachIds.empty() ||
+                             !result.plan.objectRemoveIds.empty() ||
                              !result.plan.objectRecipes.empty() ||
                              !result.plan.terrainEdits.empty() ||
                              !result.plan.materialEdits.empty();
@@ -1373,6 +1330,7 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
 
   result.receipt.buildingCount = layout.buildings.size();
   result.receipt.objectRecipeCount = result.plan.objectRecipes.size();
+  result.receipt.objectDetachCount = result.plan.objectDetachIds.size();
   result.receipt.objectRemoveCount = result.plan.objectRemoveIds.size();
   result.receipt.terrainControlEditCount = result.plan.terrainEdits.size();
   result.receipt.terrainMaterialEditCount = result.plan.materialEdits.size();

@@ -70,6 +70,28 @@ void setStatus(CreativeWorldLayoutApplyReceipt& receipt,
   StageResult result;
   result.document = source;
 
+  bool detachedAny = false;
+  for (const CreativeObjectId objectId : plan.objectDetachIds) {
+    CreativeObject* object = result.document.findObject(objectId);
+    if (object == nullptr ||
+        !detachCreativeWorldLayoutObject(
+            *object, creativeWorldLayoutTag(plan.layoutKey))) {
+      result.status = CreativeWorldLayoutStatus::ObjectRejected;
+      result.reasonCode = "creative_world_layout_detach_rejected";
+      return result;
+    }
+    detachedAny = true;
+  }
+  if (detachedAny) {
+    result.document.markObjectMutationChanged(
+        static_cast<CreativeObjectDirtyFlags>(
+            CreativeObjectDirtyFlag::Identity) |
+        static_cast<CreativeObjectDirtyFlags>(
+            CreativeObjectDirtyFlag::Serialization) |
+        static_cast<CreativeObjectDirtyFlags>(CreativeObjectDirtyFlag::Preview));
+    result.changed = true;
+  }
+
   for (const CreativeObjectId objectId : plan.objectRemoveIds) {
     const CreativeDocumentRemoveReceipt removed =
         result.document.removeDocumentObject(objectId);

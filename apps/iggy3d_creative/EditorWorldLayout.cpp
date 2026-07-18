@@ -2941,13 +2941,15 @@ CreativeEditorWorldLayoutPreviewReceipt previewCreativeEditorWorldLayout(
 }
 
 CreativeEditorWorldLayoutApplyReceipt confirmCreativeEditorWorldLayout(
-    CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState) {
+    CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,
+    cr::CreativeWorldLayoutConflictResolution conflictResolution) {
   CreativeEditorWorldLayoutApplyReceipt result;
   state.anchorActive = false;
   clearWorldLayoutInteraction(state);
   const cr::CreativeWorldLayoutCompileResult compiled =
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(),
-                                       state.source);
+                                       state.source,
+                                       {conflictResolution});
   if (!compiled.receipt.accepted) {
     result.reasonCode = compiled.receipt.reasonCode;
     state.statusMessage = result.reasonCode;

@@ -339,6 +339,11 @@ struct CreativeDesktopWorldLayoutOpeningManipulationPayload {
   double toleranceCells = 0.25;
 };
 
+struct CreativeDesktopWorldLayoutConfirmPayload {
+  iggy3d::creative::CreativeWorldLayoutConflictResolution conflictResolution =
+      iggy3d::creative::CreativeWorldLayoutConflictResolution::Block;
+};
+
 // The discriminated payload carried by every command (monostate = no payload).
 using CreativeDesktopCommandPayload = std::variant<
     std::monostate,
@@ -384,6 +389,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutOpeningSettingsPayload,
     CreativeDesktopWorldLayoutOpeningInsertPayload,
     CreativeDesktopWorldLayoutAssetRepairPayload,
-    CreativeDesktopWorldLayoutOpeningManipulationPayload>;
+    CreativeDesktopWorldLayoutOpeningManipulationPayload,
+    CreativeDesktopWorldLayoutConfirmPayload>;
 
 }  // namespace iggy3d_creative_app

@@ -1301,6 +1301,9 @@ previewCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
                                  const cr::CreativeDocument& document);
 [[nodiscard]] CreativeEditorWorldLayoutApplyReceipt
 confirmCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
-                                 cr::CreativeAppState& appState);
+                                 cr::CreativeAppState& appState,
+                                 cr::CreativeWorldLayoutConflictResolution
+                                     conflictResolution =
+                                         cr::CreativeWorldLayoutConflictResolution::Block);
 
 }  // namespace iggy3d_creative_app

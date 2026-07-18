@@ -2556,6 +2556,118 @@ void drawWorldLayoutAssetRepair(
   ImGui::PopID();
 }
 
+ImVec4 recipeChangeColor(
+    cr::CreativeWorldLayoutRecipeChangeKind kind) noexcept {
+  switch (kind) {
+    case cr::CreativeWorldLayoutRecipeChangeKind::Add:
+    case cr::CreativeWorldLayoutRecipeChangeKind::Keep:
+      return {0.28F, 0.92F, 0.40F, 1.0F};
+    case cr::CreativeWorldLayoutRecipeChangeKind::Refined:
+    case cr::CreativeWorldLayoutRecipeChangeKind::Replace:
+      return {1.0F, 0.72F, 0.20F, 1.0F};
+    case cr::CreativeWorldLayoutRecipeChangeKind::Remove:
+    case cr::CreativeWorldLayoutRecipeChangeKind::Conflict:
+      return {1.0F, 0.34F, 0.30F, 1.0F};
+    case cr::CreativeWorldLayoutRecipeChangeKind::DetachAndReplace:
+    case cr::CreativeWorldLayoutRecipeChangeKind::Detach:
+      return {0.38F, 0.72F, 1.0F, 1.0F};
+  }
+  return {0.75F, 0.75F, 0.75F, 1.0F};
+}
+
+void drawRecipeChanges(
+    const CreativeEditorWorldLayoutDiagnosticReport& diagnostics) {
+  const bool hasVisibleChanges = std::any_of(
+      diagnostics.recipeChanges.begin(), diagnostics.recipeChanges.end(),
+      [](const cr::CreativeWorldLayoutRecipeChange& change) {
+        return change.kind != cr::CreativeWorldLayoutRecipeChangeKind::Keep;
+      });
+  if (!hasVisibleChanges ||
+      !ImGui::CollapsingHeader("Generated output changes",
+                               ImGuiTreeNodeFlags_DefaultOpen)) {
+    return;
+  }
+  if (!ImGui::BeginTable("##world_layout_recipe_changes", 3,
+                         ImGuiTableFlags_SizingStretchProp |
+                             ImGuiTableFlags_BordersInnerH |
+                             ImGuiTableFlags_RowBg)) {
+    return;
+  }
+  ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, 92.0F);
+  ImGui::TableSetupColumn("Managed group", ImGuiTableColumnFlags_WidthStretch);
+  ImGui::TableSetupColumn("Objects", ImGuiTableColumnFlags_WidthFixed, 82.0F);
+  ImGui::TableHeadersRow();
+  for (const cr::CreativeWorldLayoutRecipeChange& change :
+       diagnostics.recipeChanges) {
+    if (change.kind == cr::CreativeWorldLayoutRecipeChangeKind::Keep) {
+      continue;
+    }
+    ImGui::TableNextRow();
+    ImGui::TableNextColumn();
+    ImGui::TextColored(recipeChangeColor(change.kind), "%s",
+                       cr::toString(change.kind).data());
+    ImGui::TableNextColumn();
+    ImGui::TextUnformatted(change.instanceKey.c_str());
+    ImGui::TableNextColumn();
+    ImGui::Text("%llu -> %llu",
+                static_cast<unsigned long long>(change.existingObjectCount),
+                static_cast<unsigned long long>(change.desiredObjectCount));
+  }
+  ImGui::EndTable();
+}
+
+void drawRefinementConflictActions(
+    const CreativeEditorWorldLayoutDiagnosticReport& diagnostics,
+    CreativeDesktopCommandFrame& commands,
+    bool editingDisabled) {
+  if (diagnostics.compileReceipt.status !=
+      cr::CreativeWorldLayoutStatus::RefinementConflict) {
+    return;
+  }
+  ImGui::BeginDisabled(editingDisabled);
+  if (ImGui::Button("Resolve generation conflicts...")) {
+    ImGui::OpenPopup("Resolve generation conflicts");
+  }
+  ImGui::EndDisabled();
+  if (!ImGui::BeginPopupModal("Resolve generation conflicts", nullptr,
+                              ImGuiWindowFlags_AlwaysAutoResize)) {
+    return;
+  }
+  ImGui::Text("%llu managed group(s) contain 3D refinements.",
+              static_cast<unsigned long long>(
+                  diagnostics.compileReceipt.objectRecipeConflictCount));
+  ImGui::Separator();
+  if (ImGui::Button("Regenerate")) {
+    commands.push(
+        CreativeDesktopCommandId::WorldLayoutConfirm,
+        CreativeDesktopWorldLayoutConfirmPayload{
+            cr::CreativeWorldLayoutConflictResolution::Regenerate});
+    ImGui::CloseCurrentPopup();
+  }
+  if (ImGui::IsItemHovered()) {
+    ImGui::SetTooltip(
+        "Replace or remove refined managed output to match the layout");
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Detach Refined Output")) {
+    commands.push(
+        CreativeDesktopCommandId::WorldLayoutConfirm,
+        CreativeDesktopWorldLayoutConfirmPayload{
+            cr::CreativeWorldLayoutConflictResolution::Detach});
+    ImGui::CloseCurrentPopup();
+  }
+  if (ImGui::IsItemHovered()) {
+    ImGui::SetTooltip(
+        "Keep refined objects as authored objects; generate current layout "
+        "output where a source remains");
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Cancel")) {
+    ImGui::CloseCurrentPopup();
+  }
+  ImGui::EndPopup();
+}
+
 
 }  // namespace
 
@@ -2693,12 +2805,15 @@ void buildCreativeEditorWorldLayoutPanel(
       const cr::CreativeWorldLayoutReceipt& generation =
           diagnostics.compileReceipt;
       ImGui::TextDisabled(
-          "Recipe groups: +%llu  replace %llu  keep %llu  |  remove %llu objects",
+          "Recipe groups: +%llu  replace %llu  keep %llu  refined %llu  |  "
+          "detach %llu  remove %llu objects",
           static_cast<unsigned long long>(
               generation.objectRecipeCreateCount),
           static_cast<unsigned long long>(
               generation.objectRecipeReplaceCount),
           static_cast<unsigned long long>(generation.objectRecipeKeepCount),
+          static_cast<unsigned long long>(generation.objectRecipeRefinedCount),
+          static_cast<unsigned long long>(generation.objectDetachCount),
           static_cast<unsigned long long>(generation.objectRemoveCount));
     }
     for (std::size_t issueIndex = 0U;
@@ -2744,6 +2859,8 @@ void buildCreativeEditorWorldLayoutPanel(
       drawWorldLayoutAssetRepair(issue, state, editor.catalog.model, commands,
                                  editingDisabled, issueIndex);
     }
+    drawRefinementConflictActions(diagnostics, commands, editingDisabled);
+    drawRecipeChanges(diagnostics);
 
     ImGui::Separator();
     if (ImGui::BeginTable("##world_layout_counts", 4,

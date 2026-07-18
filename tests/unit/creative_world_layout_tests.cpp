@@ -1117,18 +1117,21 @@ bool selectiveRegenerationPreservesIdentityAndManualRefinement() {
                         cr::CreativeWorldLayoutStatus::NoChange &&
                     unchanged.receipt.objectRecipeCreateCount == 0U &&
                     unchanged.receipt.objectRecipeReplaceCount == 0U &&
-                    unchanged.receipt.objectRecipeKeepCount == 3U &&
+                    unchanged.receipt.objectRecipeKeepCount == 2U &&
+                    unchanged.receipt.objectRecipeRefinedCount == 1U &&
+                    unchanged.receipt.objectRecipeConflictCount == 0U &&
                     unchanged.receipt.objectRecipeCount == 0U &&
                     unchanged.receipt.objectRemoveCount == 0U &&
                     unchanged.receipt.objectCount == 0U,
-                "unchanged source retains every generated recipe group") &&
+                "unchanged source distinguishes retained and refined groups") &&
          expect(unchangedApplied.accepted && !unchangedApplied.changed &&
                     unchangedPreservedRefinement,
                 "no-change apply preserves manual generated refinement") &&
          expect(replacement.receipt.accepted &&
                     replacement.receipt.objectRecipeCreateCount == 0U &&
                     replacement.receipt.objectRecipeReplaceCount == 1U &&
-                    replacement.receipt.objectRecipeKeepCount == 2U &&
+                    replacement.receipt.objectRecipeKeepCount == 1U &&
+                    replacement.receipt.objectRecipeRefinedCount == 1U &&
                     replacement.receipt.objectRecipeCount == 1U &&
                     replacement.receipt.objectRemoveCount == 1U &&
                     replacement.receipt.objectCount == 1U,
@@ -1144,6 +1147,206 @@ bool selectiveRegenerationPreservesIdentityAndManualRefinement() {
                     sameVec3(restoredCrateB->transform.position,
                              refinedPosition),
                 "selective generation remains one undo transaction");
+}
+
+cr::CreativeWorldLayout singleCrateLayout(std::string name = "Managed Crate") {
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "reconciliation_layout";
+  cr::CreativeWorldLayoutObject object;
+  object.kind = cr::CreativeObjectKind::Crate;
+  object.stableKey = "crate";
+  object.name = std::move(name);
+  object.boundsCells = {{1.0, 0.0, 1.0}, {2.0, 1.0, 2.0}};
+  object.tags = {"author:keep"};
+  layout.objects.push_back(std::move(object));
+  return layout;
+}
+
+bool refinedOutputBlocksSourceChangesUntilExplicitlyRegenerated() {
+  cr::CreativeAppState appState = makeAppState(215U);
+  cr::CreativeWorldLayout layout = singleCrateLayout();
+  const cr::CreativeWorldLayoutCompileResult initial =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt initialApply =
+      cr::applyCreativeWorldLayoutPlan(appState.facade, initial.plan);
+  const cr::CreativeObject* generated =
+      findNamed(appState.facade.document(), "Managed Crate");
+  if (generated == nullptr) {
+    return expect(false, "conflict fixture generated its managed object");
+  }
+  const cr::CreativeObjectId generatedId = generated->id;
+  const cr::CreativeVec3 refinedPosition{40.0, 2.0, 30.0};
+  const cr::CreativeDocumentMutationReceipt refined =
+      cr::moveDocumentObject(appState.facade.documentForPersistence(),
+                             generatedId, refinedPosition);
+
+  layout.objects[0].name = "Revised Managed Crate";
+  const std::uint64_t revisionBeforeBlocked =
+      appState.facade.document().revision();
+  const cr::CreativeWorldLayoutCompileResult blocked =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutCompileResult overwrite =
+      cr::buildCreativeWorldLayoutPlan(
+          appState.facade.document(), layout,
+          {cr::CreativeWorldLayoutConflictResolution::Regenerate});
+  const cr::CreativeWorldLayoutApplyReceipt overwritten =
+      cr::applyCreativeWorldLayoutPlanWithHistory(
+          appState, overwrite.plan, "world_layout_conflict_overwrite");
+  const cr::CreativeObject* replacement =
+      findNamed(appState.facade.document(), "Revised Managed Crate");
+  const cr::CreativeObjectId replacementId =
+      replacement != nullptr ? replacement->id : cr::kInvalidObjectId;
+  const cr::CreativeHistoryApplyReceipt undone = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+  const cr::CreativeObject* restored =
+      appState.facade.document().findObject(generatedId);
+
+  return expect(initial.receipt.accepted && initialApply.accepted &&
+                    refined.changed,
+                "managed output can be refined through the normal document path") &&
+         expect(!blocked.receipt.accepted &&
+                    blocked.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::RefinementConflict &&
+                    blocked.receipt.objectRecipeConflictCount == 1U &&
+                    blocked.plan.objectRecipes.empty() &&
+                    blocked.plan.objectRemoveIds.empty() &&
+                    blocked.recipeChanges.size() == 1U &&
+                    blocked.recipeChanges[0].kind ==
+                        cr::CreativeWorldLayoutRecipeChangeKind::Conflict &&
+                    appState.facade.document().revision() ==
+                        revisionBeforeBlocked,
+                "source change over refined output fails closed without mutation") &&
+         expect(overwrite.receipt.accepted &&
+                    overwrite.receipt.objectRecipeReplaceCount == 1U &&
+                    overwrite.plan.objectRemoveIds.size() == 1U &&
+                    overwrite.plan.objectRecipes.size() == 1U,
+                "explicit regenerate resolves the reviewed conflict") &&
+         expect(overwritten.accepted && overwritten.changed &&
+                    overwritten.historyReceipt.recorded &&
+                    replacementId != cr::kInvalidObjectId &&
+                    replacementId != generatedId,
+                "regenerate replaces refined output in one history step") &&
+         expect(undone.accepted && undone.changed && restored != nullptr &&
+                    sameVec3(restored->transform.position, refinedPosition),
+                "undo restores the exact refined pre-resolution object");
+}
+
+bool detachResolutionPreservesRefinementAndCreatesFreshManagedOutput() {
+  cr::CreativeAppState appState = makeAppState(216U);
+  cr::CreativeWorldLayout layout = singleCrateLayout();
+  const cr::CreativeWorldLayoutCompileResult initial =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt initialApply =
+      cr::applyCreativeWorldLayoutPlan(appState.facade, initial.plan);
+  const cr::CreativeObject* generated =
+      findNamed(appState.facade.document(), "Managed Crate");
+  if (generated == nullptr) {
+    return expect(false, "detach fixture generated its managed object");
+  }
+  const cr::CreativeObjectId refinedId = generated->id;
+  const cr::CreativeVec3 refinedPosition{22.0, 4.0, 18.0};
+  const cr::CreativeDocumentMutationReceipt refined =
+      cr::moveDocumentObject(appState.facade.documentForPersistence(),
+                             refinedId, refinedPosition);
+  layout.objects[0].name = "Fresh Managed Crate";
+
+  const cr::CreativeWorldLayoutCompileResult detached =
+      cr::buildCreativeWorldLayoutPlan(
+          appState.facade.document(), layout,
+          {cr::CreativeWorldLayoutConflictResolution::Detach});
+  const cr::CreativeWorldLayoutApplyReceipt applied =
+      cr::applyCreativeWorldLayoutPlanWithHistory(
+          appState, detached.plan, "world_layout_conflict_detach");
+  const cr::CreativeObject* preserved =
+      appState.facade.document().findObject(refinedId);
+  const cr::CreativeObject* fresh =
+      findNamed(appState.facade.document(), "Fresh Managed Crate");
+  const std::string layoutTag = cr::creativeWorldLayoutTag(layout.stableKey);
+  const bool ownershipRemoved =
+      preserved != nullptr &&
+      std::find(preserved->tags.begin(), preserved->tags.end(), layoutTag) ==
+          preserved->tags.end() &&
+      cr::creativeRecipeObjectInstanceKey(*preserved).empty() &&
+      cr::creativeRecipeObjectOutputFingerprint(*preserved) == 0U &&
+      std::find(preserved->tags.begin(), preserved->tags.end(),
+                "author:keep") != preserved->tags.end();
+
+  return expect(initial.receipt.accepted && initialApply.accepted &&
+                    refined.changed,
+                "detach fixture starts from refined managed output") &&
+         expect(detached.receipt.accepted &&
+                    detached.receipt.objectRecipeConflictCount == 1U &&
+                    detached.receipt.objectRecipeDetachCount == 1U &&
+                    detached.plan.objectDetachIds.size() == 1U &&
+                    detached.plan.objectRemoveIds.empty() &&
+                    detached.plan.objectRecipes.size() == 1U &&
+                    detached.recipeChanges.size() == 1U &&
+                    detached.recipeChanges[0].kind ==
+                        cr::CreativeWorldLayoutRecipeChangeKind::DetachAndReplace,
+                "detach resolution plans preservation plus fresh generation") &&
+         expect(applied.accepted && applied.changed &&
+                    applied.historyReceipt.recorded &&
+                    appState.facade.document().objectCount() == 2U &&
+                    ownershipRemoved && preserved != nullptr &&
+                    sameVec3(preserved->transform.position, refinedPosition),
+                "detached refinement keeps identity and authored geometry") &&
+         expect(fresh != nullptr && fresh->id != refinedId &&
+                    !cr::creativeRecipeObjectInstanceKey(*fresh).empty() &&
+                    cr::creativeRecipeObjectOutputFingerprint(*fresh) != 0U,
+                "layout receives a separate freshly managed object");
+}
+
+bool removedSourceCannotSilentlyDeleteRefinedOutput() {
+  cr::CreativeAppState appState = makeAppState(217U);
+  cr::CreativeWorldLayout layout = singleCrateLayout();
+  const cr::CreativeWorldLayoutCompileResult initial =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt initialApply =
+      cr::applyCreativeWorldLayoutPlan(appState.facade, initial.plan);
+  const cr::CreativeObject* generated =
+      findNamed(appState.facade.document(), "Managed Crate");
+  if (generated == nullptr) {
+    return expect(false, "removed-source fixture generated its managed object");
+  }
+  const cr::CreativeObjectId refinedId = generated->id;
+  const cr::CreativeDocumentMutationReceipt refined =
+      cr::moveDocumentObject(appState.facade.documentForPersistence(),
+                             refinedId, {16.0, 3.0, 12.0});
+  layout.objects.clear();
+
+  const cr::CreativeWorldLayoutCompileResult blocked =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutCompileResult detached =
+      cr::buildCreativeWorldLayoutPlan(
+          appState.facade.document(), layout,
+          {cr::CreativeWorldLayoutConflictResolution::Detach});
+  const cr::CreativeWorldLayoutApplyReceipt applied =
+      cr::applyCreativeWorldLayoutPlanWithHistory(
+          appState, detached.plan, "world_layout_removed_source_detach");
+  const cr::CreativeObject* preserved =
+      appState.facade.document().findObject(refinedId);
+
+  return expect(initial.receipt.accepted && initialApply.accepted &&
+                    refined.changed,
+                "removed-source fixture starts from refined managed output") &&
+         expect(!blocked.receipt.accepted &&
+                    blocked.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::RefinementConflict &&
+                    blocked.recipeChanges.size() == 1U &&
+                    blocked.recipeChanges[0].desiredRecipeIndex ==
+                        cr::kInvalidCreativeWorldLayoutRecipeIndex &&
+                    blocked.plan.objectRemoveIds.empty(),
+                "removing source blocks before deleting refined output") &&
+         expect(detached.receipt.accepted &&
+                    detached.plan.objectDetachIds.size() == 1U &&
+                    detached.plan.objectRemoveIds.empty() &&
+                    detached.plan.objectRecipes.empty() && applied.accepted &&
+                    applied.changed && applied.historyReceipt.recorded,
+                "explicit detach resolves a removed-source conflict once") &&
+         expect(preserved != nullptr &&
+                    cr::creativeRecipeObjectInstanceKey(*preserved).empty() &&
+                    cr::creativeRecipeObjectOutputFingerprint(*preserved) == 0U,
+                "detached removed-source output remains as an authored object");
 }
 
 bool buildingRegenerationIsolatedToChangedOwnershipGroup() {
@@ -1404,6 +1607,9 @@ int main() {
       twoDimensionalBuildingCompilesToExactThreeDimensionalOutput() &&
       rebuildingAndDeletingLayoutNeverDuplicatesOutput() &&
       selectiveRegenerationPreservesIdentityAndManualRefinement() &&
+      refinedOutputBlocksSourceChangesUntilExplicitlyRegenerated() &&
+      detachResolutionPreservesRefinementAndCreatesFreshManagedOutput() &&
+      removedSourceCannotSilentlyDeleteRefinedOutput() &&
       buildingRegenerationIsolatedToChangedOwnershipGroup() &&
       unversionedGeneratedGroupsMigrateOnceThenRemainStable() &&
       authoritativeTerrainAndMaterialApplyAsOneHistoryStep() &&

@@ -152,6 +152,8 @@ std::string diagnosticMessage(const cr::CreativeWorldLayoutReceipt& receipt) {
       return "Generated layout could not be installed";
     case cr::CreativeWorldLayoutStatus::StalePlan:
       return "Layout source changed during generation";
+    case cr::CreativeWorldLayoutStatus::RefinementConflict:
+      return "Generated output has 3D refinements that conflict with this layout change";
     case cr::CreativeWorldLayoutStatus::NotRequested:
       return "Layout preflight was not requested";
     case cr::CreativeWorldLayoutStatus::NoChange:
@@ -160,6 +162,59 @@ std::string diagnosticMessage(const cr::CreativeWorldLayoutReceipt& receipt) {
       break;
   }
   return subject + " is not ready";
+}
+
+void resolveRecipeChangeSource(
+    const cr::CreativeWorldLayout& layout,
+    const cr::CreativeWorldLayoutRecipeChange& change,
+    cr::CreativeWorldLayoutTable& table,
+    std::size_t& index) noexcept {
+  const std::string buildingPrefix = layout.stableKey + ".";
+  for (std::size_t buildingIndex = 0U;
+       buildingIndex < layout.buildings.size(); ++buildingIndex) {
+    if (change.instanceKey ==
+        buildingPrefix + layout.buildings[buildingIndex].stableKey) {
+      table = cr::CreativeWorldLayoutTable::Building;
+      index = buildingIndex;
+      return;
+    }
+  }
+  const std::string objectPrefix = layout.stableKey + ".objects.";
+  for (std::size_t objectIndex = 0U; objectIndex < layout.objects.size();
+       ++objectIndex) {
+    if (change.instanceKey ==
+        objectPrefix + layout.objects[objectIndex].stableKey) {
+      table = cr::CreativeWorldLayoutTable::Object;
+      index = objectIndex;
+      return;
+    }
+  }
+}
+
+void appendRefinementConflictDiagnostics(
+    CreativeEditorWorldLayoutDiagnosticReport& report,
+    const cr::CreativeWorldLayout& layout) {
+  for (const cr::CreativeWorldLayoutRecipeChange& change :
+       report.recipeChanges) {
+    if (change.kind !=
+            cr::CreativeWorldLayoutRecipeChangeKind::Conflict ||
+        report.issueCount >= report.issues.size()) {
+      continue;
+    }
+    CreativeEditorWorldLayoutDiagnostic& issue =
+        report.issues[report.issueCount++];
+    issue.severity = CreativeEditorWorldLayoutDiagnosticSeverity::Error;
+    issue.status = cr::CreativeWorldLayoutStatus::RefinementConflict;
+    resolveRecipeChangeSource(layout, change, issue.table, issue.index);
+    issue.stableKey = change.instanceKey;
+    issue.message = change.desiredRecipeIndex ==
+                            cr::kInvalidCreativeWorldLayoutRecipeIndex
+                        ? change.instanceKey +
+                              " was refined in 3D and its layout source was removed"
+                        : change.instanceKey +
+                              " was refined in 3D and its layout source changed";
+    issue.reasonCode = "creative_world_layout_refinement_conflict";
+  }
 }
 
 }  // namespace
@@ -173,11 +228,19 @@ buildCreativeEditorWorldLayoutDiagnosticReport(
   const cr::CreativeWorldLayoutCompileResult compiled =
       cr::buildCreativeWorldLayoutPlan(document, layout);
   report.compileReceipt = compiled.receipt;
+  report.recipeChanges = compiled.recipeChanges;
   report.ready = compiled.receipt.accepted;
   report.hasChanges = compiled.receipt.accepted &&
                       compiled.receipt.status ==
                           cr::CreativeWorldLayoutStatus::Ready;
   if (!report.ready) {
+    if (compiled.receipt.status ==
+        cr::CreativeWorldLayoutStatus::RefinementConflict) {
+      appendRefinementConflictDiagnostics(report, layout);
+      if (report.issueCount > 0U) {
+        return report;
+      }
+    }
     CreativeEditorWorldLayoutDiagnostic& issue = report.issues[0];
     issue.status = compiled.receipt.status;
     issue.table = compiled.receipt.failedTable;

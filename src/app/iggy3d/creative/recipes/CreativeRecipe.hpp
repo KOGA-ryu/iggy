@@ -58,8 +58,9 @@ struct CreativeRecipePlan {
   std::string instanceKey;
   std::string instanceName;
   // Zero keeps ordinary one-shot recipes unversioned. Regenerating owners set
-  // this from fingerprintCreativeRecipePlan before materialization so existing
-  // output can be reconciled without comparing user-edited object geometry.
+  // this from fingerprintCreativeRecipePlan before materialization. Each
+  // materialized object also receives its own generated-output fingerprint so
+  // later reconciliation can distinguish source changes from 3D refinements.
   std::uint64_t definitionFingerprint = 0U;
   std::vector<CreativeRecipeObjectPlan> objects;
 };
@@ -108,8 +109,18 @@ struct CreativeRecipeApplyReceipt {
     std::string_view stableKey);
 [[nodiscard]] std::string creativeRecipeDefinitionFingerprintTag(
     std::uint64_t fingerprint);
+[[nodiscard]] std::string creativeRecipeOutputFingerprintTag(
+    std::uint64_t fingerprint);
 [[nodiscard]] std::uint64_t fingerprintCreativeRecipePlan(
     const CreativeRecipePlan& plan) noexcept;
+[[nodiscard]] std::uint64_t fingerprintCreativeRecipeObjectPlan(
+    const CreativeRecipePlan& plan,
+    std::size_t objectIndex) noexcept;
+[[nodiscard]] std::uint64_t fingerprintCreativeRecipeObjectState(
+    const CreativeObject& object,
+    std::string_view parentStableKey) noexcept;
+[[nodiscard]] bool isCreativeRecipeManagementTag(
+    std::string_view tag) noexcept;
 [[nodiscard]] bool creativeRecipeRequestHasProvenance(
     const CreativeDocumentCreateRequest& request,
     CreativeRecipeKind kind,
@@ -136,6 +147,10 @@ struct CreativeRecipeApplyReceipt {
     CreativeRecipeObjectRole role,
     std::string_view stableKey);
 [[nodiscard]] std::string_view creativeRecipeObjectInstanceKey(
+    const CreativeObject& object) noexcept;
+[[nodiscard]] std::string_view creativeRecipeObjectStableKey(
+    const CreativeObject& object) noexcept;
+[[nodiscard]] std::uint64_t creativeRecipeObjectOutputFingerprint(
     const CreativeObject& object) noexcept;
 [[nodiscard]] bool creativeRecipeObjectHasDefinitionFingerprint(
     const CreativeObject& object,
