@@ -2,6 +2,7 @@
 #include "app/iggy3d/creative/recipes/ObjectLibraryRecipe.hpp"
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
 
+#include <array>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -81,6 +82,34 @@ bool symbolicParentAndProvenanceMaterializeDeterministically() {
                     "recipe_house", cr::CreativeRecipeObjectRole::Generated,
                     "floor.main"),
                 "recipe instance provenance");
+}
+
+bool explicitObjectIdsResolveStableParentIdentity() {
+  const std::array<cr::CreativeObjectId, 2> objectIds{41U, 99U};
+  const cr::CreativeRecipeMaterializeResult materialized =
+      cr::materializeCreativeRecipe(parentedRecipe(), objectIds);
+  const std::array<cr::CreativeObjectId, 2> duplicateIds{41U, 41U};
+  const cr::CreativeRecipeMaterializeResult duplicate =
+      cr::materializeCreativeRecipe(parentedRecipe(), duplicateIds);
+  const std::array<cr::CreativeObjectId, 1> shortIds{41U};
+  const cr::CreativeRecipeMaterializeResult shortMap =
+      cr::materializeCreativeRecipe(parentedRecipe(), shortIds);
+
+  return expect(materialized.receipt.accepted &&
+                    materialized.receipt.firstObjectId == 41U &&
+                    materialized.createRequests.size() == 2U &&
+                    materialized.createRequests[1].parentId == 41U,
+                "explicit id map resolves symbolic parent") &&
+         expect(!duplicate.receipt.accepted &&
+                    duplicate.receipt.reasonCode ==
+                        "creative_recipe_object_ids_invalid" &&
+                    duplicate.createRequests.empty(),
+                "duplicate explicit ids fail closed") &&
+         expect(!shortMap.receipt.accepted &&
+                    shortMap.receipt.reasonCode ==
+                        "creative_recipe_object_ids_invalid" &&
+                    shortMap.createRequests.empty(),
+                "incomplete explicit id map fails closed");
 }
 
 bool invalidKeysParentsAndAllocatorOverflowFailClosed() {
@@ -415,6 +444,7 @@ bool invalidObjectLibraryPlacementsFailWithoutPartialPlan() {
 int main() {
   const bool ok =
       symbolicParentAndProvenanceMaterializeDeterministically() &&
+      explicitObjectIdsResolveStableParentIdentity() &&
       invalidKeysParentsAndAllocatorOverflowFailClosed() &&
       definitionFingerprintPinsSemanticOutputAndRejectsStalePlans() &&
       generatedOutputFingerprintDetectsLaterSemanticRefinement() &&

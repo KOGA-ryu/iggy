@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace iggy3d::creative {
 namespace {
@@ -19,6 +20,16 @@ struct StageResult {
   std::size_t failedRecipeIndex = kInvalidCreativeWorldLayoutIndex;
   std::size_t failedObjectIndex = kInvalidCreativeWorldLayoutIndex;
   std::string reasonCode = "creative_world_layout_stage_not_requested";
+};
+
+struct PreparedRecipePatch {
+  CreativeRecipeMaterializeResult materialized;
+  const CreativeWorldLayoutRecipePatch* patch = nullptr;
+};
+
+struct SelectionSnapshot {
+  std::vector<CreativeObjectId> objectIds;
+  CreativeObjectId primaryObjectId = kInvalidObjectId;
 };
 
 void setStatus(CreativeWorldLayoutPreviewResult& result,
@@ -65,6 +76,96 @@ void setStatus(CreativeWorldLayoutApplyReceipt& receipt,
              plan.sourceMaterialRevision;
 }
 
+[[nodiscard]] bool refreshRecipeManagementTags(
+    CreativeObject& object,
+    std::span<const std::string> desiredTags) {
+  std::vector<std::string> refreshed;
+  refreshed.reserve(object.tags.size() + desiredTags.size());
+  for (const std::string& tag : object.tags) {
+    if (!isCreativeRecipeManagementTag(tag)) {
+      refreshed.push_back(tag);
+    }
+  }
+  for (const std::string& tag : desiredTags) {
+    if (isCreativeRecipeManagementTag(tag) &&
+        std::find(refreshed.begin(), refreshed.end(), tag) ==
+            refreshed.end()) {
+      refreshed.push_back(tag);
+    }
+  }
+  if (refreshed == object.tags) {
+    return false;
+  }
+  object.tags = std::move(refreshed);
+  return true;
+}
+
+[[nodiscard]] CreativeObjectDirtyFlags recipeMetadataDirtyFlags() noexcept {
+  return static_cast<CreativeObjectDirtyFlags>(
+             CreativeObjectDirtyFlag::Identity) |
+         static_cast<CreativeObjectDirtyFlags>(
+             CreativeObjectDirtyFlag::Preview) |
+         static_cast<CreativeObjectDirtyFlags>(
+             CreativeObjectDirtyFlag::Serialization);
+}
+
+[[nodiscard]] CreativeDocumentRestoreReceipt validateStagedDocument(
+    const CreativeDocument& document) {
+  CreativeDocumentRestoreRequest request;
+  request.documentId = document.id();
+  request.name = std::string(document.name());
+  request.units = document.units();
+  request.gridSettings = document.gridSettings();
+  request.snapSettings = document.documentSnapSettings();
+  request.worldBounds = document.worldBounds();
+  request.nextObjectId = document.nextObjectId();
+  request.objects.assign(document.objects().begin(), document.objects().end());
+  request.logicLinks.assign(document.logicLinks().begin(),
+                            document.logicLinks().end());
+  request.voxelField = document.voxelField();
+  request.terrainField = document.terrainField();
+  request.terrainMaterialField = document.terrainMaterialField();
+  CreativeDocument validationDocument;
+  return validationDocument.restoreForLoad(request);
+}
+
+[[nodiscard]] SelectionSnapshot captureSelection(const Facade& facade) {
+  SelectionSnapshot snapshot;
+  const CreativeSelectionState& selection = facade.selectionState();
+  const auto appendTarget = [&](TargetRef target) {
+    const CreativeObjectId objectId =
+        target.value == kInvalidId
+            ? kInvalidObjectId
+            : static_cast<CreativeObjectId>(target.value);
+    if (objectId != kInvalidObjectId &&
+        facade.document().containsObject(objectId) &&
+        std::find(snapshot.objectIds.begin(), snapshot.objectIds.end(),
+                  objectId) == snapshot.objectIds.end()) {
+      snapshot.objectIds.push_back(objectId);
+    }
+  };
+  for (TargetRef target : selectedTargetList(selection)) {
+    appendTarget(target);
+  }
+  appendTarget(selection.selectedTarget);
+  if (selection.selectedTarget.value != kInvalidId) {
+    snapshot.primaryObjectId = static_cast<CreativeObjectId>(
+        selection.selectedTarget.value);
+  }
+  return snapshot;
+}
+
+void restoreValidSelection(Facade& facade, SelectionSnapshot snapshot) {
+  std::erase_if(snapshot.objectIds, [&](CreativeObjectId objectId) {
+    return !facade.document().containsObject(objectId);
+  });
+  if (!facade.document().containsObject(snapshot.primaryObjectId)) {
+    snapshot.primaryObjectId = kInvalidObjectId;
+  }
+  static_cast<void>(
+      facade.selectTargets(snapshot.objectIds, snapshot.primaryObjectId));
+}
+
 [[nodiscard]] StageResult stagePlan(const CreativeDocument& source,
                                     const CreativeWorldLayoutPlan& plan) {
   StageResult result;
@@ -89,6 +190,80 @@ void setStatus(CreativeWorldLayoutApplyReceipt& receipt,
         static_cast<CreativeObjectDirtyFlags>(
             CreativeObjectDirtyFlag::Serialization) |
         static_cast<CreativeObjectDirtyFlags>(CreativeObjectDirtyFlag::Preview));
+    result.changed = true;
+  }
+
+  std::vector<PreparedRecipePatch> preparedPatches;
+  preparedPatches.reserve(plan.objectRecipePatches.size());
+  CreativeObjectDirtyFlags patchDirtyFlags = 0U;
+  bool patchedExisting = false;
+  for (std::size_t patchIndex = 0U;
+       patchIndex < plan.objectRecipePatches.size(); ++patchIndex) {
+    result.failedRecipeIndex = patchIndex;
+    const CreativeWorldLayoutRecipePatch& patch =
+        plan.objectRecipePatches[patchIndex];
+    if (patch.objectIds.size() != patch.recipe.objects.size() ||
+        patch.memberActions.size() != patch.recipe.objects.size()) {
+      result.status = CreativeWorldLayoutStatus::ObjectRejected;
+      result.reasonCode = "creative_world_layout_patch_shape_invalid";
+      return result;
+    }
+    PreparedRecipePatch prepared;
+    prepared.materialized =
+        materializeCreativeRecipe(patch.recipe, patch.objectIds);
+    prepared.patch = &patch;
+    if (!prepared.materialized.receipt.accepted ||
+        prepared.materialized.createRequests.size() !=
+            patch.memberActions.size()) {
+      result.status = CreativeWorldLayoutStatus::ObjectRejected;
+      result.reasonCode = prepared.materialized.receipt.reasonCode;
+      return result;
+    }
+
+    for (std::size_t objectIndex = 0U;
+         objectIndex < patch.memberActions.size(); ++objectIndex) {
+      result.failedObjectIndex = objectIndex;
+      const CreativeWorldLayoutRecipeMemberAction action =
+          patch.memberActions[objectIndex];
+      if (action == CreativeWorldLayoutRecipeMemberAction::Create) {
+        continue;
+      }
+      if (action != CreativeWorldLayoutRecipeMemberAction::Preserve &&
+          action != CreativeWorldLayoutRecipeMemberAction::Update) {
+        result.status = CreativeWorldLayoutStatus::ObjectRejected;
+        result.reasonCode = "creative_world_layout_patch_action_invalid";
+        return result;
+      }
+      CreativeObject* existing =
+          result.document.findObject(patch.objectIds[objectIndex]);
+      if (existing == nullptr) {
+        result.status = CreativeWorldLayoutStatus::ObjectRejected;
+        result.reasonCode = "creative_world_layout_patch_object_missing";
+        return result;
+      }
+      if (action == CreativeWorldLayoutRecipeMemberAction::Preserve) {
+        if (refreshRecipeManagementTags(
+                *existing,
+                prepared.materialized.createRequests[objectIndex].tags)) {
+          patchedExisting = true;
+          patchDirtyFlags |= recipeMetadataDirtyFlags();
+        }
+        continue;
+      }
+
+      const CreativeObjectId existingId = existing->id;
+      const CreativeObjectKind previousKind = existing->kind;
+      *existing = resolveCreativeDocumentCreateObject(
+          prepared.materialized.createRequests[objectIndex], existingId);
+      patchedExisting = true;
+      patchDirtyFlags |= dirtyFlagsForCreation(previousKind) |
+                         dirtyFlagsForCreation(existing->kind) |
+                         recipeMetadataDirtyFlags();
+    }
+    preparedPatches.push_back(std::move(prepared));
+  }
+  if (patchedExisting) {
+    result.document.markObjectMutationChanged(patchDirtyFlags);
     result.changed = true;
   }
 
@@ -124,6 +299,36 @@ void setStatus(CreativeWorldLayoutApplyReceipt& receipt,
     result.changed = result.changed || result.materialReceipt.changed;
   }
 
+  for (std::size_t patchIndex = 0U;
+       patchIndex < preparedPatches.size(); ++patchIndex) {
+    result.failedRecipeIndex = patchIndex;
+    const PreparedRecipePatch& prepared = preparedPatches[patchIndex];
+    for (std::size_t objectIndex = 0U;
+         objectIndex < prepared.patch->memberActions.size(); ++objectIndex) {
+      result.failedObjectIndex = objectIndex;
+      if (prepared.patch->memberActions[objectIndex] !=
+          CreativeWorldLayoutRecipeMemberAction::Create) {
+        continue;
+      }
+      if (result.document.nextObjectId() !=
+          prepared.patch->objectIds[objectIndex]) {
+        result.status = CreativeWorldLayoutStatus::ObjectRejected;
+        result.reasonCode = "creative_world_layout_patch_object_id_stale";
+        return result;
+      }
+      const CreativeDocumentCreateReceipt created =
+          result.document.createObject(
+              prepared.materialized.createRequests[objectIndex]);
+      if (!created.accepted || !created.changed || !created.objectCreated ||
+          created.objectId != prepared.patch->objectIds[objectIndex]) {
+        result.status = CreativeWorldLayoutStatus::ObjectRejected;
+        result.reasonCode = std::string(created.reasonCode);
+        return result;
+      }
+      result.changed = true;
+    }
+  }
+
   for (std::size_t recipeIndex = 0U;
        recipeIndex < plan.objectRecipes.size(); ++recipeIndex) {
     result.failedRecipeIndex = recipeIndex;
@@ -147,6 +352,14 @@ void setStatus(CreativeWorldLayoutApplyReceipt& receipt,
       }
       result.changed = true;
     }
+  }
+
+  const CreativeDocumentRestoreReceipt validation =
+      validateStagedDocument(result.document);
+  if (!validation.accepted) {
+    result.status = CreativeWorldLayoutStatus::ObjectRejected;
+    result.reasonCode = std::string(validation.reasonCode);
+    return result;
   }
 
   result.accepted = true;
@@ -215,6 +428,7 @@ CreativeWorldLayoutApplyReceipt applyCreativeWorldLayoutPlan(
               "creative_world_layout_plan_stale");
     return receipt;
   }
+  SelectionSnapshot selection = captureSelection(facade);
   StageResult staged = stagePlan(facade.document(), plan);
   receipt.terrainReceipt = staged.terrainReceipt;
   receipt.materialReceipt = staged.materialReceipt;
@@ -235,6 +449,7 @@ CreativeWorldLayoutApplyReceipt applyCreativeWorldLayoutPlan(
               receipt.installReceipt.reasonCode);
     return receipt;
   }
+  restoreValidSelection(facade, std::move(selection));
   receipt.changed = true;
   setStatus(receipt, CreativeWorldLayoutStatus::Applied,
             "creative_world_layout_applied", true);

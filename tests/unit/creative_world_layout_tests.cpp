@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits>
+#include <map>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -30,6 +31,10 @@ bool sameVec3(cr::CreativeVec3 lhs, cr::CreativeVec3 rhs) {
   return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
 }
 
+bool sameBounds(cr::CreativeBounds lhs, cr::CreativeBounds rhs) {
+  return sameVec3(lhs.min, rhs.min) && sameVec3(lhs.max, rhs.max);
+}
+
 cr::CreativeDocument makeDocument(cr::CreativeDocumentId id) {
   cr::CreativeDocument document = cr::CreativeDocument::create("Layout Test");
   static_cast<void>(document.assignId(id));
@@ -50,6 +55,32 @@ const cr::CreativeObject* findNamed(const cr::CreativeDocument& document,
       document.objects().begin(), document.objects().end(),
       [name](const cr::CreativeObject& object) { return object.name == name; });
   return found == document.objects().end() ? nullptr : &*found;
+}
+
+const cr::CreativeObject* findManaged(
+    const cr::CreativeDocument& document,
+    std::string_view instanceKey,
+    std::string_view stableKey) {
+  const auto found = std::find_if(
+      document.objects().begin(), document.objects().end(),
+      [&](const cr::CreativeObject& object) {
+        return cr::creativeRecipeObjectInstanceKey(object) == instanceKey &&
+               cr::creativeRecipeObjectStableKey(object) == stableKey;
+      });
+  return found == document.objects().end() ? nullptr : &*found;
+}
+
+std::map<std::string, cr::CreativeObjectId> managedObjectIds(
+    const cr::CreativeDocument& document,
+    std::string_view instanceKey) {
+  std::map<std::string, cr::CreativeObjectId> output;
+  for (const cr::CreativeObject& object : document.objects()) {
+    if (cr::creativeRecipeObjectInstanceKey(object) == instanceKey) {
+      output.emplace(std::string(cr::creativeRecipeObjectStableKey(object)),
+                     object.id);
+    }
+  }
+  return output;
 }
 
 cr::CreativeWorldLayout smallHouseLayout() {
@@ -1018,9 +1049,11 @@ bool rebuildingAndDeletingLayoutNeverDuplicatesOutput() {
                     firstObjectCount == 14U,
                 "first layout generation has exact output count") &&
          expect(replacement.receipt.accepted &&
-                    replacement.receipt.objectRemoveCount == 14U &&
+                    replacement.receipt.objectRemoveCount == 0U &&
+                    replacement.plan.objectRecipePatches.size() == 1U &&
+                    replacement.plan.objectRecipes.empty() &&
                     replacement.receipt.objectCount == 14U,
-                "layout rebuild replaces complete prior output") &&
+                "layout rebuild patches complete prior output in place") &&
          expect(replaced.accepted && replaced.changed &&
                     replacementObjectCount == 14U && replacementNamePresent,
                 "layout replacement applies atomically without duplication") &&
@@ -1094,7 +1127,7 @@ bool selectiveRegenerationPreservesIdentityAndManualRefinement() {
   const cr::CreativeObject* preservedCrateB =
       appState.facade.document().findObject(crateBId);
   const bool replacementPreserved =
-      replacedCrateA != nullptr && replacedCrateA->id != crateAId &&
+      replacedCrateA != nullptr && replacedCrateA->id == crateAId &&
       preservedBuilding != nullptr && preservedBuilding->id == buildingId &&
       preservedCrateB != nullptr &&
       sameVec3(preservedCrateB->transform.position, refinedPosition);
@@ -1133,13 +1166,15 @@ bool selectiveRegenerationPreservesIdentityAndManualRefinement() {
                     replacement.receipt.objectRecipeKeepCount == 1U &&
                     replacement.receipt.objectRecipeRefinedCount == 1U &&
                     replacement.receipt.objectRecipeCount == 1U &&
-                    replacement.receipt.objectRemoveCount == 1U &&
+                    replacement.receipt.objectRemoveCount == 0U &&
+                    replacement.plan.objectRecipePatches.size() == 1U &&
+                    replacement.plan.objectRecipes.empty() &&
                     replacement.receipt.objectCount == 1U,
-                "one source change schedules exactly one group replacement") &&
+                "one source change schedules exactly one stable-id patch") &&
          expect(replaced.accepted && replaced.changed &&
                     replaced.historyReceipt.recorded &&
                     replacementPreserved,
-                "selective replacement retains unrelated identity and edits") &&
+                "selective patch retains matching identity and unrelated edits") &&
          expect(undone.accepted && undone.changed &&
                     restoredCrateA != nullptr &&
                     restoredCrateA->name == "Crate A" &&
@@ -1504,6 +1539,11 @@ bool buildingRegenerationIsolatedToChangedOwnershipGroup() {
   }
   const cr::CreativeObjectId firstRootId = firstRoot->id;
   const cr::CreativeObjectId secondRootId = secondRoot->id;
+  const auto firstBuildingIds = managedObjectIds(
+      appState.facade.document(), "estate_level_0.house");
+  const std::array selectedIds{firstRootId};
+  const cr::CreativeSelectionReceipt selected =
+      appState.facade.selectTargets(selectedIds, firstRootId);
 
   layout.walls[0].name = "North Wall Revised";
   const cr::CreativeWorldLayoutCompileResult replacement =
@@ -1514,6 +1554,10 @@ bool buildingRegenerationIsolatedToChangedOwnershipGroup() {
       findNamed(appState.facade.document(), firstName);
   const cr::CreativeObject* retainedSecondRoot =
       findNamed(appState.facade.document(), secondName);
+  const cr::CreativeObject* revisedNorthWall =
+      findNamed(appState.facade.document(), "North Wall Revised");
+  const auto replacedBuildingIds = managedObjectIds(
+      appState.facade.document(), "estate_level_0.house");
 
   return expect(first.receipt.accepted && firstApplied.accepted &&
                     first.receipt.objectRecipeCreateCount == 2U,
@@ -1522,15 +1566,228 @@ bool buildingRegenerationIsolatedToChangedOwnershipGroup() {
                     replacement.receipt.objectRecipeReplaceCount == 1U &&
                     replacement.receipt.objectRecipeKeepCount == 1U &&
                     replacement.receipt.objectRecipeCount == 1U &&
-                    replacement.receipt.objectRemoveCount == 14U &&
+                    replacement.receipt.objectRemoveCount == 0U &&
+                    replacement.plan.objectRecipePatches.size() == 1U &&
+                    replacement.plan.objectRecipes.empty() &&
                     replacement.receipt.objectCount == 14U,
-                "wall edit schedules only its owning building recipe") &&
-         expect(replaced.accepted && replaced.changed &&
-                    replacedFirstRoot != nullptr &&
-                    replacedFirstRoot->id != firstRootId &&
+                "wall edit schedules only its owning building patch") &&
+         expect(selected.accepted && replaced.accepted && replaced.changed,
+                "stable-id patch applies after selecting generated output") &&
+         expect(replacedFirstRoot != nullptr &&
+                    replacedFirstRoot->id == firstRootId &&
                     retainedSecondRoot != nullptr &&
                     retainedSecondRoot->id == secondRootId,
-                "unrelated building preserves generated object identity");
+                "both building roots preserve identity") &&
+         expect(revisedNorthWall != nullptr &&
+                    revisedNorthWall->name == "North Wall Revised",
+                "patched wall receives revised source state") &&
+         expect(firstBuildingIds == replacedBuildingIds,
+                "all matching building members preserve stable ids") &&
+         expect(appState.facade.selectionState().selectedTarget.value ==
+                    firstRootId,
+                "regeneration restores selection by stable object id");
+}
+
+bool openingEditsPatchGeometryWithoutIdentityChurn() {
+  cr::CreativeAppState appState = makeAppState(220U);
+  cr::CreativeWorldLayout layout = smallHouseLayout();
+  const cr::CreativeWorldLayoutCompileResult initial =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt initialApplied =
+      cr::applyCreativeWorldLayoutPlan(appState.facade, initial.plan);
+  const std::string_view instanceKey = "estate_level_0.house";
+  const auto initialIds = managedObjectIds(appState.facade.document(),
+                                           instanceKey);
+  const cr::CreativeObject* initialDoor = findManaged(
+      appState.facade.document(), instanceKey, "house.front_door.insert");
+  const cr::CreativeObject* initialFloor = findManaged(
+      appState.facade.document(), instanceKey, "house.floor");
+  const cr::CreativeObject* initialWindow = findManaged(
+      appState.facade.document(), instanceKey, "house.east_window.insert");
+  if (initialDoor == nullptr || initialFloor == nullptr ||
+      initialWindow == nullptr) {
+    return expect(false, "opening patch fixture materializes");
+  }
+  const cr::CreativeBounds doorBoundsBefore = initialDoor->bounds;
+  const cr::CreativeObjectId doorId = initialDoor->id;
+  const cr::CreativeObjectId selectedFloorId = initialFloor->id;
+  const std::uint64_t floorFingerprintBefore =
+      cr::fingerprintCreativeRecipeObjectState(*initialFloor, "root");
+  const cr::CreativeObjectId selectedWindowId = initialWindow->id;
+  const cr::CreativeDocumentCreateReceipt triggerCreated =
+      appState.facade.createDocumentObject(
+          cr::CreativeObjectKind::TriggerZone);
+  const cr::CreativeLogicLinkMutationReceipt linkCreated =
+      appState.facade.setLogicLink(
+          {triggerCreated.objectId, doorId,
+           cr::CreativeLogicLinkAction::Toggle});
+  const std::array selectedIds{selectedFloorId, selectedWindowId};
+  const cr::CreativeSelectionReceipt selected =
+      appState.facade.selectTargets(selectedIds, selectedWindowId);
+
+  layout.openings[0].centerOffsetCells = 2.5;
+  const cr::CreativeWorldLayoutCompileResult changed =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt applied =
+      cr::applyCreativeWorldLayoutPlanWithHistory(
+          appState, changed.plan, "opening_identity_patch_test");
+  const auto changedIds = managedObjectIds(appState.facade.document(),
+                                           instanceKey);
+  const cr::CreativeObject* changedDoor = findManaged(
+      appState.facade.document(), instanceKey, "house.front_door.insert");
+  const cr::CreativeObject* changedFloor = findManaged(
+      appState.facade.document(), instanceKey, "house.floor");
+  const bool geometryChangedWithoutIdChurn =
+      initialIds == changedIds && changedDoor != nullptr &&
+      !sameBounds(changedDoor->bounds, doorBoundsBefore);
+  const bool floorStateStayedExact =
+      changedFloor != nullptr &&
+      cr::fingerprintCreativeRecipeObjectState(*changedFloor, "root") ==
+          floorFingerprintBefore;
+  const cr::CreativeSelectionState& selection =
+      appState.facade.selectionState();
+  const bool selectionStayedOnGeneratedMembers =
+      cr::selectedTargetCount(selection) == 2U &&
+      cr::selectionContainsTarget(
+          selection,
+          {static_cast<cr::Id>(selectedFloorId)}) &&
+      cr::selectionContainsTarget(
+          selection,
+          {static_cast<cr::Id>(selectedWindowId)}) &&
+      selection.selectedTarget.value == selectedWindowId;
+  const cr::CreativeLogicLink* preservedLink =
+      appState.facade.document().findLogicLink(triggerCreated.objectId,
+                                                doorId);
+  const cr::CreativeHistoryApplyReceipt undone = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+  const cr::CreativeObject* restoredDoor = findManaged(
+      appState.facade.document(), instanceKey, "house.front_door.insert");
+
+  return expect(initial.receipt.accepted && initialApplied.accepted &&
+                    triggerCreated.accepted && linkCreated.accepted &&
+                    selected.accepted,
+                "opening patch fixture starts selected and linked") &&
+         expect(changed.receipt.accepted &&
+                    changed.receipt.objectRecipeReplaceCount == 1U &&
+                    changed.receipt.objectRemoveCount == 0U &&
+                    changed.plan.objectRecipePatches.size() == 1U &&
+                    changed.plan.objectRecipes.empty(),
+                "opening edit compiles as one stable-id patch") &&
+         expect(applied.accepted && applied.changed &&
+                    applied.historyReceipt.recorded,
+                "opening patch applies as one history transaction") &&
+         expect(geometryChangedWithoutIdChurn,
+                "opening geometry changes without stable-id churn") &&
+         expect(floorStateStayedExact,
+                "unaffected floor semantic state stays exact") &&
+         expect(selectionStayedOnGeneratedMembers,
+                "opening patch retains generated multi-selection and primary") &&
+         expect(preservedLink != nullptr &&
+                    preservedLink->action ==
+                        cr::CreativeLogicLinkAction::Toggle,
+                "opening patch retains authored logic link by stable id") &&
+         expect(undone.accepted && undone.changed &&
+                    restoredDoor != nullptr &&
+                    sameBounds(restoredDoor->bounds, doorBoundsBefore),
+                "opening patch remains one exact undo transaction");
+}
+
+bool refinementOnUnchangedMemberSurvivesSiblingSourceEdit() {
+  cr::CreativeAppState appState = makeAppState(221U);
+  cr::CreativeWorldLayout layout = smallHouseLayout();
+  const cr::CreativeWorldLayoutCompileResult initial =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt initialApplied =
+      cr::applyCreativeWorldLayoutPlan(appState.facade, initial.plan);
+  const std::string_view instanceKey = "estate_level_0.house";
+  const cr::CreativeObject* north = findManaged(
+      appState.facade.document(), instanceKey, "house.north.segment.1");
+  const cr::CreativeObject* west = findManaged(
+      appState.facade.document(), instanceKey, "house.west.segment.1");
+  if (north == nullptr || west == nullptr) {
+    return expect(false, "sibling refinement fixture materializes");
+  }
+  const cr::CreativeObjectId northId = north->id;
+  const cr::CreativeObjectId westId = west->id;
+  const cr::CreativeVec3 refinedPosition{31.0, 4.0, 27.0};
+  const cr::CreativeDocumentMutationReceipt refined =
+      cr::moveDocumentObject(appState.facade.documentForPersistence(),
+                             northId, refinedPosition);
+
+  layout.walls[2].name = "West Wall Revised";
+  const cr::CreativeWorldLayoutCompileResult changed =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt applied =
+      cr::applyCreativeWorldLayoutPlan(appState.facade, changed.plan);
+  const cr::CreativeObject* preservedNorth =
+      appState.facade.document().findObject(northId);
+  const cr::CreativeObject* revisedWest =
+      appState.facade.document().findObject(westId);
+  const cr::CreativeWorldLayoutCompileResult stable =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+
+  return expect(initial.receipt.accepted && initialApplied.accepted &&
+                    refined.changed,
+                "sibling refinement fixture starts refined") &&
+         expect(changed.receipt.accepted &&
+                    changed.receipt.objectRecipeConflictCount == 0U &&
+                    changed.receipt.objectRecipeReplaceCount == 1U &&
+                    changed.plan.objectRecipePatches.size() == 1U,
+                "disjoint source edit does not conflict with refinement") &&
+         expect(applied.accepted && applied.changed &&
+                    preservedNorth != nullptr &&
+                    sameVec3(preservedNorth->transform.position,
+                             refinedPosition) &&
+                    revisedWest != nullptr &&
+                    revisedWest->name == "West Wall Revised",
+                "patch preserves refined member and updates sibling in place") &&
+         expect(stable.receipt.accepted &&
+                    stable.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::NoChange &&
+                    stable.receipt.objectRecipeRefinedCount == 1U &&
+                    stable.receipt.objectRecipeConflictCount == 0U,
+                "refined group is stable after sibling patch");
+}
+
+bool authoredChildBlocksRemovalOfManagedParent() {
+  cr::CreativeAppState appState = makeAppState(222U);
+  const cr::CreativeWorldLayout layout = smallHouseLayout();
+  const cr::CreativeWorldLayoutCompileResult initial =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt initialApplied =
+      cr::applyCreativeWorldLayoutPlan(appState.facade, initial.plan);
+  const cr::CreativeObject* root = findManaged(
+      appState.facade.document(), "estate_level_0.house", "root");
+  if (root == nullptr) {
+    return expect(false, "managed-parent fixture materializes");
+  }
+
+  cr::CreativeDocumentCreateRequest child;
+  child.kind = cr::CreativeObjectKind::Wall;
+  child.name = "Authored Child";
+  child.bounds = {{0.0, 0.0, 0.0}, {1.0, 1.0, 0.25}};
+  child.hasBoundsOverride = true;
+  child.transform.position = {0.5, 0.5, 0.125};
+  child.hasTransformOverride = true;
+  child.parentId = root->id;
+  const cr::CreativeDocumentCreateReceipt childCreated =
+      appState.facade.createDocumentObject(child);
+
+  cr::CreativeWorldLayout removed;
+  removed.stableKey = layout.stableKey;
+  const cr::CreativeWorldLayoutCompileResult blocked =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), removed);
+
+  return expect(initial.receipt.accepted && initialApplied.accepted &&
+                    childCreated.accepted,
+                "authored child attaches outside managed group") &&
+         expect(!blocked.receipt.accepted &&
+                    blocked.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::RefinementConflict &&
+                    blocked.receipt.objectRecipeConflictCount == 1U &&
+                    blocked.plan.objectRemoveIds.empty() &&
+                    blocked.plan.objectRecipePatches.empty(),
+                "managed parent removal fails closed around authored child");
 }
 
 bool unversionedGeneratedGroupsMigrateOnceThenRemainStable() {
@@ -1568,13 +1825,15 @@ bool unversionedGeneratedGroupsMigrateOnceThenRemainStable() {
          expect(migration.receipt.accepted &&
                     migration.receipt.objectRecipeReplaceCount == 1U &&
                     migration.receipt.objectRecipeKeepCount == 0U &&
-                    migration.receipt.objectRemoveCount == 14U &&
+                    migration.receipt.objectRemoveCount == 0U &&
+                    migration.plan.objectRecipePatches.size() == 1U &&
+                    migration.plan.objectRecipes.empty() &&
                     migration.receipt.objectCount == 14U,
-                "unversioned generated group schedules one migration") &&
+                "unversioned generated group schedules metadata adoption") &&
          expect(migrated.accepted && migrated.changed &&
                     migratedRoot != nullptr &&
-                    migratedRoot->id != legacyRootId,
-                "legacy migration replaces unversioned output once") &&
+                    migratedRoot->id == legacyRootId,
+                "legacy migration adopts output without identity churn") &&
          expect(stable.receipt.accepted &&
                     stable.receipt.status ==
                         cr::CreativeWorldLayoutStatus::NoChange &&
@@ -1743,6 +2002,9 @@ int main() {
       removedSourceCannotSilentlyDeleteRefinedOutput() &&
       conflictDecisionsAreExactCompleteAndIndependentlyApplied() &&
       buildingRegenerationIsolatedToChangedOwnershipGroup() &&
+      openingEditsPatchGeometryWithoutIdentityChurn() &&
+      refinementOnUnchangedMemberSurvivesSiblingSourceEdit() &&
+      authoredChildBlocksRemovalOfManagedParent() &&
       unversionedGeneratedGroupsMigrateOnceThenRemainStable() &&
       authoritativeTerrainAndMaterialApplyAsOneHistoryStep() &&
       buildingTransformPreservesHostedOpeningSemantics() &&

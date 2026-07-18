@@ -90,6 +90,13 @@ struct CreativeDocumentCreateRequest {
   CreativeMovingPlatformSettings movingPlatform;
 };
 
+// Resolves descriptor defaults into the exact durable object shape used by
+// CreativeDocument::createObject. The caller remains responsible for request
+// and relationship validation before installing the returned object.
+[[nodiscard]] CreativeObject resolveCreativeDocumentCreateObject(
+    const CreativeDocumentCreateRequest& request,
+    CreativeObjectId objectId = kInvalidObjectId);
+
 struct CreativeDocumentCreateReceipt {
   bool requested = false;
   bool accepted = false;

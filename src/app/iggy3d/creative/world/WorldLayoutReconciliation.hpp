@@ -34,6 +34,13 @@ enum class CreativeWorldLayoutConflictResolution : std::uint8_t {
   Count,
 };
 
+enum class CreativeWorldLayoutRecipeMemberAction : std::uint8_t {
+  Create,
+  Preserve,
+  Update,
+  Count,
+};
+
 struct CreativeWorldLayoutConflictDecision {
   std::string instanceKey;
   CreativeWorldLayoutConflictResolution resolution =
@@ -53,6 +60,16 @@ struct CreativeWorldLayoutRecipeChange {
   std::uint64_t missingBaselineCount = 0U;
 };
 
+// A patch is aligned one-to-one with the desired recipe object order.
+// Preserve keeps authored state and refreshes only generator metadata; Update
+// installs the desired state at the existing id; Create allocates a new id.
+struct CreativeWorldLayoutRecipePatchDecision {
+  std::size_t desiredRecipeIndex =
+      kInvalidCreativeWorldLayoutRecipeIndex;
+  std::vector<CreativeObjectId> existingObjectIds;
+  std::vector<CreativeWorldLayoutRecipeMemberAction> memberActions;
+};
+
 struct CreativeWorldLayoutReconciliationRequest {
   const CreativeDocument* document = nullptr;
   std::string_view layoutTag;
@@ -67,6 +84,7 @@ struct CreativeWorldLayoutReconciliationResult {
   std::vector<CreativeObjectId> removeObjectIds;
   std::vector<CreativeObjectId> detachObjectIds;
   std::vector<std::size_t> applyRecipeIndices;
+  std::vector<CreativeWorldLayoutRecipePatchDecision> patchDecisions;
   std::uint64_t createRecipeCount = 0U;
   std::uint64_t keepRecipeCount = 0U;
   std::uint64_t refinedRecipeCount = 0U;

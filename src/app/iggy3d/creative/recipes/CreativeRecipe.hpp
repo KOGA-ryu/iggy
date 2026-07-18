@@ -160,6 +160,13 @@ struct CreativeRecipeApplyReceipt {
     const CreativeRecipePlan& plan,
     CreativeObjectId firstObjectId);
 
+// Resolves symbolic recipe parents against an exact final id map. This is used
+// by regenerating owners that preserve stable object identity for matched
+// members while allocating ids only for newly introduced members.
+[[nodiscard]] CreativeRecipeMaterializeResult materializeCreativeRecipe(
+    const CreativeRecipePlan& plan,
+    std::span<const CreativeObjectId> objectIds);
+
 // Applies a materialized recipe as one atomic document replacement. Callers
 // that expose undo should use applyCreativeRecipeWithHistory below.
 [[nodiscard]] CreativeRecipeApplyReceipt applyCreativeRecipe(

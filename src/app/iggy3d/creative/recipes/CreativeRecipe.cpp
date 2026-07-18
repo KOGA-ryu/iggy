@@ -583,14 +583,20 @@ bool creativeRecipeObjectHasDefinitionFingerprint(
                 creativeRecipeDefinitionFingerprintTag(fingerprint));
 }
 
-CreativeRecipeMaterializeResult materializeCreativeRecipe(
+namespace {
+
+CreativeRecipeMaterializeResult materializeCreativeRecipeWithIds(
     const CreativeRecipePlan& plan,
-    CreativeObjectId firstObjectId) {
+    CreativeObjectId firstObjectId,
+    std::span<const CreativeObjectId> objectIds,
+    bool usesExplicitObjectIds) {
   CreativeRecipeMaterializeResult result;
   result.receipt.requested = true;
   result.receipt.kind = plan.kind;
   result.receipt.schemaVersion = plan.schemaVersion;
-  result.receipt.firstObjectId = firstObjectId;
+  result.receipt.firstObjectId = usesExplicitObjectIds && !objectIds.empty()
+                                     ? objectIds.front()
+                                     : firstObjectId;
   result.receipt.objectCount = plan.objects.size();
 
   if (!validRecipeKind(plan.kind) || !validStableKey(plan.instanceKey) ||
@@ -610,9 +616,23 @@ CreativeRecipeMaterializeResult materializeCreativeRecipe(
               "creative_recipe_definition_fingerprint_stale");
     return result;
   }
-  if (firstObjectId == kInvalidObjectId ||
-      plan.objects.size() >
-          std::numeric_limits<CreativeObjectId>::max() - firstObjectId) {
+  if (usesExplicitObjectIds) {
+    std::unordered_set<CreativeObjectId> uniqueObjectIds;
+    uniqueObjectIds.reserve(objectIds.size());
+    if (objectIds.size() != plan.objects.size() ||
+        std::any_of(objectIds.begin(), objectIds.end(),
+                    [&](CreativeObjectId objectId) {
+                      return objectId == kInvalidObjectId ||
+                             !uniqueObjectIds.insert(objectId).second;
+                    })) {
+      setStatus(result.receipt, CreativeRecipeStatus::InvalidObjectPlan,
+                "creative_recipe_object_ids_invalid");
+      return result;
+    }
+  } else if (firstObjectId == kInvalidObjectId ||
+             plan.objects.size() >
+                 std::numeric_limits<CreativeObjectId>::max() -
+                     firstObjectId) {
     setStatus(result.receipt, CreativeRecipeStatus::ObjectIdOverflow,
               "creative_recipe_object_id_overflow");
     return result;
@@ -656,7 +676,9 @@ CreativeRecipeMaterializeResult materializeCreativeRecipe(
 
     CreativeDocumentCreateRequest create = object.createRequest;
     if (object.parentObjectIndex.has_value()) {
-      create.parentId = firstObjectId + *object.parentObjectIndex;
+      create.parentId = usesExplicitObjectIds
+                            ? objectIds[*object.parentObjectIndex]
+                            : firstObjectId + *object.parentObjectIndex;
       ++result.receipt.resolvedParentCount;
     }
     appendTagOnce(create.tags, creativeRecipeKindTag(plan.kind));
@@ -684,6 +706,21 @@ CreativeRecipeMaterializeResult materializeCreativeRecipe(
   setStatus(result.receipt, CreativeRecipeStatus::Ready,
             "creative_recipe_ready");
   return result;
+}
+
+}  // namespace
+
+CreativeRecipeMaterializeResult materializeCreativeRecipe(
+    const CreativeRecipePlan& plan,
+    CreativeObjectId firstObjectId) {
+  return materializeCreativeRecipeWithIds(plan, firstObjectId, {}, false);
+}
+
+CreativeRecipeMaterializeResult materializeCreativeRecipe(
+    const CreativeRecipePlan& plan,
+    std::span<const CreativeObjectId> objectIds) {
+  return materializeCreativeRecipeWithIds(
+      plan, kInvalidObjectId, objectIds, true);
 }
 
 CreativeRecipeApplyReceipt applyCreativeRecipe(Facade& facade,

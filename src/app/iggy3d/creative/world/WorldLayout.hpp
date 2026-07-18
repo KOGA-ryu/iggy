@@ -291,6 +291,14 @@ struct CreativeWorldLayoutCompileOptions {
   std::span<const CreativeWorldLayoutConflictDecision> conflictDecisions;
 };
 
+struct CreativeWorldLayoutRecipePatch {
+  CreativeRecipePlan recipe;
+  // Exact final ids aligned with recipe.objects. Existing members retain their
+  // ids; Create members receive deterministic ids during compilation.
+  std::vector<CreativeObjectId> objectIds;
+  std::vector<CreativeWorldLayoutRecipeMemberAction> memberActions;
+};
+
 struct CreativeWorldLayoutPlan {
   std::uint32_t schemaVersion = kCreativeWorldLayoutSchemaVersion;
   std::string layoutKey;
@@ -300,6 +308,7 @@ struct CreativeWorldLayoutPlan {
   std::uint64_t sourceMaterialRevision = 0U;
   std::vector<CreativeObjectId> objectDetachIds;
   std::vector<CreativeObjectId> objectRemoveIds;
+  std::vector<CreativeWorldLayoutRecipePatch> objectRecipePatches;
   std::vector<CreativeRecipePlan> objectRecipes;
   std::vector<CreativeTerrainControlEdit> terrainEdits;
   std::vector<CreativeTerrainMaterialEdit> materialEdits;

@@ -66,6 +66,41 @@ bool attachmentSocketOccupied(std::span<const CreativeObject> objects,
 
 }  // namespace
 
+CreativeObject resolveCreativeDocumentCreateObject(
+    const CreativeDocumentCreateRequest& request,
+    CreativeObjectId objectId) {
+  const CreativeObjectDescriptor& descriptor = describeObject(request.kind);
+  const CreativeMovingPlatformSettings movingPlatform =
+      request.kind == CreativeObjectKind::MovingPlatform &&
+              request.hasMovingPlatformSettingsOverride
+          ? request.movingPlatform
+          : CreativeMovingPlatformSettings{};
+
+  CreativeObject object;
+  object.id = objectId;
+  object.kind = request.kind;
+  object.name = request.name.empty() ? descriptorDefaultName(descriptor)
+                                     : request.name;
+  object.assetId = request.assetId;
+  object.transform = request.hasTransformOverride
+                         ? request.transform
+                         : descriptor.defaults.transform;
+  object.bounds = request.hasBoundsOverride ? request.bounds
+                                            : descriptor.defaults.bounds;
+  object.layerId = request.hasLayerOverride ? request.layerId
+                                            : descriptor.defaults.layerId;
+  object.visible = request.hasVisibleOverride ? request.visible
+                                              : descriptor.defaults.visible;
+  object.locked = request.hasLockedOverride ? request.locked
+                                            : descriptor.defaults.locked;
+  object.tags = request.tags;
+  object.parentId = request.parentId;
+  object.attachmentSocket = request.attachmentSocket;
+  object.pathPoints = request.pathPoints;
+  object.movingPlatform = movingPlatform;
+  return object;
+}
+
 std::string_view toString(CreativeDocumentCreateStatus status) noexcept {
   switch (status) {
     case CreativeDocumentCreateStatus::Unknown:
@@ -216,27 +251,7 @@ CreativeDocumentCreateReceipt CreativeDocument::createObject(
     return receipt;
   }
 
-  CreativeObject object;
-  object.kind = request.kind;
-  object.name = request.name.empty() ? descriptorDefaultName(descriptor)
-                                     : request.name;
-  object.assetId = request.assetId;
-  object.transform = request.hasTransformOverride
-                         ? request.transform
-                         : descriptor.defaults.transform;
-  object.bounds = request.hasBoundsOverride ? request.bounds
-                                            : descriptor.defaults.bounds;
-  object.layerId = request.hasLayerOverride ? request.layerId
-                                            : descriptor.defaults.layerId;
-  object.visible = request.hasVisibleOverride ? request.visible
-                                              : descriptor.defaults.visible;
-  object.locked = request.hasLockedOverride ? request.locked
-                                            : descriptor.defaults.locked;
-  object.tags = request.tags;
-  object.parentId = request.parentId;
-  object.attachmentSocket = request.attachmentSocket;
-  object.pathPoints = request.pathPoints;
-  object.movingPlatform = movingPlatform;
+  CreativeObject object = resolveCreativeDocumentCreateObject(request);
 
   const CreativeObjectId id = appendObject(std::move(object));
   if (id == kInvalidObjectId) {
