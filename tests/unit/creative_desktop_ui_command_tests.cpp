@@ -2362,6 +2362,8 @@ bool worldLayoutConflictResolutionUsesTypedConfirmPayload() {
   }
   const cr::CreativeObjectId originalId =
       appState.facade.document().objects().front().id;
+  const cr::CreativeVec3 generatedPosition =
+      appState.facade.document().objects().front().transform.position;
   const cr::CreativeDocumentMutationReceipt refined = cr::moveDocumentObject(
       appState.facade.documentForPersistence(), originalId,
       {12.0, 2.0, 8.0});
@@ -2372,19 +2374,25 @@ bool worldLayoutConflictResolutionUsesTypedConfirmPayload() {
       app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
   const bool blockedPreserved =
       appState.facade.document().findObject(originalId) != nullptr;
+  const cr::CreativeWorldLayoutCompileResult conflictReport =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(),
+                                       editor.worldLayout.source);
+  if (conflictReport.recipeChanges.size() != 1U ||
+      conflictReport.recipeChanges[0].memberConflicts.size() != 1U) {
+    return expect(false, "command conflict fixture reports one exact member");
+  }
+  const cr::CreativeWorldLayoutRecipeMemberConflict& conflict =
+      conflictReport.recipeChanges[0].memberConflicts[0];
+  const cr::CreativeWorldLayoutConflictDecision decision =
+      cr::makeCreativeWorldLayoutMemberConflictDecision(
+          "command_reconciliation.objects.crate", conflict,
+          cr::CreativeWorldLayoutConflictResolution::UseSource);
   const app::CreativeDesktopCommandResult resolved = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutConfirm, context,
       app::CreativeDesktopWorldLayoutConfirmPayload{
-          {{"command_reconciliation.objects.crate",
-            cr::CreativeWorldLayoutConflictResolution::Regenerate}}});
-  const cr::CreativeObject* replacement = nullptr;
-  for (const cr::CreativeObject& candidate :
-       appState.facade.document().objects()) {
-    if (candidate.name == "Command Crate Revised") {
-      replacement = &candidate;
-      break;
-    }
-  }
+          {decision}});
+  const cr::CreativeObject* patched =
+      appState.facade.document().findObject(originalId);
 
   return expect(refined.changed && !blocked.accepted && !blocked.changed &&
                     blocked.message ==
@@ -2392,9 +2400,13 @@ bool worldLayoutConflictResolutionUsesTypedConfirmPayload() {
                     blockedPreserved,
                 "ordinary confirm blocks conflict before typed resolution") &&
          expect(resolved.accepted && resolved.changed &&
-                    resolved.sceneChanged && replacement != nullptr &&
-                    replacement->id != originalId,
-                "typed regenerate payload resolves through the sole dispatcher");
+                    resolved.sceneChanged && patched != nullptr &&
+                    patched->id == originalId &&
+                    patched->name == "Command Crate Revised" &&
+                    patched->transform.position.x == generatedPosition.x &&
+                    patched->transform.position.y == generatedPosition.y &&
+                    patched->transform.position.z == generatedPosition.z,
+                "typed exact-member payload resolves through the sole dispatcher");
 }
 
 bool worldLayoutCatalogSelectionAndPlacementUseTypedCommands() {

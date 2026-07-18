@@ -2611,8 +2611,14 @@ void drawRecipeChanges(
     ImGui::TextUnformatted(change.instanceKey.c_str());
     ImGui::TableNextColumn();
     if (change.kind == cr::CreativeWorldLayoutRecipeChangeKind::Conflict) {
-      ImGui::Text("blocked: %llu refined",
-                  static_cast<unsigned long long>(change.refinedObjectCount));
+      if (!change.memberConflicts.empty()) {
+        ImGui::Text("blocked: %zu member conflict(s)",
+                    change.memberConflicts.size());
+      } else {
+        ImGui::Text("blocked: %llu refined",
+                    static_cast<unsigned long long>(
+                        change.refinedObjectCount));
+      }
     } else {
       ImGui::TextWrapped(
           "create %llu  keep %llu  update %llu  remove %llu  detach %llu",
@@ -2644,11 +2650,42 @@ void synchronizeConflictReview(
   for (const cr::CreativeWorldLayoutRecipeChange& change :
        diagnostics.recipeChanges) {
     if (change.kind == cr::CreativeWorldLayoutRecipeChangeKind::Conflict) {
-      review.decisions.push_back(
-          {change.instanceKey,
-           cr::CreativeWorldLayoutConflictResolution::Block});
+      if (change.memberConflicts.empty()) {
+        review.decisions.push_back(
+            {change.instanceKey,
+             cr::CreativeWorldLayoutConflictResolution::Block});
+        continue;
+      }
+      for (const cr::CreativeWorldLayoutRecipeMemberConflict& conflict :
+           change.memberConflicts) {
+        review.decisions.push_back(
+            cr::makeCreativeWorldLayoutMemberConflictDecision(
+                change.instanceKey, conflict));
+      }
     }
   }
+}
+
+[[nodiscard]] const cr::CreativeWorldLayoutRecipeMemberConflict*
+findReviewedMemberConflict(
+    const CreativeEditorWorldLayoutDiagnosticReport& diagnostics,
+    const cr::CreativeWorldLayoutConflictDecision& decision) noexcept {
+  for (const cr::CreativeWorldLayoutRecipeChange& change :
+       diagnostics.recipeChanges) {
+    if (change.instanceKey != decision.instanceKey) {
+      continue;
+    }
+    const auto found = std::find_if(
+        change.memberConflicts.begin(), change.memberConflicts.end(),
+        [&](const cr::CreativeWorldLayoutRecipeMemberConflict& conflict) {
+          return conflict.stableKey == decision.memberStableKey &&
+                 conflict.objectId == decision.objectId;
+        });
+    if (found != change.memberConflicts.end()) {
+      return &*found;
+    }
+  }
+  return nullptr;
 }
 
 void drawRefinementConflictActions(
@@ -2668,52 +2705,124 @@ void drawRefinementConflictActions(
                               ImGuiWindowFlags_AlwaysAutoResize)) {
     return;
   }
-  ImGui::Text("%llu managed group(s) contain 3D refinements.",
-              static_cast<unsigned long long>(
-                  diagnostics.compileReceipt.objectRecipeConflictCount));
+  ImGui::Text("Review conflicts between the 2D layout and refined 3D output.");
+  ImGui::TextDisabled("%llu managed group(s) require a decision.",
+                      static_cast<unsigned long long>(
+                          diagnostics.compileReceipt
+                              .objectRecipeConflictCount));
   ImGui::Separator();
   ImGui::BeginDisabled(editingDisabled);
   if (ImGui::BeginTable("##world_layout_conflict_review", 3,
                         ImGuiTableFlags_SizingStretchProp |
                             ImGuiTableFlags_BordersInnerH |
                             ImGuiTableFlags_RowBg)) {
-    ImGui::TableSetupColumn("Managed group",
+    ImGui::TableSetupColumn("Managed output",
                             ImGuiTableColumnFlags_WidthStretch);
-    ImGui::TableSetupColumn("Replace", ImGuiTableColumnFlags_WidthFixed,
-                            88.0F);
-    ImGui::TableSetupColumn("Preserve", ImGuiTableColumnFlags_WidthFixed,
-                            88.0F);
+    ImGui::TableSetupColumn("2D source", ImGuiTableColumnFlags_WidthFixed,
+                            104.0F);
+    ImGui::TableSetupColumn("3D output", ImGuiTableColumnFlags_WidthFixed,
+                            104.0F);
     ImGui::TableHeadersRow();
     for (cr::CreativeWorldLayoutConflictDecision& decision :
          state.conflictReview.decisions) {
       ImGui::PushID(decision.instanceKey.c_str());
+      ImGui::PushID(decision.memberStableKey.empty()
+                        ? "whole_group"
+                        : decision.memberStableKey.c_str());
       ImGui::TableNextRow();
       ImGui::TableNextColumn();
-      ImGui::TextWrapped("%s", decision.instanceKey.c_str());
+      const cr::CreativeWorldLayoutRecipeMemberConflict* conflict =
+          findReviewedMemberConflict(diagnostics, decision);
+      if (decision.memberStableKey.empty()) {
+        ImGui::TextWrapped("%s", decision.instanceKey.c_str());
+        ImGui::TextDisabled("Group provenance requires recovery");
+      } else {
+        ImGui::TextWrapped("%s",
+                           conflict != nullptr && !conflict->objectName.empty()
+                               ? conflict->objectName.c_str()
+                               : decision.memberStableKey.c_str());
+        ImGui::TextDisabled("%s / %s", decision.instanceKey.c_str(),
+                            decision.memberStableKey.c_str());
+        switch (decision.memberConflictKind) {
+          case cr::CreativeWorldLayoutMemberConflictKind::ConcurrentEdit:
+            ImGui::TextDisabled("Changed in both 2D and 3D");
+            break;
+          case cr::CreativeWorldLayoutMemberConflictKind::
+              SourceRemovedRefinement:
+            ImGui::TextDisabled("Removed in 2D, refined in 3D");
+            break;
+          case cr::CreativeWorldLayoutMemberConflictKind::SourceRemovedLinked:
+            ImGui::TextDisabled("Removed in 2D, has logic links");
+            break;
+          case cr::CreativeWorldLayoutMemberConflictKind::SourceRemovedParent:
+            ImGui::TextDisabled("Removed in 2D, has authored children");
+            break;
+          case cr::CreativeWorldLayoutMemberConflictKind::Count:
+            break;
+        }
+      }
       ImGui::TableNextColumn();
+      const bool groupDecision = decision.memberStableKey.empty();
+      const bool concurrent =
+          decision.memberConflictKind ==
+          cr::CreativeWorldLayoutMemberConflictKind::ConcurrentEdit;
+      const bool sourceRemoveAllowed =
+          decision.memberConflictKind !=
+          cr::CreativeWorldLayoutMemberConflictKind::SourceRemovedParent;
+      const cr::CreativeWorldLayoutConflictResolution sourceResolution =
+          groupDecision
+              ? cr::CreativeWorldLayoutConflictResolution::Regenerate
+              : concurrent
+                    ? cr::CreativeWorldLayoutConflictResolution::UseSource
+                    : cr::CreativeWorldLayoutConflictResolution::RemoveMember;
+      ImGui::BeginDisabled(!groupDecision && !concurrent &&
+                           !sourceRemoveAllowed);
       if (ImGui::RadioButton(
-              "Regenerate",
-              decision.resolution ==
-                  cr::CreativeWorldLayoutConflictResolution::Regenerate)) {
-        decision.resolution =
-            cr::CreativeWorldLayoutConflictResolution::Regenerate;
+              groupDecision ? "Regenerate"
+                            : concurrent ? "Use 2D" : "Remove",
+              decision.resolution == sourceResolution)) {
+        decision.resolution = sourceResolution;
       }
       if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Replace or remove this refined output to match the layout");
+        if (groupDecision) {
+          ImGui::SetTooltip(
+              "Replace this managed group to match the layout");
+        } else if (concurrent) {
+          ImGui::SetTooltip(
+              "Apply the 2D source state at the existing object id");
+        } else if (sourceRemoveAllowed) {
+          ImGui::SetTooltip(
+              "Remove this object; incident logic links are removed too");
+        }
       }
+      ImGui::EndDisabled();
       ImGui::TableNextColumn();
+      const cr::CreativeWorldLayoutConflictResolution outputResolution =
+          groupDecision
+              ? cr::CreativeWorldLayoutConflictResolution::Detach
+              : concurrent
+                    ? cr::CreativeWorldLayoutConflictResolution::
+                          KeepRefinement
+                    : cr::CreativeWorldLayoutConflictResolution::DetachMember;
       if (ImGui::RadioButton(
-              "Detach",
-              decision.resolution ==
-                  cr::CreativeWorldLayoutConflictResolution::Detach)) {
-        decision.resolution =
-            cr::CreativeWorldLayoutConflictResolution::Detach;
+              groupDecision ? "Detach"
+                            : concurrent ? "Keep 3D" : "Detach",
+              decision.resolution == outputResolution)) {
+        decision.resolution = outputResolution;
       }
       if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Keep this refinement as authored output and release generator ownership");
+        if (groupDecision) {
+          ImGui::SetTooltip(
+              "Keep this group as authored output and create fresh managed output");
+        } else if (concurrent) {
+          ImGui::SetTooltip(
+              "Keep the 3D geometry and rebase its generator metadata to the new 2D source");
+        } else {
+          ImGui::SetTooltip(
+              "Keep this object and release generator ownership");
+        }
       }
+      ImGui::PopID();
       ImGui::PopID();
     }
     ImGui::EndTable();
@@ -2723,8 +2832,16 @@ void drawRefinementConflictActions(
       std::all_of(state.conflictReview.decisions.begin(),
                   state.conflictReview.decisions.end(),
                   [](const cr::CreativeWorldLayoutConflictDecision& decision) {
-                    return decision.resolution !=
-                           cr::CreativeWorldLayoutConflictResolution::Block;
+                    if (decision.memberStableKey.empty()) {
+                      return decision.resolution ==
+                                 cr::CreativeWorldLayoutConflictResolution::
+                                     Regenerate ||
+                             decision.resolution ==
+                                 cr::CreativeWorldLayoutConflictResolution::
+                                     Detach;
+                    }
+                    return cr::creativeWorldLayoutMemberResolutionAllowed(
+                        decision.memberConflictKind, decision.resolution);
                   });
   ImGui::BeginDisabled(!allResolved);
   if (ImGui::Button("Apply Resolutions")) {

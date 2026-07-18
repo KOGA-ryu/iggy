@@ -83,6 +83,32 @@ std::map<std::string, cr::CreativeObjectId> managedObjectIds(
   return output;
 }
 
+const cr::CreativeWorldLayoutRecipeMemberConflict* findMemberConflict(
+    const cr::CreativeWorldLayoutCompileResult& compiled,
+    std::string_view stableKey) {
+  for (const cr::CreativeWorldLayoutRecipeChange& change :
+       compiled.recipeChanges) {
+    const auto found = std::find_if(
+        change.memberConflicts.begin(), change.memberConflicts.end(),
+        [stableKey](
+            const cr::CreativeWorldLayoutRecipeMemberConflict& conflict) {
+          return conflict.stableKey == stableKey;
+        });
+    if (found != change.memberConflicts.end()) {
+      return &*found;
+    }
+  }
+  return nullptr;
+}
+
+cr::CreativeWorldLayoutConflictDecision memberDecision(
+    std::string instanceKey,
+    const cr::CreativeWorldLayoutRecipeMemberConflict& conflict,
+    cr::CreativeWorldLayoutConflictResolution resolution) {
+  return cr::makeCreativeWorldLayoutMemberConflictDecision(
+      std::move(instanceKey), conflict, resolution);
+}
+
 cr::CreativeWorldLayout smallHouseLayout() {
   cr::CreativeWorldLayout layout;
   layout.stableKey = "estate_level_0";
@@ -1698,6 +1724,9 @@ bool openingEditsPatchGeometryWithoutIdentityChurn() {
   const cr::CreativeLogicLink* preservedLink =
       appState.facade.document().findLogicLink(triggerCreated.objectId,
                                                 doorId);
+  const bool authoredLinkPreserved =
+      preservedLink != nullptr &&
+      preservedLink->action == cr::CreativeLogicLinkAction::Toggle;
   const cr::CreativeHistoryApplyReceipt undone = cr::applyCreativeHistory(
       appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
   const cr::CreativeObject* restoredDoor = findManaged(
@@ -1729,9 +1758,7 @@ bool openingEditsPatchGeometryWithoutIdentityChurn() {
                 "unaffected floor semantic state stays exact") &&
          expect(selectionStayedOnGeneratedMembers,
                 "opening patch retains generated multi-selection and primary") &&
-         expect(preservedLink != nullptr &&
-                    preservedLink->action ==
-                        cr::CreativeLogicLinkAction::Toggle,
+         expect(authoredLinkPreserved,
                 "opening patch retains authored logic link by stable id") &&
          expect(undone.accepted && undone.changed &&
                     restoredDoor != nullptr &&
@@ -1797,6 +1824,274 @@ bool refinementOnUnchangedMemberSurvivesSiblingSourceEdit() {
                 "refined group is stable after sibling patch");
 }
 
+bool exactMemberConflictChoicesPreserveIdentityAndRejectStaleState() {
+  cr::CreativeAppState appState = makeAppState(223U);
+  cr::CreativeWorldLayout layout = smallHouseLayout();
+  const cr::CreativeWorldLayoutCompileResult initial =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt initialApplied =
+      cr::applyCreativeWorldLayoutPlan(appState.facade, initial.plan);
+  const std::string_view instanceKey = "estate_level_0.house";
+  const cr::CreativeObject* north = findManaged(
+      appState.facade.document(), instanceKey, "house.north.segment.1");
+  const cr::CreativeObject* west = findManaged(
+      appState.facade.document(), instanceKey, "house.west.segment.1");
+  if (north == nullptr || west == nullptr) {
+    return expect(false, "exact conflict fixture materializes wall members");
+  }
+  const cr::CreativeObjectId northId = north->id;
+  const cr::CreativeObjectId westId = west->id;
+  const cr::CreativeVec3 generatedPosition = north->transform.position;
+  const std::string generatedName = north->name;
+  const cr::CreativeVec3 refinedPosition{31.0, 4.0, 27.0};
+  const cr::CreativeDocumentMutationReceipt refined =
+      cr::moveDocumentObject(appState.facade.documentForPersistence(),
+                             northId, refinedPosition);
+  const std::array selectedIds{northId};
+  const cr::CreativeSelectionReceipt selected =
+      appState.facade.selectTargets(selectedIds, northId);
+
+  layout.walls[0].name = "North Wall From 2D";
+  layout.walls[2].name = "West Wall From 2D";
+  const cr::CreativeWorldLayoutCompileResult blocked =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutRecipeMemberConflict* conflict =
+      findMemberConflict(blocked, "house.north.segment.1");
+  if (conflict == nullptr) {
+    return expect(false, "exact conflict identifies the changed north wall");
+  }
+
+  cr::CreativeWorldLayoutConflictDecision staleDecision = memberDecision(
+      std::string(instanceKey), *conflict,
+      cr::CreativeWorldLayoutConflictResolution::UseSource);
+  ++staleDecision.currentFingerprint;
+  const std::array staleDecisions{staleDecision};
+  const cr::CreativeWorldLayoutCompileResult stale =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout,
+                                       {staleDecisions});
+
+  const std::array useSourceDecisions{memberDecision(
+      std::string(instanceKey), *conflict,
+      cr::CreativeWorldLayoutConflictResolution::UseSource)};
+  const cr::CreativeWorldLayoutCompileResult useSource =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout,
+                                       {useSourceDecisions});
+  const cr::CreativeWorldLayoutApplyReceipt sourceApplied =
+      cr::applyCreativeWorldLayoutPlanWithHistory(
+          appState, useSource.plan, "world_layout_exact_member_use_source");
+  const cr::CreativeObject* sourcedNorth =
+      appState.facade.document().findObject(northId);
+  const cr::CreativeObject* sourcedWest =
+      appState.facade.document().findObject(westId);
+  const bool sourceStateApplied =
+      sourcedNorth != nullptr && sourcedNorth->id == northId &&
+      sourcedNorth->name == "North Wall From 2D" &&
+      sameVec3(sourcedNorth->transform.position, generatedPosition) &&
+      sourcedWest != nullptr && sourcedWest->name == "West Wall From 2D" &&
+      appState.facade.selectionState().selectedTarget.value == northId;
+  const cr::CreativeHistoryApplyReceipt sourceUndone =
+      cr::applyCreativeHistory(appState.facade, appState.history,
+                               cr::CreativeHistoryDirection::Undo);
+  const cr::CreativeObject* restoredNorth =
+      appState.facade.document().findObject(northId);
+
+  const cr::CreativeWorldLayoutCompileResult blockedAgain =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutRecipeMemberConflict* keepConflict =
+      findMemberConflict(blockedAgain, "house.north.segment.1");
+  if (keepConflict == nullptr) {
+    return expect(false, "undo restores the exact concurrent wall conflict");
+  }
+  const std::array keepDecisions{memberDecision(
+      std::string(instanceKey), *keepConflict,
+      cr::CreativeWorldLayoutConflictResolution::KeepRefinement)};
+  const cr::CreativeWorldLayoutCompileResult keep =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout,
+                                       {keepDecisions});
+  const cr::CreativeWorldLayoutApplyReceipt keepApplied =
+      cr::applyCreativeWorldLayoutPlanWithHistory(
+          appState, keep.plan, "world_layout_exact_member_keep_refinement");
+  const cr::CreativeObject* keptNorth =
+      appState.facade.document().findObject(northId);
+  const cr::CreativeObject* updatedWest =
+      appState.facade.document().findObject(westId);
+  const cr::CreativeWorldLayoutCompileResult stable =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+
+  return expect(initial.receipt.accepted && initialApplied.accepted &&
+                    refined.changed && selected.accepted,
+                "exact conflict fixture starts refined and selected") &&
+         expect(!blocked.receipt.accepted &&
+                    blocked.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::RefinementConflict &&
+                    blocked.recipeChanges.size() == 1U &&
+                    blocked.recipeChanges[0].memberConflicts.size() == 1U &&
+                    conflict->kind == cr::CreativeWorldLayoutMemberConflictKind::
+                                          ConcurrentEdit &&
+                    conflict->objectId == northId &&
+                    conflict->baselineFingerprint != 0U &&
+                    conflict->currentFingerprint !=
+                        conflict->baselineFingerprint &&
+                    conflict->desiredFingerprint !=
+                        conflict->baselineFingerprint,
+                "conflict report binds the exact three-way wall state") &&
+         expect(!stale.receipt.accepted &&
+                    stale.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::InvalidDocument &&
+                    stale.receipt.reasonCode ==
+                        "creative_world_layout_conflict_decision_stale" &&
+                    stale.plan.objectRecipePatches.empty() &&
+                    stale.plan.objectRemoveIds.empty() &&
+                    stale.plan.objectDetachIds.empty(),
+                "state-bound decision rejects a changed fingerprint atomically") &&
+         expect(useSource.receipt.accepted &&
+                    useSource.receipt.objectRecipeConflictCount == 1U &&
+                    useSource.receipt.objectRecipePatchCount == 1U &&
+                    useSource.receipt.objectRecipeReplaceCount == 0U &&
+                    useSource.plan.objectRecipePatches.size() == 1U &&
+                    sourceApplied.accepted && sourceApplied.changed &&
+                    sourceApplied.historyReceipt.recorded &&
+                    sourceStateApplied,
+                "Use 2D updates exact and safe sibling members without id churn") &&
+         expect(sourceUndone.accepted && sourceUndone.changed &&
+                    restoredNorth != nullptr &&
+                    restoredNorth->name == generatedName &&
+                    sameVec3(restoredNorth->transform.position,
+                             refinedPosition),
+                "member resolution is one exact undo transaction") &&
+         expect(keep.receipt.accepted &&
+                    keep.receipt.objectRecipeConflictCount == 1U &&
+                    keep.receipt.objectRecipePatchCount == 1U &&
+                    keepApplied.accepted && keepApplied.changed &&
+                    keepApplied.historyReceipt.recorded && keptNorth != nullptr &&
+                    keptNorth->id == northId &&
+                    keptNorth->name == generatedName &&
+                    sameVec3(keptNorth->transform.position,
+                             refinedPosition) &&
+                    updatedWest != nullptr &&
+                    updatedWest->name == "West Wall From 2D",
+                "Keep 3D rebases metadata while safe siblings still patch") &&
+         expect(stable.receipt.accepted &&
+                    stable.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::NoChange &&
+                    stable.receipt.objectRecipeRefinedCount == 1U &&
+                    stable.receipt.objectRecipeConflictCount == 0U,
+                "rebased 3D override remains stable on the next compile");
+}
+
+bool linkedRemovedMemberCanDetachOrExplicitlyRemove() {
+  cr::CreativeAppState appState = makeAppState(224U);
+  cr::CreativeWorldLayout layout = smallHouseLayout();
+  const cr::CreativeWorldLayoutCompileResult initial =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt initialApplied =
+      cr::applyCreativeWorldLayoutPlan(appState.facade, initial.plan);
+  const std::string_view instanceKey = "estate_level_0.house";
+  const std::string_view doorStableKey = "house.front_door.insert";
+  const cr::CreativeObject* door =
+      findManaged(appState.facade.document(), instanceKey, doorStableKey);
+  if (door == nullptr) {
+    return expect(false, "linked removal fixture materializes door insert");
+  }
+  const cr::CreativeObjectId doorId = door->id;
+  const cr::CreativeDocumentCreateReceipt trigger =
+      appState.facade.createDocumentObject(cr::CreativeObjectKind::TriggerZone);
+  const cr::CreativeLogicLinkMutationReceipt linked =
+      appState.facade.setLogicLink(
+          {trigger.objectId, doorId, cr::CreativeLogicLinkAction::Toggle});
+  const std::array selectedIds{doorId};
+  const cr::CreativeSelectionReceipt selected =
+      appState.facade.selectTargets(selectedIds, doorId);
+
+  layout.openings.erase(layout.openings.begin());
+  const cr::CreativeWorldLayoutCompileResult blocked =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutRecipeMemberConflict* conflict =
+      findMemberConflict(blocked, doorStableKey);
+  if (conflict == nullptr) {
+    return expect(false, "linked removal reports the exact door insert");
+  }
+  const std::array detachDecision{memberDecision(
+      std::string(instanceKey), *conflict,
+      cr::CreativeWorldLayoutConflictResolution::DetachMember)};
+  const cr::CreativeWorldLayoutCompileResult detach =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout,
+                                       {detachDecision});
+  const cr::CreativeWorldLayoutApplyReceipt detached =
+      cr::applyCreativeWorldLayoutPlanWithHistory(
+          appState, detach.plan, "world_layout_linked_member_detach");
+  const cr::CreativeObject* authoredDoor =
+      appState.facade.document().findObject(doorId);
+  const bool detachState =
+      authoredDoor != nullptr &&
+      cr::creativeRecipeObjectInstanceKey(*authoredDoor).empty() &&
+      appState.facade.document().findLogicLink(trigger.objectId, doorId) !=
+          nullptr &&
+      appState.facade.selectionState().selectedTarget.value == doorId;
+  const cr::CreativeHistoryApplyReceipt detachUndone =
+      cr::applyCreativeHistory(appState.facade, appState.history,
+                               cr::CreativeHistoryDirection::Undo);
+  const bool detachUndoRestoredDoor =
+      appState.facade.document().findObject(doorId) != nullptr;
+  const bool detachUndoRestoredLink =
+      appState.facade.document().findLogicLink(trigger.objectId, doorId) !=
+      nullptr;
+
+  const cr::CreativeWorldLayoutCompileResult blockedAgain =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutRecipeMemberConflict* removeConflict =
+      findMemberConflict(blockedAgain, doorStableKey);
+  if (removeConflict == nullptr) {
+    return expect(false, "undo restores the linked door conflict");
+  }
+  const std::array removeDecision{memberDecision(
+      std::string(instanceKey), *removeConflict,
+      cr::CreativeWorldLayoutConflictResolution::RemoveMember)};
+  const cr::CreativeWorldLayoutCompileResult remove =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout,
+                                       {removeDecision});
+  const cr::CreativeWorldLayoutApplyReceipt removed =
+      cr::applyCreativeWorldLayoutPlanWithHistory(
+          appState, remove.plan, "world_layout_linked_member_remove");
+
+  return expect(initial.receipt.accepted && initialApplied.accepted &&
+                    trigger.accepted && linked.accepted && selected.accepted,
+                "linked removal fixture starts linked and selected") &&
+         expect(!blocked.receipt.accepted &&
+                    blocked.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::RefinementConflict &&
+                    conflict->kind ==
+                        cr::CreativeWorldLayoutMemberConflictKind::
+                            SourceRemovedLinked &&
+                    conflict->objectId == doorId,
+                "removed linked output fails closed at the exact member") &&
+         expect(detach.receipt.accepted &&
+                    detach.receipt.objectRecipeConflictCount == 1U &&
+                    detach.receipt.objectRecipePatchCount == 1U &&
+                    detach.plan.objectDetachIds.size() == 1U &&
+                    detached.accepted && detached.changed &&
+                    detached.historyReceipt.recorded && detachState,
+                "Detach preserves the door identity, link, and selection") &&
+         expect(detachUndone.accepted && detachUndone.changed,
+                "detached member and sibling patches undo together") &&
+         expect(detachUndoRestoredDoor,
+                "detach undo restores managed door identity") &&
+         expect(detachUndoRestoredLink,
+                "detach undo restores the authored door link") &&
+         expect(remove.receipt.accepted &&
+                    remove.receipt.objectRecipeConflictCount == 1U &&
+                    remove.receipt.objectRecipePatchCount == 1U &&
+                    !remove.plan.objectRemoveIds.empty() && removed.accepted &&
+                    removed.changed && removed.historyReceipt.recorded &&
+                    appState.facade.document().findObject(doorId) == nullptr &&
+                    appState.facade.document().findLogicLink(
+                        trigger.objectId, doorId) == nullptr &&
+                    !cr::selectionContainsTarget(
+                        appState.facade.selectionState(),
+                        {static_cast<cr::Id>(doorId)}),
+                "Remove explicitly deletes the door and its incident link");
+}
+
 bool authoredChildBlocksRemovalOfManagedParent() {
   cr::CreativeAppState appState = makeAppState(222U);
   const cr::CreativeWorldLayout layout = smallHouseLayout();
@@ -1809,6 +2104,7 @@ bool authoredChildBlocksRemovalOfManagedParent() {
   if (root == nullptr) {
     return expect(false, "managed-parent fixture materializes");
   }
+  const cr::CreativeObjectId rootId = root->id;
 
   cr::CreativeDocumentCreateRequest child;
   child.kind = cr::CreativeObjectKind::Wall;
@@ -1817,25 +2113,89 @@ bool authoredChildBlocksRemovalOfManagedParent() {
   child.hasBoundsOverride = true;
   child.transform.position = {0.5, 0.5, 0.125};
   child.hasTransformOverride = true;
-  child.parentId = root->id;
+  child.parentId = rootId;
   const cr::CreativeDocumentCreateReceipt childCreated =
       appState.facade.createDocumentObject(child);
+  const std::array selectedIds{rootId};
+  const cr::CreativeSelectionReceipt selected =
+      appState.facade.selectTargets(selectedIds, rootId);
 
   cr::CreativeWorldLayout removed;
   removed.stableKey = layout.stableKey;
   const cr::CreativeWorldLayoutCompileResult blocked =
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), removed);
+  const cr::CreativeWorldLayoutRecipeMemberConflict* conflict =
+      findMemberConflict(blocked, "root");
+  if (conflict == nullptr) {
+    return expect(false, "managed parent reports its exact removal conflict");
+  }
+  const std::array invalidRemoveDecision{memberDecision(
+      "estate_level_0.house", *conflict,
+      cr::CreativeWorldLayoutConflictResolution::RemoveMember)};
+  const cr::CreativeWorldLayoutCompileResult invalidRemove =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), removed,
+                                       {invalidRemoveDecision});
+  const std::array detachDecision{memberDecision(
+      "estate_level_0.house", *conflict,
+      cr::CreativeWorldLayoutConflictResolution::DetachMember)};
+  const cr::CreativeWorldLayoutCompileResult detached =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), removed,
+                                       {detachDecision});
+  const cr::CreativeWorldLayoutApplyReceipt applied =
+      cr::applyCreativeWorldLayoutPlanWithHistory(
+          appState, detached.plan, "world_layout_parent_member_detach");
+  const cr::CreativeObject* detachedRoot =
+      appState.facade.document().findObject(rootId);
+  const cr::CreativeObject* retainedChild =
+      appState.facade.document().findObject(childCreated.objectId);
+  const bool detachedState =
+      detachedRoot != nullptr && retainedChild != nullptr &&
+      retainedChild->parentId == rootId &&
+      cr::creativeRecipeObjectInstanceKey(*detachedRoot).empty() &&
+      cr::creativeRecipeObjectOutputFingerprint(*detachedRoot) == 0U &&
+      appState.facade.document().objectCount() == 2U &&
+      appState.facade.selectionState().selectedTarget.value == rootId;
+  const cr::CreativeHistoryApplyReceipt undone = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+  const cr::CreativeObject* restoredRoot =
+      appState.facade.document().findObject(rootId);
 
   return expect(initial.receipt.accepted && initialApplied.accepted &&
-                    childCreated.accepted,
+                    childCreated.accepted && selected.accepted,
                 "authored child attaches outside managed group") &&
          expect(!blocked.receipt.accepted &&
                     blocked.receipt.status ==
                         cr::CreativeWorldLayoutStatus::RefinementConflict &&
                     blocked.receipt.objectRecipeConflictCount == 1U &&
                     blocked.plan.objectRemoveIds.empty() &&
-                    blocked.plan.objectRecipePatches.empty(),
-                "managed parent removal fails closed around authored child");
+                    blocked.plan.objectRecipePatches.empty() &&
+                    blocked.recipeChanges.size() == 1U &&
+                    blocked.recipeChanges[0].memberConflicts.size() == 1U &&
+                    conflict->kind ==
+                        cr::CreativeWorldLayoutMemberConflictKind::
+                            SourceRemovedParent,
+                "managed parent removal fails closed around authored child") &&
+         expect(!invalidRemove.receipt.accepted &&
+                    invalidRemove.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::InvalidDocument &&
+                    invalidRemove.receipt.reasonCode ==
+                        "creative_world_layout_conflict_decisions_invalid" &&
+                    invalidRemove.plan.objectRemoveIds.empty(),
+                "parent conflict cannot select an impossible remove action") &&
+         expect(detached.receipt.accepted &&
+                    detached.receipt.objectRecipeConflictCount == 1U &&
+                    detached.receipt.objectRecipeDetachCount == 1U &&
+                    detached.plan.objectDetachIds.size() == 1U &&
+                    detached.plan.objectRemoveIds.size() == 13U &&
+                    detached.recipeChanges[0].memberCounts.detachCount == 1U &&
+                    detached.recipeChanges[0].memberCounts.removeCount == 13U &&
+                    applied.accepted && applied.changed &&
+                    applied.historyReceipt.recorded && detachedState,
+                "member detach preserves the authored hierarchy and removes safe siblings") &&
+         expect(undone.accepted && undone.changed && restoredRoot != nullptr &&
+                    !cr::creativeRecipeObjectInstanceKey(*restoredRoot).empty() &&
+                    appState.facade.document().objectCount() == 15U,
+                "hierarchy-aware member resolution remains one undo step");
 }
 
 bool unversionedGeneratedGroupsMigrateOnceThenRemainStable() {
@@ -2060,6 +2420,8 @@ int main() {
       buildingRegenerationIsolatedToChangedOwnershipGroup() &&
       openingEditsPatchGeometryWithoutIdentityChurn() &&
       refinementOnUnchangedMemberSurvivesSiblingSourceEdit() &&
+      exactMemberConflictChoicesPreserveIdentityAndRejectStaleState() &&
+      linkedRemovedMemberCanDetachOrExplicitlyRemove() &&
       authoredChildBlocksRemovalOfManagedParent() &&
       unversionedGeneratedGroupsMigrateOnceThenRemainStable() &&
       authoritativeTerrainAndMaterialApplyAsOneHistoryStep() &&

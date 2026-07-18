@@ -343,7 +343,13 @@ bool refinementConflictProjectsExactManagedGroupAndSource() {
                     report.compileReceipt.objectRecipeConflictCount == 1U &&
                     report.recipeChanges.size() == 1U &&
                     report.recipeChanges[0].kind ==
-                        cr::CreativeWorldLayoutRecipeChangeKind::Conflict,
+                        cr::CreativeWorldLayoutRecipeChangeKind::Conflict &&
+                    report.recipeChanges[0].memberConflicts.size() == 1U &&
+                    report.recipeChanges[0].memberConflicts[0].kind ==
+                        cr::CreativeWorldLayoutMemberConflictKind::
+                            ConcurrentEdit &&
+                    report.recipeChanges[0].memberConflicts[0].objectId ==
+                        refinedId,
                 "diagnostic report retains the three-way change record") &&
          expect(report.issueCount == 1U &&
                     report.issues[0].severity ==

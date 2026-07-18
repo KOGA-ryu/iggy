@@ -9,6 +9,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace iggy3d::creative {
@@ -30,8 +31,22 @@ enum class CreativeWorldLayoutRecipeChangeKind : std::uint8_t {
 
 enum class CreativeWorldLayoutConflictResolution : std::uint8_t {
   Block,
+  // Whole-group recovery for corrupt or intentionally destructive output.
   Regenerate,
   Detach,
+  // Exact-member choices for valid three-way conflicts.
+  UseSource,
+  KeepRefinement,
+  RemoveMember,
+  DetachMember,
+  Count,
+};
+
+enum class CreativeWorldLayoutMemberConflictKind : std::uint8_t {
+  ConcurrentEdit,
+  SourceRemovedRefinement,
+  SourceRemovedLinked,
+  SourceRemovedParent,
   Count,
 };
 
@@ -43,9 +58,37 @@ enum class CreativeWorldLayoutRecipeMemberAction : std::uint8_t {
 };
 
 struct CreativeWorldLayoutConflictDecision {
+  CreativeWorldLayoutConflictDecision() = default;
+  CreativeWorldLayoutConflictDecision(
+      std::string instance,
+      CreativeWorldLayoutConflictResolution selectedResolution)
+      : instanceKey(std::move(instance)),
+        resolution(selectedResolution) {}
+
   std::string instanceKey;
   CreativeWorldLayoutConflictResolution resolution =
       CreativeWorldLayoutConflictResolution::Block;
+  // Empty selects the legacy whole-group recovery path. Member decisions bind
+  // to the exact three-way state shown during review so they cannot be replayed
+  // against a newer edit that happens to reuse the same stable key.
+  std::string memberStableKey;
+  CreativeWorldLayoutMemberConflictKind memberConflictKind =
+      CreativeWorldLayoutMemberConflictKind::Count;
+  CreativeObjectId objectId = kInvalidObjectId;
+  std::uint64_t baselineFingerprint = 0U;
+  std::uint64_t currentFingerprint = 0U;
+  std::uint64_t desiredFingerprint = 0U;
+};
+
+struct CreativeWorldLayoutRecipeMemberConflict {
+  CreativeWorldLayoutMemberConflictKind kind =
+      CreativeWorldLayoutMemberConflictKind::Count;
+  std::string stableKey;
+  std::string objectName;
+  CreativeObjectId objectId = kInvalidObjectId;
+  std::uint64_t baselineFingerprint = 0U;
+  std::uint64_t currentFingerprint = 0U;
+  std::uint64_t desiredFingerprint = 0U;
 };
 
 struct CreativeWorldLayoutRecipeMemberCounts {
@@ -68,6 +111,7 @@ struct CreativeWorldLayoutRecipeChange {
   CreativeWorldLayoutRecipeMemberCounts memberCounts;
   std::uint64_t refinedObjectCount = 0U;
   std::uint64_t missingBaselineCount = 0U;
+  std::vector<CreativeWorldLayoutRecipeMemberConflict> memberConflicts;
 };
 
 // A patch is aligned one-to-one with the desired recipe object order.
@@ -111,12 +155,24 @@ struct CreativeWorldLayoutReconciliationResult {
     CreativeWorldLayoutRecipeChangeKind kind) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeWorldLayoutConflictResolution resolution) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeWorldLayoutMemberConflictKind kind) noexcept;
+[[nodiscard]] bool creativeWorldLayoutMemberResolutionAllowed(
+    CreativeWorldLayoutMemberConflictKind kind,
+    CreativeWorldLayoutConflictResolution resolution) noexcept;
+[[nodiscard]] CreativeWorldLayoutConflictDecision
+makeCreativeWorldLayoutMemberConflictDecision(
+    std::string instanceKey,
+    const CreativeWorldLayoutRecipeMemberConflict& conflict,
+    CreativeWorldLayoutConflictResolution resolution =
+        CreativeWorldLayoutConflictResolution::Block);
 
 // Computes a deterministic three-way decision from generated baseline tags,
 // the live document, and the newly desired recipes. Decision keys must be
 // unique and identify actual conflicts; missing decisions block and stale
-// decisions reject the whole plan. Group lookup is ordered and deterministic;
-// member matching is quadratic only within one recipe ownership group.
+// decisions reject the whole plan. Member decisions are bound to object id and
+// all three fingerprints. Group lookup is ordered and deterministic; member
+// matching is quadratic only within one recipe ownership group.
 [[nodiscard]] CreativeWorldLayoutReconciliationResult
 reconcileCreativeWorldLayoutRecipes(
     const CreativeWorldLayoutReconciliationRequest& request);
