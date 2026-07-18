@@ -227,12 +227,21 @@ void buildCreativeEditorDesktopMenuBar(
 
 // Read-only projection of the out-of-process playtest (the IGGY3DP1 feed).
 // Backfills the in-process runtime monitor the split removed.
-void appendPlayMonitorTab(const PlaytestMonitorState* monitor) {
+void appendPlayMonitorTab(const PlaytestMonitorState* monitor,
+                          CreativeDesktopCommandFrame& commands) {
   if (monitor == nullptr || !monitor->everRan) {
     ImGui::TextDisabled("no playtest this session -- press Play");
     return;
   }
   if (monitor->childRunning) {
+    if (ImGui::SmallButton("Pause##playtest")) {
+      commands.push(CreativeDesktopCommandId::PlaytestPause);
+    }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Resume##playtest")) {
+      commands.push(CreativeDesktopCommandId::PlaytestResume);
+    }
+    ImGui::SameLine();
     if (monitor->stalled) {
       ImGui::TextColored(
           ImVec4{1.0F, 0.30F, 0.25F, 1.0F}, "STALLED (%.1fs) -- Play to replace",
@@ -259,6 +268,14 @@ void appendPlayMonitorTab(const PlaytestMonitorState* monitor) {
     ImGui::TextUnformatted(monitor->lastExitMessage.empty()
                                ? "playtest not running"
                                : monitor->lastExitMessage.c_str());
+  }
+  if (monitor->lastAckSeq != 0U) {
+    ImGui::TextDisabled(
+        "last ack: seq %llu %s %s%s%s",
+        static_cast<unsigned long long>(monitor->lastAckSeq),
+        monitor->lastAckVerb.c_str(), monitor->lastAckStatus.c_str(),
+        monitor->lastAckReason.empty() ? "" : " ",
+        monitor->lastAckReason.c_str());
   }
   ImGui::TextDisabled(
       "events %llu  unknown %llu  malformed %llu  foreign %llu",
@@ -356,7 +373,7 @@ void buildCreativeEditorDesktopPanels(
             ImGui::EndTabItem();
           }
           if (ImGui::BeginTabItem("Play Monitor")) {
-            appendPlayMonitorTab(playtestMonitor);
+            appendPlayMonitorTab(playtestMonitor, commands);
             ImGui::EndTabItem();
           }
           ImGui::EndTabBar();

@@ -10,6 +10,8 @@
 #include "app/iggy3d/creative/world/WorldService.hpp"
 #include "content/assets/StaticMeshAsset.hpp"
 
+#include <csignal>
+
 #include <chrono>
 #include <filesystem>
 #include <iostream>
@@ -390,6 +392,143 @@ bool silentChildStallsRecoversAndReplaces(const std::string& i3dpPath,
   return ok;
 }
 
+// ---- 5. the command channel: pause/resume, acks, EPIPE, stall guard ------
+
+bool waitForAck(app::PlaytestProcessOwner& owner, std::uint64_t seq,
+                double timeoutSeconds) {
+  const Clock::time_point start = Clock::now();
+  while (secondsSince(start) < timeoutSeconds) {
+    static_cast<void>(owner.poll());
+    if (owner.monitor().lastAckSeq == seq) {
+      return true;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
+  return false;
+}
+
+bool commandChannelPauseResumeAcks(const std::string& i3dpPath,
+                                   const std::string& saveRoot) {
+  app::PlaytestProcessOwner owner;
+  std::string reason;
+  if (!expect(owner.launch(planFor(i3dpPath, saveRoot, "100000"), reason),
+              ("channel child spawns: " + reason).c_str())) {
+    return false;
+  }
+  std::this_thread::sleep_for(std::chrono::milliseconds(800));
+  static_cast<void>(owner.poll());
+
+  // pause -> ack applied, heartbeats flip to suspended, ticks freeze
+  if (!expect(owner.sendPlaytestCommand("pause", {}, reason),
+              ("pause sends: " + reason).c_str()) ||
+      !expect(waitForAck(owner, 1U, 5.0), "pause ack arrives (seq 1)") ||
+      !expect(owner.monitor().lastAckVerb == "pause" &&
+                  owner.monitor().lastAckStatus == "applied",
+              "pause acked applied")) {
+    return false;
+  }
+  // observe two heartbeats while paused: state suspended, tick frozen
+  std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+  static_cast<void>(owner.poll());
+  const std::uint64_t pausedTickA = owner.monitor().lastHeartbeatTick;
+  const std::string pausedStateA = owner.monitor().lastHeartbeatState;
+  std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+  static_cast<void>(owner.poll());
+  const std::uint64_t pausedTickB = owner.monitor().lastHeartbeatTick;
+  std::cout << "  pause: state=" << pausedStateA << " tick " << pausedTickA
+            << " -> " << pausedTickB << "\n";
+  if (!expect(pausedStateA == "suspended",
+              "paused heartbeats say state=suspended") ||
+      !expect(pausedTickA == pausedTickB, "session ticks freeze while paused")) {
+    return false;
+  }
+
+  // resume -> ack applied, ticks advance again
+  if (!expect(owner.sendPlaytestCommand("resume", {}, reason),
+              ("resume sends: " + reason).c_str()) ||
+      !expect(waitForAck(owner, 2U, 5.0), "resume ack arrives (seq 2)") ||
+      !expect(owner.monitor().lastAckStatus == "applied",
+              "resume acked applied")) {
+    return false;
+  }
+  std::this_thread::sleep_for(std::chrono::milliseconds(2500));
+  static_cast<void>(owner.poll());
+  const std::uint64_t resumedTick = owner.monitor().lastHeartbeatTick;
+  std::cout << "  resume: state=" << owner.monitor().lastHeartbeatState
+            << " tick " << resumedTick << "\n";
+  if (!expect(owner.monitor().lastHeartbeatState == "running",
+              "resumed heartbeats say state=running") ||
+      !expect(resumedTick > pausedTickB, "session ticks advance after resume")) {
+    return false;
+  }
+
+  // unknown verb -> acked unknown (wire-law), seq correlated
+  if (!expect(owner.sendPlaytestCommand("teleport",
+                                        {{"pos", "1,0,1"}}, reason),
+              "unknown verb sends") ||
+      !expect(waitForAck(owner, 3U, 5.0), "unknown ack arrives (seq 3)") ||
+      !expect(owner.monitor().lastAckVerb == "teleport" &&
+                  owner.monitor().lastAckStatus == "unknown",
+              "unshipped verb acked status=unknown")) {
+    return false;
+  }
+
+  // EPIPE leg: kill the child OUT FROM UNDER the owner, then write.
+  const std::uint64_t pid = owner.childPid();
+  static_cast<void>(kill(static_cast<pid_t>(pid), SIGKILL));
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  std::string epipeReason;
+  const bool epipeSend =
+      owner.sendPlaytestCommand("pause", {}, epipeReason);
+  std::cout << "  epipe: send=" << epipeSend << " reason=" << epipeReason
+            << " (still alive)\n";
+  const bool epipeOk =
+      expect(!epipeSend || !epipeReason.empty(),
+             "write to a dead child fails gracefully or is flushed away") &&
+      expect(true, "editor survived the dead-child write (no signal death)");
+  // The exit is then observed normally.
+  bool exitSeen = false;
+  const Clock::time_point start = Clock::now();
+  while (secondsSince(start) < 5.0) {
+    if (owner.poll().exitObserved) {
+      exitSeen = true;
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
+  owner.shutdown();
+  return epipeOk && expect(exitSeen, "killed child's exit observed after");
+}
+
+bool stalledChildSendRejected() {
+  app::PlaytestProcessOwner owner;
+  std::string reason;
+  if (!expect(owner.launch(
+                  scriptPlan("echo IGGY3DP1 session_started doc=0 rev=0 "
+                             "room=stall_send; sleep 600"),
+                  reason),
+              "mute child spawns for stall-guard")) {
+    return false;
+  }
+  const Clock::time_point start = Clock::now();
+  bool stalled = false;
+  while (secondsSince(start) < 10.0) {
+    if (owner.poll().stalled) {
+      stalled = true;
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+  std::string sendReason;
+  const bool sent = owner.sendPlaytestCommand("pause", {}, sendReason);
+  owner.shutdown();
+  return expect(stalled, "child stalls") &&
+         expect(!sent && sendReason == "playtest_command_child_stalled",
+                "send to a stalled child is rejected without a write") &&
+         expect(owner.monitor().lastCommandSeqSent == 0U,
+                "nothing was queued to the stalled child");
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -406,7 +545,9 @@ int main(int argc, char** argv) {
   const bool ok = spawnPollAndReapCleanExit(i3dpPath, saveRoot) &&
                   replaceRunningChildThenShutdown(i3dpPath, saveRoot) &&
                   pipeFullKillReplaceDoesNotDeadlock(i3dpPath, saveRoot) &&
-                  silentChildStallsRecoversAndReplaces(i3dpPath, saveRoot);
+                  silentChildStallsRecoversAndReplaces(i3dpPath, saveRoot) &&
+                  commandChannelPauseResumeAcks(i3dpPath, saveRoot) &&
+                  stalledChildSendRejected();
   if (ok) {
     std::cout << "playtest_process_owner_tests passed\n";
   }

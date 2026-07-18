@@ -130,12 +130,44 @@ bool streamingReassembly() {
          expect(parser.totalParsed() == 3U, "cumulative parse count");
 }
 
+bool commandChannelMirror() {
+  // IGGY3DC1: same grammar, same wire-law, opposite direction.
+  app::PlaytestEvent pause;
+  pause.kind = std::string(app::kPlaytestCommandVerbPause);
+  pause.fields = {{"seq", "7"}};
+  const std::string line = app::formatPlaytestCommandLine(pause);
+  const app::PlaytestEventParseResult parsed =
+      app::parsePlaytestCommandLine(line);
+  const app::PlaytestEventParseResult crossMagic =
+      app::parsePlaytestEventLine(line);
+  app::PlaytestEventStreamParser commandParser{app::kPlaytestCommandMagic};
+  std::vector<app::PlaytestEvent> commands;
+  commandParser.feed("IGGY3DC1 pause seq=1\nIGGY3DC1 teleport seq=2 "
+                     "pos=1,2,3\nnot a command\n",
+                     commands);
+  return expect(line == "IGGY3DC1 pause seq=7", "command line format") &&
+         expect(parsed.status == app::PlaytestEventParseStatus::Parsed &&
+                    parsed.event.field("seq") == "7",
+                "command round-trip with seq") &&
+         expect(crossMagic.status ==
+                    app::PlaytestEventParseStatus::NotProtocol,
+                "event parser rejects command magic (channels stay apart)") &&
+         expect(commands.size() == 2U &&
+                    commands[1].kind == "teleport" &&
+                    commandParser.totalNonProtocol() == 1U,
+                "command stream parser reassembles and counts") &&
+         expect(app::isKnownPlaytestEventKind(
+                    app::kPlaytestEventKindCommandAck),
+                "command_ack is vocabulary, not an unknown");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = roundTrip() && sanitization() && appendedFieldTolerance() &&
                   unknownKindTolerance() &&
-                  malformedAndForeignLines() && streamingReassembly();
+                  malformedAndForeignLines() && streamingReassembly() &&
+                  commandChannelMirror();
   if (ok) {
     std::cout << "playtest_event_protocol_tests passed\n";
   }

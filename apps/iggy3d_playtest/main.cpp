@@ -5,6 +5,7 @@
 // The loaded document is never mutated: the SAME &document is handed to
 // session start and to every tick (the staleness contract holds trivially).
 
+#include <array>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -16,6 +17,9 @@
 #include <thread>
 
 #include <SDL3/SDL.h>
+
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "EditorBootstrap.hpp"
 #include "EditorControls.hpp"
@@ -46,6 +50,49 @@ void writeProtocolEvent(const app::PlaytestEvent& event) {
   std::fwrite(line.data(), 1U, line.size(), stdout);
   std::fputc('\n', stdout);
   std::fflush(stdout);
+}
+
+// IGGY3DC1 stdin drain: the mirror of the editor's read discipline --
+// non-blocking, once per frame, partial lines carried across frames, no
+// threads. The parent's SDL pipe leaves OUR read end blocking, so we flip
+// stdin to O_NONBLOCK at boot (POSIX; this app targets Linux/macOS).
+void makeStdinNonBlocking() {
+  const int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+  if (flags >= 0) {
+    static_cast<void>(fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK));
+  }
+}
+
+// Bounded per-frame drain; returns complete commands via the shared stream
+// parser (unknown verbs and malformed lines are the CALLER's wire-law duty).
+void drainStdinCommands(app::PlaytestEventStreamParser& parser,
+                        std::vector<app::PlaytestEvent>& out) {
+  std::array<char, 4096U> chunk{};
+  std::size_t total = 0U;
+  while (total < 64U * 1024U) {
+    const ssize_t got = read(STDIN_FILENO, chunk.data(), chunk.size());
+    if (got <= 0) {
+      break;  // EAGAIN (nothing buffered) or EOF/error: stop this frame
+    }
+    static_cast<void>(
+        parser.feed(std::string_view(chunk.data(),
+                                     static_cast<std::size_t>(got)),
+                    out));
+    total += static_cast<std::size_t>(got);
+  }
+}
+
+void writeCommandAck(const app::PlaytestEvent& command,
+                     std::string_view status, std::string_view reason = {}) {
+  app::PlaytestEvent ack;
+  ack.kind = std::string(app::kPlaytestEventKindCommandAck);
+  ack.fields = {{"seq", std::string(command.field("seq", "0"))},
+                {"verb", command.kind},
+                {"status", std::string(status)}};
+  if (!reason.empty()) {
+    ack.fields.emplace_back("reason", std::string(reason));
+  }
+  writeProtocolEvent(ack);
 }
 
 // Mirror of RuntimeEventKind as wire strings (kind STRING only on the wire).
@@ -168,6 +215,7 @@ int main(int argc, char** argv) {
   // window is shown -- the editor deliberately holds nothing that fights
   // it. If the OS denies (Wayland focus-stealing prevention), the child
   // starts suspended and the heartbeat state already tells that story.
+  makeStdinNonBlocking();
   bool bootFullscreen = false;
   if (fullscreenRequested) {
     // Borderless desktop only; the offscreen driver ignores the request and
@@ -272,8 +320,30 @@ int main(int argc, char** argv) {
   app::CreativeEditorGamepad gamepad;
   std::uint64_t frameIndex = 0U;
   std::string exitReason = "window_closed";
+  // USER-PAUSE (command channel): rides the existing suspend machinery by
+  // masking the focus input to the tick -- the sim suspends exactly as it
+  // does when unfocused, heartbeats say state=suspended, and focus gain
+  // does NOT auto-resume: only the `resume` verb clears it. A paused child
+  // still drains stdin, heartbeats, and honors close/ESC below.
+  bool userPaused = false;
+  app::PlaytestEventStreamParser commandParser{app::kPlaytestCommandMagic};
+  std::vector<app::PlaytestEvent> pendingCommands;
 
   while (window.isOpen()) {
+    pendingCommands.clear();
+    drainStdinCommands(commandParser, pendingCommands);
+    for (const app::PlaytestEvent& command : pendingCommands) {
+      if (command.kind == app::kPlaytestCommandVerbPause) {
+        userPaused = true;
+        writeCommandAck(command, "applied");
+      } else if (command.kind == app::kPlaytestCommandVerbResume) {
+        userPaused = false;
+        writeCommandAck(command, "applied");
+      } else {
+        // Wire-law: unknown verbs are counted (parser) and acked unknown.
+        writeCommandAck(command, "unknown");
+      }
+    }
     app::CreativeEditorFrameInputResult frameInput =
         app::beginCreativeEditorFrameInput(window, *backend, gamepad, editor,
                                            /*captureMode=*/false,
@@ -305,7 +375,7 @@ int main(int argc, char** argv) {
     playTick.input.yawDeltaDegrees = frameInput.navigationYawDeltaDegrees;
     playTick.input.pitchDeltaDegrees = frameInput.navigationPitchDeltaDegrees;
     playTick.input.sprinting = frameInput.navigationSprinting;
-    playTick.input.windowFocused = frameInput.windowFocused;
+    playTick.input.windowFocused = frameInput.windowFocused && !userPaused;
     playTick.input.actions = app::sampleCreativePlayActions(
         frameInput.inputFrame, frameInput.routedInput,
         editor.controlProfile.bindingSpan());

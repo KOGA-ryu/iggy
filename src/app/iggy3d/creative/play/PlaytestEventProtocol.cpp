@@ -5,11 +5,12 @@
 namespace iggy3d_creative_app {
 namespace {
 
-constexpr std::array<std::string_view, 4U> kKnownKinds{
+constexpr std::array<std::string_view, 5U> kKnownKinds{
     kPlaytestEventKindSessionStarted,
     kPlaytestEventKindHeartbeat,
     kPlaytestEventKindRuntimeEvent,
     kPlaytestEventKindSessionEnded,
+    kPlaytestEventKindCommandAck,
 };
 
 [[nodiscard]] std::string sanitizeToken(std::string_view raw) {
@@ -56,8 +57,36 @@ std::string_view PlaytestEvent::field(std::string_view key,
   return fallback;
 }
 
+namespace {
+
+[[nodiscard]] std::string formatLineWithMagic(std::string_view magic,
+                                              const PlaytestEvent& event);
+[[nodiscard]] PlaytestEventParseResult parseLineWithMagic(
+    std::string_view magic, std::string_view line);
+
+}  // namespace
+
 std::string formatPlaytestEventLine(const PlaytestEvent& event) {
-  std::string line{kPlaytestEventMagic};
+  return formatLineWithMagic(kPlaytestEventMagic, event);
+}
+
+std::string formatPlaytestCommandLine(const PlaytestEvent& command) {
+  return formatLineWithMagic(kPlaytestCommandMagic, command);
+}
+
+PlaytestEventParseResult parsePlaytestEventLine(std::string_view line) {
+  return parseLineWithMagic(kPlaytestEventMagic, line);
+}
+
+PlaytestEventParseResult parsePlaytestCommandLine(std::string_view line) {
+  return parseLineWithMagic(kPlaytestCommandMagic, line);
+}
+
+namespace {
+
+std::string formatLineWithMagic(std::string_view magic,
+                                const PlaytestEvent& event) {
+  std::string line{magic};
   line.push_back(' ');
   line += sanitizeToken(event.kind.empty() ? "unknown" : event.kind);
   for (const auto& [key, value] : event.fields) {
@@ -69,17 +98,18 @@ std::string formatPlaytestEventLine(const PlaytestEvent& event) {
   return line;
 }
 
-PlaytestEventParseResult parsePlaytestEventLine(std::string_view line) {
+PlaytestEventParseResult parseLineWithMagic(std::string_view magic,
+                                            std::string_view line) {
   PlaytestEventParseResult result;
   // Tolerate a trailing carriage return (Windows-side children later).
   while (!line.empty() && (line.back() == '\r' || line.back() == '\n')) {
     line.remove_suffix(1);
   }
-  if (line.substr(0, kPlaytestEventMagic.size()) != kPlaytestEventMagic) {
+  if (line.substr(0, magic.size()) != magic) {
     result.status = PlaytestEventParseStatus::NotProtocol;
     return result;
   }
-  std::string_view rest = line.substr(kPlaytestEventMagic.size());
+  std::string_view rest = line.substr(magic.size());
   if (rest.empty() || rest.front() != ' ') {
     result.status = PlaytestEventParseStatus::Malformed;
     return result;
@@ -118,13 +148,15 @@ PlaytestEventParseResult parsePlaytestEventLine(std::string_view line) {
   return result;
 }
 
+}  // namespace
+
 PlaytestEventStreamParser::FeedStats PlaytestEventStreamParser::consumeLine(
     std::string_view line, std::vector<PlaytestEvent>& out) {
   FeedStats stats;
   if (line.empty()) {
     return stats;
   }
-  PlaytestEventParseResult parsed = parsePlaytestEventLine(line);
+  PlaytestEventParseResult parsed = parseLineWithMagic(magic_, line);
   switch (parsed.status) {
     case PlaytestEventParseStatus::Parsed:
       ++stats.parsedCount;

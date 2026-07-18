@@ -1472,6 +1472,26 @@ void dispatchOne(const CreativeDesktopCommand& command,
       editor.desktopUi.showWorldLayout = true;
       break;
     }
+    case CreativeDesktopCommandId::PlaytestPause:
+    case CreativeDesktopCommandId::PlaytestResume: {
+      // Pure decision + owner executes: the hang guard inside the owner is
+      // the gatekeeper (no child / stalled -> rejected, nothing queued).
+      if (context.playtestControl == nullptr) {
+        result.message = "playtest command rejected: no child";
+        break;
+      }
+      const std::string_view verb =
+          command.id == CreativeDesktopCommandId::PlaytestPause
+              ? kPlaytestCommandVerbPause
+              : kPlaytestCommandVerbResume;
+      std::string sendReason;
+      const bool sent = context.playtestControl->sendPlaytestCommand(
+          verb, {}, sendReason);
+      result.accepted = sent;
+      result.message = sent ? std::string(verb) + " sent"
+                            : "playtest command rejected: " + sendReason;
+      break;
+    }
     case CreativeDesktopCommandId::Play: {
       // Play = play the LATEST state, always: finalize live gestures,
       // VALIDATE the document (a refusal must not disturb a running

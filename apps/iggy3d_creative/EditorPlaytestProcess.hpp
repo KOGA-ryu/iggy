@@ -104,6 +104,12 @@ struct PlaytestMonitorState {
   // Captured at Play time from the snapshotted document state; replaced on
   // every spawn (lives beside the process handle it describes).
   PlaytestEntityNameMap entityNames;
+  // Command-channel facts: last ack correlated by seq.
+  std::uint64_t lastCommandSeqSent = 0U;
+  std::uint64_t lastAckSeq = 0U;
+  std::string lastAckVerb;
+  std::string lastAckStatus;
+  std::string lastAckReason;
 };
 
 // ---- the narrow seam the dispatcher sees --------------------------------
@@ -125,6 +131,15 @@ class PlaytestProcessControl {
   // Snapshot-time entity labels for the child just launched; replaced per
   // spawn, resolved-from at render time -- never the live document.
   virtual void setSnapshotEntityNames(PlaytestEntityNameMap names) = 0;
+  // IGGY3DC1 send. The hang guard is the gatekeeper: no child or a STALLED
+  // child -> rejected editor-side with a reason, nothing queued, nothing
+  // written. Writes are non-blocking (SDL's O_NONBLOCK pipe) and a write
+  // failure (dead child / full pipe) reports gracefully -- never a signal
+  // death (SDL ignores SIGPIPE at pipe creation).
+  virtual bool sendPlaytestCommand(
+      std::string_view verb,
+      const std::vector<std::pair<std::string, std::string>>& fields,
+      std::string& reasonCode) = 0;
 };
 
 // ---- the app-shell owner -------------------------------------------------
@@ -141,6 +156,10 @@ class PlaytestProcessOwner final : public PlaytestProcessControl {
   [[nodiscard]] bool launch(const PlaytestLaunchPlan& plan,
                             std::string& reasonCode) override;
   void setSnapshotEntityNames(PlaytestEntityNameMap names) override;
+  bool sendPlaytestCommand(
+      std::string_view verb,
+      const std::vector<std::pair<std::string, std::string>>& fields,
+      std::string& reasonCode) override;
 
   // Non-blocking per-frame poll. When the child exited since the last poll,
   // exitObserved is true exactly once and the handle is reaped + cleared.
@@ -180,6 +199,8 @@ class PlaytestProcessOwner final : public PlaytestProcessControl {
   SDL_Process* process_ = nullptr;
   SDL_IOStream* stdoutStream_ = nullptr;
   SDL_IOStream* stderrStream_ = nullptr;
+  SDL_IOStream* stdinStream_ = nullptr;
+  std::uint64_t nextCommandSeq_ = 1U;
   PlaytestEventStreamParser parser_;
   std::string stderrPartial_;
   PlaytestMonitorState monitor_;

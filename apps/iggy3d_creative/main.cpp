@@ -362,6 +362,24 @@ int main(int argc, char** argv) {
     } else if (playtestPoll.stallRecovered) {
       editor.desktopUi.statusMessage = "playtest recovered";
     }
+    {
+      // Non-applied acks surface in the status bar (applied ones are
+      // visible in the Play Monitor's ack row).
+      const iggy3d_creative_app::PlaytestMonitorState& playtestMonitor =
+          playtestOwner.monitor();
+      static std::uint64_t lastSurfacedAckSeq = 0U;
+      if (playtestMonitor.lastAckSeq != 0U &&
+          playtestMonitor.lastAckSeq != lastSurfacedAckSeq &&
+          playtestMonitor.lastAckStatus != "applied") {
+        lastSurfacedAckSeq = playtestMonitor.lastAckSeq;
+        editor.desktopUi.statusMessage =
+            "playtest " + playtestMonitor.lastAckVerb + ": " +
+            playtestMonitor.lastAckStatus +
+            (playtestMonitor.lastAckReason.empty()
+                 ? std::string{}
+                 : " (" + playtestMonitor.lastAckReason + ")");
+      }
+    }
     // Non-const: captured Esc release consumes the ToggleControls action from
     // the route this frame so Controls does not also open (plan DD-9 / FC-4).
     CreativeEditorFrameInputResult frameInput = beginCreativeEditorFrameInput(
