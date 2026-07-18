@@ -44,9 +44,16 @@ void buildCreativeEditorDesktopOutlinerPanel(
 // Called inside the caller's Begin/End for the `Inspector` dock window.
 void buildCreativeEditorDesktopInspectorPanel(
     CreativeEditorDesktopUiState& desktopUi,
-    const CreativeEditorState& editor,
+    CreativeEditorState& editor,
     const iggy3d::creative::CreativeAppState& appState,
     const CreativeEditorPlayMode* playMode,
+    CreativeDesktopCommandFrame& commands);
+
+void appendCreativeDesktopGeneratedSourceSettings(
+    CreativeEditorWorldLayoutState& worldLayout,
+    iggy3d::creative::CreativeObjectId objectId,
+    iggy3d::creative::CreativeWorldLayoutObjectProvenance provenance,
+    bool disabled,
     CreativeDesktopCommandFrame& commands);
 
 // Shared by the Inspector's logic rows and the bottom Diagnostics tab, so the

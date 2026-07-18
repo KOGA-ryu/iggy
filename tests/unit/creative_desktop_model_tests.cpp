@@ -1,6 +1,7 @@
 #include "EditorDesktopModel.hpp"
 
 #include "app/iggy3d/creative/document/Object.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
 #include <cmath>
 #include <cstdint>
@@ -363,6 +364,38 @@ bool draftRejectsNonFiniteAndNonPositiveScale() {
          expect(!negativeScale.valid, "a negative scale component is rejected");
 }
 
+// 16. Only one-to-one generated sources permit raw refinement + adoption.
+bool generatedSourceAdoptionPolicyKeepsStructuresSourceOwned() {
+  const auto provenance = [](bool owned, cr::CreativeWorldLayoutTable table,
+                             std::size_t contributors) {
+    return cr::CreativeWorldLayoutObjectProvenance{
+        owned, table, 0U, cr::CreativeWorldLayoutRoomEdge::Count,
+        contributors};
+  };
+  return expect(app::creativeDesktopGeneratedSourceSupportsAdoption(
+                    provenance(true, cr::CreativeWorldLayoutTable::Object,
+                               1U)) &&
+                    app::creativeDesktopGeneratedSourceSupportsAdoption(
+                        provenance(true, cr::CreativeWorldLayoutTable::Box,
+                                   1U)),
+                "one-to-one object and box outputs permit adoption") &&
+         expect(!app::creativeDesktopGeneratedSourceSupportsAdoption(
+                    provenance(true, cr::CreativeWorldLayoutTable::Wall,
+                               1U)) &&
+                    !app::creativeDesktopGeneratedSourceSupportsAdoption(
+                        provenance(true,
+                                   cr::CreativeWorldLayoutTable::Opening,
+                                   1U)) &&
+                    !app::creativeDesktopGeneratedSourceSupportsAdoption(
+                        provenance(true, cr::CreativeWorldLayoutTable::Object,
+                                   2U)) &&
+                    !app::creativeDesktopGeneratedSourceSupportsAdoption(
+                        provenance(false,
+                                   cr::CreativeWorldLayoutTable::Object,
+                                   1U)),
+                "structures condensed outputs and unowned objects stay locked");
+}
+
 }  // namespace
 
 int main() {
@@ -382,5 +415,6 @@ int main() {
   ok = staleSelectionIdsAreDiscarded() && ok;
   ok = degreeRadianParity() && ok;
   ok = draftRejectsNonFiniteAndNonPositiveScale() && ok;
+  ok = generatedSourceAdoptionPolicyKeepsStructuresSourceOwned() && ok;
   return ok ? 0 : 1;
 }

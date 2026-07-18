@@ -12,6 +12,7 @@
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
 #include "app/iggy3d/creative/tools/Group.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
 #include <array>
 #include <chrono>
@@ -2523,6 +2524,406 @@ bool worldLayoutObjectFocusAndAdoptionCloseTheSourceLoop() {
                 "adoption undo and redo keep live identity and source parity");
 }
 
+bool generatedWallAndOpeningSettingsCommitSourceAndSceneTogether() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Generated Structure Editing");
+  static_cast<void>(document.assignId(435U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "generated_structure_editing");
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "building";
+  building.name = "Building";
+  editor.worldLayout.source.buildings.push_back(building);
+  cr::CreativeWorldLayoutLevel level;
+  level.buildingIndex = 0U;
+  level.stableKey = "ground";
+  level.name = "Ground";
+  editor.worldLayout.source.levels.push_back(level);
+  cr::CreativeWorldLayoutWall wall;
+  wall.buildingIndex = 0U;
+  wall.stableKey = "partition";
+  wall.name = "Partition";
+  wall.start = {0, 0};
+  wall.end = {8, 0};
+  editor.worldLayout.source.walls.push_back(wall);
+  cr::CreativeWorldLayoutOpening opening;
+  opening.hostKind = cr::CreativeWorldLayoutOpeningHostKind::Wall;
+  opening.wallIndex = 0U;
+  opening.kind = cr::CreativeBuildingOpeningKind::Door;
+  opening.stableKey = "door";
+  opening.name = "Door";
+  opening.centerOffsetCells = 4.0;
+  opening.widthCells = 1.0;
+  opening.cutoutHeightCells = 2.1;
+  editor.worldLayout.source.openings.push_back(opening);
+  ++editor.worldLayout.revision;
+
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const app::CreativeDesktopCommandResult generated = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  if (!generated.accepted) {
+    return expect(false, "generated structure editing fixture generated");
+  }
+
+  const auto generatedObjectId = [&](cr::CreativeWorldLayoutTable table) {
+    for (const cr::CreativeObject& object :
+         appState.facade.document().objects()) {
+      const cr::CreativeWorldLayoutObjectProvenance provenance =
+          cr::resolveCreativeWorldLayoutObjectProvenance(
+              editor.worldLayout.source, object);
+      if (provenance.owned && provenance.table == table) {
+        return object.id;
+      }
+    }
+    return cr::kInvalidObjectId;
+  };
+  const cr::CreativeObjectId wallObjectId =
+      generatedObjectId(cr::CreativeWorldLayoutTable::Wall);
+  const cr::CreativeObjectId openingObjectId =
+      generatedObjectId(cr::CreativeWorldLayoutTable::Opening);
+  if (wallObjectId == cr::kInvalidObjectId ||
+      openingObjectId == cr::kInvalidObjectId) {
+    return expect(false, "wall and opening provenance objects exist");
+  }
+
+  const std::uint64_t undoBefore = cr::creativeUndoDepth(appState.history);
+  const std::uint64_t documentRevisionBefore =
+      appState.facade.document().revision();
+  app::CreativeEditorWorldLayoutWallSettings wallSettings;
+  static_cast<void>(app::readCreativeEditorWorldLayoutWallSettings(
+      editor.worldLayout, 0U, wallSettings));
+  wallSettings.heightCells = 5U;
+  wallSettings.thicknessCells = 0.35;
+  const app::CreativeDesktopCommandResult wallPreview = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutPreviewGeneratedWallSettings,
+      context,
+      app::CreativeDesktopGeneratedWallSettingsPayload{wallObjectId,
+                                                        wallSettings});
+  const bool wallPreviewOnly =
+      wallPreview.accepted && wallPreview.sceneChanged &&
+      app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      editor.worldLayout.source.walls[0].heightCells ==
+          cr::kDefaultCreativeWorldLayoutWallHeightCells &&
+      appState.facade.document().revision() == documentRevisionBefore &&
+      cr::creativeUndoDepth(appState.history) == undoBefore;
+  const app::CreativeDesktopCommandResult wallUpdated = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedWallSettings,
+      context,
+      app::CreativeDesktopGeneratedWallSettingsPayload{wallObjectId,
+                                                        wallSettings});
+  const bool wallSynchronized =
+      editor.worldLayout.source.walls[0].heightCells == 5U &&
+      near(editor.worldLayout.source.walls[0].thicknessCells, 0.35) &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision;
+
+  const cr::CreativeObjectId liveOpeningObjectId =
+      generatedObjectId(cr::CreativeWorldLayoutTable::Opening);
+  app::CreativeEditorWorldLayoutOpeningSettings openingSettings;
+  static_cast<void>(app::readCreativeEditorWorldLayoutOpeningSettings(
+      editor.worldLayout, 0U, openingSettings));
+  openingSettings.widthCells = 1.5;
+  openingSettings.heightCells = 2.5;
+  openingSettings.pose =
+      cr::CreativeBuildingOpeningPose::OpenFromStartPositiveNormal;
+  const std::uint64_t documentRevisionBeforeOpeningPreview =
+      appState.facade.document().revision();
+  const std::uint64_t undoBeforeOpeningPreview =
+      cr::creativeUndoDepth(appState.history);
+  const app::CreativeDesktopCommandResult openingPreview = dispatchPayload(
+      app::CreativeDesktopCommandId::
+          WorldLayoutPreviewGeneratedOpeningSettings,
+      context,
+      app::CreativeDesktopGeneratedOpeningSettingsPayload{
+          liveOpeningObjectId, openingSettings});
+  const bool openingPreviewOnly =
+      openingPreview.accepted && openingPreview.sceneChanged &&
+      app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      near(editor.worldLayout.source.openings[0].widthCells, 1.0) &&
+      appState.facade.document().revision() ==
+          documentRevisionBeforeOpeningPreview &&
+      cr::creativeUndoDepth(appState.history) == undoBeforeOpeningPreview;
+  const app::CreativeDesktopCommandResult openingUpdated = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedOpeningSettings,
+      context,
+      app::CreativeDesktopGeneratedOpeningSettingsPayload{
+          liveOpeningObjectId, openingSettings});
+  const bool openingSynchronized =
+      near(editor.worldLayout.source.openings[0].widthCells, 1.5) &&
+      near(editor.worldLayout.source.openings[0].cutoutHeightCells, 2.5) &&
+      editor.worldLayout.source.openings[0].pose ==
+          cr::CreativeBuildingOpeningPose::OpenFromStartPositiveNormal &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision;
+
+  const std::uint64_t revisionBeforeReject = editor.worldLayout.revision;
+  const std::uint64_t documentRevisionBeforeReject =
+      appState.facade.document().revision();
+  const std::uint64_t undoBeforeReject =
+      cr::creativeUndoDepth(appState.history);
+  openingSettings.widthCells = -1.0;
+  const app::CreativeDesktopCommandResult invalidOpening = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedOpeningSettings,
+      context,
+      app::CreativeDesktopGeneratedOpeningSettingsPayload{
+          generatedObjectId(cr::CreativeWorldLayoutTable::Opening),
+          openingSettings});
+  const app::CreativeDesktopCommandResult wrongSource = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedWallSettings,
+      context,
+      app::CreativeDesktopGeneratedWallSettingsPayload{
+          generatedObjectId(cr::CreativeWorldLayoutTable::Opening),
+          wallSettings});
+  const bool rejectedAtomically =
+      !invalidOpening.accepted && !invalidOpening.changed &&
+      !wrongSource.accepted && !wrongSource.changed &&
+      editor.worldLayout.revision == revisionBeforeReject &&
+      documentRevisionBeforeReject ==
+          appState.facade.document().revision() &&
+      cr::creativeUndoDepth(appState.history) == undoBeforeReject;
+
+  const app::CreativeDesktopCommandResult undone =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const bool undoRestoredOpening =
+      near(editor.worldLayout.source.openings[0].widthCells, 1.0) &&
+      editor.worldLayout.source.openings[0].pose ==
+          cr::CreativeBuildingOpeningPose::Closed &&
+      editor.worldLayout.source.walls[0].heightCells == 5U;
+  const app::CreativeDesktopCommandResult redone =
+      dispatchOne(app::CreativeDesktopCommandId::Redo, context);
+  const bool redoRestoredOpening =
+      redone.accepted &&
+      near(editor.worldLayout.source.openings[0].widthCells, 1.5);
+
+  const cr::CreativeObjectId refinedWallObjectId =
+      generatedObjectId(cr::CreativeWorldLayoutTable::Wall);
+  const cr::CreativeObject* refinedWallObject =
+      appState.facade.document().findObject(refinedWallObjectId);
+  if (refinedWallObject == nullptr) {
+    return expect(false, "generated wall survives semantic redo");
+  }
+  const cr::CreativeDocumentMutationReceipt refined = cr::moveDocumentObject(
+      appState.facade.documentForPersistence(), refinedWallObjectId,
+      {refinedWallObject->transform.position.x + 0.5,
+       refinedWallObject->transform.position.y,
+       refinedWallObject->transform.position.z});
+  const std::uint64_t sourceRevisionBeforeConflict =
+      editor.worldLayout.revision;
+  const std::uint64_t documentRevisionBeforeConflict =
+      appState.facade.document().revision();
+  const std::uint64_t undoBeforeConflict =
+      cr::creativeUndoDepth(appState.history);
+  wallSettings.heightCells = 6U;
+  const app::CreativeDesktopCommandResult conflicted = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedWallSettings,
+      context,
+      app::CreativeDesktopGeneratedWallSettingsPayload{refinedWallObjectId,
+                                                        wallSettings});
+  const bool conflictPreservedTruth =
+      refined.changed && !conflicted.accepted && !conflicted.changed &&
+      editor.worldLayout.source.walls[0].heightCells == 5U &&
+      editor.worldLayout.revision == sourceRevisionBeforeConflict &&
+      appState.facade.document().revision() ==
+          documentRevisionBeforeConflict &&
+      cr::creativeUndoDepth(appState.history) == undoBeforeConflict;
+
+  ++editor.worldLayout.revision;
+  const std::uint64_t documentRevisionBeforeUnsynchronized =
+      appState.facade.document().revision();
+  const std::uint64_t undoBeforeUnsynchronized =
+      cr::creativeUndoDepth(appState.history);
+  static_cast<void>(app::readCreativeEditorWorldLayoutOpeningSettings(
+      editor.worldLayout, 0U, openingSettings));
+  openingSettings.widthCells = 1.75;
+  const app::CreativeDesktopCommandResult unsynchronized = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedOpeningSettings,
+      context,
+      app::CreativeDesktopGeneratedOpeningSettingsPayload{
+          generatedObjectId(cr::CreativeWorldLayoutTable::Opening),
+          openingSettings});
+  const bool unsynchronizedRejected =
+      !unsynchronized.accepted && !unsynchronized.changed &&
+      unsynchronized.message ==
+          "creative_editor_world_layout_generated_edit_unsynchronized_source" &&
+      near(editor.worldLayout.source.openings[0].widthCells, 1.5) &&
+      appState.facade.document().revision() ==
+          documentRevisionBeforeUnsynchronized &&
+      cr::creativeUndoDepth(appState.history) == undoBeforeUnsynchronized;
+
+  return expect(wallPreviewOnly,
+                "generated partition settings preview without mutation") &&
+         expect(wallUpdated.accepted && wallUpdated.changed &&
+                    wallUpdated.worldLayoutChanged &&
+                    wallUpdated.sceneChanged && wallSynchronized &&
+                    appState.facade.document().revision() >
+                        documentRevisionBefore,
+                "generated partition edit synchronizes source and scene") &&
+         expect(openingPreviewOnly,
+                "generated opening settings preview without mutation") &&
+         expect(openingUpdated.accepted && openingUpdated.changed &&
+                    openingUpdated.worldLayoutChanged &&
+                    openingUpdated.sceneChanged && openingSynchronized &&
+                    cr::creativeUndoDepth(appState.history) == undoBefore + 2U,
+                "generated opening edit records one semantic history step") &&
+         expect(rejectedAtomically,
+                "invalid and mismatched generated edits are atomic no-ops") &&
+         expect(undone.accepted && undoRestoredOpening &&
+                    redoRestoredOpening,
+                "generated opening edit undo and redo keep source parity") &&
+         expect(conflictPreservedTruth,
+                "refinement conflict leaves source document and history untouched") &&
+         expect(unsynchronizedRejected,
+                "generated edit rejects while 2D source changes are pending");
+}
+
+bool generatedSourceOnlyOpeningEditUsesSourceHistory() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Source Only Opening Editing");
+  static_cast<void>(document.assignId(436U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "source_only_opening_editing");
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "building";
+  building.name = "Building";
+  editor.worldLayout.source.buildings.push_back(building);
+  cr::CreativeWorldLayoutWall wall;
+  wall.buildingIndex = 0U;
+  wall.stableKey = "partition";
+  wall.name = "Partition";
+  wall.start = {0, 0};
+  wall.end = {8, 0};
+  editor.worldLayout.source.walls.push_back(wall);
+  cr::CreativeWorldLayoutOpening opening;
+  opening.hostKind = cr::CreativeWorldLayoutOpeningHostKind::Wall;
+  opening.wallIndex = 0U;
+  opening.kind = cr::CreativeBuildingOpeningKind::Door;
+  opening.stableKey = "door";
+  opening.name = "Door";
+  opening.centerOffsetCells = 4.0;
+  opening.widthCells = 1.0;
+  opening.cutoutHeightCells = 2.1;
+  opening.includeInsert = false;
+  editor.worldLayout.source.openings.push_back(opening);
+  ++editor.worldLayout.revision;
+
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const app::CreativeDesktopCommandResult generated = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  cr::CreativeObjectId openingObjectId = cr::kInvalidObjectId;
+  for (const cr::CreativeObject& object : appState.facade.document().objects()) {
+    const cr::CreativeWorldLayoutObjectProvenance provenance =
+        cr::resolveCreativeWorldLayoutObjectProvenance(
+            editor.worldLayout.source, object);
+    if (provenance.owned &&
+        provenance.table == cr::CreativeWorldLayoutTable::Opening) {
+      openingObjectId = object.id;
+      break;
+    }
+  }
+  if (!generated.accepted || openingObjectId == cr::kInvalidObjectId) {
+    return expect(false, "source-only opening fixture generated");
+  }
+
+  app::CreativeEditorWorldLayoutOpeningSettings settings;
+  static_cast<void>(app::readCreativeEditorWorldLayoutOpeningSettings(
+      editor.worldLayout, 0U, settings));
+  settings.pose =
+      cr::CreativeBuildingOpeningPose::OpenFromEndNegativeNormal;
+  const std::uint64_t documentRevisionBefore =
+      appState.facade.document().revision();
+  const std::uint64_t documentUndoBefore =
+      cr::creativeUndoDepth(appState.history);
+  const std::size_t sourceUndoBefore =
+      editor.worldLayout.sourceHistory.undoEntries.size();
+  editor.desktopUi.showWorldLayout = false;
+  const app::CreativeDesktopCommandResult previewed = dispatchPayload(
+      app::CreativeDesktopCommandId::
+          WorldLayoutPreviewGeneratedOpeningSettings,
+      context,
+      app::CreativeDesktopGeneratedOpeningSettingsPayload{openingObjectId,
+                                                           settings});
+  const app::CreativeDesktopCommandResult previewCancelled = dispatchOne(
+      app::CreativeDesktopCommandId::
+          WorldLayoutCancelGeneratedSettingsPreview,
+      context);
+  const bool previewCancelStayedInInspector =
+      previewed.accepted && previewCancelled.accepted &&
+      previewCancelled.changed &&
+      !app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      !editor.desktopUi.showWorldLayout &&
+      appState.facade.document().revision() == documentRevisionBefore &&
+      editor.worldLayout.revision == editor.worldLayout.generatedRevision;
+  static_cast<void>(dispatchPayload(
+      app::CreativeDesktopCommandId::
+          WorldLayoutPreviewGeneratedOpeningSettings,
+      context,
+      app::CreativeDesktopGeneratedOpeningSettingsPayload{openingObjectId,
+                                                           settings}));
+  const app::CreativeDesktopCommandResult focused = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutFocusObjectSource, context,
+      app::CreativeDesktopWorldLayoutObjectSourcePayload{openingObjectId});
+  const bool focusCancelledPreview =
+      focused.accepted && focused.sceneChanged &&
+      editor.desktopUi.showWorldLayout &&
+      !app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+  editor.desktopUi.showWorldLayout = false;
+  static_cast<void>(dispatchPayload(
+      app::CreativeDesktopCommandId::
+          WorldLayoutPreviewGeneratedOpeningSettings,
+      context,
+      app::CreativeDesktopGeneratedOpeningSettingsPayload{openingObjectId,
+                                                           settings}));
+  const app::CreativeDesktopCommandResult updated = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedOpeningSettings,
+      context,
+      app::CreativeDesktopGeneratedOpeningSettingsPayload{openingObjectId,
+                                                           settings});
+  const bool sourceOnlyRecorded =
+      updated.accepted && updated.changed && updated.worldLayoutChanged &&
+      updated.sceneChanged &&
+      editor.worldLayout.source.openings[0].pose ==
+          cr::CreativeBuildingOpeningPose::OpenFromEndNegativeNormal &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision &&
+      appState.facade.document().revision() == documentRevisionBefore &&
+      cr::creativeUndoDepth(appState.history) == documentUndoBefore &&
+      editor.worldLayout.sourceHistory.undoEntries.size() ==
+          sourceUndoBefore + 1U;
+
+  const app::CreativeDesktopCommandResult undone =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const bool undoRestored =
+      undone.accepted &&
+      editor.worldLayout.source.openings[0].pose ==
+          cr::CreativeBuildingOpeningPose::Closed &&
+      appState.facade.document().revision() == documentRevisionBefore;
+  const app::CreativeDesktopCommandResult redone =
+      dispatchOne(app::CreativeDesktopCommandId::Redo, context);
+
+  return expect(previewCancelStayedInInspector,
+                "generated preview cancel keeps the 3D Inspector active") &&
+         expect(focusCancelledPreview,
+                "source focus cancels preview and opens the 2D owner") &&
+         expect(sourceOnlyRecorded,
+                "source-only semantic edit records no fake document revision") &&
+         expect(undoRestored && redone.accepted &&
+                    editor.worldLayout.source.openings[0].pose ==
+                        cr::CreativeBuildingOpeningPose::
+                            OpenFromEndNegativeNormal,
+                "source-only semantic edit remains undoable and redoable");
+}
+
 bool worldLayoutCatalogSelectionAndPlacementUseTypedCommands() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document =
@@ -2942,6 +3343,8 @@ int main() {
   ok = worldLayoutCommandsPreviewAndGenerateThroughDispatcher() && ok;
   ok = worldLayoutConflictResolutionUsesTypedConfirmPayload() && ok;
   ok = worldLayoutObjectFocusAndAdoptionCloseTheSourceLoop() && ok;
+  ok = generatedWallAndOpeningSettingsCommitSourceAndSceneTogether() && ok;
+  ok = generatedSourceOnlyOpeningEditUsesSourceHistory() && ok;
   ok = worldLayoutCatalogSelectionAndPlacementUseTypedCommands() && ok;
   ok = worldLayoutOpeningInsertCommandsUseCatalogAndHistory() && ok;
   ok = worldLayoutAssetRepairCommandsPreservePlacementAndHistory() && ok;

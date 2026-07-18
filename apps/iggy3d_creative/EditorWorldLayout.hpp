@@ -1127,6 +1127,15 @@ applyCreativeEditorWorldLayoutBoxManipulation(
 setCreativeEditorWorldLayoutWallSettings(
     CreativeEditorWorldLayoutState& state, std::size_t wallIndex,
     CreativeEditorWorldLayoutWallSettings settings);
+[[nodiscard]] CreativeEditorWorldLayoutApplyReceipt
+applyCreativeEditorWorldLayoutWallSettingsToDocument(
+    CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,
+    std::size_t wallIndex, CreativeEditorWorldLayoutWallSettings settings);
+[[nodiscard]] CreativeEditorWorldLayoutPreviewReceipt
+previewCreativeEditorWorldLayoutWallSettings(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document, std::size_t wallIndex,
+    CreativeEditorWorldLayoutWallSettings settings);
 [[nodiscard]] CreativeEditorWorldLayoutWallTarget
 findCreativeEditorWorldLayoutWallTarget(
     const CreativeEditorWorldLayoutState& state,
@@ -1292,6 +1301,16 @@ findCreativeEditorWorldLayoutOpeningTarget(
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 setCreativeEditorWorldLayoutOpeningSettings(
     CreativeEditorWorldLayoutState& state, std::size_t openingIndex,
+    CreativeEditorWorldLayoutOpeningSettings settings);
+[[nodiscard]] CreativeEditorWorldLayoutApplyReceipt
+applyCreativeEditorWorldLayoutOpeningSettingsToDocument(
+    CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,
+    std::size_t openingIndex,
+    CreativeEditorWorldLayoutOpeningSettings settings);
+[[nodiscard]] CreativeEditorWorldLayoutPreviewReceipt
+previewCreativeEditorWorldLayoutOpeningSettings(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document, std::size_t openingIndex,
     CreativeEditorWorldLayoutOpeningSettings settings);
 [[nodiscard]] CreativeEditorWorldLayoutOpeningInsertPlan
 planCreativeEditorWorldLayoutOpeningInsert(

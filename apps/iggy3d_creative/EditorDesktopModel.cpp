@@ -1,5 +1,7 @@
 #include "EditorDesktopModel.hpp"
 
+#include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -387,6 +389,13 @@ CreativeDesktopTransformDraft validateCreativeDesktopTransformDraft(
   draft.transform.scale = scale;
   draft.valid = true;
   return draft;
+}
+
+bool creativeDesktopGeneratedSourceSupportsAdoption(
+    const cr::CreativeWorldLayoutObjectProvenance& provenance) noexcept {
+  return provenance.owned && provenance.contributorCount == 1U &&
+         (provenance.table == cr::CreativeWorldLayoutTable::Object ||
+          provenance.table == cr::CreativeWorldLayoutTable::Box);
 }
 
 }  // namespace iggy3d_creative_app

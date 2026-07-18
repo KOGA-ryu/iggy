@@ -10,6 +10,10 @@
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 
+namespace iggy3d::creative {
+struct CreativeWorldLayoutObjectProvenance;
+}
+
 // UI-4A pure desktop model. ImGui-free and mutation-free: it projects document
 // objects into the rows the Project panel renders, filters them, plans
 // selection transitions, resolves selection against document truth, and
@@ -145,5 +149,10 @@ struct CreativeDesktopTransformDraft {
 validateCreativeDesktopTransformDraft(cr::CreativeVec3 position,
                                       cr::CreativeVec3 rotationDegrees,
                                       cr::CreativeVec3 scale) noexcept;
+
+// Generated Object/Box outputs have a one-to-one inverse and may be refined
+// then adopted. Structural and condensed outputs remain source-owned.
+[[nodiscard]] bool creativeDesktopGeneratedSourceSupportsAdoption(
+    const cr::CreativeWorldLayoutObjectProvenance& provenance) noexcept;
 
 }  // namespace iggy3d_creative_app

@@ -623,7 +623,7 @@ void appendTransformFields(CreativeDesktopInspectorDraft& draft,
 void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
                            const cr::CreativeDocument& document,
                            const cr::CreativeObject& object,
-                           const CreativeEditorWorldLayoutState& worldLayout,
+                           CreativeEditorWorldLayoutState& worldLayout,
                            const CreativeMovingPlatformPreviewState& preview,
                            const CreativeMovingPlatformPathEditState& pathEdit,
                            bool playModeActive,
@@ -632,9 +632,30 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
   refreshInspectorDraft(draft, document, object);
   draft.editing = false;  // recomputed from this frame's active items.
 
+  const cr::CreativeWorldLayoutObjectProvenance provenance =
+      cr::resolveCreativeWorldLayoutObjectProvenance(worldLayout.source,
+                                                     object);
+  const bool sourceSupportsAdoption =
+      creativeDesktopGeneratedSourceSupportsAdoption(provenance);
+  const bool sourceOwnedOnly = provenance.owned && !sourceSupportsAdoption;
+  const bool generatedSettingsSource =
+      provenance.table == cr::CreativeWorldLayoutTable::Wall ||
+      provenance.table == cr::CreativeWorldLayoutTable::Opening;
+  if (!generatedSettingsSource &&
+      (worldLayout.wallSettingsDraft.active ||
+       worldLayout.openingSettingsDraft.active)) {
+    worldLayout.wallSettingsDraft = {};
+    worldLayout.openingSettingsDraft = {};
+    if (creativeEditorWorldLayoutPreviewActive(worldLayout)) {
+      commands.push(CreativeDesktopCommandId::
+                        WorldLayoutCancelGeneratedSettingsPreview);
+    }
+  }
+
   // A locked object can still be unlocked, inspected, and navigated; only its
   // name and transform are frozen. Play freezes every document edit.
-  const bool fieldsDisabled = playModeActive || object.locked;
+  const bool fieldsDisabled =
+      playModeActive || object.locked || sourceOwnedOnly;
 
   ImGui::BeginDisabled(fieldsDisabled);
   if (inputTextStdString("Name", &draft.name,
@@ -649,7 +670,7 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
                       std::string(cr::toString(object.kind)).c_str(),
                       static_cast<unsigned long long>(object.id));
 
-  ImGui::BeginDisabled(playModeActive);
+  ImGui::BeginDisabled(playModeActive || sourceOwnedOnly);
   bool visible = object.visible;
   if (ImGui::Checkbox("Visible", &visible)) {
     commands.push(CreativeDesktopCommandId::SetObjectsVisible,
@@ -682,9 +703,6 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
     ImGui::BulletText("%s", tag.c_str());
   }
 
-  const cr::CreativeWorldLayoutObjectProvenance provenance =
-      cr::resolveCreativeWorldLayoutObjectProvenance(worldLayout.source,
-                                                     object);
   if (provenance.owned) {
     ImGui::SeparatorText("World Layout");
     if (ImGui::Button("Focus in 2D")) {
@@ -694,13 +712,9 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
     }
     const bool sourceSynchronized =
         worldLayout.generatedRevision == worldLayout.revision;
-    const bool invertible = provenance.contributorCount == 1U &&
-                            (provenance.table ==
-                                 cr::CreativeWorldLayoutTable::Object ||
-                             provenance.table ==
-                                 cr::CreativeWorldLayoutTable::Box);
     ImGui::SameLine();
-    ImGui::BeginDisabled(playModeActive || !sourceSynchronized || !invertible);
+    ImGui::BeginDisabled(playModeActive || !sourceSynchronized ||
+                         !sourceSupportsAdoption);
     if (ImGui::Button("Adopt 3D Edit")) {
       commands.push(
           CreativeDesktopCommandId::WorldLayoutAdoptObjectSource,
@@ -709,12 +723,15 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
     ImGui::EndDisabled();
     if (!sourceSynchronized) {
       ImGui::TextDisabled("Generate pending 2D edits before adoption");
-    } else if (!invertible) {
-      ImGui::TextDisabled("Edit this generated fragment from its 2D source");
+    } else if (sourceOwnedOnly) {
+      ImGui::TextDisabled("Source-owned geometry; raw object edits are locked");
     }
+    appendCreativeDesktopGeneratedSourceSettings(
+        worldLayout, object.id, provenance,
+        playModeActive || !sourceSynchronized, commands);
   }
 
-  ImGui::BeginDisabled(playModeActive);
+  ImGui::BeginDisabled(playModeActive || sourceOwnedOnly);
   if (ImGui::Button("Duplicate##single")) {
     commands.push(CreativeDesktopCommandId::DuplicateSelection);
   }
@@ -753,7 +770,7 @@ ImVec4 creativeDesktopLogicDiagnosticColor(
 
 void buildCreativeEditorDesktopInspectorPanel(
     CreativeEditorDesktopUiState& desktopUi,
-    const CreativeEditorState& editor,
+    CreativeEditorState& editor,
     const cr::CreativeAppState& appState,
     const CreativeEditorPlayMode* playMode,
     CreativeDesktopCommandFrame& commands) {

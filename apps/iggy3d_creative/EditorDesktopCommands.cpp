@@ -20,6 +20,7 @@
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
 namespace iggy3d_creative_app {
 
@@ -950,11 +951,18 @@ void dispatchOne(const CreativeDesktopCommand& command,
         result.message = "layout object source focus: target missing";
         break;
       }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      if (previewWasActive) {
+        static_cast<void>(
+            cancelCreativeEditorWorldLayoutPreview(editor.worldLayout));
+      }
       const CreativeEditorWorldLayoutEditReceipt receipt =
           focusCreativeEditorWorldLayoutObjectSource(editor.worldLayout,
                                                      *object);
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
+      result.sceneChanged = previewWasActive;
       result.message = editor.worldLayout.statusMessage;
       if (receipt.accepted) {
         editor.desktopUi.showWorldLayout = true;
@@ -1570,6 +1578,71 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutApplyGeneratedWallSettings: {
+      const auto* payload =
+          payloadAs<CreativeDesktopGeneratedWallSettingsPayload>(command);
+      if (payload == nullptr) {
+        result.message = "generated partition settings: payload mismatch";
+        break;
+      }
+      const creative::CreativeObject* object =
+          appState.facade.findObject(payload->objectId);
+      if (object == nullptr) {
+        result.message = "generated partition settings: target missing";
+        break;
+      }
+      const creative::CreativeWorldLayoutObjectProvenance provenance =
+          creative::resolveCreativeWorldLayoutObjectProvenance(
+              editor.worldLayout.source, *object);
+      if (!provenance.owned ||
+          provenance.table != creative::CreativeWorldLayoutTable::Wall) {
+        result.message = "generated partition settings: source mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutApplyReceipt receipt =
+          applyCreativeEditorWorldLayoutWallSettingsToDocument(
+              editor.worldLayout, appState, provenance.index,
+              payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive || receipt.apply.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutPreviewGeneratedWallSettings: {
+      const auto* payload =
+          payloadAs<CreativeDesktopGeneratedWallSettingsPayload>(command);
+      if (payload == nullptr) {
+        result.message = "generated partition preview: payload mismatch";
+        break;
+      }
+      const creative::CreativeObject* object =
+          appState.facade.findObject(payload->objectId);
+      if (object == nullptr) {
+        result.message = "generated partition preview: target missing";
+        break;
+      }
+      const creative::CreativeWorldLayoutObjectProvenance provenance =
+          creative::resolveCreativeWorldLayoutObjectProvenance(
+              editor.worldLayout.source, *object);
+      if (!provenance.owned ||
+          provenance.table != creative::CreativeWorldLayoutTable::Wall) {
+        result.message = "generated partition preview: source mismatch";
+        break;
+      }
+      const CreativeEditorWorldLayoutPreviewReceipt receipt =
+          previewCreativeEditorWorldLayoutWallSettings(
+              editor.worldLayout, appState.facade.document(),
+              provenance.index, payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.sceneChanged = receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutManipulateWall: {
       const auto* payload =
           payloadAs<CreativeDesktopWorldLayoutWallManipulationPayload>(command);
@@ -1610,6 +1683,71 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.changed = receipt.changed;
       result.worldLayoutChanged = receipt.changed;
       result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutApplyGeneratedOpeningSettings: {
+      const auto* payload =
+          payloadAs<CreativeDesktopGeneratedOpeningSettingsPayload>(command);
+      if (payload == nullptr) {
+        result.message = "generated opening settings: payload mismatch";
+        break;
+      }
+      const creative::CreativeObject* object =
+          appState.facade.findObject(payload->objectId);
+      if (object == nullptr) {
+        result.message = "generated opening settings: target missing";
+        break;
+      }
+      const creative::CreativeWorldLayoutObjectProvenance provenance =
+          creative::resolveCreativeWorldLayoutObjectProvenance(
+              editor.worldLayout.source, *object);
+      if (!provenance.owned ||
+          provenance.table != creative::CreativeWorldLayoutTable::Opening) {
+        result.message = "generated opening settings: source mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutApplyReceipt receipt =
+          applyCreativeEditorWorldLayoutOpeningSettingsToDocument(
+              editor.worldLayout, appState, provenance.index,
+              payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive || receipt.apply.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutPreviewGeneratedOpeningSettings: {
+      const auto* payload =
+          payloadAs<CreativeDesktopGeneratedOpeningSettingsPayload>(command);
+      if (payload == nullptr) {
+        result.message = "generated opening preview: payload mismatch";
+        break;
+      }
+      const creative::CreativeObject* object =
+          appState.facade.findObject(payload->objectId);
+      if (object == nullptr) {
+        result.message = "generated opening preview: target missing";
+        break;
+      }
+      const creative::CreativeWorldLayoutObjectProvenance provenance =
+          creative::resolveCreativeWorldLayoutObjectProvenance(
+              editor.worldLayout.source, *object);
+      if (!provenance.owned ||
+          provenance.table != creative::CreativeWorldLayoutTable::Opening) {
+        result.message = "generated opening preview: source mismatch";
+        break;
+      }
+      const CreativeEditorWorldLayoutPreviewReceipt receipt =
+          previewCreativeEditorWorldLayoutOpeningSettings(
+              editor.worldLayout, appState.facade.document(),
+              provenance.index, payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.sceneChanged = receipt.changed;
       result.message = editor.worldLayout.statusMessage;
       break;
     }
@@ -1766,6 +1904,15 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.sceneChanged = receipt.changed;
       result.message = editor.worldLayout.statusMessage;
       editor.desktopUi.showWorldLayout = true;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutCancelGeneratedSettingsPreview: {
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          cancelCreativeEditorWorldLayoutPreview(editor.worldLayout);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.sceneChanged = receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
       break;
     }
     case CreativeDesktopCommandId::Play:
