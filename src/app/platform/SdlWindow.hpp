@@ -81,6 +81,13 @@ public:
   // setViewportPointerCapture() can enter relative mode (viewport fly-look).
   // Disabled by default, so capture mode and shell-off behave exactly as before.
   void setDesktopFreePointerMode(bool enabled);
+
+  // ONE polite raise-and-focus request (playtest boot handoff). Subject to
+  // window-manager policy -- Wayland focus-stealing prevention may deny it,
+  // and that is acceptable. Returns the immediate post-request input-focus
+  // flag (the first focus state SDL reports); offscreen windows simply
+  // report false. Never loops, never re-raises.
+  bool requestRaiseAndFocus();
   SdlMouseCaptureResult setViewportPointerCapture(bool captured);
   bool setTextInputActive(bool enabled);
   void centerPointer();
