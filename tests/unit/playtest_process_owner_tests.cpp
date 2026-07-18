@@ -111,7 +111,13 @@ bool spawnPollAndReapCleanExit(const std::string& i3dpPath,
   bool sawHeartbeat = false;
   bool startedFirst = false;
   bool sawEnrichedRuntimeEvent = false;
+  bool startedCarriesFocusField = false;
   for (const app::PlaytestEvent& event : monitor.events) {
+    if (event.kind == app::kPlaytestEventKindSessionStarted) {
+      // Presence only: headless cannot own focus truth (the value is the
+      // OS's answer on a real desktop -- Ace's verification).
+      startedCarriesFocusField = !event.field("focused").empty();
+    }
     if (event.kind == app::kPlaytestEventKindRuntimeEvent &&
         !event.field("actor").empty() && !event.field("sequence").empty()) {
       sawEnrichedRuntimeEvent = true;  // guard patrol 'moved' carries ids
@@ -141,6 +147,9 @@ bool spawnPollAndReapCleanExit(const std::string& i3dpPath,
          expect(heartbeatStateOk, "wall-clock heartbeat carries state=running") &&
          expect(sawEnrichedRuntimeEvent,
                 "an enriched runtime_event arrived with raw ids intact") &&
+         expect(startedCarriesFocusField || monitor.totalEventCount >
+                                                monitor.events.size(),
+                "session_started carries the focused handoff field") &&
          expect([&monitor]() {
                   for (const app::PlaytestEvent& event : monitor.events) {
                     if (event.kind != app::kPlaytestEventKindRuntimeEvent) {

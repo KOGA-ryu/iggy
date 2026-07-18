@@ -143,6 +143,11 @@ int main(int argc, char** argv) {
     SDL_Log("i3dp: failed to open window");
     return 1;
   }
+  // FOCUS HANDOFF: one polite raise request at boot, immediately after the
+  // window is shown -- the editor deliberately holds nothing that fights
+  // it. If the OS denies (Wayland focus-stealing prevention), the child
+  // starts suspended and the heartbeat state already tells that story.
+  const bool bootFocused = window.requestRaiseAndFocus();
   window.setRelativeMouseMode(true);
 
   std::unique_ptr<iggy3d::VulkanBackend> backend =
@@ -203,6 +208,7 @@ int main(int argc, char** argv) {
         {"doc", std::to_string(appState.facade.document().id())},
         {"rev", std::to_string(appState.facade.document().revision())},
         {"room", "creative_editor_play"},
+        {"focused", bootFocused ? "1" : "0"},
     };
     writeProtocolEvent(started);
   }

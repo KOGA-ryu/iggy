@@ -52,6 +52,20 @@ bool sanitization() {
                 "sanitized line stays parseable");
 }
 
+bool appendedFieldTolerance() {
+  // The wire-law in action: session_started grew focused= (focus handoff
+  // slice); parsers written before it must read it as just another field.
+  const app::PlaytestEventParseResult parsed = app::parsePlaytestEventLine(
+      "IGGY3DP1 session_started doc=1 rev=0 room=creative_editor_play "
+      "focused=1");
+  return expect(parsed.status == app::PlaytestEventParseStatus::Parsed,
+                "appended focused field parses") &&
+         expect(parsed.event.field("focused") == "1",
+                "focused field readable") &&
+         expect(parsed.event.field("room") == "creative_editor_play",
+                "pre-existing fields unaffected");
+}
+
 bool unknownKindTolerance() {
   // The wire-law: a future child may emit kinds this editor cannot name.
   const app::PlaytestEventParseResult parsed = app::parsePlaytestEventLine(
@@ -119,7 +133,8 @@ bool streamingReassembly() {
 }  // namespace
 
 int main() {
-  const bool ok = roundTrip() && sanitization() && unknownKindTolerance() &&
+  const bool ok = roundTrip() && sanitization() && appendedFieldTolerance() &&
+                  unknownKindTolerance() &&
                   malformedAndForeignLines() && streamingReassembly();
   if (ok) {
     std::cout << "playtest_event_protocol_tests passed\n";

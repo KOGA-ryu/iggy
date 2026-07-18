@@ -141,6 +141,16 @@ SdlMouseCaptureResult SdlWindow::setRelativeMouseMode(bool enabled) {
   return applyRelativeMouseMode(enabled);
 }
 
+bool SdlWindow::requestRaiseAndFocus() {
+  if (window_ == nullptr) {
+    return false;
+  }
+  // Request only: success emits SDL_EVENT_WINDOW_FOCUS_GAINED and sets
+  // SDL_WINDOW_INPUT_FOCUS; denial (WM policy) is not an error we fight.
+  static_cast<void>(SDL_RaiseWindow(window_));
+  return (SDL_GetWindowFlags(window_) & SDL_WINDOW_INPUT_FOCUS) != 0U;
+}
+
 void SdlWindow::setDesktopFreePointerMode(bool enabled) {
   desktopFreePointerMode_ = enabled;
   if (enabled) {
