@@ -331,6 +331,10 @@ bool skippedRuntimeObjectFailsValidation() {
 
 bool linkedPlatformWithoutCollisionFailsValidation() {
   iggy3d::StaticMeshAssetCatalog catalog;
+  catalog.entries.push_back(catalogEntry(
+      "unphysical_platform", iggy3d::StaticMeshCollisionMode::None,
+      iggy3d::StaticMeshAuthoringMetadataStatus::Authored,
+      "asset_metadata_authored"));
   cr::CreativeDocument document = playableDocument("Invalid Logic Platform");
 
   cr::CreativeDocumentCreateRequest sourceRequest;
@@ -344,6 +348,7 @@ bool linkedPlatformWithoutCollisionFailsValidation() {
   cr::CreativeDocumentCreateRequest platformRequest;
   platformRequest.kind = cr::CreativeObjectKind::Platform;
   platformRequest.name = "Vertical Platform";
+  platformRequest.assetId = "unphysical_platform";
   platformRequest.transform.position = {0.0, 1.5, 1.0};
   platformRequest.hasTransformOverride = true;
   platformRequest.bounds = {{-1.5, 0.0, 0.825}, {1.5, 3.0, 1.175}};

@@ -61,6 +61,22 @@ cr::CreativeDocument playableDocument(cr::CreativeDocumentId id = 17U) {
   return document;
 }
 
+void addNoCollisionAsset(iggy3d::StaticMeshAssetCatalog& catalog,
+                         std::string assetId) {
+  iggy3d::StaticMeshAssetCatalogEntry entry;
+  entry.assetId = std::move(assetId);
+  entry.label = entry.assetId;
+  entry.boundsMin = {-0.5F, -0.5F, -0.5F};
+  entry.boundsMax = {0.5F, 0.5F, 0.5F};
+  entry.authoringMetadata.collisionMode =
+      iggy3d::StaticMeshCollisionMode::None;
+  entry.authoringMetadata.status =
+      iggy3d::StaticMeshAuthoringMetadataStatus::Authored;
+  entry.authoringMetadata.reasonCode = "asset_metadata_authored";
+  entry.authoringMetadata.collisionSpecified = true;
+  catalog.entries.push_back(std::move(entry));
+}
+
 const cr::CreativeMapDiagnostic* findDiagnostic(
     const cr::CreativeMapValidationResult& validation,
     cr::CreativeMapDiagnosticCode code) {
@@ -138,6 +154,7 @@ bool validationFailureReturnsDiagnosticsWithoutPayload() {
 
 bool linkedPlatformWithoutCollisionCannotPrepare() {
   iggy3d::StaticMeshAssetCatalog catalog;
+  addNoCollisionAsset(catalog, "unphysical_platform");
   cr::CreativeDocument document = playableDocument(22U);
 
   cr::CreativeDocumentCreateRequest sourceRequest;
@@ -151,6 +168,7 @@ bool linkedPlatformWithoutCollisionCannotPrepare() {
   cr::CreativeDocumentCreateRequest platformRequest;
   platformRequest.kind = cr::CreativeObjectKind::Platform;
   platformRequest.name = "Unphysical Platform";
+  platformRequest.assetId = "unphysical_platform";
   platformRequest.transform.position = {0.0, 1.5, 1.0};
   platformRequest.hasTransformOverride = true;
   platformRequest.bounds = {{-1.5, 0.0, 0.825}, {1.5, 3.0, 1.175}};

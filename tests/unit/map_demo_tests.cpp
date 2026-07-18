@@ -356,7 +356,9 @@ iggy3d::ReachabilityGrid buildWalkGrid(
             x - params.radiusMeters < b.max.x &&
             z + params.radiusMeters > b.min.z &&
             z - params.radiusMeters < b.max.z) {
-          grid.walkable[static_cast<std::size_t>(cz) * kGridCells + cx] = 0U;
+          grid.walkable[static_cast<std::size_t>(cz) *
+                            static_cast<std::size_t>(kGridCells) +
+                        static_cast<std::size_t>(cx)] = 0U;
           break;
         }
       }
@@ -398,8 +400,9 @@ bool reachabilityProvesSneakPathAndPatrols() {
   }
   const auto reached = [&](double x, double z) {
     const iggy3d::ReachabilityCoord cell = toCell(x, z);
-    return flood.reached[static_cast<std::size_t>(cell.z) * kGridCells +
-                         cell.x] != 0U;
+    return flood.reached[static_cast<std::size_t>(cell.z) *
+                             static_cast<std::size_t>(kGridCells) +
+                         static_cast<std::size_t>(cell.x)] != 0U;
   };
   bool ok = expect(reached(objective->transform.position.x,
                            objective->transform.position.z),
