@@ -1497,11 +1497,21 @@ void dispatchOne(const CreativeDesktopCommand& command,
         context.playtestControl->stopRunning();
       }
       const char* basePath = SDL_GetBasePath();
-      const PlaytestLaunchPreparation preparation = preparePlaytestLaunch(
+      PlaytestLaunchPreparation preparation = preparePlaytestLaunch(
           appState.facade.document(), context.staticMeshAssetCatalog,
           context.saveRoot,
           basePath == nullptr ? std::filesystem::path{}
                               : std::filesystem::path{basePath});
+      if (preparation.accepted) {
+        // Window preferences from the profile's [playtest] section ride the
+        // spawn argv; absent section leaves the plan untouched.
+        preparation.plan = buildPlaytestLaunchPlan(
+            basePath == nullptr ? std::filesystem::path{}
+                                : std::filesystem::path{basePath},
+            context.saveRoot / std::string(kPlaytestSnapshotDirName),
+            std::string(kPlaytestSnapshotSaveId),
+            &editor.playtestWindowPreferences);
+      }
       if (!preparation.accepted) {
         result.message = "playtest refused: " + preparation.reasonCode;
         break;

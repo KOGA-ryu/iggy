@@ -116,7 +116,9 @@ bool spawnPollAndReapCleanExit(const std::string& i3dpPath,
     if (event.kind == app::kPlaytestEventKindSessionStarted) {
       // Presence only: headless cannot own focus truth (the value is the
       // OS's answer on a real desktop -- Ace's verification).
-      startedCarriesFocusField = !event.field("focused").empty();
+      startedCarriesFocusField = !event.field("focused").empty() &&
+                                 !event.field("window").empty() &&
+                                 !event.field("fullscreen").empty();
     }
     if (event.kind == app::kPlaytestEventKindRuntimeEvent &&
         !event.field("actor").empty() && !event.field("sequence").empty()) {
@@ -149,7 +151,7 @@ bool spawnPollAndReapCleanExit(const std::string& i3dpPath,
                 "an enriched runtime_event arrived with raw ids intact") &&
          expect(startedCarriesFocusField || monitor.totalEventCount >
                                                 monitor.events.size(),
-                "session_started carries the focused handoff field") &&
+                "session_started carries focused/window/fullscreen receipts") &&
          expect([&monitor]() {
                   for (const app::PlaytestEvent& event : monitor.events) {
                     if (event.kind != app::kPlaytestEventKindRuntimeEvent) {

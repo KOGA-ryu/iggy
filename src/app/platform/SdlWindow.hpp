@@ -88,6 +88,13 @@ public:
   // flag (the first focus state SDL reports); offscreen windows simply
   // report false. Never loops, never re-raises.
   bool requestRaiseAndFocus();
+
+  // Borderless desktop fullscreen (SDL's default fullscreen mode; exclusive
+  // mode switching is permanently out of scope). Returns the ACTUAL
+  // post-request fullscreen flag -- the offscreen driver ignores the
+  // request and reports false.
+  bool applyBorderlessFullscreen();
+  [[nodiscard]] bool isFullscreen() const;
   SdlMouseCaptureResult setViewportPointerCapture(bool captured);
   bool setTextInputActive(bool enabled);
   void centerPointer();

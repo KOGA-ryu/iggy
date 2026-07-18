@@ -30,10 +30,48 @@ namespace {
 
 }  // namespace
 
+PlaytestResolution parsePlaytestResolution(std::string_view argument) {
+  PlaytestResolution resolution;
+  const std::size_t separator = argument.find('x');
+  if (separator == std::string_view::npos || separator == 0U ||
+      separator + 1U >= argument.size()) {
+    return resolution;
+  }
+  const auto parseDimension = [](std::string_view digits,
+                                 std::uint32_t& out) {
+    if (digits.empty() || digits.size() > 5U) {
+      return false;
+    }
+    std::uint32_t value = 0U;
+    for (const char c : digits) {
+      if (c < '0' || c > '9') {
+        return false;
+      }
+      value = value * 10U + static_cast<std::uint32_t>(c - '0');
+    }
+    out = value;
+    return true;
+  };
+  std::uint32_t width = 0U;
+  std::uint32_t height = 0U;
+  if (!parseDimension(argument.substr(0, separator), width) ||
+      !parseDimension(argument.substr(separator + 1U), height) ||
+      width < kPlaytestMinWindowWidth || height < kPlaytestMinWindowHeight ||
+      width > kPlaytestMaxWindowDimension ||
+      height > kPlaytestMaxWindowDimension) {
+    return resolution;
+  }
+  resolution.valid = true;
+  resolution.width = width;
+  resolution.height = height;
+  return resolution;
+}
+
 PlaytestLaunchPlan buildPlaytestLaunchPlan(
     const std::filesystem::path& basePath,
     const std::filesystem::path& saveRoot,
-    const std::string& saveId) {
+    const std::string& saveId,
+    const PlaytestWindowPreferences* windowPreferences) {
   PlaytestLaunchPlan plan;
   if (basePath.empty()) {
     plan.reasonCode = "playtest_launch_missing_base_path";
@@ -51,6 +89,17 @@ PlaytestLaunchPlan buildPlaytestLaunchPlan(
   plan.argv = {plan.binaryPath.generic_string(),
                "--save-root", saveRoot.generic_string(),
                "--load", saveId};
+  if (windowPreferences != nullptr && windowPreferences->present) {
+    // Decided precedence: fullscreen wins when both are configured.
+    if (windowPreferences->fullscreen) {
+      plan.argv.emplace_back("--fullscreen");
+    } else if (windowPreferences->width != 0U &&
+               windowPreferences->height != 0U) {
+      plan.argv.emplace_back("--resolution");
+      plan.argv.emplace_back(std::to_string(windowPreferences->width) + "x" +
+                             std::to_string(windowPreferences->height));
+    }
+  }
   plan.valid = true;
   plan.reasonCode = "playtest_launch_plan_ready";
   return plan;

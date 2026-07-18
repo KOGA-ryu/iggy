@@ -151,6 +151,22 @@ bool SdlWindow::requestRaiseAndFocus() {
   return (SDL_GetWindowFlags(window_) & SDL_WINDOW_INPUT_FOCUS) != 0U;
 }
 
+bool SdlWindow::applyBorderlessFullscreen() {
+  if (window_ == nullptr) {
+    return false;
+  }
+  // No SDL_SetWindowFullscreenMode call -> SDL uses borderless desktop.
+  static_cast<void>(SDL_SetWindowFullscreen(window_, true));
+  SDL_SyncWindow(window_);
+  refreshExtents();
+  return isFullscreen();
+}
+
+bool SdlWindow::isFullscreen() const {
+  return window_ != nullptr &&
+         (SDL_GetWindowFlags(window_) & SDL_WINDOW_FULLSCREEN) != 0U;
+}
+
 void SdlWindow::setDesktopFreePointerMode(bool enabled) {
   desktopFreePointerMode_ = enabled;
   if (enabled) {

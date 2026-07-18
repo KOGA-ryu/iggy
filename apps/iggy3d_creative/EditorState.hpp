@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <vector>
 
+#include "EditorPlaytestLaunch.hpp"
 #include "app/iggy3d/creative/camera/Fly.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
@@ -86,6 +87,9 @@ struct CreativeEditorState {
   bool loggedSelection = false;
   iggy3d::creative::CreativeControlProfile controlProfile =
       iggy3d::creative::makeDefaultCreativeControlProfile();
+  // The optional [playtest] window preferences from the control profile
+  // file (loaded at boot, preserved on control saves, read at Play).
+  PlaytestWindowPreferences playtestWindowPreferences;
   iggy3d::creative::CreativeInputRouterState inputRouterState;
   iggy3d::creative::CreativeControllerState controllerInputState;
   CreativeEditorControlsState controls;
