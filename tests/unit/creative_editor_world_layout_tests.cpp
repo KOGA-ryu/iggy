@@ -506,6 +506,25 @@ bool catalogWallSnapUsesCanonicalActiveLevelHosts() {
         {{-1.0, -0.5, -0.2}, {2.0, 1.0, 0.2}}));
     return entry;
   };
+  const auto restsOnWallFace = [](const auto& plan) {
+    if (!plan.accepted || !plan.footprint.valid) {
+      return false;
+    }
+    const double normalLength =
+        std::hypot(plan.snapNormal.x, plan.snapNormal.z);
+    double minimumFaceDistance = std::numeric_limits<double>::infinity();
+    for (const app::CreativeEditorWorldLayoutPoint corner :
+         plan.footprint.corners) {
+      const double distance =
+          (corner.x - plan.snapSurfacePoint.x) * plan.snapNormal.x +
+          (corner.z - plan.snapSurfacePoint.z) * plan.snapNormal.z;
+      if (distance < -1.0e-9) {
+        return false;
+      }
+      minimumFaceDistance = std::min(minimumFaceDistance, distance);
+    }
+    return near(normalLength, 1.0) && near(minimumFaceDistance, 0.0);
+  };
 
   app::CreativeEditorWorldLayoutState state;
   app::resetCreativeEditorWorldLayout(state, "wall_snap_layout");
@@ -540,6 +559,7 @@ bool catalogWallSnapUsesCanonicalActiveLevelHosts() {
   diagonal.start = {4, 4};
   diagonal.end = {0, 0};
   diagonal.baseLayer = 1.5;
+  diagonal.thicknessCells = 0.75;
   state.source.walls.push_back(diagonal);
 
   const cr::CreativeCatalogEntry wallAsset =
@@ -555,6 +575,11 @@ bool catalogWallSnapUsesCanonicalActiveLevelHosts() {
   const app::CreativeEditorWorldLayoutCatalogPlacementPlan diagonalPlan =
       app::planCreativeEditorWorldLayoutCatalogPlacement(state, {2.0, 3.0},
                                                          grid);
+  state.catalogPlacement.wallSideFlipped = true;
+  const app::CreativeEditorWorldLayoutCatalogPlacementPlan flippedPlan =
+      app::planCreativeEditorWorldLayoutCatalogPlacement(state, {2.0, 3.0},
+                                                         grid);
+  state.catalogPlacement.wallSideFlipped = false;
   const app::CreativeEditorWorldLayoutCatalogPlacementPlan noHost =
       app::planCreativeEditorWorldLayoutCatalogPlacement(state, {20.0, 20.0},
                                                          grid);
@@ -570,6 +595,7 @@ bool catalogWallSnapUsesCanonicalActiveLevelHosts() {
   firstRoom.stableKey = "room_first";
   firstRoom.name = "First";
   firstRoom.footprint = {{0, 0}, {4, 4}};
+  firstRoom.wallThicknessCells = 0.5;
   rooms.source.rooms.push_back(firstRoom);
   cr::CreativeWorldLayoutRoom secondRoom = firstRoom;
   secondRoom.stableKey = "room_second";
@@ -594,20 +620,60 @@ bool catalogWallSnapUsesCanonicalActiveLevelHosts() {
   const app::CreativeEditorWorldLayoutCatalogPlacementPlan doorPlan =
       app::planCreativeEditorWorldLayoutCatalogPlacement(
           openingAsset, {4.0, 2.0}, grid);
+  const cr::CreativeCatalogEntry windowAsset =
+      catalogAsset("window", "architecture/window_frame");
+  static_cast<void>(app::selectCreativeEditorWorldLayoutCatalogAsset(
+      openingAsset, windowAsset));
+  openingAsset.catalogPlacement.snapMode =
+      app::CreativeEditorWorldLayoutCatalogSnapMode::Wall;
+  const app::CreativeEditorWorldLayoutCatalogPlacementPlan windowPlan =
+      app::planCreativeEditorWorldLayoutCatalogPlacement(
+          openingAsset, {4.0, 2.0}, grid);
+
+  const app::CreativeEditorWorldLayoutPoint diagonalCenterline{2.5, 2.5};
+  const double diagonalFaceDistance =
+      (diagonalPlan.snapSurfacePoint.x - diagonalCenterline.x) *
+          diagonalPlan.snapNormal.x +
+      (diagonalPlan.snapSurfacePoint.z - diagonalCenterline.z) *
+          diagonalPlan.snapNormal.z;
+  const double diagonalPointerSide =
+      (2.0 - diagonalCenterline.x) * diagonalPlan.snapNormal.x +
+      (3.0 - diagonalCenterline.z) * diagonalPlan.snapNormal.z;
+  const double flippedPointerSide =
+      (2.0 - diagonalCenterline.x) * flippedPlan.snapNormal.x +
+      (3.0 - diagonalCenterline.z) * flippedPlan.snapNormal.z;
+  const double sharedFaceDistance =
+      (sharedEdge.snapSurfacePoint.x - 4.0) * sharedEdge.snapNormal.x +
+      (sharedEdge.snapSurfacePoint.z - 2.0) * sharedEdge.snapNormal.z;
 
   return expect(diagonalPlan.accepted &&
                     diagonalPlan.snapHostKind ==
                         app::CreativeEditorWorldLayoutCatalogSnapHostKind::
                             ExplicitWall &&
                     diagonalPlan.snapHostIndex == 1U &&
-                    near(diagonalPlan.object.pointCells.x, 2.5) &&
                     near(diagonalPlan.object.pointCells.y, 3.5) &&
-                    near(diagonalPlan.object.pointCells.z, 2.5) &&
                     near(diagonalPlan.object.yawRadians,
                          -std::numbers::pi / 6.0) &&
                     near(diagonalPlan.snapDistanceCells,
-                         std::sqrt(0.5)),
-                "wall snap filters other levels and canonicalizes a reversed diagonal") &&
+                         std::sqrt(0.5)) &&
+                    near(diagonalPlan.snapWallThicknessCells, 0.75) &&
+                    near(diagonalFaceDistance, 0.375) &&
+                    diagonalPointerSide > 0.0 &&
+                    restsOnWallFace(diagonalPlan),
+                "wall snap filters other levels and seats an asymmetric scaled asset on a reversed diagonal face") &&
+         expect(flippedPlan.accepted && restsOnWallFace(flippedPlan) &&
+                    near(flippedPlan.snapNormal.x,
+                         -diagonalPlan.snapNormal.x) &&
+                    near(flippedPlan.snapNormal.z,
+                         -diagonalPlan.snapNormal.z) &&
+                    near(flippedPlan.snapSurfacePoint.x +
+                             diagonalPlan.snapSurfacePoint.x,
+                         diagonalCenterline.x * 2.0) &&
+                    near(flippedPlan.snapSurfacePoint.z +
+                             diagonalPlan.snapSurfacePoint.z,
+                         diagonalCenterline.z * 2.0) &&
+                    flippedPointerSide < 0.0,
+                "wall side flip selects the opposite face without breaking contact") &&
          expect(!noHost.accepted &&
                     noHost.reasonCode ==
                         "creative_editor_world_layout_catalog_wall_missing",
@@ -619,17 +685,25 @@ bool catalogWallSnapUsesCanonicalActiveLevelHosts() {
                     sharedEdge.snapHostIndex == 0U &&
                     sharedEdge.snapRoomEdge ==
                         cr::CreativeWorldLayoutRoomEdge::East &&
-                    near(sharedEdge.object.pointCells.x, 4.0) &&
                     near(sharedEdge.object.pointCells.z, 2.0) &&
                     near(sharedEdge.object.yawRadians,
-                         -std::numbers::pi * 0.5),
-                "shared room walls resolve once in stable room-edge order") &&
+                         -std::numbers::pi * 0.5) &&
+                    near(sharedEdge.snapWallThicknessCells, 0.5) &&
+                    near(sharedFaceDistance, 0.25) &&
+                    restsOnWallFace(sharedEdge),
+                "shared room walls resolve once with their authored face thickness") &&
          expect(!doorPlan.accepted &&
                     doorPlan.reasonCode ==
                         "creative_editor_world_layout_catalog_wall_opening_requires_tool" &&
                     doorPlan.message ==
                         "Use the Door or Window tool to cut an opening",
-                "catalog door assets cannot pretend to cut hosted openings");
+                "catalog door assets cannot pretend to cut hosted openings") &&
+         expect(!windowPlan.accepted &&
+                    windowPlan.reasonCode ==
+                        "creative_editor_world_layout_catalog_wall_opening_requires_tool" &&
+                    windowPlan.message ==
+                        "Use the Door or Window tool to cut an opening",
+                "catalog window assets cannot pretend to cut hosted openings");
 }
 
 bool openingsSnapInsideWallsAndRejectOverlap() {

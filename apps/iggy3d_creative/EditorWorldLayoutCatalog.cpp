@@ -87,7 +87,22 @@ struct CatalogWallSnapHost {
   CreativeEditorWorldLayoutPoint end;
   CreativeEditorWorldLayoutPoint projected;
   double baseLayer = 0.0;
+  double thicknessCells = 0.0;
   double distanceCells = std::numeric_limits<double>::infinity();
+};
+
+struct CatalogWallFrame {
+  bool valid = false;
+  CreativeEditorWorldLayoutPoint tangent;
+  CreativeEditorWorldLayoutPoint normal;
+};
+
+struct CatalogWallContact {
+  bool valid = false;
+  CreativeEditorWorldLayoutPoint pivot;
+  CreativeEditorWorldLayoutPoint surfacePoint;
+  CreativeEditorWorldLayoutPoint normal;
+  double contactOffsetCells = 0.0;
 };
 
 struct CatalogSnapResolution {
@@ -101,6 +116,10 @@ struct CatalogSnapResolution {
   cr::CreativeWorldLayoutRoomEdge roomEdge =
       cr::CreativeWorldLayoutRoomEdge::Count;
   double distanceCells = 0.0;
+  CreativeEditorWorldLayoutPoint surfacePoint;
+  CreativeEditorWorldLayoutPoint normal;
+  double wallThicknessCells = 0.0;
+  double contactOffsetCells = 0.0;
   std::string_view message = "Choose a placement target";
   std::string_view reasonCode =
       "creative_editor_world_layout_catalog_snap_not_requested";
@@ -173,6 +192,7 @@ void considerWallSnapHost(
     CatalogWallSnapHost& best, CreativeEditorWorldLayoutPoint pointer,
     CreativeEditorWorldLayoutPoint start,
     CreativeEditorWorldLayoutPoint end, double baseLayer,
+    double thicknessCells,
     CreativeEditorWorldLayoutCatalogSnapHostKind kind, std::size_t index,
     cr::CreativeWorldLayoutRoomEdge roomEdge) noexcept {
   const double dx = end.x - start.x;
@@ -181,6 +201,7 @@ void considerWallSnapHost(
   if (!detail::finiteWorldLayoutPoint(pointer) ||
       !detail::finiteWorldLayoutPoint(start) ||
       !detail::finiteWorldLayoutPoint(end) || !std::isfinite(baseLayer) ||
+      !std::isfinite(thicknessCells) || thicknessCells <= 0.0 ||
       !std::isfinite(lengthSquared) || lengthSquared <= 0.0) {
     return;
   }
@@ -209,6 +230,7 @@ void considerWallSnapHost(
   best.end = end;
   best.projected = projected;
   best.baseLayer = baseLayer;
+  best.thicknessCells = thicknessCells;
   best.distanceCells = distance;
 }
 
@@ -236,7 +258,7 @@ void considerWallSnapHost(
         {static_cast<double>(wall.start.x),
          static_cast<double>(wall.start.z)},
         {static_cast<double>(wall.end.x), static_cast<double>(wall.end.z)},
-        wall.baseLayer,
+        wall.baseLayer, wall.thicknessCells,
         CreativeEditorWorldLayoutCatalogSnapHostKind::ExplicitWall,
         wallIndex, cr::CreativeWorldLayoutRoomEdge::Count);
   }
@@ -263,11 +285,33 @@ void considerWallSnapHost(
       const auto [start, end] = roomEdgeSegment(room, edge);
       considerWallSnapHost(
           best, pointer, start, end, level.floorTopLayer,
+          room.wallThicknessCells,
           CreativeEditorWorldLayoutCatalogSnapHostKind::RoomEdge, roomIndex,
           edge);
     }
   }
   return best;
+}
+
+[[nodiscard]] CatalogWallFrame wallFrame(
+    const CatalogWallSnapHost& host) noexcept {
+  CatalogWallFrame result;
+  double dx = host.end.x - host.start.x;
+  double dz = host.end.z - host.start.z;
+  if (dx < -kCatalogSnapTieEpsilon ||
+      (std::fabs(dx) <= kCatalogSnapTieEpsilon && dz < 0.0)) {
+    dx = -dx;
+    dz = -dz;
+  }
+  const double length = std::hypot(dx, dz);
+  if (!std::isfinite(length) || length <= 0.0) {
+    return result;
+  }
+  result.tangent = {dx / length, dz / length};
+  result.normal = {-result.tangent.z, result.tangent.x};
+  result.valid = detail::finiteWorldLayoutPoint(result.tangent) &&
+                 detail::finiteWorldLayoutPoint(result.normal);
+  return result;
 }
 
 [[nodiscard]] double floorAlignedElevationCells(
@@ -285,22 +329,81 @@ void considerWallSnapHost(
 [[nodiscard]] double wallAlignedYawRadians(
     const CreativeEditorWorldLayoutCatalogPlacementState& placement,
     const CatalogWallSnapHost& host) noexcept {
-  double dx = host.end.x - host.start.x;
-  double dz = host.end.z - host.start.z;
-  if (dx < -kCatalogSnapTieEpsilon ||
-      (std::fabs(dx) <= kCatalogSnapTieEpsilon && dz < 0.0)) {
-    dx = -dx;
-    dz = -dz;
+  const CatalogWallFrame frame = wallFrame(host);
+  if (!frame.valid) {
+    return std::numeric_limits<double>::quiet_NaN();
   }
   const cr::CreativeBoundsMetrics source =
       cr::measureCreativeBounds(placement.sourceBoundsMeters);
   const bool localXIsPrimary =
       source.size.x * placement.scale.x >= source.size.z * placement.scale.z;
-  const double hostYaw = localXIsPrimary ? std::atan2(-dz, dx)
-                                         : std::atan2(dx, dz);
+  const double hostYaw =
+      localXIsPrimary
+          ? std::atan2(-frame.tangent.z, frame.tangent.x)
+          : std::atan2(frame.tangent.x, frame.tangent.z);
   const double yawOffset =
       std::remainder(placement.yawDegrees, 360.0) * std::numbers::pi / 180.0;
   return std::remainder(hostYaw + yawOffset, std::numbers::pi * 2.0);
+}
+
+[[nodiscard]] CatalogWallContact resolveWallContact(
+    const CreativeEditorWorldLayoutCatalogPlacementState& placement,
+    const CatalogWallSnapHost& host, CreativeEditorWorldLayoutPoint pointer,
+    double cellSizeMeters, double yawRadians) noexcept {
+  CatalogWallContact result;
+  const CatalogWallFrame frame = wallFrame(host);
+  if (!frame.valid || !detail::finiteWorldLayoutPoint(pointer) ||
+      !std::isfinite(cellSizeMeters) || cellSizeMeters <= 0.0 ||
+      !std::isfinite(host.thicknessCells) || host.thicknessCells <= 0.0 ||
+      !std::isfinite(yawRadians)) {
+    return result;
+  }
+
+  const double pointerSide =
+      (pointer.x - host.projected.x) * frame.normal.x +
+      (pointer.z - host.projected.z) * frame.normal.z;
+  const double sideSign =
+      (pointerSide >= 0.0) != placement.wallSideFlipped ? 1.0 : -1.0;
+  result.normal = {frame.normal.x * sideSign, frame.normal.z * sideSign};
+
+  const double inverseCell = 1.0 / cellSizeMeters;
+  const cr::CreativeBounds authoredCells{
+      {placement.sourceBoundsMeters.min.x * inverseCell,
+       placement.sourceBoundsMeters.min.y * inverseCell,
+       placement.sourceBoundsMeters.min.z * inverseCell},
+      {placement.sourceBoundsMeters.max.x * inverseCell,
+       placement.sourceBoundsMeters.max.y * inverseCell,
+       placement.sourceBoundsMeters.max.z * inverseCell},
+  };
+  cr::CreativeTransform transform;
+  transform.rotationEulerRadians.y = yawRadians;
+  transform.scale = placement.scale;
+  const cr::CreativeTransformedBounds transformed =
+      cr::resolveCreativeTransformedBounds(authoredCells, transform);
+  if (!transformed.valid) {
+    return {};
+  }
+
+  double minimumSupport = std::numeric_limits<double>::infinity();
+  for (const cr::CreativeVec3 corner : transformed.corners) {
+    minimumSupport =
+        std::min(minimumSupport,
+                 corner.x * result.normal.x + corner.z * result.normal.z);
+  }
+  const double halfThickness = host.thicknessCells * 0.5;
+  result.contactOffsetCells = halfThickness - minimumSupport;
+  result.surfacePoint = {
+      host.projected.x + result.normal.x * halfThickness,
+      host.projected.z + result.normal.z * halfThickness};
+  result.pivot = {
+      host.projected.x + result.normal.x * result.contactOffsetCells,
+      host.projected.z + result.normal.z * result.contactOffsetCells};
+  result.valid = std::isfinite(minimumSupport) &&
+                 std::isfinite(result.contactOffsetCells) &&
+                 detail::finiteWorldLayoutPoint(result.surfacePoint) &&
+                 detail::finiteWorldLayoutPoint(result.pivot) &&
+                 detail::finiteWorldLayoutPoint(result.normal);
+  return result;
 }
 
 [[nodiscard]] std::string lowerAscii(std::string_view value) {
@@ -410,14 +513,26 @@ void considerWallSnapHost(
             "creative_editor_world_layout_catalog_wall_missing";
         return result;
       }
-      result.point = host.projected;
+      result.yawRadians = wallAlignedYawRadians(placement, host);
+      const CatalogWallContact contact = resolveWallContact(
+          placement, host, pointer, grid.cellSizeMeters, result.yawRadians);
+      if (!contact.valid) {
+        result.message = "Wall contact could not be resolved";
+        result.reasonCode =
+            "creative_editor_world_layout_catalog_wall_contact_invalid";
+        return result;
+      }
+      result.point = contact.pivot;
       result.elevationCells = floorAlignedElevationCells(
           placement, host.baseLayer, grid.cellSizeMeters);
-      result.yawRadians = wallAlignedYawRadians(placement, host);
       result.hostKind = host.kind;
       result.hostIndex = host.index;
       result.roomEdge = host.roomEdge;
       result.distanceCells = host.distanceCells;
+      result.surfacePoint = contact.surfacePoint;
+      result.normal = contact.normal;
+      result.wallThicknessCells = host.thicknessCells;
+      result.contactOffsetCells = contact.contactOffsetCells;
       result.message = host.kind ==
                                CreativeEditorWorldLayoutCatalogSnapHostKind::
                                    ExplicitWall
@@ -563,6 +678,7 @@ selectCreativeEditorWorldLayoutCatalogAsset(
   const double elevation = state.catalogPlacement.elevationCells;
   const double yaw = state.catalogPlacement.yawDegrees;
   const cr::CreativeVec3 scale = state.catalogPlacement.scale;
+  const bool wallSideFlipped = state.catalogPlacement.wallSideFlipped;
   static_cast<void>(setCreativeEditorWorldLayoutTool(
       state, CreativeEditorWorldLayoutTool::CatalogAsset));
   state.catalogPlacement = {};
@@ -579,6 +695,7 @@ selectCreativeEditorWorldLayoutCatalogAsset(
   state.catalogPlacement.elevationCells = elevation;
   state.catalogPlacement.yawDegrees = yaw;
   state.catalogPlacement.scale = scale;
+  state.catalogPlacement.wallSideFlipped = wallSideFlipped;
   state.assetCategory = classifyCreativeEditorWorldLayoutAsset(entry);
   state.statusMessage = state.catalogPlacement.label + " ready to place";
   return {true, changed,
@@ -679,6 +796,10 @@ planCreativeEditorWorldLayoutCatalogPlacement(
   result.snapHostIndex = snap.hostIndex;
   result.snapRoomEdge = snap.roomEdge;
   result.snapDistanceCells = snap.distanceCells;
+  result.snapSurfacePoint = snap.surfacePoint;
+  result.snapNormal = snap.normal;
+  result.snapWallThicknessCells = snap.wallThicknessCells;
+  result.snapContactOffsetCells = snap.contactOffsetCells;
   result.message = snap.message;
   if (!snap.accepted) {
     result.reasonCode = snap.reasonCode;

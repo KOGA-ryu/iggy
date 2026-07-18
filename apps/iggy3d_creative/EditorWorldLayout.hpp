@@ -563,6 +563,7 @@ struct CreativeEditorWorldLayoutCatalogPlacementState {
   cr::CreativeBounds sourceBoundsMeters;
   CreativeEditorWorldLayoutCatalogSnapMode snapMode =
       CreativeEditorWorldLayoutCatalogSnapMode::Grid;
+  bool wallSideFlipped = false;
   double elevationCells = 0.0;
   double yawDegrees = 0.0;
   cr::CreativeVec3 scale{1.0, 1.0, 1.0};
@@ -585,6 +586,10 @@ struct CreativeEditorWorldLayoutCatalogPlacementPlan {
   std::size_t snapHostIndex = cr::kInvalidCreativeWorldLayoutIndex;
   cr::CreativeWorldLayoutRoomEdge snapRoomEdge =
       cr::CreativeWorldLayoutRoomEdge::Count;
+  CreativeEditorWorldLayoutPoint snapSurfacePoint;
+  CreativeEditorWorldLayoutPoint snapNormal;
+  double snapWallThicknessCells = 0.0;
+  double snapContactOffsetCells = 0.0;
   double snapDistanceCells = 0.0;
   std::string message = "Choose a placement target";
   std::string reasonCode =

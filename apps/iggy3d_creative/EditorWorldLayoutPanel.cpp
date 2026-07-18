@@ -914,10 +914,54 @@ void drawCatalogPlacementPreview(
                        ImDrawFlags_Closed, 2.5F);
   const ImVec2 pivot = toScreen(transform, plan.object.pointCells.x,
                                 plan.object.pointCells.z);
-  if (plan.snapMode == CreativeEditorWorldLayoutCatalogSnapMode::Wall &&
-      plan.snapDistanceCells > 0.01) {
-    const ImVec2 pointer = toScreen(transform, hovered.x, hovered.z);
-    drawList.AddLine(pointer, pivot, outline, 1.5F);
+  if (plan.snapMode == CreativeEditorWorldLayoutCatalogSnapMode::Wall) {
+    const CreativeEditorWorldLayoutPoint centerline{
+        plan.snapSurfacePoint.x -
+            plan.snapNormal.x * plan.snapWallThicknessCells * 0.5,
+        plan.snapSurfacePoint.z -
+            plan.snapNormal.z * plan.snapWallThicknessCells * 0.5};
+    const CreativeEditorWorldLayoutPoint tangent{-plan.snapNormal.z,
+                                                  plan.snapNormal.x};
+    const CreativeEditorWorldLayoutPoint faceStart{
+        plan.snapSurfacePoint.x - tangent.x * 0.45,
+        plan.snapSurfacePoint.z - tangent.z * 0.45};
+    const CreativeEditorWorldLayoutPoint faceEnd{
+        plan.snapSurfacePoint.x + tangent.x * 0.45,
+        plan.snapSurfacePoint.z + tangent.z * 0.45};
+    const CreativeEditorWorldLayoutPoint normalTip{
+        plan.snapSurfacePoint.x + plan.snapNormal.x * 0.65,
+        plan.snapSurfacePoint.z + plan.snapNormal.z * 0.65};
+    const ImVec2 centerlineScreen =
+        toScreen(transform, centerline.x, centerline.z);
+    const ImVec2 surfaceScreen = toScreen(
+        transform, plan.snapSurfacePoint.x, plan.snapSurfacePoint.z);
+    const ImVec2 normalTipScreen =
+        toScreen(transform, normalTip.x, normalTip.z);
+    const ImU32 faceColor = color({0.98F, 0.78F, 0.20F, 1.0F});
+    if (plan.snapDistanceCells > 0.01) {
+      const ImVec2 pointer = toScreen(transform, hovered.x, hovered.z);
+      drawList.AddLine(pointer, centerlineScreen, outline, 1.0F);
+    }
+    drawList.AddLine(centerlineScreen, surfaceScreen, faceColor, 2.0F);
+    drawList.AddLine(toScreen(transform, faceStart.x, faceStart.z),
+                     toScreen(transform, faceEnd.x, faceEnd.z), faceColor,
+                     3.0F);
+    drawList.AddCircleFilled(surfaceScreen, 3.5F, faceColor);
+    drawList.AddLine(surfaceScreen, normalTipScreen, outline, 2.0F);
+    const float arrowDx = normalTipScreen.x - surfaceScreen.x;
+    const float arrowDy = normalTipScreen.y - surfaceScreen.y;
+    const float arrowLength = std::hypot(arrowDx, arrowDy);
+    if (arrowLength > 0.0F) {
+      const float unitX = arrowDx / arrowLength;
+      const float unitY = arrowDy / arrowLength;
+      const ImVec2 arrowBase{normalTipScreen.x - unitX * 7.0F,
+                             normalTipScreen.y - unitY * 7.0F};
+      const ImVec2 arrowSide{-unitY * 3.5F, unitX * 3.5F};
+      drawList.AddTriangleFilled(
+          normalTipScreen,
+          {arrowBase.x + arrowSide.x, arrowBase.y + arrowSide.y},
+          {arrowBase.x - arrowSide.x, arrowBase.y - arrowSide.y}, outline);
+    }
   }
   drawList.AddCircleFilled(pivot, 3.5F, outline);
   const std::string previewLabel =
@@ -1275,6 +1319,10 @@ void drawWorldLayoutAssetPlacementControls(
           : "Yaw##layout_asset";
   ImGui::InputDouble(yawLabel, &placement.yawDegrees, 15.0, 90.0,
                      "%.1f deg");
+  if (placement.snapMode == CreativeEditorWorldLayoutCatalogSnapMode::Wall) {
+    ImGui::Checkbox("Flip wall side##layout_asset",
+                    &placement.wallSideFlipped);
+  }
   ImGui::InputDouble("Scale X##layout_asset", &placement.scale.x, 0.1, 1.0,
                      "%.3f");
   ImGui::InputDouble("Scale Y##layout_asset", &placement.scale.y, 0.1, 1.0,
@@ -1293,6 +1341,7 @@ void drawWorldLayoutAssetPlacementControls(
     placement.elevationCells = 0.0;
     placement.yawDegrees = 0.0;
     placement.scale = {1.0, 1.0, 1.0};
+    placement.wallSideFlipped = false;
   }
 }
 
