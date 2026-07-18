@@ -1049,10 +1049,19 @@ bool rebuildingAndDeletingLayoutNeverDuplicatesOutput() {
                     firstObjectCount == 14U,
                 "first layout generation has exact output count") &&
          expect(replacement.receipt.accepted &&
+                    replacement.receipt.objectRecipePatchCount == 1U &&
+                    replacement.receipt.objectRecipeReplaceCount == 0U &&
                     replacement.receipt.objectRemoveCount == 0U &&
                     replacement.plan.objectRecipePatches.size() == 1U &&
                     replacement.plan.objectRecipes.empty() &&
-                    replacement.receipt.objectCount == 14U,
+                    replacement.receipt.objectCount == 14U &&
+                    replacement.recipeChanges.size() == 1U &&
+                    replacement.recipeChanges[0].kind ==
+                        cr::CreativeWorldLayoutRecipeChangeKind::Patch &&
+                    replacement.recipeChanges[0].memberCounts.updateCount ==
+                        1U &&
+                    replacement.recipeChanges[0]
+                            .memberCounts.preserveCount == 13U,
                 "layout rebuild patches complete prior output in place") &&
          expect(replaced.accepted && replaced.changed &&
                     replacementObjectCount == 14U && replacementNamePresent,
@@ -1140,6 +1149,7 @@ bool selectiveRegenerationPreservesIdentityAndManualRefinement() {
 
   return expect(first.receipt.accepted && firstApplied.accepted &&
                     first.receipt.objectRecipeCreateCount == 3U &&
+                    first.receipt.objectRecipePatchCount == 0U &&
                     first.receipt.objectRecipeReplaceCount == 0U &&
                     first.receipt.objectRecipeKeepCount == 0U &&
                     first.receipt.objectRecipeCount == 3U &&
@@ -1149,6 +1159,7 @@ bool selectiveRegenerationPreservesIdentityAndManualRefinement() {
                     unchanged.receipt.status ==
                         cr::CreativeWorldLayoutStatus::NoChange &&
                     unchanged.receipt.objectRecipeCreateCount == 0U &&
+                    unchanged.receipt.objectRecipePatchCount == 0U &&
                     unchanged.receipt.objectRecipeReplaceCount == 0U &&
                     unchanged.receipt.objectRecipeKeepCount == 2U &&
                     unchanged.receipt.objectRecipeRefinedCount == 1U &&
@@ -1162,14 +1173,24 @@ bool selectiveRegenerationPreservesIdentityAndManualRefinement() {
                 "no-change apply preserves manual generated refinement") &&
          expect(replacement.receipt.accepted &&
                     replacement.receipt.objectRecipeCreateCount == 0U &&
-                    replacement.receipt.objectRecipeReplaceCount == 1U &&
+                    replacement.receipt.objectRecipePatchCount == 1U &&
+                    replacement.receipt.objectRecipeReplaceCount == 0U &&
                     replacement.receipt.objectRecipeKeepCount == 1U &&
                     replacement.receipt.objectRecipeRefinedCount == 1U &&
                     replacement.receipt.objectRecipeCount == 1U &&
                     replacement.receipt.objectRemoveCount == 0U &&
                     replacement.plan.objectRecipePatches.size() == 1U &&
                     replacement.plan.objectRecipes.empty() &&
-                    replacement.receipt.objectCount == 1U,
+                    replacement.receipt.objectCount == 1U &&
+                    replacement.recipeChanges.size() == 3U &&
+                    replacement.recipeChanges[1].kind ==
+                        cr::CreativeWorldLayoutRecipeChangeKind::Patch &&
+                    replacement.recipeChanges[1]
+                            .memberCounts.updateCount == 1U &&
+                    replacement.recipeChanges[1]
+                            .memberCounts.createCount == 0U &&
+                    replacement.recipeChanges[1]
+                            .memberCounts.removeCount == 0U,
                 "one source change schedules exactly one stable-id patch") &&
          expect(replaced.accepted && replaced.changed &&
                     replaced.historyReceipt.recorded &&
@@ -1255,9 +1276,17 @@ bool refinedOutputBlocksSourceChangesUntilExplicitlyRegenerated() {
                         revisionBeforeBlocked,
                 "source change over refined output fails closed without mutation") &&
          expect(overwrite.receipt.accepted &&
+                    overwrite.receipt.objectRecipePatchCount == 0U &&
                     overwrite.receipt.objectRecipeReplaceCount == 1U &&
                     overwrite.plan.objectRemoveIds.size() == 1U &&
-                    overwrite.plan.objectRecipes.size() == 1U,
+                    overwrite.plan.objectRecipes.size() == 1U &&
+                    overwrite.recipeChanges.size() == 1U &&
+                    overwrite.recipeChanges[0].kind ==
+                        cr::CreativeWorldLayoutRecipeChangeKind::Replace &&
+                    overwrite.recipeChanges[0].memberCounts.createCount ==
+                        1U &&
+                    overwrite.recipeChanges[0].memberCounts.removeCount ==
+                        1U,
                 "explicit regenerate resolves the reviewed conflict") &&
          expect(overwritten.accepted && overwritten.changed &&
                     overwritten.historyReceipt.recorded &&
@@ -1323,7 +1352,10 @@ bool detachResolutionPreservesRefinementAndCreatesFreshManagedOutput() {
                     detached.plan.objectRecipes.size() == 1U &&
                     detached.recipeChanges.size() == 1U &&
                     detached.recipeChanges[0].kind ==
-                        cr::CreativeWorldLayoutRecipeChangeKind::DetachAndReplace,
+                        cr::CreativeWorldLayoutRecipeChangeKind::DetachAndReplace &&
+                    detached.recipeChanges[0].memberCounts.createCount == 1U &&
+                    detached.recipeChanges[0].memberCounts.detachCount == 1U &&
+                    detached.recipeChanges[0].memberCounts.removeCount == 0U,
                 "detach resolution plans preservation plus fresh generation") &&
          expect(applied.accepted && applied.changed &&
                     applied.historyReceipt.recorded &&
@@ -1563,13 +1595,21 @@ bool buildingRegenerationIsolatedToChangedOwnershipGroup() {
                     first.receipt.objectRecipeCreateCount == 2U,
                 "two buildings begin as two independent recipe groups") &&
          expect(replacement.receipt.accepted &&
-                    replacement.receipt.objectRecipeReplaceCount == 1U &&
+                    replacement.receipt.objectRecipePatchCount == 1U &&
+                    replacement.receipt.objectRecipeReplaceCount == 0U &&
                     replacement.receipt.objectRecipeKeepCount == 1U &&
                     replacement.receipt.objectRecipeCount == 1U &&
                     replacement.receipt.objectRemoveCount == 0U &&
                     replacement.plan.objectRecipePatches.size() == 1U &&
                     replacement.plan.objectRecipes.empty() &&
-                    replacement.receipt.objectCount == 14U,
+                    replacement.receipt.objectCount == 14U &&
+                    replacement.recipeChanges.size() == 2U &&
+                    replacement.recipeChanges[0].kind ==
+                        cr::CreativeWorldLayoutRecipeChangeKind::Patch &&
+                    replacement.recipeChanges[0]
+                            .memberCounts.updateCount == 1U &&
+                    replacement.recipeChanges[0]
+                            .memberCounts.preserveCount == 13U,
                 "wall edit schedules only its owning building patch") &&
          expect(selected.accepted && replaced.accepted && replaced.changed,
                 "stable-id patch applies after selecting generated output") &&
@@ -1668,10 +1708,17 @@ bool openingEditsPatchGeometryWithoutIdentityChurn() {
                     selected.accepted,
                 "opening patch fixture starts selected and linked") &&
          expect(changed.receipt.accepted &&
-                    changed.receipt.objectRecipeReplaceCount == 1U &&
+                    changed.receipt.objectRecipePatchCount == 1U &&
+                    changed.receipt.objectRecipeReplaceCount == 0U &&
                     changed.receipt.objectRemoveCount == 0U &&
                     changed.plan.objectRecipePatches.size() == 1U &&
-                    changed.plan.objectRecipes.empty(),
+                    changed.plan.objectRecipes.empty() &&
+                    changed.recipeChanges.size() == 1U &&
+                    changed.recipeChanges[0].kind ==
+                        cr::CreativeWorldLayoutRecipeChangeKind::Patch &&
+                    changed.recipeChanges[0].memberCounts.createCount == 0U &&
+                    changed.recipeChanges[0].memberCounts.updateCount > 0U &&
+                    changed.recipeChanges[0].memberCounts.removeCount == 0U,
                 "opening edit compiles as one stable-id patch") &&
          expect(applied.accepted && applied.changed &&
                     applied.historyReceipt.recorded,
@@ -1731,7 +1778,8 @@ bool refinementOnUnchangedMemberSurvivesSiblingSourceEdit() {
                 "sibling refinement fixture starts refined") &&
          expect(changed.receipt.accepted &&
                     changed.receipt.objectRecipeConflictCount == 0U &&
-                    changed.receipt.objectRecipeReplaceCount == 1U &&
+                    changed.receipt.objectRecipePatchCount == 1U &&
+                    changed.receipt.objectRecipeReplaceCount == 0U &&
                     changed.plan.objectRecipePatches.size() == 1U,
                 "disjoint source edit does not conflict with refinement") &&
          expect(applied.accepted && applied.changed &&
@@ -1823,12 +1871,20 @@ bool unversionedGeneratedGroupsMigrateOnceThenRemainStable() {
   return expect(legacyApplied.accepted && legacyHasNoDefinition,
                 "legacy fixture has no definition provenance") &&
          expect(migration.receipt.accepted &&
-                    migration.receipt.objectRecipeReplaceCount == 1U &&
+                    migration.receipt.objectRecipePatchCount == 1U &&
+                    migration.receipt.objectRecipeReplaceCount == 0U &&
                     migration.receipt.objectRecipeKeepCount == 0U &&
                     migration.receipt.objectRemoveCount == 0U &&
                     migration.plan.objectRecipePatches.size() == 1U &&
                     migration.plan.objectRecipes.empty() &&
-                    migration.receipt.objectCount == 14U,
+                    migration.receipt.objectCount == 14U &&
+                    migration.recipeChanges.size() == 1U &&
+                    migration.recipeChanges[0].kind ==
+                        cr::CreativeWorldLayoutRecipeChangeKind::Patch &&
+                    migration.recipeChanges[0]
+                            .memberCounts.preserveCount == 14U &&
+                    migration.recipeChanges[0]
+                            .memberCounts.updateCount == 0U,
                 "unversioned generated group schedules metadata adoption") &&
          expect(migrated.accepted && migrated.changed &&
                     migratedRoot != nullptr &&

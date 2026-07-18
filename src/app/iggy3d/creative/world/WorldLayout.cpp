@@ -1096,6 +1096,8 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
   result.receipt.objectRecipeKeepCount = reconciliation.keepRecipeCount;
   result.receipt.objectRecipeRefinedCount =
       reconciliation.refinedRecipeCount;
+  result.receipt.objectRecipePatchCount =
+      reconciliation.patchRecipeCount;
   result.receipt.objectRecipeReplaceCount =
       reconciliation.replaceRecipeCount;
   result.receipt.objectRecipeConflictCount =

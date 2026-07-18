@@ -20,6 +20,7 @@ enum class CreativeWorldLayoutRecipeChangeKind : std::uint8_t {
   Add,
   Keep,
   Refined,
+  Patch,
   Replace,
   Remove,
   Conflict,
@@ -47,6 +48,14 @@ struct CreativeWorldLayoutConflictDecision {
       CreativeWorldLayoutConflictResolution::Block;
 };
 
+struct CreativeWorldLayoutRecipeMemberCounts {
+  std::uint64_t createCount = 0U;
+  std::uint64_t preserveCount = 0U;
+  std::uint64_t updateCount = 0U;
+  std::uint64_t removeCount = 0U;
+  std::uint64_t detachCount = 0U;
+};
+
 struct CreativeWorldLayoutRecipeChange {
   CreativeWorldLayoutRecipeChangeKind kind =
       CreativeWorldLayoutRecipeChangeKind::Keep;
@@ -56,6 +65,7 @@ struct CreativeWorldLayoutRecipeChange {
       kInvalidCreativeWorldLayoutRecipeIndex;
   std::uint64_t existingObjectCount = 0U;
   std::uint64_t desiredObjectCount = 0U;
+  CreativeWorldLayoutRecipeMemberCounts memberCounts;
   std::uint64_t refinedObjectCount = 0U;
   std::uint64_t missingBaselineCount = 0U;
 };
@@ -88,6 +98,7 @@ struct CreativeWorldLayoutReconciliationResult {
   std::uint64_t createRecipeCount = 0U;
   std::uint64_t keepRecipeCount = 0U;
   std::uint64_t refinedRecipeCount = 0U;
+  std::uint64_t patchRecipeCount = 0U;
   std::uint64_t replaceRecipeCount = 0U;
   std::uint64_t removeRecipeCount = 0U;
   std::uint64_t conflictRecipeCount = 0U;

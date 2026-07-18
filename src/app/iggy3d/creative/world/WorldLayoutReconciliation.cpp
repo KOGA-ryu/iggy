@@ -32,6 +32,38 @@ struct RecipePatchAnalysis {
   std::vector<const CreativeObject*> removeObjects;
 };
 
+[[nodiscard]] CreativeWorldLayoutRecipeMemberCounts memberCounts(
+    std::uint64_t createCount = 0U,
+    std::uint64_t preserveCount = 0U,
+    std::uint64_t updateCount = 0U,
+    std::uint64_t removeCount = 0U,
+    std::uint64_t detachCount = 0U) noexcept {
+  return {createCount, preserveCount, updateCount, removeCount, detachCount};
+}
+
+[[nodiscard]] CreativeWorldLayoutRecipeMemberCounts memberCountsForPatch(
+    std::span<const CreativeWorldLayoutRecipeMemberAction> actions,
+    std::size_t removeCount) noexcept {
+  CreativeWorldLayoutRecipeMemberCounts counts;
+  counts.removeCount = removeCount;
+  for (const CreativeWorldLayoutRecipeMemberAction action : actions) {
+    switch (action) {
+      case CreativeWorldLayoutRecipeMemberAction::Create:
+        ++counts.createCount;
+        break;
+      case CreativeWorldLayoutRecipeMemberAction::Preserve:
+        ++counts.preserveCount;
+        break;
+      case CreativeWorldLayoutRecipeMemberAction::Update:
+        ++counts.updateCount;
+        break;
+      case CreativeWorldLayoutRecipeMemberAction::Count:
+        break;
+    }
+  }
+  return counts;
+}
+
 struct ConflictDecisionEntry {
   CreativeWorldLayoutConflictResolution resolution =
       CreativeWorldLayoutConflictResolution::Block;
@@ -261,13 +293,15 @@ CreativeWorldLayoutRecipeChange makeChange(
     std::size_t desiredRecipeIndex,
     std::size_t existingObjectCount,
     std::size_t desiredObjectCount,
-    const ExistingGroupAnalysis& analysis = {}) {
+    const ExistingGroupAnalysis& analysis = {},
+    CreativeWorldLayoutRecipeMemberCounts counts = {}) {
   return {kind,
           recipeKind,
           std::move(instanceKey),
           desiredRecipeIndex,
           existingObjectCount,
           desiredObjectCount,
+          counts,
           analysis.refinedObjectCount,
           analysis.missingBaselineCount};
 }
@@ -298,13 +332,16 @@ void appendConflictResolution(
       result.changes.push_back(makeChange(
           CreativeWorldLayoutRecipeChangeKind::Replace, desired->kind,
           std::move(instanceKey), desiredIndex, existing.size(),
-          desired->objects.size(), analysis));
+          desired->objects.size(), analysis,
+          memberCounts(desired->objects.size(), 0U, 0U,
+                       existing.size())));
     } else {
       ++result.removeRecipeCount;
       result.changes.push_back(makeChange(
           CreativeWorldLayoutRecipeChangeKind::Remove,
           CreativeRecipeKind::Unknown, std::move(instanceKey), desiredIndex,
-          existing.size(), 0U, analysis));
+          existing.size(), 0U, analysis,
+          memberCounts(0U, 0U, 0U, existing.size())));
     }
     return;
   }
@@ -317,12 +354,15 @@ void appendConflictResolution(
     result.changes.push_back(makeChange(
         CreativeWorldLayoutRecipeChangeKind::DetachAndReplace, desired->kind,
         std::move(instanceKey), desiredIndex, existing.size(),
-        desired->objects.size(), analysis));
+        desired->objects.size(), analysis,
+        memberCounts(desired->objects.size(), 0U, 0U, 0U,
+                     existing.size())));
   } else {
     result.changes.push_back(makeChange(
         CreativeWorldLayoutRecipeChangeKind::Detach,
         CreativeRecipeKind::Unknown, std::move(instanceKey), desiredIndex,
-        existing.size(), 0U, analysis));
+        existing.size(), 0U, analysis,
+        memberCounts(0U, 0U, 0U, 0U, existing.size())));
   }
 }
 
@@ -333,6 +373,7 @@ std::string_view toString(CreativeWorldLayoutRecipeChangeKind kind) noexcept {
     case CreativeWorldLayoutRecipeChangeKind::Add: return "Add";
     case CreativeWorldLayoutRecipeChangeKind::Keep: return "Keep";
     case CreativeWorldLayoutRecipeChangeKind::Refined: return "Refined";
+    case CreativeWorldLayoutRecipeChangeKind::Patch: return "Patch";
     case CreativeWorldLayoutRecipeChangeKind::Replace: return "Replace";
     case CreativeWorldLayoutRecipeChangeKind::Remove: return "Remove";
     case CreativeWorldLayoutRecipeChangeKind::Conflict: return "Conflict";
@@ -394,7 +435,8 @@ CreativeWorldLayoutReconciliationResult reconcileCreativeWorldLayoutRecipes(
       ++result.createRecipeCount;
       result.changes.push_back(makeChange(
           CreativeWorldLayoutRecipeChangeKind::Add, desired.kind,
-          desired.instanceKey, desiredIndex, 0U, desired.objects.size()));
+          desired.instanceKey, desiredIndex, 0U, desired.objects.size(), {},
+          memberCounts(desired.objects.size())));
       continue;
     }
 
@@ -407,29 +449,34 @@ CreativeWorldLayoutReconciliationResult reconcileCreativeWorldLayoutRecipes(
           existing->second, &desired, desiredIndex, patch.summary,
           desired.instanceKey);
     } else if (patch.requiresPatch) {
+      const CreativeWorldLayoutRecipeMemberCounts counts =
+          memberCountsForPatch(patch.memberActions,
+                               patch.removeObjects.size());
       appendIds(result.removeObjectIds, patch.removeObjects);
       CreativeWorldLayoutRecipePatchDecision decision;
       decision.desiredRecipeIndex = desiredIndex;
       decision.existingObjectIds = std::move(patch.existingObjectIds);
       decision.memberActions = std::move(patch.memberActions);
       result.patchDecisions.push_back(std::move(decision));
-      ++result.replaceRecipeCount;
+      ++result.patchRecipeCount;
       result.changes.push_back(makeChange(
-          CreativeWorldLayoutRecipeChangeKind::Replace, desired.kind,
+          CreativeWorldLayoutRecipeChangeKind::Patch, desired.kind,
           desired.instanceKey, desiredIndex, existing->second.size(),
-          desired.objects.size(), patch.summary));
+          desired.objects.size(), patch.summary, counts));
     } else if (patch.summary.refinedObjectCount > 0U) {
       ++result.refinedRecipeCount;
       result.changes.push_back(makeChange(
           CreativeWorldLayoutRecipeChangeKind::Refined, desired.kind,
           desired.instanceKey, desiredIndex, existing->second.size(),
-          desired.objects.size(), patch.summary));
+          desired.objects.size(), patch.summary,
+          memberCounts(0U, desired.objects.size())));
     } else {
       ++result.keepRecipeCount;
       result.changes.push_back(makeChange(
           CreativeWorldLayoutRecipeChangeKind::Keep, desired.kind,
           desired.instanceKey, desiredIndex, existing->second.size(),
-          desired.objects.size(), patch.summary));
+          desired.objects.size(), patch.summary,
+          memberCounts(0U, desired.objects.size())));
     }
     existingGroups.erase(existing);
   }
@@ -463,7 +510,7 @@ CreativeWorldLayoutReconciliationResult reconcileCreativeWorldLayoutRecipes(
           CreativeWorldLayoutRecipeChangeKind::Remove,
           CreativeRecipeKind::Unknown, instanceKey,
           kInvalidCreativeWorldLayoutRecipeIndex, objects.size(), 0U,
-          analysis));
+          analysis, memberCounts(0U, 0U, 0U, objects.size())));
     } else {
       appendConflictResolution(
           result, conflictResolutionFor(decisions, instanceKey), objects,

@@ -324,6 +324,9 @@ struct CreativeWorldLayoutReceipt {
   // Recipes and objects scheduled by this compile, not total source output.
   std::uint64_t objectRecipeCount = 0U;
   std::uint64_t objectRecipeCreateCount = 0U;
+  // Safe member-level reconciliation that retains matching object ids.
+  std::uint64_t objectRecipePatchCount = 0U;
+  // Explicit destructive regeneration selected during conflict review.
   std::uint64_t objectRecipeReplaceCount = 0U;
   // Desired groups retained byte-for-byte in the destination document.
   std::uint64_t objectRecipeKeepCount = 0U;

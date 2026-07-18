@@ -279,6 +279,43 @@ bool diagnosticFocusRoutesThroughTypedDispatcher() {
                 "dispatcher focuses the requested source symbol");
 }
 
+bool stableIdPatchProjectsHonestMemberCounts() {
+  cr::CreativeAppState live = makeApp("Diagnostic Patch", 9207U);
+  app::CreativeEditorWorldLayoutState state = roomLayout();
+  const cr::CreativeWorldLayoutCompileResult initial =
+      cr::buildCreativeWorldLayoutPlan(live.facade.document(), state.source);
+  const cr::CreativeWorldLayoutApplyReceipt applied =
+      cr::applyCreativeWorldLayoutPlan(live.facade, initial.plan);
+  state.source.rooms[0].footprint.maximum.x += 1;
+  ++state.revision;
+
+  const app::CreativeEditorWorldLayoutDiagnosticReport report =
+      app::buildCreativeEditorWorldLayoutDiagnosticReport(
+          live.facade.document(), state.source);
+  if (report.recipeChanges.size() != 1U) {
+    return expect(false, "stable-id patch diagnostic has one managed group");
+  }
+  const cr::CreativeWorldLayoutRecipeChange& change =
+      report.recipeChanges.front();
+  const std::uint64_t accountedMembers =
+      change.memberCounts.createCount + change.memberCounts.preserveCount +
+      change.memberCounts.updateCount + change.memberCounts.removeCount;
+
+  return expect(initial.receipt.accepted && applied.accepted,
+                "stable-id patch diagnostic fixture generated") &&
+         expect(report.ready && report.hasChanges &&
+                    report.compileReceipt.objectRecipePatchCount == 1U &&
+                    report.compileReceipt.objectRecipeReplaceCount == 0U,
+                "preflight separates safe patch from destructive replace") &&
+         expect(change.kind ==
+                        cr::CreativeWorldLayoutRecipeChangeKind::Patch &&
+                    change.memberCounts.createCount == 0U &&
+                    change.memberCounts.updateCount > 0U &&
+                    change.memberCounts.removeCount == 0U &&
+                    accountedMembers == change.desiredObjectCount,
+                "preflight accounts for every patched recipe member");
+}
+
 bool refinementConflictProjectsExactManagedGroupAndSource() {
   cr::CreativeAppState live = makeApp("Diagnostic Refinement", 9206U);
   app::CreativeEditorWorldLayoutState state = roomLayout();
@@ -327,6 +364,7 @@ int main() {
                   missingObjectAssetWarningIsNavigable() &&
                   diagnosticFocusSelectsFramesAndPreservesSource() &&
                   diagnosticFocusRoutesThroughTypedDispatcher() &&
+                  stableIdPatchProjectsHonestMemberCounts() &&
                   refinementConflictProjectsExactManagedGroupAndSource();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

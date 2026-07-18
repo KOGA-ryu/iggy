@@ -2563,6 +2563,7 @@ ImVec4 recipeChangeColor(
     case cr::CreativeWorldLayoutRecipeChangeKind::Keep:
       return {0.28F, 0.92F, 0.40F, 1.0F};
     case cr::CreativeWorldLayoutRecipeChangeKind::Refined:
+    case cr::CreativeWorldLayoutRecipeChangeKind::Patch:
     case cr::CreativeWorldLayoutRecipeChangeKind::Replace:
       return {1.0F, 0.72F, 0.20F, 1.0F};
     case cr::CreativeWorldLayoutRecipeChangeKind::Remove:
@@ -2595,7 +2596,7 @@ void drawRecipeChanges(
   }
   ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, 92.0F);
   ImGui::TableSetupColumn("Managed group", ImGuiTableColumnFlags_WidthStretch);
-  ImGui::TableSetupColumn("Objects", ImGuiTableColumnFlags_WidthFixed, 82.0F);
+  ImGui::TableSetupColumn("Members", ImGuiTableColumnFlags_WidthStretch);
   ImGui::TableHeadersRow();
   for (const cr::CreativeWorldLayoutRecipeChange& change :
        diagnostics.recipeChanges) {
@@ -2609,9 +2610,23 @@ void drawRecipeChanges(
     ImGui::TableNextColumn();
     ImGui::TextUnformatted(change.instanceKey.c_str());
     ImGui::TableNextColumn();
-    ImGui::Text("%llu -> %llu",
-                static_cast<unsigned long long>(change.existingObjectCount),
-                static_cast<unsigned long long>(change.desiredObjectCount));
+    if (change.kind == cr::CreativeWorldLayoutRecipeChangeKind::Conflict) {
+      ImGui::Text("blocked: %llu refined",
+                  static_cast<unsigned long long>(change.refinedObjectCount));
+    } else {
+      ImGui::TextWrapped(
+          "create %llu  keep %llu  update %llu  remove %llu  detach %llu",
+          static_cast<unsigned long long>(
+              change.memberCounts.createCount),
+          static_cast<unsigned long long>(
+              change.memberCounts.preserveCount),
+          static_cast<unsigned long long>(
+              change.memberCounts.updateCount),
+          static_cast<unsigned long long>(
+              change.memberCounts.removeCount),
+          static_cast<unsigned long long>(
+              change.memberCounts.detachCount));
+    }
   }
   ImGui::EndTable();
 }
@@ -2865,10 +2880,12 @@ void buildCreativeEditorWorldLayoutPanel(
       const cr::CreativeWorldLayoutReceipt& generation =
           diagnostics.compileReceipt;
       ImGui::TextDisabled(
-          "Recipe groups: +%llu  replace %llu  keep %llu  refined %llu  |  "
-          "detach %llu  remove %llu objects",
+          "Recipe groups: +%llu  patch %llu  replace %llu  keep %llu  "
+          "refined %llu  |  detach %llu  remove %llu objects",
           static_cast<unsigned long long>(
               generation.objectRecipeCreateCount),
+          static_cast<unsigned long long>(
+              generation.objectRecipePatchCount),
           static_cast<unsigned long long>(
               generation.objectRecipeReplaceCount),
           static_cast<unsigned long long>(generation.objectRecipeKeepCount),
