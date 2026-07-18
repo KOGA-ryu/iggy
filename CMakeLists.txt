@@ -411,6 +411,10 @@ add_executable(i3dc apps/iggy3d_creative/main.cpp)
 target_link_libraries(i3dc PRIVATE iggy3d_creative_app)
 iggy3d_apply_warnings(i3dc)
 
+add_executable(i3dp apps/iggy3d_playtest/main.cpp)
+target_link_libraries(i3dp PRIVATE iggy3d_creative_app)
+iggy3d_apply_warnings(i3dp)
+
 # Preserve the descriptive build target while keeping the executable convenient.
 add_custom_target(iggy3d_creative DEPENDS i3dc)
 
