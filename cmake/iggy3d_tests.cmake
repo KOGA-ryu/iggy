@@ -953,3 +953,37 @@ add_test(NAME creative_playtest_launch_tests
 set_tests_properties(creative_playtest_launch_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;play;launch;iggy3d")
+
+# i3dp headless smokes (verification-hold pins): the playtest binary must
+# boot offscreen on the committed map fixture and exit 0 within the frame
+# limit, and must refuse a missing save id nonzero BEFORE any window work.
+add_test(NAME i3dp_headless_smoke
+  COMMAND "$<TARGET_FILE:i3dp>" --offscreen
+          --save-root "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/worlds"
+          --load map_demo --frames 60)
+set_tests_properties(i3dp_headless_smoke PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "smoke;app;playtest;play;iggy3d")
+
+add_test(NAME i3dp_missing_save_refusal
+  COMMAND "$<TARGET_FILE:i3dp>" --offscreen
+          --save-root "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/worlds"
+          --load missing_id)
+set_tests_properties(i3dp_missing_save_refusal PROPERTIES
+  WILL_FAIL TRUE
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "smoke;app;playtest;play;iggy3d")
+
+# Guards the missing-.spv trap: a build whose shader set is absent or a
+# capture readback regression fails this loudly instead of silently. Only
+# registered when the shader compiler is available to this configure.
+if(IGGY3D_SHADER_COMPILER_AVAILABLE)
+  add_test(NAME i3dc_capture_smoke
+    COMMAND "$<TARGET_FILE:i3dc>"
+            --capture "${CMAKE_CURRENT_BINARY_DIR}/capture_smoke.png"
+            --frames 4)
+  set_tests_properties(i3dc_capture_smoke PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    ENVIRONMENT "SDL_VIDEODRIVER=offscreen"
+    LABELS "smoke;app;creative;capture;iggy3d")
+endif()

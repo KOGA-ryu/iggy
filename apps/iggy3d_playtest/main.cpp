@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <system_error>
 #include <thread>
 
 #include <SDL3/SDL.h>
@@ -30,6 +31,7 @@
 #include "app/platform/SdlWindow.hpp"
 #include "render/FrameInput.hpp"
 #include "render/vulkan/VulkanBackend.hpp"
+#include "runtime/save/SaveFileStore.hpp"
 
 namespace {
 
@@ -38,11 +40,14 @@ namespace app = iggy3d_creative_app;
 
 int usage() {
   std::fprintf(stderr,
-               "usage: i3dp --save-root <dir> --load <save-id> [--frames N]\n"
+               "usage: i3dp --save-root <dir> --load <save-id> [--frames N] "
+               "[--offscreen]\n"
                "  --save-root  directory holding <save-id>.iggy3d.save "
                "(REQUIRED)\n"
                "  --load       save id to play (REQUIRED)\n"
-               "  --frames     auto-exit after N frames (headless smoke)\n");
+               "  --frames     auto-exit after N frames (headless smoke)\n"
+               "  --offscreen  SDL offscreen video driver (true headless: no "
+               "display needed)\n");
   return 2;
 }
 
@@ -52,6 +57,7 @@ int main(int argc, char** argv) {
   std::filesystem::path playRoot;
   std::string loadSaveId;
   std::uint64_t maxFrames = 0U;
+  bool offscreen = false;
   for (int i = 1; i < argc; ++i) {
     const std::string arg = argv[i];
     if (arg == "--save-root" && i + 1 < argc) {
@@ -60,6 +66,8 @@ int main(int argc, char** argv) {
       loadSaveId = argv[++i];
     } else if (arg == "--frames" && i + 1 < argc) {
       maxFrames = std::strtoull(argv[++i], nullptr, 10);
+    } else if (arg == "--offscreen") {
+      offscreen = true;
     } else {
       std::fprintf(stderr, "i3dp: unknown argument '%s'\n", arg.c_str());
       return usage();
@@ -67,6 +75,24 @@ int main(int argc, char** argv) {
   }
   if (playRoot.empty() || loadSaveId.empty()) {
     return usage();
+  }
+  // Refuse a missing/invalid save BEFORE any window or renderer work: a bad
+  // launch must not flash a window (or, headless, touch the GPU) at all.
+  const std::filesystem::path savePath =
+      iggy3d::saveFilePathForId(playRoot, loadSaveId);
+  std::error_code saveError;
+  if (!std::filesystem::is_regular_file(savePath, saveError) || saveError) {
+    std::fprintf(stderr, "i3dp: save not found: '%s' (save-root='%s' id='%s')\n",
+                 savePath.generic_string().c_str(),
+                 playRoot.generic_string().c_str(), loadSaveId.c_str());
+    return 1;
+  }
+  if (offscreen) {
+    // First-class headless boot: the same SDL offscreen video driver the
+    // i3dc capture path runs under, selected here in-process so the smoke
+    // does not depend on the caller's environment.
+    SDL_SetHintWithPriority(SDL_HINT_VIDEO_DRIVER, "offscreen",
+                            SDL_HINT_OVERRIDE);
   }
 
   iggy3d::SdlWindowCreateInfo createInfo;
