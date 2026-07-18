@@ -60,7 +60,6 @@
 #include "EditorToolWheelPreferences.hpp"
 #include "EditorPlacement.hpp"
 #include "EditorPersistence.hpp"
-#include "EditorPlayMode.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorTransform.hpp"
 #include "EditorWorldLayout.hpp"
@@ -342,27 +341,17 @@ int main(int argc, char** argv) {
   const float kGizmoThickness = bootstrapData.gizmoThicknessMeters;
   CreativeEditorGamepad gamepad;
   iggy3d_creative_app::CreativeEditorSceneCache sceneCache;
-  iggy3d_creative_app::CreativeEditorPlayMode playMode;
 
   while (window.isOpen()) {
     // Non-const: captured Esc release consumes the ToggleControls action from
     // the route this frame so Controls does not also open (plan DD-9 / FC-4).
     CreativeEditorFrameInputResult frameInput = beginCreativeEditorFrameInput(
         window, *backend, gamepad, editor, !capturePath.empty(),
-        !iggy3d_creative_app::creativeEditorPlayModeActive(playMode));
+        /*applyEditorNavigation=*/true);
     if (!frameInput.keepRunning) {
       break;
     }
     if (frameInput.skipFrame) {
-      if (iggy3d_creative_app::creativeEditorPlayModeActive(playMode)) {
-        iggy3d_creative_app::CreativeEditorPlayTickRequest playTick;
-        playTick.sourceDocument = &appState.facade.document();
-        playTick.input.windowFocused = false;
-        playTick.monotonicTimeNanoseconds =
-            frameInput.monotonicTimeNanoseconds;
-        static_cast<void>(iggy3d_creative_app::tickCreativeEditorPlayMode(
-            playMode, playTick));
-      }
       if (!frameInput.windowFocused) {
         creative::CreativeAppState& activeAppState =
             activeCreativeEditorAppState(editor, appState);
@@ -438,17 +427,13 @@ int main(int argc, char** argv) {
     iggy3d_creative_app::CreativeEditorAssetLibraryFrameResult
         assetLibraryFrame;
     assetLibraryFrame.remainingInput = frameInput.routedInput;
-    if (!iggy3d_creative_app::creativeEditorPlayModeActive(playMode)) {
-      assetLibraryFrame = processCreativeEditorAssetLibraryFrame(
-          {window, appState, editor, frameInput.routedInput});
-    }
+    assetLibraryFrame = processCreativeEditorAssetLibraryFrame(
+        {window, appState, editor, frameInput.routedInput});
     if (assetLibraryFrame.activeDocumentChanged) {
       invalidateCreativeEditorSceneCache(sceneCache);
     }
     creative::CreativeAppState& activeAppState =
-        iggy3d_creative_app::creativeEditorPlayModeActive(playMode)
-            ? appState
-            : activeCreativeEditorAppState(editor, appState);
+        activeCreativeEditorAppState(editor, appState);
 
     // Desktop shell chrome: the menu emits semantic command IDs, the sole
     // dispatcher applies them to the existing kernels, and the status bar
@@ -460,14 +445,11 @@ int main(int argc, char** argv) {
       iggy3d_creative_app::buildCreativeEditorDesktopMenuBar(
           editor.desktopUi, activeAppState,
           &activeAppState == &appState ? &editor.worldLayout : nullptr,
-          iggy3d_creative_app::creativeEditorPlayModeActive(playMode),
+          /*playModeActive=*/false,
           desktopCommands);
       iggy3d_creative_app::buildCreativeEditorDesktopPanels(
-          editor.desktopUi, editor, activeAppState, &playMode,
-          desktopCommands);
+          editor.desktopUi, editor, activeAppState, desktopCommands);
       if (desktopCommands.count > 0U) {
-        const bool playWasActive =
-            iggy3d_creative_app::creativeEditorPlayModeActive(playMode);
         const iggy3d_creative_app::CreativeDesktopCommandResult desktopResult =
             iggy3d_creative_app::dispatchCreativeDesktopCommands(
                 desktopCommands,
@@ -475,7 +457,6 @@ int main(int argc, char** argv) {
                  editor,
                  saveRoot,
                  &saveId,
-                 &playMode,
                  &bootstrapData.staticMeshAssetCatalog});
         if (!desktopResult.message.empty()) {
           editor.desktopUi.statusMessage = desktopResult.message;
@@ -491,98 +472,9 @@ int main(int argc, char** argv) {
         if (desktopResult.documentReplaced || desktopResult.sceneChanged) {
           invalidateCreativeEditorSceneCache(sceneCache);
         }
-        if (!playWasActive && desktopResult.accepted &&
-            desktopResult.lastCommand ==
-                iggy3d_creative_app::CreativeDesktopCommandId::Play &&
-            iggy3d_creative_app::creativeEditorPlayModeActive(playMode)) {
-          finalizeCreativeEditorContinuousGestures(
-              activeAppState, editor, "creative_continuous_gesture_play_start");
-        }
       }
       iggy3d_creative_app::buildCreativeEditorDesktopStatusBar(
           editor.desktopUi, editor, activeAppState);
-    }
-
-    if (iggy3d_creative_app::creativeEditorPlayModeActive(playMode)) {
-      iggy3d_creative_app::CreativeEditorPlayTickRequest playTick;
-      playTick.sourceDocument = &appState.facade.document();
-      playTick.input.moveRight = frameInput.navigationMoveRight;
-      playTick.input.moveForward = frameInput.navigationMoveForward;
-      playTick.input.yawDeltaDegrees =
-          frameInput.navigationYawDeltaDegrees;
-      playTick.input.pitchDeltaDegrees =
-          frameInput.navigationPitchDeltaDegrees;
-      playTick.input.sprinting = frameInput.navigationSprinting;
-      playTick.input.windowFocused = frameInput.windowFocused;
-      playTick.input.actions =
-          iggy3d_creative_app::sampleCreativeEditorPlayActions(
-              frameInput.inputFrame, frameInput.routedInput,
-              editor.controlProfile.bindingSpan());
-      playTick.monotonicTimeNanoseconds =
-          frameInput.monotonicTimeNanoseconds;
-      const iggy3d_creative_app::CreativeEditorPlayTickReceipt tickReceipt =
-          iggy3d_creative_app::tickCreativeEditorPlayMode(playMode, playTick);
-      if (!tickReceipt.active && !tickReceipt.reasonCode.empty()) {
-        editor.desktopUi.statusMessage = tickReceipt.reasonCode;
-      }
-
-      if (iggy3d_creative_app::creativeEditorPlayModeActive(playMode)) {
-        creative::CreativeObjectId highlightedLogicSourceId =
-            creative::kInvalidObjectId;
-        const creative::TargetRef selectedTarget =
-            appState.facade.selectionState().selectedTarget;
-        if (selectedTarget.value != creative::kInvalidId) {
-          const creative::CreativeObjectId selectedObjectId =
-              static_cast<creative::CreativeObjectId>(selectedTarget.value);
-          const creative::CreativeObject* selectedObject =
-              appState.facade.findObject(selectedObjectId);
-          if (selectedObject != nullptr &&
-              creative::creativeObjectCanSourceLogicLink(
-                  selectedObject->kind)) {
-            highlightedLogicSourceId = selectedObjectId;
-          }
-        }
-        if (highlightedLogicSourceId == creative::kInvalidObjectId) {
-          highlightedLogicSourceId = editor.logicLinks.sourceObjectId;
-        }
-        iggy3d_creative_app::CreativeEditorPlayScene playScene =
-            iggy3d_creative_app::buildCreativeEditorPlayScene(
-                playMode, highlightedLogicSourceId);
-        if (!playScene.available) {
-          static_cast<void>(
-              iggy3d_creative_app::stopCreativeEditorPlayMode(playMode));
-          editor.desktopUi.statusMessage = "play scene unavailable";
-        } else {
-          DebugProjectionResult debug{};
-          FrameInput frame = makeCreativeVulkanFrame(
-              playScene.scene, debug, editor.frameIndex++, extent.width,
-              extent.height, playMode.cameraYawDegrees,
-              playMode.cameraPitchDegrees,
-              /*cameraAnchorOverrideAvailable=*/true,
-              playScene.cameraAnchorMeters, editor.desktopUi.contentViewport);
-          const iggy3d_creative_app::CreativeEditorPlayHudFrame playHud =
-              iggy3d_creative_app::buildCreativeEditorPlayHud(playMode, frame);
-          iggy3d_creative_app::attachCreativeEditorPlayHud(playHud, frame);
-          frame.creativeWireframeDebug.available = true;
-          frame.creativeWireframeDebug.visible =
-              !playScene.logicOverlay.lines.empty();
-          frame.creativeWireframeDebug.lines =
-              playScene.logicOverlay.lines.data();
-          frame.creativeWireframeDebug.lineCount =
-              playScene.logicOverlay.lines.size();
-          const iggy3d_creative_app::StandaloneFrustumCullResult frustumCull =
-              iggy3d_creative_app::cullStandaloneSceneRoomMeshesByFrustum(
-                  playScene.scene, frame.camera.clipFromWorld);
-          frame.projections.scene = &frustumCull.scene;
-          iggy3d_creative_app::endCreativeEditorDesktopFrame(editor.desktopUi);
-          static_cast<void>(backend->submitFrame(frame));
-          if (maxFrames != 0U && editor.frameIndex >= maxFrames) {
-            break;
-          }
-          std::this_thread::sleep_for(std::chrono::milliseconds(16));
-          continue;
-        }
-      }
     }
 
     const creative::CreativeInputRouteResult& routedInput =
@@ -856,9 +748,6 @@ int main(int argc, char** argv) {
       editor, "creative_authored_asset_edit_shutdown"));
   static_cast<void>(iggy3d_creative_app::cancelCreativeEditorAssetReplacement(
       editor.assetReplacement, "creative_asset_replace_shutdown"));
-  static_cast<void>(
-      iggy3d_creative_app::stopCreativeEditorPlayMode(playMode));
-
   bool captureOk = true;
   if (!capturePath.empty()) {
     captureOk = captureFrameToPng(*backend, capturePath);

@@ -14,7 +14,7 @@
 #include "EditorGizmo.hpp"
 #include "EditorGroup.hpp"
 #include "EditorInteraction.hpp"
-#include "EditorLogicLinkOverlay.hpp"
+#include "app/iggy3d/creative/overlay/LogicLinkOverlay.hpp"
 #include "EditorPathEditing.hpp"
 #include "EditorPlacementFeedback.hpp"
 #include "EditorPlacementGridOverlay.hpp"

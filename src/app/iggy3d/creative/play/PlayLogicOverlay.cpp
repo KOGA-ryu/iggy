@@ -1,10 +1,10 @@
-#include "EditorPlayLogicOverlay.hpp"
+#include "app/iggy3d/creative/play/PlayLogicOverlay.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cstdint>
 
-#include "EditorLogicLinkOverlay.hpp"
+#include "app/iggy3d/creative/overlay/LogicLinkOverlay.hpp"
 #include "core/math/OrientedBox.hpp"
 
 namespace iggy3d_creative_app {
@@ -95,14 +95,14 @@ std::size_t appendRuntimeLogicBox(
 
 }  // namespace
 
-CreativeEditorPlayLogicOverlay buildCreativeEditorPlayLogicOverlay(
+CreativePlayLogicOverlay buildCreativePlayLogicOverlay(
     const iggy3d::creative::CreativeRuntimeSandbox& sandbox,
     iggy3d::creative::CreativeObjectId highlightedLogicSourceObjectId) {
   using InteractableKind =
       iggy3d::creative::CreativeRuntimeInteractableKind;
   using SourceMode = iggy3d::creative::CreativeRuntimeLogicSourceMode;
 
-  CreativeEditorPlayLogicOverlay overlay;
+  CreativePlayLogicOverlay overlay;
   overlay.lines.reserve(sandbox.interactables.size() * kBoxEdgeIndices.size() +
                         sandbox.logicLinks.size() *
                             (kCreativeLogicLinkOverlaySegmentCapacity +

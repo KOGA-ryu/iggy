@@ -8,7 +8,7 @@
 
 namespace iggy3d_creative_app {
 
-struct CreativeEditorPlayLogicOverlay {
+struct CreativePlayLogicOverlay {
   std::vector<iggy3d::RenderCreativeWireframeDebugLine> lines;
   std::size_t sourceEdgeCount = 0U;
   std::size_t linkShaftCount = 0U;
@@ -17,7 +17,7 @@ struct CreativeEditorPlayLogicOverlay {
   std::size_t invalidLinkCount = 0U;
 };
 
-[[nodiscard]] CreativeEditorPlayLogicOverlay buildCreativeEditorPlayLogicOverlay(
+[[nodiscard]] CreativePlayLogicOverlay buildCreativePlayLogicOverlay(
     const iggy3d::creative::CreativeRuntimeSandbox& sandbox,
     iggy3d::creative::CreativeObjectId highlightedLogicSourceObjectId);
 

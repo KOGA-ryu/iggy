@@ -5,18 +5,23 @@
 #include <span>
 #include <string>
 #include <utility>
+#include <filesystem>
 #include <variant>
+
+#include <SDL3/SDL.h>
 
 #include "EditorAssetLibrary.hpp"
 #include "EditorAuthoredAssets.hpp"
 #include "EditorEdits.hpp"
+#include "EditorInteraction.hpp"
+#include "EditorPlaytestLaunch.hpp"
 #include "EditorFrame.hpp"
 #include "EditorLogicLinks.hpp"
 #include "EditorMovingPlatformPreview.hpp"
 #include "EditorObjectActions.hpp"
 #include "EditorPathEditing.hpp"
 #include "EditorPersistence.hpp"
-#include "EditorPlayMode.hpp"
+#include "app/iggy3d/creative/play/PlaySession.hpp"
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
@@ -66,14 +71,6 @@ template <typename Payload>
   return std::get_if<Payload>(&command.payload);
 }
 
-[[nodiscard]] bool commandAllowedDuringPlay(
-    CreativeDesktopCommandId id) noexcept {
-  return id == CreativeDesktopCommandId::None ||
-         id == CreativeDesktopCommandId::Play ||
-         id == CreativeDesktopCommandId::SelectObjects ||
-         id == CreativeDesktopCommandId::ClearSelection ||
-         id == CreativeDesktopCommandId::WorldLayoutFocusSource;
-}
 
 [[nodiscard]] bool focusEditorCameraOnObject(
     CreativeEditorState& editor,
@@ -134,12 +131,6 @@ void dispatchOne(const CreativeDesktopCommand& command,
   result.affectedObjectCount = 0U;
   result.message.clear();
 
-  if (context.playMode != nullptr &&
-      creativeEditorPlayModeActive(*context.playMode) &&
-      !commandAllowedDuringPlay(command.id)) {
-    result.message = "stop play before editing";
-    return;
-  }
 
   switch (command.id) {
     case CreativeDesktopCommandId::NewDocument:
@@ -1478,33 +1469,30 @@ void dispatchOne(const CreativeDesktopCommand& command,
       editor.desktopUi.showWorldLayout = true;
       break;
     }
-    case CreativeDesktopCommandId::Play:
-      if (context.playMode == nullptr) {
-        result.message = "play owner is unavailable";
+    case CreativeDesktopCommandId::Play: {
+      // Play = launch the i3dp playtest process: finalize live gestures,
+      // VALIDATE the document, write the immutable snapshot, spawn i3dp on
+      // it, and stay in the editor. Invalid documents never spawn.
+      finalizeCreativeEditorContinuousGestures(
+          appState, editor, "creative_continuous_gesture_playtest_launch");
+      const char* basePath = SDL_GetBasePath();
+      const PlaytestLaunchPreparation preparation = preparePlaytestLaunch(
+          appState.facade.document(), context.staticMeshAssetCatalog,
+          context.saveRoot,
+          basePath == nullptr ? std::filesystem::path{}
+                              : std::filesystem::path{basePath});
+      if (!preparation.accepted) {
+        result.message = "playtest refused: " + preparation.reasonCode;
         break;
       }
-      if (creativeEditorPlayModeActive(*context.playMode)) {
-        const creative::CreativeRuntimeSandboxStopReceipt stopped =
-            stopCreativeEditorPlayMode(*context.playMode);
-        result.accepted = stopped.stopped;
-        result.changed = stopped.stopped;
-        result.message = stopped.stopped ? "play stopped"
-                                         : "play stop failed";
-        break;
-      }
-      {
-        CreativeEditorPlayStartRequest request;
-        request.document = &appState.facade.document();
-        request.staticMeshAssetCatalog = context.staticMeshAssetCatalog;
-        const CreativeEditorPlayStartReceipt started =
-            startCreativeEditorPlayMode(*context.playMode, std::move(request));
-        result.accepted = started.accepted;
-        result.changed = started.accepted;
-        result.message = started.accepted
-                             ? "play started"
-                             : "play failed: " + started.reasonCode;
-      }
+      std::string spawnReason;
+      const bool spawned =
+          spawnPlaytestProcess(preparation.plan, spawnReason);
+      result.accepted = spawned;
+      result.message = spawned ? "playtest launched"
+                               : "playtest launch failed: " + spawnReason;
       break;
+    }
     case CreativeDesktopCommandId::None:
     case CreativeDesktopCommandId::Count:
       break;

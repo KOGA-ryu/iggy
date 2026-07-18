@@ -10,7 +10,6 @@
 #include "EditorDesktopWidgets.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorPlacementFeedback.hpp"
-#include "EditorPlayMode.hpp"
 #include "EditorWorldLayoutHistory.hpp"
 #include "EditorWorldLayoutPanel.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
@@ -190,7 +189,7 @@ void buildCreativeEditorDesktopMenuBar(
       }
       ImGui::EndMenu();
     }
-    if (ImGui::MenuItem(playModeActive ? "Stop" : "Play")) {
+    if (ImGui::MenuItem("Play")) {
       commands.push(CreativeDesktopCommandId::Play);
     }
     ImGui::EndMainMenuBar();
@@ -226,7 +225,6 @@ void buildCreativeEditorDesktopPanels(
     CreativeEditorDesktopUiState& desktopUi,
     CreativeEditorState& editor,
     const cr::CreativeAppState& appState,
-    const CreativeEditorPlayMode* playMode,
     CreativeDesktopCommandFrame& commands) {
   const cr::CreativeDocument& document = appState.facade.document();
   // Logic topology is document-revision owned, so idle UI frames reuse one
@@ -242,8 +240,9 @@ void buildCreativeEditorDesktopPanels(
   }
   const cr::CreativeLogicDiagnosticReport& logicDiagnostics =
       desktopUi.logicDiagnostics;
-  const bool playModeActive =
-      playMode != nullptr && creativeEditorPlayModeActive(*playMode);
+  // The playtest runs out of process (i3dp); the editor never enters an
+  // in-process play state.
+  constexpr bool playModeActive = false;
 
   const ImGuiWindowFlags toolbarFlags =
       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
@@ -283,7 +282,7 @@ void buildCreativeEditorDesktopPanels(
     if (desktopUi.showInspector) {
       if (ImGui::Begin("Inspector", &desktopUi.showInspector)) {
         buildCreativeEditorDesktopInspectorPanel(desktopUi, editor, appState,
-                                                 playMode, commands);
+                                                 commands);
       }
       ImGui::End();
     }
