@@ -98,8 +98,10 @@ bool spawnPollAndReapCleanExit(const std::string& i3dpPath,
     }
   }
   // The ring may evict mid-run events; the monitor keeps sticky heartbeat
-  // facts on receipt, which is the durable proof.
-  sawHeartbeat = sawHeartbeat || monitor.lastHeartbeatTick >= 60U;
+  // facts on receipt, which is the durable proof. Wall-clock cadence: any
+  // received heartbeat counts, and the offscreen (focused) child runs.
+  sawHeartbeat = sawHeartbeat || monitor.lastHeartbeatAtMs != 0U;
+  const bool heartbeatStateOk = monitor.lastHeartbeatState == "running";
   const bool ringEvicted = monitor.totalEventCount > monitor.events.size();
   return expect(pid != 0U, "short child has a pid") &&
          expect(exitObserved, "poll observes the natural exit") &&
@@ -108,6 +110,7 @@ bool spawnPollAndReapCleanExit(const std::string& i3dpPath,
                 "session_started received (or evicted by volume)") &&
          expect(startedFirst || ringEvicted, "session_started arrived first") &&
          expect(sawHeartbeat, "heartbeat received") &&
+         expect(heartbeatStateOk, "wall-clock heartbeat carries state=running") &&
          expect(!monitor.events.empty() &&
                     monitor.events.back().kind ==
                         app::kPlaytestEventKindSessionEnded &&
@@ -227,6 +230,109 @@ bool pipeFullKillReplaceDoesNotDeadlock(const std::string& i3dpPath,
                 "replacement reaped on shutdown");
 }
 
+// ---- 4. hang detection: silent-but-alive children ------------------------
+
+app::PlaytestLaunchPlan scriptPlan(const std::string& script) {
+  app::PlaytestLaunchPlan plan;
+  plan.valid = true;
+  plan.reasonCode = "test_script_plan";
+  plan.binaryPath = "/bin/sh";
+  plan.argv = {"/bin/sh", "-c", script};
+  return plan;
+}
+
+bool silentChildStallsRecoversAndReplaces(const std::string& i3dpPath,
+                                          const std::string& saveRoot) {
+  static_cast<void>(i3dpPath);
+  static_cast<void>(saveRoot);
+  app::PlaytestProcessOwner owner;
+  std::string reason;
+  // Child 1: heartbeats ~1s, then SILENT-BUT-ALIVE for 8s, then resumes
+  // with a state=suspended heartbeat (still liveness), then keeps beating.
+  const std::string script =
+      "echo IGGY3DP1 session_started doc=0 rev=0 room=hang_test; "
+      "echo IGGY3DP1 heartbeat tick=1 state=running; sleep 0.5; "
+      "echo IGGY3DP1 heartbeat tick=2 state=running; "
+      "sleep 8; "
+      "echo IGGY3DP1 heartbeat tick=3 state=suspended; "
+      "while true; do echo IGGY3DP1 heartbeat tick=4 state=running; "
+      "sleep 1; done";
+  if (!expect(owner.launch(scriptPlan(script), reason),
+              ("hang-test child spawns: " + reason).c_str())) {
+    return false;
+  }
+  bool everStalledEarly = false;
+  bool stalledObserved = false;
+  bool recoveredObserved = false;
+  double stalledAtSeconds = 0.0;
+  const Clock::time_point start = Clock::now();
+  while (secondsSince(start) < 20.0) {
+    const app::PlaytestProcessOwner::PollResult poll = owner.poll();
+    if (!poll.running) {
+      break;
+    }
+    if (secondsSince(start) < 4.0 && poll.stalled) {
+      everStalledEarly = true;  // must NOT trip while heartbeating
+    }
+    if (poll.stalled && !stalledObserved) {
+      stalledObserved = true;
+      stalledAtSeconds = secondsSince(start);
+    }
+    if (poll.stallRecovered) {
+      recoveredObserved = true;
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+  std::cout << "  hang child: stalled at " << stalledAtSeconds
+            << "s recovered=" << recoveredObserved << "\n";
+  const bool phaseOneOk =
+      expect(!everStalledEarly, "no false positive while heartbeating") &&
+      expect(stalledObserved, "silent-but-alive child flagged stalled") &&
+      expect(stalledAtSeconds > 5.0 && stalledAtSeconds < 12.0,
+             "stall flagged at the threshold, not before") &&
+      expect(recoveredObserved,
+             "a fresh (suspended-state) heartbeat clears the stall") &&
+      expect(owner.running(), "child stayed alive throughout");
+  owner.shutdown();
+  if (!phaseOneOk) {
+    return false;
+  }
+
+  // Child 2: starts then never heartbeats -- stalls from the spawn
+  // baseline; the normal kill-replace path must work WHILE stalled.
+  if (!expect(owner.launch(
+                  scriptPlan("echo IGGY3DP1 session_started doc=0 rev=0 "
+                             "room=hang_test2; sleep 600"),
+                  reason),
+              ("mute child spawns: " + reason).c_str())) {
+    return false;
+  }
+  const std::uint64_t mutePid = owner.childPid();
+  bool muteStalled = false;
+  const Clock::time_point muteStart = Clock::now();
+  while (secondsSince(muteStart) < 10.0) {
+    const app::PlaytestProcessOwner::PollResult poll = owner.poll();
+    if (poll.stalled) {
+      muteStalled = true;
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+  const double muteStalledAt = secondsSince(muteStart);
+  owner.stopRunning();  // Play-replaces path, exercised while stalled
+  const bool replaced =
+      owner.launch(scriptPlan("sleep 600"), reason) && owner.running();
+  std::cout << "  mute child: pid=" << mutePid << " stalled at "
+            << muteStalledAt << "s, replaced=" << replaced << "\n";
+  const bool ok =
+      expect(muteStalled, "never-heartbeating child stalls from spawn") &&
+      expect(waitForPidGone(mutePid, 2.0), "stalled child reaped on replace") &&
+      expect(replaced, "replacement launched while predecessor was stalled");
+  owner.shutdown();
+  return ok;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -242,7 +348,8 @@ int main(int argc, char** argv) {
   }
   const bool ok = spawnPollAndReapCleanExit(i3dpPath, saveRoot) &&
                   replaceRunningChildThenShutdown(i3dpPath, saveRoot) &&
-                  pipeFullKillReplaceDoesNotDeadlock(i3dpPath, saveRoot);
+                  pipeFullKillReplaceDoesNotDeadlock(i3dpPath, saveRoot) &&
+                  silentChildStallsRecoversAndReplaces(i3dpPath, saveRoot);
   if (ok) {
     std::cout << "playtest_process_owner_tests passed\n";
   }

@@ -353,6 +353,13 @@ int main(int argc, char** argv) {
     if (playtestPoll.exitObserved) {
       editor.desktopUi.statusMessage =
           playtestOwner.monitor().lastExitMessage;
+    } else if (playtestPoll.stalled) {
+      // Live age display while stalled; no auto-kill -- Play replaces.
+      editor.desktopUi.statusMessage =
+          iggy3d_creative_app::playtestStalledStatusMessage(
+              playtestPoll.stallAgeMs);
+    } else if (playtestPoll.stallRecovered) {
+      editor.desktopUi.statusMessage = "playtest recovered";
     }
     // Non-const: captured Esc release consumes the ToggleControls action from
     // the route this frame so Controls does not also open (plan DD-9 / FC-4).

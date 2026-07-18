@@ -49,10 +49,29 @@ bool exitMessages() {
                 "running status text");
 }
 
+bool stallDecision() {
+  using app::decidePlaytestStalled;
+  constexpr std::uint64_t kT = app::kPlaytestStallThresholdMs;
+  return expect(!decidePlaytestStalled(true, kT - 1U, kT),
+                "alive + fresh heartbeat -> ok") &&
+         expect(decidePlaytestStalled(true, kT + 1U, kT),
+                "alive + stale -> stalled") &&
+         expect(!decidePlaytestStalled(false, kT * 10U, kT),
+                "dead is never stalled (exit reporting owns it)") &&
+         // Suspended-state heartbeats refresh liveness upstream, so their
+         // age stays low -- semantically: suspended-but-heartbeating -> ok.
+         expect(!decidePlaytestStalled(true, 0U, kT),
+                "suspended-but-heartbeating (age refreshed) -> ok") &&
+         expect(app::playtestStalledStatusMessage(7400U) ==
+                    "playtest stalled (7s) -- Play to replace",
+                "stalled message names the age and the remedy");
+}
+
 }  // namespace
 
 int main() {
-  const bool ok = launchDecision() && shutdownDecision() && exitMessages();
+  const bool ok = launchDecision() && shutdownDecision() && exitMessages() &&
+                  stallDecision();
   if (ok) {
     std::cout << "playtest_lifecycle_tests passed\n";
   }

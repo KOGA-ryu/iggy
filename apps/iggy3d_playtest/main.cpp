@@ -206,7 +206,28 @@ int main(int argc, char** argv) {
     };
     writeProtocolEvent(started);
   }
-  std::uint64_t lastHeartbeatBucket = 0U;
+  // WALL-CLOCK liveness heartbeat (~1s of real time, regardless of sim
+  // suspension): heartbeat means "process responsive", not "sim advancing".
+  // The editor-stays-open workflow keeps this window unfocused (suspended)
+  // most of the time -- a suspended child must still prove it is alive.
+  constexpr std::uint64_t kHeartbeatIntervalMs = 1000U;
+  std::uint64_t lastHeartbeatAtMs = SDL_GetTicks();
+  const auto emitWallClockHeartbeat = [&](bool simRunning) {
+    const std::uint64_t nowMs = SDL_GetTicks();
+    if (nowMs - lastHeartbeatAtMs < kHeartbeatIntervalMs) {
+      return;
+    }
+    lastHeartbeatAtMs = nowMs;
+    app::PlaytestEvent heartbeat;
+    heartbeat.kind = std::string(app::kPlaytestEventKindHeartbeat);
+    const std::uint64_t tickIndex =
+        playSession.sandbox.has_value()
+            ? playSession.sandbox->session.state().clock.tickIndex
+            : 0U;
+    heartbeat.fields = {{"tick", std::to_string(tickIndex)},
+                       {"state", simRunning ? "running" : "suspended"}};
+    writeProtocolEvent(heartbeat);
+  };
   // Runtime events accumulate in session transient state under a cursor
   // (the play loop's own consumption pattern) -- mirror only the new tail.
   std::size_t mirroredRuntimeEventCount = 0U;
@@ -235,6 +256,7 @@ int main(int argc, char** argv) {
       playTick.input.windowFocused = false;
       playTick.monotonicTimeNanoseconds = frameInput.monotonicTimeNanoseconds;
       static_cast<void>(app::tickCreativePlaySession(playSession, playTick));
+      emitWallClockHeartbeat(/*simRunning=*/false);
       std::this_thread::sleep_for(std::chrono::milliseconds(16));
       continue;
     }
@@ -270,15 +292,10 @@ int main(int argc, char** argv) {
         writeProtocolEvent(mirror);
       }
       mirroredRuntimeEventCount = runtimeEvents.size();
-      const std::uint64_t tickIndex = sessionState.clock.tickIndex;
-      if (tickIndex / 60U > lastHeartbeatBucket) {
-        lastHeartbeatBucket = tickIndex / 60U;
-        app::PlaytestEvent heartbeat;
-        heartbeat.kind = std::string(app::kPlaytestEventKindHeartbeat);
-        heartbeat.fields = {{"tick", std::to_string(tickIndex)}};
-        writeProtocolEvent(heartbeat);
-      }
     }
+    emitWallClockHeartbeat(
+        /*simRunning=*/tickReceipt.status !=
+        app::CreativePlayTickStatus::Suspended);
     if (!app::creativePlaySessionActive(playSession)) {
       exitReason = tickReceipt.reasonCode.empty() ? "session_stopped"
                                                   : tickReceipt.reasonCode;

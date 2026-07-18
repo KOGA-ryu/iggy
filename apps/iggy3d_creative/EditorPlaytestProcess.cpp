@@ -74,6 +74,16 @@ std::string_view playtestRunningStatusMessage() noexcept {
   return "playtest running";
 }
 
+bool decidePlaytestStalled(bool childAlive, std::uint64_t livenessAgeMs,
+                           std::uint64_t thresholdMs) noexcept {
+  return childAlive && livenessAgeMs > thresholdMs;
+}
+
+std::string playtestStalledStatusMessage(std::uint64_t livenessAgeMs) {
+  return "playtest stalled (" + std::to_string(livenessAgeMs / 1000U) +
+         "s) -- Play to replace";
+}
+
 std::string composePlaytestExitStatusMessage(
     int exitCode, const std::deque<std::string>& stderrTail) {
   std::string message = playtestExitStatusMessage(exitCode);
@@ -108,6 +118,9 @@ void PlaytestProcessOwner::applyEvent(PlaytestEvent event) {
     const std::string tick{event.field("tick", "0")};
     monitor_.lastHeartbeatTick = SDL_strtoull(tick.c_str(), nullptr, 10);
     monitor_.lastHeartbeatAtMs = SDL_GetTicks();
+    monitor_.lastHeartbeatState = std::string(event.field("state", "running"));
+    // EVERY heartbeat is liveness -- suspended ones included.
+    monitor_.lastLivenessAtMs = monitor_.lastHeartbeatAtMs;
   }
   monitor_.events.push_back(std::move(event));
   while (monitor_.events.size() > kPlaytestMonitorEventCapacity) {
@@ -264,6 +277,8 @@ bool PlaytestProcessOwner::launch(const PlaytestLaunchPlan& plan,
   monitor_ = {};
   monitor_.childRunning = true;
   monitor_.everRan = true;
+  monitor_.lastLivenessAtMs = SDL_GetTicks();  // stall baseline until the
+                                               // first heartbeat lands
   reasonCode = "playtest_spawned";
   return true;
 }
@@ -285,12 +300,22 @@ PlaytestProcessOwner::PollResult PlaytestProcessOwner::poll() {
     stdoutStream_ = nullptr;
     stderrStream_ = nullptr;
     monitor_.childRunning = false;
+    monitor_.stalled = false;
+    monitor_.stallAgeMs = 0U;
     monitor_.lastExitMessage =
         composePlaytestExitStatusMessage(exitCode, monitor_.stderrTail);
     return result;
   }
   result.running = true;
   monitor_.childRunning = true;
+  const std::uint64_t ageMs = SDL_GetTicks() - monitor_.lastLivenessAtMs;
+  const bool wasStalled = monitor_.stalled;
+  monitor_.stalled =
+      decidePlaytestStalled(true, ageMs, kPlaytestStallThresholdMs);
+  monitor_.stallAgeMs = monitor_.stalled ? ageMs : 0U;
+  result.stalled = monitor_.stalled;
+  result.stallAgeMs = monitor_.stallAgeMs;
+  result.stallRecovered = wasStalled && !monitor_.stalled;
   return result;
 }
 
