@@ -49,6 +49,22 @@ enum class PlaytestShutdownAction : std::uint8_t {
 
 [[nodiscard]] std::string_view playtestRunningStatusMessage() noexcept;
 
+// ---- hang detection (pure) -----------------------------------------------
+// Stalled = child ALIVE and no liveness heartbeat for longer than the
+// threshold. Suspended-state heartbeats are still heartbeats (an unfocused
+// playtest is the NORMAL state while the editor has focus); a dead child is
+// never stalled -- exit reporting owns that. No auto-kill: Play replaces.
+
+inline constexpr std::uint64_t kPlaytestStallThresholdMs = 5000U;
+
+[[nodiscard]] bool decidePlaytestStalled(bool childAlive,
+                                         std::uint64_t livenessAgeMs,
+                                         std::uint64_t thresholdMs) noexcept;
+
+// "playtest stalled (<age>s) -- Play to replace"
+[[nodiscard]] std::string playtestStalledStatusMessage(
+    std::uint64_t livenessAgeMs);
+
 // Exit message plus the captured stderr tail's last line (pure; the full
 // tail lives in the Play Monitor). Clean exits never carry a tail.
 [[nodiscard]] std::string composePlaytestExitStatusMessage(
@@ -70,6 +86,12 @@ struct PlaytestMonitorState {
   std::size_t nonProtocolLineCount = 0U;
   std::uint64_t lastHeartbeatTick = 0U;
   std::uint64_t lastHeartbeatAtMs = 0U;  // SDL_GetTicks() at receipt
+  std::string lastHeartbeatState;        // "running" / "suspended"
+  // Liveness baseline: spawn time, refreshed by EVERY heartbeat (suspended
+  // included). Stall age measures against this.
+  std::uint64_t lastLivenessAtMs = 0U;
+  bool stalled = false;
+  std::uint64_t stallAgeMs = 0U;
   std::deque<std::string> stderrTail;    // bounded
 };
 
@@ -111,6 +133,9 @@ class PlaytestProcessOwner final : public PlaytestProcessControl {
     bool running = false;
     bool exitObserved = false;
     int exitCode = 0;
+    bool stalled = false;
+    std::uint64_t stallAgeMs = 0U;
+    bool stallRecovered = false;  // fresh heartbeat after a stalled stretch
   };
   [[nodiscard]] PollResult poll();
 

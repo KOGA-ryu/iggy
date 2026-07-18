@@ -233,8 +233,18 @@ void appendPlayMonitorTab(const PlaytestMonitorState* monitor) {
     return;
   }
   if (monitor->childRunning) {
-    ImGui::TextColored(ImVec4{0.20F, 1.0F, 0.35F, 1.0F}, "%s",
-                       std::string(playtestRunningStatusMessage()).c_str());
+    if (monitor->stalled) {
+      ImGui::TextColored(
+          ImVec4{1.0F, 0.30F, 0.25F, 1.0F}, "STALLED (%.1fs) -- Play to replace",
+          static_cast<float>(monitor->stallAgeMs) / 1000.0F);
+    } else {
+      ImGui::TextColored(ImVec4{0.20F, 1.0F, 0.35F, 1.0F}, "%s",
+                         std::string(playtestRunningStatusMessage()).c_str());
+    }
+    if (!monitor->lastHeartbeatState.empty()) {
+      ImGui::SameLine();
+      ImGui::TextDisabled("| sim %s", monitor->lastHeartbeatState.c_str());
+    }
     if (monitor->lastHeartbeatAtMs != 0U) {
       const float ageSeconds =
           static_cast<float>(SDL_GetTicks() - monitor->lastHeartbeatAtMs) /
