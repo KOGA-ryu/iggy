@@ -2,6 +2,8 @@
 
 #include "EditorPlaytestProcess.hpp"
 
+#include "EditorPlaytestNames.hpp"
+
 #include <iostream>
 
 namespace {
@@ -95,11 +97,90 @@ bool monitorRowFormatting() {
                 "unknown kind falls back to the raw wire line");
 }
 
+iggy3d::creative::CreativePlayActivationPayload payloadWithNpcAnchors(
+    std::initializer_list<std::string> stableNames) {
+  iggy3d::creative::CreativePlayActivationPayload payload;
+  for (const std::string& stableName : stableNames) {
+    iggy3d::RoomAnchorAsset anchor;
+    anchor.id = stableName + "_anchor";
+    anchor.kind = "npc";
+    anchor.runtimeStableName = stableName;
+    payload.room.anchors.push_back(anchor);
+  }
+  return payload;
+}
+
+bool nameMapBuildAndStaleness() {
+  namespace cr = iggy3d::creative;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Names");
+  static_cast<void>(document.assignId(1));
+  cr::CreativeDocumentCreateRequest guard;
+  guard.kind = cr::CreativeObjectKind::NpcSpawn;
+  guard.name = "Aisle One Guard";
+  guard.hasTransformOverride = true;
+  const cr::CreativeObjectId guardId = document.createObject(guard).objectId;
+  cr::CreativeDocumentCreateRequest unnamed;
+  unnamed.kind = cr::CreativeObjectKind::NpcSpawn;
+  unnamed.hasTransformOverride = true;
+  const cr::CreativeObjectId unnamedId =
+      document.createObject(unnamed).objectId;
+
+  const auto payload = payloadWithNpcAnchors(
+      {"creative_object_" + std::to_string(guardId),
+       "creative_object_" + std::to_string(unnamedId),
+       "creative_object_9999"});
+  app::PlaytestEntityNameMap names =
+      app::buildPlaytestNameMap(payload, document);
+
+  const bool buildOk =
+      expect(names.at(1U) == "player", "entity 1 is the player") &&
+      expect(names.at(2U) == "Aisle One Guard",
+             "named object resolves to its name") &&
+      // createObject auto-fills empty names with the descriptor default, so
+      // the kind+id fallback is defensive-only; assert the real contract.
+      expect(names.at(3U) == document.findObject(unnamedId)->name &&
+                 !names.at(3U).empty(),
+             "unnamed create resolves to the descriptor default name") &&
+      expect(names.find(4U) == names.end(),
+             "missing document object stays unmapped (raw)");
+
+  // THE STALENESS PIN: rename after capture -- the captured map must keep
+  // the snapshot-time label; only a re-capture picks up the new name.
+  cr::CreativeObject* live = document.findObject(guardId);
+  live->name = "Renamed After Spawn";
+  const bool staleOk =
+      expect(names.at(2U) == "Aisle One Guard",
+             "captured map keeps the snapshot-time label after a rename") &&
+      expect(app::buildPlaytestNameMap(payload, document).at(2U) ==
+                 "Renamed After Spawn",
+             "the NEXT capture (next Play) picks up the new name");
+
+  // Row rendering: resolved actor/target vs raw fallback for unmapped ids.
+  app::PlaytestEvent moved;
+  moved.kind = std::string(app::kPlaytestEventKindRuntimeEvent);
+  moved.fields = {{"kind", "moved"}, {"tick", "9"}, {"actor", "2"}};
+  app::PlaytestEvent interacted;
+  interacted.kind = std::string(app::kPlaytestEventKindRuntimeEvent);
+  interacted.fields = {{"kind", "interacted"}, {"actor", "1"},
+                       {"target", "4"}};
+  return buildOk && staleOk &&
+         expect(app::formatPlaytestMonitorRow(moved, &names) ==
+                    "moved Aisle One Guard tick=9",
+                "resolved actor replaces the raw id") &&
+         expect(app::formatPlaytestMonitorRow(interacted, &names) ==
+                    "interacted player target=4",
+                "player resolves; unmapped target stays raw") &&
+         expect(app::formatPlaytestMonitorRow(moved, nullptr) ==
+                    "moved tick=9 actor=2",
+                "no map: everything stays raw");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = launchDecision() && shutdownDecision() && exitMessages() &&
-                  stallDecision() && monitorRowFormatting();
+                  stallDecision() && monitorRowFormatting() &&
+                  nameMapBuildAndStaleness();
   if (ok) {
     std::cout << "playtest_lifecycle_tests passed\n";
   }

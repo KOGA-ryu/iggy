@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "EditorPlaytestLaunch.hpp"
+#include "EditorPlaytestNames.hpp"
 #include "app/iggy3d/creative/play/PlaytestEventProtocol.hpp"
 
 struct SDL_Process;
@@ -66,9 +67,11 @@ inline constexpr std::uint64_t kPlaytestStallThresholdMs = 5000U;
     std::uint64_t livenessAgeMs);
 
 // One Play Monitor row, readable: known kinds render as a story line with
-// their payload fields ("moved actor=2 tick=140"); unknown kinds fall back
-// to the raw wire line. Ids stay raw -- name resolution is a future slice.
-[[nodiscard]] std::string formatPlaytestMonitorRow(const PlaytestEvent& event);
+// their payload fields; actor=/target= resolve through the SNAPSHOT-TIME
+// name map when one is supplied ("moved Aisle One Guard"), and stay raw for
+// unmapped ids or a null map. Unknown kinds fall back to the raw wire line.
+[[nodiscard]] std::string formatPlaytestMonitorRow(
+    const PlaytestEvent& event, const PlaytestEntityNameMap* names = nullptr);
 
 // Exit message plus the captured stderr tail's last line (pure; the full
 // tail lives in the Play Monitor). Clean exits never carry a tail.
@@ -98,6 +101,9 @@ struct PlaytestMonitorState {
   bool stalled = false;
   std::uint64_t stallAgeMs = 0U;
   std::deque<std::string> stderrTail;    // bounded
+  // Captured at Play time from the snapshotted document state; replaced on
+  // every spawn (lives beside the process handle it describes).
+  PlaytestEntityNameMap entityNames;
 };
 
 // ---- the narrow seam the dispatcher sees --------------------------------
@@ -116,6 +122,9 @@ class PlaytestProcessControl {
   // reason) if a child is still running or the plan/spawn is invalid.
   [[nodiscard]] virtual bool launch(const PlaytestLaunchPlan& plan,
                                     std::string& reasonCode) = 0;
+  // Snapshot-time entity labels for the child just launched; replaced per
+  // spawn, resolved-from at render time -- never the live document.
+  virtual void setSnapshotEntityNames(PlaytestEntityNameMap names) = 0;
 };
 
 // ---- the app-shell owner -------------------------------------------------
@@ -131,6 +140,7 @@ class PlaytestProcessOwner final : public PlaytestProcessControl {
   void stopRunning() override;
   [[nodiscard]] bool launch(const PlaytestLaunchPlan& plan,
                             std::string& reasonCode) override;
+  void setSnapshotEntityNames(PlaytestEntityNameMap names) override;
 
   // Non-blocking per-frame poll. When the child exited since the last poll,
   // exitObserved is true exactly once and the handle is reaped + cleared.

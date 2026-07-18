@@ -3,7 +3,12 @@
 //   argv[1] = path to the i3dp binary
 //   argv[2] = save root holding map_demo.iggy3d.save (fixtures/worlds)
 
+#include "EditorPlaytestNames.hpp"
 #include "EditorPlaytestProcess.hpp"
+
+#include "app/iggy3d/creative/play/PlayPreparation.hpp"
+#include "app/iggy3d/creative/world/WorldService.hpp"
+#include "content/assets/StaticMeshAsset.hpp"
 
 #include <chrono>
 #include <filesystem>
@@ -65,6 +70,24 @@ bool spawnPollAndReapCleanExit(const std::string& i3dpPath,
               ("short child spawns: " + reason).c_str())) {
     return false;
   }
+  // Snapshot-time name capture, exactly as the Play case does: from the
+  // same fixture document the child is playing.
+  const iggy3d::CreativeWorldOpenResult fixture =
+      iggy3d::openCreativeWorld({saveRoot, "map_demo"});
+  const iggy3d::StaticMeshAssetCatalog catalog =
+      iggy3d::discoverStaticMeshAssetCatalog("assets/creative");
+  iggy3d::creative::CreativePlayPreparationRequest preparationRequest;
+  preparationRequest.document = &fixture.document;
+  preparationRequest.staticMeshAssetCatalog = &catalog;
+  const iggy3d::creative::CreativePlayPreparationResult preparation =
+      iggy3d::creative::prepareCreativePlay(preparationRequest);
+  if (!expect(fixture.accepted && preparation.accepted &&
+                  preparation.payload.has_value(),
+              "fixture prepares for name capture")) {
+    return false;
+  }
+  owner.setSnapshotEntityNames(
+      app::buildPlaytestNameMap(*preparation.payload, fixture.document));
   const std::uint64_t pid = owner.childPid();
   bool exitObserved = false;
   int exitCode = -1;
@@ -118,6 +141,22 @@ bool spawnPollAndReapCleanExit(const std::string& i3dpPath,
          expect(heartbeatStateOk, "wall-clock heartbeat carries state=running") &&
          expect(sawEnrichedRuntimeEvent,
                 "an enriched runtime_event arrived with raw ids intact") &&
+         expect([&monitor]() {
+                  for (const app::PlaytestEvent& event : monitor.events) {
+                    if (event.kind != app::kPlaytestEventKindRuntimeEvent) {
+                      continue;
+                    }
+                    const std::string row = app::formatPlaytestMonitorRow(
+                        event, &monitor.entityNames);
+                    if (row.find("Guard") != std::string::npos &&
+                        row.find("actor=") == std::string::npos) {
+                      std::cout << "  resolved row: " << row << "\n";
+                      return true;
+                    }
+                  }
+                  return false;
+                }(),
+                "a patrol event resolves to the fixture's guard name") &&
          expect(!monitor.events.empty() &&
                     monitor.events.back().kind ==
                         app::kPlaytestEventKindSessionEnded &&
