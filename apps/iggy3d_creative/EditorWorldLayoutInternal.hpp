@@ -216,6 +216,7 @@ inline void clearWorldLayoutInteraction(
   state.terrainProfileSettingsDraft = {};
   state.terrainPathSettingsDraft = {};
   state.objectSettingsDraft = {};
+  state.objectManipulation = {};
 }
 
 inline CreativeEditorWorldLayoutSourceHistoryEntry

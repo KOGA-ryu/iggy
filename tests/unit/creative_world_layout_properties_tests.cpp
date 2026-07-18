@@ -5,7 +5,9 @@
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
+#include <limits>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace app = iggy3d_creative_app;
@@ -19,6 +21,8 @@ bool expect(bool condition, const char* message) {
   }
   return condition;
 }
+
+cr::CreativeAppState makeApp();
 
 app::CreativeEditorWorldLayoutState shellState() {
   app::CreativeEditorWorldLayoutState state;
@@ -211,6 +215,115 @@ bool objectSettingsPreserveSemanticIdentity() {
                 "zero-volume object bounds reject atomically");
 }
 
+bool objectManipulationPreviewsThenCommitsOnce() {
+  app::CreativeEditorWorldLayoutState state = shellState();
+  cr::CreativeWorldLayoutObject boundsObject;
+  boundsObject.kind = cr::CreativeObjectKind::Rock;
+  boundsObject.mode = cr::CreativeObjectLibraryPlacementMode::Bounds;
+  boundsObject.stableKey = "rock_drag";
+  boundsObject.name = "Drag Boulder";
+  boundsObject.assetId = "boulder_01";
+  boundsObject.boundsCells = {{1.0, 0.25, 1.0}, {3.0, 2.25, 3.0}};
+  boundsObject.tags = {"world_layout:object"};
+  cr::CreativeWorldLayoutObject pointObject;
+  pointObject.kind = cr::CreativeObjectKind::SpawnPoint;
+  pointObject.mode = cr::CreativeObjectLibraryPlacementMode::Point;
+  pointObject.stableKey = "spawn_drag";
+  pointObject.name = "Drag Spawn";
+  pointObject.pointCells = {8.0, 1.5, -4.0};
+  pointObject.tags = {"world_layout:object"};
+  state.source.objects = {boundsObject, pointObject};
+  app::installCreativeEditorWorldLayout(state, state.source);
+
+  const std::uint64_t revisionBefore = state.revision;
+  const std::size_t undoBefore = state.sourceHistory.undoEntries.size();
+  const std::size_t hit = app::findCreativeEditorWorldLayoutObjectAt(
+      state, {2.0, 2.0});
+  const auto begun = app::beginCreativeEditorWorldLayoutObjectManipulation(
+      state, hit, {2.0, 2.0});
+  const auto previewed = app::updateCreativeEditorWorldLayoutObjectManipulation(
+      state, {5.49, 0.51});
+
+  cr::CreativeAppState live = makeApp();
+  app::CreativeEditorState editor;
+  editor.worldLayout = std::move(state);
+  const std::size_t objectIndex =
+      editor.worldLayout.objectManipulation.objectIndex;
+  const std::string stableKey = editor.worldLayout.objectManipulation.stableKey;
+  app::CreativeEditorWorldLayoutObjectSettings settings =
+      editor.worldLayout.objectManipulation.previewSettings;
+  editor.worldLayout.objectManipulation = {};
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{
+      live, editor, std::filesystem::path{}, &saveId};
+  app::CreativeDesktopCommandFrame frame;
+  frame.push(app::CreativeDesktopCommandId::WorldLayoutSetObjectSettings,
+             app::CreativeDesktopWorldLayoutObjectSettingsPayload{
+                 objectIndex, stableKey, settings});
+  const app::CreativeDesktopCommandResult committed =
+      app::dispatchCreativeDesktopCommands(frame, context);
+
+  const cr::CreativeBounds& moved =
+      editor.worldLayout.source.objects[0].boundsCells;
+  return expect(hit == 0U && begun.accepted && begun.changed &&
+                    previewed.accepted && previewed.changed &&
+                    editor.worldLayout.sourceHistory.undoEntries.size() ==
+                        undoBefore + 1U,
+                "object dragging previews transiently and records one edit") &&
+         expect(committed.accepted && committed.changed &&
+                    committed.worldLayoutChanged &&
+                    editor.worldLayout.revision == revisionBefore + 1U &&
+                    moved.min.x == 4.0 && moved.max.x == 6.0 &&
+                    moved.min.z == 0.0 && moved.max.z == 2.0 &&
+                    moved.min.y == 0.25 && moved.max.y == 2.25,
+                "bounds dragging snaps XZ and preserves vertical geometry");
+}
+
+bool pointObjectManipulationCancelsAndRejectsStaleInput() {
+  app::CreativeEditorWorldLayoutState state = shellState();
+  cr::CreativeWorldLayoutObject object;
+  object.kind = cr::CreativeObjectKind::SpawnPoint;
+  object.mode = cr::CreativeObjectLibraryPlacementMode::Point;
+  object.stableKey = "spawn_drag";
+  object.name = "Drag Spawn";
+  object.pointCells = {8.0, 1.5, -4.0};
+  object.tags = {"world_layout:object"};
+  state.source.objects.push_back(object);
+  app::installCreativeEditorWorldLayout(state, state.source);
+
+  const auto begun = app::beginCreativeEditorWorldLayoutObjectManipulation(
+      state, 0U, {8.0, -4.0});
+  const auto moved = app::updateCreativeEditorWorldLayoutObjectManipulation(
+      state, {6.2, -0.7});
+  const cr::CreativeVec3 preview =
+      state.objectManipulation.previewSettings.pointCells;
+  const auto invalid = app::updateCreativeEditorWorldLayoutObjectManipulation(
+      state, {std::numeric_limits<double>::infinity(), 0.0});
+  const bool invalidPreview = !state.objectManipulation.previewValid;
+  const auto cancelled =
+      app::cancelCreativeEditorWorldLayoutObjectManipulation(state);
+  const cr::CreativeVec3 unchanged = state.source.objects[0].pointCells;
+
+  static_cast<void>(app::beginCreativeEditorWorldLayoutObjectManipulation(
+      state, 0U, {8.0, -4.0}));
+  ++state.revision;
+  const auto stale = app::updateCreativeEditorWorldLayoutObjectManipulation(
+      state, {9.0, -4.0});
+
+  return expect(begun.accepted && moved.accepted && preview.x == 6.0 &&
+                    preview.y == 1.5 && preview.z == -1.0,
+                "point dragging snaps XZ and preserves authored height") &&
+         expect(invalid.accepted && invalidPreview && cancelled.accepted &&
+                    cancelled.changed && unchanged.x == 8.0 &&
+                    unchanged.y == 1.5 && unchanged.z == -4.0,
+                "invalid or cancelled previews never mutate layout truth") &&
+         expect(!stale.accepted && !stale.changed &&
+                    !state.objectManipulation.active &&
+                    stale.reasonCode ==
+                        "creative_editor_world_layout_object_manipulation_stale",
+                "source revision changes invalidate an active object drag");
+}
+
 cr::CreativeAppState makeApp() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document = cr::CreativeDocument::create("Properties");
@@ -267,6 +380,8 @@ int main() {
                   terrainProfileSettingsAreBounded() &&
                   terrainPathSettingsUseTheSharedRecipe() &&
                   objectSettingsPreserveSemanticIdentity() &&
+                  objectManipulationPreviewsThenCommitsOnce() &&
+                  pointObjectManipulationCancelsAndRejectsStaleInput() &&
                   typedSettingsCommandsGuardIdentityAndPreview();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

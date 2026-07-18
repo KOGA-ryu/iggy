@@ -510,6 +510,19 @@ struct CreativeEditorWorldLayoutObjectSettingsDraft {
   CreativeEditorWorldLayoutObjectSettings settings;
 };
 
+struct CreativeEditorWorldLayoutObjectManipulationState {
+  bool active = false;
+  std::uint64_t sourceRevision = 0U;
+  std::size_t objectIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::string stableKey;
+  CreativeEditorWorldLayoutPoint startPoint;
+  CreativeEditorWorldLayoutObjectSettings originalSettings;
+  CreativeEditorWorldLayoutObjectSettings previewSettings;
+  bool previewValid = false;
+  std::string reasonCode =
+      "creative_editor_world_layout_object_manipulation_inactive";
+};
+
 struct CreativeEditorWorldLayoutOpeningHost {
   bool valid = false;
   CreativeEditorWorldLayoutPoint start;
@@ -655,6 +668,7 @@ struct CreativeEditorWorldLayoutState {
       terrainProfileSettingsDraft;
   CreativeEditorWorldLayoutTerrainPathSettingsDraft terrainPathSettingsDraft;
   CreativeEditorWorldLayoutObjectSettingsDraft objectSettingsDraft;
+  CreativeEditorWorldLayoutObjectManipulationState objectManipulation;
 
   CreativeEditorWorldLayoutViewMode viewMode =
       CreativeEditorWorldLayoutViewMode::Plan;
@@ -914,6 +928,20 @@ setCreativeEditorWorldLayoutTerrainPathSettings(
 setCreativeEditorWorldLayoutObjectSettings(
     CreativeEditorWorldLayoutState& state, std::size_t objectIndex,
     CreativeEditorWorldLayoutObjectSettings settings);
+[[nodiscard]] std::size_t findCreativeEditorWorldLayoutObjectAt(
+    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint point) noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+beginCreativeEditorWorldLayoutObjectManipulation(
+    CreativeEditorWorldLayoutState& state, std::size_t objectIndex,
+    CreativeEditorWorldLayoutPoint point);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+updateCreativeEditorWorldLayoutObjectManipulation(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint point);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+cancelCreativeEditorWorldLayoutObjectManipulation(
+    CreativeEditorWorldLayoutState& state) noexcept;
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 clearCreativeEditorWorldLayoutSelection(
     CreativeEditorWorldLayoutState& state);

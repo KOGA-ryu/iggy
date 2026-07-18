@@ -3,6 +3,7 @@
 #include "EditorWorldLayoutInternal.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -83,6 +84,44 @@ namespace {
   cr::CreativeObjectLibraryRecipeRequest request;
   request.placements.push_back(std::move(placement));
   return cr::buildCreativeObjectLibraryRecipe(request).receipt.accepted;
+}
+
+[[nodiscard]] bool offsetFiniteCoordinate(double value, std::int64_t delta,
+                                          double& output) noexcept {
+  output = value + static_cast<double>(delta);
+  return std::isfinite(output);
+}
+
+[[nodiscard]] bool translatedObjectSettings(
+    const CreativeEditorWorldLayoutObjectManipulationState& manipulation,
+    CreativeEditorWorldLayoutPoint point,
+    CreativeEditorWorldLayoutObjectSettings& output) noexcept {
+  std::int64_t deltaX = 0;
+  std::int64_t deltaZ = 0;
+  if (!detail::snappedWorldLayoutPointerDelta(
+          point.x, manipulation.startPoint.x, deltaX) ||
+      !detail::snappedWorldLayoutPointerDelta(
+          point.z, manipulation.startPoint.z, deltaZ)) {
+    return false;
+  }
+  output = manipulation.originalSettings;
+  if (output.mode == cr::CreativeObjectLibraryPlacementMode::Bounds) {
+    return offsetFiniteCoordinate(output.boundsCells.min.x, deltaX,
+                                  output.boundsCells.min.x) &&
+           offsetFiniteCoordinate(output.boundsCells.max.x, deltaX,
+                                  output.boundsCells.max.x) &&
+           offsetFiniteCoordinate(output.boundsCells.min.z, deltaZ,
+                                  output.boundsCells.min.z) &&
+           offsetFiniteCoordinate(output.boundsCells.max.z, deltaZ,
+                                  output.boundsCells.max.z);
+  }
+  if (output.mode == cr::CreativeObjectLibraryPlacementMode::Point) {
+    return offsetFiniteCoordinate(output.pointCells.x, deltaX,
+                                  output.pointCells.x) &&
+           offsetFiniteCoordinate(output.pointCells.z, deltaZ,
+                                  output.pointCells.z);
+  }
+  return false;
 }
 
 }  // namespace
@@ -305,6 +344,119 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutObjectSettings(
   detail::noteWorldLayoutSourceChange(state, "object settings updated");
   return {true, true,
           "creative_editor_world_layout_object_settings_updated"};
+}
+
+std::size_t findCreativeEditorWorldLayoutObjectAt(
+    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint point) noexcept {
+  if (!detail::finiteWorldLayoutPoint(point)) {
+    return cr::kInvalidCreativeWorldLayoutIndex;
+  }
+  for (std::size_t index = state.source.objects.size(); index > 0U; --index) {
+    const cr::CreativeWorldLayoutObject& object =
+        state.source.objects[index - 1U];
+    const bool hit =
+        object.mode == cr::CreativeObjectLibraryPlacementMode::Bounds
+            ? point.x >= object.boundsCells.min.x &&
+                  point.x <= object.boundsCells.max.x &&
+                  point.z >= object.boundsCells.min.z &&
+                  point.z <= object.boundsCells.max.z
+            : object.mode == cr::CreativeObjectLibraryPlacementMode::Point &&
+                  std::hypot(point.x - object.pointCells.x,
+                             point.z - object.pointCells.z) <= 0.6;
+    if (hit) {
+      return index - 1U;
+    }
+  }
+  return cr::kInvalidCreativeWorldLayoutIndex;
+}
+
+CreativeEditorWorldLayoutEditReceipt
+beginCreativeEditorWorldLayoutObjectManipulation(
+    CreativeEditorWorldLayoutState& state, std::size_t objectIndex,
+    CreativeEditorWorldLayoutPoint point) {
+  CreativeEditorWorldLayoutObjectSettings settings;
+  if (state.tool != CreativeEditorWorldLayoutTool::Select ||
+      !detail::finiteWorldLayoutPoint(point) ||
+      !readCreativeEditorWorldLayoutObjectSettings(state, objectIndex,
+                                                   settings)) {
+    return {false, false,
+            "creative_editor_world_layout_object_manipulation_target_invalid"};
+  }
+  detail::clearWorldLayoutInteraction(state);
+  const std::string stableKey = state.source.objects[objectIndex].stableKey;
+  state.selection = {CreativeEditorWorldLayoutSelectionKind::Object,
+                     objectIndex};
+  state.anchorActive = false;
+  state.objectManipulation = {
+      true,
+      state.revision,
+      objectIndex,
+      stableKey,
+      point,
+      settings,
+      settings,
+      true,
+      "creative_editor_world_layout_object_manipulation_ready",
+  };
+  state.statusMessage = "drag to move object";
+  return {true, true,
+          "creative_editor_world_layout_object_manipulation_started"};
+}
+
+CreativeEditorWorldLayoutEditReceipt
+updateCreativeEditorWorldLayoutObjectManipulation(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint point) {
+  CreativeEditorWorldLayoutObjectManipulationState& manipulation =
+      state.objectManipulation;
+  if (!manipulation.active ||
+      manipulation.objectIndex >= state.source.objects.size()) {
+    return {false, false,
+            "creative_editor_world_layout_object_manipulation_not_active"};
+  }
+  const cr::CreativeWorldLayoutObject& object =
+      state.source.objects[manipulation.objectIndex];
+  CreativeEditorWorldLayoutObjectSettings current;
+  if (state.revision != manipulation.sourceRevision ||
+      object.stableKey != manipulation.stableKey ||
+      !readCreativeEditorWorldLayoutObjectSettings(
+          state, manipulation.objectIndex, current) ||
+      !(current == manipulation.originalSettings)) {
+    state.objectManipulation = {};
+    state.statusMessage = "object changed while drag was active";
+    return {false, false,
+            "creative_editor_world_layout_object_manipulation_stale"};
+  }
+  CreativeEditorWorldLayoutObjectSettings preview;
+  const bool coordinatesValid =
+      translatedObjectSettings(manipulation, point, preview);
+  const bool previewValid =
+      coordinatesValid && validObjectSettings(object, preview);
+  const char* reasonCode =
+      previewValid
+          ? "creative_editor_world_layout_object_manipulation_preview"
+          : "creative_editor_world_layout_object_manipulation_out_of_range";
+  if (preview == manipulation.previewSettings &&
+      previewValid == manipulation.previewValid) {
+    return {true, false, reasonCode};
+  }
+  manipulation.previewSettings = std::move(preview);
+  manipulation.previewValid = previewValid;
+  manipulation.reasonCode = reasonCode;
+  state.statusMessage = previewValid ? "object drag preview"
+                                     : "object drag exceeds the layout range";
+  return {true, true, reasonCode};
+}
+
+CreativeEditorWorldLayoutEditReceipt
+cancelCreativeEditorWorldLayoutObjectManipulation(
+    CreativeEditorWorldLayoutState& state) noexcept {
+  const bool changed = state.objectManipulation.active;
+  state.objectManipulation = {};
+  state.statusMessage = "object manipulation cancelled";
+  return {true, changed,
+          "creative_editor_world_layout_object_manipulation_cancelled"};
 }
 
 }  // namespace iggy3d_creative_app
