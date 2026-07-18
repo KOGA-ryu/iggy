@@ -1035,6 +1035,10 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
       placement.stableKey = symbol.stableKey;
       placement.name = symbol.name;
       placement.assetId = symbol.assetId;
+      placement.assetSourceBounds = symbol.assetSourceBoundsMeters;
+      placement.hasAssetSourceBounds = symbol.hasAssetSourceBounds;
+      placement.yawRadians = symbol.yawRadians;
+      placement.scale = symbol.scale;
       placement.visible = symbol.visible;
       placement.tags = symbol.tags;
       appendTagOnce(placement.tags, layoutTag);

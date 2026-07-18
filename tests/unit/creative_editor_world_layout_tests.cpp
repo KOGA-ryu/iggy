@@ -18,6 +18,7 @@
 
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
+#include "app/iggy3d/creative/input/Catalog.hpp"
 #include "app/iggy3d/creative/world/MapTemplate.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
@@ -137,7 +138,7 @@ bool categorizedPaletteOwnsEveryBindableSemanticAction() {
                        BuildingTemplate &&
                entry.buildingTemplateId == cr::kBuilderEstateHouseTemplateId;
       });
-  return expect(entries.size() == 17U && unique,
+  return expect(entries.size() == 16U && unique,
                 "world layout palette is fixed and duplicate free") &&
          expect(std::all_of(categoryCounts.begin(), categoryCounts.end(),
                             [](std::size_t count) { return count > 0U; }),
@@ -153,8 +154,6 @@ bool categorizedPaletteOwnsEveryBindableSemanticAction() {
                         app::CreativeEditorWorldLayoutTool::Ramp)] &&
                     seenTools[static_cast<std::size_t>(
                         app::CreativeEditorWorldLayoutTool::Plateau)] &&
-                    seenTools[static_cast<std::size_t>(
-                        app::CreativeEditorWorldLayoutTool::Boulder)] &&
                     seenTools[static_cast<std::size_t>(
                         app::CreativeEditorWorldLayoutTool::NpcSpawn)],
                 "palette binds structures terrain objects and gameplay") &&
@@ -202,8 +201,19 @@ bool terrainAndObjectPaletteToolsCreateCompilableSymbols() {
     static_cast<void>(app::setCreativeEditorWorldLayoutTool(state, tool));
     return app::applyCreativeEditorWorldLayoutPoint(state, point);
   };
-  const auto boulder =
-      addPoint(app::CreativeEditorWorldLayoutTool::Boulder, {2.0, 12.0});
+  cr::CreativeCatalogEntry boulderEntry;
+  boulderEntry.category = cr::CreativeCatalogEntryCategory::Asset;
+  boulderEntry.label = "Boulder 01";
+  boulderEntry.searchText = "boulder 01 rock nature";
+  boulderEntry.assetAuthoringMetadata.categoryId = "boulder";
+  boulderEntry.hotbarEntry.objectKind = cr::CreativeObjectKind::Rock;
+  static_cast<void>(cr::setCreativeHotbarAsset(
+      boulderEntry.hotbarEntry, "boulder_01",
+      {{-1.25, 0.0, -1.25}, {1.25, 2.0, 1.25}}));
+  const auto selectedBoulder =
+      app::selectCreativeEditorWorldLayoutCatalogAsset(state, boulderEntry);
+  const auto boulder = app::applyCreativeEditorWorldLayoutPoint(
+      state, {2.0, 12.0}, cr::CreativeGridSettings{});
   const auto player =
       addPoint(app::CreativeEditorWorldLayoutTool::PlayerSpawn, {6.0, 8.0});
   const auto npc =
@@ -222,7 +232,8 @@ bool terrainAndObjectPaletteToolsCreateCompilableSymbols() {
                     ditchBegin.accepted && ditchCommit.accepted &&
                     ditchCommit.changed && bridgeBegin.accepted &&
                     bridgeCommit.accepted && bridgeCommit.changed &&
-                    boulder.accepted && player.accepted && npc.accepted,
+                    selectedBoulder.accepted && boulder.accepted &&
+                    player.accepted && npc.accepted,
                 "palette actions author semantic symbols") &&
          expect(state.source.terrainProfiles.size() == 1U &&
                     state.source.terrainPaths.size() == 2U &&
@@ -231,6 +242,9 @@ bool terrainAndObjectPaletteToolsCreateCompilableSymbols() {
                 "palette actions retain compact flat source tables") &&
          expect(state.source.objects[0].kind == cr::CreativeObjectKind::Bridge &&
                     state.source.objects[1].assetId == "boulder_01" &&
+                    state.source.objects[1].mode ==
+                        cr::CreativeObjectLibraryPlacementMode::Point &&
+                    state.source.objects[1].hasAssetSourceBounds &&
                     state.source.objects[2].kind ==
                         cr::CreativeObjectKind::SpawnPoint &&
                     state.source.objects[3].kind ==
@@ -244,6 +258,134 @@ bool terrainAndObjectPaletteToolsCreateCompilableSymbols() {
                     decoded.layout.objects.size() == 4U &&
                     decoded.layout.terrainPaths.size() == 2U,
                 "palette source survives durable layout round trip");
+}
+
+bool catalogPlacementSharesOneExactTwoAndThreeDimensionalRecipe() {
+  const auto catalogEntry = [](std::string label, std::string assetId,
+                               std::string categoryId,
+                               cr::CreativeObjectKind kind,
+                               cr::CreativeBounds sourceBounds) {
+    cr::CreativeCatalogEntry entry;
+    entry.category = cr::CreativeCatalogEntryCategory::Asset;
+    entry.label = std::move(label);
+    entry.searchText = "dresser furnishing interior prop";
+    entry.assetAuthoringMetadata.categoryId = std::move(categoryId);
+    entry.hotbarEntry.objectKind = kind;
+    static_cast<void>(cr::setCreativeHotbarAsset(
+        entry.hotbarEntry, assetId, sourceBounds));
+    return entry;
+  };
+
+  const cr::CreativeCatalogEntry architecture = catalogEntry(
+      "Wall", "wall_asset", "wall", cr::CreativeObjectKind::Wall,
+      {{-0.5, 0.0, -0.1}, {0.5, 2.5, 0.1}});
+  const cr::CreativeCatalogEntry nature = catalogEntry(
+      "Tree", "tree_asset", "tree", cr::CreativeObjectKind::Prop,
+      {{-0.5, 0.0, -0.5}, {0.5, 3.0, 0.5}});
+  const cr::CreativeCatalogEntry cover = catalogEntry(
+      "Cover", "cover_asset", "stealth_blockout",
+      cr::CreativeObjectKind::Prop, {{-1.0, 0.0, -0.2}, {1.0, 1.2, 0.2}});
+  const cr::CreativeCatalogEntry gameplay = catalogEntry(
+      "Objective", "objective_asset", "objective",
+      cr::CreativeObjectKind::Prop, {{-0.4, 0.0, -0.4}, {0.4, 0.8, 0.4}});
+  const cr::CreativeCatalogEntry dresser = catalogEntry(
+      "Dresser", "homestead/interior/dresser_1p3", "furniture",
+      cr::CreativeObjectKind::Prop,
+      {{-0.5, 0.0, -0.25}, {1.5, 1.0, 0.75}});
+
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "catalog_layout");
+  const auto selected =
+      app::selectCreativeEditorWorldLayoutCatalogAsset(state, dresser);
+  state.catalogPlacement.elevationCells = 2.0;
+  state.catalogPlacement.yawDegrees = 45.0;
+  state.catalogPlacement.scale = {1.5, 0.75, 2.0};
+  cr::CreativeGridSettings grid;
+  grid.cellSizeMeters = 0.5;
+  const app::CreativeEditorWorldLayoutCatalogPlacementPlan preview =
+      app::planCreativeEditorWorldLayoutCatalogPlacement(state, {4.2, 5.7},
+                                                         grid);
+  const std::size_t undoBefore = state.sourceHistory.undoEntries.size();
+  const auto placed = app::applyCreativeEditorWorldLayoutPoint(
+      state, {4.2, 5.7}, grid);
+  const cr::CreativeWorldLayoutObject& object = state.source.objects[0];
+  const app::CreativeEditorWorldLayoutObjectFootprint footprint =
+      app::planCreativeEditorWorldLayoutObjectFootprint(object, grid);
+
+  cr::CreativeDocument document = cr::CreativeDocument::create("Catalog Plan");
+  static_cast<void>(document.assignId(8102U));
+  static_cast<void>(document.setGridSettings(grid));
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, state.source);
+  const cr::CreativeDocumentCreateRequest* createRequest =
+      compiled.receipt.accepted && compiled.plan.objectRecipes.size() == 1U &&
+              compiled.plan.objectRecipes[0].objects.size() == 1U
+          ? &compiled.plan.objectRecipes[0].objects[0].createRequest
+          : nullptr;
+  const cr::CreativeTransformedBounds worldBounds =
+      createRequest == nullptr
+          ? cr::CreativeTransformedBounds{}
+          : cr::resolveCreativeTransformedBounds(createRequest->bounds,
+                                                 createRequest->transform);
+  const app::CreativeEditorWorldLayoutPoint aabbOnlyPoint{
+      footprint.axisAlignedBoundsCells.min.x + 0.01,
+      footprint.axisAlignedBoundsCells.min.z + 0.01};
+
+  return expect(
+             app::classifyCreativeEditorWorldLayoutAsset(architecture) ==
+                     app::CreativeEditorWorldLayoutAssetCategory::Architecture &&
+                 app::classifyCreativeEditorWorldLayoutAsset(nature) ==
+                     app::CreativeEditorWorldLayoutAssetCategory::Nature &&
+                 app::classifyCreativeEditorWorldLayoutAsset(cover) ==
+                     app::CreativeEditorWorldLayoutAssetCategory::Cover &&
+                 app::classifyCreativeEditorWorldLayoutAsset(dresser) ==
+                     app::CreativeEditorWorldLayoutAssetCategory::Props &&
+                 app::classifyCreativeEditorWorldLayoutAsset(gameplay) ==
+                     app::CreativeEditorWorldLayoutAssetCategory::Gameplay &&
+                 app::creativeEditorWorldLayoutAssetMatchesQuery(dresser,
+                                                                 "DRESSER") &&
+                 !app::creativeEditorWorldLayoutAssetMatchesQuery(dresser,
+                                                                  "tree"),
+             "catalog assets classify and search through one pure index") &&
+         expect(selected.accepted && preview.accepted && placed.accepted &&
+                    placed.changed && footprint.valid &&
+                    state.source.objects.size() == 1U &&
+                    state.sourceHistory.undoEntries.size() == undoBefore + 1U &&
+                    object.stableKey.starts_with("asset_") &&
+                    object.pointCells.x == 4.0 && object.pointCells.y == 2.0 &&
+                    object.pointCells.z == 6.0 &&
+                    object.assetId == "homestead/interior/dresser_1p3" &&
+                    object.hasAssetSourceBounds &&
+                    near(object.yawRadians, std::acos(-1.0) * 0.25) &&
+                    object.scale.x == 1.5 && object.scale.y == 0.75 &&
+                    object.scale.z == 2.0 && stableKeysUnique(state.source),
+                "catalog confirm creates one durable source edit") &&
+         expect(createRequest != nullptr && worldBounds.valid &&
+                    createRequest->assetId == object.assetId &&
+                    near(createRequest->transform.position.x, 2.0) &&
+                    near(createRequest->transform.position.y, 1.0) &&
+                    near(createRequest->transform.position.z, 3.0) &&
+                    near(createRequest->transform.rotationEulerRadians.y,
+                         object.yawRadians) &&
+                    near(footprint.axisAlignedBoundsCells.min.x *
+                             grid.cellSizeMeters,
+                         worldBounds.worldBounds.min.x) &&
+                    near(footprint.axisAlignedBoundsCells.min.z *
+                             grid.cellSizeMeters,
+                         worldBounds.worldBounds.min.z) &&
+                    near(footprint.axisAlignedBoundsCells.max.x *
+                             grid.cellSizeMeters,
+                         worldBounds.worldBounds.max.x) &&
+                    near(footprint.axisAlignedBoundsCells.max.z *
+                             grid.cellSizeMeters,
+                         worldBounds.worldBounds.max.z),
+                "2D footprint and generated 3D bounds share pivot math") &&
+         expect(app::findCreativeEditorWorldLayoutObjectAt(state, {4.0, 6.0},
+                                                            grid) == 0U &&
+                    app::findCreativeEditorWorldLayoutObjectAt(
+                        state, aabbOnlyPoint, grid) ==
+                        cr::kInvalidCreativeWorldLayoutIndex,
+                "rotated hit testing uses the exact footprint, not its AABB");
 }
 
 bool openingsSnapInsideWallsAndRejectOverlap() {
@@ -2977,6 +3119,7 @@ int main() {
       floorAndWallGesturesProduceNormalizedSymbols() &&
       categorizedPaletteOwnsEveryBindableSemanticAction() &&
       terrainAndObjectPaletteToolsCreateCompilableSymbols() &&
+      catalogPlacementSharesOneExactTwoAndThreeDimensionalRecipe() &&
       openingsSnapInsideWallsAndRejectOverlap() &&
       deletingWallCascadesItsOpenings() &&
       roomGestureHostsOpeningsAndSupportsResize() &&

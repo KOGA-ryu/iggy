@@ -2311,6 +2311,72 @@ bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
                 "layout generation installs objects with one undo entry");
 }
 
+bool worldLayoutCatalogSelectionAndPlacementUseTypedCommands() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd World Layout Catalog");
+  static_cast<void>(document.assignId(428U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout, "catalog_commands");
+  cr::CreativeCatalogEntry entry;
+  entry.category = cr::CreativeCatalogEntryCategory::Asset;
+  entry.label = "Dresser";
+  entry.searchText = "dresser furnishing interior prop";
+  entry.assetAuthoringMetadata.categoryId = "furniture";
+  entry.hotbarEntry.objectKind = cr::CreativeObjectKind::Prop;
+  static_cast<void>(cr::setCreativeHotbarAsset(
+      entry.hotbarEntry, "homestead/interior/dresser_1p3",
+      {{-0.65, 0.0, -0.3}, {0.65, 1.1, 0.3}}));
+  editor.catalog.model.entries.push_back(entry);
+
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const app::CreativeDesktopCommandResult selected = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSelectCatalogAsset, context,
+      app::CreativeDesktopWorldLayoutCatalogAssetPayload{
+          "homestead/interior/dresser_1p3"});
+  editor.worldLayout.catalogPlacement.elevationCells = 1.5;
+  editor.worldLayout.catalogPlacement.yawDegrees = 90.0;
+  editor.worldLayout.catalogPlacement.scale = {1.0, 2.0, 0.5};
+  const std::size_t undoBefore =
+      editor.worldLayout.sourceHistory.undoEntries.size();
+  const app::CreativeDesktopCommandResult placed = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutCanvasPoint, context,
+      app::CreativeDesktopWorldLayoutPointPayload{{3.2, -1.7}});
+  const app::CreativeDesktopCommandResult mismatch = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSelectCatalogAsset, context,
+      app::CreativeDesktopWorldLayoutToolPayload{
+          app::CreativeEditorWorldLayoutTool::Select});
+  const cr::CreativeWorldLayoutObject& object =
+      editor.worldLayout.source.objects[0];
+
+  return expect(selected.accepted && selected.changed &&
+                    !selected.worldLayoutChanged &&
+                    editor.worldLayout.tool ==
+                        app::CreativeEditorWorldLayoutTool::CatalogAsset,
+                "typed catalog selection resolves the existing asset model") &&
+         expect(placed.accepted && placed.changed &&
+                    placed.worldLayoutChanged &&
+                    editor.worldLayout.source.objects.size() == 1U &&
+                    editor.worldLayout.sourceHistory.undoEntries.size() ==
+                        undoBefore + 1U &&
+                    object.assetId ==
+                        "homestead/interior/dresser_1p3" &&
+                    object.pointCells.x == 3.0 &&
+                    object.pointCells.y == 1.5 &&
+                    object.pointCells.z == -2.0 &&
+                    object.hasAssetSourceBounds && object.scale.y == 2.0,
+                "typed canvas confirm creates one posed source object") &&
+         expect(!mismatch.accepted && !mismatch.changed &&
+                    mismatch.message == "layout asset: payload mismatch" &&
+                    editor.worldLayout.source.objects.size() == 1U,
+                "catalog command payload mismatch is transactionally empty");
+}
+
 }  // namespace
 
 int main() {
@@ -2344,5 +2410,6 @@ int main() {
   ok = worldLayoutBuildingTemplateCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutCommandsPreviewAndGenerateThroughDispatcher() && ok;
+  ok = worldLayoutCatalogSelectionAndPlacementUseTypedCommands() && ok;
   return ok ? 0 : 1;
 }

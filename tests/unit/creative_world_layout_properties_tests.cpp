@@ -10,6 +10,8 @@
 #include <utility>
 #include <vector>
 
+#include "app/iggy3d/creative/Geometry.hpp"
+
 namespace app = iggy3d_creative_app;
 namespace cr = iggy3d::creative;
 
@@ -324,6 +326,59 @@ bool pointObjectManipulationCancelsAndRejectsStaleInput() {
                 "source revision changes invalidate an active object drag");
 }
 
+bool catalogObjectManipulationMovesOnlyItsPivot() {
+  app::CreativeEditorWorldLayoutState state = shellState();
+  cr::CreativeWorldLayoutObject object;
+  object.kind = cr::CreativeObjectKind::Prop;
+  object.mode = cr::CreativeObjectLibraryPlacementMode::Point;
+  object.stableKey = "catalog_drag";
+  object.name = "Drag Dresser";
+  object.assetId = "homestead/interior/dresser_1p3";
+  object.pointCells = {8.0, 1.5, -4.0};
+  object.assetSourceBoundsMeters =
+      {{-0.65, 0.0, -0.3}, {0.65, 1.1, 0.3}};
+  object.hasAssetSourceBounds = true;
+  object.yawRadians = 0.5;
+  object.scale = {1.25, 0.75, 1.5};
+  object.tags = {"world_layout:object", "world_layout:catalog_asset"};
+  state.source.objects.push_back(object);
+  app::installCreativeEditorWorldLayout(state, state.source);
+
+  const std::uint64_t revisionBefore = state.revision;
+  const std::size_t undoBefore = state.sourceHistory.undoEntries.size();
+  const auto begun = app::beginCreativeEditorWorldLayoutObjectManipulation(
+      state, 0U, {8.0, -4.0});
+  const auto moved = app::updateCreativeEditorWorldLayoutObjectManipulation(
+      state, {6.2, -0.7});
+  const app::CreativeEditorWorldLayoutObjectSettings preview =
+      state.objectManipulation.previewSettings;
+  state.objectManipulation = {};
+  const auto committed = app::setCreativeEditorWorldLayoutObjectSettings(
+      state, 0U, preview);
+  const cr::CreativeWorldLayoutObject& result = state.source.objects[0];
+
+  return expect(begun.accepted && moved.accepted && moved.changed &&
+                    preview.pointCells.x == 6.0 &&
+                    preview.pointCells.y == 1.5 &&
+                    preview.pointCells.z == -1.0 &&
+                    preview.hasAssetSourceBounds &&
+                    preview.assetSourceBoundsMeters.min.x == -0.65 &&
+                    preview.yawRadians == 0.5 && preview.scale.x == 1.25,
+                "catalog drag preview moves only the placement pivot") &&
+         expect(committed.accepted && committed.changed &&
+                    state.revision == revisionBefore + 1U &&
+                    state.sourceHistory.undoEntries.size() == undoBefore + 1U &&
+                    result.pointCells.x == 6.0 && result.pointCells.y == 1.5 &&
+                    result.pointCells.z == -1.0 &&
+                    result.assetId == object.assetId &&
+                    cr::creativeBoundsExactlyEqual(
+                        result.assetSourceBoundsMeters,
+                        object.assetSourceBoundsMeters) &&
+                    result.yawRadians == object.yawRadians &&
+                    cr::creativeVec3ExactlyEqual(result.scale, object.scale),
+                "catalog drag commits once without geometry drift");
+}
+
 cr::CreativeAppState makeApp() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document = cr::CreativeDocument::create("Properties");
@@ -382,6 +437,7 @@ int main() {
                   objectSettingsPreserveSemanticIdentity() &&
                   objectManipulationPreviewsThenCommitsOnce() &&
                   pointObjectManipulationCancelsAndRejectsStaleInput() &&
+                  catalogObjectManipulationMovesOnlyItsPivot() &&
                   typedSettingsCommandsGuardIdentityAndPreview();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -37,6 +37,10 @@ struct CreativeObjectLibraryPlacementSpec {
   std::string assetId;
   CreativeBounds bounds;
   CreativeVec3 point;
+  CreativeBounds assetSourceBounds;
+  bool hasAssetSourceBounds = false;
+  double yawRadians = 0.0;
+  CreativeVec3 scale{1.0, 1.0, 1.0};
   bool visible = true;
   std::vector<std::string> tags;
 };

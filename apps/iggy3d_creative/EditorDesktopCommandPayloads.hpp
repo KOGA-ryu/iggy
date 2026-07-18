@@ -124,6 +124,10 @@ struct CreativeDesktopWorldLayoutToolPayload {
       CreativeEditorWorldLayoutTool::Select;
 };
 
+struct CreativeDesktopWorldLayoutCatalogAssetPayload {
+  std::string assetId;
+};
+
 struct CreativeDesktopWorldLayoutBuildingSelectionPayload {
   std::size_t buildingIndex =
       iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
@@ -323,6 +327,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopAssetOpPayload,
     CreativeDesktopInstanceRefreshPayload,
     CreativeDesktopWorldLayoutToolPayload,
+    CreativeDesktopWorldLayoutCatalogAssetPayload,
     CreativeDesktopWorldLayoutBuildingSelectionPayload,
     CreativeDesktopWorldLayoutSourcePayload,
     CreativeDesktopWorldLayoutSourceRenamePayload,

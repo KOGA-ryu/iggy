@@ -15,7 +15,7 @@
 
 namespace iggy3d::creative {
 
-inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 8U;
+inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 9U;
 inline constexpr std::size_t kInvalidCreativeWorldLayoutIndex =
     std::numeric_limits<std::size_t>::max();
 inline constexpr std::uint16_t kDefaultCreativeWorldLayoutWallHeightCells = 3U;
@@ -180,6 +180,13 @@ struct CreativeWorldLayoutObject {
   std::string assetId;
   CreativeBounds boundsCells;
   CreativeVec3 pointCells;
+  // Point-anchored catalog assets retain the imported bounds relative to the
+  // asset pivot. The compiler combines these meter-space bounds with the
+  // grid-derived point so moving an object never desynchronizes its footprint.
+  CreativeBounds assetSourceBoundsMeters;
+  bool hasAssetSourceBounds = false;
+  double yawRadians = 0.0;
+  CreativeVec3 scale{1.0, 1.0, 1.0};
   bool visible = true;
   std::vector<std::string> tags;
 };

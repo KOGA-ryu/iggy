@@ -736,6 +736,34 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutSelectCatalogAsset: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutCatalogAssetPayload>(command);
+      if (payload == nullptr || payload->assetId.empty()) {
+        result.message = "layout asset: payload mismatch";
+        break;
+      }
+      const auto found = std::find_if(
+          editor.catalog.model.entries.begin(),
+          editor.catalog.model.entries.end(),
+          [payload](const creative::CreativeCatalogEntry& entry) {
+            return entry.category ==
+                       creative::CreativeCatalogEntryCategory::Asset &&
+                   creative::creativeHotbarAssetId(entry.hotbarEntry) ==
+                       payload->assetId;
+          });
+      if (found == editor.catalog.model.entries.end()) {
+        result.message = "layout asset: catalog entry missing";
+        break;
+      }
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          selectCreativeEditorWorldLayoutCatalogAsset(editor.worldLayout,
+                                                      *found);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutSelectBuilding: {
       const auto* payload =
           payloadAs<CreativeDesktopWorldLayoutBuildingSelectionPayload>(
@@ -1180,7 +1208,9 @@ void dispatchOne(const CreativeDesktopCommand& command,
           creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
       const CreativeEditorWorldLayoutEditReceipt receipt =
           applyCreativeEditorWorldLayoutPoint(editor.worldLayout,
-                                              payload->point);
+                                              payload->point,
+                                              activeAppState.facade.document()
+                                                  .gridSettings());
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
       result.worldLayoutChanged = receipt.changed;

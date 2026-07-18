@@ -68,7 +68,11 @@ namespace {
       !detail::hasVisibleWorldLayoutName(settings.name) ||
       !cr::isFiniteCreativeVec3(settings.boundsCells.min) ||
       !cr::isFiniteCreativeVec3(settings.boundsCells.max) ||
-      !cr::isFiniteCreativeVec3(settings.pointCells)) {
+      !cr::isFiniteCreativeVec3(settings.pointCells) ||
+      !cr::isFiniteCreativeVec3(settings.assetSourceBoundsMeters.min) ||
+      !cr::isFiniteCreativeVec3(settings.assetSourceBoundsMeters.max) ||
+      !std::isfinite(settings.yawRadians) ||
+      !cr::isFiniteCreativeVec3(settings.scale)) {
     return false;
   }
   cr::CreativeObjectLibraryPlacementSpec placement;
@@ -79,6 +83,10 @@ namespace {
   placement.assetId = settings.assetId;
   placement.bounds = settings.boundsCells;
   placement.point = settings.pointCells;
+  placement.assetSourceBounds = settings.assetSourceBoundsMeters;
+  placement.hasAssetSourceBounds = settings.hasAssetSourceBounds;
+  placement.yawRadians = settings.yawRadians;
+  placement.scale = settings.scale;
   placement.visible = settings.visible;
   placement.tags = current.tags;
   cr::CreativeObjectLibraryRecipeRequest request;
@@ -311,9 +319,18 @@ bool readCreativeEditorWorldLayoutObjectSettings(
     return false;
   }
   const cr::CreativeWorldLayoutObject& object = state.source.objects[objectIndex];
-  output = {object.kind,       object.mode,       object.name,
-            object.assetId,   object.boundsCells, object.pointCells,
-            object.visible};
+  output = {};
+  output.kind = object.kind;
+  output.mode = object.mode;
+  output.name = object.name;
+  output.assetId = object.assetId;
+  output.boundsCells = object.boundsCells;
+  output.pointCells = object.pointCells;
+  output.assetSourceBoundsMeters = object.assetSourceBoundsMeters;
+  output.hasAssetSourceBounds = object.hasAssetSourceBounds;
+  output.yawRadians = object.yawRadians;
+  output.scale = object.scale;
+  output.visible = object.visible;
   return true;
 }
 
@@ -338,6 +355,10 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutObjectSettings(
   object.assetId = std::move(settings.assetId);
   object.boundsCells = settings.boundsCells;
   object.pointCells = settings.pointCells;
+  object.assetSourceBoundsMeters = settings.assetSourceBoundsMeters;
+  object.hasAssetSourceBounds = settings.hasAssetSourceBounds;
+  object.yawRadians = settings.yawRadians;
+  object.scale = settings.scale;
   object.visible = settings.visible;
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Object,
                      objectIndex};
@@ -349,26 +370,7 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutObjectSettings(
 std::size_t findCreativeEditorWorldLayoutObjectAt(
     const CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutPoint point) noexcept {
-  if (!detail::finiteWorldLayoutPoint(point)) {
-    return cr::kInvalidCreativeWorldLayoutIndex;
-  }
-  for (std::size_t index = state.source.objects.size(); index > 0U; --index) {
-    const cr::CreativeWorldLayoutObject& object =
-        state.source.objects[index - 1U];
-    const bool hit =
-        object.mode == cr::CreativeObjectLibraryPlacementMode::Bounds
-            ? point.x >= object.boundsCells.min.x &&
-                  point.x <= object.boundsCells.max.x &&
-                  point.z >= object.boundsCells.min.z &&
-                  point.z <= object.boundsCells.max.z
-            : object.mode == cr::CreativeObjectLibraryPlacementMode::Point &&
-                  std::hypot(point.x - object.pointCells.x,
-                             point.z - object.pointCells.z) <= 0.6;
-    if (hit) {
-      return index - 1U;
-    }
-  }
-  return cr::kInvalidCreativeWorldLayoutIndex;
+  return findCreativeEditorWorldLayoutObjectAt(state, point, {});
 }
 
 CreativeEditorWorldLayoutEditReceipt

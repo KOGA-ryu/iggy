@@ -26,7 +26,7 @@ constexpr double kOpeningEndClearanceCells = 0.25;
 constexpr double kOpeningMinimumWidthCells = 0.25;
 constexpr double kOpeningGeometryEpsilon = 1.0e-9;
 
-constexpr std::array<CreativeEditorWorldLayoutPaletteEntry, 17U>
+constexpr std::array<CreativeEditorWorldLayoutPaletteEntry, 16U>
     kWorldLayoutPaletteEntries = {{
         {CreativeEditorWorldLayoutPaletteCategory::Structure, "Select",
          CreativeEditorWorldLayoutPaletteActivation::Tool,
@@ -71,9 +71,6 @@ constexpr std::array<CreativeEditorWorldLayoutPaletteEntry, 17U>
         {CreativeEditorWorldLayoutPaletteCategory::Object, "Bridge",
          CreativeEditorWorldLayoutPaletteActivation::Tool,
          CreativeEditorWorldLayoutTool::Bridge, {}},
-        {CreativeEditorWorldLayoutPaletteCategory::Object, "Boulder",
-         CreativeEditorWorldLayoutPaletteActivation::Tool,
-         CreativeEditorWorldLayoutTool::Boulder, {}},
         {CreativeEditorWorldLayoutPaletteCategory::Gameplay, "Player Spawn",
          CreativeEditorWorldLayoutPaletteActivation::Tool,
          CreativeEditorWorldLayoutTool::PlayerSpawn, {}},
@@ -1436,49 +1433,31 @@ CreativeEditorWorldLayoutEditReceipt addBridgePoint(
   return {true, true, "creative_editor_world_layout_bridge_added"};
 }
 
-CreativeEditorWorldLayoutEditReceipt addPointObject(
+CreativeEditorWorldLayoutEditReceipt addSpawnPoint(
     CreativeEditorWorldLayoutState& state, cr::CreativeTerrainCoord2 point,
     CreativeEditorWorldLayoutTool tool) {
   cr::CreativeWorldLayoutObject object;
   object.stableKey = mintWorldLayoutStableKey(
-      state, tool == CreativeEditorWorldLayoutTool::Boulder
-                 ? "boulder"
-                 : tool == CreativeEditorWorldLayoutTool::PlayerSpawn
-                       ? "player_spawn"
-                       : "npc_spawn");
+      state, tool == CreativeEditorWorldLayoutTool::PlayerSpawn
+                 ? "player_spawn"
+                 : "npc_spawn");
   object.tags = {"world_layout:object"};
-  if (tool == CreativeEditorWorldLayoutTool::Boulder) {
-    object.kind = cr::CreativeObjectKind::Rock;
-    object.mode = cr::CreativeObjectLibraryPlacementMode::Bounds;
-    object.name = "Boulder " +
-                  std::to_string(state.source.objects.size() + 1U);
-    object.assetId = "boulder_01";
-    object.boundsCells = {
-        {static_cast<double>(point.x) - 1.25, 0.0,
-         static_cast<double>(point.z) - 1.25},
-        {static_cast<double>(point.x) + 1.25, 2.0,
-         static_cast<double>(point.z) + 1.25},
-    };
-  } else {
-    object.kind = tool == CreativeEditorWorldLayoutTool::PlayerSpawn
-                      ? cr::CreativeObjectKind::SpawnPoint
-                      : cr::CreativeObjectKind::NpcSpawn;
-    object.mode = cr::CreativeObjectLibraryPlacementMode::Point;
-    object.name = tool == CreativeEditorWorldLayoutTool::PlayerSpawn
-                      ? "Player Spawn"
-                      : "NPC Spawn";
-    object.pointCells = {static_cast<double>(point.x), 0.0,
-                         static_cast<double>(point.z)};
-  }
+  object.kind = tool == CreativeEditorWorldLayoutTool::PlayerSpawn
+                    ? cr::CreativeObjectKind::SpawnPoint
+                    : cr::CreativeObjectKind::NpcSpawn;
+  object.mode = cr::CreativeObjectLibraryPlacementMode::Point;
+  object.name = tool == CreativeEditorWorldLayoutTool::PlayerSpawn
+                    ? "Player Spawn"
+                    : "NPC Spawn";
+  object.pointCells = {static_cast<double>(point.x), 0.0,
+                       static_cast<double>(point.z)};
   state.source.objects.push_back(std::move(object));
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Object,
                      state.source.objects.size() - 1U};
   noteWorldLayoutSourceChange(
-      state, tool == CreativeEditorWorldLayoutTool::Boulder
-                 ? "boulder added"
-                 : tool == CreativeEditorWorldLayoutTool::PlayerSpawn
-                       ? "player spawn added"
-                       : "NPC spawn added");
+      state, tool == CreativeEditorWorldLayoutTool::PlayerSpawn
+                 ? "player spawn added"
+                 : "NPC spawn added");
   return {true, true, "creative_editor_world_layout_object_added"};
 }
 
@@ -1513,8 +1492,8 @@ const char* creativeEditorWorldLayoutToolLabel(
       return "Ditch";
     case CreativeEditorWorldLayoutTool::Bridge:
       return "Bridge";
-    case CreativeEditorWorldLayoutTool::Boulder:
-      return "Boulder";
+    case CreativeEditorWorldLayoutTool::CatalogAsset:
+      return "Catalog Asset";
     case CreativeEditorWorldLayoutTool::PlayerSpawn:
       return "Player Spawn";
     case CreativeEditorWorldLayoutTool::NpcSpawn:
@@ -1841,10 +1820,9 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutPoint(
   if (state.tool == CreativeEditorWorldLayoutTool::Bridge) {
     return addBridgePoint(state, gridPoint);
   }
-  if (state.tool == CreativeEditorWorldLayoutTool::Boulder ||
-      state.tool == CreativeEditorWorldLayoutTool::PlayerSpawn ||
+  if (state.tool == CreativeEditorWorldLayoutTool::PlayerSpawn ||
       state.tool == CreativeEditorWorldLayoutTool::NpcSpawn) {
-    return addPointObject(state, gridPoint, state.tool);
+    return addSpawnPoint(state, gridPoint, state.tool);
   }
   return {false, false, "creative_editor_world_layout_tool_invalid"};
 }

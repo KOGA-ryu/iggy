@@ -3,6 +3,7 @@
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 
+#include <cmath>
 #include <cstddef>
 #include <string_view>
 #include <utility>
@@ -30,8 +31,24 @@ bool validPlacement(const CreativeObjectLibraryPlacementSpec& placement) {
     return false;
   }
   if (placement.mode == CreativeObjectLibraryPlacementMode::Point) {
-    return objectHasTransform(placement.kind) &&
-           isFiniteCreativeVec3(placement.point);
+    if (!objectHasTransform(placement.kind) ||
+        !isFiniteCreativeVec3(placement.point) ||
+        !std::isfinite(placement.yawRadians) ||
+        !isPositiveCreativeVec3(placement.scale)) {
+      return false;
+    }
+    if (!placement.hasAssetSourceBounds) {
+      return true;
+    }
+    const CreativeBoundsMetrics source =
+        measureCreativeBounds(placement.assetSourceBounds);
+    return objectHasBounds(placement.kind) && source.valid &&
+           isPositiveCreativeVec3(source.size);
+  }
+  if (placement.hasAssetSourceBounds || placement.yawRadians != 0.0 ||
+      placement.scale.x != 1.0 || placement.scale.y != 1.0 ||
+      placement.scale.z != 1.0) {
+    return false;
   }
   const CreativeBoundsMetrics metrics = measureCreativeBounds(placement.bounds);
   return objectHasBounds(placement.kind) && metrics.valid &&
@@ -57,7 +74,20 @@ CreativeDocumentCreateRequest createRequest(
     }
   } else {
     request.transform.position = placement.point;
+    request.transform.rotationEulerRadians.y = placement.yawRadians;
+    request.transform.scale = placement.scale;
     request.hasTransformOverride = true;
+    if (placement.hasAssetSourceBounds) {
+      request.bounds = {
+          {placement.point.x + placement.assetSourceBounds.min.x,
+           placement.point.y + placement.assetSourceBounds.min.y,
+           placement.point.z + placement.assetSourceBounds.min.z},
+          {placement.point.x + placement.assetSourceBounds.max.x,
+           placement.point.y + placement.assetSourceBounds.max.y,
+           placement.point.z + placement.assetSourceBounds.max.z},
+      };
+      request.hasBoundsOverride = true;
+    }
   }
   return request;
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -14,6 +15,10 @@
 
 #include "EditorWorldLayoutElevation.hpp"
 #include "EditorWorldLayoutDiagnostics.hpp"
+
+namespace iggy3d::creative {
+struct CreativeCatalogEntry;
+}
 
 namespace iggy3d_creative_app {
 
@@ -32,10 +37,19 @@ enum class CreativeEditorWorldLayoutTool : std::uint8_t {
   Road,
   Ditch,
   Bridge,
-  Boulder,
+  CatalogAsset,
   PlayerSpawn,
   NpcSpawn,
   BuildingShell,
+  Count,
+};
+
+enum class CreativeEditorWorldLayoutAssetCategory : std::uint8_t {
+  Architecture,
+  Nature,
+  Cover,
+  Props,
+  Gameplay,
   Count,
 };
 
@@ -483,6 +497,10 @@ struct CreativeEditorWorldLayoutObjectSettings {
   std::string assetId;
   cr::CreativeBounds boundsCells;
   cr::CreativeVec3 pointCells;
+  cr::CreativeBounds assetSourceBoundsMeters;
+  bool hasAssetSourceBounds = false;
+  double yawRadians = 0.0;
+  cr::CreativeVec3 scale{1.0, 1.0, 1.0};
   bool visible = true;
 
   [[nodiscard]] friend bool operator==(
@@ -499,8 +517,49 @@ struct CreativeEditorWorldLayoutObjectSettings {
            lhs.pointCells.x == rhs.pointCells.x &&
            lhs.pointCells.y == rhs.pointCells.y &&
            lhs.pointCells.z == rhs.pointCells.z &&
+           lhs.assetSourceBoundsMeters.min.x ==
+               rhs.assetSourceBoundsMeters.min.x &&
+           lhs.assetSourceBoundsMeters.min.y ==
+               rhs.assetSourceBoundsMeters.min.y &&
+           lhs.assetSourceBoundsMeters.min.z ==
+               rhs.assetSourceBoundsMeters.min.z &&
+           lhs.assetSourceBoundsMeters.max.x ==
+               rhs.assetSourceBoundsMeters.max.x &&
+           lhs.assetSourceBoundsMeters.max.y ==
+               rhs.assetSourceBoundsMeters.max.y &&
+           lhs.assetSourceBoundsMeters.max.z ==
+               rhs.assetSourceBoundsMeters.max.z &&
+           lhs.hasAssetSourceBounds == rhs.hasAssetSourceBounds &&
+           lhs.yawRadians == rhs.yawRadians && lhs.scale.x == rhs.scale.x &&
+           lhs.scale.y == rhs.scale.y && lhs.scale.z == rhs.scale.z &&
            lhs.visible == rhs.visible;
   }
+};
+
+struct CreativeEditorWorldLayoutCatalogPlacementState {
+  bool active = false;
+  cr::CreativeObjectKind kind = cr::CreativeObjectKind::Unknown;
+  std::string assetId;
+  std::string label;
+  std::string categoryId;
+  cr::CreativeBounds sourceBoundsMeters;
+  double elevationCells = 0.0;
+  double yawDegrees = 0.0;
+  cr::CreativeVec3 scale{1.0, 1.0, 1.0};
+};
+
+struct CreativeEditorWorldLayoutObjectFootprint {
+  bool valid = false;
+  std::array<CreativeEditorWorldLayoutPoint, 4U> corners{};
+  cr::CreativeBounds axisAlignedBoundsCells;
+};
+
+struct CreativeEditorWorldLayoutCatalogPlacementPlan {
+  bool accepted = false;
+  cr::CreativeWorldLayoutObject object;
+  CreativeEditorWorldLayoutObjectFootprint footprint;
+  std::string reasonCode =
+      "creative_editor_world_layout_catalog_placement_not_requested";
 };
 
 struct CreativeEditorWorldLayoutObjectSettingsDraft {
@@ -669,6 +728,10 @@ struct CreativeEditorWorldLayoutState {
   CreativeEditorWorldLayoutTerrainPathSettingsDraft terrainPathSettingsDraft;
   CreativeEditorWorldLayoutObjectSettingsDraft objectSettingsDraft;
   CreativeEditorWorldLayoutObjectManipulationState objectManipulation;
+  CreativeEditorWorldLayoutAssetCategory assetCategory =
+      CreativeEditorWorldLayoutAssetCategory::Architecture;
+  std::string assetQuery;
+  CreativeEditorWorldLayoutCatalogPlacementState catalogPlacement;
 
   CreativeEditorWorldLayoutViewMode viewMode =
       CreativeEditorWorldLayoutViewMode::Plan;
@@ -721,6 +784,26 @@ struct CreativeEditorWorldLayoutApplyReceipt {
     CreativeEditorWorldLayoutPaletteCategory category) noexcept;
 [[nodiscard]] std::span<const CreativeEditorWorldLayoutPaletteEntry>
 creativeEditorWorldLayoutPaletteEntries() noexcept;
+[[nodiscard]] const char* creativeEditorWorldLayoutAssetCategoryLabel(
+    CreativeEditorWorldLayoutAssetCategory category) noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutAssetCategory
+classifyCreativeEditorWorldLayoutAsset(
+    const cr::CreativeCatalogEntry& entry) noexcept;
+[[nodiscard]] bool creativeEditorWorldLayoutAssetMatchesQuery(
+    const cr::CreativeCatalogEntry& entry, std::string_view query);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+selectCreativeEditorWorldLayoutCatalogAsset(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeCatalogEntry& entry);
+[[nodiscard]] CreativeEditorWorldLayoutObjectFootprint
+planCreativeEditorWorldLayoutObjectFootprint(
+    const cr::CreativeWorldLayoutObject& object,
+    cr::CreativeGridSettings grid) noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutCatalogPlacementPlan
+planCreativeEditorWorldLayoutCatalogPlacement(
+    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint point,
+    cr::CreativeGridSettings grid);
 
 void resetCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
                                     std::string layoutKey = "world_layout");
@@ -787,6 +870,10 @@ setCreativeEditorWorldLayoutTool(CreativeEditorWorldLayoutState& state,
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 applyCreativeEditorWorldLayoutPoint(CreativeEditorWorldLayoutState& state,
                                     CreativeEditorWorldLayoutPoint point);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+applyCreativeEditorWorldLayoutPoint(CreativeEditorWorldLayoutState& state,
+                                    CreativeEditorWorldLayoutPoint point,
+                                    cr::CreativeGridSettings grid);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 applyCreativeEditorWorldLayoutGesture(
     CreativeEditorWorldLayoutState& state,
@@ -931,6 +1018,10 @@ setCreativeEditorWorldLayoutObjectSettings(
 [[nodiscard]] std::size_t findCreativeEditorWorldLayoutObjectAt(
     const CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutPoint point) noexcept;
+[[nodiscard]] std::size_t findCreativeEditorWorldLayoutObjectAt(
+    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint point,
+    cr::CreativeGridSettings grid) noexcept;
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 beginCreativeEditorWorldLayoutObjectManipulation(
     CreativeEditorWorldLayoutState& state, std::size_t objectIndex,

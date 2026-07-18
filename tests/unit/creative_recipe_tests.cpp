@@ -201,12 +201,25 @@ bool objectLibraryRecipeOwnsBoundedAndPointPlacementParity() {
   spawn.point = {8.0, 3.0, -2.0};
   request.placements.push_back(spawn);
 
+  cr::CreativeObjectLibraryPlacementSpec asset;
+  asset.kind = cr::CreativeObjectKind::Rock;
+  asset.mode = cr::CreativeObjectLibraryPlacementMode::Point;
+  asset.stableKey = "asset.boulder";
+  asset.name = "Boulder";
+  asset.assetId = "boulder_01";
+  asset.point = {12.0, 1.5, 4.0};
+  asset.assetSourceBounds = {{-1.0, 0.0, -0.5}, {1.0, 2.0, 0.5}};
+  asset.hasAssetSourceBounds = true;
+  asset.yawRadians = 1.5707963267948966;
+  asset.scale = {2.0, 0.5, 1.5};
+  request.placements.push_back(asset);
+
   const cr::CreativeObjectLibraryRecipeResult recipe =
       cr::buildCreativeObjectLibraryRecipe(request);
   const cr::CreativeRecipeMaterializeResult materialized =
       cr::materializeCreativeRecipe(recipe.plan, 20U);
   const bool placementParity =
-      materialized.createRequests.size() == 2U &&
+      materialized.createRequests.size() == 3U &&
       materialized.createRequests[0].kind == cr::CreativeObjectKind::Bridge &&
       materialized.createRequests[0].hasBoundsOverride &&
       materialized.createRequests[0].bounds.min.x == 1.0 &&
@@ -216,7 +229,17 @@ bool objectLibraryRecipeOwnsBoundedAndPointPlacementParity() {
       materialized.createRequests[1].hasTransformOverride &&
       materialized.createRequests[1].transform.position.x == 8.0 &&
       materialized.createRequests[1].transform.position.y == 3.0 &&
-      materialized.createRequests[1].transform.position.z == -2.0;
+      materialized.createRequests[1].transform.position.z == -2.0 &&
+      materialized.createRequests[2].assetId == "boulder_01" &&
+      materialized.createRequests[2].hasTransformOverride &&
+      materialized.createRequests[2].hasBoundsOverride &&
+      materialized.createRequests[2].bounds.min.x == 11.0 &&
+      materialized.createRequests[2].bounds.max.y == 3.5 &&
+      materialized.createRequests[2].transform.rotationEulerRadians.y ==
+          asset.yawRadians &&
+      materialized.createRequests[2].transform.scale.x == 2.0 &&
+      materialized.createRequests[2].transform.scale.y == 0.5 &&
+      materialized.createRequests[2].transform.scale.z == 1.5;
 
   return expect(recipe.receipt.accepted &&
                     recipe.receipt.status ==
@@ -224,7 +247,7 @@ bool objectLibraryRecipeOwnsBoundedAndPointPlacementParity() {
                 "object library recipe accepted") &&
          expect(recipe.plan.kind == cr::CreativeRecipeKind::ObjectLibrary &&
                     recipe.receipt.boundedPlacementCount == 1U &&
-                    recipe.receipt.pointPlacementCount == 1U,
+                    recipe.receipt.pointPlacementCount == 2U,
                 "object library recipe owns placement modes") &&
          expect(materialized.receipt.accepted && placementParity,
                 "object library materialization preserves exact placement") &&

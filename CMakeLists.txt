@@ -327,6 +327,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorInteractionOverlay.cpp
   apps/iggy3d_creative/EditorWorldTargeting.cpp
   apps/iggy3d_creative/EditorWorldLayout.cpp
+  apps/iggy3d_creative/EditorWorldLayoutCatalog.cpp
   apps/iggy3d_creative/EditorWorldLayoutElevationProjection.cpp
   apps/iggy3d_creative/EditorWorldLayoutElevationEditing.cpp
   apps/iggy3d_creative/EditorWorldLayoutElevationPanel.cpp

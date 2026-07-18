@@ -135,6 +135,21 @@ cr::CreativeWorldLayout richLayout() {
   object.tags = {"prop", "source=blender"};
   layout.objects.push_back(object);
 
+  cr::CreativeWorldLayoutObject posedAsset;
+  posedAsset.kind = cr::CreativeObjectKind::Prop;
+  posedAsset.mode = cr::CreativeObjectLibraryPlacementMode::Point;
+  posedAsset.stableKey = "prop.posed";
+  posedAsset.name = "Posed Catalog Asset";
+  posedAsset.assetId = "homestead/interior/dresser_1p3";
+  posedAsset.pointCells = {6.0, 0.5, -3.0};
+  posedAsset.assetSourceBoundsMeters =
+      {{-0.65, 0.0, -0.3}, {0.65, 1.1, 0.3}};
+  posedAsset.hasAssetSourceBounds = true;
+  posedAsset.yawRadians = 0.7853981633974483;
+  posedAsset.scale = {1.25, 0.75, 1.5};
+  posedAsset.tags = {"world_layout:catalog_asset"};
+  layout.objects.push_back(posedAsset);
+
   cr::CreativeWorldLayoutTerrainProfile profile;
   profile.stableKey = "hill.west";
   profile.kind = cr::CreativeTerrainRecipeKind::Hill;
@@ -214,11 +229,17 @@ bool deterministicRoundTripPreservesEveryTable() {
                     decoded.layout.openings[1].hostKind ==
                         cr::CreativeWorldLayoutOpeningHostKind::RoomEdge,
                 "building, room, connector, and opening tables round trip") &&
-         expect(decoded.layout.objects.size() == 1U &&
+         expect(decoded.layout.objects.size() == 2U &&
                     decoded.layout.objects[0].assetId == "boulder_01" &&
                     decoded.layout.objects[0].tags == source.objects[0].tags &&
-                    decoded.layout.objects[0].boundsCells.min.x == 2.25,
-                "object-library symbols round trip") &&
+                    decoded.layout.objects[0].boundsCells.min.x == 2.25 &&
+                    decoded.layout.objects[1].hasAssetSourceBounds &&
+                    decoded.layout.objects[1].assetSourceBoundsMeters.min.x ==
+                        -0.65 &&
+                    decoded.layout.objects[1].yawRadians ==
+                        source.objects[1].yawRadians &&
+                    decoded.layout.objects[1].scale.z == 1.5,
+                "object-library symbols and pose round trip") &&
          expect(decoded.layout.terrainProfiles.size() == 1U &&
                     decoded.layout.terrainPaths.size() == 1U &&
                     decoded.layout.terrainPathPoints ==
@@ -256,6 +277,15 @@ bool malformedAndNonFiniteInputsFailClosed() {
       std::numeric_limits<double>::infinity();
   const cr::CreativeWorldLayoutEncodeResult nonFiniteRoofPitch =
       cr::encodeCreativeWorldLayout(badRoofPitch);
+  cr::CreativeWorldLayout badObjectScale = richLayout();
+  badObjectScale.objects[1].scale.x = 0.0;
+  const cr::CreativeWorldLayoutEncodeResult invalidObjectScale =
+      cr::encodeCreativeWorldLayout(badObjectScale);
+  cr::CreativeWorldLayout badObjectSourceBounds = richLayout();
+  badObjectSourceBounds.objects[1].assetSourceBoundsMeters.max.x =
+      badObjectSourceBounds.objects[1].assetSourceBoundsMeters.min.x;
+  const cr::CreativeWorldLayoutEncodeResult invalidObjectSourceBounds =
+      cr::encodeCreativeWorldLayout(badObjectSourceBounds);
 
   const cr::CreativeWorldLayoutEncodeResult valid =
       cr::encodeCreativeWorldLayout(richLayout());
@@ -321,6 +351,14 @@ bool malformedAndNonFiniteInputsFailClosed() {
                     nonFiniteRoofPitch.status ==
                         cr::CreativeWorldLayoutCodecStatus::NonFiniteValue,
                 "non-finite roof pitch is not encoded") &&
+         expect(!invalidObjectScale.accepted &&
+                    invalidObjectScale.status ==
+                        cr::CreativeWorldLayoutCodecStatus::InvalidRecord,
+                "non-positive catalog scale is not encoded") &&
+         expect(!invalidObjectSourceBounds.accepted &&
+                    invalidObjectSourceBounds.status ==
+                        cr::CreativeWorldLayoutCodecStatus::InvalidRecord,
+                "degenerate catalog source bounds are not encoded") &&
          expect(!truncated.accepted, "truncated source is rejected") &&
          expect(!wrongVersion.accepted &&
                     wrongVersion.status ==
@@ -514,9 +552,44 @@ bool versionSevenLevelsMigrateToFlatRoofDefaults() {
                         cr::kDefaultCreativeStructuralRoofPitchDegrees &&
                     decoded.layout.levels[0].roofOverhangCells == 0.0,
                 "version-seven level migrates to stable flat roof defaults") &&
-         expect(encoded.accepted && encoded.encodedText.starts_with(
-                                        "IGGY3D_WORLD_LAYOUT 8\n"),
+         expect(encoded.accepted &&
+                    encoded.encodedText.starts_with(
+                        "IGGY3D_WORLD_LAYOUT " +
+                        std::to_string(cr::kCreativeWorldLayoutCodecVersion) +
+                        "\n"),
                 "version-seven roof migration writes current schema");
+}
+
+bool versionEightObjectsMigrateToIdentityCatalogPose() {
+  const std::string versionEight =
+      "IGGY3D_WORLD_LAYOUT 8\n"
+      "L 8 6c6567616379 0 0 0 0 0 0 0 0 1 0 0 0\n"
+      "Y " +
+      std::to_string(static_cast<unsigned>(cr::CreativeObjectKind::Rock)) +
+      " 1 726f636b 526f636b 626f756c6465725f3031 1 "
+      "0 0 0 1 1 1 4 2 6 0\n"
+      "END\n";
+  const cr::CreativeWorldLayoutDecodeResult decoded =
+      cr::decodeCreativeWorldLayout(versionEight);
+  const cr::CreativeWorldLayoutEncodeResult encoded =
+      decoded.accepted ? cr::encodeCreativeWorldLayout(decoded.layout)
+                       : cr::CreativeWorldLayoutEncodeResult{};
+
+  return expect(decoded.accepted && decoded.layout.objects.size() == 1U &&
+                    decoded.layout.schemaVersion ==
+                        cr::kCreativeWorldLayoutSchemaVersion &&
+                    !decoded.layout.objects[0].hasAssetSourceBounds &&
+                    decoded.layout.objects[0].yawRadians == 0.0 &&
+                    decoded.layout.objects[0].scale.x == 1.0 &&
+                    decoded.layout.objects[0].scale.y == 1.0 &&
+                    decoded.layout.objects[0].scale.z == 1.0,
+                "version-eight objects migrate to identity catalog pose") &&
+         expect(encoded.accepted &&
+                    encoded.encodedText.starts_with(
+                        "IGGY3D_WORLD_LAYOUT " +
+                        std::to_string(cr::kCreativeWorldLayoutCodecVersion) +
+                        "\n"),
+                "version-eight migration writes current object fields");
 }
 
 }  // namespace
@@ -530,6 +603,7 @@ int main() {
                   versionFourBoxesMigrateToExplicitAnchorPlanes() &&
                   versionFiveRoomsMigrateToSharedLevels() &&
                   versionSixSourceMigratesWithoutFabricatedVerticalConnectors() &&
-                  versionSevenLevelsMigrateToFlatRoofDefaults();
+                  versionSevenLevelsMigrateToFlatRoofDefaults() &&
+                  versionEightObjectsMigrateToIdentityCatalogPose();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

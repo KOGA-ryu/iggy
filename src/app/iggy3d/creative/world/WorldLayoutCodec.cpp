@@ -385,7 +385,33 @@ bool validateForEncoding(const CreativeWorldLayout& layout,
                         std::isfinite(object.boundsCells.max.z) &&
                         std::isfinite(object.pointCells.x) &&
                         std::isfinite(object.pointCells.y) &&
-                        std::isfinite(object.pointCells.z);
+                        std::isfinite(object.pointCells.z) &&
+                        std::isfinite(object.assetSourceBoundsMeters.min.x) &&
+                        std::isfinite(object.assetSourceBoundsMeters.min.y) &&
+                        std::isfinite(object.assetSourceBoundsMeters.min.z) &&
+                        std::isfinite(object.assetSourceBoundsMeters.max.x) &&
+                        std::isfinite(object.assetSourceBoundsMeters.max.y) &&
+                        std::isfinite(object.assetSourceBoundsMeters.max.z) &&
+                        std::isfinite(object.yawRadians) &&
+                        std::isfinite(object.scale.x) &&
+                        std::isfinite(object.scale.y) &&
+                        std::isfinite(object.scale.z);
+    const bool validScale = object.scale.x > 0.0 && object.scale.y > 0.0 &&
+                            object.scale.z > 0.0;
+    const bool validAssetBounds =
+        !object.hasAssetSourceBounds ||
+        (object.mode == CreativeObjectLibraryPlacementMode::Point &&
+         object.assetSourceBoundsMeters.max.x >
+             object.assetSourceBoundsMeters.min.x &&
+         object.assetSourceBoundsMeters.max.y >
+             object.assetSourceBoundsMeters.min.y &&
+         object.assetSourceBoundsMeters.max.z >
+             object.assetSourceBoundsMeters.min.z);
+    const bool validBoundsModePose =
+        object.mode != CreativeObjectLibraryPlacementMode::Bounds ||
+        (!object.hasAssetSourceBounds && object.yawRadians == 0.0 &&
+         object.scale.x == 1.0 && object.scale.y == 1.0 &&
+         object.scale.z == 1.0);
     if (object.tags.size() >
         kCreativeWorldLayoutCodecMaxRecords - totalTagCount) {
       failure = {CreativeWorldLayoutCodecStatus::CapacityExceeded,
@@ -399,6 +425,7 @@ bool validateForEncoding(const CreativeWorldLayout& layout,
         enumValue(object.kind) >= enumValue(CreativeObjectKind::Count) ||
         enumValue(object.mode) >=
             enumValue(CreativeObjectLibraryPlacementMode::Count) ||
+        !validScale || !validAssetBounds || !validBoundsModePose ||
         !std::all_of(object.tags.begin(), object.tags.end(), validString)) {
       failure = {finite ? CreativeWorldLayoutCodecStatus::InvalidRecord
                         : CreativeWorldLayoutCodecStatus::NonFiniteValue,
@@ -639,7 +666,15 @@ CreativeWorldLayoutEncodeResult encodeCreativeWorldLayout(
            << object.boundsCells.max.x << ' ' << object.boundsCells.max.y << ' '
            << object.boundsCells.max.z << ' ' << object.pointCells.x << ' '
            << object.pointCells.y << ' ' << object.pointCells.z << ' '
-           << object.tags.size();
+           << (object.hasAssetSourceBounds ? 1 : 0) << ' '
+           << object.assetSourceBoundsMeters.min.x << ' '
+           << object.assetSourceBoundsMeters.min.y << ' '
+           << object.assetSourceBoundsMeters.min.z << ' '
+           << object.assetSourceBoundsMeters.max.x << ' '
+           << object.assetSourceBoundsMeters.max.y << ' '
+           << object.assetSourceBoundsMeters.max.z << ' ' << object.yawRadians
+           << ' ' << object.scale.x << ' ' << object.scale.y << ' '
+           << object.scale.z << ' ' << object.tags.size();
     for (const std::string& tag : object.tags) {
       output << ' ' << hexString(tag);
     }
@@ -1053,12 +1088,12 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
                  readOpening, result)) {
     return result;
   }
-  const auto readObject = [&](RecordReader& reader,
-                              CreativeWorldLayoutObject& object) {
+  const auto readObject = [&, codecVersion](RecordReader& reader,
+                                            CreativeWorldLayoutObject& object) {
     std::uint16_t kind = 0U;
     std::uint8_t mode = 0U;
     std::size_t tagCount = 0U;
-    const bool parsed =
+    bool parsed =
         reader.readLiteral("Y") && reader.readUnsigned(kind) &&
         kind > enumValue(CreativeObjectKind::Unknown) &&
         kind < enumValue(CreativeObjectKind::Count) &&
@@ -1074,9 +1109,27 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
         reader.readDouble(object.boundsCells.max.z) &&
         reader.readDouble(object.pointCells.x) &&
         reader.readDouble(object.pointCells.y) &&
-        reader.readDouble(object.pointCells.z) &&
-        reader.readSize(tagCount) &&
-        tagCount <= kCreativeWorldLayoutCodecMaxRecords - totalTagCount;
+        reader.readDouble(object.pointCells.z);
+    if (parsed && codecVersion >= 9U) {
+      parsed = reader.readBool(object.hasAssetSourceBounds) &&
+               reader.readDouble(object.assetSourceBoundsMeters.min.x) &&
+               reader.readDouble(object.assetSourceBoundsMeters.min.y) &&
+               reader.readDouble(object.assetSourceBoundsMeters.min.z) &&
+               reader.readDouble(object.assetSourceBoundsMeters.max.x) &&
+               reader.readDouble(object.assetSourceBoundsMeters.max.y) &&
+               reader.readDouble(object.assetSourceBoundsMeters.max.z) &&
+               reader.readDouble(object.yawRadians) &&
+               reader.readDouble(object.scale.x) &&
+               reader.readDouble(object.scale.y) &&
+               reader.readDouble(object.scale.z);
+    } else if (codecVersion < 9U) {
+      object.assetSourceBoundsMeters = {};
+      object.hasAssetSourceBounds = false;
+      object.yawRadians = 0.0;
+      object.scale = {1.0, 1.0, 1.0};
+    }
+    parsed = parsed && reader.readSize(tagCount) &&
+             tagCount <= kCreativeWorldLayoutCodecMaxRecords - totalTagCount;
     const bool finite = std::isfinite(object.boundsCells.min.x) &&
                         std::isfinite(object.boundsCells.min.y) &&
                         std::isfinite(object.boundsCells.min.z) &&
@@ -1085,12 +1138,41 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
                         std::isfinite(object.boundsCells.max.z) &&
                         std::isfinite(object.pointCells.x) &&
                         std::isfinite(object.pointCells.y) &&
-                        std::isfinite(object.pointCells.z);
-    if (!parsed || !finite) {
+                        std::isfinite(object.pointCells.z) &&
+                        std::isfinite(object.assetSourceBoundsMeters.min.x) &&
+                        std::isfinite(object.assetSourceBoundsMeters.min.y) &&
+                        std::isfinite(object.assetSourceBoundsMeters.min.z) &&
+                        std::isfinite(object.assetSourceBoundsMeters.max.x) &&
+                        std::isfinite(object.assetSourceBoundsMeters.max.y) &&
+                        std::isfinite(object.assetSourceBoundsMeters.max.z) &&
+                        std::isfinite(object.yawRadians) &&
+                        std::isfinite(object.scale.x) &&
+                        std::isfinite(object.scale.y) &&
+                        std::isfinite(object.scale.z);
+    const auto placementMode =
+        static_cast<CreativeObjectLibraryPlacementMode>(mode);
+    const bool validScale = object.scale.x > 0.0 && object.scale.y > 0.0 &&
+                            object.scale.z > 0.0;
+    const bool validAssetBounds =
+        !object.hasAssetSourceBounds ||
+        (placementMode == CreativeObjectLibraryPlacementMode::Point &&
+         object.assetSourceBoundsMeters.max.x >
+             object.assetSourceBoundsMeters.min.x &&
+         object.assetSourceBoundsMeters.max.y >
+             object.assetSourceBoundsMeters.min.y &&
+         object.assetSourceBoundsMeters.max.z >
+             object.assetSourceBoundsMeters.min.z);
+    const bool validBoundsModePose =
+        placementMode != CreativeObjectLibraryPlacementMode::Bounds ||
+        (!object.hasAssetSourceBounds && object.yawRadians == 0.0 &&
+         object.scale.x == 1.0 && object.scale.y == 1.0 &&
+         object.scale.z == 1.0);
+    if (!parsed || !finite || !validScale || !validAssetBounds ||
+        !validBoundsModePose) {
       return false;
     }
     object.kind = static_cast<CreativeObjectKind>(kind);
-    object.mode = static_cast<CreativeObjectLibraryPlacementMode>(mode);
+    object.mode = placementMode;
     totalTagCount += tagCount;
     object.tags.resize(tagCount);
     for (std::string& tag : object.tags) {

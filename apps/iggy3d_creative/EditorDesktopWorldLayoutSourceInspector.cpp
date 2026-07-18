@@ -6,6 +6,8 @@
 #include <string>
 #include <string_view>
 
+#include "app/iggy3d/creative/Geometry.hpp"
+
 #include "imgui.h"
 
 namespace iggy3d_creative_app {
@@ -440,6 +442,25 @@ void drawObjectInspector(CreativeEditorWorldLayoutState& state,
   } else {
     ImGui::SeparatorText("Point in grid cells");
     drawVec3Table("##layout_object_point", "Point", draft.pointCells);
+    if (draft.hasAssetSourceBounds) {
+      constexpr double kRadiansToDegrees =
+          57.295779513082320876798154814105;
+      constexpr double kDegreesToRadians =
+          0.01745329251994329576923690768489;
+      double yawDegrees = draft.yawRadians * kRadiansToDegrees;
+      if (ImGui::InputDouble("Yaw##layout_object_properties", &yawDegrees,
+                             15.0, 90.0, "%.1f deg")) {
+        draft.yawRadians = yawDegrees * kDegreesToRadians;
+      }
+      drawVec3Table("##layout_object_scale", "Scale", draft.scale);
+      const cr::CreativeBoundsMetrics sourceBounds =
+          cr::measureCreativeBounds(draft.assetSourceBoundsMeters);
+      if (sourceBounds.valid) {
+        ImGui::TextDisabled("Catalog bounds: %.2f x %.2f x %.2f m",
+                            sourceBounds.size.x, sourceBounds.size.y,
+                            sourceBounds.size.z);
+      }
+    }
   }
 
   bool apply = false;
