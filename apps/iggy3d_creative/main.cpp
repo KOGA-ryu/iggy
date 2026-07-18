@@ -352,8 +352,7 @@ int main(int argc, char** argv) {
     editor.desktopUi.playtestRunning = playtestPoll.running;
     if (playtestPoll.exitObserved) {
       editor.desktopUi.statusMessage =
-          iggy3d_creative_app::playtestExitStatusMessage(
-              playtestPoll.exitCode);
+          playtestOwner.monitor().lastExitMessage;
     }
     // Non-const: captured Esc release consumes the ToggleControls action from
     // the route this frame so Controls does not also open (plan DD-9 / FC-4).
@@ -460,7 +459,8 @@ int main(int argc, char** argv) {
           /*playModeActive=*/false,
           desktopCommands);
       iggy3d_creative_app::buildCreativeEditorDesktopPanels(
-          editor.desktopUi, editor, activeAppState, desktopCommands);
+          editor.desktopUi, editor, activeAppState,
+          &playtestOwner.monitor(), desktopCommands);
       if (desktopCommands.count > 0U) {
         const iggy3d_creative_app::CreativeDesktopCommandResult desktopResult =
             iggy3d_creative_app::dispatchCreativeDesktopCommands(

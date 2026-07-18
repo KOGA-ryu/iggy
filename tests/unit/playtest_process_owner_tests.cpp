@@ -61,7 +61,7 @@ bool spawnPollAndReapCleanExit(const std::string& i3dpPath,
   app::PlaytestProcessOwner owner;
   std::string reason;
   const Clock::time_point start = Clock::now();
-  if (!expect(owner.launch(planFor(i3dpPath, saveRoot, "30"), reason),
+  if (!expect(owner.launch(planFor(i3dpPath, saveRoot, "240"), reason),
               ("short child spawns: " + reason).c_str())) {
     return false;
   }
@@ -78,11 +78,45 @@ bool spawnPollAndReapCleanExit(const std::string& i3dpPath,
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
   const double elapsed = secondsSince(start);
+  const app::PlaytestMonitorState& monitor = owner.monitor();
   std::cout << "  short child: pid=" << pid << " exit=" << exitCode
-            << " observed=" << exitObserved << " in " << elapsed << "s\n";
+            << " observed=" << exitObserved << " in " << elapsed
+            << "s events=" << monitor.totalEventCount << "\n";
+  // Protocol assertions: session_started first, heartbeats present,
+  // session_ended last with the frame-limit reason, no wire noise.
+  bool sawStarted = false;
+  bool sawHeartbeat = false;
+  bool startedFirst = false;
+  for (const app::PlaytestEvent& event : monitor.events) {
+    if (event.kind == app::kPlaytestEventKindSessionStarted) {
+      sawStarted = true;
+      startedFirst = &event == &monitor.events.front() ||
+                     monitor.totalEventCount >
+                         monitor.events.size();  // ring may have evicted it
+    } else if (event.kind == app::kPlaytestEventKindHeartbeat) {
+      sawHeartbeat = true;
+    }
+  }
+  // The ring may evict mid-run events; the monitor keeps sticky heartbeat
+  // facts on receipt, which is the durable proof.
+  sawHeartbeat = sawHeartbeat || monitor.lastHeartbeatTick >= 60U;
+  const bool ringEvicted = monitor.totalEventCount > monitor.events.size();
   return expect(pid != 0U, "short child has a pid") &&
          expect(exitObserved, "poll observes the natural exit") &&
-         expect(exitCode == 0, "30-frame child exits 0") &&
+         expect(exitCode == 0, "240-frame child exits 0") &&
+         expect(sawStarted || ringEvicted,
+                "session_started received (or evicted by volume)") &&
+         expect(startedFirst || ringEvicted, "session_started arrived first") &&
+         expect(sawHeartbeat, "heartbeat received") &&
+         expect(!monitor.events.empty() &&
+                    monitor.events.back().kind ==
+                        app::kPlaytestEventKindSessionEnded &&
+                    monitor.events.back().field("reason") ==
+                        "frame_limit_reached",
+                "session_ended last with frame_limit_reached") &&
+         expect(monitor.malformedLineCount == 0U &&
+                    monitor.nonProtocolLineCount == 0U,
+                "clean wire: no malformed or foreign stdout lines") &&
          expect(!owner.running(), "owner clear after exit") &&
          expect(owner.childPid() == 0U, "handle cleared after reap") &&
          expect(waitForPidGone(pid, 2.0), "no zombie: pid is gone");
@@ -141,6 +175,58 @@ bool replaceRunningChildThenShutdown(const std::string& i3dpPath,
                 "second child is dead and reaped");
 }
 
+// ---- 3. the pipe-full kill-replace deadlock case -------------------------
+// A child flooding stdout blocks in write() once the pipe fills; a blocking
+// wait without draining would deadlock the reap. The owner's drain-before-
+// wait law must make kill-and-replace complete promptly anyway.
+
+bool pipeFullKillReplaceDoesNotDeadlock(const std::string& i3dpPath,
+                                        const std::string& saveRoot) {
+  app::PlaytestProcessOwner owner;
+  std::string reason;
+  app::PlaytestLaunchPlan flood;
+  flood.valid = true;
+  flood.reasonCode = "test_flood_plan";
+  flood.binaryPath = "/bin/sh";
+  flood.argv = {"/bin/sh", "-c",
+                "i=0; while [ $i -lt 200000 ]; do echo IGGY3DP1 heartbeat "
+                "tick=$i; i=$((i+1)); done; sleep 600"};
+  if (!expect(owner.launch(flood, reason),
+              ("flood child spawns: " + reason).c_str())) {
+    return false;
+  }
+  const std::uint64_t floodPid = owner.childPid();
+  // Do NOT drain: let the writer fill the pipe and block.
+  std::this_thread::sleep_for(std::chrono::milliseconds(400));
+  const Clock::time_point stopStart = Clock::now();
+  owner.stopRunning();  // kill-and-replace path; must drain before waits
+  const double stopSeconds = secondsSince(stopStart);
+  const app::PlaytestMonitorState& monitor = owner.monitor();
+  std::cout << "  flood child: pid=" << floodPid << " stopped in "
+            << stopSeconds << "s drained events=" << monitor.totalEventCount
+            << "\n";
+  if (!expect(stopSeconds < 3.0,
+              "pipe-full kill-replace completes promptly (no deadlock)") ||
+      !expect(waitForPidGone(floodPid, 2.0), "flood child reaped") ||
+      !expect(monitor.totalEventCount > 1000U,
+              "the drained backlog was actually processed")) {
+    return false;
+  }
+  // Replace with a real i3dp child, then shutdown-reap it.
+  if (!expect(owner.launch(planFor(i3dpPath, saveRoot, "100000"), reason),
+              ("replacement after flood spawns: " + reason).c_str())) {
+    return false;
+  }
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  const std::uint64_t replacementPid = owner.childPid();
+  const bool replacementRuns = owner.running();
+  owner.shutdown();
+  return expect(replacementRuns && replacementPid != 0U,
+                "replacement child ran after the flood") &&
+         expect(waitForPidGone(replacementPid, 2.0),
+                "replacement reaped on shutdown");
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -155,7 +241,8 @@ int main(int argc, char** argv) {
     return 1;
   }
   const bool ok = spawnPollAndReapCleanExit(i3dpPath, saveRoot) &&
-                  replaceRunningChildThenShutdown(i3dpPath, saveRoot);
+                  replaceRunningChildThenShutdown(i3dpPath, saveRoot) &&
+                  pipeFullKillReplaceDoesNotDeadlock(i3dpPath, saveRoot);
   if (ok) {
     std::cout << "playtest_process_owner_tests passed\n";
   }
