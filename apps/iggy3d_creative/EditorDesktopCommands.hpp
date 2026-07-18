@@ -138,12 +138,17 @@ struct CreativeDesktopCommandResult {
   std::string message;
 };
 
+class PlaytestProcessControl;
+
 struct CreativeDesktopCommandContext {
   iggy3d::creative::CreativeAppState& appState;
   CreativeEditorState& editor;
   std::filesystem::path saveRoot;
   std::string* activeSaveId = nullptr;  // Save As rebinds the active id here.
   const iggy3d::StaticMeshAssetCatalog* staticMeshAssetCatalog = nullptr;
+  // Narrow seam to the app-shell playtest child owner; null in headless
+  // dispatch tests (Play then falls back to fire-and-forget spawning).
+  PlaytestProcessControl* playtestControl = nullptr;
 };
 
 // Applies every command in the frame to the existing kernels (New/Open/Save/

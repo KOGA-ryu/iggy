@@ -375,6 +375,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorMovingPlatformPreview.cpp
   apps/iggy3d_creative/EditorPersistence.cpp
   apps/iggy3d_creative/EditorPlaytestLaunch.cpp
+  apps/iggy3d_creative/EditorPlaytestProcess.cpp
   apps/iggy3d_creative/EditorPickFrame.cpp
   apps/iggy3d_creative/EditorPicking.cpp
   apps/iggy3d_creative/EditorOverlayHud.cpp

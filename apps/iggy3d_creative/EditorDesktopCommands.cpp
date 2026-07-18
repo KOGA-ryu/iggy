@@ -15,6 +15,8 @@
 #include "EditorEdits.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorPlaytestLaunch.hpp"
+#include "EditorPlaytestProcess.hpp"
+#include "app/iggy3d/creative/play/PlayPreparation.hpp"
 #include "EditorFrame.hpp"
 #include "EditorLogicLinks.hpp"
 #include "EditorMovingPlatformPreview.hpp"
@@ -1470,11 +1472,29 @@ void dispatchOne(const CreativeDesktopCommand& command,
       break;
     }
     case CreativeDesktopCommandId::Play: {
-      // Play = launch the i3dp playtest process: finalize live gestures,
-      // VALIDATE the document, write the immutable snapshot, spawn i3dp on
-      // it, and stay in the editor. Invalid documents never spawn.
+      // Play = play the LATEST state, always: finalize live gestures,
+      // VALIDATE the document (a refusal must not disturb a running
+      // playtest), then kill + reap any running child, THEN write the fresh
+      // snapshot and spawn the new i3dp on it. Invalid documents never
+      // spawn and never kill.
       finalizeCreativeEditorContinuousGestures(
           appState, editor, "creative_continuous_gesture_playtest_launch");
+      iggy3d::creative::CreativePlayPreparationRequest validationRequest;
+      validationRequest.document = &appState.facade.document();
+      validationRequest.staticMeshAssetCatalog =
+          context.staticMeshAssetCatalog;
+      const iggy3d::creative::CreativePlayPreparationResult validation =
+          iggy3d::creative::prepareCreativePlay(validationRequest);
+      if (!validation.accepted) {
+        result.message = std::string("playtest refused: playtest_refused_") +
+                         std::string(toString(validation.status));
+        break;
+      }
+      if (context.playtestControl != nullptr &&
+          decidePlaytestLaunchAction(context.playtestControl->running()) ==
+              PlaytestLaunchAction::ReplaceRunning) {
+        context.playtestControl->stopRunning();
+      }
       const char* basePath = SDL_GetBasePath();
       const PlaytestLaunchPreparation preparation = preparePlaytestLaunch(
           appState.facade.document(), context.staticMeshAssetCatalog,
@@ -1487,7 +1507,9 @@ void dispatchOne(const CreativeDesktopCommand& command,
       }
       std::string spawnReason;
       const bool spawned =
-          spawnPlaytestProcess(preparation.plan, spawnReason);
+          context.playtestControl != nullptr
+              ? context.playtestControl->launch(preparation.plan, spawnReason)
+              : spawnPlaytestProcess(preparation.plan, spawnReason);
       result.accepted = spawned;
       result.message = spawned ? "playtest launched"
                                : "playtest launch failed: " + spawnReason;
