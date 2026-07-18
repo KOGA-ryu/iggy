@@ -53,6 +53,24 @@ enum class CreativeEditorWorldLayoutAssetCategory : std::uint8_t {
   Count,
 };
 
+enum class CreativeEditorWorldLayoutCatalogSnapMode : std::uint8_t {
+  Grid,
+  Floor,
+  Wall,
+  Count,
+};
+
+enum class CreativeEditorWorldLayoutCatalogSnapHostKind : std::uint8_t {
+  None,
+  LevelFloor,
+  ExplicitWall,
+  RoomEdge,
+  Count,
+};
+
+inline constexpr double
+    kCreativeEditorWorldLayoutCatalogWallSnapToleranceCells = 1.25;
+
 enum class CreativeEditorWorldLayoutPaletteCategory : std::uint8_t {
   Structure,
   Terrain,
@@ -543,6 +561,8 @@ struct CreativeEditorWorldLayoutCatalogPlacementState {
   std::string label;
   std::string categoryId;
   cr::CreativeBounds sourceBoundsMeters;
+  CreativeEditorWorldLayoutCatalogSnapMode snapMode =
+      CreativeEditorWorldLayoutCatalogSnapMode::Grid;
   double elevationCells = 0.0;
   double yawDegrees = 0.0;
   cr::CreativeVec3 scale{1.0, 1.0, 1.0};
@@ -558,6 +578,15 @@ struct CreativeEditorWorldLayoutCatalogPlacementPlan {
   bool accepted = false;
   cr::CreativeWorldLayoutObject object;
   CreativeEditorWorldLayoutObjectFootprint footprint;
+  CreativeEditorWorldLayoutCatalogSnapMode snapMode =
+      CreativeEditorWorldLayoutCatalogSnapMode::Grid;
+  CreativeEditorWorldLayoutCatalogSnapHostKind snapHostKind =
+      CreativeEditorWorldLayoutCatalogSnapHostKind::None;
+  std::size_t snapHostIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  cr::CreativeWorldLayoutRoomEdge snapRoomEdge =
+      cr::CreativeWorldLayoutRoomEdge::Count;
+  double snapDistanceCells = 0.0;
+  std::string message = "Choose a placement target";
   std::string reasonCode =
       "creative_editor_world_layout_catalog_placement_not_requested";
 };
@@ -786,9 +815,13 @@ struct CreativeEditorWorldLayoutApplyReceipt {
 creativeEditorWorldLayoutPaletteEntries() noexcept;
 [[nodiscard]] const char* creativeEditorWorldLayoutAssetCategoryLabel(
     CreativeEditorWorldLayoutAssetCategory category) noexcept;
+[[nodiscard]] const char* creativeEditorWorldLayoutCatalogSnapModeLabel(
+    CreativeEditorWorldLayoutCatalogSnapMode mode) noexcept;
 [[nodiscard]] CreativeEditorWorldLayoutAssetCategory
 classifyCreativeEditorWorldLayoutAsset(
     const cr::CreativeCatalogEntry& entry) noexcept;
+[[nodiscard]] bool creativeEditorWorldLayoutCatalogAssetSupportsWallSnap(
+    std::string_view categoryId) noexcept;
 [[nodiscard]] bool creativeEditorWorldLayoutAssetMatchesQuery(
     const cr::CreativeCatalogEntry& entry, std::string_view query);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt

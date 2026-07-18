@@ -894,12 +894,13 @@ void drawCatalogPlacementPreview(
                             ? color({0.20F, 0.82F, 0.38F, 1.0F})
                             : color({0.92F, 0.29F, 0.24F, 1.0F});
   if (!plan.accepted || !plan.footprint.valid) {
-    const ImVec2 center =
-        toScreen(transform, std::round(hovered.x), std::round(hovered.z));
+    const ImVec2 center = toScreen(transform, hovered.x, hovered.z);
     drawList.AddLine({center.x - 8.0F, center.y - 8.0F},
                      {center.x + 8.0F, center.y + 8.0F}, outline, 3.0F);
     drawList.AddLine({center.x - 8.0F, center.y + 8.0F},
                      {center.x + 8.0F, center.y - 8.0F}, outline, 3.0F);
+    drawList.AddText({center.x + 12.0F, center.y + 10.0F}, outline,
+                     plan.message.c_str());
     return;
   }
   std::array<ImVec2, 4U> points;
@@ -911,8 +912,18 @@ void drawCatalogPlacementPreview(
                                color({0.20F, 0.82F, 0.38F, 0.22F}));
   drawList.AddPolyline(points.data(), static_cast<int>(points.size()), outline,
                        ImDrawFlags_Closed, 2.5F);
+  const ImVec2 pivot = toScreen(transform, plan.object.pointCells.x,
+                                plan.object.pointCells.z);
+  if (plan.snapMode == CreativeEditorWorldLayoutCatalogSnapMode::Wall &&
+      plan.snapDistanceCells > 0.01) {
+    const ImVec2 pointer = toScreen(transform, hovered.x, hovered.z);
+    drawList.AddLine(pointer, pivot, outline, 1.5F);
+  }
+  drawList.AddCircleFilled(pivot, 3.5F, outline);
+  const std::string previewLabel =
+      state.catalogPlacement.label + " | " + plan.message;
   drawList.AddText({points.front().x + 6.0F, points.front().y + 6.0F}, outline,
-                   state.catalogPlacement.label.c_str());
+                   previewLabel.c_str());
 }
 
 void queueTool(CreativeDesktopCommandFrame& commands,
@@ -1220,9 +1231,49 @@ void drawWorldLayoutAssetPlacementControls(
   }
   ImGui::SeparatorText("Placement");
   ImGui::TextUnformatted(placement.label.c_str());
-  ImGui::InputDouble("Elevation##layout_asset", &placement.elevationCells,
+  ImGui::TextUnformatted("Snap");
+  constexpr std::array kSnapModes{
+      CreativeEditorWorldLayoutCatalogSnapMode::Grid,
+      CreativeEditorWorldLayoutCatalogSnapMode::Floor,
+      CreativeEditorWorldLayoutCatalogSnapMode::Wall,
+  };
+  for (std::size_t index = 0U; index < kSnapModes.size(); ++index) {
+    const CreativeEditorWorldLayoutCatalogSnapMode mode = kSnapModes[index];
+    if (index > 0U) {
+      ImGui::SameLine();
+    }
+    const bool wallUnsupported =
+        mode == CreativeEditorWorldLayoutCatalogSnapMode::Wall &&
+        !creativeEditorWorldLayoutCatalogAssetSupportsWallSnap(
+            placement.categoryId);
+    ImGui::BeginDisabled(wallUnsupported);
+    const bool selected = placement.snapMode == mode;
+    if (ImGui::RadioButton(creativeEditorWorldLayoutCatalogSnapModeLabel(mode),
+                           selected) &&
+        !selected) {
+      placement.snapMode = mode;
+    }
+    ImGui::EndDisabled();
+    if (wallUnsupported &&
+        ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+      const bool hostedOpening = placement.categoryId == "door" ||
+                                 placement.categoryId == "window";
+      ImGui::SetTooltip("%s", hostedOpening
+                                  ? "Use the Door or Window tool"
+                                  : "Architecture assets only");
+    }
+  }
+  ImGui::BeginDisabled(
+      placement.snapMode != CreativeEditorWorldLayoutCatalogSnapMode::Grid);
+  ImGui::InputDouble("Grid elevation##layout_asset",
+                     &placement.elevationCells,
                      0.25, 1.0, "%.3f");
-  ImGui::InputDouble("Yaw##layout_asset", &placement.yawDegrees, 15.0, 90.0,
+  ImGui::EndDisabled();
+  const char* yawLabel =
+      placement.snapMode == CreativeEditorWorldLayoutCatalogSnapMode::Wall
+          ? "Yaw offset##layout_asset"
+          : "Yaw##layout_asset";
+  ImGui::InputDouble(yawLabel, &placement.yawDegrees, 15.0, 90.0,
                      "%.1f deg");
   ImGui::InputDouble("Scale X##layout_asset", &placement.scale.x, 0.1, 1.0,
                      "%.3f");

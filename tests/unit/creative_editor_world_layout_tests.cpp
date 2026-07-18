@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <iostream>
 #include <limits>
+#include <numbers>
 #include <span>
 #include <string>
 #include <vector>
@@ -386,6 +387,249 @@ bool catalogPlacementSharesOneExactTwoAndThreeDimensionalRecipe() {
                         state, aabbOnlyPoint, grid) ==
                         cr::kInvalidCreativeWorldLayoutIndex,
                 "rotated hit testing uses the exact footprint, not its AABB");
+}
+
+bool catalogFloorSnapPlacesScaledSourceBottomOnTheFinishedFloor() {
+  cr::CreativeCatalogEntry entry;
+  entry.category = cr::CreativeCatalogEntryCategory::Asset;
+  entry.label = "Asymmetric Cabinet";
+  entry.assetAuthoringMetadata.categoryId = "structure";
+  entry.hotbarEntry.objectKind = cr::CreativeObjectKind::Prop;
+  static_cast<void>(cr::setCreativeHotbarAsset(
+      entry.hotbarEntry, "architecture/asymmetric_cabinet",
+      {{-0.75, -0.60, -0.25}, {1.25, 1.40, 0.75}}));
+
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "floor_snap_layout");
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "building_1";
+  building.name = "Building";
+  state.source.buildings.push_back(building);
+  cr::CreativeWorldLayoutLevel level;
+  level.buildingIndex = 0U;
+  level.stableKey = "level_1";
+  level.name = "Upper Floor";
+  level.floorTopLayer = 2.5;
+  state.source.levels.push_back(level);
+  cr::CreativeWorldLayoutRoom room;
+  room.buildingIndex = 0U;
+  room.levelIndex = 0U;
+  room.stableKey = "room_1";
+  room.name = "Room";
+  room.footprint = {{0, -4}, {8, 4}};
+  state.source.rooms.push_back(room);
+  state.activeLevelIndex = 0U;
+
+  const auto selected =
+      app::selectCreativeEditorWorldLayoutCatalogAsset(state, entry);
+  state.catalogPlacement.snapMode =
+      app::CreativeEditorWorldLayoutCatalogSnapMode::Floor;
+  state.catalogPlacement.elevationCells = -99.0;
+  state.catalogPlacement.yawDegrees = 30.0;
+  state.catalogPlacement.scale = {1.5, 1.75, 0.65};
+  cr::CreativeGridSettings grid;
+  grid.origin = {7.0, -3.0, 11.0};
+  grid.cellSizeMeters = 0.4;
+  const app::CreativeEditorWorldLayoutCatalogPlacementPlan preview =
+      app::planCreativeEditorWorldLayoutCatalogPlacement(state, {3.2, -1.7},
+                                                         grid);
+  const auto placed = app::applyCreativeEditorWorldLayoutPoint(
+      state, {3.2, -1.7}, grid);
+
+  cr::CreativeDocument document = cr::CreativeDocument::create("Floor Snap");
+  static_cast<void>(document.assignId(8103U));
+  static_cast<void>(document.setGridSettings(grid));
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, state.source);
+  const auto objectRecipe = std::find_if(
+      compiled.plan.objectRecipes.begin(), compiled.plan.objectRecipes.end(),
+      [](const cr::CreativeRecipePlan& recipe) {
+        return recipe.kind == cr::CreativeRecipeKind::ObjectLibrary;
+      });
+  const cr::CreativeDocumentCreateRequest* request =
+      compiled.receipt.accepted &&
+              objectRecipe != compiled.plan.objectRecipes.end() &&
+              objectRecipe->objects.size() == 1U
+          ? &objectRecipe->objects[0].createRequest
+          : nullptr;
+  const cr::CreativeTransformedBounds generated =
+      request == nullptr
+          ? cr::CreativeTransformedBounds{}
+          : cr::resolveCreativeTransformedBounds(request->bounds,
+                                                 request->transform);
+  const double expectedElevation =
+      2.5 - (-0.60 * 1.75) / grid.cellSizeMeters;
+  const double finishedFloorWorldY =
+      grid.origin.y + 2.5 * grid.cellSizeMeters;
+
+  app::CreativeEditorWorldLayoutState missingLevel = state;
+  missingLevel.activeLevelIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  const app::CreativeEditorWorldLayoutCatalogPlacementPlan rejected =
+      app::planCreativeEditorWorldLayoutCatalogPlacement(
+          missingLevel, {3.2, -1.7}, grid);
+
+  return expect(selected.accepted && preview.accepted && placed.accepted &&
+                    preview.snapMode ==
+                        app::CreativeEditorWorldLayoutCatalogSnapMode::Floor &&
+                    preview.snapHostKind ==
+                        app::CreativeEditorWorldLayoutCatalogSnapHostKind::
+                            LevelFloor &&
+                    preview.snapHostIndex == 0U &&
+                    near(preview.object.pointCells.x, 3.0) &&
+                    near(preview.object.pointCells.y, expectedElevation) &&
+                    near(preview.object.pointCells.z, -2.0) &&
+                    near(preview.object.yawRadians,
+                         std::numbers::pi / 6.0),
+                "floor snap derives one finite pose from active-level truth") &&
+         expect(request != nullptr && generated.valid &&
+                    near(generated.worldBounds.min.y, finishedFloorWorldY) &&
+                    near(state.source.objects[0].pointCells.y,
+                         preview.object.pointCells.y),
+                "preview and generated geometry share the exact scaled bottom contact") &&
+         expect(!rejected.accepted &&
+                    rejected.reasonCode ==
+                        "creative_editor_world_layout_catalog_floor_missing" &&
+                    rejected.message == "Select a level for floor snap",
+                "floor snap fails closed without an active level");
+}
+
+bool catalogWallSnapUsesCanonicalActiveLevelHosts() {
+  const auto catalogAsset = [](std::string categoryId,
+                               std::string assetId) {
+    cr::CreativeCatalogEntry entry;
+    entry.category = cr::CreativeCatalogEntryCategory::Asset;
+    entry.label = "Wall Module";
+    entry.assetAuthoringMetadata.categoryId = std::move(categoryId);
+    entry.hotbarEntry.objectKind = cr::CreativeObjectKind::Prop;
+    static_cast<void>(cr::setCreativeHotbarAsset(
+        entry.hotbarEntry, assetId,
+        {{-1.0, -0.5, -0.2}, {2.0, 1.0, 0.2}}));
+    return entry;
+  };
+
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "wall_snap_layout");
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "building_1";
+  building.name = "Building";
+  state.source.buildings.push_back(building);
+  cr::CreativeWorldLayoutLevel ground;
+  ground.buildingIndex = 0U;
+  ground.stableKey = "level_ground";
+  ground.name = "Ground";
+  ground.floorTopLayer = 1.5;
+  state.source.levels.push_back(ground);
+  cr::CreativeWorldLayoutLevel upper = ground;
+  upper.stableKey = "level_upper";
+  upper.name = "Upper";
+  upper.floorTopLayer = 4.5;
+  state.source.levels.push_back(upper);
+  state.activeLevelIndex = 0U;
+
+  cr::CreativeWorldLayoutWall wrongLevel;
+  wrongLevel.buildingIndex = 0U;
+  wrongLevel.stableKey = "wall_upper";
+  wrongLevel.name = "Upper Wall";
+  wrongLevel.start = {0, 3};
+  wrongLevel.end = {4, 3};
+  wrongLevel.baseLayer = 4.5;
+  state.source.walls.push_back(wrongLevel);
+  cr::CreativeWorldLayoutWall diagonal = wrongLevel;
+  diagonal.stableKey = "wall_ground";
+  diagonal.name = "Ground Diagonal";
+  diagonal.start = {4, 4};
+  diagonal.end = {0, 0};
+  diagonal.baseLayer = 1.5;
+  state.source.walls.push_back(diagonal);
+
+  const cr::CreativeCatalogEntry wallAsset =
+      catalogAsset("wall", "architecture/wall_module");
+  static_cast<void>(
+      app::selectCreativeEditorWorldLayoutCatalogAsset(state, wallAsset));
+  state.catalogPlacement.snapMode =
+      app::CreativeEditorWorldLayoutCatalogSnapMode::Wall;
+  state.catalogPlacement.yawDegrees = 15.0;
+  state.catalogPlacement.scale = {2.0, 2.0, 0.5};
+  cr::CreativeGridSettings grid;
+  grid.cellSizeMeters = 0.5;
+  const app::CreativeEditorWorldLayoutCatalogPlacementPlan diagonalPlan =
+      app::planCreativeEditorWorldLayoutCatalogPlacement(state, {2.0, 3.0},
+                                                         grid);
+  const app::CreativeEditorWorldLayoutCatalogPlacementPlan noHost =
+      app::planCreativeEditorWorldLayoutCatalogPlacement(state, {20.0, 20.0},
+                                                         grid);
+
+  app::CreativeEditorWorldLayoutState rooms;
+  app::resetCreativeEditorWorldLayout(rooms, "room_wall_snap_layout");
+  rooms.source.buildings.push_back(building);
+  rooms.source.levels.push_back(ground);
+  rooms.activeLevelIndex = 0U;
+  cr::CreativeWorldLayoutRoom firstRoom;
+  firstRoom.buildingIndex = 0U;
+  firstRoom.levelIndex = 0U;
+  firstRoom.stableKey = "room_first";
+  firstRoom.name = "First";
+  firstRoom.footprint = {{0, 0}, {4, 4}};
+  rooms.source.rooms.push_back(firstRoom);
+  cr::CreativeWorldLayoutRoom secondRoom = firstRoom;
+  secondRoom.stableKey = "room_second";
+  secondRoom.name = "Second";
+  secondRoom.footprint = {{4, 0}, {8, 4}};
+  rooms.source.rooms.push_back(secondRoom);
+  static_cast<void>(
+      app::selectCreativeEditorWorldLayoutCatalogAsset(rooms, wallAsset));
+  rooms.catalogPlacement.snapMode =
+      app::CreativeEditorWorldLayoutCatalogSnapMode::Wall;
+  const app::CreativeEditorWorldLayoutCatalogPlacementPlan sharedEdge =
+      app::planCreativeEditorWorldLayoutCatalogPlacement(rooms, {4.0, 2.0},
+                                                         grid);
+
+  app::CreativeEditorWorldLayoutState openingAsset = rooms;
+  const cr::CreativeCatalogEntry doorAsset =
+      catalogAsset("door", "architecture/door_leaf");
+  static_cast<void>(app::selectCreativeEditorWorldLayoutCatalogAsset(
+      openingAsset, doorAsset));
+  openingAsset.catalogPlacement.snapMode =
+      app::CreativeEditorWorldLayoutCatalogSnapMode::Wall;
+  const app::CreativeEditorWorldLayoutCatalogPlacementPlan doorPlan =
+      app::planCreativeEditorWorldLayoutCatalogPlacement(
+          openingAsset, {4.0, 2.0}, grid);
+
+  return expect(diagonalPlan.accepted &&
+                    diagonalPlan.snapHostKind ==
+                        app::CreativeEditorWorldLayoutCatalogSnapHostKind::
+                            ExplicitWall &&
+                    diagonalPlan.snapHostIndex == 1U &&
+                    near(diagonalPlan.object.pointCells.x, 2.5) &&
+                    near(diagonalPlan.object.pointCells.y, 3.5) &&
+                    near(diagonalPlan.object.pointCells.z, 2.5) &&
+                    near(diagonalPlan.object.yawRadians,
+                         -std::numbers::pi / 6.0) &&
+                    near(diagonalPlan.snapDistanceCells,
+                         std::sqrt(0.5)),
+                "wall snap filters other levels and canonicalizes a reversed diagonal") &&
+         expect(!noHost.accepted &&
+                    noHost.reasonCode ==
+                        "creative_editor_world_layout_catalog_wall_missing",
+                "wall snap rejects pointers outside its bounded host radius") &&
+         expect(sharedEdge.accepted &&
+                    sharedEdge.snapHostKind ==
+                        app::CreativeEditorWorldLayoutCatalogSnapHostKind::
+                            RoomEdge &&
+                    sharedEdge.snapHostIndex == 0U &&
+                    sharedEdge.snapRoomEdge ==
+                        cr::CreativeWorldLayoutRoomEdge::East &&
+                    near(sharedEdge.object.pointCells.x, 4.0) &&
+                    near(sharedEdge.object.pointCells.z, 2.0) &&
+                    near(sharedEdge.object.yawRadians,
+                         -std::numbers::pi * 0.5),
+                "shared room walls resolve once in stable room-edge order") &&
+         expect(!doorPlan.accepted &&
+                    doorPlan.reasonCode ==
+                        "creative_editor_world_layout_catalog_wall_opening_requires_tool" &&
+                    doorPlan.message ==
+                        "Use the Door or Window tool to cut an opening",
+                "catalog door assets cannot pretend to cut hosted openings");
 }
 
 bool openingsSnapInsideWallsAndRejectOverlap() {
@@ -3120,6 +3364,8 @@ int main() {
       categorizedPaletteOwnsEveryBindableSemanticAction() &&
       terrainAndObjectPaletteToolsCreateCompilableSymbols() &&
       catalogPlacementSharesOneExactTwoAndThreeDimensionalRecipe() &&
+      catalogFloorSnapPlacesScaledSourceBottomOnTheFinishedFloor() &&
+      catalogWallSnapUsesCanonicalActiveLevelHosts() &&
       openingsSnapInsideWallsAndRejectOverlap() &&
       deletingWallCascadesItsOpenings() &&
       roomGestureHostsOpeningsAndSupportsResize() &&

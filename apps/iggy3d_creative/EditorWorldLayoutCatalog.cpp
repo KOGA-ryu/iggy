@@ -71,6 +71,238 @@ constexpr std::array kAssetCategoryRules{
                       CreativeEditorWorldLayoutAssetCategory::Gameplay},
 };
 
+constexpr std::array<std::string_view, 2U> kHostedOpeningCategoryIds{
+    "door", "window"};
+
+constexpr double kCatalogSnapTieEpsilon = 1.0e-9;
+
+struct CatalogWallSnapHost {
+  bool valid = false;
+  CreativeEditorWorldLayoutCatalogSnapHostKind kind =
+      CreativeEditorWorldLayoutCatalogSnapHostKind::None;
+  std::size_t index = cr::kInvalidCreativeWorldLayoutIndex;
+  cr::CreativeWorldLayoutRoomEdge roomEdge =
+      cr::CreativeWorldLayoutRoomEdge::Count;
+  CreativeEditorWorldLayoutPoint start;
+  CreativeEditorWorldLayoutPoint end;
+  CreativeEditorWorldLayoutPoint projected;
+  double baseLayer = 0.0;
+  double distanceCells = std::numeric_limits<double>::infinity();
+};
+
+struct CatalogSnapResolution {
+  bool accepted = false;
+  CreativeEditorWorldLayoutPoint point;
+  double elevationCells = 0.0;
+  double yawRadians = 0.0;
+  CreativeEditorWorldLayoutCatalogSnapHostKind hostKind =
+      CreativeEditorWorldLayoutCatalogSnapHostKind::None;
+  std::size_t hostIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  cr::CreativeWorldLayoutRoomEdge roomEdge =
+      cr::CreativeWorldLayoutRoomEdge::Count;
+  double distanceCells = 0.0;
+  std::string_view message = "Choose a placement target";
+  std::string_view reasonCode =
+      "creative_editor_world_layout_catalog_snap_not_requested";
+};
+
+[[nodiscard]] CreativeEditorWorldLayoutAssetCategory classifyCategoryId(
+    std::string_view categoryId) noexcept {
+  const auto found = std::find_if(
+      kAssetCategoryRules.begin(), kAssetCategoryRules.end(),
+      [categoryId](const AssetCategoryRule& rule) {
+        return rule.categoryId == categoryId;
+      });
+  return found == kAssetCategoryRules.end()
+             ? CreativeEditorWorldLayoutAssetCategory::Props
+             : found->category;
+}
+
+[[nodiscard]] bool hostedOpeningCategory(
+    std::string_view categoryId) noexcept {
+  return std::find(kHostedOpeningCategoryIds.begin(),
+                   kHostedOpeningCategoryIds.end(),
+                   categoryId) != kHostedOpeningCategoryIds.end();
+}
+
+[[nodiscard]] bool validSnapMode(
+    CreativeEditorWorldLayoutCatalogSnapMode mode) noexcept {
+  return mode < CreativeEditorWorldLayoutCatalogSnapMode::Count;
+}
+
+[[nodiscard]] std::pair<CreativeEditorWorldLayoutPoint,
+                        CreativeEditorWorldLayoutPoint>
+roomEdgeSegment(const cr::CreativeWorldLayoutRoom& room,
+                cr::CreativeWorldLayoutRoomEdge edge) noexcept {
+  switch (edge) {
+    case cr::CreativeWorldLayoutRoomEdge::North:
+      return {CreativeEditorWorldLayoutPoint{
+                  static_cast<double>(room.footprint.minimum.x),
+                  static_cast<double>(room.footprint.minimum.z)},
+              CreativeEditorWorldLayoutPoint{
+                  static_cast<double>(room.footprint.maximum.x),
+                  static_cast<double>(room.footprint.minimum.z)}};
+    case cr::CreativeWorldLayoutRoomEdge::East:
+      return {CreativeEditorWorldLayoutPoint{
+                  static_cast<double>(room.footprint.maximum.x),
+                  static_cast<double>(room.footprint.minimum.z)},
+              CreativeEditorWorldLayoutPoint{
+                  static_cast<double>(room.footprint.maximum.x),
+                  static_cast<double>(room.footprint.maximum.z)}};
+    case cr::CreativeWorldLayoutRoomEdge::South:
+      return {CreativeEditorWorldLayoutPoint{
+                  static_cast<double>(room.footprint.minimum.x),
+                  static_cast<double>(room.footprint.maximum.z)},
+              CreativeEditorWorldLayoutPoint{
+                  static_cast<double>(room.footprint.maximum.x),
+                  static_cast<double>(room.footprint.maximum.z)}};
+    case cr::CreativeWorldLayoutRoomEdge::West:
+      return {CreativeEditorWorldLayoutPoint{
+                  static_cast<double>(room.footprint.minimum.x),
+                  static_cast<double>(room.footprint.minimum.z)},
+              CreativeEditorWorldLayoutPoint{
+                  static_cast<double>(room.footprint.minimum.x),
+                  static_cast<double>(room.footprint.maximum.z)}};
+    case cr::CreativeWorldLayoutRoomEdge::Count:
+      break;
+  }
+  return {};
+}
+
+void considerWallSnapHost(
+    CatalogWallSnapHost& best, CreativeEditorWorldLayoutPoint pointer,
+    CreativeEditorWorldLayoutPoint start,
+    CreativeEditorWorldLayoutPoint end, double baseLayer,
+    CreativeEditorWorldLayoutCatalogSnapHostKind kind, std::size_t index,
+    cr::CreativeWorldLayoutRoomEdge roomEdge) noexcept {
+  const double dx = end.x - start.x;
+  const double dz = end.z - start.z;
+  const double lengthSquared = dx * dx + dz * dz;
+  if (!detail::finiteWorldLayoutPoint(pointer) ||
+      !detail::finiteWorldLayoutPoint(start) ||
+      !detail::finiteWorldLayoutPoint(end) || !std::isfinite(baseLayer) ||
+      !std::isfinite(lengthSquared) || lengthSquared <= 0.0) {
+    return;
+  }
+  const double projection =
+      ((pointer.x - start.x) * dx + (pointer.z - start.z) * dz) /
+      lengthSquared;
+  if (!std::isfinite(projection)) {
+    return;
+  }
+  const double t = std::clamp(projection, 0.0, 1.0);
+  const CreativeEditorWorldLayoutPoint projected{start.x + t * dx,
+                                                  start.z + t * dz};
+  const double distance =
+      std::hypot(pointer.x - projected.x, pointer.z - projected.z);
+  if (!std::isfinite(distance) ||
+      distance >
+          kCreativeEditorWorldLayoutCatalogWallSnapToleranceCells ||
+      distance >= best.distanceCells - kCatalogSnapTieEpsilon) {
+    return;
+  }
+  best.valid = true;
+  best.kind = kind;
+  best.index = index;
+  best.roomEdge = roomEdge;
+  best.start = start;
+  best.end = end;
+  best.projected = projected;
+  best.baseLayer = baseLayer;
+  best.distanceCells = distance;
+}
+
+// Hover-time scan is allocation-free; stable ties retain explicit and earlier
+// room-edge hosts without constructing a second wall table.
+[[nodiscard]] CatalogWallSnapHost nearestWallSnapHost(
+    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint pointer) noexcept {
+  CatalogWallSnapHost best;
+  const cr::CreativeWorldLayoutLevel* activeLevel =
+      state.activeLevelIndex < state.source.levels.size()
+          ? &state.source.levels[state.activeLevelIndex]
+          : nullptr;
+  for (std::size_t wallIndex = 0U; wallIndex < state.source.walls.size();
+       ++wallIndex) {
+    const cr::CreativeWorldLayoutWall& wall = state.source.walls[wallIndex];
+    if (activeLevel != nullptr &&
+        (wall.buildingIndex != activeLevel->buildingIndex ||
+         std::fabs(wall.baseLayer - activeLevel->floorTopLayer) >
+             kCatalogSnapTieEpsilon)) {
+      continue;
+    }
+    considerWallSnapHost(
+        best, pointer,
+        {static_cast<double>(wall.start.x),
+         static_cast<double>(wall.start.z)},
+        {static_cast<double>(wall.end.x), static_cast<double>(wall.end.z)},
+        wall.baseLayer,
+        CreativeEditorWorldLayoutCatalogSnapHostKind::ExplicitWall,
+        wallIndex, cr::CreativeWorldLayoutRoomEdge::Count);
+  }
+  for (std::size_t roomIndex = 0U; roomIndex < state.source.rooms.size();
+       ++roomIndex) {
+    const cr::CreativeWorldLayoutRoom& room = state.source.rooms[roomIndex];
+    if (room.levelIndex >= state.source.levels.size() ||
+        (activeLevel != nullptr &&
+         room.levelIndex != state.activeLevelIndex)) {
+      continue;
+    }
+    const cr::CreativeWorldLayoutLevel& level =
+        state.source.levels[room.levelIndex];
+    if (level.buildingIndex != room.buildingIndex ||
+        !std::isfinite(level.floorTopLayer)) {
+      continue;
+    }
+    for (std::uint8_t edgeValue = 0U;
+         edgeValue < static_cast<std::uint8_t>(
+                         cr::CreativeWorldLayoutRoomEdge::Count);
+         ++edgeValue) {
+      const auto edge =
+          static_cast<cr::CreativeWorldLayoutRoomEdge>(edgeValue);
+      const auto [start, end] = roomEdgeSegment(room, edge);
+      considerWallSnapHost(
+          best, pointer, start, end, level.floorTopLayer,
+          CreativeEditorWorldLayoutCatalogSnapHostKind::RoomEdge, roomIndex,
+          edge);
+    }
+  }
+  return best;
+}
+
+[[nodiscard]] double floorAlignedElevationCells(
+    const CreativeEditorWorldLayoutCatalogPlacementState& placement,
+    double floorLayer, double cellSizeMeters) noexcept {
+  if (!std::isfinite(floorLayer) || !std::isfinite(cellSizeMeters) ||
+      cellSizeMeters <= 0.0) {
+    return std::numeric_limits<double>::quiet_NaN();
+  }
+  return floorLayer -
+         placement.sourceBoundsMeters.min.y * placement.scale.y /
+             cellSizeMeters;
+}
+
+[[nodiscard]] double wallAlignedYawRadians(
+    const CreativeEditorWorldLayoutCatalogPlacementState& placement,
+    const CatalogWallSnapHost& host) noexcept {
+  double dx = host.end.x - host.start.x;
+  double dz = host.end.z - host.start.z;
+  if (dx < -kCatalogSnapTieEpsilon ||
+      (std::fabs(dx) <= kCatalogSnapTieEpsilon && dz < 0.0)) {
+    dx = -dx;
+    dz = -dz;
+  }
+  const cr::CreativeBoundsMetrics source =
+      cr::measureCreativeBounds(placement.sourceBoundsMeters);
+  const bool localXIsPrimary =
+      source.size.x * placement.scale.x >= source.size.z * placement.scale.z;
+  const double hostYaw = localXIsPrimary ? std::atan2(-dz, dx)
+                                         : std::atan2(dx, dz);
+  const double yawOffset =
+      std::remainder(placement.yawDegrees, 360.0) * std::numbers::pi / 180.0;
+  return std::remainder(hostYaw + yawOffset, std::numbers::pi * 2.0);
+}
+
 [[nodiscard]] std::string lowerAscii(std::string_view value) {
   std::string lowered(value);
   std::transform(lowered.begin(), lowered.end(), lowered.begin(), [](char byte) {
@@ -83,6 +315,132 @@ constexpr std::array kAssetCategoryRules{
 [[nodiscard]] bool finitePositiveScale(cr::CreativeVec3 scale) noexcept {
   return cr::isFiniteCreativeVec3(scale) && scale.x > 0.0 && scale.y > 0.0 &&
          scale.z > 0.0;
+}
+
+[[nodiscard]] bool coordinateInsideLayoutRange(double value) noexcept {
+  return std::isfinite(value) &&
+         value >=
+             static_cast<double>(std::numeric_limits<std::int32_t>::min()) &&
+         value <=
+             static_cast<double>(std::numeric_limits<std::int32_t>::max());
+}
+
+[[nodiscard]] CatalogSnapResolution resolveCatalogSnap(
+    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint pointer,
+    cr::CreativeGridSettings grid) noexcept {
+  CatalogSnapResolution result;
+  const CreativeEditorWorldLayoutCatalogPlacementState& placement =
+      state.catalogPlacement;
+  if (!validSnapMode(placement.snapMode)) {
+    result.message = "Choose a valid snap mode";
+    result.reasonCode =
+        "creative_editor_world_layout_catalog_snap_mode_invalid";
+    return result;
+  }
+
+  const double manualYaw =
+      std::remainder(placement.yawDegrees, 360.0) * std::numbers::pi / 180.0;
+  switch (placement.snapMode) {
+    case CreativeEditorWorldLayoutCatalogSnapMode::Grid: {
+      result.point = {std::round(pointer.x), std::round(pointer.z)};
+      result.elevationCells = placement.elevationCells;
+      result.yawRadians = manualYaw;
+      result.message = "Grid target ready";
+      result.reasonCode = "creative_editor_world_layout_catalog_grid_ready";
+      break;
+    }
+    case CreativeEditorWorldLayoutCatalogSnapMode::Floor: {
+      if (state.activeLevelIndex >= state.source.levels.size()) {
+        result.message = "Select a level for floor snap";
+        result.reasonCode =
+            "creative_editor_world_layout_catalog_floor_missing";
+        return result;
+      }
+      const cr::CreativeWorldLayoutLevel& level =
+          state.source.levels[state.activeLevelIndex];
+      if (level.buildingIndex >= state.source.buildings.size() ||
+          !std::isfinite(level.floorTopLayer)) {
+        result.message = "Active level is invalid";
+        result.reasonCode =
+            "creative_editor_world_layout_catalog_floor_invalid";
+        return result;
+      }
+      result.point = {std::round(pointer.x), std::round(pointer.z)};
+      result.elevationCells = floorAlignedElevationCells(
+          placement, level.floorTopLayer, grid.cellSizeMeters);
+      result.yawRadians = manualYaw;
+      result.hostKind =
+          CreativeEditorWorldLayoutCatalogSnapHostKind::LevelFloor;
+      result.hostIndex = state.activeLevelIndex;
+      result.message = "Active-level floor target ready";
+      result.reasonCode = "creative_editor_world_layout_catalog_floor_ready";
+      break;
+    }
+    case CreativeEditorWorldLayoutCatalogSnapMode::Wall: {
+      if (state.activeLevelIndex >= state.source.levels.size()) {
+        result.message = "Select a level for wall snap";
+        result.reasonCode =
+            "creative_editor_world_layout_catalog_wall_level_missing";
+        return result;
+      }
+      const cr::CreativeWorldLayoutLevel& level =
+          state.source.levels[state.activeLevelIndex];
+      if (level.buildingIndex >= state.source.buildings.size() ||
+          !std::isfinite(level.floorTopLayer)) {
+        result.message = "Active level is invalid";
+        result.reasonCode =
+            "creative_editor_world_layout_catalog_wall_level_invalid";
+        return result;
+      }
+      if (!creativeEditorWorldLayoutCatalogAssetSupportsWallSnap(
+              placement.categoryId)) {
+        result.message = hostedOpeningCategory(placement.categoryId)
+                             ? "Use the Door or Window tool to cut an opening"
+                             : "Wall snap supports architecture assets";
+        result.reasonCode = hostedOpeningCategory(placement.categoryId)
+                                ? "creative_editor_world_layout_catalog_wall_opening_requires_tool"
+                                : "creative_editor_world_layout_catalog_wall_asset_unsupported";
+        return result;
+      }
+      const CatalogWallSnapHost host = nearestWallSnapHost(state, pointer);
+      if (!host.valid) {
+        result.message = "No active-level wall within 1.25 cells";
+        result.reasonCode =
+            "creative_editor_world_layout_catalog_wall_missing";
+        return result;
+      }
+      result.point = host.projected;
+      result.elevationCells = floorAlignedElevationCells(
+          placement, host.baseLayer, grid.cellSizeMeters);
+      result.yawRadians = wallAlignedYawRadians(placement, host);
+      result.hostKind = host.kind;
+      result.hostIndex = host.index;
+      result.roomEdge = host.roomEdge;
+      result.distanceCells = host.distanceCells;
+      result.message = host.kind ==
+                               CreativeEditorWorldLayoutCatalogSnapHostKind::
+                                   ExplicitWall
+                           ? "Explicit wall target ready"
+                           : "Room wall target ready";
+      result.reasonCode = "creative_editor_world_layout_catalog_wall_ready";
+      break;
+    }
+    case CreativeEditorWorldLayoutCatalogSnapMode::Count:
+      return result;
+  }
+
+  if (!coordinateInsideLayoutRange(result.point.x) ||
+      !coordinateInsideLayoutRange(result.point.z) ||
+      !std::isfinite(result.elevationCells) ||
+      !std::isfinite(result.yawRadians)) {
+    result.message = "Snap result is outside the layout range";
+    result.reasonCode =
+        "creative_editor_world_layout_catalog_snap_out_of_range";
+    return result;
+  }
+  result.accepted = true;
+  return result;
 }
 
 [[nodiscard]] bool samePlacementAsset(
@@ -145,18 +503,32 @@ const char* creativeEditorWorldLayoutAssetCategoryLabel(
   return "Unknown";
 }
 
+const char* creativeEditorWorldLayoutCatalogSnapModeLabel(
+    CreativeEditorWorldLayoutCatalogSnapMode mode) noexcept {
+  switch (mode) {
+    case CreativeEditorWorldLayoutCatalogSnapMode::Grid:
+      return "Grid";
+    case CreativeEditorWorldLayoutCatalogSnapMode::Floor:
+      return "Floor";
+    case CreativeEditorWorldLayoutCatalogSnapMode::Wall:
+      return "Wall";
+    case CreativeEditorWorldLayoutCatalogSnapMode::Count:
+      break;
+  }
+  return "Unknown";
+}
+
 CreativeEditorWorldLayoutAssetCategory
 classifyCreativeEditorWorldLayoutAsset(
     const cr::CreativeCatalogEntry& entry) noexcept {
-  const std::string_view categoryId = entry.assetAuthoringMetadata.categoryId;
-  const auto found = std::find_if(
-      kAssetCategoryRules.begin(), kAssetCategoryRules.end(),
-      [categoryId](const AssetCategoryRule& rule) {
-        return rule.categoryId == categoryId;
-      });
-  return found == kAssetCategoryRules.end()
-             ? CreativeEditorWorldLayoutAssetCategory::Props
-             : found->category;
+  return classifyCategoryId(entry.assetAuthoringMetadata.categoryId);
+}
+
+bool creativeEditorWorldLayoutCatalogAssetSupportsWallSnap(
+    std::string_view categoryId) noexcept {
+  return classifyCategoryId(categoryId) ==
+             CreativeEditorWorldLayoutAssetCategory::Architecture &&
+         !hostedOpeningCategory(categoryId);
 }
 
 bool creativeEditorWorldLayoutAssetMatchesQuery(
@@ -186,6 +558,8 @@ selectCreativeEditorWorldLayoutCatalogAsset(
 
   const bool changed = state.tool != CreativeEditorWorldLayoutTool::CatalogAsset ||
                        !samePlacementAsset(state.catalogPlacement, entry);
+  const CreativeEditorWorldLayoutCatalogSnapMode snapMode =
+      state.catalogPlacement.snapMode;
   const double elevation = state.catalogPlacement.elevationCells;
   const double yaw = state.catalogPlacement.yawDegrees;
   const cr::CreativeVec3 scale = state.catalogPlacement.scale;
@@ -201,6 +575,7 @@ selectCreativeEditorWorldLayoutCatalogAsset(
       entry.assetAuthoringMetadata.categoryId;
   state.catalogPlacement.sourceBoundsMeters =
       entry.hotbarEntry.assetSourceBounds;
+  state.catalogPlacement.snapMode = snapMode;
   state.catalogPlacement.elevationCells = elevation;
   state.catalogPlacement.yawDegrees = yaw;
   state.catalogPlacement.scale = scale;
@@ -293,18 +668,20 @@ planCreativeEditorWorldLayoutCatalogPlacement(
       !std::isfinite(selected.yawDegrees) ||
       !finitePositiveScale(selected.scale) ||
       !std::isfinite(grid.cellSizeMeters) || grid.cellSizeMeters <= 0.0) {
+    result.message = "Placement settings are invalid";
     result.reasonCode =
         "creative_editor_world_layout_catalog_placement_invalid";
     return result;
   }
-  const double snappedX = std::round(point.x);
-  const double snappedZ = std::round(point.z);
-  if (snappedX < static_cast<double>(std::numeric_limits<std::int32_t>::min()) ||
-      snappedX > static_cast<double>(std::numeric_limits<std::int32_t>::max()) ||
-      snappedZ < static_cast<double>(std::numeric_limits<std::int32_t>::min()) ||
-      snappedZ > static_cast<double>(std::numeric_limits<std::int32_t>::max())) {
-    result.reasonCode =
-        "creative_editor_world_layout_catalog_placement_out_of_range";
+  result.snapMode = selected.snapMode;
+  const CatalogSnapResolution snap = resolveCatalogSnap(state, point, grid);
+  result.snapHostKind = snap.hostKind;
+  result.snapHostIndex = snap.hostIndex;
+  result.snapRoomEdge = snap.roomEdge;
+  result.snapDistanceCells = snap.distanceCells;
+  result.message = snap.message;
+  if (!snap.accepted) {
+    result.reasonCode = snap.reasonCode;
     return result;
   }
 
@@ -312,17 +689,17 @@ planCreativeEditorWorldLayoutCatalogPlacement(
   result.object.mode = cr::CreativeObjectLibraryPlacementMode::Point;
   result.object.name = selected.label;
   result.object.assetId = selected.assetId;
-  result.object.pointCells = {snappedX, selected.elevationCells, snappedZ};
+  result.object.pointCells = {snap.point.x, snap.elevationCells, snap.point.z};
   result.object.assetSourceBoundsMeters = selected.sourceBoundsMeters;
   result.object.hasAssetSourceBounds = true;
-  result.object.yawRadians =
-      std::remainder(selected.yawDegrees, 360.0) * std::numbers::pi / 180.0;
+  result.object.yawRadians = snap.yawRadians;
   result.object.scale = selected.scale;
   result.object.tags = {"world_layout:object", "world_layout:catalog_asset"};
   result.footprint =
       planCreativeEditorWorldLayoutObjectFootprint(result.object, grid);
   if (!result.footprint.valid) {
     result.object = {};
+    result.message = "Asset footprint is invalid";
     result.reasonCode =
         "creative_editor_world_layout_catalog_footprint_invalid";
     return result;
@@ -367,7 +744,7 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutPoint(
   CreativeEditorWorldLayoutCatalogPlacementPlan plan =
       planCreativeEditorWorldLayoutCatalogPlacement(state, point, grid);
   if (!plan.accepted) {
-    state.statusMessage = plan.reasonCode;
+    state.statusMessage = plan.message;
     return {false, false, std::move(plan.reasonCode)};
   }
   plan.object.stableKey = detail::mintWorldLayoutStableKey(state, "asset");
