@@ -113,6 +113,10 @@ cr::CreativeWorldLayout richLayout() {
   opening.insertHeightCells = 1.25;
   opening.insertWidthCells = 1.5;
   opening.insertThicknessCells = 0.1;
+  opening.insertAssetId = "homestead/modular/window_frame_1p5x1p2";
+  opening.insertAssetSourceBoundsMeters =
+      {{-0.75, 0.0, -0.05}, {0.75, 1.2, 0.05}};
+  opening.hasInsertAssetSourceBounds = true;
   layout.openings.push_back(opening);
 
   cr::CreativeWorldLayoutOpening roomDoor;
@@ -226,6 +230,12 @@ bool deterministicRoundTripPreservesEveryTable() {
                     decoded.layout.boxes[0].layerCount == 2U &&
                     decoded.layout.walls.size() == 1U &&
                     decoded.layout.openings.size() == 2U &&
+                    decoded.layout.openings[0].insertAssetId ==
+                        source.openings[0].insertAssetId &&
+                    decoded.layout.openings[0]
+                        .hasInsertAssetSourceBounds &&
+                    decoded.layout.openings[0]
+                            .insertAssetSourceBoundsMeters.max.y == 1.2 &&
                     decoded.layout.openings[1].hostKind ==
                         cr::CreativeWorldLayoutOpeningHostKind::RoomEdge,
                 "building, room, connector, and opening tables round trip") &&
@@ -286,6 +296,21 @@ bool malformedAndNonFiniteInputsFailClosed() {
       badObjectSourceBounds.objects[1].assetSourceBoundsMeters.min.x;
   const cr::CreativeWorldLayoutEncodeResult invalidObjectSourceBounds =
       cr::encodeCreativeWorldLayout(badObjectSourceBounds);
+  cr::CreativeWorldLayout badOpeningSourceBounds = richLayout();
+  badOpeningSourceBounds.openings[0].insertAssetSourceBoundsMeters.max.x =
+      badOpeningSourceBounds.openings[0].insertAssetSourceBoundsMeters.min.x;
+  const cr::CreativeWorldLayoutEncodeResult invalidOpeningSourceBounds =
+      cr::encodeCreativeWorldLayout(badOpeningSourceBounds);
+  cr::CreativeWorldLayout mismatchedOpeningAsset = richLayout();
+  mismatchedOpeningAsset.openings[0].hasInsertAssetSourceBounds = false;
+  const cr::CreativeWorldLayoutEncodeResult invalidOpeningAssetContract =
+      cr::encodeCreativeWorldLayout(mismatchedOpeningAsset);
+  cr::CreativeWorldLayout cutoutOnlyAsset = richLayout();
+  cutoutOnlyAsset.openings[0].includeInsert = false;
+  const cr::CreativeWorldLayoutEncodeResult cutoutOnlyEncoded =
+      cr::encodeCreativeWorldLayout(cutoutOnlyAsset);
+  const cr::CreativeWorldLayoutDecodeResult cutoutOnlyDecoded =
+      cr::decodeCreativeWorldLayout(cutoutOnlyEncoded.encodedText);
 
   const cr::CreativeWorldLayoutEncodeResult valid =
       cr::encodeCreativeWorldLayout(richLayout());
@@ -359,6 +384,19 @@ bool malformedAndNonFiniteInputsFailClosed() {
                     invalidObjectSourceBounds.status ==
                         cr::CreativeWorldLayoutCodecStatus::InvalidRecord,
                 "degenerate catalog source bounds are not encoded") &&
+         expect(!invalidOpeningSourceBounds.accepted &&
+                    invalidOpeningSourceBounds.status ==
+                        cr::CreativeWorldLayoutCodecStatus::InvalidRecord,
+                "degenerate opening asset bounds are not encoded") &&
+         expect(!invalidOpeningAssetContract.accepted &&
+                    invalidOpeningAssetContract.status ==
+                        cr::CreativeWorldLayoutCodecStatus::InvalidRecord,
+                "partial opening asset metadata is not encoded") &&
+         expect(cutoutOnlyEncoded.accepted && cutoutOnlyDecoded.accepted &&
+                    !cutoutOnlyDecoded.layout.openings[0].includeInsert &&
+                    cutoutOnlyDecoded.layout.openings[0].insertAssetId ==
+                        cutoutOnlyAsset.openings[0].insertAssetId,
+                "cutout-only opening retains its dormant asset identity") &&
          expect(!truncated.accepted, "truncated source is rejected") &&
          expect(!wrongVersion.accepted &&
                     wrongVersion.status ==
@@ -592,6 +630,35 @@ bool versionEightObjectsMigrateToIdentityCatalogPose() {
                 "version-eight migration writes current object fields");
 }
 
+bool versionNineOpeningsMigrateToProceduralInserts() {
+  const std::string versionNine =
+      "IGGY3D_WORLD_LAYOUT 9\n"
+      "L 9 6c6567616379 0 1 0 0 0 0 1 1 0 0 0 0\n"
+      "B 686f757365 486f757365 0 0 0 8 4 0 3 1 0\n"
+      "W 0 77616c6c 57616c6c 0 0 8 0 0 3 0.25\n"
+      "O 0 0 0 0 0 0 646f6f72 446f6f72 4 1 0 2.1 1 0 0 0 0\n"
+      "END\n";
+  const cr::CreativeWorldLayoutDecodeResult decoded =
+      cr::decodeCreativeWorldLayout(versionNine);
+  const cr::CreativeWorldLayoutEncodeResult encoded =
+      decoded.accepted ? cr::encodeCreativeWorldLayout(decoded.layout)
+                       : cr::CreativeWorldLayoutEncodeResult{};
+
+  return expect(decoded.accepted && decoded.layout.openings.size() == 1U &&
+                    decoded.layout.schemaVersion ==
+                        cr::kCreativeWorldLayoutSchemaVersion &&
+                    decoded.layout.openings[0].insertAssetId.empty() &&
+                    !decoded.layout.openings[0]
+                         .hasInsertAssetSourceBounds,
+                "version-nine openings retain procedural insert semantics") &&
+         expect(encoded.accepted &&
+                    encoded.encodedText.starts_with(
+                        "IGGY3D_WORLD_LAYOUT " +
+                        std::to_string(cr::kCreativeWorldLayoutCodecVersion) +
+                        "\n"),
+                "version-nine migration writes current opening fields");
+}
+
 }  // namespace
 
 int main() {
@@ -604,6 +671,7 @@ int main() {
                   versionFiveRoomsMigrateToSharedLevels() &&
                   versionSixSourceMigratesWithoutFabricatedVerticalConnectors() &&
                   versionSevenLevelsMigrateToFlatRoofDefaults() &&
-                  versionEightObjectsMigrateToIdentityCatalogPose();
+                  versionEightObjectsMigrateToIdentityCatalogPose() &&
+                  versionNineOpeningsMigrateToProceduralInserts();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

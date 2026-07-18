@@ -1433,6 +1433,57 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutSetOpeningInsert: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutOpeningInsertPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout opening insert: payload mismatch";
+        break;
+      }
+      CreativeEditorWorldLayoutOpeningInsertRequest request;
+      request.openingIndex = payload->openingIndex;
+      request.operation = payload->operation;
+      request.assetScale = payload->assetScale;
+      request.gridCellSizeMeters =
+          context.appState.facade.document().gridSettings().cellSizeMeters;
+      if (payload->operation !=
+          CreativeEditorWorldLayoutOpeningInsertOperation::
+              UseProceduralInsert) {
+        const auto found = std::find_if(
+            editor.catalog.model.entries.begin(),
+            editor.catalog.model.entries.end(),
+            [payload](const creative::CreativeCatalogEntry& entry) {
+              return entry.category ==
+                         creative::CreativeCatalogEntryCategory::Asset &&
+                     creative::creativeHotbarAssetId(entry.hotbarEntry) ==
+                         payload->assetId;
+            });
+        if (found == editor.catalog.model.entries.end() ||
+            !creativeEditorWorldLayoutCatalogAssetIsHostedOpening(
+                found->assetAuthoringMetadata.categoryId)) {
+          result.message = "layout opening insert: catalog entry missing";
+          break;
+        }
+        request.assetId = creative::creativeHotbarAssetId(found->hotbarEntry);
+        request.assetSourceBoundsMeters =
+            found->hotbarEntry.assetSourceBounds;
+        request.assetKind = found->assetAuthoringMetadata.categoryId ==
+                                    "window"
+                                ? creative::CreativeBuildingOpeningKind::Window
+                                : creative::CreativeBuildingOpeningKind::Door;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          applyCreativeEditorWorldLayoutOpeningInsert(editor.worldLayout,
+                                                      request);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutManipulateOpening: {
       const auto* payload =
           payloadAs<CreativeDesktopWorldLayoutOpeningManipulationPayload>(

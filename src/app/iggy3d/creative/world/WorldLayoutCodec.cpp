@@ -1,5 +1,7 @@
 #include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
 
+#include "app/iggy3d/creative/Geometry.hpp"
+
 #include <algorithm>
 #include <cerrno>
 #include <charconv>
@@ -360,8 +362,28 @@ bool validateForEncoding(const CreativeWorldLayout& layout,
                         std::isfinite(opening.insertBottomCells) &&
                         std::isfinite(opening.insertHeightCells) &&
                         std::isfinite(opening.insertWidthCells) &&
-                        std::isfinite(opening.insertThicknessCells);
+                        std::isfinite(opening.insertThicknessCells) &&
+                        std::isfinite(
+                            opening.insertAssetSourceBoundsMeters.min.x) &&
+                        std::isfinite(
+                            opening.insertAssetSourceBoundsMeters.min.y) &&
+                        std::isfinite(
+                            opening.insertAssetSourceBoundsMeters.min.z) &&
+                        std::isfinite(
+                            opening.insertAssetSourceBoundsMeters.max.x) &&
+                        std::isfinite(
+                            opening.insertAssetSourceBoundsMeters.max.y) &&
+                        std::isfinite(
+                            opening.insertAssetSourceBoundsMeters.max.z);
+    const CreativeBoundsMetrics assetSource =
+        measureCreativeBounds(opening.insertAssetSourceBoundsMeters);
+    const bool validAsset =
+        opening.hasInsertAssetSourceBounds
+            ? !opening.insertAssetId.empty() && assetSource.valid &&
+                  isPositiveCreativeVec3(assetSource.size)
+            : opening.insertAssetId.empty();
     if (!validKeyName(opening.stableKey, opening.name) || !finite ||
+        !validString(opening.insertAssetId) || !validAsset ||
         enumValue(opening.hostKind) >=
             enumValue(CreativeWorldLayoutOpeningHostKind::Count) ||
         enumValue(opening.roomEdge) >=
@@ -654,7 +676,15 @@ CreativeWorldLayoutEncodeResult encodeCreativeWorldLayout(
            << (opening.includeInsert ? 1 : 0) << ' '
            << opening.insertBottomCells << ' ' << opening.insertHeightCells
            << ' ' << opening.insertWidthCells << ' '
-           << opening.insertThicknessCells << '\n';
+           << opening.insertThicknessCells << ' '
+           << hexString(opening.insertAssetId) << ' '
+           << (opening.hasInsertAssetSourceBounds ? 1 : 0) << ' '
+           << opening.insertAssetSourceBoundsMeters.min.x << ' '
+           << opening.insertAssetSourceBoundsMeters.min.y << ' '
+           << opening.insertAssetSourceBoundsMeters.min.z << ' '
+           << opening.insertAssetSourceBoundsMeters.max.x << ' '
+           << opening.insertAssetSourceBoundsMeters.max.y << ' '
+           << opening.insertAssetSourceBoundsMeters.max.z << '\n';
   }
   for (const CreativeWorldLayoutObject& object : layout.objects) {
     output << "Y " << static_cast<unsigned>(enumValue(object.kind)) << ' '
@@ -1051,7 +1081,7 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
                   reader.readSize(opening.roomIndex) &&
                   reader.readUnsigned(roomEdge) &&
                   roomEdge < enumValue(CreativeWorldLayoutRoomEdge::Count);
-    const bool parsed = hostParsed &&
+    bool parsed = hostParsed &&
         reader.readUnsigned(kind) &&
         kind <= enumValue(CreativeBuildingOpeningKind::Window) &&
         reader.readUnsigned(pose) &&
@@ -1067,6 +1097,33 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
         reader.readDouble(opening.insertHeightCells) &&
         reader.readDouble(opening.insertWidthCells) &&
         reader.readDouble(opening.insertThicknessCells);
+    if (parsed && codecVersion >= 10U) {
+      parsed = reader.readHex(opening.insertAssetId) &&
+               reader.readBool(opening.hasInsertAssetSourceBounds) &&
+               reader.readDouble(
+                   opening.insertAssetSourceBoundsMeters.min.x) &&
+               reader.readDouble(
+                   opening.insertAssetSourceBoundsMeters.min.y) &&
+               reader.readDouble(
+                   opening.insertAssetSourceBoundsMeters.min.z) &&
+               reader.readDouble(
+                   opening.insertAssetSourceBoundsMeters.max.x) &&
+               reader.readDouble(
+                   opening.insertAssetSourceBoundsMeters.max.y) &&
+               reader.readDouble(
+                   opening.insertAssetSourceBoundsMeters.max.z);
+    } else if (codecVersion < 10U) {
+      opening.insertAssetId.clear();
+      opening.insertAssetSourceBoundsMeters = {};
+      opening.hasInsertAssetSourceBounds = false;
+    }
+    const CreativeBoundsMetrics assetSource =
+        measureCreativeBounds(opening.insertAssetSourceBoundsMeters);
+    const bool validAsset =
+        opening.hasInsertAssetSourceBounds
+            ? !opening.insertAssetId.empty() && assetSource.valid &&
+                  isPositiveCreativeVec3(assetSource.size)
+            : opening.insertAssetId.empty();
     if (!parsed || !std::isfinite(opening.centerOffsetCells) ||
         !std::isfinite(opening.widthCells) ||
         !std::isfinite(opening.cutoutBottomCells) ||
@@ -1074,7 +1131,14 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
         !std::isfinite(opening.insertBottomCells) ||
         !std::isfinite(opening.insertHeightCells) ||
         !std::isfinite(opening.insertWidthCells) ||
-        !std::isfinite(opening.insertThicknessCells)) {
+        !std::isfinite(opening.insertThicknessCells) ||
+        !std::isfinite(opening.insertAssetSourceBoundsMeters.min.x) ||
+        !std::isfinite(opening.insertAssetSourceBoundsMeters.min.y) ||
+        !std::isfinite(opening.insertAssetSourceBoundsMeters.min.z) ||
+        !std::isfinite(opening.insertAssetSourceBoundsMeters.max.x) ||
+        !std::isfinite(opening.insertAssetSourceBoundsMeters.max.y) ||
+        !std::isfinite(opening.insertAssetSourceBoundsMeters.max.z) ||
+        !validAsset) {
       return false;
     }
     opening.hostKind =

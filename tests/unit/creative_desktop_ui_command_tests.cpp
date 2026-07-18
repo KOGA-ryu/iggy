@@ -48,6 +48,10 @@ bool vecNear(cr::CreativeVec3 lhs, cr::CreativeVec3 rhs) {
          std::fabs(lhs.z - rhs.z) < 1.0e-8;
 }
 
+bool near(double lhs, double rhs) {
+  return std::fabs(lhs - rhs) <= 1.0e-9;
+}
+
 cr::CreativeObjectId createCrate(cr::Facade& facade, double x) {
   cr::CreativeDocumentCreateRequest request;
   request.kind = cr::CreativeObjectKind::Crate;
@@ -1351,6 +1355,10 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSetOpeningSettings, context,
           app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutOpeningInsert =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutSetOpeningInsert, context,
+          app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult badWorldLayoutOpeningManipulation =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutManipulateOpening, context,
@@ -1484,6 +1492,10 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badWorldLayoutOpeningSettings.message ==
                         "layout opening settings: payload mismatch",
                 "opening settings reject a mismatched payload") &&
+         expect(!badWorldLayoutOpeningInsert.accepted &&
+                    badWorldLayoutOpeningInsert.message ==
+                        "layout opening insert: payload mismatch",
+                "opening insert replacement rejects a mismatched payload") &&
          expect(!badWorldLayoutOpeningManipulation.accepted &&
                     badWorldLayoutOpeningManipulation.message ==
                         "layout opening manipulation: payload mismatch",
@@ -2377,6 +2389,113 @@ bool worldLayoutCatalogSelectionAndPlacementUseTypedCommands() {
                 "catalog command payload mismatch is transactionally empty");
 }
 
+bool worldLayoutOpeningInsertCommandsUseCatalogAndHistory() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Opening Insert");
+  static_cast<void>(document.assignId(429U));
+  cr::CreativeGridSettings grid;
+  grid.cellSizeMeters = 0.5;
+  static_cast<void>(document.setGridSettings(grid));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "opening_insert_commands");
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      editor.worldLayout, app::CreativeEditorWorldLayoutTool::Wall));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(
+      editor.worldLayout, {0.0, 0.0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(
+      editor.worldLayout, {8.0, 0.0}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutWallSettings(
+      editor.worldLayout, 0U, {{0, 0}, {8, 0}, 0.0, 8U, 0.25}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      editor.worldLayout, app::CreativeEditorWorldLayoutTool::Door));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(
+      editor.worldLayout, {4.0, 0.1}));
+
+  cr::CreativeCatalogEntry door;
+  door.category = cr::CreativeCatalogEntryCategory::Asset;
+  door.label = "Asymmetric Door";
+  door.assetAuthoringMetadata.categoryId = "door";
+  door.hotbarEntry.objectKind = cr::CreativeObjectKind::Door;
+  static_cast<void>(cr::setCreativeHotbarAsset(
+      door.hotbarEntry, "homestead/modular/door_leaf_1p1x2p2",
+      {{-0.2, 0.0, -0.05}, {0.9, 2.2, 0.15}}));
+  editor.catalog.model.entries.push_back(door);
+
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const std::size_t undoBefore =
+      editor.worldLayout.sourceHistory.undoEntries.size();
+  const auto fitted = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSetOpeningInsert, context,
+      app::CreativeDesktopWorldLayoutOpeningInsertPayload{
+          0U,
+          app::CreativeEditorWorldLayoutOpeningInsertOperation::
+              FitAssetToOpening,
+          "homestead/modular/door_leaf_1p1x2p2",
+          {1.0, 1.0, 1.0}});
+  const cr::CreativeWorldLayoutOpening fittedOpening =
+      editor.worldLayout.source.openings[0];
+  const std::uint64_t revisionAfterFit = editor.worldLayout.revision;
+  const auto unavailable = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSetOpeningInsert, context,
+      app::CreativeDesktopWorldLayoutOpeningInsertPayload{
+          0U,
+          app::CreativeEditorWorldLayoutOpeningInsertOperation::
+              FitAssetToOpening,
+          "missing/door",
+          {1.0, 1.0, 1.0}});
+  const auto resized = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSetOpeningInsert, context,
+      app::CreativeDesktopWorldLayoutOpeningInsertPayload{
+          0U,
+          app::CreativeEditorWorldLayoutOpeningInsertOperation::
+              ResizeOpeningToAsset,
+          "homestead/modular/door_leaf_1p1x2p2",
+          {1.0, 1.0, 1.0}});
+  const cr::CreativeWorldLayoutOpening resizedOpening =
+      editor.worldLayout.source.openings[0];
+  const auto procedural = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSetOpeningInsert, context,
+      app::CreativeDesktopWorldLayoutOpeningInsertPayload{
+          0U,
+          app::CreativeEditorWorldLayoutOpeningInsertOperation::
+              UseProceduralInsert,
+          {},
+          {1.0, 1.0, 1.0}});
+  const cr::CreativeWorldLayoutOpening& finalOpening =
+      editor.worldLayout.source.openings[0];
+
+  return expect(fitted.accepted && fitted.changed &&
+                    fitted.worldLayoutChanged &&
+                    fittedOpening.insertAssetId ==
+                        "homestead/modular/door_leaf_1p1x2p2" &&
+                    fittedOpening.hasInsertAssetSourceBounds &&
+                    editor.worldLayout.sourceHistory.undoEntries.size() ==
+                        undoBefore + 3U,
+                "opening insert command resolves catalog metadata and history") &&
+         expect(!unavailable.accepted && !unavailable.changed &&
+                    unavailable.message ==
+                        "layout opening insert: catalog entry missing" &&
+                    revisionAfterFit + 2U == editor.worldLayout.revision,
+                "missing catalog insert rejects without a source mutation") &&
+         expect(resized.accepted && resized.changed &&
+                    near(resizedOpening.widthCells, 2.2) &&
+                    near(resizedOpening.cutoutHeightCells, 4.4) &&
+                    near(resizedOpening.insertThicknessCells, 0.4),
+                "resize command uses live document grid scale") &&
+         expect(procedural.accepted && procedural.changed &&
+                    finalOpening.includeInsert &&
+                    finalOpening.insertAssetId.empty() &&
+                    !finalOpening.hasInsertAssetSourceBounds,
+                "procedural command clears catalog ownership explicitly");
+}
+
 }  // namespace
 
 int main() {
@@ -2411,5 +2530,6 @@ int main() {
   ok = worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutCommandsPreviewAndGenerateThroughDispatcher() && ok;
   ok = worldLayoutCatalogSelectionAndPlacementUseTypedCommands() && ok;
+  ok = worldLayoutOpeningInsertCommandsUseCatalogAndHistory() && ok;
   return ok ? 0 : 1;
 }

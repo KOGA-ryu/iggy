@@ -88,6 +88,72 @@ bool preflightCacheTracksBothTruthRevisions() {
                 "document identity invalidates preflight once");
 }
 
+bool missingOpeningAssetWarnsAndTracksCatalogMembership() {
+  cr::CreativeAppState live = makeApp("Diagnostic Asset", 9204U);
+  app::CreativeEditorWorldLayoutState state = roomLayout();
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Door));
+  const app::CreativeEditorWorldLayoutEditReceipt placed =
+      app::applyCreativeEditorWorldLayoutPoint(state, {14.0, 20.1});
+  cr::CreativeWorldLayoutOpening& opening = state.source.openings[0];
+  opening.includeInsert = true;
+  opening.insertAssetId = "homestead/modular/door_leaf_1p1x2p2";
+  opening.insertAssetSourceBoundsMeters =
+      {{-0.2, 0.0, -0.05}, {0.9, 2.2, 0.15}};
+  opening.hasInsertAssetSourceBounds = true;
+  ++state.revision;
+
+  cr::CreativeCatalogState catalog;
+  const auto& missing = app::refreshCreativeEditorWorldLayoutDiagnostics(
+      state.diagnosticCache, live.facade.document(), state.source,
+      state.revision, &catalog);
+  const bool warningProjected =
+      placed.accepted && placed.changed && missing.ready &&
+      missing.issueCount == 1U &&
+      missing.issues[0].severity ==
+          app::CreativeEditorWorldLayoutDiagnosticSeverity::Warning &&
+      missing.issues[0].table == cr::CreativeWorldLayoutTable::Opening &&
+      missing.issues[0].index == 0U &&
+      missing.issues[0].reasonCode ==
+          "creative_world_layout_opening_asset_missing";
+  static_cast<void>(app::refreshCreativeEditorWorldLayoutDiagnostics(
+      state.diagnosticCache, live.facade.document(), state.source,
+      state.revision, &catalog));
+  const std::uint64_t afterIdle = state.diagnosticCache.buildCount;
+
+  cr::CreativeCatalogEntry entry;
+  entry.category = cr::CreativeCatalogEntryCategory::Asset;
+  entry.label = "Asymmetric Door";
+  entry.assetAuthoringMetadata.categoryId = "door";
+  entry.hotbarEntry.objectKind = cr::CreativeObjectKind::Door;
+  static_cast<void>(cr::setCreativeHotbarAsset(
+      entry.hotbarEntry, opening.insertAssetId,
+      opening.insertAssetSourceBoundsMeters));
+  catalog.entries.push_back(std::move(entry));
+  const auto& resolved = app::refreshCreativeEditorWorldLayoutDiagnostics(
+      state.diagnosticCache, live.facade.document(), state.source,
+      state.revision, &catalog);
+  const bool catalogResolved = resolved.ready && resolved.issueCount == 0U;
+  const std::uint64_t afterCatalog = state.diagnosticCache.buildCount;
+
+  catalog.entries.clear();
+  state.source.openings[0].includeInsert = false;
+  ++state.revision;
+  const auto& dormant = app::refreshCreativeEditorWorldLayoutDiagnostics(
+      state.diagnosticCache, live.facade.document(), state.source,
+      state.revision, &catalog);
+
+  return expect(warningProjected,
+                "missing opening asset is ready with a navigable warning") &&
+         expect(afterIdle == 1U,
+                "unchanged missing-asset diagnostics reuse the cache") &&
+         expect(catalogResolved && afterCatalog == 2U,
+                "catalog membership invalidates and clears the warning") &&
+         expect(dormant.ready && dormant.issueCount == 0U &&
+                    state.diagnosticCache.buildCount == 3U,
+                "disabled inserts retain dormant identity without warning");
+}
+
 bool diagnosticFocusSelectsFramesAndPreservesSource() {
   app::CreativeEditorWorldLayoutState state = roomLayout();
   state.canvasPixelsPerCell = 10.0F;
@@ -158,6 +224,7 @@ bool diagnosticFocusRoutesThroughTypedDispatcher() {
 
 int main() {
   const bool ok = preflightCacheTracksBothTruthRevisions() &&
+                  missingOpeningAssetWarnsAndTracksCatalogMembership() &&
                   diagnosticFocusSelectsFramesAndPreservesSource() &&
                   diagnosticFocusRoutesThroughTypedDispatcher();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

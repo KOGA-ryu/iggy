@@ -40,6 +40,16 @@ enum class CreativeBuildingRecipeStatus : std::uint8_t {
   Ready,
 };
 
+enum class CreativeBuildingOpeningAssetFitStatus : std::uint8_t {
+  NotRequested,
+  InvalidSourceBounds,
+  InvalidTargetBounds,
+  InvalidWallFrame,
+  InvalidPose,
+  UnrepresentableTransform,
+  Ready,
+};
+
 enum class CreativeRectangularRoomGeometryStatus : std::uint8_t {
   NotRequested,
   InvalidCorner,
@@ -132,8 +142,32 @@ struct CreativeBuildingOpeningSpec {
   double insertHeightMeters = 0.0;
   double insertWidthMeters = 0.0;
   double insertThicknessMeters = 0.0;
+  std::string insertAssetId;
+  CreativeBounds insertAssetSourceBoundsMeters;
+  bool hasInsertAssetSourceBounds = false;
   std::vector<std::string> tags;
 };
+
+struct CreativeBuildingOpeningAssetFitRequest {
+  CreativeBounds sourceBoundsMeters;
+  CreativeBounds targetBoundsMeters;
+  CreativeStructuralWallFrame wallFrame;
+  CreativeBuildingOpeningPose pose = CreativeBuildingOpeningPose::Closed;
+};
+
+struct CreativeBuildingOpeningAssetFitPlan {
+  CreativeBuildingOpeningAssetFitStatus status =
+      CreativeBuildingOpeningAssetFitStatus::NotRequested;
+  CreativeBounds authoredBoundsMeters;
+  CreativeTransform transform;
+  bool accepted = false;
+  std::string_view reasonCode =
+      "creative_building_opening_asset_fit_not_requested";
+};
+
+static_assert(
+    std::is_trivially_copyable_v<CreativeBuildingOpeningAssetFitRequest>);
+static_assert(std::is_trivially_copyable_v<CreativeBuildingOpeningAssetFitPlan>);
 
 struct CreativeBuildingWallSpec {
   std::string stableKey;
@@ -215,11 +249,20 @@ struct CreativeBuildingRecipeResult {
 [[nodiscard]] std::string_view toString(
     CreativeBuildingRecipeStatus status) noexcept;
 [[nodiscard]] std::string_view toString(
+    CreativeBuildingOpeningAssetFitStatus status) noexcept;
+[[nodiscard]] std::string_view toString(
     CreativeRectangularRoomGeometryStatus status) noexcept;
 
 [[nodiscard]] CreativeRectangularRoomGeometryPlan
 planCreativeRectangularRoomGeometry(
     const CreativeRectangularRoomGeometryRequest& request) noexcept;
+
+// Fits imported source bounds into the exact structural insert volume. The
+// source pivot is preserved, so asymmetric door/window assets remain aligned
+// after rotation and non-uniform scaling.
+[[nodiscard]] CreativeBuildingOpeningAssetFitPlan
+planCreativeBuildingOpeningAssetFit(
+    const CreativeBuildingOpeningAssetFitRequest& request) noexcept;
 
 [[nodiscard]] CreativeBuildingOpeningSpec makeCreativeBuildingDoorOpening(
     std::string stableKey,

@@ -351,9 +351,13 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
     const RoomBakeObjectClassification& classification) {
   const BakeBounds bounds = classification.bounds;
   const BakedRoomRole role = classification.role;
+  const bool useProceduralRenderFallback =
+      object.assetId.empty() ||
+      classification.assetSurfaces.policy ==
+          RoomBakeAssetSurfacePolicy::MissingMetadata;
   RoomStaticMeshAsset mesh;
   mesh.id = stableObjectId(object);
-  mesh.meshId = object.assetId.empty()
+  mesh.meshId = useProceduralRenderFallback
                     ? std::string(generatedMeshIdForDescriptor(descriptor, role))
                     : "asset:" + object.assetId;
   mesh.materialId = std::string(materialIdForRole(role));
@@ -370,8 +374,9 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
       resolved.valid
           ? creativeVec3ToCoreChecked(resolved.rotationEulerRadians).value
           : Vec3{};
-  mesh.proceduralSegmentCount =
-      object.assetId.empty() ? classification.proceduralSegmentCount : 0U;
+  mesh.proceduralSegmentCount = useProceduralRenderFallback
+                                    ? classification.proceduralSegmentCount
+                                    : 0U;
   if (role == BakedRoomRole::Wall &&
       axisAlignedYaw(object.transform.rotationEulerRadians)) {
     setWallSegmentFields(mesh, bounds);
@@ -852,10 +857,6 @@ void appendSpatialSurfaces(RoomAsset& room,
 
   classification.orientedSize = orientedSize.value;
   classification.transformedBounds = resolved;
-  classification.proceduralSegmentCount =
-      object.assetId.empty()
-          ? creativeGeneratedGeometrySegmentCount(descriptor, resolved.size)
-          : 0U;
   classification.role = roleForObject(descriptor, classification.orientedSize);
   if (classification.role == BakedRoomRole::Unsupported) {
     classification.decision = RoomBakeObjectDecision::SkipUnsupportedShape;
@@ -864,6 +865,12 @@ void appendSpatialSurfaces(RoomAsset& room,
 
   classification.assetSurfaces =
       classifyRoomBakeAssetSurfaces(object, assetCatalog);
+  if (object.assetId.empty() ||
+      classification.assetSurfaces.policy ==
+          RoomBakeAssetSurfacePolicy::MissingMetadata) {
+    classification.proceduralSegmentCount =
+        creativeGeneratedGeometrySegmentCount(descriptor, resolved.size);
+  }
 
   classification.decision = RoomBakeObjectDecision::BakeStaticMesh;
   return classification;

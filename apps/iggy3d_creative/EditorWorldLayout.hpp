@@ -7,6 +7,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
@@ -65,6 +66,13 @@ enum class CreativeEditorWorldLayoutCatalogSnapHostKind : std::uint8_t {
   LevelFloor,
   ExplicitWall,
   RoomEdge,
+  Count,
+};
+
+enum class CreativeEditorWorldLayoutOpeningInsertOperation : std::uint8_t {
+  FitAssetToOpening,
+  ResizeOpeningToAsset,
+  UseProceduralInsert,
   Count,
 };
 
@@ -575,10 +583,96 @@ struct CreativeEditorWorldLayoutObjectFootprint {
   cr::CreativeBounds axisAlignedBoundsCells;
 };
 
+struct CreativeEditorWorldLayoutOpeningHost {
+  bool valid = false;
+  CreativeEditorWorldLayoutPoint start;
+  CreativeEditorWorldLayoutPoint end;
+  double lengthCells = 0.0;
+  double wallHeightCells = 0.0;
+};
+
+struct CreativeEditorWorldLayoutOpeningPlacementPlan {
+  bool accepted = false;
+  cr::CreativeWorldLayoutOpening opening;
+  CreativeEditorWorldLayoutOpeningHost host;
+  CreativeEditorWorldLayoutPoint centerPoint;
+  CreativeEditorWorldLayoutPoint startPoint;
+  CreativeEditorWorldLayoutPoint endPoint;
+  double pointerDistanceCells = 0.0;
+  std::string_view message = "Choose a wall target";
+  std::string_view reasonCode =
+      "creative_editor_world_layout_opening_placement_not_requested";
+};
+
+struct CreativeEditorWorldLayoutOpeningPlacementRequest {
+  CreativeEditorWorldLayoutPoint point;
+  cr::CreativeBuildingOpeningKind kind =
+      cr::CreativeBuildingOpeningKind::Door;
+  double widthCells = 0.0;
+  double cutoutBottomCells = 0.0;
+  double cutoutHeightCells = 0.0;
+  double insertThicknessCells = 0.0;
+  bool useExplicitDimensions = false;
+  std::string_view insertAssetId;
+  cr::CreativeBounds insertAssetSourceBoundsMeters;
+  bool hasInsertAssetSourceBounds = false;
+  std::string_view label;
+};
+
+static_assert(std::is_trivially_copyable_v<
+              CreativeEditorWorldLayoutOpeningPlacementRequest>);
+
+struct CreativeEditorWorldLayoutOpeningInsertRequest {
+  std::size_t openingIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  CreativeEditorWorldLayoutOpeningInsertOperation operation =
+      CreativeEditorWorldLayoutOpeningInsertOperation::FitAssetToOpening;
+  cr::CreativeBuildingOpeningKind assetKind =
+      cr::CreativeBuildingOpeningKind::Door;
+  std::string_view assetId;
+  cr::CreativeBounds assetSourceBoundsMeters;
+  cr::CreativeVec3 assetScale{1.0, 1.0, 1.0};
+  double gridCellSizeMeters = 1.0;
+};
+
+struct CreativeEditorWorldLayoutOpeningAssetGeometryRequest {
+  cr::CreativeBuildingOpeningKind kind =
+      cr::CreativeBuildingOpeningKind::Door;
+  cr::CreativeBounds sourceBoundsMeters;
+  cr::CreativeVec3 scale{1.0, 1.0, 1.0};
+  double gridCellSizeMeters = 1.0;
+};
+
+struct CreativeEditorWorldLayoutOpeningAssetGeometryPlan {
+  bool accepted = false;
+  double widthCells = 0.0;
+  double cutoutBottomCells = 0.0;
+  double cutoutHeightCells = 0.0;
+  double insertThicknessCells = 0.0;
+  std::string_view reasonCode =
+      "creative_editor_world_layout_opening_asset_geometry_not_requested";
+};
+
+struct CreativeEditorWorldLayoutOpeningInsertPlan {
+  bool accepted = false;
+  cr::CreativeWorldLayoutOpening candidate;
+  std::string message = "Choose an opening insert";
+  std::string reasonCode =
+      "creative_editor_world_layout_opening_insert_not_requested";
+};
+
+static_assert(std::is_trivially_copyable_v<
+              CreativeEditorWorldLayoutOpeningInsertRequest>);
+static_assert(std::is_trivially_copyable_v<
+              CreativeEditorWorldLayoutOpeningAssetGeometryRequest>);
+static_assert(std::is_trivially_copyable_v<
+              CreativeEditorWorldLayoutOpeningAssetGeometryPlan>);
+
 struct CreativeEditorWorldLayoutCatalogPlacementPlan {
   bool accepted = false;
+  bool hostedOpening = false;
   cr::CreativeWorldLayoutObject object;
   CreativeEditorWorldLayoutObjectFootprint footprint;
+  CreativeEditorWorldLayoutOpeningPlacementPlan openingPlacement;
   CreativeEditorWorldLayoutCatalogSnapMode snapMode =
       CreativeEditorWorldLayoutCatalogSnapMode::Grid;
   CreativeEditorWorldLayoutCatalogSnapHostKind snapHostKind =
@@ -614,27 +708,6 @@ struct CreativeEditorWorldLayoutObjectManipulationState {
   bool previewValid = false;
   std::string reasonCode =
       "creative_editor_world_layout_object_manipulation_inactive";
-};
-
-struct CreativeEditorWorldLayoutOpeningHost {
-  bool valid = false;
-  CreativeEditorWorldLayoutPoint start;
-  CreativeEditorWorldLayoutPoint end;
-  double lengthCells = 0.0;
-  double wallHeightCells = 0.0;
-};
-
-struct CreativeEditorWorldLayoutOpeningPlacementPlan {
-  bool accepted = false;
-  cr::CreativeWorldLayoutOpening opening;
-  CreativeEditorWorldLayoutOpeningHost host;
-  CreativeEditorWorldLayoutPoint centerPoint;
-  CreativeEditorWorldLayoutPoint startPoint;
-  CreativeEditorWorldLayoutPoint endPoint;
-  double pointerDistanceCells = 0.0;
-  std::string_view message = "Choose a wall target";
-  std::string_view reasonCode =
-      "creative_editor_world_layout_opening_placement_not_requested";
 };
 
 enum class CreativeEditorWorldLayoutOpeningHandle : std::uint8_t {
@@ -840,6 +913,11 @@ classifyCreativeEditorWorldLayoutAsset(
     const cr::CreativeCatalogEntry& entry) noexcept;
 [[nodiscard]] bool creativeEditorWorldLayoutCatalogAssetSupportsWallSnap(
     std::string_view categoryId) noexcept;
+[[nodiscard]] bool creativeEditorWorldLayoutCatalogAssetIsHostedOpening(
+    std::string_view categoryId) noexcept;
+[[nodiscard]] bool creativeEditorWorldLayoutCatalogAssetMatchesOpening(
+    std::string_view categoryId,
+    cr::CreativeBuildingOpeningKind kind) noexcept;
 [[nodiscard]] bool creativeEditorWorldLayoutAssetMatchesQuery(
     const cr::CreativeCatalogEntry& entry, std::string_view query);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
@@ -1156,6 +1234,14 @@ planCreativeEditorWorldLayoutOpeningPlacement(
     const CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutPoint point,
     cr::CreativeBuildingOpeningKind kind);
+[[nodiscard]] CreativeEditorWorldLayoutOpeningPlacementPlan
+planCreativeEditorWorldLayoutOpeningPlacement(
+    const CreativeEditorWorldLayoutState& state,
+    const CreativeEditorWorldLayoutOpeningPlacementRequest& request);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+applyCreativeEditorWorldLayoutOpeningPlacement(
+    CreativeEditorWorldLayoutState& state,
+    const CreativeEditorWorldLayoutOpeningPlacementRequest& request);
 [[nodiscard]] CreativeEditorWorldLayoutOpeningHost
 resolveCreativeEditorWorldLayoutOpeningHost(
     const CreativeEditorWorldLayoutState& state,
@@ -1168,6 +1254,18 @@ findCreativeEditorWorldLayoutOpeningTarget(
 setCreativeEditorWorldLayoutOpeningSettings(
     CreativeEditorWorldLayoutState& state, std::size_t openingIndex,
     CreativeEditorWorldLayoutOpeningSettings settings);
+[[nodiscard]] CreativeEditorWorldLayoutOpeningInsertPlan
+planCreativeEditorWorldLayoutOpeningInsert(
+    const CreativeEditorWorldLayoutState& state,
+    const CreativeEditorWorldLayoutOpeningInsertRequest& request);
+[[nodiscard]] CreativeEditorWorldLayoutOpeningAssetGeometryPlan
+planCreativeEditorWorldLayoutOpeningAssetGeometry(
+    const CreativeEditorWorldLayoutOpeningAssetGeometryRequest& request)
+    noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+applyCreativeEditorWorldLayoutOpeningInsert(
+    CreativeEditorWorldLayoutState& state,
+    const CreativeEditorWorldLayoutOpeningInsertRequest& request);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 applyCreativeEditorWorldLayoutOpeningManipulation(
     CreativeEditorWorldLayoutState& state,

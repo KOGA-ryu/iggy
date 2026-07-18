@@ -94,6 +94,7 @@ enum class CreativeDesktopCommandId : std::uint8_t {
   WorldLayoutSetWallSettings,
   WorldLayoutManipulateWall,
   WorldLayoutSetOpeningSettings,
+  WorldLayoutSetOpeningInsert,
   WorldLayoutManipulateOpening,
   WorldLayoutDeleteSelection,
   WorldLayoutPreview,

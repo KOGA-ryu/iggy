@@ -304,6 +304,15 @@ struct CreativeDesktopWorldLayoutOpeningSettingsPayload {
   CreativeEditorWorldLayoutOpeningSettings settings;
 };
 
+struct CreativeDesktopWorldLayoutOpeningInsertPayload {
+  std::size_t openingIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  CreativeEditorWorldLayoutOpeningInsertOperation operation =
+      CreativeEditorWorldLayoutOpeningInsertOperation::FitAssetToOpening;
+  std::string assetId;
+  iggy3d::creative::CreativeVec3 assetScale{1.0, 1.0, 1.0};
+};
+
 struct CreativeDesktopWorldLayoutOpeningManipulationPayload {
   CreativeEditorWorldLayoutOpeningManipulationPhase phase =
       CreativeEditorWorldLayoutOpeningManipulationPhase::Begin;
@@ -354,6 +363,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutWallSettingsPayload,
     CreativeDesktopWorldLayoutWallManipulationPayload,
     CreativeDesktopWorldLayoutOpeningSettingsPayload,
+    CreativeDesktopWorldLayoutOpeningInsertPayload,
     CreativeDesktopWorldLayoutOpeningManipulationPayload>;
 
 }  // namespace iggy3d_creative_app

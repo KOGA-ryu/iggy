@@ -3,6 +3,7 @@
 #include "EditorWorldLayoutInternal.hpp"
 #include "EditorWorldLayoutHistory.hpp"
 
+#include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/world/MapTemplate.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
@@ -651,6 +652,14 @@ bool validOpeningPose(cr::CreativeBuildingOpeningPose pose) noexcept {
              cr::CreativeBuildingOpeningPose::OpenFromEndPositiveNormal;
 }
 
+bool sameVec3(cr::CreativeVec3 lhs, cr::CreativeVec3 rhs) noexcept {
+  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
+}
+
+bool sameBounds(cr::CreativeBounds lhs, cr::CreativeBounds rhs) noexcept {
+  return sameVec3(lhs.min, rhs.min) && sameVec3(lhs.max, rhs.max);
+}
+
 CreativeEditorWorldLayoutOpeningSettings openingSettings(
     const cr::CreativeWorldLayoutOpening& opening) noexcept {
   return {opening.centerOffsetCells,
@@ -701,7 +710,12 @@ bool sameEditableOpening(const cr::CreativeWorldLayoutOpening& lhs,
          lhs.insertBottomCells == rhs.insertBottomCells &&
          lhs.insertHeightCells == rhs.insertHeightCells &&
          lhs.insertWidthCells == rhs.insertWidthCells &&
-         lhs.insertThicknessCells == rhs.insertThicknessCells;
+         lhs.insertThicknessCells == rhs.insertThicknessCells &&
+         lhs.insertAssetId == rhs.insertAssetId &&
+         lhs.hasInsertAssetSourceBounds ==
+             rhs.hasInsertAssetSourceBounds &&
+         sameBounds(lhs.insertAssetSourceBoundsMeters,
+                    rhs.insertAssetSourceBoundsMeters);
 }
 
 OpeningValidation validateOpeningCandidate(
@@ -717,6 +731,18 @@ OpeningValidation validateOpeningCandidate(
       candidate.cutoutBottomCells < 0.0 ||
       candidate.cutoutHeightCells <= 0.0) {
     return {};
+  }
+  const cr::CreativeBoundsMetrics assetSource =
+      cr::measureCreativeBounds(candidate.insertAssetSourceBoundsMeters);
+  const bool validAsset =
+      candidate.hasInsertAssetSourceBounds
+          ? !candidate.insertAssetId.empty() && assetSource.valid &&
+                cr::isPositiveCreativeVec3(assetSource.size)
+          : candidate.insertAssetId.empty();
+  if (!validAsset) {
+    return {false,
+            "creative_editor_world_layout_opening_insert_asset_invalid",
+            "opening insert asset metadata is invalid"};
   }
   if (candidate.kind == cr::CreativeBuildingOpeningKind::Door &&
       !nearlyEqual(candidate.cutoutBottomCells, 0.0)) {
@@ -1138,25 +1164,10 @@ CreativeEditorWorldLayoutEditReceipt addWallPoint(
 CreativeEditorWorldLayoutEditReceipt addOpening(
     CreativeEditorWorldLayoutState& state, CreativeEditorWorldLayoutPoint point,
     cr::CreativeBuildingOpeningKind kind) {
-  CreativeEditorWorldLayoutOpeningPlacementPlan plan =
-      planCreativeEditorWorldLayoutOpeningPlacement(state, point, kind);
-  if (!plan.accepted) {
-    state.statusMessage = plan.message;
-    return {false, false, std::string(plan.reasonCode)};
-  }
-  cr::CreativeWorldLayoutOpening opening = std::move(plan.opening);
-  opening.stableKey = mintWorldLayoutStableKey(
-      state, kind == cr::CreativeBuildingOpeningKind::Door ? "door" : "window");
-  opening.name =
-      (kind == cr::CreativeBuildingOpeningKind::Door ? "Door " : "Window ") +
-      std::to_string(state.source.openings.size() + 1U);
-  state.source.openings.push_back(std::move(opening));
-  state.selection = {CreativeEditorWorldLayoutSelectionKind::Opening,
-                     state.source.openings.size() - 1U};
-  noteWorldLayoutSourceChange(
-      state, kind == cr::CreativeBuildingOpeningKind::Door ? "door added"
-                                                           : "window added");
-  return {true, true, "creative_editor_world_layout_opening_added"};
+  CreativeEditorWorldLayoutOpeningPlacementRequest request;
+  request.point = point;
+  request.kind = kind;
+  return applyCreativeEditorWorldLayoutOpeningPlacement(state, request);
 }
 
 struct ContainingRoomResult {
@@ -1487,8 +1498,35 @@ planCreativeEditorWorldLayoutOpeningPlacement(
     const CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutPoint point,
     cr::CreativeBuildingOpeningKind kind) {
+  CreativeEditorWorldLayoutOpeningPlacementRequest request;
+  request.point = point;
+  request.kind = kind;
+  return planCreativeEditorWorldLayoutOpeningPlacement(state, request);
+}
+
+CreativeEditorWorldLayoutOpeningPlacementPlan
+planCreativeEditorWorldLayoutOpeningPlacement(
+    const CreativeEditorWorldLayoutState& state,
+    const CreativeEditorWorldLayoutOpeningPlacementRequest& request) {
   CreativeEditorWorldLayoutOpeningPlacementPlan result;
-  if (!finitePoint(point) || !validOpeningKind(kind)) {
+  const cr::CreativeBoundsMetrics assetSource =
+      cr::measureCreativeBounds(request.insertAssetSourceBoundsMeters);
+  const bool validAsset =
+      request.hasInsertAssetSourceBounds
+          ? !request.insertAssetId.empty() && request.useExplicitDimensions &&
+                assetSource.valid && cr::isPositiveCreativeVec3(assetSource.size)
+          : request.insertAssetId.empty();
+  const bool validExplicitDimensions =
+      !request.useExplicitDimensions ||
+      (std::isfinite(request.widthCells) && request.widthCells > 0.0 &&
+       std::isfinite(request.cutoutBottomCells) &&
+       request.cutoutBottomCells >= 0.0 &&
+       std::isfinite(request.cutoutHeightCells) &&
+       request.cutoutHeightCells > 0.0 &&
+       std::isfinite(request.insertThicknessCells) &&
+       request.insertThicknessCells > 0.0);
+  if (!finitePoint(request.point) || !validOpeningKind(request.kind) ||
+      !validAsset || !validExplicitDimensions) {
     result.message = "Opening target is invalid";
     result.reasonCode =
         "creative_editor_world_layout_opening_placement_invalid";
@@ -1496,7 +1534,7 @@ planCreativeEditorWorldLayoutOpeningPlacement(
   }
 
   const OpeningHostProjection projection =
-      nearestOpeningHost(state.source, point, kOpeningHitToleranceCells,
+      nearestOpeningHost(state.source, request.point, kOpeningHitToleranceCells,
                          state.activeLevelIndex);
   if (!projection.hit) {
     result.message = "Place the opening on a room edge or partition";
@@ -1509,10 +1547,10 @@ planCreativeEditorWorldLayoutOpeningPlacement(
   opening.wallIndex = projection.wallIndex;
   opening.roomIndex = projection.roomIndex;
   opening.roomEdge = projection.roomEdge;
-  opening.kind = kind;
+  opening.kind = request.kind;
   opening.pose = cr::CreativeBuildingOpeningPose::Closed;
   opening.includeInsert = true;
-  switch (kind) {
+  switch (request.kind) {
     case cr::CreativeBuildingOpeningKind::Door:
       opening.widthCells = 1.0;
       opening.cutoutBottomCells = 0.0;
@@ -1531,6 +1569,15 @@ planCreativeEditorWorldLayoutOpeningPlacement(
       opening.insertWidthCells = 1.5;
       opening.insertThicknessCells = 0.10;
       break;
+  }
+  if (request.useExplicitDimensions) {
+    opening.widthCells = request.widthCells;
+    opening.cutoutBottomCells = request.cutoutBottomCells;
+    opening.cutoutHeightCells = request.cutoutHeightCells;
+    opening.insertBottomCells = request.cutoutBottomCells;
+    opening.insertHeightCells = request.cutoutHeightCells;
+    opening.insertWidthCells = request.widthCells;
+    opening.insertThicknessCells = request.insertThicknessCells;
   }
 
   const double halfWidth = opening.widthCells * 0.5;
@@ -1569,7 +1616,7 @@ planCreativeEditorWorldLayoutOpeningPlacement(
         "creative_editor_world_layout_opening_height_invalid";
     return result;
   }
-  if (kind == cr::CreativeBuildingOpeningKind::Window &&
+  if (request.kind == cr::CreativeBuildingOpeningKind::Window &&
       projection.hostKind ==
           cr::CreativeWorldLayoutOpeningHostKind::RoomEdge &&
       cr::creativeWorldLayoutRoomEdgeIntervalIsShared(
@@ -1611,13 +1658,50 @@ planCreativeEditorWorldLayoutOpeningPlacement(
       result.host,
       result.opening.centerOffsetCells + result.opening.widthCells * 0.5);
   result.pointerDistanceCells = projection.distanceCells;
-  result.message = kind == cr::CreativeBuildingOpeningKind::Door
+  result.message = request.kind == cr::CreativeBuildingOpeningKind::Door
                        ? "Door target ready"
                        : "Window target ready";
   result.reasonCode =
       "creative_editor_world_layout_opening_placement_ready";
   result.accepted = true;
   return result;
+}
+
+CreativeEditorWorldLayoutEditReceipt
+applyCreativeEditorWorldLayoutOpeningPlacement(
+    CreativeEditorWorldLayoutState& state,
+    const CreativeEditorWorldLayoutOpeningPlacementRequest& request) {
+  CreativeEditorWorldLayoutOpeningPlacementPlan plan =
+      planCreativeEditorWorldLayoutOpeningPlacement(state, request);
+  if (!plan.accepted) {
+    state.statusMessage = plan.message;
+    return {false, false, std::string(plan.reasonCode)};
+  }
+
+  cr::CreativeWorldLayoutOpening opening = std::move(plan.opening);
+  opening.stableKey = mintWorldLayoutStableKey(
+      state, request.kind == cr::CreativeBuildingOpeningKind::Door ? "door"
+                                                                   : "window");
+  opening.name = request.label.empty()
+                     ? (request.kind == cr::CreativeBuildingOpeningKind::Door
+                            ? "Door "
+                            : "Window ") +
+                           std::to_string(state.source.openings.size() + 1U)
+                     : std::string(request.label);
+  if (request.hasInsertAssetSourceBounds) {
+    opening.insertAssetId = std::string(request.insertAssetId);
+    opening.insertAssetSourceBoundsMeters =
+        request.insertAssetSourceBoundsMeters;
+    opening.hasInsertAssetSourceBounds = true;
+  }
+  state.source.openings.push_back(std::move(opening));
+  state.selection = {CreativeEditorWorldLayoutSelectionKind::Opening,
+                     state.source.openings.size() - 1U};
+  noteWorldLayoutSourceChange(
+      state, request.kind == cr::CreativeBuildingOpeningKind::Door
+                 ? "door added"
+                 : "window added");
+  return {true, true, "creative_editor_world_layout_opening_added"};
 }
 
 bool creativeEditorWorldLayoutToolIsVerticalConnector(
@@ -2303,6 +2387,142 @@ setCreativeEditorWorldLayoutOpeningSettings(
       state.source.openings[openingIndex], settings);
   return commitOpeningCandidate(state, openingIndex, candidate,
                                 "opening settings updated");
+}
+
+CreativeEditorWorldLayoutOpeningAssetGeometryPlan
+planCreativeEditorWorldLayoutOpeningAssetGeometry(
+    const CreativeEditorWorldLayoutOpeningAssetGeometryRequest& request)
+    noexcept {
+  CreativeEditorWorldLayoutOpeningAssetGeometryPlan plan;
+  const cr::CreativeBoundsMetrics source =
+      cr::measureCreativeBounds(request.sourceBoundsMeters);
+  if (!validOpeningKind(request.kind) || !source.valid ||
+      !cr::isPositiveCreativeVec3(source.size) ||
+      !cr::isFiniteCreativeVec3(request.scale) ||
+      !cr::isPositiveCreativeVec3(request.scale) ||
+      !std::isfinite(request.gridCellSizeMeters) ||
+      request.gridCellSizeMeters <= 0.0) {
+    plan.reasonCode =
+        "creative_editor_world_layout_opening_asset_geometry_invalid";
+    return plan;
+  }
+  const bool localXIsPrimary = source.size.x >= source.size.z;
+  const double widthMeters =
+      localXIsPrimary ? source.size.x * request.scale.x
+                      : source.size.z * request.scale.z;
+  const double thicknessMeters =
+      localXIsPrimary ? source.size.z * request.scale.z
+                      : source.size.x * request.scale.x;
+  plan.accepted = true;
+  plan.widthCells = widthMeters / request.gridCellSizeMeters;
+  plan.cutoutBottomCells =
+      request.kind == cr::CreativeBuildingOpeningKind::Window ? 1.0 : 0.0;
+  plan.cutoutHeightCells =
+      source.size.y * request.scale.y / request.gridCellSizeMeters;
+  plan.insertThicknessCells =
+      thicknessMeters / request.gridCellSizeMeters;
+  plan.reasonCode =
+      "creative_editor_world_layout_opening_asset_geometry_ready";
+  return plan;
+}
+
+CreativeEditorWorldLayoutOpeningInsertPlan
+planCreativeEditorWorldLayoutOpeningInsert(
+    const CreativeEditorWorldLayoutState& state,
+    const CreativeEditorWorldLayoutOpeningInsertRequest& request) {
+  CreativeEditorWorldLayoutOpeningInsertPlan plan;
+  if (request.openingIndex >= state.source.openings.size() ||
+      request.operation >=
+          CreativeEditorWorldLayoutOpeningInsertOperation::Count) {
+    plan.message = "Opening insert request is invalid";
+    plan.reasonCode =
+        "creative_editor_world_layout_opening_insert_request_invalid";
+    return plan;
+  }
+
+  cr::CreativeWorldLayoutOpening candidate =
+      state.source.openings[request.openingIndex];
+  if (request.operation ==
+      CreativeEditorWorldLayoutOpeningInsertOperation::UseProceduralInsert) {
+    candidate.includeInsert = true;
+    candidate.insertAssetId.clear();
+    candidate.insertAssetSourceBoundsMeters = {};
+    candidate.hasInsertAssetSourceBounds = false;
+  } else {
+    const cr::CreativeBoundsMetrics source =
+        cr::measureCreativeBounds(request.assetSourceBoundsMeters);
+    if (request.assetKind != candidate.kind || request.assetId.empty() ||
+        !source.valid || !cr::isPositiveCreativeVec3(source.size)) {
+      plan.message = "Choose a compatible door or window asset";
+      plan.reasonCode =
+          "creative_editor_world_layout_opening_insert_asset_invalid";
+      return plan;
+    }
+    candidate.includeInsert = true;
+    candidate.insertAssetId = std::string(request.assetId);
+    candidate.insertAssetSourceBoundsMeters =
+        request.assetSourceBoundsMeters;
+    candidate.hasInsertAssetSourceBounds = true;
+
+    if (request.operation ==
+        CreativeEditorWorldLayoutOpeningInsertOperation::
+            ResizeOpeningToAsset) {
+      const CreativeEditorWorldLayoutOpeningAssetGeometryPlan geometry =
+          planCreativeEditorWorldLayoutOpeningAssetGeometry(
+              {request.assetKind, request.assetSourceBoundsMeters,
+               request.assetScale, request.gridCellSizeMeters});
+      if (!geometry.accepted) {
+        plan.message = "Opening resize settings are invalid";
+        plan.reasonCode =
+            "creative_editor_world_layout_opening_insert_resize_invalid";
+        return plan;
+      }
+      candidate.widthCells = geometry.widthCells;
+      candidate.cutoutHeightCells = geometry.cutoutHeightCells;
+      candidate.insertBottomCells = candidate.cutoutBottomCells;
+      candidate.insertHeightCells = candidate.cutoutHeightCells;
+      candidate.insertWidthCells = candidate.widthCells;
+      candidate.insertThicknessCells = geometry.insertThicknessCells;
+    }
+  }
+
+  const OpeningValidation validation =
+      validateOpeningCandidate(state, request.openingIndex, candidate);
+  if (!validation.accepted) {
+    plan.message = validation.message;
+    plan.reasonCode = validation.reasonCode;
+    return plan;
+  }
+  plan.accepted = true;
+  plan.candidate = std::move(candidate);
+  plan.message =
+      request.operation ==
+              CreativeEditorWorldLayoutOpeningInsertOperation::
+                  UseProceduralInsert
+          ? "Procedural opening insert ready"
+          : "Catalog opening insert ready";
+  plan.reasonCode =
+      "creative_editor_world_layout_opening_insert_ready";
+  return plan;
+}
+
+CreativeEditorWorldLayoutEditReceipt
+applyCreativeEditorWorldLayoutOpeningInsert(
+    CreativeEditorWorldLayoutState& state,
+    const CreativeEditorWorldLayoutOpeningInsertRequest& request) {
+  CreativeEditorWorldLayoutOpeningInsertPlan plan =
+      planCreativeEditorWorldLayoutOpeningInsert(state, request);
+  if (!plan.accepted) {
+    state.statusMessage = plan.message;
+    return {false, false, std::move(plan.reasonCode)};
+  }
+  return commitOpeningCandidate(
+      state, request.openingIndex, plan.candidate,
+      request.operation ==
+              CreativeEditorWorldLayoutOpeningInsertOperation::
+                  UseProceduralInsert
+          ? "procedural opening insert selected"
+          : "opening insert replaced");
 }
 
 CreativeEditorWorldLayoutEditReceipt

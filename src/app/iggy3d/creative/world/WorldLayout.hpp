@@ -15,7 +15,7 @@
 
 namespace iggy3d::creative {
 
-inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 9U;
+inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 10U;
 inline constexpr std::size_t kInvalidCreativeWorldLayoutIndex =
     std::numeric_limits<std::size_t>::max();
 inline constexpr std::uint16_t kDefaultCreativeWorldLayoutWallHeightCells = 3U;
@@ -166,6 +166,12 @@ struct CreativeWorldLayoutOpening {
   double insertHeightCells = 0.0;
   double insertWidthCells = 0.0;
   double insertThicknessCells = 0.0;
+  // Empty keeps the descriptor-backed procedural insert. Catalog-backed
+  // openings retain imported meter-space bounds so compilation can fit the
+  // asset to the semantic cutout without creating an unrelated prop.
+  std::string insertAssetId;
+  CreativeBounds insertAssetSourceBoundsMeters;
+  bool hasInsertAssetSourceBounds = false;
 };
 
 // Reusable props and gameplay anchors remain semantic layout symbols instead

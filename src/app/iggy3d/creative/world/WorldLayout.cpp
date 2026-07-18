@@ -956,6 +956,11 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     opening.insertWidthMeters = symbol.insertWidthCells * grid.cellSizeMeters;
     opening.insertThicknessMeters =
         symbol.insertThicknessCells * grid.cellSizeMeters;
+    opening.insertAssetId = symbol.insertAssetId;
+    opening.insertAssetSourceBoundsMeters =
+        symbol.insertAssetSourceBoundsMeters;
+    opening.hasInsertAssetSourceBounds =
+        symbol.hasInsertAssetSourceBounds;
     appendTagOnce(opening.tags, creativeWorldLayoutProvenanceTag(
                                     layout,
                                     CreativeWorldLayoutTable::Opening,

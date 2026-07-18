@@ -144,6 +144,36 @@ struct CatalogSnapResolution {
                    categoryId) != kHostedOpeningCategoryIds.end();
 }
 
+[[nodiscard]] CreativeEditorWorldLayoutOpeningPlacementRequest
+hostedOpeningPlacementRequest(
+    const CreativeEditorWorldLayoutCatalogPlacementState& placement,
+    CreativeEditorWorldLayoutPoint point,
+    cr::CreativeGridSettings grid) noexcept {
+  CreativeEditorWorldLayoutOpeningPlacementRequest request;
+  request.point = point;
+  request.kind = placement.categoryId == "window"
+                     ? cr::CreativeBuildingOpeningKind::Window
+                     : cr::CreativeBuildingOpeningKind::Door;
+  request.useExplicitDimensions = true;
+  request.insertAssetId = placement.assetId;
+  request.insertAssetSourceBoundsMeters = placement.sourceBoundsMeters;
+  request.hasInsertAssetSourceBounds = true;
+  request.label = placement.label;
+
+  const CreativeEditorWorldLayoutOpeningAssetGeometryPlan geometry =
+      planCreativeEditorWorldLayoutOpeningAssetGeometry(
+          {request.kind, placement.sourceBoundsMeters, placement.scale,
+           grid.cellSizeMeters});
+  if (!geometry.accepted) {
+    return request;
+  }
+  request.widthCells = geometry.widthCells;
+  request.cutoutBottomCells = geometry.cutoutBottomCells;
+  request.cutoutHeightCells = geometry.cutoutHeightCells;
+  request.insertThicknessCells = geometry.insertThicknessCells;
+  return request;
+}
+
 [[nodiscard]] bool validSnapMode(
     CreativeEditorWorldLayoutCatalogSnapMode mode) noexcept {
   return mode < CreativeEditorWorldLayoutCatalogSnapMode::Count;
@@ -498,12 +528,9 @@ void considerWallSnapHost(
       }
       if (!creativeEditorWorldLayoutCatalogAssetSupportsWallSnap(
               placement.categoryId)) {
-        result.message = hostedOpeningCategory(placement.categoryId)
-                             ? "Use the Door or Window tool to cut an opening"
-                             : "Wall snap supports architecture assets";
-        result.reasonCode = hostedOpeningCategory(placement.categoryId)
-                                ? "creative_editor_world_layout_catalog_wall_opening_requires_tool"
-                                : "creative_editor_world_layout_catalog_wall_asset_unsupported";
+        result.message = "Wall snap supports architecture assets";
+        result.reasonCode =
+            "creative_editor_world_layout_catalog_wall_asset_unsupported";
         return result;
       }
       const CatalogWallSnapHost host = nearestWallSnapHost(state, pointer);
@@ -642,8 +669,21 @@ classifyCreativeEditorWorldLayoutAsset(
 bool creativeEditorWorldLayoutCatalogAssetSupportsWallSnap(
     std::string_view categoryId) noexcept {
   return classifyCategoryId(categoryId) ==
-             CreativeEditorWorldLayoutAssetCategory::Architecture &&
-         !hostedOpeningCategory(categoryId);
+         CreativeEditorWorldLayoutAssetCategory::Architecture;
+}
+
+bool creativeEditorWorldLayoutCatalogAssetIsHostedOpening(
+    std::string_view categoryId) noexcept {
+  return hostedOpeningCategory(categoryId);
+}
+
+bool creativeEditorWorldLayoutCatalogAssetMatchesOpening(
+    std::string_view categoryId,
+    cr::CreativeBuildingOpeningKind kind) noexcept {
+  return (categoryId == "door" &&
+          kind == cr::CreativeBuildingOpeningKind::Door) ||
+         (categoryId == "window" &&
+          kind == cr::CreativeBuildingOpeningKind::Window);
 }
 
 bool creativeEditorWorldLayoutAssetMatchesQuery(
@@ -691,7 +731,10 @@ selectCreativeEditorWorldLayoutCatalogAsset(
       entry.assetAuthoringMetadata.categoryId;
   state.catalogPlacement.sourceBoundsMeters =
       entry.hotbarEntry.assetSourceBounds;
-  state.catalogPlacement.snapMode = snapMode;
+  state.catalogPlacement.snapMode =
+      hostedOpeningCategory(state.catalogPlacement.categoryId)
+          ? CreativeEditorWorldLayoutCatalogSnapMode::Wall
+          : snapMode;
   state.catalogPlacement.elevationCells = elevation;
   state.catalogPlacement.yawDegrees = yaw;
   state.catalogPlacement.scale = scale;
@@ -790,6 +833,16 @@ planCreativeEditorWorldLayoutCatalogPlacement(
         "creative_editor_world_layout_catalog_placement_invalid";
     return result;
   }
+  if (hostedOpeningCategory(selected.categoryId)) {
+    result.hostedOpening = true;
+    result.snapMode = CreativeEditorWorldLayoutCatalogSnapMode::Wall;
+    result.openingPlacement = planCreativeEditorWorldLayoutOpeningPlacement(
+        state, hostedOpeningPlacementRequest(selected, point, grid));
+    result.accepted = result.openingPlacement.accepted;
+    result.message = std::string(result.openingPlacement.message);
+    result.reasonCode = std::string(result.openingPlacement.reasonCode);
+    return result;
+  }
   result.snapMode = selected.snapMode;
   const CatalogSnapResolution snap = resolveCatalogSnap(state, point, grid);
   result.snapHostKind = snap.hostKind;
@@ -867,6 +920,11 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutPoint(
   if (!plan.accepted) {
     state.statusMessage = plan.message;
     return {false, false, std::move(plan.reasonCode)};
+  }
+  if (plan.hostedOpening) {
+    return applyCreativeEditorWorldLayoutOpeningPlacement(
+        state, hostedOpeningPlacementRequest(state.catalogPlacement, point,
+                                             grid));
   }
   plan.object.stableKey = detail::mintWorldLayoutStableKey(state, "asset");
   state.source.objects.push_back(std::move(plan.object));

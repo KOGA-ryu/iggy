@@ -277,6 +277,97 @@ bool openDoorPoseMatchesReferenceGeometry() {
                 "open door pose preserves reference bounds");
 }
 
+bool assetBackedOpeningsFitTheStructuralInsertVolume() {
+  const cr::CreativeBounds sourceBounds{{-0.2, -0.1, -0.05},
+                                         {1.3, 2.3, 0.15}};
+  const auto buildDoor = [&](cr::CreativeBuildingOpeningPose pose,
+                             bool includeInsert = true) {
+    cr::CreativeBuildingRecipeRequest request;
+    request.stableKey = "asset_opening";
+    request.name = "Asset Opening";
+    request.rootMode = cr::CreativeBuildingRootMode::None;
+    cr::CreativeBuildingWallSpec wall;
+    wall.stableKey = "wall.reversed";
+    wall.name = "Reversed Wall";
+    wall.start = {8.0, 0.0, 0.0};
+    wall.end = {0.0, 0.0, 0.0};
+    cr::CreativeBuildingOpeningSpec door =
+        cr::makeCreativeBuildingDoorOpening("door.asset", "Catalog Door",
+                                             2.0, 1.5, 2.4);
+    door.pose = pose;
+    door.insertHeightMeters = 2.4;
+    door.insertWidthMeters = 1.5;
+    door.insertThicknessMeters = 0.2;
+    door.includeInsert = includeInsert;
+    door.insertAssetId = "homestead/modular/door_leaf_1p1x2p2";
+    door.insertAssetSourceBoundsMeters = sourceBounds;
+    door.hasInsertAssetSourceBounds = true;
+    wall.openings.push_back(std::move(door));
+    request.walls.push_back(std::move(wall));
+    return cr::buildCreativeBuildingRecipe(request);
+  };
+
+  const cr::CreativeBuildingRecipeResult closed =
+      buildDoor(cr::CreativeBuildingOpeningPose::Closed);
+  const cr::CreativeBuildingRecipeResult open = buildDoor(
+      cr::CreativeBuildingOpeningPose::OpenFromStartPositiveNormal);
+  const cr::CreativeBuildingRecipeResult cutoutOnly =
+      buildDoor(cr::CreativeBuildingOpeningPose::Closed, false);
+  const cr::CreativeRecipeObjectPlan* closedInsert =
+      findPlanObject(closed.plan, "door.asset.insert");
+  const cr::CreativeRecipeObjectPlan* openInsert =
+      findPlanObject(open.plan, "door.asset.insert");
+  const cr::CreativeTransformedBounds closedResolved =
+      closedInsert == nullptr
+          ? cr::CreativeTransformedBounds{}
+          : cr::resolveCreativeTransformedBounds(
+                closedInsert->createRequest.bounds,
+                closedInsert->createRequest.transform);
+  const cr::CreativeTransformedBounds openResolved =
+      openInsert == nullptr
+          ? cr::CreativeTransformedBounds{}
+          : cr::resolveCreativeTransformedBounds(
+                openInsert->createRequest.bounds,
+                openInsert->createRequest.transform);
+
+  cr::CreativeBuildingOpeningAssetFitRequest invalidFit;
+  invalidFit.sourceBoundsMeters = sourceBounds;
+  invalidFit.sourceBoundsMeters.max.x =
+      std::numeric_limits<double>::quiet_NaN();
+  invalidFit.targetBoundsMeters = {{0.0, 0.0, 0.0}, {1.0, 2.0, 0.2}};
+  invalidFit.wallFrame.axis = cr::CreativeStructuralWallAxis::X;
+  invalidFit.wallFrame.tangent = {1.0, 0.0, 0.0};
+  invalidFit.wallFrame.normal = {0.0, 0.0, 1.0};
+  const cr::CreativeBuildingOpeningAssetFitPlan invalid =
+      cr::planCreativeBuildingOpeningAssetFit(invalidFit);
+
+  return expect(closed.receipt.accepted && closedInsert != nullptr &&
+                    closedResolved.valid,
+                "asset-backed closed opening compiles") &&
+         expect(closedInsert->createRequest.assetId ==
+                        "homestead/modular/door_leaf_1p1x2p2" &&
+                    closedInsert->createRequest.hasBoundsOverride &&
+                    closedInsert->createRequest.hasTransformOverride,
+                "asset identity and explicit pivot reach the document request") &&
+         expect(sameBounds(closedResolved.worldBounds,
+                           {{5.25, 0.0, -0.1}, {6.75, 2.4, 0.1}}),
+                "reversed closed wall fits the exact insert volume") &&
+         expect(open.receipt.accepted && openInsert != nullptr &&
+                    openResolved.valid &&
+                    sameBounds(openResolved.worldBounds,
+                               {{6.55, 0.0, 0.0},
+                                {6.75, 2.4, 1.5}}),
+                "open pose rotates the asset into the exact swept insert volume") &&
+         expect(cutoutOnly.receipt.accepted &&
+                    findPlanObject(cutoutOnly.plan, "door.asset.insert") ==
+                        nullptr,
+                "disabling an asset insert preserves a valid cutout-only opening") &&
+         expect(!invalid.accepted &&
+                    invalid.status == cr::CreativeBuildingOpeningAssetFitStatus::
+                                          InvalidSourceBounds,
+                "asset fit rejects non-finite source geometry");
+}
+
 bool invalidGeometryFailsWithSpecificStatuses() {
   cr::CreativeBuildingRecipeRequest diagonal = representativeRoom();
   diagonal.walls[0].end = {8.0, 0.0, 2.0};
@@ -423,6 +514,7 @@ int main() {
                   stairBoxesPreserveAuthoredRotation() &&
                   concernTagsReachOnlyTheirGeneratedObjects() &&
                   openDoorPoseMatchesReferenceGeometry() &&
+                  assetBackedOpeningsFitTheStructuralInsertVolume() &&
                   invalidGeometryFailsWithSpecificStatuses() &&
                   rectangularRoomGeometryKeepsFloorAndWallsOnOneSeam() &&
                   rectangularRoomCompilesToStableShellRecipe() &&

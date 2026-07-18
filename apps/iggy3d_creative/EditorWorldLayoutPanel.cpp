@@ -818,20 +818,11 @@ void drawOpenings(ImDrawList& drawList, const CanvasTransform& transform,
   }
 }
 
-void drawOpeningPlacementPreview(
+void drawOpeningPlacementPlan(
     ImDrawList& drawList, const CanvasTransform& transform,
-    const CreativeEditorWorldLayoutState& state,
-    CreativeEditorWorldLayoutPoint hovered) {
-  cr::CreativeBuildingOpeningKind kind;
-  if (state.tool == CreativeEditorWorldLayoutTool::Door) {
-    kind = cr::CreativeBuildingOpeningKind::Door;
-  } else if (state.tool == CreativeEditorWorldLayoutTool::Window) {
-    kind = cr::CreativeBuildingOpeningKind::Window;
-  } else {
-    return;
-  }
-  const CreativeEditorWorldLayoutOpeningPlacementPlan plan =
-      planCreativeEditorWorldLayoutOpeningPlacement(state, hovered, kind);
+    CreativeEditorWorldLayoutPoint hovered,
+    const CreativeEditorWorldLayoutOpeningPlacementPlan& plan,
+    cr::CreativeBuildingOpeningKind kind, std::string_view label) {
   const ImU32 previewColor =
       !plan.accepted
           ? color({0.92F, 0.29F, 0.24F, 1.0F})
@@ -869,12 +860,34 @@ void drawOpeningPlacementPreview(
     drawList.AddRectFilled({center.x - 6.0F, center.y - 6.0F},
                            {center.x + 6.0F, center.y + 6.0F}, previewColor);
   }
-  char label[96]{};
-  std::snprintf(label, sizeof(label), "%s | %.2f wide x %.2f high",
-                kind == cr::CreativeBuildingOpeningKind::Door ? "Door"
-                                                               : "Window",
+  char placementLabel[96]{};
+  const std::size_t visibleLabelSize =
+      std::min(label.size(), std::size_t{48U});
+  std::snprintf(placementLabel, sizeof(placementLabel),
+                "%.*s | %.2f wide x %.2f high",
+                static_cast<int>(visibleLabelSize), label.data(),
                 plan.opening.widthCells, plan.opening.cutoutHeightCells);
-  drawList.AddText({center.x + 9.0F, center.y + 9.0F}, previewColor, label);
+  drawList.AddText({center.x + 9.0F, center.y + 9.0F}, previewColor,
+                   placementLabel);
+}
+
+void drawOpeningPlacementPreview(
+    ImDrawList& drawList, const CanvasTransform& transform,
+    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint hovered) {
+  cr::CreativeBuildingOpeningKind kind;
+  if (state.tool == CreativeEditorWorldLayoutTool::Door) {
+    kind = cr::CreativeBuildingOpeningKind::Door;
+  } else if (state.tool == CreativeEditorWorldLayoutTool::Window) {
+    kind = cr::CreativeBuildingOpeningKind::Window;
+  } else {
+    return;
+  }
+  const CreativeEditorWorldLayoutOpeningPlacementPlan plan =
+      planCreativeEditorWorldLayoutOpeningPlacement(state, hovered, kind);
+  drawOpeningPlacementPlan(
+      drawList, transform, hovered, plan, kind,
+      kind == cr::CreativeBuildingOpeningKind::Door ? "Door" : "Window");
 }
 
 void drawAnchorPreview(ImDrawList& drawList, const CanvasTransform& transform,
@@ -949,6 +962,15 @@ void drawCatalogPlacementPreview(
   }
   const CreativeEditorWorldLayoutCatalogPlacementPlan plan =
       planCreativeEditorWorldLayoutCatalogPlacement(state, hovered, grid);
+  if (plan.hostedOpening) {
+    drawOpeningPlacementPlan(
+        drawList, transform, hovered, plan.openingPlacement,
+        state.catalogPlacement.categoryId == "window"
+            ? cr::CreativeBuildingOpeningKind::Window
+            : cr::CreativeBuildingOpeningKind::Door,
+        state.catalogPlacement.label);
+    return;
+  }
   const ImU32 outline = plan.accepted
                             ? color({0.20F, 0.82F, 0.38F, 1.0F})
                             : color({0.92F, 0.29F, 0.24F, 1.0F});
@@ -1326,7 +1348,8 @@ void drawWorldLayoutPalette(CreativeEditorWorldLayoutState& state,
 }
 
 void drawWorldLayoutAssetPlacementControls(
-    CreativeEditorWorldLayoutState& state) {
+    CreativeEditorWorldLayoutState& state,
+    CreativeDesktopCommandFrame& commands) {
   CreativeEditorWorldLayoutCatalogPlacementState& placement =
       state.catalogPlacement;
   if (!placement.active) {
@@ -1335,52 +1358,54 @@ void drawWorldLayoutAssetPlacementControls(
   ImGui::SeparatorText("Placement");
   ImGui::TextUnformatted(placement.label.c_str());
   ImGui::TextUnformatted("Snap");
-  constexpr std::array kSnapModes{
-      CreativeEditorWorldLayoutCatalogSnapMode::Grid,
-      CreativeEditorWorldLayoutCatalogSnapMode::Floor,
-      CreativeEditorWorldLayoutCatalogSnapMode::Wall,
-  };
-  for (std::size_t index = 0U; index < kSnapModes.size(); ++index) {
-    const CreativeEditorWorldLayoutCatalogSnapMode mode = kSnapModes[index];
-    if (index > 0U) {
-      ImGui::SameLine();
+  const bool hostedOpening =
+      creativeEditorWorldLayoutCatalogAssetIsHostedOpening(
+          placement.categoryId);
+  if (hostedOpening) {
+    ImGui::RadioButton("Wall", true);
+  } else {
+    constexpr std::array kSnapModes{
+        CreativeEditorWorldLayoutCatalogSnapMode::Grid,
+        CreativeEditorWorldLayoutCatalogSnapMode::Floor,
+        CreativeEditorWorldLayoutCatalogSnapMode::Wall,
+    };
+    for (std::size_t index = 0U; index < kSnapModes.size(); ++index) {
+      const CreativeEditorWorldLayoutCatalogSnapMode mode = kSnapModes[index];
+      if (index > 0U) {
+        ImGui::SameLine();
+      }
+      const bool wallUnsupported =
+          mode == CreativeEditorWorldLayoutCatalogSnapMode::Wall &&
+          !creativeEditorWorldLayoutCatalogAssetSupportsWallSnap(
+              placement.categoryId);
+      ImGui::BeginDisabled(wallUnsupported);
+      const bool selected = placement.snapMode == mode;
+      if (ImGui::RadioButton(
+              creativeEditorWorldLayoutCatalogSnapModeLabel(mode), selected) &&
+          !selected) {
+        placement.snapMode = mode;
+      }
+      ImGui::EndDisabled();
+      if (wallUnsupported &&
+          ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("Architecture assets only");
+      }
     }
-    const bool wallUnsupported =
-        mode == CreativeEditorWorldLayoutCatalogSnapMode::Wall &&
-        !creativeEditorWorldLayoutCatalogAssetSupportsWallSnap(
-            placement.categoryId);
-    ImGui::BeginDisabled(wallUnsupported);
-    const bool selected = placement.snapMode == mode;
-    if (ImGui::RadioButton(creativeEditorWorldLayoutCatalogSnapModeLabel(mode),
-                           selected) &&
-        !selected) {
-      placement.snapMode = mode;
-    }
+    ImGui::BeginDisabled(
+        placement.snapMode != CreativeEditorWorldLayoutCatalogSnapMode::Grid);
+    ImGui::InputDouble("Grid elevation##layout_asset",
+                       &placement.elevationCells, 0.25, 1.0, "%.3f");
     ImGui::EndDisabled();
-    if (wallUnsupported &&
-        ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-      const bool hostedOpening = placement.categoryId == "door" ||
-                                 placement.categoryId == "window";
-      ImGui::SetTooltip("%s", hostedOpening
-                                  ? "Use the Door or Window tool"
-                                  : "Architecture assets only");
+    const char* yawLabel =
+        placement.snapMode == CreativeEditorWorldLayoutCatalogSnapMode::Wall
+            ? "Yaw offset##layout_asset"
+            : "Yaw##layout_asset";
+    ImGui::InputDouble(yawLabel, &placement.yawDegrees, 15.0, 90.0,
+                       "%.1f deg");
+    if (placement.snapMode == CreativeEditorWorldLayoutCatalogSnapMode::Wall) {
+      ImGui::Checkbox("Flip wall side##layout_asset",
+                      &placement.wallSideFlipped);
     }
-  }
-  ImGui::BeginDisabled(
-      placement.snapMode != CreativeEditorWorldLayoutCatalogSnapMode::Grid);
-  ImGui::InputDouble("Grid elevation##layout_asset",
-                     &placement.elevationCells,
-                     0.25, 1.0, "%.3f");
-  ImGui::EndDisabled();
-  const char* yawLabel =
-      placement.snapMode == CreativeEditorWorldLayoutCatalogSnapMode::Wall
-          ? "Yaw offset##layout_asset"
-          : "Yaw##layout_asset";
-  ImGui::InputDouble(yawLabel, &placement.yawDegrees, 15.0, 90.0,
-                     "%.1f deg");
-  if (placement.snapMode == CreativeEditorWorldLayoutCatalogSnapMode::Wall) {
-    ImGui::Checkbox("Flip wall side##layout_asset",
-                    &placement.wallSideFlipped);
   }
   ImGui::InputDouble("Scale X##layout_asset", &placement.scale.x, 0.1, 1.0,
                      "%.3f");
@@ -1388,14 +1413,55 @@ void drawWorldLayoutAssetPlacementControls(
                      "%.3f");
   ImGui::InputDouble("Scale Z##layout_asset", &placement.scale.z, 0.1, 1.0,
                      "%.3f");
-  if (ImGui::Button("Rotate left##layout_asset")) {
-    placement.yawDegrees -= 90.0;
+  if (hostedOpening) {
+    ImGui::SeparatorText("Selected opening");
+    const bool hasOpeningSelection =
+        state.selection.kind ==
+            CreativeEditorWorldLayoutSelectionKind::Opening &&
+        state.selection.index < state.source.openings.size();
+    const bool compatible =
+        hasOpeningSelection &&
+        creativeEditorWorldLayoutCatalogAssetMatchesOpening(
+            placement.categoryId,
+            state.source.openings[state.selection.index].kind);
+    if (!hasOpeningSelection) {
+      ImGui::TextDisabled("Select an opening to replace");
+    } else if (!compatible) {
+      ImGui::TextDisabled("Selected opening requires a matching asset kind");
+    }
+    ImGui::BeginDisabled(!compatible);
+    if (ImGui::Button("Fit asset to opening")) {
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutSetOpeningInsert,
+          CreativeDesktopWorldLayoutOpeningInsertPayload{
+              state.selection.index,
+              CreativeEditorWorldLayoutOpeningInsertOperation::
+                  FitAssetToOpening,
+              placement.assetId,
+              placement.scale});
+    }
+    if (ImGui::Button("Resize opening to asset")) {
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutSetOpeningInsert,
+          CreativeDesktopWorldLayoutOpeningInsertPayload{
+              state.selection.index,
+              CreativeEditorWorldLayoutOpeningInsertOperation::
+                  ResizeOpeningToAsset,
+              placement.assetId,
+              placement.scale});
+    }
+    ImGui::EndDisabled();
   }
-  ImGui::SameLine();
-  if (ImGui::Button("Rotate right##layout_asset")) {
-    placement.yawDegrees += 90.0;
+  if (!hostedOpening) {
+    if (ImGui::Button("Rotate left##layout_asset")) {
+      placement.yawDegrees -= 90.0;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Rotate right##layout_asset")) {
+      placement.yawDegrees += 90.0;
+    }
+    ImGui::SameLine();
   }
-  ImGui::SameLine();
   if (ImGui::Button("Reset##layout_asset")) {
     placement.elevationCells = 0.0;
     placement.yawDegrees = 0.0;
@@ -1462,7 +1528,7 @@ void drawWorldLayoutAssetPalette(
     ImGui::EndTabItem();
   }
   ImGui::EndTabBar();
-  drawWorldLayoutAssetPlacementControls(state);
+  drawWorldLayoutAssetPlacementControls(state, commands);
 }
 
 void drawWorldLayoutLevels(CreativeEditorDesktopUiState& desktopUi,
@@ -1776,8 +1842,20 @@ bool sameOpeningSettings(
          lhs.includeInsert == rhs.includeInsert;
 }
 
-void drawSelectedOpeningSettings(CreativeEditorWorldLayoutState& state,
-                                 CreativeDesktopCommandFrame& commands) {
+bool catalogContainsAsset(const cr::CreativeCatalogState& catalog,
+                          std::string_view assetId) {
+  return std::any_of(
+      catalog.entries.begin(), catalog.entries.end(),
+      [assetId](const cr::CreativeCatalogEntry& entry) {
+        return entry.category == cr::CreativeCatalogEntryCategory::Asset &&
+               cr::creativeHotbarAssetId(entry.hotbarEntry) == assetId;
+      });
+}
+
+void drawSelectedOpeningSettings(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeCatalogState& catalog,
+    CreativeDesktopCommandFrame& commands) {
   if (state.selection.kind !=
           CreativeEditorWorldLayoutSelectionKind::Opening ||
       state.selection.index >= state.source.openings.size()) {
@@ -1803,6 +1881,13 @@ void drawSelectedOpeningSettings(CreativeEditorWorldLayoutState& state,
       state.openingSettingsDraft.settings;
   const bool isDoor = opening.kind == cr::CreativeBuildingOpeningKind::Door;
   ImGui::TextUnformatted(isDoor ? "Door settings" : "Window settings");
+  if (!opening.insertAssetId.empty()) {
+    ImGui::TextDisabled("Asset: %s", opening.insertAssetId.c_str());
+    if (!catalogContainsAsset(catalog, opening.insertAssetId)) {
+      ImGui::TextColored({1.0F, 0.72F, 0.20F, 1.0F},
+                         "Asset unavailable: procedural preview");
+    }
+  }
   ImGui::SetNextItemWidth(128.0F);
   ImGui::InputDouble("Offset##opening", &settings.centerOffsetCells, 0.25, 1.0,
                      "%.2f");
@@ -1833,6 +1918,23 @@ void drawSelectedOpeningSettings(CreativeEditorWorldLayoutState& state,
   ImGui::Checkbox("Insert##opening", &settings.includeInsert);
 
   const bool dirty = !sameOpeningSettings(current, settings);
+  if (!opening.insertAssetId.empty()) {
+    ImGui::BeginDisabled(dirty || state.openingManipulation.active);
+    if (ImGui::Button("Use procedural insert")) {
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutSetOpeningInsert,
+          CreativeDesktopWorldLayoutOpeningInsertPayload{
+              openingIndex,
+              CreativeEditorWorldLayoutOpeningInsertOperation::
+                  UseProceduralInsert,
+              {},
+              {1.0, 1.0, 1.0}});
+    }
+    ImGui::EndDisabled();
+    if (dirty && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+      ImGui::SetTooltip("Apply or reset opening edits first");
+    }
+  }
   ImGui::BeginDisabled(!dirty || state.openingManipulation.active);
   if (ImGui::Button("Apply opening")) {
     commands.push(
@@ -2337,7 +2439,8 @@ void buildCreativeEditorWorldLayoutPanel(
   const bool editingDisabled = playModeActive || editor.assetEdit.active;
   const CreativeEditorWorldLayoutDiagnosticReport& diagnostics =
       refreshCreativeEditorWorldLayoutDiagnostics(
-          state.diagnosticCache, document, state.source, state.revision);
+          state.diagnosticCache, document, state.source, state.revision,
+          &editor.catalog.model);
   if (editingDisabled) {
     queueLayoutManipulationCancel(state, commands);
   }
@@ -2384,7 +2487,7 @@ void buildCreativeEditorWorldLayoutPanel(
     drawCreativeEditorWorldLayoutSourceInspector(state, commands);
     drawCreativeEditorWorldLayoutStructureInspector(state, commands);
     drawSelectedRoomSettings(state, commands);
-    drawSelectedOpeningSettings(state, commands);
+    drawSelectedOpeningSettings(state, editor.catalog.model, commands);
     if (state.selection.kind == CreativeEditorWorldLayoutSelectionKind::None) {
       ImGui::TextDisabled("Select a World Layout source to edit it.");
     }
@@ -2454,12 +2557,24 @@ void buildCreativeEditorWorldLayoutPanel(
       ImGui::TextDisabled("%s", diagnostics.hasChanges
                                     ? "Changes are ready to generate"
                                     : "Generated output already matches");
-    } else if (diagnostics.issueCount > 0U) {
-      const CreativeEditorWorldLayoutDiagnostic& issue = diagnostics.issues[0];
+    }
+    for (std::size_t issueIndex = 0U;
+         issueIndex < diagnostics.issueCount; ++issueIndex) {
+      const CreativeEditorWorldLayoutDiagnostic& issue =
+          diagnostics.issues[issueIndex];
       const bool navigable =
           issue.table != cr::CreativeWorldLayoutTable::None &&
           issue.index != cr::kInvalidCreativeWorldLayoutIndex;
-      const std::string label = issue.message + "##world_layout_issue_0";
+      const ImVec4 issueColor =
+          issue.severity == CreativeEditorWorldLayoutDiagnosticSeverity::Warning
+              ? ImVec4{1.0F, 0.72F, 0.20F, 1.0F}
+              : issue.severity ==
+                        CreativeEditorWorldLayoutDiagnosticSeverity::Info
+                    ? ImVec4{0.38F, 0.72F, 1.0F, 1.0F}
+                    : ImVec4{1.0F, 0.34F, 0.30F, 1.0F};
+      const std::string label = issue.message + "##world_layout_issue_" +
+                                std::to_string(issueIndex);
+      ImGui::PushStyleColor(ImGuiCol_Text, issueColor);
       if (navigable) {
         if (ImGui::Selectable(label.c_str(), false,
                               ImGuiSelectableFlags_None,
@@ -2472,6 +2587,7 @@ void buildCreativeEditorWorldLayoutPanel(
       } else {
         ImGui::TextUnformatted(issue.message.c_str());
       }
+      ImGui::PopStyleColor();
       if (ImGui::IsItemHovered()) {
         if (!issue.kernelReasonCode.empty() &&
             issue.kernelReasonCode !=

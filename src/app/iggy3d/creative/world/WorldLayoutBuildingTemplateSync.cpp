@@ -505,6 +505,14 @@ fingerprintCreativeWorldLayoutBuilding(const CreativeWorldLayout& layout,
     builder.appendDouble(opening.insertHeightCells);
     builder.appendDouble(opening.insertWidthCells);
     builder.appendDouble(opening.insertThicknessCells);
+    builder.appendString(opening.insertAssetId);
+    builder.appendBool(opening.hasInsertAssetSourceBounds);
+    builder.appendDouble(opening.insertAssetSourceBoundsMeters.min.x);
+    builder.appendDouble(opening.insertAssetSourceBoundsMeters.min.y);
+    builder.appendDouble(opening.insertAssetSourceBoundsMeters.min.z);
+    builder.appendDouble(opening.insertAssetSourceBoundsMeters.max.x);
+    builder.appendDouble(opening.insertAssetSourceBoundsMeters.max.y);
+    builder.appendDouble(opening.insertAssetSourceBoundsMeters.max.z);
   }
 
   result.valid = builder.valid;

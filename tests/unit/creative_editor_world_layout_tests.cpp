@@ -588,6 +588,7 @@ bool catalogWallSnapUsesCanonicalActiveLevelHosts() {
   app::resetCreativeEditorWorldLayout(rooms, "room_wall_snap_layout");
   rooms.source.buildings.push_back(building);
   rooms.source.levels.push_back(ground);
+  rooms.source.levels[0].wallHeightCells = 6U;
   rooms.activeLevelIndex = 0U;
   cr::CreativeWorldLayoutRoom firstRoom;
   firstRoom.buildingIndex = 0U;
@@ -611,8 +612,11 @@ bool catalogWallSnapUsesCanonicalActiveLevelHosts() {
                                                          grid);
 
   app::CreativeEditorWorldLayoutState openingAsset = rooms;
-  const cr::CreativeCatalogEntry doorAsset =
+  cr::CreativeCatalogEntry doorAsset =
       catalogAsset("door", "architecture/door_leaf");
+  static_cast<void>(cr::setCreativeHotbarAsset(
+      doorAsset.hotbarEntry, "architecture/door_leaf",
+      {{-0.55, 0.0, -0.1}, {0.55, 2.2, 0.1}}));
   static_cast<void>(app::selectCreativeEditorWorldLayoutCatalogAsset(
       openingAsset, doorAsset));
   openingAsset.catalogPlacement.snapMode =
@@ -620,8 +624,11 @@ bool catalogWallSnapUsesCanonicalActiveLevelHosts() {
   const app::CreativeEditorWorldLayoutCatalogPlacementPlan doorPlan =
       app::planCreativeEditorWorldLayoutCatalogPlacement(
           openingAsset, {4.0, 2.0}, grid);
-  const cr::CreativeCatalogEntry windowAsset =
+  cr::CreativeCatalogEntry windowAsset =
       catalogAsset("window", "architecture/window_frame");
+  static_cast<void>(cr::setCreativeHotbarAsset(
+      windowAsset.hotbarEntry, "architecture/window_frame",
+      {{-0.75, 0.0, -0.05}, {0.75, 1.2, 0.05}}));
   static_cast<void>(app::selectCreativeEditorWorldLayoutCatalogAsset(
       openingAsset, windowAsset));
   openingAsset.catalogPlacement.snapMode =
@@ -645,7 +652,6 @@ bool catalogWallSnapUsesCanonicalActiveLevelHosts() {
   const double sharedFaceDistance =
       (sharedEdge.snapSurfacePoint.x - 4.0) * sharedEdge.snapNormal.x +
       (sharedEdge.snapSurfacePoint.z - 2.0) * sharedEdge.snapNormal.z;
-
   return expect(diagonalPlan.accepted &&
                     diagonalPlan.snapHostKind ==
                         app::CreativeEditorWorldLayoutCatalogSnapHostKind::
@@ -692,18 +698,265 @@ bool catalogWallSnapUsesCanonicalActiveLevelHosts() {
                     near(sharedFaceDistance, 0.25) &&
                     restsOnWallFace(sharedEdge),
                 "shared room walls resolve once with their authored face thickness") &&
-         expect(!doorPlan.accepted &&
+         expect(doorPlan.accepted && doorPlan.hostedOpening &&
+                    doorPlan.openingPlacement.accepted &&
+                    near(doorPlan.openingPlacement.opening.widthCells, 2.2) &&
                     doorPlan.reasonCode ==
-                        "creative_editor_world_layout_catalog_wall_opening_requires_tool" &&
-                    doorPlan.message ==
-                        "Use the Door or Window tool to cut an opening",
-                "catalog door assets cannot pretend to cut hosted openings") &&
-         expect(!windowPlan.accepted &&
+                        "creative_editor_world_layout_opening_placement_ready",
+                "catalog door assets resolve through the hosted opening planner") &&
+         expect(!windowPlan.accepted && windowPlan.hostedOpening &&
                     windowPlan.reasonCode ==
-                        "creative_editor_world_layout_catalog_wall_opening_requires_tool" &&
+                        "creative_editor_world_layout_window_requires_exterior" &&
                     windowPlan.message ==
-                        "Use the Door or Window tool to cut an opening",
-                "catalog window assets cannot pretend to cut hosted openings");
+                        "Place windows on an exterior room edge",
+                "catalog windows retain the exterior-wall semantic law");
+}
+
+bool catalogOpeningAssetsCompileAsOwnedStructuralInserts() {
+  const auto catalogAsset = [](std::string label, std::string assetId,
+                               std::string category,
+                               cr::CreativeObjectKind kind,
+                               cr::CreativeBounds bounds) {
+    cr::CreativeCatalogEntry entry;
+    entry.category = cr::CreativeCatalogEntryCategory::Asset;
+    entry.label = std::move(label);
+    entry.assetAuthoringMetadata.categoryId = std::move(category);
+    entry.hotbarEntry.objectKind = kind;
+    static_cast<void>(
+        cr::setCreativeHotbarAsset(entry.hotbarEntry, assetId, bounds));
+    return entry;
+  };
+
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "asset_opening_layout");
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "building_1";
+  building.name = "Building";
+  state.source.buildings.push_back(building);
+  cr::CreativeWorldLayoutLevel level;
+  level.buildingIndex = 0U;
+  level.stableKey = "level_1";
+  level.name = "Ground";
+  state.source.levels.push_back(level);
+  cr::CreativeWorldLayoutWall wall;
+  wall.buildingIndex = 0U;
+  wall.stableKey = "wall_1";
+  wall.name = "Exterior Wall";
+  wall.start = {0, 0};
+  wall.end = {8, 0};
+  state.source.walls.push_back(wall);
+  state.activeLevelIndex = 0U;
+
+  const cr::CreativeCatalogEntry door = catalogAsset(
+      "Asymmetric Door", "homestead/modular/door_leaf_1p1x2p2", "door",
+      cr::CreativeObjectKind::Door,
+      {{-0.2, 0.0, -0.05}, {0.9, 2.2, 0.15}});
+  const auto doorSelected =
+      app::selectCreativeEditorWorldLayoutCatalogAsset(state, door);
+  cr::CreativeGridSettings grid;
+  grid.cellSizeMeters = 1.0;
+  const app::CreativeEditorWorldLayoutCatalogPlacementPlan doorPreview =
+      app::planCreativeEditorWorldLayoutCatalogPlacement(state, {2.0, 0.1},
+                                                         grid);
+  const auto doorPlaced = app::applyCreativeEditorWorldLayoutPoint(
+      state, {2.0, 0.1}, grid);
+
+  const cr::CreativeCatalogEntry window = catalogAsset(
+      "Wide Window", "homestead/modular/window_frame_1p5x1p2", "window",
+      cr::CreativeObjectKind::Window,
+      {{-0.75, 0.0, -0.05}, {0.75, 1.2, 0.05}});
+  const auto windowSelected =
+      app::selectCreativeEditorWorldLayoutCatalogAsset(state, window);
+  state.catalogPlacement.scale = {1.0, 1.25, 2.0};
+  const app::CreativeEditorWorldLayoutCatalogPlacementPlan windowPreview =
+      app::planCreativeEditorWorldLayoutCatalogPlacement(state, {5.0, 0.1},
+                                                         grid);
+  const auto windowPlaced = app::applyCreativeEditorWorldLayoutPoint(
+      state, {5.0, 0.1}, grid);
+
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Asset Openings");
+  static_cast<void>(document.assignId(8104U));
+  static_cast<void>(document.setGridSettings(grid));
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, state.source);
+  const cr::CreativeDocumentCreateRequest* doorRequest = nullptr;
+  const cr::CreativeDocumentCreateRequest* windowRequest = nullptr;
+  for (const cr::CreativeRecipePlan& recipe : compiled.plan.objectRecipes) {
+    for (const cr::CreativeRecipeObjectPlan& object : recipe.objects) {
+      if (object.createRequest.kind == cr::CreativeObjectKind::Door) {
+        doorRequest = &object.createRequest;
+      } else if (object.createRequest.kind == cr::CreativeObjectKind::Window) {
+        windowRequest = &object.createRequest;
+      }
+    }
+  }
+  const cr::CreativeTransformedBounds compiledDoor =
+      doorRequest == nullptr
+          ? cr::CreativeTransformedBounds{}
+          : cr::resolveCreativeTransformedBounds(doorRequest->bounds,
+                                                 doorRequest->transform);
+  const cr::CreativeTransformedBounds compiledWindow =
+      windowRequest == nullptr
+          ? cr::CreativeTransformedBounds{}
+          : cr::resolveCreativeTransformedBounds(windowRequest->bounds,
+                                                 windowRequest->transform);
+
+  return expect(doorSelected.accepted && doorPreview.accepted &&
+                    doorPreview.hostedOpening &&
+                    doorPreview.openingPlacement.accepted &&
+                    near(doorPreview.openingPlacement.opening.widthCells,
+                         1.1) &&
+                    near(doorPreview.openingPlacement.opening
+                             .cutoutHeightCells,
+                         2.2) &&
+                    doorPlaced.accepted && doorPlaced.changed,
+                "catalog door previews and commits through one opening plan") &&
+         expect(windowSelected.accepted && windowPreview.accepted &&
+                    windowPreview.hostedOpening &&
+                    near(windowPreview.openingPlacement.opening.widthCells,
+                         1.5) &&
+                    near(windowPreview.openingPlacement.opening
+                             .cutoutHeightCells,
+                         1.5) &&
+                    near(windowPreview.openingPlacement.opening
+                             .insertThicknessCells,
+                         0.2) &&
+                    windowPlaced.accepted && windowPlaced.changed,
+                "catalog scale deterministically sizes the window cutout") &&
+         expect(state.source.objects.empty() &&
+                    state.source.openings.size() == 2U &&
+                    state.source.openings[0].insertAssetId ==
+                        "homestead/modular/door_leaf_1p1x2p2" &&
+                    state.source.openings[0].hasInsertAssetSourceBounds &&
+                    state.source.openings[1].insertAssetId ==
+                        "homestead/modular/window_frame_1p5x1p2",
+                "hosted assets are opening-owned instead of duplicate props") &&
+         expect(compiled.receipt.accepted && doorRequest != nullptr &&
+                    windowRequest != nullptr && compiledDoor.valid &&
+                    compiledWindow.valid &&
+                    doorRequest->assetId ==
+                        "homestead/modular/door_leaf_1p1x2p2" &&
+                    windowRequest->assetId ==
+                        "homestead/modular/window_frame_1p5x1p2" &&
+                    near(compiledDoor.size.x, 1.1) &&
+                    near(compiledDoor.size.y, 2.2) &&
+                    near(compiledDoor.size.z, 0.2) &&
+                    near(compiledWindow.size.x, 1.5) &&
+                    near(compiledWindow.size.y, 1.5) &&
+                    near(compiledWindow.size.z, 0.2),
+                "compiled inserts retain asset identity and exact fitted size");
+}
+
+bool openingInsertReplacementPreservesSemanticOwnership() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "opening_insert_replacement");
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Wall));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(state, {0, 0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(state, {8, 0}));
+  const auto wallConfigured = app::setCreativeEditorWorldLayoutWallSettings(
+      state, 0U, {{0, 0}, {8, 0}, 0.0, 8U, 0.25});
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Door));
+  const auto doorPlaced =
+      app::applyCreativeEditorWorldLayoutPoint(state, {4.0, 0.1});
+
+  const cr::CreativeWorldLayoutOpening original = state.source.openings[0];
+  app::CreativeEditorWorldLayoutOpeningInsertRequest fit;
+  fit.openingIndex = 0U;
+  fit.operation =
+      app::CreativeEditorWorldLayoutOpeningInsertOperation::FitAssetToOpening;
+  fit.assetKind = cr::CreativeBuildingOpeningKind::Door;
+  fit.assetId = "homestead/modular/door_leaf_1p1x2p2";
+  fit.assetSourceBoundsMeters =
+      {{-0.2, 0.0, -0.05}, {0.9, 2.2, 0.15}};
+  fit.gridCellSizeMeters = 0.5;
+  const std::uint64_t revisionBeforeFit = state.revision;
+  const std::size_t undoBeforeFit = state.sourceHistory.undoEntries.size();
+  const auto fitted =
+      app::applyCreativeEditorWorldLayoutOpeningInsert(state, fit);
+  const std::uint64_t revisionAfterFit = state.revision;
+  const std::size_t undoAfterFit = state.sourceHistory.undoEntries.size();
+  const cr::CreativeWorldLayoutOpening fittedOpening =
+      state.source.openings[0];
+  const auto fittedAgain =
+      app::applyCreativeEditorWorldLayoutOpeningInsert(state, fit);
+
+  app::CreativeEditorWorldLayoutOpeningInsertRequest mismatch = fit;
+  mismatch.assetKind = cr::CreativeBuildingOpeningKind::Window;
+  const std::uint64_t revisionBeforeMismatch = state.revision;
+  const auto mismatched =
+      app::applyCreativeEditorWorldLayoutOpeningInsert(state, mismatch);
+  const std::uint64_t revisionAfterNoOps = state.revision;
+  const std::size_t undoAfterNoOps = state.sourceHistory.undoEntries.size();
+
+  app::CreativeEditorWorldLayoutOpeningInsertRequest resize = fit;
+  resize.operation = app::CreativeEditorWorldLayoutOpeningInsertOperation::
+      ResizeOpeningToAsset;
+  resize.assetScale = {1.0, 1.0, 1.0};
+  const std::size_t undoBeforeResize =
+      state.sourceHistory.undoEntries.size();
+  const auto resized =
+      app::applyCreativeEditorWorldLayoutOpeningInsert(state, resize);
+  const std::uint64_t revisionAfterResize = state.revision;
+  const std::size_t undoAfterResize = state.sourceHistory.undoEntries.size();
+  const cr::CreativeWorldLayoutOpening resizedOpening =
+      state.source.openings[0];
+
+  app::CreativeEditorWorldLayoutOpeningInsertRequest procedural;
+  procedural.openingIndex = 0U;
+  procedural.operation = app::CreativeEditorWorldLayoutOpeningInsertOperation::
+      UseProceduralInsert;
+  const std::size_t undoBeforeProcedural =
+      state.sourceHistory.undoEntries.size();
+  const auto proceduralApplied =
+      app::applyCreativeEditorWorldLayoutOpeningInsert(state, procedural);
+  const std::uint64_t revisionAfterProcedural = state.revision;
+  const std::size_t undoAfterProcedural =
+      state.sourceHistory.undoEntries.size();
+  const cr::CreativeWorldLayoutOpening& finalOpening =
+      state.source.openings[0];
+
+  return expect(wallConfigured.accepted && doorPlaced.accepted &&
+                    doorPlaced.changed,
+                "opening insert test creates a valid hosted door") &&
+         expect(fitted.accepted && fitted.changed &&
+                    revisionAfterFit == revisionBeforeFit + 1U &&
+                    undoAfterFit == undoBeforeFit + 1U &&
+                    fittedOpening.stableKey == original.stableKey &&
+                    fittedOpening.wallIndex == original.wallIndex &&
+                    fittedOpening.centerOffsetCells ==
+                        original.centerOffsetCells &&
+                    fittedOpening.widthCells == original.widthCells &&
+                    fittedOpening.insertAssetId == fit.assetId &&
+                    fittedOpening.hasInsertAssetSourceBounds,
+                "fit mode replaces only the insert and records one source edit") &&
+         expect(fittedAgain.accepted && !fittedAgain.changed &&
+                    !mismatched.accepted && !mismatched.changed &&
+                    revisionAfterNoOps == revisionBeforeMismatch &&
+                    undoAfterNoOps == undoAfterFit &&
+                    resizedOpening.insertAssetId == fit.assetId,
+                "repeat and mismatched replacement attempts do not add edits") &&
+         expect(resized.accepted && resized.changed &&
+                    revisionAfterResize == revisionAfterNoOps + 1U &&
+                    undoAfterResize == undoBeforeResize + 1U &&
+                    near(resizedOpening.widthCells, 2.2) &&
+                    near(resizedOpening.cutoutHeightCells, 4.4) &&
+                    near(resizedOpening.insertThicknessCells, 0.4) &&
+                    resizedOpening.stableKey == original.stableKey &&
+                    resizedOpening.wallIndex == original.wallIndex &&
+                    resizedOpening.centerOffsetCells ==
+                        original.centerOffsetCells &&
+                    undoBeforeResize + 1U == undoBeforeProcedural,
+                "resize mode derives cutout geometry without changing ownership") &&
+         expect(proceduralApplied.accepted && proceduralApplied.changed &&
+                    revisionAfterProcedural == revisionAfterResize + 1U &&
+                    undoAfterProcedural == undoBeforeProcedural + 1U &&
+                    finalOpening.includeInsert &&
+                    finalOpening.insertAssetId.empty() &&
+                    !finalOpening.hasInsertAssetSourceBounds,
+                "procedural mode clears catalog identity in one source edit");
 }
 
 bool openingsSnapInsideWallsAndRejectOverlap() {
@@ -3311,7 +3564,14 @@ cr::CreativeWorldLayout elevationFixture() {
        1.0,
        0.0,
        2.0,
-       true});
+       true,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       {},
+       {},
+       false});
   layout.openings.push_back(
       {cr::CreativeWorldLayoutOpeningHostKind::RoomEdge,
        cr::kInvalidCreativeWorldLayoutIndex,
@@ -3325,7 +3585,14 @@ cr::CreativeWorldLayout elevationFixture() {
        1.0,
        1.0,
        1.5,
-       true});
+       true,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       {},
+       {},
+       false});
   return layout;
 }
 
@@ -3582,6 +3849,8 @@ int main() {
       catalogPlacementSharesOneExactTwoAndThreeDimensionalRecipe() &&
       catalogFloorSnapPlacesScaledSourceBottomOnTheFinishedFloor() &&
       catalogWallSnapUsesCanonicalActiveLevelHosts() &&
+      catalogOpeningAssetsCompileAsOwnedStructuralInserts() &&
+      openingInsertReplacementPreservesSemanticOwnership() &&
       openingsSnapInsideWallsAndRejectOverlap() &&
       openingPlacementPlansRespectActiveLevelsAndSharedEdges() &&
       deletingWallCascadesItsOpenings() &&

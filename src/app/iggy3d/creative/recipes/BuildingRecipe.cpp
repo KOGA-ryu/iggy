@@ -36,6 +36,19 @@ void setStatus(CreativeBuildingRecipeReceipt& receipt,
   return metrics.valid && isPositiveCreativeVec3(metrics.size);
 }
 
+[[nodiscard]] bool boundsNear(const CreativeBounds& lhs,
+                              const CreativeBounds& rhs) noexcept {
+  const auto nearComponent = [](double first, double second) {
+    return std::abs(first - second) <= 1.0e-8;
+  };
+  return nearComponent(lhs.min.x, rhs.min.x) &&
+         nearComponent(lhs.min.y, rhs.min.y) &&
+         nearComponent(lhs.min.z, rhs.min.z) &&
+         nearComponent(lhs.max.x, rhs.max.x) &&
+         nearComponent(lhs.max.y, rhs.max.y) &&
+         nearComponent(lhs.max.z, rhs.max.z);
+}
+
 void setGeometryStatus(CreativeRectangularRoomGeometryPlan& plan,
                        CreativeRectangularRoomGeometryStatus status,
                        std::string_view reasonCode) noexcept {
@@ -61,6 +74,25 @@ void setGeometryStatus(CreativeRectangularRoomGeometryPlan& plan,
     CreativeBuildingOpeningKind kind) noexcept {
   return kind == CreativeBuildingOpeningKind::Door ||
          kind == CreativeBuildingOpeningKind::Window;
+}
+
+[[nodiscard]] double openingPoseNormalSign(
+    CreativeBuildingOpeningPose pose) noexcept {
+  return pose == CreativeBuildingOpeningPose::OpenFromStartNegativeNormal ||
+                 pose == CreativeBuildingOpeningPose::OpenFromEndNegativeNormal
+             ? -1.0
+             : 1.0;
+}
+
+[[nodiscard]] bool validOpeningAsset(
+    const CreativeBuildingOpeningSpec& opening) noexcept {
+  if (!opening.hasInsertAssetSourceBounds) {
+    return opening.insertAssetId.empty();
+  }
+  const CreativeBoundsMetrics source =
+      measureCreativeBounds(opening.insertAssetSourceBoundsMeters);
+  return !opening.insertAssetId.empty() && source.valid &&
+         isPositiveCreativeVec3(source.size);
 }
 
 [[nodiscard]] bool validRootMode(CreativeBuildingRootMode mode) noexcept {
@@ -115,20 +147,13 @@ void setRecipeParent(CreativeRecipeObjectPlan& object,
   }
 }
 
-void appendGeneratedObject(CreativeBuildingRecipeResult& result,
-                           const CreativeBuildingRecipeRequest& request,
-                           CreativeObjectKind kind, std::string stableKey,
-                           std::string name, CreativeBounds bounds,
-                           bool hasCreatedRoot,
-                           const std::vector<std::string>& specificTags = {},
-                           CreativeVec3 scale = {1.0, 1.0, 1.0},
-                           CreativeVec3 rotationEulerRadians = {}) {
+void appendGeneratedRequest(CreativeBuildingRecipeResult& result,
+                            const CreativeBuildingRecipeRequest& request,
+                            CreativeObjectKind kind, std::string stableKey,
+                            CreativeDocumentCreateRequest createRequest,
+                            bool hasCreatedRoot) {
   CreativeRecipeObjectPlan object;
-  const std::vector<std::string> tags =
-      mergedTags(request.tags, specificTags);
-  object.createRequest =
-      makeBoxRequest(kind, std::move(name), bounds, request.visible, tags,
-                     scale, rotationEulerRadians);
+  object.createRequest = std::move(createRequest);
   object.role = CreativeRecipeObjectRole::Generated;
   object.stableKey = std::move(stableKey);
   setRecipeParent(object, request, hasCreatedRoot);
@@ -143,6 +168,70 @@ void appendGeneratedObject(CreativeBuildingRecipeResult& result,
   } else {
     ++result.receipt.boxObjectCount;
   }
+}
+
+void appendGeneratedObject(CreativeBuildingRecipeResult& result,
+                           const CreativeBuildingRecipeRequest& request,
+                           CreativeObjectKind kind, std::string stableKey,
+                           std::string name, CreativeBounds bounds,
+                           bool hasCreatedRoot,
+                           const std::vector<std::string>& specificTags = {},
+                           CreativeVec3 scale = {1.0, 1.0, 1.0},
+                           CreativeVec3 rotationEulerRadians = {}) {
+  const std::vector<std::string> tags =
+      mergedTags(request.tags, specificTags);
+  appendGeneratedRequest(
+      result, request, kind, std::move(stableKey),
+      makeBoxRequest(kind, std::move(name), bounds, request.visible, tags,
+                     scale, rotationEulerRadians),
+      hasCreatedRoot);
+}
+
+[[nodiscard]] bool appendGeneratedOpeningInsert(
+    CreativeBuildingRecipeResult& result,
+    const CreativeBuildingRecipeRequest& request,
+    const CreativeBuildingOpeningSpec& opening,
+    const CreativeStructuralWallFrame& frame,
+    const CreativeStructuralWallOpeningPlan& openingPlan,
+    bool hasCreatedRoot) {
+  const CreativeObjectKind kind =
+      opening.kind == CreativeBuildingOpeningKind::Door
+          ? CreativeObjectKind::Door
+          : CreativeObjectKind::Window;
+  if (!opening.hasInsertAssetSourceBounds) {
+    appendGeneratedObject(result, request, kind,
+                          opening.stableKey + ".insert", opening.name,
+                          openingPlan.insertBounds, hasCreatedRoot,
+                          opening.tags);
+    return true;
+  }
+
+  const CreativeBuildingOpeningAssetFitPlan fit =
+      planCreativeBuildingOpeningAssetFit(
+          {opening.insertAssetSourceBoundsMeters, openingPlan.insertBounds,
+           frame, opening.pose});
+  if (!fit.accepted) {
+    result.receipt.failedOpeningIndex = openingPlan.sourceIndex;
+    setStatus(result.receipt, CreativeBuildingRecipeStatus::InvalidOpening,
+              fit.reasonCode);
+    return false;
+  }
+
+  CreativeDocumentCreateRequest createRequest;
+  createRequest.kind = kind;
+  createRequest.name = opening.name;
+  createRequest.assetId = opening.insertAssetId;
+  createRequest.bounds = fit.authoredBoundsMeters;
+  createRequest.hasBoundsOverride = true;
+  createRequest.transform = fit.transform;
+  createRequest.hasTransformOverride = true;
+  createRequest.visible = request.visible;
+  createRequest.hasVisibleOverride = true;
+  createRequest.tags = mergedTags(request.tags, opening.tags);
+  appendGeneratedRequest(result, request, kind,
+                         opening.stableKey + ".insert",
+                         std::move(createRequest), hasCreatedRoot);
+  return true;
 }
 
 [[nodiscard]] std::string segmentName(const CreativeBuildingWallSpec& wall,
@@ -202,6 +291,7 @@ void setWallKernelFailure(CreativeBuildingRecipeReceipt& receipt,
     if (!validOpeningKind(opening.kind) ||
         !isCreativeStructuralWallOpeningPoseValid(opening.pose) ||
         opening.stableKey.empty() || opening.name.empty() ||
+        !validOpeningAsset(opening) ||
         (opening.kind == CreativeBuildingOpeningKind::Window &&
          openingPoseIsOpen(opening.pose))) {
       setStatus(result.receipt, CreativeBuildingRecipeStatus::InvalidOpening,
@@ -250,13 +340,11 @@ void setWallKernelFailure(CreativeBuildingRecipeReceipt& receipt,
     }
 
     if (openingPlan.hasInsert) {
-      const CreativeObjectKind kind =
-          opening.kind == CreativeBuildingOpeningKind::Door
-              ? CreativeObjectKind::Door
-              : CreativeObjectKind::Window;
-      appendGeneratedObject(
-          result, request, kind, opening.stableKey + ".insert", opening.name,
-          openingPlan.insertBounds, hasCreatedRoot, opening.tags);
+      if (!appendGeneratedOpeningInsert(result, request, opening,
+                                        geometry.frame, openingPlan,
+                                        hasCreatedRoot)) {
+        return false;
+      }
     }
   }
 
@@ -329,6 +417,27 @@ std::string_view toString(CreativeBuildingRecipeStatus status) noexcept {
     case CreativeBuildingRecipeStatus::InvalidPlan:
       return "InvalidPlan";
     case CreativeBuildingRecipeStatus::Ready:
+      return "Ready";
+  }
+  return "Unknown";
+}
+
+std::string_view toString(
+    CreativeBuildingOpeningAssetFitStatus status) noexcept {
+  switch (status) {
+    case CreativeBuildingOpeningAssetFitStatus::NotRequested:
+      return "NotRequested";
+    case CreativeBuildingOpeningAssetFitStatus::InvalidSourceBounds:
+      return "InvalidSourceBounds";
+    case CreativeBuildingOpeningAssetFitStatus::InvalidTargetBounds:
+      return "InvalidTargetBounds";
+    case CreativeBuildingOpeningAssetFitStatus::InvalidWallFrame:
+      return "InvalidWallFrame";
+    case CreativeBuildingOpeningAssetFitStatus::InvalidPose:
+      return "InvalidPose";
+    case CreativeBuildingOpeningAssetFitStatus::UnrepresentableTransform:
+      return "UnrepresentableTransform";
+    case CreativeBuildingOpeningAssetFitStatus::Ready:
       return "Ready";
   }
   return "Unknown";
@@ -444,6 +553,120 @@ CreativeRectangularRoomGeometryPlan planCreativeRectangularRoomGeometry(
   plan.accepted = true;
   setGeometryStatus(plan, CreativeRectangularRoomGeometryStatus::Ready,
                     "creative_rectangular_room_geometry_ready");
+  return plan;
+}
+
+CreativeBuildingOpeningAssetFitPlan planCreativeBuildingOpeningAssetFit(
+    const CreativeBuildingOpeningAssetFitRequest& request) noexcept {
+  CreativeBuildingOpeningAssetFitPlan plan;
+  const CreativeBoundsMetrics source =
+      measureCreativeBounds(request.sourceBoundsMeters);
+  if (!source.valid || !isPositiveCreativeVec3(source.size)) {
+    plan.status =
+        CreativeBuildingOpeningAssetFitStatus::InvalidSourceBounds;
+    plan.reasonCode = "creative_building_opening_asset_source_invalid";
+    return plan;
+  }
+  const CreativeBoundsMetrics target =
+      measureCreativeBounds(request.targetBoundsMeters);
+  if (!target.valid || !isPositiveCreativeVec3(target.size)) {
+    plan.status =
+        CreativeBuildingOpeningAssetFitStatus::InvalidTargetBounds;
+    plan.reasonCode = "creative_building_opening_asset_target_invalid";
+    return plan;
+  }
+  if (request.wallFrame.axis >= CreativeStructuralWallAxis::Count ||
+      !isFiniteCreativeVec3(request.wallFrame.tangent) ||
+      !isFiniteCreativeVec3(request.wallFrame.normal)) {
+    plan.status = CreativeBuildingOpeningAssetFitStatus::InvalidWallFrame;
+    plan.reasonCode = "creative_building_opening_asset_wall_frame_invalid";
+    return plan;
+  }
+  if (!isCreativeStructuralWallOpeningPoseValid(request.pose)) {
+    plan.status = CreativeBuildingOpeningAssetFitStatus::InvalidPose;
+    plan.reasonCode = "creative_building_opening_asset_pose_invalid";
+    return plan;
+  }
+
+  const bool open = openingPoseIsOpen(request.pose);
+  CreativeVec3 targetDirection =
+      open ? request.wallFrame.normal : request.wallFrame.tangent;
+  if (open) {
+    const double normalSign = openingPoseNormalSign(request.pose);
+    targetDirection.x *= normalSign;
+    targetDirection.z *= normalSign;
+  }
+  const double directionLength =
+      std::hypot(targetDirection.x, targetDirection.z);
+  if (!std::isfinite(directionLength) || directionLength <= kGeometryEpsilon ||
+      std::abs(targetDirection.y) > kGeometryEpsilon) {
+    plan.status = CreativeBuildingOpeningAssetFitStatus::InvalidWallFrame;
+    plan.reasonCode = "creative_building_opening_asset_wall_frame_invalid";
+    return plan;
+  }
+  targetDirection.x /= directionLength;
+  targetDirection.z /= directionLength;
+
+  const bool wallRunsAlongX =
+      request.wallFrame.axis == CreativeStructuralWallAxis::X;
+  const double targetPrimary =
+      open ? (wallRunsAlongX ? target.size.z : target.size.x)
+           : (wallRunsAlongX ? target.size.x : target.size.z);
+  const double targetSecondary =
+      open ? (wallRunsAlongX ? target.size.x : target.size.z)
+           : (wallRunsAlongX ? target.size.z : target.size.x);
+  const bool localXIsPrimary = source.size.x >= source.size.z;
+  if (localXIsPrimary) {
+    plan.transform.scale = {targetPrimary / source.size.x,
+                            target.size.y / source.size.y,
+                            targetSecondary / source.size.z};
+    plan.transform.rotationEulerRadians.y =
+        std::atan2(-targetDirection.z, targetDirection.x);
+  } else {
+    plan.transform.scale = {targetSecondary / source.size.x,
+                            target.size.y / source.size.y,
+                            targetPrimary / source.size.z};
+    plan.transform.rotationEulerRadians.y =
+        std::atan2(targetDirection.x, targetDirection.z);
+  }
+  if (!isPositiveCreativeVec3(plan.transform.scale) ||
+      !isFiniteCreativeVec3(plan.transform.rotationEulerRadians)) {
+    plan.status =
+        CreativeBuildingOpeningAssetFitStatus::UnrepresentableTransform;
+    plan.reasonCode = "creative_building_opening_asset_transform_invalid";
+    return plan;
+  }
+
+  const CreativeVec3 scaledSourceCenter{
+      source.center.x * plan.transform.scale.x,
+      source.center.y * plan.transform.scale.y,
+      source.center.z * plan.transform.scale.z};
+  const CreativeVec3 rotatedSourceCenter = rotateCreativeVectorEulerXyz(
+      scaledSourceCenter, plan.transform.rotationEulerRadians);
+  plan.transform.position = {
+      target.center.x - rotatedSourceCenter.x,
+      target.center.y - rotatedSourceCenter.y,
+      target.center.z - rotatedSourceCenter.z};
+  plan.authoredBoundsMeters = {
+      {plan.transform.position.x + request.sourceBoundsMeters.min.x,
+       plan.transform.position.y + request.sourceBoundsMeters.min.y,
+       plan.transform.position.z + request.sourceBoundsMeters.min.z},
+      {plan.transform.position.x + request.sourceBoundsMeters.max.x,
+       plan.transform.position.y + request.sourceBoundsMeters.max.y,
+       plan.transform.position.z + request.sourceBoundsMeters.max.z}};
+  const CreativeTransformedBounds resolved = resolveCreativeTransformedBounds(
+      plan.authoredBoundsMeters, plan.transform);
+  if (!resolved.valid ||
+      !boundsNear(resolved.worldBounds, request.targetBoundsMeters)) {
+    plan = {};
+    plan.status =
+        CreativeBuildingOpeningAssetFitStatus::UnrepresentableTransform;
+    plan.reasonCode = "creative_building_opening_asset_transform_invalid";
+    return plan;
+  }
+  plan.status = CreativeBuildingOpeningAssetFitStatus::Ready;
+  plan.accepted = true;
+  plan.reasonCode = "creative_building_opening_asset_fit_ready";
   return plan;
 }
 

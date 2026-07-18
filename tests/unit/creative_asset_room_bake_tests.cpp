@@ -507,6 +507,15 @@ bool renderOnlyAndUnsafeMetadataStayVisibleWithoutPhysics() {
                        addAsset(document, cr::CreativeObjectKind::Prop,
                                 "unsupported", 3.0);
   const cr::CreativeRoomBakeResult result = bake(document, &catalog);
+  const auto missingObject = std::find_if(
+      document.objects().begin(), document.objects().end(),
+      [](const cr::CreativeObject& object) {
+        return object.assetId == "missing";
+      });
+  const iggy3d::RoomStaticMeshAsset* missingMesh =
+      missingObject == document.objects().end()
+          ? nullptr
+          : findMesh(result.room, missingObject->id);
   const iggy3d::SpatialSurfaceSet surfaces =
       iggy3d::buildSpatialSurfaceSet(result.room);
   const iggy3d::PhysicsSpatialSurfaceColliderBakeResult physics =
@@ -520,6 +529,10 @@ bool renderOnlyAndUnsafeMetadataStayVisibleWithoutPhysics() {
          expect(result.room.spatialSurfaces.empty() && physics.ok &&
                     physics.colliderCount == 0U,
                 "unsafe physics metadata emits no collision") &&
+         expect(missingMesh != nullptr &&
+                    missingMesh->meshId == "creative_box_proxy" &&
+                    missingMesh->proceduralSegmentCount == 0U,
+                "missing asset renders its descriptor-backed procedural fallback") &&
          expect(result.receipt.skippedAssetNoCollisionCount == 1U &&
                     result.receipt.skippedInvalidAssetMetadataCount == 1U &&
                     result.receipt.skippedMissingAssetMetadataCount == 1U &&

@@ -7,6 +7,10 @@
 
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
 
+namespace iggy3d::creative {
+struct CreativeCatalogState;
+}
+
 namespace iggy3d_creative_app {
 
 inline constexpr std::size_t kCreativeEditorWorldLayoutDiagnosticCapacity = 8U;
@@ -52,6 +56,7 @@ struct CreativeEditorWorldLayoutDiagnosticCache {
   std::uint64_t documentRevision = 0U;
   std::uint64_t terrainRevision = 0U;
   std::uint64_t materialRevision = 0U;
+  std::uint64_t assetCatalogSignature = 0U;
   std::uint64_t buildCount = 0U;
   CreativeEditorWorldLayoutDiagnosticReport report;
 };
@@ -59,13 +64,15 @@ struct CreativeEditorWorldLayoutDiagnosticCache {
 [[nodiscard]] CreativeEditorWorldLayoutDiagnosticReport
 buildCreativeEditorWorldLayoutDiagnosticReport(
     const iggy3d::creative::CreativeDocument& document,
-    const iggy3d::creative::CreativeWorldLayout& layout);
+    const iggy3d::creative::CreativeWorldLayout& layout,
+    const iggy3d::creative::CreativeCatalogState* assetCatalog = nullptr);
 
 [[nodiscard]] const CreativeEditorWorldLayoutDiagnosticReport&
 refreshCreativeEditorWorldLayoutDiagnostics(
     CreativeEditorWorldLayoutDiagnosticCache& cache,
     const iggy3d::creative::CreativeDocument& document,
     const iggy3d::creative::CreativeWorldLayout& layout,
-    std::uint64_t layoutRevision);
+    std::uint64_t layoutRevision,
+    const iggy3d::creative::CreativeCatalogState* assetCatalog = nullptr);
 
 }  // namespace iggy3d_creative_app
