@@ -624,6 +624,19 @@ struct CreativeEditorWorldLayoutOpeningHost {
   double wallHeightCells = 0.0;
 };
 
+struct CreativeEditorWorldLayoutOpeningPlacementPlan {
+  bool accepted = false;
+  cr::CreativeWorldLayoutOpening opening;
+  CreativeEditorWorldLayoutOpeningHost host;
+  CreativeEditorWorldLayoutPoint centerPoint;
+  CreativeEditorWorldLayoutPoint startPoint;
+  CreativeEditorWorldLayoutPoint endPoint;
+  double pointerDistanceCells = 0.0;
+  std::string_view message = "Choose a wall target";
+  std::string_view reasonCode =
+      "creative_editor_world_layout_opening_placement_not_requested";
+};
+
 enum class CreativeEditorWorldLayoutOpeningHandle : std::uint8_t {
   None,
   Move,
@@ -1136,6 +1149,13 @@ applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
 [[nodiscard]] bool readCreativeEditorWorldLayoutOpeningSettings(
     const CreativeEditorWorldLayoutState& state, std::size_t openingIndex,
     CreativeEditorWorldLayoutOpeningSettings& output) noexcept;
+// Hover-time query: O(walls + room edges + openings), stable first-host ties,
+// and no layout copies or container allocations.
+[[nodiscard]] CreativeEditorWorldLayoutOpeningPlacementPlan
+planCreativeEditorWorldLayoutOpeningPlacement(
+    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint point,
+    cr::CreativeBuildingOpeningKind kind);
 [[nodiscard]] CreativeEditorWorldLayoutOpeningHost
 resolveCreativeEditorWorldLayoutOpeningHost(
     const CreativeEditorWorldLayoutState& state,

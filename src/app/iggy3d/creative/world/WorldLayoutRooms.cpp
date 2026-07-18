@@ -99,17 +99,6 @@ bool sharedMergeLane(const EdgeRecord& lhs,
          oppositeEdges(lhs.roomEdge, rhs.roomEdge);
 }
 
-std::pair<double, double> spanOffsets(
-    const CreativeWorldLayoutRoom& room, CreativeWorldLayoutRoomEdge edge,
-    CreativeTerrainCoord2 start, CreativeTerrainCoord2 end) noexcept {
-  const bool horizontal = edge == CreativeWorldLayoutRoomEdge::North ||
-                          edge == CreativeWorldLayoutRoomEdge::South;
-  const double origin = horizontal ? room.footprint.minimum.x
-                                   : room.footprint.minimum.z;
-  return {static_cast<double>(horizontal ? start.x : start.z) - origin,
-          static_cast<double>(horizontal ? end.x : end.z) - origin};
-}
-
 auto edgeSortKey(const EdgeRecord& edge) noexcept {
   return std::tuple{edge.buildingIndex, edge.levelIndex, edge.baseLayer,
                     edge.heightCells, edge.thicknessCells, edge.orientation,
@@ -374,21 +363,39 @@ bool creativeWorldLayoutRoomEdgeIntervalIsShared(
   }
   const double intervalBegin = centerOffsetCells - widthCells * 0.5;
   const double intervalEnd = centerOffsetCells + widthCells * 0.5;
-  for (const CreativeWorldLayoutSharedRoomEdgeSpan& span :
-       inspectCreativeWorldLayoutSharedRoomEdges(layout)) {
-    CreativeWorldLayoutRoomEdge matchedEdge =
-        CreativeWorldLayoutRoomEdge::Count;
-    if (span.firstRoomIndex == roomIndex && span.firstRoomEdge == roomEdge) {
-      matchedEdge = span.firstRoomEdge;
-    } else if (span.secondRoomIndex == roomIndex &&
-               span.secondRoomEdge == roomEdge) {
-      matchedEdge = span.secondRoomEdge;
-    }
-    if (matchedEdge == CreativeWorldLayoutRoomEdge::Count) {
+  const CreativeWorldLayoutRoom& room = layout.rooms[roomIndex];
+  const auto candidateEdges = roomEdges(
+      room, roomIndex,
+      resolveCreativeWorldLayoutRoomGeometry(layout, roomIndex));
+  const EdgeRecord& candidate =
+      candidateEdges[static_cast<std::size_t>(roomEdge)];
+  const double offsetOrigin =
+      candidate.orientation == EdgeOrientation::Horizontal
+          ? static_cast<double>(room.footprint.minimum.x)
+          : static_cast<double>(room.footprint.minimum.z);
+  for (std::size_t otherRoomIndex = 0U;
+       otherRoomIndex < layout.rooms.size(); ++otherRoomIndex) {
+    if (otherRoomIndex == roomIndex) {
       continue;
     }
-    const auto [sharedBegin, sharedEnd] = spanOffsets(
-        layout.rooms[roomIndex], matchedEdge, span.start, span.end);
+    const auto otherEdges = roomEdges(
+        layout.rooms[otherRoomIndex], otherRoomIndex,
+        resolveCreativeWorldLayoutRoomGeometry(layout, otherRoomIndex));
+    const auto found = std::find_if(
+        otherEdges.begin(), otherEdges.end(), [&](const EdgeRecord& edge) {
+          return sharedMergeLane(candidate, edge) &&
+                 std::max(candidate.begin, edge.begin) <
+                     std::min(candidate.end, edge.end);
+        });
+    if (found == otherEdges.end()) {
+      continue;
+    }
+    const double sharedBegin =
+        static_cast<double>(std::max(candidate.begin, found->begin)) -
+        offsetOrigin;
+    const double sharedEnd =
+        static_cast<double>(std::min(candidate.end, found->end)) -
+        offsetOrigin;
     if (std::max(intervalBegin, sharedBegin) <
         std::min(intervalEnd, sharedEnd)) {
       return true;

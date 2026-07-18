@@ -57,6 +57,7 @@ expandCreativeWorldLayoutRooms(const CreativeWorldLayout& layout);
 inspectCreativeWorldLayoutSharedRoomEdges(
     const CreativeWorldLayout& layout);
 
+// Allocation-free O(room_count) query for one authored edge interval.
 [[nodiscard]] bool creativeWorldLayoutRoomEdgeIntervalIsShared(
     const CreativeWorldLayout& layout, std::size_t roomIndex,
     CreativeWorldLayoutRoomEdge roomEdge, double centerOffsetCells,

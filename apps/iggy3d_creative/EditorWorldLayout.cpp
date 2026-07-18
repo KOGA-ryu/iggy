@@ -309,6 +309,43 @@ CreativeEditorWorldLayoutPoint openingHostPoint(
                              offsetCells};
 }
 
+bool openingIntervalsOverlap(
+    const cr::CreativeWorldLayoutOpening& candidate,
+    CreativeEditorWorldLayoutOpeningHost candidateHost,
+    const cr::CreativeWorldLayoutOpening& existing,
+    CreativeEditorWorldLayoutOpeningHost existingHost) noexcept {
+  if (!candidateHost.valid || !existingHost.valid ||
+      !std::isfinite(candidate.widthCells) || candidate.widthCells <= 0.0 ||
+      !std::isfinite(existing.widthCells) || existing.widthCells <= 0.0) {
+    return false;
+  }
+  const double candidateDx = candidateHost.end.x - candidateHost.start.x;
+  const double candidateDz = candidateHost.end.z - candidateHost.start.z;
+  const double existingDx = existingHost.end.x - existingHost.start.x;
+  const double existingDz = existingHost.end.z - existingHost.start.z;
+  const double parallelCross =
+      candidateDx * existingDz - candidateDz * existingDx;
+  const double lineCross =
+      candidateDx * (existingHost.start.z - candidateHost.start.z) -
+      candidateDz * (existingHost.start.x - candidateHost.start.x);
+  if (std::fabs(parallelCross) > kOpeningGeometryEpsilon ||
+      std::fabs(lineCross) > kOpeningGeometryEpsilon) {
+    return false;
+  }
+  const CreativeEditorWorldLayoutPoint existingCenter =
+      openingHostPoint(existingHost, existing.centerOffsetCells);
+  const double inverseCandidateLength = 1.0 / candidateHost.lengthCells;
+  const double existingOffsetOnCandidate =
+      (existingCenter.x - candidateHost.start.x) * candidateDx *
+          inverseCandidateLength +
+      (existingCenter.z - candidateHost.start.z) * candidateDz *
+          inverseCandidateLength;
+  return std::isfinite(existingOffsetOnCandidate) &&
+         std::fabs(existingOffsetOnCandidate - candidate.centerOffsetCells) <=
+             (existing.widthCells + candidate.widthCells) * 0.5 +
+                 kOpeningGeometryEpsilon;
+}
+
 double pointDistance(CreativeEditorWorldLayoutPoint lhs,
                      CreativeEditorWorldLayoutPoint rhs) noexcept {
   return std::hypot(lhs.x - rhs.x, lhs.z - rhs.z);
@@ -358,8 +395,18 @@ OpeningHostProjection nearestOpeningHost(
     CreativeEditorWorldLayoutPoint point, double tolerance,
     std::size_t activeLevelIndex) {
   OpeningHostProjection best;
+  const cr::CreativeWorldLayoutLevel* activeLevel =
+      activeLevelIndex < layout.levels.size()
+          ? &layout.levels[activeLevelIndex]
+          : nullptr;
   for (std::size_t index = 0U; index < layout.walls.size(); ++index) {
     const cr::CreativeWorldLayoutWall& wall = layout.walls[index];
+    if (activeLevel != nullptr &&
+        (wall.buildingIndex != activeLevel->buildingIndex ||
+         std::fabs(wall.baseLayer - activeLevel->floorTopLayer) >
+             kOpeningGeometryEpsilon)) {
+      continue;
+    }
     considerSegment(best, point, wall.start, wall.end, tolerance,
                     cr::CreativeWorldLayoutOpeningHostKind::Wall, index,
                     cr::CreativeWorldLayoutRoomEdge::North);
@@ -1091,82 +1138,13 @@ CreativeEditorWorldLayoutEditReceipt addWallPoint(
 CreativeEditorWorldLayoutEditReceipt addOpening(
     CreativeEditorWorldLayoutState& state, CreativeEditorWorldLayoutPoint point,
     cr::CreativeBuildingOpeningKind kind) {
-  const OpeningHostProjection projection =
-      nearestOpeningHost(state.source, point, kOpeningHitToleranceCells,
-                         state.activeLevelIndex);
-  if (!projection.hit) {
-    state.statusMessage = "place the opening on a room edge or partition";
-    return {false, false, "creative_editor_world_layout_wall_not_found"};
+  CreativeEditorWorldLayoutOpeningPlacementPlan plan =
+      planCreativeEditorWorldLayoutOpeningPlacement(state, point, kind);
+  if (!plan.accepted) {
+    state.statusMessage = plan.message;
+    return {false, false, std::string(plan.reasonCode)};
   }
-  cr::CreativeWorldLayoutOpening opening;
-  opening.hostKind = projection.hostKind;
-  opening.wallIndex = projection.wallIndex;
-  opening.roomIndex = projection.roomIndex;
-  opening.roomEdge = projection.roomEdge;
-  opening.kind = kind;
-  opening.pose = cr::CreativeBuildingOpeningPose::Closed;
-  opening.includeInsert = true;
-  if (kind == cr::CreativeBuildingOpeningKind::Door) {
-    opening.widthCells = 1.0;
-    opening.cutoutBottomCells = 0.0;
-    opening.cutoutHeightCells = 2.1;
-    opening.insertBottomCells = 0.0;
-    opening.insertHeightCells = 2.1;
-    opening.insertWidthCells = 1.0;
-    opening.insertThicknessCells = 0.15;
-  } else {
-    opening.widthCells = 1.5;
-    opening.cutoutBottomCells = 1.0;
-    opening.cutoutHeightCells = 1.2;
-    opening.insertBottomCells = 1.0;
-    opening.insertHeightCells = 1.2;
-    opening.insertWidthCells = 1.5;
-    opening.insertThicknessCells = 0.10;
-  }
-  const double wallLength = projection.lengthCells;
-  const double halfWidth = opening.widthCells * 0.5;
-  const double minimumCenter = halfWidth + kOpeningEndClearanceCells;
-  const double maximumCenter =
-      wallLength - halfWidth - kOpeningEndClearanceCells;
-  if (minimumCenter > maximumCenter + kOpeningGeometryEpsilon) {
-    state.statusMessage = "wall is too short for this opening";
-    return {false, false, "creative_editor_world_layout_wall_too_short"};
-  }
-  opening.centerOffsetCells =
-      std::clamp(std::round(projection.centerOffsetCells * 4.0) / 4.0,
-                 minimumCenter, maximumCenter);
-  if (kind == cr::CreativeBuildingOpeningKind::Window &&
-      projection.hostKind ==
-          cr::CreativeWorldLayoutOpeningHostKind::RoomEdge &&
-      cr::creativeWorldLayoutRoomEdgeIntervalIsShared(
-          state.source, projection.roomIndex, projection.roomEdge,
-          opening.centerOffsetCells, opening.widthCells)) {
-    state.statusMessage = "place windows on an exterior room edge";
-    return {false, false,
-            "creative_editor_world_layout_window_requires_exterior"};
-  }
-  cr::CreativeWorldLayout candidate = state.source;
-  candidate.openings.push_back(opening);
-  const cr::CreativeWorldLayoutRoomCompileResult expanded =
-      cr::expandCreativeWorldLayoutRooms(candidate);
-  if (!expanded.accepted) {
-    state.statusMessage = expanded.reasonCode;
-    return {false, false, expanded.reasonCode};
-  }
-  const cr::CreativeWorldLayoutOpening& resolved =
-      expanded.expanded.openings.back();
-  for (std::size_t index = 0U; index + 1U < expanded.expanded.openings.size();
-       ++index) {
-    const cr::CreativeWorldLayoutOpening& existing =
-        expanded.expanded.openings[index];
-    if (existing.wallIndex == resolved.wallIndex &&
-        std::fabs(existing.centerOffsetCells - resolved.centerOffsetCells) <=
-            (existing.widthCells + resolved.widthCells) * 0.5 +
-                kOpeningGeometryEpsilon) {
-      state.statusMessage = "opening overlaps an existing opening";
-      return {false, false, "creative_editor_world_layout_opening_overlap"};
-    }
-  }
+  cr::CreativeWorldLayoutOpening opening = std::move(plan.opening);
   opening.stableKey = mintWorldLayoutStableKey(
       state, kind == cr::CreativeBuildingOpeningKind::Door ? "door" : "window");
   opening.name =
@@ -1502,6 +1480,144 @@ const char* creativeEditorWorldLayoutToolLabel(
       break;
   }
   return "Unknown";
+}
+
+CreativeEditorWorldLayoutOpeningPlacementPlan
+planCreativeEditorWorldLayoutOpeningPlacement(
+    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint point,
+    cr::CreativeBuildingOpeningKind kind) {
+  CreativeEditorWorldLayoutOpeningPlacementPlan result;
+  if (!finitePoint(point) || !validOpeningKind(kind)) {
+    result.message = "Opening target is invalid";
+    result.reasonCode =
+        "creative_editor_world_layout_opening_placement_invalid";
+    return result;
+  }
+
+  const OpeningHostProjection projection =
+      nearestOpeningHost(state.source, point, kOpeningHitToleranceCells,
+                         state.activeLevelIndex);
+  if (!projection.hit) {
+    result.message = "Place the opening on a room edge or partition";
+    result.reasonCode = "creative_editor_world_layout_wall_not_found";
+    return result;
+  }
+
+  cr::CreativeWorldLayoutOpening opening;
+  opening.hostKind = projection.hostKind;
+  opening.wallIndex = projection.wallIndex;
+  opening.roomIndex = projection.roomIndex;
+  opening.roomEdge = projection.roomEdge;
+  opening.kind = kind;
+  opening.pose = cr::CreativeBuildingOpeningPose::Closed;
+  opening.includeInsert = true;
+  switch (kind) {
+    case cr::CreativeBuildingOpeningKind::Door:
+      opening.widthCells = 1.0;
+      opening.cutoutBottomCells = 0.0;
+      opening.cutoutHeightCells = 2.1;
+      opening.insertBottomCells = 0.0;
+      opening.insertHeightCells = 2.1;
+      opening.insertWidthCells = 1.0;
+      opening.insertThicknessCells = 0.15;
+      break;
+    case cr::CreativeBuildingOpeningKind::Window:
+      opening.widthCells = 1.5;
+      opening.cutoutBottomCells = 1.0;
+      opening.cutoutHeightCells = 1.2;
+      opening.insertBottomCells = 1.0;
+      opening.insertHeightCells = 1.2;
+      opening.insertWidthCells = 1.5;
+      opening.insertThicknessCells = 0.10;
+      break;
+  }
+
+  const double halfWidth = opening.widthCells * 0.5;
+  const double minimumCenter = halfWidth + kOpeningEndClearanceCells;
+  const double maximumCenter =
+      projection.lengthCells - halfWidth - kOpeningEndClearanceCells;
+  if (minimumCenter > maximumCenter + kOpeningGeometryEpsilon) {
+    result.message = "Wall is too short for this opening";
+    result.reasonCode = "creative_editor_world_layout_wall_too_short";
+    return result;
+  }
+  opening.centerOffsetCells =
+      std::clamp(std::round(projection.centerOffsetCells / kOpeningSnapCells) *
+                     kOpeningSnapCells,
+                 minimumCenter, maximumCenter);
+  result.host = openingHost(state.source, opening);
+  if (!result.host.valid) {
+    result.message = "Opening host is unavailable";
+    result.reasonCode =
+        "creative_editor_world_layout_opening_host_invalid";
+    return result;
+  }
+  const double hostDx = result.host.end.x - result.host.start.x;
+  const double hostDz = result.host.end.z - result.host.start.z;
+  if (std::fabs(hostDx) > kOpeningGeometryEpsilon &&
+      std::fabs(hostDz) > kOpeningGeometryEpsilon) {
+    result.message = "Openings require a cardinal wall";
+    result.reasonCode =
+        "creative_editor_world_layout_opening_host_orientation_unsupported";
+    return result;
+  }
+  if (opening.cutoutBottomCells + opening.cutoutHeightCells >
+      result.host.wallHeightCells + kOpeningGeometryEpsilon) {
+    result.message = "Opening exceeds the wall height";
+    result.reasonCode =
+        "creative_editor_world_layout_opening_height_invalid";
+    return result;
+  }
+  if (kind == cr::CreativeBuildingOpeningKind::Window &&
+      projection.hostKind ==
+          cr::CreativeWorldLayoutOpeningHostKind::RoomEdge &&
+      cr::creativeWorldLayoutRoomEdgeIntervalIsShared(
+          state.source, projection.roomIndex, projection.roomEdge,
+          opening.centerOffsetCells, opening.widthCells)) {
+    result.message = "Place windows on an exterior room edge";
+    result.reasonCode =
+        "creative_editor_world_layout_window_requires_exterior";
+    return result;
+  }
+
+  for (const cr::CreativeWorldLayoutOpening& existing :
+       state.source.openings) {
+    const CreativeEditorWorldLayoutOpeningHost existingHost =
+        openingHost(state.source, existing);
+    if (!existingHost.valid ||
+        !std::isfinite(existing.centerOffsetCells) ||
+        !std::isfinite(existing.widthCells) || existing.widthCells <= 0.0) {
+      result.message = "An existing opening is invalid";
+      result.reasonCode =
+          "creative_editor_world_layout_existing_opening_invalid";
+      return result;
+    }
+    if (openingIntervalsOverlap(opening, result.host, existing,
+                                existingHost)) {
+      result.message = "Opening overlaps an existing opening";
+      result.reasonCode = "creative_editor_world_layout_opening_overlap";
+      return result;
+    }
+  }
+
+  result.opening = std::move(opening);
+  result.centerPoint =
+      openingHostPoint(result.host, result.opening.centerOffsetCells);
+  result.startPoint = openingHostPoint(
+      result.host,
+      result.opening.centerOffsetCells - result.opening.widthCells * 0.5);
+  result.endPoint = openingHostPoint(
+      result.host,
+      result.opening.centerOffsetCells + result.opening.widthCells * 0.5);
+  result.pointerDistanceCells = projection.distanceCells;
+  result.message = kind == cr::CreativeBuildingOpeningKind::Door
+                       ? "Door target ready"
+                       : "Window target ready";
+  result.reasonCode =
+      "creative_editor_world_layout_opening_placement_ready";
+  result.accepted = true;
+  return result;
 }
 
 bool creativeEditorWorldLayoutToolIsVerticalConnector(

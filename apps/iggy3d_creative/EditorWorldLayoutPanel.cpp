@@ -818,6 +818,65 @@ void drawOpenings(ImDrawList& drawList, const CanvasTransform& transform,
   }
 }
 
+void drawOpeningPlacementPreview(
+    ImDrawList& drawList, const CanvasTransform& transform,
+    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint hovered) {
+  cr::CreativeBuildingOpeningKind kind;
+  if (state.tool == CreativeEditorWorldLayoutTool::Door) {
+    kind = cr::CreativeBuildingOpeningKind::Door;
+  } else if (state.tool == CreativeEditorWorldLayoutTool::Window) {
+    kind = cr::CreativeBuildingOpeningKind::Window;
+  } else {
+    return;
+  }
+  const CreativeEditorWorldLayoutOpeningPlacementPlan plan =
+      planCreativeEditorWorldLayoutOpeningPlacement(state, hovered, kind);
+  const ImU32 previewColor =
+      !plan.accepted
+          ? color({0.92F, 0.29F, 0.24F, 1.0F})
+          : kind == cr::CreativeBuildingOpeningKind::Door
+                ? color({0.20F, 0.82F, 0.38F, 1.0F})
+                : color({0.27F, 0.72F, 0.91F, 1.0F});
+  if (!plan.accepted) {
+    const ImVec2 center = toScreen(transform, hovered.x, hovered.z);
+    drawList.AddLine({center.x - 7.0F, center.y - 7.0F},
+                     {center.x + 7.0F, center.y + 7.0F}, previewColor, 3.0F);
+    drawList.AddLine({center.x - 7.0F, center.y + 7.0F},
+                     {center.x + 7.0F, center.y - 7.0F}, previewColor, 3.0F);
+    drawList.AddText({center.x + 11.0F, center.y + 9.0F}, previewColor,
+                     plan.message.data());
+    return;
+  }
+
+  const ImVec2 start =
+      toScreen(transform, plan.startPoint.x, plan.startPoint.z);
+  const ImVec2 center =
+      toScreen(transform, plan.centerPoint.x, plan.centerPoint.z);
+  const ImVec2 end = toScreen(transform, plan.endPoint.x, plan.endPoint.z);
+  if (plan.pointerDistanceCells > 0.01) {
+    const ImVec2 pointer = toScreen(transform, hovered.x, hovered.z);
+    drawList.AddLine(pointer, center, previewColor, 1.0F);
+  }
+  drawList.AddLine(start, end, previewColor, 8.0F);
+  drawList.AddRectFilled({start.x - 3.5F, start.y - 3.5F},
+                         {start.x + 3.5F, start.y + 3.5F}, previewColor);
+  drawList.AddRectFilled({end.x - 3.5F, end.y - 3.5F},
+                         {end.x + 3.5F, end.y + 3.5F}, previewColor);
+  if (kind == cr::CreativeBuildingOpeningKind::Door) {
+    drawList.AddCircleFilled(center, 6.0F, previewColor);
+  } else {
+    drawList.AddRectFilled({center.x - 6.0F, center.y - 6.0F},
+                           {center.x + 6.0F, center.y + 6.0F}, previewColor);
+  }
+  char label[96]{};
+  std::snprintf(label, sizeof(label), "%s | %.2f wide x %.2f high",
+                kind == cr::CreativeBuildingOpeningKind::Door ? "Door"
+                                                               : "Window",
+                plan.opening.widthCells, plan.opening.cutoutHeightCells);
+  drawList.AddText({center.x + 9.0F, center.y + 9.0F}, previewColor, label);
+}
+
 void drawAnchorPreview(ImDrawList& drawList, const CanvasTransform& transform,
                        const CreativeEditorWorldLayoutState& state,
                        CreativeEditorWorldLayoutPoint hovered) {
@@ -1908,6 +1967,7 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   const double handleTolerance = std::clamp(
       8.0 / static_cast<double>(transform.pixelsPerCell), 0.10, 0.45);
   if (hovered && !state.buildingTemplatePlacement.active) {
+    drawOpeningPlacementPreview(*drawList, transform, state, hoveredPoint);
     drawCatalogPlacementPreview(*drawList, transform, state, hoveredPoint,
                                 grid);
     drawAnchorPreview(*drawList, transform, state, hoveredPoint);

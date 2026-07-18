@@ -715,25 +715,167 @@ bool openingsSnapInsideWallsAndRejectOverlap() {
   static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(state, {6, 0}));
   static_cast<void>(app::setCreativeEditorWorldLayoutTool(
       state, app::CreativeEditorWorldLayoutTool::Door));
+  const app::CreativeEditorWorldLayoutOpeningPlacementPlan doorPlan =
+      app::planCreativeEditorWorldLayoutOpeningPlacement(
+          state, {0.05, 0.1}, cr::CreativeBuildingOpeningKind::Door);
   const auto door =
       app::applyCreativeEditorWorldLayoutPoint(state, {0.05, 0.1});
   const double doorCenter = state.source.openings[0].centerOffsetCells;
   static_cast<void>(app::setCreativeEditorWorldLayoutTool(
       state, app::CreativeEditorWorldLayoutTool::Window));
+  const app::CreativeEditorWorldLayoutOpeningPlacementPlan overlapPlan =
+      app::planCreativeEditorWorldLayoutOpeningPlacement(
+          state, {0.5, 0.1}, cr::CreativeBuildingOpeningKind::Window);
   const auto overlap =
       app::applyCreativeEditorWorldLayoutPoint(state, {0.5, 0.1});
   const std::size_t countAfterOverlap = state.source.openings.size();
+  const app::CreativeEditorWorldLayoutOpeningPlacementPlan windowPlan =
+      app::planCreativeEditorWorldLayoutOpeningPlacement(
+          state, {5.8, 0.1}, cr::CreativeBuildingOpeningKind::Window);
   const auto window =
       app::applyCreativeEditorWorldLayoutPoint(state, {5.8, 0.1});
 
-  return expect(door.accepted && door.changed && doorCenter == 0.75,
-                "door preserves a quarter-cell wall pier at the start") &&
+  return expect(doorPlan.accepted && door.accepted && door.changed &&
+                    doorCenter == doorPlan.opening.centerOffsetCells &&
+                    near(doorPlan.centerPoint.x, 0.75) &&
+                    near(doorPlan.startPoint.x, 0.25) &&
+                    near(doorPlan.endPoint.x, 1.25) &&
+                    near(doorPlan.pointerDistanceCells, 0.1),
+                "door preview and mutation share the quarter-cell host plan") &&
          expect(
-             !overlap.accepted && !overlap.changed && countAfterOverlap == 1U,
-             "overlapping opening is rejected without a source edit") &&
-         expect(window.accepted &&
-                    state.source.openings[1].centerOffsetCells == 5.0,
-                "window preserves a quarter-cell wall pier at the end");
+             !overlapPlan.accepted &&
+                 overlapPlan.reasonCode ==
+                     "creative_editor_world_layout_opening_overlap" &&
+                 !overlap.accepted && !overlap.changed &&
+                 countAfterOverlap == 1U,
+             "overlap is rejected by preview and commit without a source edit") &&
+         expect(windowPlan.accepted && window.accepted &&
+                    state.source.openings[1].centerOffsetCells ==
+                        windowPlan.opening.centerOffsetCells &&
+                    near(windowPlan.centerPoint.x, 5.0) &&
+                    near(windowPlan.startPoint.x, 4.25) &&
+                    near(windowPlan.endPoint.x, 5.75),
+                "window preview and mutation preserve the far wall pier");
+}
+
+bool openingPlacementPlansRespectActiveLevelsAndSharedEdges() {
+  app::CreativeEditorWorldLayoutState levels;
+  app::resetCreativeEditorWorldLayout(levels, "opening_level_plan");
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "building";
+  building.name = "Building";
+  levels.source.buildings.push_back(building);
+  cr::CreativeWorldLayoutLevel ground;
+  ground.buildingIndex = 0U;
+  ground.stableKey = "ground";
+  ground.name = "Ground";
+  ground.floorTopLayer = 0.0;
+  levels.source.levels.push_back(ground);
+  cr::CreativeWorldLayoutLevel upper = ground;
+  upper.stableKey = "upper";
+  upper.name = "Upper";
+  upper.floorTopLayer = 3.0;
+  levels.source.levels.push_back(upper);
+  levels.activeLevelIndex = 0U;
+  cr::CreativeWorldLayoutWall upperWall;
+  upperWall.buildingIndex = 0U;
+  upperWall.stableKey = "upper_wall";
+  upperWall.name = "Upper Wall";
+  upperWall.start = {0, 0};
+  upperWall.end = {6, 0};
+  upperWall.baseLayer = 3.0;
+  levels.source.walls.push_back(upperWall);
+  cr::CreativeWorldLayoutWall groundWall = upperWall;
+  groundWall.stableKey = "ground_wall";
+  groundWall.name = "Ground Wall";
+  groundWall.start = {0, 2};
+  groundWall.end = {6, 2};
+  groundWall.baseLayer = 0.0;
+  levels.source.walls.push_back(groundWall);
+  cr::CreativeWorldLayoutWall lowWall = groundWall;
+  lowWall.stableKey = "low_wall";
+  lowWall.name = "Low Wall";
+  lowWall.start = {0, 4};
+  lowWall.end = {6, 4};
+  lowWall.heightCells = 2U;
+  levels.source.walls.push_back(lowWall);
+  cr::CreativeWorldLayoutWall diagonalWall = groundWall;
+  diagonalWall.stableKey = "diagonal_wall";
+  diagonalWall.name = "Diagonal Wall";
+  diagonalWall.start = {0, 6};
+  diagonalWall.end = {6, 12};
+  levels.source.walls.push_back(diagonalWall);
+  const auto wrongLevel = app::planCreativeEditorWorldLayoutOpeningPlacement(
+      levels, {3.0, 0.0}, cr::CreativeBuildingOpeningKind::Door);
+  const auto groundPlan = app::planCreativeEditorWorldLayoutOpeningPlacement(
+      levels, {3.0, 2.1}, cr::CreativeBuildingOpeningKind::Door);
+  const auto lowWallPlan = app::planCreativeEditorWorldLayoutOpeningPlacement(
+      levels, {3.0, 4.0}, cr::CreativeBuildingOpeningKind::Door);
+  const auto diagonalPlan = app::planCreativeEditorWorldLayoutOpeningPlacement(
+      levels, {3.0, 9.0}, cr::CreativeBuildingOpeningKind::Door);
+
+  app::CreativeEditorWorldLayoutState rooms;
+  app::resetCreativeEditorWorldLayout(rooms, "shared_opening_plan");
+  rooms.source.buildings.push_back(building);
+  rooms.source.levels.push_back(ground);
+  rooms.activeLevelIndex = 0U;
+  cr::CreativeWorldLayoutRoom first;
+  first.buildingIndex = 0U;
+  first.levelIndex = 0U;
+  first.stableKey = "first";
+  first.name = "First";
+  first.footprint = {{0, 0}, {4, 4}};
+  rooms.source.rooms.push_back(first);
+  cr::CreativeWorldLayoutRoom second = first;
+  second.stableKey = "second";
+  second.name = "Second";
+  second.footprint = {{4, 0}, {8, 4}};
+  rooms.source.rooms.push_back(second);
+  const auto interiorWindow =
+      app::planCreativeEditorWorldLayoutOpeningPlacement(
+          rooms, {4.0, 2.0}, cr::CreativeBuildingOpeningKind::Window);
+  const auto interiorDoor = app::planCreativeEditorWorldLayoutOpeningPlacement(
+      rooms, {4.0, 2.0}, cr::CreativeBuildingOpeningKind::Door);
+  cr::CreativeWorldLayoutOpening oppositeEdgeDoor;
+  oppositeEdgeDoor.hostKind =
+      cr::CreativeWorldLayoutOpeningHostKind::RoomEdge;
+  oppositeEdgeDoor.roomIndex = 1U;
+  oppositeEdgeDoor.roomEdge = cr::CreativeWorldLayoutRoomEdge::West;
+  oppositeEdgeDoor.kind = cr::CreativeBuildingOpeningKind::Door;
+  oppositeEdgeDoor.centerOffsetCells = 2.0;
+  oppositeEdgeDoor.widthCells = 1.0;
+  rooms.source.openings.push_back(oppositeEdgeDoor);
+  const auto sharedOverlap =
+      app::planCreativeEditorWorldLayoutOpeningPlacement(
+          rooms, {4.0, 2.0}, cr::CreativeBuildingOpeningKind::Door);
+
+  return expect(!wrongLevel.accepted &&
+                    wrongLevel.reasonCode ==
+                        "creative_editor_world_layout_wall_not_found" &&
+                    groundPlan.accepted &&
+                    groundPlan.opening.wallIndex == 1U,
+                "opening planning ignores explicit walls from other levels") &&
+         expect(!lowWallPlan.accepted &&
+                    lowWallPlan.reasonCode ==
+                        "creative_editor_world_layout_opening_height_invalid",
+                "opening planning rejects cutouts taller than their host") &&
+         expect(!diagonalPlan.accepted &&
+                    diagonalPlan.reasonCode ==
+                        "creative_editor_world_layout_opening_host_orientation_unsupported",
+                "opening planning rejects walls the structural compiler cannot cut") &&
+         expect(!interiorWindow.accepted &&
+                    interiorWindow.reasonCode ==
+                        "creative_editor_world_layout_window_requires_exterior" &&
+                    interiorDoor.accepted &&
+                    interiorDoor.opening.hostKind ==
+                        cr::CreativeWorldLayoutOpeningHostKind::RoomEdge &&
+                    interiorDoor.opening.roomIndex == 0U &&
+                    interiorDoor.opening.roomEdge ==
+                        cr::CreativeWorldLayoutRoomEdge::East &&
+                    !sharedOverlap.accepted &&
+                    sharedOverlap.reasonCode ==
+                        "creative_editor_world_layout_opening_overlap",
+                "shared room edges accept doors, reject windows, and detect opposite-edge overlap");
 }
 
 bool deletingWallCascadesItsOpenings() {
@@ -3441,6 +3583,7 @@ int main() {
       catalogFloorSnapPlacesScaledSourceBottomOnTheFinishedFloor() &&
       catalogWallSnapUsesCanonicalActiveLevelHosts() &&
       openingsSnapInsideWallsAndRejectOverlap() &&
+      openingPlacementPlansRespectActiveLevelsAndSharedEdges() &&
       deletingWallCascadesItsOpenings() &&
       roomGestureHostsOpeningsAndSupportsResize() &&
       buildingShellCreatesOwnedRoomAndGeneratesAsOneEdit() &&
