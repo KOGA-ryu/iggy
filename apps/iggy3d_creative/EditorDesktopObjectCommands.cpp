@@ -1,0 +1,347 @@
+#include "EditorDesktopCommandsInternal.hpp"
+
+#include "EditorEdits.hpp"
+#include "EditorLogicLinks.hpp"
+#include "EditorMovingPlatformPreview.hpp"
+#include "EditorObjectActions.hpp"
+#include "EditorPathEditing.hpp"
+
+#include <span>
+#include <string>
+
+namespace iggy3d_creative_app {
+
+namespace creative = iggy3d::creative;
+
+bool dispatchCreativeDesktopObjectCommand(
+    const CreativeDesktopCommand& command,
+    const CreativeDesktopCommandContext& context,
+    CreativeDesktopCommandResult& result) {
+  creative::CreativeAppState& appState = context.appState;
+  CreativeEditorState& editor = context.editor;
+  creative::CreativeAppState& activeAppState =
+      activeCreativeEditorAppState(editor, appState);
+  switch (command.id) {
+    case CreativeDesktopCommandId::DuplicateSelection: {
+      const creative::CreativeDuplicateCommandReceipt receipt =
+          duplicateSelectedObjectsWithUndo(
+              activeAppState, activeAppState.history,
+              creative::CreativeDuplicateCommandRequest{}, "desktop_duplicate");
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.message = receipt.changed ? "duplicated selection"
+                                       : "nothing to duplicate";
+      break;
+    }
+    case CreativeDesktopCommandId::DeleteSelection: {
+      const creative::CreativeDocumentRemoveReceipt receipt =
+          deleteSelectedObject(activeAppState, "desktop_delete",
+                               &activeAppState.history);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.message = receipt.changed ? "deleted selection"
+                                       : "nothing to delete";
+      break;
+    }
+    case CreativeDesktopCommandId::SelectObjects: {
+      const auto* payload = payloadAs<CreativeDesktopSelectPayload>(command);
+      if (payload == nullptr) {
+        result.message = "select: payload mismatch";
+        break;
+      }
+      const creative::CreativeSelectionReceipt receipt =
+          activeAppState.facade.selectTargets(payload->objectIds,
+                                              payload->primaryObjectId);
+      result.accepted = true;
+      result.changed = receipt.changed;
+      result.affectedObjectCount = receipt.selectedCountAfter;
+      result.message = "selection updated";
+      break;
+    }
+    case CreativeDesktopCommandId::FocusObject: {
+      const auto* payload = payloadAs<CreativeDesktopSelectPayload>(command);
+      if (payload == nullptr) {
+        result.message = "focus: payload mismatch";
+        break;
+      }
+      const creative::CreativeObjectId objectId =
+          payload->primaryObjectId != creative::kInvalidObjectId
+              ? payload->primaryObjectId
+              : payload->objectIds.empty() ? creative::kInvalidObjectId
+                                           : payload->objectIds.front();
+      const creative::CreativeObject* object =
+          activeAppState.facade.findObject(objectId);
+      if (object == nullptr || !focusEditorCameraOnObject(editor, *object)) {
+        result.message = "focus: object unavailable";
+        break;
+      }
+      const creative::CreativeSelectionReceipt receipt =
+          activeAppState.facade.selectTargets(
+              std::span<const creative::CreativeObjectId>{&objectId, 1U},
+              objectId);
+      result.accepted = true;
+      result.changed = true;
+      result.affectedObjectCount = receipt.selectedCountAfter;
+      result.message = "object focused";
+      break;
+    }
+    case CreativeDesktopCommandId::ClearSelection: {
+      const creative::CreativeSelectionReceipt receipt =
+          activeAppState.facade.selectTargets(
+              std::span<const creative::CreativeObjectId>{},
+              creative::kInvalidObjectId);
+      result.accepted = true;
+      result.changed = receipt.changed;
+      result.affectedObjectCount = receipt.selectedCountAfter;
+      result.message = "selection cleared";
+      break;
+    }
+    case CreativeDesktopCommandId::SetLogicSource: {
+      const auto* payload = payloadAs<CreativeDesktopLogicLinkPayload>(command);
+      if (payload == nullptr) {
+        result.message = "logic source: payload mismatch";
+        break;
+      }
+      const creative::CreativeObjectId sourceBefore =
+          editor.logicLinks.sourceObjectId;
+      const CreativeEditorLogicLinkReceipt receipt =
+          selectCreativeEditorLogicLinkSource(
+              activeAppState, editor.logicLinks, payload->sourceObjectId);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.accepted &&
+                       sourceBefore != editor.logicLinks.sourceObjectId;
+      result.affectedObjectCount = receipt.accepted ? 1U : 0U;
+      result.message = receipt.accepted
+                           ? "logic source selected"
+                           : std::string(receipt.reasonCode);
+      break;
+    }
+    case CreativeDesktopCommandId::ClearLogicSource:
+      result.accepted = true;
+      result.changed =
+          clearCreativeEditorLogicLinkSource(editor.logicLinks);
+      result.message = result.changed ? "logic source cleared"
+                                      : "logic source already clear";
+      break;
+    case CreativeDesktopCommandId::SetLogicLink: {
+      const auto* payload = payloadAs<CreativeDesktopLogicLinkPayload>(command);
+      if (payload == nullptr) {
+        result.message = "set logic link: payload mismatch";
+        break;
+      }
+      const CreativeEditorLogicLinkReceipt receipt =
+          setCreativeEditorLogicLink(
+              activeAppState, editor.logicLinks, payload->sourceObjectId,
+              payload->targetObjectId, payload->action,
+              "desktop_set_logic_link");
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.affectedObjectCount = receipt.accepted ? 1U : 0U;
+      result.message = receipt.accepted
+                           ? (receipt.changed ? "logic link updated"
+                                              : "logic link unchanged")
+                           : std::string(receipt.reasonCode);
+      break;
+    }
+    case CreativeDesktopCommandId::RemoveLogicLink: {
+      const auto* payload = payloadAs<CreativeDesktopLogicLinkPayload>(command);
+      if (payload == nullptr) {
+        result.message = "remove logic link: payload mismatch";
+        break;
+      }
+      const CreativeEditorLogicLinkReceipt receipt =
+          removeCreativeEditorLogicLink(
+              activeAppState, editor.logicLinks, payload->sourceObjectId,
+              payload->targetObjectId, "desktop_remove_logic_link");
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.affectedObjectCount = receipt.changed ? 1U : 0U;
+      result.message = receipt.accepted
+                           ? "logic link removed"
+                           : std::string(receipt.reasonCode);
+      break;
+    }
+    case CreativeDesktopCommandId::DeleteObjects: {
+      const auto* payload = payloadAs<CreativeDesktopDeletePayload>(command);
+      if (payload == nullptr) {
+        result.message = "delete objects: payload mismatch";
+        break;
+      }
+      const CreativeStandaloneBatchEditReceipt receipt = deleteObjectsWithUndo(
+          activeAppState, activeAppState.history, payload->objectIds,
+          "desktop_delete_objects");
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.affectedObjectCount = receipt.affectedObjectCount;
+      result.message = receipt.changed ? "deleted objects" : "nothing deleted";
+      break;
+    }
+    case CreativeDesktopCommandId::RenameObject: {
+      const auto* payload = payloadAs<CreativeDesktopRenamePayload>(command);
+      if (payload == nullptr) {
+        result.message = "rename: payload mismatch";
+        break;
+      }
+      if (payload->objectId == creative::kInvalidObjectId ||
+          payload->name.empty()) {
+        result.message = "rename: invalid request";
+        break;
+      }
+      const creative::CreativeDocumentMutationReceipt receipt =
+          renameObjectWithUndo(activeAppState, activeAppState.history,
+                               payload->objectId, payload->name,
+                               "desktop_rename");
+      const bool applied =
+          receipt.status == creative::CreativeDocumentMutationStatus::Applied;
+      result.accepted = applied;
+      result.changed = applied && receipt.changed;
+      result.affectedObjectCount = result.changed ? 1U : 0U;
+      result.message = applied ? "renamed object" : "rename failed";
+      break;
+    }
+    case CreativeDesktopCommandId::SetObjectsVisible: {
+      const auto* payload = payloadAs<CreativeDesktopObjectFlagPayload>(command);
+      if (payload == nullptr) {
+        result.message = "visibility: payload mismatch";
+        break;
+      }
+      const CreativeStandaloneBatchEditReceipt receipt =
+          setObjectsVisibleWithUndo(activeAppState, activeAppState.history,
+                                    payload->objectIds, payload->value,
+                                    "desktop_set_visible");
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.affectedObjectCount = receipt.affectedObjectCount;
+      result.message = receipt.changed ? "visibility updated"
+                                       : "visibility unchanged";
+      break;
+    }
+    case CreativeDesktopCommandId::SetObjectsLocked: {
+      const auto* payload = payloadAs<CreativeDesktopObjectFlagPayload>(command);
+      if (payload == nullptr) {
+        result.message = "lock: payload mismatch";
+        break;
+      }
+      const CreativeStandaloneBatchEditReceipt receipt =
+          setObjectsLockedWithUndo(activeAppState, activeAppState.history,
+                                   payload->objectIds, payload->value,
+                                   "desktop_set_locked");
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.affectedObjectCount = receipt.affectedObjectCount;
+      result.message = receipt.changed ? "lock updated" : "lock unchanged";
+      break;
+    }
+    case CreativeDesktopCommandId::SetObjectTransform: {
+      const auto* payload = payloadAs<CreativeDesktopTransformPayload>(command);
+      if (payload == nullptr) {
+        result.message = "transform: payload mismatch";
+        break;
+      }
+      const CreativeStandaloneBatchEditReceipt receipt =
+          setObjectTransformWithUndo(activeAppState, activeAppState.history,
+                                     payload->objectId, payload->transform,
+                                     payload->setPosition, payload->setRotation,
+                                     payload->setScale, "desktop_set_transform");
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.affectedObjectCount = receipt.affectedObjectCount;
+      result.message = receipt.accepted
+                           ? (receipt.changed ? "transform set"
+                                              : "transform unchanged")
+                           : receipt.message;
+      break;
+    }
+    case CreativeDesktopCommandId::SetMovingPlatformSettings: {
+      const auto* payload =
+          payloadAs<CreativeDesktopMovingPlatformPayload>(command);
+      if (payload == nullptr) {
+        result.message = "moving platform settings: payload mismatch";
+        break;
+      }
+      const creative::CreativeDocumentMutationReceipt receipt =
+          setMovingPlatformSettingsWithUndo(
+              activeAppState, activeAppState.history, payload->objectId,
+              payload->settings, "desktop_set_moving_platform_settings");
+      result.accepted =
+          creative::documentMutationSucceeded(receipt.status);
+      result.changed = receipt.changed;
+      result.affectedObjectCount = result.changed ? 1U : 0U;
+      result.message = result.accepted
+                           ? (result.changed ? "platform settings updated"
+                                             : "platform settings unchanged")
+                           : receipt.message;
+      break;
+    }
+    case CreativeDesktopCommandId::ToggleMovingPlatformPreview:
+    case CreativeDesktopCommandId::RestartMovingPlatformPreview:
+    case CreativeDesktopCommandId::SeekMovingPlatformPreview: {
+      const auto* payload =
+          payloadAs<CreativeDesktopMovingPlatformPreviewPayload>(command);
+      if (payload == nullptr) {
+        result.message = "moving platform preview: payload mismatch";
+        break;
+      }
+      CreativeMovingPlatformPreviewCommand previewCommand =
+          CreativeMovingPlatformPreviewCommand::TogglePlayback;
+      if (command.id ==
+          CreativeDesktopCommandId::RestartMovingPlatformPreview) {
+        previewCommand = CreativeMovingPlatformPreviewCommand::Restart;
+      } else if (command.id ==
+                 CreativeDesktopCommandId::SeekMovingPlatformPreview) {
+        previewCommand = CreativeMovingPlatformPreviewCommand::Seek;
+      }
+      const CreativeMovingPlatformPreviewReceipt receipt =
+          applyCreativeMovingPlatformPreviewCommand(
+              editor.movingPlatformPreview, previewCommand,
+              payload->objectId, payload->normalizedProgress);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.affectedObjectCount = receipt.accepted ? 1U : 0U;
+      result.message = receipt.accepted
+                           ? std::string(editor.movingPlatformPreview.reasonCode)
+                           : std::string(receipt.reasonCode);
+      break;
+    }
+    case CreativeDesktopCommandId::SelectMovingPlatformWaypoint:
+    case CreativeDesktopCommandId::SetMovingPlatformWaypointDwell: {
+      const auto* payload =
+          payloadAs<CreativeDesktopMovingPlatformWaypointPayload>(command);
+      if (payload == nullptr) {
+        result.message = "moving platform waypoint: payload mismatch";
+        break;
+      }
+      syncCreativeMovingPlatformPathEditState(
+          activeAppState, editor.interaction.movingPlatformPathEdit);
+      if (editor.interaction.movingPlatformPathEdit.objectId !=
+          payload->objectId) {
+        result.message = "moving platform waypoint: target mismatch";
+        break;
+      }
+      if (command.id ==
+          CreativeDesktopCommandId::SelectMovingPlatformWaypoint) {
+        result.accepted = selectCreativeMovingPlatformPathPoint(
+            editor.interaction.movingPlatformPathEdit, payload->pointIndex);
+        result.changed = result.accepted;
+        result.message = result.accepted
+                             ? "moving platform waypoint selected"
+                             : "moving platform waypoint selection rejected";
+        break;
+      }
+      const CreativeMovingPlatformPathEditReceipt receipt =
+          setCreativeMovingPlatformWaypointDwellWithUndo(
+              activeAppState, payload->objectId, payload->pointIndex,
+              payload->dwellSeconds, "desktop_inspector_waypoint_dwell");
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.affectedObjectCount = receipt.changed ? 1U : 0U;
+      result.message = std::string(receipt.reasonCode);
+      break;
+    }
+    default:
+      return false;
+  }
+  return true;
+}
+
+}  // namespace iggy3d_creative_app

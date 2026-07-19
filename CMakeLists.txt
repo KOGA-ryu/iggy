@@ -401,6 +401,11 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorScenePreview.cpp
   apps/iggy3d_creative/EditorShapePreview.cpp
   apps/iggy3d_creative/EditorPreviewFrame.cpp
+  apps/iggy3d_creative/EditorDesktopCommandCamera.cpp
+  apps/iggy3d_creative/EditorDesktopAssetCommands.cpp
+  apps/iggy3d_creative/EditorDesktopDocumentCommands.cpp
+  apps/iggy3d_creative/EditorDesktopObjectCommands.cpp
+  apps/iggy3d_creative/EditorDesktopTerrainCommands.cpp
   apps/iggy3d_creative/EditorDesktopUi.cpp
   apps/iggy3d_creative/EditorDesktopCommands.cpp
   apps/iggy3d_creative/EditorDesktopModel.cpp
