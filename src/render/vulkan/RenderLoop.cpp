@@ -6,6 +6,7 @@
 
 #include "render/vulkan/RenderLoopFramePlan.hpp"
 #include "render/vulkan/RenderLoopRecording.hpp"
+#include "render/vulkan/RenderLoopSubmission.hpp"
 #include "render/vulkan/VulkanResult.hpp"
 
 namespace iggy3d::vulkan {
@@ -343,55 +344,32 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
   }
   result.commandRecorded = true;
 
-  const FrameSyncOperationResult resetResult = createInfo_.frameSync->resetFenceBeforeSubmit();
-  if (resetResult.outcome != RenderOutcome::Ok) {
+  const RenderLoopSubmissionResult submission =
+      submitAndPresentRenderLoopFrame(createInfo_, submitPlan, commandBuffer,
+                                      acquire.imageIndex);
+  if (submission.stage == RenderLoopSubmissionStage::ResetFailed) {
     result.status = VulkanFrameStatus::Failed;
-    result.outcome = resetResult.outcome;
-    result.reason = resetResult.reason;
+    result.outcome = submission.reset.outcome;
+    result.reason = submission.reset.reason;
     result.receipt = makeReceipt("fail", result.reason.code);
     return result;
   }
-
-  VkSemaphore waitSemaphore = submitPlan.waitSemaphore;
-  VkSemaphore signalSemaphore = submitPlan.signalSemaphore;
-  VkPipelineStageFlags waitStage = submitPlan.waitStageMask;
-  VkSubmitInfo submitInfo{};
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submitInfo.waitSemaphoreCount = 1;
-  submitInfo.pWaitSemaphores = &waitSemaphore;
-  submitInfo.pWaitDstStageMask = &waitStage;
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &commandBuffer;
-  submitInfo.signalSemaphoreCount = 1;
-  submitInfo.pSignalSemaphores = &signalSemaphore;
-  const VkResult submitResult = vkQueueSubmit(createInfo_.deviceSurface->handles().graphicsQueue,
-                                              1, &submitInfo, submitPlan.signalFence);
-  if (submitResult != VK_SUCCESS) {
+  if (submission.stage == RenderLoopSubmissionStage::SubmitFailed) {
     result.status = VulkanFrameStatus::Failed;
-    result.outcome = mapVkResult(submitResult, VulkanCallContext::QueueSubmit).outcome;
+    result.outcome =
+        mapVkResult(submission.submitResult, VulkanCallContext::QueueSubmit)
+            .outcome;
     result.reason = reasonFor("empty_frame_submit_failed");
     result.receipt = makeReceipt("fail", result.reason.code);
-    appendReceiptField(result.receipt, "submit_result", vkResultName(submitResult));
+    appendReceiptField(result.receipt, "submit_result",
+                       vkResultName(submission.submitResult));
     return result;
   }
-  createInfo_.frameSync->markSubmitted(acquire.imageIndex);
-  result.submitted = true;
 
-  VkSwapchainKHR swapchain = createInfo_.swapchain->handle();
-  VkPresentInfoKHR presentInfo{};
-  presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-  presentInfo.waitSemaphoreCount = 1;
-  presentInfo.pWaitSemaphores = &signalSemaphore;
-  presentInfo.swapchainCount = 1;
-  presentInfo.pSwapchains = &swapchain;
-  presentInfo.pImageIndices = &acquire.imageIndex;
-  const VkResult presentVkResult =
-      createInfo_.deviceSurface->functions().device.queuePresentKHR(
-          createInfo_.deviceSurface->handles().presentQueue, &presentInfo);
-  const SwapchainPresentResult presentResult =
-      createInfo_.swapchain->notePresentResult(presentVkResult);
-  createInfo_.frameSync->markPresentedOrSkipped(true);
-  createInfo_.frameSync->advanceFrameSlot();
+  result.submitted = true;
+  const VkResult submitResult = submission.submitResult;
+  const VkResult presentVkResult = submission.presentResult;
+  const SwapchainPresentResult& presentResult = submission.presentation;
 
   result.presented = presentResult.presented;
   result.swapchainRecreated = result.swapchainRecreated || presentResult.recreateRequested;
