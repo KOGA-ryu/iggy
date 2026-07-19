@@ -1,5 +1,6 @@
 #include "EditorWorldLayoutPanelInternal.hpp"
 
+#include "EditorDesktopWorldLayoutInspector.hpp"
 #include "EditorToolPresentation.hpp"
 #include "EditorWorldLayout.hpp"
 
@@ -684,6 +685,36 @@ void drawWorldLayoutBuildingBlockoutSection(
     firstChoice = false;
     if (ImGui::RadioButton(choice.label, draft.pattern == choice.pattern)) {
       draft.pattern = choice.pattern;
+    }
+  }
+
+  ImGui::SetNextItemWidth(120.0F);
+  ImGui::InputScalar("Storeys##blockout", ImGuiDataType_U16,
+                     &draft.storeys.count);
+  ImGui::Checkbox("Stairs##blockout", &draft.storeys.connectStoreys);
+  if (draft.storeys.connectStoreys) {
+    ImGui::SetNextItemWidth(188.0F);
+    if (ImGui::BeginCombo(
+            "Direction##blockout",
+            creativeEditorWorldLayoutVerticalConnectorDirectionLabel(
+                draft.storeys.preferredDirection))) {
+      for (const cr::CreativeWorldLayoutVerticalDirection direction :
+           {cr::CreativeWorldLayoutVerticalDirection::PositiveX,
+            cr::CreativeWorldLayoutVerticalDirection::NegativeX,
+            cr::CreativeWorldLayoutVerticalDirection::PositiveZ,
+            cr::CreativeWorldLayoutVerticalDirection::NegativeZ}) {
+        const bool selected = draft.storeys.preferredDirection == direction;
+        if (ImGui::Selectable(
+                creativeEditorWorldLayoutVerticalConnectorDirectionLabel(
+                    direction),
+                selected)) {
+          draft.storeys.preferredDirection = direction;
+        }
+        if (selected) {
+          ImGui::SetItemDefaultFocus();
+        }
+      }
+      ImGui::EndCombo();
     }
   }
 

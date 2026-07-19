@@ -567,12 +567,21 @@ bool blockoutDraftAndPatternChoicesArePinned() {
       }
     }
   }
+  const cr::CreativeWorldLayoutBuildingBlockoutStoreySettings storeyDefaults;
+  const bool storeysKeepDefaults =
+      draft.storeys.count == storeyDefaults.count &&
+      draft.storeys.connectStoreys == storeyDefaults.connectStoreys &&
+      draft.storeys.connectorKind == storeyDefaults.connectorKind &&
+      draft.storeys.preferredDirection == storeyDefaults.preferredDirection;
   return expect(footprintRight,
                 "the blockout draft starts at the 0,0 to 8,8 footprint") &&
          expect(draft.pattern == Pattern::SingleRoom,
                 "the blockout draft starts as a single room") &&
          expect(shellKeepsDefaults,
                 "non-footprint shell values keep the room-settings defaults") &&
+         expect(storeysKeepDefaults,
+                "storey settings keep the backend defaults: one storey, "
+                "stairs on, stair kind, positive-Z preference") &&
          expect(topologyKeepsDefaults,
                 "blockout drafts default to one connected storey, stairs, "
                 "and a south facade") &&
