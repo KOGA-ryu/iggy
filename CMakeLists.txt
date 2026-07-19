@@ -48,6 +48,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/document/DocumentRestore.cpp
     src/app/iggy3d/creative/document/DocumentValidation.cpp
     src/app/iggy3d/creative/document/TerrainField.cpp
+    src/app/iggy3d/creative/document/TerrainHeightField.cpp
     src/app/iggy3d/creative/document/TerrainRaycast.cpp
     src/app/iggy3d/creative/document/TerrainRender.cpp
     src/app/iggy3d/creative/document/TerrainMaterialField.cpp
@@ -132,6 +133,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/recipes/StructuralWallRecipe.cpp
     src/app/iggy3d/creative/recipes/ObjectLibraryRecipe.cpp
     src/app/iggy3d/creative/recipes/TerrainRecipe.cpp
+    src/app/iggy3d/creative/recipes/TerrainGeneration.cpp
     src/app/iggy3d/creative/world/WorldLayout.cpp
     src/app/iggy3d/creative/world/WorldLayoutTerrainImpact.cpp
     src/app/iggy3d/creative/world/WorldLayoutTerrainReconciliation.cpp
