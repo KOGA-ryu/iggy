@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -9,10 +10,8 @@
 
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
-
-namespace iggy3d::creative {
-struct CreativeWorldLayoutObjectProvenance;
-}
+#include "app/iggy3d/creative/world/WorldLayout.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
 // UI-4A pure desktop model. ImGui-free and mutation-free: it projects document
 // objects into the rows the Project panel renders, filters them, plans
@@ -154,5 +153,35 @@ validateCreativeDesktopTransformDraft(cr::CreativeVec3 position,
 // then adopted. Structural and condensed outputs remain source-owned.
 [[nodiscard]] bool creativeDesktopGeneratedSourceSupportsAdoption(
     const cr::CreativeWorldLayoutObjectProvenance& provenance) noexcept;
+
+inline constexpr std::size_t kCreativeDesktopGeneratedSourceScopeCapacity = 4U;
+
+struct CreativeDesktopGeneratedSourceScopeEntry {
+  cr::CreativeWorldLayoutTable table = cr::CreativeWorldLayoutTable::None;
+  std::size_t index = cr::kInvalidCreativeWorldLayoutIndex;
+  std::string_view stableKey;
+  std::string_view name;
+};
+
+// Fixed ancestry for one generated object. The order is broadest to narrowest:
+// Building -> Level -> Room/host -> direct source. Cross-level connectors omit
+// Level and Room because selecting either endpoint would fabricate ownership.
+struct CreativeDesktopGeneratedSourceScopeModel {
+  std::array<CreativeDesktopGeneratedSourceScopeEntry,
+             kCreativeDesktopGeneratedSourceScopeCapacity>
+      entries{};
+  std::size_t count = 0U;
+  std::size_t directEntryIndex = 0U;
+};
+
+[[nodiscard]] CreativeDesktopGeneratedSourceScopeModel
+buildCreativeDesktopGeneratedSourceScopeModel(
+    const cr::CreativeWorldLayout& layout,
+    const cr::CreativeWorldLayoutObjectProvenance& provenance) noexcept;
+
+[[nodiscard]] std::size_t findCreativeDesktopGeneratedSourceScope(
+    const CreativeDesktopGeneratedSourceScopeModel& model,
+    cr::CreativeWorldLayoutTable table,
+    std::size_t index) noexcept;
 
 }  // namespace iggy3d_creative_app

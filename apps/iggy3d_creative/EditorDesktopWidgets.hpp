@@ -56,6 +56,12 @@ void appendCreativeDesktopGeneratedSourceSettings(
     iggy3d::creative::CreativeWorldLayoutObjectProvenance provenance,
     bool disabled,
     CreativeDesktopCommandFrame& commands);
+void appendCreativeDesktopGeneratedBuildingSettings(
+    CreativeEditorWorldLayoutState& worldLayout,
+    iggy3d::creative::CreativeObjectId objectId,
+    std::size_t buildingIndex,
+    bool disabled,
+    CreativeDesktopCommandFrame& commands);
 void appendCreativeDesktopGeneratedRoomSettings(
     CreativeEditorWorldLayoutState& worldLayout,
     iggy3d::creative::CreativeObjectId objectId,

@@ -303,7 +303,80 @@ SourceTarget resolveSourceTarget(
   return target;
 }
 
+CreativeEditorWorldLayoutEditReceipt applySourceTarget(
+    CreativeEditorWorldLayoutState& state,
+    const SourceTarget& target,
+    bool centerView) {
+  if (!target.valid) {
+    state.statusMessage = "layout source has no selectable symbol";
+    return {false, false,
+            "creative_editor_world_layout_source_target_invalid"};
+  }
+  const bool changed = state.tool != CreativeEditorWorldLayoutTool::Select ||
+                       state.selection.kind != target.selection.kind ||
+                       state.selection.index != target.selection.index ||
+                       (target.activeLevelIndex !=
+                            cr::kInvalidCreativeWorldLayoutIndex &&
+                        state.activeLevelIndex != target.activeLevelIndex);
+  detail::clearWorldLayoutInteraction(state);
+  state.anchorActive = false;
+  state.tool = CreativeEditorWorldLayoutTool::Select;
+  state.selection = target.selection;
+  if (target.activeLevelIndex < state.source.levels.size()) {
+    state.activeLevelIndex = target.activeLevelIndex;
+  } else if (target.buildingIndex < state.source.buildings.size()) {
+    repairCreativeEditorWorldLayoutActiveLevel(state, target.buildingIndex);
+  }
+  if (centerView && target.hasCenter) {
+    state.canvasPanX =
+        -static_cast<float>(target.center.x) * state.canvasPixelsPerCell;
+    state.canvasPanZ =
+        -static_cast<float>(target.center.z) * state.canvasPixelsPerCell;
+    const double horizontal =
+        state.elevationAxis == CreativeEditorWorldLayoutElevationAxis::X
+            ? target.center.x
+            : target.center.z;
+    state.elevationPanHorizontal =
+        -static_cast<float>(horizontal) * state.elevationPixelsPerCell;
+  }
+  state.statusMessage = centerView ? "layout source selected"
+                                   : "layout source scope selected";
+  return {true, changed,
+          centerView
+              ? "creative_editor_world_layout_source_target_focused"
+              : "creative_editor_world_layout_source_scope_selected"};
+}
+
 }  // namespace
+
+cr::CreativeWorldLayoutTable creativeEditorWorldLayoutSelectionTable(
+    CreativeEditorWorldLayoutSelectionKind kind) noexcept {
+  switch (kind) {
+    case CreativeEditorWorldLayoutSelectionKind::Building:
+      return cr::CreativeWorldLayoutTable::Building;
+    case CreativeEditorWorldLayoutSelectionKind::Level:
+      return cr::CreativeWorldLayoutTable::Level;
+    case CreativeEditorWorldLayoutSelectionKind::Room:
+      return cr::CreativeWorldLayoutTable::Room;
+    case CreativeEditorWorldLayoutSelectionKind::VerticalConnector:
+      return cr::CreativeWorldLayoutTable::VerticalConnector;
+    case CreativeEditorWorldLayoutSelectionKind::Box:
+      return cr::CreativeWorldLayoutTable::Box;
+    case CreativeEditorWorldLayoutSelectionKind::Wall:
+      return cr::CreativeWorldLayoutTable::Wall;
+    case CreativeEditorWorldLayoutSelectionKind::Opening:
+      return cr::CreativeWorldLayoutTable::Opening;
+    case CreativeEditorWorldLayoutSelectionKind::TerrainProfile:
+      return cr::CreativeWorldLayoutTable::TerrainProfile;
+    case CreativeEditorWorldLayoutSelectionKind::TerrainPath:
+      return cr::CreativeWorldLayoutTable::TerrainPath;
+    case CreativeEditorWorldLayoutSelectionKind::Object:
+      return cr::CreativeWorldLayoutTable::Object;
+    case CreativeEditorWorldLayoutSelectionKind::None:
+      return cr::CreativeWorldLayoutTable::None;
+  }
+  return cr::CreativeWorldLayoutTable::None;
+}
 
 bool creativeEditorWorldLayoutSourceCanRename(
     cr::CreativeWorldLayoutTable table) noexcept {
@@ -415,46 +488,19 @@ CreativeEditorWorldLayoutEditReceipt deleteCreativeEditorWorldLayoutSource(
 }
 
 CreativeEditorWorldLayoutEditReceipt
+selectCreativeEditorWorldLayoutSource(
+    CreativeEditorWorldLayoutState& state, cr::CreativeWorldLayoutTable table,
+    std::size_t index) {
+  return applySourceTarget(state, resolveSourceTarget(state, table, index),
+                           false);
+}
+
+CreativeEditorWorldLayoutEditReceipt
 focusCreativeEditorWorldLayoutSource(
     CreativeEditorWorldLayoutState& state, cr::CreativeWorldLayoutTable table,
     std::size_t index) {
-  const SourceTarget target = resolveSourceTarget(state, table, index);
-  if (!target.valid) {
-    state.statusMessage = "layout source has no selectable symbol";
-    return {false, false,
-            "creative_editor_world_layout_source_target_invalid"};
-  }
-
-  const bool changed = state.tool != CreativeEditorWorldLayoutTool::Select ||
-                       state.selection.kind != target.selection.kind ||
-                       state.selection.index != target.selection.index ||
-                       (target.activeLevelIndex !=
-                            cr::kInvalidCreativeWorldLayoutIndex &&
-                        state.activeLevelIndex != target.activeLevelIndex);
-  detail::clearWorldLayoutInteraction(state);
-  state.anchorActive = false;
-  state.tool = CreativeEditorWorldLayoutTool::Select;
-  state.selection = target.selection;
-  if (target.activeLevelIndex < state.source.levels.size()) {
-    state.activeLevelIndex = target.activeLevelIndex;
-  } else if (target.buildingIndex < state.source.buildings.size()) {
-    repairCreativeEditorWorldLayoutActiveLevel(state, target.buildingIndex);
-  }
-  if (target.hasCenter) {
-    state.canvasPanX =
-        -static_cast<float>(target.center.x) * state.canvasPixelsPerCell;
-    state.canvasPanZ =
-        -static_cast<float>(target.center.z) * state.canvasPixelsPerCell;
-    const double horizontal =
-        state.elevationAxis == CreativeEditorWorldLayoutElevationAxis::X
-            ? target.center.x
-            : target.center.z;
-    state.elevationPanHorizontal =
-        -static_cast<float>(horizontal) * state.elevationPixelsPerCell;
-  }
-  state.statusMessage = "layout source selected";
-  return {true, changed,
-          "creative_editor_world_layout_source_target_focused"};
+  return applySourceTarget(state, resolveSourceTarget(state, table, index),
+                           true);
 }
 
 }  // namespace iggy3d_creative_app

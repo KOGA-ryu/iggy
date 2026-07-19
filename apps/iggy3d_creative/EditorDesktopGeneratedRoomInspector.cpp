@@ -247,7 +247,8 @@ void appendCreativeDesktopGeneratedRoomSettings(
     if (representable) {
       commands.push(
           CreativeDesktopCommandId::WorldLayoutPreviewGeneratedRoomSettings,
-          CreativeDesktopGeneratedRoomSettingsPayload{objectId, settings});
+          CreativeDesktopGeneratedRoomSettingsPayload{
+              objectId, provenance.index, room.stableKey, settings});
     } else if (creativeEditorWorldLayoutPreviewActive(worldLayout)) {
       commands.push(CreativeDesktopCommandId::
                         WorldLayoutCancelGeneratedSettingsPreview);
@@ -260,7 +261,8 @@ void appendCreativeDesktopGeneratedRoomSettings(
   if (ImGui::Button("Update room shell in 3D")) {
     commands.push(
         CreativeDesktopCommandId::WorldLayoutApplyGeneratedRoomSettings,
-        CreativeDesktopGeneratedRoomSettingsPayload{objectId, settings});
+        CreativeDesktopGeneratedRoomSettingsPayload{
+            objectId, provenance.index, room.stableKey, settings});
   }
   ImGui::EndDisabled();
   ImGui::SameLine();

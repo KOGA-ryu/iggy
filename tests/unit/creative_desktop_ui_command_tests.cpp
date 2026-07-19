@@ -56,6 +56,11 @@ bool near(double lhs, double rhs) {
   return std::fabs(lhs - rhs) <= 1.0e-9;
 }
 
+bool rectEquals(cr::CreativeWorldLayoutRect lhs,
+                cr::CreativeWorldLayoutRect rhs) {
+  return lhs.minimum == rhs.minimum && lhs.maximum == rhs.maximum;
+}
+
 cr::CreativeObjectId createCrate(cr::Facade& facade, double x) {
   cr::CreativeDocumentCreateRequest request;
   request.kind = cr::CreativeObjectKind::Crate;
@@ -1362,6 +1367,10 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutFocusSource, context,
           app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutSourceScope =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutSelectSourceScope,
+          context, app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult badWorldLayoutObjectSourceFocus =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutFocusObjectSource,
@@ -1394,6 +1403,16 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutTransformBuilding, context,
           app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badGeneratedBuildingPreview =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::
+              WorldLayoutPreviewGeneratedBuildingOperation,
+          context, app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badGeneratedBuildingApply =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::
+              WorldLayoutApplyGeneratedBuildingOperation,
+          context, app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult badWorldLayoutTemplateCapture =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutCaptureBuildingTemplate,
@@ -1534,6 +1553,10 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badWorldLayoutSourceFocus.message ==
                         "layout source focus: payload mismatch",
                 "source focus rejects a mismatched payload") &&
+         expect(!badWorldLayoutSourceScope.accepted &&
+                    badWorldLayoutSourceScope.message ==
+                        "layout source scope: payload mismatch",
+                "source scope rejects a mismatched payload") &&
          expect(!badWorldLayoutObjectSourceFocus.accepted &&
                     badWorldLayoutObjectSourceFocus.message ==
                         "layout object source focus: payload mismatch" &&
@@ -1565,6 +1588,13 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badWorldLayoutBuildingTransform.message ==
                         "layout building transform: payload mismatch",
                 "building transform rejects a mismatched payload") &&
+         expect(!badGeneratedBuildingPreview.accepted &&
+                    badGeneratedBuildingPreview.message ==
+                        "generated building preview: payload mismatch" &&
+                    !badGeneratedBuildingApply.accepted &&
+                    badGeneratedBuildingApply.message ==
+                        "generated building operation: payload mismatch",
+                "generated building commands reject mismatched payloads") &&
          expect(!badWorldLayoutTemplateCapture.accepted &&
                     badWorldLayoutTemplateCapture.message ==
                         "layout template capture: payload mismatch",
@@ -1687,6 +1717,58 @@ bool worldLayoutLevelCommandsRouteThroughDispatcher() {
                     editor.worldLayout.activeLevelIndex == 0U &&
                     editor.worldLayout.revision == revisionAfterAdd,
                 "select level changes only the active editor view");
+}
+
+bool worldLayoutSourceScopeSelectionDoesNotMoveTheCanvas() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Source Scope");
+  static_cast<void>(document.assignId(440U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  app::CreativeEditorState editor;
+  const auto shell = app::createCreativeEditorWorldLayoutBuildingShell(
+      editor.worldLayout, {{{0, 0}, {6, 4}}, 0.0, 3U, 0.25, 1U});
+  if (!shell.accepted || editor.worldLayout.source.rooms.empty()) {
+    return expect(false, "source scope fixture creates a room");
+  }
+  editor.worldLayout.selection = {
+      app::CreativeEditorWorldLayoutSelectionKind::Building, 0U};
+  editor.worldLayout.canvasPanX = 17.0F;
+  editor.worldLayout.canvasPanZ = -9.0F;
+  const std::string roomKey = editor.worldLayout.source.rooms[0].stableKey;
+
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const app::CreativeDesktopCommandResult selected = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSelectSourceScope, context,
+      app::CreativeDesktopWorldLayoutSourcePayload{
+          cr::CreativeWorldLayoutTable::Room, 0U, roomKey});
+  const bool selectedWithoutPan =
+      selected.accepted && selected.changed &&
+      editor.worldLayout.selection.kind ==
+          app::CreativeEditorWorldLayoutSelectionKind::Room &&
+      editor.worldLayout.selection.index == 0U &&
+      editor.worldLayout.canvasPanX == 17.0F &&
+      editor.worldLayout.canvasPanZ == -9.0F;
+  const app::CreativeDesktopCommandResult stale = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSelectSourceScope, context,
+      app::CreativeDesktopWorldLayoutSourcePayload{
+          cr::CreativeWorldLayoutTable::Level, 0U, "stale_level"});
+  const app::CreativeDesktopCommandResult focused = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutFocusSource, context,
+      app::CreativeDesktopWorldLayoutSourcePayload{
+          cr::CreativeWorldLayoutTable::Room, 0U, roomKey});
+
+  return expect(selectedWithoutPan,
+                "scope selection changes owner without moving the canvas") &&
+         expect(!stale.accepted && !stale.changed &&
+                    editor.worldLayout.selection.kind ==
+                        app::CreativeEditorWorldLayoutSelectionKind::Room,
+                "stale scope target leaves the selected owner unchanged") &&
+         expect(focused.accepted && editor.worldLayout.canvasPanX != 17.0F,
+                "explicit focus remains the only scope action that pans");
 }
 
 bool worldLayoutStructuralCommandsRouteThroughDispatcher() {
@@ -2626,6 +2708,242 @@ bool worldLayoutObjectFocusAndAdoptionCloseTheSourceLoop() {
                 "adoption undo and redo keep live identity and source parity");
 }
 
+bool generatedBuildingScopeOperationsUseExactPreviewAndOneUndo() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Generated Building Operations");
+  static_cast<void>(document.assignId(441U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "generated_building_operations");
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "scope_house";
+  building.name = "Scope House";
+  editor.worldLayout.source.buildings.push_back(building);
+  editor.worldLayout.source.levels.push_back(
+      {0U, "ground", "Ground", 0.0, 3U, 1U, 1U, 1U});
+  editor.worldLayout.source.rooms.push_back(
+      {0U, 0U, "main_room", "Main Room", {{2, 3}, {10, 7}}, 0.25});
+  cr::CreativeWorldLayoutOpening opening;
+  opening.hostKind = cr::CreativeWorldLayoutOpeningHostKind::RoomEdge;
+  opening.roomIndex = 0U;
+  opening.roomEdge = cr::CreativeWorldLayoutRoomEdge::North;
+  opening.kind = cr::CreativeBuildingOpeningKind::Door;
+  opening.stableKey = "front_door";
+  opening.name = "Front Door";
+  opening.centerOffsetCells = 4.0;
+  opening.widthCells = 1.0;
+  opening.cutoutHeightCells = 2.1;
+  editor.worldLayout.source.openings.push_back(opening);
+  ++editor.worldLayout.revision;
+
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const app::CreativeDesktopCommandResult generated = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  const cr::CreativeObject* roomFloor = findGeneratedObject(
+      appState.facade.document(), editor.worldLayout.source,
+      cr::CreativeWorldLayoutTable::Room, 0U, cr::CreativeObjectKind::Floor);
+  if (!generated.accepted || roomFloor == nullptr) {
+    return expect(false, "generated building operation fixture generated");
+  }
+  const cr::CreativeObjectId sourceObjectId = roomFloor->id;
+  selectPrimary(appState.facade, sourceObjectId);
+  const std::uint64_t sourceRevisionBefore = editor.worldLayout.revision;
+  const std::uint64_t documentRevisionBefore =
+      appState.facade.document().revision();
+  const std::uint64_t undoBefore = cr::creativeUndoDepth(appState.history);
+
+  const app::CreativeDesktopGeneratedBuildingOperationPayload rotate{
+      sourceObjectId,
+      0U,
+      "scope_house",
+      app::CreativeEditorWorldLayoutGeneratedBuildingOperation::RotateRight90,
+      0,
+      0};
+  const app::CreativeDesktopCommandResult previewed = dispatchPayload(
+      app::CreativeDesktopCommandId::
+          WorldLayoutPreviewGeneratedBuildingOperation,
+      context, rotate);
+  cr::CreativeBounds previewFloor;
+  const bool previewBoundsReady = generatedBounds(
+      editor.worldLayout.preview.document, editor.worldLayout.source,
+      cr::CreativeWorldLayoutTable::Room, 0U, cr::CreativeObjectKind::Floor,
+      previewFloor);
+  const bool previewStayedTransient =
+      previewed.accepted && previewed.sceneChanged && previewBoundsReady &&
+      near(previewFloor.max.x - previewFloor.min.x, 4.0) &&
+      near(previewFloor.max.z - previewFloor.min.z, 8.0) &&
+      rectEquals(editor.worldLayout.source.rooms[0].footprint,
+                 {{2, 3}, {10, 7}}) &&
+      editor.worldLayout.revision == sourceRevisionBefore &&
+      appState.facade.document().revision() == documentRevisionBefore &&
+      cr::creativeUndoDepth(appState.history) == undoBefore;
+
+  const app::CreativeDesktopCommandResult appliedRotate = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedBuildingOperation,
+      context, rotate);
+  cr::CreativeBounds rotatedFloor;
+  const bool rotatedBoundsReady = generatedBounds(
+      appState.facade.document(), editor.worldLayout.source,
+      cr::CreativeWorldLayoutTable::Room, 0U, cr::CreativeObjectKind::Floor,
+      rotatedFloor);
+  const bool rotateCommitted =
+      appliedRotate.accepted && appliedRotate.changed &&
+      appliedRotate.worldLayoutChanged && appliedRotate.sceneChanged &&
+      rotatedBoundsReady && near(rotatedFloor.max.x - rotatedFloor.min.x, 4.0) &&
+      near(rotatedFloor.max.z - rotatedFloor.min.z, 8.0) &&
+      editor.worldLayout.source.openings[0].stableKey == "front_door" &&
+      editor.worldLayout.revision == sourceRevisionBefore + 1U &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision &&
+      cr::creativeUndoDepth(appState.history) == undoBefore + 1U;
+
+  const app::CreativeDesktopCommandResult undone =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const bool undoRestored =
+      undone.accepted &&
+      rectEquals(editor.worldLayout.source.rooms[0].footprint,
+                 {{2, 3}, {10, 7}});
+  const app::CreativeDesktopCommandResult redone =
+      dispatchOne(app::CreativeDesktopCommandId::Redo, context);
+  const bool redoRestored =
+      redone.accepted &&
+      rectEquals(editor.worldLayout.source.rooms[0].footprint,
+                 {{2, 3}, {6, 11}});
+
+  const cr::CreativeObject* rotatedScopeObject = findGeneratedObject(
+      appState.facade.document(), editor.worldLayout.source,
+      cr::CreativeWorldLayoutTable::Room, 0U, cr::CreativeObjectKind::Floor);
+  if (rotatedScopeObject == nullptr) {
+    return expect(false, "rotated generated building remains addressable");
+  }
+  const app::CreativeDesktopGeneratedBuildingOperationPayload move{
+      rotatedScopeObject->id,
+      0U,
+      "scope_house",
+      app::CreativeEditorWorldLayoutGeneratedBuildingOperation::Move,
+      3,
+      -2};
+  const app::CreativeDesktopCommandResult moved = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedBuildingOperation,
+      context, move);
+  const bool moveCommitted =
+      moved.accepted && moved.changed &&
+      rectEquals(editor.worldLayout.source.rooms[0].footprint,
+                 {{5, 1}, {9, 9}}) &&
+      cr::creativeUndoDepth(appState.history) == undoBefore + 2U;
+
+  const cr::CreativeObject* movedScopeObject = findGeneratedObject(
+      appState.facade.document(), editor.worldLayout.source,
+      cr::CreativeWorldLayoutTable::Room, 0U, cr::CreativeObjectKind::Floor);
+  if (movedScopeObject == nullptr) {
+    return expect(false, "moved generated building remains addressable");
+  }
+  const cr::CreativeObjectId movedScopeObjectId = movedScopeObject->id;
+  std::int64_t duplicateX = 0;
+  std::int64_t duplicateZ = 0;
+  const bool hasDuplicateOffset =
+      app::defaultCreativeEditorWorldLayoutBuildingDuplicateOffset(
+          editor.worldLayout, 0U, duplicateX, duplicateZ);
+  const app::CreativeDesktopGeneratedBuildingOperationPayload duplicate{
+      movedScopeObjectId,
+      0U,
+      "scope_house",
+      app::CreativeEditorWorldLayoutGeneratedBuildingOperation::Duplicate,
+      duplicateX,
+      duplicateZ};
+  const std::uint64_t liveCountBeforeDuplicate =
+      appState.facade.document().objectCount();
+  const app::CreativeDesktopCommandResult duplicatePreview = dispatchPayload(
+      app::CreativeDesktopCommandId::
+          WorldLayoutPreviewGeneratedBuildingOperation,
+      context, duplicate);
+  const bool duplicateStayedTransient =
+      hasDuplicateOffset && duplicatePreview.accepted &&
+      editor.worldLayout.source.buildings.size() == 1U &&
+      appState.facade.document().objectCount() == liveCountBeforeDuplicate &&
+      editor.worldLayout.preview.document.objectCount() >
+          liveCountBeforeDuplicate;
+  const app::CreativeDesktopCommandResult duplicated = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedBuildingOperation,
+      context, duplicate);
+  const cr::TargetRef selectedDuplicateTarget =
+      appState.facade.selectionState().selectedTarget;
+  const cr::CreativeObject* selectedDuplicateObject =
+      selectedDuplicateTarget.value == cr::kInvalidId
+          ? nullptr
+          : appState.facade.document().findObject(
+                static_cast<cr::CreativeObjectId>(selectedDuplicateTarget.value));
+  const cr::CreativeWorldLayoutObjectProvenance selectedDuplicateProvenance =
+      selectedDuplicateObject == nullptr
+          ? cr::CreativeWorldLayoutObjectProvenance{}
+          : cr::resolveCreativeWorldLayoutObjectProvenance(
+                editor.worldLayout.source, *selectedDuplicateObject);
+  const app::CreativeDesktopGeneratedSourceScopeModel selectedDuplicateScopes =
+      app::buildCreativeDesktopGeneratedSourceScopeModel(
+          editor.worldLayout.source, selectedDuplicateProvenance);
+  const bool selectedDuplicateBuilding =
+      app::findCreativeDesktopGeneratedSourceScope(
+          selectedDuplicateScopes, cr::CreativeWorldLayoutTable::Building,
+          1U) < selectedDuplicateScopes.count;
+  const bool duplicateCommitted =
+      duplicated.accepted && duplicated.changed &&
+      editor.worldLayout.source.buildings.size() == 2U &&
+      editor.worldLayout.source.rooms.size() == 2U &&
+      editor.worldLayout.selection.kind ==
+          app::CreativeEditorWorldLayoutSelectionKind::Building &&
+      editor.worldLayout.selection.index == 1U &&
+      selectedDuplicateObject != nullptr &&
+      selectedDuplicateObject->kind == cr::CreativeObjectKind::Floor &&
+      selectedDuplicateBuilding &&
+      cr::creativeUndoDepth(appState.history) == undoBefore + 3U;
+
+  const cr::CreativeObject* duplicateObject = findGeneratedObject(
+      appState.facade.document(), editor.worldLayout.source,
+      cr::CreativeWorldLayoutTable::Room, 1U, cr::CreativeObjectKind::Floor);
+  const std::uint64_t rejectRevision = editor.worldLayout.revision;
+  const std::uint64_t rejectDocumentRevision =
+      appState.facade.document().revision();
+  const std::uint64_t rejectUndo = cr::creativeUndoDepth(appState.history);
+  app::CreativeDesktopGeneratedBuildingOperationPayload stale = move;
+  stale.objectId = movedScopeObjectId;
+  stale.stableKey = "stale_house";
+  const app::CreativeDesktopCommandResult rejectedStale = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedBuildingOperation,
+      context, stale);
+  app::CreativeDesktopGeneratedBuildingOperationPayload wrongOwner = move;
+  wrongOwner.objectId =
+      duplicateObject == nullptr ? cr::kInvalidObjectId : duplicateObject->id;
+  const app::CreativeDesktopCommandResult rejectedOwner = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedBuildingOperation,
+      context, wrongOwner);
+  const bool rejectedAtomically =
+      duplicateObject != nullptr && !rejectedStale.accepted &&
+      !rejectedStale.changed && !rejectedOwner.accepted &&
+      !rejectedOwner.changed && editor.worldLayout.revision == rejectRevision &&
+      appState.facade.document().revision() == rejectDocumentRevision &&
+      cr::creativeUndoDepth(appState.history) == rejectUndo;
+
+  return expect(previewStayedTransient,
+                "building rotation preview is exact and transient") &&
+         expect(rotateCommitted,
+                "building rotation commits source scene and one undo") &&
+         expect(undoRestored && redoRestored,
+                "building operation undo and redo restore exact topology") &&
+         expect(moveCommitted,
+                "building move reuses the bounded grid translation kernel") &&
+         expect(duplicateStayedTransient,
+                "building duplicate preview stays transient") &&
+         expect(duplicateCommitted,
+                "building duplicate commits source scene and one undo") &&
+         expect(rejectedAtomically,
+                "stale and unrelated building targets mutate nothing");
+}
+
 bool generatedLevelSettingsRebuildEveryRoomAtomically() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document =
@@ -2708,7 +3026,7 @@ bool generatedLevelSettingsRebuildEveryRoomAtomically() {
   if (roof == nullptr || roomFloor == nullptr) {
     return expect(false, "generated level roof and room floor exist");
   }
-  const cr::CreativeObjectId roofId = roof->id;
+  const cr::CreativeObjectId roomFloorScopeObjectId = roomFloor->id;
 
   app::CreativeEditorWorldLayoutLevelSettings settings;
   static_cast<void>(app::readCreativeEditorWorldLayoutLevelSettings(
@@ -2729,7 +3047,8 @@ bool generatedLevelSettingsRebuildEveryRoomAtomically() {
   const app::CreativeDesktopCommandResult previewed = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutPreviewGeneratedLevelSettings,
       context,
-      app::CreativeDesktopGeneratedLevelSettingsPayload{roofId, settings});
+      app::CreativeDesktopGeneratedLevelSettingsPayload{
+          roomFloorScopeObjectId, 1U, "upper", settings});
   cr::CreativeBounds previewWestWalls;
   cr::CreativeBounds previewEastWalls;
   const bool previewHasBothRooms =
@@ -2756,7 +3075,8 @@ bool generatedLevelSettingsRebuildEveryRoomAtomically() {
   const app::CreativeDesktopCommandResult applied = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedLevelSettings,
       context,
-      app::CreativeDesktopGeneratedLevelSettingsPayload{roofId, settings});
+      app::CreativeDesktopGeneratedLevelSettingsPayload{
+          roomFloorScopeObjectId, 1U, "upper", settings});
   cr::CreativeBounds westWalls;
   cr::CreativeBounds eastWalls;
   cr::CreativeBounds groundWalls;
@@ -2825,21 +3145,21 @@ bool generatedLevelSettingsRebuildEveryRoomAtomically() {
   const app::CreativeDesktopCommandResult rejectedPreview = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutPreviewGeneratedLevelSettings,
       context, app::CreativeDesktopGeneratedLevelSettingsPayload{
-                   liveRoof->id, connectorInvalid});
+                   liveRoof->id, 1U, "upper", connectorInvalid});
   const app::CreativeDesktopCommandResult rejectedConnector = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedLevelSettings,
       context, app::CreativeDesktopGeneratedLevelSettingsPayload{
-                   liveRoof->id, connectorInvalid});
+                   liveRoof->id, 1U, "upper", connectorInvalid});
   app::CreativeEditorWorldLayoutLevelSettings duplicateElevation = settings;
   duplicateElevation.floorTopLayer = 0.0;
   const app::CreativeDesktopCommandResult rejectedDuplicate = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedLevelSettings,
       context, app::CreativeDesktopGeneratedLevelSettingsPayload{
-                   liveRoof->id, duplicateElevation});
+                   liveRoof->id, 1U, "upper", duplicateElevation});
   const app::CreativeDesktopCommandResult wrongSource = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedLevelSettings,
       context, app::CreativeDesktopGeneratedLevelSettingsPayload{
-                   liveRoomFloor->id, settings});
+                   liveRoomFloor->id, 0U, "ground", settings});
   const bool rejectedAtomically =
       !rejectedPreview.accepted && !rejectedPreview.changed &&
       !rejectedConnector.accepted && !rejectedConnector.changed &&
@@ -2973,10 +3293,15 @@ bool generatedRoomSettingsRebuildTopologyAtomically() {
   const cr::CreativeObject* connector = generatedObject(
       cr::CreativeWorldLayoutTable::VerticalConnector, 0U,
       cr::CreativeObjectKind::Stair);
-  if (upperFloor == nullptr || connector == nullptr) {
-    return expect(false, "room and connector provenance objects exist");
+  const cr::CreativeObject* generatedDoor = generatedObject(
+      cr::CreativeWorldLayoutTable::Opening, 0U,
+      cr::CreativeObjectKind::Door);
+  if (upperFloor == nullptr || connector == nullptr ||
+      generatedDoor == nullptr) {
+    return expect(false,
+                  "room opening and connector provenance objects exist");
   }
-  const cr::CreativeObjectId upperFloorId = upperFloor->id;
+  const cr::CreativeObjectId roomScopeObjectId = generatedDoor->id;
   cr::CreativeBounds upperFloorBoundsBefore;
   const bool initialFloorBounds = generatedBounds(
       appState.facade.document(), cr::CreativeWorldLayoutTable::Room, 1U,
@@ -3001,7 +3326,8 @@ bool generatedRoomSettingsRebuildTopologyAtomically() {
   const app::CreativeDesktopCommandResult previewed = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutPreviewGeneratedRoomSettings,
       context,
-      app::CreativeDesktopGeneratedRoomSettingsPayload{upperFloorId, settings});
+      app::CreativeDesktopGeneratedRoomSettingsPayload{
+          roomScopeObjectId, 1U, "upper_room", settings});
   cr::CreativeBounds previewFloorBounds;
   const bool hasPreviewFloorBounds = generatedBounds(
       editor.worldLayout.preview.document, cr::CreativeWorldLayoutTable::Room,
@@ -3020,7 +3346,8 @@ bool generatedRoomSettingsRebuildTopologyAtomically() {
   const app::CreativeDesktopCommandResult applied = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedRoomSettings,
       context,
-      app::CreativeDesktopGeneratedRoomSettingsPayload{upperFloorId, settings});
+      app::CreativeDesktopGeneratedRoomSettingsPayload{
+          roomScopeObjectId, 1U, "upper_room", settings});
   const cr::CreativeObject* resizedFloor = generatedObject(
       cr::CreativeWorldLayoutTable::Room, 1U, cr::CreativeObjectKind::Floor);
   const cr::CreativeObject* resizedWall = generatedObject(
@@ -3115,17 +3442,17 @@ bool generatedRoomSettingsRebuildTopologyAtomically() {
   const app::CreativeDesktopCommandResult rejectedOpening = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedRoomSettings,
       context, app::CreativeDesktopGeneratedRoomSettingsPayload{
-                   liveRoomObject->id, openingInvalid});
+                   liveRoomObject->id, 1U, "upper_room", openingInvalid});
   app::CreativeEditorWorldLayoutRoomSettings connectorInvalid = settings;
   connectorInvalid.footprint = {{2, 0}, {10, 8}};
   const app::CreativeDesktopCommandResult rejectedConnector = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedRoomSettings,
       context, app::CreativeDesktopGeneratedRoomSettingsPayload{
-                   liveRoomObject->id, connectorInvalid});
+                   liveRoomObject->id, 1U, "upper_room", connectorInvalid});
   const app::CreativeDesktopCommandResult wrongSource = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedRoomSettings,
       context, app::CreativeDesktopGeneratedRoomSettingsPayload{
-                   liveConnector->id, settings});
+                   liveConnector->id, 1U, "upper_room", settings});
   const bool rejectedAtomically =
       !rejectedOpening.accepted && !rejectedOpening.changed &&
       !rejectedConnector.accepted && !rejectedConnector.changed &&
@@ -4143,6 +4470,7 @@ int main() {
   ok = assetAndInstanceCommandsCompleteSuccessPaths() && ok;
   ok = mismatchedPayloadsAreNoOpFailures() && ok;
   ok = worldLayoutLevelCommandsRouteThroughDispatcher() && ok;
+  ok = worldLayoutSourceScopeSelectionDoesNotMoveTheCanvas() && ok;
   ok = worldLayoutStructuralCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutVerticalConnectorCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutBuildingTemplateCommandsRouteThroughDispatcher() && ok;
@@ -4150,6 +4478,7 @@ int main() {
   ok = worldLayoutCommandsPreviewAndGenerateThroughDispatcher() && ok;
   ok = worldLayoutConflictResolutionUsesTypedConfirmPayload() && ok;
   ok = worldLayoutObjectFocusAndAdoptionCloseTheSourceLoop() && ok;
+  ok = generatedBuildingScopeOperationsUseExactPreviewAndOneUndo() && ok;
   ok = generatedLevelSettingsRebuildEveryRoomAtomically() && ok;
   ok = generatedRoomSettingsRebuildTopologyAtomically() && ok;
   ok = generatedWallAndOpeningSettingsCommitSourceAndSceneTogether() && ok;

@@ -176,6 +176,9 @@ struct CreativeDesktopWorldLayoutLevelSettingsPayload {
 struct CreativeDesktopGeneratedLevelSettingsPayload {
   iggy3d::creative::CreativeObjectId objectId =
       iggy3d::creative::kInvalidObjectId;
+  std::size_t levelIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::string stableKey;
   CreativeEditorWorldLayoutLevelSettings settings;
 };
 
@@ -219,7 +222,19 @@ struct CreativeDesktopWorldLayoutBuildingTransformPayload {
       CreativeEditorWorldLayoutBuildingTransformPhase::Preview;
   iggy3d::creative::CreativeWorldLayoutBuildingTransformOperation operation =
       iggy3d::creative::CreativeWorldLayoutBuildingTransformOperation::
-          RotateRight90;
+      RotateRight90;
+};
+
+struct CreativeDesktopGeneratedBuildingOperationPayload {
+  iggy3d::creative::CreativeObjectId objectId =
+      iggy3d::creative::kInvalidObjectId;
+  std::size_t buildingIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::string stableKey;
+  CreativeEditorWorldLayoutGeneratedBuildingOperation operation =
+      CreativeEditorWorldLayoutGeneratedBuildingOperation::Move;
+  std::int64_t deltaXCells = 0;
+  std::int64_t deltaZCells = 0;
 };
 
 struct CreativeDesktopWorldLayoutBuildingTemplateCapturePayload {
@@ -268,6 +283,9 @@ struct CreativeDesktopWorldLayoutRoomSettingsPayload {
 struct CreativeDesktopGeneratedRoomSettingsPayload {
   iggy3d::creative::CreativeObjectId objectId =
       iggy3d::creative::kInvalidObjectId;
+  std::size_t roomIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::string stableKey;
   CreativeEditorWorldLayoutRoomSettings settings;
 };
 
@@ -409,6 +427,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutBuildingManipulationPayload,
     CreativeDesktopWorldLayoutBuildingDuplicatePayload,
     CreativeDesktopWorldLayoutBuildingTransformPayload,
+    CreativeDesktopGeneratedBuildingOperationPayload,
     CreativeDesktopWorldLayoutBuildingTemplateCapturePayload,
     CreativeDesktopWorldLayoutBuildingTemplateSyncPayload,
     CreativeDesktopWorldLayoutBuildingTemplateSelectionPayload,

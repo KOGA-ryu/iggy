@@ -407,6 +407,103 @@ bool generatedSourceAdoptionPolicyKeepsStructuresSourceOwned() {
                 "structures condensed outputs and unowned objects stay locked");
 }
 
+bool generatedSourceScopesAreOrderedAndDoNotInventConnectorOwnership() {
+  cr::CreativeWorldLayout layout;
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "house";
+  building.name = "House";
+  layout.buildings.push_back(building);
+  layout.levels.push_back({0U, "ground", "Ground"});
+  layout.levels.push_back({0U, "upper", "Upper", 3.0});
+  layout.rooms.push_back(
+      {0U, 0U, "ground_room", "Ground Room", {{0, 0}, {8, 6}}, 0.25});
+  layout.rooms.push_back(
+      {0U, 1U, "upper_room", "Upper Room", {{0, 0}, {8, 6}}, 0.25});
+  layout.walls.push_back(
+      {0U, "partition", "Partition", {4, 0}, {4, 6}, 0.0, 3U, 0.25});
+  cr::CreativeWorldLayoutOpening roomOpening;
+  roomOpening.hostKind =
+      cr::CreativeWorldLayoutOpeningHostKind::RoomEdge;
+  roomOpening.roomIndex = 1U;
+  roomOpening.stableKey = "room_door";
+  roomOpening.name = "Room Door";
+  layout.openings.push_back(roomOpening);
+  cr::CreativeWorldLayoutOpening wallOpening;
+  wallOpening.hostKind = cr::CreativeWorldLayoutOpeningHostKind::Wall;
+  wallOpening.wallIndex = 0U;
+  wallOpening.stableKey = "wall_door";
+  wallOpening.name = "Wall Door";
+  layout.openings.push_back(wallOpening);
+  layout.verticalConnectors.push_back(
+      {0U,
+       0U,
+       1U,
+       cr::CreativeWorldLayoutVerticalConnectorKind::Stair,
+       cr::CreativeWorldLayoutVerticalDirection::PositiveX,
+       "stair",
+       "Stair",
+       {{1, 1}, {5, 3}}});
+
+  const auto provenance = [](cr::CreativeWorldLayoutTable table,
+                             std::size_t index) {
+    return cr::CreativeWorldLayoutObjectProvenance{
+        true, table, index, cr::CreativeWorldLayoutRoomEdge::Count, 1U};
+  };
+  const app::CreativeDesktopGeneratedSourceScopeModel room =
+      app::buildCreativeDesktopGeneratedSourceScopeModel(
+          layout, provenance(cr::CreativeWorldLayoutTable::Room, 1U));
+  const app::CreativeDesktopGeneratedSourceScopeModel roomOpeningScopes =
+      app::buildCreativeDesktopGeneratedSourceScopeModel(
+          layout, provenance(cr::CreativeWorldLayoutTable::Opening, 0U));
+  const app::CreativeDesktopGeneratedSourceScopeModel wallOpeningScopes =
+      app::buildCreativeDesktopGeneratedSourceScopeModel(
+          layout, provenance(cr::CreativeWorldLayoutTable::Opening, 1U));
+  const app::CreativeDesktopGeneratedSourceScopeModel connector =
+      app::buildCreativeDesktopGeneratedSourceScopeModel(
+          layout,
+          provenance(cr::CreativeWorldLayoutTable::VerticalConnector, 0U));
+  const app::CreativeDesktopGeneratedSourceScopeModel unowned =
+      app::buildCreativeDesktopGeneratedSourceScopeModel(layout, {});
+
+  const bool roomPath =
+      room.count == 3U &&
+      room.entries[0].table == cr::CreativeWorldLayoutTable::Building &&
+      room.entries[1].table == cr::CreativeWorldLayoutTable::Level &&
+      room.entries[2].table == cr::CreativeWorldLayoutTable::Room &&
+      room.directEntryIndex == 2U && room.entries[1].name == "Upper";
+  const bool openingPath =
+      roomOpeningScopes.count == 4U &&
+      roomOpeningScopes.entries[0].table ==
+          cr::CreativeWorldLayoutTable::Building &&
+      roomOpeningScopes.entries[1].table ==
+          cr::CreativeWorldLayoutTable::Level &&
+      roomOpeningScopes.entries[2].table ==
+          cr::CreativeWorldLayoutTable::Room &&
+      roomOpeningScopes.entries[3].table ==
+          cr::CreativeWorldLayoutTable::Opening &&
+      roomOpeningScopes.directEntryIndex == 3U;
+  const bool ambiguousPathsStayShort =
+      wallOpeningScopes.count == 2U &&
+      wallOpeningScopes.entries[0].table ==
+          cr::CreativeWorldLayoutTable::Building &&
+      wallOpeningScopes.entries[1].table ==
+          cr::CreativeWorldLayoutTable::Opening &&
+      connector.count == 2U &&
+      connector.entries[0].table ==
+          cr::CreativeWorldLayoutTable::Building &&
+      connector.entries[1].table ==
+          cr::CreativeWorldLayoutTable::VerticalConnector;
+
+  return expect(roomPath,
+                "room scope orders building level and direct room") &&
+         expect(openingPath,
+                "room-hosted opening retains every unambiguous owner") &&
+         expect(ambiguousPathsStayShort,
+                "wall openings and cross-level connectors omit guessed owners") &&
+         expect(unowned.count == 0U,
+                "unowned objects expose no generated source scopes");
+}
+
 }  // namespace
 
 int main() {
@@ -427,5 +524,6 @@ int main() {
   ok = degreeRadianParity() && ok;
   ok = draftRejectsNonFiniteAndNonPositiveScale() && ok;
   ok = generatedSourceAdoptionPolicyKeepsStructuresSourceOwned() && ok;
+  ok = generatedSourceScopesAreOrderedAndDoNotInventConnectorOwnership() && ok;
   return ok ? 0 : 1;
 }

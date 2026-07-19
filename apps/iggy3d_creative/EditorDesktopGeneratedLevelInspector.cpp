@@ -178,7 +178,8 @@ void appendCreativeDesktopGeneratedLevelSettings(
     if (representable) {
       commands.push(
           CreativeDesktopCommandId::WorldLayoutPreviewGeneratedLevelSettings,
-          CreativeDesktopGeneratedLevelSettingsPayload{objectId, settings});
+          CreativeDesktopGeneratedLevelSettingsPayload{
+              objectId, provenance.index, level.stableKey, settings});
     } else if (creativeEditorWorldLayoutPreviewActive(worldLayout)) {
       commands.push(CreativeDesktopCommandId::
                         WorldLayoutCancelGeneratedSettingsPreview);
@@ -190,7 +191,8 @@ void appendCreativeDesktopGeneratedLevelSettings(
   if (ImGui::Button("Update level shell in 3D")) {
     commands.push(
         CreativeDesktopCommandId::WorldLayoutApplyGeneratedLevelSettings,
-        CreativeDesktopGeneratedLevelSettingsPayload{objectId, settings});
+        CreativeDesktopGeneratedLevelSettingsPayload{
+            objectId, provenance.index, level.stableKey, settings});
   }
   ImGui::EndDisabled();
   ImGui::SameLine();

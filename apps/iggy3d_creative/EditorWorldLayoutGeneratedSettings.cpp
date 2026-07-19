@@ -24,6 +24,116 @@ CreativeEditorWorldLayoutState makeWorldLayoutSettingsCandidate(
   return candidate;
 }
 
+struct GeneratedBuildingCandidate {
+  CreativeEditorWorldLayoutState state;
+  CreativeEditorWorldLayoutEditReceipt edit;
+};
+
+GeneratedBuildingCandidate makeGeneratedBuildingCandidate(
+    const CreativeEditorWorldLayoutState& source,
+    std::size_t buildingIndex,
+    CreativeEditorWorldLayoutGeneratedBuildingOperation operation,
+    std::int64_t deltaXCells,
+    std::int64_t deltaZCells) {
+  GeneratedBuildingCandidate candidate;
+  candidate.state = makeWorldLayoutSettingsCandidate(source);
+  if (operation >= CreativeEditorWorldLayoutGeneratedBuildingOperation::Count ||
+      buildingIndex >= source.source.buildings.size()) {
+    candidate.state.statusMessage = "generated building operation is invalid";
+    candidate.edit = {
+        false, false,
+        "creative_editor_world_layout_generated_building_operation_invalid"};
+    return candidate;
+  }
+
+  if (operation ==
+      CreativeEditorWorldLayoutGeneratedBuildingOperation::Move) {
+    cr::CreativeWorldLayoutBuildingEditResult moved =
+        cr::moveCreativeWorldLayoutBuilding(
+            source.source, {buildingIndex, deltaXCells, deltaZCells});
+    if (!moved.accepted) {
+      candidate.state.statusMessage = moved.reasonCode;
+      candidate.edit = {false, false, moved.reasonCode};
+      return candidate;
+    }
+    candidate.state.source = std::move(moved.edited);
+    candidate.state.selection = {
+        CreativeEditorWorldLayoutSelectionKind::Building,
+        moved.resultBuildingIndex};
+    if (moved.changed) {
+      ++candidate.state.revision;
+    }
+    candidate.edit = {true, moved.changed, moved.reasonCode};
+    return candidate;
+  }
+
+  if (operation ==
+      CreativeEditorWorldLayoutGeneratedBuildingOperation::Duplicate) {
+    cr::CreativeWorldLayoutBuildingEditResult duplicated =
+        cr::duplicateCreativeWorldLayoutBuilding(
+            source.source,
+            {buildingIndex, deltaXCells, deltaZCells,
+             source.nextStableOrdinal});
+    if (!duplicated.accepted) {
+      candidate.state.statusMessage = duplicated.reasonCode;
+      candidate.edit = {false, false, duplicated.reasonCode};
+      return candidate;
+    }
+    candidate.state.source = std::move(duplicated.edited);
+    candidate.state.nextStableOrdinal = duplicated.nextStableOrdinal;
+    candidate.state.selection = {
+        CreativeEditorWorldLayoutSelectionKind::Building,
+        duplicated.resultBuildingIndex};
+    repairCreativeEditorWorldLayoutActiveLevel(
+        candidate.state, duplicated.resultBuildingIndex);
+    if (duplicated.changed) {
+      ++candidate.state.revision;
+    }
+    candidate.edit = {true, duplicated.changed, duplicated.reasonCode};
+    return candidate;
+  }
+
+  cr::CreativeWorldLayoutBuildingTransformOperation transformOperation =
+      cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90;
+  switch (operation) {
+    case CreativeEditorWorldLayoutGeneratedBuildingOperation::RotateLeft90:
+      transformOperation =
+          cr::CreativeWorldLayoutBuildingTransformOperation::RotateLeft90;
+      break;
+    case CreativeEditorWorldLayoutGeneratedBuildingOperation::RotateRight90:
+      transformOperation =
+          cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90;
+      break;
+    case CreativeEditorWorldLayoutGeneratedBuildingOperation::MirrorX:
+      transformOperation =
+          cr::CreativeWorldLayoutBuildingTransformOperation::MirrorX;
+      break;
+    case CreativeEditorWorldLayoutGeneratedBuildingOperation::MirrorZ:
+      transformOperation =
+          cr::CreativeWorldLayoutBuildingTransformOperation::MirrorZ;
+      break;
+    case CreativeEditorWorldLayoutGeneratedBuildingOperation::Move:
+    case CreativeEditorWorldLayoutGeneratedBuildingOperation::Duplicate:
+    case CreativeEditorWorldLayoutGeneratedBuildingOperation::Count:
+      break;
+  }
+  cr::CreativeWorldLayoutBuildingTransformResult transformed =
+      cr::transformCreativeWorldLayoutBuilding(
+          source.source, {buildingIndex, transformOperation});
+  if (!transformed.accepted) {
+    candidate.state.statusMessage = transformed.reasonCode;
+    candidate.edit = {false, false, transformed.reasonCode};
+    return candidate;
+  }
+  candidate.state.source = std::move(transformed.transformed);
+  candidate.state.selection = {
+      CreativeEditorWorldLayoutSelectionKind::Building,
+      transformed.buildingIndex};
+  ++candidate.state.revision;
+  candidate.edit = {true, true, transformed.reasonCode};
+  return candidate;
+}
+
 CreativeEditorWorldLayoutPreviewReceipt previewWorldLayoutSettingsCandidate(
     CreativeEditorWorldLayoutState& state,
     const cr::CreativeDocument& document,
@@ -116,6 +226,9 @@ CreativeEditorWorldLayoutApplyReceipt applyWorldLayoutSettingsCandidate(
   CreativeEditorWorldLayoutSourceHistoryEntry sourceOnlyUndo =
       detail::captureWorldLayoutSourceHistoryEntry(state);
   sourceOnlyUndo.source = std::string(historySource);
+  const CreativeEditorWorldLayoutSelection committedSelection =
+      candidate.selection;
+  const std::size_t committedActiveLevelIndex = candidate.activeLevelIndex;
   result.apply = applyCreativeEditorWorldLayoutPlanWithHistory(
       state, appState, compiled.plan,
       captureCreativeEditorWorldLayoutSnapshot(candidate), historySource);
@@ -126,6 +239,8 @@ CreativeEditorWorldLayoutApplyReceipt applyWorldLayoutSettingsCandidate(
     state.statusMessage = result.reasonCode;
     return result;
   }
+  state.selection = committedSelection;
+  state.activeLevelIndex = committedActiveLevelIndex;
 
   // A source setting can be meaningful even when its compiled geometry is
   // identical (for example, a closed pose on an omitted insert). Preserve one
@@ -141,6 +256,32 @@ CreativeEditorWorldLayoutApplyReceipt applyWorldLayoutSettingsCandidate(
 }
 
 }  // namespace
+
+CreativeEditorWorldLayoutPreviewReceipt
+previewCreativeEditorWorldLayoutGeneratedBuildingOperation(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document, std::size_t buildingIndex,
+    CreativeEditorWorldLayoutGeneratedBuildingOperation operation,
+    std::int64_t deltaXCells, std::int64_t deltaZCells) {
+  GeneratedBuildingCandidate candidate = makeGeneratedBuildingCandidate(
+      state, buildingIndex, operation, deltaXCells, deltaZCells);
+  return previewWorldLayoutSettingsCandidate(
+      state, document, std::move(candidate.state), candidate.edit,
+      "building operation preview ready");
+}
+
+CreativeEditorWorldLayoutApplyReceipt
+applyCreativeEditorWorldLayoutGeneratedBuildingOperationToDocument(
+    CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,
+    std::size_t buildingIndex,
+    CreativeEditorWorldLayoutGeneratedBuildingOperation operation,
+    std::int64_t deltaXCells, std::int64_t deltaZCells) {
+  GeneratedBuildingCandidate candidate = makeGeneratedBuildingCandidate(
+      state, buildingIndex, operation, deltaXCells, deltaZCells);
+  return applyWorldLayoutSettingsCandidate(
+      state, appState, std::move(candidate.state), candidate.edit,
+      "desktop_generated_building_operation", "building updated in 3D");
+}
 
 CreativeEditorWorldLayoutPreviewReceipt
 previewCreativeEditorWorldLayoutRoomSettings(

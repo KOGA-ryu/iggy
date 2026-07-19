@@ -418,28 +418,93 @@ void appendCreativeDesktopGeneratedSourceSettings(
     cr::CreativeWorldLayoutObjectProvenance provenance,
     bool disabled,
     CreativeDesktopCommandFrame& commands) {
+  const CreativeDesktopGeneratedSourceScopeModel scopes =
+      buildCreativeDesktopGeneratedSourceScopeModel(worldLayout.source,
+                                                     provenance);
+  if (scopes.count == 0U) {
+    return;
+  }
+  const cr::CreativeWorldLayoutTable selectedTable =
+      creativeEditorWorldLayoutSelectionTable(worldLayout.selection.kind);
+  std::size_t activeScope = findCreativeDesktopGeneratedSourceScope(
+      scopes, selectedTable, worldLayout.selection.index);
+  if (activeScope >= scopes.count) {
+    activeScope = scopes.directEntryIndex;
+  }
+
+  ImGui::TextDisabled("Source scope");
+  for (std::size_t scopeIndex = 0U; scopeIndex < scopes.count; ++scopeIndex) {
+    const CreativeDesktopGeneratedSourceScopeEntry& entry =
+        scopes.entries[scopeIndex];
+    if (scopeIndex > 0U) {
+      ImGui::SameLine();
+      ImGui::TextDisabled(">");
+      ImGui::SameLine();
+    }
+    ImGui::PushID(static_cast<int>(scopeIndex));
+    if (scopeIndex == activeScope) {
+      ImGui::PushStyleColor(ImGuiCol_Button,
+                            ImVec4{0.12F, 0.42F, 0.20F, 1.0F});
+      ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
+                            ImVec4{0.16F, 0.54F, 0.26F, 1.0F});
+    }
+    const std::string label =
+        entry.name.empty() ? std::string(cr::toString(entry.table))
+                           : std::string(entry.name);
+    const bool selected = ImGui::SmallButton(label.c_str());
+    if (scopeIndex == activeScope) {
+      ImGui::PopStyleColor(2);
+    }
+    if (ImGui::IsItemHovered()) {
+      ImGui::SetTooltip("%s source", cr::toString(entry.table).data());
+    }
+    if (selected && scopeIndex != activeScope) {
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutSelectSourceScope,
+          CreativeDesktopWorldLayoutSourcePayload{
+              entry.table, entry.index, std::string(entry.stableKey)});
+    }
+    ImGui::PopID();
+  }
+
+  const CreativeDesktopGeneratedSourceScopeEntry& scope =
+      scopes.entries[activeScope];
+  ImGui::BeginDisabled(disabled);
+  if (ImGui::Button("Focus selected scope in 2D")) {
+    commands.push(CreativeDesktopCommandId::WorldLayoutFocusSource,
+                  CreativeDesktopWorldLayoutSourcePayload{
+                      scope.table, scope.index,
+                      std::string(scope.stableKey)});
+  }
+  ImGui::EndDisabled();
+
   bool clearedDraft = false;
-  if (provenance.table != cr::CreativeWorldLayoutTable::Room &&
+  if (scope.table != cr::CreativeWorldLayoutTable::Building &&
+      worldLayout.generatedBuildingDraft.active) {
+    worldLayout.generatedBuildingDraft = {};
+    clearedDraft = true;
+  }
+  if (scope.table != cr::CreativeWorldLayoutTable::Room &&
       worldLayout.roomSettingsDraft.active) {
     worldLayout.roomSettingsDraft = {};
     clearedDraft = true;
   }
-  if (provenance.table != cr::CreativeWorldLayoutTable::Level &&
+  if (scope.table != cr::CreativeWorldLayoutTable::Level &&
       worldLayout.generatedLevelSettingsDraft.active) {
     worldLayout.generatedLevelSettingsDraft = {};
     clearedDraft = true;
   }
-  if (provenance.table != cr::CreativeWorldLayoutTable::VerticalConnector &&
+  if (scope.table != cr::CreativeWorldLayoutTable::VerticalConnector &&
       worldLayout.verticalConnectorSettingsDraft.active) {
     worldLayout.verticalConnectorSettingsDraft = {};
     clearedDraft = true;
   }
-  if (provenance.table != cr::CreativeWorldLayoutTable::Wall &&
+  if (scope.table != cr::CreativeWorldLayoutTable::Wall &&
       worldLayout.wallSettingsDraft.active) {
     worldLayout.wallSettingsDraft = {};
     clearedDraft = true;
   }
-  if (provenance.table != cr::CreativeWorldLayoutTable::Opening &&
+  if (scope.table != cr::CreativeWorldLayoutTable::Opening &&
       worldLayout.openingSettingsDraft.active) {
     worldLayout.openingSettingsDraft = {};
     clearedDraft = true;
@@ -449,27 +514,47 @@ void appendCreativeDesktopGeneratedSourceSettings(
                       WorldLayoutCancelGeneratedSettingsPreview);
   }
 
-  switch (provenance.table) {
+  cr::CreativeWorldLayoutObjectProvenance scopedProvenance = provenance;
+  scopedProvenance.table = scope.table;
+  scopedProvenance.index = scope.index;
+  if (scope.table != provenance.table || scope.index != provenance.index) {
+    scopedProvenance.roomEdge = cr::CreativeWorldLayoutRoomEdge::Count;
+    scopedProvenance.contributorCount = 1U;
+  }
+  switch (scope.table) {
+    case cr::CreativeWorldLayoutTable::Building:
+      appendCreativeDesktopGeneratedBuildingSettings(
+          worldLayout, objectId, scope.index, disabled, commands);
+      break;
     case cr::CreativeWorldLayoutTable::Level:
       appendCreativeDesktopGeneratedLevelSettings(
-          worldLayout, objectId, provenance, disabled, commands);
+          worldLayout, objectId, scopedProvenance, disabled, commands);
       break;
     case cr::CreativeWorldLayoutTable::Room:
       appendCreativeDesktopGeneratedRoomSettings(
-          worldLayout, objectId, provenance, disabled, commands);
+          worldLayout, objectId, scopedProvenance, disabled, commands);
       break;
     case cr::CreativeWorldLayoutTable::VerticalConnector:
       appendGeneratedVerticalConnectorSettings(
-          worldLayout, objectId, provenance, disabled, commands);
+          worldLayout, objectId, scopedProvenance, disabled, commands);
       break;
     case cr::CreativeWorldLayoutTable::Wall:
-      appendGeneratedWallSettings(worldLayout, objectId, provenance, disabled,
-                                  commands);
+      appendGeneratedWallSettings(worldLayout, objectId, scopedProvenance,
+                                  disabled, commands);
       break;
     case cr::CreativeWorldLayoutTable::Opening:
-      appendGeneratedOpeningSettings(worldLayout, objectId, provenance,
+      appendGeneratedOpeningSettings(worldLayout, objectId, scopedProvenance,
                                      disabled, commands);
       break;
+    case cr::CreativeWorldLayoutTable::Box:
+    case cr::CreativeWorldLayoutTable::Object:
+      ImGui::TextDisabled(
+          "One-to-one source; use the transform fields and Adopt 3D Edit");
+      break;
+    case cr::CreativeWorldLayoutTable::TerrainProfile:
+    case cr::CreativeWorldLayoutTable::TerrainPath:
+    case cr::CreativeWorldLayoutTable::TerrainPathPoint:
+    case cr::CreativeWorldLayoutTable::None:
     default:
       break;
   }

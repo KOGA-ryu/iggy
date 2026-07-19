@@ -393,6 +393,28 @@ struct CreativeEditorWorldLayoutBuildingTransformState {
       "creative_editor_world_layout_building_transform_inactive";
 };
 
+enum class CreativeEditorWorldLayoutGeneratedBuildingOperation
+    : std::uint8_t {
+  Move,
+  RotateLeft90,
+  RotateRight90,
+  MirrorX,
+  MirrorZ,
+  Duplicate,
+  Count,
+};
+
+struct CreativeEditorWorldLayoutGeneratedBuildingDraft {
+  bool active = false;
+  std::size_t buildingIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::uint64_t sourceRevision = 0U;
+  CreativeEditorWorldLayoutGeneratedBuildingOperation operation =
+      CreativeEditorWorldLayoutGeneratedBuildingOperation::Move;
+  std::int64_t deltaXCells = 0;
+  std::int64_t deltaZCells = 0;
+  bool previewReady = false;
+};
+
 inline constexpr std::size_t
     kCreativeEditorWorldLayoutBuildingTemplateCapacity = 256U;
 
@@ -859,6 +881,7 @@ struct CreativeEditorWorldLayoutState {
   CreativeEditorWorldLayoutWallManipulationState wallManipulation;
   CreativeEditorWorldLayoutBuildingManipulationState buildingManipulation;
   CreativeEditorWorldLayoutBuildingTransformState buildingTransform;
+  CreativeEditorWorldLayoutGeneratedBuildingDraft generatedBuildingDraft;
   CreativeEditorWorldLayoutBuildingTemplateLibrary buildingTemplates;
   CreativeEditorWorldLayoutBuildingTemplatePlacementState
       buildingTemplatePlacement;
@@ -984,6 +1007,13 @@ void markCreativeEditorWorldLayoutSaved(
 focusCreativeEditorWorldLayoutSource(
     CreativeEditorWorldLayoutState& state,
     cr::CreativeWorldLayoutTable table, std::size_t index);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+selectCreativeEditorWorldLayoutSource(
+    CreativeEditorWorldLayoutState& state,
+    cr::CreativeWorldLayoutTable table, std::size_t index);
+[[nodiscard]] cr::CreativeWorldLayoutTable
+creativeEditorWorldLayoutSelectionTable(
+    CreativeEditorWorldLayoutSelectionKind kind) noexcept;
 
 [[nodiscard]] bool creativeEditorWorldLayoutSourceCanRename(
     cr::CreativeWorldLayoutTable table) noexcept;
@@ -1262,6 +1292,18 @@ applyCreativeEditorWorldLayoutBuildingTransform(
     CreativeEditorWorldLayoutBuildingTransformPhase phase,
     cr::CreativeWorldLayoutBuildingTransformOperation operation =
         cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90);
+[[nodiscard]] CreativeEditorWorldLayoutPreviewReceipt
+previewCreativeEditorWorldLayoutGeneratedBuildingOperation(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document, std::size_t buildingIndex,
+    CreativeEditorWorldLayoutGeneratedBuildingOperation operation,
+    std::int64_t deltaXCells = 0, std::int64_t deltaZCells = 0);
+[[nodiscard]] CreativeEditorWorldLayoutApplyReceipt
+applyCreativeEditorWorldLayoutGeneratedBuildingOperationToDocument(
+    CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,
+    std::size_t buildingIndex,
+    CreativeEditorWorldLayoutGeneratedBuildingOperation operation,
+    std::int64_t deltaXCells = 0, std::int64_t deltaZCells = 0);
 [[nodiscard]] bool defaultCreativeEditorWorldLayoutBuildingDuplicateOffset(
     const CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
     std::int64_t& deltaXCells, std::int64_t& deltaZCells) noexcept;

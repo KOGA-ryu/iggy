@@ -9,6 +9,7 @@
 
 #include "EditorAssetLibrary.hpp"
 #include "EditorAuthoredAssets.hpp"
+#include "EditorDesktopModel.hpp"
 #include "EditorEdits.hpp"
 #include "EditorFrame.hpp"
 #include "EditorLogicLinks.hpp"
@@ -65,6 +66,56 @@ namespace {
 template <typename Payload>
 [[nodiscard]] const Payload* payloadAs(const CreativeDesktopCommand& command) {
   return std::get_if<Payload>(&command.payload);
+}
+
+struct GeneratedSourceScopeResolution {
+  bool ancestor = false;
+  bool stable = false;
+};
+
+[[nodiscard]] GeneratedSourceScopeResolution resolveGeneratedSourceScope(
+    const creative::CreativeWorldLayout& layout,
+    const creative::CreativeObject& object,
+    creative::CreativeWorldLayoutTable table,
+    std::size_t index,
+    std::string_view stableKey) {
+  const creative::CreativeWorldLayoutObjectProvenance provenance =
+      creative::resolveCreativeWorldLayoutObjectProvenance(layout, object);
+  const CreativeDesktopGeneratedSourceScopeModel scopes =
+      buildCreativeDesktopGeneratedSourceScopeModel(layout, provenance);
+  const std::size_t scopeIndex =
+      findCreativeDesktopGeneratedSourceScope(scopes, table, index);
+  if (scopeIndex >= scopes.count) {
+    return {};
+  }
+  return {true, !stableKey.empty() &&
+                    scopes.entries[scopeIndex].stableKey == stableKey};
+}
+
+[[nodiscard]] creative::CreativeObjectId findGeneratedSourceScopeObject(
+    const creative::CreativeDocument& document,
+    const creative::CreativeWorldLayout& layout,
+    creative::CreativeWorldLayoutTable table,
+    std::size_t index,
+    creative::CreativeObjectKind preferredKind) noexcept {
+  creative::CreativeObjectId fallback = creative::kInvalidObjectId;
+  for (const creative::CreativeObject& object : document.objects()) {
+    const creative::CreativeWorldLayoutObjectProvenance provenance =
+        creative::resolveCreativeWorldLayoutObjectProvenance(layout, object);
+    const CreativeDesktopGeneratedSourceScopeModel scopes =
+        buildCreativeDesktopGeneratedSourceScopeModel(layout, provenance);
+    if (findCreativeDesktopGeneratedSourceScope(scopes, table, index) >=
+        scopes.count) {
+      continue;
+    }
+    if (object.kind == preferredKind) {
+      return object.id;
+    }
+    if (fallback == creative::kInvalidObjectId) {
+      fallback = object.id;
+    }
+  }
+  return fallback;
 }
 
 [[nodiscard]] const creative::CreativeCatalogEntry* findCatalogAsset(
@@ -938,6 +989,27 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutSelectSourceScope: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutSourcePayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout source scope: payload mismatch";
+        break;
+      }
+      if (!creativeEditorWorldLayoutSourceStableKeyMatches(
+              editor.worldLayout, payload->table, payload->index,
+              payload->stableKey)) {
+        result.message = "layout source scope: stale target";
+        break;
+      }
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          selectCreativeEditorWorldLayoutSource(
+              editor.worldLayout, payload->table, payload->index);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutFocusObjectSource: {
       const auto* payload =
           payloadAs<CreativeDesktopWorldLayoutObjectSourcePayload>(command);
@@ -1131,19 +1203,24 @@ void dispatchOne(const CreativeDesktopCommand& command,
         result.message = "generated level settings: target missing";
         break;
       }
-      const creative::CreativeWorldLayoutObjectProvenance provenance =
-          creative::resolveCreativeWorldLayoutObjectProvenance(
-              editor.worldLayout.source, *object);
-      if (!provenance.owned ||
-          provenance.table != creative::CreativeWorldLayoutTable::Level) {
+      const GeneratedSourceScopeResolution scope =
+          resolveGeneratedSourceScope(
+              editor.worldLayout.source, *object,
+              creative::CreativeWorldLayoutTable::Level,
+              payload->levelIndex, payload->stableKey);
+      if (!scope.ancestor) {
         result.message = "generated level settings: source mismatch";
+        break;
+      }
+      if (!scope.stable) {
+        result.message = "generated level settings: stale target";
         break;
       }
       const bool previewWasActive =
           creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
       const CreativeEditorWorldLayoutApplyReceipt receipt =
           applyCreativeEditorWorldLayoutLevelSettingsToDocument(
-              editor.worldLayout, appState, provenance.index,
+              editor.worldLayout, appState, payload->levelIndex,
               payload->settings);
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
@@ -1165,18 +1242,23 @@ void dispatchOne(const CreativeDesktopCommand& command,
         result.message = "generated level preview: target missing";
         break;
       }
-      const creative::CreativeWorldLayoutObjectProvenance provenance =
-          creative::resolveCreativeWorldLayoutObjectProvenance(
-              editor.worldLayout.source, *object);
-      if (!provenance.owned ||
-          provenance.table != creative::CreativeWorldLayoutTable::Level) {
+      const GeneratedSourceScopeResolution scope =
+          resolveGeneratedSourceScope(
+              editor.worldLayout.source, *object,
+              creative::CreativeWorldLayoutTable::Level,
+              payload->levelIndex, payload->stableKey);
+      if (!scope.ancestor) {
         result.message = "generated level preview: source mismatch";
+        break;
+      }
+      if (!scope.stable) {
+        result.message = "generated level preview: stale target";
         break;
       }
       const CreativeEditorWorldLayoutPreviewReceipt receipt =
           previewCreativeEditorWorldLayoutLevelSettings(
               editor.worldLayout, appState.facade.document(),
-              provenance.index, payload->settings);
+              payload->levelIndex, payload->settings);
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
       result.sceneChanged = receipt.changed;
@@ -1341,6 +1423,110 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.sceneChanged =
           exactPreviewClosed || (previewWasActive && sourceChanged);
       result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::
+        WorldLayoutPreviewGeneratedBuildingOperation: {
+      const auto* payload =
+          payloadAs<CreativeDesktopGeneratedBuildingOperationPayload>(command);
+      if (payload == nullptr) {
+        result.message = "generated building preview: payload mismatch";
+        break;
+      }
+      const creative::CreativeObject* object =
+          appState.facade.findObject(payload->objectId);
+      if (object == nullptr) {
+        result.message = "generated building preview: target missing";
+        break;
+      }
+      const GeneratedSourceScopeResolution scope =
+          resolveGeneratedSourceScope(
+              editor.worldLayout.source, *object,
+              creative::CreativeWorldLayoutTable::Building,
+              payload->buildingIndex, payload->stableKey);
+      if (!scope.ancestor) {
+        result.message = "generated building preview: source mismatch";
+        break;
+      }
+      if (!scope.stable) {
+        result.message = "generated building preview: stale target";
+        break;
+      }
+      const CreativeEditorWorldLayoutPreviewReceipt receipt =
+          previewCreativeEditorWorldLayoutGeneratedBuildingOperation(
+              editor.worldLayout, appState.facade.document(),
+              payload->buildingIndex, payload->operation,
+              payload->deltaXCells, payload->deltaZCells);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.sceneChanged = receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::
+        WorldLayoutApplyGeneratedBuildingOperation: {
+      const auto* payload =
+          payloadAs<CreativeDesktopGeneratedBuildingOperationPayload>(command);
+      if (payload == nullptr) {
+        result.message = "generated building operation: payload mismatch";
+        break;
+      }
+      const creative::CreativeObject* object =
+          appState.facade.findObject(payload->objectId);
+      if (object == nullptr) {
+        result.message = "generated building operation: target missing";
+        break;
+      }
+      const GeneratedSourceScopeResolution scope =
+          resolveGeneratedSourceScope(
+              editor.worldLayout.source, *object,
+              creative::CreativeWorldLayoutTable::Building,
+              payload->buildingIndex, payload->stableKey);
+      if (!scope.ancestor) {
+        result.message = "generated building operation: source mismatch";
+        break;
+      }
+      if (!scope.stable) {
+        result.message = "generated building operation: stale target";
+        break;
+      }
+      const creative::CreativeObjectKind sourceObjectKind = object->kind;
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutApplyReceipt receipt =
+          applyCreativeEditorWorldLayoutGeneratedBuildingOperationToDocument(
+              editor.worldLayout, appState, payload->buildingIndex,
+              payload->operation, payload->deltaXCells,
+              payload->deltaZCells);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive || receipt.apply.changed;
+      result.message = editor.worldLayout.statusMessage;
+      if (receipt.accepted &&
+          payload->operation ==
+              CreativeEditorWorldLayoutGeneratedBuildingOperation::Duplicate) {
+        const std::size_t duplicateBuildingIndex =
+            editor.worldLayout.selection.kind ==
+                    CreativeEditorWorldLayoutSelectionKind::Building
+                ? editor.worldLayout.selection.index
+                : creative::kInvalidCreativeWorldLayoutIndex;
+        const creative::CreativeObjectId duplicateObjectId =
+            findGeneratedSourceScopeObject(
+                appState.facade.document(), editor.worldLayout.source,
+                creative::CreativeWorldLayoutTable::Building,
+                duplicateBuildingIndex, sourceObjectKind);
+        if (duplicateObjectId != creative::kInvalidObjectId) {
+          static_cast<void>(appState.facade.selectTargets(
+              std::span<const creative::CreativeObjectId>{&duplicateObjectId,
+                                                          1U},
+              duplicateObjectId));
+        } else {
+          editor.worldLayout.selection = {
+              CreativeEditorWorldLayoutSelectionKind::Building,
+              payload->buildingIndex};
+        }
+      }
       break;
     }
     case CreativeDesktopCommandId::WorldLayoutCaptureBuildingTemplate: {
@@ -1522,19 +1708,24 @@ void dispatchOne(const CreativeDesktopCommand& command,
         result.message = "generated room settings: target missing";
         break;
       }
-      const creative::CreativeWorldLayoutObjectProvenance provenance =
-          creative::resolveCreativeWorldLayoutObjectProvenance(
-              editor.worldLayout.source, *object);
-      if (!provenance.owned ||
-          provenance.table != creative::CreativeWorldLayoutTable::Room) {
+      const GeneratedSourceScopeResolution scope =
+          resolveGeneratedSourceScope(
+              editor.worldLayout.source, *object,
+              creative::CreativeWorldLayoutTable::Room, payload->roomIndex,
+              payload->stableKey);
+      if (!scope.ancestor) {
         result.message = "generated room settings: source mismatch";
+        break;
+      }
+      if (!scope.stable) {
+        result.message = "generated room settings: stale target";
         break;
       }
       const bool previewWasActive =
           creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
       const CreativeEditorWorldLayoutApplyReceipt receipt =
           applyCreativeEditorWorldLayoutRoomSettingsToDocument(
-              editor.worldLayout, appState, provenance.index,
+              editor.worldLayout, appState, payload->roomIndex,
               payload->settings);
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
@@ -1556,18 +1747,23 @@ void dispatchOne(const CreativeDesktopCommand& command,
         result.message = "generated room preview: target missing";
         break;
       }
-      const creative::CreativeWorldLayoutObjectProvenance provenance =
-          creative::resolveCreativeWorldLayoutObjectProvenance(
-              editor.worldLayout.source, *object);
-      if (!provenance.owned ||
-          provenance.table != creative::CreativeWorldLayoutTable::Room) {
+      const GeneratedSourceScopeResolution scope =
+          resolveGeneratedSourceScope(
+              editor.worldLayout.source, *object,
+              creative::CreativeWorldLayoutTable::Room, payload->roomIndex,
+              payload->stableKey);
+      if (!scope.ancestor) {
         result.message = "generated room preview: source mismatch";
+        break;
+      }
+      if (!scope.stable) {
+        result.message = "generated room preview: stale target";
         break;
       }
       const CreativeEditorWorldLayoutPreviewReceipt receipt =
           previewCreativeEditorWorldLayoutRoomSettings(
               editor.worldLayout, appState.facade.document(),
-              provenance.index, payload->settings);
+              payload->roomIndex, payload->settings);
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
       result.sceneChanged = receipt.changed;

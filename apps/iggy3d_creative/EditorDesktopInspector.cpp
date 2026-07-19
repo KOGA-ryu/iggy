@@ -642,18 +642,15 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
   const bool sourceSupportsAdoption =
       creativeDesktopGeneratedSourceSupportsAdoption(provenance);
   const bool sourceOwnedOnly = provenance.owned && !sourceSupportsAdoption;
-  const bool generatedSettingsSource =
-      provenance.table == cr::CreativeWorldLayoutTable::Level ||
-      provenance.table == cr::CreativeWorldLayoutTable::Room ||
-      provenance.table == cr::CreativeWorldLayoutTable::VerticalConnector ||
-      provenance.table == cr::CreativeWorldLayoutTable::Wall ||
-      provenance.table == cr::CreativeWorldLayoutTable::Opening;
+  const bool generatedSettingsSource = provenance.owned;
   if (!generatedSettingsSource &&
-      (worldLayout.generatedLevelSettingsDraft.active ||
+      (worldLayout.generatedBuildingDraft.active ||
+       worldLayout.generatedLevelSettingsDraft.active ||
        worldLayout.roomSettingsDraft.active ||
        worldLayout.verticalConnectorSettingsDraft.active ||
        worldLayout.wallSettingsDraft.active ||
        worldLayout.openingSettingsDraft.active)) {
+    worldLayout.generatedBuildingDraft = {};
     worldLayout.generatedLevelSettingsDraft = {};
     worldLayout.roomSettingsDraft = {};
     worldLayout.verticalConnectorSettingsDraft = {};
@@ -718,14 +715,8 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
 
   if (provenance.owned) {
     ImGui::SeparatorText("World Layout");
-    if (ImGui::Button("Focus in 2D")) {
-      commands.push(
-          CreativeDesktopCommandId::WorldLayoutFocusObjectSource,
-          CreativeDesktopWorldLayoutObjectSourcePayload{object.id});
-    }
     const bool sourceSynchronized =
         worldLayout.generatedRevision == worldLayout.revision;
-    ImGui::SameLine();
     ImGui::BeginDisabled(playModeActive || !sourceSynchronized ||
                          !sourceSupportsAdoption);
     if (ImGui::Button("Adopt 3D Edit")) {
