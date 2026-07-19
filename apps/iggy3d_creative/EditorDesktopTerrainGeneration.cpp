@@ -286,6 +286,36 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
   }
   ImGui::EndDisabled();
 
+  CreativeTerrainContourDisplayState& contours = editor.terrain.contours;
+  ImGui::SeparatorText("Topographic Display");
+  ImGui::Checkbox("Contour lines", &contours.visible);
+  int contourInterval = static_cast<int>(contours.intervalCells);
+  if (ImGui::SliderInt(
+          "Interval", &contourInterval, 1,
+          static_cast<int>(cr::kCreativeTerrainContourMaximumIntervalCells),
+          "%d cells")) {
+    contours.intervalCells = static_cast<std::uint16_t>(contourInterval);
+  }
+  int contourMajorEvery = static_cast<int>(contours.majorEvery);
+  if (ImGui::SliderInt(
+          "Index every", &contourMajorEvery, 1,
+          static_cast<int>(cr::kCreativeTerrainContourMaximumMajorEvery))) {
+    contours.majorEvery = static_cast<std::uint16_t>(contourMajorEvery);
+  }
+  if (contours.visible && contours.cacheValid) {
+    if (contours.plan.accepted) {
+      ImGui::Text("Segments  %zu  Levels  %llu", contours.plan.segments.size(),
+                  static_cast<unsigned long long>(
+                      contours.plan.contourLevelCount));
+    } else {
+      const std::string_view contourStatus =
+          cr::toString(contours.plan.status);
+      ImGui::TextColored(ImVec4{1.0F, 0.34F, 0.30F, 1.0F}, "%.*s",
+                         static_cast<int>(contourStatus.size()),
+                         contourStatus.data());
+    }
+  }
+
   if (state.generation.receipt.accepted) {
     const cr::CreativeTerrainGenerationReceipt& generation =
         state.generation.receipt;

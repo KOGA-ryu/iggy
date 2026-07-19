@@ -38,6 +38,9 @@ struct CreativeEditorOverlayFrameRequest {
       iggy3d::creative::CreativeControlDevice::KeyboardMouse;
   const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr;
   const CreativePlacementClearanceCache* placementClearanceCache = nullptr;
+  const iggy3d::creative::CreativeDocument* terrainDocument = nullptr;
+  const iggy3d::creative::CreativeTerrainSurfacePlan* terrainSurface = nullptr;
+  std::uint64_t terrainSurfaceKey = 0U;
 };
 
 struct CreativeEditorOverlayFrame {
@@ -76,6 +79,7 @@ struct CreativeEditorOverlayFrame {
   std::size_t terrainSourceImpactMaterialCellCount = 0;
   std::size_t terrainSourceImpactEdgeCount = 0;
   bool terrainSourceImpactClipped = false;
+  std::size_t terrainContourEdgeCount = 0;
   std::size_t terrainEdgeCount = 0;
   std::size_t volumeEdgeCount = 0;
   std::size_t patternEdgeCount = 0;
@@ -134,6 +138,7 @@ struct CreativeEditorSceneCache {
   iggy3d::creative::CreativeVec3 terrainGridOrigin{};
   double terrainGridCellSizeMeters = 0.0;
   std::vector<CreativeEditorVoxelChunkMeshCache> voxelChunkMeshes;
+  iggy3d::creative::CreativeTerrainSurfacePlan composedTerrainSurface;
   std::vector<iggy3d::creative::CreativeVoxelCuboid> terrainCuboids;
   std::vector<iggy3d::creative::CreativeTerrainSurfacePatch>
       terrainCollisionPatches;

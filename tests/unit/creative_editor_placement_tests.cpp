@@ -1816,6 +1816,65 @@ bool materialAimMovementDoesNotChangeUploadSignature() {
          ok;
 }
 
+bool creativeWireframeRendererSupportsArbitrarySegments() {
+  const std::array<iggy3d::RenderCreativeWireframeDebugLine, 2> lines{{
+      {{1.0F, 2.0F, 3.0F},
+       {5.0F, 5.0F, -1.0F},
+       {0.2F, 0.8F, 0.4F, 1.0F},
+       0U,
+       0U,
+       0U,
+       0U,
+       0.1F},
+      {{2.0F, 1.0F, -3.0F},
+       {2.0F, 1.0F, -3.0F},
+       {1.0F, 0.0F, 0.0F, 1.0F},
+       0U,
+       0U,
+       0U,
+       0U,
+       0.1F},
+  }};
+  iggy3d::RenderCreativeWireframeDebugFrame frame;
+  frame.available = true;
+  frame.visible = true;
+  frame.lines = lines.data();
+  frame.lineCount = lines.size();
+
+  const iggy3d::vulkan::CreativeWireframeDebugCpuGeometry geometry =
+      iggy3d::vulkan::buildCreativeWireframeDebugCpuGeometry(&frame);
+  const float length = std::sqrt(41.0F);
+  const std::array<float, 3> direction{
+      4.0F / length, 3.0F / length, -4.0F / length};
+  const std::array<float, 3> center{3.0F, 3.5F, 1.0F};
+  float minimumProjection = std::numeric_limits<float>::max();
+  float maximumProjection = std::numeric_limits<float>::lowest();
+  bool allFinite = true;
+  for (const iggy3d::vulkan::FirstRoomVertex& vertex : geometry.vertices) {
+    const float projection =
+        (vertex.position[0] - center[0]) * direction[0] +
+        (vertex.position[1] - center[1]) * direction[1] +
+        (vertex.position[2] - center[2]) * direction[2];
+    minimumProjection = std::min(minimumProjection, projection);
+    maximumProjection = std::max(maximumProjection, projection);
+    allFinite = allFinite && std::isfinite(vertex.position[0]) &&
+                std::isfinite(vertex.position[1]) &&
+                std::isfinite(vertex.position[2]);
+  }
+
+  return expect(geometry.ready && geometry.inputLineCount == 2U &&
+                    geometry.emittedBoxCount == 1U &&
+                    geometry.skippedCount == 1U,
+                "wireframe renderer emits arbitrary 3D segments and skips "
+                "zero-length input") &&
+         expect(geometry.vertices.size() == 8U &&
+                    geometry.indices.size() == 72U && allFinite,
+                "arbitrary segment produces one finite box") &&
+         expect(near(minimumProjection, -length * 0.5F) &&
+                    near(maximumProjection, length * 0.5F),
+                "arbitrary segment box aligns its long axis to the endpoints");
+}
+
 bool placementGridDotsRenderOnlyTheActiveDepthLayer() {
   cr::CreativeDocument document = cr::CreativeDocument::create("dot layer");
   static_cast<void>(document.assignId(119U));
@@ -5937,6 +5996,7 @@ int main() {
   ok = previewsDoNotAffectRoomGeometrySignature() && ok;
   ok = roomGeometryRendersStoredEulerRadians() && ok;
   ok = materialAimMovementDoesNotChangeUploadSignature() && ok;
+  ok = creativeWireframeRendererSupportsArbitrarySegments() && ok;
   ok = placementGridDotsRenderOnlyTheActiveDepthLayer() && ok;
   ok = lockedPlacementPlaneFeedsPreviewAdmissionAndMutation() && ok;
   ok = authoredAnchorFeedsPreviewAdmissionAndMutation() && ok;

@@ -152,7 +152,7 @@ void refreshTerrainSurfacePlan(CreativeEditorSceneCache& cache,
     ++cache.terrainMaterialBuildCount;
     return;
   }
-  const cr::CreativeTerrainSurfacePlan plan =
+  cr::CreativeTerrainSurfacePlan plan =
       cr::buildCreativeComposedTerrainSurfacePlan(
           document.terrainField(), heightField);
   cache.terrainCuboids = plan.accepted ? plan.cuboids
@@ -174,6 +174,7 @@ void refreshTerrainSurfacePlan(CreativeEditorSceneCache& cache,
       document.terrainMaterialField().revision();
   cache.terrainGridOrigin = grid.origin;
   cache.terrainGridCellSizeMeters = grid.cellSizeMeters;
+  cache.composedTerrainSurface = std::move(plan);
   ++cache.terrainSurfaceBuildCount;
   ++cache.terrainMaterialBuildCount;
 }
@@ -257,6 +258,7 @@ bool refreshCreativeEditorSceneCache(
   }
   if (cache.documentId != document.id()) {
     cache.voxelChunkMeshes.clear();
+    cache.composedTerrainSurface = {};
     cache.terrainCuboids.clear();
     cache.terrainCollisionPatches.clear();
     cache.terrainSurfacePatches.clear();
@@ -362,6 +364,7 @@ void invalidateCreativeEditorSceneCache(
   cache.documentId = iggy3d::creative::kInvalidDocumentId;
   cache.documentRevision = 0;
   cache.voxelChunkMeshes.clear();
+  cache.composedTerrainSurface = {};
   cache.terrainCuboids.clear();
   cache.terrainCollisionPatches.clear();
   cache.terrainSurfacePatches.clear();

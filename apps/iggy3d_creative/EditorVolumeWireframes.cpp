@@ -165,6 +165,16 @@ CreativeEditorVolumePreviewFacts appendCreativeEditorVolumeAndToolWireframes(
   output.terrainSourceImpactMaterialCellCount = sourceImpact.materialCellCount;
   output.terrainSourceImpactEdgeCount = sourceImpact.edgeCount;
   output.terrainSourceImpactClipped = sourceImpact.influenceCellsClipped;
+  const cr::CreativeDocument& terrainDocument =
+      request.terrainDocument == nullptr
+          ? request.appState.facade.document()
+          : *request.terrainDocument;
+  static_cast<void>(refreshCreativeEditorTerrainContours(
+      editor.terrain.contours, terrainDocument, request.terrainSurface,
+      request.terrainSurfaceKey));
+  output.terrainContourEdgeCount = appendCreativeEditorTerrainContours(
+      terrainDocument, editor, request.gizmoThickness, lines,
+      request.captureMode);
   appendCreativeEditorTerrainOverlay(
       request.appState.facade.document(), editor, request.gizmoThickness, lines,
       request.captureMode);

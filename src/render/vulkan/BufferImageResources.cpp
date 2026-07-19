@@ -712,7 +712,8 @@ void setCreativeWireframeDebugGeometryStatus(
 bool creativeDebugLineBox(const RenderCreativeWireframeDebugLine& line,
                           Vec3& center,
                           Vec3& size,
-                          Vec3& color) {
+                          Vec3& color,
+                          Vec3& rotationEulerRadians) {
   if (!finiteVec3(line.start) || !finiteVec3(line.end) ||
       !std::isfinite(line.thickness) || line.thickness <= 0.0F ||
       !std::isfinite(line.color.r) || !std::isfinite(line.color.g) ||
@@ -723,14 +724,8 @@ bool creativeDebugLineBox(const RenderCreativeWireframeDebugLine& line,
   const float dx = line.end.x - line.start.x;
   const float dy = line.end.y - line.start.y;
   const float dz = line.end.z - line.start.z;
-  const bool movesX = !near(dx, 0.0F);
-  const bool movesY = !near(dy, 0.0F);
-  const bool movesZ = !near(dz, 0.0F);
-  const std::uint8_t movedAxisCount =
-      static_cast<std::uint8_t>(movesX ? 1U : 0U) +
-      static_cast<std::uint8_t>(movesY ? 1U : 0U) +
-      static_cast<std::uint8_t>(movesZ ? 1U : 0U);
-  if (movedAxisCount != 1U) {
+  const float length = std::sqrt(dx * dx + dy * dy + dz * dz);
+  if (!std::isfinite(length) || near(length, 0.0F)) {
     return false;
   }
 
@@ -738,13 +733,10 @@ bool creativeDebugLineBox(const RenderCreativeWireframeDebugLine& line,
             (line.start.y + line.end.y) * 0.5F,
             (line.start.z + line.end.z) * 0.5F};
   const float thickness = std::max(line.thickness, 0.001F);
-  if (movesX) {
-    size = {std::fabs(dx), thickness, thickness};
-  } else if (movesY) {
-    size = {thickness, std::fabs(dy), thickness};
-  } else {
-    size = {thickness, thickness, std::fabs(dz)};
-  }
+  size = {length, thickness, thickness};
+  const float horizontalLength = std::sqrt(dx * dx + dy * dy);
+  rotationEulerRadians =
+      {0.0F, std::atan2(-dz, horizontalLength), std::atan2(dy, dx)};
   color = {line.color.r, line.color.g, line.color.b};
   return true;
 }
@@ -1563,16 +1555,19 @@ CreativeWireframeDebugCpuGeometry buildCreativeWireframeDebugCpuGeometry(
     Vec3 center;
     Vec3 size;
     Vec3 color;
+    Vec3 rotationEulerRadians;
     if (!creativeDebugLineBox(creativeWireframeDebug->lines[index],
                               center,
                               size,
-                              color) ||
+                              color,
+                              rotationEulerRadians) ||
         !appendBoxIfFits(result.vertices,
                          result.indices,
                          result.indexedDraws,
                          center,
                          size,
-                         color)) {
+                         color,
+                         rotationEulerRadians)) {
       ++result.skippedCount;
       continue;
     }

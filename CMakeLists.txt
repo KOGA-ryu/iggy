@@ -50,6 +50,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/document/DocumentValidation.cpp
     src/app/iggy3d/creative/document/TerrainField.cpp
     src/app/iggy3d/creative/document/TerrainHeightField.cpp
+    src/app/iggy3d/creative/document/TerrainContours.cpp
     src/app/iggy3d/creative/document/TerrainRaycast.cpp
     src/app/iggy3d/creative/document/TerrainRender.cpp
     src/app/iggy3d/creative/document/TerrainMaterialField.cpp
@@ -357,6 +358,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorSurfaceExtrude.cpp
   apps/iggy3d_creative/EditorTerrain.cpp
   apps/iggy3d_creative/EditorTerrainGeneration.cpp
+  apps/iggy3d_creative/EditorTerrainContours.cpp
   apps/iggy3d_creative/EditorTerrainOverlay.cpp
   apps/iggy3d_creative/EditorTerrainGrade.cpp
   apps/iggy3d_creative/EditorTerrainPath.cpp

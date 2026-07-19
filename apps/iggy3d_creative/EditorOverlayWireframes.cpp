@@ -869,7 +869,7 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
     for (const GizmoAxisShaft& shaft : gizmoShafts) {
       RenderCreativeWireframeDebugLine gizmoLine;
       gizmoLine.start = request.gizmoFrame.center;
-      gizmoLine.end = shaft.tip;  // Axis-aligned: only one component differs.
+      gizmoLine.end = shaft.tip;
       gizmoLine.color = shaft.color;
       gizmoLine.objectId =
           static_cast<creative::CreativeObjectId>(selectedId);

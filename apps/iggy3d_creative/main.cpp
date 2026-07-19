@@ -739,6 +739,15 @@ int main(int argc, char** argv) {
       invalidateCreativeEditorGeneratedTerrainPreview(
           terrainGenerationPreviewCache);
     }
+    const creative::CreativeTerrainSurfacePlan* terrainContourSurface =
+        &sceneCache.composedTerrainSurface;
+    std::uint64_t terrainContourSurfaceKey =
+        sceneCache.terrainSurfaceBuildCount;
+    if (terrainGenerationPreviewCache.valid &&
+        selectedPreview == &terrainGenerationPreviewCache.preview) {
+      terrainContourSurface = &terrainGenerationPreviewCache.composedSurface;
+      terrainContourSurfaceKey = terrainGenerationPreviewCache.heightHash;
+    }
     StandaloneRoomBakePreviewScene& roomBakePreview = *selectedPreview;
     SceneProjectionResult& scene = roomBakePreview.scene;
     DebugProjectionResult debug{};
@@ -830,10 +839,7 @@ int main(int argc, char** argv) {
 
     // ---- GIZMO GEOMETRY -----------------------------------------------------
     // Build the 3 axis shafts at the selected object's center C = (min+max)/2.
-    // Each shaft is a single AXIS-ALIGNED world segment (start=C, end=C+dir*L),
-    // which is the ONLY geometry the renderer's creativeDebugLineBox will draw
-    // (it silently skips any segment moving along more than one world axis). The
-    // gizmo wireframe lines are appended to the yellow selection-box lines below.
+    // Gizmo wireframe lines are appended to the yellow selection-box lines.
     const CreativeEditorGizmoFrame gizmoFrame = buildCreativeEditorGizmoFrame(
         selection, editor.interaction.movingPlatformPathEdit, frame.camera,
         extent.width, extent.height, kGizmoAxisLength);
@@ -856,7 +862,10 @@ int main(int argc, char** argv) {
          frameInput.inputFrame.context,
          frameInput.activeControlDevice,
          &bootstrapData.staticMeshAssetCatalog,
-         &sceneCache.placementClearance},
+         &sceneCache.placementClearance,
+         &renderDocument,
+         terrainContourSurface,
+         terrainContourSurfaceKey},
         overlayFrame);
 
     iggy3d_creative_app::endCreativeEditorDesktopFrame(editor.desktopUi);

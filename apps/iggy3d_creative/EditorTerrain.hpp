@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/iggy3d/creative/document/TerrainContours.hpp"
 #include "app/iggy3d/creative/document/TerrainField.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
@@ -210,6 +211,23 @@ struct CreativeTerrainRegionState {
   CreativeTerrainStampPlacementState stamp{};
 };
 
+struct CreativeTerrainContourDisplayState {
+  bool visible = false;
+  std::uint16_t intervalCells = 2U;
+  std::uint16_t majorEvery = 5U;
+  bool cacheValid = false;
+  bool sourceOverride = false;
+  iggy3d::creative::CreativeDocumentId documentId =
+      iggy3d::creative::kInvalidDocumentId;
+  std::uint64_t terrainRevision = 0U;
+  std::uint64_t terrainHeightRevision = 0U;
+  std::uint64_t sourceKey = 0U;
+  std::uint16_t cachedIntervalCells = 0U;
+  std::uint16_t cachedMajorEvery = 0U;
+  std::uint64_t buildCount = 0U;
+  iggy3d::creative::CreativeTerrainContourPlan plan{};
+};
+
 struct CreativeEditorTerrainState {
   std::uint16_t heightCells = 4U;
   std::uint16_t radiusCells = 4U;
@@ -226,6 +244,7 @@ struct CreativeEditorTerrainState {
   CreativeTerrainProfileState profile{};
   CreativeTerrainPathState path{};
   CreativeTerrainRegionState region{};
+  CreativeTerrainContourDisplayState contours{};
 };
 
 enum class CreativeEditorTerrainEditKind : std::uint8_t {
@@ -617,6 +636,20 @@ appendCreativeEditorWorldLayoutTerrainImpactOverlay(
     bool captureMode = false);
 
 void appendCreativeEditorTerrainOverlay(
+    const iggy3d::creative::CreativeDocument& document,
+    const CreativeEditorState& editor,
+    float wireThickness,
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines,
+    bool captureMode = false);
+
+[[nodiscard]] bool refreshCreativeEditorTerrainContours(
+    CreativeTerrainContourDisplayState& state,
+    const iggy3d::creative::CreativeDocument& document,
+    const iggy3d::creative::CreativeTerrainSurfacePlan* surfaceOverride =
+        nullptr,
+    std::uint64_t sourceKey = 0U);
+
+[[nodiscard]] std::size_t appendCreativeEditorTerrainContours(
     const iggy3d::creative::CreativeDocument& document,
     const CreativeEditorState& editor,
     float wireThickness,
