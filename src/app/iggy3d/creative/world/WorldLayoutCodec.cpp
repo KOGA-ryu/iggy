@@ -270,6 +270,8 @@ bool validateForEncoding(const CreativeWorldLayout& layout,
         !validRect(building.rootFootprint) ||
         enumValue(building.rootMode) >
             enumValue(CreativeBuildingRootMode::ExistingRoom) ||
+        enumValue(building.groundingMode) >=
+            enumValue(CreativeWorldLayoutGroundingMode::Count) ||
         building.tags.size() > kCreativeWorldLayoutCodecMaxRecords ||
         !std::all_of(building.tags.begin(), building.tags.end(), validString)) {
       failure = {CreativeWorldLayoutCodecStatus::InvalidRecord,
@@ -614,7 +616,9 @@ CreativeWorldLayoutEncodeResult encodeCreativeWorldLayout(
            << static_cast<unsigned>(enumValue(building.rootMode));
     writeRect(output, building.rootFootprint);
     output << ' ' << building.rootBaseLayer << ' ' << building.rootHeightCells
-           << ' ' << (building.visible ? 1 : 0) << ' ' << building.tags.size();
+           << ' ' << static_cast<unsigned>(enumValue(building.groundingMode))
+           << ' ' << building.maximumGroundReliefCells << ' '
+           << (building.visible ? 1 : 0) << ' ' << building.tags.size();
     for (const std::string& tag : building.tags) {
       output << ' ' << hexString(tag);
     }
@@ -859,9 +863,11 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
 
   std::size_t lineIndex = 2U;
   std::size_t totalTagCount = 0U;
-  const auto readBuilding = [&](RecordReader& reader,
+  const auto readBuilding = [codecVersion, &totalTagCount](
+                                RecordReader& reader,
                                 CreativeWorldLayoutBuilding& building) {
     std::uint8_t rootMode = 0U;
+    std::uint8_t groundingMode = 0U;
     std::size_t tagCount = 0U;
     if (!reader.readLiteral("B") || !reader.readHex(building.stableKey) ||
         !reader.readHex(building.name) || !reader.readUnsigned(rootMode) ||
@@ -869,12 +875,19 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
         !readRect(reader, building.rootFootprint) ||
         !reader.readI32(building.rootBaseLayer) ||
         !reader.readUnsigned(building.rootHeightCells) ||
+        (codecVersion >= 11U &&
+         (!reader.readUnsigned(groundingMode) ||
+          groundingMode >=
+              enumValue(CreativeWorldLayoutGroundingMode::Count) ||
+          !reader.readUnsigned(building.maximumGroundReliefCells))) ||
         !reader.readBool(building.visible) || !reader.readSize(tagCount) ||
         tagCount > kCreativeWorldLayoutCodecMaxRecords - totalTagCount) {
       return false;
     }
     totalTagCount += tagCount;
     building.rootMode = static_cast<CreativeBuildingRootMode>(rootMode);
+    building.groundingMode =
+        static_cast<CreativeWorldLayoutGroundingMode>(groundingMode);
     building.tags.resize(tagCount);
     for (std::string& tag : building.tags) {
       if (!reader.readHex(tag)) {

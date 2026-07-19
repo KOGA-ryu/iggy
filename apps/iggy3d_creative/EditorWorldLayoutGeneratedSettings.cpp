@@ -294,6 +294,22 @@ applyCreativeEditorWorldLayoutGeneratedBuildingOperationToDocument(
       "desktop_generated_building_operation", "building updated in 3D");
 }
 
+CreativeEditorWorldLayoutApplyReceipt
+applyCreativeEditorWorldLayoutBuildingGroundingSettingsToDocument(
+    CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,
+    std::size_t buildingIndex,
+    CreativeEditorWorldLayoutBuildingGroundingSettings settings) {
+  CreativeEditorWorldLayoutState candidate =
+      makeWorldLayoutSettingsCandidate(state);
+  const CreativeEditorWorldLayoutEditReceipt editReceipt =
+      setCreativeEditorWorldLayoutBuildingGroundingSettings(
+          candidate, buildingIndex, settings);
+  return applyWorldLayoutSettingsCandidate(
+      state, appState, std::move(candidate), editReceipt,
+      "desktop_generated_building_grounding",
+      "building grounding updated in 3D");
+}
+
 CreativeEditorWorldLayoutPreviewReceipt
 previewCreativeEditorWorldLayoutRoomSettings(
     CreativeEditorWorldLayoutState& state,

@@ -89,6 +89,40 @@ bool levelSettingsAreOwnedAndValidated() {
                 "a level is a real selection with an owning building");
 }
 
+bool buildingGroundingSettingsAreExplicitAndBounded() {
+  app::CreativeEditorWorldLayoutState state = shellState();
+  app::CreativeEditorWorldLayoutBuildingGroundingSettings settings;
+  const bool read =
+      app::readCreativeEditorWorldLayoutBuildingGroundingSettings(
+          state, 0U, settings);
+  const std::uint64_t before = state.revision;
+  settings.mode = cr::CreativeWorldLayoutGroundingMode::Foundation;
+  settings.maximumReliefCells = 2U;
+  const auto updated =
+      app::setCreativeEditorWorldLayoutBuildingGroundingSettings(
+          state, 0U, settings);
+  const auto unchanged =
+      app::setCreativeEditorWorldLayoutBuildingGroundingSettings(
+          state, 0U, settings);
+  settings.mode = cr::CreativeWorldLayoutGroundingMode::Count;
+  const auto rejected =
+      app::setCreativeEditorWorldLayoutBuildingGroundingSettings(
+          state, 0U, settings);
+
+  return expect(read &&
+                    settings.maximumReliefCells == 2U &&
+                    updated.accepted && updated.changed &&
+                    state.source.buildings[0].groundingMode ==
+                        cr::CreativeWorldLayoutGroundingMode::Foundation &&
+                    state.source.buildings[0].maximumGroundReliefCells == 2U &&
+                    state.revision == before + 1U,
+                "building grounding is one semantic source property") &&
+         expect(unchanged.accepted && !unchanged.changed &&
+                    !rejected.accepted && !rejected.changed &&
+                    state.revision == before + 1U,
+                "unchanged and invalid grounding settings do not drift source");
+}
+
 bool terrainProfileSettingsAreBounded() {
   app::CreativeEditorWorldLayoutState state = shellState();
   cr::CreativeWorldLayoutTerrainProfile profile;
@@ -432,6 +466,7 @@ bool typedSettingsCommandsGuardIdentityAndPreview() {
 
 int main() {
   const bool ok = levelSettingsAreOwnedAndValidated() &&
+                  buildingGroundingSettingsAreExplicitAndBounded() &&
                   terrainProfileSettingsAreBounded() &&
                   terrainPathSettingsUseTheSharedRecipe() &&
                   objectSettingsPreserveSemanticIdentity() &&

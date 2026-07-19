@@ -66,12 +66,15 @@ void setStatus(CreativeWorldLayoutApplyReceipt& receipt,
   return document.isValid() && document.id() != kInvalidDocumentId &&
          document.nextObjectId() != kInvalidObjectId &&
          document.terrainField().validateInvariants() &&
+         document.terrainHeightField().validateInvariants() &&
          document.terrainMaterialField().validateInvariants() &&
          plan.schemaVersion == kCreativeWorldLayoutSchemaVersion &&
          validStableKey(plan.layoutKey) &&
          document.id() == plan.sourceDocumentId &&
          document.revision() == plan.sourceDocumentRevision &&
          document.terrainField().revision() == plan.sourceTerrainRevision &&
+         document.terrainHeightField().revision() ==
+             plan.sourceTerrainHeightRevision &&
          document.terrainMaterialField().revision() ==
              plan.sourceMaterialRevision;
 }

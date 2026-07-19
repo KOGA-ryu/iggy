@@ -275,6 +275,8 @@ bool noChangeApplyPreservesSourceHistory() {
   noChangePlan.sourceDocumentRevision = live.facade.document().revision();
   noChangePlan.sourceTerrainRevision =
       live.facade.document().terrainField().revision();
+  noChangePlan.sourceTerrainHeightRevision =
+      live.facade.document().terrainHeightField().revision();
   noChangePlan.sourceMaterialRevision =
       live.facade.document().terrainMaterialField().revision();
   const auto applied = app::applyCreativeEditorWorldLayoutPlanWithHistory(

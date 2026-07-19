@@ -379,11 +379,14 @@ fingerprintCreativeWorldLayoutBuilding(const CreativeWorldLayout& layout,
   const CreativeWorldLayoutBuilding& building = layout.buildings[buildingIndex];
   builder.appendUnsigned(static_cast<std::uint8_t>(building.rootMode));
   builder.appendString(building.name);
-  if (building.rootMode != CreativeBuildingRootMode::None) {
+  if (building.rootMode != CreativeBuildingRootMode::None ||
+      building.groundingMode == CreativeWorldLayoutGroundingMode::Foundation) {
     appendRelativeRect(builder, building.rootFootprint, bounds.minimum);
   }
   builder.appendSigned(building.rootBaseLayer);
   builder.appendUnsigned(building.rootHeightCells);
+  builder.appendUnsigned(static_cast<std::uint8_t>(building.groundingMode));
+  builder.appendUnsigned(building.maximumGroundReliefCells);
   builder.appendBool(building.visible);
   const std::size_t tagCount = countIf(
       building.tags, [](const std::string& tag) {

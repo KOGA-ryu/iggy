@@ -136,6 +136,11 @@ iggy3d_add_unit_test(creative_terrain_recipe_tests
 set_tests_properties(creative_terrain_recipe_tests PROPERTIES
   LABELS "unit;app;creative;recipe;terrain;history;iggy3d")
 
+iggy3d_add_unit_test(creative_terrain_grounding_tests
+  tests/unit/creative_terrain_grounding_tests.cpp)
+set_tests_properties(creative_terrain_grounding_tests PROPERTIES
+  LABELS "unit;app;creative;recipe;terrain;grounding;iggy3d")
+
 iggy3d_add_unit_test(creative_world_layout_tests
   tests/unit/creative_world_layout_tests.cpp)
 set_tests_properties(creative_world_layout_tests PROPERTIES

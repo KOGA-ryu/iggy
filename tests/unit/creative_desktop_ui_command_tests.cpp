@@ -1486,6 +1486,15 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSetLevelSettings, context,
           app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutBuildingGrounding =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutSetBuildingGrounding,
+          context, app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badGeneratedBuildingGrounding =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::
+              WorldLayoutApplyGeneratedBuildingGrounding,
+          context, app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult badWorldLayoutTerrainProfileSettings =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSetTerrainProfileSettings,
@@ -1662,6 +1671,13 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badWorldLayoutLevelSettings.message ==
                         "layout level settings: payload mismatch",
                 "level settings reject a mismatched payload") &&
+         expect(!badWorldLayoutBuildingGrounding.accepted &&
+                    badWorldLayoutBuildingGrounding.message ==
+                        "layout building grounding: payload mismatch" &&
+                    !badGeneratedBuildingGrounding.accepted &&
+                    badGeneratedBuildingGrounding.message ==
+                        "generated building grounding: payload mismatch",
+                "building grounding commands reject mismatched payloads") &&
          expect(!badWorldLayoutTerrainProfileSettings.accepted &&
                     badWorldLayoutTerrainProfileSettings.message ==
                         "layout terrain profile settings: payload mismatch",
@@ -2977,6 +2993,10 @@ bool generatedSettingsCannotBypassTerrainReconciliation() {
   const app::CreativeEditorWorldLayoutEditReceipt shell =
       app::createCreativeEditorWorldLayoutBuildingShell(
           state, {{{1, 1}, {7, 5}}, 0.0, 4U, 0.25, 1U});
+  if (!state.source.buildings.empty()) {
+    state.source.buildings[0].groundingMode =
+        cr::CreativeWorldLayoutGroundingMode::Absolute;
+  }
   cr::CreativeWorldLayoutTerrainProfile profile;
   profile.stableKey = "terrain.guard";
   profile.kind = cr::CreativeTerrainRecipeKind::Plateau;
@@ -3272,6 +3292,132 @@ bool generatedBuildingScopeOperationsUseExactPreviewAndOneUndo() {
                 "building duplicate commits source scene and one undo") &&
          expect(rejectedAtomically,
                 "stale and unrelated building targets mutate nothing");
+}
+
+bool buildingGroundingCommandsShareSourceAndGeneratedTransactions() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Building Grounding");
+  static_cast<void>(document.assignId(478U));
+  constexpr std::array<std::uint16_t, 4U> heights{2U, 3U, 2U, 3U};
+  static_cast<void>(
+      document.replaceTerrainHeightField({{0, 0}, 2U, 2U}, heights));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "building_grounding_commands");
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "grounded_house";
+  building.name = "Grounded House";
+  building.rootFootprint = {{0, 0}, {2, 2}};
+  editor.worldLayout.source.buildings.push_back(building);
+  editor.worldLayout.source.levels.push_back(
+      {0U, "ground", "Ground", 0.05, 3U, 1U, 1U, 1U});
+  editor.worldLayout.source.rooms.push_back(
+      {0U, 0U, "room", "Room", {{0, 0}, {2, 2}}, 0.25});
+  ++editor.worldLayout.revision;
+
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const app::CreativeDesktopWorldLayoutBuildingGroundingPayload sourceGrounded{
+      cr::kInvalidObjectId,
+      0U,
+      "grounded_house",
+      {cr::CreativeWorldLayoutGroundingMode::Foundation, 1U}};
+  const app::CreativeDesktopCommandResult sourceChanged = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSetBuildingGrounding, context,
+      sourceGrounded);
+  app::CreativeDesktopWorldLayoutBuildingGroundingPayload sourceAbsolute =
+      sourceGrounded;
+  sourceAbsolute.settings.mode =
+      cr::CreativeWorldLayoutGroundingMode::Absolute;
+  const app::CreativeDesktopCommandResult sourceRestored = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSetBuildingGrounding, context,
+      sourceAbsolute);
+
+  const app::CreativeDesktopCommandResult generated = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  const cr::CreativeObject* initialFloor = findGeneratedObject(
+      appState.facade.document(), editor.worldLayout.source,
+      cr::CreativeWorldLayoutTable::Room, 0U, cr::CreativeObjectKind::Floor);
+  if (!generated.accepted || initialFloor == nullptr) {
+    return expect(false, "building grounding command fixture generated");
+  }
+  const cr::CreativeObjectId floorId = initialFloor->id;
+  const std::uint64_t undoBefore = cr::creativeUndoDepth(appState.history);
+  app::CreativeDesktopWorldLayoutBuildingGroundingPayload generatedGrounded =
+      sourceGrounded;
+  generatedGrounded.objectId = floorId;
+  const app::CreativeDesktopCommandResult grounded = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedBuildingGrounding,
+      context, generatedGrounded);
+  const cr::CreativeObject* groundedFloor = findGeneratedObject(
+      appState.facade.document(), editor.worldLayout.source,
+      cr::CreativeWorldLayoutTable::Room, 0U, cr::CreativeObjectKind::Floor);
+  const auto foundationFound = std::find_if(
+      appState.facade.document().objects().begin(),
+      appState.facade.document().objects().end(),
+      [](const cr::CreativeObject& object) {
+        return object.name == "Grounded House Foundation";
+      });
+  const bool groundedState =
+      grounded.accepted && grounded.changed && grounded.worldLayoutChanged &&
+      grounded.sceneChanged && groundedFloor != nullptr &&
+      near(groundedFloor->bounds.min.y, 3.0) &&
+      foundationFound != appState.facade.document().objects().end() &&
+      editor.worldLayout.source.buildings[0].groundingMode ==
+          cr::CreativeWorldLayoutGroundingMode::Foundation &&
+      editor.worldLayout.source.buildings[0].maximumGroundReliefCells == 1U &&
+      cr::creativeUndoDepth(appState.history) == undoBefore + 1U;
+
+  const app::CreativeDesktopCommandResult undone =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const cr::CreativeObject* restoredFloor = findGeneratedObject(
+      appState.facade.document(), editor.worldLayout.source,
+      cr::CreativeWorldLayoutTable::Room, 0U, cr::CreativeObjectKind::Floor);
+  const bool undoRestored =
+      undone.accepted && restoredFloor != nullptr &&
+      near(restoredFloor->bounds.min.y, 0.0) &&
+      editor.worldLayout.source.buildings[0].groundingMode ==
+          cr::CreativeWorldLayoutGroundingMode::Absolute &&
+      std::none_of(appState.facade.document().objects().begin(),
+                   appState.facade.document().objects().end(),
+                   [](const cr::CreativeObject& object) {
+                     return object.name == "Grounded House Foundation";
+                   });
+  const app::CreativeDesktopCommandResult redone =
+      dispatchOne(app::CreativeDesktopCommandId::Redo, context);
+  const cr::CreativeObject* redoneFloor = findGeneratedObject(
+      appState.facade.document(), editor.worldLayout.source,
+      cr::CreativeWorldLayoutTable::Room, 0U, cr::CreativeObjectKind::Floor);
+
+  app::CreativeDesktopWorldLayoutBuildingGroundingPayload stale =
+      generatedGrounded;
+  stale.stableKey = "stale_house";
+  const std::uint64_t rejectRevision = editor.worldLayout.revision;
+  const std::uint64_t rejectDocumentRevision =
+      appState.facade.document().revision();
+  const app::CreativeDesktopCommandResult rejected = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedBuildingGrounding,
+      context, stale);
+
+  return expect(sourceChanged.accepted && sourceChanged.changed &&
+                    sourceChanged.worldLayoutChanged &&
+                    sourceRestored.accepted && sourceRestored.changed,
+                "2D grounding command edits semantic source only") &&
+         expect(groundedState,
+                "generated grounding updates source scene and one undo") &&
+         expect(undoRestored && redone.accepted && redoneFloor != nullptr &&
+                    near(redoneFloor->bounds.min.y, 3.0),
+                "grounding undo and redo restore source and geometry") &&
+         expect(!rejected.accepted && !rejected.changed &&
+                    editor.worldLayout.revision == rejectRevision &&
+                    appState.facade.document().revision() ==
+                        rejectDocumentRevision,
+                "stale grounding target rejects atomically");
 }
 
 bool generatedLevelSettingsRebuildEveryRoomAtomically() {
@@ -4854,6 +5000,7 @@ int main() {
   ok = worldLayoutObjectFocusAndAdoptionCloseTheSourceLoop() && ok;
   ok = generatedSettingsCannotBypassTerrainReconciliation() && ok;
   ok = generatedBuildingScopeOperationsUseExactPreviewAndOneUndo() && ok;
+  ok = buildingGroundingCommandsShareSourceAndGeneratedTransactions() && ok;
   ok = generatedLevelSettingsRebuildEveryRoomAtomically() && ok;
   ok = generatedRoomSettingsRebuildTopologyAtomically() && ok;
   ok = generatedWallAndOpeningSettingsCommitSourceAndSceneTogether() && ok;

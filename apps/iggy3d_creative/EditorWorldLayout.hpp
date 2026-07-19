@@ -514,6 +514,16 @@ struct CreativeEditorWorldLayoutLevelSettingsDraft {
   CreativeEditorWorldLayoutLevelSettings settings;
 };
 
+struct CreativeEditorWorldLayoutBuildingGroundingSettings {
+  cr::CreativeWorldLayoutGroundingMode mode =
+      cr::CreativeWorldLayoutGroundingMode::Absolute;
+  std::uint16_t maximumReliefCells = 4U;
+
+  [[nodiscard]] friend bool operator==(
+      CreativeEditorWorldLayoutBuildingGroundingSettings,
+      CreativeEditorWorldLayoutBuildingGroundingSettings) noexcept = default;
+};
+
 struct CreativeEditorWorldLayoutTerrainProfileSettings {
   cr::CreativeTerrainRecipeKind kind = cr::CreativeTerrainRecipeKind::Hill;
   cr::CreativeTerrainCoord2 center;
@@ -1231,6 +1241,18 @@ applyCreativeEditorWorldLayoutLevelOperation(
 setCreativeEditorWorldLayoutLevelSettings(
     CreativeEditorWorldLayoutState& state, std::size_t levelIndex,
     CreativeEditorWorldLayoutLevelSettings settings);
+[[nodiscard]] bool readCreativeEditorWorldLayoutBuildingGroundingSettings(
+    const CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
+    CreativeEditorWorldLayoutBuildingGroundingSettings& output) noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+setCreativeEditorWorldLayoutBuildingGroundingSettings(
+    CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
+    CreativeEditorWorldLayoutBuildingGroundingSettings settings);
+[[nodiscard]] CreativeEditorWorldLayoutApplyReceipt
+applyCreativeEditorWorldLayoutBuildingGroundingSettingsToDocument(
+    CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,
+    std::size_t buildingIndex,
+    CreativeEditorWorldLayoutBuildingGroundingSettings settings);
 [[nodiscard]] CreativeEditorWorldLayoutApplyReceipt
 applyCreativeEditorWorldLayoutLevelSettingsToDocument(
     CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,

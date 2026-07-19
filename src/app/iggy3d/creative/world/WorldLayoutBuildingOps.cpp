@@ -98,7 +98,8 @@ bool offsetBuilding(CreativeWorldLayout& layout,
                     std::int64_t deltaXCells,
                     std::int64_t deltaZCells) noexcept {
   CreativeWorldLayoutBuilding& building = layout.buildings[buildingIndex];
-  if (building.rootMode != CreativeBuildingRootMode::None &&
+  if ((building.rootMode != CreativeBuildingRootMode::None ||
+       building.groundingMode == CreativeWorldLayoutGroundingMode::Foundation) &&
       !offsetRect(building.rootFootprint, deltaXCells, deltaZCells)) {
     return false;
   }
@@ -199,7 +200,8 @@ bool measureCreativeWorldLayoutBuildingBounds(
     return false;
   }
   const CreativeWorldLayoutBuilding& building = layout.buildings[buildingIndex];
-  if (building.rootMode != CreativeBuildingRootMode::None) {
+  if (building.rootMode != CreativeBuildingRootMode::None ||
+      building.groundingMode == CreativeWorldLayoutGroundingMode::Foundation) {
     includeRect(output, building.rootFootprint);
   }
   for (const CreativeWorldLayoutRoom& room : layout.rooms) {
@@ -235,7 +237,8 @@ bool canMoveCreativeWorldLayoutBuilding(
   }
   const CreativeWorldLayoutBuilding& building =
       layout.buildings[request.buildingIndex];
-  if (building.rootMode != CreativeBuildingRootMode::None) {
+  if (building.rootMode != CreativeBuildingRootMode::None ||
+      building.groundingMode == CreativeWorldLayoutGroundingMode::Foundation) {
     CreativeWorldLayoutRect footprint = building.rootFootprint;
     if (!offsetRect(footprint, request.deltaXCells, request.deltaZCells)) {
       return false;

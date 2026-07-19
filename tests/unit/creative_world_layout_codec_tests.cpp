@@ -30,6 +30,9 @@ cr::CreativeWorldLayout richLayout() {
   building.rootFootprint = {{-4, -3}, {8, 7}};
   building.rootBaseLayer = -1;
   building.rootHeightCells = 4U;
+  building.groundingMode =
+      cr::CreativeWorldLayoutGroundingMode::Foundation;
+  building.maximumGroundReliefCells = 3U;
   building.tags = {"interior", "author=map maker"};
   layout.buildings.push_back(building);
 
@@ -202,7 +205,10 @@ bool deterministicRoundTripPreservesEveryTable() {
          expect(
              decoded.layout.buildings.size() == 1U &&
                  decoded.layout.buildings[0].name == source.buildings[0].name &&
-                 decoded.layout.buildings[0].tags == source.buildings[0].tags,
+                 decoded.layout.buildings[0].tags == source.buildings[0].tags &&
+                 decoded.layout.buildings[0].groundingMode ==
+                     cr::CreativeWorldLayoutGroundingMode::Foundation &&
+                 decoded.layout.buildings[0].maximumGroundReliefCells == 3U,
              "building strings and tags round trip") &&
          expect(decoded.layout.levels.size() == 2U &&
                     decoded.layout.levels[0].floorTopLayer == 1.25 &&
@@ -659,6 +665,34 @@ bool versionNineOpeningsMigrateToProceduralInserts() {
                 "version-nine migration writes current opening fields");
 }
 
+bool versionTenBuildingsMigrateToAbsoluteGrounding() {
+  const std::string versionTen =
+      "IGGY3D_WORLD_LAYOUT 10\n"
+      "L 10 6c6567616379 0 1 0 0 0 0 0 0 0 0 0 0\n"
+      "B 686f757365 486f757365 0 0 0 8 4 0 3 1 0\n"
+      "END\n";
+  const cr::CreativeWorldLayoutDecodeResult decoded =
+      cr::decodeCreativeWorldLayout(versionTen);
+  const cr::CreativeWorldLayoutEncodeResult encoded =
+      decoded.accepted ? cr::encodeCreativeWorldLayout(decoded.layout)
+                       : cr::CreativeWorldLayoutEncodeResult{};
+
+  return expect(decoded.accepted && decoded.layout.buildings.size() == 1U &&
+                    decoded.layout.schemaVersion ==
+                        cr::kCreativeWorldLayoutSchemaVersion &&
+                    decoded.layout.buildings[0].groundingMode ==
+                        cr::CreativeWorldLayoutGroundingMode::Absolute &&
+                    decoded.layout.buildings[0]
+                            .maximumGroundReliefCells == 4U,
+                "version-ten buildings retain absolute elevation") &&
+         expect(encoded.accepted &&
+                    encoded.encodedText.starts_with(
+                        "IGGY3D_WORLD_LAYOUT " +
+                        std::to_string(cr::kCreativeWorldLayoutCodecVersion) +
+                        "\n"),
+                "version-ten migration writes grounding fields");
+}
+
 }  // namespace
 
 int main() {
@@ -672,6 +706,7 @@ int main() {
                   versionSixSourceMigratesWithoutFabricatedVerticalConnectors() &&
                   versionSevenLevelsMigrateToFlatRoofDefaults() &&
                   versionEightObjectsMigrateToIdentityCatalogPose() &&
-                  versionNineOpeningsMigrateToProceduralInserts();
+                  versionNineOpeningsMigrateToProceduralInserts() &&
+                  versionTenBuildingsMigrateToAbsoluteGrounding();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -17,7 +17,7 @@
 
 namespace iggy3d::creative {
 
-inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 10U;
+inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 11U;
 inline constexpr std::size_t kInvalidCreativeWorldLayoutIndex =
     std::numeric_limits<std::size_t>::max();
 inline constexpr std::uint16_t kDefaultCreativeWorldLayoutWallHeightCells = 3U;
@@ -32,6 +32,12 @@ struct CreativeWorldLayoutRect {
   CreativeTerrainCoord2 maximum{};
 };
 
+enum class CreativeWorldLayoutGroundingMode : std::uint8_t {
+  Absolute,
+  Foundation,
+  Count,
+};
+
 struct CreativeWorldLayoutBuilding {
   std::string stableKey;
   std::string name;
@@ -41,6 +47,9 @@ struct CreativeWorldLayoutBuilding {
   std::uint16_t rootHeightCells = 3U;
   bool visible = true;
   std::vector<std::string> tags;
+  CreativeWorldLayoutGroundingMode groundingMode =
+      CreativeWorldLayoutGroundingMode::Absolute;
+  std::uint16_t maximumGroundReliefCells = 4U;
 };
 
 struct CreativeWorldLayoutBox {
@@ -305,6 +314,7 @@ struct CreativeWorldLayoutPlan {
   CreativeDocumentId sourceDocumentId = kInvalidDocumentId;
   std::uint64_t sourceDocumentRevision = 0U;
   std::uint64_t sourceTerrainRevision = 0U;
+  std::uint64_t sourceTerrainHeightRevision = 0U;
   std::uint64_t sourceMaterialRevision = 0U;
   std::vector<CreativeObjectId> objectDetachIds;
   std::vector<CreativeObjectId> objectRemoveIds;
@@ -321,6 +331,8 @@ struct CreativeWorldLayoutReceipt {
   CreativeWorldLayoutTable failedTable = CreativeWorldLayoutTable::None;
   std::size_t failedIndex = kInvalidCreativeWorldLayoutIndex;
   std::uint64_t buildingCount = 0U;
+  std::uint64_t groundedBuildingCount = 0U;
+  std::uint64_t foundationObjectCount = 0U;
   // Recipes and objects scheduled by this compile, not total source output.
   std::uint64_t objectRecipeCount = 0U;
   std::uint64_t objectRecipeCreateCount = 0U;

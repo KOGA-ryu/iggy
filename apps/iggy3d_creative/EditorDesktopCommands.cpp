@@ -1491,6 +1491,31 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutSetBuildingGrounding: {
+      const auto* payload = payloadAs<
+          CreativeDesktopWorldLayoutBuildingGroundingPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout building grounding: payload mismatch";
+        break;
+      }
+      if (!creativeEditorWorldLayoutSourceStableKeyMatches(
+              editor.worldLayout, cr::CreativeWorldLayoutTable::Building,
+              payload->buildingIndex, payload->stableKey)) {
+        result.message = "layout building grounding: stale target";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          setCreativeEditorWorldLayoutBuildingGroundingSettings(
+              editor.worldLayout, payload->buildingIndex, payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutApplyGeneratedLevelSettings: {
       const auto* payload =
           payloadAs<CreativeDesktopGeneratedLevelSettingsPayload>(command);
@@ -1828,6 +1853,46 @@ void dispatchOne(const CreativeDesktopCommand& command,
               payload->buildingIndex};
         }
       }
+      break;
+    }
+    case CreativeDesktopCommandId::
+        WorldLayoutApplyGeneratedBuildingGrounding: {
+      const auto* payload = payloadAs<
+          CreativeDesktopWorldLayoutBuildingGroundingPayload>(command);
+      if (payload == nullptr) {
+        result.message = "generated building grounding: payload mismatch";
+        break;
+      }
+      const creative::CreativeObject* object =
+          appState.facade.findObject(payload->objectId);
+      if (object == nullptr) {
+        result.message = "generated building grounding: target missing";
+        break;
+      }
+      const GeneratedSourceScopeResolution scope =
+          resolveGeneratedSourceScope(
+              editor.worldLayout.source, *object,
+              creative::CreativeWorldLayoutTable::Building,
+              payload->buildingIndex, payload->stableKey);
+      if (!scope.ancestor) {
+        result.message = "generated building grounding: source mismatch";
+        break;
+      }
+      if (!scope.stable) {
+        result.message = "generated building grounding: stale target";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutApplyReceipt receipt =
+          applyCreativeEditorWorldLayoutBuildingGroundingSettingsToDocument(
+              editor.worldLayout, appState, payload->buildingIndex,
+              payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive || receipt.apply.changed;
+      result.message = editor.worldLayout.statusMessage;
       break;
     }
     case CreativeDesktopCommandId::WorldLayoutCaptureBuildingTemplate: {

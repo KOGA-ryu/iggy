@@ -245,6 +245,15 @@ struct CreativeDesktopGeneratedBuildingOperationPayload {
   std::int64_t deltaZCells = 0;
 };
 
+struct CreativeDesktopWorldLayoutBuildingGroundingPayload {
+  iggy3d::creative::CreativeObjectId objectId =
+      iggy3d::creative::kInvalidObjectId;
+  std::size_t buildingIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::string stableKey;
+  CreativeEditorWorldLayoutBuildingGroundingSettings settings;
+};
+
 struct CreativeDesktopWorldLayoutBuildingTemplateCapturePayload {
   std::size_t buildingIndex =
       iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
@@ -439,6 +448,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutBuildingDuplicatePayload,
     CreativeDesktopWorldLayoutBuildingTransformPayload,
     CreativeDesktopGeneratedBuildingOperationPayload,
+    CreativeDesktopWorldLayoutBuildingGroundingPayload,
     CreativeDesktopWorldLayoutBuildingTemplateCapturePayload,
     CreativeDesktopWorldLayoutBuildingTemplateSyncPayload,
     CreativeDesktopWorldLayoutBuildingTemplateSelectionPayload,

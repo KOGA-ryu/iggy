@@ -326,7 +326,10 @@ bool transformOwnedGeometry(
     CreativeWorldLayoutBuildingTransformOperation operation,
     CreativeWorldLayoutBuildingTransformStatus& failureStatus) noexcept {
   CreativeWorldLayoutBuilding& building = candidate.buildings[buildingIndex];
-  if (building.rootMode == CreativeBuildingRootMode::CreateRoom) {
+  if (building.rootMode == CreativeBuildingRootMode::CreateRoom ||
+      (building.rootMode == CreativeBuildingRootMode::None &&
+       building.groundingMode ==
+           CreativeWorldLayoutGroundingMode::Foundation)) {
     const CreativeWorldLayoutRect sourceFootprint =
         source.buildings[buildingIndex].rootFootprint;
     if (!validRect(sourceFootprint)) {

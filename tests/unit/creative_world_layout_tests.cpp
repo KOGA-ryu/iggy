@@ -37,6 +37,99 @@ bool sameBounds(cr::CreativeBounds lhs, cr::CreativeBounds rhs) {
   return sameVec3(lhs.min, rhs.min) && sameVec3(lhs.max, rhs.max);
 }
 
+cr::CreativeDocument makeDocument(cr::CreativeDocumentId id);
+const cr::CreativeObject* findNamed(const cr::CreativeDocument& document,
+                                    std::string_view name);
+
+bool terrainGroundedBuildingsShiftAsOneAndFillRelief() {
+  cr::CreativeDocument document = makeDocument(76U);
+  constexpr std::array<std::uint16_t, 4U> heights{2U, 3U, 2U, 3U};
+  const cr::CreativeTerrainHeightFieldReplaceReceipt terrain =
+      document.replaceTerrainHeightField({{0, 0}, 2U, 2U}, heights);
+
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "grounded_layout";
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "grounded_house";
+  building.name = "Grounded House";
+  building.rootFootprint = {{0, 0}, {2, 2}};
+  building.groundingMode =
+      cr::CreativeWorldLayoutGroundingMode::Foundation;
+  building.maximumGroundReliefCells = 1U;
+  layout.buildings.push_back(building);
+  layout.levels.push_back(
+      {0U, "ground", "Ground", 0.05, 3U, 1U, 1U, 1U});
+  layout.rooms.push_back(
+      {0U, 0U, "room", "Grounded Room", {{0, 0}, {2, 2}}, 0.25});
+
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, layout);
+  cr::Facade facade;
+  static_cast<void>(facade.installDocument(std::move(document)));
+  const cr::CreativeWorldLayoutApplyReceipt applied =
+      compiled.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlan(facade, compiled.plan)
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const cr::CreativeObject* floor =
+      findNamed(facade.document(), "Grounded Room Floor");
+  const cr::CreativeObject* foundation =
+      findNamed(facade.document(), "Grounded House Foundation");
+
+  return expect(terrain.accepted && terrain.changed,
+                "grounded building fixture has dense terrain") &&
+         expect(compiled.receipt.accepted &&
+                    compiled.receipt.groundedBuildingCount == 1U &&
+                    compiled.receipt.foundationObjectCount == 1U,
+                "world layout reports grounded foundation output") &&
+         expect(applied.accepted && applied.changed && floor != nullptr &&
+                    near(floor->bounds.min.y, 4.0) &&
+                    near(floor->bounds.max.y, 4.05),
+                "floor underside rests on highest terrain cell") &&
+         expect(foundation != nullptr &&
+                    near(foundation->bounds.min.y, 3.0) &&
+                    near(foundation->bounds.max.y, 4.0),
+                "foundation fills bounded terrain relief");
+}
+
+bool denseTerrainRevisionInvalidatesGroundedPlans() {
+  cr::CreativeDocument document = makeDocument(77U);
+  constexpr std::array<std::uint16_t, 1U> firstHeight{2U};
+  static_cast<void>(
+      document.replaceTerrainHeightField({{0, 0}, 1U, 1U}, firstHeight));
+
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "stale_grounding";
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "house";
+  building.name = "House";
+  building.rootFootprint = {{0, 0}, {1, 1}};
+  building.groundingMode =
+      cr::CreativeWorldLayoutGroundingMode::Foundation;
+  layout.buildings.push_back(building);
+  layout.levels.push_back(
+      {0U, "ground", "Ground", 0.05, 2U, 1U, 1U, 1U});
+  layout.rooms.push_back(
+      {0U, 0U, "room", "Room", {{0, 0}, {1, 1}}, 0.1});
+
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, layout);
+  constexpr std::array<std::uint16_t, 1U> changedHeight{3U};
+  const cr::CreativeTerrainHeightFieldReplaceReceipt changed =
+      document.replaceTerrainHeightField({{0, 0}, 1U, 1U}, changedHeight);
+  cr::Facade facade;
+  static_cast<void>(facade.installDocument(std::move(document)));
+  const cr::CreativeWorldLayoutApplyReceipt stale =
+      cr::applyCreativeWorldLayoutPlan(facade, compiled.plan);
+
+  return expect(compiled.receipt.accepted,
+                compiled.receipt.reasonCode) &&
+         expect(changed.accepted && changed.changed,
+                "dense terrain edit changes the source revision") &&
+         expect(!stale.accepted && !stale.changed &&
+                    stale.status == cr::CreativeWorldLayoutStatus::StalePlan,
+                "dense terrain revision invalidates grounded plan");
+}
+
 cr::CreativeDocument makeDocument(cr::CreativeDocumentId id) {
   cr::CreativeDocument document = cr::CreativeDocument::create("Layout Test");
   static_cast<void>(document.assignId(id));
@@ -456,6 +549,13 @@ bool buildingTransformsRoundTripAndRejectOverflow() {
   const auto rightThenLeft = cr::transformCreativeWorldLayoutBuilding(
       right.transformed,
       {0U, cr::CreativeWorldLayoutBuildingTransformOperation::RotateLeft90});
+  cr::CreativeWorldLayout grounded = source;
+  grounded.buildings[0].rootMode = cr::CreativeBuildingRootMode::None;
+  grounded.buildings[0].groundingMode =
+      cr::CreativeWorldLayoutGroundingMode::Foundation;
+  const auto groundedTurn = cr::transformCreativeWorldLayoutBuilding(
+      grounded,
+      {0U, cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90});
 
   cr::CreativeWorldLayout overflow = source;
   overflow.buildings[0].rootFootprint = {
@@ -484,6 +584,14 @@ bool buildingTransformsRoundTripAndRejectOverflow() {
                     sameBuildingTransformGeometry(source,
                                                   rightThenLeft.transformed),
                 "left and right quarter turns are exact inverses") &&
+         expect(groundedTurn.accepted &&
+                    groundedTurn.transformed.buildings[0].rootFootprint
+                            .minimum ==
+                        cr::CreativeTerrainCoord2{10, 20} &&
+                    groundedTurn.transformed.buildings[0].rootFootprint
+                            .maximum ==
+                        cr::CreativeTerrainCoord2{16, 28},
+                "grounded root footprint follows a rootless building transform") &&
          expect(
              mirrorTwice(
                  cr::CreativeWorldLayoutBuildingTransformOperation::MirrorX) &&
@@ -1896,6 +2004,10 @@ bool exactMemberConflictChoicesPreserveIdentityAndRejectStaleState() {
                                cr::CreativeHistoryDirection::Undo);
   const cr::CreativeObject* restoredNorth =
       appState.facade.document().findObject(northId);
+  const bool sourceUndoRestored =
+      sourceUndone.accepted && sourceUndone.changed &&
+      restoredNorth != nullptr && restoredNorth->name == generatedName &&
+      sameVec3(restoredNorth->transform.position, refinedPosition);
 
   const cr::CreativeWorldLayoutCompileResult blockedAgain =
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
@@ -1955,11 +2067,7 @@ bool exactMemberConflictChoicesPreserveIdentityAndRejectStaleState() {
                     sourceApplied.historyReceipt.recorded &&
                     sourceStateApplied,
                 "Use 2D updates exact and safe sibling members without id churn") &&
-         expect(sourceUndone.accepted && sourceUndone.changed &&
-                    restoredNorth != nullptr &&
-                    restoredNorth->name == generatedName &&
-                    sameVec3(restoredNorth->transform.position,
-                             refinedPosition),
+         expect(sourceUndoRestored,
                 "member resolution is one exact undo transaction") &&
          expect(keep.receipt.accepted &&
                     keep.receipt.objectRecipeConflictCount == 1U &&
@@ -2553,6 +2661,8 @@ bool generatedOutputAdoptionIsBoundedToInvertibleSources() {
 
 int main() {
   const bool ok =
+      terrainGroundedBuildingsShiftAsOneAndFillRelief() &&
+      denseTerrainRevisionInvalidatesGroundedPlans() &&
       structuralSurfacesCompileFromExplicitPlanesOnNonUnitGrid() &&
       twoDimensionalBuildingCompilesToExactThreeDimensionalOutput() &&
       rebuildingAndDeletingLayoutNeverDuplicatesOutput() &&

@@ -92,6 +92,40 @@ void drawBuildingActions(CreativeEditorWorldLayoutState& state,
                       static_cast<unsigned long long>(boxCount),
                       static_cast<unsigned long long>(wallCount));
 
+  ImGui::SeparatorText("Terrain placement");
+  int groundingMode = static_cast<int>(building.groundingMode);
+  constexpr const char* kGroundingModes[] = {"Absolute elevation",
+                                              "Grounded foundation"};
+  ImGui::BeginDisabled(state.buildingManipulation.active ||
+                       state.buildingTransform.active);
+  if (ImGui::Combo("Placement##layout_building", &groundingMode,
+                   kGroundingModes, 2)) {
+    commands.push(
+        CreativeDesktopCommandId::WorldLayoutSetBuildingGrounding,
+        CreativeDesktopWorldLayoutBuildingGroundingPayload{
+            cr::kInvalidObjectId, buildingIndex, building.stableKey,
+            {static_cast<cr::CreativeWorldLayoutGroundingMode>(groundingMode),
+             building.maximumGroundReliefCells}});
+  }
+  if (building.groundingMode ==
+      cr::CreativeWorldLayoutGroundingMode::Foundation) {
+    std::uint16_t maximumRelief = building.maximumGroundReliefCells;
+    constexpr std::uint16_t one = 1U;
+    ImGui::SetNextItemWidth(112.0F);
+    static_cast<void>(ImGui::InputScalar(
+        "Max relief##layout_building", ImGuiDataType_U16, &maximumRelief,
+        &one));
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutSetBuildingGrounding,
+          CreativeDesktopWorldLayoutBuildingGroundingPayload{
+              cr::kInvalidObjectId, buildingIndex, building.stableKey,
+              {building.groundingMode, maximumRelief}});
+    }
+    ImGui::TextDisabled("cells; higher relief adds a buried foundation");
+  }
+  ImGui::EndDisabled();
+
   const auto previewTransform =
       [&](cr::CreativeWorldLayoutBuildingTransformOperation operation) {
         commands.push(

@@ -196,6 +196,57 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutLevelSettings(
           "creative_editor_world_layout_level_settings_updated"};
 }
 
+bool readCreativeEditorWorldLayoutBuildingGroundingSettings(
+    const CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
+    CreativeEditorWorldLayoutBuildingGroundingSettings& output) noexcept {
+  if (buildingIndex >= state.source.buildings.size()) {
+    return false;
+  }
+  const cr::CreativeWorldLayoutBuilding& building =
+      state.source.buildings[buildingIndex];
+  output = {building.groundingMode, building.maximumGroundReliefCells};
+  return true;
+}
+
+CreativeEditorWorldLayoutEditReceipt
+setCreativeEditorWorldLayoutBuildingGroundingSettings(
+    CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
+    CreativeEditorWorldLayoutBuildingGroundingSettings settings) {
+  CreativeEditorWorldLayoutBuildingGroundingSettings current;
+  if (!readCreativeEditorWorldLayoutBuildingGroundingSettings(
+          state, buildingIndex, current) ||
+      settings.mode >= cr::CreativeWorldLayoutGroundingMode::Count) {
+    state.statusMessage = "building grounding settings are invalid";
+    return {false, false,
+            "creative_editor_world_layout_building_grounding_invalid"};
+  }
+  const cr::CreativeWorldLayoutRect footprint =
+      state.source.buildings[buildingIndex].rootFootprint;
+  if (settings.mode == cr::CreativeWorldLayoutGroundingMode::Foundation &&
+      (footprint.minimum.x >= footprint.maximum.x ||
+       footprint.minimum.z >= footprint.maximum.z)) {
+    state.statusMessage = "grounded buildings need a valid footprint";
+    return {false, false,
+            "creative_editor_world_layout_building_grounding_footprint_invalid"};
+  }
+  if (current == settings) {
+    state.statusMessage = "building grounding unchanged";
+    return {true, false,
+            "creative_editor_world_layout_building_grounding_no_change"};
+  }
+
+  cr::CreativeWorldLayoutBuilding& building =
+      state.source.buildings[buildingIndex];
+  building.groundingMode = settings.mode;
+  building.maximumGroundReliefCells = settings.maximumReliefCells;
+  state.selection = {CreativeEditorWorldLayoutSelectionKind::Building,
+                     buildingIndex};
+  detail::noteWorldLayoutSourceChange(state,
+                                      "building grounding updated");
+  return {true, true,
+          "creative_editor_world_layout_building_grounding_updated"};
+}
+
 bool readCreativeEditorWorldLayoutTerrainProfileSettings(
     const CreativeEditorWorldLayoutState& state, std::size_t profileIndex,
     CreativeEditorWorldLayoutTerrainProfileSettings& output) noexcept {
