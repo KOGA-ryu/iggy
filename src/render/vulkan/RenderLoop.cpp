@@ -5,6 +5,7 @@
 #include <string>
 
 #include "render/vulkan/RenderLoopFramePlan.hpp"
+#include "render/vulkan/RenderLoopReceipt.hpp"
 #include "render/vulkan/RenderLoopRecording.hpp"
 #include "render/vulkan/RenderLoopSubmission.hpp"
 #include "render/vulkan/VulkanResult.hpp"
@@ -321,13 +322,9 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
   const SwapchainInfo& readySwapchain = createInfo_.swapchain->info();
   const RenderLoopFramePlan framePlan = buildRenderLoopFramePlan(
       createInfo_, frame, drawPackageRoom, firstRoomBundleReady(createInfo_));
-  const DebugHudLayoutResult& debugHud = framePlan.debugHud;
-  const ProjectileOverlayLayout& projectileOverlay =
-      framePlan.projectileOverlay;
   const bool drawUiFrame = framePlan.drawUiFrame;
   const bool drawProxyPrimitives = framePlan.drawProxyPrimitives;
   const bool drawFirstRoom = framePlan.drawFirstRoom;
-  const RenderLoopProxySceneFacts& proxyFacts = framePlan.proxyFacts;
   const RenderLoopCommandRecord recording = recordRenderLoopFrameCommands(
       createInfo_, frame, framePlan, readySwapchain, result.frameSlot,
       acquire.imageIndex);
@@ -367,8 +364,6 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
   }
 
   result.submitted = true;
-  const VkResult submitResult = submission.submitResult;
-  const VkResult presentVkResult = submission.presentResult;
   const SwapchainPresentResult& presentResult = submission.presentation;
 
   result.presented = presentResult.presented;
@@ -404,219 +399,9 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     result.reason = reasonFor("empty_frame_present_failed");
     result.receipt = makeReceipt("fail", result.reason.code);
   }
-  appendReceiptField(result.receipt, "frame_status", vulkanFrameStatusName(result.status));
-  appendReceiptField(result.receipt, "acquire_result", "VK_SUCCESS");
-  appendReceiptField(result.receipt, "acquire_action", "submit");
-  appendReceiptField(result.receipt, "acquired_image_index",
-                     static_cast<std::uint64_t>(acquire.imageIndex));
-  appendReceiptField(result.receipt, "command_recorded", result.commandRecorded);
-  appendReceiptField(result.receipt, "submit_result", vkResultName(submitResult));
-  appendReceiptField(result.receipt, "present_result", vkResultName(presentVkResult));
-  appendReceiptField(result.receipt, "present_action",
-                     presentResult.presented
-                         ? (presentResult.recreateRequested ? "presented_then_recreate"
-                                                            : "presented")
-                         : (presentResult.recreateRequested ? "recreate" : "fail"));
-  appendReceiptField(result.receipt, "presented", presentResult.presented);
-  // branch-gate: BG-1078
-  appendReceiptField(result.receipt, "record_mode",
-                     drawPackageRoom ? "room_mesh_draws"
-                     : drawProxyPrimitives ? "draw_primitives"
-                     // branch-gate: BG-1078
-                     : drawUiFrame ? "ui_primitives"
-                                         : (drawFirstRoom ? "first_room" : "empty_frame"));
-  // branch-gate: BG-1078
-  appendReceiptField(result.receipt, "draw_count",
-                     static_cast<std::uint64_t>(
-                         drawPackageRoom
-                             ? createInfo_.firstRoomResources->geometry().indexedDraws.size() +
-                                   createInfo_.firstRoomResources->geometry()
-                                       .staticMeshInstanceBatches.size()
-                         : drawProxyPrimitives
-                               ? renderLoopProxyDrawCount(proxyFacts)
-                         // branch-gate: BG-1078
-                         : drawUiFrame ? frame.ui.primitiveCount
-                                             : (drawFirstRoom ? 1U : 0U)));
-  appendReceiptField(result.receipt, "first_room_visible",
-                     (drawPackageRoom || drawProxyPrimitives || drawFirstRoom) &&
-                         presentResult.presented);
-  appendReceiptField(result.receipt, "proxy_floor_visible", drawPackageRoom || drawProxyPrimitives);
-  appendReceiptField(result.receipt, "proxy_room_bounds_visible",
-                     drawPackageRoom || drawProxyPrimitives);
-  appendReceiptField(result.receipt, "proxy_player_marker_visible",
-                     drawPackageRoom || drawProxyPrimitives);
-  appendReceiptField(result.receipt, "proxy_target_marker_visible",
-                     (drawPackageRoom || drawProxyPrimitives) && proxyFacts.targetMarkerVisible);
-  appendReceiptField(result.receipt, "proxy_objective_marker_visible",
-                     (drawPackageRoom || drawProxyPrimitives) && proxyFacts.objectiveMarkerVisible);
-  appendReceiptField(result.receipt, "fallback_room_proxy", drawProxyPrimitives);
-  appendReceiptField(result.receipt, "fallback_reason",
-                     drawProxyPrimitives ? "no_projected_room_geometry" : "not_applicable");
-  if (drawPackageRoom) {
-    const SceneRoomProjection& room = frame.projections.scene->room;
-    const FirstRoomGeometryResources& geometry =
-        createInfo_.firstRoomResources->geometry();
-    appendReceiptField(result.receipt, "room_asset_loaded", true);
-    appendReceiptField(result.receipt, "room_asset_id", room.assetId);
-    appendReceiptField(result.receipt, "room_asset_version",
-                       static_cast<std::uint64_t>(room.version));
-    appendReceiptField(result.receipt, "source_toml", room.sourceToml);
-    appendReceiptField(result.receipt, "source_subset", room.sourceSubset);
-    appendReceiptField(result.receipt, "room_static_mesh_count",
-                       static_cast<std::uint64_t>(room.staticMeshCount));
-    appendReceiptField(result.receipt, "room_material_count",
-                       static_cast<std::uint64_t>(room.materialCount));
-    appendReceiptField(result.receipt, "room_anchor_count",
-                       static_cast<std::uint64_t>(room.anchorCount));
-    appendReceiptField(result.receipt, "mesh_draw_count",
-                       static_cast<std::uint64_t>(
-                           geometry.indexedDraws.size() +
-                           geometry.staticMeshInstanceBatches.size()));
-    appendReceiptField(result.receipt, "indexed_draw_count",
-                       static_cast<std::uint64_t>(
-                           geometry.indexedDraws.size()));
-    appendReceiptField(
-        result.receipt, "static_mesh_instance_draw_count",
-        static_cast<std::uint64_t>(geometry.staticMeshInstanceBatches.size()));
-    appendReceiptField(result.receipt, "static_mesh_instance_count",
-                       static_cast<std::uint64_t>(
-                           geometry.staticMeshInstanceCount));
-    appendReceiptField(result.receipt, "room_floor_draw_count",
-                       static_cast<std::uint64_t>(geometry.roomFloorDrawCount));
-    appendReceiptField(result.receipt, "room_wall_draw_count",
-                       static_cast<std::uint64_t>(geometry.roomWallDrawCount));
-    appendReceiptField(result.receipt, "room_grid_line_draw_count",
-                       static_cast<std::uint64_t>(geometry.roomGridLineDrawCount));
-    appendReceiptField(result.receipt, "room_grid_visible", geometry.roomGridVisible);
-    appendReceiptField(result.receipt, "room_grid_truncated", geometry.roomGridTruncated);
-    appendReceiptField(result.receipt, "vertex_buffer_uploaded",
-                       createInfo_.firstRoomResources->geometry().vertexBuffer.allocation.buffer !=
-                           VK_NULL_HANDLE);
-    appendReceiptField(result.receipt, "index_buffer_uploaded",
-                       createInfo_.firstRoomResources->geometry().indexBuffer.allocation.buffer !=
-                           VK_NULL_HANDLE);
-    appendReceiptField(result.receipt, "depth_enabled", true);
-    appendReceiptField(result.receipt, "camera_projection", "perspective");
-    appendReceiptField(result.receipt, "drawable_aspect",
-                       std::to_string(frame.viewport.aspectRatio));
-    appendReceiptField(result.receipt, "projection_application", "single");
-    appendReceiptField(result.receipt, "floor_visible", room.floorVisible);
-    appendReceiptField(result.receipt, "wall_visible", room.wallVisible);
-    appendReceiptField(result.receipt, "opening_visible", room.openingVisible);
-    appendReceiptField(result.receipt, "prop_visible", room.propVisible);
-    appendReceiptField(result.receipt, "key_marker_visible",
-                       proxyFacts.keyMarkerVisible || room.keyAnchorVisible);
-    appendReceiptField(result.receipt, "dummy_marker_visible",
-                       proxyFacts.dummyMarkerVisible || room.dummyAnchorVisible);
-  }
-  if (drawPackageRoom) {
-    const FirstRoomGeometryResources& geometry =
-        createInfo_.firstRoomResources->geometry();
-    appendReceiptField(result.receipt,
-                       "creative_wireframe_debug_geometry_input_line_count",
-                       static_cast<std::uint64_t>(
-                           geometry.creativeWireframeDebugLineInputCount));
-    appendReceiptField(result.receipt,
-                       "creative_wireframe_debug_geometry_draw_count",
-                       static_cast<std::uint64_t>(
-                           geometry.creativeWireframeDebugGeometryDrawCount));
-    appendReceiptField(result.receipt,
-                       "creative_wireframe_debug_geometry_box_count",
-                       static_cast<std::uint64_t>(
-                           geometry.creativeWireframeDebugGeometryDrawCount));
-    appendReceiptField(result.receipt,
-                       "creative_wireframe_debug_geometry_skipped_count",
-                       static_cast<std::uint64_t>(
-                           geometry.creativeWireframeDebugGeometrySkippedCount));
-    appendReceiptField(result.receipt,
-                       "creative_wireframe_debug_geometry_status",
-                       geometry.creativeWireframeDebugGeometryStatus);
-    appendReceiptField(result.receipt,
-                       "creative_wireframe_debug_geometry_reason_code",
-                       geometry.creativeWireframeDebugGeometryReasonCode);
-  } else {
-    appendReceiptField(result.receipt,
-                       "creative_wireframe_debug_geometry_input_line_count",
-                       static_cast<std::uint64_t>(
-                           frame.creativeWireframeDebug.lineCount));
-    appendReceiptField(result.receipt,
-                       "creative_wireframe_debug_geometry_draw_count",
-                       static_cast<std::uint64_t>(0));
-    appendReceiptField(result.receipt,
-                       "creative_wireframe_debug_geometry_box_count",
-                       static_cast<std::uint64_t>(0));
-    appendReceiptField(result.receipt,
-                       "creative_wireframe_debug_geometry_skipped_count",
-                       static_cast<std::uint64_t>(0));
-    const char* reasonCode =
-        frame.creativeWireframeDebug.available
-            ? (frame.creativeWireframeDebug.lineCount == 0U
-                   ? "vulkan_creative_wireframe_debug_geometry_no_lines"
-                   : "vulkan_creative_wireframe_debug_geometry_not_drawn")
-            : "vulkan_creative_wireframe_debug_geometry_not_requested";
-    appendReceiptField(result.receipt,
-                       "creative_wireframe_debug_geometry_status",
-                       reasonCode);
-    appendReceiptField(result.receipt,
-                       "creative_wireframe_debug_geometry_reason_code",
-                       reasonCode);
-  }
-  appendReceiptField(result.receipt, "screenshot_capture",
-                     drawFirstRoom && readySwapchain.transferSourceSupported &&
-                             createInfo_.frameCapture != nullptr &&
-                             createInfo_.frameCapture->ready()
-                         ? "enabled"
-                         : "unavailable");
-  appendReceiptField(result.receipt, "room_proxy_visible",
-                     drawPackageRoom || drawProxyPrimitives || (drawFirstRoom && presentResult.presented)
-                         ? "true"
-                         : "unavailable");
-  appendReceiptField(result.receipt, "player_marker_visible",
-                     drawPackageRoom || drawProxyPrimitives ? "true" : "unavailable");
-  appendReceiptField(result.receipt, "marker_count",
-                     static_cast<std::uint64_t>(
-                         drawPackageRoom || drawProxyPrimitives ? proxyFacts.markerCount : 0U));
-  appendReceiptField(result.receipt, "debug_hud_projected", debugHud.projected);
-  appendReceiptField(result.receipt, "debug_hud_line_count",
-                     static_cast<std::uint64_t>(debugHud.lineCount));
-  appendReceiptField(result.receipt, "debug_hud_glyph_count",
-                     static_cast<std::uint64_t>(debugHud.glyphCount));
-  appendReceiptField(result.receipt, "debug_hud_rendered",
-                     debugHud.projected && !debugHud.quads.empty() &&
-                         result.commandRecorded && presentResult.presented);
-  appendReceiptField(result.receipt, "debug_hud_record_mode",
-                     debugHud.projected && !debugHud.quads.empty() ? "glyph_quads"
-                                                                   : "unavailable");
-  appendReceiptField(result.receipt, "ui_visible", frame.ui.visible);
-  appendReceiptField(result.receipt, "ui_rendered",
-                     drawUiFrame && result.commandRecorded && presentResult.presented);
-  appendReceiptField(result.receipt, "ui_overlay_rect_count",
-                     static_cast<std::uint64_t>(frame.ui.rectCount));
-  appendReceiptField(result.receipt, "ui_text_glyph_count",
-                     static_cast<std::uint64_t>(frame.ui.textGlyphCount));
-  appendReceiptField(result.receipt, "ui_text_glyph_quad_count",
-                     static_cast<std::uint64_t>(frame.ui.textGlyphQuadCount));
-  appendReceiptField(result.receipt, "ui_primitive_count",
-                     static_cast<std::uint64_t>(frame.ui.primitiveCount));
-  appendReceiptField(result.receipt, "projectile_visual_projected",
-                     projectileOverlay.projected);
-  appendReceiptField(result.receipt, "projectile_visual_count",
-                     static_cast<std::uint64_t>(projectileOverlay.projectileCount));
-  appendReceiptField(result.receipt, "projectile_marker_count",
-                     static_cast<std::uint64_t>(projectileOverlay.markerCount));
-  appendReceiptField(result.receipt, "projectile_trail_rect_count",
-                     static_cast<std::uint64_t>(projectileOverlay.trailRectCount));
-  appendReceiptField(result.receipt, "projectile_overlay_rect_count",
-                     static_cast<std::uint64_t>(projectileOverlay.rects.size()));
-  appendReceiptField(result.receipt, "projectile_impact_visible",
-                     projectileOverlay.impactVisible);
-  appendReceiptField(result.receipt, "projectile_rendered",
-                     projectileOverlay.projected && !projectileOverlay.rects.empty() &&
-                         result.commandRecorded && presentResult.presented);
-  appendReceiptField(result.receipt, "projectile_record_mode",
-                     projectileOverlay.projected && !projectileOverlay.rects.empty()
-                         ? "overlay_rects"
-                         : "unavailable");
+  appendRenderLoopFrameReceipt(
+      result.receipt, result, createInfo_, frame, readySwapchain, framePlan,
+      acquire, submission);
   return result;
 }
 
