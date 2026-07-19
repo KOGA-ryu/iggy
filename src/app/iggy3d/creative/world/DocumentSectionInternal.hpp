@@ -56,6 +56,15 @@ toSaveTerrainHeightField(
 [[nodiscard]] bool toCreativeTerrainHeightField(
     const SaveCreativeDocumentTerrainHeightFieldRecord& record,
     creative::CreativeTerrainHeightField& output);
+[[nodiscard]] std::vector<SaveCreativeDocumentTerrainOperationRecord>
+toSaveTerrainOperations(
+    const creative::CreativeTerrainOperationStack& stack);
+[[nodiscard]] bool toCreativeTerrainOperationStack(
+    std::span<const SaveCreativeDocumentTerrainOperationRecord> records,
+    std::uint32_t stackVersion,
+    creative::CreativeTerrainOperationId nextOperationId,
+    const SaveCreativeDocumentTerrainHeightFieldRecord& baseHeightField,
+    creative::CreativeTerrainOperationStack& output);
 [[nodiscard]] std::vector<SaveCreativeDocumentTerrainMaterialRecord>
 toSaveTerrainMaterials(
     const creative::CreativeTerrainMaterialField& field);

@@ -8,6 +8,7 @@
 
 #include "app/iggy3d/creative/assets/AuthoredAsset.hpp"
 #include "app/iggy3d/creative/document/LogicLink.hpp"
+#include "app/iggy3d/creative/recipes/TerrainOperation.hpp"
 #include "EditorWorldLayout.hpp"
 
 namespace iggy3d_creative_app {
@@ -117,6 +118,13 @@ struct CreativeDesktopInstanceRefreshPayload {
       iggy3d::creative::kInvalidObjectId;
   iggy3d::creative::CreativeAuthoredAssetRefreshMode mode =
       iggy3d::creative::CreativeAuthoredAssetRefreshMode::ForceAll;
+};
+
+struct CreativeDesktopTerrainOperationPayload {
+  iggy3d::creative::CreativeTerrainOperationId operationId =
+      iggy3d::creative::kInvalidCreativeTerrainOperationId;
+  bool enabled = true;
+  std::size_t targetIndex = 0U;
 };
 
 struct CreativeDesktopWorldLayoutToolPayload {
@@ -414,6 +422,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopMovingPlatformWaypointPayload,
     CreativeDesktopAssetOpPayload,
     CreativeDesktopInstanceRefreshPayload,
+    CreativeDesktopTerrainOperationPayload,
     CreativeDesktopWorldLayoutToolPayload,
     CreativeDesktopWorldLayoutCatalogAssetPayload,
     CreativeDesktopWorldLayoutBuildingSelectionPayload,

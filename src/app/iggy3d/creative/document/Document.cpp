@@ -47,7 +47,11 @@ CreativeDocument CreativeDocument::create(std::string name) {
 
 bool CreativeDocument::isValid() const noexcept {
   return valid_ && voxelField_.isValid() && terrainField_.isValid() &&
-         terrainHeightField_.isValid() && terrainMaterialField_.isValid();
+         terrainHeightField_.isValid() &&
+         validateCreativeTerrainOperationStack(terrainOperationStack_) &&
+         (!terrainOperationStack_.operations.empty() ||
+          terrainOperationStack_.baseHeightField.cellCount() == 0U) &&
+         terrainMaterialField_.isValid();
 }
 
 CreativeDocumentId CreativeDocument::id() const noexcept {
@@ -171,6 +175,7 @@ void CreativeDocument::reset() {
   voxelField_.clear();
   terrainField_.clear();
   terrainHeightField_.clear();
+  terrainOperationStack_ = {};
   terrainMaterialField_.clear();
   units_ = CreativeUnits::Meters;
   gridSettings_ = {};
@@ -224,6 +229,11 @@ const CreativeTerrainField& CreativeDocument::terrainField() const noexcept {
 const CreativeTerrainHeightField& CreativeDocument::terrainHeightField()
     const noexcept {
   return terrainHeightField_;
+}
+
+const CreativeTerrainOperationStack&
+CreativeDocument::terrainOperationStack() const noexcept {
+  return terrainOperationStack_;
 }
 
 const CreativeTerrainMaterialField& CreativeDocument::terrainMaterialField()
@@ -288,6 +298,34 @@ CreativeTerrainMutationReceipt CreativeDocument::applyTerrainControlEdits(
     return receipt;
   }
 
+  if (!terrainOperationStack_.operations.empty()) {
+    CreativeTerrainField stagedTerrain = terrainField_;
+    CreativeTerrainMutationReceipt receipt = stagedTerrain.apply(edits);
+    if (!receipt.accepted || !receipt.changed) {
+      return receipt;
+    }
+    const CreativeTerrainOperationReplayResult replay =
+        replayCreativeTerrainOperations(stagedTerrain,
+                                        terrainOperationStack_);
+    if (!replay.receipt.accepted) {
+      receipt.accepted = false;
+      receipt.changed = false;
+      receipt.status = CreativeTerrainMutationStatus::InvalidField;
+      receipt.revisionAfter = receipt.revisionBefore;
+      receipt.controlCountAfter = receipt.controlCountBefore;
+      receipt.changedControlCount = 0U;
+      receipt.reasonCode =
+          "creative_terrain_operation_control_replay_rejected";
+      return receipt;
+    }
+    terrainField_ = std::move(stagedTerrain);
+    terrainHeightField_ = replay.heightField;
+    markObjectMutationChanged(
+        dirtyFlagsForCreation(CreativeObjectKind::TerrainPatch) |
+        documentSettingsDirtyFlags());
+    return receipt;
+  }
+
   CreativeTerrainMutationReceipt receipt = terrainField_.apply(edits);
   if (receipt.changed) {
     markObjectMutationChanged(
@@ -313,6 +351,7 @@ CreativeDocument::replaceTerrainHeightField(
   CreativeTerrainHeightFieldReplaceReceipt receipt =
       terrainHeightField_.replace(bounds, heights);
   if (receipt.changed) {
+    terrainOperationStack_ = {};
     markObjectMutationChanged(
         dirtyFlagsForCreation(CreativeObjectKind::TerrainPatch) |
         documentSettingsDirtyFlags());

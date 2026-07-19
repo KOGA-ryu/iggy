@@ -216,6 +216,20 @@ std::string_view toString(CreativeTerrainCompositionMask mask) noexcept {
   return "Invalid";
 }
 
+bool parseCreativeTerrainCompositionMask(
+    std::string_view value,
+    CreativeTerrainCompositionMask& output) noexcept {
+  if (value == "Rectangle") {
+    output = CreativeTerrainCompositionMask::Rectangle;
+    return true;
+  }
+  if (value == "Ellipse") {
+    output = CreativeTerrainCompositionMask::Ellipse;
+    return true;
+  }
+  return false;
+}
+
 std::string_view toString(CreativeTerrainCompositionMode mode) noexcept {
   switch (mode) {
     case CreativeTerrainCompositionMode::Replace:
@@ -228,6 +242,24 @@ std::string_view toString(CreativeTerrainCompositionMode mode) noexcept {
       break;
   }
   return "Invalid";
+}
+
+bool parseCreativeTerrainCompositionMode(
+    std::string_view value,
+    CreativeTerrainCompositionMode& output) noexcept {
+  if (value == "Replace") {
+    output = CreativeTerrainCompositionMode::Replace;
+    return true;
+  }
+  if (value == "Raise") {
+    output = CreativeTerrainCompositionMode::Raise;
+    return true;
+  }
+  if (value == "Lower") {
+    output = CreativeTerrainCompositionMode::Lower;
+    return true;
+  }
+  return false;
 }
 
 std::string_view toString(CreativeTerrainCompositionStatus status) noexcept {

@@ -47,6 +47,8 @@ std::string_view toString(CreativeDocumentRestoreStatus status) noexcept {
       return "InvalidTerrainField";
     case CreativeDocumentRestoreStatus::InvalidTerrainHeightField:
       return "InvalidTerrainHeightField";
+    case CreativeDocumentRestoreStatus::InvalidTerrainOperationStack:
+      return "InvalidTerrainOperationStack";
     case CreativeDocumentRestoreStatus::InvalidTerrainMaterialField:
       return "InvalidTerrainMaterialField";
     case CreativeDocumentRestoreStatus::InvalidNextObjectId:
@@ -67,6 +69,8 @@ CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
   receipt.voxelCellCount = request.voxelField.occupiedCellCount();
   receipt.terrainControlCount = request.terrainField.controlCount();
   receipt.terrainHeightCellCount = request.terrainHeightField.cellCount();
+  receipt.terrainOperationCount =
+      request.terrainOperationStack.operations.size();
   receipt.terrainMaterialOverrideCount =
       request.terrainMaterialField.overrideCount();
   receipt.nextObjectId = request.nextObjectId;
@@ -185,6 +189,31 @@ CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
     return receipt;
   }
 
+  if (!validateCreativeTerrainOperationStack(
+          request.terrainOperationStack) ||
+      (request.terrainOperationStack.operations.empty() &&
+       request.terrainOperationStack.baseHeightField.cellCount() != 0U)) {
+    setRestoreStatus(
+        receipt,
+        CreativeDocumentRestoreStatus::InvalidTerrainOperationStack,
+        "invalid_terrain_operation_stack");
+    return receipt;
+  }
+  if (!request.terrainOperationStack.operations.empty()) {
+    const CreativeTerrainOperationReplayResult replay =
+        replayCreativeTerrainOperations(request.terrainField,
+                                        request.terrainOperationStack);
+    if (!replay.receipt.accepted ||
+        !creativeTerrainHeightFieldsEqual(replay.heightField,
+                                          request.terrainHeightField)) {
+      setRestoreStatus(
+          receipt,
+          CreativeDocumentRestoreStatus::InvalidTerrainOperationStack,
+          "terrain_operation_derived_field_mismatch");
+      return receipt;
+    }
+  }
+
   if (!request.terrainMaterialField.validateInvariants()) {
     setRestoreStatus(receipt,
                      CreativeDocumentRestoreStatus::InvalidTerrainMaterialField,
@@ -221,6 +250,7 @@ CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
   voxelField_ = request.voxelField;
   terrainField_ = request.terrainField;
   terrainHeightField_ = request.terrainHeightField;
+  terrainOperationStack_ = request.terrainOperationStack;
   terrainMaterialField_ = request.terrainMaterialField;
   revision_ = 0;
   dirtyFlags_ = 0;

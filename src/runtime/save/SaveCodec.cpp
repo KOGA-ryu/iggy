@@ -350,6 +350,24 @@ private:
     }
   }
 
+  void writeCreativeTerrainHeightField(
+      const std::string& prefix,
+      const SaveCreativeDocumentTerrainHeightFieldRecord& heightField) {
+    if (!heightField.present) {
+      return;
+    }
+    lineBool(prefix + ".present", true);
+    line(prefix + ".minimumX", std::to_string(heightField.minimumX));
+    line(prefix + ".minimumZ", std::to_string(heightField.minimumZ));
+    line(prefix + ".widthCells", unsignedText(heightField.widthCells));
+    line(prefix + ".depthCells", unsignedText(heightField.depthCells));
+    line(prefix + ".height.count", unsignedText(heightField.heights.size()));
+    for (std::size_t index = 0U; index < heightField.heights.size(); ++index) {
+      line(prefix + ".height." + std::to_string(index),
+           unsignedText(heightField.heights[index]));
+    }
+  }
+
   void writeCreativeDocument() {
     if (!envelope_.creativeDocument.present) {
       return;
@@ -427,26 +445,57 @@ private:
       line(p + "heightCells", unsignedText(control.heightCells));
       line(p + "radiusCells", unsignedText(control.radiusCells));
     }
-    if (section.terrainHeightField.present) {
-      const SaveCreativeDocumentTerrainHeightFieldRecord& heightField =
-          section.terrainHeightField;
-      lineBool("creativeDocument.terrainHeightField.present", true);
-      line("creativeDocument.terrainHeightField.minimumX",
-           std::to_string(heightField.minimumX));
-      line("creativeDocument.terrainHeightField.minimumZ",
-           std::to_string(heightField.minimumZ));
-      line("creativeDocument.terrainHeightField.widthCells",
-           unsignedText(heightField.widthCells));
-      line("creativeDocument.terrainHeightField.depthCells",
-           unsignedText(heightField.depthCells));
-      line("creativeDocument.terrainHeightField.height.count",
-           unsignedText(heightField.heights.size()));
-      for (std::size_t index = 0U; index < heightField.heights.size();
-           ++index) {
-        line("creativeDocument.terrainHeightField.height." +
-                 std::to_string(index),
-             unsignedText(heightField.heights[index]));
-      }
+    writeCreativeTerrainHeightField("creativeDocument.terrainHeightField",
+                                    section.terrainHeightField);
+    line("creativeDocument.terrainOperation.version",
+         unsignedText(section.terrainOperationStackVersion));
+    line("creativeDocument.terrainOperation.nextId",
+         unsignedText(section.nextTerrainOperationId));
+    writeCreativeTerrainHeightField(
+        "creativeDocument.terrainOperation.baseHeightField",
+        section.terrainOperationBaseHeightField);
+    line("creativeDocument.terrainOperation.count",
+         unsignedText(section.terrainOperations.size()));
+    for (std::size_t index = 0U; index < section.terrainOperations.size();
+         ++index) {
+      const SaveCreativeDocumentTerrainOperationRecord& operation =
+          section.terrainOperations[index];
+      const std::string prefix = "creativeDocument.terrainOperation." +
+                                 std::to_string(index) + ".";
+      line(prefix + "id", unsignedText(operation.id));
+      lineBool(prefix + "enabled", operation.enabled);
+      line(prefix + "generation.version",
+           unsignedText(operation.generationVersion));
+      lineString(prefix + "generation.kind", operation.generatorKind);
+      line(prefix + "generation.seed", unsignedText(operation.seed));
+      line(prefix + "generation.minimumX",
+           std::to_string(operation.minimumX));
+      line(prefix + "generation.minimumZ",
+           std::to_string(operation.minimumZ));
+      line(prefix + "generation.widthCells",
+           unsignedText(operation.widthCells));
+      line(prefix + "generation.depthCells",
+           unsignedText(operation.depthCells));
+      line(prefix + "generation.baseHeightCells",
+           unsignedText(operation.baseHeightCells));
+      line(prefix + "generation.reliefCells",
+           unsignedText(operation.reliefCells));
+      line(prefix + "generation.horizontalScaleCells",
+           formatDoubleLossless(operation.horizontalScaleCells));
+      line(prefix + "generation.octaveCount",
+           unsignedText(operation.octaveCount));
+      line(prefix + "generation.persistence",
+           formatDoubleLossless(operation.persistence));
+      line(prefix + "generation.lacunarity",
+           formatDoubleLossless(operation.lacunarity));
+      line(prefix + "generation.slopeDamping",
+           formatDoubleLossless(operation.slopeDamping));
+      line(prefix + "composition.version",
+           unsignedText(operation.compositionVersion));
+      lineString(prefix + "composition.mask", operation.mask);
+      lineString(prefix + "composition.mode", operation.mode);
+      line(prefix + "composition.featherCells",
+           unsignedText(operation.featherCells));
     }
     line("creativeDocument.terrainMaterial.count",
          unsignedText(section.terrainMaterials.size()));

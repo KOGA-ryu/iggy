@@ -101,6 +101,9 @@ private:
   void readAuthoredRoom();
   void readCreativeDocumentObject(const std::string& prefix,
                                   SaveCreativeDocumentObjectRecord& object);
+  void readCreativeTerrainHeightField(
+      const std::string& prefix,
+      SaveCreativeDocumentTerrainHeightFieldRecord& heightField);
   void readCreativeDocument();
   void readCreativeWorldLayout();
   void readPlayers();

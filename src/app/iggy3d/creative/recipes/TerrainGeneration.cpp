@@ -187,6 +187,16 @@ std::string_view toString(CreativeTerrainGeneratorKind kind) noexcept {
   return "Invalid";
 }
 
+bool parseCreativeTerrainGeneratorKind(
+    std::string_view value,
+    CreativeTerrainGeneratorKind& output) noexcept {
+  if (value == "SlopeDampedFbm") {
+    output = CreativeTerrainGeneratorKind::SlopeDampedFbm;
+    return true;
+  }
+  return false;
+}
+
 std::string_view toString(CreativeTerrainGenerationStatus status) noexcept {
   switch (status) {
     case CreativeTerrainGenerationStatus::NotRequested:

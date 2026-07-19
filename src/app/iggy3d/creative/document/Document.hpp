@@ -8,6 +8,7 @@
 #include "app/iggy3d/creative/document/TerrainHeightField.hpp"
 #include "app/iggy3d/creative/document/TerrainMaterialField.hpp"
 #include "app/iggy3d/creative/document/VoxelField.hpp"
+#include "app/iggy3d/creative/recipes/TerrainOperation.hpp"
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
 
 #include <cstddef>
@@ -54,6 +55,7 @@ enum class CreativeDocumentRestoreStatus : std::uint8_t {
   InvalidVoxelField,
   InvalidTerrainField,
   InvalidTerrainHeightField,
+  InvalidTerrainOperationStack,
   InvalidTerrainMaterialField,
   InvalidNextObjectId,
   Restored,
@@ -150,6 +152,7 @@ struct CreativeDocumentRestoreRequest {
   CreativeVoxelField voxelField;
   CreativeTerrainField terrainField;
   CreativeTerrainHeightField terrainHeightField;
+  CreativeTerrainOperationStack terrainOperationStack;
   CreativeTerrainMaterialField terrainMaterialField;
 };
 
@@ -165,6 +168,7 @@ struct CreativeDocumentRestoreReceipt {
   std::uint64_t voxelCellCount = 0;
   std::uint64_t terrainControlCount = 0;
   std::uint64_t terrainHeightCellCount = 0;
+  std::uint64_t terrainOperationCount = 0;
   std::uint64_t terrainMaterialOverrideCount = 0;
   CreativeObjectId nextObjectId = kInvalidObjectId;
   std::string_view message = "document_restore_not_requested";
@@ -231,6 +235,8 @@ class CreativeDocument {
   [[nodiscard]] const CreativeTerrainField& terrainField() const noexcept;
   [[nodiscard]] const CreativeTerrainHeightField& terrainHeightField()
       const noexcept;
+  [[nodiscard]] const CreativeTerrainOperationStack& terrainOperationStack()
+      const noexcept;
   [[nodiscard]] const CreativeTerrainMaterialField& terrainMaterialField()
       const noexcept;
 
@@ -254,6 +260,9 @@ class CreativeDocument {
   replaceTerrainHeightField(
       CreativeTerrainHeightFieldBounds bounds,
       std::span<const std::uint16_t> heights);
+  [[nodiscard]] CreativeTerrainOperationMutationReceipt
+  applyTerrainOperationMutation(
+      const CreativeTerrainOperationMutationRequest& request);
   [[nodiscard]] CreativeTerrainMaterialMutationReceipt applyTerrainMaterialEdits(
       std::span<const CreativeTerrainMaterialEdit> edits);
   [[nodiscard]] CreativeDocumentRestoreReceipt restoreForLoad(
@@ -295,6 +304,7 @@ class CreativeDocument {
   CreativeVoxelField voxelField_{};
   CreativeTerrainField terrainField_{};
   CreativeTerrainHeightField terrainHeightField_{};
+  CreativeTerrainOperationStack terrainOperationStack_{};
   CreativeTerrainMaterialField terrainMaterialField_{};
 
   CreativeUnits units_{CreativeUnits::Meters};

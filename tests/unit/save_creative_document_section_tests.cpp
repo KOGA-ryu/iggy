@@ -495,6 +495,50 @@ bool version9SegmentSpeedDefaultsRemainReadable() {
                 "version 9 route segments receive 1x speed defaults");
 }
 
+bool version11TerrainWithoutOperationBlockRemainsReadable() {
+  iggy3d::SaveEnvelope envelope = minimalEnvelope();
+  iggy3d::SaveCreativeDocumentSection& section = envelope.creativeDocument;
+  section.present = true;
+  section.documentId = 94U;
+  section.name = "Legacy Baked Terrain";
+  section.gridWidth = 8U;
+  section.gridHeight = 8U;
+  section.gridDepth = 8U;
+  section.worldBounds.max = {8.0, 8.0, 8.0};
+  section.nextObjectId = 1U;
+  section.terrainHeightField.present = true;
+  section.terrainHeightField.minimumX = -1;
+  section.terrainHeightField.minimumZ = 2;
+  section.terrainHeightField.widthCells = 1U;
+  section.terrainHeightField.depthCells = 1U;
+  section.terrainHeightField.heights = {7U};
+
+  const iggy3d::SaveEncodeResult encoded =
+      iggy3d::encodeSaveEnvelope(envelope);
+  std::string version11Text = replaceValueForKey(
+      encoded.encodedText, "creativeDocument.version", "11");
+  version11Text = eraseLineForKey(
+      version11Text, "creativeDocument.terrainOperation.version");
+  version11Text = eraseLineForKey(
+      version11Text, "creativeDocument.terrainOperation.nextId");
+  version11Text = eraseLineForKey(
+      version11Text, "creativeDocument.terrainOperation.count");
+
+  const iggy3d::SaveDecodeResult decoded =
+      iggy3d::decodeSaveEnvelope(version11Text);
+  return expect(encoded.status == iggy3d::SaveCodecStatus::Ok,
+                "version 11 terrain setup encode ok") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok &&
+                    decoded.envelope.creativeDocument.version == 11U,
+                "version 11 text without operation block decodes") &&
+         expect(decoded.envelope.creativeDocument.terrainOperations.empty() &&
+                    decoded.envelope.creativeDocument.terrainHeightField
+                            .heights.size() == 1U &&
+                    decoded.envelope.creativeDocument.terrainHeightField
+                            .heights.front() == 7U,
+                "version 11 preserves baked terrain as the fallback truth");
+}
+
 bool malformedCreativeDocumentPathPointKeysReject() {
   iggy3d::SaveEnvelope envelope = minimalEnvelope();
   iggy3d::SaveCreativeDocumentSection& section = envelope.creativeDocument;
@@ -625,6 +669,7 @@ int main() {
   ok = version7MovingPlatformDefaultsRemainReadable() && ok;
   ok = version8WaypointDwellDefaultsRemainReadable() && ok;
   ok = version9SegmentSpeedDefaultsRemainReadable() && ok;
+  ok = version11TerrainWithoutOperationBlockRemainsReadable() && ok;
   ok = malformedCreativeDocumentPathPointKeysReject() && ok;
   ok = schemaCompatibilityAcceptsV1V2AndRejectsTooNew() && ok;
   return ok ? 0 : 1;

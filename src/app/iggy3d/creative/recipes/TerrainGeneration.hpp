@@ -37,6 +37,10 @@ struct CreativeTerrainGeneratorRecipe {
   double persistence = 0.5;
   double lacunarity = 2.0;
   double slopeDamping = 0.35;
+
+  [[nodiscard]] friend bool operator==(
+      const CreativeTerrainGeneratorRecipe&,
+      const CreativeTerrainGeneratorRecipe&) noexcept = default;
 };
 
 enum class CreativeTerrainGenerationStatus : std::uint8_t {
@@ -77,6 +81,9 @@ struct CreativeTerrainGenerationResult {
     const CreativeTerrainGeneratorRecipe& recipe) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeTerrainGeneratorKind kind) noexcept;
+[[nodiscard]] bool parseCreativeTerrainGeneratorKind(
+    std::string_view value,
+    CreativeTerrainGeneratorKind& output) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeTerrainGenerationStatus status) noexcept;
 

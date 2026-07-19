@@ -264,6 +264,9 @@ class Facade {
   replaceTerrainHeightField(
       CreativeTerrainHeightFieldBounds bounds,
       std::span<const std::uint16_t> heights);
+  [[nodiscard]] CreativeTerrainOperationMutationReceipt
+  applyTerrainOperationMutation(
+      const CreativeTerrainOperationMutationRequest& request);
   [[nodiscard]] CreativeTerrainMaterialMutationReceipt applyTerrainMaterialEdits(
       std::span<const CreativeTerrainMaterialEdit> edits);
 

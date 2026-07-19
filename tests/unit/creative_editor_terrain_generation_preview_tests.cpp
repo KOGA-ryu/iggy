@@ -254,10 +254,10 @@ bool terrainGenerationWorkflowIsAtomicAndUndoable() {
           state, appState.facade.document(), true);
   const std::uint64_t secondHash = state.generation.receipt.heightHash;
   const cr::CreativeTerrainHeightFieldBounds expectedBounds =
-      state.composition.heightField.bounds();
+      state.operationPreview.heightField.bounds();
   const std::vector<std::uint16_t> expectedHeights(
-      state.composition.heightField.heights().begin(),
-      state.composition.heightField.heights().end());
+      state.operationPreview.heightField.heights().begin(),
+      state.operationPreview.heightField.heights().end());
   app::CreativeEditorSceneCache sourceCache;
   const bool sourceBuilt = app::refreshCreativeEditorSceneCache(
       sourceCache, appState.facade.document());
@@ -265,10 +265,10 @@ bool terrainGenerationWorkflowIsAtomicAndUndoable() {
   const bool candidateRendered =
       app::refreshCreativeEditorGeneratedTerrainPreview(
           renderedPreview, sourceCache, appState.facade.document(),
-          state.composition.heightField,
-          state.composition.receipt.heightHash);
+          state.operationPreview.heightField,
+          state.operationPreview.receipt.replay.heightHash);
   const bool renderedCandidateMatches = surfaceMatchesHeightField(
-      renderedPreview.composedSurface, state.composition.heightField);
+      renderedPreview.composedSurface, state.operationPreview.heightField);
 
   const app::CreativeEditorTerrainGenerationApplyReceipt applied =
       app::applyCreativeEditorTerrainGeneration(appState, state);
@@ -295,7 +295,8 @@ bool terrainGenerationWorkflowIsAtomicAndUndoable() {
                 "apply commits the exact active preview") &&
          expect(sourceBuilt && candidateRendered && renderedCandidateMatches,
                 "rendered preview consumes the exact composed candidate") &&
-         expect(applied.replacement.cellCountAfter == expectedHeights.size() &&
+         expect(applied.operation.replay.outputCellCount ==
+                        expectedHeights.size() &&
                     undoDepthAfterApply == 1U &&
                     cr::creativeUndoDepth(appState.history) == 0U && undone,
                 "apply creates exactly one undo record") &&
@@ -383,6 +384,7 @@ bool sequentialGenerationPreservesEarlierRegion() {
       appState.facade.document().terrainHeightField().heights().begin(),
       appState.facade.document().terrainHeightField().heights().end());
 
+  static_cast<void>(app::beginNewCreativeEditorTerrainOperation(state));
   state.recipe.bounds = {{4, 0}, 3U, 3U};
   state.recipe.seed = 200U;
   const app::CreativeEditorTerrainGenerationPreviewReceipt secondPreview =
@@ -420,6 +422,155 @@ bool sequentialGenerationPreservesEarlierRegion() {
                 "one undo removes only the second composed operation");
 }
 
+bool desktopCommandsEditOrderedTerrainOperationsWithHistory() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 907U);
+  app::CreativeEditorState editor;
+  editor.terrainGeneration.recipe.bounds = {{0, 0}, 2U, 2U};
+  editor.terrainGeneration.recipe.seed = 11U;
+  static_cast<void>(app::previewCreativeEditorTerrainGeneration(
+      editor.terrainGeneration, appState.facade.document(), false));
+  const app::CreativeEditorTerrainGenerationApplyReceipt first =
+      app::applyCreativeEditorTerrainGeneration(appState,
+                                                editor.terrainGeneration);
+  const cr::CreativeTerrainOperationId firstId = first.operation.operationId;
+
+  static_cast<void>(
+      app::beginNewCreativeEditorTerrainOperation(editor.terrainGeneration));
+  editor.terrainGeneration.recipe.bounds = {{3, 0}, 2U, 2U};
+  editor.terrainGeneration.recipe.seed = 22U;
+  static_cast<void>(app::previewCreativeEditorTerrainGeneration(
+      editor.terrainGeneration, appState.facade.document(), false));
+  const app::CreativeEditorTerrainGenerationApplyReceipt second =
+      app::applyCreativeEditorTerrainGeneration(appState,
+                                                editor.terrainGeneration);
+  const cr::CreativeTerrainOperationId secondId = second.operation.operationId;
+
+  const auto dispatch = [&](app::CreativeDesktopCommandId id,
+                            app::CreativeDesktopTerrainOperationPayload payload) {
+    app::CreativeDesktopCommandFrame frame;
+    frame.push(id, payload);
+    return app::dispatchCreativeDesktopCommands(
+        frame, {appState, editor, {}, nullptr, nullptr, nullptr});
+  };
+  const app::CreativeDesktopCommandResult disabled = dispatch(
+      app::CreativeDesktopCommandId::TerrainOperationSetEnabled,
+      {firstId, false, 0U});
+  const app::CreativeDesktopCommandResult moved = dispatch(
+      app::CreativeDesktopCommandId::TerrainOperationMove,
+      {secondId, true, 0U});
+  const app::CreativeDesktopCommandResult duplicated = dispatch(
+      app::CreativeDesktopCommandId::TerrainOperationDuplicate,
+      {firstId, false, 0U});
+  const cr::CreativeTerrainOperationId duplicateId =
+      editor.terrainGeneration.editingOperationId;
+  const app::CreativeDesktopCommandResult selected = dispatch(
+      app::CreativeDesktopCommandId::TerrainOperationSelect,
+      {secondId, true, 0U});
+  const app::CreativeDesktopCommandResult removed = dispatch(
+      app::CreativeDesktopCommandId::TerrainOperationDelete,
+      {secondId, true, 0U});
+  const bool undone = app::undoLastEdit(
+      appState, "terrain_operation_delete_undo");
+
+  const cr::CreativeTerrainOperationStack& stack =
+      appState.facade.document().terrainOperationStack();
+  return expect(first.accepted && second.accepted && firstId == 1U &&
+                    secondId == 2U,
+                "two explicit operation adds establish stable ids") &&
+         expect(disabled.accepted && disabled.changed &&
+                    moved.accepted && moved.changed &&
+                    duplicated.accepted && duplicated.changed &&
+                    duplicateId == 3U,
+                "enable reorder and duplicate commands mutate through dispatcher") &&
+         expect(selected.accepted &&
+                    editor.terrainGeneration.recipe.seed == 22U,
+                "select command loads the durable recipe into the editor") &&
+         expect(removed.accepted && removed.changed && undone &&
+                    stack.operations.size() == 3U &&
+                    stack.operations.front().id == secondId &&
+                    stack.operations[1U].id == firstId &&
+                    stack.operations.back().id == duplicateId,
+                "delete is one history edit and undo restores operation order") &&
+         expect(cr::creativeUndoDepth(appState.history) == 5U,
+                "each document operation records exactly one undo snapshot");
+}
+
+bool terrainOperationDraftSurvivesUnrelatedDocumentRevision() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 908U);
+  app::CreativeEditorTerrainGenerationState state;
+  state.recipe.bounds = {{0, 0}, 3U, 3U};
+  state.recipe.seed = 31U;
+  static_cast<void>(app::previewCreativeEditorTerrainGeneration(
+      state, appState.facade.document(), false));
+  const app::CreativeEditorTerrainGenerationApplyReceipt applied =
+      app::applyCreativeEditorTerrainGeneration(appState, state);
+  const cr::CreativeTerrainGeneratorRecipe durableRecipe = state.recipe;
+
+  state.recipe.seed = 99U;
+  state.draftDirty = true;
+  const cr::CreativeDocumentCreateReceipt created =
+      appState.facade.createDocumentObject(cr::CreativeObjectKind::Crate);
+  const bool dirtySynchronized =
+      app::synchronizeCreativeEditorTerrainGeneration(
+          state, appState.facade.document());
+  const bool dirtyDraftPreserved =
+      state.recipe.seed == 99U && state.draftDirty &&
+      state.sourceDocumentRevision != appState.facade.document().revision();
+
+  state.draftDirty = false;
+  const bool cleanSynchronized =
+      app::synchronizeCreativeEditorTerrainGeneration(
+          state, appState.facade.document());
+
+  return expect(applied.accepted && created.accepted,
+                "terrain draft synchronization fixture applies") &&
+         expect(!dirtySynchronized && dirtyDraftPreserved,
+                "unrelated revision preserves an unsaved terrain draft") &&
+         expect(cleanSynchronized && state.recipe == durableRecipe &&
+                    state.sourceDocumentRevision ==
+                        appState.facade.document().revision(),
+                "clean selected draft reloads durable operation truth");
+}
+
+bool terrainOperationFootprintTracksSelectedAndPreviewMasks() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 909U);
+  app::CreativeEditorState editor;
+  editor.terrainGeneration.recipe.bounds = {{-2, 3}, 6U, 4U};
+  editor.terrainGeneration.recipe.baseHeightCells = 5U;
+  editor.terrainGeneration.recipe.reliefCells = 2U;
+  static_cast<void>(app::previewCreativeEditorTerrainGeneration(
+      editor.terrainGeneration, appState.facade.document(), false));
+  const app::CreativeEditorTerrainGenerationApplyReceipt applied =
+      app::applyCreativeEditorTerrainGeneration(appState,
+                                                editor.terrainGeneration);
+
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> selectedLines;
+  app::appendCreativeEditorTerrainOverlay(appState.facade.document(), editor,
+                                          0.08F, selectedLines, false);
+
+  editor.terrainGeneration.compositionRecipe.mask =
+      cr::CreativeTerrainCompositionMask::Ellipse;
+  const app::CreativeEditorTerrainGenerationPreviewReceipt preview =
+      app::previewCreativeEditorTerrainGeneration(
+          editor.terrainGeneration, appState.facade.document(), false);
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> previewLines;
+  app::appendCreativeEditorTerrainOverlay(appState.facade.document(), editor,
+                                          0.08F, previewLines, false);
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> captureLines;
+  app::appendCreativeEditorTerrainOverlay(appState.facade.document(), editor,
+                                          0.08F, captureLines, true);
+
+  return expect(applied.accepted && selectedLines.size() == 4U,
+                "selected rectangle operation emits four footprint edges") &&
+         expect(preview.accepted && previewLines.size() == 32U,
+                "ellipse preview emits one bounded segmented footprint") &&
+         expect(captureLines.empty(),
+                "capture mode hides terrain operation footprints");
+}
+
 }  // namespace
 
 int main() {
@@ -428,7 +579,10 @@ int main() {
                  terrainGenerationWorkflowIsAtomicAndUndoable() &&
                  terrainGenerationRejectsStalePreviewAndCancelDoesNotMutate() &&
                  desktopCommandsRouteTerrainPreviewAndApply() &&
-                 sequentialGenerationPreservesEarlierRegion()
+                 sequentialGenerationPreservesEarlierRegion() &&
+                 desktopCommandsEditOrderedTerrainOperationsWithHistory() &&
+                 terrainOperationDraftSurvivesUnrelatedDocumentRevision() &&
+                 terrainOperationFootprintTracksSelectedAndPreviewMasks()
              ? EXIT_SUCCESS
              : EXIT_FAILURE;
 }

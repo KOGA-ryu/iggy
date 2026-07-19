@@ -986,7 +986,8 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.accepted = receipt.accepted;
       result.changed = true;
       result.affectedObjectCount =
-          editor.terrainGeneration.composition.receipt.modifiedCellCount;
+          editor.terrainGeneration.operationPreview.receipt.replay
+              .modifiedCellCount;
       result.message = editor.terrainGeneration.statusMessage;
       break;
     }
@@ -1002,7 +1003,7 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
       result.sceneChanged = receipt.changed;
-      result.affectedObjectCount = receipt.replacement.cellCountAfter;
+      result.affectedObjectCount = receipt.operation.replay.outputCellCount;
       result.message = editor.terrainGeneration.statusMessage;
       break;
     }
@@ -1012,6 +1013,84 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.accepted = true;
       result.message = editor.terrainGeneration.statusMessage;
       break;
+    case CreativeDesktopCommandId::TerrainOperationNew:
+      result.accepted = true;
+      result.changed =
+          beginNewCreativeEditorTerrainOperation(editor.terrainGeneration);
+      result.message = editor.terrainGeneration.statusMessage;
+      break;
+    case CreativeDesktopCommandId::TerrainOperationSelect: {
+      const auto* payload =
+          payloadAs<CreativeDesktopTerrainOperationPayload>(command);
+      if (payload == nullptr) {
+        result.message = "terrain operation select: payload mismatch";
+        break;
+      }
+      const bool exists = creative::findCreativeTerrainOperation(
+                              activeAppState.facade.document()
+                                  .terrainOperationStack(),
+                              payload->operationId) != nullptr;
+      result.changed = exists && selectCreativeEditorTerrainOperation(
+                                     editor.terrainGeneration,
+                                     activeAppState.facade.document(),
+                                     payload->operationId);
+      result.accepted = exists;
+      result.message = editor.terrainGeneration.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::TerrainOperationSetEnabled:
+    case CreativeDesktopCommandId::TerrainOperationMove:
+    case CreativeDesktopCommandId::TerrainOperationDuplicate:
+    case CreativeDesktopCommandId::TerrainOperationDelete: {
+      const auto* payload =
+          payloadAs<CreativeDesktopTerrainOperationPayload>(command);
+      if (payload == nullptr) {
+        result.message = "terrain operation edit: payload mismatch";
+        break;
+      }
+      creative::CreativeTerrainOperationMutationRequest request;
+      request.operationId = payload->operationId;
+      std::string_view source = "desktop_terrain_operation_edit";
+      if (command.id ==
+          CreativeDesktopCommandId::TerrainOperationSetEnabled) {
+        request.kind =
+            creative::CreativeTerrainOperationMutationKind::SetEnabled;
+        request.enabled = payload->enabled;
+        source = "desktop_terrain_operation_enable";
+      } else if (command.id ==
+                 CreativeDesktopCommandId::TerrainOperationMove) {
+        request.kind = creative::CreativeTerrainOperationMutationKind::Move;
+        request.targetIndex = payload->targetIndex;
+        source = "desktop_terrain_operation_move";
+      } else if (command.id ==
+                 CreativeDesktopCommandId::TerrainOperationDelete) {
+        request.kind = creative::CreativeTerrainOperationMutationKind::Remove;
+        source = "desktop_terrain_operation_delete";
+      } else {
+        const creative::CreativeTerrainOperation* operation =
+            creative::findCreativeTerrainOperation(
+                activeAppState.facade.document().terrainOperationStack(),
+                payload->operationId);
+        if (operation == nullptr) {
+          result.message = "terrain operation duplicate: source unavailable";
+          break;
+        }
+        request.kind = creative::CreativeTerrainOperationMutationKind::Add;
+        request.generation = operation->generation;
+        request.composition = operation->composition;
+        request.enabled = operation->enabled;
+        source = "desktop_terrain_operation_duplicate";
+      }
+      const CreativeEditorTerrainOperationEditReceipt receipt =
+          editCreativeEditorTerrainOperation(
+              activeAppState, editor.terrainGeneration, request, source);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.sceneChanged = receipt.changed;
+      result.affectedObjectCount = receipt.operation.replay.outputCellCount;
+      result.message = editor.terrainGeneration.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutSetTool: {
       const auto* payload =
           payloadAs<CreativeDesktopWorldLayoutToolPayload>(command);

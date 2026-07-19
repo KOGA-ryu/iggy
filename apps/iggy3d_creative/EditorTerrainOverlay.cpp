@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <limits>
 #include <span>
@@ -446,12 +447,103 @@ void appendCreativeEditorTerrainPatchSlopeTriangles(
   }
 }
 
+void appendTerrainGenerationFootprint(
+    const cr::CreativeDocument& document,
+    const CreativeEditorState& editor,
+    float thickness,
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,
+    bool captureMode) {
+  const CreativeEditorTerrainGenerationState& state =
+      editor.terrainGeneration;
+  if (captureMode || editor.catalog.model.open ||
+      editor.catalog.toolWheel.open || editor.toolOptions.open ||
+      editor.controls.open || editor.transform.active ||
+      editor.transform.controlsOpen) {
+    return;
+  }
+
+  const cr::CreativeTerrainGeneratorRecipe* recipe = nullptr;
+  cr::CreativeTerrainCompositionMask mask = state.compositionRecipe.mask;
+  if (state.previewActive) {
+    recipe = &state.recipe;
+  } else {
+    const cr::CreativeTerrainOperation* operation =
+        cr::findCreativeTerrainOperation(document.terrainOperationStack(),
+                                         state.editingOperationId);
+    if (operation != nullptr) {
+      recipe = &operation->generation;
+      mask = operation->composition.mask;
+    }
+  }
+  if (recipe == nullptr || recipe->bounds.widthCells == 0U ||
+      recipe->bounds.depthCells == 0U) {
+    return;
+  }
+
+  constexpr iggy3d::RenderLineColor selectedColor{0.18F, 0.82F, 0.92F, 1.0F};
+  constexpr iggy3d::RenderLineColor previewColor{0.20F, 1.0F, 0.35F, 1.0F};
+  constexpr iggy3d::RenderLineColor rejectedColor{1.0F, 0.18F, 0.14F, 1.0F};
+  const iggy3d::RenderLineColor color =
+      !state.previewActive
+          ? selectedColor
+          : state.operationPreview.receipt.accepted ? previewColor
+                                                    : rejectedColor;
+  const cr::CreativeGridSettings grid = document.gridSettings();
+  const double minimumX =
+      grid.origin.x + recipe->bounds.minimum.x * grid.cellSizeMeters;
+  const double minimumZ =
+      grid.origin.z + recipe->bounds.minimum.z * grid.cellSizeMeters;
+  const double maximumX =
+      minimumX + recipe->bounds.widthCells * grid.cellSizeMeters;
+  const double maximumZ =
+      minimumZ + recipe->bounds.depthCells * grid.cellSizeMeters;
+  const double y =
+      grid.origin.y +
+      (static_cast<double>(recipe->baseHeightCells) +
+       static_cast<double>(recipe->reliefCells) + 0.15) *
+          grid.cellSizeMeters;
+  if (mask == cr::CreativeTerrainCompositionMask::Rectangle) {
+    appendTerrainLine(lines, {minimumX, y, minimumZ},
+                      {maximumX, y, minimumZ}, color, thickness);
+    appendTerrainLine(lines, {maximumX, y, minimumZ},
+                      {maximumX, y, maximumZ}, color, thickness);
+    appendTerrainLine(lines, {maximumX, y, maximumZ},
+                      {minimumX, y, maximumZ}, color, thickness);
+    appendTerrainLine(lines, {minimumX, y, maximumZ},
+                      {minimumX, y, minimumZ}, color, thickness);
+    return;
+  }
+
+  constexpr std::size_t kEllipseSegmentCount = 32U;
+  constexpr double kTau = 6.28318530717958647692;
+  const double centerX = (minimumX + maximumX) * 0.5;
+  const double centerZ = (minimumZ + maximumZ) * 0.5;
+  const double radiusX = (maximumX - minimumX) * 0.5;
+  const double radiusZ = (maximumZ - minimumZ) * 0.5;
+  for (std::size_t index = 0U; index < kEllipseSegmentCount; ++index) {
+    const double firstAngle =
+        kTau * static_cast<double>(index) / kEllipseSegmentCount;
+    const double secondAngle =
+        kTau * static_cast<double>(index + 1U) / kEllipseSegmentCount;
+    appendTerrainLine(
+        lines,
+        {centerX + std::cos(firstAngle) * radiusX, y,
+         centerZ + std::sin(firstAngle) * radiusZ},
+        {centerX + std::cos(secondAngle) * radiusX, y,
+         centerZ + std::sin(secondAngle) * radiusZ},
+        color, thickness);
+  }
+}
+
 void appendCreativeEditorTerrainOverlay(
     const cr::CreativeDocument& document,
     const CreativeEditorState& editor,
     float wireThickness,
     std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines,
     bool captureMode) {
+  appendTerrainGenerationFootprint(document, editor,
+                                   std::max(0.02F, wireThickness * 0.75F),
+                                   wireLines, captureMode);
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   const bool terrainControl =

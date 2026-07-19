@@ -201,6 +201,96 @@ toSaveTerrainHeightField(
   return true;
 }
 
+[[nodiscard]] std::vector<SaveCreativeDocumentTerrainOperationRecord>
+toSaveTerrainOperations(
+    const creative::CreativeTerrainOperationStack& stack) {
+  std::vector<SaveCreativeDocumentTerrainOperationRecord> records;
+  records.reserve(stack.operations.size());
+  for (const creative::CreativeTerrainOperation& operation :
+       stack.operations) {
+    SaveCreativeDocumentTerrainOperationRecord record;
+    record.id = operation.id;
+    record.enabled = operation.enabled;
+    record.generationVersion = operation.generation.version;
+    record.generatorKind =
+        std::string(creative::toString(operation.generation.kind));
+    record.seed = operation.generation.seed;
+    record.minimumX = operation.generation.bounds.minimum.x;
+    record.minimumZ = operation.generation.bounds.minimum.z;
+    record.widthCells = operation.generation.bounds.widthCells;
+    record.depthCells = operation.generation.bounds.depthCells;
+    record.baseHeightCells = operation.generation.baseHeightCells;
+    record.reliefCells = operation.generation.reliefCells;
+    record.horizontalScaleCells = operation.generation.horizontalScaleCells;
+    record.octaveCount = operation.generation.octaveCount;
+    record.persistence = operation.generation.persistence;
+    record.lacunarity = operation.generation.lacunarity;
+    record.slopeDamping = operation.generation.slopeDamping;
+    record.compositionVersion = operation.composition.version;
+    record.mask = std::string(creative::toString(operation.composition.mask));
+    record.mode = std::string(creative::toString(operation.composition.mode));
+    record.featherCells = operation.composition.featherCells;
+    records.push_back(std::move(record));
+  }
+  return records;
+}
+
+[[nodiscard]] bool toCreativeTerrainOperationStack(
+    std::span<const SaveCreativeDocumentTerrainOperationRecord> records,
+    std::uint32_t stackVersion,
+    creative::CreativeTerrainOperationId nextOperationId,
+    const SaveCreativeDocumentTerrainHeightFieldRecord& baseHeightField,
+    creative::CreativeTerrainOperationStack& output) {
+  if (records.size() > creative::kCreativeTerrainOperationCapacity) {
+    return false;
+  }
+  creative::CreativeTerrainOperationStack restored;
+  restored.version = stackVersion;
+  restored.nextOperationId = nextOperationId;
+  if (!toCreativeTerrainHeightField(baseHeightField,
+                                    restored.baseHeightField)) {
+    return false;
+  }
+  restored.operations.reserve(records.size());
+  for (const SaveCreativeDocumentTerrainOperationRecord& record : records) {
+    creative::CreativeTerrainOperation operation;
+    operation.id = record.id;
+    operation.enabled = record.enabled;
+    operation.generation.version = record.generationVersion;
+    if (!creative::parseCreativeTerrainGeneratorKind(
+            record.generatorKind, operation.generation.kind)) {
+      return false;
+    }
+    operation.generation.seed = record.seed;
+    operation.generation.bounds = {
+        {record.minimumX, record.minimumZ}, record.widthCells,
+        record.depthCells};
+    operation.generation.baseHeightCells = record.baseHeightCells;
+    operation.generation.reliefCells = record.reliefCells;
+    operation.generation.horizontalScaleCells = record.horizontalScaleCells;
+    operation.generation.octaveCount = record.octaveCount;
+    operation.generation.persistence = record.persistence;
+    operation.generation.lacunarity = record.lacunarity;
+    operation.generation.slopeDamping = record.slopeDamping;
+    operation.composition.version = record.compositionVersion;
+    if (!creative::parseCreativeTerrainCompositionMask(
+            record.mask, operation.composition.mask) ||
+        !creative::parseCreativeTerrainCompositionMode(
+            record.mode, operation.composition.mode)) {
+      return false;
+    }
+    operation.composition.featherCells = record.featherCells;
+    restored.operations.push_back(std::move(operation));
+  }
+  if (!creative::validateCreativeTerrainOperationStack(restored) ||
+      (restored.operations.empty() &&
+       restored.baseHeightField.cellCount() != 0U)) {
+    return false;
+  }
+  output = std::move(restored);
+  return true;
+}
+
 [[nodiscard]] std::vector<SaveCreativeDocumentTerrainMaterialRecord>
 toSaveTerrainMaterials(const creative::CreativeTerrainMaterialField& field) {
   std::vector<SaveCreativeDocumentTerrainMaterialRecord> records;

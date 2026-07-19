@@ -29,8 +29,10 @@ inline constexpr std::uint32_t kRuntimeSaveVersion = 1;
 inline constexpr std::uint32_t kSaveCreativeDocumentWaypointDwellVersion = 9;
 inline constexpr std::uint32_t kSaveCreativeDocumentSegmentSpeedVersion = 10;
 inline constexpr std::uint32_t kSaveCreativeDocumentTerrainHeightVersion = 11;
+inline constexpr std::uint32_t kSaveCreativeDocumentTerrainOperationVersion =
+    12;
 inline constexpr std::uint32_t kSaveCreativeDocumentSectionVersion =
-    kSaveCreativeDocumentTerrainHeightVersion;
+    kSaveCreativeDocumentTerrainOperationVersion;
 inline constexpr std::uint32_t kSaveCreativeWorldLayoutSectionVersion = 1U;
 
 struct SaveEnvelopeMetadata {
@@ -245,6 +247,29 @@ struct SaveCreativeDocumentTerrainHeightFieldRecord {
   std::vector<std::uint16_t> heights;
 };
 
+struct SaveCreativeDocumentTerrainOperationRecord {
+  std::uint64_t id = 0U;
+  bool enabled = true;
+  std::uint32_t generationVersion = 1U;
+  std::string generatorKind;
+  std::uint64_t seed = 1U;
+  std::int32_t minimumX = 0;
+  std::int32_t minimumZ = 0;
+  std::uint16_t widthCells = 0U;
+  std::uint16_t depthCells = 0U;
+  std::uint16_t baseHeightCells = 8U;
+  std::uint16_t reliefCells = 6U;
+  double horizontalScaleCells = 24.0;
+  std::uint8_t octaveCount = 5U;
+  double persistence = 0.5;
+  double lacunarity = 2.0;
+  double slopeDamping = 0.35;
+  std::uint32_t compositionVersion = 1U;
+  std::string mask;
+  std::string mode;
+  std::uint16_t featherCells = 4U;
+};
+
 struct SaveCreativeDocumentTerrainMaterialRecord {
   std::int32_t x = 0;
   std::int32_t z = 0;
@@ -277,6 +302,10 @@ struct SaveCreativeDocumentSection {
   std::vector<SaveCreativeDocumentVoxelChunkRecord> voxelChunks;
   std::vector<SaveCreativeDocumentTerrainControlRecord> terrainControls;
   SaveCreativeDocumentTerrainHeightFieldRecord terrainHeightField;
+  std::uint32_t terrainOperationStackVersion = 1U;
+  std::uint64_t nextTerrainOperationId = 1U;
+  SaveCreativeDocumentTerrainHeightFieldRecord terrainOperationBaseHeightField;
+  std::vector<SaveCreativeDocumentTerrainOperationRecord> terrainOperations;
   std::vector<SaveCreativeDocumentTerrainMaterialRecord> terrainMaterials;
 };
 

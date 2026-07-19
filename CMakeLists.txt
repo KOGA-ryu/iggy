@@ -43,6 +43,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/assets/AuthoredAsset.cpp
     src/app/iggy3d/creative/document/Object.cpp
     src/app/iggy3d/creative/document/Document.cpp
+    src/app/iggy3d/creative/document/DocumentTerrainOperations.cpp
     src/app/iggy3d/creative/document/DocumentLogicLinks.cpp
     src/app/iggy3d/creative/document/DocumentObjects.cpp
     src/app/iggy3d/creative/document/DocumentRestore.cpp
@@ -135,6 +136,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/recipes/TerrainRecipe.cpp
     src/app/iggy3d/creative/recipes/TerrainGeneration.cpp
     src/app/iggy3d/creative/recipes/TerrainComposition.cpp
+    src/app/iggy3d/creative/recipes/TerrainOperation.cpp
     src/app/iggy3d/creative/world/WorldLayout.cpp
     src/app/iggy3d/creative/world/WorldLayoutTerrainImpact.cpp
     src/app/iggy3d/creative/world/WorldLayoutTerrainReconciliation.cpp

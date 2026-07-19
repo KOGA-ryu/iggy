@@ -6,7 +6,9 @@
 #include <array>
 #include <cstdint>
 #include <limits>
+#include <string>
 #include <string_view>
+#include <vector>
 
 namespace iggy3d_creative_app {
 
@@ -51,6 +53,83 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
 
   bool recipeChanged = false;
   ImGui::BeginDisabled(blocked);
+  ImGui::SeparatorText("Operations");
+  if (ImGui::Button("New Operation")) {
+    commands.push(CreativeDesktopCommandId::TerrainOperationNew);
+  }
+  ImGui::SameLine();
+  ImGui::Text("%zu / %zu",
+              document.terrainOperationStack().operations.size(),
+              cr::kCreativeTerrainOperationCapacity);
+  if (document.terrainOperationStack().operations.empty()) {
+    ImGui::TextDisabled("No terrain operations");
+  } else {
+    const bool childVisible =
+        ImGui::BeginChild("TerrainOperations", ImVec2{0.0F, 150.0F},
+                          true);
+    if (childVisible) {
+      const std::vector<cr::CreativeTerrainOperation>& operations =
+          document.terrainOperationStack().operations;
+      for (std::size_t index = 0U; index < operations.size(); ++index) {
+        const cr::CreativeTerrainOperation& operation = operations[index];
+        ImGui::PushID(static_cast<int>(index));
+        bool enabled = operation.enabled;
+        if (ImGui::Checkbox("##enabled", &enabled)) {
+          commands.push(
+              CreativeDesktopCommandId::TerrainOperationSetEnabled,
+              CreativeDesktopTerrainOperationPayload{operation.id, enabled,
+                                                     index});
+        }
+        ImGui::SameLine();
+        const std::string label =
+            "#" + std::to_string(operation.id) + "  " +
+            std::string(cr::toString(operation.composition.mode));
+        const bool selected = state.editingOperationId == operation.id;
+        if (ImGui::Selectable(label.c_str(), selected)) {
+          commands.push(
+              CreativeDesktopCommandId::TerrainOperationSelect,
+              CreativeDesktopTerrainOperationPayload{operation.id,
+                                                     operation.enabled, index});
+        }
+        ImGui::BeginDisabled(index == 0U);
+        if (ImGui::SmallButton("Up")) {
+          commands.push(
+              CreativeDesktopCommandId::TerrainOperationMove,
+              CreativeDesktopTerrainOperationPayload{operation.id,
+                                                     operation.enabled,
+                                                     index - 1U});
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        ImGui::BeginDisabled(index + 1U >= operations.size());
+        if (ImGui::SmallButton("Down")) {
+          commands.push(
+              CreativeDesktopCommandId::TerrainOperationMove,
+              CreativeDesktopTerrainOperationPayload{operation.id,
+                                                     operation.enabled,
+                                                     index + 1U});
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Duplicate")) {
+          commands.push(
+              CreativeDesktopCommandId::TerrainOperationDuplicate,
+              CreativeDesktopTerrainOperationPayload{operation.id,
+                                                     operation.enabled, index});
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Delete")) {
+          commands.push(
+              CreativeDesktopCommandId::TerrainOperationDelete,
+              CreativeDesktopTerrainOperationPayload{operation.id,
+                                                     operation.enabled, index});
+        }
+        ImGui::PopID();
+      }
+    }
+    ImGui::EndChild();
+  }
+
   ImGui::SeparatorText("Region");
   std::array<int, 2U> origin{
       static_cast<int>(recipe.bounds.minimum.x),
@@ -173,6 +252,7 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
   if (recipeChanged && state.previewActive) {
     commands.push(CreativeDesktopCommandId::TerrainGenerationPreview);
   }
+  state.draftDirty = state.draftDirty || recipeChanged;
 
   ImGui::Separator();
   if (!state.previewActive) {
@@ -191,7 +271,11 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
     const bool canApply =
         creativeEditorTerrainGenerationPreviewMatches(state, document);
     ImGui::BeginDisabled(!canApply);
-    if (ImGui::Button("Apply")) {
+    if (ImGui::Button(
+            state.editingOperationId ==
+                    cr::kInvalidCreativeTerrainOperationId
+                ? "Add Operation"
+                : "Update Operation")) {
       commands.push(CreativeDesktopCommandId::TerrainGenerationApply);
     }
     ImGui::EndDisabled();
@@ -208,17 +292,17 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
     ImGui::Text("Height  %u - %u cells", generation.minimumHeightCells,
                 generation.maximumHeightCells);
     ImGui::Text("Seed  %llu", static_cast<unsigned long long>(recipe.seed));
-    if (state.composition.receipt.accepted) {
+    if (state.operationPreview.receipt.accepted) {
       ImGui::TextColored(ImVec4{0.20F, 1.0F, 0.35F, 1.0F}, "READY");
       ImGui::Text("Modified  %llu  Feathered  %llu",
                   static_cast<unsigned long long>(
-                      state.composition.receipt.modifiedCellCount),
+                      state.operationPreview.receipt.replay.modifiedCellCount),
                   static_cast<unsigned long long>(
-                      state.composition.receipt.featheredCellCount));
+                      state.operationPreview.receipt.replay.featheredCellCount));
       ImGui::Text(
           "Hash  %016llx",
           static_cast<unsigned long long>(
-              state.composition.receipt.heightHash));
+              state.operationPreview.receipt.replay.heightHash));
     }
   } else if (state.previewActive && state.generation.receipt.requested) {
     const std::string_view status =
@@ -227,10 +311,10 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
                        static_cast<int>(status.size()), status.data());
   }
   if (state.previewActive && state.generation.receipt.accepted &&
-      state.composition.receipt.requested &&
-      !state.composition.receipt.accepted) {
+      state.operationPreview.receipt.requested &&
+      !state.operationPreview.receipt.accepted) {
     const std::string_view status =
-        cr::toString(state.composition.receipt.status);
+        cr::toString(state.operationPreview.receipt.status);
     ImGui::TextColored(ImVec4{1.0F, 0.34F, 0.30F, 1.0F}, "%.*s",
                        static_cast<int>(status.size()), status.data());
   }

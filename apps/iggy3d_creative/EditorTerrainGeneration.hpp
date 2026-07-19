@@ -5,8 +5,7 @@
 #include <string_view>
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
-#include "app/iggy3d/creative/recipes/TerrainComposition.hpp"
-#include "app/iggy3d/creative/recipes/TerrainGeneration.hpp"
+#include "app/iggy3d/creative/recipes/TerrainOperation.hpp"
 
 namespace iggy3d_creative_app {
 
@@ -18,12 +17,15 @@ struct CreativeEditorTerrainGenerationState {
       makeDefaultCreativeEditorTerrainGeneratorRecipe();
   iggy3d::creative::CreativeTerrainCompositionRecipe compositionRecipe{};
   iggy3d::creative::CreativeTerrainGenerationResult generation{};
-  iggy3d::creative::CreativeTerrainCompositionResult composition{};
+  iggy3d::creative::CreativeTerrainOperationMutationPlan operationPreview{};
+  iggy3d::creative::CreativeTerrainOperationId editingOperationId =
+      iggy3d::creative::kInvalidCreativeTerrainOperationId;
   iggy3d::creative::CreativeDocumentId sourceDocumentId =
       iggy3d::creative::kInvalidDocumentId;
   std::uint64_t sourceDocumentRevision = 0U;
   std::uint64_t generationCount = 0U;
   bool previewActive = false;
+  bool draftDirty = false;
   std::string statusMessage;
 };
 
@@ -42,10 +44,20 @@ struct CreativeEditorTerrainGenerationApplyReceipt {
   bool requested = false;
   bool accepted = false;
   bool changed = false;
-  iggy3d::creative::CreativeTerrainHeightFieldReplaceReceipt replacement{};
+  iggy3d::creative::CreativeTerrainOperationMutationReceipt operation{};
   iggy3d::creative::CreativeHistoryRecordReceipt history{};
   std::string_view reasonCode =
       "creative_editor_terrain_generation_apply_not_requested";
+};
+
+struct CreativeEditorTerrainOperationEditReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  iggy3d::creative::CreativeTerrainOperationMutationReceipt operation{};
+  iggy3d::creative::CreativeHistoryRecordReceipt history{};
+  std::string_view reasonCode =
+      "creative_editor_terrain_operation_edit_not_requested";
 };
 
 void resetCreativeEditorTerrainGeneration(
@@ -71,6 +83,21 @@ previewCreativeEditorTerrainGeneration(
     CreativeEditorTerrainGenerationState& state,
     std::string_view reasonCode =
         "creative_editor_terrain_generation_preview_canceled");
+
+[[nodiscard]] bool beginNewCreativeEditorTerrainOperation(
+    CreativeEditorTerrainGenerationState& state);
+
+[[nodiscard]] bool selectCreativeEditorTerrainOperation(
+    CreativeEditorTerrainGenerationState& state,
+    const iggy3d::creative::CreativeDocument& document,
+    iggy3d::creative::CreativeTerrainOperationId operationId);
+
+[[nodiscard]] CreativeEditorTerrainOperationEditReceipt
+editCreativeEditorTerrainOperation(
+    iggy3d::creative::CreativeAppState& appState,
+    CreativeEditorTerrainGenerationState& state,
+    const iggy3d::creative::CreativeTerrainOperationMutationRequest& request,
+    std::string_view source);
 
 // Commits the exact quantized preview through Facade under one history record.
 [[nodiscard]] CreativeEditorTerrainGenerationApplyReceipt

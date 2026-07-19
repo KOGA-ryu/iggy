@@ -94,6 +94,19 @@ CreativeTerrainHeightFieldReplaceReceipt Facade::replaceTerrainHeightField(
   return receipt;
 }
 
+CreativeTerrainOperationMutationReceipt Facade::applyTerrainOperationMutation(
+    const CreativeTerrainOperationMutationRequest& request) {
+  recordCommandAttempt(stats_);
+  CreativeTerrainOperationMutationReceipt receipt =
+      document_.applyTerrainOperationMutation(request);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
 CreativeTerrainMaterialMutationReceipt Facade::applyTerrainMaterialEdits(
     std::span<const CreativeTerrainMaterialEdit> edits) {
   recordCommandAttempt(stats_);

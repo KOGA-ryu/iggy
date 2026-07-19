@@ -1307,6 +1307,141 @@ bool terrainHeightFieldEncodeDecodeRestoreAndLegacyFallback() {
                 "absent heightfield cannot hide a stale payload");
 }
 
+bool terrainOperationsEncodeDecodeRestoreAndRejectDrift() {
+  cr::CreativeDocument document = authoredDocument();
+  constexpr cr::CreativeTerrainHeightFieldBounds bounds{{0, 0}, 2U, 2U};
+  constexpr std::array<std::uint16_t, 4U> baseHeights{2U, 2U, 2U, 2U};
+  const cr::CreativeTerrainHeightFieldReplaceReceipt base =
+      document.replaceTerrainHeightField(bounds, baseHeights);
+
+  cr::CreativeTerrainOperationMutationRequest firstRequest;
+  firstRequest.kind = cr::CreativeTerrainOperationMutationKind::Add;
+  firstRequest.generation.bounds = bounds;
+  firstRequest.generation.baseHeightCells = 5U;
+  firstRequest.generation.reliefCells = 0U;
+  firstRequest.generation.horizontalScaleCells = 4.0;
+  firstRequest.generation.octaveCount = 1U;
+  firstRequest.generation.slopeDamping = 0.0;
+  firstRequest.composition.featherCells = 0U;
+  const cr::CreativeTerrainOperationMutationReceipt first =
+      document.applyTerrainOperationMutation(firstRequest);
+
+  cr::CreativeTerrainOperationMutationRequest secondRequest = firstRequest;
+  secondRequest.generation.seed = 44U;
+  secondRequest.generation.baseHeightCells = 9U;
+  secondRequest.composition.mask =
+      cr::CreativeTerrainCompositionMask::Ellipse;
+  const cr::CreativeTerrainOperationMutationReceipt second =
+      document.applyTerrainOperationMutation(secondRequest);
+  cr::CreativeTerrainOperationMutationRequest disableFirst;
+  disableFirst.kind = cr::CreativeTerrainOperationMutationKind::SetEnabled;
+  disableFirst.operationId = first.operationId;
+  disableFirst.enabled = false;
+  const cr::CreativeTerrainOperationMutationReceipt disabled =
+      document.applyTerrainOperationMutation(disableFirst);
+
+  const iggy3d::ProductCreativeDocumentSectionBuildResult built =
+      iggy3d::buildSaveCreativeDocumentSection(document);
+  iggy3d::SaveEnvelope envelope = minimalEnvelope();
+  envelope.creativeDocument = built.section;
+  const iggy3d::SaveEncodeResult encoded =
+      iggy3d::encodeSaveEnvelope(envelope);
+  const iggy3d::SaveDecodeResult decoded =
+      iggy3d::decodeSaveEnvelope(encoded.encodedText);
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult restored =
+      iggy3d::restoreCreativeDocumentFromSaveSection(
+          decoded.envelope.creativeDocument);
+
+  iggy3d::SaveCreativeDocumentSection legacy = built.section;
+  legacy.version = iggy3d::kSaveCreativeDocumentTerrainHeightVersion;
+  legacy.nextTerrainOperationId = 1U;
+  legacy.terrainOperationBaseHeightField = {};
+  legacy.terrainOperations.clear();
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult legacyRestored =
+      iggy3d::restoreCreativeDocumentFromSaveSection(legacy);
+
+  iggy3d::SaveCreativeDocumentSection badKind = built.section;
+  badKind.terrainOperations.front().generatorKind = "UnknownGenerator";
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult badKindResult =
+      iggy3d::restoreCreativeDocumentFromSaveSection(badKind);
+  iggy3d::SaveCreativeDocumentSection badStackVersion = built.section;
+  badStackVersion.terrainOperationStackVersion = 99U;
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult
+      badStackVersionResult =
+          iggy3d::restoreCreativeDocumentFromSaveSection(badStackVersion);
+  iggy3d::SaveCreativeDocumentSection duplicateId = built.section;
+  duplicateId.terrainOperations.back().id =
+      duplicateId.terrainOperations.front().id;
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult duplicateResult =
+      iggy3d::restoreCreativeDocumentFromSaveSection(duplicateId);
+  iggy3d::SaveCreativeDocumentSection drifted = built.section;
+  ++drifted.terrainHeightField.heights.front();
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult driftedResult =
+      iggy3d::restoreCreativeDocumentFromSaveSection(drifted);
+
+  const cr::CreativeTerrainOperationStack& restoredStack =
+      restored.document.terrainOperationStack();
+  return expect(base.accepted && first.accepted && second.accepted &&
+                    disabled.accepted,
+                "terrain operation save setup applies") &&
+         expect(built.receipt.accepted &&
+                    built.receipt.terrainOperationCount == 2U &&
+                    built.section.terrainOperations.size() == 2U &&
+                    built.section.terrainOperationStackVersion ==
+                        cr::kCreativeTerrainOperationStackVersion &&
+                    built.section.terrainOperationBaseHeightField.present,
+                "save section owns ordered operation provenance") &&
+         expect(encoded.status == iggy3d::SaveCodecStatus::Ok &&
+                    encoded.encodedText.find(
+                        "creativeDocument.terrainOperation.count=2\n") !=
+                        std::string::npos &&
+                    encoded.encodedText.find(
+                        "creativeDocument.terrainOperation.0.enabled=false\n") !=
+                        std::string::npos,
+                "codec writes operation order and enabled state") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok &&
+                    decoded.envelope.creativeDocument.terrainOperations.size() ==
+                        2U,
+                "codec decodes bounded operation records") &&
+         expect(restored.receipt.accepted &&
+                    restoredStack.operations.size() == 2U &&
+                    !restoredStack.operations.front().enabled &&
+                    restoredStack.operations.back().generation.seed == 44U &&
+                    restoredStack.operations.back().composition.mask ==
+                        cr::CreativeTerrainCompositionMask::Ellipse &&
+                    cr::creativeTerrainHeightFieldsEqual(
+                        restored.document.terrainHeightField(),
+                        document.terrainHeightField()),
+                "restore preserves recipes and replayed terrain") &&
+         expect(legacyRestored.receipt.accepted &&
+                    legacyRestored.document.terrainOperationStack()
+                        .operations.empty() &&
+                    cr::creativeTerrainHeightFieldsEqual(
+                        legacyRestored.document.terrainHeightField(),
+                        document.terrainHeightField()),
+                "version 11 terrain remains readable as a baked field") &&
+         expect(!badKindResult.receipt.accepted &&
+                    badKindResult.receipt.status ==
+                        iggy3d::ProductCreativeDocumentSectionStatus::
+                            InvalidTerrainOperationData,
+                "unknown generator rejects before restore") &&
+         expect(!badStackVersionResult.receipt.accepted &&
+                    badStackVersionResult.receipt.status ==
+                        iggy3d::ProductCreativeDocumentSectionStatus::
+                            InvalidTerrainOperationData,
+                "unknown operation stack version rejects before restore") &&
+         expect(!duplicateResult.receipt.accepted &&
+                    duplicateResult.receipt.status ==
+                        iggy3d::ProductCreativeDocumentSectionStatus::
+                            InvalidTerrainOperationData,
+                "duplicate operation ids reject before restore") &&
+         expect(!driftedResult.receipt.accepted &&
+                    driftedResult.receipt.status ==
+                        iggy3d::ProductCreativeDocumentSectionStatus::
+                            InvalidTerrainOperationData,
+                "derived field drift rejects against deterministic replay");
+}
+
 }  // namespace
 
 int main() {
@@ -1336,6 +1471,7 @@ int main() {
   ok = voxelChunksEncodeDecodeAndRestore() && ok;
   ok = terrainControlsEncodeDecodeAndRestore() && ok;
   ok = terrainHeightFieldEncodeDecodeRestoreAndLegacyFallback() && ok;
+  ok = terrainOperationsEncodeDecodeRestoreAndRejectDrift() && ok;
   ok = terrainMaterialsEncodeDecodeAndRestore() && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

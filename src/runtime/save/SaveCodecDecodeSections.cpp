@@ -257,6 +257,36 @@ void Reader::readCreativeDocumentObject(const std::string& prefix,
   }
 }
 
+void Reader::readCreativeTerrainHeightField(
+    const std::string& prefix,
+    SaveCreativeDocumentTerrainHeightFieldRecord& heightField) {
+  if (!nextKeyIs(prefix + ".present")) {
+    return;
+  }
+  readBool(prefix + ".present", heightField.present);
+  if (!heightField.present) {
+    return;
+  }
+  readI32(prefix + ".minimumX", heightField.minimumX);
+  readI32(prefix + ".minimumZ", heightField.minimumZ);
+  readUnsigned(prefix + ".widthCells", heightField.widthCells);
+  readUnsigned(prefix + ".depthCells", heightField.depthCells);
+  std::uint64_t heightCount = 0U;
+  readUnsigned(prefix + ".height.count", heightCount);
+  constexpr std::uint64_t kMaxCreativeTerrainHeightCellCount = 8192U;
+  if (heightCount > kMaxCreativeTerrainHeightCellCount) {
+    result_ = fail(SaveCodecStatus::InvalidNumber,
+                   prefix + ".height.count", index_,
+                   "terrain height cell count exceeds limit");
+    return;
+  }
+  heightField.heights.resize(static_cast<std::size_t>(heightCount));
+  for (std::size_t index = 0U; index < heightField.heights.size(); ++index) {
+    readUnsigned(prefix + ".height." + std::to_string(index),
+                 heightField.heights[index]);
+  }
+}
+
 void Reader::readCreativeDocument() {
   if (!nextKeyIs("creativeDocument.present")) {
     return;
@@ -382,37 +412,65 @@ void Reader::readCreativeDocument() {
       readUnsigned(p + "radiusCells", control.radiusCells);
     }
   }
-  if (nextKeyIs("creativeDocument.terrainHeightField.present")) {
-    SaveCreativeDocumentTerrainHeightFieldRecord& heightField =
-        section.terrainHeightField;
-    readBool("creativeDocument.terrainHeightField.present",
-             heightField.present);
-    if (heightField.present) {
-      readI32("creativeDocument.terrainHeightField.minimumX",
-              heightField.minimumX);
-      readI32("creativeDocument.terrainHeightField.minimumZ",
-              heightField.minimumZ);
-      readUnsigned("creativeDocument.terrainHeightField.widthCells",
-                   heightField.widthCells);
-      readUnsigned("creativeDocument.terrainHeightField.depthCells",
-                   heightField.depthCells);
-      std::uint64_t heightCount = 0U;
-      readUnsigned("creativeDocument.terrainHeightField.height.count",
-                   heightCount);
-      constexpr std::uint64_t kMaxCreativeTerrainHeightCellCount = 8192U;
-      if (heightCount > kMaxCreativeTerrainHeightCellCount) {
-        result_ = fail(SaveCodecStatus::InvalidNumber,
-                       "creativeDocument.terrainHeightField.height.count",
-                       index_, "terrain height cell count exceeds limit");
-        return;
-      }
-      heightField.heights.resize(static_cast<std::size_t>(heightCount));
-      for (std::size_t index = 0U; index < heightField.heights.size();
-           ++index) {
-        readUnsigned("creativeDocument.terrainHeightField.height." +
-                         std::to_string(index),
-                     heightField.heights[index]);
-      }
+  readCreativeTerrainHeightField("creativeDocument.terrainHeightField",
+                                 section.terrainHeightField);
+  if (section.version >= kSaveCreativeDocumentTerrainOperationVersion ||
+      nextKeyIs("creativeDocument.terrainOperation.version")) {
+    readUnsigned("creativeDocument.terrainOperation.version",
+                 section.terrainOperationStackVersion);
+    readUnsigned("creativeDocument.terrainOperation.nextId",
+                 section.nextTerrainOperationId);
+    readCreativeTerrainHeightField(
+        "creativeDocument.terrainOperation.baseHeightField",
+        section.terrainOperationBaseHeightField);
+    std::uint64_t operationCount = 0U;
+    readUnsigned("creativeDocument.terrainOperation.count", operationCount);
+    constexpr std::uint64_t kMaxCreativeTerrainOperationCount = 64U;
+    if (operationCount > kMaxCreativeTerrainOperationCount) {
+      result_ = fail(SaveCodecStatus::InvalidNumber,
+                     "creativeDocument.terrainOperation.count", index_,
+                     "terrain operation count exceeds limit");
+      return;
+    }
+    section.terrainOperations.resize(
+        static_cast<std::size_t>(operationCount));
+    for (std::size_t operationIndex = 0U;
+         operationIndex < section.terrainOperations.size();
+         ++operationIndex) {
+      SaveCreativeDocumentTerrainOperationRecord& operation =
+          section.terrainOperations[operationIndex];
+      const std::string prefix = "creativeDocument.terrainOperation." +
+                                 std::to_string(operationIndex) + ".";
+      readUnsigned(prefix + "id", operation.id);
+      readBool(prefix + "enabled", operation.enabled);
+      readUnsigned(prefix + "generation.version",
+                   operation.generationVersion);
+      readString(prefix + "generation.kind", operation.generatorKind);
+      readUnsigned(prefix + "generation.seed", operation.seed);
+      readI32(prefix + "generation.minimumX", operation.minimumX);
+      readI32(prefix + "generation.minimumZ", operation.minimumZ);
+      readUnsigned(prefix + "generation.widthCells", operation.widthCells);
+      readUnsigned(prefix + "generation.depthCells", operation.depthCells);
+      readUnsigned(prefix + "generation.baseHeightCells",
+                   operation.baseHeightCells);
+      readUnsigned(prefix + "generation.reliefCells",
+                   operation.reliefCells);
+      readDouble(prefix + "generation.horizontalScaleCells",
+                 operation.horizontalScaleCells);
+      readUnsigned(prefix + "generation.octaveCount",
+                   operation.octaveCount);
+      readDouble(prefix + "generation.persistence",
+                 operation.persistence);
+      readDouble(prefix + "generation.lacunarity",
+                 operation.lacunarity);
+      readDouble(prefix + "generation.slopeDamping",
+                 operation.slopeDamping);
+      readUnsigned(prefix + "composition.version",
+                   operation.compositionVersion);
+      readString(prefix + "composition.mask", operation.mask);
+      readString(prefix + "composition.mode", operation.mode);
+      readUnsigned(prefix + "composition.featherCells",
+                   operation.featherCells);
     }
   }
   if (nextKeyIs("creativeDocument.terrainMaterial.count")) {

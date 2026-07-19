@@ -32,6 +32,10 @@ struct CreativeTerrainCompositionRecipe {
   CreativeTerrainCompositionMode mode =
       CreativeTerrainCompositionMode::Replace;
   std::uint16_t featherCells = 4U;
+
+  [[nodiscard]] friend bool operator==(
+      CreativeTerrainCompositionRecipe,
+      CreativeTerrainCompositionRecipe) noexcept = default;
 };
 
 enum class CreativeTerrainCompositionStatus : std::uint8_t {
@@ -77,8 +81,14 @@ struct CreativeTerrainCompositionResult {
     const CreativeTerrainCompositionRecipe& recipe) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeTerrainCompositionMask mask) noexcept;
+[[nodiscard]] bool parseCreativeTerrainCompositionMask(
+    std::string_view value,
+    CreativeTerrainCompositionMask& output) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeTerrainCompositionMode mode) noexcept;
+[[nodiscard]] bool parseCreativeTerrainCompositionMode(
+    std::string_view value,
+    CreativeTerrainCompositionMode& output) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeTerrainCompositionStatus status) noexcept;
 

@@ -23,6 +23,7 @@ enum class ProductCreativeDocumentSectionStatus : std::uint8_t {
   DuplicateObjectId,
   InvalidVoxelData,
   InvalidTerrainData,
+  InvalidTerrainOperationData,
   InvalidTerrainMaterialData,
   InvalidNextObjectId,
   Converted,
@@ -40,6 +41,7 @@ struct ProductCreativeDocumentSectionReceipt {
   std::uint64_t voxelCellCount = 0;
   std::uint64_t terrainControlCount = 0;
   std::uint64_t terrainHeightCellCount = 0;
+  std::uint64_t terrainOperationCount = 0;
   std::uint64_t terrainMaterialOverrideCount = 0;
   creative::CreativeObjectId nextObjectId = creative::kInvalidObjectId;
   std::string_view message = "creative_document_section_not_requested";
