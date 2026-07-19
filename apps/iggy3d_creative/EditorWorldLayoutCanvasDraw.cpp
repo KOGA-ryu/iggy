@@ -1,6 +1,7 @@
 #include "EditorWorldLayoutCanvasInternal.hpp"
 
 #include "EditorDesktopModel.hpp"
+#include "EditorWorldLayoutInternal.hpp"
 #include "EditorWorldLayoutTopography.hpp"
 
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
@@ -41,26 +42,6 @@ ImVec4 generatedScopeTint(cr::CreativeWorldLayoutTable table) {
 bool selected(const CreativeEditorWorldLayoutState& state,
               CreativeEditorWorldLayoutSelectionKind kind, std::size_t index) {
   return state.selection.kind == kind && state.selection.index == index;
-}
-
-bool roomOnActiveLevel(const CreativeEditorWorldLayoutState& state,
-                       const cr::CreativeWorldLayout& source,
-                       std::size_t roomIndex) noexcept {
-  return roomIndex < source.rooms.size() &&
-         (state.activeLevelIndex >= source.levels.size() ||
-          source.rooms[roomIndex].levelIndex == state.activeLevelIndex);
-}
-
-bool openingOnActiveLevel(const CreativeEditorWorldLayoutState& state,
-                          const cr::CreativeWorldLayout& source,
-                          std::size_t openingIndex) noexcept {
-  if (openingIndex >= source.openings.size()) {
-    return false;
-  }
-  const cr::CreativeWorldLayoutOpening& opening = source.openings[openingIndex];
-  return opening.hostKind !=
-             cr::CreativeWorldLayoutOpeningHostKind::RoomEdge ||
-         roomOnActiveLevel(state, source, opening.roomIndex);
 }
 
 std::pair<double, double> buildingPreviewOffset(
@@ -247,7 +228,8 @@ void drawSharedRoomEdges(ImDrawList& drawList,
   const auto spans = cr::inspectCreativeWorldLayoutSharedRoomEdges(source);
   const ImU32 sharedColor = color({0.26F, 0.84F, 0.58F, 1.0F});
   for (const cr::CreativeWorldLayoutSharedRoomEdgeSpan& span : spans) {
-    if (!roomOnActiveLevel(state, source, span.firstRoomIndex)) {
+    if (!detail::worldLayoutRoomOnActiveLevel(state, source,
+                                              span.firstRoomIndex)) {
       continue;
     }
     const auto [deltaX, deltaZ] =
@@ -427,7 +409,8 @@ void drawRoomManipulation(ImDrawList& drawList,
                           const CanvasTransform& transform,
                           const CreativeEditorWorldLayoutState& state) {
   if (state.selection.kind != CreativeEditorWorldLayoutSelectionKind::Room ||
-      !roomOnActiveLevel(state, state.source, state.selection.index)) {
+      !detail::worldLayoutRoomOnActiveLevel(state, state.source,
+                                            state.selection.index)) {
     return;
   }
   const bool active = state.roomManipulation.active &&
@@ -594,7 +577,7 @@ void drawOpenings(ImDrawList& drawList, const CanvasTransform& transform,
   const cr::CreativeWorldLayout& source =
       creativeEditorWorldLayoutDisplaySource(state);
   for (std::size_t index = 0U; index < source.openings.size(); ++index) {
-    if (!openingOnActiveLevel(state, source, index)) {
+    if (!detail::worldLayoutOpeningOnActiveLevel(state, source, index)) {
       continue;
     }
     const cr::CreativeWorldLayoutOpening& opening =
@@ -687,7 +670,7 @@ drawCreativeEditorWorldLayoutCanvasScene(
   const cr::CreativeWorldLayout& displaySource =
       creativeEditorWorldLayoutDisplaySource(state);
   for (std::size_t index = 0U; index < displaySource.rooms.size(); ++index) {
-    if (roomOnActiveLevel(state, displaySource, index)) {
+    if (detail::worldLayoutRoomOnActiveLevel(state, displaySource, index)) {
       drawRoom(drawList, transform, state, index);
     }
   }

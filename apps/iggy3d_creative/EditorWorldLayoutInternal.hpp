@@ -31,6 +31,32 @@ inline bool finiteWorldLayoutPoint(
   return std::isfinite(point.x) && std::isfinite(point.z);
 }
 
+inline bool worldLayoutRoomOnActiveLevel(
+    const CreativeEditorWorldLayoutState& state,
+    const cr::CreativeWorldLayout& source,
+    std::size_t roomIndex) noexcept {
+  return roomIndex < source.rooms.size() &&
+         (state.activeLevelIndex >= source.levels.size() ||
+          source.rooms[roomIndex].levelIndex == state.activeLevelIndex);
+}
+
+inline bool worldLayoutOpeningOnActiveLevel(
+    const CreativeEditorWorldLayoutState& state,
+    const cr::CreativeWorldLayout& source,
+    std::size_t openingIndex) noexcept {
+  if (openingIndex >= source.openings.size()) {
+    return false;
+  }
+  const cr::CreativeWorldLayoutOpening& opening = source.openings[openingIndex];
+  return opening.hostKind !=
+             cr::CreativeWorldLayoutOpeningHostKind::RoomEdge ||
+         worldLayoutRoomOnActiveLevel(state, source, opening.roomIndex);
+}
+
+CreativeEditorWorldLayoutEditReceipt selectWorldLayoutAtPoint(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint point);
+
 inline CreativeEditorWorldLayoutRectHandle worldLayoutRectHandleAt(
     cr::CreativeWorldLayoutRect footprint,
     CreativeEditorWorldLayoutPoint point, double toleranceCells) noexcept {
