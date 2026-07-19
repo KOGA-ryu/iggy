@@ -44,4 +44,18 @@ void drawCreativeEditorWorldLayoutStatusBar(
     const CreativeEditorState& editor,
     const CreativeEditorWorldLayoutCanvasHoverStatus& hover);
 
+void cancelCreativeEditorWorldLayoutPanelManipulation(
+    CreativeEditorWorldLayoutState& state,
+    CreativeDesktopCommandFrame& commands);
+
+void drawCreativeEditorWorldLayoutViewControls(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutTopographyState& topography,
+    CreativeDesktopCommandFrame& commands);
+
+void drawCreativeEditorWorldLayoutCanvas(
+    CreativeEditorState& editor, const cr::CreativeDocument& document,
+    CreativeDesktopCommandFrame& commands, bool interactionEnabled,
+    CreativeEditorWorldLayoutCanvasHoverStatus* hoverStatus);
+
 }  // namespace iggy3d_creative_app
