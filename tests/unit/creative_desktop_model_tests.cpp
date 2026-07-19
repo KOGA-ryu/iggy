@@ -380,8 +380,11 @@ bool generatedSourceAdoptionPolicyKeepsStructuresSourceOwned() {
                                    1U)),
                 "one-to-one object and box outputs permit adoption") &&
          expect(!app::creativeDesktopGeneratedSourceSupportsAdoption(
-                    provenance(true, cr::CreativeWorldLayoutTable::Wall,
+                    provenance(true, cr::CreativeWorldLayoutTable::Room,
                                1U)) &&
+                    !app::creativeDesktopGeneratedSourceSupportsAdoption(
+                        provenance(true, cr::CreativeWorldLayoutTable::Wall,
+                                   1U)) &&
                     !app::creativeDesktopGeneratedSourceSupportsAdoption(
                         provenance(
                             true,

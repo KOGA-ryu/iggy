@@ -221,6 +221,7 @@ constexpr std::string_view kRoomEdgePrefix =
   for (const auto [table, count] : {
            std::pair{CreativeWorldLayoutTable::Room, layout.rooms.size()},
            std::pair{CreativeWorldLayoutTable::Object, layout.objects.size()},
+           std::pair{CreativeWorldLayoutTable::Level, layout.levels.size()},
            std::pair{CreativeWorldLayoutTable::Building,
                      layout.buildings.size()},
        }) {

@@ -143,6 +143,33 @@ CreativeEditorWorldLayoutApplyReceipt applyWorldLayoutSettingsCandidate(
 }  // namespace
 
 CreativeEditorWorldLayoutPreviewReceipt
+previewCreativeEditorWorldLayoutRoomSettings(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document, std::size_t roomIndex,
+    CreativeEditorWorldLayoutRoomSettings settings) {
+  CreativeEditorWorldLayoutState candidate =
+      makeWorldLayoutSettingsCandidate(state);
+  const CreativeEditorWorldLayoutEditReceipt editReceipt =
+      setCreativeEditorWorldLayoutRoomSettings(candidate, roomIndex, settings);
+  return previewWorldLayoutSettingsCandidate(
+      state, document, std::move(candidate), editReceipt,
+      "room shell preview ready");
+}
+
+CreativeEditorWorldLayoutApplyReceipt
+applyCreativeEditorWorldLayoutRoomSettingsToDocument(
+    CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,
+    std::size_t roomIndex, CreativeEditorWorldLayoutRoomSettings settings) {
+  CreativeEditorWorldLayoutState candidate =
+      makeWorldLayoutSettingsCandidate(state);
+  const CreativeEditorWorldLayoutEditReceipt editReceipt =
+      setCreativeEditorWorldLayoutRoomSettings(candidate, roomIndex, settings);
+  return applyWorldLayoutSettingsCandidate(
+      state, appState, std::move(candidate), editReceipt,
+      "desktop_generated_room_settings", "room shell updated in 3D");
+}
+
+CreativeEditorWorldLayoutPreviewReceipt
 previewCreativeEditorWorldLayoutVerticalConnectorSettings(
     CreativeEditorWorldLayoutState& state,
     const cr::CreativeDocument& document, std::size_t connectorIndex,

@@ -1279,6 +1279,14 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutManipulateRoom, context,
           app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badGeneratedRoomPreview =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutPreviewGeneratedRoomSettings,
+          context, app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badGeneratedRoomApply =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedRoomSettings,
+          context, app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult badWorldLayoutLevelOperation =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutLevelOperation, context,
@@ -1437,6 +1445,13 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badWorldLayoutManipulation.message ==
                         "layout room manipulation: payload mismatch",
                 "room manipulation rejects a mismatched payload") &&
+         expect(!badGeneratedRoomPreview.accepted &&
+                    badGeneratedRoomPreview.message ==
+                        "generated room preview: payload mismatch" &&
+                    !badGeneratedRoomApply.accepted &&
+                    badGeneratedRoomApply.message ==
+                        "generated room settings: payload mismatch",
+                "generated room commands reject mismatched payloads") &&
          expect(!badWorldLayoutLevelOperation.accepted &&
                     badWorldLayoutLevelOperation.message ==
                         "layout level operation: payload mismatch",
@@ -2541,6 +2556,289 @@ bool worldLayoutObjectFocusAndAdoptionCloseTheSourceLoop() {
                 "adoption undo and redo keep live identity and source parity");
 }
 
+bool generatedRoomSettingsRebuildTopologyAtomically() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Generated Room Editing");
+  static_cast<void>(document.assignId(438U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "generated_room_editing");
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "house";
+  building.name = "House";
+  building.rootMode = cr::CreativeBuildingRootMode::None;
+  editor.worldLayout.source.buildings.push_back(building);
+  editor.worldLayout.source.levels.push_back(
+      {0U, "ground", "Ground", 0.0, 3U, 1U, 1U, 1U});
+  editor.worldLayout.source.levels.push_back(
+      {0U, "upper", "Upper", 3.0, 3U, 1U, 1U, 1U});
+  editor.worldLayout.source.rooms.push_back(
+      {0U, 0U, "ground_room", "Ground Room", {{0, 0}, {8, 8}}, 0.25});
+  editor.worldLayout.source.rooms.push_back(
+      {0U, 1U, "upper_room", "Upper Room", {{0, 0}, {8, 8}}, 0.25});
+  cr::CreativeWorldLayoutOpening opening;
+  opening.hostKind = cr::CreativeWorldLayoutOpeningHostKind::RoomEdge;
+  opening.roomIndex = 1U;
+  opening.roomEdge = cr::CreativeWorldLayoutRoomEdge::North;
+  opening.kind = cr::CreativeBuildingOpeningKind::Door;
+  opening.stableKey = "upper_door";
+  opening.name = "Upper Door";
+  opening.centerOffsetCells = 4.0;
+  opening.widthCells = 1.0;
+  opening.cutoutHeightCells = 2.1;
+  editor.worldLayout.source.openings.push_back(opening);
+  editor.worldLayout.source.verticalConnectors.push_back(
+      {0U,
+       0U,
+       1U,
+       cr::CreativeWorldLayoutVerticalConnectorKind::Stair,
+       cr::CreativeWorldLayoutVerticalDirection::PositiveX,
+       "main_stair",
+       "Main Stair",
+       {{1, 2}, {5, 4}}});
+  ++editor.worldLayout.revision;
+
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const app::CreativeDesktopCommandResult generated = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  if (!generated.accepted) {
+    return expect(false, "generated room editing fixture generated");
+  }
+
+  const auto generatedObject =
+      [&](cr::CreativeWorldLayoutTable table, std::size_t index,
+          cr::CreativeObjectKind kind) -> const cr::CreativeObject* {
+    for (const cr::CreativeObject& object :
+         appState.facade.document().objects()) {
+      const cr::CreativeWorldLayoutObjectProvenance provenance =
+          cr::resolveCreativeWorldLayoutObjectProvenance(
+              editor.worldLayout.source, object);
+      if (provenance.owned && provenance.table == table &&
+          provenance.index == index && object.kind == kind) {
+        return &object;
+      }
+    }
+    return nullptr;
+  };
+  const auto generatedBounds =
+      [&](const cr::CreativeDocument& sourceDocument,
+          cr::CreativeWorldLayoutTable table, std::size_t index,
+          cr::CreativeObjectKind kind, cr::CreativeBounds& output) {
+    bool found = false;
+    for (const cr::CreativeObject& object : sourceDocument.objects()) {
+      const cr::CreativeWorldLayoutObjectProvenance provenance =
+          cr::resolveCreativeWorldLayoutObjectProvenance(
+              editor.worldLayout.source, object);
+      if (!provenance.owned || provenance.table != table ||
+          provenance.index != index || object.kind != kind) {
+        continue;
+      }
+      const cr::CreativeTransformedBounds bounds =
+          cr::resolveCreativeObjectBounds(object);
+      if (!bounds.valid) {
+        continue;
+      }
+      if (!found) {
+        output = bounds.worldBounds;
+        found = true;
+      } else {
+        output.min.x = std::min(output.min.x, bounds.worldBounds.min.x);
+        output.min.y = std::min(output.min.y, bounds.worldBounds.min.y);
+        output.min.z = std::min(output.min.z, bounds.worldBounds.min.z);
+        output.max.x = std::max(output.max.x, bounds.worldBounds.max.x);
+        output.max.y = std::max(output.max.y, bounds.worldBounds.max.y);
+        output.max.z = std::max(output.max.z, bounds.worldBounds.max.z);
+      }
+    }
+    return found;
+  };
+
+  const cr::CreativeObject* upperFloor = generatedObject(
+      cr::CreativeWorldLayoutTable::Room, 1U, cr::CreativeObjectKind::Floor);
+  const cr::CreativeObject* connector = generatedObject(
+      cr::CreativeWorldLayoutTable::VerticalConnector, 0U,
+      cr::CreativeObjectKind::Stair);
+  if (upperFloor == nullptr || connector == nullptr) {
+    return expect(false, "room and connector provenance objects exist");
+  }
+  const cr::CreativeObjectId upperFloorId = upperFloor->id;
+  cr::CreativeBounds upperFloorBoundsBefore;
+  const bool initialFloorBounds = generatedBounds(
+      appState.facade.document(), cr::CreativeWorldLayoutTable::Room, 1U,
+      cr::CreativeObjectKind::Floor, upperFloorBoundsBefore);
+
+  app::CreativeEditorWorldLayoutRoomSettings settings;
+  static_cast<void>(app::readCreativeEditorWorldLayoutRoomSettings(
+      editor.worldLayout, 1U, settings));
+  settings.footprint.maximum.x = 10;
+  settings.wallHeightCells = 4U;
+  settings.floorThicknessLayers = 2U;
+  settings.roofThicknessLayers = 2U;
+  settings.roofStyle = cr::CreativeStructuralRoofStyle::Gable;
+  settings.roofRidgeAxis = cr::CreativeStructuralRoofRidgeAxis::Z;
+  settings.roofPitchDegrees = 35.0;
+  settings.roofOverhangCells = 0.5;
+
+  const std::uint64_t sourceRevisionBefore = editor.worldLayout.revision;
+  const std::uint64_t documentRevisionBefore =
+      appState.facade.document().revision();
+  const std::uint64_t undoBefore = cr::creativeUndoDepth(appState.history);
+  const app::CreativeDesktopCommandResult previewed = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutPreviewGeneratedRoomSettings,
+      context,
+      app::CreativeDesktopGeneratedRoomSettingsPayload{upperFloorId, settings});
+  cr::CreativeBounds previewFloorBounds;
+  const bool hasPreviewFloorBounds = generatedBounds(
+      editor.worldLayout.preview.document, cr::CreativeWorldLayoutTable::Room,
+      1U, cr::CreativeObjectKind::Floor, previewFloorBounds);
+  const bool previewStayedTransient =
+      previewed.accepted && previewed.sceneChanged &&
+      app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      hasPreviewFloorBounds &&
+      near(previewFloorBounds.max.x - previewFloorBounds.min.x, 10.0) &&
+      editor.worldLayout.source.rooms[1].footprint.maximum.x == 8 &&
+      editor.worldLayout.source.levels[1].wallHeightCells == 3U &&
+      editor.worldLayout.revision == sourceRevisionBefore &&
+      appState.facade.document().revision() == documentRevisionBefore &&
+      cr::creativeUndoDepth(appState.history) == undoBefore;
+
+  const app::CreativeDesktopCommandResult applied = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedRoomSettings,
+      context,
+      app::CreativeDesktopGeneratedRoomSettingsPayload{upperFloorId, settings});
+  const cr::CreativeObject* resizedFloor = generatedObject(
+      cr::CreativeWorldLayoutTable::Room, 1U, cr::CreativeObjectKind::Floor);
+  const cr::CreativeObject* resizedWall = generatedObject(
+      cr::CreativeWorldLayoutTable::Room, 1U, cr::CreativeObjectKind::Wall);
+  const cr::CreativeObject* resizedRoof = generatedObject(
+      cr::CreativeWorldLayoutTable::Level, 1U, cr::CreativeObjectKind::Roof);
+  const cr::CreativeObject* preservedOpening = generatedObject(
+      cr::CreativeWorldLayoutTable::Opening, 0U,
+      cr::CreativeObjectKind::Door);
+  const cr::CreativeObject* preservedConnector = generatedObject(
+      cr::CreativeWorldLayoutTable::VerticalConnector, 0U,
+      cr::CreativeObjectKind::Stair);
+  cr::CreativeBounds resizedFloorBounds;
+  cr::CreativeBounds resizedWallBounds;
+  const bool hasResizedFloorBounds = generatedBounds(
+      appState.facade.document(), cr::CreativeWorldLayoutTable::Room, 1U,
+      cr::CreativeObjectKind::Floor, resizedFloorBounds);
+  const bool hasResizedWallBounds = generatedBounds(
+      appState.facade.document(), cr::CreativeWorldLayoutTable::Room, 1U,
+      cr::CreativeObjectKind::Wall, resizedWallBounds);
+  const bool rebuiltCompleteShell =
+      applied.accepted && applied.changed && applied.worldLayoutChanged &&
+      applied.sceneChanged &&
+      editor.worldLayout.source.rooms[1].footprint.maximum.x == 10 &&
+      editor.worldLayout.source.levels[1].wallHeightCells == 4U &&
+      editor.worldLayout.source.levels[1].floorThicknessLayers == 2U &&
+      editor.worldLayout.source.levels[1].roofStyle ==
+          cr::CreativeStructuralRoofStyle::Gable &&
+      editor.worldLayout.source.openings[0].stableKey == "upper_door" &&
+      editor.worldLayout.source.verticalConnectors[0].stableKey ==
+          "main_stair" &&
+      resizedFloor != nullptr && resizedWall != nullptr &&
+      resizedRoof != nullptr && preservedOpening != nullptr &&
+      preservedConnector != nullptr && initialFloorBounds &&
+      hasResizedFloorBounds && hasResizedWallBounds &&
+      near(resizedFloorBounds.max.x - resizedFloorBounds.min.x, 10.0) &&
+      near(resizedWallBounds.max.y - resizedWallBounds.min.y, 4.0) &&
+      near(upperFloorBoundsBefore.max.x - upperFloorBoundsBefore.min.x, 8.0) &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision &&
+      editor.worldLayout.revision == sourceRevisionBefore + 1U &&
+      appState.facade.document().revision() > documentRevisionBefore &&
+      cr::creativeUndoDepth(appState.history) == undoBefore + 1U;
+
+  const app::CreativeDesktopCommandResult undone =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const cr::CreativeObject* undoneFloor = generatedObject(
+      cr::CreativeWorldLayoutTable::Room, 1U, cr::CreativeObjectKind::Floor);
+  cr::CreativeBounds undoneFloorBounds;
+  const bool hasUndoneFloorBounds = generatedBounds(
+      appState.facade.document(), cr::CreativeWorldLayoutTable::Room, 1U,
+      cr::CreativeObjectKind::Floor, undoneFloorBounds);
+  const bool undoRestoredTopology =
+      undone.accepted &&
+      editor.worldLayout.source.rooms[1].footprint.maximum.x == 8 &&
+      editor.worldLayout.source.levels[1].wallHeightCells == 3U &&
+      editor.worldLayout.source.levels[1].roofStyle ==
+          cr::CreativeStructuralRoofStyle::Flat &&
+      undoneFloor != nullptr && hasUndoneFloorBounds &&
+      near(undoneFloorBounds.max.x - undoneFloorBounds.min.x, 8.0);
+  const app::CreativeDesktopCommandResult redone =
+      dispatchOne(app::CreativeDesktopCommandId::Redo, context);
+  const cr::CreativeObject* redoneFloor = generatedObject(
+      cr::CreativeWorldLayoutTable::Room, 1U, cr::CreativeObjectKind::Floor);
+  cr::CreativeBounds redoneFloorBounds;
+  const bool hasRedoneFloorBounds = generatedBounds(
+      appState.facade.document(), cr::CreativeWorldLayoutTable::Room, 1U,
+      cr::CreativeObjectKind::Floor, redoneFloorBounds);
+  const bool redoRestoredTopology =
+      redone.accepted &&
+      editor.worldLayout.source.rooms[1].footprint.maximum.x == 10 &&
+      editor.worldLayout.source.levels[1].roofStyle ==
+          cr::CreativeStructuralRoofStyle::Gable &&
+      redoneFloor != nullptr && hasRedoneFloorBounds &&
+      near(redoneFloorBounds.max.x - redoneFloorBounds.min.x, 10.0);
+
+  const cr::CreativeObject* liveRoomObject = generatedObject(
+      cr::CreativeWorldLayoutTable::Room, 1U, cr::CreativeObjectKind::Floor);
+  const cr::CreativeObject* liveConnector = generatedObject(
+      cr::CreativeWorldLayoutTable::VerticalConnector, 0U,
+      cr::CreativeObjectKind::Stair);
+  if (liveRoomObject == nullptr || liveConnector == nullptr) {
+    return expect(false, "room topology survives semantic redo");
+  }
+  const std::uint64_t sourceRevisionBeforeReject =
+      editor.worldLayout.revision;
+  const std::uint64_t documentRevisionBeforeReject =
+      appState.facade.document().revision();
+  const std::uint64_t undoBeforeReject =
+      cr::creativeUndoDepth(appState.history);
+  app::CreativeEditorWorldLayoutRoomSettings openingInvalid = settings;
+  openingInvalid.footprint.maximum.x = 4;
+  const app::CreativeDesktopCommandResult rejectedOpening = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedRoomSettings,
+      context, app::CreativeDesktopGeneratedRoomSettingsPayload{
+                   liveRoomObject->id, openingInvalid});
+  app::CreativeEditorWorldLayoutRoomSettings connectorInvalid = settings;
+  connectorInvalid.footprint = {{2, 0}, {10, 8}};
+  const app::CreativeDesktopCommandResult rejectedConnector = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedRoomSettings,
+      context, app::CreativeDesktopGeneratedRoomSettingsPayload{
+                   liveRoomObject->id, connectorInvalid});
+  const app::CreativeDesktopCommandResult wrongSource = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedRoomSettings,
+      context, app::CreativeDesktopGeneratedRoomSettingsPayload{
+                   liveConnector->id, settings});
+  const bool rejectedAtomically =
+      !rejectedOpening.accepted && !rejectedOpening.changed &&
+      !rejectedConnector.accepted && !rejectedConnector.changed &&
+      !wrongSource.accepted && !wrongSource.changed &&
+      editor.worldLayout.source.rooms[1].footprint.minimum ==
+          cr::CreativeTerrainCoord2{0, 0} &&
+      editor.worldLayout.source.rooms[1].footprint.maximum ==
+          cr::CreativeTerrainCoord2{10, 8} &&
+      editor.worldLayout.revision == sourceRevisionBeforeReject &&
+      appState.facade.document().revision() == documentRevisionBeforeReject &&
+      cr::creativeUndoDepth(appState.history) == undoBeforeReject;
+
+  return expect(previewStayedTransient,
+                "generated room preview is exact and transient") &&
+         expect(rebuiltCompleteShell,
+                "room edit rebuilds shell dependents in one history step") &&
+         expect(undoRestoredTopology && redoRestoredTopology,
+                "room edit undo and redo restore source and generated scene") &&
+         expect(rejectedAtomically,
+                "opening connector and source conflicts reject atomically");
+}
+
 bool generatedWallAndOpeningSettingsCommitSourceAndSceneTogether() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document =
@@ -3543,6 +3841,7 @@ int main() {
   ok = worldLayoutCommandsPreviewAndGenerateThroughDispatcher() && ok;
   ok = worldLayoutConflictResolutionUsesTypedConfirmPayload() && ok;
   ok = worldLayoutObjectFocusAndAdoptionCloseTheSourceLoop() && ok;
+  ok = generatedRoomSettingsRebuildTopologyAtomically() && ok;
   ok = generatedWallAndOpeningSettingsCommitSourceAndSceneTogether() && ok;
   ok = generatedVerticalConnectorSettingsCommitSourceAndSceneTogether() && ok;
   ok = generatedSourceOnlyOpeningEditUsesSourceHistory() && ok;

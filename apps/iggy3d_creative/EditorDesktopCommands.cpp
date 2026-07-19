@@ -1444,6 +1444,71 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutApplyGeneratedRoomSettings: {
+      const auto* payload =
+          payloadAs<CreativeDesktopGeneratedRoomSettingsPayload>(command);
+      if (payload == nullptr) {
+        result.message = "generated room settings: payload mismatch";
+        break;
+      }
+      const creative::CreativeObject* object =
+          appState.facade.findObject(payload->objectId);
+      if (object == nullptr) {
+        result.message = "generated room settings: target missing";
+        break;
+      }
+      const creative::CreativeWorldLayoutObjectProvenance provenance =
+          creative::resolveCreativeWorldLayoutObjectProvenance(
+              editor.worldLayout.source, *object);
+      if (!provenance.owned ||
+          provenance.table != creative::CreativeWorldLayoutTable::Room) {
+        result.message = "generated room settings: source mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutApplyReceipt receipt =
+          applyCreativeEditorWorldLayoutRoomSettingsToDocument(
+              editor.worldLayout, appState, provenance.index,
+              payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive || receipt.apply.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutPreviewGeneratedRoomSettings: {
+      const auto* payload =
+          payloadAs<CreativeDesktopGeneratedRoomSettingsPayload>(command);
+      if (payload == nullptr) {
+        result.message = "generated room preview: payload mismatch";
+        break;
+      }
+      const creative::CreativeObject* object =
+          appState.facade.findObject(payload->objectId);
+      if (object == nullptr) {
+        result.message = "generated room preview: target missing";
+        break;
+      }
+      const creative::CreativeWorldLayoutObjectProvenance provenance =
+          creative::resolveCreativeWorldLayoutObjectProvenance(
+              editor.worldLayout.source, *object);
+      if (!provenance.owned ||
+          provenance.table != creative::CreativeWorldLayoutTable::Room) {
+        result.message = "generated room preview: source mismatch";
+        break;
+      }
+      const CreativeEditorWorldLayoutPreviewReceipt receipt =
+          previewCreativeEditorWorldLayoutRoomSettings(
+              editor.worldLayout, appState.facade.document(),
+              provenance.index, payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.sceneChanged = receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutManipulateRoom: {
       const auto* payload =
           payloadAs<CreativeDesktopWorldLayoutRoomManipulationPayload>(command);

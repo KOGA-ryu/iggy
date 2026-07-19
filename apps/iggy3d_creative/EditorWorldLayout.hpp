@@ -160,6 +160,13 @@ struct CreativeEditorWorldLayoutRoomSettings {
   double roofOverhangCells = 0.0;
 };
 
+struct CreativeEditorWorldLayoutRoomSettingsDraft {
+  bool active = false;
+  std::size_t roomIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::uint64_t sourceRevision = 0U;
+  CreativeEditorWorldLayoutRoomSettings settings;
+};
+
 enum class CreativeEditorWorldLayoutRectHandle : std::uint8_t {
   None,
   Move,
@@ -856,6 +863,7 @@ struct CreativeEditorWorldLayoutState {
   CreativeEditorWorldLayoutBuildingTemplatePlacementState
       buildingTemplatePlacement;
   CreativeEditorWorldLayoutOpeningManipulationState openingManipulation;
+  CreativeEditorWorldLayoutRoomSettingsDraft roomSettingsDraft;
   CreativeEditorWorldLayoutVerticalConnectorSettingsDraft
       verticalConnectorSettingsDraft;
   CreativeEditorWorldLayoutBoxSettingsDraft boxSettingsDraft;
@@ -1061,6 +1069,15 @@ createCreativeEditorWorldLayoutRoom(
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 setCreativeEditorWorldLayoutRoomSettings(
     CreativeEditorWorldLayoutState& state, std::size_t roomIndex,
+    CreativeEditorWorldLayoutRoomSettings settings);
+[[nodiscard]] CreativeEditorWorldLayoutApplyReceipt
+applyCreativeEditorWorldLayoutRoomSettingsToDocument(
+    CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,
+    std::size_t roomIndex, CreativeEditorWorldLayoutRoomSettings settings);
+[[nodiscard]] CreativeEditorWorldLayoutPreviewReceipt
+previewCreativeEditorWorldLayoutRoomSettings(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document, std::size_t roomIndex,
     CreativeEditorWorldLayoutRoomSettings settings);
 [[nodiscard]] CreativeEditorWorldLayoutRoomTarget
 findCreativeEditorWorldLayoutRoomTarget(

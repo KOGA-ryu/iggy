@@ -639,13 +639,16 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
       creativeDesktopGeneratedSourceSupportsAdoption(provenance);
   const bool sourceOwnedOnly = provenance.owned && !sourceSupportsAdoption;
   const bool generatedSettingsSource =
+      provenance.table == cr::CreativeWorldLayoutTable::Room ||
       provenance.table == cr::CreativeWorldLayoutTable::VerticalConnector ||
       provenance.table == cr::CreativeWorldLayoutTable::Wall ||
       provenance.table == cr::CreativeWorldLayoutTable::Opening;
   if (!generatedSettingsSource &&
-      (worldLayout.verticalConnectorSettingsDraft.active ||
+      (worldLayout.roomSettingsDraft.active ||
+       worldLayout.verticalConnectorSettingsDraft.active ||
        worldLayout.wallSettingsDraft.active ||
        worldLayout.openingSettingsDraft.active)) {
+    worldLayout.roomSettingsDraft = {};
     worldLayout.verticalConnectorSettingsDraft = {};
     worldLayout.wallSettingsDraft = {};
     worldLayout.openingSettingsDraft = {};

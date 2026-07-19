@@ -259,6 +259,12 @@ struct CreativeDesktopWorldLayoutRoomSettingsPayload {
   CreativeEditorWorldLayoutRoomSettings settings;
 };
 
+struct CreativeDesktopGeneratedRoomSettingsPayload {
+  iggy3d::creative::CreativeObjectId objectId =
+      iggy3d::creative::kInvalidObjectId;
+  CreativeEditorWorldLayoutRoomSettings settings;
+};
+
 struct CreativeDesktopWorldLayoutRoomManipulationPayload {
   CreativeEditorWorldLayoutRoomManipulationPhase phase =
       CreativeEditorWorldLayoutRoomManipulationPhase::Begin;
@@ -403,6 +409,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutPointPayload,
     CreativeDesktopWorldLayoutGesturePayload,
     CreativeDesktopWorldLayoutRoomSettingsPayload,
+    CreativeDesktopGeneratedRoomSettingsPayload,
     CreativeDesktopWorldLayoutRoomManipulationPayload,
     CreativeDesktopWorldLayoutVerticalConnectorSettingsPayload,
     CreativeDesktopGeneratedVerticalConnectorSettingsPayload,

@@ -55,6 +55,12 @@ void appendCreativeDesktopGeneratedSourceSettings(
     iggy3d::creative::CreativeWorldLayoutObjectProvenance provenance,
     bool disabled,
     CreativeDesktopCommandFrame& commands);
+void appendCreativeDesktopGeneratedRoomSettings(
+    CreativeEditorWorldLayoutState& worldLayout,
+    iggy3d::creative::CreativeObjectId objectId,
+    iggy3d::creative::CreativeWorldLayoutObjectProvenance provenance,
+    bool disabled,
+    CreativeDesktopCommandFrame& commands);
 
 // Shared by the Inspector's logic rows and the bottom Diagnostics tab, so the
 // helper is not duplicated across the two TUs. Defined in

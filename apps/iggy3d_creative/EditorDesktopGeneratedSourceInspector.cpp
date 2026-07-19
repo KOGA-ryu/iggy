@@ -419,6 +419,11 @@ void appendCreativeDesktopGeneratedSourceSettings(
     bool disabled,
     CreativeDesktopCommandFrame& commands) {
   bool clearedDraft = false;
+  if (provenance.table != cr::CreativeWorldLayoutTable::Room &&
+      worldLayout.roomSettingsDraft.active) {
+    worldLayout.roomSettingsDraft = {};
+    clearedDraft = true;
+  }
   if (provenance.table != cr::CreativeWorldLayoutTable::VerticalConnector &&
       worldLayout.verticalConnectorSettingsDraft.active) {
     worldLayout.verticalConnectorSettingsDraft = {};
@@ -440,6 +445,10 @@ void appendCreativeDesktopGeneratedSourceSettings(
   }
 
   switch (provenance.table) {
+    case cr::CreativeWorldLayoutTable::Room:
+      appendCreativeDesktopGeneratedRoomSettings(
+          worldLayout, objectId, provenance, disabled, commands);
+      break;
     case cr::CreativeWorldLayoutTable::VerticalConnector:
       appendGeneratedVerticalConnectorSettings(
           worldLayout, objectId, provenance, disabled, commands);

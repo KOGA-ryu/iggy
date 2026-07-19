@@ -2133,6 +2133,7 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutTool(
                        state.buildingTemplatePlacement.active ||
                        state.openingManipulation.active ||
                        state.objectManipulation.active ||
+                       state.roomSettingsDraft.active ||
                        state.verticalConnectorSettingsDraft.active ||
                        state.boxSettingsDraft.active ||
                        state.wallSettingsDraft.active ||
