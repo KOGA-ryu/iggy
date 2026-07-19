@@ -6,6 +6,8 @@ namespace iggy3d::creative::authored_asset_internal {
 
 [[nodiscard]] std::string makeSourceFingerprintTag(
     std::uint64_t fingerprint);
+[[nodiscard]] bool isSourceFingerprintTag(
+    const std::string& tag) noexcept;
 [[nodiscard]] CreativeBounds translateAssetBounds(
     CreativeBounds bounds,
     CreativeVec3 offset) noexcept;
