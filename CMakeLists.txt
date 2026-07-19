@@ -284,6 +284,7 @@ target_sources(iggy3d
     src/render/vulkan/StaticMeshMaterialTextures.cpp
     src/render/vulkan/StaticMeshInstances.cpp
     src/render/vulkan/BufferImageResources.cpp
+    src/render/vulkan/CreativePreviewCpuGeometry.cpp
     src/render/vulkan/RoomMeshCpuGeometry.cpp
     src/render/vulkan/RoomMeshCpuPrimitives.cpp
     src/render/vulkan/RoomMeshOptimization.cpp
