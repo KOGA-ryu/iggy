@@ -536,6 +536,11 @@ bool blockoutDraftAndPatternChoicesArePinned() {
       draft.shell.roofRidgeAxis == defaults.roofRidgeAxis &&
       draft.shell.roofPitchDegrees == defaults.roofPitchDegrees &&
       draft.shell.roofOverhangCells == defaults.roofOverhangCells;
+  const bool topologyKeepsDefaults =
+      draft.connectRooms && draft.facade.includeEntrance &&
+      draft.facade.entranceEdge == cr::CreativeWorldLayoutRoomEdge::South &&
+      draft.facade.entranceOffsetCells == 0.0 &&
+      draft.facade.includeExteriorWindows;
   const auto choices =
       iggy3d_creative_app::creativeEditorWorldLayoutBlockoutPatternChoices();
   using Pattern = cr::CreativeWorldLayoutBuildingBlockoutPattern;
@@ -563,6 +568,9 @@ bool blockoutDraftAndPatternChoicesArePinned() {
                 "the blockout draft starts as a single room") &&
          expect(shellKeepsDefaults,
                 "non-footprint shell values keep the room-settings defaults") &&
+         expect(topologyKeepsDefaults,
+                "blockout drafts default to connected rooms and a south "
+                "facade") &&
          expect(choicesRight,
                 "the four pattern choices map one-to-one onto the planner "
                 "enum") &&

@@ -48,6 +48,16 @@ bool stableKeysUnique(const cr::CreativeWorldLayout& layout) {
   return std::adjacent_find(keys.begin(), keys.end()) == keys.end();
 }
 
+std::size_t openingIntentCount(
+    const cr::CreativeWorldLayoutBuildingBlockoutPlan& plan,
+    cr::CreativeWorldLayoutBuildingBlockoutOpeningRole role) noexcept {
+  return static_cast<std::size_t>(std::count_if(
+      plan.openings.begin(), plan.openings.begin() + plan.openingCount,
+      [role](const cr::CreativeWorldLayoutBuildingBlockoutOpening& opening) {
+        return opening.role == role;
+      }));
+}
+
 cr::CreativeAppState makeAppState() {
   cr::CreativeAppState state;
   cr::CreativeDocument document =
@@ -73,7 +83,7 @@ bool plannerOwnsEveryPresetAndOddSplit() {
   const cr::CreativeWorldLayoutRect footprint{{-5, -3}, {4, 4}};
   const auto plan = [&](cr::CreativeWorldLayoutBuildingBlockoutPattern pattern) {
     return cr::planCreativeWorldLayoutBuildingBlockout(
-        {footprint, pattern, 0.25});
+        {footprint, pattern, 0.25, true, {}});
   };
   const cr::CreativeWorldLayoutBuildingBlockoutPlan single =
       plan(cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom);
@@ -83,15 +93,39 @@ bool plannerOwnsEveryPresetAndOddSplit() {
       plan(cr::CreativeWorldLayoutBuildingBlockoutPattern::SplitZ);
   const cr::CreativeWorldLayoutBuildingBlockoutPlan grid =
       plan(cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2);
-  const cr::CreativeWorldLayoutBuildingBlockoutPlan disconnected =
-      cr::planCreativeWorldLayoutBuildingBlockout(
-          {footprint, cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2,
-           0.25, false});
+  cr::CreativeWorldLayoutBuildingBlockoutRequest emptyRequest{
+      footprint, cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2,
+      0.25, true, {}};
+  emptyRequest.connectRooms = false;
+  emptyRequest.facade.includeEntrance = false;
+  emptyRequest.facade.includeExteriorWindows = false;
+  const cr::CreativeWorldLayoutBuildingBlockoutPlan emptyOpenings =
+      cr::planCreativeWorldLayoutBuildingBlockout(emptyRequest);
+
+  cr::CreativeWorldLayoutBuildingBlockoutRequest offsetRequest{
+      {{0, 0}, {8, 8}},
+      cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom, 0.25, true,
+      {}};
+  offsetRequest.connectRooms = false;
+  offsetRequest.facade.entranceEdge = cr::CreativeWorldLayoutRoomEdge::East;
+  offsetRequest.facade.entranceOffsetCells = 1.25;
+  offsetRequest.facade.includeExteriorWindows = false;
+  const cr::CreativeWorldLayoutBuildingBlockoutPlan offsetEntrance =
+      cr::planCreativeWorldLayoutBuildingBlockout(offsetRequest);
+  offsetRequest.facade.entranceEdge = cr::CreativeWorldLayoutRoomEdge::North;
+  offsetRequest.facade.entranceOffsetCells = -1.5;
+  const cr::CreativeWorldLayoutBuildingBlockoutPlan northEntrance =
+      cr::planCreativeWorldLayoutBuildingBlockout(offsetRequest);
+  offsetRequest.facade.entranceEdge = cr::CreativeWorldLayoutRoomEdge::West;
+  offsetRequest.facade.entranceOffsetCells = 0.75;
+  const cr::CreativeWorldLayoutBuildingBlockoutPlan westEntrance =
+      cr::planCreativeWorldLayoutBuildingBlockout(offsetRequest);
   const cr::CreativeWorldLayoutBuildingBlockoutPlan extreme =
       cr::planCreativeWorldLayoutBuildingBlockout(
           {{{std::numeric_limits<std::int32_t>::min(), 0},
             {std::numeric_limits<std::int32_t>::max(), 4}},
-           cr::CreativeWorldLayoutBuildingBlockoutPattern::SplitX, 0.25});
+           cr::CreativeWorldLayoutBuildingBlockoutPattern::SplitX, 0.25, true,
+           {}});
 
   return expect(single.accepted && single.roomCount == 1U &&
                     sameRect(single.rooms[0], footprint),
@@ -110,52 +144,105 @@ bool plannerOwnsEveryPresetAndOddSplit() {
                     sameRect(grid.rooms[2], {{-5, 0}, {-1, 4}}) &&
                     sameRect(grid.rooms[3], {{-1, 0}, {4, 4}}),
                 "2x2 blockout is deterministic row-major geometry") &&
-         expect(single.connectionCount == 0U &&
-                    splitX.connectionCount == 1U &&
-                    splitX.connections[0].firstRoomIndex == 0U &&
-                    splitX.connections[0].firstRoomEdge ==
+         expect(single.openingCount == 4U &&
+                    openingIntentCount(
+                        single,
+                        cr::CreativeWorldLayoutBuildingBlockoutOpeningRole::
+                            Entrance) == 1U &&
+                    openingIntentCount(
+                        single,
+                        cr::CreativeWorldLayoutBuildingBlockoutOpeningRole::
+                            ExteriorWindow) == 3U &&
+                    openingIntentCount(
+                        single,
+                        cr::CreativeWorldLayoutBuildingBlockoutOpeningRole::
+                            InteriorConnection) == 0U,
+                "single-room facade owns one entrance and three windows") &&
+         expect(splitX.openingCount == 7U &&
+                    splitX.openings[0].role ==
+                        cr::CreativeWorldLayoutBuildingBlockoutOpeningRole::
+                            InteriorConnection &&
+                    splitX.openings[0].roomIndex == 0U &&
+                    splitX.openings[0].roomEdge ==
                         cr::CreativeWorldLayoutRoomEdge::East &&
-                    splitX.connections[0].secondRoomIndex == 1U &&
-                    splitX.connections[0].secondRoomEdge ==
+                    splitX.openings[0].adjacentRoomIndex == 1U &&
+                    splitX.openings[0].adjacentRoomEdge ==
                         cr::CreativeWorldLayoutRoomEdge::West &&
-                    splitX.connections[0].xCells == -1.0 &&
-                    splitX.connections[0].zCells == 0.5 &&
-                    splitZ.connectionCount == 1U &&
-                    splitZ.connections[0].firstRoomEdge ==
+                    splitX.openings[0].xCells == -1.0 &&
+                    splitX.openings[0].zCells == 0.5 &&
+                    splitZ.openingCount == 7U &&
+                    splitZ.openings[0].roomEdge ==
                         cr::CreativeWorldLayoutRoomEdge::South &&
-                    splitZ.connections[0].secondRoomEdge ==
+                    splitZ.openings[0].adjacentRoomEdge ==
                         cr::CreativeWorldLayoutRoomEdge::North &&
-                    splitZ.connections[0].xCells == -0.5 &&
-                    splitZ.connections[0].zCells == 0.0,
+                    splitZ.openings[0].xCells == -0.5 &&
+                    splitZ.openings[0].zCells == 0.0,
                 "split presets expose one centered circulation edge") &&
-         expect(grid.connectionCount == 3U &&
-                    grid.connections[0].firstRoomIndex == 0U &&
-                    grid.connections[0].secondRoomIndex == 1U &&
-                    grid.connections[0].firstRoomEdge ==
+         expect(grid.openingCount == 11U &&
+                    openingIntentCount(
+                        grid,
+                        cr::CreativeWorldLayoutBuildingBlockoutOpeningRole::
+                            InteriorConnection) == 3U &&
+                    openingIntentCount(
+                        grid,
+                        cr::CreativeWorldLayoutBuildingBlockoutOpeningRole::
+                            Entrance) == 1U &&
+                    openingIntentCount(
+                        grid,
+                        cr::CreativeWorldLayoutBuildingBlockoutOpeningRole::
+                            ExteriorWindow) == 7U &&
+                    grid.openings[0].roomIndex == 0U &&
+                    grid.openings[0].adjacentRoomIndex == 1U &&
+                    grid.openings[0].roomEdge ==
                         cr::CreativeWorldLayoutRoomEdge::East &&
-                    grid.connections[0].secondRoomEdge ==
+                    grid.openings[0].adjacentRoomEdge ==
                         cr::CreativeWorldLayoutRoomEdge::West &&
-                    grid.connections[0].xCells == -1.0 &&
-                    grid.connections[0].zCells == -1.5 &&
-                    grid.connections[1].firstRoomIndex == 0U &&
-                    grid.connections[1].secondRoomIndex == 2U &&
-                    grid.connections[1].firstRoomEdge ==
+                    grid.openings[0].xCells == -1.0 &&
+                    grid.openings[0].zCells == -1.5 &&
+                    grid.openings[1].roomIndex == 0U &&
+                    grid.openings[1].adjacentRoomIndex == 2U &&
+                    grid.openings[1].roomEdge ==
                         cr::CreativeWorldLayoutRoomEdge::South &&
-                    grid.connections[1].secondRoomEdge ==
+                    grid.openings[1].adjacentRoomEdge ==
                         cr::CreativeWorldLayoutRoomEdge::North &&
-                    grid.connections[1].xCells == -3.0 &&
-                    grid.connections[1].zCells == 0.0 &&
-                    grid.connections[2].firstRoomIndex == 2U &&
-                    grid.connections[2].secondRoomIndex == 3U &&
-                    grid.connections[2].firstRoomEdge ==
+                    grid.openings[1].xCells == -3.0 &&
+                    grid.openings[1].zCells == 0.0 &&
+                    grid.openings[2].roomIndex == 2U &&
+                    grid.openings[2].adjacentRoomIndex == 3U &&
+                    grid.openings[2].roomEdge ==
                         cr::CreativeWorldLayoutRoomEdge::East &&
-                    grid.connections[2].secondRoomEdge ==
+                    grid.openings[2].adjacentRoomEdge ==
                         cr::CreativeWorldLayoutRoomEdge::West &&
-                    grid.connections[2].xCells == -1.0 &&
-                    grid.connections[2].zCells == 2.0,
+                    grid.openings[2].xCells == -1.0 &&
+                    grid.openings[2].zCells == 2.0,
                 "2x2 circulation is a deterministic row-major spanning tree") &&
-         expect(disconnected.accepted && disconnected.connectionCount == 0U,
-                "callers may explicitly request a doorless blockout") &&
+         expect(grid.openings[3].role ==
+                        cr::CreativeWorldLayoutBuildingBlockoutOpeningRole::
+                            Entrance &&
+                    grid.openings[3].kind ==
+                        cr::CreativeBuildingOpeningKind::Door &&
+                    grid.openings[3].roomIndex == 3U &&
+                    grid.openings[3].roomEdge ==
+                        cr::CreativeWorldLayoutRoomEdge::South &&
+                    grid.openings[3].xCells == 1.5 &&
+                    grid.openings[3].zCells == 4.0,
+                "the entrance uses the central eligible south facade segment") &&
+         expect(emptyOpenings.accepted && emptyOpenings.openingCount == 0U,
+                "callers may explicitly request an opening-free blockout") &&
+         expect(offsetEntrance.accepted &&
+                    offsetEntrance.openingCount == 1U &&
+                    offsetEntrance.openings[0].roomEdge ==
+                        cr::CreativeWorldLayoutRoomEdge::East &&
+                    offsetEntrance.openings[0].xCells == 8.0 &&
+                    offsetEntrance.openings[0].zCells == 5.25,
+                "entrance offsets are measured along the selected facade") &&
+         expect(northEntrance.accepted &&
+                    northEntrance.openings[0].xCells == 2.5 &&
+                    northEntrance.openings[0].zCells == 0.0 &&
+                    westEntrance.accepted &&
+                    westEntrance.openings[0].xCells == 0.0 &&
+                    westEntrance.openings[0].zCells == 4.75,
+                "all cardinal facade orientations map to world coordinates") &&
          expect(extreme.accepted && extreme.roomCount == 2U &&
                     extreme.rooms[0].maximum.x == -1 &&
                     extreme.rooms[1].minimum.x == -1,
@@ -187,18 +274,55 @@ bool editorRejectsUnconnectableRoomsWithoutPartialMutation() {
       app::creativeEditorWorldLayoutSourceUndoDepth(state) == 0U;
 
   settings.connectRooms = false;
-  const app::CreativeEditorWorldLayoutEditReceipt doorless =
+  settings.facade.includeEntrance = false;
+  settings.facade.includeExteriorWindows = false;
+  const app::CreativeEditorWorldLayoutEditReceipt openingFree =
       app::createCreativeEditorWorldLayoutBuildingBlockout(state, settings);
   return expect(rejectionWasAtomic &&
                     rejected.reasonCode ==
                         "creative_editor_world_layout_wall_too_short",
                 "an unconnectable preset fails without publishing partial "
                 "source") &&
-         expect(doorless.accepted && doorless.changed &&
+         expect(openingFree.accepted && openingFree.changed &&
                     state.source.rooms.size() == 2U &&
                     state.source.openings.empty(),
                 "the same geometry remains available when connections are "
                 "disabled");
+}
+
+bool editorRejectsUnfitFacadeWithoutPartialMutation() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "blockout_facade_failure");
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings settings;
+  settings.shell.footprint = {{0, 0}, {8, 1}};
+  settings.connectRooms = false;
+  settings.facade.includeEntrance = false;
+
+  const std::uint64_t revisionBefore = state.revision;
+  const std::uint64_t ordinalBefore = state.nextStableOrdinal;
+  const app::CreativeEditorWorldLayoutEditReceipt rejected =
+      app::createCreativeEditorWorldLayoutBuildingBlockout(state, settings);
+  const bool rejectionWasAtomic =
+      !rejected.accepted && !rejected.changed &&
+      rejected.reasonCode == "creative_editor_world_layout_wall_too_short" &&
+      state.revision == revisionBefore &&
+      state.nextStableOrdinal == ordinalBefore &&
+      state.source.buildings.empty() && state.source.levels.empty() &&
+      state.source.rooms.empty() && state.source.openings.empty() &&
+      app::creativeEditorWorldLayoutSourceUndoDepth(state) == 0U;
+
+  settings.facade.includeEntrance = true;
+  settings.facade.includeExteriorWindows = false;
+  const app::CreativeEditorWorldLayoutEditReceipt entranceOnly =
+      app::createCreativeEditorWorldLayoutBuildingBlockout(state, settings);
+  return expect(rejectionWasAtomic,
+                "an unfit facade window rejects the whole staged blockout") &&
+         expect(entranceOnly.accepted && entranceOnly.changed &&
+                    state.source.rooms.size() == 1U &&
+                    state.source.openings.size() == 1U &&
+                    state.source.openings[0].kind ==
+                        cr::CreativeBuildingOpeningKind::Door,
+                "the same shallow building remains available entrance-only");
 }
 
 bool editorRejectsOverlapWithoutPartialMutation() {
@@ -252,28 +376,49 @@ bool editorRejectsOverlapWithoutPartialMutation() {
                     state.source.buildings.size() == buildingCountBefore + 1U &&
                     state.source.levels.size() == levelCountBefore + 1U &&
                     state.source.rooms.size() == roomCountBefore + 4U &&
-                    state.source.openings.size() == openingCountBefore + 3U,
-                "vertically separate blockouts may reuse the same door plan");
+                    state.source.openings.size() == openingCountBefore + 11U,
+                "vertically separate blockouts may reuse one facade plan");
 }
 
 bool plannerRejectsInvalidOrUnbuildableRooms() {
   const cr::CreativeWorldLayoutBuildingBlockoutPlan badPattern =
       cr::planCreativeWorldLayoutBuildingBlockout(
           {{{0, 0}, {8, 8}},
-           cr::CreativeWorldLayoutBuildingBlockoutPattern::Count, 0.25});
+           cr::CreativeWorldLayoutBuildingBlockoutPattern::Count, 0.25, true,
+           {}});
   const cr::CreativeWorldLayoutBuildingBlockoutPlan badFootprint =
       cr::planCreativeWorldLayoutBuildingBlockout(
           {{{8, 0}, {0, 8}},
-           cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom, 0.25});
+           cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom, 0.25,
+           true, {}});
   const cr::CreativeWorldLayoutBuildingBlockoutPlan badThickness =
       cr::planCreativeWorldLayoutBuildingBlockout(
           {{{0, 0}, {8, 8}},
            cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom,
-           std::numeric_limits<double>::quiet_NaN()});
+           std::numeric_limits<double>::quiet_NaN(), true, {}});
   const cr::CreativeWorldLayoutBuildingBlockoutPlan smallRooms =
       cr::planCreativeWorldLayoutBuildingBlockout(
           {{{0, 0}, {3, 8}},
-           cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2, 0.5});
+           cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2, 0.5, true,
+           {}});
+  cr::CreativeWorldLayoutBuildingBlockoutRequest badEdgeRequest{
+      {{0, 0}, {8, 8}},
+      cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom, 0.25, true,
+      {}};
+  badEdgeRequest.facade.entranceEdge = cr::CreativeWorldLayoutRoomEdge::Count;
+  const cr::CreativeWorldLayoutBuildingBlockoutPlan badEdge =
+      cr::planCreativeWorldLayoutBuildingBlockout(badEdgeRequest);
+  cr::CreativeWorldLayoutBuildingBlockoutRequest badOffsetRequest{
+      {{0, 0}, {8, 8}},
+      cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom, 0.25, true,
+      {}};
+  badOffsetRequest.facade.entranceOffsetCells =
+      std::numeric_limits<double>::quiet_NaN();
+  const cr::CreativeWorldLayoutBuildingBlockoutPlan badOffset =
+      cr::planCreativeWorldLayoutBuildingBlockout(badOffsetRequest);
+  badOffsetRequest.facade.entranceOffsetCells = 4.0;
+  const cr::CreativeWorldLayoutBuildingBlockoutPlan outsideSegment =
+      cr::planCreativeWorldLayoutBuildingBlockout(badOffsetRequest);
 
   return expect(!badPattern.accepted &&
                     badPattern.status ==
@@ -294,7 +439,21 @@ bool plannerRejectsInvalidOrUnbuildableRooms() {
                     smallRooms.status ==
                         cr::CreativeWorldLayoutBuildingBlockoutStatus::
                             RoomTooSmall,
-                "preset rejects rooms whose walls consume the footprint");
+                "preset rejects rooms whose walls consume the footprint") &&
+         expect(!badEdge.accepted &&
+                    badEdge.status ==
+                        cr::CreativeWorldLayoutBuildingBlockoutStatus::
+                            InvalidEntranceEdge,
+                "invalid entrance edges fail closed") &&
+         expect(!badOffset.accepted &&
+                    badOffset.status ==
+                        cr::CreativeWorldLayoutBuildingBlockoutStatus::
+                            InvalidEntranceOffset &&
+                    !outsideSegment.accepted &&
+                    outsideSegment.status ==
+                        cr::CreativeWorldLayoutBuildingBlockoutStatus::
+                            InvalidEntranceOffset,
+                "non-finite and out-of-segment entrance offsets fail closed");
 }
 
 bool editorCreatesAndGeneratesOneAtomicBlockout() {
@@ -314,17 +473,35 @@ bool editorCreatesAndGeneratesOneAtomicBlockout() {
   const bool sourceShapeReady =
       state.source.buildings.size() == 1U &&
       state.source.levels.size() == 1U && state.source.rooms.size() == 4U &&
-      state.source.openings.size() == 3U;
-  const bool sourceDoorsConnectSharedEdges = std::all_of(
-      state.source.openings.begin(), state.source.openings.end(),
-      [&](const cr::CreativeWorldLayoutOpening& opening) {
-        return opening.hostKind ==
-                   cr::CreativeWorldLayoutOpeningHostKind::RoomEdge &&
-               opening.kind == cr::CreativeBuildingOpeningKind::Door &&
-               cr::creativeWorldLayoutRoomEdgeIntervalIsShared(
-                   state.source, opening.roomIndex, opening.roomEdge,
-                   opening.centerOffsetCells, opening.widthCells);
-      });
+      state.source.openings.size() == 11U;
+  std::size_t interiorDoorCount = 0U;
+  std::size_t entranceCount = 0U;
+  std::size_t exteriorWindowCount = 0U;
+  bool sourceOpeningsMatchTopology = true;
+  for (const cr::CreativeWorldLayoutOpening& opening : state.source.openings) {
+    const bool shared = cr::creativeWorldLayoutRoomEdgeIntervalIsShared(
+        state.source, opening.roomIndex, opening.roomEdge,
+        opening.centerOffsetCells, opening.widthCells);
+    sourceOpeningsMatchTopology =
+        sourceOpeningsMatchTopology &&
+        opening.hostKind == cr::CreativeWorldLayoutOpeningHostKind::RoomEdge;
+    if (opening.kind == cr::CreativeBuildingOpeningKind::Door && shared) {
+      ++interiorDoorCount;
+    } else if (opening.kind == cr::CreativeBuildingOpeningKind::Door &&
+               !shared) {
+      ++entranceCount;
+      sourceOpeningsMatchTopology =
+          sourceOpeningsMatchTopology && opening.name == "Entrance";
+    } else if (opening.kind == cr::CreativeBuildingOpeningKind::Window &&
+               !shared) {
+      ++exteriorWindowCount;
+    } else {
+      sourceOpeningsMatchTopology = false;
+    }
+  }
+  sourceOpeningsMatchTopology =
+      sourceOpeningsMatchTopology && interiorDoorCount == 3U &&
+      entranceCount == 1U && exteriorWindowCount == 7U;
   const bool selectedStableBuilding =
       state.selection.kind ==
           app::CreativeEditorWorldLayoutSelectionKind::Building &&
@@ -341,10 +518,12 @@ bool editorCreatesAndGeneratesOneAtomicBlockout() {
   std::uint64_t floorCount = 0U;
   std::uint64_t roofCount = 0U;
   std::uint64_t doorCount = 0U;
+  std::uint64_t windowCount = 0U;
   for (const cr::CreativeObject& object : state.preview.document.objects()) {
     floorCount += object.kind == cr::CreativeObjectKind::Floor ? 1U : 0U;
     roofCount += object.kind == cr::CreativeObjectKind::Roof ? 1U : 0U;
     doorCount += object.kind == cr::CreativeObjectKind::Door ? 1U : 0U;
+    windowCount += object.kind == cr::CreativeObjectKind::Window ? 1U : 0U;
   }
   const std::uint64_t previewObjectCount = state.preview.document.objectCount();
   const app::CreativeEditorWorldLayoutApplyReceipt confirmed =
@@ -363,14 +542,13 @@ bool editorCreatesAndGeneratesOneAtomicBlockout() {
   return expect(oneSourceEdit,
                 "whole blockout is one source revision") &&
          expect(sourceShapeReady,
-                "blockout owns one building, one level, four rooms, and three "
-                "doors") &&
-         expect(sourceDoorsConnectSharedEdges,
-                "blockout doors connect authored shared room edges") &&
+                "blockout owns rooms, circulation, an entrance, and windows") &&
+         expect(sourceOpeningsMatchTopology,
+                "opening roles match shared and exterior room edges") &&
          expect(selectedStableBuilding,
                 "blockout selects one stable-keyed building") &&
          expect(expanded.accepted && expanded.expanded.walls.size() == 6U &&
-                    expanded.expanded.openings.size() == 3U &&
+                    expanded.expanded.openings.size() == 11U &&
                     std::all_of(expanded.expanded.openings.begin(),
                                 expanded.expanded.openings.end(),
                                 [](const cr::CreativeWorldLayoutOpening&
@@ -381,15 +559,15 @@ bool editorCreatesAndGeneratesOneAtomicBlockout() {
                 "2x2 rooms and doors compile to canonical wall ownership") &&
          expect(encoded.accepted && decoded.accepted &&
                     decoded.layout.rooms.size() == 4U &&
-                    decoded.layout.openings.size() == 3U,
-                "blockout rooms and doors survive source codec round trip") &&
+                    decoded.layout.openings.size() == 11U,
+                "blockout rooms and facade survive source codec round trip") &&
          expect(preview.accepted && floorCount == 4U && roofCount == 4U &&
-                    doorCount == 3U,
-                "exact preview contains floors, roofs, and interior doors") &&
+                    doorCount == 4U && windowCount == 7U,
+                "exact preview contains floors, roofs, doors, and windows") &&
          expect(oneDocumentEdit,
                 "blockout confirms as one document transaction") &&
          expect(undoRestored && redone && state.source.rooms.size() == 4U &&
-                    state.source.openings.size() == 3U &&
+                    state.source.openings.size() == 11U &&
                     live.facade.document().objectCount() == previewObjectCount,
                 "undo and redo restore source and generated geometry together");
 }
@@ -424,7 +602,7 @@ bool desktopCommandRoutesTypedBlockoutRequest() {
          expect(created.accepted && created.changed &&
                     created.worldLayoutChanged && !created.sceneChanged &&
                     editor.worldLayout.source.rooms.size() == 4U &&
-                    editor.worldLayout.source.openings.size() == 3U,
+                    editor.worldLayout.source.openings.size() == 11U,
                 "typed desktop command reaches the blockout kernel");
 }
 
@@ -435,6 +613,7 @@ int main() {
                   plannerRejectsInvalidOrUnbuildableRooms() &&
                   editorRejectsOverlapWithoutPartialMutation() &&
                   editorRejectsUnconnectableRoomsWithoutPartialMutation() &&
+                  editorRejectsUnfitFacadeWithoutPartialMutation() &&
                   editorCreatesAndGeneratesOneAtomicBlockout() &&
                   desktopCommandRoutesTypedBlockoutRequest();
   if (!ok) {

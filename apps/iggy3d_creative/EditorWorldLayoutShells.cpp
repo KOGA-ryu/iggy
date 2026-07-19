@@ -10,6 +10,7 @@
 #include <cmath>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace iggy3d_creative_app {
 
@@ -174,6 +175,80 @@ bool blockoutOverlapsExistingRoom(
     }
   }
   return false;
+}
+
+bool sharedSpanMatchesOpeningIntent(
+    const std::vector<cr::CreativeWorldLayoutSharedRoomEdgeSpan>& sharedSpans,
+    std::size_t firstRoomIndex,
+    const cr::CreativeWorldLayoutBuildingBlockoutOpening& intent) noexcept {
+  if (intent.adjacentRoomIndex == cr::kInvalidCreativeWorldLayoutIndex) {
+    return false;
+  }
+  const std::size_t roomIndex = firstRoomIndex + intent.roomIndex;
+  const std::size_t adjacentRoomIndex =
+      firstRoomIndex + intent.adjacentRoomIndex;
+  return std::any_of(
+      sharedSpans.begin(), sharedSpans.end(),
+      [&](const cr::CreativeWorldLayoutSharedRoomEdgeSpan& span) {
+        return (span.firstRoomIndex == roomIndex &&
+                span.firstRoomEdge == intent.roomEdge &&
+                span.secondRoomIndex == adjacentRoomIndex &&
+                span.secondRoomEdge == intent.adjacentRoomEdge) ||
+               (span.secondRoomIndex == roomIndex &&
+                span.secondRoomEdge == intent.roomEdge &&
+                span.firstRoomIndex == adjacentRoomIndex &&
+                span.firstRoomEdge == intent.adjacentRoomEdge);
+      });
+}
+
+bool openingMatchesBlockoutIntent(
+    const cr::CreativeWorldLayout& layout, std::size_t firstRoomIndex,
+    const std::vector<cr::CreativeWorldLayoutSharedRoomEdgeSpan>& sharedSpans,
+    const cr::CreativeWorldLayoutBuildingBlockoutOpening& intent,
+    const cr::CreativeWorldLayoutOpening& opening) noexcept {
+  const std::size_t roomIndex = firstRoomIndex + intent.roomIndex;
+  if (intent.role >=
+          cr::CreativeWorldLayoutBuildingBlockoutOpeningRole::Count ||
+      roomIndex >= layout.rooms.size() || opening.kind != intent.kind ||
+      opening.hostKind != cr::CreativeWorldLayoutOpeningHostKind::RoomEdge ||
+      opening.roomIndex != roomIndex || opening.roomEdge != intent.roomEdge) {
+    return false;
+  }
+  const bool shared = cr::creativeWorldLayoutRoomEdgeIntervalIsShared(
+      layout, roomIndex, intent.roomEdge, opening.centerOffsetCells,
+      opening.widthCells);
+  switch (intent.role) {
+    case cr::CreativeWorldLayoutBuildingBlockoutOpeningRole::
+        InteriorConnection:
+      return opening.kind == cr::CreativeBuildingOpeningKind::Door && shared &&
+             sharedSpanMatchesOpeningIntent(sharedSpans, firstRoomIndex,
+                                             intent);
+    case cr::CreativeWorldLayoutBuildingBlockoutOpeningRole::Entrance:
+      return opening.kind == cr::CreativeBuildingOpeningKind::Door && !shared;
+    case cr::CreativeWorldLayoutBuildingBlockoutOpeningRole::ExteriorWindow:
+      return opening.kind == cr::CreativeBuildingOpeningKind::Window &&
+             !shared;
+    case cr::CreativeWorldLayoutBuildingBlockoutOpeningRole::Count:
+      break;
+  }
+  return false;
+}
+
+std::string blockoutOpeningName(
+    cr::CreativeWorldLayoutBuildingBlockoutOpeningRole role,
+    std::size_t ordinal) {
+  switch (role) {
+    case cr::CreativeWorldLayoutBuildingBlockoutOpeningRole::
+        InteriorConnection:
+      return "Interior Door " + std::to_string(ordinal);
+    case cr::CreativeWorldLayoutBuildingBlockoutOpeningRole::Entrance:
+      return "Entrance";
+    case cr::CreativeWorldLayoutBuildingBlockoutOpeningRole::ExteriorWindow:
+      return "Exterior Window " + std::to_string(ordinal);
+    case cr::CreativeWorldLayoutBuildingBlockoutOpeningRole::Count:
+      break;
+  }
+  return "Opening " + std::to_string(ordinal);
 }
 
 struct RoomSettingsValidation {
@@ -367,7 +442,8 @@ createCreativeEditorWorldLayoutBuildingBlockout(
   const cr::CreativeWorldLayoutBuildingBlockoutPlan blockout =
       cr::planCreativeWorldLayoutBuildingBlockout(
           {settings.shell.footprint, settings.pattern,
-           settings.shell.wallThicknessCells, settings.connectRooms});
+           settings.shell.wallThicknessCells, settings.connectRooms,
+           settings.facade});
   if (!blockout.accepted) {
     state.statusMessage = blockout.reasonCode;
     return {false, false, std::string(blockout.reasonCode)};
@@ -417,16 +493,20 @@ createCreativeEditorWorldLayoutBuildingBlockout(
                                               "room")));
   }
 
-  if (blockout.connectionCount > 0U) {
+  if (blockout.openingCount > 0U) {
     CreativeEditorWorldLayoutState candidateState;
     candidateState.source = std::move(candidate);
     candidateState.activeLevelIndex = levelIndex;
-    for (std::size_t index = 0U; index < blockout.connectionCount; ++index) {
-      const cr::CreativeWorldLayoutBuildingBlockoutConnection& connection =
-          blockout.connections[index];
+    const std::vector<cr::CreativeWorldLayoutSharedRoomEdgeSpan> sharedSpans =
+        cr::inspectCreativeWorldLayoutSharedRoomEdges(candidateState.source);
+    std::size_t interiorDoorOrdinal = 1U;
+    std::size_t exteriorWindowOrdinal = 1U;
+    for (std::size_t index = 0U; index < blockout.openingCount; ++index) {
+      const cr::CreativeWorldLayoutBuildingBlockoutOpening& intent =
+          blockout.openings[index];
       CreativeEditorWorldLayoutOpeningPlacementRequest request;
-      request.point = {connection.xCells, connection.zCells};
-      request.kind = cr::CreativeBuildingOpeningKind::Door;
+      request.point = {intent.xCells, intent.zCells};
+      request.kind = intent.kind;
       CreativeEditorWorldLayoutOpeningPlacementPlan placement =
           planCreativeEditorWorldLayoutOpeningPlacement(candidateState,
                                                         request);
@@ -434,25 +514,31 @@ createCreativeEditorWorldLayoutBuildingBlockout(
         state.statusMessage = placement.message;
         return {false, false, std::string(placement.reasonCode)};
       }
-      const std::size_t expectedRoomIndex =
-          firstRoomIndex + connection.firstRoomIndex;
-      if (placement.opening.hostKind !=
-              cr::CreativeWorldLayoutOpeningHostKind::RoomEdge ||
-          placement.opening.roomIndex != expectedRoomIndex ||
-          placement.opening.roomEdge != connection.firstRoomEdge) {
+      if (!openingMatchesBlockoutIntent(candidateState.source, firstRoomIndex,
+                                        sharedSpans, intent,
+                                        placement.opening)) {
         state.statusMessage =
-            "building blockout could not resolve its interior door host";
+            "building blockout could not resolve an opening host";
         return {
             false, false,
-            "creative_editor_world_layout_building_blockout_connection_host"};
+            "creative_editor_world_layout_building_blockout_opening_host"};
       }
 
       cr::CreativeWorldLayoutOpening opening = std::move(placement.opening);
       opening.stableKey = cr::mintCreativeWorldLayoutStableKey(
-          candidateState.source, nextStableOrdinal, "door");
-      opening.name = "Interior Door " +
-                     std::to_string(candidateState.source.openings.size() +
-                                    1U);
+          candidateState.source, nextStableOrdinal,
+          opening.kind == cr::CreativeBuildingOpeningKind::Door ? "door"
+                                                                 : "window");
+      std::size_t openingOrdinal = 1U;
+      if (intent.role == cr::CreativeWorldLayoutBuildingBlockoutOpeningRole::
+                             InteriorConnection) {
+        openingOrdinal = interiorDoorOrdinal++;
+      } else if (
+          intent.role == cr::CreativeWorldLayoutBuildingBlockoutOpeningRole::
+                             ExteriorWindow) {
+        openingOrdinal = exteriorWindowOrdinal++;
+      }
+      opening.name = blockoutOpeningName(intent.role, openingOrdinal);
       candidateState.source.openings.push_back(std::move(opening));
     }
     candidate = std::move(candidateState.source);

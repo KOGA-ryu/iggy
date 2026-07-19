@@ -167,6 +167,7 @@ struct CreativeEditorWorldLayoutBuildingBlockoutSettings {
   cr::CreativeWorldLayoutBuildingBlockoutPattern pattern =
       cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom;
   bool connectRooms = true;
+  cr::CreativeWorldLayoutBuildingBlockoutFacadeSettings facade;
 };
 
 struct CreativeEditorWorldLayoutRoomSettingsDraft {

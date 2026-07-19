@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <string_view>
 
 namespace iggy3d::creative {
@@ -27,17 +28,172 @@ double center(std::int32_t minimum, std::int32_t maximum) noexcept {
   return static_cast<double>(minimum) + static_cast<double>(span) * 0.5;
 }
 
-void appendConnection(
+bool appendOpening(
     CreativeWorldLayoutBuildingBlockoutPlan& plan,
-    std::size_t firstRoomIndex, CreativeWorldLayoutRoomEdge firstRoomEdge,
-    std::size_t secondRoomIndex, CreativeWorldLayoutRoomEdge secondRoomEdge,
-    double xCells, double zCells) noexcept {
-  if (plan.connectionCount >= plan.connections.size()) {
+    CreativeWorldLayoutBuildingBlockoutOpeningRole role,
+    CreativeBuildingOpeningKind kind, std::size_t roomIndex,
+    CreativeWorldLayoutRoomEdge roomEdge, std::size_t adjacentRoomIndex,
+    CreativeWorldLayoutRoomEdge adjacentRoomEdge, double xCells,
+    double zCells) noexcept {
+  if (plan.openingCount >= plan.openings.size()) {
+    fail(plan,
+         CreativeWorldLayoutBuildingBlockoutStatus::OpeningCapacityExceeded,
+         "creative_world_layout_building_blockout_opening_capacity_exceeded");
+    return false;
+  }
+  plan.openings[plan.openingCount++] = {role,
+                                        kind,
+                                        roomIndex,
+                                        roomEdge,
+                                        adjacentRoomIndex,
+                                        adjacentRoomEdge,
+                                        xCells,
+                                        zCells};
+  return true;
+}
+
+bool roomTouchesFacade(CreativeWorldLayoutRect room,
+                       CreativeWorldLayoutRect footprint,
+                       CreativeWorldLayoutRoomEdge edge) noexcept {
+  switch (edge) {
+    case CreativeWorldLayoutRoomEdge::North:
+      return room.minimum.z == footprint.minimum.z;
+    case CreativeWorldLayoutRoomEdge::East:
+      return room.maximum.x == footprint.maximum.x;
+    case CreativeWorldLayoutRoomEdge::South:
+      return room.maximum.z == footprint.maximum.z;
+    case CreativeWorldLayoutRoomEdge::West:
+      return room.minimum.x == footprint.minimum.x;
+    case CreativeWorldLayoutRoomEdge::Count:
+      break;
+  }
+  return false;
+}
+
+bool horizontalEdge(CreativeWorldLayoutRoomEdge edge) noexcept {
+  return edge == CreativeWorldLayoutRoomEdge::North ||
+         edge == CreativeWorldLayoutRoomEdge::South;
+}
+
+double edgeMinimum(CreativeWorldLayoutRect room,
+                   CreativeWorldLayoutRoomEdge edge) noexcept {
+  return horizontalEdge(edge) ? static_cast<double>(room.minimum.x)
+                              : static_cast<double>(room.minimum.z);
+}
+
+double edgeMaximum(CreativeWorldLayoutRect room,
+                   CreativeWorldLayoutRoomEdge edge) noexcept {
+  return horizontalEdge(edge) ? static_cast<double>(room.maximum.x)
+                              : static_cast<double>(room.maximum.z);
+}
+
+void edgePoint(CreativeWorldLayoutRect room,
+               CreativeWorldLayoutRoomEdge edge, double coordinate,
+               double& xCells, double& zCells) noexcept {
+  if (horizontalEdge(edge)) {
+    xCells = coordinate;
+    zCells = edge == CreativeWorldLayoutRoomEdge::North
+                 ? static_cast<double>(room.minimum.z)
+                 : static_cast<double>(room.maximum.z);
     return;
   }
-  plan.connections[plan.connectionCount++] = {
-      firstRoomIndex, firstRoomEdge, secondRoomIndex, secondRoomEdge, xCells,
-      zCells};
+  xCells = edge == CreativeWorldLayoutRoomEdge::West
+               ? static_cast<double>(room.minimum.x)
+               : static_cast<double>(room.maximum.x);
+  zCells = coordinate;
+}
+
+bool appendFacadeOpenings(
+    CreativeWorldLayoutBuildingBlockoutPlan& plan,
+    const CreativeWorldLayoutBuildingBlockoutRequest& request) noexcept {
+  std::size_t entranceRoomIndex = kInvalidCreativeWorldLayoutIndex;
+  CreativeWorldLayoutRoomEdge entranceRoomEdge =
+      CreativeWorldLayoutRoomEdge::Count;
+
+  if (request.facade.includeEntrance) {
+    const double facadeCenter =
+        horizontalEdge(request.facade.entranceEdge)
+            ? center(request.footprint.minimum.x, request.footprint.maximum.x)
+            : center(request.footprint.minimum.z, request.footprint.maximum.z);
+    double bestDistance = std::numeric_limits<double>::infinity();
+    for (std::size_t roomIndex = 0U; roomIndex < plan.roomCount; ++roomIndex) {
+      const CreativeWorldLayoutRect room = plan.rooms[roomIndex];
+      if (!roomTouchesFacade(room, request.footprint,
+                             request.facade.entranceEdge)) {
+        continue;
+      }
+      const double roomEdgeCenter =
+          (edgeMinimum(room, request.facade.entranceEdge) +
+           edgeMaximum(room, request.facade.entranceEdge)) *
+          0.5;
+      const double distance = std::fabs(roomEdgeCenter - facadeCenter);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        entranceRoomIndex = roomIndex;
+      }
+    }
+    if (entranceRoomIndex == kInvalidCreativeWorldLayoutIndex) {
+      fail(plan, CreativeWorldLayoutBuildingBlockoutStatus::InvalidEntranceEdge,
+           "creative_world_layout_building_blockout_entrance_edge_invalid");
+      return false;
+    }
+
+    entranceRoomEdge = request.facade.entranceEdge;
+    const CreativeWorldLayoutRect entranceRoom =
+        plan.rooms[entranceRoomIndex];
+    const double minimum = edgeMinimum(entranceRoom, entranceRoomEdge);
+    const double maximum = edgeMaximum(entranceRoom, entranceRoomEdge);
+    const double coordinate =
+        (minimum + maximum) * 0.5 + request.facade.entranceOffsetCells;
+    if (!(coordinate > minimum && coordinate < maximum)) {
+      fail(plan,
+           CreativeWorldLayoutBuildingBlockoutStatus::InvalidEntranceOffset,
+           "creative_world_layout_building_blockout_entrance_offset_invalid");
+      return false;
+    }
+    double xCells = 0.0;
+    double zCells = 0.0;
+    edgePoint(entranceRoom, entranceRoomEdge, coordinate, xCells, zCells);
+    if (!appendOpening(
+            plan, CreativeWorldLayoutBuildingBlockoutOpeningRole::Entrance,
+            CreativeBuildingOpeningKind::Door, entranceRoomIndex,
+            entranceRoomEdge, kInvalidCreativeWorldLayoutIndex,
+            CreativeWorldLayoutRoomEdge::Count, xCells, zCells)) {
+      return false;
+    }
+  }
+
+  if (!request.facade.includeExteriorWindows) {
+    return true;
+  }
+  for (std::size_t roomIndex = 0U; roomIndex < plan.roomCount; ++roomIndex) {
+    const CreativeWorldLayoutRect room = plan.rooms[roomIndex];
+    for (std::uint8_t edgeValue = 0U;
+         edgeValue <
+         static_cast<std::uint8_t>(CreativeWorldLayoutRoomEdge::Count);
+         ++edgeValue) {
+      const CreativeWorldLayoutRoomEdge edge =
+          static_cast<CreativeWorldLayoutRoomEdge>(edgeValue);
+      if (!roomTouchesFacade(room, request.footprint, edge) ||
+          (roomIndex == entranceRoomIndex && edge == entranceRoomEdge)) {
+        continue;
+      }
+      double xCells = 0.0;
+      double zCells = 0.0;
+      edgePoint(room, edge,
+                (edgeMinimum(room, edge) + edgeMaximum(room, edge)) * 0.5,
+                xCells, zCells);
+      if (!appendOpening(
+              plan,
+              CreativeWorldLayoutBuildingBlockoutOpeningRole::ExteriorWindow,
+              CreativeBuildingOpeningKind::Window, roomIndex, edge,
+              kInvalidCreativeWorldLayoutIndex,
+              CreativeWorldLayoutRoomEdge::Count, xCells, zCells)) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 bool roomSupportsWalls(CreativeWorldLayoutRect room,
@@ -80,8 +236,14 @@ std::string_view toString(
       return "InvalidFootprint";
     case CreativeWorldLayoutBuildingBlockoutStatus::InvalidWallThickness:
       return "InvalidWallThickness";
+    case CreativeWorldLayoutBuildingBlockoutStatus::InvalidEntranceEdge:
+      return "InvalidEntranceEdge";
+    case CreativeWorldLayoutBuildingBlockoutStatus::InvalidEntranceOffset:
+      return "InvalidEntranceOffset";
     case CreativeWorldLayoutBuildingBlockoutStatus::RoomTooSmall:
       return "RoomTooSmall";
+    case CreativeWorldLayoutBuildingBlockoutStatus::OpeningCapacityExceeded:
+      return "OpeningCapacityExceeded";
     case CreativeWorldLayoutBuildingBlockoutStatus::Ready:
       return "Ready";
   }
@@ -111,6 +273,18 @@ planCreativeWorldLayoutBuildingBlockout(
       request.wallThicknessCells <= 0.0) {
     fail(plan, CreativeWorldLayoutBuildingBlockoutStatus::InvalidWallThickness,
          "creative_world_layout_building_blockout_wall_thickness_invalid");
+    return plan;
+  }
+  if (request.facade.includeEntrance &&
+      request.facade.entranceEdge >= CreativeWorldLayoutRoomEdge::Count) {
+    fail(plan, CreativeWorldLayoutBuildingBlockoutStatus::InvalidEntranceEdge,
+         "creative_world_layout_building_blockout_entrance_edge_invalid");
+    return plan;
+  }
+  if (request.facade.includeEntrance &&
+      !std::isfinite(request.facade.entranceOffsetCells)) {
+    fail(plan, CreativeWorldLayoutBuildingBlockoutStatus::InvalidEntranceOffset,
+         "creative_world_layout_building_blockout_entrance_offset_invalid");
     return plan;
   }
 
@@ -169,35 +343,68 @@ planCreativeWorldLayoutBuildingBlockout(
       case CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom:
         break;
       case CreativeWorldLayoutBuildingBlockoutPattern::SplitX:
-        appendConnection(plan, 0U, CreativeWorldLayoutRoomEdge::East, 1U,
-                         CreativeWorldLayoutRoomEdge::West,
-                         static_cast<double>(splitX), footprintCenterZ);
+        if (!appendOpening(
+                plan,
+                CreativeWorldLayoutBuildingBlockoutOpeningRole::
+                    InteriorConnection,
+                CreativeBuildingOpeningKind::Door, 0U,
+                CreativeWorldLayoutRoomEdge::East, 1U,
+                CreativeWorldLayoutRoomEdge::West,
+                static_cast<double>(splitX), footprintCenterZ)) {
+          return plan;
+        }
         break;
       case CreativeWorldLayoutBuildingBlockoutPattern::SplitZ:
-        appendConnection(plan, 0U, CreativeWorldLayoutRoomEdge::South, 1U,
-                         CreativeWorldLayoutRoomEdge::North, footprintCenterX,
-                         static_cast<double>(splitZ));
+        if (!appendOpening(
+                plan,
+                CreativeWorldLayoutBuildingBlockoutOpeningRole::
+                    InteriorConnection,
+                CreativeBuildingOpeningKind::Door, 0U,
+                CreativeWorldLayoutRoomEdge::South, 1U,
+                CreativeWorldLayoutRoomEdge::North, footprintCenterX,
+                static_cast<double>(splitZ))) {
+          return plan;
+        }
         break;
       case CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2:
         // Row-major spanning tree: 1 -> 0, 2 -> 0, 3 -> 2. Three doors connect
         // all four rooms without imposing an extra circulation loop.
-        appendConnection(
-            plan, 0U, CreativeWorldLayoutRoomEdge::East, 1U,
-            CreativeWorldLayoutRoomEdge::West, static_cast<double>(splitX),
-            center(request.footprint.minimum.z, splitZ));
-        appendConnection(
-            plan, 0U, CreativeWorldLayoutRoomEdge::South, 2U,
-            CreativeWorldLayoutRoomEdge::North,
-            center(request.footprint.minimum.x, splitX),
-            static_cast<double>(splitZ));
-        appendConnection(
-            plan, 2U, CreativeWorldLayoutRoomEdge::East, 3U,
-            CreativeWorldLayoutRoomEdge::West, static_cast<double>(splitX),
-            center(splitZ, request.footprint.maximum.z));
+        if (!appendOpening(
+                plan,
+                CreativeWorldLayoutBuildingBlockoutOpeningRole::
+                    InteriorConnection,
+                CreativeBuildingOpeningKind::Door, 0U,
+                CreativeWorldLayoutRoomEdge::East, 1U,
+                CreativeWorldLayoutRoomEdge::West,
+                static_cast<double>(splitX),
+                center(request.footprint.minimum.z, splitZ)) ||
+            !appendOpening(
+                plan,
+                CreativeWorldLayoutBuildingBlockoutOpeningRole::
+                    InteriorConnection,
+                CreativeBuildingOpeningKind::Door, 0U,
+                CreativeWorldLayoutRoomEdge::South, 2U,
+                CreativeWorldLayoutRoomEdge::North,
+                center(request.footprint.minimum.x, splitX),
+                static_cast<double>(splitZ)) ||
+            !appendOpening(
+                plan,
+                CreativeWorldLayoutBuildingBlockoutOpeningRole::
+                    InteriorConnection,
+                CreativeBuildingOpeningKind::Door, 2U,
+                CreativeWorldLayoutRoomEdge::East, 3U,
+                CreativeWorldLayoutRoomEdge::West,
+                static_cast<double>(splitX),
+                center(splitZ, request.footprint.maximum.z))) {
+          return plan;
+        }
         break;
       case CreativeWorldLayoutBuildingBlockoutPattern::Count:
         break;
     }
+  }
+  if (!appendFacadeOpenings(plan, request)) {
+    return plan;
   }
 
   plan.accepted = true;
