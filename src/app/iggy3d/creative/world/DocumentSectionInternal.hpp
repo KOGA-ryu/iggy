@@ -50,6 +50,12 @@ toSaveTerrainControls(const creative::CreativeTerrainField& field);
 [[nodiscard]] bool toCreativeTerrainField(
     std::span<const SaveCreativeDocumentTerrainControlRecord> records,
     creative::CreativeTerrainField& out);
+[[nodiscard]] SaveCreativeDocumentTerrainHeightFieldRecord
+toSaveTerrainHeightField(
+    const creative::CreativeTerrainHeightField& field);
+[[nodiscard]] bool toCreativeTerrainHeightField(
+    const SaveCreativeDocumentTerrainHeightFieldRecord& record,
+    creative::CreativeTerrainHeightField& output);
 [[nodiscard]] std::vector<SaveCreativeDocumentTerrainMaterialRecord>
 toSaveTerrainMaterials(
     const creative::CreativeTerrainMaterialField& field);

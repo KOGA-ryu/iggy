@@ -124,6 +124,7 @@ void setStatus(CreativeWorldLayoutApplyReceipt& receipt,
                             document.logicLinks().end());
   request.voxelField = document.voxelField();
   request.terrainField = document.terrainField();
+  request.terrainHeightField = document.terrainHeightField();
   request.terrainMaterialField = document.terrainMaterialField();
   CreativeDocument validationDocument;
   return validationDocument.restoreForLoad(request);

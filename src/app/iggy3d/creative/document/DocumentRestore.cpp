@@ -45,6 +45,8 @@ std::string_view toString(CreativeDocumentRestoreStatus status) noexcept {
       return "InvalidVoxelField";
     case CreativeDocumentRestoreStatus::InvalidTerrainField:
       return "InvalidTerrainField";
+    case CreativeDocumentRestoreStatus::InvalidTerrainHeightField:
+      return "InvalidTerrainHeightField";
     case CreativeDocumentRestoreStatus::InvalidTerrainMaterialField:
       return "InvalidTerrainMaterialField";
     case CreativeDocumentRestoreStatus::InvalidNextObjectId:
@@ -64,6 +66,7 @@ CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
   receipt.logicLinkCount = request.logicLinks.size();
   receipt.voxelCellCount = request.voxelField.occupiedCellCount();
   receipt.terrainControlCount = request.terrainField.controlCount();
+  receipt.terrainHeightCellCount = request.terrainHeightField.cellCount();
   receipt.terrainMaterialOverrideCount =
       request.terrainMaterialField.overrideCount();
   receipt.nextObjectId = request.nextObjectId;
@@ -174,6 +177,14 @@ CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
     return receipt;
   }
 
+  if (!request.terrainHeightField.validateInvariants()) {
+    setRestoreStatus(
+        receipt,
+        CreativeDocumentRestoreStatus::InvalidTerrainHeightField,
+        "invalid_terrain_height_field");
+    return receipt;
+  }
+
   if (!request.terrainMaterialField.validateInvariants()) {
     setRestoreStatus(receipt,
                      CreativeDocumentRestoreStatus::InvalidTerrainMaterialField,
@@ -209,6 +220,7 @@ CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
   nextObjectId_ = request.nextObjectId;
   voxelField_ = request.voxelField;
   terrainField_ = request.terrainField;
+  terrainHeightField_ = request.terrainHeightField;
   terrainMaterialField_ = request.terrainMaterialField;
   revision_ = 0;
   dirtyFlags_ = 0;

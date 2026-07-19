@@ -382,6 +382,39 @@ void Reader::readCreativeDocument() {
       readUnsigned(p + "radiusCells", control.radiusCells);
     }
   }
+  if (nextKeyIs("creativeDocument.terrainHeightField.present")) {
+    SaveCreativeDocumentTerrainHeightFieldRecord& heightField =
+        section.terrainHeightField;
+    readBool("creativeDocument.terrainHeightField.present",
+             heightField.present);
+    if (heightField.present) {
+      readI32("creativeDocument.terrainHeightField.minimumX",
+              heightField.minimumX);
+      readI32("creativeDocument.terrainHeightField.minimumZ",
+              heightField.minimumZ);
+      readUnsigned("creativeDocument.terrainHeightField.widthCells",
+                   heightField.widthCells);
+      readUnsigned("creativeDocument.terrainHeightField.depthCells",
+                   heightField.depthCells);
+      std::uint64_t heightCount = 0U;
+      readUnsigned("creativeDocument.terrainHeightField.height.count",
+                   heightCount);
+      constexpr std::uint64_t kMaxCreativeTerrainHeightCellCount = 8192U;
+      if (heightCount > kMaxCreativeTerrainHeightCellCount) {
+        result_ = fail(SaveCodecStatus::InvalidNumber,
+                       "creativeDocument.terrainHeightField.height.count",
+                       index_, "terrain height cell count exceeds limit");
+        return;
+      }
+      heightField.heights.resize(static_cast<std::size_t>(heightCount));
+      for (std::size_t index = 0U; index < heightField.heights.size();
+           ++index) {
+        readUnsigned("creativeDocument.terrainHeightField.height." +
+                         std::to_string(index),
+                     heightField.heights[index]);
+      }
+    }
+  }
   if (nextKeyIs("creativeDocument.terrainMaterial.count")) {
     std::uint64_t materialCount = 0U;
     readUnsigned("creativeDocument.terrainMaterial.count", materialCount);

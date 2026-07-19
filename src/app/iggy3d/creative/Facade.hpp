@@ -260,6 +260,10 @@ class Facade {
       std::span<const CreativeVoxelEdit> edits);
   [[nodiscard]] CreativeTerrainMutationReceipt applyTerrainControlEdits(
       std::span<const CreativeTerrainControlEdit> edits);
+  [[nodiscard]] CreativeTerrainHeightFieldReplaceReceipt
+  replaceTerrainHeightField(
+      CreativeTerrainHeightFieldBounds bounds,
+      std::span<const std::uint16_t> heights);
   [[nodiscard]] CreativeTerrainMaterialMutationReceipt applyTerrainMaterialEdits(
       std::span<const CreativeTerrainMaterialEdit> edits);
 

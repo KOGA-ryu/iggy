@@ -80,6 +80,20 @@ CreativeTerrainMutationReceipt Facade::applyTerrainControlEdits(
   return receipt;
 }
 
+CreativeTerrainHeightFieldReplaceReceipt Facade::replaceTerrainHeightField(
+    CreativeTerrainHeightFieldBounds bounds,
+    std::span<const std::uint16_t> heights) {
+  recordCommandAttempt(stats_);
+  CreativeTerrainHeightFieldReplaceReceipt receipt =
+      document_.replaceTerrainHeightField(bounds, heights);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
 CreativeTerrainMaterialMutationReceipt Facade::applyTerrainMaterialEdits(
     std::span<const CreativeTerrainMaterialEdit> edits) {
   recordCommandAttempt(stats_);

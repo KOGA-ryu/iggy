@@ -47,7 +47,7 @@ CreativeDocument CreativeDocument::create(std::string name) {
 
 bool CreativeDocument::isValid() const noexcept {
   return valid_ && voxelField_.isValid() && terrainField_.isValid() &&
-         terrainMaterialField_.isValid();
+         terrainHeightField_.isValid() && terrainMaterialField_.isValid();
 }
 
 CreativeDocumentId CreativeDocument::id() const noexcept {
@@ -170,6 +170,7 @@ void CreativeDocument::reset() {
   nextObjectId_ = 1;
   voxelField_.clear();
   terrainField_.clear();
+  terrainHeightField_.clear();
   terrainMaterialField_.clear();
   units_ = CreativeUnits::Meters;
   gridSettings_ = {};
@@ -218,6 +219,11 @@ const CreativeVoxelField& CreativeDocument::voxelField() const noexcept {
 
 const CreativeTerrainField& CreativeDocument::terrainField() const noexcept {
   return terrainField_;
+}
+
+const CreativeTerrainHeightField& CreativeDocument::terrainHeightField()
+    const noexcept {
+  return terrainHeightField_;
 }
 
 const CreativeTerrainMaterialField& CreativeDocument::terrainMaterialField()
@@ -283,6 +289,29 @@ CreativeTerrainMutationReceipt CreativeDocument::applyTerrainControlEdits(
   }
 
   CreativeTerrainMutationReceipt receipt = terrainField_.apply(edits);
+  if (receipt.changed) {
+    markObjectMutationChanged(
+        dirtyFlagsForCreation(CreativeObjectKind::TerrainPatch) |
+        documentSettingsDirtyFlags());
+  }
+  return receipt;
+}
+
+CreativeTerrainHeightFieldReplaceReceipt
+CreativeDocument::replaceTerrainHeightField(
+    CreativeTerrainHeightFieldBounds bounds,
+    std::span<const std::uint16_t> heights) {
+  if (!valid_) {
+    CreativeTerrainHeightFieldReplaceReceipt receipt;
+    receipt.requested = true;
+    receipt.cellCountBefore = terrainHeightField_.cellCount();
+    receipt.cellCountAfter = receipt.cellCountBefore;
+    receipt.status = CreativeTerrainHeightFieldReplaceStatus::InvalidField;
+    receipt.reasonCode = "creative_terrain_height_document_invalid";
+    return receipt;
+  }
+  CreativeTerrainHeightFieldReplaceReceipt receipt =
+      terrainHeightField_.replace(bounds, heights);
   if (receipt.changed) {
     markObjectMutationChanged(
         dirtyFlagsForCreation(CreativeObjectKind::TerrainPatch) |

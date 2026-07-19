@@ -39,6 +39,7 @@ struct ProductCreativeDocumentSectionReceipt {
   std::uint64_t logicLinkCount = 0;
   std::uint64_t voxelCellCount = 0;
   std::uint64_t terrainControlCount = 0;
+  std::uint64_t terrainHeightCellCount = 0;
   std::uint64_t terrainMaterialOverrideCount = 0;
   creative::CreativeObjectId nextObjectId = creative::kInvalidObjectId;
   std::string_view message = "creative_document_section_not_requested";

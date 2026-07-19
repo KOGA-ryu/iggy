@@ -17,6 +17,7 @@ using document_section_internal::toCreativeLogicLink;
 using document_section_internal::toCreativeObject;
 using document_section_internal::toCreativeSnapSettings;
 using document_section_internal::toCreativeTerrainField;
+using document_section_internal::toCreativeTerrainHeightField;
 using document_section_internal::toCreativeTerrainMaterialField;
 using document_section_internal::toCreativeVoxelField;
 using document_section_internal::toSaveBounds;
@@ -25,6 +26,7 @@ using document_section_internal::toSaveLogicLink;
 using document_section_internal::toSaveObject;
 using document_section_internal::toSaveSnapSettings;
 using document_section_internal::toSaveTerrainControls;
+using document_section_internal::toSaveTerrainHeightField;
 using document_section_internal::toSaveTerrainMaterials;
 using document_section_internal::toSaveUnits;
 using document_section_internal::toSaveVoxelChunks;
@@ -139,6 +141,11 @@ void mirrorRestoreFailure(ProductCreativeDocumentSectionReceipt& receipt,
                 ProductCreativeDocumentSectionStatus::InvalidTerrainData,
                 reason);
       return;
+    case creative::CreativeDocumentRestoreStatus::InvalidTerrainHeightField:
+      setStatus(receipt,
+                ProductCreativeDocumentSectionStatus::InvalidTerrainData,
+                reason);
+      return;
     case creative::CreativeDocumentRestoreStatus::InvalidTerrainMaterialField:
       setStatus(
           receipt,
@@ -232,6 +239,8 @@ ProductCreativeDocumentSectionBuildResult buildSaveCreativeDocumentSection(
   receipt.logicLinkCount = document.logicLinks().size();
   receipt.voxelCellCount = document.voxelField().occupiedCellCount();
   receipt.terrainControlCount = document.terrainField().controlCount();
+  receipt.terrainHeightCellCount =
+      document.terrainHeightField().cellCount();
   receipt.terrainMaterialOverrideCount =
       document.terrainMaterialField().overrideCount();
   receipt.nextObjectId = document.nextObjectId();
@@ -290,6 +299,8 @@ ProductCreativeDocumentSectionBuildResult buildSaveCreativeDocumentSection(
   result.section.voxelChunks = toSaveVoxelChunks(document.voxelField());
   result.section.terrainControls =
       toSaveTerrainControls(document.terrainField());
+  result.section.terrainHeightField =
+      toSaveTerrainHeightField(document.terrainHeightField());
   result.section.terrainMaterials =
       toSaveTerrainMaterials(document.terrainMaterialField());
 
@@ -300,6 +311,8 @@ ProductCreativeDocumentSectionBuildResult buildSaveCreativeDocumentSection(
   receipt.logicLinkCount = result.section.logicLinks.size();
   receipt.voxelCellCount = document.voxelField().occupiedCellCount();
   receipt.terrainControlCount = document.terrainField().controlCount();
+  receipt.terrainHeightCellCount =
+      document.terrainHeightField().cellCount();
   receipt.terrainMaterialOverrideCount =
       document.terrainMaterialField().overrideCount();
   receipt.nextObjectId = result.section.nextObjectId;
@@ -321,6 +334,8 @@ ProductCreativeDocumentSectionRestoreResult restoreCreativeDocumentFromSaveSecti
     receipt.voxelCellCount += chunk.cells.size();
   }
   receipt.terrainControlCount = section.terrainControls.size();
+  receipt.terrainHeightCellCount =
+      section.terrainHeightField.heights.size();
   receipt.terrainMaterialOverrideCount = section.terrainMaterials.size();
   receipt.nextObjectId = section.nextObjectId;
 
@@ -364,6 +379,13 @@ ProductCreativeDocumentSectionRestoreResult restoreCreativeDocumentFromSaveSecti
     setStatus(receipt,
               ProductCreativeDocumentSectionStatus::InvalidTerrainData,
               "invalid_terrain_data");
+    return result;
+  }
+  if (!toCreativeTerrainHeightField(section.terrainHeightField,
+                                    request.terrainHeightField)) {
+    setStatus(receipt,
+              ProductCreativeDocumentSectionStatus::InvalidTerrainData,
+              "invalid_terrain_height_data");
     return result;
   }
   if (!toCreativeTerrainMaterialField(section.terrainMaterials,

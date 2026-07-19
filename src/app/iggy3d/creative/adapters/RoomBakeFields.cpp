@@ -359,25 +359,60 @@ void appendRoomBakeFields(CreativeRoomBakeResult& result,
   std::vector<CreativeVoxelCuboid> ownedVoxelCuboids;
   std::span<const CreativeVoxelCuboid> voxelCuboids =
       request.precomputedVoxelCuboids;
+  CreativeTerrainSurfacePlan ownedTerrainSurface;
+  bool terrainSurfaceBuilt = false;
+  const auto ensureTerrainSurface = [&]()
+      -> const CreativeTerrainSurfacePlan& {
+    if (!terrainSurfaceBuilt) {
+      ownedTerrainSurface = buildCreativeComposedTerrainSurfacePlan(
+          document.terrainField(), document.terrainHeightField());
+      terrainSurfaceBuilt = true;
+    }
+    return ownedTerrainSurface;
+  };
   if (!request.usePrecomputedVoxelCuboids) {
     ownedVoxelCuboids = buildCreativeVoxelCuboids(document.voxelField());
+    const CreativeTerrainSurfacePlan& terrain = ensureTerrainSurface();
+    if (terrain.accepted) {
+      ownedVoxelCuboids.insert(ownedVoxelCuboids.end(),
+                               terrain.cuboids.begin(),
+                               terrain.cuboids.end());
+    }
     voxelCuboids = ownedVoxelCuboids;
   }
   const CreativeGridSettings grid = document.gridSettings();
   const CreativeCoreVec3Conversion gridOrigin =
       creativeVec3ToCoreChecked(grid.origin);
+  std::vector<CreativeTerrainSurfacePatch> ownedTerrainSurfacePatches;
+  std::span<const CreativeTerrainSurfacePatch> terrainSurfacePatches =
+      request.precomputedTerrainSurfacePatches;
+  bool useTerrainSurfacePatches =
+      request.usePrecomputedTerrainSurfacePatches;
+  if (!useTerrainSurfacePatches) {
+    const CreativeTerrainSurfacePlan& terrain = ensureTerrainSurface();
+    if (terrain.accepted) {
+      const CreativeTerrainRenderPlan render =
+          buildCreativeTerrainRenderPlan(
+              terrain, document.terrainMaterialField(), grid.origin,
+              grid.cellSizeMeters);
+      if (render.accepted) {
+        ownedTerrainSurfacePatches = render.patches;
+        terrainSurfacePatches = ownedTerrainSurfacePatches;
+        useTerrainSurfacePatches = true;
+      }
+    }
+  }
   const bool smoothTerrainCollision =
-      request.usePrecomputedTerrainSurfacePatches && gridOrigin.converted &&
+      useTerrainSurfacePatches && !terrainSurfacePatches.empty() &&
+      gridOrigin.converted &&
       std::isfinite(static_cast<float>(grid.cellSizeMeters)) &&
       static_cast<float>(grid.cellSizeMeters) > 0.0F &&
-      validTerrainSurfacePatches(
-          request.precomputedTerrainSurfacePatches);
+      validTerrainSurfacePatches(terrainSurfacePatches);
   for (const CreativeVoxelCuboid& cuboid : voxelCuboids) {
     appendVoxelCuboid(result, cuboid, grid, smoothTerrainCollision);
   }
   if (smoothTerrainCollision) {
-    appendSmoothTerrainCollision(
-        result, request.precomputedTerrainSurfacePatches, grid);
+    appendSmoothTerrainCollision(result, terrainSurfacePatches, grid);
   }
 }
 

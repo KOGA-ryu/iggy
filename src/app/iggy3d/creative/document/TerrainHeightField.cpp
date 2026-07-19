@@ -180,6 +180,23 @@ CreativeTerrainHeightFieldReplaceReceipt CreativeTerrainHeightField::replace(
     receipt.reasonCode = "creative_terrain_height_field_invalid";
     return receipt;
   }
+  if (bounds == CreativeTerrainHeightFieldBounds{} && heights.empty()) {
+    receipt.accepted = true;
+    if (heights_.empty()) {
+      receipt.status = CreativeTerrainHeightFieldReplaceStatus::NoChange;
+      receipt.reasonCode = "creative_terrain_height_field_no_change";
+      return receipt;
+    }
+    bounds_ = {};
+    heights_.clear();
+    ++revision_;
+    receipt.changed = true;
+    receipt.status = CreativeTerrainHeightFieldReplaceStatus::Applied;
+    receipt.revisionAfter = revision_;
+    receipt.cellCountAfter = 0U;
+    receipt.reasonCode = "creative_terrain_height_field_cleared";
+    return receipt;
+  }
   if (!isValidCreativeTerrainHeightFieldBounds(bounds)) {
     receipt.status = CreativeTerrainHeightFieldReplaceStatus::InvalidBounds;
     receipt.reasonCode = "creative_terrain_height_field_bounds_invalid";
@@ -317,6 +334,17 @@ CreativeTerrainSurfacePlan replaceCreativeTerrainSurfaceRegion(
                         ? "creative_terrain_height_composition_empty"
                         : "creative_terrain_height_composition_ready";
   return plan;
+}
+
+CreativeTerrainSurfacePlan buildCreativeComposedTerrainSurfacePlan(
+    const CreativeTerrainField& legacy,
+    const CreativeTerrainHeightField& authored) {
+  CreativeTerrainSurfacePlan base =
+      buildCreativeTerrainSurfacePlan(legacy);
+  if (!base.accepted || authored.cellCount() == 0U) {
+    return base;
+  }
+  return replaceCreativeTerrainSurfaceRegion(base, authored);
 }
 
 CreativeTerrainRenderPlan buildCreativeTerrainHeightRenderPlan(

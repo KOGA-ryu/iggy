@@ -427,6 +427,27 @@ private:
       line(p + "heightCells", unsignedText(control.heightCells));
       line(p + "radiusCells", unsignedText(control.radiusCells));
     }
+    if (section.terrainHeightField.present) {
+      const SaveCreativeDocumentTerrainHeightFieldRecord& heightField =
+          section.terrainHeightField;
+      lineBool("creativeDocument.terrainHeightField.present", true);
+      line("creativeDocument.terrainHeightField.minimumX",
+           std::to_string(heightField.minimumX));
+      line("creativeDocument.terrainHeightField.minimumZ",
+           std::to_string(heightField.minimumZ));
+      line("creativeDocument.terrainHeightField.widthCells",
+           unsignedText(heightField.widthCells));
+      line("creativeDocument.terrainHeightField.depthCells",
+           unsignedText(heightField.depthCells));
+      line("creativeDocument.terrainHeightField.height.count",
+           unsignedText(heightField.heights.size()));
+      for (std::size_t index = 0U; index < heightField.heights.size();
+           ++index) {
+        line("creativeDocument.terrainHeightField.height." +
+                 std::to_string(index),
+             unsignedText(heightField.heights[index]));
+      }
+    }
     line("creativeDocument.terrainMaterial.count",
          unsignedText(section.terrainMaterials.size()));
     for (std::size_t index = 0; index < section.terrainMaterials.size();

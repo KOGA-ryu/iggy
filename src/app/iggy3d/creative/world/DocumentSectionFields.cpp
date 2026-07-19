@@ -159,6 +159,48 @@ toSaveTerrainControls(const creative::CreativeTerrainField& field) {
   return true;
 }
 
+[[nodiscard]] SaveCreativeDocumentTerrainHeightFieldRecord
+toSaveTerrainHeightField(
+    const creative::CreativeTerrainHeightField& field) {
+  SaveCreativeDocumentTerrainHeightFieldRecord record;
+  if (field.cellCount() == 0U) {
+    return record;
+  }
+  const creative::CreativeTerrainHeightFieldBounds bounds = field.bounds();
+  record.present = true;
+  record.minimumX = bounds.minimum.x;
+  record.minimumZ = bounds.minimum.z;
+  record.widthCells = bounds.widthCells;
+  record.depthCells = bounds.depthCells;
+  record.heights.assign(field.heights().begin(), field.heights().end());
+  return record;
+}
+
+[[nodiscard]] bool toCreativeTerrainHeightField(
+    const SaveCreativeDocumentTerrainHeightFieldRecord& record,
+    creative::CreativeTerrainHeightField& output) {
+  if (!record.present) {
+    if (record.minimumX != 0 || record.minimumZ != 0 ||
+        record.widthCells != 0U || record.depthCells != 0U ||
+        !record.heights.empty()) {
+      return false;
+    }
+    output.clear();
+    return true;
+  }
+  creative::CreativeTerrainHeightField restored;
+  const creative::CreativeTerrainHeightFieldReplaceReceipt receipt =
+      restored.replace(
+          {{record.minimumX, record.minimumZ}, record.widthCells,
+           record.depthCells},
+          record.heights);
+  if (!receipt.accepted || !receipt.changed) {
+    return false;
+  }
+  output = std::move(restored);
+  return true;
+}
+
 [[nodiscard]] std::vector<SaveCreativeDocumentTerrainMaterialRecord>
 toSaveTerrainMaterials(const creative::CreativeTerrainMaterialField& field) {
   std::vector<SaveCreativeDocumentTerrainMaterialRecord> records;

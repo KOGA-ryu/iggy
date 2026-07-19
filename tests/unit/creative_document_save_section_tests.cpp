@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/world/DocumentSection.hpp"
 #include "runtime/save/SaveCodec.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstdlib>
 #include <iostream>
@@ -1223,6 +1224,89 @@ bool terrainMaterialsEncodeDecodeAndRestore() {
                 "restore preserves overrides and sparse grass default");
 }
 
+bool terrainHeightFieldEncodeDecodeRestoreAndLegacyFallback() {
+  cr::CreativeDocument document = authoredDocument();
+  constexpr cr::CreativeTerrainHeightFieldBounds bounds{{-3, 5}, 3U, 2U};
+  constexpr std::array<std::uint16_t, 6U> heights{4U, 0U, 6U,
+                                                 7U, 8U, 9U};
+  const cr::CreativeTerrainHeightFieldReplaceReceipt mutation =
+      document.replaceTerrainHeightField(bounds, heights);
+  const iggy3d::ProductCreativeDocumentSectionBuildResult built =
+      iggy3d::buildSaveCreativeDocumentSection(document);
+  iggy3d::SaveEnvelope envelope = minimalEnvelope();
+  envelope.creativeDocument = built.section;
+  const iggy3d::SaveEncodeResult encoded =
+      iggy3d::encodeSaveEnvelope(envelope);
+  const iggy3d::SaveDecodeResult decoded =
+      iggy3d::decodeSaveEnvelope(encoded.encodedText);
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult restored =
+      iggy3d::restoreCreativeDocumentFromSaveSection(
+          decoded.envelope.creativeDocument);
+  const cr::CreativeTerrainHeightField& restoredField =
+      restored.document.terrainHeightField();
+
+  iggy3d::SaveCreativeDocumentSection legacy = built.section;
+  legacy.version = iggy3d::kSaveCreativeDocumentSegmentSpeedVersion;
+  legacy.terrainHeightField = {};
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult legacyRestored =
+      iggy3d::restoreCreativeDocumentFromSaveSection(legacy);
+
+  iggy3d::SaveCreativeDocumentSection malformed = built.section;
+  malformed.terrainHeightField.heights.pop_back();
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult rejected =
+      iggy3d::restoreCreativeDocumentFromSaveSection(malformed);
+  iggy3d::SaveCreativeDocumentSection hiddenPayload = built.section;
+  hiddenPayload.terrainHeightField.present = false;
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult hiddenRejected =
+      iggy3d::restoreCreativeDocumentFromSaveSection(hiddenPayload);
+
+  return expect(mutation.accepted && mutation.changed,
+                "terrain height save setup applies") &&
+         expect(built.receipt.accepted &&
+                    built.receipt.terrainHeightCellCount == heights.size() &&
+                    built.section.terrainHeightField.present &&
+                    built.section.terrainHeightField.minimumX == -3 &&
+                    built.section.terrainHeightField.minimumZ == 5 &&
+                    built.section.terrainHeightField.widthCells == 3U &&
+                    built.section.terrainHeightField.depthCells == 2U &&
+                    built.section.terrainHeightField.heights.size() ==
+                        heights.size(),
+                "save section preserves authored heightfield shape") &&
+         expect(encoded.status == iggy3d::SaveCodecStatus::Ok &&
+                    encoded.encodedText.find(
+                        "creativeDocument.terrainHeightField.present=true\n") !=
+                        std::string::npos &&
+                    encoded.encodedText.find(
+                        "creativeDocument.terrainHeightField.height.1=0\n") !=
+                        std::string::npos,
+                "codec writes bounded heights including holes") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok &&
+                    decoded.envelope.creativeDocument.terrainHeightField
+                        .heights.size() == heights.size(),
+                "codec decodes authored terrain heights") &&
+         expect(restored.receipt.accepted &&
+                    restored.receipt.terrainHeightCellCount == heights.size() &&
+                    restoredField.bounds() == bounds &&
+                    std::equal(restoredField.heights().begin(),
+                               restoredField.heights().end(), heights.begin(),
+                               heights.end()),
+                "document restore preserves exact authored heightfield") &&
+         expect(legacyRestored.receipt.accepted &&
+                    legacyRestored.document.terrainHeightField().cellCount() ==
+                        0U,
+                "version 10 section without heightfield remains readable") &&
+         expect(!rejected.receipt.accepted &&
+                    rejected.receipt.status ==
+                        iggy3d::ProductCreativeDocumentSectionStatus::
+                            InvalidTerrainData,
+                "malformed heightfield rejects before document mutation") &&
+         expect(!hiddenRejected.receipt.accepted &&
+                    hiddenRejected.receipt.status ==
+                        iggy3d::ProductCreativeDocumentSectionStatus::
+                            InvalidTerrainData,
+                "absent heightfield cannot hide a stale payload");
+}
+
 }  // namespace
 
 int main() {
@@ -1251,6 +1335,7 @@ int main() {
   ok = restoreRejectsTooLargeGridDimension() && ok;
   ok = voxelChunksEncodeDecodeAndRestore() && ok;
   ok = terrainControlsEncodeDecodeAndRestore() && ok;
+  ok = terrainHeightFieldEncodeDecodeRestoreAndLegacyFallback() && ok;
   ok = terrainMaterialsEncodeDecodeAndRestore() && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

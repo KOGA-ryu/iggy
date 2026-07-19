@@ -96,6 +96,13 @@ buildCreativeTerrainHeightSurfacePlan(
 replaceCreativeTerrainSurfaceRegion(
     const CreativeTerrainSurfacePlan& base,
     const CreativeTerrainHeightField& replacement);
+// Legacy controls remain the fallback outside the authored heightfield bounds.
+// Inside those bounds the dense heightfield is authoritative, including zero
+// cells that intentionally remove legacy terrain.
+[[nodiscard]] CreativeTerrainSurfacePlan
+buildCreativeComposedTerrainSurfacePlan(
+    const CreativeTerrainField& legacy,
+    const CreativeTerrainHeightField& authored);
 [[nodiscard]] CreativeTerrainRenderPlan buildCreativeTerrainHeightRenderPlan(
     const CreativeTerrainHeightField& field,
     CreativeVec3 gridOrigin,

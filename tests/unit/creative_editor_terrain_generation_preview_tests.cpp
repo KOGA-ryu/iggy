@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
+#include <span>
 #include <string_view>
 
 namespace {
@@ -47,13 +48,29 @@ bool generatedPreviewReplacesTerrainAndCachesByHeightHash() {
   };
   const cr::CreativeTerrainMutationReceipt terrainApplied =
       document.applyTerrainControlEdits(controls);
+  const cr::CreativeTerrainGenerationResult firstGeneration =
+      generationFor(1001U);
+  const cr::CreativeTerrainHeightFieldReplaceReceipt authoredApplied =
+      document.replaceTerrainHeightField(
+          firstGeneration.plan.heightField.bounds(),
+          firstGeneration.plan.heightField.heights());
   const std::uint64_t documentRevision = document.revision();
 
   app::CreativeEditorSceneCache sourceCache;
   const bool sourceBuilt =
       app::refreshCreativeEditorSceneCache(sourceCache, document);
-  const cr::CreativeTerrainGenerationResult firstGeneration =
-      generationFor(1001U);
+  const bool sourceContainsAuthoredAndLegacy =
+      sourceCache.terrainCollisionPatches.size() == 14U &&
+      std::any_of(sourceCache.terrainCollisionPatches.begin(),
+                  sourceCache.terrainCollisionPatches.end(),
+                  [](const cr::CreativeTerrainSurfacePatch& patch) {
+                    return patch.coord == cr::CreativeTerrainCoord2{-1, -1};
+                  }) &&
+      std::any_of(sourceCache.terrainCollisionPatches.begin(),
+                  sourceCache.terrainCollisionPatches.end(),
+                  [](const cr::CreativeTerrainSurfacePatch& patch) {
+                    return patch.coord == cr::CreativeTerrainCoord2{10, 0};
+                  });
   app::CreativeEditorGeneratedTerrainPreviewCache previewCache;
   const bool firstRefresh =
       app::refreshCreativeEditorGeneratedTerrainPreview(
@@ -119,9 +136,15 @@ bool generatedPreviewReplacesTerrainAndCachesByHeightHash() {
       app::refreshCreativeEditorGeneratedTerrainPreview(
           previewCache, sourceCache, document, invalidGeneration);
 
-  return expect(terrainApplied.accepted && sourceBuilt &&
-                    firstGeneration.receipt.accepted && firstRefresh,
+  return expect(terrainApplied.accepted && firstGeneration.receipt.accepted &&
+                    authoredApplied.accepted && authoredApplied.changed &&
+                    sourceBuilt && firstRefresh,
                 "valid generation builds a transient preview scene") &&
+         expect(sourceContainsAuthoredAndLegacy &&
+                    sourceCache.terrainHeightRevision ==
+                        document.terrainHeightField().revision() &&
+                    sourceCache.terrainHeightCellCount == 9U,
+                "normal scene cache composes authored and legacy terrain") &&
          expect(previewCache.refreshCount == 3U && sourceRebuilt &&
                     sourceRefresh && secondRefresh && reused,
                 "idle frames reuse output while source and height changes rebuild") &&
@@ -136,14 +159,56 @@ bool generatedPreviewReplacesTerrainAndCachesByHeightHash() {
                     !previewCache.valid && !invalidRefresh,
                 "invalid generation clears transient output atomically") &&
          expect(document.revision() == documentRevision &&
-                    document.terrainField().controlCount() == 2U,
+                    document.terrainField().controlCount() == 2U &&
+                    document.terrainHeightField().bounds() ==
+                        firstGeneration.plan.heightField.bounds(),
                 "preview never mutates document or legacy terrain controls");
+}
+
+bool authoredEmptyRegionSuppressesLegacyTerrain() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Authored Empty Terrain");
+  static_cast<void>(document.assignId(902U));
+  const cr::CreativeTerrainControlEdit control{
+      cr::CreativeTerrainEditKind::Upsert, {{0, 0}, 4U, 1U}};
+  const cr::CreativeTerrainMutationReceipt terrainApplied =
+      document.applyTerrainControlEdits(std::span{&control, 1U});
+  constexpr cr::CreativeTerrainHeightFieldBounds bounds{
+      {-1, -1}, 3U, 3U};
+  constexpr std::array<std::uint16_t, 9U> emptyHeights{};
+  const cr::CreativeTerrainHeightFieldReplaceReceipt authoredApplied =
+      document.replaceTerrainHeightField(bounds, emptyHeights);
+
+  app::CreativeEditorSceneCache cache;
+  const bool refreshed =
+      app::refreshCreativeEditorSceneCache(cache, document);
+  const bool roomHasTerrain = std::any_of(
+      cache.preview.roomBake.room.staticMeshes.begin(),
+      cache.preview.roomBake.room.staticMeshes.end(),
+      [](const iggy3d::RoomStaticMeshAsset& mesh) {
+        return mesh.role == "terrain";
+      });
+
+  return expect(terrainApplied.accepted && authoredApplied.accepted &&
+                    authoredApplied.changed && refreshed,
+                "empty authored terrain fixture refreshes") &&
+         expect(cache.terrainCuboids.empty() &&
+                    cache.terrainCollisionPatches.empty() &&
+                    cache.terrainSurfacePatches.empty(),
+                "authored zero cells erase legacy terrain in their bounds") &&
+         expect(!roomHasTerrain &&
+                    !cache.preview.roomBake.receipt
+                         .usedSmoothTerrainCollision &&
+                    cache.preview.roomBake.receipt
+                            .bakedTerrainSurfacePatchCount == 0U,
+                "precomputed empty terrain cannot resurrect source collision");
 }
 
 }  // namespace
 
 int main() {
-  return generatedPreviewReplacesTerrainAndCachesByHeightHash()
+  return generatedPreviewReplacesTerrainAndCachesByHeightHash() &&
+                 authoredEmptyRegionSuppressesLegacyTerrain()
              ? EXIT_SUCCESS
              : EXIT_FAILURE;
 }

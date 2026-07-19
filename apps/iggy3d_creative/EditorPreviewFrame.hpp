@@ -127,6 +127,8 @@ struct CreativeEditorSceneCache {
   std::uint64_t refreshCount = 0;
   std::uint64_t voxelChunkMeshBuildCount = 0;
   std::uint64_t terrainRevision = 0;
+  std::uint64_t terrainHeightRevision = 0;
+  std::uint64_t terrainHeightCellCount = 0;
   std::uint64_t terrainMaterialRevision = 0;
   std::uint64_t terrainSurfaceBuildCount = 0;
   std::uint64_t terrainMaterialBuildCount = 0;

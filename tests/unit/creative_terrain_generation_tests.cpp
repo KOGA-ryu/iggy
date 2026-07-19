@@ -1,4 +1,7 @@
+#include "app/iggy3d/creative/CreativeAppState.hpp"
+#include "app/iggy3d/creative/adapters/RoomBake.hpp"
 #include "app/iggy3d/creative/document/TerrainHeightField.hpp"
+#include "app/iggy3d/creative/history/History.hpp"
 #include "app/iggy3d/creative/recipes/TerrainGeneration.hpp"
 
 #include <algorithm>
@@ -9,6 +12,7 @@
 #include <limits>
 #include <span>
 #include <string_view>
+#include <utility>
 
 namespace {
 namespace cr = iggy3d::creative;
@@ -98,6 +102,96 @@ bool heightFieldReplacementIsAtomicBoundedAndCanonical() {
                             InvalidBounds &&
                     field.bounds() == bounds && field.heights().size() == 6U,
                 "capacity and coordinate overflow preserve the live field");
+}
+
+bool authoredHeightFieldMutationIsUndoableAndClearable() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Authored Heightfield");
+  static_cast<void>(document.assignId(712U));
+  cr::CreativeAppState appState;
+  const cr::CreativeFacadeDocumentInstallReceipt installed =
+      appState.facade.installDocument(std::move(document));
+  const cr::CreativeTerrainGenerationResult generation =
+      cr::buildCreativeTerrainGenerationPlan(testRecipe());
+  const std::uint64_t revisionBefore = appState.facade.document().revision();
+
+  cr::CreativeDocumentHistoryTransaction transaction =
+      cr::beginCreativeHistoryTransaction(appState.facade,
+                                          "terrain_generation_apply");
+  const cr::CreativeTerrainHeightFieldReplaceReceipt applied =
+      appState.facade.replaceTerrainHeightField(
+          generation.plan.heightField.bounds(),
+          generation.plan.heightField.heights());
+  const cr::CreativeHistoryRecordReceipt recorded =
+      cr::commitCreativeHistoryTransaction(
+          appState.history, std::move(transaction), appState.facade);
+  const std::uint64_t revisionAfterApply =
+      appState.facade.document().revision();
+  const cr::CreativeTerrainHeightFieldReplaceReceipt repeated =
+      appState.facade.replaceTerrainHeightField(
+          generation.plan.heightField.bounds(),
+          generation.plan.heightField.heights());
+  const bool repeatedPreserved =
+      appState.facade.document().revision() == revisionAfterApply &&
+      cr::creativeUndoDepth(appState.history) == 1U;
+
+  constexpr std::array<std::uint16_t, 1U> invalidHeight{65U};
+  const cr::CreativeTerrainHeightFieldReplaceReceipt rejected =
+      appState.facade.replaceTerrainHeightField({{0, 0}, 1U, 1U},
+                                                invalidHeight);
+  const bool rejectionPreserved =
+      appState.facade.document().revision() == revisionAfterApply &&
+      appState.facade.document().terrainHeightField().bounds() ==
+          generation.plan.heightField.bounds();
+  const cr::CreativeHistoryApplyReceipt undone = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+  const bool undoCleared =
+      appState.facade.document().terrainHeightField().cellCount() == 0U;
+  const cr::CreativeHistoryApplyReceipt redone = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Redo);
+  const cr::CreativeTerrainHeightField& restored =
+      appState.facade.document().terrainHeightField();
+  const bool redoExact =
+      restored.bounds() == generation.plan.heightField.bounds() &&
+      std::equal(restored.heights().begin(), restored.heights().end(),
+                 generation.plan.heightField.heights().begin(),
+                 generation.plan.heightField.heights().end());
+  cr::CreativeRoomBakeRequest bakeRequest;
+  bakeRequest.document = &appState.facade.document();
+  bakeRequest.validateReachability = false;
+  const cr::CreativeRoomBakeResult baked =
+      cr::buildRoomAssetFromCreativeDocument(bakeRequest);
+  const bool directBakeIncludesTerrain =
+      baked.receipt.accepted && baked.receipt.usedSmoothTerrainCollision &&
+      baked.receipt.bakedTerrainSurfacePatchCount ==
+          generation.plan.heightField.presentCellCount();
+  const std::uint64_t revisionBeforeClear =
+      appState.facade.document().revision();
+  const cr::CreativeTerrainHeightFieldReplaceReceipt cleared =
+      appState.facade.replaceTerrainHeightField({}, {});
+  const cr::CreativeTerrainHeightFieldReplaceReceipt clearRepeated =
+      appState.facade.replaceTerrainHeightField({}, {});
+
+  return expect(installed.accepted && generation.receipt.accepted,
+                "heightfield history fixture is valid") &&
+         expect(applied.accepted && applied.changed && recorded.recorded &&
+                    revisionAfterApply == revisionBefore + 1U,
+                "heightfield apply is one document mutation and undo record") &&
+         expect(repeated.accepted && !repeated.changed && repeatedPreserved,
+                "identical heightfield replacement is a document no-op") &&
+         expect(!rejected.accepted && !rejected.changed && rejectionPreserved,
+                "invalid replacement leaves document state unchanged") &&
+         expect(undone.accepted && undoCleared && redone.accepted && redoExact,
+                "document history restores authored terrain exactly") &&
+         expect(directBakeIncludesTerrain,
+                "direct room bake consumes canonical authored terrain") &&
+         expect(cleared.accepted && cleared.changed &&
+                    appState.facade.document().terrainHeightField().cellCount() ==
+                        0U &&
+                    appState.facade.document().revision() ==
+                        revisionBeforeClear + 1U &&
+                    clearRepeated.accepted && !clearRepeated.changed,
+                "empty replacement clears authored terrain monotonically");
 }
 
 bool flatRecipeProducesExactQuantizedBase() {
@@ -334,6 +428,7 @@ bool invalidRecipesFailClosed() {
 
 int main() {
   const bool ok = heightFieldReplacementIsAtomicBoundedAndCanonical() &&
+                  authoredHeightFieldMutationIsUndoableAndClearable() &&
                   flatRecipeProducesExactQuantizedBase() &&
                   heightSurfaceCompositionReplacesRegionAndSharesCorners() &&
                   generationIsDeterministicAndSeedSensitive() &&

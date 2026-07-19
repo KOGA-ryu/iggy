@@ -28,8 +28,9 @@ inline constexpr std::uint32_t kMinimumReadableSaveSchemaVersion = 1;
 inline constexpr std::uint32_t kRuntimeSaveVersion = 1;
 inline constexpr std::uint32_t kSaveCreativeDocumentWaypointDwellVersion = 9;
 inline constexpr std::uint32_t kSaveCreativeDocumentSegmentSpeedVersion = 10;
+inline constexpr std::uint32_t kSaveCreativeDocumentTerrainHeightVersion = 11;
 inline constexpr std::uint32_t kSaveCreativeDocumentSectionVersion =
-    kSaveCreativeDocumentSegmentSpeedVersion;
+    kSaveCreativeDocumentTerrainHeightVersion;
 inline constexpr std::uint32_t kSaveCreativeWorldLayoutSectionVersion = 1U;
 
 struct SaveEnvelopeMetadata {
@@ -235,6 +236,15 @@ struct SaveCreativeDocumentTerrainControlRecord {
   std::uint16_t radiusCells = 1;
 };
 
+struct SaveCreativeDocumentTerrainHeightFieldRecord {
+  bool present = false;
+  std::int32_t minimumX = 0;
+  std::int32_t minimumZ = 0;
+  std::uint16_t widthCells = 0;
+  std::uint16_t depthCells = 0;
+  std::vector<std::uint16_t> heights;
+};
+
 struct SaveCreativeDocumentTerrainMaterialRecord {
   std::int32_t x = 0;
   std::int32_t z = 0;
@@ -266,6 +276,7 @@ struct SaveCreativeDocumentSection {
   std::vector<SaveCreativeDocumentLogicLinkRecord> logicLinks;
   std::vector<SaveCreativeDocumentVoxelChunkRecord> voxelChunks;
   std::vector<SaveCreativeDocumentTerrainControlRecord> terrainControls;
+  SaveCreativeDocumentTerrainHeightFieldRecord terrainHeightField;
   std::vector<SaveCreativeDocumentTerrainMaterialRecord> terrainMaterials;
 };
 

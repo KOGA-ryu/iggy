@@ -119,9 +119,13 @@ refreshVoxelChunkMeshPlans(CreativeEditorSceneCache& cache,
 void refreshTerrainSurfacePlan(CreativeEditorSceneCache& cache,
                                const cr::CreativeDocument& document) {
   const cr::CreativeGridSettings grid = document.gridSettings();
+  const cr::CreativeTerrainHeightField& heightField =
+      document.terrainHeightField();
   const bool geometryCurrent =
       cache.valid && cache.documentId == document.id() &&
       cache.terrainRevision == document.terrainField().revision() &&
+      cache.terrainHeightRevision == heightField.revision() &&
+      cache.terrainHeightCellCount == heightField.cellCount() &&
       cr::creativeVec3ExactlyEqual(cache.terrainGridOrigin, grid.origin) &&
       cache.terrainGridCellSizeMeters == grid.cellSizeMeters;
   const bool materialCurrent =
@@ -149,7 +153,8 @@ void refreshTerrainSurfacePlan(CreativeEditorSceneCache& cache,
     return;
   }
   const cr::CreativeTerrainSurfacePlan plan =
-      cr::buildCreativeTerrainSurfacePlan(document.terrainField());
+      cr::buildCreativeComposedTerrainSurfacePlan(
+          document.terrainField(), heightField);
   cache.terrainCuboids = plan.accepted ? plan.cuboids
                                       : std::vector<cr::CreativeVoxelCuboid>{};
   const cr::CreativeTerrainRenderPlan renderPlan =
@@ -163,6 +168,8 @@ void refreshTerrainSurfacePlan(CreativeEditorSceneCache& cache,
     cache.terrainCollisionPatches.clear();
   }
   cache.terrainRevision = document.terrainField().revision();
+  cache.terrainHeightRevision = heightField.revision();
+  cache.terrainHeightCellCount = heightField.cellCount();
   cache.terrainMaterialRevision =
       document.terrainMaterialField().revision();
   cache.terrainGridOrigin = grid.origin;
@@ -186,8 +193,7 @@ buildStandaloneRoomBakePreviewSceneWithVoxelPlans(
   bakeRequest.sourceSubset = "standalone_preview";
   bakeRequest.usePrecomputedVoxelCuboids = usePrecomputedVoxelCuboids;
   bakeRequest.precomputedVoxelCuboids = voxelCuboids;
-  bakeRequest.usePrecomputedTerrainSurfacePatches =
-      !terrainCollisionPatches.empty();
+  bakeRequest.usePrecomputedTerrainSurfacePatches = true;
   bakeRequest.precomputedTerrainSurfacePatches = terrainCollisionPatches;
   bakeRequest.staticMeshAssetCatalog = assetCatalog;
 
@@ -218,7 +224,8 @@ StandaloneRoomBakePreviewScene buildStandaloneRoomBakePreviewScene(
   std::vector<cr::CreativeVoxelCuboid> cuboids =
       cr::buildCreativeVoxelCuboids(document.voxelField());
   const cr::CreativeTerrainSurfacePlan terrain =
-      cr::buildCreativeTerrainSurfacePlan(document.terrainField());
+      cr::buildCreativeComposedTerrainSurfacePlan(
+          document.terrainField(), document.terrainHeightField());
   std::vector<cr::CreativeTerrainSurfacePatch> terrainCollisionPatches;
   std::vector<iggy3d::SceneRoomSurfacePatchItem> terrainSurfacePatches;
   if (terrain.accepted) {
@@ -254,6 +261,8 @@ bool refreshCreativeEditorSceneCache(
     cache.terrainCollisionPatches.clear();
     cache.terrainSurfacePatches.clear();
     cache.terrainRevision = 0;
+    cache.terrainHeightRevision = 0;
+    cache.terrainHeightCellCount = 0;
     cache.terrainMaterialRevision = 0;
     cache.terrainGridOrigin = {};
     cache.terrainGridCellSizeMeters = 0.0;
@@ -301,7 +310,8 @@ bool refreshCreativeEditorGeneratedTerrainPreview(
   }
 
   const cr::CreativeTerrainSurfacePlan sourceSurface =
-      cr::buildCreativeTerrainSurfacePlan(document.terrainField());
+      cr::buildCreativeComposedTerrainSurfacePlan(
+          document.terrainField(), document.terrainHeightField());
   cr::CreativeTerrainSurfacePlan composed =
       cr::replaceCreativeTerrainSurfaceRegion(
           sourceSurface, generation.plan.heightField);
@@ -357,6 +367,8 @@ void invalidateCreativeEditorSceneCache(
   cache.terrainCollisionPatches.clear();
   cache.terrainSurfacePatches.clear();
   cache.terrainRevision = 0;
+  cache.terrainHeightRevision = 0;
+  cache.terrainHeightCellCount = 0;
   cache.terrainMaterialRevision = 0;
   cache.terrainGridOrigin = {};
   cache.terrainGridCellSizeMeters = 0.0;
