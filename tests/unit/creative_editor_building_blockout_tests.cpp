@@ -5,8 +5,11 @@
 #include "EditorWorldLayoutHistory.hpp"
 
 #include "app/iggy3d/creative/world/WorldLayoutBlockout.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutVerticalConnectors.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -43,9 +46,21 @@ bool stableKeysUnique(const cr::CreativeWorldLayout& layout) {
   append(layout.buildings);
   append(layout.levels);
   append(layout.rooms);
+  append(layout.verticalConnectors);
   append(layout.openings);
   std::sort(keys.begin(), keys.end());
   return std::adjacent_find(keys.begin(), keys.end()) == keys.end();
+}
+
+cr::CreativeWorldLayoutBuildingBlockoutRequest blockoutRequest(
+    cr::CreativeWorldLayoutRect footprint,
+    cr::CreativeWorldLayoutBuildingBlockoutPattern pattern,
+    double wallThicknessCells = 0.25) noexcept {
+  cr::CreativeWorldLayoutBuildingBlockoutRequest request;
+  request.footprint = footprint;
+  request.pattern = pattern;
+  request.wallThicknessCells = wallThicknessCells;
+  return request;
 }
 
 std::size_t openingIntentCount(
@@ -83,7 +98,7 @@ bool plannerOwnsEveryPresetAndOddSplit() {
   const cr::CreativeWorldLayoutRect footprint{{-5, -3}, {4, 4}};
   const auto plan = [&](cr::CreativeWorldLayoutBuildingBlockoutPattern pattern) {
     return cr::planCreativeWorldLayoutBuildingBlockout(
-        {footprint, pattern, 0.25, true, {}});
+        blockoutRequest(footprint, pattern));
   };
   const cr::CreativeWorldLayoutBuildingBlockoutPlan single =
       plan(cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom);
@@ -93,19 +108,20 @@ bool plannerOwnsEveryPresetAndOddSplit() {
       plan(cr::CreativeWorldLayoutBuildingBlockoutPattern::SplitZ);
   const cr::CreativeWorldLayoutBuildingBlockoutPlan grid =
       plan(cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2);
-  cr::CreativeWorldLayoutBuildingBlockoutRequest emptyRequest{
-      footprint, cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2,
-      0.25, true, {}};
+  cr::CreativeWorldLayoutBuildingBlockoutRequest emptyRequest =
+      blockoutRequest(
+          footprint,
+          cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2);
   emptyRequest.connectRooms = false;
   emptyRequest.facade.includeEntrance = false;
   emptyRequest.facade.includeExteriorWindows = false;
   const cr::CreativeWorldLayoutBuildingBlockoutPlan emptyOpenings =
       cr::planCreativeWorldLayoutBuildingBlockout(emptyRequest);
 
-  cr::CreativeWorldLayoutBuildingBlockoutRequest offsetRequest{
-      {{0, 0}, {8, 8}},
-      cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom, 0.25, true,
-      {}};
+  cr::CreativeWorldLayoutBuildingBlockoutRequest offsetRequest =
+      blockoutRequest(
+          {{0, 0}, {8, 8}},
+          cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom);
   offsetRequest.connectRooms = false;
   offsetRequest.facade.entranceEdge = cr::CreativeWorldLayoutRoomEdge::East;
   offsetRequest.facade.entranceOffsetCells = 1.25;
@@ -122,10 +138,10 @@ bool plannerOwnsEveryPresetAndOddSplit() {
       cr::planCreativeWorldLayoutBuildingBlockout(offsetRequest);
   const cr::CreativeWorldLayoutBuildingBlockoutPlan extreme =
       cr::planCreativeWorldLayoutBuildingBlockout(
-          {{{std::numeric_limits<std::int32_t>::min(), 0},
-            {std::numeric_limits<std::int32_t>::max(), 4}},
-           cr::CreativeWorldLayoutBuildingBlockoutPattern::SplitX, 0.25, true,
-           {}});
+          blockoutRequest(
+              {{std::numeric_limits<std::int32_t>::min(), 0},
+               {std::numeric_limits<std::int32_t>::max(), 4}},
+              cr::CreativeWorldLayoutBuildingBlockoutPattern::SplitX));
 
   return expect(single.accepted && single.roomCount == 1U &&
                     sameRect(single.rooms[0], footprint),
@@ -252,6 +268,86 @@ bool plannerOwnsEveryPresetAndOddSplit() {
                 "blockout plan exposes stable labels");
 }
 
+bool plannerOwnsBoundedMultiStoreyShaft() {
+  cr::CreativeWorldLayoutBuildingBlockoutRequest request = blockoutRequest(
+      {{0, 0}, {8, 8}},
+      cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom);
+  request.storeys.count = 3U;
+  const cr::CreativeWorldLayoutBuildingBlockoutPlan preferred =
+      cr::planCreativeWorldLayoutBuildingBlockout(request);
+
+  request.footprint = {{0, 0}, {4, 8}};
+  request.storeys.preferredDirection =
+      cr::CreativeWorldLayoutVerticalDirection::PositiveX;
+  const cr::CreativeWorldLayoutBuildingBlockoutPlan fallback =
+      cr::planCreativeWorldLayoutBuildingBlockout(request);
+
+  request.footprint = {{0, 0}, {8, 8}};
+  request.pattern =
+      cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2;
+  const cr::CreativeWorldLayoutBuildingBlockoutPlan unfit =
+      cr::planCreativeWorldLayoutBuildingBlockout(request);
+
+  request.storeys.connectStoreys = false;
+  const cr::CreativeWorldLayoutBuildingBlockoutPlan disconnected =
+      cr::planCreativeWorldLayoutBuildingBlockout(request);
+
+  request.storeys.count = 0U;
+  const cr::CreativeWorldLayoutBuildingBlockoutPlan zeroStoreys =
+      cr::planCreativeWorldLayoutBuildingBlockout(request);
+  request.storeys.count =
+      cr::kCreativeWorldLayoutBuildingBlockoutStoreyCapacity + 1U;
+  const cr::CreativeWorldLayoutBuildingBlockoutPlan tooManyStoreys =
+      cr::planCreativeWorldLayoutBuildingBlockout(request);
+
+  request.storeys.count = 2U;
+  request.storeys.connectStoreys = true;
+  request.pattern =
+      cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom;
+  request.storeys.preferredDirection =
+      cr::CreativeWorldLayoutVerticalDirection::Count;
+  const cr::CreativeWorldLayoutBuildingBlockoutPlan invalidDirection =
+      cr::planCreativeWorldLayoutBuildingBlockout(request);
+
+  return expect(preferred.accepted && preferred.storeyCount == 3U &&
+                    preferred.hasVerticalConnector &&
+                    preferred.verticalConnector.roomIndex == 0U &&
+                    preferred.verticalConnector.kind ==
+                        cr::CreativeWorldLayoutVerticalConnectorKind::Stair &&
+                    preferred.verticalConnector.direction ==
+                        cr::CreativeWorldLayoutVerticalDirection::PositiveZ &&
+                    sameRect(preferred.verticalConnector.footprint,
+                             {{3, 2}, {4, 5}}),
+                "multi-storey plans own one centered preferred stair shaft") &&
+         expect(fallback.accepted && fallback.hasVerticalConnector &&
+                    fallback.verticalConnector.direction ==
+                        cr::CreativeWorldLayoutVerticalDirection::PositiveZ &&
+                    sameRect(fallback.verticalConnector.footprint,
+                             {{1, 2}, {2, 5}}),
+                "shaft planning falls back through cardinal directions") &&
+         expect(!unfit.accepted &&
+                    unfit.status ==
+                        cr::CreativeWorldLayoutBuildingBlockoutStatus::
+                            VerticalConnectorDoesNotFit,
+                "multi-room presets reject when no room can own the shaft") &&
+         expect(disconnected.accepted && disconnected.storeyCount == 3U &&
+                    !disconnected.hasVerticalConnector,
+                "callers may explicitly request disconnected storeys") &&
+         expect(!zeroStoreys.accepted && !tooManyStoreys.accepted &&
+                    zeroStoreys.status ==
+                        cr::CreativeWorldLayoutBuildingBlockoutStatus::
+                            InvalidStoreyCount &&
+                    tooManyStoreys.status ==
+                        cr::CreativeWorldLayoutBuildingBlockoutStatus::
+                            InvalidStoreyCount,
+                "storey count is bounded at the pure recipe boundary") &&
+         expect(!invalidDirection.accepted &&
+                    invalidDirection.status ==
+                        cr::CreativeWorldLayoutBuildingBlockoutStatus::
+                            InvalidVerticalConnector,
+                "active connector settings reject invalid enum values");
+}
+
 bool editorRejectsUnconnectableRoomsWithoutPartialMutation() {
   app::CreativeEditorWorldLayoutState state;
   app::resetCreativeEditorWorldLayout(state, "blockout_connection_failure");
@@ -325,6 +421,77 @@ bool editorRejectsUnfitFacadeWithoutPartialMutation() {
                 "the same shallow building remains available entrance-only");
 }
 
+bool editorRejectsUnfitStoreysWithoutPartialMutation() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "blockout_storey_failure");
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings settings;
+  settings.shell.footprint = {{0, 0}, {4, 4}};
+  settings.facade.includeEntrance = false;
+  settings.facade.includeExteriorWindows = false;
+  settings.storeys.count = 2U;
+
+  const std::uint64_t revisionBefore = state.revision;
+  const std::uint64_t ordinalBefore = state.nextStableOrdinal;
+  const app::CreativeEditorWorldLayoutEditReceipt rejected =
+      app::createCreativeEditorWorldLayoutBuildingBlockout(state, settings);
+  const bool rejectionWasAtomic =
+      !rejected.accepted && !rejected.changed &&
+      rejected.reasonCode ==
+          "creative_world_layout_building_blockout_vertical_connector_does_not_fit" &&
+      state.revision == revisionBefore &&
+      state.nextStableOrdinal == ordinalBefore &&
+      state.source.buildings.empty() && state.source.levels.empty() &&
+      state.source.rooms.empty() && state.source.verticalConnectors.empty() &&
+      app::creativeEditorWorldLayoutSourceUndoDepth(state) == 0U;
+
+  settings.storeys.connectStoreys = false;
+  const app::CreativeEditorWorldLayoutEditReceipt disconnected =
+      app::createCreativeEditorWorldLayoutBuildingBlockout(state, settings);
+  return expect(rejectionWasAtomic,
+                "an unfit stair shaft rejects the whole staged blockout") &&
+         expect(disconnected.accepted && disconnected.changed &&
+                    state.source.levels.size() == 2U &&
+                    state.source.rooms.size() == 2U &&
+                    state.source.verticalConnectors.empty(),
+                "the same storeys remain available when stairs are disabled");
+}
+
+bool editorChecksTheWholeStoreySpanForOverlap() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "blockout_storey_overlap");
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings upper;
+  upper.shell.footprint = {{0, 0}, {8, 8}};
+  upper.shell.floorTopLayer = 3.0;
+  upper.facade.includeEntrance = false;
+  upper.facade.includeExteriorWindows = false;
+  const app::CreativeEditorWorldLayoutEditReceipt upperCreated =
+      app::createCreativeEditorWorldLayoutBuildingBlockout(state, upper);
+
+  const std::uint64_t revisionBefore = state.revision;
+  const std::uint64_t ordinalBefore = state.nextStableOrdinal;
+  const std::uint64_t undoDepthBefore =
+      app::creativeEditorWorldLayoutSourceUndoDepth(state);
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings lower = upper;
+  lower.shell.floorTopLayer = 0.0;
+  lower.storeys.count = 2U;
+  const app::CreativeEditorWorldLayoutEditReceipt rejected =
+      app::createCreativeEditorWorldLayoutBuildingBlockout(state, lower);
+
+  return expect(upperCreated.accepted && upperCreated.changed,
+                "vertical-overlap fixture begins with an upper building") &&
+         expect(!rejected.accepted && !rejected.changed &&
+                    rejected.reasonCode ==
+                        "creative_editor_world_layout_building_blockout_overlap" &&
+                    state.revision == revisionBefore &&
+                    state.nextStableOrdinal == ordinalBefore &&
+                    app::creativeEditorWorldLayoutSourceUndoDepth(state) ==
+                        undoDepthBefore &&
+                    state.source.buildings.size() == 1U &&
+                    state.source.levels.size() == 1U &&
+                    state.source.rooms.size() == 1U,
+                "overlap checks include every requested storey before commit");
+}
+
 bool editorRejectsOverlapWithoutPartialMutation() {
   app::CreativeEditorWorldLayoutState state;
   app::resetCreativeEditorWorldLayout(state, "blockout_overlap");
@@ -383,35 +550,43 @@ bool editorRejectsOverlapWithoutPartialMutation() {
 bool plannerRejectsInvalidOrUnbuildableRooms() {
   const cr::CreativeWorldLayoutBuildingBlockoutPlan badPattern =
       cr::planCreativeWorldLayoutBuildingBlockout(
-          {{{0, 0}, {8, 8}},
-           cr::CreativeWorldLayoutBuildingBlockoutPattern::Count, 0.25, true,
-           {}});
+          blockoutRequest(
+              {{0, 0}, {8, 8}},
+              cr::CreativeWorldLayoutBuildingBlockoutPattern::Count));
   const cr::CreativeWorldLayoutBuildingBlockoutPlan badFootprint =
       cr::planCreativeWorldLayoutBuildingBlockout(
-          {{{8, 0}, {0, 8}},
-           cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom, 0.25,
-           true, {}});
+          blockoutRequest(
+              {{8, 0}, {0, 8}},
+              cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom));
   const cr::CreativeWorldLayoutBuildingBlockoutPlan badThickness =
       cr::planCreativeWorldLayoutBuildingBlockout(
-          {{{0, 0}, {8, 8}},
-           cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom,
-           std::numeric_limits<double>::quiet_NaN(), true, {}});
+          blockoutRequest(
+              {{0, 0}, {8, 8}},
+              cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom,
+              std::numeric_limits<double>::quiet_NaN()));
   const cr::CreativeWorldLayoutBuildingBlockoutPlan smallRooms =
       cr::planCreativeWorldLayoutBuildingBlockout(
-          {{{0, 0}, {3, 8}},
-           cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2, 0.5, true,
-           {}});
-  cr::CreativeWorldLayoutBuildingBlockoutRequest badEdgeRequest{
-      {{0, 0}, {8, 8}},
-      cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom, 0.25, true,
-      {}};
+          blockoutRequest(
+              {{0, 0}, {3, 8}},
+              cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2, 0.5));
+  cr::CreativeWorldLayoutBuildingBlockoutRequest badHeightRequest =
+      blockoutRequest(
+          {{0, 0}, {8, 8}},
+          cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom);
+  badHeightRequest.wallHeightCells = 0U;
+  const cr::CreativeWorldLayoutBuildingBlockoutPlan badHeight =
+      cr::planCreativeWorldLayoutBuildingBlockout(badHeightRequest);
+  cr::CreativeWorldLayoutBuildingBlockoutRequest badEdgeRequest =
+      blockoutRequest(
+          {{0, 0}, {8, 8}},
+          cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom);
   badEdgeRequest.facade.entranceEdge = cr::CreativeWorldLayoutRoomEdge::Count;
   const cr::CreativeWorldLayoutBuildingBlockoutPlan badEdge =
       cr::planCreativeWorldLayoutBuildingBlockout(badEdgeRequest);
-  cr::CreativeWorldLayoutBuildingBlockoutRequest badOffsetRequest{
-      {{0, 0}, {8, 8}},
-      cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom, 0.25, true,
-      {}};
+  cr::CreativeWorldLayoutBuildingBlockoutRequest badOffsetRequest =
+      blockoutRequest(
+          {{0, 0}, {8, 8}},
+          cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom);
   badOffsetRequest.facade.entranceOffsetCells =
       std::numeric_limits<double>::quiet_NaN();
   const cr::CreativeWorldLayoutBuildingBlockoutPlan badOffset =
@@ -440,6 +615,11 @@ bool plannerRejectsInvalidOrUnbuildableRooms() {
                         cr::CreativeWorldLayoutBuildingBlockoutStatus::
                             RoomTooSmall,
                 "preset rejects rooms whose walls consume the footprint") &&
+         expect(!badHeight.accepted &&
+                    badHeight.status ==
+                        cr::CreativeWorldLayoutBuildingBlockoutStatus::
+                            InvalidWallHeight,
+                "zero wall height fails at the pure recipe boundary") &&
          expect(!badEdge.accepted &&
                     badEdge.status ==
                         cr::CreativeWorldLayoutBuildingBlockoutStatus::
@@ -572,6 +752,159 @@ bool editorCreatesAndGeneratesOneAtomicBlockout() {
                 "undo and redo restore source and generated geometry together");
 }
 
+bool editorCreatesOneAtomicMultiStoreyBlockout() {
+  cr::CreativeAppState live = makeAppState();
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "multi_storey_blockout");
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings settings;
+  settings.shell.footprint = {{0, 0}, {8, 8}};
+  settings.shell.floorTopLayer = 1.0;
+  settings.shell.wallHeightCells = 3U;
+  settings.shell.floorThicknessLayers = 2U;
+  settings.shell.roofThicknessLayers = 2U;
+  settings.storeys.count = 3U;
+
+  const std::uint64_t revisionBefore = state.revision;
+  const app::CreativeEditorWorldLayoutEditReceipt created =
+      app::createCreativeEditorWorldLayoutBuildingBlockout(state, settings);
+  const bool oneSourceEdit =
+      created.accepted && created.changed &&
+      state.revision == revisionBefore + 1U &&
+      app::creativeEditorWorldLayoutSourceUndoDepth(state) == 1U;
+  const bool sourceShapeReady =
+      state.source.buildings.size() == 1U &&
+      state.source.levels.size() == 3U && state.source.rooms.size() == 3U &&
+      state.source.verticalConnectors.size() == 2U &&
+      state.source.openings.size() == 12U &&
+      state.source.levels[0].floorTopLayer == 1.0 &&
+      state.source.levels[1].floorTopLayer == 4.0 &&
+      state.source.levels[2].floorTopLayer == 7.0 &&
+      stableKeysUnique(state.source);
+  const auto windowsForRoom = [&](std::size_t roomIndex) {
+    return std::count_if(
+        state.source.openings.begin(), state.source.openings.end(),
+        [roomIndex](const cr::CreativeWorldLayoutOpening& opening) {
+          return opening.roomIndex == roomIndex &&
+                 opening.kind == cr::CreativeBuildingOpeningKind::Window;
+        });
+  };
+  const bool facadeStackReady =
+      windowsForRoom(0U) == 3 && windowsForRoom(1U) == 4 &&
+      windowsForRoom(2U) == 4 &&
+      std::count_if(
+          state.source.openings.begin(), state.source.openings.end(),
+          [](const cr::CreativeWorldLayoutOpening& opening) {
+            return opening.kind == cr::CreativeBuildingOpeningKind::Door &&
+                   opening.name == "Entrance";
+          }) == 1;
+  const bool connectorOwnershipReady =
+      state.source.verticalConnectors[0].lowerRoomIndex == 0U &&
+      state.source.verticalConnectors[0].upperRoomIndex == 1U &&
+      state.source.verticalConnectors[1].lowerRoomIndex == 1U &&
+      state.source.verticalConnectors[1].upperRoomIndex == 2U &&
+      sameRect(state.source.verticalConnectors[0].footprint,
+               {{3, 2}, {4, 5}}) &&
+      sameRect(state.source.verticalConnectors[0].footprint,
+               state.source.verticalConnectors[1].footprint) &&
+      cr::planCreativeWorldLayoutVerticalConnector({}, state.source, 0U)
+          .accepted &&
+      cr::planCreativeWorldLayoutVerticalConnector({}, state.source, 1U)
+          .accepted;
+  const cr::CreativeWorldLayoutResolvedRoomGeometry groundGeometry =
+      cr::resolveCreativeWorldLayoutRoomGeometry(state.source, 0U);
+  const cr::CreativeWorldLayoutResolvedRoomGeometry middleGeometry =
+      cr::resolveCreativeWorldLayoutRoomGeometry(state.source, 1U);
+  const cr::CreativeWorldLayoutResolvedRoomGeometry topGeometry =
+      cr::resolveCreativeWorldLayoutRoomGeometry(state.source, 2U);
+  const bool upperSurfacesReady =
+      groundGeometry.valid && middleGeometry.valid && topGeometry.valid &&
+      groundGeometry.upperSurfaceKind == cr::CreativeObjectKind::Ceiling &&
+      middleGeometry.upperSurfaceKind == cr::CreativeObjectKind::Ceiling &&
+      topGeometry.upperSurfaceKind == cr::CreativeObjectKind::Roof;
+
+  const cr::CreativeWorldLayoutEncodeResult encoded =
+      cr::encodeCreativeWorldLayout(state.source);
+  const cr::CreativeWorldLayoutDecodeResult decoded =
+      cr::decodeCreativeWorldLayout(encoded.encodedText);
+  const cr::CreativeWorldLayoutBuildingTemplateResult captured =
+      cr::captureCreativeWorldLayoutBuildingTemplate(
+          state.source, {0U, "multi_storey", "Multi Storey"});
+  cr::CreativeWorldLayout templateDestination;
+  templateDestination.stableKey = "multi_storey_destination";
+  const cr::CreativeWorldLayoutBuildingEditResult stamped =
+      captured.accepted
+          ? cr::stampCreativeWorldLayoutBuildingTemplate(
+                templateDestination, captured.value,
+                {{20, 20}, 100U, false, true})
+          : cr::CreativeWorldLayoutBuildingEditResult{};
+
+  const app::CreativeEditorWorldLayoutPreviewReceipt preview =
+      app::previewCreativeEditorWorldLayout(state, live.facade.document());
+  std::uint64_t floorCount = 0U;
+  std::uint64_t ceilingCount = 0U;
+  std::uint64_t roofCount = 0U;
+  std::uint64_t stairCount = 0U;
+  std::uint64_t doorCount = 0U;
+  std::uint64_t windowCount = 0U;
+  for (const cr::CreativeObject& object : state.preview.document.objects()) {
+    floorCount += object.kind == cr::CreativeObjectKind::Floor ? 1U : 0U;
+    ceilingCount += object.kind == cr::CreativeObjectKind::Ceiling ? 1U : 0U;
+    roofCount += object.kind == cr::CreativeObjectKind::Roof ? 1U : 0U;
+    stairCount += object.kind == cr::CreativeObjectKind::Stair ? 1U : 0U;
+    doorCount += object.kind == cr::CreativeObjectKind::Door ? 1U : 0U;
+    windowCount += object.kind == cr::CreativeObjectKind::Window ? 1U : 0U;
+  }
+  const std::uint64_t previewObjectCount = state.preview.document.objectCount();
+  const app::CreativeEditorWorldLayoutApplyReceipt confirmed =
+      app::confirmCreativeEditorWorldLayout(state, live);
+  const bool oneDocumentEdit =
+      confirmed.accepted && confirmed.changed &&
+      cr::creativeUndoDepth(live.history) == 1U &&
+      live.facade.document().objectCount() == previewObjectCount;
+  const bool undone = app::undoLastEdit(live, "multi-storey-undo", &state);
+  const bool undoRestored =
+      undone && state.source.buildings.empty() && state.source.levels.empty() &&
+      state.source.rooms.empty() && state.source.verticalConnectors.empty() &&
+      live.facade.document().objectCount() == 0U;
+  const bool redone =
+      app::redoLastEdit(live, "multi-storey-redo", &state);
+
+  return expect(oneSourceEdit,
+                "multi-storey blockout is one source revision") &&
+         expect(sourceShapeReady,
+                "multi-storey source owns repeated levels and facade rows") &&
+         expect(facadeStackReady,
+                "upper storeys replace the entrance bay with a window") &&
+         expect(connectorOwnershipReady,
+                "one shaft connects every adjacent level through the kernel") &&
+         expect(upperSurfacesReady,
+                "intermediate levels use ceilings and only the top uses roof") &&
+         expect(encoded.accepted && decoded.accepted &&
+                    decoded.layout.levels.size() == 3U &&
+                    decoded.layout.verticalConnectors.size() == 2U &&
+                    decoded.layout.openings.size() == 12U,
+                "multi-storey ownership survives source codec round trip") &&
+         expect(captured.accepted &&
+                    captured.value.normalizedLayout.levels.size() == 3U &&
+                    captured.value.normalizedLayout.verticalConnectors.size() ==
+                        2U &&
+                    stamped.accepted && stamped.edited.levels.size() == 3U &&
+                    stamped.edited.verticalConnectors.size() == 2U &&
+                    stamped.edited.verticalConnectors[0].lowerRoomIndex == 0U &&
+                    stamped.edited.verticalConnectors[0].upperRoomIndex == 1U,
+                "building templates preserve generated storeys and stairs") &&
+         expect(preview.accepted && floorCount >= 3U && ceilingCount >= 2U &&
+                    roofCount == 1U && stairCount == 2U && doorCount == 1U &&
+                    windowCount == 11U,
+                "preview generates cut slabs, one roof, stairs, and facade") &&
+         expect(oneDocumentEdit,
+                "multi-storey confirmation is one document transaction") &&
+         expect(undoRestored && redone && state.source.levels.size() == 3U &&
+                    state.source.verticalConnectors.size() == 2U &&
+                    live.facade.document().objectCount() == previewObjectCount,
+                "undo and redo restore the complete multi-storey building");
+}
+
 bool desktopCommandRoutesTypedBlockoutRequest() {
   cr::CreativeAppState live = makeAppState();
   app::CreativeEditorState editor;
@@ -597,24 +930,48 @@ bool desktopCommandRoutesTypedBlockoutRequest() {
   const app::CreativeDesktopCommandResult created =
       app::dispatchCreativeDesktopCommands(frame, context);
 
+  app::CreativeEditorState multiEditor;
+  app::resetCreativeEditorWorldLayout(multiEditor.worldLayout,
+                                      "command_multi_storey_blockout");
+  const app::CreativeDesktopCommandContext multiContext{
+      live, multiEditor, std::filesystem::path{}, &saveId};
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings multiSettings;
+  multiSettings.shell.footprint = {{0, 0}, {8, 8}};
+  multiSettings.storeys.count = 2U;
+  app::CreativeDesktopCommandFrame multiFrame;
+  multiFrame.push(
+      app::CreativeDesktopCommandId::WorldLayoutCreateBuildingBlockout,
+      app::CreativeDesktopWorldLayoutBuildingBlockoutPayload{multiSettings});
+  const app::CreativeDesktopCommandResult multiCreated =
+      app::dispatchCreativeDesktopCommands(multiFrame, multiContext);
+
   return expect(mismatchWasInert,
                 "mismatched blockout payload cannot mutate source") &&
          expect(created.accepted && created.changed &&
                     created.worldLayoutChanged && !created.sceneChanged &&
                     editor.worldLayout.source.rooms.size() == 4U &&
                     editor.worldLayout.source.openings.size() == 11U,
-                "typed desktop command reaches the blockout kernel");
+                "typed desktop command reaches the blockout kernel") &&
+         expect(multiCreated.accepted && multiCreated.changed &&
+                    multiEditor.worldLayout.source.levels.size() == 2U &&
+                    multiEditor.worldLayout.source.verticalConnectors.size() ==
+                        1U,
+                "typed desktop payload preserves multi-storey settings");
 }
 
 }  // namespace
 
 int main() {
   const bool ok = plannerOwnsEveryPresetAndOddSplit() &&
+                  plannerOwnsBoundedMultiStoreyShaft() &&
                   plannerRejectsInvalidOrUnbuildableRooms() &&
                   editorRejectsOverlapWithoutPartialMutation() &&
+                  editorChecksTheWholeStoreySpanForOverlap() &&
                   editorRejectsUnconnectableRoomsWithoutPartialMutation() &&
                   editorRejectsUnfitFacadeWithoutPartialMutation() &&
+                  editorRejectsUnfitStoreysWithoutPartialMutation() &&
                   editorCreatesAndGeneratesOneAtomicBlockout() &&
+                  editorCreatesOneAtomicMultiStoreyBlockout() &&
                   desktopCommandRoutesTypedBlockoutRequest();
   if (!ok) {
     return 1;

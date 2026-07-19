@@ -23,9 +23,13 @@ enum class CreativeWorldLayoutBuildingBlockoutStatus : std::uint8_t {
   InvalidPattern,
   InvalidFootprint,
   InvalidWallThickness,
+  InvalidWallHeight,
+  InvalidStoreyCount,
   InvalidEntranceEdge,
   InvalidEntranceOffset,
+  InvalidVerticalConnector,
   RoomTooSmall,
+  VerticalConnectorDoesNotFit,
   OpeningCapacityExceeded,
   Ready,
 };
@@ -51,6 +55,21 @@ struct CreativeWorldLayoutBuildingBlockoutFacadeSettings {
   bool includeExteriorWindows = true;
 };
 
+inline constexpr std::uint16_t
+    kCreativeWorldLayoutBuildingBlockoutStoreyCapacity = 8U;
+
+struct CreativeWorldLayoutBuildingBlockoutStoreySettings {
+  std::uint16_t count = 1U;
+  bool connectStoreys = true;
+  CreativeWorldLayoutVerticalConnectorKind connectorKind =
+      CreativeWorldLayoutVerticalConnectorKind::Stair;
+
+  // The planner tries this direction first, then the remaining cardinal
+  // directions in enum order. The resolved direction is recorded in the plan.
+  CreativeWorldLayoutVerticalDirection preferredDirection =
+      CreativeWorldLayoutVerticalDirection::PositiveZ;
+};
+
 struct CreativeWorldLayoutBuildingBlockoutRequest {
   CreativeWorldLayoutRect footprint;
   CreativeWorldLayoutBuildingBlockoutPattern pattern =
@@ -59,6 +78,9 @@ struct CreativeWorldLayoutBuildingBlockoutRequest {
       kDefaultCreativeWorldLayoutWallThicknessCells;
   bool connectRooms = true;
   CreativeWorldLayoutBuildingBlockoutFacadeSettings facade;
+  std::uint16_t wallHeightCells =
+      kDefaultCreativeWorldLayoutWallHeightCells;
+  CreativeWorldLayoutBuildingBlockoutStoreySettings storeys;
 };
 
 inline constexpr std::size_t kCreativeWorldLayoutBuildingBlockoutRoomCapacity =
@@ -84,6 +106,20 @@ struct CreativeWorldLayoutBuildingBlockoutOpening {
   double zCells = 0.0;
 };
 
+// One shaft intent repeated between each adjacent pair of generated levels.
+// The footprint is centered inside one repeated room with at least one cell of
+// landing and side clearance, widened when walls require it. It includes the
+// run, not the landings. Exact slope, cut, and generated geometry remains owned
+// by WorldLayoutVerticalConnectors.
+struct CreativeWorldLayoutBuildingBlockoutVerticalConnector {
+  std::size_t roomIndex = kInvalidCreativeWorldLayoutIndex;
+  CreativeWorldLayoutVerticalConnectorKind kind =
+      CreativeWorldLayoutVerticalConnectorKind::Stair;
+  CreativeWorldLayoutVerticalDirection direction =
+      CreativeWorldLayoutVerticalDirection::PositiveZ;
+  CreativeWorldLayoutRect footprint;
+};
+
 struct CreativeWorldLayoutBuildingBlockoutPlan {
   bool requested = false;
   bool accepted = false;
@@ -100,16 +136,23 @@ struct CreativeWorldLayoutBuildingBlockoutPlan {
              kCreativeWorldLayoutBuildingBlockoutOpeningCapacity>
       openings{};
   std::size_t openingCount = 0U;
+  std::uint16_t storeyCount = 0U;
+  bool hasVerticalConnector = false;
+  CreativeWorldLayoutBuildingBlockoutVerticalConnector verticalConnector;
   std::string_view reasonCode =
       "creative_world_layout_building_blockout_not_requested";
 };
 
 static_assert(std::is_trivially_copyable_v<
               CreativeWorldLayoutBuildingBlockoutFacadeSettings>);
+static_assert(std::is_trivially_copyable_v<
+              CreativeWorldLayoutBuildingBlockoutStoreySettings>);
 static_assert(
     std::is_trivially_copyable_v<CreativeWorldLayoutBuildingBlockoutRequest>);
 static_assert(std::is_trivially_copyable_v<
               CreativeWorldLayoutBuildingBlockoutOpening>);
+static_assert(std::is_trivially_copyable_v<
+              CreativeWorldLayoutBuildingBlockoutVerticalConnector>);
 static_assert(
     std::is_trivially_copyable_v<CreativeWorldLayoutBuildingBlockoutPlan>);
 
@@ -120,9 +163,11 @@ static_assert(
 
 // Produces row-major room footprints and bounded opening intents on integer grid
 // lines in this order: minimal interior tree, entrance, then room-major facade
-// windows in cardinal-edge order. Odd spans give the extra cell to the
-// positive-X or positive-Z room. This is O(room capacity * edge count), performs
-// no allocation, and never mutates source layout.
+// windows in cardinal-edge order. For connected multi-storey requests, one
+// reusable shaft is selected by preferred direction, then largest/most-central
+// eligible room. Odd spans give the extra cell to the positive-X or positive-Z
+// room. This is O(room capacity * (edge count + direction count)), performs no
+// allocation, and never mutates source layout.
 [[nodiscard]] CreativeWorldLayoutBuildingBlockoutPlan
 planCreativeWorldLayoutBuildingBlockout(
     const CreativeWorldLayoutBuildingBlockoutRequest& request) noexcept;
