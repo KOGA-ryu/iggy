@@ -130,6 +130,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/play/PlayPreparation.cpp
     src/app/iggy3d/creative/play/RuntimeInteractableCatalog.cpp
     src/app/iggy3d/creative/play/RuntimeInteractables.cpp
+    src/app/iggy3d/creative/play/RuntimeLogicPlanning.cpp
     src/app/iggy3d/creative/play/RuntimeMovingPlatforms.cpp
     src/app/iggy3d/creative/play/RuntimeSandbox.cpp
     src/app/iggy3d/creative/spatial/Ghost.cpp
