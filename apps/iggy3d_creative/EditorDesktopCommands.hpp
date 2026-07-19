@@ -90,6 +90,8 @@ enum class CreativeDesktopCommandId : std::uint8_t {
   WorldLayoutSetRoomSettings,
   WorldLayoutManipulateRoom,
   WorldLayoutSetVerticalConnectorSettings,
+  WorldLayoutPreviewGeneratedVerticalConnectorSettings,
+  WorldLayoutApplyGeneratedVerticalConnectorSettings,
   WorldLayoutManipulateVerticalConnector,
   WorldLayoutSetBoxSettings,
   WorldLayoutManipulateBox,

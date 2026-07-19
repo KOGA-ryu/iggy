@@ -143,6 +143,37 @@ CreativeEditorWorldLayoutApplyReceipt applyWorldLayoutSettingsCandidate(
 }  // namespace
 
 CreativeEditorWorldLayoutPreviewReceipt
+previewCreativeEditorWorldLayoutVerticalConnectorSettings(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document, std::size_t connectorIndex,
+    CreativeEditorWorldLayoutVerticalConnectorSettings settings) {
+  CreativeEditorWorldLayoutState candidate =
+      makeWorldLayoutSettingsCandidate(state);
+  const CreativeEditorWorldLayoutEditReceipt editReceipt =
+      setCreativeEditorWorldLayoutVerticalConnectorSettings(
+          candidate, connectorIndex, settings);
+  return previewWorldLayoutSettingsCandidate(
+      state, document, std::move(candidate), editReceipt,
+      "vertical connector preview ready");
+}
+
+CreativeEditorWorldLayoutApplyReceipt
+applyCreativeEditorWorldLayoutVerticalConnectorSettingsToDocument(
+    CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,
+    std::size_t connectorIndex,
+    CreativeEditorWorldLayoutVerticalConnectorSettings settings) {
+  CreativeEditorWorldLayoutState candidate =
+      makeWorldLayoutSettingsCandidate(state);
+  const CreativeEditorWorldLayoutEditReceipt editReceipt =
+      setCreativeEditorWorldLayoutVerticalConnectorSettings(
+          candidate, connectorIndex, settings);
+  return applyWorldLayoutSettingsCandidate(
+      state, appState, std::move(candidate), editReceipt,
+      "desktop_generated_vertical_connector_settings",
+      "vertical connector updated in 3D");
+}
+
+CreativeEditorWorldLayoutPreviewReceipt
 previewCreativeEditorWorldLayoutWallSettings(
     CreativeEditorWorldLayoutState& state,
     const cr::CreativeDocument& document, std::size_t wallIndex,

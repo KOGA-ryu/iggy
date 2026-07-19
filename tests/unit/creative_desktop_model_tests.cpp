@@ -383,6 +383,11 @@ bool generatedSourceAdoptionPolicyKeepsStructuresSourceOwned() {
                     provenance(true, cr::CreativeWorldLayoutTable::Wall,
                                1U)) &&
                     !app::creativeDesktopGeneratedSourceSupportsAdoption(
+                        provenance(
+                            true,
+                            cr::CreativeWorldLayoutTable::VerticalConnector,
+                            1U)) &&
+                    !app::creativeDesktopGeneratedSourceSupportsAdoption(
                         provenance(true,
                                    cr::CreativeWorldLayoutTable::Opening,
                                    1U)) &&

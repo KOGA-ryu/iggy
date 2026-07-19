@@ -1358,6 +1358,16 @@ bool mismatchedPayloadsAreNoOpFailures() {
               WorldLayoutSetVerticalConnectorSettings,
           context, app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult
+      badGeneratedVerticalConnectorPreview = dispatchPayload(
+          app::CreativeDesktopCommandId::
+              WorldLayoutPreviewGeneratedVerticalConnectorSettings,
+          context, app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult
+      badGeneratedVerticalConnectorApply = dispatchPayload(
+          app::CreativeDesktopCommandId::
+              WorldLayoutApplyGeneratedVerticalConnectorSettings,
+          context, app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult
       badWorldLayoutVerticalConnectorManipulation = dispatchPayload(
           app::CreativeDesktopCommandId::
               WorldLayoutManipulateVerticalConnector,
@@ -1502,6 +1512,13 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badWorldLayoutVerticalConnectorSettings.message ==
                         "layout vertical connector settings: payload mismatch",
                 "vertical connector settings reject a mismatched payload") &&
+         expect(!badGeneratedVerticalConnectorPreview.accepted &&
+                    badGeneratedVerticalConnectorPreview.message ==
+                        "generated vertical connector preview: payload mismatch" &&
+                    !badGeneratedVerticalConnectorApply.accepted &&
+                    badGeneratedVerticalConnectorApply.message ==
+                        "generated vertical connector settings: payload mismatch",
+                "generated connector commands reject mismatched payloads") &&
          expect(!badWorldLayoutVerticalConnectorManipulation.accepted &&
                     badWorldLayoutVerticalConnectorManipulation.message ==
                         "layout vertical connector manipulation: payload mismatch",
@@ -2781,6 +2798,189 @@ bool generatedWallAndOpeningSettingsCommitSourceAndSceneTogether() {
                 "generated edit rejects while 2D source changes are pending");
 }
 
+bool generatedVerticalConnectorSettingsCommitSourceAndSceneTogether() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Generated Connector Editing");
+  static_cast<void>(document.assignId(437U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "generated_connector_editing");
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "house";
+  building.name = "House";
+  building.rootMode = cr::CreativeBuildingRootMode::None;
+  editor.worldLayout.source.buildings.push_back(building);
+  editor.worldLayout.source.levels.push_back(
+      {0U, "ground", "Ground", 0.0, 3U, 1U, 1U, 1U});
+  editor.worldLayout.source.levels.push_back(
+      {0U, "upper", "Upper", 3.0, 3U, 1U, 1U, 1U});
+  editor.worldLayout.source.rooms.push_back(
+      {0U, 0U, "ground_room", "Ground Room", {{0, 0}, {8, 8}}, 0.25});
+  editor.worldLayout.source.rooms.push_back(
+      {0U, 1U, "upper_room", "Upper Room", {{0, 0}, {8, 8}}, 0.25});
+  editor.worldLayout.source.verticalConnectors.push_back(
+      {0U,
+       0U,
+       1U,
+       cr::CreativeWorldLayoutVerticalConnectorKind::Stair,
+       cr::CreativeWorldLayoutVerticalDirection::PositiveX,
+       "main_stair",
+       "Main Stair",
+       {{1, 2}, {5, 4}}});
+  ++editor.worldLayout.revision;
+
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const app::CreativeDesktopCommandResult generated = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  if (!generated.accepted) {
+    return expect(false, "generated connector editing fixture generated");
+  }
+
+  const auto generatedObjectId = [&](cr::CreativeWorldLayoutTable table) {
+    for (const cr::CreativeObject& object :
+         appState.facade.document().objects()) {
+      const cr::CreativeWorldLayoutObjectProvenance provenance =
+          cr::resolveCreativeWorldLayoutObjectProvenance(
+              editor.worldLayout.source, object);
+      if (provenance.owned && provenance.table == table) {
+        return object.id;
+      }
+    }
+    return cr::kInvalidObjectId;
+  };
+  const cr::CreativeObjectId connectorObjectId =
+      generatedObjectId(cr::CreativeWorldLayoutTable::VerticalConnector);
+  const cr::CreativeObjectId roomObjectId =
+      generatedObjectId(cr::CreativeWorldLayoutTable::Room);
+  if (connectorObjectId == cr::kInvalidObjectId ||
+      roomObjectId == cr::kInvalidObjectId) {
+    return expect(false, "connector and room provenance objects exist");
+  }
+
+  app::CreativeEditorWorldLayoutVerticalConnectorSettings settings;
+  static_cast<void>(
+      app::readCreativeEditorWorldLayoutVerticalConnectorSettings(
+          editor.worldLayout, 0U, settings));
+  settings.kind = cr::CreativeWorldLayoutVerticalConnectorKind::Ramp;
+  settings.direction = cr::CreativeWorldLayoutVerticalDirection::NegativeX;
+  settings.footprint = {{2, 2}, {6, 4}};
+  const std::uint64_t sourceRevisionBefore = editor.worldLayout.revision;
+  const std::uint64_t documentRevisionBefore =
+      appState.facade.document().revision();
+  const std::uint64_t undoBefore = cr::creativeUndoDepth(appState.history);
+  const app::CreativeDesktopCommandResult previewed = dispatchPayload(
+      app::CreativeDesktopCommandId::
+          WorldLayoutPreviewGeneratedVerticalConnectorSettings,
+      context,
+      app::CreativeDesktopGeneratedVerticalConnectorSettingsPayload{
+          connectorObjectId, settings});
+  const bool previewStayedTransient =
+      previewed.accepted && previewed.sceneChanged &&
+      app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      editor.worldLayout.revision == sourceRevisionBefore &&
+      editor.worldLayout.source.verticalConnectors[0].kind ==
+          cr::CreativeWorldLayoutVerticalConnectorKind::Stair &&
+      appState.facade.document().revision() == documentRevisionBefore &&
+      cr::creativeUndoDepth(appState.history) == undoBefore;
+
+  const app::CreativeDesktopCommandResult applied = dispatchPayload(
+      app::CreativeDesktopCommandId::
+          WorldLayoutApplyGeneratedVerticalConnectorSettings,
+      context,
+      app::CreativeDesktopGeneratedVerticalConnectorSettingsPayload{
+          connectorObjectId, settings});
+  const cr::CreativeObjectId liveRampId =
+      generatedObjectId(cr::CreativeWorldLayoutTable::VerticalConnector);
+  const cr::CreativeObject* liveRamp =
+      appState.facade.document().findObject(liveRampId);
+  const cr::CreativeWorldLayoutVerticalConnector& appliedSource =
+      editor.worldLayout.source.verticalConnectors[0];
+  const bool appliedOnce =
+      applied.accepted && applied.changed && applied.worldLayoutChanged &&
+      applied.sceneChanged &&
+      appliedSource.kind == cr::CreativeWorldLayoutVerticalConnectorKind::Ramp &&
+      appliedSource.direction ==
+          cr::CreativeWorldLayoutVerticalDirection::NegativeX &&
+      appliedSource.footprint.minimum == cr::CreativeTerrainCoord2{2, 2} &&
+      appliedSource.footprint.maximum == cr::CreativeTerrainCoord2{6, 4} &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision &&
+      liveRamp != nullptr && liveRamp->kind == cr::CreativeObjectKind::Ramp &&
+      cr::creativeUndoDepth(appState.history) == undoBefore + 1U;
+
+  const app::CreativeDesktopCommandResult undone =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const cr::CreativeObjectId restoredStairId =
+      generatedObjectId(cr::CreativeWorldLayoutTable::VerticalConnector);
+  const cr::CreativeObject* restoredStair =
+      appState.facade.document().findObject(restoredStairId);
+  const cr::CreativeWorldLayoutVerticalConnector& undoneSource =
+      editor.worldLayout.source.verticalConnectors[0];
+  const bool undoRestoredBoth =
+      undone.accepted &&
+      undoneSource.kind == cr::CreativeWorldLayoutVerticalConnectorKind::Stair &&
+      undoneSource.direction ==
+          cr::CreativeWorldLayoutVerticalDirection::PositiveX &&
+      undoneSource.footprint.minimum == cr::CreativeTerrainCoord2{1, 2} &&
+      undoneSource.footprint.maximum == cr::CreativeTerrainCoord2{5, 4} &&
+      restoredStair != nullptr &&
+      restoredStair->kind == cr::CreativeObjectKind::Stair;
+  const app::CreativeDesktopCommandResult redone =
+      dispatchOne(app::CreativeDesktopCommandId::Redo, context);
+  const cr::CreativeObjectId restoredRampId =
+      generatedObjectId(cr::CreativeWorldLayoutTable::VerticalConnector);
+  const cr::CreativeObject* restoredRamp =
+      appState.facade.document().findObject(restoredRampId);
+  const bool redoRestoredBoth =
+      redone.accepted &&
+      editor.worldLayout.source.verticalConnectors[0].kind ==
+          cr::CreativeWorldLayoutVerticalConnectorKind::Ramp &&
+      restoredRamp != nullptr &&
+      restoredRamp->kind == cr::CreativeObjectKind::Ramp;
+
+  const std::uint64_t sourceRevisionBeforeReject =
+      editor.worldLayout.revision;
+  const std::uint64_t documentRevisionBeforeReject =
+      appState.facade.document().revision();
+  const std::uint64_t undoBeforeReject =
+      cr::creativeUndoDepth(appState.history);
+  settings.footprint = {{0, 2}, {2, 4}};
+  const app::CreativeDesktopCommandResult invalid = dispatchPayload(
+      app::CreativeDesktopCommandId::
+          WorldLayoutApplyGeneratedVerticalConnectorSettings,
+      context,
+      app::CreativeDesktopGeneratedVerticalConnectorSettingsPayload{
+          restoredRampId, settings});
+  const app::CreativeDesktopCommandResult wrongSource = dispatchPayload(
+      app::CreativeDesktopCommandId::
+          WorldLayoutApplyGeneratedVerticalConnectorSettings,
+      context,
+      app::CreativeDesktopGeneratedVerticalConnectorSettingsPayload{
+          roomObjectId, settings});
+  const bool rejectedAtomically =
+      !invalid.accepted && !invalid.changed && !wrongSource.accepted &&
+      !wrongSource.changed &&
+      editor.worldLayout.revision == sourceRevisionBeforeReject &&
+      appState.facade.document().revision() == documentRevisionBeforeReject &&
+      cr::creativeUndoDepth(appState.history) == undoBeforeReject &&
+      editor.worldLayout.source.verticalConnectors[0].footprint.minimum ==
+          cr::CreativeTerrainCoord2{2, 2};
+
+  return expect(previewStayedTransient,
+                "generated connector preview stays transient") &&
+         expect(appliedOnce,
+                "generated connector edit synchronizes source scene and history") &&
+         expect(undoRestoredBoth && redoRestoredBoth,
+                "generated connector undo and redo restore source and scene") &&
+         expect(rejectedAtomically,
+                "invalid and mismatched connector edits are atomic no-ops");
+}
+
 bool generatedSourceOnlyOpeningEditUsesSourceHistory() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document =
@@ -3344,6 +3544,7 @@ int main() {
   ok = worldLayoutConflictResolutionUsesTypedConfirmPayload() && ok;
   ok = worldLayoutObjectFocusAndAdoptionCloseTheSourceLoop() && ok;
   ok = generatedWallAndOpeningSettingsCommitSourceAndSceneTogether() && ok;
+  ok = generatedVerticalConnectorSettingsCommitSourceAndSceneTogether() && ok;
   ok = generatedSourceOnlyOpeningEditUsesSourceHistory() && ok;
   ok = worldLayoutCatalogSelectionAndPlacementUseTypedCommands() && ok;
   ok = worldLayoutOpeningInsertCommandsUseCatalogAndHistory() && ok;

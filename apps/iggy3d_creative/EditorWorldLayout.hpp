@@ -1093,6 +1093,16 @@ resolveCreativeEditorWorldLayoutVerticalConnectorDirectionHandle(
 setCreativeEditorWorldLayoutVerticalConnectorSettings(
     CreativeEditorWorldLayoutState& state, std::size_t connectorIndex,
     CreativeEditorWorldLayoutVerticalConnectorSettings settings);
+[[nodiscard]] CreativeEditorWorldLayoutApplyReceipt
+applyCreativeEditorWorldLayoutVerticalConnectorSettingsToDocument(
+    CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,
+    std::size_t connectorIndex,
+    CreativeEditorWorldLayoutVerticalConnectorSettings settings);
+[[nodiscard]] CreativeEditorWorldLayoutPreviewReceipt
+previewCreativeEditorWorldLayoutVerticalConnectorSettings(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document, std::size_t connectorIndex,
+    CreativeEditorWorldLayoutVerticalConnectorSettings settings);
 [[nodiscard]] CreativeEditorWorldLayoutVerticalConnectorTarget
 findCreativeEditorWorldLayoutVerticalConnectorTarget(
     const CreativeEditorWorldLayoutState& state,

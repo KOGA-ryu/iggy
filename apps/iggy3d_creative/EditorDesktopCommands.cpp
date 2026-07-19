@@ -1489,6 +1489,77 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::
+        WorldLayoutApplyGeneratedVerticalConnectorSettings: {
+      const auto* payload = payloadAs<
+          CreativeDesktopGeneratedVerticalConnectorSettingsPayload>(command);
+      if (payload == nullptr) {
+        result.message =
+            "generated vertical connector settings: payload mismatch";
+        break;
+      }
+      const creative::CreativeObject* object =
+          appState.facade.findObject(payload->objectId);
+      if (object == nullptr) {
+        result.message = "generated vertical connector settings: target missing";
+        break;
+      }
+      const creative::CreativeWorldLayoutObjectProvenance provenance =
+          creative::resolveCreativeWorldLayoutObjectProvenance(
+              editor.worldLayout.source, *object);
+      if (!provenance.owned ||
+          provenance.table !=
+              creative::CreativeWorldLayoutTable::VerticalConnector) {
+        result.message = "generated vertical connector settings: source mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutApplyReceipt receipt =
+          applyCreativeEditorWorldLayoutVerticalConnectorSettingsToDocument(
+              editor.worldLayout, appState, provenance.index,
+              payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive || receipt.apply.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::
+        WorldLayoutPreviewGeneratedVerticalConnectorSettings: {
+      const auto* payload = payloadAs<
+          CreativeDesktopGeneratedVerticalConnectorSettingsPayload>(command);
+      if (payload == nullptr) {
+        result.message =
+            "generated vertical connector preview: payload mismatch";
+        break;
+      }
+      const creative::CreativeObject* object =
+          appState.facade.findObject(payload->objectId);
+      if (object == nullptr) {
+        result.message = "generated vertical connector preview: target missing";
+        break;
+      }
+      const creative::CreativeWorldLayoutObjectProvenance provenance =
+          creative::resolveCreativeWorldLayoutObjectProvenance(
+              editor.worldLayout.source, *object);
+      if (!provenance.owned ||
+          provenance.table !=
+              creative::CreativeWorldLayoutTable::VerticalConnector) {
+        result.message = "generated vertical connector preview: source mismatch";
+        break;
+      }
+      const CreativeEditorWorldLayoutPreviewReceipt receipt =
+          previewCreativeEditorWorldLayoutVerticalConnectorSettings(
+              editor.worldLayout, appState.facade.document(), provenance.index,
+              payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.sceneChanged = receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutManipulateVerticalConnector: {
       const auto* payload = payloadAs<
           CreativeDesktopWorldLayoutVerticalConnectorManipulationPayload>(

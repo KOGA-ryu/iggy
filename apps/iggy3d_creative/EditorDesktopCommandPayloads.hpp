@@ -272,6 +272,12 @@ struct CreativeDesktopWorldLayoutVerticalConnectorSettingsPayload {
   CreativeEditorWorldLayoutVerticalConnectorSettings settings;
 };
 
+struct CreativeDesktopGeneratedVerticalConnectorSettingsPayload {
+  iggy3d::creative::CreativeObjectId objectId =
+      iggy3d::creative::kInvalidObjectId;
+  CreativeEditorWorldLayoutVerticalConnectorSettings settings;
+};
+
 struct CreativeDesktopWorldLayoutVerticalConnectorManipulationPayload {
   CreativeEditorWorldLayoutVerticalConnectorManipulationPhase phase =
       CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Begin;
@@ -399,6 +405,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutRoomSettingsPayload,
     CreativeDesktopWorldLayoutRoomManipulationPayload,
     CreativeDesktopWorldLayoutVerticalConnectorSettingsPayload,
+    CreativeDesktopGeneratedVerticalConnectorSettingsPayload,
     CreativeDesktopWorldLayoutVerticalConnectorManipulationPayload,
     CreativeDesktopWorldLayoutBoxSettingsPayload,
     CreativeDesktopWorldLayoutBoxManipulationPayload,

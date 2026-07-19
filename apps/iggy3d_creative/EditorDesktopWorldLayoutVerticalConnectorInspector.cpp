@@ -66,6 +66,22 @@ cr::CreativeWorldLayoutVerticalDirection oppositeDirection(
 
 }  // namespace
 
+const char* creativeEditorWorldLayoutVerticalConnectorKindLabel(
+    cr::CreativeWorldLayoutVerticalConnectorKind kind) noexcept {
+  return kindLabel(kind);
+}
+
+const char* creativeEditorWorldLayoutVerticalConnectorDirectionLabel(
+    cr::CreativeWorldLayoutVerticalDirection direction) noexcept {
+  return directionLabel(direction);
+}
+
+cr::CreativeWorldLayoutVerticalDirection
+oppositeCreativeEditorWorldLayoutVerticalConnectorDirection(
+    cr::CreativeWorldLayoutVerticalDirection direction) noexcept {
+  return oppositeDirection(direction);
+}
+
 void drawCreativeEditorWorldLayoutVerticalConnectorInspector(
     CreativeEditorWorldLayoutState& state,
     CreativeDesktopCommandFrame& commands) {
