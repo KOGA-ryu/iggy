@@ -5,6 +5,7 @@
 #include <string_view>
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
+#include "app/iggy3d/creative/recipes/TerrainComposition.hpp"
 #include "app/iggy3d/creative/recipes/TerrainGeneration.hpp"
 
 namespace iggy3d_creative_app {
@@ -15,7 +16,9 @@ makeDefaultCreativeEditorTerrainGeneratorRecipe() noexcept;
 struct CreativeEditorTerrainGenerationState {
   iggy3d::creative::CreativeTerrainGeneratorRecipe recipe =
       makeDefaultCreativeEditorTerrainGeneratorRecipe();
+  iggy3d::creative::CreativeTerrainCompositionRecipe compositionRecipe{};
   iggy3d::creative::CreativeTerrainGenerationResult generation{};
+  iggy3d::creative::CreativeTerrainCompositionResult composition{};
   iggy3d::creative::CreativeDocumentId sourceDocumentId =
       iggy3d::creative::kInvalidDocumentId;
   std::uint64_t sourceDocumentRevision = 0U;

@@ -286,23 +286,22 @@ bool refreshCreativeEditorGeneratedTerrainPreview(
     CreativeEditorGeneratedTerrainPreviewCache& cache,
     const CreativeEditorSceneCache& sourceSceneCache,
     const cr::CreativeDocument& document,
-    const cr::CreativeTerrainGenerationResult& generation,
+    const cr::CreativeTerrainHeightField& candidate,
+    std::uint64_t candidateHeightHash,
     const iggy3d::StaticMeshAssetCatalog* assetCatalog) {
   const cr::CreativeGridSettings grid = document.gridSettings();
   const bool sourceValid =
       sourceSceneCache.valid && sourceSceneCache.documentId == document.id() &&
       sourceSceneCache.documentRevision == document.revision();
-  const bool generationValid =
-      generation.receipt.accepted &&
-      generation.receipt.status == cr::CreativeTerrainGenerationStatus::Ready &&
-      generation.plan.heightField.validateInvariants();
-  if (!sourceValid || !generationValid) {
+  const bool candidateValid =
+      candidate.validateInvariants() && candidate.cellCount() > 0U;
+  if (!sourceValid || !candidateValid) {
     invalidateCreativeEditorGeneratedTerrainPreview(cache);
     return false;
   }
   if (cache.valid && cache.documentId == document.id() &&
       cache.documentRevision == document.revision() &&
-      cache.heightHash == generation.receipt.heightHash &&
+      cache.heightHash == candidateHeightHash &&
       cache.sourceSceneRefreshCount == sourceSceneCache.refreshCount &&
       cr::creativeVec3ExactlyEqual(cache.terrainGridOrigin, grid.origin) &&
       cache.terrainGridCellSizeMeters == grid.cellSizeMeters) {
@@ -314,7 +313,7 @@ bool refreshCreativeEditorGeneratedTerrainPreview(
           document.terrainField(), document.terrainHeightField());
   cr::CreativeTerrainSurfacePlan composed =
       cr::replaceCreativeTerrainSurfaceRegion(
-          sourceSurface, generation.plan.heightField);
+          sourceSurface, candidate);
   if (!composed.accepted) {
     invalidateCreativeEditorGeneratedTerrainPreview(cache);
     return false;
@@ -348,7 +347,7 @@ bool refreshCreativeEditorGeneratedTerrainPreview(
   cache.terrainSurfacePatches = std::move(surfacePatches);
   cache.documentId = document.id();
   cache.documentRevision = document.revision();
-  cache.heightHash = generation.receipt.heightHash;
+  cache.heightHash = candidateHeightHash;
   cache.sourceSceneRefreshCount = sourceSceneCache.refreshCount;
   cache.terrainGridOrigin = grid.origin;
   cache.terrainGridCellSizeMeters = grid.cellSizeMeters;

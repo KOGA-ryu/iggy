@@ -729,7 +729,8 @@ int main(int argc, char** argv) {
     if (generationTargetsRenderedDocument) {
       static_cast<void>(refreshCreativeEditorGeneratedTerrainPreview(
           terrainGenerationPreviewCache, sceneCache, renderDocument,
-          editor.terrainGeneration.generation,
+          editor.terrainGeneration.composition.heightField,
+          editor.terrainGeneration.composition.receipt.heightHash,
           &bootstrapData.staticMeshAssetCatalog));
       if (terrainGenerationPreviewCache.valid) {
         selectedPreview = &terrainGenerationPreviewCache.preview;

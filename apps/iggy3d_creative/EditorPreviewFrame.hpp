@@ -8,7 +8,6 @@
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/input/ControlProfile.hpp"
-#include "app/iggy3d/creative/recipes/TerrainGeneration.hpp"
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/FrameInput.hpp"
@@ -178,7 +177,8 @@ void invalidateCreativeEditorSceneCache(
     CreativeEditorGeneratedTerrainPreviewCache& cache,
     const CreativeEditorSceneCache& sourceSceneCache,
     const iggy3d::creative::CreativeDocument& document,
-    const iggy3d::creative::CreativeTerrainGenerationResult& generation,
+    const iggy3d::creative::CreativeTerrainHeightField& candidate,
+    std::uint64_t candidateHeightHash,
     const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr);
 void invalidateCreativeEditorGeneratedTerrainPreview(
     CreativeEditorGeneratedTerrainPreviewCache& cache) noexcept;

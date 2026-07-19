@@ -986,7 +986,7 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.accepted = receipt.accepted;
       result.changed = true;
       result.affectedObjectCount =
-          editor.terrainGeneration.generation.receipt.generatedCellCount;
+          editor.terrainGeneration.composition.receipt.modifiedCellCount;
       result.message = editor.terrainGeneration.statusMessage;
       break;
     }

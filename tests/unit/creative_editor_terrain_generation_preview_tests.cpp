@@ -43,6 +43,41 @@ cr::CreativeTerrainGenerationResult generationFor(std::uint64_t seed) {
   return cr::buildCreativeTerrainGenerationPlan(recipe);
 }
 
+bool surfaceMatchesHeightField(
+    const cr::CreativeTerrainSurfacePlan& surface,
+    const cr::CreativeTerrainHeightField& field) {
+  if (!surface.accepted || !field.validateInvariants()) {
+    return false;
+  }
+  const cr::CreativeTerrainHeightFieldBounds bounds = field.bounds();
+  std::size_t heightIndex = 0U;
+  for (std::uint16_t z = 0U; z < bounds.depthCells; ++z) {
+    for (std::uint16_t x = 0U; x < bounds.widthCells; ++x) {
+      const cr::CreativeTerrainCoord2 coord{
+          bounds.minimum.x + static_cast<std::int32_t>(x),
+          bounds.minimum.z + static_cast<std::int32_t>(z)};
+      const auto found = std::lower_bound(
+          surface.columns.begin(), surface.columns.end(), coord,
+          [](const cr::CreativeTerrainColumn& column,
+             cr::CreativeTerrainCoord2 candidate) {
+            return column.coord.z != candidate.z
+                       ? column.coord.z < candidate.z
+                       : column.coord.x < candidate.x;
+          });
+      const bool hasColumn =
+          found != surface.columns.end() && found->coord == coord;
+      const std::uint16_t expectedHeight = field.heights()[heightIndex++];
+      if ((expectedHeight == cr::kCreativeTerrainEmptyHeightCells &&
+           hasColumn) ||
+          (expectedHeight != cr::kCreativeTerrainEmptyHeightCells &&
+           (!hasColumn || found->heightCells != expectedHeight))) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 bool generatedPreviewReplacesTerrainAndCachesByHeightHash() {
   cr::CreativeDocument document =
       cr::CreativeDocument::create("Generated Terrain Preview");
@@ -81,12 +116,16 @@ bool generatedPreviewReplacesTerrainAndCachesByHeightHash() {
   app::CreativeEditorGeneratedTerrainPreviewCache previewCache;
   const bool firstRefresh =
       app::refreshCreativeEditorGeneratedTerrainPreview(
-          previewCache, sourceCache, document, firstGeneration);
+          previewCache, sourceCache, document,
+          firstGeneration.plan.heightField,
+          firstGeneration.receipt.heightHash);
 
   bool reused = true;
   for (std::uint32_t frame = 0U; frame < 300U; ++frame) {
     reused = !app::refreshCreativeEditorGeneratedTerrainPreview(
-                 previewCache, sourceCache, document, firstGeneration) &&
+                 previewCache, sourceCache, document,
+                 firstGeneration.plan.heightField,
+                 firstGeneration.receipt.heightHash) &&
              reused;
   }
 
@@ -95,13 +134,17 @@ bool generatedPreviewReplacesTerrainAndCachesByHeightHash() {
       app::refreshCreativeEditorSceneCache(sourceCache, document);
   const bool sourceRefresh =
       app::refreshCreativeEditorGeneratedTerrainPreview(
-          previewCache, sourceCache, document, firstGeneration);
+          previewCache, sourceCache, document,
+          firstGeneration.plan.heightField,
+          firstGeneration.receipt.heightHash);
 
   const cr::CreativeTerrainGenerationResult secondGeneration =
       generationFor(2002U);
   const bool secondRefresh =
       app::refreshCreativeEditorGeneratedTerrainPreview(
-          previewCache, sourceCache, document, secondGeneration);
+          previewCache, sourceCache, document,
+          secondGeneration.plan.heightField,
+          secondGeneration.receipt.heightHash);
   const bool containsOutsideSource = std::any_of(
       previewCache.composedSurface.columns.begin(),
       previewCache.composedSurface.columns.end(),
@@ -110,38 +153,13 @@ bool generatedPreviewReplacesTerrainAndCachesByHeightHash() {
                column.heightCells == 4U;
       });
 
-  bool generatedRegionMatches = true;
-  const cr::CreativeTerrainHeightFieldBounds generatedBounds =
-      secondGeneration.plan.heightField.bounds();
-  std::size_t generatedIndex = 0U;
-  for (std::uint16_t z = 0U; z < generatedBounds.depthCells; ++z) {
-    for (std::uint16_t x = 0U; x < generatedBounds.widthCells; ++x) {
-      const cr::CreativeTerrainCoord2 coord{
-          generatedBounds.minimum.x + static_cast<std::int32_t>(x),
-          generatedBounds.minimum.z + static_cast<std::int32_t>(z)};
-      const auto found = std::lower_bound(
-          previewCache.composedSurface.columns.begin(),
-          previewCache.composedSurface.columns.end(), coord,
-          [](const cr::CreativeTerrainColumn& column,
-             cr::CreativeTerrainCoord2 candidate) {
-            return column.coord.z != candidate.z
-                       ? column.coord.z < candidate.z
-                       : column.coord.x < candidate.x;
-          });
-      generatedRegionMatches =
-          generatedRegionMatches &&
-          found != previewCache.composedSurface.columns.end() &&
-          found->coord == coord &&
-          found->heightCells ==
-              secondGeneration.plan.heightField.heights()[generatedIndex];
-      ++generatedIndex;
-    }
-  }
+  const bool generatedRegionMatches = surfaceMatchesHeightField(
+      previewCache.composedSurface, secondGeneration.plan.heightField);
 
-  cr::CreativeTerrainGenerationResult invalidGeneration;
+  cr::CreativeTerrainHeightField invalidCandidate;
   const bool invalidRefresh =
       app::refreshCreativeEditorGeneratedTerrainPreview(
-          previewCache, sourceCache, document, invalidGeneration);
+          previewCache, sourceCache, document, invalidCandidate, 0U);
 
   return expect(terrainApplied.accepted && firstGeneration.receipt.accepted &&
                     authoredApplied.accepted && authoredApplied.changed &&
@@ -236,10 +254,21 @@ bool terrainGenerationWorkflowIsAtomicAndUndoable() {
           state, appState.facade.document(), true);
   const std::uint64_t secondHash = state.generation.receipt.heightHash;
   const cr::CreativeTerrainHeightFieldBounds expectedBounds =
-      state.generation.plan.heightField.bounds();
+      state.composition.heightField.bounds();
   const std::vector<std::uint16_t> expectedHeights(
-      state.generation.plan.heightField.heights().begin(),
-      state.generation.plan.heightField.heights().end());
+      state.composition.heightField.heights().begin(),
+      state.composition.heightField.heights().end());
+  app::CreativeEditorSceneCache sourceCache;
+  const bool sourceBuilt = app::refreshCreativeEditorSceneCache(
+      sourceCache, appState.facade.document());
+  app::CreativeEditorGeneratedTerrainPreviewCache renderedPreview;
+  const bool candidateRendered =
+      app::refreshCreativeEditorGeneratedTerrainPreview(
+          renderedPreview, sourceCache, appState.facade.document(),
+          state.composition.heightField,
+          state.composition.receipt.heightHash);
+  const bool renderedCandidateMatches = surfaceMatchesHeightField(
+      renderedPreview.composedSurface, state.composition.heightField);
 
   const app::CreativeEditorTerrainGenerationApplyReceipt applied =
       app::applyCreativeEditorTerrainGeneration(appState, state);
@@ -264,6 +293,8 @@ bool terrainGenerationWorkflowIsAtomicAndUndoable() {
                     applied.changed && !state.previewActive &&
                     appliedExactField,
                 "apply commits the exact active preview") &&
+         expect(sourceBuilt && candidateRendered && renderedCandidateMatches,
+                "rendered preview consumes the exact composed candidate") &&
          expect(applied.replacement.cellCountAfter == expectedHeights.size() &&
                     undoDepthAfterApply == 1U &&
                     cr::creativeUndoDepth(appState.history) == 0U && undone,
@@ -336,6 +367,59 @@ bool desktopCommandsRouteTerrainPreviewAndApply() {
                 "desktop apply uses the shared workflow and one history entry");
 }
 
+bool sequentialGenerationPreservesEarlierRegion() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 906U);
+  app::CreativeEditorTerrainGenerationState state;
+  state.compositionRecipe.featherCells = 0U;
+  state.recipe.bounds = {{0, 0}, 3U, 3U};
+  state.recipe.seed = 100U;
+  const app::CreativeEditorTerrainGenerationPreviewReceipt firstPreview =
+      app::previewCreativeEditorTerrainGeneration(
+          state, appState.facade.document(), false);
+  const app::CreativeEditorTerrainGenerationApplyReceipt firstApply =
+      app::applyCreativeEditorTerrainGeneration(appState, state);
+  const std::vector<std::uint16_t> firstHeights(
+      appState.facade.document().terrainHeightField().heights().begin(),
+      appState.facade.document().terrainHeightField().heights().end());
+
+  state.recipe.bounds = {{4, 0}, 3U, 3U};
+  state.recipe.seed = 200U;
+  const app::CreativeEditorTerrainGenerationPreviewReceipt secondPreview =
+      app::previewCreativeEditorTerrainGeneration(
+          state, appState.facade.document(), false);
+  const app::CreativeEditorTerrainGenerationApplyReceipt secondApply =
+      app::applyCreativeEditorTerrainGeneration(appState, state);
+  const cr::CreativeTerrainHeightField& combined =
+      appState.facade.document().terrainHeightField();
+  const cr::CreativeTerrainHeightFieldBounds combinedBounds =
+      combined.bounds();
+  bool firstRegionPreserved = true;
+  for (std::int32_t z = 0; z < 3; ++z) {
+    for (std::int32_t x = 0; x < 3; ++x) {
+      const std::size_t firstIndex = static_cast<std::size_t>(z * 3 + x);
+      firstRegionPreserved =
+          firstRegionPreserved && combined.heightAt({x, z}).has_value() &&
+          *combined.heightAt({x, z}) == firstHeights[firstIndex];
+    }
+  }
+  const bool secondRegionPresent = combined.heightAt({4, 0}).has_value();
+  const bool undone = app::undoLastEdit(
+      appState, "terrain_generation_second_region_undo");
+
+  return expect(firstPreview.accepted && firstApply.accepted &&
+                    secondPreview.accepted && secondApply.accepted,
+                "two disjoint generator operations apply") &&
+         expect(combinedBounds ==
+                        cr::CreativeTerrainHeightFieldBounds{{0, 0}, 7U, 3U} &&
+                    firstRegionPreserved && secondRegionPresent,
+                "second operation preserves the first generated region") &&
+         expect(cr::creativeUndoDepth(appState.history) == 1U && undone &&
+                    appState.facade.document().terrainHeightField().bounds() ==
+                        cr::CreativeTerrainHeightFieldBounds{{0, 0}, 3U, 3U},
+                "one undo removes only the second composed operation");
+}
+
 }  // namespace
 
 int main() {
@@ -343,7 +427,8 @@ int main() {
                  authoredEmptyRegionSuppressesLegacyTerrain() &&
                  terrainGenerationWorkflowIsAtomicAndUndoable() &&
                  terrainGenerationRejectsStalePreviewAndCancelDoesNotMutate() &&
-                 desktopCommandsRouteTerrainPreviewAndApply()
+                 desktopCommandsRouteTerrainPreviewAndApply() &&
+                 sequentialGenerationPreservesEarlierRegion()
              ? EXIT_SUCCESS
              : EXIT_FAILURE;
 }

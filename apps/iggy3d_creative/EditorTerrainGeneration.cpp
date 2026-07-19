@@ -29,8 +29,9 @@ bool creativeEditorTerrainGenerationPreviewMatches(
          state.sourceDocumentId == document.id() &&
          state.sourceDocumentRevision == document.revision() &&
          state.generation.receipt.accepted &&
-         state.generation.receipt.status ==
-             cr::CreativeTerrainGenerationStatus::Ready;
+         state.composition.receipt.accepted &&
+         state.composition.receipt.status ==
+             cr::CreativeTerrainCompositionStatus::Ready;
 }
 
 bool synchronizeCreativeEditorTerrainGeneration(
@@ -43,6 +44,7 @@ bool synchronizeCreativeEditorTerrainGeneration(
   }
   state.previewActive = false;
   state.generation = {};
+  state.composition = {};
   state.sourceDocumentId = cr::kInvalidDocumentId;
   state.sourceDocumentRevision = 0U;
   state.statusMessage = "Preview canceled: document changed";
@@ -65,22 +67,33 @@ previewCreativeEditorTerrainGeneration(
   }
 
   state.generation = cr::buildCreativeTerrainGenerationPlan(state.recipe);
+  state.composition = {};
+  if (state.generation.receipt.accepted) {
+    const cr::CreativeTerrainSurfacePlan canonicalSource =
+        cr::buildCreativeComposedTerrainSurfacePlan(
+            document.terrainField(), document.terrainHeightField());
+    state.composition = cr::composeCreativeTerrainGeneration(
+        document.terrainHeightField(), canonicalSource, state.generation,
+        state.compositionRecipe);
+  }
   state.sourceDocumentId = document.id();
   state.sourceDocumentRevision = document.revision();
   ++state.generationCount;
   state.previewActive = true;
 
-  receipt.accepted = state.generation.receipt.accepted;
+  receipt.accepted = state.composition.receipt.accepted;
   receipt.previewActive = true;
   receipt.seed = state.recipe.seed;
   receipt.generationCount = state.generationCount;
-  receipt.reasonCode = state.generation.receipt.reasonCode;
+  receipt.reasonCode = !state.generation.receipt.accepted
+                           ? state.generation.receipt.reasonCode
+                           : state.composition.receipt.reasonCode;
   if (receipt.accepted) {
     state.statusMessage =
         advanceSeed ? "Terrain regenerated" : "Terrain preview ready";
   } else {
     state.statusMessage =
-        "Preview failed: " + std::string(state.generation.receipt.reasonCode);
+        "Preview failed: " + std::string(receipt.reasonCode);
   }
   return receipt;
 }
@@ -91,6 +104,7 @@ bool cancelCreativeEditorTerrainGeneration(
   const bool changed = state.previewActive || state.generation.receipt.requested;
   state.previewActive = false;
   state.generation = {};
+  state.composition = {};
   state.sourceDocumentId = cr::kInvalidDocumentId;
   state.sourceDocumentRevision = 0U;
   state.statusMessage = reasonCode.empty() ? "Terrain preview canceled"
@@ -118,7 +132,7 @@ applyCreativeEditorTerrainGeneration(
   StandaloneEditTransaction transaction = beginEditTransaction(
       appState.facade, "desktop_terrain_generation_apply");
   const cr::CreativeTerrainHeightField& heightField =
-      state.generation.plan.heightField;
+      state.composition.heightField;
   receipt.replacement = appState.facade.replaceTerrainHeightField(
       heightField.bounds(), heightField.heights());
   receipt.history = completeEditTransaction(

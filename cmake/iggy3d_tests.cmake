@@ -573,6 +573,11 @@ iggy3d_add_unit_test(creative_terrain_generation_tests
 set_tests_properties(creative_terrain_generation_tests PROPERTIES
   LABELS "unit;app;creative;document;recipe;terrain;generation;iggy3d")
 
+iggy3d_add_unit_test(creative_terrain_composition_tests
+  tests/unit/creative_terrain_composition_tests.cpp)
+set_tests_properties(creative_terrain_composition_tests PROPERTIES
+  LABELS "unit;app;creative;document;recipe;terrain;composition;iggy3d")
+
 iggy3d_add_unit_test(creative_terrain_paint_tests
   tests/unit/creative_terrain_paint_tests.cpp)
 set_tests_properties(creative_terrain_paint_tests PROPERTIES

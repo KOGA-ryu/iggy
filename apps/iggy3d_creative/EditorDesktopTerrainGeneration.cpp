@@ -120,10 +120,47 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
         recipeChanged;
   }
 
+  ImGui::SeparatorText("Composition");
+  constexpr std::array<const char*, 2U> maskLabels{
+      "Rectangle",
+      "Ellipse",
+  };
+  int mask = static_cast<int>(state.compositionRecipe.mask);
+  if (ImGui::Combo("Mask", &mask, maskLabels.data(),
+                   static_cast<int>(maskLabels.size()))) {
+    state.compositionRecipe.mask =
+        static_cast<cr::CreativeTerrainCompositionMask>(mask);
+    recipeChanged = true;
+  }
+  constexpr std::array<const char*, 3U> modeLabels{
+      "Replace",
+      "Raise",
+      "Lower",
+  };
+  int mode = static_cast<int>(state.compositionRecipe.mode);
+  if (ImGui::Combo("Mode", &mode, modeLabels.data(),
+                   static_cast<int>(modeLabels.size()))) {
+    state.compositionRecipe.mode =
+        static_cast<cr::CreativeTerrainCompositionMode>(mode);
+    recipeChanged = true;
+  }
+  int feather = static_cast<int>(state.compositionRecipe.featherCells);
+  if (ImGui::DragInt(
+          "Feather", &feather, 0.25F, 0,
+          static_cast<int>(
+              cr::kCreativeTerrainCompositionMaximumFeatherCells),
+          "%d cells", ImGuiSliderFlags_AlwaysClamp)) {
+    state.compositionRecipe.featherCells =
+        static_cast<std::uint16_t>(feather);
+    recipeChanged = true;
+  }
+
   const std::uint64_t cellCount =
       static_cast<std::uint64_t>(recipe.bounds.widthCells) *
       recipe.bounds.depthCells;
-  const bool recipeValid = cr::isValidCreativeTerrainGeneratorRecipe(recipe);
+  const bool recipeValid =
+      cr::isValidCreativeTerrainGeneratorRecipe(recipe) &&
+      cr::isValidCreativeTerrainCompositionRecipe(state.compositionRecipe);
   ImGui::Text("Cells  %llu / %llu",
               static_cast<unsigned long long>(cellCount),
               static_cast<unsigned long long>(
@@ -168,15 +205,32 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
   if (state.generation.receipt.accepted) {
     const cr::CreativeTerrainGenerationReceipt& generation =
         state.generation.receipt;
-    ImGui::TextColored(ImVec4{0.20F, 1.0F, 0.35F, 1.0F}, "READY");
     ImGui::Text("Height  %u - %u cells", generation.minimumHeightCells,
                 generation.maximumHeightCells);
     ImGui::Text("Seed  %llu", static_cast<unsigned long long>(recipe.seed));
-    ImGui::Text("Hash  %016llx",
-                static_cast<unsigned long long>(generation.heightHash));
+    if (state.composition.receipt.accepted) {
+      ImGui::TextColored(ImVec4{0.20F, 1.0F, 0.35F, 1.0F}, "READY");
+      ImGui::Text("Modified  %llu  Feathered  %llu",
+                  static_cast<unsigned long long>(
+                      state.composition.receipt.modifiedCellCount),
+                  static_cast<unsigned long long>(
+                      state.composition.receipt.featheredCellCount));
+      ImGui::Text(
+          "Hash  %016llx",
+          static_cast<unsigned long long>(
+              state.composition.receipt.heightHash));
+    }
   } else if (state.previewActive && state.generation.receipt.requested) {
     const std::string_view status =
         cr::toString(state.generation.receipt.status);
+    ImGui::TextColored(ImVec4{1.0F, 0.34F, 0.30F, 1.0F}, "%.*s",
+                       static_cast<int>(status.size()), status.data());
+  }
+  if (state.previewActive && state.generation.receipt.accepted &&
+      state.composition.receipt.requested &&
+      !state.composition.receipt.accepted) {
+    const std::string_view status =
+        cr::toString(state.composition.receipt.status);
     ImGui::TextColored(ImVec4{1.0F, 0.34F, 0.30F, 1.0F}, "%.*s",
                        static_cast<int>(status.size()), status.data());
   }
