@@ -128,9 +128,11 @@ bool pointerPolicyCapturesOnViewportClick() {
   // Click that ImGui consumed (over a panel) must NOT capture.
   const auto overPanel = decideCreativeDesktopPointerCapture(
       true, false, /*primaryPressedOverViewport=*/false, true, true);
-  return expect(capture.captured && capture.changed,
-                "viewport click captures the pointer") &&
-         expect(!overPanel.captured && !overPanel.changed,
+  return expect(capture.captured && capture.changed &&
+                    capture.consumePrimaryPress,
+                "viewport click captures the pointer and consumes the press") &&
+         expect(!overPanel.captured && !overPanel.changed &&
+                    !overPanel.consumePrimaryPress,
                 "a click consumed by a panel does not capture");
 }
 
@@ -145,11 +147,14 @@ bool pointerPolicyReleasesWhenLeavingViewport() {
   // Held capture + still in the viewport, focused -> stays captured.
   const auto stays = decideCreativeDesktopPointerCapture(true, true, false,
                                                          true, true);
-  return expect(!modalOpened.captured && modalOpened.changed,
+  return expect(!modalOpened.captured && modalOpened.changed &&
+                    !modalOpened.consumePrimaryPress,
                 "leaving the viewport context releases the pointer") &&
-         expect(!focusLost.captured && focusLost.changed,
+         expect(!focusLost.captured && focusLost.changed &&
+                    !focusLost.consumePrimaryPress,
                 "losing focus releases the pointer") &&
-         expect(stays.captured && !stays.changed,
+         expect(stays.captured && !stays.changed &&
+                    !stays.consumePrimaryPress,
                 "staying in the viewport keeps the pointer captured");
 }
 
@@ -161,9 +166,11 @@ bool pointerPolicyIsInertWhenShellOff() {
       /*shellEnabled=*/false, false, true, true, true);
   const auto releaseStale = decideCreativeDesktopPointerCapture(
       false, /*currentlyCaptured=*/true, true, true, true);
-  return expect(!clean.captured && !clean.changed,
+  return expect(!clean.captured && !clean.changed &&
+                    !clean.consumePrimaryPress,
                 "shell-off never captures") &&
-         expect(!releaseStale.captured && releaseStale.changed,
+         expect(!releaseStale.captured && releaseStale.changed &&
+                    !releaseStale.consumePrimaryPress,
                 "shell-off releases a stale capture");
 }
 

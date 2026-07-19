@@ -430,6 +430,25 @@ int main(int argc, char** argv) {
                     editor.desktopUi.viewportPointerCaptured,
                     primaryOverViewport, viewportContext,
                     frameInput.windowFocused);
+        if (pointerDecision.consumePrimaryPress) {
+          // Click-to-capture owns this press. Do not also remove/place/select in
+          // the editor or attack in Play on the frame fly-look is acquired.
+          creative::setCreativeInputKey(
+              frameInput.inputFrame,
+              creative::CreativeInputKey::MousePrimary, false);
+          creative::creativeInputRouteRemove(
+              frameInput.routedInput,
+              creative::CreativeInputActionId::PrimaryAction);
+          creative::creativeInputRouteRemove(
+              frameInput.routedInput,
+              creative::CreativeInputActionId::RuntimeAttack);
+          constexpr std::size_t primaryActionIndex =
+              static_cast<std::size_t>(
+                  creative::CreativeWorldActionId::Primary);
+          frameInput.worldActions.down[primaryActionIndex] = false;
+          frameInput.worldActions.pressed[primaryActionIndex] = false;
+          frameInput.worldActions.released[primaryActionIndex] = false;
+        }
         if (pointerDecision.changed) {
           editor.desktopUi.viewportPointerCaptured = pointerDecision.captured;
           static_cast<void>(

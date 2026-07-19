@@ -138,6 +138,9 @@ struct CreativeEditorDesktopUiState {
 struct CreativeDesktopPointerDecision {
   bool captured = false;
   bool changed = false;
+  // The primary press that enters fly-look is pointer ownership, not a world
+  // edit. The caller must consume that press before downstream input handling.
+  bool consumePrimaryPress = false;
 };
 
 // The full IDE shell is opt-in. Scripted capture remains UI-free even when a

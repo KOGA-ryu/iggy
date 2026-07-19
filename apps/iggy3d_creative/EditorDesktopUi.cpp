@@ -170,6 +170,7 @@ CreativeDesktopPointerDecision decideCreativeDesktopPointerCapture(
     }
   } else if (windowFocused && viewportContext && primaryPressedOverViewport) {
     next = true;
+    decision.consumePrimaryPress = true;
   }
   decision.captured = next;
   decision.changed = next != currentlyCaptured;
