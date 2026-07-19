@@ -14,6 +14,25 @@ bool dispatchCreativeDesktopWorldLayoutBuildingCommand(
   creative::CreativeAppState& appState = context.appState;
   CreativeEditorState& editor = context.editor;
   switch (command.id) {
+    case CreativeDesktopCommandId::WorldLayoutCreateBuildingBlockout: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutBuildingBlockoutPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout building blockout: payload mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          createCreativeEditorWorldLayoutBuildingBlockout(
+              editor.worldLayout, payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutManipulateBuilding: {
       const auto* payload =
           payloadAs<CreativeDesktopWorldLayoutBuildingManipulationPayload>(

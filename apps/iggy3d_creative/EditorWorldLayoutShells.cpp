@@ -89,6 +89,38 @@ CreativeEditorWorldLayoutEditReceipt commitRoomCandidate(
   return {true, true, std::move(reasonCode)};
 }
 
+CreativeEditorWorldLayoutEditReceipt commitBuildingBlockoutCandidate(
+    CreativeEditorWorldLayoutState& state,
+    cr::CreativeWorldLayout candidate, std::uint64_t nextStableOrdinal,
+    std::size_t buildingIndex, std::size_t levelIndex) {
+  const cr::CreativeWorldLayoutRoomCompileResult expanded =
+      cr::expandCreativeWorldLayoutRooms(candidate);
+  if (!expanded.accepted) {
+    state.statusMessage =
+        expanded.status ==
+                cr::CreativeWorldLayoutRoomCompileStatus::OverlappingRooms
+            ? "rooms may touch but cannot overlap"
+            : expanded.reasonCode;
+    return {false, false, expanded.reasonCode};
+  }
+  if (cr::creativeWorldLayoutHasInteriorRoomWindow(candidate)) {
+    state.statusMessage =
+        "blockout would turn an exterior window into an interior opening";
+    return {false, false,
+            "creative_editor_world_layout_blockout_interior_window"};
+  }
+
+  state.source = std::move(candidate);
+  state.nextStableOrdinal = nextStableOrdinal;
+  state.activeLevelIndex = levelIndex;
+  state.selection = {CreativeEditorWorldLayoutSelectionKind::Building,
+                     buildingIndex};
+  noteWorldLayoutSourceChange(
+      state, "building blockout staged; preview or confirm in 3D");
+  return {true, true,
+          "creative_editor_world_layout_building_blockout_created"};
+}
+
 bool roomFootprintOverlaps(const cr::CreativeWorldLayout& layout,
                            cr::CreativeWorldLayoutRect footprint,
                            std::size_t buildingIndex,
@@ -108,6 +140,36 @@ bool roomFootprintOverlaps(const cr::CreativeWorldLayout& layout,
             std::min(footprint.maximum.x, existing.maximum.x) &&
         std::max(footprint.minimum.z, existing.minimum.z) <
             std::min(footprint.maximum.z, existing.maximum.z)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool blockoutOverlapsExistingRoom(
+    const cr::CreativeWorldLayout& layout,
+    const CreativeEditorWorldLayoutRoomSettings& settings) noexcept {
+  const double candidateBottom = settings.floorTopLayer;
+  const double candidateTop =
+      candidateBottom + static_cast<double>(settings.wallHeightCells);
+  for (const cr::CreativeWorldLayoutRoom& room : layout.rooms) {
+    if (room.levelIndex >= layout.levels.size()) {
+      continue;
+    }
+    const cr::CreativeWorldLayoutRect existing = room.footprint;
+    const bool horizontalOverlap =
+        std::max(settings.footprint.minimum.x, existing.minimum.x) <
+            std::min(settings.footprint.maximum.x, existing.maximum.x) &&
+        std::max(settings.footprint.minimum.z, existing.minimum.z) <
+            std::min(settings.footprint.maximum.z, existing.maximum.z);
+    const cr::CreativeWorldLayoutLevel& level = layout.levels[room.levelIndex];
+    const double existingBottom = level.floorTopLayer;
+    const double existingTop =
+        existingBottom + static_cast<double>(level.wallHeightCells);
+    const bool verticalOverlap =
+        std::max(candidateBottom, existingBottom) <
+        std::min(candidateTop, existingTop) - kOpeningGeometryEpsilon;
+    if (horizontalOverlap && verticalOverlap) {
       return true;
     }
   }
@@ -289,6 +351,74 @@ createCreativeEditorWorldLayoutBuildingShell(
       state, std::move(candidate), nextStableOrdinal, roomIndex,
       "building shell staged; preview or confirm in 3D",
       "creative_editor_world_layout_building_shell_created");
+}
+
+CreativeEditorWorldLayoutEditReceipt
+createCreativeEditorWorldLayoutBuildingBlockout(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutBuildingBlockoutSettings settings) {
+  if (!validShellSettings(settings.shell)) {
+    state.statusMessage =
+        "building blockout needs valid floor, wall, and roof dimensions";
+    return {false, false,
+            "creative_editor_world_layout_building_blockout_settings_invalid"};
+  }
+
+  const cr::CreativeWorldLayoutBuildingBlockoutPlan blockout =
+      cr::planCreativeWorldLayoutBuildingBlockout(
+          {settings.shell.footprint, settings.pattern,
+           settings.shell.wallThicknessCells});
+  if (!blockout.accepted) {
+    state.statusMessage = blockout.reasonCode;
+    return {false, false, std::string(blockout.reasonCode)};
+  }
+  if (blockoutOverlapsExistingRoom(state.source, settings.shell)) {
+    state.statusMessage = "building blockout overlaps an existing building";
+    return {false, false,
+            "creative_editor_world_layout_building_blockout_overlap"};
+  }
+
+  cr::CreativeWorldLayout candidate = state.source;
+  std::uint64_t nextStableOrdinal = state.nextStableOrdinal;
+  const std::size_t buildingIndex = candidate.buildings.size();
+  const std::size_t levelIndex = candidate.levels.size();
+
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = cr::mintCreativeWorldLayoutStableKey(
+      candidate, nextStableOrdinal, "building");
+  building.name = "Building " + std::to_string(buildingIndex + 1U);
+  building.rootMode = cr::CreativeBuildingRootMode::None;
+  building.rootFootprint = blockout.footprint;
+  building.rootHeightCells = settings.shell.wallHeightCells;
+  candidate.buildings.push_back(std::move(building));
+
+  cr::CreativeWorldLayoutLevel level;
+  level.buildingIndex = buildingIndex;
+  level.stableKey = cr::mintCreativeWorldLayoutStableKey(
+      candidate, nextStableOrdinal, "level");
+  level.name = "Level 0";
+  level.floorTopLayer = settings.shell.floorTopLayer;
+  level.wallHeightCells = settings.shell.wallHeightCells;
+  level.floorThicknessLayers = settings.shell.floorThicknessLayers;
+  level.roofThicknessLayers = settings.shell.roofThicknessLayers;
+  level.roofStyle = settings.shell.roofStyle;
+  level.roofRidgeAxis = settings.shell.roofRidgeAxis;
+  level.roofPitchDegrees = settings.shell.roofPitchDegrees;
+  level.roofOverhangCells = settings.shell.roofOverhangCells;
+  candidate.levels.push_back(std::move(level));
+
+  const std::size_t firstRoomIndex = candidate.rooms.size();
+  for (std::size_t index = 0U; index < blockout.roomCount; ++index) {
+    CreativeEditorWorldLayoutRoomSettings roomSettings = settings.shell;
+    roomSettings.footprint = blockout.rooms[index];
+    candidate.rooms.push_back(makeRoom(
+        roomSettings, buildingIndex, levelIndex, firstRoomIndex + index,
+        cr::mintCreativeWorldLayoutStableKey(candidate, nextStableOrdinal,
+                                              "room")));
+  }
+
+  return commitBuildingBlockoutCandidate(
+      state, std::move(candidate), nextStableOrdinal, buildingIndex, levelIndex);
 }
 
 CreativeEditorWorldLayoutEditReceipt createCreativeEditorWorldLayoutRoom(

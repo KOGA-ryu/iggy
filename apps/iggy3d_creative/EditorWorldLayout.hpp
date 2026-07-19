@@ -189,6 +189,10 @@ createCreativeEditorWorldLayoutBuildingShell(
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutRoomSettings settings);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+createCreativeEditorWorldLayoutBuildingBlockout(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutBuildingBlockoutSettings settings);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 createCreativeEditorWorldLayoutRoom(
     CreativeEditorWorldLayoutState& state, std::size_t levelIndex,
     CreativeEditorWorldLayoutRoomSettings settings);

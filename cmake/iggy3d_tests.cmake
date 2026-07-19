@@ -512,6 +512,17 @@ set_tests_properties(creative_editor_world_layout_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;editor;world;layout;iggy3d")
 
+add_executable(creative_editor_building_blockout_tests
+  tests/unit/creative_editor_building_blockout_tests.cpp)
+target_link_libraries(creative_editor_building_blockout_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_building_blockout_tests)
+add_test(NAME creative_editor_building_blockout_tests
+  COMMAND "$<TARGET_FILE:creative_editor_building_blockout_tests>")
+set_tests_properties(creative_editor_building_blockout_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;editor;world;layout;building;blockout;iggy3d")
+
 add_executable(creative_editor_world_layout_topography_tests
   tests/unit/creative_editor_world_layout_topography_tests.cpp)
 target_link_libraries(creative_editor_world_layout_topography_tests PRIVATE

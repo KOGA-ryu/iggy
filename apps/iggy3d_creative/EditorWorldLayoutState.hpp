@@ -12,6 +12,7 @@
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBlockout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutTerrainReconciliation.hpp"
 
@@ -159,6 +160,12 @@ struct CreativeEditorWorldLayoutRoomSettings {
   double roofPitchDegrees =
       cr::kDefaultCreativeStructuralRoofPitchDegrees;
   double roofOverhangCells = 0.0;
+};
+
+struct CreativeEditorWorldLayoutBuildingBlockoutSettings {
+  CreativeEditorWorldLayoutRoomSettings shell;
+  cr::CreativeWorldLayoutBuildingBlockoutPattern pattern =
+      cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom;
 };
 
 struct CreativeEditorWorldLayoutRoomSettingsDraft {
