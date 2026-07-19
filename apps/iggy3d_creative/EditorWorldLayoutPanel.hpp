@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -65,6 +66,37 @@ enum class CreativeEditorWorldLayoutTerrainRegionField : std::uint8_t {
 [[nodiscard]] std::string_view
 creativeEditorWorldLayoutTerrainRegionTargetLabel(
     CreativeEditorWorldLayoutTerrainRegionOperation operation) noexcept;
+
+// The drafting status bar under the canvas. The plan canvas captures one
+// hover sample per frame; composing the bar's segments from editor state is
+// pure so the wording stays headless-testable. Zoom reads relative to the
+// canvas's default pixels-per-cell.
+inline constexpr float kCreativeEditorWorldLayoutStatusZoomBaselinePixels =
+    28.0F;
+
+struct CreativeEditorWorldLayoutCanvasHoverStatus {
+  bool present = false;
+  double cellX = 0.0;
+  double cellZ = 0.0;
+};
+
+struct CreativeEditorWorldLayoutStatusLine {
+  std::string cursor;
+  std::string zoom;
+  std::string snap;
+  std::string cells;
+  std::string message;
+  CreativeEditorWorldLayoutTerrainRegionPhase phase =
+      CreativeEditorWorldLayoutTerrainRegionPhase::Idle;
+  bool regionMessage = false;
+};
+
+[[nodiscard]] CreativeEditorWorldLayoutStatusLine
+composeCreativeEditorWorldLayoutStatusLine(
+    const CreativeEditorWorldLayoutState& state,
+    const CreativeEditorWorldLayoutTopographyState& topography,
+    const CreativeEditorTerrainGenerationState& terrainGeneration,
+    const CreativeEditorWorldLayoutCanvasHoverStatus& hover);
 
 // The toolbox strip is the drafting-UI icon column docked to the canvas's
 // left edge. Its roster and per-button state are pure projections of the

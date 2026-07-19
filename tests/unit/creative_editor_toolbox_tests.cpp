@@ -265,6 +265,61 @@ bool terrainOptionsExposeTheRightFieldsPerOperation() {
                 "target labels match the inspector's wording");
 }
 
+bool statusLineComposesFromTheRightSources() {
+  CreativeEditorWorldLayoutState state;
+  CreativeEditorWorldLayoutTopographyState topography;
+  CreativeEditorTerrainGenerationState terrainGeneration;
+  iggy3d_creative_app::CreativeEditorWorldLayoutCanvasHoverStatus hover;
+  const auto compose = [&]() {
+    return iggy3d_creative_app::composeCreativeEditorWorldLayoutStatusLine(
+        state, topography, terrainGeneration, hover);
+  };
+  const auto idle = compose();
+  hover.present = true;
+  hover.cellX = -0.2;
+  hover.cellZ = 5.9;
+  state.canvasPixelsPerCell = 33.6F;
+  const auto hovered = compose();
+  state.tool = CreativeEditorWorldLayoutTool::CatalogAsset;
+  state.catalogPlacement.snapMode =
+      iggy3d_creative_app::CreativeEditorWorldLayoutCatalogSnapMode::Wall;
+  const auto snapping = compose();
+  topography.region.editingEnabled = true;
+  topography.region.regionValid = true;
+  topography.region.bounds.minimum.x = -1;
+  topography.region.bounds.minimum.z = -1;
+  topography.region.bounds.widthCells = 2U;
+  topography.region.bounds.depthCells = 2U;
+  const auto validRegion = compose();
+  topography.region.ownsPreview = true;
+  terrainGeneration.operationPreview.receipt.replay.modifiedCellCount = 57U;
+  terrainGeneration.operationPreview.receipt.replay.outputCellCount = 4096U;
+  const auto owningPreview = compose();
+  return expect(idle.cursor == "Cell --" && idle.zoom == "Zoom 100%",
+                "the idle bar shows no cell and the baseline zoom") &&
+         expect(idle.snap.empty() && idle.cells.empty(),
+                "the idle bar omits snap and cell segments") &&
+         expect(!idle.regionMessage && idle.message == state.statusMessage,
+                "outside region editing the layout status is the message") &&
+         expect(hovered.cursor == "Cell -1, 5",
+                "hover cells floor toward negative infinity") &&
+         expect(hovered.zoom == "Zoom 120%",
+                "zoom reads as a percentage of the default scale") &&
+         expect(snapping.snap == "Snap wall",
+                "the catalog tool reports its snap mode") &&
+         expect(validRegion.regionMessage &&
+                    validRegion.message == topography.region.statusMessage,
+                "region editing promotes the region status message") &&
+         expect(validRegion.cells == "4 candidate cells",
+                "a valid region reports its candidate cells") &&
+         expect(owningPreview.cells == "Changed 57 / 4096 cells",
+                "an owned preview reports the replay cell counts") &&
+         expect(owningPreview.phase ==
+                    iggy3d_creative_app::
+                        CreativeEditorWorldLayoutTerrainRegionPhase::Ready,
+                "owning the preview classifies as ready");
+}
+
 }  // namespace
 
 int main() {
@@ -273,5 +328,6 @@ int main() {
   ok = classificationTracksActiveToolAndTemplates() && ok;
   ok = regionToggleFollowsTheTerrainWorkflow() && ok;
   ok = terrainOptionsExposeTheRightFieldsPerOperation() && ok;
+  ok = statusLineComposesFromTheRightSources() && ok;
   return ok ? 0 : 1;
 }

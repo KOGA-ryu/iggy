@@ -2790,6 +2790,43 @@ void drawWorldLayoutToolOptionsStrip(CreativeEditorState& editor,
   ImGui::EndDisabled();
 }
 
+// One text row under the canvas: hover cell, zoom, snap readout, region
+// metrics, and the live status message tinted the same way the Build window
+// tints it. Read-only; drawn outside the editing-disabled scope so it stays
+// legible during play mode.
+void drawWorldLayoutStatusBar(
+    const CreativeEditorState& editor,
+    const CreativeEditorWorldLayoutCanvasHoverStatus& hover) {
+  const CreativeEditorWorldLayoutStatusLine line =
+      composeCreativeEditorWorldLayoutStatusLine(
+          editor.worldLayout, editor.worldLayoutTopography,
+          editor.terrainGeneration, hover);
+  ImGui::AlignTextToFramePadding();
+  ImGui::TextDisabled("%s", line.cursor.c_str());
+  ImGui::SameLine(0.0F, 16.0F);
+  ImGui::TextDisabled("%s", line.zoom.c_str());
+  if (!line.snap.empty()) {
+    ImGui::SameLine(0.0F, 16.0F);
+    ImGui::TextDisabled("%s", line.snap.c_str());
+  }
+  if (!line.cells.empty()) {
+    ImGui::SameLine(0.0F, 16.0F);
+    ImGui::TextDisabled("%s", line.cells.c_str());
+  }
+  ImGui::SameLine(0.0F, 16.0F);
+  ImVec4 statusTint{0.32F, 0.95F, 0.43F, 1.0F};
+  if (line.regionMessage) {
+    if (line.phase == CreativeEditorWorldLayoutTerrainRegionPhase::Rejected ||
+        line.phase == CreativeEditorWorldLayoutTerrainRegionPhase::Stale) {
+      statusTint = ImVec4{0.95F, 0.35F, 0.32F, 1.0F};
+    } else if (line.phase !=
+               CreativeEditorWorldLayoutTerrainRegionPhase::Ready) {
+      statusTint = ImVec4{0.75F, 0.78F, 0.80F, 1.0F};
+    }
+  }
+  ImGui::TextColored(statusTint, "%s", line.message.c_str());
+}
+
 void drawWorldLayoutViewControls(CreativeEditorWorldLayoutState& state,
                                  CreativeEditorWorldLayoutTopographyState&
                                      topography,
@@ -2860,7 +2897,8 @@ void drawWorldLayoutViewControls(CreativeEditorWorldLayoutState& state,
 void drawLayoutCanvas(CreativeEditorState& editor,
                       const cr::CreativeDocument& document,
                       CreativeDesktopCommandFrame& commands,
-                      bool interactionEnabled) {
+                      bool interactionEnabled,
+                      CreativeEditorWorldLayoutCanvasHoverStatus* hoverStatus) {
   CreativeEditorWorldLayoutState& state = editor.worldLayout;
   CreativeEditorWorldLayoutTopographyState& topography =
       editor.worldLayoutTopography;
@@ -2920,6 +2958,13 @@ void drawLayoutCanvas(CreativeEditorState& editor,
     state.canvasPanZ += io.MouseDelta.y;
     transform.origin.x += io.MouseDelta.x;
     transform.origin.y += io.MouseDelta.y;
+  }
+  if (hovered && hoverStatus != nullptr) {
+    const CreativeEditorWorldLayoutPoint hoveredWorld =
+        toWorld(transform, io.MousePos);
+    hoverStatus->present = true;
+    hoverStatus->cellX = hoveredWorld.x;
+    hoverStatus->cellZ = hoveredWorld.z;
   }
 
   ImDrawList* drawList = ImGui::GetWindowDrawList();
@@ -4048,6 +4093,69 @@ std::string_view creativeEditorWorldLayoutTerrainRegionTargetLabel(
   return "";
 }
 
+CreativeEditorWorldLayoutStatusLine composeCreativeEditorWorldLayoutStatusLine(
+    const CreativeEditorWorldLayoutState& state,
+    const CreativeEditorWorldLayoutTopographyState& topography,
+    const CreativeEditorTerrainGenerationState& terrainGeneration,
+    const CreativeEditorWorldLayoutCanvasHoverStatus& hover) {
+  CreativeEditorWorldLayoutStatusLine line;
+  char buffer[64];
+  if (hover.present) {
+    std::snprintf(buffer, sizeof buffer, "Cell %lld, %lld",
+                  static_cast<long long>(std::floor(hover.cellX)),
+                  static_cast<long long>(std::floor(hover.cellZ)));
+  } else {
+    std::snprintf(buffer, sizeof buffer, "Cell --");
+  }
+  line.cursor = buffer;
+  const long long zoomPercent = std::llround(
+      static_cast<double>(state.canvasPixelsPerCell) * 100.0 /
+      static_cast<double>(kCreativeEditorWorldLayoutStatusZoomBaselinePixels));
+  std::snprintf(buffer, sizeof buffer, "Zoom %lld%%", zoomPercent);
+  line.zoom = buffer;
+  if (state.tool == CreativeEditorWorldLayoutTool::CatalogAsset) {
+    const char* snapName = "grid";
+    switch (state.catalogPlacement.snapMode) {
+      case CreativeEditorWorldLayoutCatalogSnapMode::Floor:
+        snapName = "floor";
+        break;
+      case CreativeEditorWorldLayoutCatalogSnapMode::Wall:
+        snapName = "wall";
+        break;
+      case CreativeEditorWorldLayoutCatalogSnapMode::Grid:
+      case CreativeEditorWorldLayoutCatalogSnapMode::Count:
+        break;
+    }
+    std::snprintf(buffer, sizeof buffer, "Snap %s", snapName);
+    line.snap = buffer;
+  }
+  const CreativeEditorWorldLayoutTerrainRegionState& region = topography.region;
+  if (region.editingEnabled) {
+    line.regionMessage = true;
+    line.phase = classifyCreativeEditorWorldLayoutTerrainRegionPhase(region);
+    line.message = region.statusMessage;
+    if (region.ownsPreview) {
+      const cr::CreativeTerrainOperationReplayReceipt& replay =
+          terrainGeneration.operationPreview.receipt.replay;
+      std::snprintf(buffer, sizeof buffer, "Changed %llu / %llu cells",
+                    static_cast<unsigned long long>(replay.modifiedCellCount),
+                    static_cast<unsigned long long>(replay.outputCellCount));
+      line.cells = buffer;
+    } else {
+      const CreativeEditorWorldLayoutTerrainRegionMetrics metrics =
+          measureCreativeEditorWorldLayoutTerrainRegion(region);
+      if (metrics.present) {
+        std::snprintf(buffer, sizeof buffer, "%u candidate cells",
+                      metrics.candidateCellCount);
+        line.cells = buffer;
+      }
+    }
+  } else {
+    line.message = state.statusMessage;
+  }
+  return line;
+}
+
 CreativeEditorWorldLayoutTerrainRegionPhase
 classifyCreativeEditorWorldLayoutTerrainRegionPhase(
     const CreativeEditorWorldLayoutTerrainRegionState& region) noexcept {
@@ -4416,16 +4524,26 @@ void buildCreativeEditorWorldLayoutPanel(
         !editingDisabled && !state.buildingTransform.active;
     drawWorldLayoutToolOptionsStrip(editor, commands);
     ImGui::Separator();
-    drawWorldLayoutToolboxStrip(editor, commands);
-    ImGui::SameLine();
-    if (state.viewMode == CreativeEditorWorldLayoutViewMode::Elevation) {
-      drawCreativeEditorWorldLayoutElevationCanvas(
-          editor, document.gridSettings(), commands,
-          canvasInteractionEnabled);
-    } else {
-      drawLayoutCanvas(editor, document, commands, canvasInteractionEnabled);
+    CreativeEditorWorldLayoutCanvasHoverStatus canvasHover;
+    const float statusBarHeight = ImGui::GetFrameHeight();
+    if (ImGui::BeginChild("##world_layout_canvas_host",
+                          ImVec2{0.0F, -statusBarHeight}, ImGuiChildFlags_None,
+                          ImGuiWindowFlags_NoScrollbar |
+                              ImGuiWindowFlags_NoScrollWithMouse)) {
+      drawWorldLayoutToolboxStrip(editor, commands);
+      ImGui::SameLine();
+      if (state.viewMode == CreativeEditorWorldLayoutViewMode::Elevation) {
+        drawCreativeEditorWorldLayoutElevationCanvas(
+            editor, document.gridSettings(), commands,
+            canvasInteractionEnabled);
+      } else {
+        drawLayoutCanvas(editor, document, commands, canvasInteractionEnabled,
+                         &canvasHover);
+      }
     }
+    ImGui::EndChild();
     ImGui::EndDisabled();
+    drawWorldLayoutStatusBar(editor, canvasHover);
   } else {
     queueLayoutManipulationCancel(state, commands);
     if (topography.region.editingEnabled || topography.region.ownsPreview) {
