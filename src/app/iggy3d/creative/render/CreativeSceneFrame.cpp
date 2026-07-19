@@ -2,6 +2,7 @@
 
 #include <cmath>
 
+#include "app/iggy3d/creative/camera/Fly.hpp"
 #include "core/math/Mat4.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "projection/scene/SceneProjection.hpp"
@@ -64,7 +65,6 @@ FrameInput makeCreativeVulkanFrame(const SceneProjectionResult& scene,
                                    Vec3 cameraAnchorOverrideMeters,
                                    RenderContentViewport contentViewport) {
   constexpr float kPi = 3.14159265358979323846F;
-  constexpr float kEyeHeightMeters = 1.7F;
   FrameInput frame;
   frame.viewport = {viewportWidth, viewportHeight,
                     static_cast<float>(viewportWidth) /
@@ -78,15 +78,17 @@ FrameInput makeCreativeVulkanFrame(const SceneProjectionResult& scene,
                               static_cast<float>(effectiveContent.height);
   frame.clock = {scene.sourceTick, frameIndex, 0.0F, 1.0F / 60.0F};
   frame.camera.mode = RenderCameraMode::FirstPerson;
-  Vec3 eye{0.0F, kEyeHeightMeters, 0.0F};
+  Vec3 eye{0.0F, kProductCreativeCameraEyeHeightMeters, 0.0F};
   for (const SceneItem& item : scene.items) {
     if (item.kind == SceneItemKind::Player || item.stableName == "player") {
-      eye = item.transform.position + Vec3{0.0F, kEyeHeightMeters, 0.0F};
+      eye = item.transform.position +
+            Vec3{0.0F, kProductCreativeCameraEyeHeightMeters, 0.0F};
       break;
     }
   }
   if (cameraAnchorOverrideAvailable) {
-    eye = cameraAnchorOverrideMeters + Vec3{0.0F, kEyeHeightMeters, 0.0F};
+    eye = cameraAnchorOverrideMeters +
+          Vec3{0.0F, kProductCreativeCameraEyeHeightMeters, 0.0F};
   }
   const float yaw = cameraYawDegrees * kPi / 180.0F;
   const float pitch = cameraPitchDegrees * kPi / 180.0F;
@@ -101,7 +103,7 @@ FrameInput makeCreativeVulkanFrame(const SceneProjectionResult& scene,
       viewFromCamera(frame.camera.worldEye, frame.camera.worldForward,
                      frame.camera.worldUp);
   frame.camera.clipFromView = perspectiveMat4(
-      68.0F * kPi / 180.0F, contentAspect,
+      kProductCreativeCameraVerticalFovDegrees * kPi / 180.0F, contentAspect,
       frame.camera.nearPlane, frame.camera.farPlane);
   frame.camera.clipFromWorld =
       frame.camera.clipFromView * frame.camera.viewFromWorld;

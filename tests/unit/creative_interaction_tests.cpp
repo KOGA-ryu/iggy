@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <iostream>
 #include <limits>
 #include <span>
@@ -283,6 +284,88 @@ bool controllerMovementPreservesDirectionAndFineTravel() {
                                          diagonalResult.deltaMeters.z),
                               8.0F),
                 "full keyboard diagonal remains capped at full speed");
+}
+
+bool cameraBoundsFramingFitsThePerspectiveAndFailsClosed() {
+  iggy3d::ProductCreativeCameraFrameRequest request;
+  request.boundsMinMeters = {-6.0F, -1.0F, -2.0F};
+  request.boundsMaxMeters = {8.0F, 5.0F, 10.0F};
+  request.cameraYawDegrees = 35.0F;
+  request.cameraPitchDegrees = -22.0F;
+  request.viewportAspectRatio = 16.0F / 9.0F;
+  const iggy3d::ProductCreativeCameraFrameResult framed =
+      iggy3d::planProductCreativeCameraFrame(request);
+
+  constexpr float kPi = 3.14159265358979323846F;
+  const float yaw = request.cameraYawDegrees * kPi / 180.0F;
+  const float pitch = request.cameraPitchDegrees * kPi / 180.0F;
+  const float cosPitch = std::cos(pitch);
+  const iggy3d::Vec3 forward{std::sin(yaw) * cosPitch, std::sin(pitch),
+                             -std::cos(yaw) * cosPitch};
+  iggy3d::Vec3 right = iggy3d::cross(forward, {0.0F, 1.0F, 0.0F});
+  right = right / std::sqrt(iggy3d::lengthSquared(right));
+  const iggy3d::Vec3 up = iggy3d::cross(right, forward);
+  const iggy3d::Vec3 eye =
+      framed.anchorPositionMeters +
+      iggy3d::Vec3{0.0F, request.eyeHeightMeters, 0.0F};
+  const float verticalTangent =
+      std::tan(request.verticalFovDegrees * kPi / 360.0F);
+  const float horizontalTangent =
+      verticalTangent * request.viewportAspectRatio;
+  bool everyCornerFits = framed.applied;
+  for (std::uint32_t cornerIndex = 0U; cornerIndex < 8U; ++cornerIndex) {
+    const iggy3d::Vec3 corner{
+        (cornerIndex & 1U) != 0U ? request.boundsMaxMeters.x
+                                 : request.boundsMinMeters.x,
+        (cornerIndex & 2U) != 0U ? request.boundsMaxMeters.y
+                                 : request.boundsMinMeters.y,
+        (cornerIndex & 4U) != 0U ? request.boundsMaxMeters.z
+                                 : request.boundsMinMeters.z};
+    const iggy3d::Vec3 eyeToCorner = corner - eye;
+    const float depth = iggy3d::dot(eyeToCorner, forward);
+    everyCornerFits =
+        everyCornerFits && depth >= request.nearMarginMeters - 1.0e-4F &&
+        std::fabs(iggy3d::dot(eyeToCorner, right)) * request.paddingFactor <=
+            depth * horizontalTangent + 1.0e-4F &&
+        std::fabs(iggy3d::dot(eyeToCorner, up)) * request.paddingFactor <=
+            depth * verticalTangent + 1.0e-4F;
+  }
+
+  iggy3d::ProductCreativeCameraFrameRequest landscape = request;
+  landscape.boundsMinMeters = {-12.0F, -1.0F, -1.0F};
+  landscape.boundsMaxMeters = {12.0F, 1.0F, 1.0F};
+  landscape.cameraYawDegrees = 0.0F;
+  landscape.cameraPitchDegrees = 0.0F;
+  landscape.viewportAspectRatio = 16.0F / 9.0F;
+  iggy3d::ProductCreativeCameraFrameRequest portrait = landscape;
+  portrait.viewportAspectRatio = 9.0F / 16.0F;
+  const auto landscapeResult =
+      iggy3d::planProductCreativeCameraFrame(landscape);
+  const auto portraitResult =
+      iggy3d::planProductCreativeCameraFrame(portrait);
+
+  iggy3d::ProductCreativeCameraFrameRequest reversed = request;
+  reversed.boundsMinMeters.x = 9.0F;
+  reversed.boundsMaxMeters.x = 8.0F;
+  iggy3d::ProductCreativeCameraFrameRequest invalidAspect = request;
+  invalidAspect.viewportAspectRatio =
+      std::numeric_limits<float>::quiet_NaN();
+  const auto reversedResult =
+      iggy3d::planProductCreativeCameraFrame(reversed);
+  const auto invalidAspectResult =
+      iggy3d::planProductCreativeCameraFrame(invalidAspect);
+
+  return expect(everyCornerFits,
+                "camera framing contains every padded AABB corner") &&
+         expect(landscapeResult.applied && portraitResult.applied &&
+                    portraitResult.distanceMeters >
+                        landscapeResult.distanceMeters,
+                "portrait framing backs farther away for a wide scope") &&
+         expect(!reversedResult.applied &&
+                    reversedResult.reasonCode ==
+                        "creative_camera_frame_invalid_request" &&
+                    !invalidAspectResult.applied,
+                "camera framing rejects reversed and non-finite requests");
 }
 
 bool worldActionsAreEdgeTriggered() {
@@ -1445,6 +1528,7 @@ int main() {
   ok = controllerTransitionSanitizesAndOwnsEdges() && ok;
   ok = controllerStickPrimitiveHasCanonicalDirections() && ok;
   ok = controllerMovementPreservesDirectionAndFineTravel() && ok;
+  ok = cameraBoundsFramingFitsThePerspectiveAndFailsClosed() && ok;
   ok = worldActionsAreEdgeTriggered() && ok;
   ok = hotbarHasStableNineSlotGrammar() && ok;
   ok = heldItemRegistryOwnsEveryKind() && ok;

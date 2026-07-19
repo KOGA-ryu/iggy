@@ -1,7 +1,6 @@
 #include "EditorDesktopCommands.hpp"
 
 #include <algorithm>
-#include <cmath>
 #include <span>
 #include <string>
 #include <utility>
@@ -21,6 +20,7 @@
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/camera/Fly.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
 namespace iggy3d_creative_app {
@@ -269,44 +269,57 @@ CreativeEditorWorldLayoutEditReceipt repairWorldLayoutAsset(
          id == CreativeDesktopCommandId::WorldLayoutFocusObjectSource;
 }
 
+[[nodiscard]] float editorViewportAspectRatio(
+    const CreativeEditorState& editor) noexcept {
+  const iggy3d::RenderContentViewport viewport =
+      editor.desktopUi.contentViewport;
+  if (viewport.width > 0U && viewport.height > 0U) {
+    return static_cast<float>(viewport.width) /
+           static_cast<float>(viewport.height);
+  }
+  if (editor.lastWidth > 0U && editor.lastHeight > 0U) {
+    return static_cast<float>(editor.lastWidth) /
+           static_cast<float>(editor.lastHeight);
+  }
+  return 1.0F;
+}
+
+[[nodiscard]] bool focusEditorCameraOnBounds(
+    CreativeEditorState& editor,
+    creative::CreativeBounds bounds) noexcept {
+  const creative::CreativeCoreVec3Conversion boundsMin =
+      creative::creativeVec3ToCoreChecked(bounds.min);
+  const creative::CreativeCoreVec3Conversion boundsMax =
+      creative::creativeVec3ToCoreChecked(bounds.max);
+  if (!boundsMin.converted || !boundsMax.converted) {
+    return false;
+  }
+  iggy3d::ProductCreativeCameraFrameRequest request;
+  request.boundsMinMeters = boundsMin.value;
+  request.boundsMaxMeters = boundsMax.value;
+  request.cameraYawDegrees = editor.yawDegrees;
+  request.cameraPitchDegrees = editor.pitchDegrees;
+  request.viewportAspectRatio = editorViewportAspectRatio(editor);
+  const iggy3d::ProductCreativeCameraFrameResult frame =
+      iggy3d::planProductCreativeCameraFrame(request);
+  if (!frame.applied) {
+    return false;
+  }
+  editor.flyPos = frame.anchorPositionMeters;
+  return true;
+}
+
 [[nodiscard]] bool focusEditorCameraOnObject(
     CreativeEditorState& editor,
     const creative::CreativeObject& object) noexcept {
   const creative::CreativeTransformedBounds bounds =
       creative::resolveCreativeObjectBounds(object);
-  const creative::CreativeCoreVec3Conversion center =
-      creative::creativeVec3ToCoreChecked(
-          bounds.valid ? bounds.center : object.transform.position);
-  if (!center.converted || !std::isfinite(editor.yawDegrees) ||
-      !std::isfinite(editor.pitchDegrees)) {
-    return false;
-  }
-
-  constexpr float kPi = 3.14159265358979323846F;
-  constexpr float kEyeHeightMeters = 1.7F;
-  const float yaw = editor.yawDegrees * kPi / 180.0F;
-  const float pitch = editor.pitchDegrees * kPi / 180.0F;
-  const float cosPitch = std::cos(pitch);
-  const iggy3d::Vec3 forward{std::sin(yaw) * cosPitch, std::sin(pitch),
-                             -std::cos(yaw) * cosPitch};
-  const float longestDimension = bounds.valid
-                                     ? static_cast<float>(std::max(
-                                           {bounds.size.x, bounds.size.y,
-                                            bounds.size.z, 0.0}))
-                                     : 1.0F;
-  if (!std::isfinite(longestDimension)) {
-    return false;
-  }
-  const float distance = std::max(3.0F, longestDimension * 2.2F + 1.0F);
-  const iggy3d::Vec3 eye = center.value - forward * distance;
-  const iggy3d::Vec3 anchor =
-      eye - iggy3d::Vec3{0.0F, kEyeHeightMeters, 0.0F};
-  if (!std::isfinite(anchor.x) || !std::isfinite(anchor.y) ||
-      !std::isfinite(anchor.z)) {
-    return false;
-  }
-  editor.flyPos = anchor;
-  return true;
+  const creative::CreativeBounds focusBounds =
+      bounds.valid
+          ? bounds.worldBounds
+          : creative::CreativeBounds{object.transform.position,
+                                     object.transform.position};
+  return focusEditorCameraOnBounds(editor, focusBounds);
 }
 
 void dispatchOne(const CreativeDesktopCommand& command,
@@ -987,6 +1000,45 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
       result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutFrameSourceScope3D: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutSourcePayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout source frame: payload mismatch";
+        break;
+      }
+      if (!creativeEditorWorldLayoutSourceStableKeyMatches(
+              editor.worldLayout, payload->table, payload->index,
+              payload->stableKey)) {
+        result.message = "layout source frame: stale target";
+        break;
+      }
+      if (editor.worldLayout.generatedRevision !=
+          editor.worldLayout.revision) {
+        result.message = "layout source frame: generate pending edits";
+        break;
+      }
+      static_cast<void>(refreshCreativeDesktopGeneratedSourceScopeCache(
+          editor.generatedSourceScopeCache, appState.facade.document(),
+          editor.worldLayout.source, editor.worldLayout.sourceEpoch,
+          editor.worldLayout.revision, editor.worldLayout.generatedRevision,
+          payload->table, payload->index));
+      const CreativeDesktopGeneratedSourceScopeSummary& summary =
+          editor.generatedSourceScopeCache.summary;
+      if (!summary.valid || !summary.hasBounds) {
+        result.message = "layout source frame: no generated bounds";
+        break;
+      }
+      if (!focusEditorCameraOnBounds(editor, summary.worldBounds)) {
+        result.message = "layout source frame: bounds unavailable";
+        break;
+      }
+      result.accepted = true;
+      result.changed = true;
+      result.affectedObjectCount = summary.objectCount;
+      result.message = "source scope framed in 3D";
       break;
     }
     case CreativeDesktopCommandId::WorldLayoutSelectSourceScope: {

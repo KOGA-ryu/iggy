@@ -474,34 +474,56 @@ void appendCreativeDesktopGeneratedSourceSettings(
 
   const CreativeDesktopGeneratedSourceScopeEntry& scope =
       scopes.entries[activeScope];
+  const bool sourceSynchronized =
+      worldLayout.generatedRevision == worldLayout.revision;
+  const CreativeDesktopGeneratedSourceScopeSummary* summary = nullptr;
+  if (sourceSynchronized) {
+    static_cast<void>(refreshCreativeDesktopGeneratedSourceScopeCache(
+        scopeCache, document, worldLayout.source, worldLayout.sourceEpoch,
+        worldLayout.revision, worldLayout.generatedRevision, scope.table,
+        scope.index));
+    summary = &scopeCache.summary;
+  }
+
   ImGui::BeginDisabled(disabled);
-  if (ImGui::Button("Focus selected scope in 2D")) {
+  if (ImGui::Button("Focus in 2D")) {
     commands.push(CreativeDesktopCommandId::WorldLayoutFocusSource,
                   CreativeDesktopWorldLayoutSourcePayload{
                       scope.table, scope.index,
                       std::string(scope.stableKey)});
   }
   ImGui::EndDisabled();
+  if (ImGui::IsItemHovered()) {
+    ImGui::SetTooltip("Center this source on the 2D layout canvas");
+  }
+  ImGui::SameLine();
+  const bool frameUnavailable =
+      summary == nullptr || !summary->valid || !summary->hasBounds;
+  ImGui::BeginDisabled(disabled || frameUnavailable);
+  if (ImGui::Button("Frame in 3D")) {
+    commands.push(CreativeDesktopCommandId::WorldLayoutFrameSourceScope3D,
+                  CreativeDesktopWorldLayoutSourcePayload{
+                      scope.table, scope.index,
+                      std::string(scope.stableKey)});
+  }
+  ImGui::EndDisabled();
+  if (ImGui::IsItemHovered()) {
+    ImGui::SetTooltip("Frame every generated object in this source scope");
+  }
 
-  if (worldLayout.generatedRevision != worldLayout.revision) {
+  if (!sourceSynchronized) {
     ImGui::TextDisabled(
         "Generate pending 2D edits to refresh scope impact");
-  } else {
-    static_cast<void>(refreshCreativeDesktopGeneratedSourceScopeCache(
-        scopeCache, document, worldLayout.source, worldLayout.sourceEpoch,
-        worldLayout.revision, worldLayout.generatedRevision, scope.table,
-        scope.index));
-    const CreativeDesktopGeneratedSourceScopeSummary& summary =
-        scopeCache.summary;
-    if (summary.valid) {
+  } else if (summary != nullptr) {
+    if (summary->valid) {
       ImGui::TextDisabled("%zu generated objects (%zu visible, %zu hidden)",
-                          summary.objectCount, summary.visibleObjectCount,
-                          summary.hiddenObjectCount);
-      if (summary.hasBounds) {
+                          summary->objectCount, summary->visibleObjectCount,
+                          summary->hiddenObjectCount);
+      if (summary->hasBounds) {
         const cr::CreativeVec3 size{
-            summary.worldBounds.max.x - summary.worldBounds.min.x,
-            summary.worldBounds.max.y - summary.worldBounds.min.y,
-            summary.worldBounds.max.z - summary.worldBounds.min.z};
+            summary->worldBounds.max.x - summary->worldBounds.min.x,
+            summary->worldBounds.max.y - summary->worldBounds.min.y,
+            summary->worldBounds.max.z - summary->worldBounds.min.z};
         ImGui::TextDisabled("Scope bounds %.2f x %.2f x %.2f m", size.x,
                             size.y, size.z);
       }

@@ -1771,6 +1771,107 @@ bool worldLayoutSourceScopeSelectionDoesNotMoveTheCanvas() {
                 "explicit focus remains the only scope action that pans");
 }
 
+bool worldLayoutSourceScopeFramesThe3dCameraWithoutMutatingSource() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Source Scope Frame");
+  static_cast<void>(document.assignId(441U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  app::CreativeEditorState editor;
+  const auto shell = app::createCreativeEditorWorldLayoutBuildingShell(
+      editor.worldLayout, {{{0, 0}, {12, 8}}, 0.0, 4U, 0.25, 1U});
+  if (!shell.accepted || editor.worldLayout.source.rooms.empty()) {
+    return expect(false, "source scope frame fixture creates a room");
+  }
+
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const app::CreativeDesktopCommandResult previewed = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutPreview, context);
+  const app::CreativeDesktopCommandResult generated = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  if (!previewed.accepted || !generated.accepted) {
+    return expect(false, "source scope frame fixture generates 3D output");
+  }
+
+  const std::string roomKey = editor.worldLayout.source.rooms[0].stableKey;
+  editor.worldLayout.selection = {
+      app::CreativeEditorWorldLayoutSelectionKind::Room, 0U};
+  editor.worldLayout.canvasPanX = 13.0F;
+  editor.worldLayout.canvasPanZ = -7.0F;
+  editor.flyPos = {50.0F, 30.0F, 50.0F};
+  editor.yawDegrees = 28.0F;
+  editor.pitchDegrees = -18.0F;
+  editor.desktopUi.contentViewport = {0U, 0U, 1200U, 720U};
+  const iggy3d::Vec3 cameraBefore = editor.flyPos;
+  const std::uint64_t documentRevisionBefore =
+      appState.facade.document().revision();
+  const std::uint64_t sourceRevisionBefore = editor.worldLayout.revision;
+  const app::CreativeDesktopCommandResult framed = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutFrameSourceScope3D, context,
+      app::CreativeDesktopWorldLayoutSourcePayload{
+          cr::CreativeWorldLayoutTable::Room, 0U, roomKey});
+  const iggy3d::Vec3 cameraAfterFrame = editor.flyPos;
+  const bool framingPreservedSource =
+      appState.facade.document().revision() == documentRevisionBefore &&
+      editor.worldLayout.revision == sourceRevisionBefore;
+
+  const app::CreativeDesktopCommandResult stale = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutFrameSourceScope3D, context,
+      app::CreativeDesktopWorldLayoutSourcePayload{
+          cr::CreativeWorldLayoutTable::Room, 0U, "stale_room"});
+  const bool stalePreservedCamera =
+      editor.flyPos.x == cameraAfterFrame.x &&
+      editor.flyPos.y == cameraAfterFrame.y &&
+      editor.flyPos.z == cameraAfterFrame.z;
+
+  ++editor.worldLayout.revision;
+  const app::CreativeDesktopCommandResult pending = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutFrameSourceScope3D, context,
+      app::CreativeDesktopWorldLayoutSourcePayload{
+          cr::CreativeWorldLayoutTable::Room, 0U, roomKey});
+  const app::CreativeDesktopCommandResult mismatch = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutFrameSourceScope3D, context,
+      app::CreativeDesktopDeletePayload{{}});
+  const bool rejectedRequestsPreservedCamera =
+      editor.flyPos.x == cameraAfterFrame.x &&
+      editor.flyPos.y == cameraAfterFrame.y &&
+      editor.flyPos.z == cameraAfterFrame.z;
+
+  return expect(framed.accepted && framed.changed &&
+                    framed.affectedObjectCount > 0U &&
+                    editor.generatedSourceScopeCache.summary.valid &&
+                    editor.generatedSourceScopeCache.summary.hasBounds,
+                "source scope command frames its generated member bounds") &&
+         expect(cameraAfterFrame.x != cameraBefore.x ||
+                    cameraAfterFrame.y != cameraBefore.y ||
+                    cameraAfterFrame.z != cameraBefore.z,
+                "source scope framing moves the 3D camera anchor") &&
+         expect(editor.yawDegrees == 28.0F && editor.pitchDegrees == -18.0F &&
+                    editor.worldLayout.canvasPanX == 13.0F &&
+                    editor.worldLayout.canvasPanZ == -7.0F &&
+                    editor.worldLayout.selection.kind ==
+                        app::CreativeEditorWorldLayoutSelectionKind::Room &&
+                    editor.worldLayout.selection.index == 0U &&
+                    framingPreservedSource &&
+                    appState.facade.document().revision() ==
+                        documentRevisionBefore &&
+                    sourceRevisionBefore + 1U == editor.worldLayout.revision,
+                "3D framing preserves view direction, 2D focus, and source data") &&
+         expect(!stale.accepted && stalePreservedCamera &&
+                    rejectedRequestsPreservedCamera &&
+                    stale.message == "layout source frame: stale target" &&
+                    !pending.accepted &&
+                    pending.message ==
+                        "layout source frame: generate pending edits" &&
+                    !mismatch.accepted &&
+                    mismatch.message ==
+                        "layout source frame: payload mismatch",
+                "scope framing rejects stale, pending, and mistyped requests");
+}
+
 bool worldLayoutStructuralCommandsRouteThroughDispatcher() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document =
@@ -4471,6 +4572,7 @@ int main() {
   ok = mismatchedPayloadsAreNoOpFailures() && ok;
   ok = worldLayoutLevelCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutSourceScopeSelectionDoesNotMoveTheCanvas() && ok;
+  ok = worldLayoutSourceScopeFramesThe3dCameraWithoutMutatingSource() && ok;
   ok = worldLayoutStructuralCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutVerticalConnectorCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutBuildingTemplateCommandsRouteThroughDispatcher() && ok;
