@@ -5,6 +5,7 @@
 #include "EditorWorldLayoutHistory.hpp"
 
 #include "app/iggy3d/creative/world/WorldLayoutBlockout.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBlockoutMaterialization.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
@@ -12,6 +13,7 @@
 #include "app/iggy3d/creative/world/WorldLayoutVerticalConnectors.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <iostream>
@@ -92,6 +94,63 @@ app::CreativeEditorWorldLayoutBuildingBlockoutSettings gridBlockout() {
   settings.shell.roofThicknessLayers = 1U;
   settings.pattern = cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2;
   return settings;
+}
+
+bool sharedMaterializerOwnsCompleteAtomicBlockout() {
+  cr::CreativeWorldLayout source;
+  source.stableKey = "shared_blockout_materializer";
+  cr::CreativeWorldLayoutBuildingBlockoutRecipe recipe;
+  recipe.request.footprint = {{0, 0}, {12, 12}};
+  recipe.request.pattern =
+      cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2;
+  recipe.request.wallThicknessCells = 0.25;
+  recipe.request.wallHeightCells = 3U;
+  recipe.request.storeys.count = 2U;
+  recipe.floorTopLayer = 4.0;
+  constexpr std::array<std::string_view, 1U> tags{"source:test"};
+
+  const cr::CreativeWorldLayoutBuildingEditResult materialized =
+      cr::materializeCreativeWorldLayoutBuildingBlockout(
+          source, recipe, 7U, {"Shared House", tags});
+  const cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt sync =
+      materialized.accepted
+          ? cr::inspectCreativeWorldLayoutBuildingBlockoutSync(
+                materialized.edited, materialized.resultBuildingIndex)
+          : cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt{};
+
+  cr::CreativeWorldLayoutBuildingBlockoutRecipe invalid = recipe;
+  invalid.request.storeys.count = 0U;
+  const cr::CreativeWorldLayoutBuildingEditResult rejected =
+      cr::materializeCreativeWorldLayoutBuildingBlockout(source, invalid, 7U);
+
+  return expect(materialized.accepted && materialized.changed &&
+                    materialized.resultBuildingIndex == 0U &&
+                    materialized.nextStableOrdinal > 7U,
+                "shared materializer appends one complete building") &&
+         expect(materialized.edited.buildings.size() == 1U &&
+                    materialized.edited.buildings[0].name == "Shared House" &&
+                    std::find(materialized.edited.buildings[0].tags.begin(),
+                              materialized.edited.buildings[0].tags.end(),
+                              "source:test") !=
+                        materialized.edited.buildings[0].tags.end() &&
+                    materialized.edited.levels.size() == 2U &&
+                    materialized.edited.rooms.size() == 8U &&
+                    materialized.edited.openings.size() == 22U &&
+                    materialized.edited.verticalConnectors.size() == 1U &&
+                    stableKeysUnique(materialized.edited),
+                "shared materializer owns levels rooms openings and stairs") &&
+         expect(sync.state ==
+                        cr::CreativeWorldLayoutBuildingBlockoutSyncState::
+                            Current &&
+                    sync.provenance.recipe.request.storeys.count == 2U,
+                "shared materializer records current recipe provenance") &&
+         expect(!rejected.accepted && !rejected.changed &&
+                    rejected.edited.buildings.empty() &&
+                    rejected.reasonCode ==
+                        "creative_world_layout_building_blockout_storey_count_"
+                        "invalid" &&
+                    source.buildings.empty(),
+                "invalid shared recipes publish no partial candidate");
 }
 
 bool plannerOwnsEveryPresetAndOddSplit() {
@@ -1273,7 +1332,8 @@ bool desktopCommandRoutesTypedBlockoutRequest() {
 }  // namespace
 
 int main() {
-  const bool ok = plannerOwnsEveryPresetAndOddSplit() &&
+  const bool ok = sharedMaterializerOwnsCompleteAtomicBlockout() &&
+                  plannerOwnsEveryPresetAndOddSplit() &&
                   plannerOwnsBoundedMultiStoreyShaft() &&
                   plannerRejectsInvalidOrUnbuildableRooms() &&
                   editorRejectsOverlapWithoutPartialMutation() &&

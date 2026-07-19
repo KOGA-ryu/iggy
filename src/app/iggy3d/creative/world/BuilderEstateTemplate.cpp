@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/recipes/ObjectLibraryRecipe.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBlockoutMaterialization.hpp"
 
 #include <array>
 #include <cstddef>
@@ -19,6 +20,8 @@ constexpr std::int32_t kHouseFloorLayer = 4;
 constexpr std::uint16_t kHouseWallHeightCells = 3U;
 constexpr std::array<std::string_view, 1U> kBuiltInBuildingTemplateIds{
     kBuilderEstateHouseTemplateId};
+constexpr std::array<std::string_view, 2U> kEstateHouseTags{
+    "map_template:builder_estate", "building_role:estate_house"};
 
 void setStatus(CreativeMapTemplateResult& result,
                CreativeMapTemplateStatus status,
@@ -29,120 +32,35 @@ void setStatus(CreativeMapTemplateResult& result,
   result.accepted = accepted;
 }
 
-CreativeWorldLayoutOpening roomOpening(
-    std::size_t roomIndex,
-    CreativeWorldLayoutRoomEdge edge,
-    CreativeBuildingOpeningKind kind,
-    std::string stableKey,
-    std::string name,
-    double centerOffsetCells) {
-  CreativeWorldLayoutOpening opening;
-  opening.hostKind = CreativeWorldLayoutOpeningHostKind::RoomEdge;
-  opening.roomIndex = roomIndex;
-  opening.roomEdge = edge;
-  opening.kind = kind;
-  opening.stableKey = std::move(stableKey);
-  opening.name = std::move(name);
-  opening.centerOffsetCells = centerOffsetCells;
-  opening.widthCells = 2.0;
-  opening.cutoutBottomCells =
-      kind == CreativeBuildingOpeningKind::Door ? 0.0 : 1.0;
-  opening.cutoutHeightCells =
-      kind == CreativeBuildingOpeningKind::Door ? 2.5 : 1.25;
-  opening.insertBottomCells = opening.cutoutBottomCells;
-  opening.insertHeightCells =
-      kind == CreativeBuildingOpeningKind::Door ? 2.25 : 1.0;
-  opening.insertWidthCells = 1.8;
-  opening.insertThicknessCells = 0.2;
-  return opening;
-}
-
-void appendHouseRoom(CreativeWorldLayout& layout,
-                     std::string stableKey,
-                     std::string name,
-                     CreativeWorldLayoutRect footprint) {
-  CreativeWorldLayoutRoom room;
-  room.buildingIndex = 0U;
-  room.levelIndex = 0U;
-  room.stableKey = stableKey;
-  room.name = name;
-  room.footprint = footprint;
-  room.wallThicknessCells = 0.25;
-  layout.rooms.push_back(std::move(room));
-
-  CreativeWorldLayoutBox metadata;
-  metadata.buildingIndex = 0U;
-  metadata.kind = CreativeObjectKind::Room;
-  metadata.stableKey = stableKey + ".volume";
-  metadata.name = name;
-  metadata.footprint = footprint;
-  metadata.anchorLayer = kHouseFloorLayer;
-  metadata.layerCount = kHouseWallHeightCells;
-  layout.boxes.push_back(std::move(metadata));
-}
-
-CreativeWorldLayout builderEstateHouseLayout() {
-  CreativeWorldLayout layout;
-  layout.stableKey = "builder_estate_house_source";
-  CreativeWorldLayoutBuilding building;
-  building.stableKey = "estate_house";
-  building.name = "Estate House";
-  building.rootMode = CreativeBuildingRootMode::None;
-  building.tags = {"map_template:builder_estate",
-                   "building_role:estate_house"};
-  layout.buildings.push_back(std::move(building));
-
-  CreativeWorldLayoutLevel level;
-  level.buildingIndex = 0U;
-  level.stableKey = "ground_level";
-  level.name = "Ground Floor";
-  level.floorTopLayer = kHouseFloorLayer;
-  level.wallHeightCells = kHouseWallHeightCells;
-  layout.levels.push_back(std::move(level));
-
-  appendHouseRoom(layout, "study", "Study", {{0, 0}, {6, 6}});
-  appendHouseRoom(layout, "kitchen", "Kitchen", {{6, 0}, {12, 6}});
-  appendHouseRoom(layout, "foyer", "Foyer", {{0, 6}, {6, 12}});
-  appendHouseRoom(layout, "great_room", "Great Room", {{6, 6}, {12, 12}});
-
-  layout.openings = {
-      roomOpening(2U, CreativeWorldLayoutRoomEdge::South,
-                  CreativeBuildingOpeningKind::Door, "door.front",
-                  "Front Door", 3.0),
-      roomOpening(0U, CreativeWorldLayoutRoomEdge::East,
-                  CreativeBuildingOpeningKind::Door, "door.study_kitchen",
-                  "Study Kitchen Door", 3.0),
-      roomOpening(2U, CreativeWorldLayoutRoomEdge::East,
-                  CreativeBuildingOpeningKind::Door, "door.foyer_great",
-                  "Foyer Great Room Door", 3.0),
-      roomOpening(0U, CreativeWorldLayoutRoomEdge::South,
-                  CreativeBuildingOpeningKind::Door, "door.study_foyer",
-                  "Study Foyer Door", 3.0),
-      roomOpening(1U, CreativeWorldLayoutRoomEdge::South,
-                  CreativeBuildingOpeningKind::Door, "door.kitchen_great",
-                  "Kitchen Great Room Door", 3.0),
-      roomOpening(0U, CreativeWorldLayoutRoomEdge::North,
-                  CreativeBuildingOpeningKind::Window, "window.study_north",
-                  "Study North Window", 3.0),
-      roomOpening(1U, CreativeWorldLayoutRoomEdge::North,
-                  CreativeBuildingOpeningKind::Window,
-                  "window.kitchen_north", "Kitchen North Window", 3.0),
-      roomOpening(2U, CreativeWorldLayoutRoomEdge::West,
-                  CreativeBuildingOpeningKind::Window, "window.foyer_west",
-                  "Foyer West Window", 3.0),
-      roomOpening(3U, CreativeWorldLayoutRoomEdge::East,
-                  CreativeBuildingOpeningKind::Window,
-                  "window.great_room_east", "Great Room East Window", 3.0),
-      roomOpening(3U, CreativeWorldLayoutRoomEdge::South,
-                  CreativeBuildingOpeningKind::Window,
-                  "window.great_room_south", "Great Room South Window", 3.0),
-  };
-  return layout;
-}
-
 CreativeWorldLayoutBuildingTemplateResult builderEstateHouseTemplate() {
+  CreativeWorldLayout source;
+  source.stableKey = "builder_estate_house_source";
+  CreativeWorldLayoutBuildingBlockoutRecipe recipe;
+  recipe.request.footprint = {{0, 0}, {12, 12}};
+  recipe.request.pattern =
+      CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2;
+  recipe.request.wallThicknessCells = 0.25;
+  recipe.request.wallHeightCells = kHouseWallHeightCells;
+  recipe.request.storeys.count = 2U;
+  recipe.request.storeys.connectStoreys = true;
+  recipe.request.storeys.connectorKind =
+      CreativeWorldLayoutVerticalConnectorKind::Stair;
+  recipe.request.storeys.preferredDirection =
+      CreativeWorldLayoutVerticalDirection::PositiveZ;
+  recipe.floorTopLayer = kHouseFloorLayer;
+
+  const CreativeWorldLayoutBuildingEditResult materialized =
+      materializeCreativeWorldLayoutBuildingBlockout(
+          source, recipe, 1U, {"Estate House", kEstateHouseTags});
+  if (!materialized.accepted) {
+    CreativeWorldLayoutBuildingTemplateResult failed;
+    failed.requested = true;
+    failed.status = CreativeWorldLayoutBuildingTemplateStatus::InvalidTemplate;
+    failed.reasonCode = materialized.reasonCode;
+    return failed;
+  }
   return captureCreativeWorldLayoutBuildingTemplate(
-      builderEstateHouseLayout(),
+      materialized.edited,
       {0U, std::string{kBuilderEstateHouseTemplateId}, "Estate House"});
 }
 

@@ -163,6 +163,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/world/WorldLayoutAdoption.cpp
     src/app/iggy3d/creative/world/WorldLayoutBlockout.cpp
     src/app/iggy3d/creative/world/WorldLayoutBlockoutProvenance.cpp
+    src/app/iggy3d/creative/world/WorldLayoutBlockoutMaterialization.cpp
     src/app/iggy3d/creative/world/WorldLayoutBuildingOps.cpp
     src/app/iggy3d/creative/world/WorldLayoutBuildingTemplates.cpp
     src/app/iggy3d/creative/world/WorldLayoutBuildingTemplateSync.cpp

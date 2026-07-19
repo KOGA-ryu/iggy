@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
 #include "app/iggy3d/creative/world/MapTemplate.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBlockout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
 #include "app/iggy3d/creative/world/WorldService.hpp"
 #include "content/assets/StaticMeshAsset.hpp"
@@ -267,6 +268,10 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
   const auto secondSync = cr::inspectCreativeWorldLayoutBuildingTemplateSync(
       map.worldLayout, 1U,
       map.buildingTemplates.empty() ? nullptr : &map.buildingTemplates[0]);
+  const auto firstBlockoutSync =
+      cr::inspectCreativeWorldLayoutBuildingBlockoutSync(map.worldLayout, 0U);
+  const auto secondBlockoutSync =
+      cr::inspectCreativeWorldLayoutBuildingBlockoutSync(map.worldLayout, 1U);
 
   return expect(map.accepted &&
                     map.status == cr::CreativeMapTemplateStatus::Ready,
@@ -274,24 +279,25 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
          expect(map.document.id() == 31U &&
                     map.document.name() == "Builder Estate",
                 "builder estate identity") &&
-         expect(map.objectCount == 117U &&
+         expect(map.objectCount == 243U &&
                     map.terrainControlCount == 162U,
                 "builder estate stable authored counts") &&
          expect(map.worldLayoutPresent &&
                     map.worldLayout.stableKey == "builder_estate_layout" &&
                     map.worldLayout.buildings.size() == 2U &&
-                    map.worldLayout.levels.size() == 2U &&
-                    map.worldLayout.rooms.size() == 8U &&
-                    map.worldLayout.boxes.size() == 8U &&
-                    map.worldLayout.openings.size() == 20U,
-                "builder estate owns two four-room building symbols") &&
-         expect(countKind(map.document, cr::CreativeObjectKind::Door) == 10U &&
+                    map.worldLayout.levels.size() == 4U &&
+                    map.worldLayout.rooms.size() == 16U &&
+                    map.worldLayout.boxes.empty() &&
+                    map.worldLayout.openings.size() == 44U &&
+                    map.worldLayout.verticalConnectors.size() == 2U,
+                "builder estate owns two connected two-storey building symbols") &&
+         expect(countKind(map.document, cr::CreativeObjectKind::Door) == 14U &&
                     countKind(map.document,
-                              cr::CreativeObjectKind::Window) == 10U,
+                              cr::CreativeObjectKind::Window) == 30U,
                 "builder estate materializes every authored opening") &&
          expect(map.linkedBuildingInstanceCount == 2U &&
-                    map.roomSymbolCount == 8U &&
-                    map.openingSymbolCount == 20U &&
+                    map.roomSymbolCount == 16U &&
+                    map.openingSymbolCount == 44U &&
                     map.supplementalRecipeCount == 1U,
                 "builder estate exposes reference-map semantic counts") &&
          expect(map.worldLayout.terrainProfiles.size() == 6U &&
@@ -317,6 +323,14 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
                         cr::CreativeWorldLayoutBuildingTemplateSyncState::
                             Current,
                 "builder estate instances resolve against bundled source") &&
+         expect(firstBlockoutSync.accepted && secondBlockoutSync.accepted &&
+                    firstBlockoutSync.state ==
+                        cr::CreativeWorldLayoutBuildingBlockoutSyncState::
+                            Unlinked &&
+                    secondBlockoutSync.state ==
+                        cr::CreativeWorldLayoutBuildingBlockoutSyncState::
+                            Unlinked,
+                "template instances do not retain competing blockout ownership") &&
          expect(bridge != nullptr &&
                     cr::creativeRecipeObjectHasInstanceProvenance(
                         *bridge, cr::CreativeRecipeKind::ObjectLibrary,
@@ -348,10 +362,10 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
                               cr::defaultCreativeStructuralLayerThicknessMeters(
                                   cr::CreativeObjectKind::Floor)) <= 1.0e-9,
                 "builder estate floor top meets terrain with exact slab thickness") &&
-         expect(roof != nullptr && roof->bounds.min.y == 7.0 &&
-                    roof->bounds.max.y == 8.0 &&
+         expect(roof != nullptr && roof->bounds.min.y == 10.0 &&
+                    roof->bounds.max.y == 11.0 &&
                     sameVec(roof->transform.scale, {1.0, 1.0, 1.0}),
-                "builder estate roof rises from its exact support plane") &&
+                "builder estate roof rises from its upper-storey support plane") &&
          expect(encoded.accepted && repeatedEncoded.accepted &&
                     encoded.encodedText == repeatedEncoded.encodedText &&
                     repeated.objectCount == map.objectCount &&
@@ -397,10 +411,12 @@ bool builderEstateBakesAndSurvivesWorldLayoutRoundTrip() {
       expect(saved.accepted && saved.worldLayoutPresent,
              "builder estate durable save includes world layout") &&
       expect(opened.accepted && opened.worldLayoutPresent &&
-                 opened.document.objectCount() == 117U &&
+                 opened.document.objectCount() == 243U &&
                  opened.worldLayout.buildings.size() == 2U &&
-                 opened.worldLayout.rooms.size() == 8U &&
-                 opened.worldLayout.openings.size() == 20U &&
+                 opened.worldLayout.levels.size() == 4U &&
+                 opened.worldLayout.rooms.size() == 16U &&
+                 opened.worldLayout.openings.size() == 44U &&
+                 opened.worldLayout.verticalConnectors.size() == 2U &&
                  opened.worldLayout.objects.size() == 11U &&
                  opened.worldLayout.objects[7].assetId == "boulder_01" &&
                  opened.worldLayout.terrainProfiles.size() == 6U &&
@@ -476,6 +492,11 @@ bool builtInHouseTemplateRegistryIsExplicit() {
           cr::kBuilderEstateHouseTemplateId);
   const cr::CreativeWorldLayoutBuildingTemplateResult unknown =
       cr::buildCreativeBuiltInBuildingTemplate("unknown.house");
+  const cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt blockoutSync =
+      house.accepted
+          ? cr::inspectCreativeWorldLayoutBuildingBlockoutSync(
+                house.value.normalizedLayout, 0U)
+          : cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt{};
 
   return expect(ids.size() == 1U &&
                     ids.front() == cr::kBuilderEstateHouseTemplateId,
@@ -483,9 +504,16 @@ bool builtInHouseTemplateRegistryIsExplicit() {
          expect(house.accepted &&
                     house.value.templateId ==
                         cr::kBuilderEstateHouseTemplateId &&
-                    house.value.normalizedLayout.rooms.size() == 4U &&
-                    house.value.normalizedLayout.openings.size() == 10U,
-                "builder estate house source is reusable") &&
+                    house.value.normalizedLayout.levels.size() == 2U &&
+                    house.value.normalizedLayout.rooms.size() == 8U &&
+                    house.value.normalizedLayout.openings.size() == 22U &&
+                    house.value.normalizedLayout.verticalConnectors.size() ==
+                        1U &&
+                    blockoutSync.accepted &&
+                    blockoutSync.state ==
+                        cr::CreativeWorldLayoutBuildingBlockoutSyncState::
+                            Unlinked,
+                "builder estate house is reusable under template ownership") &&
          expect(!unknown.accepted &&
                     unknown.status ==
                         cr::CreativeWorldLayoutBuildingTemplateStatus::
