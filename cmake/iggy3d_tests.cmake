@@ -251,17 +251,15 @@ iggy3d_add_unit_test(creative_surface_extrude_tests
 set_tests_properties(creative_surface_extrude_tests PROPERTIES
   LABELS "unit;app;creative;tools;surface_extrude;iggy3d")
 
-iggy3d_add_unit_test(creative_editor_pattern_tests
+add_executable(creative_editor_pattern_tests
   tests/unit/creative_editor_pattern_tests.cpp)
-target_sources(creative_editor_pattern_tests PRIVATE
-  apps/iggy3d_creative/EditorPattern.cpp
-  apps/iggy3d_creative/EditorEdits.cpp
-  apps/iggy3d_creative/EditorTransform.cpp
-  apps/iggy3d_creative/EditorTransformOverlay.cpp
-  apps/iggy3d_creative/EditorPreviewProxies.cpp)
-target_include_directories(creative_editor_pattern_tests PRIVATE
-  "${CMAKE_CURRENT_SOURCE_DIR}/apps/iggy3d_creative")
+target_link_libraries(creative_editor_pattern_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_pattern_tests)
+add_test(NAME creative_editor_pattern_tests
+  COMMAND "$<TARGET_FILE:creative_editor_pattern_tests>")
 set_tests_properties(creative_editor_pattern_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;editor;tools;pattern;iggy3d")
 
 iggy3d_add_unit_test(creative_interaction_tests
