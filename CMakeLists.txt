@@ -287,6 +287,7 @@ target_sources(iggy3d
     src/render/vulkan/CreativePreviewCpuGeometry.cpp
     src/render/vulkan/RoomMeshCpuGeometry.cpp
     src/render/vulkan/RoomMeshCpuPrimitives.cpp
+    src/render/vulkan/RoomMeshDebugGeometry.cpp
     src/render/vulkan/RoomMeshOptimization.cpp
     src/render/vulkan/RoomMeshStaticAssetGeometry.cpp
     src/render/vulkan/FrameCapture.cpp

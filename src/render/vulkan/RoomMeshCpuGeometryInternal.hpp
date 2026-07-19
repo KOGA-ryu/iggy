@@ -162,6 +162,10 @@ void appendCreativePathWireframe(
 [[nodiscard]] std::uint64_t creativeWireframeDebugGeometrySignature(
     const RenderCreativeWireframeDebugFrame* creativeWireframeDebug);
 
+void appendCreativeWireframeDebugGeometry(
+    RoomMeshCpuGeometry& roomGeometry,
+    const RenderCreativeWireframeDebugFrame* creativeWireframeDebug);
+
 void appendCreativeWireframeDebugReceiptFields(
     RenderReceipt& receipt, const FirstRoomGeometryResources& geometry);
 
