@@ -74,4 +74,11 @@ void appendTagOnce(std::vector<std::string>& tags, std::string tag);
     CreativeBuildingRecipeRequest& building,
     double offsetMeters) noexcept;
 
+[[nodiscard]] bool reconcileWorldLayoutRecipes(
+    const CreativeDocument& document,
+    std::string_view layoutTag,
+    CreativeWorldLayoutCompileOptions options,
+    std::vector<CreativeRecipePlan>& desiredObjectRecipes,
+    CreativeWorldLayoutCompileResult& result);
+
 }  // namespace iggy3d::creative::world_layout_compile
