@@ -15,6 +15,18 @@ void drawCreativeEditorWorldLayoutCreateTools(
     const cr::CreativeCatalogState& catalog,
     CreativeDesktopCommandFrame& commands, bool unavailable);
 
+// The Create tab's Building Blockout pattern choices, in display order. Pure
+// so the one-to-one mapping between the four UI choices and the planner enum
+// stays headless-testable.
+struct CreativeEditorWorldLayoutBlockoutPatternChoice {
+  const char* label = "";
+  cr::CreativeWorldLayoutBuildingBlockoutPattern pattern =
+      cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom;
+};
+
+[[nodiscard]] std::span<const CreativeEditorWorldLayoutBlockoutPatternChoice>
+creativeEditorWorldLayoutBlockoutPatternChoices() noexcept;
+
 void drawCreativeEditorWorldLayoutToolboxStrip(
     CreativeEditorState& editor, CreativeDesktopCommandFrame& commands);
 

@@ -632,12 +632,155 @@ bool drawCreativeEditorWorldLayoutGlyphButton(
   return drawWorldLayoutGlyphButton(id, glyph, tileSize, active, tooltip);
 }
 
+namespace {
+
+constexpr std::array<CreativeEditorWorldLayoutBlockoutPatternChoice, 4U>
+    kBlockoutPatternChoices = {{
+        {"1 room", cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom},
+        {"Split X", cr::CreativeWorldLayoutBuildingBlockoutPattern::SplitX},
+        {"Split Z", cr::CreativeWorldLayoutBuildingBlockoutPattern::SplitZ},
+        {"2 x 2", cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2},
+    }};
+
+// Create-tab Building Blockout section: edits one transient draft in the
+// desktop UI state and emits exactly one typed blockout command on Stage.
+// The section never touches the source, never recomputes planner split math,
+// and leaves preview/confirm to the existing bottom Build panel.
+void drawWorldLayoutBuildingBlockoutSection(
+    CreativeEditorDesktopUiState& desktopUi,
+    CreativeEditorWorldLayoutState& state,
+    CreativeDesktopCommandFrame& commands) {
+  CreativeEditorWorldLayoutBuildingBlockoutSettings& draft =
+      desktopUi.worldLayoutBlockoutDraft;
+  ImGui::SeparatorText("Building Blockout");
+
+  int minimumX = static_cast<int>(draft.shell.footprint.minimum.x);
+  int minimumZ = static_cast<int>(draft.shell.footprint.minimum.z);
+  int maximumX = static_cast<int>(draft.shell.footprint.maximum.x);
+  int maximumZ = static_cast<int>(draft.shell.footprint.maximum.z);
+  ImGui::SetNextItemWidth(112.0F);
+  if (ImGui::InputInt("Min X##blockout", &minimumX)) {
+    draft.shell.footprint.minimum.x = static_cast<std::int32_t>(minimumX);
+  }
+  ImGui::SetNextItemWidth(112.0F);
+  if (ImGui::InputInt("Min Z##blockout", &minimumZ)) {
+    draft.shell.footprint.minimum.z = static_cast<std::int32_t>(minimumZ);
+  }
+  ImGui::SetNextItemWidth(112.0F);
+  if (ImGui::InputInt("Max X##blockout", &maximumX)) {
+    draft.shell.footprint.maximum.x = static_cast<std::int32_t>(maximumX);
+  }
+  ImGui::SetNextItemWidth(112.0F);
+  if (ImGui::InputInt("Max Z##blockout", &maximumZ)) {
+    draft.shell.footprint.maximum.z = static_cast<std::int32_t>(maximumZ);
+  }
+
+  bool firstChoice = true;
+  for (const CreativeEditorWorldLayoutBlockoutPatternChoice& choice :
+       kBlockoutPatternChoices) {
+    if (!firstChoice) {
+      ImGui::SameLine();
+    }
+    firstChoice = false;
+    if (ImGui::RadioButton(choice.label, draft.pattern == choice.pattern)) {
+      draft.pattern = choice.pattern;
+    }
+  }
+
+  ImGui::SetNextItemWidth(140.0F);
+  ImGui::InputDouble("Floor top##blockout", &draft.shell.floorTopLayer, 0.25,
+                     1.0, "%.3f");
+  ImGui::SetNextItemWidth(140.0F);
+  ImGui::InputScalar("Wall height##blockout", ImGuiDataType_U16,
+                     &draft.shell.wallHeightCells);
+  ImGui::SetNextItemWidth(112.0F);
+  ImGui::InputDouble("Wall thickness##blockout",
+                     &draft.shell.wallThicknessCells, 0.05, 0.25, "%.3f");
+  ImGui::SetNextItemWidth(120.0F);
+  ImGui::InputScalar("Floor layers##blockout", ImGuiDataType_U16,
+                     &draft.shell.floorThicknessLayers);
+  ImGui::SetNextItemWidth(120.0F);
+  ImGui::InputScalar("Roof layers##blockout", ImGuiDataType_U16,
+                     &draft.shell.roofThicknessLayers);
+
+  if (ImGui::TreeNode("Roof##blockout")) {
+    constexpr std::array roofStyles{cr::CreativeStructuralRoofStyle::Flat,
+                                    cr::CreativeStructuralRoofStyle::Gable};
+    constexpr std::array ridgeAxes{cr::CreativeStructuralRoofRidgeAxis::X,
+                                   cr::CreativeStructuralRoofRidgeAxis::Z};
+    const auto roofStyleLabel = [](cr::CreativeStructuralRoofStyle style) {
+      return style == cr::CreativeStructuralRoofStyle::Gable ? "Gable"
+                                                             : "Flat";
+    };
+    const auto ridgeLabel = [](cr::CreativeStructuralRoofRidgeAxis axis) {
+      return axis == cr::CreativeStructuralRoofRidgeAxis::Z ? "Z axis"
+                                                            : "X axis";
+    };
+    ImGui::SetNextItemWidth(140.0F);
+    if (ImGui::BeginCombo("Style##blockout",
+                          roofStyleLabel(draft.shell.roofStyle))) {
+      for (const cr::CreativeStructuralRoofStyle style : roofStyles) {
+        const bool selected = style == draft.shell.roofStyle;
+        if (ImGui::Selectable(roofStyleLabel(style), selected)) {
+          draft.shell.roofStyle = style;
+        }
+        if (selected) {
+          ImGui::SetItemDefaultFocus();
+        }
+      }
+      ImGui::EndCombo();
+    }
+    ImGui::SetNextItemWidth(140.0F);
+    ImGui::InputDouble("Overhang##blockout", &draft.shell.roofOverhangCells,
+                       0.25, 1.0, "%.2f");
+    if (draft.shell.roofStyle == cr::CreativeStructuralRoofStyle::Gable) {
+      ImGui::SetNextItemWidth(140.0F);
+      if (ImGui::BeginCombo("Ridge##blockout",
+                            ridgeLabel(draft.shell.roofRidgeAxis))) {
+        for (const cr::CreativeStructuralRoofRidgeAxis axis : ridgeAxes) {
+          const bool selected = axis == draft.shell.roofRidgeAxis;
+          if (ImGui::Selectable(ridgeLabel(axis), selected)) {
+            draft.shell.roofRidgeAxis = axis;
+          }
+          if (selected) {
+            ImGui::SetItemDefaultFocus();
+          }
+        }
+        ImGui::EndCombo();
+      }
+      ImGui::SetNextItemWidth(140.0F);
+      ImGui::InputDouble("Pitch##blockout", &draft.shell.roofPitchDegrees,
+                         1.0, 5.0, "%.1f deg");
+    }
+    ImGui::TreePop();
+  }
+
+  ImGui::BeginDisabled(creativeEditorWorldLayoutPreviewActive(state));
+  if (ImGui::Button("Stage blockout")) {
+    commands.push(
+        CreativeDesktopCommandId::WorldLayoutCreateBuildingBlockout,
+        CreativeDesktopWorldLayoutBuildingBlockoutPayload{draft});
+  }
+  ImGui::EndDisabled();
+  ImGui::TextWrapped("%s", state.statusMessage.c_str());
+}
+
+}  // namespace
+
+std::span<const CreativeEditorWorldLayoutBlockoutPatternChoice>
+creativeEditorWorldLayoutBlockoutPatternChoices() noexcept {
+  return kBlockoutPatternChoices;
+}
+
 void drawCreativeEditorWorldLayoutCreateTools(
     CreativeEditorDesktopUiState& desktopUi,
     CreativeEditorWorldLayoutState& state,
     const cr::CreativeCatalogState& catalog,
     CreativeDesktopCommandFrame& commands, bool unavailable) {
   ImGui::BeginDisabled(unavailable);
+  drawWorldLayoutBuildingBlockoutSection(desktopUi, state, commands);
+  ImGui::Spacing();
+  ImGui::Separator();
   drawWorldLayoutPalette(state, commands);
   ImGui::Spacing();
   drawWorldLayoutAssetPalette(state, catalog, commands);

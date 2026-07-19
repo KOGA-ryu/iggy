@@ -1,6 +1,7 @@
 #include "EditorToolPresentation.hpp"
 #include "EditorWorldLayout.hpp"
 #include "EditorWorldLayoutPanel.hpp"
+#include "EditorWorldLayoutPanelInternal.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -517,6 +518,57 @@ bool statusLineComposesFromTheRightSources() {
                 "owning the preview classifies as ready");
 }
 
+bool blockoutDraftAndPatternChoicesArePinned() {
+  const iggy3d_creative_app::CreativeEditorDesktopUiState desktopUi;
+  const auto& draft = desktopUi.worldLayoutBlockoutDraft;
+  const iggy3d_creative_app::CreativeEditorWorldLayoutRoomSettings defaults;
+  const bool footprintRight = draft.shell.footprint.minimum.x == 0 &&
+                              draft.shell.footprint.minimum.z == 0 &&
+                              draft.shell.footprint.maximum.x == 8 &&
+                              draft.shell.footprint.maximum.z == 8;
+  const bool shellKeepsDefaults =
+      draft.shell.floorTopLayer == defaults.floorTopLayer &&
+      draft.shell.wallHeightCells == defaults.wallHeightCells &&
+      draft.shell.wallThicknessCells == defaults.wallThicknessCells &&
+      draft.shell.floorThicknessLayers == defaults.floorThicknessLayers &&
+      draft.shell.roofThicknessLayers == defaults.roofThicknessLayers &&
+      draft.shell.roofStyle == defaults.roofStyle &&
+      draft.shell.roofRidgeAxis == defaults.roofRidgeAxis &&
+      draft.shell.roofPitchDegrees == defaults.roofPitchDegrees &&
+      draft.shell.roofOverhangCells == defaults.roofOverhangCells;
+  const auto choices =
+      iggy3d_creative_app::creativeEditorWorldLayoutBlockoutPatternChoices();
+  using Pattern = cr::CreativeWorldLayoutBuildingBlockoutPattern;
+  const bool choicesRight =
+      choices.size() == 4U &&
+      std::string_view(choices[0].label) == "1 room" &&
+      choices[0].pattern == Pattern::SingleRoom &&
+      std::string_view(choices[1].label) == "Split X" &&
+      choices[1].pattern == Pattern::SplitX &&
+      std::string_view(choices[2].label) == "Split Z" &&
+      choices[2].pattern == Pattern::SplitZ &&
+      std::string_view(choices[3].label) == "2 x 2" &&
+      choices[3].pattern == Pattern::Grid2x2;
+  bool patternsUnique = true;
+  for (std::size_t index = 0U; index < choices.size(); ++index) {
+    for (std::size_t other = index + 1U; other < choices.size(); ++other) {
+      if (choices[index].pattern == choices[other].pattern) {
+        patternsUnique = false;
+      }
+    }
+  }
+  return expect(footprintRight,
+                "the blockout draft starts at the 0,0 to 8,8 footprint") &&
+         expect(draft.pattern == Pattern::SingleRoom,
+                "the blockout draft starts as a single room") &&
+         expect(shellKeepsDefaults,
+                "non-footprint shell values keep the room-settings defaults") &&
+         expect(choicesRight,
+                "the four pattern choices map one-to-one onto the planner "
+                "enum") &&
+         expect(patternsUnique, "pattern choices never repeat an enum value");
+}
+
 }  // namespace
 
 int main() {
@@ -529,5 +581,6 @@ int main() {
   ok = optionBindingsReadWriteAndClamp() && ok;
   ok = actionRulesMatchTheBuildWindow() && ok;
   ok = statusLineComposesFromTheRightSources() && ok;
+  ok = blockoutDraftAndPatternChoicesArePinned() && ok;
   return ok ? 0 : 1;
 }

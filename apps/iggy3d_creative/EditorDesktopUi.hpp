@@ -12,6 +12,7 @@
 
 #include "EditorDesktopModel.hpp"
 #include "EditorWorldLayoutHierarchy.hpp"
+#include "EditorWorldLayoutState.hpp"
 
 namespace iggy3d {
 class VulkanBackend;
@@ -77,6 +78,18 @@ struct CreativeDesktopInspectorDraft {
 // CreativeEditorState next to the other panel sub-states, never inside
 // creative::CreativeAppState). No ImGui types here (plan DL-2); RenderContentViewport
 // is a plain render struct, not an ImGui type.
+// Transient draft for the Create tab's Building Blockout section: UI state,
+// not document truth, never persisted. Footprint fields are integer grid-line
+// coordinates with exclusive maximums; every non-footprint shell value keeps
+// the CreativeEditorWorldLayoutRoomSettings default.
+[[nodiscard]] inline CreativeEditorWorldLayoutBuildingBlockoutSettings
+makeCreativeEditorWorldLayoutBlockoutDraft() noexcept {
+  CreativeEditorWorldLayoutBuildingBlockoutSettings draft;
+  draft.shell.footprint.minimum = {0, 0};
+  draft.shell.footprint.maximum = {8, 8};
+  return draft;
+}
+
 struct CreativeEditorDesktopUiState {
   bool shellEnabled = false;  // true only for explicit desktop UI launches
   bool frameActive = false;   // NewFrame issued this frame, Render still owed
@@ -131,6 +144,10 @@ struct CreativeEditorDesktopUiState {
   CreativeDesktopOutlinerState outliner;
   CreativeDesktopWorldLayoutHierarchyState worldLayoutHierarchy;
   CreativeDesktopInspectorDraft inspectorDraft;
+
+  // Building Blockout draft for the Create tab (UI-BLOCKOUT-1).
+  CreativeEditorWorldLayoutBuildingBlockoutSettings worldLayoutBlockoutDraft =
+      makeCreativeEditorWorldLayoutBlockoutDraft();
 };
 
 // Result of the free-pointer capture policy: the new capture state and whether
