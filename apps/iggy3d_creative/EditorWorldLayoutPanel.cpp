@@ -1723,6 +1723,132 @@ void drawWorldLayoutAssetPlacementControls(
   }
 }
 
+void drawWorldLayoutToolboxStrip(CreativeEditorState& editor,
+                                 CreativeDesktopCommandFrame& commands) {
+  CreativeEditorWorldLayoutState& state = editor.worldLayout;
+  CreativeEditorWorldLayoutTopographyState& topography =
+      editor.worldLayoutTopography;
+  const std::vector<CreativeEditorWorldLayoutToolboxEntry> entries =
+      buildCreativeEditorWorldLayoutToolboxEntries();
+  const std::span<const CreativeEditorWorldLayoutPaletteEntry> palette =
+      creativeEditorWorldLayoutPaletteEntries();
+  constexpr float kTileSize = 24.0F;
+  constexpr float kGlyphPadding = 2.0F;
+  constexpr float kTileRounding = 2.0F;
+  const ImGuiStyle& style = ImGui::GetStyle();
+  const float stripWidth = (2.0F * kTileSize) + style.ItemSpacing.x +
+                           (2.0F * style.WindowPadding.x);
+  const bool open =
+      ImGui::BeginChild("##world_layout_toolbox", ImVec2{stripWidth, 0.0F},
+                        ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
+  if (!open) {
+    ImGui::EndChild();
+    return;
+  }
+  auto lastCategory = CreativeEditorWorldLayoutPaletteCategory::Count;
+  int column = 0;
+  for (std::size_t entryIndex = 0U; entryIndex < entries.size();
+       ++entryIndex) {
+    const CreativeEditorWorldLayoutToolboxEntry& entry = entries[entryIndex];
+    if (entry.category != lastCategory) {
+      if (lastCategory != CreativeEditorWorldLayoutPaletteCategory::Count) {
+        ImGui::Separator();
+      }
+      lastCategory = entry.category;
+      column = 0;
+    }
+    if (column == 1) {
+      ImGui::SameLine();
+    }
+    const CreativeEditorWorldLayoutToolboxButtonState buttonState =
+        classifyCreativeEditorWorldLayoutToolboxButton(
+            entry, state, topography, editor.terrainGeneration);
+    ImGui::PushID(static_cast<int>(entryIndex));
+    ImGui::BeginDisabled(buttonState.unavailable);
+    const ImVec2 tilePosition = ImGui::GetCursorScreenPos();
+    const bool pressed =
+        ImGui::InvisibleButton("##tool", ImVec2{kTileSize, kTileSize});
+    const bool hovered = ImGui::IsItemHovered();
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    const ImVec2 tileEnd{tilePosition.x + kTileSize,
+                         tilePosition.y + kTileSize};
+    if (buttonState.active) {
+      drawList->AddRectFilled(tilePosition, tileEnd,
+                              ImGui::GetColorU32(ImVec4{0.16F, 0.47F, 0.25F,
+                                                        1.0F}),
+                              kTileRounding);
+    } else if (hovered) {
+      drawList->AddRectFilled(tilePosition, tileEnd,
+                              ImGui::GetColorU32(ImGuiCol_ButtonHovered),
+                              kTileRounding);
+    }
+    drawCreativeEditorToolGlyph(*drawList, entry.glyph,
+                                tilePosition.x + kGlyphPadding,
+                                tilePosition.y + kGlyphPadding,
+                                kTileSize - (2.0F * kGlyphPadding),
+                                ImGui::GetColorU32(ImGuiCol_Text));
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+      ImGui::SetTooltip("%s", entry.label.data());
+    }
+    if (pressed && !buttonState.unavailable) {
+      switch (entry.kind) {
+        case CreativeEditorWorldLayoutToolboxEntryKind::PaletteTool: {
+          if (entry.paletteIndex < palette.size()) {
+            queueTool(commands, palette[entry.paletteIndex].tool);
+          }
+          break;
+        }
+        case CreativeEditorWorldLayoutToolboxEntryKind::
+            PaletteBuildingTemplate: {
+          if (entry.paletteIndex >= palette.size()) {
+            break;
+          }
+          const std::size_t templateIndex = findBuildingTemplate(
+              state.buildingTemplates,
+              palette[entry.paletteIndex].buildingTemplateId);
+          if (templateIndex == cr::kInvalidCreativeWorldLayoutIndex) {
+            break;
+          }
+          if (state.tool != CreativeEditorWorldLayoutTool::Select) {
+            queueTool(commands, CreativeEditorWorldLayoutTool::Select);
+          }
+          commands.push(
+              CreativeDesktopCommandId::WorldLayoutSelectBuildingTemplate,
+              CreativeDesktopWorldLayoutBuildingTemplateSelectionPayload{
+                  templateIndex});
+          commands.push(
+              CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate,
+              CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload{
+                  CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::
+                      Begin,
+                  {0.0, 0.0},
+                  cr::CreativeWorldLayoutBuildingTransformOperation::
+                      RotateRight90});
+          break;
+        }
+        case CreativeEditorWorldLayoutToolboxEntryKind::TerrainRegionToggle: {
+          if (topography.region.editingEnabled) {
+            topography.region.editingEnabled = false;
+            commands.push(
+                CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
+          } else {
+            topography.region.editingEnabled = true;
+            topography.visible = true;
+            topography.elevationBandsVisible = true;
+          }
+          break;
+        }
+        case CreativeEditorWorldLayoutToolboxEntryKind::Count:
+          break;
+      }
+    }
+    ImGui::PopID();
+    column = (column + 1) % 2;
+  }
+  ImGui::EndChild();
+}
+
 void drawWorldLayoutAssetPalette(
     CreativeEditorWorldLayoutState& state,
     const cr::CreativeCatalogState& catalog,
@@ -3541,6 +3667,102 @@ void drawRefinementConflictActions(
 
 }  // namespace
 
+std::vector<CreativeEditorWorldLayoutToolboxEntry>
+buildCreativeEditorWorldLayoutToolboxEntries() {
+  const std::span<const CreativeEditorWorldLayoutPaletteEntry> palette =
+      creativeEditorWorldLayoutPaletteEntries();
+  std::vector<CreativeEditorWorldLayoutToolboxEntry> entries;
+  entries.reserve(palette.size() + 1U);
+  for (std::uint8_t categoryValue = 0U;
+       categoryValue < static_cast<std::uint8_t>(
+                           CreativeEditorWorldLayoutPaletteCategory::Count);
+       ++categoryValue) {
+    const auto category =
+        static_cast<CreativeEditorWorldLayoutPaletteCategory>(categoryValue);
+    for (std::size_t index = 0U; index < palette.size(); ++index) {
+      const CreativeEditorWorldLayoutPaletteEntry& paletteEntry =
+          palette[index];
+      if (paletteEntry.category != category) {
+        continue;
+      }
+      CreativeEditorWorldLayoutToolboxEntry entry;
+      const bool isTool =
+          paletteEntry.activation ==
+          CreativeEditorWorldLayoutPaletteActivation::Tool;
+      entry.kind =
+          isTool ? CreativeEditorWorldLayoutToolboxEntryKind::PaletteTool
+                 : CreativeEditorWorldLayoutToolboxEntryKind::
+                       PaletteBuildingTemplate;
+      entry.category = category;
+      entry.paletteIndex = index;
+      entry.glyph =
+          isTool ? creativeEditorToolGlyphForWorldLayoutTool(paletteEntry.tool)
+                 : CreativeEditorToolGlyph::EstateHouse;
+      entry.label = paletteEntry.label;
+      entries.push_back(entry);
+    }
+    if (category == CreativeEditorWorldLayoutPaletteCategory::Terrain) {
+      CreativeEditorWorldLayoutToolboxEntry toggle;
+      toggle.kind =
+          CreativeEditorWorldLayoutToolboxEntryKind::TerrainRegionToggle;
+      toggle.category = category;
+      toggle.paletteIndex = palette.size();
+      toggle.glyph = CreativeEditorToolGlyph::MaskRectangle;
+      toggle.label = "Terrain region";
+      entries.push_back(toggle);
+    }
+  }
+  return entries;
+}
+
+CreativeEditorWorldLayoutToolboxButtonState
+classifyCreativeEditorWorldLayoutToolboxButton(
+    const CreativeEditorWorldLayoutToolboxEntry& entry,
+    const CreativeEditorWorldLayoutState& state,
+    const CreativeEditorWorldLayoutTopographyState& topography,
+    const CreativeEditorTerrainGenerationState& terrainGeneration) noexcept {
+  CreativeEditorWorldLayoutToolboxButtonState result;
+  const std::span<const CreativeEditorWorldLayoutPaletteEntry> palette =
+      creativeEditorWorldLayoutPaletteEntries();
+  switch (entry.kind) {
+    case CreativeEditorWorldLayoutToolboxEntryKind::PaletteTool: {
+      if (entry.paletteIndex >= palette.size()) {
+        return result;
+      }
+      result.active = state.tool == palette[entry.paletteIndex].tool &&
+                      !state.buildingTemplatePlacement.active;
+      return result;
+    }
+    case CreativeEditorWorldLayoutToolboxEntryKind::PaletteBuildingTemplate: {
+      if (entry.paletteIndex >= palette.size()) {
+        return result;
+      }
+      const std::size_t templateIndex = findBuildingTemplate(
+          state.buildingTemplates,
+          palette[entry.paletteIndex].buildingTemplateId);
+      result.unavailable =
+          templateIndex == cr::kInvalidCreativeWorldLayoutIndex;
+      result.active = !result.unavailable &&
+                      state.buildingTemplatePlacement.active &&
+                      state.buildingTemplatePlacement.templateIndex ==
+                          templateIndex;
+      return result;
+    }
+    case CreativeEditorWorldLayoutToolboxEntryKind::TerrainRegionToggle: {
+      result.active = topography.region.editingEnabled;
+      result.unavailable =
+          (terrainGeneration.previewActive && !topography.region.ownsPreview) ||
+          creativeEditorWorldLayoutPreviewActive(state) ||
+          state.buildingTransform.active ||
+          state.buildingTemplatePlacement.active;
+      return result;
+    }
+    case CreativeEditorWorldLayoutToolboxEntryKind::Count:
+      break;
+  }
+  return result;
+}
+
 CreativeEditorWorldLayoutTerrainRegionPhase
 classifyCreativeEditorWorldLayoutTerrainRegionPhase(
     const CreativeEditorWorldLayoutTerrainRegionState& region) noexcept {
@@ -3907,6 +4129,8 @@ void buildCreativeEditorWorldLayoutPanel(
     ImGui::BeginDisabled(editingDisabled);
     const bool canvasInteractionEnabled =
         !editingDisabled && !state.buildingTransform.active;
+    drawWorldLayoutToolboxStrip(editor, commands);
+    ImGui::SameLine();
     if (state.viewMode == CreativeEditorWorldLayoutViewMode::Elevation) {
       drawCreativeEditorWorldLayoutElevationCanvas(
           editor, document.gridSettings(), commands,
