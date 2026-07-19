@@ -90,6 +90,14 @@ makeCreativeEditorWorldLayoutBlockoutDraft() noexcept {
   return draft;
 }
 
+struct CreativeEditorDesktopBlockoutEditDraft {
+  bool active = false;
+  std::size_t buildingIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::uint64_t sourceRevision = 0U;
+  CreativeEditorWorldLayoutBuildingBlockoutSettings settings;
+};
+
 struct CreativeEditorDesktopUiState {
   bool shellEnabled = false;  // true only for explicit desktop UI launches
   bool frameActive = false;   // NewFrame issued this frame, Render still owed
@@ -148,6 +156,12 @@ struct CreativeEditorDesktopUiState {
   // Building Blockout draft for the Create tab (UI-BLOCKOUT-1).
   CreativeEditorWorldLayoutBuildingBlockoutSettings worldLayoutBlockoutDraft =
       makeCreativeEditorWorldLayoutBlockoutDraft();
+
+  // Selected-building Edit draft (UI-BLOCKOUT-2): filled from the backend
+  // read contract, applied through the typed update command. sourceRevision
+  // records the world-layout revision at read time so the drawer can show
+  // whether the draft is still in sync with the source.
+  CreativeEditorDesktopBlockoutEditDraft worldLayoutBlockoutEdit;
 };
 
 // Result of the free-pointer capture policy: the new capture state and whether

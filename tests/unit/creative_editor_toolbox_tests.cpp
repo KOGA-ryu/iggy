@@ -591,6 +591,38 @@ bool blockoutDraftAndPatternChoicesArePinned() {
          expect(patternsUnique, "pattern choices never repeat an enum value");
 }
 
+bool blockoutEditDraftSyncFollowsTheSource() {
+  iggy3d_creative_app::CreativeEditorDesktopBlockoutEditDraft draft;
+  CreativeEditorWorldLayoutState state;
+  const auto inSync = [&]() {
+    return iggy3d_creative_app::creativeEditorWorldLayoutBlockoutEditInSync(
+        draft, state);
+  };
+  const bool defaultsInert =
+      !draft.active &&
+      draft.buildingIndex == cr::kInvalidCreativeWorldLayoutIndex &&
+      draft.sourceRevision == 0U;
+  const bool inactiveOut = !inSync();
+  state.source.buildings.emplace_back();
+  state.revision = 41U;
+  draft.active = true;
+  draft.buildingIndex = 0U;
+  draft.sourceRevision = 41U;
+  const bool freshIn = inSync();
+  state.revision = 42U;
+  const bool staleOut = !inSync();
+  draft.sourceRevision = 42U;
+  draft.buildingIndex = 5U;
+  const bool missingBuildingOut = !inSync();
+  return expect(defaultsInert, "the edit draft defaults are inert") &&
+         expect(inactiveOut, "an inactive draft is never in sync") &&
+         expect(freshIn,
+                "a draft read at the current revision is in sync") &&
+         expect(staleOut, "advancing the source revision marks it stale") &&
+         expect(missingBuildingOut,
+                "a vanished building index is never in sync");
+}
+
 }  // namespace
 
 int main() {
@@ -604,5 +636,6 @@ int main() {
   ok = actionRulesMatchTheBuildWindow() && ok;
   ok = statusLineComposesFromTheRightSources() && ok;
   ok = blockoutDraftAndPatternChoicesArePinned() && ok;
+  ok = blockoutEditDraftSyncFollowsTheSource() && ok;
   return ok ? 0 : 1;
 }

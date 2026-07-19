@@ -643,17 +643,11 @@ constexpr std::array<CreativeEditorWorldLayoutBlockoutPatternChoice, 4U>
         {"2 x 2", cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2},
     }};
 
-// Create-tab Building Blockout section: edits one transient draft in the
-// desktop UI state and emits exactly one typed blockout command on Stage.
-// The section never touches the source, never recomputes planner split math,
-// and leaves preview/confirm to the existing bottom Build panel.
-void drawWorldLayoutBuildingBlockoutSection(
-    CreativeEditorDesktopUiState& desktopUi,
-    CreativeEditorWorldLayoutState& state,
-    CreativeDesktopCommandFrame& commands) {
-  CreativeEditorWorldLayoutBuildingBlockoutSettings& draft =
-      desktopUi.worldLayoutBlockoutDraft;
-  ImGui::SeparatorText("Building Blockout");
+// The one blockout settings drawer, shared verbatim by the Create draft and
+// the selected-building Edit draft so the two surfaces cannot drift. Only one
+// mode is visible per frame, so the widget ids stay stable across modes.
+void drawWorldLayoutBlockoutSettingsDrawer(
+    CreativeEditorWorldLayoutBuildingBlockoutSettings& draft) {
 
   int minimumX = static_cast<int>(draft.shell.footprint.minimum.x);
   int minimumZ = static_cast<int>(draft.shell.footprint.minimum.z);
@@ -688,11 +682,32 @@ void drawWorldLayoutBuildingBlockoutSection(
     }
   }
 
+  ImGui::Checkbox("Interior doors##blockout", &draft.connectRooms);
   ImGui::SetNextItemWidth(120.0F);
   ImGui::InputScalar("Storeys##blockout", ImGuiDataType_U16,
                      &draft.storeys.count);
-  ImGui::Checkbox("Stairs##blockout", &draft.storeys.connectStoreys);
+  ImGui::Checkbox("Connect storeys##blockout", &draft.storeys.connectStoreys);
   if (draft.storeys.connectStoreys) {
+    ImGui::SetNextItemWidth(140.0F);
+    if (ImGui::BeginCombo(
+            "Connector##blockout",
+            creativeEditorWorldLayoutVerticalConnectorKindLabel(
+                draft.storeys.connectorKind))) {
+      for (const cr::CreativeWorldLayoutVerticalConnectorKind kind :
+           {cr::CreativeWorldLayoutVerticalConnectorKind::Stair,
+            cr::CreativeWorldLayoutVerticalConnectorKind::Ramp}) {
+        const bool selected = draft.storeys.connectorKind == kind;
+        if (ImGui::Selectable(
+                creativeEditorWorldLayoutVerticalConnectorKindLabel(kind),
+                selected)) {
+          draft.storeys.connectorKind = kind;
+        }
+        if (selected) {
+          ImGui::SetItemDefaultFocus();
+        }
+      }
+      ImGui::EndCombo();
+    }
     ImGui::SetNextItemWidth(188.0F);
     if (ImGui::BeginCombo(
             "Direction##blockout",
@@ -786,17 +801,80 @@ void drawWorldLayoutBuildingBlockoutSection(
     ImGui::TreePop();
   }
 
-  ImGui::BeginDisabled(creativeEditorWorldLayoutPreviewActive(state));
-  if (ImGui::Button("Stage blockout")) {
-    commands.push(
-        CreativeDesktopCommandId::WorldLayoutCreateBuildingBlockout,
-        CreativeDesktopWorldLayoutBuildingBlockoutPayload{draft});
+}
+
+// Create-tab Building Blockout section. Create mode edits the transient
+// Create draft and stages one new building; Edit mode loads the selected
+// building through the backend read contract into its own draft, shows
+// whether that draft is still in sync with the source revision, and applies
+// through the typed update command. Both modes render the same drawer and
+// surface the raw status message; preview/confirm stay in the Build panel.
+void drawWorldLayoutBuildingBlockoutSection(
+    CreativeEditorDesktopUiState& desktopUi,
+    CreativeEditorWorldLayoutState& state,
+    CreativeDesktopCommandFrame& commands) {
+  CreativeEditorDesktopBlockoutEditDraft& edit =
+      desktopUi.worldLayoutBlockoutEdit;
+  if (edit.active && edit.buildingIndex >= state.source.buildings.size()) {
+    edit = {};
   }
-  ImGui::EndDisabled();
+  ImGui::SeparatorText("Building Blockout");
+  const bool previewActive = creativeEditorWorldLayoutPreviewActive(state);
+  if (edit.active) {
+    ImGui::TextDisabled(
+        "Editing %s", state.source.buildings[edit.buildingIndex].name.c_str());
+    ImGui::TextDisabled(
+        "%s", creativeEditorWorldLayoutBlockoutEditInSync(edit, state)
+                  ? "In sync with source."
+                  : "Source changed since this draft was read.");
+    drawWorldLayoutBlockoutSettingsDrawer(edit.settings);
+    ImGui::BeginDisabled(previewActive);
+    if (ImGui::Button("Apply blockout")) {
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutUpdateBuildingBlockout,
+          CreativeDesktopWorldLayoutBuildingBlockoutUpdatePayload{
+              edit.buildingIndex, edit.settings});
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel##blockout_edit")) {
+      edit = {};
+    }
+  } else {
+    drawWorldLayoutBlockoutSettingsDrawer(desktopUi.worldLayoutBlockoutDraft);
+    ImGui::BeginDisabled(previewActive);
+    if (ImGui::Button("Stage blockout")) {
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutCreateBuildingBlockout,
+          CreativeDesktopWorldLayoutBuildingBlockoutPayload{
+              desktopUi.worldLayoutBlockoutDraft});
+    }
+    ImGui::EndDisabled();
+    if (state.selection.kind ==
+        CreativeEditorWorldLayoutSelectionKind::Building) {
+      CreativeEditorWorldLayoutBuildingBlockoutSettings readSettings;
+      const bool readable =
+          readCreativeEditorWorldLayoutBuildingBlockoutSettings(
+              state, state.selection.index, readSettings);
+      ImGui::SameLine();
+      ImGui::BeginDisabled(!readable);
+      if (ImGui::Button("Edit selected##blockout")) {
+        edit = {true, state.selection.index, state.revision, readSettings};
+      }
+      ImGui::EndDisabled();
+    }
+  }
   ImGui::TextWrapped("%s", state.statusMessage.c_str());
 }
 
 }  // namespace
+
+bool creativeEditorWorldLayoutBlockoutEditInSync(
+    const CreativeEditorDesktopBlockoutEditDraft& draft,
+    const CreativeEditorWorldLayoutState& state) noexcept {
+  return draft.active && draft.buildingIndex < state.source.buildings.size() &&
+         draft.sourceRevision == state.revision;
+}
 
 std::span<const CreativeEditorWorldLayoutBlockoutPatternChoice>
 creativeEditorWorldLayoutBlockoutPatternChoices() noexcept {
