@@ -285,6 +285,7 @@ target_sources(iggy3d
     src/render/vulkan/StaticMeshInstances.cpp
     src/render/vulkan/BufferImageResources.cpp
     src/render/vulkan/RoomMeshCpuGeometry.cpp
+    src/render/vulkan/RoomMeshCpuPrimitives.cpp
     src/render/vulkan/RoomMeshOptimization.cpp
     src/render/vulkan/RoomMeshStaticAssetGeometry.cpp
     src/render/vulkan/FrameCapture.cpp

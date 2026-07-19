@@ -59,6 +59,84 @@ struct WallBoxDraw {
   Vec3 rotationEulerRadians;
 };
 
+[[nodiscard]] Vec3 colorForRoomRole(const std::string& role);
+
+[[nodiscard]] bool appendFloorPlaneIfFits(
+    std::vector<FirstRoomVertex>& vertices,
+    std::vector<std::uint16_t>& indices,
+    std::vector<IndexedDrawRange>& draws,
+    Vec3 center,
+    Vec3 size,
+    Vec3 color);
+
+[[nodiscard]] bool appendSurfacePatches(
+    std::vector<FirstRoomVertex>& vertices,
+    std::vector<std::uint16_t>& indices,
+    std::vector<IndexedDrawRange>& draws,
+    std::span<const SceneRoomSurfacePatchItem> patches);
+
+[[nodiscard]] bool canAppendSurfacePatches(
+    const std::vector<FirstRoomVertex>& vertices,
+    std::span<const SceneRoomSurfacePatchItem> patches);
+
+[[nodiscard]] bool appendBoxIfFits(
+    std::vector<FirstRoomVertex>& vertices,
+    std::vector<std::uint16_t>& indices,
+    std::vector<IndexedDrawRange>& draws,
+    Vec3 center,
+    Vec3 size,
+    Vec3 color,
+    Vec3 rotationEulerRadians = {});
+
+[[nodiscard]] bool appendRampWedgeIfFits(
+    std::vector<FirstRoomVertex>& vertices,
+    std::vector<std::uint16_t>& indices,
+    std::vector<IndexedDrawRange>& draws,
+    Vec3 center,
+    Vec3 size,
+    Vec3 color,
+    Vec3 rotationEulerRadians);
+
+[[nodiscard]] bool appendOpenFrameIfFits(
+    std::vector<FirstRoomVertex>& vertices,
+    std::vector<std::uint16_t>& indices,
+    std::vector<IndexedDrawRange>& draws,
+    Vec3 center,
+    Vec3 size,
+    Vec3 color,
+    Vec3 rotationEulerRadians);
+
+[[nodiscard]] bool appendStairStepsIfFits(
+    std::vector<FirstRoomVertex>& vertices,
+    std::vector<std::uint16_t>& indices,
+    std::vector<IndexedDrawRange>& draws,
+    Vec3 center,
+    Vec3 size,
+    Vec3 color,
+    Vec3 rotationEulerRadians,
+    std::uint16_t segmentCount);
+
+void appendCreativeTargetWireframe(
+    std::vector<FirstRoomVertex>& vertices,
+    std::vector<std::uint32_t>& indices,
+    std::vector<IndexedDrawRange>& componentDraws,
+    Vec3 color);
+
+void appendCreativePathWireframe(
+    std::vector<FirstRoomVertex>& vertices,
+    std::vector<std::uint32_t>& indices,
+    std::vector<IndexedDrawRange>& componentDraws,
+    Vec3 color);
+
+[[nodiscard]] bool appendCreativeGeneratedPreviewShape(
+    std::vector<FirstRoomVertex>& vertices,
+    std::vector<std::uint32_t>& indices,
+    std::vector<IndexedDrawRange>& componentDraws,
+    RenderCreativePreviewGeometryProfile profile,
+    std::uint16_t proceduralSegmentCount,
+    Vec3 size,
+    Vec3 color);
+
 [[nodiscard]] Vec3 componentProduct(Vec3 lhs, Vec3 rhs) noexcept;
 
 [[nodiscard]] bool appendStaticMeshAsset(
