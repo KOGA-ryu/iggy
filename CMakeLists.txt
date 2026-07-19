@@ -192,6 +192,10 @@ target_sources(iggy3d
     src/app/iggy3d/save/CatalogProjector.cpp
     src/app/iggy3d/creative/world/WorldService.cpp
     src/app/iggy3d/save/SaveBridge.cpp
+    src/app/iggy3d/save/SaveBridgeSupport.cpp
+    src/app/iggy3d/save/SaveBridgeSession.cpp
+    src/app/iggy3d/save/SaveBridgeCreative.cpp
+    src/app/iggy3d/save/SaveBridgeMutation.cpp
     src/app/frontend/SaveSlotModel.cpp
     src/app/platform/ExecutablePath.cpp
     src/content/assets/TraversalTag.cpp
