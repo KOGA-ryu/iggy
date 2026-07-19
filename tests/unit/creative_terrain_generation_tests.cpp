@@ -20,6 +20,10 @@ bool expect(bool condition, std::string_view message) {
   return condition;
 }
 
+bool exactPoint(cr::CreativeVec3 lhs, cr::CreativeVec3 rhs) {
+  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
+}
+
 cr::CreativeTerrainGeneratorRecipe testRecipe() {
   cr::CreativeTerrainGeneratorRecipe recipe;
   recipe.seed = 0x123456789abcdef0ULL;
@@ -123,6 +127,70 @@ bool flatRecipeProducesExactQuantizedBase() {
          expect(result.receipt.heightHash != 0U &&
                     result.plan.recipe.seed == recipe.seed,
                 "plan retains source recipe and stable output hash");
+}
+
+const cr::CreativeTerrainSurfacePatch* findPatch(
+    const cr::CreativeTerrainRenderPlan& plan,
+    cr::CreativeTerrainCoord2 coord) {
+  const auto found = std::find_if(
+      plan.patches.begin(), plan.patches.end(),
+      [coord](const cr::CreativeTerrainSurfacePatch& patch) {
+        return patch.coord == coord;
+      });
+  return found == plan.patches.end() ? nullptr : &*found;
+}
+
+bool heightSurfaceCompositionReplacesRegionAndSharesCorners() {
+  cr::CreativeTerrainHeightField baseField;
+  constexpr cr::CreativeTerrainHeightFieldBounds baseBounds{
+      {-2, 0}, 6U, 2U};
+  constexpr std::array<std::uint16_t, 12U> baseHeights{
+      3U, 3U, 3U, 3U, 3U, 3U,
+      3U, 3U, 3U, 3U, 3U, 3U,
+  };
+  static_cast<void>(baseField.replace(baseBounds, baseHeights));
+  const cr::CreativeTerrainSurfacePlan base =
+      cr::buildCreativeTerrainHeightSurfacePlan(baseField);
+
+  cr::CreativeTerrainHeightField replacement;
+  constexpr cr::CreativeTerrainHeightFieldBounds replacementBounds{
+      {0, 0}, 3U, 2U};
+  constexpr std::array<std::uint16_t, 6U> replacementHeights{
+      7U, 0U, 7U,
+      7U, 7U, 7U,
+  };
+  static_cast<void>(replacement.replace(replacementBounds,
+                                        replacementHeights));
+  const cr::CreativeTerrainSurfacePlan composed =
+      cr::replaceCreativeTerrainSurfaceRegion(base, replacement);
+  const cr::CreativeTerrainRenderPlan render =
+      cr::buildCreativeTerrainRenderPlan(composed, {}, 1.0);
+  const cr::CreativeTerrainSurfacePatch* left = findPatch(render, {-1, 1});
+  const cr::CreativeTerrainSurfacePatch* right = findPatch(render, {0, 1});
+  const bool holeAbsent =
+      std::none_of(composed.columns.begin(), composed.columns.end(),
+                   [](const cr::CreativeTerrainColumn& column) {
+                     return column.coord == cr::CreativeTerrainCoord2{1, 0};
+                   });
+
+  return expect(base.accepted && base.columns.size() == 12U &&
+                    base.cuboids.size() == 2U,
+                "dense heightfield converts to canonical row cuboids") &&
+         expect(composed.accepted && composed.columns.size() == 11U &&
+                    composed.cuboids.size() == 7U && holeAbsent,
+                "replacement region preserves outside and removes zero cells") &&
+         expect(composed.columns.front().coord ==
+                        cr::CreativeTerrainCoord2{-2, 0} &&
+                    composed.columns.back().coord ==
+                        cr::CreativeTerrainCoord2{3, 1},
+                "composed columns remain ordered by row then coordinate") &&
+         expect(render.accepted && render.patches.size() == 11U &&
+                    left != nullptr && right != nullptr &&
+                    exactPoint(left->corners[1], right->corners[0]) &&
+                    exactPoint(left->corners[2], right->corners[3]),
+                "base and replacement share exact boundary vertices") &&
+         expect(baseField.revision() == 1U && replacement.revision() == 1U,
+                "surface composition mutates neither source field");
 }
 
 bool generationIsDeterministicAndSeedSensitive() {
@@ -267,6 +335,7 @@ bool invalidRecipesFailClosed() {
 int main() {
   const bool ok = heightFieldReplacementIsAtomicBoundedAndCanonical() &&
                   flatRecipeProducesExactQuantizedBase() &&
+                  heightSurfaceCompositionReplacesRegionAndSharesCorners() &&
                   generationIsDeterministicAndSeedSensitive() &&
                   slopeDampingSuppressesFineTerrainVariation() &&
                   invalidRecipesFailClosed();

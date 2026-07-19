@@ -12,6 +12,7 @@
 namespace iggy3d::creative {
 
 using terrain_field_internal::coordLess;
+using terrain_field_internal::appendTerrainRowCuboids;
 using terrain_field_internal::terrainContributionWeight;
 
 namespace {
@@ -71,41 +72,6 @@ struct TerrainContribution {
   return count == 0U ? 0.0
                      : static_cast<double>(heightSum) /
                            static_cast<double>(count);
-}
-
-[[nodiscard]] std::int32_t floorDivByVoxelChunk(
-    std::int32_t value) noexcept {
-  std::int32_t quotient = value / kCreativeVoxelChunkEdge;
-  if (value % kCreativeVoxelChunkEdge < 0) {
-    --quotient;
-  }
-  return quotient;
-}
-
-void appendRowCuboids(std::span<const CreativeTerrainColumn> row,
-                      std::vector<CreativeVoxelCuboid>& output) {
-  if (row.empty()) {
-    return;
-  }
-  std::size_t begin = 0U;
-  while (begin < row.size()) {
-    std::size_t end = begin + 1U;
-    while (end < row.size() &&
-           row[end].heightCells == row[begin].heightCells &&
-           row[end].coord.x == row[end - 1U].coord.x + 1) {
-      ++end;
-    }
-    const CreativeTerrainColumn& first = row[begin];
-    CreativeVoxelCuboid cuboid;
-    cuboid.chunk = {floorDivByVoxelChunk(first.coord.x), 0,
-                    floorDivByVoxelChunk(first.coord.z)};
-    cuboid.minCell = {first.coord.x, 0, first.coord.z};
-    cuboid.maxCellExclusive = {row[end - 1U].coord.x + 1,
-                               first.heightCells, first.coord.z + 1};
-    cuboid.material = CreativeObjectKind::TerrainPatch;
-    output.push_back(cuboid);
-    begin = end;
-  }
 }
 
 }  // namespace
@@ -233,7 +199,7 @@ CreativeTerrainSurfacePlan buildCreativeTerrainSurfacePlan(
            plan.columns[end].coord.z == plan.columns[begin].coord.z) {
       ++end;
     }
-    appendRowCuboids(
+    appendTerrainRowCuboids(
         std::span<const CreativeTerrainColumn>{plan.columns.data() + begin,
                                                end - begin},
         plan.cuboids);

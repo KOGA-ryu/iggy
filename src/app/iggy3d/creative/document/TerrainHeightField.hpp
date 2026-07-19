@@ -82,4 +82,24 @@ class CreativeTerrainHeightField {
 [[nodiscard]] std::string_view toString(
     CreativeTerrainHeightFieldReplaceStatus status) noexcept;
 
+// Converts committed tile heights into the same canonical surface contract as
+// legacy terrain. Absent cells remain holes; contiguous equal-height cells are
+// merged into collision cuboids without changing the heightfield.
+[[nodiscard]] CreativeTerrainSurfacePlan
+buildCreativeTerrainHeightSurfacePlan(
+    const CreativeTerrainHeightField& field);
+// Replaces every base column inside the heightfield bounds, including removing
+// columns where the replacement height is zero, then rebuilds canonical
+// cuboids for the combined surface. This is the transient preview composition
+// seam; neither input is mutated.
+[[nodiscard]] CreativeTerrainSurfacePlan
+replaceCreativeTerrainSurfaceRegion(
+    const CreativeTerrainSurfacePlan& base,
+    const CreativeTerrainHeightField& replacement);
+[[nodiscard]] CreativeTerrainRenderPlan buildCreativeTerrainHeightRenderPlan(
+    const CreativeTerrainHeightField& field,
+    CreativeVec3 gridOrigin,
+    double cellSize,
+    std::size_t maxPatchCount = kCreativeTerrainRenderPatchCapacity);
+
 }  // namespace iggy3d::creative

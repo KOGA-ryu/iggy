@@ -52,6 +52,46 @@ namespace iggy3d::creative::terrain_field_internal {
   return sample;
 }
 
+namespace {
+
+[[nodiscard]] std::int32_t floorDivByVoxelChunk(
+    std::int32_t value) noexcept {
+  std::int32_t quotient = value / kCreativeVoxelChunkEdge;
+  if (value % kCreativeVoxelChunkEdge < 0) {
+    --quotient;
+  }
+  return quotient;
+}
+
+}  // namespace
+
+void appendTerrainRowCuboids(
+    std::span<const CreativeTerrainColumn> row,
+    std::vector<CreativeVoxelCuboid>& output) {
+  if (row.empty()) {
+    return;
+  }
+  std::size_t begin = 0U;
+  while (begin < row.size()) {
+    std::size_t end = begin + 1U;
+    while (end < row.size() &&
+           row[end].heightCells == row[begin].heightCells &&
+           row[end].coord.x == row[end - 1U].coord.x + 1) {
+      ++end;
+    }
+    const CreativeTerrainColumn& first = row[begin];
+    CreativeVoxelCuboid cuboid;
+    cuboid.chunk = {floorDivByVoxelChunk(first.coord.x), 0,
+                    floorDivByVoxelChunk(first.coord.z)};
+    cuboid.minCell = {first.coord.x, 0, first.coord.z};
+    cuboid.maxCellExclusive = {row[end - 1U].coord.x + 1,
+                               first.heightCells, first.coord.z + 1};
+    cuboid.material = CreativeObjectKind::TerrainPatch;
+    output.push_back(cuboid);
+    begin = end;
+  }
+}
+
 }  // namespace iggy3d::creative::terrain_field_internal
 
 namespace iggy3d::creative {

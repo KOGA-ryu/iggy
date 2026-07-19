@@ -1,5 +1,7 @@
 #include "app/iggy3d/creative/document/TerrainHeightField.hpp"
 
+#include "app/iggy3d/creative/document/TerrainFieldInternal.hpp"
+
 #include <algorithm>
 #include <limits>
 
@@ -15,6 +17,52 @@ namespace {
   return height == kCreativeTerrainEmptyHeightCells ||
          (height >= kCreativeTerrainMinimumHeightCells &&
           height <= kCreativeTerrainMaximumHeightCells);
+}
+
+[[nodiscard]] bool coordLess(CreativeTerrainCoord2 lhs,
+                             CreativeTerrainCoord2 rhs) noexcept {
+  return lhs.z != rhs.z ? lhs.z < rhs.z : lhs.x < rhs.x;
+}
+
+[[nodiscard]] bool coordInsideBounds(
+    CreativeTerrainCoord2 coord,
+    CreativeTerrainHeightFieldBounds bounds) noexcept {
+  const std::int64_t offsetX =
+      static_cast<std::int64_t>(coord.x) - bounds.minimum.x;
+  const std::int64_t offsetZ =
+      static_cast<std::int64_t>(coord.z) - bounds.minimum.z;
+  return offsetX >= 0 && offsetX < bounds.widthCells && offsetZ >= 0 &&
+         offsetZ < bounds.depthCells;
+}
+
+[[nodiscard]] bool validSurfaceColumns(
+    std::span<const CreativeTerrainColumn> columns) noexcept {
+  for (std::size_t index = 0U; index < columns.size(); ++index) {
+    if (!validHeight(columns[index].heightCells) ||
+        columns[index].heightCells == kCreativeTerrainEmptyHeightCells ||
+        (index > 0U &&
+         !coordLess(columns[index - 1U].coord, columns[index].coord))) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void rebuildTerrainCuboids(CreativeTerrainSurfacePlan& plan) {
+  plan.cuboids.clear();
+  for (std::size_t rowBegin = 0U; rowBegin < plan.columns.size();) {
+    std::size_t rowEnd = rowBegin + 1U;
+    while (rowEnd < plan.columns.size() &&
+           plan.columns[rowEnd].coord.z ==
+               plan.columns[rowBegin].coord.z) {
+      ++rowEnd;
+    }
+    terrain_field_internal::appendTerrainRowCuboids(
+        std::span<const CreativeTerrainColumn>{
+            plan.columns.data() + rowBegin, rowEnd - rowBegin},
+        plan.cuboids);
+    rowBegin = rowEnd;
+  }
 }
 
 }  // namespace
@@ -168,6 +216,117 @@ void CreativeTerrainHeightField::clear() noexcept {
   heights_.clear();
   revision_ = 0U;
   valid_ = true;
+}
+
+CreativeTerrainSurfacePlan buildCreativeTerrainHeightSurfacePlan(
+    const CreativeTerrainHeightField& field) {
+  CreativeTerrainSurfacePlan plan;
+  plan.requested = true;
+  plan.sourceRevision = field.revision();
+  if (!field.validateInvariants()) {
+    plan.status = CreativeTerrainSurfacePlanStatus::InvalidField;
+    plan.reasonCode = "creative_terrain_height_surface_field_invalid";
+    return plan;
+  }
+  if (field.presentCellCount() == 0U) {
+    plan.accepted = true;
+    plan.status = CreativeTerrainSurfacePlanStatus::Empty;
+    plan.reasonCode = "creative_terrain_height_surface_empty";
+    return plan;
+  }
+
+  const CreativeTerrainHeightFieldBounds bounds = field.bounds();
+  const std::uint64_t presentCellCount = field.presentCellCount();
+  plan.columns.reserve(static_cast<std::size_t>(presentCellCount));
+  for (std::uint16_t z = 0U; z < bounds.depthCells; ++z) {
+    const std::size_t rowBegin = plan.columns.size();
+    for (std::uint16_t x = 0U; x < bounds.widthCells; ++x) {
+      const CreativeTerrainCoord2 coord{
+          bounds.minimum.x + static_cast<std::int32_t>(x),
+          bounds.minimum.z + static_cast<std::int32_t>(z)};
+      const std::uint16_t height = field.heightAt(coord).value_or(
+          kCreativeTerrainEmptyHeightCells);
+      if (height == kCreativeTerrainEmptyHeightCells) {
+        continue;
+      }
+      plan.columns.push_back({coord, height});
+    }
+    if (plan.columns.size() != rowBegin) {
+      terrain_field_internal::appendTerrainRowCuboids(
+          std::span<const CreativeTerrainColumn>{
+              plan.columns.data() + rowBegin,
+              plan.columns.size() - rowBegin},
+          plan.cuboids);
+    }
+  }
+
+  plan.contributionCount = plan.columns.size();
+  plan.accepted = true;
+  plan.status = CreativeTerrainSurfacePlanStatus::Ready;
+  plan.reasonCode = "creative_terrain_height_surface_ready";
+  return plan;
+}
+
+CreativeTerrainSurfacePlan replaceCreativeTerrainSurfaceRegion(
+    const CreativeTerrainSurfacePlan& base,
+    const CreativeTerrainHeightField& replacement) {
+  CreativeTerrainSurfacePlan plan;
+  plan.requested = true;
+  plan.sourceRevision = replacement.revision();
+  if (!replacement.validateInvariants() ||
+      !isValidCreativeTerrainHeightFieldBounds(replacement.bounds()) ||
+      !base.accepted ||
+      (base.status != CreativeTerrainSurfacePlanStatus::Empty &&
+       base.status != CreativeTerrainSurfacePlanStatus::Ready) ||
+      (base.status == CreativeTerrainSurfacePlanStatus::Empty &&
+       !base.columns.empty()) ||
+      !validSurfaceColumns(base.columns)) {
+    plan.status = CreativeTerrainSurfacePlanStatus::InvalidField;
+    plan.reasonCode = "creative_terrain_height_composition_invalid";
+    return plan;
+  }
+
+  const CreativeTerrainSurfacePlan replacementPlan =
+      buildCreativeTerrainHeightSurfacePlan(replacement);
+  if (!replacementPlan.accepted) {
+    plan.status = CreativeTerrainSurfacePlanStatus::InvalidField;
+    plan.reasonCode = "creative_terrain_height_replacement_invalid";
+    return plan;
+  }
+
+  plan.columns.reserve(base.columns.size() + replacementPlan.columns.size());
+  for (const CreativeTerrainColumn& column : base.columns) {
+    if (!coordInsideBounds(column.coord, replacement.bounds())) {
+      plan.columns.push_back(column);
+    }
+  }
+  plan.columns.insert(plan.columns.end(), replacementPlan.columns.begin(),
+                      replacementPlan.columns.end());
+  std::sort(plan.columns.begin(), plan.columns.end(),
+            [](const CreativeTerrainColumn& lhs,
+               const CreativeTerrainColumn& rhs) {
+              return coordLess(lhs.coord, rhs.coord);
+            });
+  rebuildTerrainCuboids(plan);
+  plan.contributionCount = plan.columns.size();
+  plan.accepted = true;
+  plan.status = plan.columns.empty()
+                    ? CreativeTerrainSurfacePlanStatus::Empty
+                    : CreativeTerrainSurfacePlanStatus::Ready;
+  plan.reasonCode = plan.columns.empty()
+                        ? "creative_terrain_height_composition_empty"
+                        : "creative_terrain_height_composition_ready";
+  return plan;
+}
+
+CreativeTerrainRenderPlan buildCreativeTerrainHeightRenderPlan(
+    const CreativeTerrainHeightField& field,
+    CreativeVec3 gridOrigin,
+    double cellSize,
+    std::size_t maxPatchCount) {
+  return buildCreativeTerrainRenderPlan(
+      buildCreativeTerrainHeightSurfacePlan(field), gridOrigin, cellSize,
+      maxPatchCount);
 }
 
 }  // namespace iggy3d::creative

@@ -15,5 +15,8 @@ namespace iggy3d::creative::terrain_field_internal {
 [[nodiscard]] CreativeTerrainHeightSample sampleTerrainHeightUnchecked(
     std::span<const CreativeTerrainControlPoint> controls,
     CreativeTerrainCoord2 coord) noexcept;
+void appendTerrainRowCuboids(
+    std::span<const CreativeTerrainColumn> row,
+    std::vector<CreativeVoxelCuboid>& output);
 
 }  // namespace iggy3d::creative::terrain_field_internal

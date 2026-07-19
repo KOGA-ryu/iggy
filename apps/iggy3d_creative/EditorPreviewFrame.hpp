@@ -8,6 +8,7 @@
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/input/ControlProfile.hpp"
+#include "app/iggy3d/creative/recipes/TerrainGeneration.hpp"
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/FrameInput.hpp"
@@ -140,6 +141,26 @@ struct CreativeEditorSceneCache {
   bool valid = false;
 };
 
+// A complete transient scene built only when the source document, grid, or
+// generated height hash changes. The generated region replaces source terrain
+// before meshing, so preview frames cannot contain overlapping terrain owners.
+struct CreativeEditorGeneratedTerrainPreviewCache {
+  StandaloneRoomBakePreviewScene preview;
+  iggy3d::creative::CreativeTerrainSurfacePlan composedSurface;
+  std::vector<iggy3d::creative::CreativeTerrainSurfacePatch>
+      terrainCollisionPatches;
+  std::vector<iggy3d::SceneRoomSurfacePatchItem> terrainSurfacePatches;
+  iggy3d::creative::CreativeDocumentId documentId =
+      iggy3d::creative::kInvalidDocumentId;
+  std::uint64_t documentRevision = 0U;
+  std::uint64_t heightHash = 0U;
+  std::uint64_t sourceSceneRefreshCount = 0U;
+  std::uint64_t refreshCount = 0U;
+  iggy3d::creative::CreativeVec3 terrainGridOrigin{};
+  double terrainGridCellSizeMeters = 0.0;
+  bool valid = false;
+};
+
 [[nodiscard]] StandaloneRoomBakePreviewScene buildStandaloneRoomBakePreviewScene(
     const iggy3d::creative::CreativeDocument& document,
     const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr);
@@ -150,6 +171,15 @@ struct CreativeEditorSceneCache {
     const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr);
 void invalidateCreativeEditorSceneCache(
     CreativeEditorSceneCache& cache) noexcept;
+
+[[nodiscard]] bool refreshCreativeEditorGeneratedTerrainPreview(
+    CreativeEditorGeneratedTerrainPreviewCache& cache,
+    const CreativeEditorSceneCache& sourceSceneCache,
+    const iggy3d::creative::CreativeDocument& document,
+    const iggy3d::creative::CreativeTerrainGenerationResult& generation,
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr);
+void invalidateCreativeEditorGeneratedTerrainPreview(
+    CreativeEditorGeneratedTerrainPreviewCache& cache) noexcept;
 
 void logStandaloneRoomBakeFinal(
     const StandaloneRoomBakePreviewScene& preview);
