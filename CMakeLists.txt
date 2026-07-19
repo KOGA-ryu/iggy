@@ -340,6 +340,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorWorldTargeting.cpp
   apps/iggy3d_creative/EditorWorldLayout.cpp
   apps/iggy3d_creative/EditorWorldLayoutAdoption.cpp
+  apps/iggy3d_creative/EditorWorldLayoutLifecycle.cpp
   apps/iggy3d_creative/EditorWorldLayoutGeneratedSettings.cpp
   apps/iggy3d_creative/EditorWorldLayoutCatalog.cpp
   apps/iggy3d_creative/EditorWorldLayoutElevationProjection.cpp
