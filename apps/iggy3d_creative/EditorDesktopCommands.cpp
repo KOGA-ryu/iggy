@@ -18,6 +18,7 @@
 #include "EditorPersistence.hpp"
 #include "EditorPlayMode.hpp"
 #include "EditorState.hpp"
+#include "EditorTerrainGeneration.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/camera/Fly.hpp"
@@ -321,6 +322,39 @@ CreativeEditorWorldLayoutEditReceipt repairWorldLayoutAsset(
           : creative::CreativeBounds{object.transform.position,
                                      object.transform.position};
   return focusEditorCameraOnBounds(editor, focusBounds);
+}
+
+[[nodiscard]] bool focusEditorCameraOnTerrainGeneration(
+    CreativeEditorState& editor,
+    const creative::CreativeDocument& document,
+    const creative::CreativeTerrainGenerationResult& generation) noexcept {
+  if (!generation.receipt.accepted) {
+    return false;
+  }
+  const creative::CreativeGridSettings grid = document.gridSettings();
+  const creative::CreativeTerrainHeightFieldBounds bounds =
+      generation.plan.heightField.bounds();
+  const double minimumX =
+      grid.origin.x + static_cast<double>(bounds.minimum.x) *
+                          grid.cellSizeMeters;
+  const double minimumZ =
+      grid.origin.z + static_cast<double>(bounds.minimum.z) *
+                          grid.cellSizeMeters;
+  const double maximumX =
+      grid.origin.x +
+      (static_cast<double>(bounds.minimum.x) + bounds.widthCells) *
+          grid.cellSizeMeters;
+  const double maximumZ =
+      grid.origin.z +
+      (static_cast<double>(bounds.minimum.z) + bounds.depthCells) *
+          grid.cellSizeMeters;
+  return focusEditorCameraOnBounds(
+      editor,
+      {{minimumX, grid.origin.y, minimumZ},
+       {maximumX,
+        grid.origin.y + generation.receipt.maximumHeightCells *
+                            grid.cellSizeMeters,
+        maximumZ}});
 }
 
 void dispatchOne(const CreativeDesktopCommand& command,
@@ -930,6 +964,54 @@ void dispatchOne(const CreativeDesktopCommand& command,
                                         : "update failed: " + receipt.reasonCode;
       break;
     }
+    case CreativeDesktopCommandId::TerrainGenerationPreview:
+    case CreativeDesktopCommandId::TerrainGenerationRegenerate: {
+      if (editor.assetEdit.active ||
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout)) {
+        result.message = "terrain generator unavailable in this workspace";
+        break;
+      }
+      const bool wasActive = editor.terrainGeneration.previewActive;
+      const bool regenerate =
+          command.id == CreativeDesktopCommandId::TerrainGenerationRegenerate;
+      const CreativeEditorTerrainGenerationPreviewReceipt receipt =
+          previewCreativeEditorTerrainGeneration(
+              editor.terrainGeneration, activeAppState.facade.document(),
+              regenerate);
+      if (receipt.accepted && !wasActive) {
+        static_cast<void>(focusEditorCameraOnTerrainGeneration(
+            editor, activeAppState.facade.document(),
+            editor.terrainGeneration.generation));
+      }
+      result.accepted = receipt.accepted;
+      result.changed = true;
+      result.affectedObjectCount =
+          editor.terrainGeneration.generation.receipt.generatedCellCount;
+      result.message = editor.terrainGeneration.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::TerrainGenerationApply: {
+      if (editor.assetEdit.active ||
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout)) {
+        result.message = "terrain generator unavailable in this workspace";
+        break;
+      }
+      const CreativeEditorTerrainGenerationApplyReceipt receipt =
+          applyCreativeEditorTerrainGeneration(activeAppState,
+                                               editor.terrainGeneration);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.sceneChanged = receipt.changed;
+      result.affectedObjectCount = receipt.replacement.cellCountAfter;
+      result.message = editor.terrainGeneration.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::TerrainGenerationCancel:
+      result.changed = cancelCreativeEditorTerrainGeneration(
+          editor.terrainGeneration, "Terrain preview canceled");
+      result.accepted = true;
+      result.message = editor.terrainGeneration.statusMessage;
+      break;
     case CreativeDesktopCommandId::WorldLayoutSetTool: {
       const auto* payload =
           payloadAs<CreativeDesktopWorldLayoutToolPayload>(command);
@@ -2414,6 +2496,10 @@ void dispatchOne(const CreativeDesktopCommand& command,
         result.changed = stopped.stopped;
         result.message = stopped.stopped ? "play stopped"
                                          : "play stop failed";
+        break;
+      }
+      if (editor.terrainGeneration.previewActive) {
+        result.message = "apply or cancel the terrain preview before play";
         break;
       }
       {

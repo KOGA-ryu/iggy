@@ -342,6 +342,8 @@ int main(int argc, char** argv) {
   const float kGizmoThickness = bootstrapData.gizmoThicknessMeters;
   CreativeEditorGamepad gamepad;
   iggy3d_creative_app::CreativeEditorSceneCache sceneCache;
+  iggy3d_creative_app::CreativeEditorGeneratedTerrainPreviewCache
+      terrainGenerationPreviewCache;
   iggy3d_creative_app::CreativeEditorPlayMode playMode;
 
   while (window.isOpen()) {
@@ -449,6 +451,11 @@ int main(int argc, char** argv) {
         iggy3d_creative_app::creativeEditorPlayModeActive(playMode)
             ? appState
             : activeCreativeEditorAppState(editor, appState);
+    if (synchronizeCreativeEditorTerrainGeneration(
+            editor.terrainGeneration, activeAppState.facade.document())) {
+      invalidateCreativeEditorGeneratedTerrainPreview(
+          terrainGenerationPreviewCache);
+    }
 
     // Desktop shell chrome: the menu emits semantic command IDs, the sole
     // dispatcher applies them to the existing kernels, and the status bar
@@ -674,7 +681,8 @@ int main(int argc, char** argv) {
         controlsFrame.blockWorldActions || transformFrame.blockWorldActions ||
         catalogFrame.blockWorldActions ||
         assetReplacementFrame.blockWorldActions ||
-        toolOptionsFrame.blockWorldActions || layoutPreviewActive;
+        toolOptionsFrame.blockWorldActions || layoutPreviewActive ||
+        editor.terrainGeneration.previewActive;
     if (modalBlocksWorldActions || !frameInput.windowFocused) {
       finalizeCreativeEditorContinuousGestures(
           activeAppState, editor,
@@ -713,7 +721,24 @@ int main(int argc, char** argv) {
     static_cast<void>(refreshCreativeEditorSceneCache(
         sceneCache, renderDocument,
         &bootstrapData.staticMeshAssetCatalog));
-    StandaloneRoomBakePreviewScene& roomBakePreview = sceneCache.preview;
+    StandaloneRoomBakePreviewScene* selectedPreview = &sceneCache.preview;
+    const bool generationTargetsRenderedDocument =
+        &renderDocument == &activeAppState.facade.document() &&
+        creativeEditorTerrainGenerationPreviewMatches(
+            editor.terrainGeneration, renderDocument);
+    if (generationTargetsRenderedDocument) {
+      static_cast<void>(refreshCreativeEditorGeneratedTerrainPreview(
+          terrainGenerationPreviewCache, sceneCache, renderDocument,
+          editor.terrainGeneration.generation,
+          &bootstrapData.staticMeshAssetCatalog));
+      if (terrainGenerationPreviewCache.valid) {
+        selectedPreview = &terrainGenerationPreviewCache.preview;
+      }
+    } else {
+      invalidateCreativeEditorGeneratedTerrainPreview(
+          terrainGenerationPreviewCache);
+    }
+    StandaloneRoomBakePreviewScene& roomBakePreview = *selectedPreview;
     SceneProjectionResult& scene = roomBakePreview.scene;
     DebugProjectionResult debug{};
 

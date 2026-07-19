@@ -9,6 +9,15 @@ namespace iggy3d::creative {
 
 inline constexpr std::uint32_t kCreativeTerrainGeneratorRecipeVersion = 1U;
 inline constexpr std::uint8_t kCreativeTerrainGeneratorMaximumOctaves = 8U;
+inline constexpr double kCreativeTerrainGeneratorMinimumHorizontalScaleCells =
+    1.0;
+inline constexpr double kCreativeTerrainGeneratorMaximumHorizontalScaleCells =
+    4096.0;
+inline constexpr double kCreativeTerrainGeneratorMinimumPersistence = 0.05;
+inline constexpr double kCreativeTerrainGeneratorMaximumPersistence = 1.0;
+inline constexpr double kCreativeTerrainGeneratorMinimumLacunarity = 1.25;
+inline constexpr double kCreativeTerrainGeneratorMaximumLacunarity = 4.0;
+inline constexpr double kCreativeTerrainGeneratorMaximumSlopeDamping = 8.0;
 
 enum class CreativeTerrainGeneratorKind : std::uint8_t {
   SlopeDampedFbm,

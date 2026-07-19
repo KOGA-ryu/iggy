@@ -1,5 +1,10 @@
 #include "EditorPreviewFrame.hpp"
+#include "EditorDesktopCommands.hpp"
+#include "EditorEdits.hpp"
+#include "EditorState.hpp"
+#include "EditorTerrainGeneration.hpp"
 
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/recipes/TerrainGeneration.hpp"
 
@@ -10,6 +15,8 @@
 #include <iostream>
 #include <span>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace {
 namespace app = iggy3d_creative_app;
@@ -204,11 +211,139 @@ bool authoredEmptyRegionSuppressesLegacyTerrain() {
                 "precomputed empty terrain cannot resurrect source collision");
 }
 
+void installDocument(cr::CreativeAppState& appState,
+                     cr::CreativeDocumentId id) {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Terrain Generator Workflow");
+  static_cast<void>(document.assignId(id));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+}
+
+bool terrainGenerationWorkflowIsAtomicAndUndoable() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 903U);
+  app::CreativeEditorTerrainGenerationState state;
+  state.recipe.bounds = {{-4, -3}, 8U, 6U};
+  state.recipe.seed = 77U;
+  const std::uint64_t revisionBefore = appState.facade.document().revision();
+
+  const app::CreativeEditorTerrainGenerationPreviewReceipt preview =
+      app::previewCreativeEditorTerrainGeneration(
+          state, appState.facade.document(), false);
+  const std::uint64_t firstHash = state.generation.receipt.heightHash;
+  const app::CreativeEditorTerrainGenerationPreviewReceipt regenerated =
+      app::previewCreativeEditorTerrainGeneration(
+          state, appState.facade.document(), true);
+  const std::uint64_t secondHash = state.generation.receipt.heightHash;
+  const cr::CreativeTerrainHeightFieldBounds expectedBounds =
+      state.generation.plan.heightField.bounds();
+  const std::vector<std::uint16_t> expectedHeights(
+      state.generation.plan.heightField.heights().begin(),
+      state.generation.plan.heightField.heights().end());
+
+  const app::CreativeEditorTerrainGenerationApplyReceipt applied =
+      app::applyCreativeEditorTerrainGeneration(appState, state);
+  const std::uint64_t revisionAfterApply =
+      appState.facade.document().revision();
+  const bool appliedExactField =
+      appState.facade.document().terrainHeightField().bounds() ==
+          expectedBounds &&
+      std::equal(
+          expectedHeights.begin(), expectedHeights.end(),
+          appState.facade.document().terrainHeightField().heights().begin(),
+          appState.facade.document().terrainHeightField().heights().end());
+  const std::uint64_t undoDepthAfterApply =
+      cr::creativeUndoDepth(appState.history);
+  const bool undone = app::undoLastEdit(appState, "terrain_generation_undo");
+
+  return expect(preview.accepted && regenerated.accepted &&
+                    preview.seed == 77U && regenerated.seed == 78U &&
+                    firstHash != secondHash,
+                "preview is deterministic and regenerate advances the seed") &&
+         expect(revisionAfterApply != revisionBefore && applied.accepted &&
+                    applied.changed && !state.previewActive &&
+                    appliedExactField,
+                "apply commits the exact active preview") &&
+         expect(applied.replacement.cellCountAfter == expectedHeights.size() &&
+                    undoDepthAfterApply == 1U &&
+                    cr::creativeUndoDepth(appState.history) == 0U && undone,
+                "apply creates exactly one undo record") &&
+         expect(appState.facade.document().terrainHeightField().cellCount() ==
+                    0U &&
+                    expectedBounds.widthCells == 8U &&
+                    expectedBounds.depthCells == 6U,
+                "undo restores the terrain field before generation");
+}
+
+bool terrainGenerationRejectsStalePreviewAndCancelDoesNotMutate() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 904U);
+  app::CreativeEditorTerrainGenerationState state;
+  state.recipe.bounds = {{0, 0}, 4U, 4U};
+  const app::CreativeEditorTerrainGenerationPreviewReceipt preview =
+      app::previewCreativeEditorTerrainGeneration(
+          state, appState.facade.document(), false);
+  const std::uint64_t revisionBeforeMutation =
+      appState.facade.document().revision();
+  constexpr cr::CreativeTerrainControlEdit edit{
+      cr::CreativeTerrainEditKind::Upsert, {{10, 10}, 4U, 1U}};
+  const cr::CreativeTerrainMutationReceipt mutation =
+      appState.facade.applyTerrainControlEdits(std::span{&edit, 1U});
+  const app::CreativeEditorTerrainGenerationApplyReceipt staleApply =
+      app::applyCreativeEditorTerrainGeneration(appState, state);
+  const bool synchronized = app::synchronizeCreativeEditorTerrainGeneration(
+      state, appState.facade.document());
+  const std::uint64_t revisionBeforeCancel =
+      appState.facade.document().revision();
+  static_cast<void>(app::previewCreativeEditorTerrainGeneration(
+      state, appState.facade.document(), false));
+  const bool canceled = app::cancelCreativeEditorTerrainGeneration(state);
+
+  return expect(preview.accepted && mutation.accepted &&
+                    appState.facade.document().revision() >
+                        revisionBeforeMutation,
+                "fixture changes document truth after preview") &&
+         expect(!staleApply.accepted && !staleApply.changed && synchronized &&
+                    !state.previewActive,
+                "stale preview cannot overwrite newer document truth") &&
+         expect(canceled && !state.previewActive &&
+                    appState.facade.document().revision() ==
+                        revisionBeforeCancel &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "cancel clears only transient state");
+}
+
+bool desktopCommandsRouteTerrainPreviewAndApply() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 905U);
+  app::CreativeEditorState editor;
+  editor.terrainGeneration.recipe.bounds = {{-2, -2}, 5U, 5U};
+  app::CreativeDesktopCommandFrame frame;
+  frame.push(app::CreativeDesktopCommandId::TerrainGenerationPreview);
+  frame.push(app::CreativeDesktopCommandId::TerrainGenerationApply);
+  const app::CreativeDesktopCommandResult result =
+      app::dispatchCreativeDesktopCommands(
+          frame, {appState, editor, {}, nullptr, nullptr, nullptr});
+
+  return expect(result.accepted && result.changed && result.sceneChanged &&
+                    result.lastCommand ==
+                        app::CreativeDesktopCommandId::TerrainGenerationApply,
+                "desktop semantic commands preview then apply") &&
+         expect(appState.facade.document()
+                            .terrainHeightField()
+                            .bounds() == editor.terrainGeneration.recipe.bounds &&
+                    cr::creativeUndoDepth(appState.history) == 1U,
+                "desktop apply uses the shared workflow and one history entry");
+}
+
 }  // namespace
 
 int main() {
   return generatedPreviewReplacesTerrainAndCachesByHeightHash() &&
-                 authoredEmptyRegionSuppressesLegacyTerrain()
+                 authoredEmptyRegionSuppressesLegacyTerrain() &&
+                 terrainGenerationWorkflowIsAtomicAndUndoable() &&
+                 terrainGenerationRejectsStalePreviewAndCancelDoesNotMutate() &&
+                 desktopCommandsRouteTerrainPreviewAndApply()
              ? EXIT_SUCCESS
              : EXIT_FAILURE;
 }

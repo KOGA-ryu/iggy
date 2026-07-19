@@ -15,6 +15,7 @@
 #include "EditorPersistence.hpp"
 #include "EditorSurfaceExtrude.hpp"
 #include "EditorTerrain.hpp"
+#include "EditorTerrainGeneration.hpp"
 #include "EditorToolOptions.hpp"
 #include "EditorTransform.hpp"
 #include "EditorVolume.hpp"
@@ -33,6 +34,7 @@ void resetCreativeEditorForDocumentReplacement(
   editor.terrain.region.stamp.preview.valid = false;
   editor.terrain.region.stamp.preview.renderAccepted = false;
   editor.terrain.region.stamp.preview.patches.clear();
+  resetCreativeEditorTerrainGeneration(editor.terrainGeneration);
   invalidateCreativeEditorConnectedFillCache(editor.interaction.connectedFill);
   invalidateCreativeEditorSurfaceExtrudeCache(
       editor.interaction.surfaceExtrude);

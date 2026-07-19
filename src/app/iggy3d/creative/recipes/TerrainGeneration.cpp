@@ -11,14 +11,6 @@
 namespace iggy3d::creative {
 namespace {
 
-inline constexpr double kMinimumHorizontalScaleCells = 1.0;
-inline constexpr double kMaximumHorizontalScaleCells = 4096.0;
-inline constexpr double kMinimumPersistence = 0.05;
-inline constexpr double kMaximumPersistence = 1.0;
-inline constexpr double kMinimumLacunarity = 1.25;
-inline constexpr double kMaximumLacunarity = 4.0;
-inline constexpr double kMaximumSlopeDamping = 8.0;
-
 struct NoiseSample {
   double value = 0.0;
   double derivativeX = 0.0;
@@ -168,18 +160,21 @@ bool isValidCreativeTerrainGeneratorRecipe(
          recipe.baseHeightCells <= kCreativeTerrainMaximumHeightCells &&
          recipe.reliefCells <= kCreativeTerrainMaximumHeightCells &&
          std::isfinite(recipe.horizontalScaleCells) &&
-         recipe.horizontalScaleCells >= kMinimumHorizontalScaleCells &&
-         recipe.horizontalScaleCells <= kMaximumHorizontalScaleCells &&
+         recipe.horizontalScaleCells >=
+             kCreativeTerrainGeneratorMinimumHorizontalScaleCells &&
+         recipe.horizontalScaleCells <=
+             kCreativeTerrainGeneratorMaximumHorizontalScaleCells &&
          recipe.octaveCount >= 1U &&
          recipe.octaveCount <= kCreativeTerrainGeneratorMaximumOctaves &&
          std::isfinite(recipe.persistence) &&
-         recipe.persistence >= kMinimumPersistence &&
-         recipe.persistence <= kMaximumPersistence &&
+         recipe.persistence >= kCreativeTerrainGeneratorMinimumPersistence &&
+         recipe.persistence <= kCreativeTerrainGeneratorMaximumPersistence &&
          std::isfinite(recipe.lacunarity) &&
-         recipe.lacunarity >= kMinimumLacunarity &&
-         recipe.lacunarity <= kMaximumLacunarity &&
+         recipe.lacunarity >= kCreativeTerrainGeneratorMinimumLacunarity &&
+         recipe.lacunarity <= kCreativeTerrainGeneratorMaximumLacunarity &&
          std::isfinite(recipe.slopeDamping) && recipe.slopeDamping >= 0.0 &&
-         recipe.slopeDamping <= kMaximumSlopeDamping;
+         recipe.slopeDamping <=
+             kCreativeTerrainGeneratorMaximumSlopeDamping;
 }
 
 std::string_view toString(CreativeTerrainGeneratorKind kind) noexcept {

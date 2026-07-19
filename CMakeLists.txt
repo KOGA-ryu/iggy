@@ -353,6 +353,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorConnectedFill.cpp
   apps/iggy3d_creative/EditorSurfaceExtrude.cpp
   apps/iggy3d_creative/EditorTerrain.cpp
+  apps/iggy3d_creative/EditorTerrainGeneration.cpp
   apps/iggy3d_creative/EditorTerrainOverlay.cpp
   apps/iggy3d_creative/EditorTerrainGrade.cpp
   apps/iggy3d_creative/EditorTerrainPath.cpp
@@ -397,6 +398,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorDesktopModel.cpp
   apps/iggy3d_creative/EditorDesktopOutliner.cpp
   apps/iggy3d_creative/EditorDesktopInspector.cpp
+  apps/iggy3d_creative/EditorDesktopTerrainGeneration.cpp
   apps/iggy3d_creative/EditorDesktopGeneratedSourceInspector.cpp
   apps/iggy3d_creative/EditorDesktopGeneratedBuildingInspector.cpp
   apps/iggy3d_creative/EditorDesktopGeneratedRoomInspector.cpp

@@ -51,6 +51,15 @@ void buildCreativeEditorDesktopInspectorPanel(
     const CreativeEditorPlayMode* playMode,
     CreativeDesktopCommandFrame& commands);
 
+// Terrain generator body for the Inspector's dedicated tab. Widgets edit only
+// transient recipe state and emit semantic workflow commands; the dispatcher
+// owns preview/apply/cancel behavior and document history.
+void buildCreativeEditorDesktopTerrainGenerationPanel(
+    CreativeEditorState& editor,
+    const iggy3d::creative::CreativeAppState& appState,
+    bool playModeActive,
+    CreativeDesktopCommandFrame& commands);
+
 void appendCreativeDesktopGeneratedSourceSettings(
     CreativeEditorWorldLayoutState& worldLayout,
     CreativeDesktopGeneratedSourceScopeCache& scopeCache,

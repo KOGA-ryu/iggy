@@ -190,6 +190,18 @@ void buildCreativeEditorDesktopMenuBar(
       }
       ImGui::EndMenu();
     }
+    if (ImGui::BeginMenu("Tools")) {
+      if (ImGui::MenuItem("Terrain Generator")) {
+        if (worldLayout != nullptr &&
+            creativeEditorWorldLayoutPreviewActive(*worldLayout)) {
+          commands.push(CreativeDesktopCommandId::WorldLayoutCancelPreview);
+        }
+        desktopUi.showWorldLayout = false;
+        desktopUi.showInspector = true;
+        desktopUi.terrainGeneratorFocusRequested = true;
+      }
+      ImGui::EndMenu();
+    }
     if (ImGui::MenuItem(playModeActive ? "Stop" : "Play")) {
       commands.push(CreativeDesktopCommandId::Play);
     }
@@ -254,6 +266,10 @@ void buildCreativeEditorDesktopPanels(
     ImGui::SameLine();
     if (ImGui::Button(desktopUi.showWorldLayout ? "Close World Layout"
                                                 : "World Layout")) {
+      if (!desktopUi.showWorldLayout &&
+          editor.terrainGeneration.previewActive) {
+        commands.push(CreativeDesktopCommandId::TerrainGenerationCancel);
+      }
       desktopUi.showWorldLayout = !desktopUi.showWorldLayout;
     }
     if (creativeEditorWorldLayoutPreviewActive(editor.worldLayout)) {
@@ -282,8 +298,25 @@ void buildCreativeEditorDesktopPanels(
     // Inspector (right).
     if (desktopUi.showInspector) {
       if (ImGui::Begin("Inspector", &desktopUi.showInspector)) {
-        buildCreativeEditorDesktopInspectorPanel(desktopUi, editor, appState,
-                                                 playMode, commands);
+        if (ImGui::BeginTabBar("##creative_desktop_inspector_tabs")) {
+          if (ImGui::BeginTabItem("Selection")) {
+            buildCreativeEditorDesktopInspectorPanel(
+                desktopUi, editor, appState, playMode, commands);
+            ImGui::EndTabItem();
+          }
+          const ImGuiTabItemFlags terrainFlags =
+              desktopUi.terrainGeneratorFocusRequested
+                  ? ImGuiTabItemFlags_SetSelected
+                  : ImGuiTabItemFlags_None;
+          if (ImGui::BeginTabItem("Terrain Generator", nullptr,
+                                  terrainFlags)) {
+            buildCreativeEditorDesktopTerrainGenerationPanel(
+                editor, appState, playModeActive, commands);
+            ImGui::EndTabItem();
+          }
+          desktopUi.terrainGeneratorFocusRequested = false;
+          ImGui::EndTabBar();
+        }
       }
       ImGui::End();
     }

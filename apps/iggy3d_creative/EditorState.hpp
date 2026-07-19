@@ -22,6 +22,7 @@
 #include "EditorMovingPlatformPreview.hpp"
 #include "EditorPattern.hpp"
 #include "EditorTerrain.hpp"
+#include "EditorTerrainGeneration.hpp"
 #include "EditorTerrainPaint.hpp"
 #include "EditorToolOptions.hpp"
 #include "EditorTransform.hpp"
@@ -105,6 +106,7 @@ struct CreativeEditorState {
   CreativeEditorAssetReplacementState assetReplacement;
   CreativeEditorSelectionTransformState transform;
   CreativeEditorTerrainState terrain;
+  CreativeEditorTerrainGenerationState terrainGeneration;
   CreativeEditorTerrainPaintState terrainPaint;
   CreativeEditorLogicLinkState logicLinks;
   CreativeMovingPlatformPreviewState movingPlatformPreview;

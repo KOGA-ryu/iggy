@@ -99,6 +99,7 @@ struct CreativeEditorDesktopUiState {
   bool showAssetLibrary = true;
   bool showHistory = true;
   bool showWorldLayout = true;
+  bool terrainGeneratorFocusRequested = false;
   std::size_t worldLayoutDeleteLevelIndex =
       std::numeric_limits<std::size_t>::max();
 
