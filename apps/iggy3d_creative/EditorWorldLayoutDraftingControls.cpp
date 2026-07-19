@@ -1,5 +1,6 @@
 #include "EditorWorldLayoutPanelInternal.hpp"
 
+#include "EditorToolPresentation.hpp"
 #include "EditorWorldLayout.hpp"
 
 #include <array>
@@ -226,47 +227,33 @@ void drawWorldLayoutTerrainRegionBuild(
   ImGui::EndDisabled();
 }
 
-// Canvas-top tool options strip: one row that follows the active tool. While
-// terrain-region editing is live it carries the whole region workflow —
-// operation, mask, parameters, preview/apply/cancel — so a terrain edit never
-// leaves the canvas; otherwise it names the active tool. Parameter widgets
-// mirror the inspector exactly: same clamps, same state fields, and the same
-// change-requests-preview rule through the dispatcher.
+// Canvas-top tool options strip: one row that follows the active tool
+// presentation. The strip is a generic consumer of the declarative
+// tool-presentation model — it renders whatever options and actions the
+// active presentation declares (choices, drags, seed, right-aligned actions)
+// and dispatches the model's commands; it holds no per-tool branches.
 void drawWorldLayoutToolOptionsStrip(CreativeEditorState& editor,
                                      CreativeDesktopCommandFrame& commands) {
   CreativeEditorWorldLayoutState& state = editor.worldLayout;
   CreativeEditorWorldLayoutTopographyState& topography =
       editor.worldLayoutTopography;
-  CreativeEditorWorldLayoutTerrainRegionState& region = topography.region;
   const float tile = ImGui::GetFrameHeight();
-  if (!region.editingEnabled) {
-    const bool placingTemplate = state.buildingTemplatePlacement.active;
-    const CreativeEditorToolGlyph glyph =
-        placingTemplate ? CreativeEditorToolGlyph::EstateHouse
-                        : creativeEditorToolGlyphForWorldLayoutTool(state.tool);
-    std::string_view label = "Placing building template";
-    if (!placingTemplate) {
-      label = toString(glyph);
-      if (state.tool == CreativeEditorWorldLayoutTool::CatalogAsset &&
-          !state.catalogPlacement.label.empty()) {
-        label = state.catalogPlacement.label;
-      } else {
-        for (const CreativeEditorWorldLayoutPaletteEntry& paletteEntry :
-             creativeEditorWorldLayoutPaletteEntries()) {
-          if (paletteEntry.activation ==
-                  CreativeEditorWorldLayoutPaletteActivation::Tool &&
-              paletteEntry.tool == state.tool) {
-            label = paletteEntry.label;
-            break;
-          }
-        }
-      }
+  const CreativeEditorToolPresentation& presentation =
+      activeCreativeEditorToolPresentation(state, topography);
+  const CreativeEditorToolPresentationStatus status =
+      evaluateCreativeEditorToolPresentation(presentation, state, topography,
+                                             editor.terrainGeneration);
+  if (presentation.options.empty() && presentation.actions.empty()) {
+    std::string_view label = presentation.name;
+    if (presentation.tool == CreativeEditorWorldLayoutTool::CatalogAsset &&
+        !state.catalogPlacement.label.empty()) {
+      label = state.catalogPlacement.label;
     }
     const ImVec2 glyphPosition = ImGui::GetCursorScreenPos();
     ImGui::Dummy(ImVec2{tile, tile});
-    drawCreativeEditorToolGlyph(*ImGui::GetWindowDrawList(), glyph,
-                                glyphPosition.x + 2.0F, glyphPosition.y + 2.0F,
-                                tile - 4.0F,
+    drawCreativeEditorToolGlyph(*ImGui::GetWindowDrawList(),
+                                presentation.glyph, glyphPosition.x + 2.0F,
+                                glyphPosition.y + 2.0F, tile - 4.0F,
                                 ImGui::GetColorU32(ImGuiCol_Text));
     ImGui::SameLine();
     ImGui::AlignTextToFramePadding();
@@ -274,190 +261,140 @@ void drawWorldLayoutToolOptionsStrip(CreativeEditorState& editor,
     return;
   }
 
-  const bool previewOwnedElsewhere =
-      editor.terrainGeneration.previewActive && !region.ownsPreview;
-  const bool locked = previewOwnedElsewhere ||
-                      creativeEditorWorldLayoutPreviewActive(state) ||
-                      state.buildingTransform.active ||
-                      state.buildingTemplatePlacement.active;
-  ImGui::BeginDisabled(locked);
+  ImGui::BeginDisabled(status.unavailable);
   bool settingsChanged = false;
-
-  constexpr std::array<CreativeEditorWorldLayoutTerrainRegionOperation, 5U>
-      operations{CreativeEditorWorldLayoutTerrainRegionOperation::Flatten,
-                 CreativeEditorWorldLayoutTerrainRegionOperation::Raise,
-                 CreativeEditorWorldLayoutTerrainRegionOperation::Lower,
-                 CreativeEditorWorldLayoutTerrainRegionOperation::Smooth,
-                 CreativeEditorWorldLayoutTerrainRegionOperation::Noise};
-  constexpr std::array<const char*, 5U> operationNames{
-      "Flatten", "Raise", "Lower", "Smooth", "Noise"};
-  for (std::size_t index = 0U; index < operations.size(); ++index) {
-    if (index > 0U) {
-      ImGui::SameLine();
+  int widgetId = 0;
+  bool firstGroup = true;
+  for (const CreativeEditorToolOptionSpec& option : presentation.options) {
+    if (!creativeEditorToolOptionVisible(option, topography)) {
+      continue;
     }
-    ImGui::PushID(static_cast<int>(index));
-    if (drawCreativeEditorWorldLayoutGlyphButton(
-            "##options_operation",
-            creativeEditorToolGlyphForTerrainRegionOperation(
-                operations[index]),
-            tile, region.operation == operations[index],
-            operationNames[index]) &&
-        region.operation != operations[index]) {
-      region.operation = operations[index];
-      settingsChanged = true;
+    if (!firstGroup) {
+      ImGui::SameLine(0.0F, 12.0F);
+    }
+    firstGroup = false;
+    ImGui::PushID(widgetId++);
+    switch (option.widget) {
+      case CreativeEditorToolOptionWidget::GlyphChoice: {
+        const std::uint8_t current =
+            creativeEditorToolOptionChoiceValue(option, topography);
+        for (std::size_t index = 0U; index < option.choices.size(); ++index) {
+          const CreativeEditorToolOptionChoice& choice =
+              option.choices[index];
+          if (index > 0U) {
+            ImGui::SameLine();
+          }
+          ImGui::PushID(static_cast<int>(index));
+          if (drawCreativeEditorWorldLayoutGlyphButton(
+                  "##choice", choice.glyph, tile, current == choice.value,
+                  choice.label) &&
+              setCreativeEditorToolOptionChoiceValue(option, topography,
+                                                     choice.value)) {
+            settingsChanged = true;
+          }
+          ImGui::PopID();
+        }
+        break;
+      }
+      case CreativeEditorToolOptionWidget::IntDrag: {
+        const std::string_view compact =
+            creativeEditorToolOptionCompactLabel(option, topography);
+        const std::string_view full =
+            creativeEditorToolOptionFullLabel(option, topography);
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextDisabled("%s", compact.data());
+        if (!full.empty() && ImGui::IsItemHovered()) {
+          ImGui::SetTooltip("%s", full.data());
+        }
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(64.0F);
+        int value = static_cast<int>(
+            creativeEditorToolOptionScalarValue(option, topography));
+        if (ImGui::DragInt("##value", &value, 0.25F,
+                           static_cast<int>(option.minimum),
+                           static_cast<int>(option.maximum), "%d",
+                           ImGuiSliderFlags_AlwaysClamp) &&
+            setCreativeEditorToolOptionScalarValue(
+                option, topography, static_cast<double>(value))) {
+          settingsChanged = true;
+        }
+        break;
+      }
+      case CreativeEditorToolOptionWidget::DoubleDrag: {
+        const std::string_view compact =
+            creativeEditorToolOptionCompactLabel(option, topography);
+        const std::string_view full =
+            creativeEditorToolOptionFullLabel(option, topography);
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextDisabled("%s", compact.data());
+        if (!full.empty() && ImGui::IsItemHovered()) {
+          ImGui::SetTooltip("%s", full.data());
+        }
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(64.0F);
+        double value =
+            creativeEditorToolOptionScalarValue(option, topography);
+        if (ImGui::DragScalar("##value", ImGuiDataType_Double, &value, 0.25F,
+                              &option.minimum, &option.maximum, "%.1f",
+                              ImGuiSliderFlags_AlwaysClamp) &&
+            setCreativeEditorToolOptionScalarValue(option, topography,
+                                                   value)) {
+          settingsChanged = true;
+        }
+        break;
+      }
+      case CreativeEditorToolOptionWidget::SeedButton: {
+        if (drawCreativeEditorWorldLayoutGlyphButton(
+                "##seed", CreativeEditorToolGlyph::ActionNewSeed, tile, false,
+                option.label)) {
+          advanceCreativeEditorToolOptionSeed(topography);
+          settingsChanged = true;
+        }
+        break;
+      }
+      case CreativeEditorToolOptionWidget::Count:
+        break;
     }
     ImGui::PopID();
   }
 
-  ImGui::SameLine(0.0F, 12.0F);
-  constexpr std::array<cr::CreativeTerrainCompositionMask, 2U> masks{
-      cr::CreativeTerrainCompositionMask::Rectangle,
-      cr::CreativeTerrainCompositionMask::Ellipse};
-  constexpr std::array<const char*, 2U> maskNames{"Rectangle mask",
-                                                  "Ellipse mask"};
-  for (std::size_t index = 0U; index < masks.size(); ++index) {
-    if (index > 0U) {
+  if (settingsChanged) {
+    for (const CreativeEditorToolActionSpec& action : presentation.actions) {
+      if (action.runOnOptionChange &&
+          creativeEditorToolActionEnabled(action, topography)) {
+        commands.push(action.command);
+      }
+    }
+  }
+
+  if (!presentation.actions.empty()) {
+    const ImGuiStyle& style = ImGui::GetStyle();
+    const auto actionCount =
+        static_cast<float>(presentation.actions.size());
+    const float actionsWidth =
+        (actionCount * tile) + ((actionCount - 1.0F) * style.ItemSpacing.x);
+    ImGui::SameLine();
+    const float slack = ImGui::GetContentRegionAvail().x - actionsWidth;
+    if (slack > style.ItemSpacing.x) {
+      ImGui::Dummy(ImVec2{slack - style.ItemSpacing.x, 0.0F});
       ImGui::SameLine();
     }
-    ImGui::PushID(static_cast<int>(index));
-    if (drawCreativeEditorWorldLayoutGlyphButton(
-            "##options_mask",
-            creativeEditorToolGlyphForTerrainMask(masks[index]), tile,
-            region.mask == masks[index], maskNames[index]) &&
-        region.mask != masks[index]) {
-      region.mask = masks[index];
-      settingsChanged = true;
-    }
-    ImGui::PopID();
-  }
-
-  const auto compactParam = [&settingsChanged](
-                                const char* compactLabel,
-                                std::string_view fullLabel, const char* id,
-                                std::uint16_t& valueCells, int minimum,
-                                int maximum) {
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextDisabled("%s", compactLabel);
-    if (!fullLabel.empty() && ImGui::IsItemHovered()) {
-      ImGui::SetTooltip("%s", fullLabel.data());
-    }
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(64.0F);
-    int value = static_cast<int>(valueCells);
-    if (ImGui::DragInt(id, &value, 0.25F, minimum, maximum, "%d",
-                       ImGuiSliderFlags_AlwaysClamp)) {
-      valueCells = static_cast<std::uint16_t>(value);
-      settingsChanged = true;
-    }
-  };
-
-  const CreativeEditorWorldLayoutTerrainRegionOperation operation =
-      region.operation;
-  if (creativeEditorWorldLayoutTerrainRegionFieldVisible(
-          operation,
-          CreativeEditorWorldLayoutTerrainRegionField::TargetHeight)) {
-    const char* compactLabel = "Height";
-    switch (operation) {
-      case CreativeEditorWorldLayoutTerrainRegionOperation::Raise:
-        compactLabel = "Min";
-        break;
-      case CreativeEditorWorldLayoutTerrainRegionOperation::Lower:
-        compactLabel = "Max";
-        break;
-      case CreativeEditorWorldLayoutTerrainRegionOperation::Noise:
-        compactLabel = "Base";
-        break;
-      default:
-        break;
-    }
-    ImGui::SameLine(0.0F, 12.0F);
-    compactParam(compactLabel,
-                 creativeEditorWorldLayoutTerrainRegionTargetLabel(operation),
-                 "##options_height", region.targetHeightCells,
-                 static_cast<int>(cr::kCreativeTerrainMinimumHeightCells),
-                 static_cast<int>(cr::kCreativeTerrainMaximumHeightCells));
-  }
-  if (creativeEditorWorldLayoutTerrainRegionFieldVisible(
-          operation, CreativeEditorWorldLayoutTerrainRegionField::NoiseRelief)) {
-    ImGui::SameLine(0.0F, 12.0F);
-    compactParam("Relief", {}, "##options_relief", region.noiseReliefCells, 0,
-                 static_cast<int>(cr::kCreativeTerrainMaximumHeightCells));
-  }
-  if (creativeEditorWorldLayoutTerrainRegionFieldVisible(
-          operation, CreativeEditorWorldLayoutTerrainRegionField::NoiseScale)) {
-    ImGui::SameLine(0.0F, 12.0F);
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextDisabled("Scale");
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(64.0F);
-    settingsChanged =
-        ImGui::DragScalar(
-            "##options_scale", ImGuiDataType_Double, &region.noiseScaleCells,
-            0.25F, &cr::kCreativeTerrainGeneratorMinimumHorizontalScaleCells,
-            &cr::kCreativeTerrainGeneratorMaximumHorizontalScaleCells, "%.1f",
-            ImGuiSliderFlags_AlwaysClamp) ||
-        settingsChanged;
-  }
-  if (creativeEditorWorldLayoutTerrainRegionFieldVisible(
-          operation, CreativeEditorWorldLayoutTerrainRegionField::Seed)) {
-    ImGui::SameLine(0.0F, 12.0F);
-    if (drawCreativeEditorWorldLayoutGlyphButton("##options_seed",
-                                   CreativeEditorToolGlyph::ActionNewSeed,
-                                   tile, false, "New seed")) {
-      region.seed =
-          region.seed == std::numeric_limits<std::uint64_t>::max()
-              ? 0U
-              : region.seed + 1U;
-      settingsChanged = true;
+    int actionId = 0;
+    for (const CreativeEditorToolActionSpec& action : presentation.actions) {
+      if (actionId > 0) {
+        ImGui::SameLine();
+      }
+      ImGui::PushID(actionId++);
+      ImGui::BeginDisabled(
+          !creativeEditorToolActionEnabled(action, topography));
+      if (drawCreativeEditorWorldLayoutGlyphButton(
+              "##action", action.glyph, tile, false, action.label)) {
+        commands.push(action.command);
+      }
+      ImGui::EndDisabled();
+      ImGui::PopID();
     }
   }
-  if (creativeEditorWorldLayoutTerrainRegionFieldVisible(
-          operation, CreativeEditorWorldLayoutTerrainRegionField::Feather)) {
-    ImGui::SameLine(0.0F, 12.0F);
-    compactParam(
-        "Feather", {}, "##options_feather", region.featherCells, 0,
-        static_cast<int>(cr::kCreativeTerrainCompositionMaximumFeatherCells));
-  }
-
-  // A parameter change invalidates the owned preview by definition; the
-  // fresh exact preview is requested through the dispatcher, never computed
-  // by the panel.
-  if (settingsChanged && region.regionValid && !region.selecting) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
-  }
-
-  const ImGuiStyle& style = ImGui::GetStyle();
-  const float actionsWidth = (3.0F * tile) + (2.0F * style.ItemSpacing.x);
-  ImGui::SameLine();
-  const float slack = ImGui::GetContentRegionAvail().x - actionsWidth;
-  if (slack > style.ItemSpacing.x) {
-    ImGui::Dummy(ImVec2{slack - style.ItemSpacing.x, 0.0F});
-    ImGui::SameLine();
-  }
-  ImGui::BeginDisabled(!region.regionValid || region.selecting);
-  if (drawCreativeEditorWorldLayoutGlyphButton("##options_preview",
-                                 CreativeEditorToolGlyph::ActionPreview, tile,
-                                 false, "Preview")) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
-  }
-  ImGui::EndDisabled();
-  ImGui::SameLine();
-  ImGui::BeginDisabled(!region.ownsPreview);
-  if (drawCreativeEditorWorldLayoutGlyphButton("##options_apply",
-                                 CreativeEditorToolGlyph::ActionApply, tile,
-                                 false, "Apply region")) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutTerrainRegionApply);
-  }
-  ImGui::EndDisabled();
-  ImGui::SameLine();
-  ImGui::BeginDisabled(!region.selecting && !region.regionValid &&
-                       !region.ownsPreview);
-  if (drawCreativeEditorWorldLayoutGlyphButton("##options_cancel",
-                                 CreativeEditorToolGlyph::ActionCancel, tile,
-                                 false, "Cancel")) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
-  }
-  ImGui::EndDisabled();
   ImGui::EndDisabled();
 }
 

@@ -48,25 +48,6 @@ classifyCreativeEditorWorldLayoutTerrainRegionPhase(
 measureCreativeEditorWorldLayoutTerrainRegion(
     const CreativeEditorWorldLayoutTerrainRegionState& region) noexcept;
 
-// Which terrain-region parameters the active operation exposes, shared by
-// the inspector and the canvas tool-options strip so both stay in lockstep.
-enum class CreativeEditorWorldLayoutTerrainRegionField : std::uint8_t {
-  TargetHeight,
-  NoiseRelief,
-  NoiseScale,
-  Seed,
-  Feather,
-  Count,
-};
-
-[[nodiscard]] bool creativeEditorWorldLayoutTerrainRegionFieldVisible(
-    CreativeEditorWorldLayoutTerrainRegionOperation operation,
-    CreativeEditorWorldLayoutTerrainRegionField field) noexcept;
-
-[[nodiscard]] std::string_view
-creativeEditorWorldLayoutTerrainRegionTargetLabel(
-    CreativeEditorWorldLayoutTerrainRegionOperation operation) noexcept;
-
 // The drafting status bar under the canvas. The plan canvas captures one
 // hover sample per frame; composing the bar's segments from editor state is
 // pure so the wording stays headless-testable. Zoom reads relative to the
@@ -97,45 +78,6 @@ composeCreativeEditorWorldLayoutStatusLine(
     const CreativeEditorWorldLayoutTopographyState& topography,
     const CreativeEditorTerrainGenerationState& terrainGeneration,
     const CreativeEditorWorldLayoutCanvasHoverStatus& hover);
-
-// The toolbox strip is the drafting-UI icon column docked to the canvas's
-// left edge. Its roster and per-button state are pure projections of the
-// palette table and editor state so they stay headless-testable; the strip
-// itself reuses the palette's activation paths (tool command, building
-// template commands, terrain-region toggle semantics) without adding any.
-enum class CreativeEditorWorldLayoutToolboxEntryKind : std::uint8_t {
-  PaletteTool,
-  PaletteBuildingTemplate,
-  TerrainRegionToggle,
-  Count,
-};
-
-struct CreativeEditorWorldLayoutToolboxEntry {
-  CreativeEditorWorldLayoutToolboxEntryKind kind =
-      CreativeEditorWorldLayoutToolboxEntryKind::PaletteTool;
-  CreativeEditorWorldLayoutPaletteCategory category =
-      CreativeEditorWorldLayoutPaletteCategory::Structure;
-  // Index into creativeEditorWorldLayoutPaletteEntries(); one past the end
-  // for the terrain-region toggle, which is not a palette entry.
-  std::size_t paletteIndex = 0U;
-  CreativeEditorToolGlyph glyph = CreativeEditorToolGlyph::ParentSelect;
-  std::string_view label;
-};
-
-struct CreativeEditorWorldLayoutToolboxButtonState {
-  bool active = false;
-  bool unavailable = false;
-};
-
-[[nodiscard]] std::vector<CreativeEditorWorldLayoutToolboxEntry>
-buildCreativeEditorWorldLayoutToolboxEntries();
-
-[[nodiscard]] CreativeEditorWorldLayoutToolboxButtonState
-classifyCreativeEditorWorldLayoutToolboxButton(
-    const CreativeEditorWorldLayoutToolboxEntry& entry,
-    const CreativeEditorWorldLayoutState& state,
-    const CreativeEditorWorldLayoutTopographyState& topography,
-    const CreativeEditorTerrainGenerationState& terrainGeneration) noexcept;
 
 // ImGui-only projection of EditorWorldLayout. It may update canvas pan/zoom,
 // but every semantic source edit is emitted through the desktop dispatcher.

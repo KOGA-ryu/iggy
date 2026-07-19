@@ -1,5 +1,6 @@
 #include "EditorWorldLayoutPanelInternal.hpp"
 
+#include "EditorToolPresentation.hpp"
 #include "EditorWorldLayout.hpp"
 
 #include "EditorDesktopModel.hpp"
@@ -309,10 +310,6 @@ void drawWorldLayoutToolboxStrip(CreativeEditorState& editor,
   CreativeEditorWorldLayoutState& state = editor.worldLayout;
   CreativeEditorWorldLayoutTopographyState& topography =
       editor.worldLayoutTopography;
-  const std::vector<CreativeEditorWorldLayoutToolboxEntry> entries =
-      buildCreativeEditorWorldLayoutToolboxEntries();
-  const std::span<const CreativeEditorWorldLayoutPaletteEntry> palette =
-      creativeEditorWorldLayoutPaletteEntries();
   constexpr float kTileSize = 24.0F;
   const ImGuiStyle& style = ImGui::GetStyle();
   const float stripWidth = (2.0F * kTileSize) + style.ItemSpacing.x +
@@ -326,43 +323,40 @@ void drawWorldLayoutToolboxStrip(CreativeEditorState& editor,
   }
   auto lastCategory = CreativeEditorWorldLayoutPaletteCategory::Count;
   int column = 0;
-  for (std::size_t entryIndex = 0U; entryIndex < entries.size();
-       ++entryIndex) {
-    const CreativeEditorWorldLayoutToolboxEntry& entry = entries[entryIndex];
-    if (entry.category != lastCategory) {
+  int buttonId = 0;
+  for (const CreativeEditorToolPresentation& presentation :
+       creativeEditorToolPresentations()) {
+    if (!presentation.toolbox) {
+      continue;
+    }
+    if (presentation.category != lastCategory) {
       if (lastCategory != CreativeEditorWorldLayoutPaletteCategory::Count) {
         ImGui::Separator();
       }
-      lastCategory = entry.category;
+      lastCategory = presentation.category;
       column = 0;
     }
     if (column == 1) {
       ImGui::SameLine();
     }
-    const CreativeEditorWorldLayoutToolboxButtonState buttonState =
-        classifyCreativeEditorWorldLayoutToolboxButton(
-            entry, state, topography, editor.terrainGeneration);
-    ImGui::PushID(static_cast<int>(entryIndex));
-    ImGui::BeginDisabled(buttonState.unavailable);
+    const CreativeEditorToolPresentationStatus status =
+        evaluateCreativeEditorToolPresentation(presentation, state, topography,
+                                               editor.terrainGeneration);
+    ImGui::PushID(buttonId++);
+    ImGui::BeginDisabled(status.unavailable);
     const bool pressed = drawWorldLayoutGlyphButton(
-        "##tool", entry.glyph, kTileSize, buttonState.active, entry.label);
+        "##tool", presentation.glyph, kTileSize, status.active,
+        presentation.name);
     ImGui::EndDisabled();
-    if (pressed && !buttonState.unavailable) {
-      switch (entry.kind) {
-        case CreativeEditorWorldLayoutToolboxEntryKind::PaletteTool: {
-          if (entry.paletteIndex < palette.size()) {
-            queueTool(commands, palette[entry.paletteIndex].tool);
-          }
+    if (pressed && !status.unavailable) {
+      switch (presentation.activation) {
+        case CreativeEditorToolActivation::WorldLayoutTool: {
+          queueTool(commands, presentation.tool);
           break;
         }
-        case CreativeEditorWorldLayoutToolboxEntryKind::
-            PaletteBuildingTemplate: {
-          if (entry.paletteIndex >= palette.size()) {
-            break;
-          }
+        case CreativeEditorToolActivation::BuildingTemplate: {
           const std::size_t templateIndex = findBuildingTemplate(
-              state.buildingTemplates,
-              palette[entry.paletteIndex].buildingTemplateId);
+              state.buildingTemplates, presentation.buildingTemplateId);
           if (templateIndex == cr::kInvalidCreativeWorldLayoutIndex) {
             break;
           }
@@ -383,7 +377,7 @@ void drawWorldLayoutToolboxStrip(CreativeEditorState& editor,
                       RotateRight90});
           break;
         }
-        case CreativeEditorWorldLayoutToolboxEntryKind::TerrainRegionToggle: {
+        case CreativeEditorToolActivation::TerrainRegionSession: {
           if (topography.region.editingEnabled) {
             topography.region.editingEnabled = false;
             commands.push(
@@ -395,7 +389,7 @@ void drawWorldLayoutToolboxStrip(CreativeEditorState& editor,
           }
           break;
         }
-        case CreativeEditorWorldLayoutToolboxEntryKind::Count:
+        case CreativeEditorToolActivation::Count:
           break;
       }
     }
