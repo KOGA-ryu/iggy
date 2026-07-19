@@ -257,18 +257,43 @@ void drawTerrainRegionSelection(
   const double maximumZ =
       static_cast<double>(region.bounds.minimum.z) +
       region.bounds.depthCells;
-  const ImVec4 tint = region.selecting
-                          ? ImVec4{0.98F, 0.78F, 0.20F, 1.0F}
-                      : region.ownsPreview
-                          ? ImVec4{0.25F, 0.95F, 0.48F, 1.0F}
-                          : ImVec4{0.30F, 0.72F, 1.0F, 1.0F};
+  const CreativeEditorWorldLayoutTerrainRegionPhase phase =
+      classifyCreativeEditorWorldLayoutTerrainRegionPhase(region);
+  ImVec4 tint{0.30F, 0.72F, 1.0F, 1.0F};  // AwaitingPreview: blue draft.
+  switch (phase) {
+    case CreativeEditorWorldLayoutTerrainRegionPhase::Selecting:
+      tint = ImVec4{0.98F, 0.85F, 0.20F, 1.0F};
+      break;
+    case CreativeEditorWorldLayoutTerrainRegionPhase::Ready:
+      tint = ImVec4{0.25F, 0.95F, 0.48F, 1.0F};
+      break;
+    case CreativeEditorWorldLayoutTerrainRegionPhase::Rejected:
+      tint = ImVec4{0.95F, 0.30F, 0.28F, 1.0F};
+      break;
+    default:
+      break;
+  }
   const ImVec2 minimum =
       toScreen(transform, region.bounds.minimum.x, region.bounds.minimum.z);
   const ImVec2 maximum = toScreen(transform, maximumX, maximumZ);
   ImVec4 fill = tint;
   fill.w = 0.14F;
-  drawList.AddRectFilled(minimum, maximum, color(fill));
-  drawList.AddRect(minimum, maximum, color(tint), 0.0F, 0, 2.5F);
+  if (region.mask == cr::CreativeTerrainCompositionMask::Ellipse) {
+    const ImVec2 center{(minimum.x + maximum.x) * 0.5F,
+                        (minimum.y + maximum.y) * 0.5F};
+    const ImVec2 radius{(maximum.x - minimum.x) * 0.5F,
+                        (maximum.y - minimum.y) * 0.5F};
+    drawList.AddEllipseFilled(center, radius, color(fill));
+    drawList.AddEllipse(center, radius, color(tint), 0.0F, 0, 2.5F);
+    if (region.selecting) {
+      // Thin bounds guide so the drag rectangle stays aimable while the
+      // composition mask is elliptical.
+      drawList.AddRect(minimum, maximum, color(fill), 0.0F, 0, 1.0F);
+    }
+  } else {
+    drawList.AddRectFilled(minimum, maximum, color(fill));
+    drawList.AddRect(minimum, maximum, color(tint), 0.0F, 0, 2.5F);
+  }
 }
 
 void drawTopographyHoverFacts(
@@ -2179,7 +2204,11 @@ void drawSelectedOpeningSettings(
   ImGui::EndDisabled();
 }
 
-void drawWorldLayoutTerrainRegionControls(
+// Left tools tab: mode toggle, operation, and selection shape only. The
+// parameters live in the Properties window and the workflow status plus the
+// sole Apply/Cancel controls live in the Build window, so the plan canvas
+// keeps its space and each dock owns one concern.
+void drawWorldLayoutTerrainTab(
     CreativeEditorWorldLayoutTopographyState& topography,
     const CreativeEditorTerrainGenerationState& terrainGeneration,
     CreativeDesktopCommandFrame& commands,
@@ -2187,7 +2216,6 @@ void drawWorldLayoutTerrainRegionControls(
   CreativeEditorWorldLayoutTerrainRegionState& region = topography.region;
   const bool previewOwnedElsewhere =
       terrainGeneration.previewActive && !region.ownsPreview;
-  ImGui::SeparatorText("Terrain region");
   ImGui::BeginDisabled(unavailable || previewOwnedElsewhere);
   bool editingEnabled = region.editingEnabled;
   if (ImGui::Checkbox("Edit terrain region", &editingEnabled)) {
@@ -2201,14 +2229,17 @@ void drawWorldLayoutTerrainRegionControls(
     }
   }
   if (!region.editingEnabled) {
+    if (previewOwnedElsewhere) {
+      ImGui::TextDisabled("Another terrain preview is active.");
+    }
     ImGui::EndDisabled();
     return;
   }
 
   constexpr std::array<const char*, 5U> operationLabels{
       "Flatten", "Raise", "Lower", "Smooth", "Noise"};
-  int operation = static_cast<int>(region.operation);
   bool settingsChanged = false;
+  int operation = static_cast<int>(region.operation);
   ImGui::SetNextItemWidth(-1.0F);
   if (ImGui::Combo("Operation##terrain_region", &operation,
                    operationLabels.data(),
@@ -2228,15 +2259,49 @@ void drawWorldLayoutTerrainRegionControls(
     settingsChanged = true;
   }
 
+  if (settingsChanged && region.regionValid && !region.selecting) {
+    commands.push(
+        CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
+  }
+
+  ImGui::TextDisabled("Drag on the map to select a region.");
+  ImGui::EndDisabled();
+}
+
+// Right Properties window while terrain-region editing is active:
+// context-sensitive operation parameters plus read-only region metrics.
+void drawWorldLayoutTerrainRegionInspector(
+    CreativeEditorWorldLayoutTopographyState& topography,
+    const CreativeEditorTerrainGenerationState& terrainGeneration,
+    CreativeDesktopCommandFrame& commands,
+    bool unavailable) {
+  CreativeEditorWorldLayoutTerrainRegionState& region = topography.region;
+  const bool previewOwnedElsewhere =
+      terrainGeneration.previewActive && !region.ownsPreview;
+  ImGui::SeparatorText("Terrain region");
+  ImGui::BeginDisabled(unavailable || previewOwnedElsewhere);
+
+  bool settingsChanged = false;
   const bool smooth = region.operation ==
                       CreativeEditorWorldLayoutTerrainRegionOperation::Smooth;
-  if (!smooth) {
+  if (smooth) {
+    ImGui::TextDisabled("Smooth runs one fixed 3x3 pass.");
+  } else {
+    const char* targetLabel = "Height##terrain_region";
+    switch (region.operation) {
+      case CreativeEditorWorldLayoutTerrainRegionOperation::Raise:
+        targetLabel = "Raise to at least##terrain_region";
+        break;
+      case CreativeEditorWorldLayoutTerrainRegionOperation::Lower:
+        targetLabel = "Lower to at most##terrain_region";
+        break;
+      case CreativeEditorWorldLayoutTerrainRegionOperation::Noise:
+        targetLabel = "Base height##terrain_region";
+        break;
+      default:
+        break;
+    }
     int target = static_cast<int>(region.targetHeightCells);
-    const char* targetLabel =
-        region.operation ==
-                CreativeEditorWorldLayoutTerrainRegionOperation::Noise
-            ? "Base height##terrain_region"
-            : "Target height##terrain_region";
     if (ImGui::DragInt(
             targetLabel, &target, 0.25F,
             static_cast<int>(cr::kCreativeTerrainMinimumHeightCells),
@@ -2265,6 +2330,9 @@ void drawWorldLayoutTerrainRegionControls(
             &cr::kCreativeTerrainGeneratorMaximumHorizontalScaleCells,
             "%.1f cells", ImGuiSliderFlags_AlwaysClamp) ||
         settingsChanged;
+    ImGui::Text("Seed: %llu",
+                static_cast<unsigned long long>(region.seed));
+    ImGui::SameLine();
     if (ImGui::Button("New seed##terrain_region")) {
       region.seed = region.seed == std::numeric_limits<std::uint64_t>::max()
                         ? 0U
@@ -2283,25 +2351,73 @@ void drawWorldLayoutTerrainRegionControls(
     settingsChanged = true;
   }
 
+  // A parameter change invalidates the owned preview by definition; the
+  // fresh exact preview is requested through the dispatcher, never computed
+  // by the panel.
   if (settingsChanged && region.regionValid && !region.selecting) {
     commands.push(
         CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
   }
 
+  ImGui::SeparatorText("Region");
+  const CreativeEditorWorldLayoutTerrainRegionMetrics metrics =
+      measureCreativeEditorWorldLayoutTerrainRegion(region);
+  if (metrics.present) {
+    ImGui::Text("Bounds: (%d, %d)", metrics.minimumX, metrics.minimumZ);
+    ImGui::Text("Width: %u cells", metrics.widthCells);
+    ImGui::Text("Depth: %u cells", metrics.depthCells);
+    ImGui::Text("Candidate cells: %u", metrics.candidateCellCount);
+  } else {
+    ImGui::TextDisabled("No region selected.");
+  }
+  ImGui::EndDisabled();
+}
+
+// Bottom Build window while terrain-region editing is active: preview state,
+// the terrain state's exact status message, preview cell counts, and the
+// sole Apply/Cancel controls.
+void drawWorldLayoutTerrainRegionBuild(
+    CreativeEditorWorldLayoutTopographyState& topography,
+    const CreativeEditorTerrainGenerationState& terrainGeneration,
+    CreativeDesktopCommandFrame& commands,
+    bool unavailable) {
+  CreativeEditorWorldLayoutTerrainRegionState& region = topography.region;
+  const bool previewOwnedElsewhere =
+      terrainGeneration.previewActive && !region.ownsPreview;
+  const CreativeEditorWorldLayoutTerrainRegionPhase phase =
+      classifyCreativeEditorWorldLayoutTerrainRegionPhase(region);
+  ImGui::BeginDisabled(unavailable || previewOwnedElsewhere);
+  ImGui::Text("Preview: %s", toString(phase).data());
+  ImVec4 statusTint{0.75F, 0.78F, 0.80F, 1.0F};
+  if (phase == CreativeEditorWorldLayoutTerrainRegionPhase::Ready) {
+    statusTint = ImVec4{0.32F, 0.95F, 0.43F, 1.0F};
+  } else if (phase == CreativeEditorWorldLayoutTerrainRegionPhase::Rejected ||
+             phase == CreativeEditorWorldLayoutTerrainRegionPhase::Stale) {
+    statusTint = ImVec4{0.95F, 0.35F, 0.32F, 1.0F};
+  }
+  ImGui::TextColored(statusTint, "%s", region.statusMessage.c_str());
+  if (region.ownsPreview) {
+    const cr::CreativeTerrainOperationReplayReceipt& replay =
+        terrainGeneration.operationPreview.receipt.replay;
+    ImGui::Text("Changed cells: %llu",
+                static_cast<unsigned long long>(replay.modifiedCellCount));
+    ImGui::SameLine();
+    ImGui::Text("Output cells: %llu",
+                static_cast<unsigned long long>(replay.outputCellCount));
+  }
   ImGui::BeginDisabled(!region.ownsPreview);
-  if (ImGui::Button("Apply region")) {
+  if (ImGui::Button("Apply Region")) {
     commands.push(CreativeDesktopCommandId::WorldLayoutTerrainRegionApply);
   }
   ImGui::EndDisabled();
   ImGui::SameLine();
-  ImGui::BeginDisabled(!region.regionValid && !region.ownsPreview);
-  if (ImGui::Button("Cancel preview")) {
+  ImGui::BeginDisabled(!region.selecting && !region.regionValid &&
+                       !region.ownsPreview);
+  if (ImGui::Button("Cancel")) {
     commands.push(
         CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
   }
   ImGui::EndDisabled();
-  ImGui::TextColored(ImVec4{0.32F, 0.95F, 0.43F, 1.0F}, "%s",
-                     region.statusMessage.c_str());
   ImGui::EndDisabled();
 }
 
@@ -3425,6 +3541,76 @@ void drawRefinementConflictActions(
 
 }  // namespace
 
+CreativeEditorWorldLayoutTerrainRegionPhase
+classifyCreativeEditorWorldLayoutTerrainRegionPhase(
+    const CreativeEditorWorldLayoutTerrainRegionState& region) noexcept {
+  using Phase = CreativeEditorWorldLayoutTerrainRegionPhase;
+  if (!region.editingEnabled) {
+    return Phase::Idle;
+  }
+  if (region.selecting) {
+    return Phase::Selecting;
+  }
+  if (region.ownsPreview) {
+    return Phase::Ready;
+  }
+  // The terrain state carries its lifecycle in exact status messages; the
+  // classifier keys on the strings the kernels emit rather than inventing a
+  // parallel flag the state could contradict.
+  if (region.statusMessage ==
+      "Terrain region preview canceled: document changed") {
+    return Phase::Stale;
+  }
+  if (region.statusMessage == "Terrain region preview rejected" ||
+      region.statusMessage == "Another terrain preview is active" ||
+      region.statusMessage == "No terrain region preview to apply" ||
+      region.statusMessage == "Terrain region apply failed") {
+    return Phase::Rejected;
+  }
+  if (region.regionValid) {
+    return Phase::AwaitingPreview;
+  }
+  return Phase::Idle;
+}
+
+std::string_view toString(
+    CreativeEditorWorldLayoutTerrainRegionPhase phase) noexcept {
+  switch (phase) {
+    case CreativeEditorWorldLayoutTerrainRegionPhase::Idle:
+      return "idle";
+    case CreativeEditorWorldLayoutTerrainRegionPhase::Selecting:
+      return "selecting";
+    case CreativeEditorWorldLayoutTerrainRegionPhase::AwaitingPreview:
+      return "awaiting preview";
+    case CreativeEditorWorldLayoutTerrainRegionPhase::Ready:
+      return "ready";
+    case CreativeEditorWorldLayoutTerrainRegionPhase::Rejected:
+      return "rejected";
+    case CreativeEditorWorldLayoutTerrainRegionPhase::Stale:
+      return "stale";
+  }
+  return "idle";
+}
+
+CreativeEditorWorldLayoutTerrainRegionMetrics
+measureCreativeEditorWorldLayoutTerrainRegion(
+    const CreativeEditorWorldLayoutTerrainRegionState& region) noexcept {
+  CreativeEditorWorldLayoutTerrainRegionMetrics metrics;
+  if (!region.regionValid ||
+      !cr::isValidCreativeTerrainHeightFieldBounds(region.bounds)) {
+    return metrics;
+  }
+  metrics.present = true;
+  metrics.minimumX = region.bounds.minimum.x;
+  metrics.minimumZ = region.bounds.minimum.z;
+  metrics.widthCells = region.bounds.widthCells;
+  metrics.depthCells = region.bounds.depthCells;
+  metrics.candidateCellCount =
+      static_cast<std::uint32_t>(region.bounds.widthCells) *
+      static_cast<std::uint32_t>(region.bounds.depthCells);
+  return metrics;
+}
+
 void buildCreativeEditorWorldLayoutPanel(
     CreativeEditorDesktopUiState& desktopUi, CreativeEditorState& editor,
     const cr::CreativeDocument& document, bool playModeActive,
@@ -3485,11 +3671,6 @@ void buildCreativeEditorWorldLayoutPanel(
         ImGui::EndTabItem();
       }
       if (ImGui::BeginTabItem("Create")) {
-        drawWorldLayoutTerrainRegionControls(
-            topography, editor.terrainGeneration, commands,
-            editingDisabled || exactPreviewActive ||
-                state.buildingTransform.active ||
-                state.buildingTemplatePlacement.active);
         ImGui::BeginDisabled(
             editingDisabled || state.buildingTransform.active ||
             state.buildingTemplatePlacement.active ||
@@ -3503,6 +3684,14 @@ void buildCreativeEditorWorldLayoutPanel(
         drawWorldLayoutLevelDeleteModal(desktopUi, state, commands);
         ImGui::EndTabItem();
       }
+      if (ImGui::BeginTabItem("Terrain")) {
+        drawWorldLayoutTerrainTab(
+            topography, editor.terrainGeneration, commands,
+            editingDisabled || exactPreviewActive ||
+                state.buildingTransform.active ||
+                state.buildingTemplatePlacement.active);
+        ImGui::EndTabItem();
+      }
       ImGui::EndTabBar();
     }
   }
@@ -3510,16 +3699,24 @@ void buildCreativeEditorWorldLayoutPanel(
 
   if (ImGui::Begin("World Layout Properties###Inspector", nullptr,
                    ImGuiWindowFlags_NoCollapse)) {
-    ImGui::BeginDisabled(editingDisabled ||
-                         topography.region.editingEnabled);
-    drawCreativeEditorWorldLayoutSourceInspector(state, document, commands);
-    drawCreativeEditorWorldLayoutStructureInspector(state, commands);
-    drawSelectedRoomSettings(state, commands);
-    drawSelectedOpeningSettings(state, editor.catalog.model, commands);
-    if (state.selection.kind == CreativeEditorWorldLayoutSelectionKind::None) {
-      ImGui::TextDisabled("Select a World Layout source to edit it.");
+    if (topography.region.editingEnabled) {
+      drawWorldLayoutTerrainRegionInspector(
+          topography, editor.terrainGeneration, commands,
+          editingDisabled || exactPreviewActive ||
+              state.buildingTransform.active ||
+              state.buildingTemplatePlacement.active);
+    } else {
+      ImGui::BeginDisabled(editingDisabled);
+      drawCreativeEditorWorldLayoutSourceInspector(state, document, commands);
+      drawCreativeEditorWorldLayoutStructureInspector(state, commands);
+      drawSelectedRoomSettings(state, commands);
+      drawSelectedOpeningSettings(state, editor.catalog.model, commands);
+      if (state.selection.kind ==
+          CreativeEditorWorldLayoutSelectionKind::None) {
+        ImGui::TextDisabled("Select a World Layout source to edit it.");
+      }
+      ImGui::EndDisabled();
     }
-    ImGui::EndDisabled();
   }
   ImGui::End();
 
@@ -3529,169 +3726,174 @@ void buildCreativeEditorWorldLayoutPanel(
       state.selection.kind == CreativeEditorWorldLayoutSelectionKind::Building;
   if (ImGui::Begin("World Layout Build###Diagnostics##bottom", nullptr,
                    ImGuiWindowFlags_NoCollapse)) {
-    ImGui::BeginDisabled(editingDisabled || state.buildingTransform.active ||
-                         state.buildingTemplatePlacement.active ||
-                         topography.region.editingEnabled);
-    ImGui::BeginDisabled(!diagnostics.ready);
-    if (ImGui::Button(exactPreviewActive ? "Refresh 3D Preview"
-                                         : "Preview 3D")) {
-      commands.push(CreativeDesktopCommandId::WorldLayoutPreview);
-    }
-    ImGui::EndDisabled();
-    ImGui::SameLine();
-    ImGui::BeginDisabled(!diagnostics.canGenerate);
-    if (ImGui::Button(exactPreviewActive ? "Confirm Preview"
-                                         : "Confirm & Generate")) {
-      commands.push(CreativeDesktopCommandId::WorldLayoutConfirm);
-    }
-    ImGui::EndDisabled();
-    ImGui::SameLine();
-    ImGui::BeginDisabled(!hasSelection);
-    if (ImGui::Button(buildingSelected ? "Delete building" : "Delete")) {
-      if (buildingSelected) {
-        ImGui::OpenPopup("Delete building group");
-      } else {
-        commands.push(CreativeDesktopCommandId::WorldLayoutDeleteSelection);
+    if (topography.region.editingEnabled) {
+      drawWorldLayoutTerrainRegionBuild(topography, editor.terrainGeneration,
+                                        commands, editingDisabled);
+    } else {
+      ImGui::BeginDisabled(editingDisabled ||
+                           state.buildingTransform.active ||
+                           state.buildingTemplatePlacement.active);
+      ImGui::BeginDisabled(!diagnostics.ready);
+      if (ImGui::Button(exactPreviewActive ? "Refresh 3D Preview"
+                                           : "Preview 3D")) {
+        commands.push(CreativeDesktopCommandId::WorldLayoutPreview);
       }
-    }
-    ImGui::EndDisabled();
-    ImGui::EndDisabled();
-
-    if (ImGui::BeginPopupModal("Delete building group", nullptr,
-                               ImGuiWindowFlags_AlwaysAutoResize)) {
-      const char* buildingName =
-          buildingSelected &&
-                  state.selection.index < state.source.buildings.size()
-              ? state.source.buildings[state.selection.index].name.c_str()
-              : "selected building";
-      ImGui::Text("Delete %s and all owned layout symbols?", buildingName);
-      if (ImGui::Button("Delete building")) {
-        commands.push(CreativeDesktopCommandId::WorldLayoutDeleteSelection);
-        ImGui::CloseCurrentPopup();
-      }
+      ImGui::EndDisabled();
       ImGui::SameLine();
-      if (ImGui::Button("Cancel")) {
-        ImGui::CloseCurrentPopup();
+      ImGui::BeginDisabled(!diagnostics.canGenerate);
+      if (ImGui::Button(exactPreviewActive ? "Confirm Preview"
+                                           : "Confirm & Generate")) {
+        commands.push(CreativeDesktopCommandId::WorldLayoutConfirm);
       }
-      ImGui::EndPopup();
-    }
-
-    ImGui::Separator();
-    ImGui::TextColored(
-        diagnostics.canGenerate ? ImVec4{0.20F, 1.0F, 0.35F, 1.0F}
-                                : ImVec4{1.0F, 0.34F, 0.30F, 1.0F},
-        "%s", diagnostics.canGenerate ? "READY" : "BLOCKED");
-    ImGui::SameLine();
-    if (diagnostics.ready) {
-      ImGui::TextDisabled(
-          "%s", !diagnostics.canGenerate
-                    ? "Refined terrain requires an explicit decision"
-                    : diagnostics.hasChanges
-                          ? "Changes are ready to generate"
-                          : "Generated output already matches");
-      const cr::CreativeWorldLayoutReceipt& generation =
-          diagnostics.compileReceipt;
-      ImGui::TextDisabled(
-          "Recipe groups: +%llu  patch %llu  replace %llu  keep %llu  "
-          "refined %llu  |  detach %llu  remove %llu objects",
-          static_cast<unsigned long long>(
-              generation.objectRecipeCreateCount),
-          static_cast<unsigned long long>(
-              generation.objectRecipePatchCount),
-          static_cast<unsigned long long>(
-              generation.objectRecipeReplaceCount),
-          static_cast<unsigned long long>(generation.objectRecipeKeepCount),
-          static_cast<unsigned long long>(generation.objectRecipeRefinedCount),
-          static_cast<unsigned long long>(generation.objectDetachCount),
-          static_cast<unsigned long long>(generation.objectRemoveCount));
-    }
-    for (std::size_t issueIndex = 0U;
-         issueIndex < diagnostics.issueCount; ++issueIndex) {
-      const CreativeEditorWorldLayoutDiagnostic& issue =
-          diagnostics.issues[issueIndex];
-      const bool navigable =
-          issue.table != cr::CreativeWorldLayoutTable::None &&
-          issue.index != cr::kInvalidCreativeWorldLayoutIndex;
-      const ImVec4 issueColor =
-          issue.severity == CreativeEditorWorldLayoutDiagnosticSeverity::Warning
-              ? ImVec4{1.0F, 0.72F, 0.20F, 1.0F}
-              : issue.severity ==
-                        CreativeEditorWorldLayoutDiagnosticSeverity::Info
-                    ? ImVec4{0.38F, 0.72F, 1.0F, 1.0F}
-                    : ImVec4{1.0F, 0.34F, 0.30F, 1.0F};
-      const std::string label = issue.message + "##world_layout_issue_" +
-                                std::to_string(issueIndex);
-      ImGui::PushStyleColor(ImGuiCol_Text, issueColor);
-      if (navigable) {
-        if (ImGui::Selectable(label.c_str(), false,
-                              ImGuiSelectableFlags_None,
-                              ImVec2(0.0F, ImGui::GetFrameHeight()))) {
-          commands.push(
-              CreativeDesktopCommandId::WorldLayoutFocusSource,
-              CreativeDesktopWorldLayoutSourcePayload{issue.table,
-                                                       issue.index, {}});
-        }
-      } else {
-        ImGui::TextUnformatted(issue.message.c_str());
-      }
-      ImGui::PopStyleColor();
-      if (ImGui::IsItemHovered()) {
-        if (!issue.kernelReasonCode.empty() &&
-            issue.kernelReasonCode !=
-                "creative_world_layout_kernel_not_requested") {
-          ImGui::SetTooltip("%s\n%s", issue.reasonCode.c_str(),
-                            issue.kernelReasonCode.c_str());
+      ImGui::EndDisabled();
+      ImGui::SameLine();
+      ImGui::BeginDisabled(!hasSelection);
+      if (ImGui::Button(buildingSelected ? "Delete building" : "Delete")) {
+        if (buildingSelected) {
+          ImGui::OpenPopup("Delete building group");
         } else {
-          ImGui::SetTooltip("%s", issue.reasonCode.c_str());
+          commands.push(CreativeDesktopCommandId::WorldLayoutDeleteSelection);
         }
       }
-      drawWorldLayoutAssetRepair(issue, state, editor.catalog.model, commands,
-                                 editingDisabled, issueIndex);
-    }
-    drawRefinementConflictActions(state, diagnostics, commands,
-                                  editingDisabled);
-    drawRecipeChanges(diagnostics);
+      ImGui::EndDisabled();
+      ImGui::EndDisabled();
 
-    ImGui::Separator();
-    if (ImGui::BeginTable("##world_layout_counts", 4,
-                          ImGuiTableFlags_SizingStretchSame |
-                              ImGuiTableFlags_BordersInnerV)) {
-      ImGui::TableNextColumn();
-      ImGui::Text("Buildings  %llu", static_cast<unsigned long long>(
-                                        state.source.buildings.size()));
-      ImGui::TableNextColumn();
-      ImGui::Text("Levels  %llu", static_cast<unsigned long long>(
-                                     state.source.levels.size()));
-      ImGui::TableNextColumn();
-      ImGui::Text("Rooms  %llu", static_cast<unsigned long long>(
-                                    state.source.rooms.size()));
-      ImGui::TableNextColumn();
-      ImGui::Text("Floors  %llu", static_cast<unsigned long long>(
-                                     state.source.boxes.size()));
-      ImGui::TableNextColumn();
-      ImGui::Text("Partitions  %llu", static_cast<unsigned long long>(
-                                         state.source.walls.size()));
-      ImGui::TableNextColumn();
-      ImGui::Text("Openings  %llu", static_cast<unsigned long long>(
-                                       state.source.openings.size()));
-      ImGui::TableNextColumn();
-      ImGui::Text(
-          "Terrain  %llu",
-          static_cast<unsigned long long>(
-              state.source.terrainProfiles.size() +
-              state.source.terrainPaths.size()));
-      ImGui::TableNextColumn();
-      ImGui::Text("Objects  %llu", static_cast<unsigned long long>(
-                                      state.source.objects.size()));
-      ImGui::EndTable();
-    }
+      if (ImGui::BeginPopupModal("Delete building group", nullptr,
+                                 ImGuiWindowFlags_AlwaysAutoResize)) {
+        const char* buildingName =
+            buildingSelected &&
+                    state.selection.index < state.source.buildings.size()
+                ? state.source.buildings[state.selection.index].name.c_str()
+                : "selected building";
+        ImGui::Text("Delete %s and all owned layout symbols?", buildingName);
+        if (ImGui::Button("Delete building")) {
+          commands.push(CreativeDesktopCommandId::WorldLayoutDeleteSelection);
+          ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) {
+          ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+      }
 
-    ImGui::TextDisabled("Revision %llu%s",
-                        static_cast<unsigned long long>(state.revision),
-                        creativeEditorWorldLayoutDirty(state) ? " *" : "");
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4{0.32F, 0.95F, 0.43F, 1.0F}, "%s",
-                       state.statusMessage.c_str());
+      ImGui::Separator();
+      ImGui::TextColored(
+          diagnostics.canGenerate ? ImVec4{0.20F, 1.0F, 0.35F, 1.0F}
+                                  : ImVec4{1.0F, 0.34F, 0.30F, 1.0F},
+          "%s", diagnostics.canGenerate ? "READY" : "BLOCKED");
+      ImGui::SameLine();
+      if (diagnostics.ready) {
+        ImGui::TextDisabled(
+            "%s", !diagnostics.canGenerate
+                      ? "Refined terrain requires an explicit decision"
+                      : diagnostics.hasChanges
+                            ? "Changes are ready to generate"
+                            : "Generated output already matches");
+        const cr::CreativeWorldLayoutReceipt& generation =
+            diagnostics.compileReceipt;
+        ImGui::TextDisabled(
+            "Recipe groups: +%llu  patch %llu  replace %llu  keep %llu  "
+            "refined %llu  |  detach %llu  remove %llu objects",
+            static_cast<unsigned long long>(
+                generation.objectRecipeCreateCount),
+            static_cast<unsigned long long>(
+                generation.objectRecipePatchCount),
+            static_cast<unsigned long long>(
+                generation.objectRecipeReplaceCount),
+            static_cast<unsigned long long>(generation.objectRecipeKeepCount),
+            static_cast<unsigned long long>(generation.objectRecipeRefinedCount),
+            static_cast<unsigned long long>(generation.objectDetachCount),
+            static_cast<unsigned long long>(generation.objectRemoveCount));
+      }
+      for (std::size_t issueIndex = 0U;
+           issueIndex < diagnostics.issueCount; ++issueIndex) {
+        const CreativeEditorWorldLayoutDiagnostic& issue =
+            diagnostics.issues[issueIndex];
+        const bool navigable =
+            issue.table != cr::CreativeWorldLayoutTable::None &&
+            issue.index != cr::kInvalidCreativeWorldLayoutIndex;
+        const ImVec4 issueColor =
+            issue.severity == CreativeEditorWorldLayoutDiagnosticSeverity::Warning
+                ? ImVec4{1.0F, 0.72F, 0.20F, 1.0F}
+                : issue.severity ==
+                          CreativeEditorWorldLayoutDiagnosticSeverity::Info
+                      ? ImVec4{0.38F, 0.72F, 1.0F, 1.0F}
+                      : ImVec4{1.0F, 0.34F, 0.30F, 1.0F};
+        const std::string label = issue.message + "##world_layout_issue_" +
+                                  std::to_string(issueIndex);
+        ImGui::PushStyleColor(ImGuiCol_Text, issueColor);
+        if (navigable) {
+          if (ImGui::Selectable(label.c_str(), false,
+                                ImGuiSelectableFlags_None,
+                                ImVec2(0.0F, ImGui::GetFrameHeight()))) {
+            commands.push(
+                CreativeDesktopCommandId::WorldLayoutFocusSource,
+                CreativeDesktopWorldLayoutSourcePayload{issue.table,
+                                                         issue.index, {}});
+          }
+        } else {
+          ImGui::TextUnformatted(issue.message.c_str());
+        }
+        ImGui::PopStyleColor();
+        if (ImGui::IsItemHovered()) {
+          if (!issue.kernelReasonCode.empty() &&
+              issue.kernelReasonCode !=
+                  "creative_world_layout_kernel_not_requested") {
+            ImGui::SetTooltip("%s\n%s", issue.reasonCode.c_str(),
+                              issue.kernelReasonCode.c_str());
+          } else {
+            ImGui::SetTooltip("%s", issue.reasonCode.c_str());
+          }
+        }
+        drawWorldLayoutAssetRepair(issue, state, editor.catalog.model, commands,
+                                   editingDisabled, issueIndex);
+      }
+      drawRefinementConflictActions(state, diagnostics, commands,
+                                    editingDisabled);
+      drawRecipeChanges(diagnostics);
+
+      ImGui::Separator();
+      if (ImGui::BeginTable("##world_layout_counts", 4,
+                            ImGuiTableFlags_SizingStretchSame |
+                                ImGuiTableFlags_BordersInnerV)) {
+        ImGui::TableNextColumn();
+        ImGui::Text("Buildings  %llu", static_cast<unsigned long long>(
+                                          state.source.buildings.size()));
+        ImGui::TableNextColumn();
+        ImGui::Text("Levels  %llu", static_cast<unsigned long long>(
+                                       state.source.levels.size()));
+        ImGui::TableNextColumn();
+        ImGui::Text("Rooms  %llu", static_cast<unsigned long long>(
+                                      state.source.rooms.size()));
+        ImGui::TableNextColumn();
+        ImGui::Text("Floors  %llu", static_cast<unsigned long long>(
+                                       state.source.boxes.size()));
+        ImGui::TableNextColumn();
+        ImGui::Text("Partitions  %llu", static_cast<unsigned long long>(
+                                           state.source.walls.size()));
+        ImGui::TableNextColumn();
+        ImGui::Text("Openings  %llu", static_cast<unsigned long long>(
+                                         state.source.openings.size()));
+        ImGui::TableNextColumn();
+        ImGui::Text(
+            "Terrain  %llu",
+            static_cast<unsigned long long>(
+                state.source.terrainProfiles.size() +
+                state.source.terrainPaths.size()));
+        ImGui::TableNextColumn();
+        ImGui::Text("Objects  %llu", static_cast<unsigned long long>(
+                                        state.source.objects.size()));
+        ImGui::EndTable();
+      }
+
+      ImGui::TextDisabled("Revision %llu%s",
+                          static_cast<unsigned long long>(state.revision),
+                          creativeEditorWorldLayoutDirty(state) ? " *" : "");
+      ImGui::SameLine();
+      ImGui::TextColored(ImVec4{0.32F, 0.95F, 0.43F, 1.0F}, "%s",
+                         state.statusMessage.c_str());
+    }
   }
   ImGui::End();
 

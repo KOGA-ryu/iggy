@@ -1,4 +1,5 @@
 #include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutPanel.hpp"
 #include "EditorWorldLayoutTopography.hpp"
 #include "EditorDesktopCommands.hpp"
 #include "EditorEdits.hpp"
@@ -414,6 +415,124 @@ bool regionPreviewAndApplyAreExactAtomicAndUndoable() {
                 "cancel clears transient region truth without mutation");
 }
 
+// The desktop terrain workflow presents the region lifecycle through a pure
+// phase classifier and read-only metrics; this walks the real dispatcher
+// workflow through every presented state.
+bool regionPhaseAndMetricsMirrorTheWorkflow() {
+  using Phase = app::CreativeEditorWorldLayoutTerrainRegionPhase;
+  constexpr std::array<std::uint16_t, 9U> heights{
+      4U, 4U, 4U,
+      4U, 4U, 4U,
+      4U, 4U, 4U,
+  };
+  cr::CreativeAppState appState;
+  static_cast<void>(appState.facade.installDocument(
+      topographyDocument(2108U, heights)));
+  app::CreativeEditorState editor;
+  app::CreativeEditorWorldLayoutTerrainRegionState& region =
+      editor.worldLayoutTopography.region;
+
+  const bool labelsExact =
+      app::toString(Phase::Idle) == "idle" &&
+      app::toString(Phase::Selecting) == "selecting" &&
+      app::toString(Phase::AwaitingPreview) == "awaiting preview" &&
+      app::toString(Phase::Ready) == "ready" &&
+      app::toString(Phase::Rejected) == "rejected" &&
+      app::toString(Phase::Stale) == "stale";
+
+  const Phase disabledPhase =
+      app::classifyCreativeEditorWorldLayoutTerrainRegionPhase(region);
+  region.editingEnabled = true;
+  const Phase enabledIdlePhase =
+      app::classifyCreativeEditorWorldLayoutTerrainRegionPhase(region);
+  const app::CreativeEditorWorldLayoutTerrainRegionMetrics idleMetrics =
+      app::measureCreativeEditorWorldLayoutTerrainRegion(region);
+
+  static_cast<void>(app::beginCreativeEditorWorldLayoutTerrainRegion(
+      region, -0.8, -0.8));
+  const Phase selectingPhase =
+      app::classifyCreativeEditorWorldLayoutTerrainRegionPhase(region);
+  static_cast<void>(app::finishCreativeEditorWorldLayoutTerrainRegion(
+      region, 0.8, 0.8));
+  const Phase draftPhase =
+      app::classifyCreativeEditorWorldLayoutTerrainRegionPhase(region);
+  const app::CreativeEditorWorldLayoutTerrainRegionMetrics draftMetrics =
+      app::measureCreativeEditorWorldLayoutTerrainRegion(region);
+
+  app::CreativeDesktopCommandFrame previewFrame;
+  previewFrame.push(
+      app::CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
+  const app::CreativeDesktopCommandResult preview =
+      app::dispatchCreativeDesktopCommands(
+          previewFrame, {appState, editor, {}, nullptr, nullptr, nullptr});
+  const Phase readyPhase =
+      app::classifyCreativeEditorWorldLayoutTerrainRegionPhase(region);
+
+  // A different document invalidates the owned preview: the workflow
+  // presents the loss as the stale state with the terrain state's exact
+  // message.
+  const cr::CreativeDocument otherDocument =
+      topographyDocument(2109U, heights);
+  const bool staleSynchronized =
+      app::synchronizeCreativeEditorWorldLayoutTerrainRegion(
+          region, editor.terrainGeneration, otherDocument);
+  const Phase stalePhase =
+      app::classifyCreativeEditorWorldLayoutTerrainRegionPhase(region);
+  const bool staleMessageExact =
+      region.statusMessage ==
+      "Terrain region preview canceled: document changed";
+
+  // An invalid draft parameter turns the next exact preview into the
+  // rejected state.
+  static_cast<void>(app::beginCreativeEditorWorldLayoutTerrainRegion(
+      region, -0.8, -0.8));
+  static_cast<void>(app::finishCreativeEditorWorldLayoutTerrainRegion(
+      region, 0.8, 0.8));
+  region.noiseScaleCells = std::numeric_limits<double>::infinity();
+  app::CreativeDesktopCommandFrame rejectedFrame;
+  rejectedFrame.push(
+      app::CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
+  const app::CreativeDesktopCommandResult rejected =
+      app::dispatchCreativeDesktopCommands(
+          rejectedFrame, {appState, editor, {}, nullptr, nullptr, nullptr});
+  const Phase rejectedPhase =
+      app::classifyCreativeEditorWorldLayoutTerrainRegionPhase(region);
+
+  region.noiseScaleCells = 12.0;
+  app::CreativeDesktopCommandFrame cancelFrame;
+  cancelFrame.push(
+      app::CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
+  const app::CreativeDesktopCommandResult canceled =
+      app::dispatchCreativeDesktopCommands(
+          cancelFrame, {appState, editor, {}, nullptr, nullptr, nullptr});
+  const Phase canceledPhase =
+      app::classifyCreativeEditorWorldLayoutTerrainRegionPhase(region);
+
+  return expect(labelsExact,
+                "phase labels present the workflow vocabulary exactly") &&
+         expect(disabledPhase == Phase::Idle &&
+                    enabledIdlePhase == Phase::Idle && !idleMetrics.present,
+                "the workflow rests idle with no region metrics") &&
+         expect(selectingPhase == Phase::Selecting &&
+                    draftPhase == Phase::AwaitingPreview,
+                "selection presents selecting then awaiting preview") &&
+         expect(draftMetrics.present && draftMetrics.minimumX == -1 &&
+                    draftMetrics.minimumZ == -1 &&
+                    draftMetrics.widthCells == 2U &&
+                    draftMetrics.depthCells == 2U &&
+                    draftMetrics.candidateCellCount == 4U,
+                "metrics report bounds width depth and candidate cells") &&
+         expect(preview.accepted && readyPhase == Phase::Ready,
+                "an owned exact preview presents ready") &&
+         expect(staleSynchronized && stalePhase == Phase::Stale &&
+                    staleMessageExact,
+                "a document change presents the stale state exactly") &&
+         expect(!rejected.accepted && rejectedPhase == Phase::Rejected,
+                "an invalid draft presents the rejected state") &&
+         expect(canceled.accepted && canceledPhase == Phase::Idle,
+                "cancel returns the workflow to idle");
+}
+
 }  // namespace
 
 int main() {
@@ -425,5 +544,6 @@ int main() {
   ok = capacityLimitsRemainAtomicAndUseful() && ok;
   ok = regionSelectionBuildsSharedOperationRecipes() && ok;
   ok = regionPreviewAndApplyAreExactAtomicAndUndoable() && ok;
+  ok = regionPhaseAndMetricsMirrorTheWorkflow() && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -4772,6 +4772,48 @@ bool worldLayoutAssetRepairCommandsPreservePlacementAndHistory() {
                 "repaired sources compile without asset diagnostics");
 }
 
+
+// The world-layout terrain-region commands stay guarded outside the map
+// workspace and refuse apply without an owned exact preview; cancel is
+// always safe.
+bool worldLayoutTerrainRegionCommandsRespectWorkspaceGuards() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Cmd Region");
+  static_cast<void>(document.assignId(470U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  app::CreativeEditorState editor;
+  const app::CreativeDesktopCommandContext context{
+      appState, editor, {}, nullptr, nullptr, nullptr};
+
+  editor.assetEdit.active = true;
+  const app::CreativeDesktopCommandResult guarded = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview,
+      context);
+  editor.assetEdit.active = false;
+
+  const app::CreativeDesktopCommandResult applyWithoutPreview = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutTerrainRegionApply, context);
+  const std::uint64_t revisionAfterApply =
+      appState.facade.document().revision();
+
+  const app::CreativeDesktopCommandResult idleCancel = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel, context);
+
+  return expect(!guarded.accepted && !guarded.changed &&
+                    guarded.message ==
+                        "terrain region unavailable in this workspace",
+                "terrain region preview refuses outside the map workspace") &&
+         expect(!applyWithoutPreview.accepted &&
+                    !applyWithoutPreview.changed &&
+                    applyWithoutPreview.message ==
+                        "No terrain region preview to apply" &&
+                    revisionAfterApply ==
+                        appState.facade.document().revision(),
+                "apply without an owned preview is a rejected no-op") &&
+         expect(idleCancel.accepted && !idleCancel.changed,
+                "cancel with nothing to cancel stays a safe no-op");
+}
+
 }  // namespace
 
 int main() {
@@ -4820,5 +4862,6 @@ int main() {
   ok = worldLayoutCatalogSelectionAndPlacementUseTypedCommands() && ok;
   ok = worldLayoutOpeningInsertCommandsUseCatalogAndHistory() && ok;
   ok = worldLayoutAssetRepairCommandsPreservePlacementAndHistory() && ok;
+  ok = worldLayoutTerrainRegionCommandsRespectWorkspaceGuards() && ok;
   return ok ? 0 : 1;
 }
