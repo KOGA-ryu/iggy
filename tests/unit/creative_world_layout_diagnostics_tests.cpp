@@ -1,6 +1,7 @@
 #include "EditorDesktopCommands.hpp"
 #include "EditorState.hpp"
 #include "EditorTerrain.hpp"
+#include "EditorWorldLayout.hpp"
 #include "EditorWorldLayoutDiagnostics.hpp"
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
 

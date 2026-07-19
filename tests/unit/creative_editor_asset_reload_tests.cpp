@@ -2,6 +2,7 @@
 #include "EditorAssetReplacement.hpp"
 #include "EditorEdits.hpp"
 #include "EditorPreviewFrame.hpp"
+#include "EditorWorldLayout.hpp"
 
 #include <algorithm>
 #include <array>

@@ -2,6 +2,7 @@
 #include "EditorEdits.hpp"
 #include "EditorRoomPlacement.hpp"
 #include "EditorState.hpp"
+#include "EditorWorldLayout.hpp"
 
 #include <algorithm>
 #include <cmath>
