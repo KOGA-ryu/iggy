@@ -59,6 +59,16 @@ struct WallBoxDraw {
   Vec3 rotationEulerRadians;
 };
 
+[[nodiscard]] Vec3 componentProduct(Vec3 lhs, Vec3 rhs) noexcept;
+
+[[nodiscard]] bool appendStaticMeshAsset(
+    std::vector<FirstRoomVertex>& vertices,
+    std::vector<std::uint16_t>& indices,
+    std::vector<IndexedDrawRange>& draws,
+    const SceneRoomMeshItem& item,
+    const StaticMeshAsset& asset,
+    const StaticMeshMaterialTextureResources* materialTextures);
+
 [[nodiscard]] std::vector<FloorDraw> buildOptimizedFloorDraws(
     const SceneRoomProjection& room);
 [[nodiscard]] bool canEmitFloorDraw(const FloorDraw& floor) noexcept;
