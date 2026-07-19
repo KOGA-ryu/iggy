@@ -41,6 +41,7 @@ target_sources(iggy3d
     src/app/PackageRuntimeLookup.cpp
     src/app/iggy3d/creative/Geometry.cpp
     src/app/iggy3d/creative/assets/AuthoredAsset.cpp
+    src/app/iggy3d/creative/assets/AuthoredAssetFingerprint.cpp
     src/app/iggy3d/creative/assets/AuthoredAssetPlacement.cpp
     src/app/iggy3d/creative/assets/AuthoredAssetRefresh.cpp
     src/app/iggy3d/creative/assets/AuthoredAssetSync.cpp
