@@ -174,6 +174,37 @@ struct CreativeDesktopGeneratedSourceScopeModel {
   std::size_t directEntryIndex = 0U;
 };
 
+struct CreativeDesktopGeneratedSourceScopeTint {
+  float r = 1.0F;
+  float g = 0.82F;
+  float b = 0.22F;
+  float a = 1.0F;
+};
+
+struct CreativeDesktopGeneratedSourceScopeSummary {
+  bool valid = false;
+  cr::CreativeWorldLayoutTable table = cr::CreativeWorldLayoutTable::None;
+  std::size_t index = cr::kInvalidCreativeWorldLayoutIndex;
+  std::size_t objectCount = 0U;
+  std::size_t visibleObjectCount = 0U;
+  std::size_t hiddenObjectCount = 0U;
+  bool hasBounds = false;
+  cr::CreativeBounds worldBounds{};
+};
+
+struct CreativeDesktopGeneratedSourceScopeCache {
+  bool populated = false;
+  cr::CreativeDocumentId documentId = cr::kInvalidDocumentId;
+  std::uint64_t documentRevision = 0U;
+  std::uint64_t sourceEpoch = 0U;
+  std::uint64_t sourceRevision = 0U;
+  std::uint64_t generatedRevision = 0U;
+  cr::CreativeWorldLayoutTable table = cr::CreativeWorldLayoutTable::None;
+  std::size_t index = cr::kInvalidCreativeWorldLayoutIndex;
+  CreativeDesktopGeneratedSourceScopeSummary summary;
+  std::vector<cr::CreativeObjectId> objectIds;
+};
+
 [[nodiscard]] CreativeDesktopGeneratedSourceScopeModel
 buildCreativeDesktopGeneratedSourceScopeModel(
     const cr::CreativeWorldLayout& layout,
@@ -183,5 +214,51 @@ buildCreativeDesktopGeneratedSourceScopeModel(
     const CreativeDesktopGeneratedSourceScopeModel& model,
     cr::CreativeWorldLayoutTable table,
     std::size_t index) noexcept;
+
+// Resolves the 2D source selection against one generated object's ancestry.
+// A selection outside that ancestry cannot steal scope and falls back to the
+// object's direct source.
+[[nodiscard]] std::size_t resolveCreativeDesktopGeneratedSourceActiveScope(
+    const CreativeDesktopGeneratedSourceScopeModel& model,
+    cr::CreativeWorldLayoutTable selectedTable,
+    std::size_t selectedIndex) noexcept;
+
+// Shared room edges belong to every contributing room. Other scopes follow
+// the same no-fabricated-ancestry model used by the Inspector breadcrumb.
+[[nodiscard]] bool creativeDesktopGeneratedObjectBelongsToSourceScope(
+    const cr::CreativeWorldLayout& layout,
+    const cr::CreativeObject& object,
+    cr::CreativeWorldLayoutTable table,
+    std::size_t index);
+
+[[nodiscard]] CreativeDesktopGeneratedSourceScopeSummary
+buildCreativeDesktopGeneratedSourceScopeSummary(
+    const cr::CreativeDocument& document,
+    const cr::CreativeWorldLayout& layout,
+    cr::CreativeWorldLayoutTable table,
+    std::size_t index);
+
+// Returns true only when the revision/scope key changed and the member list was
+// rebuilt. Object ids are sorted for allocation-free binary lookup on idle
+// frames.
+[[nodiscard]] bool refreshCreativeDesktopGeneratedSourceScopeCache(
+    CreativeDesktopGeneratedSourceScopeCache& cache,
+    const cr::CreativeDocument& document,
+    const cr::CreativeWorldLayout& layout,
+    std::uint64_t sourceEpoch,
+    std::uint64_t sourceRevision,
+    std::uint64_t generatedRevision,
+    cr::CreativeWorldLayoutTable table,
+    std::size_t index);
+
+[[nodiscard]] bool creativeDesktopGeneratedSourceScopeCacheContains(
+    const CreativeDesktopGeneratedSourceScopeCache& cache,
+    cr::CreativeObjectId objectId) noexcept;
+
+// Building, Level, Room, and direct-leaf selections use one visual language in
+// the 3D viewport, 2D layout canvas, and Inspector breadcrumb.
+[[nodiscard]] CreativeDesktopGeneratedSourceScopeTint
+creativeDesktopGeneratedSourceScopeTint(
+    cr::CreativeWorldLayoutTable table) noexcept;
 
 }  // namespace iggy3d_creative_app

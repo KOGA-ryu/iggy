@@ -11,6 +11,7 @@
 #include "EditorFrame.hpp"
 #include "EditorAssetReplacement.hpp"
 #include "EditorAssetScatter.hpp"
+#include "EditorDesktopModel.hpp"
 #include "EditorGizmo.hpp"
 #include "EditorGroup.hpp"
 #include "EditorInteraction.hpp"
@@ -52,6 +53,10 @@ void resetCreativeEditorOverlayFrame(CreativeEditorOverlayFrame& output) {
   output.placementBlockerEdgeCount = 0;
   output.placementGridClipped = false;
   output.documentWireLineCount = 0;
+  output.generatedScopeActive = false;
+  output.generatedScopeObjectCount = 0;
+  output.generatedScopeVisibleObjectCount = 0;
+  output.generatedScopeEdgeCount = 0;
   output.pointMarkerEdgeCount = 0;
   output.lineMarkerEdgeCount = 0;
   output.pathPointHandleEdgeCount = 0;
@@ -538,10 +543,65 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
     output.placementVisualization = *placementVisualization;
   }
 
+  const cr::CreativeDocument& document = appState.facade.document();
+  CreativeDesktopGeneratedSourceScopeModel generatedScopes;
+  CreativeDesktopGeneratedSourceScopeSummary generatedScopeSummary;
+  cr::CreativeWorldLayoutTable generatedScopeTable =
+      cr::CreativeWorldLayoutTable::None;
+  std::size_t generatedScopeIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::size_t generatedActiveScopeIndex = 0U;
+  RenderLineColor generatedScopeColor{1.0F, 0.82F, 0.22F, 1.0F};
+  bool generatedScopeBroad = false;
+  if (hasSelection && selected != nullptr &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision) {
+    const cr::CreativeWorldLayoutObjectProvenance provenance =
+        cr::resolveCreativeWorldLayoutObjectProvenance(
+            editor.worldLayout.source, *selected);
+    generatedScopes = buildCreativeDesktopGeneratedSourceScopeModel(
+        editor.worldLayout.source, provenance);
+    if (generatedScopes.count > 0U) {
+      generatedActiveScopeIndex =
+          resolveCreativeDesktopGeneratedSourceActiveScope(
+              generatedScopes,
+              creativeEditorWorldLayoutSelectionTable(
+                  editor.worldLayout.selection.kind),
+              editor.worldLayout.selection.index);
+      const CreativeDesktopGeneratedSourceScopeEntry& scope =
+          generatedScopes.entries[generatedActiveScopeIndex];
+      generatedScopeTable = scope.table;
+      generatedScopeIndex = scope.index;
+      static_cast<void>(refreshCreativeDesktopGeneratedSourceScopeCache(
+          editor.generatedSourceScopeCache, document,
+          editor.worldLayout.source, editor.worldLayout.sourceEpoch,
+          editor.worldLayout.revision, editor.worldLayout.generatedRevision,
+          generatedScopeTable, generatedScopeIndex));
+      generatedScopeSummary = editor.generatedSourceScopeCache.summary;
+      if (generatedScopeSummary.valid) {
+        const CreativeDesktopGeneratedSourceScopeTint tint =
+            creativeDesktopGeneratedSourceScopeTint(generatedScopeTable);
+        generatedScopeColor = {tint.r, tint.g, tint.b, tint.a};
+        output.generatedScopeActive = true;
+        output.generatedScopeObjectCount = generatedScopeSummary.objectCount;
+        output.generatedScopeVisibleObjectCount =
+            generatedScopeSummary.visibleObjectCount;
+        generatedScopeBroad =
+            generatedActiveScopeIndex != generatedScopes.directEntryIndex ||
+            generatedScopeTable == cr::CreativeWorldLayoutTable::Building ||
+            generatedScopeTable == cr::CreativeWorldLayoutTable::Level ||
+            generatedScopeTable == cr::CreativeWorldLayoutTable::Room;
+      }
+    }
+  }
+  const auto generatedScopeContains = [&](cr::CreativeObjectId objectId) {
+    return output.generatedScopeActive &&
+           creativeDesktopGeneratedSourceScopeCacheContains(
+               editor.generatedSourceScopeCache, objectId);
+  };
+
   // ---- BOUNDS BOX (wireframe) --------------------------------------------
   const creative::CreativeDocumentWireframeSegmentBuildResult segs =
       creative::buildCreativeDocumentWireframeSegments(
-          appState.facade.document(), wireProjReq);
+          document, wireProjReq);
   ProductCreativeWireframeDebugLineBuildResult lines =
       buildProductCreativeWireframeDebugLines(segs.segmentList);
   // The renderer turns each line into a world-space tube of `thickness` METRES
@@ -552,8 +612,12 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
   for (ProductCreativeWireframeDebugLine& line : lines.lineList.lines) {
     // Recolor the SELECTED object's edges — matched by id, whatever the kind.
     const bool sel = hasSelection && objectSelected(line.objectId);
-    line.thickness = sel ? 0.06F : 0.03F;
-    if (sel) {
+    const bool inGeneratedScope = generatedScopeContains(line.objectId);
+    line.thickness = inGeneratedScope ? 0.055F : sel ? 0.06F : 0.03F;
+    if (inGeneratedScope) {
+      line.color = {generatedScopeColor.r, generatedScopeColor.g,
+                    generatedScopeColor.b, generatedScopeColor.a};
+    } else if (sel) {
       line.color = {1.0F, 1.0F, 0.0F, 1.0F};
     }
   }
@@ -571,7 +635,7 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
       output.combinedWireLines;
   combinedWireLines.reserve(
       dbg.lines.size() +
-      appState.facade.document().logicLinks().size() * 15U + 72U +
+      document.logicLinks().size() * 15U + 84U +
       37U +
       kMaxStaticMeshAttachmentSocketCount * 3U +
       editor.interaction.assetScatter.preview.candidateCount * 12U +
@@ -585,7 +649,7 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
   for (const RenderCreativeWireframeDebugLine& line : dbg.lines) {
     const creative::CreativeObject* object =
         line.objectId != creative::kInvalidObjectId
-            ? appState.facade.findObject(line.objectId)
+            ? document.findObject(line.objectId)
             : nullptr;
     if (object != nullptr &&
         creative::describeObject(object->kind).shapeKind ==
@@ -593,8 +657,26 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
       continue;
     }
     combinedWireLines.push_back(line);
+    if (generatedScopeContains(line.objectId)) {
+      ++output.generatedScopeEdgeCount;
+    }
   }
   documentWireLineCount = combinedWireLines.size();
+  if (output.generatedScopeActive && generatedScopeSummary.hasBounds) {
+    const creative::CreativeCoreVec3Conversion minimum =
+        creative::creativeVec3ToCoreChecked(
+            generatedScopeSummary.worldBounds.min);
+    const creative::CreativeCoreVec3Conversion maximum =
+        creative::creativeVec3ToCoreChecked(
+            generatedScopeSummary.worldBounds.max);
+    if (minimum.converted && maximum.converted) {
+      const std::size_t before = combinedWireLines.size();
+      appendStandaloneWireframeBoxEdges(
+          combinedWireLines, minimum.value, maximum.value,
+          generatedScopeColor, 0.07F);
+      output.generatedScopeEdgeCount += combinedWireLines.size() - before;
+    }
+  }
   appendCreativeEditorPlacementGridOverlay(request, output);
   const creative::CreativeObjectId focusedGroupId =
       activeCreativeEditorGroupFocusId(editor.groupFocus);
@@ -640,6 +722,7 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
       continue;
     }
     const bool sel = hasSelection && objectSelected(obj.id);
+    const bool inGeneratedScope = generatedScopeContains(obj.id);
     if (descriptor.shapeKind != creative::CreativeObjectShapeKind::Point &&
         descriptor.shapeKind != creative::CreativeObjectShapeKind::Line) {
       continue;
@@ -648,11 +731,13 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
     const std::size_t before = combinedWireLines.size();
     appendStandaloneWireframeBoxEdges(
         combinedWireLines, markerBounds.min, markerBounds.max,
-        sel ? RenderLineColor{1.0F, 1.0F, 0.0F, 1.0F}
+        inGeneratedScope
+            ? generatedScopeColor
+            : sel ? RenderLineColor{1.0F, 1.0F, 0.0F, 1.0F}
             : descriptor.shapeKind == creative::CreativeObjectShapeKind::Line
                   ? RenderLineColor{0.86F, 0.68F, 0.28F, 1.0F}
                   : RenderLineColor{0.34F, 0.62F, 0.88F, 1.0F},
-        sel ? 0.06F : 0.035F);
+        inGeneratedScope ? 0.055F : sel ? 0.06F : 0.035F);
     for (std::size_t i = before; i < combinedWireLines.size(); ++i) {
       combinedWireLines[i].objectId = obj.id;
     }
@@ -660,6 +745,9 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
       lineMarkerEdgeCount += combinedWireLines.size() - before;
     } else {
       pointMarkerEdgeCount += combinedWireLines.size() - before;
+    }
+    if (inGeneratedScope) {
+      output.generatedScopeEdgeCount += combinedWireLines.size() - before;
     }
   }
   if (selectedIsPathForHandles) {
@@ -772,7 +860,7 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
       }
     }
   }
-  if (hasSelection) {
+  if (hasSelection && !generatedScopeBroad) {
     for (const GizmoAxisShaft& shaft : gizmoShafts) {
       RenderCreativeWireframeDebugLine gizmoLine;
       gizmoLine.start = request.gizmoFrame.center;

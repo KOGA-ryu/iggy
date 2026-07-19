@@ -6,6 +6,7 @@
 #include "imgui.h"
 
 #include "EditorDesktopCommands.hpp"
+#include "EditorDesktopModel.hpp"
 #include "EditorDesktopUi.hpp"
 #include "EditorPlayMode.hpp"
 #include "EditorState.hpp"
@@ -52,6 +53,8 @@ void buildCreativeEditorDesktopInspectorPanel(
 
 void appendCreativeDesktopGeneratedSourceSettings(
     CreativeEditorWorldLayoutState& worldLayout,
+    CreativeDesktopGeneratedSourceScopeCache& scopeCache,
+    const iggy3d::creative::CreativeDocument& document,
     iggy3d::creative::CreativeObjectId objectId,
     iggy3d::creative::CreativeWorldLayoutObjectProvenance provenance,
     bool disabled,

@@ -66,6 +66,39 @@ constexpr double kRadiansPerDegree = kPi / 180.0;
          asciiContains(idText, query);
 }
 
+void includeGeneratedScopeObject(
+    CreativeDesktopGeneratedSourceScopeSummary& summary,
+    const cr::CreativeObject& object) noexcept {
+  ++summary.objectCount;
+  if (object.visible) {
+    ++summary.visibleObjectCount;
+  } else {
+    ++summary.hiddenObjectCount;
+  }
+  const cr::CreativeTransformedBounds bounds =
+      cr::resolveCreativeObjectBounds(object);
+  if (!bounds.valid) {
+    return;
+  }
+  if (!summary.hasBounds) {
+    summary.worldBounds = bounds.worldBounds;
+    summary.hasBounds = true;
+    return;
+  }
+  summary.worldBounds.min.x =
+      std::min(summary.worldBounds.min.x, bounds.worldBounds.min.x);
+  summary.worldBounds.min.y =
+      std::min(summary.worldBounds.min.y, bounds.worldBounds.min.y);
+  summary.worldBounds.min.z =
+      std::min(summary.worldBounds.min.z, bounds.worldBounds.min.z);
+  summary.worldBounds.max.x =
+      std::max(summary.worldBounds.max.x, bounds.worldBounds.max.x);
+  summary.worldBounds.max.y =
+      std::max(summary.worldBounds.max.y, bounds.worldBounds.max.y);
+  summary.worldBounds.max.z =
+      std::max(summary.worldBounds.max.z, bounds.worldBounds.max.z);
+}
+
 }  // namespace
 
 CreativeDesktopOutlinerModel buildCreativeDesktopOutlinerModel(
@@ -562,6 +595,157 @@ std::size_t findCreativeDesktopGeneratedSourceScope(
     }
   }
   return model.count;
+}
+
+std::size_t resolveCreativeDesktopGeneratedSourceActiveScope(
+    const CreativeDesktopGeneratedSourceScopeModel& model,
+    cr::CreativeWorldLayoutTable selectedTable,
+    std::size_t selectedIndex) noexcept {
+  const std::size_t selected = findCreativeDesktopGeneratedSourceScope(
+      model, selectedTable, selectedIndex);
+  return selected < model.count ? selected : model.directEntryIndex;
+}
+
+bool creativeDesktopGeneratedObjectBelongsToSourceScope(
+    const cr::CreativeWorldLayout& layout,
+    const cr::CreativeObject& object,
+    cr::CreativeWorldLayoutTable table,
+    std::size_t index) {
+  if (table == cr::CreativeWorldLayoutTable::None ||
+      index == cr::kInvalidCreativeWorldLayoutIndex) {
+    return false;
+  }
+  const cr::CreativeWorldLayoutObjectProvenance provenance =
+      cr::resolveCreativeWorldLayoutObjectProvenance(layout, object);
+  if (!provenance.owned) {
+    return false;
+  }
+
+  const auto hasTag = [&](std::string_view expected) {
+    return !expected.empty() &&
+           std::find(object.tags.begin(), object.tags.end(), expected) !=
+               object.tags.end();
+  };
+  if (table == cr::CreativeWorldLayoutTable::Room) {
+    if (index >= layout.rooms.size()) {
+      return false;
+    }
+    if (hasTag(cr::creativeWorldLayoutProvenanceTag(layout, table, index))) {
+      return true;
+    }
+    for (std::size_t edgeIndex = 0U;
+         edgeIndex <
+         static_cast<std::size_t>(cr::CreativeWorldLayoutRoomEdge::Count);
+         ++edgeIndex) {
+      if (hasTag(cr::creativeWorldLayoutRoomEdgeProvenanceTag(
+              layout, index,
+              static_cast<cr::CreativeWorldLayoutRoomEdge>(edgeIndex)))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  const CreativeDesktopGeneratedSourceScopeModel scopes =
+      buildCreativeDesktopGeneratedSourceScopeModel(layout, provenance);
+  return findCreativeDesktopGeneratedSourceScope(scopes, table, index) <
+         scopes.count;
+}
+
+CreativeDesktopGeneratedSourceScopeSummary
+buildCreativeDesktopGeneratedSourceScopeSummary(
+    const cr::CreativeDocument& document,
+    const cr::CreativeWorldLayout& layout,
+    cr::CreativeWorldLayoutTable table,
+    std::size_t index) {
+  CreativeDesktopGeneratedSourceScopeSummary summary;
+  summary.table = table;
+  summary.index = index;
+  for (const cr::CreativeObject& object : document.objects()) {
+    if (!creativeDesktopGeneratedObjectBelongsToSourceScope(
+            layout, object, table, index)) {
+      continue;
+    }
+    includeGeneratedScopeObject(summary, object);
+  }
+  summary.valid = summary.objectCount > 0U;
+  return summary;
+}
+
+bool refreshCreativeDesktopGeneratedSourceScopeCache(
+    CreativeDesktopGeneratedSourceScopeCache& cache,
+    const cr::CreativeDocument& document,
+    const cr::CreativeWorldLayout& layout,
+    std::uint64_t sourceEpoch,
+    std::uint64_t sourceRevision,
+    std::uint64_t generatedRevision,
+    cr::CreativeWorldLayoutTable table,
+    std::size_t index) {
+  if (cache.populated && cache.documentId == document.id() &&
+      cache.documentRevision == document.revision() &&
+      cache.sourceEpoch == sourceEpoch &&
+      cache.sourceRevision == sourceRevision &&
+      cache.generatedRevision == generatedRevision && cache.table == table &&
+      cache.index == index) {
+    return false;
+  }
+
+  cache.populated = true;
+  cache.documentId = document.id();
+  cache.documentRevision = document.revision();
+  cache.sourceEpoch = sourceEpoch;
+  cache.sourceRevision = sourceRevision;
+  cache.generatedRevision = generatedRevision;
+  cache.table = table;
+  cache.index = index;
+  cache.summary = {};
+  cache.summary.table = table;
+  cache.summary.index = index;
+  cache.objectIds.clear();
+  cache.objectIds.reserve(document.objects().size());
+  for (const cr::CreativeObject& object : document.objects()) {
+    if (!creativeDesktopGeneratedObjectBelongsToSourceScope(
+            layout, object, table, index)) {
+      continue;
+    }
+    cache.objectIds.push_back(object.id);
+    includeGeneratedScopeObject(cache.summary, object);
+  }
+  std::sort(cache.objectIds.begin(), cache.objectIds.end());
+  cache.summary.valid = cache.summary.objectCount > 0U;
+  return true;
+}
+
+bool creativeDesktopGeneratedSourceScopeCacheContains(
+    const CreativeDesktopGeneratedSourceScopeCache& cache,
+    cr::CreativeObjectId objectId) noexcept {
+  return cache.populated &&
+         std::binary_search(cache.objectIds.begin(), cache.objectIds.end(),
+                            objectId);
+}
+
+CreativeDesktopGeneratedSourceScopeTint
+creativeDesktopGeneratedSourceScopeTint(
+    cr::CreativeWorldLayoutTable table) noexcept {
+  switch (table) {
+    case cr::CreativeWorldLayoutTable::Building:
+      return {0.18F, 0.82F, 1.0F, 1.0F};
+    case cr::CreativeWorldLayoutTable::Level:
+      return {0.24F, 0.90F, 0.48F, 1.0F};
+    case cr::CreativeWorldLayoutTable::Room:
+      return {1.0F, 0.58F, 0.18F, 1.0F};
+    case cr::CreativeWorldLayoutTable::None:
+    case cr::CreativeWorldLayoutTable::VerticalConnector:
+    case cr::CreativeWorldLayoutTable::Box:
+    case cr::CreativeWorldLayoutTable::Wall:
+    case cr::CreativeWorldLayoutTable::Opening:
+    case cr::CreativeWorldLayoutTable::Object:
+    case cr::CreativeWorldLayoutTable::TerrainProfile:
+    case cr::CreativeWorldLayoutTable::TerrainPath:
+    case cr::CreativeWorldLayoutTable::TerrainPathPoint:
+      return {};
+  }
+  return {};
 }
 
 }  // namespace iggy3d_creative_app

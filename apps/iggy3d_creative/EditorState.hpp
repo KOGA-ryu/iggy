@@ -13,6 +13,7 @@
 #include "EditorAssetReplacement.hpp"
 #include "EditorCapture.hpp"
 #include "EditorControls.hpp"
+#include "EditorDesktopModel.hpp"
 #include "EditorDesktopUi.hpp"
 #include "EditorEdits.hpp"
 #include "EditorGroup.hpp"
@@ -108,6 +109,7 @@ struct CreativeEditorState {
   CreativeEditorLogicLinkState logicLinks;
   CreativeMovingPlatformPreviewState movingPlatformPreview;
   CreativeEditorWorldLayoutState worldLayout;
+  CreativeDesktopGeneratedSourceScopeCache generatedSourceScopeCache;
 
   bool placeMode = false;
   std::vector<iggy3d::creative::CreativeObjectKind> brushPalette;

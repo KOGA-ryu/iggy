@@ -628,6 +628,8 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
                            const cr::CreativeDocument& document,
                            const cr::CreativeObject& object,
                            CreativeEditorWorldLayoutState& worldLayout,
+                           CreativeDesktopGeneratedSourceScopeCache&
+                               generatedSourceScopeCache,
                            const CreativeMovingPlatformPreviewState& preview,
                            const CreativeMovingPlatformPathEditState& pathEdit,
                            bool playModeActive,
@@ -731,7 +733,7 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
       ImGui::TextDisabled("Source-owned geometry; raw object edits are locked");
     }
     appendCreativeDesktopGeneratedSourceSettings(
-        worldLayout, object.id, provenance,
+        worldLayout, generatedSourceScopeCache, document, object.id, provenance,
         playModeActive || !sourceSynchronized, commands);
   }
 
@@ -805,6 +807,7 @@ void buildCreativeEditorDesktopInspectorPanel(
     return;
   }
   appendSingleInspector(desktopUi, document, *object, editor.worldLayout,
+                        editor.generatedSourceScopeCache,
                         editor.movingPlatformPreview,
                         editor.interaction.movingPlatformPathEdit,
                         playModeActive,

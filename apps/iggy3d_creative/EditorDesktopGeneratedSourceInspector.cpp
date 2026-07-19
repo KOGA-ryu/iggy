@@ -1,5 +1,6 @@
 #include "EditorDesktopWidgets.hpp"
 
+#include "EditorDesktopModel.hpp"
 #include "EditorDesktopWorldLayoutInspector.hpp"
 
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
@@ -414,6 +415,8 @@ void appendGeneratedOpeningSettings(
 
 void appendCreativeDesktopGeneratedSourceSettings(
     CreativeEditorWorldLayoutState& worldLayout,
+    CreativeDesktopGeneratedSourceScopeCache& scopeCache,
+    const cr::CreativeDocument& document,
     cr::CreativeObjectId objectId,
     cr::CreativeWorldLayoutObjectProvenance provenance,
     bool disabled,
@@ -426,11 +429,9 @@ void appendCreativeDesktopGeneratedSourceSettings(
   }
   const cr::CreativeWorldLayoutTable selectedTable =
       creativeEditorWorldLayoutSelectionTable(worldLayout.selection.kind);
-  std::size_t activeScope = findCreativeDesktopGeneratedSourceScope(
-      scopes, selectedTable, worldLayout.selection.index);
-  if (activeScope >= scopes.count) {
-    activeScope = scopes.directEntryIndex;
-  }
+  const std::size_t activeScope =
+      resolveCreativeDesktopGeneratedSourceActiveScope(
+          scopes, selectedTable, worldLayout.selection.index);
 
   ImGui::TextDisabled("Source scope");
   for (std::size_t scopeIndex = 0U; scopeIndex < scopes.count; ++scopeIndex) {
@@ -443,10 +444,14 @@ void appendCreativeDesktopGeneratedSourceSettings(
     }
     ImGui::PushID(static_cast<int>(scopeIndex));
     if (scopeIndex == activeScope) {
+      const CreativeDesktopGeneratedSourceScopeTint tint =
+          creativeDesktopGeneratedSourceScopeTint(entry.table);
       ImGui::PushStyleColor(ImGuiCol_Button,
-                            ImVec4{0.12F, 0.42F, 0.20F, 1.0F});
+                            ImVec4{tint.r * 0.42F, tint.g * 0.42F,
+                                   tint.b * 0.42F, tint.a});
       ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
-                            ImVec4{0.16F, 0.54F, 0.26F, 1.0F});
+                            ImVec4{tint.r * 0.60F, tint.g * 0.60F,
+                                   tint.b * 0.60F, tint.a});
     }
     const std::string label =
         entry.name.empty() ? std::string(cr::toString(entry.table))
@@ -477,6 +482,33 @@ void appendCreativeDesktopGeneratedSourceSettings(
                       std::string(scope.stableKey)});
   }
   ImGui::EndDisabled();
+
+  if (worldLayout.generatedRevision != worldLayout.revision) {
+    ImGui::TextDisabled(
+        "Generate pending 2D edits to refresh scope impact");
+  } else {
+    static_cast<void>(refreshCreativeDesktopGeneratedSourceScopeCache(
+        scopeCache, document, worldLayout.source, worldLayout.sourceEpoch,
+        worldLayout.revision, worldLayout.generatedRevision, scope.table,
+        scope.index));
+    const CreativeDesktopGeneratedSourceScopeSummary& summary =
+        scopeCache.summary;
+    if (summary.valid) {
+      ImGui::TextDisabled("%zu generated objects (%zu visible, %zu hidden)",
+                          summary.objectCount, summary.visibleObjectCount,
+                          summary.hiddenObjectCount);
+      if (summary.hasBounds) {
+        const cr::CreativeVec3 size{
+            summary.worldBounds.max.x - summary.worldBounds.min.x,
+            summary.worldBounds.max.y - summary.worldBounds.min.y,
+            summary.worldBounds.max.z - summary.worldBounds.min.z};
+        ImGui::TextDisabled("Scope bounds %.2f x %.2f x %.2f m", size.x,
+                            size.y, size.z);
+      }
+    } else {
+      ImGui::TextDisabled("No generated objects in this scope");
+    }
+  }
 
   bool clearedDraft = false;
   if (scope.table != cr::CreativeWorldLayoutTable::Building &&

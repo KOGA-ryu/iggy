@@ -1,5 +1,6 @@
 #include "EditorWorldLayoutPanel.hpp"
 
+#include "EditorDesktopModel.hpp"
 #include "EditorDesktopWorldLayoutInspector.hpp"
 #include "EditorWorldLayoutElevationPanel.hpp"
 #include "EditorWorldLayoutHierarchyPanel.hpp"
@@ -55,6 +56,12 @@ CreativeEditorWorldLayoutPoint toWorld(const CanvasTransform& transform,
 }
 
 ImU32 color(ImVec4 value) { return ImGui::ColorConvertFloat4ToU32(value); }
+
+ImVec4 generatedScopeTint(cr::CreativeWorldLayoutTable table) {
+  const CreativeDesktopGeneratedSourceScopeTint tint =
+      creativeDesktopGeneratedSourceScopeTint(table);
+  return {tint.r, tint.g, tint.b, tint.a};
+}
 
 bool selected(const CreativeEditorWorldLayoutState& state,
               CreativeEditorWorldLayoutSelectionKind kind, std::size_t index) {
@@ -302,9 +309,70 @@ void drawRoom(ImDrawList& drawList, const CanvasTransform& transform,
   drawList.AddRectFilled(minimum, maximum,
                          color({0.22F, 0.34F, 0.42F, 0.38F}));
   drawList.AddRect(minimum, maximum,
-                   isSelected ? color({0.96F, 0.82F, 0.22F, 1.0F})
+                   isSelected
+                       ? color(generatedScopeTint(
+                             cr::CreativeWorldLayoutTable::Room))
                               : color({0.70F, 0.78F, 0.86F, 1.0F}),
                    0.0F, 0, isSelected ? 4.0F : 3.0F);
+}
+
+void drawLevelSelection(ImDrawList& drawList,
+                        const CanvasTransform& transform,
+                        const CreativeEditorWorldLayoutState& state) {
+  const cr::CreativeWorldLayout& source =
+      creativeEditorWorldLayoutDisplaySource(state);
+  if (state.buildingTemplatePlacement.active ||
+      state.selection.kind !=
+          CreativeEditorWorldLayoutSelectionKind::Level ||
+      state.selection.index >= source.levels.size()) {
+    return;
+  }
+
+  bool haveBounds = false;
+  double minimumX = 0.0;
+  double minimumZ = 0.0;
+  double maximumX = 0.0;
+  double maximumZ = 0.0;
+  const cr::CreativeWorldLayoutLevel& level =
+      source.levels[state.selection.index];
+  for (const cr::CreativeWorldLayoutRoom& room : source.rooms) {
+    if (room.levelIndex != state.selection.index ||
+        room.buildingIndex != level.buildingIndex) {
+      continue;
+    }
+    const auto [deltaX, deltaZ] =
+        buildingPreviewOffset(state, room.buildingIndex);
+    const double roomMinimumX = room.footprint.minimum.x + deltaX;
+    const double roomMinimumZ = room.footprint.minimum.z + deltaZ;
+    const double roomMaximumX = room.footprint.maximum.x + deltaX;
+    const double roomMaximumZ = room.footprint.maximum.z + deltaZ;
+    if (!haveBounds) {
+      minimumX = roomMinimumX;
+      minimumZ = roomMinimumZ;
+      maximumX = roomMaximumX;
+      maximumZ = roomMaximumZ;
+      haveBounds = true;
+      continue;
+    }
+    minimumX = std::min(minimumX, roomMinimumX);
+    minimumZ = std::min(minimumZ, roomMinimumZ);
+    maximumX = std::max(maximumX, roomMaximumX);
+    maximumZ = std::max(maximumZ, roomMaximumZ);
+  }
+  if (!haveBounds) {
+    return;
+  }
+
+  const ImVec2 minimum = toScreen(transform, minimumX, minimumZ);
+  const ImVec2 maximum = toScreen(transform, maximumX, maximumZ);
+  const ImVec4 tint =
+      generatedScopeTint(cr::CreativeWorldLayoutTable::Level);
+  ImVec4 fill = tint;
+  fill.w = 0.05F;
+  drawList.AddRectFilled(minimum, maximum, color(fill));
+  drawList.AddRect(minimum, maximum, color(tint), 0.0F, 0, 3.0F);
+  drawList.AddText({minimum.x + 8.0F, minimum.y + 7.0F}, color(tint),
+                   level.name.c_str());
 }
 
 void drawActiveLevelRoof(ImDrawList& drawList,
@@ -690,7 +758,7 @@ void drawBuildingSelection(ImDrawList& drawList,
       active ? ((transformActive || state.buildingManipulation.previewValid)
                     ? ImVec4{0.20F, 0.78F, 0.38F, 1.0F}
                     : ImVec4{0.92F, 0.29F, 0.24F, 1.0F})
-             : ImVec4{0.96F, 0.82F, 0.22F, 1.0F};
+             : generatedScopeTint(cr::CreativeWorldLayoutTable::Building);
   ImVec4 fill = tint;
   fill.w = active ? 0.12F : 0.05F;
   drawList.AddRectFilled(minimum, maximum, color(fill));
@@ -2055,6 +2123,7 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   drawSharedRoomEdges(*drawList, transform, state);
   drawOpenings(*drawList, transform, state);
   drawObjectSymbols(*drawList, transform, state, grid);
+  drawLevelSelection(*drawList, transform, state);
   drawBuildingSelection(*drawList, transform, state);
   drawBuildingTemplatePlacement(*drawList, transform, state);
   drawRoomManipulation(*drawList, transform, state);

@@ -504,6 +504,215 @@ bool generatedSourceScopesAreOrderedAndDoNotInventConnectorOwnership() {
                 "unowned objects expose no generated source scopes");
 }
 
+cr::CreativeWorldLayout generatedScopeFixture() {
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "scope_layout";
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "house";
+  building.name = "House";
+  layout.buildings.push_back(std::move(building));
+  layout.levels.push_back({0U, "ground", "Ground"});
+  layout.levels.push_back({0U, "upper", "Upper", 3.0});
+  layout.rooms.push_back(
+      {0U, 0U, "west", "West", {{0, 0}, {4, 4}}, 0.25});
+  layout.rooms.push_back(
+      {0U, 0U, "east", "East", {{4, 0}, {8, 4}}, 0.25});
+  layout.rooms.push_back(
+      {0U, 1U, "upper", "Upper", {{0, 0}, {8, 4}}, 0.25});
+  layout.verticalConnectors.push_back(
+      {0U,
+       0U,
+       2U,
+       cr::CreativeWorldLayoutVerticalConnectorKind::Stair,
+       cr::CreativeWorldLayoutVerticalDirection::PositiveX,
+       "stair",
+       "Stair",
+       {{1, 1}, {3, 3}}});
+  return layout;
+}
+
+cr::CreativeObject taggedObject(
+    cr::CreativeObjectId id,
+    std::string name,
+    cr::CreativeBounds bounds,
+    std::vector<std::string> tags,
+    bool visible = true) {
+  cr::CreativeObject object;
+  object.id = id;
+  object.kind = cr::CreativeObjectKind::Crate;
+  object.name = std::move(name);
+  object.bounds = bounds;
+  object.tags = std::move(tags);
+  object.visible = visible;
+  return object;
+}
+
+std::vector<std::string> generatedTags(
+    const cr::CreativeWorldLayout& layout,
+    std::string sourceTag) {
+  return {cr::creativeWorldLayoutTag(layout.stableKey),
+          std::move(sourceTag)};
+}
+
+bool generatedScopeMembershipHonorsSharedEdgesAndNoInventedAncestry() {
+  const cr::CreativeWorldLayout layout = generatedScopeFixture();
+  const cr::CreativeObject west = taggedObject(
+      1U, "West floor", {{0.0, 0.0, 0.0}, {4.0, 0.2, 4.0}},
+      generatedTags(layout, cr::creativeWorldLayoutProvenanceTag(
+                                layout, cr::CreativeWorldLayoutTable::Room,
+                                0U)));
+  const cr::CreativeObject east = taggedObject(
+      2U, "East floor", {{4.0, 0.0, 0.0}, {8.0, 0.2, 4.0}},
+      generatedTags(layout, cr::creativeWorldLayoutProvenanceTag(
+                                layout, cr::CreativeWorldLayoutTable::Room,
+                                1U)));
+  const cr::CreativeObject shared = taggedObject(
+      3U, "Shared wall", {{3.8, 0.0, 0.0}, {4.2, 3.0, 4.0}},
+      {cr::creativeWorldLayoutTag(layout.stableKey),
+       cr::creativeWorldLayoutRoomEdgeProvenanceTag(
+           layout, 0U, cr::CreativeWorldLayoutRoomEdge::East),
+       cr::creativeWorldLayoutRoomEdgeProvenanceTag(
+           layout, 1U, cr::CreativeWorldLayoutRoomEdge::West)});
+  const cr::CreativeObject connector = taggedObject(
+      4U, "Stair", {{1.0, 0.0, 1.0}, {3.0, 3.0, 3.0}},
+      generatedTags(
+          layout, cr::creativeWorldLayoutProvenanceTag(
+                      layout,
+                      cr::CreativeWorldLayoutTable::VerticalConnector, 0U)));
+
+  const auto belongs = [&](const cr::CreativeObject& object,
+                           cr::CreativeWorldLayoutTable table,
+                           std::size_t index) {
+    return app::creativeDesktopGeneratedObjectBelongsToSourceScope(
+        layout, object, table, index);
+  };
+  return expect(belongs(west, cr::CreativeWorldLayoutTable::Room, 0U) &&
+                    belongs(shared, cr::CreativeWorldLayoutTable::Room, 0U) &&
+                    !belongs(east, cr::CreativeWorldLayoutTable::Room, 0U),
+                "west room includes its floor and shared wall only") &&
+         expect(belongs(east, cr::CreativeWorldLayoutTable::Room, 1U) &&
+                    belongs(shared, cr::CreativeWorldLayoutTable::Room, 1U),
+                "shared wall belongs to every contributing room") &&
+         expect(belongs(west, cr::CreativeWorldLayoutTable::Level, 0U) &&
+                    belongs(east, cr::CreativeWorldLayoutTable::Level, 0U) &&
+                    belongs(shared, cr::CreativeWorldLayoutTable::Level, 0U) &&
+                    !belongs(connector, cr::CreativeWorldLayoutTable::Level,
+                             0U),
+                "level includes room geometry but not a cross-level connector") &&
+         expect(belongs(connector, cr::CreativeWorldLayoutTable::Building,
+                        0U) &&
+                    belongs(connector,
+                            cr::CreativeWorldLayoutTable::VerticalConnector,
+                            0U) &&
+                    !belongs(connector, cr::CreativeWorldLayoutTable::Room,
+                             0U),
+                "connector belongs to its building and direct source only");
+}
+
+bool generatedScopeSummaryCountsVisibilityAndMergesWorldBounds() {
+  const cr::CreativeWorldLayout layout = generatedScopeFixture();
+  cr::CreativeDocument document = cr::CreativeDocument::create("Scope");
+  static_cast<void>(document.assignId(77U));
+  const auto append = [&](std::string name, cr::CreativeBounds bounds,
+                          std::vector<std::string> tags, bool visible) {
+    cr::CreativeDocumentCreateRequest request;
+    request.kind = cr::CreativeObjectKind::Crate;
+    request.name = std::move(name);
+    request.bounds = bounds;
+    request.hasBoundsOverride = true;
+    request.tags = std::move(tags);
+    request.visible = visible;
+    request.hasVisibleOverride = true;
+    const cr::CreativeDocumentCreateReceipt receipt =
+        document.createObject(request);
+    return receipt.accepted ? receipt.objectId : cr::kInvalidObjectId;
+  };
+  const cr::CreativeObjectId westId = append(
+      "West floor", {{0.0, 0.0, 0.0}, {4.0, 0.2, 4.0}},
+      generatedTags(layout, cr::creativeWorldLayoutProvenanceTag(
+                                layout, cr::CreativeWorldLayoutTable::Room,
+                                0U)),
+      true);
+  const cr::CreativeObjectId sharedId = append(
+      "Shared wall", {{3.8, 0.0, -1.0}, {4.2, 3.0, 5.0}},
+      {cr::creativeWorldLayoutTag(layout.stableKey),
+       cr::creativeWorldLayoutRoomEdgeProvenanceTag(
+           layout, 0U, cr::CreativeWorldLayoutRoomEdge::East),
+       cr::creativeWorldLayoutRoomEdgeProvenanceTag(
+           layout, 1U, cr::CreativeWorldLayoutRoomEdge::West)},
+      false);
+  const cr::CreativeObjectId eastId = append(
+      "East floor", {{4.0, 0.0, 0.0}, {8.0, 0.2, 4.0}},
+      generatedTags(layout, cr::creativeWorldLayoutProvenanceTag(
+                                layout, cr::CreativeWorldLayoutTable::Room,
+                                1U)),
+      true);
+  const app::CreativeDesktopGeneratedSourceScopeSummary west =
+      app::buildCreativeDesktopGeneratedSourceScopeSummary(
+          document, layout, cr::CreativeWorldLayoutTable::Room, 0U);
+
+  const auto provenance = cr::CreativeWorldLayoutObjectProvenance{
+      true, cr::CreativeWorldLayoutTable::Room, 1U,
+      cr::CreativeWorldLayoutRoomEdge::Count, 1U};
+  const app::CreativeDesktopGeneratedSourceScopeModel scopes =
+      app::buildCreativeDesktopGeneratedSourceScopeModel(layout, provenance);
+  const std::size_t direct =
+      app::resolveCreativeDesktopGeneratedSourceActiveScope(
+          scopes, cr::CreativeWorldLayoutTable::Level, 99U);
+  const app::CreativeDesktopGeneratedSourceScopeTint buildingTint =
+      app::creativeDesktopGeneratedSourceScopeTint(
+          cr::CreativeWorldLayoutTable::Building);
+  app::CreativeDesktopGeneratedSourceScopeCache cache;
+  const bool cacheBuilt =
+      app::refreshCreativeDesktopGeneratedSourceScopeCache(
+          cache, document, layout, 5U, 8U, 8U,
+          cr::CreativeWorldLayoutTable::Room, 0U);
+  bool idleCacheReused = true;
+  for (std::size_t frame = 0U; frame < 300U; ++frame) {
+    idleCacheReused =
+        !app::refreshCreativeDesktopGeneratedSourceScopeCache(
+            cache, document, layout, 5U, 8U, 8U,
+            cr::CreativeWorldLayoutTable::Room, 0U) &&
+        idleCacheReused;
+  }
+  const bool sourceReplacementRebuilt =
+      app::refreshCreativeDesktopGeneratedSourceScopeCache(
+          cache, document, layout, 6U, 8U, 8U,
+          cr::CreativeWorldLayoutTable::Room, 0U);
+
+  return expect(westId != cr::kInvalidObjectId &&
+                    sharedId != cr::kInvalidObjectId &&
+                    eastId != cr::kInvalidObjectId,
+                "summary fixture objects are valid document objects") &&
+         expect(west.valid && west.objectCount == 2U &&
+                    west.visibleObjectCount == 1U &&
+                    west.hiddenObjectCount == 1U,
+                "scope summary distinguishes visible and hidden members") &&
+         expect(west.hasBounds && near(west.worldBounds.min.x, 0.0) &&
+                    near(west.worldBounds.min.y, 0.0) &&
+                    near(west.worldBounds.min.z, -1.0) &&
+                    near(west.worldBounds.max.x, 4.2) &&
+                    near(west.worldBounds.max.y, 3.0) &&
+                    near(west.worldBounds.max.z, 5.0),
+                "scope summary merges exact transformed world bounds") &&
+         expect(direct == scopes.directEntryIndex &&
+                    scopes.entries[direct].table ==
+                        cr::CreativeWorldLayoutTable::Room,
+                "an unrelated 2D selection falls back to direct source") &&
+         expect(near(buildingTint.r, 0.18, 1.0e-6) &&
+                    near(buildingTint.g, 0.82, 1.0e-6) &&
+                    near(buildingTint.b, 1.0, 1.0e-6),
+                "shared scope tint policy pins the Building color") &&
+         expect(cacheBuilt && idleCacheReused && sourceReplacementRebuilt &&
+                    app::creativeDesktopGeneratedSourceScopeCacheContains(
+                        cache, westId) &&
+                    app::creativeDesktopGeneratedSourceScopeCacheContains(
+                        cache, sharedId) &&
+                    !app::creativeDesktopGeneratedSourceScopeCacheContains(
+                        cache, eastId),
+                "scope cache rebuilds only when its complete revision key changes");
+}
+
 }  // namespace
 
 int main() {
@@ -525,5 +734,7 @@ int main() {
   ok = draftRejectsNonFiniteAndNonPositiveScale() && ok;
   ok = generatedSourceAdoptionPolicyKeepsStructuresSourceOwned() && ok;
   ok = generatedSourceScopesAreOrderedAndDoNotInventConnectorOwnership() && ok;
+  ok = generatedScopeMembershipHonorsSharedEdgesAndNoInventedAncestry() && ok;
+  ok = generatedScopeSummaryCountsVisibilityAndMergesWorldBounds() && ok;
   return ok ? 0 : 1;
 }

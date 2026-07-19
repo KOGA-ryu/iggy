@@ -55,6 +55,10 @@ struct CreativeEditorOverlayFrame {
   std::size_t placementBlockerEdgeCount = 0;
   bool placementGridClipped = false;
   std::size_t documentWireLineCount = 0;
+  bool generatedScopeActive = false;
+  std::size_t generatedScopeObjectCount = 0;
+  std::size_t generatedScopeVisibleObjectCount = 0;
+  std::size_t generatedScopeEdgeCount = 0;
   std::size_t pointMarkerEdgeCount = 0;
   std::size_t lineMarkerEdgeCount = 0;
   std::size_t pathPointHandleEdgeCount = 0;
