@@ -4,6 +4,7 @@
 #include "EditorDesktopWorldLayoutInspector.hpp"
 #include "EditorWorldLayoutElevationPanel.hpp"
 #include "EditorWorldLayoutHierarchyPanel.hpp"
+#include "EditorWorldLayoutTopography.hpp"
 
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRoofs.hpp"
@@ -132,6 +133,138 @@ void drawGrid(ImDrawList& drawList, ImVec2 minimum, ImVec2 maximum,
                    color({0.40F, 0.63F, 0.86F, 1.0F}), 1.8F);
   drawList.AddLine({minimum.x, zero.y}, {maximum.x, zero.y},
                    color({0.86F, 0.42F, 0.36F, 1.0F}), 1.8F);
+}
+
+struct CanvasWorldBounds {
+  double minimumX = 0.0;
+  double maximumX = 0.0;
+  double minimumZ = 0.0;
+  double maximumZ = 0.0;
+};
+
+CanvasWorldBounds canvasWorldBounds(const CanvasTransform& transform,
+                                    ImVec2 minimum,
+                                    ImVec2 maximum) noexcept {
+  const CreativeEditorWorldLayoutPoint first = toWorld(transform, minimum);
+  const CreativeEditorWorldLayoutPoint second = toWorld(transform, maximum);
+  return {std::min(first.x, second.x), std::max(first.x, second.x),
+          std::min(first.z, second.z), std::max(first.z, second.z)};
+}
+
+bool overlapsCanvas(const CanvasWorldBounds& bounds,
+                    double minimumX,
+                    double maximumX,
+                    double minimumZ,
+                    double maximumZ) noexcept {
+  return maximumX >= bounds.minimumX && minimumX <= bounds.maximumX &&
+         maximumZ >= bounds.minimumZ && minimumZ <= bounds.maximumZ;
+}
+
+ImVec4 mixColor(ImVec4 first, ImVec4 second, float amount) noexcept {
+  const float t = std::clamp(amount, 0.0F, 1.0F);
+  return {first.x + (second.x - first.x) * t,
+          first.y + (second.y - first.y) * t,
+          first.z + (second.z - first.z) * t,
+          first.w + (second.w - first.w) * t};
+}
+
+ImVec4 topographyBandColor(
+    const CreativeEditorWorldLayoutTopographyPlan& plan,
+    std::uint16_t heightCells) noexcept {
+  constexpr ImVec4 low{0.12F, 0.31F, 0.22F, 0.82F};
+  constexpr ImVec4 middle{0.34F, 0.36F, 0.22F, 0.84F};
+  constexpr ImVec4 high{0.48F, 0.43F, 0.40F, 0.88F};
+  const std::uint16_t range =
+      plan.maximumHeightCells - plan.minimumHeightCells;
+  if (range == 0U) {
+    return middle;
+  }
+  constexpr float bandCount = 10.0F;
+  const float normalized =
+      static_cast<float>(heightCells - plan.minimumHeightCells) /
+      static_cast<float>(range);
+  const float banded = std::floor(normalized * bandCount) / bandCount;
+  return banded <= 0.5F
+             ? mixColor(low, middle, banded * 2.0F)
+             : mixColor(middle, high, (banded - 0.5F) * 2.0F);
+}
+
+void drawTopographyBands(
+    ImDrawList& drawList,
+    const CanvasTransform& transform,
+    const CanvasWorldBounds& visibleBounds,
+    const CreativeEditorWorldLayoutTopographyState& topography) {
+  const CreativeEditorWorldLayoutTopographyPlan& plan = topography.plan;
+  if (!topography.visible || !topography.elevationBandsVisible ||
+      !topography.cacheValid || !plan.accepted ||
+      plan.status != CreativeEditorWorldLayoutTopographyStatus::Ready) {
+    return;
+  }
+  for (const cr::CreativeTerrainColumn& column : plan.columns) {
+    const double minimumX = static_cast<double>(column.coord.x);
+    const double minimumZ = static_cast<double>(column.coord.z);
+    if (!overlapsCanvas(visibleBounds, minimumX, minimumX + 1.0, minimumZ,
+                        minimumZ + 1.0)) {
+      continue;
+    }
+    drawList.AddRectFilled(
+        toScreen(transform, minimumX, minimumZ),
+        toScreen(transform, minimumX + 1.0, minimumZ + 1.0),
+        color(topographyBandColor(plan, column.heightCells)));
+  }
+}
+
+void drawTopographyContours(
+    ImDrawList& drawList,
+    const CanvasTransform& transform,
+    const CanvasWorldBounds& visibleBounds,
+    const CreativeEditorWorldLayoutTopographyState& topography) {
+  const CreativeEditorWorldLayoutTopographyPlan& plan = topography.plan;
+  if (!topography.visible || !topography.cacheValid || !plan.accepted ||
+      !plan.contours.accepted ||
+      plan.contours.status != cr::CreativeTerrainContourPlanStatus::Ready) {
+    return;
+  }
+  const ImU32 minor = color({0.35F, 0.79F, 0.76F, 0.90F});
+  const ImU32 major = color({0.98F, 0.80F, 0.22F, 1.0F});
+  for (const cr::CreativeTerrainContourSegment& segment :
+       plan.contours.segments) {
+    const double minimumX = std::min(segment.start.x, segment.end.x);
+    const double maximumX = std::max(segment.start.x, segment.end.x);
+    const double minimumZ = std::min(segment.start.z, segment.end.z);
+    const double maximumZ = std::max(segment.start.z, segment.end.z);
+    if (!overlapsCanvas(visibleBounds, minimumX, maximumX, minimumZ,
+                        maximumZ)) {
+      continue;
+    }
+    drawList.AddLine(toScreen(transform, segment.start.x, segment.start.z),
+                     toScreen(transform, segment.end.x, segment.end.z),
+                     segment.major ? major : minor,
+                     segment.major ? 2.25F : 1.25F);
+  }
+}
+
+void drawTopographyHoverFacts(
+    const CreativeEditorWorldLayoutTopographyState& topography,
+    CreativeEditorWorldLayoutPoint point,
+    cr::CreativeGridSettings grid) {
+  if (!topography.visible || !topography.cacheValid ||
+      !topography.plan.accepted) {
+    return;
+  }
+  const CreativeEditorWorldLayoutTopographySample sample =
+      sampleCreativeEditorWorldLayoutTopography(topography.plan, point.x,
+                                                point.z);
+  if (!sample.present) {
+    return;
+  }
+  const double heightMeters =
+      static_cast<double>(sample.heightCells) * grid.cellSizeMeters;
+  ImGui::SetTooltip(
+      "Cell X %d  Z %d\nHeight %u cells  %.2f m\nSlope %.1f deg",
+      sample.coord.x, sample.coord.z,
+      static_cast<unsigned int>(sample.heightCells), heightMeters,
+      sample.slopeDegrees);
 }
 
 void drawTerrainSymbols(ImDrawList& drawList,
@@ -2020,6 +2153,8 @@ void drawSelectedOpeningSettings(
 }
 
 void drawWorldLayoutViewControls(CreativeEditorWorldLayoutState& state,
+                                 CreativeEditorWorldLayoutTopographyState&
+                                     topography,
                                  CreativeDesktopCommandFrame& commands) {
   const bool plan = state.viewMode == CreativeEditorWorldLayoutViewMode::Plan;
   if (ImGui::RadioButton("Plan", plan) && !plan) {
@@ -2033,7 +2168,32 @@ void drawWorldLayoutViewControls(CreativeEditorWorldLayoutState& state,
     queueLayoutManipulationCancel(state, commands);
     state.viewMode = CreativeEditorWorldLayoutViewMode::Elevation;
   }
-  if (state.viewMode != CreativeEditorWorldLayoutViewMode::Elevation) {
+  if (state.viewMode == CreativeEditorWorldLayoutViewMode::Plan) {
+    ImGui::SameLine();
+    ImGui::Checkbox("Topography", &topography.visible);
+    if (topography.visible) {
+      ImGui::SameLine();
+      ImGui::Checkbox("Bands", &topography.elevationBandsVisible);
+      int interval = static_cast<int>(topography.intervalCells);
+      ImGui::SameLine();
+      ImGui::SetNextItemWidth(112.0F);
+      if (ImGui::SliderInt(
+              "Contour##world_layout_topography", &interval, 1,
+              static_cast<int>(
+                  cr::kCreativeTerrainContourMaximumIntervalCells),
+              "%d cells")) {
+        topography.intervalCells = static_cast<std::uint16_t>(interval);
+      }
+      int majorEvery = static_cast<int>(topography.majorEvery);
+      ImGui::SameLine();
+      ImGui::SetNextItemWidth(90.0F);
+      if (ImGui::SliderInt(
+              "Index##world_layout_topography", &majorEvery, 1,
+              static_cast<int>(cr::kCreativeTerrainContourMaximumMajorEvery),
+              "%d")) {
+        topography.majorEvery = static_cast<std::uint16_t>(majorEvery);
+      }
+    }
     return;
   }
   ImGui::SameLine();
@@ -2055,10 +2215,19 @@ void drawWorldLayoutViewControls(CreativeEditorWorldLayoutState& state,
 }
 
 void drawLayoutCanvas(CreativeEditorState& editor,
-                      cr::CreativeGridSettings grid,
+                      const cr::CreativeDocument& document,
                       CreativeDesktopCommandFrame& commands,
                       bool interactionEnabled) {
   CreativeEditorWorldLayoutState& state = editor.worldLayout;
+  CreativeEditorWorldLayoutTopographyState& topography =
+      editor.worldLayoutTopography;
+  const bool previewActive = creativeEditorWorldLayoutPreviewActive(state);
+  const cr::CreativeDocument& renderDocument =
+      creativeEditorWorldLayoutRenderDocument(state, document);
+  const cr::CreativeGridSettings grid = renderDocument.gridSettings();
+  static_cast<void>(refreshCreativeEditorWorldLayoutTopography(
+      topography, renderDocument, previewActive,
+      previewActive ? state.previewLayoutRevision : 0U));
   const ImVec2 available = ImGui::GetContentRegionAvail();
   const ImVec2 canvasSize{std::max(available.x, 160.0F),
                           std::max(available.y, 160.0F)};
@@ -2100,7 +2269,11 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   drawList->PushClipRect(minimum, maximum, true);
   drawList->AddRectFilled(minimum, maximum,
                           color({0.105F, 0.12F, 0.135F, 1.0F}));
+  const CanvasWorldBounds visibleBounds =
+      canvasWorldBounds(transform, minimum, maximum);
+  drawTopographyBands(*drawList, transform, visibleBounds, topography);
   drawGrid(*drawList, minimum, maximum, transform);
+  drawTopographyContours(*drawList, transform, visibleBounds, topography);
   const cr::CreativeWorldLayout &displaySource =
       creativeEditorWorldLayoutDisplaySource(state);
   drawTerrainSymbols(*drawList, transform, state);
@@ -2144,6 +2317,10 @@ void drawLayoutCanvas(CreativeEditorState& editor,
     drawAnchorPreview(*drawList, transform, state, hoveredPoint);
   }
   drawList->PopClipRect();
+
+  if (hovered) {
+    drawTopographyHoverFacts(topography, pointerPoint, grid);
+  }
 
   if (!interactionEnabled) {
     return;
@@ -3282,7 +3459,8 @@ void buildCreativeEditorWorldLayoutPanel(
                    ImGuiWindowFlags_NoCollapse |
                        ImGuiWindowFlags_NoScrollbar |
                        ImGuiWindowFlags_NoScrollWithMouse)) {
-    drawWorldLayoutViewControls(state, commands);
+    drawWorldLayoutViewControls(state, editor.worldLayoutTopography,
+                                commands);
     ImGui::Separator();
     ImGui::BeginDisabled(editingDisabled);
     const bool canvasInteractionEnabled =
@@ -3292,8 +3470,7 @@ void buildCreativeEditorWorldLayoutPanel(
           editor, document.gridSettings(), commands,
           canvasInteractionEnabled);
     } else {
-      drawLayoutCanvas(editor, document.gridSettings(), commands,
-                       canvasInteractionEnabled);
+      drawLayoutCanvas(editor, document, commands, canvasInteractionEnabled);
     }
     ImGui::EndDisabled();
   } else {

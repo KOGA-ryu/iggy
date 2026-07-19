@@ -354,6 +354,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorWorldLayoutVerticalConnectors.cpp
   apps/iggy3d_creative/EditorWorldLayoutGroups.cpp
   apps/iggy3d_creative/EditorWorldLayoutTemplates.cpp
+  apps/iggy3d_creative/EditorWorldLayoutTopography.cpp
   apps/iggy3d_creative/EditorConnectedFill.cpp
   apps/iggy3d_creative/EditorSurfaceExtrude.cpp
   apps/iggy3d_creative/EditorTerrain.cpp

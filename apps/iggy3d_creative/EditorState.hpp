@@ -28,6 +28,7 @@
 #include "EditorTransform.hpp"
 #include "EditorVolume.hpp"
 #include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutTopography.hpp"
 
 namespace iggy3d_creative_app {
 
@@ -111,6 +112,7 @@ struct CreativeEditorState {
   CreativeEditorLogicLinkState logicLinks;
   CreativeMovingPlatformPreviewState movingPlatformPreview;
   CreativeEditorWorldLayoutState worldLayout;
+  CreativeEditorWorldLayoutTopographyState worldLayoutTopography;
   CreativeDesktopGeneratedSourceScopeCache generatedSourceScopeCache;
 
   bool placeMode = false;
