@@ -2691,7 +2691,7 @@ bool worldLayoutConflictResolutionUsesTypedConfirmPayload() {
   const app::CreativeDesktopCommandResult resolved = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutConfirm, context,
       app::CreativeDesktopWorldLayoutConfirmPayload{
-          {decision}});
+          {decision}, {}});
   const cr::CreativeObject* patched =
       appState.facade.document().findObject(originalId);
 
@@ -2708,6 +2708,162 @@ bool worldLayoutConflictResolutionUsesTypedConfirmPayload() {
                     patched->transform.position.y == generatedPosition.y &&
                     patched->transform.position.z == generatedPosition.z,
                 "typed exact-member payload resolves through the sole dispatcher");
+}
+
+bool worldLayoutTerrainReconciliationUsesTypedConfirmPayload() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd World Layout Terrain Reconciliation");
+  static_cast<void>(document.assignId(435U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "command_terrain_reconciliation");
+  cr::CreativeWorldLayoutTerrainProfile profile;
+  profile.stableKey = "terrain.plateau";
+  profile.kind = cr::CreativeTerrainRecipeKind::Plateau;
+  profile.center = {2, 3};
+  profile.baseHeightCells = 4U;
+  profile.radiusCells = 2U;
+  profile.spacingCells = 1U;
+  profile.blend = cr::CreativeTerrainProfileBlend::Set;
+  profile.rodPolicy = cr::CreativeTerrainProfileRodPolicy::Fill;
+  editor.worldLayout.source.terrainProfiles.push_back(profile);
+  cr::CreativeWorldLayoutObject marker;
+  marker.kind = cr::CreativeObjectKind::Crate;
+  marker.stableKey = "marker";
+  marker.name = "Terrain Marker";
+  marker.boundsCells = {{8.0, 0.0, 8.0}, {9.0, 1.0, 9.0}};
+  editor.worldLayout.source.objects.push_back(marker);
+  ++editor.worldLayout.revision;
+
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const app::CreativeDesktopCommandResult generated = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  const cr::CreativeWorldLayoutTerrainImpactPlan generatedImpact =
+      cr::buildCreativeWorldLayoutTerrainImpactPlan(
+          appState.facade.document(),
+          editor.worldLayout.generatedBaseline.source);
+  if (!generated.accepted || generatedImpact.sources.size() != 1U ||
+      generatedImpact.sources[0].controls.empty()) {
+    return expect(false, "command terrain reconciliation fixture generated");
+  }
+
+  cr::CreativeTerrainControlPoint drifted =
+      generatedImpact.sources[0].controls.front();
+  ++drifted.heightCells;
+  const cr::CreativeTerrainControlEdit driftEdit{
+      cr::CreativeTerrainEditKind::Upsert, drifted};
+  const cr::CreativeTerrainMutationReceipt driftReceipt =
+      appState.facade.documentForPersistence().applyTerrainControlEdits(
+          {&driftEdit, 1U});
+  const std::uint64_t undoBeforeBlocked =
+      cr::creativeUndoDepth(appState.history);
+  const std::uint64_t terrainRevisionBeforeBlocked =
+      appState.facade.document().terrainField().revision();
+  const app::CreativeDesktopCommandResult blocked = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  const cr::CreativeTerrainControlPoint* blockedControl =
+      appState.facade.document().terrainField().controlAt(drifted.coord);
+  const bool blockedWasAtomic =
+      cr::creativeUndoDepth(appState.history) == undoBeforeBlocked &&
+      appState.facade.document().terrainField().revision() ==
+          terrainRevisionBeforeBlocked &&
+      blockedControl != nullptr && *blockedControl == drifted;
+  const cr::CreativeWorldLayoutTerrainReconciliationResult reconciliation =
+      app::reconcileCreativeEditorWorldLayoutTerrain(
+          editor.worldLayout, appState.facade.document(),
+          editor.worldLayout.source);
+  if (!reconciliation.blocked || reconciliation.conflicts.size() != 1U) {
+    return expect(false, "command terrain conflict exposes one exact source");
+  }
+  const cr::CreativeWorldLayoutTerrainConflict& conflict =
+      reconciliation.conflicts[0];
+  const cr::CreativeWorldLayoutTerrainConflictDecision decision{
+      conflict.generatedTable, conflict.generatedIndex, conflict.stableKey,
+      cr::CreativeWorldLayoutTerrainConflictResolution::Regenerate};
+  const app::CreativeDesktopCommandResult regenerated = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context,
+      app::CreativeDesktopWorldLayoutConfirmPayload{{}, {decision}});
+  const cr::CreativeWorldLayoutTerrainImpactPlan currentImpact =
+      cr::buildCreativeWorldLayoutTerrainImpactPlan(
+          appState.facade.document(),
+          editor.worldLayout.generatedBaseline.source);
+  const std::uint64_t undoAfterRegenerate =
+      cr::creativeUndoDepth(appState.history);
+
+  const app::CreativeDesktopCommandResult undone =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const cr::CreativeWorldLayoutTerrainImpactPlan restoredDrift =
+      cr::buildCreativeWorldLayoutTerrainImpactPlan(
+          appState.facade.document(),
+          editor.worldLayout.generatedBaseline.source);
+  const std::uint64_t sourceUndoBeforeDetach =
+      app::creativeEditorWorldLayoutSourceUndoDepth(editor.worldLayout);
+  const std::uint64_t documentUndoBeforeDetach =
+      cr::creativeUndoDepth(appState.history);
+  const app::CreativeDesktopCommandResult detached = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutDeleteSource, context,
+      app::CreativeDesktopWorldLayoutSourcePayload{
+          cr::CreativeWorldLayoutTable::TerrainProfile, 0U,
+          profile.stableKey});
+  const cr::CreativeTerrainControlPoint* keptBeforeConfirm =
+      appState.facade.document().terrainField().controlAt(drifted.coord);
+  const bool detachedKeptTerrain =
+      keptBeforeConfirm != nullptr && *keptBeforeConfirm == drifted;
+  const app::CreativeDesktopCommandResult confirmedDetached = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  const cr::CreativeTerrainControlPoint* keptAfterConfirm =
+      appState.facade.document().terrainField().controlAt(drifted.coord);
+
+  bool ok = true;
+  ok = expect(driftReceipt.accepted && driftReceipt.changed &&
+                  !blocked.accepted && !blocked.changed &&
+                  blocked.message ==
+                      "terrain changed in 3D; resolve before generating" &&
+                  blockedWasAtomic,
+              "ordinary confirm blocks terrain drift without mutation") &&
+       ok;
+  ok = expect(regenerated.accepted && regenerated.changed &&
+                  regenerated.sceneChanged &&
+                  undoAfterRegenerate == undoBeforeBlocked + 1U &&
+                  currentImpact.sources.size() == 1U &&
+                  currentImpact.sources[0].status ==
+                      cr::CreativeWorldLayoutTerrainImpactStatus::Current,
+              "typed Regenerate restores 2D terrain with one undo entry") &&
+       ok;
+  ok = expect(undone.accepted && restoredDrift.sources.size() == 1U &&
+                  restoredDrift.sources[0].status ==
+                      cr::CreativeWorldLayoutTerrainImpactStatus::Drifted,
+              "undo restores the refined 3D terrain conflict") &&
+       ok;
+  ok = expect(detached.accepted && detached.changed &&
+                  editor.worldLayout.source.terrainProfiles.empty() &&
+                  app::creativeEditorWorldLayoutSourceUndoDepth(
+                      editor.worldLayout) == sourceUndoBeforeDetach + 1U &&
+                  detachedKeptTerrain,
+              "Keep 3D removes only the exact 2D terrain owner") &&
+       ok;
+  ok = expect(confirmedDetached.accepted,
+              confirmedDetached.message.empty()
+                  ? "detached PreserveExisting source confirmation rejected"
+                  : confirmedDetached.message) &&
+       ok;
+  ok = expect(!confirmedDetached.changed,
+              "detached PreserveExisting source confirms without document mutation") &&
+       ok;
+  ok = expect(keptAfterConfirm != nullptr && *keptAfterConfirm == drifted,
+              "detached PreserveExisting terrain survives generation unchanged") &&
+       ok;
+  ok = expect(cr::creativeUndoDepth(appState.history) ==
+                  documentUndoBeforeDetach,
+              "detached source confirmation adds no document history entry") &&
+       ok;
+  return ok;
 }
 
 bool worldLayoutObjectFocusAndAdoptionCloseTheSourceLoop() {
@@ -2807,6 +2963,79 @@ bool worldLayoutObjectFocusAndAdoptionCloseTheSourceLoop() {
                             {4.0, 2.0, 3.0}) &&
                     appState.facade.document().findObject(objectId) != nullptr,
                 "adoption undo and redo keep live identity and source parity");
+}
+
+bool generatedSettingsCannotBypassTerrainReconciliation() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Generated Settings Terrain Guard");
+  static_cast<void>(document.assignId(436U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "generated_settings_guard");
+  const app::CreativeEditorWorldLayoutEditReceipt shell =
+      app::createCreativeEditorWorldLayoutBuildingShell(
+          state, {{{1, 1}, {7, 5}}, 0.0, 4U, 0.25, 1U});
+  cr::CreativeWorldLayoutTerrainProfile profile;
+  profile.stableKey = "terrain.guard";
+  profile.kind = cr::CreativeTerrainRecipeKind::Plateau;
+  profile.center = {12, 12};
+  profile.baseHeightCells = 4U;
+  profile.radiusCells = 2U;
+  profile.spacingCells = 1U;
+  profile.blend = cr::CreativeTerrainProfileBlend::Set;
+  profile.rodPolicy = cr::CreativeTerrainProfileRodPolicy::Fill;
+  state.source.terrainProfiles.push_back(profile);
+  ++state.revision;
+  const app::CreativeEditorWorldLayoutApplyReceipt generated =
+      app::confirmCreativeEditorWorldLayout(state, appState);
+  const cr::CreativeWorldLayoutTerrainImpactPlan impact =
+      cr::buildCreativeWorldLayoutTerrainImpactPlan(
+          appState.facade.document(), state.generatedBaseline.source);
+  if (!shell.accepted || !generated.accepted || impact.sources.size() != 1U ||
+      impact.sources[0].controls.empty()) {
+    return expect(false, "generated settings terrain guard fixture generated");
+  }
+
+  cr::CreativeTerrainControlPoint drifted = impact.sources[0].controls.front();
+  ++drifted.heightCells;
+  const cr::CreativeTerrainControlEdit edit{
+      cr::CreativeTerrainEditKind::Upsert, drifted};
+  const cr::CreativeTerrainMutationReceipt driftReceipt =
+      appState.facade.documentForPersistence().applyTerrainControlEdits(
+          {&edit, 1U});
+  const std::uint64_t sourceRevisionBefore = state.revision;
+  const std::uint64_t documentRevisionBefore =
+      appState.facade.document().revision();
+  const std::uint64_t terrainRevisionBefore =
+      appState.facade.document().terrainField().revision();
+  const std::uint64_t undoBefore = cr::creativeUndoDepth(appState.history);
+
+  const app::CreativeEditorWorldLayoutPreviewReceipt preview =
+      app::previewCreativeEditorWorldLayoutGeneratedBuildingOperation(
+          state, appState.facade.document(), 0U,
+          app::CreativeEditorWorldLayoutGeneratedBuildingOperation::Move, 2,
+          0);
+  const app::CreativeEditorWorldLayoutApplyReceipt blocked =
+      app::applyCreativeEditorWorldLayoutGeneratedBuildingOperationToDocument(
+          state, appState, 0U,
+          app::CreativeEditorWorldLayoutGeneratedBuildingOperation::Move, 2,
+          0);
+
+  return expect(driftReceipt.accepted && driftReceipt.changed &&
+                    preview.accepted && preview.changed,
+                "generated settings preview remains read-only and available") &&
+         expect(!blocked.accepted && !blocked.changed &&
+                    blocked.reasonCode ==
+                        "creative_world_layout_terrain_refinement_conflict" &&
+                    state.revision == sourceRevisionBefore &&
+                    appState.facade.document().revision() ==
+                        documentRevisionBefore &&
+                    appState.facade.document().terrainField().revision() ==
+                        terrainRevisionBefore &&
+                    cr::creativeUndoDepth(appState.history) == undoBefore,
+                "generated settings apply cannot bypass terrain reconciliation");
 }
 
 bool generatedBuildingScopeOperationsUseExactPreviewAndOneUndo() {
@@ -4579,7 +4808,9 @@ int main() {
   ok = worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutCommandsPreviewAndGenerateThroughDispatcher() && ok;
   ok = worldLayoutConflictResolutionUsesTypedConfirmPayload() && ok;
+  ok = worldLayoutTerrainReconciliationUsesTypedConfirmPayload() && ok;
   ok = worldLayoutObjectFocusAndAdoptionCloseTheSourceLoop() && ok;
+  ok = generatedSettingsCannotBypassTerrainReconciliation() && ok;
   ok = generatedBuildingScopeOperationsUseExactPreviewAndOneUndo() && ok;
   ok = generatedLevelSettingsRebuildEveryRoomAtomically() && ok;
   ok = generatedRoomSettingsRebuildTopologyAtomically() && ok;

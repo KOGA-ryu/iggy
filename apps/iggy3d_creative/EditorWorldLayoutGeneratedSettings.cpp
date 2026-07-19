@@ -214,6 +214,17 @@ CreativeEditorWorldLayoutApplyReceipt applyWorldLayoutSettingsCandidate(
     return result;
   }
 
+  const cr::CreativeWorldLayoutTerrainReconciliationResult terrain =
+      reconcileCreativeEditorWorldLayoutTerrain(
+          state, appState.facade.document(), candidate.source);
+  if (!terrain.accepted) {
+    result.reasonCode = terrain.reasonCode;
+    state.statusMessage = terrain.blocked
+                              ? "resolve refined terrain before editing generated output"
+                              : terrain.reasonCode;
+    return result;
+  }
+
   const cr::CreativeWorldLayoutCompileResult compiled =
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(),
                                        candidate.source);

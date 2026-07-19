@@ -146,6 +146,11 @@ iggy3d_add_unit_test(creative_world_layout_terrain_impact_tests
 set_tests_properties(creative_world_layout_terrain_impact_tests PROPERTIES
   LABELS "unit;app;creative;world;layout;terrain;impact;iggy3d")
 
+iggy3d_add_unit_test(creative_world_layout_terrain_reconciliation_tests
+  tests/unit/creative_world_layout_terrain_reconciliation_tests.cpp)
+set_tests_properties(creative_world_layout_terrain_reconciliation_tests PROPERTIES
+  LABELS "unit;app;creative;world;layout;terrain;reconciliation;iggy3d")
+
 iggy3d_add_unit_test(creative_world_layout_room_tests
   tests/unit/creative_world_layout_room_tests.cpp)
 set_tests_properties(creative_world_layout_room_tests PROPERTIES

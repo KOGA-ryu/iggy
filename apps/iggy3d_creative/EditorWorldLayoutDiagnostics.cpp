@@ -223,7 +223,8 @@ CreativeEditorWorldLayoutDiagnosticReport
 buildCreativeEditorWorldLayoutDiagnosticReport(
     const cr::CreativeDocument& document,
     const cr::CreativeWorldLayout& layout,
-    const cr::CreativeCatalogState* assetCatalog) {
+    const cr::CreativeCatalogState* assetCatalog,
+    const cr::CreativeWorldLayout* generatedLayout) {
   CreativeEditorWorldLayoutDiagnosticReport report;
   const cr::CreativeWorldLayoutCompileResult compiled =
       cr::buildCreativeWorldLayoutPlan(document, layout);
@@ -232,6 +233,7 @@ buildCreativeEditorWorldLayoutDiagnosticReport(
   report.terrainImpactPlan =
       cr::buildCreativeWorldLayoutTerrainImpactPlan(document, layout);
   report.ready = compiled.receipt.accepted;
+  report.canGenerate = report.ready;
   report.hasChanges = compiled.receipt.accepted &&
                       compiled.receipt.status ==
                           cr::CreativeWorldLayoutStatus::Ready;
@@ -252,6 +254,32 @@ buildCreativeEditorWorldLayoutDiagnosticReport(
     issue.kernelReasonCode = compiled.receipt.kernelReasonCode;
     report.issueCount = 1U;
     return report;
+  }
+  if (generatedLayout != nullptr) {
+    report.terrainReconciliation = cr::reconcileCreativeWorldLayoutTerrain(
+        {&document, generatedLayout, &layout, {}});
+    report.canGenerate = report.terrainReconciliation.accepted;
+    if (!report.terrainReconciliation.accepted &&
+        report.issueCount < report.issues.size()) {
+      CreativeEditorWorldLayoutDiagnostic& issue =
+          report.issues[report.issueCount++];
+      issue.status = cr::CreativeWorldLayoutStatus::RefinementConflict;
+      issue.reasonCode = report.terrainReconciliation.reasonCode;
+      if (!report.terrainReconciliation.conflicts.empty()) {
+        const cr::CreativeWorldLayoutTerrainConflict& conflict =
+            report.terrainReconciliation.conflicts.front();
+        issue.table = conflict.desiredSourcePresent ? conflict.desiredTable
+                                                    : conflict.generatedTable;
+        issue.index = conflict.desiredSourcePresent
+                          ? conflict.desiredIndex
+                          : cr::kInvalidCreativeWorldLayoutIndex;
+        issue.stableKey = conflict.stableKey;
+        issue.message = conflict.stableKey +
+                        " differs from its last generated 3D terrain";
+      } else {
+        issue.message = "terrain reconciliation is unavailable";
+      }
+    }
   }
   if (assetCatalog == nullptr) {
     return report;
@@ -287,7 +315,8 @@ refreshCreativeEditorWorldLayoutDiagnostics(
     const cr::CreativeDocument& document,
     const cr::CreativeWorldLayout& layout, std::uint64_t layoutRevision,
     const cr::CreativeCatalogState* assetCatalog,
-    std::uint64_t sourceEpoch) {
+    std::uint64_t sourceEpoch, std::uint64_t generatedRevision,
+    const cr::CreativeWorldLayout* generatedLayout) {
   const std::uint64_t terrainRevision = document.terrainField().revision();
   const std::uint64_t materialRevision =
       document.terrainMaterialField().revision();
@@ -295,6 +324,7 @@ refreshCreativeEditorWorldLayoutDiagnostics(
       assetCatalogSignature(assetCatalog);
   if (cache.valid && cache.sourceEpoch == sourceEpoch &&
       cache.layoutRevision == layoutRevision &&
+      cache.generatedRevision == generatedRevision &&
       cache.documentId == document.id() &&
       cache.documentRevision == document.revision() &&
       cache.terrainRevision == terrainRevision &&
@@ -304,14 +334,14 @@ refreshCreativeEditorWorldLayoutDiagnostics(
   }
   cache.sourceEpoch = sourceEpoch;
   cache.layoutRevision = layoutRevision;
+  cache.generatedRevision = generatedRevision;
   cache.documentId = document.id();
   cache.documentRevision = document.revision();
   cache.terrainRevision = terrainRevision;
   cache.materialRevision = materialRevision;
   cache.assetCatalogSignature = catalogSignature;
-  cache.report = buildCreativeEditorWorldLayoutDiagnosticReport(document,
-                                                                 layout,
-                                                                 assetCatalog);
+  cache.report = buildCreativeEditorWorldLayoutDiagnosticReport(
+      document, layout, assetCatalog, generatedLayout);
   cache.valid = true;
   ++cache.buildCount;
   return cache.report;

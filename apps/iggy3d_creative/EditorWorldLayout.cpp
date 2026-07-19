@@ -1983,6 +1983,17 @@ adoptCreativeEditorWorldLayoutObjectSource(
     return result;
   }
 
+  const cr::CreativeWorldLayoutTerrainReconciliationResult terrain =
+      reconcileCreativeEditorWorldLayoutTerrain(
+          state, appState.facade.document(), adoption.candidate);
+  if (!terrain.accepted) {
+    result.reasonCode = terrain.reasonCode;
+    state.statusMessage = terrain.blocked
+                              ? "resolve refined terrain before adopting 3D output"
+                              : terrain.reasonCode;
+    return result;
+  }
+
   const cr::CreativeWorldLayoutCompileResult diagnostic =
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(),
                                        adoption.candidate);
@@ -3117,13 +3128,36 @@ CreativeEditorWorldLayoutPreviewReceipt previewCreativeEditorWorldLayout(
   return receipt;
 }
 
+cr::CreativeWorldLayoutTerrainReconciliationResult
+reconcileCreativeEditorWorldLayoutTerrain(
+    const CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document,
+    const cr::CreativeWorldLayout& desiredLayout,
+    std::span<const cr::CreativeWorldLayoutTerrainConflictDecision> decisions) {
+  return cr::reconcileCreativeWorldLayoutTerrain(
+      {&document, &state.generatedBaseline.source, &desiredLayout, decisions});
+}
+
 CreativeEditorWorldLayoutApplyReceipt confirmCreativeEditorWorldLayout(
     CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,
     std::span<const cr::CreativeWorldLayoutConflictDecision>
-        conflictDecisions) {
+        conflictDecisions,
+    std::span<const cr::CreativeWorldLayoutTerrainConflictDecision>
+        terrainConflictDecisions) {
   CreativeEditorWorldLayoutApplyReceipt result;
   state.anchorActive = false;
   clearWorldLayoutInteraction(state);
+  const cr::CreativeWorldLayoutTerrainReconciliationResult terrain =
+      reconcileCreativeEditorWorldLayoutTerrain(
+          state, appState.facade.document(), state.source,
+          terrainConflictDecisions);
+  if (!terrain.accepted) {
+    result.reasonCode = terrain.reasonCode;
+    state.statusMessage = terrain.blocked
+                              ? "terrain changed in 3D; resolve before generating"
+                              : terrain.reasonCode;
+    return result;
+  }
   const cr::CreativeWorldLayoutCompileResult compiled =
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(),
                                        state.source,

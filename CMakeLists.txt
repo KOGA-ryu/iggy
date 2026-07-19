@@ -134,6 +134,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/recipes/TerrainRecipe.cpp
     src/app/iggy3d/creative/world/WorldLayout.cpp
     src/app/iggy3d/creative/world/WorldLayoutTerrainImpact.cpp
+    src/app/iggy3d/creative/world/WorldLayoutTerrainReconciliation.cpp
     src/app/iggy3d/creative/world/WorldLayoutReconciliation.cpp
     src/app/iggy3d/creative/world/WorldLayoutLevels.cpp
     src/app/iggy3d/creative/world/WorldLayoutRoofs.cpp

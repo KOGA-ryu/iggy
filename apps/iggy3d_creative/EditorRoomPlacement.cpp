@@ -292,6 +292,16 @@ CreativeEditorRoomPlacementReceipt advanceCreativeEditorRoomPlacement(
   candidate.rooms.push_back(std::move(room));
   ++committed.revision;
 
+  const cr::CreativeWorldLayoutTerrainReconciliationResult terrain =
+      reconcileCreativeEditorWorldLayoutTerrain(editor.worldLayout, document,
+                                                candidate);
+  if (!terrain.accepted) {
+    receipt.status = CreativeEditorRoomPlacementStatus::InvalidLayout;
+    receipt.reasonCode = terrain.reasonCode;
+    rejectRoom(editor);
+    return receipt;
+  }
+
   const cr::CreativeWorldLayoutCompileResult compiled =
       cr::buildCreativeWorldLayoutPlan(document, candidate);
   receipt.layoutStatus = compiled.receipt.status;

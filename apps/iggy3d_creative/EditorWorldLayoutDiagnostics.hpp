@@ -8,6 +8,7 @@
 
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutTerrainImpact.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutTerrainReconciliation.hpp"
 
 namespace iggy3d::creative {
 struct CreativeCatalogState;
@@ -51,6 +52,7 @@ struct CreativeEditorWorldLayoutDiagnostic {
 
 struct CreativeEditorWorldLayoutDiagnosticReport {
   bool ready = false;
+  bool canGenerate = false;
   bool hasChanges = false;
   std::array<CreativeEditorWorldLayoutDiagnostic,
              kCreativeEditorWorldLayoutDiagnosticCapacity>
@@ -60,6 +62,8 @@ struct CreativeEditorWorldLayoutDiagnosticReport {
   std::vector<iggy3d::creative::CreativeWorldLayoutRecipeChange>
       recipeChanges;
   iggy3d::creative::CreativeWorldLayoutTerrainImpactPlan terrainImpactPlan;
+  iggy3d::creative::CreativeWorldLayoutTerrainReconciliationResult
+      terrainReconciliation;
 };
 
 // Transient preflight cache. The compiler can materialize a large exact plan,
@@ -68,6 +72,7 @@ struct CreativeEditorWorldLayoutDiagnosticCache {
   bool valid = false;
   std::uint64_t sourceEpoch = 0U;
   std::uint64_t layoutRevision = 0U;
+  std::uint64_t generatedRevision = 0U;
   iggy3d::creative::CreativeDocumentId documentId =
       iggy3d::creative::kInvalidDocumentId;
   std::uint64_t documentRevision = 0U;
@@ -82,7 +87,8 @@ struct CreativeEditorWorldLayoutDiagnosticCache {
 buildCreativeEditorWorldLayoutDiagnosticReport(
     const iggy3d::creative::CreativeDocument& document,
     const iggy3d::creative::CreativeWorldLayout& layout,
-    const iggy3d::creative::CreativeCatalogState* assetCatalog = nullptr);
+    const iggy3d::creative::CreativeCatalogState* assetCatalog = nullptr,
+    const iggy3d::creative::CreativeWorldLayout* generatedLayout = nullptr);
 
 [[nodiscard]] const CreativeEditorWorldLayoutDiagnosticReport&
 refreshCreativeEditorWorldLayoutDiagnostics(
@@ -91,6 +97,8 @@ refreshCreativeEditorWorldLayoutDiagnostics(
     const iggy3d::creative::CreativeWorldLayout& layout,
     std::uint64_t layoutRevision,
     const iggy3d::creative::CreativeCatalogState* assetCatalog = nullptr,
-    std::uint64_t sourceEpoch = 0U);
+    std::uint64_t sourceEpoch = 0U,
+    std::uint64_t generatedRevision = 0U,
+    const iggy3d::creative::CreativeWorldLayout* generatedLayout = nullptr);
 
 }  // namespace iggy3d_creative_app

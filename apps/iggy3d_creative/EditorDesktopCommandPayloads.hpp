@@ -395,6 +395,8 @@ struct CreativeDesktopWorldLayoutOpeningManipulationPayload {
 struct CreativeDesktopWorldLayoutConfirmPayload {
   std::vector<iggy3d::creative::CreativeWorldLayoutConflictDecision>
       conflictDecisions;
+  std::vector<iggy3d::creative::CreativeWorldLayoutTerrainConflictDecision>
+      terrainConflictDecisions;
 };
 
 // The discriminated payload carried by every command (monostate = no payload).

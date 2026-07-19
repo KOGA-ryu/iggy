@@ -5,12 +5,14 @@
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
 
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace app = iggy3d_creative_app;
 namespace cr = iggy3d::creative;
@@ -506,6 +508,78 @@ bool terrainImpactCacheOverlayAndFramingShareOneSourcePlan() {
                 "terrain revision invalidates once and projects drift red");
 }
 
+bool terrainReconciliationBlocksGenerationButKeepsPreviewAvailable() {
+  cr::CreativeAppState live = makeApp("Diagnostic Terrain Reconciliation",
+                                      9209U);
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "terrain_reconciliation_layout");
+  cr::CreativeWorldLayoutTerrainProfile profile;
+  profile.stableKey = "terrain.plateau";
+  profile.kind = cr::CreativeTerrainRecipeKind::Plateau;
+  profile.center = {3, 5};
+  profile.baseHeightCells = 4U;
+  profile.radiusCells = 2U;
+  profile.spacingCells = 1U;
+  profile.blend = cr::CreativeTerrainProfileBlend::Set;
+  profile.rodPolicy = cr::CreativeTerrainProfileRodPolicy::Fill;
+  state.source.terrainProfiles.push_back(profile);
+  ++state.revision;
+
+  const app::CreativeEditorWorldLayoutApplyReceipt generated =
+      app::confirmCreativeEditorWorldLayout(state, live);
+  const cr::CreativeWorldLayoutTerrainImpactPlan generatedImpact =
+      cr::buildCreativeWorldLayoutTerrainImpactPlan(
+          live.facade.document(), state.generatedBaseline.source);
+  if (!generated.accepted || generatedImpact.sources.size() != 1U ||
+      generatedImpact.sources[0].controls.empty()) {
+    return expect(false, "terrain reconciliation diagnostic fixture generated");
+  }
+  cr::CreativeTerrainControlPoint drifted =
+      generatedImpact.sources[0].controls.front();
+  ++drifted.heightCells;
+  const cr::CreativeTerrainControlEdit edit{
+      cr::CreativeTerrainEditKind::Upsert, drifted};
+  const cr::CreativeTerrainMutationReceipt driftReceipt =
+      live.facade.documentForPersistence().applyTerrainControlEdits(
+          {&edit, 1U});
+  const std::uint64_t documentRevisionBeforePreview =
+      live.facade.document().revision();
+  const std::uint64_t terrainRevisionBeforePreview =
+      live.facade.document().terrainField().revision();
+
+  const auto& blocked = app::refreshCreativeEditorWorldLayoutDiagnostics(
+      state.diagnosticCache, live.facade.document(), state.source,
+      state.revision, nullptr, state.sourceEpoch, state.generatedRevision,
+      &state.generatedBaseline.source);
+  const std::uint64_t buildCount = state.diagnosticCache.buildCount;
+  static_cast<void>(app::refreshCreativeEditorWorldLayoutDiagnostics(
+      state.diagnosticCache, live.facade.document(), state.source,
+      state.revision, nullptr, state.sourceEpoch, state.generatedRevision,
+      &state.generatedBaseline.source));
+  const app::CreativeEditorWorldLayoutPreviewReceipt preview =
+      app::previewCreativeEditorWorldLayout(state, live.facade.document());
+
+  return expect(driftReceipt.accepted && driftReceipt.changed &&
+                    blocked.ready && !blocked.canGenerate &&
+                    blocked.terrainReconciliation.blocked &&
+                    blocked.terrainReconciliation.conflicts.size() == 1U &&
+                    blocked.issueCount == 1U &&
+                    blocked.issues[0].table ==
+                        cr::CreativeWorldLayoutTable::TerrainProfile &&
+                    blocked.issues[0].index == 0U &&
+                    blocked.issues[0].stableKey == "terrain.plateau",
+                "terrain drift is a navigable generation conflict") &&
+         expect(state.diagnosticCache.buildCount == buildCount,
+                "unchanged terrain reconciliation reuses the diagnostic cache") &&
+         expect(preview.accepted &&
+                    app::creativeEditorWorldLayoutPreviewActive(state) &&
+                    live.facade.document().revision() ==
+                        documentRevisionBeforePreview &&
+                    live.facade.document().terrainField().revision() ==
+                        terrainRevisionBeforePreview,
+                "read-only exact preview remains available during conflict");
+}
+
 }  // namespace
 
 int main() {
@@ -516,6 +590,7 @@ int main() {
                   diagnosticFocusRoutesThroughTypedDispatcher() &&
                   stableIdPatchProjectsHonestMemberCounts() &&
                   refinementConflictProjectsExactManagedGroupAndSource() &&
-                  terrainImpactCacheOverlayAndFramingShareOneSourcePlan();
+                  terrainImpactCacheOverlayAndFramingShareOneSourcePlan() &&
+                  terrainReconciliationBlocksGenerationButKeepsPreviewAvailable();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

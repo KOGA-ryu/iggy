@@ -13,6 +13,7 @@
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutTerrainReconciliation.hpp"
 
 #include "EditorWorldLayoutElevation.hpp"
 #include "EditorWorldLayoutDiagnostics.hpp"
@@ -854,6 +855,7 @@ struct CreativeEditorWorldLayoutDeferredSourceHistory {
 struct CreativeEditorWorldLayoutConflictReviewState {
   std::uint64_t diagnosticBuildCount = 0U;
   std::vector<cr::CreativeWorldLayoutConflictDecision> decisions;
+  std::vector<cr::CreativeWorldLayoutTerrainConflictDecision> terrainDecisions;
 };
 
 struct CreativeEditorWorldLayoutState {
@@ -1422,11 +1424,21 @@ cancelCreativeEditorWorldLayoutPreview(
 [[nodiscard]] CreativeEditorWorldLayoutPreviewReceipt
 previewCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
                                  const cr::CreativeDocument& document);
+[[nodiscard]] cr::CreativeWorldLayoutTerrainReconciliationResult
+reconcileCreativeEditorWorldLayoutTerrain(
+    const CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document,
+    const cr::CreativeWorldLayout& desiredLayout,
+    std::span<const cr::CreativeWorldLayoutTerrainConflictDecision> decisions =
+        {});
 [[nodiscard]] CreativeEditorWorldLayoutApplyReceipt
 confirmCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
                                  cr::CreativeAppState& appState,
                                  std::span<const
                                      cr::CreativeWorldLayoutConflictDecision>
-                                     conflictDecisions = {});
+                                     conflictDecisions = {},
+                                 std::span<const
+                                     cr::CreativeWorldLayoutTerrainConflictDecision>
+                                     terrainConflictDecisions = {});
 
 }  // namespace iggy3d_creative_app

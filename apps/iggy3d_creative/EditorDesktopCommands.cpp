@@ -2358,11 +2358,21 @@ void dispatchOne(const CreativeDesktopCommand& command,
                         payload->conflictDecisions)
                   : std::span<const
                         creative::CreativeWorldLayoutConflictDecision>{};
+      const std::span<
+          const creative::CreativeWorldLayoutTerrainConflictDecision>
+          terrainConflictDecisions =
+              payload != nullptr
+                  ? std::span<const creative::
+                                  CreativeWorldLayoutTerrainConflictDecision>(
+                        payload->terrainConflictDecisions)
+                  : std::span<const creative::
+                                  CreativeWorldLayoutTerrainConflictDecision>{};
       const bool previewWasActive =
           creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
       const CreativeEditorWorldLayoutApplyReceipt receipt =
           confirmCreativeEditorWorldLayout(editor.worldLayout, appState,
-                                           conflictDecisions);
+                                           conflictDecisions,
+                                           terrainConflictDecisions);
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
       result.sceneChanged = previewWasActive || receipt.changed;

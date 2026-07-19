@@ -2716,6 +2716,7 @@ void synchronizeConflictReview(
   }
   review.diagnosticBuildCount = state.diagnosticCache.buildCount;
   review.decisions.clear();
+  review.terrainDecisions.clear();
   for (const cr::CreativeWorldLayoutRecipeChange& change :
        diagnostics.recipeChanges) {
     if (change.kind == cr::CreativeWorldLayoutRecipeChangeKind::Conflict) {
@@ -2732,6 +2733,12 @@ void synchronizeConflictReview(
                 change.instanceKey, conflict));
       }
     }
+  }
+  for (const cr::CreativeWorldLayoutTerrainConflict& conflict :
+       diagnostics.terrainReconciliation.conflicts) {
+    review.terrainDecisions.push_back(
+        {conflict.generatedTable, conflict.generatedIndex, conflict.stableKey,
+         cr::CreativeWorldLayoutTerrainConflictResolution::Block});
   }
 }
 
@@ -2757,12 +2764,32 @@ findReviewedMemberConflict(
   return nullptr;
 }
 
+[[nodiscard]] const cr::CreativeWorldLayoutTerrainConflict*
+findReviewedTerrainConflict(
+    const CreativeEditorWorldLayoutDiagnosticReport& diagnostics,
+    const cr::CreativeWorldLayoutTerrainConflictDecision& decision) noexcept {
+  const auto found = std::find_if(
+      diagnostics.terrainReconciliation.conflicts.begin(),
+      diagnostics.terrainReconciliation.conflicts.end(),
+      [&](const cr::CreativeWorldLayoutTerrainConflict& conflict) {
+        return conflict.generatedTable == decision.table &&
+               conflict.generatedIndex == decision.generatedIndex &&
+               conflict.stableKey == decision.stableKey;
+      });
+  return found == diagnostics.terrainReconciliation.conflicts.end()
+             ? nullptr
+             : &*found;
+}
+
 void drawRefinementConflictActions(
     CreativeEditorWorldLayoutState& state,
     const CreativeEditorWorldLayoutDiagnosticReport& diagnostics,
     CreativeDesktopCommandFrame& commands, bool editingDisabled) {
-  if (diagnostics.compileReceipt.status !=
-      cr::CreativeWorldLayoutStatus::RefinementConflict) {
+  const bool objectConflicts =
+      diagnostics.compileReceipt.status ==
+      cr::CreativeWorldLayoutStatus::RefinementConflict;
+  const bool terrainConflicts = diagnostics.terrainReconciliation.blocked;
+  if (!objectConflicts && !terrainConflicts) {
     return;
   }
   ImGui::BeginDisabled(editingDisabled);
@@ -2775,13 +2802,15 @@ void drawRefinementConflictActions(
     return;
   }
   ImGui::Text("Review conflicts between the 2D layout and refined 3D output.");
-  ImGui::TextDisabled("%llu managed group(s) require a decision.",
-                      static_cast<unsigned long long>(
-                          diagnostics.compileReceipt
-                              .objectRecipeConflictCount));
+  ImGui::TextDisabled(
+      "%llu object group(s), %zu terrain source(s) require a decision.",
+      static_cast<unsigned long long>(
+          diagnostics.compileReceipt.objectRecipeConflictCount),
+      diagnostics.terrainReconciliation.conflicts.size());
   ImGui::Separator();
   ImGui::BeginDisabled(editingDisabled);
-  if (ImGui::BeginTable("##world_layout_conflict_review", 3,
+  if (objectConflicts &&
+      ImGui::BeginTable("##world_layout_conflict_review", 3,
                         ImGuiTableFlags_SizingStretchProp |
                             ImGuiTableFlags_BordersInnerH |
                             ImGuiTableFlags_RowBg)) {
@@ -2896,27 +2925,101 @@ void drawRefinementConflictActions(
     }
     ImGui::EndTable();
   }
-  const bool allResolved =
-      !state.conflictReview.decisions.empty() &&
-      std::all_of(state.conflictReview.decisions.begin(),
-                  state.conflictReview.decisions.end(),
-                  [](const cr::CreativeWorldLayoutConflictDecision& decision) {
-                    if (decision.memberStableKey.empty()) {
-                      return decision.resolution ==
-                                 cr::CreativeWorldLayoutConflictResolution::
-                                     Regenerate ||
-                             decision.resolution ==
-                                 cr::CreativeWorldLayoutConflictResolution::
-                                     Detach;
-                    }
-                    return cr::creativeWorldLayoutMemberResolutionAllowed(
-                        decision.memberConflictKind, decision.resolution);
-                  });
+  if (terrainConflicts) {
+    ImGui::SeparatorText("Terrain sources");
+    if (ImGui::BeginTable("##world_layout_terrain_conflict_review", 3,
+                          ImGuiTableFlags_SizingStretchProp |
+                              ImGuiTableFlags_BordersInnerH |
+                              ImGuiTableFlags_RowBg)) {
+      ImGui::TableSetupColumn("Terrain source",
+                              ImGuiTableColumnFlags_WidthStretch);
+      ImGui::TableSetupColumn("2D source", ImGuiTableColumnFlags_WidthFixed,
+                              112.0F);
+      ImGui::TableSetupColumn("3D terrain", ImGuiTableColumnFlags_WidthFixed,
+                              152.0F);
+      ImGui::TableHeadersRow();
+      for (cr::CreativeWorldLayoutTerrainConflictDecision& decision :
+           state.conflictReview.terrainDecisions) {
+        const cr::CreativeWorldLayoutTerrainConflict* conflict =
+            findReviewedTerrainConflict(diagnostics, decision);
+        if (conflict == nullptr) {
+          continue;
+        }
+        ImGui::PushID("terrain_conflict");
+        ImGui::PushID(decision.stableKey.c_str());
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+        ImGui::TextWrapped("%s", decision.stableKey.c_str());
+        ImGui::TextDisabled("Changed after its last generation");
+        ImGui::TableNextColumn();
+        if (ImGui::RadioButton(
+                "Regenerate",
+                decision.resolution ==
+                    cr::CreativeWorldLayoutTerrainConflictResolution::
+                        Regenerate)) {
+          decision.resolution =
+              cr::CreativeWorldLayoutTerrainConflictResolution::Regenerate;
+        }
+        if (ImGui::IsItemHovered()) {
+          ImGui::SetTooltip("Reapply the 2D terrain source over the 3D edit");
+        }
+        ImGui::TableNextColumn();
+        ImGui::BeginDisabled(!conflict->canDetachAndKeep3D);
+        if (ImGui::Button("Keep 3D & remove source")) {
+          commands.push(
+              CreativeDesktopCommandId::WorldLayoutDeleteSource,
+              CreativeDesktopWorldLayoutSourcePayload{
+                  conflict->desiredTable, conflict->desiredIndex,
+                  conflict->stableKey});
+          ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+          ImGui::SetTooltip(
+              conflict->canDetachAndKeep3D
+                  ? "Preserve the current 3D terrain and remove its 2D owner"
+                  : "Unavailable: Replace All ownership would clear the 3D terrain");
+        }
+        ImGui::PopID();
+        ImGui::PopID();
+      }
+      ImGui::EndTable();
+    }
+  }
+  const bool objectResolved =
+      !objectConflicts ||
+      (!state.conflictReview.decisions.empty() &&
+       std::all_of(
+           state.conflictReview.decisions.begin(),
+           state.conflictReview.decisions.end(),
+           [](const cr::CreativeWorldLayoutConflictDecision& decision) {
+             if (decision.memberStableKey.empty()) {
+               return decision.resolution ==
+                          cr::CreativeWorldLayoutConflictResolution::Regenerate ||
+                      decision.resolution ==
+                          cr::CreativeWorldLayoutConflictResolution::Detach;
+             }
+             return cr::creativeWorldLayoutMemberResolutionAllowed(
+                 decision.memberConflictKind, decision.resolution);
+           }));
+  const bool terrainResolved =
+      !terrainConflicts ||
+      (!state.conflictReview.terrainDecisions.empty() &&
+       std::all_of(
+           state.conflictReview.terrainDecisions.begin(),
+           state.conflictReview.terrainDecisions.end(),
+           [](const cr::CreativeWorldLayoutTerrainConflictDecision& decision) {
+             return decision.resolution ==
+                    cr::CreativeWorldLayoutTerrainConflictResolution::
+                        Regenerate;
+           }));
+  const bool allResolved = objectResolved && terrainResolved;
   ImGui::BeginDisabled(!allResolved);
   if (ImGui::Button("Apply Resolutions")) {
     commands.push(CreativeDesktopCommandId::WorldLayoutConfirm,
                   CreativeDesktopWorldLayoutConfirmPayload{
-                      state.conflictReview.decisions});
+                      state.conflictReview.decisions,
+                      state.conflictReview.terrainDecisions});
     ImGui::CloseCurrentPopup();
   }
   ImGui::EndDisabled();
@@ -2945,7 +3048,8 @@ void buildCreativeEditorWorldLayoutPanel(
   const CreativeEditorWorldLayoutDiagnosticReport& diagnostics =
       refreshCreativeEditorWorldLayoutDiagnostics(
           state.diagnosticCache, document, state.source, state.revision,
-          &editor.catalog.model, state.sourceEpoch);
+          &editor.catalog.model, state.sourceEpoch, state.generatedRevision,
+          &state.generatedBaseline.source);
   synchronizeConflictReview(state, diagnostics);
   if (editingDisabled) {
     queueLayoutManipulationCancel(state, commands);
@@ -3016,7 +3120,9 @@ void buildCreativeEditorWorldLayoutPanel(
                                          : "Preview 3D")) {
       commands.push(CreativeDesktopCommandId::WorldLayoutPreview);
     }
+    ImGui::EndDisabled();
     ImGui::SameLine();
+    ImGui::BeginDisabled(!diagnostics.canGenerate);
     if (ImGui::Button(exactPreviewActive ? "Confirm Preview"
                                          : "Confirm & Generate")) {
       commands.push(CreativeDesktopCommandId::WorldLayoutConfirm);
@@ -3055,14 +3161,17 @@ void buildCreativeEditorWorldLayoutPanel(
 
     ImGui::Separator();
     ImGui::TextColored(
-        diagnostics.ready ? ImVec4{0.20F, 1.0F, 0.35F, 1.0F}
-                          : ImVec4{1.0F, 0.34F, 0.30F, 1.0F},
-        "%s", diagnostics.ready ? "READY" : "BLOCKED");
+        diagnostics.canGenerate ? ImVec4{0.20F, 1.0F, 0.35F, 1.0F}
+                                : ImVec4{1.0F, 0.34F, 0.30F, 1.0F},
+        "%s", diagnostics.canGenerate ? "READY" : "BLOCKED");
     ImGui::SameLine();
     if (diagnostics.ready) {
-      ImGui::TextDisabled("%s", diagnostics.hasChanges
-                                    ? "Changes are ready to generate"
-                                    : "Generated output already matches");
+      ImGui::TextDisabled(
+          "%s", !diagnostics.canGenerate
+                    ? "Refined terrain requires an explicit decision"
+                    : diagnostics.hasChanges
+                          ? "Changes are ready to generate"
+                          : "Generated output already matches");
       const cr::CreativeWorldLayoutReceipt& generation =
           diagnostics.compileReceipt;
       ImGui::TextDisabled(
