@@ -25,6 +25,7 @@
 namespace iggy3d::creative {
 
 using world_layout_compile::appendTagOnce;
+using world_layout_compile::buildWorldLayoutObjectRecipes;
 using world_layout_compile::childKey;
 using world_layout_compile::collectObjectRemovalOrder;
 using world_layout_compile::layoutBounds;
@@ -689,138 +690,10 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     desiredLibraryRecipes.push_back(std::move(objects.plan));
   }
 
-  CreativeDocument terrainStaged = document;
-  if (!stageWorldLayoutTerrain(document, layout, stableKeys, result,
-                               terrainStaged)) {
+  if (!buildWorldLayoutObjectRecipes(
+          document, layout, grid, stableKeys, buildings,
+          desiredObjectRecipes, desiredLibraryRecipes, result)) {
     return result;
-  }
-  const CreativeTerrainSurfacePlan terrainSurface =
-      buildCreativeComposedTerrainSurfacePlan(
-          terrainStaged.terrainField(), document.terrainHeightField());
-  if (!terrainSurface.accepted) {
-    result.receipt.kernelReasonCode = terrainSurface.reasonCode;
-    setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
-              "creative_world_layout_terrain_surface_rejected");
-    return result;
-  }
-
-  const double floorLayerThickness =
-      defaultCreativeStructuralLayerThicknessMeters(CreativeObjectKind::Floor);
-  for (std::size_t index = 0U; index < buildings.size(); ++index) {
-    const CreativeWorldLayoutBuilding& symbol = layout.buildings[index];
-    if (symbol.groundingMode ==
-        CreativeWorldLayoutGroundingMode::Foundation) {
-      double authoredGroundLayer =
-          std::numeric_limits<double>::infinity();
-      for (const CreativeWorldLayoutLevel& level : layout.levels) {
-        if (level.buildingIndex == index) {
-          const double floorThicknessLayers =
-              static_cast<double>(level.floorThicknessLayers) *
-              floorLayerThickness / grid.cellSizeMeters;
-          authoredGroundLayer =
-              std::min(authoredGroundLayer,
-                       level.floorTopLayer - floorThicknessLayers);
-        }
-      }
-      if (!std::isfinite(authoredGroundLayer)) {
-        authoredGroundLayer = static_cast<double>(symbol.rootBaseLayer);
-      }
-      const CreativeTerrainGroundingPlan grounding =
-          planCreativeTerrainGrounding(
-              {&terrainSurface, symbol.rootFootprint.minimum,
-               symbol.rootFootprint.maximum, authoredGroundLayer,
-               symbol.maximumGroundReliefCells});
-      if (!grounding.accepted) {
-        result.receipt.failedTable = CreativeWorldLayoutTable::Building;
-        result.receipt.failedIndex = index;
-        result.receipt.kernelReasonCode = grounding.reasonCode;
-        setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
-                  "creative_world_layout_building_grounding_rejected");
-        return result;
-      }
-
-      const double offsetMeters =
-          grounding.verticalOffsetLayers * grid.cellSizeMeters;
-      if (!shiftBuildingVertically(buildings[index], offsetMeters)) {
-        result.receipt.failedTable = CreativeWorldLayoutTable::Building;
-        result.receipt.failedIndex = index;
-        setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidSymbol,
-                  "creative_world_layout_building_grounding_offset_invalid");
-        return result;
-      }
-      ++result.receipt.groundedBuildingCount;
-
-      if (grounding.reliefCells > 0U) {
-        const std::string foundationKey =
-            childKey(symbol.stableKey, "foundation");
-        if (!registerKey(stableKeys, foundationKey,
-                         CreativeWorldLayoutTable::Building, index,
-                         result.receipt)) {
-          return result;
-        }
-        CreativeBounds foundationBounds;
-        if (!worldCoordinate(grid.origin.x, grid.cellSizeMeters,
-                             symbol.rootFootprint.minimum.x,
-                             foundationBounds.min.x) ||
-            !worldCoordinate(grid.origin.x, grid.cellSizeMeters,
-                             symbol.rootFootprint.maximum.x,
-                             foundationBounds.max.x) ||
-            !worldCoordinate(grid.origin.z, grid.cellSizeMeters,
-                             symbol.rootFootprint.minimum.z,
-                             foundationBounds.min.z) ||
-            !worldCoordinate(grid.origin.z, grid.cellSizeMeters,
-                             symbol.rootFootprint.maximum.z,
-                             foundationBounds.max.z) ||
-            !worldCoordinate(grid.origin.y, grid.cellSizeMeters,
-                             grounding.minimumHeightCells,
-                             foundationBounds.min.y) ||
-            !worldCoordinate(grid.origin.y, grid.cellSizeMeters,
-                             grounding.maximumHeightCells,
-                             foundationBounds.max.y)) {
-          result.receipt.failedTable = CreativeWorldLayoutTable::Building;
-          result.receipt.failedIndex = index;
-          setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidSymbol,
-                    "creative_world_layout_foundation_bounds_invalid");
-          return result;
-        }
-        CreativeBuildingBoxSpec foundation{
-            CreativeObjectKind::Floor, foundationKey,
-            symbol.name + " Foundation", foundationBounds};
-        appendTagOnce(foundation.tags,
-                      creativeWorldLayoutProvenanceTag(
-                          layout, CreativeWorldLayoutTable::Building, index));
-        appendTagOnce(foundation.tags, "creative_world_layout:foundation");
-        buildings[index].boxes.insert(buildings[index].boxes.begin(),
-                                      std::move(foundation));
-        ++result.receipt.foundationObjectCount;
-      }
-    }
-
-    CreativeBuildingRecipeResult built =
-        buildCreativeBuildingRecipe(buildings[index]);
-    if (!built.receipt.accepted) {
-      result.receipt.failedTable = CreativeWorldLayoutTable::Building;
-      result.receipt.failedIndex = index;
-      result.receipt.kernelReasonCode = built.receipt.reasonCode;
-      setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
-                "creative_world_layout_building_rejected");
-      return result;
-    }
-    built.plan.definitionFingerprint =
-        fingerprintCreativeRecipePlan(built.plan);
-    if (built.plan.definitionFingerprint == 0U) {
-      result.receipt.failedTable = CreativeWorldLayoutTable::Building;
-      result.receipt.failedIndex = index;
-      result.receipt.kernelReasonCode =
-          "creative_recipe_definition_fingerprint_invalid";
-      setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
-                "creative_world_layout_building_fingerprint_rejected");
-      return result;
-    }
-    desiredObjectRecipes.push_back(std::move(built.plan));
-  }
-  for (CreativeRecipePlan& recipe : desiredLibraryRecipes) {
-    desiredObjectRecipes.push_back(std::move(recipe));
   }
 
   if (!reconcileWorldLayoutRecipes(document, layoutTag, options,

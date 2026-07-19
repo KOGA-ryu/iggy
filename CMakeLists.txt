@@ -140,6 +140,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/recipes/TerrainGrounding.cpp
     src/app/iggy3d/creative/recipes/TerrainOperation.cpp
     src/app/iggy3d/creative/world/WorldLayout.cpp
+    src/app/iggy3d/creative/world/WorldLayoutBuildingCompile.cpp
     src/app/iggy3d/creative/world/WorldLayoutCompiler.cpp
     src/app/iggy3d/creative/world/WorldLayoutCompileSupport.cpp
     src/app/iggy3d/creative/world/WorldLayoutRecipeReconciliation.cpp
