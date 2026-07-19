@@ -166,6 +166,7 @@ struct CreativeEditorWorldLayoutBuildingBlockoutSettings {
   CreativeEditorWorldLayoutRoomSettings shell;
   cr::CreativeWorldLayoutBuildingBlockoutPattern pattern =
       cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom;
+  bool connectRooms = true;
 };
 
 struct CreativeEditorWorldLayoutRoomSettingsDraft {
@@ -649,6 +650,7 @@ struct CreativeEditorWorldLayoutOpeningHost {
   CreativeEditorWorldLayoutPoint start;
   CreativeEditorWorldLayoutPoint end;
   double lengthCells = 0.0;
+  double baseLayer = 0.0;
   double wallHeightCells = 0.0;
 };
 

@@ -52,6 +52,7 @@ CreativeEditorWorldLayoutOpeningHost openingHost(
     const cr::CreativeWorldLayoutWall& wall = layout.walls[opening.wallIndex];
     start = wall.start;
     end = wall.end;
+    host.baseLayer = wall.baseLayer;
     host.wallHeightCells = wall.heightCells;
   } else if (opening.hostKind ==
              cr::CreativeWorldLayoutOpeningHostKind::RoomEdge) {
@@ -66,6 +67,7 @@ CreativeEditorWorldLayoutOpeningHost openingHost(
     if (level == nullptr) {
       return host;
     }
+    host.baseLayer = level->floorTopLayer;
     host.wallHeightCells = level->wallHeightCells;
   } else {
     return host;
@@ -74,7 +76,9 @@ CreativeEditorWorldLayoutOpeningHost openingHost(
   const double dz = static_cast<double>(end.z) - start.z;
   host.lengthCells = std::hypot(dx, dz);
   if (!std::isfinite(host.lengthCells) || host.lengthCells <= 0.0 ||
-      !std::isfinite(host.wallHeightCells) || host.wallHeightCells <= 0.0) {
+      !std::isfinite(host.baseLayer) ||
+      !std::isfinite(host.wallHeightCells) || host.wallHeightCells <= 0.0 ||
+      !std::isfinite(host.baseLayer + host.wallHeightCells)) {
     return {};
   }
   host.valid = true;
@@ -114,6 +118,14 @@ bool openingIntervalsOverlap(
   if (!candidateHost.valid || !existingHost.valid ||
       !std::isfinite(candidate.widthCells) || candidate.widthCells <= 0.0 ||
       !std::isfinite(existing.widthCells) || existing.widthCells <= 0.0) {
+    return false;
+  }
+  const double candidateTop =
+      candidateHost.baseLayer + candidateHost.wallHeightCells;
+  const double existingTop =
+      existingHost.baseLayer + existingHost.wallHeightCells;
+  if (candidateTop <= existingHost.baseLayer + kOpeningGeometryEpsilon ||
+      existingTop <= candidateHost.baseLayer + kOpeningGeometryEpsilon) {
     return false;
   }
   const double candidateDx = candidateHost.end.x - candidateHost.start.x;

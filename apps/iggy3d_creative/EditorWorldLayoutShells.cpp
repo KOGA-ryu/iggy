@@ -367,7 +367,7 @@ createCreativeEditorWorldLayoutBuildingBlockout(
   const cr::CreativeWorldLayoutBuildingBlockoutPlan blockout =
       cr::planCreativeWorldLayoutBuildingBlockout(
           {settings.shell.footprint, settings.pattern,
-           settings.shell.wallThicknessCells});
+           settings.shell.wallThicknessCells, settings.connectRooms});
   if (!blockout.accepted) {
     state.statusMessage = blockout.reasonCode;
     return {false, false, std::string(blockout.reasonCode)};
@@ -415,6 +415,47 @@ createCreativeEditorWorldLayoutBuildingBlockout(
         roomSettings, buildingIndex, levelIndex, firstRoomIndex + index,
         cr::mintCreativeWorldLayoutStableKey(candidate, nextStableOrdinal,
                                               "room")));
+  }
+
+  if (blockout.connectionCount > 0U) {
+    CreativeEditorWorldLayoutState candidateState;
+    candidateState.source = std::move(candidate);
+    candidateState.activeLevelIndex = levelIndex;
+    for (std::size_t index = 0U; index < blockout.connectionCount; ++index) {
+      const cr::CreativeWorldLayoutBuildingBlockoutConnection& connection =
+          blockout.connections[index];
+      CreativeEditorWorldLayoutOpeningPlacementRequest request;
+      request.point = {connection.xCells, connection.zCells};
+      request.kind = cr::CreativeBuildingOpeningKind::Door;
+      CreativeEditorWorldLayoutOpeningPlacementPlan placement =
+          planCreativeEditorWorldLayoutOpeningPlacement(candidateState,
+                                                        request);
+      if (!placement.accepted) {
+        state.statusMessage = placement.message;
+        return {false, false, std::string(placement.reasonCode)};
+      }
+      const std::size_t expectedRoomIndex =
+          firstRoomIndex + connection.firstRoomIndex;
+      if (placement.opening.hostKind !=
+              cr::CreativeWorldLayoutOpeningHostKind::RoomEdge ||
+          placement.opening.roomIndex != expectedRoomIndex ||
+          placement.opening.roomEdge != connection.firstRoomEdge) {
+        state.statusMessage =
+            "building blockout could not resolve its interior door host";
+        return {
+            false, false,
+            "creative_editor_world_layout_building_blockout_connection_host"};
+      }
+
+      cr::CreativeWorldLayoutOpening opening = std::move(placement.opening);
+      opening.stableKey = cr::mintCreativeWorldLayoutStableKey(
+          candidateState.source, nextStableOrdinal, "door");
+      opening.name = "Interior Door " +
+                     std::to_string(candidateState.source.openings.size() +
+                                    1U);
+      candidateState.source.openings.push_back(std::move(opening));
+    }
+    candidate = std::move(candidateState.source);
   }
 
   return commitBuildingBlockoutCandidate(

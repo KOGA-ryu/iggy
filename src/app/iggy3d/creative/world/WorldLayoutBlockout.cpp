@@ -22,6 +22,24 @@ std::int32_t midpoint(std::int32_t minimum, std::int32_t maximum) noexcept {
                                    span / 2);
 }
 
+double center(std::int32_t minimum, std::int32_t maximum) noexcept {
+  const std::int64_t span = static_cast<std::int64_t>(maximum) - minimum;
+  return static_cast<double>(minimum) + static_cast<double>(span) * 0.5;
+}
+
+void appendConnection(
+    CreativeWorldLayoutBuildingBlockoutPlan& plan,
+    std::size_t firstRoomIndex, CreativeWorldLayoutRoomEdge firstRoomEdge,
+    std::size_t secondRoomIndex, CreativeWorldLayoutRoomEdge secondRoomEdge,
+    double xCells, double zCells) noexcept {
+  if (plan.connectionCount >= plan.connections.size()) {
+    return;
+  }
+  plan.connections[plan.connectionCount++] = {
+      firstRoomIndex, firstRoomEdge, secondRoomIndex, secondRoomEdge, xCells,
+      zCells};
+}
+
 bool roomSupportsWalls(CreativeWorldLayoutRect room,
                        double wallThicknessCells) noexcept {
   const double width = static_cast<double>(
@@ -139,6 +157,46 @@ planCreativeWorldLayoutBuildingBlockout(
       fail(plan, CreativeWorldLayoutBuildingBlockoutStatus::RoomTooSmall,
            "creative_world_layout_building_blockout_room_too_small");
       return plan;
+    }
+  }
+
+  if (request.connectRooms) {
+    const double footprintCenterX =
+        center(request.footprint.minimum.x, request.footprint.maximum.x);
+    const double footprintCenterZ =
+        center(request.footprint.minimum.z, request.footprint.maximum.z);
+    switch (request.pattern) {
+      case CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom:
+        break;
+      case CreativeWorldLayoutBuildingBlockoutPattern::SplitX:
+        appendConnection(plan, 0U, CreativeWorldLayoutRoomEdge::East, 1U,
+                         CreativeWorldLayoutRoomEdge::West,
+                         static_cast<double>(splitX), footprintCenterZ);
+        break;
+      case CreativeWorldLayoutBuildingBlockoutPattern::SplitZ:
+        appendConnection(plan, 0U, CreativeWorldLayoutRoomEdge::South, 1U,
+                         CreativeWorldLayoutRoomEdge::North, footprintCenterX,
+                         static_cast<double>(splitZ));
+        break;
+      case CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2:
+        // Row-major spanning tree: 1 -> 0, 2 -> 0, 3 -> 2. Three doors connect
+        // all four rooms without imposing an extra circulation loop.
+        appendConnection(
+            plan, 0U, CreativeWorldLayoutRoomEdge::East, 1U,
+            CreativeWorldLayoutRoomEdge::West, static_cast<double>(splitX),
+            center(request.footprint.minimum.z, splitZ));
+        appendConnection(
+            plan, 0U, CreativeWorldLayoutRoomEdge::South, 2U,
+            CreativeWorldLayoutRoomEdge::North,
+            center(request.footprint.minimum.x, splitX),
+            static_cast<double>(splitZ));
+        appendConnection(
+            plan, 2U, CreativeWorldLayoutRoomEdge::East, 3U,
+            CreativeWorldLayoutRoomEdge::West, static_cast<double>(splitX),
+            center(splitZ, request.footprint.maximum.z));
+        break;
+      case CreativeWorldLayoutBuildingBlockoutPattern::Count:
+        break;
     }
   }
 
