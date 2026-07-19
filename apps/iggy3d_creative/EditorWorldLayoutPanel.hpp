@@ -47,6 +47,25 @@ classifyCreativeEditorWorldLayoutTerrainRegionPhase(
 measureCreativeEditorWorldLayoutTerrainRegion(
     const CreativeEditorWorldLayoutTerrainRegionState& region) noexcept;
 
+// Which terrain-region parameters the active operation exposes, shared by
+// the inspector and the canvas tool-options strip so both stay in lockstep.
+enum class CreativeEditorWorldLayoutTerrainRegionField : std::uint8_t {
+  TargetHeight,
+  NoiseRelief,
+  NoiseScale,
+  Seed,
+  Feather,
+  Count,
+};
+
+[[nodiscard]] bool creativeEditorWorldLayoutTerrainRegionFieldVisible(
+    CreativeEditorWorldLayoutTerrainRegionOperation operation,
+    CreativeEditorWorldLayoutTerrainRegionField field) noexcept;
+
+[[nodiscard]] std::string_view
+creativeEditorWorldLayoutTerrainRegionTargetLabel(
+    CreativeEditorWorldLayoutTerrainRegionOperation operation) noexcept;
+
 // The toolbox strip is the drafting-UI icon column docked to the canvas's
 // left edge. Its roster and per-button state are pure projections of the
 // palette table and editor state so they stay headless-testable; the strip

@@ -212,6 +212,59 @@ bool regionToggleFollowsTheTerrainWorkflow() {
                 "template placement locks the toggle");
 }
 
+bool terrainOptionsExposeTheRightFieldsPerOperation() {
+  using Field = iggy3d_creative_app::CreativeEditorWorldLayoutTerrainRegionField;
+  using Operation =
+      iggy3d_creative_app::CreativeEditorWorldLayoutTerrainRegionOperation;
+  const auto visible = [](Operation operation, Field field) {
+    return iggy3d_creative_app::creativeEditorWorldLayoutTerrainRegionFieldVisible(
+        operation, field);
+  };
+  const auto label = [](Operation operation) {
+    return iggy3d_creative_app::
+        creativeEditorWorldLayoutTerrainRegionTargetLabel(operation);
+  };
+  bool heightRight = true;
+  bool noiseRight = true;
+  bool featherRight = true;
+  for (const Operation operation :
+       {Operation::Flatten, Operation::Raise, Operation::Lower,
+        Operation::Smooth, Operation::Noise}) {
+    const bool expectHeight = operation != Operation::Smooth;
+    if (visible(operation, Field::TargetHeight) != expectHeight) {
+      heightRight = false;
+    }
+    const bool expectNoise = operation == Operation::Noise;
+    if (visible(operation, Field::NoiseRelief) != expectNoise ||
+        visible(operation, Field::NoiseScale) != expectNoise ||
+        visible(operation, Field::Seed) != expectNoise) {
+      noiseRight = false;
+    }
+    if (!visible(operation, Field::Feather)) {
+      featherRight = false;
+    }
+  }
+  bool countOpHidesAll = true;
+  for (std::uint8_t fieldValue = 0U;
+       fieldValue < static_cast<std::uint8_t>(Field::Count); ++fieldValue) {
+    if (visible(Operation::Count, static_cast<Field>(fieldValue))) {
+      countOpHidesAll = false;
+    }
+  }
+  return expect(heightRight,
+                "target height shows for every operation except smooth") &&
+         expect(noiseRight,
+                "relief, scale, and seed show only for noise") &&
+         expect(featherRight, "feather shows for every operation") &&
+         expect(countOpHidesAll, "an invalid operation exposes no fields") &&
+         expect(label(Operation::Flatten) == "Height" &&
+                    label(Operation::Raise) == "Raise to at least" &&
+                    label(Operation::Lower) == "Lower to at most" &&
+                    label(Operation::Noise) == "Base height" &&
+                    label(Operation::Smooth).empty(),
+                "target labels match the inspector's wording");
+}
+
 }  // namespace
 
 int main() {
@@ -219,5 +272,6 @@ int main() {
   ok = rosterMirrorsThePaletteAndAddsTheRegionToggle() && ok;
   ok = classificationTracksActiveToolAndTemplates() && ok;
   ok = regionToggleFollowsTheTerrainWorkflow() && ok;
+  ok = terrainOptionsExposeTheRightFieldsPerOperation() && ok;
   return ok ? 0 : 1;
 }
