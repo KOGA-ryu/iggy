@@ -57,6 +57,11 @@ CreativeEditorWorldLayoutEditReceipt selectWorldLayoutAtPoint(
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutPoint point);
 
+CreativeEditorWorldLayoutSelection hitTestWorldLayout(
+    const cr::CreativeWorldLayout& layout,
+    CreativeEditorWorldLayoutPoint point,
+    std::size_t activeLevelIndex);
+
 inline CreativeEditorWorldLayoutRectHandle worldLayoutRectHandleAt(
     cr::CreativeWorldLayoutRect footprint,
     CreativeEditorWorldLayoutPoint point, double toleranceCells) noexcept {
