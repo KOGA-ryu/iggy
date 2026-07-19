@@ -299,6 +299,7 @@ target_sources(iggy3d
     src/render/vulkan/ProjectileOverlayProjection.cpp
     src/render/vulkan/RenderLoop.cpp
     src/render/vulkan/RenderLoopFramePlan.cpp
+    src/render/vulkan/RenderLoopRecording.cpp
     src/render/vulkan/ShaderModule.cpp
     src/render/vulkan/PipelineLayout.cpp
     src/render/vulkan/FirstRoomPipeline.cpp
