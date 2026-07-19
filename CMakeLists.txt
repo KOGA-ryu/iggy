@@ -287,6 +287,7 @@ target_sources(iggy3d
     src/render/vulkan/Swapchain.cpp
     src/render/vulkan/FrameSync.cpp
     src/render/vulkan/CommandRecording.cpp
+    src/render/vulkan/CommandRecordingEmptyFrame.cpp
     src/render/vulkan/CommandRecordingProxy.cpp
     src/render/vulkan/DearImGuiVulkanBridge.cpp
     src/render/vulkan/ProjectileOverlayProjection.cpp
