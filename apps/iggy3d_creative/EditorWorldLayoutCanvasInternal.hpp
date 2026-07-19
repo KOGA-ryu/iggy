@@ -47,6 +47,13 @@ void drawCreativeEditorWorldLayoutTopographyHoverFacts(
     const CreativeEditorWorldLayoutTopographyState& topography,
     CreativeEditorWorldLayoutPoint point, cr::CreativeGridSettings grid);
 
+void drawCreativeEditorWorldLayoutPlacementPreviews(
+    ImDrawList& drawList,
+    const CreativeEditorWorldLayoutCanvasTransform& transform,
+    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint hoveredPoint,
+    const cr::CreativeGridSettings& grid);
+
 CreativeEditorWorldLayoutCanvasPointerGeometry
 drawCreativeEditorWorldLayoutCanvasScene(
     ImDrawList& drawList, ImVec2 minimum, ImVec2 maximum,
