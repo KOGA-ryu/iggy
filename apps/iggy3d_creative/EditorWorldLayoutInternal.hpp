@@ -11,6 +11,13 @@
 
 namespace iggy3d_creative_app::detail {
 
+[[nodiscard]] bool validWorldLayoutShellSettings(
+    const CreativeEditorWorldLayoutRoomSettings& settings) noexcept;
+[[nodiscard]] cr::CreativeWorldLayoutRoom makeWorldLayoutRoom(
+    const CreativeEditorWorldLayoutRoomSettings& settings,
+    std::size_t buildingIndex, std::size_t levelIndex, std::size_t roomIndex,
+    std::string stableKey);
+
 inline bool hasVisibleWorldLayoutName(std::string_view name) noexcept {
   for (const char value : name) {
     if (value != ' ' && value != '\t' && value != '\r' && value != '\n') {
