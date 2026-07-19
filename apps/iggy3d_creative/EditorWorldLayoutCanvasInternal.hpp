@@ -31,6 +31,22 @@ struct CreativeEditorWorldLayoutCanvasPointerGeometry {
   double handleToleranceCells = 0.25;
 };
 
+void drawCreativeEditorWorldLayoutTerrainBackground(
+    ImDrawList& drawList, ImVec2 minimum, ImVec2 maximum,
+    const CreativeEditorWorldLayoutCanvasTransform& transform,
+    const CreativeEditorWorldLayoutState& state,
+    const CreativeEditorWorldLayoutTopographyState& topography);
+
+void drawCreativeEditorWorldLayoutObjectSymbols(
+    ImDrawList& drawList,
+    const CreativeEditorWorldLayoutCanvasTransform& transform,
+    const CreativeEditorWorldLayoutState& state,
+    const cr::CreativeGridSettings& grid);
+
+void drawCreativeEditorWorldLayoutTopographyHoverFacts(
+    const CreativeEditorWorldLayoutTopographyState& topography,
+    CreativeEditorWorldLayoutPoint point, cr::CreativeGridSettings grid);
+
 CreativeEditorWorldLayoutCanvasPointerGeometry
 drawCreativeEditorWorldLayoutCanvasScene(
     ImDrawList& drawList, ImVec2 minimum, ImVec2 maximum,
