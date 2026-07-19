@@ -42,6 +42,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/Geometry.cpp
     src/app/iggy3d/creative/assets/AuthoredAsset.cpp
     src/app/iggy3d/creative/assets/AuthoredAssetPlacement.cpp
+    src/app/iggy3d/creative/assets/AuthoredAssetRefresh.cpp
     src/app/iggy3d/creative/assets/AuthoredAssetSync.cpp
     src/app/iggy3d/creative/document/Object.cpp
     src/app/iggy3d/creative/document/Document.cpp
