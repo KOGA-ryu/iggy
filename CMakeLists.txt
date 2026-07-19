@@ -123,6 +123,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/adapters/RoomBake.cpp
     src/app/iggy3d/creative/adapters/RoomBakeAssetSurfaces.cpp
     src/app/iggy3d/creative/adapters/RoomBakeFields.cpp
+    src/app/iggy3d/creative/adapters/RoomBakeObjectSurfaces.cpp
     src/app/iggy3d/creative/adapters/RoomBakeObjects.cpp
     src/app/iggy3d/creative/adapters/RoomBakeGreedyFloors.cpp
     src/app/iggy3d/creative/adapters/RoomBakeReachability.cpp
