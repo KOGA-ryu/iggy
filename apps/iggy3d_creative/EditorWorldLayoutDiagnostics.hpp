@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutTerrainImpact.hpp"
 
 namespace iggy3d::creative {
 struct CreativeCatalogState;
@@ -58,12 +59,14 @@ struct CreativeEditorWorldLayoutDiagnosticReport {
   iggy3d::creative::CreativeWorldLayoutReceipt compileReceipt;
   std::vector<iggy3d::creative::CreativeWorldLayoutRecipeChange>
       recipeChanges;
+  iggy3d::creative::CreativeWorldLayoutTerrainImpactPlan terrainImpactPlan;
 };
 
 // Transient preflight cache. The compiler can materialize a large exact plan,
 // so desktop idle frames reuse the report until either source truth changes.
 struct CreativeEditorWorldLayoutDiagnosticCache {
   bool valid = false;
+  std::uint64_t sourceEpoch = 0U;
   std::uint64_t layoutRevision = 0U;
   iggy3d::creative::CreativeDocumentId documentId =
       iggy3d::creative::kInvalidDocumentId;
@@ -87,6 +90,7 @@ refreshCreativeEditorWorldLayoutDiagnostics(
     const iggy3d::creative::CreativeDocument& document,
     const iggy3d::creative::CreativeWorldLayout& layout,
     std::uint64_t layoutRevision,
-    const iggy3d::creative::CreativeCatalogState* assetCatalog = nullptr);
+    const iggy3d::creative::CreativeCatalogState* assetCatalog = nullptr,
+    std::uint64_t sourceEpoch = 0U);
 
 }  // namespace iggy3d_creative_app

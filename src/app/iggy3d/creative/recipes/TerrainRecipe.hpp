@@ -80,6 +80,11 @@ struct CreativeTerrainRecipePlan {
   CreativeTerrainCoord2 maximumCoord{};
   std::vector<CreativeTerrainControlEdit> controlEdits;
   std::vector<CreativeTerrainMaterialEdit> materialEdits;
+  // Complete semantic outputs, including values already present in the source
+  // document. Transient attribution can therefore distinguish a no-op from an
+  // absent source without reimplementing terrain geometry.
+  std::vector<CreativeTerrainControlPoint> controlOutputs;
+  std::vector<CreativeTerrainMaterialOverride> materialOutputs;
 };
 
 struct CreativeTerrainRecipeReceipt {

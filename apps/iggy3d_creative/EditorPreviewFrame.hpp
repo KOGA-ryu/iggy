@@ -71,6 +71,11 @@ struct CreativeEditorOverlayFrame {
   std::size_t materialBrushEdgeCount = 0;
   std::size_t connectedFillEdgeCount = 0;
   std::size_t surfaceExtrudeEdgeCount = 0;
+  bool terrainSourceImpactActive = false;
+  std::size_t terrainSourceImpactControlCount = 0;
+  std::size_t terrainSourceImpactMaterialCellCount = 0;
+  std::size_t terrainSourceImpactEdgeCount = 0;
+  bool terrainSourceImpactClipped = false;
   std::size_t terrainEdgeCount = 0;
   std::size_t volumeEdgeCount = 0;
   std::size_t patternEdgeCount = 0;

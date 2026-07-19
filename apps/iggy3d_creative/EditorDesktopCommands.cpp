@@ -22,6 +22,7 @@
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/camera/Fly.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutTerrainImpact.hpp"
 
 namespace iggy3d_creative_app {
 
@@ -1018,6 +1019,33 @@ void dispatchOne(const CreativeDesktopCommand& command,
       if (editor.worldLayout.generatedRevision !=
           editor.worldLayout.revision) {
         result.message = "layout source frame: generate pending edits";
+        break;
+      }
+      if (payload->table ==
+              creative::CreativeWorldLayoutTable::TerrainProfile ||
+          payload->table == creative::CreativeWorldLayoutTable::TerrainPath) {
+        const creative::CreativeWorldLayoutTerrainImpactPlan impactPlan =
+            creative::buildCreativeWorldLayoutTerrainImpactPlan(
+                appState.facade.document(), editor.worldLayout.source);
+        const creative::CreativeWorldLayoutTerrainSourceImpact* impact =
+            creative::findCreativeWorldLayoutTerrainSourceImpact(
+                impactPlan, payload->table, payload->index);
+        creative::CreativeBounds bounds{};
+        if (impact == nullptr ||
+            !creative::creativeWorldLayoutTerrainImpactWorldBounds(
+                *impact, appState.facade.document().gridSettings(), bounds)) {
+          result.message = "layout source frame: no terrain impact bounds";
+          break;
+        }
+        if (!focusEditorCameraOnBounds(editor, bounds)) {
+          result.message = "layout source frame: bounds unavailable";
+          break;
+        }
+        result.accepted = true;
+        result.changed = true;
+        result.affectedObjectCount =
+            impact->controls.size() + impact->materials.size();
+        result.message = "terrain source impact framed in 3D";
         break;
       }
       static_cast<void>(refreshCreativeDesktopGeneratedSourceScopeCache(

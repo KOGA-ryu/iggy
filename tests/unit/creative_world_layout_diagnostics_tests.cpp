@@ -1,5 +1,6 @@
 #include "EditorDesktopCommands.hpp"
 #include "EditorState.hpp"
+#include "EditorTerrain.hpp"
 #include "EditorWorldLayoutDiagnostics.hpp"
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
 
@@ -362,6 +363,149 @@ bool refinementConflictProjectsExactManagedGroupAndSource() {
                 "conflict points back to its building source row");
 }
 
+bool terrainImpactCacheOverlayAndFramingShareOneSourcePlan() {
+  cr::CreativeAppState live = makeApp("Diagnostic Terrain Impact", 9208U);
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "terrain_impact_layout");
+  cr::CreativeWorldLayoutTerrainProfile profile;
+  profile.stableKey = "terrain.plateau";
+  profile.kind = cr::CreativeTerrainRecipeKind::Plateau;
+  profile.center = {4, 6};
+  profile.baseHeightCells = 5U;
+  profile.radiusCells = 2U;
+  profile.spacingCells = 1U;
+  profile.blend = cr::CreativeTerrainProfileBlend::Set;
+  profile.rodPolicy = cr::CreativeTerrainProfileRodPolicy::Fill;
+  editor.worldLayout.source.terrainProfiles.push_back(profile);
+  ++editor.worldLayout.revision;
+
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(live.facade.document(),
+                                       editor.worldLayout.source);
+  const cr::CreativeWorldLayoutApplyReceipt applied =
+      cr::applyCreativeWorldLayoutPlan(live.facade, compiled.plan);
+  if (!compiled.receipt.accepted || !applied.accepted) {
+    return expect(false, "terrain impact editor fixture generates terrain");
+  }
+  editor.worldLayout.generatedRevision = editor.worldLayout.revision;
+  editor.worldLayout.selection = {
+      app::CreativeEditorWorldLayoutSelectionKind::TerrainProfile, 0U};
+  editor.desktopUi.showWorldLayout = true;
+
+  for (std::size_t frameIndex = 0U; frameIndex < 300U; ++frameIndex) {
+    static_cast<void>(app::refreshCreativeEditorWorldLayoutDiagnostics(
+        editor.worldLayout.diagnosticCache, live.facade.document(),
+        editor.worldLayout.source, editor.worldLayout.revision, nullptr,
+        editor.worldLayout.sourceEpoch));
+  }
+  const std::uint64_t afterIdle =
+      editor.worldLayout.diagnosticCache.buildCount;
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> currentLines;
+  const app::CreativeEditorTerrainSourceImpactOverlayFacts currentOverlay =
+      app::appendCreativeEditorWorldLayoutTerrainImpactOverlay(
+          live.facade.document(), editor, 0.08F, currentLines);
+  const std::uint64_t documentRevisionAfterOverlay =
+      live.facade.document().revision();
+  --editor.worldLayout.generatedRevision;
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> pendingLines;
+  const app::CreativeEditorTerrainSourceImpactOverlayFacts pendingOverlay =
+      app::appendCreativeEditorWorldLayoutTerrainImpactOverlay(
+          live.facade.document(), editor, 0.08F, pendingLines);
+  ++editor.worldLayout.generatedRevision;
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> captureLines;
+  const app::CreativeEditorTerrainSourceImpactOverlayFacts captureOverlay =
+      app::appendCreativeEditorWorldLayoutTerrainImpactOverlay(
+          live.facade.document(), editor, 0.08F, captureLines, true);
+
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{
+      live, editor, std::filesystem::path{}, &saveId};
+  editor.flyPos = {40.0F, 24.0F, 40.0F};
+  editor.yawDegrees = 31.0F;
+  editor.pitchDegrees = -14.0F;
+  editor.desktopUi.contentViewport = {0U, 0U, 1200U, 720U};
+  const iggy3d::Vec3 cameraBefore = editor.flyPos;
+  app::CreativeDesktopCommandFrame frame;
+  frame.push(app::CreativeDesktopCommandId::WorldLayoutFrameSourceScope3D,
+             app::CreativeDesktopWorldLayoutSourcePayload{
+                 cr::CreativeWorldLayoutTable::TerrainProfile, 0U,
+                 profile.stableKey});
+  const app::CreativeDesktopCommandResult framed =
+      app::dispatchCreativeDesktopCommands(frame, context);
+  const bool cameraMoved = editor.flyPos.x != cameraBefore.x ||
+                           editor.flyPos.y != cameraBefore.y ||
+                           editor.flyPos.z != cameraBefore.z;
+
+  ++editor.worldLayout.sourceEpoch;
+  static_cast<void>(app::refreshCreativeEditorWorldLayoutDiagnostics(
+      editor.worldLayout.diagnosticCache, live.facade.document(),
+      editor.worldLayout.source, editor.worldLayout.revision, nullptr,
+      editor.worldLayout.sourceEpoch));
+  const std::uint64_t afterEpoch =
+      editor.worldLayout.diagnosticCache.buildCount;
+  const bool overlayAndFramePreservedDocument =
+      live.facade.document().revision() == documentRevisionAfterOverlay;
+
+  const auto& currentImpact =
+      editor.worldLayout.diagnosticCache.report.terrainImpactPlan.sources[0];
+  cr::CreativeTerrainControlPoint drifted = currentImpact.controls.front();
+  ++drifted.heightCells;
+  const cr::CreativeTerrainControlEdit driftEdit{
+      cr::CreativeTerrainEditKind::Upsert, drifted};
+  const cr::CreativeTerrainMutationReceipt driftReceipt =
+      live.facade.documentForPersistence().applyTerrainControlEdits(
+          {&driftEdit, 1U});
+  static_cast<void>(app::refreshCreativeEditorWorldLayoutDiagnostics(
+      editor.worldLayout.diagnosticCache, live.facade.document(),
+      editor.worldLayout.source, editor.worldLayout.revision, nullptr,
+      editor.worldLayout.sourceEpoch));
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> driftLines;
+  const app::CreativeEditorTerrainSourceImpactOverlayFacts driftOverlay =
+      app::appendCreativeEditorWorldLayoutTerrainImpactOverlay(
+          live.facade.document(), editor, 0.08F, driftLines);
+
+  return expect(afterIdle == 1U &&
+                    editor.worldLayout.diagnosticCache.report
+                        .terrainImpactPlan.accepted,
+                "300 idle frames reuse one terrain impact compile") &&
+         expect(currentOverlay.active &&
+                    currentOverlay.status ==
+                        cr::CreativeWorldLayoutTerrainImpactStatus::Current &&
+                    currentOverlay.controlCount > 0U &&
+                    currentOverlay.edgeCount == currentLines.size() &&
+                    !currentLines.empty() &&
+                    near(currentLines[0].color.r, 0.98F) &&
+                    near(currentLines[0].color.g, 0.88F) &&
+                    overlayAndFramePreservedDocument,
+                "current terrain source projects yellow cached 3D impact") &&
+         expect(pendingOverlay.active &&
+                    pendingOverlay.status ==
+                        cr::CreativeWorldLayoutTerrainImpactStatus::Drifted &&
+                    !pendingLines.empty() &&
+                    near(pendingLines[0].color.r, 1.0F) &&
+                    near(pendingLines[0].color.g, 0.20F),
+                "pending source edits project red without stale generation") &&
+         expect(!captureOverlay.active && captureLines.empty(),
+                "capture mode suppresses terrain source impact") &&
+         expect(framed.accepted && framed.changed && cameraMoved &&
+                    framed.message == "terrain source impact framed in 3D" &&
+                    editor.yawDegrees == 31.0F &&
+                    editor.pitchDegrees == -14.0F,
+                "terrain source uses shared 3D framing command") &&
+         expect(afterEpoch == 2U,
+                "source replacement epoch invalidates equal revision cache") &&
+         expect(driftReceipt.accepted && driftReceipt.changed &&
+                    editor.worldLayout.diagnosticCache.buildCount == 3U &&
+                    driftOverlay.active &&
+                    driftOverlay.status ==
+                        cr::CreativeWorldLayoutTerrainImpactStatus::Drifted &&
+                    !driftLines.empty() &&
+                    near(driftLines[0].color.r, 1.0F) &&
+                    near(driftLines[0].color.g, 0.20F),
+                "terrain revision invalidates once and projects drift red");
+}
+
 }  // namespace
 
 int main() {
@@ -371,6 +515,7 @@ int main() {
                   diagnosticFocusSelectsFramesAndPreservesSource() &&
                   diagnosticFocusRoutesThroughTypedDispatcher() &&
                   stableIdPatchProjectsHonestMemberCounts() &&
-                  refinementConflictProjectsExactManagedGroupAndSource();
+                  refinementConflictProjectsExactManagedGroupAndSource() &&
+                  terrainImpactCacheOverlayAndFramingShareOneSourcePlan();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

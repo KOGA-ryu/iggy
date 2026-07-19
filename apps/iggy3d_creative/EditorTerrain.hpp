@@ -10,6 +10,7 @@
 #include "app/iggy3d/creative/tools/TerrainRegion.hpp"
 #include "app/iggy3d/creative/tools/TerrainSculpt.hpp"
 #include "app/iggy3d/creative/tools/TerrainStamp.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutTerrainImpact.hpp"
 #include "render/FrameInput.hpp"
 
 #include <array>
@@ -596,6 +597,24 @@ void appendCreativeEditorTerrainPatchSlopeTriangles(
     std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,
     const iggy3d::creative::CreativeTerrainSurfacePatch& patch,
     float thickness);
+
+struct CreativeEditorTerrainSourceImpactOverlayFacts {
+  bool active = false;
+  iggy3d::creative::CreativeWorldLayoutTerrainImpactStatus status =
+      iggy3d::creative::CreativeWorldLayoutTerrainImpactStatus::NoEffect;
+  std::size_t controlCount = 0U;
+  std::size_t materialCellCount = 0U;
+  std::size_t edgeCount = 0U;
+  bool influenceCellsClipped = false;
+};
+
+[[nodiscard]] CreativeEditorTerrainSourceImpactOverlayFacts
+appendCreativeEditorWorldLayoutTerrainImpactOverlay(
+    const iggy3d::creative::CreativeDocument& document,
+    const CreativeEditorState& editor,
+    float wireThickness,
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines,
+    bool captureMode = false);
 
 void appendCreativeEditorTerrainOverlay(
     const iggy3d::creative::CreativeDocument& document,

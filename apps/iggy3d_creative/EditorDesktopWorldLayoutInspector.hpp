@@ -24,6 +24,7 @@ void drawCreativeEditorWorldLayoutStructureInspector(
 
 void drawCreativeEditorWorldLayoutSourceInspector(
     CreativeEditorWorldLayoutState& state,
+    const iggy3d::creative::CreativeDocument& document,
     CreativeDesktopCommandFrame& commands);
 
 }  // namespace iggy3d_creative_app

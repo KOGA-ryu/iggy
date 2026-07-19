@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/recipes/TerrainRecipe.hpp"
 
+#include "app/iggy3d/creative/tools/TerrainBrushKernel.hpp"
 #include "app/iggy3d/creative/tools/TerrainSeed.hpp"
 
 #include <algorithm>
@@ -161,7 +162,8 @@ void initializePlanSource(CreativeTerrainRecipePlan& plan,
     const CreativeDocument& document,
     const CreativeTerrainPathPlan& path,
     CreativeTerrainMaterial material,
-    std::vector<CreativeTerrainMaterialEdit>& output) {
+    std::vector<CreativeTerrainMaterialEdit>& edits,
+    std::vector<CreativeTerrainMaterialOverride>& outputs) {
   if (material >= CreativeTerrainMaterial::Count) {
     return true;
   }
@@ -176,19 +178,24 @@ void initializePlanSource(CreativeTerrainRecipePlan& plan,
     return false;
   }
 
-  output.reserve(surface.columns.size());
+  edits.reserve(surface.columns.size());
+  outputs.reserve(surface.columns.size());
   for (const CreativeTerrainColumn& column : surface.columns) {
-    if (!columnInfluencedByControls(column.coord, path.finalControls()) ||
-        document.terrainMaterialField().materialAt(column.coord) == material) {
+    if (!columnInfluencedByControls(column.coord, path.finalControls())) {
+      continue;
+    }
+    outputs.push_back({column.coord, material});
+    if (document.terrainMaterialField().materialAt(column.coord) == material) {
       continue;
     }
     const CreativeTerrainMaterialEditKind editKind =
         material == CreativeTerrainMaterial::Grass
             ? CreativeTerrainMaterialEditKind::Clear
             : CreativeTerrainMaterialEditKind::Set;
-    output.push_back({editKind, column.coord, material});
+    edits.push_back({editKind, column.coord, material});
   }
-  return output.size() <= kCreativeTerrainMaterialOverrideCapacity;
+  return edits.size() <= kCreativeTerrainMaterialOverrideCapacity &&
+         outputs.size() <= kCreativeTerrainMaterialOverrideCapacity;
 }
 
 [[nodiscard]] bool applyPlanToDocument(
@@ -302,6 +309,11 @@ CreativeTerrainRecipeResult buildCreativeTerrainProfileRecipe(
       return result;
     }
     result.plan.controlEdits.assign(seed.items().begin(), seed.items().end());
+    for (const CreativeTerrainControlEdit& edit : seed.items()) {
+      if (edit.kind == CreativeTerrainEditKind::Upsert) {
+        result.plan.controlOutputs.push_back(edit.control);
+      }
+    }
     CreativeTerrainField staged = request.document->terrainField();
     const CreativeTerrainMutationReceipt stagedReceipt =
         staged.apply(result.plan.controlEdits);
@@ -362,6 +374,20 @@ CreativeTerrainRecipeResult buildCreativeTerrainProfileRecipe(
   }
   result.plan.controlEdits.assign(profilePlan.items().begin(),
                                   profilePlan.items().end());
+  CreativeTerrainField outputField = request.document->terrainField();
+  if (!result.plan.controlEdits.empty() &&
+      !outputField.apply(result.plan.controlEdits).accepted) {
+    setStatus(result.receipt, CreativeTerrainRecipeStatus::KernelRejected,
+              "creative_terrain_profile_output_stage_rejected");
+    result.plan = {};
+    return result;
+  }
+  for (const CreativeTerrainControlPoint& control : outputField.controls()) {
+    if (creativeTerrainInsideRadius(request.center, control.coord,
+                                    request.radiusCells)) {
+      result.plan.controlOutputs.push_back(control);
+    }
+  }
   result.receipt.controlEditCount = result.plan.controlEdits.size();
   if (result.plan.controlEdits.empty()) {
     setStatus(result.receipt, CreativeTerrainRecipeStatus::NoChange,
@@ -412,6 +438,8 @@ CreativeTerrainRecipeResult buildCreativeTerrainPathRecipe(
   result.plan.maximumCoord = pathPlan.maximumCoord;
   result.plan.controlEdits.assign(pathPlan.items().begin(),
                                   pathPlan.items().end());
+  result.plan.controlOutputs.assign(pathPlan.finalControls().begin(),
+                                    pathPlan.finalControls().end());
   CreativeTerrainMaterial material = request.material;
   if (material != CreativeTerrainMaterial::Count &&
       !isValidCreativeTerrainMaterial(material)) {
@@ -426,7 +454,8 @@ CreativeTerrainRecipeResult buildCreativeTerrainPathRecipe(
   }
   if (request.paintSurface && material < CreativeTerrainMaterial::Count &&
       !appendPathMaterialEdits(*request.document, pathPlan, material,
-                               result.plan.materialEdits)) {
+                               result.plan.materialEdits,
+                               result.plan.materialOutputs)) {
     setStatus(result.receipt,
               CreativeTerrainRecipeStatus::MaterialPlanRejected,
               "creative_terrain_recipe_material_plan_rejected");

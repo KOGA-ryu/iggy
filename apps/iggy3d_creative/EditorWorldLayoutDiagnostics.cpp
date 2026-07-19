@@ -229,6 +229,8 @@ buildCreativeEditorWorldLayoutDiagnosticReport(
       cr::buildCreativeWorldLayoutPlan(document, layout);
   report.compileReceipt = compiled.receipt;
   report.recipeChanges = compiled.recipeChanges;
+  report.terrainImpactPlan =
+      cr::buildCreativeWorldLayoutTerrainImpactPlan(document, layout);
   report.ready = compiled.receipt.accepted;
   report.hasChanges = compiled.receipt.accepted &&
                       compiled.receipt.status ==
@@ -284,13 +286,15 @@ refreshCreativeEditorWorldLayoutDiagnostics(
     CreativeEditorWorldLayoutDiagnosticCache& cache,
     const cr::CreativeDocument& document,
     const cr::CreativeWorldLayout& layout, std::uint64_t layoutRevision,
-    const cr::CreativeCatalogState* assetCatalog) {
+    const cr::CreativeCatalogState* assetCatalog,
+    std::uint64_t sourceEpoch) {
   const std::uint64_t terrainRevision = document.terrainField().revision();
   const std::uint64_t materialRevision =
       document.terrainMaterialField().revision();
   const std::uint64_t catalogSignature =
       assetCatalogSignature(assetCatalog);
-  if (cache.valid && cache.layoutRevision == layoutRevision &&
+  if (cache.valid && cache.sourceEpoch == sourceEpoch &&
+      cache.layoutRevision == layoutRevision &&
       cache.documentId == document.id() &&
       cache.documentRevision == document.revision() &&
       cache.terrainRevision == terrainRevision &&
@@ -298,6 +302,7 @@ refreshCreativeEditorWorldLayoutDiagnostics(
       cache.assetCatalogSignature == catalogSignature) {
     return cache.report;
   }
+  cache.sourceEpoch = sourceEpoch;
   cache.layoutRevision = layoutRevision;
   cache.documentId = document.id();
   cache.documentRevision = document.revision();

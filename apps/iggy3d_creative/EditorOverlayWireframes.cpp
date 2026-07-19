@@ -69,6 +69,11 @@ void resetCreativeEditorOverlayFrame(CreativeEditorOverlayFrame& output) {
   output.materialBrushEdgeCount = 0;
   output.connectedFillEdgeCount = 0;
   output.surfaceExtrudeEdgeCount = 0;
+  output.terrainSourceImpactActive = false;
+  output.terrainSourceImpactControlCount = 0;
+  output.terrainSourceImpactMaterialCellCount = 0;
+  output.terrainSourceImpactEdgeCount = 0;
+  output.terrainSourceImpactClipped = false;
   output.terrainEdgeCount = 0;
   output.volumeEdgeCount = 0;
   output.patternEdgeCount = 0;

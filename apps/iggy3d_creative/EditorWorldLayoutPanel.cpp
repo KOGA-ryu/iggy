@@ -2945,7 +2945,7 @@ void buildCreativeEditorWorldLayoutPanel(
   const CreativeEditorWorldLayoutDiagnosticReport& diagnostics =
       refreshCreativeEditorWorldLayoutDiagnostics(
           state.diagnosticCache, document, state.source, state.revision,
-          &editor.catalog.model);
+          &editor.catalog.model, state.sourceEpoch);
   synchronizeConflictReview(state, diagnostics);
   if (editingDisabled) {
     queueLayoutManipulationCancel(state, commands);
@@ -2990,7 +2990,7 @@ void buildCreativeEditorWorldLayoutPanel(
   if (ImGui::Begin("World Layout Properties###Inspector", nullptr,
                    ImGuiWindowFlags_NoCollapse)) {
     ImGui::BeginDisabled(editingDisabled);
-    drawCreativeEditorWorldLayoutSourceInspector(state, commands);
+    drawCreativeEditorWorldLayoutSourceInspector(state, document, commands);
     drawCreativeEditorWorldLayoutStructureInspector(state, commands);
     drawSelectedRoomSettings(state, commands);
     drawSelectedOpeningSettings(state, editor.catalog.model, commands);

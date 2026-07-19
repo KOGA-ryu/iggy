@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <limits>
+#include <span>
 #include <vector>
 
 #include "app/iggy3d/creative/document/Document.hpp"
@@ -141,6 +143,95 @@ void appendTerrainLine(
   lines.push_back(line);
 }
 
+[[nodiscard]] bool coordLess(cr::CreativeTerrainCoord2 lhs,
+                             cr::CreativeTerrainCoord2 rhs) noexcept {
+  return lhs.z < rhs.z || (lhs.z == rhs.z && lhs.x < rhs.x);
+}
+
+[[nodiscard]] bool containsCoord(
+    std::span<const cr::CreativeTerrainCoord2> coords,
+    cr::CreativeTerrainCoord2 coord) noexcept {
+  return std::binary_search(coords.begin(), coords.end(), coord, coordLess);
+}
+
+[[nodiscard]] bool containsOffsetCoord(
+    std::span<const cr::CreativeTerrainCoord2> coords,
+    cr::CreativeTerrainCoord2 coord,
+    std::int32_t dx,
+    std::int32_t dz) noexcept {
+  const std::int64_t x = static_cast<std::int64_t>(coord.x) + dx;
+  const std::int64_t z = static_cast<std::int64_t>(coord.z) + dz;
+  if (x < std::numeric_limits<std::int32_t>::min() ||
+      x > std::numeric_limits<std::int32_t>::max() ||
+      z < std::numeric_limits<std::int32_t>::min() ||
+      z > std::numeric_limits<std::int32_t>::max()) {
+    return false;
+  }
+  return containsCoord(coords, {static_cast<std::int32_t>(x),
+                                static_cast<std::int32_t>(z)});
+}
+
+template <typename Height>
+void appendTerrainCellUnionOutline(
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,
+    cr::CreativeGridSettings grid,
+    std::span<const cr::CreativeTerrainCoord2> coords,
+    Height height,
+    iggy3d::RenderLineColor color,
+    float thickness) {
+  for (const cr::CreativeTerrainCoord2 coord : coords) {
+    const double minimumX =
+        grid.origin.x + coord.x * grid.cellSizeMeters;
+    const double maximumX = minimumX + grid.cellSizeMeters;
+    const double minimumZ =
+        grid.origin.z + coord.z * grid.cellSizeMeters;
+    const double maximumZ = minimumZ + grid.cellSizeMeters;
+    const double y = height(coord);
+    if (!containsOffsetCoord(coords, coord, -1, 0)) {
+      appendTerrainLine(lines, {minimumX, y, minimumZ},
+                        {minimumX, y, maximumZ}, color, thickness);
+    }
+    if (!containsOffsetCoord(coords, coord, 1, 0)) {
+      appendTerrainLine(lines, {maximumX, y, minimumZ},
+                        {maximumX, y, maximumZ}, color, thickness);
+    }
+    if (!containsOffsetCoord(coords, coord, 0, -1)) {
+      appendTerrainLine(lines, {minimumX, y, minimumZ},
+                        {maximumX, y, minimumZ}, color, thickness);
+    }
+    if (!containsOffsetCoord(coords, coord, 0, 1)) {
+      appendTerrainLine(lines, {minimumX, y, maximumZ},
+                        {maximumX, y, maximumZ}, color, thickness);
+    }
+  }
+}
+
+[[nodiscard]] const cr::CreativeWorldLayoutTerrainSourceImpact*
+selectedTerrainSourceImpact(const cr::CreativeDocument& document,
+                            const CreativeEditorState& editor) noexcept {
+  const CreativeEditorWorldLayoutState& layout = editor.worldLayout;
+  const CreativeEditorWorldLayoutDiagnosticCache& cache =
+      layout.diagnosticCache;
+  if (!editor.desktopUi.showWorldLayout || !cache.valid ||
+      cache.sourceEpoch != layout.sourceEpoch ||
+      cache.layoutRevision != layout.revision ||
+      cache.documentId != document.id() ||
+      cache.documentRevision != document.revision() ||
+      cache.terrainRevision != document.terrainField().revision() ||
+      cache.materialRevision != document.terrainMaterialField().revision() ||
+      !cache.report.terrainImpactPlan.accepted) {
+    return nullptr;
+  }
+  const cr::CreativeWorldLayoutTable table =
+      creativeEditorWorldLayoutSelectionTable(layout.selection.kind);
+  if (table != cr::CreativeWorldLayoutTable::TerrainProfile &&
+      table != cr::CreativeWorldLayoutTable::TerrainPath) {
+    return nullptr;
+  }
+  return cr::findCreativeWorldLayoutTerrainSourceImpact(
+      cache.report.terrainImpactPlan, table, layout.selection.index);
+}
+
 void appendTerrainGradePreview(
     const cr::CreativeDocument& document,
     const CreativeEditorState& editor,
@@ -209,6 +300,84 @@ void appendTerrainGradePreview(
 }
 
 }  // namespace
+
+CreativeEditorTerrainSourceImpactOverlayFacts
+appendCreativeEditorWorldLayoutTerrainImpactOverlay(
+    const cr::CreativeDocument& document,
+    const CreativeEditorState& editor,
+    float wireThickness,
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines,
+    bool captureMode) {
+  CreativeEditorTerrainSourceImpactOverlayFacts facts;
+  if (captureMode) {
+    return facts;
+  }
+  const cr::CreativeWorldLayoutTerrainSourceImpact* impact =
+      selectedTerrainSourceImpact(document, editor);
+  if (impact == nullptr) {
+    return facts;
+  }
+
+  constexpr iggy3d::RenderLineColor currentColor{0.98F, 0.88F, 0.16F, 1.0F};
+  constexpr iggy3d::RenderLineColor driftedColor{1.0F, 0.20F, 0.18F, 1.0F};
+  const bool pending =
+      editor.worldLayout.generatedRevision != editor.worldLayout.revision;
+  const iggy3d::RenderLineColor color =
+      !pending && impact->status ==
+                      cr::CreativeWorldLayoutTerrainImpactStatus::Current
+          ? currentColor
+          : driftedColor;
+  const float thickness = std::max(0.02F, wireThickness * 0.85F);
+  const cr::CreativeGridSettings grid = document.gridSettings();
+  const std::size_t before = wireLines.size();
+
+  cr::CreativeBounds aggregate{};
+  if (cr::creativeWorldLayoutTerrainImpactWorldBounds(*impact, grid,
+                                                       aggregate)) {
+    appendBounds(wireLines, aggregate, color, thickness * 1.4F);
+  }
+  for (const cr::CreativeTerrainControlPoint& control : impact->controls) {
+    appendBounds(wireLines, terrainRodBounds(grid, control, 0.20), color,
+                 thickness);
+  }
+  if (!impact->influenceCells.empty() &&
+      !impact->influenceCellsClipped) {
+    appendTerrainCellUnionOutline(
+        wireLines, grid, impact->influenceCells,
+        [grid](cr::CreativeTerrainCoord2) {
+          return grid.origin.y + grid.cellSizeMeters * 0.12;
+        },
+        color, thickness * 0.8F);
+  }
+  if (!impact->materials.empty()) {
+    std::vector<cr::CreativeTerrainCoord2> materialCoords;
+    materialCoords.reserve(impact->materials.size());
+    for (const cr::CreativeWorldLayoutTerrainMaterialImpact& material :
+         impact->materials) {
+      materialCoords.push_back(material.coord);
+    }
+    appendTerrainCellUnionOutline(
+        wireLines, grid, materialCoords,
+        [&document, grid](cr::CreativeTerrainCoord2 coord) {
+          const cr::CreativeTerrainHeightSample sample =
+              cr::sampleCreativeTerrainHeight(document.terrainField(), coord);
+          return grid.origin.y +
+                 (sample.present ? sample.heightCells + 0.04 : 0.12) *
+                     grid.cellSizeMeters;
+        },
+        color, thickness * 1.1F);
+  }
+
+  facts.active = true;
+  facts.status = pending
+                     ? cr::CreativeWorldLayoutTerrainImpactStatus::Drifted
+                     : impact->status;
+  facts.controlCount = impact->controls.size();
+  facts.materialCellCount = impact->materials.size();
+  facts.edgeCount = wireLines.size() - before;
+  facts.influenceCellsClipped = impact->influenceCellsClipped;
+  return facts;
+}
 
 void appendCreativeEditorTerrainFootprintOutline(
     std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,

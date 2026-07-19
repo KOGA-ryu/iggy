@@ -156,6 +156,15 @@ CreativeEditorVolumePreviewFacts appendCreativeEditorVolumeAndToolWireframes(
       appendCreativeEditorSelectionTransformPreview(
           editor.transform, request.gizmoThickness, lines);
   const std::size_t terrainBefore = lines.size();
+  const CreativeEditorTerrainSourceImpactOverlayFacts sourceImpact =
+      appendCreativeEditorWorldLayoutTerrainImpactOverlay(
+          request.appState.facade.document(), editor, request.gizmoThickness,
+          lines, request.captureMode);
+  output.terrainSourceImpactActive = sourceImpact.active;
+  output.terrainSourceImpactControlCount = sourceImpact.controlCount;
+  output.terrainSourceImpactMaterialCellCount = sourceImpact.materialCellCount;
+  output.terrainSourceImpactEdgeCount = sourceImpact.edgeCount;
+  output.terrainSourceImpactClipped = sourceImpact.influenceCellsClipped;
   appendCreativeEditorTerrainOverlay(
       request.appState.facade.document(), editor, request.gizmoThickness, lines,
       request.captureMode);

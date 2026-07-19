@@ -75,6 +75,70 @@ void drawStableKey(std::string_view stableKey, std::string_view type) {
                       stableKey.data());
 }
 
+void drawTerrainImpactSummary(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document,
+    cr::CreativeWorldLayoutTable table,
+    std::size_t index,
+    std::string_view stableKey,
+    CreativeDesktopCommandFrame& commands) {
+  const CreativeEditorWorldLayoutDiagnosticCache& cache =
+      state.diagnosticCache;
+  const bool cacheCurrent =
+      cache.valid && cache.sourceEpoch == state.sourceEpoch &&
+      cache.layoutRevision == state.revision &&
+      cache.documentId == document.id() &&
+      cache.documentRevision == document.revision() &&
+      cache.terrainRevision == document.terrainField().revision() &&
+      cache.materialRevision == document.terrainMaterialField().revision();
+  const cr::CreativeWorldLayoutTerrainSourceImpact* impact =
+      cacheCurrent
+          ? cr::findCreativeWorldLayoutTerrainSourceImpact(
+                cache.report.terrainImpactPlan, table, index)
+          : nullptr;
+  if (impact == nullptr) {
+    ImGui::TextDisabled("Impact unavailable");
+    return;
+  }
+
+  const bool pending = state.generatedRevision != state.revision;
+  const bool current =
+      !pending && impact->status ==
+                      cr::CreativeWorldLayoutTerrainImpactStatus::Current;
+  const bool noEffect =
+      impact->status == cr::CreativeWorldLayoutTerrainImpactStatus::NoEffect;
+  const ImVec4 statusColor =
+      current ? ImVec4{0.45F, 0.95F, 0.48F, 1.0F}
+              : noEffect ? ImVec4{0.65F, 0.68F, 0.72F, 1.0F}
+                         : ImVec4{1.0F, 0.32F, 0.28F, 1.0F};
+  const std::string_view status = pending ? "Pending generation"
+                                          : cr::toString(impact->status);
+  ImGui::TextColored(statusColor, "Impact: %.*s",
+                     static_cast<int>(status.size()), status.data());
+  ImGui::TextDisabled("%zu controls  %zu material cells",
+                      impact->controls.size(), impact->materials.size());
+
+  cr::CreativeBounds worldBounds{};
+  const bool hasWorldBounds =
+      cr::creativeWorldLayoutTerrainImpactWorldBounds(
+          *impact, document.gridSettings(), worldBounds);
+  if (hasWorldBounds) {
+    const cr::CreativeBoundsMetrics metrics =
+        cr::measureCreativeBounds(worldBounds);
+    if (metrics.valid) {
+      ImGui::TextDisabled("Bounds %.2f x %.2f x %.2f m", metrics.size.x,
+                          metrics.size.y, metrics.size.z);
+    }
+  }
+  ImGui::BeginDisabled(pending || !hasWorldBounds);
+  if (ImGui::Button("Frame in 3D##terrain_impact")) {
+    commands.push(CreativeDesktopCommandId::WorldLayoutFrameSourceScope3D,
+                  CreativeDesktopWorldLayoutSourcePayload{
+                      table, index, std::string(stableKey)});
+  }
+  ImGui::EndDisabled();
+}
+
 void drawVec3Table(const char* id, const char* firstLabel,
                    cr::CreativeVec3& first, const char* secondLabel = nullptr,
                    cr::CreativeVec3* second = nullptr) {
@@ -195,6 +259,7 @@ void drawLevelInspector(CreativeEditorWorldLayoutState& state,
 }
 
 void drawTerrainProfileInspector(CreativeEditorWorldLayoutState& state,
+                                 const cr::CreativeDocument& document,
                                  CreativeDesktopCommandFrame& commands) {
   if (state.selection.kind !=
           CreativeEditorWorldLayoutSelectionKind::TerrainProfile ||
@@ -221,6 +286,9 @@ void drawTerrainProfileInspector(CreativeEditorWorldLayoutState& state,
 
   ImGui::SeparatorText("Terrain profile");
   drawStableKey(profile.stableKey, "Absolute height field");
+  drawTerrainImpactSummary(state, document,
+                           cr::CreativeWorldLayoutTable::TerrainProfile,
+                           profileIndex, profile.stableKey, commands);
   constexpr std::array kinds{cr::CreativeTerrainRecipeKind::Plateau,
                              cr::CreativeTerrainRecipeKind::Hill,
                              cr::CreativeTerrainRecipeKind::Valley,
@@ -292,6 +360,7 @@ void drawTerrainProfileInspector(CreativeEditorWorldLayoutState& state,
 }
 
 void drawTerrainPathInspector(CreativeEditorWorldLayoutState& state,
+                              const cr::CreativeDocument& document,
                               CreativeDesktopCommandFrame& commands) {
   if (state.selection.kind !=
           CreativeEditorWorldLayoutSelectionKind::TerrainPath ||
@@ -318,6 +387,9 @@ void drawTerrainPathInspector(CreativeEditorWorldLayoutState& state,
 
   ImGui::SeparatorText("Terrain path");
   drawStableKey(path.stableKey, "Polyline recipe");
+  drawTerrainImpactSummary(state, document,
+                           cr::CreativeWorldLayoutTable::TerrainPath,
+                           pathIndex, path.stableKey, commands);
   constexpr std::array kinds{cr::CreativeTerrainRecipeKind::Road,
                              cr::CreativeTerrainRecipeKind::River,
                              cr::CreativeTerrainRecipeKind::Ditch,
@@ -480,10 +552,11 @@ void drawObjectInspector(CreativeEditorWorldLayoutState& state,
 
 void drawCreativeEditorWorldLayoutSourceInspector(
     CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document,
     CreativeDesktopCommandFrame& commands) {
   drawLevelInspector(state, commands);
-  drawTerrainProfileInspector(state, commands);
-  drawTerrainPathInspector(state, commands);
+  drawTerrainProfileInspector(state, document, commands);
+  drawTerrainPathInspector(state, document, commands);
   drawObjectInspector(state, commands);
 }
 
