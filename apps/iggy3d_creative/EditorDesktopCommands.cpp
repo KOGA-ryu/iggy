@@ -967,7 +967,9 @@ void dispatchOne(const CreativeDesktopCommand& command,
     case CreativeDesktopCommandId::TerrainGenerationPreview:
     case CreativeDesktopCommandId::TerrainGenerationRegenerate: {
       if (editor.assetEdit.active ||
-          creativeEditorWorldLayoutPreviewActive(editor.worldLayout)) {
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout) ||
+          editor.worldLayoutTopography.region.editingEnabled ||
+          editor.worldLayoutTopography.region.ownsPreview) {
         result.message = "terrain generator unavailable in this workspace";
         break;
       }
@@ -993,7 +995,9 @@ void dispatchOne(const CreativeDesktopCommand& command,
     }
     case CreativeDesktopCommandId::TerrainGenerationApply: {
       if (editor.assetEdit.active ||
-          creativeEditorWorldLayoutPreviewActive(editor.worldLayout)) {
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout) ||
+          editor.worldLayoutTopography.region.editingEnabled ||
+          editor.worldLayoutTopography.region.ownsPreview) {
         result.message = "terrain generator unavailable in this workspace";
         break;
       }
@@ -1008,18 +1012,33 @@ void dispatchOne(const CreativeDesktopCommand& command,
       break;
     }
     case CreativeDesktopCommandId::TerrainGenerationCancel:
+      if (editor.worldLayoutTopography.region.editingEnabled ||
+          editor.worldLayoutTopography.region.ownsPreview) {
+        result.message = "cancel the terrain region from World Layout";
+        break;
+      }
       result.changed = cancelCreativeEditorTerrainGeneration(
           editor.terrainGeneration, "Terrain preview canceled");
       result.accepted = true;
       result.message = editor.terrainGeneration.statusMessage;
       break;
     case CreativeDesktopCommandId::TerrainOperationNew:
+      if (editor.worldLayoutTopography.region.editingEnabled ||
+          editor.worldLayoutTopography.region.ownsPreview) {
+        result.message = "finish the World Layout terrain region first";
+        break;
+      }
       result.accepted = true;
       result.changed =
           beginNewCreativeEditorTerrainOperation(editor.terrainGeneration);
       result.message = editor.terrainGeneration.statusMessage;
       break;
     case CreativeDesktopCommandId::TerrainOperationSelect: {
+      if (editor.worldLayoutTopography.region.editingEnabled ||
+          editor.worldLayoutTopography.region.ownsPreview) {
+        result.message = "finish the World Layout terrain region first";
+        break;
+      }
       const auto* payload =
           payloadAs<CreativeDesktopTerrainOperationPayload>(command);
       if (payload == nullptr) {
@@ -1042,6 +1061,11 @@ void dispatchOne(const CreativeDesktopCommand& command,
     case CreativeDesktopCommandId::TerrainOperationMove:
     case CreativeDesktopCommandId::TerrainOperationDuplicate:
     case CreativeDesktopCommandId::TerrainOperationDelete: {
+      if (editor.worldLayoutTopography.region.editingEnabled ||
+          editor.worldLayoutTopography.region.ownsPreview) {
+        result.message = "finish the World Layout terrain region first";
+        break;
+      }
       const auto* payload =
           payloadAs<CreativeDesktopTerrainOperationPayload>(command);
       if (payload == nullptr) {
@@ -1091,6 +1115,42 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = editor.terrainGeneration.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview: {
+      if (editor.assetEdit.active ||
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout)) {
+        result.message = "terrain region unavailable in this workspace";
+        break;
+      }
+      const CreativeEditorTerrainGenerationPreviewReceipt receipt =
+          previewCreativeEditorWorldLayoutTerrainRegion(
+              editor.worldLayoutTopography.region, editor.terrainGeneration,
+              activeAppState.facade.document());
+      result.accepted = receipt.accepted;
+      result.changed = receipt.accepted;
+      result.affectedObjectCount =
+          editor.terrainGeneration.operationPreview.receipt.replay
+              .modifiedCellCount;
+      result.message = editor.worldLayoutTopography.region.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutTerrainRegionApply: {
+      const CreativeEditorTerrainGenerationApplyReceipt receipt =
+          applyCreativeEditorWorldLayoutTerrainRegion(
+              editor.worldLayoutTopography.region, editor.terrainGeneration,
+              activeAppState);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.sceneChanged = receipt.changed;
+      result.affectedObjectCount = receipt.operation.replay.outputCellCount;
+      result.message = editor.worldLayoutTopography.region.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel:
+      result.changed = cancelCreativeEditorWorldLayoutTerrainRegion(
+          editor.worldLayoutTopography.region, editor.terrainGeneration);
+      result.accepted = true;
+      result.message = editor.worldLayoutTopography.region.statusMessage;
+      break;
     case CreativeDesktopCommandId::WorldLayoutSetTool: {
       const auto* payload =
           payloadAs<CreativeDesktopWorldLayoutToolPayload>(command);
@@ -2492,6 +2552,11 @@ void dispatchOne(const CreativeDesktopCommand& command,
       break;
     }
     case CreativeDesktopCommandId::WorldLayoutPreview: {
+      if (editor.worldLayoutTopography.region.editingEnabled ||
+          editor.worldLayoutTopography.region.ownsPreview) {
+        result.message = "finish the terrain region before layout preview";
+        break;
+      }
       const CreativeEditorWorldLayoutPreviewReceipt receipt =
           previewCreativeEditorWorldLayout(editor.worldLayout,
                                            appState.facade.document());
@@ -2505,6 +2570,11 @@ void dispatchOne(const CreativeDesktopCommand& command,
       break;
     }
     case CreativeDesktopCommandId::WorldLayoutConfirm: {
+      if (editor.worldLayoutTopography.region.editingEnabled ||
+          editor.worldLayoutTopography.region.ownsPreview) {
+        result.message = "finish the terrain region before layout generation";
+        break;
+      }
       const auto* payload =
           payloadAs<CreativeDesktopWorldLayoutConfirmPayload>(command);
       if (payload == nullptr &&

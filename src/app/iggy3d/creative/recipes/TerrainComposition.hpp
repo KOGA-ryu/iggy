@@ -22,6 +22,7 @@ enum class CreativeTerrainCompositionMode : std::uint8_t {
   Replace,
   Raise,
   Lower,
+  Smooth,
   Count,
 };
 
@@ -96,9 +97,10 @@ struct CreativeTerrainCompositionResult {
 // sampling canonical source terrain for every cell before applying the mask.
 // The returned field is complete document-candidate truth: preview and Apply
 // must consume this exact field rather than recomposing independently.
-// Traversal is deterministic row-major O(output cells + source columns), and
-// capacity is rejected before output allocation so failure leaves no partial
-// candidate.
+// Smooth is one deterministic 3x3 box-filter pass over present source cells;
+// empty centers stay empty. Traversal is deterministic row-major O(output
+// cells + source columns), and capacity is rejected before output allocation
+// so failure leaves no partial candidate.
 [[nodiscard]] CreativeTerrainCompositionResult composeCreativeTerrainGeneration(
     const CreativeTerrainHeightField& existingAuthored,
     const CreativeTerrainSurfacePlan& canonicalSource,

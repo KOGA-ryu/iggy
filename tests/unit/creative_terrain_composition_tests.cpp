@@ -191,6 +191,67 @@ bool raiseAndLowerAreMonotonic() {
                 "lower never raises source terrain");
 }
 
+bool smoothUsesOneBoundedSourcePassAndPreservesHoles() {
+  constexpr cr::CreativeTerrainHeightFieldBounds bounds{{0, 0}, 3U, 3U};
+  constexpr std::array<std::uint16_t, 9U> sourceHeights{
+      4U, 4U, 4U,
+      4U, 16U, 4U,
+      4U, 4U, 4U,
+  };
+  constexpr std::array<std::uint16_t, 9U> generatedHeights{
+      1U, 1U, 1U,
+      1U, 1U, 1U,
+      1U, 1U, 1U,
+  };
+  const cr::CreativeTerrainHeightField existing =
+      makeField(bounds, sourceHeights);
+  const cr::CreativeTerrainSurfacePlan canonical =
+      cr::buildCreativeTerrainHeightSurfacePlan(existing);
+  const cr::CreativeTerrainGenerationResult generation =
+      makeGeneration(bounds, generatedHeights);
+  cr::CreativeTerrainCompositionRecipe recipe;
+  recipe.mode = cr::CreativeTerrainCompositionMode::Smooth;
+  recipe.featherCells = 0U;
+  const cr::CreativeTerrainCompositionResult composed =
+      cr::composeCreativeTerrainGeneration(existing, canonical, generation,
+                                            recipe);
+  constexpr std::array<std::uint16_t, 9U> expected{
+      7U, 6U, 7U,
+      6U, 5U, 6U,
+      7U, 6U, 7U,
+  };
+
+  constexpr cr::CreativeTerrainHeightFieldBounds holeBounds{{0, 0}, 2U, 1U};
+  constexpr std::array<std::uint16_t, 2U> holeHeights{0U, 8U};
+  constexpr std::array<std::uint16_t, 2U> holeGenerated{1U, 1U};
+  const cr::CreativeTerrainHeightField holeField =
+      makeField(holeBounds, holeHeights);
+  const cr::CreativeTerrainCompositionResult holes =
+      cr::composeCreativeTerrainGeneration(
+          holeField, cr::buildCreativeTerrainHeightSurfacePlan(holeField),
+          makeGeneration(holeBounds, holeGenerated), recipe);
+
+  return expect(composed.receipt.accepted &&
+                    std::equal(expected.begin(), expected.end(),
+                               composed.heightField.heights().begin(),
+                               composed.heightField.heights().end()),
+                "smooth is one deterministic 3x3 source pass") &&
+         expect(holes.receipt.accepted &&
+                    holes.heightField.heights().front() == 0U,
+                "smooth does not materialize an empty center cell") &&
+         expect(cr::toString(cr::CreativeTerrainCompositionMode::Smooth) ==
+                        "Smooth" &&
+                    [] {
+                      cr::CreativeTerrainCompositionMode parsed =
+                          cr::CreativeTerrainCompositionMode::Count;
+                      return cr::parseCreativeTerrainCompositionMode(
+                                 "Smooth", parsed) &&
+                             parsed ==
+                                 cr::CreativeTerrainCompositionMode::Smooth;
+                    }(),
+                "smooth has stable persistence text");
+}
+
 bool invalidInputsAndCapacityRejectAtomically() {
   constexpr cr::CreativeTerrainHeightFieldBounds existingBounds{
       {0, 0}, 1U, 1U};
@@ -271,6 +332,7 @@ int main() {
                  rectangleFeatherBlendsDeterministically() &&
                  ellipseMaskLeavesCornersUntouched() &&
                  raiseAndLowerAreMonotonic() &&
+                 smoothUsesOneBoundedSourcePassAndPreservesHoles() &&
                  invalidInputsAndCapacityRejectAtomically()
              ? EXIT_SUCCESS
              : EXIT_FAILURE;

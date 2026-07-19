@@ -211,10 +211,11 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
         static_cast<cr::CreativeTerrainCompositionMask>(mask);
     recipeChanged = true;
   }
-  constexpr std::array<const char*, 3U> modeLabels{
+  constexpr std::array<const char*, 4U> modeLabels{
       "Replace",
       "Raise",
       "Lower",
+      "Smooth",
   };
   int mode = static_cast<int>(state.compositionRecipe.mode);
   if (ImGui::Combo("Mode", &mode, modeLabels.data(),

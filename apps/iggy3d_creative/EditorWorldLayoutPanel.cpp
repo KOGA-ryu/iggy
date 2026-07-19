@@ -244,6 +244,33 @@ void drawTopographyContours(
   }
 }
 
+void drawTerrainRegionSelection(
+    ImDrawList& drawList,
+    const CanvasTransform& transform,
+    const CreativeEditorWorldLayoutTerrainRegionState& region) {
+  if (!region.editingEnabled || !region.regionValid) {
+    return;
+  }
+  const double maximumX =
+      static_cast<double>(region.bounds.minimum.x) +
+      region.bounds.widthCells;
+  const double maximumZ =
+      static_cast<double>(region.bounds.minimum.z) +
+      region.bounds.depthCells;
+  const ImVec4 tint = region.selecting
+                          ? ImVec4{0.98F, 0.78F, 0.20F, 1.0F}
+                      : region.ownsPreview
+                          ? ImVec4{0.25F, 0.95F, 0.48F, 1.0F}
+                          : ImVec4{0.30F, 0.72F, 1.0F, 1.0F};
+  const ImVec2 minimum =
+      toScreen(transform, region.bounds.minimum.x, region.bounds.minimum.z);
+  const ImVec2 maximum = toScreen(transform, maximumX, maximumZ);
+  ImVec4 fill = tint;
+  fill.w = 0.14F;
+  drawList.AddRectFilled(minimum, maximum, color(fill));
+  drawList.AddRect(minimum, maximum, color(tint), 0.0F, 0, 2.5F);
+}
+
 void drawTopographyHoverFacts(
     const CreativeEditorWorldLayoutTopographyState& topography,
     CreativeEditorWorldLayoutPoint point,
@@ -2152,6 +2179,132 @@ void drawSelectedOpeningSettings(
   ImGui::EndDisabled();
 }
 
+void drawWorldLayoutTerrainRegionControls(
+    CreativeEditorWorldLayoutTopographyState& topography,
+    const CreativeEditorTerrainGenerationState& terrainGeneration,
+    CreativeDesktopCommandFrame& commands,
+    bool unavailable) {
+  CreativeEditorWorldLayoutTerrainRegionState& region = topography.region;
+  const bool previewOwnedElsewhere =
+      terrainGeneration.previewActive && !region.ownsPreview;
+  ImGui::SeparatorText("Terrain region");
+  ImGui::BeginDisabled(unavailable || previewOwnedElsewhere);
+  bool editingEnabled = region.editingEnabled;
+  if (ImGui::Checkbox("Edit terrain region", &editingEnabled)) {
+    region.editingEnabled = editingEnabled;
+    if (editingEnabled) {
+      topography.visible = true;
+      topography.elevationBandsVisible = true;
+    } else {
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
+    }
+  }
+  if (!region.editingEnabled) {
+    ImGui::EndDisabled();
+    return;
+  }
+
+  constexpr std::array<const char*, 5U> operationLabels{
+      "Flatten", "Raise", "Lower", "Smooth", "Noise"};
+  int operation = static_cast<int>(region.operation);
+  bool settingsChanged = false;
+  ImGui::SetNextItemWidth(-1.0F);
+  if (ImGui::Combo("Operation##terrain_region", &operation,
+                   operationLabels.data(),
+                   static_cast<int>(operationLabels.size()))) {
+    region.operation =
+        static_cast<CreativeEditorWorldLayoutTerrainRegionOperation>(
+            operation);
+    settingsChanged = true;
+  }
+
+  constexpr std::array<const char*, 2U> maskLabels{"Rectangle", "Ellipse"};
+  int mask = static_cast<int>(region.mask);
+  ImGui::SetNextItemWidth(-1.0F);
+  if (ImGui::Combo("Shape##terrain_region", &mask, maskLabels.data(),
+                   static_cast<int>(maskLabels.size()))) {
+    region.mask = static_cast<cr::CreativeTerrainCompositionMask>(mask);
+    settingsChanged = true;
+  }
+
+  const bool smooth = region.operation ==
+                      CreativeEditorWorldLayoutTerrainRegionOperation::Smooth;
+  if (!smooth) {
+    int target = static_cast<int>(region.targetHeightCells);
+    const char* targetLabel =
+        region.operation ==
+                CreativeEditorWorldLayoutTerrainRegionOperation::Noise
+            ? "Base height##terrain_region"
+            : "Target height##terrain_region";
+    if (ImGui::DragInt(
+            targetLabel, &target, 0.25F,
+            static_cast<int>(cr::kCreativeTerrainMinimumHeightCells),
+            static_cast<int>(cr::kCreativeTerrainMaximumHeightCells),
+            "%d cells", ImGuiSliderFlags_AlwaysClamp)) {
+      region.targetHeightCells = static_cast<std::uint16_t>(target);
+      settingsChanged = true;
+    }
+  }
+
+  if (region.operation ==
+      CreativeEditorWorldLayoutTerrainRegionOperation::Noise) {
+    int relief = static_cast<int>(region.noiseReliefCells);
+    if (ImGui::DragInt(
+            "Relief##terrain_region", &relief, 0.25F, 0,
+            static_cast<int>(cr::kCreativeTerrainMaximumHeightCells),
+            "%d cells", ImGuiSliderFlags_AlwaysClamp)) {
+      region.noiseReliefCells = static_cast<std::uint16_t>(relief);
+      settingsChanged = true;
+    }
+    settingsChanged =
+        ImGui::DragScalar(
+            "Scale##terrain_region", ImGuiDataType_Double,
+            &region.noiseScaleCells, 0.25F,
+            &cr::kCreativeTerrainGeneratorMinimumHorizontalScaleCells,
+            &cr::kCreativeTerrainGeneratorMaximumHorizontalScaleCells,
+            "%.1f cells", ImGuiSliderFlags_AlwaysClamp) ||
+        settingsChanged;
+    if (ImGui::Button("New seed##terrain_region")) {
+      region.seed = region.seed == std::numeric_limits<std::uint64_t>::max()
+                        ? 0U
+                        : region.seed + 1U;
+      settingsChanged = true;
+    }
+  }
+
+  int feather = static_cast<int>(region.featherCells);
+  if (ImGui::DragInt(
+          "Feather##terrain_region", &feather, 0.25F, 0,
+          static_cast<int>(
+              cr::kCreativeTerrainCompositionMaximumFeatherCells),
+          "%d cells", ImGuiSliderFlags_AlwaysClamp)) {
+    region.featherCells = static_cast<std::uint16_t>(feather);
+    settingsChanged = true;
+  }
+
+  if (settingsChanged && region.regionValid && !region.selecting) {
+    commands.push(
+        CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
+  }
+
+  ImGui::BeginDisabled(!region.ownsPreview);
+  if (ImGui::Button("Apply region")) {
+    commands.push(CreativeDesktopCommandId::WorldLayoutTerrainRegionApply);
+  }
+  ImGui::EndDisabled();
+  ImGui::SameLine();
+  ImGui::BeginDisabled(!region.regionValid && !region.ownsPreview);
+  if (ImGui::Button("Cancel preview")) {
+    commands.push(
+        CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
+  }
+  ImGui::EndDisabled();
+  ImGui::TextColored(ImVec4{0.32F, 0.95F, 0.43F, 1.0F}, "%s",
+                     region.statusMessage.c_str());
+  ImGui::EndDisabled();
+}
+
 void drawWorldLayoutViewControls(CreativeEditorWorldLayoutState& state,
                                  CreativeEditorWorldLayoutTopographyState&
                                      topography,
@@ -2166,6 +2319,11 @@ void drawWorldLayoutViewControls(CreativeEditorWorldLayoutState& state,
       state.viewMode == CreativeEditorWorldLayoutViewMode::Elevation;
   if (ImGui::RadioButton("Elevation", elevation) && !elevation) {
     queueLayoutManipulationCancel(state, commands);
+    if (topography.region.editingEnabled) {
+      topography.region.editingEnabled = false;
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
+    }
     state.viewMode = CreativeEditorWorldLayoutViewMode::Elevation;
   }
   if (state.viewMode == CreativeEditorWorldLayoutViewMode::Plan) {
@@ -2224,10 +2382,24 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   const bool previewActive = creativeEditorWorldLayoutPreviewActive(state);
   const cr::CreativeDocument& renderDocument =
       creativeEditorWorldLayoutRenderDocument(state, document);
+  const bool terrainGenerationPreviewActive =
+      !previewActive && &renderDocument == &document &&
+      creativeEditorTerrainGenerationPreviewMatches(
+          editor.terrainGeneration, document);
+  const cr::CreativeTerrainHeightField* terrainHeightOverride =
+      terrainGenerationPreviewActive
+          ? &editor.terrainGeneration.operationPreview.heightField
+          : nullptr;
+  const bool topographySourceOverride =
+      previewActive || terrainGenerationPreviewActive;
+  const std::uint64_t topographySourceKey =
+      terrainGenerationPreviewActive
+          ? editor.terrainGeneration.operationPreview.receipt.replay.heightHash
+          : previewActive ? state.previewLayoutRevision : 0U;
   const cr::CreativeGridSettings grid = renderDocument.gridSettings();
   static_cast<void>(refreshCreativeEditorWorldLayoutTopography(
-      topography, renderDocument, previewActive,
-      previewActive ? state.previewLayoutRevision : 0U));
+      topography, renderDocument, topographySourceOverride,
+      topographySourceKey, terrainHeightOverride));
   const ImVec2 available = ImGui::GetContentRegionAvail();
   const ImVec2 canvasSize{std::max(available.x, 160.0F),
                           std::max(available.y, 160.0F)};
@@ -2274,6 +2446,7 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   drawTopographyBands(*drawList, transform, visibleBounds, topography);
   drawGrid(*drawList, minimum, maximum, transform);
   drawTopographyContours(*drawList, transform, visibleBounds, topography);
+  drawTerrainRegionSelection(*drawList, transform, topography.region);
   const cr::CreativeWorldLayout &displaySource =
       creativeEditorWorldLayoutDisplaySource(state);
   drawTerrainSymbols(*drawList, transform, state);
@@ -2323,6 +2496,47 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   }
 
   if (!interactionEnabled) {
+    return;
+  }
+
+  CreativeEditorWorldLayoutTerrainRegionState& terrainRegion =
+      topography.region;
+  if (terrainRegion.editingEnabled) {
+    if (hovered) {
+      ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+    }
+    const bool cancel =
+        io.AppFocusLost ||
+        (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
+        ImGui::IsKeyPressed(ImGuiKey_Escape);
+    if (cancel) {
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
+      return;
+    }
+    const bool previewOwnedElsewhere =
+        editor.terrainGeneration.previewActive &&
+        !terrainRegion.ownsPreview;
+    if (previewOwnedElsewhere) {
+      return;
+    }
+    if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+      static_cast<void>(beginCreativeEditorWorldLayoutTerrainRegion(
+          terrainRegion, hoveredPoint.x, hoveredPoint.z));
+    }
+    if (terrainRegion.selecting &&
+        ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+      static_cast<void>(updateCreativeEditorWorldLayoutTerrainRegion(
+          terrainRegion, hoveredPoint.x, hoveredPoint.z));
+    }
+    if (terrainRegion.selecting &&
+        ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+      if (finishCreativeEditorWorldLayoutTerrainRegion(
+              terrainRegion, hoveredPoint.x, hoveredPoint.z)) {
+        commands.push(
+            CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
+      }
+    }
     return;
   }
 
@@ -3216,12 +3430,25 @@ void buildCreativeEditorWorldLayoutPanel(
     const cr::CreativeDocument& document, bool playModeActive,
     CreativeDesktopCommandFrame& commands) {
   CreativeEditorWorldLayoutState& state = editor.worldLayout;
+  CreativeEditorWorldLayoutTopographyState& topography =
+      editor.worldLayoutTopography;
+  if (synchronizeCreativeEditorWorldLayoutTerrainRegion(
+          topography.region, editor.terrainGeneration, document)) {
+    topography.cacheValid = false;
+  }
   if (!desktopUi.showWorldLayout) {
     queueLayoutManipulationCancel(state, commands);
+    if (topography.region.editingEnabled || topography.region.ownsPreview) {
+      topography.region.editingEnabled = false;
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
+    }
     return;
   }
 
   const bool editingDisabled = playModeActive || editor.assetEdit.active;
+  const bool exactPreviewActive =
+      creativeEditorWorldLayoutPreviewActive(state);
   const CreativeEditorWorldLayoutDiagnosticReport& diagnostics =
       refreshCreativeEditorWorldLayoutDiagnostics(
           state.diagnosticCache, document, state.source, state.revision,
@@ -3230,6 +3457,11 @@ void buildCreativeEditorWorldLayoutPanel(
   synchronizeConflictReview(state, diagnostics);
   if (editingDisabled) {
     queueLayoutManipulationCancel(state, commands);
+    if (topography.region.editingEnabled || topography.region.ownsPreview) {
+      topography.region.editingEnabled = false;
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
+    }
   }
   if (state.buildingTransform.active && ImGui::IsKeyPressed(ImGuiKey_Escape)) {
     commands.push(CreativeDesktopCommandId::WorldLayoutTransformBuilding,
@@ -3247,13 +3479,21 @@ void buildCreativeEditorWorldLayoutPanel(
     if (ImGui::BeginTabBar("##world_layout_left_tabs")) {
       if (ImGui::BeginTabItem("Source")) {
         drawCreativeEditorWorldLayoutHierarchy(desktopUi, state, commands,
-                                               editingDisabled);
+                                               editingDisabled ||
+                                                   topography.region
+                                                       .editingEnabled);
         ImGui::EndTabItem();
       }
       if (ImGui::BeginTabItem("Create")) {
+        drawWorldLayoutTerrainRegionControls(
+            topography, editor.terrainGeneration, commands,
+            editingDisabled || exactPreviewActive ||
+                state.buildingTransform.active ||
+                state.buildingTemplatePlacement.active);
         ImGui::BeginDisabled(
             editingDisabled || state.buildingTransform.active ||
-            state.buildingTemplatePlacement.active);
+            state.buildingTemplatePlacement.active ||
+            topography.region.editingEnabled);
         drawWorldLayoutPalette(state, commands);
         ImGui::Spacing();
         drawWorldLayoutAssetPalette(state, editor.catalog.model, commands);
@@ -3270,7 +3510,8 @@ void buildCreativeEditorWorldLayoutPanel(
 
   if (ImGui::Begin("World Layout Properties###Inspector", nullptr,
                    ImGuiWindowFlags_NoCollapse)) {
-    ImGui::BeginDisabled(editingDisabled);
+    ImGui::BeginDisabled(editingDisabled ||
+                         topography.region.editingEnabled);
     drawCreativeEditorWorldLayoutSourceInspector(state, document, commands);
     drawCreativeEditorWorldLayoutStructureInspector(state, commands);
     drawSelectedRoomSettings(state, commands);
@@ -3282,8 +3523,6 @@ void buildCreativeEditorWorldLayoutPanel(
   }
   ImGui::End();
 
-  const bool exactPreviewActive =
-      creativeEditorWorldLayoutPreviewActive(state);
   const bool hasSelection =
       state.selection.kind != CreativeEditorWorldLayoutSelectionKind::None;
   const bool buildingSelected =
@@ -3291,7 +3530,8 @@ void buildCreativeEditorWorldLayoutPanel(
   if (ImGui::Begin("World Layout Build###Diagnostics##bottom", nullptr,
                    ImGuiWindowFlags_NoCollapse)) {
     ImGui::BeginDisabled(editingDisabled || state.buildingTransform.active ||
-                         state.buildingTemplatePlacement.active);
+                         state.buildingTemplatePlacement.active ||
+                         topography.region.editingEnabled);
     ImGui::BeginDisabled(!diagnostics.ready);
     if (ImGui::Button(exactPreviewActive ? "Refresh 3D Preview"
                                          : "Preview 3D")) {
@@ -3475,6 +3715,11 @@ void buildCreativeEditorWorldLayoutPanel(
     ImGui::EndDisabled();
   } else {
     queueLayoutManipulationCancel(state, commands);
+    if (topography.region.editingEnabled || topography.region.ownsPreview) {
+      topography.region.editingEnabled = false;
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
+    }
   }
   ImGui::End();
 }

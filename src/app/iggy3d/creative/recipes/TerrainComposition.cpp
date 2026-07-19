@@ -152,10 +152,48 @@ inline constexpr std::uint32_t kMaximumMaskWeight = 65535U;
   return 0U;
 }
 
+[[nodiscard]] std::uint16_t smoothTarget(
+    std::span<const std::uint16_t> sourceHeights,
+    CreativeTerrainHeightFieldBounds bounds,
+    std::uint16_t centerX,
+    std::uint16_t centerZ) noexcept {
+  const std::size_t centerIndex =
+      static_cast<std::size_t>(centerZ) * bounds.widthCells + centerX;
+  if (sourceHeights[centerIndex] == kCreativeTerrainEmptyHeightCells) {
+    return kCreativeTerrainEmptyHeightCells;
+  }
+  std::uint32_t sum = 0U;
+  std::uint32_t count = 0U;
+  const std::int32_t minimumX = std::max<std::int32_t>(centerX - 1, 0);
+  const std::int32_t maximumX = std::min<std::int32_t>(
+      centerX + 1, static_cast<std::int32_t>(bounds.widthCells) - 1);
+  const std::int32_t minimumZ = std::max<std::int32_t>(centerZ - 1, 0);
+  const std::int32_t maximumZ = std::min<std::int32_t>(
+      centerZ + 1, static_cast<std::int32_t>(bounds.depthCells) - 1);
+  for (std::int32_t z = minimumZ; z <= maximumZ; ++z) {
+    for (std::int32_t x = minimumX; x <= maximumX; ++x) {
+      const std::uint16_t height =
+          sourceHeights[static_cast<std::size_t>(z) * bounds.widthCells +
+                        static_cast<std::size_t>(x)];
+      if (height != kCreativeTerrainEmptyHeightCells) {
+        sum += height;
+        ++count;
+      }
+    }
+  }
+  return count == 0U
+             ? kCreativeTerrainEmptyHeightCells
+             : static_cast<std::uint16_t>((sum + count / 2U) / count);
+}
+
 [[nodiscard]] std::uint16_t compositionTarget(
     CreativeTerrainCompositionMode mode,
     std::uint16_t source,
-    std::uint16_t generated) noexcept {
+    std::uint16_t generated,
+    std::span<const std::uint16_t> sourceHeights,
+    CreativeTerrainHeightFieldBounds bounds,
+    std::uint16_t x,
+    std::uint16_t z) noexcept {
   switch (mode) {
     case CreativeTerrainCompositionMode::Replace:
       return generated;
@@ -163,6 +201,8 @@ inline constexpr std::uint32_t kMaximumMaskWeight = 65535U;
       return std::max(source, generated);
     case CreativeTerrainCompositionMode::Lower:
       return std::min(source, generated);
+    case CreativeTerrainCompositionMode::Smooth:
+      return smoothTarget(sourceHeights, bounds, x, z);
     case CreativeTerrainCompositionMode::Count:
       break;
   }
@@ -238,6 +278,8 @@ std::string_view toString(CreativeTerrainCompositionMode mode) noexcept {
       return "Raise";
     case CreativeTerrainCompositionMode::Lower:
       return "Lower";
+    case CreativeTerrainCompositionMode::Smooth:
+      return "Smooth";
     case CreativeTerrainCompositionMode::Count:
       break;
   }
@@ -257,6 +299,10 @@ bool parseCreativeTerrainCompositionMode(
   }
   if (value == "Lower") {
     output = CreativeTerrainCompositionMode::Lower;
+    return true;
+  }
+  if (value == "Smooth") {
+    output = CreativeTerrainCompositionMode::Smooth;
     return true;
   }
   return false;
@@ -375,8 +421,8 @@ CreativeTerrainCompositionResult composeCreativeTerrainGeneration(
   const CreativeTerrainHeightFieldBounds generatedBounds = generated.bounds();
   const CreativeTerrainHeightFieldBounds existingBounds =
       existingAuthored.bounds();
-  std::vector<std::uint16_t> heights;
-  heights.reserve(static_cast<std::size_t>(outputCellCount));
+  std::vector<std::uint16_t> sourceHeights;
+  sourceHeights.reserve(static_cast<std::size_t>(outputCellCount));
   std::size_t sourceIndex = 0U;
   for (std::uint16_t outputZ = 0U; outputZ < outputBounds.depthCells;
        ++outputZ) {
@@ -395,6 +441,24 @@ CreativeTerrainCompositionResult composeCreativeTerrainGeneration(
                   canonicalSource.columns[sourceIndex].coord == coord
               ? canonicalSource.columns[sourceIndex].heightCells
               : kCreativeTerrainEmptyHeightCells;
+      sourceHeights.push_back(sourceHeight);
+    }
+  }
+
+  std::vector<std::uint16_t> heights;
+  heights.reserve(static_cast<std::size_t>(outputCellCount));
+  for (std::uint16_t outputZ = 0U; outputZ < outputBounds.depthCells;
+       ++outputZ) {
+    for (std::uint16_t outputX = 0U; outputX < outputBounds.widthCells;
+         ++outputX) {
+      const CreativeTerrainCoord2 coord{
+          outputBounds.minimum.x + static_cast<std::int32_t>(outputX),
+          outputBounds.minimum.z + static_cast<std::int32_t>(outputZ),
+      };
+      const std::size_t outputIndex =
+          static_cast<std::size_t>(outputZ) * outputBounds.widthCells +
+          outputX;
+      const std::uint16_t sourceHeight = sourceHeights[outputIndex];
       std::uint16_t outputHeight = sourceHeight;
       if (insideBounds(coord, generatedBounds)) {
         const std::uint16_t generatedX = static_cast<std::uint16_t>(
@@ -413,7 +477,8 @@ CreativeTerrainCompositionResult composeCreativeTerrainGeneration(
             ++result.receipt.featheredCellCount;
           }
           const std::uint16_t target = compositionTarget(
-              recipe.mode, sourceHeight, generated.heights()[generatedIndex]);
+              recipe.mode, sourceHeight, generated.heights()[generatedIndex],
+              sourceHeights, outputBounds, outputX, outputZ);
           outputHeight = blendHeight(sourceHeight, target, weight);
         }
       }

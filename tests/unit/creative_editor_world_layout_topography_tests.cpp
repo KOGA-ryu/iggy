@@ -1,5 +1,8 @@
 #include "EditorWorldLayout.hpp"
 #include "EditorWorldLayoutTopography.hpp"
+#include "EditorDesktopCommands.hpp"
+#include "EditorEdits.hpp"
+#include "EditorState.hpp"
 
 #include <array>
 #include <cmath>
@@ -243,6 +246,174 @@ bool capacityLimitsRemainAtomicAndUseful() {
                 "contour overflow retains bounded elevation bands");
 }
 
+bool regionSelectionBuildsSharedOperationRecipes() {
+  app::CreativeEditorWorldLayoutTerrainRegionState state;
+  state.editingEnabled = true;
+  const bool began = app::beginCreativeEditorWorldLayoutTerrainRegion(
+      state, 2.8, -1.2);
+  const bool updated = app::updateCreativeEditorWorldLayoutTerrainRegion(
+      state, -0.1, 2.9);
+  const bool finished = app::finishCreativeEditorWorldLayoutTerrainRegion(
+      state, -0.1, 2.9);
+
+  constexpr std::array expectedModes{
+      cr::CreativeTerrainCompositionMode::Replace,
+      cr::CreativeTerrainCompositionMode::Raise,
+      cr::CreativeTerrainCompositionMode::Lower,
+      cr::CreativeTerrainCompositionMode::Smooth,
+      cr::CreativeTerrainCompositionMode::Replace,
+  };
+  bool mappingsMatch = true;
+  for (std::size_t index = 0U; index < expectedModes.size(); ++index) {
+    state.operation =
+        static_cast<app::CreativeEditorWorldLayoutTerrainRegionOperation>(
+            index);
+    const auto plan =
+        app::planCreativeEditorWorldLayoutTerrainRegion(state);
+    mappingsMatch = mappingsMatch && plan.accepted &&
+                    plan.generation.bounds == state.bounds &&
+                    plan.composition.mode == expectedModes[index] &&
+                    plan.generation.reliefCells ==
+                        (state.operation ==
+                                 app::CreativeEditorWorldLayoutTerrainRegionOperation::
+                                     Noise
+                             ? state.noiseReliefCells
+                             : 0U);
+  }
+
+  app::CreativeEditorWorldLayoutTerrainRegionState oversized;
+  oversized.editingEnabled = true;
+  const bool oversizedBegan =
+      app::beginCreativeEditorWorldLayoutTerrainRegion(oversized, 0.0, 0.0);
+  const bool oversizedUpdated =
+      app::updateCreativeEditorWorldLayoutTerrainRegion(
+          oversized, 100.0, 100.0);
+  const bool nonFinite =
+      app::beginCreativeEditorWorldLayoutTerrainRegion(
+          oversized, std::numeric_limits<double>::quiet_NaN(), 0.0);
+
+  return expect(began && updated && finished &&
+                    state.bounds ==
+                        cr::CreativeTerrainHeightFieldBounds{{-1, -2}, 4U,
+                                                             5U},
+                "drag selection floors cells and includes both endpoints") &&
+         expect(mappingsMatch,
+                "region modes map to the shared durable composition recipes") &&
+         expect(oversizedBegan && !oversizedUpdated &&
+                    !oversized.regionValid && !nonFinite,
+                "capacity and non-finite selection fail closed");
+}
+
+bool regionPreviewAndApplyAreExactAtomicAndUndoable() {
+  constexpr std::array<std::uint16_t, 9U> heights{
+      4U, 4U, 4U,
+      4U, 4U, 4U,
+      4U, 4U, 4U,
+  };
+  cr::CreativeAppState appState;
+  static_cast<void>(appState.facade.installDocument(
+      topographyDocument(2107U, heights)));
+  app::CreativeEditorState editor;
+  app::CreativeEditorWorldLayoutTerrainRegionState& region =
+      editor.worldLayoutTopography.region;
+  region.editingEnabled = true;
+  region.targetHeightCells = 9U;
+  region.featherCells = 0U;
+  static_cast<void>(app::beginCreativeEditorWorldLayoutTerrainRegion(
+      region, -0.8, -0.8));
+  static_cast<void>(app::finishCreativeEditorWorldLayoutTerrainRegion(
+      region, 0.8, 0.8));
+  const std::uint64_t revisionBefore =
+      appState.facade.document().revision();
+
+  app::CreativeDesktopCommandFrame previewFrame;
+  previewFrame.push(
+      app::CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
+  const app::CreativeDesktopCommandResult preview =
+      app::dispatchCreativeDesktopCommands(
+          previewFrame, {appState, editor, {}, nullptr, nullptr, nullptr});
+  const bool previewOwned = region.ownsPreview;
+  const cr::CreativeTerrainHeightField& candidate =
+      editor.terrainGeneration.operationPreview.heightField;
+  app::CreativeEditorWorldLayoutTopographyState previewCache;
+  const std::uint64_t candidateHash =
+      editor.terrainGeneration.operationPreview.receipt.replay.heightHash;
+  const bool candidateCacheBuilt =
+      app::refreshCreativeEditorWorldLayoutTopography(
+          previewCache, appState.facade.document(), true, candidateHash,
+          &candidate);
+  const bool candidateCacheReused =
+      !app::refreshCreativeEditorWorldLayoutTopography(
+          previewCache, appState.facade.document(), true, candidateHash,
+          &candidate);
+  const auto previewPlan = app::buildCreativeEditorWorldLayoutTopography(
+      appState.facade.document(), 1U, 2U, &candidate);
+  const auto changedSample = app::sampleCreativeEditorWorldLayoutTopography(
+      previewPlan, -0.5, -0.5);
+  const auto preservedSample = app::sampleCreativeEditorWorldLayoutTopography(
+      previewPlan, 1.5, 1.5);
+
+  app::CreativeDesktopCommandFrame applyFrame;
+  applyFrame.push(
+      app::CreativeDesktopCommandId::WorldLayoutTerrainRegionApply);
+  const app::CreativeDesktopCommandResult applied =
+      app::dispatchCreativeDesktopCommands(
+          applyFrame, {appState, editor, {}, nullptr, nullptr, nullptr});
+  const std::size_t operationCountAfterApply =
+      appState.facade.document().terrainOperationStack().operations.size();
+  const std::uint64_t undoDepthAfterApply =
+      cr::creativeUndoDepth(appState.history);
+  const bool undone =
+      app::undoLastEdit(appState, "world_layout_terrain_region_undo");
+  region.editingEnabled = true;
+  static_cast<void>(app::beginCreativeEditorWorldLayoutTerrainRegion(
+      region, -0.8, -0.8));
+  static_cast<void>(app::finishCreativeEditorWorldLayoutTerrainRegion(
+      region, 0.8, 0.8));
+  app::CreativeDesktopCommandFrame canceledPreviewFrame;
+  canceledPreviewFrame.push(
+      app::CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
+  const app::CreativeDesktopCommandResult canceledPreview =
+      app::dispatchCreativeDesktopCommands(
+          canceledPreviewFrame,
+          {appState, editor, {}, nullptr, nullptr, nullptr});
+  const std::uint64_t revisionBeforeCancel =
+      appState.facade.document().revision();
+  app::CreativeDesktopCommandFrame cancelFrame;
+  cancelFrame.push(
+      app::CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
+  const app::CreativeDesktopCommandResult canceled =
+      app::dispatchCreativeDesktopCommands(
+          cancelFrame, {appState, editor, {}, nullptr, nullptr, nullptr});
+
+  return expect(preview.accepted && preview.changed && previewOwned &&
+                    appState.facade.document().revision() == revisionBefore,
+                "preview computes exact candidate without document mutation") &&
+         expect(changedSample.present && changedSample.heightCells == 9U &&
+                    preservedSample.present &&
+                    preservedSample.heightCells == 4U &&
+                    candidateCacheBuilt && candidateCacheReused &&
+                    previewCache.buildCount == 1U,
+                "2D topography consumes the same bounded candidate as 3D") &&
+         expect(applied.accepted && applied.changed && applied.sceneChanged &&
+                    operationCountAfterApply == 1U &&
+                    undoDepthAfterApply == 1U && undone &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "apply records one durable operation and one undo entry") &&
+         expect(appState.facade.document().terrainOperationStack()
+                        .operations.empty() &&
+                    appState.facade.document().terrainHeightField().heightAt(
+                        {-1, -1}) == 4U,
+                "undo restores pre-region terrain truth") &&
+         expect(canceledPreview.accepted && canceled.accepted &&
+                    canceled.changed &&
+                    appState.facade.document().revision() ==
+                        revisionBeforeCancel &&
+                    !editor.terrainGeneration.previewActive &&
+                    !region.ownsPreview,
+                "cancel clears transient region truth without mutation");
+}
+
 }  // namespace
 
 int main() {
@@ -252,5 +423,7 @@ int main() {
   ok = renderDocumentSwitchesCommittedAndPreviewTerrain() && ok;
   ok = invalidRequestsFailClosed() && ok;
   ok = capacityLimitsRemainAtomicAndUseful() && ok;
+  ok = regionSelectionBuildsSharedOperationRecipes() && ok;
+  ok = regionPreviewAndApplyAreExactAtomicAndUndoable() && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
