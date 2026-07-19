@@ -91,4 +91,9 @@ void appendTagOnce(std::vector<std::string>& tags, std::string tag);
     std::vector<CreativeRecipePlan>& desiredLibraryRecipes,
     CreativeWorldLayoutCompileResult& result);
 
+void finalizeWorldLayoutCompileResult(
+    const CreativeDocument& document,
+    const CreativeWorldLayout& layout,
+    CreativeWorldLayoutCompileResult& result);
+
 }  // namespace iggy3d::creative::world_layout_compile

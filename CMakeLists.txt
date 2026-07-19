@@ -143,6 +143,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/world/WorldLayoutBuildingCompile.cpp
     src/app/iggy3d/creative/world/WorldLayoutCompiler.cpp
     src/app/iggy3d/creative/world/WorldLayoutCompileSupport.cpp
+    src/app/iggy3d/creative/world/WorldLayoutCompileFinalize.cpp
     src/app/iggy3d/creative/world/WorldLayoutRecipeReconciliation.cpp
     src/app/iggy3d/creative/world/WorldLayoutTerrainImpact.cpp
     src/app/iggy3d/creative/world/WorldLayoutTerrainReconciliation.cpp

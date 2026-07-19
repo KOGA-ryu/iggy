@@ -6,16 +6,12 @@
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutVerticalConnectors.hpp"
 
-#include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/recipes/StructuralSurfaceRecipe.hpp"
-#include "app/iggy3d/creative/recipes/TerrainGrounding.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
-#include <limits>
-#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_set>
@@ -27,14 +23,12 @@ namespace iggy3d::creative {
 using world_layout_compile::appendTagOnce;
 using world_layout_compile::buildWorldLayoutObjectRecipes;
 using world_layout_compile::childKey;
-using world_layout_compile::collectObjectRemovalOrder;
+using world_layout_compile::finalizeWorldLayoutCompileResult;
 using world_layout_compile::layoutBounds;
 using world_layout_compile::layoutPoint;
 using world_layout_compile::reconcileWorldLayoutRecipes;
 using world_layout_compile::registerKey;
 using world_layout_compile::setStatus;
-using world_layout_compile::shiftBuildingVertically;
-using world_layout_compile::stageWorldLayoutTerrain;
 using world_layout_compile::validDocument;
 using world_layout_compile::validRect;
 using world_layout_compile::validStableKey;
@@ -701,46 +695,7 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     return result;
   }
 
-  const bool hasSourceSymbols =
-      !layout.buildings.empty() || !layout.levels.empty() ||
-      !layout.rooms.empty() || !layout.boxes.empty() ||
-      !layout.walls.empty() || !layout.openings.empty() ||
-      !layout.objects.empty() ||
-      !layout.terrainProfiles.empty() || !layout.terrainPaths.empty();
-  const bool hasOperations = !result.plan.objectDetachIds.empty() ||
-                             !result.plan.objectRemoveIds.empty() ||
-                             !result.plan.objectRecipePatches.empty() ||
-                             !result.plan.objectRecipes.empty() ||
-                             !result.plan.terrainEdits.empty() ||
-                             !result.plan.materialEdits.empty();
-  if (!hasSourceSymbols && !hasOperations) {
-    setStatus(result.receipt, CreativeWorldLayoutStatus::Empty,
-              "creative_world_layout_empty");
-    result.plan = {};
-    return result;
-  }
-
-  const CreativeWorldLayoutPreviewResult preview =
-      previewCreativeWorldLayoutPlan(document, result.plan);
-  if (!preview.accepted) {
-    setStatus(result.receipt, preview.status, preview.reasonCode);
-    result.plan = {};
-    return result;
-  }
-
-  result.receipt.buildingCount = layout.buildings.size();
-  result.receipt.objectRecipeCount =
-      result.plan.objectRecipePatches.size() +
-      result.plan.objectRecipes.size();
-  result.receipt.objectDetachCount = result.plan.objectDetachIds.size();
-  result.receipt.objectRemoveCount = result.plan.objectRemoveIds.size();
-  result.receipt.terrainControlEditCount = result.plan.terrainEdits.size();
-  result.receipt.terrainMaterialEditCount = result.plan.materialEdits.size();
-  const bool changed = preview.status == CreativeWorldLayoutStatus::Ready;
-  setStatus(result.receipt, preview.status,
-            changed ? "creative_world_layout_ready"
-                    : "creative_world_layout_no_change",
-            true);
+  finalizeWorldLayoutCompileResult(document, layout, result);
   return result;
 }
 
