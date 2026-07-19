@@ -338,7 +338,8 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorInteraction.cpp
   apps/iggy3d_creative/EditorInteractionOverlay.cpp
   apps/iggy3d_creative/EditorWorldTargeting.cpp
-  apps/iggy3d_creative/EditorWorldLayout.cpp
+  apps/iggy3d_creative/EditorWorldLayoutMaintenance.cpp
+  apps/iggy3d_creative/EditorWorldLayoutTools.cpp
   apps/iggy3d_creative/EditorWorldLayoutAdoption.cpp
   apps/iggy3d_creative/EditorWorldLayoutLifecycle.cpp
   apps/iggy3d_creative/EditorWorldLayoutOpeningGeometry.cpp
