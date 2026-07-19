@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <vector>
 
 #include "imgui.h"
@@ -61,6 +62,17 @@ void appendCreativeDesktopGeneratedRoomSettings(
     iggy3d::creative::CreativeWorldLayoutObjectProvenance provenance,
     bool disabled,
     CreativeDesktopCommandFrame& commands);
+void appendCreativeDesktopGeneratedLevelSettings(
+    CreativeEditorWorldLayoutState& worldLayout,
+    iggy3d::creative::CreativeObjectId objectId,
+    iggy3d::creative::CreativeWorldLayoutObjectProvenance provenance,
+    bool disabled,
+    CreativeDesktopCommandFrame& commands);
+
+// Non-truncating adapter shared by inspector owners; imgui_stdlib is not
+// vendored in this checkout.
+bool creativeDesktopInputTextStdString(const char* label, std::string* value,
+                                       ImGuiInputTextFlags flags = 0);
 
 // Shared by the Inspector's logic rows and the bottom Diagnostics tab, so the
 // helper is not duplicated across the two TUs. Defined in

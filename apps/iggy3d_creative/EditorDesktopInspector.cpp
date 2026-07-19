@@ -22,6 +22,28 @@ namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 namespace {
 
+// Non-truncating std::string InputText adapter (imgui_stdlib is not vendored),
+// so an existing document name is never clipped into a fixed buffer.
+int inputTextResizeCallback(ImGuiInputTextCallbackData* data) {
+  if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
+    auto* str = static_cast<std::string*>(data->UserData);
+    str->resize(static_cast<std::size_t>(data->BufTextLen));
+    data->Buf = str->data();
+  }
+  return 0;
+}
+
+}  // namespace
+
+bool creativeDesktopInputTextStdString(const char* label, std::string* str,
+                                       ImGuiInputTextFlags flags) {
+  return ImGui::InputText(label, str->data(), str->capacity() + 1U,
+                          flags | ImGuiInputTextFlags_CallbackResize,
+                          inputTextResizeCallback, str);
+}
+
+namespace {
+
 constexpr std::array kInspectorLogicActions{
     cr::CreativeLogicLinkAction::Toggle,
     cr::CreativeLogicLinkAction::Open,
@@ -39,24 +61,6 @@ void appendHoverTooltip(const char* text) {
     ImGui::TextUnformatted(text);
     ImGui::EndTooltip();
   }
-}
-
-// Non-truncating std::string InputText adapter (imgui_stdlib is not vendored),
-// so an existing document name is never clipped into a fixed buffer.
-int inputTextResizeCallback(ImGuiInputTextCallbackData* data) {
-  if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
-    auto* str = static_cast<std::string*>(data->UserData);
-    str->resize(static_cast<std::size_t>(data->BufTextLen));
-    data->Buf = str->data();
-  }
-  return 0;
-}
-
-bool inputTextStdString(const char* label, std::string* str,
-                        ImGuiInputTextFlags flags) {
-  return ImGui::InputText(label, str->data(), str->capacity() + 1U,
-                          flags | ImGuiInputTextFlags_CallbackResize,
-                          inputTextResizeCallback, str);
 }
 
 // ---- logic helpers (moved from EditorDesktopPanels.cpp) -------------------
@@ -639,15 +643,18 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
       creativeDesktopGeneratedSourceSupportsAdoption(provenance);
   const bool sourceOwnedOnly = provenance.owned && !sourceSupportsAdoption;
   const bool generatedSettingsSource =
+      provenance.table == cr::CreativeWorldLayoutTable::Level ||
       provenance.table == cr::CreativeWorldLayoutTable::Room ||
       provenance.table == cr::CreativeWorldLayoutTable::VerticalConnector ||
       provenance.table == cr::CreativeWorldLayoutTable::Wall ||
       provenance.table == cr::CreativeWorldLayoutTable::Opening;
   if (!generatedSettingsSource &&
-      (worldLayout.roomSettingsDraft.active ||
+      (worldLayout.generatedLevelSettingsDraft.active ||
+       worldLayout.roomSettingsDraft.active ||
        worldLayout.verticalConnectorSettingsDraft.active ||
        worldLayout.wallSettingsDraft.active ||
        worldLayout.openingSettingsDraft.active)) {
+    worldLayout.generatedLevelSettingsDraft = {};
     worldLayout.roomSettingsDraft = {};
     worldLayout.verticalConnectorSettingsDraft = {};
     worldLayout.wallSettingsDraft = {};
@@ -664,8 +671,8 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
       playModeActive || object.locked || sourceOwnedOnly;
 
   ImGui::BeginDisabled(fieldsDisabled);
-  if (inputTextStdString("Name", &draft.name,
-                         ImGuiInputTextFlags_EnterReturnsTrue) &&
+  if (creativeDesktopInputTextStdString(
+          "Name", &draft.name, ImGuiInputTextFlags_EnterReturnsTrue) &&
       !draft.name.empty()) {
     commands.push(CreativeDesktopCommandId::RenameObject,
                   CreativeDesktopRenamePayload{object.id, draft.name});

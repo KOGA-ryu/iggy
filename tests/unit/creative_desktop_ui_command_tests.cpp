@@ -14,6 +14,7 @@
 #include "app/iggy3d/creative/tools/Group.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
@@ -136,6 +137,58 @@ app::CreativeDesktopCommandResult dispatchPayload(
   app::CreativeDesktopCommandFrame frame;
   frame.push(id, std::move(payload));
   return app::dispatchCreativeDesktopCommands(frame, context);
+}
+
+const cr::CreativeObject* findGeneratedObject(
+    const cr::CreativeDocument& document,
+    const cr::CreativeWorldLayout& layout,
+    cr::CreativeWorldLayoutTable table,
+    std::size_t index,
+    cr::CreativeObjectKind kind) {
+  for (const cr::CreativeObject& object : document.objects()) {
+    const cr::CreativeWorldLayoutObjectProvenance provenance =
+        cr::resolveCreativeWorldLayoutObjectProvenance(layout, object);
+    if (provenance.owned && provenance.table == table &&
+        provenance.index == index && object.kind == kind) {
+      return &object;
+    }
+  }
+  return nullptr;
+}
+
+bool generatedBounds(
+    const cr::CreativeDocument& document,
+    const cr::CreativeWorldLayout& layout,
+    cr::CreativeWorldLayoutTable table,
+    std::size_t index,
+    cr::CreativeObjectKind kind,
+    cr::CreativeBounds& output) {
+  bool found = false;
+  for (const cr::CreativeObject& object : document.objects()) {
+    const cr::CreativeWorldLayoutObjectProvenance provenance =
+        cr::resolveCreativeWorldLayoutObjectProvenance(layout, object);
+    if (!provenance.owned || provenance.table != table ||
+        provenance.index != index || object.kind != kind) {
+      continue;
+    }
+    const cr::CreativeTransformedBounds bounds =
+        cr::resolveCreativeObjectBounds(object);
+    if (!bounds.valid) {
+      continue;
+    }
+    if (!found) {
+      output = bounds.worldBounds;
+      found = true;
+      continue;
+    }
+    output.min.x = std::min(output.min.x, bounds.worldBounds.min.x);
+    output.min.y = std::min(output.min.y, bounds.worldBounds.min.y);
+    output.min.z = std::min(output.min.z, bounds.worldBounds.min.z);
+    output.max.x = std::max(output.max.x, bounds.worldBounds.max.x);
+    output.max.y = std::max(output.max.y, bounds.worldBounds.max.y);
+    output.max.z = std::max(output.max.z, bounds.worldBounds.max.z);
+  }
+  return found;
 }
 
 bool newDocumentReplacesAndClearsHistory() {
@@ -1287,6 +1340,16 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedRoomSettings,
           context, app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badGeneratedLevelPreview =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::
+              WorldLayoutPreviewGeneratedLevelSettings,
+          context, app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badGeneratedLevelApply =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::
+              WorldLayoutApplyGeneratedLevelSettings,
+          context, app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult badWorldLayoutLevelOperation =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutLevelOperation, context,
@@ -1452,6 +1515,13 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badGeneratedRoomApply.message ==
                         "generated room settings: payload mismatch",
                 "generated room commands reject mismatched payloads") &&
+         expect(!badGeneratedLevelPreview.accepted &&
+                    badGeneratedLevelPreview.message ==
+                        "generated level preview: payload mismatch" &&
+                    !badGeneratedLevelApply.accepted &&
+                    badGeneratedLevelApply.message ==
+                        "generated level settings: payload mismatch",
+                "generated level commands reject mismatched payloads") &&
          expect(!badWorldLayoutLevelOperation.accepted &&
                     badWorldLayoutLevelOperation.message ==
                         "layout level operation: payload mismatch",
@@ -2554,6 +2624,245 @@ bool worldLayoutObjectFocusAndAdoptionCloseTheSourceLoop() {
                             {4.0, 2.0, 3.0}) &&
                     appState.facade.document().findObject(objectId) != nullptr,
                 "adoption undo and redo keep live identity and source parity");
+}
+
+bool generatedLevelSettingsRebuildEveryRoomAtomically() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Generated Level Editing");
+  static_cast<void>(document.assignId(439U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "generated_level_editing");
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "level_house";
+  building.name = "Level House";
+  editor.worldLayout.source.buildings.push_back(building);
+
+  cr::CreativeWorldLayoutLevel ground;
+  ground.buildingIndex = 0U;
+  ground.stableKey = "ground";
+  ground.name = "Ground";
+  ground.floorTopLayer = 0.0;
+  ground.wallHeightCells = 3U;
+  editor.worldLayout.source.levels.push_back(ground);
+  cr::CreativeWorldLayoutLevel upper;
+  upper.buildingIndex = 0U;
+  upper.stableKey = "upper";
+  upper.name = "Upper";
+  upper.floorTopLayer = 3.0;
+  upper.wallHeightCells = 3U;
+  upper.roofStyle = cr::CreativeStructuralRoofStyle::Gable;
+  upper.roofRidgeAxis = cr::CreativeStructuralRoofRidgeAxis::X;
+  upper.roofPitchDegrees = 25.0;
+  editor.worldLayout.source.levels.push_back(upper);
+
+  editor.worldLayout.source.rooms.push_back(
+      {0U, 0U, "ground_room", "Ground Room", {{0, 0}, {12, 6}}, 0.25});
+  editor.worldLayout.source.rooms.push_back(
+      {0U, 1U, "upper_west", "Upper West", {{0, 0}, {6, 6}}, 0.25});
+  editor.worldLayout.source.rooms.push_back(
+      {0U, 1U, "upper_east", "Upper East", {{6, 0}, {12, 6}}, 0.25});
+
+  cr::CreativeWorldLayoutOpening opening;
+  opening.hostKind = cr::CreativeWorldLayoutOpeningHostKind::RoomEdge;
+  opening.roomIndex = 2U;
+  opening.roomEdge = cr::CreativeWorldLayoutRoomEdge::North;
+  opening.kind = cr::CreativeBuildingOpeningKind::Window;
+  opening.stableKey = "upper_window";
+  opening.name = "Upper Window";
+  opening.centerOffsetCells = 3.0;
+  opening.widthCells = 1.5;
+  opening.cutoutBottomCells = 1.0;
+  opening.cutoutHeightCells = 1.0;
+  editor.worldLayout.source.openings.push_back(opening);
+  editor.worldLayout.source.verticalConnectors.push_back(
+      {0U,
+       0U,
+       1U,
+       cr::CreativeWorldLayoutVerticalConnectorKind::Stair,
+       cr::CreativeWorldLayoutVerticalDirection::PositiveX,
+       "level_stair",
+       "Level Stair",
+       {{1, 2}, {5, 4}}});
+  ++editor.worldLayout.revision;
+
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const app::CreativeDesktopCommandResult generated = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  if (!generated.accepted) {
+    return expect(false, "generated level editing fixture generated");
+  }
+
+  const cr::CreativeObject* roof = findGeneratedObject(
+      appState.facade.document(), editor.worldLayout.source,
+      cr::CreativeWorldLayoutTable::Level, 1U, cr::CreativeObjectKind::Roof);
+  const cr::CreativeObject* roomFloor = findGeneratedObject(
+      appState.facade.document(), editor.worldLayout.source,
+      cr::CreativeWorldLayoutTable::Room, 1U, cr::CreativeObjectKind::Floor);
+  if (roof == nullptr || roomFloor == nullptr) {
+    return expect(false, "generated level roof and room floor exist");
+  }
+  const cr::CreativeObjectId roofId = roof->id;
+
+  app::CreativeEditorWorldLayoutLevelSettings settings;
+  static_cast<void>(app::readCreativeEditorWorldLayoutLevelSettings(
+      editor.worldLayout, 1U, settings));
+  settings.name = "Upper Edited";
+  settings.wallHeightCells = 4U;
+  settings.floorThicknessLayers = 2U;
+  settings.ceilingThicknessLayers = 2U;
+  settings.roofThicknessLayers = 2U;
+  settings.roofRidgeAxis = cr::CreativeStructuralRoofRidgeAxis::Z;
+  settings.roofPitchDegrees = 35.0;
+  settings.roofOverhangCells = 0.5;
+
+  const std::uint64_t sourceRevisionBefore = editor.worldLayout.revision;
+  const std::uint64_t documentRevisionBefore =
+      appState.facade.document().revision();
+  const std::uint64_t undoBefore = cr::creativeUndoDepth(appState.history);
+  const app::CreativeDesktopCommandResult previewed = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutPreviewGeneratedLevelSettings,
+      context,
+      app::CreativeDesktopGeneratedLevelSettingsPayload{roofId, settings});
+  cr::CreativeBounds previewWestWalls;
+  cr::CreativeBounds previewEastWalls;
+  const bool previewHasBothRooms =
+      generatedBounds(editor.worldLayout.preview.document,
+                      editor.worldLayout.source,
+                      cr::CreativeWorldLayoutTable::Room, 1U,
+                      cr::CreativeObjectKind::Wall, previewWestWalls) &&
+      generatedBounds(editor.worldLayout.preview.document,
+                      editor.worldLayout.source,
+                      cr::CreativeWorldLayoutTable::Room, 2U,
+                      cr::CreativeObjectKind::Wall, previewEastWalls);
+  const bool previewStayedTransient =
+      previewed.accepted && previewed.sceneChanged &&
+      app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      previewHasBothRooms &&
+      near(previewWestWalls.max.y - previewWestWalls.min.y, 4.0) &&
+      near(previewEastWalls.max.y - previewEastWalls.min.y, 4.0) &&
+      editor.worldLayout.source.levels[1].name == "Upper" &&
+      editor.worldLayout.source.levels[1].wallHeightCells == 3U &&
+      editor.worldLayout.revision == sourceRevisionBefore &&
+      appState.facade.document().revision() == documentRevisionBefore &&
+      cr::creativeUndoDepth(appState.history) == undoBefore;
+
+  const app::CreativeDesktopCommandResult applied = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedLevelSettings,
+      context,
+      app::CreativeDesktopGeneratedLevelSettingsPayload{roofId, settings});
+  cr::CreativeBounds westWalls;
+  cr::CreativeBounds eastWalls;
+  cr::CreativeBounds groundWalls;
+  const bool rebuiltRoomBounds =
+      generatedBounds(appState.facade.document(), editor.worldLayout.source,
+                      cr::CreativeWorldLayoutTable::Room, 1U,
+                      cr::CreativeObjectKind::Wall, westWalls) &&
+      generatedBounds(appState.facade.document(), editor.worldLayout.source,
+                      cr::CreativeWorldLayoutTable::Room, 2U,
+                      cr::CreativeObjectKind::Wall, eastWalls) &&
+      generatedBounds(appState.facade.document(), editor.worldLayout.source,
+                      cr::CreativeWorldLayoutTable::Room, 0U,
+                      cr::CreativeObjectKind::Wall, groundWalls);
+  const bool rebuiltLevelAndPreservedDependents =
+      applied.accepted && applied.changed && applied.worldLayoutChanged &&
+      applied.sceneChanged && rebuiltRoomBounds &&
+      near(westWalls.max.y - westWalls.min.y, 4.0) &&
+      near(eastWalls.max.y - eastWalls.min.y, 4.0) &&
+      near(groundWalls.max.y - groundWalls.min.y, 3.0) &&
+      editor.worldLayout.source.levels[1].name == "Upper Edited" &&
+      editor.worldLayout.source.levels[1].floorThicknessLayers == 2U &&
+      editor.worldLayout.source.levels[1].ceilingThicknessLayers == 2U &&
+      editor.worldLayout.source.levels[1].roofThicknessLayers == 2U &&
+      findGeneratedObject(appState.facade.document(),
+                          editor.worldLayout.source,
+                          cr::CreativeWorldLayoutTable::Opening, 0U,
+                          cr::CreativeObjectKind::Window) != nullptr &&
+      findGeneratedObject(appState.facade.document(),
+                          editor.worldLayout.source,
+                          cr::CreativeWorldLayoutTable::VerticalConnector, 0U,
+                          cr::CreativeObjectKind::Stair) != nullptr &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision &&
+      editor.worldLayout.revision == sourceRevisionBefore + 1U &&
+      cr::creativeUndoDepth(appState.history) == undoBefore + 1U;
+
+  const app::CreativeDesktopCommandResult undone =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const bool undoRestoredLevel =
+      undone.accepted && editor.worldLayout.source.levels[1].name == "Upper" &&
+      editor.worldLayout.source.levels[1].wallHeightCells == 3U &&
+      editor.worldLayout.source.levels[1].floorThicknessLayers == 1U;
+  const app::CreativeDesktopCommandResult redone =
+      dispatchOne(app::CreativeDesktopCommandId::Redo, context);
+  const bool redoRestoredLevel =
+      redone.accepted &&
+      editor.worldLayout.source.levels[1].name == "Upper Edited" &&
+      editor.worldLayout.source.levels[1].wallHeightCells == 4U &&
+      editor.worldLayout.source.levels[1].roofPitchDegrees == 35.0;
+
+  const cr::CreativeObject* liveRoof = findGeneratedObject(
+      appState.facade.document(), editor.worldLayout.source,
+      cr::CreativeWorldLayoutTable::Level, 1U, cr::CreativeObjectKind::Roof);
+  const cr::CreativeObject* liveRoomFloor = findGeneratedObject(
+      appState.facade.document(), editor.worldLayout.source,
+      cr::CreativeWorldLayoutTable::Room, 1U, cr::CreativeObjectKind::Floor);
+  if (liveRoof == nullptr || liveRoomFloor == nullptr) {
+    return expect(false, "level edit targets survive redo");
+  }
+  const std::uint64_t sourceRevisionBeforeReject =
+      editor.worldLayout.revision;
+  const std::uint64_t documentRevisionBeforeReject =
+      appState.facade.document().revision();
+  const std::uint64_t undoBeforeReject = cr::creativeUndoDepth(appState.history);
+  app::CreativeEditorWorldLayoutLevelSettings connectorInvalid = settings;
+  connectorInvalid.floorTopLayer = 4.0;
+  const app::CreativeDesktopCommandResult rejectedPreview = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutPreviewGeneratedLevelSettings,
+      context, app::CreativeDesktopGeneratedLevelSettingsPayload{
+                   liveRoof->id, connectorInvalid});
+  const app::CreativeDesktopCommandResult rejectedConnector = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedLevelSettings,
+      context, app::CreativeDesktopGeneratedLevelSettingsPayload{
+                   liveRoof->id, connectorInvalid});
+  app::CreativeEditorWorldLayoutLevelSettings duplicateElevation = settings;
+  duplicateElevation.floorTopLayer = 0.0;
+  const app::CreativeDesktopCommandResult rejectedDuplicate = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedLevelSettings,
+      context, app::CreativeDesktopGeneratedLevelSettingsPayload{
+                   liveRoof->id, duplicateElevation});
+  const app::CreativeDesktopCommandResult wrongSource = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedLevelSettings,
+      context, app::CreativeDesktopGeneratedLevelSettingsPayload{
+                   liveRoomFloor->id, settings});
+  const bool rejectedAtomically =
+      !rejectedPreview.accepted && !rejectedPreview.changed &&
+      !rejectedConnector.accepted && !rejectedConnector.changed &&
+      !rejectedDuplicate.accepted && !rejectedDuplicate.changed &&
+      !wrongSource.accepted && !wrongSource.changed &&
+      !app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      editor.worldLayout.source.levels[1].floorTopLayer == 3.0 &&
+      editor.worldLayout.source.levels[1].wallHeightCells == 4U &&
+      editor.worldLayout.source.openings[0].stableKey == "upper_window" &&
+      editor.worldLayout.source.verticalConnectors[0].stableKey ==
+          "level_stair" &&
+      editor.worldLayout.revision == sourceRevisionBeforeReject &&
+      appState.facade.document().revision() == documentRevisionBeforeReject &&
+      cr::creativeUndoDepth(appState.history) == undoBeforeReject;
+
+  return expect(previewStayedTransient,
+                "generated level preview rebuilds every room transiently") &&
+         expect(rebuiltLevelAndPreservedDependents,
+                "level edit rebuilds all rooms and preserves dependents") &&
+         expect(undoRestoredLevel && redoRestoredLevel,
+                "level edit records exactly one semantic undo step") &&
+         expect(rejectedAtomically,
+                "invalid elevation topology and wrong source reject atomically");
 }
 
 bool generatedRoomSettingsRebuildTopologyAtomically() {
@@ -3841,6 +4150,7 @@ int main() {
   ok = worldLayoutCommandsPreviewAndGenerateThroughDispatcher() && ok;
   ok = worldLayoutConflictResolutionUsesTypedConfirmPayload() && ok;
   ok = worldLayoutObjectFocusAndAdoptionCloseTheSourceLoop() && ok;
+  ok = generatedLevelSettingsRebuildEveryRoomAtomically() && ok;
   ok = generatedRoomSettingsRebuildTopologyAtomically() && ok;
   ok = generatedWallAndOpeningSettingsCommitSourceAndSceneTogether() && ok;
   ok = generatedVerticalConnectorSettingsCommitSourceAndSceneTogether() && ok;

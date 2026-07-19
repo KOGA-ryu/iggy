@@ -2137,7 +2137,8 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutTool(
                        state.verticalConnectorSettingsDraft.active ||
                        state.boxSettingsDraft.active ||
                        state.wallSettingsDraft.active ||
-                       state.openingSettingsDraft.active;
+                       state.openingSettingsDraft.active ||
+                       state.generatedLevelSettingsDraft.active;
   state.tool = tool;
   state.anchorActive = false;
   clearWorldLayoutInteraction(state);

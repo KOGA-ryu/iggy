@@ -214,6 +214,7 @@ inline void clearWorldLayoutInteraction(
   state.wallSettingsDraft = {};
   state.openingSettingsDraft = {};
   state.levelSettingsDraft = {};
+  state.generatedLevelSettingsDraft = {};
   state.terrainProfileSettingsDraft = {};
   state.terrainPathSettingsDraft = {};
   state.objectSettingsDraft = {};

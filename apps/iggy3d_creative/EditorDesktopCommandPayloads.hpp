@@ -173,6 +173,12 @@ struct CreativeDesktopWorldLayoutLevelSettingsPayload {
   CreativeEditorWorldLayoutLevelSettings settings;
 };
 
+struct CreativeDesktopGeneratedLevelSettingsPayload {
+  iggy3d::creative::CreativeObjectId objectId =
+      iggy3d::creative::kInvalidObjectId;
+  CreativeEditorWorldLayoutLevelSettings settings;
+};
+
 struct CreativeDesktopWorldLayoutTerrainProfileSettingsPayload {
   std::size_t profileIndex =
       iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
@@ -396,6 +402,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutSourceRenamePayload,
     CreativeDesktopWorldLayoutLevelOperationPayload,
     CreativeDesktopWorldLayoutLevelSettingsPayload,
+    CreativeDesktopGeneratedLevelSettingsPayload,
     CreativeDesktopWorldLayoutTerrainProfileSettingsPayload,
     CreativeDesktopWorldLayoutTerrainPathSettingsPayload,
     CreativeDesktopWorldLayoutObjectSettingsPayload,

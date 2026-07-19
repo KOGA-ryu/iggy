@@ -170,6 +170,35 @@ applyCreativeEditorWorldLayoutRoomSettingsToDocument(
 }
 
 CreativeEditorWorldLayoutPreviewReceipt
+previewCreativeEditorWorldLayoutLevelSettings(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document, std::size_t levelIndex,
+    CreativeEditorWorldLayoutLevelSettings settings) {
+  CreativeEditorWorldLayoutState candidate =
+      makeWorldLayoutSettingsCandidate(state);
+  const CreativeEditorWorldLayoutEditReceipt editReceipt =
+      setCreativeEditorWorldLayoutLevelSettings(candidate, levelIndex,
+                                                settings);
+  return previewWorldLayoutSettingsCandidate(
+      state, document, std::move(candidate), editReceipt,
+      "level shell preview ready");
+}
+
+CreativeEditorWorldLayoutApplyReceipt
+applyCreativeEditorWorldLayoutLevelSettingsToDocument(
+    CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,
+    std::size_t levelIndex, CreativeEditorWorldLayoutLevelSettings settings) {
+  CreativeEditorWorldLayoutState candidate =
+      makeWorldLayoutSettingsCandidate(state);
+  const CreativeEditorWorldLayoutEditReceipt editReceipt =
+      setCreativeEditorWorldLayoutLevelSettings(candidate, levelIndex,
+                                                settings);
+  return applyWorldLayoutSettingsCandidate(
+      state, appState, std::move(candidate), editReceipt,
+      "desktop_generated_level_settings", "level shell updated in 3D");
+}
+
+CreativeEditorWorldLayoutPreviewReceipt
 previewCreativeEditorWorldLayoutVerticalConnectorSettings(
     CreativeEditorWorldLayoutState& state,
     const cr::CreativeDocument& document, std::size_t connectorIndex,

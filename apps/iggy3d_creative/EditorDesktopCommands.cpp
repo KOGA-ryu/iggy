@@ -1118,6 +1118,71 @@ void dispatchOne(const CreativeDesktopCommand& command,
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutApplyGeneratedLevelSettings: {
+      const auto* payload =
+          payloadAs<CreativeDesktopGeneratedLevelSettingsPayload>(command);
+      if (payload == nullptr) {
+        result.message = "generated level settings: payload mismatch";
+        break;
+      }
+      const creative::CreativeObject* object =
+          appState.facade.findObject(payload->objectId);
+      if (object == nullptr) {
+        result.message = "generated level settings: target missing";
+        break;
+      }
+      const creative::CreativeWorldLayoutObjectProvenance provenance =
+          creative::resolveCreativeWorldLayoutObjectProvenance(
+              editor.worldLayout.source, *object);
+      if (!provenance.owned ||
+          provenance.table != creative::CreativeWorldLayoutTable::Level) {
+        result.message = "generated level settings: source mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutApplyReceipt receipt =
+          applyCreativeEditorWorldLayoutLevelSettingsToDocument(
+              editor.worldLayout, appState, provenance.index,
+              payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive || receipt.apply.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutPreviewGeneratedLevelSettings: {
+      const auto* payload =
+          payloadAs<CreativeDesktopGeneratedLevelSettingsPayload>(command);
+      if (payload == nullptr) {
+        result.message = "generated level preview: payload mismatch";
+        break;
+      }
+      const creative::CreativeObject* object =
+          appState.facade.findObject(payload->objectId);
+      if (object == nullptr) {
+        result.message = "generated level preview: target missing";
+        break;
+      }
+      const creative::CreativeWorldLayoutObjectProvenance provenance =
+          creative::resolveCreativeWorldLayoutObjectProvenance(
+              editor.worldLayout.source, *object);
+      if (!provenance.owned ||
+          provenance.table != creative::CreativeWorldLayoutTable::Level) {
+        result.message = "generated level preview: source mismatch";
+        break;
+      }
+      const CreativeEditorWorldLayoutPreviewReceipt receipt =
+          previewCreativeEditorWorldLayoutLevelSettings(
+              editor.worldLayout, appState.facade.document(),
+              provenance.index, payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.sceneChanged = receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutSetTerrainProfileSettings: {
       const auto* payload = payloadAs<
           CreativeDesktopWorldLayoutTerrainProfileSettingsPayload>(command);

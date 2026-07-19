@@ -870,6 +870,7 @@ struct CreativeEditorWorldLayoutState {
   CreativeEditorWorldLayoutWallSettingsDraft wallSettingsDraft;
   CreativeEditorWorldLayoutOpeningSettingsDraft openingSettingsDraft;
   CreativeEditorWorldLayoutLevelSettingsDraft levelSettingsDraft;
+  CreativeEditorWorldLayoutLevelSettingsDraft generatedLevelSettingsDraft;
   CreativeEditorWorldLayoutTerrainProfileSettingsDraft
       terrainProfileSettingsDraft;
   CreativeEditorWorldLayoutTerrainPathSettingsDraft terrainPathSettingsDraft;
@@ -1197,6 +1198,15 @@ applyCreativeEditorWorldLayoutLevelOperation(
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 setCreativeEditorWorldLayoutLevelSettings(
     CreativeEditorWorldLayoutState& state, std::size_t levelIndex,
+    CreativeEditorWorldLayoutLevelSettings settings);
+[[nodiscard]] CreativeEditorWorldLayoutApplyReceipt
+applyCreativeEditorWorldLayoutLevelSettingsToDocument(
+    CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,
+    std::size_t levelIndex, CreativeEditorWorldLayoutLevelSettings settings);
+[[nodiscard]] CreativeEditorWorldLayoutPreviewReceipt
+previewCreativeEditorWorldLayoutLevelSettings(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document, std::size_t levelIndex,
     CreativeEditorWorldLayoutLevelSettings settings);
 [[nodiscard]] bool readCreativeEditorWorldLayoutTerrainProfileSettings(
     const CreativeEditorWorldLayoutState& state, std::size_t profileIndex,
