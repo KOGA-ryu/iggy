@@ -129,10 +129,12 @@ bool pointerPolicyCapturesOnViewportClick() {
   const auto overPanel = decideCreativeDesktopPointerCapture(
       true, false, /*primaryPressedOverViewport=*/false, true, true);
   return expect(capture.captured && capture.changed &&
-                    capture.consumePrimaryPress,
+                    capture.consumePrimaryPress &&
+                    capture.discardNextMouseDelta,
                 "viewport click captures the pointer and consumes the press") &&
          expect(!overPanel.captured && !overPanel.changed &&
-                    !overPanel.consumePrimaryPress,
+                    !overPanel.consumePrimaryPress &&
+                    !overPanel.discardNextMouseDelta,
                 "a click consumed by a panel does not capture");
 }
 
@@ -232,6 +234,32 @@ bool desktopUiContextDisablesFlyNavigation() {
                 "fly navigation is off while the desktop UI owns input");
 }
 
+bool worldLayoutPreviewKeepsViewportNavigation() {
+  namespace cr = iggy3d::creative;
+  using iggy3d_creative_app::admitCreativeEditorNavigation;
+  using iggy3d_creative_app::resolveCreativeEditorInputContext;
+
+  iggy3d_creative_app::CreativeEditorState editor;
+  editor.worldLayout.previewVisible = true;
+  editor.worldLayout.previewLayoutRevision = editor.worldLayout.revision;
+  editor.worldLayout.preview.accepted = true;
+  editor.worldLayout.preview.document = cr::CreativeDocument::create("Preview");
+  const bool previewDocumentReady =
+      editor.worldLayout.preview.document.assignId(77U);
+  const cr::CreativeInputContext context = resolveCreativeEditorInputContext(
+      /*captureMode=*/false, /*desktopUiWantsInput=*/false,
+      /*editorInteractionEnabled=*/true, editor);
+  const cr::CreativeStickSignal noStick{};
+  const auto navigation = admitCreativeEditorNavigation(
+      context, false, false, noStick, false, false);
+  return expect(previewDocumentReady,
+                "world-layout preview fixture is valid") &&
+         expect(context == cr::CreativeInputContext::EditorViewport,
+                "3D world-layout preview keeps viewport input context") &&
+         expect(navigation.navigationActive,
+                "3D world-layout preview admits fly navigation");
+}
+
 bool desktopShellRequiresExplicitLaunchRequest() {
   using iggy3d_creative_app::creativeDesktopShellEnabledForLaunch;
   return expect(!creativeDesktopShellEnabledForLaunch(false, false),
@@ -258,6 +286,7 @@ int main() {
   ok = wantInputHelperIgnoresImGuiWhileCaptured() && ok;
   ok = routeRemoveDropsActionForEscRelease() && ok;
   ok = desktopUiContextDisablesFlyNavigation() && ok;
+  ok = worldLayoutPreviewKeepsViewportNavigation() && ok;
   ok = desktopShellRequiresExplicitLaunchRequest() && ok;
   return ok ? 0 : 1;
 }

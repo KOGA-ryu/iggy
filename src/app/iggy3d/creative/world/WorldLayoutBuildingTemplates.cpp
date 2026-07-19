@@ -434,6 +434,18 @@ CreativeWorldLayoutBuildingEditResult stampCreativeWorldLayoutBuildingTemplate(
   std::uint64_t nextOrdinal = request.nextStableOrdinal;
   const std::size_t newBuildingIndex = edited.buildings.size();
   CreativeWorldLayoutBuilding building = positioned.buildings[0];
+  if (building.rootMode == CreativeBuildingRootMode::None) {
+    CreativeWorldLayoutBuildingBounds positionedBounds;
+    if (!measureCreativeWorldLayoutBuildingBounds(positioned, 0U,
+                                                  positionedBounds)) {
+      setEditFailure(
+          result, CreativeWorldLayoutBuildingEditStatus::InvalidRequest,
+          "creative_world_layout_building_template_stamp_bounds_invalid");
+      return result;
+    }
+    building.rootFootprint =
+        {positionedBounds.minimum, positionedBounds.maximum};
+  }
   building.stableKey =
       mintCreativeWorldLayoutStableKey(edited, nextOrdinal, "building");
   building.name = copiedName(source.label, request.appendCopySuffix);

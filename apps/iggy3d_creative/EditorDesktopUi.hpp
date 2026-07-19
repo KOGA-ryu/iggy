@@ -109,6 +109,9 @@ struct CreativeEditorDesktopUiState {
   // resting state in desktop mode is a free cursor; a click on the viewport
   // captures it and leaving the viewport context releases it (plan DD-9).
   bool viewportPointerCaptured = false;
+  // SDL may report the cursor warp that enters relative mode as mouse motion.
+  // Consume that transition sample before applying camera look.
+  bool discardNextViewportMouseDelta = false;
 
   // View-menu panel visibility. The panels themselves land in UI-2b/UI-3;
   // these toggles are wired now so the menu is complete and the panels honor
@@ -172,6 +175,8 @@ struct CreativeDesktopPointerDecision {
   // The primary press that enters fly-look is pointer ownership, not a world
   // edit. The caller must consume that press before downstream input handling.
   bool consumePrimaryPress = false;
+  // A newly acquired relative pointer must discard its first motion sample.
+  bool discardNextMouseDelta = false;
 };
 
 // The full IDE shell is opt-in. Scripted capture remains UI-free even when a

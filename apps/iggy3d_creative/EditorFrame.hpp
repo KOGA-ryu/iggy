@@ -64,6 +64,13 @@ struct CreativeEditorNavigationAdmission {
   bool clearRightStickLookRearm = false;
 };
 
+[[nodiscard]] iggy3d::creative::CreativeInputContext
+resolveCreativeEditorInputContext(
+    bool captureMode,
+    bool desktopUiWantsInput,
+    bool editorInteractionEnabled,
+    const CreativeEditorState& editor) noexcept;
+
 [[nodiscard]] CreativeEditorNavigationAdmission
 admitCreativeEditorNavigation(
     iggy3d::creative::CreativeInputContext inputContext,

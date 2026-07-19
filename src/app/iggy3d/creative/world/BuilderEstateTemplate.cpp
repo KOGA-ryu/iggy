@@ -17,7 +17,9 @@ namespace {
 
 constexpr CreativeVec3 kEstateGridOrigin{-40.0, 0.0, -40.0};
 constexpr std::int32_t kHouseFloorLayer = 4;
-constexpr std::uint16_t kHouseWallHeightCells = 3U;
+// Two equal 22-unit storeys plus the structural top layer read as a roughly
+// 45-unit building in the current Creative viewport scale.
+constexpr std::uint16_t kHouseWallHeightCells = 22U;
 constexpr std::array<std::string_view, 1U> kBuiltInBuildingTemplateIds{
     kBuilderEstateHouseTemplateId};
 constexpr std::array<std::string_view, 2U> kEstateHouseTags{
@@ -36,7 +38,7 @@ CreativeWorldLayoutBuildingTemplateResult builderEstateHouseTemplate() {
   CreativeWorldLayout source;
   source.stableKey = "builder_estate_house_source";
   CreativeWorldLayoutBuildingBlockoutRecipe recipe;
-  recipe.request.footprint = {{0, 0}, {12, 12}};
+  recipe.request.footprint = {{0, 0}, {48, 48}};
   recipe.request.pattern =
       CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2;
   recipe.request.wallThicknessCells = 0.25;
@@ -108,37 +110,23 @@ CreativeWorldLayoutBuildingEditResult builderEstateLayout(
   CreativeWorldLayout layout;
   layout.stableKey = "builder_estate_layout";
   layout.terrainOwnership = CreativeWorldLayoutTerrainOwnership::ReplaceAll;
-  appendPlateau(layout, "plateau.northwest", {20, 28});
-  appendPlateau(layout, "plateau.north", {36, 28});
-  appendPlateau(layout, "plateau.northeast", {52, 28});
-  appendPlateau(layout, "plateau.southwest", {20, 40});
-  appendPlateau(layout, "plateau.south", {36, 40});
-  appendPlateau(layout, "plateau.southeast", {52, 40});
+  appendPlateau(layout, "plateau.row_1.col_1", {20, 36});
+  appendPlateau(layout, "plateau.row_1.col_2", {40, 36});
+  appendPlateau(layout, "plateau.row_1.col_3", {60, 36});
+  appendPlateau(layout, "plateau.row_2.col_1", {20, 52});
+  appendPlateau(layout, "plateau.row_2.col_2", {40, 52});
+  appendPlateau(layout, "plateau.row_2.col_3", {60, 52});
+  appendPlateau(layout, "plateau.row_3.col_1", {20, 68});
+  appendPlateau(layout, "plateau.row_3.col_2", {40, 68});
+  appendPlateau(layout, "plateau.row_3.col_3", {60, 68});
   appendTerrainPath(layout, "path.ditch", CreativeTerrainRecipeKind::Ditch,
                     {{{12, 20}, 4U}, {{64, 20}, 4U}}, 0U, 4U);
   appendTerrainPath(layout, "path.estate_road",
                     CreativeTerrainRecipeKind::Road,
-                    {{{12, 44}, 3U}, {{64, 44}, 3U}}, 0U, 3U);
+                    {{{12, 78}, 3U}, {{64, 78}, 3U}}, 0U, 3U);
 
-  CreativeWorldLayoutBuildingEditResult first =
-      stampCreativeWorldLayoutBuildingTemplate(
-          layout, houseTemplate, {{20, 28}, 1U, false, true});
-  if (!first.accepted) {
-    return first;
-  }
-  const CreativeWorldLayoutBuildingTemplateResult rotated =
-      transformCreativeWorldLayoutBuildingTemplate(
-          houseTemplate,
-          CreativeWorldLayoutBuildingTransformOperation::RotateRight90);
-  if (!rotated.accepted) {
-    CreativeWorldLayoutBuildingEditResult failed;
-    failed.requested = true;
-    failed.reasonCode = rotated.reasonCode;
-    return failed;
-  }
   return stampCreativeWorldLayoutBuildingTemplate(
-      first.edited, rotated.value,
-      {{44, 28}, first.nextStableOrdinal, false, true});
+      layout, houseTemplate, {{16, 28}, 1U, false, true});
 }
 
 CreativeWorldLayoutObject boundedPlacement(
@@ -183,22 +171,16 @@ void appendBuilderEstateObjects(CreativeWorldLayout& layout) {
                        {{34.0, 4.0, 17.0}, {38.0, 4.35, 23.0}}),
       boundedPlacement(CreativeObjectKind::Platform, "platform.main_approach",
                        "Main House Approach",
-                       {{21.5, 4.0, 40.0}, {24.5, 4.2, 45.0}}),
+                       {{38.5, 4.0, 76.0}, {41.5, 4.2, 79.0}}),
       boundedPlacement(CreativeObjectKind::Furniture, "furniture.main_sofa",
                        "Main Great Room Sofa",
-                       {{28.0, 4.5, 32.0}, {31.0, 5.5, 33.5}}),
+                       {{36.0, 4.5, 32.0}, {39.0, 5.5, 33.5}}),
       boundedPlacement(CreativeObjectKind::Furniture, "furniture.main_table",
                        "Main Great Room Table",
-                       {{25.0, 4.5, 34.5}, {27.0, 5.2, 36.5}}),
+                       {{33.0, 4.5, 34.5}, {35.0, 5.2, 36.5}}),
       boundedPlacement(CreativeObjectKind::Furniture,
                        "furniture.main_counter", "Main Kitchen Counter",
-                       {{27.0, 4.5, 28.5}, {31.5, 5.5, 30.0}}),
-      boundedPlacement(CreativeObjectKind::Furniture, "furniture.guest_bed",
-                       "Guest House Bed",
-                       {{47.0, 4.5, 29.5}, {51.0, 5.2, 32.5}}),
-      boundedPlacement(CreativeObjectKind::Crate, "prop.guest_crate",
-                       "Guest House Crate",
-                       {{53.0, 4.5, 36.0}, {54.25, 5.75, 37.25}}),
+                       {{35.0, 4.5, 28.5}, {39.5, 5.5, 30.0}}),
       boundedPlacement(CreativeObjectKind::Rock, "rock.ditch_west",
                        "Ditch West Boulder",
                        {{16.0, 3.0, 18.0}, {18.5, 5.0, 20.5}},
@@ -208,9 +190,9 @@ void appendBuilderEstateObjects(CreativeWorldLayout& layout) {
                        {{59.0, 3.0, 18.5}, {61.0, 4.75, 20.5}},
                        "boulder_01"),
       pointPlacement(CreativeObjectKind::SpawnPoint, "anchor.player",
-                     "Estate Arrival", {23.0, 4.5, 43.0}),
+                     "Estate Arrival", {40.0, 4.5, 79.0}),
       pointPlacement(CreativeObjectKind::NpcSpawn, "anchor.caretaker",
-                     "Estate Caretaker", {30.0, 4.5, 37.0}),
+                     "Estate Caretaker", {38.0, 4.5, 37.0}),
   };
 }
 
@@ -260,9 +242,9 @@ CreativeMapTemplateResult buildBuilderEstateMapTemplate(
   CreativeDocument document = CreativeDocument::create("Builder Estate");
   if (!document.assignId(documentId) ||
       !document.setGridSettings(
-          {kEstateGridOrigin, 1.0, {80, 16, 80}}) ||
+          {kEstateGridOrigin, 1.0, {80, 64, 80}}) ||
       !document.setWorldBounds(
-          {kEstateGridOrigin, {40.0, 16.0, 40.0}}) ||
+          {kEstateGridOrigin, {40.0, 64.0, 40.0}}) ||
       !facade.installDocument(std::move(document)).accepted) {
     setStatus(result, CreativeMapTemplateStatus::DocumentSetupFailed,
               "creative_builder_estate_document_setup_failed");

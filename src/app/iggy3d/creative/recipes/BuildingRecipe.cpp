@@ -314,6 +314,34 @@ void setWallKernelFailure(CreativeBuildingRecipeReceipt& receipt,
     return false;
   }
 
+  if (!geometry.planarSolidPieces.empty()) {
+    if (!wall.segmentNames.empty()) {
+      setStatus(result.receipt, CreativeBuildingRecipeStatus::InvalidWall,
+                "creative_building_wall_segment_names_invalid");
+      return false;
+    }
+    for (std::size_t pieceIndex = 0U;
+         pieceIndex < geometry.planarSolidPieces.size(); ++pieceIndex) {
+      appendGeneratedObject(
+          result, request, CreativeObjectKind::Wall,
+          wall.stableKey + ".piece." + std::to_string(pieceIndex + 1U),
+          wall.name + " Piece " + std::to_string(pieceIndex + 1U),
+          geometry.planarSolidPieces[pieceIndex], hasCreatedRoot, wall.tags);
+    }
+    for (const CreativeStructuralWallOpeningPlan& openingPlan :
+         geometry.openings) {
+      const CreativeBuildingOpeningSpec& opening =
+          wall.openings[openingPlan.sourceIndex];
+      if (openingPlan.hasInsert &&
+          !appendGeneratedOpeningInsert(result, request, opening,
+                                        geometry.frame, openingPlan,
+                                        hasCreatedRoot)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   std::size_t segmentIndex = 0U;
   for (const CreativeStructuralWallOpeningPlan& openingPlan :
        geometry.openings) {

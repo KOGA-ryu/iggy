@@ -137,6 +137,57 @@ bool openPoseUsesStableWallLocalFrame() {
                 "open insert hinges from authored end toward positive normal");
 }
 
+bool verticallyStackedSlotsUsePlanarPartition() {
+  cr::CreativeStructuralWallOpeningRequest lower;
+  lower.sortKey = "lower";
+  lower.centerOffsetMeters = 3.0;
+  lower.widthMeters = 2.0;
+  lower.cutoutBottomMeters = 1.0;
+  lower.cutoutHeightMeters = 1.0;
+  lower.insertBottomMeters = 1.0;
+
+  cr::CreativeStructuralWallOpeningRequest upper = lower;
+  upper.sortKey = "upper";
+  upper.cutoutBottomMeters = 4.0;
+  upper.insertBottomMeters = 4.0;
+  const std::vector stacked{lower, upper};
+  const cr::CreativeStructuralWallRecipeResult result =
+      cr::planCreativeStructuralWall(
+          {{0.0, 0.0, 0.0}, {10.0, 0.0, 0.0}, 6.0, 0.5, 0.0, 0.0,
+           stacked});
+
+  double solidArea = 0.0;
+  for (const cr::CreativeBounds& piece : result.planarSolidPieces) {
+    solidArea += (piece.max.x - piece.min.x) *
+                 (piece.max.y - piece.min.y);
+  }
+
+  upper.cutoutBottomMeters = 1.5;
+  upper.insertBottomMeters = 1.5;
+  const std::vector overlapping{lower, upper};
+  const cr::CreativeStructuralWallRecipeResult rejected =
+      cr::planCreativeStructuralWall(
+          {{0.0, 0.0, 0.0}, {10.0, 0.0, 0.0}, 6.0, 0.5, 0.0, 0.0,
+           overlapping});
+
+  return expect(result.accepted && result.fullHeightSpans.empty() &&
+                    result.planarSolidPieces.size() == 7U &&
+                    result.openings.size() == 2U,
+                "stacked slots use the planar wall partition") &&
+         expect(near(solidArea, 56.0),
+                "planar pieces preserve wall area outside both cutouts") &&
+         expect(sameBounds(result.openings[0].insertBounds,
+                           {{2.0, 1.0, -0.25}, {4.0, 2.0, 0.25}}) &&
+                    sameBounds(result.openings[1].insertBounds,
+                               {{2.0, 4.0, -0.25}, {4.0, 5.0, 0.25}}),
+                "stacked inserts retain independent vertical placement") &&
+         expect(!rejected.accepted &&
+                    rejected.status ==
+                        cr::CreativeStructuralWallRecipeStatus::
+                            OverlappingOpenings,
+                "true two-dimensional opening overlap still rejects");
+}
+
 bool invalidAndCrowdedGeometryFailsClosed() {
   const auto diagonal = plan({0.0, 0.0, 0.0}, {4.0, 0.0, 2.0});
   const auto uneven = plan({0.0, 0.0, 0.0}, {4.0, 1.0, 0.0});
@@ -230,6 +281,7 @@ int main() {
   const bool ok = cardinalFramesRetainAuthoredDirection() &&
                   slotsProduceDeterministicSpansAndCutoutPieces() &&
                   openPoseUsesStableWallLocalFrame() &&
+                  verticallyStackedSlotsUsePlanarPartition() &&
                   invalidAndCrowdedGeometryFailsClosed() &&
                   nonFiniteAndOverflowingInputsReject();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

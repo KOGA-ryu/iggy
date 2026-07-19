@@ -237,7 +237,7 @@ void setSdlKey(creative::CreativeInputFrame& frame,
       });
 }
 
-[[nodiscard]] creative::CreativeInputContext resolveInputContext(
+[[nodiscard]] creative::CreativeInputContext resolveInputContextImpl(
     bool captureMode,
     bool desktopUiWantsInput,
     bool editorInteractionEnabled,
@@ -254,9 +254,6 @@ void setSdlKey(creative::CreativeInputFrame& frame,
       // panel bindings stay quiet while the user drives ImGui. Capture stays
       // first so scripted --capture runs remain input-inert.
       Candidate{desktopUiWantsInput,
-                creative::CreativeInputContext::DesktopUi},
-      Candidate{editorInteractionEnabled &&
-                    creativeEditorWorldLayoutPreviewActive(editor.worldLayout),
                 creative::CreativeInputContext::DesktopUi},
       Candidate{editorInteractionEnabled && editor.assetLibrary.open,
                 creative::CreativeInputContext::AssetLibrary},
@@ -418,6 +415,15 @@ constexpr creative::CreativeWheelProfile kFrameWheelProfile{};
 
 }  // namespace
 
+creative::CreativeInputContext resolveCreativeEditorInputContext(
+    bool captureMode,
+    bool desktopUiWantsInput,
+    bool editorInteractionEnabled,
+    const CreativeEditorState& editor) noexcept {
+  return resolveInputContextImpl(captureMode, desktopUiWantsInput,
+                                 editorInteractionEnabled, editor);
+}
+
 CreativeEditorNavigationAdmission admitCreativeEditorNavigation(
     creative::CreativeInputContext inputContext,
     bool transformControlsOpen,
@@ -478,8 +484,8 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
       editor.desktopUi.viewportPointerCaptured, backend.externalUiWantsMouse(),
       backend.externalUiWantsKeyboard());
   const creative::CreativeInputContext inputContext =
-      resolveInputContext(captureMode, desktopUiWantsInput,
-                          applyEditorNavigation, editor);
+      resolveCreativeEditorInputContext(captureMode, desktopUiWantsInput,
+                                        applyEditorNavigation, editor);
   const creative::CreativeInputFrame inputFrame = makeCreativeInputFrame(
       keys, SDL_GetModState(), inputContext, controller);
   result.inputFrame = inputFrame;
@@ -543,6 +549,11 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
   float mouseDx = 0.0F;
   float mouseDy = 0.0F;
   SDL_GetRelativeMouseState(&mouseDx, &mouseDy);
+  if (editor.desktopUi.discardNextViewportMouseDelta) {
+    mouseDx = 0.0F;
+    mouseDy = 0.0F;
+    editor.desktopUi.discardNextViewportMouseDelta = false;
+  }
   const creative::CreativeControlDeviceActivity deviceActivity =
       creative::measureCreativeControlDeviceActivity(
           inputFrame,

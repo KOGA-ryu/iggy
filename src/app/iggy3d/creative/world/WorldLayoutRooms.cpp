@@ -37,6 +37,7 @@ struct EdgeBinding {
   std::int32_t edgeBegin = 0;
   std::int32_t wallBegin = 0;
   std::int32_t edgeLength = 0;
+  double edgeBaseLayer = 0.0;
 };
 
 constexpr std::size_t kRoomEdgeCount =
@@ -86,6 +87,121 @@ bool oppositeEdges(CreativeWorldLayoutRoomEdge lhs,
           rhs == CreativeWorldLayoutRoomEdge::North) ||
          (lhs == CreativeWorldLayoutRoomEdge::West &&
           rhs == CreativeWorldLayoutRoomEdge::East);
+}
+
+bool exteriorWallProvenance(
+    const CreativeWorldLayoutRoomCompileResult::WallProvenance& provenance)
+    noexcept {
+  if (provenance.contributors.empty()) {
+    return false;
+  }
+  for (std::size_t first = 0U; first < provenance.contributors.size();
+       ++first) {
+    for (std::size_t second = first + 1U;
+         second < provenance.contributors.size(); ++second) {
+      if (oppositeEdges(provenance.contributors[first].roomEdge,
+                        provenance.contributors[second].roomEdge)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+bool sameFacadeRun(const CreativeWorldLayoutWall& lhs,
+                   const CreativeWorldLayoutWall& rhs) noexcept {
+  return lhs.buildingIndex == rhs.buildingIndex && lhs.start == rhs.start &&
+         lhs.end == rhs.end && lhs.thicknessCells == rhs.thicknessCells;
+}
+
+bool mergeContiguousFacadeHeight(CreativeWorldLayoutWall& destination,
+                                 const CreativeWorldLayoutWall& source)
+    noexcept {
+  constexpr double kFacadeLayerEpsilon = 1.0e-9;
+  const double destinationTop =
+      destination.baseLayer + static_cast<double>(destination.heightCells);
+  const double sourceTop =
+      source.baseLayer + static_cast<double>(source.heightCells);
+  if (source.baseLayer > destinationTop + kFacadeLayerEpsilon ||
+      destination.baseLayer > sourceTop + kFacadeLayerEpsilon) {
+    return false;
+  }
+
+  const double mergedBase = std::min(destination.baseLayer, source.baseLayer);
+  const double mergedTop = std::max(destinationTop, sourceTop);
+  const double mergedHeight = mergedTop - mergedBase;
+  const double roundedHeight = std::round(mergedHeight);
+  if (!std::isfinite(mergedHeight) ||
+      std::abs(mergedHeight - roundedHeight) > kFacadeLayerEpsilon ||
+      roundedHeight <= 0.0 ||
+      roundedHeight >
+          static_cast<double>(std::numeric_limits<std::uint16_t>::max())) {
+    return false;
+  }
+
+  destination.baseLayer = mergedBase;
+  destination.heightCells = static_cast<std::uint16_t>(roundedHeight);
+  return true;
+}
+
+void mergeContiguousExteriorFacades(
+    std::size_t explicitWallCount,
+    CreativeWorldLayoutRoomCompileResult& result,
+    std::vector<EdgeBinding>& bindings) {
+  std::vector<CreativeWorldLayoutWall> mergedWalls;
+  std::vector<CreativeWorldLayoutRoomCompileResult::WallProvenance>
+      mergedProvenance;
+  std::vector<bool> mergedExterior;
+  std::vector<std::size_t> wallRemap(
+      result.expanded.walls.size(), kInvalidCreativeWorldLayoutIndex);
+  mergedWalls.reserve(result.expanded.walls.size());
+  mergedProvenance.reserve(result.wallProvenance.size());
+  mergedExterior.reserve(result.wallProvenance.size());
+
+  for (std::size_t wallIndex = 0U;
+       wallIndex < result.expanded.walls.size(); ++wallIndex) {
+    const bool exterior =
+        wallIndex >= explicitWallCount &&
+        wallIndex < result.wallProvenance.size() &&
+        exteriorWallProvenance(result.wallProvenance[wallIndex]);
+    std::size_t destinationIndex = kInvalidCreativeWorldLayoutIndex;
+    if (exterior) {
+      for (std::size_t candidateIndex = explicitWallCount;
+           candidateIndex < mergedWalls.size(); ++candidateIndex) {
+        if (mergedExterior[candidateIndex] &&
+            sameFacadeRun(mergedWalls[candidateIndex],
+                          result.expanded.walls[wallIndex]) &&
+            mergeContiguousFacadeHeight(
+                mergedWalls[candidateIndex],
+                result.expanded.walls[wallIndex])) {
+          destinationIndex = candidateIndex;
+          break;
+        }
+      }
+    }
+
+    if (destinationIndex == kInvalidCreativeWorldLayoutIndex) {
+      destinationIndex = mergedWalls.size();
+      mergedWalls.push_back(result.expanded.walls[wallIndex]);
+      mergedProvenance.push_back(result.wallProvenance[wallIndex]);
+      mergedExterior.push_back(exterior);
+    } else {
+      auto& contributors = mergedProvenance[destinationIndex].contributors;
+      const auto& sourceContributors =
+          result.wallProvenance[wallIndex].contributors;
+      contributors.insert(contributors.end(), sourceContributors.begin(),
+                          sourceContributors.end());
+    }
+    wallRemap[wallIndex] = destinationIndex;
+  }
+
+  for (EdgeBinding& binding : bindings) {
+    if (binding.wallIndex < wallRemap.size()) {
+      binding.wallIndex = wallRemap[binding.wallIndex];
+    }
+  }
+  result.expanded.walls = std::move(mergedWalls);
+  result.wallProvenance = std::move(mergedProvenance);
 }
 
 bool sharedMergeLane(const EdgeRecord& lhs,
@@ -255,10 +371,13 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
       const EdgeRecord& edge = edges[edgeIndex];
       provenance.contributors.push_back({edge.roomIndex, edge.roomEdge});
       bindings[bindingIndex(edge.roomIndex, edge.roomEdge)] = {
-          wallIndex, edge.begin, mergedBegin, edge.end - edge.begin};
+          wallIndex, edge.begin, mergedBegin, edge.end - edge.begin,
+          edge.baseLayer};
     }
     result.wallProvenance.push_back(std::move(provenance));
   }
+
+  mergeContiguousExteriorFacades(layout.walls.size(), result, bindings);
 
   for (std::size_t openingIndex = 0U;
        openingIndex < result.expanded.openings.size(); ++openingIndex) {
@@ -297,6 +416,11 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
     opening.wallIndex = binding.wallIndex;
     opening.centerOffsetCells +=
         static_cast<double>(binding.edgeBegin - binding.wallBegin);
+    const double verticalOffset =
+        binding.edgeBaseLayer -
+        result.expanded.walls[binding.wallIndex].baseLayer;
+    opening.cutoutBottomCells += verticalOffset;
+    opening.insertBottomCells += verticalOffset;
     opening.hostKind = CreativeWorldLayoutOpeningHostKind::Wall;
     opening.roomIndex = kInvalidCreativeWorldLayoutIndex;
   }

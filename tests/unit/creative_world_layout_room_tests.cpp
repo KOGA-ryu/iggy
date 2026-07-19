@@ -226,6 +226,87 @@ bool sharedEdgeInspectionMatchesCanonicalTopology() {
                 "edges with incompatible wall geometry remain exterior");
 }
 
+bool stackedRoomsUseBuildingFacadesAndLevelPartitions() {
+  cr::CreativeWorldLayout layout = adjacentRooms();
+  cr::CreativeWorldLayoutLevel upperLevel = layout.levels[0];
+  upperLevel.stableKey = "level_upper";
+  upperLevel.name = "Upper Level";
+  upperLevel.floorTopLayer = 3.0;
+  layout.levels.push_back(upperLevel);
+
+  cr::CreativeWorldLayoutRoom upperLeft = layout.rooms[0];
+  upperLeft.levelIndex = 1U;
+  upperLeft.stableKey = "room_upper_left";
+  upperLeft.name = "Upper Left Room";
+  layout.rooms.push_back(upperLeft);
+  cr::CreativeWorldLayoutRoom upperRight = layout.rooms[1];
+  upperRight.levelIndex = 1U;
+  upperRight.stableKey = "room_upper_right";
+  upperRight.name = "Upper Right Room";
+  layout.rooms.push_back(upperRight);
+
+  cr::CreativeWorldLayoutOpening upperWindow;
+  upperWindow.hostKind = cr::CreativeWorldLayoutOpeningHostKind::RoomEdge;
+  upperWindow.roomIndex = 2U;
+  upperWindow.roomEdge = cr::CreativeWorldLayoutRoomEdge::North;
+  upperWindow.kind = cr::CreativeBuildingOpeningKind::Window;
+  upperWindow.stableKey = "upper_window";
+  upperWindow.name = "Upper Window";
+  upperWindow.centerOffsetCells = 2.0;
+  upperWindow.widthCells = 1.5;
+  upperWindow.cutoutBottomCells = 1.0;
+  upperWindow.cutoutHeightCells = 1.2;
+  upperWindow.insertBottomCells = 1.0;
+  upperWindow.insertHeightCells = 1.2;
+  layout.openings.push_back(upperWindow);
+
+  const cr::CreativeWorldLayoutRoomCompileResult expanded =
+      cr::expandCreativeWorldLayoutRooms(layout);
+  if (!expect(expanded.accepted,
+              "stacked room expansion is accepted")) {
+    return false;
+  }
+
+  std::size_t facadeCount = 0U;
+  std::size_t partitionCount = 0U;
+  const cr::CreativeWorldLayoutWall* northFacade = nullptr;
+  for (const cr::CreativeWorldLayoutWall& wall : expanded.expanded.walls) {
+    if (near(wall.baseLayer, 0.0) && wall.heightCells == 6U) {
+      ++facadeCount;
+      if (wall.start == cr::CreativeTerrainCoord2{0, 0} &&
+          wall.end == cr::CreativeTerrainCoord2{8, 0}) {
+        northFacade = &wall;
+      }
+    }
+    if (wall.start == cr::CreativeTerrainCoord2{4, 0} &&
+        wall.end == cr::CreativeTerrainCoord2{4, 4} &&
+        wall.heightCells == 3U) {
+      ++partitionCount;
+    }
+  }
+
+  const cr::CreativeWorldLayoutOpening& lowerDoor =
+      expanded.expanded.openings[0];
+  const cr::CreativeWorldLayoutOpening& resolvedUpperWindow =
+      expanded.expanded.openings[1];
+  const cr::CreativeWorldLayoutWall& lowerDoorWall =
+      expanded.expanded.walls[lowerDoor.wallIndex];
+  const cr::CreativeWorldLayoutWall& upperWindowWall =
+      expanded.expanded.walls[resolvedUpperWindow.wallIndex];
+
+  return expect(expanded.expanded.walls.size() == 6U && facadeCount == 4U,
+                "four exterior runs span both storeys exactly once") &&
+         expect(partitionCount == 2U &&
+                    lowerDoorWall.heightCells == 3U &&
+                    near(lowerDoorWall.baseLayer, 0.0),
+                "interior partitions remain owned by their level") &&
+         expect(northFacade != nullptr &&
+                    &upperWindowWall == northFacade &&
+                    near(resolvedUpperWindow.cutoutBottomCells, 4.0) &&
+                    near(resolvedUpperWindow.insertBottomCells, 4.0),
+                "upper openings retain their storey offset in the facade");
+}
+
 bool invalidTopologyFailsClosed() {
   cr::CreativeWorldLayout overlap = adjacentRooms();
   overlap.rooms[1].footprint = {{3, 1}, {7, 5}};
@@ -730,6 +811,7 @@ int main() {
   const bool ok = roomEdgesHaveStableCardinalIdentity() &&
                   adjacentRoomsShareOneCanonicalWall() &&
                   sharedEdgeInspectionMatchesCanonicalTopology() &&
+                  stackedRoomsUseBuildingFacadesAndLevelPartitions() &&
                   invalidTopologyFailsClosed() &&
                   roomTopologyCompilesThroughExistingBuildingRecipe() &&
                   generatedRoomObjectsResolveToSemanticSources() &&

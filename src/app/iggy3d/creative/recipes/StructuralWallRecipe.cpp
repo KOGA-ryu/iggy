@@ -45,6 +45,7 @@ void reject(CreativeStructuralWallRecipeResult& result,
   result.status = status;
   result.frame = {};
   result.fullHeightSpans.clear();
+  result.planarSolidPieces.clear();
   result.openings.clear();
   result.failedOpeningIndex = failedOpeningIndex;
   result.reasonCode = reasonCode;
@@ -217,6 +218,146 @@ void reject(CreativeStructuralWallRecipeResult& result,
              request.cutoutBottomMeters;
 }
 
+[[nodiscard]] double cutoutTop(const OrderedOpening& opening) noexcept {
+  return opening.request->cutoutBottomMeters +
+         opening.request->cutoutHeightMeters;
+}
+
+[[nodiscard]] bool intervalsSeparated(double firstMinimum,
+                                      double firstMaximum,
+                                      double secondMinimum,
+                                      double secondMaximum,
+                                      double separation) noexcept {
+  return firstMaximum + separation + kGeometryEpsilon < secondMinimum ||
+         secondMaximum + separation + kGeometryEpsilon < firstMinimum;
+}
+
+[[nodiscard]] bool buildOpeningPlan(
+    const CreativeStructuralWallFrame& frame,
+    const OrderedOpening& orderedOpening,
+    CreativeStructuralWallOpeningPlan& plan) noexcept {
+  const CreativeStructuralWallOpeningRequest& opening =
+      *orderedOpening.request;
+  plan.sourceIndex = orderedOpening.sourceIndex;
+  plan.minimumOffsetMeters = orderedOpening.minimum;
+  plan.maximumOffsetMeters = orderedOpening.maximum;
+  plan.cutoutBounds =
+      spanBounds(frame, orderedOpening.minimum, orderedOpening.maximum,
+                 opening.cutoutBottomMeters, cutoutTop(orderedOpening),
+                 frame.thicknessMeters);
+  if (!validBounds(plan.cutoutBounds)) {
+    return false;
+  }
+
+  if (opening.cutoutBottomMeters > kGeometryEpsilon) {
+    plan.hasSill = true;
+    plan.sillBounds =
+        spanBounds(frame, orderedOpening.minimum, orderedOpening.maximum, 0.0,
+                   opening.cutoutBottomMeters, frame.thicknessMeters);
+  }
+  const double openingTop = cutoutTop(orderedOpening);
+  if (openingTop < frame.heightMeters - kGeometryEpsilon) {
+    plan.hasLintel = true;
+    plan.lintelBounds =
+        spanBounds(frame, orderedOpening.minimum, orderedOpening.maximum,
+                   openingTop, frame.heightMeters, frame.thicknessMeters);
+  }
+  if (opening.includeInsert) {
+    plan.hasInsert = true;
+    plan.insertBounds = spanBounds(
+        frame, opening.centerOffsetMeters - orderedOpening.insertWidth * 0.5,
+        opening.centerOffsetMeters + orderedOpening.insertWidth * 0.5,
+        opening.insertBottomMeters,
+        opening.insertBottomMeters + orderedOpening.insertHeight,
+        orderedOpening.insertThickness);
+    if (opening.pose != CreativeStructuralWallOpeningPose::Closed) {
+      plan.insertBounds = openInsertBounds(frame, orderedOpening);
+    }
+  }
+  return (!plan.hasSill || validBounds(plan.sillBounds)) &&
+         (!plan.hasLintel || validBounds(plan.lintelBounds)) &&
+         (!plan.hasInsert || validBounds(plan.insertBounds));
+}
+
+void sortUniqueBreaks(std::vector<double>& breaks) {
+  std::sort(breaks.begin(), breaks.end());
+  breaks.erase(
+      std::unique(breaks.begin(), breaks.end(),
+                  [](double lhs, double rhs) { return near(lhs, rhs); }),
+      breaks.end());
+}
+
+[[nodiscard]] bool appendPlanarSolidPieces(
+    const CreativeStructuralWallFrame& frame,
+    const std::vector<OrderedOpening>& openings,
+    std::vector<CreativeBounds>& pieces) {
+  std::vector<double> horizontalBreaks{0.0, frame.lengthMeters};
+  std::vector<double> verticalBreaks{0.0, frame.heightMeters};
+  horizontalBreaks.reserve(openings.size() * 2U + 2U);
+  verticalBreaks.reserve(openings.size() * 2U + 2U);
+  for (const OrderedOpening& opening : openings) {
+    horizontalBreaks.push_back(opening.minimum);
+    horizontalBreaks.push_back(opening.maximum);
+    verticalBreaks.push_back(opening.request->cutoutBottomMeters);
+    verticalBreaks.push_back(cutoutTop(opening));
+  }
+  sortUniqueBreaks(horizontalBreaks);
+  sortUniqueBreaks(verticalBreaks);
+
+  const auto cellIsCutout = [&](double horizontal, double vertical) {
+    return std::any_of(
+        openings.begin(), openings.end(), [&](const OrderedOpening& opening) {
+          return horizontal > opening.minimum - kGeometryEpsilon &&
+                 horizontal < opening.maximum + kGeometryEpsilon &&
+                 vertical > opening.request->cutoutBottomMeters -
+                                kGeometryEpsilon &&
+                 vertical < cutoutTop(opening) + kGeometryEpsilon;
+        });
+  };
+
+  for (std::size_t verticalIndex = 1U;
+       verticalIndex < verticalBreaks.size(); ++verticalIndex) {
+    const double bottom = verticalBreaks[verticalIndex - 1U];
+    const double top = verticalBreaks[verticalIndex];
+    if (top - bottom <= kGeometryEpsilon) {
+      continue;
+    }
+    bool runActive = false;
+    double runMinimum = 0.0;
+    for (std::size_t horizontalIndex = 1U;
+         horizontalIndex < horizontalBreaks.size(); ++horizontalIndex) {
+      const double minimum = horizontalBreaks[horizontalIndex - 1U];
+      const double maximum = horizontalBreaks[horizontalIndex];
+      if (maximum - minimum <= kGeometryEpsilon) {
+        continue;
+      }
+      const bool solid = !cellIsCutout((minimum + maximum) * 0.5,
+                                       (bottom + top) * 0.5);
+      if (solid && !runActive) {
+        runActive = true;
+        runMinimum = minimum;
+      }
+      const bool runEnds = runActive &&
+                           (!solid ||
+                            horizontalIndex + 1U == horizontalBreaks.size());
+      if (!runEnds) {
+        continue;
+      }
+      const double runMaximum = solid ? maximum : minimum;
+      const CreativeBounds piece =
+          spanBounds(frame, runMinimum, runMaximum, bottom, top,
+                     frame.thicknessMeters);
+      if (!validBounds(piece)) {
+        pieces.clear();
+        return false;
+      }
+      pieces.push_back(piece);
+      runActive = false;
+    }
+  }
+  return !pieces.empty();
+}
+
 }  // namespace
 
 bool isCreativeStructuralWallOpeningPoseValid(
@@ -292,79 +433,74 @@ CreativeStructuralWallRecipeResult planCreativeStructuralWall(
               }
               return lhs.sourceIndex < rhs.sourceIndex;
             });
-  for (std::size_t index = 1U; index < ordered.size(); ++index) {
-    if (ordered[index].minimum <= ordered[index - 1U].maximum +
-                                      request.minimumOpeningSeparationMeters +
-                                      kGeometryEpsilon) {
-      reject(result, CreativeStructuralWallRecipeStatus::OverlappingOpenings,
-             "creative_structural_wall_openings_overlap",
-             ordered[index].sourceIndex);
-      return result;
+  bool requiresPlanarPartition = false;
+  for (std::size_t first = 0U; first < ordered.size(); ++first) {
+    for (std::size_t second = first + 1U; second < ordered.size(); ++second) {
+      const bool horizontallySeparated = intervalsSeparated(
+          ordered[first].minimum, ordered[first].maximum,
+          ordered[second].minimum, ordered[second].maximum,
+          request.minimumOpeningSeparationMeters);
+      if (horizontallySeparated) {
+        continue;
+      }
+      const bool verticallySeparated = intervalsSeparated(
+          ordered[first].request->cutoutBottomMeters, cutoutTop(ordered[first]),
+          ordered[second].request->cutoutBottomMeters,
+          cutoutTop(ordered[second]),
+          request.minimumOpeningSeparationMeters);
+      if (!verticallySeparated) {
+        reject(result,
+               CreativeStructuralWallRecipeStatus::OverlappingOpenings,
+               "creative_structural_wall_openings_overlap",
+               ordered[second].sourceIndex);
+        return result;
+      }
+      requiresPlanarPartition = true;
     }
   }
 
-  result.fullHeightSpans.reserve(ordered.size() + 1U);
   result.openings.reserve(ordered.size());
-  double cursor = 0.0;
   for (const OrderedOpening& orderedOpening : ordered) {
-    const CreativeStructuralWallOpeningRequest& opening =
-        *orderedOpening.request;
-    const CreativeBounds span =
-        spanBounds(result.frame, cursor, orderedOpening.minimum, 0.0,
-                   result.frame.heightMeters, result.frame.thicknessMeters);
     CreativeStructuralWallOpeningPlan plan;
-    plan.sourceIndex = orderedOpening.sourceIndex;
-    plan.minimumOffsetMeters = orderedOpening.minimum;
-    plan.maximumOffsetMeters = orderedOpening.maximum;
-    plan.cutoutBounds =
-        spanBounds(result.frame, orderedOpening.minimum, orderedOpening.maximum,
-                   opening.cutoutBottomMeters,
-                   opening.cutoutBottomMeters + opening.cutoutHeightMeters,
-                   result.frame.thicknessMeters);
-    if (!validBounds(span) || !validBounds(plan.cutoutBounds)) {
-      reject(result, CreativeStructuralWallRecipeStatus::InvalidOpening,
-             "creative_structural_wall_opening_geometry_unrepresentable",
-             orderedOpening.sourceIndex);
-      return result;
-    }
-    result.fullHeightSpans.push_back(span);
-
-    if (opening.cutoutBottomMeters > kGeometryEpsilon) {
-      plan.hasSill = true;
-      plan.sillBounds = spanBounds(
-          result.frame, orderedOpening.minimum, orderedOpening.maximum, 0.0,
-          opening.cutoutBottomMeters, result.frame.thicknessMeters);
-    }
-    const double cutoutTop =
-        opening.cutoutBottomMeters + opening.cutoutHeightMeters;
-    if (cutoutTop < result.frame.heightMeters - kGeometryEpsilon) {
-      plan.hasLintel = true;
-      plan.lintelBounds = spanBounds(
-          result.frame, orderedOpening.minimum, orderedOpening.maximum,
-          cutoutTop, result.frame.heightMeters, result.frame.thicknessMeters);
-    }
-    if (opening.includeInsert) {
-      plan.hasInsert = true;
-      plan.insertBounds = spanBounds(
-          result.frame,
-          opening.centerOffsetMeters - orderedOpening.insertWidth * 0.5,
-          opening.centerOffsetMeters + orderedOpening.insertWidth * 0.5,
-          opening.insertBottomMeters,
-          opening.insertBottomMeters + orderedOpening.insertHeight,
-          orderedOpening.insertThickness);
-      if (opening.pose != CreativeStructuralWallOpeningPose::Closed) {
-        plan.insertBounds = openInsertBounds(result.frame, orderedOpening);
-      }
-    }
-    if ((plan.hasSill && !validBounds(plan.sillBounds)) ||
-        (plan.hasLintel && !validBounds(plan.lintelBounds)) ||
-        (plan.hasInsert && !validBounds(plan.insertBounds))) {
+    if (!buildOpeningPlan(result.frame, orderedOpening, plan)) {
       reject(result, CreativeStructuralWallRecipeStatus::InvalidOpening,
              "creative_structural_wall_opening_geometry_unrepresentable",
              orderedOpening.sourceIndex);
       return result;
     }
     result.openings.push_back(plan);
+  }
+
+  if (requiresPlanarPartition) {
+    if (!appendPlanarSolidPieces(result.frame, ordered,
+                                 result.planarSolidPieces)) {
+      reject(result,
+             CreativeStructuralWallRecipeStatus::UnrepresentableGeometry,
+             "creative_structural_wall_geometry_unrepresentable");
+      return result;
+    }
+    result.accepted = true;
+    result.status = CreativeStructuralWallRecipeStatus::Ready;
+    result.failedOpeningIndex = 0U;
+    result.reasonCode = "creative_structural_wall_ready";
+    return result;
+  }
+
+  result.fullHeightSpans.reserve(ordered.size() + 1U);
+  double cursor = 0.0;
+  for (std::size_t openingIndex = 0U; openingIndex < ordered.size();
+       ++openingIndex) {
+    const OrderedOpening& orderedOpening = ordered[openingIndex];
+    const CreativeBounds span =
+        spanBounds(result.frame, cursor, orderedOpening.minimum, 0.0,
+                   result.frame.heightMeters, result.frame.thicknessMeters);
+    if (!validBounds(span)) {
+      reject(result, CreativeStructuralWallRecipeStatus::InvalidOpening,
+             "creative_structural_wall_opening_geometry_unrepresentable",
+             orderedOpening.sourceIndex);
+      return result;
+    }
+    result.fullHeightSpans.push_back(span);
     cursor = orderedOpening.maximum;
   }
 

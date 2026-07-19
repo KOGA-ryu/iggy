@@ -96,6 +96,10 @@ struct CreativeStructuralWallRecipeResult {
       CreativeStructuralWallRecipeStatus::NotRequested;
   CreativeStructuralWallFrame frame;
   std::vector<CreativeBounds> fullHeightSpans;
+  // Populated only when openings overlap along the wall axis but occupy
+  // separate vertical bands. These non-overlapping solids are the canonical
+  // wall geometry for that 2D cutout layout.
+  std::vector<CreativeBounds> planarSolidPieces;
   std::vector<CreativeStructuralWallOpeningPlan> openings;
   std::size_t failedOpeningIndex = 0U;
   std::string_view reasonCode = "creative_structural_wall_not_requested";

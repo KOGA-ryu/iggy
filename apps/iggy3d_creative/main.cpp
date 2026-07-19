@@ -450,9 +450,13 @@ int main(int argc, char** argv) {
           frameInput.worldActions.released[primaryActionIndex] = false;
         }
         if (pointerDecision.changed) {
-          editor.desktopUi.viewportPointerCaptured = pointerDecision.captured;
-          static_cast<void>(
-              window.setViewportPointerCapture(pointerDecision.captured));
+          const SdlMouseCaptureResult captureResult =
+              window.setViewportPointerCapture(pointerDecision.captured);
+          const bool acquired = !editor.desktopUi.viewportPointerCaptured &&
+                                captureResult.active;
+          editor.desktopUi.viewportPointerCaptured = captureResult.active;
+          editor.desktopUi.discardNextViewportMouseDelta =
+              acquired && pointerDecision.discardNextMouseDelta;
         }
       }
     }
