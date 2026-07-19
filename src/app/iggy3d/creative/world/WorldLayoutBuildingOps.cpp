@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBlockout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 
 #include <algorithm>
@@ -356,6 +357,23 @@ CreativeWorldLayoutBuildingEditResult moveCreativeWorldLayoutBuilding(
                "creative_world_layout_building_move_provenance_invalid");
     return result;
   }
+  CreativeWorldLayoutBuildingBlockoutProvenance blockoutProvenance =
+      creativeWorldLayoutBuildingBlockoutProvenance(source,
+                                                    request.buildingIndex);
+  if (blockoutProvenance.valid) {
+    if (!offsetRect(blockoutProvenance.recipe.request.footprint,
+                    request.deltaXCells, request.deltaZCells) ||
+        !setCreativeWorldLayoutBuildingBlockoutProvenance(
+            edited, request.buildingIndex, blockoutProvenance)) {
+      setFailure(result,
+                 CreativeWorldLayoutBuildingEditStatus::CoordinateOverflow,
+                 "creative_world_layout_building_move_blockout_provenance_"
+                 "invalid");
+      return result;
+    }
+    edited.buildings[request.buildingIndex].rootFootprint =
+        blockoutProvenance.recipe.request.footprint;
+  }
   setReady(result, true, std::move(edited),
            "creative_world_layout_building_move_ready");
   return result;
@@ -433,6 +451,47 @@ CreativeWorldLayoutBuildingEditResult duplicateCreativeWorldLayoutBuilding(
         setFailure(
             result, CreativeWorldLayoutBuildingEditStatus::InvalidRequest,
             "creative_world_layout_building_duplicate_provenance_invalid");
+        return result;
+      }
+    }
+    CreativeWorldLayoutBuildingBlockoutProvenance blockoutProvenance =
+        creativeWorldLayoutBuildingBlockoutProvenance(source,
+                                                      request.buildingIndex);
+    if (blockoutProvenance.valid) {
+      const CreativeWorldLayoutBuildingBlockoutSyncReceipt sourceSync =
+          inspectCreativeWorldLayoutBuildingBlockoutSync(
+              source, request.buildingIndex);
+      if (!offsetRect(blockoutProvenance.recipe.request.footprint,
+                      request.deltaXCells, request.deltaZCells)) {
+        setFailure(
+            result, CreativeWorldLayoutBuildingEditStatus::CoordinateOverflow,
+            "creative_world_layout_building_duplicate_blockout_provenance_"
+            "invalid");
+        return result;
+      }
+      result.edited.buildings[result.resultBuildingIndex].rootFootprint =
+          blockoutProvenance.recipe.request.footprint;
+      if (sourceSync.state ==
+          CreativeWorldLayoutBuildingBlockoutSyncState::Current) {
+        const CreativeWorldLayoutBuildingBlockoutFingerprint fingerprint =
+            fingerprintCreativeWorldLayoutBuildingBlockout(
+                result.edited, result.resultBuildingIndex);
+        if (!fingerprint.valid) {
+          setFailure(
+              result, CreativeWorldLayoutBuildingEditStatus::InvalidRequest,
+              "creative_world_layout_building_duplicate_blockout_"
+              "fingerprint_invalid");
+          return result;
+        }
+        blockoutProvenance.instanceBaselineFingerprint = fingerprint.value;
+      }
+      if (!setCreativeWorldLayoutBuildingBlockoutProvenance(
+              result.edited, result.resultBuildingIndex,
+              blockoutProvenance)) {
+        setFailure(
+            result, CreativeWorldLayoutBuildingEditStatus::InvalidRequest,
+            "creative_world_layout_building_duplicate_blockout_provenance_"
+            "invalid");
         return result;
       }
     }

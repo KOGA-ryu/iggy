@@ -33,6 +33,26 @@ bool dispatchCreativeDesktopWorldLayoutBuildingCommand(
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutUpdateBuildingBlockout: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutBuildingBlockoutUpdatePayload>(
+              command);
+      if (payload == nullptr) {
+        result.message = "layout building blockout update: payload mismatch";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          updateCreativeEditorWorldLayoutBuildingBlockout(
+              editor.worldLayout, payload->buildingIndex, payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutManipulateBuilding: {
       const auto* payload =
           payloadAs<CreativeDesktopWorldLayoutBuildingManipulationPayload>(

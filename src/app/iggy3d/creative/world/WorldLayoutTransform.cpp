@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBlockout.hpp"
 
 #include <algorithm>
 #include <array>
@@ -502,6 +503,60 @@ bool transformOwnedGeometry(
   return true;
 }
 
+bool transformBlockoutRecipe(
+    CreativeWorldLayoutBuildingBlockoutRecipe& recipe,
+    CreativeWorldLayoutBuildingBounds sourceBounds,
+    CreativeWorldLayoutBuildingTransformOperation operation) noexcept {
+  CreativeWorldLayoutRect transformedFootprint;
+  if (!transformRect(recipe.request.footprint, sourceBounds, operation,
+                     transformedFootprint)) {
+    return false;
+  }
+  recipe.request.footprint = transformedFootprint;
+
+  const EdgeTransform entrance =
+      transformEdge(recipe.request.facade.entranceEdge, operation);
+  if (entrance.edge >= CreativeWorldLayoutRoomEdge::Count) {
+    return false;
+  }
+  recipe.request.facade.entranceEdge = entrance.edge;
+  if (entrance.reversesCanonicalDirection) {
+    recipe.request.facade.entranceOffsetCells =
+        -recipe.request.facade.entranceOffsetCells;
+  }
+
+  recipe.request.storeys.preferredDirection = verticalDirectionFromVector(
+      transformVector(verticalDirectionVector(
+                          recipe.request.storeys.preferredDirection),
+                      operation));
+  if (recipe.request.storeys.preferredDirection >=
+      CreativeWorldLayoutVerticalDirection::Count) {
+    return false;
+  }
+
+  const bool swapsAxes =
+      operation ==
+          CreativeWorldLayoutBuildingTransformOperation::RotateLeft90 ||
+      operation ==
+          CreativeWorldLayoutBuildingTransformOperation::RotateRight90;
+  if (swapsAxes) {
+    if (recipe.request.pattern ==
+        CreativeWorldLayoutBuildingBlockoutPattern::SplitX) {
+      recipe.request.pattern =
+          CreativeWorldLayoutBuildingBlockoutPattern::SplitZ;
+    } else if (recipe.request.pattern ==
+               CreativeWorldLayoutBuildingBlockoutPattern::SplitZ) {
+      recipe.request.pattern =
+          CreativeWorldLayoutBuildingBlockoutPattern::SplitX;
+    }
+    recipe.roofRidgeAxis =
+        recipe.roofRidgeAxis == CreativeStructuralRoofRidgeAxis::X
+            ? CreativeStructuralRoofRidgeAxis::Z
+            : CreativeStructuralRoofRidgeAxis::X;
+  }
+  return validCreativeWorldLayoutBuildingBlockoutRecipe(recipe);
+}
+
 }  // namespace
 
 std::string_view toString(
@@ -575,6 +630,13 @@ CreativeWorldLayoutBuildingTransformResult transformCreativeWorldLayoutBuilding(
           source, request.buildingIndex);
   const CreativeWorldLayoutBuildingTemplateFingerprint sourceFingerprint =
       fingerprintCreativeWorldLayoutBuilding(source, request.buildingIndex);
+  CreativeWorldLayoutBuildingBlockoutProvenance blockoutProvenance =
+      creativeWorldLayoutBuildingBlockoutProvenance(source,
+                                                    request.buildingIndex);
+  const CreativeWorldLayoutBuildingBlockoutFingerprint
+      sourceBlockoutFingerprint =
+          fingerprintCreativeWorldLayoutBuildingBlockout(
+              source, request.buildingIndex);
 
   result.transformed = source;
   CreativeWorldLayoutBuildingTransformStatus failureStatus =
@@ -623,6 +685,44 @@ CreativeWorldLayoutBuildingTransformResult transformCreativeWorldLayoutBuilding(
       setFailure(result,
                  CreativeWorldLayoutBuildingTransformStatus::InvalidGeometry,
                  "creative_world_layout_building_transform_provenance_invalid");
+      return result;
+    }
+  }
+  if (blockoutProvenance.valid) {
+    if (!transformBlockoutRecipe(blockoutProvenance.recipe,
+                                 result.sourceBounds, request.operation)) {
+      setFailure(
+          result, CreativeWorldLayoutBuildingTransformStatus::InvalidGeometry,
+          "creative_world_layout_building_transform_blockout_provenance_"
+          "invalid");
+      return result;
+    }
+    result.transformed.buildings[request.buildingIndex].rootFootprint =
+        blockoutProvenance.recipe.request.footprint;
+    const CreativeWorldLayoutBuildingBlockoutFingerprint
+        transformedFingerprint =
+            fingerprintCreativeWorldLayoutBuildingBlockout(
+                result.transformed, request.buildingIndex);
+    if (!transformedFingerprint.valid) {
+      setFailure(
+          result, CreativeWorldLayoutBuildingTransformStatus::InvalidGeometry,
+          "creative_world_layout_building_transform_blockout_fingerprint_"
+          "invalid");
+      return result;
+    }
+    if (sourceBlockoutFingerprint.valid &&
+        sourceBlockoutFingerprint.value ==
+            blockoutProvenance.instanceBaselineFingerprint) {
+      blockoutProvenance.instanceBaselineFingerprint =
+          transformedFingerprint.value;
+    }
+    if (!setCreativeWorldLayoutBuildingBlockoutProvenance(
+            result.transformed, request.buildingIndex,
+            blockoutProvenance)) {
+      setFailure(
+          result, CreativeWorldLayoutBuildingTransformStatus::InvalidGeometry,
+          "creative_world_layout_building_transform_blockout_provenance_"
+          "invalid");
       return result;
     }
   }

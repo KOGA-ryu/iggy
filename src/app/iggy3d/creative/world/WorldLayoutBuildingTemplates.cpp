@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBlockout.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -105,7 +106,8 @@ CreativeWorldLayout isolateBuilding(const CreativeWorldLayout& source,
   CreativeWorldLayoutBuilding building = source.buildings[buildingIndex];
   building.name = std::move(label);
   std::erase_if(building.tags, [](const std::string& tag) {
-    return isCreativeWorldLayoutBuildingTemplateProvenanceTag(tag);
+    return isCreativeWorldLayoutBuildingTemplateProvenanceTag(tag) ||
+           isCreativeWorldLayoutBuildingBlockoutProvenanceTag(tag);
   });
   isolated.buildings.push_back(std::move(building));
 

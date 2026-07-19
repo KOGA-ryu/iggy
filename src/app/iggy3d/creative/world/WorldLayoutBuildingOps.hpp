@@ -341,6 +341,15 @@ refreshCreativeWorldLayoutBuildingTemplateInstances(
     const CreativeWorldLayout& source,
     const CreativeWorldLayoutBuildingTemplateRefreshRequest& request);
 
+// Replaces every flat-table row owned by one building with the rows from a
+// one-building replacement layout. Existing stable keys are reused by
+// deterministic owner order; newly introduced rows mint keys from the supplied
+// ordinal. The caller must pass a scratch candidate and discard it on false.
+[[nodiscard]] bool replaceCreativeWorldLayoutBuildingInCandidate(
+    CreativeWorldLayout& candidate, std::size_t buildingIndex,
+    const CreativeWorldLayout& replacement,
+    std::uint64_t& nextStableOrdinal, bool preserveExistingNames);
+
 // O(buildings + rooms + boxes + walls + openings), with one full layout copy.
 // Stable keys, source order, heights, and terrain remain unchanged. Quarter
 // turns keep the aggregate minimum grid line fixed, avoiding half-cell pivots;

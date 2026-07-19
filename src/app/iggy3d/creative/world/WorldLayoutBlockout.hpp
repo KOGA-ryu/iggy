@@ -83,6 +83,57 @@ struct CreativeWorldLayoutBuildingBlockoutRequest {
   CreativeWorldLayoutBuildingBlockoutStoreySettings storeys;
 };
 
+inline constexpr std::uint32_t
+    kCreativeWorldLayoutBuildingBlockoutRecipeVersion = 1U;
+
+// The complete semantic input required to regenerate a blockout. This remains
+// independent of editor UI state so both 2D and 3D frontends can load and
+// update the same authored building recipe.
+struct CreativeWorldLayoutBuildingBlockoutRecipe {
+  std::uint32_t version =
+      kCreativeWorldLayoutBuildingBlockoutRecipeVersion;
+  CreativeWorldLayoutBuildingBlockoutRequest request;
+  double floorTopLayer = 0.0;
+  std::uint16_t floorThicknessLayers = 1U;
+  std::uint16_t roofThicknessLayers = 1U;
+  CreativeStructuralRoofStyle roofStyle = CreativeStructuralRoofStyle::Flat;
+  CreativeStructuralRoofRidgeAxis roofRidgeAxis =
+      CreativeStructuralRoofRidgeAxis::X;
+  double roofPitchDegrees = kDefaultCreativeStructuralRoofPitchDegrees;
+  double roofOverhangCells = 0.0;
+};
+
+struct CreativeWorldLayoutBuildingBlockoutFingerprint {
+  bool valid = false;
+  std::uint64_t value = 0U;
+};
+
+struct CreativeWorldLayoutBuildingBlockoutProvenance {
+  bool present = false;
+  bool valid = false;
+  CreativeWorldLayoutBuildingBlockoutRecipe recipe;
+  std::uint64_t instanceBaselineFingerprint = 0U;
+};
+
+enum class CreativeWorldLayoutBuildingBlockoutSyncState : std::uint8_t {
+  Unlinked,
+  Current,
+  LocallyModified,
+  Invalid,
+};
+
+struct CreativeWorldLayoutBuildingBlockoutSyncReceipt {
+  bool requested = false;
+  bool accepted = false;
+  std::size_t buildingIndex = kInvalidCreativeWorldLayoutIndex;
+  CreativeWorldLayoutBuildingBlockoutSyncState state =
+      CreativeWorldLayoutBuildingBlockoutSyncState::Unlinked;
+  CreativeWorldLayoutBuildingBlockoutProvenance provenance;
+  CreativeWorldLayoutBuildingBlockoutFingerprint instanceFingerprint;
+  std::string_view reasonCode =
+      "creative_world_layout_building_blockout_sync_not_requested";
+};
+
 inline constexpr std::size_t kCreativeWorldLayoutBuildingBlockoutRoomCapacity =
     4U;
 inline constexpr std::size_t
@@ -149,6 +200,10 @@ static_assert(std::is_trivially_copyable_v<
               CreativeWorldLayoutBuildingBlockoutStoreySettings>);
 static_assert(
     std::is_trivially_copyable_v<CreativeWorldLayoutBuildingBlockoutRequest>);
+static_assert(
+    std::is_trivially_copyable_v<CreativeWorldLayoutBuildingBlockoutRecipe>);
+static_assert(std::is_trivially_copyable_v<
+              CreativeWorldLayoutBuildingBlockoutProvenance>);
 static_assert(std::is_trivially_copyable_v<
               CreativeWorldLayoutBuildingBlockoutOpening>);
 static_assert(std::is_trivially_copyable_v<
@@ -160,6 +215,25 @@ static_assert(
     CreativeWorldLayoutBuildingBlockoutPattern pattern) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeWorldLayoutBuildingBlockoutStatus status) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeWorldLayoutBuildingBlockoutSyncState state) noexcept;
+
+[[nodiscard]] bool validCreativeWorldLayoutBuildingBlockoutRecipe(
+    const CreativeWorldLayoutBuildingBlockoutRecipe& recipe) noexcept;
+[[nodiscard]] bool isCreativeWorldLayoutBuildingBlockoutProvenanceTag(
+    std::string_view tag) noexcept;
+[[nodiscard]] CreativeWorldLayoutBuildingBlockoutFingerprint
+fingerprintCreativeWorldLayoutBuildingBlockout(
+    const CreativeWorldLayout& layout, std::size_t buildingIndex);
+[[nodiscard]] CreativeWorldLayoutBuildingBlockoutProvenance
+creativeWorldLayoutBuildingBlockoutProvenance(
+    const CreativeWorldLayout& layout, std::size_t buildingIndex);
+[[nodiscard]] bool setCreativeWorldLayoutBuildingBlockoutProvenance(
+    CreativeWorldLayout& layout, std::size_t buildingIndex,
+    const CreativeWorldLayoutBuildingBlockoutProvenance& provenance);
+[[nodiscard]] CreativeWorldLayoutBuildingBlockoutSyncReceipt
+inspectCreativeWorldLayoutBuildingBlockoutSync(
+    const CreativeWorldLayout& layout, std::size_t buildingIndex);
 
 // Produces row-major room footprints and bounded opening intents on integer grid
 // lines in this order: minimal interior tree, entrance, then room-major facade

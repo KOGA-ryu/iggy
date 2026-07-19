@@ -140,6 +140,12 @@ struct CreativeDesktopWorldLayoutBuildingBlockoutPayload {
   CreativeEditorWorldLayoutBuildingBlockoutSettings settings;
 };
 
+struct CreativeDesktopWorldLayoutBuildingBlockoutUpdatePayload {
+  std::size_t buildingIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  CreativeEditorWorldLayoutBuildingBlockoutSettings settings;
+};
+
 struct CreativeDesktopWorldLayoutBuildingSelectionPayload {
   std::size_t buildingIndex =
       iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
@@ -439,6 +445,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutToolPayload,
     CreativeDesktopWorldLayoutCatalogAssetPayload,
     CreativeDesktopWorldLayoutBuildingBlockoutPayload,
+    CreativeDesktopWorldLayoutBuildingBlockoutUpdatePayload,
     CreativeDesktopWorldLayoutBuildingSelectionPayload,
     CreativeDesktopWorldLayoutSourcePayload,
     CreativeDesktopWorldLayoutObjectSourcePayload,

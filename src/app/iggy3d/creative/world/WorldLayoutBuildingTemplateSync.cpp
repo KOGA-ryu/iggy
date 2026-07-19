@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBlockout.hpp"
 
 #include <algorithm>
 #include <array>
@@ -276,6 +277,11 @@ bool setProvenanceTags(
   return true;
 }
 
+bool isBuildingGeneratorProvenanceTag(std::string_view tag) noexcept {
+  return isCreativeWorldLayoutBuildingTemplateProvenanceTag(tag) ||
+         isCreativeWorldLayoutBuildingBlockoutProvenanceTag(tag);
+}
+
 }  // namespace
 
 std::string_view toString(
@@ -390,11 +396,11 @@ fingerprintCreativeWorldLayoutBuilding(const CreativeWorldLayout& layout,
   builder.appendBool(building.visible);
   const std::size_t tagCount = countIf(
       building.tags, [](const std::string& tag) {
-        return !isCreativeWorldLayoutBuildingTemplateProvenanceTag(tag);
+        return !isBuildingGeneratorProvenanceTag(tag);
       });
   builder.appendUnsigned(tagCount);
   for (const std::string& tag : building.tags) {
-    if (!isCreativeWorldLayoutBuildingTemplateProvenanceTag(tag)) {
+    if (!isBuildingGeneratorProvenanceTag(tag)) {
       builder.appendString(tag);
     }
   }

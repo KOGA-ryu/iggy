@@ -18,126 +18,90 @@ bool openingOwnedByBuilding(const CreativeWorldLayout& layout,
              : layout.walls[opening.wallIndex].buildingIndex == buildingIndex;
 }
 
-std::vector<std::string> ownedRoomKeys(const CreativeWorldLayout& layout,
-                                       std::size_t buildingIndex) {
-  std::vector<std::string> result;
-  for (const CreativeWorldLayoutRoom& room : layout.rooms) {
-    if (room.buildingIndex == buildingIndex) {
-      result.push_back(room.stableKey);
+struct OwnedIdentity {
+  std::string stableKey;
+  std::string name;
+};
+
+template <typename Rows, typename Predicate>
+std::vector<OwnedIdentity> ownedIdentities(const Rows& rows,
+                                           Predicate isOwned) {
+  std::vector<OwnedIdentity> result;
+  for (const auto& row : rows) {
+    if (isOwned(row)) {
+      result.push_back({row.stableKey, row.name});
     }
   }
   return result;
 }
 
-std::vector<std::string>
-ownedVerticalConnectorKeys(const CreativeWorldLayout& layout,
-                           std::size_t buildingIndex) {
-  std::vector<std::string> result;
-  for (const CreativeWorldLayoutVerticalConnector& connector :
-       layout.verticalConnectors) {
-    if (connector.buildingIndex == buildingIndex) {
-      result.push_back(connector.stableKey);
+void applyReusedOrMintedIdentity(
+    CreativeWorldLayout& layout, std::uint64_t& nextStableOrdinal,
+    const std::vector<OwnedIdentity>& oldIdentities, std::size_t ordinal,
+    std::string_view prefix, bool preserveExistingNames,
+    std::string& stableKey, std::string& name) {
+  if (ordinal < oldIdentities.size()) {
+    stableKey = oldIdentities[ordinal].stableKey;
+    if (preserveExistingNames) {
+      name = oldIdentities[ordinal].name;
     }
+    return;
   }
-  return result;
+  stableKey =
+      mintCreativeWorldLayoutStableKey(layout, nextStableOrdinal, prefix);
 }
 
-std::vector<std::string> ownedLevelKeys(const CreativeWorldLayout& layout,
-                                        std::size_t buildingIndex) {
-  std::vector<std::string> result;
-  for (const CreativeWorldLayoutLevel& level : layout.levels) {
-    if (level.buildingIndex == buildingIndex) {
-      result.push_back(level.stableKey);
-    }
-  }
-  return result;
-}
-
-std::vector<std::string> ownedBoxKeys(const CreativeWorldLayout& layout,
-                                      std::size_t buildingIndex) {
-  std::vector<std::string> result;
-  for (const CreativeWorldLayoutBox& box : layout.boxes) {
-    if (box.buildingIndex == buildingIndex) {
-      result.push_back(box.stableKey);
-    }
-  }
-  return result;
-}
-
-std::vector<std::string> ownedWallKeys(const CreativeWorldLayout& layout,
-                                       std::size_t buildingIndex) {
-  std::vector<std::string> result;
-  for (const CreativeWorldLayoutWall& wall : layout.walls) {
-    if (wall.buildingIndex == buildingIndex) {
-      result.push_back(wall.stableKey);
-    }
-  }
-  return result;
-}
-
-std::vector<std::string> ownedOpeningKeys(const CreativeWorldLayout& layout,
-                                          std::size_t buildingIndex) {
-  std::vector<std::string> result;
-  for (const CreativeWorldLayoutOpening& opening : layout.openings) {
-    if (openingOwnedByBuilding(layout, opening, buildingIndex)) {
-      result.push_back(opening.stableKey);
-    }
-  }
-  return result;
-}
-
-std::string reusedOrMintedKey(CreativeWorldLayout& layout,
-                              std::uint64_t& nextStableOrdinal,
-                              const std::vector<std::string>& oldKeys,
-                              std::size_t ordinal,
-                              std::string_view prefix) {
-  return ordinal < oldKeys.size()
-             ? oldKeys[ordinal]
-             : mintCreativeWorldLayoutStableKey(layout, nextStableOrdinal,
-                                                prefix);
-}
-
-bool replaceBuildingFromTemplate(
-    CreativeWorldLayout& layout,
-    std::size_t buildingIndex,
-    const CreativeWorldLayoutBuildingTemplate& sourceTemplate,
-    const CreativeWorldLayoutBuildingTemplateInstanceProvenance& provenance,
-    std::uint64_t& nextStableOrdinal) {
-  CreativeWorldLayoutBuildingTemplateResult oriented =
-      orientCreativeWorldLayoutBuildingTemplate(sourceTemplate,
-                                                provenance.orientation);
-  if (!oriented.accepted) {
+bool replaceBuildingContents(CreativeWorldLayout& layout,
+                             std::size_t buildingIndex,
+                             const CreativeWorldLayout& positioned,
+                             std::uint64_t& nextStableOrdinal,
+                             bool preserveExistingNames) {
+  if (buildingIndex >= layout.buildings.size() ||
+      positioned.buildings.size() != 1U ||
+      !validCreativeWorldLayoutBuildingOwnership(layout) ||
+      !validCreativeWorldLayoutBuildingOwnership(positioned)) {
     return false;
   }
-  CreativeWorldLayout positioned = oriented.value.normalizedLayout;
-  if (provenance.anchor != CreativeTerrainCoord2{}) {
-    CreativeWorldLayoutBuildingEditResult moved =
-        moveCreativeWorldLayoutBuilding(
-            positioned, {0U, provenance.anchor.x, provenance.anchor.z});
-    if (!moved.accepted) {
-      return false;
-    }
-    positioned = std::move(moved.edited);
-  }
 
-  const std::vector<std::string> oldLevelKeys =
-      ownedLevelKeys(layout, buildingIndex);
-  const std::vector<std::string> oldRoomKeys =
-      ownedRoomKeys(layout, buildingIndex);
-  const std::vector<std::string> oldVerticalConnectorKeys =
-      ownedVerticalConnectorKeys(layout, buildingIndex);
-  const std::vector<std::string> oldBoxKeys =
-      ownedBoxKeys(layout, buildingIndex);
-  const std::vector<std::string> oldWallKeys =
-      ownedWallKeys(layout, buildingIndex);
-  const std::vector<std::string> oldOpeningKeys =
-      ownedOpeningKeys(layout, buildingIndex);
+  const std::vector<OwnedIdentity> oldLevelIdentities = ownedIdentities(
+      layout.levels,
+      [buildingIndex](const auto& row) {
+        return row.buildingIndex == buildingIndex;
+      });
+  const std::vector<OwnedIdentity> oldRoomIdentities = ownedIdentities(
+      layout.rooms,
+      [buildingIndex](const auto& row) {
+        return row.buildingIndex == buildingIndex;
+      });
+  const std::vector<OwnedIdentity> oldVerticalConnectorIdentities =
+      ownedIdentities(layout.verticalConnectors,
+                      [buildingIndex](const auto& row) {
+                        return row.buildingIndex == buildingIndex;
+                      });
+  const std::vector<OwnedIdentity> oldBoxIdentities = ownedIdentities(
+      layout.boxes,
+      [buildingIndex](const auto& row) {
+        return row.buildingIndex == buildingIndex;
+      });
+  const std::vector<OwnedIdentity> oldWallIdentities = ownedIdentities(
+      layout.walls,
+      [buildingIndex](const auto& row) {
+        return row.buildingIndex == buildingIndex;
+      });
+  const std::vector<OwnedIdentity> oldOpeningIdentities = ownedIdentities(
+      layout.openings,
+      [&](const auto& row) {
+        return openingOwnedByBuilding(layout, row, buildingIndex);
+      });
   const std::string buildingStableKey =
       layout.buildings[buildingIndex].stableKey;
+  const std::string buildingName = layout.buildings[buildingIndex].name;
 
   CreativeWorldLayoutBuilding replacement = positioned.buildings[0];
   replacement.stableKey = buildingStableKey;
-  replacement.name = sourceTemplate.label;
+  if (preserveExistingNames) {
+    replacement.name = buildingName;
+  }
   layout.buildings[buildingIndex] = std::move(replacement);
 
   std::vector<std::size_t> oldLevelMap(layout.levels.size(),
@@ -156,8 +120,9 @@ bool replaceBuildingFromTemplate(
   for (std::size_t index = 0U; index < positioned.levels.size(); ++index) {
     CreativeWorldLayoutLevel level = positioned.levels[index];
     level.buildingIndex = buildingIndex;
-    level.stableKey = reusedOrMintedKey(
-        layout, nextStableOrdinal, oldLevelKeys, index, "level");
+    applyReusedOrMintedIdentity(
+        layout, nextStableOrdinal, oldLevelIdentities, index, "level",
+        preserveExistingNames, level.stableKey, level.name);
     newLevelMap[index] = levels.size();
     levels.push_back(std::move(level));
   }
@@ -181,8 +146,9 @@ bool replaceBuildingFromTemplate(
     CreativeWorldLayoutRoom room = positioned.rooms[index];
     room.buildingIndex = buildingIndex;
     room.levelIndex = newLevelMap[room.levelIndex];
-    room.stableKey = reusedOrMintedKey(layout, nextStableOrdinal, oldRoomKeys,
-                                       index, "room");
+    applyReusedOrMintedIdentity(
+        layout, nextStableOrdinal, oldRoomIdentities, index, "room",
+        preserveExistingNames, room.stableKey, room.name);
     newRoomMap[index] = rooms.size();
     rooms.push_back(std::move(room));
   }
@@ -206,9 +172,10 @@ bool replaceBuildingFromTemplate(
     connector.buildingIndex = buildingIndex;
     connector.lowerRoomIndex = newRoomMap[connector.lowerRoomIndex];
     connector.upperRoomIndex = newRoomMap[connector.upperRoomIndex];
-    connector.stableKey =
-        reusedOrMintedKey(layout, nextStableOrdinal, oldVerticalConnectorKeys,
-                          index, "vertical_connector");
+    applyReusedOrMintedIdentity(
+        layout, nextStableOrdinal, oldVerticalConnectorIdentities, index,
+        "vertical_connector", preserveExistingNames, connector.stableKey,
+        connector.name);
     verticalConnectors.push_back(std::move(connector));
   }
 
@@ -222,8 +189,9 @@ bool replaceBuildingFromTemplate(
   for (std::size_t index = 0U; index < positioned.boxes.size(); ++index) {
     CreativeWorldLayoutBox box = positioned.boxes[index];
     box.buildingIndex = buildingIndex;
-    box.stableKey = reusedOrMintedKey(layout, nextStableOrdinal, oldBoxKeys,
-                                      index, "floor");
+    applyReusedOrMintedIdentity(
+        layout, nextStableOrdinal, oldBoxIdentities, index, "floor",
+        preserveExistingNames, box.stableKey, box.name);
     boxes.push_back(std::move(box));
   }
 
@@ -243,8 +211,9 @@ bool replaceBuildingFromTemplate(
   for (std::size_t index = 0U; index < positioned.walls.size(); ++index) {
     CreativeWorldLayoutWall wall = positioned.walls[index];
     wall.buildingIndex = buildingIndex;
-    wall.stableKey = reusedOrMintedKey(layout, nextStableOrdinal, oldWallKeys,
-                                       index, "wall");
+    applyReusedOrMintedIdentity(
+        layout, nextStableOrdinal, oldWallIdentities, index, "wall",
+        preserveExistingNames, wall.stableKey, wall.name);
     newWallMap[index] = walls.size();
     walls.push_back(std::move(wall));
   }
@@ -269,10 +238,10 @@ bool replaceBuildingFromTemplate(
     } else {
       opening.wallIndex = newWallMap[opening.wallIndex];
     }
-    opening.stableKey = reusedOrMintedKey(
-        layout, nextStableOrdinal, oldOpeningKeys, index,
-        opening.kind == CreativeBuildingOpeningKind::Door ? "door" :
-                                                            "window");
+    applyReusedOrMintedIdentity(
+        layout, nextStableOrdinal, oldOpeningIdentities, index,
+        opening.kind == CreativeBuildingOpeningKind::Door ? "door" : "window",
+        preserveExistingNames, opening.stableKey, opening.name);
     openings.push_back(std::move(opening));
   }
 
@@ -282,6 +251,36 @@ bool replaceBuildingFromTemplate(
   layout.boxes = std::move(boxes);
   layout.walls = std::move(walls);
   layout.openings = std::move(openings);
+  return validCreativeWorldLayoutBuildingOwnership(layout);
+}
+
+bool replaceBuildingFromTemplate(
+    CreativeWorldLayout& layout,
+    std::size_t buildingIndex,
+    const CreativeWorldLayoutBuildingTemplate& sourceTemplate,
+    const CreativeWorldLayoutBuildingTemplateInstanceProvenance& provenance,
+    std::uint64_t& nextStableOrdinal) {
+  CreativeWorldLayoutBuildingTemplateResult oriented =
+      orientCreativeWorldLayoutBuildingTemplate(sourceTemplate,
+                                                provenance.orientation);
+  if (!oriented.accepted) {
+    return false;
+  }
+  CreativeWorldLayout positioned = oriented.value.normalizedLayout;
+  positioned.buildings[0].name = sourceTemplate.label;
+  if (provenance.anchor != CreativeTerrainCoord2{}) {
+    CreativeWorldLayoutBuildingEditResult moved =
+        moveCreativeWorldLayoutBuilding(
+            positioned, {0U, provenance.anchor.x, provenance.anchor.z});
+    if (!moved.accepted) {
+      return false;
+    }
+    positioned = std::move(moved.edited);
+  }
+  if (!replaceBuildingContents(layout, buildingIndex, positioned,
+                               nextStableOrdinal, false)) {
+    return false;
+  }
 
   CreativeWorldLayoutBuildingTemplateInstanceProvenance updated = provenance;
   updated.present = true;
@@ -294,8 +293,7 @@ bool replaceBuildingFromTemplate(
   }
   updated.instanceBaselineFingerprint = baseline.value;
   return setCreativeWorldLayoutBuildingTemplateInstanceProvenance(
-             layout, buildingIndex, updated) &&
-         validCreativeWorldLayoutBuildingOwnership(layout);
+      layout, buildingIndex, updated);
 }
 
 void setRefreshFailure(
@@ -310,6 +308,14 @@ void setRefreshFailure(
 }
 
 }  // namespace
+
+bool replaceCreativeWorldLayoutBuildingInCandidate(
+    CreativeWorldLayout& candidate, std::size_t buildingIndex,
+    const CreativeWorldLayout& replacement,
+    std::uint64_t& nextStableOrdinal, bool preserveExistingNames) {
+  return replaceBuildingContents(candidate, buildingIndex, replacement,
+                                 nextStableOrdinal, preserveExistingNames);
+}
 
 CreativeWorldLayoutBuildingTemplateRefreshResult
 refreshCreativeWorldLayoutBuildingTemplateInstances(

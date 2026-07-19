@@ -192,6 +192,13 @@ createCreativeEditorWorldLayoutBuildingShell(
 createCreativeEditorWorldLayoutBuildingBlockout(
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutBuildingBlockoutSettings settings);
+[[nodiscard]] bool readCreativeEditorWorldLayoutBuildingBlockoutSettings(
+    const CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
+    CreativeEditorWorldLayoutBuildingBlockoutSettings& output) noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+updateCreativeEditorWorldLayoutBuildingBlockout(
+    CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
+    CreativeEditorWorldLayoutBuildingBlockoutSettings settings);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 createCreativeEditorWorldLayoutRoom(
     CreativeEditorWorldLayoutState& state, std::size_t levelIndex,

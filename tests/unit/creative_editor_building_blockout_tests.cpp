@@ -905,6 +905,292 @@ bool editorCreatesOneAtomicMultiStoreyBlockout() {
                 "undo and redo restore the complete multi-storey building");
 }
 
+bool blockoutProvenanceRoundTripsAndProtectsRefinements() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "blockout_provenance");
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings settings =
+      gridBlockout();
+  settings.shell.footprint = {{0, 0}, {12, 12}};
+  settings.facade.entranceOffsetCells = 0.5;
+  settings.storeys.count = 2U;
+  const app::CreativeEditorWorldLayoutEditReceipt created =
+      app::createCreativeEditorWorldLayoutBuildingBlockout(state, settings);
+  const cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt current =
+      cr::inspectCreativeWorldLayoutBuildingBlockoutSync(state.source, 0U);
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings restored;
+  const bool read = app::readCreativeEditorWorldLayoutBuildingBlockoutSettings(
+      state, 0U, restored);
+
+  const cr::CreativeWorldLayoutEncodeResult encoded =
+      cr::encodeCreativeWorldLayout(state.source);
+  const cr::CreativeWorldLayoutDecodeResult decoded =
+      cr::decodeCreativeWorldLayout(encoded.encodedText);
+  const cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt decodedSync =
+      decoded.accepted
+          ? cr::inspectCreativeWorldLayoutBuildingBlockoutSync(decoded.layout,
+                                                               0U)
+          : cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt{};
+  cr::CreativeWorldLayout malformed = decoded.layout;
+  if (decoded.accepted && !malformed.buildings.empty()) {
+    const auto provenanceTag = std::find_if(
+        malformed.buildings[0].tags.begin(),
+        malformed.buildings[0].tags.end(), [](const std::string& tag) {
+          return cr::isCreativeWorldLayoutBuildingBlockoutProvenanceTag(tag);
+        });
+    if (provenanceTag != malformed.buildings[0].tags.end()) {
+      malformed.buildings[0].tags.push_back(*provenanceTag);
+    }
+  }
+  const cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt malformedSync =
+      cr::inspectCreativeWorldLayoutBuildingBlockoutSync(malformed, 0U);
+  const cr::CreativeWorldLayoutBuildingTemplateResult captured =
+      cr::captureCreativeWorldLayoutBuildingTemplate(
+          state.source, {0U, "blockout_capture", "Blockout Capture"});
+  const bool templateOwnsNoBlockoutRecipe =
+      captured.accepted &&
+      std::none_of(
+          captured.value.normalizedLayout.buildings[0].tags.begin(),
+          captured.value.normalizedLayout.buildings[0].tags.end(),
+          [](const std::string& tag) {
+            return cr::isCreativeWorldLayoutBuildingBlockoutProvenanceTag(tag);
+          });
+
+  cr::CreativeWorldLayout refined = decoded.layout;
+  if (!decoded.accepted || refined.rooms.empty()) {
+    return expect(false,
+                  "blockout source codec returns the generated room rows");
+  }
+  refined.rooms[0].wallThicknessCells += 0.125;
+  const cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt refinedSync =
+      cr::inspectCreativeWorldLayoutBuildingBlockoutSync(refined, 0U);
+
+  return expect(created.accepted && current.accepted &&
+                    current.state ==
+                        cr::CreativeWorldLayoutBuildingBlockoutSyncState::
+                            Current,
+                "created blockout records a current semantic recipe") &&
+         expect(read && sameRect(restored.shell.footprint,
+                                 settings.shell.footprint) &&
+                    restored.pattern == settings.pattern &&
+                    restored.facade.entranceOffsetCells == 0.5 &&
+                    restored.storeys.count == 2U,
+                "editor reloads the complete blockout recipe") &&
+         expect(encoded.accepted && decoded.accepted &&
+                    decodedSync.state ==
+                        cr::CreativeWorldLayoutBuildingBlockoutSyncState::
+                            Current,
+                "blockout recipe and baseline survive source codec round trip") &&
+         expect(malformedSync.state ==
+                    cr::CreativeWorldLayoutBuildingBlockoutSyncState::Invalid,
+                "duplicate provenance fields fail closed as invalid") &&
+         expect(templateOwnsNoBlockoutRecipe,
+                "captured templates do not retain competing blockout ownership") &&
+         expect(refinedSync.accepted &&
+                    refinedSync.state ==
+                        cr::CreativeWorldLayoutBuildingBlockoutSyncState::
+                            LocallyModified,
+                "source-level refinements invalidate destructive regeneration");
+}
+
+bool editorRegeneratesBlockoutWithStableIdentityAndOneHistoryStep() {
+  cr::CreativeAppState live = makeAppState();
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "blockout_update");
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings neighbor;
+  neighbor.shell.footprint = {{-16, 0}, {-8, 8}};
+  const app::CreativeEditorWorldLayoutEditReceipt neighborCreated =
+      app::createCreativeEditorWorldLayoutBuildingBlockout(state, neighbor);
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings settings;
+  settings.shell.footprint = {{0, 0}, {12, 12}};
+  settings.facade.includeExteriorWindows = false;
+  const app::CreativeEditorWorldLayoutEditReceipt created =
+      app::createCreativeEditorWorldLayoutBuildingBlockout(state, settings);
+  const std::string buildingKey = state.source.buildings[1].stableKey;
+  const std::string levelKey = state.source.levels[1].stableKey;
+  const std::string roomKey = state.source.rooms[1].stableKey;
+  const std::string roomName = state.source.rooms[1].name;
+  const std::uint64_t revisionBefore = state.revision;
+  const std::uint64_t undoDepthBefore =
+      app::creativeEditorWorldLayoutSourceUndoDepth(state);
+
+  settings.pattern = cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2;
+  settings.facade.includeExteriorWindows = true;
+  settings.storeys.count = 3U;
+  const app::CreativeEditorWorldLayoutEditReceipt updated =
+      app::updateCreativeEditorWorldLayoutBuildingBlockout(state, 1U,
+                                                           settings);
+  const cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt updatedSync =
+      cr::inspectCreativeWorldLayoutBuildingBlockoutSync(state.source, 1U);
+  const bool stableIdentity =
+      state.source.buildings[1].stableKey == buildingKey &&
+      state.source.levels[1].stableKey == levelKey &&
+      state.source.rooms[1].stableKey == roomKey &&
+      state.source.rooms[1].name == roomName &&
+      stableKeysUnique(state.source);
+  const bool oneEdit =
+      updated.accepted && updated.changed &&
+      state.revision == revisionBefore + 1U &&
+      app::creativeEditorWorldLayoutSourceUndoDepth(state) ==
+          undoDepthBefore + 1U;
+  const bool expanded =
+      state.source.levels.size() == 4U && state.source.rooms.size() == 13U &&
+      state.source.verticalConnectors.size() == 2U &&
+      updatedSync.state ==
+          cr::CreativeWorldLayoutBuildingBlockoutSyncState::Current;
+
+  const bool undone = app::undoLastEdit(live, "blockout-update-undo", &state);
+  const bool originalRestored =
+      undone && state.source.levels.size() == 2U &&
+      state.source.rooms.size() == 2U &&
+      state.source.verticalConnectors.empty() &&
+      cr::inspectCreativeWorldLayoutBuildingBlockoutSync(state.source, 1U)
+              .state ==
+          cr::CreativeWorldLayoutBuildingBlockoutSyncState::Current;
+  const bool redone = app::redoLastEdit(live, "blockout-update-redo", &state);
+
+  return expect(neighborCreated.accepted && created.accepted,
+                "blockout update fixture is valid") &&
+         expect(oneEdit,
+                "whole regeneration creates exactly one source history step") &&
+         expect(stableIdentity,
+                "reused building rows retain stable identity and labels") &&
+         expect(expanded,
+                "regeneration updates pattern, facade, storeys, and stairs") &&
+         expect(originalRestored && redone &&
+                    state.source.levels.size() == 4U &&
+                    state.source.rooms.size() == 13U,
+                "one undo and redo restore complete blockout generations");
+}
+
+bool blockoutUpdateRejectsConflictAndOverlapAtomically() {
+  app::CreativeEditorWorldLayoutState refinedState;
+  app::resetCreativeEditorWorldLayout(refinedState, "blockout_conflict");
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings settings;
+  settings.shell.footprint = {{0, 0}, {8, 8}};
+  const app::CreativeEditorWorldLayoutEditReceipt created =
+      app::createCreativeEditorWorldLayoutBuildingBlockout(refinedState,
+                                                           settings);
+  refinedState.source.rooms[0].name = "Hand Refined Room";
+  const cr::CreativeWorldLayoutEncodeResult refinedBefore =
+      cr::encodeCreativeWorldLayout(refinedState.source);
+  const std::uint64_t refinedRevision = refinedState.revision;
+  settings.storeys.count = 2U;
+  const app::CreativeEditorWorldLayoutEditReceipt conflict =
+      app::updateCreativeEditorWorldLayoutBuildingBlockout(refinedState, 0U,
+                                                           settings);
+  const cr::CreativeWorldLayoutEncodeResult refinedAfter =
+      cr::encodeCreativeWorldLayout(refinedState.source);
+
+  app::CreativeEditorWorldLayoutState overlapState;
+  app::resetCreativeEditorWorldLayout(overlapState, "blockout_overlap_update");
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings first;
+  first.shell.footprint = {{0, 0}, {8, 8}};
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings second = first;
+  second.shell.footprint = {{12, 0}, {20, 8}};
+  const bool fixturesReady =
+      app::createCreativeEditorWorldLayoutBuildingBlockout(overlapState, first)
+          .accepted &&
+      app::createCreativeEditorWorldLayoutBuildingBlockout(overlapState,
+                                                           second)
+          .accepted;
+  const cr::CreativeWorldLayoutEncodeResult overlapBefore =
+      cr::encodeCreativeWorldLayout(overlapState.source);
+  first.shell.footprint = {{14, 0}, {22, 8}};
+  const std::uint64_t overlapRevision = overlapState.revision;
+  const app::CreativeEditorWorldLayoutEditReceipt overlap =
+      app::updateCreativeEditorWorldLayoutBuildingBlockout(overlapState, 0U,
+                                                           first);
+  const cr::CreativeWorldLayoutEncodeResult overlapAfter =
+      cr::encodeCreativeWorldLayout(overlapState.source);
+
+  return expect(created.accepted && !conflict.accepted && !conflict.changed &&
+                    conflict.reasonCode ==
+                        "creative_editor_world_layout_building_blockout_"
+                        "update_conflict" &&
+                    refinedState.revision == refinedRevision &&
+                    refinedBefore.encodedText == refinedAfter.encodedText,
+                "local refinement conflict leaves source byte-equivalent") &&
+         expect(fixturesReady && !overlap.accepted && !overlap.changed &&
+                    overlapState.revision == overlapRevision &&
+                    overlapBefore.encodedText == overlapAfter.encodedText,
+                "overlapping regeneration publishes no partial candidate");
+}
+
+bool blockoutProvenanceFollowsMoveDuplicateAndTransform() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "blockout_transforms");
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings settings;
+  settings.shell.footprint = {{0, 0}, {8, 6}};
+  settings.pattern = cr::CreativeWorldLayoutBuildingBlockoutPattern::SplitX;
+  settings.facade.entranceOffsetCells = 0.5;
+  settings.storeys.preferredDirection =
+      cr::CreativeWorldLayoutVerticalDirection::PositiveZ;
+  const bool created =
+      app::createCreativeEditorWorldLayoutBuildingBlockout(state, settings)
+          .accepted;
+
+  const cr::CreativeWorldLayoutBuildingEditResult moved =
+      cr::moveCreativeWorldLayoutBuilding(state.source, {0U, 10, -3});
+  const cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt movedSync =
+      moved.accepted
+          ? cr::inspectCreativeWorldLayoutBuildingBlockoutSync(moved.edited,
+                                                               0U)
+          : cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt{};
+  const bool moveReady =
+      movedSync.state ==
+          cr::CreativeWorldLayoutBuildingBlockoutSyncState::Current &&
+      sameRect(movedSync.provenance.recipe.request.footprint,
+               {{10, -3}, {18, 3}});
+
+  const cr::CreativeWorldLayoutBuildingEditResult duplicated =
+      cr::duplicateCreativeWorldLayoutBuilding(
+          state.source, {0U, 12, 0, state.nextStableOrdinal});
+  const cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt duplicateSync =
+      duplicated.accepted
+          ? cr::inspectCreativeWorldLayoutBuildingBlockoutSync(
+                duplicated.edited, duplicated.resultBuildingIndex)
+          : cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt{};
+  const bool duplicateReady =
+      duplicateSync.state ==
+          cr::CreativeWorldLayoutBuildingBlockoutSyncState::Current &&
+      sameRect(duplicateSync.provenance.recipe.request.footprint,
+               {{12, 0}, {20, 6}});
+
+  const cr::CreativeWorldLayoutBuildingTransformResult transformed =
+      cr::transformCreativeWorldLayoutBuilding(
+          state.source,
+          {0U, cr::CreativeWorldLayoutBuildingTransformOperation::
+                   RotateRight90});
+  const cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt transformSync =
+      transformed.accepted
+          ? cr::inspectCreativeWorldLayoutBuildingBlockoutSync(
+                transformed.transformed, 0U)
+          : cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt{};
+  const cr::CreativeWorldLayoutBuildingBlockoutRecipe transformedRecipe =
+      transformSync.provenance.recipe;
+  const bool transformReady =
+      transformSync.state ==
+          cr::CreativeWorldLayoutBuildingBlockoutSyncState::Current &&
+      sameRect(transformedRecipe.request.footprint, {{0, 0}, {6, 8}}) &&
+      transformedRecipe.request.pattern ==
+          cr::CreativeWorldLayoutBuildingBlockoutPattern::SplitZ &&
+      transformedRecipe.request.facade.entranceEdge ==
+          cr::CreativeWorldLayoutRoomEdge::West &&
+      transformedRecipe.request.facade.entranceOffsetCells == 0.5 &&
+      transformedRecipe.request.storeys.preferredDirection ==
+          cr::CreativeWorldLayoutVerticalDirection::NegativeX &&
+      transformedRecipe.roofRidgeAxis ==
+          cr::CreativeStructuralRoofRidgeAxis::Z;
+
+  return expect(created, "blockout transform fixture is valid") &&
+         expect(moveReady,
+                "moving a blockout moves its editable recipe footprint") &&
+         expect(duplicateReady,
+                "duplicating a current blockout creates a current recipe copy") &&
+         expect(transformReady,
+                "rotation remaps blockout axes, facade, roof, and stairs");
+}
+
 bool desktopCommandRoutesTypedBlockoutRequest() {
   cr::CreativeAppState live = makeAppState();
   app::CreativeEditorState editor;
@@ -930,6 +1216,26 @@ bool desktopCommandRoutesTypedBlockoutRequest() {
   const app::CreativeDesktopCommandResult created =
       app::dispatchCreativeDesktopCommands(frame, context);
 
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings updatedSettings =
+      gridBlockout();
+  updatedSettings.shell.footprint = {{0, 0}, {12, 12}};
+  updatedSettings.storeys.count = 2U;
+  app::CreativeDesktopCommandFrame updateFrame;
+  updateFrame.push(
+      app::CreativeDesktopCommandId::WorldLayoutUpdateBuildingBlockout,
+      app::CreativeDesktopWorldLayoutBuildingBlockoutUpdatePayload{
+          0U, updatedSettings});
+  const app::CreativeDesktopCommandResult updated =
+      app::dispatchCreativeDesktopCommands(updateFrame, context);
+
+  app::CreativeDesktopCommandFrame updateMismatchFrame;
+  updateMismatchFrame.push(
+      app::CreativeDesktopCommandId::WorldLayoutUpdateBuildingBlockout,
+      app::CreativeDesktopWorldLayoutToolPayload{});
+  const std::uint64_t revisionBeforeMismatch = editor.worldLayout.revision;
+  const app::CreativeDesktopCommandResult updateMismatch =
+      app::dispatchCreativeDesktopCommands(updateMismatchFrame, context);
+
   app::CreativeEditorState multiEditor;
   app::resetCreativeEditorWorldLayout(multiEditor.worldLayout,
                                       "command_multi_storey_blockout");
@@ -949,9 +1255,14 @@ bool desktopCommandRoutesTypedBlockoutRequest() {
                 "mismatched blockout payload cannot mutate source") &&
          expect(created.accepted && created.changed &&
                     created.worldLayoutChanged && !created.sceneChanged &&
-                    editor.worldLayout.source.rooms.size() == 4U &&
-                    editor.worldLayout.source.openings.size() == 11U,
+                    editor.worldLayout.source.rooms.size() == 8U &&
+                    editor.worldLayout.source.levels.size() == 2U,
                 "typed desktop command reaches the blockout kernel") &&
+         expect(updated.accepted && updated.changed &&
+                    updated.worldLayoutChanged &&
+                    !updateMismatch.accepted && !updateMismatch.changed &&
+                    editor.worldLayout.revision == revisionBeforeMismatch,
+                "typed desktop update routes safely and rejects bad payloads") &&
          expect(multiCreated.accepted && multiCreated.changed &&
                     multiEditor.worldLayout.source.levels.size() == 2U &&
                     multiEditor.worldLayout.source.verticalConnectors.size() ==
@@ -972,6 +1283,10 @@ int main() {
                   editorRejectsUnfitStoreysWithoutPartialMutation() &&
                   editorCreatesAndGeneratesOneAtomicBlockout() &&
                   editorCreatesOneAtomicMultiStoreyBlockout() &&
+                  blockoutProvenanceRoundTripsAndProtectsRefinements() &&
+                  editorRegeneratesBlockoutWithStableIdentityAndOneHistoryStep() &&
+                  blockoutUpdateRejectsConflictAndOverlapAtomically() &&
+                  blockoutProvenanceFollowsMoveDuplicateAndTransform() &&
                   desktopCommandRoutesTypedBlockoutRequest();
   if (!ok) {
     return 1;
