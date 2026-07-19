@@ -1,4 +1,5 @@
 #include "EditorDesktopWidgets.hpp"
+#include "EditorWorldLayout.hpp"
 
 #include "EditorDesktopWorldLayoutInspector.hpp"
 

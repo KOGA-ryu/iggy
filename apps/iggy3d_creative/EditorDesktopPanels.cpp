@@ -11,6 +11,7 @@
 #include "EditorInteraction.hpp"
 #include "EditorPlacementFeedback.hpp"
 #include "EditorPlayMode.hpp"
+#include "EditorWorldLayout.hpp"
 #include "EditorWorldLayoutHistory.hpp"
 #include "EditorWorldLayoutPanel.hpp"
 #include "app/iggy3d/creative/history/History.hpp"

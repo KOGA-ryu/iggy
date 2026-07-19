@@ -14,6 +14,7 @@
 #include "EditorEdits.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorState.hpp"
+#include "EditorWorldLayout.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
 #include "render/vulkan/VulkanBackend.hpp"

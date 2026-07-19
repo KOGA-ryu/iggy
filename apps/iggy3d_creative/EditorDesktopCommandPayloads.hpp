@@ -9,7 +9,7 @@
 #include "app/iggy3d/creative/assets/AuthoredAsset.hpp"
 #include "app/iggy3d/creative/document/LogicLink.hpp"
 #include "app/iggy3d/creative/recipes/TerrainOperation.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutState.hpp"
 
 namespace iggy3d_creative_app {
 

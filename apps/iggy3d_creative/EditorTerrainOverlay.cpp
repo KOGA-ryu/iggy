@@ -14,6 +14,7 @@
 #include "EditorState.hpp"
 #include "EditorTerrainInternal.hpp"
 #include "EditorTerrainPaint.hpp"
+#include "EditorWorldLayout.hpp"
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;

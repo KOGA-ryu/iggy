@@ -1,4 +1,5 @@
 #include "EditorWorldLayoutPanel.hpp"
+#include "EditorWorldLayout.hpp"
 
 #include <cstddef>
 #include <iostream>

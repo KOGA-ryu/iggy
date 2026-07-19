@@ -1,6 +1,7 @@
 #include "EditorDesktopCommandsInternal.hpp"
 
 #include "EditorTerrainGeneration.hpp"
+#include "EditorWorldLayout.hpp"
 
 #include <string_view>
 

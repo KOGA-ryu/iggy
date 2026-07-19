@@ -1,6 +1,7 @@
 #include "EditorWorldLayoutCanvasInternal.hpp"
 
 #include "EditorDesktopModel.hpp"
+#include "EditorWorldLayout.hpp"
 #include "EditorWorldLayoutTopography.hpp"
 
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"

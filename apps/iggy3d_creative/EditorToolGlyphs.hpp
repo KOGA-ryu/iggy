@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutState.hpp"
 #include "EditorWorldLayoutTopography.hpp"
 
 struct ImDrawList;

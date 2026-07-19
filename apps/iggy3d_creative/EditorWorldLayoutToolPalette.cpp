@@ -1,5 +1,7 @@
 #include "EditorWorldLayoutPanelInternal.hpp"
 
+#include "EditorWorldLayout.hpp"
+
 #include "EditorDesktopModel.hpp"
 
 #include <algorithm>

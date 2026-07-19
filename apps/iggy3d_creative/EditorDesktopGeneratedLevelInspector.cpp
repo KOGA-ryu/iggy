@@ -1,4 +1,5 @@
 #include "EditorDesktopWidgets.hpp"
+#include "EditorWorldLayout.hpp"
 
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 

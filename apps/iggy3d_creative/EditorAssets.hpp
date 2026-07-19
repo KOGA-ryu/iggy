@@ -11,7 +11,7 @@
 #include "app/iggy3d/creative/mutation/Mutation.hpp"
 #include "content/assets/StaticMeshAsset.hpp"
 
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutState.hpp"
 
 namespace iggy3d {
 

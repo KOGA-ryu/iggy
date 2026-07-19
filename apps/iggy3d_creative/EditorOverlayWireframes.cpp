@@ -23,6 +23,7 @@
 #include "EditorRoomPlacement.hpp"
 #include "EditorState.hpp"
 #include "EditorStructuralPlacement.hpp"
+#include "EditorWorldLayout.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/DocumentWireframe.hpp"
 #include "app/iggy3d/creative/render/CreativeOverlayFrame.hpp"

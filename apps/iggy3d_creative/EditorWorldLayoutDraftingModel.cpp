@@ -1,5 +1,7 @@
 #include "EditorWorldLayoutPanel.hpp"
 
+#include "EditorWorldLayout.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>

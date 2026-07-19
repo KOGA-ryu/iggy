@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "EditorDesktopModel.hpp"
+#include "EditorWorldLayout.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/play/RuntimeInteractables.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"

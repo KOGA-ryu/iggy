@@ -1,5 +1,6 @@
 #include "EditorWorldLayoutCanvasInternal.hpp"
 
+#include "EditorWorldLayout.hpp"
 #include "EditorWorldLayoutTopography.hpp"
 
 #include <algorithm>

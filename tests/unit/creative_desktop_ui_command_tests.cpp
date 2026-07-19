@@ -6,6 +6,7 @@
 #include "EditorFrame.hpp"
 #include "EditorPersistence.hpp"
 #include "EditorState.hpp"
+#include "EditorWorldLayout.hpp"
 #include "EditorWorldLayoutDiagnostics.hpp"
 #include "EditorWorldLayoutHistory.hpp"
 #include "app/iggy3d/creative/Facade.hpp"

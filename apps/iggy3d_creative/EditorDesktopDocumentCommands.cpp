@@ -3,6 +3,7 @@
 #include "EditorEdits.hpp"
 #include "EditorFrame.hpp"
 #include "EditorPersistence.hpp"
+#include "EditorWorldLayout.hpp"
 
 namespace iggy3d_creative_app {
 

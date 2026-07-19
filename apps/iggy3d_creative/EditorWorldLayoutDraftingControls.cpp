@@ -1,5 +1,7 @@
 #include "EditorWorldLayoutPanelInternal.hpp"
 
+#include "EditorWorldLayout.hpp"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>

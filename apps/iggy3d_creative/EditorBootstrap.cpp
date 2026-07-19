@@ -26,6 +26,7 @@
 
 #include "EditorAssets.hpp"
 #include "EditorPlacement.hpp"
+#include "EditorWorldLayout.hpp"
 
 namespace iggy3d_creative_app {
 

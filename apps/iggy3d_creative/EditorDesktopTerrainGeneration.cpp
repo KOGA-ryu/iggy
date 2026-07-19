@@ -1,6 +1,7 @@
 #include "EditorDesktopWidgets.hpp"
 
 #include "EditorTerrainGeneration.hpp"
+#include "EditorWorldLayout.hpp"
 
 #include <algorithm>
 #include <array>

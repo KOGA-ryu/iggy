@@ -1,5 +1,7 @@
 #include "EditorWorldLayoutCanvasInternal.hpp"
 
+#include "EditorWorldLayout.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
