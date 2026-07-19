@@ -1,14 +1,10 @@
 #include "render/vulkan/RenderLoop.hpp"
 
-#include <algorithm>
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string>
-#include <vector>
 
-#include "render/debug/DebugHudText.hpp"
-#include "render/vulkan/ProjectileOverlayProjection.hpp"
+#include "render/vulkan/RenderLoopFramePlan.hpp"
 #include "render/vulkan/VulkanResult.hpp"
 
 namespace iggy3d::vulkan {
@@ -117,17 +113,6 @@ FirstRoomPushConstants firstRoomClipFromModel() {
   return constants;
 }
 
-FirstRoomPushConstants pushConstantsFromMat4(const Mat4& matrix) {
-  FirstRoomPushConstants constants;
-  for (std::uint32_t row = 0; row < 4U; ++row) {
-    for (std::uint32_t column = 0; column < 4U; ++column) {
-      constants.clipFromModel[static_cast<std::size_t>(column) * 4U + row] =
-          iggy3d::at(matrix, row, column);
-    }
-  }
-  return constants;
-}
-
 void populateStaticMeshInstanceRecordInfo(
     const RenderLoopCreateInfo& createInfo,
     FirstRoomFrameRecordInfo& recordInfo) {
@@ -157,88 +142,8 @@ void populateStaticMeshInstanceRecordInfo(
       geometry.staticMeshInstanceBatches.size();
 }
 
-struct ProxySceneFacts {
-  bool targetMarkerVisible = false;
-  bool objectiveMarkerVisible = false;
-  bool keyMarkerVisible = false;
-  bool dummyMarkerVisible = false;
-  std::uint32_t markerCount = 0;
-};
-
-ProxySceneFacts proxySceneFacts(const FrameInput& frame) {
-  ProxySceneFacts facts;
-  if (frame.projections.scene == nullptr) {
-    return facts;
-  }
-  for (const SceneItem& item : frame.projections.scene->items) {
-    if (!item.visible) {
-      continue;
-    }
-    if (item.stableName == "training_dummy" || item.targetable ||
-        item.kind == SceneItemKind::Interactable) {
-      facts.targetMarkerVisible = true;
-    }
-    if (item.stableName == "training_dummy") {
-      facts.dummyMarkerVisible = true;
-    }
-    if (item.stableName == "gold_key" || item.kind == SceneItemKind::Pickup ||
-        item.kind == SceneItemKind::ObjectiveMarker) {
-      facts.objectiveMarkerVisible = true;
-    }
-    if (item.stableName == "gold_key") {
-      facts.keyMarkerVisible = true;
-    }
-  }
-  facts.markerCount = 2U + (facts.targetMarkerVisible ? 1U : 0U) +
-                      (facts.objectiveMarkerVisible ? 1U : 0U);
-  return facts;
-}
-
-std::uint32_t proxyDrawCount(const ProxySceneFacts& facts) {
-  return 3U + (facts.targetMarkerVisible ? 1U : 0U) +
-         (facts.objectiveMarkerVisible ? 1U : 0U);
-}
-
 bool packageRoomLoaded(const FrameInput& frame) {
   return frame.projections.scene != nullptr && frame.projections.scene->room.loaded;
-}
-
-bool sceneHasRenderableContent(const FrameInput& frame) {
-  if (frame.projections.scene == nullptr) {
-    return false;
-  }
-  return frame.projections.scene->room.loaded || !frame.projections.scene->items.empty() ||
-         !frame.projections.scene->projectiles.empty();
-}
-
-bool frameHasUiContent(const FrameInput& frame) {
-  return frame.ui.visible &&
-         ((frame.ui.rects != nullptr && frame.ui.rectCount > 0U) ||
-          (frame.ui.textGlyphQuads != nullptr &&
-           frame.ui.textGlyphQuadCount > 0U));
-}
-
-DebugHudLayoutResult debugHudLayoutFor(const FrameInput& frame) {
-  if (frame.projections.debug == nullptr ||
-      frame.projections.debug->runtimeDebugHudLines.empty()) {
-    return {};
-  }
-  return layoutDebugHudText(frame.projections.debug->runtimeDebugHudLines,
-                            frame.viewport.width, frame.viewport.height);
-}
-
-std::vector<OverlayRect> uiOverlayRectsFor(const FrameInput& frame) {
-  std::vector<OverlayRect> rects;
-  // branch-gate: BG-1078
-  if (frame.ui.rects == nullptr || frame.ui.rectCount == 0U) {
-    return rects;
-  }
-  rects.reserve(frame.ui.rectCount);
-  for (std::size_t index = 0; index < frame.ui.rectCount; ++index) {
-    const RenderUiRect& ui = frame.ui.rects[index];
-    rects.push_back({ui.x, ui.y, ui.width, ui.height, ui.r, ui.g, ui.b, ui.a});
-  }
-  return rects;
 }
 
 }  // namespace
@@ -449,41 +354,21 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
   }
 
   const SwapchainInfo& readySwapchain = createInfo_.swapchain->info();
-  const DebugHudLayoutResult debugHud = debugHudLayoutFor(frame);
-  const ProjectileOverlayLayout projectileOverlay = projectileOverlayLayoutFor(frame);
-  const std::vector<OverlayRect> uiOverlayRects = uiOverlayRectsFor(frame);
-  std::array<CreativePreviewDrawInfo, kRenderCreativePreviewCapacity>
-      creativePreviewDraws{};
+  const RenderLoopFramePlan framePlan = buildRenderLoopFramePlan(
+      createInfo_, frame, drawPackageRoom, firstRoomBundleReady(createInfo_));
+  const DebugHudLayoutResult& debugHud = framePlan.debugHud;
+  const ProjectileOverlayLayout& projectileOverlay =
+      framePlan.projectileOverlay;
+  const std::vector<OverlayRect>& uiOverlayRects = framePlan.uiOverlayRects;
+  const auto& creativePreviewDraws = framePlan.creativePreviewDraws;
   const std::size_t creativePreviewDrawCount =
-      std::min<std::size_t>(frame.creativePreview.itemCount,
-                            creativePreviewDraws.size());
-  for (std::size_t index = 0; index < creativePreviewDrawCount; ++index) {
-    const RenderCreativePreviewItem& item =
-        frame.creativePreview.items[index];
-    creativePreviewDraws[index].geometryDrawIndex =
-        createInfo_.firstRoomResources != nullptr
-            ? resolveCreativePreviewGeometryDrawIndex(
-                  createInfo_.firstRoomResources->creativePreviewGeometry(),
-                  item)
-            : creativePreviewGeometryDrawIndex(item.role,
-                                               item.includePathWireframe,
-                                               item.geometryProfile,
-                                               item.proceduralSegmentCount);
-    creativePreviewDraws[index].depthDisabled =
-        item.role == RenderCreativePreviewRole::Held;
-    creativePreviewDraws[index].pushConstants =
-        pushConstantsFromMat4(item.clipFromModel);
-  }
+      framePlan.creativePreviewDrawCount;
+  const bool drawUiFrame = framePlan.drawUiFrame;
+  const bool drawProxyPrimitives = framePlan.drawProxyPrimitives;
+  const bool drawFirstRoom = framePlan.drawFirstRoom;
+  const RenderLoopProxySceneFacts& proxyFacts = framePlan.proxyFacts;
   VkCommandBuffer commandBuffer =
       createInfo_.commandRecording->commandBufferForFrameSlot(result.frameSlot);
-  const bool drawSceneContent = sceneHasRenderableContent(frame);
-  const bool drawUiFrame = frameHasUiContent(frame) && !drawSceneContent;
-  const bool drawProxyPrimitives =
-      drawSceneContent && !drawPackageRoom && frame.camera.mode == RenderCameraMode::FirstPerson;
-  const bool drawFirstRoom =
-      drawSceneContent && !drawPackageRoom && !drawProxyPrimitives &&
-      firstRoomBundleReady(createInfo_);
-  const ProxySceneFacts proxyFacts = proxySceneFacts(frame);
   CommandRecordResult recordResult;
   if (drawPackageRoom) {
     FirstRoomFrameRecordInfo recordInfo;
@@ -523,7 +408,8 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     recordInfo.indexedDraws = createInfo_.firstRoomResources->geometry().indexedDraws.data();
     recordInfo.indexedDrawCount =
         createInfo_.firstRoomResources->geometry().indexedDraws.size();
-    recordInfo.pushConstants = pushConstantsFromMat4(frame.camera.clipFromWorld);
+    recordInfo.pushConstants =
+        renderLoopPushConstantsFromMat4(frame.camera.clipFromWorld);
     populateStaticMeshInstanceRecordInfo(createInfo_, recordInfo);
     const CreativePreviewGeometryResources& previewGeometry =
         createInfo_.firstRoomResources->creativePreviewGeometry();
@@ -790,7 +676,8 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
                              ? createInfo_.firstRoomResources->geometry().indexedDraws.size() +
                                    createInfo_.firstRoomResources->geometry()
                                        .staticMeshInstanceBatches.size()
-                         : drawProxyPrimitives ? proxyDrawCount(proxyFacts)
+                         : drawProxyPrimitives
+                               ? renderLoopProxyDrawCount(proxyFacts)
                          // branch-gate: BG-1078
                          : drawUiFrame ? frame.ui.primitiveCount
                                              : (drawFirstRoom ? 1U : 0U)));
