@@ -415,6 +415,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorDesktopWorldLayoutSourceInspector.cpp
   apps/iggy3d_creative/EditorDesktopWorldLayoutVerticalConnectorInspector.cpp
   apps/iggy3d_creative/EditorDesktopPanels.cpp
+  apps/iggy3d_creative/EditorWorldLayoutDraftingModel.cpp
   apps/iggy3d_creative/EditorWorldLayoutPanel.cpp)
 
 add_library(iggy3d_creative_app STATIC ${IGGY3D_CREATIVE_APP_SOURCES})
