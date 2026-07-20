@@ -2,6 +2,8 @@
 
 #include "EditorDesktopUi.hpp"
 
+#include "app/iggy3d/creative/world/WorldLayoutDimensions.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -56,6 +58,7 @@ const char* boxApplyLabel(cr::CreativeObjectKind kind) noexcept {
 }
 
 void drawBuildingActions(CreativeEditorWorldLayoutState& state,
+                         const cr::CreativeDocument& document,
                          CreativeDesktopCommandFrame& commands) {
   const std::size_t buildingIndex =
       creativeEditorWorldLayoutSelectedBuilding(state);
@@ -93,6 +96,60 @@ void drawBuildingActions(CreativeEditorWorldLayoutState& state,
                       static_cast<unsigned long long>(roomCount),
                       static_cast<unsigned long long>(boxCount),
                       static_cast<unsigned long long>(wallCount));
+
+  ImGui::SeparatorText("Measured architecture");
+  const cr::CreativeWorldLayoutBuildingDimensions dimensions =
+      cr::measureCreativeWorldLayoutBuildingDimensions(
+          document.gridSettings(), state.source, buildingIndex);
+  if (dimensions.accepted) {
+    ImGui::Text("Footprint  %.2f x %.2f m",
+                dimensions.footprintWidthMeters,
+                dimensions.footprintDepthMeters);
+    ImGui::Text("Exterior facade  %.2f m",
+                dimensions.exteriorFacadeHeightMeters);
+    ImGui::Text("Total with roof  %.2f m", dimensions.totalHeightMeters);
+    if (dimensions.occupiedLevelCount > 1U) {
+      if (dimensions.uniformFloorToFloor) {
+        ImGui::Text("Floor to floor  %.2f m",
+                    dimensions.minimumFloorToFloorMeters);
+      } else {
+        ImGui::Text("Floor to floor  %.2f - %.2f m",
+                    dimensions.minimumFloorToFloorMeters,
+                    dimensions.maximumFloorToFloorMeters);
+      }
+    }
+    if (dimensions.uniformWallHeight) {
+      ImGui::Text("Interior wall  %.2f m",
+                  dimensions.minimumWallHeightMeters);
+    } else {
+      ImGui::Text("Interior wall  %.2f - %.2f m",
+                  dimensions.minimumWallHeightMeters,
+                  dimensions.maximumWallHeightMeters);
+    }
+    if (dimensions.uniformFloorThickness) {
+      ImGui::Text("Floor slab  %.2f m",
+                  dimensions.minimumFloorThicknessMeters);
+    } else {
+      ImGui::Text("Floor slab  %.2f - %.2f m",
+                  dimensions.minimumFloorThicknessMeters,
+                  dimensions.maximumFloorThicknessMeters);
+    }
+    ImGui::Text("Roof base Y %.2f m  top Y %.2f m",
+                dimensions.roofBaseMeters, dimensions.roofTopMeters);
+    ImGui::TextDisabled("Human %.2f m  |  building %.1fx human height",
+                        cr::kCreativeArchitecturalHumanReferenceHeightMeters,
+                        dimensions.totalHeightMeters /
+                            cr::kCreativeArchitecturalHumanReferenceHeightMeters);
+    if (!dimensions.uniformFloorToFloor || !dimensions.uniformWallHeight ||
+        !dimensions.uniformFloorThickness) {
+      ImGui::TextColored(ImVec4{0.92F, 0.72F, 0.20F, 1.0F},
+                         "Storey dimensions are not uniform");
+    }
+  } else {
+    ImGui::TextDisabled("Dimensions unavailable: %.*s",
+                        static_cast<int>(dimensions.reasonCode.size()),
+                        dimensions.reasonCode.data());
+  }
 
   ImGui::SeparatorText("Terrain placement");
   int groundingMode = static_cast<int>(building.groundingMode);
@@ -634,10 +691,11 @@ void drawWallSettings(CreativeEditorWorldLayoutState& state,
 void drawCreativeEditorWorldLayoutStructureInspector(
     CreativeEditorDesktopUiState& desktopUi,
     CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document,
     CreativeDesktopCommandFrame& commands) {
   switch (state.selection.kind) {
     case CreativeEditorWorldLayoutSelectionKind::Building:
-      drawBuildingActions(state, commands);
+      drawBuildingActions(state, document, commands);
       drawBuildingTemplateActions(desktopUi, state, commands);
       break;
     case CreativeEditorWorldLayoutSelectionKind::VerticalConnector:

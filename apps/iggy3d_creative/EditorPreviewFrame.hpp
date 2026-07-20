@@ -9,6 +9,7 @@
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/input/ControlProfile.hpp"
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutDimensions.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/FrameInput.hpp"
 #include "EditorPlacementFeedback.hpp"
@@ -62,6 +63,10 @@ struct CreativeEditorOverlayFrame {
   std::size_t generatedScopeObjectCount = 0;
   std::size_t generatedScopeVisibleObjectCount = 0;
   std::size_t generatedScopeEdgeCount = 0;
+  bool architectureScaleGuideActive = false;
+  std::size_t architectureScaleGuideLineCount = 0;
+  iggy3d::creative::CreativeWorldLayoutBuildingDimensions
+      architecturalDimensions{};
   std::size_t pointMarkerEdgeCount = 0;
   std::size_t lineMarkerEdgeCount = 0;
   std::size_t pathPointHandleEdgeCount = 0;

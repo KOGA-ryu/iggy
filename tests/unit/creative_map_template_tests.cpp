@@ -2,6 +2,7 @@
 #include "app/iggy3d/creative/world/MapTemplate.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBlockout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutDimensions.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 #include "app/iggy3d/creative/world/WorldService.hpp"
 #include "content/assets/StaticMeshAsset.hpp"
@@ -263,6 +264,9 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
       cr::sampleCreativeTerrainHeight(map.document.terrainField(), {20, 36});
   const cr::CreativeWorldLayoutRoomCompileResult expanded =
       cr::expandCreativeWorldLayoutRooms(map.worldLayout);
+  const cr::CreativeWorldLayoutBuildingDimensions dimensions =
+      cr::measureCreativeWorldLayoutBuildingDimensions(
+          map.document.gridSettings(), map.worldLayout, 0U);
   const std::size_t facadeCount =
       expanded.accepted
           ? static_cast<std::size_t>(std::count_if(
@@ -392,6 +396,15 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
                     roof->bounds.max.y == 49.0 &&
                     sameVec(roof->transform.scale, {1.0, 1.0, 1.0}),
                 "builder estate roof rises from its upper-storey support plane") &&
+         expect(dimensions.accepted && dimensions.occupiedLevelCount == 2U &&
+                    dimensions.uniformFloorToFloor &&
+                    dimensions.uniformWallHeight &&
+                    dimensions.footprintWidthMeters == 48.0 &&
+                    dimensions.footprintDepthMeters == 48.0 &&
+                    dimensions.minimumFloorToFloorMeters == 22.0 &&
+                    dimensions.exteriorFacadeHeightMeters == 44.0 &&
+                    std::fabs(dimensions.totalHeightMeters - 45.05) <= 1.0e-9,
+                "builder estate publishes its exact architectural scale") &&
          expect(encoded.accepted && repeatedEncoded.accepted &&
                     encoded.encodedText == repeatedEncoded.encodedText &&
                     repeated.objectCount == map.objectCount &&

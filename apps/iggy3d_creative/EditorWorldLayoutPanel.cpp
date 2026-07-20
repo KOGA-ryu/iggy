@@ -660,8 +660,8 @@ void buildCreativeEditorWorldLayoutPanel(
     } else {
       ImGui::BeginDisabled(editingDisabled);
       drawCreativeEditorWorldLayoutSourceInspector(state, document, commands);
-      drawCreativeEditorWorldLayoutStructureInspector(desktopUi, state,
-                                                      commands);
+      drawCreativeEditorWorldLayoutStructureInspector(
+          desktopUi, state, document, commands);
       drawCreativeEditorWorldLayoutSelectionProperties(
           state, editor.catalog.model, commands);
       if (state.selection.kind ==

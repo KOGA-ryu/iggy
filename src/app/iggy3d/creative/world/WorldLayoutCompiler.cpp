@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutCompileInternal.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutDimensions.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRoofs.hpp"
@@ -267,12 +268,15 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     const CreativeWorldLayoutRoom& symbol = layout.rooms[index];
     const CreativeRectangularRoomGeometryPlan geometry =
         planCreativeWorldLayoutRoomGeometry(grid, layout, index);
-    const CreativeWorldLayoutResolvedRoomGeometry resolved =
-        resolveCreativeWorldLayoutRoomGeometry(layout, index);
-    if (!geometry.accepted || !resolved.valid) {
+    const CreativeWorldLayoutLevelDimensions dimensions =
+        measureCreativeWorldLayoutLevelDimensions(grid, layout,
+                                                  symbol.levelIndex);
+    if (!geometry.accepted || !dimensions.accepted ||
+        dimensions.buildingIndex != symbol.buildingIndex) {
       result.receipt.failedTable = CreativeWorldLayoutTable::Room;
       result.receipt.failedIndex = index;
-      result.receipt.kernelReasonCode = geometry.reasonCode;
+      result.receipt.kernelReasonCode =
+          geometry.accepted ? dimensions.reasonCode : geometry.reasonCode;
       setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
                 "creative_world_layout_room_geometry_rejected");
       return result;
@@ -290,7 +294,7 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     }
 
     const auto appendSurface =
-        [&](CreativeObjectKind kind, double anchorLayer,
+        [&](CreativeObjectKind kind, double anchorPlaneMeters,
             std::uint16_t layerCount, std::string_view suffix,
             std::string_view label,
             const CreativeWorldLayoutVerticalConnectorPlan* cutout) {
@@ -305,14 +309,14 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
                                symbol.footprint.minimum.z, surface.minimumZ) ||
               !worldCoordinate(grid.origin.z, grid.cellSizeMeters,
                                symbol.footprint.maximum.z, surface.maximumZ) ||
-              !worldCoordinate(grid.origin.y, grid.cellSizeMeters, anchorLayer,
-                               surface.anchorPlaneMeters)) {
+              !std::isfinite(anchorPlaneMeters)) {
             result.receipt.failedTable = CreativeWorldLayoutTable::Room;
             result.receipt.failedIndex = index;
             setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidSymbol,
                       "creative_world_layout_room_surface_invalid");
             return false;
           }
+          surface.anchorPlaneMeters = anchorPlaneMeters;
 
           std::array<CreativeStructuralSurfaceRecipeResult,
                      kCreativeStructuralSurfaceCutoutPieceCapacity>
@@ -398,14 +402,15 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
           return true;
         };
 
-    if (!appendSurface(CreativeObjectKind::Floor, resolved.floorTopLayer,
-                       resolved.floorThicknessLayers, ".floor", " Floor",
+    if (!appendSurface(CreativeObjectKind::Floor, dimensions.floorTopMeters,
+                       dimensions.floorThicknessLayers, ".floor", " Floor",
                        floorCutout)) {
       return result;
     }
-    const bool roof = resolved.upperSurfaceKind == CreativeObjectKind::Roof;
+    const bool roof =
+        dimensions.upperSurfaceKind == CreativeObjectKind::Roof;
     const CreativeWorldLayoutLevel& level =
-        layout.levels[resolved.levelIndex];
+        layout.levels[dimensions.levelIndex];
     const bool usesAuthoredLevelRoof =
         level.roofStyle == CreativeStructuralRoofStyle::Gable ||
         level.roofOverhangCells > 0.0;
@@ -414,16 +419,16 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
           layout.rooms.begin(), layout.rooms.begin() +
                                     static_cast<std::ptrdiff_t>(index),
           [&](const CreativeWorldLayoutRoom& room) {
-            return room.levelIndex == resolved.levelIndex;
+            return room.levelIndex == dimensions.levelIndex;
           });
       if (!firstRoomForLevel) {
         continue;
       }
       const CreativeWorldLayoutRoofPlan roofPlan =
-          planCreativeWorldLayoutRoof(grid, layout, resolved.levelIndex);
+          planCreativeWorldLayoutRoof(grid, layout, dimensions.levelIndex);
       if (!roofPlan.accepted) {
         result.receipt.failedTable = CreativeWorldLayoutTable::Level;
-        result.receipt.failedIndex = resolved.levelIndex;
+        result.receipt.failedIndex = dimensions.levelIndex;
         result.receipt.kernelReasonCode = roofPlan.reasonCode;
         setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
                   "creative_world_layout_roof_rejected");
@@ -444,7 +449,7 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
             layout.buildings[level.buildingIndex].stableKey,
             level.stableKey + std::string(kPartSuffixes[partIndex]));
         if (!registerKey(stableKeys, key, CreativeWorldLayoutTable::Level,
-                         resolved.levelIndex, result.receipt)) {
+                         dimensions.levelIndex, result.receipt)) {
           return result;
         }
         CreativeBuildingBoxSpec box{
@@ -455,14 +460,14 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
             box.tags,
             creativeWorldLayoutProvenanceTag(
                 layout, CreativeWorldLayoutTable::Level,
-                resolved.levelIndex));
+                dimensions.levelIndex));
         buildings[level.buildingIndex].boxes.push_back(std::move(box));
       }
       continue;
     }
-    if (!appendSurface(resolved.upperSurfaceKind,
-                       resolved.floorTopLayer + resolved.wallHeightCells,
-                       resolved.upperSurfaceThicknessLayers,
+    if (!appendSurface(dimensions.upperSurfaceKind,
+                       dimensions.upperSurfaceSupportMeters,
+                       dimensions.upperSurfaceThicknessLayers,
                        roof ? ".roof" : ".ceiling", roof ? " Roof" : " Ceiling",
                        upperCutout)) {
       return result;
@@ -551,6 +556,16 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     }
     const CreativeWorldLayoutWall& wallSymbol = expanded.walls[symbol.wallIndex];
     const std::size_t buildingIndex = wallSymbol.buildingIndex;
+    const CreativeWorldLayoutOpeningDimensions dimensions =
+        measureCreativeWorldLayoutOpeningDimensions(grid, expanded, index);
+    if (!dimensions.accepted || dimensions.buildingIndex != buildingIndex) {
+      result.receipt.failedTable = CreativeWorldLayoutTable::Opening;
+      result.receipt.failedIndex = index;
+      result.receipt.kernelReasonCode = dimensions.reasonCode;
+      setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
+                "creative_world_layout_opening_dimensions_rejected");
+      return result;
+    }
     const std::string key = childKey(
         layout.buildings[buildingIndex].stableKey, symbol.stableKey);
     if (!registerKey(stableKeys, key, CreativeWorldLayoutTable::Opening, index,
@@ -562,24 +577,15 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     opening.pose = symbol.pose;
     opening.stableKey = key;
     opening.name = symbol.name;
-    opening.centerOffsetMeters =
-        symbol.centerOffsetCells * grid.cellSizeMeters;
-    opening.widthMeters = symbol.widthCells * grid.cellSizeMeters;
-    opening.cutoutBottomMeters =
-        symbol.cutoutBottomCells * grid.cellSizeMeters;
-    opening.cutoutHeightMeters =
-        symbol.cutoutHeightCells * grid.cellSizeMeters;
+    opening.centerOffsetMeters = dimensions.centerOffsetMeters;
+    opening.widthMeters = dimensions.widthMeters;
+    opening.cutoutBottomMeters = dimensions.cutoutBottomOffsetMeters;
+    opening.cutoutHeightMeters = dimensions.cutoutHeightMeters;
     opening.includeInsert = symbol.includeInsert;
-    opening.insertBottomMeters =
-        (symbol.kind == CreativeBuildingOpeningKind::Window &&
-         symbol.insertBottomCells == 0.0)
-            ? opening.cutoutBottomMeters
-            : symbol.insertBottomCells * grid.cellSizeMeters;
-    opening.insertHeightMeters =
-        symbol.insertHeightCells * grid.cellSizeMeters;
-    opening.insertWidthMeters = symbol.insertWidthCells * grid.cellSizeMeters;
-    opening.insertThicknessMeters =
-        symbol.insertThicknessCells * grid.cellSizeMeters;
+    opening.insertBottomMeters = dimensions.insertBottomOffsetMeters;
+    opening.insertHeightMeters = dimensions.insertHeightMeters;
+    opening.insertWidthMeters = dimensions.insertWidthMeters;
+    opening.insertThicknessMeters = dimensions.insertThicknessMeters;
     opening.insertAssetId = symbol.insertAssetId;
     opening.insertAssetSourceBoundsMeters =
         symbol.insertAssetSourceBoundsMeters;

@@ -58,6 +58,9 @@ void resetCreativeEditorOverlayFrame(CreativeEditorOverlayFrame& output) {
   output.generatedScopeObjectCount = 0;
   output.generatedScopeVisibleObjectCount = 0;
   output.generatedScopeEdgeCount = 0;
+  output.architectureScaleGuideActive = false;
+  output.architectureScaleGuideLineCount = 0;
+  output.architecturalDimensions = {};
   output.pointMarkerEdgeCount = 0;
   output.lineMarkerEdgeCount = 0;
   output.pathPointHandleEdgeCount = 0;
@@ -683,6 +686,7 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
       output.generatedScopeEdgeCount += combinedWireLines.size() - before;
     }
   }
+  appendCreativeEditorArchitectureScaleGuide(request, output);
   appendCreativeEditorPlacementGridOverlay(request, output);
   const creative::CreativeObjectId focusedGroupId =
       activeCreativeEditorGroupFocusId(editor.groupFocus);

@@ -23,6 +23,7 @@ void drawCreativeEditorWorldLayoutVerticalConnectorInspector(
 void drawCreativeEditorWorldLayoutStructureInspector(
     CreativeEditorDesktopUiState& desktopUi,
     CreativeEditorWorldLayoutState& state,
+    const iggy3d::creative::CreativeDocument& document,
     CreativeDesktopCommandFrame& commands);
 
 void drawCreativeEditorWorldLayoutSourceInspector(

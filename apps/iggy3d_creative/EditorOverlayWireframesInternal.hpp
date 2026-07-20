@@ -13,6 +13,9 @@ void appendCreativeEditorConnectedFillWireframe(
 void appendCreativeEditorSurfaceExtrudeWireframe(
     const CreativeEditorOverlayFrameRequest& request,
     CreativeEditorOverlayFrame& output);
+void appendCreativeEditorArchitectureScaleGuide(
+    const CreativeEditorOverlayFrameRequest& request,
+    CreativeEditorOverlayFrame& output);
 [[nodiscard]] CreativeEditorVolumePreviewFacts
 appendCreativeEditorVolumeAndToolWireframes(
     const CreativeEditorOverlayFrameRequest& request,

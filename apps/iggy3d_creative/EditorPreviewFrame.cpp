@@ -59,6 +59,7 @@ void buildAndAttachCreativeEditorOverlayFrame(
       iggy3d::effectiveContentViewport(request.frame);
   appendCreativeEditorCrosshairOverlay(editor, crosshairRegion,
                                        output.uiRects);
+  appendCreativeEditorArchitectureScaleLabel(request, output);
   if (!suppressLegacyHud) {
     appendCreativeEditorHudOverlays(
         request, output, worldFacts.volume, worldFacts.hasSelection);

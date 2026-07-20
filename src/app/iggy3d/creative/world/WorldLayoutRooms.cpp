@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutDimensions.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 
 #include <algorithm>
@@ -557,9 +558,10 @@ CreativeRectangularRoomGeometryPlan planCreativeWorldLayoutRoomGeometry(
     return planCreativeRectangularRoomGeometry(request);
   }
   const CreativeWorldLayoutRoom& room = layout.rooms[roomIndex];
-  const CreativeWorldLayoutResolvedRoomGeometry geometry =
-      resolveCreativeWorldLayoutRoomGeometry(layout, roomIndex);
-  if (!geometry.valid) {
+  const CreativeWorldLayoutLevelDimensions dimensions =
+      measureCreativeWorldLayoutLevelDimensions(grid, layout,
+                                                room.levelIndex);
+  if (!dimensions.accepted || dimensions.buildingIndex != room.buildingIndex) {
     return planCreativeRectangularRoomGeometry(request);
   }
   const auto coordinate = [](double origin, double cellSize,
@@ -568,7 +570,7 @@ CreativeRectangularRoomGeometryPlan planCreativeWorldLayoutRoomGeometry(
   };
   request.firstFloorCorner = {
       coordinate(grid.origin.x, grid.cellSizeMeters, room.footprint.minimum.x),
-      coordinate(grid.origin.y, grid.cellSizeMeters, geometry.floorTopLayer),
+      dimensions.floorTopMeters,
       coordinate(grid.origin.z, grid.cellSizeMeters, room.footprint.minimum.z),
   };
   request.oppositeFloorCorner = {
@@ -576,11 +578,9 @@ CreativeRectangularRoomGeometryPlan planCreativeWorldLayoutRoomGeometry(
       request.firstFloorCorner.y,
       coordinate(grid.origin.z, grid.cellSizeMeters, room.footprint.maximum.z),
   };
-  request.wallHeightMeters = geometry.wallHeightCells * grid.cellSizeMeters;
+  request.wallHeightMeters = dimensions.wallHeightMeters;
   request.wallThicknessMeters = room.wallThicknessCells * grid.cellSizeMeters;
-  request.floorThicknessMeters =
-      geometry.floorThicknessLayers *
-      defaultCreativeStructuralLayerThicknessMeters(CreativeObjectKind::Floor);
+  request.floorThicknessMeters = dimensions.floorThicknessMeters;
   return planCreativeRectangularRoomGeometry(request);
 }
 

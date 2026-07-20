@@ -436,7 +436,8 @@ bool generatedScopeOverlaySharesHierarchyTruthAndFailsClosed() {
   return expect(roomScope.generatedScopeActive &&
                     roomScope.generatedScopeObjectCount == 2U &&
                     roomScope.generatedScopeVisibleObjectCount == 2U &&
-                    roomScope.generatedScopeEdgeCount == 36U,
+                    roomScope.generatedScopeEdgeCount == 36U &&
+                    !roomScope.architectureScaleGuideActive,
                 "room scope renders two members plus one aggregate box") &&
          expect(hasColor(roomScope, east, 1.0F, 0.58F, 0.18F) &&
                     hasColor(roomScope, shared, 1.0F, 0.58F, 0.18F) &&
@@ -446,13 +447,23 @@ bool generatedScopeOverlaySharesHierarchyTruthAndFailsClosed() {
          expect(buildingScope.generatedScopeActive &&
                     buildingScope.generatedScopeObjectCount == 4U &&
                     buildingScope.generatedScopeEdgeCount == 60U &&
+                    buildingScope.architectureScaleGuideActive &&
+                    buildingScope.architectureScaleGuideLineCount == 13U &&
+                    buildingScope.architecturalDimensions.accepted &&
+                    buildingScope.architecturalDimensions.occupiedLevelCount ==
+                        2U &&
+                    std::fabs(buildingScope.architecturalDimensions
+                                  .totalHeightMeters -
+                              7.05) < 1.0e-9 &&
                     hasColor(buildingScope, west, 0.18F, 0.82F, 1.0F) &&
                     hasColor(buildingScope, connector, 0.18F, 0.82F, 1.0F),
-                "building color covers every generated descendant") &&
+                "building scope adds exact dimensions and a human guide") &&
          expect(!stale.generatedScopeActive &&
                     stale.generatedScopeEdgeCount == 0U &&
+                    !stale.architectureScaleGuideActive &&
+                    stale.architectureScaleGuideLineCount == 0U &&
                     hasColor(stale, east, 1.0F, 1.0F, 0.0F),
-                "stale source disables scope claims and restores leaf yellow");
+                "stale source disables scope and architectural scale claims");
 }
 
 }  // namespace

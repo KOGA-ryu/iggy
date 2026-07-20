@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutDimensions.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRoofs.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
@@ -602,6 +603,158 @@ bool horizontalStructuralLayersUseDescriptorThickness() {
                 "floor ceiling and roof share descriptor-to-render-to-collision geometry");
 }
 
+bool architecturalDimensionsOwnCompilerAndOpeningScale() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Architectural Dimensions");
+  static_cast<void>(document.assignId(9210U));
+  static_cast<void>(document.setGridSettings(
+      {{10.0, 2.0, -4.0}, 0.5, {64, 64, 64}}));
+
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "architectural_dimensions";
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "house";
+  building.name = "Measured House";
+  layout.buildings.push_back(building);
+
+  cr::CreativeWorldLayoutLevel ground;
+  ground.buildingIndex = 0U;
+  ground.stableKey = "ground";
+  ground.name = "Ground";
+  ground.floorTopLayer = 1.0;
+  ground.wallHeightCells = 6U;
+  ground.floorThicknessLayers = 2U;
+  ground.ceilingThicknessLayers = 2U;
+  ground.roofThicknessLayers = 2U;
+  layout.levels.push_back(ground);
+  cr::CreativeWorldLayoutLevel upper = ground;
+  upper.stableKey = "upper";
+  upper.name = "Upper";
+  upper.floorTopLayer = 7.0;
+  layout.levels.push_back(upper);
+
+  cr::CreativeWorldLayoutRoom lowerRoom;
+  lowerRoom.buildingIndex = 0U;
+  lowerRoom.levelIndex = 0U;
+  lowerRoom.stableKey = "lower_room";
+  lowerRoom.name = "Lower Room";
+  lowerRoom.footprint = {{0, 0}, {8, 6}};
+  layout.rooms.push_back(lowerRoom);
+  cr::CreativeWorldLayoutRoom upperRoom = lowerRoom;
+  upperRoom.levelIndex = 1U;
+  upperRoom.stableKey = "upper_room";
+  upperRoom.name = "Upper Room";
+  layout.rooms.push_back(upperRoom);
+
+  cr::CreativeWorldLayoutOpening window;
+  window.hostKind = cr::CreativeWorldLayoutOpeningHostKind::RoomEdge;
+  window.roomIndex = 1U;
+  window.roomEdge = cr::CreativeWorldLayoutRoomEdge::North;
+  window.kind = cr::CreativeBuildingOpeningKind::Window;
+  window.stableKey = "upper_window";
+  window.name = "Upper Window";
+  window.centerOffsetCells = 4.0;
+  window.widthCells = 2.0;
+  window.cutoutBottomCells = 1.0;
+  window.cutoutHeightCells = 2.2;
+  window.insertBottomCells = 0.0;
+  window.insertHeightCells = 2.0;
+  window.insertWidthCells = 1.5;
+  window.insertThicknessCells = 0.25;
+  layout.openings.push_back(window);
+
+  const cr::CreativeWorldLayoutLevelDimensions groundDimensions =
+      cr::measureCreativeWorldLayoutLevelDimensions(
+          document.gridSettings(), layout, 0U);
+  const cr::CreativeWorldLayoutBuildingDimensions buildingDimensions =
+      cr::measureCreativeWorldLayoutBuildingDimensions(
+          document.gridSettings(), layout, 0U);
+  const cr::CreativeWorldLayoutOpeningDimensions sourceOpeningDimensions =
+      cr::measureCreativeWorldLayoutOpeningDimensions(
+          document.gridSettings(), layout, 0U);
+  const cr::CreativeWorldLayoutRoomCompileResult expanded =
+      cr::expandCreativeWorldLayoutRooms(layout);
+  const cr::CreativeWorldLayoutOpeningDimensions expandedOpeningDimensions =
+      cr::measureCreativeWorldLayoutOpeningDimensions(
+          document.gridSettings(), expanded.expanded, 0U);
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, layout);
+  const cr::CreativeWorldLayoutPreviewResult preview =
+      cr::previewCreativeWorldLayoutPlan(document, compiled.plan);
+
+  const cr::CreativeObject* roof =
+      findKind(preview.document, cr::CreativeObjectKind::Roof);
+  const cr::CreativeObject* generatedWindow =
+      findKind(preview.document, cr::CreativeObjectKind::Window);
+  const cr::CreativeTransformedBounds roofBounds =
+      roof == nullptr ? cr::CreativeTransformedBounds{}
+                      : cr::resolveCreativeObjectBounds(*roof);
+  const cr::CreativeTransformedBounds windowBounds =
+      generatedWindow == nullptr
+          ? cr::CreativeTransformedBounds{}
+          : cr::resolveCreativeObjectBounds(*generatedWindow);
+
+  cr::CreativeGridSettings invalidGrid = document.gridSettings();
+  invalidGrid.cellSizeMeters = 0.0;
+  const cr::CreativeWorldLayoutBuildingDimensions invalid =
+      cr::measureCreativeWorldLayoutBuildingDimensions(invalidGrid, layout,
+                                                       0U);
+  cr::CreativeWorldLayout nonuniform = layout;
+  nonuniform.levels[1].wallHeightCells = 8U;
+  const cr::CreativeWorldLayoutBuildingDimensions varied =
+      cr::measureCreativeWorldLayoutBuildingDimensions(
+          document.gridSettings(), nonuniform, 0U);
+
+  return expect(groundDimensions.accepted &&
+                    near(groundDimensions.floorBottomMeters, 2.4) &&
+                    near(groundDimensions.floorTopMeters, 2.5) &&
+                    near(groundDimensions.wallTopMeters, 5.5) &&
+                    near(groundDimensions.upperSurfaceTopMeters, 6.0),
+                "level dimensions combine grid and descriptor-owned slabs") &&
+         expect(buildingDimensions.accepted &&
+                    buildingDimensions.occupiedLevelCount == 2U &&
+                    near(buildingDimensions.footprintMinimumXMeters, 10.0) &&
+                    near(buildingDimensions.footprintMaximumXMeters, 14.0) &&
+                    near(buildingDimensions.footprintMinimumZMeters, -4.0) &&
+                    near(buildingDimensions.footprintMaximumZMeters, -1.0) &&
+                    near(buildingDimensions.minimumFloorToFloorMeters, 3.0) &&
+                    near(buildingDimensions.exteriorFacadeHeightMeters, 6.0) &&
+                    near(buildingDimensions.roofBaseMeters, 8.5) &&
+                    near(buildingDimensions.roofTopMeters, 10.5) &&
+                    near(buildingDimensions.totalHeightMeters, 8.1) &&
+                    buildingDimensions.uniformFloorToFloor &&
+                    buildingDimensions.uniformWallHeight &&
+                    buildingDimensions.uniformFloorThickness,
+                "building dimensions report one exact architectural scale") &&
+         expect(sourceOpeningDimensions.accepted &&
+                    expandedOpeningDimensions.accepted &&
+                    near(sourceOpeningDimensions.cutoutBottomMeters, 6.0) &&
+                    near(sourceOpeningDimensions.insertBottomMeters, 6.0) &&
+                    near(sourceOpeningDimensions.cutoutTopMeters, 7.1) &&
+                    near(expandedOpeningDimensions.cutoutBottomMeters,
+                         sourceOpeningDimensions.cutoutBottomMeters) &&
+                    near(expandedOpeningDimensions.insertBottomMeters,
+                         sourceOpeningDimensions.insertBottomMeters),
+                "source and facade-normalized openings retain world elevation") &&
+         expect(compiled.receipt.accepted && preview.accepted &&
+                    roofBounds.valid && windowBounds.valid &&
+                    near(roofBounds.worldBounds.min.y,
+                         buildingDimensions.roofBaseMeters) &&
+                    near(roofBounds.worldBounds.max.y,
+                         buildingDimensions.roofTopMeters) &&
+                    near(windowBounds.worldBounds.min.y,
+                         sourceOpeningDimensions.insertBottomMeters),
+                "compiler geometry consumes the measured dimensions") &&
+         expect(!invalid.accepted &&
+                    invalid.status ==
+                        cr::CreativeWorldLayoutDimensionStatus::InvalidGrid,
+                "invalid grid dimensions fail closed") &&
+         expect(varied.accepted && !varied.uniformWallHeight &&
+                    near(varied.minimumWallHeightMeters, 3.0) &&
+                    near(varied.maximumWallHeightMeters, 4.0),
+                "nonuniform storeys remain measurable and explicit");
+}
+
 bool occupiedLevelsGenerateCeilingsAndOneTopRoof() {
   cr::CreativeDocument document = cr::CreativeDocument::create("Level Shell");
   static_cast<void>(document.assignId(9204U));
@@ -699,6 +852,9 @@ bool authoredGableRoofCompilesThroughSharedRenderCollisionGeometry() {
 
   const cr::CreativeWorldLayoutRoofPlan roofPlan =
       cr::planCreativeWorldLayoutRoof(document.gridSettings(), layout, 0U);
+  const cr::CreativeWorldLayoutBuildingDimensions dimensions =
+      cr::measureCreativeWorldLayoutBuildingDimensions(
+          document.gridSettings(), layout, 0U);
   const cr::CreativeWorldLayoutCompileResult compiled =
       cr::buildCreativeWorldLayoutPlan(document, layout);
   const cr::CreativeWorldLayoutPreviewResult preview =
@@ -748,6 +904,11 @@ bool authoredGableRoofCompilesThroughSharedRenderCollisionGeometry() {
                         cr::CreativeTerrainCoord2{8, 4} &&
                     near(roofPlan.geometry.riseMeters, 3.0),
                 "adjacent rooms resolve one pitched roof footprint") &&
+         expect(dimensions.accepted &&
+                    near(dimensions.roofBaseMeters, 3.0) &&
+                    near(dimensions.roofTopMeters, 7.0) &&
+                    near(dimensions.totalHeightMeters, 7.05),
+                "building dimensions include the pitched roof envelope") &&
          expect(compiled.receipt.accepted && preview.accepted &&
                     base != nullptr && slopes.size() == 2U,
                 "gable layout emits one base and two semantic slope objects") &&
@@ -822,6 +983,7 @@ int main() {
                   roomTopologyCompilesThroughExistingBuildingRecipe() &&
                   generatedRoomObjectsResolveToSemanticSources() &&
                   horizontalStructuralLayersUseDescriptorThickness() &&
+                  architecturalDimensionsOwnCompilerAndOpeningScale() &&
                   occupiedLevelsGenerateCeilingsAndOneTopRoof() &&
                   authoredGableRoofCompilesThroughSharedRenderCollisionGeometry() &&
                   flatRoofOverhangUsesTheSharedLevelFootprint();

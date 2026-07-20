@@ -39,4 +39,8 @@ void appendCreativeEditorHudOverlays(
     const CreativeEditorVolumePreviewFacts& volumeFacts,
     bool hasSelection);
 
+void appendCreativeEditorArchitectureScaleLabel(
+    const CreativeEditorOverlayFrameRequest& request,
+    CreativeEditorOverlayFrame& output);
+
 }  // namespace iggy3d_creative_app

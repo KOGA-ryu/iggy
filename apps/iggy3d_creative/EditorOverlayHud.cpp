@@ -127,7 +127,7 @@ void appendCreativeEditorSelectionDimensionLabel(
     const CreativeEditorOverlayFrameRequest& request,
     CreativeEditorOverlayFrame& output,
     bool hasSelection) {
-  if (!hasSelection) {
+  if (!hasSelection || output.architectureScaleGuideActive) {
     return;
   }
   const Vec3 center{
@@ -157,6 +157,47 @@ void appendCreativeEditorSelectionDimensionLabel(
 }
 
 }  // namespace
+
+void appendCreativeEditorArchitectureScaleLabel(
+    const CreativeEditorOverlayFrameRequest& request,
+    CreativeEditorOverlayFrame& output) {
+  if (!output.architectureScaleGuideActive ||
+      !output.architecturalDimensions.accepted) {
+    return;
+  }
+  const cr::CreativeWorldLayoutBuildingDimensions& dimensions =
+      output.architecturalDimensions;
+  const Vec3 labelPosition{
+      static_cast<float>((dimensions.footprintMinimumXMeters +
+                          dimensions.footprintMaximumXMeters) *
+                         0.5),
+      static_cast<float>(dimensions.roofTopMeters),
+      static_cast<float>((dimensions.footprintMinimumZMeters +
+                          dimensions.footprintMaximumZMeters) *
+                         0.5)};
+  const creative::CreativeScreenPoint screenPoint =
+      creative::projectCreativeWorldPointToScreen(
+          request.frame.camera.clipFromWorld, labelPosition,
+          request.drawableWidth, request.drawableHeight);
+  if (!screenPoint.valid) {
+    return;
+  }
+
+  char label[160];
+  std::snprintf(
+      label, sizeof(label),
+      "BUILDING %.1f x %.1f m | %llu floors | facade %.1f m | total %.1f m | human %.1f m",
+      dimensions.footprintWidthMeters, dimensions.footprintDepthMeters,
+      static_cast<unsigned long long>(dimensions.occupiedLevelCount),
+      dimensions.exteriorFacadeHeightMeters, dimensions.totalHeightMeters,
+      cr::kCreativeArchitecturalHumanReferenceHeightMeters);
+  const DebugHudLayoutResult layout = layoutDebugHudTextAt(
+      label, static_cast<std::int32_t>(screenPoint.x),
+      static_cast<std::int32_t>(screenPoint.y), request.drawableWidth,
+      request.drawableHeight);
+  output.glyphs.insert(output.glyphs.end(), layout.quads.begin(),
+                       layout.quads.end());
+}
 
 void appendCreativeEditorHudOverlays(
     const CreativeEditorOverlayFrameRequest& request,
