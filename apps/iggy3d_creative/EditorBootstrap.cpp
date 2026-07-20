@@ -171,7 +171,7 @@ void initializeCreativeEditorBootstrapData(
         continue;
       }
       const CreativeEditorWorldLayoutBuildingTemplateInstallReceipt installed =
-          installCreativeEditorWorldLayoutBuildingTemplate(
+          installCreativeEditorBuiltInWorldLayoutBuildingTemplate(
               output.editor.worldLayout.buildingTemplates, source.value);
       if (!installed.accepted) {
         SDL_Log("iggy3d_creative: built-in building template install failed "

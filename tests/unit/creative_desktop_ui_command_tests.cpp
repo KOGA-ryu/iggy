@@ -13,6 +13,7 @@
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
 #include "app/iggy3d/creative/tools/Group.hpp"
+#include "app/iggy3d/creative/world/MapTemplate.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
 #include <algorithm>
@@ -197,6 +198,52 @@ bool generatedBounds(
   return found;
 }
 
+bool generatedRoomContributorBounds(
+    const cr::CreativeDocument& document, const cr::CreativeWorldLayout& layout,
+    std::size_t roomIndex, cr::CreativeObjectKind kind,
+    cr::CreativeBounds& output) {
+  if (roomIndex >= layout.rooms.size()) {
+    return false;
+  }
+  std::array<std::string, 4U> edgeTags;
+  for (std::size_t edgeIndex = 0U; edgeIndex < edgeTags.size(); ++edgeIndex) {
+    edgeTags[edgeIndex] = cr::creativeWorldLayoutRoomEdgeProvenanceTag(
+        layout, roomIndex,
+        static_cast<cr::CreativeWorldLayoutRoomEdge>(edgeIndex));
+  }
+
+  bool found = false;
+  for (const cr::CreativeObject& object : document.objects()) {
+    const bool contributes =
+        object.kind == kind &&
+        std::any_of(edgeTags.begin(), edgeTags.end(),
+                    [&](const std::string& tag) {
+                      return std::find(object.tags.begin(), object.tags.end(),
+                                       tag) != object.tags.end();
+                    });
+    if (!contributes) {
+      continue;
+    }
+    const cr::CreativeTransformedBounds bounds =
+        cr::resolveCreativeObjectBounds(object);
+    if (!bounds.valid) {
+      continue;
+    }
+    if (!found) {
+      output = bounds.worldBounds;
+      found = true;
+      continue;
+    }
+    output.min.x = std::min(output.min.x, bounds.worldBounds.min.x);
+    output.min.y = std::min(output.min.y, bounds.worldBounds.min.y);
+    output.min.z = std::min(output.min.z, bounds.worldBounds.min.z);
+    output.max.x = std::max(output.max.x, bounds.worldBounds.max.x);
+    output.max.y = std::max(output.max.y, bounds.worldBounds.max.y);
+    output.max.z = std::max(output.max.z, bounds.worldBounds.max.z);
+  }
+  return found;
+}
+
 bool newDocumentReplacesAndClearsHistory() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document = cr::CreativeDocument::create("Cmd New");
@@ -223,6 +270,109 @@ bool newDocumentReplacesAndClearsHistory() {
                 "new document is blank") &&
          expect(cr::creativeUndoDepth(appState.history) == 0U,
                 "new document clears undo history");
+}
+
+bool builderEstateRegenerationIsExplicitUndoableAndUnsaved() {
+  const std::filesystem::path root =
+      std::filesystem::temp_directory_path() /
+      "iggy3d_desktop_builder_estate_regeneration_tests";
+  std::error_code error;
+  std::filesystem::remove_all(root, error);
+
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Custom Before Regeneration");
+  static_cast<void>(document.assignId(499U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  static_cast<void>(createCrate(appState.facade, 3.0));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "custom_before_regeneration");
+  std::string saveId = "custom_slot";
+  const app::CreativeDesktopCommandContext context{appState, editor, root,
+                                                    &saveId};
+  const cr::CreativeMapTemplateResult expected = cr::buildCreativeMapTemplate(
+      cr::kBuilderEstateMapTemplateId, appState.facade.document().id());
+  if (!expected.accepted || !expected.worldLayoutPresent) {
+    std::filesystem::remove_all(root, error);
+    return expect(false, "builder estate regeneration fixture generated");
+  }
+
+  const std::uint64_t undoBefore = cr::creativeUndoDepth(appState.history);
+  const auto regenerated = dispatchPayload(
+      app::CreativeDesktopCommandId::RegenerateMapTemplate, context,
+      app::CreativeDesktopMapTemplatePayload{
+          std::string(cr::kBuilderEstateMapTemplateId)});
+  const bool noSaveWritten = !std::filesystem::exists(
+      root / "custom_slot.iggy3d.save", error);
+  const bool replaced =
+      regenerated.accepted && regenerated.changed &&
+      regenerated.documentReplaced && regenerated.sceneChanged &&
+      regenerated.worldLayoutChanged && saveId == "custom_slot" &&
+      appState.facade.document().id() == 499U &&
+      appState.facade.document().name() == expected.document.name() &&
+      appState.facade.document().objectCount() ==
+          expected.document.objectCount() &&
+      regenerated.affectedObjectCount == expected.document.objectCount() &&
+      editor.worldLayout.source.stableKey ==
+          expected.worldLayout.stableKey &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision &&
+      cr::creativeUndoDepth(appState.history) == undoBefore + 1U &&
+      noSaveWritten;
+
+  const auto undone =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const bool restoredCustom =
+      undone.accepted && undone.changed && undone.sceneChanged &&
+      undone.worldLayoutChanged && appState.facade.document().id() == 499U &&
+      appState.facade.document().name() == "Custom Before Regeneration" &&
+      appState.facade.document().objectCount() == 1U &&
+      editor.worldLayout.source.stableKey ==
+          "custom_before_regeneration";
+
+  const auto redone =
+      dispatchOne(app::CreativeDesktopCommandId::Redo, context);
+  const bool restoredEstate =
+      redone.accepted && redone.changed && redone.sceneChanged &&
+      redone.worldLayoutChanged && appState.facade.document().id() == 499U &&
+      appState.facade.document().objectCount() ==
+          expected.document.objectCount() &&
+      editor.worldLayout.source.stableKey == expected.worldLayout.stableKey &&
+      saveId == "custom_slot" &&
+      !std::filesystem::exists(root / "custom_slot.iggy3d.save", error);
+
+  const std::string buildingKey =
+      editor.worldLayout.source.buildings.front().stableKey;
+  const auto pendingRename = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutRenameSource, context,
+      app::CreativeDesktopWorldLayoutSourceRenamePayload{
+          cr::CreativeWorldLayoutTable::Building, 0U, buildingKey,
+          "Pending Estate Rename"});
+  const std::uint64_t documentRevisionBeforeRejectedRegeneration =
+      appState.facade.document().revision();
+  const auto rejectedPending = dispatchPayload(
+      app::CreativeDesktopCommandId::RegenerateMapTemplate, context,
+      app::CreativeDesktopMapTemplatePayload{
+          std::string(cr::kBuilderEstateMapTemplateId)});
+  const bool pendingSourceProtected =
+      pendingRename.accepted && pendingRename.changed &&
+      !rejectedPending.accepted && !rejectedPending.changed &&
+      appState.facade.document().revision() ==
+          documentRevisionBeforeRejectedRegeneration &&
+      editor.worldLayout.source.buildings[0].name == "Pending Estate Rename";
+
+  const bool ok =
+      expect(replaced,
+             "builder estate regeneration replaces source and 3D without saving") &&
+      expect(restoredCustom,
+             "builder estate regeneration undo restores document and layout") &&
+      expect(restoredEstate,
+             "builder estate regeneration redo restores document and layout") &&
+      expect(pendingSourceProtected,
+             "map regeneration refuses to overwrite pending source edits");
+  std::filesystem::remove_all(root, error);
+  return ok;
 }
 
 bool deleteAndDuplicateHitTheKernels() {
@@ -1312,6 +1462,9 @@ bool mismatchedPayloadsAreNoOpFailures() {
                                                     &saveId};
   const std::uint64_t before = appState.facade.document().objectCount();
 
+  const app::CreativeDesktopCommandResult badMapRegeneration = dispatchPayload(
+      app::CreativeDesktopCommandId::RegenerateMapTemplate, context,
+      app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult badDelete = dispatchPayload(
       app::CreativeDesktopCommandId::DeleteObjects, context,
       app::CreativeDesktopSelectPayload{{a}, a});
@@ -1509,7 +1662,11 @@ bool mismatchedPayloadsAreNoOpFailures() {
           app::CreativeDesktopCommandId::WorldLayoutSetObjectSettings, context,
           app::CreativeDesktopDeletePayload{{a}});
 
-  return expect(!badDelete.accepted &&
+  return expect(!badMapRegeneration.accepted &&
+                    badMapRegeneration.message ==
+                        "map regeneration: payload mismatch",
+                "map regeneration rejects a mismatched payload") &&
+         expect(!badDelete.accepted &&
                     badDelete.message == "delete objects: payload mismatch",
                 "DeleteObjects with the wrong payload is a no-op failure") &&
          expect(!badRename.accepted &&
@@ -2413,7 +2570,10 @@ bool worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() {
     return began.accepted && committed.accepted && committed.changed;
   };
   const bool stamped = stampAt({10.0, 0.0}) && stampAt({20.0, 0.0});
-  if (!libraryLoaded.accepted || !captured.accepted || !stamped) {
+  const auto generatedStamps =
+      dispatchOne(app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  if (!libraryLoaded.accepted || !captured.accepted || !stamped ||
+      !generatedStamps.accepted) {
     std::filesystem::remove_all(root, error);
     return expect(false, "template sync command setup accepted");
   }
@@ -2445,7 +2605,24 @@ bool worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() {
   const auto siblingOutdated =
       app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(
           editor.worldLayout, 2U);
+  const std::uint64_t documentRevisionBeforeBlockedRefresh =
+      appState.facade.document().revision();
+  const auto blockedRefresh = dispatchPayload(
+      app::CreativeDesktopCommandId::
+          WorldLayoutRefreshBuildingTemplateInstances,
+      context, app::CreativeDesktopWorldLayoutBuildingTemplateSyncPayload{
+                   1U,
+                   cr::CreativeWorldLayoutBuildingTemplateRefreshMode::
+                       SafeInstances});
+  const std::uint64_t documentRevisionAfterBlockedRefresh =
+      appState.facade.document().revision();
+  const auto generatedUpdate =
+      dispatchOne(app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
   const std::uint64_t revisionBeforeRefresh = editor.worldLayout.revision;
+  const std::uint64_t documentRevisionBeforeRefresh =
+      appState.facade.document().revision();
+  const std::uint64_t undoBeforeRefresh =
+      cr::creativeUndoDepth(appState.history);
   const auto refreshed = dispatchPayload(
       app::CreativeDesktopCommandId::
           WorldLayoutRefreshBuildingTemplateInstances,
@@ -2454,6 +2631,18 @@ bool worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() {
                    cr::CreativeWorldLayoutBuildingTemplateRefreshMode::
                        SafeInstances});
   const auto siblingCurrent =
+      app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(
+          editor.worldLayout, 2U);
+  const std::uint64_t documentRevisionAfterRefresh =
+      appState.facade.document().revision();
+  const auto undone =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const auto siblingAfterUndo =
+      app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(
+          editor.worldLayout, 2U);
+  const auto redone =
+      dispatchOne(app::CreativeDesktopCommandId::Redo, context);
+  const auto siblingAfterRedo =
       app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(
           editor.worldLayout, 2U);
 
@@ -2466,11 +2655,30 @@ bool worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() {
                      cr::CreativeWorldLayoutBuildingTemplateSyncState::
                          SourceChanged,
              "template update command publishes one source revision") &&
-      expect(refreshed.accepted && refreshed.changed &&
-                 refreshed.worldLayoutChanged &&
+      expect(!blockedRefresh.accepted && !blockedRefresh.changed &&
+                 !blockedRefresh.sceneChanged &&
+                 documentRevisionAfterBlockedRefresh ==
+                     documentRevisionBeforeBlockedRefresh,
+             "template rebuild waits for pending source edits to be generated") &&
+      expect(generatedUpdate.accepted && refreshed.accepted &&
+                 refreshed.changed && refreshed.worldLayoutChanged &&
+                 refreshed.sceneChanged &&
+                 documentRevisionAfterRefresh !=
+                     documentRevisionBeforeRefresh &&
+                 cr::creativeUndoDepth(appState.history) ==
+                     undoBeforeRefresh + 1U &&
                  siblingCurrent.state ==
                      cr::CreativeWorldLayoutBuildingTemplateSyncState::Current,
-             "safe template refresh command updates the stale sibling once");
+             "safe template refresh rebuilds the stale sibling in 3D once") &&
+      expect(undone.accepted && siblingAfterUndo.state ==
+                                    cr::CreativeWorldLayoutBuildingTemplateSyncState::
+                                        SourceChanged &&
+                 redone.accepted && siblingAfterRedo.state ==
+                                        cr::CreativeWorldLayoutBuildingTemplateSyncState::
+                                            Current &&
+                 appState.facade.document().revision() ==
+                     documentRevisionAfterRefresh,
+             "template rebuild source and geometry undo and redo together");
   std::filesystem::remove_all(root, error);
   return ok;
 }
@@ -3529,20 +3737,20 @@ bool generatedLevelSettingsRebuildEveryRoomAtomically() {
   cr::CreativeBounds previewWestWalls;
   cr::CreativeBounds previewEastWalls;
   const bool previewHasBothRooms =
-      generatedBounds(editor.worldLayout.preview.document,
-                      editor.worldLayout.source,
-                      cr::CreativeWorldLayoutTable::Room, 1U,
-                      cr::CreativeObjectKind::Wall, previewWestWalls) &&
-      generatedBounds(editor.worldLayout.preview.document,
-                      editor.worldLayout.source,
-                      cr::CreativeWorldLayoutTable::Room, 2U,
-                      cr::CreativeObjectKind::Wall, previewEastWalls);
+      generatedRoomContributorBounds(editor.worldLayout.preview.document,
+                                     editor.worldLayout.source, 1U,
+                                     cr::CreativeObjectKind::Wall,
+                                     previewWestWalls) &&
+      generatedRoomContributorBounds(editor.worldLayout.preview.document,
+                                     editor.worldLayout.source, 2U,
+                                     cr::CreativeObjectKind::Wall,
+                                     previewEastWalls);
   const bool previewStayedTransient =
       previewed.accepted && previewed.sceneChanged &&
       app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
       previewHasBothRooms &&
-      near(previewWestWalls.max.y - previewWestWalls.min.y, 4.0) &&
-      near(previewEastWalls.max.y - previewEastWalls.min.y, 4.0) &&
+      near(previewWestWalls.max.y - previewWestWalls.min.y, 7.0) &&
+      near(previewEastWalls.max.y - previewEastWalls.min.y, 7.0) &&
       editor.worldLayout.source.levels[1].name == "Upper" &&
       editor.worldLayout.source.levels[1].wallHeightCells == 3U &&
       editor.worldLayout.revision == sourceRevisionBefore &&
@@ -3558,21 +3766,21 @@ bool generatedLevelSettingsRebuildEveryRoomAtomically() {
   cr::CreativeBounds eastWalls;
   cr::CreativeBounds groundWalls;
   const bool rebuiltRoomBounds =
-      generatedBounds(appState.facade.document(), editor.worldLayout.source,
-                      cr::CreativeWorldLayoutTable::Room, 1U,
-                      cr::CreativeObjectKind::Wall, westWalls) &&
-      generatedBounds(appState.facade.document(), editor.worldLayout.source,
-                      cr::CreativeWorldLayoutTable::Room, 2U,
-                      cr::CreativeObjectKind::Wall, eastWalls) &&
-      generatedBounds(appState.facade.document(), editor.worldLayout.source,
-                      cr::CreativeWorldLayoutTable::Room, 0U,
-                      cr::CreativeObjectKind::Wall, groundWalls);
+      generatedRoomContributorBounds(appState.facade.document(),
+                                     editor.worldLayout.source, 1U,
+                                     cr::CreativeObjectKind::Wall, westWalls) &&
+      generatedRoomContributorBounds(appState.facade.document(),
+                                     editor.worldLayout.source, 2U,
+                                     cr::CreativeObjectKind::Wall, eastWalls) &&
+      generatedRoomContributorBounds(appState.facade.document(),
+                                     editor.worldLayout.source, 0U,
+                                     cr::CreativeObjectKind::Wall, groundWalls);
   const bool rebuiltLevelAndPreservedDependents =
       applied.accepted && applied.changed && applied.worldLayoutChanged &&
       applied.sceneChanged && rebuiltRoomBounds &&
-      near(westWalls.max.y - westWalls.min.y, 4.0) &&
-      near(eastWalls.max.y - eastWalls.min.y, 4.0) &&
-      near(groundWalls.max.y - groundWalls.min.y, 3.0) &&
+      near(westWalls.max.y - westWalls.min.y, 7.0) &&
+      near(eastWalls.max.y - eastWalls.min.y, 7.0) &&
+      near(groundWalls.max.y - groundWalls.min.y, 7.0) &&
       editor.worldLayout.source.levels[1].name == "Upper Edited" &&
       editor.worldLayout.source.levels[1].floorThicknessLayers == 2U &&
       editor.worldLayout.source.levels[1].ceilingThicknessLayers == 2U &&
@@ -4966,6 +5174,7 @@ bool worldLayoutTerrainRegionCommandsRespectWorkspaceGuards() {
 int main() {
   bool ok = true;
   ok = newDocumentReplacesAndClearsHistory() && ok;
+  ok = builderEstateRegenerationIsExplicitUndoableAndUnsaved() && ok;
   ok = deleteAndDuplicateHitTheKernels() && ok;
   ok = undoRedoMoveTheHistoryRings() && ok;
   ok = worldLayoutSourceUndoRedoRoutesThroughDispatcher() && ok;

@@ -25,6 +25,12 @@ struct CreativeDesktopSaveAsPayload {
   std::string saveId;
 };
 
+// RegenerateMapTemplate: explicit replacement of the current document and its
+// synchronized world-layout source from one built-in map recipe.
+struct CreativeDesktopMapTemplatePayload {
+  std::string templateId;
+};
+
 // SelectObjects: replace the persistent selection with these ids. primaryObjectId
 // picks the primary; kInvalidObjectId falls back to the last surviving id.
 // ClearSelection ignores its payload (an empty list selects nothing).
@@ -430,6 +436,7 @@ struct CreativeDesktopWorldLayoutConfirmPayload {
 using CreativeDesktopCommandPayload = std::variant<
     std::monostate,
     CreativeDesktopSaveAsPayload,
+    CreativeDesktopMapTemplatePayload,
     CreativeDesktopSelectPayload,
     CreativeDesktopLogicLinkPayload,
     CreativeDesktopDeletePayload,

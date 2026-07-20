@@ -2381,6 +2381,17 @@ bool builtInBuildingTemplateInstallIsDurableAndIdempotent() {
                             ? app::installCreativeEditorWorldLayoutBuildingTemplate(
                                   library, changedSource.value)
                             : app::CreativeEditorWorldLayoutBuildingTemplateInstallReceipt{};
+  const auto installedStaleBuiltIn =
+      changedSource.accepted
+          ? app::installCreativeEditorBuiltInWorldLayoutBuildingTemplate(
+                library, changedSource.value)
+          : app::CreativeEditorWorldLayoutBuildingTemplateInstallReceipt{};
+  const auto upgradedBuiltIn =
+      app::installCreativeEditorBuiltInWorldLayoutBuildingTemplate(library,
+                                                                   source.value);
+  const auto repeatedUpgrade =
+      app::installCreativeEditorBuiltInWorldLayoutBuildingTemplate(library,
+                                                                   source.value);
 
   app::CreativeEditorWorldLayoutBuildingTemplateLibrary reloadedLibrary;
   const auto reloaded =
@@ -2404,6 +2415,13 @@ bool builtInBuildingTemplateInstallIsDurableAndIdempotent() {
                  conflict.reasonCode == "creative_editor_world_layout_building_"
                                         "template_install_conflict",
              "conflicting built-in template id fails closed") &&
+      expect(installedStaleBuiltIn.accepted && installedStaleBuiltIn.changed &&
+                 upgradedBuiltIn.accepted && upgradedBuiltIn.changed &&
+                 repeatedUpgrade.accepted && !repeatedUpgrade.changed &&
+                 library.templates.size() == 1U &&
+                 library.templates[0].sourceFingerprint ==
+                     source.value.sourceFingerprint,
+             "authoritative built-in install upgrades a stale cached definition") &&
       expect(filePresent && reloaded.accepted && reloaded.loadedCount == 1U &&
                  reloadedLibrary.templates.size() == 1U &&
                  reloadedLibrary.templates[0].sourceFingerprint ==

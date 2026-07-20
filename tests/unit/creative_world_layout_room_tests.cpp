@@ -256,7 +256,6 @@ bool stackedRoomsUseBuildingFacadesAndLevelPartitions() {
   upperWindow.widthCells = 1.5;
   upperWindow.cutoutBottomCells = 1.0;
   upperWindow.cutoutHeightCells = 1.2;
-  upperWindow.insertBottomCells = 1.0;
   upperWindow.insertHeightCells = 1.2;
   layout.openings.push_back(upperWindow);
 
@@ -293,6 +292,11 @@ bool stackedRoomsUseBuildingFacadesAndLevelPartitions() {
       expanded.expanded.walls[lowerDoor.wallIndex];
   const cr::CreativeWorldLayoutWall& upperWindowWall =
       expanded.expanded.walls[resolvedUpperWindow.wallIndex];
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Stacked Facade Windows");
+  static_cast<void>(document.assignId(9207U));
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, layout);
 
   return expect(expanded.expanded.walls.size() == 6U && facadeCount == 4U,
                 "four exterior runs span both storeys exactly once") &&
@@ -304,7 +308,9 @@ bool stackedRoomsUseBuildingFacadesAndLevelPartitions() {
                     &upperWindowWall == northFacade &&
                     near(resolvedUpperWindow.cutoutBottomCells, 4.0) &&
                     near(resolvedUpperWindow.insertBottomCells, 4.0),
-                "upper openings retain their storey offset in the facade");
+                "default upper window inserts align to their rebased cutouts") &&
+         expect(compiled.receipt.accepted,
+                "stacked facades with default window inserts compile");
 }
 
 bool invalidTopologyFailsClosed() {

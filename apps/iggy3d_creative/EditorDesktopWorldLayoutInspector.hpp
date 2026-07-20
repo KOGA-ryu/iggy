@@ -5,6 +5,8 @@
 
 namespace iggy3d_creative_app {
 
+struct CreativeEditorDesktopUiState;
+
 [[nodiscard]] const char* creativeEditorWorldLayoutVerticalConnectorKindLabel(
     iggy3d::creative::CreativeWorldLayoutVerticalConnectorKind kind) noexcept;
 [[nodiscard]] const char*
@@ -19,6 +21,7 @@ void drawCreativeEditorWorldLayoutVerticalConnectorInspector(
     CreativeDesktopCommandFrame& commands);
 
 void drawCreativeEditorWorldLayoutStructureInspector(
+    CreativeEditorDesktopUiState& desktopUi,
     CreativeEditorWorldLayoutState& state,
     CreativeDesktopCommandFrame& commands);
 

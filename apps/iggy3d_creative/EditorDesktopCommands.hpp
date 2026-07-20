@@ -31,6 +31,7 @@ enum class CreativeDesktopCommandId : std::uint8_t {
   OpenDocument,
   SaveDocument,
   SaveDocumentAs,
+  RegenerateMapTemplate,
   Undo,
   Redo,
   DuplicateSelection,

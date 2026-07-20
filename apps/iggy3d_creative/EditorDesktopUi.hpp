@@ -137,6 +137,16 @@ struct CreativeEditorDesktopUiState {
   // Save As modal (in-app, no native dialog — plan DD-14).
   bool saveAsModalOpen = false;
   std::array<char, 96> saveAsNameBuffer{};
+  // Explicit destructive confirmations. The pending building index/mode is
+  // transient UI routing state; document/template truth remains elsewhere.
+  bool regenerateBuilderEstateModalOpen = false;
+  bool buildingTemplateRebuildModalOpen = false;
+  std::size_t pendingBuildingTemplateRebuildIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  iggy3d::creative::CreativeWorldLayoutBuildingTemplateRefreshMode
+      pendingBuildingTemplateRebuildMode =
+          iggy3d::creative::CreativeWorldLayoutBuildingTemplateRefreshMode::
+              SelectedInstance;
 
   // Last dispatched command message, surfaced in the status bar (plan DD-11).
   std::string statusMessage;

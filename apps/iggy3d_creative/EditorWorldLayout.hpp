@@ -443,6 +443,13 @@ loadCreativeEditorWorldLayoutBuildingTemplateLibrary(
 installCreativeEditorWorldLayoutBuildingTemplate(
     CreativeEditorWorldLayoutBuildingTemplateLibrary& library,
     const cr::CreativeWorldLayoutBuildingTemplate& sourceTemplate);
+// Built-in templates are application-owned source, not user-authored library
+// entries. A newer built-in fingerprint replaces its cached copy atomically;
+// the ordinary installer above continues to reject conflicting IDs.
+[[nodiscard]] CreativeEditorWorldLayoutBuildingTemplateInstallReceipt
+installCreativeEditorBuiltInWorldLayoutBuildingTemplate(
+    CreativeEditorWorldLayoutBuildingTemplateLibrary& library,
+    const cr::CreativeWorldLayoutBuildingTemplate& sourceTemplate);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 captureCreativeEditorWorldLayoutBuildingTemplate(
     CreativeEditorWorldLayoutState& state,
@@ -459,6 +466,11 @@ updateCreativeEditorWorldLayoutBuildingTemplateFromInstance(
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 refreshCreativeEditorWorldLayoutBuildingTemplateInstances(
     CreativeEditorWorldLayoutState& state,
+    std::size_t buildingIndex,
+    cr::CreativeWorldLayoutBuildingTemplateRefreshMode mode);
+[[nodiscard]] CreativeEditorWorldLayoutApplyReceipt
+applyCreativeEditorWorldLayoutBuildingTemplateRefreshToDocument(
+    CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,
     std::size_t buildingIndex,
     cr::CreativeWorldLayoutBuildingTemplateRefreshMode mode);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt

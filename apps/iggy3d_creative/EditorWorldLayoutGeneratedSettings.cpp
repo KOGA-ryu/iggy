@@ -295,6 +295,38 @@ applyCreativeEditorWorldLayoutGeneratedBuildingOperationToDocument(
 }
 
 CreativeEditorWorldLayoutApplyReceipt
+applyCreativeEditorWorldLayoutBuildingTemplateRefreshToDocument(
+    CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,
+    std::size_t buildingIndex,
+    cr::CreativeWorldLayoutBuildingTemplateRefreshMode mode) {
+  CreativeEditorWorldLayoutState candidate =
+      makeWorldLayoutSettingsCandidate(state);
+  candidate.buildingTemplates = state.buildingTemplates;
+  const CreativeEditorWorldLayoutEditReceipt editReceipt =
+      refreshCreativeEditorWorldLayoutBuildingTemplateInstances(
+          candidate, buildingIndex, mode);
+  if (!editReceipt.accepted &&
+      editReceipt.reasonCode ==
+          "creative_world_layout_building_template_refresh_no_eligible_"
+          "instances") {
+    CreativeEditorWorldLayoutApplyReceipt result;
+    result.accepted = true;
+    result.reasonCode = editReceipt.reasonCode;
+    state.statusMessage = "building template output already current";
+    return result;
+  }
+  const std::string successMessage =
+      editReceipt.accepted
+          ? candidate.buildingTemplates.statusMessage + " in 3D"
+          : std::string{};
+  return applyWorldLayoutSettingsCandidate(
+      state, appState, std::move(candidate), editReceipt,
+      "desktop_generated_building_template_refresh",
+      successMessage.empty() ? "building template rebuilt in 3D"
+                             : successMessage);
+}
+
+CreativeEditorWorldLayoutApplyReceipt
 applyCreativeEditorWorldLayoutBuildingGroundingSettingsToDocument(
     CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,
     std::size_t buildingIndex,

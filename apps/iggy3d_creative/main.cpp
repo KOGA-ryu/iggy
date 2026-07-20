@@ -150,7 +150,8 @@ bool generateCreativeMapSave(std::string_view templateId) {
     for (const creative::CreativeWorldLayoutBuildingTemplate& source :
          map.buildingTemplates) {
       const auto installed =
-          iggy3d_creative_app::installCreativeEditorWorldLayoutBuildingTemplate(
+          iggy3d_creative_app::
+              installCreativeEditorBuiltInWorldLayoutBuildingTemplate(
               library, source);
       if (!installed.accepted) {
         std::fprintf(stderr,
@@ -520,6 +521,7 @@ int main(int argc, char** argv) {
         }
         if (desktopResult.documentReplaced || desktopResult.sceneChanged) {
           invalidateCreativeEditorSceneCache(sceneCache);
+          floorObjectId = firstFloorObjectId(appState.facade.document());
         }
         if (!playWasActive && desktopResult.accepted &&
             desktopResult.lastCommand ==

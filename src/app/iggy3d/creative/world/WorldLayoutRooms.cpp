@@ -419,8 +419,15 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
     const double verticalOffset =
         binding.edgeBaseLayer -
         result.expanded.walls[binding.wallIndex].baseLayer;
+    const bool alignWindowInsertToCutout =
+        opening.kind == CreativeBuildingOpeningKind::Window &&
+        opening.insertBottomCells == 0.0;
     opening.cutoutBottomCells += verticalOffset;
-    opening.insertBottomCells += verticalOffset;
+    if (alignWindowInsertToCutout) {
+      opening.insertBottomCells = opening.cutoutBottomCells;
+    } else {
+      opening.insertBottomCells += verticalOffset;
+    }
     opening.hostKind = CreativeWorldLayoutOpeningHostKind::Wall;
     opening.roomIndex = kInvalidCreativeWorldLayoutIndex;
   }

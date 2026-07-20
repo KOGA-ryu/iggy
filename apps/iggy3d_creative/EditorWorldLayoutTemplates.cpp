@@ -269,10 +269,13 @@ loadCreativeEditorWorldLayoutBuildingTemplateLibrary(
   return receipt;
 }
 
+namespace {
+
 CreativeEditorWorldLayoutBuildingTemplateInstallReceipt
-installCreativeEditorWorldLayoutBuildingTemplate(
+installWorldLayoutBuildingTemplate(
     CreativeEditorWorldLayoutBuildingTemplateLibrary& library,
-    const cr::CreativeWorldLayoutBuildingTemplate& sourceTemplate) {
+    const cr::CreativeWorldLayoutBuildingTemplate& sourceTemplate,
+    bool replaceExisting) {
   CreativeEditorWorldLayoutBuildingTemplateInstallReceipt receipt;
   receipt.requested = true;
   if (library.root.empty() ||
@@ -299,10 +302,33 @@ installCreativeEditorWorldLayoutBuildingTemplate(
       templateIndexForId(library, sourceTemplate.templateId);
   if (existingIndex < library.templates.size()) {
     receipt.templateIndex = existingIndex;
-    if (library.templates[existingIndex].sourceFingerprint !=
-        sourceTemplate.sourceFingerprint) {
+    const bool sourceChanged =
+        library.templates[existingIndex].sourceFingerprint !=
+        sourceTemplate.sourceFingerprint;
+    if (sourceChanged && !replaceExisting) {
       receipt.reasonCode =
           "creative_editor_world_layout_building_template_install_conflict";
+      return receipt;
+    }
+    if (sourceChanged) {
+      const cr::CreativeWorldLayoutEncodeResult encoded =
+          cr::encodeCreativeWorldLayout(canonical.value.normalizedLayout);
+      const std::filesystem::path path =
+          library.root /
+          (canonical.value.templateId +
+           std::string(kBuildingTemplateExtension));
+      if (!encoded.accepted ||
+          !writeTemplateFileAtomically(path, encoded.encodedText)) {
+        receipt.reasonCode =
+            "creative_editor_world_layout_building_template_install_write_failed";
+        return receipt;
+      }
+      library.templates[existingIndex] = std::move(canonical.value);
+      library.statusMessage = "built-in building template updated";
+      receipt.accepted = true;
+      receipt.changed = true;
+      receipt.reasonCode =
+          "creative_editor_world_layout_building_template_builtin_updated";
       return receipt;
     }
     receipt.accepted = true;
@@ -340,6 +366,22 @@ installCreativeEditorWorldLayoutBuildingTemplate(
   receipt.reasonCode =
       "creative_editor_world_layout_building_template_installed";
   return receipt;
+}
+
+}  // namespace
+
+CreativeEditorWorldLayoutBuildingTemplateInstallReceipt
+installCreativeEditorWorldLayoutBuildingTemplate(
+    CreativeEditorWorldLayoutBuildingTemplateLibrary& library,
+    const cr::CreativeWorldLayoutBuildingTemplate& sourceTemplate) {
+  return installWorldLayoutBuildingTemplate(library, sourceTemplate, false);
+}
+
+CreativeEditorWorldLayoutBuildingTemplateInstallReceipt
+installCreativeEditorBuiltInWorldLayoutBuildingTemplate(
+    CreativeEditorWorldLayoutBuildingTemplateLibrary& library,
+    const cr::CreativeWorldLayoutBuildingTemplate& sourceTemplate) {
+  return installWorldLayoutBuildingTemplate(library, sourceTemplate, true);
 }
 
 CreativeEditorWorldLayoutEditReceipt

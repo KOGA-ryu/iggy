@@ -323,13 +323,15 @@ bool dispatchCreativeDesktopWorldLayoutBuildingCommand(
       }
       const bool previewWasActive =
           creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
-      const CreativeEditorWorldLayoutEditReceipt receipt =
-          refreshCreativeEditorWorldLayoutBuildingTemplateInstances(
-              editor.worldLayout, payload->buildingIndex, payload->mode);
+      const CreativeEditorWorldLayoutApplyReceipt receipt =
+          applyCreativeEditorWorldLayoutBuildingTemplateRefreshToDocument(
+              editor.worldLayout, appState, payload->buildingIndex,
+              payload->mode);
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
       result.worldLayoutChanged = receipt.changed;
-      result.sceneChanged = previewWasActive && receipt.changed;
+      result.sceneChanged = receipt.apply.changed ||
+                            (previewWasActive && receipt.changed);
       result.message = editor.worldLayout.statusMessage;
       break;
     }

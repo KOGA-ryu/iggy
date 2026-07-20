@@ -16,6 +16,7 @@
 #include "EditorWorldLayoutPanel.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
 #include "app/iggy3d/creative/tools/Select.hpp"
+#include "app/iggy3d/creative/world/MapTemplate.hpp"
 
 // Desktop shell chrome and panel orchestration. The Project and Inspector
 // bodies live in EditorDesktopOutliner.cpp / EditorDesktopInspector.cpp; this TU
@@ -143,6 +144,9 @@ void buildCreativeEditorDesktopMenuBar(
       (worldLayout != nullptr &&
        creativeEditorWorldLayoutSourceRedoAvailable(*worldLayout)) ||
       (sourceSynchronized && cr::creativeRedoAvailable(appState.history));
+  const bool canRegenerateMap =
+      !playModeActive && worldLayout != nullptr && sourceSynchronized &&
+      appState.history.maxDepth > 0U;
 
   if (ImGui::BeginMainMenuBar()) {
     if (ImGui::BeginMenu("File")) {
@@ -158,6 +162,11 @@ void buildCreativeEditorDesktopMenuBar(
       if (ImGui::MenuItem("Save As...")) {
         desktopUi.saveAsModalOpen = true;
         desktopUi.saveAsNameBuffer[0] = '\0';
+      }
+      ImGui::Separator();
+      if (ImGui::MenuItem("Regenerate Builder Estate...", nullptr, false,
+                          canRegenerateMap)) {
+        desktopUi.regenerateBuilderEstateModalOpen = true;
       }
       // Import lands with the Asset Library slice (UI-2b) where the catalog
       // reload glue lives; disabled until then.
@@ -227,6 +236,30 @@ void buildCreativeEditorDesktopMenuBar(
       ImGui::CloseCurrentPopup();
     }
     ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel")) {
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
+  }
+
+  if (desktopUi.regenerateBuilderEstateModalOpen) {
+    ImGui::OpenPopup("Regenerate Builder Estate##desktop");
+    desktopUi.regenerateBuilderEstateModalOpen = false;
+  }
+  if (ImGui::BeginPopupModal("Regenerate Builder Estate##desktop", nullptr,
+                             ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImGui::TextUnformatted(
+        "Replace the current document with the latest Builder Estate?");
+    ImGui::TextDisabled(
+        "The replacement is undoable and is not saved until you choose Save.");
+    if (ImGui::Button("Regenerate")) {
+      commands.push(
+          CreativeDesktopCommandId::RegenerateMapTemplate,
+          CreativeDesktopMapTemplatePayload{
+              std::string(cr::kBuilderEstateMapTemplateId)});
+      ImGui::CloseCurrentPopup();
+    }
     ImGui::SameLine();
     if (ImGui::Button("Cancel")) {
       ImGui::CloseCurrentPopup();

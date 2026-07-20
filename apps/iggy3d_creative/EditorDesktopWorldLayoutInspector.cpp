@@ -1,5 +1,7 @@
 #include "EditorDesktopWorldLayoutInspector.hpp"
 
+#include "EditorDesktopUi.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -198,7 +200,8 @@ void drawBuildingActions(CreativeEditorWorldLayoutState& state,
   ImGui::Separator();
 }
 
-void drawBuildingTemplateActions(CreativeEditorWorldLayoutState& state,
+void drawBuildingTemplateActions(CreativeEditorDesktopUiState& desktopUi,
+                                 CreativeEditorWorldLayoutState& state,
                                  CreativeDesktopCommandFrame& commands) {
   CreativeEditorWorldLayoutBuildingTemplateLibrary& library =
       state.buildingTemplates;
@@ -264,19 +267,33 @@ void drawBuildingTemplateActions(CreativeEditorWorldLayoutState& state,
   const bool selectedNeedsRefresh =
       linkedSourceAvailable &&
       sync.state != cr::CreativeWorldLayoutBuildingTemplateSyncState::Current;
+  const bool selectedRefreshDestructive =
+      sync.state ==
+          cr::CreativeWorldLayoutBuildingTemplateSyncState::LocallyModified ||
+      sync.state ==
+          cr::CreativeWorldLayoutBuildingTemplateSyncState::Conflict;
   ImGui::BeginDisabled(!selectedNeedsRefresh);
-  if (ImGui::Button("Refresh selected")) {
-    commands.push(
-        CreativeDesktopCommandId::
-            WorldLayoutRefreshBuildingTemplateInstances,
-        CreativeDesktopWorldLayoutBuildingTemplateSyncPayload{
-            selectedBuilding,
-            cr::CreativeWorldLayoutBuildingTemplateRefreshMode::
-                SelectedInstance});
+  if (ImGui::Button("Rebuild selected in 3D")) {
+    if (selectedRefreshDestructive) {
+      desktopUi.pendingBuildingTemplateRebuildIndex = selectedBuilding;
+      desktopUi.pendingBuildingTemplateRebuildMode =
+          cr::CreativeWorldLayoutBuildingTemplateRefreshMode::
+              SelectedInstance;
+      desktopUi.buildingTemplateRebuildModalOpen = true;
+    } else {
+      commands.push(
+          CreativeDesktopCommandId::
+              WorldLayoutRefreshBuildingTemplateInstances,
+          CreativeDesktopWorldLayoutBuildingTemplateSyncPayload{
+              selectedBuilding,
+              cr::CreativeWorldLayoutBuildingTemplateRefreshMode::
+                  SelectedInstance});
+    }
   }
   ImGui::EndDisabled();
   ImGui::SameLine();
-  if (ImGui::Button("Refresh safe instances")) {
+  ImGui::BeginDisabled(!linkedSourceAvailable);
+  if (ImGui::Button("Rebuild safe instances")) {
     commands.push(
         CreativeDesktopCommandId::
             WorldLayoutRefreshBuildingTemplateInstances,
@@ -286,15 +303,47 @@ void drawBuildingTemplateActions(CreativeEditorWorldLayoutState& state,
                 SafeInstances});
   }
   ImGui::SameLine();
-  if (ImGui::Button("Force refresh all")) {
-    commands.push(
-        CreativeDesktopCommandId::
-            WorldLayoutRefreshBuildingTemplateInstances,
-        CreativeDesktopWorldLayoutBuildingTemplateSyncPayload{
-            selectedBuilding,
-            cr::CreativeWorldLayoutBuildingTemplateRefreshMode::ForceAll});
+  if (ImGui::Button("Force rebuild all...")) {
+    desktopUi.pendingBuildingTemplateRebuildIndex = selectedBuilding;
+    desktopUi.pendingBuildingTemplateRebuildMode =
+        cr::CreativeWorldLayoutBuildingTemplateRefreshMode::ForceAll;
+    desktopUi.buildingTemplateRebuildModalOpen = true;
   }
   ImGui::EndDisabled();
+
+  if (desktopUi.buildingTemplateRebuildModalOpen) {
+    ImGui::OpenPopup("Rebuild template instances##world_layout");
+    desktopUi.buildingTemplateRebuildModalOpen = false;
+  }
+  if (ImGui::BeginPopupModal("Rebuild template instances##world_layout",
+                             nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+    const bool forceAll =
+        desktopUi.pendingBuildingTemplateRebuildMode ==
+        cr::CreativeWorldLayoutBuildingTemplateRefreshMode::ForceAll;
+    ImGui::TextUnformatted(
+        forceAll
+            ? "Replace every modified instance with the current template?"
+            : "Replace this building's local changes with the current template?");
+    ImGui::TextDisabled("The rebuild is one undoable 3D edit.");
+    if (ImGui::Button(forceAll ? "Force rebuild all" : "Rebuild selected")) {
+      commands.push(
+          CreativeDesktopCommandId::
+              WorldLayoutRefreshBuildingTemplateInstances,
+          CreativeDesktopWorldLayoutBuildingTemplateSyncPayload{
+              desktopUi.pendingBuildingTemplateRebuildIndex,
+              desktopUi.pendingBuildingTemplateRebuildMode});
+      desktopUi.pendingBuildingTemplateRebuildIndex =
+          cr::kInvalidCreativeWorldLayoutIndex;
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel")) {
+      desktopUi.pendingBuildingTemplateRebuildIndex =
+          cr::kInvalidCreativeWorldLayoutIndex;
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
+  }
 
   if (library.templates.empty()) {
     ImGui::TextDisabled("No saved building templates");
@@ -583,12 +632,13 @@ void drawWallSettings(CreativeEditorWorldLayoutState& state,
 }  // namespace
 
 void drawCreativeEditorWorldLayoutStructureInspector(
+    CreativeEditorDesktopUiState& desktopUi,
     CreativeEditorWorldLayoutState& state,
     CreativeDesktopCommandFrame& commands) {
   switch (state.selection.kind) {
     case CreativeEditorWorldLayoutSelectionKind::Building:
       drawBuildingActions(state, commands);
-      drawBuildingTemplateActions(state, commands);
+      drawBuildingTemplateActions(desktopUi, state, commands);
       break;
     case CreativeEditorWorldLayoutSelectionKind::VerticalConnector:
       drawCreativeEditorWorldLayoutVerticalConnectorInspector(state,
