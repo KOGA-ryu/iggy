@@ -146,6 +146,11 @@ iggy3d_add_unit_test(creative_world_layout_tests
 set_tests_properties(creative_world_layout_tests PROPERTIES
   LABELS "unit;app;creative;world;layout;recipe;history;iggy3d")
 
+iggy3d_add_unit_test(creative_world_layout_architecture_tests
+  tests/unit/creative_world_layout_architecture_tests.cpp)
+set_tests_properties(creative_world_layout_architecture_tests PROPERTIES
+  LABELS "unit;app;creative;world;layout;architecture;iggy3d")
+
 iggy3d_add_unit_test(creative_world_layout_terrain_impact_tests
   tests/unit/creative_world_layout_terrain_impact_tests.cpp)
 set_tests_properties(creative_world_layout_terrain_impact_tests PROPERTIES
@@ -489,6 +494,17 @@ add_test(NAME creative_desktop_ui_command_tests
 set_tests_properties(creative_desktop_ui_command_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;editor;desktop;command;iggy3d")
+
+add_executable(creative_editor_architecture_tests
+  tests/unit/creative_editor_architecture_tests.cpp)
+target_link_libraries(creative_editor_architecture_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_architecture_tests)
+add_test(NAME creative_editor_architecture_tests
+  COMMAND "$<TARGET_FILE:creative_editor_architecture_tests>")
+set_tests_properties(creative_editor_architecture_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;editor;architecture;history;iggy3d")
 
 add_executable(creative_desktop_model_tests
   tests/unit/creative_desktop_model_tests.cpp)

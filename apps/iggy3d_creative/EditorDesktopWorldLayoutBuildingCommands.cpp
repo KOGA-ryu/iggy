@@ -233,6 +233,55 @@ bool dispatchCreativeDesktopWorldLayoutBuildingCommand(
       }
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutPreviewBuildingArchitecture: {
+      const auto* payload = payloadAs<
+          CreativeDesktopWorldLayoutBuildingArchitecturePayload>(command);
+      if (payload == nullptr) {
+        result.message = "building architecture preview: payload mismatch";
+        break;
+      }
+      if (!creativeEditorWorldLayoutSourceStableKeyMatches(
+              editor.worldLayout, creative::CreativeWorldLayoutTable::Building,
+              payload->buildingIndex, payload->stableKey)) {
+        result.message = "building architecture preview: stale target";
+        break;
+      }
+      const CreativeEditorWorldLayoutPreviewReceipt receipt =
+          previewCreativeEditorWorldLayoutBuildingArchitecture(
+              editor.worldLayout, appState.facade.document(),
+              payload->buildingIndex, payload->profile);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.sceneChanged = receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutApplyBuildingArchitecture: {
+      const auto* payload = payloadAs<
+          CreativeDesktopWorldLayoutBuildingArchitecturePayload>(command);
+      if (payload == nullptr) {
+        result.message = "building architecture apply: payload mismatch";
+        break;
+      }
+      if (!creativeEditorWorldLayoutSourceStableKeyMatches(
+              editor.worldLayout, creative::CreativeWorldLayoutTable::Building,
+              payload->buildingIndex, payload->stableKey)) {
+        result.message = "building architecture apply: stale target";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutApplyReceipt receipt =
+          applyCreativeEditorWorldLayoutBuildingArchitectureToDocument(
+              editor.worldLayout, appState, payload->buildingIndex,
+              payload->profile);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive || receipt.apply.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::
         WorldLayoutApplyGeneratedBuildingGrounding: {
       const auto* payload = payloadAs<

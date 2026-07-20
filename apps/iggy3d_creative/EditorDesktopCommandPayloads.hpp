@@ -9,6 +9,7 @@
 #include "app/iggy3d/creative/assets/AuthoredAsset.hpp"
 #include "app/iggy3d/creative/document/LogicLink.hpp"
 #include "app/iggy3d/creative/recipes/TerrainOperation.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutArchitecture.hpp"
 #include "EditorWorldLayoutState.hpp"
 
 namespace iggy3d_creative_app {
@@ -270,6 +271,13 @@ struct CreativeDesktopWorldLayoutBuildingGroundingPayload {
   CreativeEditorWorldLayoutBuildingGroundingSettings settings;
 };
 
+struct CreativeDesktopWorldLayoutBuildingArchitecturePayload {
+  std::size_t buildingIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::string stableKey;
+  iggy3d::creative::CreativeWorldLayoutArchitecturalProfile profile;
+};
+
 struct CreativeDesktopWorldLayoutBuildingTemplateCapturePayload {
   std::size_t buildingIndex =
       iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
@@ -468,6 +476,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutBuildingTransformPayload,
     CreativeDesktopGeneratedBuildingOperationPayload,
     CreativeDesktopWorldLayoutBuildingGroundingPayload,
+    CreativeDesktopWorldLayoutBuildingArchitecturePayload,
     CreativeDesktopWorldLayoutBuildingTemplateCapturePayload,
     CreativeDesktopWorldLayoutBuildingTemplateSyncPayload,
     CreativeDesktopWorldLayoutBuildingTemplateSelectionPayload,

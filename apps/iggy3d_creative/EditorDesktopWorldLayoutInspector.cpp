@@ -1,6 +1,7 @@
 #include "EditorDesktopWorldLayoutInspector.hpp"
 
 #include "EditorDesktopUi.hpp"
+#include "EditorDesktopWorldLayoutArchitectureInspector.hpp"
 
 #include "app/iggy3d/creative/world/WorldLayoutDimensions.hpp"
 
@@ -57,7 +58,8 @@ const char* boxApplyLabel(cr::CreativeObjectKind kind) noexcept {
   }
 }
 
-void drawBuildingActions(CreativeEditorWorldLayoutState& state,
+void drawBuildingActions(CreativeEditorDesktopUiState& desktopUi,
+                         CreativeEditorWorldLayoutState& state,
                          const cr::CreativeDocument& document,
                          CreativeDesktopCommandFrame& commands) {
   const std::size_t buildingIndex =
@@ -150,6 +152,10 @@ void drawBuildingActions(CreativeEditorWorldLayoutState& state,
                         static_cast<int>(dimensions.reasonCode.size()),
                         dimensions.reasonCode.data());
   }
+
+  drawCreativeEditorWorldLayoutArchitectureInspector(
+      desktopUi, state, document, dimensions, buildingIndex, building,
+      commands);
 
   ImGui::SeparatorText("Terrain placement");
   int groundingMode = static_cast<int>(building.groundingMode);
@@ -695,7 +701,7 @@ void drawCreativeEditorWorldLayoutStructureInspector(
     CreativeDesktopCommandFrame& commands) {
   switch (state.selection.kind) {
     case CreativeEditorWorldLayoutSelectionKind::Building:
-      drawBuildingActions(state, document, commands);
+      drawBuildingActions(desktopUi, state, document, commands);
       drawBuildingTemplateActions(desktopUi, state, commands);
       break;
     case CreativeEditorWorldLayoutSelectionKind::VerticalConnector:

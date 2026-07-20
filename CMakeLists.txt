@@ -157,6 +157,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/world/WorldLayoutReconciliation.cpp
     src/app/iggy3d/creative/world/WorldLayoutLevels.cpp
     src/app/iggy3d/creative/world/WorldLayoutDimensions.cpp
+    src/app/iggy3d/creative/world/WorldLayoutArchitecture.cpp
     src/app/iggy3d/creative/world/WorldLayoutRoofs.cpp
     src/app/iggy3d/creative/world/WorldLayoutRooms.cpp
     src/app/iggy3d/creative/world/WorldLayoutVerticalConnectors.cpp
@@ -465,6 +466,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorDesktopGeneratedBuildingInspector.cpp
   apps/iggy3d_creative/EditorDesktopGeneratedRoomInspector.cpp
   apps/iggy3d_creative/EditorDesktopGeneratedLevelInspector.cpp
+  apps/iggy3d_creative/EditorDesktopWorldLayoutArchitectureInspector.cpp
   apps/iggy3d_creative/EditorDesktopWorldLayoutInspector.cpp
   apps/iggy3d_creative/EditorDesktopWorldLayoutSourceInspector.cpp
   apps/iggy3d_creative/EditorDesktopWorldLayoutVerticalConnectorInspector.cpp

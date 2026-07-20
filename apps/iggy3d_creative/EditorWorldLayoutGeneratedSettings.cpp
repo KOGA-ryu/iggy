@@ -29,6 +29,33 @@ struct GeneratedBuildingCandidate {
   CreativeEditorWorldLayoutEditReceipt edit;
 };
 
+GeneratedBuildingCandidate makeBuildingArchitectureCandidate(
+    const CreativeEditorWorldLayoutState& source,
+    cr::CreativeGridSettings grid,
+    std::size_t buildingIndex,
+    cr::CreativeWorldLayoutArchitecturalProfile profile) {
+  GeneratedBuildingCandidate candidate;
+  candidate.state = makeWorldLayoutSettingsCandidate(source);
+  cr::CreativeWorldLayoutArchitectureResult normalized =
+      cr::normalizeCreativeWorldLayoutBuildingArchitecture(
+          grid, source.source, {buildingIndex, profile});
+  if (!normalized.receipt.accepted) {
+    candidate.state.statusMessage = normalized.receipt.reasonCode;
+    candidate.edit = {false, false,
+                      std::string(normalized.receipt.reasonCode)};
+    return candidate;
+  }
+  candidate.state.source = std::move(normalized.edited);
+  candidate.state.selection = {
+      CreativeEditorWorldLayoutSelectionKind::Building, buildingIndex};
+  if (normalized.receipt.changed) {
+    ++candidate.state.revision;
+  }
+  candidate.edit = {true, normalized.receipt.changed,
+                    std::string(normalized.receipt.reasonCode)};
+  return candidate;
+}
+
 GeneratedBuildingCandidate makeGeneratedBuildingCandidate(
     const CreativeEditorWorldLayoutState& source,
     std::size_t buildingIndex,
@@ -292,6 +319,32 @@ applyCreativeEditorWorldLayoutGeneratedBuildingOperationToDocument(
   return applyWorldLayoutSettingsCandidate(
       state, appState, std::move(candidate.state), candidate.edit,
       "desktop_generated_building_operation", "building updated in 3D");
+}
+
+CreativeEditorWorldLayoutPreviewReceipt
+previewCreativeEditorWorldLayoutBuildingArchitecture(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document, std::size_t buildingIndex,
+    cr::CreativeWorldLayoutArchitecturalProfile profile) {
+  GeneratedBuildingCandidate candidate = makeBuildingArchitectureCandidate(
+      state, document.gridSettings(), buildingIndex, profile);
+  return previewWorldLayoutSettingsCandidate(
+      state, document, std::move(candidate.state), candidate.edit,
+      "architectural profile preview ready");
+}
+
+CreativeEditorWorldLayoutApplyReceipt
+applyCreativeEditorWorldLayoutBuildingArchitectureToDocument(
+    CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,
+    std::size_t buildingIndex,
+    cr::CreativeWorldLayoutArchitecturalProfile profile) {
+  GeneratedBuildingCandidate candidate = makeBuildingArchitectureCandidate(
+      state, appState.facade.document().gridSettings(), buildingIndex,
+      profile);
+  return applyWorldLayoutSettingsCandidate(
+      state, appState, std::move(candidate.state), candidate.edit,
+      "desktop_generated_building_architecture",
+      "architectural profile applied in 3D");
 }
 
 CreativeEditorWorldLayoutApplyReceipt

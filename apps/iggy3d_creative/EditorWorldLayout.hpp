@@ -12,6 +12,7 @@
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutArchitecture.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutTerrainReconciliation.hpp"
 
@@ -425,6 +426,16 @@ applyCreativeEditorWorldLayoutGeneratedBuildingOperationToDocument(
     std::size_t buildingIndex,
     CreativeEditorWorldLayoutGeneratedBuildingOperation operation,
     std::int64_t deltaXCells = 0, std::int64_t deltaZCells = 0);
+[[nodiscard]] CreativeEditorWorldLayoutPreviewReceipt
+previewCreativeEditorWorldLayoutBuildingArchitecture(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document, std::size_t buildingIndex,
+    cr::CreativeWorldLayoutArchitecturalProfile profile);
+[[nodiscard]] CreativeEditorWorldLayoutApplyReceipt
+applyCreativeEditorWorldLayoutBuildingArchitectureToDocument(
+    CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,
+    std::size_t buildingIndex,
+    cr::CreativeWorldLayoutArchitecturalProfile profile);
 [[nodiscard]] bool defaultCreativeEditorWorldLayoutBuildingDuplicateOffset(
     const CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
     std::int64_t& deltaXCells, std::int64_t& deltaZCells) noexcept;

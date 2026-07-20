@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "app/iggy3d/creative/document/Document.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutArchitecture.hpp"
 #include "render/FrameInput.hpp"
 
 #include "EditorDesktopModel.hpp"
@@ -98,6 +99,15 @@ struct CreativeEditorDesktopBlockoutEditDraft {
   CreativeEditorWorldLayoutBuildingBlockoutSettings settings;
 };
 
+struct CreativeEditorDesktopArchitectureDraft {
+  bool active = false;
+  bool previewReady = false;
+  std::size_t buildingIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::uint64_t sourceRevision = 0U;
+  iggy3d::creative::CreativeWorldLayoutArchitecturalProfile profile;
+};
+
 struct CreativeEditorDesktopUiState {
   bool shellEnabled = false;  // true only for explicit desktop UI launches
   bool frameActive = false;   // NewFrame issued this frame, Render still owed
@@ -175,6 +185,7 @@ struct CreativeEditorDesktopUiState {
   // records the world-layout revision at read time so the drawer can show
   // whether the draft is still in sync with the source.
   CreativeEditorDesktopBlockoutEditDraft worldLayoutBlockoutEdit;
+  CreativeEditorDesktopArchitectureDraft worldLayoutArchitecture;
 };
 
 // Result of the free-pointer capture policy: the new capture state and whether
