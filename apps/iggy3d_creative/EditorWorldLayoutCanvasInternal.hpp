@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EditorWorldLayoutPanelInternal.hpp"
+#include "EditorWorldLayoutPlanView.hpp"
 
 #include "imgui.h"
 
@@ -34,7 +35,6 @@ struct CreativeEditorWorldLayoutCanvasPointerGeometry {
 void drawCreativeEditorWorldLayoutTerrainBackground(
     ImDrawList& drawList, ImVec2 minimum, ImVec2 maximum,
     const CreativeEditorWorldLayoutCanvasTransform& transform,
-    const CreativeEditorWorldLayoutState& state,
     const CreativeEditorWorldLayoutTopographyState& topography);
 
 void drawCreativeEditorWorldLayoutObjectSymbols(
@@ -60,6 +60,7 @@ drawCreativeEditorWorldLayoutCanvasScene(
     const CreativeEditorWorldLayoutCanvasTransform& transform,
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutTopographyState& topography,
+    const CreativeEditorWorldLayoutPlanViewCache& planView,
     const cr::CreativeGridSettings& grid, ImVec2 pointerPosition,
     bool hovered);
 

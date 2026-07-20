@@ -231,6 +231,13 @@ ProjectionFixture makeFixture() {
   upperProp.pointCells = {1.0, 3.0, 1.0};
   fixture.layout.objects.push_back(upperProp);
 
+  cr::CreativeWorldLayoutObject enemy = player;
+  enemy.kind = cr::CreativeObjectKind::EnemySpawn;
+  enemy.stableKey = "enemy";
+  enemy.name = "Enemy Spawn";
+  enemy.pointCells = {3.0, 0.0, 6.0};
+  fixture.layout.objects.push_back(enemy);
+
   fixture.contours = {
       {{-2.0, -2.0}, {2.0, -2.0}, 2U, false},
       {{-2.0, -1.0}, {2.0, -1.0}, 10U, true},
@@ -488,7 +495,7 @@ bool terrainContoursAndObjectsCarrySemanticMetadata() {
                         cr::CreativeWorldLayoutPlanLayer::Active) == 1U &&
                     countRole(plan,
                               cr::CreativeWorldLayoutPlanRole::NpcSpawn,
-                              cr::CreativeWorldLayoutPlanLayer::Active) == 1U,
+                              cr::CreativeWorldLayoutPlanLayer::Active) == 2U,
                 "gameplay and bridge objects own semantic roles");
 }
 

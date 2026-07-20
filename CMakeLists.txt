@@ -479,6 +479,8 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorWorldLayoutCanvasDraw.cpp
   apps/iggy3d_creative/EditorWorldLayoutCanvasPreviewDraw.cpp
   apps/iggy3d_creative/EditorWorldLayoutCanvasTerrainDraw.cpp
+  apps/iggy3d_creative/EditorWorldLayoutPlanDraw.cpp
+  apps/iggy3d_creative/EditorWorldLayoutPlanView.cpp
   apps/iggy3d_creative/EditorWorldLayoutDraftingControls.cpp
   apps/iggy3d_creative/EditorWorldLayoutDraftingModel.cpp
   apps/iggy3d_creative/EditorWorldLayoutPropertiesPanel.cpp

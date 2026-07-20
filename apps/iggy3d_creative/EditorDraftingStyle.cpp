@@ -80,6 +80,9 @@ constexpr Color kRoof{168, 155, 120, 255};
 constexpr Color kEarthDim{110, 103, 83, 255};
 constexpr Color kEarth{138, 129, 104, 255};
 constexpr Color kMesa{153, 144, 111, 255};
+constexpr Color kValley{106, 128, 101, 255};
+constexpr Color kCrater{151, 112, 105, 255};
+constexpr Color kRidge{183, 158, 104, 255};
 constexpr Color kRoadGray{169, 169, 180, 255};
 constexpr Color kWater{94, 110, 120, 255};
 constexpr Color kTimber{180, 169, 143, 255};
@@ -97,6 +100,16 @@ constexpr Color kLocked{154, 160, 166, 255};
 constexpr Color kGenerated{127, 184, 255, 255};
 constexpr Color kOverhead{232, 228, 216, 140};
 constexpr Color kGhost{140, 135, 120, 110};
+
+constexpr Style terrain(Color tint, Stroke strokeClass,
+                        std::uint8_t drawOrder, float fillAlpha,
+                        float dashCells = 0.0F,
+                        float gapCells = 0.0F) {
+  Style style = stroke(tint, strokeClass, drawOrder, dashCells, gapCells);
+  style.fillPattern = Fill::Solid;
+  style.fillAlpha = fillAlpha;
+  return style;
+}
 
 constexpr std::size_t kRoleCount = static_cast<std::size_t>(Role::Count);
 
@@ -116,9 +129,15 @@ constexpr std::array<Style, kRoleCount> kStyles = {{
     // Terrain
     stroke(kEarthDim, Stroke::Hairline, 6U),
     stroke(kEarth, Stroke::Light, 7U),
-    stroke(kMesa, Stroke::Light, 8U),
-    stroke(kRoadGray, Stroke::Medium, 9U),
-    stroke(kWater, Stroke::Light, 8U),
+    terrain(kMesa, Stroke::Light, 8U, 0.10F),
+    terrain(kValley, Stroke::Light, 8U, 0.08F, 0.9F, 0.7F),
+    terrain(kCrater, Stroke::Medium, 8U, 0.08F, 0.6F, 0.5F),
+    terrain(kRidge, Stroke::Medium, 9U, 0.08F),
+    terrain(kMesa, Stroke::Medium, 8U, 0.16F),
+    terrain(kRoadGray, Stroke::Medium, 9U, 0.16F),
+    terrain(kWater, Stroke::Medium, 9U, 0.18F),
+    terrain(kWater, Stroke::Light, 8U, 0.12F),
+    terrain(kRidge, Stroke::Medium, 10U, 0.08F, 1.3F, 0.8F),
     stroke(kTimber, Stroke::Medium, 12U),
     filled(kMoss, 0.10F, 2U),
     stroke(kPaper, Stroke::Light, 80U, 2.5F, 2.0F),
@@ -159,9 +178,15 @@ constexpr std::array<std::string_view, kRoleCount> kRoleNames = {{
     "roof ridge",
     "contour minor",
     "contour major",
+    "hill",
+    "valley",
+    "crater",
+    "ridge",
     "plateau",
     "road",
+    "river",
     "ditch",
+    "ridge line",
     "bridge",
     "elevation band",
     "region mask",

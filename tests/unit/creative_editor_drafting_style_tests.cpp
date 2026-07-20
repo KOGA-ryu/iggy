@@ -175,6 +175,38 @@ bool visualLawsHold() {
                 "fills paint under lines and partitions under exteriors");
 }
 
+bool terrainSemanticsRemainDistinct() {
+  using Role = CreativeEditorDraftingRole;
+  constexpr Role kTerrainRoles[] = {
+      Role::Hill,      Role::Valley, Role::Crater,
+      Role::Ridge,     Role::Plateau, Role::Road,
+      Role::River,     Role::Ditch, Role::RidgeLine,
+  };
+  bool allDistinct = true;
+  for (std::size_t first = 0U; first < std::size(kTerrainRoles); ++first) {
+    for (std::size_t second = first + 1U; second < std::size(kTerrainRoles);
+         ++second) {
+      const CreativeEditorDraftingStyle& a = style(kTerrainRoles[first]);
+      const CreativeEditorDraftingStyle& b = style(kTerrainRoles[second]);
+      const bool colorDiffers = a.tint.r != b.tint.r || a.tint.g != b.tint.g ||
+                                a.tint.b != b.tint.b;
+      const bool structureDiffers =
+          a.strokeClass != b.strokeClass || !near(a.dashCells, b.dashCells) ||
+          !near(a.gapCells, b.gapCells) || !near(a.fillAlpha, b.fillAlpha);
+      if (!colorDiffers && !structureDiffers) {
+        std::cerr << "indistinguishable terrain styles: "
+                  << iggy3d_creative_app::toString(kTerrainRoles[first])
+                  << " vs "
+                  << iggy3d_creative_app::toString(kTerrainRoles[second])
+                  << '\n';
+        allDistinct = false;
+      }
+    }
+  }
+  return expect(allDistinct,
+                "every authored terrain recipe remains visually distinct");
+}
+
 bool overlaysStayDistinguishableInGrayscale() {
   using Role = CreativeEditorDraftingRole;
   constexpr Role kOverlays[] = {
@@ -233,6 +265,7 @@ int main() {
   ok = everyRoleHasAStyleAndAUniqueName() && ok;
   ok = stylesAreStructurallyValid() && ok;
   ok = visualLawsHold() && ok;
+  ok = terrainSemanticsRemainDistinct() && ok;
   ok = overlaysStayDistinguishableInGrayscale() && ok;
   ok = strokeThicknessFollowsClassAndFloor() && ok;
   return ok ? 0 : 1;

@@ -2,11 +2,8 @@
 
 #include "EditorDesktopModel.hpp"
 #include "EditorWorldLayoutInternal.hpp"
+#include "EditorWorldLayoutPlanDraw.hpp"
 #include "EditorWorldLayoutTopography.hpp"
-
-#include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
-#include "app/iggy3d/creative/world/WorldLayoutRoofs.hpp"
-#include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
 #include <algorithm>
 #include <array>
@@ -15,6 +12,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace iggy3d_creative_app {
@@ -32,6 +30,10 @@ CreativeEditorWorldLayoutPoint toWorld(const CanvasTransform& transform,
 }
 
 ImU32 color(ImVec4 value) { return ImGui::ColorConvertFloat4ToU32(value); }
+
+ImU32 draftingColor(CreativeEditorDraftingColor value) {
+  return IM_COL32(value.r, value.g, value.b, value.a);
+}
 
 ImVec4 generatedScopeTint(cr::CreativeWorldLayoutTable table) {
   const CreativeDesktopGeneratedSourceScopeTint tint =
@@ -55,53 +57,6 @@ std::pair<double, double> buildingPreviewOffset(
       static_cast<double>(state.buildingManipulation.previewDeltaXCells),
       static_cast<double>(state.buildingManipulation.previewDeltaZCells),
   };
-}
-
-void drawFloor(ImDrawList& drawList, const CanvasTransform& transform,
-               const CreativeEditorWorldLayoutState& state,
-               std::size_t boxIndex) {
-  const cr::CreativeWorldLayoutBox& box =
-      creativeEditorWorldLayoutDisplaySource(state).boxes[boxIndex];
-  const auto [deltaX, deltaZ] =
-      buildingPreviewOffset(state, box.buildingIndex);
-  const ImVec2 minimum =
-      toScreen(transform, box.footprint.minimum.x + deltaX,
-               box.footprint.minimum.z + deltaZ);
-  const ImVec2 maximum =
-      toScreen(transform, box.footprint.maximum.x + deltaX,
-               box.footprint.maximum.z + deltaZ);
-  const bool isSelected = selected(
-      state, CreativeEditorWorldLayoutSelectionKind::Box, boxIndex);
-  drawList.AddRectFilled(minimum, maximum, color({0.32F, 0.42F, 0.37F, 0.72F}));
-  drawList.AddRect(minimum, maximum,
-                   isSelected ? color({0.96F, 0.82F, 0.22F, 1.0F})
-                              : color({0.53F, 0.70F, 0.59F, 1.0F}),
-                   0.0F, 0, isSelected ? 3.0F : 1.5F);
-}
-
-void drawRoom(ImDrawList& drawList, const CanvasTransform& transform,
-              const CreativeEditorWorldLayoutState& state,
-              std::size_t roomIndex) {
-  const cr::CreativeWorldLayoutRoom& room =
-      creativeEditorWorldLayoutDisplaySource(state).rooms[roomIndex];
-  const auto [deltaX, deltaZ] =
-      buildingPreviewOffset(state, room.buildingIndex);
-  const ImVec2 minimum =
-      toScreen(transform, room.footprint.minimum.x + deltaX,
-               room.footprint.minimum.z + deltaZ);
-  const ImVec2 maximum =
-      toScreen(transform, room.footprint.maximum.x + deltaX,
-               room.footprint.maximum.z + deltaZ);
-  const bool isSelected = selected(
-      state, CreativeEditorWorldLayoutSelectionKind::Room, roomIndex);
-  drawList.AddRectFilled(minimum, maximum,
-                         color({0.22F, 0.34F, 0.42F, 0.38F}));
-  drawList.AddRect(minimum, maximum,
-                   isSelected
-                       ? color(generatedScopeTint(
-                             cr::CreativeWorldLayoutTable::Room))
-                              : color({0.70F, 0.78F, 0.86F, 1.0F}),
-                   0.0F, 0, isSelected ? 4.0F : 3.0F);
 }
 
 void drawLevelSelection(ImDrawList& drawList,
@@ -161,85 +116,6 @@ void drawLevelSelection(ImDrawList& drawList,
   drawList.AddRect(minimum, maximum, color(tint), 0.0F, 0, 3.0F);
   drawList.AddText({minimum.x + 8.0F, minimum.y + 7.0F}, color(tint),
                    level.name.c_str());
-}
-
-void drawActiveLevelRoof(ImDrawList& drawList,
-                         const CanvasTransform& transform,
-                         const CreativeEditorWorldLayoutState& state) {
-  const cr::CreativeWorldLayout& source =
-      creativeEditorWorldLayoutDisplaySource(state);
-  if (state.activeLevelIndex >= source.levels.size()) {
-    return;
-  }
-  const cr::CreativeWorldLayoutLevel& level =
-      source.levels[state.activeLevelIndex];
-  const bool drawsAuthoredFootprint =
-      level.roofStyle == cr::CreativeStructuralRoofStyle::Gable ||
-      level.roofOverhangCells > 0.0;
-  if (!drawsAuthoredFootprint ||
-      !cr::creativeWorldLayoutLevelIsTopmostOccupied(
-          source, state.activeLevelIndex)) {
-    return;
-  }
-  cr::CreativeWorldLayoutRect footprint;
-  if (!cr::creativeWorldLayoutLevelRoofFootprint(
-          source, state.activeLevelIndex, footprint)) {
-    return;
-  }
-  const auto [deltaX, deltaZ] =
-      buildingPreviewOffset(state, level.buildingIndex);
-  const double minimumX = footprint.minimum.x - level.roofOverhangCells +
-                          deltaX;
-  const double maximumX = footprint.maximum.x + level.roofOverhangCells +
-                          deltaX;
-  const double minimumZ = footprint.minimum.z - level.roofOverhangCells +
-                          deltaZ;
-  const double maximumZ = footprint.maximum.z + level.roofOverhangCells +
-                          deltaZ;
-  const ImVec2 first = toScreen(transform, minimumX, minimumZ);
-  const ImVec2 second = toScreen(transform, maximumX, maximumZ);
-  const ImVec2 minimum{std::min(first.x, second.x),
-                       std::min(first.y, second.y)};
-  const ImVec2 maximum{std::max(first.x, second.x),
-                       std::max(first.y, second.y)};
-  const ImU32 outline = color({0.34F, 0.86F, 0.56F, 0.92F});
-  drawList.AddRectFilled(minimum, maximum,
-                         color({0.20F, 0.54F, 0.34F, 0.10F}));
-  drawList.AddRect(minimum, maximum, outline, 0.0F, 0, 2.0F);
-  if (level.roofStyle != cr::CreativeStructuralRoofStyle::Gable) {
-    return;
-  }
-  if (level.roofRidgeAxis == cr::CreativeStructuralRoofRidgeAxis::X) {
-    const double centerZ = (minimumZ + maximumZ) * 0.5;
-    drawList.AddLine(toScreen(transform, minimumX, centerZ),
-                     toScreen(transform, maximumX, centerZ), outline, 3.0F);
-  } else {
-    const double centerX = (minimumX + maximumX) * 0.5;
-    drawList.AddLine(toScreen(transform, centerX, minimumZ),
-                     toScreen(transform, centerX, maximumZ), outline, 3.0F);
-  }
-}
-
-void drawSharedRoomEdges(ImDrawList& drawList,
-                         const CanvasTransform& transform,
-                         const CreativeEditorWorldLayoutState& state) {
-  const cr::CreativeWorldLayout& source =
-      creativeEditorWorldLayoutDisplaySource(state);
-  const auto spans = cr::inspectCreativeWorldLayoutSharedRoomEdges(source);
-  const ImU32 sharedColor = color({0.26F, 0.84F, 0.58F, 1.0F});
-  for (const cr::CreativeWorldLayoutSharedRoomEdgeSpan& span : spans) {
-    if (!detail::worldLayoutRoomOnActiveLevel(state, source,
-                                              span.firstRoomIndex)) {
-      continue;
-    }
-    const auto [deltaX, deltaZ] =
-        buildingPreviewOffset(state,
-                              source.rooms[span.firstRoomIndex].buildingIndex);
-    drawList.AddLine(
-        toScreen(transform, span.start.x + deltaX, span.start.z + deltaZ),
-        toScreen(transform, span.end.x + deltaX, span.end.z + deltaZ),
-        sharedColor, 4.0F);
-  }
 }
 
 std::pair<ImVec2, ImVec2> screenRect(
@@ -596,6 +472,9 @@ void drawOpenings(ImDrawList& drawList, const CanvasTransform& transform,
         state.wallManipulation.active &&
         opening.hostKind == cr::CreativeWorldLayoutOpeningHostKind::Wall &&
         opening.wallIndex == state.wallManipulation.target.wallIndex;
+    if (!isSelected && !active && !hostWallActive) {
+      continue;
+    }
     const double centerOffset = active
                                     ? state.openingManipulation
                                           .previewCenterOffsetCells
@@ -627,6 +506,14 @@ void drawOpenings(ImDrawList& drawList, const CanvasTransform& transform,
         : isSelected  ? color({0.96F, 0.82F, 0.22F, 1.0F})
         : isDoor      ? color({0.31F, 0.82F, 0.43F, 1.0F})
                       : color({0.27F, 0.72F, 0.91F, 1.0F});
+    if (active) {
+      // The semantic wall is cut around the durable opening. During an
+      // opening drag, restore the host line beneath the transient marker so
+      // the old cut does not remain as a misleading second opening.
+      drawList.AddLine(toScreen(transform, host.start.x, host.start.z),
+                       toScreen(transform, host.end.x, host.end.z), markerColor,
+                       3.0F);
+    }
     drawList.AddLine(start, end, markerColor,
                      previewing || isSelected ? 7.0F : 5.0F);
     if (isDoor) {
@@ -660,32 +547,56 @@ drawCreativeEditorWorldLayoutCanvasScene(
     const CreativeEditorWorldLayoutCanvasTransform& transform,
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutTopographyState& topography,
+    const CreativeEditorWorldLayoutPlanViewCache& planView,
     const cr::CreativeGridSettings& grid, ImVec2 pointerPosition,
     bool hovered) {
   drawList.PushClipRect(minimum, maximum, true);
   drawList.AddRectFilled(minimum, maximum,
                          color({0.105F, 0.12F, 0.135F, 1.0F}));
   drawCreativeEditorWorldLayoutTerrainBackground(
-      drawList, minimum, maximum, transform, state, topography);
+      drawList, minimum, maximum, transform, topography);
   const cr::CreativeWorldLayout& displaySource =
       creativeEditorWorldLayoutDisplaySource(state);
-  for (std::size_t index = 0U; index < displaySource.rooms.size(); ++index) {
-    if (detail::worldLayoutRoomOnActiveLevel(state, displaySource, index)) {
-      drawRoom(drawList, transform, state, index);
-    }
-  }
-  drawActiveLevelRoof(drawList, transform, state);
-  for (std::size_t index = 0U; index < displaySource.boxes.size(); ++index) {
-    drawFloor(drawList, transform, state, index);
+  static_cast<void>(drawCreativeEditorWorldLayoutPlan(
+      drawList, transform, state, displaySource, planView));
+  const cr::CreativeWorldLayoutPlanProjection& projection =
+      planView.projection;
+  if (!projection.accepted) {
+    const CreativeEditorDraftingStyle& invalidStyle =
+        creativeEditorDraftingStyle(
+            CreativeEditorDraftingRole::PreviewInvalidOverlay);
+    constexpr std::string_view prefix = "Plan unavailable: ";
+    drawList.AddText({minimum.x + 12.0F, minimum.y + 12.0F},
+                     draftingColor(invalidStyle.tint), prefix.data(),
+                     prefix.data() + prefix.size());
+    drawList.AddText({minimum.x + 12.0F, minimum.y + 30.0F},
+                     draftingColor(invalidStyle.tint),
+                     projection.reasonCode.data(),
+                     projection.reasonCode.data() +
+                         projection.reasonCode.size());
   }
   for (std::size_t index = 0U; index < displaySource.verticalConnectors.size();
        ++index) {
-    drawVerticalConnector(drawList, transform, state, index);
+    const bool selectedConnector =
+        selected(state,
+                 CreativeEditorWorldLayoutSelectionKind::VerticalConnector,
+                 index);
+    const bool activeConnector = state.verticalConnectorManipulation.active &&
+                                 state.verticalConnectorManipulation.target
+                                         .connectorIndex == index;
+    if (selectedConnector || activeConnector) {
+      drawVerticalConnector(drawList, transform, state, index);
+    }
   }
   for (std::size_t index = 0U; index < displaySource.walls.size(); ++index) {
-    drawWall(drawList, transform, state, index);
+    const bool selectedWall =
+        selected(state, CreativeEditorWorldLayoutSelectionKind::Wall, index);
+    const bool activeWall = state.wallManipulation.active &&
+                            state.wallManipulation.target.wallIndex == index;
+    if (selectedWall || activeWall) {
+      drawWall(drawList, transform, state, index);
+    }
   }
-  drawSharedRoomEdges(drawList, transform, state);
   drawOpenings(drawList, transform, state);
   drawCreativeEditorWorldLayoutObjectSymbols(drawList, transform, state, grid);
   drawLevelSelection(drawList, transform, state);

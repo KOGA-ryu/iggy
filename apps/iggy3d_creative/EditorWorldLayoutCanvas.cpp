@@ -340,6 +340,8 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   static_cast<void>(refreshCreativeEditorWorldLayoutTopography(
       topography, renderDocument, topographySourceOverride,
       topographySourceKey, terrainHeightOverride));
+  static_cast<void>(refreshCreativeEditorWorldLayoutPlanView(
+      editor.worldLayoutPlanView, state, topography, grid));
   const ImVec2 available = ImGui::GetContentRegionAvail();
   const ImVec2 canvasSize{std::max(available.x, 160.0F),
                           std::max(available.y, 160.0F)};
@@ -387,7 +389,7 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   const CreativeEditorWorldLayoutCanvasPointerGeometry pointerGeometry =
       drawCreativeEditorWorldLayoutCanvasScene(
           *ImGui::GetWindowDrawList(), minimum, maximum, transform, state,
-          topography, grid, io.MousePos, hovered);
+          topography, editor.worldLayoutPlanView, grid, io.MousePos, hovered);
   const CreativeEditorWorldLayoutPoint pointerPoint =
       pointerGeometry.pointerPoint;
   const CreativeEditorWorldLayoutPoint hoveredPoint =

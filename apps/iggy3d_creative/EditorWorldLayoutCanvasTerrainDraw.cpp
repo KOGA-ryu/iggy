@@ -142,36 +142,6 @@ void drawTopographyBands(
   }
 }
 
-void drawTopographyContours(
-    ImDrawList& drawList,
-    const CanvasTransform& transform,
-    const CanvasWorldBounds& visibleBounds,
-    const CreativeEditorWorldLayoutTopographyState& topography) {
-  const CreativeEditorWorldLayoutTopographyPlan& plan = topography.plan;
-  if (!topography.visible || !topography.cacheValid || !plan.accepted ||
-      !plan.contours.accepted ||
-      plan.contours.status != cr::CreativeTerrainContourPlanStatus::Ready) {
-    return;
-  }
-  const ImU32 minor = color({0.35F, 0.79F, 0.76F, 0.90F});
-  const ImU32 major = color({0.98F, 0.80F, 0.22F, 1.0F});
-  for (const cr::CreativeTerrainContourSegment& segment :
-       plan.contours.segments) {
-    const double minimumX = std::min(segment.start.x, segment.end.x);
-    const double maximumX = std::max(segment.start.x, segment.end.x);
-    const double minimumZ = std::min(segment.start.z, segment.end.z);
-    const double maximumZ = std::max(segment.start.z, segment.end.z);
-    if (!overlapsCanvas(visibleBounds, minimumX, maximumX, minimumZ,
-                        maximumZ)) {
-      continue;
-    }
-    drawList.AddLine(toScreen(transform, segment.start.x, segment.start.z),
-                     toScreen(transform, segment.end.x, segment.end.z),
-                     segment.major ? major : minor,
-                     segment.major ? 2.25F : 1.25F);
-  }
-}
-
 void drawTerrainRegionSelection(
     ImDrawList& drawList,
     const CanvasTransform& transform,
@@ -247,66 +217,6 @@ void drawTopographyHoverFacts(
       sample.slopeDegrees);
 }
 
-void drawTerrainSymbols(ImDrawList& drawList,
-                        const CanvasTransform& transform,
-                        const CreativeEditorWorldLayoutState& state) {
-  const cr::CreativeWorldLayout& source =
-      creativeEditorWorldLayoutDisplaySource(state);
-  for (std::size_t index = 0U; index < source.terrainProfiles.size(); ++index) {
-    const cr::CreativeWorldLayoutTerrainProfile& profile =
-        source.terrainProfiles[index];
-    const ImVec2 center =
-        toScreen(transform, profile.center.x, profile.center.z);
-    const float radius = std::max(
-        5.0F, static_cast<float>(profile.radiusCells) * transform.pixelsPerCell);
-    const bool isSelected = selected(
-        state, CreativeEditorWorldLayoutSelectionKind::TerrainProfile, index);
-    drawList.AddCircleFilled(center, radius,
-                             color({0.25F, 0.46F, 0.28F, 0.12F}), 48);
-    drawList.AddCircle(center, radius,
-                       isSelected ? color({0.96F, 0.82F, 0.22F, 1.0F})
-                                  : color({0.38F, 0.68F, 0.42F, 0.78F}),
-                       48, isSelected ? 3.0F : 1.5F);
-    drawList.AddCircleFilled(center, isSelected ? 6.0F : 4.0F,
-                             isSelected
-                                 ? color({0.96F, 0.82F, 0.22F, 1.0F})
-                                 : color({0.38F, 0.68F, 0.42F, 1.0F}));
-  }
-  for (std::size_t index = 0U; index < source.terrainPaths.size(); ++index) {
-    const cr::CreativeWorldLayoutTerrainPath& path = source.terrainPaths[index];
-    if (path.pointCount < 2U ||
-        path.firstPointIndex > source.terrainPathPoints.size() ||
-        path.pointCount >
-            source.terrainPathPoints.size() - path.firstPointIndex) {
-      continue;
-    }
-    const bool isSelected = selected(
-        state, CreativeEditorWorldLayoutSelectionKind::TerrainPath, index);
-    const ImVec4 tint = path.kind == cr::CreativeTerrainRecipeKind::Ditch
-                            ? ImVec4{0.25F, 0.47F, 0.68F, 1.0F}
-                            : ImVec4{0.72F, 0.56F, 0.28F, 1.0F};
-    ImVec4 fill = tint;
-    fill.w = 0.24F;
-    const float width = std::max(
-        3.0F, static_cast<float>(path.halfWidthCells * 2U + 1U) *
-                  transform.pixelsPerCell);
-    for (std::size_t pointIndex = path.firstPointIndex + 1U;
-         pointIndex < path.firstPointIndex + path.pointCount; ++pointIndex) {
-      const cr::CreativeTerrainCoord2 startCoord =
-          source.terrainPathPoints[pointIndex - 1U].coord;
-      const cr::CreativeTerrainCoord2 endCoord =
-          source.terrainPathPoints[pointIndex].coord;
-      const ImVec2 start = toScreen(transform, startCoord.x, startCoord.z);
-      const ImVec2 end = toScreen(transform, endCoord.x, endCoord.z);
-      drawList.AddLine(start, end, color(fill), width);
-      drawList.AddLine(start, end,
-                       isSelected ? color({0.96F, 0.82F, 0.22F, 1.0F})
-                                  : color(tint),
-                       isSelected ? 4.0F : 2.0F);
-    }
-  }
-}
-
 void drawObjectSymbols(ImDrawList& drawList,
                        const CanvasTransform& transform,
                        const CreativeEditorWorldLayoutState& state,
@@ -321,6 +231,9 @@ void drawObjectSymbols(ImDrawList& drawList,
                             state.objectManipulation.objectIndex == index &&
                             state.objectManipulation.sourceRevision ==
                                 state.revision;
+    if (!isSelected && !previewing) {
+      continue;
+    }
     const CreativeEditorWorldLayoutObjectSettings* preview =
         previewing ? &state.objectManipulation.previewSettings : nullptr;
     const ImU32 outline =
@@ -388,15 +301,12 @@ void drawObjectSymbols(ImDrawList& drawList,
 void drawCreativeEditorWorldLayoutTerrainBackground(
     ImDrawList& drawList, ImVec2 minimum, ImVec2 maximum,
     const CreativeEditorWorldLayoutCanvasTransform& transform,
-    const CreativeEditorWorldLayoutState& state,
     const CreativeEditorWorldLayoutTopographyState& topography) {
   const CanvasWorldBounds visibleBounds =
       canvasWorldBounds(transform, minimum, maximum);
   drawTopographyBands(drawList, transform, visibleBounds, topography);
   drawGrid(drawList, minimum, maximum, transform);
-  drawTopographyContours(drawList, transform, visibleBounds, topography);
   drawTerrainRegionSelection(drawList, transform, topography.region);
-  drawTerrainSymbols(drawList, transform, state);
 }
 
 void drawCreativeEditorWorldLayoutObjectSymbols(

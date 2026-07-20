@@ -75,7 +75,8 @@ Role objectRole(CreativeObjectKind kind) noexcept {
   if (kind == CreativeObjectKind::SpawnPoint) {
     return Role::PlayerSpawn;
   }
-  if (kind == CreativeObjectKind::NpcSpawn) {
+  if (kind == CreativeObjectKind::NpcSpawn ||
+      kind == CreativeObjectKind::EnemySpawn) {
     return Role::NpcSpawn;
   }
   return Role::Object;
