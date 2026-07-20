@@ -158,6 +158,9 @@ target_sources(iggy3d
     src/app/iggy3d/creative/world/WorldLayoutLevels.cpp
     src/app/iggy3d/creative/world/WorldLayoutDimensions.cpp
     src/app/iggy3d/creative/world/WorldLayoutArchitecture.cpp
+    src/app/iggy3d/creative/world/WorldLayoutPlanProjection.cpp
+    src/app/iggy3d/creative/world/WorldLayoutPlanProjectionArchitecture.cpp
+    src/app/iggy3d/creative/world/WorldLayoutPlanProjectionSymbols.cpp
     src/app/iggy3d/creative/world/WorldLayoutRoofs.cpp
     src/app/iggy3d/creative/world/WorldLayoutRooms.cpp
     src/app/iggy3d/creative/world/WorldLayoutVerticalConnectors.cpp

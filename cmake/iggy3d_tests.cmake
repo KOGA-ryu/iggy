@@ -151,6 +151,11 @@ iggy3d_add_unit_test(creative_world_layout_architecture_tests
 set_tests_properties(creative_world_layout_architecture_tests PROPERTIES
   LABELS "unit;app;creative;world;layout;architecture;iggy3d")
 
+iggy3d_add_unit_test(creative_world_layout_plan_projection_tests
+  tests/unit/creative_world_layout_plan_projection_tests.cpp)
+set_tests_properties(creative_world_layout_plan_projection_tests PROPERTIES
+  LABELS "unit;app;creative;world;layout;plan;projection;iggy3d")
+
 iggy3d_add_unit_test(creative_world_layout_terrain_impact_tests
   tests/unit/creative_world_layout_terrain_impact_tests.cpp)
 set_tests_properties(creative_world_layout_terrain_impact_tests PROPERTIES
