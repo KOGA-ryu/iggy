@@ -349,6 +349,12 @@ CreativeEditorWorldLayoutEditReceipt applySourceTarget(
 
 }  // namespace
 
+std::string_view creativeEditorWorldLayoutSourceStableKey(
+    const CreativeEditorWorldLayoutState& state,
+    cr::CreativeWorldLayoutTable table, std::size_t index) noexcept {
+  return sourceStableKey(state, table, index);
+}
+
 cr::CreativeWorldLayoutTable creativeEditorWorldLayoutSelectionTable(
     CreativeEditorWorldLayoutSelectionKind kind) noexcept {
   switch (kind) {

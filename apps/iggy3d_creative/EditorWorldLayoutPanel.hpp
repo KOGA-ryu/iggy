@@ -59,6 +59,7 @@ struct CreativeEditorWorldLayoutCanvasHoverStatus {
   bool present = false;
   double cellX = 0.0;
   double cellZ = 0.0;
+  std::string_view semanticRole;
 };
 
 struct CreativeEditorWorldLayoutStatusLine {

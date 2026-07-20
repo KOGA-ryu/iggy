@@ -53,6 +53,20 @@ struct CreativeEditorWorldLayoutPlanViewCache {
   std::uint64_t buildCount = 0U;
 };
 
+struct CreativeEditorWorldLayoutPlanHit {
+  bool hit = false;
+  std::size_t primitiveIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  iggy3d::creative::CreativeWorldLayoutTable table =
+      iggy3d::creative::CreativeWorldLayoutTable::None;
+  std::size_t sourceIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  iggy3d::creative::CreativeWorldLayoutPlanRole role =
+      iggy3d::creative::CreativeWorldLayoutPlanRole::Count;
+  double distanceCells = 0.0;
+  std::size_t testedPrimitiveCount = 0U;
+};
+
 // Returns true only when a new semantic projection was built. Ordinary idle
 // frames reuse the cached projection. Candidate layouts are intentionally
 // rebuilt while an interactive transform/template preview owns their data,
@@ -65,6 +79,17 @@ struct CreativeEditorWorldLayoutPlanViewCache {
 
 void invalidateCreativeEditorWorldLayoutPlanView(
     CreativeEditorWorldLayoutPlanViewCache& cache) noexcept;
+
+// Scans cached primitives in reverse paint order so the visible topmost active
+// symbol wins. Context and overhead layers are presentation-only here. Source
+// provenance, not reconstructed coordinates, determines the returned target.
+[[nodiscard]] CreativeEditorWorldLayoutPlanHit
+hitCreativeEditorWorldLayoutPlan(
+    const CreativeEditorWorldLayoutPlanViewCache& cache,
+    const CreativeEditorWorldLayoutState& state,
+    const iggy3d::creative::CreativeWorldLayout& layout,
+    iggy3d::creative::CreativeWorldLayoutPlanPoint point,
+    double toleranceCells) noexcept;
 
 // Exhaustive semantic adapter: projection roles and their metadata resolve to
 // the visual table here, never in the ImGui renderer.

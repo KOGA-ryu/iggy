@@ -124,6 +124,9 @@ creativeEditorWorldLayoutSelectionTable(
     const CreativeEditorWorldLayoutState& state,
     cr::CreativeWorldLayoutTable table, std::size_t index,
     std::string_view stableKey) noexcept;
+[[nodiscard]] std::string_view creativeEditorWorldLayoutSourceStableKey(
+    const CreativeEditorWorldLayoutState& state,
+    cr::CreativeWorldLayoutTable table, std::size_t index) noexcept;
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 renameCreativeEditorWorldLayoutSource(
     CreativeEditorWorldLayoutState& state,

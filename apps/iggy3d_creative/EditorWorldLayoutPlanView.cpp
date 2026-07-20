@@ -4,8 +4,10 @@
 #include "EditorWorldLayoutTopography.hpp"
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutPlanHitTest.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <numeric>
 #include <span>
 
@@ -184,6 +186,42 @@ bool openingUsesWall(const cr::CreativeWorldLayout& layout,
          opening.wallIndex == wallIndex;
 }
 
+bool selectableTable(Table table) noexcept {
+  switch (table) {
+    case Table::Building:
+    case Table::Level:
+    case Table::Room:
+    case Table::VerticalConnector:
+    case Table::Box:
+    case Table::Wall:
+    case Table::Opening:
+    case Table::Object:
+    case Table::TerrainProfile:
+    case Table::TerrainPath:
+      return true;
+    case Table::None:
+    case Table::TerrainPathPoint:
+      return false;
+  }
+  return false;
+}
+
+std::pair<Table, std::size_t> selectableSource(
+    const CreativeEditorWorldLayoutState& state,
+    const SourceRef& source) noexcept {
+  const std::pair<Table, std::size_t> candidates[] = {
+      {source.primaryTable, source.primaryIndex},
+      {source.secondaryTable, source.secondaryIndex},
+  };
+  for (const auto [table, index] : candidates) {
+    if (selectableTable(table) &&
+        !creativeEditorWorldLayoutSourceStableKey(state, table, index).empty()) {
+      return {table, index};
+    }
+  }
+  return {Table::None, cr::kInvalidCreativeWorldLayoutIndex};
+}
+
 }  // namespace
 
 bool refreshCreativeEditorWorldLayoutPlanView(
@@ -243,6 +281,55 @@ void invalidateCreativeEditorWorldLayoutPlanView(
   cache.key = {};
   cache.projection = {};
   cache.paintOrder.clear();
+}
+
+CreativeEditorWorldLayoutPlanHit hitCreativeEditorWorldLayoutPlan(
+    const CreativeEditorWorldLayoutPlanViewCache& cache,
+    const CreativeEditorWorldLayoutState& state,
+    const cr::CreativeWorldLayout& layout,
+    cr::CreativeWorldLayoutPlanPoint point, double toleranceCells) noexcept {
+  CreativeEditorWorldLayoutPlanHit hit;
+  if (!cache.valid || !cache.projection.accepted || !std::isfinite(point.x) ||
+      !std::isfinite(point.z) || !std::isfinite(toleranceCells) ||
+      toleranceCells < 0.0) {
+    return hit;
+  }
+
+  for (auto ordered = cache.paintOrder.rbegin();
+       ordered != cache.paintOrder.rend(); ++ordered) {
+    const std::size_t primitiveIndex = *ordered;
+    if (primitiveIndex >= cache.projection.primitives.size()) {
+      continue;
+    }
+    const PlanPrimitive& primitive =
+        cache.projection.primitives[primitiveIndex];
+    if (primitive.layer != cr::CreativeWorldLayoutPlanLayer::Active ||
+        creativeEditorWorldLayoutPlanPrimitiveSuppressed(state, layout,
+                                                          primitive)) {
+      continue;
+    }
+    const auto [table, sourceIndex] = selectableSource(state, primitive.source);
+    if (table == Table::None) {
+      continue;
+    }
+    const auto [offsetX, offsetZ] =
+        creativeEditorWorldLayoutPlanPrimitiveOffset(state, layout, primitive);
+    const cr::CreativeWorldLayoutPlanHitTestResult geometry =
+        cr::hitTestCreativeWorldLayoutPlanPrimitive(
+            primitive, {point.x - offsetX, point.z - offsetZ}, toleranceCells);
+    ++hit.testedPrimitiveCount;
+    if (!geometry.hit) {
+      continue;
+    }
+    hit.hit = true;
+    hit.primitiveIndex = primitiveIndex;
+    hit.table = table;
+    hit.sourceIndex = sourceIndex;
+    hit.role = primitive.role;
+    hit.distanceCells = geometry.distanceCells;
+    return hit;
+  }
+  return hit;
 }
 
 CreativeEditorDraftingRole creativeEditorWorldLayoutPlanDraftingRole(

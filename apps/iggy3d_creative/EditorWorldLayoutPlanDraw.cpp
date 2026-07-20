@@ -305,7 +305,8 @@ CreativeEditorWorldLayoutPlanDrawReceipt drawCreativeEditorWorldLayoutPlan(
     const CreativeEditorWorldLayoutCanvasTransform& transform,
     const CreativeEditorWorldLayoutState& state,
     const cr::CreativeWorldLayout& layout,
-    const CreativeEditorWorldLayoutPlanViewCache& planView) {
+    const CreativeEditorWorldLayoutPlanViewCache& planView,
+    std::size_t hoveredPrimitiveIndex) {
   CreativeEditorWorldLayoutPlanDrawReceipt receipt;
   const cr::CreativeWorldLayoutPlanProjection& projection =
       planView.projection;
@@ -331,6 +332,23 @@ CreativeEditorWorldLayoutPlanDrawReceipt drawCreativeEditorWorldLayoutPlan(
         creativeEditorWorldLayoutPlanPrimitiveOffset(state, layout, primitive);
     drawPrimitive(drawList, transform, primitive, style, offsetX, offsetZ);
     ++receipt.basePrimitiveCount;
+  }
+
+  if (hoveredPrimitiveIndex < projection.primitives.size()) {
+    const Primitive& primitive =
+        projection.primitives[hoveredPrimitiveIndex];
+    if (primitive.layer == cr::CreativeWorldLayoutPlanLayer::Active &&
+        !creativeEditorWorldLayoutPlanPrimitiveSuppressed(state, layout,
+                                                           primitive)) {
+      const Style& hoverStyle = creativeEditorDraftingStyle(
+          CreativeEditorDraftingRole::HoverOverlay);
+      const auto [offsetX, offsetZ] =
+          creativeEditorWorldLayoutPlanPrimitiveOffset(state, layout,
+                                                       primitive);
+      drawPrimitive(drawList, transform, primitive, hoverStyle, offsetX,
+                    offsetZ);
+      ++receipt.hoveredPrimitiveCount;
+    }
   }
 
   const Style& selectedStyle = creativeEditorDraftingStyle(

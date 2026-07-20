@@ -14,6 +14,7 @@ struct CreativeEditorWorldLayoutState;
 
 struct CreativeEditorWorldLayoutPlanDrawReceipt {
   std::size_t basePrimitiveCount = 0U;
+  std::size_t hoveredPrimitiveCount = 0U;
   std::size_t selectedPrimitiveCount = 0U;
   std::size_t suppressedPrimitiveCount = 0U;
 };
@@ -27,6 +28,8 @@ drawCreativeEditorWorldLayoutPlan(
     const CreativeEditorWorldLayoutCanvasTransform& transform,
     const CreativeEditorWorldLayoutState& state,
     const iggy3d::creative::CreativeWorldLayout& layout,
-    const CreativeEditorWorldLayoutPlanViewCache& planView);
+    const CreativeEditorWorldLayoutPlanViewCache& planView,
+    std::size_t hoveredPrimitiveIndex =
+        iggy3d::creative::kInvalidCreativeWorldLayoutIndex);
 
 }  // namespace iggy3d_creative_app

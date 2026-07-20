@@ -476,6 +476,7 @@ bool statusLineComposesFromTheRightSources() {
   hover.present = true;
   hover.cellX = -0.2;
   hover.cellZ = 5.9;
+  hover.semanticRole = "exterior wall";
   state.canvasPixelsPerCell = 33.6F;
   const auto hovered = compose();
   state.tool = CreativeEditorWorldLayoutTool::CatalogAsset;
@@ -499,8 +500,8 @@ bool statusLineComposesFromTheRightSources() {
                 "the idle bar omits snap and cell segments") &&
          expect(!idle.regionMessage && idle.message == state.statusMessage,
                 "outside region editing the layout status is the message") &&
-         expect(hovered.cursor == "Cell -1, 5",
-                "hover cells floor toward negative infinity") &&
+         expect(hovered.cursor == "Cell -1, 5 | exterior wall",
+                "hover cursor names the semantic plan target") &&
          expect(hovered.zoom == "Zoom 120%",
                 "zoom reads as a percentage of the default scale") &&
          expect(snapping.snap == "Snap wall",

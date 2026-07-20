@@ -259,6 +259,62 @@ bool sourceProvenanceDrivesOverlays() {
       "selection, building movement, and manipulation use source provenance");
 }
 
+bool hitTestUsesPaintOrderLayersOffsetsAndProvenance() {
+  app::CreativeEditorWorldLayoutState state = layoutState();
+  app::CreativeEditorWorldLayoutPlanViewCache cache;
+  cache.valid = true;
+  cache.projection.accepted = true;
+
+  auto room = primitive(cr::CreativeWorldLayoutPlanRole::RoomFloor);
+  room.kind = cr::CreativeWorldLayoutPlanPrimitiveKind::Polygon;
+  room.pointCount = 4U;
+  room.points = {{{0.0, 0.0}, {8.0, 0.0}, {8.0, 8.0}, {0.0, 8.0}}};
+  room.source = {cr::CreativeWorldLayoutTable::Room, 0U,
+                 cr::CreativeWorldLayoutTable::None,
+                 cr::kInvalidCreativeWorldLayoutIndex};
+  auto wall = primitive(cr::CreativeWorldLayoutPlanRole::InteriorPartition);
+  wall.points[0] = {4.0, 0.0};
+  wall.points[1] = {4.0, 8.0};
+  wall.source = {cr::CreativeWorldLayoutTable::Wall, 0U,
+                 cr::CreativeWorldLayoutTable::None,
+                 cr::kInvalidCreativeWorldLayoutIndex};
+  auto contour = primitive(cr::CreativeWorldLayoutPlanRole::Contour);
+  contour.points[0] = {0.0, 4.0};
+  contour.points[1] = {8.0, 4.0};
+  contour.source = {};
+  cache.projection.primitives = {room, wall, contour};
+  cache.paintOrder = {0U, 1U, 2U};
+
+  const app::CreativeEditorWorldLayoutPlanHit wallHit =
+      app::hitCreativeEditorWorldLayoutPlan(cache, state, state.source,
+                                            {4.0, 3.0}, 0.1);
+  const app::CreativeEditorWorldLayoutPlanHit roomHit =
+      app::hitCreativeEditorWorldLayoutPlan(cache, state, state.source,
+                                            {2.0, 3.0}, 0.1);
+  cache.projection.primitives[1].layer =
+      cr::CreativeWorldLayoutPlanLayer::Context;
+  const app::CreativeEditorWorldLayoutPlanHit contextIgnored =
+      app::hitCreativeEditorWorldLayoutPlan(cache, state, state.source,
+                                            {4.0, 3.0}, 0.1);
+  cache.projection.primitives[1].layer =
+      cr::CreativeWorldLayoutPlanLayer::Active;
+  state.buildingManipulation.active = true;
+  state.buildingManipulation.buildingIndex = 0U;
+  state.buildingManipulation.previewDeltaXCells = 3;
+  const app::CreativeEditorWorldLayoutPlanHit moved =
+      app::hitCreativeEditorWorldLayoutPlan(cache, state, state.source,
+                                            {7.0, 3.0}, 0.1);
+
+  return expect(
+      wallHit.hit && wallHit.primitiveIndex == 1U &&
+          wallHit.table == cr::CreativeWorldLayoutTable::Wall &&
+          wallHit.sourceIndex == 0U && roomHit.hit &&
+          roomHit.primitiveIndex == 0U && contextIgnored.hit &&
+          contextIgnored.primitiveIndex == 0U && moved.hit &&
+          moved.primitiveIndex == 1U,
+      "topmost active provenance wins and building offsets remain clickable");
+}
+
 }  // namespace
 
 int main() {
@@ -268,5 +324,6 @@ int main() {
   ok = objectCategoriesResolveDeclaratively() && ok;
   ok = cacheReusesStableFrames() && ok;
   ok = sourceProvenanceDrivesOverlays() && ok;
+  ok = hitTestUsesPaintOrderLayersOffsetsAndProvenance() && ok;
   return ok ? 0 : 1;
 }

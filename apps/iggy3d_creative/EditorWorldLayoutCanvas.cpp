@@ -378,18 +378,51 @@ void drawLayoutCanvas(CreativeEditorState& editor,
     transform.origin.x += io.MouseDelta.x;
     transform.origin.y += io.MouseDelta.y;
   }
+  const ImVec2 boundedPointer{
+      std::clamp(io.MousePos.x, minimum.x, maximum.x),
+      std::clamp(io.MousePos.y, minimum.y, maximum.y)};
+  const CreativeEditorWorldLayoutPoint semanticHoverPoint =
+      toWorld(transform, boundedPointer);
+  const double semanticHitTolerance = std::clamp(
+      8.0 / static_cast<double>(transform.pixelsPerCell), 0.10, 0.45);
+  const bool manipulationActive =
+      state.objectManipulation.active || state.buildingManipulation.active ||
+      state.openingManipulation.active || state.wallManipulation.active ||
+      state.verticalConnectorManipulation.active ||
+      state.roomManipulation.active || state.boxManipulation.active;
+  const bool semanticHoverEnabled =
+      interactionEnabled && hovered &&
+      state.tool == CreativeEditorWorldLayoutTool::Select &&
+      !topography.region.editingEnabled &&
+      !state.buildingTemplatePlacement.active && !manipulationActive;
+  const cr::CreativeWorldLayout& displaySource =
+      creativeEditorWorldLayoutDisplaySource(state);
+  const CreativeEditorWorldLayoutPlanHit hoveredPlanHit =
+      semanticHoverEnabled
+          ? hitCreativeEditorWorldLayoutPlan(
+                editor.worldLayoutPlanView, state, displaySource,
+                {semanticHoverPoint.x, semanticHoverPoint.z},
+                semanticHitTolerance)
+          : CreativeEditorWorldLayoutPlanHit{};
   if (hovered && hoverStatus != nullptr) {
-    const CreativeEditorWorldLayoutPoint hoveredWorld =
-        toWorld(transform, io.MousePos);
     hoverStatus->present = true;
-    hoverStatus->cellX = hoveredWorld.x;
-    hoverStatus->cellZ = hoveredWorld.z;
+    hoverStatus->cellX = semanticHoverPoint.x;
+    hoverStatus->cellZ = semanticHoverPoint.z;
+    if (hoveredPlanHit.hit &&
+        hoveredPlanHit.primitiveIndex <
+            editor.worldLayoutPlanView.projection.primitives.size()) {
+      hoverStatus->semanticRole = toString(
+          creativeEditorWorldLayoutPlanDraftingRole(
+              editor.worldLayoutPlanView.projection
+                  .primitives[hoveredPlanHit.primitiveIndex]));
+    }
   }
 
   const CreativeEditorWorldLayoutCanvasPointerGeometry pointerGeometry =
       drawCreativeEditorWorldLayoutCanvasScene(
           *ImGui::GetWindowDrawList(), minimum, maximum, transform, state,
-          topography, editor.worldLayoutPlanView, grid, io.MousePos, hovered);
+          topography, editor.worldLayoutPlanView,
+          hoveredPlanHit.primitiveIndex, grid, io.MousePos, hovered);
   const CreativeEditorWorldLayoutPoint pointerPoint =
       pointerGeometry.pointerPoint;
   const CreativeEditorWorldLayoutPoint hoveredPoint =
@@ -495,8 +528,9 @@ void drawLayoutCanvas(CreativeEditorState& editor,
                                                    handleTolerance)
           : CreativeEditorWorldLayoutBoxTarget{};
   const std::size_t hoveredObjectIndex =
-      hovered && state.tool == CreativeEditorWorldLayoutTool::Select
-          ? findCreativeEditorWorldLayoutObjectAt(state, hoveredPoint, grid)
+      hoveredPlanHit.hit &&
+              hoveredPlanHit.table == cr::CreativeWorldLayoutTable::Object
+          ? hoveredPlanHit.sourceIndex
           : cr::kInvalidCreativeWorldLayoutIndex;
   const bool hoveredBuilding =
       hovered && state.tool == CreativeEditorWorldLayoutTool::Select &&
@@ -547,6 +581,8 @@ void drawLayoutCanvas(CreativeEditorState& editor,
     } else if (hoveredBoxTarget.handle !=
                CreativeEditorWorldLayoutBoxHandle::None) {
       ImGui::SetMouseCursor(rectHandleCursor(hoveredBoxTarget.handle));
+    } else if (hoveredPlanHit.hit) {
+      ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
     }
   }
 
@@ -588,10 +624,16 @@ void drawLayoutCanvas(CreativeEditorState& editor,
         queueBoxManipulation(
             commands, CreativeEditorWorldLayoutBoxManipulationPhase::Begin,
             hoveredPoint, handleTolerance);
+      } else if (hoveredPlanHit.hit) {
+        commands.push(
+            CreativeDesktopCommandId::WorldLayoutSelectSourceScope,
+            CreativeDesktopWorldLayoutSourcePayload{
+                hoveredPlanHit.table, hoveredPlanHit.sourceIndex,
+                std::string(creativeEditorWorldLayoutSourceStableKey(
+                    state, hoveredPlanHit.table,
+                    hoveredPlanHit.sourceIndex))});
       } else {
-        queueRoomManipulation(
-            commands, CreativeEditorWorldLayoutRoomManipulationPhase::Begin,
-            hoveredPoint, handleTolerance);
+        commands.push(CreativeDesktopCommandId::WorldLayoutClearSelection);
       }
     } else if (dragTool(state.tool)) {
       queueGesture(commands, CreativeEditorWorldLayoutGesturePhase::Begin,

@@ -23,6 +23,10 @@ CreativeEditorWorldLayoutStatusLine composeCreativeEditorWorldLayoutStatusLine(
     std::snprintf(buffer, sizeof buffer, "Cell --");
   }
   line.cursor = buffer;
+  if (!hover.semanticRole.empty()) {
+    line.cursor += " | ";
+    line.cursor.append(hover.semanticRole);
+  }
   const long long zoomPercent = std::llround(
       static_cast<double>(state.canvasPixelsPerCell) * 100.0 /
       static_cast<double>(kCreativeEditorWorldLayoutStatusZoomBaselinePixels));

@@ -548,6 +548,7 @@ drawCreativeEditorWorldLayoutCanvasScene(
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutTopographyState& topography,
     const CreativeEditorWorldLayoutPlanViewCache& planView,
+    std::size_t hoveredPlanPrimitiveIndex,
     const cr::CreativeGridSettings& grid, ImVec2 pointerPosition,
     bool hovered) {
   drawList.PushClipRect(minimum, maximum, true);
@@ -558,7 +559,8 @@ drawCreativeEditorWorldLayoutCanvasScene(
   const cr::CreativeWorldLayout& displaySource =
       creativeEditorWorldLayoutDisplaySource(state);
   static_cast<void>(drawCreativeEditorWorldLayoutPlan(
-      drawList, transform, state, displaySource, planView));
+      drawList, transform, state, displaySource, planView,
+      hoveredPlanPrimitiveIndex));
   const cr::CreativeWorldLayoutPlanProjection& projection =
       planView.projection;
   if (!projection.accepted) {

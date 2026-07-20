@@ -61,6 +61,7 @@ drawCreativeEditorWorldLayoutCanvasScene(
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutTopographyState& topography,
     const CreativeEditorWorldLayoutPlanViewCache& planView,
+    std::size_t hoveredPlanPrimitiveIndex,
     const cr::CreativeGridSettings& grid, ImVec2 pointerPosition,
     bool hovered);
 
