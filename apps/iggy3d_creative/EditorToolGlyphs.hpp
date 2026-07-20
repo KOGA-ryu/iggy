@@ -64,6 +64,18 @@ enum class CreativeEditorToolGlyph : std::uint8_t {
   BadgeLower,
   BadgeNoise,
   BadgeTemplate,
+  ViewPlan,
+  ViewElevation,
+  View3d,
+  LevelUp,
+  LevelDown,
+  FitAll,
+  FitSelection,
+  RoofVisibility,
+  LowerLevelContext,
+  Contours,
+  Dimensions,
+  Snap,
   Count,
 };
 

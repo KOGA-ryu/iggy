@@ -298,6 +298,39 @@ bool pathFlatteningIsEndpointExact() {
          expect(ellipseBounded, "ellipse points stay within the radii box");
 }
 
+bool viewControlGlyphsJoinTheVocabulary() {
+  constexpr std::string_view kViewControlNames[] = {
+      "plan view",     "elevation view",      "3d view",
+      "level up",      "level down",          "fit all",
+      "fit selection", "roof visibility",     "lower level context",
+      "contours",      "dimensions",          "snap"};
+  bool allPresent = true;
+  for (const std::string_view expected : kViewControlNames) {
+    bool found = false;
+    for (std::size_t index = 0U; index < kGlyphCount; ++index) {
+      if (iggy3d_creative_app::toString(
+              static_cast<CreativeEditorToolGlyph>(index)) == expected) {
+        found = true;
+      }
+    }
+    if (!found) {
+      std::cerr << "missing view-control glyph: " << expected << '\n';
+      allPresent = false;
+    }
+  }
+  const auto ladder = [](float sizePixels) {
+    return iggy3d_creative_app::creativeEditorToolGlyphStrokeThicknessPixels(
+        1.25F, sizePixels);
+  };
+  return expect(kGlyphCount == 55U,
+                "the vocabulary is the original 43 plus 12 view controls") &&
+         expect(allPresent, "every view-control glyph is enumerated") &&
+         expect(near(ladder(16.0F), 1.0F) && near(ladder(20.0F), 1.041667F) &&
+                    near(ladder(24.0F), 1.25F) &&
+                    near(ladder(32.0F), 1.666667F),
+                "the icon-size ladder holds at 16, 20, 24, and 32 pixels");
+}
+
 }  // namespace
 
 int main() {
@@ -308,5 +341,6 @@ int main() {
   ok = strokeThicknessKeepsAOnePixelFloor() && ok;
   ok = dashSegmentationTilesThePatternExactly() && ok;
   ok = pathFlatteningIsEndpointExact() && ok;
+  ok = viewControlGlyphsJoinTheVocabulary() && ok;
   return ok ? 0 : 1;
 }

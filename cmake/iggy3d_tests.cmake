@@ -560,6 +560,16 @@ add_test(NAME creative_editor_tool_glyph_tests
 set_tests_properties(creative_editor_tool_glyph_tests PROPERTIES
   LABELS "unit;app;creative;editor;tool;glyph;icon;iggy3d")
 
+add_executable(creative_editor_drafting_style_tests
+  tests/unit/creative_editor_drafting_style_tests.cpp)
+target_link_libraries(creative_editor_drafting_style_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_drafting_style_tests)
+add_test(NAME creative_editor_drafting_style_tests
+  COMMAND "$<TARGET_FILE:creative_editor_drafting_style_tests>")
+set_tests_properties(creative_editor_drafting_style_tests PROPERTIES
+  LABELS "unit;app;creative;editor;drafting;style;iggy3d")
+
 add_executable(creative_editor_toolbox_tests
   tests/unit/creative_editor_toolbox_tests.cpp)
 target_link_libraries(creative_editor_toolbox_tests PRIVATE

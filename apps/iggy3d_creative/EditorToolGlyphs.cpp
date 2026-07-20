@@ -447,6 +447,144 @@ constexpr GlyphPoint kBadgeStar[] = {{12.0F, 4.5F},  {13.9F, 10.1F},
                                      {4.5F, 12.0F},  {10.1F, 10.1F}};
 constexpr GlyphOp kBadgeTemplateOps[] = {fillOp(kBadgeStar, 1.0F)};
 
+constexpr GlyphPoint kViewPlanFrame[] = {{3.0F, 3.0F},
+                                         {21.0F, 3.0F},
+                                         {21.0F, 21.0F},
+                                         {3.0F, 21.0F}};
+constexpr GlyphPoint kViewPlanVertical[] = {{13.0F, 3.0F}, {13.0F, 12.0F}};
+constexpr GlyphPoint kViewPlanHorizontal[] = {{3.0F, 12.0F}, {21.0F, 12.0F}};
+constexpr GlyphOp kViewPlanOps[] = {strokeOp(kViewPlanFrame, true),
+                                    strokeOp(kViewPlanVertical),
+                                    strokeOp(kViewPlanHorizontal)};
+
+constexpr GlyphPoint kElevationGround[] = {{2.0F, 20.0F}, {22.0F, 20.0F}};
+constexpr GlyphPoint kElevationFacade[] = {{5.0F, 9.0F},
+                                           {19.0F, 9.0F},
+                                           {19.0F, 20.0F},
+                                           {5.0F, 20.0F}};
+constexpr GlyphPoint kElevationRoof[] = {{5.0F, 9.0F},
+                                         {12.0F, 4.0F},
+                                         {19.0F, 9.0F}};
+constexpr GlyphOp kViewElevationOps[] = {strokeOp(kElevationGround),
+                                         strokeOp(kElevationFacade, true),
+                                         strokeOp(kElevationRoof)};
+
+constexpr GlyphOp kView3dOps[] = {strokeOp(kCubeHex, true),
+                                  strokeOp(kCubeSeamAcross),
+                                  strokeOp(kCubeSeamDown)};
+
+constexpr GlyphPoint kLevelChevronUp[] = {{9.0F, 6.5F},
+                                          {12.0F, 3.5F},
+                                          {15.0F, 6.5F}};
+constexpr GlyphPoint kLevelUpperPlate[] = {{12.0F, 9.0F},
+                                           {19.0F, 12.5F},
+                                           {12.0F, 16.0F},
+                                           {5.0F, 12.5F}};
+constexpr GlyphPoint kLevelLowerEdge[] = {{5.0F, 16.0F},
+                                          {12.0F, 19.5F},
+                                          {19.0F, 16.0F}};
+constexpr GlyphOp kLevelUpOps[] = {strokeOp(kLevelChevronUp),
+                                   strokeOp(kLevelUpperPlate, true),
+                                   strokeOp(kLevelLowerEdge)};
+
+constexpr GlyphPoint kLevelDownPlate[] = {{12.0F, 8.0F},
+                                          {19.0F, 11.5F},
+                                          {12.0F, 15.0F},
+                                          {5.0F, 11.5F}};
+constexpr GlyphPoint kLevelDownEdge[] = {{5.0F, 15.0F},
+                                         {12.0F, 18.5F},
+                                         {19.0F, 15.0F}};
+constexpr GlyphPoint kLevelChevronDown[] = {{9.0F, 17.5F},
+                                            {12.0F, 20.5F},
+                                            {15.0F, 17.5F}};
+constexpr GlyphOp kLevelDownOps[] = {strokeOp(kLevelDownPlate, true),
+                                     strokeOp(kLevelDownEdge),
+                                     strokeOp(kLevelChevronDown)};
+
+constexpr GlyphPoint kFitBracketTopLeft[] = {{3.0F, 7.0F},
+                                             {3.0F, 3.0F},
+                                             {7.0F, 3.0F}};
+constexpr GlyphPoint kFitBracketTopRight[] = {{17.0F, 3.0F},
+                                              {21.0F, 3.0F},
+                                              {21.0F, 7.0F}};
+constexpr GlyphPoint kFitBracketBottomRight[] = {{21.0F, 17.0F},
+                                                 {21.0F, 21.0F},
+                                                 {17.0F, 21.0F}};
+constexpr GlyphPoint kFitBracketBottomLeft[] = {{7.0F, 21.0F},
+                                                {3.0F, 21.0F},
+                                                {3.0F, 17.0F}};
+constexpr GlyphPoint kFitInnerRect[] = {{8.0F, 8.0F},
+                                        {16.0F, 8.0F},
+                                        {16.0F, 16.0F},
+                                        {8.0F, 16.0F}};
+constexpr GlyphOp kFitAllOps[] = {strokeOp(kFitBracketTopLeft),
+                                  strokeOp(kFitBracketTopRight),
+                                  strokeOp(kFitBracketBottomRight),
+                                  strokeOp(kFitBracketBottomLeft),
+                                  strokeOp(kFitInnerRect, true)};
+constexpr GlyphOp kFitSelectionOps[] = {
+    strokeOp(kFitBracketTopLeft), strokeOp(kFitBracketTopRight),
+    strokeOp(kFitBracketBottomRight), strokeOp(kFitBracketBottomLeft),
+    dashedOp(kFitInnerRect, 1.6F, 1.4F, true)};
+
+constexpr GlyphPoint kRoofGable[] = {{3.0F, 14.0F},
+                                     {12.0F, 5.0F},
+                                     {21.0F, 14.0F}};
+constexpr GlyphPoint kRoofRidgeTick[] = {{12.0F, 5.0F}, {12.0F, 9.0F}};
+constexpr GlyphPoint kRoofEyeOutline[] = {{12.0F, 17.5F}, {4.5F, 2.6F}};
+constexpr GlyphPoint kRoofEyePupil[] = {{12.0F, 17.5F}, {1.2F, 1.2F}};
+constexpr GlyphOp kRoofVisibilityOps[] = {strokeOp(kRoofGable),
+                                          strokeOp(kRoofRidgeTick),
+                                          ellipseOp(kRoofEyeOutline, false),
+                                          ellipseOp(kRoofEyePupil, true)};
+
+constexpr GlyphPoint kContextUpperPlate[] = {{12.0F, 4.5F},
+                                             {19.5F, 8.5F},
+                                             {12.0F, 12.5F},
+                                             {4.5F, 8.5F}};
+constexpr GlyphPoint kContextLowerPlate[] = {{12.0F, 11.5F},
+                                             {19.5F, 15.5F},
+                                             {12.0F, 19.5F},
+                                             {4.5F, 15.5F}};
+constexpr GlyphOp kLowerLevelContextOps[] = {
+    strokeOp(kContextUpperPlate, true),
+    dashedOp(kContextLowerPlate, 1.6F, 1.4F, true)};
+
+constexpr GlyphPoint kContourOuter[] = {{12.0F, 12.0F}, {9.0F, 6.5F}};
+constexpr GlyphPoint kContourMiddle[] = {{12.0F, 12.0F}, {6.0F, 4.2F}};
+constexpr GlyphPoint kContourInner[] = {{12.0F, 12.0F}, {3.0F, 1.9F}};
+constexpr GlyphOp kContoursOps[] = {ellipseOp(kContourOuter, false),
+                                    ellipseOp(kContourMiddle, false),
+                                    ellipseOp(kContourInner, false)};
+
+constexpr GlyphPoint kDimensionLeftTick[] = {{5.0F, 6.0F}, {5.0F, 18.0F}};
+constexpr GlyphPoint kDimensionRightTick[] = {{19.0F, 6.0F}, {19.0F, 18.0F}};
+constexpr GlyphPoint kDimensionLine[] = {{5.0F, 12.0F}, {19.0F, 12.0F}};
+constexpr GlyphPoint kDimensionLeftArrow[] = {{8.0F, 10.5F},
+                                              {5.0F, 12.0F},
+                                              {8.0F, 13.5F}};
+constexpr GlyphPoint kDimensionRightArrow[] = {{16.0F, 10.5F},
+                                               {19.0F, 12.0F},
+                                               {16.0F, 13.5F}};
+constexpr GlyphOp kDimensionsOps[] = {strokeOp(kDimensionLeftTick),
+                                      strokeOp(kDimensionRightTick),
+                                      strokeOp(kDimensionLine),
+                                      strokeOp(kDimensionLeftArrow),
+                                      strokeOp(kDimensionRightArrow)};
+
+constexpr GlyphPoint kSnapLeftLeg[] = {{8.0F, 21.0F}, {8.0F, 11.0F}};
+constexpr GlyphPoint kSnapRightLeg[] = {{16.0F, 21.0F}, {16.0F, 11.0F}};
+constexpr GlyphPoint kSnapArch[] = {{8.0F, 11.0F},
+                                    {8.0F, 5.7F},
+                                    {16.0F, 5.7F},
+                                    {16.0F, 11.0F}};
+constexpr GlyphPoint kSnapLeftCap[] = {{6.8F, 17.0F}, {9.2F, 17.0F}};
+constexpr GlyphPoint kSnapRightCap[] = {{14.8F, 17.0F}, {17.2F, 17.0F}};
+constexpr GlyphOp kSnapOps[] = {strokeOp(kSnapLeftLeg),
+                                strokeOp(kSnapRightLeg), pathOp(kSnapArch),
+                                strokeOp(kSnapLeftCap),
+                                strokeOp(kSnapRightCap)};
+
 constexpr std::size_t kGlyphCount =
     static_cast<std::size_t>(CreativeEditorToolGlyph::Count);
 
@@ -465,7 +603,11 @@ constexpr std::array<std::span<const GlyphOp>, kGlyphCount> kGlyphOpsTable = {{
     kActionApplyOps,      kActionCancelOps,     kActionNewSeedOps,
     kActionPlayOps,       kBadgeAddOps,         kBadgeRemoveOps,
     kBadgeRaiseOps,       kBadgeLowerOps,       kBadgeNoiseOps,
-    kBadgeTemplateOps,
+    kBadgeTemplateOps,    kViewPlanOps,         kViewElevationOps,
+    kView3dOps,           kLevelUpOps,          kLevelDownOps,
+    kFitAllOps,           kFitSelectionOps,     kRoofVisibilityOps,
+    kLowerLevelContextOps, kContoursOps,        kDimensionsOps,
+    kSnapOps,
 }};
 
 constexpr std::array<std::string_view, kGlyphCount> kGlyphNames = {{
@@ -483,7 +625,11 @@ constexpr std::array<std::string_view, kGlyphCount> kGlyphNames = {{
     "apply",           "cancel",          "new seed",
     "play",            "badge add",       "badge remove",
     "badge raise",     "badge lower",     "badge noise",
-    "badge template",
+    "badge template",  "plan view",       "elevation view",
+    "3d view",         "level up",        "level down",
+    "fit all",         "fit selection",   "roof visibility",
+    "lower level context",                "contours",
+    "dimensions",      "snap",
 }};
 
 constexpr int kPathSegmentsPerCubic = 12;
