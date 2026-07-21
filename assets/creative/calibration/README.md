@@ -31,16 +31,19 @@ the exported GLB, never typed. Bounds are in the engine's glTF Y-up space
 compounds, or 1/0 for a single `bounds` asset that declares `iggy_walkable`.
 
 <!-- METRICS-TABLE:BEGIN -->
-| assetId | tris | prims | mats | nodes | bounds min..max (m, glTF Y-up) | collision | parts | walkable | sockets |
-|---|--:|--:|--:|--:|---|---|--:|--:|--:|
-| `calibration/grid_1m_10x10` | 264 | 1 | 1 | 1 | (-5.010,0.000,-5.010)..(5.010,0.020,5.010) | none | 0 | 0 | 0 |
-| `calibration/human_gauge_1p8m` | 72 | 1 | 1 | 1 | (-0.250,0.000,-0.150)..(0.250,1.800,0.150) | none | 0 | 0 | 0 |
-| `calibration/door_clearance_0p9x2p1` | 48 | 1 | 1 | 1 | (-0.500,0.000,-0.025)..(0.500,2.150,0.025) | none | 0 | 0 | 0 |
-| `calibration/storey_3m` | 72 | 1 | 1 | 1 | (-0.300,0.000,-0.300)..(0.300,3.000,0.300) | none | 0 | 0 | 0 |
-| `calibration/pivot_hinge` | 12 | 1 | 1 | 1 | (0.000,0.000,-0.025)..(0.900,2.100,0.025) | bounds | 0 | 0 | 0 |
-| `calibration/socket_receiver` | 60 | 2 | 2 | 2 | (-0.200,0.000,-0.200)..(0.200,0.900,0.200) | none | 0 | 0 | 1 |
-| `calibration/socket_plug` | 60 | 2 | 2 | 2 | (-0.100,0.000,-0.200)..(0.200,0.520,0.100) | none | 0 | 0 | 1 |
-| `calibration/collision_compound` | 24 | 2 | 2 | 2 | (-0.700,0.000,-0.700)..(0.700,0.700,0.700) | compound_bounds | 2 | 1 | 0 |
+| assetId | tris | prims | mats | nodes | bounds min..max (m, glTF Y-up) | collision | parts | walkable | sockets | tile |
+|---|--:|--:|--:|--:|---|---|--:|--:|--:|---|
+| `calibration/grid_1m_10x10` | 264 | 1 | 1 | 1 | (-5.010,0.000,-5.010)..(5.010,0.020,5.010) | none | 0 | 0 | 0 | - |
+| `calibration/human_gauge_1p8m` | 72 | 1 | 1 | 1 | (-0.250,0.000,-0.150)..(0.250,1.800,0.150) | none | 0 | 0 | 0 | - |
+| `calibration/door_clearance_0p9x2p1` | 48 | 1 | 1 | 1 | (-0.500,0.000,-0.025)..(0.500,2.150,0.025) | none | 0 | 0 | 0 | - |
+| `calibration/storey_3m` | 72 | 1 | 1 | 1 | (-0.300,0.000,-0.300)..(0.300,3.000,0.300) | none | 0 | 0 | 0 | - |
+| `calibration/pivot_hinge` | 12 | 1 | 1 | 1 | (0.000,0.000,-0.025)..(0.900,2.100,0.025) | bounds | 0 | 0 | 0 | - |
+| `calibration/socket_receiver` | 60 | 2 | 2 | 2 | (-0.200,0.000,-0.200)..(0.200,0.900,0.200) | none | 0 | 0 | 1 | - |
+| `calibration/socket_plug` | 60 | 2 | 2 | 2 | (-0.100,0.000,-0.200)..(0.200,0.520,0.100) | none | 0 | 0 | 1 | - |
+| `calibration/collision_compound` | 24 | 2 | 2 | 2 | (-0.700,0.000,-0.700)..(0.700,0.700,0.700) | compound_bounds | 2 | 1 | 0 | - |
+| `calibration/material_base_color` | 72 | 6 | 6 | 6 | (-1.450,0.000,-0.200)..(1.450,0.400,0.200) | none | 0 | 0 | 0 | - |
+| `calibration/material_texture_uv` | 12 | 1 | 1 | 1 | (-0.500,0.000,-0.500)..(0.500,1.000,0.500) | none | 0 | 0 | 0 | uv_marker |
+| `calibration/material_missing_texture` | 12 | 1 | 1 | 1 | (-0.500,0.000,-0.500)..(0.500,1.000,0.500) | none | 0 | 0 | 0 | severed |
 <!-- METRICS-TABLE:END -->
 
 ## Validator path & tool versions

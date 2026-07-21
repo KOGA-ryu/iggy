@@ -854,7 +854,16 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
       ModularAssetExpectation{"calibration/collision_compound", "calibration",
                               iggy3d::StaticMeshCollisionMode::CompoundBounds,
                               true, 2U, 1U},
+      ModularAssetExpectation{"calibration/material_base_color",
+                              "calibration",
+                              iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{"calibration/material_texture_uv", "calibration",
+                              iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{"calibration/material_missing_texture",
+                              "calibration",
+                              iggy3d::StaticMeshCollisionMode::None},
   };
+
   // ASSET-CAL-1 Batch 1 seed: building-closure architecture assets.
   constexpr std::array kArchitectureAssets{
       ModularAssetExpectation{
@@ -881,6 +890,221 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
           iggy3d::StaticMeshCollisionMode::Bounds},
       ModularAssetExpectation{"architecture/roof/ridge_cap_end", "roof",
                               iggy3d::StaticMeshCollisionMode::Bounds},
+      // ASSET-BLD-1 phase 4: building-closure tranche 1.
+      ModularAssetExpectation{
+          "architecture/openings/door_frame_wide", "openings",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 3U, 0U, 1U,
+          0U, 1U},
+      ModularAssetExpectation{
+          "architecture/openings/door_leaf_wide_closed", "openings",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{
+          "architecture/openings/door_leaf_wide_open", "openings",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{
+          "architecture/openings/window_frame_standard", "openings",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 4U, 0U, 3U,
+          0U, 3U},
+      ModularAssetExpectation{
+          "architecture/openings/window_frame_small", "openings",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 4U},
+      ModularAssetExpectation{
+          "architecture/openings/window_shutter_left_closed", "openings",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{
+          "architecture/openings/window_shutter_left_open", "openings",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{
+          "architecture/openings/window_shutter_right_closed", "openings",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{
+          "architecture/openings/window_shutter_right_open", "openings",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{
+          "architecture/openings/window_mullion_cross", "openings",
+          iggy3d::StaticMeshCollisionMode::None, false, 0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{
+          "architecture/openings/window_sill_standard", "openings",
+          iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "architecture/openings/window_lintel_standard", "openings",
+          iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "architecture/traversal/stair_straight_3m_with_rails", "traversal",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 24U, 16U},
+      ModularAssetExpectation{
+          "architecture/traversal/stair_rail_slope_3m", "traversal",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/traversal/stair_newel_post", "traversal",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/roof/ridge_cap_straight_2m", "roof",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{"architecture/roof/eave_trim_2m", "roof",
+                              iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{"architecture/roof/eave_trim_4m", "roof",
+                              iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{"architecture/roof/eave_outer_corner", "roof",
+                              iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{"architecture/roof/fascia_end", "roof",
+                              iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{"architecture/roof/gable_cap_4m", "roof",
+                              iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{"architecture/roof/gutter_straight_2m", "roof",
+                              iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{"architecture/roof/downspout_3m", "roof",
+                              iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{"architecture/roof/downspout_outlet", "roof",
+                              iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "architecture/roof/chimney_stack_short", "roof",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 0U, 1U},
+      ModularAssetExpectation{
+          "architecture/roof/chimney_cap", "roof",
+          iggy3d::StaticMeshCollisionMode::None, false, 0U, 0U, 1U, 1U, 0U},
+      // ASSET-BLD-2: double doors, window completion, structural core.
+      ModularAssetExpectation{
+          "architecture/openings/door_frame_double", "openings",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 3U, 0U, 2U,
+          0U, 2U},
+      ModularAssetExpectation{
+          "architecture/openings/door_leaf_double_left_closed", "openings",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{
+          "architecture/openings/door_leaf_double_left_open", "openings",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{
+          "architecture/openings/door_leaf_double_right_closed", "openings",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{
+          "architecture/openings/door_leaf_double_right_open", "openings",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{
+          "architecture/openings/window_frame_wide", "openings",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 4U},
+      ModularAssetExpectation{
+          "architecture/openings/window_frame_tall", "openings",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 4U},
+      ModularAssetExpectation{
+          "architecture/openings/window_bars_standard", "openings",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{
+          "architecture/structural/foundation_plinth_straight_2m",
+          "structural", iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "architecture/structural/foundation_plinth_straight_4m",
+          "structural", iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "architecture/structural/foundation_plinth_inner_corner",
+          "structural", iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "architecture/structural/foundation_plinth_outer_corner",
+          "structural", iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "architecture/structural/foundation_plinth_end", "structural",
+          iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "architecture/structural/post_square_0p3x3m", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/post_square_0p5x3m", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/column_round_0p5x3m", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 2U, 1U, 1U},
+      ModularAssetExpectation{
+          "architecture/structural/column_round_base", "structural",
+          iggy3d::StaticMeshCollisionMode::None, false, 0U, 0U, 1U, 0U, 1U},
+      ModularAssetExpectation{
+          "architecture/structural/column_round_cap", "structural",
+          iggy3d::StaticMeshCollisionMode::None, false, 0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{"architecture/structural/beam_2m", "structural",
+                              iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{"architecture/structural/beam_4m", "structural",
+                              iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{"architecture/structural/beam_6m", "structural",
+                              iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/beam_end_cap", "structural",
+          iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "architecture/structural/brace_left", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/brace_right", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      // ASSET-BLD-3: Batch 1 closure — arches, buttresses, piers, parapets,
+      // balconies, small railings, quarter-turn stair, stepped ramps.
+      ModularAssetExpectation{
+          "architecture/traversal/stair_quarter_turn_3m", "traversal",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 16U, 16U},
+      ModularAssetExpectation{
+          "architecture/traversal/stair_landing_2x4m", "traversal",
+          iggy3d::StaticMeshCollisionMode::Bounds, true},
+      ModularAssetExpectation{
+          "architecture/traversal/ramp_2x3x1p5m", "traversal",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 8U, 8U},
+      ModularAssetExpectation{
+          "architecture/traversal/ramp_2x6x3m", "traversal",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 16U, 16U},
+      ModularAssetExpectation{
+          "architecture/traversal/ramp_landing_2x2m", "traversal",
+          iggy3d::StaticMeshCollisionMode::Bounds, true},
+      ModularAssetExpectation{
+          "architecture/structural/arch_1p2m", "structural",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 3U},
+      ModularAssetExpectation{
+          "architecture/structural/arch_2m", "structural",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 3U},
+      ModularAssetExpectation{
+          "architecture/structural/arch_4m", "structural",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 3U},
+      ModularAssetExpectation{
+          "architecture/structural/buttress_low", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/buttress_tall", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/wall_pier_0p5x3m", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/wall_pier_1x3m", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/parapet_straight_2m", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/parapet_straight_4m", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/parapet_inner_corner", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/parapet_outer_corner", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/parapet_end", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/balcony_deck_2x1p5m", "structural",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 3U, 1U},
+      ModularAssetExpectation{
+          "architecture/structural/balcony_deck_4x1p5m", "structural",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 4U, 1U},
+      ModularAssetExpectation{
+          "architecture/structural/balcony_bracket", "structural",
+          iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "architecture/structural/railing_straight_1m", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/railing_corner", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/railing_end_post", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
   };
   const iggy3d::StaticMeshAssetCatalog catalog =
       iggy3d::discoverStaticMeshAssetCatalog("assets/creative");
@@ -1176,22 +1400,25 @@ bool texturedFixtureBuildsOneCachedMaterialBinding() {
          expect(walkway.asset.materials[0].baseColorImageIndex == 0U &&
                     walkway.asset.primitives[0].hasTexcoord0,
                 "material and primitive retain texture ownership") &&
-         expect(textures.textures.size() == 1U &&
-                    textures.materialBindings.size() == 1U &&
-                    textures.rejectedTextureCount == 0U,
-                "startup cache deduplicates one texture binding") &&
+         expect(textures.textures.size() == 8U &&
+                    textures.materialBindings.size() == 83U &&
+                    textures.rejectedTextureCount == 1U,
+                "startup cache dedups palette copies to unique textures and "
+                "rejects only the severed missing-texture probe") &&
          expect(geometry.ready && geometry.indexedDraws.size() == 1U &&
-                    geometry.indexedDraws[0].materialTextureIndex == 0U &&
+                    geometry.indexedDraws[0].materialTextureIndex <
+                        textures.materialBindings.size() &&
                     hasNonzeroUv,
                 "room draw carries texture binding and transformed UVs") &&
          expect(atlas.valid && walkwayDraw != atlas.assetDraws.end() &&
                     walkwayDraw->indexedDraws.size() == 1U &&
-                    walkwayDraw->indexedDraws[0].materialTextureIndex == 0U &&
+                    walkwayDraw->indexedDraws[0].materialTextureIndex <
+                        textures.materialBindings.size() &&
                     instanced.ready && instanced.vertices.empty() &&
                     instanced.staticMeshInstances.size() == 1U &&
                     instanced.staticMeshInstanceBatches.size() == 1U &&
-                    instanced.staticMeshInstanceBatches[0]
-                            .materialTextureIndex == 0U,
+                    instanced.staticMeshInstanceBatches[0].materialTextureIndex ==
+                        walkwayDraw->indexedDraws[0].materialTextureIndex,
                 "instanced atlas retains textured primitive binding") &&
          expect(!invalid.ok() &&
                     invalid.reasonCode == "image_dimensions_invalid",
