@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <type_traits>
 #include <variant>
 #include <vector>
 
@@ -402,6 +403,64 @@ struct CreativeDesktopGeneratedOpeningSettingsPayload {
   CreativeEditorWorldLayoutOpeningSettings settings;
 };
 
+enum class CreativeDesktopWorldLayoutPropertyEditPhase : std::uint8_t {
+  Preview,
+  Commit,
+  Cancel,
+  Count,
+};
+
+using CreativeDesktopWorldLayoutPropertySettings =
+    CreativeEditorWorldLayoutPropertySettings;
+
+template <typename Settings>
+[[nodiscard]] constexpr iggy3d::creative::CreativeWorldLayoutTable
+creativeDesktopWorldLayoutPropertyTable() noexcept {
+  if constexpr (std::is_same_v<Settings,
+                               CreativeEditorWorldLayoutLevelSettings>) {
+    return iggy3d::creative::CreativeWorldLayoutTable::Level;
+  } else if constexpr (std::is_same_v<Settings,
+                                      CreativeEditorWorldLayoutRoomSettings>) {
+    return iggy3d::creative::CreativeWorldLayoutTable::Room;
+  } else if constexpr (
+      std::is_same_v<Settings,
+                     CreativeEditorWorldLayoutVerticalConnectorSettings>) {
+    return iggy3d::creative::CreativeWorldLayoutTable::VerticalConnector;
+  } else if constexpr (std::is_same_v<Settings,
+                                      CreativeEditorWorldLayoutBoxSettings>) {
+    return iggy3d::creative::CreativeWorldLayoutTable::Box;
+  } else if constexpr (std::is_same_v<Settings,
+                                      CreativeEditorWorldLayoutWallSettings>) {
+    return iggy3d::creative::CreativeWorldLayoutTable::Wall;
+  } else if constexpr (
+      std::is_same_v<Settings, CreativeEditorWorldLayoutOpeningSettings>) {
+    return iggy3d::creative::CreativeWorldLayoutTable::Opening;
+  } else if constexpr (
+      std::is_same_v<Settings,
+                     CreativeEditorWorldLayoutTerrainProfileSettings>) {
+    return iggy3d::creative::CreativeWorldLayoutTable::TerrainProfile;
+  } else if constexpr (
+      std::is_same_v<Settings,
+                     CreativeEditorWorldLayoutTerrainPathSettings>) {
+    return iggy3d::creative::CreativeWorldLayoutTable::TerrainPath;
+  } else {
+    static_assert(
+        std::is_same_v<Settings, CreativeEditorWorldLayoutObjectSettings>);
+    return iggy3d::creative::CreativeWorldLayoutTable::Object;
+  }
+}
+
+struct CreativeDesktopWorldLayoutPropertyEditPayload {
+  CreativeDesktopWorldLayoutPropertyEditPhase phase =
+      CreativeDesktopWorldLayoutPropertyEditPhase::Preview;
+  iggy3d::creative::CreativeWorldLayoutTable table =
+      iggy3d::creative::CreativeWorldLayoutTable::None;
+  std::size_t index =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::string stableKey;
+  CreativeDesktopWorldLayoutPropertySettings settings;
+};
+
 struct CreativeDesktopWorldLayoutOpeningInsertPayload {
   std::size_t openingIndex =
       iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
@@ -500,6 +559,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutWallManipulationPayload,
     CreativeDesktopWorldLayoutOpeningSettingsPayload,
     CreativeDesktopGeneratedOpeningSettingsPayload,
+    CreativeDesktopWorldLayoutPropertyEditPayload,
     CreativeDesktopWorldLayoutOpeningInsertPayload,
     CreativeDesktopWorldLayoutAssetRepairPayload,
     CreativeDesktopWorldLayoutOpeningManipulationPayload,

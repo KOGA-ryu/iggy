@@ -33,6 +33,49 @@ bool near(double a, double b, double tol = 1.0e-9) {
   return (d < 0.0 ? -d : d) <= tol;
 }
 
+bool propertyEditIntentSeparatesPreviewCommitAndCancel() {
+  app::CreativeDesktopPropertyEditActivity continuous;
+  app::observeCreativeDesktopContinuousPropertyEdit(continuous, true, false);
+  const app::CreativeDesktopPropertyEditIntent preview =
+      app::resolveCreativeDesktopPropertyEditIntent(
+          continuous, true, true, false);
+
+  app::CreativeDesktopPropertyEditActivity released;
+  app::observeCreativeDesktopContinuousPropertyEdit(released, false, true);
+  const app::CreativeDesktopPropertyEditIntent commit =
+      app::resolveCreativeDesktopPropertyEditIntent(
+          released, true, true, true);
+
+  app::CreativeDesktopPropertyEditActivity discrete;
+  app::observeCreativeDesktopDiscretePropertyEdit(discrete, true);
+  const app::CreativeDesktopPropertyEditIntent immediateCommit =
+      app::resolveCreativeDesktopPropertyEditIntent(
+          discrete, true, true, false);
+  const app::CreativeDesktopPropertyEditIntent invalid =
+      app::resolveCreativeDesktopPropertyEditIntent(
+          continuous, true, false, true);
+  const app::CreativeDesktopPropertyEditIntent reset =
+      app::resolveCreativeDesktopPropertyEditIntent(
+          {}, false, true, true, true);
+  const app::CreativeDesktopPropertyEditIntent idle =
+      app::resolveCreativeDesktopPropertyEditIntent(
+          {}, true, true, true);
+
+  return expect(
+             preview == app::CreativeDesktopPropertyEditIntent::Preview,
+             "an active continuous edit requests an exact preview") &&
+         expect(commit == app::CreativeDesktopPropertyEditIntent::Commit,
+                "deactivation commits one dirty valid draft") &&
+         expect(immediateCommit ==
+                    app::CreativeDesktopPropertyEditIntent::Commit,
+                "a discrete property choice commits immediately") &&
+         expect(invalid == app::CreativeDesktopPropertyEditIntent::Cancel &&
+                    reset == app::CreativeDesktopPropertyEditIntent::Cancel,
+                "invalid and reset drafts clear an owned preview") &&
+         expect(idle == app::CreativeDesktopPropertyEditIntent::None,
+                "idle frames do not replay property work");
+}
+
 cr::CreativeObject makeObject(cr::CreativeObjectId id,
                               std::optional<cr::CreativeObjectId> parent,
                               cr::CreativeObjectKind kind, std::string name) {
@@ -717,6 +760,7 @@ bool generatedScopeSummaryCountsVisibilityAndMergesWorldBounds() {
 
 int main() {
   bool ok = true;
+  ok = propertyEditIntentSeparatesPreviewCommitAndCancel() && ok;
   ok = emptyDocumentProjectsNoRows() && ok;
   ok = flattenKeepsParentBeforeChildAndSourceOrder() && ok;
   ok = missingParentBecomesRecoveredRoot() && ok;

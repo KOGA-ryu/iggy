@@ -1,4 +1,5 @@
 #include "EditorDesktopWorldLayoutInspector.hpp"
+#include "EditorDesktopWidgets.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -8,14 +9,6 @@
 
 namespace iggy3d_creative_app {
 namespace {
-
-bool sameSettings(
-    const CreativeEditorWorldLayoutVerticalConnectorSettings& lhs,
-    const CreativeEditorWorldLayoutVerticalConnectorSettings& rhs) noexcept {
-  return lhs.footprint.minimum == rhs.footprint.minimum &&
-         lhs.footprint.maximum == rhs.footprint.maximum &&
-         lhs.kind == rhs.kind && lhs.direction == rhs.direction;
-}
 
 const char* kindLabel(
     cr::CreativeWorldLayoutVerticalConnectorKind kind) noexcept {
@@ -119,7 +112,10 @@ void drawCreativeEditorWorldLayoutVerticalConnectorInspector(
           : "Unavailable";
   ImGui::TextUnformatted("Vertical connector settings");
   ImGui::TextDisabled("%s -> %s", lowerName, upperName);
+  CreativeDesktopPropertyEditActivity activity;
+  bool discreteChanged = false;
 
+  ImGui::BeginDisabled(state.verticalConnectorManipulation.active);
   if (ImGui::BeginCombo("Kind##layout_connector", kindLabel(settings.kind))) {
     for (const cr::CreativeWorldLayoutVerticalConnectorKind kind :
          {cr::CreativeWorldLayoutVerticalConnectorKind::Stair,
@@ -127,6 +123,7 @@ void drawCreativeEditorWorldLayoutVerticalConnectorInspector(
       const bool selected = settings.kind == kind;
       if (ImGui::Selectable(kindLabel(kind), selected)) {
         settings.kind = kind;
+        discreteChanged = true;
       }
       if (selected) {
         ImGui::SetItemDefaultFocus();
@@ -144,6 +141,7 @@ void drawCreativeEditorWorldLayoutVerticalConnectorInspector(
       const bool selected = settings.direction == direction;
       if (ImGui::Selectable(directionLabel(direction), selected)) {
         settings.direction = direction;
+        discreteChanged = true;
       }
       if (selected) {
         ImGui::SetItemDefaultFocus();
@@ -154,7 +152,9 @@ void drawCreativeEditorWorldLayoutVerticalConnectorInspector(
   ImGui::SameLine();
   if (ImGui::Button("Flip rise")) {
     settings.direction = oppositeDirection(settings.direction);
+    discreteChanged = true;
   }
+  observeCreativeDesktopDiscretePropertyWidget(activity, discreteChanged);
 
   int originX = settings.footprint.minimum.x;
   int originZ = settings.footprint.minimum.z;
@@ -171,18 +171,22 @@ void drawCreativeEditorWorldLayoutVerticalConnectorInspector(
       depth64, std::numeric_limits<int>::min(),
       std::numeric_limits<int>::max()));
   ImGui::SetNextItemWidth(84.0F);
-  bool edited = ImGui::InputInt("X##layout_connector", &originX, 1, 4);
+  bool edited = false;
+  const auto observe = [&](bool changed) {
+    edited = edited || changed;
+    observeCreativeDesktopContinuousPropertyWidget(activity, changed);
+  };
+  observe(ImGui::InputInt("X##layout_connector", &originX, 1, 4));
   ImGui::SameLine();
   ImGui::SetNextItemWidth(84.0F);
-  edited = ImGui::InputInt("Z##layout_connector", &originZ, 1, 4) || edited;
+  observe(ImGui::InputInt("Z##layout_connector", &originZ, 1, 4));
   ImGui::SameLine();
   ImGui::SetNextItemWidth(84.0F);
-  edited =
-      ImGui::InputInt("Width##layout_connector", &width, 1, 4) || edited;
+  observe(ImGui::InputInt("Width##layout_connector", &width, 1, 4));
   ImGui::SameLine();
   ImGui::SetNextItemWidth(84.0F);
-  edited =
-      ImGui::InputInt("Depth##layout_connector", &depth, 1, 4) || edited;
+  observe(ImGui::InputInt("Depth##layout_connector", &depth, 1, 4));
+  ImGui::EndDisabled();
 
   const std::int64_t maximumX =
       static_cast<std::int64_t>(originX) + width;
@@ -207,22 +211,9 @@ void drawCreativeEditorWorldLayoutVerticalConnectorInspector(
                        "connector footprint must be positive and in range");
   }
 
-  const bool dirty = !sameSettings(current, settings);
-  ImGui::BeginDisabled(!dirty || !valuesRepresentable ||
-                       state.verticalConnectorManipulation.active);
-  if (ImGui::Button("Apply connector")) {
-    commands.push(
-        CreativeDesktopCommandId::WorldLayoutSetVerticalConnectorSettings,
-        CreativeDesktopWorldLayoutVerticalConnectorSettingsPayload{
-            connectorIndex, settings});
-  }
-  ImGui::EndDisabled();
-  ImGui::SameLine();
-  ImGui::BeginDisabled(!dirty);
-  if (ImGui::Button("Reset connector")) {
-    state.verticalConnectorSettingsDraft.settings = current;
-  }
-  ImGui::EndDisabled();
+  finishCreativeDesktopWorldLayoutPropertyEdit(
+      activity, current, settings, valuesRepresentable, "Reset connector",
+      state, connectorIndex, connector.stableKey, commands);
 }
 
 }  // namespace iggy3d_creative_app

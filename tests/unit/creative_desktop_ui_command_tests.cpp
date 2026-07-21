@@ -5698,6 +5698,199 @@ bool synchronizedPlanDragPreviewsAndCommitsOneStoreyAtomically() {
                 "invalid release leaves source, document, and history unchanged");
 }
 
+bool sourcePropertyTablesAreDerivedFromSettingsTypes() {
+  const bool allMatch =
+      app::creativeDesktopWorldLayoutPropertyTable<
+          app::CreativeEditorWorldLayoutLevelSettings>() ==
+          cr::CreativeWorldLayoutTable::Level &&
+      app::creativeDesktopWorldLayoutPropertyTable<
+          app::CreativeEditorWorldLayoutRoomSettings>() ==
+          cr::CreativeWorldLayoutTable::Room &&
+      app::creativeDesktopWorldLayoutPropertyTable<
+          app::CreativeEditorWorldLayoutVerticalConnectorSettings>() ==
+          cr::CreativeWorldLayoutTable::VerticalConnector &&
+      app::creativeDesktopWorldLayoutPropertyTable<
+          app::CreativeEditorWorldLayoutBoxSettings>() ==
+          cr::CreativeWorldLayoutTable::Box &&
+      app::creativeDesktopWorldLayoutPropertyTable<
+          app::CreativeEditorWorldLayoutWallSettings>() ==
+          cr::CreativeWorldLayoutTable::Wall &&
+      app::creativeDesktopWorldLayoutPropertyTable<
+          app::CreativeEditorWorldLayoutOpeningSettings>() ==
+          cr::CreativeWorldLayoutTable::Opening &&
+      app::creativeDesktopWorldLayoutPropertyTable<
+          app::CreativeEditorWorldLayoutTerrainProfileSettings>() ==
+          cr::CreativeWorldLayoutTable::TerrainProfile &&
+      app::creativeDesktopWorldLayoutPropertyTable<
+          app::CreativeEditorWorldLayoutTerrainPathSettings>() ==
+          cr::CreativeWorldLayoutTable::TerrainPath &&
+      app::creativeDesktopWorldLayoutPropertyTable<
+          app::CreativeEditorWorldLayoutObjectSettings>() ==
+          cr::CreativeWorldLayoutTable::Object;
+  return expect(allMatch,
+                "each property settings type owns one source table");
+}
+
+bool sourcePropertyPreviewAndCommitAreAtomic() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Source Property Edit");
+  static_cast<void>(document.assignId(910U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "source_property_edit");
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "building";
+  building.name = "Building";
+  editor.worldLayout.source.buildings.push_back(building);
+  cr::CreativeWorldLayoutLevel level;
+  level.buildingIndex = 0U;
+  level.stableKey = "ground";
+  level.name = "Ground";
+  editor.worldLayout.source.levels.push_back(level);
+  cr::CreativeWorldLayoutRoom room;
+  room.buildingIndex = 0U;
+  room.levelIndex = 0U;
+  room.stableKey = "room";
+  room.name = "Room";
+  room.footprint = {{0, 0}, {4, 4}};
+  editor.worldLayout.source.rooms.push_back(room);
+  ++editor.worldLayout.revision;
+
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const app::CreativeDesktopCommandResult generated = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  if (!generated.accepted) {
+    return expect(false, "source property fixture generated");
+  }
+
+  app::CreativeEditorWorldLayoutRoomSettings settings;
+  if (!app::readCreativeEditorWorldLayoutRoomSettings(editor.worldLayout, 0U,
+                                                       settings)) {
+    return expect(false, "source property room settings readable");
+  }
+  settings.footprint.maximum.x = 7;
+  const auto payload = [&](app::CreativeDesktopWorldLayoutPropertyEditPhase
+                               phase) {
+    return app::CreativeDesktopWorldLayoutPropertyEditPayload{
+        phase, cr::CreativeWorldLayoutTable::Room, 0U, "room", settings};
+  };
+
+  const std::uint64_t sourceRevisionBefore = editor.worldLayout.revision;
+  const std::uint64_t documentRevisionBefore =
+      appState.facade.document().revision();
+  const std::uint64_t undoBefore = cr::creativeUndoDepth(appState.history);
+  const app::CreativeDesktopCommandResult preview = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutEditSourceProperty, context,
+      payload(app::CreativeDesktopWorldLayoutPropertyEditPhase::Preview));
+  cr::CreativeBounds previewFloorBounds;
+  const bool previewBoundsReady = generatedBounds(
+      editor.worldLayout.preview.document, editor.worldLayout.source,
+      cr::CreativeWorldLayoutTable::Room, 0U, cr::CreativeObjectKind::Floor,
+      previewFloorBounds);
+  const std::uint64_t previewContentRevision =
+      editor.worldLayout.previewContentRevision;
+  const app::CreativeDesktopCommandResult repeatedPreview = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutEditSourceProperty, context,
+      payload(app::CreativeDesktopWorldLayoutPropertyEditPhase::Preview));
+  const bool previewStayedTransient =
+      preview.accepted && preview.sceneChanged && previewBoundsReady &&
+      near(previewFloorBounds.max.x - previewFloorBounds.min.x, 7.0) &&
+      repeatedPreview.accepted && !repeatedPreview.sceneChanged &&
+      editor.worldLayout.previewContentRevision == previewContentRevision &&
+      editor.worldLayout.liveEditPreviewVisible &&
+      editor.worldLayout.source.rooms[0].footprint.maximum.x == 4 &&
+      editor.worldLayout.revision == sourceRevisionBefore &&
+      appState.facade.document().revision() == documentRevisionBefore &&
+      cr::creativeUndoDepth(appState.history) == undoBefore;
+
+  const app::CreativeDesktopCommandResult committed = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutEditSourceProperty, context,
+      payload(app::CreativeDesktopWorldLayoutPropertyEditPhase::Commit));
+  cr::CreativeBounds committedFloorBounds;
+  const bool committedBoundsReady = generatedBounds(
+      appState.facade.document(), editor.worldLayout.source,
+      cr::CreativeWorldLayoutTable::Room, 0U, cr::CreativeObjectKind::Floor,
+      committedFloorBounds);
+  const bool committedOnce =
+      committed.accepted && committed.changed && committed.sceneChanged &&
+      committed.worldLayoutChanged && committedBoundsReady &&
+      near(committedFloorBounds.max.x - committedFloorBounds.min.x, 7.0) &&
+      !editor.worldLayout.liveEditPreviewVisible &&
+      editor.worldLayout.source.rooms[0].footprint.maximum.x == 7 &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision &&
+      editor.worldLayout.revision == sourceRevisionBefore + 1U &&
+      appState.facade.document().revision() > documentRevisionBefore &&
+      cr::creativeUndoDepth(appState.history) == undoBefore + 1U;
+
+  const app::CreativeDesktopCommandResult undone =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const bool undoRestoredBoth =
+      undone.accepted &&
+      editor.worldLayout.source.rooms[0].footprint.maximum.x == 4;
+
+  const std::uint64_t rejectSourceRevision = editor.worldLayout.revision;
+  const std::uint64_t rejectDocumentRevision =
+      appState.facade.document().revision();
+  const std::uint64_t rejectUndoDepth =
+      cr::creativeUndoDepth(appState.history);
+  app::CreativeEditorWorldLayoutWallSettings wrongSettings;
+  const app::CreativeDesktopCommandResult wrongType = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutEditSourceProperty, context,
+      app::CreativeDesktopWorldLayoutPropertyEditPayload{
+          app::CreativeDesktopWorldLayoutPropertyEditPhase::Commit,
+          cr::CreativeWorldLayoutTable::Room, 0U, "room", wrongSettings});
+  settings.footprint.maximum.x = 0;
+  const app::CreativeDesktopCommandResult invalid = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutEditSourceProperty, context,
+      payload(app::CreativeDesktopWorldLayoutPropertyEditPhase::Commit));
+  const bool rejectionWasAtomic =
+      !wrongType.accepted && !wrongType.changed && !invalid.accepted &&
+      !invalid.changed && editor.worldLayout.revision == rejectSourceRevision &&
+      appState.facade.document().revision() == rejectDocumentRevision &&
+      cr::creativeUndoDepth(appState.history) == rejectUndoDepth;
+
+  settings.footprint.maximum.x = 6;
+  const app::CreativeDesktopCommandResult previewToCancel = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutEditSourceProperty, context,
+      payload(app::CreativeDesktopWorldLayoutPropertyEditPhase::Preview));
+  const app::CreativeDesktopCommandResult foreignCancel = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutEditSourceProperty, context,
+      app::CreativeDesktopWorldLayoutPropertyEditPayload{
+          app::CreativeDesktopWorldLayoutPropertyEditPhase::Cancel,
+          cr::CreativeWorldLayoutTable::Room, 1U, "other-room", settings});
+  const bool foreignCancelPreservedPreview =
+      foreignCancel.accepted && !foreignCancel.changed &&
+      app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+  const app::CreativeDesktopCommandResult canceled = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutEditSourceProperty, context,
+      payload(app::CreativeDesktopWorldLayoutPropertyEditPhase::Cancel));
+  const bool cancelWasTransient =
+      previewToCancel.accepted && canceled.accepted && canceled.sceneChanged &&
+      !app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      editor.worldLayout.revision == rejectSourceRevision &&
+      appState.facade.document().revision() == rejectDocumentRevision &&
+      cr::creativeUndoDepth(appState.history) == rejectUndoDepth;
+
+  return expect(previewStayedTransient,
+                "source property updates deduplicate exact 3D previews") &&
+         expect(committedOnce,
+                "source property release commits one source and scene edit") &&
+         expect(undoRestoredBoth,
+                "source property undo restores source and generated scene") &&
+         expect(rejectionWasAtomic,
+                "invalid and mismatched source properties mutate nothing") &&
+         expect(foreignCancelPreservedPreview,
+                "a property cancel cannot clear another target's preview") &&
+         expect(cancelWasTransient,
+                "source property cancel clears only the transient preview");
+}
+
 }  // namespace
 
 int main() {
@@ -5751,5 +5944,7 @@ int main() {
   ok = worldLayoutTerrainRegionCommandsRespectWorkspaceGuards() && ok;
   ok = synchronizedCreationPreviewAndPointCommitAreAtomic() && ok;
   ok = synchronizedPlanDragPreviewsAndCommitsOneStoreyAtomically() && ok;
+  ok = sourcePropertyTablesAreDerivedFromSettingsTypes() && ok;
+  ok = sourcePropertyPreviewAndCommitAreAtomic() && ok;
   return ok ? 0 : 1;
 }

@@ -225,6 +225,7 @@ inline void invalidateWorldLayoutPreview(
     CreativeEditorWorldLayoutState& state) {
   state.previewVisible = false;
   state.liveEditPreviewVisible = false;
+  state.propertyPreviewKey = {};
   state.previewLayoutRevision = 0U;
   state.preview = {};
 }

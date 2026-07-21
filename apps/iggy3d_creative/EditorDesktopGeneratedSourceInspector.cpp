@@ -67,9 +67,11 @@ void appendGeneratedVerticalConnectorSettings(
 
   CreativeEditorWorldLayoutVerticalConnectorSettings& settings =
       worldLayout.verticalConnectorSettingsDraft.settings;
-  bool edited = false;
-  ImGui::BeginDisabled(disabled);
+  CreativeDesktopPropertyEditActivity editActivity;
+  ImGui::BeginDisabled(
+      disabled || worldLayout.verticalConnectorManipulation.active);
   ImGui::SetNextItemWidth(188.0F);
+  bool kindEdited = false;
   if (ImGui::BeginCombo(
           "Kind##generated_vertical_connector",
           creativeEditorWorldLayoutVerticalConnectorKindLabel(settings.kind))) {
@@ -81,7 +83,7 @@ void appendGeneratedVerticalConnectorSettings(
               creativeEditorWorldLayoutVerticalConnectorKindLabel(kind),
               selected)) {
         settings.kind = kind;
-        edited = true;
+        kindEdited = true;
       }
       if (selected) {
         ImGui::SetItemDefaultFocus();
@@ -89,7 +91,9 @@ void appendGeneratedVerticalConnectorSettings(
     }
     ImGui::EndCombo();
   }
+  observeCreativeDesktopDiscretePropertyEdit(editActivity, kindEdited);
   ImGui::SetNextItemWidth(188.0F);
+  bool directionEdited = false;
   if (ImGui::BeginCombo(
           "Direction##generated_vertical_connector",
           creativeEditorWorldLayoutVerticalConnectorDirectionLabel(
@@ -105,7 +109,7 @@ void appendGeneratedVerticalConnectorSettings(
                   direction),
               selected)) {
         settings.direction = direction;
-        edited = true;
+        directionEdited = true;
       }
       if (selected) {
         ImGui::SetItemDefaultFocus();
@@ -113,12 +117,15 @@ void appendGeneratedVerticalConnectorSettings(
     }
     ImGui::EndCombo();
   }
-  if (ImGui::Button("Flip rise##generated_vertical_connector")) {
+  observeCreativeDesktopDiscretePropertyEdit(editActivity, directionEdited);
+  const bool flipEdited =
+      ImGui::Button("Flip rise##generated_vertical_connector");
+  if (flipEdited) {
     settings.direction =
         oppositeCreativeEditorWorldLayoutVerticalConnectorDirection(
             settings.direction);
-    edited = true;
   }
+  observeCreativeDesktopDiscretePropertyEdit(editActivity, flipEdited);
 
   std::array<int, 2U> origin = {settings.footprint.minimum.x,
                                 settings.footprint.minimum.z};
@@ -138,10 +145,13 @@ void appendGeneratedVerticalConnectorSettings(
   ImGui::SetNextItemWidth(188.0F);
   const bool originEdited = ImGui::InputInt2(
       "Origin X/Z##generated_vertical_connector", origin.data());
+  observeCreativeDesktopContinuousPropertyEdit(
+      editActivity, originEdited, ImGui::IsItemDeactivatedAfterEdit());
   ImGui::SetNextItemWidth(188.0F);
   const bool sizeEdited = ImGui::InputInt2(
       "Size W/D##generated_vertical_connector", size.data());
-  edited = originEdited || sizeEdited || edited;
+  observeCreativeDesktopContinuousPropertyEdit(
+      editActivity, sizeEdited, ImGui::IsItemDeactivatedAfterEdit());
   ImGui::EndDisabled();
 
   const std::int64_t maximumX =
@@ -168,40 +178,32 @@ void appendGeneratedVerticalConnectorSettings(
     ImGui::TextColored({0.94F, 0.45F, 0.32F, 1.0F},
                        "Connector footprint must be positive and in range");
   }
-  if (edited) {
-    if (representable) {
-      commands.push(
-          CreativeDesktopCommandId::
-              WorldLayoutPreviewGeneratedVerticalConnectorSettings,
-          CreativeDesktopGeneratedVerticalConnectorSettingsPayload{objectId,
-                                                                    settings});
-    } else if (creativeEditorWorldLayoutPreviewActive(worldLayout)) {
-      commands.push(CreativeDesktopCommandId::
-                        WorldLayoutCancelGeneratedSettingsPreview);
-    }
-  }
-
-  const bool dirty = !sameConnectorSettings(current, settings);
-  ImGui::BeginDisabled(disabled || !dirty || !representable ||
-                       worldLayout.verticalConnectorManipulation.active);
-  if (ImGui::Button("Update connector in 3D")) {
-    commands.push(
-        CreativeDesktopCommandId::
-            WorldLayoutApplyGeneratedVerticalConnectorSettings,
-        CreativeDesktopGeneratedVerticalConnectorSettingsPayload{objectId,
-                                                                  settings});
-  }
-  ImGui::EndDisabled();
-  ImGui::SameLine();
+  bool dirty = !sameConnectorSettings(current, settings);
+  bool resetRequested = false;
   ImGui::BeginDisabled(disabled || !dirty);
   if (ImGui::Button("Reset##generated_vertical_connector")) {
     worldLayout.verticalConnectorSettingsDraft.settings = current;
-    if (creativeEditorWorldLayoutPreviewActive(worldLayout)) {
-      commands.push(CreativeDesktopCommandId::
-                        WorldLayoutCancelGeneratedSettingsPreview);
-    }
+    dirty = false;
+    resetRequested = true;
   }
   ImGui::EndDisabled();
+
+  const CreativeDesktopPropertyEditIntent intent =
+      resolveCreativeDesktopPropertyEditIntent(
+          editActivity, dirty,
+          representable &&
+              !worldLayout.verticalConnectorManipulation.active,
+          creativeEditorWorldLayoutPreviewActive(worldLayout),
+          resetRequested);
+  queueCreativeDesktopGeneratedPropertyEdit(
+      intent,
+      CreativeDesktopCommandId::
+          WorldLayoutPreviewGeneratedVerticalConnectorSettings,
+      CreativeDesktopCommandId::
+          WorldLayoutApplyGeneratedVerticalConnectorSettings,
+      CreativeDesktopGeneratedVerticalConnectorSettingsPayload{
+          objectId, worldLayout.verticalConnectorSettingsDraft.settings},
+      commands);
 }
 
 void appendGeneratedWallSettings(
@@ -232,6 +234,7 @@ void appendGeneratedWallSettings(
 
   CreativeEditorWorldLayoutWallSettings& settings =
       worldLayout.wallSettingsDraft.settings;
+  CreativeDesktopPropertyEditActivity editActivity;
   double baseLayer = settings.baseLayer;
   int heightCells = settings.heightCells;
   double thicknessCells = settings.thicknessCells;
@@ -241,12 +244,19 @@ void appendGeneratedWallSettings(
   ImGui::SetNextItemWidth(112.0F);
   const bool baseEdited = ImGui::InputDouble(
       "Base layer##generated_wall", &baseLayer, 0.5, 1.0, "%.2f");
+  observeCreativeDesktopContinuousPropertyEdit(
+      editActivity, baseEdited, ImGui::IsItemDeactivatedAfterEdit());
   ImGui::SetNextItemWidth(112.0F);
   const bool heightEdited = ImGui::InputInt(
       "Height##generated_wall", &heightCells, 1, 2);
+  observeCreativeDesktopContinuousPropertyEdit(
+      editActivity, heightEdited, ImGui::IsItemDeactivatedAfterEdit());
   ImGui::SetNextItemWidth(112.0F);
   const bool thicknessEdited = ImGui::InputDouble(
       "Thickness##generated_wall", &thicknessCells, 0.05, 0.25, "%.3f");
+  observeCreativeDesktopContinuousPropertyEdit(
+      editActivity, thicknessEdited,
+      ImGui::IsItemDeactivatedAfterEdit());
   ImGui::EndDisabled();
   const bool representable =
       std::isfinite(baseLayer) && std::isfinite(thicknessCells) &&
@@ -256,43 +266,36 @@ void appendGeneratedWallSettings(
     settings.heightCells = static_cast<std::uint16_t>(heightCells);
     settings.thicknessCells = thicknessCells;
   }
-  const bool edited = baseEdited || heightEdited || thicknessEdited;
-  if (edited) {
-    if (representable) {
-      commands.push(
-          CreativeDesktopCommandId::WorldLayoutPreviewGeneratedWallSettings,
-          CreativeDesktopGeneratedWallSettingsPayload{objectId, settings});
-    } else if (creativeEditorWorldLayoutPreviewActive(worldLayout)) {
-      commands.push(CreativeDesktopCommandId::
-                        WorldLayoutCancelGeneratedSettingsPreview);
-    }
-  }
   if (!representable) {
     ImGui::TextColored({0.94F, 0.45F, 0.32F, 1.0F},
                        "Height and thickness must be positive");
   }
-  const bool dirty =
+  bool dirty =
       current.start != settings.start || current.end != settings.end ||
       current.baseLayer != settings.baseLayer ||
       current.heightCells != settings.heightCells ||
       current.thicknessCells != settings.thicknessCells;
-  ImGui::BeginDisabled(disabled || !dirty || !representable);
-  if (ImGui::Button("Update partition in 3D")) {
-    commands.push(
-        CreativeDesktopCommandId::WorldLayoutApplyGeneratedWallSettings,
-        CreativeDesktopGeneratedWallSettingsPayload{objectId, settings});
-  }
-  ImGui::EndDisabled();
-  ImGui::SameLine();
+  bool resetRequested = false;
   ImGui::BeginDisabled(disabled || !dirty);
   if (ImGui::Button("Reset##generated_wall")) {
     worldLayout.wallSettingsDraft.settings = current;
-    if (creativeEditorWorldLayoutPreviewActive(worldLayout)) {
-      commands.push(CreativeDesktopCommandId::
-                        WorldLayoutCancelGeneratedSettingsPreview);
-    }
+    dirty = false;
+    resetRequested = true;
   }
   ImGui::EndDisabled();
+
+  const CreativeDesktopPropertyEditIntent intent =
+      resolveCreativeDesktopPropertyEditIntent(
+          editActivity, dirty, representable,
+          creativeEditorWorldLayoutPreviewActive(worldLayout),
+          resetRequested);
+  queueCreativeDesktopGeneratedPropertyEdit(
+      intent,
+      CreativeDesktopCommandId::WorldLayoutPreviewGeneratedWallSettings,
+      CreativeDesktopCommandId::WorldLayoutApplyGeneratedWallSettings,
+      CreativeDesktopGeneratedWallSettingsPayload{
+          objectId, worldLayout.wallSettingsDraft.settings},
+      commands);
 }
 
 void appendGeneratedOpeningSettings(
@@ -326,21 +329,28 @@ void appendGeneratedOpeningSettings(
       worldLayout.source.openings[provenance.index];
   CreativeEditorWorldLayoutOpeningSettings& settings =
       worldLayout.openingSettingsDraft.settings;
+  CreativeDesktopPropertyEditActivity editActivity;
   const bool door = opening.kind == cr::CreativeBuildingOpeningKind::Door;
   ImGui::TextDisabled("%s source", door ? "Door" : "Window");
   ImGui::BeginDisabled(disabled);
   ImGui::SetNextItemWidth(112.0F);
-  bool edited = ImGui::InputDouble("Offset##generated_opening",
-                                   &settings.centerOffsetCells, 0.25, 1.0,
-                                   "%.2f");
+  const bool offsetEdited = ImGui::InputDouble(
+      "Offset##generated_opening", &settings.centerOffsetCells, 0.25, 1.0,
+      "%.2f");
+  observeCreativeDesktopContinuousPropertyEdit(
+      editActivity, offsetEdited, ImGui::IsItemDeactivatedAfterEdit());
   ImGui::SetNextItemWidth(112.0F);
-  edited = ImGui::InputDouble("Width##generated_opening",
-                              &settings.widthCells, 0.25, 1.0, "%.2f") ||
-           edited;
+  const bool widthEdited = ImGui::InputDouble(
+      "Width##generated_opening", &settings.widthCells, 0.25, 1.0,
+      "%.2f");
+  observeCreativeDesktopContinuousPropertyEdit(
+      editActivity, widthEdited, ImGui::IsItemDeactivatedAfterEdit());
   ImGui::SetNextItemWidth(112.0F);
-  edited = ImGui::InputDouble("Height##generated_opening",
-                              &settings.heightCells, 0.25, 1.0, "%.2f") ||
-           edited;
+  const bool heightEdited = ImGui::InputDouble(
+      "Height##generated_opening", &settings.heightCells, 0.25, 1.0,
+      "%.2f");
+  observeCreativeDesktopContinuousPropertyEdit(
+      editActivity, heightEdited, ImGui::IsItemDeactivatedAfterEdit());
   if (door) {
     settings.sillHeightCells = 0.0;
     constexpr std::array<const char*, 5U> kPoseLabels = {
@@ -348,22 +358,25 @@ void appendGeneratedOpeningSettings(
         "End hinge / side A", "End hinge / side B"};
     int pose = static_cast<int>(settings.pose);
     ImGui::SetNextItemWidth(188.0F);
-    if (ImGui::Combo("Pose##generated_opening", &pose, kPoseLabels.data(),
-                     static_cast<int>(kPoseLabels.size()))) {
+    const bool poseEdited = ImGui::Combo(
+        "Pose##generated_opening", &pose, kPoseLabels.data(),
+        static_cast<int>(kPoseLabels.size()));
+    if (poseEdited) {
       settings.pose = static_cast<cr::CreativeBuildingOpeningPose>(pose);
-      edited = true;
     }
+    observeCreativeDesktopDiscretePropertyEdit(editActivity, poseEdited);
   } else {
     settings.pose = cr::CreativeBuildingOpeningPose::Closed;
     ImGui::SetNextItemWidth(112.0F);
-    edited = ImGui::InputDouble("Sill##generated_opening",
-                                &settings.sillHeightCells, 0.25, 1.0,
-                                "%.2f") ||
-             edited;
+    const bool sillEdited = ImGui::InputDouble(
+        "Sill##generated_opening", &settings.sillHeightCells, 0.25, 1.0,
+        "%.2f");
+    observeCreativeDesktopContinuousPropertyEdit(
+        editActivity, sillEdited, ImGui::IsItemDeactivatedAfterEdit());
   }
-  edited = ImGui::Checkbox("Include insert##generated_opening",
-                           &settings.includeInsert) ||
-           edited;
+  const bool insertEdited = ImGui::Checkbox(
+      "Include insert##generated_opening", &settings.includeInsert);
+  observeCreativeDesktopDiscretePropertyEdit(editActivity, insertEdited);
   ImGui::EndDisabled();
 
   const bool representable =
@@ -376,40 +389,34 @@ void appendGeneratedOpeningSettings(
     ImGui::TextColored({0.94F, 0.45F, 0.32F, 1.0F},
                        "Opening dimensions must be finite and positive");
   }
-  if (edited) {
-    if (representable) {
-      commands.push(
-          CreativeDesktopCommandId::WorldLayoutPreviewGeneratedOpeningSettings,
-          CreativeDesktopGeneratedOpeningSettingsPayload{objectId, settings});
-    } else if (creativeEditorWorldLayoutPreviewActive(worldLayout)) {
-      commands.push(CreativeDesktopCommandId::
-                        WorldLayoutCancelGeneratedSettingsPreview);
-    }
-  }
-  const bool dirty =
+  bool dirty =
       current.centerOffsetCells != settings.centerOffsetCells ||
       current.widthCells != settings.widthCells ||
       current.sillHeightCells != settings.sillHeightCells ||
       current.heightCells != settings.heightCells ||
       current.pose != settings.pose ||
       current.includeInsert != settings.includeInsert;
-  ImGui::BeginDisabled(disabled || !dirty || !representable);
-  if (ImGui::Button("Update opening in 3D")) {
-    commands.push(
-        CreativeDesktopCommandId::WorldLayoutApplyGeneratedOpeningSettings,
-        CreativeDesktopGeneratedOpeningSettingsPayload{objectId, settings});
-  }
-  ImGui::EndDisabled();
-  ImGui::SameLine();
+  bool resetRequested = false;
   ImGui::BeginDisabled(disabled || !dirty);
   if (ImGui::Button("Reset##generated_opening")) {
     worldLayout.openingSettingsDraft.settings = current;
-    if (creativeEditorWorldLayoutPreviewActive(worldLayout)) {
-      commands.push(CreativeDesktopCommandId::
-                        WorldLayoutCancelGeneratedSettingsPreview);
-    }
+    dirty = false;
+    resetRequested = true;
   }
   ImGui::EndDisabled();
+
+  const CreativeDesktopPropertyEditIntent intent =
+      resolveCreativeDesktopPropertyEditIntent(
+          editActivity, dirty, representable,
+          creativeEditorWorldLayoutPreviewActive(worldLayout),
+          resetRequested);
+  queueCreativeDesktopGeneratedPropertyEdit(
+      intent,
+      CreativeDesktopCommandId::WorldLayoutPreviewGeneratedOpeningSettings,
+      CreativeDesktopCommandId::WorldLayoutApplyGeneratedOpeningSettings,
+      CreativeDesktopGeneratedOpeningSettingsPayload{
+          objectId, worldLayout.openingSettingsDraft.settings},
+      commands);
 }
 
 }  // namespace

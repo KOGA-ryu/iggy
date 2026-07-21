@@ -59,6 +59,7 @@ void appendCreativeDesktopGeneratedLevelSettings(
 
   CreativeEditorWorldLayoutLevelSettings& settings =
       worldLayout.generatedLevelSettingsDraft.settings;
+  CreativeDesktopPropertyEditActivity editActivity;
   int wallHeight = settings.wallHeightCells;
   int floorLayers = settings.floorThicknessLayers;
   int ceilingLayers = settings.ceilingThicknessLayers;
@@ -67,29 +68,43 @@ void appendCreativeDesktopGeneratedLevelSettings(
   ImGui::BeginDisabled(disabled);
   ImGui::SeparatorText("Level shell");
   ImGui::SetNextItemWidth(188.0F);
-  bool edited = creativeDesktopInputTextStdString(
+  const bool nameEdited = creativeDesktopInputTextStdString(
       "Name##generated_level", &settings.name);
+  observeCreativeDesktopContinuousPropertyEdit(
+      editActivity, nameEdited, ImGui::IsItemDeactivatedAfterEdit());
   ImGui::SetNextItemWidth(112.0F);
-  edited = ImGui::InputDouble("Floor top##generated_level",
-                              &settings.floorTopLayer, 0.5, 1.0, "%.2f") ||
-           edited;
+  const bool floorTopEdited = ImGui::InputDouble(
+      "Floor top##generated_level", &settings.floorTopLayer, 0.5, 1.0,
+      "%.2f");
+  observeCreativeDesktopContinuousPropertyEdit(
+      editActivity, floorTopEdited, ImGui::IsItemDeactivatedAfterEdit());
   ImGui::SetNextItemWidth(112.0F);
   const bool wallHeightEdited = ImGui::InputInt(
       "Wall height##generated_level", &wallHeight, 1, 2);
+  observeCreativeDesktopContinuousPropertyEdit(
+      editActivity, wallHeightEdited, ImGui::IsItemDeactivatedAfterEdit());
 
   ImGui::SeparatorText("Slabs");
   ImGui::SetNextItemWidth(112.0F);
   const bool floorLayersEdited = ImGui::InputInt(
       "Floor layers##generated_level", &floorLayers, 1, 2);
+  observeCreativeDesktopContinuousPropertyEdit(
+      editActivity, floorLayersEdited, ImGui::IsItemDeactivatedAfterEdit());
   ImGui::SetNextItemWidth(112.0F);
   const bool ceilingLayersEdited = ImGui::InputInt(
       "Ceiling layers##generated_level", &ceilingLayers, 1, 2);
+  observeCreativeDesktopContinuousPropertyEdit(
+      editActivity, ceilingLayersEdited,
+      ImGui::IsItemDeactivatedAfterEdit());
   ImGui::SetNextItemWidth(112.0F);
   const bool roofLayersEdited = ImGui::InputInt(
       "Roof layers##generated_level", &roofLayers, 1, 2);
+  observeCreativeDesktopContinuousPropertyEdit(
+      editActivity, roofLayersEdited, ImGui::IsItemDeactivatedAfterEdit());
 
   ImGui::SeparatorText("Roof shape");
   ImGui::SetNextItemWidth(148.0F);
+  bool roofStyleEdited = false;
   if (ImGui::BeginCombo(
           "Style##generated_level",
           settings.roofStyle == cr::CreativeStructuralRoofStyle::Gable
@@ -104,7 +119,7 @@ void appendCreativeDesktopGeneratedLevelSettings(
                                                                : "Flat",
               selected)) {
         settings.roofStyle = style;
-        edited = true;
+        roofStyleEdited = true;
       }
       if (selected) {
         ImGui::SetItemDefaultFocus();
@@ -112,13 +127,16 @@ void appendCreativeDesktopGeneratedLevelSettings(
     }
     ImGui::EndCombo();
   }
+  observeCreativeDesktopDiscretePropertyEdit(editActivity, roofStyleEdited);
   ImGui::SetNextItemWidth(112.0F);
-  edited = ImGui::InputDouble("Overhang##generated_level",
-                              &settings.roofOverhangCells, 0.25, 1.0,
-                              "%.2f") ||
-           edited;
+  const bool overhangEdited = ImGui::InputDouble(
+      "Overhang##generated_level", &settings.roofOverhangCells, 0.25, 1.0,
+      "%.2f");
+  observeCreativeDesktopContinuousPropertyEdit(
+      editActivity, overhangEdited, ImGui::IsItemDeactivatedAfterEdit());
   if (settings.roofStyle == cr::CreativeStructuralRoofStyle::Gable) {
     ImGui::SetNextItemWidth(148.0F);
+    bool ridgeEdited = false;
     if (ImGui::BeginCombo(
             "Ridge##generated_level",
             settings.roofRidgeAxis == cr::CreativeStructuralRoofRidgeAxis::Z
@@ -133,7 +151,7 @@ void appendCreativeDesktopGeneratedLevelSettings(
                                                                 : "X axis",
                 selected)) {
           settings.roofRidgeAxis = axis;
-          edited = true;
+          ridgeEdited = true;
         }
         if (selected) {
           ImGui::SetItemDefaultFocus();
@@ -141,16 +159,16 @@ void appendCreativeDesktopGeneratedLevelSettings(
       }
       ImGui::EndCombo();
     }
+    observeCreativeDesktopDiscretePropertyEdit(editActivity, ridgeEdited);
     ImGui::SetNextItemWidth(112.0F);
-    edited = ImGui::InputDouble("Pitch##generated_level",
-                                &settings.roofPitchDegrees, 1.0, 5.0,
-                                "%.1f deg") ||
-             edited;
+    const bool pitchEdited = ImGui::InputDouble(
+        "Pitch##generated_level", &settings.roofPitchDegrees, 1.0, 5.0,
+        "%.1f deg");
+    observeCreativeDesktopContinuousPropertyEdit(
+        editActivity, pitchEdited, ImGui::IsItemDeactivatedAfterEdit());
   }
   ImGui::EndDisabled();
 
-  edited = wallHeightEdited || floorLayersEdited || ceilingLayersEdited ||
-           roofLayersEdited || edited;
   const bool layersRepresentable =
       wallHeight > 0 && wallHeight <= 65535 && floorLayers > 0 &&
       floorLayers <= 65535 && ceilingLayers > 0 &&
@@ -175,37 +193,29 @@ void appendCreativeDesktopGeneratedLevelSettings(
     ImGui::TextColored({0.94F, 0.45F, 0.32F, 1.0F},
                        "Level shell settings are outside valid bounds");
   }
-  if (edited) {
-    if (representable) {
-      commands.push(
-          CreativeDesktopCommandId::WorldLayoutPreviewGeneratedLevelSettings,
-          CreativeDesktopGeneratedLevelSettingsPayload{
-              objectId, provenance.index, level.stableKey, settings});
-    } else if (creativeEditorWorldLayoutPreviewActive(worldLayout)) {
-      commands.push(CreativeDesktopCommandId::
-                        WorldLayoutCancelGeneratedSettingsPreview);
-    }
-  }
-
-  const bool dirty = !(current == settings);
-  ImGui::BeginDisabled(disabled || !dirty || !representable);
-  if (ImGui::Button("Update level shell in 3D")) {
-    commands.push(
-        CreativeDesktopCommandId::WorldLayoutApplyGeneratedLevelSettings,
-        CreativeDesktopGeneratedLevelSettingsPayload{
-            objectId, provenance.index, level.stableKey, settings});
-  }
-  ImGui::EndDisabled();
-  ImGui::SameLine();
+  bool dirty = !(current == settings);
+  bool resetRequested = false;
   ImGui::BeginDisabled(disabled || !dirty);
   if (ImGui::Button("Reset##generated_level")) {
     worldLayout.generatedLevelSettingsDraft.settings = current;
-    if (creativeEditorWorldLayoutPreviewActive(worldLayout)) {
-      commands.push(CreativeDesktopCommandId::
-                        WorldLayoutCancelGeneratedSettingsPreview);
-    }
+    dirty = false;
+    resetRequested = true;
   }
   ImGui::EndDisabled();
+
+  const CreativeDesktopPropertyEditIntent intent =
+      resolveCreativeDesktopPropertyEditIntent(
+          editActivity, dirty, representable,
+          creativeEditorWorldLayoutPreviewActive(worldLayout),
+          resetRequested);
+  queueCreativeDesktopGeneratedPropertyEdit(
+      intent,
+      CreativeDesktopCommandId::WorldLayoutPreviewGeneratedLevelSettings,
+      CreativeDesktopCommandId::WorldLayoutApplyGeneratedLevelSettings,
+      CreativeDesktopGeneratedLevelSettingsPayload{
+          objectId, provenance.index, level.stableKey,
+          worldLayout.generatedLevelSettingsDraft.settings},
+      commands);
 }
 
 }  // namespace iggy3d_creative_app

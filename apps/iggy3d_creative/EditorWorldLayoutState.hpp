@@ -8,6 +8,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <variant>
 #include <vector>
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
@@ -160,6 +161,22 @@ struct CreativeEditorWorldLayoutRoomSettings {
   double roofPitchDegrees =
       cr::kDefaultCreativeStructuralRoofPitchDegrees;
   double roofOverhangCells = 0.0;
+
+  [[nodiscard]] friend bool operator==(
+      const CreativeEditorWorldLayoutRoomSettings& lhs,
+      const CreativeEditorWorldLayoutRoomSettings& rhs) noexcept {
+    return lhs.footprint.minimum == rhs.footprint.minimum &&
+           lhs.footprint.maximum == rhs.footprint.maximum &&
+           lhs.floorTopLayer == rhs.floorTopLayer &&
+           lhs.wallHeightCells == rhs.wallHeightCells &&
+           lhs.wallThicknessCells == rhs.wallThicknessCells &&
+           lhs.floorThicknessLayers == rhs.floorThicknessLayers &&
+           lhs.roofThicknessLayers == rhs.roofThicknessLayers &&
+           lhs.roofStyle == rhs.roofStyle &&
+           lhs.roofRidgeAxis == rhs.roofRidgeAxis &&
+           lhs.roofPitchDegrees == rhs.roofPitchDegrees &&
+           lhs.roofOverhangCells == rhs.roofOverhangCells;
+  }
 };
 
 struct CreativeEditorWorldLayoutBuildingBlockoutSettings {
@@ -239,6 +256,14 @@ struct CreativeEditorWorldLayoutVerticalConnectorSettings {
       cr::CreativeWorldLayoutVerticalConnectorKind::Stair;
   cr::CreativeWorldLayoutVerticalDirection direction =
       cr::CreativeWorldLayoutVerticalDirection::PositiveZ;
+
+  [[nodiscard]] friend bool operator==(
+      CreativeEditorWorldLayoutVerticalConnectorSettings lhs,
+      CreativeEditorWorldLayoutVerticalConnectorSettings rhs) noexcept {
+    return lhs.footprint.minimum == rhs.footprint.minimum &&
+           lhs.footprint.maximum == rhs.footprint.maximum &&
+           lhs.kind == rhs.kind && lhs.direction == rhs.direction;
+  }
 };
 
 struct CreativeEditorWorldLayoutVerticalConnectorSettingsDraft {
@@ -279,6 +304,15 @@ struct CreativeEditorWorldLayoutBoxSettings {
   cr::CreativeWorldLayoutRect footprint;
   double anchorLayer = 0.0;
   std::uint16_t layerCount = 1U;
+
+  [[nodiscard]] friend bool operator==(
+      CreativeEditorWorldLayoutBoxSettings lhs,
+      CreativeEditorWorldLayoutBoxSettings rhs) noexcept {
+    return lhs.footprint.minimum == rhs.footprint.minimum &&
+           lhs.footprint.maximum == rhs.footprint.maximum &&
+           lhs.anchorLayer == rhs.anchorLayer &&
+           lhs.layerCount == rhs.layerCount;
+  }
 };
 
 struct CreativeEditorWorldLayoutBoxSettingsDraft {
@@ -314,6 +348,10 @@ struct CreativeEditorWorldLayoutWallSettings {
       cr::kDefaultCreativeWorldLayoutWallHeightCells;
   double thicknessCells =
       cr::kDefaultCreativeWorldLayoutWallThicknessCells;
+
+  [[nodiscard]] friend bool operator==(
+      CreativeEditorWorldLayoutWallSettings,
+      CreativeEditorWorldLayoutWallSettings) noexcept = default;
 };
 
 struct CreativeEditorWorldLayoutWallSettingsDraft {
@@ -488,6 +526,10 @@ struct CreativeEditorWorldLayoutOpeningSettings {
   cr::CreativeBuildingOpeningPose pose =
       cr::CreativeBuildingOpeningPose::Closed;
   bool includeInsert = true;
+
+  [[nodiscard]] friend bool operator==(
+      CreativeEditorWorldLayoutOpeningSettings,
+      CreativeEditorWorldLayoutOpeningSettings) noexcept = default;
 };
 
 struct CreativeEditorWorldLayoutOpeningSettingsDraft {
@@ -762,6 +804,25 @@ struct CreativeEditorWorldLayoutObjectSettingsDraft {
   CreativeEditorWorldLayoutObjectSettings settings;
 };
 
+using CreativeEditorWorldLayoutPropertySettings = std::variant<
+    CreativeEditorWorldLayoutLevelSettings,
+    CreativeEditorWorldLayoutRoomSettings,
+    CreativeEditorWorldLayoutVerticalConnectorSettings,
+    CreativeEditorWorldLayoutBoxSettings,
+    CreativeEditorWorldLayoutWallSettings,
+    CreativeEditorWorldLayoutOpeningSettings,
+    CreativeEditorWorldLayoutTerrainProfileSettings,
+    CreativeEditorWorldLayoutTerrainPathSettings,
+    CreativeEditorWorldLayoutObjectSettings>;
+
+struct CreativeEditorWorldLayoutPropertyPreviewKey {
+  bool active = false;
+  std::uint64_t sourceRevision = 0U;
+  cr::CreativeWorldLayoutTable table = cr::CreativeWorldLayoutTable::None;
+  std::size_t index = cr::kInvalidCreativeWorldLayoutIndex;
+  CreativeEditorWorldLayoutPropertySettings settings;
+};
+
 struct CreativeEditorWorldLayoutObjectManipulationState {
   bool active = false;
   std::uint64_t sourceRevision = 0U;
@@ -943,6 +1004,7 @@ struct CreativeEditorWorldLayoutState {
   // True only while an active 2D edit owns the exact 3D preview. Explicit
   // previews and generated-settings previews leave this false.
   bool liveEditPreviewVisible = false;
+  CreativeEditorWorldLayoutPropertyPreviewKey propertyPreviewKey;
   std::uint64_t previewLayoutRevision = 0U;
   std::uint64_t previewContentRevision = 0U;
   cr::CreativeWorldLayoutPreviewResult preview;

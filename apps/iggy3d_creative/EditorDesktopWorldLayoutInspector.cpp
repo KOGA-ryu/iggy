@@ -1,6 +1,7 @@
 #include "EditorDesktopWorldLayoutInspector.hpp"
 
 #include "EditorDesktopUi.hpp"
+#include "EditorDesktopWidgets.hpp"
 #include "EditorDesktopWorldLayoutArchitectureInspector.hpp"
 
 #include "app/iggy3d/creative/world/WorldLayoutDimensions.hpp"
@@ -14,22 +15,6 @@
 
 namespace iggy3d_creative_app {
 namespace {
-
-bool sameBoxSettings(const CreativeEditorWorldLayoutBoxSettings& lhs,
-                     const CreativeEditorWorldLayoutBoxSettings& rhs) noexcept {
-  return lhs.footprint.minimum == rhs.footprint.minimum &&
-         lhs.footprint.maximum == rhs.footprint.maximum &&
-         lhs.anchorLayer == rhs.anchorLayer && lhs.layerCount == rhs.layerCount;
-}
-
-bool sameWallSettings(
-    const CreativeEditorWorldLayoutWallSettings& lhs,
-    const CreativeEditorWorldLayoutWallSettings& rhs) noexcept {
-  return lhs.start == rhs.start && lhs.end == rhs.end &&
-         lhs.baseLayer == rhs.baseLayer &&
-         lhs.heightCells == rhs.heightCells &&
-         lhs.thicknessCells == rhs.thicknessCells;
-}
 
 const char* boxSettingsTitle(cr::CreativeObjectKind kind) noexcept {
   switch (kind) {
@@ -46,15 +31,6 @@ const char* boxAnchorLabel(cr::CreativeObjectKind kind) noexcept {
     case cr::CreativeObjectKind::Ceiling:
     case cr::CreativeObjectKind::Roof: return "Support##layout_box";
     default: return "Base##layout_box";
-  }
-}
-
-const char* boxApplyLabel(cr::CreativeObjectKind kind) noexcept {
-  switch (kind) {
-    case cr::CreativeObjectKind::Floor: return "Apply floor";
-    case cr::CreativeObjectKind::Ceiling: return "Apply ceiling";
-    case cr::CreativeObjectKind::Roof: return "Apply roof";
-    default: return "Apply volume";
   }
 }
 
@@ -539,27 +515,36 @@ void drawBoxSettings(CreativeEditorWorldLayoutState& state,
       std::numeric_limits<int>::max()));
   double anchorLayer = settings.anchorLayer;
   int layerCount = settings.layerCount;
-  const cr::CreativeObjectKind kind = state.source.boxes[boxIndex].kind;
+  const cr::CreativeWorldLayoutBox& box = state.source.boxes[boxIndex];
+  const cr::CreativeObjectKind kind = box.kind;
+  CreativeDesktopPropertyEditActivity activity;
+  bool edited = false;
+  const auto observe = [&](bool changed) {
+    edited = edited || changed;
+    observeCreativeDesktopContinuousPropertyWidget(activity, changed);
+  };
+
+  ImGui::BeginDisabled(state.boxManipulation.active);
   ImGui::TextUnformatted(boxSettingsTitle(kind));
   ImGui::SetNextItemWidth(84.0F);
-  bool edited = ImGui::InputInt("X##layout_box", &originX, 1, 4);
+  observe(ImGui::InputInt("X##layout_box", &originX, 1, 4));
   ImGui::SameLine();
   ImGui::SetNextItemWidth(84.0F);
-  edited = ImGui::InputInt("Z##layout_box", &originZ, 1, 4) || edited;
+  observe(ImGui::InputInt("Z##layout_box", &originZ, 1, 4));
   ImGui::SameLine();
   ImGui::SetNextItemWidth(84.0F);
-  edited = ImGui::InputInt("Width##layout_box", &width, 1, 4) || edited;
+  observe(ImGui::InputInt("Width##layout_box", &width, 1, 4));
   ImGui::SameLine();
   ImGui::SetNextItemWidth(84.0F);
-  edited = ImGui::InputInt("Depth##layout_box", &depth, 1, 4) || edited;
+  observe(ImGui::InputInt("Depth##layout_box", &depth, 1, 4));
 
   ImGui::SetNextItemWidth(92.0F);
-  edited = ImGui::InputDouble(boxAnchorLabel(kind), &anchorLayer, 0.25, 1.0,
-                              "%.2f") ||
-           edited;
+  observe(ImGui::InputDouble(boxAnchorLabel(kind), &anchorLayer, 0.25, 1.0,
+                             "%.2f"));
   ImGui::SameLine();
   ImGui::SetNextItemWidth(84.0F);
-  edited = ImGui::InputInt("Layers##layout_box", &layerCount, 1, 2) || edited;
+  observe(ImGui::InputInt("Layers##layout_box", &layerCount, 1, 2));
+  ImGui::EndDisabled();
 
   const std::int64_t maximumX =
       static_cast<std::int64_t>(originX) + width;
@@ -585,21 +570,9 @@ void drawBoxSettings(CreativeEditorWorldLayoutState& state,
                        "surface dimensions must be finite and positive");
   }
 
-  const bool dirty = !sameBoxSettings(current, settings);
-  ImGui::BeginDisabled(!dirty || !valuesRepresentable ||
-                       state.boxManipulation.active);
-  if (ImGui::Button(boxApplyLabel(kind))) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutSetBoxSettings,
-                  CreativeDesktopWorldLayoutBoxSettingsPayload{boxIndex,
-                                                               settings});
-  }
-  ImGui::EndDisabled();
-  ImGui::SameLine();
-  ImGui::BeginDisabled(!dirty);
-  if (ImGui::Button("Reset floor")) {
-    state.boxSettingsDraft.settings = current;
-  }
-  ImGui::EndDisabled();
+  finishCreativeDesktopWorldLayoutPropertyEdit(
+      activity, current, settings, valuesRepresentable, "Reset surface",
+      state, boxIndex, box.stableKey, commands);
 }
 
 void drawWallSettings(CreativeEditorWorldLayoutState& state,
@@ -630,31 +603,39 @@ void drawWallSettings(CreativeEditorWorldLayoutState& state,
   double baseLayer = settings.baseLayer;
   int height = settings.heightCells;
   double thicknessCells = settings.thicknessCells;
+  const cr::CreativeWorldLayoutWall& wall = state.source.walls[wallIndex];
+  CreativeDesktopPropertyEditActivity activity;
+  bool edited = false;
+  const auto observe = [&](bool changed) {
+    edited = edited || changed;
+    observeCreativeDesktopContinuousPropertyWidget(activity, changed);
+  };
+
+  ImGui::BeginDisabled(state.wallManipulation.active);
   ImGui::TextUnformatted("Partition settings");
   ImGui::SetNextItemWidth(82.0F);
-  bool edited = ImGui::InputInt("Start X##layout_wall", &startX, 1, 4);
+  observe(ImGui::InputInt("Start X##layout_wall", &startX, 1, 4));
   ImGui::SameLine();
   ImGui::SetNextItemWidth(82.0F);
-  edited = ImGui::InputInt("Start Z##layout_wall", &startZ, 1, 4) || edited;
+  observe(ImGui::InputInt("Start Z##layout_wall", &startZ, 1, 4));
   ImGui::SameLine();
   ImGui::SetNextItemWidth(82.0F);
-  edited = ImGui::InputInt("End X##layout_wall", &endX, 1, 4) || edited;
+  observe(ImGui::InputInt("End X##layout_wall", &endX, 1, 4));
   ImGui::SameLine();
   ImGui::SetNextItemWidth(82.0F);
-  edited = ImGui::InputInt("End Z##layout_wall", &endZ, 1, 4) || edited;
+  observe(ImGui::InputInt("End Z##layout_wall", &endZ, 1, 4));
 
   ImGui::SetNextItemWidth(92.0F);
-  edited = ImGui::InputDouble("Base##layout_wall", &baseLayer, 0.5, 1.0,
-                              "%.2f") ||
-           edited;
+  observe(ImGui::InputDouble("Base##layout_wall", &baseLayer, 0.5, 1.0,
+                             "%.2f"));
   ImGui::SameLine();
   ImGui::SetNextItemWidth(92.0F);
-  edited = ImGui::InputInt("Height##layout_wall", &height, 1, 2) || edited;
+  observe(ImGui::InputInt("Height##layout_wall", &height, 1, 2));
   ImGui::SameLine();
   ImGui::SetNextItemWidth(110.0F);
-  edited = ImGui::InputDouble("Thickness##layout_wall", &thicknessCells, 0.05,
-                              0.25, "%.3f") ||
-           edited;
+  observe(ImGui::InputDouble("Thickness##layout_wall", &thicknessCells,
+                             0.05, 0.25, "%.3f"));
+  ImGui::EndDisabled();
 
   const bool valuesRepresentable =
       height > 0 && height <= std::numeric_limits<std::uint16_t>::max() &&
@@ -675,21 +656,9 @@ void drawWallSettings(CreativeEditorWorldLayoutState& state,
                        "partition must be cardinal, positive, and in range");
   }
 
-  const bool dirty = !sameWallSettings(current, settings);
-  ImGui::BeginDisabled(!dirty || !valuesRepresentable ||
-                       state.wallManipulation.active);
-  if (ImGui::Button("Apply partition")) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutSetWallSettings,
-                  CreativeDesktopWorldLayoutWallSettingsPayload{wallIndex,
-                                                                settings});
-  }
-  ImGui::EndDisabled();
-  ImGui::SameLine();
-  ImGui::BeginDisabled(!dirty);
-  if (ImGui::Button("Reset partition")) {
-    state.wallSettingsDraft.settings = current;
-  }
-  ImGui::EndDisabled();
+  finishCreativeDesktopWorldLayoutPropertyEdit(
+      activity, current, settings, valuesRepresentable, "Reset partition",
+      state, wallIndex, wall.stableKey, commands);
 }
 
 }  // namespace

@@ -1,4 +1,5 @@
 #include "EditorDesktopWorldLayoutInspector.hpp"
+#include "EditorDesktopWidgets.hpp"
 
 #include <array>
 #include <cstddef>
@@ -58,15 +59,6 @@ bool u16Combo(const char* id, std::uint16_t& value,
     return std::to_string(choice) + suffix;
   };
   return enumCombo(id, value, choices, label);
-}
-
-void drawApplyReset(bool dirty, const char* applyLabel,
-                    const char* resetLabel, bool& apply, bool& reset) {
-  ImGui::BeginDisabled(!dirty);
-  apply = ImGui::Button(applyLabel);
-  ImGui::SameLine();
-  reset = ImGui::Button(resetLabel);
-  ImGui::EndDisabled();
 }
 
 void drawStableKey(std::string_view stableKey, std::string_view type) {
@@ -140,7 +132,9 @@ void drawTerrainImpactSummary(
 }
 
 void drawVec3Table(const char* id, const char* firstLabel,
-                   cr::CreativeVec3& first, const char* secondLabel = nullptr,
+                   cr::CreativeVec3& first,
+                   CreativeDesktopPropertyEditActivity& activity,
+                   const char* secondLabel = nullptr,
                    cr::CreativeVec3* second = nullptr) {
   if (!ImGui::BeginTable(id, 4, ImGuiTableFlags_SizingStretchSame |
                                    ImGuiTableFlags_BordersInnerV)) {
@@ -151,20 +145,26 @@ void drawVec3Table(const char* id, const char* firstLabel,
   ImGui::TableSetupColumn("Y");
   ImGui::TableSetupColumn("Z");
   ImGui::TableHeadersRow();
-  const auto row = [](const char* label, cr::CreativeVec3& value) {
+  const auto row = [&activity](const char* label, cr::CreativeVec3& value) {
     ImGui::PushID(label);
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
     ImGui::TextUnformatted(label);
     ImGui::TableNextColumn();
     ImGui::SetNextItemWidth(-1.0F);
-    ImGui::InputDouble("##x", &value.x, 0.25, 1.0, "%.3f");
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputDouble("##x", &value.x, 0.25, 1.0, "%.3f"));
     ImGui::TableNextColumn();
     ImGui::SetNextItemWidth(-1.0F);
-    ImGui::InputDouble("##y", &value.y, 0.25, 1.0, "%.3f");
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputDouble("##y", &value.y, 0.25, 1.0, "%.3f"));
     ImGui::TableNextColumn();
     ImGui::SetNextItemWidth(-1.0F);
-    ImGui::InputDouble("##z", &value.z, 0.25, 1.0, "%.3f");
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputDouble("##z", &value.z, 0.25, 1.0, "%.3f"));
     ImGui::PopID();
   };
   row(firstLabel, first);
@@ -195,27 +195,40 @@ void drawLevelInspector(CreativeEditorWorldLayoutState& state,
   CreativeEditorWorldLayoutLevelSettings& draft =
       state.levelSettingsDraft.settings;
   const cr::CreativeWorldLayoutLevel& level = state.source.levels[levelIndex];
+  CreativeDesktopPropertyEditActivity activity;
 
   ImGui::SeparatorText("Level");
   drawStableKey(level.stableKey, "Building level");
-  inputText("Name##layout_level_properties", draft.name);
+  observeCreativeDesktopContinuousPropertyWidget(
+      activity, inputText("Name##layout_level_properties", draft.name));
   ImGui::SetNextItemWidth(140.0F);
-  ImGui::InputDouble("Floor top##layout_level_properties",
-                     &draft.floorTopLayer, 0.25, 1.0, "%.3f");
+  observeCreativeDesktopContinuousPropertyWidget(
+      activity,
+      ImGui::InputDouble("Floor top##layout_level_properties",
+                         &draft.floorTopLayer, 0.25, 1.0, "%.3f"));
   ImGui::SetNextItemWidth(140.0F);
-  ImGui::InputScalar("Wall height##layout_level_properties",
-                     ImGuiDataType_U16, &draft.wallHeightCells);
+  observeCreativeDesktopContinuousPropertyWidget(
+      activity,
+      ImGui::InputScalar("Wall height##layout_level_properties",
+                         ImGuiDataType_U16, &draft.wallHeightCells));
 
   ImGui::SeparatorText("Slabs");
   ImGui::SetNextItemWidth(120.0F);
-  ImGui::InputScalar("Floor##layout_level_properties", ImGuiDataType_U16,
-                     &draft.floorThicknessLayers);
+  observeCreativeDesktopContinuousPropertyWidget(
+      activity,
+      ImGui::InputScalar("Floor##layout_level_properties", ImGuiDataType_U16,
+                         &draft.floorThicknessLayers));
   ImGui::SetNextItemWidth(120.0F);
-  ImGui::InputScalar("Ceiling##layout_level_properties", ImGuiDataType_U16,
-                     &draft.ceilingThicknessLayers);
+  observeCreativeDesktopContinuousPropertyWidget(
+      activity,
+      ImGui::InputScalar("Ceiling##layout_level_properties",
+                         ImGuiDataType_U16,
+                         &draft.ceilingThicknessLayers));
   ImGui::SetNextItemWidth(120.0F);
-  ImGui::InputScalar("Roof##layout_level_properties", ImGuiDataType_U16,
-                     &draft.roofThicknessLayers);
+  observeCreativeDesktopContinuousPropertyWidget(
+      activity,
+      ImGui::InputScalar("Roof##layout_level_properties", ImGuiDataType_U16,
+                         &draft.roofThicknessLayers));
 
   constexpr std::array roofStyles{cr::CreativeStructuralRoofStyle::Flat,
                                   cr::CreativeStructuralRoofStyle::Gable};
@@ -231,31 +244,31 @@ void drawLevelInspector(CreativeEditorWorldLayoutState& state,
   };
   ImGui::SeparatorText("Roof shape");
   ImGui::SetNextItemWidth(140.0F);
-  enumCombo("Style##layout_level_properties", draft.roofStyle, roofStyles,
-            roofStyleLabel);
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      enumCombo("Style##layout_level_properties", draft.roofStyle,
+                roofStyles, roofStyleLabel));
   ImGui::SetNextItemWidth(140.0F);
-  ImGui::InputDouble("Overhang##layout_level_properties",
-                     &draft.roofOverhangCells, 0.25, 1.0, "%.2f");
+  observeCreativeDesktopContinuousPropertyWidget(
+      activity,
+      ImGui::InputDouble("Overhang##layout_level_properties",
+                         &draft.roofOverhangCells, 0.25, 1.0, "%.2f"));
   if (draft.roofStyle == cr::CreativeStructuralRoofStyle::Gable) {
     ImGui::SetNextItemWidth(140.0F);
-    enumCombo("Ridge##layout_level_properties", draft.roofRidgeAxis,
-              ridgeAxes, ridgeLabel);
+    observeCreativeDesktopDiscretePropertyWidget(
+        activity,
+        enumCombo("Ridge##layout_level_properties", draft.roofRidgeAxis,
+                  ridgeAxes, ridgeLabel));
     ImGui::SetNextItemWidth(140.0F);
-    ImGui::InputDouble("Pitch##layout_level_properties",
-                       &draft.roofPitchDegrees, 1.0, 5.0, "%.1f deg");
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputDouble("Pitch##layout_level_properties",
+                           &draft.roofPitchDegrees, 1.0, 5.0, "%.1f deg"));
   }
 
-  bool apply = false;
-  bool reset = false;
-  drawApplyReset(!(current == draft), "Apply level", "Reset level", apply,
-                 reset);
-  if (apply) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutSetLevelSettings,
-                  CreativeDesktopWorldLayoutLevelSettingsPayload{
-                      levelIndex, level.stableKey, draft});
-  } else if (reset) {
-    draft = std::move(current);
-  }
+  finishCreativeDesktopWorldLayoutPropertyEdit(
+      activity, current, draft, true, "Reset level", state,
+      levelIndex, level.stableKey, commands);
 }
 
 void drawTerrainProfileInspector(CreativeEditorWorldLayoutState& state,
@@ -283,6 +296,7 @@ void drawTerrainProfileInspector(CreativeEditorWorldLayoutState& state,
   CreativeEditorWorldLayoutTerrainProfileSettings& draft =
       state.terrainProfileSettingsDraft.settings;
   const auto& profile = state.source.terrainProfiles[profileIndex];
+  CreativeDesktopPropertyEditActivity activity;
 
   ImGui::SeparatorText("Terrain profile");
   drawStableKey(profile.stableKey, "Absolute height field");
@@ -295,31 +309,44 @@ void drawTerrainProfileInspector(CreativeEditorWorldLayoutState& state,
                              cr::CreativeTerrainRecipeKind::Crater,
                              cr::CreativeTerrainRecipeKind::Ridge};
   ImGui::SetNextItemWidth(160.0F);
-  enumCombo("Shape##layout_profile_properties", draft.kind, kinds,
-            [](cr::CreativeTerrainRecipeKind kind) {
-              return cr::toString(kind);
-            });
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      enumCombo("Shape##layout_profile_properties", draft.kind, kinds,
+                [](cr::CreativeTerrainRecipeKind kind) {
+                  return cr::toString(kind);
+                }));
   ImGui::SetNextItemWidth(110.0F);
-  ImGui::InputScalar("Center X##layout_profile_properties",
-                     ImGuiDataType_S32, &draft.center.x);
+  observeCreativeDesktopContinuousPropertyWidget(
+      activity,
+      ImGui::InputScalar("Center X##layout_profile_properties",
+                         ImGuiDataType_S32, &draft.center.x));
   ImGui::SetNextItemWidth(110.0F);
-  ImGui::InputScalar("Center Z##layout_profile_properties",
-                     ImGuiDataType_S32, &draft.center.z);
+  observeCreativeDesktopContinuousPropertyWidget(
+      activity,
+      ImGui::InputScalar("Center Z##layout_profile_properties",
+                         ImGuiDataType_S32, &draft.center.z));
   ImGui::SetNextItemWidth(120.0F);
-  ImGui::InputScalar("Base height##layout_profile_properties",
-                     ImGuiDataType_U16, &draft.baseHeightCells);
+  observeCreativeDesktopContinuousPropertyWidget(
+      activity,
+      ImGui::InputScalar("Base height##layout_profile_properties",
+                         ImGuiDataType_U16, &draft.baseHeightCells));
   constexpr std::array<std::uint16_t, 3U> radii{2U, 4U, 8U};
   constexpr std::array<std::uint16_t, 5U> amplitudes{1U, 2U, 4U, 8U, 16U};
   constexpr std::array<std::uint16_t, 3U> spacings{1U, 2U, 4U};
   ImGui::SetNextItemWidth(140.0F);
-  u16Combo("Radius##layout_profile_properties", draft.radiusCells, radii,
-           " cells");
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      u16Combo("Radius##layout_profile_properties", draft.radiusCells, radii,
+               " cells"));
   ImGui::SetNextItemWidth(140.0F);
-  u16Combo("Amplitude##layout_profile_properties", draft.amplitudeCells,
-           amplitudes, " cells");
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity, u16Combo("Amplitude##layout_profile_properties",
+                         draft.amplitudeCells, amplitudes, " cells"));
   ImGui::SetNextItemWidth(140.0F);
-  u16Combo("Spacing##layout_profile_properties", draft.spacingCells, spacings,
-           " cells");
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      u16Combo("Spacing##layout_profile_properties", draft.spacingCells,
+               spacings, " cells"));
   if (draft.kind == cr::CreativeTerrainRecipeKind::Ridge) {
     constexpr std::array directions{
         cr::CreativeTerrainProfileDirection::PositiveX,
@@ -331,32 +358,28 @@ void drawTerrainProfileInspector(CreativeEditorWorldLayoutState& state,
         cr::CreativeTerrainProfileDirection::NegativeZ,
         cr::CreativeTerrainProfileDirection::PositiveXNegativeZ};
     ImGui::SetNextItemWidth(180.0F);
-    enumCombo("Direction##layout_profile_properties", draft.direction,
-              directions, [](cr::CreativeTerrainProfileDirection direction) {
-                return cr::toString(direction);
-              });
+    observeCreativeDesktopDiscretePropertyWidget(
+        activity,
+        enumCombo(
+            "Direction##layout_profile_properties", draft.direction,
+            directions, [](cr::CreativeTerrainProfileDirection direction) {
+              return cr::toString(direction);
+            }));
   }
   constexpr std::array<std::uint8_t, 2U> frequencies{1U, 2U};
   ImGui::SetNextItemWidth(140.0F);
-  enumCombo("Frequency##layout_profile_properties", draft.frequency,
-            frequencies, [](std::uint8_t frequency) {
-              return std::to_string(static_cast<unsigned>(frequency)) +
-                     (frequency == 1U ? " cycle" : " cycles");
-            });
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      enumCombo("Frequency##layout_profile_properties", draft.frequency,
+                frequencies, [](std::uint8_t frequency) {
+                  return std::to_string(static_cast<unsigned>(frequency)) +
+                         (frequency == 1U ? " cycle" : " cycles");
+                }));
   ImGui::TextDisabled("Blend: Set  Rods: Fill");
 
-  bool apply = false;
-  bool reset = false;
-  drawApplyReset(!(current == draft), "Apply terrain", "Reset terrain",
-                 apply, reset);
-  if (apply) {
-    commands.push(
-        CreativeDesktopCommandId::WorldLayoutSetTerrainProfileSettings,
-        CreativeDesktopWorldLayoutTerrainProfileSettingsPayload{
-            profileIndex, profile.stableKey, draft});
-  } else if (reset) {
-    draft = current;
-  }
+  finishCreativeDesktopWorldLayoutPropertyEdit(
+      activity, current, draft, true, "Reset terrain", state,
+      profileIndex, profile.stableKey, commands);
 }
 
 void drawTerrainPathInspector(CreativeEditorWorldLayoutState& state,
@@ -384,6 +407,7 @@ void drawTerrainPathInspector(CreativeEditorWorldLayoutState& state,
   CreativeEditorWorldLayoutTerrainPathSettings& draft =
       state.terrainPathSettingsDraft.settings;
   const auto& path = state.source.terrainPaths[pathIndex];
+  CreativeDesktopPropertyEditActivity activity;
 
   ImGui::SeparatorText("Terrain path");
   drawStableKey(path.stableKey, "Polyline recipe");
@@ -397,28 +421,37 @@ void drawTerrainPathInspector(CreativeEditorWorldLayoutState& state,
   constexpr std::array elevations{cr::CreativeTerrainPathElevation::Level,
                                   cr::CreativeTerrainPathElevation::Grade};
   ImGui::SetNextItemWidth(150.0F);
-  enumCombo("Type##layout_path_properties", draft.kind, kinds,
-            [](cr::CreativeTerrainRecipeKind kind) {
-              return cr::toString(kind);
-            });
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      enumCombo("Type##layout_path_properties", draft.kind, kinds,
+                [](cr::CreativeTerrainRecipeKind kind) {
+                  return cr::toString(kind);
+                }));
   ImGui::SetNextItemWidth(150.0F);
-  enumCombo("Elevation##layout_path_properties", draft.elevation, elevations,
-            [](cr::CreativeTerrainPathElevation elevation) {
-              return cr::toString(elevation);
-            });
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      enumCombo("Elevation##layout_path_properties", draft.elevation,
+                elevations, [](cr::CreativeTerrainPathElevation elevation) {
+                  return cr::toString(elevation);
+                }));
   constexpr std::array<std::uint16_t, 4U> halfWidths{0U, 1U, 2U, 3U};
   constexpr std::array<std::uint16_t, 4U> amplitudes{1U, 2U, 4U, 8U};
   ImGui::SetNextItemWidth(150.0F);
   const auto widthLabel = [](std::uint16_t halfWidth) {
     return std::to_string(halfWidth * 2U + 1U) + " cells";
   };
-  enumCombo("Width##layout_path_properties", draft.halfWidthCells,
-            halfWidths, widthLabel);
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      enumCombo("Width##layout_path_properties", draft.halfWidthCells,
+                halfWidths, widthLabel));
   ImGui::SetNextItemWidth(150.0F);
-  u16Combo("Depth / rise##layout_path_properties", draft.amplitudeCells,
-           amplitudes, " cells");
-  ImGui::Checkbox("Paint surface##layout_path_properties",
-                  &draft.paintSurface);
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity, u16Combo("Depth / rise##layout_path_properties",
+                         draft.amplitudeCells, amplitudes, " cells"));
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      ImGui::Checkbox("Paint surface##layout_path_properties",
+                      &draft.paintSurface));
   constexpr std::array materials{cr::CreativeTerrainMaterial::Count,
                                  cr::CreativeTerrainMaterial::Grass,
                                  cr::CreativeTerrainMaterial::Dirt,
@@ -426,12 +459,15 @@ void drawTerrainPathInspector(CreativeEditorWorldLayoutState& state,
                                  cr::CreativeTerrainMaterial::Sand};
   ImGui::BeginDisabled(!draft.paintSurface);
   ImGui::SetNextItemWidth(150.0F);
-  enumCombo("Material##layout_path_properties", draft.material, materials,
-            [](cr::CreativeTerrainMaterial material) -> std::string_view {
-              return material == cr::CreativeTerrainMaterial::Count
-                         ? "Semantic default"
-                         : cr::toString(material);
-            });
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      enumCombo("Material##layout_path_properties", draft.material,
+                materials,
+                [](cr::CreativeTerrainMaterial material) -> std::string_view {
+                  return material == cr::CreativeTerrainMaterial::Count
+                             ? "Semantic default"
+                             : cr::toString(material);
+                }));
   ImGui::EndDisabled();
 
   ImGui::SeparatorText("Control points");
@@ -451,30 +487,28 @@ void drawTerrainPathInspector(CreativeEditorWorldLayoutState& state,
       ImGui::Text("%llu", static_cast<unsigned long long>(index + 1U));
       ImGui::TableNextColumn();
       ImGui::SetNextItemWidth(-1.0F);
-      ImGui::InputScalar("##x", ImGuiDataType_S32, &point.coord.x);
+      observeCreativeDesktopContinuousPropertyWidget(
+          activity,
+          ImGui::InputScalar("##x", ImGuiDataType_S32, &point.coord.x));
       ImGui::TableNextColumn();
       ImGui::SetNextItemWidth(-1.0F);
-      ImGui::InputScalar("##z", ImGuiDataType_S32, &point.coord.z);
+      observeCreativeDesktopContinuousPropertyWidget(
+          activity,
+          ImGui::InputScalar("##z", ImGuiDataType_S32, &point.coord.z));
       ImGui::TableNextColumn();
       ImGui::SetNextItemWidth(-1.0F);
-      ImGui::InputScalar("##height", ImGuiDataType_U16,
-                         &point.heightCells);
+      observeCreativeDesktopContinuousPropertyWidget(
+          activity,
+          ImGui::InputScalar("##height", ImGuiDataType_U16,
+                             &point.heightCells));
       ImGui::PopID();
     }
     ImGui::EndTable();
   }
 
-  bool apply = false;
-  bool reset = false;
-  drawApplyReset(!(current == draft), "Apply path", "Reset path", apply,
-                 reset);
-  if (apply) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutSetTerrainPathSettings,
-                  CreativeDesktopWorldLayoutTerrainPathSettingsPayload{
-                      pathIndex, path.stableKey, draft});
-  } else if (reset) {
-    draft = std::move(current);
-  }
+  finishCreativeDesktopWorldLayoutPropertyEdit(
+      activity, current, draft, true, "Reset path", state,
+      pathIndex, path.stableKey, commands);
 }
 
 void drawObjectInspector(CreativeEditorWorldLayoutState& state,
@@ -499,32 +533,43 @@ void drawObjectInspector(CreativeEditorWorldLayoutState& state,
   CreativeEditorWorldLayoutObjectSettings& draft =
       state.objectSettingsDraft.settings;
   const auto& object = state.source.objects[objectIndex];
+  CreativeDesktopPropertyEditActivity activity;
 
   ImGui::SeparatorText("Placed object");
   drawStableKey(object.stableKey, cr::toString(object.kind));
-  inputText("Name##layout_object_properties", draft.name);
-  inputText("Asset ID##layout_object_properties", draft.assetId);
-  ImGui::Checkbox("Visible##layout_object_properties", &draft.visible);
+  observeCreativeDesktopContinuousPropertyWidget(
+      activity, inputText("Name##layout_object_properties", draft.name));
+  observeCreativeDesktopContinuousPropertyWidget(
+      activity,
+      inputText("Asset ID##layout_object_properties", draft.assetId));
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      ImGui::Checkbox("Visible##layout_object_properties", &draft.visible));
   ImGui::TextDisabled("Placement: %s",
                       cr::toString(draft.mode).data());
   if (draft.mode == cr::CreativeObjectLibraryPlacementMode::Bounds) {
     ImGui::SeparatorText("Bounds in grid cells");
     drawVec3Table("##layout_object_bounds", "Min", draft.boundsCells.min,
-                  "Max", &draft.boundsCells.max);
+                  activity, "Max", &draft.boundsCells.max);
   } else {
     ImGui::SeparatorText("Point in grid cells");
-    drawVec3Table("##layout_object_point", "Point", draft.pointCells);
+    drawVec3Table("##layout_object_point", "Point", draft.pointCells,
+                  activity);
     if (draft.hasAssetSourceBounds) {
       constexpr double kRadiansToDegrees =
           57.295779513082320876798154814105;
       constexpr double kDegreesToRadians =
           0.01745329251994329576923690768489;
       double yawDegrees = draft.yawRadians * kRadiansToDegrees;
-      if (ImGui::InputDouble("Yaw##layout_object_properties", &yawDegrees,
-                             15.0, 90.0, "%.1f deg")) {
+      const bool yawChanged = ImGui::InputDouble(
+          "Yaw##layout_object_properties", &yawDegrees, 15.0, 90.0,
+          "%.1f deg");
+      if (yawChanged) {
         draft.yawRadians = yawDegrees * kDegreesToRadians;
       }
-      drawVec3Table("##layout_object_scale", "Scale", draft.scale);
+      observeCreativeDesktopContinuousPropertyWidget(activity, yawChanged);
+      drawVec3Table("##layout_object_scale", "Scale", draft.scale,
+                    activity);
       const cr::CreativeBoundsMetrics sourceBounds =
           cr::measureCreativeBounds(draft.assetSourceBoundsMeters);
       if (sourceBounds.valid) {
@@ -535,17 +580,9 @@ void drawObjectInspector(CreativeEditorWorldLayoutState& state,
     }
   }
 
-  bool apply = false;
-  bool reset = false;
-  drawApplyReset(!(current == draft), "Apply object", "Reset object", apply,
-                 reset);
-  if (apply) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutSetObjectSettings,
-                  CreativeDesktopWorldLayoutObjectSettingsPayload{
-                      objectIndex, object.stableKey, draft});
-  } else if (reset) {
-    draft = std::move(current);
-  }
+  finishCreativeDesktopWorldLayoutPropertyEdit(
+      activity, current, draft, true, "Reset object", state,
+      objectIndex, object.stableKey, commands);
 }
 
 }  // namespace

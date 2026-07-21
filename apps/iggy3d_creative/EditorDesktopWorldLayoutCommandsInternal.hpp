@@ -143,6 +143,49 @@ dispatchCreativeDesktopWorldLayoutLiveEdit(
 
 template <typename ApplyEdit>
 [[nodiscard]] CreativeDesktopWorldLayoutLiveEditResult
+dispatchCreativeDesktopWorldLayoutPreviewEdit(
+    CreativeEditorWorldLayoutState& state,
+    iggy3d::creative::CreativeAppState& appState,
+    ApplyEdit applyEdit,
+    std::string_view previewMessage) {
+  CreativeDesktopWorldLayoutLiveEditResult result;
+  if (state.generatedRevision != state.revision) {
+    state.statusMessage =
+        "Generate pending layout edits before previewing properties";
+    return result;
+  }
+
+  CreativeEditorWorldLayoutState candidate =
+      makeCreativeEditorWorldLayoutLiveEditCandidate(state);
+  const CreativeEditorWorldLayoutEditReceipt candidateEdit =
+      applyEdit(candidate);
+  if (!candidateEdit.accepted) {
+    const std::string candidateMessage = candidate.statusMessage;
+    result.sceneChanged =
+        clearCreativeEditorWorldLayoutLiveEditPreview(state);
+    state.statusMessage = candidateMessage;
+    return result;
+  }
+  if (!candidateEdit.changed || candidate.revision == state.revision) {
+    result.accepted = true;
+    result.sceneChanged =
+        clearCreativeEditorWorldLayoutLiveEditPreview(state);
+    state.statusMessage = candidate.statusMessage;
+    return result;
+  }
+
+  const CreativeEditorWorldLayoutPreviewReceipt preview =
+      previewCreativeEditorWorldLayoutLiveEditCandidate(
+          state, appState.facade.document(), std::move(candidate),
+          candidateEdit, previewMessage);
+  result.accepted = preview.accepted;
+  result.changed = preview.changed;
+  result.sceneChanged = preview.changed;
+  return result;
+}
+
+template <typename ApplyEdit>
+[[nodiscard]] CreativeDesktopWorldLayoutLiveEditResult
 dispatchCreativeDesktopWorldLayoutImmediateEdit(
     CreativeEditorWorldLayoutState& state,
     iggy3d::creative::CreativeAppState& appState,

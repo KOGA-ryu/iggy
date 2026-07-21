@@ -1,6 +1,8 @@
 #pragma once
 
 #include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 #include "imgui.h"
@@ -86,6 +88,114 @@ void appendCreativeDesktopGeneratedLevelSettings(
     iggy3d::creative::CreativeWorldLayoutObjectProvenance provenance,
     bool disabled,
     CreativeDesktopCommandFrame& commands);
+
+template <typename Payload>
+void queueCreativeDesktopGeneratedPropertyEdit(
+    CreativeDesktopPropertyEditIntent intent,
+    CreativeDesktopCommandId previewCommand,
+    CreativeDesktopCommandId commitCommand,
+    Payload payload,
+    CreativeDesktopCommandFrame& commands) {
+  switch (intent) {
+    case CreativeDesktopPropertyEditIntent::Preview:
+      commands.push(previewCommand, std::move(payload));
+      return;
+    case CreativeDesktopPropertyEditIntent::Commit:
+      commands.push(commitCommand, std::move(payload));
+      return;
+    case CreativeDesktopPropertyEditIntent::Cancel:
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutCancelGeneratedSettingsPreview);
+      return;
+    case CreativeDesktopPropertyEditIntent::None:
+    default:
+      return;
+  }
+}
+
+template <typename Settings>
+void queueCreativeDesktopWorldLayoutPropertyEdit(
+    CreativeDesktopPropertyEditIntent intent,
+    std::size_t index,
+    std::string_view stableKey,
+    const Settings& settings,
+    CreativeDesktopCommandFrame& commands) {
+  CreativeDesktopWorldLayoutPropertyEditPhase phase{};
+  switch (intent) {
+    case CreativeDesktopPropertyEditIntent::Preview:
+      phase = CreativeDesktopWorldLayoutPropertyEditPhase::Preview;
+      break;
+    case CreativeDesktopPropertyEditIntent::Commit:
+      phase = CreativeDesktopWorldLayoutPropertyEditPhase::Commit;
+      break;
+    case CreativeDesktopPropertyEditIntent::Cancel:
+      phase = CreativeDesktopWorldLayoutPropertyEditPhase::Cancel;
+      break;
+    case CreativeDesktopPropertyEditIntent::None:
+    default:
+      return;
+  }
+  constexpr iggy3d::creative::CreativeWorldLayoutTable table =
+      creativeDesktopWorldLayoutPropertyTable<Settings>();
+  commands.push(
+      CreativeDesktopCommandId::WorldLayoutEditSourceProperty,
+      CreativeDesktopWorldLayoutPropertyEditPayload{
+          phase, table, index, std::string(stableKey), settings});
+}
+
+inline void observeCreativeDesktopContinuousPropertyWidget(
+    CreativeDesktopPropertyEditActivity& activity,
+    bool changed) noexcept {
+  observeCreativeDesktopContinuousPropertyEdit(
+      activity, changed, ImGui::IsItemDeactivatedAfterEdit());
+}
+
+inline void observeCreativeDesktopDiscretePropertyWidget(
+    CreativeDesktopPropertyEditActivity& activity,
+    bool changed) noexcept {
+  observeCreativeDesktopDiscretePropertyEdit(activity, changed);
+}
+
+[[nodiscard]] inline bool creativeDesktopWorldLayoutPropertyPreviewActive(
+    const CreativeEditorWorldLayoutState& state,
+    iggy3d::creative::CreativeWorldLayoutTable table,
+    std::size_t index) noexcept {
+  return state.liveEditPreviewVisible && state.propertyPreviewKey.active &&
+         state.propertyPreviewKey.sourceRevision == state.revision &&
+         state.propertyPreviewKey.table == table &&
+         state.propertyPreviewKey.index == index;
+}
+
+template <typename Settings>
+void finishCreativeDesktopWorldLayoutPropertyEdit(
+    CreativeDesktopPropertyEditActivity activity,
+    const Settings& current,
+    Settings& draft,
+    bool valid,
+    const char* resetLabel,
+    CreativeEditorWorldLayoutState& state,
+    std::size_t index,
+    std::string_view stableKey,
+    CreativeDesktopCommandFrame& commands) {
+  constexpr iggy3d::creative::CreativeWorldLayoutTable table =
+      creativeDesktopWorldLayoutPropertyTable<Settings>();
+  bool dirty = !(current == draft);
+  ImGui::BeginDisabled(!dirty);
+  const bool resetRequested = ImGui::Button(resetLabel);
+  ImGui::EndDisabled();
+  if (resetRequested) {
+    draft = current;
+    dirty = false;
+  }
+  const CreativeDesktopPropertyEditIntent intent =
+      resolveCreativeDesktopPropertyEditIntent(
+          activity, dirty, valid,
+          creativeDesktopWorldLayoutPropertyPreviewActive(state, table,
+                                                          index),
+          resetRequested);
+  queueCreativeDesktopWorldLayoutPropertyEdit(
+      intent, index, stableKey, draft, commands);
+}
 
 // Non-truncating adapter shared by inspector owners; imgui_stdlib is not
 // vendored in this checkout.

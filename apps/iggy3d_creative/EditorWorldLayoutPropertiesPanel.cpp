@@ -1,5 +1,6 @@
 #include "EditorWorldLayoutPanelInternal.hpp"
 
+#include "EditorDesktopWidgets.hpp"
 #include "EditorWorldLayout.hpp"
 
 #include <algorithm>
@@ -22,91 +23,97 @@ void drawSelectedRoomSettings(CreativeEditorWorldLayoutState& state,
                               CreativeDesktopCommandFrame& commands) {
   if (state.selection.kind != CreativeEditorWorldLayoutSelectionKind::Room ||
       state.selection.index >= state.source.rooms.size()) {
+    state.roomSettingsDraft = {};
     return;
   }
 
-  const cr::CreativeWorldLayoutRoom& room =
-      state.source.rooms[state.selection.index];
-  const cr::CreativeWorldLayoutLevel* level =
-      cr::creativeWorldLayoutLevelForRoom(state.source,
-                                          state.selection.index);
-  if (level == nullptr) {
+  const std::size_t roomIndex = state.selection.index;
+  CreativeEditorWorldLayoutRoomSettings current;
+  if (!readCreativeEditorWorldLayoutRoomSettings(state, roomIndex, current)) {
+    state.roomSettingsDraft = {};
     ImGui::TextDisabled("Room level is unavailable");
     return;
   }
+  if (!state.roomSettingsDraft.active ||
+      state.roomSettingsDraft.roomIndex != roomIndex ||
+      state.roomSettingsDraft.sourceRevision != state.revision) {
+    state.roomSettingsDraft = {true, roomIndex, state.revision, current};
+  }
+
+  const cr::CreativeWorldLayoutRoom& room = state.source.rooms[roomIndex];
+  CreativeEditorWorldLayoutRoomSettings& settings =
+      state.roomSettingsDraft.settings;
   const std::int64_t widthCells =
-      static_cast<std::int64_t>(room.footprint.maximum.x) -
-      room.footprint.minimum.x;
+      static_cast<std::int64_t>(settings.footprint.maximum.x) -
+      settings.footprint.minimum.x;
   const std::int64_t depthCells =
-      static_cast<std::int64_t>(room.footprint.maximum.z) -
-      room.footprint.minimum.z;
+      static_cast<std::int64_t>(settings.footprint.maximum.z) -
+      settings.footprint.minimum.z;
   int width = static_cast<int>(std::min<std::int64_t>(
       widthCells, std::numeric_limits<int>::max()));
   int depth = static_cast<int>(std::min<std::int64_t>(
       depthCells, std::numeric_limits<int>::max()));
-  double floorTopLayer = level->floorTopLayer;
-  int wallHeight = level->wallHeightCells;
-  double wallThickness = room.wallThicknessCells;
-  int floorLayers = level->floorThicknessLayers;
-  int roofLayers = level->roofThicknessLayers;
-  int roofStyle = static_cast<int>(level->roofStyle);
-  int roofRidgeAxis = static_cast<int>(level->roofRidgeAxis);
-  double roofPitch = level->roofPitchDegrees;
-  double roofOverhang = level->roofOverhangCells;
+  double floorTopLayer = settings.floorTopLayer;
+  int wallHeight = settings.wallHeightCells;
+  double wallThickness = settings.wallThicknessCells;
+  int floorLayers = settings.floorThicknessLayers;
+  int roofLayers = settings.roofThicknessLayers;
+  int roofStyle = static_cast<int>(settings.roofStyle);
+  int roofRidgeAxis = static_cast<int>(settings.roofRidgeAxis);
+  double roofPitch = settings.roofPitchDegrees;
+  double roofOverhang = settings.roofOverhangCells;
+  CreativeDesktopPropertyEditActivity activity;
+  bool continuousChanged = false;
+  const auto observe = [&](bool changed) {
+    continuousChanged = continuousChanged || changed;
+    observeCreativeDesktopContinuousPropertyWidget(activity, changed);
+  };
+
+  ImGui::BeginDisabled(state.roomManipulation.active);
+  ImGui::SetNextItemWidth(128.0F);
+  observe(ImGui::InputInt("Width##room_shell", &width, 1, 4));
+  ImGui::SetNextItemWidth(128.0F);
+  observe(ImGui::InputInt("Depth##room_shell", &depth, 1, 4));
+  ImGui::SetNextItemWidth(128.0F);
+  observe(ImGui::InputDouble("Level floor##room_shell", &floorTopLayer, 0.5,
+                             1.0, "%.3f"));
 
   ImGui::SetNextItemWidth(128.0F);
-  bool changed = ImGui::InputInt("Width##room_shell", &width, 1, 4);
+  observe(ImGui::InputInt("Level wall height##room_shell", &wallHeight, 1,
+                          4));
   ImGui::SetNextItemWidth(128.0F);
-  changed = ImGui::InputInt("Depth##room_shell", &depth, 1, 4) || changed;
+  observe(ImGui::InputDouble("Room wall##room_shell", &wallThickness, 0.05,
+                             0.25, "%.3f"));
   ImGui::SetNextItemWidth(128.0F);
-  changed = ImGui::InputDouble("Level floor##room_shell", &floorTopLayer, 0.5,
-                               1.0, "%.3f") ||
-            changed;
-
-  ImGui::SetNextItemWidth(128.0F);
-  changed = ImGui::InputInt("Level wall height##room_shell", &wallHeight, 1,
-                            4) ||
-            changed;
-  ImGui::SetNextItemWidth(128.0F);
-  changed = ImGui::InputDouble("Room wall##room_shell", &wallThickness,
-                               0.05, 0.25, "%.3f") ||
-            changed;
-  ImGui::SetNextItemWidth(128.0F);
-  changed = ImGui::InputInt("Level floor layers##room_shell", &floorLayers, 1,
-                            2) ||
-            changed;
+  observe(ImGui::InputInt("Level floor layers##room_shell", &floorLayers, 1,
+                          2));
 
   ImGui::SeparatorText("Level roof");
   ImGui::SetNextItemWidth(128.0F);
-  changed = ImGui::Combo("Style##room_roof", &roofStyle,
-                         "Flat\0Gable\0") ||
-            changed;
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      ImGui::Combo("Style##room_roof", &roofStyle, "Flat\0Gable\0"));
   ImGui::SetNextItemWidth(128.0F);
-  changed = ImGui::InputInt("Layers##room_roof", &roofLayers, 1, 2) ||
-            changed;
+  observe(ImGui::InputInt("Layers##room_roof", &roofLayers, 1, 2));
   ImGui::SetNextItemWidth(128.0F);
-  changed = ImGui::InputDouble("Overhang##room_roof", &roofOverhang, 0.25,
-                               1.0, "%.2f") ||
-            changed;
+  observe(ImGui::InputDouble("Overhang##room_roof", &roofOverhang, 0.25,
+                             1.0, "%.2f"));
   if (roofStyle == static_cast<int>(cr::CreativeStructuralRoofStyle::Gable)) {
     ImGui::SetNextItemWidth(128.0F);
-    changed = ImGui::Combo("Ridge##room_roof", &roofRidgeAxis,
-                           "X axis\0Z axis\0") ||
-              changed;
+    observeCreativeDesktopDiscretePropertyWidget(
+        activity,
+        ImGui::Combo("Ridge##room_roof", &roofRidgeAxis,
+                     "X axis\0Z axis\0"));
     ImGui::SetNextItemWidth(128.0F);
-    changed = ImGui::InputDouble("Pitch##room_roof", &roofPitch, 1.0, 5.0,
-                                 "%.1f deg") ||
-              changed;
+    observe(ImGui::InputDouble("Pitch##room_roof", &roofPitch, 1.0, 5.0,
+                               "%.1f deg"));
   }
-
-  if (!changed) {
-    return;
-  }
+  ImGui::EndDisabled();
 
   const std::int64_t maximumX =
-      static_cast<std::int64_t>(room.footprint.minimum.x) + width;
+      static_cast<std::int64_t>(settings.footprint.minimum.x) + width;
   const std::int64_t maximumZ =
-      static_cast<std::int64_t>(room.footprint.minimum.z) + depth;
+      static_cast<std::int64_t>(settings.footprint.minimum.z) + depth;
   const int maximumLayerCount = std::numeric_limits<std::uint16_t>::max();
   const bool valid =
       width > 0 && depth > 0 &&
@@ -132,38 +139,29 @@ void drawSelectedRoomSettings(CreativeEditorWorldLayoutState& state,
   if (!valid) {
     ImGui::TextColored(ImVec4{0.94F, 0.45F, 0.32F, 1.0F},
                        "room shell settings are outside valid bounds");
-    return;
   }
 
-  CreativeEditorWorldLayoutRoomSettings settings;
-  settings.footprint = room.footprint;
-  settings.footprint.maximum.x = static_cast<std::int32_t>(maximumX);
-  settings.footprint.maximum.z = static_cast<std::int32_t>(maximumZ);
-  settings.floorTopLayer = floorTopLayer;
-  settings.wallHeightCells = static_cast<std::uint16_t>(wallHeight);
-  settings.wallThicknessCells = wallThickness;
-  settings.floorThicknessLayers = static_cast<std::uint16_t>(floorLayers);
-  settings.roofThicknessLayers = static_cast<std::uint16_t>(roofLayers);
-  settings.roofStyle =
-      static_cast<cr::CreativeStructuralRoofStyle>(roofStyle);
-  settings.roofRidgeAxis =
-      static_cast<cr::CreativeStructuralRoofRidgeAxis>(roofRidgeAxis);
-  settings.roofPitchDegrees = roofPitch;
-  settings.roofOverhangCells = roofOverhang;
-  commands.push(
-      CreativeDesktopCommandId::WorldLayoutSetRoomSettings,
-      CreativeDesktopWorldLayoutRoomSettingsPayload{state.selection.index,
-                                                    settings});
-}
+  if (continuousChanged && valid) {
+    settings.footprint.maximum.x = static_cast<std::int32_t>(maximumX);
+    settings.footprint.maximum.z = static_cast<std::int32_t>(maximumZ);
+    settings.floorTopLayer = floorTopLayer;
+    settings.wallHeightCells = static_cast<std::uint16_t>(wallHeight);
+    settings.wallThicknessCells = wallThickness;
+    settings.floorThicknessLayers = static_cast<std::uint16_t>(floorLayers);
+    settings.roofThicknessLayers = static_cast<std::uint16_t>(roofLayers);
+    settings.roofPitchDegrees = roofPitch;
+    settings.roofOverhangCells = roofOverhang;
+  }
+  if (valid) {
+    settings.roofStyle =
+        static_cast<cr::CreativeStructuralRoofStyle>(roofStyle);
+    settings.roofRidgeAxis =
+        static_cast<cr::CreativeStructuralRoofRidgeAxis>(roofRidgeAxis);
+  }
 
-bool sameOpeningSettings(
-    const CreativeEditorWorldLayoutOpeningSettings& lhs,
-    const CreativeEditorWorldLayoutOpeningSettings& rhs) noexcept {
-  return lhs.centerOffsetCells == rhs.centerOffsetCells &&
-         lhs.widthCells == rhs.widthCells &&
-         lhs.sillHeightCells == rhs.sillHeightCells &&
-         lhs.heightCells == rhs.heightCells && lhs.pose == rhs.pose &&
-         lhs.includeInsert == rhs.includeInsert;
+  finishCreativeDesktopWorldLayoutPropertyEdit(
+      activity, current, settings, valid, "Reset room", state,
+      roomIndex, room.stableKey, commands);
 }
 
 bool catalogContainsAsset(const cr::CreativeCatalogState& catalog,
@@ -204,6 +202,7 @@ void drawSelectedOpeningSettings(
   CreativeEditorWorldLayoutOpeningSettings& settings =
       state.openingSettingsDraft.settings;
   const bool isDoor = opening.kind == cr::CreativeBuildingOpeningKind::Door;
+  CreativeDesktopPropertyEditActivity activity;
   ImGui::TextUnformatted(isDoor ? "Door settings" : "Window settings");
   if (!opening.insertAssetId.empty()) {
     ImGui::TextDisabled("Asset: %s", opening.insertAssetId.c_str());
@@ -212,15 +211,22 @@ void drawSelectedOpeningSettings(
                          "Asset unavailable: procedural preview");
     }
   }
+  ImGui::BeginDisabled(state.openingManipulation.active);
   ImGui::SetNextItemWidth(128.0F);
-  ImGui::InputDouble("Offset##opening", &settings.centerOffsetCells, 0.25, 1.0,
-                     "%.2f");
+  observeCreativeDesktopContinuousPropertyWidget(
+      activity,
+      ImGui::InputDouble("Offset##opening", &settings.centerOffsetCells,
+                         0.25, 1.0, "%.2f"));
   ImGui::SetNextItemWidth(128.0F);
-  ImGui::InputDouble("Width##opening", &settings.widthCells, 0.25, 1.0,
-                     "%.2f");
+  observeCreativeDesktopContinuousPropertyWidget(
+      activity,
+      ImGui::InputDouble("Width##opening", &settings.widthCells, 0.25, 1.0,
+                         "%.2f"));
   ImGui::SetNextItemWidth(128.0F);
-  ImGui::InputDouble("Height##opening", &settings.heightCells, 0.25, 1.0,
-                     "%.2f");
+  observeCreativeDesktopContinuousPropertyWidget(
+      activity,
+      ImGui::InputDouble("Height##opening", &settings.heightCells, 0.25, 1.0,
+                         "%.2f"));
 
   if (isDoor) {
     settings.sillHeightCells = 0.0;
@@ -232,16 +238,22 @@ void drawSelectedOpeningSettings(
     if (ImGui::Combo("Pose##opening", &pose, kPoseLabels.data(),
                      static_cast<int>(kPoseLabels.size()))) {
       settings.pose = static_cast<cr::CreativeBuildingOpeningPose>(pose);
+      observeCreativeDesktopDiscretePropertyWidget(activity, true);
     }
   } else {
     settings.pose = cr::CreativeBuildingOpeningPose::Closed;
     ImGui::SetNextItemWidth(128.0F);
-    ImGui::InputDouble("Sill##opening", &settings.sillHeightCells, 0.25, 1.0,
-                       "%.2f");
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputDouble("Sill##opening", &settings.sillHeightCells, 0.25,
+                           1.0, "%.2f"));
   }
-  ImGui::Checkbox("Insert##opening", &settings.includeInsert);
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      ImGui::Checkbox("Insert##opening", &settings.includeInsert));
+  ImGui::EndDisabled();
 
-  const bool dirty = !sameOpeningSettings(current, settings);
+  const bool dirty = !(current == settings);
   if (!opening.insertAssetId.empty()) {
     ImGui::BeginDisabled(dirty || state.openingManipulation.active);
     if (ImGui::Button("Use procedural insert")) {
@@ -259,20 +271,21 @@ void drawSelectedOpeningSettings(
       ImGui::SetTooltip("Apply or reset opening edits first");
     }
   }
-  ImGui::BeginDisabled(!dirty || state.openingManipulation.active);
-  if (ImGui::Button("Apply opening")) {
-    commands.push(
-        CreativeDesktopCommandId::WorldLayoutSetOpeningSettings,
-        CreativeDesktopWorldLayoutOpeningSettingsPayload{openingIndex,
-                                                         settings});
+  const bool valuesRepresentable =
+      std::isfinite(settings.centerOffsetCells) &&
+      std::isfinite(settings.widthCells) &&
+      std::isfinite(settings.sillHeightCells) &&
+      std::isfinite(settings.heightCells) && settings.widthCells > 0.0 &&
+      settings.sillHeightCells >= 0.0 && settings.heightCells > 0.0 &&
+      settings.pose <=
+          cr::CreativeBuildingOpeningPose::OpenFromEndPositiveNormal;
+  if (!valuesRepresentable) {
+    ImGui::TextColored(ImVec4{0.94F, 0.45F, 0.32F, 1.0F},
+                       "opening dimensions must be finite and positive");
   }
-  ImGui::EndDisabled();
-  ImGui::SameLine();
-  ImGui::BeginDisabled(!dirty);
-  if (ImGui::Button("Reset opening")) {
-    state.openingSettingsDraft.settings = current;
-  }
-  ImGui::EndDisabled();
+  finishCreativeDesktopWorldLayoutPropertyEdit(
+      activity, current, settings, valuesRepresentable, "Reset opening",
+      state, openingIndex, opening.stableKey, commands);
 }
 
 

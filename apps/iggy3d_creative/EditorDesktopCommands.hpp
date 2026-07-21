@@ -97,6 +97,7 @@ enum class CreativeDesktopCommandId : std::uint8_t {
   WorldLayoutSetTerrainProfileSettings,
   WorldLayoutSetTerrainPathSettings,
   WorldLayoutSetObjectSettings,
+  WorldLayoutEditSourceProperty,
   WorldLayoutClearSelection,
   WorldLayoutManipulateBuilding,
   WorldLayoutDuplicateBuilding,

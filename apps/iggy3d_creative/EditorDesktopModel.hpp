@@ -141,6 +141,64 @@ struct CreativeDesktopTransformDraft {
   cr::CreativeTransform transform;  // rotation in radians; valid only when valid.
 };
 
+enum class CreativeDesktopPropertyEditIntent : std::uint8_t {
+  None,
+  Preview,
+  Commit,
+  Cancel,
+};
+
+// ImGui item state is sampled at the widget boundary, then reduced here so
+// every Inspector property family obeys the same preview/commit law.
+struct CreativeDesktopPropertyEditActivity {
+  bool changed = false;
+  bool commitRequested = false;
+};
+
+constexpr void observeCreativeDesktopContinuousPropertyEdit(
+    CreativeDesktopPropertyEditActivity& activity,
+    bool changed,
+    bool deactivatedAfterEdit) noexcept {
+  activity.changed = activity.changed || changed;
+  activity.commitRequested =
+      activity.commitRequested || deactivatedAfterEdit;
+}
+
+constexpr void observeCreativeDesktopDiscretePropertyEdit(
+    CreativeDesktopPropertyEditActivity& activity,
+    bool changed) noexcept {
+  activity.changed = activity.changed || changed;
+  activity.commitRequested = activity.commitRequested || changed;
+}
+
+[[nodiscard]] constexpr CreativeDesktopPropertyEditIntent
+resolveCreativeDesktopPropertyEditIntent(
+    CreativeDesktopPropertyEditActivity activity,
+    bool dirty,
+    bool valid,
+    bool previewActive,
+    bool cancelRequested = false) noexcept {
+  if (cancelRequested) {
+    return previewActive ? CreativeDesktopPropertyEditIntent::Cancel
+                         : CreativeDesktopPropertyEditIntent::None;
+  }
+  if (activity.commitRequested) {
+    if (dirty && valid) {
+      return CreativeDesktopPropertyEditIntent::Commit;
+    }
+    return previewActive ? CreativeDesktopPropertyEditIntent::Cancel
+                         : CreativeDesktopPropertyEditIntent::None;
+  }
+  if (activity.changed) {
+    if (dirty && valid) {
+      return CreativeDesktopPropertyEditIntent::Preview;
+    }
+    return previewActive ? CreativeDesktopPropertyEditIntent::Cancel
+                         : CreativeDesktopPropertyEditIntent::None;
+  }
+  return CreativeDesktopPropertyEditIntent::None;
+}
+
 // Validates an Inspector draft (position meters, rotation degrees, scale) and
 // converts it to a document transform. Rejects any non-finite component and any
 // scale component <= 0.0.
