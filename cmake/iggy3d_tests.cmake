@@ -33,6 +33,11 @@ iggy3d_add_unit_test(facade_slice_tests
 set_tests_properties(facade_slice_tests PROPERTIES
   LABELS "unit;content;asset;glb;creative;fixture;iggy3d")
 
+iggy3d_add_unit_test(framing_bay_tests
+  tests/unit/framing_bay_tests.cpp)
+set_tests_properties(framing_bay_tests PROPERTIES
+  LABELS "unit;content;asset;glb;creative;fixture;iggy3d")
+
 iggy3d_add_unit_test(creative_asset_room_bake_tests
   tests/unit/creative_asset_room_bake_tests.cpp)
 set_tests_properties(creative_asset_room_bake_tests PROPERTIES

@@ -145,6 +145,25 @@ ARCHITECTURE = {
         spec((-0.025, 0, 0.0), (0.025, 2.1, 1.2), "openings", "bounds",
              sockets=1, plugs=1, tile="oak_plank"),
 
+    # --- BLD-2: double door family (two named receivers, mirrored leaf
+    # families) ---
+    "architecture/openings/door_frame_double":
+        spec((-0.95, 0, -0.075), (0.95, 2.25, 0.075), "openings",
+             "compound_bounds", parts=3, wparts=0, sockets=2, receivers=2,
+             tile="oak_timber"),
+    "architecture/openings/door_leaf_double_left_closed":
+        spec((0.0, 0, -0.025), (0.9, 2.1, 0.025), "openings", "bounds",
+             sockets=1, plugs=1, tile="oak_plank"),
+    "architecture/openings/door_leaf_double_left_open":
+        spec((-0.025, 0, 0.0), (0.025, 2.1, 0.9), "openings", "bounds",
+             sockets=1, plugs=1, tile="oak_plank"),
+    "architecture/openings/door_leaf_double_right_closed":
+        spec((-0.9, 0, -0.025), (0.0, 2.1, 0.025), "openings", "bounds",
+             sockets=1, plugs=1, tile="oak_plank"),
+    "architecture/openings/door_leaf_double_right_open":
+        spec((-0.025, 0, 0.0), (0.025, 2.1, 0.9), "openings", "bounds",
+             sockets=1, plugs=1, tile="oak_plank"),
+
     # --- BLD-1 phase 4: window family (frame origin: X centered, Y=0 at the
     # clear-opening bottom; the stool spans below it, so not grounded) ---
     "architecture/openings/window_frame_standard":
@@ -167,6 +186,17 @@ ARCHITECTURE = {
     "architecture/openings/window_shutter_right_open":
         spec((-0.02, 0, 0.0), (0.02, 1.2, 0.4), "openings", "bounds",
              sockets=1, plugs=1, tile="oak_plank"),
+    "architecture/openings/window_frame_wide":
+        spec((-0.78, -0.08, -0.075), (0.78, 1.28, 0.075), "openings",
+             "compound_bounds", grounded=False, parts=4, wparts=0,
+             tile="oak_timber"),
+    "architecture/openings/window_frame_tall":
+        spec((-0.48, -0.08, -0.075), (0.48, 1.88, 0.075), "openings",
+             "compound_bounds", grounded=False, parts=4, wparts=0,
+             tile="oak_timber"),
+    "architecture/openings/window_bars_standard":
+        spec((-0.4, 0, -0.02), (0.4, 1.2, 0.02), "openings", "bounds",
+             sockets=1, plugs=1, tile="iron_forged"),
     "architecture/openings/window_mullion_cross":
         spec((-0.4, 0, -0.025), (0.4, 1.2, 0.025), "openings", "none",
              sockets=1, plugs=1, tile="oak_timber"),
@@ -188,6 +218,56 @@ ARCHITECTURE = {
              tile="oak_timber"),
     "architecture/traversal/stair_newel_post":
         spec((-0.08, 0, -0.08), (0.08, 1.12, 0.08), "traversal", "bounds",
+             tile="oak_timber"),
+
+    # --- BLD-2: structural detail kit (section C core) ---
+    "architecture/structural/foundation_plinth_straight_2m":
+        spec((-1.0, 0, -0.15), (1.0, 0.5, 0.15), "structural", "none",
+             tile="stone_rough"),
+    "architecture/structural/foundation_plinth_straight_4m":
+        spec((-2.0, 0, -0.15), (2.0, 0.5, 0.15), "structural", "none",
+             tile="stone_rough"),
+    "architecture/structural/foundation_plinth_inner_corner":
+        spec((-0.15, 0, -0.5), (0.5, 0.5, 0.15), "structural", "none",
+             tile="stone_rough"),
+    "architecture/structural/foundation_plinth_outer_corner":
+        spec((-0.15, 0, -0.5), (0.5, 0.55, 0.15), "structural", "none",
+             tile="stone_rough"),
+    "architecture/structural/foundation_plinth_end":
+        spec((0.0, 0, -0.15), (0.45, 0.5, 0.15), "structural", "none",
+             tile="stone_rough"),
+    "architecture/structural/post_square_0p3x3m":
+        spec((-0.15, 0, -0.15), (0.15, 3.0, 0.15), "structural", "bounds",
+             tile="oak_timber"),
+    "architecture/structural/post_square_0p5x3m":
+        spec((-0.25, 0, -0.25), (0.25, 3.0, 0.25), "structural", "bounds",
+             tile="oak_timber"),
+    "architecture/structural/column_round_0p5x3m":
+        spec((-0.25, 0, -0.25), (0.25, 3.0, 0.25), "structural", "bounds",
+             sockets=2, receivers=1, plugs=1, tile="stone_rough"),
+    "architecture/structural/column_round_base":
+        spec((-0.3, 0, -0.3), (0.3, 0.25, 0.3), "structural", "none",
+             sockets=1, receivers=1, tile="stone_rough"),
+    "architecture/structural/column_round_cap":
+        spec((-0.3, 0, -0.3), (0.3, 0.25, 0.3), "structural", "none",
+             sockets=1, plugs=1, tile="stone_rough"),
+    "architecture/structural/beam_2m":
+        spec((-1.0, 0, -0.1), (1.0, 0.3, 0.1), "structural", "bounds",
+             tile="oak_timber"),
+    "architecture/structural/beam_4m":
+        spec((-2.0, 0, -0.1), (2.0, 0.3, 0.1), "structural", "bounds",
+             tile="oak_timber"),
+    "architecture/structural/beam_6m":
+        spec((-3.0, 0, -0.125), (3.0, 0.45, 0.125), "structural", "bounds",
+             tile="oak_timber"),
+    "architecture/structural/beam_end_cap":
+        spec((0.0, 0, -0.13), (0.24, 0.36, 0.13), "structural", "none",
+             tile="oak_timber"),
+    "architecture/structural/brace_left":
+        spec((0.0, 0, -0.06), (0.8, 0.85, 0.06), "structural", "bounds",
+             tile="oak_timber"),
+    "architecture/structural/brace_right":
+        spec((-0.8, 0, -0.06), (0.0, 0.85, 0.06), "structural", "bounds",
              tile="oak_timber"),
 
     # --- BLD-1 phase 4: roof closure ---

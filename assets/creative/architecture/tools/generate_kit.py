@@ -47,6 +47,7 @@ STOREY = 3.0
 DOOR_CLEAR_W = 0.9
 DOOR_CLEAR_H = 2.1
 WIDE_CLEAR_W = 1.2
+DOUBLE_CLEAR_W = 1.8
 STAIR_RISE = STOREY
 STAIR_STEPS = 16
 STAIR_RISER = STAIR_RISE / STAIR_STEPS   # 0.1875
@@ -70,10 +71,24 @@ RAIL_SHOE_H = 0.06
 
 DOOR_FAMILY = "architecture.door_standard"
 DOOR_WIDE_FAMILY = "architecture.door_wide"
+DOOR_DOUBLE_LEFT_FAMILY = "architecture.door_double_left"
+DOOR_DOUBLE_RIGHT_FAMILY = "architecture.door_double_right"
 SHUTTER_LEFT_FAMILY = "architecture.shutter_left"
 SHUTTER_RIGHT_FAMILY = "architecture.shutter_right"
 MULLION_FAMILY = "architecture.window_mullion"
 CHIMNEY_CAP_FAMILY = "architecture.chimney_cap"
+COLUMN_FAMILY = "architecture.column_round"
+COLUMN_CAP_FAMILY = "architecture.column_cap"
+
+# structural detail constants (backlog section C; sheet 06 language)
+PLINTH_D = 0.125       # base-course half depth
+PLINTH_LEDGE = 0.15    # cap-ledge half depth
+PLINTH_BODY_H = 0.45
+PLINTH_H = 0.5
+COLUMN_R = 0.25
+COLUMN_SEGS = 16
+BEAM_HALF_W = 0.1      # 2m/4m beam section 0.2 x 0.3
+BEAM_H = 0.3
 
 OUT_DIR = os.path.abspath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir))
@@ -176,6 +191,27 @@ def sloped_bar_x(name, x0, x1, y0, y1, zb0, zb1, height, material=None):
         (0, 1, 2, 3), (4, 7, 6, 5), (0, 4, 5, 1),
         (1, 5, 6, 2), (2, 6, 7, 3), (3, 7, 4, 0),
     ]
+    return _mesh_obj(name, verts, faces, material)
+
+
+def make_ngon_prism(name, radius, z0, z1, segments, material=None,
+                    cx=0.0, cy=0.0):
+    """Vertical n-gon prism with cap fans; a vertex lands on +X and +Y so the
+    AABB equals +/-radius on both axes. Baked verts, no operators."""
+    import math as _m
+    n = segments
+    verts = []
+    for zz in (z0, z1):
+        for k in range(n):
+            a = 2.0 * _m.pi * k / n
+            verts.append((cx + radius * _m.cos(a), cy + radius * _m.sin(a),
+                          zz))
+    faces = []
+    for k in range(n):
+        k2 = (k + 1) % n
+        faces.append((k, k2, n + k2, n + k))
+    faces.append(tuple(reversed(range(n))))          # bottom cap (down)
+    faces.append(tuple(range(n, 2 * n)))             # top cap (up)
     return _mesh_obj(name, verts, faces, material)
 
 
@@ -333,6 +369,73 @@ def build_door_frame_wide():
     _door_frame("openings/door_frame_wide", WIDE_CLEAR_W, DOOR_WIDE_FAMILY)
 
 
+def build_door_frame_double():
+    """1.8 m clear opening, TWO hinge receivers (sheet 03 double pair). Left
+    and right leaves are separate compatibility families because their hinge
+    pivots are mirrored."""
+    reset_scene()
+    mat = tile_material("oak_timber")
+    half = DOUBLE_CLEAR_W / 2.0
+    depth = 0.15
+    left = make_box("jamb_l", -half - 0.05, -half, -depth / 2.0, depth / 2.0,
+                    0.0, DOOR_CLEAR_H, material=mat)
+    tag_part(left, "openings", walkable=False)
+    right = make_box("jamb_r", half, half + 0.05, -depth / 2.0, depth / 2.0,
+                     0.0, DOOR_CLEAR_H, material=mat)
+    tag_part(right, "openings", walkable=False)
+    lintel = make_box("lintel", -half - 0.05, half + 0.05, -depth / 2.0,
+                      depth / 2.0, DOOR_CLEAR_H, DOOR_CLEAR_H + 0.15,
+                      material=mat)
+    tag_part(lintel, "openings", walkable=False)
+    add_socket("hinge.left", (-half, 0.0, 0.0), "receiver",
+               DOOR_DOUBLE_LEFT_FAMILY)
+    add_socket("hinge.right", (half, 0.0, 0.0), "receiver",
+               DOOR_DOUBLE_RIGHT_FAMILY)
+    export_glb("openings/door_frame_double", "oak_timber")
+
+
+def _hand_leaf(rel_path, name, width, thickness, height, family, hand,
+               closed):
+    """Mirrored-hand leaf, same law as shutters: origin on the hinge line;
+    left closed fills +X, right closed fills -X, both open swing 90 deg into
+    -Y (exterior) with opposite rotation senses."""
+    reset_scene()
+    mat = tile_material("oak_plank")
+    t = thickness
+    if closed:
+        x0, x1 = (0.0, width) if hand == "left" else (-width, 0.0)
+        panel = make_box(name, x0, x1, -t, t, 0.0, height, material=mat)
+    else:
+        panel = make_box(name, -t, t, -width, 0.0, 0.0, height, material=mat)
+    tag_bounds(panel, "openings")
+    add_socket("hinge", (0.0, 0.0, 0.0), "plug", family)
+    export_glb(rel_path, "oak_plank")
+
+
+def build_door_leaf_double_left_closed():
+    _hand_leaf("openings/door_leaf_double_left_closed",
+               "door_leaf_double_left_closed", DOUBLE_CLEAR_W / 2.0, 0.025,
+               DOOR_CLEAR_H, DOOR_DOUBLE_LEFT_FAMILY, "left", True)
+
+
+def build_door_leaf_double_left_open():
+    _hand_leaf("openings/door_leaf_double_left_open",
+               "door_leaf_double_left_open", DOUBLE_CLEAR_W / 2.0, 0.025,
+               DOOR_CLEAR_H, DOOR_DOUBLE_LEFT_FAMILY, "left", False)
+
+
+def build_door_leaf_double_right_closed():
+    _hand_leaf("openings/door_leaf_double_right_closed",
+               "door_leaf_double_right_closed", DOUBLE_CLEAR_W / 2.0, 0.025,
+               DOOR_CLEAR_H, DOOR_DOUBLE_RIGHT_FAMILY, "right", True)
+
+
+def build_door_leaf_double_right_open():
+    _hand_leaf("openings/door_leaf_double_right_open",
+               "door_leaf_double_right_open", DOUBLE_CLEAR_W / 2.0, 0.025,
+               DOOR_CLEAR_H, DOOR_DOUBLE_RIGHT_FAMILY, "right", False)
+
+
 def build_door_leaf_wide_closed():
     _door_leaf("openings/door_leaf_wide_closed", "door_leaf_wide_closed",
                WIDE_CLEAR_W, DOOR_WIDE_FAMILY, True)
@@ -385,6 +488,35 @@ def build_window_frame_standard():
 def build_window_frame_small():
     _window_frame("openings/window_frame_small", WIN_SMALL_W, WIN_SMALL_H,
                   with_sockets=False)
+
+
+def build_window_frame_wide():
+    # no sockets: shutters and the mullion cross are sized to the standard
+    # opening; wide/tall inserts are future family members
+    _window_frame("openings/window_frame_wide", 1.4, 1.2, with_sockets=False)
+
+
+def build_window_frame_tall():
+    _window_frame("openings/window_frame_tall", 0.8, 1.8, with_sockets=False)
+
+
+def build_window_bars_standard():
+    """Solid opaque bars for the standard opening (blocker). Mounts in the
+    standard frame's mullion receiver — the receiver accepts either insert
+    of the mullion family, never both."""
+    reset_scene()
+    mat = tile_material("iron_forged")
+    parts = []
+    for bx in (-0.2, 0.0, 0.2):
+        parts.append(make_box("bar_%+.1f" % bx, bx - 0.02, bx + 0.02,
+                              -0.02, 0.02, 0.0, WIN_STD_H, material=mat))
+    parts.append(make_box("tie", -WIN_STD_W / 2.0, WIN_STD_W / 2.0,
+                          -0.02, 0.02, WIN_STD_H / 2.0 - 0.02,
+                          WIN_STD_H / 2.0 + 0.02, material=mat))
+    bars = join_into(parts, "window_bars_standard")
+    tag_bounds(bars, "openings")
+    add_socket("mullion", (0.0, 0.0, 0.0), "plug", MULLION_FAMILY)
+    export_glb("openings/window_bars_standard", "iron_forged")
 
 
 def _shutter(rel_path, name, family, hand, closed):
@@ -589,6 +721,211 @@ def build_railing_straight_2m():
 
 
 # ---------------------------------------------------------------------------
+# Structural detail kit (backlog section C; sheet 06): foundation plinths,
+# posts and round columns, beams, braces
+# ---------------------------------------------------------------------------
+def _plinth_run(name, x0, x1, material):
+    """Base-course segment along X: body + proud cap ledge."""
+    return [
+        make_box(name + "_body", x0, x1, -PLINTH_D, PLINTH_D, 0.0,
+                 PLINTH_BODY_H, material=material),
+        make_box(name + "_ledge", x0, x1, -PLINTH_LEDGE, PLINTH_LEDGE,
+                 PLINTH_BODY_H, PLINTH_H, material=material),
+    ]
+
+
+def _plinth_straight(rel_path, name, length):
+    reset_scene()
+    mat = tile_material("stone_rough")
+    plinth = join_into(_plinth_run(name, -length / 2.0, length / 2.0, mat),
+                       name)
+    tag_none(plinth, "structural")
+    export_glb(rel_path, "stone_rough")
+
+
+def build_foundation_plinth_straight_2m():
+    _plinth_straight("structural/foundation_plinth_straight_2m",
+                     "foundation_plinth_straight_2m", 2.0)
+
+
+def build_foundation_plinth_straight_4m():
+    _plinth_straight("structural/foundation_plinth_straight_4m",
+                     "foundation_plinth_straight_4m", 4.0)
+
+
+def _plinth_corner(rel_path, name, with_quoin):
+    """L junction: legs along +X and +Y. The convex (outer) corner adds a
+    proud quoin block at the junction (sheet 06)."""
+    reset_scene()
+    mat = tile_material("stone_rough")
+    parts = _plinth_run(name + "_x", 0.0, 0.5, mat)
+    parts += [
+        make_box(name + "_y_body", -PLINTH_D, PLINTH_D, 0.0, 0.5, 0.0,
+                 PLINTH_BODY_H, material=mat),
+        make_box(name + "_y_ledge", -PLINTH_LEDGE, PLINTH_LEDGE, 0.0, 0.5,
+                 PLINTH_BODY_H, PLINTH_H, material=mat),
+    ]
+    if with_quoin:
+        parts.append(make_box(name + "_quoin", -PLINTH_LEDGE, PLINTH_LEDGE,
+                              -PLINTH_LEDGE, PLINTH_LEDGE, 0.0, 0.55,
+                              material=mat))
+    corner = join_into(parts, name)
+    tag_none(corner, "structural")
+    export_glb(rel_path, "stone_rough")
+
+
+def build_foundation_plinth_inner_corner():
+    _plinth_corner("structural/foundation_plinth_inner_corner",
+                   "foundation_plinth_inner_corner", with_quoin=False)
+
+
+def build_foundation_plinth_outer_corner():
+    _plinth_corner("structural/foundation_plinth_outer_corner",
+                   "foundation_plinth_outer_corner", with_quoin=True)
+
+
+def build_foundation_plinth_end():
+    """Finished exposed end: the ledge wraps past the body end."""
+    reset_scene()
+    mat = tile_material("stone_rough")
+    parts = [
+        make_box("plinth_end_body", 0.0, 0.4, -PLINTH_D, PLINTH_D, 0.0,
+                 PLINTH_BODY_H, material=mat),
+        make_box("plinth_end_ledge", 0.0, 0.45, -PLINTH_LEDGE, PLINTH_LEDGE,
+                 PLINTH_BODY_H, PLINTH_H, material=mat),
+    ]
+    end = join_into(parts, "foundation_plinth_end")
+    tag_none(end, "structural")
+    export_glb("structural/foundation_plinth_end", "stone_rough")
+
+
+def _post_square(rel_path, name, half):
+    reset_scene()
+    mat = tile_material("oak_timber")
+    post = make_box(name, -half, half, -half, half, 0.0, STOREY,
+                    material=mat)
+    tag_bounds(post, "structural")
+    export_glb(rel_path, "oak_timber")
+
+
+def build_post_square_0p3x3m():
+    _post_square("structural/post_square_0p3x3m", "post_square_0p3x3m", 0.15)
+
+
+def build_post_square_0p5x3m():
+    _post_square("structural/post_square_0p5x3m", "post_square_0p5x3m", 0.25)
+
+
+def build_column_round_0p5x3m():
+    """Storey round column; plug mates the base's receiver, receiver on top
+    takes the cap (chained sockets)."""
+    reset_scene()
+    mat = tile_material("stone_rough")
+    col = make_ngon_prism("column_round_0p5x3m", COLUMN_R, 0.0, STOREY,
+                          COLUMN_SEGS, material=mat)
+    tag_bounds(col, "structural")
+    add_socket("column.base", (0.0, 0.0, 0.0), "plug", COLUMN_FAMILY)
+    add_socket("column.cap", (0.0, 0.0, STOREY), "receiver",
+               COLUMN_CAP_FAMILY)
+    export_glb("structural/column_round_0p5x3m", "stone_rough")
+
+
+def build_column_round_base():
+    """Stepped base (sheet 06): square pad, round disc, round stub; receiver
+    on top of the stub."""
+    reset_scene()
+    mat = tile_material("stone_rough")
+    parts = [
+        make_box("base_pad", -0.3, 0.3, -0.3, 0.3, 0.0, 0.08, material=mat),
+        make_ngon_prism("base_disc", 0.28, 0.08, 0.18, COLUMN_SEGS,
+                        material=mat),
+        make_ngon_prism("base_stub", COLUMN_R, 0.18, 0.25, COLUMN_SEGS,
+                        material=mat),
+    ]
+    base = join_into(parts, "column_round_base")
+    tag_none(base, "structural")
+    add_socket("column.base", (0.0, 0.0, 0.25), "receiver", COLUMN_FAMILY)
+    export_glb("structural/column_round_base", "stone_rough")
+
+
+def build_column_round_cap():
+    """Round neck under a square abacus; plug mates the column's top
+    receiver."""
+    reset_scene()
+    mat = tile_material("stone_rough")
+    parts = [
+        make_ngon_prism("cap_neck", COLUMN_R, 0.0, 0.15, COLUMN_SEGS,
+                        material=mat),
+        make_box("cap_abacus", -0.3, 0.3, -0.3, 0.3, 0.15, 0.25,
+                 material=mat),
+    ]
+    cap = join_into(parts, "column_round_cap")
+    tag_none(cap, "structural")
+    add_socket("column.cap", (0.0, 0.0, 0.0), "plug", COLUMN_CAP_FAMILY)
+    export_glb("structural/column_round_cap", "stone_rough")
+
+
+def _beam(rel_path, name, length, half_w, height):
+    reset_scene()
+    mat = tile_material("oak_timber")
+    beam = make_box(name, -length / 2.0, length / 2.0, -half_w, half_w, 0.0,
+                    height, material=mat)
+    tag_bounds(beam, "structural")
+    export_glb(rel_path, "oak_timber")
+
+
+def build_beam_2m():
+    _beam("structural/beam_2m", "beam_2m", 2.0, BEAM_HALF_W, BEAM_H)
+
+
+def build_beam_4m():
+    _beam("structural/beam_4m", "beam_4m", 4.0, BEAM_HALF_W, BEAM_H)
+
+
+def build_beam_6m():
+    # long span with credible depth
+    _beam("structural/beam_6m", "beam_6m", 6.0, 0.125, 0.45)
+
+
+def build_beam_end_cap():
+    """Exposed beam-end treatment: section stub with a proud end plate."""
+    reset_scene()
+    mat = tile_material("oak_timber")
+    parts = [
+        make_box("cap_stub", 0.0, 0.2, -BEAM_HALF_W, BEAM_HALF_W, 0.03,
+                 0.33, material=mat),
+        make_box("cap_plate", 0.2, 0.24, -0.13, 0.13, 0.0, 0.36,
+                 material=mat),
+    ]
+    cap = join_into(parts, "beam_end_cap")
+    tag_none(cap, "structural")
+    export_glb("structural/beam_end_cap", "oak_timber")
+
+
+def _brace(rel_path, name, hand):
+    """Diagonal support with vertical-cut ends; left rises toward +X from
+    the origin, right is the mirror (explicit mirrored pivots)."""
+    reset_scene()
+    mat = tile_material("oak_timber")
+    if hand == "left":
+        bar = sloped_bar_x(name, 0.0, 0.8, -0.06, 0.06, 0.0, 0.68, 0.17,
+                           material=mat)
+    else:
+        bar = sloped_bar_x(name, -0.8, 0.0, -0.06, 0.06, 0.68, 0.0, 0.17,
+                           material=mat)
+    tag_bounds(bar, "structural")
+    export_glb(rel_path, "oak_timber")
+
+
+def build_brace_left():
+    _brace("structural/brace_left", "brace_left", "left")
+
+
+def build_brace_right():
+    _brace("structural/brace_right", "brace_right", "right")
+
+
+# ---------------------------------------------------------------------------
 # Roof: ridge family (CAL-1 section), eave/gable trim, drainage, chimney
 # ---------------------------------------------------------------------------
 def _ridge_prism(name, length, base_half, apex_z, out_half, material):
@@ -771,8 +1108,16 @@ def main():
         build_door_frame_wide,
         build_door_leaf_wide_closed,
         build_door_leaf_wide_open,
+        build_door_frame_double,
+        build_door_leaf_double_left_closed,
+        build_door_leaf_double_left_open,
+        build_door_leaf_double_right_closed,
+        build_door_leaf_double_right_open,
         build_window_frame_standard,
         build_window_frame_small,
+        build_window_frame_wide,
+        build_window_frame_tall,
+        build_window_bars_standard,
         build_window_shutter_left_closed,
         build_window_shutter_left_open,
         build_window_shutter_right_closed,
@@ -786,6 +1131,22 @@ def main():
         build_stair_rail_slope_3m,
         build_stair_newel_post,
         build_railing_straight_2m,
+        build_foundation_plinth_straight_2m,
+        build_foundation_plinth_straight_4m,
+        build_foundation_plinth_inner_corner,
+        build_foundation_plinth_outer_corner,
+        build_foundation_plinth_end,
+        build_post_square_0p3x3m,
+        build_post_square_0p5x3m,
+        build_column_round_0p5x3m,
+        build_column_round_base,
+        build_column_round_cap,
+        build_beam_2m,
+        build_beam_4m,
+        build_beam_6m,
+        build_beam_end_cap,
+        build_brace_left,
+        build_brace_right,
         build_ridge_cap_straight_4m,
         build_ridge_cap_straight_2m,
         build_ridge_cap_end,

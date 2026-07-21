@@ -963,6 +963,77 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
       ModularAssetExpectation{
           "architecture/roof/chimney_cap", "roof",
           iggy3d::StaticMeshCollisionMode::None, false, 0U, 0U, 1U, 1U, 0U},
+      // ASSET-BLD-2: double doors, window completion, structural core.
+      ModularAssetExpectation{
+          "architecture/openings/door_frame_double", "openings",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 3U, 0U, 2U,
+          0U, 2U},
+      ModularAssetExpectation{
+          "architecture/openings/door_leaf_double_left_closed", "openings",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{
+          "architecture/openings/door_leaf_double_left_open", "openings",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{
+          "architecture/openings/door_leaf_double_right_closed", "openings",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{
+          "architecture/openings/door_leaf_double_right_open", "openings",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{
+          "architecture/openings/window_frame_wide", "openings",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 4U},
+      ModularAssetExpectation{
+          "architecture/openings/window_frame_tall", "openings",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 4U},
+      ModularAssetExpectation{
+          "architecture/openings/window_bars_standard", "openings",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{
+          "architecture/structural/foundation_plinth_straight_2m",
+          "structural", iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "architecture/structural/foundation_plinth_straight_4m",
+          "structural", iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "architecture/structural/foundation_plinth_inner_corner",
+          "structural", iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "architecture/structural/foundation_plinth_outer_corner",
+          "structural", iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "architecture/structural/foundation_plinth_end", "structural",
+          iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "architecture/structural/post_square_0p3x3m", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/post_square_0p5x3m", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/column_round_0p5x3m", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 2U, 1U, 1U},
+      ModularAssetExpectation{
+          "architecture/structural/column_round_base", "structural",
+          iggy3d::StaticMeshCollisionMode::None, false, 0U, 0U, 1U, 0U, 1U},
+      ModularAssetExpectation{
+          "architecture/structural/column_round_cap", "structural",
+          iggy3d::StaticMeshCollisionMode::None, false, 0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{"architecture/structural/beam_2m", "structural",
+                              iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{"architecture/structural/beam_4m", "structural",
+                              iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{"architecture/structural/beam_6m", "structural",
+                              iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/beam_end_cap", "structural",
+          iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "architecture/structural/brace_left", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/brace_right", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
   };
   const iggy3d::StaticMeshAssetCatalog catalog =
       iggy3d::discoverStaticMeshAssetCatalog("assets/creative");
@@ -1259,7 +1330,7 @@ bool texturedFixtureBuildsOneCachedMaterialBinding() {
                     walkway.asset.primitives[0].hasTexcoord0,
                 "material and primitive retain texture ownership") &&
          expect(textures.textures.size() == 7U &&
-                    textures.materialBindings.size() == 36U &&
+                    textures.materialBindings.size() == 60U &&
                     textures.rejectedTextureCount == 1U,
                 "startup cache dedups palette copies to unique textures and "
                 "rejects only the severed missing-texture probe") &&
