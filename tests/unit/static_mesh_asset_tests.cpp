@@ -854,7 +854,16 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
       ModularAssetExpectation{"calibration/collision_compound", "calibration",
                               iggy3d::StaticMeshCollisionMode::CompoundBounds,
                               true, 2U, 1U},
+      ModularAssetExpectation{"calibration/material_base_color",
+                              "calibration",
+                              iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{"calibration/material_texture_uv", "calibration",
+                              iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{"calibration/material_missing_texture",
+                              "calibration",
+                              iggy3d::StaticMeshCollisionMode::None},
   };
+
   // ASSET-CAL-1 Batch 1 seed: building-closure architecture assets.
   constexpr std::array kArchitectureAssets{
       ModularAssetExpectation{
@@ -1176,22 +1185,25 @@ bool texturedFixtureBuildsOneCachedMaterialBinding() {
          expect(walkway.asset.materials[0].baseColorImageIndex == 0U &&
                     walkway.asset.primitives[0].hasTexcoord0,
                 "material and primitive retain texture ownership") &&
-         expect(textures.textures.size() == 1U &&
-                    textures.materialBindings.size() == 1U &&
-                    textures.rejectedTextureCount == 0U,
-                "startup cache deduplicates one texture binding") &&
+         expect(textures.textures.size() == 5U &&
+                    textures.materialBindings.size() == 10U &&
+                    textures.rejectedTextureCount == 1U,
+                "startup cache dedups palette copies to unique textures and "
+                "rejects only the severed missing-texture probe") &&
          expect(geometry.ready && geometry.indexedDraws.size() == 1U &&
-                    geometry.indexedDraws[0].materialTextureIndex == 0U &&
+                    geometry.indexedDraws[0].materialTextureIndex <
+                        textures.materialBindings.size() &&
                     hasNonzeroUv,
                 "room draw carries texture binding and transformed UVs") &&
          expect(atlas.valid && walkwayDraw != atlas.assetDraws.end() &&
                     walkwayDraw->indexedDraws.size() == 1U &&
-                    walkwayDraw->indexedDraws[0].materialTextureIndex == 0U &&
+                    walkwayDraw->indexedDraws[0].materialTextureIndex <
+                        textures.materialBindings.size() &&
                     instanced.ready && instanced.vertices.empty() &&
                     instanced.staticMeshInstances.size() == 1U &&
                     instanced.staticMeshInstanceBatches.size() == 1U &&
-                    instanced.staticMeshInstanceBatches[0]
-                            .materialTextureIndex == 0U,
+                    instanced.staticMeshInstanceBatches[0].materialTextureIndex ==
+                        walkwayDraw->indexedDraws[0].materialTextureIndex,
                 "instanced atlas retains textured primitive binding") &&
          expect(!invalid.ok() &&
                     invalid.reasonCode == "image_dimensions_invalid",

@@ -206,7 +206,7 @@ for i, c in enumerate(colors):
     o["iggy_category"] = "calibration"
     o["iggy_collision"] = "none"
     objs.append(o)
-export_glb(objs, f"{CALDIR}/calibration_material_base_color.glb")
+export_glb(objs, f"{CALDIR}/material_base_color.glb")
 
 reset_scene()
 # material_texture_uv: 1m cube with the uv marker texture
@@ -216,9 +216,9 @@ o.name = "texture_uv_proof"
 o.data.materials.append(image_mat("uv_marker", uv_path, 0.9))
 o["iggy_category"] = "calibration"
 o["iggy_collision"] = "none"
-export_glb([o], f"{CALDIR}/calibration_material_texture_uv.glb")
+export_glb([o], f"{CALDIR}/material_texture_uv.glb")
 # missing_texture starts as a copy; python3 post-pass severs the image
-export_glb([o], f"{CALDIR}/calibration_material_missing_texture.glb")
+export_glb([o], f"{CALDIR}/material_missing_texture.glb")
 print("PHASE1 DONE")
 
 # ---------------- phase 2 proofs: tiling + swatch sheet ----------------
