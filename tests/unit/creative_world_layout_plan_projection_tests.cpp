@@ -1,11 +1,14 @@
 #include "app/iggy3d/creative/world/WorldLayoutPlanProjection.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
+#include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -438,6 +441,256 @@ bool upperStoreyAddsContextRoofAndVerticalFiltering() {
                 "stair footprint axis arrow and five treads are explicit");
 }
 
+bool displayFlagsOnlyRemoveTheirPresentationLayers() {
+  const ProjectionFixture fixture = makeFixture();
+  const cr::CreativeWorldLayoutPlanProjection complete = project(fixture, 1U);
+  cr::CreativeWorldLayoutPlanProjectionRequest request;
+  request.layout = &fixture.layout;
+  request.grid = fixture.grid;
+  request.activeLevelIndex = 1U;
+  request.contours = fixture.contours;
+  request.includeLowerLevelContext = false;
+  request.includeRoofOverhead = false;
+  const cr::CreativeWorldLayoutPlanProjection reduced =
+      cr::projectCreativeWorldLayoutPlan(request);
+
+  return expect(complete.accepted && reduced.accepted,
+                "display flags preserve a valid plan") &&
+         expect(reduced.receipt.contextLevelCount == 0U &&
+                    reduced.receipt.roofPrimitiveCount == 0U,
+                "disabled context and roof emit no presentation primitives") &&
+         expect(findSource(reduced, cr::CreativeWorldLayoutPlanRole::RoomFloor,
+                           cr::CreativeWorldLayoutPlanLayer::Active,
+                           cr::CreativeWorldLayoutTable::Room, 2U) != nullptr &&
+                    countRole(reduced,
+                              cr::CreativeWorldLayoutPlanRole::RoomFloor,
+                              cr::CreativeWorldLayoutPlanLayer::Active) ==
+                        countRole(complete,
+                                  cr::CreativeWorldLayoutPlanRole::RoomFloor,
+                                  cr::CreativeWorldLayoutPlanLayer::Active),
+                "active storey semantics survive visibility changes") &&
+         expect(reduced.receipt.terrainPrimitiveCount ==
+                        complete.receipt.terrainPrimitiveCount &&
+                    reduced.receipt.contourPrimitiveCount ==
+                        complete.receipt.contourPrimitiveCount,
+                "architecture visibility does not alter terrain drafting");
+}
+
+bool levelNavigationUsesPhysicalDatums() {
+  ProjectionFixture fixture = makeFixture();
+  cr::CreativeWorldLayoutLevel neighborUpper = fixture.layout.levels[1U];
+  neighborUpper.buildingIndex = 1U;
+  neighborUpper.stableKey = "neighbor_upper";
+  neighborUpper.name = "Neighbor Upper";
+  fixture.layout.levels.push_back(neighborUpper);
+  cr::CreativeWorldLayoutLevel primaryTop = fixture.layout.levels[1U];
+  primaryTop.floorTopLayer = 6.0;
+  primaryTop.stableKey = "primary_top";
+  primaryTop.name = "Primary Top";
+  fixture.layout.levels.push_back(primaryTop);
+  cr::CreativeWorldLayoutBuilding hiddenBuilding =
+      fixture.layout.buildings[1U];
+  hiddenBuilding.stableKey = "hidden_neighbor";
+  hiddenBuilding.name = "Hidden Neighbor";
+  hiddenBuilding.visible = false;
+  fixture.layout.buildings.push_back(hiddenBuilding);
+  cr::CreativeWorldLayoutLevel hiddenMiddle = fixture.layout.levels[1U];
+  hiddenMiddle.buildingIndex = 2U;
+  hiddenMiddle.floorTopLayer = 1.5;
+  hiddenMiddle.stableKey = "hidden_middle";
+  hiddenMiddle.name = "Hidden Middle";
+  fixture.layout.levels.push_back(hiddenMiddle);
+
+  using Direction = cr::CreativeWorldLayoutLevelNavigationDirection;
+  using Status = cr::CreativeWorldLayoutLevelNavigationStatus;
+  const auto primaryUp =
+      cr::navigateCreativeWorldLayoutLevel(fixture.layout, 0U,
+                                           Direction::Higher);
+  const auto neighborUp =
+      cr::navigateCreativeWorldLayoutLevel(fixture.layout, 2U,
+                                           Direction::Higher);
+  const auto neighborUpperFallback = cr::navigateCreativeWorldLayoutLevel(
+      fixture.layout, 3U, Direction::Higher);
+  const auto topDown = cr::navigateCreativeWorldLayoutLevel(
+      fixture.layout, 4U, Direction::Lower);
+  const auto groundDown = cr::navigateCreativeWorldLayoutLevel(
+      fixture.layout, 0U, Direction::Lower);
+  const auto topUp = cr::navigateCreativeWorldLayoutLevel(
+      fixture.layout, 4U, Direction::Higher);
+  const auto invalidActive = cr::navigateCreativeWorldLayoutLevel(
+      fixture.layout, fixture.layout.levels.size(), Direction::Higher);
+  const auto invalidDirection = cr::navigateCreativeWorldLayoutLevel(
+      fixture.layout, 0U, Direction::Count);
+
+  cr::CreativeWorldLayout hiddenActive = fixture.layout;
+  hiddenActive.buildings[0U].visible = false;
+  const auto invalidHiddenActive = cr::navigateCreativeWorldLayoutLevel(
+      hiddenActive, 0U, Direction::Higher);
+
+  cr::CreativeWorldLayout malformed = fixture.layout;
+  malformed.levels[3U].wallHeightCells = 0U;
+  const auto invalidLayout = cr::navigateCreativeWorldLayoutLevel(
+      malformed, 0U, Direction::Higher);
+
+  return expect(primaryUp.status == Status::Ready &&
+                    primaryUp.targetLevelIndex == 1U &&
+                    near(primaryUp.targetFloorTopLayer, 3.0),
+                "higher chooses the nearest distinct physical datum") &&
+         expect(neighborUp.status == Status::Ready &&
+                    neighborUp.targetLevelIndex == 3U,
+                "same-datum ties prefer the current building") &&
+         expect(neighborUpperFallback.status == Status::Ready &&
+                    neighborUpperFallback.targetLevelIndex == 4U &&
+                    near(neighborUpperFallback.targetFloorTopLayer, 6.0),
+                "navigation falls back across buildings deterministically") &&
+         expect(topDown.status == Status::Ready &&
+                    topDown.targetLevelIndex == 1U,
+                "lower navigation ignores table order, hidden floors, and keeps ownership") &&
+         expect(groundDown.status == Status::Boundary &&
+                    topUp.status == Status::Boundary,
+                "first and last physical floors report a boundary") &&
+         expect(invalidActive.status == Status::InvalidActiveLevel &&
+                    invalidHiddenActive.status ==
+                        Status::InvalidActiveLevel &&
+                    invalidDirection.status == Status::InvalidDirection &&
+                    invalidLayout.status == Status::InvalidLayout,
+                "invalid navigation inputs fail closed");
+}
+
+bool semanticSourcesResolveToExactStoreys() {
+  cr::CreativeWorldLayout layout;
+  cr::CreativeWorldLayoutBuilding west;
+  west.stableKey = "west";
+  west.name = "West";
+  layout.buildings.push_back(west);
+  cr::CreativeWorldLayoutBuilding east = west;
+  east.stableKey = "east";
+  east.name = "East";
+  layout.buildings.push_back(east);
+
+  const auto addLevel = [&layout](std::size_t buildingIndex,
+                                  std::string stableKey, double datum) {
+    cr::CreativeWorldLayoutLevel level;
+    level.buildingIndex = buildingIndex;
+    level.stableKey = std::move(stableKey);
+    level.name = level.stableKey;
+    level.floorTopLayer = datum;
+    layout.levels.push_back(std::move(level));
+  };
+  addLevel(0U, "west_ground", 0.0);
+  addLevel(0U, "west_upper", 3.0);
+  addLevel(1U, "east_ground", 0.0);
+  addLevel(1U, "east_upper", 3.0);
+
+  const auto addRoom = [&layout](std::size_t buildingIndex,
+                                 std::size_t levelIndex,
+                                 std::string stableKey) {
+    cr::CreativeWorldLayoutRoom room;
+    room.buildingIndex = buildingIndex;
+    room.levelIndex = levelIndex;
+    room.stableKey = std::move(stableKey);
+    room.name = room.stableKey;
+    room.footprint = {{0, 0}, {4, 4}};
+    layout.rooms.push_back(std::move(room));
+  };
+  addRoom(0U, 0U, "west_ground_room");
+  addRoom(0U, 1U, "west_upper_room");
+  addRoom(1U, 2U, "east_ground_room");
+  addRoom(1U, 3U, "east_upper_room");
+
+  cr::CreativeWorldLayoutBox groundFloor;
+  groundFloor.buildingIndex = 0U;
+  groundFloor.stableKey = "ground_floor";
+  groundFloor.name = "Ground Floor";
+  groundFloor.footprint = {{0, 0}, {4, 4}};
+  groundFloor.anchorLayer = 0.0;
+  layout.boxes.push_back(groundFloor);
+  cr::CreativeWorldLayoutBox upperFloor = groundFloor;
+  upperFloor.stableKey = "upper_floor";
+  upperFloor.name = "Upper Floor";
+  upperFloor.anchorLayer = 3.0;
+  layout.boxes.push_back(upperFloor);
+
+  cr::CreativeWorldLayoutWall groundWall;
+  groundWall.buildingIndex = 0U;
+  groundWall.stableKey = "ground_wall";
+  groundWall.name = "Ground Wall";
+  groundWall.start = {0, 0};
+  groundWall.end = {4, 0};
+  groundWall.baseLayer = 0.0;
+  groundWall.heightCells = 3U;
+  layout.walls.push_back(groundWall);
+  cr::CreativeWorldLayoutWall upperWall = groundWall;
+  upperWall.stableKey = "upper_wall";
+  upperWall.name = "Upper Wall";
+  upperWall.baseLayer = 3.0;
+  layout.walls.push_back(upperWall);
+  cr::CreativeWorldLayoutWall tallWall = groundWall;
+  tallWall.stableKey = "tall_wall";
+  tallWall.name = "Tall Wall";
+  tallWall.heightCells = 6U;
+  layout.walls.push_back(tallWall);
+
+  cr::CreativeWorldLayoutOpening groundDoor;
+  groundDoor.hostKind = cr::CreativeWorldLayoutOpeningHostKind::Wall;
+  groundDoor.wallIndex = 2U;
+  groundDoor.stableKey = "ground_door";
+  groundDoor.name = "Ground Door";
+  layout.openings.push_back(groundDoor);
+  cr::CreativeWorldLayoutOpening upperWindow = groundDoor;
+  upperWindow.stableKey = "upper_window";
+  upperWindow.name = "Upper Window";
+  upperWindow.kind = cr::CreativeBuildingOpeningKind::Window;
+  upperWindow.cutoutBottomCells = 3.5;
+  upperWindow.cutoutHeightCells = 1.0;
+  layout.openings.push_back(upperWindow);
+
+  cr::CreativeWorldLayoutVerticalConnector connector;
+  connector.buildingIndex = 0U;
+  connector.lowerRoomIndex = 0U;
+  connector.upperRoomIndex = 1U;
+  connector.stableKey = "stair";
+  connector.name = "Stair";
+  connector.footprint = {{1, 1}, {2, 3}};
+  layout.verticalConnectors.push_back(connector);
+
+  const std::size_t invalid = cr::kInvalidCreativeWorldLayoutIndex;
+  return expect(
+      cr::creativeWorldLayoutSourceLevelAtDatum(
+          layout, cr::CreativeWorldLayoutTable::Room, 3U, 3.0) == 3U &&
+          cr::creativeWorldLayoutSourceLevelAtDatum(
+              layout, cr::CreativeWorldLayoutTable::Box, 0U, 0.0) == 0U &&
+          cr::creativeWorldLayoutSourceLevelAtDatum(
+              layout, cr::CreativeWorldLayoutTable::Box, 0U, 3.0) == invalid &&
+          cr::creativeWorldLayoutSourceTouchesLevel(
+              layout, cr::CreativeWorldLayoutTable::Wall, 0U, 0U) &&
+          !cr::creativeWorldLayoutSourceTouchesLevel(
+              layout, cr::CreativeWorldLayoutTable::Wall, 0U, 1U) &&
+          !cr::creativeWorldLayoutSourceTouchesLevel(
+              layout, cr::CreativeWorldLayoutTable::Wall, 1U, 0U) &&
+          cr::creativeWorldLayoutSourceTouchesLevel(
+              layout, cr::CreativeWorldLayoutTable::Wall, 1U, 1U) &&
+          cr::creativeWorldLayoutSourceTouchesLevel(
+              layout, cr::CreativeWorldLayoutTable::Wall, 2U, 0U) &&
+          cr::creativeWorldLayoutSourceTouchesLevel(
+              layout, cr::CreativeWorldLayoutTable::Wall, 2U, 1U) &&
+          cr::creativeWorldLayoutSourceTouchesLevel(
+              layout, cr::CreativeWorldLayoutTable::Opening, 0U, 0U) &&
+          !cr::creativeWorldLayoutSourceTouchesLevel(
+              layout, cr::CreativeWorldLayoutTable::Opening, 0U, 1U) &&
+          !cr::creativeWorldLayoutSourceTouchesLevel(
+              layout, cr::CreativeWorldLayoutTable::Opening, 1U, 0U) &&
+          cr::creativeWorldLayoutSourceTouchesLevel(
+              layout, cr::CreativeWorldLayoutTable::Opening, 1U, 1U) &&
+          cr::creativeWorldLayoutSourceTouchesLevel(
+              layout, cr::CreativeWorldLayoutTable::VerticalConnector, 0U,
+              0U) &&
+          cr::creativeWorldLayoutSourceTouchesLevel(
+              layout, cr::CreativeWorldLayoutTable::VerticalConnector, 0U,
+              1U),
+      "semantic sources resolve to one floor while spanning structures stay intentional");
+}
+
 bool terrainContoursAndObjectsCarrySemanticMetadata() {
   const ProjectionFixture fixture = makeFixture();
   const cr::CreativeWorldLayoutPlanProjection plan = project(fixture, 0U);
@@ -614,6 +867,9 @@ int main() {
                   groundDatumProjectsBothBuildingsAndCutOpenings() &&
                   everyDoorPoseProjectsTheAuthoredHingeAndSwing() &&
                   upperStoreyAddsContextRoofAndVerticalFiltering() &&
+                  displayFlagsOnlyRemoveTheirPresentationLayers() &&
+                  levelNavigationUsesPhysicalDatums() &&
+                  semanticSourcesResolveToExactStoreys() &&
                   terrainContoursAndObjectsCarrySemanticMetadata() &&
                   rampOmitsStairTreadsAndTerrainOnlyPlansRemainValid() &&
                   invalidInputFailsAtomically() && projectionIsDeterministic();

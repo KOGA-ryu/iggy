@@ -942,6 +942,8 @@ struct CreativeEditorWorldLayoutState {
   std::string statusMessage = "layout ready";
 
   // Canvas-only view state. It is neither document nor layout truth.
+  bool planLowerLevelContextVisible = true;
+  bool planRoofOverheadVisible = true;
   float canvasPixelsPerCell = 28.0F;
   float canvasPanX = 0.0F;
   float canvasPanZ = 0.0F;

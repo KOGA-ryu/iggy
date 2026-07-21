@@ -1835,6 +1835,70 @@ bool floorSettingsMoveAndResizeCommitOnce() {
                 "edited floor remains exact 3D-previewable");
 }
 
+bool planStoreySelectionEditsOnlyItsExactFloorSource() {
+  app::CreativeEditorWorldLayoutState state;
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "stacked_house";
+  building.name = "Stacked House";
+  state.source.buildings.push_back(building);
+
+  cr::CreativeWorldLayoutLevel ground;
+  ground.buildingIndex = 0U;
+  ground.stableKey = "ground";
+  ground.name = "Ground";
+  state.source.levels.push_back(ground);
+  cr::CreativeWorldLayoutLevel upper = ground;
+  upper.stableKey = "upper";
+  upper.name = "Upper";
+  upper.floorTopLayer = 3.0;
+  state.source.levels.push_back(upper);
+
+  cr::CreativeWorldLayoutBox groundFloor;
+  groundFloor.buildingIndex = 0U;
+  groundFloor.stableKey = "ground_floor";
+  groundFloor.name = "Ground Floor";
+  groundFloor.footprint = {{0, 0}, {4, 4}};
+  groundFloor.anchorLayer = 0.0;
+  state.source.boxes.push_back(groundFloor);
+  cr::CreativeWorldLayoutBox upperFloor = groundFloor;
+  upperFloor.stableKey = "upper_floor";
+  upperFloor.name = "Upper Floor";
+  upperFloor.anchorLayer = 3.0;
+  state.source.boxes.push_back(upperFloor);
+
+  state.activeLevelIndex = 0U;
+  state.tool = app::CreativeEditorWorldLayoutTool::Select;
+  const auto selected = app::selectCreativeEditorWorldLayoutSource(
+      state, cr::CreativeWorldLayoutTable::Box, 1U, 1U);
+  const auto mismatched = app::selectCreativeEditorWorldLayoutSource(
+      state, cr::CreativeWorldLayoutTable::Box, 0U, 1U);
+  const std::uint64_t revisionBefore = state.revision;
+  const auto begun = app::applyCreativeEditorWorldLayoutBoxManipulation(
+      state, app::CreativeEditorWorldLayoutBoxManipulationPhase::Begin,
+      {2.0, 2.0}, 0.2);
+  const auto committed = app::applyCreativeEditorWorldLayoutBoxManipulation(
+      state, app::CreativeEditorWorldLayoutBoxManipulationPhase::Commit,
+      {3.0, 2.0}, 0.2);
+
+  return expect(selected.accepted && selected.changed &&
+                    state.activeLevelIndex == 1U &&
+                    !mismatched.accepted && !mismatched.changed &&
+                    mismatched.reasonCode ==
+                        "creative_editor_world_layout_source_level_mismatch",
+                "plan source selection accepts only its resolved storey") &&
+         expect(begun.accepted && committed.accepted && committed.changed &&
+                    state.revision == revisionBefore + 1U &&
+                    state.source.boxes[0].footprint.minimum ==
+                        cr::CreativeTerrainCoord2{0, 0} &&
+                    state.source.boxes[0].footprint.maximum ==
+                        cr::CreativeTerrainCoord2{4, 4} &&
+                    state.source.boxes[1].footprint.minimum ==
+                        cr::CreativeTerrainCoord2{1, 0} &&
+                    state.source.boxes[1].footprint.maximum ==
+                        cr::CreativeTerrainCoord2{5, 4},
+                "overlapping storeys mutate only the clicked semantic floor");
+}
+
 bool partitionManipulationPreservesHostedOpeningWorldPositions() {
   cr::CreativeAppState live = appState();
   app::CreativeEditorWorldLayoutState state;
@@ -3885,6 +3949,7 @@ int main() {
       roomEdgesAndCornersResizeFromTheirOwnedSides() &&
       invalidRoomManipulationsRejectWithoutMutation() &&
       floorSettingsMoveAndResizeCommitOnce() &&
+      planStoreySelectionEditsOnlyItsExactFloorSource() &&
       partitionManipulationPreservesHostedOpeningWorldPositions() &&
       buildingGroupMoveDuplicateAndDeleteAreAtomic() &&
       buildingTransformPreviewsAndCommitsOneRevision() &&

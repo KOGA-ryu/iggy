@@ -210,7 +210,8 @@ bool dispatchCreativeDesktopWorldLayoutSourceCommand(
       }
       const CreativeEditorWorldLayoutEditReceipt receipt =
           selectCreativeEditorWorldLayoutSource(
-              editor.worldLayout, payload->table, payload->index);
+              editor.worldLayout, payload->table, payload->index,
+              payload->preferredLevelIndex);
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
       result.message = editor.worldLayout.statusMessage;

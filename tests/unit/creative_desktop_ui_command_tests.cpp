@@ -1918,14 +1918,19 @@ bool worldLayoutSourceScopeSelectionDoesNotMoveTheCanvas() {
   const app::CreativeDesktopCommandResult selected = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutSelectSourceScope, context,
       app::CreativeDesktopWorldLayoutSourcePayload{
-          cr::CreativeWorldLayoutTable::Room, 0U, roomKey});
+          cr::CreativeWorldLayoutTable::Room, 0U, roomKey, 0U});
   const bool selectedWithoutPan =
       selected.accepted && selected.changed &&
       editor.worldLayout.selection.kind ==
           app::CreativeEditorWorldLayoutSelectionKind::Room &&
       editor.worldLayout.selection.index == 0U &&
+      editor.worldLayout.activeLevelIndex == 0U &&
       editor.worldLayout.canvasPanX == 17.0F &&
       editor.worldLayout.canvasPanZ == -9.0F;
+  const app::CreativeDesktopCommandResult wrongFloor = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSelectSourceScope, context,
+      app::CreativeDesktopWorldLayoutSourcePayload{
+          cr::CreativeWorldLayoutTable::Room, 0U, roomKey, 99U});
   const app::CreativeDesktopCommandResult stale = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutSelectSourceScope, context,
       app::CreativeDesktopWorldLayoutSourcePayload{
@@ -1941,6 +1946,9 @@ bool worldLayoutSourceScopeSelectionDoesNotMoveTheCanvas() {
                     editor.worldLayout.selection.kind ==
                         app::CreativeEditorWorldLayoutSelectionKind::Room,
                 "stale scope target leaves the selected owner unchanged") &&
+         expect(!wrongFloor.accepted && !wrongFloor.changed &&
+                    editor.worldLayout.activeLevelIndex == 0U,
+                "scope selection rejects a source-floor mismatch") &&
          expect(focused.accepted && editor.worldLayout.canvasPanX != 17.0F,
                 "explicit focus remains the only scope action that pans");
 }

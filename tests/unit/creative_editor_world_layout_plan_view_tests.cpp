@@ -200,6 +200,12 @@ bool cacheReusesStableFrames() {
   state.buildingTransform.active = false;
   const bool restoredSource = app::refreshCreativeEditorWorldLayoutPlanView(
       cache, state, topography, grid());
+  state.planLowerLevelContextVisible = false;
+  const bool lowerContext = app::refreshCreativeEditorWorldLayoutPlanView(
+      cache, state, topography, grid());
+  state.planRoofOverheadVisible = false;
+  const bool roofOverhead = app::refreshCreativeEditorWorldLayoutPlanView(
+      cache, state, topography, grid());
   app::invalidateCreativeEditorWorldLayoutPlanView(cache);
   const bool invalidated = app::refreshCreativeEditorWorldLayoutPlanView(
       cache, state, topography, grid());
@@ -219,7 +225,10 @@ bool cacheReusesStableFrames() {
     previousOrder = currentOrder;
   }
   return expect(first && !idle && revision && contours && candidate &&
-                    restoredSource && invalidated && cache.buildCount == 6U &&
+                    restoredSource && lowerContext && roofOverhead &&
+                    invalidated && cache.buildCount == 8U &&
+                    !cache.key.lowerLevelContextVisible &&
+                    !cache.key.roofOverheadVisible &&
                     cache.projection.accepted && paintOrderStable,
                 "stable frames reuse while candidate transitions invalidate");
 }
@@ -308,7 +317,8 @@ bool hitTestUsesPaintOrderLayersOffsetsAndProvenance() {
   return expect(
       wallHit.hit && wallHit.primitiveIndex == 1U &&
           wallHit.table == cr::CreativeWorldLayoutTable::Wall &&
-          wallHit.sourceIndex == 0U && roomHit.hit &&
+          wallHit.sourceIndex == 0U && wallHit.sourceLevelIndex == 0U &&
+          roomHit.hit && roomHit.sourceLevelIndex == 0U &&
           roomHit.primitiveIndex == 0U && contextIgnored.hit &&
           contextIgnored.primitiveIndex == 0U && moved.hit &&
           moved.primitiveIndex == 1U,

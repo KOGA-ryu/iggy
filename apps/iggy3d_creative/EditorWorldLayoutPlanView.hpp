@@ -24,6 +24,8 @@ struct CreativeEditorWorldLayoutPlanViewKey {
   iggy3d::creative::CreativeGridSize3 gridSize;
   double gridCellSizeMeters = 0.0;
   bool topographyVisible = false;
+  bool lowerLevelContextVisible = true;
+  bool roofOverheadVisible = true;
   bool transientCandidate = false;
 
   [[nodiscard]] friend constexpr bool operator==(
@@ -41,6 +43,8 @@ struct CreativeEditorWorldLayoutPlanViewKey {
            lhs.gridSize.depth == rhs.gridSize.depth &&
            lhs.gridCellSizeMeters == rhs.gridCellSizeMeters &&
            lhs.topographyVisible == rhs.topographyVisible &&
+           lhs.lowerLevelContextVisible == rhs.lowerLevelContextVisible &&
+           lhs.roofOverheadVisible == rhs.roofOverheadVisible &&
            lhs.transientCandidate == rhs.transientCandidate;
   }
 };
@@ -60,6 +64,8 @@ struct CreativeEditorWorldLayoutPlanHit {
   iggy3d::creative::CreativeWorldLayoutTable table =
       iggy3d::creative::CreativeWorldLayoutTable::None;
   std::size_t sourceIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::size_t sourceLevelIndex =
       iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
   iggy3d::creative::CreativeWorldLayoutPlanRole role =
       iggy3d::creative::CreativeWorldLayoutPlanRole::Count;

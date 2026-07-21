@@ -125,6 +125,72 @@ void queueOpeningManipulation(
           phase, point, toleranceCells});
 }
 
+void queuePlanSourceSelection(
+    CreativeDesktopCommandFrame& commands,
+    const CreativeEditorWorldLayoutState& state,
+    const CreativeEditorWorldLayoutPlanHit& hit) {
+  commands.push(
+      CreativeDesktopCommandId::WorldLayoutSelectSourceScope,
+      CreativeDesktopWorldLayoutSourcePayload{
+          hit.table, hit.sourceIndex,
+          std::string(creativeEditorWorldLayoutSourceStableKey(
+              state, hit.table, hit.sourceIndex)),
+          hit.sourceLevelIndex});
+}
+
+bool queuePlanSourceInteraction(
+    CreativeEditorWorldLayoutState& state,
+    CreativeDesktopCommandFrame& commands,
+    const CreativeEditorWorldLayoutPlanHit& hit,
+    CreativeEditorWorldLayoutPoint point, double toleranceCells) {
+  if (!hit.hit) {
+    return false;
+  }
+  if (hit.table == cr::CreativeWorldLayoutTable::Object) {
+    static_cast<void>(beginCreativeEditorWorldLayoutObjectManipulation(
+        state, hit.sourceIndex, point));
+    return true;
+  }
+  queuePlanSourceSelection(commands, state, hit);
+  switch (hit.table) {
+    case cr::CreativeWorldLayoutTable::Room:
+      queueRoomManipulation(
+          commands, CreativeEditorWorldLayoutRoomManipulationPhase::Begin,
+          point, toleranceCells);
+      break;
+    case cr::CreativeWorldLayoutTable::VerticalConnector:
+      queueVerticalConnectorManipulation(
+          commands,
+          CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Begin,
+          point, toleranceCells);
+      break;
+    case cr::CreativeWorldLayoutTable::Box:
+      queueBoxManipulation(
+          commands, CreativeEditorWorldLayoutBoxManipulationPhase::Begin,
+          point, toleranceCells);
+      break;
+    case cr::CreativeWorldLayoutTable::Wall:
+      queueWallManipulation(
+          commands, CreativeEditorWorldLayoutWallManipulationPhase::Begin,
+          point, toleranceCells);
+      break;
+    case cr::CreativeWorldLayoutTable::Opening:
+      queueOpeningManipulation(
+          commands, CreativeEditorWorldLayoutOpeningManipulationPhase::Begin,
+          point, toleranceCells);
+      break;
+    case cr::CreativeWorldLayoutTable::None:
+    case cr::CreativeWorldLayoutTable::Building:
+    case cr::CreativeWorldLayoutTable::Level:
+    case cr::CreativeWorldLayoutTable::Object:
+    case cr::CreativeWorldLayoutTable::TerrainProfile:
+    case cr::CreativeWorldLayoutTable::TerrainPath:
+    case cr::CreativeWorldLayoutTable::TerrainPathPoint:
+      break;
+  }
+  return true;
+}
+
 void queueBuildingTemplatePlacement(
     CreativeDesktopCommandFrame& commands,
     CreativeEditorWorldLayoutBuildingTemplatePlacementPhase phase,
@@ -240,23 +306,29 @@ bool dragTool(CreativeEditorWorldLayoutTool tool) noexcept {
          tool == CreativeEditorWorldLayoutTool::Bridge;
 }
 
-// Left tools tab: mode toggle, operation, and selection shape only. The
-// parameters live in the Properties window and the workflow status plus the
-// sole Apply/Cancel controls live in the Build window, so the plan canvas
-// keeps its space and each dock owns one concern.
+// Compact canvas navigation only. Authoring parameters stay in Properties and
+// workflow Apply/Cancel controls stay in Build, so each dock owns one concern.
 void drawWorldLayoutViewControls(CreativeEditorWorldLayoutState& state,
                                  CreativeEditorWorldLayoutTopographyState&
                                      topography,
                                  CreativeDesktopCommandFrame& commands) {
+  constexpr float kTileSize = 24.0F;
   const bool plan = state.viewMode == CreativeEditorWorldLayoutViewMode::Plan;
-  if (ImGui::RadioButton("Plan", plan) && !plan) {
+  if (drawCreativeEditorWorldLayoutGlyphButton(
+          "##world_layout_view_plan", CreativeEditorToolGlyph::ViewPlan,
+          kTileSize, plan, "Plan view") &&
+      !plan) {
     queueLayoutManipulationCancel(state, commands);
     state.viewMode = CreativeEditorWorldLayoutViewMode::Plan;
   }
   ImGui::SameLine();
   const bool elevation =
       state.viewMode == CreativeEditorWorldLayoutViewMode::Elevation;
-  if (ImGui::RadioButton("Elevation", elevation) && !elevation) {
+  if (drawCreativeEditorWorldLayoutGlyphButton(
+          "##world_layout_view_elevation",
+          CreativeEditorToolGlyph::ViewElevation, kTileSize, elevation,
+          "Elevation view") &&
+      !elevation) {
     queueLayoutManipulationCancel(state, commands);
     if (topography.region.editingEnabled) {
       topography.region.editingEnabled = false;
@@ -266,11 +338,93 @@ void drawWorldLayoutViewControls(CreativeEditorWorldLayoutState& state,
     state.viewMode = CreativeEditorWorldLayoutViewMode::Elevation;
   }
   if (state.viewMode == CreativeEditorWorldLayoutViewMode::Plan) {
+    const cr::CreativeWorldLayoutLevelNavigationResult lower =
+        cr::navigateCreativeWorldLayoutLevel(
+            state.source, state.activeLevelIndex,
+            cr::CreativeWorldLayoutLevelNavigationDirection::Lower);
+    const cr::CreativeWorldLayoutLevelNavigationResult higher =
+        cr::navigateCreativeWorldLayoutLevel(
+            state.source, state.activeLevelIndex,
+            cr::CreativeWorldLayoutLevelNavigationDirection::Higher);
+    const bool lowerReady =
+        lower.status == cr::CreativeWorldLayoutLevelNavigationStatus::Ready;
+    const bool higherReady =
+        higher.status == cr::CreativeWorldLayoutLevelNavigationStatus::Ready;
+
     ImGui::SameLine();
-    ImGui::Checkbox("Topography", &topography.visible);
+    ImGui::BeginDisabled(!lowerReady);
+    const bool lowerPressed = drawCreativeEditorWorldLayoutGlyphButton(
+        "##world_layout_level_down", CreativeEditorToolGlyph::LevelDown,
+        kTileSize, false,
+        lowerReady ? "Show the next lower floor" : "No lower floor");
+    ImGui::EndDisabled();
+    if (lowerPressed && lowerReady) {
+      const cr::CreativeWorldLayoutLevel& target =
+          state.source.levels[lower.targetLevelIndex];
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutLevelOperation,
+          CreativeDesktopWorldLayoutLevelOperationPayload{
+              CreativeEditorWorldLayoutLevelOperation::Select,
+              target.buildingIndex, lower.targetLevelIndex});
+    }
+
+    ImGui::SameLine();
+    if (state.activeLevelIndex < state.source.levels.size()) {
+      const cr::CreativeWorldLayoutLevel& active =
+          state.source.levels[state.activeLevelIndex];
+      ImGui::AlignTextToFramePadding();
+      ImGui::Text("Floor %.3f", active.floorTopLayer);
+      if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("%s\nElevation %.3f grid layers",
+                          active.name.c_str(), active.floorTopLayer);
+      }
+    } else {
+      ImGui::AlignTextToFramePadding();
+      ImGui::TextDisabled("No active floor");
+    }
+
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!higherReady);
+    const bool higherPressed = drawCreativeEditorWorldLayoutGlyphButton(
+        "##world_layout_level_up", CreativeEditorToolGlyph::LevelUp,
+        kTileSize, false,
+        higherReady ? "Show the next higher floor" : "No higher floor");
+    ImGui::EndDisabled();
+    if (higherPressed && higherReady) {
+      const cr::CreativeWorldLayoutLevel& target =
+          state.source.levels[higher.targetLevelIndex];
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutLevelOperation,
+          CreativeDesktopWorldLayoutLevelOperationPayload{
+              CreativeEditorWorldLayoutLevelOperation::Select,
+              target.buildingIndex, higher.targetLevelIndex});
+    }
+
+    ImGui::SameLine();
+    if (drawCreativeEditorWorldLayoutGlyphButton(
+            "##world_layout_lower_context",
+            CreativeEditorToolGlyph::LowerLevelContext, kTileSize,
+            state.planLowerLevelContextVisible,
+            "Show the nearest lower floor as context")) {
+      state.planLowerLevelContextVisible =
+          !state.planLowerLevelContextVisible;
+    }
+    ImGui::SameLine();
+    if (drawCreativeEditorWorldLayoutGlyphButton(
+            "##world_layout_roof_overhead",
+            CreativeEditorToolGlyph::RoofVisibility, kTileSize,
+            state.planRoofOverheadVisible, "Show roof overhead")) {
+      state.planRoofOverheadVisible = !state.planRoofOverheadVisible;
+    }
+    ImGui::SameLine();
+    if (drawCreativeEditorWorldLayoutGlyphButton(
+            "##world_layout_contours", CreativeEditorToolGlyph::Contours,
+            kTileSize, topography.visible, "Show terrain contours")) {
+      topography.visible = !topography.visible;
+    }
+
     if (topography.visible) {
-      ImGui::SameLine();
-      ImGui::Checkbox("Bands", &topography.elevationBandsVisible);
+      ImGui::Checkbox("Elevation bands", &topography.elevationBandsVisible);
       int interval = static_cast<int>(topography.intervalCells);
       ImGui::SameLine();
       ImGui::SetNextItemWidth(112.0F);
@@ -502,28 +656,34 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   }
 
   const CreativeEditorWorldLayoutOpeningTarget hoveredOpeningTarget =
-      hovered && state.tool == CreativeEditorWorldLayoutTool::Select
+      hovered && state.tool == CreativeEditorWorldLayoutTool::Select &&
+              hoveredPlanHit.table == cr::CreativeWorldLayoutTable::Opening
           ? findCreativeEditorWorldLayoutOpeningTarget(
                 state, hoveredPoint, handleTolerance)
           : CreativeEditorWorldLayoutOpeningTarget{};
   const CreativeEditorWorldLayoutWallTarget hoveredWallTarget =
-      hovered && state.tool == CreativeEditorWorldLayoutTool::Select
+      hovered && state.tool == CreativeEditorWorldLayoutTool::Select &&
+              hoveredPlanHit.table == cr::CreativeWorldLayoutTable::Wall
           ? findCreativeEditorWorldLayoutWallTarget(state, hoveredPoint,
                                                     handleTolerance)
           : CreativeEditorWorldLayoutWallTarget{};
   const CreativeEditorWorldLayoutVerticalConnectorTarget
       hoveredVerticalConnectorTarget =
-          hovered && state.tool == CreativeEditorWorldLayoutTool::Select
+          hovered && state.tool == CreativeEditorWorldLayoutTool::Select &&
+                  hoveredPlanHit.table ==
+                      cr::CreativeWorldLayoutTable::VerticalConnector
               ? findCreativeEditorWorldLayoutVerticalConnectorTarget(
                     state, hoveredPoint, handleTolerance)
               : CreativeEditorWorldLayoutVerticalConnectorTarget{};
   const CreativeEditorWorldLayoutRoomTarget hoveredRoomTarget =
-      hovered && state.tool == CreativeEditorWorldLayoutTool::Select
+      hovered && state.tool == CreativeEditorWorldLayoutTool::Select &&
+              hoveredPlanHit.table == cr::CreativeWorldLayoutTable::Room
           ? findCreativeEditorWorldLayoutRoomTarget(state, hoveredPoint,
                                                     handleTolerance)
           : CreativeEditorWorldLayoutRoomTarget{};
   const CreativeEditorWorldLayoutBoxTarget hoveredBoxTarget =
-      hovered && state.tool == CreativeEditorWorldLayoutTool::Select
+      hovered && state.tool == CreativeEditorWorldLayoutTool::Select &&
+              hoveredPlanHit.table == cr::CreativeWorldLayoutTable::Box
           ? findCreativeEditorWorldLayoutBoxTarget(state, hoveredPoint,
                                                    handleTolerance)
           : CreativeEditorWorldLayoutBoxTarget{};
@@ -588,51 +748,14 @@ void drawLayoutCanvas(CreativeEditorState& editor,
 
   if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
     if (state.tool == CreativeEditorWorldLayoutTool::Select) {
-      if (hoveredOpeningTarget.handle !=
-          CreativeEditorWorldLayoutOpeningHandle::None) {
-        queueOpeningManipulation(
-            commands,
-            CreativeEditorWorldLayoutOpeningManipulationPhase::Begin,
-            hoveredPoint, handleTolerance);
-      } else if (hoveredWallTarget.handle !=
-                 CreativeEditorWorldLayoutWallHandle::None) {
-        queueWallManipulation(
-            commands, CreativeEditorWorldLayoutWallManipulationPhase::Begin,
-            hoveredPoint, handleTolerance);
-      } else if (hoveredObjectIndex != cr::kInvalidCreativeWorldLayoutIndex) {
-        static_cast<void>(beginCreativeEditorWorldLayoutObjectManipulation(
-            state, hoveredObjectIndex, hoveredPoint));
-      } else if (hoveredBuilding) {
+      if (hoveredBuilding) {
         queueBuildingManipulation(
             commands,
             CreativeEditorWorldLayoutBuildingManipulationPhase::Begin,
             hoveredPoint, handleTolerance);
-      } else if (hoveredVerticalConnectorTarget.directionHandle ||
-                 hoveredVerticalConnectorTarget.handle !=
-                     CreativeEditorWorldLayoutRectHandle::None) {
-        queueVerticalConnectorManipulation(
-            commands,
-            CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Begin,
-            hoveredPoint, handleTolerance);
-      } else if (hoveredRoomTarget.handle !=
-                 CreativeEditorWorldLayoutRoomHandle::None) {
-        queueRoomManipulation(
-            commands, CreativeEditorWorldLayoutRoomManipulationPhase::Begin,
-            hoveredPoint, handleTolerance);
-      } else if (hoveredBoxTarget.handle !=
-                 CreativeEditorWorldLayoutBoxHandle::None) {
-        queueBoxManipulation(
-            commands, CreativeEditorWorldLayoutBoxManipulationPhase::Begin,
-            hoveredPoint, handleTolerance);
-      } else if (hoveredPlanHit.hit) {
-        commands.push(
-            CreativeDesktopCommandId::WorldLayoutSelectSourceScope,
-            CreativeDesktopWorldLayoutSourcePayload{
-                hoveredPlanHit.table, hoveredPlanHit.sourceIndex,
-                std::string(creativeEditorWorldLayoutSourceStableKey(
-                    state, hoveredPlanHit.table,
-                    hoveredPlanHit.sourceIndex))});
-      } else {
+      } else if (!queuePlanSourceInteraction(
+                     state, commands, hoveredPlanHit, hoveredPoint,
+                     handleTolerance)) {
         commands.push(CreativeDesktopCommandId::WorldLayoutClearSelection);
       }
     } else if (dragTool(state.tool)) {

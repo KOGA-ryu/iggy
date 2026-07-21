@@ -4,6 +4,7 @@
 #include "EditorWorldLayoutTopography.hpp"
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutPlanHitTest.hpp"
 
 #include <algorithm>
@@ -42,6 +43,8 @@ CreativeEditorWorldLayoutPlanViewKey makeKey(
   key.gridSize = grid.size;
   key.gridCellSizeMeters = grid.cellSizeMeters;
   key.topographyVisible = topography.visible;
+  key.lowerLevelContextVisible = state.planLowerLevelContextVisible;
+  key.roofOverheadVisible = state.planRoofOverheadVisible;
   key.transientCandidate = transientCandidateActive(state);
   return key;
 }
@@ -242,8 +245,14 @@ bool refreshCreativeEditorWorldLayoutPlanView(
   }
   const cr::CreativeWorldLayout& source =
       creativeEditorWorldLayoutDisplaySource(state);
-  cache.projection = cr::projectCreativeWorldLayoutPlan(
-      {&source, grid, state.activeLevelIndex, contours});
+  cr::CreativeWorldLayoutPlanProjectionRequest request;
+  request.layout = &source;
+  request.grid = grid;
+  request.activeLevelIndex = state.activeLevelIndex;
+  request.contours = contours;
+  request.includeLowerLevelContext = state.planLowerLevelContextVisible;
+  request.includeRoofOverhead = state.planRoofOverheadVisible;
+  cache.projection = cr::projectCreativeWorldLayoutPlan(request);
   cache.paintOrder.resize(cache.projection.primitives.size());
   std::iota(cache.paintOrder.begin(), cache.paintOrder.end(), 0U);
   std::stable_sort(
@@ -325,6 +334,8 @@ CreativeEditorWorldLayoutPlanHit hitCreativeEditorWorldLayoutPlan(
     hit.primitiveIndex = primitiveIndex;
     hit.table = table;
     hit.sourceIndex = sourceIndex;
+    hit.sourceLevelIndex = cr::creativeWorldLayoutSourceLevelAtDatum(
+        layout, table, sourceIndex, cache.projection.activeFloorTopLayer);
     hit.role = primitive.role;
     hit.distanceCells = geometry.distanceCells;
     return hit;

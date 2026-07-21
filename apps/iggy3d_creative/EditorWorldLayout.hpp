@@ -109,7 +109,9 @@ focusCreativeEditorWorldLayoutSource(
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 selectCreativeEditorWorldLayoutSource(
     CreativeEditorWorldLayoutState& state,
-    cr::CreativeWorldLayoutTable table, std::size_t index);
+    cr::CreativeWorldLayoutTable table, std::size_t index,
+    std::size_t preferredLevelIndex =
+        cr::kInvalidCreativeWorldLayoutIndex);
 [[nodiscard]] cr::CreativeWorldLayoutTable
 creativeEditorWorldLayoutSelectionTable(
     CreativeEditorWorldLayoutSelectionKind kind) noexcept;

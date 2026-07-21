@@ -166,6 +166,10 @@ struct CreativeDesktopWorldLayoutSourcePayload {
   // Optional for immediate commands; delayed dialogs provide it so an index
   // shift cannot redirect the action to another source symbol.
   std::string stableKey;
+  // Plan-view commands carry the exact visible storey. Other callers leave it
+  // invalid and retain the source owner's normal active-level resolution.
+  std::size_t preferredLevelIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
 };
 
 struct CreativeDesktopWorldLayoutObjectSourcePayload {

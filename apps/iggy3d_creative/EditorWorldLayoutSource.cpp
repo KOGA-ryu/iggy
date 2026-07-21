@@ -2,6 +2,8 @@
 
 #include "EditorWorldLayoutInternal.hpp"
 
+#include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <string>
@@ -496,9 +498,19 @@ CreativeEditorWorldLayoutEditReceipt deleteCreativeEditorWorldLayoutSource(
 CreativeEditorWorldLayoutEditReceipt
 selectCreativeEditorWorldLayoutSource(
     CreativeEditorWorldLayoutState& state, cr::CreativeWorldLayoutTable table,
-    std::size_t index) {
-  return applySourceTarget(state, resolveSourceTarget(state, table, index),
-                           false);
+    std::size_t index, std::size_t preferredLevelIndex) {
+  SourceTarget target = resolveSourceTarget(state, table, index);
+  if (preferredLevelIndex != cr::kInvalidCreativeWorldLayoutIndex) {
+    if (!target.valid || !cr::creativeWorldLayoutSourceTouchesLevel(
+                             state.source, table, index,
+                             preferredLevelIndex)) {
+      state.statusMessage = "layout source is not on the requested floor";
+      return {false, false,
+              "creative_editor_world_layout_source_level_mismatch"};
+    }
+    target.activeLevelIndex = preferredLevelIndex;
+  }
+  return applySourceTarget(state, target, false);
 }
 
 CreativeEditorWorldLayoutEditReceipt
