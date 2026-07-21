@@ -8,6 +8,9 @@
 
 namespace iggy3d_creative_app {
 
+struct PlaytestMonitorState;
+struct CreativePlaySession;
+
 // Renders the main menu bar + Save As modal, emitting semantic command IDs
 // into the frame. Widget code only — it reads editor/document state for
 // enable-states and never mutates documents (plan DL-3). Call inside the ImGui
@@ -27,7 +30,8 @@ void buildCreativeEditorDesktopPanels(
     CreativeEditorDesktopUiState& desktopUi,
     CreativeEditorState& editor,
     const iggy3d::creative::CreativeAppState& appState,
-    const CreativeEditorPlayMode* playMode,
+    const CreativePlaySession* playMode,
+    const PlaytestMonitorState* playtestMonitor,
     CreativeDesktopCommandFrame& commands);
 
 // Renders the bottom status bar — a read-only projection of document + editor

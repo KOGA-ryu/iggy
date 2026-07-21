@@ -28,9 +28,53 @@ constexpr std::string_view kLegacyControlFileHeader =
   return false;
 }
 
+// Optional trailing [playtest] section: `key = value` lines. Unknown keys
+// in the section are tolerated (forward compat); syntax errors are not.
+[[nodiscard]] bool parsePlaytestSectionLine(
+    const std::string& line, PlaytestWindowPreferences& preferences) {
+  std::istringstream row(line);
+  std::string key;
+  std::string equals;
+  std::string value;
+  row >> key >> equals >> value;
+  if (!row || equals != "=" || value.empty()) {
+    return false;
+  }
+  row >> std::ws;
+  if (!row.eof()) {
+    return false;
+  }
+  if (key == "fullscreen") {
+    if (value != "true" && value != "false" && value != "1" && value != "0") {
+      return false;
+    }
+    preferences.fullscreen = value == "true" || value == "1";
+    return true;
+  }
+  const auto parseDimension = [&value](std::uint32_t& out) {
+    std::uint32_t parsed = 0U;
+    for (const char c : value) {
+      if (c < '0' || c > '9' || value.size() > 5U) {
+        return false;
+      }
+      parsed = parsed * 10U + static_cast<std::uint32_t>(c - '0');
+    }
+    out = parsed;
+    return true;
+  };
+  if (key == "width") {
+    return parseDimension(preferences.width);
+  }
+  if (key == "height") {
+    return parseDimension(preferences.height);
+  }
+  return true;  // unknown section key: tolerated, ignored
+}
+
 CreativeEditorControlPersistenceReceipt parseControlProfileStream(
     std::istream& input,
-    cr::CreativeControlProfile& profile) {
+    cr::CreativeControlProfile& profile,
+    PlaytestWindowPreferences* playtestPreferences) {
   CreativeEditorControlPersistenceReceipt receipt;
   std::string header;
   std::getline(input, header);
@@ -42,9 +86,23 @@ CreativeEditorControlPersistenceReceipt parseControlProfileStream(
 
   cr::CreativeControlProfile candidate =
       cr::makeDefaultCreativeControlProfile();
+  PlaytestWindowPreferences playtestSection;
+  bool inPlaytestSection = false;
   std::string line;
   while (std::getline(input, line)) {
     if (line.empty()) {
+      continue;
+    }
+    if (line == "[playtest]") {
+      inPlaytestSection = true;
+      playtestSection.present = true;
+      continue;
+    }
+    if (inPlaytestSection) {
+      if (!parsePlaytestSectionLine(line, playtestSection)) {
+        receipt.status = CreativeEditorControlPersistenceStatus::Invalid;
+        return receipt;
+      }
       continue;
     }
     std::istringstream row(line);
@@ -137,6 +195,9 @@ CreativeEditorControlPersistenceReceipt parseControlProfileStream(
     return receipt;
   }
   profile = candidate;
+  if (playtestPreferences != nullptr) {
+    *playtestPreferences = playtestSection;
+  }
   receipt.status = CreativeEditorControlPersistenceStatus::Loaded;
   receipt.bindingCount = profile.bindingCount;
   receipt.accepted = true;
@@ -199,7 +260,7 @@ CreativeEditorControlPersistenceReceipt parseCreativeEditorControlProfile(
     std::string_view text,
     cr::CreativeControlProfile& profile) {
   std::istringstream input{std::string{text}};
-  return parseControlProfileStream(input, profile);
+  return parseControlProfileStream(input, profile, nullptr);
 }
 
 CreativeEditorControlPersistenceReceipt serializeCreativeEditorControlProfile(
@@ -218,22 +279,36 @@ CreativeEditorControlPersistenceReceipt serializeCreativeEditorControlProfile(
 
 CreativeEditorControlPersistenceReceipt loadCreativeEditorControlProfile(
     cr::CreativeControlProfile& profile,
-    const std::filesystem::path& path) {
+    const std::filesystem::path& path,
+    PlaytestWindowPreferences* playtestPreferences) {
   std::ifstream input(path);
   if (!input.is_open()) {
     return {};
   }
-  return parseControlProfileStream(input, profile);
+  return parseControlProfileStream(input, profile, playtestPreferences);
 }
 
 CreativeEditorControlPersistenceReceipt saveCreativeEditorControlProfile(
     const cr::CreativeControlProfile& profile,
-    const std::filesystem::path& path) {
+    const std::filesystem::path& path,
+    const PlaytestWindowPreferences* playtestPreferences) {
   std::string text;
   CreativeEditorControlPersistenceReceipt receipt =
       serializeCreativeEditorControlProfile(profile, text);
   if (!receipt.accepted) {
     return receipt;
+  }
+  if (playtestPreferences != nullptr && playtestPreferences->present) {
+    // Preserve Ace's hand edit across control saves: re-emit the section.
+    text += "[playtest]\nfullscreen = ";
+    text += playtestPreferences->fullscreen ? "true" : "false";
+    text += "\n";
+    if (playtestPreferences->width != 0U &&
+        playtestPreferences->height != 0U) {
+      text += "width = " + std::to_string(playtestPreferences->width) + "\n";
+      text += "height = " + std::to_string(playtestPreferences->height) +
+              "\n";
+    }
   }
 
   receipt.accepted = false;

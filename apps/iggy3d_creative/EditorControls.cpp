@@ -99,7 +99,8 @@ void beginCapture(CreativeEditorControlsState& state,
     CreativeEditorState& editor,
     const std::filesystem::path& path) {
   const CreativeEditorControlPersistenceReceipt receipt =
-      saveCreativeEditorControlProfile(editor.controlProfile, path);
+      saveCreativeEditorControlProfile(editor.controlProfile, path,
+                                       &editor.playtestWindowPreferences);
   editor.controls.statusLabel =
       receipt.status == CreativeEditorControlPersistenceStatus::Saved
           ? "SAVED"

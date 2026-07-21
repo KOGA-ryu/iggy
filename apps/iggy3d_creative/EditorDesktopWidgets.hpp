@@ -10,7 +10,6 @@
 #include "EditorDesktopCommands.hpp"
 #include "EditorDesktopModel.hpp"
 #include "EditorDesktopUi.hpp"
-#include "EditorPlayMode.hpp"
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 
@@ -50,7 +49,6 @@ void buildCreativeEditorDesktopInspectorPanel(
     CreativeEditorDesktopUiState& desktopUi,
     CreativeEditorState& editor,
     const iggy3d::creative::CreativeAppState& appState,
-    const CreativeEditorPlayMode* playMode,
     CreativeDesktopCommandFrame& commands);
 
 // Terrain generator body for the Inspector's dedicated tab. Widgets edit only

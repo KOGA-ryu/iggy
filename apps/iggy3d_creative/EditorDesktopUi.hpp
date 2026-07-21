@@ -160,6 +160,8 @@ struct CreativeEditorDesktopUiState {
 
   // Last dispatched command message, surfaced in the status bar (plan DD-11).
   std::string statusMessage;
+  // True while a playtest child process is running (polled each frame).
+  bool playtestRunning = false;
   // Document revision at the last successful save; dirty = current != this.
   std::uint64_t lastSavedRevision = 0;
 

@@ -184,6 +184,10 @@ std::string_view captureFormatName(VkFormat format) {
       return "VK_FORMAT_R8G8B8A8_SRGB";
     case VK_FORMAT_A8B8G8R8_SRGB_PACK32:
       return "VK_FORMAT_A8B8G8R8_SRGB_PACK32";
+    case VK_FORMAT_B8G8R8A8_UNORM:
+      return "VK_FORMAT_B8G8R8A8_UNORM";
+    case VK_FORMAT_R8G8B8A8_UNORM:
+      return "VK_FORMAT_R8G8B8A8_UNORM";
     default:
       return "unsupported";
   }
@@ -204,15 +208,20 @@ NormalizedCapture normalizeCapturePixels(const std::uint8_t* source,
     capture.height = 0;
     return capture;
   }
+  // UNORM twins are byte-identical layouts to their SRGB counterparts; the
+  // headless (offscreen) surface offers only UNORM, so captures accept both.
   if (sourceFormat != VK_FORMAT_B8G8R8A8_SRGB &&
-      sourceFormat != VK_FORMAT_R8G8B8A8_SRGB) {
+      sourceFormat != VK_FORMAT_R8G8B8A8_SRGB &&
+      sourceFormat != VK_FORMAT_B8G8R8A8_UNORM &&
+      sourceFormat != VK_FORMAT_R8G8B8A8_UNORM) {
     capture.width = 0;
     capture.height = 0;
     return capture;
   }
   capture.rgba.resize(expected);
   for (std::size_t index = 0; index + 3U < expected; index += 4U) {
-    if (sourceFormat == VK_FORMAT_B8G8R8A8_SRGB) {
+    if (sourceFormat == VK_FORMAT_B8G8R8A8_SRGB ||
+        sourceFormat == VK_FORMAT_B8G8R8A8_UNORM) {
       capture.rgba[index] = source[index + 2U];
       capture.rgba[index + 1U] = source[index + 1U];
       capture.rgba[index + 2U] = source[index];
