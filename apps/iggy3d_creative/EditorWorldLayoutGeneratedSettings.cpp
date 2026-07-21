@@ -212,6 +212,7 @@ CreativeEditorWorldLayoutPreviewReceipt previewWorldLayoutSettingsCandidate(
   }
   state.preview = std::move(preview);
   state.previewVisible = true;
+  state.manipulationPreviewVisible = false;
   state.previewLayoutRevision = state.revision;
   state.statusMessage = std::string(successMessage);
   return result;
@@ -294,6 +295,60 @@ CreativeEditorWorldLayoutApplyReceipt applyWorldLayoutSettingsCandidate(
 }
 
 }  // namespace
+
+CreativeEditorWorldLayoutState
+makeCreativeEditorWorldLayoutManipulationCandidate(
+    const CreativeEditorWorldLayoutState& state) {
+  CreativeEditorWorldLayoutState candidate =
+      makeWorldLayoutSettingsCandidate(state);
+  candidate.tool = state.tool;
+  candidate.roomManipulation = state.roomManipulation;
+  candidate.verticalConnectorManipulation =
+      state.verticalConnectorManipulation;
+  candidate.boxManipulation = state.boxManipulation;
+  candidate.wallManipulation = state.wallManipulation;
+  candidate.buildingManipulation = state.buildingManipulation;
+  candidate.openingManipulation = state.openingManipulation;
+  return candidate;
+}
+
+CreativeEditorWorldLayoutPreviewReceipt
+previewCreativeEditorWorldLayoutManipulationCandidate(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document,
+    CreativeEditorWorldLayoutState candidate,
+    CreativeEditorWorldLayoutEditReceipt editReceipt,
+    std::string_view successMessage) {
+  CreativeEditorWorldLayoutPreviewReceipt receipt =
+      previewWorldLayoutSettingsCandidate(
+          state, document, std::move(candidate), std::move(editReceipt),
+          successMessage);
+  state.manipulationPreviewVisible = receipt.accepted;
+  return receipt;
+}
+
+CreativeEditorWorldLayoutApplyReceipt
+applyCreativeEditorWorldLayoutManipulationCandidate(
+    CreativeEditorWorldLayoutState& state,
+    cr::CreativeAppState& appState,
+    CreativeEditorWorldLayoutState candidate,
+    CreativeEditorWorldLayoutEditReceipt editReceipt,
+    std::string_view historySource,
+    std::string_view successMessage) {
+  return applyWorldLayoutSettingsCandidate(
+      state, appState, std::move(candidate), std::move(editReceipt),
+      historySource, successMessage);
+}
+
+bool clearCreativeEditorWorldLayoutManipulationPreview(
+    CreativeEditorWorldLayoutState& state) noexcept {
+  if (!state.manipulationPreviewVisible) {
+    return false;
+  }
+  const bool changed = creativeEditorWorldLayoutPreviewActive(state);
+  detail::invalidateWorldLayoutPreview(state);
+  return changed;
+}
 
 CreativeEditorWorldLayoutPreviewReceipt
 previewCreativeEditorWorldLayoutGeneratedBuildingOperation(

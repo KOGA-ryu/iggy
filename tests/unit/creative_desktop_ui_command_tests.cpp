@@ -163,6 +163,24 @@ const cr::CreativeObject* findGeneratedObject(
   return nullptr;
 }
 
+std::vector<cr::CreativeObjectId> generatedSourceObjectIds(
+    const cr::CreativeDocument& document,
+    const cr::CreativeWorldLayout& layout,
+    cr::CreativeWorldLayoutTable table,
+    std::size_t index) {
+  std::vector<cr::CreativeObjectId> ids;
+  for (const cr::CreativeObject& object : document.objects()) {
+    const cr::CreativeWorldLayoutObjectProvenance provenance =
+        cr::resolveCreativeWorldLayoutObjectProvenance(layout, object);
+    if (provenance.owned && provenance.table == table &&
+        provenance.index == index) {
+      ids.push_back(object.id);
+    }
+  }
+  std::sort(ids.begin(), ids.end());
+  return ids;
+}
+
 bool generatedBounds(
     const cr::CreativeDocument& document,
     const cr::CreativeWorldLayout& layout,
@@ -5177,6 +5195,283 @@ bool worldLayoutTerrainRegionCommandsRespectWorkspaceGuards() {
                 "cancel with nothing to cancel stays a safe no-op");
 }
 
+bool synchronizedPlanDragPreviewsAndCommitsOneStoreyAtomically() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Plan Live Edit");
+  static_cast<void>(document.assignId(471U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "plan_live_edit_layout");
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings settings;
+  settings.shell.footprint = {{0, 0}, {8, 8}};
+  settings.shell.floorTopLayer = 1.0;
+  settings.shell.wallHeightCells = 3U;
+  settings.facade.includeExteriorWindows = false;
+  settings.storeys.count = 2U;
+  const auto created = app::createCreativeEditorWorldLayoutBuildingBlockout(
+      editor.worldLayout, settings);
+  const auto generated =
+      app::confirmCreativeEditorWorldLayout(editor.worldLayout, appState);
+  if (!created.accepted || !generated.accepted ||
+      editor.worldLayout.source.rooms.size() != 2U) {
+    return expect(false, "two-storey live-edit fixture generates");
+  }
+
+  const app::CreativeDesktopCommandContext context{
+      appState, editor, {}, nullptr, nullptr, nullptr};
+  editor.worldLayout.tool = app::CreativeEditorWorldLayoutTool::Select;
+  editor.worldLayout.activeLevelIndex = 0U;
+  std::size_t openingIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  double openingMoveDelta = 0.0;
+  constexpr std::array<double, 6U> kCandidateDeltas{
+      0.25, -0.25, 0.5, -0.5, 1.0, -1.0};
+  for (std::size_t index = 0U;
+       index < editor.worldLayout.source.openings.size() &&
+       openingIndex == cr::kInvalidCreativeWorldLayoutIndex;
+       ++index) {
+    const cr::CreativeWorldLayoutOpening& opening =
+        editor.worldLayout.source.openings[index];
+    if (opening.roomIndex != 0U) {
+      continue;
+    }
+    for (const double delta : kCandidateDeltas) {
+      app::CreativeEditorWorldLayoutState candidate = editor.worldLayout;
+      app::CreativeEditorWorldLayoutOpeningSettings candidateSettings;
+      if (!app::readCreativeEditorWorldLayoutOpeningSettings(
+              candidate, index, candidateSettings)) {
+        continue;
+      }
+      candidateSettings.centerOffsetCells += delta;
+      const app::CreativeEditorWorldLayoutEditReceipt candidateEdit =
+          app::setCreativeEditorWorldLayoutOpeningSettings(
+              candidate, index, candidateSettings);
+      if (candidateEdit.accepted && candidateEdit.changed) {
+        openingIndex = index;
+        openingMoveDelta = delta;
+        break;
+      }
+    }
+  }
+  if (openingIndex == cr::kInvalidCreativeWorldLayoutIndex) {
+    return expect(false,
+                  "two-storey live-edit fixture has a movable ground opening");
+  }
+  const cr::CreativeWorldLayoutOpening openingBefore =
+      editor.worldLayout.source.openings[openingIndex];
+  const cr::CreativeObjectKind openingObjectKind =
+      openingBefore.kind == cr::CreativeBuildingOpeningKind::Door
+          ? cr::CreativeObjectKind::Door
+          : cr::CreativeObjectKind::Window;
+  const cr::CreativeWorldLayoutRoom& openingRoom =
+      editor.worldLayout.source.rooms[openingBefore.roomIndex];
+  const auto openingPoint = [&](double offsetCells) {
+    switch (openingBefore.roomEdge) {
+      case cr::CreativeWorldLayoutRoomEdge::North:
+        return app::CreativeEditorWorldLayoutPoint{
+            static_cast<double>(openingRoom.footprint.minimum.x) + offsetCells,
+            static_cast<double>(openingRoom.footprint.minimum.z)};
+      case cr::CreativeWorldLayoutRoomEdge::East:
+        return app::CreativeEditorWorldLayoutPoint{
+            static_cast<double>(openingRoom.footprint.maximum.x),
+            static_cast<double>(openingRoom.footprint.minimum.z) + offsetCells};
+      case cr::CreativeWorldLayoutRoomEdge::South:
+        return app::CreativeEditorWorldLayoutPoint{
+            static_cast<double>(openingRoom.footprint.minimum.x) + offsetCells,
+            static_cast<double>(openingRoom.footprint.maximum.z)};
+      case cr::CreativeWorldLayoutRoomEdge::West:
+        return app::CreativeEditorWorldLayoutPoint{
+            static_cast<double>(openingRoom.footprint.minimum.x),
+            static_cast<double>(openingRoom.footprint.minimum.z) + offsetCells};
+      case cr::CreativeWorldLayoutRoomEdge::Count:
+        break;
+    }
+    return app::CreativeEditorWorldLayoutPoint{};
+  };
+  const app::CreativeEditorWorldLayoutPoint startPoint =
+      openingPoint(openingBefore.centerOffsetCells);
+  const app::CreativeEditorWorldLayoutPoint movedPoint =
+      openingPoint(openingBefore.centerOffsetCells + openingMoveDelta);
+  editor.worldLayout.selection = {
+      app::CreativeEditorWorldLayoutSelectionKind::Opening, openingIndex};
+
+  const cr::CreativeObject* openingObjectBefore = findGeneratedObject(
+      appState.facade.document(), editor.worldLayout.source,
+      cr::CreativeWorldLayoutTable::Opening, openingIndex,
+      openingObjectKind);
+  const std::vector<cr::CreativeObjectId> upperIdsBefore =
+      generatedSourceObjectIds(appState.facade.document(),
+                               editor.worldLayout.source,
+                               cr::CreativeWorldLayoutTable::Room, 1U);
+  if (openingObjectBefore == nullptr || upperIdsBefore.empty()) {
+    return expect(false, "two-storey live-edit fixture has generated rooms");
+  }
+  const cr::CreativeObjectId openingObjectId = openingObjectBefore->id;
+  const cr::CreativeTransform openingTransformBefore =
+      openingObjectBefore->transform;
+  const std::uint64_t sourceRevisionBefore = editor.worldLayout.revision;
+  const std::uint64_t documentRevisionBefore =
+      appState.facade.document().revision();
+  const std::uint64_t undoDepthBefore = cr::creativeUndoDepth(appState.history);
+
+  const auto begin = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateOpening, context,
+      app::CreativeDesktopWorldLayoutOpeningManipulationPayload{
+          app::CreativeEditorWorldLayoutOpeningManipulationPhase::Begin,
+          startPoint, 0.25});
+  const auto update = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateOpening, context,
+      app::CreativeDesktopWorldLayoutOpeningManipulationPayload{
+          app::CreativeEditorWorldLayoutOpeningManipulationPhase::Update,
+          movedPoint, 0.25});
+  const cr::CreativeObject* previewOpening = findGeneratedObject(
+      editor.worldLayout.preview.document, editor.worldLayout.source,
+      cr::CreativeWorldLayoutTable::Opening, openingIndex,
+      openingObjectKind);
+  const std::vector<cr::CreativeObjectId> upperPreviewIds =
+      generatedSourceObjectIds(editor.worldLayout.preview.document,
+                               editor.worldLayout.source,
+                               cr::CreativeWorldLayoutTable::Room, 1U);
+  const bool previewIsTransient =
+      begin.accepted && begin.changed && update.accepted && update.changed &&
+      update.sceneChanged &&
+      !update.worldLayoutChanged &&
+      editor.worldLayout.manipulationPreviewVisible &&
+      app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      editor.worldLayout.revision == sourceRevisionBefore &&
+      editor.worldLayout.source.openings[openingIndex].centerOffsetCells ==
+          openingBefore.centerOffsetCells &&
+      appState.facade.document().revision() == documentRevisionBefore &&
+      cr::creativeUndoDepth(appState.history) == undoDepthBefore &&
+      previewOpening != nullptr && previewOpening->id == openingObjectId &&
+      !vecNear(previewOpening->transform.position,
+               openingTransformBefore.position) &&
+      upperPreviewIds == upperIdsBefore;
+
+  const auto repeatedUpdate = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateOpening, context,
+      app::CreativeDesktopWorldLayoutOpeningManipulationPayload{
+          app::CreativeEditorWorldLayoutOpeningManipulationPhase::Update,
+          movedPoint, 0.25});
+  const auto committed = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateOpening, context,
+      app::CreativeDesktopWorldLayoutOpeningManipulationPayload{
+          app::CreativeEditorWorldLayoutOpeningManipulationPhase::Commit,
+          movedPoint, 0.25});
+  const cr::CreativeObject* openingObjectAfter = findGeneratedObject(
+      appState.facade.document(), editor.worldLayout.source,
+      cr::CreativeWorldLayoutTable::Opening, openingIndex,
+      openingObjectKind);
+  const std::vector<cr::CreativeObjectId> upperIdsAfter =
+      generatedSourceObjectIds(appState.facade.document(),
+                               editor.worldLayout.source,
+                               cr::CreativeWorldLayoutTable::Room, 1U);
+  const bool committedOnce =
+      repeatedUpdate.accepted && !repeatedUpdate.changed &&
+      !repeatedUpdate.sceneChanged && committed.accepted && committed.changed &&
+      committed.worldLayoutChanged && committed.sceneChanged &&
+      !editor.worldLayout.manipulationPreviewVisible &&
+      !app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      editor.worldLayout.revision == sourceRevisionBefore + 1U &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision &&
+      editor.worldLayout.source.openings[openingIndex].centerOffsetCells ==
+          openingBefore.centerOffsetCells + openingMoveDelta &&
+      appState.facade.document().revision() != documentRevisionBefore &&
+      cr::creativeUndoDepth(appState.history) == undoDepthBefore + 1U &&
+      openingObjectAfter != nullptr &&
+      openingObjectAfter->id == openingObjectId &&
+      upperIdsAfter == upperIdsBefore;
+  if (!previewIsTransient || !committedOnce) {
+    return expect(false, "synchronized opening live-edit setup completes");
+  }
+
+  const bool undone =
+      app::undoLastEdit(appState, "plan-live-edit-undo", &editor.worldLayout);
+  const cr::CreativeObject* openingObjectUndone = findGeneratedObject(
+      appState.facade.document(), editor.worldLayout.source,
+      cr::CreativeWorldLayoutTable::Opening, openingIndex,
+      openingObjectKind);
+  const bool undoRestoredBoth =
+      undone &&
+      editor.worldLayout.source.openings[openingIndex].centerOffsetCells ==
+          openingBefore.centerOffsetCells &&
+      openingObjectUndone != nullptr &&
+      openingObjectUndone->id == openingObjectId &&
+      vecNear(openingObjectUndone->transform.position,
+              openingTransformBefore.position);
+
+  editor.worldLayout.tool = app::CreativeEditorWorldLayoutTool::Select;
+  editor.worldLayout.activeLevelIndex = 0U;
+  editor.worldLayout.selection = {
+      app::CreativeEditorWorldLayoutSelectionKind::Opening, openingIndex};
+  const std::uint64_t cancelDocumentRevision =
+      appState.facade.document().revision();
+  const std::uint64_t cancelUndoDepth = cr::creativeUndoDepth(appState.history);
+  const auto cancelBegin = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateOpening, context,
+      app::CreativeDesktopWorldLayoutOpeningManipulationPayload{
+          app::CreativeEditorWorldLayoutOpeningManipulationPhase::Begin,
+          startPoint, 0.25});
+  const auto cancelUpdate = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateOpening, context,
+      app::CreativeDesktopWorldLayoutOpeningManipulationPayload{
+          app::CreativeEditorWorldLayoutOpeningManipulationPhase::Update,
+          movedPoint, 0.25});
+  const auto cancelled = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateOpening, context,
+      app::CreativeDesktopWorldLayoutOpeningManipulationPayload{
+          app::CreativeEditorWorldLayoutOpeningManipulationPhase::Cancel,
+          {}, 0.25});
+  const bool cancelRestoredLiveScene =
+      cancelBegin.accepted && cancelUpdate.accepted &&
+      cancelUpdate.sceneChanged && cancelled.accepted &&
+      cancelled.sceneChanged &&
+      !app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      editor.worldLayout.source.openings[openingIndex].centerOffsetCells ==
+          openingBefore.centerOffsetCells &&
+      appState.facade.document().revision() == cancelDocumentRevision &&
+      cr::creativeUndoDepth(appState.history) == cancelUndoDepth;
+
+  editor.worldLayout.selection = {
+      app::CreativeEditorWorldLayoutSelectionKind::Opening, openingIndex};
+  const auto invalidBegin = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateOpening, context,
+      app::CreativeDesktopWorldLayoutOpeningManipulationPayload{
+          app::CreativeEditorWorldLayoutOpeningManipulationPhase::Begin,
+          startPoint, 0.25});
+  const auto invalidUpdate = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateOpening, context,
+      app::CreativeDesktopWorldLayoutOpeningManipulationPayload{
+          app::CreativeEditorWorldLayoutOpeningManipulationPhase::Update,
+          {1.0e30, 1.0}, 0.25});
+  const auto invalidCommit = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateOpening, context,
+      app::CreativeDesktopWorldLayoutOpeningManipulationPayload{
+          app::CreativeEditorWorldLayoutOpeningManipulationPhase::Commit,
+          {1.0e30, 1.0}, 0.25});
+  const bool invalidMutatedNothing =
+      invalidBegin.accepted && invalidUpdate.accepted &&
+      !invalidCommit.accepted && !invalidCommit.changed &&
+      !invalidCommit.worldLayoutChanged &&
+      editor.worldLayout.source.openings[openingIndex].centerOffsetCells ==
+          openingBefore.centerOffsetCells &&
+      appState.facade.document().revision() == cancelDocumentRevision &&
+      cr::creativeUndoDepth(appState.history) == cancelUndoDepth;
+
+  return expect(previewIsTransient,
+                "plan drag previews one storey in 3D without live mutation") &&
+         expect(committedOnce,
+                "release commits source and 3D output in one stable-id edit") &&
+         expect(undoRestoredBoth,
+                "one undo restores the plan source and generated geometry") &&
+         expect(cancelRestoredLiveScene,
+                "cancel removes only the transient manipulation preview") &&
+         expect(invalidMutatedNothing,
+                "invalid release leaves source, document, and history unchanged");
+}
+
 }  // namespace
 
 int main() {
@@ -5228,5 +5523,6 @@ int main() {
   ok = worldLayoutOpeningInsertCommandsUseCatalogAndHistory() && ok;
   ok = worldLayoutAssetRepairCommandsPreservePlacementAndHistory() && ok;
   ok = worldLayoutTerrainRegionCommandsRespectWorkspaceGuards() && ok;
+  ok = synchronizedPlanDragPreviewsAndCommitsOneStoreyAtomically() && ok;
   return ok ? 0 : 1;
 }

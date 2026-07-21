@@ -151,6 +151,7 @@ CreativeEditorWorldLayoutPreviewReceipt previewCreativeEditorWorldLayout(
   }
   state.preview = std::move(preview);
   state.previewVisible = true;
+  state.manipulationPreviewVisible = false;
   state.previewLayoutRevision = state.revision;
   state.statusMessage = "exact 3D preview ready";
   return receipt;

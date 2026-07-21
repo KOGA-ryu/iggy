@@ -61,20 +61,24 @@ bool dispatchCreativeDesktopWorldLayoutBuildingCommand(
         result.message = "layout building manipulation: payload mismatch";
         break;
       }
-      const bool previewWasActive =
-          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
-      const CreativeEditorWorldLayoutEditReceipt receipt =
-          applyCreativeEditorWorldLayoutBuildingManipulation(
-              editor.worldLayout, payload->phase, payload->point,
-              payload->toleranceCells);
-      const bool sourceChanged =
-          payload->phase ==
-              CreativeEditorWorldLayoutBuildingManipulationPhase::Commit &&
-          receipt.changed;
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
-      result.worldLayoutChanged = sourceChanged;
-      result.sceneChanged = previewWasActive && sourceChanged;
+      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
+          dispatchCreativeDesktopWorldLayoutLiveEdit(
+              editor.worldLayout, appState, payload->phase,
+              CreativeEditorWorldLayoutBuildingManipulationPhase::Begin,
+              CreativeEditorWorldLayoutBuildingManipulationPhase::Update,
+              CreativeEditorWorldLayoutBuildingManipulationPhase::Commit,
+              CreativeEditorWorldLayoutBuildingManipulationPhase::Cancel,
+              [&](CreativeEditorWorldLayoutState& target,
+                  CreativeEditorWorldLayoutBuildingManipulationPhase phase) {
+                return applyCreativeEditorWorldLayoutBuildingManipulation(
+                    target, phase, payload->point, payload->toleranceCells);
+              },
+              "desktop_world_layout_building_move",
+              "building move preview ready in 3D", "building moved in 3D");
+      result.accepted = liveEdit.accepted;
+      result.changed = liveEdit.changed;
+      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
+      result.sceneChanged = liveEdit.sceneChanged;
       result.message = editor.worldLayout.statusMessage;
       break;
     }

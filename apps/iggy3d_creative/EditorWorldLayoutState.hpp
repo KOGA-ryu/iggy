@@ -937,6 +937,9 @@ struct CreativeEditorWorldLayoutState {
   CreativeEditorWorldLayoutConflictReviewState conflictReview;
 
   bool previewVisible = false;
+  // True only while an active 2D manipulation owns the exact 3D preview.
+  // Explicit previews and generated-settings previews leave this false.
+  bool manipulationPreviewVisible = false;
   std::uint64_t previewLayoutRevision = 0U;
   cr::CreativeWorldLayoutPreviewResult preview;
   std::string statusMessage = "layout ready";

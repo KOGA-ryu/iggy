@@ -156,20 +156,24 @@ bool dispatchCreativeDesktopWorldLayoutStructureCommand(
         result.message = "layout room manipulation: payload mismatch";
         break;
       }
-      const bool previewWasActive =
-          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
-      const CreativeEditorWorldLayoutEditReceipt receipt =
-          applyCreativeEditorWorldLayoutRoomManipulation(
-              editor.worldLayout, payload->phase, payload->point,
-              payload->toleranceCells);
-      const bool sourceChanged =
-          payload->phase ==
-              CreativeEditorWorldLayoutRoomManipulationPhase::Commit &&
-          receipt.changed;
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
-      result.worldLayoutChanged = sourceChanged;
-      result.sceneChanged = previewWasActive && sourceChanged;
+      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
+          dispatchCreativeDesktopWorldLayoutLiveEdit(
+              editor.worldLayout, appState, payload->phase,
+              CreativeEditorWorldLayoutRoomManipulationPhase::Begin,
+              CreativeEditorWorldLayoutRoomManipulationPhase::Update,
+              CreativeEditorWorldLayoutRoomManipulationPhase::Commit,
+              CreativeEditorWorldLayoutRoomManipulationPhase::Cancel,
+              [&](CreativeEditorWorldLayoutState& target,
+                  CreativeEditorWorldLayoutRoomManipulationPhase phase) {
+                return applyCreativeEditorWorldLayoutRoomManipulation(
+                    target, phase, payload->point, payload->toleranceCells);
+              },
+              "desktop_world_layout_room_drag",
+              "room drag preview ready in 3D", "room updated in 3D");
+      result.accepted = liveEdit.accepted;
+      result.changed = liveEdit.changed;
+      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
+      result.sceneChanged = liveEdit.sceneChanged;
       result.message = editor.worldLayout.statusMessage;
       break;
     }
@@ -274,21 +278,30 @@ bool dispatchCreativeDesktopWorldLayoutStructureCommand(
             "layout vertical connector manipulation: payload mismatch";
         break;
       }
-      const bool previewWasActive =
-          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
-      const CreativeEditorWorldLayoutEditReceipt receipt =
-          applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
-              editor.worldLayout, payload->phase, payload->point,
-              payload->toleranceCells);
-      const bool sourceChanged =
-          payload->phase ==
+      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
+          dispatchCreativeDesktopWorldLayoutLiveEdit(
+              editor.worldLayout, appState, payload->phase,
               CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
-                  Commit &&
-          receipt.changed;
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
-      result.worldLayoutChanged = sourceChanged;
-      result.sceneChanged = previewWasActive && sourceChanged;
+                  Begin,
+              CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+                  Update,
+              CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+                  Commit,
+              CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+                  Cancel,
+              [&](CreativeEditorWorldLayoutState& target,
+                  CreativeEditorWorldLayoutVerticalConnectorManipulationPhase
+                      phase) {
+                return applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
+                    target, phase, payload->point, payload->toleranceCells);
+              },
+              "desktop_world_layout_vertical_connector_drag",
+              "connector drag preview ready in 3D",
+              "vertical connector updated in 3D");
+      result.accepted = liveEdit.accepted;
+      result.changed = liveEdit.changed;
+      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
+      result.sceneChanged = liveEdit.sceneChanged;
       result.message = editor.worldLayout.statusMessage;
       break;
     }
@@ -318,20 +331,24 @@ bool dispatchCreativeDesktopWorldLayoutStructureCommand(
         result.message = "layout floor manipulation: payload mismatch";
         break;
       }
-      const bool previewWasActive =
-          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
-      const CreativeEditorWorldLayoutEditReceipt receipt =
-          applyCreativeEditorWorldLayoutBoxManipulation(
-              editor.worldLayout, payload->phase, payload->point,
-              payload->toleranceCells);
-      const bool sourceChanged =
-          payload->phase ==
-              CreativeEditorWorldLayoutBoxManipulationPhase::Commit &&
-          receipt.changed;
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
-      result.worldLayoutChanged = sourceChanged;
-      result.sceneChanged = previewWasActive && sourceChanged;
+      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
+          dispatchCreativeDesktopWorldLayoutLiveEdit(
+              editor.worldLayout, appState, payload->phase,
+              CreativeEditorWorldLayoutBoxManipulationPhase::Begin,
+              CreativeEditorWorldLayoutBoxManipulationPhase::Update,
+              CreativeEditorWorldLayoutBoxManipulationPhase::Commit,
+              CreativeEditorWorldLayoutBoxManipulationPhase::Cancel,
+              [&](CreativeEditorWorldLayoutState& target,
+                  CreativeEditorWorldLayoutBoxManipulationPhase phase) {
+                return applyCreativeEditorWorldLayoutBoxManipulation(
+                    target, phase, payload->point, payload->toleranceCells);
+              },
+              "desktop_world_layout_floor_drag",
+              "floor drag preview ready in 3D", "floor updated in 3D");
+      result.accepted = liveEdit.accepted;
+      result.changed = liveEdit.changed;
+      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
+      result.sceneChanged = liveEdit.sceneChanged;
       result.message = editor.worldLayout.statusMessage;
       break;
     }
@@ -426,20 +443,25 @@ bool dispatchCreativeDesktopWorldLayoutStructureCommand(
         result.message = "layout partition manipulation: payload mismatch";
         break;
       }
-      const bool previewWasActive =
-          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
-      const CreativeEditorWorldLayoutEditReceipt receipt =
-          applyCreativeEditorWorldLayoutWallManipulation(
-              editor.worldLayout, payload->phase, payload->point,
-              payload->toleranceCells);
-      const bool sourceChanged =
-          payload->phase ==
-              CreativeEditorWorldLayoutWallManipulationPhase::Commit &&
-          receipt.changed;
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
-      result.worldLayoutChanged = sourceChanged;
-      result.sceneChanged = previewWasActive && sourceChanged;
+      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
+          dispatchCreativeDesktopWorldLayoutLiveEdit(
+              editor.worldLayout, appState, payload->phase,
+              CreativeEditorWorldLayoutWallManipulationPhase::Begin,
+              CreativeEditorWorldLayoutWallManipulationPhase::Update,
+              CreativeEditorWorldLayoutWallManipulationPhase::Commit,
+              CreativeEditorWorldLayoutWallManipulationPhase::Cancel,
+              [&](CreativeEditorWorldLayoutState& target,
+                  CreativeEditorWorldLayoutWallManipulationPhase phase) {
+                return applyCreativeEditorWorldLayoutWallManipulation(
+                    target, phase, payload->point, payload->toleranceCells);
+              },
+              "desktop_world_layout_partition_drag",
+              "partition drag preview ready in 3D",
+              "partition updated in 3D");
+      result.accepted = liveEdit.accepted;
+      result.changed = liveEdit.changed;
+      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
+      result.sceneChanged = liveEdit.sceneChanged;
       result.message = editor.worldLayout.statusMessage;
       break;
     }
@@ -600,20 +622,24 @@ bool dispatchCreativeDesktopWorldLayoutStructureCommand(
         result.message = "layout opening manipulation: payload mismatch";
         break;
       }
-      const bool previewWasActive =
-          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
-      const CreativeEditorWorldLayoutEditReceipt receipt =
-          applyCreativeEditorWorldLayoutOpeningManipulation(
-              editor.worldLayout, payload->phase, payload->point,
-              payload->toleranceCells);
-      const bool sourceChanged =
-          payload->phase ==
-              CreativeEditorWorldLayoutOpeningManipulationPhase::Commit &&
-          receipt.changed;
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
-      result.worldLayoutChanged = sourceChanged;
-      result.sceneChanged = previewWasActive && sourceChanged;
+      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
+          dispatchCreativeDesktopWorldLayoutLiveEdit(
+              editor.worldLayout, appState, payload->phase,
+              CreativeEditorWorldLayoutOpeningManipulationPhase::Begin,
+              CreativeEditorWorldLayoutOpeningManipulationPhase::Update,
+              CreativeEditorWorldLayoutOpeningManipulationPhase::Commit,
+              CreativeEditorWorldLayoutOpeningManipulationPhase::Cancel,
+              [&](CreativeEditorWorldLayoutState& target,
+                  CreativeEditorWorldLayoutOpeningManipulationPhase phase) {
+                return applyCreativeEditorWorldLayoutOpeningManipulation(
+                    target, phase, payload->point, payload->toleranceCells);
+              },
+              "desktop_world_layout_opening_drag",
+              "opening drag preview ready in 3D", "opening updated in 3D");
+      result.accepted = liveEdit.accepted;
+      result.changed = liveEdit.changed;
+      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
+      result.sceneChanged = liveEdit.sceneChanged;
       result.message = editor.worldLayout.statusMessage;
       break;
     }

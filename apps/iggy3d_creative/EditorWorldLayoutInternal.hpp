@@ -224,6 +224,7 @@ bool worldLayoutManipulatedRect(const Manipulation& manipulation,
 inline void invalidateWorldLayoutPreview(
     CreativeEditorWorldLayoutState& state) {
   state.previewVisible = false;
+  state.manipulationPreviewVisible = false;
   state.previewLayoutRevision = 0U;
   state.preview = {};
 }
