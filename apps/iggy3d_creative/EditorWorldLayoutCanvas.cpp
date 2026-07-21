@@ -489,7 +489,7 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   const std::uint64_t topographySourceKey =
       terrainGenerationPreviewActive
           ? editor.terrainGeneration.operationPreview.receipt.replay.heightHash
-          : previewActive ? state.previewLayoutRevision : 0U;
+          : previewActive ? state.previewContentRevision : 0U;
   const cr::CreativeGridSettings grid = renderDocument.gridSettings();
   static_cast<void>(refreshCreativeEditorWorldLayoutTopography(
       topography, renderDocument, topographySourceOverride,
@@ -937,7 +937,8 @@ void drawLayoutCanvas(CreativeEditorState& editor,
       !state.verticalConnectorManipulation.active &&
       !state.roomManipulation.active && !state.boxManipulation.active &&
       state.anchorActive &&
-      ((hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
+      (io.AppFocusLost ||
+       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
        ImGui::IsKeyPressed(ImGuiKey_Escape));
   if (cancelGesture) {
     queueGesture(commands, CreativeEditorWorldLayoutGesturePhase::Cancel);
@@ -945,6 +946,10 @@ void drawLayoutCanvas(CreativeEditorState& editor,
              ImGui::IsMouseReleased(ImGuiMouseButton_Left) &&
              ImGui::IsItemDeactivated()) {
     queueGesture(commands, CreativeEditorWorldLayoutGesturePhase::Commit,
+                 hoveredPoint);
+  } else if (state.anchorActive && dragTool(state.tool) &&
+             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+    queueGesture(commands, CreativeEditorWorldLayoutGesturePhase::Update,
                  hoveredPoint);
   }
 }

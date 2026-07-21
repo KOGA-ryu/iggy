@@ -734,6 +734,8 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutGesture(
   }
   if (phase == CreativeEditorWorldLayoutGesturePhase::Cancel) {
     state.anchorActive = false;
+    state.gesturePreviewGridPointValid = false;
+    state.gesturePreviewGridPoint = {};
     state.statusMessage = "layout gesture cancelled";
     return {true, false, "creative_editor_world_layout_gesture_cancelled"};
   }
@@ -783,7 +785,25 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutGesture(
     return {false, false,
             "creative_editor_world_layout_gesture_not_active"};
   }
-  return applyCreativeEditorWorldLayoutPoint(state, point);
+  if (phase == CreativeEditorWorldLayoutGesturePhase::Update) {
+    cr::CreativeTerrainCoord2 gridPoint;
+    if (!toGridCoord(point, gridPoint)) {
+      return {false, false,
+              "creative_editor_world_layout_point_out_of_range"};
+    }
+    const bool changed = !state.gesturePreviewGridPointValid ||
+                         state.gesturePreviewGridPoint != gridPoint;
+    state.gesturePreviewGridPointValid = true;
+    state.gesturePreviewGridPoint = gridPoint;
+    return {true, changed,
+            changed ? "creative_editor_world_layout_gesture_preview_updated"
+                    : "creative_editor_world_layout_gesture_preview_current"};
+  }
+  CreativeEditorWorldLayoutEditReceipt receipt =
+      applyCreativeEditorWorldLayoutPoint(state, point);
+  state.gesturePreviewGridPointValid = false;
+  state.gesturePreviewGridPoint = {};
+  return receipt;
 }
 
 

@@ -18,8 +18,15 @@ CreativeEditorWorldLayoutState makeWorldLayoutSettingsCandidate(
   candidate.savedRevision = state.savedRevision;
   candidate.generatedRevision = state.generatedRevision;
   candidate.nextStableOrdinal = state.nextStableOrdinal;
+  candidate.tool = state.tool;
   candidate.activeLevelIndex = state.activeLevelIndex;
   candidate.selection = state.selection;
+  candidate.assetCategory = state.assetCategory;
+  candidate.assetQuery = state.assetQuery;
+  candidate.catalogPlacement = state.catalogPlacement;
+  candidate.planLowerLevelContextVisible =
+      state.planLowerLevelContextVisible;
+  candidate.planRoofOverheadVisible = state.planRoofOverheadVisible;
   candidate.sourceHistory.maxDepth = 0U;
   return candidate;
 }
@@ -212,8 +219,10 @@ CreativeEditorWorldLayoutPreviewReceipt previewWorldLayoutSettingsCandidate(
   }
   state.preview = std::move(preview);
   state.previewVisible = true;
-  state.manipulationPreviewVisible = false;
+  state.liveEditPreviewVisible = false;
   state.previewLayoutRevision = state.revision;
+  state.previewContentRevision =
+      detail::nextWorldLayoutSourceEpoch(state.previewContentRevision);
   state.statusMessage = std::string(successMessage);
   return result;
 }
@@ -268,6 +277,16 @@ CreativeEditorWorldLayoutApplyReceipt applyWorldLayoutSettingsCandidate(
   const CreativeEditorWorldLayoutSelection committedSelection =
       candidate.selection;
   const std::size_t committedActiveLevelIndex = candidate.activeLevelIndex;
+  const CreativeEditorWorldLayoutTool committedTool = candidate.tool;
+  const CreativeEditorWorldLayoutAssetCategory committedAssetCategory =
+      candidate.assetCategory;
+  const std::string committedAssetQuery = candidate.assetQuery;
+  const CreativeEditorWorldLayoutCatalogPlacementState
+      committedCatalogPlacement = candidate.catalogPlacement;
+  const bool committedLowerLevelContextVisible =
+      candidate.planLowerLevelContextVisible;
+  const bool committedRoofOverheadVisible =
+      candidate.planRoofOverheadVisible;
   result.apply = applyCreativeEditorWorldLayoutPlanWithHistory(
       state, appState, compiled.plan,
       captureCreativeEditorWorldLayoutSnapshot(candidate), historySource);
@@ -280,6 +299,13 @@ CreativeEditorWorldLayoutApplyReceipt applyWorldLayoutSettingsCandidate(
   }
   state.selection = committedSelection;
   state.activeLevelIndex = committedActiveLevelIndex;
+  state.tool = committedTool;
+  state.assetCategory = committedAssetCategory;
+  state.assetQuery = committedAssetQuery;
+  state.catalogPlacement = committedCatalogPlacement;
+  state.planLowerLevelContextVisible =
+      committedLowerLevelContextVisible;
+  state.planRoofOverheadVisible = committedRoofOverheadVisible;
 
   // A source setting can be meaningful even when its compiled geometry is
   // identical (for example, a closed pose on an omitted insert). Preserve one
@@ -297,11 +323,15 @@ CreativeEditorWorldLayoutApplyReceipt applyWorldLayoutSettingsCandidate(
 }  // namespace
 
 CreativeEditorWorldLayoutState
-makeCreativeEditorWorldLayoutManipulationCandidate(
+makeCreativeEditorWorldLayoutLiveEditCandidate(
     const CreativeEditorWorldLayoutState& state) {
   CreativeEditorWorldLayoutState candidate =
       makeWorldLayoutSettingsCandidate(state);
-  candidate.tool = state.tool;
+  candidate.anchorActive = state.anchorActive;
+  candidate.anchor = state.anchor;
+  candidate.gesturePreviewGridPointValid =
+      state.gesturePreviewGridPointValid;
+  candidate.gesturePreviewGridPoint = state.gesturePreviewGridPoint;
   candidate.roomManipulation = state.roomManipulation;
   candidate.verticalConnectorManipulation =
       state.verticalConnectorManipulation;
@@ -313,7 +343,7 @@ makeCreativeEditorWorldLayoutManipulationCandidate(
 }
 
 CreativeEditorWorldLayoutPreviewReceipt
-previewCreativeEditorWorldLayoutManipulationCandidate(
+previewCreativeEditorWorldLayoutLiveEditCandidate(
     CreativeEditorWorldLayoutState& state,
     const cr::CreativeDocument& document,
     CreativeEditorWorldLayoutState candidate,
@@ -323,12 +353,12 @@ previewCreativeEditorWorldLayoutManipulationCandidate(
       previewWorldLayoutSettingsCandidate(
           state, document, std::move(candidate), std::move(editReceipt),
           successMessage);
-  state.manipulationPreviewVisible = receipt.accepted;
+  state.liveEditPreviewVisible = receipt.accepted;
   return receipt;
 }
 
 CreativeEditorWorldLayoutApplyReceipt
-applyCreativeEditorWorldLayoutManipulationCandidate(
+applyCreativeEditorWorldLayoutLiveEditCandidate(
     CreativeEditorWorldLayoutState& state,
     cr::CreativeAppState& appState,
     CreativeEditorWorldLayoutState candidate,
@@ -340,9 +370,9 @@ applyCreativeEditorWorldLayoutManipulationCandidate(
       historySource, successMessage);
 }
 
-bool clearCreativeEditorWorldLayoutManipulationPreview(
+bool clearCreativeEditorWorldLayoutLiveEditPreview(
     CreativeEditorWorldLayoutState& state) noexcept {
-  if (!state.manipulationPreviewVisible) {
+  if (!state.liveEditPreviewVisible) {
     return false;
   }
   const bool changed = creativeEditorWorldLayoutPreviewActive(state);

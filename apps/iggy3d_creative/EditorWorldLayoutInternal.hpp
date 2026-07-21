@@ -224,7 +224,7 @@ bool worldLayoutManipulatedRect(const Manipulation& manipulation,
 inline void invalidateWorldLayoutPreview(
     CreativeEditorWorldLayoutState& state) {
   state.previewVisible = false;
-  state.manipulationPreviewVisible = false;
+  state.liveEditPreviewVisible = false;
   state.previewLayoutRevision = 0U;
   state.preview = {};
 }
@@ -238,6 +238,8 @@ inline std::uint64_t nextWorldLayoutSourceEpoch(
 
 inline void clearWorldLayoutInteraction(
     CreativeEditorWorldLayoutState& state) {
+  state.gesturePreviewGridPointValid = false;
+  state.gesturePreviewGridPoint = {};
   state.roomManipulation = {};
   state.verticalConnectorManipulation = {};
   state.boxManipulation = {};

@@ -24,7 +24,7 @@ struct CreativeDesktopWorldLayoutLiveEditResult {
   bool worldLayoutChanged = false;
 };
 
-template <typename Phase, typename ApplyManipulation>
+template <typename Phase, typename ApplyEdit>
 [[nodiscard]] CreativeDesktopWorldLayoutLiveEditResult
 dispatchCreativeDesktopWorldLayoutLiveEdit(
     CreativeEditorWorldLayoutState& state,
@@ -34,7 +34,7 @@ dispatchCreativeDesktopWorldLayoutLiveEdit(
     Phase updatePhase,
     Phase commitPhase,
     Phase cancelPhase,
-    ApplyManipulation applyManipulation,
+    ApplyEdit applyEdit,
     std::string_view historySource,
     std::string_view previewMessage,
     std::string_view successMessage) {
@@ -43,9 +43,9 @@ dispatchCreativeDesktopWorldLayoutLiveEdit(
 
   if (phase == beginPhase) {
     result.sceneChanged =
-        clearCreativeEditorWorldLayoutManipulationPreview(state);
+        clearCreativeEditorWorldLayoutLiveEditPreview(state);
     const CreativeEditorWorldLayoutEditReceipt edit =
-        applyManipulation(state, phase);
+        applyEdit(state, phase);
     result.accepted = edit.accepted;
     result.changed = edit.changed;
     return result;
@@ -53,18 +53,18 @@ dispatchCreativeDesktopWorldLayoutLiveEdit(
 
   if (phase == cancelPhase) {
     const CreativeEditorWorldLayoutEditReceipt edit =
-        applyManipulation(state, phase);
+        applyEdit(state, phase);
     result.accepted = edit.accepted;
     result.changed = edit.changed;
     result.sceneChanged =
-        clearCreativeEditorWorldLayoutManipulationPreview(state);
+        clearCreativeEditorWorldLayoutLiveEditPreview(state);
     return result;
   }
 
   const bool sourceSynchronized = state.generatedRevision == state.revision;
   if (!sourceSynchronized) {
     const CreativeEditorWorldLayoutEditReceipt edit =
-        applyManipulation(state, phase);
+        applyEdit(state, phase);
     result.accepted = edit.accepted;
     result.changed = edit.changed;
     result.worldLayoutChanged = phase == commitPhase && edit.changed;
@@ -74,7 +74,7 @@ dispatchCreativeDesktopWorldLayoutLiveEdit(
 
   if (phase == updatePhase) {
     const CreativeEditorWorldLayoutEditReceipt edit =
-        applyManipulation(state, phase);
+        applyEdit(state, phase);
     result.accepted = edit.accepted;
     result.changed = edit.changed;
     if (!edit.accepted || !edit.changed) {
@@ -82,17 +82,19 @@ dispatchCreativeDesktopWorldLayoutLiveEdit(
     }
 
     CreativeEditorWorldLayoutState candidate =
-        makeCreativeEditorWorldLayoutManipulationCandidate(state);
+        makeCreativeEditorWorldLayoutLiveEditCandidate(state);
     const CreativeEditorWorldLayoutEditReceipt candidateEdit =
-        applyManipulation(candidate, commitPhase);
+        applyEdit(candidate, commitPhase);
     if (!candidateEdit.accepted || !candidateEdit.changed) {
+      const std::string candidateMessage = candidate.statusMessage;
       result.sceneChanged =
-          clearCreativeEditorWorldLayoutManipulationPreview(state);
+          clearCreativeEditorWorldLayoutLiveEditPreview(state);
+      state.statusMessage = candidateMessage;
       return result;
     }
 
     const CreativeEditorWorldLayoutPreviewReceipt preview =
-        previewCreativeEditorWorldLayoutManipulationCandidate(
+        previewCreativeEditorWorldLayoutLiveEditCandidate(
             state, appState.facade.document(), std::move(candidate),
             candidateEdit, previewMessage);
     result.sceneChanged = preview.changed;
@@ -101,21 +103,21 @@ dispatchCreativeDesktopWorldLayoutLiveEdit(
 
   if (phase == commitPhase) {
     CreativeEditorWorldLayoutState candidate =
-        makeCreativeEditorWorldLayoutManipulationCandidate(state);
+        makeCreativeEditorWorldLayoutLiveEditCandidate(state);
     const CreativeEditorWorldLayoutEditReceipt candidateEdit =
-        applyManipulation(candidate, commitPhase);
+        applyEdit(candidate, commitPhase);
     if (!candidateEdit.accepted || !candidateEdit.changed) {
       const std::string candidateMessage = candidate.statusMessage;
-      static_cast<void>(applyManipulation(state, cancelPhase));
+      static_cast<void>(applyEdit(state, cancelPhase));
       result.sceneChanged =
-          clearCreativeEditorWorldLayoutManipulationPreview(state);
+          clearCreativeEditorWorldLayoutLiveEditPreview(state);
       state.statusMessage = candidateMessage;
       result.accepted = candidateEdit.accepted;
       return result;
     }
 
     const CreativeEditorWorldLayoutApplyReceipt applied =
-        applyCreativeEditorWorldLayoutManipulationCandidate(
+        applyCreativeEditorWorldLayoutLiveEditCandidate(
             state, appState, std::move(candidate), candidateEdit,
             historySource, successMessage);
     result.accepted = applied.accepted;
@@ -124,18 +126,70 @@ dispatchCreativeDesktopWorldLayoutLiveEdit(
     result.sceneChanged = previewWasActive || applied.apply.changed;
     if (!applied.accepted) {
       const std::string failureMessage = state.statusMessage;
-      static_cast<void>(applyManipulation(state, cancelPhase));
+      static_cast<void>(applyEdit(state, cancelPhase));
       static_cast<void>(
-          clearCreativeEditorWorldLayoutManipulationPreview(state));
+          clearCreativeEditorWorldLayoutLiveEditPreview(state));
       state.statusMessage = failureMessage;
     }
     return result;
   }
 
   const CreativeEditorWorldLayoutEditReceipt edit =
-      applyManipulation(state, phase);
+      applyEdit(state, phase);
   result.accepted = edit.accepted;
   result.changed = edit.changed;
+  return result;
+}
+
+template <typename ApplyEdit>
+[[nodiscard]] CreativeDesktopWorldLayoutLiveEditResult
+dispatchCreativeDesktopWorldLayoutImmediateEdit(
+    CreativeEditorWorldLayoutState& state,
+    iggy3d::creative::CreativeAppState& appState,
+    ApplyEdit applyEdit,
+    std::string_view historySource) {
+  CreativeDesktopWorldLayoutLiveEditResult result;
+  const bool previewWasActive = creativeEditorWorldLayoutPreviewActive(state);
+  const bool livePreviewCleared =
+      clearCreativeEditorWorldLayoutLiveEditPreview(state);
+  if (state.generatedRevision != state.revision) {
+    const CreativeEditorWorldLayoutEditReceipt edit = applyEdit(state);
+    result.accepted = edit.accepted;
+    result.changed = edit.changed;
+    result.worldLayoutChanged = edit.changed;
+    result.sceneChanged =
+        livePreviewCleared || (previewWasActive && edit.changed);
+    return result;
+  }
+
+  CreativeEditorWorldLayoutState candidate =
+      makeCreativeEditorWorldLayoutLiveEditCandidate(state);
+  const CreativeEditorWorldLayoutEditReceipt candidateEdit =
+      applyEdit(candidate);
+  if (!candidateEdit.accepted) {
+    state.statusMessage = candidate.statusMessage;
+    result.sceneChanged = livePreviewCleared;
+    return result;
+  }
+
+  if (!candidateEdit.changed || candidate.revision == state.revision) {
+    const CreativeEditorWorldLayoutEditReceipt edit = applyEdit(state);
+    result.accepted = edit.accepted;
+    result.changed = edit.changed;
+    result.sceneChanged = livePreviewCleared;
+    return result;
+  }
+
+  const std::string successMessage = candidate.statusMessage;
+  const CreativeEditorWorldLayoutApplyReceipt applied =
+      applyCreativeEditorWorldLayoutLiveEditCandidate(
+          state, appState, std::move(candidate), candidateEdit,
+          historySource, successMessage);
+  result.accepted = applied.accepted;
+  result.changed = applied.changed;
+  result.worldLayoutChanged = applied.changed;
+  result.sceneChanged = applied.accepted &&
+                        (previewWasActive || applied.apply.changed);
   return result;
 }
 

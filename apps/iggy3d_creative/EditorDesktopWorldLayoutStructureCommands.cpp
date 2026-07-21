@@ -22,17 +22,19 @@ bool dispatchCreativeDesktopWorldLayoutStructureCommand(
         result.message = "layout point: payload mismatch";
         break;
       }
-      const bool previewWasActive =
-          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
-      const CreativeEditorWorldLayoutEditReceipt receipt =
-          applyCreativeEditorWorldLayoutPoint(editor.worldLayout,
-                                              payload->point,
-                                              activeAppState.facade.document()
-                                                  .gridSettings());
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
-      result.worldLayoutChanged = receipt.changed;
-      result.sceneChanged = previewWasActive && receipt.changed;
+      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
+          dispatchCreativeDesktopWorldLayoutImmediateEdit(
+              editor.worldLayout, activeAppState,
+              [&](CreativeEditorWorldLayoutState& target) {
+                return applyCreativeEditorWorldLayoutPoint(
+                    target, payload->point,
+                    activeAppState.facade.document().gridSettings());
+              },
+              "desktop_world_layout_point_create");
+      result.accepted = liveEdit.accepted;
+      result.changed = liveEdit.changed;
+      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
+      result.sceneChanged = liveEdit.sceneChanged;
       result.message = editor.worldLayout.statusMessage;
       break;
     }
@@ -43,15 +45,25 @@ bool dispatchCreativeDesktopWorldLayoutStructureCommand(
         result.message = "layout gesture: payload mismatch";
         break;
       }
-      const bool previewWasActive =
-          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
-      const CreativeEditorWorldLayoutEditReceipt receipt =
-          applyCreativeEditorWorldLayoutGesture(
-              editor.worldLayout, payload->phase, payload->point);
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
-      result.worldLayoutChanged = receipt.changed;
-      result.sceneChanged = previewWasActive && receipt.changed;
+      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
+          dispatchCreativeDesktopWorldLayoutLiveEdit(
+              editor.worldLayout, activeAppState, payload->phase,
+              CreativeEditorWorldLayoutGesturePhase::Begin,
+              CreativeEditorWorldLayoutGesturePhase::Update,
+              CreativeEditorWorldLayoutGesturePhase::Commit,
+              CreativeEditorWorldLayoutGesturePhase::Cancel,
+              [&](CreativeEditorWorldLayoutState& target,
+                  CreativeEditorWorldLayoutGesturePhase phase) {
+                return applyCreativeEditorWorldLayoutGesture(
+                    target, phase, payload->point);
+              },
+              "desktop_world_layout_gesture_create",
+              "plan creation preview ready in 3D",
+              "plan element created in 3D");
+      result.accepted = liveEdit.accepted;
+      result.changed = liveEdit.changed;
+      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
+      result.sceneChanged = liveEdit.sceneChanged;
       result.message = editor.worldLayout.statusMessage;
       break;
     }

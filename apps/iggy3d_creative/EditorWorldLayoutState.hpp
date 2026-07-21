@@ -831,6 +831,7 @@ struct CreativeEditorWorldLayoutElevationManipulationState {
 
 enum class CreativeEditorWorldLayoutGesturePhase : std::uint8_t {
   Begin,
+  Update,
   Commit,
   Cancel,
   Count,
@@ -897,6 +898,8 @@ struct CreativeEditorWorldLayoutState {
   CreativeEditorWorldLayoutSelection selection;
   bool anchorActive = false;
   cr::CreativeTerrainCoord2 anchor{};
+  bool gesturePreviewGridPointValid = false;
+  cr::CreativeTerrainCoord2 gesturePreviewGridPoint{};
   CreativeEditorWorldLayoutRoomManipulationState roomManipulation;
   CreativeEditorWorldLayoutVerticalConnectorManipulationState
       verticalConnectorManipulation;
@@ -937,10 +940,11 @@ struct CreativeEditorWorldLayoutState {
   CreativeEditorWorldLayoutConflictReviewState conflictReview;
 
   bool previewVisible = false;
-  // True only while an active 2D manipulation owns the exact 3D preview.
-  // Explicit previews and generated-settings previews leave this false.
-  bool manipulationPreviewVisible = false;
+  // True only while an active 2D edit owns the exact 3D preview. Explicit
+  // previews and generated-settings previews leave this false.
+  bool liveEditPreviewVisible = false;
   std::uint64_t previewLayoutRevision = 0U;
+  std::uint64_t previewContentRevision = 0U;
   cr::CreativeWorldLayoutPreviewResult preview;
   std::string statusMessage = "layout ready";
 

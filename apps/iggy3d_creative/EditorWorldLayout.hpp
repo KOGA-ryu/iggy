@@ -572,24 +572,24 @@ cancelCreativeEditorWorldLayoutPreview(
 previewCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
                                  const cr::CreativeDocument& document);
 [[nodiscard]] CreativeEditorWorldLayoutState
-makeCreativeEditorWorldLayoutManipulationCandidate(
+makeCreativeEditorWorldLayoutLiveEditCandidate(
     const CreativeEditorWorldLayoutState& state);
 [[nodiscard]] CreativeEditorWorldLayoutPreviewReceipt
-previewCreativeEditorWorldLayoutManipulationCandidate(
+previewCreativeEditorWorldLayoutLiveEditCandidate(
     CreativeEditorWorldLayoutState& state,
     const cr::CreativeDocument& document,
     CreativeEditorWorldLayoutState candidate,
     CreativeEditorWorldLayoutEditReceipt editReceipt,
     std::string_view successMessage);
 [[nodiscard]] CreativeEditorWorldLayoutApplyReceipt
-applyCreativeEditorWorldLayoutManipulationCandidate(
+applyCreativeEditorWorldLayoutLiveEditCandidate(
     CreativeEditorWorldLayoutState& state,
     cr::CreativeAppState& appState,
     CreativeEditorWorldLayoutState candidate,
     CreativeEditorWorldLayoutEditReceipt editReceipt,
     std::string_view historySource,
     std::string_view successMessage);
-[[nodiscard]] bool clearCreativeEditorWorldLayoutManipulationPreview(
+[[nodiscard]] bool clearCreativeEditorWorldLayoutLiveEditPreview(
     CreativeEditorWorldLayoutState& state) noexcept;
 [[nodiscard]] cr::CreativeWorldLayoutTerrainReconciliationResult
 reconcileCreativeEditorWorldLayoutTerrain(
