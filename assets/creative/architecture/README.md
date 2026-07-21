@@ -29,16 +29,42 @@ Y-up (X width, Y vertical, Z depth). `walkable` = walkable-part count (compound)
 or 1/0 for a single walkable `bounds` asset.
 
 <!-- METRICS-TABLE:BEGIN -->
-| assetId | tris | prims | mats | nodes | bounds min..max (m, glTF Y-up) | collision | parts | walkable | sockets |
-|---|--:|--:|--:|--:|---|---|--:|--:|--:|
-| `architecture/openings/door_frame_standard` | 36 | 3 | 1 | 4 | (-0.500,0.000,-0.075)..(0.500,2.250,0.075) | compound_bounds | 3 | 0 | 1 |
-| `architecture/openings/door_leaf_standard_closed` | 12 | 1 | 1 | 2 | (0.000,0.000,-0.025)..(0.900,2.100,0.025) | bounds | 0 | 0 | 1 |
-| `architecture/openings/door_leaf_standard_open` | 12 | 1 | 1 | 2 | (-0.025,0.000,0.000)..(0.025,2.100,0.900) | bounds | 0 | 0 | 1 |
-| `architecture/traversal/stair_straight_3m` | 192 | 16 | 1 | 16 | (-0.500,0.000,-2.000)..(0.500,3.000,2.000) | compound_bounds | 16 | 16 | 0 |
-| `architecture/traversal/stair_landing_2x2m` | 12 | 1 | 1 | 1 | (-1.000,0.000,-1.000)..(1.000,0.200,1.000) | bounds | 0 | 1 | 0 |
-| `architecture/structural/railing_straight_2m` | 48 | 1 | 1 | 1 | (-1.000,0.000,-0.040)..(1.000,1.000,0.040) | bounds | 0 | 0 | 0 |
-| `architecture/roof/ridge_cap_straight_4m` | 8 | 1 | 1 | 1 | (-2.000,0.000,-0.200)..(2.000,0.115,0.200) | bounds | 0 | 0 | 0 |
-| `architecture/roof/ridge_cap_end` | 8 | 1 | 1 | 1 | (-0.200,0.000,-0.200)..(0.200,0.115,0.200) | bounds | 0 | 0 | 0 |
+| assetId | tris | prims | mats | nodes | bounds min..max (m, glTF Y-up) | collision | parts | walkable | sockets | tile |
+|---|--:|--:|--:|--:|---|---|--:|--:|--:|---|
+| `architecture/openings/door_frame_standard` | 36 | 3 | 1 | 4 | (-0.500,0.000,-0.075)..(0.500,2.250,0.075) | compound_bounds | 3 | 0 | 1 | oak_timber |
+| `architecture/openings/door_leaf_standard_closed` | 12 | 1 | 1 | 2 | (0.000,0.000,-0.025)..(0.900,2.100,0.025) | bounds | 0 | 0 | 1 | oak_plank |
+| `architecture/openings/door_leaf_standard_open` | 12 | 1 | 1 | 2 | (-0.025,0.000,0.000)..(0.025,2.100,0.900) | bounds | 0 | 0 | 1 | oak_plank |
+| `architecture/traversal/stair_straight_3m` | 192 | 16 | 1 | 16 | (-0.500,0.000,-2.000)..(0.500,3.000,2.000) | compound_bounds | 16 | 16 | 0 | oak_timber |
+| `architecture/traversal/stair_landing_2x2m` | 12 | 1 | 1 | 1 | (-1.000,0.000,-1.000)..(1.000,0.200,1.000) | bounds | 0 | 1 | 0 | oak_plank |
+| `architecture/structural/railing_straight_2m` | 48 | 1 | 1 | 1 | (-1.000,0.000,-0.040)..(1.000,1.000,0.040) | bounds | 0 | 0 | 0 | oak_timber |
+| `architecture/roof/ridge_cap_straight_4m` | 8 | 1 | 1 | 1 | (-2.000,0.000,-0.200)..(2.000,0.115,0.200) | bounds | 0 | 0 | 0 | shingle_oak |
+| `architecture/roof/ridge_cap_end` | 8 | 1 | 1 | 1 | (-0.200,0.000,-0.200)..(0.200,0.115,0.200) | bounds | 0 | 0 | 0 | shingle_oak |
+| `architecture/openings/door_frame_wide` | 36 | 3 | 1 | 4 | (-0.650,0.000,-0.075)..(0.650,2.250,0.075) | compound_bounds | 3 | 0 | 1 | oak_timber |
+| `architecture/openings/door_leaf_wide_closed` | 12 | 1 | 1 | 2 | (0.000,0.000,-0.025)..(1.200,2.100,0.025) | bounds | 0 | 0 | 1 | oak_plank |
+| `architecture/openings/door_leaf_wide_open` | 12 | 1 | 1 | 2 | (-0.025,0.000,0.000)..(0.025,2.100,1.200) | bounds | 0 | 0 | 1 | oak_plank |
+| `architecture/openings/window_frame_standard` | 48 | 4 | 1 | 7 | (-0.480,-0.080,-0.075)..(0.480,1.280,0.075) | compound_bounds | 4 | 0 | 3 | oak_timber |
+| `architecture/openings/window_frame_small` | 48 | 4 | 1 | 4 | (-0.330,-0.080,-0.075)..(0.330,0.680,0.075) | compound_bounds | 4 | 0 | 0 | oak_timber |
+| `architecture/openings/window_shutter_left_closed` | 12 | 1 | 1 | 2 | (0.000,0.000,-0.020)..(0.400,1.200,0.020) | bounds | 0 | 0 | 1 | oak_plank |
+| `architecture/openings/window_shutter_left_open` | 12 | 1 | 1 | 2 | (-0.020,0.000,0.000)..(0.020,1.200,0.400) | bounds | 0 | 0 | 1 | oak_plank |
+| `architecture/openings/window_shutter_right_closed` | 12 | 1 | 1 | 2 | (-0.400,0.000,-0.020)..(0.000,1.200,0.020) | bounds | 0 | 0 | 1 | oak_plank |
+| `architecture/openings/window_shutter_right_open` | 12 | 1 | 1 | 2 | (-0.020,0.000,0.000)..(0.020,1.200,0.400) | bounds | 0 | 0 | 1 | oak_plank |
+| `architecture/openings/window_mullion_cross` | 24 | 1 | 1 | 2 | (-0.400,0.000,-0.025)..(0.400,1.200,0.025) | none | 0 | 0 | 1 | oak_timber |
+| `architecture/openings/window_sill_standard` | 12 | 1 | 1 | 1 | (-0.550,0.000,-0.125)..(0.550,0.100,0.125) | none | 0 | 0 | 0 | stone_rough |
+| `architecture/openings/window_lintel_standard` | 12 | 1 | 1 | 1 | (-0.600,0.000,-0.100)..(0.600,0.120,0.100) | none | 0 | 0 | 0 | oak_timber |
+| `architecture/traversal/stair_straight_3m_with_rails` | 288 | 24 | 1 | 24 | (-0.585,0.000,-2.000)..(0.585,4.050,2.000) | compound_bounds | 24 | 16 | 0 | oak_timber |
+| `architecture/traversal/stair_rail_slope_3m` | 84 | 1 | 1 | 1 | (-0.040,0.000,-2.000)..(0.040,3.950,2.000) | bounds | 0 | 0 | 0 | oak_timber |
+| `architecture/traversal/stair_newel_post` | 24 | 1 | 1 | 1 | (-0.080,0.000,-0.080)..(0.080,1.120,0.080) | bounds | 0 | 0 | 0 | oak_timber |
+| `architecture/roof/ridge_cap_straight_2m` | 8 | 1 | 1 | 1 | (-1.000,0.000,-0.200)..(1.000,0.115,0.200) | bounds | 0 | 0 | 0 | shingle_oak |
+| `architecture/roof/eave_trim_2m` | 36 | 1 | 1 | 1 | (-1.000,0.000,-0.170)..(1.000,0.300,0.030) | none | 0 | 0 | 0 | oak_timber |
+| `architecture/roof/eave_trim_4m` | 48 | 1 | 1 | 1 | (-2.000,0.000,-0.170)..(2.000,0.300,0.030) | none | 0 | 0 | 0 | oak_timber |
+| `architecture/roof/eave_outer_corner` | 36 | 1 | 1 | 1 | (-0.030,0.000,-0.600)..(0.600,0.300,0.030) | none | 0 | 0 | 0 | oak_timber |
+| `architecture/roof/fascia_end` | 24 | 1 | 1 | 1 | (-0.050,0.000,-0.050)..(0.300,0.300,0.050) | none | 0 | 0 | 0 | oak_timber |
+| `architecture/roof/gable_cap_4m` | 24 | 1 | 1 | 1 | (-2.000,0.000,-0.030)..(2.000,1.335,0.030) | bounds | 0 | 0 | 0 | oak_timber |
+| `architecture/roof/gutter_straight_2m` | 36 | 1 | 1 | 1 | (-1.000,0.000,-0.090)..(1.000,0.140,0.090) | none | 0 | 0 | 0 | oak_plank |
+| `architecture/roof/downspout_3m` | 12 | 1 | 1 | 1 | (-0.050,0.000,-0.050)..(0.050,3.000,0.050) | none | 0 | 0 | 0 | iron_forged |
+| `architecture/roof/downspout_outlet` | 24 | 1 | 1 | 1 | (-0.050,0.000,-0.050)..(0.050,0.500,0.300) | none | 0 | 0 | 0 | iron_forged |
+| `architecture/roof/chimney_stack_short` | 24 | 1 | 1 | 2 | (-0.475,0.000,-0.475)..(0.475,2.200,0.475) | bounds | 0 | 0 | 1 | stone_rough |
+| `architecture/roof/chimney_cap` | 36 | 1 | 1 | 2 | (-0.450,0.000,-0.450)..(0.450,0.330,0.450) | none | 0 | 0 | 1 | stone_rough |
 <!-- METRICS-TABLE:END -->
 
 Validator path & tool versions: pygltflib 1.16.5, Blender 4.5.9 LTS; see

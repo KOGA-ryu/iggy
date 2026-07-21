@@ -183,6 +183,10 @@ def export_glb(objs, path):
     for o in objs:
         o.select_set(True)
     bpy.context.view_layer.objects.active = objs[0]
+    # bake TRS into vertices: exported mesh nodes must have identity
+    # transforms (linter law; socket empties would be exempt but the material
+    # proofs carry none)
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     bpy.ops.export_scene.gltf(filepath=path, export_format="GLB",
                               use_selection=True, export_extras=True,
                               export_apply=True, export_yup=True)
@@ -217,8 +221,12 @@ o.data.materials.append(image_mat("uv_marker", uv_path, 0.9))
 o["iggy_category"] = "calibration"
 o["iggy_collision"] = "none"
 export_glb([o], f"{CALDIR}/material_texture_uv.glb")
-# missing_texture starts as a copy; python3 post-pass severs the image
+# missing_texture starts as a copy; the committed post-pass severs the image
+# (calibration/tools/sever_missing_texture.py) so the probe stays re-runnable
 export_glb([o], f"{CALDIR}/material_missing_texture.glb")
+import subprocess
+subprocess.run(
+    ["python3", f"{CALDIR}/tools/sever_missing_texture.py"], check=True)
 print("PHASE1 DONE")
 
 # ---------------- phase 2 proofs: tiling + swatch sheet ----------------

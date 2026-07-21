@@ -10,3 +10,4 @@ compile_commands.json
 
 # ctest scratch output (regenerated every run)
 Testing/
+__pycache__/
