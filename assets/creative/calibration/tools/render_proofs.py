@@ -276,8 +276,12 @@ def render_assembled_bay():
     """The 4 x 4 m bay use-case, rendered from the committed fixture layout:
     3 m storey gauge, socketed door, full-storey stair + landing resting on the
     stair top, rail on the landing, and the roof ridge cap + end."""
-    for tag, azimuth, elev, pad in (("assembled_bay", -58.0, 0.5, 1.05),
-                                    ("assembled_bay_side", 30.0, 0.3, 1.05)):
+    # The ridge runs along Blender X at Z=3 (identity rotation). Angle 1 is an
+    # elevated 3/4 view; angle 2 is BROADSIDE to the ridge (camera looks along
+    # Blender Y) at near-level elevation, where a level ridge must read as a
+    # horizontal top edge — the unambiguous level-ridge proof.
+    for tag, azimuth, elev, pad in (("assembled_bay", -88.0, 0.6, 1.2),
+                                    ("assembled_bay_side", 90.0, 0.18, 1.25)):
         reset_scene()
         allobjs = []
         for path, loc in BAY:
