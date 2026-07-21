@@ -23,6 +23,11 @@ iggy3d_add_unit_test(static_mesh_asset_tests
 set_tests_properties(static_mesh_asset_tests PROPERTIES
   LABELS "unit;content;asset;glb;render;creative;iggy3d")
 
+iggy3d_add_unit_test(calibration_bay_tests
+  tests/unit/calibration_bay_tests.cpp)
+set_tests_properties(calibration_bay_tests PROPERTIES
+  LABELS "unit;content;asset;glb;creative;fixture;iggy3d")
+
 iggy3d_add_unit_test(creative_asset_room_bake_tests
   tests/unit/creative_asset_room_bake_tests.cpp)
 set_tests_properties(creative_asset_room_bake_tests PROPERTIES
