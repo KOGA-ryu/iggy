@@ -832,6 +832,56 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
           "stealth_blockout/giant_shelf_2x3p6", "stealth_blockout",
           iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 2U, 1U},
   };
+  // ASSET-CAL-1 Batch 0: calibration and pipeline proofs.
+  constexpr std::array kCalibrationAssets{
+      ModularAssetExpectation{"calibration/grid_1m_10x10", "calibration",
+                              iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{"calibration/human_gauge_1p8m", "calibration",
+                              iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{"calibration/door_clearance_0p9x2p1",
+                              "calibration",
+                              iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{"calibration/storey_3m", "calibration",
+                              iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{"calibration/pivot_hinge", "calibration",
+                              iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{"calibration/socket_receiver", "calibration",
+                              iggy3d::StaticMeshCollisionMode::None, false, 0U,
+                              0U, 1U, 0U, 1U},
+      ModularAssetExpectation{"calibration/socket_plug", "calibration",
+                              iggy3d::StaticMeshCollisionMode::None, false, 0U,
+                              0U, 1U, 1U, 0U},
+      ModularAssetExpectation{"calibration/collision_compound", "calibration",
+                              iggy3d::StaticMeshCollisionMode::CompoundBounds,
+                              true, 2U, 1U},
+  };
+  // ASSET-CAL-1 Batch 1 seed: building-closure architecture assets.
+  constexpr std::array kArchitectureAssets{
+      ModularAssetExpectation{
+          "architecture/openings/door_frame_standard", "openings",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 3U, 0U, 1U,
+          0U, 1U},
+      ModularAssetExpectation{
+          "architecture/openings/door_leaf_standard_closed", "openings",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{
+          "architecture/openings/door_leaf_standard_open", "openings",
+          iggy3d::StaticMeshCollisionMode::Bounds, false, 0U, 0U, 1U, 1U, 0U},
+      ModularAssetExpectation{
+          "architecture/traversal/stair_straight_3m", "traversal",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 16U, 16U},
+      ModularAssetExpectation{
+          "architecture/traversal/stair_landing_2x2m", "traversal",
+          iggy3d::StaticMeshCollisionMode::Bounds, true},
+      ModularAssetExpectation{
+          "architecture/structural/railing_straight_2m", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/roof/ridge_cap_straight_4m", "roof",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{"architecture/roof/ridge_cap_end", "roof",
+                              iggy3d::StaticMeshCollisionMode::Bounds},
+  };
   const iggy3d::StaticMeshAssetCatalog catalog =
       iggy3d::discoverStaticMeshAssetCatalog("assets/creative");
   const iggy3d::StaticMeshAssetCatalog missing =
@@ -958,6 +1008,10 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
   const bool caveAssetsValid = validateAssetFamily(kCaveAssets, "cave");
   const bool stealthBlockoutAssetsValid =
       validateAssetFamily(kStealthBlockoutAssets, "stealth blockout");
+  const bool calibrationAssetsValid =
+      validateAssetFamily(kCalibrationAssets, "calibration");
+  const bool architectureAssetsValid =
+      validateAssetFamily(kArchitectureAssets, "architecture");
 
   return expect(catalog.failures.empty() &&
                     catalog.entries.size() ==
@@ -965,7 +1019,9 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
                             kYardAssets.size() + kWoodlandAssets.size() +
                             kInfrastructureAssets.size() +
                             kRockCliffAssets.size() + kCaveAssets.size() +
-                            kStealthBlockoutAssets.size(),
+                            kStealthBlockoutAssets.size() +
+                            kCalibrationAssets.size() +
+                            kArchitectureAssets.size(),
                 "catalog discovers every valid GLB fixture") &&
          modularAssetsValid &&
          interiorAssetsValid &&
@@ -975,6 +1031,8 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
          rockCliffAssetsValid &&
          caveAssetsValid &&
          stealthBlockoutAssetsValid &&
+         calibrationAssetsValid &&
+         architectureAssetsValid &&
          expect(boulder != catalog.entries.end() &&
                     boulder->label == "Boulder 01" &&
                     boulder->authoringMetadata.collisionMode ==
