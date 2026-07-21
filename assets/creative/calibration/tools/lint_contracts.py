@@ -207,6 +207,27 @@ ARCHITECTURE = {
         spec((-0.6, 0, -0.1), (0.6, 0.12, 0.1), "openings", "none",
              tile="oak_timber"),
 
+    # --- BLD-3: traversal completion (quarter-turn stair, big landing,
+    # stepped ramps per the stealth ramp precedent) ---
+    "architecture/traversal/stair_quarter_turn_3m":
+        spec((-0.5, 0, -1.75), (2.5, 3.0, 1.0), "traversal",
+             "compound_bounds", walkable=True, parts=16, wparts=16,
+             tile="oak_timber"),
+    "architecture/traversal/stair_landing_2x4m":
+        spec((-2.0, 0, -1.0), (2.0, 0.2, 1.0), "traversal", "bounds",
+             walkable=True, tile="oak_plank"),
+    "architecture/traversal/ramp_2x3x1p5m":
+        spec((-1.0, 0, -1.5), (1.0, 1.5, 1.5), "traversal",
+             "compound_bounds", walkable=True, parts=8, wparts=8,
+             tile="oak_plank"),
+    "architecture/traversal/ramp_2x6x3m":
+        spec((-1.0, 0, -3.0), (1.0, 3.0, 3.0), "traversal",
+             "compound_bounds", walkable=True, parts=16, wparts=16,
+             tile="oak_plank"),
+    "architecture/traversal/ramp_landing_2x2m":
+        spec((-1.0, 0, -1.0), (1.0, 0.15, 1.0), "traversal", "bounds",
+             walkable=True, tile="oak_plank"),
+
     # --- BLD-1 phase 4: traversal completion (rail collision parts sit
     # outside the 1.0 m walkable tread width; section E law) ---
     "architecture/traversal/stair_straight_3m_with_rails":
@@ -269,6 +290,65 @@ ARCHITECTURE = {
     "architecture/structural/brace_right":
         spec((-0.8, 0, -0.06), (0.0, 0.85, 0.06), "structural", "bounds",
              tile="oak_timber"),
+
+    # --- BLD-3: arches, buttresses, wall piers, parapets, balconies,
+    # small railings (Batch 1 closure) ---
+    "architecture/structural/arch_1p2m":
+        spec((-0.75, 0, -0.075), (0.75, 2.28, 0.075), "structural",
+             "compound_bounds", parts=3, wparts=0, tile="oak_timber"),
+    "architecture/structural/arch_2m":
+        spec((-1.15, 0, -0.075), (1.15, 2.28, 0.075), "structural",
+             "compound_bounds", parts=3, wparts=0, tile="oak_timber"),
+    "architecture/structural/arch_4m":
+        spec((-2.2, 0, -0.1), (2.2, 2.92, 0.1), "structural",
+             "compound_bounds", parts=3, wparts=0, tile="oak_timber"),
+    "architecture/structural/buttress_low":
+        spec((-0.25, 0, 0.0), (0.25, 3.0, 0.4), "structural", "bounds",
+             tile="stone_rough"),
+    "architecture/structural/buttress_tall":
+        spec((-0.3, 0, 0.0), (0.3, 6.0, 0.6), "structural", "bounds",
+             tile="stone_rough"),
+    "architecture/structural/wall_pier_0p5x3m":
+        spec((-0.25, 0, -0.15), (0.25, 3.0, 0.15), "structural", "bounds",
+             tile="lime_plaster"),
+    "architecture/structural/wall_pier_1x3m":
+        spec((-0.5, 0, -0.15), (0.5, 3.0, 0.15), "structural", "bounds",
+             tile="lime_plaster"),
+    "architecture/structural/parapet_straight_2m":
+        spec((-1.0, 0, -0.14), (1.0, 0.88, 0.14), "structural", "bounds",
+             tile="stone_rough"),
+    "architecture/structural/parapet_straight_4m":
+        spec((-2.0, 0, -0.14), (2.0, 0.88, 0.14), "structural", "bounds",
+             tile="stone_rough"),
+    "architecture/structural/parapet_inner_corner":
+        spec((-0.14, 0, -0.5), (0.5, 0.88, 0.14), "structural", "bounds",
+             tile="stone_rough"),
+    "architecture/structural/parapet_outer_corner":
+        spec((-0.14, 0, -0.5), (0.5, 0.95, 0.14), "structural", "bounds",
+             tile="stone_rough"),
+    "architecture/structural/parapet_end":
+        spec((0.0, 0, -0.14), (0.45, 0.88, 0.14), "structural", "bounds",
+             tile="stone_rough"),
+    "architecture/structural/balcony_deck_2x1p5m":
+        spec((-1.0, -0.12, 0.0), (1.0, 0.15, 1.5), "structural",
+             "compound_bounds", grounded=False, walkable=True, parts=3,
+             wparts=1, tile="oak_plank"),
+    "architecture/structural/balcony_deck_4x1p5m":
+        spec((-2.0, -0.12, 0.0), (2.0, 0.15, 1.5), "structural",
+             "compound_bounds", grounded=False, walkable=True, parts=4,
+             wparts=1, tile="oak_plank"),
+    "architecture/structural/balcony_bracket":
+        spec((-0.06, -0.55, 0.0), (0.06, 0.0, 0.5), "structural", "none",
+             grounded=False, tile="oak_timber"),
+    "architecture/structural/railing_straight_1m":
+        spec((-0.5, 0, -0.04), (0.5, 1.0, 0.04), "structural", "bounds",
+             tile="oak_timber"),
+    "architecture/structural/railing_corner":
+        spec((-0.04, 0, -0.5), (0.5, 1.0, 0.04), "structural", "bounds",
+             tile="oak_timber"),
+    "architecture/structural/railing_end_post":
+        spec((-0.055, 0, -0.055), (0.055, 1.05, 0.055), "structural",
+             "bounds", tile="oak_timber"),
 
     # --- BLD-1 phase 4: roof closure ---
     "architecture/roof/ridge_cap_straight_2m":

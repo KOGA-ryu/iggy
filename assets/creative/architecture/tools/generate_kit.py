@@ -89,6 +89,11 @@ COLUMN_R = 0.25
 COLUMN_SEGS = 16
 BEAM_HALF_W = 0.1      # 2m/4m beam section 0.2 x 0.3
 BEAM_H = 0.3
+PARAPET_D = 0.11       # parapet body half thickness
+PARAPET_COPING = 0.14  # coping half thickness
+PARAPET_BODY_H = 0.78
+PARAPET_H = 0.88
+RAMP_RISER = 0.1875    # stepped-ramp riser (stealth ramp precedent; < 0.35)
 
 OUT_DIR = os.path.abspath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir))
@@ -689,6 +694,75 @@ def build_stair_rail_slope_3m():
     export_glb("traversal/stair_rail_slope_3m", "oak_timber")
 
 
+def build_stair_quarter_turn_3m():
+    """L stair with landing (backlog E): 7 risers ascending -Y to a 1x1 m
+    turn landing (the 8th tread), then 8 risers turning +X to exactly 3.0 m.
+    16 walkable compound parts; riser 0.1875 m throughout."""
+    reset_scene()
+    mat = tile_material("oak_timber")
+    r = STAIR_RISER
+    # run A: x +/-0.5, front edge y=1.75, stacked shrinking slabs like the
+    # straight stair (slab i spans from the landing edge y=0 to its nose)
+    for i in range(7):
+        step = make_box("run_a_%02d" % (i + 1), -0.5, 0.5, 0.0,
+                        1.75 - i * 0.25, i * r, (i + 1) * r, material=mat)
+        tag_part(step, "traversal", walkable=True)
+    # turn landing: 1 x 1 m solid column to the 8th tread height
+    landing = make_box("turn_landing", -0.5, 0.5, -1.0, 0.0, 0.0, 8 * r,
+                       material=mat)
+    tag_part(landing, "traversal", walkable=True)
+    # run B: solid columns ascending +X off the landing edge
+    for j in range(8):
+        step = make_box("run_b_%02d" % (j + 1), 0.5 + j * 0.25, 2.5, -1.0,
+                        0.0, 0.0, (9 + j) * r, material=mat)
+        tag_part(step, "traversal", walkable=True)
+    export_glb("traversal/stair_quarter_turn_3m", "oak_timber")
+
+
+def build_stair_landing_2x4m():
+    reset_scene()
+    mat = tile_material("oak_plank")
+    slab = centered_box("stair_landing_2x4m", (4.0, 2.0, 0.2), base_z=0.0,
+                        material=mat)
+    tag_bounds(slab, "traversal", walkable=True)
+    export_glb("traversal/stair_landing_2x4m", "oak_plank")
+
+
+def _stepped_ramp(rel_path, name, width, run, rise):
+    """Stepped walkable ramp (stealth ramp_2x2x1 precedent: compound tread
+    parts, riser < the 0.35 m auto-step). Ascends -Y, front edge at
+    y = +run/2, solid shrinking columns."""
+    reset_scene()
+    mat = tile_material("oak_plank")
+    steps = int(round(rise / RAMP_RISER))
+    tread = run / steps
+    for i in range(steps):
+        depth = run - i * tread
+        step = centered_box("%s_tread_%02d" % (name, i + 1),
+                            (width, depth, RAMP_RISER),
+                            center_xy=(0.0, -i * tread / 2.0),
+                            base_z=i * RAMP_RISER, material=mat)
+        tag_part(step, "traversal", walkable=True)
+    export_glb(rel_path, "oak_plank")
+
+
+def build_ramp_2x3x1p5m():
+    _stepped_ramp("traversal/ramp_2x3x1p5m", "ramp_2x3x1p5m", 2.0, 3.0, 1.5)
+
+
+def build_ramp_2x6x3m():
+    _stepped_ramp("traversal/ramp_2x6x3m", "ramp_2x6x3m", 2.0, 6.0, 3.0)
+
+
+def build_ramp_landing_2x2m():
+    reset_scene()
+    mat = tile_material("oak_plank")
+    slab = centered_box("ramp_landing_2x2m", (2.0, 2.0, 0.15), base_z=0.0,
+                        material=mat)
+    tag_bounds(slab, "traversal", walkable=True)
+    export_glb("traversal/ramp_landing_2x2m", "oak_plank")
+
+
 def build_stair_newel_post():
     """Capped newel post (sheet 05): rail endpoint/junction."""
     reset_scene()
@@ -925,6 +999,263 @@ def build_brace_right():
     _brace("structural/brace_right", "brace_right", "right")
 
 
+def _arch(rel_path, name, clear_w, spring, apex, post_w, half_d, band_h):
+    """Passage arch (sheet 06): flanking posts to the spring line, segmental
+    arch band chained from vertical-thickness segments along a circular arc
+    (arc baked into verts). Compound: two posts + one band part, so the
+    passage below the spring line stays clear."""
+    reset_scene()
+    mat = tile_material("oak_timber")
+    half = clear_w / 2.0
+    rise = apex - spring
+    radius = (half * half + rise * rise) / (2.0 * rise)
+    zc = apex - radius
+    left = make_box("post_l", -half - post_w, -half, -half_d, half_d, 0.0,
+                    spring, material=mat)
+    tag_part(left, "structural", walkable=False)
+    right = make_box("post_r", half, half + post_w, -half_d, half_d, 0.0,
+                     spring, material=mat)
+    tag_part(right, "structural", walkable=False)
+    segs = 8
+    pieces = []
+    for k in range(segs):
+        x0 = -half + clear_w * k / segs
+        x1 = -half + clear_w * (k + 1) / segs
+        zb0 = zc + math.sqrt(radius * radius - x0 * x0)
+        zb1 = zc + math.sqrt(radius * radius - x1 * x1)
+        pieces.append(sloped_bar_x("seg_%d" % k, x0, x1, -half_d, half_d,
+                                   zb0, zb1, band_h, material=mat))
+    band = join_into(pieces, name + "_band")
+    tag_part(band, "structural", walkable=False)
+    export_glb(rel_path, "oak_timber")
+
+
+def build_arch_1p2m():
+    _arch("structural/arch_1p2m", "arch_1p2m", 1.2, 1.8, 2.1, 0.15, 0.075,
+          0.18)
+
+
+def build_arch_2m():
+    _arch("structural/arch_2m", "arch_2m", 2.0, 1.6, 2.1, 0.15, 0.075, 0.18)
+
+
+def build_arch_4m():
+    _arch("structural/arch_4m", "arch_4m", 4.0, 1.7, 2.7, 0.2, 0.1, 0.22)
+
+
+def _buttress(rel_path, name, half_w, steps):
+    """Stepped stone buttress projecting -Y from the wall face (sheet 06);
+    steps = [(z0, z1, depth), ...]."""
+    reset_scene()
+    mat = tile_material("stone_rough")
+    parts = []
+    for i, (z0, z1, depth) in enumerate(steps):
+        parts.append(make_box("step_%d" % i, -half_w, half_w, -depth, 0.0,
+                              z0, z1, material=mat))
+    buttress = join_into(parts, name)
+    tag_bounds(buttress, "structural")
+    export_glb(rel_path, "stone_rough")
+
+
+def build_buttress_low():
+    _buttress("structural/buttress_low", "buttress_low", 0.25,
+              [(0.0, 1.2, 0.4), (1.2, 2.2, 0.28), (2.2, 3.0, 0.16)])
+
+
+def build_buttress_tall():
+    _buttress("structural/buttress_tall", "buttress_tall", 0.3,
+              [(0.0, 1.6, 0.6), (1.6, 3.2, 0.45), (3.2, 4.6, 0.3),
+               (4.6, 6.0, 0.15)])
+
+
+def _wall_pier(rel_path, name, half_w):
+    """Plastered masonry pier between openings (production pass on the
+    homestead wall-pier roles). First lime_plaster consumer in the kit."""
+    reset_scene()
+    mat = tile_material("lime_plaster")
+    pier = make_box(name, -half_w, half_w, -0.15, 0.15, 0.0, STOREY,
+                    material=mat)
+    tag_bounds(pier, "structural")
+    export_glb(rel_path, "lime_plaster")
+
+
+def build_wall_pier_0p5x3m():
+    _wall_pier("structural/wall_pier_0p5x3m", "wall_pier_0p5x3m", 0.25)
+
+
+def build_wall_pier_1x3m():
+    _wall_pier("structural/wall_pier_1x3m", "wall_pier_1x3m", 0.5)
+
+
+def _parapet_run(name, x0, x1, material):
+    return [
+        make_box(name + "_body", x0, x1, -PARAPET_D, PARAPET_D, 0.0,
+                 PARAPET_BODY_H, material=material),
+        make_box(name + "_coping", x0, x1, -PARAPET_COPING, PARAPET_COPING,
+                 PARAPET_BODY_H, PARAPET_H, material=material),
+    ]
+
+
+def _parapet_straight(rel_path, name, length):
+    reset_scene()
+    mat = tile_material("stone_rough")
+    parapet = join_into(_parapet_run(name, -length / 2.0, length / 2.0, mat),
+                        name)
+    tag_bounds(parapet, "structural")
+    export_glb(rel_path, "stone_rough")
+
+
+def build_parapet_straight_2m():
+    _parapet_straight("structural/parapet_straight_2m",
+                      "parapet_straight_2m", 2.0)
+
+
+def build_parapet_straight_4m():
+    _parapet_straight("structural/parapet_straight_4m",
+                      "parapet_straight_4m", 4.0)
+
+
+def _parapet_corner(rel_path, name, with_block):
+    reset_scene()
+    mat = tile_material("stone_rough")
+    parts = _parapet_run(name + "_x", 0.0, 0.5, mat)
+    parts += [
+        make_box(name + "_y_body", -PARAPET_D, PARAPET_D, 0.0, 0.5, 0.0,
+                 PARAPET_BODY_H, material=mat),
+        make_box(name + "_y_coping", -PARAPET_COPING, PARAPET_COPING, 0.0,
+                 0.5, PARAPET_BODY_H, PARAPET_H, material=mat),
+    ]
+    if with_block:
+        parts.append(make_box(name + "_block", -PARAPET_COPING,
+                              PARAPET_COPING, -PARAPET_COPING,
+                              PARAPET_COPING, 0.0, 0.95, material=mat))
+    corner = join_into(parts, name)
+    tag_bounds(corner, "structural")
+    export_glb(rel_path, "stone_rough")
+
+
+def build_parapet_inner_corner():
+    _parapet_corner("structural/parapet_inner_corner",
+                    "parapet_inner_corner", with_block=False)
+
+
+def build_parapet_outer_corner():
+    _parapet_corner("structural/parapet_outer_corner",
+                    "parapet_outer_corner", with_block=True)
+
+
+def build_parapet_end():
+    """Finished end: the coping wraps past the body end."""
+    reset_scene()
+    mat = tile_material("stone_rough")
+    parts = [
+        make_box("parapet_end_body", 0.0, 0.4, -PARAPET_D, PARAPET_D, 0.0,
+                 PARAPET_BODY_H, material=mat),
+        make_box("parapet_end_coping", 0.0, 0.45, -PARAPET_COPING,
+                 PARAPET_COPING, PARAPET_BODY_H, PARAPET_H, material=mat),
+    ]
+    end = join_into(parts, "parapet_end")
+    tag_bounds(end, "structural")
+    export_glb("structural/parapet_end", "stone_rough")
+
+
+def _balcony_deck(rel_path, name, half_w, joist_xs):
+    """Walkable compound deck mounting at the wall plane (local y=0),
+    projecting -Y (exterior): walkable slab part over non-walkable joists."""
+    reset_scene()
+    mat = tile_material("oak_plank")
+    slab = make_box(name + "_deck", -half_w, half_w, -1.5, 0.0, 0.0, 0.15,
+                    material=mat)
+    tag_part(slab, "structural", walkable=True)
+    for jx in joist_xs:
+        joist = make_box(name + "_joist_%+.1f" % jx, jx - 0.06, jx + 0.06,
+                         -1.4, 0.0, -0.12, 0.0, material=mat)
+        tag_part(joist, "structural", walkable=False)
+    export_glb(rel_path, "oak_plank")
+
+
+def build_balcony_deck_2x1p5m():
+    _balcony_deck("structural/balcony_deck_2x1p5m", "balcony_deck_2x1p5m",
+                  1.0, (-0.75, 0.75))
+
+
+def build_balcony_deck_4x1p5m():
+    _balcony_deck("structural/balcony_deck_4x1p5m", "balcony_deck_4x1p5m",
+                  2.0, (-1.5, 0.0, 1.5))
+
+
+def build_balcony_bracket():
+    """Non-walkable support under a balcony deck: wall arm, horizontal arm,
+    diagonal strut (sheet 06 bracket language)."""
+    reset_scene()
+    mat = tile_material("oak_timber")
+    parts = [
+        make_box("arm_top", -0.06, 0.06, -0.5, 0.0, -0.12, 0.0,
+                 material=mat),
+        make_box("arm_wall", -0.06, 0.06, -0.12, 0.0, -0.55, 0.0,
+                 material=mat),
+        sloped_bar_y("strut", -0.05, 0.05, -0.45, -0.1, -0.22, -0.52, 0.1,
+                     material=mat),
+    ]
+    bracket = join_into(parts, "balcony_bracket")
+    tag_none(bracket, "structural")
+    export_glb("structural/balcony_bracket", "oak_timber")
+
+
+def _railing_run(name, x0, x1, material):
+    return [
+        make_box(name + "_top", x0, x1, -0.03, 0.03, 0.92, 0.98,
+                 material=material),
+        make_box(name + "_mid", x0, x1, -0.03, 0.03, 0.48, 0.54,
+                 material=material),
+    ]
+
+
+def build_railing_straight_1m():
+    reset_scene()
+    mat = tile_material("oak_timber")
+    parts = [
+        make_box("post_l", -0.5, -0.42, -0.04, 0.04, 0.0, 1.0, material=mat),
+        make_box("post_r", 0.42, 0.5, -0.04, 0.04, 0.0, 1.0, material=mat),
+    ] + _railing_run("rail", -0.5, 0.5, mat)
+    rail = join_into(parts, "railing_straight_1m")
+    tag_bounds(rail, "structural")
+    export_glb("structural/railing_straight_1m", "oak_timber")
+
+
+def build_railing_corner():
+    """90-degree railing junction: corner post with legs along +X and +Y."""
+    reset_scene()
+    mat = tile_material("oak_timber")
+    parts = [make_box("corner_post", -0.04, 0.04, -0.04, 0.04, 0.0, 1.0,
+                      material=mat)]
+    parts += _railing_run("leg_x", 0.04, 0.5, mat)
+    parts += [
+        make_box("leg_y_top", -0.03, 0.03, 0.04, 0.5, 0.92, 0.98,
+                 material=mat),
+        make_box("leg_y_mid", -0.03, 0.03, 0.04, 0.5, 0.48, 0.54,
+                 material=mat),
+        make_box("end_x", 0.42, 0.5, -0.04, 0.04, 0.0, 1.0, material=mat),
+        make_box("end_y", -0.04, 0.04, 0.42, 0.5, 0.0, 1.0, material=mat),
+    ]
+    corner = join_into(parts, "railing_corner")
+    tag_bounds(corner, "structural")
+    export_glb("structural/railing_corner", "oak_timber")
+
+
+def build_railing_end_post():
+    reset_scene()
+    mat = tile_material("oak_timber")
+    parts = [
+        make_box("post", -0.04, 0.04, -0.04, 0.04, 0.0, 1.0, material=mat),
+        make_box("cap", -0.055, 0.055, -0.055, 0.055, 1.0, 1.05,
+                 material=mat),
+    ]
+    post = join_into(parts, "railing_end_post")
+    tag_bounds(post, "structural")
+    export_glb("structural/railing_end_post", "oak_timber")
+
+
 # ---------------------------------------------------------------------------
 # Roof: ridge family (CAL-1 section), eave/gable trim, drainage, chimney
 # ---------------------------------------------------------------------------
@@ -1118,6 +1449,11 @@ def main():
         build_window_frame_wide,
         build_window_frame_tall,
         build_window_bars_standard,
+        build_stair_quarter_turn_3m,
+        build_stair_landing_2x4m,
+        build_ramp_2x3x1p5m,
+        build_ramp_2x6x3m,
+        build_ramp_landing_2x2m,
         build_window_shutter_left_closed,
         build_window_shutter_left_open,
         build_window_shutter_right_closed,
@@ -1147,6 +1483,24 @@ def main():
         build_beam_end_cap,
         build_brace_left,
         build_brace_right,
+        build_arch_1p2m,
+        build_arch_2m,
+        build_arch_4m,
+        build_buttress_low,
+        build_buttress_tall,
+        build_wall_pier_0p5x3m,
+        build_wall_pier_1x3m,
+        build_parapet_straight_2m,
+        build_parapet_straight_4m,
+        build_parapet_inner_corner,
+        build_parapet_outer_corner,
+        build_parapet_end,
+        build_balcony_deck_2x1p5m,
+        build_balcony_deck_4x1p5m,
+        build_balcony_bracket,
+        build_railing_straight_1m,
+        build_railing_corner,
+        build_railing_end_post,
         build_ridge_cap_straight_4m,
         build_ridge_cap_straight_2m,
         build_ridge_cap_end,

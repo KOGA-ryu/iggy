@@ -1034,6 +1034,77 @@ bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
       ModularAssetExpectation{
           "architecture/structural/brace_right", "structural",
           iggy3d::StaticMeshCollisionMode::Bounds},
+      // ASSET-BLD-3: Batch 1 closure — arches, buttresses, piers, parapets,
+      // balconies, small railings, quarter-turn stair, stepped ramps.
+      ModularAssetExpectation{
+          "architecture/traversal/stair_quarter_turn_3m", "traversal",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 16U, 16U},
+      ModularAssetExpectation{
+          "architecture/traversal/stair_landing_2x4m", "traversal",
+          iggy3d::StaticMeshCollisionMode::Bounds, true},
+      ModularAssetExpectation{
+          "architecture/traversal/ramp_2x3x1p5m", "traversal",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 8U, 8U},
+      ModularAssetExpectation{
+          "architecture/traversal/ramp_2x6x3m", "traversal",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 16U, 16U},
+      ModularAssetExpectation{
+          "architecture/traversal/ramp_landing_2x2m", "traversal",
+          iggy3d::StaticMeshCollisionMode::Bounds, true},
+      ModularAssetExpectation{
+          "architecture/structural/arch_1p2m", "structural",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 3U},
+      ModularAssetExpectation{
+          "architecture/structural/arch_2m", "structural",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 3U},
+      ModularAssetExpectation{
+          "architecture/structural/arch_4m", "structural",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, false, 3U},
+      ModularAssetExpectation{
+          "architecture/structural/buttress_low", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/buttress_tall", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/wall_pier_0p5x3m", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/wall_pier_1x3m", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/parapet_straight_2m", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/parapet_straight_4m", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/parapet_inner_corner", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/parapet_outer_corner", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/parapet_end", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/balcony_deck_2x1p5m", "structural",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 3U, 1U},
+      ModularAssetExpectation{
+          "architecture/structural/balcony_deck_4x1p5m", "structural",
+          iggy3d::StaticMeshCollisionMode::CompoundBounds, true, 4U, 1U},
+      ModularAssetExpectation{
+          "architecture/structural/balcony_bracket", "structural",
+          iggy3d::StaticMeshCollisionMode::None},
+      ModularAssetExpectation{
+          "architecture/structural/railing_straight_1m", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/railing_corner", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
+      ModularAssetExpectation{
+          "architecture/structural/railing_end_post", "structural",
+          iggy3d::StaticMeshCollisionMode::Bounds},
   };
   const iggy3d::StaticMeshAssetCatalog catalog =
       iggy3d::discoverStaticMeshAssetCatalog("assets/creative");
@@ -1329,8 +1400,8 @@ bool texturedFixtureBuildsOneCachedMaterialBinding() {
          expect(walkway.asset.materials[0].baseColorImageIndex == 0U &&
                     walkway.asset.primitives[0].hasTexcoord0,
                 "material and primitive retain texture ownership") &&
-         expect(textures.textures.size() == 7U &&
-                    textures.materialBindings.size() == 60U &&
+         expect(textures.textures.size() == 8U &&
+                    textures.materialBindings.size() == 83U &&
                     textures.rejectedTextureCount == 1U,
                 "startup cache dedups palette copies to unique textures and "
                 "rejects only the severed missing-texture probe") &&
