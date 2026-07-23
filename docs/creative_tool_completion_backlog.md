@@ -1046,12 +1046,14 @@ tests prove cross-frontend recipe and preview parity, overlap fallthrough,
 stable-id updates, one-record undo, schema persistence, room bake, collision,
 and reasoning-route compatibility.
 
-The canonical Builder Estate now supplies a real Road, Trench, attached Bridge,
-and generated approach-grade corridor for this tool's remaining integration
-proof. Terrain Region has not yet been used to refine that corridor inside the
-same end-to-end task. This remains M2 rather than M3/M4 until that proof,
-universal discovery, complete keyboard/touchpad/PS5 operation, stress and
-visual-regression coverage, and manual acceptance are complete.
+The canonical Builder Estate now uses a contour target to draft, preview, apply,
+save, reopen, and preserve one Manual Region above its World Layout-owned
+plateaus, Road, Trench, Bridge, and approach grades. Later source regeneration
+retains both the region's stable operation id and its stack position, so a valid
+refinement cannot silently move below or disappear behind regenerated terrain.
+This remains M2 rather than M3/M4 until universal discovery, complete
+keyboard/touchpad/PS5 operation, stress and visual-regression coverage, and
+manual acceptance are complete.
 
 ### T8. Terrain Stamp - Current M2 Stable Recipe + Durable Catalog
 
@@ -1132,12 +1134,14 @@ contour/height precedence, shared recipe adoption, exact preview/apply parity,
 3D contour parity, and room-baked walkable collision matching the same smoothed
 render patch before and after the edit.
 
-The canonical site-work corridor now survives generation, save/reopen, a durable
-path-point edit, synchronized Bridge regeneration, runtime traversal, and exact
-undo. This remains M2 rather than M3/M4 until contour refinement and slope
-inspection are exercised through that same product task, universal discovery
-and keyboard/touchpad/PS5 operation are complete, and stress,
-visual-regression, and manual acceptance are satisfied.
+The canonical site-work corridor now grades its Road through the production
+source-property command, derives and inspects a non-flat slope band, selects a
+real contour into the shared Region recipe, previews and applies the edit,
+survives save/reopen, then retains that refinement through a durable Trench
+point edit, synchronized Bridge regeneration, runtime traversal, and exact
+undo. This remains M2 rather than M3/M4 until universal discovery and
+keyboard/touchpad/PS5 operation are complete, and stress, visual-regression,
+and manual acceptance are satisfied.
 
 ### T11. Hydrology And Erosion - Missing - Deferred
 
@@ -2037,10 +2041,13 @@ base plateau terrain, a Road, a three-point Trench, one stable crossing, a
 semantic Bridge, and two approach Grade operations. Headless product proof runs
 through the desktop command dispatcher, durable save/open, source-point
 modification, synchronized in-place regeneration, room bake, collision and
-reasoning traversal, and one-step undo. The remaining Wave 2 proof is to perform
-Terrain Region refinement, road-grade adjustment, contour/elevation editing,
-and slope inspection inside this same task, then close direct-manipulation,
-stress, visual-regression, and manual input gates.
+reasoning traversal, and one-step undo. The same task now also grades the Road,
+inspects the resulting slope classification, turns an exact contour hit into a
+shared Terrain Region draft, previews and applies it, and proves that the manual
+top layer persists through save/open and later World Layout regeneration.
+Reconciliation preserves external operation slots while reordering only
+layout-owned operations. The remaining Wave 2 work is direct manipulation,
+stress, visual-regression, and manual keyboard/touchpad/PS5 acceptance.
 
 ### Wave 3 - Complete Asset And Gameplay Placement
 

@@ -413,6 +413,9 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
                 "builder estate stable authored terrain sources") &&
          expect(map.worldLayoutPresent &&
                     map.worldLayout.stableKey == "builder_estate_layout" &&
+                    map.worldLayout.terrainOwnership ==
+                        cr::CreativeWorldLayoutTerrainOwnership::
+                            PreserveExisting &&
                     map.worldLayout.buildings.size() == 1U &&
                     map.worldLayout.levels.size() == 2U &&
                     map.worldLayout.rooms.size() == 8U &&

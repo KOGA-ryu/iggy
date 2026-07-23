@@ -3,6 +3,7 @@
 #include "EditorGroup.hpp"
 #include "EditorState.hpp"
 #include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutTopography.hpp"
 
 #include "app/iggy3d/creative/history/History.hpp"
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
@@ -368,6 +369,8 @@ bool canonicalSiteCorridorTaskSurvivesLifecycle() {
               task.editor.worldLayout.source.objects[0].usesBridgeRecipe &&
               task.editor.worldLayout.source.objects[0]
                       .bridge.watercoursePathKey == "path.ditch" &&
+              task.editor.worldLayout.source.terrainOwnership ==
+                  cr::CreativeWorldLayoutTerrainOwnership::PreserveExisting &&
               generatedDeck != nullptr &&
               task.appState.facade.document()
                       .terrainOperationStack()
@@ -376,6 +379,136 @@ bool canonicalSiteCorridorTaskSurvivesLifecycle() {
     return false;
   }
 
+  const std::size_t roadIndex = static_cast<std::size_t>(
+      std::distance(task.editor.worldLayout.source.terrainPaths.begin(), road));
+  app::CreativeEditorWorldLayoutTerrainPathSettings roadSettings;
+  if (!expect(app::readCreativeEditorWorldLayoutTerrainPathSettings(
+                  task.editor.worldLayout, roadIndex, roadSettings) &&
+                  roadSettings.recipe.points.size() == 2U,
+              "site road exposes its durable grade settings")) {
+    return false;
+  }
+  roadSettings.recipe.elevation = cr::CreativeTerrainPathElevation::Grade;
+  roadSettings.recipe.points[0].heightCells = 3U;
+  roadSettings.recipe.points[1].heightCells = 5U;
+  roadSettings.recipe.road.maximumGradePermille = 100U;
+  const cr::CreativeTerrainPathSourceRecipe gradedRoadRecipe =
+      roadSettings.recipe;
+  const app::CreativeDesktopCommandResult roadGraded = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutEditSourceProperty,
+      task.context,
+      app::CreativeDesktopWorldLayoutPropertyEditPayload{
+          app::CreativeDesktopWorldLayoutPropertyEditPhase::Commit,
+          cr::CreativeWorldLayoutTable::TerrainPath, roadIndex, road->stableKey,
+          roadSettings});
+
+  const app::CreativeEditorWorldLayoutTopographyPlan gradedTopography =
+      app::buildCreativeEditorWorldLayoutTopography(
+          task.appState.facade.document(), 1U, 2U);
+  const cr::CreativeTerrainAnalysisCell* steepestRoadCell = nullptr;
+  for (const cr::CreativeTerrainAnalysisCell& cell :
+       gradedTopography.analysis.cells) {
+    if (!cell.terrainPresent || cell.coord.x < 12 || cell.coord.x > 64 ||
+        cell.coord.z < 77 || cell.coord.z > 79) {
+      continue;
+    }
+    if (steepestRoadCell == nullptr ||
+        cell.slopeDegrees > steepestRoadCell->slopeDegrees) {
+      steepestRoadCell = &cell;
+    }
+  }
+  const app::CreativeEditorWorldLayoutTopographySample inspectedSlope =
+      steepestRoadCell == nullptr
+          ? app::CreativeEditorWorldLayoutTopographySample{}
+          : app::sampleCreativeEditorWorldLayoutTopography(
+                gradedTopography,
+                static_cast<double>(steepestRoadCell->coord.x) + 0.5,
+                static_cast<double>(steepestRoadCell->coord.z) + 0.5);
+
+  const cr::CreativeTerrainContourSegment* refinementContour = nullptr;
+  for (const cr::CreativeTerrainContourSegment& segment :
+       gradedTopography.analysis.contours.segments) {
+    const double midpointZ = (segment.start.z + segment.end.z) * 0.5;
+    if (midpointZ >= 28.0) {
+      refinementContour = &segment;
+      break;
+    }
+  }
+  const app::CreativeEditorWorldLayoutTerrainAnalysisEditPlan refinementEdit =
+      refinementContour == nullptr
+          ? app::CreativeEditorWorldLayoutTerrainAnalysisEditPlan{}
+          : app::planCreativeEditorWorldLayoutTerrainAnalysisEdit(
+                gradedTopography,
+                (refinementContour->start.x + refinementContour->end.x) * 0.5,
+                (refinementContour->start.z + refinementContour->end.z) * 0.5,
+                0.05, cr::CreativeTerrainAnalysisHitMode::ContourOnly);
+  app::CreativeEditorWorldLayoutTerrainRegionState& region =
+      task.editor.worldLayoutTopography.region;
+  region.editingEnabled = true;
+  const bool refinementSelected =
+      app::selectCreativeEditorWorldLayoutTerrainAnalysisEdit(region,
+                                                               refinementEdit);
+  if (refinementSelected) {
+    region.recipe.targetHeightCells =
+        region.recipe.targetHeightCells < cr::kCreativeTerrainMaximumHeightCells
+            ? static_cast<std::uint16_t>(
+                  region.recipe.targetHeightCells + 1U)
+            : static_cast<std::uint16_t>(
+                  region.recipe.targetHeightCells - 1U);
+  }
+  const std::uint64_t revisionBeforePreview =
+      task.appState.facade.document().revision();
+  const app::CreativeDesktopCommandResult refinementPreview =
+      dispatchOne(app::CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview,
+                  task.context);
+  const std::uint64_t revisionAfterPreview =
+      task.appState.facade.document().revision();
+  const app::CreativeDesktopCommandResult refinementApplied =
+      dispatchOne(app::CreativeDesktopCommandId::WorldLayoutTerrainRegionApply,
+                  task.context);
+  const auto manualRegion = std::find_if(
+      task.appState.facade.document().terrainOperationStack().operations.begin(),
+      task.appState.facade.document().terrainOperationStack().operations.end(),
+      [](const cr::CreativeTerrainOperation& operation) {
+        return operation.owner == cr::CreativeTerrainOperationOwner::Manual &&
+               operation.kind == cr::CreativeTerrainOperationKind::Region;
+      });
+  if (!expect(
+          roadGraded.accepted && roadGraded.changed &&
+              roadGraded.worldLayoutChanged && roadGraded.sceneChanged &&
+              gradedTopography.accepted &&
+              gradedTopography.status ==
+                  app::CreativeEditorWorldLayoutTopographyStatus::Ready &&
+              gradedTopography.analysis.contours.accepted &&
+              refinementContour != nullptr && refinementEdit.accepted &&
+              refinementSelected && steepestRoadCell != nullptr &&
+              inspectedSlope.present && inspectedSlope.slopeDegrees > 0.0 &&
+              inspectedSlope.slopeBand !=
+                  cr::CreativeTerrainSlopeBand::Unavailable &&
+              inspectedSlope.slopeBand != cr::CreativeTerrainSlopeBand::Flat,
+          "site road grades and exposes contour and slope inspection") ||
+      !expect(
+          refinementPreview.accepted && refinementPreview.changed &&
+              revisionAfterPreview == revisionBeforePreview &&
+              refinementApplied.accepted && refinementApplied.changed &&
+              refinementApplied.sceneChanged &&
+              task.appState.facade.document().revision() >
+                  revisionAfterPreview &&
+              manualRegion != task.appState.facade.document()
+                                  .terrainOperationStack()
+                                  .operations.end(),
+          "contour target previews without mutation then applies one manual region")) {
+    return false;
+  }
+
+  const cr::CreativeTerrainOperationId regionOperationId = manualRegion->id;
+  const cr::CreativeTerrainRegionRecipe regionRecipe = manualRegion->region;
+  generatedDeck = findRecipeMember(task.appState.facade.document(),
+                                   "bridge.ditch", "deck");
+  if (!expect(generatedDeck != nullptr,
+              "site bridge remains generated after terrain refinement")) {
+    return false;
+  }
   const cr::CreativeObjectId deckId = generatedDeck->id;
   const cr::CreativeTransform originalDeckTransform = generatedDeck->transform;
   const cr::CreativeBounds originalDeckBounds = generatedDeck->bounds;
@@ -393,9 +526,28 @@ bool canonicalSiteCorridorTaskSurvivesLifecycle() {
       });
   const cr::CreativeObject* reopenedDeck = findRecipeMember(
       task.appState.facade.document(), "bridge.ditch", "deck");
+  const auto reopenedRoad = std::find_if(
+      task.editor.worldLayout.source.terrainPaths.begin(),
+      task.editor.worldLayout.source.terrainPaths.end(),
+      [](const cr::CreativeWorldLayoutTerrainPath& path) {
+        return path.stableKey == "path.estate_road";
+      });
+  const cr::CreativeTerrainOperation* reopenedRegion =
+      cr::findCreativeTerrainOperation(
+          task.appState.facade.document().terrainOperationStack(),
+          regionOperationId);
   if (!expect(
           reopenedDitch !=
                   task.editor.worldLayout.source.terrainPaths.end() &&
+              reopenedRoad !=
+                  task.editor.worldLayout.source.terrainPaths.end() &&
+              reopenedRoad->recipe == gradedRoadRecipe &&
+              reopenedRegion != nullptr &&
+              reopenedRegion->owner ==
+                  cr::CreativeTerrainOperationOwner::Manual &&
+              reopenedRegion->kind ==
+                  cr::CreativeTerrainOperationKind::Region &&
+              reopenedRegion->region == regionRecipe &&
               reopenedDeck != nullptr && reopenedDeck->id == deckId &&
               sameTransform(reopenedDeck->transform, originalDeckTransform) &&
               sameBounds(reopenedDeck->bounds, originalDeckBounds) &&
@@ -425,6 +577,10 @@ bool canonicalSiteCorridorTaskSurvivesLifecycle() {
           reopenedDitch->stableKey, settings});
   const cr::CreativeObject* movedDeck = findRecipeMember(
       task.appState.facade.document(), "bridge.ditch", "deck");
+  const cr::CreativeTerrainOperation* retainedRegion =
+      cr::findCreativeTerrainOperation(
+          task.appState.facade.document().terrainOperationStack(),
+          regionOperationId);
   const cr::CreativeWorldLayoutCompileResult synchronized =
       cr::buildCreativeWorldLayoutPlan(task.appState.facade.document(),
                                        task.editor.worldLayout.source);
@@ -483,6 +639,7 @@ bool canonicalSiteCorridorTaskSurvivesLifecycle() {
       !modified.worldLayoutChanged || !modified.sceneChanged ||
       cr::creativeUndoDepth(task.appState.history) != 1U ||
       movedDeck == nullptr || movedDeck->id != deckId ||
+      retainedRegion == nullptr || retainedRegion->region != regionRecipe ||
       movedDeck->transform.position.z !=
           originalDeckTransform.position.z + 1.0 ||
       task.appState.facade.document().objectCount() != objectCount ||
@@ -497,6 +654,7 @@ bool canonicalSiteCorridorTaskSurvivesLifecycle() {
               << " deck-id="
               << (movedDeck != nullptr ? movedDeck->id : cr::kInvalidObjectId)
               << " expected-id=" << deckId
+              << " region=" << (retainedRegion != nullptr)
               << " deck-z="
               << (movedDeck != nullptr ? movedDeck->transform.position.z : 0.0)
               << " expected-z=" << originalDeckTransform.position.z + 1.0
@@ -538,6 +696,10 @@ bool canonicalSiteCorridorTaskSurvivesLifecycle() {
               modified.worldLayoutChanged && modified.sceneChanged &&
               cr::creativeUndoDepth(task.appState.history) == 1U &&
               movedDeck != nullptr && movedDeck->id == deckId &&
+              retainedRegion != nullptr &&
+              retainedRegion->owner ==
+                  cr::CreativeTerrainOperationOwner::Manual &&
+              retainedRegion->region == regionRecipe &&
               movedDeck->transform.position.z ==
                   originalDeckTransform.position.z + 1.0 &&
               task.appState.facade.document().objectCount() == objectCount &&
@@ -556,23 +718,65 @@ bool canonicalSiteCorridorTaskSurvivesLifecycle() {
       dispatchOne(app::CreativeDesktopCommandId::Undo, task.context);
   const cr::CreativeObject* restoredDeck = findRecipeMember(
       task.appState.facade.document(), "bridge.ditch", "deck");
+  const cr::CreativeTerrainOperation* restoredRegion =
+      cr::findCreativeTerrainOperation(
+          task.appState.facade.document().terrainOperationStack(),
+          regionOperationId);
   const cr::CreativeWorldLayoutCompileResult restored =
       cr::buildCreativeWorldLayoutPlan(task.appState.facade.document(),
                                        task.editor.worldLayout.source);
+  const bool restoredExact =
+      undone.accepted && cr::creativeUndoDepth(task.appState.history) == 0U &&
+      task.editor.worldLayout.source.terrainPaths[ditchIndex].recipe ==
+          originalRecipe &&
+      task.editor.worldLayout.generatedRevision ==
+          task.editor.worldLayout.revision &&
+      restoredDeck != nullptr && restoredDeck->id == deckId &&
+      restoredRegion != nullptr &&
+      restoredRegion->owner == cr::CreativeTerrainOperationOwner::Manual &&
+      restoredRegion->region == regionRecipe &&
+      sameTransform(restoredDeck->transform, originalDeckTransform) &&
+      sameBounds(restoredDeck->bounds, originalDeckBounds) &&
+      task.appState.facade.document().objectCount() == objectCount &&
+      restored.receipt.accepted &&
+      restored.receipt.status == cr::CreativeWorldLayoutStatus::NoChange;
+  if (!restoredExact) {
+    std::cerr
+        << "Site corridor undo: accepted=" << undone.accepted
+        << " undo=" << cr::creativeUndoDepth(task.appState.history)
+        << " source="
+        << (task.editor.worldLayout.source.terrainPaths[ditchIndex].recipe ==
+            originalRecipe)
+        << " revisions="
+        << (task.editor.worldLayout.generatedRevision ==
+            task.editor.worldLayout.revision)
+        << " deck=" << (restoredDeck != nullptr)
+        << " deck-id="
+        << (restoredDeck != nullptr ? restoredDeck->id
+                                    : cr::kInvalidObjectId)
+        << " expected-id=" << deckId
+        << " region=" << (restoredRegion != nullptr)
+        << " region-owner="
+        << (restoredRegion != nullptr
+                ? static_cast<int>(restoredRegion->owner)
+                : -1)
+        << " region-recipe="
+        << (restoredRegion != nullptr &&
+            restoredRegion->region == regionRecipe)
+        << " transform="
+        << (restoredDeck != nullptr &&
+            sameTransform(restoredDeck->transform, originalDeckTransform))
+        << " bounds="
+        << (restoredDeck != nullptr &&
+            sameBounds(restoredDeck->bounds, originalDeckBounds))
+        << " objects=" << task.appState.facade.document().objectCount()
+        << " expected-objects=" << objectCount
+        << " sync=" << restored.receipt.accepted
+        << " sync-status=" << cr::toString(restored.receipt.status)
+        << " sync-reason=" << restored.receipt.reasonCode << '\n';
+  }
   return expect(
-             undone.accepted &&
-                 cr::creativeUndoDepth(task.appState.history) == 0U &&
-                 task.editor.worldLayout.source.terrainPaths[ditchIndex].recipe ==
-                     originalRecipe &&
-                 task.editor.worldLayout.generatedRevision ==
-                     task.editor.worldLayout.revision &&
-                 restoredDeck != nullptr && restoredDeck->id == deckId &&
-                 sameTransform(restoredDeck->transform, originalDeckTransform) &&
-                 sameBounds(restoredDeck->bounds, originalDeckBounds) &&
-                 task.appState.facade.document().objectCount() == objectCount &&
-                 restored.receipt.accepted &&
-                 restored.receipt.status ==
-                     cr::CreativeWorldLayoutStatus::NoChange,
+             restoredExact,
              "site corridor undo restores source structure and generated output");
 }
 

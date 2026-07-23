@@ -145,7 +145,8 @@ CreativeWorldLayoutBuildingEditResult builderEstateLayout(
     const CreativeWorldLayoutBuildingTemplate& houseTemplate) {
   CreativeWorldLayout layout;
   layout.stableKey = "builder_estate_layout";
-  layout.terrainOwnership = CreativeWorldLayoutTerrainOwnership::ReplaceAll;
+  layout.terrainOwnership =
+      CreativeWorldLayoutTerrainOwnership::PreserveExisting;
   appendPlateau(layout, "plateau.row_1.col_1", {20, 36});
   appendPlateau(layout, "plateau.row_1.col_2", {40, 36});
   appendPlateau(layout, "plateau.row_1.col_3", {60, 36});

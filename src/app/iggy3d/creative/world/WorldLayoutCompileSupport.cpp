@@ -594,13 +594,26 @@ void appendTagOnce(std::vector<std::string>& tags, std::string tag) {
 
   std::vector<CreativeTerrainOperationId> finalOrder;
   finalOrder.reserve(staged.terrainOperationStack().operations.size());
+  std::size_t desiredIndex = 0U;
+  // Preserve external layer slots; normalize only this layout's operations.
   for (const CreativeTerrainOperation& operation :
        staged.terrainOperationStack().operations) {
-    if (!managed(operation)) {
+    if (managed(operation)) {
+      if (desiredIndex >= desiredIds.size()) {
+        setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidDocument,
+                  "creative_world_layout_terrain_operation_order_invalid");
+        return false;
+      }
+      finalOrder.push_back(desiredIds[desiredIndex++]);
+    } else {
       finalOrder.push_back(operation.id);
     }
   }
-  finalOrder.insert(finalOrder.end(), desiredIds.begin(), desiredIds.end());
+  if (desiredIndex != desiredIds.size()) {
+    setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidDocument,
+              "creative_world_layout_terrain_operation_order_invalid");
+    return false;
+  }
   for (std::size_t targetIndex = 0U; targetIndex < finalOrder.size();
        ++targetIndex) {
     const std::size_t currentIndex = findCreativeTerrainOperationIndex(
